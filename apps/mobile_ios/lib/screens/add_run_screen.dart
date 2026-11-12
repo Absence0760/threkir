@@ -1,7 +1,7 @@
 import '../activity_type_labels.dart';
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
-import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../auth_error.dart';
@@ -10,14 +10,20 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../manual_duration_input.dart';
 import '../preferences.dart';
+import '../route_file_import.dart';
+import '../social_service.dart';
+import '../typed_decimal.dart';
 import '../widgets/confirm_discard.dart';
 import '../widgets/top_banner.dart';
+import 'route_builder_screen.dart';
 
 /// Form for adding a run to history without recording it live.
 ///
 /// The user provides date, duration, and distance; they can optionally pick
-/// one of their saved routes to prefill the distance. No GPS track is
+/// one of their saved routes to prefill the distance — or, with none saved,
+/// build or import one from the empty route field. No GPS track is
 /// captured — the resulting run has an empty `track` and `metadata` is
 /// stamped with `manual_entry: true` so other surfaces can tell it apart
 /// from a recorded one.
@@ -26,11 +32,26 @@ class AddRunScreen extends StatefulWidget {
   final LocalRouteStore routeStore;
   final Preferences preferences;
 
+  /// Null when signed out: the route builder needs it, so the empty route
+  /// field then offers only Import.
+  final ApiClient? apiClient;
+  final SocialService? social;
+  final DateTime Function() now;
+
+  /// Replaces pushing [RouteBuilderScreen], which needs a live map and
+  /// backend, so a widget test can hand back the route a save would pop.
+  @visibleForTesting
+  final Future<Route?> Function(BuildContext context)? openRouteBuilder;
+
   const AddRunScreen({
     super.key,
     required this.runStore,
     required this.routeStore,
     required this.preferences,
+    this.apiClient,
+    this.social,
+    this.now = DateTime.now,
+    this.openRouteBuilder,
   });
 
   @override
@@ -58,7 +79,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
+    final now = widget.now();
     _startedAt = DateTime(now.year, now.month, now.day, now.hour);
     _initialStartedAt = _startedAt;
   }
@@ -90,9 +111,10 @@ class _AddRunScreenState extends State<AddRunScreen> {
       context: context,
       initialDate: _startedAt,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: widget.now(),
     );
     if (picked == null) return;
+    if (!mounted) return;
     setState(() {
       _startedAt = DateTime(
         picked.year,
@@ -104,21 +126,28 @@ class _AddRunScreenState extends State<AddRunScreen> {
     });
   }
 
+  /// The date picker stops at today, but a time of day has no such bound,
+  /// so a start later today than now has to be refused here — and again at
+  /// save, because a date moved back to today keeps the earlier time.
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_startedAt),
     );
     if (picked == null) return;
-    setState(() {
-      _startedAt = DateTime(
-        _startedAt.year,
-        _startedAt.month,
-        _startedAt.day,
-        picked.hour,
-        picked.minute,
-      );
-    });
+    if (!mounted) return;
+    final next = DateTime(
+      _startedAt.year,
+      _startedAt.month,
+      _startedAt.day,
+      picked.hour,
+      picked.minute,
+    );
+    if (next.isAfter(widget.now())) {
+      showTopBanner(context, AppLocalizations.of(context).addRunStartInFuture);
+      return;
+    }
+    setState(() => _startedAt = next);
   }
 
   void _onRouteSelected(Route? route) {
@@ -145,6 +174,57 @@ class _AddRunScreenState extends State<AddRunScreen> {
     _onRouteSelected(picked.route);
   }
 
+  Future<void> _addRoute() async {
+    final l10n = AppLocalizations.of(context);
+    final api = widget.apiClient;
+    final source = await showModalBottomSheet<_NewRouteSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (api != null)
+              ListTile(
+                leading: const Icon(Icons.add_location_alt),
+                title: Text(l10n.addRunBuildRoute),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _NewRouteSource.build),
+              ),
+            ListTile(
+              leading: const Icon(Icons.upload_file),
+              title: Text(l10n.addRunImportRoute),
+              onTap: () => Navigator.pop(sheetContext, _NewRouteSource.import),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    switch (source) {
+      case _NewRouteSource.build:
+        final created = await (widget.openRouteBuilder?.call(context) ??
+            Navigator.of(context).push<Route>(
+              MaterialPageRoute(
+                builder: (_) => RouteBuilderScreen(
+                  apiClient: api!,
+                  routeStore: widget.routeStore,
+                  social: widget.social,
+                ),
+              ),
+            ));
+        if (created != null && mounted) _onRouteSelected(created);
+      case _NewRouteSource.import:
+        final imported =
+            await pickAndImportRouteFile(context, widget.routeStore);
+        if (!mounted) return;
+        if (imported.length == 1) {
+          _onRouteSelected(imported.first);
+        } else {
+          setState(() {});
+        }
+    }
+  }
+
   String _formatDistanceForInput(double metres) {
     final unit = widget.preferences.unit;
     if (unit == DistanceUnit.mi) {
@@ -154,30 +234,32 @@ class _AddRunScreenState extends State<AddRunScreen> {
   }
 
   double? _parseDistanceMetres(String raw) {
-    final v = double.tryParse(raw.trim());
+    final v = parseTypedDecimal(raw);
     if (v == null || v <= 0) return null;
     return widget.preferences.unit == DistanceUnit.mi
         ? v * _metresPerMile
         : v * 1000;
   }
 
-  Duration? _parseDuration() {
-    final h = int.tryParse(_hoursCtl.text.trim().isEmpty ? '0' : _hoursCtl.text.trim());
-    final m = int.tryParse(_minutesCtl.text.trim().isEmpty ? '0' : _minutesCtl.text.trim());
-    final s = int.tryParse(_secondsCtl.text.trim().isEmpty ? '0' : _secondsCtl.text.trim());
-    if (h == null || m == null || s == null) return null;
-    if (h < 0 || m < 0 || s < 0) return null;
-    final total = Duration(hours: h, minutes: m, seconds: s);
-    if (total.inSeconds <= 0) return null;
-    return total;
-  }
+  ManualDurationResult _duration() => validateManualDuration(
+      _hoursCtl.text, _minutesCtl.text, _secondsCtl.text);
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final distance = _parseDistanceMetres(_distanceCtl.text);
-    final duration = _parseDuration();
-    if (distance == null || duration == null) return;
+    final seconds = _duration().seconds;
+    if (distance == null || seconds == null) return;
+    if (_startedAt.isAfter(widget.now())) {
+      showTopBanner(context, AppLocalizations.of(context).addRunStartInFuture);
+      return;
+    }
+    if (isImplausiblySlow(seconds, distance) &&
+        !await confirmImplausiblySlowDuration(context)) {
+      return;
+    }
+    if (!mounted) return;
+    final duration = Duration(seconds: seconds);
 
     setState(() => _saving = true);
 
@@ -316,18 +398,19 @@ class _AddRunScreenState extends State<AddRunScreen> {
                 ),
               ),
             ] else ...[
-              // Empty-state hint — keeps the affordance discoverable
-              // before the user has built or synced any routes. Without
-              // this the whole section disappears and the feature looks
-              // missing.
-              InputDecorator(
-                decoration: const InputDecoration(
-                  suffixIcon: Icon(Icons.route),
-                ),
-                child: Text(
-                  l10n.addRunNoRoutes,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+              InkWell(
+                key: const Key('add_run_add_route'),
+                onTap: _addRoute,
+                borderRadius: BorderRadius.circular(4),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    suffixIcon: Icon(Icons.add),
+                  ),
+                  child: Text(
+                    l10n.addRunNoRoutes,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
@@ -341,9 +424,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
                 controller: _distanceCtl,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
+                inputFormatters: typedDecimalInputFormatters,
                 decoration: InputDecoration(
                   suffixText: UnitFormat.distanceLabel(unit),
                 ),
@@ -359,8 +440,12 @@ class _AddRunScreenState extends State<AddRunScreen> {
             Text(l10n.addRunSectionDuration, style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             FormField<Duration>(
-              validator: (_) =>
-                  _parseDuration() == null ? l10n.addRunDurationInvalid : null,
+              validator: (_) {
+                final error = _duration().error;
+                return error == null
+                    ? null
+                    : manualDurationErrorText(l10n, error);
+              },
               builder: (state) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +454,8 @@ class _AddRunScreenState extends State<AddRunScreen> {
                       children: [
                         Expanded(
                             child: _durationField(_hoursCtl, 'h', state,
-                                l10n.durationFieldHours)),
+                                l10n.durationFieldHours,
+                                hours: true)),
                         const SizedBox(width: 8),
                         Expanded(
                             child: _durationField(_minutesCtl, 'm', state,
@@ -435,15 +521,16 @@ class _AddRunScreenState extends State<AddRunScreen> {
     TextEditingController ctl,
     String suffix,
     FormFieldState<Duration> state,
-    String label,
-  ) {
+    String label, {
+    bool hours = false,
+  }) {
     return Semantics(
       label: label,
       textField: true,
       child: TextField(
         controller: ctl,
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: durationBoxFormatters(hours: hours),
         onChanged: (_) => state.didChange(null),
         decoration: InputDecoration(
           suffixText: suffix,
@@ -462,6 +549,8 @@ class _AddRunScreenState extends State<AddRunScreen> {
 /// Result wrapper so `Navigator.pop(null)` (dismiss) is distinguishable
 /// from "the user picked the No route option" — the latter pops a
 /// [_RoutePick] whose `route` field is null.
+enum _NewRouteSource { build, import }
+
 class _RoutePick {
   final Route? route;
   const _RoutePick(this.route);

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
@@ -18,7 +18,7 @@ import { insertRun } from '../fixtures/simulate';
  *     EventEditor + RaceDayPanel LABELS.
  *
  * What none of them does, and this one does: drive the pref change
- * through the REAL Settings → Preferences UI toggle (not a service-role
+ * through the REAL Settings → Units & display UI toggle (not a service-role
  * write) and then prove the new value lands on MULTIPLE distinct
  * surfaces — /runs list, /dashboard recent-runs, /runs/[id] detail — in
  * ONE journey, then revert and prove every surface reverts too.
@@ -60,8 +60,6 @@ const RUN_A_MI_TEXT = '6.21 mi';
 const RUN_B_KM_TEXT = '5.00 km';
 const RUN_B_MI_TEXT = '3.11 mi';
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:7777';
-
 test.describe('saga: unit pref flip propagates across runs list + dashboard + detail', () => {
 	// One continuous multi-surface journey with several full navigations
 	// + a UI save round-trip; the default 30 s test timeout is tight.
@@ -102,10 +100,11 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 
 	test('km baseline → toggle to mi in Settings → every surface follows → revert to km', async ({
 		browser,
+		baseURL,
 	}) => {
 		const ctx = await browser.newContext({
 			storageState: users[0].storageStatePath,
-			baseURL: BASE_URL,
+			baseURL,
 		});
 		const page = await ctx.newPage();
 
@@ -155,8 +154,8 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 			// ── Step 3: flip the unit to MILES via the real Settings UI ─
 			// The headline action of the journey: drive the pref change
 			// through the canonical toggle, not a service-role write.
-			await test.step('flip to Miles in Settings → Preferences', async () => {
-				await page.goto('/settings/preferences');
+			await test.step('flip to Miles in Settings → Units & display', async () => {
+				await page.goto('/settings/display');
 				await page.getByRole('button', { name: 'Miles', exact: true }).click();
 				await expect(page.getByTestId('save-status')).toContainText('Saved', {
 					timeout: 8_000,
@@ -215,7 +214,7 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 			// value anywhere (memoised derived, write-time format) — the
 			// runs would otherwise stay stuck at mi.
 			await test.step('revert to Kilometres → all surfaces show km again', async () => {
-				await page.goto('/settings/preferences');
+				await page.goto('/settings/display');
 				await page
 					.getByRole('button', { name: 'Kilometres', exact: true })
 					.click();

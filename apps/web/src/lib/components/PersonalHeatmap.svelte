@@ -1,21 +1,22 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
-	import { mapTrackLine } from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { fetchRuns, fetchTrackByPath } from '$lib/core/data';
-	import { buildHeatCells, heatBounds, toHeatGeoJSON, toTrackLinesGeoJSON, MAX_CELL_WEIGHT } from '$lib/routes/run_heatmap';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/routes/map-style.svelte.ts';
+	import { MAP_HEAT_OPACITY, mapHeatRamp, mapTrackLine } from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { fetchRuns, fetchTrackByPath } from '#lib/core/data.ts';
+	import { toLinePoint } from '#lib/runs/track_line.ts';
+	import { buildHeatCells, heatBounds, toHeatGeoJSON, toTrackLinesGeoJSON, MAX_CELL_WEIGHT } from '#lib/routes/run_heatmap.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	// Cap the number of tracks downloaded so a runner with thousands of
 	// runs doesn't pull every blob on first paint. Newest-first; the
@@ -96,7 +97,7 @@
 				empty = true;
 				return;
 			}
-			const tracks = await downloadTracks(paths);
+			const tracks = (await downloadTracks(paths)).map((t) => t.map(toLinePoint));
 			const cells = buildHeatCells(tracks);
 			if (cells.length === 0) {
 				empty = true;
@@ -136,6 +137,7 @@
 
 	// When the data resolves before the style's `load` fires, stash it
 	// and apply on load.
+	let heatRamp = $state(mapHeatRamp(false));
 	let pendingData: GeoJSON.FeatureCollection<GeoJSON.Point, { weight: number }> | null = null;
 	let pendingLines: GeoJSON.FeatureCollection<GeoJSON.LineString> | null = null;
 	let pendingBounds: [[number, number], [number, number]] | null = null;
@@ -151,6 +153,7 @@
 			typeof window !== 'undefined' &&
 			window.matchMedia('(prefers-color-scheme: dark)').matches;
 		const darkBasemap = basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY, prefersDark);
+		heatRamp = mapHeatRamp(darkBasemap);
 
 		map = new maplibregl.Map({
 			container: mapEl,
@@ -215,11 +218,14 @@
 						'interpolate',
 						['linear'],
 						['heatmap-density'],
+						// Below 0.2 is the cloud's soft edge; every stop past
+						// it is opaque so the layer opacity alone sets the
+						// composite each rung is measured at.
 						0, 'rgba(0,0,0,0)',
-						0.2, 'rgba(59, 130, 246, 0.45)',
-						0.4, 'rgba(16, 185, 129, 0.6)',
-						0.6, 'rgba(245, 158, 11, 0.75)',
-						1.0, 'rgba(239, 68, 68, 0.9)',
+						0.2, heatRamp[0],
+						0.4, heatRamp[1],
+						0.6, heatRamp[2],
+						1.0, heatRamp[3],
 					],
 					// Fade the heat cloud out as the track lines fade in, so
 					// zooming past street level reveals the precise paths
@@ -228,7 +234,7 @@
 						'interpolate',
 						['linear'],
 						['zoom'],
-						FADE_MIN, 0.85,
+						FADE_MIN, MAP_HEAT_OPACITY,
 						FADE_MAX, 0,
 					],
 				},
@@ -264,7 +270,7 @@
 						['linear'],
 						['zoom'],
 						FADE_MIN, 0,
-						FADE_MAX, 0.55,
+						FADE_MAX, MAP_HEAT_OPACITY,
 					],
 				},
 			});
@@ -347,7 +353,13 @@
 			<strong>{m('personalHeatmap.legendTitle')}</strong>
 			<p>{trackCount === 1 ? m('personalHeatmap.legendSummaryOne', { n: trackCount }) : m('personalHeatmap.legendSummaryMany', { n: trackCount })}</p>
 			<p class="visually-hidden">{m('personalHeatmap.srAltData')}</p>
-			<span class="legend-scale" aria-hidden="true"></span>
+			<span
+				class="legend-scale"
+				aria-hidden="true"
+				data-testid="personal-heatmap-legend-scale"
+				style:--heat-ramp={heatRamp.join(', ')}
+				style:--heat-opacity={MAP_HEAT_OPACITY}
+			></span>
 			<span class="legend-scale-labels"><span>{m('personalHeatmap.scaleLess')}</span><span>{m('personalHeatmap.scaleMore')}</span></span>
 		</aside>
 	{/if}
@@ -479,13 +491,8 @@
 		display: block;
 		height: 8px;
 		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			rgba(59, 130, 246, 0.7),
-			rgba(16, 185, 129, 0.8),
-			rgba(245, 158, 11, 0.85),
-			rgba(239, 68, 68, 0.95)
-		);
+		background: linear-gradient(90deg, var(--heat-ramp));
+		opacity: var(--heat-opacity);
 	}
 	.legend-scale-labels {
 		display: flex;

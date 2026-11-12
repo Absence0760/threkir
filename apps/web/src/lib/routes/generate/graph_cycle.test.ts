@@ -7,6 +7,7 @@ import {
 	GraphCycleError,
 	parseGraphCycle,
 	parseLargestCleanM,
+	parsePreferenceApplied,
 } from './graph_cycle';
 import { handleGenerate } from './handler';
 import type { Fetcher } from './graphhopper';
@@ -18,7 +19,7 @@ const GH = 'http://gh.local';
 // the engine chain, so they run as a Pro caller via the proChecker seam.
 const AUTH = 'Bearer test-token';
 const GATE_CFG = {
-	publicSupabaseUrl: 'http://127.0.0.1:54321',
+	publicSupabaseUrl: 'http://127.0.0.1:24321',
 	publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 	bypassPaywallEnabled: false,
 };
@@ -176,6 +177,62 @@ test('fetchGraphCycle POSTs a JSON body with the start + target and the key head
 	assert.equal(body.targetDistanceM, 5000);
 });
 
+test('fetchGraphCycle carries a preference on the body, and omits the key when unset', async () => {
+	let seenInit: RequestInit | undefined;
+	const fetcher: Fetcher = async (_u, init) => {
+		seenInit = init;
+		return gcResponse(true, squareLoop(0, 0, 0.01), 5000);
+	};
+	await fetchGraphCycle(
+		{ baseUrl: GC, start: { lat: 0, lng: 0 }, targetDistanceM: 5000, preference: 'scenic' },
+		fetcher,
+	);
+	assert.equal(JSON.parse(seenInit?.body as string).preference, 'scenic');
+
+	await fetchGraphCycle({ baseUrl: GC, start: { lat: 0, lng: 0 }, targetDistanceM: 5000 }, fetcher);
+	// Absent, not null: "no preference" must be the byte-for-byte request the
+	// sidecar has always answered.
+	assert.equal('preference' in JSON.parse(seenInit?.body as string), false);
+});
+
+test('parsePreferenceApplied accepts only the shared vocabulary', () => {
+	assert.equal(parsePreferenceApplied({ preferenceApplied: 'quiet' }), 'quiet');
+	assert.equal(parsePreferenceApplied({ preferenceApplied: 'cul_de_sac' }), 'cul_de_sac');
+	// Fail-closed: a value we can't read is "not applied", never "applied".
+	assert.equal(parsePreferenceApplied({ preferenceApplied: 'elevation' }), null);
+	assert.equal(parsePreferenceApplied({ preferenceApplied: null }), null);
+	assert.equal(parsePreferenceApplied({ preferenceApplied: true }), null);
+	assert.equal(parsePreferenceApplied({}), null);
+	assert.equal(parsePreferenceApplied(null), null);
+});
+
+test('fetchGraphCycle reports the preference the sidecar actually applied', async () => {
+	const withApplied: Fetcher = async () =>
+		new Response(
+			JSON.stringify({
+				found: true,
+				coordinates: squareLoop(0, 0, 0.01),
+				distanceM: 5000,
+				preferenceApplied: 'quiet',
+			}),
+			{ status: 200, headers: { 'content-type': 'application/json' } },
+		);
+	const got = await fetchGraphCycle(
+		{ baseUrl: GC, start: { lat: 0, lng: 0 }, targetDistanceM: 5000, preference: 'quiet' },
+		withApplied,
+	);
+	assert.equal(got.preferenceApplied, 'quiet');
+
+	// The sidecar's own unweighted retry served this one — the ask went unmet,
+	// and asking for it is not evidence it landed.
+	const unweighted: Fetcher = async () => gcResponse(true, squareLoop(0, 0, 0.01), 5000);
+	const fallback = await fetchGraphCycle(
+		{ baseUrl: GC, start: { lat: 0, lng: 0 }, targetDistanceM: 5000, preference: 'quiet' },
+		unweighted,
+	);
+	assert.equal(fallback.preferenceApplied, null);
+});
+
 test('fetchGraphCycle omits the key header when no apiKey is set', async () => {
 	let seenInit: RequestInit | undefined;
 	const fetcher: Fetcher = async (_u, init) => {
@@ -301,7 +358,10 @@ test('handleGenerate falls back to round_trip when the sidecar errors', async ()
 	assert.equal(rtCalled, true, 'an unreachable sidecar must fall back, not fail the request');
 });
 
-test('handleGenerate → 502 when graph-cycle is loop-poor and no fallback engine is configured', async () => {
+test('handleGenerate → 422 when graph-cycle is loop-poor and no fallback engine is configured', async () => {
+	// The sidecar ANSWERED — this start simply has no loop. A 502 here would
+	// reach the Lambda's engine_unreachable log line and page the on-call over
+	// a runner's street layout.
 	const fetcher: Fetcher = async () => gcResponse(false);
 	const res = await handleGenerate(
 		AUTH,
@@ -309,13 +369,15 @@ test('handleGenerate → 502 when graph-cycle is loop-poor and no fallback engin
 		{ ...GATE_CFG, graphCycleUrl: GC, graphhopperUrl: undefined },
 		{ fetcher, proChecker: asPro },
 	);
-	assert.equal(res.status, 502);
+	assert.equal(res.status, 422);
+	assert.deepEqual(res.body, { error: 'no usable route' });
 });
 
 test('handleGenerate → 502 when the sidecar THROWS and no fallback engine is configured', async () => {
 	// Distinct path from the loop-poor (found:false → null) case above: here the
 	// sidecar errors, fetchGraphCycle throws, the catch swallows it, and with no
-	// GraphHopper to fall back to the handler must still 502 (not crash).
+	// GraphHopper to fall back to this IS an outage — the one branch here that
+	// should page anyone.
 	const fetcher: Fetcher = async () => new Response('down', { status: 503 });
 	const res = await handleGenerate(
 		AUTH,
@@ -324,6 +386,7 @@ test('handleGenerate → 502 when the sidecar THROWS and no fallback engine is c
 		{ fetcher, proChecker: asPro },
 	);
 	assert.equal(res.status, 502);
+	assert.deepEqual(res.body, { error: 'route engine unavailable' });
 });
 
 test('handleGenerate serves graph-cycle alone (no GraphHopper) on a clean loop', async () => {

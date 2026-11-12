@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
-import { waterStorageKey } from '../fixtures/helpers';
+import { browserDayAt, waterStorageKey } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * /nutrition daily view — meal-slot grouping, per-slot calorie headers, the
@@ -22,9 +23,7 @@ test.describe('/nutrition — daily grouping + water decrement', () => {
 	test('meals group + order by slot, each header summing its own items', async ({ page }) => {
 		const admin = getAdminClient();
 		const stamp = Date.now();
-		const now = new Date();
-		const at = (h: number) =>
-			new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, 0).toISOString();
+		const at = (h: number) => browserDayAt(0, h);
 
 		// USER_A is the seed user (runner@test.com), whose seed food_log carries
 		// today-relative items in every slot — they'd sum into these slot headers
@@ -122,12 +121,15 @@ test.describe('/nutrition — daily grouping + water decrement', () => {
 		const row = page.locator('.meal-list li', { hasText: item });
 		await expect(row).toBeVisible({ timeout: 10_000 });
 
-		const { data: created } = await admin
-			.from('food_log')
-			.select('id, meal_slot')
-			.eq('user_id', USER_A.id)
-			.eq('item_name', item);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'food_log by user_id+item_name',
+			admin
+				.from('food_log')
+				.select('id, meal_slot')
+				.eq('user_id', USER_A.id)
+				.eq('item_name', item)
+		);
+		expect(created.length).toBe(1);
 		expect(created![0].meal_slot).toBe('breakfast');
 
 		await admin.from('food_log').delete().eq('id', created![0].id);

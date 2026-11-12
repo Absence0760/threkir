@@ -1,9 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { isInAnyZone } from '../../src/lib/routes/privacy';
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Privacy + data-rights JOURNEY — ONE public run with a real GPS track
@@ -121,15 +123,18 @@ test.describe('privacy + data-rights journey', () => {
 					track: FULL_TRACK
 				});
 
-				const { data: row } = await admin
-					.from('runs')
-					.select('user_id, is_public, track_url')
-					.eq('id', runId)
-					.single();
-				expect(row?.user_id).toBe(USER_A.id);
-				expect(row?.is_public).toBe(true);
+				const row = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('user_id, is_public, track_url')
+						.eq('id', runId)
+						.single()
+				);
+				expect(row.user_id).toBe(USER_A.id);
+				expect(row.is_public).toBe(true);
 				// Canonical track path the export's path-shape guard expects.
-				expect(row?.track_url).toBe(`${USER_A.id}/${runId}.json.gz`);
+				expect(row.track_url).toBe(`${USER_A.id}/${runId}.json.gz`);
 			});
 
 			// ── 1. Non-owner sees a CLIPPED track on /share/run/[id] ───────
@@ -139,12 +144,7 @@ test.describe('privacy + data-rights journey', () => {
 				});
 				// Pre-accept cookie consent so the clip EF (a third-party-ish
 				// fetch behind consent gating) is allowed to fire.
-				await ctx.addInitScript(() => {
-					localStorage.setItem(
-						'cookie_consent',
-						JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-					);
-				});
+				await acceptCookieConsent(ctx);
 				const guestPage = await ctx.newPage();
 				try {
 					const efPromise = guestPage.waitForResponse(
@@ -200,12 +200,7 @@ test.describe('privacy + data-rights journey', () => {
 					.newContext({ storageState: USER_A.storageStatePath })
 					.then((c) => c.newPage());
 				try {
-					await page.addInitScript(() => {
-						localStorage.setItem(
-							'cookie_consent',
-							JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-						);
-					});
+					await acceptCookieConsent(page);
 					await page.goto('/settings/account');
 
 					// The signed-URL response carries the run count + format; we
@@ -239,7 +234,7 @@ test.describe('privacy + data-rights journey', () => {
 					// network, so it mints the signed URL against the INTERNAL
 					// gateway host (http://kong:8000), which doesn't resolve
 					// from the test process. Rewrite the origin to the external
-					// API URL the fixtures use (http://127.0.0.1:54321); the
+					// API URL the fixtures use (http://127.0.0.1:24321); the
 					// path + signature token are unchanged so the signature
 					// still verifies. In production SUPABASE_URL is the public
 					// host, so the URL is already externally fetchable.

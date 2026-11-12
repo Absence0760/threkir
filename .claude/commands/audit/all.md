@@ -45,6 +45,8 @@ Run the project's full audit sweep. By default, runs every audit; with an argume
 4. **Consolidate findings** into a single report grouped by severity (Critical / High / Medium / Low), then by audit area. For each finding: file:line, what's wrong, the audit that found it.
 5. **Recommend a fix order**, but don't apply fixes without explicit confirmation. Critical/High findings should be flagged with "fix this before next deploy"; Medium/Low can be batched.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../../CLAUDE.md)).
+
 ## Output shape
 
 ```

@@ -53,6 +53,8 @@ the registry):
 
 **Both concepts are authorable in either form.** Each editor shows ONE field per concept with a clock-vs-elapsed switch, opening in whichever form the marker was saved in, and writes only the selected one — the two are alternatives, and a marker holding both is contradictory (`_cutoffLimitS` silently prefers the elapsed value). Saving normalises a both-forms marker down to the one the readers already honoured, so nothing in use is lost. Before this, `cutoff_elapsed_s` and `target_clock` were in the registry with no input on either platform, so an ultra whose cut-offs are stated as "22 hours in" could not be described at all.
 
+**`services` is read as a set.** Neither the database nor the jsonb bag stops a duplicate or a non-string entry, and the web roadbook keys its service chips on the name, so one duplicate threw `each_key_duplicate` and took the page down; on mobile a non-string entry threw from a lazy `cast<String>()`. Every reader goes through `parseAidServices(raw)` (web `route_markers.ts` ↔ mobile `route_markers.dart`): strings only, first occurrence kept, unknown names preserved so a service added by a newer client still round-trips. `buildRoadbook` (both platforms), both editors' detail lines and the web editor's draft load use it, so opening and re-saving a malformed marker writes it back clean. Both editors already write a set (web toggles membership, mobile holds a `Set`); the database deliberately does not police `meta`, which stays a schemaless registry.
+
 The pure helpers `parseCutoff(meta)` / `parseTarget(meta)` validate / normalise
 those keys so a cut-off or target chip renders identically on both platforms.
 They are also the **write** gate: an editor asks `parseCutoff` whether a typed
@@ -82,7 +84,10 @@ roadbook, GPX export, live cut-off ETA).
   the owner's privacy zones — the marker analogue of `clip_route_for_viewer` for
   waypoints (decisions §33). A public course therefore can't leak a pin dropped at
   the owner's home. The web + mobile read paths (`fetchRouteMarkers`) call this RPC
-  and fail closed (empty list) on error.
+  as a GET and throw on error rather than answering an empty list (decisions
+  §1703): each caller decides what a failure means — a retryable error where
+  markers are the surface (roadbook, marker editor/panel), a disclosed or silent
+  degradation where they are auxiliary (export, watch push, cut-off cards).
 - **Placement by distance.** Besides map-tap and typed lat/lng, the editor accepts
   a "distance along route" (mi/km) that resolves to a point on the polyline via
   `markerPointAtDistance` (`route_geometry.ts ↔ .dart`); the server still derives
@@ -159,6 +164,12 @@ roadbook, GPX export, live cut-off ETA).
   what the GPX export emits: one `<wpt>` per marker (kind → `<sym>`, cutoff +
   services in `<desc>`) alongside the route line, so a watch surfaces them
   mid-race. Shipped on web (route-detail + roadbook download) + mobile share.
+- **3D course preview** (#1270, web) — a `climb` marker with a label names
+  that climb in the `/routes/[id]` flyover. It is placed by projecting the
+  marker's position onto the line the preview flies (`climbNamesFromMarkers`
+  in `course_preview_points.ts`), not by `position_m`: that is measured along
+  the unclipped route, and a non-owner flies the clipped one. A marker more
+  than 100 m off the flown line names nothing.
 
 ## Deferred
 

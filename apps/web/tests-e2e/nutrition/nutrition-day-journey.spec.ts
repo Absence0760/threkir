@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
-import { waterStorageKey } from '../fixtures/helpers';
+import { waterStorageKey } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Nutrition day-in-the-life journey — one long, multi-step walk through the
@@ -126,12 +127,15 @@ test.describe('/nutrition — day-in-the-life journey', () => {
 			await expect.poll(consumedKcal).toBe(baseKcal + ITEM_KCAL);
 
 			// Backend row exists, owned by USER_A, in the chosen slot.
-			const { data: created } = await admin
-				.from('food_log')
-				.select('id, meal_slot')
-				.eq('user_id', USER_A.id)
-				.eq('item_name', item);
-			expect(created?.length).toBe(1);
+			const created = await readRows(
+				'food_log by user_id+item_name',
+				admin
+					.from('food_log')
+					.select('id, meal_slot')
+					.eq('user_id', USER_A.id)
+					.eq('item_name', item)
+			);
+			expect(created.length).toBe(1);
 			expect(created![0].meal_slot).toBe('lunch');
 		});
 
@@ -143,12 +147,14 @@ test.describe('/nutrition — day-in-the-life journey', () => {
 
 			const chip = page.getByTestId('water-budget');
 			await expect(chip).toBeVisible({ timeout: 10_000 });
-			await expect(chip).toContainText(/ml left/);
-			const before = parseInt((await chip.innerText()).replace(/\D/g, ''), 10);
+			await expect(chip).toContainText(/L left/);
+			const remainingMl = async () =>
+				Math.round(parseFloat((await chip.innerText()).replace(/[^\d.]/g, '')) * 1000);
+			const before = await remainingMl();
 
 			// One 250 ml add reduces the remaining by exactly one unit.
 			await page.getByTestId('add-water').click();
-			await expect(chip).toContainText(`${before - 250} ml left`);
+			await expect.poll(remainingMl).toBe(before - 250);
 
 			// Seed the per-day counter to one unit below the bodyweight-derived
 			// target (parsed from the "X / Y L" readout), reload, and the final
@@ -161,7 +167,7 @@ test.describe('/nutrition — day-in-the-life journey', () => {
 				{ key: waterStorageKey(USER_A.id), ml: targetMl - 250 },
 			);
 			await page.reload();
-			await expect(chip).toContainText(/ml left/);
+			await expect(chip).toContainText(/L left/);
 			await page.getByTestId('add-water').click();
 			await expect(chip).toContainText('Goal reached');
 

@@ -34,12 +34,12 @@ void main() {
     );
   }
 
-  group('a local edit is durably unsynced', () {
-    test('update() survives a cold reload as unsynced', () async {
-      // H1: update() flipped the run unsynced in memory + in index.json but
-      // never wrote synced_ids.json, and cold-load treats that sidecar as
-      // authoritative — so an offline edit was silently re-marked synced on
-      // the next launch and could never drain.
+  group('a local edit is durably pending', () {
+    test('update() of a synced run survives a cold reload as a pending edit',
+        () async {
+      // H1: the edit used to be lost on the next launch because only memory
+      // knew about it. A synced run's edit is now a pending field edit
+      // (decisions § 2147), and that has to be just as durable.
       final store = LocalRunStore();
       await store.init(overrideDirectory: tempDir);
       await store.save(makeRun(id: 'R'));
@@ -51,13 +51,29 @@ void main() {
 
       final third = LocalRunStore();
       await third.init(overrideDirectory: tempDir);
+      expect(third.pendingEdit('R')?.fields, {RunEditField.distanceM});
+      expect(third.unsyncedRuns, isEmpty);
+    });
+
+    test('update() of a never-pushed run survives a cold reload as unsynced',
+        () async {
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      await store.save(makeRun(id: 'R'));
+
+      final second = LocalRunStore();
+      await second.init(overrideDirectory: tempDir);
+      await second.update(makeRun(id: 'R', distance: 9999));
+
+      final third = LocalRunStore();
+      await third.init(overrideDirectory: tempDir);
       expect(third.unsyncedRuns.map((r) => r.id), ['R']);
     });
 
     test('update() on a windowed-out run restores its residency', () async {
-      // The other half of H1: `unsyncedRuns` reads `_runs`, not `_summaries`,
-      // so an edit to a run outside the resident window was invisible to the
-      // drain even inside the same session.
+      // The other half of H1: an edit to a run outside the resident window
+      // was invisible to the drain even inside the same session. It is a
+      // pending field edit now (decisions § 2147), and still made resident.
       final seed = LocalRunStore();
       await seed.init(overrideDirectory: tempDir);
       await seed.save(Run(
@@ -76,7 +92,7 @@ void main() {
         track: const [],
         source: RunSource.app,
       ));
-      await seed.markManySynced(['older', 'newer']);
+      await seed.markManySynced(seed.runs);
 
       final store = LocalRunStore();
       store.residentWindow = 1;
@@ -92,7 +108,59 @@ void main() {
         track: const [],
         source: RunSource.app,
       ));
-      expect(store.unsyncedRuns.map((r) => r.id), ['older']);
+      expect(store.pendingEditIds, ['older']);
+      expect(store.runs.map((r) => r.id), contains('older'));
+    });
+
+    test('an edit DURING a push is not marked synced', () async {
+      // saveRunsBatch uploads N gzipped tracks and can run for minutes.
+      // Marking by id alone flipped whatever was resident at that later
+      // moment, so an edit made mid-push was recorded as synced and never
+      // sent — and saveFromRemote's newer-wins then preserved the local copy,
+      // making the divergence permanent and invisible on BOTH sides. The gym
+      // store hardened against exactly this; the run store never did.
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      await store.save(makeRun(id: 'R'));
+
+      // Snapshot the batch the way SyncService does, before the await.
+      final pushed = store.unsyncedRuns.toList();
+      expect(pushed.map((r) => r.id), ['R']);
+
+      // ...the runner edits the title while the upload is in flight.
+      await store.update(makeRun(id: 'R', distance: 4242));
+
+      // ...and the batch completes, reporting success for the run it pushed.
+      await store.markManySynced(pushed);
+
+      expect(store.unsyncedRuns.map((r) => r.id), ['R'],
+          reason: 'the edited run must stay pending for the next drain');
+      final reloaded = LocalRunStore();
+      await reloaded.init(overrideDirectory: tempDir);
+      expect(reloaded.unsyncedRuns.map((r) => r.id), ['R']);
+    });
+
+    test('a run marked synced right after save() actually flips', () async {
+      // markManySynced matches by object identity, and save() stores a
+      // STAMPED/owner-tagged copy — not the caller's instance. The import
+      // paths save and then immediately push, so passing their own copies
+      // matched nothing: every imported run stayed unsynced forever and
+      // re-uploaded its full gzipped track on every drain. save() returns the
+      // resident instance for exactly this.
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+
+      final mine = makeRun(id: 'R');
+      final stored = await store.save(mine);
+      expect(identical(stored, mine), isFalse,
+          reason: 'precondition: save stamps a new instance');
+
+      await store.markManySynced([stored]);
+      expect(store.unsyncedRuns.map((r) => r.id), isEmpty);
+
+      final reloaded = LocalRunStore();
+      await reloaded.init(overrideDirectory: tempDir);
+      expect(reloaded.unsyncedRuns.map((r) => r.id), isEmpty);
     });
 
     test('re-saving a synced id survives a cold reload as unsynced', () async {
@@ -354,6 +422,50 @@ void main() {
       await store.init(overrideDirectory: tempDir);
       await store.saveInProgress(makeRun(id: 'live'));
       expect(File('${tempDir.path}/in_progress.json').existsSync(), isTrue);
+    });
+
+    test('a seeded track carrying a non-finite point still saves', () async {
+      // `resumeSession` takes a caller-supplied track and the two watch
+      // bridges hand one in unscreened, so a point that is not a location can
+      // reach the store. `jsonEncode` refuses a non-finite double, so before
+      // the filter this threw a `JsonUnsupportedObjectError` and the live
+      // recording could not be checkpointed at all.
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      final seeded = makeRun(
+        id: 'live',
+        track: const [
+          Waypoint(lat: 47.37, lng: 8.54),
+          Waypoint(lat: double.nan, lng: 8.54),
+          Waypoint(lat: 47.38, lng: 8.55),
+        ],
+      );
+      await store.saveInProgress(seeded);
+
+      final loaded = await store.loadInProgress();
+      expect(loaded, isNotNull);
+      expect(loaded!.track.length, 2);
+      expect(loaded.track.first.lat, 47.37);
+      expect(loaded.track.last.lat, 47.38);
+    });
+
+    test('a completed run carrying a non-finite point still saves', () async {
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      await store.save(makeRun(
+        id: 'R',
+        track: const [
+          Waypoint(lat: 47.37, lng: 8.54),
+          Waypoint(lat: 47.38, lng: double.infinity),
+        ],
+      ));
+
+      final second = LocalRunStore();
+      await second.init(overrideDirectory: tempDir);
+      final back = await second.runById('R');
+      expect(back, isNotNull);
+      expect(back!.track.length, 1);
+      expect(back.track.single.lat, 47.37);
     });
 
     test('loadInProgress round-trip', () async {
@@ -867,7 +979,7 @@ void main() {
         await foreground.init(overrideDirectory: tempDir);
         await foreground.save(makeRun(id: 'R5', distance: 10000));
         await foreground.save(makeRun(id: 'R3', distance: 3000));
-        await foreground.markManySynced(['R5', 'R3']);
+        await foreground.markManySynced(foreground.runs);
 
         final background = LocalRunStore();
         await background.init(overrideDirectory: tempDir);
@@ -1249,82 +1361,6 @@ void main() {
     });
   });
 
-  group('_lastModifiedOf fallback prefers startedAt over createdAt (L2)', () {
-    Run rawRun({
-      required String id,
-      required DateTime startedAt,
-      DateTime? createdAt,
-      Map<String, dynamic>? metadata,
-      double distance = 5000,
-    }) =>
-        Run(
-          id: id,
-          startedAt: startedAt,
-          duration: const Duration(minutes: 25),
-          distanceMetres: distance,
-          track: const [],
-          source: RunSource.app,
-          metadata: metadata,
-          createdAt: createdAt,
-        );
-
-    test(
-        'a legacy local run with a later startedAt wins over a remote run with '
-        'a later createdAt', () async {
-      final store = LocalRunStore();
-      await store.init(overrideDirectory: tempDir);
-
-      // Local run, no metadata.last_modified_at: startedAt is LATE,
-      // createdAt is EARLY. Seed it as already-on-disk (synced) so
-      // saveFromRemote sees it as the existing copy.
-      await store.saveFromRemote(rawRun(
-        id: 'r-clock',
-        startedAt: DateTime.utc(2026, 6, 10),
-        createdAt: DateTime.utc(2026, 1, 1),
-        distance: 1111,
-      ));
-
-      // Remote run with the same id: startedAt EARLY, createdAt LATE.
-      // Under the old createdAt-preferring chain the remote (later
-      // createdAt) would win and overwrite the local distance. With the
-      // startedAt fallback the local (later startedAt) is kept.
-      await store.saveFromRemote(rawRun(
-        id: 'r-clock',
-        startedAt: DateTime.utc(2026, 1, 1),
-        createdAt: DateTime.utc(2026, 6, 10),
-        distance: 9999,
-      ));
-
-      expect(store.runs.single.distanceMetres, 1111,
-          reason: 'startedAt (not the ambiguous server createdAt) is the '
-              'modification-clock fallback');
-    });
-
-    test('metadata.last_modified_at still takes precedence over startedAt',
-        () async {
-      final store = LocalRunStore();
-      await store.init(overrideDirectory: tempDir);
-
-      // Local: late last_modified_at but an early startedAt.
-      await store.saveFromRemote(rawRun(
-        id: 'r-meta',
-        startedAt: DateTime.utc(2026, 1, 1),
-        metadata: {'last_modified_at': '2026-06-10T00:00:00.000Z'},
-        distance: 2222,
-      ));
-
-      // Remote: no last_modified_at, a late startedAt. The local's
-      // explicit stamp must still win.
-      await store.saveFromRemote(rawRun(
-        id: 'r-meta',
-        startedAt: DateTime.utc(2026, 6, 9),
-        distance: 8888,
-      ));
-
-      expect(store.runs.single.distanceMetres, 2222);
-    });
-  });
-
   group('summary index', () {
     test('save writes the run summary to index.json (one per row)', () async {
       final store = LocalRunStore();
@@ -1514,6 +1550,60 @@ void main() {
       indexFile.writeAsStringSync('{not json');
       expect(await store.debugReadIndex(), isNull);
     });
+
+    // What one unreadable row costs, traced end to end. It costs the INDEX,
+    // not the load and not the run: `_readIndex` catches, the loader falls
+    // through to the full walk of the per-run files, and the index is written
+    // back correct. Skipping the row instead would drop a run that is still on
+    // disk and then persist that omission (decisions § 1431).
+    test('one unreadable index row costs the index, never a run', () async {
+      final seed = LocalRunStore();
+      await seed.init(overrideDirectory: tempDir);
+      await seed.save(makeRun(id: 'r-1', distance: 5000));
+      await seed.save(makeRun(id: 'r-2', distance: 6000));
+
+      final indexFile = File('${tempDir.path}/index.json');
+      final data =
+          jsonDecode(indexFile.readAsStringSync()) as Map<String, dynamic>;
+      (data['summaries'] as List)[0]['duration_us'] = 'thirty minutes';
+      indexFile.writeAsStringSync(jsonEncode(data));
+
+      expect(await seed.debugReadIndex(), isNull,
+          reason: 'the whole index is discarded, not the one row');
+
+      final reloaded = LocalRunStore();
+      await reloaded.init(overrideDirectory: tempDir);
+      expect(reloaded.summaryRuns.map((r) => r.id),
+          containsAll(<String>['r-1', 'r-2']));
+      final rebuilt = await reloaded.debugReadIndex();
+      expect(rebuilt, isNotNull, reason: 'the rebuild persists a usable index');
+      expect(rebuilt!.map((s) => s.id), containsAll(<String>['r-1', 'r-2']));
+    });
+
+    test('an impossible start in the index reaches the rebuild', () async {
+      // This is the row that never used to reach it: `DateTime.parse` answered
+      // 2026-13-45 with 2027-02-18, so nothing threw, the run list sorted by a
+      // day the runner never ran, and the value was written back on the next
+      // flush.
+      final seed = LocalRunStore();
+      await seed.init(overrideDirectory: tempDir);
+      await seed.save(makeRun(id: 'r-roll', distance: 5000));
+      final started = seed.summaryRuns.single.startedAt;
+
+      final indexFile = File('${tempDir.path}/index.json');
+      final data =
+          jsonDecode(indexFile.readAsStringSync()) as Map<String, dynamic>;
+      (data['summaries'] as List)[0]['started_at'] = '2026-13-45T99:99:99Z';
+      indexFile.writeAsStringSync(jsonEncode(data));
+
+      expect(await seed.debugReadIndex(), isNull);
+
+      final reloaded = LocalRunStore();
+      await reloaded.init(overrideDirectory: tempDir);
+      expect(reloaded.summaryRuns.single.startedAt, started,
+          reason: 'the run file, not the rolled-over index row, is the source');
+      expect((await reloaded.debugReadIndex())!.single.startedAt, started);
+    });
   });
 
   group('windowed API', () {
@@ -1651,6 +1741,51 @@ void main() {
       final a = await store.runById('a'); // outside the window
       expect(a, isNotNull);
       expect(a!.track, hasLength(1), reason: 'hydrated from disk with its track');
+    });
+
+    test(
+        'saveManyFromRemote updates an out-of-window copy in place, keeping '
+        'its track and leaving it out of the window', () async {
+      // The first pull after sign-in or upgrade hands over every owned row
+      // (decisions § 2118). Making each windowed-out copy resident would load
+      // every track in the history into memory.
+      await seed([
+        mk('a', DateTime(2026, 1, 1), track: const [Waypoint(lat: 1, lng: 2)]),
+        mk('b', DateTime(2026, 2, 1)),
+      ]);
+      final store = LocalRunStore()..residentWindow = 1;
+      await store.init(overrideDirectory: tempDir);
+      expect(store.runs.map((r) => r.id), ['b'], reason: 'precondition');
+
+      await store.saveManyFromRemote([
+        Run(
+          id: 'a',
+          startedAt: DateTime(2026, 1, 1),
+          duration: const Duration(minutes: 20),
+          distanceMetres: 6100,
+          track: const [],
+          source: RunSource.app,
+        ),
+      ]);
+
+      expect(store.runs.map((r) => r.id), ['b'],
+          reason: 'a synced copy outside the window stays outside it');
+      expect(store.summaries.firstWhere((s) => s.id == 'a').distanceMetres,
+          6100);
+      final a = await store.runById('a');
+      expect(a!.distanceMetres, 6100, reason: 'the file took the server copy');
+      expect(a.track, hasLength(1), reason: 'and kept the local track');
+    });
+
+    test('saveManyFromRemote writes more rows than one batch', () async {
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      final count = LocalRunStore.kRemoteWriteBatch * 2 + 3;
+      await store.saveManyFromRemote([
+        for (var i = 0; i < count; i++) mk('r$i', DateTime(2026, 1, 1, 0, i)),
+      ]);
+      expect(store.summaries, hasLength(count));
+      expect(store.unsyncedRuns, isEmpty);
     });
 
     test('residency: an unsynced run older than the window stays resident',

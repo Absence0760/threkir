@@ -5,16 +5,19 @@
 //   1. cross-provider near-duplicate detection (`isCrossProviderDuplicate`)
 //   2. embedded best efforts on imported tracks (`computeEmbeddedBests`)
 //
-// Importing `../_shared/strava.ts` pulls its esm.sh deps, which the CI
-// "Warm the Deno dependency cache" step pre-fetches, so the recursive
+// Importing `../_shared/strava.ts` pulls its remote deps (supabase-js from
+// npm, through `database.ts`), which CI's `deno install` and "Warm the Deno
+// dependency cache" steps provision, so the recursive
 // `deno test --allow-read --allow-env` run resolves them offline.
 
-import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
+import { assert, assertEquals, assertExists } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
 	CROSS_PROVIDER_DISTANCE_FRACTION,
 	CROSS_PROVIDER_START_TOLERANCE_S,
+	WINDOW_TOLERANCE_RATIO,
 	collectRunIdentities,
 	computeEmbeddedBests,
+	embeddedHaversineM,
 	fastestWindowSeconds,
 	isCrossProviderDuplicate,
 	type RawRunRow,
@@ -84,29 +87,33 @@ Deno.test('cross-provider tolerances are the documented values', () => {
 	assertEquals(CROSS_PROVIDER_DISTANCE_FRACTION, 0.05);
 });
 
-// ---- BUG 3: the dedupe fetch must page past PostgREST's 1000-row cap ----
+// ---- BUG 3: the dedupe fetch must walk past PostgREST's 1000-row cap ----
 
 Deno.test('collectRunIdentities — 1200 runs are all collected across two pages', async () => {
 	const rows: RawRunRow[] = Array.from({ length: 1200 }, (_, i) => ({
-		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(),
+		id: `r-${String(1200 - i).padStart(5, '0')}`,
+		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, 1200 - i)).toISOString(),
 		distance_m: 5000 + i,
 	}));
-	const calls: Array<[number, number]> = [];
-	const ids = await collectRunIdentities(async (from, to) => {
-		calls.push([from, to]);
-		return rows.slice(from, to + 1);
+	const calls: Array<string | null> = [];
+	const ids = await collectRunIdentities(async (after, limit) => {
+		calls.push(after);
+		const id = after === null ? null : /id\.lt\."([^"]+)"/.exec(after)?.[1];
+		const from = id == null ? 0 : rows.findIndex((r) => r.id === id) + 1;
+		return { data: rows.slice(from, from + limit), error: null };
 	});
 	assertEquals(ids.length, 1200);
 	assertEquals(calls.length, 2);
-	assertEquals(calls[0], [0, 999]);
-	assertEquals(calls[1], [1000, 1999]);
+	assertEquals(calls[0], null);
 });
 
 Deno.test('collectRunIdentities — a page error stops the loop without throwing', async () => {
 	let call = 0;
 	const ids = await collectRunIdentities(async () => {
 		call++;
-		return call === 1 ? [{ started_at: '2026-01-01T09:00:00Z', distance_m: 5000 }] : null;
+		return call === 1
+			? { data: [{ id: 'a', started_at: '2026-01-01T09:00:00Z', distance_m: 5000 }], error: null }
+			: { data: null, error: new Error('reset') };
 	}, 1);
 	assertEquals(ids.length, 1);
 });
@@ -142,27 +149,53 @@ Deno.test('computeEmbeddedBests — a track shorter than 5 km has no bests', () 
 Deno.test('computeEmbeddedBests — even 6 km run yields a ~total-time 5k', () => {
 	// 60 × 100 m at 30 s/step = 6 km, 5:00/km. Fastest 5 km window ≈ 1500 s.
 	const bests = computeEmbeddedBests(evenTrack('2026-01-01T09:00:00Z', 60, 100, 30));
+	// A key the helper omits is a real outcome (see the two tests above), so
+	// assert presence before the range — otherwise `undefined >= 1495` is just
+	// `false` and the failure reads as a bad number rather than a missing one.
+	assertExists(bests.fastest_5k_s, 'a 6 km track must yield a 5 km best');
 	assert(bests.fastest_5k_s >= 1495 && bests.fastest_5k_s <= 1505, `got ${bests.fastest_5k_s}`);
 	assertEquals(bests.fastest_10k_s, undefined);
 });
 
 Deno.test('computeEmbeddedBests — a fast 5 km inside a long run is detected', () => {
-	// First 5 km fast (100 m / 20 s → 1000 s), last 5 km slow (100 m / 40 s).
+	// First 5 km fast (100 m / 20 s → 1000 s), the rest slow (100 m / 40 s).
+	// 104 steps rather than 100 so the slow tail holds a 10 km window. The
+	// smoother spreads the 2:1 pace change across both sides of it, so the
+	// fast half credits ~8 m short and its best reads ~1016 s, not 1000.
 	const mPerDeg = 6371000 * (Math.PI / 180);
 	const stepDeg = 100 / mPerDeg;
 	const startMs = Date.parse('2026-01-01T09:00:00Z');
 	const track: { lat: number; lng: number; ts: string }[] = [{ lat: 0, lng: 0, ts: new Date(startMs).toISOString() }];
 	let t = startMs;
-	for (let i = 1; i <= 100; i++) {
+	for (let i = 1; i <= 104; i++) {
 		t += (i <= 50 ? 20 : 40) * 1000;
 		track.push({ lat: 0, lng: i * stepDeg, ts: new Date(t).toISOString() });
 	}
 	const bests = computeEmbeddedBests(track);
-	// The embedded fast 5k (~1000 s) beats the whole-run-scaled pace (1500 s).
-	assert(bests.fastest_5k_s >= 995 && bests.fastest_5k_s <= 1005, `got ${bests.fastest_5k_s}`);
-	// Only one 10k window (the whole track): 1000 + 2000 = 3000 s.
-	assert(bests.fastest_10k_s >= 2990 && bests.fastest_10k_s <= 3010, `got ${bests.fastest_10k_s}`);
+	// The embedded fast 5k (~1016 s) beats the whole-run-scaled pace (1500 s).
+	assertExists(bests.fastest_5k_s, 'a 10 km track must yield a 5 km best');
+	assert(bests.fastest_5k_s >= 995 && bests.fastest_5k_s <= 1020, `got ${bests.fastest_5k_s}`);
+	// The fast 5 km plus 5 km slow is 3000 s on the straight line; the
+	// smoothed cumulative reads ~2998 s.
+	assertExists(bests.fastest_10k_s, 'a 10.4 km track must yield a 10 km best');
+	assert(bests.fastest_10k_s >= 2990 && bests.fastest_10k_s <= 3040, `got ${bests.fastest_10k_s}`);
 	assertEquals(bests.fastest_half_marathon_s, undefined);
+});
+
+Deno.test('computeEmbeddedBests — GPS zig-zag no longer closes the 5k window early', () => {
+	// 6 km due east at 5:00/km, one fix a second, each fix 2 m either side of
+	// the line: the hop-sum reads ~9.4 km and its 5k ~960 s.
+	const mPerDeg = 6371000 * (Math.PI / 180);
+	const startMs = Date.parse('2026-04-01T00:00:00Z');
+	const track = Array.from({ length: 1801 }, (_, i) => ({
+		lat: (i % 2 === 1 ? 2 : -2) / mPerDeg,
+		lng: (i * (6000 / 1800)) / mPerDeg,
+		ts: new Date(startMs + i * 1000).toISOString(),
+	}));
+	const raw = fastestWindowSeconds(track, 5000) ?? -1;
+	assert(raw > 0 && raw < 1100, `fixture must be noisy, got ${raw}`);
+	const s = computeEmbeddedBests(track, 'run').fastest_5k_s ?? -1;
+	assert(s >= 1480 && s <= 1520, `got ${s}`);
 });
 
 Deno.test('computeEmbeddedBests — a track with no timestamps writes nothing (no fake bests)', () => {
@@ -174,4 +207,46 @@ Deno.test('computeEmbeddedBests — a track with no timestamps writes nothing (n
 
 Deno.test('fastestWindowSeconds — null when the track is shorter than the window', () => {
 	assertEquals(fastestWindowSeconds(evenTrack('2026-01-01T09:00:00Z', 10, 100, 30), 5000), null);
+});
+
+Deno.test('fastestWindowSeconds — a track that measures exactly the window still yields a best', () => {
+	// Fifty 100 m legs at the equator IS a 5 km run at 5:00/km, and the
+	// accumulated haversine sum of it measures 4999.999 999 999 998 2 m —
+	// 1.819e-12 m short. Compared strictly, that decided there was no 5 km
+	// effort in a 5 km run on the last bit of a float. Worse on this rail than
+	// on the two clients: the unclamped `atan2` form this module used to carry
+	// summed the SAME track to 5000.000 000 000 001 8 m, so the importer found
+	// a best where the phone found none. Web's twin case is in
+	// `apps/web/src/lib/integrations/embedded_best_efforts.test.ts`.
+	const track = evenTrack('2026-01-01T09:00:00Z', 50, 100, 30);
+	assertEquals(fastestWindowSeconds(track, 5000), 1500);
+	assertEquals(fastestWindowSeconds(track, 5000, track.map((_, i) => i * 100)), 1500);
+});
+
+Deno.test('fastestWindowSeconds — the tolerance is relative, so it never admits a real shortfall', () => {
+	// A millimetre short of the window is a real shortfall at every distance
+	// the app measures: the ratio of the marathon window is 42 µm, twenty times
+	// less than a millimetre, so the answer stays null.
+	assert(WINDOW_TOLERANCE_RATIO * 42195 < 0.001);
+	const short = evenTrack('2026-01-01T09:00:00Z', 50, 100 - 0.001 / 50, 30);
+	assertEquals(fastestWindowSeconds(short, 5000), null);
+});
+
+Deno.test('embeddedHaversineM is the canonical form, to the last bit', () => {
+	// The importer cannot import `apps/web/src/lib`, so this arc is a copy by
+	// necessity — and a copy pinned only by prose is what let it be the
+	// unclamped `atan2` while both clients used the clamped `asin`. The sum
+	// below is exact, not a tolerance: the atan2 form gives
+	// 5000.0000000000018 for the same fifty legs, and that single ULP decided
+	// whether the importer wrote a `fastest_5k_s` the phone would not have.
+	const track = evenTrack('2026-01-01T09:00:00Z', 50, 100, 30);
+	let cum = 0;
+	for (let i = 1; i < track.length; i++) {
+		cum += embeddedHaversineM(track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+	}
+	assertEquals(cum, 4999.999999999998);
+	// And it clamps: `sqrt(1 - a)` on a near-antipodal pair is NaN unclamped.
+	const antipodal = embeddedHaversineM(-87.5, 0, 87.5, 180);
+	assert(Number.isFinite(antipodal), `near-antipodal must be a number, got ${antipodal}`);
+	assert(antipodal > 20_010_000 && antipodal < 20_020_000, `got ${antipodal}`);
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { signIn } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -140,7 +140,11 @@ test.describe('/login', () => {
 		// Neutral outcome: the info (status) banner appears; the error
 		// (alert) banner does NOT; and no session is minted so we stay
 		// on /login (no /onboarding or /dashboard handoff).
-		await expect(page.locator('.info[role="status"]')).toBeVisible({ timeout: 10_000 });
+		// The status region is permanently mounted and only the `.info` banner
+		// inside it comes and goes — a live region announces changes made
+		// inside it, not its own arrival (decisions.md § 736) — so the message
+		// is a descendant of the role, not the element carrying it.
+		await expect(page.locator('[role="status"] .info')).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.error[role="alert"]')).toHaveCount(0);
 		await expect(page).toHaveURL(/\/login/);
 	});
@@ -178,19 +182,24 @@ test.describe('/login', () => {
 			if (createErr || !created?.user) throw createErr ?? new Error('createUser failed');
 			userId = created.user.id;
 
-			// Stamp `onboarded_at` on the auto-created user_profiles
-			// row so the layout-level onboarding gate doesn't redirect
-			// the sign-in to /onboarding (the test is about password
-			// rotation, not the wizard). Migration 20261016_001 added
-			// the column. Same pattern as the saga-users fixture.
-			await admin
+			// Stamp `onboarded_at` and both consent stamps on the
+			// auto-created user_profiles row so neither the onboarding
+			// gate nor the Art 8 age gate owes this account a stop: the
+			// sign-in hop routes an account that owes one straight to it
+			// rather than through /dashboard (decisions § 2149), and the
+			// test is about password rotation. Same stamps as the
+			// saga-users fixture.
+			const { error: profileErr } = await admin
 				.from('user_profiles')
 				.upsert({
 					id: userId,
 					preferred_unit: 'km',
 					subscription_tier: 'free',
-					onboarded_at: new Date().toISOString()
+					onboarded_at: new Date().toISOString(),
+					age_confirmed_at: new Date().toISOString(),
+					terms_accepted_at: new Date().toISOString()
 				});
+			expect(profileErr).toBeNull();
 
 			await clearMailpit();
 
@@ -223,11 +232,12 @@ test.describe('/login', () => {
 			expect(link).toContain('/auth/reset');
 
 			// Step 5: visit the reset link in a new page (a fresh tab
-			// captures the supabase-js URL-hash consumption cleanly,
-			// without competing auth state from the /login tab).
-			// Mailpit gives us the verify-link form
-			//   <supabase>/auth/v1/verify?token=...&type=recovery&redirect_to=<origin>/auth/reset
-			// which 302s to the origin with the access_token in the hash.
+			// captures the token redemption cleanly, without competing
+			// auth state from the /login tab). Mailpit gives us
+			//   <origin>/auth/reset?token_hash=...&type=recovery
+			// which the landing page redeems via verifyOtp. The
+			// cross-browser case — mail opened somewhere that never held
+			// the PKCE verifier — is pinned in reset.spec.ts.
 			const resetPage = await context.newPage();
 			await resetPage.goto(link);
 			await expect(resetPage.getByRole('heading', { name: 'Set a new password' }))

@@ -19,6 +19,7 @@ import assert from 'node:assert/strict';
 // under `noUncheckedSideEffectImports` / no-extension TS config) is happy.
 // `tsx --test` resolves this to training.ts at runtime.
 import {
+	isStepBackWeek,
 	vdotFromRace,
 	riegelPredict,
 	predictionConfidence,
@@ -30,14 +31,27 @@ import {
 	peakVolumeKm,
 	mileageFraction,
 	isMastersAge,
+	usesMastersRecovery,
 	defaultPlanWeeks,
 	walkRunDefaultWeeks,
+	WALK_RUN_GRADUATION_M,
+	minDaysPerWeek,
 	GOAL_DISTANCES_M,
 	formatISO,
 	fmtHms,
 	isWorkoutCompleted,
 	isWorkoutSkipped,
 	longRunDistance,
+	isUltraDistance,
+	parseISO,
+	planPhaseFor,
+	ultraPhaseFor,
+	ultraLongRunCapSec,
+	ultraMarathonEquivalentSec,
+	ultraTaperWeeks,
+	ULTRA_PRESETS,
+	ULTRA_MAX_WEEKLY_RAMP,
+	type GeneratedPlan,
 	type WorkoutStructure
 } from './training';
 
@@ -85,14 +99,72 @@ test('generatePlan(beginnerWalkRun): every session is a walk_run workout', () =>
 	assert.equal(wk1.structure?.repeats?.duration_s, 60);
 	assert.equal(wk1.structure?.repeats?.recovery_duration_s, 90);
 	assert.equal(wk1.structure?.repeats?.count, 8);
-	// Graduation week: a single continuous run, no recovery interval.
+	// Graduation week: a single continuous 30-minute run, no recovery interval.
 	const wk9 = plan.weeks[8].workouts.find((w) => w.kind === 'walk_run')!;
 	assert.equal(wk9.structure?.repeats?.count, 1);
+	assert.equal(wk9.structure?.repeats?.duration_s, 1800);
 	assert.equal(wk9.structure?.repeats?.recovery_duration_s, undefined);
 	// #273: the final week is a graduation, not a race — a beginner walk-run
 	// plan has no goal race, so labelling it 'race' ("Race week") misleads.
 	assert.equal(plan.weeks[8].phase, 'graduation');
 	assert.equal(plan.weeks[0].phase, 'build');
+});
+
+test('generatePlan(beginnerWalkRun): the last session is a 5K ended by distance, and the only one', () => {
+	for (const daysPerWeek of [1, 2, 3]) {
+		for (const weeks of [9, 12]) {
+			const plan = generatePlan({
+				goalEvent: 'distance_5k',
+				startDate: '2026-06-01',
+				daysPerWeek,
+				weeks,
+				beginnerWalkRun: true
+			});
+			const sessions = plan.weeks.flatMap((w) => w.workouts).filter((w) => w.kind === 'walk_run');
+			const last = sessions[sessions.length - 1];
+			assert.equal(last.structure?.repeats?.count, 1);
+			assert.equal(last.structure?.repeats?.distance_m, WALK_RUN_GRADUATION_M);
+			assert.equal(last.structure?.repeats?.duration_s, undefined);
+			// A walk recovery keeps the whole session unpaced (decisions § 2074).
+			assert.equal(last.structure?.repeats?.recovery_pace, 'walk');
+			assert.equal(last.structure?.warmup?.duration_s, 300);
+			assert.equal(last.structure?.cooldown?.duration_s, 300);
+			assert.equal(last.scheduled_date, plan.weeks[plan.weeks.length - 1].workouts.filter((w) => w.kind === 'walk_run').at(-1)!.scheduled_date);
+			assert.equal(sessions.filter((w) => w.structure?.repeats?.distance_m != null).length, 1);
+		}
+	}
+	// At the 12:12/km fallback the run is 61 min of the 71-min session, and the
+	// distance counts the walking either side at 11:40/km.
+	const fallback = generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 3, beginnerWalkRun: true });
+	const fiveK = fallback.weeks[8].workouts.filter((w) => w.kind === 'walk_run').at(-1)!;
+	assert.equal(fiveK.target_pace_sec_per_km, fallback.paces.easy);
+	assert.equal(fiveK.target_duration_seconds, Math.round(5 * fallback.paces.easy) + 600);
+	assert.equal(fiveK.target_distance_m, 5857);
+});
+
+test('minDaysPerWeek: a two-day walk-run plan may run two days, a road plan needs three', () => {
+	const walkRun = generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 2, beginnerWalkRun: true });
+	assert.equal(walkRun.weeks[0].workouts.filter((w) => w.kind === 'walk_run').length, 2);
+	assert.equal(minDaysPerWeek(walkRun.weeks), 2);
+	const road = generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 3 });
+	assert.equal(minDaysPerWeek(road.weeks), 3);
+});
+
+test('generatePlan(beginnerWalkRun, 2 days): sessions sit three days apart, never five', () => {
+	const plan = generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 2, beginnerWalkRun: true });
+	const days = plan.weeks
+		.flatMap((w) => w.workouts)
+		.filter((w) => w.kind === 'walk_run')
+		.map((w) => parseISO(w.scheduled_date).getTime() / 86_400_000);
+	assert.deepEqual(plan.weeks[0].workouts.map((w) => w.kind === 'walk_run'), [true, false, false, true, false, false, false]);
+	for (let i = 1; i < days.length; i++) assert.ok(Math.round(days[i] - days[i - 1]) <= 4);
+});
+
+test('minDaysPerWeek: a walk-run plan with a goal race stays walk-run; one road session does not', () => {
+	const wo = (kind: string) => ({ kind });
+	assert.equal(minDaysPerWeek([{ workouts: [wo('walk_run'), wo('rest'), wo('race')] }]), 2);
+	assert.equal(minDaysPerWeek([{ workouts: [wo('walk_run'), wo('easy')] }]), 3);
+	assert.equal(minDaysPerWeek([{ workouts: [wo('rest')] }]), 3);
 });
 
 // Persona round-5 runner-new: a default 5k beginner plan arrives with
@@ -118,7 +190,27 @@ test('generatePlan(beginnerWalkRun, weeks=8): keeps the graduation week (off-by-
 	const wkLast = plan.weeks[plan.weeks.length - 1].workouts.find((w) => w.kind === 'walk_run')!;
 	assert.equal(wkLast.structure?.repeats?.count, 1);
 	assert.equal(wkLast.structure?.repeats?.recovery_duration_s, undefined);
-	assert.match(wkLast.notes ?? '', /Graduation week/);
+	assert.equal(plan.weeks[plan.weeks.length - 1].phase, 'graduation');
+});
+
+test('generatePlan: no week or workout carries a generated note', () => {
+	// The notes column is free text the runner or a coach owns. A generated
+	// English sentence ("Tempo: 6 km @ threshold.", "Race week — trust the
+	// work.") showed in every locale; the advice is read from the rows and
+	// localized (plan_advice.ts).
+	const plans = [
+		generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 3, beginnerWalkRun: true }),
+		generatePlan({ goalEvent: 'distance_10k', startDate: '2026-06-07', daysPerWeek: 5, goalTimeSec: 50 * 60 }),
+		generatePlan({ goalEvent: 'distance_half', startDate: '2026-06-07', daysPerWeek: 5, goalTimeSec: 105 * 60 }),
+		generatePlan({ goalEvent: 'distance_full', startDate: '2026-06-07', daysPerWeek: 6, goalTimeSec: 4 * 3600, age: 60 }),
+		generatePlan({ goalEvent: 'custom', goalDistanceM: 100_000, startDate: '2026-06-07', daysPerWeek: 5 })
+	];
+	for (const plan of plans) {
+		for (const week of plan.weeks) {
+			assert.equal(week.notes, null, `week ${week.week_index}`);
+			for (const w of week.workouts) assert.equal(w.notes, null, `${w.kind} on ${w.scheduled_date}`);
+		}
+	}
 });
 
 // Persona round-5 runner-comeback: when the engine can't derive paces from a
@@ -283,6 +375,41 @@ test('resolveTrainingPaces: fall-back produces a valid pace set', () => {
 	assert.ok(p.easy > 0 && p.interval > 0);
 });
 
+test('resolveTrainingPaces: a degenerate goal distance falls back instead of a non-finite pace (twin parity)', () => {
+	// A 0 m goal distance divided every anchor to Infinity, which each band
+	// rounded to and `fmtPace` printed as "Infinity:NaN/km". Same table as
+	// training_test.dart.
+	const fallback = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000 });
+	const cases: Array<{ goalDistanceM: number; goalTimeSec?: number; recent5kSec?: number }> = [
+		{ goalDistanceM: 0, goalTimeSec: 1200 },
+		{ goalDistanceM: 0, recent5kSec: 1200 },
+		{ goalDistanceM: -5000, goalTimeSec: 1200 },
+		{ goalDistanceM: Number.NaN, goalTimeSec: 1200 },
+	];
+	for (const input of cases) {
+		const got = resolveTrainingPacesWithMeta(input);
+		const label = JSON.stringify(input);
+		assert.equal(got.isFallback, true, label);
+		assert.equal(got.goalPaceSecPerKm, 600, label);
+		assert.deepEqual(got.paces, fallback.paces, label);
+	}
+});
+
+test('resolveTrainingPaces: a real goal time or recent 5K is an anchor, not the fallback (twin parity)', () => {
+	// The degenerate-pace guard sits after the anchor branches; a usable
+	// anchor must still come through it unchanged. Same cases as
+	// training_test.dart and training_paces.rs.
+	const goal = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000, goalTimeSec: 2400 });
+	assert.equal(goal.isFallback, false);
+	assert.equal(goal.goalPaceSecPerKm, 240);
+	assert.deepEqual(goal.paces, pacesFromGoalPace(240));
+
+	const recent = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000, recent5kSec: 1200 });
+	assert.equal(recent.isFallback, false);
+	assert.ok(Math.abs(recent.goalPaceSecPerKm - riegelPredict(5000, 1200, 10_000) / 10) < 1e-9);
+	assert.deepEqual(recent.paces, pacesFromGoalPace(recent.goalPaceSecPerKm));
+});
+
 test('resolveTrainingPaces: a zero recent5kSec/goalTimeSec is treated as no anchor (twin parity)', () => {
 	// A 0 anchor is "no usable time", not a real one. Web's JS truthiness already
 	// fell through to the conservative fallback; the Dart twin used `!= null` and
@@ -324,6 +451,37 @@ test('phaseFor: final week is always race', () => {
 	for (const total of [4, 8, 12, 16, 20]) {
 		assert.equal(phaseFor(total - 1, total), 'race');
 	}
+});
+
+test('phaseFor: every total from the editor floor up seats a taper and sums exact', () => {
+	const order = ['base', 'build', 'peak', 'taper', 'race'];
+	// 4 is the plan editor's `min` on the free-text total-weeks override.
+	for (let total = 4; total <= 30; total++) {
+		const seq = Array.from({ length: total }, (_, i) => phaseFor(i, total));
+		assert.equal(seq.length, total, `total ${total}: every week must land in a phase`);
+		for (let i = 1; i < seq.length; i++) {
+			assert.ok(
+				order.indexOf(seq[i]) >= order.indexOf(seq[i - 1]),
+				`total ${total}: phases must not run backwards (${seq.join(',')})`
+			);
+		}
+		assert.equal(seq.filter((p) => p === 'race').length, 1, `total ${total}: one race week`);
+		assert.ok(seq.includes('taper'), `total ${total}: taper starved (${seq.join(',')})`);
+		// Four phases need four non-race weeks; below that one must go empty, and
+		// the taper asserted above is never the one dropped.
+		if (total >= 5) {
+			for (const phase of ['base', 'build', 'peak'] as const) {
+				assert.ok(seq.includes(phase), `total ${total}: ${phase} starved (${seq.join(',')})`);
+			}
+		}
+	}
+});
+
+test('phaseFor: a 10-week plan tapers instead of peaking into race week', () => {
+	// 10 and 5 floored to exactly the non-race block (3+4+2 and 1+2+1), so the
+	// taper got nothing and the 100 %-volume peak week sat against race day.
+	assert.equal(phaseFor(8, 10), 'taper');
+	assert.equal(phaseFor(3, 5), 'taper');
 });
 
 // ─────────────────────── Plan generation ───────────────────────
@@ -753,7 +911,7 @@ test('generatePlan: masters step back volume every 3rd week, not every 4th', () 
 			masters.weeks[2].target_volume_m <= masters.weeks[1].target_volume_m,
 			'masters 3rd-week step-back should not exceed the 2nd week'
 		);
-		assert.match(masters.weeks[2].notes ?? '', /Step-back/);
+		assert.ok(isStepBackWeek(2, true));
 	}
 });
 
@@ -767,6 +925,41 @@ test('generatePlan: a sub-masters age leaves the standard Tue/Thu schedule intac
 	});
 	const week = plan.weeks.find((w) => dayOffsetInWeek(w, QUALITY_KINDS) != null)!;
 	assert.equal(dayOffsetInWeek(week, QUALITY_KINDS), 2);
+});
+
+test('usesMastersRecovery: extra recovery applies at any age and never removes it from a masters runner', () => {
+	assert.equal(usesMastersRecovery(34, true), true);
+	assert.equal(usesMastersRecovery(null, true), true);
+	assert.equal(usesMastersRecovery(34, false), false);
+	assert.equal(usesMastersRecovery(undefined, undefined), false);
+	assert.equal(usesMastersRecovery(58, false), true);
+	assert.equal(usesMastersRecovery(58, null), true);
+});
+
+test('generatePlan: extra recovery gives a sub-masters or ageless runner the masters schedule', () => {
+	const base = {
+		goalEvent: 'distance_full' as const,
+		startDate: '2026-06-07',
+		daysPerWeek: 5,
+		recent5kSec: 24 * 60
+	};
+	const masters = generatePlan({ ...base, age: 58 });
+	assert.deepEqual(generatePlan({ ...base, age: 34, extraRecovery: true }), masters);
+	assert.deepEqual(generatePlan({ ...base, age: null, extraRecovery: true }), masters);
+	assert.notDeepEqual(generatePlan({ ...base, age: 34 }), masters);
+});
+
+test('generatePlan: extra recovery reaches the ultra schedule too', () => {
+	const base = {
+		goalEvent: 'custom' as const,
+		goalDistanceM: 100_000,
+		startDate: '2026-06-07',
+		daysPerWeek: 5,
+		recent5kSec: 24 * 60
+	};
+	const masters = generatePlan({ ...base, age: 61 });
+	assert.deepEqual(generatePlan({ ...base, extraRecovery: true }), masters);
+	assert.notDeepEqual(generatePlan(base), masters);
 });
 
 
@@ -878,6 +1071,10 @@ test('fmtHms — zero/null/negative render the em-dash placeholder', () => {
 	assert.equal(fmtHms(undefined), '—');
 	// A negative is truthy in JS; the <= 0 guard must still placeholder it.
 	assert.equal(fmtHms(-90), '—');
+	// Infinity is truthy and > 0 too, and printed "Infinity:NaN:NaN". The Dart
+	// twin takes an `int?`, which cannot hold either of these.
+	assert.equal(fmtHms(Number.POSITIVE_INFINITY), '—');
+	assert.equal(fmtHms(Number.NaN), '—');
 });
 
 test('fmtHms — formats a positive duration', () => {
@@ -906,4 +1103,369 @@ test('longRunDistance: flat 33% of weekly volume (rounded), 0 → 0', () => {
 	assert.equal(longRunDistance(wk(60)), 20); // round(19.8)
 	assert.equal(longRunDistance(wk(50)), 17); // round(16.5)
 	assert.equal(longRunDistance(wk(0)), 0);
+});
+
+test('the race workout is prescribed at the goal pace, at every distance', () => {
+	// The generator used to hand `generateWeek` a goal pace reconstructed from
+	// the derived `marathon` band: `paces.marathon * (goalDistanceM >= 21_000 ?
+	// 1 : 0.95)`. Since that band is `goalPace * 1.06`, the 0.95 roughly undid
+	// it on 5K/10K plans but the `1` left half + marathon plans prescribing the
+	// race 6% slower than the runner's goal — a 3:30 marathon plan whose race
+	// workout implied a 3:42 finish.
+	const cases: Array<[string, number, number]> = [
+		['distance_5k', 1_200, 5_000],
+		['distance_10k', 2_700, 10_000],
+		['distance_half', 6_300, 21_097],
+		['distance_full', 12_600, 42_195]
+	];
+	for (const [goalEvent, goalTimeSec, distanceM] of cases) {
+		const plan = generatePlan({
+			goalEvent: goalEvent as Parameters<typeof generatePlan>[0]['goalEvent'],
+			goalTimeSec,
+			startDate: '2026-01-05',
+			daysPerWeek: 5,
+			weeks: 16
+		});
+		const goalPace = goalTimeSec / (distanceM / 1000);
+		const race = plan.weeks.flatMap((w) => w.workouts).find((w) => w.kind === 'race');
+		assert.ok(race, `${goalEvent} generates a race workout`);
+		assert.ok(race!.target_pace_sec_per_km !== null, `${goalEvent} race carries a pace`);
+		// Within a second per km — the only slack is integer sec/km rounding.
+		assert.ok(
+			Math.abs(race!.target_pace_sec_per_km! - goalPace) <= 1,
+			`${goalEvent}: race pace ${race!.target_pace_sec_per_km} should be goal pace ${goalPace.toFixed(1)}`
+		);
+	}
+});
+
+test('marathon_pace sessions are prescribed at the goal pace, not the training band', () => {
+	const plan = generatePlan({
+		goalEvent: 'distance_full',
+		goalTimeSec: 12_600,
+		startDate: '2026-01-05',
+		daysPerWeek: 5,
+		weeks: 16
+	});
+	const goalPace = 12_600 / 42.195;
+	const mp = plan.weeks.flatMap((w) => w.workouts).filter((w) => w.kind === 'marathon_pace');
+	assert.ok(mp.length > 0, 'a marathon plan schedules marathon-pace work');
+	for (const w of mp) {
+		assert.ok(
+			Math.abs(w.target_pace_sec_per_km! - goalPace) <= 1,
+			`marathon_pace ${w.target_pace_sec_per_km} should be goal pace ${goalPace.toFixed(1)}`
+		);
+		// The structure the mobile workout runner executes must agree with the
+		// headline target — they are read by different surfaces.
+		const steady = (w.structure as { steady?: { pace_sec_per_km?: number } } | null)?.steady;
+		assert.equal(steady?.pace_sec_per_km, w.target_pace_sec_per_km);
+	}
+});
+
+test('a 10K plan keeps marathon_pace on the training band, not the goal pace', () => {
+	// The other side of the same branch: on a short-distance goal this session
+	// is steady aerobic work at marathon *effort*, which is legitimately slower
+	// than goal pace. Pinning it stops the fix above from over-reaching.
+	const plan = generatePlan({
+		goalEvent: 'distance_10k',
+		goalTimeSec: 2_700,
+		startDate: '2026-01-05',
+		daysPerWeek: 5,
+		weeks: 16
+	});
+	const { paces } = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000, goalTimeSec: 2_700 });
+	const mp = plan.weeks.flatMap((w) => w.workouts).filter((w) => w.kind === 'marathon_pace');
+	assert.ok(mp.length > 0);
+	for (const w of mp) {
+		assert.equal(w.target_pace_sec_per_km, paces.marathon);
+		assert.ok(w.target_pace_sec_per_km! > 270, 'slower than the 10K goal pace');
+	}
+});
+
+test('the goal pace the bands derive from is returned, ungendered', () => {
+	// The race is the runner's stated goal; the female calibration shapes
+	// training zones, so it must not move the goal itself.
+	const male = resolveTrainingPacesWithMeta({ goalDistanceM: 42_195, goalTimeSec: 12_600 });
+	const female = resolveTrainingPacesWithMeta({
+		goalDistanceM: 42_195,
+		goalTimeSec: 12_600,
+		gender: 'female'
+	});
+	assert.equal(male.goalPaceSecPerKm, female.goalPaceSecPerKm);
+	assert.ok(Math.abs(male.goalPaceSecPerKm - 12_600 / 42.195) < 0.001);
+	assert.notEqual(male.paces.easy, female.paces.easy, 'bands still calibrate');
+});
+
+// ─────────────────────── Ultra distances (#1181) ───────────────────────
+
+const MI_100 = 160_934.4;
+
+function ultraPlan(
+	distanceM: number,
+	opts: { goalTimeSec?: number | null; recent5kSec?: number | null; days?: number; weeks?: number; age?: number | null } = {}
+): GeneratedPlan {
+	return generatePlan({
+		goalEvent: 'custom',
+		goalDistanceM: distanceM,
+		goalTimeSec: opts.goalTimeSec ?? null,
+		recent5kSec: opts.recent5kSec ?? null,
+		startDate: '2026-11-01',
+		daysPerWeek: opts.days ?? 5,
+		weeks: opts.weeks,
+		age: opts.age ?? null
+	});
+}
+
+
+test('ultra: a distance past the marathon is an ultra, the marathon itself is not', () => {
+	assert.equal(isUltraDistance(GOAL_DISTANCES_M.distance_full), false);
+	assert.equal(isUltraDistance(42_196), true);
+	assert.equal(isUltraDistance(Number.NaN), false);
+	assert.equal(isUltraDistance(Number.POSITIVE_INFINITY), false);
+	for (const p of ULTRA_PRESETS) assert.ok(isUltraDistance(p.distanceM), p.id);
+	assert.deepEqual(
+		ULTRA_PRESETS.map((p) => p.distanceM),
+		[50_000, 56_000, 90_000, MI_100]
+	);
+});
+
+test('ultra: default plan weeks scale with the distance, and a custom road distance keeps 12', () => {
+	assert.equal(defaultPlanWeeks('custom', 50_000), 16);
+	assert.equal(defaultPlanWeeks('custom', 56_000), 16);
+	assert.equal(defaultPlanWeeks('custom', 70_000), 18);
+	assert.equal(defaultPlanWeeks('custom', 87_700), 20);
+	assert.equal(defaultPlanWeeks('custom', MI_100), 24);
+	assert.equal(defaultPlanWeeks('custom', 30_000), 12);
+	assert.equal(defaultPlanWeeks('custom'), 12);
+	assert.equal(defaultPlanWeeks('distance_full', MI_100), 16, 'a named event ignores the distance');
+	assert.equal(ultraPlan(56_000).weeks.length, 16);
+	assert.equal(ultraPlan(MI_100).weeks.length, 24);
+});
+
+test('ultra: weekly volume never grows more than 10% over the previous build week', () => {
+	for (const d of [...ULTRA_PRESETS.map((p) => p.distanceM), 43_000, 70_000, 250_000]) {
+		for (const days of [3, 4, 5, 6, 7]) {
+			for (const anchor of [{}, { goalTimeSec: Math.round(d * 0.42) }, { recent5kSec: 1_500 }]) {
+				for (const age of [30, 55]) {
+					for (const weeks of [undefined, 8, 12]) {
+						const plan = ultraPlan(d, { ...anchor, days, age, weeks });
+						let prev: number | null = null;
+						for (const w of plan.weeks) {
+							if (w.phase === 'taper' || w.phase === 'race') break;
+							if (isStepBackWeek(w.week_index, usesMastersRecovery(age, false))) continue;
+							if (prev !== null) {
+								assert.ok(
+									w.target_volume_m <= prev * ULTRA_MAX_WEEKLY_RAMP + 1e-6,
+									`${d} m, ${days} d/wk, week ${w.week_index}: ${prev} -> ${w.target_volume_m}`
+								);
+							}
+							prev = w.target_volume_m;
+						}
+					}
+				}
+			}
+		}
+	}
+});
+
+test('ultra: no long run outlasts the time-on-feet cap', () => {
+	assert.equal(ultraLongRunCapSec(50_000), 3.5 * 3600);
+	assert.equal(ultraLongRunCapSec(56_000), 3.5 * 3600);
+	assert.equal(ultraLongRunCapSec(70_000), 4 * 3600);
+	assert.equal(ultraLongRunCapSec(90_000), 5 * 3600);
+	assert.equal(ultraLongRunCapSec(MI_100), 6 * 3600);
+	for (const d of [...ULTRA_PRESETS.map((p) => p.distanceM), 70_000]) {
+		for (const days of [3, 5, 7]) {
+			// A fast runner at 7 days pushes the long run hardest into its cap.
+			const plan = ultraPlan(d, { recent5kSec: 1_080, days });
+			const longs = plan.weeks.flatMap((w) => w.workouts).filter((w) => w.kind === 'long');
+			assert.ok(longs.length > 0);
+			for (const w of longs) {
+				assert.ok(w.target_duration_seconds! <= ultraLongRunCapSec(d), `${d}: ${w.target_duration_seconds}`);
+			}
+		}
+	}
+	// The cap binds: a 32-hour 100-miler and a 7-hour 56 km runner both reach it.
+	const longest = (plan: GeneratedPlan) =>
+		Math.max(
+			...plan.weeks.flatMap((w) => w.workouts).map((w) => (w.kind === 'long' ? w.target_duration_seconds! : 0))
+		);
+	assert.equal(longest(ultraPlan(MI_100, { goalTimeSec: 32 * 3600, days: 7 })), 6 * 3600);
+	assert.equal(longest(ultraPlan(56_000, { goalTimeSec: 7 * 3600, days: 6 })), 3.5 * 3600);
+});
+
+test('ultra: long runs are time-on-feet targets with no pace, their distance the duration at easy pace', () => {
+	const plan = ultraPlan(56_000, { goalTimeSec: 6 * 3600 });
+	const longs = plan.weeks.flatMap((w) => w.workouts).filter((w) => w.kind === 'long');
+	for (const w of longs) {
+		assert.ok(w.target_duration_seconds! >= 3600);
+		assert.equal(w.target_duration_seconds! % 900, 0, 'quarter-hour steps');
+		assert.equal(w.target_pace_sec_per_km, null);
+		assert.equal(w.target_pace_tolerance_sec, null);
+		assert.equal(
+			w.target_distance_m,
+			Math.round((w.target_duration_seconds! / plan.paces.easy) * 10) * 100
+		);
+	}
+});
+
+test('ultra: 90 km and 100 mi plans carry back-to-back weekends; 50 km and 56 km do not', () => {
+	const saturdayLongs = (plan: GeneratedPlan) =>
+		plan.weeks.flatMap((w, i) =>
+			w.workouts
+				.filter((x) => x.kind === 'long' && x.scheduled_date !== w.workouts[0].scheduled_date)
+				.map((x) => ({ week: i, workout: x }))
+		);
+	for (const d of [87_700, 90_000, MI_100]) {
+		const plan = ultraPlan(d, { goalTimeSec: Math.round(d * 0.45), days: 5 });
+		const b2b = saturdayLongs(plan);
+		assert.ok(b2b.length >= 4, `${d}: ${b2b.length} back-to-back weekends`);
+		for (const { week, workout } of b2b) {
+			assert.equal(parseISO(workout.scheduled_date).getDay(), 6, 'Saturday');
+			assert.ok(['build', 'peak'].includes(plan.weeks[week].phase));
+			// The next day is the following week's Sunday long run.
+			const sunday = plan.weeks[week + 1].workouts[0];
+			assert.equal(sunday.kind, 'long');
+			assert.ok(workout.target_duration_seconds! <= Math.floor((ultraLongRunCapSec(d) * 0.6) / 900) * 900);
+		}
+		for (const w of plan.weeks.filter((x) => x.phase === 'taper')) {
+			assert.equal(w.workouts.filter((x) => x.kind === 'long').length, 1, 'no back-to-back in the taper');
+		}
+	}
+	for (const d of [50_000, 56_000, 70_000]) {
+		assert.equal(saturdayLongs(ultraPlan(d, { goalTimeSec: Math.round(d * 0.45) })).length, 0, `${d}`);
+	}
+});
+
+test('ultra: the taper runs 2 weeks below 80 km and 3 from 80 km, cutting volume each week', () => {
+	assert.equal(ultraTaperWeeks(56_000, 16), 2);
+	assert.equal(ultraTaperWeeks(90_000, 20), 3);
+	assert.equal(ultraTaperWeeks(MI_100, 8), 1, 'a short plan keeps most of its weeks to build');
+	assert.equal(ultraTaperWeeks(MI_100, 1), 0);
+	for (const [d, taper] of [
+		[56_000, 2],
+		[MI_100, 3]
+	] as const) {
+		const plan = ultraPlan(d, { goalTimeSec: Math.round(d * 0.45) });
+		const tapers = plan.weeks.filter((w) => w.phase === 'taper');
+		assert.equal(tapers.length, taper, `${d}`);
+		assert.equal(plan.weeks.at(-1)!.phase, 'race');
+		const peak = Math.max(...plan.weeks.filter((w) => w.phase !== 'race').map((w) => w.target_volume_m));
+		let prev = peak;
+		for (const w of tapers) {
+			assert.ok(w.target_volume_m < prev, `taper week ${w.week_index} comes down`);
+			assert.ok(w.workouts.some((x) => x.kind === 'tempo'), 'some intensity stays');
+			prev = w.target_volume_m;
+		}
+		assert.ok(tapers.at(-1)!.target_volume_m <= peak * 0.6, 'the last taper week is well under peak');
+	}
+});
+
+test('ultra: a custom 70 km plan is an 18-week ultra plan with no back-to-backs', () => {
+	const plan = ultraPlan(70_000, { goalTimeSec: 8 * 3600, days: 5 });
+	assert.equal(plan.weeks.length, 18);
+	assert.equal(plan.goalDistanceM, 70_000);
+	const workouts = plan.weeks.flatMap((w) => w.workouts);
+	assert.ok(workouts.every((w) => w.kind !== 'marathon_pace'), 'no goal pace to rehearse');
+	assert.ok(workouts.filter((w) => w.kind === 'long').every((w) => w.target_duration_seconds! <= 4 * 3600));
+	assert.equal(
+		workouts.filter((w) => w.kind === 'long' && parseISO(w.scheduled_date).getDay() === 6).length,
+		0
+	);
+	assert.equal(plan.weeks.filter((w) => w.phase === 'taper').length, 2);
+});
+
+test('ultra: the race day carries the goal time as its duration and no pace', () => {
+	const withGoal = ultraPlan(90_000, { goalTimeSec: 11 * 3600 });
+	const race = withGoal.weeks.at(-1)!.workouts[0];
+	assert.equal(race.kind, 'race');
+	assert.equal(race.target_distance_m, 90_000);
+	assert.equal(race.target_duration_seconds, 11 * 3600);
+	assert.equal(race.target_pace_sec_per_km, null);
+	const noGoal = ultraPlan(90_000).weeks.at(-1)!.workouts[0];
+	assert.equal(noGoal.target_duration_seconds, null);
+});
+
+test('ultra: training zones come from the marathon equivalent of the goal', () => {
+	assert.equal(ultraMarathonEquivalentSec(24 * 3600, MI_100), 18_532);
+	const plan = ultraPlan(MI_100, { goalTimeSec: 24 * 3600 });
+	const expected = resolveTrainingPaces({ goalDistanceM: 42_195, goalTimeSec: 18_532 });
+	assert.deepEqual(plan.paces, expected);
+	assert.ok(plan.paces.tempo < 24 * 3600 / 160.9344, 'tempo is faster than the 100-mile race pace');
+	assert.ok(Math.abs(plan.vdot! - vdotFromRace(42_195, 18_532)) < 1e-9);
+	// A recent 5k anchors through the marathon too.
+	const anchored = ultraPlan(MI_100, { recent5kSec: 1_500 });
+	assert.deepEqual(anchored.paces, resolveTrainingPaces({ goalDistanceM: 42_195, recent5kSec: 1_500 }));
+});
+
+test('ultra: peak volume continues from the marathon and caps at 120 km', () => {
+	assert.equal(peakVolumeKm(42_195, 5), peakVolumeKm(42_196, 5));
+	assert.equal(peakVolumeKm(MI_100, 6), 120);
+	assert.equal(peakVolumeKm(250_000, 6), 120);
+	assert.ok(peakVolumeKm(90_000, 5) > peakVolumeKm(56_000, 5));
+});
+
+test('ultra: any distance from 5 km plans from a distance, a date and training days alone', () => {
+	for (const d of [5_000, 12_345, 42_195, 43_000, 56_000, 87_700, 123_456, MI_100, 386_000]) {
+		for (const days of [3, 4, 5, 6, 7]) {
+			const plan = generatePlan({ goalEvent: 'custom', goalDistanceM: d, startDate: '2027-01-03', daysPerWeek: days });
+			assert.equal(plan.goalDistanceM, d);
+			assert.ok(plan.weeks.length >= 8);
+			const all = plan.weeks.flatMap((w) => w.workouts);
+			assert.equal(all.length, plan.weeks.length * 7);
+			for (const w of all) {
+				assert.ok(w.target_distance_m === null || (Number.isFinite(w.target_distance_m) && w.target_distance_m > 0));
+			}
+			assert.ok(all.filter((w) => w.kind !== 'rest').length <= plan.weeks.length * days);
+			const race = plan.weeks.at(-1)!.workouts[0];
+			assert.equal(race.kind, 'race');
+			assert.equal(race.target_distance_m, d);
+		}
+	}
+});
+
+test('ultra: road plans are unchanged by the ultra branch', () => {
+	// Captured from the generator before the ultra branch landed.
+	const marathon = generatePlan({
+		goalEvent: 'distance_full',
+		goalTimeSec: 4 * 3600,
+		startDate: '2026-11-01',
+		daysPerWeek: 5
+	});
+	assert.deepEqual(
+		marathon.weeks.map((w) => w.target_volume_m),
+		[41000, 44000, 45000, 40000, 49000, 52000, 54000, 46000, 58000, 61000, 63000, 52000, 67000, 37000, 37000, 42195]
+	);
+	assert.equal(marathon.weeks[15].workouts[0].target_pace_sec_per_km, 341);
+	const custom30k = generatePlan({
+		goalEvent: 'custom',
+		goalDistanceM: 30_000,
+		recent5kSec: 1_500,
+		startDate: '2026-11-01',
+		daysPerWeek: 4
+	});
+	assert.deepEqual(
+		custom30k.weeks.map((w) => w.target_volume_m),
+		[27000, 29000, 30000, 27000, 33000, 36000, 38000, 33000, 42000, 24000, 24000, 30000]
+	);
+	// The marathon distance itself, entered as a custom goal, stays a road plan.
+	const customMarathon = generatePlan({
+		goalEvent: 'custom',
+		goalDistanceM: 42_195,
+		goalTimeSec: 4 * 3600,
+		startDate: '2026-11-01',
+		daysPerWeek: 5,
+		weeks: 16
+	});
+	assert.deepEqual(customMarathon.weeks, marathon.weeks);
+});
+
+test('ultra: planPhaseFor takes the ultra split past the marathon and the road one otherwise', () => {
+	for (let i = 0; i < 18; i++) {
+		assert.equal(planPhaseFor(i, 18, 70_000), ultraPhaseFor(i, 18, 70_000));
+		assert.equal(planPhaseFor(i, 18, 42_195), phaseFor(i, 18));
+	}
+	assert.deepEqual(
+		ultraPlan(70_000, { goalTimeSec: 8 * 3600 }).weeks.map((w) => w.phase),
+		Array.from({ length: 18 }, (_, i) => planPhaseFor(i, 18, 70_000))
+	);
 });

@@ -22,12 +22,17 @@ class ReadinessCard extends StatelessWidget {
   /// and the O(runs) aggregation isn't re-run. Standalone callers omit it.
   final List<TrainingLoadPoint>? loadSeries;
 
+  /// One line (score, band, advice) instead of the card, for the Today hero
+  /// beside a plan session or today's run (decisions § 2385).
+  final bool compact;
+
   const ReadinessCard({
     super.key,
     required this.runs,
     required this.now,
     this.hrPrefs = const HrPrefs(),
     this.loadSeries,
+    this.compact = false,
   });
 
   @override
@@ -47,6 +52,35 @@ class ReadinessCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final accent = _bandAccent(AppSemanticColors.of(context), readiness.band);
+
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              l10n.dashboardHeroReadiness(readiness.score),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            StatusPill(
+              label: _bandLabel(l10n, readiness.band),
+              foreground: accent,
+              fill: accent.withValues(alpha: 0.15),
+              size: StatusPillSize.compact,
+            ),
+            Text(
+              readiness.advice,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Card(
       child: Container(
@@ -94,6 +128,20 @@ class ReadinessCard extends StatelessWidget {
                 ],
               ),
             ],
+            // Nothing reads sleep or resting HR yet, so the score is training
+            // balance alone; say so in words rather than leave one chip to
+            // imply it. Goes away by itself once either input contributes.
+            if (readiness.contributors
+                .every((c) => c.kind == ReadinessContributorKind.form)) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.readinessFromLoadOnly,
+                key: const Key('readinessLoadOnly'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -119,6 +167,13 @@ class _ContributorChip extends StatelessWidget {
   final ReadinessContribution contribution;
   const _ContributorChip({required this.contribution});
 
+  static String _name(AppLocalizations l10n, ReadinessContributorKind kind) =>
+      switch (kind) {
+        ReadinessContributorKind.form => l10n.readinessContributorForm,
+        ReadinessContributorKind.sleep => l10n.readinessContributorSleep,
+        ReadinessContributorKind.restingHr => l10n.readinessContributorRestingHr,
+      };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -135,7 +190,7 @@ class _ContributorChip extends StatelessWidget {
       children: [
         Flexible(
           child: Text(
-            contribution.name,
+            _name(AppLocalizations.of(context), contribution.kind),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(

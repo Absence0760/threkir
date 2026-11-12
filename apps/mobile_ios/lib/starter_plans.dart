@@ -55,7 +55,8 @@ StarterPlan? starterById(String id) {
 /// delegating to [generatePlan]. Returns null for an unknown id. No goal time /
 /// recent-5k is supplied, so paces come back as the conservative fallback —
 /// the caller discloses that, same as the wizard.
-GeneratedPlan? instantiateStarter(String id, DateTime startDate, {int? age}) {
+GeneratedPlan? instantiateStarter(String id, DateTime startDate,
+    {int? age, bool extraRecovery = false}) {
   final starter = starterById(id);
   if (starter == null) return null;
   return generatePlan(GeneratePlanInput(
@@ -65,5 +66,57 @@ GeneratedPlan? instantiateStarter(String id, DateTime startDate, {int? age}) {
     weeks: starter.weeks,
     beginnerWalkRun: starter.beginnerWalkRun,
     age: age,
+    extraRecovery: extraRecovery,
   ));
+}
+
+/// What a starter asks of the runner, for the line under its name.
+class StarterSummary {
+  final int weeks;
+  final int daysPerWeek;
+
+  /// The shortest and longest session, in whole minutes rounded to the nearest
+  /// 5, for a starter whose sessions are timed (walk-run). Null for a
+  /// distance-based starter, whose session length depends on the runner's
+  /// pace; for the same reason the walk-run graduation 5K is left out.
+  final ({int min, int max})? sessionMinutes;
+
+  const StarterSummary({
+    required this.weeks,
+    required this.daysPerWeek,
+    required this.sessionMinutes,
+  });
+}
+
+/// Read off the plan [instantiateStarter] actually builds, so the line cannot
+/// drift from the schedule. Session lengths do not depend on the start date;
+/// the fixed Sunday below only gives the generator a valid day 0. Mirrors
+/// `starterSummary` in starter_plans.ts.
+StarterSummary? starterSummary(String id) {
+  final starter = starterById(id);
+  final plan = instantiateStarter(id, DateTime(2026, 1, 4));
+  if (starter == null || plan == null) return null;
+  ({int min, int max})? sessionMinutes;
+  if (starter.beginnerWalkRun) {
+    final seconds = [
+      for (final w in plan.weeks)
+        for (final wo in w.workouts)
+          if (wo.kind == WorkoutKind.walkRun &&
+              wo.targetDurationSeconds != null &&
+              wo.structure?.repeats?['distance_m'] == null)
+            wo.targetDurationSeconds!,
+    ];
+    if (seconds.isNotEmpty) {
+      int toFive(int s) => (s / 300).round() * 5;
+      sessionMinutes = (
+        min: toFive(seconds.reduce((a, b) => a < b ? a : b)),
+        max: toFive(seconds.reduce((a, b) => a > b ? a : b)),
+      );
+    }
+  }
+  return StarterSummary(
+    weeks: plan.weeks.length,
+    daysPerWeek: starter.daysPerWeek,
+    sessionMinutes: sessionMinutes,
+  );
 }

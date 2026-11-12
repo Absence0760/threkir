@@ -3,17 +3,19 @@ import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppSemanticColors, StatGrid, StatTile, StatusPill, motionScrollTo;
 
+import '../ai_disclosure.dart';
 import '../apple_watch_route_bridge.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
+import '../course_drive.dart' show DriveMarkerInput, DrivePoint;
+import '../course_drive_flag.dart';
 import '../detail_map_height.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
 import '../l10n/date_format.dart';
@@ -29,7 +31,12 @@ import '../reactive_ble_watch_transport.dart';
 import '../route_describe_client.dart';
 import '../route_description.dart';
 import '../route_geometry.dart' show interpolateAlongRoute;
+import '../park_courses.dart';
 import '../route_gpx.dart';
+import '../official_distance.dart';
+import '../share_sheet.dart';
+import '../web_base_url.dart';
+import '../widgets/audience_sheet.dart';
 import '../roadbook.dart'
     show RoadbookMarker, RoadbookWaypoint, buildRoadbook;
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -40,19 +47,28 @@ import '../tile_pack.dart' show TileBbox;
 import '../undo_queue.dart';
 import '../watch_course.dart';
 import '../watch_roadbook.dart';
+import 'course_drive_screen.dart';
+import 'message_thread_screen.dart';
 import 'roadbook_screen.dart';
+import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/app_bar_actions.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/missing_map_tiles_hint.dart';
+import '../park_course_routes.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_markers_panel.dart';
+import '../race_service.dart';
+import '../widgets/course_alerts_section.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/route_share_card.dart';
+import '../widgets/scrolled_away_title.dart';
 import '../widgets/segments_panel.dart';
+import '../widgets/send_route_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import '../xml_text.dart';
 
 /// Pure helper — filter the viewer's club memberships down to clubs
 /// they can transfer a route into (owner or admin). Mirrors the
@@ -71,12 +87,7 @@ List<ClubView> adminClubsForRouteTransfer(Iterable<ClubView> clubs) {
 /// trimmed. Mirrors web's `${origin}/share/route/${id}` in
 /// `routes/[id]/+page.svelte`.
 String routeShareUrl(String routeId, {String? webBase}) {
-  final base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          'https://threkir.com')
-      .trim()
-      .replaceAll(RegExp(r'/+$'), '');
-  return '$base/share/route/$routeId';
+  return '${resolveWebBaseUrl(override: webBase)}/share/route/$routeId';
 }
 
 class RouteDetailScreen extends StatefulWidget {
@@ -97,8 +108,8 @@ class RouteDetailScreen extends StatefulWidget {
   /// affordance. Defaults to the real Pro-gated endpoint; tests pass a
   /// stub to exercise the enhance / upgrade / failure paths without a
   /// network or a Supabase session.
-  final Future<AiDescriptionResult> Function(RouteDescriptionInput)?
-      describeAi;
+  final Future<AiDescriptionResult> Function(RouteDescriptionInput,
+      DistanceUnit, String locale, String routeId)? describeAi;
 
   /// Injectable Pro check. Defaults to `apiClient.isPro()`; tests pass a
   /// fixed value to drive the Pro vs free branch deterministically.
@@ -135,6 +146,21 @@ class RouteDetailScreen extends StatefulWidget {
 }
 
 class _RouteDetailScreenState extends State<RouteDetailScreen> {
+  late final RaceService _raceService = RaceService();
+  late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup((
+    ids,
+  ) async {
+    final api = widget.apiClient;
+    if (api == null) return <String>{};
+    return api.fetchParkCourseRouteIds(ids);
+  });
+
+  /// A park course's official route carries its source credit in the
+  /// course row, not in the description (decisions § 2438). Null until read,
+  /// and when the read fails: the credit is auxiliary on this screen (an
+  /// export still refuses to go out uncredited, § 2395).
+  String? _courseCredit;
+
   late bool _isPublic = widget.route.isPublic;
   late bool _isStarred = widget.route.isStarred;
   late bool _isOfflinePinned =
@@ -153,6 +179,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // refresh it without rebuilding the screen.
   late String? _clubId = widget.route.clubId;
   bool _transferBusy = false;
+  bool _deleteBusy = false;
 
   // Lazy SocialService — production uses the global Supabase client;
   // tests inject a fake via the constructor.
@@ -184,6 +211,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // LiveRunMap's plannedRoute prop.
   List<cm.Waypoint> _displayWaypoints = const [];
 
+  // With no line to draw, LiveRunMap falls back to its live-recording
+  // "Waiting for GPS..." state, which is meaningless on a route page. These
+  // let the map slot say what actually happened instead.
+  bool _lineLoading = true;
+  bool _lineFailed = false;
+
   // Course-marker wiring between RouteMarkersPanel (owns the data) and the
   // LiveRunMap (renders the pins + reports placement / pin taps).
   final GlobalKey<RouteMarkersPanelState> _markersPanelKey = GlobalKey();
@@ -192,6 +225,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // The map is the first list child and the markers panel sits far below the
   // fold, so "tap the map to place" arrived with no map on screen.
   final ScrollController _scrollController = ScrollController();
+
+  late final ScrolledAwayTitleController _nameTitle =
+      ScrolledAwayTitleController(_scrollController);
 
   /// 0.0 = start, 1.0 = finish. Drives the route-preview scrubber:
   /// dragging the slider feeds an interpolated lat/lng to the
@@ -216,6 +252,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   String? _genSource;
   bool _describing = false;
   bool _describeFailed = false;
+  bool _describeConsentRequired = false;
   bool _showUpgradeHint = false;
 
   @override
@@ -225,6 +262,22 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     _loadBookmarkState();
     _resolveDisplayWaypoints();
     _resolveAppleWatchAvailability();
+    if (widget.route.official) {
+      unawaited(_parkCourses.check([widget.route.id]));
+      unawaited(_loadCourseCredit());
+    }
+  }
+
+  Future<void> _loadCourseCredit() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final credit = await api.fetchParkCourseCredit(routeId: widget.route.id);
+      if (!mounted || credit == null) return;
+      setState(() => _courseCredit = credit);
+    } catch (e) {
+      debugPrint('fetchParkCourseCredit failed: $e');
+    }
   }
 
   Future<void> _resolveAppleWatchAvailability() async {
@@ -236,6 +289,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   @override
   void dispose() {
     _tilePackStore?.dispose();
+    _parkCourses.dispose();
+    _nameTitle.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -251,6 +306,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     } catch (e) {
       debugPrint('route detail: reveal map for marker placement failed: $e');
     }
+  }
+
+  Future<void> _retryDisplayWaypoints() async {
+    setState(() {
+      _lineLoading = true;
+      _lineFailed = false;
+    });
+    await _resolveDisplayWaypoints();
   }
 
   Future<void> _resolveDisplayWaypoints() async {
@@ -269,29 +332,47 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // opening a freshly-built route shows "Waiting for GPS..." instead
     // of the polyline — the user's report.
     if (viewerId != null && (viewerId == ownerId || ownerId.isEmpty)) {
-      setState(() => _displayWaypoints = widget.route.waypoints);
+      setState(() {
+        _displayWaypoints = widget.route.waypoints;
+        _lineLoading = false;
+      });
       return;
     }
     // Signed-out viewer looking at a locally-built route — same
     // logic, no cloud row to clip against. Use the row waypoints.
     if (viewerId == null && ownerId.isEmpty) {
-      setState(() => _displayWaypoints = widget.route.waypoints);
+      setState(() {
+        _displayWaypoints = widget.route.waypoints;
+        _lineLoading = false;
+      });
       return;
     }
     // Non-owner (incl. anon api == null): fetch clipped output. The
     // helper fails closed — an RPC error renders an empty map rather
     // than fall through to the unclipped row column.
     if (api == null) {
-      setState(() => _displayWaypoints = const []);
+      setState(() {
+        _displayWaypoints = const [];
+        _lineLoading = false;
+      });
       return;
     }
     try {
       final clipped = await api.clipRouteForViewer(widget.route.id);
       if (!mounted) return;
-      setState(() => _displayWaypoints = clipped);
+      setState(() {
+        _displayWaypoints = clipped;
+        _lineLoading = false;
+      });
     } catch (e) {
       debugPrint('clipRouteForViewer failed for ${widget.route.id}: $e');
-      if (mounted) setState(() => _displayWaypoints = const []);
+      if (mounted) {
+        setState(() {
+          _displayWaypoints = const [];
+          _lineLoading = false;
+          _lineFailed = true;
+        });
+      }
     }
   }
 
@@ -367,17 +448,20 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_describing) return;
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
+    final locale = routeDescribeLocaleTag(Localizations.localeOf(context));
     setState(() {
       _describing = true;
       _describeFailed = false;
+      _describeConsentRequired = false;
       _showUpgradeHint = false;
     });
 
     final input = _describeInput();
     final parts = describeRoute(input);
     // L1 baseline: render the localised templated sentence immediately.
+    final localised = _localisedTemplate(parts, input.name, l10n, unit);
     setState(() {
-      _genDescription = _localisedTemplate(parts, input.name, l10n, unit);
+      _genDescription = localised;
       _genSource = 'template';
     });
 
@@ -403,19 +487,77 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
 
     try {
       final ai =
-          await (widget.describeAi ?? requestAiDescription)(input);
+          await (widget.describeAi ?? requestAiDescription)(
+              input, unit, locale, widget.route.id);
       if (!mounted) return;
       setState(() {
-        _genDescription = ai.description;
+        _genDescription = shownDescription(localised,
+            description: ai.description, source: ai.source);
         _genSource = ai.source;
         _showUpgradeHint = ai.upgrade;
       });
     } catch (e) {
       debugPrint('route_detail: requestAiDescription failed: $e');
-      if (mounted) setState(() => _describeFailed = true);
+      // The templated baseline stays on screen either way (L1 must always
+      // work). A consent gap is not something a retry fixes, so it gets its
+      // own line plus a way to act on it.
+      final consent = e is StateError && e.message == kAiDisclosureError;
+      if (mounted) {
+        setState(() {
+          _describeConsentRequired = consent;
+          _describeFailed = !consent;
+        });
+      }
     } finally {
       if (mounted) setState(() => _describing = false);
     }
+  }
+
+  /// Open the AI disclosure from the fallback notice and, when the runner
+  /// accepts, re-run the enhancement they were refused. Nothing here
+  /// assumes the write landed — a cancelled or failed dialog resolves null
+  /// and the templated baseline simply stays.
+  Future<void> _reviewAiDisclosure() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    final recorded = await showAiDisclosureDialog(context, api);
+    if (recorded == null || !mounted) return;
+    setState(() => _describeConsentRequired = false);
+    await _describe();
+  }
+
+  Widget _lineUnavailable(ThemeData theme, AppLocalizations l10n) {
+    if (_lineLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _lineFailed ? Icons.cloud_off : Icons.route,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _lineFailed ? l10n.routeDetailLineLoadFailed : l10n.routeDetailLineEmpty,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (_lineFailed) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _retryDisplayWaypoints,
+                child: Text(l10n.routeDetailLineRetry),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   /// The "Describe this route" surface shown when the route has no
@@ -490,6 +632,26 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.error,
               ),
+            ),
+          ),
+        if (_describeConsentRequired)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.routeDetailDescribeConsentRequired,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (widget.apiClient != null)
+                  TextButton(
+                    onPressed: _reviewAiDisclosure,
+                    child: Text(l10n.routeDetailReviewDisclosure),
+                  ),
+              ],
             ),
           ),
       ],
@@ -578,12 +740,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           name: r.name,
           waypoints: r.waypoints,
           distanceMetres: r.distanceMetres,
+          officialDistanceMetres: r.officialDistanceMetres,
           elevationGainMetres: r.elevationGainMetres,
           isPublic: isPublic,
           createdAt: r.createdAt,
           surface: r.surface,
           tags: _tags,
           featured: r.featured,
+          official: r.official,
           runCount: r.runCount,
           isStarred: _isStarred,
           description: r.description,
@@ -713,12 +877,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           name: r.name,
           waypoints: r.waypoints,
           distanceMetres: r.distanceMetres,
+          officialDistanceMetres: r.officialDistanceMetres,
           elevationGainMetres: r.elevationGainMetres,
           isPublic: _isPublic,
           createdAt: r.createdAt,
           surface: r.surface,
           tags: _tags,
           featured: r.featured,
+          official: r.official,
           runCount: r.runCount,
           isStarred: starred,
           description: r.description,
@@ -887,6 +1053,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // outcome) — nothing meaningful to start.
     final canStartRun = _displayWaypoints.length >= 2;
     return Scaffold(
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: canStartRun
           ? FloatingActionButton.extended(
               heroTag: 'route_detail_start_run',
@@ -897,8 +1064,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               // Start silently did nothing from any pusher that didn't — the
               // shared-file import landing, a deep push, etc.
               onPressed: () => pendingStartRunWithRoute.value = route,
-              backgroundColor: semantic.success,
-              foregroundColor: semantic.onSuccess,
               icon: const Icon(Icons.play_arrow),
               label: Text(
                 l10n.routeDetailStartRun,
@@ -907,7 +1072,10 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
             )
           : null,
       appBar: AppBar(
-        title: Text(route.name),
+        title: ScrolledAwayTitle(
+          controller: _nameTitle,
+          child: Text(route.name),
+        ),
         // Six concurrent owner actions left a measured 0dp of a 360dp toolbar
         // for the route's name. Share stays pinned (it is itself a menu, and
         // menus don't nest), one action earns the remaining slot, the rest
@@ -920,6 +1088,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 tooltip: l10n.routeDetailShare,
                 onSelected: (fmt) => switch (fmt) {
                   'link' => _shareLink(context),
+                  'send' => _sendToFollower(context),
                   'watch' => _sendCourseToWatch(),
                   'apple_watch' => _sendRouteToAppleWatch(),
                   _ => _shareAs(context, fmt),
@@ -934,6 +1103,11 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   if (_isPublic || _isOwner)
                     PopupMenuItem(
                         value: 'link', child: Text(l10n.routeDetailShareLink)),
+                  if ((_isPublic || _isOwner) &&
+                      widget.apiClient?.userId != null)
+                    PopupMenuItem(
+                        value: 'send',
+                        child: Text(l10n.routeDetailSendToFollower)),
                   PopupMenuItem(
                       value: 'image',
                       child: Text(l10n.routeDetailShareAsImage)),
@@ -991,6 +1165,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     : l10n.routeDetailSaveForOffline,
                 onPressed: _offlinePinBusy ? null : _toggleOfflinePin,
               ),
+              // A private course offers no drive mode, its owner included
+              // (course_drive.md gotcha 6).
+              if (courseDriveGate && _isPublic && _displayWaypoints.length >= 2)
+                AppBarAction(
+                  icon: const Icon(Icons.directions_car_outlined),
+                  label: l10n.courseDriveTitle,
+                  onPressed: _openCourseDrive,
+                ),
               if (_isOwner)
                 AppBarAction(
                   icon: Icon(_isStarred ? Icons.star : Icons.star_border),
@@ -1041,6 +1223,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     api: widget.apiClient!,
                     targetKind: 'route',
                     targetId: route.id,
+                    organiserClubs:
+                        _isPublic ? _raceService.fetchMyOrganiserClubs : null,
+                    targetClubId: _clubId,
                   ),
                 ),
               if (_isOwner)
@@ -1048,7 +1233,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   icon: const Icon(Icons.delete_outline),
                   label: l10n.routeDetailDeleteRoute,
                   destructive: true,
-                  onPressed: () => _confirmDelete(context),
+                  onPressed: _deleteBusy ? null : () => _confirmDelete(context),
                 ),
             ],
           ),
@@ -1068,33 +1253,37 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               _KeepAliveMap(
                 child: SizedBox(
                   height: detailMapHeight(viewport.maxHeight),
-                  child: LiveRunMap(
-                    track: const [],
-                    plannedRoute: _displayWaypoints,
-                    followRunner: false,
-                    courseMarkers: _markerPins,
-                    markerPlacing: _markerPlacing,
-                    onMarkerPlace: (wp) =>
-                        _markersPanelKey.currentState?.placeAt(wp),
-                    onMarkerTap: (id) =>
-                        _markersPanelKey.currentState?.selectMarker(id),
-                    // Only mount the preview-runner pulse while the user
-                    // is actually scrubbing — releasing the thumb fades
-                    // back to the static polyline view so the marker
-                    // doesn't sit at the start indefinitely after a
-                    // single drag.
-                    previewPosition: _scrubbing
-                        ? interpolateAlongRoute(
-                            _displayWaypoints,
-                            _scrubFraction,
-                          )
-                        : null,
-                  ),
+                  child: _displayWaypoints.length < 2
+                      ? _lineUnavailable(theme, l10n)
+                      : LiveRunMap(
+                        track: const [],
+                        plannedRoute: _displayWaypoints,
+                        offlinePackRouteId: widget.route.id,
+                        followRunner: false,
+                        courseMarkers: _markerPins,
+                        markerPlacing: _markerPlacing,
+                        onMarkerPlace: (wp) =>
+                            _markersPanelKey.currentState?.placeAt(wp),
+                        onMarkerTap: (id) =>
+                            _markersPanelKey.currentState?.selectMarker(id),
+                        // Only mount the preview-runner pulse while the user
+                        // is actually scrubbing — releasing the thumb fades
+                        // back to the static polyline view so the marker
+                        // doesn't sit at the start indefinitely after a
+                        // single drag.
+                        previewPosition: _scrubbing
+                            ? interpolateAlongRoute(
+                                _displayWaypoints,
+                                _scrubFraction,
+                              )
+                            : null,
+                      ),
                 ),
               ),
+              ScrolledAwayHeading(controller: _nameTitle, text: route.name),
               // Diagnostic for the "I'm still not seeing the map"
-              // user report — when `MAPTILER_KEY` isn't set in
-              // `.env.local`, the LiveRunMap above renders the
+              // user report — when neither `MAPTILER_KEY` nor
+              // `TILE_URL_TEMPLATE` is set, the LiveRunMap above renders the
               // polyline on a blank grey backdrop (the tile fetch
               // returns 401 with an empty key). The hint widget
               // surfaces the exact fix-instruction instead of the
@@ -1107,7 +1296,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               if (_displayWaypoints.length >= 2)
                 _RoutePreviewScrubber(
                   fraction: _scrubFraction,
-                  totalDistanceM: route.distanceMetres,
+                  totalDistanceM: routeDisplayDistanceM(
+                      route.distanceMetres, route.officialDistanceMetres),
                   unit: unit,
                   onChangeStart: () => setState(() => _scrubbing = true),
                   onChanged: (f) => setState(() => _scrubFraction = f),
@@ -1119,14 +1309,27 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 child: StatGrid(
                   cells: [
                     StatTile.large(
-                      label: l10n.routeDetailStatDistance,
-                      value: UnitFormat.distanceValue(route.distanceMetres, unit),
+                      label: route.officialDistanceMetres != null
+                          ? l10n.routeDetailStatOfficialDistance
+                          : l10n.routeDetailStatDistance,
+                      value: UnitFormat.distanceValue(
+                          routeDisplayDistanceM(route.distanceMetres,
+                              route.officialDistanceMetres),
+                          unit),
                       unit: UnitFormat.distanceLabel(unit),
                     ),
+                    if (route.officialDistanceMetres != null)
+                      StatTile.large(
+                        label: l10n.routeDetailStatMeasured,
+                        value: UnitFormat.distanceValue(
+                            route.distanceMetres, unit),
+                        unit: UnitFormat.distanceLabel(unit),
+                      ),
                     StatTile.large(
                       label: l10n.routeDetailStatElevation,
-                      value: '${route.elevationGainMetres.round()}',
-                      unit: 'm',
+                      value: UnitFormat.elevationValue(
+                          route.elevationGainMetres, unit),
+                      unit: UnitFormat.elevationLabel(unit),
                     ),
                     if (_avgRating > 0)
                       StatTile.large(
@@ -1134,10 +1337,10 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                         value: formatFixed(_avgRating, 1, activeLocaleTag),
                         unit: '/ 5',
                       )
-                    else
+                    else if (_displayWaypoints.isNotEmpty)
                       StatTile.large(
                         label: l10n.routeDetailStatWaypoints,
-                        value: '${route.waypoints.length}',
+                        value: '${_displayWaypoints.length}',
                       ),
                   ],
                 ),
@@ -1255,6 +1458,17 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: _describeBlock(theme, l10n),
                 ),
+              if (_courseCredit != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Text(
+                    _courseCredit!,
+                    key: const Key('route-course-credit'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
 
               // Surface + run-count + featured metadata. Left-aligned
               // (was centered + orphaned-feeling) and uses the same
@@ -1262,7 +1476,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               // affordances elsewhere.
               if (route.surface != null ||
                   route.runCount > 0 ||
-                  route.featured)
+                  route.featured ||
+                  route.official)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                   child: Wrap(
@@ -1286,6 +1501,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                           icon: Icons.star,
                           label: l10n.routeDetailFeatured,
                           color: semantic.crown,
+                        ),
+                      if (route.official)
+                        OfficialRouteBadge(
+                          routeId: route.id,
+                          lookup: _parkCourses,
+                          size: 16,
                         ),
                     ],
                   ),
@@ -1516,6 +1737,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   routeId: widget.route.id,
                   routeOwnerId: widget.route.userId,
                 ),
+                if (widget.route.clubId != null)
+                  CourseAlertsSection(
+                    key: ValueKey('course-alerts-${widget.route.id}'),
+                    service: _raceService,
+                    routeId: widget.route.id,
+                    clubId: widget.route.clubId,
+                  ),
               ],
 
               // Trailing bottom-of-scroll padding so the FAB doesn't
@@ -1535,44 +1763,118 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// only offers this when the route is public or the viewer owns it, so a
   /// non-owner never shares a dead link.
   Future<void> _shareLink(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
-    if (_isOwner && !_isPublic) {
-      // Making a still-private route public exposes it (and its start point)
-      // to anyone with the link and in Explore — confirm before that flip.
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.routeDetailShareConfirmTitle),
-          content: Text(l10n.routeDetailShareConfirmBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.routeDetailCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.routeDetailShareConfirmCta),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
-      if (!mounted) return;
-      final api = widget.apiClient!;
-      try {
-        await api.setRoutePublic(widget.route.id, true);
-        if (!mounted) return;
-        setState(() => _isPublic = true);
-        showTopBanner(context, l10n.routeDetailMadePublicForLink);
-      } catch (e) {
-        if (!mounted) return;
-        showTopBanner(context,
-            l10n.routeDetailShareLinkFailed(friendlyError(l10n, e)));
-        return;
+    final api = widget.apiClient;
+    if (_isOwner && !_isPublic && api != null && api.userId != null) {
+      // With audience sharing on, Share asks who should see the route; public
+      // is one answer of four, never a side effect of the button (decisions
+      // § 1879).
+      if (await api.audienceSharingEnabled()) {
+        if (!context.mounted) return;
+        final choice = await showAudienceSheet(
+          context,
+          backend: ApiAudienceBackend(api, ShareableKind.route, widget.route.id),
+        );
+        if (!context.mounted) return;
+        if (choice == AudienceSheetResult.shareLink) {
+          await shareTextFrom(context,
+              text: audienceLinkUrl(ShareableKind.route, widget.route.id),
+              subject: widget.route.name);
+          return;
+        }
+        if (choice != AudienceSheetResult.requestPublic) return;
       }
     }
-    await Share.share(routeShareUrl(widget.route.id),
-        subject: widget.route.name);
+    if (!context.mounted) return;
+    if (!await _ensurePublic(context)) return;
+    if (!context.mounted) return;
+    await shareTextFrom(context,
+        text: routeShareUrl(widget.route.id), subject: widget.route.name);
+  }
+
+  /// Make the route publicly reachable before a link to it goes out. An
+  /// already-public route answers true at once. An owner's still-private
+  /// route is flipped only after the confirm, because the flip exposes it
+  /// (and its start point) to anyone with the link and in Explore; a
+  /// cancelled confirm or a failed flip answers false and leaves it private.
+  /// Both link affordances come through here, as web's both come through
+  /// `runShare` (decisions § 734).
+  Future<bool> _ensurePublic(BuildContext context) async {
+    if (_isPublic) return true;
+    if (!_isOwner) return false;
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.routeDetailShareConfirmTitle),
+        content: Text(l10n.routeDetailShareConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.routeDetailCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.routeDetailShareConfirmCta),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return false;
+    try {
+      await widget.apiClient!.setRoutePublic(widget.route.id, true);
+      if (!mounted) return false;
+      setState(() => _isPublic = true);
+      if (context.mounted) {
+        showTopBanner(context, l10n.routeDetailMadePublicForLink);
+      }
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      if (context.mounted) {
+        showTopBanner(context,
+            l10n.routeDetailShareLinkFailed(friendlyError(l10n, e)));
+      }
+      return false;
+    }
+  }
+
+  /// Send the route to one follower as a direct message carrying the route
+  /// attachment. Mirror of web's `handleSendToFollower`: with audience
+  /// sharing on, an owner's private route stays private and each send grants
+  /// that one person access; otherwise a private route goes through the same
+  /// public-flip confirm as Share link, and a cancel leaves it private with
+  /// the picker never opened (route_direct_share.md).
+  Future<void> _sendToFollower(BuildContext context) async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    var grantAccess = false;
+    var shareUrl = routeShareUrl(widget.route.id);
+    if (_isOwner && !_isPublic && await api.audienceSharingEnabled()) {
+      grantAccess = true;
+      shareUrl = audienceLinkUrl(ShareableKind.route, widget.route.id);
+    } else {
+      if (!context.mounted) return;
+      if (!await _ensurePublic(context)) return;
+    }
+    if (!context.mounted) return;
+    final openWith = await showSendRouteSheet(
+      context,
+      api: api,
+      routeId: widget.route.id,
+      shareUrl: shareUrl,
+      grantAccess: grantAccess,
+    );
+    if (openWith == null || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MessageThreadScreen(
+          api: api,
+          partnerId: openWith.id,
+          partnerName: openWith.displayName,
+          partnerAvatarUrl: openWith.avatarUrl,
+        ),
+      ),
+    );
   }
 
   /// Whether the custom-watch course push is offered at all. See
@@ -1602,6 +1904,37 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// half is held to the same bar: an over-cap one is reduced deliberately (see
   /// [watchRoadbookFromRoadbook]) and the runner is told what was dropped, or
   /// refused outright when it can't be reduced honestly.
+  /// Reads the same clipped polyline the map does, and the viewer-redacted
+  /// markers, so a drive can show no more than the screen (decisions §33).
+  void _openCourseDrive() {
+    final line = [
+      for (final w in _displayWaypoints)
+        DrivePoint(w.lat, w.lng, ele: w.elevationMetres),
+    ];
+    final api = widget.apiClient;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CourseDriveScreen(
+        title: widget.route.name,
+        load: () async {
+          final rows = api == null
+              ? const <cm.RouteMarkerRow>[]
+              : await api.fetchRouteMarkers(widget.route.id);
+          return CourseDriveCourse(line: line, markers: [
+            for (final m in rows)
+              DriveMarkerInput(
+                kind: m.kind,
+                label: m.label,
+                lat: m.lat,
+                lng: m.lng,
+                positionM: m.positionM,
+                meta: m.meta,
+              ),
+          ]);
+        },
+      ),
+    ));
+  }
+
   Future<void> _sendCourseToWatch() async {
     if (_watchPushBusy) return;
     final l10n = AppLocalizations.of(context);
@@ -1616,7 +1949,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       // Shaped before the radio opens: the schedule half may have to ask the
       // runner for a goal time and a start clock, and a modal answered at
       // leisure would otherwise hold a live BLE connection open behind it.
-      final schedule = await _watchRoadbook();
+      final roadbook = await _watchRoadbook();
+      final schedule = roadbook.schedule;
       if (!mounted) return;
       final client = WatchSyncClient(
         transport: (widget.watchTransportFactory ??
@@ -1636,7 +1970,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       }
       if (!mounted) return;
       showTopBanner(
-          context, _watchPushMessage(l10n, course, points.length, schedule));
+          context,
+          _watchPushMessage(l10n, course, points.length, schedule,
+              markersFailed: roadbook.markersFailed));
     } catch (e) {
       if (!mounted) return;
       // A refusal is not a generic failure: the watch answered, and what it
@@ -1710,21 +2046,24 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// race whose barriers are all wall-clock is the entire schedule.
   ///
   /// Fetching markers is an auxiliary step: a failure degrades to a course-only
-  /// push (the course still goes) instead of sinking the whole action.
-  Future<WatchRoadbookResult?> _watchRoadbook() async {
+  /// push (the course still goes) instead of sinking the whole action, and is
+  /// reported so the banner does not read as a route with no checkpoints.
+  Future<({WatchRoadbookResult? schedule, bool markersFailed})>
+      _watchRoadbook() async {
+    const none = (schedule: null, markersFailed: false);
     final api = widget.apiClient;
-    if (api == null) return null;
+    if (api == null) return none;
     List<cm.RouteMarkerRow> markers;
     try {
       markers = await api.fetchRouteMarkers(widget.route.id);
     } catch (e) {
       debugPrint('sendToWatch: fetchRouteMarkers failed: $e');
-      return null;
+      return (schedule: null, markersFailed: true);
     }
-    if (markers.isEmpty || !mounted) return null;
+    if (markers.isEmpty || !mounted) return none;
     final plan = await _roadbookPlan();
-    if (plan == null || !mounted) return null;
-    return watchRoadbookFromRoadbook(buildRoadbook(
+    if (plan == null || !mounted) return none;
+    final schedule = watchRoadbookFromRoadbook(buildRoadbook(
       [
         for (final w in _displayWaypoints)
           RoadbookWaypoint(lat: w.lat, lng: w.lng, ele: w.elevationMetres),
@@ -1738,6 +2077,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       startClockMin: plan.startClockMin?.toDouble(),
       model: plan.model,
     ));
+    return (schedule: schedule, markersFailed: false);
   }
 
   /// This route's stored race plan, asking for one when there is none. A
@@ -1763,8 +2103,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     AppLocalizations l10n,
     WatchCourseResult course,
     int pointCount,
-    WatchRoadbookResult? schedule,
-  ) {
+    WatchRoadbookResult? schedule, {
+    bool markersFailed = false,
+  }) {
+    if (markersFailed) {
+      return l10n.routeDetailWatchCourseSentMarkersFailed(pointCount);
+    }
     final checkpoints = schedule?.checkpoints;
     if (schedule != null && checkpoints == null) {
       // noSchedule is not worth a warning — it just means the markers carry no
@@ -1801,12 +2145,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       name: widget.route.name,
       waypoints: _displayWaypoints,
       distanceMetres: widget.route.distanceMetres,
+      officialDistanceMetres: widget.route.officialDistanceMetres,
       elevationGainMetres: widget.route.elevationGainMetres,
       isPublic: widget.route.isPublic,
       createdAt: widget.route.createdAt,
       surface: widget.route.surface,
       tags: widget.route.tags,
       featured: widget.route.featured,
+      official: widget.route.official,
       runCount: widget.route.runCount,
       isStarred: widget.route.isStarred,
       description: widget.route.description,
@@ -1819,6 +2165,53 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       );
       return;
     }
+    final withMarkers = format == 'gpx_markers';
+    // Fetch the raw course markers on demand so the waypoints land in
+    // the export. A failed read is reported rather than shared as a
+    // markers-less file named "with markers"; the plain GPX export stays
+    // one tap away.
+    var markers = <cm.RouteMarkerRow>[];
+    if (withMarkers) {
+      try {
+        markers =
+            await widget.apiClient?.fetchRouteMarkers(widget.route.id) ??
+                <cm.RouteMarkerRow>[];
+      } catch (e) {
+        debugPrint('shareAs gpx_markers: fetchRouteMarkers failed: $e');
+        if (context.mounted) {
+          showTopBanner(
+              context, AppLocalizations.of(context).routeMarkerLoadFailed);
+        }
+        return;
+      }
+    }
+
+    // A park course's route carries third-party geometry, so its exported
+    // file carries the credit. Park course routes are official routes, so a
+    // failed check refuses an official route's export rather than writing it
+    // uncredited, and lets any other route export as before (offline too).
+    GpxAttribution? attribution;
+    try {
+      final provenance =
+          await widget.apiClient?.fetchRouteCourseProvenance(widget.route.id);
+      if (provenance != null) {
+        attribution = courseAttribution(
+          provenance.geometrySource,
+          parkName: provenance.parkName,
+          parkWebsiteUrl: provenance.parkWebsiteUrl,
+        );
+      }
+    } catch (e) {
+      debugPrint('shareAs $format: fetchRouteCourseProvenance failed: $e');
+      if (widget.route.official) {
+        if (context.mounted) {
+          showTopBanner(context,
+              AppLocalizations.of(context).routeDetailExportCreditFailed);
+        }
+        return;
+      }
+    }
+
     try {
       final tmp = await getTemporaryDirectory();
       final safe = route.name
@@ -1826,21 +2219,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               .replaceAll(RegExp(r'\s+'), '_');
       final base = safe.isEmpty ? 'route' : safe;
       final isKml = format == 'kml';
-      final withMarkers = format == 'gpx_markers';
-
-      // Fetch the raw course markers on demand so the waypoints land in
-      // the export. A failure (offline / RLS) must never sink the share —
-      // fall back to a line-only GPX.
-      var markers = <cm.RouteMarkerRow>[];
-      if (withMarkers) {
-        try {
-          markers =
-              await widget.apiClient?.fetchRouteMarkers(widget.route.id) ??
-                  <cm.RouteMarkerRow>[];
-        } catch (e) {
-          debugPrint('shareAs gpx_markers: fetchRouteMarkers failed: $e');
-        }
-      }
 
       final fileName = withMarkers
           ? '${base}_with_markers.gpx'
@@ -1848,15 +2226,16 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       final file = File('${tmp.path}/$fileName');
       final String contents;
       if (isKml) {
-        contents = _routeToKml(route);
+        contents = routeToKml(route, attribution);
       } else if (withMarkers) {
-        contents = routeGpxFromRoute(route, markers);
+        contents = routeGpxFromRoute(route, markers, attribution);
       } else {
-        contents = _routeToGpx(route);
+        contents = routeToGpx(route, attribution);
       }
       await file.writeAsString(contents);
-      await Share.shareXFiles(
-        [
+      await shareFilesFrom(
+        context,
+        files: [
           XFile(file.path,
               mimeType: isKml
                   ? 'application/vnd.google-earth.kml+xml'
@@ -1947,13 +2326,42 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     }
   }
 
+  // Deleting a route cascades its photos, markers and other runners'
+  // reviews, bookmarks and segments, none of which a re-insert could bring
+  // back, so it takes the confirm and no undo (conventions.md § Destructive
+  // actions). [_deleteBusy] spans the impact read, the dialog and the delete,
+  // so a second tap cannot open a second dialog or send a second delete.
   Future<void> _confirmDelete(BuildContext context) async {
+    if (_deleteBusy) return;
+    setState(() => _deleteBusy = true);
+    try {
+      await _runDelete(context);
+    } finally {
+      if (mounted) setState(() => _deleteBusy = false);
+    }
+  }
+
+  Future<void> _runDelete(BuildContext context) async {
+    final api = widget.apiClient;
+    final signedIn = api != null && api.userId != null;
+    RouteDeleteImpact? impact;
+    if (signedIn) {
+      try {
+        impact = await api.fetchRouteDeleteImpact(widget.route.id);
+      } catch (e) {
+        debugPrint('route_delete_impact failed: $e');
+      }
+    }
+    if (!context.mounted) return;
     final l10n = AppLocalizations.of(context);
+    final body = signedIn
+        ? routeDeleteConfirmLines(l10n, impact, isPublic: _isPublic).join(' ')
+        : l10n.routeDetailDeleteBody;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.routeDetailDeleteTitle),
-        content: Text(l10n.routeDetailDeleteBody),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -1980,10 +2388,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // the error and KEEP the local file so the user can retry once
     // they're back online. Falls back to local-only delete when the
     // ApiClient isn't available (signed-out / no-Supabase build).
-    final api = widget.apiClient;
-    if (api != null && api.userId != null) {
+    if (signedIn) {
       try {
         await api.deleteRoute(widget.route.id);
+      } on RouteDeleteRefusedException {
+        if (!context.mounted) return;
+        showTopBanner(context, AppLocalizations.of(context).routeDetailDeleteNotAllowed);
+        return;
       } catch (e) {
         debugPrint('route detail delete failed: $e');
         if (!context.mounted) return;
@@ -2022,24 +2433,59 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   }
 }
 
-String _routeToKml(cm.Route route) {
-  String esc(String s) => s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
+/// The confirm's body: the irreversibility sentence, then one line per
+/// thing that depends on the route, from `route_delete_impact`. Mirrors web
+/// `routeDeleteImpactLines` — other people's things first, then the owner's
+/// own content, zero counts saying nothing. Null [impact] means the count
+/// failed, which says so rather than implying nothing depends on it.
+List<String> routeDeleteConfirmLines(
+  AppLocalizations l10n,
+  RouteDeleteImpact? impact, {
+  required bool isPublic,
+}) {
+  final lines = <String>[l10n.routeDetailDeleteBody];
+  if (isPublic) lines.add(l10n.routeDetailDeleteImpactPublic);
+  if (impact == null) {
+    lines.add(l10n.routeDetailDeleteImpactUnknown);
+    return lines;
+  }
+  void add(int count, String Function(int) line) {
+    if (count > 0) lines.add(line(count));
+  }
 
+  add(impact.raceListings, l10n.routeDetailDeleteImpactRaceListings);
+  add(impact.events, l10n.routeDetailDeleteImpactEvents);
+  add(impact.savedByOthers, l10n.routeDetailDeleteImpactSaved);
+  add(impact.shares, l10n.routeDetailDeleteImpactShares);
+  add(impact.segmentsByOthers, l10n.routeDetailDeleteImpactSegments);
+  add(impact.segmentEffortsByOthers, l10n.routeDetailDeleteImpactEfforts);
+  add(impact.reviewsByOthers, l10n.routeDetailDeleteImpactReviews);
+  add(impact.conditionsByOthers, l10n.routeDetailDeleteImpactConditions);
+  add(impact.linkedRuns, l10n.routeDetailDeleteImpactRuns);
+  add(impact.photos, l10n.routeDetailDeleteImpactPhotos);
+  add(impact.markers, l10n.routeDetailDeleteImpactMarkers);
+  return lines;
+}
+
+/// The route as KML. [attribution] becomes the Document description.
+String routeToKml(cm.Route route, [GpxAttribution? attribution]) {
   final coords = StringBuffer();
+  // A waypoint without finite coordinates is dropped rather than written as
+  // `NaN`, which every KML reader refuses; a non-finite elevation is 0.
   for (final w in route.waypoints) {
-    coords.writeln('          ${w.lng},${w.lat},${w.elevationMetres ?? 0}');
+    if (!w.lat.isFinite || !w.lng.isFinite) continue;
+    final ele = w.elevationMetres;
+    coords.writeln(
+        '          ${w.lng},${w.lat},${ele != null && ele.isFinite ? ele : 0}');
   }
 
   return '<?xml version="1.0" encoding="UTF-8"?>\n'
       '<kml xmlns="http://www.opengis.net/kml/2.2">\n'
       '  <Document>\n'
-      '    <name>${esc(route.name)}</name>\n'
+      '    <name>${escapeXmlText(route.name)}</name>\n'
+      '${attribution != null ? '    <description>${escapeXmlText(attribution.notice)}</description>\n' : ''}'
       '    <Placemark>\n'
-      '      <name>${esc(route.name)}</name>\n'
+      '      <name>${escapeXmlText(route.name)}</name>\n'
       '      <Style>\n'
       '        <LineStyle>\n'
       '          <color>ffff0000</color>\n'
@@ -2056,28 +2502,26 @@ String _routeToKml(cm.Route route) {
       '</kml>\n';
 }
 
-String _routeToGpx(cm.Route route) {
-  String esc(String s) => s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
-
+/// The route as plain GPX. [attribution] lands in `<metadata>`.
+String routeToGpx(cm.Route route, [GpxAttribution? attribution]) {
   final buf = StringBuffer();
   buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
   buf.writeln(
       '<gpx version="1.1" creator="Run" xmlns="http://www.topografix.com/GPX/1/1">');
   buf.writeln('  <metadata>');
-  buf.writeln('    <name>${esc(route.name)}</name>');
+  buf.writeln('    <name>${escapeXmlText(route.name)}</name>');
+  buf.write(gpxAttributionMetadata(attribution));
   buf.writeln('    <time>${DateTime.now().toUtc().toIso8601String()}</time>');
   buf.writeln('  </metadata>');
   buf.writeln('  <trk>');
-  buf.writeln('    <name>${esc(route.name)}</name>');
+  buf.writeln('    <name>${escapeXmlText(route.name)}</name>');
   buf.writeln('    <trkseg>');
   for (final w in route.waypoints) {
+    if (!w.lat.isFinite || !w.lng.isFinite) continue;
     buf.write('      <trkpt lat="${w.lat}" lon="${w.lng}">');
-    if (w.elevationMetres != null) {
-      buf.write('<ele>${w.elevationMetres}</ele>');
+    final ele = w.elevationMetres;
+    if (ele != null && ele.isFinite) {
+      buf.write('<ele>$ele</ele>');
     }
     buf.writeln('</trkpt>');
   }
@@ -2091,7 +2535,11 @@ String _routeToGpx(cm.Route route) {
 /// plus one `<wpt>` per course marker. Pure composition over
 /// `toRouteGpxWithMarkers` so the share path stays testable without file
 /// IO. `[lng, lat]` order matches the shared emitter.
-String routeGpxFromRoute(cm.Route route, List<cm.RouteMarkerRow> markers) {
+String routeGpxFromRoute(
+  cm.Route route,
+  List<cm.RouteMarkerRow> markers, [
+  GpxAttribution? attribution,
+]) {
   final coordinates = <List<double>>[];
   final elevations = <double>[];
   for (final w in route.waypoints) {
@@ -2109,7 +2557,8 @@ String routeGpxFromRoute(cm.Route route, List<cm.RouteMarkerRow> markers) {
                 : <String, dynamic>{},
           ))
       .toList();
-  return toRouteGpxWithMarkers(route.name, coordinates, elevations, gpxMarkers);
+  return toRouteGpxWithMarkers(
+      route.name, coordinates, elevations, gpxMarkers, attribution);
 }
 
 /// Horizontal scrubber for previewing a route's direction. Hosted

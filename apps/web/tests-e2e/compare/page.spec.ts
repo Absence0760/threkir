@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /compare — public marketing comparison vs Strava Free + Pro.
@@ -16,12 +17,7 @@ test.describe('/compare — feature comparison vs Strava', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ page }) => {
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(page);
 	});
 
 	test('document title + meta description match the SEO contract', async ({ page }) => {
@@ -105,12 +101,12 @@ test.describe('/compare — feature comparison vs Strava', () => {
 		expect(partialColor).not.toEqual(noColor);
 	});
 
-	test('internal feature links in the footer point at /coach + /plans + /clubs', async ({
+	test('internal feature links in the footer point at the Coach + /plans + /clubs', async ({
 		page,
 	}) => {
 		await page.goto('/compare');
 		const footer = page.locator('.cmp-footer');
-		await expect(footer.locator('a[href="/coach"]', { hasText: /Coach/ })).toBeVisible();
+		await expect(footer.locator('a[href="/messages/coach"]', { hasText: /Coach/ })).toBeVisible();
 		await expect(footer.locator('a[href="/plans"]', { hasText: /plans/i })).toBeVisible();
 		await expect(footer.locator('a[href="/clubs"]', { hasText: /Clubs/ })).toBeVisible();
 	});

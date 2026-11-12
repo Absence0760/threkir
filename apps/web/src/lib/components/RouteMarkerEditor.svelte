@@ -1,16 +1,18 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import type { MapMarkerPin } from './RunMap.svelte';
-	import type { RouteMarker, RouteMarkerKind } from '$lib/types';
+	import type { RouteMarker, RouteMarkerKind } from '#lib/types.ts';
+	import type { JsonObject } from '#lib/types.ts';
 	import {
 		fetchRouteMarkers,
 		addRouteMarker,
 		updateRouteMarker,
 		deleteRouteMarker
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		ROUTE_MARKER_KINDS,
 		AID_SERVICES,
@@ -18,10 +20,11 @@
 		sortMarkers,
 		parseCutoff,
 		parseTarget,
+		parseAidServices,
 		isOfficialMarker
-	} from '$lib/routes/route_markers';
-	import { markerPointAtDistance, polylineLengthMetres } from '$lib/routes/route_geometry';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
+	} from '#lib/routes/route_markers.ts';
+	import { markerPointAtDistance, polylineLengthMetres } from '#lib/routes/route_geometry.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
 
 	interface Props {
 		routeId: string;
@@ -72,6 +75,7 @@
 
 	let markers = $state<RouteMarker[]>([]);
 	let loaded = $state(false);
+	let loadFailed = $state(false);
 
 	// Draft form state for the marker currently being added or edited.
 	let editingId = $state<string | null>(null); // null while adding a new one
@@ -129,8 +133,15 @@
 	}
 
 	async function reload() {
-		markers = await fetchRouteMarkers(routeId);
-		loaded = true;
+		try {
+			markers = await fetchRouteMarkers(routeId);
+			loadFailed = false;
+		} catch (e) {
+			console.error('route markers load failed', e);
+			loadFailed = true;
+		} finally {
+			loaded = true;
+		}
 	}
 	$effect(() => {
 		void routeId;
@@ -253,7 +264,7 @@
 			await reload();
 			showToast(m('routeMarker.moved'), 'success');
 		} catch (e) {
-			showToast(m('routeMarker.saveFailed', { error: `${e}` }), 'error');
+			showToast(m('routeMarker.saveFailed', { error: errorCopy(e, m, 'routeMarker.saveFailed') }), 'error');
 		}
 	}
 
@@ -296,7 +307,7 @@
 		editingId = mk.id;
 		draftKind = mk.kind;
 		draftLabel = mk.label;
-		draftServices = Array.isArray(mk.meta?.services) ? [...(mk.meta.services as string[])] : [];
+		draftServices = parseAidServices(mk.meta?.services);
 		const cutoff = parseCutoff(mk.meta);
 		// Open in the form the marker was actually saved in.
 		draftCutoffElapsed = cutoff?.elapsedS != null;
@@ -385,9 +396,9 @@
 	// rebuilding from scratch silently deleted all of it on any edit. Each key
 	// the editor owns is explicitly set or deleted below, so switching kind
 	// still drops the fields that kind can't carry.
-	function buildMeta(): Record<string, unknown> {
+	function buildMeta(): JsonObject {
 		const existing = editingId ? markers.find((mk) => mk.id === editingId)?.meta : null;
-		const meta: Record<string, unknown> = { ...((existing ?? {}) as Record<string, unknown>) };
+		const meta: JsonObject = { ...(existing ?? {}) };
 		const spec = kindSpec(draftKind);
 		if (spec.hasServices && draftServices.length > 0) meta.services = draftServices;
 		else delete meta.services;
@@ -479,7 +490,7 @@
 			await reload();
 			closeForm();
 		} catch (e) {
-			showToast(m('routeMarker.saveFailed', { error: `${e}` }), 'error');
+			showToast(m('routeMarker.saveFailed', { error: errorCopy(e, m, 'routeMarker.saveFailed') }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -501,7 +512,7 @@
 				markers = before;
 			},
 			onCommitError: (e) =>
-				showToast(m('routeMarker.deleteFailed', { error: `${e}` }), 'error'),
+				showToast(m('routeMarker.deleteFailed', { error: errorCopy(e, m, 'routeMarker.deleteFailed') }), 'error'),
 		});
 	}
 
@@ -516,9 +527,10 @@
 	function detailLine(mk: RouteMarker): string {
 		const spec = kindSpec(mk.kind);
 		const parts: string[] = [];
-		if (spec.hasServices && Array.isArray(mk.meta?.services) && mk.meta.services.length > 0) {
+		const services = spec.hasServices ? parseAidServices(mk.meta?.services) : [];
+		if (services.length > 0) {
 			parts.push(
-				(mk.meta.services as string[])
+				services
 					.map((s) => m(`routeMarker.service.${s}` as 'routeMarker.service.water'))
 					.join(' · ')
 			);
@@ -529,9 +541,8 @@
 			parts.push(mk.meta.note as string);
 		}
 		const target = parseTarget(mk.meta);
-		if (target?.elapsedS != null) {
-			parts.push(m('routeMarker.targetAt', { time: formatElapsed(target.elapsedS) }));
-		}
+		const targetTime = target?.elapsedS != null ? formatElapsed(target.elapsedS) : target?.clock;
+		if (targetTime) parts.push(m('routeMarker.targetAt', { time: targetTime }));
 		return parts.join(' · ');
 	}
 </script>
@@ -554,7 +565,14 @@
 		</p>
 	{/if}
 
-	{#if loaded && sorted.length === 0 && !formOpen}
+	{#if loadFailed}
+		<p class="markers-load-error" role="alert" data-testid="markers-load-error">
+			{m('routeMarker.loadFailed')}
+			<button type="button" class="btn btn-outline btn-sm" onclick={() => void reload()}>
+				{m('routeDetail.retry')}
+			</button>
+		</p>
+	{:else if loaded && sorted.length === 0 && !formOpen}
 		<p class="markers-empty">{m('routeMarker.empty')}</p>
 	{/if}
 
@@ -829,6 +847,15 @@
 		margin: 0;
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
+	}
+	.markers-load-error {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
 	}
 	.markers-list {
 		list-style: none;

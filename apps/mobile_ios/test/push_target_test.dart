@@ -30,12 +30,39 @@ void main() {
           const PushTarget(PushTargetKind.plans));
     });
 
-    test('message → /messages degrades to the inbox (no mobile surface)', () {
-      expect(pushTargetFromUrl('$_base/messages'), PushTarget.inbox);
+    test('message → /messages opens the conversation list', () {
+      expect(pushTargetFromUrl('$_base/messages'),
+          const PushTarget(PushTargetKind.messages));
+    });
+
+    test('/messages/{id} opens that conversation', () {
+      expect(pushTargetFromUrl('$_base/messages/user-4'),
+          const PushTarget(PushTargetKind.messages, 'user-4'));
+    });
+
+    test('/messages/group/{id} opens the group, not a partner named group', () {
+      expect(pushTargetFromUrl('$_base/messages/group/c-9'),
+          const PushTarget(PushTargetKind.groupThread, 'c-9'));
+      expect(pushTargetFromUrl('$_base/messages/group'),
+          const PushTarget(PushTargetKind.messages));
+    });
+
+    test('a group invitation opens the inbox on its Requests list', () {
+      expect(pushTargetFromUrl('$_base/messages?view=requests'),
+          const PushTarget(PushTargetKind.messageRequests));
     });
 
     test('run family → /runs/{id}', () {
       expect(pushTargetFromUrl('$_base/runs/run-9'),
+          const PushTarget(PushTargetKind.run, 'run-9'));
+    });
+
+    test('personal_record → /runs/{id}?share=pr opens the run on its PR card',
+        () {
+      expect(pushTargetFromUrl('$_base/runs/run-9?share=pr'),
+          const PushTarget(PushTargetKind.runPrCard, 'run-9'));
+      // Any other share value is the plain run.
+      expect(pushTargetFromUrl('$_base/runs/run-9?share=card'),
           const PushTarget(PushTargetKind.run, 'run-9'));
     });
 
@@ -49,8 +76,49 @@ void main() {
           const PushTarget(PushTargetKind.challenges));
     });
 
-    test('achievement + any future kind → /notifications', () {
+    test('run_completed → /share/run/{id} opens the in-app run', () {
+      expect(pushTargetFromUrl('$_base/share/run/run-9'),
+          const PushTarget(PushTargetKind.run, 'run-9'));
+    });
+
+    test('achievement → /share/badge/{id} opens the own Achievements tab', () {
+      expect(pushTargetFromUrl('$_base/share/badge/a-5'),
+          const PushTarget(PushTargetKind.badges));
+    });
+
+    test('any other or incomplete /share path degrades to the inbox', () {
+      expect(pushTargetFromUrl('$_base/share/run'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/share/run/'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/share/workout/w-1'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/share'), PushTarget.inbox);
+    });
+
+    test('any future kind → /notifications', () {
       expect(pushTargetFromUrl('$_base/notifications'), PushTarget.inbox);
+    });
+
+    test('data_export_ready → /settings/account', () {
+      // The archive is collected from Settings → Account, which mints the
+      // signed download URL at the tap. A push landing on the inbox instead
+      // would leave the runner one screen short of the thing the
+      // notification is about (decisions §729).
+      expect(pushTargetFromUrl('$_base/settings/account'),
+          const PushTarget(PushTargetKind.settingsAccount));
+    });
+
+    test('course_alert → /course-alerts/{id} carries the alert to resolve',
+        () {
+      const id = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+      expect(pushTargetFromUrl('$_base/course-alerts/$id'),
+          const PushTarget(PushTargetKind.courseAlert, id));
+      expect(pushTargetFromUrl('$_base/course-alerts/not-a-uuid'),
+          PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/course-alerts'), PushTarget.inbox);
+    });
+
+    test('any other /settings path degrades to the inbox', () {
+      expect(pushTargetFromUrl('$_base/settings'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/settings/preferences'), PushTarget.inbox);
     });
   });
 
@@ -138,5 +206,51 @@ void main() {
         isNot(const PushTarget(PushTargetKind.run, 'b')));
     expect(const PushTarget(PushTargetKind.run, 'a').hashCode,
         const PushTarget(PushTargetKind.run, 'a').hashCode);
+  });
+
+  group('plan paths', () {
+    const plan = '0b6f2f4e-8c1d-4a7e-9f3b-2d5c6a7b8c9d';
+    const wo = '1c7a3f5e-9d2e-4b8f-8a4c-3e6d7b8c9d0e';
+
+    test('a plan push opens that plan', () {
+      expect(pushTargetFromUrl('$_base/plans/$plan'),
+          const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('a workout path opens that workout of its plan', () {
+      expect(pushTargetFromUrl('$_base/plans/$plan/workouts/$wo'),
+          const PushTarget(PushTargetKind.planWorkout, plan, wo));
+    });
+
+    test('an upper-case id is normalised', () {
+      expect(pushTargetFromUrl('$_base/plans/${plan.toUpperCase()}'),
+          const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('other plan pages degrade to the list, or to the plan they name',
+        () {
+      for (final path in ['plans/new', 'plans/season', 'plans/library/x']) {
+        expect(pushTargetFromUrl('$_base/$path'),
+            const PushTarget(PushTargetKind.plans),
+            reason: path);
+      }
+      expect(pushTargetFromUrl('$_base/plans/$plan/workouts'),
+          const PushTarget(PushTargetKind.plan, plan));
+      expect(pushTargetFromUrl('$_base/plans/$plan/workouts/not-a-uuid'),
+          const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('a library plan, or its Train with me page, opens the preview', () {
+      expect(pushTargetFromUrl('$_base/plans/library/$plan'),
+          const PushTarget(PushTargetKind.planLibrary, plan));
+      expect(pushTargetFromUrl('$_base/share/plan/${plan.toUpperCase()}'),
+          const PushTarget(PushTargetKind.planLibrary, plan));
+      expect(pushTargetFromUrl('$_base/share/plan/not-a-uuid'), PushTarget.inbox);
+    });
+
+    test('the workout id is part of equality', () {
+      expect(const PushTarget(PushTargetKind.planWorkout, plan, wo),
+          isNot(const PushTarget(PushTargetKind.planWorkout, plan, plan)));
+    });
   });
 }

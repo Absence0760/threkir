@@ -32,9 +32,9 @@ Key values for client apps:
 
 | Field | Example |
 |---|---|
-| Project URL | `http://127.0.0.1:54321` |
+| Project URL | `http://127.0.0.1:24321` |
 | Publishable key | `sb_publishable_...` |
-| Database URL | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
+| Database URL | `postgresql://postgres:postgres@127.0.0.1:24322/postgres` |
 
 These are local defaults and are regenerated on each `supabase start` — no need to save them.
 
@@ -52,7 +52,7 @@ This drops and recreates the local database using the migration files in `supaba
 - Email: `runner@test.com`
 - Password: `testtest`
 
-The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and 2 connected integrations. This is enough to test the dashboard, run history, route library, and all other pages with real data.
+The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and a connected Strava integration. The parkrun runs stand for history imported before the parkrun import was removed (decisions § 2467). This is enough to test the dashboard, run history, route library, and all other pages with real data.
 
 ### Regenerate client row types
 
@@ -78,23 +78,23 @@ cp .env.example .env.local
 supabase functions serve --env-file .env.local
 ```
 
-Functions are now available at `http://localhost:54321/functions/v1/{function-name}`.
+Functions are now available at `http://localhost:24321/functions/v1/{function-name}`.
 
 You can test them with curl:
 
 ```bash
-# Example: test parkrun import
-curl -X POST http://localhost:54321/functions/v1/parkrun-import \
+# Example: ask race-results-import whether the RunSignUp leg is available
+curl -X POST http://localhost:24321/functions/v1/race-results-import \
   -H "Authorization: Bearer <user-jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"athleteNumber": "A123456"}'
+  -d '{"provider": "runsignup", "probe": true}'
 ```
 
 ---
 
 ## Supabase Studio
 
-Open `http://localhost:54323` in your browser to:
+Open `http://localhost:24323` in your browser to:
 
 - Browse and edit table data
 - Run SQL queries
@@ -109,7 +109,7 @@ Open `http://localhost:54323` in your browser to:
 |---|---|---|
 | `STRAVA_CLIENT_ID` | `apps/backend/.env.local` | From Strava developer portal (optional) |
 | `STRAVA_CLIENT_SECRET` | `apps/backend/.env.local` | From Strava developer portal (optional) |
-| `PARKRUN_USER_AGENT` | `apps/backend/.env.local` | Any user agent string |
+| `RACE_IMPORT_USER_AGENT` | `apps/backend/.env.local` | Any user agent string (optional; defaults to `RunApp/1.0`) |
 
 ---
 
@@ -130,7 +130,7 @@ supabase stop --no-backup
 
 ## Troubleshooting
 
-### "Port 54321 already in use"
+### "Port 24321 already in use"
 
 A previous Supabase instance is still running:
 
@@ -138,6 +138,10 @@ A previous Supabase instance is still running:
 supabase stop
 supabase start
 ```
+
+### Something still dials 54321 / 54322 / 54324
+
+The stack used to publish the CLI's default 5432x ports. It now pins every host port below 32768 (API 24321, DB 24322, Studio 24323, Mailpit 24324 / SMTP 24325 / POP3 24326, analytics 24327), outside Linux's ephemeral source-port range, so an outbound connection can never take one before docker binds it (issue #963). A checkout from before the move needs two things: restart the stack (`supabase stop && supabase start`) so it republishes on the new ports, and regenerate any **uncommitted** env file copied from the old values — `apps/web/.env`, `apps/backend/.env.local`, a mobile `.env` — plus any `adb reverse tcp:54321` set by hand (`npm run dev:core` re-runs it on 24321 / 24322). The committed `.env.development` / `.env.example` files already carry the new ports.
 
 ### Docker not running
 

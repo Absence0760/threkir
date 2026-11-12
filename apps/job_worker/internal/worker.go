@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 
-	"github.com/Absence0760/project-running/apps/job_worker/internal/nativepush"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/webpush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/nativepush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/webpush"
 )
 
 // Backend is the subset of SupabaseClient methods the worker needs.
@@ -23,8 +25,8 @@ type Backend interface {
 	DeferJob(ctx context.Context, jobID int64, delaySeconds int, errMsg *string) (string, error)
 	DownloadTrack(ctx context.Context, path string) ([]TrackPoint, error)
 	UploadMatchedTrack(ctx context.Context, path string, points []TrackPoint) error
-	UpdateMatchedTrackRow(ctx context.Context, runID string, expectedSourceTrackURL string, row MatchedTrackRow) error
-	ReadRunTrackURL(ctx context.Context, runID string) (string, error)
+	UpdateMatchedTrackRow(ctx context.Context, runID string, src TrackSource, row MatchedTrackRow) error
+	ReadRunTrackSource(ctx context.Context, runID string) (TrackSource, error)
 	ReadRunForAutoLink(ctx context.Context, runID string) (RunLinkInfo, error)
 	FindMatchingRoutes(ctx context.Context, userID string, track []TrackPoint, toleranceM float64, maxResults int) ([]RouteMatchCandidate, error)
 	LinkRunToRoute(ctx context.Context, runID, routeID string) error
@@ -46,6 +48,9 @@ type Backend interface {
 	// filters by `disconnected_at IS NULL`, so the broken row
 	// stops re-appearing every hour. /audit/strava High #2.
 	MarkIntegrationDisconnected(ctx context.Context, userID, provider, reason string) error
+	// DeleteUserProviderSecrets drops the user's Vault token rows for
+	// `provider` (the `delete_user_provider_secrets` RPC). Idempotent.
+	DeleteUserProviderSecrets(ctx context.Context, userID, provider string) error
 	// TryConsumeStravaQuota gates the aggregate Strava-API call
 	// rate at 90% of Strava's published limits (90/15min + 900/day).
 	// Returns true → caller may proceed, false → caller must back
@@ -90,6 +95,31 @@ type Backend interface {
 	// methods above (kind='club_photo_process', migration 20270301_001).
 	// Same download → strip → 512w thumbnail → PATCH contract against the
 	// `club-photos` bucket + `club_photos` table.
+	// Export retention path — used by the kind='export_blob_reap' handler.
+	// Listing carries each object's creation time because that is what the
+	// window selects on, and the DELETE goes through the Storage API because
+	// that is the only caller that erases the bytes rather than the row
+	// (decisions § 1049 / § 1112).
+	ListStorageObjectsWithMeta(ctx context.Context, bucket, prefix string) ([]StorageObject, error)
+	DeleteStorageObjects(ctx context.Context, bucket string, paths []string) error
+	// Route-photo orphan path — kind='route_photo_orphan_sweep' (migration
+	// 20271106000020). The `route_photo_orphan_paths` RPC returns at most
+	// `limit` route-photos objects no route_photos row references; nil
+	// `paths` is the 24-hour-graced backstop, non-nil restricts it to those
+	// paths. Empty while the server-side gate is off.
+	RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error)
+	// Direct-message image path — kind='dm_image_process' and
+	// kind='dm_image_orphan_sweep' (migration 20271213121604, issue #1216).
+	// FetchDmImage returns (nil, nil) for a row that no longer exists.
+	// DownloadDmImage reads at most maxBytes and returns ErrDmImageTooLarge
+	// past that. Every method reports errors without the object path, which
+	// names the sender.
+	FetchDmImage(ctx context.Context, imageID string) (*DmImage, error)
+	DownloadDmImage(ctx context.Context, path string, maxBytes int64) ([]byte, error)
+	UploadDmImage(ctx context.Context, path string, body []byte) error
+	MarkDmImageReady(ctx context.Context, imageID string, width, height int) (bool, error)
+	MarkDmImageRejected(ctx context.Context, imageID string) (bool, error)
+	DmImageOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error)
 	DownloadClubPhoto(ctx context.Context, path string) (body []byte, contentType string, err error)
 	UploadClubPhoto(ctx context.Context, path string, body []byte, contentType string) error
 	UpdateClubPhotoThumb512Path(ctx context.Context, photoID, path string) error
@@ -140,6 +170,54 @@ type Backend interface {
 	// the bounded per-user weekly summary from existing data.
 	IsEmailSuppressed(ctx context.Context, email string) (bool, error)
 	BuildWeeklyDigest(ctx context.Context, userID string, since time.Time) (DigestSummary, error)
+	// Art 20 export path — kind='data_export' (migration 20270603_001).
+	// The `jobs` row is the queue entry; `data_export_jobs` is the
+	// durable state the subject's status read sees, so the handler
+	// stamps it at the start of an attempt and records the outcome.
+	// GetDataExportJob returns ErrExportJobGone when the row has
+	// cascaded away with a deleted account.
+	GetDataExportJob(ctx context.Context, exportJobID string) (*ExportJobRow, error)
+	MarkDataExportRunning(ctx context.Context, exportJobID, startedAt string) error
+	FinishDataExportJob(ctx context.Context, exportJobID string, res ExportJobResult) error
+	// NotifyDataExportReady writes the subject's `data_export_ready`
+	// inbox row once the archive has landed (migration 20270607_001,
+	// decisions.md § 729). Idempotent server-side against an
+	// at-least-once redelivery; reports whether it was the caller that
+	// announced.
+	NotifyDataExportReady(ctx context.Context, exportJobID string) (bool, error)
+	// Distance-recompute path — kind='distance_recompute', enqueued by the
+	// owner-only request_distance_recompute RPC. Replays the stored track
+	// through the spec-v1.2 smoother (internal/gpsdistance) and rewrites
+	// runs.distance_m plus the four fastest_* embedded bests. ReadRunForDistanceRecompute returns ErrRunNotFound
+	// for a deleted run; UpdateRunDistance returns
+	// ErrRunChangedDuringRecompute when its track_url + metadata CAS misses.
+	ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error)
+	DownloadRecordedTrack(ctx context.Context, path string) (*RecordedTrack, error)
+	UpdateRunDistance(ctx context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error
+	// UploadSmoothedSidecar writes `{user_id}/{run_id}.smoothed.json.gz`, the
+	// smoother's per-waypoint positions plus the fingerprint of the track
+	// they were computed from (smoothed_sidecar.go). Written after a
+	// recompute and, for a watch run, after its map_match.
+	UploadSmoothedSidecar(ctx context.Context, path string, sc *SmoothedSidecar) error
+	// Duration-repair path — kind='duration_repair', enqueued once by
+	// migration 20271218000002 for each run it capped at the ten-day bound
+	// that has a track. ReadRunForDurationRepair returns ErrRunNotFound for a
+	// deleted run; UpdateRunDuration returns ErrRunChangedDuringDurationRepair
+	// when its duration + track_url + flag CAS misses. The track is read with
+	// DownloadRecordedTrack.
+	ReadRunForDurationRepair(ctx context.Context, runID string) (*DurationRepairRun, error)
+	UpdateRunDuration(ctx context.Context, read *DurationRepairRun, durationS int) error
+	// Road-distance path — the map_match handler's last step. Reads the run
+	// with its linked route's surface and writes metadata.distance_map_matched_m
+	// through a track_url + metadata CAS; UpdateRunMetadata returns
+	// ErrRunMetadataChanged on a miss.
+	ReadRunForRoadDistance(ctx context.Context, runID string) (*RoadDistanceRun, error)
+	UpdateRunMetadata(ctx context.Context, read *RoadDistanceRun, trackURL string, metadata json.RawMessage) error
+	// Segment-match path — kind='segment_match' (migration 20271117002392).
+	// Hands the job's payload to the `segment-match` Edge Function, which
+	// runs the canonical TS matcher and writes the efforts; an *HTTPError
+	// carries its status so the classifier retries a 5xx and fails a 4xx.
+	InvokeSegmentMatch(ctx context.Context, payload json.RawMessage) error
 }
 
 // WebPushSender is the transport for kind='web_push' jobs. Production wires
@@ -151,13 +229,12 @@ type WebPushSender interface {
 }
 
 // NativePushSender is the transport for kind='native_push' jobs. Production
-// wires *nativepush.Sender (FCM HTTP v1 + APNs HTTP/2 behind one router); tests
-// substitute a fake recorder. Returns the push-service HTTP status (so the
-// handler can prune a 404/410, retry a 429/5xx) and a non-nil error only on a
-// transport failure, or nativepush.ErrPlatformNotConfigured when that
-// platform's credentials are unset.
+// wires *nativepush.Sender (one FCM HTTP v1 POST per device, Android and iOS
+// alike); tests substitute a fake recorder. Returns the push-service HTTP
+// status (so the handler can prune a 404/410, retry a 429/5xx) and a non-nil
+// error only on a transport failure before the request completed.
 type NativePushSender interface {
-	Send(ctx context.Context, token nativepush.DeviceToken, msg nativepush.Message) (int, error)
+	Send(ctx context.Context, token string, msg nativepush.Message) (int, error)
 }
 
 // StravaRefresher is the upstream OAuth call used by handleTokenRefresh.
@@ -181,10 +258,17 @@ type StravaIngestor interface {
 // interval keeps latency low when the queue's busy, exponential
 // backoff caps avoid hammering the matching upstream when it's down.
 type Config struct {
-	WorkerID       string
-	PollInterval   time.Duration // sleep between empty claims
-	HandleTimeout  time.Duration // per-job timeout
-	TransientDelay int           // seconds; defer_job's delay_seconds
+	WorkerID      string
+	PollInterval  time.Duration // sleep between empty claims
+	HandleTimeout time.Duration // per-job timeout
+	// ExportTimeout is the per-attempt timeout for kind='data_export'
+	// only. A deep-history archive is dominated by per-object Storage
+	// fetches and does not fit the generic HandleTimeout; capping it
+	// there would make the queued rail worse than the synchronous
+	// endpoint it replaces, which had no clock at all. Zero falls back
+	// to ExportJobTimeout.
+	ExportTimeout  time.Duration
+	TransientDelay int // seconds; defer_job's delay_seconds
 }
 
 // Worker drains background jobs forever. Stops when ctx is
@@ -218,9 +302,8 @@ type Worker struct {
 	WebPush WebPushSender
 	// NativePush is the transport for kind='native_push' jobs. Nil disables the
 	// send path — the handler finishes those jobs done but leaves the
-	// notification rows pending so a later credentialed deploy (FCM/APNs keys
-	// set) can still send. Wired in main.go when FCM and/or APNs credentials
-	// are present.
+	// notification rows pending so a later credentialed deploy can still send.
+	// Wired in main.go when the FCM credentials are present.
 	NativePush NativePushSender
 	// Sms is the transport for kind='safety_sms' jobs (the overdue-runner
 	// SMS escalation leg). Nil disables the send path — the handler finishes
@@ -229,6 +312,13 @@ type Worker struct {
 	// missing SMS provider never suppresses the alert. Wired in main.go when
 	// SMS_PROVIDER + the provider credentials are all set.
 	Sms SmsSender
+	// DataExport builds the archive for kind='data_export' jobs. Nil
+	// disables the path — unlike the optional transports above, the
+	// handler then FAILS the export row rather than finishing quietly,
+	// because a subject is waiting on a status that would otherwise say
+	// `queued` for ever. Wired in main.go whenever the export endpoint
+	// is (both need the same service-role Storage access).
+	DataExport DataExportBuilder
 	// AppBaseURL is the web origin used to build deep links + the
 	// unsubscribe URL in rendered email (APP_BASE_URL). Empty falls back
 	// to relative-looking links; production sets it.
@@ -241,8 +331,19 @@ type Worker struct {
 	// degraded — but enabling the actual digest SEND is a separate
 	// CISO/counsel-gated step (no pg_cron schedule ships here).
 	DigestUnsubSecret string
-	Config            Config
-	Log        *slog.Logger
+	// DeletionAuditKey is the operator secret keying the account-deletion
+	// receipt's send-once digest (DELETION_AUDIT_KEY, the same env var
+	// delete-account reads for hashUserIdForAudit). Empty -> the legacy
+	// unkeyed SHA-256 of the address, which an adversary holding a candidate
+	// address can recompute to ask the table whether that person deleted their
+	// account; set -> HMAC-SHA256 over a domain-separated input, which ends
+	// that test rather than time-bounding it (decisions § 1551, § 1600).
+	// Absent by default on purpose: nothing changes until an operator
+	// provisions it, and a keyed worker reads BOTH digests so the changeover
+	// re-sends no receipt.
+	DeletionAuditKey string
+	Config           Config
+	Log              *slog.Logger
 	// OnPollTick fires after every claim attempt (whether or not a job
 	// was returned). Used by the /health server to distinguish "queue
 	// empty" from "loop wedged" — see main.go. Safe to leave nil; the
@@ -304,19 +405,25 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 // handle wraps the per-job work with a timeout + result reporting.
-// Always reports back to the queue: a panic-free error path is
-// finish_job(failed, …); a transient one is defer_job(delay, …).
-// Lost jobs (worker crashes mid-handle) are recovered on the next
-// process start because attempts < max_attempts and locked_at can be
-// reaped by an external watchdog (out of scope for v1).
+// Always reports back to the queue: a permanent error is
+// finish_job(failed, …); a transient one is defer_job(delay, …); a panicking
+// handler is caught by dispatchSafely and reported as permanent.
+//
+// A job whose process dies mid-handle (SIGKILL, OOM) is NOT recovered on the
+// next start: claim_next_job only ever selects `status = 'queued'` and nothing
+// moves a row back out of `running`, so the attempts < max_attempts budget
+// never gets to apply. find_stuck_jobs (migration 20260731_001) surfaces those
+// rows for operator remediation and deliberately does not rewrite them. The
+// panic barrier exists so the commonest way to reach that state — a bug in one
+// handler — reports back instead.
 func (w *Worker) handle(ctx context.Context, job *Job) {
-	jobCtx, cancel := context.WithTimeout(ctx, w.Config.HandleTimeout)
+	jobCtx, cancel := context.WithTimeout(ctx, w.handleTimeoutFor(job.Kind))
 	defer cancel()
 
 	logger := w.Log.With("job_id", job.ID, "kind", job.Kind, "attempt", job.Attempts)
 	logger.Info("handling job")
 
-	err := w.dispatch(jobCtx, job)
+	err := w.dispatchSafely(jobCtx, job)
 	if err == nil {
 		if ferr := w.Backend.FinishJob(ctx, job.ID, "done", nil); ferr != nil {
 			logger.Error("finish_job(done) failed", "err", ferr)
@@ -352,8 +459,71 @@ func (w *Worker) handle(ctx context.Context, job *Job) {
 	logger.Error("job failed", "err", err)
 }
 
-// dispatch picks the per-kind handler. New job types (strava-webhook,
-// data-export per roadmap §214) plug in here.
+// handleTimeoutFor is the per-attempt clock. Every kind takes the
+// generic HandleTimeout except `data_export` — see Config.ExportTimeout.
+// The zero-checks live here rather than only in Run so a handler driven
+// directly (tests, a future one-shot runner) gets the same bounds.
+func (w *Worker) handleTimeoutFor(kind string) time.Duration {
+	if kind == "data_export" {
+		if w.Config.ExportTimeout > 0 {
+			return w.Config.ExportTimeout
+		}
+		return ExportJobTimeout
+	}
+	if w.Config.HandleTimeout > 0 {
+		return w.Config.HandleTimeout
+	}
+	return 5 * time.Minute
+}
+
+// panicError wraps a value recovered from a panicking job handler. It is a
+// distinct type so isTransient can refuse it outright: a panic message is
+// arbitrary text and the substring sniffing below would happily read
+// `index out of range` in a stack that also mentions "timeout" as a network
+// blip worth retrying. A panic is a bug, never a condition that clears on its
+// own.
+type panicError struct {
+	value any
+}
+
+func (e *panicError) Error() string {
+	return fmt.Sprintf("panic in job handler: %v", e.value)
+}
+
+// dispatchSafely runs the per-kind handler behind a panic barrier.
+//
+// Without it a single panicking handler ends the PROCESS, not the job: the
+// worker loop runs in main's own goroutine alongside the live-spectator hub,
+// the data-export endpoints, the Strava webhook, the unsubscribe endpoint and
+// the bounce webhook, all of which share this binary. One malformed payload
+// would therefore stop live tracking for every spectator watching every runner
+// — the layered-resilience contract says an auxiliary failure may not take a
+// lower layer with it.
+//
+// The recovered panic is reported as a PERMANENT failure so the row is stamped
+// `failed`. That matters more than the retry question: `claim_next_job` only
+// ever looks at `status = 'queued'`, and nothing resets a row out of
+// `running`, so a job whose handler killed the process before it could report
+// back is invisible to the queue for ever (find_stuck_jobs only alerts — by
+// design, migration 20260731_001, it deliberately does not rewrite status).
+func (w *Worker) dispatchSafely(ctx context.Context, job *Job) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			w.Log.Error("job handler panicked",
+				"job_id", job.ID,
+				"kind", job.Kind,
+				"panic", fmt.Sprint(r),
+				"stack", string(debug.Stack()))
+			err = &panicError{value: r}
+		}
+	}()
+	return w.dispatch(ctx, job)
+}
+
+// dispatch picks the per-kind handler. New job types plug in here —
+// alongside a migration widening `jobs_kind_chk` and a case in
+// `apps/backend/supabase/tests/jobs_kind_allowlist_test.sql`, the
+// three-file rule migration 20260822_001 documents.
 func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 	switch job.Kind {
 	case "map_match":
@@ -376,6 +546,10 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleSafetyEmail(ctx, job)
 	case "safety_sms":
 		return w.handleSafetySms(ctx, job)
+	case "security_email":
+		return w.handleSecurityEmail(ctx, job)
+	case "club_verification_email":
+		return w.handleClubVerificationEmail(ctx, job)
 	case "web_push":
 		return w.handleWebPush(ctx, job)
 	case "native_push":
@@ -384,28 +558,42 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleWeeklyDigest(ctx, job)
 	case "lifecycle_drip":
 		return w.handleLifecycleDrip(ctx, job)
+	case "data_export":
+		return w.handleDataExport(ctx, job)
+	case "export_blob_reap":
+		return w.handleExportBlobReap(ctx, job)
+	case "route_photo_orphan_sweep":
+		return w.handleRoutePhotoOrphanSweep(ctx, job)
+	case "dm_image_process":
+		return w.handleDmImageProcess(ctx, job)
+	case "dm_image_orphan_sweep":
+		return w.handleDmImageOrphanSweep(ctx, job)
+	case "distance_recompute":
+		return w.handleDistanceRecompute(ctx, job)
+	case "duration_repair":
+		return w.handleDurationRepair(ctx, job)
+	case "segment_match":
+		return w.handleSegmentMatch(ctx, job)
 	default:
 		return fmt.Errorf("unknown job kind %q", job.Kind)
 	}
 }
 
-// handleMapMatch is the production handler for map_match jobs. Reads
-// the latest track_url at match time so a re-upload that changes the
-// path is matched against the freshest data — the trigger's reset of
-// run_matched_tracks pairs with this read so the worker never persists
-// a result tagged against a stale track.
+// handleMapMatch is the production handler for map_match jobs.
 //
-// Re-upload race handling: between reading track_url and writing the
-// result, a runner can re-upload (replacing track_url). Without a
-// recheck, the worker would persist a 'matched' state tagged against
-// the OLD url over the trigger's pending reset. We re-read the url
-// just before the write and discard the result if it changed — the
-// newer job already queued by the trigger will produce the right one.
-// A small TOCTOU window remains between recheck and PATCH; closing it
-// fully needs a server-side CAS (e.g. a `source_track_url` column on
-// run_matched_tracks), which is the upgrade path when a real engine
-// lands. The recheck shrinks the race from O(match duration) to
-// O(network round-trip), good enough for the stub matcher.
+// Re-upload race handling. A run's track_url is fixed once set, so a client
+// that re-uploads the track (web save, mobile sync, a backup restore)
+// replaces the bytes behind the same path; what changes is the Storage
+// object's version. The worker reads the path and that version together
+// before downloading, and every result it writes is conditional on both:
+// record_map_match_result refuses a matched-track row, and the
+// runs_road_distance_matches_track trigger refuses a road distance, for any
+// version but the one now stored (migration 20270719000020). A rewrite
+// also resets run_matched_tracks to pending from a trigger on
+// storage.objects, and finish_job puts a map_match job back in the queue
+// when it ends with the row still pending — so a job whose result was
+// refused, or whose write a rewrite undid, is matched again rather than
+// left behind by the queue's one-job-per-run dedupe.
 func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	var p MapMatchPayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
@@ -415,36 +603,41 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 		return errors.New("payload missing run_id or user_id")
 	}
 
-	trackURL, err := w.Backend.ReadRunTrackURL(ctx, p.RunID)
+	src, err := w.Backend.ReadRunTrackSource(ctx, p.RunID)
 	if err != nil {
 		return fmt.Errorf("read track_url: %w", err)
 	}
+	trackURL := src.URL
 
 	raw, err := w.Backend.DownloadTrack(ctx, trackURL)
 	if err != nil {
 		return fmt.Errorf("download track: %w", err)
 	}
 
-	matched, err := w.Matcher.Match(ctx, raw)
+	var matched []TrackPoint
+	var road RoadMatch
+	if rm, ok := w.Matcher.(RoadDistanceMatcher); ok {
+		matched, road, err = rm.MatchWithRoadDistance(ctx, raw)
+	} else {
+		matched, err = w.Matcher.Match(ctx, raw)
+	}
 	if err != nil {
 		return fmt.Errorf("match: %w", err)
 	}
 
-	// Pre-write recheck. Skips the upload + PATCH when we already
-	// know track_url has changed — saves wasted Storage writes.
-	// Doesn't replace the source_track_url CAS below; the CAS is
-	// what closes the residual TOCTOU window (re-upload between
-	// recheck and PATCH).
-	currentURL, err := w.Backend.ReadRunTrackURL(ctx, p.RunID)
+	// Pre-write recheck. Skips the upload + write when the track has
+	// already moved on — saves a wasted Storage write. The conditional
+	// write below is what closes the window after it.
+	current, err := w.Backend.ReadRunTrackSource(ctx, p.RunID)
 	if err != nil {
 		return fmt.Errorf("recheck track_url: %w", err)
 	}
-	if currentURL != trackURL {
+	if current != src {
 		w.Log.Info(
-			"track_url changed mid-match; discarding stale result",
+			"track changed mid-match; discarding stale result",
 			"run_id", p.RunID,
 			"matched_against", trackURL,
-			"current", currentURL,
+			"current", current.URL,
 		)
 		return nil
 	}
@@ -454,13 +647,11 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	// floor was too high. The status update lets the client tell
 	// "matcher decided no" apart from "matcher hasn't run yet".
 	//
-	// Both write paths PATCH conditionally on source_track_url; an
-	// ErrStaleSourceTrackURL means the trigger reset the row out
-	// from under us between recheck and PATCH (the residual
-	// TOCTOU window). Discard cleanly — the trigger already queued
-	// a fresh job, no need to fail the current one.
+	// Both write paths are conditional on src; an ErrStaleSourceTrackURL
+	// means the track was replaced between recheck and write. Discard
+	// cleanly: finish_job re-queues this job because the row is pending.
 	if len(matched) < 2 {
-		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, trackURL, MatchedTrackRow{
+		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, src, MatchedTrackRow{
 			Status:           "skipped",
 			MatchedTrackURL:  nil,
 			Algorithm:        w.Matcher.Algorithm(),
@@ -480,7 +671,7 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 			return fmt.Errorf("upload matched: %w", err)
 		}
 		now := time.Now().UTC()
-		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, trackURL, MatchedTrackRow{
+		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, src, MatchedTrackRow{
 			Status:           "matched",
 			MatchedTrackURL:  &matchedPath,
 			MatchedAt:        &now,
@@ -504,6 +695,25 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	// job because the match is already persisted; log and move on.
 	if err := w.maybeAutoLinkRoute(ctx, p, raw); err != nil {
 		w.Log.Warn("auto-link skipped",
+			"run_id", p.RunID,
+			"err", err,
+		)
+	}
+	// The road distance runs after auto-link so a route linked just now
+	// decides by its surface. Auxiliary like auto-link: the match is
+	// already persisted, so a failure is logged and never fails the job. A
+	// skipped match still runs it, to clear a figure an older track left.
+	if len(matched) < 2 {
+		road = RoadMatch{}
+	}
+	if err := w.updateRoadDistance(ctx, p.RunID, src, raw, road); err != nil {
+		w.Log.Warn("road distance skipped",
+			"run_id", p.RunID,
+			"err", err,
+		)
+	}
+	if err := w.writeWatchSmoothedSidecar(ctx, p.RunID, trackURL, road); err != nil {
+		w.Log.Warn("smoothed sidecar skipped",
 			"run_id", p.RunID,
 			"err", err,
 		)
@@ -572,13 +782,34 @@ func (w *Worker) maybeAutoLinkRoute(
 	return nil
 }
 
+// isRetryableUpstreamStatus reports whether an upstream HTTP status means
+// "come back later" rather than "this will never work". Shared by isTransient
+// and the Strava refresh sweep so the two can't drift apart on 429.
+func isRetryableUpstreamStatus(status int) bool {
+	switch status {
+	case http.StatusRequestTimeout, http.StatusTooEarly, http.StatusTooManyRequests:
+		return true
+	}
+	return status >= 500 && status < 600
+}
+
 // isTransient classifies an error as worth-retrying. Network blips,
-// 5xx upstream, request timeouts → defer + retry. 4xx, malformed
-// payload, missing run, RLS denial → permanent.
+// 5xx upstream, request timeouts, and the retry-shaped 4xx → defer + retry.
+// Other 4xx, malformed payload, missing run, RLS denial → permanent.
+//
+// 429 in particular says "come back later", not "this will never work":
+// handler_web_push and nativepush both raise it deliberately meaning retry,
+// and classifying it permanent dropped the notification for good and left
+// notifications.web_push_sent_at null with no job left to drive it. 408 and
+// 425 are the same shape.
 func isTransient(err error) bool {
+	var pErr *panicError
+	if errors.As(err, &pErr) {
+		return false
+	}
 	var hErr *HTTPError
 	if errors.As(err, &hErr) {
-		return hErr.StatusCode >= 500 && hErr.StatusCode < 600
+		return isRetryableUpstreamStatus(hErr.StatusCode)
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true

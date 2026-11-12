@@ -37,7 +37,7 @@ MARKS=thorn SAMPLES=300 RES=1600 blender -b --python assets/logo-render/render.p
 
 `render.py` builds each mark as a mesh directly from its path geometry (Blender's
 SVG-curve fill mishandles the thorn's counter hole), extrudes + bevels it, and
-renders it with the brand ember→magenta gradient as an emissive material on a
+renders it with the brand coral→rose→violet gradient as an emissive material on a
 transparent film. The thorn geometry and the warm gradient here mirror the
 shipped `../icon.svg`, so a re-render matches the production mark.
 

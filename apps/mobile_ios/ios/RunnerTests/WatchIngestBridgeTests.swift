@@ -1,0 +1,485 @@
+import Flutter
+import WatchConnectivity
+import XCTest
+
+@testable import Runner
+
+/// Pure-host tests for the seams of `WatchIngestBridge` that can run without a
+/// live `WCSession`: the phone -> watch route payload check, the watch -> phone
+/// ingest payload builder, the hand-off reply, and the serialised in-memory pen
+/// that holds runs until Dart is ready to take them. `WCSession` itself, and
+/// `WCSessionFile`, cannot be constructed in a test, so these are the testable
+/// seams — same convention as the Kotlin bridge tests on the Android twin.
+final class WatchIngestBridgeTests: XCTestCase {
+
+    private func routeArgs(
+        points: Int,
+        id: String = "route-1",
+        name: String = "Canal loop",
+        distance: Any = NSNumber(value: 5012.5)
+    ) -> [String: Any] {
+        [
+            "route_id": id,
+            "route_name": name,
+            "route_distance_m": distance,
+            "route_lat": (0..<points).map { 51.5 + Double($0) * 1e-5 },
+            "route_lng": (0..<points).map { -0.12 + Double($0) * 1e-5 },
+        ]
+    }
+
+    // MARK: - Route push cap
+
+    func testMaxRoutePointsMatchesTheDartAndWatchConstants() {
+        // Matched only by identical literals in `kMaxAppleWatchRoutePoints`
+        // (apple_watch_route_bridge.dart) and `ArmedRoute.maxPoints`
+        // (watch_ios). Drift means the phone queues a durable transfer the
+        // watch drops whole, and the runner is told the push succeeded.
+        XCTAssertEqual(WatchIngestBridge.maxRoutePoints, 512)
+    }
+
+    func testAcceptsAPayloadAtTheCap() {
+        XCTAssertNotNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 512)))
+    }
+
+    func testAcceptsAPayloadJustUnderTheCap() {
+        XCTAssertNotNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 511)))
+    }
+
+    func testRejectsAPayloadOnePointOverTheCap() {
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 513)))
+    }
+
+    func testRejectsARouteWithNoLineToFollow() {
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 0)))
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 1)))
+    }
+
+    func testAcceptsTheShortestUsableRoute() {
+        XCTAssertNotNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 2)))
+    }
+
+    // MARK: - Route push argument decoding
+
+    func testRejectsMismatchedCoordinateCounts() {
+        var args = routeArgs(points: 10)
+        args["route_lng"] = (0..<9).map { -0.12 + Double($0) * 1e-5 }
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+    }
+
+    func testRejectsAMissingOrEmptyRouteId() {
+        var args = routeArgs(points: 4)
+        args.removeValue(forKey: "route_id")
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 4, id: "")))
+    }
+
+    func testRejectsAMissingRouteName() {
+        var args = routeArgs(points: 4)
+        args.removeValue(forKey: "route_name")
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+    }
+
+    func testAcceptsAnEmptyRouteName() {
+        // An unnamed saved route is still a route worth following.
+        XCTAssertNotNil(WatchIngestBridge.routeUserInfo(from: routeArgs(points: 4, name: "")))
+    }
+
+    func testRejectsADistanceThatIsNotAFiniteNonNegativeNumber() {
+        for bad in [Double.nan, .infinity, -.infinity, -1] {
+            XCTAssertNil(
+                WatchIngestBridge.routeUserInfo(
+                    from: routeArgs(points: 4, distance: NSNumber(value: bad))
+                ),
+                "expected \(bad) to be rejected"
+            )
+        }
+        var args = routeArgs(points: 4)
+        args.removeValue(forKey: "route_distance_m")
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+        args["route_distance_m"] = "5012.5"
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+    }
+
+    func testAcceptsAZeroDistance() {
+        XCTAssertNotNil(
+            WatchIngestBridge.routeUserInfo(
+                from: routeArgs(points: 4, distance: NSNumber(value: 0))
+            )
+        )
+    }
+
+    func testRejectsCoordinatesThatAreNotNumberArrays() {
+        var args = routeArgs(points: 4)
+        args["route_lat"] = "51.5,51.6"
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+
+        args = routeArgs(points: 4)
+        args.removeValue(forKey: "route_lng")
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+
+        args = routeArgs(points: 4)
+        args["route_lng"] = ["a", "b", "c", "d"]
+        XCTAssertNil(WatchIngestBridge.routeUserInfo(from: args))
+    }
+
+    func testPayloadCarriesTheFiveWireKeysAndNothingElse() throws {
+        var args = routeArgs(points: 3)
+        args["route_colour"] = "teal"
+        let payload = try XCTUnwrap(WatchIngestBridge.routeUserInfo(from: args))
+        XCTAssertEqual(
+            Set(payload.keys),
+            ["route_id", "route_name", "route_distance_m", "route_lat", "route_lng"]
+        )
+    }
+
+    func testPayloadPreservesCoordinateOrder() throws {
+        let latitudes = [51.5, 51.6, 51.7]
+        let longitudes = [-0.12, -0.13, -0.14]
+        let payload = try XCTUnwrap(
+            WatchIngestBridge.routeUserInfo(from: [
+                "route_id": "route-1",
+                "route_name": "Canal loop",
+                "route_distance_m": NSNumber(value: 1200.0),
+                "route_lat": latitudes,
+                "route_lng": longitudes,
+            ])
+        )
+        XCTAssertEqual(payload["route_lat"] as? [Double], latitudes)
+        XCTAssertEqual(payload["route_lng"] as? [Double], longitudes)
+    }
+
+    // MARK: - Workout push
+
+    func testWorkoutPushForwardsTheJsonTextUnderOneKey() {
+        let json = #"{"v":1,"plan_workout_id":"pw-3","steps":[]}"#
+        let payload = WatchIngestBridge.workoutUserInfo(from: ["workout_json": json])
+        XCTAssertEqual(payload?.keys.sorted(), ["todays_workout"])
+        XCTAssertEqual(payload?["todays_workout"] as? String, json)
+    }
+
+    func testWorkoutPushForwardsTheNothingTodayValue() {
+        // The explicit empty push is how the wrist drops a stale workout, so
+        // it must reach the queue like any other.
+        XCTAssertNotNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"v":1}"#]))
+    }
+
+    func testWorkoutPushRefusesWhatTheWatchCouldNeverDecode() {
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: [:]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": NSNumber(value: 1)]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": "not json"]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": "[1,2]"]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"v":2}"#]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"plan_workout_id":"x"}"#]))
+    }
+
+    // MARK: - Ingest payload
+
+    private var fullMetadata: [String: Any] {
+        [
+            "id": "run-7",
+            "started_at": "2026-09-20T06:30:00Z",
+            "source": "apple_watch",
+            "activity_type": "run",
+            "last_modified_at": "2026-09-20T07:35:00Z",
+            "duration_s": NSNumber(value: 3_902),
+            "distance_m": NSNumber(value: 12_040.5),
+            "avg_bpm": NSNumber(value: 148),
+            "hr_coverage": NSNumber(value: 0.93),
+            "steps": NSNumber(value: 7_412),
+            "laps": "[{\"n\":1}]",
+            "is_public": true,
+            "plan_workout_id": "pw-3",
+            "workout_adherence": "partial",
+            "workout_step_results": [[
+                "step_index": NSNumber(value: 0),
+                "kind": "warmup",
+                "status": "completed",
+            ]],
+        ]
+    }
+
+    func testIngestPayloadForwardsEveryKnownKeyPlusTheTrack() {
+        let payload = WatchIngestBridge.ingestPayload(metadata: fullMetadata, track: "[]")
+        XCTAssertEqual(Set(payload.keys), Set(fullMetadata.keys).union(["track"]))
+        XCTAssertEqual(payload["id"] as? String, "run-7")
+        XCTAssertEqual(payload["source"] as? String, "apple_watch")
+        XCTAssertEqual(payload["avg_bpm"] as? Int, 148)
+        XCTAssertEqual(payload["steps"] as? Int, 7_412)
+    }
+
+    func testIngestPayloadDropsMetadataTheDartSideDoesNotRead() {
+        var metadata = fullMetadata
+        metadata["device_name"] = "Apple Watch Ultra"
+        metadata["schema"] = NSNumber(value: 2)
+        let payload = WatchIngestBridge.ingestPayload(metadata: metadata, track: "[]")
+        XCTAssertNil(payload["device_name"])
+        XCTAssertNil(payload["schema"])
+    }
+
+    func testIngestPayloadOmitsRatherThanNullsAbsentKeys() {
+        // An absent optional must stay absent: a key present with NSNull would
+        // cross the channel as a Dart null and overwrite a real value.
+        let payload = WatchIngestBridge.ingestPayload(
+            metadata: ["id": "run-7", "started_at": "2026-09-20T06:30:00Z"],
+            track: "[]"
+        )
+        XCTAssertEqual(Set(payload.keys), ["id", "started_at", "track"])
+    }
+
+    func testIngestPayloadForwardsTheCompleteTrackClaim() {
+        var metadata = fullMetadata
+        metadata["track_complete"] = true
+        let payload = WatchIngestBridge.ingestPayload(metadata: metadata, track: "[]")
+        XCTAssertEqual(payload["track_complete"] as? Bool, true)
+    }
+
+    func testIngestPayloadCarriesTheVisibilityTheWristStamped() {
+        let payload = WatchIngestBridge.ingestPayload(metadata: fullMetadata, track: "[]")
+        XCTAssertEqual(payload["is_public"] as? Bool, true)
+    }
+
+    // MARK: - Preference push
+
+    private let requiredPrefs: [String: Any] = ["preferred_unit": "km", "audio_cues": true]
+
+    func testPrefsContextCarriesTheThreeSettingsTheWatchApplies() throws {
+        var args = requiredPrefs
+        args["default_activity_type"] = "hike"
+        args["privacy_default"] = "public"
+        args["hr_zone_cutoffs"] = [114, 133, 152, 171, 190]
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(context["default_activity_type"] as? String, "hike")
+        XCTAssertEqual(context["privacy_default"] as? String, "public")
+        XCTAssertEqual(context["hr_zone_cutoffs"] as? [Int], [114, 133, 152, 171, 190])
+    }
+
+    func testPrefsContextKeepsAnEmptyLadderBecauseThatIsHowZonesAreCleared() throws {
+        var args = requiredPrefs
+        args["hr_zone_cutoffs"] = [Int]()
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(context["hr_zone_cutoffs"] as? [Int], [])
+    }
+
+    func testARogueOptionalIsDroppedAloneAndTheRequiredPairStillShips() throws {
+        var args = requiredPrefs
+        args["default_activity_type"] = "stroller"
+        args["privacy_default"] = "everyone"
+        args["hr_zone_cutoffs"] = [150, 140, 130, 120, 110]
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(Set(context.keys), ["preferred_unit", "audio_cues"])
+    }
+
+    func testPrefsContextCarriesTheTwoWorkoutVoiceSwitches() throws {
+        var args = requiredPrefs
+        args["voice_feedback_verbosity"] = "minimal"
+        args["voice_cue_workout_steps"] = false
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(context["voice_feedback_verbosity"] as? String, "minimal")
+        // A false is the runner silencing step calls on the wrist, not an
+        // absence, so it has to survive the repack.
+        XCTAssertEqual(context["voice_cue_workout_steps"] as? Bool, false)
+    }
+
+    func testARogueVerbosityIsDroppedAloneRatherThanReadAsFull() throws {
+        var args = requiredPrefs
+        args["voice_feedback_verbosity"] = "quiet"
+        args["voice_cue_workout_steps"] = "no"
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(Set(context.keys), ["preferred_unit", "audio_cues"])
+    }
+
+    func testTheZoneLadderGateMatchesTheWatchDecoder() {
+        XCTAssertTrue(WatchIngestBridge.isZoneLadder([]))
+        XCTAssertTrue(WatchIngestBridge.isZoneLadder([40, 100, 150, 200, 240]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([39, 100, 150, 200, 240]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([40, 100, 150, 200, 241]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([100, 100, 150, 200, 240]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([100, 150, 200, 240]))
+    }
+
+    func testIngestPayloadKeepsTheTrackVerbatim() {
+        let track = #"[{"lat":51.5,"lng":-0.12,"t":0}]"#
+        let payload = WatchIngestBridge.ingestPayload(metadata: fullMetadata, track: track)
+        XCTAssertEqual(payload["track"] as? String, track)
+    }
+
+    // MARK: - Holding pen
+
+    /// Stands in for the real dispatch, which needs a live method channel.
+    /// A refusal goes back through `buffer` exactly as production's reply
+    /// handler sends it, so what the pen does with it is exercised rather than
+    /// modelled.
+    private final class RecordingBridge: WatchIngestBridge {
+        var dispatched: [[String: Any]] = []
+        var refuse: [String] = []
+
+        override func dispatch(_ payload: [String: Any]) {
+            dispatched.append(payload)
+            if let id = payload["id"] as? String, refuse.contains(id) {
+                buffer(payload)
+            }
+        }
+    }
+
+    /// A `FlutterBinaryMessenger` that answers nothing, so `attach` can build
+    /// its channels without an engine.
+    private final class SilentMessenger: NSObject, FlutterBinaryMessenger {
+        func send(onChannel channel: String, message: Data?) {}
+
+        func send(onChannel channel: String, message: Data?, binaryReply: FlutterBinaryReply?) {}
+
+        func setMessageHandlerOnChannel(
+            _ channel: String,
+            binaryMessageHandler handler: FlutterBinaryMessageHandler?
+        ) -> FlutterBinaryMessengerConnection {
+            0
+        }
+
+        func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) {}
+    }
+
+    private func payload(_ id: String) -> [String: Any] {
+        ["id": id, "track": "[]"]
+    }
+
+    /// FIFO on the main queue: every dispatch enqueued before this call has
+    /// run by the time it returns.
+    private func drainMainQueue() {
+        let drained = expectation(description: "main queue drained")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 5)
+    }
+
+    func testFlushDispatchesInArrivalOrder() {
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a"), payload("b"), payload("c")]
+        bridge.flushPending()
+        XCTAssertEqual(bridge.dispatched.compactMap { $0["id"] as? String }, ["a", "b", "c"])
+        XCTAssertTrue(bridge.pending.isEmpty)
+    }
+
+    func testFlushClearsTheBufferBeforeDispatchingSoARefusedRunSurvives() {
+        // A run Dart could not take goes back in the pen during the dispatch.
+        // Clearing the buffer after the loop instead of before it would throw
+        // that run away.
+        let bridge = RecordingBridge()
+        bridge.refuse = ["b"]
+        bridge.pending = [payload("a"), payload("b")]
+        bridge.flushPending()
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["b"])
+    }
+
+    func testFlushOnAnEmptyBufferDispatchesNothing() {
+        let bridge = RecordingBridge()
+        bridge.flushPending()
+        XCTAssertTrue(bridge.dispatched.isEmpty)
+    }
+
+    func testActivationCompletingFlushesThePen() {
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a")]
+        bridge.session(WCSession.default, activationDidCompleteWith: .activated, error: nil)
+        XCTAssertEqual(bridge.dispatched.compactMap { $0["id"] as? String }, ["a"])
+    }
+
+    func testAFailedActivationDoesNotFlush() {
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a")]
+        bridge.session(WCSession.default, activationDidCompleteWith: .notActivated, error: nil)
+        XCTAssertTrue(bridge.dispatched.isEmpty)
+        XCTAssertEqual(bridge.pending.count, 1)
+    }
+
+    // MARK: - Waiting for Dart
+
+    func testAttachingAnEngineDoesNotDispatchBeforeDartIsReady() {
+        // A dispatch that lands before Dart installs its handler is answered
+        // "not implemented" by a channel nobody listens on. That reply used to
+        // read as success, and the run was gone.
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a")]
+        bridge.attach(binaryMessenger: SilentMessenger())
+        XCTAssertTrue(bridge.dispatched.isEmpty)
+        XCTAssertEqual(bridge.pending.count, 1)
+    }
+
+    func testDartReadyFlushesThePen() {
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a"), payload("b")]
+        bridge.attach(binaryMessenger: SilentMessenger())
+        bridge.markDartReady()
+        XCTAssertEqual(bridge.dispatched.compactMap { $0["id"] as? String }, ["a", "b"])
+        XCTAssertTrue(bridge.pending.isEmpty)
+    }
+
+    func testAFlushBeforeTheEngineIsUpReBuffersRatherThanDropping() {
+        let bridge = WatchIngestBridge()
+        bridge.pending = [payload("a"), payload("b")]
+        bridge.flushPending()
+        XCTAssertTrue(bridge.pending.isEmpty)
+        drainMainQueue()
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["a", "b"])
+    }
+
+    func testAFlushWithAnEngineButNoReadyDartReBuffersRatherThanDropping() {
+        // Watch activation can land between `attach` and Dart's `ready`.
+        let bridge = WatchIngestBridge()
+        bridge.attach(binaryMessenger: SilentMessenger())
+        bridge.pending = [payload("a"), payload("b")]
+        bridge.flushPending()
+        drainMainQueue()
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["a", "b"])
+    }
+
+    func testANewEngineWaitsForItsOwnReady() {
+        let bridge = WatchIngestBridge()
+        bridge.attach(binaryMessenger: SilentMessenger())
+        bridge.markDartReady()
+        bridge.attach(binaryMessenger: SilentMessenger())
+        bridge.pending = [payload("a")]
+        bridge.flushPending()
+        drainMainQueue()
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["a"],
+                       "a re-attached engine runs a fresh isolate with no handler yet")
+    }
+
+    // MARK: - The hand-off reply
+
+    func testOnlyALiteralTrueReleasesTheRun() {
+        XCTAssertTrue(WatchIngestBridge.isHandOff(true))
+        XCTAssertTrue(WatchIngestBridge.isHandOff(NSNumber(value: true)))
+        XCTAssertFalse(WatchIngestBridge.isHandOff(false))
+        XCTAssertFalse(WatchIngestBridge.isHandOff(nil))
+        XCTAssertFalse(WatchIngestBridge.isHandOff(FlutterMethodNotImplemented))
+        XCTAssertFalse(
+            WatchIngestBridge.isHandOff(FlutterError(code: "x", message: nil, details: nil))
+        )
+    }
+
+    func testARefusedRunIsHeldAndRetriedWithNoCeiling() {
+        // Dart writes every run to disk before it answers, so a refusal is a
+        // failed disk write, not a verdict on the payload. Holding it and
+        // trying again on each contact is right; giving up after N is a run
+        // lost to a full disk that has since been cleared.
+        let bridge = RecordingBridge()
+        bridge.refuse = ["a"]
+        bridge.pending = [payload("a")]
+        for _ in 0..<20 { bridge.flushPending() }
+        XCTAssertEqual(bridge.dispatched.count, 20)
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["a"])
+    }
+
+    // MARK: - Buffer serialisation
+
+    func testConcurrentBufferWritesDoNotLoseARun() {
+        // The buffer is written from the WCSession delegate queue, the main
+        // queue and the channel reply callback. Unserialised this corrupts.
+        let bridge = WatchIngestBridge()
+        let runs = 400
+        DispatchQueue.concurrentPerform(iterations: runs) { i in
+            bridge.buffer(self.payload("run-\(i)"))
+        }
+        XCTAssertEqual(bridge.pending.count, runs)
+        XCTAssertEqual(Set(bridge.pending.compactMap { $0["id"] as? String }).count, runs)
+    }
+}

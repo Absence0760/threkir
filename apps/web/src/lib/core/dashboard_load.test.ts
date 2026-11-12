@@ -1,0 +1,139 @@
+// Source-grep guards on the /dashboard mount sequence. Run with
+// `npx tsx --test apps/web/src/lib/core/dashboard_load.test.ts`.
+//
+// The mount is a Svelte onMount that issues ~15 Supabase reads; it can't be
+// unit-tested without a stack. Pin the shape in the source instead, the same
+// way coach/context.test.ts pins its no-duplicate-get_my_profile invariant.
+//
+// The dashboard is the app's highest-traffic page. It used to run six serial
+// stages after its opening batch, two of which re-read something an earlier
+// stage had already fetched: `loadSettings` (two selects) and `get_my_profile`
+// (one) were each called twice. The reads have no dependency on each other, so
+// they belong in the opening batch.
+//
+// The dependency that IS real: `loadTodaysNutrition` reads `runs` and
+// `gymWorkouts`, and the fitness-snapshot write reads `runs`. Both must stay
+// downstream of the batch that fills them.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const SRC = readFileSync(
+	resolve(import.meta.dirname, '../../routes/dashboard/+page.svelte'),
+	'utf8',
+);
+
+/** Occurrences of `re` in the dashboard source. */
+function count(re: RegExp): number {
+	return SRC.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))
+		?.length ?? 0;
+}
+
+test('dashboard: get_my_profile is read once per mount', () => {
+	assert.equal(
+		count(/rpc\(\s*['"]get_my_profile['"]/),
+		1,
+		'the age-grade column and the nutrition targets share one self-read',
+	);
+});
+
+test('dashboard: loadSettings is called once per mount', () => {
+	assert.equal(
+		count(/\bloadSettings\(/),
+		1,
+		'loadTodaysNutrition takes the settings the mount already loaded',
+	);
+});
+
+test('dashboard: loadTodaysNutrition is handed the settings + profile, not left to re-read them', () => {
+	assert.match(
+		SRC,
+		/async function loadTodaysNutrition\(\s*settings:\s*LoadedSettings\s*\|\s*null,\s*profile:\s*DashboardProfile\s*\|\s*null,?\s*\)/,
+	);
+});
+
+test('dashboard: the reads with no dependency all share one batch', () => {
+	// The opening Promise.all — everything from the runs read through the
+	// profile read. A refactor that pulls one back out into its own await
+	// costs a serial round trip on every dashboard load.
+	const batch = SRC.match(/\]\s*=\s*await Promise\.all\(\[([\s\S]*?)\n\t\t\]\);/);
+	assert.ok(batch, 'the mount must open with one Promise.all batch');
+	for (const call of [
+		'fetchRunsForDashboard(',
+		'fetchRunAllTimeStats(',
+		'fetchPersonalRecords(',
+		'fetchActivePlanOverview(',
+		'fetchNextRsvpedEvent(',
+		'fetchFitnessSnapshots(',
+		'loadSettings(',
+		'fetchGymWorkouts(',
+		'fetchGymSetHistory(',
+		'fetchDashboardProfile(',
+	]) {
+		assert.ok(batch![1].includes(call), `${call}) belongs in the opening batch`);
+	}
+});
+
+test('dashboard: every additive read in the batch is individually guarded', () => {
+	// A rejection anywhere in a Promise.all rejects the whole batch. The
+	// settings / gym / profile reads are additive — a blip in one must not
+	// take the run-derived cards down with it, which is what the per-read
+	// try/catch blocks used to guarantee.
+	const batch = SRC.match(/\]\s*=\s*await Promise\.all\(\[([\s\S]*?)\n\t\t\]\);/);
+	assert.match(batch![1], /loadSettings\(uid\)\.catch\(/);
+	assert.match(batch![1], /fetchGymSetHistory\(\{ sinceDays: 180 \}\)\]\)\.catch\(/);
+	assert.match(SRC, /async function fetchDashboardProfile\(\)[\s\S]*?catch \(_\) \{\s*return null;/);
+});
+
+test('dashboard: the runs-dependent work stays downstream of the batch', () => {
+	const batchEnd = SRC.indexOf('] = await Promise.all([');
+	assert.ok(batchEnd > 0);
+	const nutrition = SRC.indexOf('loadTodaysNutrition(settingsRead, profileRead)');
+	const snapshot = SRC.indexOf('insertFitnessSnapshot(computeSnapshot(runs))');
+	const gymAssign = SRC.indexOf('[gymWorkouts, gymHistory] = gymRead');
+	const runsAssign = SRC.indexOf('runs = runsRead.runs');
+	assert.ok(runsAssign > batchEnd, 'runs is assigned from the batch');
+	assert.ok(gymAssign > batchEnd, 'gymWorkouts is assigned from the batch');
+	// loadTodaysNutrition filters `runs` and `gymWorkouts` by today; the
+	// snapshot is computed from `runs`. Both must follow those assignments.
+	assert.ok(nutrition > gymAssign, 'loadTodaysNutrition reads gymWorkouts — it must run after it');
+	assert.ok(nutrition > runsAssign, 'loadTodaysNutrition reads runs — it must run after it');
+	assert.ok(snapshot > runsAssign, 'the fitness snapshot is computed from runs');
+});
+
+test('dashboard: the weekly mileage chart is derived from the week_start_day it renders beside', () => {
+	// The chart used to be FETCHED in the opening batch with the page's
+	// `weekStartDay` as an argument. `weekStartDay` is filled by
+	// `applyDashboardSettings` from the settings read in that same batch, so
+	// the argument was always the 'monday' default: a Sunday-first runner's
+	// tile said 22.50 km this week and the chart beside it said 7.50 km. A
+	// derived chart re-buckets when the preference lands, and reads the same
+	// source-filtered runs the tile does.
+	assert.equal(count(/\bfetchWeeklyMileage\(/), 0, 'the weekly chart is not a separate read');
+	assert.match(
+		SRC,
+		/let weeklyMileage = \$derived\(\s*bucketWeeklyMileage\(filteredRuns, 12, [^,]+, weekStartDay, now\)/,
+	);
+	// The page computes no week window of its own any more: the This Week
+	// tile left the grid (§ 2283), and the week lead and the weekly summary
+	// take theirs from weekStartLocal, which week_start_guard.test.ts pins.
+	assert.doesNotMatch(SRC, /\bweekStartLocal\(/);
+});
+
+test('dashboard: a failed plan read shows a load error, not the create-a-plan promo', () => {
+	// planOverviewFor used to drop the Supabase error, so a failed read came
+	// back as "no plan" and the dashboard offered to create one over a plan
+	// that exists. The read now reports the error and the plan slot says so.
+	const data = readFileSync(resolve(import.meta.dirname, 'data.ts'), 'utf8');
+	const reader = data.slice(data.indexOf('async function planOverviewFor('));
+	const body = reader.slice(0, reader.indexOf('\n}\n'));
+	assert.match(body, /error: rowsErr \} = await supabase/);
+	assert.match(body, /if \(rowsErr\) return \{ overview: null, error: dbError\(rowsErr\) \}/);
+	assert.match(body, /if \(planErr\) return \{ overview: null, error: planErr \}/);
+	assert.match(SRC, /planLoadError = planRead\.error/);
+	const errorBranch = SRC.indexOf('{:else if planLoadError}');
+	const promoBranch = SRC.indexOf('{:else if !planOverview}');
+	assert.ok(errorBranch > 0 && errorBranch < promoBranch, 'the error branch must precede the promo');
+});

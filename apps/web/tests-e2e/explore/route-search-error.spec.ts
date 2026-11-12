@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
- * /routes?tab=explore — when the public-route search RPC fails, the
+ * /routes?tab=explore — when the public-route search read fails, the
  * Explore surface shows a retry affordance instead of the misleading
  * "no matches" empty state (which used to be indistinguishable from a
  * genuine load failure — searchPublicRoutes swallowed the error to []).
@@ -13,22 +14,24 @@ test.describe('/routes?tab=explore — search failure', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('a failed search shows a retry card, not the empty state', async ({ page }) => {
-		await page.route('**/rest/v1/rpc/search_public_routes*', (route) =>
-			route.fulfill({
+		// The search reads the public_routes view with an `order`; the other
+		// public_routes reads on the page (saved-route lookup, route detail)
+		// carry none, so only the search fails.
+		await page.route('**/rest/v1/public_routes*', async (route) => {
+			if (!new URL(route.request().url()).searchParams.has('order')) {
+				await route.fallback();
+				return;
+			}
+			await route.fulfill({
 				status: 500,
 				contentType: 'application/json',
 				body: JSON.stringify({ message: 'simulated search failure' })
-			})
-		);
+			});
+		});
 
 		await page.goto('/routes?tab=explore');
 

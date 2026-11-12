@@ -1,4 +1,4 @@
-import type { EventCategory } from '$lib/types';
+import type { EventCategory } from '#lib/types.ts';
 
 /**
  * Event categories, in the order shown in the create-event picker.

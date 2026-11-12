@@ -1,52 +1,89 @@
 <script lang="ts">
+	import { selfTimedBoard } from '#lib/races/race_start_modes.ts';
 	import type * as GeoJSON from 'geojson';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount, onDestroy } from 'svelte';
-	import { formatDuration as baseDuration } from '$lib/format/time';
-	import { page } from '$app/stores';
-	import maplibregl from '$lib/routes/maplibre';
+	import { formatDuration as baseDuration } from '#lib/format/time.ts';
+	import { page } from '$app/state';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		getMapStyle,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapAccentColour,
 		mapLabelHalo,
 		mapLabelInk,
 		mapOverlayOutline,
-	} from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { supabase } from '$lib/core/supabase';
+	} from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { queryChunked } from '#lib/social/feed_merge.ts';
 	import {
 		fetchRecentRacePings,
 		fetchLatestRacePings,
 		fetchRaceSession,
 		fetchEventById,
 		fetchEventResults,
+		fetchEventCourses,
+		fetchAttendeeCourses,
+		fetchCourseLinesForOccurrence,
+		type CourseLinesRow,
 		type RacePingRow,
 		type RaceSessionRow,
 		type EventResultWithUser
-	} from '$lib/core/data';
-	import type { EventWithMeta } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import type { EventWithMeta } from '#lib/types.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
-	import { formatDistance, fmtPace } from '$lib/format/units.svelte';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
-	import { runnerHandle, shouldRevealDisplayName } from '$lib/social/runner_handle';
-	import { freshnessFor, type Freshness } from '$lib/runs/live_freshness';
-	import { CoalescingRefetcher } from '$lib/runs/live_refetch';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatDistance, fmtPace } from '#lib/format/units.svelte.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
+	import { runnerHandle, shouldRevealDisplayName } from '#lib/social/runner_handle.ts';
+	import { freshnessFor, type Freshness } from '#lib/runs/live_freshness.ts';
+	import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import {
+		finishMethodBadge,
+		groupResultsByCourse,
+		groupRunnersByCourse,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
+	import { courseGate } from '#lib/races/course_gates.ts';
+	import { addCourseGateLayers, type DrawnGate } from '#lib/races/course_gate_layers.ts';
 
-	let eventId = $derived($page.params.id as string);
-	let instance = $derived(decodeURIComponent($page.params.instance as string));
+	let eventId = $derived(page.params.id as string);
+	let instance = $derived(decodeURIComponent(page.params.instance as string));
 
 	let event = $state<EventWithMeta | null>(null);
 	let race = $state<RaceSessionRow | null>(null);
+	// The status the race is in on the server clock (race_sessions_redacted):
+	// a scheduled race whose GO has passed is live before the job moves it.
+	let raceStatus = $derived(race?.effective_status ?? race?.status ?? null);
 	let recentPings = $state<RacePingRow[]>([]);
 	let leaderPings = $state<RacePingRow[]>([]);
 	let results = $state<EventResultWithUser[]>([]);
+	// Courses of a multi-course race: one finisher board per course.
+	let courses = $state<EventCourse[]>([]);
+	// Every course's start and finish lines (#1305), from the race's frozen
+	// copy once it has one: the lines the runners are crossing.
+	let courseLines = $state<CourseLinesRow[]>([]);
+	let liveGates = $derived.by<DrawnGate[]>(() => {
+		const out: DrawnGate[] = [];
+		for (const row of courseLines) {
+			const s = courseGate(row, 'start');
+			const f = courseGate(row, 'finish');
+			if (s) out.push({ which: 'start', gate: s, courseId: row.course_id });
+			if (f) out.push({ which: 'finish', gate: f, courseId: row.course_id });
+		}
+		return out;
+	});
+	// Each runner's RSVP'd course, which splits the on-course board the way
+	// the finisher boards are split. Read only for a multi-course race.
+	let courseByUser = $state<Map<string, string>>(new Map());
 	let profiles = $state<Map<string, { display_name: string | null }>>(new Map());
 	let nowTick = $state(Date.now());
 	let loading = $state(true);
@@ -64,6 +101,7 @@
 	let pingRefetcher: CoalescingRefetcher<{
 		recent: RacePingRow[];
 		leaders: RacePingRow[];
+		byUser: Map<string, string>;
 		profiles: Map<string, { display_name: string | null }>;
 	}> | null = null;
 
@@ -158,12 +196,41 @@
 			leaderPings = lp;
 			results = rr;
 			profiles = await buildProfiles(lp, rr);
+			// A failed course read degrades to the single combined board
+			// rather than failing the tracker.
+			try {
+				courses = await fetchEventCourses(eventId);
+			} catch (ce) {
+				console.warn('live/event: courses read failed', ce);
+				courses = [];
+			}
+			courseByUser = await readCourseByUser();
+			try {
+				courseLines =
+					courses.length > 0
+						? await fetchCourseLinesForOccurrence(eventId, instance, !!race?.courses_frozen_at)
+						: [];
+			} catch (le) {
+				console.warn('live/event: course lines read failed', le);
+			}
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'live/event/[id]/[instance]: loadError');
 		}
 		loading = false;
+	}
+
+	// A failed read keeps the split already on screen: collapsing every
+	// runner into "no course" would read as a fact about them.
+	async function readCourseByUser(): Promise<Map<string, string>> {
+		if (courses.length <= 1) return new Map();
+		try {
+			return await fetchAttendeeCourses(eventId, instance);
+		} catch (err) {
+			console.warn('live/event: attendee courses read failed', err);
+			return courseByUser;
+		}
 	}
 
 	// Privacy gate (mirrors the /live/[id] solo-page contract): a public
@@ -195,17 +262,23 @@
 		const followsViewer = new Set<string>();
 		if (viewerId && runnerIds.size > 0) {
 			const ids = [...runnerIds];
+			// A race field is hundreds of runners, past what one `in` filter
+			// carries (decisions § 653), so each probe reads in bounded chunks.
 			const [vfr, rfv] = await Promise.all([
-				supabase
-					.from('user_follows')
-					.select('followee_id')
-					.eq('follower_id', viewerId)
-					.in('followee_id', ids),
-				supabase
-					.from('user_follows')
-					.select('follower_id')
-					.eq('followee_id', viewerId)
-					.in('follower_id', ids)
+				queryChunked(ids, (part) =>
+					supabase
+						.from('user_follows')
+						.select('followee_id')
+						.eq('follower_id', viewerId)
+						.in('followee_id', part)
+				),
+				queryChunked(ids, (part) =>
+					supabase
+						.from('user_follows')
+						.select('follower_id')
+						.eq('followee_id', viewerId)
+						.in('follower_id', part)
+				)
 			]);
 			for (const row of vfr.data ?? []) viewerFollows.add(row.followee_id);
 			for (const row of rfv.data ?? []) followsViewer.add(row.follower_id);
@@ -223,15 +296,19 @@
 		);
 		const realNames = new Map<string, string | null>();
 		if (revealIds.length > 0) {
-			const { data } = await supabase
-				.from('user_profiles')
-				.select('id, display_name')
-				.in('id', revealIds);
+			const { data } = await queryChunked(revealIds, (part) =>
+				supabase.from('user_profiles').select('id, display_name').in('id', part)
+			);
 			for (const p of data ?? []) realNames.set(p.id, p.display_name);
 		}
 		for (const id of runnerIds) {
 			map.set(id, {
-				display_name: realNames.has(id) ? realNames.get(id)! : runnerHandle(id)
+				display_name: realNames.has(id)
+					? realNames.get(id)!
+					: runnerHandle(id, {
+							handle: (slug) => m('live.runnerHandle', { slug }),
+							anonymous: m('live.runnerAnonymous')
+						})
 			});
 		}
 
@@ -249,15 +326,24 @@
 	function subscribe() {
 		pingRefetcher = new CoalescingRefetcher({
 			fetch: async () => {
-				const [ps, lp] = await Promise.all([
+				// A runner who RSVPs after the page loaded joins their course
+				// board on their first ping, not on a reload.
+				const [ps, lp, byUser] = await Promise.all([
 					fetchRecentRacePings(eventId, instance),
-					fetchLatestRacePings(eventId, instance)
+					fetchLatestRacePings(eventId, instance),
+					readCourseByUser()
 				]);
-				return { recent: ps, leaders: lp, profiles: await buildProfiles(lp, results) };
+				return {
+					recent: ps,
+					leaders: lp,
+					byUser,
+					profiles: await buildProfiles(lp, results)
+				};
 			},
 			apply: (v) => {
 				recentPings = v.recent;
 				leaderPings = v.leaders;
+				courseByUser = v.byUser;
 				profiles = v.profiles;
 			},
 			onError: (err) => {
@@ -355,7 +441,7 @@
 		// course, so each row's freshness ("updated N ago" / stale badge)
 		// keeps recomputing — a runner who lost signal must transition to
 		// stale even if the organiser hasn't formally flipped the race state.
-		if (race?.status === 'running' || pings.length > 0) {
+		if (raceStatus === 'running' || raceStatus === 'armed' || pings.length > 0) {
 			tickTimer = setInterval(() => (nowTick = Date.now()), 1000);
 			return () => {
 				if (tickTimer) clearInterval(tickTimer);
@@ -365,7 +451,7 @@
 	});
 
 	let raceElapsedS = $derived(
-		race?.status === 'running' && race.started_at
+		raceStatus === 'running' && race?.started_at
 			? Math.max(0, Math.floor((nowTick - new Date(race.started_at).getTime()) / 1000))
 			: race?.status === 'finished' && race.started_at && race.finished_at
 			? Math.max(
@@ -404,6 +490,8 @@
 				return m('live.updatedHours', { n: f.value });
 			case 'days':
 				return m('live.updatedDays', { n: f.value });
+			case 'unknown':
+				return m('live.updatedUnknown');
 		}
 	}
 
@@ -425,10 +513,49 @@
 
 	let finishedResults = $derived(results.filter((r) => r.finisher_status === 'finished'));
 	let dnfResults = $derived(results.filter((r) => r.finisher_status !== 'finished'));
+	let finishedBoards = $derived(
+		groupResultsByCourse(finishedResults, courses).filter((b) => b.results.length > 0)
+	);
+	let onCourseBoards = $derived(groupRunnersByCourse(pings, courses, courseByUser));
+	// A Self-timed race has no common gun: each course board orders by time
+	// since the runner's own start-line crossing, and runners without one (an
+	// Apple Watch relay, an older app) follow in their own block (M13).
+	let selfTimed = $derived(race?.start_mode === 'self_timed');
+	let onCourseBlocks = $derived(
+		onCourseBoards.map((b) => {
+			if (!selfTimed) return { course: b.course, timed: b.results, untimed: [] as RacePingRow[] };
+			const split = selfTimedBoard(b.results.map((p) => ({ ...p, userId: p.user_id, sinceStartLineS: p.since_start_line_s ?? null })));
+			return { course: b.course, timed: split.timed, untimed: split.untimed };
+		})
+	);
+	function clockTime(iso: string | null | undefined): string {
+		if (!iso) return '';
+		return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+	}
+
+	function courseTitle(c: EventCourse | null): string {
+		if (!c) return m('liveEvent.noCourse');
+		return c.distance_m != null ? `${c.name} · ${formatDistance(c.distance_m)}` : c.name;
+	}
+
+	// Gun time is the ranked time on a gun-started race; the chip time is
+	// shown beside it when it differs.
+	function chipNote(r: EventResultWithUser): string | null {
+		if (r.chip_time_s == null || r.chip_time_s === r.duration_s) return null;
+		return m('liveEvent.chipTime', { time: formatDuration(r.chip_time_s) });
+	}
 
 	let statusCopy = $derived.by(() => {
 		if (!race) return { label: m('liveEvent.statusPreRaceLabel'), sub: m('liveEvent.statusPreRaceSub') };
-		switch (race.status) {
+		if (race.start_mode === 'scheduled' && raceStatus === 'armed') {
+			return { label: m('liveEvent.statusArmedLabel'), sub: m('liveEvent.statusScheduledSub', { time: clockTime(race.scheduled_start_at) }) };
+		}
+		if (race.start_mode === 'self_timed' && (raceStatus === 'armed' || raceStatus === 'running')) {
+			return raceStatus === 'armed'
+				? { label: m('liveEvent.statusSelfTimedSoonLabel'), sub: m('liveEvent.statusSelfTimedSoonSub', { time: clockTime(race.window_opens_at) }) }
+				: { label: m('liveEvent.statusSelfTimedLabel'), sub: m('liveEvent.statusSelfTimedSub', { time: clockTime(race.window_closes_at) }) };
+		}
+		switch (raceStatus) {
 			case 'armed':
 				return { label: m('liveEvent.statusArmedLabel'), sub: m('liveEvent.statusArmedSub') };
 			case 'running':
@@ -438,7 +565,7 @@
 			case 'cancelled':
 				return { label: m('liveEvent.statusCancelledLabel'), sub: m('liveEvent.statusCancelledSub') };
 			default:
-				return { label: race.status, sub: '' };
+				return { label: raceStatus ?? '', sub: '' };
 		}
 	});
 
@@ -493,6 +620,8 @@
 
 	function addOverlays() {
 		if (!map) return;
+		// Under the runners, so a runner on the line stays visible.
+		addCourseGateLayers(map, 'course-gates', liveGates, darkBasemap);
 		map.addSource('runner-trails', { type: 'geojson', data: buildTrailsGeoJSON() });
 		map.addSource('runner-positions', { type: 'geojson', data: buildPositionsGeoJSON() });
 
@@ -603,6 +732,12 @@
 		refreshMapData();
 	});
 
+	$effect(() => {
+		const gates = liveGates;
+		if (!map || !mapReady) return;
+		addCourseGateLayers(map, 'course-gates', gates, darkBasemap);
+	});
+
 	let currentStyle: ReturnType<typeof getMapStyle> = getMapStyle();
 	$effect(() => {
 		const next = getMapStyle();
@@ -618,51 +753,7 @@
 	});
 </script>
 
-<svelte:head>
-	<title>{m('liveEvent.pageTitle', { title: event?.title ?? m('liveEvent.eventFallback') })}</title>
-</svelte:head>
-
-<div class="page">
-	<header class="hero">
-		<p class="kicker">{m('liveEvent.kicker')}</p>
-		<h1>{event?.title ?? m('liveEvent.heroFallback')}</h1>
-		<div class="status-row">
-			<span class="status-dot status-{race?.status ?? 'idle'}"></span>
-			<strong class="status-label">{statusCopy.label}</strong>
-			<span class="status-sub">{statusCopy.sub}</span>
-		</div>
-	</header>
-
-	<!-- Shell-less routes get no <main> from +layout.svelte, so each one owns
-	     its landmark — every /share/* sibling already does. Without it this
-	     page shipped no main region at all (WCAG 1.3.1). -->
-	<main id="main-content">
-	{#if loading}
-		<p class="muted">{m('shell.loading')}</p>
-	{:else if loadError}
-		<div class="error-banner" role="alert">
-			<span class="material-symbols" aria-hidden="true">error</span>
-			<div>
-				<strong>{m('liveEvent.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
-			</div>
-			<button class="btn btn-outline" onclick={load}>{m('liveEvent.retry')}</button>
-		</div>
-	{:else}
-		<div class="layout">
-			<section class="leaderboard">
-				<header class="section-head">
-					<h2>{m('liveEvent.onCourse')}</h2>
-					<span class="count">{pings.length}</span>
-				</header>
-				{#if pings.length === 0}
-					<div class="empty-inline">
-						<span class="material-symbols">satellite_alt</span>
-						<p>{m('liveEvent.noLiveData')}</p>
-					</div>
-				{:else}
-					<ol class="runners">
-						{#each pings as p, i (p.user_id)}
+	{#snippet runnerRow(p: RacePingRow, i: number, sinceStart: boolean)}
 							{@const fresh = freshnessFor_(p)}
 							<li class="runner" class:stale={fresh.stale} class:coarse={p.coarse}>
 								<span class="pos">{i + 1}</span>
@@ -688,10 +779,72 @@
 								</span>
 								<span class="dist">{formatDistance(p.distance_m ?? 0)}</span>
 								<span class="pace">{fmtPace(paceSecPerKm(p))}</span>
-								<span class="elapsed">{formatDuration(p.elapsed_s ?? 0)}</span>
+								<span class="elapsed">{formatDuration(sinceStart ? (p.since_start_line_s ?? 0) : (p.elapsed_s ?? 0))}</span>
 							</li>
+	{/snippet}
+
+<svelte:head>
+	<title>{m('liveEvent.pageTitle', { title: event?.title ?? m('liveEvent.eventFallback') })}</title>
+</svelte:head>
+
+<div class="page">
+	<header class="hero">
+		<p class="kicker">{m('liveEvent.kicker')}</p>
+		<h1>{event?.title ?? m('liveEvent.heroFallback')}</h1>
+		<HelpLink route="/live/event/[id]/[instance]" />
+		<div class="status-row">
+			<span class="status-dot status-{race?.status ?? 'idle'}"></span>
+			<strong class="status-label">{statusCopy.label}</strong>
+			<span class="status-sub">{statusCopy.sub}</span>
+		</div>
+	</header>
+
+	<!-- Shell-less routes get no <main> from +layout.svelte, so each one owns
+	     its landmark — every /share/* sibling already does. Without it this
+	     page shipped no main region at all (WCAG 1.3.1). -->
+	<main id="main-content">
+	{#if loading}
+		<p class="muted">{m('shell.loading')}</p>
+	{:else if loadError !== null}
+		<div class="error-banner" role="alert">
+			<span class="material-symbols" aria-hidden="true">error</span>
+			<div>
+				<strong>{m('liveEvent.loadError')}</strong>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
+			</div>
+			<button class="btn btn-outline" onclick={load}>{m('liveEvent.retry')}</button>
+		</div>
+	{:else}
+		<div class="layout">
+			<section class="leaderboard">
+				<header class="section-head">
+					<h2>{m('liveEvent.onCourse')}</h2>
+					<span class="count">{pings.length}</span>
+				</header>
+				{#if pings.length === 0}
+					<div class="empty-inline">
+						<span class="material-symbols">satellite_alt</span>
+						<p>{m('liveEvent.noLiveData')}</p>
+					</div>
+				{:else}
+					{#each onCourseBlocks as board (board.course?.id ?? 'none')}
+					{#if courses.length > 1}
+						<h3 class="course-title" data-testid="live-oncourse-title">{courseTitle(board.course)}</h3>
+					{/if}
+					<ol class="runners" data-testid="live-oncourse-board">
+						{#each board.timed as p, i (p.user_id)}
+							{@render runnerRow(p, i, selfTimed)}
 						{/each}
 					</ol>
+					{#if board.untimed.length > 0}
+						<h4 class="course-title" data-testid="live-untimed-title">{m('liveEvent.noStartLineTime')}</h4>
+						<ol class="runners" data-testid="live-untimed-board">
+							{#each board.untimed as p, i (p.user_id)}
+								{@render runnerRow(p, board.timed.length + i, false)}
+							{/each}
+						</ol>
+					{/if}
+					{/each}
 				{/if}
 			</section>
 
@@ -736,22 +889,35 @@
 						<h2>{m('liveEvent.finished')}</h2>
 						<span class="count">{finishedResults.length}</span>
 					</header>
-					<ol class="runners">
-						{#each finishedResults as r (keyOf(r))}
-							<li class="runner" class:pending={!r.organiser_approved}>
-								<span class="pos">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
-								<span class="avatar" style="background: {tintFor(keyOf(r))}; color: {colorFor(keyOf(r))};">
-									{initialsFor(keyOf(r))}
-								</span>
-								<span class="name">{nameFor(keyOf(r))}</span>
-								<span class="dist">{formatDistance(r.distance_m)}</span>
-								<span class="elapsed">{formatDuration(r.duration_s)}</span>
-								{#if !r.organiser_approved}
-									<span class="pending-tag">{m('liveEvent.pending')}</span>
-								{/if}
-							</li>
-						{/each}
-					</ol>
+					{#each finishedBoards as board (board.course?.id ?? 'none')}
+						{#if finishedBoards.length > 1 || courses.length > 1}
+							<h3 class="course-title" data-testid="live-course-title">{courseTitle(board.course)}</h3>
+						{/if}
+						<ol class="runners" data-testid="live-course-board">
+							{#each board.results as r (keyOf(r))}
+								<li class="runner" class:pending={!r.organiser_approved}>
+									<span class="pos">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
+									<span class="avatar" style="background: {tintFor(keyOf(r))}; color: {colorFor(keyOf(r))};">
+										{initialsFor(keyOf(r))}
+									</span>
+									<span class="name">
+										{nameFor(keyOf(r))}
+										{#if finishMethodBadge(r.finish_method) === 'manual'}
+											<span class="method-chip" data-testid="live-finish-method">{m('liveEvent.finishManual')}</span>
+										{:else if finishMethodBadge(r.finish_method) === 'host'}
+											<span class="method-chip" data-testid="live-finish-method">{m('liveEvent.finishHostEdited')}</span>
+										{/if}
+										{#if chipNote(r)}<span class="freshness">{chipNote(r)}</span>{/if}
+									</span>
+									<span class="dist">{formatDistance(r.distance_m)}</span>
+									<span class="elapsed">{formatDuration(r.duration_s)}</span>
+									{#if !r.organiser_approved}
+										<span class="pending-tag">{m('liveEvent.pending')}</span>
+									{/if}
+								</li>
+							{/each}
+						</ol>
+					{/each}
 				{/if}
 
 				{#if dnfResults.length > 0}
@@ -1106,6 +1272,22 @@
 		font-weight: 700;
 		font-size: 0.75rem;
 		letter-spacing: 0.05em;
+	}
+	.course-title {
+		margin: var(--space-md) 0 var(--space-xs);
+		font-size: 0.95rem;
+	}
+	.method-chip {
+		margin-inline-start: 0.35rem;
+		padding: 0.05rem 0.4rem;
+		border-radius: 9999px;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		vertical-align: middle;
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
 	}
 	.pending-tag {
 		background: color-mix(in srgb, var(--color-warning) 18%, transparent);

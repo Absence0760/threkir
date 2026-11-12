@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { stripComments } from '../../src/lib/core/strip_comments';
 
 /**
  * Static source-level guards — same shape as
@@ -82,8 +83,7 @@ test.describe('architecture guards', () => {
 
 			// Skip files that don't reference the auth store at all —
 			// those are anon pages by definition.
-			if (!src.includes("from '$lib/stores/auth.svelte'") &&
-				!src.includes("from '$lib/stores/auth'")) {
+			if (!/from '[^']*\/stores\/auth\.svelte(?:\.ts)?'/.test(src)) {
 				continue;
 			}
 
@@ -115,7 +115,7 @@ test.describe('architecture guards', () => {
 	});
 
 	test('login page snapshots return_to at mount, not on every navigation', () => {
-		// Regression guard: the login page used to read $page.url.searchParams
+		// Regression guard: the login page used to read page.url.searchParams
 		// at navigation time, which let the post-sign-in $effect's
 		// replaceState clobber the captured return_to. Snapshotting at
 		// mount is the only way to make the explicit-goto + reactive-$effect
@@ -123,7 +123,7 @@ test.describe('architecture guards', () => {
 		// dual-trigger flow.
 		const src = readFileSync('src/routes/login/+page.svelte', 'utf-8');
 		expect(src).toContain('returnToOnMount');
-		// Old shape returned `$page.url.searchParams.get('return_to')`
+		// Old shape returned `page.url.searchParams.get('return_to')`
 		// directly from inside `safeReturnTo`. New shape reads the
 		// cached value. Pin the cache assignment lives in onMount —
 		// check the ordering by index since multi-line regex
@@ -217,11 +217,9 @@ test.describe('architecture guards', () => {
 		// `CLUB_SELECT_COLS` / `EVENT_SELECT_COLS` from data.ts", or
 		// for nested embeds use `clubs(${CLUB_SELECT_COLS})`.
 		const data = readFileSync('src/lib/core/data.ts', 'utf-8');
-		// Strip block + line comments so doc strings can mention the
-		// pattern without false-positive.
-		const stripped = data
-			.replace(/\/\*[\s\S]*?\*\//g, '')
-			.replace(/\/\/.*$/gm, '');
+		// Comments blanked so a doc string naming the pattern is not read as
+		// an instance of it.
+		const stripped = stripComments(data);
 		const banned = [
 			/\.from\(['"]clubs['"]\)\.select\(['"]\*['"]\)/,
 			/\.from\(['"]events['"]\)\.select\(['"]\*['"]\)/,

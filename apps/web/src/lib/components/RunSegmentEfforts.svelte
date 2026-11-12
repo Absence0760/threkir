@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		fetchEffortsForRunWithError,
 		computeSegmentEffortsForRun,
@@ -10,25 +11,18 @@
 		fetchGlobalEffortsForRun,
 		type SegmentEffortWithSegment,
 		type GlobalSegmentEffortWithSegment,
-	} from '$lib/core/data';
-	import { pickAutoEffortRoute } from '$lib/segments/auto_segment_effort';
-	import { distanceInPreferred } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { pickAutoEffortRoute } from '#lib/segments/auto_segment_effort.ts';
+	import { rankPillClass, rankPillText } from '#lib/segments/effort_rank.ts';
+	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { haversineMetres } from '#lib/runs/run_stats.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	function trackLengthM(pts: TrackPoint[]): number {
 		let total = 0;
 		for (let i = 1; i < pts.length; i++) {
-			const a = pts[i - 1];
-			const b = pts[i];
-			const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-			const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-			const lat1 = (a.lat * Math.PI) / 180;
-			const lat2 = (b.lat * Math.PI) / 180;
-			const h =
-				Math.sin(dLat / 2) ** 2 +
-				Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-			total += 2 * 6_371_000 * Math.asin(Math.min(1, Math.sqrt(h)));
+			total += haversineMetres(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng);
 		}
 		return total;
 	}
@@ -38,8 +32,11 @@
 		runOwnerId: string;
 		routeId: string | null;
 		track: TrackPoint[];
+		/// Called once the owner's on-view catalogue scoring has run, so a
+		/// sibling that reads the efforts it writes can read again.
+		onscored?: () => void;
 	}
-	let { runId, runOwnerId, routeId, track }: Props = $props();
+	let { runId, runOwnerId, routeId, track, onscored }: Props = $props();
 
 	let efforts = $state<SegmentEffortWithSegment[]>([]);
 	let globalEfforts = $state<GlobalSegmentEffortWithSegment[]>([]);
@@ -81,6 +78,7 @@
 				// matches end-to-end. Owner-only; RLS also gates the write.
 				if (isOwner) {
 					await computeGlobalSegmentEffortsForRun({ run_id: runId, user_id: runOwnerId, track });
+					onscored?.();
 				}
 			} catch (e) {
 				console.warn('segment effort compute failed', e);
@@ -92,13 +90,13 @@
 				fetchGlobalEffortsForRun(runId),
 			]);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RunSegmentEfforts: loadError');
 				return;
 			}
 			efforts = res.efforts;
 			globalEfforts = globals;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'RunSegmentEfforts: loadError');
 		} finally {
 			loading = false;
 		}
@@ -115,22 +113,16 @@
 		return formatDuration(Math.round(s));
 	}
 
-	function rankClass(rank: number): string {
-		if (rank === 1) return 'gold';
-		if (rank <= 3) return 'silver';
-		if (rank <= 10) return 'bronze';
-		return '';
-	}
 </script>
 
 {#if loading}
 	<p class="muted">{m('segmentEfforts.checking')}</p>
-{:else if loadError}
+{:else if loadError !== null}
 	<div class="error-banner" role="alert">
 		<span class="material-symbols" aria-hidden="true">error</span>
 		<div>
 			<strong>{m('runs.loadFailed')}</strong>
-			<span class="error-detail">{loadError}</span>
+			{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 		</div>
 		<button class="btn btn-outline btn-sm" onclick={load}>{m('runs.retry')}</button>
 	</div>
@@ -146,7 +138,11 @@
 								{fmtDist(Number(e.segment.length_m ?? Number(e.segment.end_distance_m) - Number(e.segment.start_distance_m)))}
 							</span>
 						</div>
-						<span class="rank-pill {rankClass(e.rank)}">#{e.rank}</span>
+						<span
+							class="rank-pill {rankPillClass(e.rank)}"
+							aria-label={e.rank == null ? m('segmentEfforts.rankUnknown') : undefined}
+							title={e.rank == null ? m('segmentEfforts.rankUnknown') : undefined}
+						>{rankPillText(e.rank)}</span>
 						<span class="time">{fmtTime(e.effort.time_seconds)}</span>
 					</a>
 				</li>
@@ -154,7 +150,10 @@
 		</ul>
 	{/if}
 	{#if globalEfforts.length > 0}
-		<p class="section-label">{m('segmentEfforts.catalogueHeading')}</p>
+		<p class="section-label">
+			{m('segmentEfforts.catalogueHeading')}
+			<a class="browse-link" href="/segments">{m('segments.browseAll')}</a>
+		</p>
 		<ul class="efforts">
 			{#each globalEfforts as e (e.effort.id)}
 				<li>
@@ -166,7 +165,11 @@
 								{#if e.segment.region}<span class="meta-sep">·</span>{e.segment.region}{/if}
 							</span>
 						</div>
-						<span class="rank-pill {rankClass(e.rank)}">#{e.rank}</span>
+						<span
+							class="rank-pill {rankPillClass(e.rank)}"
+							aria-label={e.rank == null ? m('segmentEfforts.rankUnknown') : undefined}
+							title={e.rank == null ? m('segmentEfforts.rankUnknown') : undefined}
+						>{rankPillText(e.rank)}</span>
 						<span class="time">{fmtTime(e.effort.time_seconds)}</span>
 					</a>
 				</li>
@@ -193,12 +196,24 @@
 		font-size: 0.78rem;
 	}
 	.section-label {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-sm);
 		margin: 0.6rem 0 0.2rem;
 		font-size: 0.72rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--color-text-secondary);
+	}
+	.browse-link {
+		font-weight: 500;
+		color: var(--color-primary);
+		text-decoration: none;
+	}
+	.browse-link:hover {
+		text-decoration: underline;
 	}
 	.meta-sep {
 		margin: 0 0.3rem;
@@ -282,7 +297,7 @@
 	}
 	.rank-pill.silver {
 		background: #94a3b8;
-		color: #1f2328;
+		color: #1A1722;
 	}
 	.rank-pill.bronze {
 		background: #b45309;

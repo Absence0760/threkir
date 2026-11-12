@@ -2,7 +2,7 @@ import XCTest
 @testable import WatchApp
 
 /// `WorkoutManager.writeTrackJSON()` serialises a finished run's track to a
-/// file in Caches keyed by the run id — the exact file the watch hands to the
+/// file in the durable payload directory keyed by the run id — the exact file the watch hands to the
 /// phone via `WCSession.transferFile`. The phone gzips + uploads it, so the
 /// on-disk shape is a cross-device contract. Since the read path became
 /// streaming, the source is the run's NDJSON file rather than an in-memory
@@ -38,7 +38,11 @@ final class WorkoutManagerTrackJSONTests: XCTestCase {
             distanceMetres: 5230.5,
             trackFileURL: store.trackFileURL,
             trackPointCount: points.count,
-            averageBPM: 152
+            averageBPM: 152,
+            activityType: .run,
+            hrCoverage: 0.5,
+            steps: nil,
+            laps: []
         )
     }
 
@@ -48,6 +52,23 @@ final class WorkoutManagerTrackJSONTests: XCTestCase {
         XCTAssertThrowsError(try wm.writeTrackJSON()) { error in
             XCTAssertTrue("\(error)".contains("No finished run") || (error as NSError).code == 1)
         }
+    }
+
+    func testWriteTrackJSONWritesIntoTheDurablePayloadDirectory() throws {
+        // WCSession reads this file off disk for as long as the transfer is
+        // outstanding — days, with the phone switched off — and by then
+        // `reset()` has deleted the NDJSON it was built from. In Caches a
+        // purge in that window loses the run outright.
+        let id = "durable-\(UUID().uuidString.lowercased())"
+        let wm = WorkoutManager()
+        wm.finishedRun = makeRun(id: id, points: [
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: 12.0, ts: "2026-04-15T07:30:01Z"),
+        ])
+        let url = try wm.writeTrackJSON()
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertEqual(url.deletingLastPathComponent().path, RunPayloadStorage.directory.path)
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        XCTAssertFalse(url.path.hasPrefix(caches.path))
     }
 
     func testWriteTrackJSONNamesFileByRunId() throws {
@@ -83,6 +104,66 @@ final class WorkoutManagerTrackJSONTests: XCTestCase {
         XCTAssertEqual(back[0].ele, 12.0)
         XCTAssertNil(back[1].ele, "nil elevation must survive the round-trip as null")
         XCTAssertEqual(back[1].ts, "2026-04-15T07:30:11Z")
+    }
+
+    func testCreditedDistanceRidesTheWireAsDistM() throws {
+        let id = "json-\(UUID().uuidString.lowercased())"
+        let wm = WorkoutManager()
+        wm.finishedRun = makeRun(id: id, points: [
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z", distM: 0),
+            TrackPointRecord(lat: 51.4514, lng: -0.1961, ele: nil, ts: "2026-04-15T07:30:11Z", distM: 14.25),
+            TrackPointRecord(lat: 51.4515, lng: -0.1960, ele: nil, ts: "2026-04-15T07:30:21Z"),
+        ])
+        let url = try wm.writeTrackJSON()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]]
+        XCTAssertEqual(raw?[0]["distM"] as? Double, 0)
+        XCTAssertEqual(raw?[1]["distM"] as? Double, 14.25)
+        XCTAssertNil(raw?[2]["distM"], "an unstamped point omits the key rather than writing null")
+    }
+
+    func testAnOffTrackFixRidesTheWireFlaggedAndAnOnTrackOneOmitsTheKey() throws {
+        // docs/features/gps_distance.md § Stored track: the phone and the
+        // server read `offTrack: true`; absent means on the line, never false.
+        let id = "json-\(UUID().uuidString.lowercased())"
+        let wm = WorkoutManager()
+        wm.finishedRun = makeRun(id: id, points: [
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z", distM: 0),
+            TrackPointRecord(
+                lat: 51.4514, lng: -0.1961, ele: nil, ts: "2026-04-15T07:30:02Z",
+                accuracyMetres: 38, distM: 11.1, offTrack: true
+            ),
+        ])
+        let url = try wm.writeTrackJSON()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]]
+        XCTAssertNil(raw?[0]["offTrack"])
+        XCTAssertEqual(raw?[1]["offTrack"] as? Bool, true)
+        XCTAssertEqual(raw?[1]["distM"] as? Double, 11.1)
+    }
+
+    func testASegmentsFirstFixRidesTheWireMarkedAndTheOthersOmitTheKey() throws {
+        // docs/features/gps_distance.md § Stored track (spec v1.8): the phone
+        // forwards the file's text and the server replays each segment apart
+        // from `segmentStart: true`; absent on every other fix, never false.
+        let id = "json-\(UUID().uuidString.lowercased())"
+        let wm = WorkoutManager()
+        wm.finishedRun = makeRun(id: id, points: [
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z", distM: 0),
+            TrackPointRecord(
+                lat: 51.4524, lng: -0.1961, ele: nil, ts: "2026-04-15T07:32:01Z",
+                distM: 2.8, segmentStart: true
+            ),
+        ])
+        let url = try wm.writeTrackJSON()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]]
+        XCTAssertNil(raw?[0]["segmentStart"])
+        XCTAssertEqual(raw?[1]["segmentStart"] as? Bool, true)
+        XCTAssertNil(raw?[1]["offTrack"])
     }
 
     func testEmptyTrackWritesValidEmptyArray() throws {

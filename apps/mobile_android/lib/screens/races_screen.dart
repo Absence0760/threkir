@@ -1,40 +1,79 @@
 import 'dart:async';
 
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
+import '../preferences.dart' show formatDistanceForPref;
+import '../race_plan_preset.dart';
+import '../race_provider_labels.dart';
+import '../provenance.dart';
 import '../race_service.dart';
+import '../training.dart' show toIsoDate;
+import '../training_service.dart';
 import '../widgets/error_state.dart';
+import '../widgets/help_button.dart';
+import '../widgets/provenance_badge.dart';
+import '../widgets/run_any_time_section.dart';
 import '../widgets/top_banner.dart';
+import 'plan_new_screen.dart';
+import 'race_detail_screen.dart';
 
-/// Race calendar discovery (race_calendar.md). Mirrors the web `/races` page:
-/// a name search + distance-band chips + "near a place" geocode over the
-/// `search_race_listings` RPC, with a Register link per result and an
-/// "Import my result" affordance (manual paste; RunSignUp pull when the
-/// provider key is configured). A "Add a race" action submits a crowd listing.
+/// Races & courses (issue #1352): the race calendar under **Upcoming races**,
+/// and the park courses that can be run on any day under **Run any time**.
+/// Mirrors the web `/races` page.
 ///
-/// Reached from the run surface's labelled peer strip (Train → Runs →
-/// **Races**, decisions § 488) and, as a secondary deep link, from the
-/// RunSignUp / ChronoTrack tiles under Settings → Integrations. NOT a
-/// bottom-nav destination (the 5-slot ceiling holds, decisions §63).
+/// Upcoming races is the race calendar discovery of race_calendar.md: a name
+/// search + distance-band chips + "near a place" geocode over the
+/// `search_race_listings` RPC, with a race-page link per result, a name that
+/// opens the race detail screen, and an "Import my result" affordance from
+/// race day on (manual paste always; a provider pull when that listing's
+/// provider has a leg and its key is configured). An "Add a race" action
+/// submits a crowd listing.
+///
+/// Run any time is [RunAnyTimeSection], which loads and fails on its own; it
+/// needs a client, so a mount without one shows the races alone.
+///
+/// A tab of the Fitness hub (decisions § 2437), and pushed as itself only
+/// where no shell is listening (`openFitnessSurface`). NOT a bottom-nav
+/// destination (the 5-slot ceiling holds, decisions §63).
 ///
 /// Nothing gates reaching it: the search is a public RPC, and
-/// [RaceService.isRunSignUpConfigured] gates only the *provider* import path
-/// inside the per-race import sheet.
+/// [RaceService.isProviderConfigured] gates only the *provider* import path
+/// inside the per-race import sheet, which probes the listing it was opened
+/// for rather than a provider chosen up front.
 class RacesScreen extends StatefulWidget {
   final RaceService service;
   final String? mapTilerKey;
 
-  const RacesScreen({super.key, required this.service, this.mapTilerKey});
+  /// The client the Run any time section reads park courses through. Null
+  /// leaves the section out.
+  final ApiClient? api;
+
+  /// Test-only DI seam for the plan wizard the "train for this race" action
+  /// opens; production callsites let the screen build its own.
+  final TrainingService? training;
+
+  const RacesScreen({
+    super.key,
+    required this.service,
+    this.mapTilerKey,
+    this.api,
+    this.training,
+  });
 
   @override
   State<RacesScreen> createState() => _RacesScreenState();
 }
 
 const _distanceBands = ['', '5k', '10k', 'half', 'marathon', 'ultra'];
+
+/// How far back Recent results looks, in days. Mirrors web's
+/// `RECENT_WINDOW_DAYS` on `/races`.
+const recentWindowDays = 30;
 
 class _RacesScreenState extends State<RacesScreen> {
   final _searchCtl = TextEditingController();
@@ -44,18 +83,19 @@ class _RacesScreenState extends State<RacesScreen> {
 
   String _query = '';
   String _distance = '';
+  bool _recent = false;
   String _nearPlace = '';
 
   bool _loading = true;
   bool _error = false;
   List<RaceListingView> _results = const [];
-  bool _runSignUpAvailable = false;
+
+  late final TrainingService _training = widget.training ?? TrainingService();
 
   @override
   void initState() {
     super.initState();
     _run();
-    _probeRunSignUp();
   }
 
   @override
@@ -64,15 +104,6 @@ class _RacesScreenState extends State<RacesScreen> {
     _searchCtl.dispose();
     _placeCtl.dispose();
     super.dispose();
-  }
-
-  Future<void> _probeRunSignUp() async {
-    try {
-      final ok = await widget.service.isRunSignUpConfigured();
-      if (mounted) setState(() => _runSignUpAvailable = ok);
-    } catch (_) {
-      if (mounted) setState(() => _runSignUpAvailable = false);
-    }
   }
 
   void _schedule() {
@@ -86,10 +117,19 @@ class _RacesScreenState extends State<RacesScreen> {
       _loading = true;
       _error = false;
     });
+    final today = DateTime.now();
     try {
       final next = await widget.service.searchRaceListings(
         query: _query,
         distance: _distance.isEmpty ? null : _distance,
+        from: _recent
+            ? toIsoDate(
+                DateTime(today.year, today.month, today.day - recentWindowDays))
+            : null,
+        to: _recent
+            ? toIsoDate(DateTime(today.year, today.month, today.day - 1))
+            : null,
+        newestFirst: _recent,
         nearPlace: _nearPlace.isEmpty ? null : _nearPlace,
         mapTilerKey: widget.mapTilerKey,
       );
@@ -129,12 +169,39 @@ class _RacesScreenState extends State<RacesScreen> {
     if (created == true) _run();
   }
 
+  /// Open the plan wizard sized around this race. The listing's own facts go
+  /// across, not the derived dates — the wizard re-derives them against today,
+  /// so the arithmetic has one home (decisions § 606).
+  Future<void> _trainForRace(RaceListingView race) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlanNewScreen(
+          training: _training,
+          raceDateIso: race.raceDate,
+          raceName: race.name,
+          raceDistanceM: race.distanceM,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDetail(RaceListingView race) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RaceDetailScreen(
+          service: widget.service,
+          listingId: race.id,
+          training: _training,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openImport(RaceListingView race) async {
     final done = await showRaceImportSheet(
       context,
       service: widget.service,
       race: race,
-      runSignUpAvailable: _runSignUpAvailable,
     );
     if (done == true && mounted) {
       showTopBanner(context, AppLocalizations.of(context).racesImported);
@@ -144,92 +211,277 @@ class _RacesScreenState extends State<RacesScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final api = widget.api;
     return Scaffold(
-      appBar: AppBar(title: Text(l.racesTitle)),
+      appBar: AppBar(
+        title: Text(l.runSurfaceTabRacesCourses),
+        actions: const [HelpButton(routes: ['/races'])],
+      ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openSubmit,
         icon: const Icon(Icons.add),
         label: Text(l.racesSubmitRace),
       ),
-      body: Column(
+      // One scroll for both sections: Upcoming races first, as on web, then
+      // Run any time below the results.
+      body: CustomScrollView(
+        key: const Key('races-scroll'),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Semantics(
+                header: true,
+                child: Text(l.racesSectionUpcoming,
+                    style: theme.textTheme.titleMedium),
+              ),
+            ),
+          ),
+          // One row: the list is what the section is for, so only the search
+          // stays out here and every other filter waits behind Filters.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtl,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: l.racesSearchPlaceholder,
+                        isDense: true,
+                      ),
+                      onChanged: (v) {
+                        _query = v;
+                        _schedule();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    key: const Key('races-filters-button'),
+                    onPressed: _openFilters,
+                    icon: ExcludeSemantics(
+                      child: Badge(
+                        isLabelVisible: _activeCount > 0,
+                        label: Text('$_activeCount'),
+                        child: const Icon(Icons.tune),
+                      ),
+                    ),
+                    label: Semantics(
+                      label: _activeCount > 0
+                          ? l.racesFiltersCount(_activeCount)
+                          : l.racesFilters,
+                      excludeSemantics: true,
+                      child: Text(l.racesFilters),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_activeCount > 0)
+            SliverToBoxAdapter(child: _buildActiveFilters(l)),
+          _buildResults(l),
+          if (api != null)
+            SliverToBoxAdapter(child: RunAnyTimeSection(api: api)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: fabScrollClearance(context)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int get _activeCount =>
+      (_distance.isEmpty ? 0 : 1) +
+      (_recent ? 1 : 0) +
+      (_nearPlace.trim().isEmpty ? 0 : 1);
+
+  void _setRecent(bool recent) {
+    setState(() => _recent = recent);
+    _run();
+  }
+
+  void _setDistance(String band) {
+    setState(() => _distance = band);
+    _run();
+  }
+
+  void _clearNear() {
+    _placeCtl.clear();
+    setState(() => _nearPlace = '');
+    _run();
+  }
+
+  /// The filter state with the sheet closed: one removable chip per filter,
+  /// in a single row that scrolls rather than wraps so it never costs the
+  /// list more than one line.
+  Widget _buildActiveFilters(AppLocalizations l) {
+    Widget chip(String label, VoidCallback onRemove) => Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text(label),
+            selected: true,
+            showCheckmark: false,
+            onPressed: _openFilters,
+            onDeleted: onRemove,
+            deleteButtonTooltipMessage: l.racesRemoveFilter(label),
+          ),
+        );
+    return SingleChildScrollView(
+      key: const Key('races-active-filters'),
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _searchCtl,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: l.racesSearchPlaceholder,
-                    isDense: true,
+          if (_recent) chip(l.racesWhenRecent, () => _setRecent(false)),
+          if (_distance.isNotEmpty)
+            chip(_bandLabel(l, _distance), () => _setDistance('')),
+          if (_nearPlace.trim().isNotEmpty)
+            chip(l.racesNearChip(_nearPlace.trim()), _clearNear),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openFilters() {
+    final l = AppLocalizations.of(context);
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          // Each change applies at once, so the list behind the sheet and the
+          // chips above it are already right when it closes.
+          void apply(VoidCallback change) {
+            change();
+            setSheet(() {});
+          }
+
+          final theme = Theme.of(sheetContext);
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.racesFilters, style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _placeCtl,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.place),
+                      hintText: l.racesNearPlace,
+                      isDense: true,
+                    ),
+                    onChanged: (v) => apply(() {
+                      setState(() => _nearPlace = v);
+                      _schedule();
+                    }),
                   ),
-                  onChanged: (v) {
-                    _query = v;
-                    _schedule();
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _placeCtl,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.place),
-                    hintText: l.racesNearPlace,
-                    isDense: true,
+                  const SizedBox(height: 16),
+                  Text(l.racesWhenGroup, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Semantics(
+                    container: true,
+                    label: l.racesWhenGroup,
+                    child: Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: Text(l.racesWhenUpcoming),
+                          selected: !_recent,
+                          onSelected: (_) => apply(() => _setRecent(false)),
+                        ),
+                        ChoiceChip(
+                          label: Text(l.racesWhenRecent),
+                          selected: _recent,
+                          onSelected: (_) => apply(() => _setRecent(true)),
+                        ),
+                      ],
+                    ),
                   ),
-                  onChanged: (v) {
-                    _nearPlace = v;
-                    _schedule();
-                  },
-                ),
-                const SizedBox(height: 8),
-                // A scrolling Row, not a horizontal ListView in a fixed-height
-                // box: a chip needs 58 px at 2x OS text scale and a 40 px lane
-                // cropped its label (and stole its 48 dp tap target at 1.0x).
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                  if (_recent)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l.racesWhenHint(recentWindowDays),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  Text(l.racesDistanceGroup, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  // A Wrap, not a fixed-height lane: a chip needs 58 px at 2x
+                  // OS text scale and a 40 px lane cropped its label (and stole
+                  // its 48 dp tap target at 1.0x).
+                  Wrap(
+                    spacing: 8,
                     children: [
                       for (final band in _distanceBands)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(_bandLabel(l, band)),
-                            selected: _distance == band,
-                            onSelected: (_) {
-                              setState(() => _distance = band);
-                              _run();
-                            },
-                          ),
+                        ChoiceChip(
+                          label: Text(_bandLabel(l, band)),
+                          selected: _distance == band,
+                          onSelected: (_) => apply(() => _setDistance(band)),
                         ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      child: Text(l.racesFiltersDone),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(child: _buildResults(l)),
-        ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildResults(AppLocalizations l) {
     if (_loading) {
-      return ListSkeleton(label: l.commonLoading, hasLeading: false);
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        sliver: SliverToBoxAdapter(
+          child: ListSkeleton.section(
+              label: l.commonLoading, rows: 3, hasLeading: false),
+        ),
+      );
     }
     if (_error) {
-      return ErrorState(message: l.racesSearchFailed, onRetry: _run);
+      return SliverToBoxAdapter(
+        child: ErrorState(message: l.racesSearchFailed, onRetry: _run),
+      );
     }
     if (_results.isEmpty) {
-      return EmptyState(icon: Icons.flag_outlined, title: l.racesEmpty);
+      return SliverToBoxAdapter(
+        child: EmptyState(
+          icon: Icons.flag_outlined,
+          title: _recent ? l.racesEmptyRecent(recentWindowDays) : l.racesEmpty,
+        ),
+      );
     }
-    return ListView.builder(
-      padding: EdgeInsets.only(bottom: fabScrollClearance(context)),
+    return SliverList.builder(
       itemCount: _results.length,
       itemBuilder: (context, i) => _RaceCard(
         race: _results[i],
         onImport: () => _openImport(_results[i]),
+        onOpen: () => _openDetail(_results[i]),
+        onTrainFor: () => _trainForRace(_results[i]),
       ),
     );
   }
@@ -238,59 +490,129 @@ class _RacesScreenState extends State<RacesScreen> {
 class _RaceCard extends StatelessWidget {
   final RaceListingView race;
   final VoidCallback onImport;
+  final VoidCallback onTrainFor;
+  final VoidCallback onOpen;
 
-  const _RaceCard({required this.race, required this.onImport});
+  const _RaceCard({
+    required this.race,
+    required this.onImport,
+    required this.onTrainFor,
+    required this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    // Only offer to build a plan when one can actually be built for this race
+    // — a past or too-close race gets no action rather than one that lands on
+    // a refusal. The wizard re-derives from the same helper, so a list left
+    // open across midnight is caught there too.
+    final today = toIsoDate(DateTime.now());
+    final canTrainFor = racePlanPreset(
+      raceDateIso: race.raceDate,
+      distanceM: race.distanceM,
+      todayIso: today,
+    ).ok;
+    // A result exists only from race day on; before that the import can only
+    // come back empty, so the action is not offered.
+    final canImport = race.raceDate.compareTo(today) <= 0;
+    final provenance = raceListingProvenance(
+      organiserIsOfficial: race.organiserIsOfficial,
+      provider: race.provider,
+      isVerified: race.isVerified,
+    );
     final meta = <String>[
       _formatRaceDate(race.raceDate),
-      if (race.distanceM != null) '${(race.distanceM! / 1000).toStringAsFixed(1)} km',
+      if (race.distanceM != null)
+        formatDistanceForPref(race.distanceM!.toDouble()),
       if (race.locationLabel != null) race.locationLabel!,
       if (race.distanceMAway != null)
-        l.racesKmAway((race.distanceMAway! / 1000).toStringAsFixed(1)),
+        l.racesDistanceAway(formatDistanceForPref(race.distanceMAway!)),
     ];
+    // The whole card opens the race; the action buttons below stay their own
+    // targets because each claims its own tap. A screen reader hears the
+    // name and facts as one button, and each action separately — the
+    // InkWell's own tap node is excluded so the card is not announced twice.
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(race.name, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(meta.join(' · '), style: Theme.of(context).textTheme.bodySmall),
-            if (!race.isVerified)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  l.racesUnverified,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        excludeFromSemantics: true,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              MergeSemantics(
+                child: Semantics(
+                  button: true,
+                  onTap: onOpen,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        race.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(decoration: TextDecoration.underline),
                       ),
+                      if (provenanceShowsBadge(provenance)) ...[
+                        const SizedBox(height: 4),
+                        ProvenanceBadge(provenance: provenance),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        meta.join(' · '),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (!race.isVerified)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            l.racesUnverified,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              alignment: WrapAlignment.end,
-              children: [
-                if (race.entryUrl != null)
-                  OutlinedButton(
-                    onPressed: () => _launch(context, race.entryUrl!),
-                    child: Text(l.racesRegister),
-                  ),
-                if (race.resultsUrl != null)
-                  OutlinedButton(
-                    onPressed: () => _launch(context, race.resultsUrl!),
-                    child: Text(l.racesViewResults),
-                  ),
-                FilledButton(onPressed: onImport, child: Text(l.racesImportResult)),
-              ],
-            ),
-          ],
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  if (canTrainFor)
+                    OutlinedButton(
+                      onPressed: onTrainFor,
+                      child: Text(l.racesTrainForThis),
+                    ),
+                  if (race.entryUrl != null)
+                    OutlinedButton(
+                      onPressed: () => _launch(context, race.entryUrl!),
+                      child: Text(l.racesRegister),
+                    ),
+                  if (race.resultsUrl != null)
+                    OutlinedButton(
+                      onPressed: () => _launch(context, race.resultsUrl!),
+                      child: Text(l.racesViewResults),
+                    ),
+                  if (canImport)
+                    FilledButton(
+                      onPressed: onImport,
+                      child: Text(l.racesImportResult),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -372,6 +694,7 @@ class _RaceListingFormState extends State<_RaceListingForm> {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 5),
     );
+    if (!mounted) return;
     if (picked != null) {
       setState(() => _date.text =
           '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}');
@@ -456,14 +779,14 @@ class _RaceListingFormState extends State<_RaceListingForm> {
   }
 }
 
-/// Import a result onto a recorded run / new race run. Offers the RunSignUp
-/// pull when the provider is configured, else a manual paste form. Resolves
-/// true when a result was imported.
+/// Import a result onto a recorded run / new race run. Offers this listing's
+/// own provider pull when that provider has a built leg and its key is
+/// configured, and manual paste in every case. Resolves true when a result was
+/// imported.
 Future<bool?> showRaceImportSheet(
   BuildContext context, {
   required RaceService service,
   required RaceListingView race,
-  required bool runSignUpAvailable,
   String? matchRunId,
 }) {
   return showDialog<bool>(
@@ -471,7 +794,6 @@ Future<bool?> showRaceImportSheet(
     builder: (_) => _RaceImportForm(
       service: service,
       race: race,
-      runSignUpAvailable: runSignUpAvailable,
       matchRunId: matchRunId,
     ),
   );
@@ -480,13 +802,11 @@ Future<bool?> showRaceImportSheet(
 class _RaceImportForm extends StatefulWidget {
   final RaceService service;
   final RaceListingView race;
-  final bool runSignUpAvailable;
   final String? matchRunId;
 
   const _RaceImportForm({
     required this.service,
     required this.race,
-    required this.runSignUpAvailable,
     this.matchRunId,
   });
 
@@ -501,6 +821,36 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   final _place = TextEditingController();
   bool _busy = false;
 
+  /// Null for a listing whose provider has no import leg at all (ultrasignup,
+  /// manual, raceresult) — manual paste still applies to every one of them.
+  late final RaceImportProvider? _provider =
+      raceImportProviderFor(widget.race.provider);
+
+  /// Null until the probe answers. Guessing either way is wrong: offering an
+  /// import that 503s, or withdrawing one that works. Nothing below is gated
+  /// on it — paste is offered throughout.
+  bool? _available;
+
+  @override
+  void initState() {
+    super.initState();
+    _probe();
+  }
+
+  /// A probe is a network call (L4): a failure degrades this listing's
+  /// provider to unavailable and never takes the sheet or the paste form down.
+  Future<void> _probe() async {
+    final spec = _provider;
+    if (spec == null) return;
+    var ok = false;
+    try {
+      ok = await widget.service.isProviderConfigured(spec.provider);
+    } catch (e) {
+      debugPrint('RacesScreen: ${spec.provider} probe failed: $e');
+    }
+    if (mounted) setState(() => _available = ok);
+  }
+
   @override
   void dispose() {
     _bib.dispose();
@@ -513,27 +863,53 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   bool get _canPaste =>
       !_busy && (_chip.text.trim().isNotEmpty || _gun.text.trim().isNotEmpty);
 
-  Future<void> _runSignUpImport() async {
+  /// Whether this runner's pull is scoped by their bib. Every leg refuses
+  /// without one client-side, mirroring the Edge Function's own pre-fetch gate
+  /// (issue #360).
+  bool get _scoped => _provider != null && _blank(_bib.text) != null;
+
+  bool get _canProviderImport => !_busy && _available == true && _scoped;
+
+  Future<void> _providerImport() async {
+    final spec = _provider;
+    if (spec == null || !_scoped) return;
     setState(() => _busy = true);
     final l = AppLocalizations.of(context);
     try {
-      await widget.service.importRaceResult(
-        provider: 'runsignup',
+      final outcome = await widget.service.importRaceResult(
+        provider: spec.provider,
         listingId: widget.race.id,
         bib: _blank(_bib.text),
         matchRunId: widget.matchRunId,
       );
-      if (mounted) Navigator.of(context).pop(true);
-    } on RunSignUpUnavailable {
-      if (mounted) {
-        setState(() => _busy = false);
-        showTopBanner(context, l.integrationsRunsignupUnavailable);
+      if (!mounted) return;
+      // A field read only as far as the cap still imports what it found, so a
+      // truncated import used to close the sheet looking like a whole one.
+      if (!outcome.complete) {
+        showTopBanner(context, l.integrationsImportPartial(outcome.imported));
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _busy = false);
-        showTopBanner(context, l.racesImportFailed);
-      }
+      Navigator.of(context).pop(true);
+    } on RaceResultsTruncated {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showTopBanner(context, l.integrationsImportTruncated);
+    } catch (e) {
+      if (!mounted) return;
+      // The service throws the catalogue's own const instance, so identity is
+      // what tells "this provider is unconfigured" from any other failure —
+      // and the probe that said otherwise is now known to be wrong.
+      final unconfigured = identical(e, spec.unavailable);
+      setState(() {
+        _busy = false;
+        if (unconfigured) _available = false;
+      });
+      showTopBanner(
+        context,
+        unconfigured
+            ? (raceProviderLabels(l)[spec.provider]?.unavailable ??
+                l.racesImportFailed)
+            : l.racesImportFailed,
+      );
     }
   }
 
@@ -574,17 +950,21 @@ class _RaceImportFormState extends State<_RaceImportForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.race.provider == 'runsignup' && widget.runSignUpAvailable) ...[
-              Text(l.racesRunSignUpBibHint, style: Theme.of(context).textTheme.bodySmall),
-              FilledButton(
-                onPressed: (_busy || _bib.text.trim().isEmpty) ? null : _runSignUpImport,
-                child: Text(l.racesImportResult),
-              ),
-            ] else if (widget.race.provider == 'runsignup' && !widget.runSignUpAvailable)
-              Text(
-                l.integrationsRunsignupUnavailable,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+            if (_provider case final spec?) ...[
+              if (_available == true) ...[
+                Text(l.racesRunSignUpBibHint,
+                    style: Theme.of(context).textTheme.bodySmall),
+                FilledButton(
+                  onPressed: _canProviderImport ? _providerImport : null,
+                  child: Text(l.racesImportResult),
+                ),
+              ] else if (_available == false)
+                Text(
+                  raceProviderLabels(l)[spec.provider]?.unavailable ??
+                      l.racesImportFailed,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+            ],
             const SizedBox(height: 8),
             Text(l.racesPasteResultHint, style: Theme.of(context).textTheme.bodySmall),
             TextField(

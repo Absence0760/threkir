@@ -1,27 +1,18 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SkeletonBlock;
 
 import '../auth_error.dart';
+import '../column_limits.dart';
 import '../local_crossings_store.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart' show activeLocaleTag;
+import '../l10n/number_format.dart' show formatFixed;
+import '../preferences.dart' show WeightFormat, activeWeightUnit;
+import '../weigh_in_flag.dart';
 import '../widgets/top_banner.dart';
-
-/// P3 weigh-in fields are Art 9 health data — gated fail-closed behind this
-/// dotenv flag (OFF by default; mirrors `ADAPTIVE_FITNESS_GATE` in
-/// plan_detail_screen). When off, the screen never collects or sends body
-/// weight / medical-hold data. Production enablement is the owner+CISO+counsel
-/// sign-off (decisions §150).
-bool get _weighInGate {
-  try {
-    final v = dotenv.env['WEIGH_IN_GATE'];
-    return v == '1' || v == 'true';
-  } catch (_) {
-    return false;
-  }
-}
+import '../widgets/loading_skeletons.dart';
 
 /// Offline aid-station check-in for race-crew volunteers. Pick the checkpoint,
 /// enter/scan a bib (account linkage optional), stamp IN / OUT. Writes flow
@@ -133,7 +124,7 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
     var healthConsent = false;
     double? bodyWeightKg;
     bool? medicalHold;
-    if (_weighInGate && cp.requiresWeighIn) {
+    if (weighInGate && cp.requiresWeighIn) {
       final result = await _showWeighInSheet();
       if (result == null) return; // cancelled
       healthConsent = result.consent;
@@ -143,6 +134,7 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       }
     }
 
+    if (!mounted) return;
     setState(() => _busy = true);
     final now = DateTime.now().toUtc();
     try {
@@ -219,9 +211,27 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
 
   Widget _buildBody(AppLocalizations l10n, ThemeData theme) {
     if (_loading) {
-      return FullBodyLoader(
-        kind: ActivityLoaderKind.run,
-        label: l10n.commonLoading,
+      return ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          const FractionallySizedBox(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 0.3,
+            child: SkeletonBlock(height: 12, radius: 4),
+          ),
+          const SizedBox(height: 8),
+          const SkeletonBlock(height: 56),
+          const SizedBox(height: 20),
+          const SkeletonBlock(height: 56),
+          const SizedBox(height: 16),
+          const SkeletonStatStrip(cells: 2),
+          const SizedBox(height: 16),
+          ListSkeleton.section(
+            label: l10n.commonLoading,
+            hasLeading: false,
+          ),
+        ],
       );
     }
     if (_loadError != null) {
@@ -280,7 +290,7 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
               for (final cp in _checkpoints)
                 DropdownMenuItem(
                   value: cp.id,
-                  child: Text(cp.requiresWeighIn && _weighInGate
+                  child: Text(cp.requiresWeighIn && weighInGate
                       ? '${cp.name}  ⚖'
                       : cp.name),
                 ),
@@ -387,14 +397,49 @@ class _WeighInSheet extends StatefulWidget {
 }
 
 class _WeighInSheetState extends State<_WeighInSheet> {
+  static const _weightKey = 'checkpoint_crossings.body_weight_kg';
+
   final TextEditingController _weight = TextEditingController();
   bool _consent = false;
   bool _medicalHold = false;
 
   @override
+  void initState() {
+    super.initState();
+    // `body_weight_kg` is CHECK-bounded 20..400 kg and this field had no
+    // bound at all, so a mis-keyed weigh-in was a raw 23514 at an aid station
+    // with no signal (decisions § 792).
+    _weight.addListener(_onChanged);
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _weight.removeListener(_onChanged);
     _weight.dispose();
     super.dispose();
+  }
+
+  /// The typed weight in canonical kg. The field is entered in the volunteer's
+  /// own weight unit, so the bound has to be converted for the message too.
+  double? get _typedKg =>
+      WeightFormat.parseToKg(_weight.text, activeWeightUnit);
+
+  bool get _outOfRange {
+    final kg = _typedKg;
+    return kg != null && !withinColumnLimit(_weightKey, kg);
+  }
+
+  static String _bound(num v) =>
+      formatFixed(v.toDouble(), v == v.roundToDouble() ? 0 : 1, activeLocaleTag);
+
+  String _rangeMessage(AppLocalizations l10n) {
+    final b = WeightFormat.boundsIn(_weightKey, activeWeightUnit);
+    return l10n.limitsWeightOutOfRange(
+        _bound(b.min), _bound(b.max), WeightFormat.label(activeWeightUnit));
   }
 
   @override
@@ -431,7 +476,9 @@ class _WeighInSheetState extends State<_WeighInSheet> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: l10n.checkpointWeighInWeightKg,
+                labelText: l10n.checkpointWeighInBodyWeight,
+                suffixText: WeightFormat.label(activeWeightUnit),
+                errorText: _outOfRange ? _rangeMessage(l10n) : null,
               ),
             ),
             const SizedBox(height: 8),
@@ -454,15 +501,15 @@ class _WeighInSheetState extends State<_WeighInSheet> {
               ),
               const SizedBox(width: 8),
               FilledButton(
-                onPressed: () {
-                  Navigator.of(context).pop(_WeighInResult(
-                    consent: _consent,
-                    bodyWeightKg: _consent
-                        ? double.tryParse(_weight.text.trim())
-                        : null,
-                    medicalHold: _consent ? _medicalHold : null,
-                  ));
-                },
+                onPressed: _outOfRange
+                    ? null
+                    : () {
+                        Navigator.of(context).pop(_WeighInResult(
+                          consent: _consent,
+                          bodyWeightKg: _consent ? _typedKg : null,
+                          medicalHold: _consent ? _medicalHold : null,
+                        ));
+                      },
                 child: Text(l10n.checkpointWeighInSave),
               ),
             ],

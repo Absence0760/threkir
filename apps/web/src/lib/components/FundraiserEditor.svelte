@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		createFundraiser,
 		updateFundraiser,
 		fetchPayoutAccount,
 		type CreateFundraiserInput
-	} from '$lib/core/data';
-	import type { Fundraiser } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import type { Fundraiser } from '#lib/types.ts';
+	import { fromMinorUnits, toMinorUnits } from '#lib/format/minor_units.ts';
 	import { onMount, untrack } from 'svelte';
 
 	let {
@@ -28,8 +29,11 @@
 	let charityUrl = $state(untrack(() => existing?.charity_url ?? ''));
 	let title = $state(untrack(() => existing?.title ?? ''));
 	let story = $state(untrack(() => existing?.story ?? ''));
-	// Goal entered in major units; stored in cents.
-	let goalMajor = $state<number | null>(untrack(() => (existing ? existing.goal_cents / 100 : null)));
+	// Goal entered in major units; stored in the currency's minor unit.
+	const currency = untrack(() => existing?.currency ?? 'usd');
+	let goalMajor = $state<number | null>(
+		untrack(() => (existing ? fromMinorUnits(existing.goal_cents, currency) : null))
+	);
 
 	let chargesEnabled = $state(false);
 	let loadingGate = $state(true);
@@ -53,7 +57,7 @@
 		if (!canSave || saving) return;
 		saving = true;
 		try {
-			const goalCents = Math.round((goalMajor as number) * 100);
+			const goalCents = toMinorUnits(goalMajor as number, currency);
 			if (existing) {
 				await updateFundraiser(existing.id, {
 					charityName,
@@ -93,25 +97,65 @@
 		</p>
 	{/if}
 
-	<label>
-		<span>{m('fundraiser.title')}</span>
-		<input type="text" bind:value={title} required maxlength="120" data-testid="fundraiser-title" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.title')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				required
+				maxlength="120"
+				data-testid="fundraiser-title"
+				aria-describedby="fundraiser-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-title-hint">{m('fundraiser.titleHint')}</span>
+	</div>
 
-	<label>
-		<span>{m('fundraiser.charityName')}</span>
-		<input type="text" bind:value={charityName} required maxlength="120" data-testid="fundraiser-charity" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.charityName')}</span>
+			<input
+				type="text"
+				bind:value={charityName}
+				required
+				maxlength="120"
+				data-testid="fundraiser-charity"
+				aria-describedby="fundraiser-charity-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-charity-hint">{m('fundraiser.charityNameHint')}</span>
+	</div>
 
-	<label>
-		<span>{m('fundraiser.charityUrl')}</span>
-		<input type="url" bind:value={charityUrl} placeholder="https://" inputmode="url" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.charityUrl')}</span>
+			<input
+				type="url"
+				bind:value={charityUrl}
+				placeholder="https://"
+				inputmode="url"
+				aria-describedby="fundraiser-charity-url-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-charity-url-hint">{m('fundraiser.charityUrlHint')}</span>
+	</div>
 
-	<label>
-		<span>{m('fundraiser.goal')}</span>
-		<input type="number" bind:value={goalMajor} min="1" step="1" required data-testid="fundraiser-goal" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.goal')}</span>
+			<input
+				type="number"
+				bind:value={goalMajor}
+				min="1"
+				step="1"
+				required
+				data-testid="fundraiser-goal"
+				aria-describedby="fundraiser-goal-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-goal-hint">{m('fundraiser.goalHint')}</span>
+	</div>
 
 	<label>
 		<span>{m('fundraiser.story')}</span>

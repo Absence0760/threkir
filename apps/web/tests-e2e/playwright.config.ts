@@ -1,4 +1,9 @@
+import { resolve } from 'node:path';
+
 import { defineConfig, devices } from '@playwright/test';
+
+import { resolveBaseUrl } from './fixtures/base-url';
+import { viteCommand } from './fixtures/vite-command';
 
 /**
  * Playwright e2e config for apps/web.
@@ -7,23 +12,54 @@ import { defineConfig, devices } from '@playwright/test';
  * The dev server is auto-started by the webServer block below.
  *
  * Why `vite dev` instead of `vite build && vite preview`:
- *   adapter-static + `fallback: "index.html"` returns the SPA shell
- *   for any unmatched route (e.g. /runs/<id>). The fallback HTML
- *   computes its asset base via `new URL("..", location).pathname` —
- *   for /runs/<id> that resolves to /runs, breaking _app/ asset URLs.
- *   Production fixes this with a CloudFront viewer-request rewrite;
- *   `vite preview` doesn't have that, so dev mode is the right
- *   server for e2e. The trade-off (HMR + slower first-paint) doesn't
- *   matter for headless tests.
+ *   the app's eleven `+server.ts` endpoints are not in an
+ *   adapter-static build. `/api/coach` and the `/api/routes/osrm`
+ *   proxy declare `prerender = false`, so nothing is emitted for them
+ *   and `vite preview` would answer a POST to `/api/coach` with the
+ *   SPA fallback — a 200 of HTML. `cross-cutting/paywall-wire.spec.ts`
+ *   posts there directly to pin the SERVER-side tier gate (429 at the
+ *   cap, 401 anonymous) and `cross-cutting/tier-cache-resilience.spec.ts`
+ *   fetches it to prove the handler re-reads the tier per call; both
+ *   would stop testing anything without failing. Production serves
+ *   those endpoints as Lambdas (decisions §53), which `vite preview`
+ *   has no equivalent of either. Second reason: a static build bakes
+ *   `PUBLIC_*` at BUILD time, so the `webServer.env` overrides below —
+ *   which force the localhost tile + OSRM services empty — would have
+ *   to move into the build command to have any effect at all.
+ *
+ *   Not the reason, though it stood here until round 41: an asset-base
+ *   break on deep links. SvelteKit computes the relative
+ *   `new URL("..", location)` base only when the page is NOT the
+ *   fallback (`!state.prerendering?.fallback` in kit's
+ *   `runtime/server/page/render.js`); the fallback carries the literal
+ *   `paths.base` and absolute `_app/` URLs, so `/runs/<id>` cannot
+ *   break them. The claim also named `fallback: "index.html"`, which
+ *   the build has not produced since the shell was renamed to
+ *   `200.html` (vite.config.ts, decisions § 1268).
  *
  * Local dev: `cd apps/web && pnpm test:e2e` (auto-boots dev server).
  * Or `pnpm test:e2e:ui` for the UI picker.
+ *
+ * PLAYWRIGHT_BASE_URL moves the whole lane to another port — the dev
+ * server this config boots, the readiness probe, and `use.baseURL` all
+ * come off the one resolved value, so a second checkout can run the
+ * suite beside a first without the two fighting over :7777.
  *
  * The fixtures/auth.ts globalSetup signs each seeded user in once via
  * the UI and saves their storage state to .auth/<user>.json. Spec
  * files attach the storage state via test.use({ storageState: ... }).
  * .auth/ is gitignored.
  */
+const WEB_DIR = resolve(import.meta.dirname, '..');
+
+const BASE_URL = resolveBaseUrl();
+const DEV_PORT = new URL(BASE_URL).port;
+if (!DEV_PORT) {
+	throw new Error(
+		`PLAYWRIGHT_BASE_URL must name a port — this config boots the dev server on it. Got ${BASE_URL}.`
+	);
+}
+
 export default defineConfig({
 	testDir: '.',
 	// Don't recurse into node_modules / .auth / fixtures from the testDir glob.
@@ -36,9 +72,23 @@ export default defineConfig({
 		'**/.auth/**',
 		'**/fixtures/**',
 		'**/live/spectator_websocket.spec.ts',
+		// The queued-export lane needs the Go worker + a dev server with
+		// PUBLIC_EXPORT_HUB_URL set, which only
+		// playwright.exporthub.config.ts boots. Without it the page takes
+		// the Edge Function fallback and the job card never appears.
+		'**/settings/export_job.spec.ts',
 		// The SSO/OAuth lane (tests-e2e/sso) needs the mock OIDC provider +
 		// GoTrue wired to it, which only playwright.sso.config.ts boots.
-		'**/sso/**'
+		'**/sso/**',
+		// The built-app lane (tests-e2e/built) needs a production build with a
+		// Sentry DSN, which only playwright.built.config.ts makes. Under
+		// `vite dev` Sentry never initialises and every case there fails.
+		'**/built/**',
+		// The configured lane (tests-e2e/configured) needs a dev server with
+		// optional integration ids set (PUBLIC_STRAVA_CLIENT_ID), which only
+		// playwright.configured.config.ts boots. This lane builds without
+		// them and pins the unconfigured behaviour instead.
+		'**/configured/**'
 	],
 
 	// Stable on CI even with the dev server taking a beat to warm up.
@@ -64,8 +114,13 @@ export default defineConfig({
 	// Auto-start the dev server. `reuseExistingServer` lets a manually
 	// started server (e.g. for `playwright test --ui`) take precedence.
 	webServer: {
-		command: 'pnpm run dev',
-		url: 'http://localhost:7777',
+		// vite's bin run directly (not `pnpm run dev`, which pins --port
+		// 7777) so the port follows PLAYWRIGHT_BASE_URL, and not through
+		// any package-manager wrapper, which leaves vite outside the process
+		// group Playwright kills at teardown (fixtures/vite-command.ts).
+		command: viteCommand(`dev --port ${DEV_PORT}`),
+		cwd: WEB_DIR,
+		url: BASE_URL,
 		reuseExistingServer: !process.env.CI,
 		timeout: 60_000,
 		// Force the localhost dev services empty for e2e. `.env.development`
@@ -75,14 +130,30 @@ export default defineConfig({
 		// /api/routes/osrm proxy's demo fallback, though the specs mock the
 		// proxy path in-browser) deterministically, local and CI alike, instead
 		// of chasing services that aren't there. See decisions.md § 137.
-		env: { PUBLIC_TILE_STYLE_URL: '', OSRM_URL: '' },
+		//
+		// The checkout link goes the other way: set to a well-formed fixture so
+		// /settings/upgrade renders its `checkout` storefront and the purchase
+		// specs exercise the plan picker and the redirect. Nothing is fetched
+		// from it — upgrade.spec.ts intercepts the navigation. Without it the
+		// page renders the app-only storefront (decisions § 1826), which the
+		// unit guards in paywall_guards.test.ts pin instead.
+		//
+		// Strava is pinned empty, as every CI lane writes it, so a developer's
+		// .env holding a client id can't flip the "unconfigured Strava" specs;
+		// the configured lane sets its own fixture id.
+		env: {
+			PUBLIC_TILE_STYLE_URL: '',
+			OSRM_URL: '',
+			PUBLIC_STRAVA_CLIENT_ID: '',
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/e2e-fixture',
+		},
 		// Vite logs are noisy; only surface them on failure.
 		stdout: 'ignore',
 		stderr: 'pipe'
 	},
 
 	use: {
-		baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:7777',
+		baseURL: BASE_URL,
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 		video: 'retain-on-failure',

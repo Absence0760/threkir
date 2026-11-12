@@ -104,11 +104,23 @@ void main() {
     expect(xml, contains('<desc>Services: water &amp; ice</desc>'));
   });
 
+  // Mirror of the web suite's own case: the apostrophe is the one reserved
+  // character with two legal spellings, and the two halves have to emit the
+  // same bytes (decisions § 1450).
+  test('toRouteGpxWithMarkers — apostrophe is the numeric &#39;, not &apos;', () {
+    final xml = toRouteGpxWithMarkers("O'Brien's Loop", coords3, elevs3, [
+      _marker(label: "Ranger's hut"),
+    ]);
+    expect(xml.contains('&apos;'), isFalse);
+    expect(xml, contains('<name>O&#39;Brien&#39;s Loop</name>'));
+    expect(xml, contains('<name>Ranger&#39;s hut</name>'));
+  });
+
   test('toRouteGpxWithMarkers — empty marker list still emits the line + zero wpt', () {
     final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, []);
     expect('<wpt '.allMatches(xml).length, 0);
     expect('<trkpt '.allMatches(xml).length, 3);
-    expect(xml, contains('<trkpt lat="47.37" lon="8.54"><ele>400.0</ele>'));
+    expect(xml, contains('<trkpt lat="47.37" lon="8.54"><ele>400</ele>'));
   });
 
   test('toRouteGpxWithMarkers — missing elevation falls back to 0', () {
@@ -126,5 +138,88 @@ void main() {
     final trkIdx = xml.indexOf('<trk>');
     expect(wptIdx > -1 && trkIdx > -1, isTrue);
     expect(wptIdx < trkIdx, isTrue);
+  });
+
+  test('whole-degree coordinates render without a trailing .0, as web does', () {
+    // Dart's $double interpolation always writes a decimal point, so the two
+    // platforms exported different bytes for the same route while the docs
+    // claimed lockstep — and each suite pinned its own answer.
+    final xml = toRouteGpxWithMarkers(
+      'Whole',
+      const [
+        [8.0, 47.0],
+        [8.5, 47.5],
+        [9.0, 48.0],
+      ],
+      const [400.0, 410.5, 0.0],
+      const [],
+    );
+    expect(xml, contains('<trkpt lat="47" lon="8"><ele>400</ele>'));
+    expect(xml, contains('<ele>410.5</ele>'));
+    expect(xml, contains('<ele>0</ele>'));
+  });
+
+  const osm = GpxAttribution(
+    notice: 'Course line © OpenStreetMap contributors, available under the Open Database License (ODbL).',
+    author: 'OpenStreetMap contributors',
+    licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
+    linkHref: 'https://www.openstreetmap.org/copyright',
+    linkText: '© OpenStreetMap contributors',
+  );
+
+  test('toRouteGpxWithMarkers — attribution lands in metadata as desc, copyright, link in GPX 1.1 order', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [], osm);
+    expect(
+      xml,
+      contains('  <metadata>\n'
+          '    <name>Loop</name>\n'
+          '    <desc>Course line © OpenStreetMap contributors, available under the Open Database License (ODbL).</desc>\n'
+          '    <copyright author="OpenStreetMap contributors"><license>https://opendatacommons.org/licenses/odbl/1-0/</license></copyright>\n'
+          '    <link href="https://www.openstreetmap.org/copyright"><text>© OpenStreetMap contributors</text></link>\n'
+          '  </metadata>\n'),
+    );
+  });
+
+  test('toRouteGpxWithMarkers — attribution with no rights holder or link writes only the desc', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [],
+        const GpxAttribution(
+          notice: 'Traced.',
+          author: null,
+          licenseUrl: null,
+          linkHref: null,
+          linkText: 'Park',
+        ));
+    expect(xml, contains('    <name>Loop</name>\n    <desc>Traced.</desc>\n  </metadata>\n'));
+    expect(xml, isNot(contains('<copyright')));
+    expect(xml, isNot(contains('<link')));
+  });
+
+  test('toRouteGpxWithMarkers — a rights holder with no licence writes an empty copyright, and every field is escaped', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [],
+        const GpxAttribution(
+          notice: 'A & B',
+          author: 'Smith\'s "Park"',
+          licenseUrl: null,
+          linkHref: 'https://example.com/?a=1&b=2',
+          linkText: '<Park>',
+        ));
+    expect(xml, contains('<desc>A &amp; B</desc>'));
+    expect(xml, contains('<copyright author="Smith&#39;s &quot;Park&quot;"></copyright>'));
+    expect(xml, contains('<link href="https://example.com/?a=1&amp;b=2"><text>&lt;Park&gt;</text></link>'));
+  });
+
+  test('toRouteGpxWithMarkers — no attribution leaves the metadata as the name alone', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [], null);
+    expect(xml, contains('  <metadata>\n    <name>Loop</name>\n  </metadata>\n'));
+  });
+
+  test('toRouteGpxWithMarkers — a track description is the trk desc, after its name, escaped', () {
+    final xml = toRouteGpxWithMarkers(
+        'Loop', coords3, elevs3, [], null, 'Turn left at <the> "fork" & go');
+    expect(
+        xml,
+        contains('  <trk>\n    <name>Loop</name>\n    <desc>Turn left at &lt;the&gt; &quot;fork&quot; &amp; go</desc>\n    <trkseg>\n'));
+    expect(toRouteGpxWithMarkers('Loop', coords3, elevs3, []),
+        contains('  <trk>\n    <name>Loop</name>\n    <trkseg>\n'));
   });
 }

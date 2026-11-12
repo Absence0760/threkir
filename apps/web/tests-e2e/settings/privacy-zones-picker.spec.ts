@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const PRIVACY_ZONES_KEY = 'privacy_zones';
 const SEEDED_ZONE = { lat: -37.8136, lng: 144.9631, radius_m: 200, label: 'home' };
@@ -27,16 +28,11 @@ async function getUserPrivacyZones(): Promise<
 	);
 }
 
-test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', () => {
+test.describe('/settings/privacy — PrivacyZonePicker (MapLibre modal)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, []);
 	});
 
@@ -47,7 +43,7 @@ test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', ()
 	test('Add-zone modal mounts PrivacyZonePicker with map + radius + disabled Add button', async ({
 		page
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/privacy');
 
 		await expect(page.getByText('No privacy zones yet.')).toBeVisible({ timeout: 10_000 });
 
@@ -76,7 +72,7 @@ test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', ()
 	test('Map click places marker, enables Add zone, persists zone to user_settings, then Remove clears it', async ({
 		page
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/privacy');
 
 		await page.getByRole('button', { name: /Add a zone/ }).click();
 
@@ -152,7 +148,7 @@ test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', ()
 	test('Radius slider drives the picker state (data-layer fallback for canvas-bridge flake)', async ({
 		page
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/privacy');
 
 		await page.getByRole('button', { name: /Add a zone/ }).click();
 		const modal = page.locator('.modal', { hasText: 'Add a privacy zone' });

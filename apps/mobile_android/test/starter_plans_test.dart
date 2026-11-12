@@ -47,4 +47,36 @@ void main() {
     expect(plan, isNotNull);
     expect(plan!.endDate.isAfter(DateTime(2026, 7, 1)), isTrue);
   });
+
+  test(
+      'an instantiated starter takes the masters schedule from extra recovery as it does from age',
+      () {
+    List<Object?> volumes(GeneratedPlan? p) =>
+        [for (final w in p!.weeks) (w.targetVolumeM, w.notes)];
+    final start = DateTime(2026, 7, 5);
+    final masters = volumes(instantiateStarter('half_12wk', start, age: 60));
+    expect(
+        volumes(instantiateStarter('half_12wk', start, extraRecovery: true)),
+        masters);
+    expect(volumes(instantiateStarter('half_12wk', start)), isNot(masters));
+  });
+
+  test('starterSummary describes C25K as 9 weeks, 3 days a week, 30-45 minute sessions',
+      () {
+    // The shortest session is week 1 (28.5 min) and the longest week 7
+    // (44 min), each rounded to the nearest 5. The graduation 5K lasts as
+    // long as the runner takes, so it does not stretch the range.
+    final s = starterSummary('c25k')!;
+    expect(s.weeks, 9);
+    expect(s.daysPerWeek, 3);
+    expect(s.sessionMinutes, (min: 30, max: 45));
+  });
+
+  test('starterSummary gives a distance-based starter no session length', () {
+    final s = starterSummary('half_12wk')!;
+    expect(s.weeks, 12);
+    expect(s.daysPerWeek, 4);
+    expect(s.sessionMinutes, isNull);
+    expect(starterSummary('nope'), isNull);
+  });
 }

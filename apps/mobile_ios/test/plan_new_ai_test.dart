@@ -1,0 +1,393 @@
+import 'package:core_models/core_models.dart' hide Route;
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../lib/l10n/date_format.dart';
+import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/l10n/gen/app_localizations_en.dart';
+import '../lib/plan_request_client.dart';
+import '../lib/plan_start.dart';
+import '../lib/screens/plan_new_screen.dart';
+import '../lib/social_service.dart';
+import '../lib/training.dart';
+import '../lib/plan_calibration.dart';
+import '../lib/training_service.dart';
+
+final _en = AppLocalizationsEn();
+
+class _QuietTraining extends TrainingService {
+  @override
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
+  @override
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      const [];
+}
+
+class _NoClubs extends SocialService {
+  @override
+  Future<List<ClubView>> fetchMyClubs() async => const [];
+}
+
+/// Answers each description from a queue and records what it was asked.
+class _Assistant {
+  final List<Object> answers;
+  final requests = <String>[];
+  _Assistant(this.answers);
+
+  Future<PlanRequestInputs> call(String request, String todayIso) async {
+    requests.add(request);
+    final next = answers[requests.length - 1];
+    if (next is PlanRequestInputs) return next;
+    throw next;
+  }
+}
+
+PlanRequestInputs _inputs({
+  GoalEvent goalEvent = GoalEvent.distanceHalf,
+  double? goalDistanceM,
+  String? raceDate,
+  int? goalTimeSec,
+  int? recent5kSec,
+  int daysPerWeek = 4,
+  int? weeks,
+  bool beginnerWalkRun = false,
+  String? planName,
+  List<PlanRequestAssumption> assumptions = const [],
+}) =>
+    PlanRequestInputs(
+      goalEvent: goalEvent,
+      goalDistanceM: goalDistanceM,
+      raceDate: raceDate,
+      goalTimeSec: goalTimeSec,
+      recent5kSec: recent5kSec,
+      daysPerWeek: daysPerWeek,
+      weeks: weeks,
+      beginnerWalkRun: beginnerWalkRun,
+      planName: planName,
+      assumptions: assumptions,
+    );
+
+Future<void> _pump(
+  WidgetTester tester, {
+  bool available = true,
+  _Assistant? assistant,
+  String? initialDescription,
+}) async {
+  tester.view.physicalSize = const Size(1000, 5000);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: PlanNewScreen(
+      training: _QuietTraining(),
+      social: _NoClubs(),
+      initialDescription: initialDescription,
+      loadAiPlanAvailable: () async => available,
+      requestPlanInputsFn: (assistant ?? _Assistant(const [])).call,
+    ),
+  ));
+  await _settle(tester);
+  // The box is collapsed on arrival unless a description was handed in.
+  if (available && find.byKey(const Key('plan-new-ai-field')).evaluate().isEmpty) {
+    await tester.tap(find.text(_en.planNewAiTitle));
+    await tester.pumpAndSettle();
+  }
+}
+
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 5; i++) {
+    await tester.pump();
+  }
+}
+
+Future<void> _describe(WidgetTester tester, String text) async {
+  await tester.enterText(find.byKey(const Key('plan-new-ai-field')), text);
+  await tester.pump();
+  await tester.tap(find.byKey(const Key('plan-new-ai-fill')));
+  await _settle(tester);
+}
+
+/// The [index]th time box labelled [label]: the goal time's boxes come
+/// before the recent 5K's.
+TextEditingController _timeField(WidgetTester tester, String label,
+        [int index = 0]) =>
+    tester
+        .widgetList<TextField>(find.byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.labelText == label))
+        .elementAt(index)
+        .controller!;
+
+TextEditingController _nameField(WidgetTester tester) => tester
+    .widget<TextField>(find.byWidgetPredicate((w) =>
+        w is TextField && w.decoration?.labelText == _en.planNewNameLabel))
+    .controller!;
+
+TextEditingController _weeksField(WidgetTester tester) => tester
+    .widget<TextField>(find.byWidgetPredicate((w) =>
+        w is TextField && w.decoration?.helperText == _en.planNewOverrideHelp))
+    .controller!;
+
+String? _selectedChip(WidgetTester tester, String prefix) {
+  for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+    final key = chip.key;
+    if (chip.selected && key is ValueKey<String> && key.value.startsWith(prefix)) {
+      return key.value.substring(prefix.length);
+    }
+  }
+  return null;
+}
+
+String? _goalChoice(WidgetTester tester) =>
+    _selectedChip(tester, 'plan-new-goal-');
+
+GoalEvent? _goal(WidgetTester tester) {
+  final value = _goalChoice(tester);
+  return value == null ? null : goalEventFromDb(value);
+}
+
+int? _days(WidgetTester tester) =>
+    int.tryParse(_selectedChip(tester, 'plan-new-days-') ?? '');
+
+DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
+
+void main() {
+  testWidgets('the box is hidden when the deploy has no AI plan assistant',
+      (tester) async {
+    await _pump(tester, available: false);
+    expect(find.byKey(const Key('plan-new-ai-card')), findsNothing);
+    expect(find.text(_en.planNewAiTitle), findsNothing);
+  });
+
+  testWidgets('the box shows when the AI plan assistant is live',
+      (tester) async {
+    await _pump(tester);
+    expect(find.byKey(const Key('plan-new-ai-card')), findsOneWidget);
+    final button = tester.widget<ButtonStyleButton>(
+        find.byKey(const Key('plan-new-ai-fill')));
+    expect(button.onPressed, isNull, reason: 'nothing typed yet');
+  });
+
+  testWidgets('a fill sets the form fields and explains itself',
+      (tester) async {
+    final assistant = _Assistant([
+      _inputs(
+        goalEvent: GoalEvent.distanceFull,
+        goalTimeSec: 3 * 3600 + 45 * 60 + 30,
+        recent5kSec: 26 * 60 + 30,
+        daysPerWeek: 5,
+        planName: 'Autumn marathon',
+        assumptions: const [PlanRequestAssumption.weeksClamped],
+      ),
+    ]);
+    await _pump(tester, assistant: assistant);
+    await _describe(tester, 'A 3:45:30 marathon, 5 days a week');
+
+    expect(assistant.requests, ['A 3:45:30 marathon, 5 days a week']);
+    expect(_goal(tester), GoalEvent.distanceFull);
+    expect(_days(tester), 5);
+    expect(_timeField(tester, _en.planNewHoursLabel).text, '3');
+    expect(_timeField(tester, _en.planNewMinutesLabel).text, '45');
+    expect(_timeField(tester, _en.planNewSecondsLabel).text, '30');
+    expect(_timeField(tester, _en.planNewMinutesLabel, 1).text, '26');
+    expect(_timeField(tester, _en.planNewSecondsLabel, 1).text, '30');
+    expect(_nameField(tester).text, 'Autumn marathon');
+
+    // The recent 5K is filled but never confirmed for the runner.
+    final confirm = tester.widget<SwitchListTile>(
+        find.byKey(const Key('plan-new-recent5k-confirm')));
+    expect(confirm.value, isFalse);
+
+    expect(find.byKey(const Key('plan-new-ai-status')), findsOneWidget);
+    expect(find.textContaining(_en.planNewAiAppliedTitle), findsOneWidget);
+    expect(find.textContaining(_en.planNewAiAppliedGenerator), findsOneWidget);
+    expect(find.textContaining(_en.planNewAiAppliedRecent5k), findsOneWidget);
+    expect(find.textContaining(_en.planNewAiAssumptionWeeksClamped),
+        findsOneWidget);
+  });
+
+  testWidgets('an ultra fill selects the Ultra entry and shows its distance',
+      (tester) async {
+    final assistant = _Assistant([
+      _inputs(
+          goalEvent: GoalEvent.custom,
+          goalDistanceM: 56000,
+          goalTimeSec: 11 * 3600),
+      _inputs(goalEvent: GoalEvent.custom, goalDistanceM: 160934),
+      _inputs(goalEvent: GoalEvent.custom, goalDistanceM: 70000),
+      _inputs(goalEvent: GoalEvent.distanceFull),
+    ]);
+    await _pump(tester, assistant: assistant);
+
+    String? choice() => _goalChoice(tester);
+    String distance() => tester
+        .widget<TextField>(find.byKey(const Key('plan-new-ultra-distance')))
+        .controller!
+        .text;
+
+    await _describe(tester, 'Two Oceans in 11 hours');
+    expect(choice(), 'ultra_56k');
+    expect(distance(), '56');
+    expect(_timeField(tester, _en.planNewHoursLabel).text, '11');
+
+    await _describe(tester, 'a 100 mile race');
+    expect(choice(), 'ultra_100mi');
+
+    await _describe(tester, 'a 70 km trail race');
+    expect(choice(), 'ultra_other');
+    expect(distance(), '70');
+
+    // A road fill clears the Ultra entry and its distance field.
+    await _describe(tester, 'a marathon');
+    expect(_goal(tester), GoalEvent.distanceFull);
+    expect(find.byKey(const Key('plan-new-ultra-distance')), findsNothing);
+  });
+
+  testWidgets('a beginner fill ticks the walk-run box', (tester) async {
+    await _pump(tester,
+        assistant: _Assistant([
+          _inputs(
+            goalEvent: GoalEvent.distance5k,
+            beginnerWalkRun: true,
+            daysPerWeek: 3,
+            assumptions: const [PlanRequestAssumption.beginner5k],
+          ),
+        ]));
+    await _describe(tester, 'I have never run');
+    // A walk-run description answers the first question: never run, which
+    // takes the race fields away.
+    final group = tester.widget<RadioGroup<Object?>>(find.byWidgetPredicate(
+        (w) => w is RadioGroup && w.groupValue.toString().endsWith('newRunner')));
+    expect(group, isNotNull);
+    expect(find.byKey(const Key('plan-new-goal-distance_5k')), findsNothing);
+    expect(_days(tester), 3);
+    expect(find.textContaining(_en.planNewAiAssumptionBeginner5k),
+        findsOneWidget);
+  });
+
+  testWidgets('the runner\'s own plan name beats the extracted one',
+      (tester) async {
+    await _pump(tester,
+        assistant: _Assistant([_inputs(planName: 'From the AI')]));
+    await tester.enterText(
+        find.byWidgetPredicate((w) =>
+            w is TextField && w.decoration?.labelText == _en.planNewNameLabel),
+        'Mine');
+    await tester.pump();
+    await _describe(tester, 'a half');
+    expect(_nameField(tester).text, 'Mine');
+  });
+
+  testWidgets(
+      'a race date sizes the plan to end on race week, a shorter request '
+      'starting later', (tester) async {
+    final today = _day(DateTime.now());
+    final race = DateTime(today.year, today.month, today.day + 140);
+    final raceIso = toIsoDate(race);
+    await _pump(tester,
+        assistant: _Assistant([
+          _inputs(raceDate: raceIso, weeks: 10, goalTimeSec: 7200),
+          _inputs(),
+        ]));
+    await _describe(tester, 'A half on that date, 10 weeks');
+
+    final raceWeekStart =
+        DateTime(race.year, race.month, race.day - race.weekday % 7);
+    final expectedStart = DateTime(raceWeekStart.year, raceWeekStart.month,
+        raceWeekStart.day - 9 * 7);
+    expect(find.text(formatDateMed(expectedStart, 'en')), findsOneWidget);
+    expect(_weeksField(tester).text, '10');
+    expect(
+        find.textContaining(
+            _en.planNewAiRaceApplied(formatDateMed(race, 'en'))),
+        findsOneWidget);
+
+    // A second description that names no race, length or goal time must not
+    // inherit the first one's.
+    await _describe(tester, 'Actually just a half, no race');
+    final defaultStart = defaultPlanStart(today, walkRun: false);
+    expect(find.text(formatDateMed(defaultStart, 'en')), findsOneWidget);
+    expect(_weeksField(tester).text, isEmpty);
+    expect(_timeField(tester, _en.planNewHoursLabel).text, isEmpty);
+    expect(_timeField(tester, _en.planNewMinutesLabel).text, isEmpty);
+  });
+
+  testWidgets('a past race date leaves the start date and says why',
+      (tester) async {
+    final today = _day(DateTime.now());
+    final before = defaultPlanStart(today, walkRun: false);
+    await _pump(tester,
+        assistant: _Assistant([
+          _inputs(
+              raceDate: toIsoDate(
+                  DateTime(today.year, today.month, today.day - 3))),
+        ]));
+    await _describe(tester, 'the race I already ran');
+    expect(find.text(formatDateMed(before, 'en')), findsOneWidget);
+    expect(find.textContaining(_en.planNewAiRacePast), findsOneWidget);
+  });
+
+  testWidgets('a consent refusal offers the disclosure, the form still works',
+      (tester) async {
+    await _pump(tester,
+        assistant: _Assistant(
+            [const PlanRequestError(PlanRequestErrorKind.consent)]));
+    await _describe(tester, 'a half');
+    expect(find.text(_en.planNewAiErrorConsent), findsOneWidget);
+    expect(find.byKey(const Key('plan-new-ai-review-disclosure')),
+        findsOneWidget);
+    expect(find.byKey(const Key('plan-new-ai-status')), findsNothing);
+
+    await tester.enterText(
+        find.byWidgetPredicate((w) =>
+            w is TextField && w.decoration?.labelText == _en.planNewNameLabel),
+        'By hand');
+    await tester.pump();
+    expect(_nameField(tester).text, 'By hand');
+  });
+
+  testWidgets('the daily limit and every other failure read as such',
+      (tester) async {
+    await _pump(tester,
+        assistant: _Assistant([
+          const PlanRequestError(PlanRequestErrorKind.dailyLimit),
+          const PlanRequestError(PlanRequestErrorKind.notUnderstood),
+          StateError('boom'),
+        ]));
+    await _describe(tester, 'one');
+    expect(find.text(_en.planNewAiErrorDailyLimit), findsOneWidget);
+    await _describe(tester, 'two');
+    expect(find.text(_en.planNewAiErrorFallback), findsOneWidget);
+    await _describe(tester, 'three');
+    expect(find.text(_en.planNewAiErrorFallback), findsOneWidget);
+    expect(find.byKey(const Key('plan-new-ai-review-disclosure')),
+        findsNothing);
+    expect(_goal(tester), GoalEvent.distanceHalf);
+  });
+
+  testWidgets('an initial description prefills the box and fills once',
+      (tester) async {
+    final assistant =
+        _Assistant([_inputs(goalEvent: GoalEvent.distance10k)]);
+    await _pump(tester,
+        assistant: assistant, initialDescription: '  A 10K in spring  ');
+    expect(assistant.requests, ['A 10K in spring']);
+    expect(_goal(tester), GoalEvent.distance10k);
+    expect(find.byKey(const Key('plan-new-ai-status')), findsOneWidget);
+    await _settle(tester);
+    expect(assistant.requests, hasLength(1));
+  });
+
+  testWidgets('an initial description does nothing when the box is off',
+      (tester) async {
+    final assistant = _Assistant([_inputs()]);
+    await _pump(tester,
+        available: false,
+        assistant: assistant,
+        initialDescription: 'A 10K in spring');
+    expect(assistant.requests, isEmpty);
+  });
+}

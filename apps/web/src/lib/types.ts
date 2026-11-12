@@ -1,8 +1,23 @@
 // Database row types are generated from the Supabase schema. Regenerate with
 // `npm run gen:types` after every migration. The aliases below add the narrow
 // unions and lazy-loaded client-side fields that the schema alone can't express.
-import type { Database } from './database.types';
+import type { Database, Json } from './database.types';
 import type { EventGymTemplate } from './social/event_gym_template';
+import type { SessionStartMode } from './races/course_gates';
+
+/// A jsonb bag as the column actually holds it.
+///
+/// The `Record<string, unknown>` these replace was under-specified in a way
+/// that mattered: `unknown` admits a `Date`, a `Map`, a function — none of
+/// which survive `JSON.stringify` as themselves — and, being neither `Json`
+/// nor assignable to it, forced a cast at every point the bag met the column
+/// it is stored in. Reading a key gives `Json | undefined` rather than
+/// `unknown`, which narrows the same way and carries more information.
+///
+/// Written as a type alias rather than an interface deliberately: only an
+/// alias of an object type gets TypeScript's implicit index signature, and
+/// without it nothing is assignable to a jsonb column at all.
+export type JsonObject = { [key: string]: Json | undefined };
 
 type RunRow = Database['public']['Tables']['runs']['Row'];
 type RouteRow = Database['public']['Tables']['routes']['Row'];
@@ -32,6 +47,8 @@ type ChallengeRow = Database['public']['Tables']['challenges']['Row'];
 type ChallengeParticipantRow = Database['public']['Tables']['challenge_participants']['Row'];
 type ChallengeBadgeRow = Database['public']['Tables']['challenge_badges']['Row'];
 type ExerciseRow = Database['public']['Tables']['exercises']['Row'];
+type NutritionPlanRow = Database['public']['Tables']['nutrition_plans']['Row'];
+type NutritionPlanAssignmentRow = Database['public']['Tables']['nutrition_plan_assignments']['Row'];
 
 // Coach-athlete link lifecycle (persona #46). Enforced by the
 // `coach_athletes_status_check` CHECK in 20261102_001_coach_athletes.sql;
@@ -58,7 +75,10 @@ export type Achievement = Omit<AchievementRow, 'tier' | 'source_kind'> & {
 	source_kind: AchievementSourceKind;
 };
 
-export interface TrackPoint {
+/// A type alias, not an interface, so the array of them is assignable to
+/// `routes.waypoints` — a jsonb column, and an interface has no implicit
+/// index signature.
+export type TrackPoint = {
 	lat: number;
 	lng: number;
 	ele?: number;
@@ -70,7 +90,35 @@ export interface TrackPoint {
 	/// it falls back to a "No HR samples on this run" message. See
 	/// `docs/backend/metadata.md`.
 	bpm?: number;
-}
+	/// The GPS distance smoother's position for this fix (spec v1.2,
+	/// docs/features/gps_distance.md § Waypoint fields), written when the run
+	/// was saved; `lat` / `lng` stay the raw fix. Readers that draw the line
+	/// go through `lineLat` / `lineLng` (lib/runs/track_line.ts).
+	smoothedLat?: number;
+	smoothedLng?: number;
+	/// The phone barometer's altitude for this fix, metres, anchored to GPS
+	/// altitude over a long window (docs/features/gps_distance.md § Waypoint
+	/// fields); `ele` stays the GPS altitude. Climb and the profile read it
+	/// through `runAltitude` (lib/runs/run_altitude.ts).
+	baroEle?: number;
+	/// The run's distance credited up to and including this fix, metres:
+	/// the GPS distance estimator's cumulative figure as the recorder saved it
+	/// (docs/features/gps_distance.md § Waypoint fields). Splits and moving
+	/// time read it through `trackCumulativeMetres` (lib/runs/run_stats.ts).
+	distM?: number;
+	/// A fix the distance estimator took that failed the recorder's track
+	/// gate (docs/features/gps_distance.md § Waypoint fields): stored for the
+	/// server's distance replay, never drawn. Absent, never `false`, on every
+	/// other point. Line readers go through `trackLine`
+	/// (lib/runs/track_line.ts).
+	offTrack?: boolean;
+	/// The first fix of a watch run's segment after its first: the watch
+	/// restarted its distance estimator here after a pause, a Wear OS source
+	/// switch or a continued run, so the server's distance replay restarts
+	/// here too (docs/features/gps_distance.md § Stored track, spec v1.8).
+	/// Absent, never `false`, on every other point; on the line like any fix.
+	segmentStart?: boolean;
+};
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped
 // Storage object pointed to by `track_url`. It is not a column on the table.
@@ -80,7 +128,7 @@ export interface TrackPoint {
 export type Run = Omit<RunRow, 'source' | 'metadata' | 'activity_type'> & {
 	source: RunSource;
 	activity_type: ActivityType;
-	metadata: Record<string, unknown> | null;
+	metadata: JsonObject | null;
 	track: TrackPoint[] | null;
 	// View-only boolean from `public_runs` (migration 20261105_001):
 	// whether a GPS trace exists, without exposing the Storage path. Set on
@@ -90,9 +138,26 @@ export type Run = Omit<RunRow, 'source' | 'metadata' | 'activity_type'> & {
 	has_track?: boolean;
 };
 
-export type Route = Omit<RouteRow, 'waypoints' | 'surface'> & {
+// `shadow_hidden` is omitted, not narrowed: it is server-/trigger-owned
+// moderation state (migration 20270218_001) and every read path in the client
+// strips it — `fetchRouteById` destructures it off the owner read, the
+// `public_routes` view projects it away, and the list projection never selects
+// it. The one column the read boundary is unanimous about must not be the one
+// the type promises on every path (§ 1327).
+/// Published by a verified organiser: the row's club is verified and its
+/// author an active owner/admin of it (migration 20271021000030, decisions
+/// § 2228). Derived server-side and never stored, so it is present only on the
+/// reads that select it — the `is_official` computed field on a table, or the
+/// column the read views and discovery RPCs carry — and absent elsewhere.
+export type OfficialFlag = { is_official?: boolean | null };
+
+export type Route = Omit<RouteRow, 'waypoints' | 'surface' | 'shadow_hidden'> & OfficialFlag & {
 	waypoints: TrackPoint[];
 	surface: RouteSurface | null;
+	/// Client-only, never a column: a non-owner read whose privacy-clipped
+	/// line could not be fetched. `waypoints` is then `[]` because the read
+	/// failed closed, not because the route has no line.
+	line_unavailable?: boolean;
 };
 
 export type Integration = Omit<IntegrationRow, 'provider'> & {
@@ -114,23 +179,45 @@ export type RouteMarkerKind =
 
 export type RouteMarker = Omit<RouteMarkerRow, 'kind' | 'meta'> & {
 	kind: RouteMarkerKind;
-	meta: Record<string, unknown>;
+	meta: JsonObject;
 };
 
 // A discoverable race calendar entry (migration 20270214_001). `provider` is
 // the narrow union enforced by the CHECK constraint + check_constraint_unions.mjs.
 export type RaceProvider =
 	| 'runsignup'
-	| 'parkrun'
 	| 'manual'
 	| 'chronotrack'
 	| 'raceresult'
 	| 'ultrasignup';
 
+// Where a linked race course came from (migration 20271114002381, decisions
+// § 2381): the organiser's official course, or one the club traced from the
+// race's published map. Narrow union enforced by the CHECK constraint +
+// check_constraint_unions.mjs.
+export type RaceCourseSource = 'official' | 'traced';
+
+export function parseRaceCourseSource(raw: string | null | undefined): RaceCourseSource | null {
+	return raw === 'official' || raw === 'traced' ? raw : null;
+}
+
+// What an organiser's course alert is about (migration 20271124002407,
+// decisions § 2407): a reroute, a closure, the course direction (Comrades'
+// up/down year) or a general notice. Narrow union enforced by the CHECK
+// constraint + check_constraint_unions.mjs.
+export type CourseAlertKind = 'reroute' | 'closure' | 'direction' | 'notice';
+
+export const COURSE_ALERT_KINDS: readonly CourseAlertKind[] = ['reroute', 'closure', 'direction', 'notice'];
+
+export function parseCourseAlertKind(raw: string | null | undefined): CourseAlertKind {
+	return raw === 'reroute' || raw === 'closure' || raw === 'direction' ? raw : 'notice';
+}
+
 // submitted_by is omitted: reads go through the redacted public_race_listings
 // view (migration 20270320_001), which never carries the submitter crosswalk.
-export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by'> & {
+export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by' | 'course_source'> & {
 	provider: RaceProvider;
+	course_source: RaceCourseSource | null;
 };
 
 // Community condition reports on a route (migration 20270212_001). `condition`
@@ -202,6 +289,22 @@ export function parseRunSource(raw: string | null | undefined): RunSource {
 	}
 }
 
+/// Defensive narrow on read, mirroring `parseRunSource`. A jsonb column holds
+/// any JSON value, so the generated row types `metadata` as `Json` — which
+/// admits a string, a number, a boolean and an array as well as an object.
+/// `Run.metadata` promises `JsonObject | null`, and every consumer indexes it
+/// by key, so the four non-object cases have to be answered here rather than
+/// asserted away at each read.
+///
+/// A non-object reads as `null`, not `{}`: the column is nullable and "nothing
+/// usable is stored" is a state the type already has, whereas `{}` would claim
+/// an empty bag was written. Callers already treat null as "no metadata".
+export function parseRunMetadata(raw: unknown): JsonObject | null {
+	return typeof raw === 'object' && raw !== null && !Array.isArray(raw)
+		? (raw as JsonObject)
+		: null;
+}
+
 // Promoted out of `runs.metadata` into a real `runs.activity_type` column by
 // migration 20261207_001 (CHECK in ('run','walk','hike','cycle','stroller')).
 // The CHECK ↔ this union lockstep is enforced by check_constraint_unions.mjs.
@@ -226,15 +329,69 @@ export function parseRouteSurface(raw: string | null | undefined): RouteSurface 
 	}
 }
 
-export type IntegrationProvider = 'strava' | 'garmin' | 'parkrun' | 'runsignup';
+export type IntegrationProvider = 'strava' | 'garmin' | 'runsignup';
 export type PreferredUnit = 'km' | 'mi';
 export type Gender = 'male' | 'female' | 'prefer_not_to_say';
 export type SubscriptionTier = 'free' | 'pro' | 'lifetime';
 
+/// Defensive narrows on read, mirroring `parseRunSource` / `parseRouteSurface`.
+/// Every one of these columns carries a CHECK, so the server cannot store a
+/// value outside the union — but the generated row and RPC types spell each of
+/// them `string`, so a client that assigns one straight into the narrow union
+/// is asserting rather than checking, and a value the union has not learned
+/// about yet (a migration that widens the CHECK, a row written by a newer
+/// build) would arrive typed as something it is not.
+///
+/// `parseSubscriptionTier` fails closed to `'free'` specifically: an
+/// unrecognised tier must never read as an entitlement. Reading it as `'pro'`
+/// would open every paywalled surface on a value the build does not understand.
+export function parseActivityType(raw: string | null | undefined): ActivityType {
+	switch (raw) {
+		case 'run':
+		case 'walk':
+		case 'hike':
+		case 'cycle':
+		case 'stroller':
+			return raw;
+		default:
+			return 'run';
+	}
+}
+
+export function parseIntegrationProvider(
+	raw: string | null | undefined,
+): IntegrationProvider | null {
+	switch (raw) {
+		case 'strava':
+		case 'garmin':
+		case 'runsignup':
+			return raw;
+		default:
+			return null;
+	}
+}
+
+export function parsePreferredUnit(raw: string | null | undefined): PreferredUnit {
+	return raw === 'mi' ? 'mi' : 'km';
+}
+
+export function parseSubscriptionTier(raw: string | null | undefined): SubscriptionTier {
+	switch (raw) {
+		case 'pro':
+		case 'lifetime':
+			return raw;
+		default:
+			return 'free';
+	}
+}
+
 export type ClubRole = 'owner' | 'admin' | 'event_organiser' | 'race_director' | 'member';
 // 'waitlisted' is assigned server-side by the event-capacity trigger
 // (migration 20261018_001) when a 'going' RSVP exceeds events.capacity; the
-// client never writes it directly. No DB CHECK exists on event_attendees.status.
+// client never writes it directly. `event_attendees_status_check` (migration
+// 20261210_001) constrains the column to these four — this comment said no
+// CHECK existed for the eight months after that migration landed, which reads
+// as "widening the union is enough" when it also needs a migration.
 export type RsvpStatus = 'going' | 'maybe' | 'declined' | 'waitlisted';
 // Attendance is orthogonal to RSVP status (instructor_business.md M6): a
 // host marks who actually showed up, NULL until then. Host-written via the
@@ -242,8 +399,32 @@ export type RsvpStatus = 'going' | 'maybe' | 'declined' | 'waitlisted';
 // event_attendees_attendance_check CHECK (migration 20270102_001) — keep this
 // union in lockstep (check_constraint_unions.mjs PAIRS).
 export type EventAttendance = 'attended' | 'no_show';
-export type MembershipStatus = 'active' | 'pending';
+// 'rejected' is a value `club_members_status_check` (migration 20261210_001)
+// admits and three RLS policies read (20260926_001, 20270402000001,
+// 20270416_001), and this union did not carry it — so `fetchMyClubStatuses`
+// casts a real row through a type that cannot describe it, and every
+// `status === 'pending'` branch misfiles it. No writer produces one today; a
+// reject-request flow would be the first, and would have shipped against a
+// union that already told it the value was impossible.
+export type MembershipStatus = 'active' | 'pending' | 'rejected';
 export type JoinPolicy = 'open' | 'request' | 'invite';
+
+/// Defensive narrow on read, mirroring `parseRunSource`. `clubs.join_policy`
+/// carries a CHECK, so the server cannot store anything else — but the
+/// generated row types it `string`, and every club read fed the raw row into
+/// `Club`, which promises the union. `'request'` is the fallback because it is
+/// the only value that neither opens a club nor makes it unjoinable: a policy
+/// this build has not learned about must not silently read as `'open'`.
+export function parseJoinPolicy(raw: string | null | undefined): JoinPolicy {
+	switch (raw) {
+		case 'open':
+		case 'request':
+		case 'invite':
+			return raw;
+		default:
+			return 'request';
+	}
+}
 export type RecurrenceFreq = 'weekly' | 'biweekly' | 'monthly';
 export type Weekday = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU';
 // Names track ActivityType ('cycle', not 'ride') so the app keeps one type
@@ -260,12 +441,16 @@ export type RecapPeriodKind = 'year' | 'month';
 // constraint (migration 20261229_001) — keep these unions in lockstep
 // (check_constraint_unions.mjs PAIRS).
 // event_orders.status — the order ledger lifecycle, written only by the
-// stripe-events webhook (service role).
+// stripe-events webhook (service role). `refund_failed` (20270624000001) is a
+// `refunded` order whose refund the bank reversed: the seat was released when
+// the refund was created and the money never reached the buyer, so it backs no
+// seat and is not a live payment either. decisions § 789.
 export type OrderStatus =
 	| 'pending'
 	| 'paid'
 	| 'refunded'
 	| 'partially_refunded'
+	| 'refund_failed'
 	| 'failed'
 	| 'canceled';
 // event_pricing.refund_policy — buyer self-cancel terms (honoured in P2).
@@ -273,14 +458,72 @@ export type RefundPolicy = 'full_until_start' | 'full_until_24h' | 'no_refund';
 // event_pricing.modality — in_person only in P1; 'virtual' is a digital good
 // that re-opens the app-store IAP rule (reserved for P4).
 export type EventModality = 'in_person';
+// event_results.finisher_status — how a result row ended. Enforced by the
+// event_results CHECK (migration 20260424_001); the finisher-only rank window
+// (20261222_001) partitions on `= 'finished'`, so a new value lands OUTSIDE
+// the ranked set by default. Keep in lockstep (check_constraint_unions.mjs).
+export type FinisherStatus = 'finished' | 'dnf' | 'dns';
+// event_results.finish_method — where a result's time came from: the device's
+// finish detection (`auto`), the racer's own Finish / Submit-my-time
+// (`manual`), or the race director (`host` — an edited time or the DNF End
+// files). NULL on a pre-20270727000001 row and on a bulk import. Enforced by
+// the event_results CHECK (migration 20270727000001); keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type FinishMethod = 'auto' | 'manual' | 'host';
+// race_sessions.status — the club-event race-mode lifecycle. Enforced by the
+// race_sessions CHECK (migration 20260425_001) — keep this union in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type RaceSessionStatus = 'armed' | 'running' | 'finished' | 'cancelled';
+// event_courses.start_gate_source / finish_gate_source — where a course's
+// timing line came from: `derived` from the course route's clipped ends, or
+// placed by an `organiser` through set_event_course_gate. Enforced by the
+// event_courses CHECKs (migration 20271116002390); keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type GateSource = 'derived' | 'organiser';
+// global_segments.start_gate_source / end_gate_source — where a catalogue
+// segment's timing line came from: `derived` from its own polyline, or placed
+// by a `curator`. global_segment_efforts.matched_by — whether an effort was
+// timed between the two lines (`gate`) or by the 35 m circles (`zone`).
+// Enforced by the CHECKs in migration 20271122002402; keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type SegmentGateSource = 'derived' | 'curator';
+export type GlobalSegmentMatchedBy = 'zone' | 'gate';
 // Charity fundraising (fundraising.md, migration 20270213_001). Two
 // narrow-union ↔ CHECK pairs; the Dart side treats both as raw String. Keep
 // each in lockstep with the migration (check_constraint_unions.mjs PAIRS).
 // fundraisers.status — open until the owner closes it.
 export type FundraiserStatus = 'open' | 'closed';
 // donations.status — the donation ledger lifecycle, written only by the
-// stripe-events webhook donation branch (service role).
-export type DonationStatus = 'pending' | 'paid' | 'refunded' | 'failed' | 'canceled';
+// stripe-events webhook donation branch (service role). `partially_refunded`
+// (20270620_001) is the state a donation is in when part of the charge came
+// back and the rest did not; `donations.refunded_cents` carries how much, and
+// `fundraiser_totals` sums the difference.
+// `refund_failed` (20270624000001) is the same reversal on the donation
+// ledger; fundraiser_totals excludes it exactly as it excludes `refunded`,
+// because the money is owed back to the donor rather than raised.
+export type DonationStatus =
+	| 'pending'
+	| 'paid'
+	| 'partially_refunded'
+	| 'refunded'
+	| 'refund_failed'
+	| 'failed'
+	| 'canceled';
+// payment_refunds.status — one row per Stripe Refund on either payment ledger
+// (migration 20270630000001). Stripe declares `Refund.status` a bare
+// `string | null`, so this union and the CHECK are the only two places the
+// accepted set is stated; the third rail is REFUND_STATUSES in the
+// stripe-events webhook, which refuses to record a status outside it rather
+// than take a CHECK violation into an endless Stripe retry. A `failed` /
+// `canceled` row is money that came back to us and is owed to the payer by
+// another route — the queryable worklist § 789 could not give the PARTIAL
+// case. Keep in lockstep (check_constraint_unions.mjs PAIRS).
+export type PaymentRefundStatus =
+	| 'pending'
+	| 'requires_action'
+	| 'succeeded'
+	| 'failed'
+	| 'canceled';
 // session_plan_items.kind — a yoga/pilates movement is a timed hold, a counted
 // set of reps, or a continuous flow. Enforced by the session_plan_items_kind_check
 // CHECK constraint (migration 20270103_001) — keep this union in lockstep
@@ -323,9 +566,64 @@ export type Exercise = Omit<ExerciseRow, 'category' | 'modality'> & {
 	category: ExerciseCategory;
 	modality: GymExerciseModality;
 };
+// Nutrition programming P1 (nutrition_programming.md, migration
+// 20270815000001). Three narrow-union ↔ CHECK pairs; keep each in lockstep
+// with the migration (check_constraint_unions.mjs PAIRS).
+// nutrition_plans.goal_phase — maps onto WeightGoal (goalPhaseToWeightGoal).
+export type NutritionGoalPhase = 'cut' | 'maintain' | 'build' | 'recomp';
+// nutrition_plans.progression — every P1 plan stays 'none'; P2 wires the engine.
+export type NutritionProgression = 'none' | 'weight_trend' | 'linear_deficit' | 'reverse_diet';
+// nutrition_plan_assignments.status
+export type NutritionAssignmentStatus = 'active' | 'ended';
+export type NutritionPlan = Omit<NutritionPlanRow, 'goal_phase' | 'progression' | 'progression_params'> & {
+	goal_phase: NutritionGoalPhase;
+	progression: NutritionProgression;
+	progression_params: JsonObject;
+};
+export type NutritionPlanAssignment = Omit<NutritionPlanAssignmentRow, 'status'> & {
+	status: NutritionAssignmentStatus;
+};
+
+/// Defensive narrows on read. An unknown phase reads as `'maintain'`, the
+/// phase that moves no target. An unknown scheme reads as `'none'`, so a
+/// build that cannot read a progression never suggests from it. An unknown
+/// status reads as `'ended'`: an ended row governs only an explicit date
+/// range, so a value this build does not understand can never leave a plan
+/// governing every future day.
+export function parseNutritionGoalPhase(raw: string | null | undefined): NutritionGoalPhase {
+	switch (raw) {
+		case 'cut':
+		case 'maintain':
+		case 'build':
+		case 'recomp':
+			return raw;
+		default:
+			return 'maintain';
+	}
+}
+
+export function parseNutritionProgression(raw: string | null | undefined): NutritionProgression {
+	switch (raw) {
+		case 'none':
+		case 'weight_trend':
+		case 'linear_deficit':
+		case 'reverse_diet':
+			return raw;
+		default:
+			return 'none';
+	}
+}
+
+export function parseNutritionAssignmentStatus(
+	raw: string | null | undefined,
+): NutritionAssignmentStatus {
+	return raw === 'active' ? 'active' : 'ended';
+}
 // Polymorphic report target. Kept in lockstep with the `reports.target_kind`
 // CHECK constraint (migrations 20260908_001 / 20261117_001 / 20270115_001 /
-// 20270402_001) via apps/web/scripts/check_constraint_unions.mjs.
+// 20270402_001 / 20271021000003 / 20271202000001 / 20271213000001 /
+// 20271224000800) via
+// apps/web/scripts/check_constraint_unions.mjs.
 export type ReportTargetKind =
 	| 'user'
 	| 'club'
@@ -333,7 +631,31 @@ export type ReportTargetKind =
 	| 'comment'
 	| 'club_post'
 	| 'run'
-	| 'route_review';
+	| 'route_review'
+	| 'direct_message'
+	| 'training_plan'
+	| 'gym_routine'
+	| 'challenge'
+	| 'race_listing'
+	| 'park_course'
+	| 'group_invite';
+
+// The kinds a verified organiser may dispute (reports_organiser_dispute_check).
+// The last four take nothing but a dispute, so the general report dialog never
+// offers them.
+export type OrganiserDisputeTargetKind =
+	| 'club'
+	| 'route'
+	| 'training_plan'
+	| 'gym_routine'
+	| 'challenge'
+	| 'race_listing';
+// A park course is reported through ParkCourseReportDialog and the
+// park-course-report Edge Function, with reasons of its own (decisions § 2449).
+export type GeneralReportTargetKind = Exclude<
+	ReportTargetKind,
+	'training_plan' | 'gym_routine' | 'challenge' | 'race_listing' | 'park_course'
+>;
 export type NotificationKind =
 	| 'kudos'
 	| 'comment'
@@ -349,7 +671,29 @@ export type NotificationKind =
 	| 'plan_assigned'
 	| 'achievement'
 	| 'challenge_complete'
-	| 'content_hidden';
+	| 'content_hidden'
+	| 'data_export_ready'
+	| 'refund_failed'
+	| 'event_waitlist_slot'
+	| 'follow_request'
+	| 'reaction'
+	| 'comment_like'
+	| 'mention'
+	| 'workout_reminder'
+	| 'plan_ai_edit'
+	| 'personal_record'
+	| 'club_join_request'
+	| 'club_join_approved'
+	| 'event_updated'
+	| 'plan_change_request'
+	| 'plan_change_decision'
+	| 'club_verification'
+	| 'course_alert'
+	| 'organiser_dispute'
+	| 'park_course_report'
+	| 'race_starting_soon'
+	| 'race_start_moved'
+	| 'group_invite';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)
@@ -369,18 +713,45 @@ export type NotificationKind =
 // it server-side). The column is grantable to anon/authenticated; if
 // a future client surface ever needs to render the point (a map pin
 // on a club's page), reintroduce it here + extend CLUB_SELECT_COLS.
-export type Club = Omit<ClubRow, 'join_policy' | 'invite_token' | 'location_point'> & {
+//
+// `strava_club_id` (migration 20270819001953) is granted but no club surface
+// reads it: the Strava link is listed and written through the `strava-clubs`
+// Edge Function (decisions § 1959), so the browse and member reads leave it out.
+export type Club = Omit<ClubRow, 'join_policy' | 'invite_token' | 'location_point' | 'strava_club_id'> & {
 	join_policy: JoinPolicy;
 };
-export type ClubMember = Omit<ClubMemberRow, 'role' | 'status'> & {
+// `activity_waiver_ack_at` is omitted for the same reason `Route` omits
+// `shadow_hidden` (§ 1327): both roster reads enumerate columns precisely to
+// leave it out — on a public club anyone may read the member list, and when a
+// member signed the liability waiver is their own business — so the type must
+// not promise it on every row it can never arrive on. The `joinClub` insert
+// still writes it; that is an object literal against the row's Insert shape,
+// not this read overlay.
+export type ClubMember = Omit<ClubMemberRow, 'role' | 'status' | 'activity_waiver_ack_at'> & {
 	role: ClubRole;
 	status: MembershipStatus;
 };
+// `host_user_id`, `meet_lat` and `meet_lng` are omitted, not narrowed: all
+// three are revoked from the `authenticated` and `anon` column grants on
+// `events` (migration 20270818_001's enumerated `grant select`, reaffirmed for
+// `host_user_id` by 20261230_001), so a client select naming one raises 42501.
+// A read type must not promise a column the reader is not allowed to fetch
+// (§ 1329). The precise meet point is reachable only through the member-gated
+// `get_event_meet_point` RPC, which returns its own row shape.
 export type Event = Omit<
 	EventRow,
-	'recurrence_freq' | 'recurrence_byday' | 'category' | 'gym_template'
+	| 'recurrence_freq'
+	| 'recurrence_byday'
+	| 'category'
+	| 'gym_template'
+	| 'host_user_id'
+	| 'meet_lat'
+	| 'meet_lng'
+	| 'race_start_mode'
 > & {
 	recurrence_freq: RecurrenceFreq | null;
+	// How the event's races start (#1306), narrowed to the CHECK's set.
+	race_start_mode: SessionStartMode;
 	recurrence_byday: Weekday[] | null;
 	category: EventCategory;
 	// The class -> gym seam hint, parsed from the loose jsonb bag into the
@@ -428,7 +799,7 @@ export interface FundraiserTotals {
 	currency: string;
 }
 
-export type SessionPlan = SessionPlanRow;
+export type SessionPlan = SessionPlanRow & OfficialFlag;
 export type SessionPlanBlock = SessionPlanBlockRow;
 export type SessionPlanItem = Omit<SessionPlanItemRow, 'kind'> & { kind: SessionItemKind };
 
@@ -455,7 +826,12 @@ export type ClubWithMeta = Club & {
 export type EventWithMeta = Event & {
 	attendee_count: number;
 	viewer_rsvp: RsvpStatus | null;
-	next_instance_start: string; // ISO — equals starts_at for one-offs
+	/** ISO start of the next occurrence that is still ON — equals `starts_at`
+	 * for one-offs, and is null once every remaining occurrence has passed or
+	 * been called off (`event_exceptions`). Nullable rather than falling back
+	 * to `starts_at`: a caller that reads a stale date as "the next one" is
+	 * exactly how a cancelled occurrence kept being advertised. */
+	next_instance_start: string | null;
 };
 
 export type ClubPostWithAuthor = ClubPost & {
@@ -468,11 +844,12 @@ export type ClubPostWithAuthor = ClubPost & {
 
 export type PlanStatus = 'active' | 'completed' | 'abandoned' | 'paused';
 
-export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & { status: PlanStatus };
+export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & OfficialFlag & { status: PlanStatus };
 export type PlanWeek = PlanWeekRow;
 export type PlanWorkout = PlanWorkoutRow;
 
-/** View-model returned by `fetchActivePlanOverview` — plan + current week +
+/** View-model returned by `fetchActivePlanOverview` — the current plan (or,
+ * when none is current, the next to start) + current week +
  * next few workouts. Used by the dashboard card + the plan detail page. */
 export type ActivePlanOverview = {
 	plan: TrainingPlan;
@@ -480,14 +857,19 @@ export type ActivePlanOverview = {
 	workouts: PlanWorkout[];
 	todayWorkout: PlanWorkout | null;
 	completionPct: number;
+	/** The active plan queued after `plan`, if any (plan chaining). */
+	upcoming: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'> | null;
+	/** Every active plan the runner holds, `plan` included — what a coach's
+	 *  assignment must not overlap (plan chaining, decisions § 2008). */
+	activePlans: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[];
 };
 
 // ─────────────────────── Challenges & competitions ───────────────────────
 
-export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
+export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days' | 'park_courses';
 export type ChallengeScope = 'individual' | 'club_vs_club' | 'group_goal';
 
-export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & {
+export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & OfficialFlag & {
 	metric: ChallengeMetric;
 	scope: ChallengeScope;
 	activity_type: ActivityType | null;
@@ -511,4 +893,10 @@ export type ChallengeWithMeta = Challenge & {
 	my_rank: number | null;
 	joined: boolean;
 	completed_at: string | null;
+	/** Which club the caller joined a `club_vs_club` challenge under, from their
+	 * own `challenge_participants` row. Absent on the list producers, which
+	 * don't read participant rows — a club membership of the caller's that
+	 * happens to field a team is NOT the same fact, because nothing stops a
+	 * runner belonging to two clubs both on one board. */
+	my_team_club_id?: string | null;
 };

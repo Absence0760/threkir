@@ -11,6 +11,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { TABLES } from '../core/schema';
+import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedBadge {
 	id: string;
@@ -41,6 +43,14 @@ export async function lookupSharedBadge(
 	if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
 		return { badge: null, displayName: null };
 	}
+	// A non-uuid segment — `/share/run/hello`, a crawler's mangled link, a
+	// truncated paste — makes Postgres raise 22P02 on the uuid column. That
+	// surfaces as a PostgREST error, so it took the `upstream_unreachable`
+	// branch below: the tagged line a CloudWatch metric filter alarms on. Ten
+	// such URLs inside ten minutes therefore paged the on-call engineer, from
+	// anonymous traffic, and there is no WAF rate rule on /share/* or /og/*.
+	// A malformed id is a clean not-found, not an outage.
+	if (!isEntityId(id)) return { badge: null, displayName: null };
 	try {
 		const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
 			auth: { persistSession: false },
@@ -63,7 +73,7 @@ export async function lookupSharedBadge(
 		let displayName: string | null = null;
 		if (badge.user_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: badge.user_id })
+				.rpc('public_profile_by_id', { p_id: badge.user_id }, { get: true })
 				.maybeSingle();
 			displayName = (profile as { display_name?: string | null } | null)?.display_name ?? null;
 		}
@@ -71,7 +81,7 @@ export async function lookupSharedBadge(
 	} catch (err) {
 		console.error(
 			'[share-badge] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { badge: null, displayName: null };
 	}

@@ -16,25 +16,56 @@
 #![no_main]
 
 use defmt::*;
+use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
 #[cfg(not(feature = "ble"))]
 use embassy_nrf::nvmc::Nvmc;
-use embassy_nrf::{bind_interrupts, peripherals, saadc, spim, twim, uarte};
+use embassy_nrf::{bind_interrupts, buffered_uarte, peripherals, saadc, spim, twim, uarte};
 use embassy_sync::mutex::Mutex;
 use nrf52840_dk::Board;
 use static_cell::StaticCell;
-use {defmt_rtt as _, panic_probe as _};
+use watch_core::battery_sense::SupplySense;
 
 #[cfg(feature = "ble")]
 use nrf_softdevice::Softdevice;
 
+mod panic;
 mod run_flash;
 mod state;
+mod supply;
 mod tasks;
 
+/// Say something before halting on a hard fault.
+///
+/// `panic_probe` already prints a Rust panic, but a fault is the other way the
+/// core stops and nothing covered it: cortex-m-rt's default `HardFault` is a
+/// silent infinite loop, so a bad dereference took the watch down leaving the
+/// log ending mid-sentence and no way to tell a fault from a deadlock. The
+/// stacked frame is the whole diagnostic — `pc` is the faulting instruction and
+/// `lr` its caller, which `addr2line -e app <pc>` turns straight into a source
+/// line.
+///
+/// This does NOT help under Renode, and issue #754 is the reason to say so out
+/// loud: the sim returns 0 for reads outside any modelled peripheral and keeps
+/// executing, so the corruption seen there never raises a fault to catch. This
+/// is for the bench, and for telling the two failure modes apart when it is.
+#[cortex_m_rt::exception]
+unsafe fn HardFault(frame: &cortex_m_rt::ExceptionFrame) -> ! {
+    error!(
+        "HARD FAULT pc={=u32:#010x} lr={=u32:#010x} psr={=u32:#010x}",
+        frame.pc(),
+        frame.lr(),
+        frame.xpsr()
+    );
+    // The log is drained over RTT by a host that has to still be attached, so
+    // halting beats resetting: a reset boots a clean watch and erases the only
+    // evidence there was.
+    cortex_m::asm::udf()
+}
+
 bind_interrupts!(struct Irqs {
-    UARTE0 => uarte::InterruptHandler<peripherals::UARTE0>;
+    UARTE0 => buffered_uarte::InterruptHandler<peripherals::UARTE0>;
     UARTE1 => uarte::InterruptHandler<peripherals::UARTE1>;
     SPIM3 => spim::InterruptHandler<peripherals::SPI3>;
     TWISPI0 => twim::InterruptHandler<peripherals::TWISPI0>;
@@ -68,19 +99,42 @@ async fn main(spawner: Spawner) {
 
     let board = Board::split(p);
     info!("custom_watch firmware booting (tier 1)");
+    // Before any peripheral is driven: say which supply path the SoC came up
+    // on, because one of them sets the GPIO logic level to 1.8 V by default and
+    // every breakout on this bench expects 3 V. The same read decides which
+    // SAADC input the battery gauge can see the cell through.
+    let battery_sense = supply::report();
 
     let mut gps_config = uarte::Config::default();
-    gps_config.baudrate = uarte::Baudrate::BAUD9600;
-    let gps_uart = uarte::Uarte::new(
+    // The MAX-M10S's own factory default, so a receiver straight out of the bag
+    // talks to us with no u-center step. Its config survives a power cut only
+    // while the breakout's backup cell holds (~2 weeks), so anything other than
+    // the factory value is a setting that silently lapses in a drawer.
+    gps_config.baudrate = uarte::Baudrate::BAUD38400;
+    // `BufferedUarte`, not a plain `Uarte`: the ring's next half-transfer is
+    // pre-armed and chained over PPI, so the ~85 ms CPU halt an NVMC page erase
+    // costs (decisions.md § 419) no longer leaves the receiver disarmed. The
+    // ring's *guaranteed* depth is half its length — 1 KiB, 267 ms at 38400 —
+    // which is what sizes it at 2048 rather than the 512 the earlier notes
+    // specified (§ 622, § 698).
+    static GPS_RX_RING: StaticCell<[u8; tasks::gps::RX_RING_LEN]> = StaticCell::new();
+    static GPS_TX_RING: StaticCell<[u8; tasks::gps::TX_RING_LEN]> = StaticCell::new();
+    let gps_uart = buffered_uarte::BufferedUarte::new(
         board.gps.uarte,
+        board.gps.ring_timer,
+        board.gps.ring_ppi.0,
+        board.gps.ring_ppi.1,
+        board.gps.ring_ppi_group,
         board.gps.rx,
         board.gps.tx,
         Irqs,
         gps_config,
+        GPS_RX_RING.init([0u8; tasks::gps::RX_RING_LEN]),
+        GPS_TX_RING.init([0u8; tasks::gps::TX_RING_LEN]),
     );
     // TX carries the UBX-RXM-PMREQ power-down frames + the 0xFF wake byte the
     // gps task sends to duty-cycle the receiver in throttled recording modes.
-    let (gps_tx, gps_rx) = gps_uart.split();
+    let (gps_rx, gps_tx) = gps_uart.split();
 
     // Sharp MIP wants LSB-first (datasheet bit M0 leads) and mode 0; the
     // panel tops out at 2 MHz.
@@ -127,15 +181,30 @@ async fn main(spawner: Spawner) {
         unsafe { &mut *core::ptr::addr_of_mut!(BARO_TWIM_RAM) },
     );
 
-    // Battery gauge: the SAADC's internal VDD channel — the rail itself is the
-    // input, no pin to route. Driver defaults (12-bit, 0.6 V internal
-    // reference, gain 1/6 -> 3.6 V full scale) suit a supply read; the task
-    // owns the conversion maths and the plausibility park.
+    // Battery gauge: an internal SAADC channel, so there is no pin to route —
+    // but WHICH channel is not a free choice. In high-voltage mode VDD is the
+    // internal regulator's output and reads the same at every state of charge,
+    // so the cell is reachable only through VDDH/5; in normal mode the supply
+    // *is* VDD. Both the input and its range therefore come from the supply
+    // mode `supply::report` read above, and `watch_core::battery_sense` scales
+    // the conversion to match.
+    let battery_channel = match battery_sense {
+        SupplySense::VddDirect => saadc::ChannelConfig::single_ended(saadc::VddInput),
+        SupplySense::VddhDiv5 => {
+            let mut channel = saadc::ChannelConfig::single_ended(saadc::VddhDiv5Input);
+            // Gain 1/2 against the 0.6 V reference is 1200 mV at the converter,
+            // so 6000 mV of VDDH — above VDDH's own 5.8 V absolute maximum, so
+            // the input cannot saturate anywhere the SoC is allowed to run.
+            // Must stay in lockstep with `battery_sense::FULL_SCALE_VDDHDIV5_MV`.
+            channel.gain = saadc::Gain::GAIN1_2;
+            channel
+        }
+    };
     let battery_adc = saadc::Saadc::new(
         board.battery.saadc,
         Irqs,
         saadc::Config::default(),
-        [saadc::ChannelConfig::single_ended(saadc::VddInput)],
+        [battery_channel],
     );
 
     // Buttons are active-LOW with the line idle-high, so pull up and treat a
@@ -242,7 +311,7 @@ async fn main(spawner: Spawner) {
     // applies the stated precedence rule between them (§365).
     spawner.spawn(unwrap!(tasks::hr_source::run()));
     spawner.spawn(unwrap!(tasks::baro::run(baro_twim)));
-    spawner.spawn(unwrap!(tasks::battery::run(battery_adc)));
+    spawner.spawn(unwrap!(tasks::battery::run(battery_adc, battery_sense)));
     spawner.spawn(unwrap!(tasks::record::run(store)));
 
     // Phone link. Default build: UARTE1 → Renode TCP bridge, plus the BLE

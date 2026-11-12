@@ -24,7 +24,7 @@ import 'package:test/test.dart';
 /// ```
 /// cd apps/backend && supabase status -o env
 /// # …
-/// export SUPABASE_TEST_URL=http://127.0.0.1:54321
+/// export SUPABASE_TEST_URL=http://127.0.0.1:24321
 /// export SUPABASE_TEST_ANON_KEY=<ANON_KEY from `supabase status`>
 /// cd ../../packages/api_client
 /// flutter test test/api_client_integration_test.dart
@@ -108,16 +108,12 @@ void main() {
     });
 
     test(
-        'autoMatchRunToPlanWorkout links a run to a same-date workout '
-        'within 25% of target distance, and skips one that is further',
+        'saveRun links the run to a same-day workout in the active plan '
+        '(the database matcher, 20270901000001), and not one it falls short of',
         () async {
-      // Client-side mirror of the web `autoMatchRunToPlanWorkout` (there is
-      // no `auto_match_run_to_plan_workout` RPC). A real run id satisfies
-      // the plan_workouts.completed_run_id FK.
-      final runId = (await api.getRuns()).first.id;
-
-      // plan -> week -> two workouts on far-future dates so no seeded
-      // workout interferes; the plan cascade-deletes weeks + workouts.
+      // Matching moved into a trigger on `runs`, so the phone does nothing
+      // but save; this pins that the Dart write path reaches it.
+      // Far-future dates keep the plan clear of the seeded active plan.
       final plan = await client
           .from('training_plans')
           .insert({
@@ -127,9 +123,7 @@ void main() {
             'goal_distance_m': 5000,
             'start_date': '2099-06-01',
             'end_date': '2099-08-31',
-            // Non-active so it doesn't trip training_plans_one_active; the
-            // auto-match query is status-agnostic (mirrors web).
-            'status': 'completed',
+            'status': 'active',
           })
           .select('id')
           .single();
@@ -147,58 +141,61 @@ void main() {
           .single();
       final weekId = week['id'] as String;
 
-      final matchWo = await client
-          .from('plan_workouts')
-          .insert({
-            'week_id': weekId,
-            'scheduled_date': '2099-06-15',
-            'kind': 'easy',
-            'target_distance_m': 5000,
-          })
-          .select('id')
-          .single();
-      final matchWoId = matchWo['id'] as String;
+      Future<String> workout(String day, num targetM) async {
+        final row = await client
+            .from('plan_workouts')
+            .insert({
+              'week_id': weekId,
+              'scheduled_date': day,
+              'kind': 'easy',
+              'target_distance_m': targetM,
+            })
+            .select('id')
+            .single();
+        return row['id'] as String;
+      }
 
-      final missWo = await client
-          .from('plan_workouts')
-          .insert({
-            'week_id': weekId,
-            'scheduled_date': '2099-06-16',
-            'kind': 'easy',
-            'target_distance_m': 20000,
-          })
-          .select('id')
-          .single();
-      final missWoId = missWo['id'] as String;
+      final matchWoId = await workout('2099-06-15', 5000);
+      final missWoId = await workout('2099-06-16', 20000);
 
-      // 5000 m run on the matching date -> links to matchWo.
-      final matched = await api.autoMatchRunToPlanWorkout(
-          runId, DateTime.utc(2099, 6, 15), 5000.0);
-      expect(matched, matchWoId,
-          reason: 'a same-date run within 25% of target distance must '
-              'auto-link to that workout');
+      Future<String> save(DateTime startedAt) async {
+        final id = '00000000-0000-0000-0001-' +
+            DateTime.now()
+                .microsecondsSinceEpoch
+                .toRadixString(16)
+                .padLeft(12, '0')
+                .substring(0, 12);
+        inserted.add(id);
+        await api.saveRun(Run(
+          id: id,
+          startedAt: startedAt,
+          duration: const Duration(minutes: 25),
+          distanceMetres: 5000,
+          source: RunSource.app,
+          metadata: const {'activity_type': 'run'},
+        ));
+        return id;
+      }
+
+      final runId = await save(DateTime.utc(2099, 6, 15, 9));
       final linked = await client
           .from('plan_workouts')
           .select('completed_run_id, manually_completed, completed_at')
           .eq('id', matchWoId)
           .single();
-      expect(linked['completed_run_id'], runId);
-      expect(linked['manually_completed'], isFalse,
-          reason: 'auto-match is not a manual completion');
+      expect(linked['completed_run_id'], runId,
+          reason: 'a same-day run at the target distance must link');
+      expect(linked['manually_completed'], isFalse);
       expect(linked['completed_at'], isNotNull);
 
-      // 5000 m run on the off-distance date -> no match (20000 m target is
-      // 75% away), workout stays open.
-      final unmatched = await api.autoMatchRunToPlanWorkout(
-          runId, DateTime.utc(2099, 6, 16), 5000.0);
-      expect(unmatched, isNull,
-          reason: 'a run > 25% from every same-date target must not link');
+      await save(DateTime.utc(2099, 6, 16, 9));
       final stillOpen = await client
           .from('plan_workouts')
           .select('completed_run_id')
           .eq('id', missWoId)
           .single();
-      expect(stillOpen['completed_run_id'], isNull);
+      expect(stillOpen['completed_run_id'], isNull,
+          reason: 'a run under 75% of the target must not link');
     });
 
     test('getRuns returns the seeded runs for runner@test.com', () async {
@@ -359,44 +356,39 @@ void main() {
       expect(downloaded.last.lng, closeTo(8.56, 0.001));
     });
 
-    test('getRuns(updatedSince:) delta filter matches metadata.last_modified_at',
+    test('getRunsModifiedSince returns a new write and advances the cursor',
         () async {
-      // Regression: the PostgREST filter key was written as
-      // `metadata->>'last_modified_at'` — the quoted key is treated as a
-      // literal JSON key named `'last_modified_at'` (quotes included),
-      // which matches nothing, so EVERY delta pull silently returned []
-      // and multi-device edits never arrived after the cold load.
+      // The delta keys on the server-stamped `runs.updated_at` (migration
+      // 20270918000005, decisions § 2118), so the write needs no client
+      // stamp at all to be returned, and the cursor it hands back is a
+      // server instant.
+      final before = await api.getRunsModifiedSince(null);
       final id = '00000000-0000-0000-0001-' + DateTime.now()
               .microsecondsSinceEpoch
               .toRadixString(16)
               .padLeft(12, '0')
               .substring(0, 12);
-      final stamp = DateTime.now().toUtc();
       final run = Run(
         id: id,
-        startedAt: stamp,
+        startedAt: DateTime.utc(2024, 1, 1, 7),
         duration: const Duration(minutes: 30),
         distanceMetres: 6000,
         track: const [],
         source: RunSource.app,
-        metadata: {
-          'activity_type': 'run',
-          'last_modified_at': stamp.toIso8601String(),
-        },
+        metadata: {'activity_type': 'run'},
       );
       inserted.add(id);
       await api.saveRun(run);
 
-      final since = stamp.subtract(const Duration(minutes: 1));
-      final delta = await api.getRuns(limit: 200, updatedSince: since);
-      expect(delta.map((r) => r.id), contains(id),
-          reason: 'a run stamped after `updatedSince` must be returned '
-              'by the delta pull.');
-
-      final afterStamp = stamp.add(const Duration(minutes: 1));
-      final none = await api.getRuns(limit: 200, updatedSince: afterStamp);
-      expect(none.map((r) => r.id), isNot(contains(id)),
-          reason: 'a run stamped before `updatedSince` must be excluded.');
+      final delta = await api.getRunsModifiedSince(before.cursor);
+      expect(delta.runs.map((r) => r.id), contains(id),
+          reason: 'a run written after the cursor must be returned, even one '
+              'started long ago and carrying no last_modified_at.');
+      expect(delta.cursor, isNotNull);
+      if (before.cursor != null) {
+        expect(delta.cursor!.isAfter(before.cursor!), isTrue,
+            reason: 'the cursor is the newest server updated_at seen');
+      }
     });
 
     test(
@@ -430,14 +422,78 @@ void main() {
       // (fetchFollowing is inside the feed's Future.wait) and the
       // profile Followers/Following tabs. The seed user follows two
       // accounts, so a successful narrowed read returns both.
-      final following = await api.fetchFollowing(userId!);
+      final following = (await api.fetchFollowing(userId!)).rows;
       expect(following, hasLength(greaterThanOrEqualTo(2)),
           reason: 'fetchFollowing must succeed for the seed user; a '
               '42501 here means the profile hydrate drifted back onto '
               'a revoked user_profiles column.');
       expect(following.first.displayName, isNotEmpty);
-      final followers = await api.fetchFollowers(userId!);
+      final followers = (await api.fetchFollowers(userId!)).rows;
       expect(followers, isNotNull);
+    });
+
+    test('fetchFollowing pages by keyset cursor without a gap or a repeat',
+        () async {
+      // The seed user follows two accounts. One-row pages walked by the
+      // returned cursor must visit exactly the rows of a single wide read, in
+      // order — the property an offset loses when an edge is removed between
+      // two reads (that half is pinned against in-memory rows by
+      // core_models' keyset_page_test.dart).
+      final whole = (await api.fetchFollowing(userId!)).rows;
+      expect(whole, hasLength(greaterThanOrEqualTo(2)));
+      final walked = <String>[];
+      List<Object?>? after;
+      for (var guard = 0; guard < whole.length + 2; guard++) {
+        final page = await api.fetchFollowing(userId!, limit: 1, after: after);
+        walked.addAll(page.rows.map((p) => p.id));
+        if (page.next == null) break;
+        after = page.next;
+      }
+      expect(walked, whole.map((p) => p.id).toList());
+    });
+
+    test('getRoutes pages past two routes sharing a created_at', () async {
+      // Two routes saved in the same instant, newer than anything else the
+      // seed user owns so they lead the list. One-row pages walked by the
+      // returned cursor must visit both: the old `lt created_at` cursor
+      // excluded every row with the boundary's created_at, so the second was
+      // never read.
+      final hex = DateTime.now()
+          .microsecondsSinceEpoch
+          .toRadixString(16)
+          .padLeft(11, '0');
+      final stem = '00000000-0000-4000-8000-${hex.substring(hex.length - 11)}';
+      final ids = ['${stem}a', '${stem}b'];
+      const sameInstant = '2099-01-01T00:00:00.123456+00:00';
+      await client.from('routes').insert([
+        for (final id in ids)
+          {
+            'id': id,
+            'user_id': userId,
+            'name': 'keyset tie $id',
+            'waypoints': const <Object>[],
+            'distance_m': 1000,
+            'created_at': sameInstant,
+          },
+      ]);
+      try {
+        final walked = <String>[];
+        List<Object?>? after;
+        for (var page = 0; page < 2; page++) {
+          final got = await api.getRoutes(limit: 1, after: after);
+          walked.addAll(got.rows.map((r) => r.id));
+          if (got.next == null) break;
+          after = got.next;
+        }
+        expect(walked, ['${stem}b', '${stem}a'],
+            reason: 'both tied routes, in id desc order, one per page');
+      } finally {
+        for (final id in ids) {
+          try {
+            await api.deleteRoute(id);
+          } catch (_) {}
+        }
+      }
     });
 
     test('fetchProfileSummary loads for the seed user (profile screen '

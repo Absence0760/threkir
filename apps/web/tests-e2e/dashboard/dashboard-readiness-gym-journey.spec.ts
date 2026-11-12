@@ -1,8 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { noonOnBrowserDay } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { expandTrainingLoad } from '../fixtures/dashboard';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun, setUserSetting } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * End-to-end readiness journey: gym sessions folding into the dashboard
@@ -38,22 +42,6 @@ import { insertRun, setUserSetting } from '../fixtures/simulate';
  * +page.svelte lines 1164-1195) and the `data-testid="gym-readiness-note"`
  * disclosure (lines 1205-1215).
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
-
-/** Local-date ISO for `daysAgo` days back, midday-anchored so it lands
- *  squarely on its own local calendar day regardless of tz offset. */
-function daysAgoIso(daysAgo: number): string {
-	const d = new Date();
-	d.setHours(12, 0, 0, 0);
-	d.setDate(d.getDate() - daysAgo);
-	return d.toISOString();
-}
 
 /** Read the numeric value out of the Fitness-card metric whose label
  *  matches `labelRe` (CTL/ATL/TSB). The card renders one
@@ -94,7 +82,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 					runIds.push(
 						await insertRun({
 							user_id: subject.id,
-							started_at: daysAgoIso(d),
+							started_at: noonOnBrowserDay(-d),
 							distance_m: 8000,
 							duration_s: 2700,
 						}),
@@ -112,7 +100,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 						.insert({
 							user_id: subject.id,
 							title: 'Heavy lower',
-							started_at: daysAgoIso(ago),
+							started_at: noonOnBrowserDay(-ago),
 							duration_s: 3600,
 						})
 						.select('id')
@@ -143,7 +131,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 			const ctx = await browser.newContext({ storageState: subject.storageStatePath });
 			// Saga users have not accepted the cookie banner — pre-accept so the
 			// GDPR banner can't float over the Fitness card.
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			let atlIncluded = 0;
@@ -154,6 +142,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				// ── Phase 1: gym IS in the readiness curve ──────────────────
 				await test.step('readiness includes gym — note says "factored in", capture ATL/TSB', async () => {
 					await page.goto('/dashboard');
+					await expandTrainingLoad(page);
 
 					// The transparency note confirms a recent lift is moving the
 					// curve (hasRecentLift && !excludeGymFromReadiness).
@@ -174,6 +163,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				await test.step('toggle exclude_gym_from_readiness → note flips to "excluded"', async () => {
 					await setUserSetting(subject.id, 'exclude_gym_from_readiness', true);
 					await page.goto('/dashboard');
+					await expandTrainingLoad(page);
 					const note = page.getByTestId('gym-readiness-note');
 					await expect(note).toBeVisible({ timeout: 10_000 });
 					await expect(note).toContainText(/excluded/i);
@@ -204,6 +194,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				await test.step('revert pref → gym is folded back into the readiness curve', async () => {
 					await setUserSetting(subject.id, 'exclude_gym_from_readiness', false);
 					await page.goto('/dashboard');
+					await expandTrainingLoad(page);
 					const note = page.getByTestId('gym-readiness-note');
 					await expect(note).toBeVisible({ timeout: 10_000 });
 					await expect(note).toContainText(/factored into your fatigue/i);

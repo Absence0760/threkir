@@ -13,12 +13,12 @@ Operational counterpart of [`apps/mobile_android/CLAUDE.md`](CLAUDE.md) (stack, 
 **Track strategy:**
 
 ```
-Internal track  → Closed alpha (10–100 testers)  → Closed beta (1k+ testers)  → Production
-   ↑ workflow                                                                       ↑ manual
-   tag-driven                                                                  Play Console
+Internal track  ──────────────────────────────────────────────→  Production (staged rollout)
+   ↑ workflow                                                       ↑ same workflow, after the
+   tag-driven                                                         `production` approval
 ```
 
-The release workflow always lands at the **Internal track**. Manual promotion to Beta / Production happens in the Play Console after a smoke test. This is intentional: tagging `mobile_android@1.2.3` should never reach unsuspecting users without a human checking the build first.
+Since 2026-11-11 the release workflow uploads to the **Internal track** and then sends the same bundle to **Production** for review as a staged rollout at 1%, the way an iOS release goes straight to App Store review ([decisions § 2478](../../docs/architecture/decisions.md), modelled on [§ 2040](../../docs/architecture/decisions.md)). The human gate is the `production` environment approval, which every release job already waits on before reading a secret; nothing reaches users without it. Once Play approves, `play-rollout.yml` moves the rollout up 1% → 2% → 5% → 10% → 20% → 50% → 100% once a day. **Halt rollout** in Play Console is the brake, and no workflow ever resumes a halted release. The app's first production release (`mobile_android@1.24.0`) cannot be staged: Play offers staged rollouts for updates only, so it goes out to every user in the chosen countries on approval. Closed / open testing tracks are no longer part of the flow; add a tester build to one by hand in Play Console when you want one.
 
 **Application ID:** `com.threkir.app` (or whatever the brand picks). Don't change this after the first published release — every existing install becomes orphaned.
 
@@ -30,7 +30,7 @@ The release workflow always lands at the **Internal track**. Manual promotion to
 
 1. **Pay the $25 developer registration fee.** One time, per Google account. **The login identity is a dedicated Gmail** (e.g. `threkir.app@gmail.com`), **not** a branded `@threkir.com` address — see § Account identity below for why. Set the Play Console *contact* addresses to `google@` / `support@` / `privacy@threkir.com` so the domain still shows up on the operator-facing side.
 2. **Create the app.** Play Console → Create app. Name, default language (en-GB), Type: App, Free.
-3. **Fill the Store listing.** Short description, long description, screenshots (need at least 2 phone screenshots, 1 7"+ tablet, 1 10"+ tablet for newer Play guidelines), feature graphic (1024×500 PNG — committed at `assets/feature-graphic.png`, regenerate from the SVG source with `assets/gen-feature-graphic.sh`), app icon (512×512 PNG).
+3. **Fill the Store listing.** Short description, long description, screenshots (need at least 2 phone screenshots, 1 7"+ tablet, 1 10"+ tablet for newer Play guidelines), feature graphic (1024×500 PNG — committed at `assets/feature-graphic.png`, regenerate from the SVG source with `assets/gen-feature-graphic.sh`), app icon (512×512 32-bit PNG — committed at `assets/play-store-icon-512.png`, regenerated with the launcher icons by `assets/gen-icons.sh`).
 4. **Privacy policy URL.** Required for any app that touches location. Host at `threkir.com/privacy` — see § Privacy policy below.
 5. **App content questionnaire.** Click through every "Privacy", "Ads", "Target audience", "Data safety" form. **Data safety is non-trivial** — see § Data safety below.
 6. **App access.** Provide test credentials (`runner@test.com` / `testtest` against a *staging* Supabase project — never production seed). The Play review team uses these to access functionality behind sign-in.
@@ -94,15 +94,15 @@ base64 -w0 -i upload-keystore.jks | xclip -selection clipboard
 # irreplaceable.
 ```
 
-**Canonical backup: the private estate secrets repo** (`Absence0760/infra-secrets`, cloned as a sibling at `../infra-secrets`) at `running/android-upload-keystore.sops.yaml` — the `.jks` (base64), the key alias, and both passwords, sops-encrypted under the running prod web-stack KMS key (access = IAM `kms:Decrypt`, backed up 2026-07-21 and verified byte-identical). The GitHub Secret is a **signing copy, not a backup**: GitHub secrets are write-only, so CI can sign with it forever but nobody can ever read the keystore back out. The release operator's workstation holds a working copy of the `.jks`.
+**Canonical backup: the private estate secrets repo** (`Absence0760/infra-secrets`, cloned as a sibling at `../infra-secrets`) at `threkir/android-upload-keystore.sops.yaml` — the `.jks` (base64), the key alias, and both passwords, sops-encrypted under the threkir prod web-stack KMS key (access = IAM `kms:Decrypt`, backed up 2026-07-21 and verified byte-identical). The GitHub Secret is a **signing copy, not a backup**: GitHub secrets are write-only, so CI can sign with it forever but nobody can ever read the keystore back out. The release operator's workstation holds a working copy of the `.jks`.
 
 Restore after a lost workstation:
 
 ```bash
-AWS_PROFILE=running sops --decrypt --extract '["keystore_jks_base64"]' ../infra-secrets/running/android-upload-keystore.sops.yaml | base64 -d > upload-keystore.jks
+AWS_PROFILE=threkir sops --decrypt --extract '["keystore_jks_base64"]' ../infra-secrets/threkir/android-upload-keystore.sops.yaml | base64 -d > upload-keystore.jks
 ```
 
-The passwords live in the same file (`sops ../infra-secrets/running/android-upload-keystore.sops.yaml` to view), and in the owner's Bitwarden.
+The passwords live in the same file (`sops ../infra-secrets/threkir/android-upload-keystore.sops.yaml` to view), and in the owner's Bitwarden.
 
 ### GitHub Secrets required
 
@@ -113,6 +113,7 @@ The passwords live in the same file (`sops ../infra-secrets/running/android-uplo
 | `ANDROID_KEY_ALIAS` | `upload` (matches `-alias` above) |
 | `ANDROID_KEY_PASSWORD` | from `keytool -genkey` (often same as keystore password) |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Play service account key JSON (next section) |
+| `GOOGLE_SERVICES_JSON_BASE64` | base64 of `google-services.json` from the Firebase project's `com.threkir.app` Android app. Optional, and its absence is quiet by construction: `android/app/build.gradle.kts` applies the `google-services` plugin only when the decoded file is there, so a release without this secret builds and ships an AAB that registers no FCM token (the workflow warns). Durable copy in the estate repo beside the keystore; runbook in [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate) |
 
 ### Play service account (one-time)
 
@@ -121,11 +122,13 @@ Lets the workflow upload an `.aab` without a human in the loop:
 1. Play Console → Setup → API access → "Choose a project to link" → create a Google Cloud project.
 2. Create a service account in the Cloud Console (IAM & Admin → Service Accounts → Create).
 3. Skip granting Cloud roles; we only need Play permissions.
-4. Back in the Play Console → grant the service account "Release manager" role on **this app**.
+4. Back in the Play Console → Users and permissions → invite the service account's email → App permissions → `com.threkir.app` → grant **"Release to production, exclude devices, and use Play App Signing"** (the production promotion and the daily rollout step) and **"Release apps to testing tracks"** (the Internal upload).
 5. Generate a JSON key for the service account (Service Accounts → … → Manage keys → Add key → JSON).
 6. Paste the entire JSON into the GitHub Secret `PLAY_SERVICE_ACCOUNT_JSON`.
 
-The same service account JSON is reusable for the Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) — just grant it Release manager on that app too.
+The same service account JSON is reusable for the Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) — grant it "Release apps to testing tracks" on that app too. The Wear release still stops at Internal: `com.threkir.watchwear` is its own Play listing and has no production access yet.
+
+The daily rollout job reads its own copy of this secret from the reviewer-less `play-rollout` environment (restricted to `main`), because a cron job on `production` would wait every day for an approval nobody is watching for.
 
 ---
 
@@ -162,7 +165,24 @@ Each define is passed from a GitHub Secret; `main.dart`'s `String.fromEnvironmen
 | `MOBILE_STRAVA_CLIENT_ID` | `STRAVA_CLIENT_ID` | Strava OAuth client id; empty → connect falls back to the web flow |
 | `MOBILE_REVENUECAT_API_KEY_ANDROID` | `REVENUECAT_API_KEY_ANDROID` | RevenueCat Android key; empty → Subscribe falls back to the web upgrade page |
 
-Dev-only defines (`DEV_USER_EMAIL` / `DEV_USER_PASSWORD` auto-login, `BYPASS_PAYWALL`, `ADAPTIVE_FITNESS_GATE` / `WEIGH_IN_GATE`, `USDA_FDC_API_KEY`) are **deliberately not passed** — the gated ones stay off until their sign-off lands.
+**Sign-off-gated + optional defines — the bridge carries them, the workflow does not pass them (yet):**
+
+| Define | Value / effect |
+|---|---|
+| `OFF_ROUTE_ESCALATION_ENABLED` | off-route → notify-a-contact escalation; unset → the whole path stays inert. Owner + CISO + counsel sign-off. |
+| `ADAPTIVE_FITNESS_GATE` | plan-generator-v2 P2 health-derived load → prescription; unset → exactly shipped P1. CISO / Security-Analyst sign-off. |
+| `WEIGH_IN_GATE` | Art 9 checkpoint weigh-in fields; unset → never collected or sent. Owner + CISO + counsel sign-off. |
+| `WEIGHT_FLUID_ENABLED` | the roadbook's "Fluid from body weight" toggle (decisions § 1976); unset → no body weight is read and the flat fluid rate stands. CISO + counsel review of the new Art 9 use; flip together with web's `PUBLIC_WEIGHT_FLUID_ENABLED`. |
+| `CYCLE_PLANS_ENABLED` | plan detail's "Adjust for my cycle / for pregnancy" option, which reads the Art 9 cycle and pregnancy settings (decisions § 231); unset → no option and none of those settings are read. Owner + CISO + counsel sign-off, the same gate as web's `PUBLIC_CYCLE_PLANS_ENABLED`. |
+| `FLYOVER_VIDEO_MAPTILER_ENABLED` | the run share sheet's **Video** style, which opens the web flyover export (decisions § 2271); unset → the style is not offered, because threkir.com offers no export without the web flag (§ 2270). Operator confirms MapTiler's video terms; flip together with web's `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED`. |
+| `COURSE_DRIVE_ENABLED` | Drive this course on the route and race screens: the Maps hand-off and the spoken course notes ([course_drive.md](../../docs/features/course_drive.md), decisions § 2380); unset → no entry point renders. Counsel signs off on the driver safety notice; flip together with web's `PUBLIC_COURSE_DRIVE_ENABLED`. |
+| `ENABLE_NEARBY_RUNNERS` | opt-in person-location discovery; unset → the surface is unreachable. Owner + CISO/counsel sign-off. |
+| `USDA_FDC_API_KEY` | second food-search source; unset → Open Food Facts only, no error. |
+| `TILE_URL_TEMPLATE` | `{z}/{x}/{y}` raster override that outranks MapTiler (decisions §68) — the wire for a self-hosted Protomaps migration. |
+
+Every one of these is read through `main.dart`'s `String.fromEnvironment` bridge, so passing the define is all it takes to turn it on. That was not true before decisions §709: the three sign-off gates were absent from the bridge entirely, so a release build could not have flipped them however the deploy was configured. Adding a define to the workflow is now the *only* remaining step, and it stays a deploy-time decision the sign-off unlocks.
+
+`DEV_USER_EMAIL` / `DEV_USER_PASSWORD` (auto-login) are bridged too but self-limiting — `shouldAutoLogin` only fires against a loopback `SUPABASE_URL`. `BYPASS_PAYWALL` is not read by the Flutter app at all.
 
 ### Manifest declarations to verify before launch
 
@@ -244,7 +264,9 @@ Play Console → App content → Data safety. Be precise; mismatches between the
 |---|---|---|---|---|
 | Approximate location | Yes | No | No (required for the core function) | Yes |
 | Precise location | Yes | No | No | Yes |
-| Health & fitness — heart rate, steps | Yes | No | Yes | Yes |
+| Health & fitness — heart rate, steps, body weight (Health Connect `READ_WEIGHT`, seeds the calorie estimate) | Yes | No | Yes | Yes |
+| Phone number | Yes (an optional safety contact's, for the SMS escalation) | No | Yes | Yes |
+| Personal info — other (date of birth, gender) | Yes (optional, setup wizard) | No | Yes | Yes |
 | Email address | Yes | No | No (account requirement) | Yes |
 | Name | Yes (optional display name, setup wizard / profile) | No | Yes | Yes |
 | User IDs | Yes | No | No | Yes |
@@ -272,19 +294,22 @@ A mismatch between these declarations and the binary is grounds for a rating rec
 
 ## Release workflow — `mobile_android@*`
 
-Triggered by tagging `mobile_android@1.2.3`. The workflow at `.github/workflows/release-android.yml`:
+Triggered by publishing a GitHub Release for `mobile_android@1.2.3`. Its body must carry an owner-written `## What's New` section of at most 500 characters: it becomes the en-US Play release notes, and the job fails in its first minute without one (never truncated, never the generated notes). The workflow at `.github/workflows/release-android.yml`:
 
-1. Checks out the tag.
+1. Checks out the tag, and reads `## What's New` out of the Release body (`scripts/play_release.mjs notes`).
 2. Sets up Flutter SDK + JDK 17.
 3. `melos bootstrap`.
 4. Decodes `ANDROID_KEYSTORE_BASE64` to a temp file.
 5. Reads version from the tag (`1.2.3`); derives `versionCode` from `git rev-list --count HEAD`, and pins both into `pubspec.yaml`.
 6. Decodes the keystore + writes `key.properties` (so the gradle release `signingConfig` engages), and stubs an empty `.env.development`.
 7. `flutter build appbundle --release` with the production `--dart-define`s (§ Production config above) — the build is signed by gradle via `key.properties`, no separate sign step.
-8. Uploads to Play Internal track via `PLAY_SERVICE_ACCOUNT_JSON`.
-9. Attaches the AAB to the GitHub Release that triggered the run.
+8. Attaches the AAB to the GitHub Release that triggered the run.
+9. Uploads to Play Internal track via `PLAY_SERVICE_ACCOUNT_JSON`, unless Play already holds that version code (a re-run).
+10. Puts the version code on the production track as a staged rollout at 1% with the What's New as its notes and commits the edit, which sends it for review (`scripts/play_release.mjs promote`). Production already carrying it is a no-op; a different build still rolling out, or other changes already in review, fail the job rather than being cancelled.
 
-Promotion from Internal to Beta to Production is **manual** through the Play Console after smoke-testing the Internal build.
+**Promoting an existing build without rebuilding.** Actions → Release Android → Run workflow, `tag` = `mobile_android@1.2.3`. The `promote` job waits for the `production` approval, derives the version code from the tag exactly as the build did, reads the Release's `## What's New`, and runs step 10. This is how a build already on Internal (`mobile_android@1.24.0`, version code 5158) reaches production.
+
+**The daily rollout step.** `.github/workflows/play-rollout.yml` runs `scripts/play_release.mjs advance` at 15:00 UTC: an in-progress production rollout that Play has published moves to the next step, and past 50% it completes. It does nothing while the release is in review or approved but unpublished (managed publishing), while other changes are in review, and when the rollout is halted. A red run opens a `play-rollout` issue.
 
 ---
 
@@ -341,7 +366,7 @@ The single failure mode that's actually scary. The Play Store has a recovery flo
 3. Google generates a new upload key; you swap it into GitHub Secrets.
 4. Deploys resume.
 
-This takes 2–7 days. **Keep the keystore in the estate secrets repo (sops, § Signing setup) and consider cold storage too** (a printed QR code in a fireproof safe, an encrypted backup at a friend's house, etc.). The cost of redundancy is zero; the cost of losing the only copy is a week of zero releases.
+This takes 2–7 days. The estate secrets repo (sops, § Signing setup) is the only readable copy of the keystore, and no cold copy is kept — a deliberate call (2026-10-07): the sops copy depends on the threkir AWS account staying reachable, and the fallback if it does not is this reset, which costs a week without releases, never the app.
 
 ### Lost Play Console access
 
@@ -368,12 +393,12 @@ Rare, but if it happens (usually for ToS violations the team didn't realise appl
 - [ ] App access test creds provided (staging, not prod seed)
 - [ ] Internal testing track has ≥1 tester email
 - [x] Upload keystore generated, set as GitHub Secrets, and sops-backed-up in the estate secrets repo (2026-07-21)
-- [ ] Keystore backup stored cold (off-machine)
 - [ ] Play service account created, JSON in GitHub Secrets, granted Release manager on this app
 - [ ] Shared `PUBLIC_*` secrets present (Supabase URL/anon, MapTiler — already set for web) and `MOBILE_OSRM_URL` set (required for route-builder road-snapping — unset degrades Trail/Road to straight-line placement, not a hard failure); optional `MOBILE_*` keys left unset stay fail-closed
 - [ ] Manifest reviewed; permissions list matches data-safety form
 - [ ] BACKGROUND_LOCATION prominent in-app disclosure on OnboardingScreen verified
 - [ ] First `mobile_android@*` tag built clean, AAB landed on Internal track
 - [ ] Internal smoke test passed (sign-in, record a run, view in history, sync to backend)
+- [ ] Club invite App Link verified (§ 1865, § 1923): `apps/web/static/.well-known/assetlinks.json` is committed and names `com.threkir.app` with the **Play app-signing** SHA-256 fingerprint (Play Console → Protected with Play → Play Store protection → Protect app signing key; the old "App integrity" page no longer shows it). After the next `web@*` release puts it on `https://threkir.com/.well-known/assetlinks.json`, on a device run `adb shell pm get-app-links com.threkir.app` and confirm `threkir.com: verified`; tapping a `/clubs/join/<token>` link in a chat app should open the invite screen, not the browser. Also confirm the sign-up email's `com.threkir.app://login-callback` still completes sign-in now that Flutter's own deep-link routing is off
 - [ ] Sentry receiving events from a debug build
 - [ ] [`docs/product/parity.md`](../../docs/product/parity.md) Android column updated when promotion to Production happens

@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import {
 	buildFuelPlan,
 	type FuelLegInput,
+	DEFAULT_FLUID_PER_HOUR_ML,
 	GEL_CARBS_G,
-	HEAT_FLUID_FACTOR
+	HEAT_FLUID_FACTOR,
+	WEIGHT_FLUID_MAX_ML,
+	WEIGHT_FLUID_MIN_ML,
+	WEIGHT_FLUID_REFERENCE_KG,
+	weightFluidPerHourMl
 } from './fuel_plan';
 
 // start → aid (1h, refill) → cutoff (0.5h, no services) → finish (0.5h).
@@ -87,4 +92,25 @@ test('non-positive intake rates clamp to zero', () => {
 	const plan = buildFuelPlan(legs(), { carbsPerHourG: -10, fluidPerHourMl: -5 });
 	assert.equal(plan.totalCarbsG, 0);
 	assert.equal(plan.totalFluidMl, 0);
+});
+
+test('weight-based fluid is the default rate at the reference weight and scales with mass', () => {
+	assert.equal(weightFluidPerHourMl(WEIGHT_FLUID_REFERENCE_KG), DEFAULT_FLUID_PER_HOUR_ML);
+	// 500 × 90 / 70 = 642.9 → nearest 25 ml.
+	assert.equal(weightFluidPerHourMl(90), 650);
+	// 500 × 63 / 70 = 450.
+	assert.equal(weightFluidPerHourMl(63), 450);
+});
+
+test('weight-based fluid is held to the 400-800 ml/h band', () => {
+	assert.equal(weightFluidPerHourMl(50), WEIGHT_FLUID_MIN_ML);
+	assert.equal(weightFluidPerHourMl(130), WEIGHT_FLUID_MAX_ML);
+	assert.equal(weightFluidPerHourMl(20), WEIGHT_FLUID_MIN_ML);
+	assert.equal(weightFluidPerHourMl(250), WEIGHT_FLUID_MAX_ML);
+});
+
+test('no usable weight gives no weight-based rate, so the flat rate stands', () => {
+	for (const w of [null, undefined, 0, -70, 19.9, 250.1, NaN, Infinity]) {
+		assert.equal(weightFluidPerHourMl(w), null, String(w));
+	}
 });

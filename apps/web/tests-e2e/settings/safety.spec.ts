@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * /settings/safety — safety-contact double opt-in (migration
@@ -51,6 +52,18 @@ test.describe('/settings/safety', () => {
 			await alex.getByTestId('safety-confirm-request').click();
 			// After confirming, the pending section clears.
 			await expect(alex.getByTestId('safety-incoming')).toHaveCount(0, { timeout: 5_000 });
+
+			// …and the row alex just confirmed does NOT reappear as one of alex's
+			// OWN contacts. `safety_contacts` has a permissive linked-contact SELECT
+			// policy alongside the owner one, so the unfiltered read returned the
+			// union and rendered the runner's row here — under alex's own address,
+			// with a Remove button that the equally-permissive linked-contact DELETE
+			// policy let through, destroying the RUNNER's emergency contact
+			// (decisions §720).
+			await expect(alex.getByTestId('safety-empty')).toBeVisible({ timeout: 5_000 });
+			await expect(
+				alex.getByTestId('safety-contact').filter({ hasText: USER_B.email }),
+			).toHaveCount(0);
 
 			// ── Owner now sees the contact as confirmed ──
 			await runner.reload();
@@ -106,12 +119,15 @@ test.describe('/settings/safety', () => {
 
 			// The opt-in stamp is persisted server-side.
 			const admin = getAdminClient();
-			const { data: after } = await admin
-				.from('safety_contacts')
-				.select('sms_opt_in_at, contact_phone')
-				.eq('owner_id', USER_A.id)
-				.eq('contact_email', USER_B.email)
-				.single();
+			const after = await readRow(
+				'safety_contacts by owner_id+contact_email',
+				admin
+					.from('safety_contacts')
+					.select('sms_opt_in_at, contact_phone')
+					.eq('owner_id', USER_A.id)
+					.eq('contact_email', USER_B.email)
+					.single()
+			);
 			expect((after as { sms_opt_in_at: string | null }).sms_opt_in_at).not.toBeNull();
 			expect((after as { contact_phone: string | null }).contact_phone).toBe('+447700900123');
 		} finally {
@@ -120,12 +136,12 @@ test.describe('/settings/safety', () => {
 		}
 	});
 
-	test('an invalid phone is rejected client-side before any insert', async ({ browser }) => {
+	test('an invalid phone is rejected client-side before any insert', async ({ browser, mockRoute }) => {
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
 		const page = await ctx.newPage();
 		try {
 			let inserts = 0;
-			await page.route('**/rest/v1/safety_contacts**', async (route) => {
+			await mockRoute(page, '**/rest/v1/safety_contacts**', async (route) => {
 				if (route.request().method() === 'POST') inserts++;
 				await route.continue();
 			});
@@ -146,6 +162,7 @@ test.describe('/settings/safety', () => {
 
 	test('double-clicking Confirm on an incoming request fires the RPC once', async ({
 		browser,
+		mockRoute
 	}) => {
 		// Plant a pending request from USER_A to USER_B (matched by email).
 		const admin = getAdminClient();
@@ -158,7 +175,7 @@ test.describe('/settings/safety', () => {
 		const page = await ctx.newPage();
 		try {
 			let calls = 0;
-			await page.route('**/rest/v1/rpc/confirm_safety_contact**', async (route) => {
+			await mockRoute(page, '**/rest/v1/rpc/confirm_safety_contact**', async (route) => {
 				calls++;
 				// Hold the response so the busy guard stays engaged across the
 				// second synchronous click.
@@ -223,12 +240,15 @@ test.describe('/settings/safety', () => {
 
 			// The row is now confirmed in the DB, with the SMS opt-in stamped
 			// because the owner had stored a phone.
-			const { data: after } = await admin
-				.from('safety_contacts')
-				.select('confirmed_at, sms_opt_in_at')
-				.eq('owner_id', USER_A.id)
-				.eq('contact_email', email)
-				.single();
+			const after = await readRow(
+				'safety_contacts by owner_id+contact_email',
+				admin
+					.from('safety_contacts')
+					.select('confirmed_at, sms_opt_in_at')
+					.eq('owner_id', USER_A.id)
+					.eq('contact_email', email)
+					.single()
+			);
 			expect((after as { confirmed_at: string | null }).confirmed_at).not.toBeNull();
 			expect((after as { sms_opt_in_at: string | null }).sms_opt_in_at).not.toBeNull();
 
@@ -287,13 +307,147 @@ test.describe('/settings/safety', () => {
 
 			// The opt-in tick survived hydration — proving the checkbox
 			// gate keeps bind:checked and the DOM in agreement.
-			const { data: after } = await admin
-				.from('safety_contacts')
-				.select('sms_opt_in_at')
-				.eq('owner_id', USER_A.id)
-				.eq('contact_email', email)
-				.single();
+			const after = await readRow(
+				'safety_contacts by owner_id+contact_email',
+				admin
+					.from('safety_contacts')
+					.select('sms_opt_in_at')
+					.eq('owner_id', USER_A.id)
+					.eq('contact_email', email)
+					.single()
+			);
 			expect((after as { sms_opt_in_at: string | null }).sms_opt_in_at).not.toBeNull();
+		} finally {
+			await ctx.close();
+		}
+	});
+});
+
+/**
+ * The contact-of direction (decisions §726). `set_safety_sms_opt_in` shipped
+ * with migration `20270410_001` and worked, but nothing listed the
+ * relationships a user is the CONTACT of, so the SMS consent could be given
+ * once at confirm time and never withdrawn. These rows are exactly the ones
+ * §720 stopped returning from the owner list, so the section fetches them by
+ * name (`contact_user_id`).
+ */
+test.describe('/settings/safety — you are a safety contact for', () => {
+	test.beforeEach(cleanup);
+	test.afterEach(cleanup);
+
+	/// A confirmed link from USER_A to USER_B, planted directly. The BEFORE
+	/// INSERT guard forces every insert unconfirmed (that is its job), so the
+	/// link is made by a following UPDATE rather than in the insert body.
+	async function plantConfirmedLink(phone: string | null) {
+		const admin = getAdminClient();
+		const { error: insErr } = await admin
+			.from('safety_contacts')
+			.insert({ owner_id: USER_A.id, contact_email: USER_B.email, contact_phone: phone });
+		expect(insErr).toBeNull();
+		const { error: updErr } = await admin
+			.from('safety_contacts')
+			.update({ confirmed_at: new Date().toISOString(), contact_user_id: USER_B.id })
+			.eq('owner_id', USER_A.id)
+			.eq('contact_email', USER_B.email);
+		expect(updErr).toBeNull();
+	}
+
+	async function smsOptInAt(): Promise<string | null> {
+		const admin = getAdminClient();
+		const { data } = await admin
+			.from('safety_contacts')
+			.select('sms_opt_in_at')
+			.eq('owner_id', USER_A.id)
+			.eq('contact_email', USER_B.email)
+			.maybeSingle();
+		return (data as { sms_opt_in_at: string | null } | null)?.sms_opt_in_at ?? null;
+	}
+
+	test('the contact sees the relationship and can turn SMS consent on, then off', async ({
+		browser,
+	}) => {
+		await plantConfirmedLink('+447700900126');
+
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/settings/safety');
+			const section = page.getByTestId('safety-contact-of');
+			await expect(section).toBeVisible({ timeout: 10_000 });
+			// Named as the runner's relationship, not as one of alex's own
+			// contacts — that conflation is what §720 fixed.
+			await expect(section).toContainText('Jared Howard');
+			await expect(page.getByTestId('safety-empty')).toBeVisible();
+
+			const sms = page.getByTestId('safety-contact-of-sms');
+			await expect(sms).not.toBeChecked();
+
+			await sms.check();
+			await expect.poll(smsOptInAt, { timeout: 10_000 }).not.toBeNull();
+
+			// The withdrawal half — the whole point of the surface. Before this
+			// existed the consent could only ever be granted.
+			await sms.uncheck();
+			await expect.poll(smsOptInAt, { timeout: 10_000 }).toBeNull();
+
+			// It survives a reload as off, rather than reading off local state.
+			await page.reload();
+			await expect(page.getByTestId('safety-contact-of-sms')).not.toBeChecked({
+				timeout: 10_000,
+			});
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('withdrawing goes through decline_safety_contact, never an owner-scoped delete', async ({
+		browser,
+		mockRoute
+	}) => {
+		// `removeSafetyContact` is scoped to `owner_id` since §720, so wiring
+		// the withdraw button to it would match no row here and report success
+		// while the relationship stood. The action has to be the decline RPC.
+		await plantConfirmedLink(null);
+
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
+		const page = await ctx.newPage();
+		try {
+			let declineCalls = 0;
+			let tableDeletes = 0;
+			await mockRoute(page, '**/rest/v1/rpc/decline_safety_contact**', async (route) => {
+				declineCalls++;
+				await route.continue();
+			});
+			await mockRoute(page, '**/rest/v1/safety_contacts**', async (route) => {
+				if (route.request().method() === 'DELETE') tableDeletes++;
+				await route.continue();
+			});
+
+			await page.goto('/settings/safety');
+			await expect(page.getByTestId('safety-contact-of-row')).toBeVisible({ timeout: 10_000 });
+			// No number on file: the toggle would consent to nothing, so the
+			// surface says so instead of offering it.
+			await expect(page.getByTestId('safety-contact-of-sms')).toHaveCount(0);
+
+			await page.getByTestId('safety-contact-of-withdraw').click();
+			await page
+				.getByTestId('safety-withdraw-dialog')
+				.getByRole('button', { name: 'Withdraw' })
+				.click();
+
+			await expect(page.getByTestId('safety-contact-of')).toHaveCount(0, { timeout: 10_000 });
+			expect(declineCalls).toBe(1);
+			expect(tableDeletes).toBe(0);
+
+			const admin = getAdminClient();
+			const left = await readRows(
+				'safety_contacts by owner_id',
+				admin
+					.from('safety_contacts')
+					.select('id')
+					.eq('owner_id', USER_A.id)
+			);
+			expect(left).toHaveLength(0);
 		} finally {
 			await ctx.close();
 		}

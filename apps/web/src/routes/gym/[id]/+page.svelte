@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
+	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymWorkoutWithSets,
 		fetchExerciseSetHistoryBatch,
@@ -13,32 +13,45 @@
 		type GymWorkoutWithSets,
 		type GymSet,
 		type GymSetWithDate,
-	} from '$lib/core/data';
-	import { workoutPrs, normaliseExerciseName, type GymSetLike, type PrKind } from '$lib/gym/gym_prs';
-	import { previousExerciseSession, type ExerciseSession } from '$lib/gym/exercise_history';
-	import { nextPrescription, type ProgressionSetLike } from '$lib/gym/gym_progression';
+	} from '#lib/core/data.ts';
+	import {
+		workoutPrs,
+		normaliseExerciseName,
+		distinctExerciseCount,
+		type GymSetLike,
+		type PrKind,
+	} from '#lib/gym/gym_prs.ts';
+	import { previousExerciseSession, type ExerciseSession } from '#lib/gym/exercise_history.ts';
+	import { groupExerciseBlocks } from '#lib/gym/exercise_blocks.ts';
+	import { buildNextTargetHints } from '#lib/gym/next_target_hints.ts';
 	import {
 		routineFromWorkout,
 		prefillFromRoutine,
 		type PrefillExercise,
-	} from '$lib/gym/gym_routine';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight, weightUnitLabel } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import RoutineEditor from '$lib/components/RoutineEditor.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GymWorkoutReview from '$lib/components/GymWorkoutReview.svelte';
-	import type { NextTargetHint } from '$lib/gym/gym_session_types';
-	import { reviewFromMetadata } from '$lib/gym/gym_workout_review';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { env } from '$env/dynamic/public';
-	import { buildWorkoutShareCanonical } from '$lib/share/share_workout_meta';
+	} from '#lib/gym/gym_routine.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GymWorkoutReview from '#lib/components/GymWorkoutReview.svelte';
+	import type { NextTargetHint } from '#lib/gym/gym_session_types.ts';
+	import { reviewFromMetadata } from '#lib/gym/gym_workout_review.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildWorkoutShareCanonical } from '#lib/share/share_workout_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
 
-	const id = $derived($page.params.id ?? '');
+	const id = $derived(page.params.id ?? '');
 	const canonicalUrl = $derived(
-		buildWorkoutShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, id)
+		buildWorkoutShareCanonical(siteOrigin(PUBLIC_SITE_URL), id)
 	);
 
 	let data = $state<GymWorkoutWithSets | null>(null);
@@ -122,7 +135,7 @@
 		try {
 			w = await fetchGymWorkoutWithSets(id);
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'gym/[id]: loadError');
 			data = null;
 			notFound = false;
 			loading = false;
@@ -155,61 +168,17 @@
 	// logged sets. Pure suggestion — never auto-applied. The chip self-hides for
 	// ad-hoc workouts (no routine_id) and 'none'-scheme exercises.
 	async function loadNextTargets(w: GymWorkoutWithSets | null): Promise<NextTargetHint[]> {
-		const out: NextTargetHint[] = [];
-		if (!w || w.workout.user_id !== auth.user?.id) return out;
+		if (!w || w.workout.user_id !== auth.user?.id) return [];
 		const meta = (w.workout as { metadata?: Record<string, unknown> | null }).metadata;
 		const routineId = meta && typeof meta === 'object' ? meta['routine_id'] : null;
-		if (typeof routineId !== 'string' || routineId === '') return out;
+		if (typeof routineId !== 'string' || routineId === '') return [];
 
 		// L4 auxiliary: the progression hint is a suggestion chip, so a failed
 		// routine read degrades to "no hint" rather than failing the page.
 		const routine = await fetchGymRoutineDetail(routineId).catch(() => null);
-		if (!routine) return out;
+		if (!routine) return [];
 
-		const setsByKey = new Map<string, ProgressionSetLike[]>();
-		for (const s of w.sets) {
-			const key = normaliseExerciseName(s.exercise_name);
-			if (key === '') continue;
-			const list = setsByKey.get(key) ?? [];
-			list.push({ reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe });
-			setsByKey.set(key, list);
-		}
-
-		for (const ex of routine.exercises) {
-			if (ex.progression === 'none') continue;
-			const key = normaliseExerciseName(ex.exercise_name);
-			const lastSets = setsByKey.get(key);
-			if (!lastSets || lastSets.length === 0) continue;
-			const firstSet = ex.sets[0];
-			const sug = nextPrescription({
-				scheme: ex.progression,
-				lastSets,
-				targetRepsMin: firstSet?.target_reps_min ?? null,
-				targetRepsMax: firstSet?.target_reps_max ?? null,
-				params: ex.progression_params,
-			});
-			if (sug.reason === 'none') continue;
-
-			let topKg: number | null = null;
-			let topReps: number | null = null;
-			for (const s of lastSets) {
-				if (s.weight_kg != null && s.weight_kg > 0 && (topKg == null || s.weight_kg > topKg)) {
-					topKg = s.weight_kg;
-					topReps = s.reps;
-				}
-			}
-			out.push({
-				exerciseKey: key,
-				exerciseName: ex.exercise_name,
-				suggestedWeightKg: sug.suggestedWeightKg,
-				suggestedRepsMin: sug.suggestedRepsMin,
-				suggestedRepsMax: sug.suggestedRepsMax,
-				currentTopKg: topKg,
-				currentTopReps: topReps,
-				reason: sug.reason,
-			});
-		}
-		return out;
+		return buildNextTargetHints({ exercises: routine.exercises, sets: w.sets, history });
 	}
 
 	onMount(async () => {
@@ -217,16 +186,11 @@
 		await load();
 	});
 
-	// Group this workout's sets into exercise blocks (set_index order).
-	const blocks = $derived.by(() => {
-		const out: { name: string; sets: GymSet[] }[] = [];
-		for (const s of data?.sets ?? []) {
-			const last = out[out.length - 1];
-			if (last && last.name === s.exercise_name) last.sets.push(s);
-			else out.push({ name: s.exercise_name, sets: [s] });
-		}
-		return out;
-	});
+	// Group this workout's sets into exercise blocks (set_index order). Each
+	// block carries the canonical grouping key alongside its display spelling,
+	// so every lookup below is keyed on the same thing the PR engine and the
+	// server-stamped `exercise_key` are — never on the block's own spelling.
+	const blocks = $derived(groupExerciseBlocks(data?.sets ?? []));
 
 	// PR kinds this workout achieved, per exercise, judged against all of
 	// the user's OTHER (earlier) sets.
@@ -243,7 +207,7 @@
 			weight_kg: s.weight_kg,
 		}));
 		for (const r of workoutPrs(prior, mine)) {
-			out.set(r.exerciseName.trim().toLowerCase(), r.kinds);
+			out.set(r.key, r.kinds);
 		}
 		return out;
 	});
@@ -255,19 +219,24 @@
 		const out = new Map<string, { prev: ExerciseSession; deltaKg: number | null }>();
 		if (!data || !isOwner) return out;
 		const startedAt = data.workout.started_at;
+		// Heaviest set per exercise across the WHOLE workout, not per block: a
+		// superset logs one lift in non-consecutive sets, so `blocks` holds two
+		// groups for it and a per-block top reports the delta off whichever
+		// half came first.
+		const topByKey = new Map<string, number>();
+		for (const st of data.sets) {
+			const key = normaliseExerciseName(st.exercise_name);
+			if (key === '' || st.weight_kg == null || st.weight_kg <= 0) continue;
+			const seen = topByKey.get(key);
+			if (seen == null || st.weight_kg > seen) topByKey.set(key, st.weight_kg);
+		}
 		for (const b of blocks) {
-			const key = b.name.trim().toLowerCase();
-			if (out.has(key)) continue;
+			if (out.has(b.key)) continue;
 			const prev = previousExerciseSession(history, b.name, startedAt);
 			if (!prev) continue;
-			let thisTop: number | null = null;
-			for (const st of b.sets) {
-				if (st.weight_kg != null && st.weight_kg > 0 && (thisTop == null || st.weight_kg > thisTop)) {
-					thisTop = st.weight_kg;
-				}
-			}
+			const thisTop = topByKey.get(b.key) ?? null;
 			const deltaKg = thisTop != null ? Math.round((thisTop - prev.topWeightKg) * 10) / 10 : null;
-			out.set(key, { prev, deltaKg });
+			out.set(b.key, { prev, deltaKg });
 		}
 		return out;
 	});
@@ -280,12 +249,8 @@
 		return `${deltaKg > 0 ? '+' : '−'}${formatWeight(Math.abs(deltaKg))}`;
 	}
 
-	function prLabel(kind: PrKind): string {
-		return kind === 'weight'
-			? t('gym.pr.weight')
-			: kind === 'volume'
-				? t('gym.pr.volume')
-				: t('gym.pr.e1rm');
+	function prLabel(kind: Exclude<PrKind, 'e1rm'>): string {
+		return kind === 'weight' ? t('gym.pr.weight') : t('gym.pr.volume');
 	}
 	// Only surface a chip for non-default roles; a plain working set shows
 	// nothing so the common case stays uncluttered.
@@ -309,13 +274,15 @@
 	// Header summary stats — total exercises / sets / working volume.
 	const summary = $derived.by(() => {
 		const sets = data?.sets ?? [];
-		const names = new Set<string>();
 		let volume = 0;
 		for (const s of sets) {
-			names.add(s.exercise_name.trim().toLowerCase());
 			if (s.reps != null && s.weight_kg != null) volume += s.reps * s.weight_kg;
 		}
-		return { exercises: names.size, sets: sets.length, volume: Math.round(volume) };
+		return {
+			exercises: distinctExerciseCount(sets.map((s) => s.exercise_name)),
+			sets: sets.length,
+			volume: Math.round(volume),
+		};
 	});
 
 	const review = $derived(
@@ -365,8 +332,9 @@
 		confirmingShare = false;
 		// Same builder as the canonical, but based on the CURRENT origin: a
 		// preview-host user must get a preview link, not a prod one.
-		const url = buildWorkoutShareCanonical(location.origin, id);
+		const base = buildWorkoutShareCanonical(location.origin, id);
 		try {
+			const url = withShareRef(base, await ownShareRef(data?.workout.user_id));
 			if (data && !data.workout.is_public) {
 				await setGymWorkoutPublic(id, true);
 				data = { ...data, workout: { ...data.workout, is_public: true } };
@@ -406,29 +374,35 @@
 
 	{#if loading}
 		<div class="skel-head" aria-hidden="true">
-			<span class="skel skel-line skel-w-50"></span>
-			<span class="skel skel-line skel-w-30"></span>
+			<SkeletonBlock height="1.4rem" width="50%" />
+			<SkeletonBlock height="0.9rem" width="30%" />
 		</div>
 		{#each Array(2) as _, i (i)}
 			<div class="card-elevated skel-block" aria-hidden="true">
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line"></span>
-				<span class="skel skel-line"></span>
+				<SkeletonBlock height="0.9rem" width="40%" />
+				<SkeletonBlock height="0.9rem" />
+				<SkeletonBlock height="0.9rem" />
 			</div>
 		{/each}
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
-		<div class="card-elevated empty-card" role="alert" data-testid="gym-detail-load-error">
-			<span class="material-symbols empty-icon" aria-hidden="true">error</span>
-			<p class="empty-text">{t('gym.loadError')}</p>
-			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
-		</div>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
+	{:else if loadError !== null}
+		<EmptyState
+			icon="error"
+			tone="danger"
+			title={t('gym.loadError')}
+			role="alert"
+			data-testid="gym-detail-load-error"
+		>
+			{#snippet actions()}
+				<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
+			{/snippet}
+		</EmptyState>
 	{:else if notFound}
-		<div class="card-elevated empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
-			<p class="empty-text">{t('gym.notFound')}</p>
-			<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
-		</div>
+		<EmptyState icon="search_off" title={t('gym.notFound')}>
+			{#snippet actions()}
+				<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else if data}
 		<header class="page-header">
 			<div class="head-text">
@@ -523,14 +497,14 @@
 		     with the same name — a name key throws each_key_duplicate and wedges the
 		     page on its loading state. -->
 		{#each blocks as block (block.sets[0].id)}
-			{@const lt = prevByExercise.get(block.name.trim().toLowerCase())}
+			{@const lt = prevByExercise.get(block.key)}
 			<section class="card-elevated exercise-block">
 				<div class="block-head">
 					<h2>{block.name}</h2>
-					{#each prByExercise.get(block.name.trim().toLowerCase()) ?? [] as kind (kind)}
+					{#each prByExercise.get(block.key) ?? [] as kind (kind)}
 						<span class="pr-chip">
 							<span class="material-symbols" aria-hidden="true">trophy</span>
-							{prLabel(kind)}
+							{#if kind === 'e1rm'}<MetricLabel metric="e1rm" />{:else}{prLabel(kind)}{/if}
 						</span>
 					{/each}
 				</div>
@@ -550,12 +524,14 @@
 						<span class="material-symbols lt-chevron" aria-hidden="true">chevron_right</span>
 					</a>
 				{/if}
+				<!-- The column header sits outside the list, so it is not counted as a
+				     set, and only the RPE caption is exposed: it carries a disclosure. -->
+				<div class="sets-head">
+					<span class="set-n" aria-hidden="true"></span>
+					<span class="set-val section-label" aria-hidden="true">{t('gym.reps')} × {t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
+					<span class="rpe section-label"><MetricLabel metric="rpe" /></span>
+				</div>
 				<ol class="sets">
-					<li class="sets-head" aria-hidden="true">
-						<span class="set-n"></span>
-						<span class="set-val section-label">{t('gym.reps')} × {t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
-						<span class="rpe section-label">{t('gym.rpe')}</span>
-					</li>
 					{#each block.sets as s (s.id)}
 						<li>
 							<span class="set-n">{t('gym.setN', { n: s.set_index + 1 })}</span>
@@ -812,17 +788,19 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.sets li {
+	.sets li,
+	.sets-head {
 		display: grid;
 		grid-template-columns: minmax(0, 4rem) minmax(0, 1fr) minmax(0, 4rem);
 		align-items: center;
 		gap: var(--space-sm);
 		padding: var(--space-xs) 0;
 	}
-	.sets li + li:not(.sets-head) {
+	.sets li + li {
 		border-top: 1px solid var(--color-border);
 	}
 	.sets-head {
+		padding-top: 0;
 		padding-bottom: var(--space-2xs);
 	}
 	.sets-head .set-val,
@@ -868,28 +846,6 @@
 
 	/* Empty / not-found card — composes .card-elevated; only the centered
 	   layout lives here. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		margin: 0;
-		padding: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-	}
-	.empty-card .btn {
-		margin-top: var(--space-xs);
-	}
 
 	/* Skeletons mirror the head + exercise-card heights. */
 	.skel-head {
@@ -903,58 +859,6 @@
 		flex-direction: column;
 		gap: var(--space-sm);
 		margin-bottom: var(--space-md);
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-		height: 0.9rem;
-	}
-	.skel-line {
-		width: 100%;
-	}
-	.skel-w-30 {
-		width: 30%;
-	}
-	.skel-w-40 {
-		width: 40%;
-	}
-	.skel-w-50 {
-		width: 50%;
-		height: 1.4rem;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	@media (max-width: 40rem) {

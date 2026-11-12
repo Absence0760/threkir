@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { consent } from '$lib/settings/consent.svelte';
+	import { consent } from '#lib/settings/consent.svelte.ts';
 
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-11-05';
 
 	// audit/cookie-consent (May 2026): the prior page told users to
 	// use a "Cookie settings" link in the footer that does not exist.
@@ -27,8 +27,8 @@
 	<p class="lead">
 		Threkir uses a small number of cookies and similar technologies (including browser
 		localStorage). Most are strictly necessary or first-party preferences that never leave your
-		device; the consent-gated third-party services are off by default and load only after you opt
-		in.
+		device (the one exception, noted below, is sent to us only if you sign up); the consent-gated
+		third-party services are off by default and load only after you opt in.
 	</p>
 	<p class="meta">Last updated: {lastUpdated}</p>
 
@@ -53,9 +53,9 @@
 
 	<h2>2. Preferences + on-device caches</h2>
 	<p>
-		First-party localStorage that holds your own preferences and offline caches. Nothing in this
-		table is sent to a third party; entries keyed by user id or date are cleared on sign-out or
-		roll off naturally.
+		First-party browser storage that holds your own preferences and offline caches. Nothing in
+		this table is sent to a third party; entries keyed by user id or date are cleared on sign-out
+		or roll off naturally.
 	</p>
 	<div class="table-scroll" tabindex="0">
 		<table>
@@ -70,6 +70,7 @@
 				<tr><td>runs_filters_v1 / routes_filters_v1</td><td>Your list filters, so they survive navigation</td><td>Persistent</td></tr>
 				<tr><td>water_ml_&lt;user&gt;_&lt;date&gt;</td><td>Today's water-tracker total (stays on this device)</td><td>Per day</td></tr>
 				<tr><td>Layout keys (panel widths, goal migration)</td><td>Remember resizable-panel positions; migrate legacy locally-stored goals into your account</td><td>Persistent</td></tr>
+				<tr data-testid="signup-source-storage"><td>threkir.signup_source (sessionStorage)</td><td>Where this tab first arrived from: the link's campaign tags, or the address of the site that sent you, or "direct". Sent to us with your sign-up if you create an account, so we can count which links bring new members; never sent otherwise. See the <a href="/privacy">Privacy Policy</a>.</td><td>Until the tab is closed</td></tr>
 			</tbody>
 		</table>
 	</div>
@@ -96,9 +97,24 @@
 	<ul>
 		<li>
 			<strong>MapTiler</strong> (EU, with global edge caching) — every map tile fetch logs the
-			requesting IP and the map viewport. Map tiles load only after you accept the consent banner;
-			on map screens (run detail, route detail, route builder, live spectator) the map renders as
-			a "Load map" placeholder until then.
+			requesting IP, browser details, and the map viewport. On signed-in map screens (run detail,
+			route detail, route builder) and the live spectator pages, map tiles load once you accept
+			the consent banner; until then the map renders as a "Load map" placeholder you can tap to
+			load it for that view. The 3D course preview loads MapTiler elevation tiles along the course
+			under the same rule.
+		</li>
+		<li data-testid="share-page-map-tap">
+			<strong>Share pages</strong> (a shared run or route, usually opened without an account) — the
+			map and, on a shared route, the 3D course preview ask on every view, whatever you chose on
+			the banner: nothing is requested from MapTiler until you tap "Load map" or "Load preview",
+			and the tap covers only that view. On these pages the banner covers error monitoring
+			(Sentry) only.
+		</li>
+		<li>
+			<strong>AWS Open Data Terrain Tiles</strong> (US) — only on a deployment with no MapTiler
+			account, where the 3D course preview reads elevation from this public Amazon S3 bucket
+			instead. Each request logs your IP address and the map tile it asked for. It follows the same
+			rules as MapTiler, including the per-view "Load preview" tap on a shared route.
 		</li>
 		<li>
 			<strong>Open-Meteo</strong> (EU) — fires when you build or view a route, to look up
@@ -111,8 +127,10 @@
 			macros manually avoids it entirely.
 		</li>
 		<li>
-			<strong>Anthropic / OpenAI</strong> — only fires when you open the AI Coach. The
-			request includes prompt text + recent training data.
+			<strong>Anthropic / OpenAI</strong> — never called from your browser. Our servers send a
+			request only when you use the AI Coach (your prompt and recent training data) or one of the
+			AI assistants (route, plan, and plan edits: the text you type plus the facts each needs, listed
+			in the <a href="/privacy#sub-processors">Privacy Policy</a>). No cookie is involved.
 		</li>
 		<li>
 			<strong>Supabase Storage (signed URLs)</strong> — every track preview or photo fetch

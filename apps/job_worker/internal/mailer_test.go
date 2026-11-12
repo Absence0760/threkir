@@ -25,31 +25,102 @@ func TestEmailMode_DefaultsToImportant(t *testing.T) {
 	}
 }
 
+// emailPrefs / pushPrefs build the one-key bag the gate reads, so the matrix
+// below still reads as "kind x mode" now that shouldEmail/shouldPush take the
+// whole prefs bag rather than a pre-resolved mode.
+func emailPrefs(mode string) map[string]interface{} {
+	return map[string]interface{}{"email_notifications": mode}
+}
+
+func pushPrefs(mode string) map[string]interface{} {
+	return map[string]interface{}{"push_notifications": mode}
+}
+
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message"}
-	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request", "club_join_request", "club_join_approved", "event_updated", "course_alert"}
+	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like", "workout_reminder"}
 
 	for _, k := range important {
-		if !shouldEmail(k, emailModeImportant) {
+		if !shouldEmail(k, emailPrefs(emailModeImportant)) {
 			t.Errorf("%s should email under 'important'", k)
 		}
-		if !shouldEmail(k, emailModeAll) {
+		if !shouldEmail(k, emailPrefs(emailModeAll)) {
 			t.Errorf("%s should email under 'all'", k)
 		}
-		if shouldEmail(k, emailModeOff) {
+		if shouldEmail(k, emailPrefs(emailModeOff)) {
 			t.Errorf("%s must NOT email under 'off'", k)
 		}
 	}
 	for _, k := range social {
-		if shouldEmail(k, emailModeImportant) {
+		if shouldEmail(k, emailPrefs(emailModeImportant)) {
 			t.Errorf("%s must NOT email under 'important'", k)
 		}
-		if !shouldEmail(k, emailModeAll) {
+		if !shouldEmail(k, emailPrefs(emailModeAll)) {
 			t.Errorf("%s should email under 'all'", k)
 		}
-		if shouldEmail(k, emailModeOff) {
+		if shouldEmail(k, emailPrefs(emailModeOff)) {
 			t.Errorf("%s must NOT email under 'off'", k)
 		}
+	}
+}
+
+// The per-kind mute (decisions.md § 729) can only ever SUBTRACT. It is the
+// proportionate control the three-mode channel setting cannot express — muting
+// email to stop one notice would also stop direct messages — and its direction
+// is deliberately the opposite of the engagement streams' opt-IN: the subject
+// asked for the export minutes earlier, so an absent key means "never chose",
+// not "declined".
+func TestKindMute_OnlyEverSubtracts(t *testing.T) {
+	const kind = "data_export_ready"
+	muted := map[string]interface{}{"notify_data_export_ready": "off"}
+
+	for _, mode := range []string{emailModeAll, emailModeImportant} {
+		prefs := emailPrefs(mode)
+		if !shouldEmail(kind, prefs) {
+			t.Fatalf("precondition: %s should email under %q", kind, mode)
+		}
+		prefs["notify_data_export_ready"] = "off"
+		if shouldEmail(kind, prefs) {
+			t.Errorf("a muted kind must not email under %q", mode)
+		}
+	}
+	for _, mode := range []string{pushModeAll, pushModeImportant} {
+		prefs := pushPrefs(mode)
+		if !shouldPush(kind, prefs) {
+			t.Fatalf("precondition: %s should push under %q", kind, mode)
+		}
+		prefs["notify_data_export_ready"] = "off"
+		if shouldPush(kind, prefs) {
+			t.Errorf("a muted kind must not push under %q", mode)
+		}
+	}
+
+	// It never widens: the mute key is not a way past a muted channel, and it
+	// says nothing about any other kind.
+	off := map[string]interface{}{"email_notifications": emailModeOff, "notify_data_export_ready": "on"}
+	if shouldEmail(kind, off) {
+		t.Error("a per-kind 'on' must not promote a kind past email_notifications=off")
+	}
+	if !shouldEmail("message", muted) {
+		t.Error("muting one kind must not touch another")
+	}
+
+	// Absent, unrecognised and non-string all read as unmuted: a corrupt bag is
+	// not a decision to stop being told about your own data-rights request.
+	for name, v := range map[string]interface{}{
+		"unknown string": "silence",
+		"bool":           true,
+		"number":         0,
+	} {
+		if kindMuted(kind, map[string]interface{}{"notify_data_export_ready": v}) {
+			t.Errorf("%s value must not mute", name)
+		}
+	}
+	if kindMuted(kind, map[string]interface{}{}) {
+		t.Error("an absent key must not mute")
+	}
+	if kindMuted("message", muted) {
+		t.Error("a kind with no registered mute key is never muted")
 	}
 }
 
@@ -59,17 +130,19 @@ func TestShouldEmail_Matrix(t *testing.T) {
 // opted into everything from being emailed and pushed a provisional moderation
 // notice with no destination.
 func TestInAppOnlyKinds_NeverLeaveTheInbox(t *testing.T) {
-	if !inAppOnlyKinds["content_hidden"] {
-		t.Fatal("content_hidden must be in-app only — see the inAppOnlyKinds rationale")
+	for _, kind := range []string{"content_hidden", "plan_ai_edit"} {
+		if !inAppOnlyKinds[kind] {
+			t.Fatalf("%s must be in-app only — see the inAppOnlyKinds rationale", kind)
+		}
 	}
 	for kind := range inAppOnlyKinds {
 		for _, mode := range []string{emailModeAll, emailModeImportant, emailModeOff} {
-			if shouldEmail(kind, mode) {
+			if shouldEmail(kind, emailPrefs(mode)) {
 				t.Errorf("shouldEmail(%q, %q) = true; in-app-only kinds must never email", kind, mode)
 			}
 		}
 		for _, mode := range []string{pushModeAll, pushModeImportant, pushModeOff} {
-			if shouldPush(kind, mode) {
+			if shouldPush(kind, pushPrefs(mode)) {
 				t.Errorf("shouldPush(%q, %q) = true; in-app-only kinds must never push", kind, mode)
 			}
 		}
@@ -90,7 +163,7 @@ func TestRenderNotificationEmail_EventReminderDeepLink(t *testing.T) {
 	if !strings.Contains(msg.Body, "https://threkir.test/events/evt-42") {
 		t.Errorf("body should deep-link to the event, got:\n%s", msg.Body)
 	}
-	if msg.ListUnsubscribe != "https://threkir.test/settings/preferences" {
+	if msg.ListUnsubscribe != "https://threkir.test/settings/notifications" {
 		t.Errorf("unexpected unsubscribe URL: %q", msg.ListUnsubscribe)
 	}
 	// Trailing slash on baseURL must not double up.
@@ -125,7 +198,8 @@ func TestRenderNotificationEmail_RunDeepLinkAndFallback(t *testing.T) {
 // blank/garbled email.
 func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 	const base = "https://threkir.test"
-	ev, run, club := "evt-1", "run-1", "club-1"
+	ev, run, club, plan := "evt-1", "run-1", "club-1", "plan-1"
+	courseAlert := "ca-1"
 
 	cases := []struct {
 		kind     string
@@ -135,18 +209,59 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_reminder", NotificationRow{Kind: "event_reminder", EventID: &ev}, base + "/events/evt-1"},
 		{"event_cancel", NotificationRow{Kind: "event_cancel", EventID: &ev}, base + "/events/evt-1"},
 		{"event_rsvp", NotificationRow{Kind: "event_rsvp", EventID: &ev}, base + "/events/evt-1"},
+		{"event_waitlist_slot", NotificationRow{Kind: "event_waitlist_slot", EventID: &ev}, base + "/events/evt-1"},
+		{"event_updated", NotificationRow{Kind: "event_updated", EventID: &ev}, base + "/events/evt-1"},
+		// A deleted event's notice carries its club and no event (decisions § 2358).
+		{"event_cancel for a deleted event", NotificationRow{Kind: "event_cancel", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_join_request", NotificationRow{Kind: "club_join_request", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_join_approved", NotificationRow{Kind: "club_join_approved", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_verification", NotificationRow{Kind: "club_verification", ClubID: &club}, base + "/clubs/club-1"},
+		// Both sides of a naming dispute read it on one page (decisions § 2441).
+		{"organiser_dispute", NotificationRow{Kind: "organiser_dispute", ClubID: &club}, base + "/disputes"},
+		// App admins review a park course report in the queue (decisions § 2449).
+		{"park_course_report", NotificationRow{Kind: "park_course_report"}, base + "/admin/reports"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
+		// Sent to the assigning coach, whose view of the athlete's plan is the
+		// same /plans/{id} page (decisions § 2230).
+		{"plan_ai_edit", NotificationRow{Kind: "plan_ai_edit", PlanID: &plan}, base + "/plans/plan-1"},
+		{"workout_reminder", NotificationRow{Kind: "workout_reminder"}, base + "/plans"},
+		// The athlete's plan page, where both sides see the request
+		// (decisions § 2382).
+		{"plan_change_request", NotificationRow{Kind: "plan_change_request", PlanID: &plan}, base + "/plans/plan-1"},
+		{"plan_change_decision", NotificationRow{Kind: "plan_change_decision", PlanID: &plan}, base + "/plans/plan-1"},
+		// The stable-id resolver opens the race or route (decisions § 2407).
+		{"course_alert", NotificationRow{Kind: "course_alert", CourseAlertID: &courseAlert}, base + "/course-alerts/ca-1"},
+		// The occurrence's event page, where the race panel counts down
+		// (decisions § 2400).
+		{"race_starting_soon", NotificationRow{Kind: "race_starting_soon", EventID: &ev}, base + "/events/evt-1"},
+		{"race_start_moved", NotificationRow{Kind: "race_start_moved", EventID: &ev}, base + "/events/evt-1"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
 		{"club_post", NotificationRow{Kind: "club_post", ClubID: &club}, base + "/clubs/club-1"},
 		{"run_completed", NotificationRow{Kind: "run_completed", UserID: "usr-1", RunID: &run}, base + "/share/run/run-1"},
 		{"kudos", NotificationRow{Kind: "kudos", RunID: &run}, base + "/runs/run-1"},
 		{"comment", NotificationRow{Kind: "comment", RunID: &run}, base + "/runs/run-1"},
 		{"comment_reply", NotificationRow{Kind: "comment_reply", RunID: &run}, base + "/runs/run-1"},
+		{"reaction", NotificationRow{Kind: "reaction", RunID: &run}, base + "/runs/run-1"},
+		{"comment_like", NotificationRow{Kind: "comment_like", RunID: &run}, base + "/runs/run-1"},
+		{"mention", NotificationRow{Kind: "mention", RunID: &run}, base + "/runs/run-1"},
 		{"follow", NotificationRow{Kind: "follow", UserID: "usr-1"}, base + "/u/usr-1"},
+		{"follow_request", NotificationRow{Kind: "follow_request", UserID: "usr-1"}, base + "/follow-requests"},
 		{"challenge_complete", NotificationRow{Kind: "challenge_complete"}, base + "/challenges"},
 		{"achievement", NotificationRow{Kind: "achievement", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
+		{"personal_record", NotificationRow{Kind: "personal_record", RunID: &run}, base + "/runs/run-1?share=pr"},
+		{"personal_record without a run", NotificationRow{Kind: "personal_record", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 		{"content_hidden", NotificationRow{Kind: "content_hidden", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
+		// The one kind whose link carries no id: the export lives in
+		// data_export_jobs, which the notifications row has no column for,
+		// and the page mints the signed download URL when the subject
+		// arrives (decisions.md § 729).
+		{"data_export_ready", NotificationRow{Kind: "data_export_ready", UserID: "usr-1"}, base + "/settings/account"},
+		// Both shapes: an event order carries the FK and lands on the event page,
+		// a donation carries none and lands on the inbox rather than on
+		// eventPath's own /clubs fallback (decisions § 825).
+		{"refund_failed", NotificationRow{Kind: "refund_failed", UserID: "usr-1", EventID: &ev}, base + "/events/evt-1"},
+		{"refund_failed_donation", NotificationRow{Kind: "refund_failed", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 		{"unknown_future_kind", NotificationRow{Kind: "unknown_future_kind", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 	}
 
@@ -175,11 +290,11 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		if !strings.Contains(msg.HTML, brandName) {
 			t.Errorf("%s: HTML missing the %s brand header", c.kind, brandName)
 		}
-		if msg.ListUnsubscribe != base+"/settings/preferences" {
+		if msg.ListUnsubscribe != base+"/settings/notifications" {
 			t.Errorf("%s: unexpected unsubscribe URL %q", c.kind, msg.ListUnsubscribe)
 		}
-		if !strings.Contains(msg.Body, base+"/settings/preferences") ||
-			!strings.Contains(msg.HTML, base+"/settings/preferences") {
+		if !strings.Contains(msg.Body, base+"/settings/notifications") ||
+			!strings.Contains(msg.HTML, base+"/settings/notifications") {
 			t.Errorf("%s: missing manage-preferences footer", c.kind)
 		}
 	}
@@ -223,20 +338,42 @@ func TestPathForKind(t *testing.T) {
 		{"event_reminder", "event_reminder", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event_cancel", "event_cancel", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event_rsvp", "event_rsvp", NotificationRow{EventID: &ev}, base + "/events/e1"},
+		{"event_waitlist_slot", "event_waitlist_slot", NotificationRow{EventID: &ev}, base + "/events/e1"},
+		{"event_updated", "event_updated", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event nil id → /clubs", "event_reminder", NotificationRow{}, base + "/clubs"},
+		// A deleted event's cancel links no event (the cascade would erase a
+		// row that did) and lands on its club; with the club gone too, the hub.
+		{"deleted event's cancel → its club", "event_cancel", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"deleted event's cancel, club gone → /clubs", "event_cancel", NotificationRow{}, base + "/clubs"},
 		// Plan family → /plans (there is NO /training route — the old target
 		// was a dead deep link).
 		{"plan_update → /plans", "plan_update", NotificationRow{}, base + "/plans"},
 		{"plan_assigned → /plans", "plan_assigned", NotificationRow{}, base + "/plans"},
+		{"workout_reminder → /plans", "workout_reminder", NotificationRow{}, base + "/plans"},
 		// Club → the club id in the /clubs/[slug] slot; that page falls back to
 		// an id lookup and redirects to the canonical slug URL.
 		{"club_post", "club_post", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		{"club nil id → /clubs", "club_post", NotificationRow{}, base + "/clubs"},
+		{"club_join_request", "club_join_request", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"club_join_approved", "club_join_approved", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"club_verification", "club_verification", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"organiser_dispute", "organiser_dispute", NotificationRow{ClubID: &club}, base + "/disputes"},
+		{"park_course_report", "park_course_report", NotificationRow{}, base + "/admin/reports"},
+		// A group message opens its group, a 1:1 one the inbox; an invite the
+		// Requests list, where accept and decline sit (decisions § 2463).
+		{"group message", "message", NotificationRow{ConversationID: &club}, base + "/messages/group/c1"},
+		{"direct message", "message", NotificationRow{}, base + "/messages"},
+		{"group_invite", "group_invite", NotificationRow{ConversationID: &club}, base + "/messages?view=requests"},
 		// Engagement on the recipient's OWN run → the owner-scoped detail page.
 		// comment_reply folds to run.
 		{"kudos", "kudos", NotificationRow{RunID: &run}, base + "/runs/r1"},
 		{"comment", "comment", NotificationRow{RunID: &run}, base + "/runs/r1"},
 		{"comment_reply", "comment_reply", NotificationRow{RunID: &run}, base + "/runs/r1"},
+		{"reaction", "reaction", NotificationRow{RunID: &run}, base + "/runs/r1"},
+		// Not necessarily the recipient's run, but one their audience admits;
+		// /runs/{id} serves a non-owner the shared view of exactly those.
+		{"comment_like", "comment_like", NotificationRow{RunID: &run}, base + "/runs/r1"},
+		{"mention", "mention", NotificationRow{RunID: &run}, base + "/runs/r1"},
 		{"run nil id → inbox", "kudos", NotificationRow{UserID: "u1"}, inbox},
 		// A followee's run → the public share page. /runs/{id} reads
 		// owner-scoped, so it renders "run not found" for the follower this
@@ -245,6 +382,13 @@ func TestPathForKind(t *testing.T) {
 		{"run_completed nil id → inbox", "run_completed", NotificationRow{UserID: "u1"}, inbox},
 		// Follow → recipient's own profile (there is NO /profile route).
 		{"follow → /u/{id}", "follow", NotificationRow{UserID: "u1"}, base + "/u/u1"},
+		// A reversed refund on an event order → the event page, whose banner
+		// explains the same thing at length. On a DONATION there is no FK to
+		// carry, and eventPath's own /clubs fallback would answer "we still
+		// have your money" with a club directory — so that half goes to the
+		// inbox, where the message is (decisions § 825).
+		{"refund_failed order", "refund_failed", NotificationRow{UserID: "u1", EventID: &ev}, base + "/events/e1"},
+		{"refund_failed donation → inbox", "refund_failed", NotificationRow{UserID: "u1"}, inbox},
 		// Static targets.
 		{"message", "message", NotificationRow{}, base + "/messages"},
 		{"challenge_complete", "challenge_complete", NotificationRow{}, base + "/challenges"},
@@ -279,8 +423,8 @@ func TestRenderLifecycleEmail_Welcome(t *testing.T) {
 	if !strings.Contains(msg.Body, "Thanks for signing up") {
 		t.Errorf("body should thank the user:\n%s", msg.Body)
 	}
-	if !strings.Contains(msg.Body, "https://threkir.test/settings/preferences") {
-		t.Errorf("body should link to preferences:\n%s", msg.Body)
+	if !strings.Contains(msg.Body, "https://threkir.test/settings/notifications") {
+		t.Errorf("body should link to the notification preferences:\n%s", msg.Body)
 	}
 	// No trailing-slash double-up from the base URL.
 	if strings.Contains(msg.Body, "threkir.test//") {
@@ -298,7 +442,7 @@ func TestRenderLifecycleEmail_Welcome(t *testing.T) {
 		"<!DOCTYPE html>", brandName,
 		"Welcome to Threkir",
 		`href="https://threkir.test"`, // CTA → app root (no trailing slash)
-		"https://threkir.test/settings/preferences",
+		"https://threkir.test/settings/notifications",
 	} {
 		if !strings.Contains(msg.HTML, want) {
 			t.Errorf("welcome HTML missing %q in:\n%s", want, msg.HTML)
@@ -343,15 +487,15 @@ func TestBuildMIME_HeadersAndCRLF(t *testing.T) {
 	raw := buildMIME("Threkir <noreply@threkir.com>", "runner@test.com", Email{
 		Subject:         "Hi",
 		Body:            "line one\nline two",
-		ListUnsubscribe: "https://threkir.test/settings/preferences",
+		ListUnsubscribe: "https://threkir.test/settings/notifications",
 	})
 	for _, want := range []string{
 		"From: Threkir <noreply@threkir.com>\r\n",
 		"To: runner@test.com\r\n",
 		"Subject: Hi\r\n",
-		"List-Unsubscribe: <https://threkir.test/settings/preferences>\r\n",
+		"List-Unsubscribe: <https://threkir.test/settings/notifications>\r\n",
 		"Content-Type: text/plain; charset=UTF-8\r\n",
-		"\r\n\r\n", // header/body separator
+		"\r\n\r\n",             // header/body separator
 		"line one\r\nline two", // body LF rewritten to CRLF
 	} {
 		if !strings.Contains(raw, want) {
@@ -502,5 +646,75 @@ func TestExtractAddr(t *testing.T) {
 		if got := extractAddr(in); got != want {
 			t.Errorf("extractAddr(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// The header lockup is the one piece of every email a recipient sees before
+// reading a word of it, and it has three states worth pinning: the mark
+// resolved against the deployment's base URL, the wordmark alone when no base
+// is configured, and an alt that stays empty so the brand isn't announced
+// twice.
+func TestRenderBrandLockup_MarkResolvesAgainstBase(t *testing.T) {
+	got := renderBrandLockup(emailLogoURL("https://threkir.com"))
+
+	if !strings.Contains(got, `src="https://threkir.com/email-logo.png"`) {
+		t.Errorf("logo src missing or unresolved: %s", got)
+	}
+	if !strings.Contains(got, `alt=""`) {
+		t.Errorf("mark must carry an empty alt beside the wordmark: %s", got)
+	}
+	if !strings.Contains(got, brandName) {
+		t.Errorf("wordmark missing: %s", got)
+	}
+	if !strings.Contains(got, `width="32" height="32"`) {
+		t.Errorf("dimensions must be attributes, not CSS — Outlook ignores the CSS: %s", got)
+	}
+}
+
+func TestEmailLogoURL_TrailingSlashAndEmptyBase(t *testing.T) {
+	if got := emailLogoURL("https://threkir.com/"); got != "https://threkir.com/email-logo.png" {
+		t.Errorf("trailing slash not trimmed: %q", got)
+	}
+	if got := emailLogoURL(""); got != "" {
+		t.Errorf("empty base must yield no URL, got %q", got)
+	}
+}
+
+// A worker with no APP_BASE_URL must still send a coherent email rather than
+// one with a broken image at the top. This is the same shape every client
+// that blocks remote images renders.
+func TestRenderBrandLockup_NoBaseFallsBackToWordmark(t *testing.T) {
+	got := renderBrandLockup("")
+
+	if strings.Contains(got, "<img") {
+		t.Errorf("no base URL must not emit an image: %s", got)
+	}
+	if !strings.Contains(got, brandName) {
+		t.Errorf("wordmark must survive the fallback: %s", got)
+	}
+}
+
+// Every template shares one layout, so the mark reaching the rendered HTML is
+// a property of composeEmail, not of any one template.
+func TestRenderedEmails_CarryTheMark(t *testing.T) {
+	const base = "https://threkir.com"
+	want := `src="` + base + `/email-logo.png"`
+
+	notif := renderNotificationEmail(NotificationRow{Kind: "club_invite"}, base, "en")
+	if !strings.Contains(notif.HTML, want) {
+		t.Error("notification email is missing the header mark")
+	}
+
+	welcome, ok := renderLifecycleEmail("welcome", base, "en")
+	if !ok {
+		t.Fatal("welcome template did not render")
+	}
+	if !strings.Contains(welcome.HTML, want) {
+		t.Error("lifecycle email is missing the header mark")
+	}
+
+	// The text part must not grow a URL nobody can click.
+	if strings.Contains(welcome.Body, "email-logo.png") {
+		t.Error("the logo leaked into the plain-text part")
 	}
 }

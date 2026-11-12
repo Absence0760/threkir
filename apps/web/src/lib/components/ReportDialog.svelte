@@ -1,17 +1,18 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		submitReport,
-		type ReportReason,
-		type ReportTargetKind,
-	} from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+		type GeneralReportReason,
+		type GeneralReportTargetKind,
+	} from '#lib/core/data.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	interface Props {
 		open: boolean;
-		targetKind: ReportTargetKind;
+		targetKind: GeneralReportTargetKind;
 		targetId: string;
 		/// Human-readable name of the thing being reported. Surfaced
 		/// in the dialog body so the user can sanity-check what they're
@@ -23,17 +24,27 @@
 
 	let { open, targetKind, targetId, targetLabel, onclose }: Props = $props();
 
-	const NOUNS: Record<ReportTargetKind, MessageKey> = {
-		user: 'reportDialog.nounProfile',
-		club: 'reportDialog.nounClub',
-		route: 'reportDialog.nounRoute',
-		comment: 'reportDialog.nounComment',
-		club_post: 'reportDialog.nounPost',
-		run: 'reportDialog.nounRun',
-		route_review: 'reportDialog.nounReview',
+	/// A whole title per kind, not one title with a `{noun}` slot: the four
+	/// feminine nouns and the three masculine ones cannot share a determiner,
+	/// so a slot rendered "Denunciar este rota" in Portuguese and Spanish,
+	/// "Signaler ce course" in French, and put a feminine "Diese" on four
+	/// masculine German nouns (decisions § 1060).
+	const TITLES: Record<GeneralReportTargetKind, MessageKey> = {
+		user: 'reportDialog.titleProfile',
+		club: 'reportDialog.titleClub',
+		route: 'reportDialog.titleRoute',
+		comment: 'reportDialog.titleComment',
+		club_post: 'reportDialog.titlePost',
+		run: 'reportDialog.titleRun',
+		route_review: 'reportDialog.titleReview',
+		direct_message: 'reportDialog.titleMessage',
+		group_invite: 'reportDialog.titleGroupInvite',
 	};
 
-	const REASONS: { value: ReportReason; label: MessageKey; hint: MessageKey }[] = [
+	// The organiser dispute reason is filed through OrganiserDisputeDialog,
+	// for a verified club's owner or admin only; the course reasons through
+	// ParkCourseReportDialog, on a park course only.
+	const REASONS: { value: GeneralReportReason; label: MessageKey; hint: MessageKey }[] = [
 		{
 			value: 'spam',
 			label: 'reportDialog.reasonSpamLabel',
@@ -61,12 +72,12 @@
 		},
 	];
 
-	let reason = $state<ReportReason>('spam');
+	let reason = $state<GeneralReportReason>('spam');
 	let notes = $state('');
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 
-	const targetNoun = $derived(NOUNS[targetKind]);
+	const targetTitle = $derived(TITLES[targetKind]);
 
 	function reset() {
 		reason = 'spam';
@@ -94,14 +105,14 @@
 			showToast(m('reportDialog.toastSubmitted'), 'success');
 			handleClose();
 		} catch (e) {
-			error = e instanceof Error ? e.message : m('reportDialog.errorSubmitFailed');
+			error = errorCopy(e, m, 'reportDialog.errorSubmitFailed', 'reportDialog.errorSubmitFailed');
 		} finally {
 			busy = false;
 		}
 	}
 </script>
 
-<Modal {open} title={m('reportDialog.title', { noun: m(targetNoun) })} narrow onclose={handleClose} bodyClass="report-body">
+<Modal {open} title={m(targetTitle)} narrow onclose={handleClose} bodyClass="report-body">
 	{#if targetLabel}
 		<p class="target">
 			{m('reportDialog.reportingPrefix')} <strong>{targetLabel}</strong>. {m('reportDialog.reviewedNotice')}
@@ -151,7 +162,7 @@
 
 <style>
 	/* Canonical .modal-* classes live in app.css. */
-	.report-body {
+	:global(.report-body) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

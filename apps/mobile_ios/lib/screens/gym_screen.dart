@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../adaptive_width.dart';
+import '../backend_timeout.dart';
 import '../exercise_records.dart';
+import '../fab_clearance.dart';
 import '../gym_prs.dart';
+import '../gym_session_draft.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -35,15 +38,11 @@ int gymWorkoutVolume(StoredGymWorkout w) {
   return v.round();
 }
 
-/// Distinct exercise names (case-insensitive) in a stored workout.
-int gymExerciseCount(StoredGymWorkout w) {
-  final names = <String>{};
-  for (final s in w.sets) {
-    final n = ((s['exercise_name'] as String?) ?? '').trim().toLowerCase();
-    if (n.isNotEmpty) names.add(n);
-  }
-  return names.length;
-}
+/// Distinct exercises in a stored workout, bucketed by the canonical grouping
+/// key — the same one the PR engine and the server-stamped `exercise_key` use.
+int gymExerciseCount(StoredGymWorkout w) => distinctExerciseCount(
+      [for (final s in w.sets) (s['exercise_name'] as String?) ?? ''],
+    );
 
 List<GymSetLike> _setsToLikes(StoredGymWorkout w) => [
       for (final s in w.sets)
@@ -107,8 +106,8 @@ List<String> gymExerciseSuggestions(List<StoredGymWorkout> workouts) {
   for (final w in workouts) {
     for (final s in w.sets) {
       final raw = ((s['exercise_name'] as String?) ?? '').trim();
-      if (raw.isEmpty) continue;
-      final key = raw.toLowerCase();
+      final key = normaliseExerciseName(raw);
+      if (key.isEmpty) continue;
       counts[key] = (counts[key] ?? 0) + 1;
       display.putIfAbsent(key, () => raw);
     }
@@ -124,10 +123,11 @@ List<String> gymExerciseSuggestions(List<StoredGymWorkout> workouts) {
 /// fetch overlays the latest workouts on mount and pending writes drain on
 /// the next online refresh.
 ///
-/// A labelled peer strip `Log · Routines · Sessions · Records` sits above the
-/// list, mirroring web `/gym`'s header links — the gym's planning surfaces
-/// (routines, session plans) are named destinations rather than tooltip-only
-/// AppBar glyphs (decisions § 488).
+/// A labelled peer strip `Log · Gym routines · Session plans · Records` sits
+/// above the list, mirroring web `/gym`'s destination links — the gym's
+/// planning surfaces are named destinations rather than tooltip-only AppBar
+/// glyphs (decisions § 488), and the two planning names say which is the
+/// strength template and which the timed yoga / pilates sequence.
 class GymScreen extends StatefulWidget {
   /// Optional. When null (no Supabase env vars OR signed-out) the screen
   /// reads + writes exclusively to [LocalGymStore]; the pending queue
@@ -156,15 +156,40 @@ class GymScreen extends StatefulWidget {
   State<GymScreen> createState() => _GymScreenState();
 }
 
-class _GymScreenState extends State<GymScreen> {
-  bool _refreshing = false;
+class _GymScreenState extends State<GymScreen>
+    with AutomaticKeepAliveClientMixin {
+  /// The Fitness hub mounts this screen inside a `TabBarView`, which is a
+  /// `PageView` with no cache extent: without this the tab is torn down the
+  /// moment the user taps a sibling, re-running the arrival refresh and
+  /// dropping the scroll position. The shell's own pages already keep state
+  /// this way (`_LazyKeepAliveTab`).
+  @override
+  bool get wantKeepAlive => true;
+
   bool _isOnline = true;
 
   // Exercise catalogue (seeded globals + the user's customs, migration
   // 20270222_001), fetched best-effort on refresh and merged into the
   // composer's autocomplete. Empty offline / signed-out — the composer falls
   // back to history-only suggestions and logs free-text, exactly as before.
-  List<GymCatalogueEntry> _catalogue = const [];
+  //
+  // Published as a LISTENABLE rather than passed by value, because the composer
+  // is presented as a pushed route whose builder runs once: a value handed to
+  // it is fixed for the life of that route, so a read answering while the sheet
+  // is open would never reach it (§ 1571).
+  //
+  // `unavailable` starts true because "not yet read" and "the read failed" are
+  // the same state to every consumer: the catalogue is not known, so nothing
+  // downstream may claim a typed name is free. Cleared only by a read that
+  // answered.
+  //
+  // An empty catalogue is otherwise the state in which every name looks free —
+  // the picker's exact-match test finds nothing and offers to create a name the
+  // catalogue already holds, which mints a shadow against a seeded global the
+  // author's partial unique cannot see, or 23505s against the user's own custom
+  // after the affordance said the name was free.
+  final ValueNotifier<GymCatalogueState> _catalogue =
+      ValueNotifier((entries: const [], unavailable: true));
 
   // Routines (gym_programming.md P1) are a parallel planning surface owned by
   // this screen — the same "each surface owns its store" precedent the gym /
@@ -190,13 +215,20 @@ class _GymScreenState extends State<GymScreen> {
         debugPrint('gym_screen: routine store init failed: $e');
       }
     }
-    if (mounted) setState(() => _routineStoreReady = true);
+    // `dir`, not the absence of a throw: a failed init leaves the store
+    // resident but directoryless, and every write to it then refuses (§ 660).
+    // Offering the Routines peer over one is offering a surface that cannot
+    // save anything.
+    if (mounted) {
+      setState(() => _routineStoreReady = _routineStore.dir != null);
+    }
   }
 
   @override
   void dispose() {
     widget.store.removeListener(_onStoreChange);
     _routineStore.removeListener(_onStoreChange);
+    _catalogue.dispose();
     super.dispose();
   }
 
@@ -210,31 +242,47 @@ class _GymScreenState extends State<GymScreen> {
       if (mounted) setState(() => _isOnline = false);
       return;
     }
-    setState(() => _refreshing = true);
     try {
-      final fresh = await api.fetchGymWorkoutsWithSets(limit: 100);
+      final fresh = await api
+          .fetchGymWorkoutsWithSets(limit: 100)
+          .timeout(kBackendLoadTimeout);
       await widget.store.replaceFromServer(fresh, fetchLimit: 100);
       if (widget.store.hasPending) {
         await widget.store.syncWithServer(api);
       }
-      // Best-effort catalogue fetch — a failure leaves the prior list / empty,
-      // never blocks the workout list.
+      // Best-effort catalogue fetch (L4): a failure must not take the workout
+      // list down with it. It keeps whatever was last known rather than
+      // replacing it with `[]` — a stale entry still binds its id correctly, and
+      // deleting the list would be a second untruth on top of the first — and
+      // reports itself through [_catalogueUnavailable] rather than silently.
       try {
-        final cat = await api.fetchExerciseCatalogue();
-        _catalogue = [
-          for (final e in cat)
-            (name: e.name, id: e.id, category: e.category, authorId: e.authorId),
-        ];
+        final cat =
+            await api.fetchExerciseCatalogue().timeout(kBackendLoadTimeout);
+        _catalogue.value = (
+          entries: [
+            for (final e in cat)
+              (
+                name: e.name,
+                id: e.id,
+                category: e.category,
+                authorId: e.authorId,
+                nameKey: e.nameKey,
+              ),
+          ],
+          unavailable: false,
+        );
       } catch (e) {
+        // Keep whatever was last known and say it is no longer vouched for.
+        _catalogue.value =
+            (entries: _catalogue.value.entries, unavailable: true);
         debugPrint('gym_screen: catalogue fetch failed: $e');
       }
       _isOnline = true;
     } catch (e) {
       _isOnline = false;
       debugPrint('gym_screen: refresh failed, using cache: $e');
-    } finally {
-      if (mounted) setState(() => _refreshing = false);
     }
+    if (mounted) setState(() {});
   }
 
   Future<void> _maybeSync() async {
@@ -249,7 +297,7 @@ class _GymScreenState extends State<GymScreen> {
       context: context,
       store: widget.store,
       suggestions: gymExerciseSuggestions(widget.store.workouts),
-      catalogue: _catalogue,
+      catalogueSource: _catalogue,
       api: widget.api,
     );
     if (saved == true) await _maybeSync();
@@ -284,18 +332,19 @@ class _GymScreenState extends State<GymScreen> {
     );
   }
 
-  /// `Log · Routines · Sessions · Records`. Routines waits on the routine
-  /// store's disk hydration; Sessions reads the server, so it needs a
-  /// signed-in client; Records is data-gated exactly as web's header link is.
+  /// `Log · Gym routines · Session plans · Records`. Routines waits on the
+  /// routine store's disk hydration; session plans read the server, so they
+  /// need a signed-in client; Records is data-gated exactly as web's link is.
   List<SurfacePeer> _peers(
       AppLocalizations l10n, List<StoredGymWorkout> workouts) {
     final api = widget.api;
     return [
       SurfacePeer(label: l10n.gymTabLog),
       if (_routineStoreReady)
-        SurfacePeer(label: l10n.gymRoutineTitle, onTap: _openRoutines),
+        SurfacePeer(label: l10n.gymPeerRoutines, onTap: _openRoutines),
       if (api != null && api.userId != null)
-        SurfacePeer(label: l10n.sessionTitle, onTap: () => _openSessions(api)),
+        SurfacePeer(
+            label: l10n.gymPeerSessions, onTap: () => _openSessions(api)),
       if (exerciseRecords(gymSetHistory(workouts)).isNotEmpty)
         SurfacePeer(label: l10n.gymTabRecords, onTap: _openRecords),
     ];
@@ -324,10 +373,8 @@ class _GymScreenState extends State<GymScreen> {
       if (!_routineStoreReady) return null;
       for (final w in widget.store.workouts) {
         final meta = w.row['metadata'];
-        if (meta is! Map || meta[MetadataKeys.gymSessionDraft] == null) {
-          continue;
-        }
-        final rid = meta[MetadataKeys.routineId];
+        if (!hasGymSessionDraft(meta)) continue;
+        final rid = (meta as Map)[MetadataKeys.routineId];
         final routine = rid is String ? _routineStore.byId(rid) : null;
         if (routine == null) continue;
         return (draft: w, routine: routine);
@@ -404,20 +451,30 @@ class _GymScreenState extends State<GymScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final workouts = widget.store.workouts;
     final pending = widget.store.hasPending || _routineStore.hasPending;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gymTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gymLog,
-            icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _create,
-          ),
-        ],
+      appBar: AppBar(title: Text(l10n.gymTitle)),
+      // The Fitness hub's modality tabs all put their add in the same place,
+      // so switching tabs doesn't move the one control the surface exists for
+      // — it used to be a top-right glyph here and a bottom-right FAB on the
+      // run tabs. Never gated on the arrival refresh: logging a lift is an
+      // offline-first write, and the one thing that refresh feeds the composer
+      // — the exercise catalogue — reaches an already-open sheet through its
+      // own listenable (§ 1571).
+      //
+      // The tag is per-mount because the hub's Gym tab stays alive under a
+      // GymScreen pushed from Home or the run list.
+      floatingActionButtonLocation: pageFabLocation(context),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: ObjectKey(this),
+        onPressed: _create,
+        icon: const Icon(Icons.add),
+        label: Text(l10n.gymLog),
+        tooltip: l10n.gymLog,
       ),
       body: contentColumn(
         context,
@@ -476,7 +533,7 @@ class _GymScreenState extends State<GymScreen> {
     final prIds = gymPrWorkoutIds(workouts);
     final tag = localeToTag(Localizations.localeOf(context));
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, fabScrollClearance(context)),
       itemCount: workouts.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {

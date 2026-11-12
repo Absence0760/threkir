@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { predictRaceLadder, type EffortForPrediction } from '$lib/training/race_predictor';
-	import { qualifyingRuns } from '$lib/training/fitness';
-	import { fmtSplitTime } from '$lib/runs/race_day';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run } from '$lib/types';
+	import { predictRaceLadder, type EffortForPrediction } from '#lib/training/race_predictor.ts';
+	import { qualifyingRuns, type RunForFitness } from '#lib/training/fitness.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	interface Props {
-		runs: Run[];
+		runs: readonly RunForFitness[];
 	}
 	let { runs }: Props = $props();
 
@@ -41,7 +41,7 @@
 		<p class="anchor-line">
 			{m('racePredictor.anchoredOn', {
 				distance: fmtKm(prediction.anchor.distanceM, 1),
-				time: fmtSplitTime(prediction.anchor.durationS),
+				time: formatDuration(prediction.anchor.durationS),
 			})}
 		</p>
 		<div class="table-scroll" tabindex="0">
@@ -58,7 +58,7 @@
 					{#each prediction.rungs as rung (rung.distanceM)}
 						<tr>
 							<td class="dist">{fmtKm(rung.distanceM, 1)}</td>
-							<td class="time">{fmtSplitTime(rung.predictedSec)}</td>
+							<td class="time">{formatDuration(rung.predictedSec)}</td>
 							<td class="pace">{fmtPace(rung.paceSecPerKm)}</td>
 							<td class="conf">
 								<span
@@ -71,7 +71,7 @@
 				</tbody>
 			</table>
 		</div>
-		<p class="footnote">{m('racePredictor.footnote')}</p>
+		<p class="footnote"><MetricLabel metric="riegel" sentence="racePredictor.footnote" /></p>
 	</section>
 {/if}
 

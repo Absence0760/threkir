@@ -18,6 +18,25 @@ name: Release Backend
 #                                 special characters (%, !, ^) don't break psql's
 #                                 URI percent-decoding.
 #
+# After the migrations and the functions, "Sync production state" brings
+# committed state into
+# the database (apps/backend/scripts/sync-production-state.sh, stages in
+# scripts/prod_sync/run.mjs; issue #1349, decisions § 2429). Its first stage
+# loads every committed park catalogue through private.load_park_catalogue,
+# which reports each course created / updated / unchanged / closed and writes
+# nothing for an unchanged one. The table lands in the job's step summary.
+# Then it applies apps/backend/ops/prod_config.json (issue #1350, decisions
+# § 2430): feature flags, allow-listed Edge Function toggles (supabase secrets
+# set, compared by digest, so it needs the CLI, SUPABASE_ACCESS_TOKEN and
+# SUPABASE_PROJECT_REF), cron URL entries in Vault (invoked once when armed,
+# 2xx required), and the one-off tasks in apps/backend/ops/tasks/. An entry
+# absent from the file is left untouched. Last, it publishes the official
+# content catalogue (scripts/official/, issue #1190, decisions § 2446) through
+# private.load_official_catalogue: library plans, gym routines and challenge
+# boards as the official club, reported created / updated / unchanged /
+# retired. Its race courses stay `gated` until the official_race_courses flag
+# is turned on in prod_config.json.
+#
 # There is no "internal track" for a backend — once migrations and
 # functions deploy they're live for every client. Roll forward with a
 # follow-up migration rather than trying to roll back.
@@ -26,9 +45,21 @@ name: Release Backend
 # runs this workflow — a bare `backend@*` tag push does NOT deploy. `on:
 # release` fires for every published release in the repo, so the job below
 # is guarded to `backend@*` tags.
+#
+# `workflow_dispatch` runs ONLY the production sync, behind the same
+# `production` environment: no migration, no function deploy. Its `dry_run`
+# input defaults to true, which runs every stage and rolls it back; a real
+# (dry_run false) dispatch is refused off `main`, so an unreviewed branch's
+# catalogue or prod_config.json can only ever be previewed.
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Roll every sync stage back after printing what it would do"
+        type: boolean
+        default: true
 
 # Least-privilege default. This workflow only deploys (migrations + Edge
 # Functions); it writes nothing back to the triggering Release, so the job
@@ -38,34 +69,46 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # `supabase functions deploy` bundles in a local edge-runtime container,
+  # and the CLI pulls it from public.ecr.aws by default. ECR Public caps
+  # anonymous pulls per shared runner IP, which split backend@1.0.28 in half:
+  # migrations applied, then no function deployed. Same remedy and same
+  # mirror as ci.yml's setting of this variable (decisions § 2113).
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
 
 jobs:
   deploy:
     name: Deploy migrations + Edge Functions
     runs-on: ubuntu-latest
     # Guard: `on: release` fires for every published release in the repo,
-    # so only act on backend@* releases.
-    if: startsWith(github.event.release.tag_name, 'backend@')
+    # so only act on backend@* releases. A dispatch carries no release, and
+    # runs only the steps not conditioned on the release event below.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'backend@')
     # Pause on the `production` environment's required-reviewer rule
     # before any prod credentials/steps run (repo Settings → Environments).
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Parse version from tag
         id: version
+        if: github.event_name == 'release'
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#backend@}"
           echo "name=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      # A dispatch needs the CLI too: the sync's Edge Function env stage
+      # sets toggles with `supabase secrets set`.
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.109.1
 
       - name: Link project
+        if: github.event_name == 'release'
         working-directory: apps/backend
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -79,6 +122,7 @@ jobs:
       # not-yet-recorded migration in a transaction + record its ledger row, in
       # version order. Idempotent and safe to re-run.
       - name: Apply pending migrations
+        if: github.event_name == 'release'
         working-directory: apps/backend
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -86,10 +130,70 @@ jobs:
         run: ./scripts/apply-pending-migrations.sh
 
       - name: Deploy Edge Functions
+        if: github.event_name == 'release'
         working-directory: apps/backend
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          for fn in strava-webhook strava-import parkrun-import refresh-tokens export-data revenuecat-webhook delete-account clip-public-track; do
+          # Derived from the filesystem, never a hand-kept list. The hardcoded
+          # list drifted to EIGHT functions behind: auth-email, donations-checkout,
+          # events-cancel, events-checkout, events-connect-onboard,
+          # race-listings-sync, race-results-import and stripe-events-webhook had
+          # never been deployed by any release. stripe-events-webhook is the sole
+          # idempotent writer of event_orders.status, so every paid registration
+          # would have stayed `pending` with no attendee seated; auth-email is
+          # pointed at by an ENABLED config.toml hook, which 404s every
+          # confirmation and password-reset mail when the function is absent.
+          # `supabase functions deploy` reads each function's verify_jwt from
+          # config.toml, so no per-function flags are needed here.
+          shopt -s nullglob
+          deployed=0
+          for dir in supabase/functions/*/; do
+            fn="$(basename "$dir")"
+            [ "$fn" = "_shared" ] && continue
+            [ -f "$dir/index.ts" ] || continue
+            echo "::group::deploy $fn"
             supabase functions deploy "$fn" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+            echo "::endgroup::"
+            deployed=$((deployed + 1))
           done
+          echo "deployed $deployed edge functions"
+          if [ "$deployed" -eq 0 ]; then
+            echo "::error::no edge functions found to deploy — the glob is wrong"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.20.0
+          # setup-node turns its npm cache on by itself when package.json
+          # names a packageManager. A release must not restore a cache any
+          # default-branch run can write; the sync needs no install.
+          package-manager-cache: false
+
+      # Last, after the functions: a sync failure must never leave a release
+      # with its migrations applied and its functions not deployed. It still
+      # fails the job. Same connection as the migrations (lib/db_url.sh): no
+      # new secret, and the URL is never printed. Each stage is one
+      # transaction, rolled back whole on failure.
+      - name: Sync production state
+        working-directory: apps/backend
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          # The cron URL stage builds each Vault URL from the ref (through
+          # psql's \getenv, never printed); the Edge Function env stage passes
+          # it and the token to the CLI. Neither is set from anything else.
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::A sync that commits runs only from main; this dispatch is on ${GITHUB_REF}. Re-run it with dry_run, or from main."
+            exit 1
+          fi
+          ./scripts/sync-production-state.sh "${args[@]}"

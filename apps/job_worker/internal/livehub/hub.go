@@ -65,6 +65,29 @@ func SetCacheRefreshTTL(d time.Duration) func() {
 	}
 }
 
+// heartRateTTLNanos bounds how long a heart-rate consent answer is reused.
+// Short because withdrawing consent must stop bpm reaching spectators
+// within seconds, where the room meta's CacheRefreshTTL is a minute.
+var heartRateTTLNanos atomic.Int64
+
+func init() {
+	heartRateTTLNanos.Store(int64(5 * time.Second))
+}
+
+// HeartRateTTL returns the current heart-rate consent cache TTL.
+func HeartRateTTL() time.Duration {
+	return time.Duration(heartRateTTLNanos.Load())
+}
+
+// SetHeartRateTTL is the test hook for changing HeartRateTTL. Restore the
+// previous value via the returned closure.
+func SetHeartRateTTL(d time.Duration) func() {
+	prev := heartRateTTLNanos.Swap(int64(d))
+	return func() {
+		heartRateTTLNanos.Store(prev)
+	}
+}
+
 // Hub is the in-process pub/sub broker keyed by run_id.
 //
 // Concurrency model:

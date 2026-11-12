@@ -1,13 +1,21 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
-	import { onMount, onDestroy } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { initial, hashHue } from '$lib/format/avatar';
-	import { formatDuration as baseDuration, activeFormatLocale } from '$lib/format/time';
-	import { page } from '$app/stores';
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { onMount, onDestroy, untrack } from 'svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
+	import { initial, hashHue } from '#lib/format/avatar.ts';
+	import { runnerHandle } from '#lib/social/runner_handle.ts';
+	import { formatDuration as baseDuration, activeFormatLocale } from '#lib/format/time.ts';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { buildEventShareCanonical } from '$lib/share/share_event_meta';
-	import { supabase } from '$lib/core/supabase';
+	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { refusalCode } from '#lib/core/supabase_error.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -28,11 +36,19 @@
 		removeEventResult,
 		fetchRecentRunsForPicker,
 		fetchRaceSession,
+		ensureRaceSession,
 		armRace,
+		fetchCourseLinesForOccurrence,
+		fetchEventCourseLines,
+		type CourseLinesRow,
 		startRace,
 		endRace,
 		approveEventResult,
 		approveEventResultById,
+		editEventResultAsHost,
+		fetchRaceDnfPreview,
+		fetchEventCourses,
+		fetchMyEventCourse,
 		bulkImportEventResults,
 		requestEventResultClaim,
 		fetchMyEventResultClaims,
@@ -41,13 +57,22 @@
 		type EventResultClaimWithUser,
 		fetchEventExceptions,
 		cancelEventInstance,
+		cancelEventSeries,
+		cancelPaidEventInstance,
+		PAID_EVENT_DELETE_REFUSAL,
+		fetchCancelledOccurrenceRefunds,
 		reinstateEventInstance,
 		fetchEventPhotos,
 		addRunPhoto,
+		deleteRunPhoto,
+		canStewardEventPhotos,
+		setEventPhotoHidden,
+		fetchRunsForEventPhoto,
 		fetchEventMeetPoint,
 		fetchEventPricing,
 		startEventCheckout,
 		fetchMyOrder,
+		fetchMyWaitlistPlace,
 		cancelEventOrder,
 		type EventResultWithUser,
 		type RecentRunOption,
@@ -57,32 +82,93 @@
 		fetchSessionPlan,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchGymRoutineDetail,
+		fetchClubGymRoutineTemplates,
+		setEventGymRoutine,
+		type GymRoutineDetail,
+		type GymRoutineSummary,
 		type SessionPlan,
 		type SessionPlanWithItems
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import CheckpointManager from '$lib/components/CheckpointManager.svelte';
-	import FundraiserSection from '$lib/components/FundraiserSection.svelte';
-	import { expandInstances, describeRecurrence } from '$lib/social/recurrence';
-	import { isAthleticCategory } from '$lib/social/event_category';
-	import { workoutDraftFromTemplate, workoutDraftFromSession } from '$lib/social/event_gym_template';
-	import { expandSessionSteps, type SessionPlanInput } from '$lib/social/session_steps';
-	import { formatDistance, getUnit, fmtPace } from '$lib/format/units.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { registrationOpen, resolveRefundEligibility } from '$lib/social/paid_registration';
-	import { buildEventIcs, icsFilename } from '$lib/social/event_ics';
-	import { env } from '$env/dynamic/public';
-	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '$lib/routes/static_map';
-	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '$lib/runs/finisher_certificate';
-	import { rasterizeSvgToPng, downloadBlob } from '$lib/format/svg_raster';
-	import { parseChipTimingCsv, resultsToCsv, type ParsedResultRow } from '$lib/runs/event_results_csv';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import CourseLinesMap from '#lib/components/CourseLinesMap.svelte';
+	import RaceStartModePanel from '#lib/components/RaceStartModePanel.svelte';
+	import type { SessionStartMode } from '#lib/races/course_gates.ts';
+	import {
+		courseGate,
+		preflightBlocks,
+		racePreflight,
+		type GatePoint,
+		type PreflightIssue
+	} from '#lib/races/course_gates.ts';
+	import type { DrawnGate } from '#lib/races/course_gate_layers.ts';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import CheckpointManager from '#lib/components/CheckpointManager.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import { expandInstances, describeRecurrence } from '#lib/social/recurrence.ts';
+	import { isAthleticCategory } from '#lib/social/event_category.ts';
+	import type { FinisherStatus } from '#lib/types.ts';
+	import { sameInstant } from '#lib/social/event_instance.ts';
+	import { isSeriesCancelled, upcomingCancelledOccurrences } from '#lib/social/event_occurrence.ts';
+	import {
+		workoutDraftFromTemplate,
+		workoutDraftFromSession,
+		workoutDraftFromRoutine
+	} from '#lib/social/event_gym_template.ts';
+	import type { PlannedRoutine } from '#lib/gym/gym_routine.ts';
+	import { expandSessionSteps, type SessionPlanInput } from '#lib/social/session_steps.ts';
+	import { formatDistance, getUnit, fmtPace } from '#lib/format/units.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
+	import {
+		registrationOpen,
+		resolveRefundEligibility,
+		type OccurrenceRefundState,
+		type OccurrenceRefundSummary
+	} from '#lib/social/paid_registration.ts';
+	import { waitlistOfferState } from '#lib/social/event_waitlist_offer.ts';
+	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '#lib/social/event_ics.ts';
+	import { PUBLIC_MAPTILER_KEY, PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '#lib/routes/static_map.ts';
+	import { staticMapSlugFromPreference } from '#lib/routes/map-style.svelte.ts';
+	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '#lib/runs/finisher_certificate.ts';
+	import { rasterizeSvgToPng, downloadBlob, fileNamePart } from '#lib/format/svg_raster.ts';
+	import {
+		parseChipTimingCsv,
+		parseDurationToSeconds,
+		resultsToCsv,
+		type ParsedResultRow
+	} from '#lib/runs/event_results_csv.ts';
+	import {
+		finishMethodBadge,
+		groupResultsByCourse,
+		hostTimeEditPatch,
+		needsCoursePick,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive, undoStore } from '#lib/stores/undo.svelte.ts';
+	import { hasEventPhotoWindowOpened } from '#lib/social/event_photo_window.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+
+	// An attendee with no display name is shown as their runnerHandle rather
+	// than an indistinguishable "Member" (decisions § 2365).
+	function shownName(name: string | null | undefined, userId: string): string {
+		return (
+			name ??
+			runnerHandle(userId, {
+				handle: (slug) => m('live.runnerHandle', { slug }),
+				anonymous: m('live.runnerAnonymous'),
+			})
+		);
+	}
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type {
 		EventWithMeta,
 		ClubWithMeta,
@@ -93,15 +179,15 @@
 		EventAttendance,
 		EventPricing,
 		EventOrder
-	} from '$lib/types';
+	} from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
-	let eventId = $derived($page.params.id as string);
+	let slug = $derived(page.params.slug as string);
+	let eventId = $derived(page.params.id as string);
 	// Fold this in-app (CSR) event page onto the public, crawlable
 	// /share/event/[id] twin so search engines consolidate ranking signal
 	// there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildEventShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, eventId)
+		buildEventShareCanonical(siteOrigin(PUBLIC_SITE_URL), eventId)
 	);
 
 	let club = $state<ClubWithMeta | null>(null);
@@ -126,18 +212,24 @@
 	// thumbnail waits for the cookie-banner choice, or the explicit
 	// "Load map" tap as the affirmative act. audit/cookie-consent.
 	let meetMapConsented = $state(false);
+	// The OS read RunMap makes, so the meet-point preview's `streets` rung
+	// matches the live maps' light or dark one.
+	const prefersDark =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 	let meetMapUrl = $derived(
 		meetPoint && (consent.accepted || meetMapConsented)
 			? buildStaticMarkerMapUrl(meetPoint.lat, meetPoint.lng, {
 					w: 320,
 					h: 180,
-					style: 'streets-v2',
-					key: env.PUBLIC_MAPTILER_KEY ?? ''
+					style: staticMapSlugFromPreference(prefersDark),
+					key: PUBLIC_MAPTILER_KEY ?? ''
 				})
 			: null
 	);
 	let attendees = $state<(EventAttendee & { display_name: string | null; avatar_url: string | null })[]>([]);
 	let attendeesHasMore = $state(false);
+	// The keyset cursor for the attendee list's next page (see fetchEventAttendees).
+	let attendeesNext = $state<KeysetCursor | null>(null);
 	let attendeesLoadingMore = $state(false);
 	// Exact counts, independent of the paginated `attendees` roster (which is
 	// only its first page). Drives the RSVP pills + capacity/waitlist math.
@@ -152,12 +244,60 @@
 	let route = $state<Route | null>(null);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
+	// A failed instance read leaves every panel below holding the previous
+	// instance's rows. Registration in particular must not fall back to
+	// "not registered" — that is a paid slot being offered for sale twice.
+	let instanceError = $state<string | null>(null);
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	let draftPost = $state('');
 	let results = $state<EventResultWithUser[]>([]);
+	// Race courses (decisions § 1842). `courseChoice` is the viewer's pick in
+	// the RSVP course select — seeded from their stored RSVP and written with
+	// the next RSVP (or straight away when they already have one).
+	let courses = $state<EventCourse[]>([]);
+	// Each course's start and finish lines for the occurrence on screen
+	// (#1305): the race's frozen copy once it is armed, else the courses as
+	// they stand. Auxiliary: a failed read leaves the page as it was.
+	let courseLines = $state<CourseLinesRow[]>([]);
+	let linesCourseId = $state('');
+	let linesCourse = $derived(
+		courses.find((c) => c.id === linesCourseId) ??
+			courses.find((c) => c.id === courseChoice) ??
+			courses[0] ??
+			null
+	);
+	let linesGates = $derived.by<DrawnGate[]>(() => {
+		const row = linesCourse ? courseLines.find((r) => r.course_id === linesCourse.id) : undefined;
+		if (!row) return [];
+		const out: DrawnGate[] = [];
+		const s = courseGate(row, 'start');
+		const f = courseGate(row, 'finish');
+		if (s) out.push({ which: 'start', gate: s, courseId: row.course_id });
+		if (f) out.push({ which: 'finish', gate: f, courseId: row.course_id });
+		return out;
+	});
+	// The Arm preflight's findings, shown before the race is armed.
+	let preflightIssues = $state<PreflightIssue[] | null>(null);
+	let courseChoice = $state('');
+	let courseError = $state<string | null>(null);
+	let resultBoards = $derived(groupResultsByCourse(results, courses));
+	// End-race preview: how many racers End will mark DNF (null = unknown).
+	let dnfPreview = $state<number | null>(null);
+	// Organiser time edit.
+	let editingResult = $state<EventResultWithUser | null>(null);
+	let editTime = $state('');
+	let editStatus = $state<FinisherStatus>('finished');
+	let editError = $state<string | null>(null);
+	let editBusy = $state(false);
 	let eventPhotos = $state<EventPhoto[]>([]);
+	let eventPhotosError = $state<string | null>(null);
 	let photoUploading = $state(false);
+	let photoSteward = $state(false);
+	let photoRunOptions = $state<RecentRunOption[]>([]);
+	let photoRunOptionsError = $state<string | null>(null);
+	let photoRunOptionsLoading = $state(false);
+	let photoBusyId = $state<string | null>(null);
 	let showResultPicker = $state(false);
 	let runOptions = $state<RecentRunOption[]>([]);
 	let submitting = $state(false);
@@ -165,6 +305,12 @@
 	// claim decision / "this is me"), so a double-tap can't fire the write twice.
 	let resultActionBusy = $state<string | null>(null);
 	let raceSession = $state<RaceSessionRow | null>(null);
+	// How this occurrence's race starts (#1306): the session's copy once it
+	// exists, the event's setting before.
+	let raceMode = $derived<SessionStartMode>(
+		raceSession?.start_mode ?? (event?.race_start_mode as SessionStartMode | undefined) ?? 'host_go'
+	);
+	let linesFrozen = $derived(!!raceSession?.courses_frozen_at);
 	let raceBusy = $state(false);
 	let nowTick = $state(Date.now());
 	let autoApproveOnArm = $state(true);
@@ -175,6 +321,15 @@
 	let exceptions = $state<EventException[]>([]);
 	let showCancelInstance = $state(false);
 	let cancelReason = $state('');
+	let showCancelSeries = $state(false);
+	let seriesCancelReason = $state('');
+	// What cancelled occurrences still owe their registrants (M8), for the
+	// event's organisers: one entry per cancelled occurrence with anything
+	// unsettled. Empty when nothing is owed, for a non-organiser, or unreadable.
+	let occurrenceRefunds = $state<Array<{ instanceStart: string; state: OccurrenceRefundState }>>(
+		[]
+	);
+	let retryingRefundsFor = $state<string | null>(null);
 
 	// Paid registration (club_events.md slice P1). `pricing` is the
 	// effective price for the active instance (per-instance override wins
@@ -194,6 +349,14 @@
 	let myOrder = $state<EventOrder | null>(null);
 	let cancellingRegistration = $state(false);
 	let showCancelRegistration = $state(false);
+	// The viewer's own place on a paid occurrence's waitlist, and whether a
+	// seat is being held for them (migration 20270726000002). `placeUnknown`
+	// is a failed read: the page then says it cannot tell, rather than
+	// offering a place in a queue the viewer may already be in.
+	let myPlace = $state<{ status: RsvpStatus; offer_expires_at: string | null } | null>(null);
+	let placeUnknown = $state(false);
+	let waitlistBusy = $state(false);
+	let showLeaveWaitlist = $state(false);
 
 	/** The instance the user is currently RSVPing to. For one-off events this
 	 * stays equal to `event.starts_at`; for recurring events, the user can
@@ -232,10 +395,32 @@
 	);
 	let activeException = $derived(
 		activeInstance
-			? exceptions.find(
-					(e) => new Date(e.instance_start).toISOString() === activeInstance
-				) ?? null
+			? exceptions.find((e) => sameInstant(e.instance_start, activeInstance)) ?? null
 			: null
+	);
+	// Cancelled occurrences still ahead. The picker hides them, so without this
+	// list an organiser could only ever reinstate the one they happened to be
+	// looking at — calling off anything beyond the next occurrence was
+	// irreversible.
+	// A one-off event's only occurrence is the page itself, which carries the
+	// cancelled banner and its own Reinstate. An occurrence past the end of a
+	// series the host cancelled no longer exists, so reinstating it would bring
+	// nothing back.
+	let cancelledUpcoming = $derived(
+		event && event.recurrence_freq
+			? upcomingCancelledOccurrences(exceptions.map((e) => e.instance_start))
+					.filter(
+						(iso) =>
+							!event?.recurrence_until || Date.parse(iso) <= Date.parse(event.recurrence_until)
+					)
+					.map((iso) => ({
+						iso,
+						reason: exceptions.find((e) => sameInstant(e.instance_start, iso))?.reason ?? null
+					}))
+			: []
+	);
+	let seriesCancelled = $derived(
+		event ? isSeriesCancelled(event, exceptions.map((e) => e.instance_start)) : false
 	);
 	let showAllInstances = $state(false);
 	const INSTANCE_PREVIEW_COUNT = 8;
@@ -265,7 +450,10 @@
 	// AND a non-null gym_template AND a signed-in viewer — a run/cycle/social
 	// event never offers it.
 	let canLogAsWorkout = $derived(
-		!!event && event.category === 'class' && event.gym_template != null && auth.user != null
+		!!event &&
+			event.category === 'class' &&
+			(event.gym_template != null || event.gym_routine_id != null) &&
+			auth.user != null
 	);
 	let showLogWorkout = $state(false);
 
@@ -306,12 +494,45 @@
 	});
 	let sessionSteps = $derived(sessionExpansion?.steps ?? []);
 
-	// Log-as-workout prefill: with an attached session plan the attendee logs
-	// the class CONTENT (one row per expanded step, workoutDraftFromSession);
+	// A class may instead carry one of its club's gym routine templates
+	// (decisions § 1869). It is read, never cloned: the seed below fills the
+	// attendee's own new workout, and the routine stays the club's.
+	let gymRoutine = $state<GymRoutineDetail | null>(null);
+	let clubRoutines = $state<GymRoutineSummary[]>([]);
+	let showRoutineAttach = $state(false);
+	let routineChoice = $state<string>('');
+	let plannedRoutine = $derived.by((): PlannedRoutine | null => {
+		if (!gymRoutine) return null;
+		return {
+			title: gymRoutine.routine.title,
+			exercises: gymRoutine.exercises.map((e) => ({
+				exerciseName: e.exercise_name,
+				position: e.position,
+				supersetGroup: e.superset_group,
+				supersetOrder: e.superset_order,
+				sets: e.sets.map((st) => ({
+					setIndex: st.set_index,
+					setType: st.set_type,
+					targetRepsMin: st.target_reps_min,
+					targetRepsMax: st.target_reps_max,
+					targetWeightKg: st.target_weight_kg,
+					targetRpe: st.target_rpe
+				}))
+			}))
+		};
+	});
+
+	// Log-as-workout prefill: with an attached gym routine or session plan the
+	// attendee logs the class CONTENT (one row per planned set,
+	// workoutDraftFromRoutine; one per expanded step, workoutDraftFromSession);
 	// otherwise just the flat gym_template title.
 	let logWorkoutPrefill = $derived.by(() => {
 		if (!event) return null;
 		const base = workoutDraftFromTemplate(event.gym_template, event.title);
+		if (plannedRoutine) {
+			const draft = workoutDraftFromRoutine(plannedRoutine, event.discipline ?? null);
+			return { title: draft.title ?? base.title, sets: draft.sets };
+		}
 		if (!sessionPlan || !sessionExpansion) return { title: base.title };
 		const draft = workoutDraftFromSession(
 			sessionExpansion,
@@ -338,12 +559,53 @@
 		}
 	}
 
+	// L4 auxiliary read, as loadSessionPlan: a routine the viewer cannot read
+	// (a non-member of the club, or a template since unpublished) reads as no
+	// routine, and Log-as-workout falls back to the gym_template title.
+	async function loadGymRoutine() {
+		const routineId = event?.gym_routine_id ?? null;
+		if (!routineId) {
+			gymRoutine = null;
+			return;
+		}
+		try {
+			gymRoutine = await fetchGymRoutineDetail(routineId);
+		} catch (e) {
+			console.warn('gym routine read failed', e);
+			gymRoutine = null;
+		}
+	}
+
+	async function openRoutineAttach() {
+		if (!event) return;
+		clubRoutines = await fetchClubGymRoutineTemplates(event.club_id);
+		routineChoice = event.gym_routine_id ?? '';
+		showRoutineAttach = true;
+	}
+
+	async function saveRoutineAttach() {
+		if (!event) return;
+		try {
+			await setEventGymRoutine(event.id, routineChoice || null);
+			event = {
+				...event,
+				gym_routine_id: routineChoice || null,
+				session_plan_id: routineChoice ? null : event.session_plan_id
+			};
+			await Promise.all([loadGymRoutine(), loadSessionPlan()]);
+			showRoutineAttach = false;
+			showToast(m('clubEvent.gymRoutineSaved'), 'success');
+		} catch (e) {
+			showToast(errorCopy(e, m, 'clubEvent.gymRoutineSaveFailed', 'clubEvent.gymRoutineSaveFailed'), 'error');
+		}
+	}
+
 	async function openAttach() {
 		try {
 			myPlans = await fetchSessionPlans();
 		} catch (e) {
 			// Without this the modal simply never opened, with no message.
-			showToast(e instanceof Error ? e.message : m('session.loadFailed'), 'error');
+			showToast(errorCopy(e, m, 'session.loadFailed', 'session.loadFailed'), 'error');
 			return;
 		}
 		attachChoice = event?.session_plan_id ?? '';
@@ -354,12 +616,16 @@
 		if (!event) return;
 		try {
 			await setEventSessionPlan(event.id, attachChoice || null);
-			event = { ...event, session_plan_id: attachChoice || null };
-			await loadSessionPlan();
+			event = {
+				...event,
+				session_plan_id: attachChoice || null,
+				gym_routine_id: attachChoice ? null : event.gym_routine_id
+			};
+			await Promise.all([loadSessionPlan(), loadGymRoutine()]);
 			showAttach = false;
 			showToast(m('session.attached'), 'success');
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('session.saveFailed'), 'error');
+			showToast(errorCopy(e, m, 'session.saveFailed', 'session.saveFailed'), 'error');
 		}
 	}
 
@@ -402,19 +668,35 @@
 
 	let viewerRsvpForActive = $derived.by(() => {
 		if (!event || !activeInstance) return null;
-		if (activeInstance === event.next_instance_start) return event.viewer_rsvp;
+		if (sameInstant(activeInstance, event.next_instance_start)) return event.viewer_rsvp;
 		return rsvpSummary.viewerStatus;
 	});
 
 	// A paid registration is the order-backed `going` row (not maybe/declined).
+	// A `waitlisted` row is one only when an order backs it — a buyer the
+	// capacity trigger demoted after paying. Since 20270726000002 a priced
+	// occurrence also has an UNPAID waitlist, and those rows hold no seat.
 	let viewerHasPaidSlot = $derived(
 		pricing != null &&
-			(viewerRsvpForActive === 'going' || viewerRsvpForActive === 'waitlisted')
+			(viewerRsvpForActive === 'going' ||
+				(viewerRsvpForActive === 'waitlisted' &&
+					(myOrder?.status === 'paid' || myOrder?.status === 'partially_refunded')))
+	);
+
+	let offerState = $derived(waitlistOfferState(myPlace, nowTick));
+
+	// Whether the occurrence still sells at all, capacity aside — joining a
+	// waitlist for a class nobody can pay for any more promises nothing.
+	let salesOpen = $derived(
+		pricing != null &&
+			activeInstance != null &&
+			registrationOpen(new Date(nowTick), activeInstance, pricing.sales_close_offset_minutes, null, 0, false) ===
+				'open'
 	);
 
 	let priceFormatted = $derived(
 		pricing
-			? formatPrice(pricing.price_cents / 100, {
+			? formatPrice(fromMinorUnits(pricing.price_cents, pricing.currency), {
 					currency: pricing.currency.toUpperCase()
 				})
 			: ''
@@ -423,6 +705,13 @@
 	// Registration state for a priced event (free events keep the RSVP tri).
 	let regState = $derived.by(() => {
 		if (!pricing || !event || !activeInstance) return null;
+		// With the RSVP read failed, `viewerHasPaidSlot` is false because we
+		// could not find out, not because the viewer has no slot — offering
+		// the sale again here would take a second payment for the same place.
+		if (instanceError !== null) return 'unknown';
+		// Same for the viewer's own waitlist row: without it the page cannot
+		// tell a held seat from an open sale.
+		if (placeUnknown) return 'unknown';
 		return registrationOpen(
 			new Date(nowTick),
 			activeInstance,
@@ -440,6 +729,15 @@
 	let refundPending = $derived(
 		myOrder != null && myOrder.status === 'paid' && myOrder.refund_initiated_at != null
 	);
+
+	// The refund was started, Stripe created it, and the bank sent it back:
+	// `refunded -> refund_failed` (decisions § 789). The seat is already gone
+	// and is deliberately not restored, so `regState` is no longer
+	// `already_registered` and the whole registered block — where every other
+	// order state is rendered — never draws. This one has to stand outside it,
+	// and outside the `!isPast` gate too: money we still owe does not stop
+	// being owed once the event has happened.
+	let refundFailed = $derived(myOrder != null && myOrder.status === 'refund_failed');
 
 	// Whether a self-cancel of the current paid slot would refund the buyer,
 	// per the event's refund_policy and the time remaining. Pure mirror of the
@@ -465,29 +763,60 @@
 			event = ev;
 			exceptions = exc;
 			if (clubRead.error) {
-				loadError = clubRead.error;
+				loadError = errorCopy(clubRead.error, m, 'clubs/[slug]/events/[id]: loadError');
 				return;
 			}
 			if (!event) return;
 			// Preserve the user's instance selection across loads — otherwise
 			// rsvp() (which calls load()) silently warps the user back to the
 			// next instance after every click on a later one.
-			activeInstance = prevInstance ?? event.next_instance_start;
+			// `next_instance_start` is null once every remaining occurrence has
+			// been called off; `starts_at` then keeps the page anchored to a real
+			// instant so the organiser can still reach the cancelled-occurrence
+			// list below rather than landing on nothing.
+			activeInstance = prevInstance ?? event.next_instance_start ?? event.starts_at;
 			// Members-only meetup coordinates (null for non-members / no point set).
 			meetPoint = await fetchEventMeetPoint(event.id);
-			await loadSessionPlan();
+			// Courses are a layer over the event, not the event: a failed read
+			// leaves the page working as a single-course event rather than
+			// failing the whole load.
+			try {
+				courses = await fetchEventCourses(event.id);
+			} catch (ce) {
+				console.warn('fetchEventCourses failed', ce);
+				courses = [];
+			}
+			await Promise.all([loadSessionPlan(), loadGymRoutine()]);
 			await reloadInstance();
 		} catch (e) {
 			// A rejection anywhere in here used to escape and leave `loading`
 			// true, so the race-day page skeletoned forever with no way out.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'clubs/[slug]/events/[id]: loadError');
 		} finally {
 			loading = false;
 		}
 	}
 
+	// Never rethrows: most callers already wrap their own action in a
+	// try/catch whose message names that action ("Couldn't submit claim"),
+	// and a refresh failure reported under one of those would be wrong.
 	async function reloadInstance() {
 		if (!event || !club || !activeInstance) return;
+		try {
+			await readInstance();
+			instanceError = null;
+		} catch (e) {
+			instanceError = errorCopy(e, m, 'clubs/[slug]/events/[id]: instanceError');
+		}
+	}
+
+	async function readInstance() {
+		if (!event || !club || !activeInstance) return;
+		// A scheduled or self-timed session is created lazily; the page's first
+		// read creates it when it is due (ensure_race_session).
+		if (event.race_start_mode && event.race_start_mode !== 'host_go') {
+			await ensureRaceSession(event.id, activeInstance);
+		}
 		const res = await Promise.all([
 			fetchEventAttendees(event.id, activeInstance, { limit: ROSTER_PAGE_SIZE }),
 			event.route_id ? fetchRouteById(event.route_id) : Promise.resolve(null),
@@ -495,23 +824,58 @@
 			fetchEventResults(event.id, activeInstance),
 			fetchRaceSession(event.id, activeInstance),
 			fetchEventPhotos(event.id, activeInstance),
-			fetchEventRsvpSummary(event.id, activeInstance)
+			fetchEventRsvpSummary(event.id, activeInstance),
+			canStewardEventPhotos(event.id)
 		]);
-		attendees = res[0];
-		attendeesHasMore = res[0].length === ROSTER_PAGE_SIZE;
+		attendees = res[0].rows;
+		attendeesNext = res[0].next;
+		attendeesHasMore = res[0].next !== null;
 		route = res[1];
 		eventPosts = (res[2] as ClubPostWithAuthor[]).filter(
-			(p) => p.event_id === event!.id && (!p.event_instance_start || p.event_instance_start === activeInstance)
+			(p) =>
+				p.event_id === event!.id &&
+				(!p.event_instance_start || sameInstant(p.event_instance_start, activeInstance))
 		);
 		results = res[3];
 		raceSession = res[4];
-		eventPhotos = res[5];
+		try {
+			courseChoice = (await fetchMyEventCourse(event.id, activeInstance)) ?? '';
+		} catch (ce) {
+			console.warn('fetchMyEventCourse failed', ce);
+		}
+		eventPhotos = res[5].photos;
+		eventPhotosError = res[5].error ? errorCopy(res[5].error, m, 'clubEvent.photosLoadFailed') : null;
 		rsvpSummary = res[6];
+		photoSteward = res[7];
 		pricing = await fetchEventPricing(event.id, activeInstance);
 		// The buyer's own order for this instance, so the registered-state
 		// surface can offer Cancel + reflect an in-flight refund (P2). Only
 		// meaningful on a priced event with a signed-in viewer.
 		myOrder = pricing && myUserId ? await fetchMyOrder(event.id, activeInstance) : null;
+		placeUnknown = false;
+		try {
+			myPlace = pricing && myUserId ? await fetchMyWaitlistPlace(event.id, activeInstance) : null;
+		} catch (e) {
+			console.error('waitlist place read failed:', e);
+			myPlace = null;
+			placeUnknown = true;
+		}
+		// A cancelled occurrence can still owe registrants money (a refund that
+		// failed, or a buyer who paid in the moment before the cancel), so its
+		// organisers see what is left and can re-run the refunds. Read
+		// regardless of `pricing`: a price removed after people paid is still
+		// money owed. A failed read hides the panel rather than the page.
+		try {
+			occurrenceRefunds = isEventOrganiser
+				? await fetchCancelledOccurrenceRefunds(
+						event.id,
+						exceptions.map((e) => e.instance_start)
+					)
+				: [];
+		} catch (e) {
+			console.error('cancelled occurrence refunds read failed:', e);
+			occurrenceRefunds = [];
+		}
 		// Bib-result claims (persona #43): the viewer's own claim state for
 		// the pending-row affordance, and the organiser's adjudication queue.
 		myClaims = myUserId
@@ -523,17 +887,18 @@
 	}
 
 	async function loadMoreAttendees() {
-		if (!event || !activeInstance || attendeesLoadingMore || !attendeesHasMore) return;
+		if (!event || !activeInstance || attendeesLoadingMore || !attendeesHasMore || !attendeesNext) return;
 		attendeesLoadingMore = true;
 		try {
 			const more = await fetchEventAttendees(event.id, activeInstance, {
 				limit: ROSTER_PAGE_SIZE,
-				offset: attendees.length
+				after: attendeesNext
 			});
-			attendees = [...attendees, ...more];
-			attendeesHasMore = more.length === ROSTER_PAGE_SIZE;
+			attendees = appendPage(attendees, more.rows, (a) => a.user_id);
+			attendeesNext = more.next;
+			attendeesHasMore = more.next !== null;
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			attendeesLoadingMore = false;
 		}
@@ -550,7 +915,7 @@
 			showToast(m('clubEvent.claimSubmitted'), 'success');
 			await reloadInstance();
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : m('clubEvent.claimSubmitFailed'), 'error');
+			showToast(errorCopy(err, m, 'clubEvent.claimSubmitFailed', 'clubEvent.claimSubmitFailed'), 'error');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -564,7 +929,7 @@
 			showToast(approve ? m('clubEvent.claimApproved') : m('clubEvent.claimRejected'), 'success');
 			await reloadInstance();
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : m('clubEvent.claimUpdateFailed'), 'error');
+			showToast(errorCopy(err, m, 'clubEvent.claimUpdateFailed', 'clubEvent.claimUpdateFailed'), 'error');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -575,32 +940,61 @@
 	// photo attaches to that run with zero extra clicks. Group runs and other
 	// non-race events have no result rows, so any signed-in attendee instead
 	// picks which of their own runs the photo belongs to (persona round-5
-	// runner-social-group) — addRunPhoto needs a run_id the uploader owns.
+	// runner-social-group). The picker offers only runs that started inside
+	// the occurrence's photo window, because the database refuses any other
+	// (#1150). A steward (organiser or host) posts with no run at all, from
+	// two hours before the occurrence onwards.
 	let myEventRunId = $derived(
 		results.find((r) => r.user_id === myUserId && r.run_id)?.run_id ?? null
 	);
 	let canAddPhoto = $derived(auth.user != null);
+	let stewardCanPost = $derived(
+		photoSteward && hasEventPhotoWindowOpened(activeInstance, Date.now())
+	);
 	let showPhotoRunPicker = $state(false);
 	let pendingPhotoRunId = $state<string | null>(null);
+	let pendingHostPhoto = $state(false);
 	let photoFileInput: HTMLInputElement | null = $state(null);
 
 	async function openPhotoFlow() {
-		if (!canAddPhoto || photoUploading) return;
+		if (!canAddPhoto || photoUploading || !activeInstance) return;
 		if (myEventRunId) {
 			pendingPhotoRunId = myEventRunId;
 			photoFileInput?.click();
 			return;
 		}
-		if (runOptions.length === 0) {
-			runOptions = await fetchRecentRunsForPicker(20);
-		}
 		showPhotoRunPicker = true;
+		photoRunOptionsLoading = true;
+		photoRunOptionsError = null;
+		try {
+			photoRunOptions = await fetchRunsForEventPhoto(activeInstance);
+		} catch (err) {
+			photoRunOptions = [];
+			photoRunOptionsError = errorCopy(err, m, 'clubs/[slug]/events/[id]: photoRunOptionsError');
+		} finally {
+			photoRunOptionsLoading = false;
+		}
+	}
+
+	function openHostPhotoFlow() {
+		if (!stewardCanPost || photoUploading) return;
+		pendingHostPhoto = true;
+		pendingPhotoRunId = null;
+		photoFileInput?.click();
 	}
 
 	function pickRunForPhoto(runId: string) {
 		pendingPhotoRunId = runId;
+		pendingHostPhoto = false;
 		showPhotoRunPicker = false;
 		photoFileInput?.click();
+	}
+
+	async function reloadEventPhotos() {
+		if (!event || !activeInstance) return;
+		const res = await fetchEventPhotos(event.id, activeInstance);
+		eventPhotos = res.photos;
+		eventPhotosError = res.error ? errorCopy(res.error, m, 'clubEvent.photosLoadFailed') : null;
 	}
 
 	async function handleAddEventPhoto(e: Event) {
@@ -608,22 +1002,104 @@
 		const file = input.files?.[0];
 		input.value = '';
 		const runId = pendingPhotoRunId;
+		const asHost = pendingHostPhoto;
 		pendingPhotoRunId = null;
-		if (!file || !event || !runId || photoUploading) return;
+		pendingHostPhoto = false;
+		if (!file || !event || !activeInstance || (!runId && !asHost) || photoUploading) return;
 		photoUploading = true;
 		try {
 			await addRunPhoto({
-				run_id: runId,
+				run_id: asHost ? null : runId,
 				file,
 				event_id: event.id,
 				event_instance_start: activeInstance
 			});
-			eventPhotos = await fetchEventPhotos(event.id, activeInstance!);
+			await reloadEventPhotos();
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('clubEvent.photoUploadFailed');
+			showToast(
+				errorCopy(err, m, 'clubEvent.photoUploadFailed', 'clubEvent.photoUploadFailed'),
+				'error'
+			);
 		} finally {
 			photoUploading = false;
 		}
+	}
+
+	// Hiding is undoable (a steward can restore it), so it takes the undo bar
+	// rather than a confirm (conventions § Destructive actions). For the
+	// steward the photo stays in the list, badged, with Restore.
+	// The photo whose hide is still inside the undo window. Restore on it must
+	// cancel that pending commit rather than race it: a restore saved first
+	// would be overwritten by the hide landing when the window closed.
+	let pendingHidePhotoId = $state<string | null>(null);
+
+	function hideEventPhoto(photo: EventPhoto) {
+		const before = eventPhotos;
+		pendingHidePhotoId = photo.id;
+		eventPhotos = eventPhotos.map((p) =>
+			p.id === photo.id ? { ...p, hidden_at: new Date().toISOString() } : p
+		);
+		deferDestructive({
+			message: m('clubEvent.photoHidden'),
+			commit: () => {
+				if (pendingHidePhotoId === photo.id) pendingHidePhotoId = null;
+				return setEventPhotoHidden(photo.id, true);
+			},
+			restore: () => {
+				if (pendingHidePhotoId === photo.id) pendingHidePhotoId = null;
+				eventPhotos = before;
+			},
+			onCommitError: (err) =>
+				showToast(
+					m('clubEvent.photoModerateFailed', {
+						error: errorCopy(err, m, 'clubEvent.photoModerateFailed')
+					}),
+					'error'
+				)
+		});
+	}
+
+	async function restoreEventPhoto(photo: EventPhoto) {
+		if (pendingHidePhotoId === photo.id) {
+			undoStore.undo();
+			return;
+		}
+		if (photoBusyId) return;
+		photoBusyId = photo.id;
+		try {
+			await setEventPhotoHidden(photo.id, false);
+			eventPhotos = eventPhotos.map((p) => (p.id === photo.id ? { ...p, hidden_at: null } : p));
+		} catch (err) {
+			showToast(
+				m('clubEvent.photoModerateFailed', {
+					error: errorCopy(err, m, 'clubEvent.photoModerateFailed')
+				}),
+				'error'
+			);
+		} finally {
+			photoBusyId = null;
+		}
+	}
+
+	// The owner's delete is held for the undo window, so Undo cancels a timer
+	// rather than re-uploading anything.
+	function deleteMyEventPhoto(photo: EventPhoto) {
+		const before = eventPhotos;
+		eventPhotos = eventPhotos.filter((p) => p.id !== photo.id);
+		deferDestructive({
+			message: m('clubEvent.photoDeleted'),
+			commit: () => deleteRunPhoto(photo.id),
+			restore: () => {
+				eventPhotos = before;
+			},
+			onCommitError: (err) =>
+				showToast(
+					m('clubEvent.photoDeleteFailed', {
+						error: errorCopy(err, m, 'clubEvent.photoDeleteFailed')
+					}),
+					'error'
+				)
+		});
 	}
 
 	/**
@@ -646,16 +1122,104 @@
 		});
 	}
 
-	async function handleArm() {
+	async function loadCourseLines() {
+		if (!event || courses.length === 0) {
+			courseLines = [];
+			return;
+		}
+		try {
+			courseLines = await fetchCourseLinesForOccurrence(event.id, activeInstance, linesFrozen);
+		} catch (e) {
+			console.warn('fetchCourseLinesForOccurrence failed', e);
+		}
+	}
+
+	// Re-read when the courses, the occurrence or the frozen copy change: an
+	// Arm (here, or seen over realtime) swaps the live lines for the frozen ones.
+	$effect(() => {
+		void courses;
+		void activeInstance;
+		void linesFrozen;
+		untrack(() => void loadCourseLines());
+	});
+
+	/// #1305's Arm preflight, for Host GO (the only start mode until #1306).
+	/// A failed read skips it rather than blocking the race: the preflight
+	/// advises, and the race director is standing at the line.
+	async function preflightFor(eventId: string): Promise<PreflightIssue[]> {
+		try {
+			const rows = await fetchEventCourseLines(eventId);
+			const routeCache = new Map<string, GatePoint[] | null>();
+			const routeOf = async (routeId: string | null): Promise<GatePoint[] | null> => {
+				if (!routeId) return null;
+				if (!routeCache.has(routeId)) {
+					const r = await fetchRouteById(routeId).catch(() => null);
+					routeCache.set(
+						routeId,
+						r ? r.waypoints.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)) : null
+					);
+				}
+				return routeCache.get(routeId) ?? null;
+			};
+			const input = await Promise.all(
+				courses.map(async (c) => {
+					const row = rows.find((r) => r.course_id === c.id);
+					const startGate = row ? courseGate(row, 'start') : null;
+					const finishGate = row ? courseGate(row, 'finish') : null;
+					const placed = startGate?.source === 'organiser' || finishGate?.source === 'organiser';
+					return {
+						id: c.id,
+						startGate,
+						finishGate,
+						hasFinishPoint: row?.finish_lat != null && row?.finish_lng != null,
+						selfCross: row?.finish_line_self_cross ?? false,
+						route: placed ? await routeOf(c.route_id) : null
+					};
+				})
+			);
+			return racePreflight(input, raceMode);
+		} catch (e) {
+			console.warn('race preflight skipped', e);
+			return [];
+		}
+	}
+
+	/// Arm, after #1305's preflight: findings open the preflight dialog, whose
+	/// "Arm anyway" comes back here with `checked`.
+	async function handleArm(checked = false) {
 		if (!event || !activeInstance || raceBusy) return;
 		raceBusy = true;
 		try {
+			if (!checked && courses.length > 0) {
+				const issues = await preflightFor(event.id);
+				if (issues.length > 0) {
+					preflightIssues = issues;
+					return;
+				}
+			}
+			preflightIssues = null;
 			raceSession = await armRace(event.id, activeInstance, autoApproveOnArm);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.armFailed');
+			error = errorCopy(e, m, 'clubEvent.armFailed', 'clubEvent.armFailed');
 		} finally {
 			raceBusy = false;
+		}
+	}
+
+	function preflightCopy(i: PreflightIssue): string {
+		const name = courses.find((c) => c.id === i.courseId)?.name ?? '';
+		switch (i.code) {
+			case 'no_finish':
+				return m('courseLines.preflightNoFinish', { name });
+			case 'no_start':
+				return m('courseLines.preflightNoStart', { name });
+			case 'self_cross':
+				return m('courseLines.preflightSelfCross', { name });
+			case 'gate_far_from_route':
+				return i.which === 'start'
+					? m('courseLines.preflightStartFar', { name })
+					: m('courseLines.preflightFinishFar', { name });
 		}
 	}
 
@@ -666,14 +1230,15 @@
 			raceSession = await startRace(event.id, activeInstance);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.startFailed');
+			error = errorCopy(e, m, 'clubEvent.startFailed', 'clubEvent.startFailed');
 		} finally {
 			raceBusy = false;
 		}
 	}
 
-	function handleEnd(status: 'finished' | 'cancelled') {
+	async function handleEnd(status: 'finished' | 'cancelled') {
 		if (!event || !activeInstance || raceBusy) return;
+		dnfPreview = status === 'finished' ? await fetchRaceDnfPreview(event.id, activeInstance) : null;
 		showEndRaceConfirm = status;
 	}
 
@@ -685,8 +1250,10 @@
 		try {
 			raceSession = await endRace(event.id, activeInstance, status);
 			broadcastRaceStateChanged();
+			// Ending files the host DNFs server-side; show them.
+			if (status === 'finished') await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.endFailed');
+			error = errorCopy(e, m, 'clubEvent.endFailed', 'clubEvent.endFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -699,7 +1266,7 @@
 			await approveEventResult(event.id, activeInstance, userId, approve);
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.approvalFailed');
+			error = errorCopy(e, m, 'clubEvent.approvalFailed', 'clubEvent.approvalFailed');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -715,7 +1282,7 @@
 			await approveEventResultById(resultId, approve);
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.approvalFailed');
+			error = errorCopy(e, m, 'clubEvent.approvalFailed', 'clubEvent.approvalFailed');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -756,18 +1323,22 @@
 				durationS: run.duration_s,
 				distanceM: run.distance_m,
 				runId: run.id,
-				finisherStatus: 'finished'
+				finisherStatus: 'finished',
+				// On a raced occurrence this is the racer's own submission and
+				// the run's clock is the chip time; the gun time only exists
+				// where a device recorded the finish against the GO.
+				...(raceSession ? { finishMethod: 'manual' as const, chipTimeS: run.duration_s } : {})
 			});
 			showResultPicker = false;
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.submitFailed');
+			error = errorCopy(e, m, 'clubEvent.submitFailed', 'clubEvent.submitFailed');
 		} finally {
 			submitting = false;
 		}
 	}
 
-	async function recordNonFinish(status: 'dnf' | 'dns') {
+	async function recordNonFinish(status: Exclude<FinisherStatus, 'finished'>) {
 		if (!event || !activeInstance || submitting) return;
 		submitting = true;
 		try {
@@ -776,6 +1347,8 @@
 				instanceStart: activeInstance,
 				durationS: 0,
 				distanceM: 0,
+				// A non-finish carries no finish method: there is no finish time
+				// whose provenance the badge would describe.
 				finisherStatus: status
 			});
 			showResultPicker = false;
@@ -786,10 +1359,50 @@
 			// propagate uncaught. Pre-fix, a network drop on DNF / DNS
 			// left the picker open with no feedback and the user
 			// guessing whether their non-finish was recorded.
-			error = e instanceof Error ? e.message : m('clubEvent.resultSubmitFailed');
+			error = errorCopy(e, m, 'clubEvent.resultSubmitFailed', 'clubEvent.resultSubmitFailed');
 		} finally {
 			submitting = false;
 		}
+	}
+
+	function openEditResult(r: EventResultWithUser) {
+		editingResult = r;
+		editTime = r.duration_s > 0 ? baseDuration(r.duration_s) : '';
+		editStatus = r.finisher_status;
+		editError = null;
+	}
+
+	async function saveEditResult() {
+		if (!editingResult || editBusy) return;
+		const parsed = parseDurationToSeconds(editTime);
+		if (editStatus === 'finished' && (parsed == null || parsed <= 0)) {
+			editError = m('clubEvent.editResultTimeInvalid');
+			return;
+		}
+		editBusy = true;
+		editError = null;
+		try {
+			const seconds = parsed ?? editingResult.duration_s;
+			await editEventResultAsHost(editingResult.id, {
+				...hostTimeEditPatch(seconds, editingResult.gun_time_s),
+				finisher_status: editStatus
+			});
+			editingResult = null;
+			await reloadInstance();
+		} catch (e: unknown) {
+			editError = errorCopy(e, m, 'clubEvent.editResultFailed', 'clubEvent.editResultFailed');
+		} finally {
+			editBusy = false;
+		}
+	}
+
+	function timeSplit(r: EventResultWithUser): string | null {
+		const gun = r.gun_time_s != null ? baseDuration(r.gun_time_s) : null;
+		const chip = r.chip_time_s != null ? baseDuration(r.chip_time_s) : null;
+		if (gun && chip) return m('clubEvent.timeSplitGunChip', { gun, chip });
+		if (chip && r.chip_time_s !== r.duration_s) return m('clubEvent.timeSplitChip', { chip });
+		if (gun) return m('clubEvent.timeSplitGun', { gun });
+		return null;
 	}
 
 	async function removeMyResult() {
@@ -800,7 +1413,7 @@
 			showRemoveResultConfirm = false;
 			await reloadInstance();
 		} catch (e) {
-			error = e instanceof Error ? e.message : m('clubEvent.resultRemoveFailed');
+			error = errorCopy(e, m, 'clubEvent.resultRemoveFailed', 'clubEvent.resultRemoveFailed');
 		} finally {
 			submitting = false;
 		}
@@ -893,7 +1506,7 @@
 				clubName: club?.name ?? null,
 			});
 			const blob = await rasterizeSvgToPng(svg, CERT_WIDTH, CERT_HEIGHT);
-			const safe = event.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+			const safe = fileNamePart(event.title);
 			downloadBlob(blob, `threkir-certificate-${safe}.png`);
 		} catch (e) {
 			console.error('certificate generation failed', e);
@@ -916,7 +1529,7 @@
 			}))
 		);
 		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-		const safe = event.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+		const safe = fileNamePart(event.title);
 		downloadBlob(blob, `threkir-results-${safe}.csv`);
 	}
 
@@ -934,6 +1547,26 @@
 		});
 		if (!ics) return;
 		downloadBlob(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), icsFilename(event.title));
+	}
+
+	// Null for a one-off event, and for the rare recurring shape an RRULE cannot
+	// state without diverging from the occurrences this page lists — the series
+	// button is only offered when the file would agree with the app.
+	let seriesIcs = $derived(
+		event && event.recurrence_freq
+			? buildEventSeriesIcs(event, {
+					cancelledIso: exceptions.map((e) => e.instance_start),
+					url: canonicalUrl
+				})
+			: null
+	);
+
+	function addSeriesToCalendar() {
+		if (!event || !seriesIcs) return;
+		downloadBlob(
+			new Blob([seriesIcs], { type: 'text/calendar;charset=utf-8' }),
+			icsFilename(`${event.title}-series`)
+		);
 	}
 
 	function formatRunDate(iso: string): string {
@@ -981,7 +1614,7 @@
 		await auth.ready();
 		await load();
 		// Returned from Stripe Checkout: reconcile the order (?paid=1).
-		if ($page.url.searchParams.get('paid') === '1') {
+		if (page.url.searchParams.get('paid') === '1') {
 			void pollForPaidOrder();
 		}
 		// Guard each side-effect: if subscribeRealtime throws (the
@@ -1191,14 +1824,48 @@
 			if (shouldClear) {
 				await clearRsvp(event.id, activeInstance);
 			} else {
-				await rsvpEvent(event.id, status, activeInstance);
+				if (status === 'going' && needsCoursePick(courses) && !courseChoice) {
+					courseError = m('clubEvent.pickCourseFirst');
+					return;
+				}
+				courseError = null;
+				await rsvpEvent(event.id, status, activeInstance, rsvpCourseId());
 			}
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.rsvpFailed');
+			error = errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed');
 		} finally {
 			busy = false;
 		}
+	}
+
+	// The course an RSVP write carries: the viewer's pick, or the only course
+	// when there is no choice; undefined leaves the stored course alone.
+	function rsvpCourseId(): string | undefined {
+		if (courseChoice) return courseChoice;
+		if (courses.length === 1) return courses[0].id;
+		return undefined;
+	}
+
+	// Changing course with an RSVP already on file rewrites it straight away;
+	// without one the pick is held for the next RSVP click.
+	async function chooseCourse(id: string) {
+		courseChoice = id;
+		courseError = null;
+		if (!event || !activeInstance || !viewerRsvpForActive || viewerRsvpForActive === 'declined') return;
+		busy = true;
+		try {
+			await rsvpEvent(event.id, viewerRsvpForActive, activeInstance, id);
+			showToast(m('clubEvent.courseChanged'), 'success');
+		} catch (e: unknown) {
+			error = errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed');
+		} finally {
+			busy = false;
+		}
+	}
+
+	function courseLabel(c: EventCourse): string {
+		return c.distance_m != null ? `${c.name} · ${formatDistance(c.distance_m)}` : c.name;
 	}
 
 	async function setAttendance(userId: string, current: EventAttendance | null, value: EventAttendance) {
@@ -1212,7 +1879,7 @@
 			await markAttendance(event.id, userId, activeInstance, next);
 			attendees = attendees.map((a) => (a.user_id === userId ? { ...a, attendance: next } : a));
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEvent.attendanceFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEvent.attendanceFailed', 'clubEvent.attendanceFailed'), 'error');
 		} finally {
 			markingAttendance = null;
 		}
@@ -1221,7 +1888,7 @@
 	async function register() {
 		if (!event || !activeInstance || registering) return;
 		if (!auth.user) {
-			goto(`/login?next=${encodeURIComponent($page.url.pathname)}`);
+			goto(`/login?next=${encodeURIComponent(page.url.pathname)}`);
 			return;
 		}
 		registering = true;
@@ -1229,8 +1896,65 @@
 			const { url } = await startEventCheckout(event.id, activeInstance);
 			window.location.href = url;
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEvent.registerFailed'), 'error');
+			// The refusals only the server can know, arriving after the click:
+			// the two the page also renders for itself when it can see them
+			// coming, a session the schedule no longer holds (decisions § 1921),
+			// plus the host-capability ones, which no retry fixes.
+			const code = refusalCode(e);
+			const key =
+				code === 'event_full'
+					? 'clubEvent.registerSoldOut'
+					: code === 'sales_closed' || code === 'instance_cancelled'
+						? 'clubEvent.registerSalesClosed'
+						: code === 'instance_not_found'
+							? 'clubEvent.registerSessionNotFound'
+							: code === 'host_cannot_take_payment' ||
+								  code === 'event_has_no_host' ||
+								  code === 'event_not_priced' ||
+								  code === 'stripe_not_configured'
+								? 'clubEvent.registerHostUnavailable'
+								: null;
+			showToast(
+				key ? m(key) : errorCopy(e, m, 'clubEvent.registerFailed', 'clubEvent.registerFailed'),
+				'error'
+			);
 			registering = false;
+		}
+	}
+
+	/// Join a paid occurrence's waitlist. A waitlist row on a priced event
+	/// needs no order (20270726000002): it is a request to be offered a seat,
+	/// and the offer is what Register then claims.
+	async function joinWaitlist() {
+		if (!event || !activeInstance || waitlistBusy) return;
+		waitlistBusy = true;
+		try {
+			if (needsCoursePick(courses) && !courseChoice) {
+				courseError = m('clubEvent.pickCourseFirst');
+				return;
+			}
+			courseError = null;
+			await rsvpEvent(event.id, 'waitlisted', activeInstance, rsvpCourseId());
+			showToast(m('clubEvent.waitlistJoined'), 'success');
+			await load();
+		} catch (e: unknown) {
+			showToast(errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed'), 'error');
+		} finally {
+			waitlistBusy = false;
+		}
+	}
+
+	async function confirmLeaveWaitlist() {
+		if (!event || !activeInstance || waitlistBusy) return;
+		waitlistBusy = true;
+		try {
+			await clearRsvp(event.id, activeInstance);
+			showLeaveWaitlist = false;
+			await load();
+		} catch (e: unknown) {
+			showToast(errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed'), 'error');
+		} finally {
+			waitlistBusy = false;
 		}
 	}
 
@@ -1276,7 +2000,7 @@
 			);
 			await load();
 		} catch (e: unknown) {
-			const code = e instanceof Error ? e.message : '';
+			const code = refusalCode(e);
 			const key =
 				code === 'policy_no_refund'
 					? 'clubEvent.cancelPolicyNoRefund'
@@ -1284,8 +2008,13 @@
 						? 'clubEvent.cancelNoOrder'
 						: code === 'stripe_refund_failed'
 							? 'clubEvent.cancelRefundFailed'
-							: 'clubEvent.cancelRegistrationFailed';
-			showToast(m(key), 'error');
+							: null;
+			showToast(
+				key
+					? m(key)
+					: errorCopy(e, m, 'clubEvent.cancelRegistrationFailed', 'clubEvent.cancelRegistrationFailed'),
+				'error'
+			);
 		} finally {
 			cancellingRegistration = false;
 		}
@@ -1302,8 +2031,12 @@
 		try {
 			await deleteEvent(event.id);
 		} catch (e) {
+			if (e instanceof Error && e.message === PAID_EVENT_DELETE_REFUSAL) {
+				showToast(m('clubEvent.deleteEventHasPayments'), 'error');
+				return;
+			}
 			showToast(
-				m('clubHome.deleteEventFailed', { error: e instanceof Error ? e.message : String(e) }),
+				m('clubHome.deleteEventFailed', { error: errorCopy(e, m, 'clubHome.deleteEventFailed') }),
 				'error'
 			);
 			return;
@@ -1315,25 +2048,113 @@
 		if (!event || !activeInstance || busy) return;
 		busy = true;
 		try {
-			await cancelEventInstance(event.id, activeInstance, cancelReason || null);
+			const { refunds } = await cancelEventInstance(event.id, activeInstance, cancelReason || null);
 			cancelReason = '';
 			showCancelInstance = false;
+			if (refunds) reportOccurrenceRefunds(refunds);
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.cancelOccurrenceFailed');
+			error = occurrenceCancelError(e);
 		} finally {
 			busy = false;
 		}
 	}
 
-	async function reinstateInstance() {
-		if (!event || !activeInstance || busy) return;
-		busy = true;
+	/// Re-run the refunds of an occurrence that is already cancelled. The same
+	/// request as the cancel: it resumes whatever is still owed.
+	async function retryOccurrenceRefunds(instanceStart: string) {
+		if (!event || retryingRefundsFor) return;
+		retryingRefundsFor = instanceStart;
 		try {
-			await reinstateEventInstance(event.id, activeInstance);
+			reportOccurrenceRefunds(await cancelPaidEventInstance(event.id, instanceStart, null));
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.reinstateOccurrenceFailed');
+			showToast(occurrenceCancelError(e), 'error');
+		} finally {
+			retryingRefundsFor = null;
+		}
+	}
+
+	/// A failed refund is an error toast, never folded into the success one.
+	/// `scope` picks the sentence: an occurrence of a series, a one-off event,
+	/// or the whole series.
+	function reportOccurrenceRefunds(
+		refunds: OccurrenceRefundSummary,
+		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
+	) {
+		if (refunds.outcome === 'incomplete') {
+			const key =
+				scope === 'series'
+					? 'clubEvent.seriesRefundsIncomplete'
+					: scope === 'event'
+						? 'clubEvent.eventRefundsIncomplete'
+						: 'clubEvent.occurrenceRefundsIncomplete';
+			showToast(m(key, { n: refunds.failed }), 'error');
+			return;
+		}
+		const refunded = refunds.initiated + refunds.already_refunded;
+		if (refunded > 0) {
+			const key =
+				scope === 'series'
+					? 'clubEvent.seriesRefundsStarted'
+					: scope === 'event'
+						? 'clubEvent.eventRefundsStarted'
+						: 'clubEvent.occurrenceRefundsStarted';
+			showToast(m(key, { n: refunded }), 'success');
+		} else if (scope === 'series') {
+			showToast(m('clubEvent.seriesCancelledToast'), 'success');
+		}
+	}
+
+	function occurrenceCancelError(
+		e: unknown,
+		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
+	): string {
+		const code = refusalCode(e);
+		if (code === 'stripe_not_configured') {
+			return m(
+				scope === 'series'
+					? 'clubEvent.seriesCancelNotConfigured'
+					: scope === 'event'
+						? 'clubEvent.eventCancelNotConfigured'
+						: 'clubEvent.occurrenceCancelNotConfigured'
+			);
+		}
+		if (code === 'not_event_organiser') return m('clubEvent.occurrenceCancelNotOrganiser');
+		const key =
+			scope === 'series'
+				? 'clubEvent.cancelSeriesFailed'
+				: scope === 'event'
+					? 'clubEvent.cancelEventFailed'
+					: 'clubEvent.cancelOccurrenceFailed';
+		return errorCopy(e, m, key, key);
+	}
+
+	async function confirmCancelSeries() {
+		if (!event || busy) return;
+		busy = true;
+		try {
+			const { refunds } = await cancelEventSeries(event.id, seriesCancelReason || null);
+			seriesCancelReason = '';
+			showCancelSeries = false;
+			reportOccurrenceRefunds(refunds, 'series');
+			activeInstance = null;
+			await load();
+		} catch (e: unknown) {
+			error = occurrenceCancelError(e, 'series');
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function reinstateInstance(instanceIso: string | null = activeInstance) {
+		if (!event || !instanceIso || busy) return;
+		busy = true;
+		try {
+			await reinstateEventInstance(event.id, instanceIso);
+			await load();
+		} catch (e: unknown) {
+			error = errorCopy(e, m, 'clubEvent.reinstateOccurrenceFailed', 'clubEvent.reinstateOccurrenceFailed');
 		} finally {
 			busy = false;
 		}
@@ -1353,7 +2174,7 @@
 			draftPost = '';
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.postUpdateFailed');
+			error = errorCopy(e, m, 'clubEvent.postUpdateFailed', 'clubEvent.postUpdateFailed');
 		} finally {
 			busy = false;
 		}
@@ -1397,24 +2218,24 @@
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-20"></span>
-				<span class="skel skel-line skel-w-60"></span>
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-80"></span>
+				<SkeletonBlock height="0.75rem" width="20%" />
+				<SkeletonBlock height="0.75rem" width="60%" />
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="80%" />
 			</div>
 			<div class="skel-hero-actions">
-				<span class="skel skel-block"></span>
-				<span class="skel skel-block"></span>
-				<span class="skel skel-block"></span>
+				<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
 			</div>
 		</div>
 		<div class="skel-card" aria-hidden="true">
-			<span class="skel skel-line skel-w-30"></span>
-			<span class="skel skel-line skel-w-80"></span>
+			<SkeletonBlock height="0.75rem" width="30%" />
+			<SkeletonBlock height="0.75rem" width="80%" />
 		</div>
 	</div>
-	<p class="sr-only" role="status">{m('clubEvent.loadingEventStatus')}</p>
-{:else if loadError}
+	<p class="visually-hidden" role="status">{m('clubEvent.loadingEventStatus')}</p>
+{:else if loadError !== null}
 	<div class="page">
 		<a class="back" href="/clubs/{slug}">
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
@@ -1424,7 +2245,7 @@
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('clubEvent.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load} data-testid="club-event-load-retry"
 				>{m('clubEvent.retry')}</button
@@ -1437,16 +2258,11 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{m('clubEvent.backToClubs')}
 		</a>
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('clubEvent.notFoundTitle')}</h3>
-			<p class="empty-text">
-				{m('clubEvent.notFoundBody')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState icon="event_busy" title={m('clubEvent.notFoundTitle')} text={m('clubEvent.notFoundBody')}>
+			{#snippet actions()}
 				<a href="/clubs/{slug}" class="btn btn-primary">{m('clubEvent.backToClub')}</a>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div
@@ -1473,6 +2289,7 @@
 					{/if}
 				</span>
 				<h1>{event.title}</h1>
+				<HelpLink route="/clubs/[slug]/events/[id]" />
 				{#if event.is_public === false}
 					<p class="members-only-badge" data-testid="members-only-badge">
 						<span class="material-symbols" aria-hidden="true">lock</span>
@@ -1518,7 +2335,7 @@
 						</div>
 					{/if}
 					<div class="metric">
-						<span class="label">{m('clubEvent.goingLabel')}</span>
+						<span class="label">{rsvpStatusLabel('going')}</span>
 						<span class="value">
 							{event.attendee_count}{event.capacity ? ` / ${event.capacity}` : ''}
 						</span>
@@ -1536,19 +2353,57 @@
 					</a>
 				{/if}
 
+				{#if isAthletic && courseLines.some((r) => courseGate(r, 'start') || courseGate(r, 'finish'))}
+					<section class="course-lines" data-testid="event-course-lines" aria-labelledby="course-lines-title">
+						<div class="course-lines-head">
+							<h3 id="course-lines-title">{m('courseLines.displayTitle')}</h3>
+							{#if courses.length > 1}
+								<label class="course-lines-pick">
+									<span class="visually-hidden">{m('courseLines.pickCourse')}</span>
+									<select
+										value={linesCourse?.id ?? ''}
+										onchange={(e) => (linesCourseId = e.currentTarget.value)}
+										data-testid="event-course-lines-course"
+									>
+										{#each courses as c (c.id)}
+											<option value={c.id}>{c.name}</option>
+										{/each}
+									</select>
+								</label>
+							{/if}
+						</div>
+						{#if linesGates.length > 0}
+							<CourseLinesMap
+								gates={linesGates}
+								label={m('courseLines.mapLabel', { name: linesCourse?.name ?? '' })}
+								testid="event-course-lines-map"
+							/>
+						{:else}
+							<p class="muted">{m('courseLines.noLinesForCourse')}</p>
+						{/if}
+						<p class="muted small">
+							{linesFrozen ? m('courseLines.frozenNote') : m('courseLines.legend')}
+						</p>
+					</section>
+				{/if}
+
 				{#if meetPoint}
 					<div class="meet-point">
 						{#if meetMapUrl}
-							<a
-								class="meet-map"
-								href={directionsHref}
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={m('clubEvent.openMeetInMaps')}
-							>
-								<img src={meetMapUrl} alt={m('clubEvent.meetMapAlt')} loading="lazy" />
-							</a>
-						{:else if (env.PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
+							<StaticMapImage src={meetMapUrl} alt={m('clubEvent.meetMapAlt')} lazy>
+								{#snippet frame(image)}
+									<a
+										class="meet-map"
+										href={directionsHref}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={m('clubEvent.openMeetInMaps')}
+									>
+										{@render image()}
+									</a>
+								{/snippet}
+							</StaticMapImage>
+						{:else if (PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
 							<div class="meet-map-consent" data-testid="meet-map-consent">
 								<h3>{m('runMap.consentTitle')}</h3>
 								<p>
@@ -1578,11 +2433,50 @@
 				{/if}
 			</div>
 			<div class="hero-side">
+				{#if instanceError !== null}
+					<div class="error-banner instance-error" role="alert" data-testid="club-event-instance-error">
+						<span class="material-symbols" aria-hidden="true">error</span>
+						<div>
+							<strong>{m('clubEvent.instanceLoadError')}</strong>
+							{#if instanceError}<span class="error-detail">{instanceError}</span>{/if}
+						</div>
+						<button
+							class="btn btn-outline"
+							onclick={reloadInstance}
+							data-testid="club-event-instance-retry">{m('clubEvent.retry')}</button
+						>
+					</div>
+				{/if}
+				{#if refundFailed}
+					<div class="refund-failed-banner" role="alert" data-testid="refund-failed-banner">
+						<span class="material-symbols" aria-hidden="true">credit_card_off</span>
+						<div>
+							<strong>{m('clubEvent.refundFailedTitle')}</strong>
+							<p>{m('clubEvent.refundFailedBody')}</p>
+							<p>{m('clubEvent.refundFailedNext')}</p>
+							<a class="btn btn-outline" href="mailto:billing@threkir.com">
+								{m('clubEvent.refundFailedContact')}
+							</a>
+						</div>
+					</div>
+				{/if}
+				{#if seriesCancelled && !activeException}
+					<div class="cancelled-banner" role="status" data-testid="series-cancelled">
+						<span class="material-symbols" aria-hidden="true">event_busy</span>
+						<div>
+							<strong>{m('clubEvent.seriesWasCancelled')}</strong>
+						</div>
+					</div>
+				{/if}
 				{#if activeException}
 					<div class="cancelled-banner" role="status">
 						<span class="material-symbols" aria-hidden="true">event_busy</span>
 						<div>
-							<strong>{m('clubEvent.occurrenceCancelled')}</strong>
+							<strong>
+								{event.recurrence_freq
+									? m('clubEvent.occurrenceCancelled')
+									: m('clubEvent.eventCancelled')}
+							</strong>
 							{#if activeException.reason}
 								<span class="cancel-reason">{activeException.reason}</span>
 							{/if}
@@ -1592,11 +2486,13 @@
 						<button
 							type="button"
 							class="btn-ghost"
-							onclick={reinstateInstance}
+							onclick={() => reinstateInstance()}
 							disabled={busy}
 						>
 							<span class="material-symbols" aria-hidden="true">event_available</span>
-							{m('clubEvent.reinstateOccurrence')}
+							{event.recurrence_freq
+								? m('clubEvent.reinstateOccurrence')
+								: m('clubEvent.reinstateEvent')}
 						</button>
 					{/if}
 				{:else if !isPast && pricing}
@@ -1624,9 +2520,22 @@
 							</p>
 						{/if}
 						{#if !auth.user}
-							<a class="btn btn-primary register-cta" href={`/login?next=${encodeURIComponent($page.url.pathname)}`}>
+							<a class="btn btn-primary register-cta" href={`/login?next=${encodeURIComponent(page.url.pathname)}`}>
 								{m('clubEvent.registerSignInFirst')}
 							</a>
+						{:else if regState === 'unknown'}
+							<div class="register-status closed" role="alert" data-testid="register-unknown">
+								<span class="material-symbols" aria-hidden="true">error</span>
+								{m('clubEvent.registrationUnknown')}
+							</div>
+							<button
+								type="button"
+								class="btn btn-outline register-cta"
+								onclick={reloadInstance}
+								data-testid="register-unknown-retry"
+							>
+								{m('clubEvent.retry')}
+							</button>
 						{:else if regState === 'already_registered'}
 							<div class="register-status registered" role="status">
 								<span class="material-symbols" aria-hidden="true">check_circle</span>
@@ -1648,11 +2557,52 @@
 									{m('clubEvent.cancelRegistration')}
 								</button>
 							{/if}
+						{:else if offerState.kind === 'offered'}
+							<div class="register-status offered" role="status" data-testid="waitlist-offer">
+								<span class="material-symbols" aria-hidden="true">hourglass_top</span>
+								{m('clubEvent.waitlistOfferHeld', { time: fmtDate(offerState.deadline) })}
+							</div>
+							<button
+								type="button"
+								class="btn btn-primary register-cta"
+								onclick={register}
+								disabled={registering}
+								data-testid="claim-cta"
+							>
+								{registering
+									? m('clubEvent.registering')
+									: m('clubEvent.claimForPrice', { price: priceFormatted })}
+							</button>
 						{:else if regState === 'sold_out'}
 							<div class="register-status closed" role="status">
 								<span class="material-symbols" aria-hidden="true">block</span>
 								{m('clubEvent.registerSoldOut')}
 							</div>
+							{#if offerState.kind === 'waiting'}
+								<p class="register-status processing" role="status" data-testid="waitlist-waiting">
+									<span class="material-symbols" aria-hidden="true">schedule</span>
+									{m('clubEvent.waitlistJoined')}
+								</p>
+								<button
+									type="button"
+									class="btn btn-secondary register-cancel"
+									onclick={() => (showLeaveWaitlist = true)}
+									disabled={waitlistBusy}
+									data-testid="leave-waitlist"
+								>
+									{m('clubEvent.leaveWaitlist')}
+								</button>
+							{:else if offerState.kind === 'none' && salesOpen}
+								<button
+									type="button"
+									class="btn btn-outline register-cta"
+									onclick={joinWaitlist}
+									disabled={waitlistBusy}
+									data-testid="join-waitlist"
+								>
+									{m('clubEvent.joinWaitlist')}
+								</button>
+							{/if}
 						{:else if regState === 'sales_closed'}
 							<div class="register-status closed" role="status">
 								<span class="material-symbols" aria-hidden="true">lock_clock</span>
@@ -1673,6 +2623,26 @@
 						{/if}
 					</div>
 				{:else if !isPast && auth.user}
+					{#if courses.length > 1}
+						<label class="course-pick">
+							<span>{m('clubEvent.yourCourse')}</span>
+							<select
+								value={courseChoice}
+								onchange={(e) => chooseCourse(e.currentTarget.value)}
+								disabled={busy}
+								data-testid="rsvp-course-select"
+								aria-describedby={courseError ? 'rsvp-course-error' : undefined}
+							>
+								<option value="" disabled>{m('clubEvent.pickCourse')}</option>
+								{#each courses as c (c.id)}
+									<option value={c.id}>{courseLabel(c)}</option>
+								{/each}
+							</select>
+						</label>
+						{#if courseError}
+							<p class="course-error" id="rsvp-course-error" role="alert">{courseError}</p>
+						{/if}
+					{/if}
 					<div
 						class="rsvp-tri"
 						role="group"
@@ -1684,9 +2654,9 @@
 							class:active={viewerRsvpForActive === 'going' || viewerRsvpForActive === 'waitlisted'}
 							aria-pressed={viewerRsvpForActive === 'going' || viewerRsvpForActive === 'waitlisted'}
 							aria-label={viewerRsvpForActive === 'going'
-								? m('clubEvent.going')
+								? rsvpStatusLabel('going')
 								: viewerRsvpForActive === 'waitlisted'
-									? m('clubEvent.waitlisted')
+									? rsvpStatusLabel('waitlisted')
 									: m('clubEvent.imIn')}
 							onclick={() => rsvp('going')}
 							disabled={busy}
@@ -1700,9 +2670,9 @@
 							</span>
 							<span class="rsvp-label">
 								{viewerRsvpForActive === 'going'
-									? m('clubEvent.going')
+									? rsvpStatusLabel('going')
 									: viewerRsvpForActive === 'waitlisted'
-										? m('clubEvent.waitlisted')
+										? rsvpStatusLabel('waitlisted')
 										: m('clubEvent.imIn')}
 							</span>
 							<span class="rsvp-count" aria-hidden="true">{rsvpCounts.going}</span>
@@ -1712,12 +2682,12 @@
 							class="rsvp-opt rsvp-maybe"
 							class:active={viewerRsvpForActive === 'maybe'}
 							aria-pressed={viewerRsvpForActive === 'maybe'}
-							aria-label={m('clubEvent.maybe')}
+							aria-label={rsvpStatusLabel('maybe')}
 							onclick={() => rsvp('maybe')}
 							disabled={busy}
 						>
 							<span class="material-symbols" aria-hidden="true">help_outline</span>
-							<span class="rsvp-label">{m('clubEvent.maybe')}</span>
+							<span class="rsvp-label">{rsvpStatusLabel('maybe')}</span>
 							<span class="rsvp-count" aria-hidden="true">{rsvpCounts.maybe}</span>
 						</button>
 						<button
@@ -1743,8 +2713,21 @@
 						data-testid="add-to-calendar"
 					>
 						<span class="material-symbols" aria-hidden="true">calendar_add_on</span>
-						{m('clubEvent.addToCalendar')}
+						{event.recurrence_freq
+							? m('clubEvent.addOccurrenceToCalendar')
+							: m('clubEvent.addToCalendar')}
 					</button>
+					{#if seriesIcs}
+						<button
+							type="button"
+							class="btn btn-secondary add-to-calendar"
+							onclick={addSeriesToCalendar}
+							data-testid="add-series-to-calendar"
+						>
+							<span class="material-symbols" aria-hidden="true">event_repeat</span>
+							{m('clubEvent.addSeriesToCalendar')}
+						</button>
+					{/if}
 				{/if}
 				{#if isEventOrganiser}
 					<div class="admin-actions">
@@ -1759,15 +2742,29 @@
 						</button>
 					</div>
 				{/if}
-				{#if isEventOrganiser && event.recurrence_freq && activeInstance && !activeException}
+				{#if isEventOrganiser && activeInstance && !activeException && (event.recurrence_freq ? liveInstances.length > 0 : !isPast)}
 					<div class="admin-actions">
 						<button
 							type="button"
 							class="btn-ghost danger"
 							onclick={() => (showCancelInstance = true)}
+							data-testid="cancel-occurrence"
 						>
 							<span class="material-symbols" aria-hidden="true">event_busy</span>
-							{m('clubEvent.cancelOccurrence')}
+							{event.recurrence_freq ? m('clubEvent.cancelOccurrence') : m('clubEvent.cancelEvent')}
+						</button>
+					</div>
+				{/if}
+				{#if isEventOrganiser && event.recurrence_freq && liveInstances.length > 0}
+					<div class="admin-actions">
+						<button
+							type="button"
+							class="btn-ghost danger"
+							onclick={() => (showCancelSeries = true)}
+							data-testid="cancel-series"
+						>
+							<span class="material-symbols" aria-hidden="true">event_repeat</span>
+							{m('clubEvent.cancelSeries')}
 						</button>
 					</div>
 				{/if}
@@ -1824,6 +2821,82 @@
 			</section>
 		{/if}
 
+		{#if isEventOrganiser && occurrenceRefunds.length > 0}
+			<section class="cancelled-list" data-testid="occurrence-refunds">
+				<span class="label">{m('clubEvent.occurrenceRefundsTitle')}</span>
+				<ul>
+					{#each occurrenceRefunds as row (row.instanceStart)}
+						<li
+							class="occurrence-refunds"
+							class:owed={row.state.owed > 0}
+							role={row.state.owed > 0 ? 'alert' : 'status'}
+						>
+							<span class="cancelled-date">
+								{new Date(row.instanceStart).toLocaleDateString(activeFormatLocale(), {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric'
+								})}
+							</span>
+							{#if row.state.owed > 0}
+								<p>{m('clubEvent.occurrenceRefundsOwed', { n: row.state.owed })}</p>
+							{/if}
+							{#if row.state.inFlight > 0}
+								<p>{m('clubEvent.occurrenceRefundsInFlight', { n: row.state.inFlight })}</p>
+							{/if}
+							{#if row.state.returned > 0}
+								<p>{m('clubEvent.occurrenceRefundsReturned', { n: row.state.returned })}</p>
+							{/if}
+							{#if row.state.owed > 0}
+								<button
+									type="button"
+									class="btn btn-primary btn-sm"
+									onclick={() => retryOccurrenceRefunds(row.instanceStart)}
+									disabled={retryingRefundsFor !== null}
+									data-testid="occurrence-refunds-retry"
+								>
+									{retryingRefundsFor === row.instanceStart
+										? m('clubEvent.occurrenceRefundsRetrying')
+										: m('clubEvent.occurrenceRefundsRetry')}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if isEventOrganiser && cancelledUpcoming.length > 0}
+			<section class="cancelled-list" data-testid="cancelled-occurrences">
+				<span class="label">{m('clubEvent.cancelledOccurrences')}</span>
+				<ul>
+					{#each cancelledUpcoming as row (row.iso)}
+						<li>
+							<span class="cancelled-date">
+								{new Date(row.iso).toLocaleDateString(activeFormatLocale(), {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric'
+								})}
+							</span>
+							{#if row.reason}
+								<span class="cancel-reason">{row.reason}</span>
+							{/if}
+							<button
+								type="button"
+								class="btn-ghost"
+								onclick={() => reinstateInstance(row.iso)}
+								disabled={busy}
+							>
+								<span class="material-symbols" aria-hidden="true">event_available</span>
+								{m('clubEvent.reinstateOccurrence')}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
 		{#if isMember}
 			<section class="card">
 				<h3>{m('clubEvent.postUpdateTitle')}</h3>
@@ -1833,7 +2906,7 @@
 						bind:value={draftPost}
 						placeholder={m('clubEvent.postUpdatePlaceholder')}
 						rows="3"
-						maxlength="1200"
+						maxlength={lengthLimit('club_posts.body')}
 					></textarea>
 					<button class="btn-primary" type="submit" disabled={!draftPost.trim() || busy}>
 						{m('clubEvent.postUpdateButton')}
@@ -1849,9 +2922,9 @@
 					{#each eventPosts as p (p.id)}
 						<article class="post">
 							<div class="post-author">
-								<Avatar name={p.author_display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.author_id)} />
+								<Avatar url={p.author_avatar_url} name={shownName(p.author_display_name, p.author_id)} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.author_id)} />
 								<div>
-									<strong>{p.author_display_name ?? m('clubEvent.memberFallback')}</strong>
+									<strong>{shownName(p.author_display_name, p.author_id)}</strong>
 									<span class="when">{fmtRelative(p.created_at ?? new Date().toISOString())}</span>
 								</div>
 							</div>
@@ -1863,7 +2936,28 @@
 		{/if}
 
 		{#if isAthletic}
-		{#if isRaceDirector}
+		{#if raceMode !== 'host_go' && activeInstance}
+			<RaceStartModePanel
+				eventId={event.id}
+				instanceStart={activeInstance}
+				mode={raceMode}
+				timezone={event.timezone ?? null}
+				session={raceSession}
+				isDirector={isRaceDirector}
+				going={viewerRsvpForActive === 'going'}
+				courseCount={courses.length}
+				courseChosen={!!courseChoice}
+				busy={raceBusy || busy}
+				onsession={(row) => {
+					raceSession = row;
+					broadcastRaceStateChanged();
+				}}
+				onarm={() => handleArm()}
+				oncancel={() => handleEnd('cancelled')}
+				onend={() => handleEnd('finished')}
+				onjoin={() => rsvp('going')}
+			/>
+		{:else if isRaceDirector}
 			<section class="card race-panel">
 				<div class="results-head">
 					<h3>{m('clubEvent.raceControlTitle')}</h3>
@@ -1883,7 +2977,7 @@
 						<input type="checkbox" bind:checked={autoApproveOnArm} />
 						<span>{m('clubEvent.autoApproveResults')}</span>
 					</label>
-					<button type="button" class="btn btn-primary-sm" onclick={handleArm} disabled={raceBusy}>
+					<button type="button" class="btn btn-primary-sm" onclick={() => handleArm()} disabled={raceBusy}>
 						{m('clubEvent.armRace')}
 					</button>
 				{:else if raceSession.status === 'armed'}
@@ -1964,11 +3058,20 @@
 			{#if results.length === 0}
 				<p class="muted">{m('clubEvent.noResultsYet')}</p>
 			{:else}
-				<ol class="results">
-					{#each results as r (rowKey(r))}
+				{#each resultBoards as board (board.course?.id ?? 'none')}
+				{#if resultBoards.length > 1}
+					<h4 class="course-board-title" data-testid="course-board-title">
+						{board.course ? courseLabel(board.course) : m('clubEvent.noCourseBoard')}
+					</h4>
+				{/if}
+				{#if board.results.length === 0}
+					<p class="muted">{m('clubEvent.noCourseResultsYet')}</p>
+				{:else}
+				<ol class="results" data-testid="course-board">
+					{#each board.results as r (rowKey(r))}
 						<li class="result" class:me={r.user_id !== null && r.user_id === myUserId} class:pending={!r.organiser_approved}>
 							<span class="rank">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
-							<Avatar name={r.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(rowKey(r))} />
+							<Avatar url={r.avatar_url} name={r.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(rowKey(r))} />
 							<div class="res-info">
 								<strong>{r.display_name ?? m('clubEvent.runnerFallback')}</strong>
 								{#if r.user_id !== null && r.user_id === myUserId}<span class="you">{m('clubEvent.youTag')}</span>{/if}
@@ -1976,9 +3079,17 @@
 								{#if r.finisher_status !== 'finished'}
 									<span class="dnf-tag">{r.finisher_status.toUpperCase()}</span>
 								{/if}
+								{#if finishMethodBadge(r.finish_method) === 'manual'}
+									<span class="method-tag" data-testid="finish-method-badge">{m('clubEvent.finishManual')}</span>
+								{:else if finishMethodBadge(r.finish_method) === 'host'}
+									<span class="method-tag host" data-testid="finish-method-badge">{m('clubEvent.finishHostEdited')}</span>
+								{/if}
 							</div>
 							{#if r.finisher_status === 'finished'}
-								<span class="time">{formatDuration(r.duration_s)}</span>
+								<span class="time">
+									{formatDuration(r.duration_s)}
+									{#if timeSplit(r)}<small class="time-split muted">{timeSplit(r)}</small>{/if}
+								</span>
 								<span class="dist muted">{formatDistance(r.distance_m)}</span>
 							{/if}
 							{#if r.finisher_status === 'finished' && r.organiser_approved}
@@ -2001,6 +3112,15 @@
 							{:else if isRaceDirector && r.user_id === null && r.organiser_approved}
 								<button type="button" class="btn-link reject" disabled={resultActionBusy !== null} onclick={() => handleApproveById(r.id, false)}>{m('clubEvent.unverify')}</button>
 							{/if}
+							{#if isRaceDirector || (isEventOrganiser && r.user_id === null)}
+								<button
+									type="button"
+									class="btn-link edit-result"
+									disabled={editBusy}
+									onclick={() => openEditResult(r)}
+									data-testid="edit-result"
+								>{m('clubEvent.editResult')}</button>
+							{/if}
 							{#if myUserId && r.user_id === null && !hasMyResult}
 								{#if myClaims.get(r.id) === 'pending'}
 									<span class="claim-pending">{m('clubEvent.claimPending')}</span>
@@ -2011,6 +3131,42 @@
 						</li>
 					{/each}
 				</ol>
+				{/if}
+				{/each}
+			{/if}
+
+			{#if editingResult}
+				<div class="picker edit-result-panel" data-testid="edit-result-panel">
+					<h4>{m('clubEvent.editResultTitle', { name: editingResult.display_name ?? m('clubEvent.runnerFallback') })}</h4>
+					<p class="muted">{m('clubEvent.editResultHelp')}</p>
+					<div class="edit-result-fields">
+						<label>
+							<span>{m('clubEvent.editResultTime')}</span>
+							<input
+								type="text"
+								inputmode="numeric"
+								bind:value={editTime}
+								placeholder="1:02:03"
+								data-testid="edit-result-time"
+							/>
+						</label>
+						<label>
+							<span>{m('clubEvent.editResultStatus')}</span>
+							<select bind:value={editStatus} data-testid="edit-result-status">
+								<option value="finished">{m('clubEvent.statusFinished')}</option>
+								<option value="dnf">{m('clubEvent.statusDnf')}</option>
+								<option value="dns">{m('clubEvent.statusDns')}</option>
+							</select>
+						</label>
+					</div>
+					{#if editError}<p class="course-error" role="alert">{editError}</p>{/if}
+					<div class="picker-actions">
+						<button type="button" class="btn btn-primary-sm" onclick={saveEditResult} disabled={editBusy} data-testid="edit-result-save">
+							{editBusy ? m('clubEvent.submitting') : m('clubEvent.editResultSave')}
+						</button>
+						<button type="button" class="btn-link" onclick={() => (editingResult = null)} disabled={editBusy}>{m('clubEvent.cancel')}</button>
+					</div>
+				</div>
 			{/if}
 
 			{#if isEventOrganiser && pendingClaims.length > 0}
@@ -2050,7 +3206,7 @@
 										<span class="run-date">{formatRunDate(run.started_at)}</span>
 										<span class="run-dist">{formatDistance(run.distance_m)}</span>
 										<span class="run-time">{formatDuration(run.duration_s)}</span>
-										<span class="run-kind muted">{run.activity_type}</span>
+										<span class="run-kind muted">{activityTypeLabel(run.activity_type)}</span>
 									</button>
 								</li>
 							{/each}
@@ -2072,16 +3228,20 @@
 						(<code>status</code> {m('clubEvent.importHelpStatus')} <code>dnf</code> / <code>dns</code>).
 						{m('clubEvent.importHelpSuffix')}
 					</p>
-					<label class="btn-link import-file">
+					<button
+						type="button"
+						class="btn-link import-file"
+						onclick={() => importInput?.click()}
+					>
 						{importFileName ? m('clubEvent.importFileName', { name: importFileName }) : m('clubEvent.chooseCsvFile')}
-						<input
-							bind:this={importInput}
-							type="file"
-							accept=".csv,text/csv"
-							onchange={onImportFile}
-							hidden
-						/>
-					</label>
+					</button>
+					<input
+						bind:this={importInput}
+						type="file"
+						accept=".csv,text/csv"
+						onchange={onImportFile}
+						style="display: none"
+					/>
 					{#if importErrors.length > 0}
 						<ul class="import-errors">
 							{#each importErrors.slice(0, 8) as err}
@@ -2131,6 +3291,36 @@
 		</section>
 		{/if}
 
+		{#if isClass && (gymRoutine || isEventOrganiser)}
+			<section class="card" data-testid="class-routine">
+				<div class="results-head">
+					<h3>{m('clubEvent.gymRoutineTitle')}</h3>
+					{#if isEventOrganiser}
+						<button type="button" class="btn-link" onclick={openRoutineAttach}>
+							{m('clubEvent.gymRoutineAttach')}
+						</button>
+					{/if}
+				</div>
+				{#if gymRoutine}
+					<p class="session-plan-name">{gymRoutine.routine.title}</p>
+					<ol class="session-steps">
+						{#each gymRoutine.exercises as ex (ex.id)}
+							<li>
+								<span>{ex.exercise_name}</span>
+								<span class="muted session-cue">
+									{m(ex.sets.length === 1 ? 'clubEvent.gymRoutineSetsOne' : 'clubEvent.gymRoutineSetsMany', {
+										n: ex.sets.length
+									})}
+								</span>
+							</li>
+						{/each}
+					</ol>
+				{:else}
+					<p class="muted">{m('clubEvent.gymRoutineNone')}</p>
+				{/if}
+			</section>
+		{/if}
+
 		{#if isClass && (sessionPlan || isEventOrganiser)}
 			<section class="card" data-testid="session-sequence">
 				<div class="results-head">
@@ -2159,19 +3349,37 @@
 			</section>
 		{/if}
 
-		<section class="card">
+		<section class="card" data-testid="event-photos">
 			<div class="results-head">
-				<h3>{m('clubEvent.photosTitle', { n: eventPhotos.length })}</h3>
-				{#if canAddPhoto}
-					<button
-						type="button"
-						class="btn-link photo-add"
-						onclick={openPhotoFlow}
-						disabled={photoUploading}
-					>
-						{photoUploading ? m('clubEvent.uploading') : m('clubEvent.addPhoto')}
-					</button>
-				{/if}
+				<h3>{m('clubEvent.photosTitle', { n: eventPhotos.filter((p) => !p.hidden_at).length })}</h3>
+				<div class="photo-actions">
+					{#if stewardCanPost}
+						<button
+							type="button"
+							class="btn-link photo-add"
+							onclick={openHostPhotoFlow}
+							disabled={photoUploading}
+							data-testid="event-photo-add-host"
+						>
+							{photoUploading ? m('clubEvent.uploading') : m('clubEvent.addOccurrencePhoto')}
+						</button>
+					{/if}
+					{#if canAddPhoto}
+						<button
+							type="button"
+							class="btn-link photo-add"
+							onclick={openPhotoFlow}
+							disabled={photoUploading}
+							data-testid="event-photo-add-run"
+						>
+							{photoUploading
+								? m('clubEvent.uploading')
+								: stewardCanPost
+									? m('clubEvent.addPhotoFromRun')
+									: m('clubEvent.addPhoto')}
+						</button>
+					{/if}
+				</div>
 			</div>
 			<input
 				bind:this={photoFileInput}
@@ -2180,15 +3388,22 @@
 				onchange={handleAddEventPhoto}
 				disabled={photoUploading}
 				hidden
+				data-testid="event-photo-file"
 			/>
 			{#if showPhotoRunPicker}
 				<div class="picker">
 					<h4>{m('clubEvent.whichRunPhoto')}</h4>
-					{#if runOptions.length === 0}
-						<p class="muted">{m('clubEvent.noRecentRuns')}</p>
+					{#if photoRunOptionsLoading}
+						<p class="muted">{m('clubEvent.photoRunsLoading')}</p>
+					{:else if photoRunOptionsError !== null}
+						<p class="error" role="alert">
+							{m('clubEvent.photoRunsLoadFailed', { error: photoRunOptionsError })}
+						</p>
+					{:else if photoRunOptions.length === 0}
+						<p class="muted">{m('clubEvent.noRunsInPhotoWindow')}</p>
 					{:else}
 						<ul class="run-options">
-							{#each runOptions as run (run.id)}
+							{#each photoRunOptions as run (run.id)}
 								<li>
 									<button
 										type="button"
@@ -2198,7 +3413,7 @@
 										<span class="run-date">{formatRunDate(run.started_at)}</span>
 										<span class="run-dist">{formatDistance(run.distance_m)}</span>
 										<span class="run-time">{formatDuration(run.duration_s)}</span>
-										<span class="run-kind muted">{run.activity_type}</span>
+										<span class="run-kind muted">{activityTypeLabel(run.activity_type)}</span>
 									</button>
 								</li>
 							{/each}
@@ -2209,18 +3424,50 @@
 					</div>
 				</div>
 			{/if}
-			{#if eventPhotos.length === 0}
+			{#if eventPhotosError}
+				<p class="error" role="alert" data-testid="event-photos-error">
+					{m('clubEvent.photosLoadFailed', { error: eventPhotosError })}
+					<button type="button" class="btn-link" onclick={reloadEventPhotos}>{m('clubEvent.retry')}</button>
+				</p>
+			{:else if eventPhotos.length === 0}
 				<p class="muted">
 					{m('clubEvent.noPhotosYet')}{canAddPhoto ? ` ${m('clubEvent.noPhotosAddHint')}` : ''}
 				</p>
 			{:else}
 				<div class="photo-gallery">
 					{#each eventPhotos as p (p.id)}
-						<figure class="photo-tile">
+						<figure class="photo-tile" class:hidden-photo={!!p.hidden_at} data-testid="event-photo-tile">
 							<img src={p.thumbUrl ?? p.url} alt={p.caption ?? m('clubEvent.eventPhotoAlt')} loading="lazy" />
 							<figcaption>
+								{#if p.hidden_at}<span class="hidden-badge">{m('clubEvent.photoHiddenBadge')}</span>{/if}
 								{#if p.caption}<span class="cap">{p.caption}</span>{/if}
 								<span class="by">{p.uploader_name ?? m('clubEvent.runnerFallback')}</span>
+								{#if photoSteward || p.owner_id === myUserId}
+									<span class="photo-tile-actions">
+										{#if photoSteward && p.hidden_at}
+											<button
+												type="button"
+												class="btn-link"
+												onclick={() => restoreEventPhoto(p)}
+												disabled={photoBusyId === p.id}
+											>{m('clubEvent.photoRestore')}</button>
+										{:else if photoSteward}
+											<button
+												type="button"
+												class="btn-link"
+												onclick={() => hideEventPhoto(p)}
+												aria-label={m('clubEvent.photoHideLabel', { name: p.uploader_name ?? m('clubEvent.runnerFallback') })}
+											>{m('clubEvent.photoHide')}</button>
+										{/if}
+										{#if p.owner_id === myUserId}
+											<button
+												type="button"
+												class="btn-link danger"
+												onclick={() => deleteMyEventPhoto(p)}
+											>{m('clubEvent.photoDelete')}</button>
+										{/if}
+									</span>
+								{/if}
 							</figcaption>
 						</figure>
 					{/each}
@@ -2252,10 +3499,10 @@
 				<div class="attendees">
 					{#each attendees as a (a.user_id)}
 						<div class="attendee" class:maybe={a.status === 'maybe'} class:declined={a.status === 'declined'}>
-							<Avatar name={a.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(a.user_id)} />
+							<Avatar url={a.avatar_url} name={shownName(a.display_name, a.user_id)} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(a.user_id)} />
 							<div class="att-info">
-								<strong>{a.display_name ?? m('clubEvent.memberFallback')}</strong>
-								<span class="status">{a.status}</span>
+								<strong>{shownName(a.display_name, a.user_id)}</strong>
+								<span class="status">{rsvpStatusLabel(a.status)}</span>
 							</div>
 							{#if canMarkAttendance}
 								<div class="attendance-controls" role="group" aria-label={m('clubEvent.attendanceLabel')}>
@@ -2303,10 +3550,49 @@
 		</section>
 	</div>
 
+<Modal
+	open={preflightIssues !== null}
+	title={m('courseLines.preflightTitle')}
+	onclose={() => (preflightIssues = null)}
+	data-testid="race-preflight-dialog"
+>
+	{#if preflightIssues}
+		{@const blocked = preflightBlocks(preflightIssues)}
+		<p>{blocked ? m('courseLines.preflightBlocked') : m('courseLines.preflightIntro')}</p>
+		<ul class="preflight-list">
+			{#each preflightIssues as issue, i (i)}
+				<li class="preflight-{issue.severity}" data-testid="race-preflight-{issue.severity}">
+					<span class="material-symbols" aria-hidden="true">{issue.severity === 'error' ? 'error' : 'warning'}</span>
+					<span>
+						<span class="visually-hidden">
+							{issue.severity === 'error' ? m('courseLines.severityError') : m('courseLines.severityWarning')}
+						</span>
+						{preflightCopy(issue)}
+					</span>
+				</li>
+			{/each}
+		</ul>
+		<div class="preflight-actions">
+			<button type="button" class="btn btn-secondary" onclick={() => (preflightIssues = null)}>
+				{m('common.cancel')}
+			</button>
+			{#if !blocked}
+				<button type="button" class="btn btn-primary" onclick={() => handleArm(true)} disabled={raceBusy} data-testid="race-preflight-arm">
+					{m('courseLines.armAnyway')}
+				</button>
+			{/if}
+		</div>
+	{/if}
+</Modal>
+
 <ConfirmDialog
 	open={showEndRaceConfirm !== null}
 	title={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceTitle') : m('clubEvent.endRaceTitle')}
-	message={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceMessage') : m('clubEvent.endRaceMessage')}
+	message={showEndRaceConfirm === 'cancelled'
+		? m('clubEvent.cancelRaceMessage')
+		: dnfPreview != null && dnfPreview > 0
+			? m('clubEvent.endRaceMessageDnf', { n: dnfPreview })
+			: m('clubEvent.endRaceMessage')}
 	confirmLabel={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceTitle') : m('clubEvent.endRaceTitle')}
 	onconfirm={confirmEndRace}
 	oncancel={() => showEndRaceConfirm = null}
@@ -2321,6 +3607,17 @@
 	onconfirm={removeMyResult}
 	oncancel={() => (showRemoveResultConfirm = false)}
 	danger
+/>
+
+<ConfirmDialog
+	open={showLeaveWaitlist}
+	title={m('clubEvent.leaveWaitlistTitle')}
+	message={m('clubEvent.leaveWaitlistMessage')}
+	confirmLabel={m('clubEvent.leaveWaitlist')}
+	onconfirm={confirmLeaveWaitlist}
+	oncancel={() => (showLeaveWaitlist = false)}
+	danger
+	data-testid="leave-waitlist-dialog"
 />
 
 <ConfirmDialog
@@ -2373,13 +3670,20 @@
 
 <Modal
 	open={showCancelInstance}
-	title={m('clubEvent.cancelOccurrence')}
+	title={event?.recurrence_freq ? m('clubEvent.cancelOccurrence') : m('clubEvent.cancelEvent')}
 	onclose={() => (showCancelInstance = false)}
 >
 	<div class="cancel-instance-form">
 		<p>
-			{m('clubEvent.cancelInstanceBody')}
+			{event?.recurrence_freq ? m('clubEvent.cancelInstanceBody') : m('clubEvent.cancelEventBody')}
 		</p>
+		{#if pricing}
+			<p data-testid="cancel-instance-refund-note">
+				{event?.recurrence_freq
+					? m('clubEvent.cancelInstancePaidBody')
+					: m('clubEvent.cancelEventPaidBody')}
+			</p>
+		{/if}
 		<label>
 			<span>{m('clubEvent.reasonOptional')}</span>
 			<textarea
@@ -2404,7 +3708,51 @@
 				onclick={confirmCancelInstance}
 				disabled={busy}
 			>
-				{busy ? m('clubEvent.cancelling') : m('clubEvent.cancelOccurrence')}
+				{busy
+					? m('clubEvent.cancelling')
+					: event?.recurrence_freq
+						? m('clubEvent.cancelOccurrence')
+						: m('clubEvent.cancelEvent')}
+			</button>
+		</div>
+	</div>
+</Modal>
+
+<Modal
+	open={showCancelSeries}
+	title={m('clubEvent.cancelSeries')}
+	onclose={() => (showCancelSeries = false)}
+>
+	<div class="cancel-instance-form">
+		<p>{m('clubEvent.cancelSeriesBody')}</p>
+		{#if pricing}
+			<p data-testid="cancel-series-refund-note">{m('clubEvent.cancelSeriesPaidBody')}</p>
+		{/if}
+		<label>
+			<span>{m('clubEvent.reasonOptional')}</span>
+			<textarea
+				bind:value={seriesCancelReason}
+				rows="2"
+				maxlength="300"
+				placeholder={m('clubEvent.cancelReasonPlaceholder')}
+			></textarea>
+		</label>
+		<div class="cancel-instance-actions">
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={() => (showCancelSeries = false)}
+				disabled={busy}
+			>
+				{m('clubEvent.keepIt')}
+			</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				onclick={confirmCancelSeries}
+				disabled={busy}
+			>
+				{busy ? m('clubEvent.cancelling') : m('clubEvent.cancelSeries')}
 			</button>
 		</div>
 	</div>
@@ -2439,6 +3787,9 @@
 					{/each}
 				</select>
 			</label>
+			{#if event.gym_routine_id && attachChoice}
+				<p class="muted">{m('clubEvent.planReplacesRoutine')}</p>
+			{/if}
 			<div class="attach-actions">
 				<button type="button" class="btn btn-secondary" onclick={() => (showAttach = false)}>
 					{m('session.cancel')}
@@ -2448,6 +3799,42 @@
 					class="btn btn-primary"
 					data-testid="attach-plan-save"
 					onclick={saveAttach}
+				>
+					{m('session.attachSave')}
+				</button>
+			</div>
+		</div>
+	</Modal>
+	<Modal
+		open={showRoutineAttach}
+		title={m('clubEvent.gymRoutineAttach')}
+		onclose={() => (showRoutineAttach = false)}
+	>
+		<div class="attach-body">
+			<label class="attach-field">
+				<span>{m('clubEvent.gymRoutineTitle')}</span>
+				<select bind:value={routineChoice} data-testid="attach-routine-select">
+					<option value="">{m('session.attachNone')}</option>
+					{#each clubRoutines as r (r.id)}
+						<option value={r.id}>{r.title}</option>
+					{/each}
+				</select>
+			</label>
+			{#if clubRoutines.length === 0}
+				<p class="muted">{m('clubEvent.gymRoutineEmpty')}</p>
+			{/if}
+			{#if event.session_plan_id && routineChoice}
+				<p class="muted">{m('clubEvent.gymRoutineReplacesPlan')}</p>
+			{/if}
+			<div class="attach-actions">
+				<button type="button" class="btn btn-secondary" onclick={() => (showRoutineAttach = false)}>
+					{m('session.cancel')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					data-testid="attach-routine-save"
+					onclick={saveRoutineAttach}
 				>
 					{m('session.attachSave')}
 				</button>
@@ -2510,7 +3897,17 @@
 
 	.hero {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(16rem, auto);
+		/* The side rail's max is BOUNDED, not `auto`. An `auto` max track is
+		   sized to its content's max-content width — the longest line with no
+		   wrapping — and the title column beside it is `minmax(0, 1fr)`, whose
+		   min really is 0. So one long unbroken sentence in `.hero-side`
+		   starves the title to nothing: the reversed-refund banner's 868px
+		   max-content paragraph left the `<h1>` 38px wide on macOS and exactly
+		   0 on CI's wider font metrics, in the DOM and unrenderable. The
+		   skeleton beside it (`.skel-hero`) had always bounded its rail; the
+		   real hero only escaped because everything that had ever lived in the
+		   side column was short. decisions § 825. */
+		grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
 		gap: var(--space-lg);
 		padding: var(--space-lg) var(--space-xl);
 		background: linear-gradient(
@@ -2690,6 +4087,27 @@
 		font-weight: 600;
 		color: var(--color-text-secondary);
 	}
+	.refund-failed-banner {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
+		padding: 0.7rem 0.9rem;
+		border: 1px solid var(--color-warning);
+		border-radius: var(--radius-md);
+		background: var(--color-warning-light);
+		margin-bottom: 0.6rem;
+	}
+	.refund-failed-banner .material-symbols {
+		color: var(--color-warning-text);
+	}
+	.refund-failed-banner p {
+		margin: 0.3rem 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.refund-failed-banner .btn {
+		margin-top: 0.6rem;
+	}
 	.cancelled-banner {
 		display: flex;
 		align-items: flex-start;
@@ -2700,11 +4118,63 @@
 		background: var(--color-bg-secondary);
 		margin-bottom: 0.6rem;
 	}
+	.cancelled-list li.occurrence-refunds {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.3rem;
+		padding: 0.6rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-bg-secondary);
+	}
+	.cancelled-list li.occurrence-refunds.owed {
+		border-color: var(--color-warning);
+		background: var(--color-warning-light);
+	}
+	.occurrence-refunds p {
+		margin: 0;
+	}
 	.cancelled-banner .cancel-reason {
 		display: block;
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		margin-top: 0.15rem;
+	}
+	.cancelled-list {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: 0.7rem 0.9rem;
+		margin-bottom: var(--space-md);
+	}
+	.cancelled-list .label {
+		display: block;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.07em;
+		color: var(--color-text-tertiary);
+		margin-bottom: 0.5rem;
+	}
+	.cancelled-list ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.4rem;
+	}
+	.cancelled-list li {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.cancelled-list .cancelled-date {
+		font-weight: 600;
+		text-decoration: line-through;
+	}
+	.cancelled-list .cancel-reason {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
 	}
 	.cancel-instance-form { display: grid; gap: 0.8rem; }
 	.cancel-instance-form label { display: grid; gap: 0.3rem; }
@@ -2723,6 +4193,51 @@
 		gap: 0.6rem;
 	}
 
+	.course-lines {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		margin-top: var(--space-md);
+	}
+	.course-lines-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
+	.course-lines-head h3 {
+		margin: 0;
+		font-size: 1rem;
+	}
+	.course-lines .small {
+		font-size: 0.85rem;
+		margin: 0;
+	}
+	.preflight-list {
+		list-style: none;
+		padding: 0;
+		margin: var(--space-sm) 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.preflight-list li {
+		display: flex;
+		gap: var(--space-xs);
+		align-items: flex-start;
+	}
+	.preflight-warning .material-symbols {
+		color: var(--color-warning-text);
+	}
+	.preflight-error .material-symbols {
+		color: var(--color-danger-text);
+	}
+	.preflight-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-sm);
+	}
 	.route-chip {
 		display: inline-flex;
 		align-items: center;
@@ -2755,7 +4270,7 @@
 		border: 1px solid var(--color-border);
 	}
 
-	.meet-map img {
+	.meet-map :global(img) {
 		display: block;
 		width: 320px;
 		max-width: 100%;
@@ -2858,6 +4373,9 @@
 	}
 	.register-status.processing {
 		color: var(--color-text-secondary);
+	}
+	.register-status.offered {
+		color: var(--color-text);
 	}
 	.rsvp-tri {
 		display: grid;
@@ -3164,7 +4682,6 @@
 		color: var(--color-danger-text);
 	}
 
-
 	.error {
 		color: var(--color-danger-text);
 		background: var(--color-danger-light);
@@ -3222,41 +4739,8 @@
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
 	}
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
+	.instance-error {
+		margin-block-end: var(--space-md);
 	}
 
 	.attendees-empty {
@@ -3295,29 +4779,6 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-block {
-		height: 2.4rem;
-		border-radius: var(--radius-md);
-	}
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.skel-hero {
 		grid-template-columns: 1fr minmax(14rem, 18rem);
 	}
@@ -3342,25 +4803,6 @@
 		flex-direction: column;
 		gap: 0.6rem;
 		margin-bottom: var(--space-md);
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	@media (max-width: 60rem) {
@@ -3455,6 +4897,59 @@
 	.time {
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+	}
+	.time-split {
+		display: block;
+		font-weight: 400;
+		font-size: 0.78rem;
+	}
+	.method-tag {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		padding: 0.1rem 0.35rem;
+		border-radius: var(--radius-sm);
+	}
+	.method-tag.host {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
+	.course-board-title {
+		margin: 1rem 0 0.4rem;
+		font-size: 0.95rem;
+	}
+	.course-pick {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		margin-bottom: 0.6rem;
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+	.course-pick select {
+		min-height: 2.75rem;
+	}
+	.course-error {
+		color: var(--color-danger-text);
+		font-size: 0.85rem;
+		margin: 0 0 0.6rem;
+	}
+	.edit-result-fields {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		margin: 0.5rem 0;
+	}
+	.edit-result-fields label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+	}
+	.edit-result-fields input,
+	.edit-result-fields select {
+		min-height: 2.75rem;
 	}
 	.dist {
 		font-size: 0.8rem;
@@ -3609,6 +5104,26 @@
 	.btn-link.approve { color: var(--color-success-text); }
 	.btn-link.reject { color: var(--color-danger-text); }
 
+	.photo-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.photo-tile.hidden-photo img {
+		opacity: 0.45;
+	}
+	.photo-tile .hidden-badge {
+		font-weight: 600;
+		color: var(--color-text-secondary);
+	}
+	.photo-tile-actions .danger {
+		color: var(--color-danger-text);
+	}
+	.photo-tile-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
 	.photo-add {
 		cursor: pointer;
 	}

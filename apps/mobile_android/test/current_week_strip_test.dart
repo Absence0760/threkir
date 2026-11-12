@@ -27,6 +27,8 @@ Future<void> _pump(
   required List<PlanWorkoutRow> workouts,
   void Function(PlanWorkoutRow)? onSelect,
   ThemeData? theme,
+  DateTime? today,
+  String? title,
 }) async {
   await tester.pumpWidget(MaterialApp(
     theme: theme,
@@ -37,6 +39,8 @@ Future<void> _pump(
         startDate: start,
         weekIndex: weekIndex,
         weekWorkouts: workouts,
+        today: today ?? start,
+        title: title,
         onSelect: onSelect,
       ),
     ),
@@ -45,8 +49,8 @@ Future<void> _pump(
 }
 
 void main() {
-  // Past-dated start so the "today" highlight doesn't depend on the
-  // wall-clock; the strip's window is anchored to startDate + weekIndex*7.
+  // "Today" is injected, so nothing here depends on the wall clock; the
+  // strip's window is anchored to startDate + weekIndex*7.
   final start = DateTime(2024, 4, 1); // a Monday
 
   testWidgets('renders the heading + a row of seven day cells', (tester) async {
@@ -77,6 +81,7 @@ void main() {
               startDate: start,
               weekIndex: 0,
               weekWorkouts: [_wo('a', DateTime(2024, 4, 2), 'tempo', 10000)],
+              today: start,
             ),
           ),
         ),
@@ -102,7 +107,7 @@ void main() {
       ],
     );
     // 1 completed of 2 active (rest excluded), mirroring the week card.
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('1 / 2 done'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
   });
 
@@ -121,7 +126,7 @@ void main() {
       ],
     );
     // 1 completed of 2 active (rest AND the skipped tempo both excluded).
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('1 / 2 done'), findsOneWidget);
   });
 
   testWidgets('tapping a workout cell fires onSelect', (tester) async {
@@ -192,4 +197,92 @@ void main() {
       }
     });
   }
+
+  // ───────────────────────── DST window drift ─────────────────────────
+  //
+  // The strip's window used `startDate.add(Duration(days: n))`, which steps
+  // absolute time. A local calendar day is 25 hours on a fall-back, so a
+  // 6*24h step from the Monday of that week lands at 23:00 on the Sunday
+  // BEFORE the seventh day: the sixth date is emitted twice and the seventh —
+  // the long run, on a Sunday-ending plan week — never renders at all.
+  //
+  // These cases only reproduce the drift when the suite runs in a zone that
+  // has the transition (`TZ=America/New_York` exercises 2024-11-03); in UTC
+  // they hold trivially. `calendar_day_arithmetic_guard_test.dart` is the
+  // timezone-independent half that catches the shape wherever CI runs.
+
+  /// One workout per day of the window, each tagged with a distinct distance
+  /// so a missing or duplicated day is visible in the rendered cells.
+  List<PlanWorkoutRow> _week(DateTime firstDay) => [
+        for (var i = 0; i < 7; i++)
+          _wo('d$i', DateTime(firstDay.year, firstDay.month, firstDay.day + i),
+              'easy', (i + 1) * 1000),
+      ];
+
+  Future<void> _expectSevenDistinctDays(WidgetTester tester) async {
+    for (var i = 0; i < 7; i++) {
+      expect(find.text('${i + 1}.0 km'), findsOneWidget,
+          reason: 'day ${i + 1} of the plan week should render exactly once');
+    }
+  }
+
+  testWidgets('renders all seven days when the window crosses a fall-back',
+      (tester) async {
+    // 2024-10-29 (Tue) → 2024-11-04 (Mon); 2024-11-03 is 25 hours long.
+    final dstStart = DateTime(2024, 10, 29);
+    await _pump(
+      tester,
+      start: dstStart,
+      weekIndex: 0,
+      workouts: _week(dstStart),
+    );
+    await _expectSevenDistinctDays(tester);
+  }, tags: 'tz');
+
+  testWidgets('anchors the window correctly when the plan start is weeks back',
+      (tester) async {
+    // Five weeks of 24-hour blocks from 2024-10-01 fall an hour short of the
+    // calendar date, dropping the anchor onto the previous day and shifting
+    // every cell in the row.
+    final planStart = DateTime(2024, 10, 1);
+    final weekOneDay = DateTime(2024, 11, 5);
+    await _pump(
+      tester,
+      start: planStart,
+      weekIndex: 5,
+      workouts: _week(weekOneDay),
+    );
+    await _expectSevenDistinctDays(tester);
+  }, tags: 'tz');
+
+  testWidgets('a past open workout is missed, a done one is done, by the '
+      'injected day', (tester) async {
+    await _pump(
+      tester,
+      start: start,
+      weekIndex: 0,
+      today: DateTime(2024, 4, 5),
+      workouts: [
+        _wo('m', DateTime(2024, 4, 2), 'tempo', 10000),
+        _wo('d', DateTime(2024, 4, 3), 'easy', 6000, done: true),
+        _wo('u', DateTime(2024, 4, 6), 'long', 18000),
+      ],
+    );
+    expect(find.byIcon(Icons.event_busy), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+  });
+
+  testWidgets('before the plan starts the strip is titled as its first week',
+      (tester) async {
+    await _pump(
+      tester,
+      start: start,
+      weekIndex: 0,
+      today: DateTime(2024, 3, 25),
+      title: 'First week',
+      workouts: [_wo('a', DateTime(2024, 4, 2), 'tempo', 10000)],
+    );
+    expect(find.text('First week'), findsOneWidget);
+    expect(find.text('This week'), findsNothing);
+  });
 }

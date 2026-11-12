@@ -2,27 +2,39 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core_models/core_models.dart' as cm;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ui_kit/ui_kit.dart' show StatTile;
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
+import '../lib/course_gates.dart' show CourseGate, GateSource;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
+import '../lib/race_finish.dart';
+import '../lib/run_stop_dock.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
+import '../lib/step_haptics.dart' show RunHapticPattern;
 import '../lib/training_service.dart';
 import '../lib/turn_cues.dart';
+import '../lib/widgets/collapsible_panel.dart';
+import '../lib/widgets/live_run_map.dart';
+import '../lib/widgets/map_attribution.dart';
+import '../lib/widgets/race_stop_sheet.dart';
+import 'pump_until.dart';
+import 'pre_run_dialogs.dart';
+import 'supabase_test_init.dart';
 
 /// Drives the full RunScreen UI flow: tap START → countdown → recording.
 ///
@@ -69,6 +81,10 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
       LocationPermission.always;
 
   @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async =>
+      LocationAccuracyStatus.precise;
+
+  @override
   Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     _positions ??= StreamController<Position>.broadcast();
     return _positions!.stream;
@@ -99,8 +115,11 @@ class _CapturingRunStore extends LocalRunStore {
   int clearInProgressCalls = 0;
 
   @override
-  Future<void> save(run) async {
+  Future<cm.Run> save(run) async {
     captured.add(run);
+    // save() returns the RESIDENT instance so markManySynced can identify it;
+    // the spy has no store, so the argument IS the resident copy here.
+    return run;
   }
 
   @override
@@ -118,8 +137,58 @@ class _CapturingRunStore extends LocalRunStore {
 /// `RunRecorder.prepare` throws `LocationServiceDisabledError` — the
 /// documented indoor / permission-denied start path.
 class _ServicesOffGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  int openedLocationSettings = 0;
+
   @override
   Future<bool> isLocationServiceEnabled() async => false;
+
+  @override
+  Future<bool> openLocationSettings() async {
+    openedLocationSettings++;
+    return true;
+  }
+}
+
+/// Geolocator fake whose location permission was refused at START.
+class _DeniedGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  int openedAppSettings = 0;
+
+  @override
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.denied;
+
+  @override
+  Future<LocationPermission> requestPermission() async =>
+      LocationPermission.denied;
+
+  @override
+  Future<bool> openAppSettings() async {
+    openedAppSettings++;
+    return true;
+  }
+}
+
+/// Geolocator fake granting only approximate location (iOS Precise Location
+/// off / Android approximate only), and declining iOS's temporary
+/// full-accuracy prompt.
+class _ReducedAccuracyGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  int openedAppSettings = 0;
+
+  @override
+  Future<bool> openAppSettings() async {
+    openedAppSettings++;
+    return true;
+  }
+
+  @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async =>
+      LocationAccuracyStatus.reduced;
+
+  @override
+  Future<LocationAccuracyStatus> requestTemporaryFullAccuracy({
+    required String purposeKey,
+  }) async =>
+      LocationAccuracyStatus.reduced;
 }
 
 /// Records every spectator ping the run screen decides to send. The real
@@ -145,6 +214,20 @@ class _SpyRaceController extends RaceController {
 /// Captures the spoken turn cues without touching the TTS engine.
 class _SpyAudioCues extends AudioCues {
   final List<String?> turnDistances = [];
+  final List<double?> splitAverages = [];
+
+  @override
+  Future<void> announceSplit({
+    required int distanceTicks,
+    required double? paceSecondsPerKm,
+    required cm.DistanceUnit unit,
+    bool useSpeed = false,
+    double tickIntervalMetres = 1000,
+    double? averagePaceSecondsPerKm,
+    String paceMode = SplitPaceMode.split,
+  }) async {
+    splitAverages.add(averagePaceSecondsPerKm);
+  }
 
   @override
   Future<void> announceTurn(TurnDirection direction, {String? distance}) async {
@@ -167,10 +250,133 @@ class _NoOpWakelock extends WakelockPlusPlatformInterface {
   Future<bool> get enabled async => _on;
 }
 
+// Most callers move 12 m every 2 s; the Doppler speed matches, since the
+// distance estimator credits the chip's speed rather than the position hop.
+/// Counts the fixes the run screen offers the finish detector and records
+/// the instant a stop is decided at.
+class _RaceStopSpy extends RaceController {
+  _RaceStopSpy(super.social);
+
+  int fixesOffered = 0;
+  final List<DateTime> offeredAt = [];
+  DateTime? decidedAt;
+  double? lastCoverageAsked;
+
+  @override
+  bool coverageMet(double coveredM) {
+    lastCoverageAsked = coveredM;
+    return super.coverageMet(coveredM);
+  }
+
+  @override
+  RaceFinish? offerFix({
+    required double lat,
+    required double lng,
+    required double coveredM,
+    required DateTime at,
+  }) {
+    fixesOffered++;
+    offeredAt.add(at);
+    return super.offerFix(lat: lat, lng: lng, coveredM: coveredM, at: at);
+  }
+
+  @override
+  RaceOutcome decideStop({required double coveredM, DateTime? now}) {
+    decidedAt ??= now ?? DateTime.now();
+    return super.decideStop(coveredM: coveredM, now: now);
+  }
+}
+
+/// Captures the live-race result the run screen submits on Finish race.
+class _RaceResultSocial extends SocialService {
+  final List<({String finisherStatus, String? finishMethod})> submitted = [];
+
+  @override
+  Future<void> submitEventResult({
+    required String eventId,
+    required DateTime instance,
+    required int durationS,
+    required double distanceM,
+    String? runId,
+    String finisherStatus = 'finished',
+    double? ageGradePct,
+    String? note,
+    String? courseId,
+    int? gunTimeS,
+    int? chipTimeS,
+    String? finishMethod,
+    RaceCrossings crossings = RaceCrossings.none,
+  }) async {
+    submitted.add((finisherStatus: finisherStatus, finishMethod: finishMethod));
+  }
+}
+
+/// [_RaceResultSocial] that also takes the undo's delete.
+class _UndoableRaceSocial extends _RaceResultSocial {
+  int deletes = 0;
+
+  @override
+  Future<void> deleteOwnAutoEventResult({
+    required String eventId,
+    required DateTime instance,
+  }) async {
+    deletes++;
+  }
+}
+
+/// Captures the race cues the run screen speaks.
+class _SpokenCues extends AudioCues {
+  final List<String> spoken = [];
+
+  @override
+  Future<void> announceGuidedCue(String text) async => spoken.add(text);
+}
+
+/// A 100 m course due east of [_pos]'s origin with a start line 6 m in and
+/// a finish line at 90 m, both facing east.
+RaceCourse _linedCourse() {
+  const lat = 47.37;
+  const lngBase = 8.54;
+  const metrePerDegLng = 111320 * 0.6773;
+  CourseGate line(double eastM) => CourseGate(
+        lat: lat,
+        lng: lngBase + eastM / metrePerDegLng,
+        bearingDeg: 90,
+        halfWidthM: 15,
+        source: GateSource.organiser,
+      );
+  return RaceCourse(
+    courseId: 'course-100',
+    distanceM: 100,
+    finishLat: lat,
+    finishLng: lngBase + 90 / metrePerDegLng,
+    startGate: line(6),
+    finishGate: line(90),
+  );
+}
+
+/// A race controller already watching a race that went live a minute ago,
+/// with no course and no network.
+RaceController _runningRace(SocialService social, [RaceController? base]) {
+  final rc = (base ?? RaceController(social))
+    ..courseLoader = ((_, _) async => null)
+    ..pingWriter = ((_) async {})
+    ..userIdReader = (() => 'user-runner');
+  rc.setActiveForTest(ActiveRace(
+    eventId: 'event-1',
+    instanceStart: DateTime.utc(2026, 10, 13, 9),
+    status: 'running',
+    startedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 1)),
+    eventTitle: 'Club 5K',
+  ));
+  return rc;
+}
+
 Position _pos({
   required double metresEast,
   required int secondsFromStart,
   double accuracy = 5,
+  double speed = 6,
 }) {
   const lat = 47.37;
   const lngBase = 8.54;
@@ -184,7 +390,7 @@ Position _pos({
     altitudeAccuracy: 2,
     heading: 90,
     headingAccuracy: 5,
-    speed: 2.5,
+    speed: speed,
     speedAccuracy: 1,
   );
 }
@@ -266,10 +472,7 @@ void main() {
       isOptional: true,
     );
     if (!supabaseReady) {
-      await Supabase.initialize(
-        url: 'http://127.0.0.1:54321',
-        anonKey: 'eyJ.local.test',
-      );
+      await initializeTestSupabase();
       supabaseReady = true;
     }
   });
@@ -346,10 +549,11 @@ void main() {
     BleTreadmill treadmill,
     AudioCues audioCues,
     RaceController raceController,
-  })> makeStores() async {
+  })> makeStores({bool preRunDialogsSeen = true}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    if (preRunDialogsSeen) await markPreRunDialogsSeen(prefs);
 
     final runStore = LocalRunStore();
     await runStore.init(overrideDirectory: runsDir);
@@ -369,8 +573,11 @@ void main() {
     );
   }
 
-  Future<LocalRunStore> pumpRunScreen(WidgetTester tester) async {
-    final s = await makeStores();
+  Future<LocalRunStore> pumpRunScreen(
+    WidgetTester tester, {
+    bool preRunDialogsSeen = true,
+  }) async {
+    final s = await makeStores(preRunDialogsSeen: preRunDialogsSeen);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -391,31 +598,6 @@ void main() {
     );
     await tester.pump();
     return s.runStore;
-  }
-
-  /// Complete a Finish hold. The button (`HoldToStopButton`) only fires
-  /// `onHoldComplete` after an 800 ms `Ticker`-driven hold; driving that
-  /// Ticker to the threshold under the fake test clock is unreliable, so
-  /// we assert the button is present + hit-testable in the recording UI
-  /// (a real user can reach it), then invoke its wired `onHoldComplete`
-  /// callback — the exact action a completed hold performs. That routes
-  /// through the real `_stop()`, which persists via `runStore.save(run)`.
-  Future<void> holdFinish(WidgetTester tester) async {
-    final btnFinder =
-        find.byWidgetPredicate((w) => w.runtimeType.toString() == 'HoldToStopButton');
-    expect(btnFinder.hitTestable(), findsOneWidget,
-        reason: 'a hit-testable Finish button must be present while recording');
-    final hitButton = btnFinder.hitTestable().evaluate().single.widget;
-    // _stop() awaits recorder.stop(), whose position-stream cancel only
-    // completes on the real event loop (not the fake test clock), so drive
-    // it under runAsync. The spy store captures the save synchronously, so
-    // no real I/O is left in flight when runAsync returns.
-    await tester.runAsync(() async {
-      // ignore: avoid_dynamic_calls
-      (hitButton as dynamic).onHoldComplete();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-    });
-    await tester.pump();
   }
 
   group('RunScreen — recording flow', () {
@@ -524,6 +706,60 @@ void main() {
           reason: 'LiveRunMap should mount once recording begins');
     });
 
+    Future<void> startRecording(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      // The map only draws (and so only credits itself) once it has a fix.
+      geolocator.emit(_pos(metresEast: 0, secondsFromStart: 0));
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+    }
+
+    // The panel lays out once and then sits still for the whole run, so
+    // its first layout is the only measurement most runs ever get.
+    void expectMapOverlaysClearPanel(WidgetTester tester, String when) {
+      final panelTop = tester.getRect(find.byType(CollapsiblePanel)).top;
+      final panelHeight = tester.getSize(find.byType(CollapsiblePanel)).height;
+      final chip = tester.getRect(find
+          .descendant(
+            of: find.byType(MapAttribution),
+            matching: find.byType(DecoratedBox),
+          )
+          .first);
+      expect(chip.bottom, lessThanOrEqualTo(panelTop),
+          reason: 'the map credit must sit fully above the stats panel $when '
+              '(chip bottom ${chip.bottom}, panel top $panelTop)');
+      final map = tester.widget<LiveRunMap>(find.byType(LiveRunMap));
+      expect(map.bottomPadding, closeTo(panelHeight, 1),
+          reason: 'the map is inset by the panel\'s real height $when');
+    }
+
+    testWidgets(
+        'the map credit clears the stats panel from the first recording frame',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await startRecording(tester);
+      expectMapOverlaysClearPanel(tester, 'on the first frame');
+
+      await tester.tap(find.bySemanticsLabel('Collapse stats panel'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expectMapOverlaysClearPanel(tester, 'once collapsed');
+
+      await tester.tap(find.bySemanticsLabel('Expand stats panel'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expectMapOverlaysClearPanel(tester, 'once expanded again');
+    });
+
     testWidgets('pace-cue mute toggle appears when a pace target is set and silences cues',
         (tester) async {
       final s = await makeStores();
@@ -559,15 +795,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      // The mute affordance is offered (not yet muted).
-      expect(find.text('Mute pace cues'), findsOneWidget);
-      expect(find.text('Pace cues muted'), findsNothing);
+      // The mute affordance is offered (not yet muted). It is an icon toggle
+      // in the clock row, named by its tooltip.
+      expect(find.byTooltip('Mute pace cues'), findsOneWidget);
+      expect(find.byTooltip('Pace cues muted'), findsNothing);
 
       // Tapping it flips to the muted state for this session.
-      await tester.tap(find.text('Mute pace cues'));
+      await tester.tap(find.byTooltip('Mute pace cues'));
       await tester.pump();
-      expect(find.text('Pace cues muted'), findsOneWidget);
-      expect(find.text('Mute pace cues'), findsNothing);
+      expect(find.byTooltip('Pace cues muted'), findsOneWidget);
+      expect(find.byTooltip('Mute pace cues'), findsNothing);
     });
 
     testWidgets('positions emitted after recording begins flow into the recorder',
@@ -603,6 +840,162 @@ void main() {
       tester.takeException();
       expect(find.byType(MaterialApp), findsOneWidget,
           reason: 'widget tree must still be alive after GPS feed');
+    });
+
+    testWidgets(
+        'standing still shows Stopped and holds Avg pace on moving time (#1300)',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      String avgPace() => tester
+          .widget<StatTile>(find.byWidgetPredicate(
+              (w) => w is StatTile && w.label == 'Avg Pace'))
+          .value;
+
+      // 60 s at 3 m/s by the fix clock. The wall clock barely moves in a
+      // widget test, so an average over elapsed time is still unready here;
+      // one over moving time is not.
+      for (var i = 0; i <= 60; i++) {
+        geolocator.emit(
+            _pos(metresEast: i * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      final running = avgPace();
+      expect(running, isNot('--:--'));
+      expect(find.text('Stopped'), findsNothing);
+
+      // Then 20 s standing on the same spot.
+      for (var i = 61; i <= 80; i++) {
+        geolocator.emit(
+            _pos(metresEast: 180, secondsFromStart: i, speed: 0));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      expect(avgPace(), running,
+          reason: 'a stop adds no moving time, so Avg pace must not worsen');
+      expect(find.text('Stopped'), findsOneWidget);
+
+      // Moving again clears it.
+      for (var i = 81; i <= 84; i++) {
+        geolocator.emit(_pos(
+            metresEast: 180 + (i - 80) * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      expect(find.text('Stopped'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
+    testWidgets(
+        'canopy fixes off the line still count as moving time (#1300)',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      // 30 s in the open, then 30 s under trees at the same 3 m/s: 30 m
+      // fixes the estimator keeps but the line does not.
+      for (var i = 0; i <= 60; i++) {
+        geolocator.emit(_pos(
+            metresEast: i * 3.0,
+            secondsFromStart: i,
+            speed: 3,
+            accuracy: i <= 30 ? 5 : 30));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+
+      final text = tester
+          .widget<StatTile>(find.byWidgetPredicate(
+              (w) => w is StatTile && w.label == 'Avg Pace'))
+          .value;
+      final parts = text.split(':').map(int.parse).toList();
+      final secPerKm = parts[0] * 60 + parts[1];
+      // 3 m/s is 333 s/km; dividing by the line's 30 s alone reads ~167.
+      expect(secPerKm, inInclusiveRange(290, 380), reason: text);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
+    testWidgets('the spoken split average divides by moving time too (#1300)',
+        (tester) async {
+      final s = await makeStores();
+      await s.prefs.setAudioCues(true);
+      await s.prefs.setSplitIntervalMetres(100);
+      final cues = _SpyAudioCues();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: cues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      for (var i = 0; i <= 50; i++) {
+        geolocator.emit(
+            _pos(metresEast: i * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+
+      // 3 m/s is 333 s/km. The wall clock barely moves in a widget test, so
+      // an average over elapsed time would be null here.
+      expect(cues.splitAverages, isNotEmpty);
+      expect(cues.splitAverages.first, isNotNull);
+      expect(cues.splitAverages.first!, closeTo(333, 60));
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
     });
 
     testWidgets('holding Finish saves the run through runStore.save',
@@ -802,8 +1195,6 @@ void main() {
         expect(args['text'], isNotEmpty);
       }
 
-      // Drain the split top-banner timers (3 s each) before teardown.
-      await tester.pump(const Duration(seconds: 4));
       tester.takeException();
 
       await tester.pumpWidget(const SizedBox());
@@ -930,8 +1321,8 @@ void main() {
       expect(cues.turnDistances, hasLength(1),
           reason: 'the far band announces once on the approach');
 
-      // A multipath fix 300 m up the course in 2 s: the recorder rejects it
-      // for distance, so it must not advance route progress either.
+      // A multipath fix 300 m up the course in 2 s: the recorder keeps it out
+      // of the track, so it must not advance route progress either.
       geolocator.emit(_pos(metresEast: 480, secondsFromStart: 6));
       await tester.pump(const Duration(milliseconds: 50));
       geolocator.emit(_pos(metresEast: 482, secondsFromStart: 8));
@@ -957,6 +1348,8 @@ void main() {
 
       await tester.tap(find.text('START'));
       await tester.pump();
+      await tester.tap(find.text('Record time only'));
+      await tester.pump();
       // prepare() rejects here, ~3 s before _begin awaits it.
       await tester.pump(const Duration(milliseconds: 50));
       expect(tester.takeException(), isNull,
@@ -970,20 +1363,661 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       tester.takeException(); // LiveRunMap tile-fetch noise
 
+      expect(find.byType(LiveRunMap), findsOneWidget,
+          reason: 'a time-only run the runner chose still records');
       expect(
         find.text('No GPS — tracking will start when Location is on.'),
-        findsOneWidget,
-        reason: 'the indoor fallback still tells the runner why',
+        findsNothing,
+        reason: 'the runner was told at START and chose time only; the '
+            'banner would repeat it',
       );
 
-      // Drain the 6 s notice banner before teardown.
-      await tester.pump(const Duration(seconds: 6));
       await tester.pumpWidget(const SizedBox());
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
       tester.takeException();
       await off.dispose();
+    });
+
+    Future<_CapturingRunStore> pumpCapturing(WidgetTester tester) async {
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      return runStore;
+    }
+
+    Future<void> countIntoRecording(WidgetTester tester) async {
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+    }
+
+    Future<void> unmountScreen(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets('a denied location stops START at a dialog, and Cancel does '
+        'not start a run (#1300 BUG-012)', (tester) async {
+      final denied = _DeniedGeolocatorPlatform();
+      GeolocatorPlatform.instance = denied;
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      expect(find.text('Start without GPS?'), findsOneWidget);
+      expect(
+        find.text('Location access is off for this app, so this run would '
+            'record time only — no route, distance or pace.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('START'), findsOneWidget,
+          reason: 'nobody chose a time-only run, so none starts');
+      expect(find.byType(LiveRunMap), findsNothing);
+      expect(runStore.captured, isEmpty);
+      expect(denied.openedAppSettings, 0);
+
+      await unmountScreen(tester);
+      await denied.dispose();
+    });
+
+    testWidgets('Open settings on a denied start opens app settings and '
+        'starts nothing', (tester) async {
+      final denied = _DeniedGeolocatorPlatform();
+      GeolocatorPlatform.instance = denied;
+      await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.tap(find.text('Open settings'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(denied.openedAppSettings, 1);
+      expect(find.text('START'), findsOneWidget,
+          reason: 'the runner comes back from Settings and taps START again');
+
+      await unmountScreen(tester);
+      await denied.dispose();
+    });
+
+    testWidgets('Open settings with Location off opens the location settings',
+        (tester) async {
+      final off = _ServicesOffGeolocatorPlatform();
+      GeolocatorPlatform.instance = off;
+      await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      expect(
+        find.text('Location is off on this phone, so this run would record '
+            'time only — no route, distance or pace.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Open settings'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(off.openedLocationSettings, 1);
+      expect(find.text('START'), findsOneWidget);
+
+      await unmountScreen(tester);
+      await off.dispose();
+    });
+
+    testWidgets('Record time only starts the run and saves it as indoor '
+        'without asking again at Stop', (tester) async {
+      final denied = _DeniedGeolocatorPlatform();
+      GeolocatorPlatform.instance = denied;
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.tap(find.text('Record time only'));
+      await tester.pump();
+      await countIntoRecording(tester);
+      expect(find.byType(LiveRunMap), findsOneWidget);
+
+      await holdFinish(tester);
+      tester.takeException();
+
+      expect(find.text('No distance recorded'), findsNothing,
+          reason: 'time only was chosen at START');
+      expect(runStore.captured, hasLength(1));
+      final saved = runStore.captured.single as cm.Run;
+      expect(saved.distanceMetres, 0);
+      expect(saved.metadata?[cm.MetadataKeys.indoor], true,
+          reason: 'no GPS measured it, so it stays out of the VDOT ceiling');
+
+      await unmountScreen(tester);
+      await denied.dispose();
+    });
+
+    testWidgets('a GPS run that ends with no fix asks, and Discard saves '
+        'nothing', (tester) async {
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      expect(find.text('Start without GPS?'), findsNothing,
+          reason: 'GPS is available, so START goes straight to the count');
+      await countIntoRecording(tester);
+
+      final stopped = await holdFinish(
+        tester,
+        until: () => find.text('No distance recorded').evaluate().isNotEmpty,
+        describe: 'the no-distance question',
+      );
+      await tester.tap(find.text('Discard'));
+      await pumpUntil(tester, stopped, describe: 'the stop path to finish');
+      tester.takeException();
+
+      expect(runStore.captured, isEmpty,
+          reason: 'the runner discarded the 0 km run');
+      expect(runStore.clearInProgressCalls, greaterThan(0),
+          reason: 'a discarded run leaves no recovery file behind');
+      expect(find.text('START'), findsOneWidget);
+
+      await unmountScreen(tester);
+    });
+
+    testWidgets('a GPS run that ends with no fix can be saved as time only',
+        (tester) async {
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await countIntoRecording(tester);
+
+      final stopped = await holdFinish(
+        tester,
+        until: () => find.text('No distance recorded').evaluate().isNotEmpty,
+        describe: 'the no-distance question',
+      );
+      await tester.tap(find.text('Save as time-only'));
+      await pumpUntil(tester, stopped, describe: 'the stop path to finish');
+      tester.takeException();
+
+      expect(runStore.captured, hasLength(1));
+      final saved = runStore.captured.single as cm.Run;
+      expect(saved.metadata?[cm.MetadataKeys.indoor], true);
+
+      await unmountScreen(tester);
+    });
+
+    testWidgets('an approximate-only grant still records and says why the '
+        'track will be wrong', (tester) async {
+      final reduced = _ReducedAccuracyGeolocatorPlatform();
+      GeolocatorPlatform.instance = reduced;
+      await pumpRunScreen(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+
+      expect(
+        find.text('Precise location is off — the map and GPS distance for '
+            'this run will be missing or far off, but the timer still '
+            'records. Turn on precise location in Settings for an accurate '
+            'track.'),
+        findsOneWidget,
+        reason: 'a rough grant records an empty or kilometres-off track; '
+            'the runner has to be told why, with the way to fix it',
+      );
+      expect(find.text('START'), findsNothing,
+          reason: 'the notice discloses — it must not stop the run');
+
+      // The grant only ever produces kilometre-wide fixes, so the gate drops
+      // every one and the in-run strip has to say why distance is stuck.
+      for (var i = 0; i < 4; i++) {
+        reduced.emit(_pos(
+            metresEast: i * 3.0, secondsFromStart: i, accuracy: 2000));
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsOneWidget);
+      expect(find.text('Weak GPS — distance paused'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      await reduced.dispose();
+    });
+
+    testWidgets('an approximate grant that never delivers a fix still says '
+        'distance is paused, from the first second', (tester) async {
+      // The reported case: Android "approximate only", no coarse fix ever
+      // arrives, so nothing reaches the accuracy gate to flag a stall.
+      final reduced = _ReducedAccuracyGeolocatorPlatform();
+      GeolocatorPlatform.instance = reduced;
+      await pumpRunScreen(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+
+      expect(find.text('START'), findsNothing);
+      expect(find.text('Approximate location — distance paused'),
+          findsOneWidget,
+          reason: 'shown at the start, not after a rejected fix');
+      expect(find.text('Waiting for GPS...'), findsNothing,
+          reason: 'no precise fix is coming, so the map must not promise one');
+      expect(
+          find.text("Precise location is off — the map can't show where you "
+              'are'),
+          findsOneWidget);
+
+      // Let the one-shot precise-location top banner expire so only the
+      // persistent strip remains.
+      for (var i = 0; i < 9; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsOneWidget,
+          reason: 'the strip persists for as long as the grant is approximate');
+
+      await tester.tap(find.text('Turn on precise location'));
+      await tester.pump();
+      expect(reduced.openedAppSettings, 1);
+
+      // The runner turned precision on: the first fix that clears the
+      // accuracy gate clears the recorder's flag, and the strip goes.
+      reduced.emit(_pos(metresEast: 0, secondsFromStart: 20));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsNothing);
+      expect(find.text('Turn on precise location'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      await reduced.dispose();
+    });
+
+    testWidgets('a precise grant records with no precise-location notice',
+        (tester) async {
+      await pumpRunScreen(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+
+      expect(find.text('START'), findsNothing);
+      expect(
+        find.text('Precise location is off — the map and GPS distance for '
+            'this run will be missing or far off, but the timer still '
+            'records. Turn on precise location in Settings for an accurate '
+            'track.'),
+        findsNothing,
+      );
+
+      for (var i = 0; i < 4; i++) {
+        geolocator.emit(_pos(metresEast: i * 3.0, secondsFromStart: i));
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+  });
+
+  group('RunScreen — pre-run Android permission dialogs', () {
+    // permission_handler values: location = 3, locationAlways = 4; status
+    // denied = 0, granted = 1.
+    final settingsCalls = <String>[];
+
+    void mockPermissions({required bool alwaysGranted}) {
+      settingsCalls.clear();
+      mockMethodChannel('flutter.baseflow.com/permissions/methods',
+          (call) async {
+        switch (call.method) {
+          case 'checkPermissionStatus':
+            return call.arguments == 4 && !alwaysGranted ? 0 : 1;
+          case 'requestPermissions':
+            return {for (final p in (call.arguments as List)) p: 1};
+          case 'openAppSettings':
+            settingsCalls.add('app');
+            return true;
+          default:
+            return null;
+        }
+      });
+      mockMethodChannel('run_app/battery_settings', (call) async {
+        settingsCalls.add('battery');
+        return true;
+      });
+    }
+
+    Future<void> tapStartToDialog(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> leaveDialog(WidgetTester tester, String label) async {
+      await tester.tap(find.widgetWithText(FilledButton, label).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      // Longer than the 3 s countdown, so a start that was not held would
+      // already be recording.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+    }
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets(
+        'Open settings on "Allow location all the time" holds the start '
+        'instead of recording behind Settings', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        mockPermissions(alwaysGranted: false);
+        await pumpRunScreen(tester, preRunDialogsSeen: false);
+        await tapStartToDialog(tester);
+        expect(find.text('Allow location all the time'), findsOneWidget);
+
+        await leaveDialog(tester, 'Open settings');
+
+        expect(settingsCalls, ['app']);
+        expect(find.text('START'), findsOneWidget,
+            reason: 'the runner is in Settings; the run must wait for them '
+                'to come back and tap START again');
+        expect(find.text('Keep recording alive in the background'),
+            findsNothing);
+        await unmount(tester);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets(
+        'Open settings on the battery-optimisation hint holds the start too',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        mockPermissions(alwaysGranted: true);
+        await pumpRunScreen(tester, preRunDialogsSeen: false);
+        await tapStartToDialog(tester);
+        expect(find.text('Keep recording alive in the background'),
+            findsOneWidget);
+
+        await leaveDialog(tester, 'Open settings');
+
+        expect(settingsCalls, ['battery']);
+        expect(find.text('START'), findsOneWidget);
+        await unmount(tester);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets(
+        'the battery-optimisation hint shows on the first START with no run '
+        'length to judge by, is marked shown, and Not now starts the run',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        mockPermissions(alwaysGranted: true);
+        await pumpRunScreen(tester, preRunDialogsSeen: false);
+        await tapStartToDialog(tester);
+        expect(find.text('Keep recording alive in the background'),
+            findsOneWidget,
+            reason: 'no route, workout or goal is set; the hint is not '
+                'gated on a long run');
+
+        await tester.tap(find.widgetWithText(TextButton, 'Not now'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(settingsCalls, isEmpty);
+        expect(find.text('START'), findsNothing,
+            reason: 'declining the hint must not hold the run');
+        await unmount(tester);
+
+        final reread = Preferences();
+        await reread.init();
+        expect(reread.batteryOptHintShown, isTrue,
+            reason: 'the hint is one-time');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  });
+
+  group('RunScreen — the docked centre Stop (RunStopDock)', () {
+    // On the phone shell the docked centre button is the Stop while a run
+    // records, so the panel leaves its own out; the rail layout docks nothing
+    // and the panel keeps it. Driven through the real recorder: the panel is
+    // what a runner sees, and `_stop` is what a completed hold reaches.
+
+    Future<_CapturingRunStore> pumpUnder(WidgetTester tester,
+        {required bool docked}) async {
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunStopDock(
+            docked: docked,
+            child: RunScreen(
+              apiClient: null,
+              runStore: runStore,
+              routeStore: s.routeStore,
+              preferences: s.prefs,
+              audioCues: s.audioCues,
+              social: s.social,
+              raceController: s.raceController,
+              training: s.training,
+              heartRate: s.heartRate,
+              treadmill: s.treadmill,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return runStore;
+    }
+
+    Future<void> reachRecording(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+    }
+
+    Future<void> collapsePanel(WidgetTester tester) async {
+      await tester.tap(find.byWidgetPredicate((w) =>
+          w is Semantics && w.properties.label == 'Collapse stats panel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+    }
+
+    Finder labelled(String label) => find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label);
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets(
+        'under the phone dock the panel is Discard, Pause and Lap, expanded '
+        'and collapsed', (tester) async {
+      await pumpUnder(tester, docked: true);
+      await reachRecording(tester);
+
+      expect(find.byType(HoldToStopButton), findsNothing,
+          reason: 'the docked centre button is the Stop on a phone');
+      expect(find.text('Hold to stop'), findsNothing);
+      expect(labelled('Discard run'), findsOneWidget);
+      expect(labelled('Pause run'), findsOneWidget);
+      expect(labelled('Mark lap'), findsOneWidget);
+
+      await collapsePanel(tester);
+      expect(find.byType(HoldToStopButton), findsNothing,
+          reason: 'the collapsed bar sits over the same docked Stop');
+
+      await unmount(tester);
+    });
+
+    testWidgets('without a dock (the rail layout) the panel keeps its Stop',
+        (tester) async {
+      await pumpUnder(tester, docked: false);
+      await reachRecording(tester);
+
+      expect(find.byType(HoldToStopButton).hitTestable(), findsOneWidget,
+          reason: 'nothing else on the rail layout can stop the run');
+      expect(find.text('Hold to stop'), findsOneWidget);
+
+      await collapsePanel(tester);
+      expect(find.byType(HoldToStopButton).hitTestable(), findsOneWidget);
+
+      await unmount(tester);
+    });
+
+    testWidgets('a stop request ends and saves the run, and is ignored idle',
+        (tester) async {
+      final runStore = await pumpUnder(tester, docked: true);
+
+      runStopRequests.request();
+      await tester.pump();
+      expect(find.text('START'), findsOneWidget,
+          reason: 'no run is recording, so there is nothing to stop');
+      expect(runStore.captured, isEmpty);
+
+      await reachRecording(tester);
+      for (var i = 0; i < 6; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+
+      await tester.runAsync(() async => runStopRequests.request());
+      await pumpUntil(tester, () => runStore.captured.isNotEmpty,
+          describe: 'the docked Stop to save the run');
+      expect(runStore.captured, hasLength(1));
+      await pumpUntil(tester, () => !runRecordingActive.value,
+          describe: 'the recorder to leave its recording state');
+
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'a summary-dismiss request closes the finished summary to the start '
+        'screen, and is ignored idle', (tester) async {
+      final runStore = await pumpUnder(tester, docked: true);
+
+      runSummaryDismissRequests.request();
+      await tester.pump();
+      expect(find.text('START'), findsOneWidget);
+      expect(runSummaryShowing.value, isFalse);
+
+      await reachRecording(tester);
+      for (var i = 0; i < 6; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+
+      await tester.runAsync(() async => runStopRequests.request());
+      await pumpUntil(tester, () => runSummaryShowing.value,
+          describe: 'the recorder to show the finished summary');
+      expect(runStore.captured, hasLength(1));
+
+      runSummaryDismissRequests.request();
+      await tester.pump();
+      expect(runSummaryShowing.value, isFalse);
+      expect(find.text('START'), findsOneWidget,
+          reason: 'a new run starts from the start screen');
+      expect(runStore.captured, hasLength(1),
+          reason: 'closing the summary keeps the saved run');
+
+      await unmount(tester);
     });
   });
 
@@ -1025,6 +2059,7 @@ void main() {
       WidgetTester tester, {
       String? routeId,
       List<cm.Route> seedRoutes = const [],
+      cm.Run? partial,
     }) async {
       final runStore = _CapturingRunStore();
       await runStore.init(overrideDirectory: runsDir);
@@ -1047,7 +2082,8 @@ void main() {
             training: s.training,
             heartRate: s.heartRate,
             treadmill: s.treadmill,
-            initialResumablePartial: resumablePartial(routeId: routeId),
+            initialResumablePartial:
+                partial ?? resumablePartial(routeId: routeId),
           ),
         ),
       );
@@ -1063,6 +2099,36 @@ void main() {
       expect(find.text('Resume'), findsOneWidget);
       expect(find.text('Finish now'), findsOneWidget);
       expect(find.text('Discard'), findsOneWidget);
+    });
+
+    testWidgets(
+        'the prompt shows the partial\'s distance and elapsed time '
+        '(BUG-006)', (tester) async {
+      // An 11-minute stationary session: the old banner said "11m" and meant
+      // metres. The prompt now states both, in the runner's unit.
+      await pumpResume(
+        tester,
+        partial: cm.Run(
+          id: 'stationary-1',
+          startedAt: DateTime(2026, 4, 10, 9, 0, 0),
+          duration: const Duration(minutes: 11, seconds: 2),
+          distanceMetres: 11,
+          track: const [],
+          source: cm.RunSource.app,
+          metadata: {
+            'activity_type': 'run',
+            'in_progress_saved_at':
+                DateTime(2026, 4, 10, 9, 11, 2).toIso8601String(),
+          },
+        ),
+      );
+      expect(find.text('Resume your run?'), findsOneWidget);
+      expect(
+        find.text('A run from an earlier session is still in progress '
+            '(0.01 km, 11:02). Resume recording where you left off, finish '
+            'it now, or discard it.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Discard clears the in-progress file and returns to idle',
@@ -1084,8 +2150,8 @@ void main() {
         (tester) async {
       final runStore = await pumpResume(tester);
       await tester.tap(find.text('Finish now'));
-      await tester.pump();
-      await tester.pump();
+      await pumpUntil(tester, () => runStore.captured.isNotEmpty,
+          describe: 'Finish now to persist the recovered partial');
       expect(runStore.captured, hasLength(1),
           reason: 'Finish saves the recovered partial exactly once');
       final saved = runStore.captured.single;
@@ -1120,8 +2186,6 @@ void main() {
           reason: '187 km of restored distance is not a split just crossed — '
               'the resumed run must not announce one');
 
-      // Drain the 3 s resumed banner before teardown.
-      await tester.pump(const Duration(seconds: 3));
       await tester.pumpWidget(const SizedBox());
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 50));
@@ -1147,7 +2211,6 @@ void main() {
       expect(map, isNotEmpty,
           reason: 'Resume re-hydrates the recorder into the recording surface');
 
-      // Drain the 3 s resumed banner timer before finishing (still < 10 s).
       await tester.pump(const Duration(seconds: 4));
       tester.takeException();
 
@@ -1190,7 +2253,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       tester.takeException(); // LiveRunMap tile-fetch noise on the recording mount
 
-      // Drain the 3 s resumed banner timer before finishing (still < 10 s).
       await tester.pump(const Duration(seconds: 4));
       tester.takeException();
 
@@ -1217,6 +2279,888 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
       tester.takeException();
+    });
+  });
+
+  group('RunScreen — treadmill live-mode toggle', () {
+    // The belt is an L4 auxiliary distance source layered on the live
+    // recording. Every case below drives the REAL screen through the real
+    // `_toggleTreadmillMode` / status-listener wiring using the
+    // `@visibleForTesting` BleTreadmill emit seams, so no BLE stack is
+    // needed and a regression in the screen (rather than in a replica of
+    // its guards) is what fails.
+
+    /// Pump the run screen with a belt already paired, returning the shared
+    /// `BleTreadmill` the screen reads so the test can drive it.
+    ///
+    /// The pairing keys must be seeded AFTER `makeStores` (which resets the
+    /// mock store) and BEFORE the first frame, because `_loadTreadmillPairing`
+    /// reads them in a post-frame callback.
+    Future<BleTreadmill> pumpWithPairedBelt(WidgetTester tester,
+        {bool paired = true}) async {
+      final s = await makeStores();
+      if (paired) {
+        SharedPreferences.setMockInitialValues({
+          'treadmill_device_id': 'AA:BB:CC:DD:EE:FF',
+          'treadmill_device_name': 'NordicTrack T9',
+        });
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      // Drain the pairedName() read the post-frame callback kicked off.
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
+      await tester.pump();
+      return s.treadmill;
+    }
+
+    /// Tap START and walk the 3-2-1 countdown into the recording view.
+    Future<void> reachRecording(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+    }
+
+    /// Flip the toggle on with the belt reporting connected, then push one
+    /// sample through. Leaves the screen showing the live belt speed.
+    Future<void> engageBelt(WidgetTester tester, BleTreadmill treadmill,
+        {double kmh = 10}) async {
+      treadmill.debugEmitStatus(BleTreadmillStatus.connected);
+      await tester.pump();
+      await tester.tap(find.text('Treadmill mode'));
+      await tester.pump();
+      treadmill.debugEmitSample(TreadmillSample(instantaneousSpeedKmh: kmh));
+      await tester.pump();
+    }
+
+    testWidgets('is absent while recording when no belt is paired',
+        (tester) async {
+      await pumpWithPairedBelt(tester, paired: false);
+      await reachRecording(tester);
+      expect(find.text('Treadmill mode'), findsNothing,
+          reason: 'an unpaired belt makes the toggle a no-op — Settings is '
+              'where the runner is pointed instead');
+    });
+
+    testWidgets('renders off by default once a belt is paired', (tester) async {
+      await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      expect(find.text('Treadmill mode'), findsOneWidget);
+      final sw = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(sw.value, isFalse,
+          reason: 'a belt in range must never hijack an outdoor GPS run — '
+              'treadmill mode only engages on an explicit tap');
+      expect(sw.subtitle, isNull,
+          reason: 'nothing is claimed about a belt the runner has not engaged');
+    });
+
+    testWidgets('turning it on feeds the belt speed into the readout',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill, kmh: 12);
+
+      expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+          isTrue);
+      expect(find.text('Belt 12.0 km/h'), findsOneWidget,
+          reason: 'a connected belt states the speed it is reporting');
+    });
+
+    testWidgets('turning it off drops the belt readout', (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+      expect(find.text('Belt 10.0 km/h'), findsOneWidget);
+
+      await tester.tap(find.text('Treadmill mode'));
+      // The off path awaits the live subscription's cancel before its
+      // setState, and that future only completes on the real event loop.
+      await pumpUntil(
+        tester,
+        () => !tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        describe: 'the belt toggle to settle off',
+      );
+
+      final sw = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(sw.value, isFalse);
+      expect(sw.subtitle, isNull,
+          reason: 'clearTreadmillMode handed distance back to GPS — the belt '
+              'figure must not linger beside a disengaged toggle');
+    });
+
+    testWidgets('a mid-run disconnect says the belt is not feeding',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+      expect(find.text('Belt 10.0 km/h'), findsOneWidget);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.disconnected);
+      await tester.pump();
+
+      expect(find.text('Belt 10.0 km/h'), findsNothing,
+          reason: 'never a belt-derived figure while the belt is gone');
+      expect(find.text('No belt data — distance from GPS'), findsOneWidget,
+          reason: 'an engaged toggle with a blank subtitle reads identically '
+              'to "connected, first sample pending" — the drop must stay '
+              'disclosed after the banner expires');
+    });
+
+    testWidgets('a mid-run disconnect leaves the recording running',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.disconnected);
+      await tester.pump(const Duration(seconds: 2));
+      tester.takeException();
+
+      // L1/L0 intact: the recording surface is still mounted and the core
+      // controls a runner needs are still reachable.
+      expect(
+          tester.allWidgets
+              .where((w) => w.runtimeType.toString() == 'LiveRunMap'),
+          isNotEmpty,
+          reason: 'a belt failure must never tear down the recording view');
+      expect(
+          find
+              .byWidgetPredicate(
+                  (w) => w.runtimeType.toString() == 'HoldToStopButton')
+              .hitTestable(),
+          findsOneWidget,
+          reason: 'Finish must stay reachable through an auxiliary failure');
+    });
+
+    testWidgets('reconnecting is disclosed rather than a frozen speed',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.reconnecting);
+      await tester.pump();
+
+      expect(find.text('Belt 10.0 km/h'), findsNothing);
+      expect(find.text('Treadmill lost, reconnecting…'), findsWidgets,
+          reason: 'the toggle states the belt is being chased, and does not '
+              'hold the last speed as if it were current');
+    });
+
+    testWidgets('a connect failure is disclosed on the toggle', (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      // A belt that was off at launch reports connectFailed and never
+      // auto-retries, so the toggle itself has to carry the state.
+      treadmill.debugEmitStatus(BleTreadmillStatus.connectFailed);
+      await tester.pump();
+      await tester.tap(find.text('Treadmill mode'));
+      await tester.pump();
+
+      expect(find.text('No belt data — distance from GPS'), findsOneWidget);
+      expect(find.text('Reconnect'), findsOneWidget,
+          reason: 'connectFailed never retries itself — the runner is offered '
+              'the one-tap reconnect, mirroring the HR strap');
+    });
+
+    testWidgets('connecting is disclosed on the toggle', (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.connecting);
+      await tester.pump();
+
+      expect(find.text('Connecting to the treadmill…'), findsOneWidget);
+      expect(find.text('Belt 10.0 km/h'), findsNothing);
+    });
+
+    testWidgets('a belt sample fault does not disturb the recording',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+
+      treadmill.debugEmitSampleError(StateError('belt fault'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(tester.takeException(), isNull,
+          reason: 'the screen-side onError absorbs the fault — nothing may '
+              'escape into the widget error zone');
+      expect(
+          tester.allWidgets
+              .where((w) => w.runtimeType.toString() == 'LiveRunMap'),
+          isNotEmpty);
+    });
+
+    testWidgets('the belt keeps feeding across a pause and resume',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+
+      await tester.tap(find.bySemanticsLabel('Pause run'));
+      await tester.pump();
+      expect(find.bySemanticsLabel('Resume run'), findsOneWidget,
+          reason: 'the run is manually paused');
+      // The recorder excludes paused belt advance itself; the screen keeps
+      // the subscription rather than tearing it down and re-arming.
+      treadmill.debugEmitSample(
+          const TreadmillSample(instantaneousSpeedKmh: 3));
+      await tester.pump();
+      expect(find.text('Belt 3.0 km/h'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Resume run'));
+      await tester.pump();
+      treadmill.debugEmitSample(
+          const TreadmillSample(instantaneousSpeedKmh: 11));
+      await tester.pump();
+      expect(find.text('Belt 11.0 km/h'), findsOneWidget,
+          reason: 'a pause/resume cycle must not silently drop the belt '
+              'subscription — the toggle would then lie about being on');
+      tester.takeException();
+    });
+
+    testWidgets('finishing the run cancels the belt subscription',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill);
+
+      await holdFinish(tester);
+      tester.takeException();
+
+      // The recording view (and its toggle) is gone, and a late belt sample
+      // arriving after the stop path cancelled the subscription is inert.
+      expect(find.text('Treadmill mode'), findsNothing);
+      treadmill.debugEmitSample(
+          const TreadmillSample(instantaneousSpeedKmh: 9));
+      await tester.pump();
+      expect(tester.takeException(), isNull,
+          reason: 'a sample landing after stop must not reach a dead '
+              'recorder or a disposed screen');
+    });
+
+    testWidgets('a belt that reconnects states nothing until it feeds again',
+        (tester) async {
+      // The subtitle switches on the status, so the three non-feeding arms are
+      // disclosed whatever `_treadmillSpeedKmh` holds. What that structure
+      // does NOT cover is the return to `connected`: the status listener's
+      // null-out on the way out is the only thing stopping the pre-drop figure
+      // being re-presented as current the moment the link is back, before a
+      // single new sample has arrived.
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill, kmh: 10);
+      expect(find.text('Belt 10.0 km/h'), findsOneWidget);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.reconnecting);
+      await tester.pump();
+      treadmill.debugEmitStatus(BleTreadmillStatus.connected);
+      await tester.pump();
+
+      expect(find.text('Belt 10.0 km/h'), findsNothing,
+          reason: 'the belt has not sent anything since it came back — '
+              'showing what it last said before the drop presents a stale '
+              'figure as the current one');
+      final sw = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(sw.subtitle, isNull,
+          reason: 'connected-with-no-sample is the one blank state, and it is '
+              'blank because it is true');
+    });
+
+    testWidgets('a fresh sample after a reconnect is the figure shown',
+        (tester) async {
+      // The negative control for the case above: the blank is a pending
+      // reading, not a subscription the drop tore down.
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill, kmh: 10);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.reconnecting);
+      await tester.pump();
+      treadmill.debugEmitStatus(BleTreadmillStatus.connected);
+      await tester.pump();
+      treadmill.debugEmitSample(
+          const TreadmillSample(instantaneousSpeedKmh: 7.5));
+      await tester.pump();
+
+      expect(find.text('Belt 7.5 km/h'), findsOneWidget);
+      expect(find.text('Belt 10.0 km/h'), findsNothing);
+    });
+
+    testWidgets('a connect failure after a live belt clears the last figure',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      await engageBelt(tester, treadmill, kmh: 10);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.connectFailed);
+      await tester.pump();
+
+      expect(find.text('Belt 10.0 km/h'), findsNothing);
+      expect(find.text('No belt data — distance from GPS'), findsOneWidget,
+          reason: 'connectFailed and disconnected share one line: the fact '
+              'the runner needs is that distance is coming from GPS');
+    });
+
+    testWidgets('an engaged belt with no sample yet claims nothing',
+        (tester) async {
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+      treadmill.debugEmitStatus(BleTreadmillStatus.connected);
+      await tester.pump();
+      await tester.tap(find.text('Treadmill mode'));
+      await tester.pump();
+
+      final sw = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(sw.value, isTrue);
+      expect(sw.subtitle, isNull,
+          reason: 'a connected belt that has not sent a reading yet is the '
+              'one state with nothing to say');
+    });
+
+    testWidgets('a belt failure while the toggle is off says nothing at all',
+        (tester) async {
+      // A background belt's connection churn must not narrate an outdoor GPS
+      // run. The status arm is only entered while the runner engaged the mode.
+      final treadmill = await pumpWithPairedBelt(tester);
+      await reachRecording(tester);
+
+      treadmill.debugEmitStatus(BleTreadmillStatus.disconnected);
+      await tester.pump();
+
+      final sw = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
+      expect(sw.value, isFalse);
+      expect(sw.subtitle, isNull,
+          reason: 'nothing is claimed about a belt the runner never engaged');
+      expect(find.text('No belt data — distance from GPS'), findsNothing);
+    });
+
+    testWidgets('the belt speed is stated in the runner own unit',
+        (tester) async {
+      // The figure is belt-reported km/h; a miles runner reads mph. Nothing
+      // else pins the conversion, so an inverted factor would ship.
+      final s = await makeStores();
+      await tester.runAsync(() => s.prefs.setUseMiles(true));
+      SharedPreferences.setMockInitialValues({
+        'treadmill_device_id': 'AA:BB:CC:DD:EE:FF',
+        'treadmill_device_name': 'NordicTrack T9',
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      // Third copy of the deliberate case at the helper above: the pairedName()
+      // read the post-frame callback kicked off is invisible at idle, so there
+      // is no condition that is ever false to poll for (decisions § 723).
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
+      await tester.pump();
+      await reachRecording(tester);
+      await engageBelt(tester, s.treadmill, kmh: 16.09344);
+
+      expect(find.text('Belt 10.0 mph'), findsOneWidget,
+          reason: '16.09344 km/h is exactly 10 mph — a runner set to miles '
+              'must not read the belt in kilometres');
+    });
+  });
+
+  group('RunScreen — Stop during a live race is a pause (decisions § 1843)', () {
+    Future<({_CapturingRunStore runStore, RaceController race})> pumpRacing(
+        WidgetTester tester, _RaceResultSocial raceSocial,
+        {RaceController? base}) async {
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      final race = _runningRace(raceSocial, base);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: race,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      for (var i = 0; i < 4; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      return (runStore: runStore, race: race);
+    }
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    bool sheetShowing() => find.byType(RaceStopSheet).evaluate().isNotEmpty;
+
+    testWidgets('Stop opens Resume race / Finish race and Resume keeps racing',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final r = await pumpRacing(tester, raceSocial);
+      expect(r.race.isHosting, isTrue);
+
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Resume race'), findsOneWidget);
+      expect(find.text('Finish race'), findsOneWidget);
+      expect(r.runStore.captured, isEmpty,
+          reason: 'Stop during a race pauses; it must not save the run');
+
+      await tester.tap(find.byKey(const Key('race-stop-resume')));
+      await pumpUntil(tester, stopped, describe: 'the sheet to resolve');
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(sheetShowing(), isFalse);
+      expect(r.runStore.captured, isEmpty);
+      expect(raceSocial.submitted, isEmpty);
+      expect(r.race.isHosting, isTrue, reason: 'the race is still on');
+      await unmount(tester);
+    });
+
+    testWidgets('Finish race stops, saves and submits a manual finish',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final r = await pumpRacing(tester, raceSocial);
+
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => raceSocial.submitted.isNotEmpty,
+          describe: 'the race result to be submitted');
+
+      expect(r.runStore.captured, hasLength(1));
+      expect(raceSocial.submitted.single.finisherStatus, 'finished');
+      expect(raceSocial.submitted.single.finishMethod,
+          RaceFinishMethod.manual.wire,
+          reason: 'no course means Finish race is an ungated manual finish');
+      expect(r.race.isHosting, isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('Finish race is timed at the Stop, not at the tap',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+
+      final beforeStop = DateTime.now();
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      // The runner stands at the line deciding; the wall clock moves on.
+      await tester
+          .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      final tapAt = DateTime.now();
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => raceSocial.submitted.isNotEmpty,
+          describe: 'the race result to be submitted');
+
+      final decided = spy.decidedAt!;
+      expect(decided.isBefore(tapAt), isTrue,
+          reason: 'the finish is the moment Stop was pressed');
+      expect(decided.isBefore(beforeStop), isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('a host End while the choice is open still files the Finish',
+        (tester) async {
+      // The runner crossed the line and pressed Stop; the host ended the
+      // race before they answered the sheet. Their Finish is a stop that
+      // happened before the End, so it is filed (decisions § 1857).
+      final raceSocial = _RaceResultSocial();
+      final r = await pumpRacing(tester, raceSocial);
+
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      r.race.observeHostedSession('finished', null);
+      await tester.pump();
+      expect(r.race.raceEnded, isTrue);
+
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => raceSocial.submitted.isNotEmpty,
+          describe: 'the race result to be submitted');
+      await tester.pump(const Duration(seconds: 9));
+      tester.takeException();
+
+      expect(raceSocial.submitted.single.finisherStatus, 'finished');
+      expect(raceSocial.submitted.single.finishMethod,
+          RaceFinishMethod.manual.wire);
+      await unmount(tester);
+    });
+
+    testWidgets('each fix reaches the detector once, at its own instant',
+        (tester) async {
+      // The detector interpolates a crossing between consecutive fixes, so a
+      // fix re-offered on every recorder tick at a later clock reading would
+      // put the same position at several instants (#1304 section 4).
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+      expect(spy.fixesOffered, greaterThan(0));
+      final before = spy.fixesOffered;
+
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(spy.fixesOffered, before,
+          reason: 'a tick with no new fix must not re-offer the last one');
+      expect(spy.offeredAt.toSet(), hasLength(spy.offeredAt.length),
+          reason: 'every offer is a distinct fix instant');
+
+      geolocator.emit(_pos(metresEast: 4 * 12.0, secondsFromStart: 8));
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(spy.fixesOffered, before + 1,
+          reason: 'a new fix is offered exactly once');
+      await unmount(tester);
+    });
+
+    testWidgets('no fix reaches the detector while paused, and Resume restarts '
+        'the feed', (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+      expect(spy.fixesOffered, greaterThan(0));
+
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      final atPause = spy.fixesOffered;
+      for (var i = 4; i < 7; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      expect(spy.fixesOffered, atPause,
+          reason: 'a paused pass through the zone is not a finish');
+
+      await tester.tap(find.byKey(const Key('race-stop-resume')));
+      await pumpUntil(tester, stopped, describe: 'the sheet to resolve');
+      await tester.pump(const Duration(milliseconds: 400));
+      for (var i = 7; i < 10; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      expect(spy.fixesOffered, greaterThan(atPause),
+          reason: 'Resume race puts the recording and the detector back on');
+      expect(spy.stopNeedsRaceChoice, isTrue);
+      await unmount(tester);
+    });
+
+    testWidgets('the stop sheet offers Finish race at 90% and DNF just under',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+
+      Future<void> stopAndRead(String expected, String absent) async {
+        final stopped = await holdFinish(tester,
+            until: sheetShowing, describe: 'the race-stop sheet to open');
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(expected), findsOneWidget);
+        expect(find.text(absent), findsNothing);
+        await tester.tap(find.byKey(const Key('race-stop-resume')));
+        await pumpUntil(tester, stopped, describe: 'the sheet to resolve');
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+
+      // An unknown course distance cannot gate: Finish race, not DNF.
+      spy.setCourse(const RaceCourse(courseId: 'c', distanceM: null));
+      await stopAndRead('Finish race', 'Finish as DNF');
+      final covered = spy.lastCoverageAsked!;
+      expect(covered, greaterThan(0));
+
+      // A course the covered distance is exactly 90% of.
+      final atNinety = covered / kRaceFinishMinCoverage;
+      expect(raceCoverageMet(covered, atNinety), isTrue,
+          reason: 'precondition: the course is at the inclusive edge');
+      spy.setCourse(RaceCourse(courseId: 'c', distanceM: atNinety));
+      await stopAndRead('Finish race', 'Finish as DNF');
+
+      final justOver = atNinety * 1.001;
+      expect(raceCoverageMet(covered, justOver), isFalse);
+      spy.setCourse(RaceCourse(courseId: 'c', distanceM: justOver));
+      await stopAndRead('Finish as DNF', 'Finish race');
+      expect(spy.lastCoverageAsked, covered,
+          reason: 'no fix moved the distance between the three stops');
+      await unmount(tester);
+    });
+
+    testWidgets('after the host ends the race, Stop stops outright',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final r = await pumpRacing(tester, raceSocial);
+      r.race.observeHostedSession('finished', null);
+      await tester.pump();
+      expect(find.textContaining('The host ended the race'), findsOneWidget);
+      // Let the banner's own dismiss timer run out before the stop.
+      await tester.pump(const Duration(seconds: 9));
+      tester.takeException();
+
+      await holdFinish(tester);
+      expect(sheetShowing(), isFalse);
+      expect(r.runStore.captured, hasLength(1),
+          reason: 'the run itself is never lost to a race state');
+      expect(raceSocial.submitted, isEmpty,
+          reason: 'the server marks the runner DNF; nothing is submitted');
+      await unmount(tester);
+    });
+  });
+
+  group('RunScreen — timing by the lines (#1307)', () {
+    late List<String> haptics;
+
+    Future<({_CapturingRunStore runStore, RaceController race})> pumpLined(
+        WidgetTester tester, SocialService social, AudioCues cues) async {
+      haptics = [];
+      mockMethodChannel('run_app/haptics', (call) async {
+        haptics.add(call.arguments as String);
+        return null;
+      });
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      await s.prefs.setAudioCues(true);
+      final race = _runningRace(social)
+        ..courseLoader = ((_, _) async => _linedCourse());
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: cues,
+            social: s.social,
+            raceController: race,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      return (runStore: runStore, race: race);
+    }
+
+    /// Run east from [fromM] to [toM], 12 m every 2 s.
+    Future<void> runEast(WidgetTester tester, double fromM, double toM,
+        {int fromS = 0}) async {
+      var s = fromS;
+      for (var x = fromM; x <= toM; x += 12, s += 2) {
+        geolocator.emit(_pos(metresEast: x, secondsFromStart: s));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets('before the start line the screen shows how far it is, and '
+        'crossing it is cued by voice and haptic', (tester) async {
+      final cues = _SpokenCues();
+      final r = await pumpLined(tester, _UndoableRaceSocial(), cues);
+      expect(r.race.isHosting, isTrue);
+
+      await runEast(tester, -12, -12);
+      expect(find.byKey(const ValueKey('race-to-start')), findsOneWidget);
+
+      await runEast(tester, 0, 72, fromS: 2);
+      expect(find.byKey(const ValueKey('race-to-start')), findsNothing,
+          reason: 'the distance goes once the start is timed');
+      expect(cues.spoken, contains('Start line crossed, timing'));
+      expect(haptics, contains(RunHapticPattern.stepWork.wireName));
+      await unmount(tester);
+    });
+
+    testWidgets('a finish-line crossing files the finish and holds the run '
+        'open behind Not finished? Resume, then stops', (tester) async {
+      final social = _UndoableRaceSocial();
+      final cues = _SpokenCues();
+      final r = await pumpLined(tester, social, cues);
+
+      await runEast(tester, 0, 96);
+      await pumpUntil(tester, () => social.submitted.isNotEmpty,
+          describe: 'the line finish to be filed');
+      expect(social.submitted.single.finishMethod, RaceFinishMethod.auto.wire);
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsOneWidget);
+      expect(r.runStore.captured, isEmpty,
+          reason: 'the recording stays open for the undo');
+      expect(haptics, contains(RunHapticPattern.workoutComplete.wireName));
+
+      await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
+      await pumpUntil(tester, () => r.runStore.captured.isNotEmpty,
+          describe: 'the run to stop when the undo window closes');
+      expect(social.submitted, hasLength(2),
+          reason: 'Stop files the same finish again, now with its run');
+      expect(social.submitted.last.finishMethod, RaceFinishMethod.auto.wire);
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      final saved = r.runStore.captured.single as cm.Run;
+      expect(saved.metadata!.containsKey(cm.MetadataKeys.raceUndoneFinishAt),
+          isFalse,
+          reason: 'nothing was undone');
+      await unmount(tester);
+    });
+
+    testWidgets('the ordinary Resume control during the window is the undo',
+        (tester) async {
+      final social = _UndoableRaceSocial();
+      final r = await pumpLined(tester, social, _SpokenCues());
+
+      await runEast(tester, 0, 96);
+      await pumpUntil(tester, () => social.submitted.isNotEmpty,
+          describe: 'the line finish to be filed');
+      await tester.tap(find.byIcon(Icons.play_arrow).hitTestable().first);
+      await pumpUntil(tester, () => social.deletes == 1,
+          describe: 'Resume to withdraw the filed finish');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      expect(r.race.outcome, isNull);
+      await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
+      expect(r.runStore.captured, isEmpty,
+          reason: 'the window no longer stops a run the runner resumed');
+      await unmount(tester);
+    });
+
+    testWidgets('Not finished? Resume voids the finish and records on',
+        (tester) async {
+      final social = _UndoableRaceSocial();
+      final r = await pumpLined(tester, social, _SpokenCues());
+
+      // The server runs 2.5 s ahead of this device.
+      final t0 = DateTime.now();
+      r.race.clockOffset.addSample(
+        sentAt: t0,
+        receivedAt: t0.add(const Duration(milliseconds: 20)),
+        serverAt: t0.add(const Duration(milliseconds: 2510)),
+      );
+      await runEast(tester, 0, 96);
+      await pumpUntil(tester, () => social.submitted.isNotEmpty,
+          describe: 'the line finish to be filed');
+      final lineFinish = r.race.autoFinish!.at;
+      await tester.tap(find.byKey(const ValueKey('race-undo-resume')));
+      await pumpUntil(tester, () => social.deletes == 1,
+          describe: 'the filed finish to be withdrawn');
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      expect(r.race.outcome, isNull);
+      expect(r.race.isHosting, isTrue);
+      expect(r.runStore.captured, isEmpty);
+      await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
+      expect(r.runStore.captured, isEmpty,
+          reason: 'an undone finish no longer stops the run');
+
+      final stopped = await holdFinish(tester,
+          until: () => find.byType(RaceStopSheet).evaluate().isNotEmpty,
+          describe: 'Stop to ask Resume race / Finish race');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Finish race'), findsOneWidget,
+          reason: 'after an undo the race finishes by hand');
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => social.submitted.length == 2,
+          describe: 'the hand finish to be filed');
+      expect(social.submitted.last.finishMethod, RaceFinishMethod.manual.wire);
+      final saved = r.runStore.captured.single as cm.Run;
+      expect(saved.metadata![cm.MetadataKeys.raceUndoneFinishAt],
+          lineFinish.add(const Duration(milliseconds: 2500)).toUtc()
+              .toIso8601String(),
+          reason: 'the undone finish rides the run on the server clock');
+      await unmount(tester);
     });
   });
 }

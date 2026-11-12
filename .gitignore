@@ -12,6 +12,11 @@ build/
 # lockfile is what makes CI, a fresh worktree and this checkout resolve the
 # same code. Ignoring it meant a third-party publish could turn main red with
 # no commit of ours -- which is exactly what happened on 2026-08-05.
+# There is exactly ONE of them, at the repo root: the Flutter side is a pub
+# workspace (root pubspec.yaml's `workspace:` over both apps and the five
+# packages, each member declaring `resolution: workspace`), and pub resolves
+# a workspace once into a single root lockfile. A per-app pubspec.lock is
+# absent because pub never writes one, not because the policy lapsed.
 
 # Node.js
 node_modules/
@@ -81,6 +86,29 @@ DerivedData/
 *.keystore
 local.properties
 key.properties
+
+# Firebase per-app config (FCM). Google does not treat either file as a secret,
+# but both carry the project + app ids and a per-app API key and this repo is
+# public, so they follow the upload keystore's pattern instead: durable copies
+# sops-encrypted in the private estate repo, and the release workflows decode
+# them from GOOGLE_SERVICES_JSON_BASE64 / GOOGLE_SERVICE_INFO_PLIST_BASE64.
+google-services.json
+GoogleService-Info.plist
+
+# The FCM sender credential, which unlike the two config files above IS a
+# secret: the Firebase Admin SDK key downloads as
+# `<project>-firebase-adminsdk-<id>.json` and authorises sending as the
+# project. It belongs in the estate repo and as a Fly secret, never on disk
+# here — gitleaks would catch the private key, but not before it was written.
+*firebase-adminsdk*.json
+serviceAccountKey.json
+
+# The Google OAuth client credential, which downloads from Google Auth
+# Platform -> Clients as `client_secret_<id>.apps.googleusercontent.com.json`
+# the moment a Web client is created. It carries the web client's secret;
+# Supabase holds the operational copy and the estate repo the backup
+# (docs/ops/google_provisioning.md), so it has no home in this tree at all.
+client_secret_*.json
 
 # Supabase
 .supabase/

@@ -14,6 +14,8 @@
  */
 
 import JSZip from 'jszip';
+import type { JsonObject } from '../types';
+import { AppError } from '../core/app_error';
 
 import { BACKUP_FORMAT, BACKUP_VERSION } from './backup_writer';
 
@@ -21,13 +23,13 @@ export interface ParsedBackup {
 	/** The parsed manifest. Guaranteed `format == BACKUP_FORMAT` and `version <= BACKUP_VERSION`. */
 	manifest: { format: string; version: number; [k: string]: unknown };
 	/** Rows from `runs.json`. Empty array when the file is absent. */
-	runs: Record<string, unknown>[];
+	runs: JsonObject[];
 	/** Rows from `routes.json`. Empty array when the file is absent. */
-	routes: Record<string, unknown>[];
+	routes: JsonObject[];
 	/** Parsed `profile` field from `profile.json`. Null when absent. */
-	profile: Record<string, unknown> | null;
+	profile: JsonObject | null;
 	/** Parsed `settings_prefs` field from `profile.json`. Empty when absent. */
-	settingsPrefs: Record<string, unknown>;
+	settingsPrefs: JsonObject;
 	/** Lazy fetch of `tracks/<runId>.json.gz` as raw bytes; null when absent. */
 	getTrackBytes(runId: string): Promise<Uint8Array | null>;
 }
@@ -48,46 +50,52 @@ export async function parseBackupArchive(
 
 	const manifestFile = zip.file('manifest.json');
 	if (!manifestFile) {
-		throw new Error('Not a valid backup — missing manifest.json');
+		throw new AppError('settingsAccount.restoreMissingManifest', {
+			message: 'Not a valid backup — missing manifest.json'
+		});
 	}
-	const manifest = JSON.parse(await manifestFile.async('string')) as {
+	const rawManifest: unknown = JSON.parse(await manifestFile.async('string'));
+	if (!isPlainObject(rawManifest)) {
+		throw new AppError('settingsAccount.restoreBadManifest', {
+			message: 'Not a valid backup — manifest.json is not an object'
+		});
+	}
+	const manifest = rawManifest as {
 		format?: unknown;
 		version?: unknown;
 		[k: string]: unknown;
 	};
 	if (manifest.format !== BACKUP_FORMAT) {
-		throw new Error(`Unexpected format: ${String(manifest.format)}`);
+		const format = String(manifest.format).slice(0, 40);
+		throw new AppError('settingsAccount.restoreUnexpectedFormat', {
+			params: { format },
+			message: `Unexpected format: ${format}`
+		});
 	}
 	const version = typeof manifest.version === 'number' ? manifest.version : 0;
 	if (version > BACKUP_VERSION) {
-		throw new Error(
-			`Backup is from a newer version (${version}). Update the app before restoring.`
-		);
+		throw new AppError('settingsAccount.restoreTooNew', {
+			params: { version },
+			message: `Backup is from a newer version (${version}). Update the app before restoring.`
+		});
 	}
 
-	const runsFile = zip.file('runs.json');
-	const runs = runsFile
-		? (JSON.parse(await runsFile.async('string')) as Record<string, unknown>[])
-		: [];
+	const runs = await readRowList(zip, 'runs.json');
+	const routes = await readRowList(zip, 'routes.json');
 
-	const routesFile = zip.file('routes.json');
-	const routes = routesFile
-		? (JSON.parse(await routesFile.async('string')) as Record<string, unknown>[])
-		: [];
-
-	let profile: Record<string, unknown> | null = null;
-	let settingsPrefs: Record<string, unknown> = {};
+	let profile: JsonObject | null = null;
+	let settingsPrefs: JsonObject = {};
 	const profileFile = zip.file('profile.json');
 	if (profileFile) {
 		const parsed = JSON.parse(await profileFile.async('string')) as {
 			profile?: unknown;
 			settings_prefs?: unknown;
 		};
-		if (parsed.profile && typeof parsed.profile === 'object') {
-			profile = parsed.profile as Record<string, unknown>;
+		if (isPlainObject(parsed?.profile)) {
+			profile = parsed.profile as JsonObject;
 		}
-		if (parsed.settings_prefs && typeof parsed.settings_prefs === 'object') {
-			settingsPrefs = parsed.settings_prefs as Record<string, unknown>;
+		if (isPlainObject(parsed?.settings_prefs)) {
+			settingsPrefs = parsed.settings_prefs as JsonObject;
 		}
 	}
 
@@ -109,6 +117,28 @@ export async function parseBackupArchive(
 	};
 }
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/// A section file that is present must be a JSON list. Anything else is a
+/// damaged archive, and is refused here rather than handed to the restore
+/// loop, which would throw part-way with nothing to say which file was wrong.
+/// A non-object ELEMENT is left for the restore to skip with a warning, so
+/// one bad row does not cost the rest of the section.
+async function readRowList(zip: JSZip, name: string): Promise<JsonObject[]> {
+	const file = zip.file(name);
+	if (!file) return [];
+	const parsed: unknown = JSON.parse(await file.async('string'));
+	if (!Array.isArray(parsed)) {
+		throw new AppError('settingsAccount.restoreSectionNotList', {
+			params: { name },
+			message: `Not a valid backup — ${name} is not a list`
+		});
+	}
+	return parsed as JsonObject[];
+}
+
 /**
  * Strip server-managed fields a client-controlled archive must not
  * round-trip. The 20260718_001 INSERT WITH CHECK + 20260624_001
@@ -116,6 +146,19 @@ export async function parseBackupArchive(
  * stripping here means the rest of the profile (display_name,
  * avatar_url, preferred_unit, etc.) upserts cleanly instead of
  * failing the whole row.
+ *
+ * `handle` is here for a different reason and it is the interesting one.
+ * `20270424000002` makes it a public identity claimed through `set_my_handle`
+ * — SECURITY DEFINER, and named there as the ONLY write path — because that
+ * function is what enforces the format and the case-insensitive uniqueness and
+ * tells a caller which of the two it failed. A restore that upserts the column
+ * directly answers neither question: into a DIFFERENT account it always
+ * collides with `user_profiles_handle_lower_key`, into a FRESH one it silently
+ * re-claims a name the deleted account released or collides with whoever took
+ * it since, and either way it arrives as a 23505 that fails the WHOLE profile
+ * row (§ 1563). The archive still carries the handle, so the runner can
+ * re-claim it through the normal flow if it is free — which is the only path
+ * that can tell them if it is not.
  */
 export function stripServerManagedProfileFields(
 	profile: Record<string, unknown>
@@ -124,11 +167,13 @@ export function stripServerManagedProfileFields(
 		subscription_tier: _tier,
 		subscription_at: _subAt,
 		parkrun_number: _parkrun,
+		handle: _handle,
 		...rest
 	} = profile;
 	void _tier;
 	void _subAt;
 	void _parkrun;
+	void _handle;
 	return rest;
 }
 
@@ -141,13 +186,13 @@ export function stripServerManagedProfileFields(
  * restored row doesn't double-store it. Returns the column value plus the
  * cleaned metadata bag.
  */
-export function coalesceRunActivity(row: Record<string, unknown>): {
+export function coalesceRunActivity(row: JsonObject): {
 	activity_type: string;
-	metadata: Record<string, unknown> | null;
+	metadata: JsonObject | null;
 } {
 	const md =
-		row.metadata && typeof row.metadata === 'object'
-			? { ...(row.metadata as Record<string, unknown>) }
+		row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+			? { ...row.metadata }
 			: null;
 	let activityType =
 		typeof row.activity_type === 'string' ? row.activity_type : undefined;
@@ -168,7 +213,7 @@ export function extractEventIds(runs: Record<string, unknown>[]): string[] {
 	return [
 		...new Set(
 			runs
-				.map((r) => r.event_id)
+				.map((r) => (isPlainObject(r) ? r.event_id : undefined))
 				.filter((v): v is string => typeof v === 'string' && v.length > 0)
 		)
 	];

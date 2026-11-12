@@ -17,13 +17,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { handleRouteRequest, MAX_REQUEST_TEXT_CHARS } from './handler';
+import {
+	EXTRACT_TOOL,
+	handleRouteRequest,
+	MAX_REQUEST_TEXT_CHARS,
+	ROUTE_REQUEST_RATE_BUCKET,
+	ROUTE_REQUEST_RATE_MAX,
+	ROUTE_REQUEST_RATE_WINDOW_S,
+} from './handler';
 import type { RouteRequestConfig } from './handler';
+import { validateConstraints } from './constraints';
 
 function baseConfig(): RouteRequestConfig {
 	return {
 		anthropicApiKey: 'sk-ant-test-FAKE-KEY-NEVER-USED',
-		publicSupabaseUrl: 'http://127.0.0.1:54321',
+		publicSupabaseUrl: 'http://127.0.0.1:24321',
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
 	};
@@ -31,7 +39,13 @@ function baseConfig(): RouteRequestConfig {
 
 function parse(result: Awaited<ReturnType<typeof handleRouteRequest>>): {
 	status: number;
-	body: { error?: string; upgrade?: boolean; constraints?: unknown };
+	body: {
+		error?: string;
+		upgrade?: boolean;
+		constraints?: unknown;
+		code?: string;
+		required_version?: number;
+	};
 } {
 	return { status: result.status, body: JSON.parse(result.body) };
 }
@@ -86,4 +100,284 @@ test('a valid request shape passes input validation (no 400) — fails later on 
 
 test('MAX_REQUEST_TEXT_CHARS is a sane cap', () => {
 	assert.ok(MAX_REQUEST_TEXT_CHARS >= 200 && MAX_REQUEST_TEXT_CHARS <= 2000);
+});
+
+test('every preference the tool advertises is one the validator accepts', () => {
+	// The schema is what the model is told it may emit; `validateConstraints`
+	// is what survives the trust boundary. A value on only the schema side is
+	// silently dropped after being billed for — the runner asks for a scenic
+	// route, the model complies, and the generator never hears about it.
+	const props = EXTRACT_TOOL.input_schema.properties as Record<
+		string,
+		{ enum?: string[] }
+	>;
+	const advertised = props.preference?.enum;
+	assert.ok(Array.isArray(advertised) && advertised.length > 0);
+	for (const p of advertised) {
+		assert.equal(validateConstraints({ preference: p }).preference, p);
+	}
+});
+
+// ─────────────── AI-disclosure consent gate (issue #734) ───────────────
+
+/// Minimal Supabase stand-in: enough for auth.getUser + the two RPCs the
+/// gates read. Injected through `config.createClient`, which exists so the
+/// post-auth branches are reachable without a live stack.
+function stubClient(profileRow: unknown, opts: { isPro?: boolean; profileError?: unknown } = {}) {
+	return () =>
+		({
+			auth: {
+				getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }),
+			},
+			rpc: (name: string) => {
+				if (name === 'get_my_profile') {
+					return {
+						maybeSingle: async () => ({
+							data: profileRow,
+							error: opts.profileError ?? null,
+						}),
+					};
+				}
+				return Promise.resolve({ data: opts.isPro === true, error: null });
+			},
+		}) as never;
+}
+
+const ACCEPTED_AT = '2026-01-01T00:00:00Z';
+const VALID_REQUEST = { request: 'a flat 10k loop', location_label: 'Boston, MA' };
+
+test('refuses a caller who accepted only the Coach disclosure', async () => {
+	// Reason: issue #734. This endpoint ships the typed request AND the
+	// location label to Anthropic — neither is in the v1 Coach copy.
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: stubClient({ ai_disclosure_version: 1, coach_consent_at: ACCEPTED_AT }),
+		}),
+	);
+	assert.equal(r.status, 403);
+	assert.equal(r.body.code, 'ai_disclosure_required');
+	assert.equal(r.body.required_version, 2);
+	// Not the paywall upsell — the client must not show "upgrade to Pro"
+	// to someone whose problem is a missing consent record.
+	assert.equal(r.body.upgrade, undefined);
+});
+
+test('refuses a caller with no consent record at all', async () => {
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: stubClient({ ai_disclosure_version: null, coach_consent_at: null }),
+		}),
+	);
+	assert.equal(r.status, 403);
+	assert.equal(r.body.code, 'ai_disclosure_required');
+});
+
+test('refuses a version this build does not know — fail closed, never grant', async () => {
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: stubClient({ ai_disclosure_version: 99, coach_consent_at: ACCEPTED_AT }),
+		}),
+	);
+	assert.equal(r.status, 403);
+	assert.equal(r.body.code, 'ai_disclosure_required');
+});
+
+test('an unreadable consent record is a 500, not a silent pass', async () => {
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: stubClient(null, { profileError: { code: '42501', message: 'denied' } }),
+		}),
+	);
+	assert.equal(r.status, 500);
+	assert.equal(r.body.error, 'consent check failed');
+});
+
+test('the widened acceptance clears the consent gate — the tier gate is what answers next', async () => {
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: stubClient(
+				{ ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT },
+				{ isPro: false },
+			),
+		}),
+	);
+	assert.equal(r.status, 403);
+	assert.equal(r.body.error, 'pro required');
+	assert.equal(r.body.upgrade, true);
+	assert.equal(r.body.code, undefined);
+});
+
+test('the dev paywall bypass does not bypass the consent gate', async () => {
+	// Reason: BYPASS_PAYWALL exists to skip a billing check in local dev.
+	// A lawful basis for sending a real person's data to a real
+	// sub-processor is not a billing check.
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			bypassPaywallEnabled: true,
+			createClient: stubClient({ ai_disclosure_version: 1, coach_consent_at: ACCEPTED_AT }),
+		}),
+	);
+	assert.equal(r.status, 403);
+	assert.equal(r.body.code, 'ai_disclosure_required');
+});
+
+// ─────────────── Rate-limit slot: spent before the model, refunded on failure ───────────────
+
+/// A Pro caller whose throttle hands out ticket `ticket-1`; records every RPC.
+function proClient() {
+	const calls: Array<{ name: string; args?: unknown }> = [];
+	const factory = () =>
+		({
+			auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
+			rpc: (name: string, args?: unknown) => {
+				calls.push({ name, args });
+				if (name === 'get_my_profile') {
+					return {
+						maybeSingle: async () => ({
+							data: { ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT },
+							error: null,
+						}),
+					};
+				}
+				if (name === 'spend_rate_limit_slot') {
+					return Promise.resolve({
+						data: [{ allowed: true, retry_after_seconds: 0, spend_id: 'ticket-1' }],
+						error: null,
+					});
+				}
+				return Promise.resolve({ data: true, error: null });
+			},
+		}) as never;
+	return { factory, names: () => calls.map((c) => c.name), calls };
+}
+
+function fakeModel(respond: () => unknown) {
+	let calls = 0;
+	return {
+		create: () => ({
+			messages: {
+				create: async () => {
+					calls += 1;
+					return respond() as never;
+				},
+			},
+		}),
+		calls: () => calls,
+	};
+}
+
+function quietly<T>(fn: () => Promise<T>): Promise<T> {
+	const [err, warn] = [console.error, console.warn];
+	console.error = () => {};
+	console.warn = () => {};
+	return fn().finally(() => {
+		console.error = err;
+		console.warn = warn;
+	});
+}
+
+test('success spends one slot of the route-request bucket and keeps it', async () => {
+	const sb = proClient();
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: sb.factory,
+			createAnthropic: fakeModel(() => ({
+				stop_reason: 'tool_use',
+				content: [{ type: 'tool_use', id: 'tu_1', name: EXTRACT_TOOL.name, input: {} }],
+			})).create,
+		}),
+	);
+	assert.equal(r.status, 200);
+	assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'spend_rate_limit_slot']);
+	assert.deepEqual(sb.calls[2].args, {
+		p_user_id: 'user-1',
+		p_bucket: ROUTE_REQUEST_RATE_BUCKET,
+		p_max: ROUTE_REQUEST_RATE_MAX,
+		p_window_seconds: ROUTE_REQUEST_RATE_WINDOW_S,
+	});
+});
+
+test('a refusal, a missing tool call and a provider failure each refund the slot', async () => {
+	for (const [respond, status] of [
+		[() => ({ stop_reason: 'refusal', content: [] }), 422],
+		[() => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'a loop' }] }), 422],
+		[
+			() => {
+				throw Object.assign(new Error('529 overloaded'), { status: 529 });
+			},
+			503,
+		],
+	] as const) {
+		const sb = proClient();
+		const r = await quietly(() =>
+			handleRouteRequest('Bearer x', VALID_REQUEST, {
+				...baseConfig(),
+				createClient: sb.factory,
+				createAnthropic: fakeModel(respond).create,
+			}),
+		);
+		assert.equal(r.status, status);
+		assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'spend_rate_limit_slot', 'refund_rate_limit_slot']);
+		assert.deepEqual(sb.calls[3].args, {
+			p_user_id: 'user-1',
+			p_bucket: ROUTE_REQUEST_RATE_BUCKET,
+			p_spend_id: 'ticket-1',
+		});
+	}
+});
+
+test('a missing key spends no slot', async () => {
+	const sb = proClient();
+	const model = fakeModel(() => ({}));
+	const r = await quietly(() =>
+		handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			anthropicApiKey: undefined,
+			createClient: sb.factory,
+			createAnthropic: model.create,
+		}),
+	);
+	assert.equal(r.status, 503);
+	assert.equal(sb.names().includes('spend_rate_limit_slot'), false);
+	assert.equal(model.calls(), 0);
+});
+
+// ─────────────── Location hint: a place label, never a position ───────────────
+
+test('a coordinate-shaped location label never reaches the prompt', async () => {
+	// The route builder labels a typed or map-picked start with the point
+	// itself, to four decimals. The consent copy promises no coordinates.
+	for (const [label, expected] of [
+		['Boston, MA', 'Approximate location: Boston, MA.'],
+		['51.5074, -0.1278', null],
+		['-33.9249,18.4241', null],
+		['near 40.7128, -74.0060 please', null],
+		['  ', null],
+	] as const) {
+		const prompts: string[] = [];
+		await quietly(() =>
+			handleRouteRequest('Bearer x', { request: 'a 10k loop', location_label: label }, {
+				...baseConfig(),
+				createClient: proClient().factory,
+				createAnthropic: () => ({
+					messages: {
+						create: async (body: { messages: Array<{ content: unknown }> }) => {
+							prompts.push(String(body.messages[0].content));
+							return { stop_reason: 'end_turn', content: [] } as never;
+						},
+					},
+				}),
+			}),
+		);
+		assert.equal(prompts.length, 1, label);
+		if (expected) assert.ok(prompts[0].includes(expected), label);
+		else assert.ok(!prompts[0].includes('Approximate location'), label);
+	}
 });

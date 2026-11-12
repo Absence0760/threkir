@@ -4,11 +4,14 @@ import {
 	evaluateGoal,
 	periodStart,
 	periodEnd,
+	weekStartLocal,
 	formatPaceSecPerKm,
 	loadGoals,
 	saveGoals,
 	newGoalId,
 	periodLabel,
+	markedDoneTally,
+	type PlanCompletion,
 	type RunGoal,
 } from './goals';
 import type { Run } from '../types';
@@ -57,6 +60,19 @@ test('periodStart — week with sunday weekStartDay anchors on Sunday', () => {
 	const start = periodStart('week', new Date('2026-04-08T15:00:00'), 'sunday');
 	assert.equal(start.getDay(), 0); // Sunday
 	assert.equal(start.getDate(), 5);
+});
+
+test('weekStartLocal — a late Saturday and an early Sunday straddle a Sunday-week boundary', () => {
+	// Sat 3 Jan 2026 23:30 and Sun 4 Jan 2026 00:30, local. Sunday-first, the
+	// hour around midnight is two different weeks; Monday-first, both belong to
+	// the week of Mon 29 Dec. Mirrors goals_test.dart.
+	const lateSat = new Date(2026, 0, 3, 23, 30);
+	const earlySun = new Date(2026, 0, 4, 0, 30);
+	assert.deepEqual(weekStartLocal(lateSat, 'sunday'), new Date(2025, 11, 28));
+	assert.deepEqual(weekStartLocal(earlySun, 'sunday'), new Date(2026, 0, 4));
+	assert.deepEqual(weekStartLocal(lateSat, 'monday'), new Date(2025, 11, 29));
+	assert.deepEqual(weekStartLocal(earlySun), new Date(2025, 11, 29));
+	assert.deepEqual(periodStart('week', earlySun, 'sunday'), weekStartLocal(earlySun, 'sunday'));
 });
 
 test('periodStart — month starts on the 1st', () => {
@@ -310,6 +326,72 @@ test('evaluateGoal — zero / negative target is ignored (not added to targets l
 	assert.equal(p.targets[0].kind, 'runCount');
 });
 
+function done(
+	scheduled_date: string,
+	over: Partial<PlanCompletion> = {},
+): PlanCompletion {
+	return {
+		scheduled_date,
+		target_distance_m: 5000,
+		manually_completed: true,
+		completed_run_id: null,
+		...over,
+	};
+}
+
+test('markedDoneTally — counts hand-marked sessions from the period start through today only', () => {
+	// NOW is Wed 2026-04-08; the Monday week starts 2026-04-06.
+	const tally = markedDoneTally(
+		[
+			done('2026-04-05'),
+			done('2026-04-06', { target_distance_m: 6000 }),
+			done('2026-04-07', { target_distance_m: null }),
+			done('2026-04-07', { completed_run_id: 'r1' }),
+			done('2026-04-08', { manually_completed: false }),
+			done('2026-04-08'),
+			done('2026-04-09'),
+		],
+		periodStart('week', NOW),
+		NOW,
+	);
+	assert.deepEqual(tally, { distanceM: 11000, count: 3 });
+});
+
+test('markedDoneTally — a walk-run session marked done counts, but adds no distance', () => {
+	const tally = markedDoneTally(
+		[
+			done('2026-04-06', { kind: 'walk_run', target_distance_m: 2050 }),
+			done('2026-04-07', { kind: 'easy', target_distance_m: 6000 }),
+		],
+		periodStart('week', NOW),
+		NOW,
+	);
+	assert.deepEqual(tally, { distanceM: 6000, count: 2 });
+});
+
+test('evaluateGoal — sessions marked done without a run add to distance and run count, not time or pace', () => {
+	const goal: RunGoal = {
+		id: 'g1',
+		period: 'week',
+		distanceMetres: 20000,
+		timeSeconds: 7200,
+		paceSecPerKm: 300,
+		runCount: 2,
+	};
+	const tue = run({ started_at: '2026-04-07T07:00:00', distance_m: 10000, duration_s: 3000 });
+	const p = evaluateGoal(goal, [tue], NOW, 'monday', [
+		done('2026-04-06', { target_distance_m: 8000 }),
+		done('2026-04-07', { completed_run_id: 'r-tue' }),
+	]);
+	assert.equal(p.runCount, 2);
+	const byKind = Object.fromEntries(p.targets.map((t) => [t.kind, t]));
+	assert.equal(byKind.distance.currentLabel, '18.0 km');
+	assert.equal(byKind.time.currentLabel, '50m');
+	assert.equal(byKind.pace.currentLabel, '5:00/km');
+	assert.equal(byKind.runCount.currentLabel, '2');
+	assert.equal(byKind.runCount.complete, true);
+});
+
 // ─────────────── newGoalId ───────────────
 
 test('newGoalId — produces unique strings', () => {
@@ -431,4 +513,18 @@ test('loadGoals — accepts both legacy camelCase and canonical snake_case wire 
 test('loadGoals — corrupt JSON is swallowed and returns empty', () => {
 	storage.set('run_app.goals_v1:user-a', 'not json');
 	assert.deepEqual(loadGoals('user-a'), []);
+});
+
+test('evaluateGoal — a duration past the ten-day bound counts toward no time or pace target', () => {
+	// Issue #1300 § 5: one 12,333-hour row completed every time goal at once.
+	const goal: RunGoal = { id: 'g1', period: 'week', timeSeconds: 3600, paceSecPerKm: 360 };
+	const ok = run({ started_at: '2026-04-06T07:00:00', distance_m: 5000, duration_s: 1800 });
+	const bad = run({ started_at: '2026-04-07T07:00:00', distance_m: 2000, duration_s: 44_400_094 });
+	const p = evaluateGoal(goal, [ok, bad], NOW);
+	const time = p.targets.find((t) => t.kind === 'time')!;
+	assert.equal(time.percent, 0.5);
+	assert.equal(time.complete, false);
+	const pace = p.targets.find((t) => t.kind === 'pace')!;
+	assert.equal(pace.complete, true);
+	assert.equal(p.runCount, 2);
 });

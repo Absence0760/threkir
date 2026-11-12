@@ -15,7 +15,37 @@
 import { timingSafeEqual } from '../_shared/webhook_security.ts';
 
 const BRAND_NAME = 'Threkir';
-const BRAND_COLOR = '#2C5F6E';
+/// Kept in lockstep with apps/web/src/app.css: the CTA is the light
+/// --color-primary coral, the header bar the light --color-text ink, which
+/// the coral-to-violet mark reads against where coral would not.
+const BRAND_COLOR = '#C24E24';
+const HEADER_COLOR = '#1A1722';
+/// The header mark, served off the web apex (apps/web/static/email-logo.png).
+/// Resolved against the GoTrue Site URL rather than SUPABASE_URL — the asset
+/// lives with the web app, not the API.
+const BRAND_LOGO_PATH = '/email-logo.png';
+
+/// The header bar's contents: the mark beside the wordmark, matching the Go
+/// worker's renderBrandLockup. alt is empty on purpose — the wordmark next to
+/// it already says the brand, so a populated alt announces it twice.
+///
+/// Takes APP_BASE_URL, the WEB origin. It deliberately does NOT take the hook
+/// payload's `site_url`: GoTrue sends the API external URL there
+/// (`<ref>.supabase.co/auth/v1`), not the dashboard's Site URL, so building
+/// an asset URL from it points the mark at the API host and every client
+/// renders a broken image. Unset yields the wordmark alone, which is the same
+/// thing a client that blocks remote images shows — a broken image is the one
+/// outcome worth failing closed against.
+function renderBrandLockup(appBaseUrl: string | undefined): string {
+  const wordmark =
+    `<span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">${BRAND_NAME}</span>`;
+  const base = (appBaseUrl ?? '').replace(/\/+$/, '');
+  if (!base) return wordmark;
+  return `<table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
+    `<td style="padding-right:12px;line-height:0;"><img src="${escapeHtml(base + BRAND_LOGO_PATH)}" width="32" height="32" alt="" style="display:block;border:0;"></td>` +
+    `<td style="vertical-align:middle;">${wordmark}</td>` +
+    `</tr></table>`;
+}
 
 // ─────────────────── Standard Webhooks verification ───────────────────
 
@@ -131,27 +161,46 @@ export async function signSendEmailHook(
 
 // ─────────────────── locale ───────────────────
 
-export const AUTH_EMAIL_LOCALES = ['en', 'de', 'fr', 'es', 'ja', 'pt-BR'] as const;
+/// Exact-tag and base-language tables, mirroring EXACT / BASE_TO_LOCALE in
+/// apps/web/src/lib/i18n/locale.ts and emailExact / emailBase in the worker's
+/// email_i18n.go. The Portuguese rows are the whole reason the tables exist
+/// rather than a `switch`: `pt-BR` reaches Brazilian by its own tag — which
+/// Android, iOS and every browser report — while the bare `pt` and the other
+/// European-orthography regions (`pt-AO`, `pt-MZ`, `pt-CV`) have nowhere else
+/// to land and so resolve to European. This used to be `startsWith('pt')`
+/// → `pt-BR`, which handed a Lisbon reader European Portuguese in the browser
+/// and Brazilian in their inbox (decisions § 761).
+const AUTH_EMAIL_EXACT: Record<string, string> = {
+  en: 'en',
+  de: 'de',
+  fr: 'fr',
+  es: 'es',
+  ja: 'ja',
+  'pt-br': 'pt-BR',
+  'pt-pt': 'pt-PT',
+};
 
-/// Mirror of the worker's normalizeEmailLocale: region variants collapse
-/// to their base language (de-DE → de), Portuguese collapses to pt-BR
-/// (the only pt we ship), everything unknown → en.
+const AUTH_EMAIL_BASE: Record<string, string> = {
+  en: 'en',
+  de: 'de',
+  fr: 'fr',
+  es: 'es',
+  ja: 'ja',
+  pt: 'pt-PT',
+};
+
+/// Mirror of the worker's normalizeEmailLocale: an exact tag wins, otherwise
+/// the region is dropped and the base language decides (de-DE → de);
+/// everything unknown → en. Underscores separate too — this reads
+/// user_settings.prefs.locale, which is whatever a client wrote.
 export function normalizeEmailLocale(tag: string | null | undefined): string {
-  const t = (tag ?? '').trim().toLowerCase();
+  const t = (tag ?? '').trim().toLowerCase().replaceAll('_', '-');
   if (t === '') return 'en';
-  if (t.startsWith('pt')) return 'pt-BR';
-  const sep = t.search(/[-_]/);
+  const exact = AUTH_EMAIL_EXACT[t];
+  if (exact) return exact;
+  const sep = t.indexOf('-');
   const base = sep >= 0 ? t.slice(0, sep) : t;
-  switch (base) {
-    case 'en':
-    case 'de':
-    case 'fr':
-    case 'es':
-    case 'ja':
-      return base;
-    default:
-      return 'en';
-  }
+  return AUTH_EMAIL_BASE[base] ?? 'en';
 }
 
 /// The recipient's chosen app language (user_settings.prefs.locale,
@@ -186,6 +235,10 @@ export interface HookEmailData {
   redirect_to?: string;
   email_action_type?: string;
   site_url?: string;
+  old_email?: string;
+  old_phone?: string;
+  provider?: string;
+  factor_type?: string;
 }
 
 export interface PlannedSend {
@@ -194,6 +247,9 @@ export interface PlannedSend {
   verifyType: string | null;
   token: string;
   tokenHash: string;
+  /// The identity provider or MFA factor type a security notice names
+  /// (`email_data.provider` / `factor_type`); absent on every other send.
+  detail?: string;
 }
 
 /// Wire-safety gate for a hook-supplied recipient before it reaches the
@@ -211,6 +267,18 @@ export function isValidRecipient(addr: string): boolean {
   const at = addr.indexOf('@');
   return at > 0 && at === addr.lastIndexOf('@') && at < addr.length - 1;
 }
+
+/// GoTrue's account-change notices (supabase/auth internal/mailer/mailer.go),
+/// each with its own catalogue entry. None carries a token.
+const NOTICE_ACTIONS = new Set([
+  'password_changed_notification',
+  'email_changed_notification',
+  'phone_changed_notification',
+  'identity_linked_notification',
+  'identity_unlinked_notification',
+  'mfa_factor_enrolled_notification',
+  'mfa_factor_unenrolled_notification',
+]);
 
 const LINK_ACTIONS: Record<string, string> = {
   signup: 'signup',
@@ -268,6 +336,27 @@ export function planSends(
     }];
   }
 
+  // GoTrue's own mailer sends this one to the PREVIOUS address — by the time
+  // it fires, user.email already holds the new one, and the whole point is
+  // to reach the mailbox that just lost the account. The hook payload
+  // carries it as email_data.old_email. There is no fallback: user.email is
+  // the NEW address, so in an account takeover a fallback would tell the
+  // attacker and never the owner.
+  if (action === 'email_changed_notification') {
+    const to = emailData.old_email;
+    if (!to) {
+      console.error('auth-email: email_changed_notification without old_email; notice not sent');
+      return [];
+    }
+    return [{
+      to,
+      catalogueKey: action,
+      verifyType: null,
+      token: '',
+      tokenHash: '',
+    }];
+  }
+
   if (!email) return [];
 
   if (action === 'reauthentication') {
@@ -291,14 +380,19 @@ export function planSends(
     }];
   }
 
+  const notice = NOTICE_ACTIONS.has(action);
+  const detail = action.startsWith('identity_')
+    ? emailData.provider
+    : action.startsWith('mfa_')
+    ? emailData.factor_type
+    : undefined;
   return [{
     to: email,
-    catalogueKey: action === 'password_changed_notification'
-      ? 'password_changed_notification'
-      : 'default',
+    catalogueKey: notice ? action : 'default',
     verifyType: null,
     token: '',
     tokenHash: '',
+    ...(detail ? { detail } : {}),
   }];
 }
 
@@ -327,6 +421,40 @@ export function buildVerifyUrl(
   return url;
 }
 
+/// The link an auth email actually ships.
+///
+/// GoTrue's `/auth/v1/verify` confirms the token server-side and then
+/// hands the session back to the landing page as a PKCE `?code=`, which
+/// ONLY the browser that started the flow can exchange — it alone holds
+/// the code verifier. Mail is read wherever the person happens to be
+/// (the iOS Mail in-app browser, webmail in a second browser, another
+/// device), so on the web that hop is a dead end: the address gets
+/// confirmed and the landing still fails with "PKCE code verifier not
+/// found in storage". Pointing the link straight at the web landing
+/// with `token_hash` + `type` lets it call `verifyOtp`, which mints the
+/// session from the hash alone, in any browser.
+///
+/// A non-http(s) target — the mobile custom-scheme deep link — keeps
+/// the verify hop: there the flow starts and finishes inside one app,
+/// which does hold the verifier, and supabase_flutter only understands
+/// the code form.
+export function buildActionUrl(
+  supabaseUrl: string,
+  tokenHash: string,
+  verifyType: string,
+  redirectTo: string | undefined,
+): string {
+  if (!redirectTo || !/^https?:\/\//i.test(redirectTo)) {
+    return buildVerifyUrl(supabaseUrl, tokenHash, verifyType, redirectTo);
+  }
+  const hashAt = redirectTo.indexOf('#');
+  const base = hashAt === -1 ? redirectTo : redirectTo.slice(0, hashAt);
+  const fragment = hashAt === -1 ? '' : redirectTo.slice(hashAt);
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}token_hash=${encodeURIComponent(tokenHash)}` +
+    `&type=${encodeURIComponent(verifyType)}${fragment}`;
+}
+
 // ─────────────────── catalogue ───────────────────
 
 export interface AuthEmailStrings {
@@ -340,6 +468,12 @@ export interface AuthEmailStrings {
 interface AuthEmailShared {
   footer: string;
   altCode: string;
+  /// Names for the `{method}` line of the identity / MFA notices, keyed by
+  /// GoTrue's own value: the identity `provider` for a non-brand sign-in
+  /// (`email`, `phone`) and the MFA `factor_type` (`totp`, `phone`,
+  /// `webauthn`). OAuth brands are proper nouns and live in PROVIDER_BRANDS.
+  identityLabels: Record<string, string>;
+  factorLabels: Record<string, string>;
 }
 
 export const AUTH_EMAIL_KEYS = [
@@ -351,6 +485,12 @@ export const AUTH_EMAIL_KEYS = [
   'email_change_current',
   'reauthentication',
   'password_changed_notification',
+  'email_changed_notification',
+  'phone_changed_notification',
+  'identity_linked_notification',
+  'identity_unlinked_notification',
+  'mfa_factor_enrolled_notification',
+  'mfa_factor_unenrolled_notification',
   'default',
 ] as const;
 
@@ -358,26 +498,44 @@ export const authEmailShared: Record<string, AuthEmailShared> = {
   en: {
     footer: 'This is a service message about your Threkir account.',
     altCode: 'Alternatively, enter this code:',
+    identityLabels: { email: 'Email and password', phone: 'Phone number' },
+    factorLabels: { totp: 'Authenticator app', phone: 'Text message (SMS) code', webauthn: 'Security key or passkey' },
   },
   de: {
     footer: 'Dies ist eine Service-Nachricht zu deinem Threkir-Konto.',
     altCode: 'Alternativ kannst du diesen Code eingeben:',
+    identityLabels: { email: 'E-Mail und Passwort', phone: 'Telefonnummer' },
+    factorLabels: { totp: 'Authenticator-App', phone: 'SMS-Code', webauthn: 'Sicherheitsschlüssel oder Passkey' },
   },
   fr: {
     footer: 'Ceci est un message de service concernant votre compte Threkir.',
     altCode: 'Vous pouvez aussi saisir ce code :',
+    identityLabels: { email: 'E-mail et mot de passe', phone: 'Numéro de téléphone' },
+    factorLabels: { totp: "Application d'authentification", phone: 'Code par SMS', webauthn: "Clé de sécurité ou clé d'accès" },
   },
   es: {
     footer: 'Este es un mensaje de servicio sobre tu cuenta de Threkir.',
     altCode: 'También puedes introducir este código:',
+    identityLabels: { email: 'Correo electrónico y contraseña', phone: 'Número de teléfono' },
+    factorLabels: { totp: 'Aplicación de autenticación', phone: 'Código por SMS', webauthn: 'Llave de seguridad o llave de acceso' },
   },
   ja: {
     footer: 'これはThrekirアカウントに関するサービスメッセージです。',
     altCode: 'または、次のコードを入力してください:',
+    identityLabels: { email: 'メールアドレスとパスワード', phone: '電話番号' },
+    factorLabels: { totp: '認証アプリ', phone: 'SMSコード', webauthn: 'セキュリティキーまたはパスキー' },
   },
   'pt-BR': {
     footer: 'Esta é uma mensagem de serviço sobre sua conta Threkir.',
     altCode: 'Ou digite este código:',
+    identityLabels: { email: 'E-mail e senha', phone: 'Número de telefone' },
+    factorLabels: { totp: 'App autenticador', phone: 'Código por SMS', webauthn: 'Chave de segurança ou chave de acesso' },
+  },
+  'pt-PT': {
+    footer: 'Esta é uma mensagem de serviço sobre a sua conta Threkir.',
+    altCode: 'Em alternativa, introduza este código:',
+    identityLabels: { email: 'E-mail e palavra-passe', phone: 'Número de telemóvel' },
+    factorLabels: { totp: 'Aplicação de autenticação', phone: 'Código por SMS', webauthn: 'Chave de segurança ou chave de acesso' },
   },
 };
 
@@ -460,10 +618,81 @@ export const authEmailCatalogue: Record<
       subject: 'Your password was changed',
       preheader: 'The password on your account was just changed.',
       heading: 'Your password was changed',
+      cta: 'Reset password',
+      body: [
+        'The password for your Threkir account was changed ({when}).',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
+      ],
+    },
+    email_changed_notification: {
+      subject: 'Your email address was changed',
+      preheader: 'The email address on your account was just changed.',
+      heading: 'Your email address was changed',
       cta: '',
       body: [
-        'The password for your Threkir account was just changed.',
-        "If this was you, no action is needed. If it wasn't, reset your password from the sign-in page right away.",
+        'The email address for your Threkir account was changed ({when}). This notice goes to your previous address; account emails now go to the new one.',
+        'If this was you, no action is needed.',
+        "If it wasn't, write to security@threkir.com from this address right away so we can help you get your account back — a password reset would now go to the new address, not this one.",
+      ],
+    },
+    phone_changed_notification: {
+      subject: 'Your phone number was changed',
+      preheader: 'The phone number on your account was just changed.',
+      heading: 'Your phone number was changed',
+      cta: 'Reset password',
+      body: [
+        'The phone number for your Threkir account was changed ({when}).',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'A sign-in method was added to your account',
+      preheader: 'A new way to sign in was just linked to your account.',
+      heading: 'New sign-in method linked',
+      cta: 'Reset password',
+      body: [
+        'A new sign-in method was linked to your Threkir account ({when}).',
+        'Sign-in method: {method}',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'A sign-in method was removed from your account',
+      preheader: 'A way to sign in was just removed from your account.',
+      heading: 'Sign-in method removed',
+      cta: 'Reset password',
+      body: [
+        'A sign-in method was removed from your Threkir account ({when}).',
+        'Sign-in method: {method}',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: 'A verification method was added to your account',
+      preheader: 'A two-step verification method was just added to your account.',
+      heading: 'Two-step verification method added',
+      cta: 'Reset password',
+      body: [
+        'A two-step verification method was added to your Threkir account ({when}).',
+        'Method: {method}',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: 'A verification method was removed from your account',
+      preheader: 'A two-step verification method was just removed from your account.',
+      heading: 'Two-step verification method removed',
+      cta: 'Reset password',
+      body: [
+        'A two-step verification method was removed from your Threkir account ({when}).',
+        'Method: {method}',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
       ],
     },
     default: {
@@ -551,10 +780,81 @@ export const authEmailCatalogue: Record<
       subject: 'Dein Passwort wurde geändert',
       preheader: 'Das Passwort deines Kontos wurde geändert.',
       heading: 'Dein Passwort wurde geändert',
+      cta: 'Passwort zurücksetzen',
+      body: [
+        'Das Passwort deines Threkir-Kontos wurde geändert ({when}).',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
+      ],
+    },
+    email_changed_notification: {
+      subject: 'Deine E-Mail-Adresse wurde geändert',
+      preheader: 'Die E-Mail-Adresse deines Kontos wurde geändert.',
+      heading: 'Deine E-Mail-Adresse wurde geändert',
       cta: '',
       body: [
-        'Das Passwort deines Threkir-Kontos wurde soeben geändert.',
-        'Wenn du das warst, ist nichts weiter zu tun. Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück.',
+        'Die E-Mail-Adresse deines Threkir-Kontos wurde geändert ({when}). Diese Nachricht geht an deine bisherige Adresse; Konto-E-Mails gehen ab jetzt an die neue.',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, schreib umgehend von dieser Adresse an security@threkir.com, damit wir dir helfen können, dein Konto zurückzubekommen – ein Link zum Zurücksetzen des Passworts ginge jetzt an die neue Adresse, nicht an diese.',
+      ],
+    },
+    phone_changed_notification: {
+      subject: 'Deine Telefonnummer wurde geändert',
+      preheader: 'Die Telefonnummer deines Kontos wurde geändert.',
+      heading: 'Deine Telefonnummer wurde geändert',
+      cta: 'Passwort zurücksetzen',
+      body: [
+        'Die Telefonnummer deines Threkir-Kontos wurde geändert ({when}).',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'Deinem Konto wurde eine Anmeldemethode hinzugefügt',
+      preheader: 'Mit deinem Konto wurde eine neue Anmeldemethode verknüpft.',
+      heading: 'Neue Anmeldemethode verknüpft',
+      cta: 'Passwort zurücksetzen',
+      body: [
+        'Mit deinem Threkir-Konto wurde eine neue Anmeldemethode verknüpft ({when}).',
+        'Anmeldemethode: {method}',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'Eine Anmeldemethode wurde aus deinem Konto entfernt',
+      preheader: 'Eine Anmeldemethode wurde aus deinem Konto entfernt.',
+      heading: 'Anmeldemethode entfernt',
+      cta: 'Passwort zurücksetzen',
+      body: [
+        'Eine Anmeldemethode wurde aus deinem Threkir-Konto entfernt ({when}).',
+        'Anmeldemethode: {method}',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: 'Deinem Konto wurde eine Bestätigungsmethode hinzugefügt',
+      preheader: 'Deinem Konto wurde eine Methode für die Zwei-Schritt-Verifizierung hinzugefügt.',
+      heading: 'Methode für die Zwei-Schritt-Verifizierung hinzugefügt',
+      cta: 'Passwort zurücksetzen',
+      body: [
+        'Deinem Threkir-Konto wurde eine Methode für die Zwei-Schritt-Verifizierung hinzugefügt ({when}).',
+        'Methode: {method}',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: 'Eine Bestätigungsmethode wurde aus deinem Konto entfernt',
+      preheader: 'Eine Methode für die Zwei-Schritt-Verifizierung wurde aus deinem Konto entfernt.',
+      heading: 'Methode für die Zwei-Schritt-Verifizierung entfernt',
+      cta: 'Passwort zurücksetzen',
+      body: [
+        'Eine Methode für die Zwei-Schritt-Verifizierung wurde aus deinem Threkir-Konto entfernt ({when}).',
+        'Methode: {method}',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
       ],
     },
     default: {
@@ -642,10 +942,81 @@ export const authEmailCatalogue: Record<
       subject: 'Votre mot de passe a été modifié',
       preheader: 'Le mot de passe de votre compte a été modifié.',
       heading: 'Votre mot de passe a été modifié',
+      cta: 'Réinitialiser le mot de passe',
+      body: [
+        'Le mot de passe de votre compte Threkir a été modifié ({when}).',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
+      ],
+    },
+    email_changed_notification: {
+      subject: 'Votre adresse e-mail a été modifiée',
+      preheader: "L'adresse e-mail de votre compte a été modifiée.",
+      heading: 'Votre adresse e-mail a été modifiée',
       cta: '',
       body: [
-        "Le mot de passe de votre compte Threkir vient d'être modifié.",
-        "Si c'était vous, aucune action n'est requise. Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion.",
+        "L'adresse e-mail de votre compte Threkir a été modifiée ({when}). Ce message est envoyé à votre ancienne adresse ; les e-mails du compte sont désormais envoyés à la nouvelle.",
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, écrivez immédiatement à security@threkir.com depuis cette adresse pour que nous puissions vous aider à récupérer votre compte : une réinitialisation du mot de passe serait désormais envoyée à la nouvelle adresse, pas à celle-ci.',
+      ],
+    },
+    phone_changed_notification: {
+      subject: 'Votre numéro de téléphone a été modifié',
+      preheader: 'Le numéro de téléphone de votre compte a été modifié.',
+      heading: 'Votre numéro de téléphone a été modifié',
+      cta: 'Réinitialiser le mot de passe',
+      body: [
+        'Le numéro de téléphone de votre compte Threkir a été modifié ({when}).',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'Une méthode de connexion a été ajoutée à votre compte',
+      preheader: 'Une nouvelle méthode de connexion a été associée à votre compte.',
+      heading: 'Nouvelle méthode de connexion associée',
+      cta: 'Réinitialiser le mot de passe',
+      body: [
+        'Une nouvelle méthode de connexion a été associée à votre compte Threkir ({when}).',
+        'Méthode de connexion : {method}',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'Une méthode de connexion a été retirée de votre compte',
+      preheader: 'Une méthode de connexion a été retirée de votre compte.',
+      heading: 'Méthode de connexion retirée',
+      cta: 'Réinitialiser le mot de passe',
+      body: [
+        'Une méthode de connexion a été retirée de votre compte Threkir ({when}).',
+        'Méthode de connexion : {method}',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: 'Une méthode de vérification a été ajoutée à votre compte',
+      preheader: 'Une méthode de vérification en deux étapes a été ajoutée à votre compte.',
+      heading: 'Méthode de vérification en deux étapes ajoutée',
+      cta: 'Réinitialiser le mot de passe',
+      body: [
+        'Une méthode de vérification en deux étapes a été ajoutée à votre compte Threkir ({when}).',
+        'Méthode : {method}',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: 'Une méthode de vérification a été retirée de votre compte',
+      preheader: 'Une méthode de vérification en deux étapes a été retirée de votre compte.',
+      heading: 'Méthode de vérification en deux étapes retirée',
+      cta: 'Réinitialiser le mot de passe',
+      body: [
+        'Une méthode de vérification en deux étapes a été retirée de votre compte Threkir ({when}).',
+        'Méthode : {method}',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
       ],
     },
     default: {
@@ -733,10 +1104,81 @@ export const authEmailCatalogue: Record<
       subject: 'Tu contraseña ha cambiado',
       preheader: 'La contraseña de tu cuenta ha cambiado.',
       heading: 'Tu contraseña ha cambiado',
+      cta: 'Restablecer contraseña',
+      body: [
+        'La contraseña de tu cuenta de Threkir se ha cambiado ({when}).',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
+      ],
+    },
+    email_changed_notification: {
+      subject: 'Tu correo electrónico ha cambiado',
+      preheader: 'El correo electrónico de tu cuenta ha cambiado.',
+      heading: 'Tu correo electrónico ha cambiado',
       cta: '',
       body: [
-        'La contraseña de tu cuenta de Threkir se acaba de cambiar.',
-        'Si fuiste tú, no necesitas hacer nada. Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión.',
+        'El correo electrónico de tu cuenta de Threkir se ha cambiado ({when}). Este aviso se envía a tu dirección anterior; los correos de la cuenta ahora van a la nueva.',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, escribe de inmediato a security@threkir.com desde esta dirección para que podamos ayudarte a recuperar tu cuenta: un restablecimiento de contraseña ahora iría a la nueva dirección, no a esta.',
+      ],
+    },
+    phone_changed_notification: {
+      subject: 'Tu número de teléfono ha cambiado',
+      preheader: 'El número de teléfono de tu cuenta ha cambiado.',
+      heading: 'Tu número de teléfono ha cambiado',
+      cta: 'Restablecer contraseña',
+      body: [
+        'El número de teléfono de tu cuenta de Threkir se ha cambiado ({when}).',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'Se añadió un método de inicio de sesión a tu cuenta',
+      preheader: 'Se vinculó un nuevo método de inicio de sesión a tu cuenta.',
+      heading: 'Nuevo método de inicio de sesión vinculado',
+      cta: 'Restablecer contraseña',
+      body: [
+        'Se vinculó un nuevo método de inicio de sesión a tu cuenta de Threkir ({when}).',
+        'Método de inicio de sesión: {method}',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'Se eliminó un método de inicio de sesión de tu cuenta',
+      preheader: 'Se eliminó un método de inicio de sesión de tu cuenta.',
+      heading: 'Método de inicio de sesión eliminado',
+      cta: 'Restablecer contraseña',
+      body: [
+        'Se eliminó un método de inicio de sesión de tu cuenta de Threkir ({when}).',
+        'Método de inicio de sesión: {method}',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: 'Se añadió un método de verificación a tu cuenta',
+      preheader: 'Se añadió un método de verificación en dos pasos a tu cuenta.',
+      heading: 'Método de verificación en dos pasos añadido',
+      cta: 'Restablecer contraseña',
+      body: [
+        'Se añadió un método de verificación en dos pasos a tu cuenta de Threkir ({when}).',
+        'Método: {method}',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: 'Se eliminó un método de verificación de tu cuenta',
+      preheader: 'Se eliminó un método de verificación en dos pasos de tu cuenta.',
+      heading: 'Método de verificación en dos pasos eliminado',
+      cta: 'Restablecer contraseña',
+      body: [
+        'Se eliminó un método de verificación en dos pasos de tu cuenta de Threkir ({when}).',
+        'Método: {method}',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
       ],
     },
     default: {
@@ -824,10 +1266,81 @@ export const authEmailCatalogue: Record<
       subject: 'パスワードが変更されました',
       preheader: 'アカウントのパスワードが変更されました。',
       heading: 'パスワードが変更されました',
+      cta: 'パスワードをリセット',
+      body: [
+        'Threkirアカウントのパスワードが変更されました（{when}）。',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
+      ],
+    },
+    email_changed_notification: {
+      subject: 'メールアドレスが変更されました',
+      preheader: 'アカウントのメールアドレスが変更されました。',
+      heading: 'メールアドレスが変更されました',
       cta: '',
       body: [
-        'Threkirアカウントのパスワードが変更されました。',
-        'ご自身による変更であれば、対応は不要です。心当たりがない場合は、すぐにサインインページからパスワードをリセットしてください。',
+        'Threkirアカウントのメールアドレスが変更されました（{when}）。この通知は以前のアドレスにお送りしています。今後、アカウントに関するメールは新しいアドレスに届きます。',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにこのアドレスから security@threkir.com までご連絡ください。アカウントの復旧をお手伝いします。なお、パスワードのリセットメールは現在、このアドレスではなく新しいアドレスに送信されます。',
+      ],
+    },
+    phone_changed_notification: {
+      subject: '電話番号が変更されました',
+      preheader: 'アカウントの電話番号が変更されました。',
+      heading: '電話番号が変更されました',
+      cta: 'パスワードをリセット',
+      body: [
+        'Threkirアカウントの電話番号が変更されました（{when}）。',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'アカウントにサインイン方法が追加されました',
+      preheader: 'アカウントに新しいサインイン方法が連携されました。',
+      heading: '新しいサインイン方法が連携されました',
+      cta: 'パスワードをリセット',
+      body: [
+        'Threkirアカウントに新しいサインイン方法が連携されました（{when}）。',
+        'サインイン方法: {method}',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'アカウントからサインイン方法が削除されました',
+      preheader: 'アカウントからサインイン方法が削除されました。',
+      heading: 'サインイン方法が削除されました',
+      cta: 'パスワードをリセット',
+      body: [
+        'Threkirアカウントからサインイン方法が削除されました（{when}）。',
+        'サインイン方法: {method}',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: '2段階認証の方法が追加されました',
+      preheader: 'アカウントに2段階認証の方法が追加されました。',
+      heading: '2段階認証の方法が追加されました',
+      cta: 'パスワードをリセット',
+      body: [
+        'Threkirアカウントに2段階認証の方法が追加されました（{when}）。',
+        '方法: {method}',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: '2段階認証の方法が削除されました',
+      preheader: 'アカウントから2段階認証の方法が削除されました。',
+      heading: '2段階認証の方法が削除されました',
+      cta: 'パスワードをリセット',
+      body: [
+        'Threkirアカウントから2段階認証の方法が削除されました（{when}）。',
+        '方法: {method}',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
       ],
     },
     default: {
@@ -915,10 +1428,81 @@ export const authEmailCatalogue: Record<
       subject: 'Sua senha foi alterada',
       preheader: 'A senha da sua conta foi alterada.',
       heading: 'Sua senha foi alterada',
+      cta: 'Redefinir senha',
+      body: [
+        'A senha da sua conta Threkir foi alterada ({when}).',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
+      ],
+    },
+    email_changed_notification: {
+      subject: 'Seu e-mail foi alterado',
+      preheader: 'O e-mail da sua conta foi alterado.',
+      heading: 'Seu e-mail foi alterado',
       cta: '',
       body: [
-        'A senha da sua conta Threkir acabou de ser alterada.',
-        'Se foi você, nenhuma ação é necessária. Caso contrário, redefina sua senha imediatamente pela página de login.',
+        'O e-mail da sua conta Threkir foi alterado ({when}). Este aviso vai para o seu endereço anterior; os e-mails da conta agora vão para o novo.',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, escreva imediatamente para security@threkir.com a partir deste endereço para que possamos ajudar você a recuperar sua conta — uma redefinição de senha agora iria para o novo endereço, não para este.',
+      ],
+    },
+    phone_changed_notification: {
+      subject: 'Seu número de telefone foi alterado',
+      preheader: 'O número de telefone da sua conta foi alterado.',
+      heading: 'Seu número de telefone foi alterado',
+      cta: 'Redefinir senha',
+      body: [
+        'O número de telefone da sua conta Threkir foi alterado ({when}).',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'Um método de login foi adicionado à sua conta',
+      preheader: 'Um novo método de login foi vinculado à sua conta.',
+      heading: 'Novo método de login vinculado',
+      cta: 'Redefinir senha',
+      body: [
+        'Um novo método de login foi vinculado à sua conta Threkir ({when}).',
+        'Método de login: {method}',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'Um método de login foi removido da sua conta',
+      preheader: 'Um método de login foi removido da sua conta.',
+      heading: 'Método de login removido',
+      cta: 'Redefinir senha',
+      body: [
+        'Um método de login foi removido da sua conta Threkir ({when}).',
+        'Método de login: {method}',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: 'Um método de verificação foi adicionado à sua conta',
+      preheader: 'Um método de verificação em duas etapas foi adicionado à sua conta.',
+      heading: 'Método de verificação em duas etapas adicionado',
+      cta: 'Redefinir senha',
+      body: [
+        'Um método de verificação em duas etapas foi adicionado à sua conta Threkir ({when}).',
+        'Método: {method}',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: 'Um método de verificação foi removido da sua conta',
+      preheader: 'Um método de verificação em duas etapas foi removido da sua conta.',
+      heading: 'Método de verificação em duas etapas removido',
+      cta: 'Redefinir senha',
+      body: [
+        'Um método de verificação em duas etapas foi removido da sua conta Threkir ({when}).',
+        'Método: {method}',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
       ],
     },
     default: {
@@ -931,7 +1515,179 @@ export const authEmailCatalogue: Record<
       ],
     },
   },
+  'pt-PT': {
+    signup: {
+      subject: 'Confirme o seu endereço de e-mail',
+      preheader: 'Confirme o seu endereço de e-mail para concluir a criação da sua conta Threkir.',
+      heading: 'Confirme o seu endereço de e-mail',
+      cta: 'Confirmar o meu e-mail',
+      body: [
+        'Bem-vindo ao Threkir! Confirme o seu endereço de e-mail no botão abaixo para concluir a criação da sua conta.',
+        'Depois de confirmar, pode registar a sua primeira corrida, criar rotas e seguir amigos.',
+        'Se não criou esta conta, pode ignorar este e-mail.',
+      ],
+    },
+    invite: {
+      subject: 'Foi convidado',
+      preheader: 'Aceite o convite para criar a sua conta Threkir.',
+      heading: 'Foi convidado',
+      cta: 'Aceitar o convite',
+      body: [
+        'Foi convidado a criar uma conta no Threkir. Siga o link abaixo para aceitar o convite.',
+      ],
+    },
+    magiclink: {
+      subject: 'O seu link de acesso',
+      preheader: 'Siga o link para iniciar sessão no Threkir.',
+      heading: 'O seu link mágico',
+      cta: 'Iniciar sessão',
+      body: [
+        'Siga o link abaixo para iniciar sessão na sua conta Threkir.',
+        'Se não pediu este link, pode ignorar este e-mail.',
+      ],
+    },
+    recovery: {
+      subject: 'Redefina a sua palavra-passe',
+      preheader: 'Siga o link para escolher uma nova palavra-passe.',
+      heading: 'Redefina a sua palavra-passe',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'Siga o link abaixo para redefinir a palavra-passe da sua conta Threkir.',
+        'Se não pediu a redefinição, pode ignorar este e-mail.',
+      ],
+    },
+    email_change: {
+      subject: 'Confirme o seu novo e-mail',
+      preheader: 'Confirme o seu novo endereço de e-mail.',
+      heading: 'Confirme o seu novo endereço de e-mail',
+      cta: 'Confirmar novo e-mail',
+      body: [
+        'Siga o link abaixo para confirmar este endereço como o novo e-mail da sua conta Threkir.',
+        'Se não pediu esta alteração, pode ignorar este e-mail.',
+      ],
+    },
+    email_change_current: {
+      subject: 'Confirme a alteração de e-mail',
+      preheader: 'Aprove a alteração do e-mail da sua conta.',
+      heading: 'Confirme a alteração de e-mail',
+      cta: 'Aprovar a alteração',
+      body: [
+        'Recebemos um pedido para alterar o e-mail da sua conta Threkir. Siga o link abaixo para aprovar a alteração a partir deste endereço.',
+        'Se não pediu esta alteração, ignore este e-mail — nada é alterado sem a sua confirmação.',
+      ],
+    },
+    reauthentication: {
+      subject: 'Confirme a sua identidade',
+      preheader: 'Introduza o código para confirmar a ação.',
+      heading: 'Confirme a sua identidade',
+      cta: '',
+      body: [
+        'Introduza este código para confirmar a ação na sua conta Threkir:',
+        'Se não reconhece este pedido, pode ignorar este e-mail.',
+      ],
+    },
+    password_changed_notification: {
+      subject: 'A sua palavra-passe foi alterada',
+      preheader: 'A palavra-passe da sua conta acabou de ser alterada.',
+      heading: 'A sua palavra-passe foi alterada',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'A palavra-passe da sua conta Threkir foi alterada ({when}).',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
+      ],
+    },
+    email_changed_notification: {
+      subject: 'O seu e-mail foi alterado',
+      preheader: 'O e-mail da sua conta acabou de ser alterado.',
+      heading: 'O seu e-mail foi alterado',
+      cta: '',
+      body: [
+        'O e-mail da sua conta Threkir foi alterado ({when}). Este aviso é enviado para o seu endereço anterior; os e-mails da conta passam a ir para o novo.',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, escreva imediatamente para security@threkir.com a partir deste endereço para que possamos ajudar a recuperar a sua conta — uma redefinição da palavra-passe iria agora para o novo endereço, e não para este.',
+      ],
+    },
+    phone_changed_notification: {
+      subject: 'O seu número de telemóvel foi alterado',
+      preheader: 'O número de telemóvel da sua conta acabou de ser alterado.',
+      heading: 'O seu número de telemóvel foi alterado',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'O número de telemóvel da sua conta Threkir foi alterado ({when}).',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
+      ],
+    },
+    identity_linked_notification: {
+      subject: 'Foi adicionado um método de início de sessão à sua conta',
+      preheader: 'Acabou de ser associado um novo método de início de sessão à sua conta.',
+      heading: 'Novo método de início de sessão associado',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'Foi associado um novo método de início de sessão à sua conta Threkir ({when}).',
+        'Método de início de sessão: {method}',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
+      ],
+    },
+    identity_unlinked_notification: {
+      subject: 'Foi removido um método de início de sessão da sua conta',
+      preheader: 'Acabou de ser removido um método de início de sessão da sua conta.',
+      heading: 'Método de início de sessão removido',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'Foi removido um método de início de sessão da sua conta Threkir ({when}).',
+        'Método de início de sessão: {method}',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
+      ],
+    },
+    mfa_factor_enrolled_notification: {
+      subject: 'Foi adicionado um método de verificação à sua conta',
+      preheader: 'Acabou de ser adicionado um método de verificação em dois passos à sua conta.',
+      heading: 'Método de verificação em dois passos adicionado',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'Foi adicionado um método de verificação em dois passos à sua conta Threkir ({when}).',
+        'Método: {method}',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
+      ],
+    },
+    mfa_factor_unenrolled_notification: {
+      subject: 'Foi removido um método de verificação da sua conta',
+      preheader: 'Acabou de ser removido um método de verificação em dois passos da sua conta.',
+      heading: 'Método de verificação em dois passos removido',
+      cta: 'Redefinir palavra-passe',
+      body: [
+        'Foi removido um método de verificação em dois passos da sua conta Threkir ({when}).',
+        'Método: {method}',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
+      ],
+    },
+    default: {
+      subject: 'Uma mensagem sobre a sua conta',
+      preheader: 'Aviso sobre a sua conta.',
+      heading: 'Aviso sobre a sua conta',
+      cta: '',
+      body: [
+        'Esta mensagem é sobre a sua conta Threkir. Se não estava à espera dela, pode ignorá-la.',
+      ],
+    },
+  },
 };
+
+/// DERIVED from the catalogue rather than restated beside it. A hand-written
+/// list is a second place a locale has to be added, and the one the parity
+/// test then loops over — so a seventh catalogue added to the object below and
+/// missed in the list would be skipped by the guard that exists to see it.
+/// That is the shape decisions § 748 / § 755 found six times on the client
+/// side. Sorted so the order is stable.
+export const AUTH_EMAIL_LOCALES: readonly string[] = Object.keys(
+  authEmailCatalogue,
+).sort();
 
 export function lookupAuthEmailStrings(
   locale: string,
@@ -959,35 +1715,124 @@ function escapeHtml(s: string): string {
     .replaceAll("'", '&#39;');
 }
 
+/// Informational notices with somewhere useful to send the reader. GoTrue's
+/// security notices carry no token, so their CTA is not a verify link: the
+/// password-changed notice links the web sign-in page's reset form, the one
+/// step that helps whether or not the reader can still sign in (an intruder
+/// who changed the password has locked them out, and the reset link goes to
+/// this mailbox). Needs APP_BASE_URL, the web origin; unset, the notice goes
+/// out without a button and its copy still names the sign-in page.
+///
+/// Every account-change notice but one shares that button. The exception is
+/// email changed: it goes to the PREVIOUS address, and a reset requested now
+/// would mail the new one, so its copy sends the reader to the security
+/// contact instead and it carries no button.
+const NOTICE_CTA_PATHS: Record<string, string> = {
+  password_changed_notification: '/login?reset=1',
+  phone_changed_notification: '/login?reset=1',
+  identity_linked_notification: '/login?reset=1',
+  identity_unlinked_notification: '/login?reset=1',
+  mfa_factor_enrolled_notification: '/login?reset=1',
+  mfa_factor_unenrolled_notification: '/login?reset=1',
+};
+
+/// OAuth providers by GoTrue's provider id. Brand names read the same in
+/// every locale; an id missing here (and from identityLabels) drops the
+/// `{method}` line rather than echo a raw id into the mail.
+const PROVIDER_BRANDS: Record<string, string> = {
+  apple: 'Apple',
+  azure: 'Microsoft',
+  bitbucket: 'Bitbucket',
+  discord: 'Discord',
+  facebook: 'Facebook',
+  figma: 'Figma',
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  google: 'Google',
+  kakao: 'Kakao',
+  keycloak: 'Keycloak',
+  linkedin_oidc: 'LinkedIn',
+  notion: 'Notion',
+  slack_oidc: 'Slack',
+  spotify: 'Spotify',
+  twitch: 'Twitch',
+  twitter: 'X',
+  workos: 'WorkOS',
+  zoom: 'Zoom',
+};
+
+function own(table: Record<string, string>, k: string): string {
+  return Object.hasOwn(table, k) ? table[k] : '';
+}
+
+function methodLabel(shared: AuthEmailShared, key: string, detail: string | undefined): string {
+  if (!detail) return '';
+  if (key.startsWith('identity_')) {
+    return own(shared.identityLabels, detail) || own(PROVIDER_BRANDS, detail);
+  }
+  if (key.startsWith('mfa_')) return own(shared.factorLabels, detail);
+  return '';
+}
+
+/// Numeric and explicitly UTC — the recipient's zone is unknown to the hook,
+/// and a number reads the same inside every locale's sentence. Mirrors the
+/// worker's formatInstantUTC.
+export function formatInstantUtc(ms: number): string {
+  const iso = new Date(ms).toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
+/// A paragraph carrying `{when}` states the time of the event. The hook's
+/// signed timestamp is that time to within GoTrue's send latency; without
+/// one the paragraph is swapped for the preheader, which says the same thing
+/// without a time, rather than rendering an empty placeholder.
+function fillWhen(p: string, sentAtMs: number | undefined, fallback: string): string {
+  if (!p.includes('{when}')) return p;
+  if (sentAtMs === undefined || !Number.isFinite(sentAtMs)) return fallback;
+  return p.replaceAll('{when}', formatInstantUtc(sentAtMs));
+}
+
 /// Layout port of the worker's renderTextBody/renderHTMLBody: hidden
 /// preheader, branded header bar, H1, paragraphs, bulletproof CTA
-/// button, muted footer. The CTA verify link is the ONLY URL in the
-/// message — the web e2e mail fixture extracts the first URL it finds,
-/// so nothing may link before it. The OTP code, when present, renders
-/// as its own spaced block below the paragraphs.
+/// button, muted footer. The CTA verify link is the only ANCHOR in the
+/// message, which is what the web e2e mail fixture keys on; the header
+/// mark's <img src> precedes it, so a first-URL match would return the
+/// logo (see tests-e2e/fixtures/mailpit.ts). Do not add a second anchor
+/// above the CTA. The OTP code, when present, renders as its own spaced
+/// block below the paragraphs.
 export function renderAuthEmail(
   locale: string,
   send: PlannedSend,
-  opts: { supabaseUrl: string; redirectTo?: string },
+  opts: { supabaseUrl: string; redirectTo?: string; appBaseUrl?: string; sentAtMs?: number },
 ): RenderedAuthEmail {
   const loc = normalizeEmailLocale(locale);
   const strings = lookupAuthEmailStrings(loc, send.catalogueKey);
   const shared = authEmailShared[loc] ?? authEmailShared.en;
+  const appBase = (opts.appBaseUrl ?? '').replace(/\/+$/, '');
+  const noticePath = NOTICE_CTA_PATHS[send.catalogueKey];
   const link = send.verifyType && send.tokenHash
-    ? buildVerifyUrl(opts.supabaseUrl, send.tokenHash, send.verifyType, opts.redirectTo)
+    ? buildActionUrl(opts.supabaseUrl, send.tokenHash, send.verifyType, opts.redirectTo)
+    : noticePath && appBase
+    ? appBase + noticePath
     : '';
+  // A `{method}` line names the provider / factor; with no recognisable one
+  // it is dropped whole, the surrounding paragraphs still read complete.
+  const method = methodLabel(shared, send.catalogueKey, send.detail);
+  const body = strings.body
+    .filter((p) => !p.includes('{method}') || method !== '')
+    .map((p) => fillWhen(p.replaceAll('{method}', method), opts.sentAtMs, strings.preheader));
   const codeOnly = !link && send.token !== '';
   const altCode = link && send.token !== '' ? send.token : '';
 
   let text = strings.heading + '\n\n';
-  for (const p of strings.body) text += p + '\n\n';
+  for (const p of body) text += p + '\n\n';
   if (codeOnly) text += send.token + '\n\n';
   if (link) text += `${strings.cta}: ${link}\n\n`;
   if (altCode) text += `${shared.altCode} ${altCode}\n\n`;
   text += '—\n' + shared.footer + '\n';
 
   let paras = '';
-  for (const p of strings.body) {
+  for (const p of body) {
     paras += `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">${escapeHtml(p)}</p>`;
   }
   if (codeOnly) {
@@ -1010,7 +1855,7 @@ export function renderAuthEmail(
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(strings.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="background:${BRAND_COLOR};padding:20px 32px;"><span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">${BRAND_NAME}</span></td></tr>
+<tr><td style="background:${HEADER_COLOR};padding:20px 32px;">${renderBrandLockup(opts.appBaseUrl)}</td></tr>
 <tr><td style="padding:32px;"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;">${escapeHtml(strings.heading)}</h1>${paras}${cta}</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">${escapeHtml(shared.footer)}</p></td></tr>
 </table></td></tr></table>

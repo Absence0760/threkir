@@ -13,6 +13,8 @@
 // pathological or an attempt to chain gzip + JSON.parse into a
 // memory amplifier on the EF instance (~250 MB heap budget).
 // Matches the cap used by clip-public-track.
+import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
+
 export const MAX_TRACK_GZIP_BYTES = 5 * 1024 * 1024;
 
 export class TrackTooLargeError extends Error {
@@ -22,12 +24,28 @@ export class TrackTooLargeError extends Error {
 	}
 }
 
+/// The blob decoded to something that is not a list of points.
+///
+/// Thrown for the same reason `TrackTooLargeError` is: the GPX loop's
+/// `catch` is what tolerates one unreadable object, and the return type
+/// promised an array that `JSON.parse` had no obligation to produce. An
+/// object decoded here reached `buildGpx`'s `for…of`, whose TypeError
+/// escaped the loop's guard (`track.length < 2` is false for `undefined`)
+/// and failed the WHOLE export on one bad blob.
+export class TrackShapeError extends Error {
+	constructor() {
+		super('track is not a list of points');
+		this.name = 'TrackShapeError';
+	}
+}
+
 export interface TrackPoint {
 	lat: number;
 	lng: number;
 	t?: number;
 	ele?: number;
 	bpm?: number;
+	offTrack?: boolean;
 }
 
 export async function decodeTrack(blob: Blob): Promise<TrackPoint[]> {
@@ -41,9 +59,15 @@ export async function decodeTrack(blob: Blob): Promise<TrackPoint[]> {
 		// must be observable.
 		throw new TrackTooLargeError();
 	}
-	const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
-		.DecompressionStream('gzip');
-	const stream = new Response(gz).body!.pipeThrough(ds);
-	const txt = await new Response(stream).text();
-	return JSON.parse(txt) as TrackPoint[];
+	// The compressed cap alone does not bound memory — see gunzip_capped.ts.
+	let inflated: Uint8Array;
+	try {
+		inflated = await gunzipCapped(gz);
+	} catch (e) {
+		if (e instanceof InflateLimitError) throw new TrackTooLargeError();
+		throw e;
+	}
+	const parsed: unknown = JSON.parse(new TextDecoder().decode(inflated));
+	if (!Array.isArray(parsed)) throw new TrackShapeError();
+	return parsed as TrackPoint[];
 }

@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
+import '../gym_prs.dart';
 import '../local_gym_store.dart';
 import '../local_routine_store.dart';
 import '../preferences.dart';
@@ -15,6 +16,8 @@ import '../social_service.dart';
 import '../widgets/error_state.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
+import '../widgets/official_badge.dart';
 import 'routine_detail_screen.dart';
 
 /// Public gym-routine library — browse + search routines published as public
@@ -49,7 +52,7 @@ class RoutinePublicLibraryScreen extends StatefulWidget {
 
 class _RoutinePublicLibraryScreenState
     extends State<RoutinePublicLibraryScreen> {
-  List<({GymRoutineRow routine, String? authorHandle})> _routines = const [];
+  List<({GymRoutineRow routine, String? authorHandle, bool isOfficial})> _routines = const [];
   bool _loading = true;
   bool _error = false;
   bool _signedOut = false;
@@ -110,7 +113,7 @@ class _RoutinePublicLibraryScreenState
     _debounce = Timer(const Duration(milliseconds: 300), _load);
   }
 
-  void _open(({GymRoutineRow routine, String? authorHandle}) entry) {
+  void _open(({GymRoutineRow routine, String? authorHandle, bool isOfficial}) entry) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => RoutinePublicPreviewScreen(
@@ -144,9 +147,9 @@ class _RoutinePublicLibraryScreenState
           ),
           Expanded(
             child: _loading
-                ? FullBodyLoader(
-                    kind: ActivityLoaderKind.train,
+                ? ListSkeleton(
                     label: l10n.commonLoading,
+                    hasLeading: false,
                   )
                 : _signedOut
                     ? SignInRequiredState(api: widget.api, onSignedIn: _load)
@@ -185,6 +188,8 @@ class _RoutinePublicLibraryScreenState
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          if (e.isOfficial)
+                                            const OfficialBadge(),
                                           Text(l10n.gymLibraryByAuthor(author)),
                                           const SizedBox(height: 4),
                                           Text(
@@ -221,7 +226,7 @@ class RoutinePublicPreviewScreen extends StatefulWidget {
   final LocalRoutineStore store;
   final LocalGymStore gymStore;
   final SocialService? social;
-  final ({GymRoutineRow routine, String? authorHandle}) entry;
+  final ({GymRoutineRow routine, String? authorHandle, bool isOfficial}) entry;
 
   const RoutinePublicPreviewScreen({
     super.key,
@@ -371,6 +376,7 @@ class _RoutinePublicPreviewScreenState
     final author = widget.entry.authorHandle ?? l10n.gymLibraryAnonymous;
     return Scaffold(
       appBar: AppBar(title: Text(r.title)),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: _loading
           ? null
           : FloatingActionButton.extended(
@@ -386,14 +392,21 @@ class _RoutinePublicPreviewScreenState
                   _adopting ? l10n.gymLibraryAdopting : l10n.gymLibraryAdopt),
             ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.train,
+          ? SectionedDetailSkeleton(
               label: l10n.commonLoading,
+              rows: 5,
             )
           : ListView(
               padding: EdgeInsets.fromLTRB(
                   16, 16, 16, fabScrollClearance(context)),
               children: [
+                if (widget.entry.isOfficial) ...[
+                  const Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OfficialBadge(size: 16),
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Text(l10n.gymLibraryByAuthor(author),
                     style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 8),
@@ -416,9 +429,9 @@ class _RoutinePublicPreviewScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            ex.exercise.exerciseName.isEmpty
-                                ? '—'
-                                : ex.exercise.exerciseName,
+                            namesAnExercise(ex.exercise.exerciseName)
+                                ? ex.exercise.exerciseName
+                                : '—',
                             style: theme.textTheme.titleSmall,
                           ),
                           const SizedBox(height: 4),

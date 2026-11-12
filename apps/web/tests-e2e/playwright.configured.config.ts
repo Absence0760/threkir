@@ -1,0 +1,99 @@
+import { resolve } from 'node:path';
+
+import { defineConfig, devices } from '@playwright/test';
+
+import { viteCommand } from './fixtures/vite-command';
+
+/**
+ * Dedicated Playwright config for surfaces that render only on a build with an
+ * optional integration's public id set.
+ *
+ * Why separate from playwright.config.ts:
+ *   - Every other lane builds with `PUBLIC_STRAVA_CLIENT_ID` empty, and the
+ *     sharded suite pins what that build does: `clubs/strava-clubs.spec.ts`
+ *     asserts "Your Strava clubs" stays inert and never asks Strava, and the
+ *     integrations specs pin the unconfigured Strava card. Setting the id there
+ *     would flip all of them. This lane boots a dev server of its own with a
+ *     dummy id, so the configured half is observed too (followups: "Observe
+ *     the configured path in a browser").
+ *   - The id only has to be non-empty: nothing here reaches Strava. Every
+ *     `strava-clubs` Edge Function call is answered by `mockRoute` in the
+ *     spec, and the OAuth redirect the id builds is never followed.
+ *   - One unsharded CI job (e2e-web-configured), same shape as the
+ *     export-hub lane: signed in against the local Supabase stack, its own
+ *     port, its own globalSetup.
+ *
+ * The same holds for a surface behind a fail-closed deploy gate whose off
+ * state the sharded lane pins: `PUBLIC_ADAPTIVE_FITNESS_GATE` is on here for
+ * the comeback ramp (decisions § 2207), and off everywhere else. The
+ * coach assistant is on here and off everywhere else (issue #1215). The
+ * flyover video export is offered only with a basemap a video may record
+ * (decisions § 2259), so `PUBLIC_TILE_STYLE_URL` is set here to the OSM
+ * fallback style the keyless build already draws: the other specs' maps are
+ * unchanged, and the export spec stubs every tile it asks for.
+ *
+ * Its specs live under tests-e2e/configured and are excluded from the main
+ * config via testIgnore, so they never run against a build without the id.
+ * A future configured-only surface (another integration's public id) belongs
+ * here rather than in a lane of its own.
+ *
+ * Local run: `pnpm test:e2e:configured` from apps/web.
+ */
+const HERE = import.meta.dirname;
+const WEB_DIR = resolve(HERE, '..');
+
+// :7777 is the sharded lane, :7778 live-hub, :7779 export-hub, :7780 sso,
+// :7781 the built app.
+const DEV_PORT = '7782';
+
+export default defineConfig({
+	testDir: './configured',
+
+	globalSetup: './fixtures/auth.ts',
+
+	timeout: 30_000,
+	expect: { timeout: 10_000 },
+	retries: process.env.CI ? 1 : 0,
+	forbidOnly: !!process.env.CI,
+	workers: 1,
+	fullyParallel: false,
+	reporter: process.env.CI ? [['github'], ['list']] : 'list',
+
+	webServer: {
+		command: viteCommand(`dev --port ${DEV_PORT}`),
+		cwd: WEB_DIR,
+		url: `http://localhost:${DEV_PORT}`,
+		reuseExistingServer: !process.env.CI,
+		timeout: 120_000,
+		stdout: 'ignore',
+		stderr: 'pipe',
+		// process.env wins over the .env files, so this overrides the empty
+		// `PUBLIC_STRAVA_CLIENT_ID=` every CI lane writes. Empty
+		// PUBLIC_TILE_STYLE_URL + OSRM_URL force the committed
+		// `.env.development` localhost dev services off, as in every lane. § 137.
+		env: {
+			PUBLIC_STRAVA_CLIENT_ID: 'e2e-fixture-client-id',
+			// The comeback ramp (plan-volume-anchor.spec.ts) ships behind this
+			// fail-closed gate; the sharded lane runs with it off and pins that.
+			PUBLIC_ADAPTIVE_FITNESS_GATE: 'true',
+			// The coach assistant (issue #1215 Phase 4) ships behind this gate,
+			// off in every environment; coach-assist.spec.ts drives it against a
+			// mocked /api/coach/assist, and messages/coach-assist-off.spec.ts pins
+			// the off state in the sharded lane.
+			PUBLIC_COACH_ASSIST_ENABLED: 'true',
+			PUBLIC_TILE_STYLE_URL: '/osm-fallback-style.json',
+			OSRM_URL: ''
+		}
+	},
+
+	use: {
+		baseURL: `http://localhost:${DEV_PORT}`,
+		trace: 'on-first-retry',
+		screenshot: 'only-on-failure',
+		video: 'retain-on-failure',
+		locale: 'en-GB',
+		timezoneId: 'UTC'
+	},
+
+	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }]
+});

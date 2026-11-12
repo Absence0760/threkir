@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /messages — DM permission boundaries + unread plumbing (#55).
@@ -12,7 +14,7 @@ import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
  *
  *   (a) the follow-graph send gate — USER_B and USER_C_PRO have NO follow
  *       edge in the seed (A→B, A→C, B→A), so B sending to C is rejected with
- *       the friendly "you can only message people you follow" error, never a
+ *       the friendly "you can message people you follow …" error, never a
  *       silent no-op or an uncaught throw. No row lands.
  *   (b) a block overrides an existing follow edge — A follows B and B follows
  *       A, but if A blocks B, B can no longer message A (fail-closed).
@@ -51,15 +53,39 @@ test.describe('/messages — permission boundaries', () => {
 			// silent swallow, never the message bubble appearing as if it sent.
 			const alert = page.locator('.send-error[role="alert"]');
 			await expect(alert).toBeVisible({ timeout: 10_000 });
-			await expect(alert).toContainText(/can only message people you follow/i);
+			await expect(alert).toContainText(/You can message people you follow or who follow you/i);
 
 			// Fail-closed: nothing was written.
-			const { data } = await getAdminClient()
-				.from('direct_messages')
-				.select('id')
-				.eq('sender_id', USER_B.id)
-				.eq('recipient_id', USER_C_PRO.id);
-			expect(data?.length ?? 0).toBe(0);
+			const data = await readRows(
+				'direct_messages by sender_id+recipient_id',
+				getAdminClient()
+					.from('direct_messages')
+					.select('id')
+					.eq('sender_id', USER_B.id)
+					.eq('recipient_id', USER_C_PRO.id)
+			);
+			expect(data.length).toBe(0);
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('the follow-gate refusal reads in the runner\'s own language', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath, locale: 'de-DE' });
+		const page = await ctx.newPage();
+		try {
+			await setStorageOnLoad(page, { local: { locale: 'de' } });
+			await page.goto(`/messages/${USER_C_PRO.id}`);
+
+			const composer = page.getByPlaceholder('Nachricht…');
+			await expect(composer).toBeVisible({ timeout: 10_000 });
+			await composer.fill(`e2e-should-fail-de ${Date.now()}`);
+			await page.getByRole('button', { name: 'Senden' }).click();
+
+			const alert = page.locator('.send-error[role="alert"]');
+			await expect(alert).toBeVisible({ timeout: 10_000 });
+			await expect(alert).toContainText('Du kannst Personen schreiben, denen du folgst');
+			await expect(alert).not.toContainText(/You can message people/i);
 		} finally {
 			await ctx.close();
 		}
@@ -86,12 +112,15 @@ test.describe('/messages — permission boundaries', () => {
 
 			await expect(page.locator('.send-error[role="alert"]')).toBeVisible({ timeout: 10_000 });
 
-			const { data } = await getAdminClient()
-				.from('direct_messages')
-				.select('id')
-				.eq('sender_id', USER_B.id)
-				.eq('recipient_id', USER_A.id);
-			expect(data?.length ?? 0).toBe(0);
+			const data = await readRows(
+				'direct_messages by sender_id+recipient_id',
+				getAdminClient()
+					.from('direct_messages')
+					.select('id')
+					.eq('sender_id', USER_B.id)
+					.eq('recipient_id', USER_A.id)
+			);
+			expect(data.length).toBe(0);
 		} finally {
 			await ctx.close();
 		}

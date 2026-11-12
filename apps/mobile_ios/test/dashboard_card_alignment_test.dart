@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../lib/disclosure.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -49,7 +50,9 @@ void main() {
         final now = DateTime.now().toUtc();
         final seed = LocalRunStore();
         await seed.init(overrideDirectory: dir);
-        for (var i = 0; i < 6; i++) {
+        // Enough history for the `standard` disclosure floor: below it, with
+        // no goal stored, the training-load chart folds into an expander.
+        for (var i = 0; i < disclosureStandardRuns; i++) {
           await seed.save(_run('r$i', now.subtract(Duration(days: i * 3))));
         }
 

@@ -18,6 +18,7 @@ NotificationRow n({
   String? planId,
   String? achievementId,
   String? challengeId,
+  String? conversationId,
   DateTime? readAt,
   DateTime? createdAt,
 }) {
@@ -33,8 +34,10 @@ NotificationRow n({
     planId: planId,
     achievementId: achievementId,
     challengeId: challengeId,
+    conversationId: conversationId,
     readAt: readAt,
     createdAt: createdAt ?? ago(0),
+    refunded: false,
   );
 }
 
@@ -132,6 +135,33 @@ void main() {
       expect(groups[0].otherCount, 2);
     });
 
+    test('follow requests collapse together, apart from follows', () {
+      final groups = groupNotifications([
+        n(id: 'r1', kind: 'follow_request', actorId: 'u1', createdAt: ago(1000)),
+        n(id: 'r2', kind: 'follow_request', actorId: 'u2', createdAt: ago(2000)),
+        n(id: 'f1', kind: 'follow', actorId: 'u3', createdAt: ago(1500)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+      final requests = groups.firstWhere((g) => g.lead.kind == 'follow_request');
+      expect(requests.otherCount, 1);
+    });
+
+    test('workout reminders on the same plan never collapse', () {
+      final groups = groupNotifications([
+        n(id: 'w1', kind: 'workout_reminder', planId: 'p1', createdAt: ago(1000)),
+        n(id: 'w2', kind: 'workout_reminder', planId: 'p1', createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+    });
+
+    test('personal records never collapse, even on one run', () {
+      final groups = groupNotifications([
+        n(id: 'p1', kind: 'personal_record', runId: 'r1', createdAt: ago(1000)),
+        n(id: 'p2', kind: 'personal_record', runId: 'r1', createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+    });
+
     test('event RSVPs collapse per event, distinct events split', () {
       final groups = groupNotifications([
         n(id: 'e1a', kind: 'event_rsvp', eventId: 'ev1', createdAt: ago(1000)),
@@ -152,6 +182,28 @@ void main() {
       expect(groups[0].otherCount, 1);
     });
 
+    test('join requests collapse per club, edits per event, deleted-event cancels never', () {
+      final groups = groupNotifications([
+        n(id: 'j1', kind: 'club_join_request', clubId: 'c1', actorId: 'u1', createdAt: ago(1000)),
+        n(id: 'j2', kind: 'club_join_request', clubId: 'c1', actorId: 'u2', createdAt: ago(2000)),
+        n(id: 'j3', kind: 'club_join_request', clubId: 'c2', actorId: 'u3', createdAt: ago(1500)),
+        n(id: 'u1', kind: 'event_updated', eventId: 'ev1', createdAt: ago(3000)),
+        n(id: 'u2', kind: 'event_updated', eventId: 'ev1', createdAt: ago(4000)),
+        n(id: 'x1', kind: 'event_cancel', clubId: 'c1', createdAt: ago(5000)),
+        n(id: 'x2', kind: 'event_cancel', clubId: 'c1', createdAt: ago(6000)),
+      ], nowMs: now);
+      expect(
+        groups.map((g) => [g.lead.id, g.otherCount]).toList(),
+        [
+          ['j1', 1],
+          ['j3', 0],
+          ['u1', 1],
+          ['x1', 0],
+          ['x2', 0],
+        ],
+      );
+    });
+
     test('messages collapse per actor, distinct actors split', () {
       final groups = groupNotifications([
         n(id: 'm1', kind: 'message', actorId: 'u1', createdAt: ago(1000)),
@@ -161,6 +213,53 @@ void main() {
       expect(groups.length, 2);
       final u1 = groups.firstWhere((g) => g.lead.actorId == 'u1');
       expect(u1.otherCount, 1);
+    });
+
+    test('group messages collapse per group, never per sender', () {
+      final groups = groupNotifications([
+        n(
+            id: 'g1',
+            kind: 'message',
+            actorId: 'u1',
+            conversationId: 'c1',
+            createdAt: ago(1000)),
+        n(
+            id: 'g2',
+            kind: 'message',
+            actorId: 'u2',
+            conversationId: 'c1',
+            createdAt: ago(2000)),
+        n(
+            id: 'g3',
+            kind: 'message',
+            actorId: 'u1',
+            conversationId: 'c2',
+            createdAt: ago(1500)),
+        n(id: 'd1', kind: 'message', actorId: 'u1', createdAt: ago(1200)),
+      ], nowMs: now);
+      expect(groups.length, 3);
+      final c1 = groups.firstWhere((g) => g.lead.id == 'g1');
+      expect(c1.others.map((o) => o.id).toList(), ['g2']);
+      expect(groups.firstWhere((g) => g.lead.id == 'd1').otherCount, 0,
+          reason: 'a 1:1 message stays apart from a group');
+    });
+
+    test('group invitations never collapse, even into one group', () {
+      final groups = groupNotifications([
+        n(
+            id: 'i1',
+            kind: 'group_invite',
+            actorId: 'u1',
+            conversationId: 'c1',
+            createdAt: ago(1000)),
+        n(
+            id: 'i2',
+            kind: 'group_invite',
+            actorId: 'u1',
+            conversationId: 'c2',
+            createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.map((g) => g.otherCount).toList(), [0, 0]);
     });
 
     test('a null target never merges two rows', () {
@@ -216,6 +315,40 @@ void main() {
       expect(groups.length, 3);
       final ach1 = groups.firstWhere((g) => g.lead.achievementId == 'ach1');
       expect(ach1.otherCount, 1);
+    });
+
+    test('reactions, comment likes and mentions collapse per run and kind', () {
+      final groups = groupNotifications([
+        n(id: 'r1', kind: 'reaction', runId: 'run1', actorId: 'u1', createdAt: ago(3000)),
+        n(id: 'r2', kind: 'reaction', runId: 'run1', actorId: 'u2', createdAt: ago(2000)),
+        n(id: 'l1', kind: 'comment_like', runId: 'run1', actorId: 'u1', createdAt: ago(1500)),
+        n(id: 'm1', kind: 'mention', runId: 'run1', actorId: 'u3', createdAt: ago(1000)),
+        n(id: 'm2', kind: 'mention', runId: 'run2', actorId: 'u3', createdAt: ago(500)),
+      ], nowMs: now);
+      expect(
+        groups.map((g) => [g.lead.id, g.otherCount]).toList(),
+        [
+          ['m2', 0],
+          ['m1', 0],
+          ['l1', 0],
+          ['r2', 1],
+        ],
+      );
+    });
+
+    test('race start notices collapse per event', () {
+      final groups = groupNotifications([
+        n(id: 'm1', kind: 'race_start_moved', eventId: 'ev1', createdAt: ago(1000)),
+        n(id: 'm2', kind: 'race_start_moved', eventId: 'ev1', createdAt: ago(2000)),
+        n(id: 's1', kind: 'race_starting_soon', eventId: 'ev2', createdAt: ago(3000)),
+      ], nowMs: now);
+      expect(
+        groups.map((g) => [g.lead.id, g.otherCount]).toList(),
+        [
+          ['m1', 1],
+          ['s1', 0],
+        ],
+      );
     });
   });
 }

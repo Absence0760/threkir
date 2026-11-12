@@ -1,9 +1,12 @@
 <script lang="ts">
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { fetchLatestWeightKg, fetchRuns, fetchGymWorkouts } from '$lib/core/data';
-	import { loadSettings, effective, updateUniversal } from '$lib/settings/settings';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { fetchLatestWeightKg, fetchRuns, fetchGymWorkouts } from '#lib/core/data.ts';
+	import { loadSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
 	import {
 		computeNutritionTargets,
 		ageFromDob,
@@ -16,10 +19,17 @@
 		type ActivityLevel,
 		type WeightGoal,
 		type NutritionTargets,
-	} from '$lib/nutrition/nutrition_targets';
-	import { exerciseCaloriesForDay } from '$lib/nutrition/exercise_calories';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/nutrition/nutrition_targets.ts';
+	import {
+		healthUseDob,
+		healthUseDobState,
+		type HealthUseDobState,
+	} from '#lib/core/health_consent.ts';
+	import { exerciseCaloriesForDay } from '#lib/nutrition/exercise_calories.ts';
+	import { diaryWindow, isoDateOf } from '#lib/nutrition/diary_day.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -28,6 +38,12 @@
 	let weightKg = $state<number | null>(null);
 	let heightCm = $state<number | null>(null);
 	let ageYears = $state<number | null>(null);
+	/// Why the age is missing, not merely that it is. The age record itself
+	/// carries no consent term (the under-18 search floor depends on it), but
+	/// feeding it to a BMR is an Art 9 use — so a runner who supplied a date
+	/// and declined the health-data consent is told that, rather than shown
+	/// "Not set" about a date they did set (§ 722).
+	let dobState = $state<HealthUseDobState>('absent');
 	let sex = $state<string | null>(null);
 	let exerciseKcal = $state(0);
 	let activityLevel = $state<ActivityLevel>('moderate');
@@ -55,39 +71,43 @@
 		loading = true;
 		loadError = null;
 		try {
-			const now = new Date();
-			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-			const tomorrow = new Date(todayStart.getTime() + 86_400_000);
-			const [settings, weight, profileRes, recentRuns, recentGym] = await Promise.all([
+			// `isoDateOf` always yields a parseable day, so the window is never null.
+			// Both fetches take it, so the day's membership is decided by PostgREST
+			// as a timestamptz comparison rather than by a client-side compare of
+			// Postgres' `…+00:00` rendering against a `…Z` bound (decisions § 591).
+			const dayWindow = diaryWindow(isoDateOf(new Date()))!;
+			const [settings, weight, profileRes, todayRuns, todayGym] = await Promise.all([
 				loadSettings(auth.user!.id),
 				fetchLatestWeightKg(),
-				supabase.rpc('get_my_profile'),
-				fetchRuns({ limit: 50 }),
-				fetchGymWorkouts(50),
+				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+				fetchRuns({
+					startedAtFrom: dayWindow.startIso,
+					startedAtBefore: dayWindow.endIso,
+				}),
+				fetchGymWorkouts({
+					startedAtFrom: dayWindow.startIso,
+					startedAtBefore: dayWindow.endIso,
+				}),
 			]);
-			const startIso = todayStart.toISOString();
-			const endIso = tomorrow.toISOString();
-			const isToday = (iso: string) => iso >= startIso && iso < endIso;
 			weightKg = weight;
 			const prof = profileRes.data as
-				| { height_cm: number | null; date_of_birth: string | null; gender: string | null }
+				| { height_cm: number | null; gender: string | null }
 				| null;
 			heightCm = prof?.height_cm ?? null;
-			ageYears = ageFromDob(prof?.date_of_birth, Date.now());
+			dobState = healthUseDobState(profileRes.data);
+			ageYears = ageFromDob(healthUseDob(profileRes.data), Date.now());
 			sex = prof?.gender ?? null;
 			activityLevel =
 				effective<ActivityLevel>(settings, 'nutrition_activity_level', 'moderate') ?? 'moderate';
 			goal = effective<WeightGoal>(settings, 'nutrition_goal', 'maintain') ?? 'maintain';
 			exerciseKcal = exerciseCaloriesForDay({
-				runs: recentRuns.filter((r) => isToday(r.started_at)).map((r) => ({ distanceM: r.distance_m })),
-				gymSessions: recentGym
-					.filter((w) => isToday(w.started_at))
-					.map((w) => ({ durationS: w.duration_s })),
+				runs: todayRuns.map((r) => ({ distanceM: r.distance_m })),
+				gymSessions: todayGym.map((w) => ({ durationS: w.duration_s })),
 				weightKg: weight,
 			});
 			recompute();
 		} catch (e) {
-			loadError = (e as Error).message;
+			loadError = errorCopy(e, m, 'nutrition/targets: loadError');
 		}
 		loading = false;
 	}
@@ -104,13 +124,13 @@
 		});
 	}
 
-	async function savePref(changes: Record<string, unknown>) {
+	async function savePref(changes: PrefsBag) {
 		recompute();
 		saveError = null;
 		try {
 			await updateUniversal(auth.user!.id, changes);
 		} catch (e) {
-			saveError = (e as Error).message;
+			saveError = errorCopy(e, m, 'nutrition/targets: saveError');
 		}
 	}
 
@@ -138,16 +158,16 @@
 
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
-			<div class="skel skel-block"></div>
-			<div class="skel skel-block"></div>
+			<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
+			<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
 		</div>
-		<p class="sr-only" role="status">{m('shell.loading')}</p>
-	{:else if loadError}
+		<p class="visually-hidden" role="status">{m('shell.loading')}</p>
+	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="targets-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('nutrition.loadFailed')}</strong>
-				<span class="load-error-detail">{loadError}</span>
+				{#if loadError}<span class="load-error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" type="button" onclick={() => void load()}>{m('nutrition.retry')}</button>
 		</div>
@@ -224,14 +244,18 @@
 				</ul>
 			</section>
 		{:else}
-			<section class="card-elevated empty-card" data-testid="targets-empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">straighten</span>
-				<h2>{m('nutrition.targets.emptyTitle')}</h2>
-				<p>{m('nutrition.targets.emptyBody')}</p>
-				<a class="btn btn-primary" href="/settings/preferences#body-metrics" data-testid="targets-empty-cta">
-					{m('nutrition.addBodyMetrics')}
-				</a>
-			</section>
+			<EmptyState
+				icon="straighten"
+				title={m('nutrition.targets.emptyTitle')}
+				text={m('nutrition.targets.emptyBody')}
+				data-testid="targets-empty"
+			>
+				{#snippet actions()}
+					<a class="btn btn-primary" href="/settings/body#body-metrics" data-testid="targets-empty-cta">
+						{m('nutrition.addBodyMetrics')}
+					</a>
+				{/snippet}
+			</EmptyState>
 		{/if}
 
 		<section class="card-elevated defaults-card">
@@ -239,33 +263,45 @@
 				<span class="section-label">{m('nutrition.targets.defaultsHeading')}</span>
 			</div>
 			<div class="form-grid">
-				<label>
-					<span class="label-text">{m('prefs.activityLevel')}</span>
-					<select
-						bind:value={activityLevel}
-						onchange={() => void savePref({ nutrition_activity_level: activityLevel })}
-						data-testid="targets-activity-level"
-					>
-						{#each ACTIVITY_LEVELS as lvl (lvl.key)}
-							<option value={lvl.key}>{m(`prefs.activity_${lvl.key}`)}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					<span class="label-text">{m('prefs.weightGoal')}</span>
-					<select
-						bind:value={goal}
-						onchange={() => void savePref({ nutrition_goal: goal })}
-						data-testid="targets-weight-goal"
-					>
-						<option value="lose">{m('prefs.goalLose')}</option>
-						<option value="maintain">{m('prefs.goalMaintain')}</option>
-						<option value="gain">{m('prefs.goalGain')}</option>
-					</select>
-				</label>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.activityLevel')}</span>
+						<select
+							bind:value={activityLevel}
+							onchange={() => void savePref({ nutrition_activity_level: activityLevel })}
+							data-testid="targets-activity-level"
+							aria-describedby="targets-activity-level-hint"
+						>
+							{#each ACTIVITY_LEVELS as lvl (lvl.key)}
+								<option value={lvl.key}>{m(`prefs.activity_${lvl.key}`)}</option>
+							{/each}
+						</select>
+					</label>
+					<span class="field-hint" id="targets-activity-level-hint">
+						{m('nutrition.targets.activityLevelHint')}
+					</span>
+				</div>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.weightGoal')}</span>
+						<select
+							bind:value={goal}
+							onchange={() => void savePref({ nutrition_goal: goal })}
+							data-testid="targets-weight-goal"
+							aria-describedby="targets-weight-goal-hint"
+						>
+							<option value="lose">{m('prefs.goalLose')}</option>
+							<option value="maintain">{m('prefs.goalMaintain')}</option>
+							<option value="gain">{m('prefs.goalGain')}</option>
+						</select>
+					</label>
+					<span class="field-hint" id="targets-weight-goal-hint">
+						{m('nutrition.targets.weightGoalHint')}
+					</span>
+				</div>
 			</div>
 			<p class="section-hint">{m('nutrition.targets.defaultsHint')}</p>
-			{#if saveError}
+			{#if saveError !== null}
 				<p class="save-error" role="alert" data-testid="targets-save-error">
 					<span class="material-symbols hint-icon" aria-hidden="true">error</span>
 					{m('nutrition.targets.saveFailed')}
@@ -279,7 +315,7 @@
 		<section class="card-elevated metrics-card" data-testid="targets-metrics">
 			<div class="card-head">
 				<span class="section-label">{m('nutrition.targets.metricsHeading')}</span>
-				<a class="btn btn-secondary btn-sm" href="/settings/preferences#body-metrics" data-testid="targets-edit-metrics">
+				<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="targets-edit-metrics">
 					{m('nutrition.targets.editMetrics')}
 				</a>
 			</div>
@@ -295,7 +331,9 @@
 				<li>
 					<span class="term">{m('nutrition.targets.age')}</span>
 					<span class="value">
-						{ageYears != null ? m('nutrition.targets.ageYears', { n: ageYears }) : m('nutrition.targets.unset')}
+						{#if ageYears != null}{m('nutrition.targets.ageYears', { n: ageYears })}
+						{:else if dobState === 'consent_withheld'}{m('nutrition.targets.ageConsentWithheld')}
+						{:else}{m('nutrition.targets.unset')}{/if}
 					</span>
 				</li>
 				<li>
@@ -457,28 +495,19 @@
 		gap: 0.3rem;
 	}
 
+	.form-grid .field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.form-grid .field-hint {
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		line-height: 1.4;
+	}
+
 	.label-text {
 		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
-
-	.empty-card {
-		text-align: center;
-	}
-
-	.empty-card h2 {
-		margin: var(--space-sm) 0 0.3rem;
-		font-size: 1.1rem;
-	}
-
-	.empty-card p {
-		margin: 0 0 var(--space-md);
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-	}
-
-	.empty-icon {
-		font-size: 2rem;
 		color: var(--color-text-secondary);
 	}
 
@@ -504,46 +533,4 @@
 		gap: var(--space-md);
 	}
 
-	.skel {
-		border-radius: var(--radius-lg);
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 25%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-
-	.skel-block {
-		height: 12rem;
-	}
-
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 </style>

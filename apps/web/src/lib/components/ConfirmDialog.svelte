@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		open: boolean;
@@ -11,8 +11,13 @@
 		danger?: boolean;
 		onconfirm: () => void | Promise<void>;
 		oncancel: () => void;
+		/// A second way through, rendered between cancel and confirm, for a
+		/// choice between two outcomes (e.g. end the old plan early vs replace
+		/// it). Shares the in-flight lock with confirm.
+		altLabel?: string;
+		onalt?: () => void | Promise<void>;
 		/// When set, the confirm button stays disabled until the user types
-		/// this exact string (case-insensitive, trimmed) into a challenge
+		/// this exact string (case-insensitive, trimmed, NFKC) into a challenge
 		/// input. Used for irreversible actions (e.g. account deletion —
 		/// Apple 5.1.1 / data-loss confirmation) so a stray click can't
 		/// trigger them.
@@ -38,6 +43,8 @@
 		danger = false,
 		onconfirm,
 		oncancel,
+		altLabel,
+		onalt,
 		requireText,
 		requireTextLabel,
 		'data-testid': testId,
@@ -56,19 +63,23 @@
 			busy = false;
 		}
 	});
+	// NFKC so a localized word matches however the keyboard or IME composed
+	// it (precomposed vs combining umlaut, full-width vs half-width).
+	const normalizeChallenge = (s: string) => s.normalize('NFKC').trim().toLowerCase();
 	const challengeMet = $derived(
-		!requireText || challenge.trim().toLowerCase() === requireText.trim().toLowerCase(),
+		!requireText || normalizeChallenge(challenge) === normalizeChallenge(requireText),
 	);
 
-	async function handleConfirm() {
+	async function run(action: () => void | Promise<void>) {
 		if (!challengeMet || busy) return;
 		busy = true;
 		try {
-			await onconfirm();
+			await action();
 		} finally {
 			busy = false;
 		}
 	}
+	const handleConfirm = () => run(onconfirm);
 </script>
 
 <Modal
@@ -78,53 +89,68 @@
 	onclose={() => {
 		if (!busy) oncancel();
 	}}
-	bodyClass="confirm-body"
 	data-testid={testId}
 >
-	<p>{message}</p>
-	{#if requireText}
-		<label class="challenge">
-			<span class="challenge-label">
-				{requireTextLabel ?? `Type "${requireText}" to confirm`}
-			</span>
-			<input
-				type="text"
-				class="challenge-input"
-				bind:value={challenge}
-				autocomplete="off"
-				autocapitalize="off"
-				spellcheck="false"
-				data-testid="confirm-challenge-input"
-			/>
-		</label>
-	{/if}
-	<div class="actions">
-		<button type="button" class="btn btn-secondary" onclick={oncancel} disabled={busy}>
-			{cancelLabel ?? m('common.cancel')}
-		</button>
-		<button
-			type="button"
-			class="btn"
-			class:btn-primary={!danger}
-			class:btn-danger={danger}
-			disabled={!challengeMet || busy}
-			aria-busy={busy}
-			onclick={handleConfirm}
-		>
-			{#if busy}<span class="confirm-spinner" aria-hidden="true"></span>{/if}
-			{confirmLabel ?? m('common.confirm')}
-		</button>
+	<div class="confirm-content">
+		<p>{message}</p>
+		{#if requireText}
+			<label class="challenge">
+				<span class="challenge-label">
+					{requireTextLabel ?? `Type "${requireText}" to confirm`}
+				</span>
+				<input
+					type="text"
+					class="challenge-input"
+					bind:value={challenge}
+					autocomplete="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-testid="confirm-challenge-input"
+				/>
+			</label>
+		{/if}
+		<div class="actions">
+			<button type="button" class="btn btn-secondary" onclick={oncancel} disabled={busy}>
+				{cancelLabel ?? m('common.cancel')}
+			</button>
+			{#if altLabel && onalt}
+				<button
+					type="button"
+					class="btn btn-outline"
+					disabled={!challengeMet || busy}
+					aria-busy={busy}
+					onclick={() => run(onalt)}
+				>
+					{altLabel}
+				</button>
+			{/if}
+			<button
+				type="button"
+				class="btn"
+				class:btn-primary={!danger}
+				class:btn-danger={danger}
+				disabled={!challengeMet || busy}
+				aria-busy={busy}
+				onclick={handleConfirm}
+			>
+				{#if busy}<span class="confirm-spinner" aria-hidden="true"></span>{/if}
+				{confirmLabel ?? m('common.confirm')}
+			</button>
+		</div>
 	</div>
 </Modal>
 
 <style>
-	/* Canonical .modal-* classes live in app.css. */
-	.confirm-body {
+	/* Canonical .modal-* classes live in app.css. The spacing lives on this
+	   component's own wrapper: a class handed to Modal's body is outside this
+	   style block's scope, so Svelte dropped the rule and the actions sat flush
+	   under the message in every confirm. */
+	.confirm-content {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
-	.confirm-body p {
+	.confirm-content p {
 		font-size: 0.88rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
@@ -132,6 +158,7 @@
 	}
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: 0.5rem;
 	}

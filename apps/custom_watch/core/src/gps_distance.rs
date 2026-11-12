@@ -1,0 +1,1390 @@
+//! GPS distance estimator, spec v1.8 forward filter — the `no_std` port of
+//! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
+//! spec's smoother needs the whole run in memory and is not ported here; the
+//! phone or server re-derives a saved figure from the uploaded track.
+//!
+//! Summing the straight hop between consecutive raw fixes inflates distance
+//! at running pace, because a 1 Hz fix moves about as far as its own error and
+//! every zig-zag across the true line adds length. This filters position with
+//! two constant-velocity Kalman filters on a local tangent plane, credits the
+//! receiver's Doppler speed over ground when it is usable, refuses to credit
+//! anything below a stationary floor, and re-anchors across a gap rather than
+//! inventing the un-sampled ground. v1.2 adds an innovation gate with a
+//! lock-out re-anchor, adaptive measurement noise, a Doppler-vs-position
+//! cross-check, a low-speed Doppler debias, a pedometer zero-velocity update
+//! and an antimeridian-safe projection. v1.3 learns a Doppler speed scale.
+//! v1.4 keeps fixes stating up to 50 m, credits a gap at least its straight
+//! chord less its uncertainty, and learns stride only from trustworthy credit.
+//!
+//! Every port replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so the
+//! arithmetic follows the reference operation for operation. Fixed-size, no
+//! heap. A constant changed here alone fails the vectors, which is the point.
+
+pub const EARTH_RADIUS_M: f64 = 6_371_008.8;
+pub const Q_ACCEL: f64 = 0.6;
+pub const MIN_POS_SIGMA_M: f64 = 3.0;
+pub const MAX_POS_SIGMA_M: f64 = 50.0;
+pub const INIT_VEL_VAR: f64 = 25.0;
+pub const MIN_SPEED_SIGMA_MPS: f64 = 0.3;
+pub const DEFAULT_SPEED_SIGMA_MPS: f64 = 0.5;
+pub const MAX_SPEED_SIGMA_MPS: f64 = 1.5;
+pub const STATIONARY_SPEED_MPS: f64 = 0.4;
+pub const POS_ONLY_STATIONARY_SPEED_MPS: f64 = 0.8;
+pub const GAP_S: f64 = 10.0;
+pub const FRESH_FIX_S: f64 = 2.0;
+/// Spec v1.6: gaps a step sample can still owe a share to; past it the
+/// oldest is dropped.
+pub const MAX_OPEN_GAPS: usize = 8;
+pub const STRIDE_WINDOW_STEPS: i64 = 50;
+pub const MIN_STRIDE_M: f64 = 0.4;
+pub const MAX_STRIDE_M: f64 = 2.5;
+pub const STRIDE_EMA_ALPHA: f64 = 0.2;
+pub const STRIDE_MAX_SPEED_SIGMA_MPS: f64 = 1.0;
+pub const STRIDE_MAX_POS_SIGMA_M: f64 = 20.0;
+pub const CHECK_MAX_POS_SIGMA_M: f64 = 20.0;
+pub const GATE_CHI2: f64 = 13.8155;
+pub const GATE_MAX_REJECTS: u32 = 5;
+pub const R_SCALE_ALPHA: f64 = 0.05;
+pub const R_SCALE_MIN: f64 = 1.0;
+pub const R_SCALE_MAX: f64 = 9.0;
+pub const XCHECK_TAU_S: f64 = 60.0;
+pub const XCHECK_MIN_S: f64 = 120.0;
+pub const XCHECK_ENTER_ABS_MPS: f64 = 0.4;
+pub const XCHECK_ENTER_REL: f64 = 0.15;
+pub const XCHECK_EXIT_ABS_MPS: f64 = 0.2;
+pub const XCHECK_EXIT_REL: f64 = 0.08;
+pub const XCHECK_PERSIST_S: f64 = 60.0;
+pub const XCHECK_MAX_SPAN_S: f64 = 5.0;
+pub const DEBIAS_FULL_MPS: f64 = 0.5;
+pub const DEBIAS_ZERO_MPS: f64 = 1.0;
+pub const DSCALE_TAU_S: f64 = 600.0;
+pub const DSCALE_MIN_S: f64 = 60.0;
+pub const DSCALE_MIN: f64 = 0.8;
+pub const DSCALE_MAX: f64 = 1.25;
+pub const DSCALE_MIN_SPEED_MPS: f64 = 1.5;
+pub const DSCALE_MAX_TURN_DEG: f64 = 45.0;
+pub const ZUPT_NO_STEP_S: f64 = 6.0;
+pub const ZUPT_VEL_SIGMA_MPS: f64 = 0.1;
+pub const ZUPT_DOPPLER_OVERRIDE_MPS: f64 = 1.0;
+pub const ZUPT_RELEASE_M: f64 = 40.0;
+/// Spec v1.5: the ZUPT window stretches to the pedometer's delivery cadence.
+pub const ZUPT_BATCH_MIN_CADENCE_SPS: f64 = 1.0;
+pub const ZUPT_BATCH_MARGIN: f64 = 1.5;
+pub const ZUPT_MAX_NO_STEP_S: f64 = 30.0;
+pub const SPEC_VERSION: &str = "1.8";
+pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
+
+const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
+
+/// 1-D constant-velocity Kalman filter: state `[p, v]`, covariance
+/// `[[a, b], [b, c]]`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Axis {
+    p: f64,
+    v: f64,
+    a: f64,
+    b: f64,
+    c: f64,
+}
+
+impl Axis {
+    const fn new(p: f64, pos_var: f64) -> Self {
+        Self {
+            p,
+            v: 0.0,
+            a: pos_var,
+            b: 0.0,
+            c: INIT_VEL_VAR,
+        }
+    }
+
+    fn predict(&mut self, dt: f64) {
+        self.p += self.v * dt;
+        let a = self.a + 2.0 * dt * self.b + dt * dt * self.c + Q_ACCEL * libm::pow(dt, 3.0) / 3.0;
+        let b = self.b + dt * self.c + Q_ACCEL * dt * dt / 2.0;
+        let c = self.c + Q_ACCEL * dt;
+        self.a = a;
+        self.b = b;
+        self.c = c;
+    }
+
+    fn update_pos(&mut self, z: f64, r: f64) {
+        let s = self.a + r;
+        let k0 = self.a / s;
+        let k1 = self.b / s;
+        let y = z - self.p;
+        self.p += k0 * y;
+        self.v += k1 * y;
+        let (a, b, c) = (self.a, self.b, self.c);
+        self.a = (1.0 - k0) * a;
+        self.b = (1.0 - k0) * b;
+        self.c = c - k1 * b;
+    }
+
+    fn update_vel(&mut self, z: f64, r: f64) {
+        let s = self.c + r;
+        let k0 = self.b / s;
+        let k1 = self.c / s;
+        let y = z - self.v;
+        self.p += k0 * y;
+        self.v += k1 * y;
+        let (a, b, c) = (self.a, self.b, self.c);
+        self.a = a - k0 * b;
+        self.b = (1.0 - k1) * b;
+        self.c = (1.0 - k1) * c;
+    }
+
+    /// Gate lock-out re-anchor: position jumps to `z`, velocity is kept.
+    fn reset_pos(&mut self, z: f64, r: f64) {
+        self.p = z;
+        self.a = r;
+        self.b = 0.0;
+    }
+}
+
+/// Wraps a longitude difference (inputs within [-180, 180]) into [-180, 180).
+fn wrap_lng(d: f64) -> f64 {
+    if d >= 180.0 {
+        d - 360.0
+    } else if d < -180.0 {
+        d + 360.0
+    } else {
+        d
+    }
+}
+
+/// Usable, debiased Doppler speed and its sigma, or `None`.
+fn doppler_speed(
+    speed_mps: Option<f64>,
+    speed_accuracy_mps: Option<f64>,
+    max_speed_mps: f64,
+) -> Option<(f64, f64)> {
+    let speed = valid(speed_mps).filter(|s| (0.0..=max_speed_mps).contains(s))?;
+    let reported = valid(speed_accuracy_mps).filter(|s| *s > 0.0);
+    let sa = reported.unwrap_or(DEFAULT_SPEED_SIGMA_MPS);
+    if sa > MAX_SPEED_SIGMA_MPS {
+        return None;
+    }
+    let mut s = speed;
+    if reported.is_some() && s < DEBIAS_ZERO_MPS {
+        let w = if s <= DEBIAS_FULL_MPS {
+            1.0
+        } else {
+            (DEBIAS_ZERO_MPS - s) / (DEBIAS_ZERO_MPS - DEBIAS_FULL_MPS)
+        };
+        s = libm::sqrt((s * s - w * sa * sa).max(0.0));
+    }
+    Some((s, sa))
+}
+
+fn valid(x: Option<f64>) -> Option<f64> {
+    x.filter(|v| v.is_finite())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GpsDistanceEstimator {
+    max_speed_mps: f64,
+    expected_interval_s: f64,
+    gap_s: f64,
+    fresh_fix_s: f64,
+    gps_distance_m: f64,
+    step_distance_m: f64,
+    /// v1.7: what the steps credited the gaps over their chord lower bounds.
+    step_over_chord_m: f64,
+    stride_m: Option<f64>,
+    origin: Option<(f64, f64)>,
+    axes: Option<(Axis, Axis)>,
+    t: Option<f64>,
+    win_steps: i64,
+    win_m: f64,
+    /// v1.6: the fix that last emptied the stride window.
+    win_from_t: f64,
+    /// v1.6: a stale step sample emptied the stride window since the last fix.
+    win_stale: bool,
+    last_steps: Option<i64>,
+    last_step_t: Option<f64>,
+    pending_step_m: f64,
+    /// v1.6: the gaps re-anchors closed since the last step sample (start t,
+    /// end t, their GPS top-up), owed their share of the next one; the first
+    /// `open_gaps` entries are live, oldest first.
+    gaps: [(f64, f64, f64); MAX_OPEN_GAPS],
+    open_gaps: u32,
+    r_scale: f64,
+    rejected_fixes: u32,
+    reject_streak: u32,
+    zupt_fixes: u32,
+    step_batch_s: f64,
+    doppler_trusted: bool,
+    steps_seen: bool,
+    zupt_released: bool,
+    learn_stride: bool,
+    stride_ok: bool,
+    xc_doppler: f64,
+    xc_pos: f64,
+    xc_time: f64,
+    xc_persist_s: f64,
+    /// `(x, y, t)` of the last fix whose position the filter took.
+    xc_last: (f64, f64, f64),
+    doppler_scale: f64,
+    ds_pos: f64,
+    ds_dop: f64,
+    ds_time: f64,
+    /// `(x, y, t)` of the last fix whose position the filter took, with its
+    /// Doppler speed and bearing.
+    ds_last: (f64, f64, f64, Option<f64>, Option<f64>),
+    last_step_inc_t: f64,
+    zupt_anchor: Option<(f64, f64)>,
+}
+
+/// One estimator lives in the `Recorder`, which the firmware holds once, so
+/// the pin is about noticing growth rather than a hard ceiling. Measured at
+/// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
+/// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale; spec v1.4's two
+/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B; spec v1.6's eight open gaps and their `u32` count add 192 B, and the time the stride window was last emptied 8 B (its stale flag fits beside the other `bool`s); spec v1.7's step-over-chord total adds 8 B. The state stays `f64`: the projection and the covariance
+/// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
+/// in `f32`. Identical on both targets because every field is 8-aligned
+/// scalars, `u32`s and `bool`s.
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 672);
+
+impl Default for GpsDistanceEstimator {
+    fn default() -> Self {
+        Self::new(DEFAULT_MAX_SPEED_MPS)
+    }
+}
+
+impl GpsDistanceEstimator {
+    pub const fn new(max_speed_mps: f64) -> Self {
+        Self::with_config(max_speed_mps, 1.0, None)
+    }
+
+    /// `expected_interval_s` is the interval the receiver is sampled at on
+    /// purpose: it scales the gap and fresh-fix windows, so a 60 s mode is not
+    /// re-anchored on every fix. `initial_stride_m` carries a stride learned
+    /// earlier and is ignored outside [`MIN_STRIDE_M`]..=[`MAX_STRIDE_M`].
+    pub const fn with_config(
+        max_speed_mps: f64,
+        expected_interval_s: f64,
+        initial_stride_m: Option<f64>,
+    ) -> Self {
+        let scale = if expected_interval_s.is_finite() && expected_interval_s > 1.0 {
+            expected_interval_s
+        } else {
+            1.0
+        };
+        let stride_m = match initial_stride_m {
+            Some(s) if s.is_finite() && s >= MIN_STRIDE_M && s <= MAX_STRIDE_M => Some(s),
+            _ => None,
+        };
+        Self {
+            max_speed_mps,
+            expected_interval_s,
+            gap_s: GAP_S * scale,
+            fresh_fix_s: FRESH_FIX_S * scale,
+            gps_distance_m: 0.0,
+            step_distance_m: 0.0,
+            step_over_chord_m: 0.0,
+            stride_m,
+            origin: None,
+            axes: None,
+            t: None,
+            win_steps: 0,
+            win_m: 0.0,
+            win_from_t: f64::NEG_INFINITY,
+            win_stale: false,
+            last_steps: None,
+            last_step_t: None,
+            pending_step_m: 0.0,
+            gaps: [(0.0, 0.0, 0.0); MAX_OPEN_GAPS],
+            open_gaps: 0,
+            r_scale: 1.0,
+            rejected_fixes: 0,
+            reject_streak: 0,
+            zupt_fixes: 0,
+            step_batch_s: 0.0,
+            doppler_trusted: true,
+            steps_seen: false,
+            zupt_released: false,
+            learn_stride: true,
+            stride_ok: false,
+            xc_doppler: 0.0,
+            xc_pos: 0.0,
+            xc_time: 0.0,
+            xc_persist_s: 0.0,
+            xc_last: (0.0, 0.0, 0.0),
+            doppler_scale: 1.0,
+            ds_pos: 0.0,
+            ds_dop: 0.0,
+            ds_time: 0.0,
+            ds_last: (0.0, 0.0, 0.0, None, None),
+            last_step_inc_t: 0.0,
+            zupt_anchor: None,
+        }
+    }
+
+    pub fn distance_m(&self) -> f64 {
+        self.gps_distance_m + self.step_distance_m
+    }
+
+    pub fn gps_distance_m(&self) -> f64 {
+        self.gps_distance_m
+    }
+
+    pub fn step_distance_m(&self) -> f64 {
+        self.step_distance_m
+    }
+
+    /// Spec v1.7: what the steps credited the gaps over their chord lower
+    /// bounds, summed: per gap max(chord, steps) - chord, exactly what a
+    /// replay with no steps lacks. The firmware uploads no estimator stamp,
+    /// so nothing sends it; the vectors hold it in lockstep.
+    pub fn step_over_chord_m(&self) -> f64 {
+        self.step_over_chord_m
+    }
+
+    pub fn stride_m(&self) -> Option<f64> {
+        self.stride_m
+    }
+
+    pub fn r_scale(&self) -> f64 {
+        self.r_scale
+    }
+
+    pub fn rejected_fixes(&self) -> u32 {
+        self.rejected_fixes
+    }
+
+    pub fn zupt_fixes(&self) -> u32 {
+        self.zupt_fixes
+    }
+
+    pub fn doppler_trusted(&self) -> bool {
+        self.doppler_trusted
+    }
+
+    pub fn doppler_scale(&self) -> f64 {
+        self.doppler_scale
+    }
+
+    /// The longest walking span between two step increases (spec v1.5).
+    pub fn step_batch_s(&self) -> f64 {
+        self.step_batch_s
+    }
+
+    /// How long without a step increase reads as stationary (spec v1.5): a
+    /// pedometer that delivers in batches stretches it to the batches it has shown.
+    pub fn zupt_window_s(&self) -> f64 {
+        ZUPT_NO_STEP_S
+            .max(ZUPT_BATCH_MARGIN * self.step_batch_s)
+            .min(ZUPT_MAX_NO_STEP_S)
+    }
+
+    /// The pedometer says stationary: steps seen this run, none for
+    /// [`Self::zupt_window_s`], and trusted Doppler not contradicting it.
+    fn zupt_due(&self, t: f64, dop: Option<f64>) -> bool {
+        if !self.steps_seen
+            || self.zupt_released
+            || t - self.last_step_inc_t <= self.zupt_window_s()
+        {
+            return false;
+        }
+        !matches!(dop, Some(d) if self.doppler_trusted && d >= ZUPT_DOPPLER_OVERRIDE_MPS)
+    }
+
+    /// A fresh estimator for the segment after a pause: same configuration,
+    /// seeded with this one's stride, which is itself the carried stride when
+    /// this segment learned none.
+    pub const fn next_segment(&self) -> Self {
+        let mut next =
+            Self::with_config(self.max_speed_mps, self.expected_interval_s, self.stride_m);
+        next.learn_stride = self.learn_stride;
+        next
+    }
+
+    /// The same estimator for a stretch on a source whose speed is not its
+    /// own Doppler: its stride is used, never learned.
+    pub const fn without_stride_learning(mut self) -> Self {
+        self.learn_stride = false;
+        self
+    }
+
+    /// Whether a fix may teach stride: by its Doppler sigma `sa` when its
+    /// credit came from Doppler, else by its position accuracy.
+    fn stride_grade(&self, accuracy_m: Option<f64>, doppler_sa: Option<f64>) -> bool {
+        if !self.learn_stride {
+            return false;
+        }
+        match doppler_sa {
+            Some(sa) => sa <= STRIDE_MAX_SPEED_SIGMA_MPS,
+            None => !matches!(valid(accuracy_m), Some(a) if a > STRIDE_MAX_POS_SIGMA_M),
+        }
+    }
+
+    pub fn max_speed_mps(&self) -> f64 {
+        self.max_speed_mps
+    }
+
+    pub fn expected_interval_s(&self) -> f64 {
+        self.expected_interval_s
+    }
+
+    /// Clock of the last fix the filter took, `None` before the first.
+    pub fn last_fix_t(&self) -> Option<f64> {
+        self.t
+    }
+
+    /// `t` is seconds on a clock monotonic within the run. Returns the metres
+    /// this fix credited.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_fix(
+        &mut self,
+        t: f64,
+        lat: f64,
+        lng: f64,
+        accuracy_m: Option<f64>,
+        speed_mps: Option<f64>,
+        speed_accuracy_mps: Option<f64>,
+        bearing_deg: Option<f64>,
+    ) -> f64 {
+        if !(t.is_finite() && lat.is_finite() && lng.is_finite()) {
+            return 0.0;
+        }
+        if matches!(valid(accuracy_m), Some(a) if a > MAX_POS_SIGMA_M) {
+            return 0.0;
+        }
+        let (lat0, lng0) = *self.origin.get_or_insert((lat, lng));
+        let zx = wrap_lng(lng - lng0) * DEG_TO_RAD * EARTH_RADIUS_M * libm::cos(lat0 * DEG_TO_RAD);
+        let zy = (lat - lat0) * DEG_TO_RAD * EARTH_RADIUS_M;
+        let sigma = valid(accuracy_m)
+            .filter(|a| *a > 0.0)
+            .unwrap_or(MIN_POS_SIGMA_M);
+        let floored = sigma.max(MIN_POS_SIGMA_M);
+        let r_stated = floored * floored;
+        let r = (r_stated * self.r_scale).max(MIN_POS_SIGMA_M * MIN_POS_SIGMA_M);
+
+        if let Some(last) = self.t {
+            if t <= last {
+                return 0.0;
+            }
+        }
+        let doppler = doppler_speed(speed_mps, speed_accuracy_mps, self.max_speed_mps);
+        let dop = doppler.map(|(s, _)| s);
+        let (mut x, mut y, last) = match (self.axes, self.t) {
+            (Some((x, y)), Some(last)) if t - last <= self.gap_s => (x, y, last),
+            _ => {
+                // (Re-)anchor. Steps buffered across a real gap are committed
+                // now, and the straight line across it, less its 1-sigma
+                // uncertainty, is a lower bound on the distance covered: the
+                // GPS credit makes up whatever the steps fall short of it.
+                let mut gap_m = 0.0;
+                if let (Some((px, py)), Some(last)) = (self.axes, self.t) {
+                    self.step_distance_m += self.pending_step_m;
+                    let d = libm::hypot(zx - px.p, zy - py.p);
+                    let lower = (d - libm::sqrt(px.a + py.a + 2.0 * r))
+                        .min(self.max_speed_mps * (t - last));
+                    if lower > self.pending_step_m {
+                        gap_m = lower - self.pending_step_m;
+                        self.gps_distance_m += gap_m;
+                    }
+                    self.step_over_chord_m += (self.pending_step_m - lower.max(0.0)).max(0.0);
+                    if self.open_gaps as usize == MAX_OPEN_GAPS {
+                        self.gaps.copy_within(1.., 0);
+                        self.open_gaps -= 1;
+                    }
+                    self.gaps[self.open_gaps as usize] = (last, t, gap_m);
+                    self.open_gaps += 1;
+                }
+                self.pending_step_m = 0.0;
+                self.stride_ok = self.stride_grade(accuracy_m, doppler.map(|(_, sa)| sa));
+                self.win_stale = false;
+                // The first fix also starts the window: a step sample before it
+                // counted steps no fix measured metres for.
+                if !self.stride_ok || self.t.is_none() {
+                    self.empty_window(t);
+                }
+                self.axes = Some((Axis::new(zx, r), Axis::new(zy, r)));
+                self.t = Some(t);
+                self.xc_last = (zx, zy, t);
+                self.ds_last = (zx, zy, t, dop, valid(bearing_deg));
+                self.reject_streak = 0;
+                self.zupt_anchor = None;
+                return gap_m;
+            }
+        };
+        // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
+        self.pending_step_m = 0.0;
+        let dt = t - last;
+        self.t = Some(t);
+        x.predict(dt);
+        y.predict(dt);
+
+        // 1. Innovation gate on the predicted position.
+        let (yx, yy) = (zx - x.p, zy - y.p);
+        let (pax, pay) = (x.a, y.a);
+        let nis = yx * yx / (pax + r) + yy * yy / (pay + r);
+        let accepted = nis <= GATE_CHI2;
+        if accepted {
+            self.reject_streak = 0;
+            x.update_pos(zx, r);
+            y.update_pos(zy, r);
+            // 2. Adaptive R: covariance matching, sample clamped, EMA, bounded.
+            let sample =
+                (((yx * yx - pax) + (yy * yy - pay)) / (2.0 * r_stated)).clamp(0.0, R_SCALE_MAX);
+            let ema = (1.0 - R_SCALE_ALPHA) * self.r_scale + R_SCALE_ALPHA * sample;
+            self.r_scale = ema.clamp(R_SCALE_MIN, R_SCALE_MAX);
+        } else {
+            self.rejected_fixes += 1;
+            self.reject_streak += 1;
+            if self.reject_streak > GATE_MAX_REJECTS {
+                x.reset_pos(zx, r);
+                y.reset_pos(zy, r);
+                self.reject_streak = 0;
+                self.xc_last = (zx, zy, t);
+                self.ds_last = (zx, zy, t, dop, valid(bearing_deg));
+            }
+        }
+
+        // 3. Pedometer zero-velocity update.
+        let mut zupt = self.zupt_due(t, dop);
+        let mut chord = None;
+        if zupt {
+            match self.zupt_anchor {
+                None => self.zupt_anchor = Some((x.p, y.p)),
+                Some((ax, ay)) => {
+                    let moved = libm::hypot(x.p - ax, y.p - ay);
+                    if moved > ZUPT_RELEASE_M {
+                        // The pedometer stalled while the runner moved: stop trusting it until it counts again.
+                        self.zupt_released = true;
+                        self.zupt_anchor = None;
+                        zupt = false;
+                        chord = Some(moved);
+                    }
+                }
+            }
+        } else {
+            self.zupt_anchor = None;
+        }
+        if zupt {
+            self.zupt_fixes += 1;
+            let rz = ZUPT_VEL_SIGMA_MPS * ZUPT_VEL_SIGMA_MPS;
+            x.update_vel(0.0, rz);
+            y.update_vel(0.0, rz);
+        }
+
+        // 4. Doppler-vs-position cross-check: Doppler speed against the raw
+        //    fixes' displacement projected on the Doppler bearing.
+        let bearing = valid(bearing_deg);
+        let checkable = !matches!(valid(accuracy_m), Some(a) if a > CHECK_MAX_POS_SIGMA_M);
+        if accepted && checkable {
+            let (lx, ly, lt) = self.xc_last;
+            let span = t - lt;
+            if let (Some(d), Some(bd), false) = (dop, bearing, zupt) {
+                if d >= POS_ONLY_STATIONARY_SPEED_MPS && span <= XCHECK_MAX_SPAN_S {
+                    let b = bd * DEG_TO_RAD;
+                    let u = ((zx - lx) * libm::sin(b) + (zy - ly) * libm::cos(b)) / span;
+                    if self.xc_time == 0.0 {
+                        self.xc_doppler = d;
+                        self.xc_pos = d;
+                    } else {
+                        let alpha = (span / XCHECK_TAU_S).min(1.0);
+                        self.xc_doppler += alpha * (d - self.xc_doppler);
+                        self.xc_pos += alpha * (u - self.xc_pos);
+                    }
+                    self.xc_time += span;
+                    if self.xc_time >= XCHECK_MIN_S {
+                        let diff = (self.xc_doppler - self.xc_pos).abs();
+                        let reference = self.xc_pos.abs();
+                        let flip = if self.doppler_trusted {
+                            diff > XCHECK_ENTER_ABS_MPS.max(XCHECK_ENTER_REL * reference)
+                        } else {
+                            diff < XCHECK_EXIT_ABS_MPS.max(XCHECK_EXIT_REL * reference)
+                        };
+                        self.xc_persist_s = if flip { self.xc_persist_s + span } else { 0.0 };
+                        if self.xc_persist_s >= XCHECK_PERSIST_S {
+                            self.doppler_trusted = !self.doppler_trusted;
+                            self.xc_persist_s = 0.0;
+                        }
+                    }
+                }
+            }
+            self.xc_last = (zx, zy, t);
+
+            // 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+            //     fixes' displacement along the span's mean Doppler bearing and of
+            //     the trapezoid Doppler distance over the same span.
+            let (dlx, dly, dlt, ldop, lb) = self.ds_last;
+            let ds_span = t - dlt;
+            if let (Some(d), Some(ld), Some(bd), Some(lbd), false) = (dop, ldop, bearing, lb, zupt)
+            {
+                let turn = (bd - lbd).abs() % 360.0;
+                if d >= DSCALE_MIN_SPEED_MPS
+                    && ld >= DSCALE_MIN_SPEED_MPS
+                    && ds_span <= XCHECK_MAX_SPAN_S
+                    && turn.min(360.0 - turn) <= DSCALE_MAX_TURN_DEG
+                {
+                    let (b0, b1) = (lbd * DEG_TO_RAD, bd * DEG_TO_RAD);
+                    let ux = libm::sin(b0) + libm::sin(b1);
+                    let uy = libm::cos(b0) + libm::cos(b1);
+                    let n = libm::hypot(ux, uy);
+                    let w = libm::exp(-ds_span / DSCALE_TAU_S);
+                    self.ds_pos = w * self.ds_pos + ((zx - dlx) * ux + (zy - dly) * uy) / n;
+                    self.ds_dop = w * self.ds_dop + 0.5 * (ld + d) * ds_span;
+                    self.ds_time += ds_span;
+                    if self.ds_time >= DSCALE_MIN_S && self.ds_dop > 0.0 {
+                        self.doppler_scale =
+                            (self.ds_pos / self.ds_dop).clamp(DSCALE_MIN, DSCALE_MAX);
+                    }
+                }
+            }
+            self.ds_last = (zx, zy, t, dop, bearing);
+        }
+
+        // 5. Doppler velocity update.
+        let scale = self.doppler_scale;
+        let use_dop = doppler
+            .filter(|_| self.doppler_trusted)
+            .map(|(s, sa)| (s * scale, sa));
+        if let (Some((d, sa)), Some(bd), false) = (use_dop, bearing, zupt) {
+            if d >= STATIONARY_SPEED_MPS {
+                let sa_floored = sa.max(MIN_SPEED_SIGMA_MPS);
+                let rv = sa_floored * sa_floored;
+                let b = bd * DEG_TO_RAD;
+                x.update_vel(d * libm::sin(b), rv);
+                y.update_vel(d * libm::cos(b), rv);
+            }
+        }
+        self.axes = Some((x, y));
+
+        // 6. Credit.
+        let inc = match (chord, zupt) {
+            (Some(c), _) => c,
+            (None, true) => 0.0,
+            (None, false) => {
+                let (speed, floor) = match use_dop {
+                    Some((d, _)) => (d, STATIONARY_SPEED_MPS),
+                    None => (libm::hypot(x.v, y.v), POS_ONLY_STATIONARY_SPEED_MPS),
+                };
+                if speed < floor {
+                    0.0
+                } else {
+                    speed.min(self.max_speed_mps) * dt
+                }
+            }
+        };
+        self.gps_distance_m += inc;
+        let credit_sa = match (use_dop, chord) {
+            (Some((_, sa)), None) => Some(sa),
+            _ => None,
+        };
+        self.stride_ok = self.stride_grade(accuracy_m, credit_sa);
+        // A step sample that fell stale since the last fix emptied the window
+        // inside this fix's interval, so the window no longer holds the steps its
+        // metres cover.
+        if self.stride_ok && !self.win_stale {
+            self.win_m += inc;
+        } else {
+            self.empty_window(t);
+        }
+        self.win_stale = false;
+        inc
+    }
+
+    /// Empty the stride window at the fix at `t`. Its metres start after `t`,
+    /// so a step sample whose interval reaches back before `t` must not refill
+    /// it.
+    fn empty_window(&mut self, t: f64) {
+        self.win_steps = 0;
+        self.win_m = 0.0;
+        self.win_from_t = t;
+    }
+
+    /// Cumulative pedometer count. Learns a stride while GPS is good and
+    /// buffers steps x stride for the time since the last fix, dropped when
+    /// the next fix integrates it and committed only if the gap exceeds
+    /// [`GAP_S`] x the expected interval (at that fix, or at [`Self::finish`]).
+    pub fn add_steps(&mut self, t: f64, cumulative_steps: i64) {
+        if !t.is_finite() {
+            return;
+        }
+        let (prev, prev_t) = (self.last_steps, self.last_step_t);
+        self.last_steps = Some(cumulative_steps);
+        self.last_step_t = Some(t);
+        let (prev, prev_t) = match (prev, prev_t) {
+            (Some(prev), Some(prev_t)) if cumulative_steps >= prev && t > prev_t => (prev, prev_t),
+            _ => {
+                // A baseline counts no interval, so the stride window's metres so far
+                // have no steps: start the window here, as a learn does. A stale one
+                // also marks the window, as any stale sample does, so the next fix
+                // empties it.
+                if matches!(self.t, Some(fix_t) if t - fix_t > self.fresh_fix_s) {
+                    self.win_stale = true;
+                }
+                match self.t {
+                    // v1.7: stamped before the last fix, so the window's metres
+                    // already start after this stamp; the next sample's steps
+                    // reach back before them and must not refill it.
+                    Some(fix_t) if t < fix_t => self.empty_window(fix_t),
+                    _ => {
+                        self.win_steps = 0;
+                        self.win_m = 0.0;
+                    }
+                }
+                return;
+            }
+        };
+        let d = cumulative_steps - prev;
+        let in_gap = self.attribute_steps(prev_t, t, d);
+        if d > 0 {
+            if self.steps_seen {
+                let span = t - self.last_step_inc_t;
+                if d as f64 >= ZUPT_BATCH_MIN_CADENCE_SPS * span {
+                    self.step_batch_s = self.step_batch_s.max(span);
+                }
+            }
+            self.steps_seen = true;
+            self.last_step_inc_t = t;
+            self.zupt_released = false;
+        }
+        // A sample whose interval reaches into a gap, or stamped before the last
+        // fix, holds steps GPS measured no metres for, so it must not teach stride.
+        if let Some(fix_t) = self.t {
+            if !in_gap
+                && prev_t >= self.win_from_t
+                && t - fix_t >= 0.0
+                && t - fix_t <= self.fresh_fix_s
+            {
+                if !self.stride_ok {
+                    return;
+                }
+                self.win_steps += d;
+                if self.win_steps >= STRIDE_WINDOW_STEPS {
+                    let stride = self.win_m / self.win_steps as f64;
+                    if (MIN_STRIDE_M..=MAX_STRIDE_M).contains(&stride) {
+                        self.stride_m = Some(match self.stride_m {
+                            None => stride,
+                            Some(s) => (1.0 - STRIDE_EMA_ALPHA) * s + STRIDE_EMA_ALPHA * stride,
+                        });
+                    }
+                    self.win_steps = 0;
+                    self.win_m = 0.0;
+                }
+                return;
+            }
+            if t - fix_t > self.fresh_fix_s {
+                self.win_stale = true;
+            }
+        }
+        self.win_steps = 0;
+        self.win_m = 0.0;
+    }
+
+    /// v1.6: a sample's `d` steps were taken across (prev_t, t], so each part
+    /// of that interval gets its share. The part after the last fix is
+    /// buffered; the part inside each gap a re-anchor closed since the
+    /// previous sample tops that gap's credit up to its steps. Returns whether
+    /// (prev_t, t] overlaps any open gap.
+    fn attribute_steps(&mut self, prev_t: f64, t: f64, d: i64) -> bool {
+        let open = core::mem::take(&mut self.open_gaps) as usize;
+        let in_gap = self.gaps[..open]
+            .iter()
+            .any(|&(start_t, end_t, _)| end_t.min(t) > prev_t.max(start_t));
+        let rate = match self.stride_m {
+            Some(stride) if d > 0 => (d as f64 * stride / (t - prev_t)).min(self.max_speed_mps),
+            _ => 0.0,
+        };
+        if rate > 0.0 {
+            let lo = match self.t {
+                Some(fix_t) => prev_t.max(fix_t),
+                None => prev_t,
+            };
+            if t > lo {
+                self.pending_step_m += rate * (t - lo);
+            }
+        }
+        for i in 0..open {
+            let (start_t, end_t, top_up_m) = self.gaps[i];
+            let from = prev_t.max(start_t);
+            let to = end_t.min(t);
+            let mut take = 0.0;
+            if rate > 0.0 && to > from {
+                let late = rate * (to - from);
+                self.step_distance_m += late;
+                take = late.min(top_up_m);
+                self.gps_distance_m -= take;
+                self.step_over_chord_m += late - take;
+            }
+            // A gap ending after this sample stays open, less the credit it
+            // gave up, so the next sample shares the rest of it.
+            if end_t > t {
+                self.gaps[self.open_gaps as usize] = (start_t, end_t, top_up_m - take);
+                self.open_gaps += 1;
+            }
+        }
+        in_gap
+    }
+
+    /// End of run: commit buffered steps if the trailing gap exceeds [`GAP_S`]
+    /// x the expected interval.
+    pub fn finish(&mut self, t: f64) {
+        if let Some(fix_t) = self.t {
+            if t.is_finite() && t - fix_t > self.gap_s {
+                self.step_distance_m += self.pending_step_m;
+                self.step_over_chord_m += self.pending_step_m;
+            }
+        }
+        self.pending_step_m = 0.0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const VECTORS: &str = include_str!("../../../../fixtures/gps_distance_vectors.json");
+
+    fn opt(v: &serde_json::Value, key: &str) -> Option<f64> {
+        v.get(key).and_then(serde_json::Value::as_f64)
+    }
+
+    #[test]
+    fn the_golden_vectors_replay_within_tolerance() {
+        let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
+        let tol = doc["tolerance_m"].as_f64().expect("tolerance_m");
+        let scenarios = doc["scenarios"].as_array().expect("scenarios");
+        assert!(!scenarios.is_empty());
+        for sc in scenarios {
+            let name = sc["name"].as_str().unwrap_or("?");
+            let mut e = GpsDistanceEstimator::with_config(
+                sc["maxSpeedMps"].as_f64().expect("maxSpeedMps"),
+                sc["expectedIntervalS"].as_f64().expect("expectedIntervalS"),
+                sc["initialStrideM"].as_f64(),
+            );
+            if sc["learnStride"].as_bool() == Some(false) {
+                e = e.without_stride_learning();
+            }
+            let events = sc["events"].as_array().expect("events");
+            let want = sc["expected"]["distanceAfterEachEventM"]
+                .as_array()
+                .expect("expected");
+            assert_eq!(
+                events.len(),
+                want.len(),
+                "{name}: one expectation per event"
+            );
+            for (i, ev) in events.iter().enumerate() {
+                let t = ev["t"].as_f64().expect("t");
+                match ev["type"].as_str() {
+                    Some("fix") => {
+                        e.add_fix(
+                            t,
+                            opt(ev, "lat").unwrap_or(f64::NAN),
+                            opt(ev, "lng").unwrap_or(f64::NAN),
+                            opt(ev, "acc"),
+                            opt(ev, "speed"),
+                            opt(ev, "speedAcc"),
+                            opt(ev, "bearing"),
+                        );
+                    }
+                    Some("steps") => {
+                        if let Some(count) = ev["count"].as_i64() {
+                            e.add_steps(t, count);
+                        }
+                    }
+                    Some("finish") => e.finish(t),
+                    other => panic!("{name}: unknown event {other:?}"),
+                }
+                let expected = want[i].as_f64().expect("number");
+                assert!(
+                    (e.distance_m() - expected).abs() <= tol,
+                    "{name}: after event {i} got {} want {expected}",
+                    e.distance_m()
+                );
+            }
+            let exp = &sc["expected"];
+            let gps = exp["gpsDistanceM"].as_f64().expect("gpsDistanceM");
+            let step = exp["stepDistanceM"].as_f64().expect("stepDistanceM");
+            assert!((e.gps_distance_m() - gps).abs() <= tol, "{name}: gps");
+            assert!((e.step_distance_m() - step).abs() <= tol, "{name}: step");
+            let over = exp["stepOverChordM"].as_f64().expect("stepOverChordM");
+            assert!(
+                (e.step_over_chord_m() - over).abs() <= tol,
+                "{name}: step over chord"
+            );
+            match exp["strideM"].as_f64() {
+                Some(s) => assert!(
+                    (e.stride_m().expect("stride learned") - s).abs() <= tol,
+                    "{name}: stride"
+                ),
+                None => assert!(e.stride_m().is_none(), "{name}: no stride"),
+            }
+            assert_eq!(
+                Some(u64::from(e.rejected_fixes())),
+                exp["rejectedFixes"].as_u64(),
+                "{name}: rejectedFixes"
+            );
+            assert_eq!(
+                Some(u64::from(e.zupt_fixes())),
+                exp["zuptFixes"].as_u64(),
+                "{name}: zuptFixes"
+            );
+            let r_scale = exp["rScale"].as_f64().expect("rScale");
+            assert!((e.r_scale() - r_scale).abs() <= 1e-6, "{name}: rScale");
+            let doppler_scale = exp["dopplerScale"].as_f64().expect("dopplerScale");
+            assert!(
+                (e.doppler_scale() - doppler_scale).abs() <= 1e-6,
+                "{name}: dopplerScale"
+            );
+            assert_eq!(
+                Some(e.doppler_trusted()),
+                exp["dopplerTrusted"].as_bool(),
+                "{name}: dopplerTrusted"
+            );
+        }
+    }
+
+    #[test]
+    fn the_fixture_constants_are_this_port_s_constants() {
+        let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
+        let c = &doc["constants"];
+        let f = |k: &str| c[k].as_f64().unwrap_or_else(|| panic!("constant {k}"));
+        assert_eq!(f("EARTH_RADIUS_M"), EARTH_RADIUS_M);
+        assert_eq!(f("Q_ACCEL"), Q_ACCEL);
+        assert_eq!(f("MIN_POS_SIGMA_M"), MIN_POS_SIGMA_M);
+        assert_eq!(f("MAX_POS_SIGMA_M"), MAX_POS_SIGMA_M);
+        assert_eq!(f("INIT_VEL_VAR"), INIT_VEL_VAR);
+        assert_eq!(f("MIN_SPEED_SIGMA_MPS"), MIN_SPEED_SIGMA_MPS);
+        assert_eq!(f("DEFAULT_SPEED_SIGMA_MPS"), DEFAULT_SPEED_SIGMA_MPS);
+        assert_eq!(f("MAX_SPEED_SIGMA_MPS"), MAX_SPEED_SIGMA_MPS);
+        assert_eq!(f("STATIONARY_SPEED_MPS"), STATIONARY_SPEED_MPS);
+        assert_eq!(
+            f("POS_ONLY_STATIONARY_SPEED_MPS"),
+            POS_ONLY_STATIONARY_SPEED_MPS
+        );
+        assert_eq!(f("GAP_S"), GAP_S);
+        assert_eq!(f("FRESH_FIX_S"), FRESH_FIX_S);
+        assert_eq!(f("MAX_OPEN_GAPS"), MAX_OPEN_GAPS as f64);
+        assert_eq!(f("STRIDE_WINDOW_STEPS") as i64, STRIDE_WINDOW_STEPS);
+        assert_eq!(f("MIN_STRIDE_M"), MIN_STRIDE_M);
+        assert_eq!(f("MAX_STRIDE_M"), MAX_STRIDE_M);
+        assert_eq!(f("STRIDE_EMA_ALPHA"), STRIDE_EMA_ALPHA);
+        assert_eq!(f("STRIDE_MAX_SPEED_SIGMA_MPS"), STRIDE_MAX_SPEED_SIGMA_MPS);
+        assert_eq!(f("STRIDE_MAX_POS_SIGMA_M"), STRIDE_MAX_POS_SIGMA_M);
+        assert_eq!(f("CHECK_MAX_POS_SIGMA_M"), CHECK_MAX_POS_SIGMA_M);
+        assert_eq!(f("GATE_CHI2"), GATE_CHI2);
+        assert_eq!(f("GATE_MAX_REJECTS") as u32, GATE_MAX_REJECTS);
+        assert_eq!(f("R_SCALE_ALPHA"), R_SCALE_ALPHA);
+        assert_eq!(f("R_SCALE_MIN"), R_SCALE_MIN);
+        assert_eq!(f("R_SCALE_MAX"), R_SCALE_MAX);
+        assert_eq!(f("XCHECK_TAU_S"), XCHECK_TAU_S);
+        assert_eq!(f("XCHECK_MIN_S"), XCHECK_MIN_S);
+        assert_eq!(f("XCHECK_ENTER_ABS_MPS"), XCHECK_ENTER_ABS_MPS);
+        assert_eq!(f("XCHECK_ENTER_REL"), XCHECK_ENTER_REL);
+        assert_eq!(f("XCHECK_EXIT_ABS_MPS"), XCHECK_EXIT_ABS_MPS);
+        assert_eq!(f("XCHECK_EXIT_REL"), XCHECK_EXIT_REL);
+        assert_eq!(f("XCHECK_PERSIST_S"), XCHECK_PERSIST_S);
+        assert_eq!(f("XCHECK_MAX_SPAN_S"), XCHECK_MAX_SPAN_S);
+        assert_eq!(f("DEBIAS_FULL_MPS"), DEBIAS_FULL_MPS);
+        assert_eq!(f("DEBIAS_ZERO_MPS"), DEBIAS_ZERO_MPS);
+        assert_eq!(f("DSCALE_TAU_S"), DSCALE_TAU_S);
+        assert_eq!(f("DSCALE_MIN_S"), DSCALE_MIN_S);
+        assert_eq!(f("DSCALE_MIN"), DSCALE_MIN);
+        assert_eq!(f("DSCALE_MAX"), DSCALE_MAX);
+        assert_eq!(f("DSCALE_MIN_SPEED_MPS"), DSCALE_MIN_SPEED_MPS);
+        assert_eq!(f("DSCALE_MAX_TURN_DEG"), DSCALE_MAX_TURN_DEG);
+        assert_eq!(f("ZUPT_NO_STEP_S"), ZUPT_NO_STEP_S);
+        assert_eq!(f("ZUPT_VEL_SIGMA_MPS"), ZUPT_VEL_SIGMA_MPS);
+        assert_eq!(f("ZUPT_DOPPLER_OVERRIDE_MPS"), ZUPT_DOPPLER_OVERRIDE_MPS);
+        assert_eq!(f("ZUPT_RELEASE_M"), ZUPT_RELEASE_M);
+        assert_eq!(f("ZUPT_BATCH_MIN_CADENCE_SPS"), ZUPT_BATCH_MIN_CADENCE_SPS);
+        assert_eq!(f("ZUPT_BATCH_MARGIN"), ZUPT_BATCH_MARGIN);
+        assert_eq!(f("ZUPT_MAX_NO_STEP_S"), ZUPT_MAX_NO_STEP_S);
+    }
+
+    #[test]
+    fn the_fixture_is_this_port_s_spec_version() {
+        let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
+        assert_eq!(SPEC_VERSION, "1.8");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.8"));
+    }
+
+    #[test]
+    fn a_doppler_fix_credits_speed_times_interval() {
+        let mut e = GpsDistanceEstimator::default();
+        assert_eq!(
+            e.add_fix(0.0, 40.0, -75.0, Some(4.0), Some(3.0), None, None),
+            0.0
+        );
+        let inc = e.add_fix(2.0, 40.00005, -75.0, Some(4.0), Some(3.0), None, None);
+        assert!((inc - 6.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn a_gap_over_ten_seconds_reanchors_crediting_its_chord_lower_bound() {
+        let mut e = GpsDistanceEstimator::default();
+        e.add_fix(0.0, 40.0, -75.0, None, Some(3.0), None, None);
+        // 111.195 m north, less sqrt(9 + 9 + 2 * 9) = 6 m of uncertainty.
+        let chord = 0.001 * DEG_TO_RAD * EARTH_RADIUS_M - 6.0;
+        let inc = e.add_fix(30.0, 40.001, -75.0, None, Some(3.0), None, None);
+        assert!((inc - chord).abs() < 1e-9);
+        assert!((e.distance_m() - chord).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_fix_stating_worse_than_fifty_metres_is_ignored() {
+        let mut e = GpsDistanceEstimator::default();
+        assert_eq!(
+            e.add_fix(0.0, 40.0, -75.0, Some(51.0), None, None, None),
+            0.0
+        );
+        assert_eq!(e.last_fix_t(), None);
+        e.add_fix(1.0, 40.0, -75.0, Some(50.0), None, None, None);
+        e.add_fix(
+            2.0,
+            40.00003,
+            -75.0,
+            Some(51.0),
+            Some(3.0),
+            Some(0.3),
+            Some(0.0),
+        );
+        assert_eq!(e.last_fix_t(), Some(1.0));
+        assert_eq!(e.distance_m(), 0.0);
+    }
+
+    #[test]
+    fn without_stride_learning_keeps_the_seed_across_segments() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.95))
+            .without_stride_learning();
+        learn_stride(&mut e);
+        assert_eq!(e.stride_m(), Some(0.95));
+        let mut next = e.next_segment();
+        learn_stride(&mut next);
+        assert_eq!(next.stride_m(), Some(0.95));
+        let mut unseeded = GpsDistanceEstimator::default().without_stride_learning();
+        learn_stride(&mut unseeded);
+        assert_eq!(unseeded.stride_m(), None);
+    }
+
+    fn learn_stride(e: &mut GpsDistanceEstimator) {
+        let deg_per_m = 180.0 / (core::f64::consts::PI * EARTH_RADIUS_M);
+        e.add_fix(0.0, 45.0, 7.0, Some(5.0), Some(0.0), Some(0.5), Some(0.0));
+        e.add_steps(0.5, 0);
+        for i in 1..=20i64 {
+            let t = i as f64;
+            let lat = 45.0 + 3.0 * t * deg_per_m;
+            e.add_fix(t, lat, 7.0, Some(5.0), Some(3.0), Some(0.5), Some(0.0));
+            e.add_steps(t + 0.5, 3 * i);
+        }
+    }
+
+    #[test]
+    fn the_next_segment_carries_the_learned_stride_and_the_configuration() {
+        let mut first = GpsDistanceEstimator::with_config(6.0, 15.0, None);
+        learn_stride(&mut first);
+        assert!((first.stride_m().expect("learned") - 1.0).abs() < 1e-9);
+        let next = first.next_segment();
+        assert!((next.stride_m().expect("carried") - 1.0).abs() < 1e-9);
+        assert_eq!(next.max_speed_mps(), 6.0);
+        assert_eq!(next.expected_interval_s(), 15.0);
+        assert_eq!(next.distance_m(), 0.0);
+        assert_eq!(next.last_fix_t(), None);
+    }
+
+    #[test]
+    fn a_segment_that_learned_nothing_passes_on_its_seed() {
+        let seeded = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.95));
+        assert_eq!(seeded.next_segment().next_segment().stride_m(), Some(0.95));
+        assert_eq!(
+            GpsDistanceEstimator::default().next_segment().stride_m(),
+            None
+        );
+        let out_of_range = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(3.0));
+        assert_eq!(out_of_range.stride_m(), None);
+    }
+
+    #[test]
+    fn a_carried_stride_blends_with_the_next_learned_one() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.95));
+        learn_stride(&mut e);
+        assert!((e.stride_m().expect("blended") - 0.96).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_minute_interval_is_not_a_gap_when_it_is_the_expected_one() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 60.0, None);
+        e.add_fix(0.0, 40.0, -75.0, None, Some(3.0), None, None);
+        let inc = e.add_fix(60.0, 40.0016, -75.0, None, Some(3.0), None, None);
+        assert!((inc - 180.0).abs() < 1e-9);
+        // 601 s is past the 600 s gap window: a re-anchor credited by its
+        // chord less its uncertainty, not by Doppler x interval.
+        let gap = e.add_fix(661.0, 40.02, -75.0, None, Some(3.0), None, None);
+        assert!((gap - 2040.0015971).abs() < 1e-6, "{gap}");
+    }
+
+    fn east_m_per_deg() -> f64 {
+        111195.0 * libm::cos(40.0 * core::f64::consts::PI / 180.0)
+    }
+
+    fn eastward() -> GpsDistanceEstimator {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.5))
+            .without_stride_learning();
+        for i in 0..=25 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            e.add_steps(i as f64 + 0.5, 4 * i + 2);
+        }
+        e
+    }
+
+    #[test]
+    fn a_late_step_batch_tops_a_gap_up_without_counting_its_chord_twice() {
+        // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+        // lower bound wins. The batch after the resuming fix moves 10 m of
+        // that credit from the chord to the steps and adds nothing (v1.6).
+        let mut e = eastward();
+        e.add_steps(50.0, 202);
+        e.add_fix(
+            55.0,
+            40.0,
+            -75.0 + 220.0 / east_m_per_deg(),
+            Some(3.0),
+            Some(4.0),
+            Some(0.3),
+            Some(90.0),
+        );
+        let before = e.distance_m();
+        let steps = e.step_distance_m();
+        e.add_steps(56.5, 228);
+        assert!((e.distance_m() - before).abs() < 1e-9, "{}", e.distance_m());
+        assert!(
+            (e.step_distance_m() - steps - 10.0).abs() < 1e-9,
+            "{}",
+            e.step_distance_m()
+        );
+    }
+
+    #[test]
+    fn a_late_sample_stamped_inside_a_gap_shares_only_its_own_interval() {
+        // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+        // of the gap, which the fix at 55 closed before the sample arrived, at
+        // the sample's rate would credit 5 m (v1.6).
+        let mut e = eastward();
+        e.add_steps(50.0, 202);
+        e.add_fix(
+            55.0,
+            40.0,
+            -75.0 + 110.0 / east_m_per_deg(),
+            Some(3.0),
+            Some(4.0),
+            Some(0.3),
+            Some(90.0),
+        );
+        let before = e.distance_m();
+        let steps = e.step_distance_m();
+        e.add_steps(51.0, 204);
+        assert!(
+            (e.distance_m() - before - 1.0).abs() < 1e-9,
+            "{}",
+            e.distance_m()
+        );
+        assert!(
+            (e.step_distance_m() - steps - 1.0).abs() < 1e-9,
+            "{}",
+            e.step_distance_m()
+        );
+    }
+
+    #[test]
+    fn a_fix_bridging_a_short_stall_teaches_no_stride_from_its_credit() {
+        // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+        // whose samples emptied the window; feeding its 28 m to the window
+        // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m (v1.6).
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if !(30..36).contains(&i) {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            e.add_steps(i as f64 + 0.5, 4 * i + 2);
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-9, "{stride}");
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+    /// the baseline; counting the window's metres from the first fix put 30 s of
+    /// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+    #[test]
+    fn the_first_step_sample_of_a_stretch_starts_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            if i > 0 && i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands
+    /// inside a 7 s stall the fix at 18 bridges, so it is stale as well as the
+    /// baseline; the bridging fix must empty the window rather than feed it 28
+    /// m, which learned 1.171 m.
+    #[test]
+    fn a_stale_first_step_sample_keeps_a_bridged_stall_out_of_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if !(11..=17).contains(&i) {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            if i % 15 == 14 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// The first sample, at 0.5, and the second, at 15.5, come before the
+    /// first fix at 20; the first fix starts the window, so the sample at
+    /// 30.5, whose interval began before it, empties the window rather than
+    /// pairing 15 s of steps with 10 s of metres, which learned 0.787 m.
+    #[test]
+    fn the_first_fix_of_a_stretch_starts_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if i >= 20 {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            if i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// The baseline, stamped 15.5, arrives after the fix at 18, so the window's
+    /// metres start at 18; the sample at 30.5, whose steps start at 15.5, must
+    /// empty the window rather than pair 15 s of steps with 12 s of metres,
+    /// which learned 0.8 m (v1.7).
+    #[test]
+    fn a_step_baseline_delivered_after_a_later_fix_keeps_its_steps_out_of_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            if i == 18 {
+                e.add_steps(15.5, 62);
+            }
+            if i > 15 && i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose
+    /// 104 m of steps the resuming fix puts beside no chord (the runner looped
+    /// back), a 55.39 m one, and one longer than the steps (v1.7).
+    #[test]
+    fn step_over_chord_counts_only_the_steps_a_gap_credited_beyond_its_chord() {
+        for (east_m, want) in [(24.0, 104.0), (80.0, 48.612667), (160.0, 0.0)] {
+            let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(1.0))
+                .without_stride_learning();
+            let fix = |e: &mut GpsDistanceEstimator, t: f64, east: f64| {
+                e.add_fix(
+                    t,
+                    40.0,
+                    -75.0 + east / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            };
+            for i in 0..=30 {
+                if i <= 5 {
+                    fix(&mut e, i as f64, 4.0 * i as f64);
+                }
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+            fix(&mut e, 31.0, east_m);
+            e.add_steps(31.5, 126);
+            assert!(
+                (e.step_distance_m() - 104.0).abs() < 1e-9,
+                "{}",
+                e.step_distance_m()
+            );
+            assert!(
+                (e.step_over_chord_m() - want).abs() < 1e-6,
+                "resume {east_m} m: {}",
+                e.step_over_chord_m()
+            );
+        }
+    }
+
+    #[test]
+    fn a_stretch_credits_no_steps_taken_before_its_first_fix() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(1.0))
+            .without_stride_learning();
+        for i in 0..30 {
+            e.add_steps(i as f64 + 0.5, 4 * i);
+        }
+        e.add_fix(30.0, 40.0, -75.0, Some(3.0), None, None, None);
+        e.finish(31.0);
+        assert_eq!(e.distance_m(), 0.0);
+    }
+
+    #[test]
+    fn the_estimator_fits_a_static_without_an_allocator() {
+        static E: GpsDistanceEstimator = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        assert_eq!(E.distance_m(), 0.0);
+    }
+}

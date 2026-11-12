@@ -1,0 +1,336 @@
+{
+  "_doc": "The home-screen widget snapshot (version 1): what apps/mobile_android/lib/today_widget.dart writes over run_app/home_widget and both widgets render with no formatting or translation of their own. `snapshots` are writer output (apps/mobile_android/test/today_widget_test.dart builds `typical` and `no_plan` and compares them, minus written_at_ms). `render_vectors` are what a widget shows for a snapshot on a given local date (TodayWidgetSnapshotTest.kt): a null `header`/`title`/`detail` means the widget's own fallback string, `badge` marks done or skipped, and a null `link` opens the app with no deep link. The snapshot named `not_json` is the literal text `not json`.",
+  "snapshots": {
+    "typical": {
+      "v": 1,
+      "written_at_ms": 1792330200000,
+      "plan_id": "6f1c2a3b-0000-4000-8000-000000000001",
+      "labels": {
+        "header": "Today",
+        "no_plan": "No training plan",
+        "no_plan_action": "Pick a plan",
+        "nothing_scheduled": "Nothing scheduled",
+        "stale": "Open Threkir to update",
+        "rest_day": "Rest day",
+        "done": "Done",
+        "skipped": "Skipped"
+      },
+      "days": [
+        {
+          "date": "2026-10-18",
+          "state": "workout",
+          "title": "Tempo",
+          "detail": "8.00 km · 4:45 /km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000002"
+        },
+        {
+          "date": "2026-10-19",
+          "state": "rest",
+          "title": "Rest day",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-20",
+          "state": "done",
+          "title": "Easy",
+          "detail": "6.00 km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000004"
+        },
+        {
+          "date": "2026-10-21",
+          "state": "skipped",
+          "title": "Recovery",
+          "detail": "45 min",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000005"
+        },
+        {
+          "date": "2026-10-22",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-23",
+          "state": "workout",
+          "title": "Long run",
+          "detail": "16.00 km · 5:30 /km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000006"
+        },
+        {
+          "date": "2026-10-24",
+          "state": "workout",
+          "title": "Autumn 10k",
+          "detail": "10.00 km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000007"
+        }
+      ]
+    },
+    "no_plan": {
+      "v": 1,
+      "written_at_ms": 1792330200000,
+      "labels": {
+        "header": "Today",
+        "no_plan": "No training plan",
+        "no_plan_action": "Pick a plan",
+        "nothing_scheduled": "Nothing scheduled",
+        "stale": "Open Threkir to update",
+        "rest_day": "Rest day",
+        "done": "Done",
+        "skipped": "Skipped"
+      },
+      "days": [
+        {
+          "date": "2026-10-18",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-19",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-20",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-21",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-22",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-23",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-24",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        }
+      ]
+    },
+    "future_version": {
+      "v": 2,
+      "written_at_ms": 1792330200000,
+      "plan_id": "6f1c2a3b-0000-4000-8000-000000000001",
+      "labels": {
+        "header": "Today",
+        "no_plan": "No training plan",
+        "no_plan_action": "Pick a plan",
+        "nothing_scheduled": "Nothing scheduled",
+        "stale": "Open Threkir to update",
+        "rest_day": "Rest day",
+        "done": "Done",
+        "skipped": "Skipped"
+      },
+      "days": [
+        {
+          "date": "2026-10-18",
+          "state": "workout",
+          "title": "Tempo",
+          "detail": "8.00 km · 4:45 /km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000002"
+        },
+        {
+          "date": "2026-10-19",
+          "state": "rest",
+          "title": "Rest day",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-20",
+          "state": "done",
+          "title": "Easy",
+          "detail": "6.00 km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000004"
+        },
+        {
+          "date": "2026-10-21",
+          "state": "skipped",
+          "title": "Recovery",
+          "detail": "45 min",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000005"
+        },
+        {
+          "date": "2026-10-22",
+          "state": "none",
+          "title": "",
+          "detail": ""
+        },
+        {
+          "date": "2026-10-23",
+          "state": "workout",
+          "title": "Long run",
+          "detail": "16.00 km · 5:30 /km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000006"
+        },
+        {
+          "date": "2026-10-24",
+          "state": "workout",
+          "title": "Autumn 10k",
+          "detail": "10.00 km",
+          "plan_workout_id": "6f1c2a3b-0000-4000-8000-000000000007"
+        }
+      ]
+    }
+  },
+  "render_vectors": [
+    {
+      "name": "a workout today",
+      "snapshot": "typical",
+      "today": "2026-10-18",
+      "expect": {
+        "state": "workout",
+        "header": "Today",
+        "title": "Tempo",
+        "detail": "8.00 km · 4:45 /km",
+        "badge": null,
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001/workouts/6f1c2a3b-0000-4000-8000-000000000002"
+      }
+    },
+    {
+      "name": "a rest day",
+      "snapshot": "typical",
+      "today": "2026-10-19",
+      "expect": {
+        "state": "rest",
+        "header": "Today",
+        "title": "Rest day",
+        "detail": "",
+        "badge": null,
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "a done session keeps its size and gains a badge",
+      "snapshot": "typical",
+      "today": "2026-10-20",
+      "expect": {
+        "state": "done",
+        "header": "Today",
+        "title": "Easy",
+        "detail": "6.00 km",
+        "badge": "Done",
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001/workouts/6f1c2a3b-0000-4000-8000-000000000004"
+      }
+    },
+    {
+      "name": "a skipped session",
+      "snapshot": "typical",
+      "today": "2026-10-21",
+      "expect": {
+        "state": "skipped",
+        "header": "Today",
+        "title": "Recovery",
+        "detail": "45 min",
+        "badge": "Skipped",
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001/workouts/6f1c2a3b-0000-4000-8000-000000000005"
+      }
+    },
+    {
+      "name": "a day the plan leaves empty",
+      "snapshot": "typical",
+      "today": "2026-10-22",
+      "expect": {
+        "state": "none",
+        "header": "Today",
+        "title": "Nothing scheduled",
+        "detail": "",
+        "badge": null,
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "the last day of the window",
+      "snapshot": "typical",
+      "today": "2026-10-24",
+      "expect": {
+        "state": "workout",
+        "header": "Today",
+        "title": "Autumn 10k",
+        "detail": "10.00 km",
+        "badge": null,
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001/workouts/6f1c2a3b-0000-4000-8000-000000000007"
+      }
+    },
+    {
+      "name": "past the window",
+      "snapshot": "typical",
+      "today": "2026-10-25",
+      "expect": {
+        "state": "stale",
+        "header": "Today",
+        "title": "Open Threkir to update",
+        "detail": "",
+        "badge": null,
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "a clock moved back before the write day",
+      "snapshot": "typical",
+      "today": "2026-10-17",
+      "expect": {
+        "state": "stale",
+        "header": "Today",
+        "title": "Open Threkir to update",
+        "detail": "",
+        "badge": null,
+        "link": "com.threkir.app://plans/6f1c2a3b-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "no plan",
+      "snapshot": "no_plan",
+      "today": "2026-10-18",
+      "expect": {
+        "state": "no_plan",
+        "header": "Today",
+        "title": "No training plan",
+        "detail": "Pick a plan",
+        "badge": null,
+        "link": "com.threkir.app://plans"
+      }
+    },
+    {
+      "name": "an unknown version is never read",
+      "snapshot": "future_version",
+      "today": "2026-10-18",
+      "expect": {
+        "state": "stale",
+        "header": null,
+        "title": null,
+        "detail": null,
+        "badge": null,
+        "link": null
+      }
+    },
+    {
+      "name": "text that is not a snapshot",
+      "snapshot": "not_json",
+      "today": "2026-10-18",
+      "expect": {
+        "state": "stale",
+        "header": null,
+        "title": null,
+        "detail": null,
+        "badge": null,
+        "link": null
+      }
+    }
+  ]
+}

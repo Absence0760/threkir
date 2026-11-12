@@ -54,7 +54,8 @@ const _bannedHexes = [
   'EF4444', 'DC2626', 'B91C1C', 'F87171', 'F44336', 'D32F2F',
   // crown gold
   'F5B30A',
-  // route-heatmap "kept on map" violet — cartographic, map-layer only
+  // the route heatmap's former "kept on map" violet. The map layers now draw
+  // through the basemap-aware `mapPinnedLine` rungs, so no site may use it.
   '8B5CF6',
 ];
 
@@ -68,29 +69,34 @@ const _exemptFiles = {
 // file -> pattern -> exact expected occurrence count. Patterns are either a
 // six-digit hex suffix from [_bannedHexes] or a Colors.<swatch> name.
 const _dataPalettes = <String, Map<String, int>>{
-  // 6-bucket pace ramp drawn over map tiles (slow -> fast).
-  'lib/widgets/pace_segments.dart': {'EF4444': 1, 'FBBF24': 1, '10B981': 1},
-  // Heat-density scale + its legend gradient.
-  'lib/screens/run_heatmap_screen.dart': {
-    '10B981': 2,
-    'F59E0B': 2,
-    'EF4444': 2,
+  // 6-bucket live pace ramp + the 3-stop finished-run gradient, both drawn
+  // over map tiles (slow -> fast).
+  'lib/widgets/pace_segments.dart': {
+    'EF4444': 1,
+    'FBBF24': 1,
+    '10B981': 1,
+    'FACC15': 1,
+    'DC2626': 1,
   },
-  // Heat-density dots, the featured map-pin ring, and ONE "kept" route line.
-  // The violet is legible over arbitrary basemap tiles and is drawn on the map
-  // and nowhere else: the count is what stops a fourth chrome site importing it
-  // onto a theme surface, which is how three of them got there.
+  // Heat-density dots and the featured map-pin ring. The kept route line
+  // now draws in `mapPinnedLine`'s basemap-keyed rungs.
   'lib/screens/routes_heatmap_screen.dart': {
     'Colors.red': 1,
     'FACC15': 1,
-    '8B5CF6': 1,
   },
   // Map-overlay accent (selected-segment highlight, coarse-position ring,
   // hover pointer) — one constant now, read by all three and paired with a
   // darker rung the ban list doesn't carry, because `#F59E0B` computes to
   // 1.87:1 against a light basemap. Contrast is pinned by property in
   // live_run_map_tile_url_test.dart, not by this literal count.
-  'lib/widgets/live_run_map.dart': {'F59E0B': 1},
+  // Plus the personal heatmap's dark-basemap density ramp (`mapHeatRamp`),
+  // graded composited at `mapHeatOpacity` in live_run_map_tile_url_test.dart.
+  'lib/widgets/live_run_map.dart': {
+    'F59E0B': 1,
+    '34D399': 1,
+    'FBBF24': 1,
+    'F87171': 1,
+  },
   // Painted start/finish caps on the mini track preview.
   'lib/widgets/track_preview.dart': {'22C55E': 1, 'EF4444': 1},
   // Course start/finish checkpoint hues beside the kindSpec marker catalogue.

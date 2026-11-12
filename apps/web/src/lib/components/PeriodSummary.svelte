@@ -1,19 +1,27 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { formatDistance, formatPace, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration, activeFormatLocale } from '$lib/format/time';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatISO } from '$lib/training/training';
-	import { m } from '$lib/i18n/store.svelte';
-	import { periodNeedsFullHistory, type PeriodType } from '$lib/core/dashboard_runs';
-	import type { Run } from '$lib/types';
+	import { formatDistance, formatPace, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration, activeFormatLocale } from '#lib/format/time.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatISO } from '#lib/training/training.ts';
+	import { weekStartLocal } from '#lib/training/goals.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatElevation } from '#lib/format/units.svelte.ts';
+	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
+	import { periodNeedsFullHistory, type PeriodType } from '#lib/core/dashboard_runs.ts';
+	import type { PeriodSummaryRun } from '#lib/core/data.ts';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
+	import { periodPaceTotals } from '#lib/runs/period_pace.ts';
 
 	interface Props {
-		runs: Run[];
+		runs: PeriodSummaryRun[];
 		initialType?: PeriodType;
 		initialDate?: Date;
 		onPeriodChange?: (type: PeriodType, date: Date) => void;
+		/** The runner's `week_start_day`; a week is the same seven days the
+		 *  dashboard's "This week" tile counts. */
+		weekStartDay?: 'monday' | 'sunday';
 		/**
 		 * Earliest instant `runs` is guaranteed to cover. `null` (the
 		 * default) means it is the complete history. A caller that passes a
@@ -21,7 +29,7 @@
 		 * past the bound would silently roll up a truncated total.
 		 */
 		coveredFrom?: Date | null;
-		loadFullHistory?: () => Promise<Run[]>;
+		loadFullHistory?: () => Promise<PeriodSummaryRun[]>;
 	}
 
 	let {
@@ -29,6 +37,7 @@
 		initialType = 'week',
 		initialDate,
 		onPeriodChange,
+		weekStartDay = 'monday',
 		coveredFrom = null,
 		loadFullHistory,
 	}: Props = $props();
@@ -48,14 +57,10 @@
 	let startDate = $derived(periodStart(anchor, type));
 
 	function periodStart(d: Date, t: PeriodType): Date {
+		if (t === 'week') return weekStartLocal(d, weekStartDay);
 		const out = new Date(d);
 		out.setHours(0, 0, 0, 0);
-		if (t === 'week') {
-			const dow = (out.getDay() + 6) % 7;
-			out.setDate(out.getDate() - dow);
-		} else {
-			out.setDate(1);
-		}
+		out.setDate(1);
 		return out;
 	}
 
@@ -98,7 +103,7 @@
 		return d.toLocaleDateString(activeFormatLocale(), { month: 'long', year: 'numeric' });
 	}
 
-	let fullRuns = $state<Run[] | null>(null);
+	let fullRuns = $state<PeriodSummaryRun[] | null>(null);
 	let loadingFullHistory = $state(false);
 	let fullHistoryFailed = $state(false);
 
@@ -150,12 +155,37 @@
 
 	let stats = $derived.by(() => {
 		const d = periodRuns.reduce((s, r) => s + r.distance_m, 0);
-		const t = periodRuns.reduce((s, r) => s + r.duration_s, 0);
+		const t = periodRuns.reduce(
+			(s, r) => s + (isPlausibleRunDuration(r.duration_s) ? r.duration_s : 0),
+			0,
+		);
 		const longest = periodRuns.length
 			? Math.max(...periodRuns.map((r) => r.distance_m))
 			: 0;
-		return { distance: d, duration: t, count: periodRuns.length, longest };
+		// Positive gains only: a run with no ascent recorded is not a run
+		// that went downhill.
+		const climb = periodRuns.reduce(
+			(s, r) => s + (r.elevation_gain_m != null && r.elevation_gain_m > 0 ? r.elevation_gain_m : 0),
+			0,
+		);
+		const pace = periodPaceTotals(periodRuns);
+		return {
+			distance: d,
+			duration: t,
+			count: periodRuns.length,
+			longest,
+			climb,
+			paceDistance: pace.distanceM,
+			paceDuration: pace.durationS,
+		};
 	});
+
+	// The day strip draws only the calendar week holding today, so it shows
+	// when that is the week on screen — the dashboard's This Week strip moved
+	// here when the week lead became Home's one this-week view (§ 2283).
+	let showsCurrentWeek = $derived(
+		type === 'week' && startDate.getTime() === weekStartLocal(new Date(), weekStartDay).getTime(),
+	);
 
 	async function handleShare() {
 		const lines = [
@@ -166,7 +196,9 @@
 		];
 		if (stats.count > 0) {
 			lines.push(`${m('periodSummary.shareLongest')}: ${formatDistance(stats.longest)}`);
-			lines.push(`${m('periodSummary.shareAvgPace')}: ${formatPace(stats.duration, stats.distance)}`);
+			if (stats.paceDistance > 0) {
+				lines.push(`${m('periodSummary.shareAvgPace')}: ${formatPace(stats.paceDuration, stats.paceDistance)}`);
+			}
 		}
 		const text = lines.join('\n');
 		try {
@@ -249,12 +281,22 @@
 		<div class="stat-card">
 			<span class="stat-label">{m('periodSummary.avgPace')}</span>
 			<span class="stat-value">
-				{stats.count > 0 && stats.distance > 0
-					? formatPace(stats.duration, stats.distance)
+				{stats.count > 0 && stats.paceDistance > 0
+					? formatPace(stats.paceDuration, stats.paceDistance)
 					: '—'}
 			</span>
 		</div>
+		<div class="stat-card">
+			<span class="stat-label">{m('periodSummary.climb')}</span>
+			<span class="stat-value" data-testid="period-summary-climb">
+				{stats.climb > 0 ? formatElevation(stats.climb) : '—'}
+			</span>
+		</div>
 	</div>
+
+	{#if showsCurrentWeek && !pending}
+		<ThisWeekStrip activities={sourceRuns ?? []} weekStart={weekStartDay} />
+	{/if}
 
 	{#if pending}
 		<p class="muted" role="status">{m('periodSummary.loadingHistory')}</p>
@@ -378,11 +420,8 @@
 	}
 	.stats {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
 		gap: var(--space-md);
-	}
-	@media (max-width: 40rem) {
-		.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 	.stat-card {
 		background: var(--color-surface);

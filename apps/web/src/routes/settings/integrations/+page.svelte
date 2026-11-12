@@ -1,20 +1,17 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import {
-		fetchIntegrations,
-		connectIntegration,
-		disconnectIntegration,
-		isRunSignUpConfigured,
-		isUltraSignUpConfigured,
-		isChronoTrackConfigured,
-	} from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchIntegrations, disconnectIntegration } from '#lib/core/data.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		stravaAuthUrl,
 		completeStravaOAuth,
@@ -22,12 +19,30 @@
 		storeStravaOAuthState,
 		syncStrava,
 		isStravaConfigured,
-	} from '$lib/integrations/strava';
-	import { importStravaZip, type StravaZipProgress } from '$lib/integrations/strava-zip';
-	import { importGarminBundle, type GarminZipProgress } from '$lib/integrations/garmin-zip';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { browser } from '$app/environment';
-	import { parkrunLikelyUnavailable } from '$lib/integrations/parkrun_regions';
+	} from '#lib/integrations/strava.ts';
+	import {
+		STRAVA_LOOKBACK_DEFAULT_DAYS,
+		STRAVA_LOOKBACK_OPTIONS,
+	} from '#lib/integrations/strava_sync_result.ts';
+	import { importStravaZip, type StravaZipProgress } from '#lib/integrations/strava-zip.ts';
+	import { importGarminBundle, type GarminZipProgress } from '#lib/integrations/garmin-zip.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import ImportFailureReport from '#lib/components/ImportFailureReport.svelte';
+	import { newImportFailureLog, type ImportFailureLog } from '#lib/integrations/import_failures.ts';
+	import { importRefusalMessage } from '#lib/i18n/import_refusal_message.ts';
+	import {
+		CONNECT_INTEGRATIONS,
+		RACE_INTEGRATIONS,
+		resolveIntegrationVerdicts,
+	} from '#lib/integrations/availability.ts';
+	import {
+		integrationIsStranded,
+		visibleIntegrations,
+		type GateVerdict,
+	} from '#lib/integrations/integration_visibility.ts';
+	import InfoTip from '#lib/components/InfoTip.svelte';
+	import ParkrunBarcodeCard from '#lib/components/ParkrunBarcodeCard.svelte';
+	import PlanCalendarFeedCard from '#lib/components/PlanCalendarFeedCard.svelte';
 
 	interface IntegrationUI {
 		provider: string;
@@ -38,40 +53,47 @@
 		loading: boolean;
 	}
 
-	// Static shape only (brand name + icon). The translatable description is
+	// Brand name + icon come from the catalogue; the translatable description is
 	// NOT stored here — it's rendered reactively in the template via m() so it
 	// tracks locale changes (storing it in the integrations $state below would
 	// capture one locale at init).
-	const providers: Omit<IntegrationUI, 'connected' | 'lastSync' | 'loading'>[] = [
-		{ provider: 'strava', name: 'Strava', icon: 'directions_run' },
-		{ provider: 'parkrun', name: 'parkrun', icon: 'emoji_events' },
-		{ provider: 'garmin', name: 'Garmin Connect', icon: 'watch' },
-		{ provider: 'healthkit', name: 'Apple HealthKit', icon: 'favorite' },
-	];
-
 	let integrations = $state<IntegrationUI[]>(
-		providers.map((p) => ({ ...p, connected: false, lastSync: null, loading: false }))
+		CONNECT_INTEGRATIONS.map((p) => ({
+			provider: p.provider,
+			name: p.name,
+			icon: p.icon,
+			connected: false,
+			lastSync: null,
+			loading: false,
+		}))
 	);
 
+	// Resolved gate answers, keyed by provider. Starts EMPTY, which every gate
+	// reads as `pending` — so no card is offered before its gate has answered,
+	// and a deployment that configured none of this offers none of it.
+	let verdicts = $state<Record<string, GateVerdict>>({});
+
+	const connectedProviders = $derived(
+		integrations.filter((i) => i.connected).map((i) => i.provider)
+	);
+	const visibleConnect = $derived(
+		visibleIntegrations(CONNECT_INTEGRATIONS, verdicts, connectedProviders)
+	);
+	// The race cards are not connections — the import is a per-race act on
+	// /races — so none of them reads as "connected" here.
+	const visibleRace = $derived(visibleIntegrations(RACE_INTEGRATIONS, verdicts, []));
+
+	function uiFor(provider: string): IntegrationUI {
+		// Every visible card is one of the catalogue entries `integrations` was
+		// built from, so this cannot miss.
+		return integrations.find((i) => i.provider === provider)!;
+	}
+
 	let pageLoading = $state(true);
-	let confirmingDisconnect = $state<number | null>(null);
-
-	// parkrun runs in ~20 countries; outside its footprint the card keeps
-	// working (an expat can still connect an athlete ID) but discloses that
-	// there may be no events nearby instead of presenting as universal.
-	const parkrunRegionNote = browser ? parkrunLikelyUnavailable(navigator.language) : false;
-
-	// RunSignUp race-results import runs through the race-results-import EF (no
-	// stored integration row). The whole leg is gated on a server-side API key;
-	// probe it once so the card can show the unavailable explainer fail-closed.
-	let runSignUpAvailable = $state(false);
-
-	// UltraSignup (trail/ultra results) is the same fail-closed shape on its own
-	// server-side key; probe it independently so the card can show the explainer.
-	let ultraSignUpAvailable = $state(false);
-	// ChronoTrack race-results import runs through the same EF behind its own
-	// CHRONOTRACK_* credential gate; probe it once for the same fail-closed card.
-	let chronoTrackAvailable = $state(false);
+	// The provider whose disconnect is awaiting confirmation. Keyed by provider
+	// rather than by index: the rendered list is now a filtered view of the
+	// catalogue, so an index into it means nothing to `integrations`.
+	let confirmingDisconnect = $state<string | null>(null);
 
 	async function refreshIntegrations() {
 		const saved = await fetchIntegrations();
@@ -85,60 +107,68 @@
 	onMount(async () => {
 		// fetchIntegrations returns [] silently when auth.user is null,
 		// so a hard reload during the auth race rendered every row as
-		// "Connect" (unconnected) even for runner who has parkrun +
-		// strava connected per seed.
+		// "Connect" (unconnected) even for a runner who has Strava
+		// connected per seed.
 		await auth.ready();
 		await refreshIntegrations();
 
 		// OAuth callback: Strava redirects back to this page with a
 		// `code` in the URL. Exchange it for tokens, then strip the
 		// params so a refresh doesn't replay a dead single-use code.
-		const params = $page.url.searchParams;
+		const params = page.url.searchParams;
 		if (params.has('code') && params.has('scope')) {
 			const strava = integrations.find((i) => i.provider === 'strava');
 			if (strava) strava.loading = true;
 			try {
-				const result = await completeStravaOAuth(params, $page.url.origin);
+				const result = await completeStravaOAuth(params, page.url.origin);
 				await refreshIntegrations();
+				// A first-connect backfill that Strava throttled — or that hit
+				// any other early exit — is a PARTIAL import. Saying "connected,
+				// N imported" is what stops the runner coming back for the rest,
+				// and the rest is only reachable until it ages out of the
+				// 90-day lookback window.
+				// The truncation outlives the toast on this path too. A
+				// first-connect backfill is the sync MOST likely to come up
+				// short — it is the only one that walks the whole window — so
+				// leaving the card silent here is where "sync again" would
+				// never be said at all.
+				stravaPartial = result.complete ? null : { resumable: result.resumable };
+				const counts = { imported: result.imported, skipped: result.skipped };
 				showToast(
-					m('settingsIntegrations.stravaConnected', { imported: result.imported, skipped: result.skipped }),
-					'success',
+					result.complete
+						? m('settingsIntegrations.stravaConnected', counts)
+						: result.rateLimited
+							? m('settingsIntegrations.stravaConnectedPartialRateLimited', counts)
+							: m('settingsIntegrations.stravaConnectedPartial', counts),
+					result.complete ? 'success' : 'info',
 				);
 			} catch (err) {
-				showToast(m('settingsIntegrations.stravaConnectFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+				// `completeStravaOAuth` throws an `AppError` naming the sentence for
+				// each refusal the function codes (`stravaConnectError`), so the
+				// reason slot never carries the function's code or its text.
+				showToast(
+					m('settingsIntegrations.stravaConnectFailed', {
+						error: errorCopy(err, m, 'settingsIntegrations.stravaConnectFailed'),
+					}),
+					'error',
+				);
 			} finally {
 				if (strava) strava.loading = false;
 				// Remove the OAuth params from history so a refresh is clean.
-				goto('/settings/integrations', { replaceState: true, noScroll: true });
+				goto('/settings/integrations', { replace: true, reset: false });
 			}
 		}
 
-		try {
-			runSignUpAvailable = await isRunSignUpConfigured();
-		} catch {
-			runSignUpAvailable = false;
-		}
-
-		try {
-			ultraSignUpAvailable = await isUltraSignUpConfigured();
-		} catch {
-			ultraSignUpAvailable = false;
-		}
-
-		try {
-			chronoTrackAvailable = await isChronoTrackConfigured();
-		} catch {
-			chronoTrackAvailable = false;
-		}
+		// Resolved before the skeleton clears, so a card never renders and then
+		// vanishes under the runner as its probe lands.
+		verdicts = await resolveIntegrationVerdicts();
 
 		pageLoading = false;
 	});
 
-	async function toggle(index: number) {
-		const item = integrations[index];
-
+	async function toggle(item: IntegrationUI) {
 		if (item.connected) {
-			confirmingDisconnect = index;
+			confirmingDisconnect = item.provider;
 			return;
 		}
 
@@ -155,30 +185,13 @@
 			// Redirect the window directly — Strava's OAuth page doesn't
 			// frame cleanly and the callback must come back to us.
 			window.location.href = stravaAuthUrl(window.location.origin, state);
-			return;
-		}
-
-		// Placeholder-connect for the non-OAuth providers.
-		item.loading = true;
-		try {
-			await connectIntegration(item.provider);
-			item.connected = true;
-		} catch (err) {
-			showToast(
-				m('settingsIntegrations.connectFailed', {
-					error: err instanceof Error ? err.message : String(err)
-				}),
-				'error'
-			);
-		} finally {
-			item.loading = false;
 		}
 	}
 
 	async function performDisconnect() {
-		const index = confirmingDisconnect;
-		if (index == null) return;
-		const item = integrations[index];
+		const provider = confirmingDisconnect;
+		if (provider === null) return;
+		const item = uiFor(provider);
 		confirmingDisconnect = null;
 		item.loading = true;
 		try {
@@ -191,7 +204,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsIntegrations.disconnectFailed', {
-					error: err instanceof Error ? err.message : String(err)
+					error: errorCopy(err, m, 'settingsIntegrations.disconnectFailed')
 				}),
 				'error'
 			);
@@ -214,13 +227,18 @@
 
 	let zipProgress = $state<StravaZipProgress | null>(null);
 	let zipError = $state('');
+	// Held separately from zipProgress, which self-clears after a few
+	// seconds — the "what didn't import" detail has to outlive the bar.
+	let zipFailures = $state<ImportFailureLog | null>(null);
+	let zipFileInput: HTMLInputElement | null = $state(null);
 
 	async function handleZipSelect(e: Event) {
 		const input = e.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
 		zipError = '';
-		zipProgress = { total: 0, imported: 0, skipped: 0, droppedUnsupported: 0, droppedPhotos: 0, failed: 0, currentName: m('settingsIntegrations.readingArchive') };
+		zipFailures = null;
+		zipProgress = { total: 0, imported: 0, skipped: 0, droppedUnsupported: 0, droppedPhotos: 0, failed: 0, failures: newImportFailureLog(), currentName: m('settingsIntegrations.readingArchive') };
 		window.addEventListener('beforeunload', beforeUnloadGuard);
 		try {
 			const result = await importStravaZip(file, (p) => {
@@ -234,8 +252,11 @@
 			if (result.droppedPhotos)
 				msg += ' ' + m('settingsIntegrations.stravaZipImportDroppedPhotos', { photos: result.droppedPhotos });
 			showToast(msg, 'success');
+			if (result.failures.items.length > 0 || result.failures.truncated > 0) {
+				zipFailures = result.failures;
+			}
 		} catch (err) {
-			zipError = err instanceof Error ? err.message : String(err);
+			zipError = importRefusalMessage(m, err, 'settingsIntegrations.stravaZipImportFailed');
 		} finally {
 			window.removeEventListener('beforeunload', beforeUnloadGuard);
 			input.value = '';
@@ -248,13 +269,16 @@
 
 	let garminProgress = $state<GarminZipProgress | null>(null);
 	let garminError = $state('');
+	let garminFailures = $state<ImportFailureLog | null>(null);
+	let garminFileInput: HTMLInputElement | null = $state(null);
 
 	async function handleGarminSelect(e: Event) {
 		const input = e.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
 		garminError = '';
-		garminProgress = { total: 0, imported: 0, skipped: 0, failed: 0, currentName: m('settingsIntegrations.readingFile') };
+		garminFailures = null;
+		garminProgress = { total: 0, imported: 0, skipped: 0, failed: 0, failures: newImportFailureLog(), currentName: m('settingsIntegrations.readingFile') };
 		window.addEventListener('beforeunload', beforeUnloadGuard);
 		try {
 			const result = await importGarminBundle(file, (p) => {
@@ -269,8 +293,11 @@
 			if (result.hrZonesImported) {
 				showToast(m('settingsIntegrations.garminHrZonesImported'), 'success');
 			}
+			if (result.failures.items.length > 0 || result.failures.truncated > 0) {
+				garminFailures = result.failures;
+			}
 		} catch (err) {
-			garminError = err instanceof Error ? err.message : String(err);
+			garminError = importRefusalMessage(m, err, 'settingsIntegrations.garminImportFailed');
 		} finally {
 			window.removeEventListener('beforeunload', beforeUnloadGuard);
 			input.value = '';
@@ -278,20 +305,44 @@
 		}
 	}
 
-	async function handleSyncStrava(index: number) {
-		const item = integrations[index];
+	// The window a manual sync asks for. The default stays at 90 — Strava's
+	// per-user budget is 100 requests / 15 minutes and the walk spends one per
+	// 50 activities, so raising it for every routine sync would be several
+	// times heavier for history the runner already has. Widening is the
+	// recovery path for a truncation left long enough that the missed
+	// activities have aged out of the default window.
+	let stravaLookbackDays = $state<number>(STRAVA_LOOKBACK_DEFAULT_DAYS);
+	// A truncated sync is a state of the connection, not a moment. The toast
+	// says it once and the runner dismisses it; this outlives that, so "sync
+	// again" is still on the card when they come back.
+	let stravaPartial = $state<{ resumable: boolean } | null>(null);
+
+	async function handleSyncStrava(item: IntegrationUI) {
 		item.loading = true;
 		try {
-			const result = await syncStrava();
+			const result = await syncStrava(stravaLookbackDays);
 			await refreshIntegrations();
+			stravaPartial = result.complete ? null : { resumable: result.resumable };
+			const counts = { imported: result.imported, skipped: result.skipped };
 			showToast(
-				result.failed
-					? m('settingsIntegrations.stravaSyncCompleteWithFailed', { imported: result.imported, skipped: result.skipped, failed: result.failed })
-					: m('settingsIntegrations.stravaSyncComplete', { imported: result.imported, skipped: result.skipped }),
-				'success',
+				!result.complete
+					? result.rateLimited
+						? m('settingsIntegrations.stravaSyncPartialRateLimited', counts)
+						: m('settingsIntegrations.stravaSyncPartial', counts)
+					: result.failed
+						? m('settingsIntegrations.stravaSyncCompleteWithFailed', { ...counts, failed: result.failed })
+						: m('settingsIntegrations.stravaSyncComplete', counts),
+				result.complete ? 'success' : 'info',
 			);
 		} catch (err) {
-			showToast(m('settingsIntegrations.stravaSyncFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+			// `syncStrava` throws an `AppError` for each refusal the card words
+			// (`stravaRefusal`), so the slot never carries the function's code.
+			showToast(
+				m('settingsIntegrations.stravaSyncFailed', {
+					error: errorCopy(err, m, 'settingsIntegrations.stravaSyncFailed'),
+				}),
+				'error',
+			);
 		} finally {
 			item.loading = false;
 		}
@@ -302,6 +353,7 @@
 	<header class="page-head">
 		<p class="kicker">{m('shell.settings')}</p>
 		<h1>{m('settingsIntegrations.title')}</h1>
+		<HelpLink route="/settings/integrations" />
 		<p class="tagline">
 			{m('settingsIntegrations.tagline')}
 		</p>
@@ -311,39 +363,51 @@
 		<div class="skeleton-stack" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
 				<div class="skel-row">
-					<span class="skel skel-icon"></span>
+					<SkeletonBlock height="2rem" width="2rem" radius="var(--radius-md)" />
 					<div class="skel-info">
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-60"></span>
+						<SkeletonBlock height="0.85rem" width="30%" />
+						<SkeletonBlock height="0.85rem" width="60%" />
 					</div>
-					<span class="skel skel-btn"></span>
+					<SkeletonBlock height="2.2rem" width="6rem" radius="var(--radius-md)" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('settingsIntegrations.loading')}</p>
+		<p class="visually-hidden" role="status">{m('settingsIntegrations.loading')}</p>
 	{:else}
 		{#if integrations.every((i) => !i.connected)}
-			<section class="card empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">link</span>
-				<h3>{m('settingsIntegrations.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('settingsIntegrations.emptyText')}
-				</p>
-			</section>
+			<div class="integrations-empty">
+				<EmptyState icon="link" title={m('settingsIntegrations.emptyTitle')} text={m('settingsIntegrations.emptyText')} />
+			</div>
 		{/if}
+		{#if visibleConnect.length > 0}
 		<section class="provider-section">
 			<h2>{m('settingsIntegrations.availableHeading')}</h2>
 			<div class="integration-list">
-			{#each integrations as integration, i}
-				<div class="integration-card" class:connected={integration.connected}>
+			{#each visibleConnect as gated (gated.spec.provider)}
+				{@const integration = uiFor(gated.spec.provider)}
+				<div
+					class="integration-card"
+					class:connected={integration.connected}
+					data-testid="integration-{integration.provider}"
+				>
 					<div class="integration-icon" data-provider={integration.provider} aria-hidden="true">
 						<span class="material-symbols">{integration.icon}</span>
 					</div>
 					<div class="integration-info">
-						<h3>{integration.name}</h3>
+						<div class="title-row">
+							<h3>{integration.name}</h3>
+							<InfoTip
+								label={m('settingsIntegrations.infoAbout', { name: integration.name })}
+								title={integration.name}
+								body={m(`settingsIntegrations.${integration.provider}Info` as MessageKey)}
+								testId="info-{integration.provider}"
+							/>
+						</div>
 						<p>{m(`settingsIntegrations.${integration.provider}Description` as MessageKey)}</p>
-						{#if integration.provider === 'parkrun' && parkrunRegionNote}
-							<p class="sync-note">{m('settingsIntegrations.parkrunRegionNote')}</p>
+						{#if integrationIsStranded(gated.status, gated.connected)}
+							<p class="sync-note" data-testid="stranded-{integration.provider}">
+								{m('settingsIntegrations.strandedNote')}
+							</p>
 						{/if}
 						{#if integration.connected && integration.lastSync}
 							<span class="last-sync">
@@ -359,14 +423,35 @@
 							<p class="sync-note">
 								{m('settingsIntegrations.syncNotePrefix')}<strong>{m('settingsIntegrations.syncNoteBold')}</strong>{m('settingsIntegrations.syncNoteSuffix')}
 							</p>
+							{#if stravaPartial}
+								<p class="sync-partial" role="status" data-testid="strava-partial-note">
+									{stravaPartial.resumable
+										? m('settingsIntegrations.stravaSyncPartialNoteResumable')
+										: m('settingsIntegrations.stravaSyncPartialNote')}
+								</p>
+							{/if}
 						{/if}
 					</div>
 					<div class="btn-group">
 						{#if integration.connected && integration.provider === 'strava'}
+							<label class="lookback">
+								<span class="sr-only">{m('settingsIntegrations.stravaLookbackLabel')}</span>
+								<select
+									bind:value={stravaLookbackDays}
+									disabled={integration.loading}
+									data-testid="strava-lookback"
+								>
+									{#each STRAVA_LOOKBACK_OPTIONS as days (days)}
+										<option value={days}>
+											{m(`settingsIntegrations.stravaLookback${days}` as MessageKey)}
+										</option>
+									{/each}
+								</select>
+							</label>
 							<button
 								class="btn btn-sync"
 								disabled={integration.loading}
-								onclick={() => handleSyncStrava(i)}
+								onclick={() => handleSyncStrava(integration)}
 							>
 								{integration.loading ? m('settingsIntegrations.syncing') : m('settingsIntegrations.syncNow')}
 							</button>
@@ -376,7 +461,7 @@
 							class:btn-disconnect={integration.connected}
 							class:btn-connect={!integration.connected}
 							disabled={integration.loading}
-							onclick={() => toggle(i)}
+							onclick={() => toggle(integration)}
 						>
 							{#if integration.loading}
 								...
@@ -389,18 +474,49 @@
 			{/each}
 			</div>
 		</section>
+		{/if}
+
+		<ParkrunBarcodeCard storedNumber={auth.user?.parkrun_number ?? null} />
+
+		<PlanCalendarFeedCard />
 
 		<section class="card bulk-import">
-			<h2>{m('settingsIntegrations.stravaBulkHeading')}</h2>
+			<div class="title-row">
+				<h2>{m('settingsIntegrations.stravaBulkHeading')}</h2>
+				<InfoTip
+					label={m('settingsIntegrations.infoAbout', { name: 'Strava' })}
+					title={m('settingsIntegrations.stravaBulkHeading')}
+					body={m('settingsIntegrations.stravaBulkInfo')}
+					testId="info-strava-bulk"
+				/>
+			</div>
 			<p class="card-sub">
 				{m('settingsIntegrations.stravaBulkPrefix')}<a href="https://www.strava.com/athlete/delete_your_account" target="_blank" rel="noopener noreferrer"
 					>{m('settingsIntegrations.stravaBulkLink')}</a
 				>{m('settingsIntegrations.stravaBulkSuffix')}
 			</p>
-			<label class="zip-btn">
+			<!-- Both imports walk for tens of minutes with no resume, and each
+			     snapshots its dedupe set from the PRE-import database — so a
+			     second walk started mid-flight treats every activity as new and
+			     loses the insert race on the unique index, reporting hundreds of
+			     phantom failures. The first importer's `finally` also removes the
+			     shared beforeunload guard while the second is still running. One
+			     at a time. -->
+			<button
+				type="button"
+				class="zip-btn"
+				disabled={zipProgress !== null || garminProgress !== null}
+				onclick={() => zipFileInput?.click()}
+			>
 				{m('settingsIntegrations.chooseStravaZip')}
-				<input type="file" accept=".zip,application/zip" onchange={handleZipSelect} hidden />
-			</label>
+			</button>
+			<input
+				bind:this={zipFileInput}
+				type="file"
+				accept=".zip,application/zip"
+				onchange={handleZipSelect}
+				style="display: none"
+			/>
 			{#if zipError}
 				<p class="zip-error" role="alert">{zipError}</p>
 			{/if}
@@ -438,20 +554,46 @@
 					</p>
 				</div>
 			{/if}
+			{#if zipFailures}
+				<ImportFailureReport
+					log={zipFailures}
+					provider="strava"
+					ondismiss={() => (zipFailures = null)}
+				/>
+			{/if}
 		</section>
 
 		<section class="card bulk-import">
-			<h2>{m('settingsIntegrations.garminBulkHeading')}</h2>
+			<div class="title-row">
+				<h2>{m('settingsIntegrations.garminBulkHeading')}</h2>
+				<InfoTip
+					label={m('settingsIntegrations.infoAbout', { name: 'Garmin' })}
+					title={m('settingsIntegrations.garminBulkHeading')}
+					body={m('settingsIntegrations.garminBulkInfo')}
+					testId="info-garmin-bulk"
+				/>
+			</div>
 			<p class="card-sub">
 				{m('settingsIntegrations.garminBulkFrag1')}<code>.fit</code>{m('settingsIntegrations.garminBulkFrag2')}<code>.zip</code>{m('settingsIntegrations.garminBulkFrag3')}<a href="https://www.garmin.com/account/datamanagement/exportdata/" target="_blank" rel="noopener noreferrer"
 					>{m('settingsIntegrations.garminBulkLink')}</a
 				>{m('settingsIntegrations.garminBulkFrag4')}<code>.fit</code>{m('settingsIntegrations.garminBulkFrag5')}<code>.gpx</code> /
 				<code>.tcx</code>{m('settingsIntegrations.garminBulkFrag6')}
 			</p>
-			<label class="zip-btn">
+			<button
+				type="button"
+				class="zip-btn"
+				disabled={zipProgress !== null || garminProgress !== null}
+				onclick={() => garminFileInput?.click()}
+			>
 				{m('settingsIntegrations.chooseGarminExport')}
-				<input type="file" accept=".fit,.zip,application/octet-stream,application/zip" onchange={handleGarminSelect} hidden />
-			</label>
+			</button>
+			<input
+				bind:this={garminFileInput}
+				type="file"
+				accept=".fit,.zip,application/octet-stream,application/zip"
+				onchange={handleGarminSelect}
+				style="display: none"
+			/>
 			{#if garminError}
 				<p class="zip-error" role="alert">{garminError}</p>
 			{/if}
@@ -487,64 +629,37 @@
 					</p>
 				</div>
 			{/if}
+			{#if garminFailures}
+				<ImportFailureReport
+					log={garminFailures}
+					provider="garmin"
+					ondismiss={() => (garminFailures = null)}
+				/>
+			{/if}
 		</section>
 
-		<section class="card runsignup-card" data-testid="runsignup-card">
-			<div class="integration-icon" data-provider="runsignup" aria-hidden="true">
-				<span class="material-symbols">flag</span>
-			</div>
-			<div class="runsignup-body">
-				<h2>{m('integrations.runsignup')}</h2>
-				<p class="card-sub">{m('integrations.runsignupConnect')}</p>
-				{#if runSignUpAvailable}
-					<a class="btn btn-connect" href="/races" data-testid="runsignup-open">
-						{m('integrations.runsignupOpen')}
+		{#each visibleRace as gated (gated.spec.provider)}
+			<section class="card runsignup-card" data-testid="{gated.spec.provider}-card">
+				<div class="integration-icon" data-provider={gated.spec.provider} aria-hidden="true">
+					<span class="material-symbols">{gated.spec.icon}</span>
+				</div>
+				<div class="runsignup-body">
+					<div class="title-row">
+						<h2>{m(`integrations.${gated.spec.provider}` as MessageKey)}</h2>
+						<InfoTip
+							label={m('settingsIntegrations.infoAbout', { name: gated.spec.name })}
+							title={gated.spec.name}
+							body={m(`integrations.${gated.spec.provider}Info` as MessageKey)}
+							testId="info-{gated.spec.provider}"
+						/>
+					</div>
+					<p class="card-sub">{m(`integrations.${gated.spec.provider}Connect` as MessageKey)}</p>
+					<a class="btn btn-connect" href="/races" data-testid="{gated.spec.provider}-open">
+						{m(`integrations.${gated.spec.provider}Open` as MessageKey)}
 					</a>
-				{:else}
-					<p class="runsignup-unavailable" data-testid="runsignup-unavailable" role="status">
-						{m('integrations.runsignupUnavailable')}
-					</p>
-				{/if}
-			</div>
-		</section>
-
-		<section class="card runsignup-card" data-testid="ultrasignup-card">
-			<div class="integration-icon" data-provider="ultrasignup" aria-hidden="true">
-				<span class="material-symbols">terrain</span>
-			</div>
-			<div class="runsignup-body">
-				<h2>{m('integrations.ultrasignup')}</h2>
-				<p class="card-sub">{m('integrations.ultrasignupConnect')}</p>
-				{#if ultraSignUpAvailable}
-					<a class="btn btn-connect" href="/races" data-testid="ultrasignup-open">
-						{m('integrations.ultrasignupOpen')}
-					</a>
-				{:else}
-					<p class="runsignup-unavailable" data-testid="ultrasignup-unavailable" role="status">
-						{m('integrations.ultrasignupUnavailable')}
-					</p>
-				{/if}
-			</div>
-		</section>
-
-		<section class="card runsignup-card" data-testid="chronotrack-card">
-			<div class="integration-icon" data-provider="chronotrack" aria-hidden="true">
-				<span class="material-symbols">timer</span>
-			</div>
-			<div class="runsignup-body">
-				<h2>{m('integrations.chronotrack')}</h2>
-				<p class="card-sub">{m('integrations.chronotrackConnect')}</p>
-				{#if chronoTrackAvailable}
-					<a class="btn btn-connect" href="/races" data-testid="chronotrack-open">
-						{m('integrations.chronotrackOpen')}
-					</a>
-				{:else}
-					<p class="runsignup-unavailable" data-testid="chronotrack-unavailable" role="status">
-						{m('integrations.chronotrackUnavailable')}
-					</p>
-				{/if}
-			</div>
-		</section>
+				</div>
+			</section>
+		{/each}
 	{/if}
 </div>
 
@@ -552,7 +667,7 @@
 	open={confirmingDisconnect !== null}
 	title={m('settingsIntegrations.disconnectDialogTitle')}
 	message={confirmingDisconnect !== null
-		? m('settingsIntegrations.disconnectDialogMessage', { name: integrations[confirmingDisconnect].name })
+		? m('settingsIntegrations.disconnectDialogMessage', { name: uiFor(confirmingDisconnect).name })
 		: ''}
 	confirmLabel={m('settingsIntegrations.disconnect')}
 	danger
@@ -595,33 +710,8 @@
 	}
 
 	/* Empty-state card — matches /u/[id]'s shape. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
+	.integrations-empty {
 		margin-bottom: var(--space-xl);
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 
 	/* Skeletons */
@@ -636,32 +726,7 @@
 		padding: var(--space-lg);
 		pointer-events: none;
 	}
-	.skel-icon { width: 2rem; height: 2rem; border-radius: var(--radius-md); flex-shrink: 0; }
 	.skel-info { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-	.skel-btn { width: 6rem; height: 2.2rem; border-radius: var(--radius-md); flex-shrink: 0; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
 	.sr-only {
 		position: absolute;
 		width: 1px;
@@ -721,10 +786,6 @@
 		background: rgba(252, 76, 2, 0.12);
 		color: var(--provider-strava-ink);
 	}
-	.integration-icon[data-provider="parkrun"] {
-		background: rgba(217, 122, 84, 0.14);
-		color: var(--provider-parkrun-ink);
-	}
 	.integration-icon[data-provider="garmin"] {
 		background: rgba(0, 119, 200, 0.12);
 		color: var(--provider-garmin-ink);
@@ -736,10 +797,6 @@
 	.integration-icon[data-provider="runsignup"] {
 		background: rgba(217, 142, 207, 0.14);
 		color: var(--provider-runsignup-ink);
-	}
-	.integration-icon[data-provider="ultrasignup"] {
-		background: rgba(76, 145, 92, 0.14);
-		color: var(--provider-ultrasignup-ink);
 	}
 
 	.integration-icon[data-provider="chronotrack"] {
@@ -834,6 +891,26 @@
 		font-weight: 700;
 		margin: 0 0 var(--space-xs);
 	}
+	/* The heading and its (i) sit side by side in a row rather than the tip
+	   nesting inside the heading, where its "About …" label would be read
+	   as part of the heading's name (info_tip_placement_guard.test.ts). The
+	   row takes over the margin each heading carried, so it must follow
+	   `.card h2` for the reset below to win. */
+	.title-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+	.title-row > h2,
+	.title-row > h3 {
+		margin: 0;
+	}
+	.integration-info .title-row {
+		margin-bottom: 0.125rem;
+	}
+	.card .title-row {
+		margin: 0 0 var(--space-xs);
+	}
 	.card-sub {
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
@@ -846,6 +923,22 @@
 		margin: var(--space-sm) 0 0;
 		line-height: 1.4;
 	}
+	.sync-partial {
+		font-size: 0.78rem;
+		color: var(--color-warning-text);
+		margin: var(--space-xs) 0 0;
+		line-height: 1.4;
+		font-weight: 600;
+	}
+	.lookback select {
+		padding: 0.4rem 0.5rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text);
+		font-family: inherit;
+		font-size: 0.85rem;
+	}
 	.card-sub a {
 		color: var(--color-primary);
 	}
@@ -854,7 +947,9 @@
 		padding: 0.5rem 0.9rem;
 		background: var(--color-primary);
 		color: white;
+		border: none;
 		border-radius: var(--radius-md);
+		font-family: inherit;
 		font-size: 0.85rem;
 		font-weight: 600;
 		cursor: pointer;

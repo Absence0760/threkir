@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * `/learn/<slug>` localized prose + English fallback.
@@ -21,13 +22,9 @@ import { expect, test } from '@playwright/test';
  */
 
 // initLocale() reads localStorage['locale'] on first client mount and swaps
-// the catalogue + drives the per-locale guide resolution. addInitScript
-// serialises the function into the page, so the locale MUST be passed as
-// the explicit arg — a closed-over variable is undefined in the browser.
+// the catalogue + drives the per-locale guide resolution.
 async function seedLocale(context: import('@playwright/test').BrowserContext, locale: string) {
-	await context.addInitScript((loc) => {
-		localStorage.setItem('locale', loc);
-	}, locale);
+	await setStorageOnLoad(context, { local: { locale } });
 }
 
 test.describe('/learn localized prose', () => {

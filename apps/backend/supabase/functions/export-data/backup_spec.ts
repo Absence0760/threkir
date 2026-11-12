@@ -11,6 +11,44 @@ export interface BackupTableSpec {
 	redact?: (row: Record<string, unknown>) => Record<string, unknown>;
 }
 
+/// Offset paging is only stable under a total order, and PostgREST
+/// applies none by default — two pages of an unordered read can repeat
+/// a row and skip another, which in an Art 20 export means a row the
+/// subject never receives. Every table is therefore read ordered by its
+/// primary key; this is the set whose key isn't a bare `id`. Keep in
+/// lockstep with `orderForTable` in the Go worker's supabase.go.
+const ORDER_BY_TABLE: Record<string, string> = {
+	challenge_participants: 'challenge_id,user_id',
+	club_members: 'club_id,user_id',
+	conversation_participants: 'conversation_id,user_id',
+	direct_message_reactions: 'message_id,user_id',
+	event_attendees: 'event_id,user_id,instance_start',
+	event_exceptions: 'event_id,instance_start',
+	event_pricing: 'event_id,instance_start',
+	follow_requests: 'requester_id,target_id',
+	instructor_payout_accounts: 'user_id',
+	personal_records: 'user_id,distance',
+	run_comment_likes: 'user_id,comment_id',
+	run_gear: 'run_id,gear_id',
+	run_kudos: 'user_id,run_id',
+	run_reactions: 'user_id,run_id,reaction',
+	saved_routes: 'user_id,route_id',
+	sign_in_devices: 'user_id,browser,platform',
+	user_blocks: 'blocker_id,blocked_id',
+	user_coach_usage: 'user_id,usage_date',
+	user_device_settings: 'user_id,device_id',
+	user_follows: 'follower_id,followee_id',
+	user_settings: 'user_id',
+};
+
+export function orderForTable(table: string): string {
+	return ORDER_BY_TABLE[table] ?? 'id';
+}
+
+/** Every direct_messages column but read_at (see the sent spec below). */
+export const DIRECT_MESSAGES_SENT_SELECT =
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id,is_group';
+
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
 /// shape so the EF rollback path is functionally equivalent. See
@@ -69,6 +107,24 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `runs.user_id=eq.${uid}`,
 			select: '*,runs!inner(user_id)',
 		},
+		// run_reactions + run_comment_likes (decisions § 1971), left and
+		// received. A like names no run owner, so its received half joins the
+		// comment and filters on the comment's author. Mirror of the Go
+		// worker's exportPersonalDataSpecs.
+		{ entry: 'run_reactions.json', table: 'run_reactions', filter: uidEq, select: '*' },
+		{ entry: 'run_comment_likes.json', table: 'run_comment_likes', filter: uidEq, select: '*' },
+		{
+			entry: 'run_reactions_received.json',
+			table: 'run_reactions',
+			filter: `runs.user_id=eq.${uid}`,
+			select: '*,runs!inner(user_id)',
+		},
+		{
+			entry: 'run_comment_likes_received.json',
+			table: 'run_comment_likes',
+			filter: `run_comments.author_id=eq.${uid}`,
+			select: '*,run_comments!inner(author_id)',
+		},
 		{
 			entry: 'run_photos.json',
 			table: 'run_photos',
@@ -76,6 +132,9 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			select: '*',
 		},
 		{ entry: 'segment_efforts.json', table: 'segment_efforts', filter: uidEq, select: '*' },
+		// global_segment_efforts — the subject's times on catalogue segments,
+		// park courses included. Mirror of the Go worker's exportPersonalDataSpecs.
+		{ entry: 'global_segment_efforts.json', table: 'global_segment_efforts', filter: uidEq, select: '*' },
 		{ entry: 'gear.json', table: 'gear', filter: `owner_id=eq.${uid}`, select: '*' },
 		// gear_wear_logs (migration 20270225_001) + gear_rotations
 		// (migration 20270227_001) — owner-private gear sub-data, keyed by
@@ -90,12 +149,19 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		{ entry: 'fitness_snapshots.json', table: 'fitness_snapshots', filter: uidEq, select: '*' },
 		{ entry: 'personal_records.json', table: 'personal_records', filter: uidEq, select: '*' },
 		{
+			entry: 'personal_record_improvements.json',
+			table: 'personal_record_improvements',
+			filter: uidEq,
+			select: '*',
+		},
+		{
 			entry: 'device_tokens.json',
 			table: 'device_tokens',
 			filter: uidEq,
 			select: '*',
 			redact: (row) => ({ ...row, token: '<redacted>' }),
 		},
+		{ entry: 'sign_in_devices.json', table: 'sign_in_devices', filter: uidEq, select: '*' },
 		{ entry: 'live_run_pings.json', table: 'live_run_pings', filter: uidEq, select: '*' },
 		{
 			entry: 'following.json',
@@ -107,6 +173,20 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'followers.json',
 			table: 'user_follows',
 			filter: `followee_id=eq.${uid}`,
+			select: '*',
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs. Mirrors the Go worker's entries.
+		{
+			entry: 'follow_requests_sent.json',
+			table: 'follow_requests',
+			filter: `requester_id=eq.${uid}`,
+			select: '*',
+		},
+		{
+			entry: 'follow_requests_received.json',
+			table: 'follow_requests',
+			filter: `target_id=eq.${uid}`,
 			select: '*',
 		},
 		{ entry: 'event_attendees.json', table: 'event_attendees', filter: uidEq, select: '*' },
@@ -140,28 +220,84 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `reporter_id=eq.${uid}`,
 			select: '*',
 		},
-		// reports_against_me — Art 15(1)(c) recipient disclosure with
-		// reporter anonymised (competing rights under Art 15(4)).
+		// reports_against_me — Art 15(1)(c) recipient disclosure. Reporter
+		// identity and the reporter's free-text notes are withheld (competing
+		// rights under Art 15(4)).
 		{
 			entry: 'reports_against_me.json',
 			table: 'reports',
 			filter: `target_kind=eq.user&target_id=eq.${uid}`,
-			select: 'id,target_kind,target_id,reason,status,notes,created_at,resolved_at',
+			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at',
+		},
+		// reports_against_my_messages — a report on one of the subject's direct
+		// messages snapshots their own words (migration 20271021000003), and the
+		// snapshot outlives an unsend, so it is disclosed here under Art 15.
+		// Only the recipient can report a direct message, so the reporter is
+		// identifiable from direct_messages_sent.json: the notes are never
+		// included, and a pending report is held back so the export cannot
+		// tip a sender off during review (Art 15(4)).
+		{
+			entry: 'reports_against_my_messages.json',
+			table: 'reports',
+			filter: `target_kind=eq.direct_message&snapshot_author_id=eq.${uid}&status=neq.pending`,
+			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at,snapshot_original_body',
 		},
 		// direct_messages — private 1:1 conversations, both directions.
 		// `body` is the subject's own correspondence and ships verbatim.
 		// audit/data-export-completeness (2026-05-30) Critical.
+		// The sent side leaves out read_at: it is the recipient's own read
+		// time, withheld from the sender by a column grant (20271113000001).
+		// seen_at is what the recipient chose to share. edited_at and
+		// original_body (the text before an edit, 20271114000210) are the
+		// subject's own words, so they ship on both sides.
+		// Group messages (20271216000003, decisions § 2461) ship on the sent
+		// side only: a group message has no recipient, so the received filter
+		// never matches one, and other members' group messages are their data,
+		// not the subject's (Art 20(1)/(4), owner decision D5).
 		{
 			entry: 'direct_messages_sent.json',
 			table: 'direct_messages',
 			filter: `sender_id=eq.${uid}`,
-			select: '*',
+			select: DIRECT_MESSAGES_SENT_SELECT,
 		},
 		{
 			entry: 'direct_messages_received.json',
 			table: 'direct_messages',
 			filter: `recipient_id=eq.${uid}`,
 			select: '*',
+		},
+		// direct_message_reactions — the reactions the subject put on
+		// messages (migration 20271213121602). Only their own: the partner's
+		// reactions are the partner's data.
+		{
+			entry: 'direct_message_reactions.json',
+			table: 'direct_message_reactions',
+			filter: uidEq,
+			select: 'message_id,reaction,created_at',
+		},
+		// direct_message_images — the photos the subject sent (migration
+		// 20271213121604). The re-encoded bytes ship under
+		// storage/dm-images/; the paths are left out because the object keys
+		// already carry them.
+		{
+			entry: 'direct_message_images.json',
+			table: 'direct_message_images',
+			filter: `owner_id=eq.${uid}`,
+			select: 'id,message_id,status,width,height,created_at,processed_at',
+		},
+		// conversation_participants — the subject's own view of each
+		// conversation: when they joined, and whether they deleted it for
+		// themselves, muted it, archived it, marked it unread, and where a
+		// message request to or from them stands (migrations 20271105000010,
+		// 20271109000020, 20271115002384), and their group memberships: state,
+		// role, who invited and who removed them, when they were invited and
+		// left, and their read position (20271216000002). Only their own row:
+		// the other participants' state is theirs.
+		{
+			entry: 'conversation_settings.json',
+			table: 'conversation_participants',
+			filter: uidEq,
+			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at',
 		},
 		// coach_athletes — coaching relationships as coach + as athlete.
 		// `invite_token` is a redeemable credential; the narrow select
@@ -171,13 +307,28 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'coaching_as_coach.json',
 			table: 'coach_athletes',
 			filter: `coach_id=eq.${uid}`,
-			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at',
 		},
 		{
 			entry: 'coaching_as_athlete.json',
 			table: 'coach_athletes',
 			filter: `athlete_id=eq.${uid}`,
-			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at',
+		},
+		// plan_change_requests — changes to a coach-assigned plan the subject
+		// sent as athlete or decided as coach (issue #1215 Phase 2). The
+		// change set is structured plan data, the note the coach's reply.
+		{
+			entry: 'plan_change_requests_as_athlete.json',
+			table: 'plan_change_requests',
+			filter: `athlete_id=eq.${uid}`,
+			select: '*',
+		},
+		{
+			entry: 'plan_change_requests_as_coach.json',
+			table: 'plan_change_requests',
+			filter: `coach_id=eq.${uid}`,
+			select: '*',
 		},
 		// event_results — own race finish records (time, rank, DNF/DNS,
 		// age-grade). audit/data-export-completeness (2026-05-30) Critical.
@@ -201,6 +352,70 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'event_result_claims.json',
 			table: 'event_result_claims',
 			filter: `claimant_id=eq.${uid}`,
+			select: '*',
+		},
+		// race_course_suggestions — the routes the subject suggested as a
+		// race's course, with their note and the review outcome (migration
+		// 20271114002381). `reviewed_by` is the organiser-club admin who ruled
+		// on it, kept as a recipient disclosure under Art 15(1)(c).
+		{
+			entry: 'race_course_suggestions.json',
+			table: 'race_course_suggestions',
+			filter: uidEq,
+			select: '*',
+		},
+		// race_listing_audit — the race claims, course links and reviews the
+		// subject made as a verified club's admin (migration 20271114002381).
+		{
+			entry: 'race_listing_audit.json',
+			table: 'race_listing_audit',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
+		// club_verification_requests — the verification requests the subject
+		// submitted as a club owner: the organisation and domain they claimed,
+		// the proof and the review outcome (migration 20271120000004). The
+		// reviewer is kept as an id only, as a recipient disclosure.
+		{
+			entry: 'club_verification_requests.json',
+			table: 'club_verification_requests',
+			filter: `submitted_by=eq.${uid}`,
+			select: '*',
+		},
+		// club_verification_audit — the verification actions the subject took
+		// (submit, withdraw, email proof sent; as a site admin, reviews).
+		{
+			entry: 'club_verification_audit.json',
+			table: 'club_verification_audit',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
+		// organiser_dispute_actions — the naming disputes the subject filed
+		// for a verified club and, as a site admin, the reviews they made
+		// (migration 20271202000003).
+		{
+			entry: 'organiser_dispute_actions.json',
+			table: 'organiser_dispute_actions',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
+		// organiser_dispute_notices — the reviewed disputes about content the
+		// subject owns. The reviewer is not theirs to know, so actor_id is
+		// projected away.
+		{
+			entry: 'organiser_dispute_notices.json',
+			table: 'organiser_dispute_actions',
+			// A filing alone is not the owner's to read: only reviewed actions.
+			filter: `target_owner_id=eq.${uid}&action=neq.filed`,
+			select: 'id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at',
+		},
+		// course_alerts — the course alerts the subject posted as a verified
+		// organiser club's admin (migration 20271124002407). The alert speaks
+		// for the club, but the subject wrote it.
+		{
+			entry: 'course_alerts.json',
+			table: 'course_alerts',
+			filter: `author_id=eq.${uid}`,
 			select: '*',
 		},
 		// user_blocks — the subject's own block list. High.
@@ -285,6 +500,25 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: uidEq,
 			select: '*,ingredients:recipe_ingredients(*)',
 		},
+		// nutrition_plans — the subject's authored meal plans (nutrition
+		// programming P1, migration 20270815000001). Keyed by author_id (NOT
+		// user_id), like gym_routines.
+		{
+			entry: 'nutrition_plans.json',
+			table: 'nutrition_plans',
+			filter: `author_id=eq.${uid}`,
+			select: '*',
+		},
+		// nutrition_plan_assignments — which plan governed the subject's diary
+		// days, keyed by client_id. In P1 every row is a self-assignment, so
+		// this leg is the whole table for the subject; the P3 nutritionist
+		// adds an assigner leg.
+		{
+			entry: 'nutrition_plan_assignments.json',
+			table: 'nutrition_plan_assignments',
+			filter: `client_id=eq.${uid}`,
+			select: '*',
+		},
 		// body_metrics — Phase 4 nutrition weight time-series (migration
 		// 20261216_001). Special-category health data, owner-scoped, squarely
 		// within Art 20. height_cm ships in the user_profiles export entry.
@@ -318,6 +552,14 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `contact_user_id=eq.${uid}`,
 			select: 'id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at',
 		},
+		// run_shares / route_shares — named-person read grants (migration
+		// 20270802000002), both legs: grants the subject made (owner_id) and
+		// grants made to them (recipient_id). Revoked grants are deleted, so
+		// there is no history to ship. Mirrors the Go worker's entries.
+		{ entry: 'run_shares_owned.json', table: 'run_shares', filter: `owner_id=eq.${uid}`, select: '*' },
+		{ entry: 'run_shares_received.json', table: 'run_shares', filter: `recipient_id=eq.${uid}`, select: '*' },
+		{ entry: 'route_shares_owned.json', table: 'route_shares', filter: `owner_id=eq.${uid}`, select: '*' },
+		{ entry: 'route_shares_received.json', table: 'route_shares', filter: `recipient_id=eq.${uid}`, select: '*' },
 		// session_plans (+ blocks + items via nested embeds). The yoga/pilates
 		// session-planner P1 authored content (migration 20270103_001).
 		// Author-scoped; session_plan_blocks / session_plan_items have no owner
@@ -406,8 +648,12 @@ export const BACKUP_VERSION = 1;
 /// the subject under GDPR Art 15(1) / CCPA right-to-know
 /// (audit/data-export-completeness 2026-07-02 High). Service-role
 /// reads bypass the 20260707_001 column-level revokes.
+/// One literal on purpose: supabase-js resolves a `.select()` argument at the
+/// type level, so a concatenation infers as `string` and the typed client
+/// degrades to `GenericStringError[]` at the call site.
+// prettier-ignore
 export const PROFILE_SELECT =
-	'id,display_name,avatar_url,bio,location,preferred_unit,created_at,hr_zones,date_of_birth,parkrun_number,gender,activity_default,privacy_default,subscription_tier,subscription_at,billing_issue_at';
+	'id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,date_of_birth,gender,height_cm,parkrun_number,profile_private,subscription_tier,subscription_at,billing_issue_at,terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version';
 
 /// Strip `id` from the profile so the archive is re-homeable —
 /// restore stamps the new owner's uid. Mirrors the Go worker's
@@ -426,6 +672,7 @@ const ROUTE_OPTIONAL_COLUMNS = [
 	'elevation_m',
 	'surface',
 	'is_public',
+	'followers_only',
 	'slug',
 	'tags',
 	'is_featured',
@@ -472,10 +719,14 @@ export function isSafeStoragePath(p: string): boolean {
 
 /// Pick the objects the orphan prefix-walk should archive: every key
 /// under `{userId}/` that the row-driven loops did NOT already ship —
-/// CAS-orphaned matched tracks, legacy tracks whose run row is gone,
-/// worker-generated photo thumbnails. `{userId}/exports/` is skipped in
-/// the runs bucket (prior export artifacts — self-referential). Mirrors
-/// the Go builder's walk filter so both backup paths sweep the same set.
+/// CAS-orphaned matched tracks, legacy tracks whose run row is gone, the
+/// worker's smoothed-position sidecars (no column names them),
+/// worker-generated photo thumbnails, the re-encoded direct-message photos
+/// the subject sent. `{userId}/exports/` is skipped in the runs bucket
+/// (prior export artifacts — self-referential), and anything in a
+/// subfolder of dm-images (`{userId}/{image}/upload`, the raw client upload
+/// only the worker reads, issue #1216). Mirrors the Go builder's walk
+/// filter so both backup paths sweep the same set.
 export function orphanStorageEntries(input: {
 	bucket: string;
 	keys: string[];
@@ -489,6 +740,7 @@ export function orphanStorageEntries(input: {
 		const rel = key.slice(prefix.length);
 		if (rel === '') continue;
 		if (input.bucket === 'runs' && rel.startsWith('exports/')) continue;
+		if (input.bucket === 'dm-images' && rel.includes('/')) continue;
 		if (input.archived.has(key)) continue;
 		if (!isSafeStoragePath(key)) continue;
 		out.push({ key, entry: `storage/${input.bucket}/${rel}` });
@@ -498,12 +750,19 @@ export function orphanStorageEntries(input: {
 
 /// Build `manifest.json` — same field set as the Go worker's
 /// BuildBackupZip manifest. `counts` carries runs/routes/tracks/
-/// hr_series/photos plus one count per extra-table entry.
+/// hr_series/photos plus one count per extra-table entry, and each is
+/// the AUTHORITATIVE row count the database holds — not the number of
+/// rows this archive happens to carry. `incomplete` names every section
+/// whose file is short of its count, and `complete` is the single flag a
+/// consumer gates on, so a truncated export cannot present itself as
+/// whole.
 export function buildBackupManifest(input: {
 	userId: string;
 	counts: Record<string, number>;
+	incomplete?: string[];
 	exportedAt?: string;
 }): Record<string, unknown> {
+	const incomplete = [...(input.incomplete ?? [])].sort();
 	return {
 		format: BACKUP_FORMAT,
 		version: BACKUP_VERSION,
@@ -511,6 +770,8 @@ export function buildBackupManifest(input: {
 		exported_by_user_id: input.userId,
 		exported_from: 'edge-function',
 		counts: input.counts,
+		complete: incomplete.length === 0,
+		incomplete,
 	};
 }
 

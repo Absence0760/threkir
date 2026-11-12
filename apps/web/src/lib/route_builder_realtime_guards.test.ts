@@ -249,17 +249,19 @@ test('/share/run/[id] (RunShareView) wires the same linked cursor', () => {
 
 test('/routes/[id] wires the linked cursor and aligns elevations with displayWaypoints', () => {
 	const src = read('src/routes/routes/[id]/+page.svelte');
-	// Elevations must be derived from displayWaypoints (not the raw
+	// The profile must be drawn from displayWaypoints (not the raw
 	// route.waypoints) so the chart idx-space matches the clipped
 	// polyline non-owners see. Without this, the chart's idx → map
-	// marker lookup lands at a point the user can't see.
+	// marker lookup lands at a point the user can't see. routeElevation
+	// returns its profile 1:1 with the waypoints it is given.
 	assert.match(
 		src,
-		/let elevations\s*=\s*\$derived\(displayWaypoints\.map/,
+		/let elevation\s*=\s*\$derived\(routeElevation\([^,]+,\s*displayWaypoints\)\)/,
 		'/routes/[id] elevations must derive from displayWaypoints, not ' +
 			'route.waypoints — keeps the chart idx-space aligned with the ' +
 			'polyline (matters for non-owners with a clipped trace).',
 	);
+	assert.match(src, /elevations=\{elevation\.profile\}/);
 	assert.match(src, /let chartHoverIdx/);
 	assert.match(src, /hoverIdx=\{chartHoverIdx\}/);
 	assert.match(src, /onhover=\{\(idx\)\s*=>\s*\(chartHoverIdx = idx\)\}/);
@@ -394,21 +396,21 @@ test('RouteTrackPreview renders a static map image when a key is available', () 
 	const src = read('src/lib/components/RouteTrackPreview.svelte');
 	assert.match(
 		src,
-		/buildStaticMapUrl\(/,
-		'RouteTrackPreview must call buildStaticMapUrl to construct a ' +
-			'MapTiler Static Maps URL with the polyline drawn on top — ' +
+		/trackThumbnailUrlFromEnv\(/,
+		'RouteTrackPreview must call trackThumbnailUrlFromEnv to construct a ' +
+			'static map URL with the polyline drawn on top — ' +
 			'fixes the "I only see the line, not the map" complaint on ' +
 			'the /routes grid.',
 	);
 	assert.match(
 		src,
-		/loading="lazy"/,
+		/<StaticMapImage\b[^>]*\blazy\b/,
 		'Static-map images must be lazy-loaded — a long list of route ' +
 			'cards otherwise fires N MapTiler requests on page load.',
 	);
 	assert.match(
 		src,
-		/data-testid="route-preview-map"/,
+		/<StaticMapImage\b[^>]*\btestid="route-preview-map"/,
 		'The static-map img must be tagged with ' +
 			'data-testid="route-preview-map" so the e2e can pin it.',
 	);
@@ -466,7 +468,7 @@ test('RouteBuilder.svelte: exposes a flyTo export that recentres the map', () =>
 	const src = read('src/lib/components/RouteBuilder.svelte');
 	assert.match(
 		src,
-		/export function flyTo\(\s*lngLat[^)]*\)\s*\{[\s\S]*?recentreMap\(/,
+		/export function flyTo\(\s*lngLat[^)]*\)(?::\s*\w+)?\s*\{[\s\S]*?recentreMap\(/,
 		'RouteBuilder must export flyTo() that recentres the map — the page ' +
 			'uses it to recentre on a located / typed Generate start/end so ' +
 			'the click has visible feedback.',
@@ -487,7 +489,7 @@ test('RouteBuilder.svelte: recentre jumps instead of animating until the map is 
 	// must route through recentreMap so none of them can re-introduce a raw
 	// pre-load flyTo.
 	const src = read('src/lib/components/RouteBuilder.svelte');
-	const fn = src.match(/function recentreMap\([^)]*\)\s*\{[\s\S]*?\n\t\}/);
+	const fn = src.match(/function recentreMap\([^)]*\)(?::\s*\w+)?\s*\{[\s\S]*?\n\t\}/);
 	assert.ok(fn, 'recentreMap() must exist');
 	assert.match(fn![0], /map\.loaded\(\)/, 'recentreMap must gate on map.loaded()');
 	assert.match(
@@ -593,7 +595,7 @@ test('RouteBuilder.svelte: findInsertIndex delegates to nearestInsertIndex', () 
 	const src = read('src/lib/components/RouteBuilder.svelte');
 	assert.match(
 		src,
-		/import \{ nearestInsertIndex \} from '\$lib\/routes\/insert_index'/,
+		/import \{ nearestInsertIndex \} from '#lib\/routes\/insert_index\.ts'/,
 		'RouteBuilder must import the pure nearestInsertIndex helper.',
 	);
 	const fn = src.match(/function findInsertIndex\([^)]*\)[^{]*\{[\s\S]*?\n\t\}/);

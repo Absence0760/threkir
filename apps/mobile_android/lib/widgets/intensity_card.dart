@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../hr_zones.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../run_intensity.dart';
+import '../settings_destination.dart';
 import '../settings_sync.dart';
 
 /// Dashboard card surfacing how much of the runner's recent training
@@ -41,6 +42,16 @@ class IntensityCard extends StatelessWidget {
     this.windowDays = 30,
     this.settingsSync,
   });
+
+  /// Whether [build] draws anything, so a host can leave out a heading that
+  /// would otherwise sit over nothing (the dashboard's Effort group).
+  bool get hasContent {
+    final zones = hrZones ?? _deriveZonesFromSettings();
+    if (zones == null) return false;
+    return computeIntensityBreakdown(runs, zones, windowDays: windowDays, now: now)
+            .hrTrackedRuns >
+        0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +102,25 @@ class IntensityCard extends StatelessWidget {
                 l10n.runDetailHrDisclaimer,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              // Run-detail shows this same caveat WITH a "Set max HR" button,
+              // because that screen happens to carry the Preferences and
+              // ApiClient the settings screen takes. This card carries only a
+              // SettingsSyncService, so it names the destination and lets the
+              // shell open it (decisions § 710) rather than the same advice
+              // being actionable on one surface and inert on the other.
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    minimumSize: const Size(0, 44),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () =>
+                      openSettings(SettingsDestination.preferences),
+                  child: Text(l10n.runDetailHrDisclaimerAction),
                 ),
               ),
             ],
@@ -192,11 +222,17 @@ class _ZoneLegend extends StatelessWidget {
   final IntensityBreakdown breakdown;
   const _ZoneLegend({required this.breakdown});
 
-  static const _labels = <String>['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final labels = [
+      l10n.intensityZone1,
+      l10n.intensityZone2,
+      l10n.intensityZone3,
+      l10n.intensityZone4,
+      l10n.intensityZone5,
+    ];
     final total = breakdown.totalSeconds;
     return Wrap(
       spacing: 12,
@@ -216,7 +252,7 @@ class _ZoneLegend extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                _labels[i],
+                labels[i],
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),

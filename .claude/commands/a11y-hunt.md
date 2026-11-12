@@ -50,6 +50,8 @@ Choose one bounded surface (a route + its components, a screen and its twin, a c
 
 Spawn hunters in a single message — `general-purpose` agents pointed at the surface's files (web `.svelte` + `app.css` tokens; the mobile twin `.dart` widgets; the watch Kotlin/Swift), each instructed to find **WCAG 2.2 AA violations** with the criterion named. Have them report, per finding: `file:line`, the criterion (e.g. "1.4.3"), the **measured value** (the two colours / the px size / the scale at which it clips), the threshold it misses, and which platforms share the defect. The `compliance-auditor` (via `audit:accessibility`) is the specialist if you want a deeper single-pass sweep first.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ### 3. Compute every numeric claim before touching code
 
 This is the step that stops one violation becoming another:
@@ -63,7 +65,7 @@ This is the step that stops one violation becoming another:
 Per [CLAUDE.md § Commit cadence](../../CLAUDE.md), each fix is its own commit with its guard/test in the **same** commit:
 - **Fix the root cause** at the shared token where there is one (the colour variable, the button base, the spacing scale), not per-call-site — but verify the cascade first (step 3).
 - **Fix every platform the violation ships on in the same piece** — web `.svelte` + the byte-identical mobile twin (`mobile-twin-mirror`) + watch where it applies. Don't fix web contrast and leave the Dart twin failing.
-- **i18n**: any new user-facing label/alt text added for a name/role fix goes into all six locales (`apps/web/src/lib/i18n/locales/*` + the mobile ARBs); `messages_parity.test.ts` / `l10n_parity_test.dart` enforce it.
+- **i18n**: any new user-facing label/alt text added for a name/role fix goes into every locale in `apps/web/src/lib/i18n/locales/*` (read the directory, do not assume a count) + the mobile ARBs; `messages_parity.test.ts` / `l10n_parity_test.dart` enforce it.
 - **Pin it.** This repo guards a11y with source-level tests (`contrast_guard.test.ts`, `rtl_css_guards.test.ts`, `rtl_shell_guards.test.ts`): add/extend a guard that asserts the contrast ratio clears AA, the target meets the minimum, or the logical property is used — so the regression can't silently return. Compute the asserted ratio in the test, don't hard-code a number you didn't derive.
 - **Every violation fixed in this loop gets its guard in the same commit — including ones found incidentally**, and across **every** theme/locale/platform the criterion applies to (both light + dark for contrast, every locale for a label, both twins). A fix with no guard is not done; a verified-but-deferred violation goes to `docs/product/followups.md`, not into an unguarded commit.
 

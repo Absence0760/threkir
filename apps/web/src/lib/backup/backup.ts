@@ -1,8 +1,27 @@
 import { supabase } from '../core/supabase';
+import { dbError } from '../core/supabase_error';
+import { queryChunked } from '../social/feed_merge';
+import type { JsonObject } from '../types';
+import type { Insertable } from '../core/database';
+import type { Json } from '../database.types';
+
+/// A jsonb column read back as the bag it is supposed to be. `Json` admits a
+/// string, a number, a boolean and an array as well as an object, and none of
+/// those is a preferences bag; the archive reader discards them on the way back
+/// in, so the writer refuses to put one in.
+function prefsBagOf(value: Json | null | undefined): JsonObject {
+	return value != null && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
 import { TABLES, BUCKETS } from '../core/schema';
+import { markListsStale } from '../core/list_freshness';
 import { auth } from '../stores/auth.svelte';
-import { buildBackupZip, BACKUP_FORMAT, BACKUP_VERSION } from './backup_writer';
-import type { BackupProgress } from './backup_writer';
+import { walkKeyset, type KeysetKey } from '../core/keyset_page';
+import {
+	buildBackupZip,
+	BACKUP_FORMAT,
+	BACKUP_VERSION
+} from './backup_writer';
+import type { BackupArchive, BackupProgress } from './backup_writer';
 import { parseBackupArchive } from './backup_reader';
 import {
 	restoreOrchestrate,
@@ -29,37 +48,84 @@ import {
  */
 
 export { BACKUP_FORMAT, BACKUP_VERSION };
-export type { BackupProgress };
+export type { BackupArchive, BackupProgress };
 
 export type { RestoreProgress, RestoreResult } from './restore_orchestrator';
 
+/// Newest run first, `id` breaking a `started_at` tie so the walk's order is
+/// total. Both NOT NULL.
+const BACKUP_RUN_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
+
+/// `routes` has no natural sort, so the walk orders on the primary key alone.
+const BACKUP_ROUTE_ORDER: readonly KeysetKey[] = [
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
+
+/**
+ * Build the account's local backup archive.
+ *
+ * Returns the writer's own verdict alongside the bytes, not just the
+ * bytes: a track whose download failed is skipped so one dead blob
+ * can't sink the file, which makes the returned `incomplete` and the
+ * archive's manifest the only record that it is short. The caller has
+ * to disclose that — an archive that reads as whole is what someone
+ * wipes a device on.
+ */
 export async function createBackup(
 	onProgress?: (p: BackupProgress) => void
-): Promise<Blob> {
+): Promise<BackupArchive> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
+	// WALKED, and uncapped. An unranged select is clamped to `db-max-rows`
+	// (1000) and answered 200 with no flag, so a deep history backed itself
+	// up, was told it succeeded, and found out at restore. Walked by keyset
+	// cursor, not by OFFSET: a run synced or deleted while the backup is
+	// between two pages moves every later position, and an OFFSET walk then
+	// archives one run twice or not at all under a manifest saying `complete`
+	// (§ 1936).
 	onProgress?.({ stage: 'runs', current: 0, total: 1 });
-	const { data: runs, error: runsErr } = await supabase
-		.from(TABLES.runs)
-		.select('*')
-		.eq('user_id', userId)
-		.order('started_at', { ascending: false });
-	if (runsErr) throw runsErr;
-	const runRows = runs ?? [];
+	const runsRead = await walkKeyset<Record<string, unknown>>(BACKUP_RUN_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.runs).select('*').eq('user_id', userId);
+		if (after) q = q.or(after);
+		for (const k of BACKUP_RUN_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	// Nothing at all is a failed backup, not a short one — the runner gets
+	// the error rather than a file with no runs in it. A read that died
+	// PART-way still holds runs worth keeping, so it ships flagged.
+	if (runsRead.error && runsRead.rows.length === 0) throw dbError(runsRead.error);
+	const runRows = runsRead.rows;
 
 	onProgress?.({ stage: 'routes', current: 0, total: 1 });
-	const { data: routes } = await supabase
-		.from('routes')
-		.select('*')
-		.eq('user_id', userId);
+	const routesRead = await walkKeyset<Record<string, unknown>>(BACKUP_ROUTE_ORDER, (after, limit) => {
+		let q = supabase.from('routes').select('*').eq('user_id', userId);
+		if (after) q = q.or(after);
+		for (const k of BACKUP_ROUTE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	const routes = routesRead.rows;
 
 	onProgress?.({ stage: 'profile', current: 0, total: 1 });
 	// Use the get_my_profile RPC because subscription_tier / parkrun_number
 	// / subscription_at are column-level revoked from authenticated direct
 	// reads (migration 20260707_001).
-	const { data: profile } = await supabase.rpc('get_my_profile');
-	const { data: userSettings } = await supabase
+	//
+	// Graded, not discarded. These two reads are the rest of the archive,
+	// and an error here used to leave `profile: null` / an empty prefs bag
+	// under a manifest still claiming `complete: true` — the same false
+	// all-clear the paged row reads were fixed for. A missing settings ROW
+	// is not a shortfall (a runner who never changed a preference has
+	// none); only an error is.
+	const { data: profile, error: profileErr } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+	const { data: userSettings, error: settingsErr } = await supabase
 		.from('user_settings')
 		.select('prefs')
 		.eq('user_id', userId)
@@ -67,28 +133,42 @@ export async function createBackup(
 
 	// Strip user_id from rows so the archive is re-homeable.
 	const runsOut = runRows.map((r) => {
-		const { user_id: _uid, ...rest } = r as Record<string, unknown>;
+		const { user_id: _uid, ...rest } = r;
 		return rest;
 	});
-	const routesOut = (routes ?? []).map((r) => {
-		const { user_id: _uid, ...rest } = r as Record<string, unknown>;
+	const routesOut = routes.map((r) => {
+		const { user_id: _uid, ...rest } = r;
 		return rest;
 	});
 
 	const runsWithTracks = runRows.filter(
-		(r): r is typeof r & { track_url: string } =>
-			typeof r.track_url === 'string' && r.track_url.length > 0
+		(r): r is JsonObject & { id: string; track_url: string } =>
+			typeof r.id === 'string' &&
+			typeof r.track_url === 'string' &&
+			r.track_url.length > 0
 	);
 
 	return buildBackupZip({
 		runsOut,
 		routesOut,
 		profile: profile ?? null,
-		settingsPrefs: userSettings?.prefs ?? {},
+		// `user_settings.prefs` is jsonb, so the column can legitimately hold a
+		// scalar or an array. Anything but an object is not a prefs bag, and
+		// the archive's own reader already discards one; narrowing here keeps
+		// the writer from putting a shape the reader will drop into the file.
+		settingsPrefs: prefsBagOf(userSettings?.prefs),
 		userId,
 		exportedFrom: 'web',
 		runsWithTracks,
 		fetchTrackBytes: defaultTrackFetcher,
+		// A row read that came up short is the caller's finding, not the
+		// writer's; the manifest merges both.
+		incompleteSections: [
+			...(runsRead.complete ? [] : ['runs']),
+			...(routesRead.complete ? [] : ['routes']),
+			...(profileErr ? ['profile'] : []),
+			...(settingsErr ? ['settings_prefs'] : [])
+		],
 		onProgress,
 	});
 }
@@ -101,7 +181,7 @@ export async function createBackup(
 async function defaultTrackFetcher(trackUrl: string): Promise<Uint8Array> {
 	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(trackUrl);
 	if (error || !data) {
-		throw error ?? new Error('track download returned no body');
+		throw error ? dbError(error) : new Error('track download returned no body');
 	}
 	return new Uint8Array(await data.arrayBuffer());
 }
@@ -134,11 +214,20 @@ export async function restoreBackup(
  * existing supabase-js calls. Tests substitute a counter-tracking
  * fake; see `restore_orchestrator.test.ts`.
  */
+// Each `as Insertable<...>` below narrows a VALUE shape, not a column set: the
+// orchestrator has already filtered every row against the generated Insert
+// keys (`restore_columns.ts`), so a name this build's schema has no home for
+// never reaches here. What no client can check is the values — an archived row
+// is JSON out of a file the user supplied, so a `distance_m` of `"far"` is
+// still the server's to refuse, and it comes back as a PostgREST 400 the
+// restore loop records in `result.warnings` rather than aborting on.
 function supabaseRestoreBackend(): RestoreBackend {
 	return {
 		async upsertProfile(row) {
-			const { error } = await supabase.from('user_profiles').upsert(row);
-			if (error) throw error;
+			const { error } = await supabase
+				.from('user_profiles')
+				.upsert(row as Insertable<'user_profiles'>);
+			if (error) throw dbError(error);
 		},
 		async upsertSettings(prefs) {
 			const userId = auth.user?.id;
@@ -148,7 +237,7 @@ function supabaseRestoreBackend(): RestoreBackend {
 				prefs,
 				updated_at: new Date().toISOString()
 			});
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async uploadTrack(path, bytes) {
 			const { error } = await supabase.storage.from(BUCKETS.runs).upload(path, bytes, {
@@ -156,18 +245,26 @@ function supabaseRestoreBackend(): RestoreBackend {
 				upsert: true,
 				cacheControl: '0'
 			});
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async upsertRun(row) {
-			const { error } = await supabase.from(TABLES.runs).upsert(row, { onConflict: 'id' });
-			if (error) throw error;
+			markListsStale('runs', 'history', 'routes');
+			const { error } = await supabase
+				.from(TABLES.runs)
+				.upsert(row as Insertable<'runs'>, { onConflict: 'id' });
+			if (error) throw dbError(error);
 		},
 		async upsertRoute(row) {
-			const { error } = await supabase.from('routes').upsert(row, { onConflict: 'id' });
-			if (error) throw error;
+			markListsStale('routes');
+			const { error } = await supabase
+				.from('routes')
+				.upsert(row as Insertable<'routes'>, { onConflict: 'id' });
+			if (error) throw dbError(error);
 		},
 		async fetchValidEventIds(ids) {
-			const { data } = await supabase.from('events').select('id').in('id', ids);
+			const { data } = await queryChunked(ids, (part) =>
+				supabase.from('events').select('id').in('id', part)
+			);
 			const valid = new Set<string>();
 			for (const e of data ?? []) valid.add(e.id);
 			return valid;

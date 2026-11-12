@@ -5,10 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, EmptyState, SelectionHint;
 
+import '../widgets/grisnir_moments.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../backend_timeout.dart';
 import '../fab_clearance.dart';
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -20,15 +23,17 @@ import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../missing_run_pull.dart';
 import '../preferences.dart';
 import '../runs_history_items.dart';
+import '../social_service.dart';
 import '../settings_sync.dart';
 import '../widgets/activity_timeline_list.dart';
+import '../widgets/error_state.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/nutrition_log_sheet.dart';
 import '../widgets/run_list_tile.dart';
-import '../widgets/surface_peer_strip.dart';
 import 'add_run_screen.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
@@ -47,6 +52,10 @@ class RunsScreen extends StatefulWidget {
   final LocalRouteStore routeStore;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
+
+  /// Handed to the route builder Add run opens from an empty route field,
+  /// which offers the user's clubs as owners for the new route.
+  final SocialService? social;
 
   /// Gym store, present only when History is mounted from the multi-modal
   /// home shell. When null (or [apiClient] is signed out) the unified
@@ -69,15 +78,11 @@ class RunsScreen extends StatefulWidget {
   /// tab strip. Default true preserves the standalone History behaviour.
   final bool showKindChips;
 
-  /// When set, a labelled peer strip (Runs · Routes · Plans · Races) renders
-  /// above the list. The Fitness hub's Runs sub-tab supplies it so the run
-  /// surface's planning tools have a named home; null elsewhere.
-  final List<SurfacePeer>? surfacePeers;
-
   /// When false the cloud slot (sync-unsynced badge / refresh / offline) is
-  /// suppressed. The Fitness hub's Runs sub-tab passes false so the sync
-  /// affordance lives only on the All tab — the two tabs sit side by side and
-  /// duplicating the cloud slot both clutters and overflows the Runs AppBar.
+  /// suppressed. The Fitness hub passes true only to whichever run list leads
+  /// its strip — History when it is there, Runs when it stands alone — since
+  /// the two tabs sit side by side and duplicating the cloud slot both
+  /// clutters and overflows the Runs AppBar.
   final bool showSyncActions;
 
   /// Static AppBar title. The Fitness hub's Runs sub-tab passes "Runs" so its
@@ -87,6 +92,20 @@ class RunsScreen extends StatefulWidget {
   /// Null keeps the range + count title (the All tab + standalone mounts).
   final String? titleText;
 
+  /// When false the screen renders no add FAB of its own. The Fitness hub's
+  /// History tab passes false: its add is the cross-modal run / lift / meal
+  /// picker, which is exactly what the shell's centre Log button one row below
+  /// already opens — two "+" buttons on screen at once for one action. Every
+  /// other mount's add is modality-specific, so it keeps its FAB.
+  final bool showAddFab;
+
+  /// Whether the shell's centre button starts recording on tap, in which case
+  /// it is captioned for the default activity ("Start run", "Start ride", ...)
+  /// rather than "Log" and the empty state has to name it that way. The host
+  /// knows, because it is the one that can see whether lifts or meals exist;
+  /// this screen's Runs-only mount cannot.
+  final bool centreStartsRun;
+
   const RunsScreen({
     super.key,
     this.apiClient,
@@ -94,12 +113,14 @@ class RunsScreen extends StatefulWidget {
     required this.routeStore,
     required this.preferences,
     this.settingsSync,
+    this.social,
     this.gymStore,
     this.foodStore,
     this.showKindChips = true,
-    this.surfacePeers,
     this.showSyncActions = true,
     this.titleText,
+    this.showAddFab = true,
+    this.centreStartsRun = false,
   });
 
   @override
@@ -167,7 +188,16 @@ bool shouldShowRunsLoadMore({
   return true;
 }
 
-class _RunsScreenState extends State<RunsScreen> {
+class _RunsScreenState extends State<RunsScreen>
+    with AutomaticKeepAliveClientMixin {
+  /// The Fitness hub mounts this screen inside a `TabBarView`, which is a
+  /// `PageView` with no cache extent: without this the tab is torn down the
+  /// moment the user taps a sibling, re-running the whole network fan-out and
+  /// throwing away the filters, paging window and scroll offset. The shell's
+  /// own pages already keep state this way (`_LazyKeepAliveTab`).
+  @override
+  bool get wantKeepAlive => true;
+
   bool _syncing = false;
   bool _fetching = false;
   _RunsSort _sort = _RunsSort.newest;
@@ -193,6 +223,7 @@ class _RunsScreenState extends State<RunsScreen> {
   // Capped at _filtered.length so taking past the end is a no-op.
   List<Run> _visible = const [];
   Set<String> _unsyncedIds = const {};
+  Set<String> _blockedIds = const {};
 
   /// How many filtered rows the list is currently revealing. Resets to
   /// _kRunsPageSize whenever the filter/sort changes. Grows by
@@ -224,6 +255,13 @@ class _RunsScreenState extends State<RunsScreen> {
   List<ActivityRow> _activities = const [];
   bool _hasLift = false;
   bool _hasMeal = false;
+
+  /// True when the last modality hydrate failed. A failed read is not an empty
+  /// result: without this a dropped connection silently changed what this
+  /// surface IS — timeline and History title give way to the run list and its
+  /// toolbar — with nothing saying so and no way to retry. Mirrors web
+  /// `/history`'s `history-load-error` card.
+  bool _modalityLoadFailed = false;
   _HistoryKind _kind = _HistoryKind.all;
 
   /// True once a SECOND modality has data AND the gym store is wired in
@@ -289,27 +327,44 @@ class _RunsScreenState extends State<RunsScreen> {
     final api = widget.apiClient;
     final gymStore = widget.gymStore;
     if (api == null || api.userId == null || gymStore == null) return;
+    var failed = false;
     try {
-      final fresh = await api.fetchGymWorkoutsWithSets(limit: 100);
+      final fresh = await api
+          .fetchGymWorkoutsWithSets(limit: 100)
+          .timeout(kBackendLoadTimeout);
       await gymStore.replaceFromServer(fresh, fetchLimit: 100);
     } catch (e) {
+      failed = true;
       debugPrint('History gym hydrate failed: $e');
     }
     final foodStore = widget.foodStore;
-    if (foodStore == null) return;
-    try {
-      final now = DateTime.now();
-      final weekStart = DateTime(now.year, now.month, now.day - 6);
-      final tomorrow = DateTime(now.year, now.month, now.day + 1);
-      final fresh = await api.fetchFoodLog(from: weekStart, to: tomorrow);
-      await foodStore.replaceFromServer(
-        [for (final r in fresh) r.toJson()],
-        windowStart: weekStart,
-        windowEnd: tomorrow,
-      );
-    } catch (e) {
-      debugPrint('History food hydrate failed: $e');
+    if (foodStore != null) {
+      try {
+        final now = DateTime.now();
+        final weekStart = DateTime(now.year, now.month, now.day - 6);
+        final tomorrow = DateTime(now.year, now.month, now.day + 1);
+        final fresh = await api
+            .fetchFoodLog(from: weekStart, to: tomorrow)
+            .timeout(kBackendLoadTimeout);
+        await foodStore.replaceFromServer(
+          [for (final r in fresh) r.toJson()],
+          windowStart: weekStart,
+          windowEnd: tomorrow,
+        );
+      } catch (e) {
+        failed = true;
+        debugPrint('History food hydrate failed: $e');
+      }
     }
+    if (!mounted || failed == _modalityLoadFailed) return;
+    setState(() => _modalityLoadFailed = failed);
+  }
+
+  /// Re-run the hydrate from the error affordance. Clearing the flag first is
+  /// the only feedback the tap gets — a second failure sets it straight back.
+  void _retryModalities() {
+    setState(() => _modalityLoadFailed = false);
+    _hydrateModalities();
   }
 
   /// Rebuild the unified timeline from the local stores — synchronous, no
@@ -417,6 +472,7 @@ class _RunsScreenState extends State<RunsScreen> {
     final resident = {for (final r in widget.runStore.runs) r.id: r};
     _visible = [for (final s in slice) resident[s.id] ?? s];
     _unsyncedIds = widget.runStore.unsyncedRuns.map((r) => r.id).toSet();
+    _blockedIds = widget.runStore.blockedRuns.keys.toSet();
   }
 
   /// Reset paging window back to the first page. Called on filter /
@@ -563,8 +619,7 @@ class _RunsScreenState extends State<RunsScreen> {
                     ?.effective<String>(SettingsKeys.weekStartDay) ??
                 'monday');
       case _RunsRange.month:
-        return DateTime(now.year, now.month, now.day)
-            .subtract(const Duration(days: 30));
+        return DateTime(now.year, now.month, now.day - 30);
       case _RunsRange.year:
         return DateTime(now.year, 1, 1);
       case _RunsRange.all:
@@ -633,46 +688,49 @@ class _RunsScreenState extends State<RunsScreen> {
     if (api == null || api.userId == null) return;
     setState(() => _fetching = true);
     try {
-      // Two distinct paths, both bounded:
-      //
-      // - First load (since == null): fetch the first page only — same
-      //   shape as the web app's `/runs` initial load. Older runs come
-      //   in via "Load more" rather than a 200-row up-front pull. Sets
-      //   `_remoteHasMore` based on whether the page filled, so the
-      //   button knows when to stop.
-      //
-      // - Delta sync (since != null): pull every row modified since
-      //   the last successful fetch. The cap is generous (200) because
-      //   this catches up from a multi-device edit burst, not a cold
-      //   library load — and the cap is one trip, not per-paint. This
-      //   path never touches `_remoteHasMore` on its own — it isn't a
-      //   paginated fetch, so a delta page filling or not says nothing
-      //   about whether older history remains unfetched.
-      final since = widget.preferences.runsLastFetchedAt;
-      final fetchStartedAt = DateTime.now().toUtc();
-      final remote = since == null
-          ? await api.getRuns(limit: _kRunsPageSize)
-          : await api.getRuns(limit: 200, updatedSince: since);
-      await widget.runStore.saveManyFromRemote(remote);
-      await widget.preferences.setRunsLastFetchedAt(fetchStartedAt);
+      // One pull, keyed on the server's own modification clock: every owned
+      // run whose `updated_at` moved since the cursor, so an edit made on
+      // web, by an import or by a job reaches the phone. With no cursor yet
+      // (first sign-in, or the upgrade off the old device-clock watermark) it
+      // walks every owned row, which is also what heals copies the old
+      // watermark left stale (decisions § 2118).
+      final userId = api.userId;
+      final since = widget.preferences.runsSyncCursor;
+      final delta = await api.getRunsModifiedSince(since);
+      // A sign-out or account switch during the read would otherwise write
+      // the previous account's rows into the next one's store.
+      if (api.userId != userId) return;
+      // A delete queued while the rows were in flight must win, as in the
+      // reconcile below.
+      final pending = widget.runStore.pendingRemoteDeleteIds;
+      await widget.runStore.saveManyFromRemote([
+        for (final r in delta.runs)
+          if (!pending.contains(r.id)) r,
+      ]);
+      final cursor = delta.cursor;
+      if (cursor != null) await widget.preferences.setRunsSyncCursor(cursor);
+      // The membership reconcile stays as the net under the delta: a run the
+      // phone does not hold whose `updated_at` is already behind the cursor
+      // is never returned by it again.
+      // Its own catch: a failed reconcile must not undo or mislabel the
+      // delta that already landed.
+      var reconciled = false;
+      try {
+        final pulled = await pullMissingRuns(api, widget.runStore);
+        if (pulled > 0) debugPrint('RunsScreen: pulled $pulled missing runs');
+        reconciled = true;
+      } catch (e) {
+        debugPrint('RunsScreen: missing-run reconcile failed: $e');
+      }
       if (mounted) {
         setState(() {
-          if (since == null) {
-            _remoteHasMore = remote.length == _kRunsPageSize;
-          }
-          // Returning-user regression fix: `_remoteHasMore` resets to
-          // its conservative `true` default on every fresh mount (app
-          // restart, tab remount, …), but a returning user almost
-          // always takes the delta-sync branch above, which never
-          // corrects it — so the Load-more button stayed stuck on
-          // forever for anyone with under one page of runs. The local
-          // store's full history is authoritative here regardless of
-          // which branch ran (saveManyFromRemote just folded in
-          // anything new from any device): fewer than a page total
-          // means there is provably no next page to fetch.
-          if (widget.runStore.summaries.length < _kRunsPageSize) {
-            _remoteHasMore = false;
-          }
+          // A walk from no cursor read every owned row.
+          if (since == null) _remoteHasMore = false;
+          // A completed reconcile means the device holds every owned run,
+          // so no older page exists — the only proof of that. A local count
+          // under one page is not: it read 10 restored-on-web runs' worth of
+          // history as complete and hid Load more over the gap.
+          if (reconciled) _remoteHasMore = false;
         });
       }
     } catch (e) {
@@ -769,22 +827,40 @@ class _RunsScreenState extends State<RunsScreen> {
     }
 
     final unsynced = widget.runStore.unsyncedRuns;
-    if (unsynced.isEmpty) return;
+    final blocked = widget.runStore.blockedCount;
+    if (unsynced.isEmpty) {
+      // Parked runs are absent from `unsyncedRuns` by design, so with nothing
+      // else queued this button would otherwise do nothing and say nothing —
+      // and the runner would be left with a badge and no explanation.
+      if (blocked > 0) {
+        showTopBanner(context, l10n.historySyncBlocked(blocked),
+            duration: const Duration(seconds: 6));
+      }
+      return;
+    }
 
     setState(() => _syncing = true);
     int synced = 0;
     String? lastError;
 
     try {
-      final failed = await api.saveRunsBatch(unsynced);
+      final outcome = await api.saveRunsBatch(unsynced);
+      if (outcome.blocked.isNotEmpty) {
+        await widget.runStore.markBlocked(outcome.blocked);
+      }
+      final failed = outcome.failedIds;
       // Same partial-success contract as SyncService — only mark
       // the runs whose track upload succeeded.
       await widget.runStore.markManySynced(
-        unsynced.where((r) => !failed.contains(r.id)).map((r) => r.id),
+        unsynced.where((r) => !failed.contains(r.id)),
       );
       synced = unsynced.length - failed.length;
-      if (failed.isNotEmpty) {
-        lastError = l10n.historySyncTrackFailed(failed.length);
+      // A parked run and a deferred one read differently: one is coming back
+      // on its own, the other needs the runner to decide something.
+      if (outcome.retryable.isNotEmpty) {
+        lastError = l10n.historySyncTrackFailed(outcome.retryable.length);
+      } else if (outcome.blocked.isNotEmpty) {
+        lastError = l10n.historySyncBlocked(outcome.blocked.length);
       }
     } catch (e) {
       debugPrint('RunsScreen sync failed: $e');
@@ -793,6 +869,7 @@ class _RunsScreenState extends State<RunsScreen> {
 
     if (!mounted) return;
     setState(() => _syncing = false);
+
     if (lastError != null) {
       showTopBanner(
         context,
@@ -936,11 +1013,11 @@ class _RunsScreenState extends State<RunsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
     final totalCount = widget.runStore.summaries.length;
-    final peers = widget.surfacePeers;
 
     return PopScope(
       canPop: !_selecting,
@@ -949,15 +1026,10 @@ class _RunsScreenState extends State<RunsScreen> {
       },
       child: Scaffold(
         appBar: _selecting ? _selectionAppBar(l10n) : _normalAppBar(l10n),
-        body: peers == null
-            ? _buildBody(theme, l10n, unit, totalCount)
-            : Column(
-                children: [
-                  SurfacePeerStrip(label: l10n.runSurfaceLabel, peers: peers),
-                  Expanded(child: _buildBody(theme, l10n, unit, totalCount)),
-                ],
-              ),
-        floatingActionButton: _selecting ? null : _buildAddFab(l10n),
+        body: _buildBody(theme, l10n, unit, totalCount),
+        floatingActionButtonLocation: pageFabLocation(context),
+        floatingActionButton:
+            (_selecting || !widget.showAddFab) ? null : _buildAddFab(l10n),
       ),
     );
   }
@@ -971,12 +1043,17 @@ class _RunsScreenState extends State<RunsScreen> {
     final kind = _timelineMode ? _kind : _HistoryKind.run;
     final (String label, String tooltip, VoidCallback onPressed) = switch (kind) {
       _HistoryKind.all => (l10n.logSheetTitle, l10n.historyLogTooltip, _openLogPicker),
-      _HistoryKind.run => (l10n.historyAddRun, l10n.historyAddRunTooltip, _openAddRun),
+      // "Past" because the shell's centre button, one row below, is the one
+      // that records: two "+" buttons both reading "run" was two guesses.
+      _HistoryKind.run => (l10n.historyAddPastRun, l10n.historyAddRunTooltip, _openAddRun),
       _HistoryKind.lift => (l10n.logLift, l10n.historyLogTooltip, _openAddLift),
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
     return FloatingActionButton.extended(
-      heroTag: 'history_add_fab',
+      // The Fitness hub mounts this screen twice, side by side, and both stay
+      // alive now — a constant tag would put two heroes with one tag in the
+      // same Navigator subtree, which asserts on every push out of the hub.
+      heroTag: ObjectKey(this),
       onPressed: onPressed,
       icon: const Icon(Icons.add),
       label: Text(label),
@@ -992,6 +1069,10 @@ class _RunsScreenState extends State<RunsScreen> {
     final action = await showLogSheet(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
+      hidden: hiddenLogActions(
+        gymShown: widget.preferences.gymShown(hasData: _hasLift),
+        nutritionShown: widget.preferences.nutritionShown(hasData: _hasMeal),
+      ),
     );
     if (action == null || !mounted) return;
     await widget.preferences.setLastLogType(action.wire);
@@ -1047,6 +1128,8 @@ class _RunsScreenState extends State<RunsScreen> {
           runStore: widget.runStore,
           routeStore: widget.routeStore,
           preferences: widget.preferences,
+          apiClient: widget.apiClient,
+          social: widget.social,
         ),
       ),
     );
@@ -1089,6 +1172,7 @@ class _RunsScreenState extends State<RunsScreen> {
 
   AppBar _normalAppBar(AppLocalizations l10n) {
     final unsyncedCount = widget.runStore.unsyncedCount;
+    final blockedCount = widget.runStore.blockedCount;
     final visibleCount = _visible.length;
     // Move the date-range label + visible-count into the AppBar
     // title so the otherwise-empty left half of the bar carries
@@ -1223,6 +1307,22 @@ class _RunsScreenState extends State<RunsScreen> {
               ),
             ),
           )
+        else if (widget.showSyncActions && blockedCount > 0)
+          // With nothing queued, a parked run would leave the bar showing the
+          // ordinary refresh icon and no sign that a run is stuck. It gets the
+          // error colour because it needs a decision, not patience.
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Badge.count(
+              count: blockedCount,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              child: IconButton(
+                icon: const Icon(Icons.cloud_off),
+                tooltip: l10n.historyBlockedTooltip(blockedCount),
+                onPressed: _syncAll,
+              ),
+            ),
+          )
         else if (widget.showSyncActions && widget.apiClient?.userId != null)
           IconButton(
             icon: const Icon(Icons.cloud_download),
@@ -1274,7 +1374,33 @@ class _RunsScreenState extends State<RunsScreen> {
     // their timeline — only fall back to the "no runs" empty state when there
     // is genuinely nothing across any modality (mirrors web's gym-only fix).
     if (totalCount == 0 && !_hasModalityData) {
-      return _EmptyRuns(theme: theme, l10n: l10n);
+      // Nothing to show AND the read failed is the case web's error card
+      // exists for: "no lifts yet" and "we could not ask" are different
+      // answers, and only one of them has a retry.
+      if (_modalityLoadFailed) {
+        return ErrorState(
+          message: l10n.historyModalityLoadFailed,
+          onRetry: _retryModalities,
+        );
+      }
+      // This is where a brand-new account lands, so it owes an action rather
+      // than only a sentence: the body names the shell's Log button (the Run
+      // tab it used to name was deleted by decisions § 139) and the CTA logs
+      // a run the user has already finished, which is the one add this screen
+      // can perform on its own.
+      return EmptyState(
+        icon: Icons.directions_run,
+        illustration: grisnirWaitingOrNull(),
+        title: l10n.historyEmptyTitle,
+        body: widget.centreStartsRun
+            ? l10n.historyEmptyBodyRunPrimary(startActivityCaption(
+                l10n,
+                ActivityType.fromName(widget.preferences.defaultActivityType),
+              ))
+            : l10n.historyEmptyBody,
+        ctaLabel: l10n.historyAddPastRun,
+        onCta: _openAddRun,
+      );
     }
 
     Widget content;
@@ -1298,7 +1424,44 @@ class _RunsScreenState extends State<RunsScreen> {
       );
     }
 
-    if (!_showChips) return content;
+    if (_showChips) content = _withKindChips(content, l10n);
+    if (!_modalityLoadFailed) return content;
+    // There IS local content, so replacing it with the error card would be a
+    // worse lie than the one being fixed — say the surface may be showing less
+    // than it holds, and keep the rows.
+    return Column(
+      children: [
+        Material(
+          color: theme.colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              children: [
+                Icon(Icons.cloud_off,
+                    size: 16, color: theme.colorScheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.historyModalityLoadFailed,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _retryModalities,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(child: content),
+      ],
+    );
+  }
+
+  Widget _withKindChips(Widget content, AppLocalizations l10n) {
     return Column(
       children: [
         Row(
@@ -1346,6 +1509,8 @@ class _RunsScreenState extends State<RunsScreen> {
               routeStore: widget.routeStore,
               preferences: widget.preferences,
               settingsSync: widget.settingsSync,
+              social: widget.social,
+              centreStartsRun: widget.centreStartsRun,
             ),
           ),
         );
@@ -1442,7 +1607,9 @@ class _RunsScreenState extends State<RunsScreen> {
         ? const <HistoryItem>[]
         : buildHistoryItems(_visible,
             now: DateTime.now(),
-            localeTag: localeToTag(Localizations.localeOf(context)));
+            localeTag: localeToTag(Localizations.localeOf(context)),
+            groupByMonth:
+                _sort == _RunsSort.newest || _sort == _RunsSort.oldest);
     if (widthClassOf(context) == WidthClass.expanded) {
       return _buildRunGrid(theme, l10n, unit, items,
           emptyAfterFilter: emptyAfterFilter, showLoadMore: showLoadMore);
@@ -1640,6 +1807,7 @@ class _RunsScreenState extends State<RunsScreen> {
       run: run,
       unit: unit,
       isUnsynced: _unsyncedIds.contains(run.id),
+      isBlocked: _blockedIds.contains(run.id),
       selecting: _selecting,
       selected: _selected.contains(run.id),
       onTap: () async {
@@ -1740,33 +1908,6 @@ class _KindChipRow extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyRuns extends StatelessWidget {
-  final ThemeData theme;
-  final AppLocalizations l10n;
-  const _EmptyRuns({required this.theme, required this.l10n});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.directions_run, size: 64, color: theme.colorScheme.outline),
-          const SizedBox(height: 16),
-          Text(l10n.historyEmptyTitle, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(
-            l10n.historyEmptyBody,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2228,7 +2369,7 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
                     Expanded(
                       child: Center(
                         child: Text(
-                          formatDowNarrow(DateTime(2026, 1, 5).add(Duration(days: i)),
+                          formatDowNarrow(DateTime(2026, 1, 5 + i),
                               localeToTag(Localizations.localeOf(context))),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: cs.onSurfaceVariant,

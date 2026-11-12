@@ -1,5 +1,6 @@
+import { haversineMetres } from '../runs/run_stats';
 import { bandForDistance } from './distance_bands';
-import type { RouteSurface } from '../types';
+import type { PreferredUnit, RouteSurface } from '../types';
 
 /**
  * Templated route describer — turns a route's stored stats into a short,
@@ -64,26 +65,6 @@ export const ELEVATION_THRESHOLDS = {
 	mountainous: 70,
 } as const;
 
-/**
- * Great-circle distance in metres. Local copy (not imported from
- * routing_quality) so this module stays dependency-light and the Dart
- * twin can mirror it 1:1 without dragging the routing helpers across.
- */
-function haversineM(
-	a: { lat: number; lng: number },
-	b: { lat: number; lng: number },
-): number {
-	const R = 6371000;
-	const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-	const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-	const lat1 = (a.lat * Math.PI) / 180;
-	const lat2 = (b.lat * Math.PI) / 180;
-	const h =
-		Math.sin(dLat / 2) ** 2 +
-		Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-	return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
-}
-
 /** Bucket total gain (m) over distance into a coarse elevation character. */
 export function elevationProfile(
 	distanceM: number,
@@ -110,7 +91,8 @@ export function elevationProfile(
  */
 export function routeShape(input: RouteDescriptionInput): RouteShape {
 	if (!input.start || !input.end) return 'point_to_point';
-	return haversineM(input.start, input.end) <= LOOP_CLOSE_M
+	return haversineMetres(input.start.lat, input.start.lng, input.end.lat, input.end.lng) <=
+		LOOP_CLOSE_M
 		? 'loop'
 		: 'point_to_point';
 }
@@ -162,7 +144,7 @@ const ELEVATION_WORD: Record<ElevationProfile, string> = {
 export interface DescribeI18n {
 	/** The project's `m(key, params)` translator. */
 	t: (key: string, params?: Record<string, string | number>) => string;
-	/** `formatDistance(metres)` — unit-aware, from $lib/format/units. */
+	/** `formatDistance(metres)` — unit-aware, from #lib/format/units. */
 	formatDistance: (metres: number) => string;
 }
 
@@ -192,7 +174,7 @@ const ELEV_I18N_KEY: Record<ElevationProfile, string> = {
  * Distance + gain run through the injected `formatDistance` so a
  * mi-preference viewer reads miles; every word is translated via the
  * injected `t`. Pure — no env / store imports — so it stays unit-testable
- * and free of the SvelteKit `$env` graph.
+ * and free of the SvelteKit `$app/env` graph.
  */
 export function localisedTemplate(
 	parts: RouteDescriptionParts,
@@ -229,30 +211,58 @@ export function localisedTemplate(
 	return `${sentence} ${t('routeDetail.descFlat')}`;
 }
 
+const METRES_PER_MILE = 1609.344;
+const METRES_PER_FOOT = 0.3048;
+
+/** Gain per mile in feet, from the unrounded totals rather than `gainPerKm`. */
+function feetPerMile(parts: RouteDescriptionParts): number {
+	if (parts.distanceM <= 0) return 0;
+	return Math.round(parts.elevationM / METRES_PER_FOOT / (parts.distanceM / METRES_PER_MILE));
+}
+
 /**
  * Canonical English assembler. Used to seed the LLM prompt (plain prose
  * the model enhances) and as the literal fallback string in tests and on
  * the server's degraded path. The route-detail UI does NOT call this —
  * it builds a localised, unit-aware sentence via `localisedTemplate` so
  * non-English viewers and mi-preference viewers get correct output.
- * Distance is rendered in km here because this string is English-only by
- * contract.
+ * English-only by contract, but in the viewer's [unit]: a miles runner's
+ * prompt states miles and feet, so the model is never handed kilometres to
+ * repeat back to them.
  */
 export function assembleEnglish(
 	parts: RouteDescriptionParts,
 	name: string,
+	unit: PreferredUnit = 'km',
 ): string {
-	const km = (parts.distanceM / 1000).toFixed(parts.distanceM >= 1000 ? 1 : 2);
+	const perUnitM = unit === 'mi' ? METRES_PER_MILE : 1000;
+	const distance = (parts.distanceM / perUnitM).toFixed(parts.distanceM >= perUnitM ? 1 : 2);
 	const shape = SHAPE_WORD[parts.shape];
 	const surface = parts.surface ? `${SURFACE_WORD[parts.surface]} ` : '';
 	const clauses: string[] = [];
-	clauses.push(`${name} is a ${km} km ${surface}${shape} route`);
+	clauses.push(`${name} is a ${distance} ${unit} ${surface}${shape} route`);
 	if (parts.elevationM > 0) {
-		clauses.push(
-			`with ${Math.round(parts.elevationM)} m of climbing (${ELEVATION_WORD[parts.elevation]}, about ${parts.gainPerKm} m per km)`,
-		);
+		const climb =
+			unit === 'mi'
+				? `${Math.round(parts.elevationM / METRES_PER_FOOT)} ft of climbing (${ELEVATION_WORD[parts.elevation]}, about ${feetPerMile(parts)} ft per mile)`
+				: `${Math.round(parts.elevationM)} m of climbing (${ELEVATION_WORD[parts.elevation]}, about ${parts.gainPerKm} m per km)`;
+		clauses.push(`with ${climb}`);
 	} else {
 		clauses.push('with little to no elevation change');
 	}
 	return clauses.join(' ') + '.';
+}
+
+/**
+ * The text the route-detail page shows once the enhancement endpoint has
+ * answered. Only a model-written paragraph replaces the viewer's localised
+ * template: the server's own fallback is `assembleEnglish`, which is
+ * English by contract, so taking it would hand a non-English viewer an
+ * English sentence in place of the one already rendered in their language.
+ */
+export function shownDescription(
+	localised: string,
+	server: { description: string; source: 'ai' | 'template' },
+): string {
+	return server.source === 'ai' ? server.description : localised;
 }

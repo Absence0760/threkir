@@ -1,5 +1,8 @@
+import 'package:core_models/core_models.dart'
+    show kExerciseFoldKeys, kExerciseFoldUnicodeVersion, kExerciseFoldValues;
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/catalogue_browse.dart';
 import '../lib/gym_prs.dart';
 
 GymSetLike _set(String name, num? reps, num? weightKg) =>
@@ -36,6 +39,88 @@ void main() {
     test('case, trim, whitespace collapse', () {
       expect(normaliseExerciseName('  Bench  Press '), 'bench press');
       expect(normaliseExerciseName('bench press'), 'bench press');
+    });
+
+    test('the class this key collapses is one the display fold keeps apart', () {
+      // The key answers "is this the same exercise" and the catalogue fold
+      // answers "where does a reader look for it" — deliberately different
+      // questions (decisions § 1334). This measures where they part company,
+      // because the boundary is invisible from either function alone and a
+      // surface that renders a shadowed pair AS a group would inherit it.
+      //
+      // Derived from the class itself rather than listed, so widening
+      // kExerciseWhitespace re-measures instead of silently passing.
+      final members = <int>[];
+      for (var cp = 0; cp <= 0xffff; cp++) {
+        if (kExerciseWhitespace.hasMatch(String.fromCharCode(cp))) members.add(cp);
+      }
+      expect(members.length, 26);
+
+      for (final cp in members) {
+        expect(normaliseExerciseName('Bench${String.fromCharCode(cp)}Press'),
+            'bench press',
+            reason: 'the key unifies every member of its own class');
+      }
+
+      // 25 of the 26 survive the display fold as something other than a plain
+      // space: the fold is built on CANONICAL decomposition, and the only
+      // whitespace with one is U+2000 / U+2001 (to U+2002 / U+2003, still not
+      // U+0020). U+00A0 — the one a phone keyboard and a paste from a web page
+      // actually produce — is among them.
+      final unfolded =
+          members.where((cp) => fold(String.fromCharCode(cp)) != ' ').toList();
+      expect(unfolded.length, 25);
+      expect(unfolded.contains(0x00a0), isTrue);
+      expect(unfolded.contains(0x0020), isFalse);
+    });
+
+    test('two rows sharing a key are separated by the whole block between them', () {
+      // Not merely "not adjacent": the whole block of names sharing the first
+      // word sits between two rows that are ONE exercise, so a reader scanning
+      // for a duplicate does not see one.
+      //
+      // WHICH SIDE it lands on is not fixed, and § 1496 recorded it as fixed —
+      // "every kept member sorts above U+0020". Twenty do; the five C0 members
+      // U+0009-U+000D sort below it, so a tab- or newline-bearing spelling
+      // files BEFORE the whole `Bench …` block where a U+00A0 one files after.
+      // Neither arrives from a keyboard and both arrive from a paste or an
+      // import, so a surface that groups the pair cannot reach the second row
+      // by scanning one direction from the first, whichever it picks.
+      //
+      // Derived from the class rather than listed, so widening
+      // kExerciseWhitespace re-measures instead of silently passing.
+      final members = <int>[];
+      for (var cp = 0; cp <= 0xffff; cp++) {
+        if (kExerciseWhitespace.hasMatch(String.fromCharCode(cp))) members.add(cp);
+      }
+      final kept =
+          members.where((cp) => fold(String.fromCharCode(cp)) != ' ').toList();
+      bool above(int cp) => fold(String.fromCharCode(cp)).compareTo(' ') > 0;
+      expect(kept.where(above).length, 20);
+      expect(kept.where((cp) => !above(cp)).toList(), [0x09, 0x0a, 0x0b, 0x0c, 0x0d]);
+
+      // The plain spelling sits INSIDE the block its own first word opens.
+      const plain = 'Bench Press';
+      const lower = 'Bench Arm';
+      const upper = 'Bench Row';
+      expect(compareFoldedNames(plain, 'p', lower, 'l'), 1);
+      expect(compareFoldedNames(plain, 'p', upper, 'u'), -1);
+
+      // Every shadowed spelling sits OUTSIDE it, on the side its own member
+      // sorts to — asserted over the whole class rather than over the one
+      // member the filing happened to name.
+      for (final cp in kept) {
+        final shadow = 'Bench${String.fromCharCode(cp)}Press';
+        expect(normaliseExerciseName(plain), normaliseExerciseName(shadow),
+            reason: 'the key unifies the pair');
+        expect(
+          above(cp)
+              ? compareFoldedNames(shadow, 's', upper, 'u')
+              : compareFoldedNames(shadow, 's', lower, 'l'),
+          above(cp) ? 1 : -1,
+          reason: 'U+${cp.toRadixString(16)} does not clear the block',
+        );
+      }
     });
   });
 
@@ -135,6 +220,110 @@ void main() {
       final prs = workoutPrs(prior, [_set('bench press', 5, 95)]);
       expect(prs, isEmpty);
     });
+
+    test('the result carries the grouping key, not a re-derivable display string', () {
+      // The name carries BOTH collapses the naive fold misses, because the two
+      // runtimes miss DIFFERENT ones and the intersection is empty: measured
+      // over all 1,488 table entries, Dart 3.12 disagrees with the frozen table
+      // at 465 code points and Node 24 (Unicode 17.0) at exactly U+0130, which
+      // is in neither set the other misses. The internal whitespace run is the
+      // witness that holds on both, so this test and its web mirror take the
+      // same input.
+      //
+      // A caller that keys a lookup on `exerciseName.trim().toLowerCase()`
+      // stores a key no block spelled `incline press` can ever hit, and the
+      // exercise's chips vanish with no error anywhere (§ 1248). An ASCII
+      // single-spaced name would pass either way.
+      final prs = workoutPrs([], [_set('\u0130ncline  Press', 5, 100)]);
+      expect(prs.length, 1);
+      expect(prs[0].key, 'incline press');
+      expect(prs[0].exerciseName, '\u0130ncline  Press');
+      expect(prs[0].key, isNot(prs[0].exerciseName.trim().toLowerCase()));
+      expect(prs[0].key, normaliseExerciseName('incline press'));
+    });
+  });
+
+  group('sameExerciseName', () {
+    test('spellings the canonical fold merges are the same lift', () {
+      expect(sameExerciseName('Bench Press', 'bench press'), isTrue);
+      expect(sameExerciseName('Bench  Press', 'Bench Press'), isTrue);
+      expect(sameExerciseName('Bench\u00a0Press', 'bench press'), isTrue);
+      expect(sameExerciseName('\u0130ncline Press', 'incline press'), isTrue);
+      expect(sameExerciseName('  Row  ', 'row'), isTrue);
+    });
+
+    test('different lifts, and the blank cases', () {
+      expect(sameExerciseName('Bench Press', 'Back Squat'), isFalse);
+      expect(sameExerciseName('Row', ''), isFalse);
+      // Blank spellings match each other, as they did on the raw comparison
+      // the grouping surfaces used to make.
+      expect(sameExerciseName('', '   '), isTrue);
+      expect(sameExerciseName(null, null), isTrue);
+    });
+  });
+
+  group('namesAnExercise', () {
+    test('a spelling names a lift when its canonical key is non-empty', () {
+      expect(namesAnExercise('Bench Press'), isTrue);
+      expect(namesAnExercise('  Row  '), isTrue);
+      expect(namesAnExercise('İncline Press'), isTrue);
+      expect(namesAnExercise(''), isFalse);
+      expect(namesAnExercise('   '), isFalse);
+      expect(namesAnExercise(null), isFalse);
+      // Every member of the folded class, alone, is blank.
+      for (final cp in [
+        0x09,
+        0x20,
+        0x85,
+        0xa0,
+        0x1680,
+        0x2000,
+        0x2028,
+        0x202f,
+        0x3000,
+        0xfeff,
+      ]) {
+        expect(namesAnExercise(String.fromCharCode(cp)), isFalse,
+            reason: 'U+${cp.toRadixString(16)}');
+      }
+      // U+001C-U+001F are deliberately outside the class (decisions 790), so
+      // they name a lift as any other character does.
+      expect(namesAnExercise('\u001c'), isTrue);
+    });
+
+    test('U+0085 is blank here, and this rail agrees only because it is named',
+        () {
+      // Dart's trim() strips the whole White_Space set plus U+FEFF, so it
+      // happens to answer as the class does -- which the web twin's trim() does
+      // not, and is why the test is a function on both rails rather than a
+      // trim at each call site (decisions 1367).
+      expect('\u0085'.trim(), '');
+      expect(namesAnExercise('\u0085'), isFalse);
+      expect(namesAnExercise(' \u00a0\u0085\u2028 '), isFalse);
+      // A real name carrying one is still a real name, and the class collapses
+      // it to the separator every other member collapses to.
+      expect(namesAnExercise('\u0085Row\u0085'), isTrue);
+      expect(normaliseExerciseName('Bench\u0085Press'), 'bench press');
+    });
+  });
+
+  group('distinctExerciseCount', () {
+    test('spellings the canonical fold merges count once', () {
+      // Each pair is one lift under two spellings that `trim().toLowerCase()`
+      // keeps apart: an internal whitespace run, a non-breaking space, and a
+      // code point the runtimes disagree about.
+      expect(distinctExerciseCount(['Bench  Press', 'Bench Press']), 1);
+      expect(distinctExerciseCount(['Bench\u00a0Press', 'bench press']), 1);
+      expect(distinctExerciseCount(['\u0130ncline Press', 'incline press']), 1);
+      expect(distinctExerciseCount(['Bench Press', 'Back Squat']), 2);
+    });
+
+    test('blank and whitespace-only names contribute nothing', () {
+      // Matches computeExercisePrs, which drops a blank-named set outright — a
+      // count that included it disagreed with every keyed surface.
+      expect(distinctExerciseCount(['', '   ', '\u00a0', 'Bench Press']), 1);
+      expect(distinctExerciseCount(<String>[]), 0);
+    });
   });
 
   group('RunningPrTracker', () {
@@ -162,5 +351,125 @@ void main() {
         expect(norm(viaTracker), norm(viaLoop));
       }
     });
+  });
+
+  test('the whitespace class matches web, U+0085 included', () {
+    // exercise_key is PERSISTED, so a name that normalises differently on the
+    // two platforms buckets one exercise into two PRs. Dart's trim() strips
+    // every Unicode White_Space code point (incl. NEL); JS's does not, so the
+    // class is spelled out on both sides rather than left to the runtime.
+    expect(normaliseExerciseName('Bench Press\u0085'), 'bench press');
+    expect(normaliseExerciseName('\u00a0Bench\u2003Press\u2028'), 'bench press');
+    expect(normaliseExerciseName('  Bench   press '), 'bench press');
+  });
+
+  test('the whitespace class folds what the SQL rail folds, and nothing more',
+      () {
+    // The key is derived on three rails and PERSISTED, so a name the server
+    // buckets differently from the clients splits one exercise into two: the
+    // local PR tracker says PR where gym_workout_summaries.is_pr says no.
+    // Every case here disagreed before migration 20270623000001
+    // (decisions § 790).
+    //
+    // btrim(text) strips U+0020 alone, so any other edge whitespace survived
+    // the trim and the \s+ pass then turned it into a leading/trailing SPACE.
+    expect(normaliseExerciseName('\u0009Bench Press'), 'bench press');
+    expect(normaliseExerciseName('Bench Press\u000a'), 'bench press');
+    // Postgres \s past ASCII is the locale provider's opinion, not Unicode's:
+    // the ICU provider folds NBSP and the libc one does not. Neither folds
+    // U+FEFF, which is invisible and must not split a bucket.
+    expect(normaliseExerciseName('Bench\u00a0Press'), 'bench press');
+    expect(normaliseExerciseName('Bench\ufeffPress'), 'bench press');
+    // A name that is nothing but whitespace is not an exercise. The server's
+    // btrim(coalesce(name,'')) <> '' filter kept a lone tab as an exercise
+    // named " "; both clients always dropped it.
+    expect(normaliseExerciseName('\u0009\u00a0'), '');
+    // The ICU provider also folds U+001C-U+001F. Those are control characters,
+    // not spaces — the clients must NOT start folding them to match.
+    expect(normaliseExerciseName('Bench\u001cPress'), 'bench\u001cpress');
+  });
+
+  test('the case fold matches what the SQL rail case-folds', () {
+    // No rail reaches for its own runtime's lowercase any more: all three fold
+    // through the frozen table (decisions § 1175). These are the cases that
+    // were reachable in a Latin or Greek exercise name while they did.
+    //
+    // U+0130's FULL lowercase is 'i' + U+0307 (what JS and ICU return); its
+    // SIMPLE one is a bare 'i', which is the mapping the table carries, so a
+    // key written here satisfies the CHECK on
+    // gym_routine_exercises.exercise_key.
+    expect(normaliseExerciseName('\u0130tme'), 'itme');
+    expect(normaliseExerciseName('\u0130TME'), 'itme');
+    // Final sigma: ICU and JS apply Unicode's contextual Final_Sigma rule and
+    // this rail and libc never do, so an all-caps Greek spelling has to be
+    // folded onto U+03C3 or it never meets its own lower-case one.
+    expect(normaliseExerciseName('\u039f\u0394\u039f\u03a3'),
+        '\u03bf\u03b4\u03bf\u03c3');
+    expect(normaliseExerciseName('\u03bf\u03b4\u03bf\u03c2'),
+        '\u03bf\u03b4\u03bf\u03c3');
+    // An ASCII capital I stays an i. Under a Turkish-locale database the old
+    // server derivation folded it to U+0131 and split every "Incline Press".
+    expect(normaliseExerciseName('INCLINE Press'), 'incline press');
+    // And the accented-capital merge every non-English lifter depends on is
+    // intact — an ASCII-only fold would have split these two.
+    expect(normaliseExerciseName('\u00dcBERZ\u00dcGE'), '\u00fcberz\u00fcge');
+    expect(normaliseExerciseName('\u00fcberz\u00fcge'), '\u00fcberz\u00fcge');
+  });
+
+  test('the frozen fold table is 1:1, ascending and unchained', () {
+    // Every rail applies the table in ONE pass — Postgres translate() and both
+    // clients' per-code-point lookup — so these are the claims that make the
+    // three answers the same answer rather than three passes that happen to
+    // agree today (decisions § 1175).
+    expect(kExerciseFoldKeys.length, kExerciseFoldValues.length);
+    final keys = kExerciseFoldKeys.toSet();
+    expect(keys.length, kExerciseFoldKeys.length);
+    for (var i = 1; i < kExerciseFoldKeys.length; i++) {
+      expect(kExerciseFoldKeys[i - 1] < kExerciseFoldKeys[i], isTrue);
+    }
+    for (var i = 0; i < kExerciseFoldKeys.length; i++) {
+      expect(kExerciseFoldValues[i], isNot(kExerciseFoldKeys[i]));
+      // A value the table also folds would make fold(fold(x)) differ from
+      // fold(x), and the CHECK re-derives the key from the name on every write.
+      expect(keys.contains(kExerciseFoldValues[i]), isFalse);
+    }
+    // The SQL rail takes a 26-pair fast path for an all-ASCII name, which is
+    // only answer-identical to the full table while its ASCII half is exactly
+    // this.
+    final ascii = <int, int>{
+      for (var i = 0; i < kExerciseFoldKeys.length; i++)
+        if (kExerciseFoldKeys[i] < 0x80) kExerciseFoldKeys[i]: kExerciseFoldValues[i],
+    };
+    expect(ascii, {for (var i = 0; i < 26; i++) 0x41 + i: 0x61 + i});
+  });
+
+  test('the fold is the table, not this runtime', () {
+    // The point of the table. Dart's own toLowerCase() is simple case mapping
+    // from an older Unicode revision and leaves every one of these alone, so
+    // before the table each was a name this rail could not persist without a
+    // 23514 from a CHECK web and the server both agreed on. One from each
+    // family the 465-code-point gap covered: Cherokee (Unicode 8.0), the Latin
+    // Extended-D additions, Garay and Medefaidrin in the supplementary planes.
+    for (final pair in <List<String>>[
+      ['\u13a0', '\uab70'],
+      ['\ua7cb', '\u0264'],
+      ['\u{10d50}', '\u{10d70}'],
+      ['\u{16e40}', '\u{16e60}'],
+    ]) {
+      expect(pair[0].toLowerCase(), pair[0],
+          reason: 'this runtime would have left ${pair[0]} alone');
+      expect(normaliseExerciseName(pair[0]), pair[1]);
+    }
+    expect(kExerciseFoldUnicodeVersion.isNotEmpty, isTrue);
+  });
+
+  test('the fold walks code points, not code units', () {
+    // 307 of the 1,488 entries are outside the BMP. A code-unit walk would fold
+    // each half of the surrogate pair separately, match neither, and leave the
+    // name uppercase — a second bucket for the same lift.
+    const deseret = '\u{10400}\u{10401}';
+    expect(normaliseExerciseName(deseret), '\u{10428}\u{10429}');
+    expect(normaliseExerciseName('Bench $deseret Press'),
+        'bench \u{10428}\u{10429} press');
   });
 }

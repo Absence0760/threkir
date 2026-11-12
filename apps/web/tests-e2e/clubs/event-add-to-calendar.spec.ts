@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -64,6 +64,72 @@ test.describe('/clubs/[slug]/events/[id] — add to calendar', () => {
 		expect(ics).toMatch(/DTSTART:\d{8}T\d{6}Z/);
 		expect(ics).toMatch(/DTEND:\d{8}T\d{6}Z/);
 		expect(ics).toContain(`UID:event-${eventId}-`);
+	});
+
+	test('one-off event: no whole-series button is offered', async ({ page }) => {
+		const title = `e2e calendar single ${Date.now()}`;
+		eventId = await insertEvent({
+			club_id: SYDNEY_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
+		});
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { name: title })).toBeVisible({
+			timeout: 10_000
+		});
+
+		await expect(page.getByTestId('add-to-calendar')).toBeVisible();
+		await expect(page.getByTestId('add-series-to-calendar')).toHaveCount(0);
+	});
+
+	test('recurring event: the whole series downloads as one RRULE VEVENT', async ({ page }) => {
+		const title = `e2e calendar series ${Date.now()}`;
+		// Wednesdays 21:30 in New York: already Thursday in UTC, which is the
+		// clock this browser context runs on. The file has to say Wednesday
+		// 21:30 New York time, not Thursday 02:30 UTC.
+		eventId = await insertEvent({
+			club_id: SYDNEY_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			duration_min: 60,
+			starts_at: '2027-01-14T02:30:00.000Z',
+			timezone: 'America/New_York',
+			recurrence_freq: 'weekly',
+			recurrence_byday: ['WE']
+		});
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { name: title })).toBeVisible({
+			timeout: 10_000
+		});
+
+		// The per-occurrence export stays available alongside the series one.
+		await expect(page.getByTestId('add-to-calendar')).toBeVisible();
+
+		const btn = page.getByTestId('add-series-to-calendar');
+		await expect(btn).toBeVisible();
+
+		const downloadPromise = page.waitForEvent('download');
+		await btn.click();
+		const download = await downloadPromise;
+		expect(download.suggestedFilename()).toMatch(/-series\.ics$/);
+
+		const stream = await download.createReadStream();
+		const chunks: Buffer[] = [];
+		for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+		const ics = Buffer.concat(chunks).toString('utf8');
+
+		// One VEVENT for the whole series — the calendar client expands the rule,
+		// so the member never re-downloads a later occurrence.
+		expect((ics.match(/BEGIN:VEVENT/g) ?? []).length).toBe(1);
+		expect(ics).toMatch(/\r\nRRULE:FREQ=WEEKLY;BYDAY=WE\r\n/);
+		expect(ics).toContain(`UID:event-${eventId}-series@threkir.com`);
+		expect(ics).toContain(`SUMMARY:${title}`);
+		expect(ics).toMatch(/\r\nDTSTART;TZID=America\/New_York:20270113T213000\r\n/);
+		expect(ics).toContain('BEGIN:VTIMEZONE\r\nTZID:America/New_York\r\n');
+		expect(ics).toContain('DURATION:PT60M');
 	});
 
 	test('past event: the add-to-calendar button is not offered', async ({ page }) => {

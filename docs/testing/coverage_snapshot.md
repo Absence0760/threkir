@@ -101,7 +101,6 @@ SETTINGS
 
 INTEGRATIONS
   Strava ZIP import               ███████████████░░░░░  75%
-  parkrun athlete-number          ████████░░░░░░░░░░░░  40%
   Health Connect (Android)        ████████░░░░░░░░░░░░  40%
   Stripe + RevenueCat paywall     ████████░░░░░░░░░░░░  40%
   HealthKit (iOS)                 ██████░░░░░░░░░░░░░░  30%

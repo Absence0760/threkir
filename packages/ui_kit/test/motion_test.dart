@@ -22,8 +22,9 @@ const _briefPopulation = [200, 200, 260, 350];
 /// route-detail reveal-map scroll, the onboarding page advance.
 const _standardPopulation = [180, 300, 300];
 
-/// Every repeating loop that was shipping: the coach typing dots, the three
-/// [ActivityLoader] gait cadences, the skeleton shimmer, the route-builder
+/// Every repeating loop that was shipping when the tier landed: the coach
+/// typing dots, the three gait cadences of the since-retired running-figure
+/// loader, the skeleton shimmer, the route-builder
 /// waypoint pin, the live-map current-position ring. 1500 is the only value
 /// that occurs twice, which is what makes it the rung — the four
 /// indeterminate-progress cadences stay off-tier for the reason recorded on

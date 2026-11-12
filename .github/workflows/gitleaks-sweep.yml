@@ -1,0 +1,106 @@
+name: gitleaks weekly sweep
+
+# The weekly FULL-HISTORY secret scan, and the thing that says so when it fails.
+#
+# `gitleaks.yml` holds the scan and is called from two places: `ci.yml` for the
+# push / PR half, and this file for the weekly sweep. The split is not
+# cosmetic. A called workflow's job may not request a permission its caller
+# lacks, and the reporting below needs `issues: write` -- which `ci.yml`'s
+# one-line caller job has no reason to hold. Declaring it inside `gitleaks.yml`
+# failed `ci.yml` at STARTUP: the entire workflow, not the offending job, and
+# regardless of the `if:` that would have skipped it on the PR path. So the
+# cron and the reporting live here, where the caller grants the scope.
+#
+# WHY THIS EXISTS AT ALL. The push / PR path diffs against the base ref; this
+# cron is the only scan that reads the whole of `main`'s history, which is what
+# catches a secret that landed on a forgotten branch and was merged via
+# fast-forward. It reaches the required `CI gate` by no route -- it runs on no
+# PR, and a `needs:` entry cannot name a job in a sibling workflow. That is the
+# same limitation decisions § 1264 closed for the push / PR half and left open
+# here, and the result was that EVERY scheduled run from 2026-05-18 to
+# 2026-09-21 failed while nothing surfaced it (decisions § 1697). A control
+# whose failure signal reaches nobody is failing open.
+
+on:
+  schedule:
+    # 06:00 UTC Monday, matching audit.yml — early enough to be read before the
+    # week starts, late enough to miss peak scheduler contention.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: Full-history secret scan
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/gitleaks.yml
+
+  report:
+    name: Surface a failed weekly sweep
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Open or update the tracking issue
+        if: needs.sweep.result != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create secret-scan --repo "$REPO" \
+            --color B60205 \
+            --description "Findings from the weekly full-history gitleaks sweep" \
+            2>/dev/null || true
+
+          {
+            echo "The weekly full-history \`gitleaks\` sweep did not pass."
+            echo ""
+            echo "- Run: $RUN_URL"
+            echo "- Scope: the whole of \`main\`'s history, which no other scan reads."
+            echo ""
+            echo "**Findings are deliberately not quoted here — this repository is public.**"
+            echo "Open the run above to see them."
+            echo ""
+            echo "If a finding is real: rotate the credential FIRST, then purge it from history."
+            echo "If it is a false positive: add it to \`.gitleaks.toml\`, scoped to the"
+            echo "matched value rather than the file, so a genuine key in the same source"
+            echo "still fails."
+            echo ""
+            echo "This issue closes itself on the next clean sweep."
+          } > body.md
+
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --label secret-scan --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "$REPO" --body-file body.md
+            gh issue comment "$existing" --repo "$REPO" \
+              --body "Still failing as of $(date -u +%Y-%m-%d). Run: $RUN_URL"
+          else
+            gh issue create --repo "$REPO" \
+              --title "Weekly secret scan is failing" \
+              --body-file body.md \
+              --label secret-scan
+          fi
+
+      - name: Close the tracking issue on a clean sweep
+        if: needs.sweep.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --label secret-scan --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --repo "$REPO" \
+              --comment "Sweep clean as of $(date -u +%Y-%m-%d) — closing automatically."
+          fi

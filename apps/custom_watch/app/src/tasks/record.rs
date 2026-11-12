@@ -353,6 +353,7 @@ static SIM_ROADBOOK: [watch_core::record::RoadbookCheckpoint; 3] = [
         leg_dist_m: 0.0,
         projected_elapsed_s: 0,
         cutoff: None,
+        target: None,
         is_refill: true,
     },
     watch_core::record::RoadbookCheckpoint {
@@ -360,6 +361,7 @@ static SIM_ROADBOOK: [watch_core::record::RoadbookCheckpoint; 3] = [
         leg_dist_m: 90.0,
         projected_elapsed_s: 30,
         cutoff: Some(watch_core::roadbook::CutoffStatus::Safe),
+        target: None,
         is_refill: true,
     },
     watch_core::record::RoadbookCheckpoint {
@@ -367,6 +369,7 @@ static SIM_ROADBOOK: [watch_core::record::RoadbookCheckpoint; 3] = [
         leg_dist_m: 90.0,
         projected_elapsed_s: 60,
         cutoff: Some(watch_core::roadbook::CutoffStatus::Tight),
+        target: None,
         is_refill: false,
     },
 ];
@@ -669,6 +672,7 @@ pub async fn run(store: &'static SharedStore) {
             target_duration_s: 0,
             target_pace_s_per_km: pace,
             tolerance_s_per_km: 10,
+            paced: true,
         };
         let mut steps: heapless::Vec<WorkoutStep, { watch_core::workout::MAX_WORKOUT_STEPS }> =
             heapless::Vec::new();
@@ -682,6 +686,7 @@ pub async fn run(store: &'static SharedStore) {
             target_duration_s: 30,
             target_pace_s_per_km: 420,
             tolerance_s_per_km: 15,
+            paced: true,
         });
         let _ = steps.push(dist(WorkoutStepKind::Rep, 2, 2, 50, 300));
         let _ = steps.push(dist(WorkoutStepKind::Cooldown, 0, 0, 60, 360));

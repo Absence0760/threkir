@@ -20,13 +20,27 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Pega el código de invitación que te compartió el administrador del club.';
+      'Pega el enlace o el código de invitación que te compartió el administrador del club.';
 
   @override
   String get clubInviteCodeLabel => 'Código de invitación';
 
   @override
   String get clubInviteJoinButton => 'Unirse';
+
+  @override
+  String get clubWaiverTitle => 'Una cosa antes de unirte';
+
+  @override
+  String get clubWaiverBody =>
+      'Este club pide a cada miembro que reconozca los riesgos físicos de correr en grupo antes de unirse.';
+
+  @override
+  String get clubWaiverAck =>
+      'Entiendo los riesgos físicos de correr en grupo y me uno bajo mi propia responsabilidad.';
+
+  @override
+  String get clubWaiverAccept => 'Aceptar y unirme';
 
   @override
   String recapShareHeadline(Object year) {
@@ -136,6 +150,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recapLatestStartLabel => 'Salida más tardía';
 
   @override
+  String get recapParkCoursesLabel => 'Recorridos de parque';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'en $n parques',
+      one: 'en $n parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parques donde corriste';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n recorridos',
+      one: '$n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Elegir ruta';
 
   @override
@@ -152,7 +194,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routePickerEmptyNoMatch(Object query) {
-    return 'Ninguna ruta coincide con \"$query\"';
+    return 'Ninguna ruta coincide con «$query»';
   }
 
   @override
@@ -224,6 +266,31 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable =>
+      'Este archivo no tiene el formato esperado.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'Este archivo ocupa $sizeMb MB y supera el límite de $limitMb MB. Divídelo en exportaciones más pequeñas e impórtalas una a una.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'Esto no es una exportación de Strava: no contiene ningún activities.csv.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'A la lista de actividades de esta exportación le faltan las columnas necesarias.';
+
+  @override
+  String get importRefusedNotBackup =>
+      'Esto no es una copia de seguridad hecha con esta app.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'Esta copia de seguridad se hizo con una versión más reciente de la app. Actualiza la app y luego restáurala.';
+
+  @override
   String get importStatusRestoringBackup => 'Restaurando copia de seguridad...';
 
   @override
@@ -271,6 +338,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Salud de Apple';
+
+  @override
+  String get healthPlatformNameAndroid => 'Salud conectada';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -307,20 +380,162 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'Restaurado sin conexión: las carreras se guardan en este dispositivo y se sincronizarán cuando inicies sesión. Se omitieron el perfil y los ajustes.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'Esta copia indica que estaba incompleta cuando se creó. No se sobrescribió nada: restaura una copia completa para cubrir lo que falta.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'No se restauraron el perfil ni los ajustes: $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'La carrera n.º $index de la copia no tiene ID y se omitió.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'La ruta n.º $index de la copia no tiene ID y se omitió.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'La carrera $id ya está en este dispositivo y se omitió.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'No se restauró el recorrido GPS de la carrera $id: $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'No se restauraron los datos de frecuencia cardíaca de la carrera $id: $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'No se restauró la carrera $id: $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'No se restauró la ruta $id: $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'No se restauraron los entrenamientos de gimnasio: $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'No se restauró el registro de comidas: $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Se omitieron campos que esta versión de la app no usa: $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'No se restauraron las carreras: el almacenamiento de carreras de este dispositivo no está disponible.';
+
+  @override
+  String importFailuresHeading(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count actividades no se importaron',
+      one: '1 actividad no se importó',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get importFailuresIntro =>
+      'Vuelve a ejecutar la importación para reintentarlas: lo que ya se importó se omite, así que no se duplica nada.';
+
+  @override
+  String importFailuresTruncated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'No se registraron $count fallos adicionales.',
+      one: 'No se registró 1 fallo adicional.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get importFailuresShowDetail => 'Ver cada actividad';
+
+  @override
+  String get importFailuresShare => 'Compartir informe (CSV)';
+
+  @override
+  String get importFailuresShareFailed => 'No se pudo compartir el informe.';
+
+  @override
+  String get importFailuresDismiss => 'Descartar';
+
+  @override
+  String get importFailuresNoDate => 'Fecha desconocida';
+
+  @override
+  String get importFailuresReasonNetwork => 'Conexión interrumpida';
+
+  @override
+  String get importFailuresReasonAuth => 'Sesión cerrada';
+
+  @override
+  String get importFailuresReasonRateLimited => 'Límite de peticiones';
+
+  @override
+  String get importFailuresReasonTooLarge => 'Archivo demasiado grande';
+
+  @override
+  String get importFailuresReasonUnparseable => 'No se pudo leer el archivo';
+
+  @override
+  String get importFailuresReasonRejected => 'Rechazado por el servidor';
+
+  @override
+  String get importFailuresReasonUnknown => 'Error desconocido';
+
+  @override
+  String importStatusCloudPushDeferred(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count carreras están guardadas en este dispositivo: su subida a la nube no se completó. Se reintentará en la próxima sincronización.',
+      one:
+          '1 carrera está guardada en este dispositivo: su subida a la nube no se completó. Se reintentará en la próxima sincronización.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
-      'Importa los entrenamientos que has registrado en Apple Watch, Nike Run Club, Strava y otras apps que escriben en Apple Salud';
+      'Importa los entrenamientos que has registrado en Apple Watch, Nike Run Club, Strava y otras apps que escriben en Salud de Apple';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app de Health Connect';
+      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app compatible con Salud conectada';
 
   @override
   String get importHealthDescriptionIos =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Apple Salud no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Salud de Apple no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Health Connect no expone las rutas GPS — las carreras importadas así no tendrán trazado en el mapa.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. El mapa GPS de un entrenamiento también se importa cuando Salud conectada deja que Threkir lo lea; si retiene alguno, puedes permitir el acceso a los mapas después de importar.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -331,7 +546,7 @@ class AppLocalizationsEs extends AppLocalizations {
           '$count actividades importadas tienen mapas GPS que Threkir no puede leer.',
       one: '1 actividad importada tiene un mapa GPS que Threkir no puede leer.',
     );
-    return '$_temp0 Health Connect protege la ruta de un entrenamiento con un permiso aparte.';
+    return '$_temp0 Salud conectada protege la ruta de un entrenamiento con un permiso aparte.';
   }
 
   @override
@@ -339,11 +554,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Solicitando acceso a los mapas a Health Connect...';
+      'Solicitando acceso a los mapas a Salud conectada...';
 
   @override
   String get importHealthRoutesDenied =>
-      'Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Health Connect cuando quieras.';
+      'Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Salud conectada cuando quieras.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -402,7 +617,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String peopleEmptySearchTitle(Object query) {
-    return 'Ningún corredor coincide con \"$query\"';
+    return 'Ningún corredor coincide con «$query»';
   }
 
   @override
@@ -439,6 +654,94 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get peopleNearbyHeader => 'Corredores cerca';
+
+  @override
+  String get peopleNearbySubtitle =>
+      'Corredores que se han dado de alta cerca de la zona que has fijado. Solo distancia aproximada, nunca una ubicación en vivo.';
+
+  @override
+  String get peopleNearbyEmptyTitle => 'Todavía no hay nadie cerca';
+
+  @override
+  String get peopleNearbyEmptyBody =>
+      'Activa «Mostrarme a corredores cercanos» y fija tu zona. Solo pueden encontrarte los corredores que hayan hecho lo mismo.';
+
+  @override
+  String get peopleNearbyEmptyAction => 'Abrir Preferencias';
+
+  @override
+  String get peopleNearbyLoadFailed =>
+      'No se pudieron cargar los corredores cercanos.';
+
+  @override
+  String peopleNearbyWithin(String distance) {
+    return 'A menos de $distance';
+  }
+
+  @override
+  String peopleNearbyBeyond(String distance) {
+    return 'A más de $distance';
+  }
+
+  @override
+  String get prefsDiscoverableNearby => 'Mostrarme a corredores cercanos';
+
+  @override
+  String get prefsDiscoverableNearbySubtitle =>
+      'Desactivado por defecto. Cuando está activado, otros corredores que también se hayan dado de alta pueden ver que estás aproximadamente cerca: una distancia aproximada a la zona que has fijado, nunca tu ubicación.';
+
+  @override
+  String get nearbyAreaTitle => 'Tu zona';
+
+  @override
+  String get nearbyAreaExplainer =>
+      'Elige la ciudad o el barrio donde corres. Se guarda redondeado a alrededor de un kilómetro y nunca es tu ubicación en vivo. Los demás corredores solo ven una distancia aproximada, nunca la zona en sí.';
+
+  @override
+  String get nearbyAreaNone => 'Sin zona fijada';
+
+  @override
+  String nearbyAreaCurrent(String label) {
+    return 'Zona actual: $label';
+  }
+
+  @override
+  String get nearbyAreaSearchHint => 'Buscar una ciudad o un barrio';
+
+  @override
+  String get nearbyAreaSearchUnavailable =>
+      'La búsqueda de lugares no está disponible ahora mismo.';
+
+  @override
+  String get nearbyAreaNoResults => 'Ningún lugar coincide con esa búsqueda.';
+
+  @override
+  String get nearbyAreaSaved => 'Zona guardada';
+
+  @override
+  String get nearbyAreaSaveFailed => 'No se pudo guardar tu zona.';
+
+  @override
+  String get nearbyAreaLoadFailed => 'No se pudo cargar tu zona.';
+
+  @override
+  String get nearbyAreaForget => 'Olvidar mi zona';
+
+  @override
+  String get nearbyAreaForgetConfirmTitle => '¿Olvidar tu zona?';
+
+  @override
+  String get nearbyAreaForgetConfirmBody =>
+      'Dejarás de aparecer a los corredores cercanos hasta que vuelvas a fijar una zona.';
+
+  @override
+  String get nearbyAreaForgotten => 'Zona olvidada';
+
+  @override
+  String get nearbyAreaForgetFailed => 'No se pudo olvidar tu zona.';
+
+  @override
   String get peopleFallbackDisplayName => 'Corredor';
 
   @override
@@ -466,6 +769,120 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get readinessBandLow => 'baja';
+
+  @override
+  String get readinessContributorForm => 'Equilibrio de entrenamiento';
+
+  @override
+  String get readinessContributorSleep => 'Sueño';
+
+  @override
+  String get readinessContributorRestingHr => 'Frecuencia cardíaca en reposo';
+
+  @override
+  String get dashboardTrendsDivider => 'Tendencias';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volumen';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'Cuánto has corrido, semana a semana';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Forma física';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Preparación, forma física y carga de entrenamiento';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Rendimiento';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Récords personales y tiempos de carrera previstos';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Esfuerzo';
+
+  @override
+  String get dashboardTrendGroupEffortHint =>
+      'Lo duro que ha sido tu entrenamiento';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Reciente';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Tus últimas sesiones';
+
+  @override
+  String get dashboardHeroNothingPlanned => 'Nada planificado hoy';
+
+  @override
+  String get dashboardHeroRestDay => 'Día de descanso';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Hoy no hay nada en el plan.';
+
+  @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De vuelta por la mañana, como las cabras de Thor.';
+
+  @override
+  String get mascotMilestoneFirstRun =>
+      'Primera carrera hecha. Era la más difícil.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Tu primer 5K. Eso cuenta.';
+
+  @override
+  String get mascotMilestoneBadge => 'Insignia conseguida. Merece un salto.';
+
+  @override
+  String get mascotMilestoneBest => 'Nueva mejor marca. Merece un salto.';
+
+  @override
+  String get mascotMilestoneLongest => 'Tu carrera más larga hasta ahora.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir espera al inicio del sendero.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Preparación $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Ocultar de Inicio';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name está oculto. Puedes recuperarlo en Ajustes.';
+  }
+
+  @override
+  String get dashboardHideCardFailed =>
+      'No se pudo ocultar la tarjeta. Inténtalo de nuevo.';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Calculada solo a partir de tu carga de entrenamiento. El sueño y la frecuencia cardíaca en reposo aún no cuentan.';
+
+  @override
+  String get intensityZone1 => 'Z1 (recuperación)';
+
+  @override
+  String get intensityZone2 => 'Z2 (suave)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (umbral)';
+
+  @override
+  String get intensityZone5 => 'Z5 (máx)';
 
   @override
   String get missingMapTilesTitle =>
@@ -517,7 +934,55 @@ class AppLocalizationsEs extends AppLocalizations {
   String get logA11yLabel => 'Registrar una actividad';
 
   @override
+  String get navStartRun => 'Correr';
+
+  @override
+  String get navStartWalk => 'Caminar';
+
+  @override
+  String get navStartRide => 'Pedalear';
+
+  @override
+  String get navStartTrailRun => 'Trail';
+
+  @override
+  String get navStartStroller => 'Cochecito';
+
+  @override
+  String get startRecordingRun => 'Iniciar una carrera';
+
+  @override
+  String get startRecordingWalk => 'Iniciar una caminata';
+
+  @override
+  String get startRecordingRide => 'Iniciar una salida en bici';
+
+  @override
+  String get startRecordingTrailRun => 'Iniciar un trail';
+
+  @override
+  String get startRecordingStroller => 'Iniciar una carrera con cochecito';
+
+  @override
+  String get logModalityShownGym => 'Ahora se muestra Gym';
+
+  @override
+  String get logModalityShownNutrition => 'Ahora se muestra Nutrición';
+
+  @override
+  String get navRecording => 'Grabando';
+
+  @override
+  String get navStop => 'Detener';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Volver a tu carrera';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Entrenamiento';
 
   @override
   String get navYou => 'Tú';
@@ -526,7 +991,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get fitnessTabRuns => 'Carreras';
 
   @override
-  String get fitnessTabGym => 'Gimnasio';
+  String get fitnessTabGym => 'Gym';
 
   @override
   String get fitnessTabNutrition => 'Nutrición';
@@ -538,13 +1003,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get fitnessRunsPlans => 'Planes de entrenamiento';
 
   @override
-  String get runSurfaceLabel => 'Secciones del área de carrera';
-
-  @override
   String get runSurfaceTabPlans => 'Planes';
 
   @override
-  String get runSurfaceTabRaces => 'Carreras';
+  String get runSurfaceTabRacesCourses => 'Pruebas y recorridos';
 
   @override
   String get gymSurfaceLabel => 'Secciones del gimnasio';
@@ -556,6 +1018,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymTabRecords => 'Récords';
 
   @override
+  String get gymPeerRoutines => 'Rutinas de gimnasio';
+
+  @override
+  String get gymPeerSessions => 'Planes de sesión';
+
+  @override
   String get homeAskCoach => 'Pregunta a tu entrenador';
 
   @override
@@ -563,7 +1031,53 @@ class AppLocalizationsEs extends AppLocalizations {
       'Consejos sobre tus carreras, gimnasio y nutrición';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Consejos sobre tus carreras, entrenamiento y recuperación';
+
+  @override
   String get youProfileTitle => 'Tu perfil';
+
+  @override
+  String get homeTrainingPlanLabel => 'Plan de entrenamiento';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Carrera en $days días',
+      one: 'Carrera en $days día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Carrera mañana';
+
+  @override
+  String get homeRaceDay => 'Día de carrera';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Comienza en $days días',
+      one: 'Comienza en $days día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homePlanUpNext(String name, String date) {
+    return 'A continuación: $name, empieza el $date';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Comienza mañana';
+
+  @override
+  String get youViewProfile => 'Ver perfil';
 
   @override
   String get logSheetTitle => 'Registrar';
@@ -582,7 +1096,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toca el botón central para iniciar una carrera; mantén pulsado para el menú completo';
+      'Toca el botón central para empezar una carrera. Ya está activo mientras Gym y Nutrición estén ocultos; mantén pulsado para abrir siempre el menú de registro';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Activo mientras Gym y Nutrición estén ocultos. Muestra uno de los dos para elegir';
+
+  @override
+  String get prefsSectionModalities => 'Gym y nutrición';
+
+  @override
+  String get prefsShowGym => 'Mostrar Gym';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Añade la pestaña Gym, «Registrar pesas» y tus sesiones en Inicio';
+
+  @override
+  String get prefsShowNutrition => 'Mostrar Nutrición';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Añade la pestaña Nutrición, «Registrar comida» y las comidas de hoy en Inicio';
 
   @override
   String get bodyMetricsTitle => 'Datos corporales';
@@ -612,6 +1147,24 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get bodyMetricsTargetsHint =>
       'Se usa para estimar tus objetivos diarios de calorías y macros.';
+
+  @override
+  String get bodyMetricsSaveHint =>
+      'Esta sección solo se guarda cuando tocas «Guardar».';
+
+  @override
+  String get bodyMetricsUnsaved => 'Cambios sin guardar';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Objetivos de nutrición';
+
+  @override
+  String get bodyMetricsAutosaveHint =>
+      'Los cambios aquí se guardan automáticamente.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'Has cambiado tus medidas corporales pero no las has guardado. ¿Salir sin guardar?';
 
   @override
   String get bodyMetricsConsentRequired =>
@@ -661,6 +1214,76 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get safetyAddHint => 'pareja@example.com';
+
+  @override
+  String get safetyPhoneLabel => 'Teléfono para SMS (opcional)';
+
+  @override
+  String get safetyPhoneHint =>
+      'Añade un número de móvil y este contacto también podrá recibir alertas por SMS; decide si acepta al confirmar. Las alertas por correo siempre se envían.';
+
+  @override
+  String get safetyInvalidPhone =>
+      'Introduce el teléfono en formato internacional, p. ej. +447700900123.';
+
+  @override
+  String get safetySmsBadge => 'SMS activado';
+
+  @override
+  String get safetySmsPending => 'SMS desactivado: aún no lo ha aceptado';
+
+  @override
+  String get safetyConfirmSmsLabel => 'Avisarme también por SMS';
+
+  @override
+  String get safetyContactOfTitle => 'Eres contacto de seguridad';
+
+  @override
+  String get safetyContactOfIntro =>
+      'Estas personas te indicaron como su contacto de emergencia y tú lo confirmaste. Puedes cambiar cómo te avisamos, o retirarte, cuando quieras.';
+
+  @override
+  String safetyContactOfFor(String name) {
+    return 'Contacto de emergencia de $name';
+  }
+
+  @override
+  String get safetyContactOfSmsLabel => 'Avisarme por SMS además de por correo';
+
+  @override
+  String get safetyContactOfNoPhone =>
+      'Los avisos por SMS necesitan un número móvil tuyo y no hay ninguno registrado. Los avisos por correo se envían siempre.';
+
+  @override
+  String get safetyContactOfSmsOnToast => 'Avisos por SMS activados.';
+
+  @override
+  String get safetyContactOfSmsOffToast => 'Avisos por SMS desactivados.';
+
+  @override
+  String get safetyContactOfSmsNoChange =>
+      'Esa relación ya no está activa: es posible que la persona la haya eliminado.';
+
+  @override
+  String safetyContactOfSmsFailed(String error) {
+    return 'No se pudo cambiar tu preferencia de SMS: $error';
+  }
+
+  @override
+  String get safetyContactOfWithdraw => 'Retirarme';
+
+  @override
+  String get safetyContactOfWithdrawConfirm =>
+      '¿Dejar de ser el contacto de seguridad de esta persona? Ya no podrá avisarte y tendría que enviarte una nueva solicitud.';
+
+  @override
+  String get safetyContactOfWithdrawnToast =>
+      'Ya no eres contacto de seguridad.';
+
+  @override
+  String safetyContactOfWithdrawFailed(String error) {
+    return 'No se pudo retirar: $error';
+  }
 
   @override
   String get safetyAddButton => 'Añadir contacto';
@@ -768,6 +1391,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Inicia automáticamente el directo cuando empieza una carrera en este teléfono. La carrera en curso es visible para cualquiera con el enlace; al terminar la carrera, vuelve a tu visibilidad predeterminada.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Inicia automáticamente una transmisión en vivo cuando empieza una carrera en este teléfono. Nunca es pública: solo tus contactos de seguridad confirmados pueden seguirla, mediante el enlace que les envía una alerta de retraso o de salida de ruta. Activado por defecto en cuanto configuras una alerta.';
+
+  @override
   String get safetyOffRouteTitle => 'Aviso de salida de ruta';
 
   @override
@@ -781,6 +1408,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Directo activado: envía el enlace con «Compartir enlace en directo»';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Seguimiento de seguridad activo: solo tus contactos de seguridad pueden seguirte, y solo cuando salta una alerta';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -818,7 +1449,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get homeTodaysLift => 'Pesas de hoy';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Entrenamiento';
+
+  @override
+  String get settingsSectionSettings => 'Ajustes';
 
   @override
   String get settingsSectionAppsData => 'Apps y datos';
@@ -870,6 +1504,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get authErrorEmailNotConfirmed =>
       'Confirma primero tu correo: busca el enlace de confirmación en tu bandeja de entrada.';
+
+  @override
+  String get authErrorLinkExpired =>
+      'Este enlace ha caducado o ya se usó. Solicita uno nuevo para continuar.';
 
   @override
   String authErrorWeakPassword(int minLength) {
@@ -1015,8 +1653,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get onboardingLocationTitle => 'Acceso a la ubicación';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir registra tus carreras tomando muestras de tu ubicación GPS mientras la app está en primer plano Y en segundo plano (para seguir registrando cuando la pantalla está apagada o cambias de app para hacer una foto). Los datos de ubicación se guardan en tu dispositivo y solo se suben a los servidores de Threkir cuando decides compartir o sincronizar una carrera. Si rechazas la ubicación en segundo plano, las carreras dejarán de registrarse en cuanto salgas de la app: puedes cambiarlo más tarde en Ajustes → Apps → Threkir → Permisos.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir toma tu ubicación GPS para registrar una carrera y la sigue pidiendo con la pantalla apagada: una notificación indica que hay un registro en curso. Tu ubicación se queda en este dispositivo mientras no sincronices ni compartas una carrera. La siguiente solicitud concede el acceso mientras usas la app, que es todo lo que puede dar la primera solicitud de Android; con solo ese acceso, Android puede dejar de enviar tu ubicación con la pantalla apagada o mientras estás en otra app. Antes de tu primera carrera, Threkir te ofrece pasar a «Permitir todo el tiempo», que mantiene entonces el seguimiento fiable. Si lo rechazas, las carreras siguen registrando tiempo y pasos, pero sin mapa, distancia ni ritmo.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir toma tu ubicación GPS para registrar una carrera, incluso con la pantalla apagada o mientras estás en otra app. Tu ubicación se queda en este dispositivo mientras no sincronices ni compartas una carrera. Puedes cambiarlo cuando quieras en Ajustes › Privacidad y seguridad › Localización › Threkir. Si lo rechazas, las carreras siguen registrando tiempo y pasos, pero sin mapa, distancia ni ritmo.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Sin acceso a la ubicación';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir puede seguir cronometrando tus carreras y contando pasos, pero sin ubicación no hay mapa, distancia ni ritmo. Puedes concederla cuando quieras.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Abrir ajustes';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continuar sin ella';
 
   @override
   String get onboardingPrivacyTitle => '¿Quién ve tus carreras?';
@@ -1024,6 +1679,23 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get onboardingPrivacyBody =>
       'Elige un valor predeterminado para las nuevas carreras. Puedes cambiarlo cuando quieras en Ajustes y modificarlo en cualquier carrera concreta.';
+
+  @override
+  String get onboardingAccountTitle =>
+      'Conserva tus carreras más allá de este teléfono';
+
+  @override
+  String get onboardingAccountBody =>
+      'Una cuenta sincroniza tus carreras con la app web y tus otros dispositivos, y las recupera si pierdes este. Puedes correr sin ella: aquí todo funciona sin conexión, y puedes crearla más tarde desde Tú › Ajustes.';
+
+  @override
+  String get onboardingAccountCreate => 'Crear una cuenta gratis';
+
+  @override
+  String get onboardingAccountSignIn => 'Ya tengo una cuenta';
+
+  @override
+  String get onboardingAccountLater => 'Ahora no';
 
   @override
   String get onboardingGrantPermission => 'Conceder permiso';
@@ -1039,6 +1711,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupSkipStep => 'Omitir';
+
+  @override
+  String get setupLeaveTitle => '¿Salir de la configuración?';
+
+  @override
+  String get setupLeaveBody =>
+      'Lo que hayas escrito aquí no se guardará. Puedes configurarlo todo más tarde desde Ajustes.';
+
+  @override
+  String get setupLeaveStay => 'Seguir configurando';
+
+  @override
+  String get setupLeaveConfirm => 'Salir';
 
   @override
   String get setupBack => 'Atrás';
@@ -1186,6 +1871,38 @@ class AppLocalizationsEs extends AppLocalizations {
       'Elige cuántas notificaciones push quieres. Puedes ajustarlo más tarde en Ajustes.';
 
   @override
+  String get setupTrackTitle => '¿Qué quieres registrar?';
+
+  @override
+  String get setupTrackHint =>
+      'La carrera siempre está activada. Activa Gym o Nutrición para añadir su pestaña y su acción de registro. Puedes cambiarlo más tarde en Ajustes.';
+
+  @override
+  String get setupTrackRunning => 'Correr';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Siempre activado';
+
+  @override
+  String get setupImportTitle => 'Trae tu historial de carreras';
+
+  @override
+  String get setupImportHint =>
+      '¿Ya registras tus carreras en otro sitio? Tráelas para que tu panel, tus récords y tus logros empiecen llenos. Cada opción abre su importación y después vuelves aquí.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Carreras de cualquier app que se sincronice con Salud conectada, incluidas Garmin y Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Entrenamientos de Apple Watch y de cualquier app que guarde en Salud de Apple, incluida Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Sube la exportación que Strava te envía por correo, con todas las actividades que has registrado';
+
+  @override
   String get setupDoneTitle => 'Todo listo';
 
   @override
@@ -1237,6 +1954,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runShareLiveLink => 'Compartir enlace en vivo';
 
   @override
+  String get runLiveShareArmed => 'Enlace en vivo compartido';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Inicia sesión para compartir un enlace de seguimiento en vivo.';
 
@@ -1261,7 +1981,69 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runLiveShareStop => 'Dejar de compartir';
 
   @override
+  String get runLiveShareExpectedReturn => 'Sin volver a las…';
+
+  @override
+  String get runExpectedReturnTitle => 'Sin volver a las…';
+
+  @override
+  String get runExpectedReturnIntro =>
+      'Elige cuándo esperas terminar. Si esta actividad sigue en marcha entonces, tus contactos de seguridad confirmados recibirán un aviso con tu enlace en directo.';
+
+  @override
+  String get runExpectedReturnServerNote =>
+      'El plazo se guarda en el servidor, así que sigue contando aunque este teléfono se apague. Se borra cuando la actividad se guarda: una actividad terminada sin cobertura puede avisar hasta que se sincronice.';
+
+  @override
+  String runExpectedReturnOptionMinutes(int minutes) {
+    return 'En $minutes min';
+  }
+
+  @override
+  String runExpectedReturnOptionHours(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'En $hours horas',
+      one: 'En 1 hora',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String runExpectedReturnBy(String time) {
+    return 'De vuelta a las $time';
+  }
+
+  @override
+  String runExpectedReturnActive(String time) {
+    return 'Alerta activada para las $time.';
+  }
+
+  @override
+  String get runExpectedReturnClear => 'Borrar la alerta';
+
+  @override
+  String get runExpectedReturnSetToast => 'Alerta de hora de vuelta activada.';
+
+  @override
+  String get runExpectedReturnClearedToast =>
+      'Alerta de hora de vuelta borrada.';
+
+  @override
+  String get runExpectedReturnFailed =>
+      'No se pudo actualizar la alerta de hora de vuelta.';
+
+  @override
+  String get runExpectedReturnUnavailable =>
+      'No se pudo contactar con el servidor para activar la alerta.';
+
+  @override
   String get runLiveShareStopped => 'Se dejó de compartir en vivo';
+
+  @override
+  String get runLiveShareNoPingYet =>
+      'Tu enlace en vivo aún no ha enviado ninguna ubicación: los espectadores siguen esperando. Comprueba tu señal.';
 
   @override
   String get runLiveShareEndedTitle => 'Directo finalizado';
@@ -1295,17 +2077,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runFollowing => 'SIGUIENDO';
 
   @override
+  String get runClearRouteTooltip => 'Quitar ruta';
+
+  @override
   String get runRaceFallbackTitle => 'Carrera';
 
   @override
-  String get runRaceArmed => 'Carrera lista';
+  String get runRaceArmed => 'Carrera preparada';
 
   @override
   String get runRaceLive => 'Carrera EN VIVO';
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — esperando la salida';
+    return '$label — esperando el GO';
   }
 
   @override
@@ -1335,6 +2120,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runStatAvgPace => 'Ritmo medio';
 
   @override
+  String get runStoppedChip => 'Detenido';
+
+  @override
   String get runStatAvgSpeed => 'Velocidad media';
 
   @override
@@ -1354,9 +2142,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'ppm';
@@ -1392,6 +2177,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runStopA11yHint => 'Finaliza la grabación y guarda la carrera';
 
   @override
+  String get runHoldToStopRunA11yHint =>
+      'Mantén pulsado para detener la carrera';
+
+  @override
   String get runHoldToStopHint => 'Mantén para detener';
 
   @override
@@ -1424,6 +2213,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runExpandStatsPanel => 'Expandir panel de estadísticas';
 
   @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Página de estadísticas $page de $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Muestra las siguientes estadísticas';
+
+  @override
   String runRouteRemaining(String distance) {
     return 'faltan $distance';
   }
@@ -1441,6 +2238,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runWeakGps => 'GPS débil — distancia en pausa';
+
+  @override
+  String get runWeakGpsApproximate =>
+      'Ubicación aproximada — distancia en pausa';
+
+  @override
+  String get runTurnOnPreciseLocation => 'Activar la ubicación exacta';
 
   @override
   String get runA11yStarted => 'Carrera iniciada';
@@ -1475,8 +2279,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runResumeDialogTitle => '¿Reanudar tu carrera?';
 
   @override
-  String get runResumeDialogBody =>
-      'Una carrera de una sesión anterior sigue en curso. Reanuda la grabación donde la dejaste, finalízala ahora o descártala.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Una carrera de una sesión anterior sigue en curso ($distance, $duration). Reanuda la grabación donde la dejaste, finalízala ahora o descártala.';
+  }
 
   @override
   String get runResumeAction => 'Reanudar';
@@ -1494,14 +2299,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Carrera anterior descartada.';
 
   @override
-  String get runStartWorkout => 'Iniciar entrenamiento';
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Se guardó una carrera sin terminar de una sesión anterior ($distance, $duration).';
+  }
 
   @override
-  String get runStartWorkoutSubtitle =>
-      'Corre con objetivos de paso en vivo, avisos de audio y un análisis planificado vs. real.';
-
-  @override
-  String get runViewWorkoutDetails => 'Ver detalles';
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Se descartó una grabación sin terminar de una sesión anterior ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>
@@ -1517,6 +2322,14 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return 'Entrenamiento cargado · $_temp0 — toca GO para empezar';
   }
+
+  @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Entrenamiento cargado: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Quitar entrenamiento';
 
   @override
   String get runAbandonWorkoutTitle => '¿Abandonar entrenamiento?';
@@ -1605,6 +2418,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo conectar con la cinta de correr';
 
   @override
+  String get runTreadmillConnecting => 'Conectando con la cinta de correr…';
+
+  @override
+  String get runTreadmillNoBeltData =>
+      'Sin datos de la cinta — distancia por GPS';
+
+  @override
   String get runSaveFailedRelaunch =>
       'No se pudo guardar localmente. Reinicia la app para recuperar.';
 
@@ -1633,8 +2453,36 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sin GPS — el seguimiento empezará cuando se conceda el permiso.';
 
   @override
-  String get runGpsAllowAllTheTime =>
-      'Configura la Ubicación en «Permitir siempre» — las carreras dejan de grabarse cuando cambias de app sin permiso en segundo plano.';
+  String get runNoGpsStartTitle => '¿Empezar sin GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'La ubicación está desactivada en este teléfono, así que esta carrera solo registraría el tiempo: sin ruta, distancia ni ritmo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'El acceso a la ubicación está desactivado para esta app, así que esta carrera solo registraría el tiempo: sin ruta, distancia ni ritmo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Registrar solo el tiempo';
+
+  @override
+  String get runNoDistanceTitle => 'No se registró distancia';
+
+  @override
+  String get runNoDistanceBody =>
+      'Esta carrera no obtuvo señal GPS ni distancia por pasos. ¿Guardarla solo con el tiempo o descartarla?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Guardar solo el tiempo';
+
+  @override
+  String get runBackgroundLocationPaused =>
+      'El seguimiento se pausó mientras no estabas — el tiempo siguió corriendo y no se perdió nada, pero la distancia fuera de pantalla no se contó. Configura la Ubicación en «Permitir todo el tiempo» para seguir registrando en segundo plano.';
+
+  @override
+  String get runPreciseLocationOff =>
+      'La ubicación exacta está desactivada — el mapa y la distancia GPS de esta carrera faltarán o serán muy imprecisos, pero el tiempo se sigue registrando. Activa la ubicación exacta en Ajustes para un recorrido preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -1703,6 +2551,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String runWorkoutStepHeaderUnpaced(String label, String target) {
+    return '$label · $target';
+  }
+
+  @override
   String runWorkoutStepCounter(int current, int total) {
     return '$current/$total';
   }
@@ -1717,13 +2570,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return 'faltan $yards yd';
-  }
+  String get runWorkoutMoreActions => 'Más acciones del entrenamiento';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return 'faltan $metres m';
+  String runWorkoutRemainingDistance(String distance) {
+    return 'faltan $distance';
   }
 
   @override
@@ -1814,7 +2665,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historySelectAllTooltip => 'Seleccionar todo';
 
   @override
-  String get historyClearSelectionTooltip => 'Limpiar';
+  String get historyClearSelectionTooltip => 'Borrar';
 
   @override
   String get historyDeleteTooltip => 'Eliminar';
@@ -1827,6 +2678,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Añadir una carrera manualmente';
+
+  @override
+  String get historyAddPastRun => 'Añadir carrera pasada';
+
+  @override
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Toca $button para empezar a grabar o añade una que ya hayas hecho';
+  }
 
   @override
   String get historyLogTooltip => 'Registrar una carrera, entreno o comida';
@@ -1852,6 +2711,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historyKindMeals => 'Comidas';
 
   @override
+  String get historyModalityLoadFailed =>
+      'No se pudieron cargar tus pesas y comidas';
+
+  @override
   String get historyViewAll => 'Ver todo';
 
   @override
@@ -1875,14 +2738,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no hay nada registrado en esta vista.';
 
   @override
-  String get historyClearFilters => 'Limpiar filtros';
+  String get historyClearFilters => 'Borrar filtros';
 
   @override
   String get historyEmptyTitle => 'Aún no hay carreras';
 
   @override
   String get historyEmptyBody =>
-      'Toca la pestaña Correr para iniciar tu primera carrera';
+      'Toca Registrar para grabar una carrera o añade una que ya hayas hecho';
 
   @override
   String get historyFilterAll => 'Todas';
@@ -1899,7 +2762,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historySourceFilterTooltip => 'Filtrar por fuente';
 
   @override
-  String get historySourceRecorded => 'Grabada';
+  String get historySourceRecorded => 'Grabadas';
 
   @override
   String get historySourceWatch => 'Reloj';
@@ -1911,10 +2774,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Salud de Apple';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Salud conectada';
 
   @override
   String get historyRangePickerTitle => 'Seleccionar fechas';
@@ -1932,7 +2795,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historyRangeApply => 'Aplicar';
 
   @override
-  String get historyRangeClear => 'Limpiar';
+  String get historyRangeClear => 'Borrar';
 
   @override
   String get historyPrevMonth => 'Mes anterior';
@@ -1965,6 +2828,71 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historyDelete => 'Eliminar';
+
+  @override
+  String get historyUnsyncedRowSemantics => 'aún no sincronizada';
+
+  @override
+  String get historyBlockedRowSemantics => 'no se puede subir';
+
+  @override
+  String get historyBlockedRowTooltip => 'No se puede subir';
+
+  @override
+  String historyBlockedTooltip(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count carreras no se pueden subir',
+      one: '$count carrera no se puede subir',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historySyncBlocked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count carreras no se pueden subir y no se reintentarán. Abre cada una para decidir qué hacer.',
+      one:
+          '$count carrera no se puede subir y no se reintentará. Ábrela para decidir qué hacer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get runDetailBlockedDropTrack => 'Subir sin el trazado';
+
+  @override
+  String get runDetailBlockedExport => 'Exportar una copia';
+
+  @override
+  String get runDetailBlockedTitle => 'Esta carrera no se puede subir';
+
+  @override
+  String runDetailBlockedTrackTooLarge(int waypoints) {
+    return 'Su trazado GPS ($waypoints puntos) supera lo que admite el almacenamiento en la nube, así que reintentarlo nunca funcionará. Todo lo demás de la carrera — distancia, tiempo, ritmo, desnivel — sí se puede guardar.';
+  }
+
+  @override
+  String get runDetailDropTrackBody =>
+      'El trazado se elimina de este dispositivo y la carrera se sube sin mapa. Su distancia, tiempo, ritmo y desnivel no cambian. Exporta una copia antes si quieres conservarlo.';
+
+  @override
+  String get runDetailDropTrackConfirm => 'Subir sin él';
+
+  @override
+  String get runDetailDropTrackDone =>
+      'Trazado eliminado. La carrera se sincronizará en el próximo ciclo.';
+
+  @override
+  String get runDetailDropTrackFailed =>
+      'No se pudo eliminar el trazado. Inténtalo de nuevo.';
+
+  @override
+  String get runDetailDropTrackTitle => '¿Subir sin el trazado GPS?';
 
   @override
   String get historyQueuedToSync => 'En cola para sincronizar';
@@ -2072,6 +3000,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no hay rutas guardadas — crea o importa una para adjuntarla aquí';
 
   @override
+  String get addRunBuildRoute => 'Crear una ruta';
+
+  @override
+  String get addRunImportRoute => 'Importar un archivo';
+
+  @override
   String get addRunDistanceInvalid => 'Introduce una distancia mayor que 0';
 
   @override
@@ -2098,14 +3032,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addRunPickerSearchHint => 'Buscar rutas';
 
   @override
-  String get addRunPickerClear => 'Limpiar';
+  String get addRunPickerClear => 'Borrar';
 
   @override
   String get addRunPickerCancel => 'Cancelar';
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Ninguna ruta coincide con \"$query\"';
+    return 'Ninguna ruta coincide con «$query»';
   }
 
   @override
@@ -2198,6 +3132,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailStatElevLoss => 'Desnivel -';
 
   @override
+  String get runDetailStatHrCoverage => 'Cobertura de FC';
+
+  @override
+  String runDetailHrCoveragePercent(int pct) {
+    return '$pct %';
+  }
+
+  @override
+  String runDetailHrCoverageOnly(int pct) {
+    return '$pct % cubierto';
+  }
+
+  @override
   String get runDetailStatAvgHr => 'FC media';
 
   @override
@@ -2210,16 +3157,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailSectionElevation => 'Desnivel';
 
   @override
-  String get runDetailPaceLegendTitle => 'Ritmo frente a la mediana';
-
-  @override
   String get runDetailPaceBandFaster => 'Más rápido';
 
   @override
-  String get runDetailPaceBandSteady => 'Constante';
+  String get runDetailPaceBandSlower => 'Más lento';
 
   @override
-  String get runDetailPaceBandSlower => 'Más lento';
+  String get runDetailMapPaceColours => 'Colores de ritmo';
 
   @override
   String get runDetailSectionLaps => 'Vueltas';
@@ -2252,12 +3196,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String runDetailPersonalBest(String route) {
-    return 'Récord personal en $route';
+    return 'Mejor marca personal en $route';
   }
 
   @override
   String runDetailBehindPb(String delta) {
-    return '$delta detrás del récord';
+    return '$delta por detrás de tu mejor marca';
   }
 
   @override
@@ -2304,7 +3248,137 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get runDetailPacing => 'Ritmo por mitades';
+
+  @override
+  String get runDetailPacingFirstHalf => 'Primera mitad';
+
+  @override
+  String get runDetailPacingSecondHalf => 'Segunda mitad';
+
+  @override
+  String get runDetailPacingNegative => 'Split negativo';
+
+  @override
+  String get runDetailPacingEven => 'Ritmo constante';
+
+  @override
+  String get runDetailPacingPositive => 'Split positivo';
+
+  @override
+  String runDetailPacingFaster(String delta) {
+    return '$delta más rápido en la segunda mitad';
+  }
+
+  @override
+  String runDetailPacingSlower(String delta) {
+    return '$delta más lento en la segunda mitad';
+  }
+
+  @override
+  String get runDetailPacingHeld => 'Constante en ambas mitades';
+
+  @override
+  String get runDetailPacingGapNegative =>
+      'Ajustado por el desnivel, aceleraste en la segunda mitad.';
+
+  @override
+  String get runDetailPacingGapEven =>
+      'Ajustado por el desnivel, tu esfuerzo fue igual en ambas mitades.';
+
+  @override
+  String get runDetailPacingGapPositive =>
+      'Ajustado por el desnivel, bajaste el ritmo en la segunda mitad.';
+
+  @override
+  String get runDetailStrategyTitle => 'Estrategia de ritmo';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Objetivo $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Fase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Objetivo';
+
+  @override
+  String get runDetailStrategyNotReached => 'no alcanzada';
+
+  @override
+  String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyOnPace => 'en ritmo';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Según el plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast =>
+      'Salida demasiado rápida';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Bajón final';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Final más fuerte de lo previsto';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Más rápido que el plan';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Más lento que el plan';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'No se fijó un tiempo objetivo, así que cada objetivo es la forma del plan a tu ritmo medio.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Esta carrera no tiene un track GPS con tiempos, así que sus fases no se pueden evaluar.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'No se fijó un tiempo objetivo, así que un plan de ritmo uniforme de una sola fase no tiene con qué compararse.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminó en $distance de los $planned previstos, así que las fases posteriores no se corrieron.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Una fase a menos del 1,5 % de su ritmo objetivo cuenta como en objetivo; las paradas no se incluyen.';
+
+  @override
+  String get runDetailGapColumn => 'Ajustado';
+
+  @override
+  String get runDetailGapColumnHint =>
+      'El ritmo ajustado es el ritmo en llano que habría costado el mismo esfuerzo que las cuestas que corriste de verdad.';
+
+  @override
   String get runDetailSectionSegments => 'Segmentos';
+
+  @override
+  String get runDetailParkCourses => 'Recorridos de parque en esta carrera';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return 'N.º $rank en $season';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed =>
+      'No se pudieron cargar tus tiempos en recorridos de parque.';
+
+  @override
+  String get runDetailParkCourseOpenFailed =>
+      'No se pudo abrir este recorrido.';
 
   @override
   String get runDetailSaveAsRouteTitle => 'Guardar como ruta';
@@ -2329,7 +3403,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailRouteLinkFailed => 'No se pudo vincular la ruta';
 
   @override
-  String get runDetailReSnapping => 'Reajustando a las calles…';
+  String get runDetailReSnapping => 'Reajustando a las carreteras…';
 
   @override
   String runDetailRematchFailed(String error) {
@@ -2337,19 +3411,59 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get runDetailRecalculateDistance => 'Recalcular distancia';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle =>
+      '¿Recalcular la distancia?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'La distancia de esta carrera se volverá a calcular a partir de su ruta GPS con el filtro GPS mejorado, que elimina la distancia de más que añaden las oscilaciones del GPS. La distancia registrada originalmente se conserva y se muestra junto a la nueva.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Recalcular';
+
+  @override
+  String get runDetailRecalculatingDistance =>
+      'Recalculando: actualiza en un minuto';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'No se pudo recalcular la distancia: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner =>
+      'Solo quien registró esta carrera puede recalcular su distancia.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack =>
+      'Esta carrera no tiene una ruta GPS a partir de la cual recalcular.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Registrada originalmente: $distance';
+  }
+
+  @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" guardada — $kept puntos de paso ($smoothed suavizados)';
+    return '«$name» guardada — $kept puntos de paso ($smoothed suavizados)';
   }
 
   @override
   String runDetailRouteSaveFailed(String name) {
-    return 'No se pudo guardar \"$name\" como ruta.';
+    return 'No se pudo guardar «$name» como ruta.';
   }
 
   @override
   String runDetailMakePublicFailed(String error) {
     return 'No se pudo hacer pública la carrera: $error';
   }
+
+  @override
+  String get runDetailShareZonesUnknown =>
+      'No se pudieron cargar tus zonas de privacidad, así que no se compartió nada. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get runDetailMakePublicTitle => '¿Hacer pública esta carrera?';
@@ -2388,6 +3502,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailMadePrivate => 'La carrera ahora es privada';
 
   @override
+  String get runDetailMadePublic => 'La carrera ahora es pública';
+
+  @override
+  String get runDetailVisibilityPublic => 'Público';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Privado';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Seguidores';
+
+  @override
+  String get runDetailVisibilityShared => 'Compartido';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Privado. Hacer pública esta carrera';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Público. Hacer privada esta carrera';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Cambiar quién puede ver esta carrera';
+  }
+
+  @override
   String get runDetailDeleteTitle => '¿Eliminar carrera?';
 
   @override
@@ -2410,7 +3552,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailSuggestLinkPrompt => '¿Vincular esta carrera a esa ruta?';
 
   @override
-  String get runDetailMatchPending => 'Ajustando a las calles…';
+  String get runDetailMatchPending => 'Ajustando a las carreteras…';
 
   @override
   String get runDetailMatchSkipped => 'Sin ajustar (muy pocos puntos)';
@@ -2449,6 +3591,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailSegDismiss => 'Descartar';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'En directo ahora';
@@ -2490,6 +3637,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudieron sincronizar las rutas — sin conexión';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'No se pudieron cargar tus rutas marcadas';
+
+  @override
   String get routesLoadMoreFailed => 'No se pudieron cargar más rutas';
 
   @override
@@ -2503,7 +3654,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routesImported(String name) {
-    return '\"$name\" importada';
+    return '«$name» importada';
   }
 
   @override
@@ -2518,11 +3669,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get routesImportSharedFailed =>
-      'No se pudo importar el archivo: no es una ruta GPX o KML válida.';
+      'No se pudo importar el archivo: no es una ruta válida.';
 
   @override
   String routesSaved(String name) {
-    return '\"$name\" guardada';
+    return '«$name» guardada';
   }
 
   @override
@@ -2538,7 +3689,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get routesEmptyBody =>
-      'Toca Crear para dibujar una ruta en el mapa, o importa un archivo GPX, KML o TCX.';
+      'Toca Crear para dibujar una ruta en el mapa, o importa un archivo GPX, KML, KMZ, GeoJSON o TCX.';
 
   @override
   String get routesBuild => 'Crear';
@@ -2702,6 +3853,52 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => 'Dibujar una forma';
+
+  @override
+  String get routeBuilderDrawHint =>
+      'Arrastra sobre el mapa para dibujar tu forma';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Dibuja una forma más grande: la línea debe medir al menos 300 m.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'Ese dibujo mide más de 100 km. Acerca el mapa y dibuja una forma más pequeña.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'Ese dibujo tiene demasiado detalle para trazar una ruta. Prueba una forma más sencilla.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Parte de tu dibujo no tiene calles ni caminos cerca. Muévelo sobre calles o caminos y vuelve a intentarlo.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'El cálculo de rutas no está disponible ahora mismo, así que no se pudo ajustar tu dibujo. Inténtalo de nuevo en un momento.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'Las calles y caminos de aquí solo coinciden con el $score % de tu dibujo, así que no se ha convertido en ruta. Prueba una forma más grande o dibuja siguiendo las calles.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Coincidencia con tu dibujo: $score %';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Muy parecida';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Aproximada';
+
+  @override
+  String get routeBuilderDrawMatchPoor => 'Demasiado lejos de tu dibujo';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'Error al calcular la ruta: $error';
   }
@@ -2742,9 +3939,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get routeBuilderSearchHint => 'Buscar lugares…';
-
-  @override
-  String get routeBuilderMore => 'Más';
 
   @override
   String get routeBuilderGenerateLoop => 'Generar bucle';
@@ -2915,6 +4109,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Recorrido enviado al reloj ($points puntos), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Recorrido enviado al reloj: reducido de $source a $points puntos para que quepa';
   }
@@ -3047,6 +4246,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeDetailStatDistance => 'Distancia';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distancia oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
+
+  @override
   String get routeDetailStatElevation => 'Elevación';
 
   @override
@@ -3100,6 +4305,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get routeDetailDescribeFailed =>
       'No se pudo generar una descripción. Inténtalo de nuevo.';
+
+  @override
+  String get routeDetailDescribeConsentRequired =>
+      'Las descripciones con IA necesitan tu consentimiento a la información de IA actualizada.';
+
+  @override
+  String get routeDetailReviewDisclosure => 'Ver la información';
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
@@ -3284,6 +4496,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'No se pudieron comprobar los créditos del mapa de esta ruta, así que no se exportó nada. Inténtalo de nuevo.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'No se pudieron cargar tus clubes — comprueba tu red.';
 
@@ -3314,6 +4530,143 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String routeDetailDeleteFailed(String error) {
     return 'Error al eliminar: $error';
+  }
+
+  @override
+  String get routeDetailDeleteImpactUnknown =>
+      'No pudimos comprobar qué más usa esta ruta.';
+
+  @override
+  String get routeDetailDeleteNotAllowed =>
+      'Solo quien creó la ruta puede eliminarla.';
+
+  @override
+  String get routeDetailDeleteImpactPublic =>
+      'Es pública, así que otros corredores pueden encontrarla y seguirla.';
+
+  @override
+  String routeDetailDeleteImpactRaceListings(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count carreras la usan como recorrido y perderán el recorrido.',
+      one: '$count carrera la usa como recorrido y perderá el recorrido.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eventos de club la usan y perderán su ruta.',
+      one: '$count evento de club la usa y perderá su ruta.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count corredores más la han guardado.',
+      one: '$count corredor más la ha guardado.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactShares(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count personas con quienes se comparte perderán el acceso.',
+      one: '$count persona con quien se comparte perderá el acceso.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSegments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se eliminarán $count segmentos que otros corredores crearon en ella.',
+      one: 'Se eliminará $count segmento que otros corredores crearon en ella.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEfforts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se eliminarán $count esfuerzos de otros corredores en sus segmentos.',
+      one: 'Se eliminará $count esfuerzo de otros corredores en sus segmentos.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactReviews(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se eliminarán $count reseñas de otros corredores.',
+      one: 'Se eliminará $count reseña de otro corredor.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactConditions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se eliminarán $count avisos de estado de otros corredores.',
+      one: 'Se eliminará $count aviso de estado de otro corredor.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count carreras que la siguieron conservan sus datos pero pierden el enlace.',
+      one:
+          '$count carrera que la siguió conserva sus datos pero pierde el enlace.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se eliminarán sus $count fotos.',
+      one: 'Se eliminará su $count foto.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactMarkers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se eliminarán sus $count marcadores.',
+      one: 'Se eliminará su $count marcador.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -3400,6 +4753,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se requiere permiso de ubicación para encontrar rutas cercanas';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Ubicación no disponible: $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       'No se pudieron encontrar rutas cercanas. Toca Reintentar para volver a intentarlo.';
 
@@ -3442,34 +4800,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get exploreRoutesSort => 'Ordenar';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'No se pudo guardar \"$name\" — comprueba tu conexión e inténtalo de nuevo.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'No se pudo guardar \"$name\".';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
-    return '\"$name\" guardada en tu biblioteca';
+    return '«$name» guardada en tu biblioteca';
   }
-
-  @override
-  String get exploreRoutesAlreadySaved => 'Ya guardada';
 
   @override
   String get exploreRoutesSaveToLibrary => 'Guardar en biblioteca';
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Sendero';
+  String get exploreRoutesRemoveFromLibrary => 'Quitar de tu biblioteca';
 
   @override
-  String get exploreRoutesSurfaceMixedShort => 'Mixta';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Carretera';
+  String exploreRoutesRemoved(String name) {
+    return '«$name» quitada de tu biblioteca';
+  }
 
   @override
   String get exploreRoutesDistanceUnderKm => 'Menos de 5 km';
@@ -3568,10 +4912,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get heatmapHeatDensity => 'Densidad de calor';
 
   @override
+  String get heatmapUpcomingRaces => 'Próximas carreras';
+
+  @override
+  String get heatmapViewRace => 'Ver carrera';
+
+  @override
+  String get heatmapRaceFallbackName => 'Carrera';
+
+  @override
   String get heatmapResetFilters => 'Restablecer filtros';
 
   @override
   String get heatmapLensPopular => 'Populares';
+
+  @override
+  String get heatmapLensOfficial => 'Oficiales';
 
   @override
   String get heatmapLensFriends => 'Amigos';
@@ -3835,17 +5191,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profileNotFound => 'Perfil no encontrado.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · $following siguiendo';
-  }
-
-  @override
   String get profileFollowing => 'Siguiendo';
 
   @override
@@ -3856,6 +5201,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get profileRunsEmptyOther => 'Aún no hay carreras públicas.';
+
+  @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count de tus carreras no son públicas, así que no aparecen aquí.',
+      one: '1 de tus carreras no es pública, así que no aparece aquí.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'Ver todas en Carreras';
 
   @override
   String get profileFollowersEmpty => 'Aún no hay seguidores.';
@@ -3985,13 +5345,28 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$name reaccionó a tu carrera';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return 'A $name le gustó tu comentario';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name te mencionó en un comentario';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$name empezó a seguirte';
   }
 
   @override
   String profileNotifEventRsvpTitled(String name, String title) {
-    return '$name confirmó asistencia a tu evento \"$title\"';
+    return '$name confirmó asistencia a tu evento «$title»';
   }
 
   @override
@@ -4035,8 +5410,147 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name aplicó cambios sugeridos por la IA a un plan que le asignaste';
+  }
+
+  @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$name sugirió un cambio en un plan que asignaste';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$name respondió a tu cambio de plan sugerido';
+  }
+
+  @override
+  String get planChangeTitle => 'Cambio de plan sugerido';
+
+  @override
+  String get planChangeWaitingForCoach =>
+      'Esperando la respuesta de tu entrenador';
+
+  @override
+  String get planChangeWaitingForYou => 'Tu atleta espera tu respuesta';
+
+  @override
+  String get planChangeApprovedByCoach =>
+      'Aprobado por el entrenador y aplicado';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'Aprobado en parte por el entrenador; se aplicaron las líneas que se muestran';
+
+  @override
+  String get planChangeDeclinedByCoach => 'Rechazado por el entrenador';
+
+  @override
+  String get planChangeWithdrawnByAthlete => 'Retirado por el atleta';
+
+  @override
+  String get planChangeAppliedByAthlete =>
+      'Aplicado por el atleta sin el entrenador';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'Incluir este cambio: $line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return 'Objetivo de la semana $n';
+  }
+
+  @override
+  String get planChangeSkipped => 'Omitido';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return 'Objetivo de la semana $n: $from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable =>
+      'Algunos de estos cambios ya no se pueden mostrar.';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'Nota del entrenador: $note';
+  }
+
+  @override
+  String get planChangeNoteLabel => 'Nota para tu atleta (opcional)';
+
+  @override
+  String get planChangeNotePlaceholder => 'Por qué lo apruebas o rechazas';
+
+  @override
+  String get planChangeDecline => 'Rechazar';
+
+  @override
+  String get planChangeApprove => 'Aprobar';
+
+  @override
+  String get planChangeApproveSelected => 'Aprobar selección';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'El plan es tuyo, así que puedes aplicar el cambio tú mismo. Se avisará a tu entrenador.';
+
+  @override
+  String get planChangeWithdraw => 'Retirar';
+
+  @override
+  String get planChangeApplyMyself => 'Aplicarlo yo';
+
+  @override
+  String get planChangeWithdrawConfirmTitle => '¿Retirar este cambio sugerido?';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'Ya no se pedirá a tu entrenador que lo apruebe. Para volver a sugerirlo, pide de nuevo al Coach que ajuste tu plan.';
+
+  @override
+  String get planChangeKeep => 'Mantenerlo';
+
+  @override
+  String planChangeFailed(String error) {
+    return 'No se pudo actualizar el cambio sugerido: $error';
+  }
+
+  @override
+  String get planChangeApprovedToast => 'Cambio aprobado y aplicado al plan';
+
+  @override
+  String get planChangeDeclinedToast => 'Cambio rechazado';
+
+  @override
+  String get planChangeWithdrawnToast => 'Sugerencia retirada';
+
+  @override
+  String get planChangeAppliedToast =>
+      'Cambio aplicado a tu plan; se avisó a tu entrenador';
+
+  @override
+  String get planChangeLoadFailed =>
+      'No se pudieron cargar los cambios de plan sugeridos.';
+
+  @override
+  String get planChangeRetry => 'Reintentar';
+
+  @override
+  String get profileNotifWorkoutReminder =>
+      'Tu entrenamiento de hoy te espera en tu plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
-    return 'Se canceló una ocurrencia de \"$title\"';
+    return 'Se canceló una ocurrencia de «$title»';
   }
 
   @override
@@ -4044,8 +5558,63 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se canceló una ocurrencia de un evento al que confirmaste asistencia';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pidió unirse a tu club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pidió unirse a $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Se aprobó tu solicitud para unirte a un club';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Ya estás dentro: se aprobó tu solicitud para unirte a $club';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Se actualizó un evento al que vas a ir';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '«$title» se actualizó: revisa los nuevos detalles';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Se canceló un evento al que confirmaste asistencia';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return 'Se canceló «$title»';
+  }
+
+  @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Se canceló una ocurrencia de «$title»: te estamos reembolsando el pago';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Se canceló una ocurrencia de un evento que pagaste: te estamos reembolsando el pago';
+
+  @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Se ha liberado una plaza en «$title» y te la guardamos: paga para conseguirla';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Se ha liberado una plaza en un evento en cuya lista de espera estás y te la guardamos: paga para conseguirla';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
-    return '\"$title\" está por comenzar';
+    return '«$title» está por comenzar';
   }
 
   @override
@@ -4061,6 +5630,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get profileNotifContentHidden =>
       'Una de tus publicaciones se ocultó tras ser denunciada';
+
+  @override
+  String get profileNotifDataExportReady =>
+      'Tu exportación de datos está lista para descargar';
+
+  @override
+  String get profileNotifRefundFailed =>
+      'Un reembolso que iniciamos no se pudo completar. El dinero sigue con nosotros y buscaremos otra forma de devolvértelo.';
 
   @override
   String profileNotifGeneric(String name) {
@@ -4221,7 +5798,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clubsEmptyMineTitle => 'Aún no te has unido a ningún club.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Prueba con otro nombre o ubicación.';
+  String get clubsMissingClubBody =>
+      '¿Falta tu club? Puede que aún no esté en Threkir. Crea su página e invita a tus miembros a unirse.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurar tu club';
+
+  @override
+  String get clubsHowToCreateClub => 'Cómo crear un club';
 
   @override
   String get clubsEmptyMineBody => 'Ve a Explorar para encontrar uno.';
@@ -4282,7 +5866,69 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Miembro';
+  String clubDetailNameHint(String handle) {
+    return 'Los miembros del club te ven como $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Puedes añadir tu nombre en los ajustes de tu cuenta.';
+
+  @override
+  String get clubRoleOwner => 'Propietario';
+
+  @override
+  String get clubRoleAdmin => 'Administrador';
+
+  @override
+  String get clubRoleEventOrganiser => 'Organizador de eventos';
+
+  @override
+  String get clubRoleRaceDirector => 'Director de carrera';
+
+  @override
+  String get clubRoleMember => 'Miembro';
+
+  @override
+  String get clubDetailMembersEmptyTitle => 'Aún no hay miembros';
+
+  @override
+  String get clubDetailMembersEmptyBody =>
+      'En cuanto alguien se una, aparecerá aquí con su rol.';
+
+  @override
+  String get clubDetailMembersLoadFailed =>
+      'No se pudieron cargar los miembros';
+
+  @override
+  String get clubDetailMembersLoadMore => 'Cargar más';
+
+  @override
+  String get clubDetailMemberActions => 'Acciones del miembro';
+
+  @override
+  String get clubDetailRemoveFromClub => 'Quitar del club';
+
+  @override
+  String get clubDetailRemoveMemberTitle => 'Eliminar miembro';
+
+  @override
+  String clubDetailRemoveMemberBody(String name, String club) {
+    return '¿Eliminar a $name de $club?';
+  }
+
+  @override
+  String get clubDetailRemoveMemberConfirm => 'Eliminar';
+
+  @override
+  String clubDetailRoleChangeFailed(String error) {
+    return 'No se pudo cambiar el rol: $error';
+  }
+
+  @override
+  String clubDetailRemoveMemberFailed(String error) {
+    return 'No se pudo eliminar al miembro: $error';
+  }
 
   @override
   String get clubDetailRequestPending => 'Solicitud pendiente';
@@ -4385,11 +6031,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String clubDetailUserShort(String id) {
-    return 'Usuario $id…';
-  }
-
-  @override
   String get clubDetailDeny => 'Rechazar';
 
   @override
@@ -4415,7 +6056,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String clubDetailRouteSaved(String name) {
-    return '\"$name\" guardada';
+    return '«$name» guardada';
   }
 
   @override
@@ -4554,6 +6195,60 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se encontraron carreras recientes. Registra una carrera primero y vuelve.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Añadir foto del evento';
+
+  @override
+  String get eventAddPhotoFromRun => 'Añadir desde mi carrera';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'Ninguna de tus carreras empezó durante este evento. Las fotos se asocian a una carrera que empezó hasta 2 horas antes y dentro de las 24 horas posteriores al inicio.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'No se pudieron cargar tus carreras: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'No se pudieron cargar las fotos.';
+
+  @override
+  String get eventPhotosRetry => 'Recargar fotos';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Oculta';
+
+  @override
+  String get eventPhotoHide => 'Ocultar';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Ocultar la foto de $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Restaurar';
+
+  @override
+  String get eventPhotoDelete => 'Eliminar';
+
+  @override
+  String get eventPhotoHidden => 'Foto ocultada del evento';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'No se pudo actualizar la foto: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Foto eliminada';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'No se pudo eliminar la foto: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'Un corredor';
 
   @override
@@ -4561,9 +6256,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'Aún no hay confirmaciones — sé el primero.';
-
-  @override
-  String get eventAttendeeMember => 'Miembro';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -4591,7 +6283,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo actualizar tu confirmación. Inténtalo de nuevo.';
 
   @override
-  String get eventRsvpGoing => 'Voy';
+  String get eventRsvpGoing => 'Me apunto';
 
   @override
   String get eventRsvpMaybe => 'Quizás';
@@ -4606,19 +6298,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventRsvpDeclined => 'No puedo';
 
   @override
-  String get eventRaceArmed => 'Armado — esperando el GO';
+  String get eventRaceArmed => 'Preparada — esperando el GO';
 
   @override
   String get eventRaceRunning => 'En curso — en vivo';
 
   @override
-  String get eventRaceFinished => 'Finalizado';
+  String get eventRaceFinished => 'Finalizada';
 
   @override
-  String get eventRaceCancelled => 'Cancelado';
+  String get eventRaceCancelled => 'Cancelada';
 
   @override
-  String get eventRaceNotArmed => 'No armado';
+  String get eventRaceNotArmed => 'No preparada';
 
   @override
   String get eventRaceControlLabel => 'CONTROL DE CARRERA';
@@ -4628,14 +6320,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aprobar automáticamente los tiempos enviados';
 
   @override
-  String get eventRaceArm => 'Armar carrera';
+  String get eventRaceArm => 'Preparar carrera';
 
   @override
   String get eventRaceArmedHint =>
-      'Toca Dar la salida cuando empiece la carrera. Los relojes de los participantes muestran ahora el aviso de armado.';
+      'Toca GO cuando empiece la carrera. Los relojes de los participantes muestran ahora el aviso de carrera preparada.';
 
   @override
-  String get eventRaceFireGo => 'Dar la salida';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Cancelar';
@@ -4737,14 +6429,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get liveSpectatorConnectError => 'No se pudo conectar.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'Esperando que el corredor envíe el primer ping…';
+  String get liveSpectatorWaitingGps =>
+      'Esperando el GPS del corredor: su posición aparecerá en cuanto su teléfono obtenga señal';
 
   @override
   String get liveSpectatorBadgeLive => 'En vivo';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Inactivo';
+  String get liveSpectatorBadgeWaitingGps => 'Esperando GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Conectando';
@@ -4760,10 +6452,23 @@ class AppLocalizationsEs extends AppLocalizations {
       'Visto por última vez cerca de aquí — aproximado';
 
   @override
+  String get liveSpectatorWeakGpsSub =>
+      'Aproximado — la señal GPS del corredor es débil';
+
+  @override
   String get liveSpectatorBadgeFinished => 'Finalizado';
 
   @override
   String get liveSpectatorBadgeDnf => 'DNF';
+
+  @override
+  String get liveSpectatorStatRaceTime => 'Tiempo de carrera';
+
+  @override
+  String get liveSpectatorStatTimer => 'Cronómetro';
+
+  @override
+  String get liveSpectatorStatTimerStale => 'Cronómetro, última señal';
 
   @override
   String get liveSpectatorRecentPace => 'Reciente';
@@ -4771,6 +6476,16 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String liveSpectatorCourseProgress(int p) {
     return '$p% del recorrido';
+  }
+
+  @override
+  String liveSpectatorMotionStopped(int n) {
+    return 'Sin movimiento — $n min en el mismo punto';
+  }
+
+  @override
+  String liveSpectatorMotionStoppedAtLeast(int n) {
+    return 'Sin movimiento — al menos $n min en el mismo punto';
   }
 
   @override
@@ -4838,6 +6553,19 @@ class AppLocalizationsEs extends AppLocalizations {
       'Señal perdida: no se puede estimar la llegada';
 
   @override
+  String get liveCutoffExpired => 'El tiempo de corte ya ha pasado';
+
+  @override
+  String liveCutoffRequiredPace(String pace) {
+    return 'Necesita $pace desde aquí';
+  }
+
+  @override
+  String liveCutoffRequiredPaceStale(String pace) {
+    return 'Necesita $pace desde la última posición';
+  }
+
+  @override
   String get plansTitle => 'Planes de entrenamiento';
 
   @override
@@ -4867,7 +6595,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'Después podrás crear un nuevo plan.';
+  String get plansAbandonBody =>
+      'Se conservan sus semanas, entrenamientos y carreras vinculadas. Después podrás crear un nuevo plan.';
 
   @override
   String plansActionFailed(String error) {
@@ -4875,17 +6604,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count días/sem.';
-  }
-
-  @override
-  String get plansSignInTitle =>
-      'Inicia sesión para usar los planes de entrenamiento';
-
-  @override
-  String get plansSignInBody =>
-      'Los planes se sincronizan con tu cuenta para acompañarte en todos los dispositivos. Ve a Ajustes → Iniciar sesión para conectarte.';
+  String get plansStatusUpcoming => 'próximo';
 
   @override
   String get plansEmptyTitle => 'Aún no hay planes.';
@@ -4903,6 +6622,84 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudieron cargar los planes de entrenamiento. Toca Reintentar.';
 
   @override
+  String get plansStatusActive => 'activo';
+
+  @override
+  String get plansStatusPaused => 'en pausa';
+
+  @override
+  String get plansStatusCompleted => 'completado';
+
+  @override
+  String get plansStatusAbandoned => 'abandonado';
+
+  @override
+  String get plansFilterGroupLabel => 'Filtrar planes por estado';
+
+  @override
+  String get plansFilterAll => 'Todos';
+
+  @override
+  String get plansFilterActive => 'Activos';
+
+  @override
+  String get plansFilterPaused => 'En pausa';
+
+  @override
+  String get plansFilterCompleted => 'Completados';
+
+  @override
+  String get plansFilterAbandoned => 'Abandonados';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'No hay planes $status.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Mostrar todos los planes';
+
+  @override
+  String get plansHeroGoal => 'Objetivo';
+
+  @override
+  String get plansHeroTarget => 'Meta';
+
+  @override
+  String get plansGoalFinish => 'Terminar';
+
+  @override
+  String get plansEventHalf => 'Media maratón';
+
+  @override
+  String get plansEventFull => 'Maratón';
+
+  @override
+  String get plansEventCustom => 'Personalizado';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get plansEnded => 'Finalizado';
+
+  @override
+  String get plansProgressLabel => 'Progreso del plan';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas · $days días/semana',
+      one: '$weeks semana · $days días/semana',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get planNewTitle => 'Plan nuevo';
 
   @override
@@ -4910,10 +6707,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewNameHint => 'p. ej. Media maratón de otoño';
-
-  @override
-  String get planNewNameRequiredHint =>
-      'Añade un nombre de plan para activar Crear.';
 
   @override
   String planNewDefaultName(String goal) {
@@ -4927,6 +6720,22 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewGoalRace => 'Carrera objetivo';
+
+  @override
+  String get planNewUltraOther => 'Otra distancia de ultra';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'Distancia de la carrera ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'Los recorridos de ultra varían: la Comrades mide entre 86 y 90 km según el año. Introduce la distancia exacta de tu carrera. Las tiradas largas se marcan por tiempo en movimiento, no por ritmo.';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'Un ultra es más largo que un maratón. Elige Maratón o introduce una distancia mayor.';
 
   @override
   String get planNewStartDate => 'Fecha de inicio';
@@ -4963,15 +6772,163 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewRecent5kWarning =>
-      'Hasta que confirmes, los ritmos se mantienen en la estimación conservadora basada en el objetivo. Anclarse en un resultado antiguo puede fijar ritmos demasiado rápidos para quien retoma.';
-
-  @override
-  String get planNewOverrideHint => 'Anular el total de semanas';
+      'Hasta que lo confirmes, los ritmos salen de tu tiempo objetivo, o de un valor prudente por defecto si lo dejas en blanco. Un resultado antiguo puede marcar ritmos demasiado rápidos para quien vuelve a correr, y un objetivo ambicioso también.';
 
   @override
   String planNewOverrideLabel(int count) {
     return 'Anular semanas (predet. $count)';
   }
+
+  @override
+  String planNewRaceAnchored(int weeks) {
+    return 'Ajustado a tu carrera: un plan de $weeks semanas cuya última semana es la de la carrera. Cambia lo que quieras antes de crearlo.';
+  }
+
+  @override
+  String planNewRaceChained(String date) {
+    return 'Empieza el $date, después de tu plan actual y sus días de recuperación.';
+  }
+
+  @override
+  String get planNewRacePast =>
+      'Esa carrera ya se celebró, así que las fechas de abajo son las predeterminadas.';
+
+  @override
+  String get planNewRaceTooSoon =>
+      'Esa carrera está demasiado cerca para preparar un plan completo, así que las fechas de abajo son las predeterminadas.';
+
+  @override
+  String get planNewRaceUnreadable =>
+      'No pudimos leer la fecha de esa carrera, así que las fechas de abajo son las predeterminadas.';
+
+  @override
+  String get planNewAiTitle => 'Describe el plan que quieres';
+
+  @override
+  String get planNewAiHint =>
+      'Escríbelo con tus palabras y el formulario de abajo se rellena por ti. El plan lo sigue creando el generador propio de la app: revisa cada campo antes de crearlo.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'p. ej. Una media maratón en menos de 2 horas el 14 de marzo. Puedo entrenar 4 días a la semana y mis últimos 5 km fueron en 26:30.';
+
+  @override
+  String get planNewAiButton => 'Rellenar el formulario';
+
+  @override
+  String get planNewAiWorking => 'Leyendo…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Rellenado a partir de tu descripción: revisa cada campo.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'El plan lo crea el generador propio de la app a partir de estos campos, no la IA.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Se añadió tu tiempo de 5 km, pero sin confirmar. Marca la casilla solo si refleja tu forma actual.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Fecha de inicio y duración del plan ajustadas para que la semana de la carrera incluya el $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'Esa fecha de carrera ya ha pasado, así que la fecha de inicio no se ha cambiado.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Faltan menos de cuatro semanas para la carrera, así que la fecha de inicio no se ha cambiado: un plan necesita al menos cuatro semanas.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'No se pudo leer esa fecha de carrera, así que la fecha de inicio no se ha cambiado.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'No se mencionó ninguna distancia, así que el objetivo es una media maratón.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'No se mencionaron días de entrenamiento, así que se han puesto 4 días a la semana.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Los días de entrenamiento se ajustaron al valor admitido más cercano (de 3 a 7 por semana).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'La duración del plan se ajustó al valor admitido más cercano (de 4 a 24 semanas).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'No se pudo usar la fecha de carrera: debe ser futura y estar a menos de dos años.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'El tiempo objetivo parecía fuera de rango para esa distancia, así que se dejó en blanco.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'El tiempo de 5 km parecía fuera de rango, así que se dejó en blanco.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'Un plan de caminar y correr para principiantes lleva a los 5 km, así que el objetivo se fijó en 5 km sin tiempo objetivo.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'Se omitió una carrera que no se pudo leer.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'Se omitió una carrera porque no se pudo usar su fecha: debe ser futura y estar a menos de dos años.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'Se omitió una carrera porque su distancia está fuera de lo que admite el planificador (de 5 km a 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'Una fecha sin año ya había pasado este año, así que se movió al año que viene.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'Un tiempo objetivo parecía fuera de rango para su distancia, así que esa carrera no tiene tiempo objetivo.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'Una carrera mencionada dos veces aparece una sola vez.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Solo se muestran las 12 primeras carreras: una temporada admite hasta 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Las carreras sin prioridad se marcaron como B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Ninguna carrera estaba marcada como carrera A, así que lo es la más larga.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'El asistente de planes necesita el aviso de IA actualizado.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Ver la información';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'Has usado tus solicitudes de IA de hoy. Rellena el formulario tú mismo o vuelve a intentarlo mañana.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'No se pudo leer: rellena el formulario tú mismo.';
 
   @override
   String get planNewCancel => 'Cancelar';
@@ -5010,12 +6967,25 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get planNewWeekOutline => 'Resumen de semanas';
+  String get planNewRampLabel => 'El plan frente a tu entrenamiento reciente';
 
   @override
-  String planNewMoreWeeks(int count) {
-    return '+ $count semanas más';
+  String planNewRampUnder(String peak, String recent) {
+    return 'Este plan llega como máximo a $peak por semana, por debajo de los $recent por semana que has promediado en las últimas cuatro semanas. Una carrera objetivo más larga o más días de entrenamiento aprovecharían mejor esa base.';
   }
+
+  @override
+  String planNewRampElevated(String opening, String recent) {
+    return 'La semana 1 pide $opening frente a los $recent por semana que has promediado en las últimas cuatro semanas: es un salto real. Tómatelo con calma o quita un día de entrenamiento.';
+  }
+
+  @override
+  String planNewRampHigh(String opening, String recent) {
+    return 'La semana 1 pide $opening, muy por encima de los $recent por semana que has promediado en las últimas cuatro semanas. Menos días de entrenamiento, una carrera objetivo más corta o unas semanas de base antes harían ese primer paso más seguro.';
+  }
+
+  @override
+  String get planNewWeekOutline => 'Resumen de semanas';
 
   @override
   String planNewSessions(int count) {
@@ -5023,26 +6993,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get planNewTemplateTitle => 'Empezar desde una plantilla de club';
-
-  @override
-  String get planNewTemplateSubtitle =>
-      'Adopta un plan que haya publicado un club al que perteneces. Se clona en tu cuenta con la fecha de inicio de abajo — edítalo como cualquier otro plan.';
-
-  @override
-  String get planNewTemplateButton => 'Ver plantillas';
-
-  @override
   String get planNewTemplateCloning => 'Adoptando…';
 
   @override
   String get planNewTemplateCloneFailed => 'No se pudo adoptar esa plantilla.';
-
-  @override
-  String get planNewTemplatePickerTitle => 'Elige una plantilla';
-
-  @override
-  String get planNewTemplatePickerCancel => 'Cancelar';
 
   @override
   String get planLibraryTitle => 'Biblioteca pública de planes';
@@ -5078,16 +7032,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planLibraryAnonymous => 'un corredor';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks semanas';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/semana';
-  }
-
-  @override
   String get planLibraryClone => 'Clonar en mis planes';
 
   @override
@@ -5117,6 +7061,17 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count carreras',
+      one: '$count carrera',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get planDetailPublishLibraryLabel => 'Biblioteca pública de planes';
 
   @override
@@ -5124,7 +7079,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Comparte una copia de este plan para que cualquiera pueda clonarlo. Tus datos de forma física no se comparten.';
+      'Comparte las semanas y sesiones de este plan con tu nombre para que cualquiera pueda empezarlo. Tus fechas, ritmos, tiempo objetivo y notas no se comparten.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -5137,6 +7092,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailUnpublishLibrary => 'Retirar';
+
+  @override
+  String get planDetailUnpublishTitle => '¿Retirar este plan?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'Sale de la biblioteca pública. Quien abra un enlace que hayas compartido verá que ya no está, y al volver a publicarlo se crea un enlace nuevo.';
 
   @override
   String get planDetailUnpublishSuccess =>
@@ -5158,20 +7120,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planNewStarterTitle => 'Empezar con un plan integrado';
 
   @override
-  String get planNewStarterSubtitle =>
-      'Elige un plan de entrenamiento probado y lo programamos desde tu fecha de inicio; podrás ajustarlo después.';
-
-  @override
-  String get planNewStarterButton => 'Explorar planes iniciales';
-
-  @override
   String get planNewStarterCreating => 'Creando…';
-
-  @override
-  String get planNewStarterPickerTitle => 'Elige un plan inicial';
-
-  @override
-  String get planNewStarterPickerCancel => 'Cancelar';
 
   @override
   String get planNewStarterCreateFailed => 'No se pudo crear ese plan.';
@@ -5180,19 +7129,222 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planNewReplaceActiveTitle => '¿Reemplazar tu plan activo?';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'Ya tienes un plan activo: \"$name\". Crear un plan nuevo marcará el actual como completado (podrás encontrarlo en Gestionar planes). ¿Continuar?';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'Ya tienes un plan activo. Crear un plan nuevo marcará el actual como completado. ¿Continuar?';
-
-  @override
   String get planNewReplaceActiveConfirm => 'Reemplazar plan';
 
   @override
   String get planNewReplaceActiveKeep => 'Mantener el actual';
+
+  @override
+  String get planOverlapTitle => 'Estas fechas se solapan con un plan activo';
+
+  @override
+  String planOverlapBody(String start, String end) {
+    return 'Tu nuevo plan va del $start al $end. Solo puede haber un plan activo cada día, y se solapa con:';
+  }
+
+  @override
+  String planOverlapPlanLine(String name, String start, String end) {
+    return '$name: $start – $end';
+  }
+
+  @override
+  String get planOverlapReplaceHint =>
+      'Reemplazar marca los planes solapados como abandonados. Puedes seguir encontrándolos en Gestionar planes.';
+
+  @override
+  String planOverlapTrimHint(String name, String date) {
+    return 'Termina $name antes para conservar sus semanas completadas y eliminar sus entrenamientos posteriores al $date, o reemplázalo para marcarlo como abandonado.';
+  }
+
+  @override
+  String planOverlapTrim(String name, String date) {
+    return 'Terminar $name el $date';
+  }
+
+  @override
+  String planOverlapTrimMany(String date) {
+    return 'Terminarlos el $date';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return 'Termínalos antes para conservar sus semanas completadas y eliminar sus entrenamientos posteriores al $date, o reemplázalos para marcarlos como abandonados.';
+  }
+
+  @override
+  String get planOverlapConflict =>
+      'Otro plan activo cubre ahora estas fechas. Revisa tus planes e inténtalo de nuevo.';
+
+  @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$plan tiene entrenamientos completados posteriores al $date. Reemplázalo en su lugar o empieza el nuevo plan más tarde.';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return 'El plan que elegiste terminar antes tiene entrenamientos completados posteriores al $date. Reemplázalo en su lugar o empieza el nuevo plan más tarde.';
+  }
+
+  @override
+  String get planDetailDuplicateWeekOverlap =>
+      'Duplicar esta semana llevaría el plan a las fechas de otro plan activo. Mueve o termina antes ese plan.';
+
+  @override
+  String get planNewImportButton => 'Importar un plan';
+
+  @override
+  String get planImportTitle => 'Importar un plan';
+
+  @override
+  String get planImportIntro =>
+      'Pega un plan exportado desde la app web, o una tabla con las columnas Week, Date y Type. Cárgalo para revisar las semanas antes de crearlo.';
+
+  @override
+  String get planImportPasteLabel => 'Tabla del plan o JSON';
+
+  @override
+  String get planImportLoad => 'Cargar';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'No se pudo leer ese plan: $detail';
+  }
+
+  @override
+  String planImportErrorBadDistance(String cell) {
+    return 'No se pudo leer la distancia «$cell».';
+  }
+
+  @override
+  String planImportErrorBadPace(String cell) {
+    return 'No se pudo leer el ritmo «$cell». Usa m:ss.';
+  }
+
+  @override
+  String planImportErrorDuplicateColumn(String column) {
+    return 'La columna «$column» aparece dos veces.';
+  }
+
+  @override
+  String planImportErrorMissingColumn(String column) {
+    return 'La tabla no tiene la columna «$column».';
+  }
+
+  @override
+  String planImportErrorRaceNameTooLong(String name, String max) {
+    return 'El nombre de la carrera «$name» supera los $max caracteres.';
+  }
+
+  @override
+  String planImportErrorBadRacePriority(String cell) {
+    return 'No se pudo leer la prioridad de carrera «$cell». Usa A, B o C.';
+  }
+
+  @override
+  String planImportErrorBadGoalTime(String cell) {
+    return 'No se pudo leer el tiempo objetivo «$cell». Usa h:mm:ss.';
+  }
+
+  @override
+  String planImportErrorBadWeek(String cell) {
+    return 'No se pudo leer el número de semana «$cell».';
+  }
+
+  @override
+  String planImportErrorBadDate(String cell) {
+    return 'No se pudo leer la fecha «$cell». Usa AAAA-MM-DD.';
+  }
+
+  @override
+  String planImportErrorUnknownKind(String cell) {
+    return '«$cell» no es un tipo de entrenamiento que esta app conozca.';
+  }
+
+  @override
+  String planImportErrorRaceFieldsOnNonRace(String date) {
+    return 'Carrera, prioridad y objetivo solo se aplican a las filas de carrera, y el entrenamiento del $date no es una carrera.';
+  }
+
+  @override
+  String get planImportErrorNoRows =>
+      'No se encontraron filas de entrenamiento. Pega una tabla con las columnas Week, Date y Type.';
+
+  @override
+  String get planImportErrorNoGoalDistance =>
+      'No se pudo determinar la distancia objetivo del plan.';
+
+  @override
+  String planImportErrorBeforeStart(String date, String start) {
+    return 'El entrenamiento del $date es anterior a la fecha de inicio del plan, $start.';
+  }
+
+  @override
+  String get planImportErrorNotJson => 'No es un JSON válido.';
+
+  @override
+  String get planImportErrorNoWorkoutsArray =>
+      'El JSON no tiene la lista «workouts».';
+
+  @override
+  String get planImportErrorBadJsonShape =>
+      'Los entrenamientos del JSON no están en el formato de exportación.';
+
+  @override
+  String planImportErrorBadTaperStamp(String value, String date) {
+    return 'No se pudo leer la fecha de tapering «$value» del $date.';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return 'Del $start al $end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '1 semana',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts entrenamientos',
+      one: '1 entrenamiento',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts entrenamientos',
+      one: '1 entrenamiento',
+    );
+    return 'Semana $week: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'Carrera: $name, $date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => 'Carrera sin nombre';
+
+  @override
+  String get planImportCreate => 'Crear plan';
+
+  @override
+  String get planImportCreateFailed =>
+      'No se pudo crear el plan. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'No se pudieron comprobar tus planes activos para estas fechas. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get planNewStarterC25k => 'Couch to 5K (principiante caminar-correr)';
@@ -5215,10 +7367,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailNotFound => 'Plan no encontrado.';
 
   @override
-  String get planDetailLongestLongRun => 'Tirada larga más larga';
+  String planDetailLongestLongRun(String distance) {
+    return 'Tirada larga más larga: $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publicar como plantilla del club';
+
+  @override
+  String get planDetailRacesTitle => 'Carreras de este plan';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return 'Prioridad $priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -5232,21 +7394,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailToday => 'HOY';
 
   @override
-  String get planDetailCompleted => 'Completado';
-
-  @override
   String planDetailWeek(int number) {
     return 'Semana $number';
   }
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Esta semana $pct% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.';
+    return 'Esta semana, de momento $pct% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.';
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Esta semana $pct% por debajo del plan — el volumen previsto impulsa la adaptación.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Esta semana llevas $done de los $planned previstos hasta ahora.';
   }
 
   @override
@@ -5266,6 +7425,83 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => 'Replanificación adaptativa';
+
+  @override
+  String get planDetailAdjustPlan => 'Ajustar plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Elige el cambio que encaje con lo que pasó. Cada opción dice qué cambia.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Recupera una tirada larga perdida, o aligera la semana siguiente si corriste más de lo previsto. Úsalo cuando una semana no salió según el plan.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Mira tus últimas tres semanas terminadas y propone cambios cuando al menos dos quedaron por encima o por debajo del plan, para que una semana rara no mueva tu plan. Úsalo cuando llevas un tiempo desviado del plan.';
+
+  @override
+  String get planDetailRaceTaper => 'Afinamiento en torno a carreras B/C';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      'Suaviza los días antes de cada próxima carrera B o C y los días después, para que llegues fresco y te recuperes antes de que vuelva el entrenamiento. Tu carrera A y su afinamiento se quedan como están.';
+
+  @override
+  String get planDetailRaceTaperNone =>
+      'Ninguna próxima carrera B o C necesita afinamiento.';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle =>
+      'Afinamiento y recuperación propuestos';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — afinamiento para $race';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — rodaje de activación antes de $race';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — recuperación después de $race';
+  }
+
+  @override
+  String get planDetailRaceTaperNotesCleared => 'Notas borradas';
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return 'Próxima carrera: $name';
+  }
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Deja el plan en espera sin borrar nada, hasta que lo reanudes. Úsalo por enfermedad, lesión o viaje.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Vuelve a convertirlo en tu plan activo. Úsalo cuando estés listo para retomarlo.';
+
+  @override
+  String get planDetailPausePlan => 'Pausar plan';
+
+  @override
+  String get planDetailResumePlan => 'Reanudar plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan en pausa.';
+
+  @override
+  String get planDetailResumeDone => 'Plan reanudado.';
+
+  @override
+  String get planDetailResumeOverlap =>
+      'Otro plan activo se solapa con estas fechas. Primero páusalo, márcalo como completado o haz que termine antes.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -5302,6 +7538,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailReplanOnTrack => 'Tu plan va bien — nada que ajustar.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'No se pudieron cargar tus carreras recientes, así que aún no se puede comparar el plan con ellas. Inténtalo de nuevo en un momento.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -5313,11 +7553,99 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => 'Corriendo algo menos de lo previsto';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'Has corrido menos de lo previsto en $n de las últimas $total semanas. Hay un ajuste sugerido para las próximas semanas.';
+  }
+
+  @override
+  String get planNudgeAnchorUnderTitle => 'La semana pasada se quedó corta';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'Las próximas semanas siguen subiendo desde el plan, no desde lo que corriste. Hay un cambio sugerido para reconstruir desde la semana pasada.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Volver al plan poco a poco';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n semanas',
+      one: '$n semana',
+    );
+    return 'Has estado fuera del plan $_temp0. Hay un cambio sugerido para que las próximas semanas se reconstruyan desde lo último que corriste.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'Una semana intensa';
+
+  @override
+  String get planNudgeEaseBody =>
+      'La semana pasada corriste bastante más de lo previsto. Suavizar las carreras cortas de la próxima semana ayuda a tu cuerpo a asimilarlo.';
+
+  @override
+  String get planNudgeRestTitle => 'Correr en días de descanso';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'Has corrido en días de descanso en $n de las últimas $total semanas. Esas carreras cuentan para tu semana, pero es en el descanso donde el entrenamiento se asienta.';
+  }
+
+  @override
+  String get planNudgeReview => 'Revisar los cambios';
+
+  @override
+  String get planNudgeDismiss => 'Descartar';
+
+  @override
+  String get planNudgeDismissA11y => 'Descartar esta sugerencia';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'No se pudo ocultar la sugerencia. Inténtalo de nuevo.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '$distance más de lo previsto';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => 'Cambios propuestos';
 
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Tirada larga $from → $to — recuperar una tirada larga perdida';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — reconstruir desde lo que corriste';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Tu última semana corriendo se quedó en $km, muy por debajo del plan. Estas semanas ahora se reconstruyen desde ahí, alrededor de un 10 % por semana, hasta volver a encajar con el plan. La puesta a punto se mantiene como estaba.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n semanas',
+      one: '$n semana',
+    );
+    return 'Has estado fuera del plan $_temp0. Estas semanas vuelven a empezar en aproximadamente la mitad de los $km que corriste en tu última semana y suben alrededor de un 10 % por semana. La puesta a punto se mantiene como estaba.';
   }
 
   @override
@@ -5422,6 +7750,57 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutMetricTargetPace => 'Ritmo objetivo';
 
   @override
+  String get workoutMetricEffort => 'Esfuerzo';
+
+  @override
+  String get workoutMetricHeartRate => 'Frecuencia cardíaca';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Actualizado por tu entrenador el $date';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'Esfuerzo $min–$max/10';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'Esfuerzo $value/10';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'Esfuerzo hasta $max/10';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'Esfuerzo $min/10 o más';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max ppm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value ppm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Tope $max ppm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'Al menos $min ppm';
+  }
+
+  @override
   String get workoutCompleted => 'Completado';
 
   @override
@@ -5437,6 +7816,16 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get workoutUnlinkError =>
       'No se pudo desvincular la carrera. Inténtalo de nuevo.';
+
+  @override
+  String get workoutMarkDone => 'Marcar como hecho';
+
+  @override
+  String get workoutMarkNotDone => 'Marcar como no hecho';
+
+  @override
+  String get workoutUpdateError =>
+      'No se pudo actualizar el entrenamiento. Inténtalo de nuevo.';
 
   @override
   String get workoutSkipped => 'Omitido';
@@ -5467,6 +7856,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get workoutRelinkError =>
       'No se pudieron cargar tus carreras. Inténtalo de nuevo.';
+
+  @override
+  String get workoutRelinkSaveError =>
+      'No se pudo vincular esa carrera. Inténtalo de nuevo.';
 
   @override
   String get workoutRelinkEmpty =>
@@ -5500,16 +7893,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutStructCooldown => 'Enfriamiento';
 
   @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ suave';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ suave';
-  }
-
-  @override
   String get workoutAdviceEasy =>
       'Ritmo de conversación. Si no puedes mantener una conversación, vas demasiado rápido.';
 
@@ -5534,6 +7917,34 @@ class AppLocalizationsEs extends AppLocalizations {
       'Alterna carrera suave y caminata en los intervalos cronometrados. Las pausas de caminar son parte del entrenamiento: tómalas aunque te sientas fresco.';
 
   @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de carrera: confía en el trabajo hecho.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Afinamiento: baja el volumen, se mantiene la chispa.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana: termina con tus primeros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Haz las pausas de caminar aunque te sientas bien: hacen que la carrera sea sostenible.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fin de semana back-to-back: dos tiradas largas en días seguidos, la segunda con las piernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tiempo en pie a ritmo suave: el objetivo es la duración, no el ritmo. Practica la nutrición del día de carrera.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corre por sensaciones y aliméntate pronto: el reloj se ocupa del resto.';
+
+  @override
   String get workoutAdviceRace =>
       'Confía en el plan. No persigas un récord en el primer kilómetro.';
 
@@ -5548,31 +7959,59 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachNewConversation => 'Nueva conversación';
 
   @override
-  String get coachConsentHeadline => 'Antes de chatear con Coach';
+  String get coachConsentHeadline => 'Antes de usar las funciones de IA';
 
   @override
   String get coachConsentIntro =>
-      'Para darte consejos fundamentados, Coach envía una parte de tus datos de entrenamiento a Anthropic, nuestro proveedor de modelos de IA en EE. UU. Esa parte incluye:';
+      'Las funciones de IA de Threkir envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU., para que pueda redactar las respuestas del Entrenador IA y las sugerencias de las demás funciones de IA. Según la función que uses, esa parte incluye:';
 
   @override
   String get coachConsentBulletProfile =>
-      'Tu fecha de nacimiento, sexo y zonas de FC si están configuradas.';
+      'Solo si has dado tu consentimiento de datos de salud: tu fecha de nacimiento y tus zonas de frecuencia cardíaca configuradas, si las has establecido.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Una muestra de tus carreras más recientes.';
+      'Una muestra de tus carreras más recientes: la fecha, la distancia, la duración, el tipo de actividad, el desnivel positivo, si fue en interior y cómo fue respecto a un entrenamiento planificado, además de tu frecuencia cardíaca media (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletPlan =>
-      'El plan de entrenamiento activo que has seleccionado.';
+      'El plan o los planes de entrenamiento que has seleccionado: de cada plan, su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de forma física con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletMessages =>
-      'Los mensajes de chat que escribes en la pantalla de abajo.';
+      'Los mensajes que envías al Entrenador IA, incluida cualquier cosa que escribas sobre tu salud o tus lesiones, así que no incluyas nada que prefieras no compartir.';
+
+  @override
+  String get coachConsentBulletRoutes =>
+      'Para el asistente de rutas con IA: el nombre y los datos de la ruta, la petición que escribes y una referencia aproximada del lugar; nunca tus coordenadas exactas.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'Para el asistente de planes con IA: la descripción del plan que escribes (carrera objetivo, tiempos objetivo y recientes, cuántos días puedes entrenar), solo para rellenar los ajustes del plan; el plan en sí lo crea el generador propio de Threkir, no la IA.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'Para el registro con foto del plato: la foto de tu comida que elijas, enviada solo para estimar lo que hay en el plato. La ubicación y los datos de la cámara se eliminan antes del envío, Threkir no guarda la foto y no se registra nada hasta que lo revises y guardes.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Un resumen de tus sesiones de gimnasio más recientes: la fecha, el nombre de la sesión, cuántos ejercicios y series, y el peso total levantado.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Solo si has dado tu consentimiento de datos de salud: un resumen de 7 días de tu registro de comidas (días registrados y media de calorías, proteínas, carbohidratos y grasas), nunca comidas individuales.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'Para los ajustes de plan con IA: los próximos entrenamientos del plan que cambias (fechas, tipos y distancias) y el cambio que escribes, solo para sugerir cambios que revisas antes de que se guarde nada; la IA no puede añadir entrenamientos ni fijar ritmos.';
 
   @override
   String get coachConsentProcessing =>
-      'Anthropic procesa los datos en nombre de Threkir según sus términos de tratamiento de datos; por defecto, no entrenan sus modelos con los datos de clientes de Threkir. Todos los detalles —incluido el mecanismo de transferencia, la retención y tus derechos de retirada— están en nuestra política de privacidad.';
+      'Los elementos marcados «solo si has dado tu consentimiento de datos de salud» son datos de salud: al aceptar, das tu consentimiento explícito para que se envíen a Anthropic para estas funciones. Anthropic procesa los datos en nombre de Threkir según sus términos de tratamiento de datos, no entrena sus modelos con ellos y los elimina en un plazo de 30 días (más tiempo solo en el caso del contenido que marquen sus sistemas de seguridad). Puedes retirar este consentimiento en cualquier momento en Ajustes → Cuenta; así se deja de enviar cualquier dato nuevo, pero no se deshace lo que ya se envió. Todos los detalles, incluidas las garantías de la transferencia, están en nuestra política de privacidad.';
 
   @override
   String get coachConsentAction =>
@@ -5582,13 +8021,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachConsentCancel => 'Cancelar';
 
   @override
-  String get coachConsentAccept => 'Doy mi consentimiento — iniciar Coach';
+  String get coachConsentAccept =>
+      'Doy mi consentimiento — activar las funciones de IA';
 
   @override
   String get coachConsentSaving => 'Registrando consentimiento…';
 
   @override
+  String aiDisclosureRecordFailed(Object error) {
+    return 'No se pudo registrar el consentimiento: $error';
+  }
+
+  @override
   String get coachNoPlanOption => 'Sin plan (solo carreras recientes)';
+
+  @override
+  String get coachSeasonOption =>
+      'Mi temporada (plan actual y los planes en cola después)';
+
+  @override
+  String get coachSeasonName => 'Mi temporada';
 
   @override
   String coachPlanActive(String name) {
@@ -5639,6 +8091,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      '¿Otra carrera después de este plan? Toca «Añadir a mi temporada» en la carrera y «Mi temporada» aparecerá aquí.';
+
+  @override
+  String get coachSeasonHintAction => 'Buscar una carrera';
+
+  @override
+  String get coachPlanPickerTooltip => 'Contexto del plan';
+
+  @override
   String get coachContextNoRuns => 'Sin carreras';
 
   @override
@@ -5648,8 +8110,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachContextHr => 'FC';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/sem.';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/sem.';
   }
 
   @override
@@ -5732,6 +8194,18 @@ class AppLocalizationsEs extends AppLocalizations {
       '¿Está bien caminar durante mis carreras?';
 
   @override
+  String get coachSuggestBuildHalfPlan =>
+      'Créame un plan de entrenamiento para una media maratón';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Créame un plan para principiantes para correr mis primeros 5 km';
+
+  @override
+  String get coachSuggestPlanNextRace =>
+      'Ayúdame a planificar mi próxima carrera';
+
+  @override
   String get coachEditMessageLabel => 'Edita tu mensaje';
 
   @override
@@ -5804,6 +8278,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'No se pudo abrir el archivo.';
+
+  @override
+  String get coachJumpToLatest => 'Ir al último mensaje';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -5907,12 +8384,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Esto elimina permanentemente tus carreras, rutas y perfil del servidor. Los datos locales del dispositivo se conservan a menos que inicies sesión como un usuario nuevo. Esto no se puede deshacer.';
 
   @override
-  String get settingsAccountDeleteChallengeText =>
-      'Escribe «DELETE» para confirmar';
+  String get settingsAccountDeleteChallengeWord => 'ELIMINAR';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Escribe tu correo ($email) para confirmar';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Escribe «$word» para confirmar';
   }
 
   @override
@@ -5927,20 +8403,39 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsAccountCoachConsentWithdraw =>
-      'Retirar consentimiento del Coach';
+      'Retirar el consentimiento para las funciones de IA';
 
   @override
   String get settingsAccountCoachConsentActive =>
-      'Impide que el Coach use tus datos de entrenamiento. Puedes volver a dar tu consentimiento cuando quieras.';
+      'Impide que las funciones de IA de Threkir usen tus datos. Puedes volver a dar tu consentimiento cuando quieras.';
 
   @override
   String get settingsAccountCoachConsentWithdrawn =>
-      'Consentimiento del Coach retirado.';
+      'Consentimiento para las funciones de IA retirado.';
 
   @override
   String settingsAccountCoachConsentWithdrawFailed(Object error) {
     return 'Error al retirar el consentimiento: $error';
   }
+
+  @override
+  String get settingsAccountAiConsentUpdateTitle =>
+      'Aceptar la información de IA actualizada';
+
+  @override
+  String get settingsAccountAiConsentUpdateSubtitle =>
+      'La información ahora cubre más funciones. Léela y acéptala para usar todas las funciones de IA que describe.';
+
+  @override
+  String get settingsAccountAiConsentGrantTitle =>
+      'Revisar la información de IA';
+
+  @override
+  String get settingsAccountAiConsentGrantSubtitle =>
+      'Las funciones de IA de Threkir piden tu consentimiento antes de usar tus datos. Lee la información y acéptala aquí.';
+
+  @override
+  String get settingsAccountAiConsentAccepted => 'Información de IA aceptada.';
 
   @override
   String settingsAccountDeleteFailed(Object error) {
@@ -5972,6 +8467,31 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String settingsAccountBackupFailed(Object error) {
     return 'Error en la copia de seguridad: $error';
+  }
+
+  @override
+  String settingsAccountBackupPartial(int count, int total) {
+    return 'Exportación parcial: $count de $total carreras.';
+  }
+
+  @override
+  String settingsAccountBackupPartialNotice(int count, int total) {
+    return 'Tu última exportación es parcial: contiene $count de las $total carreras de tu cuenta. No se borró nada; vuelve a exportar para reintentarlo. El archivo completo de la cuenta indica cada sección incompleta en su manifest.json.';
+  }
+
+  @override
+  String settingsAccountBackupTracksPartial(int missing, int total) {
+    return 'A la copia de seguridad le faltan $missing de $total archivos GPS.';
+  }
+
+  @override
+  String settingsAccountBackupTracksPartialNotice(int missing, int total) {
+    return 'Tu última copia de seguridad no pudo descargar $missing de $total archivos de trazado GPS. Todas las carreras están en el archivo; vuelve a exportar para recuperar los trazados. Su manifest.json indica complete: false.';
+  }
+
+  @override
+  String settingsAccountRestoreIncompleteArchive(int runs) {
+    return 'Ese archivo se declaraba incompleto. Se restauraron $runs carreras y no se sobrescribió nada: restaura desde una copia completa para rellenar los huecos.';
   }
 
   @override
@@ -6037,7 +8557,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsAccountAvatar => 'Foto de perfil';
 
   @override
-  String get settingsAccountAvatarHint => 'JPEG, PNG o WebP, hasta 2 MB.';
+  String get settingsAccountAvatarHint =>
+      'JPEG, PNG o WebP. Puedes recortarla y girarla antes de guardar.';
 
   @override
   String get settingsAccountAvatarRemove => 'Quitar foto';
@@ -6104,6 +8625,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo actualizar el nombre visible. Inténtalo de nuevo.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'No se pudo cargar tu perfil, así que todavía no puedes cambiar la foto ni el nombre visible.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Informes de errores activados: reinicia la app para aplicar.';
 
@@ -6115,7 +8640,80 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsAccountImport => 'Importar desde otra app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Exportación de Strava, app de salud, CSV o copia de seguridad';
+
+  @override
+  String get settingsAccountAccountExport => 'Exportación de la cuenta';
+
+  @override
+  String get settingsAccountAccountExportSubtitle =>
+      'Todo lo de tu cuenta: carreras, rutas, mensajes, pedidos, integraciones y contactos de seguridad. Se crea en nuestro servidor; puedes cerrar la app mientras tanto.';
+
+  @override
+  String get settingsAccountExportQueued =>
+      'Estamos creando tu exportación. Puedes cerrar la app; vuelve aquí para descargarla.';
+
+  @override
+  String get settingsAccountExportBuildingNotice =>
+      'Tu exportación de la cuenta se está creando. Puedes cerrar la app; sigue creándose sin ti.';
+
+  @override
+  String get settingsAccountExportReadyNotice =>
+      'Tu exportación de la cuenta está lista.';
+
+  @override
+  String get settingsAccountExportDownload => 'Descargar y compartir';
+
+  @override
+  String settingsAccountExportFailedNotice(String error) {
+    return 'Tu última exportación de la cuenta falló ($error). No se borró nada: pide otra.';
+  }
+
+  @override
+  String get settingsAccountExportStalledNotice =>
+      'Tu última exportación de la cuenta dejó de responder. No se borró nada: pide otra.';
+
+  @override
+  String get settingsAccountExportExpiredNotice =>
+      'Tu última exportación de la cuenta ha caducado. Las exportaciones se borran a los 7 días: pide otra.';
+
+  @override
+  String get settingsAccountExportStatusUnavailable =>
+      'No se puede contactar con el servicio de exportación para comprobar el estado. Puede que siga creándose.';
+
+  @override
+  String get settingsAccountExportUnavailable =>
+      'El servicio de exportación de la cuenta no está configurado en esta versión. La copia de seguridad completa de abajo se crea en este dispositivo y no incluye los registros de tu cuenta.';
+
+  @override
+  String settingsAccountExportUnsyncedWarning(int count) {
+    return '$count carreras aún no se han sincronizado. La exportación de la cuenta se crea en el servidor, así que no las incluirá: usa la copia de seguridad completa para conservarlas.';
+  }
+
+  @override
+  String get settingsAccountBackupOnDeviceNotice =>
+      'Tu última copia de seguridad completa se creó en este dispositivo. Contiene tus carreras, rutas, perfil, preferencias y registros de gimnasio y comidas, pero no los registros de tu cuenta. Usa la exportación de la cuenta para la copia completa.';
+
+  @override
+  String settingsAccountExportRateLimited(int seconds) {
+    return 'Límite de exportaciones alcanzado: inténtalo de nuevo en $seconds segundos.';
+  }
+
+  @override
+  String settingsAccountExportRequestFailed(String error) {
+    return 'No se pudo solicitar tu exportación: $error';
+  }
+
+  @override
+  String settingsAccountExportDownloadFailed(String error) {
+    return 'No se pudo descargar tu exportación: $error';
+  }
+
+  @override
+  String settingsAccountExportReadyBanner(int count) {
+    return 'Tu exportación de la cuenta está lista: $count carreras.';
+  }
 
   @override
   String get settingsAccountFullBackup => 'Copia de seguridad completa';
@@ -6199,11 +8797,59 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaErrNotConfigured =>
+      'Strava todavía no está configurado en este servidor.';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'Strava no compartió todas tus actividades. Vuelve a conectar y deja marcados todos los permisos.';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'Strava no aceptó el inicio de sesión. Intenta conectar de nuevo.';
+
+  @override
+  String get integrationsStravaErrReconnect =>
+      'Strava ya no acepta esta conexión. Desconecta Strava y vuelve a conectarlo.';
+
+  @override
   String get integrationsStravaConnected => 'Strava conectado.';
 
   @override
   String integrationsSyncResult(int imported, int skipped) {
     return 'Sincronizado. $imported nuevas, $skipped ya presentes.';
+  }
+
+  @override
+  String integrationsSyncPartial(int imported, int skipped) {
+    return 'La sincronización se detuvo antes de tiempo. $imported nuevas, $skipped ya presentes: algunas actividades no se descargaron. Vuelve a sincronizar para terminar.';
+  }
+
+  @override
+  String integrationsSyncPartialRateLimited(int imported, int skipped) {
+    return 'Strava está limitando las solicitudes, así que la sincronización se detuvo antes de tiempo. $imported nuevas, $skipped ya presentes. Inténtalo de nuevo en unos 15 minutos.';
+  }
+
+  @override
+  String integrationsSyncResultWithFailed(
+    int imported,
+    int skipped,
+    int failed,
+  ) {
+    return 'Sincronizado. $imported nuevas, $skipped ya presentes, $failed fallidas.';
+  }
+
+  @override
+  String integrationsStravaConnectedPartial(int imported, int skipped) {
+    return 'Strava conectado, pero la primera importación se detuvo antes de tiempo. $imported importadas, $skipped ya presentes: vuelve a sincronizar para terminar.';
+  }
+
+  @override
+  String integrationsStravaConnectedPartialRateLimited(
+    int imported,
+    int skipped,
+  ) {
+    return 'Strava conectado, pero Strava está limitando las solicitudes, así que la primera importación se detuvo antes de tiempo. $imported importadas, $skipped ya presentes. Vuelve a sincronizar en unos 15 minutos.';
   }
 
   @override
@@ -6233,41 +8879,73 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get integrationsParkrunTitle => 'Importar resultados de parkrun';
-
-  @override
-  String get integrationsParkrunBody =>
-      'Introduce tu número de atleta de parkrun (p. ej. A123456). Recuperaremos tu historial de llegadas y añadiremos los nuevos resultados a tu lista de carreras.';
-
-  @override
   String get integrationsParkrunFieldLabel => 'Número de atleta';
 
   @override
-  String get integrationsImport => 'Importar';
+  String get parkrunBarcodeTitle => 'Código de barras de parkrun';
 
   @override
-  String get integrationsParkrunImporting =>
-      'Importando resultados de parkrun…';
+  String get parkrunBarcodeTileSubtitle =>
+      'Muéstralo en la meta, incluso sin conexión.';
 
   @override
-  String integrationsParkrunImported(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count resultados de parkrun importados.',
-      one: '$count resultado de parkrun importado.',
-    );
-    return '$_temp0';
+  String parkrunBarcodeSemantics(String number) {
+    return 'Código de barras de parkrun del número de atleta $number';
   }
 
   @override
-  String get integrationsParkrunNoneNew =>
-      'No hay nuevos resultados de parkrun desde la última importación.';
+  String get parkrunBarcodeHint =>
+      'Muéstralo en la meta para que lo escaneen junto con tu ficha de llegada.';
 
   @override
-  String integrationsImportFailed(Object error) {
-    return 'Error en la importación: $error';
+  String get parkrunBarcodePaperNote =>
+      'parkrun no admite oficialmente códigos de barras en pantalla, así que lleva una copia impresa por si un escáner no puede leer este.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Añade tu número de atleta de parkrun para ver aquí tu código de barras.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Tu número de atleta guardado no tiene el formato de parkrun (una A seguida de dígitos), así que no se puede mostrar como código de barras.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Añadir número de atleta';
+
+  @override
+  String get parkrunBarcodeEdit => 'Cambiar número de atleta';
+
+  @override
+  String get parkrunBarcodeSave => 'Guardar';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'No se pudo guardar tu número de atleta: $error';
   }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Introduce una A seguida de dígitos, por ejemplo A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'No se pudo cargar tu número de atleta. Comprueba la conexión y vuelve a intentarlo.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Reintentar';
+
+  @override
+  String get parkrunBarcodeOfflineCopy =>
+      'Se muestra la copia guardada en este teléfono.';
+
+  @override
+  String integrationsImportPartial(int n) {
+    return 'No se pudieron leer todos los resultados. Importados: $n.';
+  }
+
+  @override
+  String get integrationsImportTruncated =>
+      'La lista de resultados era demasiado larga para leerla hasta el final, así que no se pudo confirmar tu resultado. Introdúcelo manualmente.';
 
   @override
   String get integrationsStravaName => 'Strava';
@@ -6286,37 +8964,50 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaSyncHistory =>
+      'Sincronizar historial más antiguo…';
+
+  @override
+  String get integrationsStravaLookbackTitle => 'Hasta cuándo sincronizar';
+
+  @override
+  String get integrationsStravaLookback90 => 'Últimos 90 días';
+
+  @override
+  String get integrationsStravaLookback180 => 'Últimos 6 meses';
+
+  @override
+  String get integrationsStravaLookback365 => 'Último año';
+
+  @override
+  String get integrationsSyncPartialNoteResumable =>
+      'La última sincronización se detuvo antes del final del periodo. Al sincronizar de nuevo continuará donde se quedó.';
+
+  @override
+  String get integrationsSyncPartialNote =>
+      'La última sincronización se detuvo antes del final del periodo y no guardó ningún punto de reanudación. Sincroniza de nuevo para volver a intentarlo.';
+
+  @override
   String get integrationsSyncNow => 'Sincronizar ahora';
-
-  @override
-  String get integrationsParkrunName => 'parkrun';
-
-  @override
-  String get integrationsParkrunTileSubtitle =>
-      'Importar resultados por número de atleta';
-
-  @override
-  String get integrationsParkrunRegionNote =>
-      'parkrun solo está presente en algunos países y puede que no haya eventos cerca de ti — aun así puedes importar resultados con un ID de atleta de parkrun.';
 
   @override
   String get integrationsSignInTitle => 'Inicia sesión para conectar servicios';
 
   @override
   String get integrationsSignInSubtitle =>
-      'Strava + parkrun requieren una cuenta para que las actividades sincronizadas lleguen a tu historial.';
+      'Strava requiere una cuenta para que las actividades sincronizadas lleguen a tu historial.';
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Escribir carreras en Health Connect';
+      'Escribir carreras en Salud conectada';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envía cada carrera terminada a Health Connect para que aparezca en Google Fit, Samsung Health, Fitbit y otros.';
+      'Envía cada carrera terminada a Salud conectada para que aparezca en Google Fit, Samsung Health, Fitbit y otros.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Permiso de Health Connect no concedido: las carreras no se escribirán.';
+      'Permiso de Salud conectada no concedido: las carreras no se escribirán.';
 
   @override
   String integrationsHrPairFailed(Object error) {
@@ -6433,21 +9124,41 @@ class AppLocalizationsEs extends AppLocalizations {
   String get proRestoreFailed => 'La restauración falló. Inténtalo más tarde.';
 
   @override
-  String get proRestoreUnavailable =>
-      'Restauración no disponible en esta versión.';
-
-  @override
   String proSubscribeTitle(String price) {
     return 'Suscribirse a Pro — $price/mes';
   }
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Entrenador de IA ilimitado + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proSubscribeSubtitleWeb =>
       'Abre el portal de suscripción en tu navegador. Se renueva automáticamente cada mes hasta su cancelación.';
+
+  @override
+  String proPlanMonthly(String price) {
+    return 'Mensual — $price/mes';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Anual — $price/año';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return 'Ahorra un $percent % frente al pago mensual';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Suscribirse a Pro — $price/año';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proComingSoonTitle => 'Pro: próximamente';
@@ -6473,6 +9184,33 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get proManageSubscriptionSubtitle =>
       'Cancelar, cambiar de plan o actualizar el método de pago';
+
+  @override
+  String get proActiveTitle => 'Tienes Pro';
+
+  @override
+  String get proActivePlanMonthly => 'Plan mensual';
+
+  @override
+  String get proActivePlanAnnual => 'Plan anual';
+
+  @override
+  String proActiveRenews(String date) {
+    return 'Se renueva el $date';
+  }
+
+  @override
+  String proActiveEnds(String date) {
+    return 'Termina el $date, sin renovación';
+  }
+
+  @override
+  String get proActiveThanks =>
+      'Tus ventajas Pro están activas. Gracias por apoyar la app.';
+
+  @override
+  String get proActivePending =>
+      'Tu compra se completó. Activar tus ventajas Pro en tu cuenta puede tardar un minuto.';
 
   @override
   String get proSupport => 'Apoyar la app';
@@ -6878,6 +9616,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gearRotationDone => 'Listo';
 
   @override
+  String gearRotationNextUp(String name) {
+    return 'A continuación: $name';
+  }
+
+  @override
+  String get gearRotationNextUpWhy => 'El menos desgastado de esta rotación.';
+
+  @override
+  String get gearRotationMakeCurrent => 'Marcar como actual';
+
+  @override
+  String gearRotationMakeCurrentLabel(String name) {
+    return 'Marcar $name como el par actual: las nuevas carreras se etiquetarán automáticamente con él';
+  }
+
+  @override
+  String get gearRotationNextUpIsCurrent => 'Ya es el par actual.';
+
+  @override
+  String get gearRotationAllWorn =>
+      'Todos los pares de aquí han alcanzado o superado su objetivo de sustitución.';
+
+  @override
+  String gearRotationMakeCurrentFailed(Object error) {
+    return 'No se pudo cambiar el par actual: $error';
+  }
+
+  @override
   String get privacyZonesSaved => 'Zonas de privacidad guardadas.';
 
   @override
@@ -6964,6 +9730,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsTitle => 'Preferencias';
 
   @override
+  String get prefsOfflineNotice =>
+      'Sin conexión: los cambios se quedan en este dispositivo y se sincronizarán cuando vuelvas a conectarte.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override
@@ -6981,6 +9751,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsCancel => 'Cancelar';
 
   @override
+  String prefsValueOutOfRange(int min, int max) {
+    return 'Introduce un valor entre $min y $max.';
+  }
+
+  @override
   String get prefsSave => 'Guardar';
 
   @override
@@ -6990,8 +9765,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsSplitIntervalDefault => 'Predeterminado';
 
   @override
-  String get prefsSplitIntervalDefaultSubtitle =>
-      'Predeterminado (1 km al correr, 5 km en bici)';
+  String prefsSplitIntervalDefaultSubtitle(String run, String cycle) {
+    return 'Predeterminado ($run al correr, $cycle en bici)';
+  }
 
   @override
   String get prefsSplitPaceMode => 'Anuncio de parciales';
@@ -7087,7 +9863,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsMapStyleSatellite => 'Satélite';
 
   @override
-  String get prefsMapStyleOutdoors => 'Aire libre';
+  String get prefsMapStyleOutdoors => 'Exteriores';
 
   @override
   String get prefsMapStyleDark => 'Oscuro';
@@ -7150,6 +9926,21 @@ class AppLocalizationsEs extends AppLocalizations {
       'Suscríbete para recibir recordatorios ocasionales de inicio, reactivación y rachas. Desactivado por defecto; independiente de tu resumen semanal y de tus correos de notificaciones.';
 
   @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertas de inicio de sesión en dispositivos nuevos';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Entrenamiento de hoy';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'La mañana de un entrenamiento planificado, recordármelo en la bandeja de entrada, por correo y con una notificación.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'No se pudo anular tu baja anterior. Es posible que los correos sigan bloqueados; inténtalo de nuevo.';
 
@@ -7209,7 +10000,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Zonas de frecuencia cardíaca (límites superiores, ppm)';
 
   @override
-  String get prefsWeeklyGoal => 'Objetivo de kilometraje semanal';
+  String get prefsWeeklyGoal => 'Objetivo de distancia semanal';
 
   @override
   String get prefsSectionActivityRecording => 'Actividad y grabación';
@@ -7267,7 +10058,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Mayor precisión, trazado más detallado, más consumo de batería';
+      'Registra un trazado más detallado. La distancia no cambia.';
 
   @override
   String get prefsShowRawTrack => 'Mostrar trayecto GPS sin procesar';
@@ -7282,6 +10073,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       'Estimadas a partir de la distancia y el peso corporal (70 kg por defecto si no se ha configurado). Desactívalo para ocultar las calorías en las páginas de carrera.';
+
+  @override
+  String get prefsShowMascot => 'Mostrar a Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'La cabra de Threkir. Descansa contigo en los días de descanso y aparece en una esquina de tus imágenes para compartir.';
 
   @override
   String get prefsDefaultRunPrivacy =>
@@ -7318,10 +10116,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Tu panel se completa en cuanto registras una carrera, defines un objetivo o importas tu historial.';
-
-  @override
-  String get dashboardStartRun => 'Iniciar una carrera';
+      'Tu panel se completa en cuanto registras una actividad, defines un objetivo o importas tu historial.';
 
   @override
   String get dashboardSetGoal => 'Definir un objetivo';
@@ -7330,7 +10125,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashboardImportRuns => 'Importar carreras';
 
   @override
-  String get dashboardPeriodWeek => 'Semana';
+  String get dashboardFirstRunBodyWithPlan =>
+      'Tu plan ya está listo arriba. Registra tu primera carrera y esta página se llenará: tu distancia, tu ritmo y cómo vas respecto al plan.';
+
+  @override
+  String get dashboardFirstRunGymHint => '¿Prefieres las pesas?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Registra una sesión de gimnasio';
 
   @override
   String get dashboardPeriodMonth => 'Mes';
@@ -7581,7 +10383,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get periodShareStatAvgPace => 'RITMO MEDIO';
 
   @override
-  String get trainingLoadTitle => 'Estado, Fatiga y Forma';
+  String get trainingLoadTitle => 'Estado físico, fatiga y forma';
 
   @override
   String trainingLoadSubtitleHr(int days) {
@@ -7597,7 +10399,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Registra algunas carreras para ver tu tendencia de estado físico.';
 
   @override
-  String get trainingLoadLegendFitness => 'Estado';
+  String get trainingLoadLegendFitness => 'Estado físico';
 
   @override
   String get trainingLoadLegendFatigue => 'Fatiga';
@@ -7627,6 +10429,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Incluye sesiones de gimnasio: las pesas también suman fatiga.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Menos fiable: indicaste que una medicación afecta a tu frecuencia cardíaca, lo que hace que la carga por frecuencia cardíaca salga baja.';
+
+  @override
   String get intensityTitle => 'INTENSIDAD DE ENTRENAMIENTO';
 
   @override
@@ -7646,7 +10452,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Kilometraje';
+  String get mileageTitle => 'Distancia';
 
   @override
   String get mileageWeek => 'Semana';
@@ -7767,6 +10573,53 @@ class AppLocalizationsEs extends AppLocalizations {
   String runSocialDeleteError(String error) {
     return 'Error al eliminar: $error';
   }
+
+  @override
+  String get runSocialReactionsLabel => 'Reacciones';
+
+  @override
+  String get runSocialReactionFire => 'Imparable';
+
+  @override
+  String get runSocialReactionStrong => 'Fuerte';
+
+  @override
+  String get runSocialReactionTrophy => 'Campeón';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Bien hecho';
+
+  @override
+  String get runSocialReactionWave => 'Hola';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Reaccionar con «$label»';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Quitar tu reacción «$label»';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'No se pudo actualizar tu reacción: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Me gusta este comentario';
+
+  @override
+  String get runSocialUnlikeComment => 'Ya no me gusta este comentario';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'No se pudo actualizar tu me gusta: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Personas para mencionar';
 
   @override
   String get runPhotosLoading => 'Cargando fotos…';
@@ -7970,6 +10823,9 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get runSegEffortsRankUnknown => 'Clasificación no disponible';
+
+  @override
   String get runSegEffortsChecking => 'Comprobando segmentos…';
 
   @override
@@ -7978,7 +10834,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runSegEffortsEmpty =>
-      'No hay esfuerzos de segmento en esta carrera.';
+      'No hay intentos de segmento en esta carrera.';
 
   @override
   String get workoutReviewTitle => 'Entrenamiento';
@@ -8140,11 +10996,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get segmentsPanelLeaderboardEmptyFiltered =>
-      'Ningún esfuerzo coincide con este filtro: prueba a ampliarlo.';
+      'Ningún intento coincide con este filtro: prueba a ampliarlo.';
 
   @override
   String get segmentsPanelLeaderboardEmpty =>
-      'Aún no hay esfuerzos: sé el primero en correr este segmento.';
+      'Aún no hay intentos: sé el primero en correr este segmento.';
+
+  @override
+  String get segmentOldMatchNote =>
+      'Algunos intentos antiguos se midieron a la manera anterior, pasando cerca de la salida y la llegada en lugar de cruzar las líneas. Cada uno se vuelve a medir la próxima vez que su corredor abra la carrera.';
 
   @override
   String segmentsPanelCrownBanner(String label) {
@@ -8293,7 +11153,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventEditorCategory => 'Tipo de evento';
 
   @override
-  String get eventEditorCatRun => 'Carrera en grupo';
+  String get eventEditorCatRun => 'Salida en grupo';
 
   @override
   String get eventEditorCatCycle => 'Ciclismo';
@@ -8416,6 +11276,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportTitleReview => 'Denunciar reseña';
 
   @override
+  String get reportTitleMessage => 'Denunciar mensaje';
+
+  @override
+  String get reportTitleGroupInvite => 'Denunciar invitación a grupo';
+
+  @override
   String get reportTitleContent => 'Denunciar contenido';
 
   @override
@@ -8432,7 +11298,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportCancel => 'Cancelar';
 
   @override
-  String get reportSubmit => 'Enviar informe';
+  String get reportSubmit => 'Enviar denuncia';
 
   @override
   String get reportErrDuplicate =>
@@ -8494,19 +11360,84 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutEditKindLabel => 'Tipo';
 
   @override
-  String get workoutEditDistanceLabel => 'Distancia objetivo (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Distancia objetivo ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'p. ej. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Ritmo objetivo (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Ritmo objetivo (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'p. ej. 5:30';
 
   @override
+  String get workoutEditRpeFromLabel => 'Esfuerzo desde (1–10)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Esfuerzo hasta (1–10)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'Lo duro que debe sentirse, de 1 (muy fácil) a 10 (a tope). Cualquier extremo puede quedar vacío: de 3 a 4 es un rodaje suave en el que puedes conversar.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Frecuencia cardíaca desde (ppm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Frecuencia cardíaca hasta (ppm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Deja vacío el extremo inferior para fijar un tope, por ejemplo 125. La frecuencia cardíaca es un dato de salud, así que un objetivo necesita el consentimiento de datos de salud del corredor.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Usa números enteros de $min a $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'El primer número no puede ser mayor que el segundo.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'Un objetivo de frecuencia cardíaca necesita el consentimiento de datos de salud del corredor. Bórralo o pídele que dé su consentimiento en sus ajustes.';
+
+  @override
   String get workoutEditNotesLabel => 'Notas';
+
+  @override
+  String get workoutEditRaceNameLabel => 'Nombre de la carrera';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'Prioridad de la carrera';
+
+  @override
+  String get workoutEditRacePriorityAuto => 'Automática';
+
+  @override
+  String get racePriorityOptionA => 'A — carrera objetivo';
+
+  @override
+  String get racePriorityOptionB => 'B — carrera importante';
+
+  @override
+  String get racePriorityOptionC => 'C — carrera de preparación';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => 'Tiempo objetivo';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => 'p. ej. 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime =>
+      'El tiempo objetivo debe tener el formato 6:30:00';
 
   @override
   String get workoutEditCancel => 'Cancelar';
@@ -8515,7 +11446,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutEditSave => 'Guardar';
 
   @override
-  String get workoutEditErrDistance => 'Introduce una distancia positiva en km';
+  String workoutEditErrDistance(String unit) {
+    return 'Introduce una distancia positiva en $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'El ritmo debe tener el formato 5:30';
@@ -8561,6 +11494,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get todaysWorkoutToday => 'ENTRENAMIENTO DE HOY';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Reintentar';
 
   @override
@@ -8568,6 +11506,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shareCardExport => 'Exportar';
+
+  @override
+  String get shareCardShareLink => 'Compartir enlace';
+
+  @override
+  String get shareCardMark => 'Mostrar el logo de Threkir';
 
   @override
   String get shareCardImage => 'Imagen';
@@ -8585,13 +11529,107 @@ class AppLocalizationsEs extends AppLocalizations {
   String get shareCardStatSpeed => 'Velocidad';
 
   @override
-  String get shareCardBrandRun => 'RUN';
+  String get shareCardBrandRun => 'Threkir';
 
   @override
   String get shareCardImageError => 'No se pudo crear la imagen para compartir';
 
   @override
   String get shareCardFileError => 'No se pudo exportar el archivo';
+
+  @override
+  String get shareCardStyleCard => 'Tarjeta con mapa';
+
+  @override
+  String get shareCardStylePhoto => 'Foto';
+
+  @override
+  String get shareCardStyleSticker => 'Sticker';
+
+  @override
+  String get shareCardPickPhoto => 'Elegir una foto';
+
+  @override
+  String get shareCardChangePhoto => 'Cambiar foto';
+
+  @override
+  String get shareCardPlacementLabel => 'Posición de los datos';
+
+  @override
+  String get shareCardPlacementHint =>
+      'Arrastra los datos para moverlos, pellizca para cambiar su tamaño y toca dos veces para devolverlos a su sitio.';
+
+  @override
+  String get shareCardPlacementReset => 'Restablecer posición';
+
+  @override
+  String get shareCardPhotoError => 'No se pudo abrir esa foto';
+
+  @override
+  String get shareCardStickerHint =>
+      'Fondo transparente. Guárdalo y añádelo como sticker a una historia o una foto.';
+
+  @override
+  String get shareCardLayout => 'Diseño';
+
+  @override
+  String get shareCardLayoutStack => 'Apilado';
+
+  @override
+  String get shareCardLayoutRoute => 'Ruta';
+
+  @override
+  String get shareCardLayoutStrip => 'Franja';
+
+  @override
+  String get shareCardLayoutHero => 'Número grande';
+
+  @override
+  String get shareCardInk => 'Color';
+
+  @override
+  String get shareCardInkLight => 'Blanco';
+
+  @override
+  String get shareCardInkDark => 'Negro';
+
+  @override
+  String get shareCardInkBrand => 'Coral';
+
+  @override
+  String get shareCardAspect => 'Tamaño';
+
+  @override
+  String get shareCardAspectStory => 'Historia 9:16';
+
+  @override
+  String get shareCardAspectPost => 'Publicación 4:5';
+
+  @override
+  String get shareCardStats => 'Datos';
+
+  @override
+  String get shareCardStatClimb => 'Desnivel';
+
+  @override
+  String get shareCardStatHeartRate => 'FC media';
+
+  @override
+  String get shareCardSave => 'Guardar en Fotos';
+
+  @override
+  String get shareCardSaved => 'Guardada en tus fotos';
+
+  @override
+  String get shareCardSaveError => 'No se pudo guardar la imagen';
+
+  @override
+  String get shareCardSaveDenied =>
+      'Permite el acceso a las fotos en Ajustes para guardar imágenes';
+
+  @override
+  String get shareCardPreviewLabel =>
+      'Vista previa de la imagen para compartir';
 
   @override
   String get shareCardRouteTitle => 'Compartir ruta';
@@ -8785,6 +11823,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get liveRunMapWaitingGps => 'Esperando GPS...';
 
   @override
+  String get liveRunMapApproximateLocation =>
+      'La ubicación exacta está desactivada — el mapa no puede mostrar dónde estás';
+
+  @override
   String get liveRunMapRecentre => 'Centrar en mi ubicación';
 
   @override
@@ -8814,13 +11856,29 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ttsStepLastFifty => 'Quedan cincuenta metros';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Afloja un poco — $delta segundos demasiado rápido.';
+  String get ttsStepLastFiftyYards => 'Quedan cincuenta yardas';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Quedan diez segundos';
+
+  @override
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Afloja un poco — $delta segundos por kilómetro demasiado rápido.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Acelera un poco — $delta segundos demasiado lento.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Afloja un poco — $delta segundos por milla demasiado rápido.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Acelera un poco — $delta segundos por kilómetro demasiado lento.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Acelera un poco — $delta segundos por milla demasiado lento.';
   }
 
   @override
@@ -8896,6 +11954,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ttsStepCooldown => 'Enfriamiento';
 
   @override
+  String get ttsStepWarmupWalk => 'Caminata de calentamiento';
+
+  @override
+  String get ttsStepCooldownWalk => 'Caminata de enfriamiento';
+
+  @override
   String get ttsStepRep => 'Repetición';
 
   @override
@@ -8963,6 +12027,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String ttsStepDuration(String intro, String duration) {
     return '$intro. $duration.';
+  }
+
+  @override
+  String ttsStepDistance(String intro, String distance) {
+    return '$intro. $distance.';
   }
 
   @override
@@ -9212,14 +12281,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsBackendNotConfigured => 'Backend no configurado';
 
   @override
-  String get settingsAccountSignedIn => 'Sesión iniciada';
-
-  @override
   String get settingsDevicesSignedOutSubtitle =>
       'Inicia sesión para ver dónde tienes sesión iniciada';
 
   @override
   String get verifiedClubTooltip => 'Club verificado oficial';
+
+  @override
+  String get officialBadgeLabel => 'Oficial';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Oficial: publicado por un organizador verificado';
+
+  @override
+  String get officialBadgeParkCourseLabel => 'Recorrido oficial de Threkir';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Recorrido oficial de Threkir: lo publica Threkir, no el parque';
 
   @override
   String get raceDistance5k => '5 km';
@@ -9243,7 +12323,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, calendario de carreras, banda de frecuencia cardíaca, cinta de correr, reloj';
+      'Strava, calendario de carreras, banda de frecuencia cardíaca, cinta de correr, reloj';
 
   @override
   String get settingsTabDevicesSubtitle =>
@@ -9287,27 +12367,27 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get gymTitle => 'Gimnasio';
+  String get gymTitle => 'Gym';
 
   @override
-  String get gymLog => 'Registrar entrenamiento';
+  String get gymLog => 'Registrar entreno';
 
   @override
-  String get gymUntitled => 'Entrenamiento sin título';
+  String get gymUntitled => 'Entreno sin título';
 
   @override
   String get gymOfflineCached =>
       'Sin conexión: mostrando entrenamientos guardados';
 
   @override
-  String get gymEmptyTitle => 'Aún no hay entrenamientos de gimnasio';
+  String get gymEmptyTitle => 'Aún no hay entrenos de gym';
 
   @override
   String get gymEmptyBody =>
       'Registra una sesión para seguirla aquí y alimentar tu carga de entrenamiento.';
 
   @override
-  String get gymPrBadge => 'RP';
+  String get gymPrBadge => 'PR';
 
   @override
   String gymExercisesShort(int count) {
@@ -9390,7 +12470,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get gymPrWeight => 'Más pesada';
+  String get gymPrWeight => 'Más pesado';
 
   @override
   String get gymPrVolume => 'Mejor volumen';
@@ -9455,11 +12535,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymVolumeLabel => 'Volumen';
 
   @override
-  String get gymDeleteConfirmTitle => '¿Eliminar entrenamiento?';
+  String get gymDeleteConfirmTitle => '¿Eliminar entreno?';
 
   @override
   String get gymDeleteConfirmBody =>
-      'Esto elimina permanentemente el entrenamiento y sus series.';
+      'Esto elimina permanentemente el entreno y sus series.';
 
   @override
   String get clubEventMembersOnly => 'Solo miembros';
@@ -9473,6 +12553,32 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clubEventLogAsWorkoutSaved => 'Añadido a tu registro de gimnasio';
+
+  @override
+  String get clubEventAddToCalendar => 'Añadir al calendario';
+
+  @override
+  String get clubEventAddOccurrenceToCalendar => 'Añadir esta fecha';
+
+  @override
+  String get clubEventAddSeriesToCalendar => 'Añadir toda la serie';
+
+  @override
+  String get clubEventCalendarUnavailable =>
+      'No se pudo abrir tu aplicación de calendario.';
+
+  @override
+  String clubEventCalendarCancelledNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Tu calendario no puede omitir las fechas canceladas: $count fechas canceladas seguirán apareciendo.',
+      one:
+          'Tu calendario no puede omitir las fechas canceladas: 1 fecha cancelada seguirá apareciendo.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get clubEventDownloadCertificate => 'Certificado de finalista';
@@ -9510,10 +12616,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get gymEditorNewTitle => 'Nuevo entrenamiento';
+  String get gymEditorNewTitle => 'Nuevo entreno';
 
   @override
-  String get gymEditorEditTitle => 'Editar entrenamiento';
+  String get gymEditorEditTitle => 'Editar entreno';
 
   @override
   String get gymEditorTitleLabel => 'Título (opcional)';
@@ -9543,7 +12649,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymEditorCancel => 'Cancelar';
 
   @override
-  String get gymEditorSave => 'Guardar entrenamiento';
+  String get gymEditorSave => 'Guardar entreno';
 
   @override
   String get gymEditorNeedExercise => 'Añade al menos un ejercicio con nombre.';
@@ -9562,6 +12668,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get gymCatalogueEmpty => 'Ningún ejercicio coincide.';
+
+  @override
+  String get gymCatalogueUnavailable =>
+      'No se pudo cargar el catálogo de ejercicios, por lo que esta lista puede estar incompleta.';
+
+  @override
+  String get gymCatalogueShadowsBuiltIn =>
+      'Añadido. Sustituye al ejercicio integrado con el mismo nombre.';
+
+  @override
+  String gymCatalogueOtherCategory(String name, String category) {
+    return '«$name» ya está en el catálogo, en $category.';
+  }
 
   @override
   String get gymCatalogueCustomBadge => 'Personalizado';
@@ -9605,7 +12724,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymCatalogueCategoryOther => 'Otros';
 
   @override
-  String get gymSaveFailed => 'No se pudo guardar el entrenamiento.';
+  String get gymSaveFailed => 'No se pudo guardar el entreno.';
 
   @override
   String get gymRoutineLink => 'Rutinas';
@@ -9634,9 +12753,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Iniciar rutina';
-
-  @override
   String get gymRoutinePublishLabel => 'Publicar en un club';
 
   @override
@@ -9650,6 +12766,36 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get gymRoutinePublishFailed => 'No se pudo publicar la rutina.';
+
+  @override
+  String get gymRoutineHistoryTitle => 'Historial de la rutina';
+
+  @override
+  String get gymRoutineHistoryRecent => 'Sesiones recientes';
+
+  @override
+  String gymRoutineHistoryLastDone(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Realizada hace $days días',
+      one: 'Realizada ayer',
+      zero: 'Realizada hoy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gymRoutineHistoryCompletedRate(int completed, int graded) {
+    return '$completed de $graded completadas';
+  }
+
+  @override
+  String get gymRoutineHistoryVerdictUngraded => 'Sin evaluar';
+
+  @override
+  String get gymRoutineHistoryLoadError =>
+      'No se pudo cargar el historial de esta rutina.';
 
   @override
   String get gymRoutineClubTemplateBadge => 'Plantilla del club';
@@ -9699,7 +12845,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Ninguna rutina coincide con \"$query\".';
+    return 'Ninguna rutina coincide con «$query».';
   }
 
   @override
@@ -9910,7 +13056,144 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nutritionTitle => 'Nutrición';
 
   @override
+  String get nutritionDayNavLabel => 'Día del diario';
+
+  @override
+  String get nutritionDayPrevious => 'Día anterior';
+
+  @override
+  String get nutritionDayNext => 'Día siguiente';
+
+  @override
+  String get nutritionDayToday => 'Hoy';
+
+  @override
+  String get nutritionDayYesterday => 'Ayer';
+
+  @override
+  String get nutritionDayBackfillHint =>
+      'Todo lo que registres aquí se añade a este día.';
+
+  @override
+  String get nutritionDayEmptyPast => 'Nada registrado en este día.';
+
+  @override
+  String nutritionDayGoalBreakdown(int base, int exercise) {
+    return 'Meta $base + $exercise kcal quemadas ese día';
+  }
+
+  @override
+  String nutritionDayTrendEnding(String date) {
+    return '7 días hasta $date';
+  }
+
+  @override
+  String nutritionDayLogHeadingFor(String date) {
+    return 'Registrar comida — $date';
+  }
+
+  @override
   String get nutritionLogFood => 'Registrar comida';
+
+  @override
+  String get nutritionLogFromPhoto => 'Registrar desde una foto';
+
+  @override
+  String get platePhotoTitle => 'Registrar desde una foto';
+
+  @override
+  String get platePhotoIntro =>
+      'Haz o elige una foto de tu comida. Threkir estima lo que hay en el plato y tú revisas y editas cada entrada antes de guardar nada.';
+
+  @override
+  String get platePhotoTakePhoto => 'Hacer una foto';
+
+  @override
+  String get platePhotoChoosePhoto => 'Elegir una foto';
+
+  @override
+  String get platePhotoPreviewLabel => 'La foto de tu comida';
+
+  @override
+  String get platePhotoNoteLabel => 'Nota (opcional)';
+
+  @override
+  String get platePhotoNoteHint => 'p. ej., media ración, sin aliño';
+
+  @override
+  String get platePhotoEstimate => 'Estimar';
+
+  @override
+  String get platePhotoEstimating => 'Estimando…';
+
+  @override
+  String get platePhotoEmpty =>
+      'No se reconoció comida en esa foto. Vuelve atrás y prueba con otra, o añade la comida a mano.';
+
+  @override
+  String get platePhotoReviewHeading => 'Revísalo antes de guardar';
+
+  @override
+  String get platePhotoReviewHint =>
+      'Son estimaciones. Corrige lo que parezca incorrecto y quita lo que no esté.';
+
+  @override
+  String get platePhotoMealSlot => 'Comida';
+
+  @override
+  String get platePhotoItemName => 'Alimento';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Quitar $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Estimación poco fiable';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Proteínas (g)';
+
+  @override
+  String get platePhotoCarbs => 'Carbohidratos (g)';
+
+  @override
+  String get platePhotoFat => 'Grasas (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Guardar entradas ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'Guardando…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'El registro con foto del plato necesita la información actualizada sobre IA. Acéptala en Ajustes → Cuenta.';
+
+  @override
+  String get platePhotoErrorPro =>
+      'Registrar desde una foto es una función Pro.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'Has registrado muchas fotos esta hora. Inténtalo más tarde o añade la comida a mano.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'No se pudo leer esa imagen. Prueba con otra foto.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'No se pudo distinguir la comida en esa foto. Prueba con otra o añádela a mano.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Registrar desde una foto no está disponible ahora. Añade la comida a mano.';
 
   @override
   String get nutritionCalories => 'Calorías';
@@ -9940,6 +13223,37 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nutritionCholesterol => 'Colesterol';
 
   @override
+  String get nutritionNutrients => 'Nutrientes';
+
+  @override
+  String get nutritionNutrientsHint =>
+      'Valores de referencia. Cada total solo cuenta los alimentos registrados que indican ese nutriente.';
+
+  @override
+  String get nutritionNutrientAtLeast => 'al menos';
+
+  @override
+  String nutritionNutrientPartial(int reported, int total, String nutrient) {
+    return '$reported de $total alimentos registrados indican $nutrient';
+  }
+
+  @override
+  String nutritionNutrientOver(String n, String unit) {
+    return '$n $unit de más';
+  }
+
+  @override
+  String nutritionNutrientLeft(String n, String unit) {
+    return '$n $unit restantes';
+  }
+
+  @override
+  String get nutritionNutrientReached => 'Objetivo alcanzado';
+
+  @override
+  String get nutritionNutrientUntargeted => 'Sin objetivo diario';
+
+  @override
   String get nutritionWater => 'Agua';
 
   @override
@@ -9954,6 +13268,96 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get nutritionAddBodyMetrics => 'Añadir datos corporales';
+
+  @override
+  String get nutritionTargetsLink => 'Objetivos';
+
+  @override
+  String get nutritionTargetsTitle => 'Objetivos de calorías y macros';
+
+  @override
+  String get nutritionTargetsSubtitle =>
+      'Cómo se calcula el objetivo de hoy y los dos ajustes que lo definen.';
+
+  @override
+  String get nutritionTargetsTotal => 'Objetivo de hoy';
+
+  @override
+  String get nutritionTargetsBmr => 'Metabolismo en reposo';
+
+  @override
+  String get nutritionTargetsBase => 'Objetivo base';
+
+  @override
+  String nutritionTargetsBaseFloored(int n) {
+    return 'Limitado al mínimo de $n kcal: el objetivo diario más bajo que recomendamos.';
+  }
+
+  @override
+  String get nutritionTargetsExercise => 'Entrenamientos de hoy';
+
+  @override
+  String get nutritionTargetsExerciseHint =>
+      'Las carreras y sesiones de gimnasio que registres hoy se suman por encima.';
+
+  @override
+  String get nutritionTargetsMacrosHeading => 'Macros';
+
+  @override
+  String nutritionTargetsProteinHint(String n) {
+    return '$n g por kg de peso corporal';
+  }
+
+  @override
+  String get nutritionTargetsCarbsHint => 'Lo que queda: tu combustible';
+
+  @override
+  String nutritionTargetsFatHint(int n) {
+    return '$n% de las calorías';
+  }
+
+  @override
+  String get nutritionTargetsDefaultsHeading => 'Tus valores predeterminados';
+
+  @override
+  String get nutritionTargetsDefaultsHint =>
+      'El nivel de actividad es tu día típico sin contar los entrenamientos: las carreras y sesiones de gimnasio que registres se suman aparte. Ambos se guardan al cambiarlos.';
+
+  @override
+  String get nutritionTargetsMetricsHeading => 'Datos corporales';
+
+  @override
+  String get nutritionTargetsMetricsHint =>
+      'La altura, el peso, la fecha de nacimiento y el sexo son datos de salud, así que se editan en Ajustes tras su consentimiento.';
+
+  @override
+  String get nutritionTargetsEditMetrics => 'Editar en Ajustes';
+
+  @override
+  String get nutritionTargetsUnset => 'Sin definir';
+
+  @override
+  String get nutritionTargetsEmptyTitle => 'Aún no hay objetivos';
+
+  @override
+  String get nutritionTargetsEmptyBody =>
+      'Añade tu altura, peso, fecha de nacimiento y sexo y aquí aparecerán tus objetivos de calorías y macros.';
+
+  @override
+  String get nutritionTargetsAge => 'Edad';
+
+  @override
+  String nutritionTargetsAgeYears(int n) {
+    return '$n años';
+  }
+
+  @override
+  String get nutritionTargetsAgeConsentWithheld =>
+      'Requiere consentimiento de datos de salud';
+
+  @override
+  String get nutritionTargetsLoadError =>
+      'No se pudieron cargar tus objetivos.';
 
   @override
   String get nutritionWeeklyTrend => 'Últimos 7 días';
@@ -9988,8 +13392,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nutritionWaterGoalReached => 'Objetivo alcanzado';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml restantes';
+  String nutritionWaterRemaining(String n) {
+    return '$n L restantes';
   }
 
   @override
@@ -10033,6 +13437,22 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsExcludeGymFromReadinessHint =>
       'De forma predeterminada, las sesiones de gimnasio aumentan tu fatiga y reducen tu preparación, igual que una carrera. Actívalo para que tu forma, fatiga y frescura se basen solo en las carreras.';
+
+  @override
+  String get prefsHrMedicationAffected =>
+      'Mi frecuencia cardíaca está afectada por medicación';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'Por ejemplo, un betabloqueante. Las zonas por edad y la carga de entrenamiento por frecuencia cardíaca salen bajas, así que la carga se marca como menos fiable. Es un dato de salud y se borra si retiras tu consentimiento.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'Es un dato de salud, así que primero necesita tu consentimiento de datos de salud.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Indica una frecuencia cardíaca máxima medida, en un esfuerzo duro o una prueba, para que tus zonas se ajusten a ti.';
 
   @override
   String get nutritionEmptyTitle => 'Aún no has registrado comida hoy';
@@ -10389,7 +13809,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get gymSessionLeaveBody =>
-      'Tus series registradas se conservan como borrador: puedes retomar la sesión desde la pestaña Gimnasio o descartarla.';
+      'Tus series registradas se conservan como borrador: puedes retomar la sesión desde la pestaña Gym o descartarla.';
 
   @override
   String get gymSessionLeaveDraft => 'Salir y conservar el borrador';
@@ -10410,6 +13830,13 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gymComposeDraftTitle => 'Entrenamiento sin terminar';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Empezaste este entrenamiento pero nunca lo guardaste.';
 
   @override
   String get gymDraftResume => 'Reanudar';
@@ -10451,13 +13878,13 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get gymReviewVerdictCompleted => 'Completada';
+  String get gymReviewVerdictCompleted => 'Completado';
 
   @override
   String get gymReviewVerdictPartial => 'Parcialmente hecha';
 
   @override
-  String get gymReviewVerdictAbandoned => 'Abandonada';
+  String get gymReviewVerdictAbandoned => 'Abandonado';
 
   @override
   String get gymReviewStatusHit => 'Logrado';
@@ -10522,13 +13949,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sessionRunDiscardConfirm => 'Descartar';
 
   @override
-  String get sessionRunVerdictCompleted => 'Completada';
+  String get sessionRunVerdictCompleted => 'Completado';
 
   @override
   String get sessionRunVerdictPartial => 'Parcialmente hecha';
 
   @override
-  String get sessionRunVerdictAbandoned => 'Abandonada';
+  String get sessionRunVerdictAbandoned => 'Abandonado';
 
   @override
   String sessionRunStepCount(int index, int total) {
@@ -10596,6 +14023,34 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachingRosterRiskInsufficient => 'Nuevo';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n perdidos seguidos';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'FC en rodaje +$pct %';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'En los rodajes suaves planificados de las dos últimas semanas, la frecuencia cardíaca es más alta al mismo ritmo que en las seis semanas anteriores. Solo se muestra para atletas que dieron su consentimiento de datos de salud.';
+
+  @override
+  String get metricEasyHrDriftLabel => 'Deriva de FC en rodajes suaves';
+
+  @override
+  String get metricMissStreakLabel => 'Perdidos seguidos';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Entrenamientos planificados seguidos, contando hacia atrás desde ayer, que pasaron sin una carrera registrada. Un entrenamiento omitido o un día de descanso no cuenta ni corta la racha; uno completado la termina.';
+
+  @override
+  String get metricRouteHistoryDefinition =>
+      'Un intento es una carrera en esta ruta, del mismo tipo de actividad, de más de 100 m y con un tiempo registrado (mayor que cero y menor de diez días). Los intentos se ordenan del más rápido al más lento; los tiempos iguales comparten puesto, así que una carrera que iguala el mejor tiempo también es tu mejor marca personal.';
 
   @override
   String get coachingRosterRiskLow => 'Bajo';
@@ -10750,8 +14205,50 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachingAthleteAssignedByYou => 'Asignado por ti';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'Este atleta ya tiene un plan activo. Tendrá que terminarlo o finalizarlo antes de que puedas asignar uno nuevo.';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return 'El plan «$plan» de $name dura hasta el $end. Un plan asignado no puede solaparse con él, así que haz que empiece después de esa fecha.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return 'El plan «$plan» de $name dura hasta el $end, y «$next» va del $nextStart al $nextEnd. Un plan asignado no puede solaparse con ninguno de los dos.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$name tiene $count planes por delante: $plans. Un plan asignado no puede solaparse con ninguno, así que haz que empiece después del $end o en un hueco entre ellos.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'Esas fechas se solapan con el plan «$plan» de $name ($start – $end). Elige una fecha de inicio posterior a su fin.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'Esas fechas se solapan con uno de los planes activos de $name. Elige una fecha de inicio posterior a su fin.';
+  }
+
+  @override
+  String get coachingAthleteAssignError =>
+      'No se pudo asignar el plan. Inténtalo de nuevo.';
 
   @override
   String get coachingAthleteComplete => 'completado';
@@ -10774,6 +14271,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachingAthleteStatusUpcoming => 'Próximo';
+
+  @override
+  String get coachingAthleteStatusSkipped => 'Saltado';
 
   @override
   String get coachingAthleteRecentRuns => 'Carreras recientes';
@@ -10803,6 +14303,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'Aún no hay marcadores. Añade avituallamientos, cortes de tiempo y más a lo largo de la ruta.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'No se pudieron cargar los marcadores de esta ruta. No se han eliminado: comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get routeMarkerEdit => 'Editar marcador';
@@ -11041,6 +14545,37 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Líquido según el peso corporal';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajusta la cantidad de líquido a tu peso corporal, dentro del rango de 400–800 ml por hora que la medicina deportiva recomienda para correr. Es una base de planificación, no una prueba de sudoración.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Líquido: $ml ml por hora según tu peso corporal.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Para basar el líquido en tu peso corporal, añade tu peso en Datos corporales y da allí el consentimiento para datos de salud.';
+
+  @override
+  String get roadbookColTarget => 'Objetivo';
+
+  @override
+  String get roadbookColLegPace => 'Ritmo del tramo';
+
+  @override
+  String get roadbookTargetAhead => 'por delante';
+
+  @override
+  String get roadbookTargetOn => 'según el plan';
+
+  @override
+  String get roadbookTargetBehind => 'por detrás';
+
+  @override
   String get checkpointCheckinAction => 'Registro en checkpoint';
 
   @override
@@ -11124,7 +14659,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'El corredor consiente el registro de datos de salud';
 
   @override
-  String get checkpointWeighInWeightKg => 'Peso corporal (kg)';
+  String get checkpointWeighInBodyWeight => 'Peso corporal';
 
   @override
   String get checkpointMedicalHold => 'Poner en retención médica';
@@ -11159,6 +14694,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get challengesDelete => 'Eliminar';
+
+  @override
+  String get challengesDeleteChallenge => 'Eliminar desafío';
 
   @override
   String get challengesMetricDistance => 'Distancia';
@@ -11212,12 +14750,201 @@ class AppLocalizationsEs extends AppLocalizations {
   String get challengesLeaderboard => 'Clasificación';
 
   @override
+  String get challengeInviteTitle => 'Invitación a un desafío';
+
+  @override
+  String get challengeInviteLoadFailed =>
+      'No se pudo cargar esta invitación. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get challengeInviteMissingTitle =>
+      'Este enlace de invitación no funciona';
+
+  @override
+  String get challengeInviteMissingBody =>
+      'Puede que quien lo compartió lo haya restablecido, o que los enlaces de invitación aún no estén disponibles. Pídele un enlace nuevo.';
+
+  @override
+  String challengeInviteFrom(String name) {
+    return 'Invitación de $name';
+  }
+
+  @override
+  String challengeInviteParticipants(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n corredores dentro',
+      one: '1 corredor dentro',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String challengeInviteStartsIn(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Empieza en $n días',
+      one: 'Empieza en 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeInviteAlreadyIn => 'Ya participas en este desafío.';
+
+  @override
+  String get challengeInviteOpen => 'Abrir desafío';
+
+  @override
+  String get challengeInviteSignInBody =>
+      'Inicia sesión o crea una cuenta gratis y te unirás al momento.';
+
+  @override
+  String get challengeInviteJoin => 'Unirse al desafío';
+
+  @override
+  String get challengeInviteLinkTitle => 'Enlace de invitación';
+
+  @override
+  String get challengeInviteLinkBodyPrivate =>
+      'Cualquiera con este enlace puede ver este desafío y unirse, aunque no sea público.';
+
+  @override
+  String get challengeInviteLinkBodyPublic =>
+      'Cualquiera con este enlace puede unirse con un toque después de registrarse.';
+
+  @override
+  String get challengeInviteLinkLoadFailed =>
+      'No se pudo cargar el enlace de invitación.';
+
+  @override
+  String get challengeInviteShare => 'Compartir enlace';
+
+  @override
+  String get challengeInviteCopy => 'Copiar enlace';
+
+  @override
+  String get challengeInviteCopied => 'Enlace copiado';
+
+  @override
+  String get challengeInviteCopyFailed => 'No se pudo copiar el enlace.';
+
+  @override
+  String get challengeInviteRotate => 'Restablecer enlace';
+
+  @override
+  String get challengeInviteRotateTitle =>
+      '¿Restablecer el enlace de invitación?';
+
+  @override
+  String get challengeInviteRotateBody =>
+      'El enlace actual deja de funcionar al instante. Quien ya se haya unido sigue dentro.';
+
+  @override
+  String get challengeInviteRotateFailed =>
+      'No se pudo restablecer el enlace. Inténtalo de nuevo.';
+
+  @override
+  String get challengeInviteShareBody =>
+      'Los desafíos públicos también tienen una página para compartir que muestra la clasificación sin iniciar sesión.';
+
+  @override
+  String get challengeInviteSharePage => 'Compartir la página del desafío';
+
+  @override
+  String get clubInviteLinkTitle => 'Enlace de invitación';
+
+  @override
+  String get clubInviteBodyInvite =>
+      'Solo quienes tengan este enlace pueden unirse.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Quien tenga este enlace se une al momento, sin esperar aprobación.';
+
+  @override
+  String get clubInviteBodyOpen => 'Cualquiera con este enlace puede unirse.';
+
+  @override
+  String get clubInviteGenerate => 'Crear enlace de invitación';
+
+  @override
+  String get clubInviteShare => 'Compartir enlace';
+
+  @override
+  String get clubInviteCopy => 'Copiar enlace';
+
+  @override
+  String get clubInviteCopied => 'Enlace de invitación copiado';
+
+  @override
+  String get clubInviteCopyFailed => 'No se pudo copiar el enlace.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'No se pudo cargar el enlace de invitación.';
+
+  @override
+  String get clubInviteRotate => 'Restablecer enlace';
+
+  @override
+  String get clubInviteRotateTitle => '¿Restablecer el enlace de invitación?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'El enlace actual deja de funcionar al instante. Quien ya se haya unido sigue dentro.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'No se pudo actualizar el enlace de invitación. Inténtalo de nuevo.';
+
+  @override
+  String get clubShareClub => 'Compartir club';
+
+  @override
+  String get clubShareLinkCopied => 'Enlace del club copiado';
+
+  @override
   String get challengesLeaderboardEmpty => 'Aún no hay progreso registrado.';
 
   @override
   String challengesLeaderboardRank(int rank) {
     return '#$rank';
   }
+
+  @override
+  String get challengesStandingTitle => 'Tu posición';
+
+  @override
+  String get challengesStandingTitleTeam => 'Posición de tu equipo';
+
+  @override
+  String challengesStandingRank(int rank, int total) {
+    return '#$rank de $total';
+  }
+
+  @override
+  String get challengesStandingTiedOne => 'Empatado con 1 más';
+
+  @override
+  String challengesStandingTiedMany(int n) {
+    return 'Empatado con $n más';
+  }
+
+  @override
+  String challengesStandingBehind(String gap, String name) {
+    return '$gap por detrás de $name';
+  }
+
+  @override
+  String challengesStandingAhead(String gap, String name) {
+    return '$gap por delante de $name';
+  }
+
+  @override
+  String get challengesStandingLeading => 'En cabeza';
 
   @override
   String challengesParticipants(int n) {
@@ -11235,6 +14962,28 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String challengesUnitActivities(int n) {
     return '$n';
+  }
+
+  @override
+  String get challengesMetricParkCourses => 'Recorridos de parque';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n recorridos',
+      one: '$n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'recorridos';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Cuenta los recorridos de parque en $region';
   }
 
   @override
@@ -11265,6 +15014,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get challengesLoadFailed => 'No se pudieron cargar los desafíos.';
+
+  @override
+  String get challengesProgressUnavailable =>
+      'Progreso no disponible: ábrelo para ver tu resultado';
+
+  @override
+  String get challengesTeamNoClub => 'Sin club';
+
+  @override
+  String get challengesTeamPrivateClub => 'Club privado';
 
   @override
   String fundraiserRaisedOfGoal(String raised, String goal) {
@@ -11298,13 +15057,72 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesTitle => 'Calendario de carreras';
 
   @override
+  String get racesSectionUpcoming => 'Próximas pruebas';
+
+  @override
+  String get racesSectionAnyTime => 'Corre cuando quieras';
+
+  @override
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Tiempo más rápido de $year: $time';
+  }
+
+  @override
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Tiempo más rápido de $year: $time, de $name';
+  }
+
+  @override
+  String get racesAnyTimeNoTimeYet =>
+      'Todavía no hay tiempos esta temporada. El tuyo podría ser el primero.';
+
+  @override
+  String racesAnyTimeAway(String distance) {
+    return 'a $distance';
+  }
+
+  @override
+  String get racesAnyTimeFastestFailed =>
+      'No se pudieron cargar los tiempos más rápidos de esta temporada.';
+
+  @override
   String get racesSearchPlaceholder => 'Buscar carreras por nombre…';
+
+  @override
+  String get racesFilters => 'Filtros';
+
+  @override
+  String racesFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filtros, $count activos',
+      one: 'Filtros, 1 activo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String racesRemoveFilter(String filter) {
+    return 'Quitar filtro: $filter';
+  }
+
+  @override
+  String racesNearChip(String place) {
+    return 'Cerca de $place';
+  }
+
+  @override
+  String get racesFiltersDone => 'Listo';
+
+  @override
+  String get racesDistanceGroup => 'Distancia';
 
   @override
   String get racesNearPlace => 'Cerca de un lugar…';
 
   @override
-  String racesKmAway(String distance) {
+  String racesDistanceAway(String distance) {
     return 'a $distance';
   }
 
@@ -11327,7 +15145,247 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Inscribirse';
+  String get racesRegister => 'Página de la carrera e inscripción';
+
+  @override
+  String get racesTrainForThis => 'Entrenar para esta carrera';
+
+  @override
+  String get racesBuildPlan => 'Crear un plan para esta carrera';
+
+  @override
+  String get racesTailorWithAi => 'Ajustarlo con IA';
+
+  @override
+  String get racesAddToSeason => 'Añadir a mi temporada';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return 'Empieza cuando termine $plan el $date, con $days días para recuperarte.';
+  }
+
+  @override
+  String get racesWhenGroup => 'Cuándo';
+
+  @override
+  String get racesWhenUpcoming => 'Próximas';
+
+  @override
+  String get racesWhenRecent => 'Resultados recientes';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Resultados recientes muestra las carreras de los últimos $days días, primero las más recientes, para que encuentres una carrera que corriste e importes tu resultado.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'Ninguna carrera de los últimos $days días coincide con estos filtros.';
+  }
+
+  @override
+  String get racesDetailLoadFailed =>
+      'No se pudo cargar esta carrera. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get racesDetailNotFound => 'Esta carrera ya no está en el calendario.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Publicada en $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Añadida por un corredor';
+
+  @override
+  String racesSourceClub(String club) {
+    return 'Añadida por $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Recorrido oficial de $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Recorrido trazado por $club a partir del mapa publicado de la carrera';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'revisado el $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Recorrido actualizado el $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Recorrido de la carrera';
+
+  @override
+  String get raceCourseClaim => 'Reclamar esta carrera';
+
+  @override
+  String get raceCourseClaimTitle => 'Reclamar esta carrera para tu club';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Al reclamarla, la carrera queda verificada y tu club puede vincular su recorrido. Reclama solo una carrera que tu club organice o cuyos recorridos trace.';
+
+  @override
+  String get raceCourseClaimClub => 'Club';
+
+  @override
+  String get raceCourseClaimConfirm => 'Reclamar carrera';
+
+  @override
+  String get raceCourseClaimed => 'Carrera reclamada.';
+
+  @override
+  String get raceCourseClaimFailed => 'No se pudo reclamar esta carrera.';
+
+  @override
+  String get raceCourseLinkCourse => 'Vincular recorrido';
+
+  @override
+  String get raceCourseChangeCourse => 'Cambiar recorrido';
+
+  @override
+  String get raceCourseLinkTitle => 'Vincular el recorrido';
+
+  @override
+  String get raceCourseLinkRoute => 'Ruta del recorrido';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'Tu club aún no tiene rutas públicas. Crea una desde la pestaña Rutas del club, hazla pública y vincúlala aquí.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'De dónde sale el recorrido';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'El recorrido oficial del organizador';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Trazado a partir del mapa publicado de la carrera';
+
+  @override
+  String get raceCourseLinkConfirm => 'Vincular recorrido';
+
+  @override
+  String get raceCourseLinked => 'Recorrido vinculado.';
+
+  @override
+  String get raceCourseLinkFailed => 'No se pudo actualizar el recorrido.';
+
+  @override
+  String get raceCourseMarkChecked => 'Marcar recorrido como revisado';
+
+  @override
+  String get raceCourseCheckedDone => 'Recorrido marcado como revisado.';
+
+  @override
+  String get raceCourseSuggest => 'Sugerir un recorrido';
+
+  @override
+  String get raceCourseSuggestTitle => 'Sugerir un recorrido para esta carrera';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Elige una de tus rutas públicas. La revisará el organizador de la carrera, o un club verificado si nadie la ha reclamado todavía.';
+
+  @override
+  String get raceCourseSuggestRoute => 'Tu ruta';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'Aún no tienes rutas públicas. Haz pública una ruta para sugerirla.';
+
+  @override
+  String get raceCourseSuggestNote => 'Nota (opcional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Enviar sugerencia';
+
+  @override
+  String get raceCourseSuggested => 'Sugerencia enviada.';
+
+  @override
+  String get raceCourseSuggestFailed => 'No se pudo enviar tu sugerencia.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'Sugeriste un recorrido. Está pendiente de revisión.';
+
+  @override
+  String get raceCourseUnlink => 'Quitar recorrido';
+
+  @override
+  String get raceCourseUnlinked => 'Recorrido quitado.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugerencias de recorrido';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reclama esta carrera para aprobar o rechazar una sugerencia.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprobar';
+
+  @override
+  String get raceCourseReviewReject => 'Rechazar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprobar este recorrido';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'El recorrido debe ser una ruta pública de tu club. Elige la copia del club de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugerencia aprobada y recorrido vinculado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugerencia rechazada.';
+
+  @override
+  String get raceCourseReviewFailed => 'No se pudo revisar la sugerencia.';
+
+  @override
+  String get racesDetailShare => 'Compartir';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'Podrás importar tu resultado oficial a partir del día de la carrera, $date.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'Tus carreras en esta prueba';
+
+  @override
+  String get racesCourseHeading => 'Recorrido';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value de desnivel positivo';
+  }
+
+  @override
+  String get racesDetailRunsFailed =>
+      'No se pudieron cargar tus carreras de esta prueba.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'Aún no hay carreras vinculadas a esta prueba. Después del día de la carrera, importa aquí tu resultado o abre la carrera que grabaste y vincúlala a esta prueba.';
 
   @override
   String get racesViewResults => 'Ver resultados';
@@ -11364,19 +15422,49 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesImported => 'Resultado oficial importado.';
 
   @override
+  String planLinkPromptEarly(String day) {
+    return '¿Hiciste antes el entrenamiento previsto para el $day?';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return '¿Hiciste más tarde el entrenamiento previsto para el $day?';
+  }
+
+  @override
+  String get planLinkConfirm => 'Vincular al plan';
+
+  @override
+  String get planLinkDismiss => 'No es este';
+
+  @override
+  String get planLinkLinked => 'Vinculado a tu plan.';
+
+  @override
+  String get planLinkFailed =>
+      'No se pudo vincular a tu plan. Inténtalo de nuevo.';
+
+  @override
+  String get planLinkDismissFailed =>
+      'No se pudo guardar la respuesta. Puede que te lo volvamos a preguntar.';
+
+  @override
   String get racesOfficialResult => 'Resultado oficial';
 
   @override
   String get racesChipTime => 'Tiempo chip';
 
   @override
-  String get racesGunTime => 'Tiempo oficial';
+  String get racesGunTime => 'Tiempo bruto';
 
   @override
   String get racesOverallPlace => 'Puesto general';
 
   @override
   String get racesAgeGroupPlace => 'Puesto por categoría';
+
+  @override
+  String get racesDivisionAwardPlace => 'Puesto en categoría de premio';
 
   @override
   String get racesAgeGroup => 'Categoría de edad';
@@ -11441,8 +15529,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Abrir el calendario de carreras';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'Acerca de $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava es una app popular para grabar y compartir carreras. Al conectarla se copian tus actividades de Strava: primero los últimos 90 días y después cada actividad nueva según aparece. Iniciarás sesión en Strava y darás permiso; puedes desconectarla cuando quieras.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp gestiona inscripciones y resultados de miles de carreras en asfalto. Si corriste una, búscala en el calendario de carreras e introduce el dorsal que llevabas: tu tiempo oficial y tus parciales se asocian a esa carrera.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack cronometra muchas carreras en asfalto con chips y alfombras. Si tu carrera la cronometró ChronoTrack, búscala en el calendario e introduce tu dorsal para traer tu resultado oficial.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
-      'La importación de RunSignUp aún no está disponible. parkrun y el pegado manual siguen funcionando.';
+      'La importación de RunSignUp aún no está disponible. El pegado manual sigue funcionando.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -11456,7 +15561,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsChronotrackUnavailable =>
-      'La importación de ChronoTrack aún no está disponible. parkrun y el pegado manual siguen funcionando.';
+      'La importación de ChronoTrack aún no está disponible. El pegado manual sigue funcionando.';
 
   @override
   String get routeConditionsTitle => 'Condiciones';
@@ -11516,7 +15621,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeConditionSnowIce => 'Nieve / hielo';
 
   @override
-  String get routeConditionOvergrown => 'Cubierto de maleza';
+  String get routeConditionOvergrown => 'Cubierto de vegetación';
 
   @override
   String get routeConditionClosed => 'Cerrado';
@@ -11689,7 +15794,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgesStreak30Desc => 'Corriste 30 días seguidos';
 
   @override
-  String get badgesStreak100Label => 'Racha de cien';
+  String get badgesStreak100Label => 'Racha de cien días';
 
   @override
   String get badgesStreak100Desc => 'Corriste 100 días seguidos';
@@ -11704,20 +15809,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgesPr1Label => 'Primer récord';
 
   @override
-  String get badgesPr1Desc => 'Estableciste tu primer récord personal';
+  String get badgesPr1Desc => 'Conseguiste tu primer récord personal';
 
   @override
   String get badgesPr3Label => 'Triple récord';
 
   @override
-  String get badgesPr3Desc => 'Mantienes récords personales en 3 distancias';
+  String get badgesPr3Desc => 'Récords personales en 3 distancias';
 
   @override
   String get badgesPr5Label => 'Coleccionista de récords';
 
   @override
-  String get badgesPr5Desc =>
-      'Mantienes récords personales en todas las distancias';
+  String get badgesPr5Desc => 'Récords personales en todas las distancias';
 
   @override
   String get badgesPlan1Label => 'Plan completado';
@@ -11726,7 +15830,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgesPlan1Desc => 'Completaste un plan de entrenamiento';
 
   @override
-  String get badgesPlan3Label => 'Triple finalizador';
+  String get badgesPlan3Label => 'Triple finalización';
 
   @override
   String get badgesPlan3Desc => 'Completaste 3 planes de entrenamiento';
@@ -11736,6 +15840,75 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Completaste 10 planes de entrenamiento';
+
+  @override
+  String get badgesParkCourses1Label => 'Primer recorrido de parque';
+
+  @override
+  String get badgesParkCourses1Desc => 'Completaste un recorrido de parque';
+
+  @override
+  String get badgesParkCourses5Label => 'Habitual de los parques';
+
+  @override
+  String get badgesParkCourses5Desc =>
+      'Completaste 5 recorridos de parque distintos';
+
+  @override
+  String get badgesParkCourses10Label => 'Coleccionista de senderos';
+
+  @override
+  String get badgesParkCourses10Desc =>
+      'Completaste 10 recorridos de parque distintos';
+
+  @override
+  String get badgesParkCourses25Label => 'Explorador de parques';
+
+  @override
+  String get badgesParkCourses25Desc =>
+      'Completaste 25 recorridos de parque distintos';
+
+  @override
+  String get badgesParkComplete1Label => 'Parque completado';
+
+  @override
+  String get badgesParkComplete1Desc =>
+      'Completaste todos los recorridos de un parque';
+
+  @override
+  String get badgesParkComplete3Label => 'Tres parques completados';
+
+  @override
+  String get badgesParkComplete3Desc =>
+      'Completaste todos los recorridos de 3 parques';
+
+  @override
+  String get badgesParkComplete10Label => 'Completista de parques';
+
+  @override
+  String get badgesParkComplete10Desc =>
+      'Completaste todos los recorridos de 10 parques';
+
+  @override
+  String get badgesParkPassport1Label => 'Pasaporte de parques';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Completaste un recorrido en cada parque de un estado';
+
+  @override
+  String get badgesParkPassport3Label => 'Pasaporte sellado';
+
+  @override
+  String get badgesParkPassport3Desc =>
+      'Completaste un pasaporte de parques en 3 estados';
+
+  @override
+  String get badgesParkPassport10Label => 'Coleccionista de pasaportes';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Completaste un pasaporte de parques en 10 estados';
 
   @override
   String get racePredictorTitle => 'Predictor de tiempo de carrera';
@@ -12040,7 +16213,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get prefsVoiceCueTypesLabel => 'Avisos hablados';
+  String get prefsVoiceCueTypesLabel => 'Avisos de voz';
 
   @override
   String get prefsCueSplits => 'Parciales';
@@ -12065,7 +16238,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Confirma que la carrera comenzó y lee tu distancia y tiempo al parar. Ejemplo: «Carrera completada. 10,0 kilómetros en 52 minutos.»';
 
   @override
-  String get prefsCueOffRoute => 'Fuera de ruta';
+  String get prefsCueOffRoute => 'Aviso de desvío de ruta';
 
   @override
   String get prefsCueOffRouteSubtitle =>
@@ -12076,7 +16249,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Solo funciona si empiezas una carrera con una ruta guardada. Te avisa en cuanto te alejas de ella para que vuelvas al camino. Ejemplo: «Fuera de ruta.»';
 
   @override
-  String get prefsCuePaceAlerts => 'Alertas de desvío de ritmo';
+  String get prefsCuePaceAlerts => 'Alertas de ritmo';
 
   @override
   String get prefsCuePaceAlertsSubtitle =>
@@ -12098,7 +16271,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Solo activo durante un entrenamiento estructurado (una sesión de plan o un entrenamiento de intervalos). Anuncia cada paso y su objetivo para que mantengas la vista al frente. Ejemplo: «Repetición 3 de 5. 400 metros a 4 minutos 30 segundos por kilómetro.»';
 
   @override
-  String get prefsCueCutoffCatchUp => 'Alcanzar el corte';
+  String get prefsCueCutoffCatchUp => 'Recuperación de corte';
 
   @override
   String get prefsCueCutoffCatchUpSubtitle =>
@@ -12109,7 +16282,8 @@ class AppLocalizationsEs extends AppLocalizations {
       'Solo activo en una ruta con cortes de tiempo. Si uno está en peligro, lee la distancia hasta él y el ritmo que aún lo alcanza. Ejemplo: «2 kilómetros hasta el corte. 6 minutos por kilómetro.»';
 
   @override
-  String get prefsCueMarkerTargets => 'Marcadores del recorrido';
+  String get prefsCueMarkerTargets =>
+      'Tiempos objetivo en los puntos del recorrido';
 
   @override
   String get prefsCueMarkerTargetsSubtitle =>
@@ -12131,10 +16305,38 @@ class AppLocalizationsEs extends AppLocalizations {
       'Solo activo cuando eliges una estrategia de carrera. Anuncia cada fase y su intención al comenzar. Ejemplo: «Fase 2 de 3. Asiéntate en tu ritmo objetivo.»';
 
   @override
+  String get prefsCueGuidedRun => 'Carreras guiadas';
+
+  @override
+  String get prefsCueGuidedRunSubtitle =>
+      'El guion del entrenador de una carrera guiada que preparaste antes de empezar';
+
+  @override
+  String get prefsCueGuidedRunInfo =>
+      'Solo activo cuando preparas una carrera guiada en la pantalla de grabación antes de empezar. Anuncia cada indicación del guion al llegar a su marca. Ejemplo: «Cinco minutos. Asíentate en un ritmo que podrías mantener todo el día.»';
+
+  @override
+  String get runGuidedRun => 'Carrera guiada';
+
+  @override
+  String get runGuidedRunNone => 'Sin carrera guiada';
+
+  @override
+  String get runClearGuidedRunTooltip => 'Quitar carrera guiada';
+
+  @override
+  String runGuidedRunOption(int minutes, String subtitle) {
+    return '$minutes min · $subtitle';
+  }
+
+  @override
   String get runRaceStrategy => 'Estrategia de carrera';
 
   @override
   String get runStrategyNone => 'Sin estrategia';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'Quitar estrategia de carrera';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';
@@ -12203,7 +16405,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Introduce el tiempo objetivo como h:mm:ss';
 
   @override
-  String get routeMarkerOfficialBadge => 'Propietario de la ruta';
+  String get routeMarkerOfficialBadge => 'Propietario';
 
   @override
   String get routeMarkerDistanceAlongLabel => 'Distancia a lo largo de la ruta';
@@ -12334,7 +16536,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get watchMetricLapElapsed => 'Tiempo de vuelta';
 
   @override
-  String get watchMetricHeartRate => 'Frecuencia cardiaca';
+  String get watchMetricHeartRate => 'Frecuencia cardíaca';
 
   @override
   String get watchMetricPacerDelta => 'Diferencia con el marcapasos';
@@ -12618,4 +16820,5683 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get settingsGearUnavailable =>
       'El equipamiento no está disponible en esta versión';
+
+  @override
+  String get loadRampTitle => 'Progresión de carga';
+
+  @override
+  String get loadRampRatioCaption =>
+      'esta semana frente a tu media de 4 semanas';
+
+  @override
+  String get loadRampAcuteLabel => 'Últimos 7 días';
+
+  @override
+  String get loadRampChronicLabel => 'Media semanal (4 semanas)';
+
+  @override
+  String get loadRampBandLow => 'Baja';
+
+  @override
+  String get loadRampBandOptimal => 'Óptima';
+
+  @override
+  String get loadRampBandElevated => 'Elevada';
+
+  @override
+  String get loadRampBandHigh => 'Alta';
+
+  @override
+  String get loadRampMeaningLow =>
+      'Estás corriendo por debajo de tu base reciente. Bien para una semana de descarga o recuperación; mantenido, es pérdida de forma.';
+
+  @override
+  String get loadRampMeaningOptimal =>
+      'Tu semana está en el rango que mejor protege frente a las lesiones. Sigue progresando a este ritmo.';
+
+  @override
+  String get loadRampMeaningElevated =>
+      'Has subido más rápido de lo que tu base reciente sostiene. Mantén esta semana estable en lugar de añadir más.';
+
+  @override
+  String get loadRampMeaningHigh =>
+      'Es un salto brusco sobre tu base reciente: el patrón más asociado a las lesiones. Plantéate una semana más suave.';
+
+  @override
+  String get loadRampTrendRamping => 'Tu carga va en aumento.';
+
+  @override
+  String get loadRampTrendSteady => 'Tu carga se mantiene estable.';
+
+  @override
+  String get loadRampTrendTapering => 'Tu carga va bajando.';
+
+  @override
+  String get comebackTitle => 'Vuelta tras un parón';
+
+  @override
+  String get comebackVerdictEasingIn => 'Vuelta progresiva';
+
+  @override
+  String get comebackVerdictSteep => 'Primera semana exigente';
+
+  @override
+  String comebackLayoff(int weeks) {
+    return '$weeks semanas sin correr';
+  }
+
+  @override
+  String get comebackShareCaption =>
+      'esta semana frente a tu semana media antes del parón';
+
+  @override
+  String get comebackMeaningEasingIn =>
+      'Esta semana queda holgadamente por debajo de las semanas que corrías antes del parón. Reconstruir poco a poco desde aquí es lo que consolida la vuelta.';
+
+  @override
+  String get comebackMeaningSteep =>
+      'Esta semana ya supera la mitad de lo que corrías antes del parón. Tu cuerpo ha perdido la base que hacía rutinarias aquellas semanas, así que una semana más corta ahora cuesta mucho menos que una recaída después.';
+
+  @override
+  String get comebackThisWeekLabel => 'Últimos 7 días';
+
+  @override
+  String get comebackBaseLabel => 'Media semanal antes del parón';
+
+  @override
+  String get comebackFootnote =>
+      'Tu curva de carga de entrenamiento volverá cuando encadenes de nuevo unas semanas constantes.';
+
+  @override
+  String get segmentCatalogueTitle => 'Segmentos famosos';
+
+  @override
+  String get segmentCatalogueIntro =>
+      'Subidas, puentes y vueltas al parque seleccionados de todo el mundo. Corre uno y tu tiempo entrará automáticamente en su clasificación.';
+
+  @override
+  String get segmentCatalogueSearchLabel => 'Buscar';
+
+  @override
+  String get segmentCatalogueSearchHint => 'Nombre o lugar';
+
+  @override
+  String get segmentCatalogueRegion => 'Región';
+
+  @override
+  String get segmentCatalogueAllRegions => 'Todas las regiones';
+
+  @override
+  String get segmentCatalogueSurface => 'Superficie';
+
+  @override
+  String get segmentCatalogueAllSurfaces => 'Todas las superficies';
+
+  @override
+  String get segmentCatalogueSort => 'Ordenar';
+
+  @override
+  String get segmentCatalogueSortName => 'Nombre';
+
+  @override
+  String get segmentCatalogueSortShortest => 'Más cortos primero';
+
+  @override
+  String get segmentCatalogueSortLongest => 'Más largos primero';
+
+  @override
+  String get segmentCatalogueSortClimb => 'Más desnivel';
+
+  @override
+  String segmentCatalogueCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count segmentos',
+      one: '$count segmento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get segmentCatalogueLoadFailed =>
+      'No se pudo cargar el catálogo de segmentos.';
+
+  @override
+  String get segmentCatalogueEmpty =>
+      'Aún no hay segmentos famosos en el catálogo.';
+
+  @override
+  String get segmentCatalogueNoMatches =>
+      'Ningún segmento coincide con estos filtros: prueba a ampliarlos.';
+
+  @override
+  String get segmentCatalogueBrowseAll => 'Ver todos';
+
+  @override
+  String get segmentCatalogueNotFoundTitle => 'Segmento no encontrado';
+
+  @override
+  String get segmentCatalogueNotFoundBody =>
+      'Este segmento no está en el catálogo o ha sido retirado.';
+
+  @override
+  String get segmentCatalogueDetailFailedTitle =>
+      'No se pudo cargar este segmento';
+
+  @override
+  String get segmentCatalogueDetailFailedBody =>
+      'Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get segmentCatalogueStatDistance => 'Distancia';
+
+  @override
+  String get segmentCatalogueStatElevation => 'Desnivel positivo';
+
+  @override
+  String get segmentCatalogueStatSurface => 'Superficie';
+
+  @override
+  String get segmentCatalogueLeaderboard => 'Clasificación';
+
+  @override
+  String get runSurfaceTabSegments => 'Segmentos';
+
+  @override
+  String rateLimitCreateClub(String wait) {
+    return 'Estás creando clubes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitCreateRoute(String wait) {
+    return 'Estás creando rutas demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitCreateReport(String wait) {
+    return 'Estás enviando informes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitCreateChallenge(String wait) {
+    return 'Estás creando desafíos demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitJoinChallenge(String wait) {
+    return 'Te estás uniendo a desafíos demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitAdoptPlan(String wait) {
+    return 'Estás adoptando planes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitAdoptSessionPlan(String wait) {
+    return 'Estás adoptando planes de sesión demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitAdoptGymRoutine(String wait) {
+    return 'Estás adoptando rutinas de gimnasio demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitPublishRoutine(String wait) {
+    return 'Estás publicando rutinas demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitSendMessage(String wait) {
+    return 'Estás enviando mensajes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitEditMessage(String wait) {
+    return 'Estás editando mensajes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Has iniciado muchas solicitudes de mensaje hoy: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitGeneric(String wait) {
+    return 'Estás haciendo eso demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitWaitSeconds(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n segundos',
+      one: '1 segundo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rateLimitWaitMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n minutos',
+      one: '1 minuto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rateLimitWaitSoon => 'un momento';
+
+  @override
+  String get challengesCreate => 'Crear desafío';
+
+  @override
+  String get challengesTitleLabel => 'Título';
+
+  @override
+  String get challengesDescriptionLabel => 'Descripción';
+
+  @override
+  String get challengesMetricLabel => 'Métrica';
+
+  @override
+  String get challengesScopeLabel => 'Tipo';
+
+  @override
+  String get challengesGoalOptional => 'Meta (opcional)';
+
+  @override
+  String get challengesActivityTypeLabel => 'Actividad';
+
+  @override
+  String get challengesActivityAny => 'Cualquiera';
+
+  @override
+  String get challengesClubLabel => 'Club';
+
+  @override
+  String get challengesClubNone => 'Abierto (todos)';
+
+  @override
+  String get challengesStartLabel => 'Inicio';
+
+  @override
+  String get challengesEndLabel => 'Fin';
+
+  @override
+  String get challengesScopeIndividual => 'Individual';
+
+  @override
+  String get challengesScopeClubVsClub => 'Club contra club';
+
+  @override
+  String get challengesScopeGroupGoal => 'Meta de grupo';
+
+  @override
+  String get challengesSuffixHours => 'h';
+
+  @override
+  String get challengesSuffixActivities => 'actividades';
+
+  @override
+  String get challengesSuffixDays => 'días';
+
+  @override
+  String challengesGoalPreview(String value) {
+    return 'Los participantes ven $value';
+  }
+
+  @override
+  String challengesGoalStreakCeiling(int n) {
+    return 'En esta ventana caben como máximo $n días activos.';
+  }
+
+  @override
+  String get challengesErrTitle => 'Ponle un título al desafío.';
+
+  @override
+  String get challengesErrGoal => 'Meta: introduce un número positivo';
+
+  @override
+  String get challengesErrWindow => 'El fin debe ser posterior al inicio.';
+
+  @override
+  String limitsWeightOutOfRange(String min, String max, String unit) {
+    return 'Introduce un peso entre $min y $max $unit.';
+  }
+
+  @override
+  String limitsHeightOutOfRange(String min, String max) {
+    return 'Introduce una altura entre $min y $max cm.';
+  }
+
+  @override
+  String limitsServingsOutOfRange(String min, String max) {
+    return 'Introduce un número de raciones entre $min y $max.';
+  }
+
+  @override
+  String runDetailGuidedRun(String title) {
+    return 'Carrera guiada: $title';
+  }
+
+  @override
+  String get runDetailGuidedRunUnavailable =>
+      'La carrera guiada ya no está en la biblioteca';
+
+  @override
+  String get guidedRunUseThisRun => 'Usar esta carrera';
+
+  @override
+  String get backExitRecordingTitle => 'La carrera sigue grabándose';
+
+  @override
+  String get backExitRecordingBody =>
+      'Salir de la app puede interrumpir la grabación. Tu carrera se conserva, así que podrás retomarla al volver.';
+
+  @override
+  String get backExitRecordingLeave => 'Salir igualmente';
+
+  @override
+  String get backExitRecordingStay => 'Seguir grabando';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Ya estás en $page';
+  }
+
+  @override
+  String metricAbout(String name) {
+    return 'Acerca de $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Tu tiempo comparado con el mejor registrado para tu edad y sexo. Alrededor del 60 % es un buen nivel local; el 80 %, nivel nacional.';
+
+  @override
+  String get metricVertLabel => 'Desnivel';
+
+  @override
+  String get metricVertDefinition =>
+      'La altura total que has subido, sumada en todas las cuestas.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulso de entrenamiento: una puntuación de lo duro que fue una carrera, según su duración y lo alta que llegó tu frecuencia cardíaca.';
+
+  @override
+  String get metricRiegelLabel => 'Fórmula de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Una forma estándar de predecir tu tiempo en una distancia a partir de un tiempo que corriste en otra.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Máximo a una repetición: el peso más alto que podrías levantar una sola vez. El 1RM estimado se calcula a partir del peso y las repeticiones de una serie que hiciste, así que nunca tienes que probarlo.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Esfuerzo percibido: lo dura que se sintió una serie, del 1 al 10. Un 10 significa que no habrías podido hacer ni una repetición más.';
+
+  @override
+  String get bleUnavailableOff =>
+      'El Bluetooth está desactivado — actívalo para usar tu banda de FC.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir no tiene permiso para usar Bluetooth. Concédelo en Ajustes para usar una banda de FC.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'Este teléfono no admite Bluetooth LE, así que no se puede usar una banda de FC.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Activa la ubicación para que Android pueda buscar tu banda de FC.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'El Bluetooth no respondió. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get bleOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get bleScanRetry => 'Buscar de nuevo';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Progreso del plan';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Fases, totales del plan, tirada larga más larga';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Reglas del plan';
+
+  @override
+  String get planDetailSectionRulesHint => 'A qué se atiene este plan';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Calendario';
+
+  @override
+  String get planDetailSectionCalendarHint => 'Cada sesión en su fecha real';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Semana a semana';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'Las $n semanas, día a día';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Compartir y publicar';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Plantilla del club y biblioteca pública de planes';
+
+  @override
+  String get confirmAgeHeading => 'Un paso más';
+
+  @override
+  String get confirmAgeLede =>
+      'Antes de empezar, confirma un par de cosas. Lo hacemos una vez por cuenta y no volverá a aparecer.';
+
+  @override
+  String get confirmAgeContinue => 'Continuar';
+
+  @override
+  String get confirmAgeRecordError => 'No se pudo registrar el consentimiento.';
+
+  @override
+  String get avatarCropTitle => 'Ajustar foto de perfil';
+
+  @override
+  String get avatarCropHint =>
+      'Arrastra para recolocar. Pellizca o usa el control deslizante para hacer zoom.';
+
+  @override
+  String get avatarCropRotateLeft => 'Girar a la izquierda';
+
+  @override
+  String get avatarCropRotateRight => 'Girar a la derecha';
+
+  @override
+  String get avatarCropZoom => 'Zoom';
+
+  @override
+  String get avatarCropConfirm => 'Usar foto';
+
+  @override
+  String get avatarCropLoading => 'Cargando foto…';
+
+  @override
+  String get avatarCropLoadFailed =>
+      'No se pudo abrir esta imagen. Prueba con JPEG, PNG o WebP.';
+
+  @override
+  String get dashboardLeadTitle => 'Tu semana';
+
+  @override
+  String get dashboardLeadEmpty => 'Aún sin carreras';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '$done de $target previstos';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '$done de tu objetivo semanal de $target';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '$done de $target actividades, tu objetivo semanal',
+      one: '$done de 1 actividad, tu objetivo semanal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Tu media semanal de las últimas $weeks semanas: $avg',
+      one: 'La semana pasada: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria =>
+      'Distancia de esta semana frente a tu plan';
+
+  @override
+  String get dashboardLeadGoalProgressAria =>
+      'Progreso de esta semana frente a tu objetivo semanal';
+
+  @override
+  String get dashboardLeadNextSession => 'Próxima sesión';
+
+  @override
+  String get dashboardLeadToday => 'Hoy';
+
+  @override
+  String get dashboardLeadTomorrow => 'Mañana';
+
+  @override
+  String get dashboardLeadNoNextSession =>
+      'No quedan más sesiones programadas en tu plan.';
+
+  @override
+  String planFinishTitle(String name) {
+    return '$name ha terminado';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'Su último día fue el $date. Finalízalo para pasarlo a tus planes completados.';
+  }
+
+  @override
+  String get planFinishAction => 'Finalizar plan';
+
+  @override
+  String get planFinishFinishing => 'Finalizando…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name ya está en tus planes completados.';
+  }
+
+  @override
+  String get planFinishFailed =>
+      'No se pudo finalizar el plan. Inténtalo de nuevo.';
+
+  @override
+  String get dashboardLeadAddRun => 'Añadir carrera';
+
+  @override
+  String get runRaceStopTitle => 'Carrera en pausa';
+
+  @override
+  String get runRaceStopBody =>
+      'El reloj de la carrera sigue corriendo. Reanuda para continuar o termina la carrera ahora.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Has recorrido menos del 90 % del recorrido, así que terminar ahora registra un DNF.';
+
+  @override
+  String get runRaceResume => 'Reanudar carrera';
+
+  @override
+  String get runRaceFinish => 'Terminar carrera';
+
+  @override
+  String get runRaceFinishDnf => 'Terminar como DNF';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return '¡Meta! Tiempo bruto $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Llegada registrada';
+
+  @override
+  String get runRaceEnded =>
+      'El organizador terminó la carrera. Tu actividad se sigue grabando, pero no se enviará ningún resultado.';
+
+  @override
+  String get runRaceLateStart =>
+      'Salida tardía: empezaste más de 5 minutos después del GO o lejos de la línea de salida.';
+
+  @override
+  String get eventCoursesTitle => 'Recorridos';
+
+  @override
+  String get eventCoursePickTitle => 'Elige tu recorrido';
+
+  @override
+  String get eventChangeCourse => 'Cambiar recorrido';
+
+  @override
+  String get eventYourCourse => 'Tu recorrido';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'No se pudo guardar tu recorrido. Inténtalo de nuevo.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Neto $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Otros resultados';
+
+  @override
+  String get eventFinishMethodManual => 'Manual';
+
+  @override
+  String get eventFinishMethodHost => 'Organizador';
+
+  @override
+  String get helpTitle => 'Ayuda';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'Cómo funcionan las carreras, las clases, los clubes y la app';
+
+  @override
+  String get helpSearchHint => 'Buscar en la ayuda';
+
+  @override
+  String get helpSearchClear => 'Borrar búsqueda';
+
+  @override
+  String get helpAudienceLabel => 'Mostrar guías para';
+
+  @override
+  String get helpAudienceAll => 'Todas';
+
+  @override
+  String get helpAudienceRunner => 'Corredores';
+
+  @override
+  String get helpAudienceOrganiser => 'Organizadores';
+
+  @override
+  String get helpAudienceParticipant => 'Participantes';
+
+  @override
+  String get helpAudienceSpectator => 'Espectadores';
+
+  @override
+  String get helpAudienceInstructor => 'Instructores';
+
+  @override
+  String get helpAudienceClubAdmin => 'Administradores de club';
+
+  @override
+  String get helpCategoryRaces => 'Carreras';
+
+  @override
+  String get helpCategoryPaidClasses => 'Clases de pago';
+
+  @override
+  String get helpCategoryInstructors => 'Instructores';
+
+  @override
+  String get helpCategoryClubs => 'Clubes';
+
+  @override
+  String get helpCategoryRunning => 'Correr';
+
+  @override
+  String get helpCategoryAccount => 'Cuenta';
+
+  @override
+  String get helpCategoryOther => 'Más guías';
+
+  @override
+  String get helpRequiresPro => 'Requiere Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Solo administradores de club';
+
+  @override
+  String get helpRequiresRaceDirector => 'Solo directores de carrera';
+
+  @override
+  String get helpRequiresStripeConnected => 'Requiere Stripe conectado';
+
+  @override
+  String get helpRequiresPaidRailLive =>
+      'Requiere la inscripción de pago activa';
+
+  @override
+  String get helpPlatformsLabel => 'Disponible en';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Consejo';
+
+  @override
+  String get helpNoteCaution => 'Precaución';
+
+  @override
+  String get helpRelated => 'Guías relacionadas';
+
+  @override
+  String get helpResultsHeader => 'Resultados';
+
+  @override
+  String get helpNoResultsTitle => 'No hay guías que coincidan';
+
+  @override
+  String get helpNoResultsBody =>
+      'Prueba con otra palabra o muestra las guías para todos los grupos.';
+
+  @override
+  String get helpLoading => 'Cargando guías';
+
+  @override
+  String get helpUnavailable => 'No se pudieron cargar las guías de ayuda.';
+
+  @override
+  String get helpGuideMissing => 'Esta guía no está disponible.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Esta guía aún no está traducida a tu idioma, así que se muestra en inglés.';
+
+  @override
+  String get helpHowThisWorks => 'Cómo funciona';
+
+  @override
+  String get helpForThisScreen => 'Guías de esta pantalla';
+
+  @override
+  String get helpBrowseAll => 'Ver todas las guías';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Paso $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Leer la guía';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '¿Finalizar la carrera? $count corredores que salieron no tienen resultado y quedarán como DNF. No se puede deshacer.',
+      one:
+          '¿Finalizar la carrera? $count corredor que salió no tiene resultado y quedará como DNF. No se puede deshacer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pendiente';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Acciones del resultado de $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Aprobar';
+
+  @override
+  String get eventResultUnverify => 'Quitar verificación';
+
+  @override
+  String get eventResultEdit => 'Editar';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Editar resultado: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Tu cambio sustituye este tiempo en la clasificación y se marca como editado por el organizador.';
+
+  @override
+  String get eventResultEditTime => 'Tiempo (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Estado';
+
+  @override
+  String get eventResultStatusFinished => 'Terminado';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Guardar resultado';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Introduce un tiempo de llegada como 42:10 o 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'No se pudo actualizar el resultado: $error';
+  }
+
+  @override
+  String get eventCancelOccurrence => 'Cancelar esta ocurrencia';
+
+  @override
+  String get eventCancelEvent => 'Cancelar evento';
+
+  @override
+  String get eventCancelSeries => 'Cancelar toda la serie';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Solo se anula esta ocurrencia: el resto de la serie no se ve afectado. Se notifica a todos los que confirmaron (asistirán, quizás o en lista de espera).';
+
+  @override
+  String get eventCancelEventBody =>
+      'El evento se cancela. Se notifica a todos los que confirmaron (asistirán, quizás o en lista de espera).';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'La serie termina ahora y no se programan más ocurrencias. Se cancela cada próxima ocurrencia a la que alguien respondió y se avisa a esas personas.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Quien haya pagado recibe el reembolso completo, sea cual sea la política de reembolso.';
+
+  @override
+  String get eventCancelReasonLabel => 'Motivo (opcional)';
+
+  @override
+  String get eventCancelKeep => 'Mantener';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Cancelado. $count personas inscritas reciben el reembolso completo.',
+      one: 'Cancelado. 1 persona inscrita recibe el reembolso completo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'pudieron iniciar $count reembolsos',
+      one: 'pudo iniciar 1 reembolso',
+    );
+    return 'Cancelado, pero no se $_temp0. Vuelve a intentarlo desde la página del evento en la web.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Cancelado.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Serie cancelada.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'Hay inscripciones pagadas y los pagos no están disponibles ahora mismo, así que todavía no se puede cancelar. No se ha cambiado nada.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Solo un organizador de este club puede cancelar una ocurrencia.';
+
+  @override
+  String get eventCancelFailed => 'No se pudo cancelar. Inténtalo de nuevo.';
+
+  @override
+  String get eventReinstateOccurrence => 'Restablecer esta ocurrencia';
+
+  @override
+  String get eventReinstateEvent => 'Restablecer este evento';
+
+  @override
+  String get eventReinstateFailed => 'No se pudo restablecer esta ocurrencia';
+
+  @override
+  String get eventEventCancelled => 'Este evento se canceló.';
+
+  @override
+  String get eventSeriesWasCancelled => 'Esta serie se canceló.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'Te guardamos una plaza hasta $time. Paga para conseguirla o pasará a la siguiente persona de la lista de espera.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'El pago se hace en la web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Reservar en la web';
+
+  @override
+  String get eventFormCapacity => 'Aforo';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Cuando haya esta cantidad de asistentes, quien diga que sí después entra en lista de espera en lugar de quedarse fuera. Déjalo vacío para no poner límite.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Introduce un número entero de 1 o más, o déjalo vacío.';
+
+  @override
+  String get eventFormEndsOn => 'Termina el';
+
+  @override
+  String get eventFormEndsOnNone => 'Sin fecha de fin';
+
+  @override
+  String get eventFormEndsOnClear => 'Quitar la fecha de fin';
+
+  @override
+  String get eventFormEndAfter => 'Termina tras';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Dónde termina la serie. Pon uno, el otro o los dos: manda el que llegue antes. Si dejas ambos vacíos, sigue repitiéndose.';
+
+  @override
+  String get eventFormErrCount =>
+      'Introduce un número entero del 1 al 520, o déjalo vacío.';
+
+  @override
+  String get eventFormSessionPlan => 'Plan de sesión';
+
+  @override
+  String get eventFormSessionPlanNone => 'Ninguno';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'Todavía no hay planes de sesión. Crea uno en la web.';
+
+  @override
+  String get eventFormCharge => 'Cobrar por este evento';
+
+  @override
+  String get eventFormChargeHint =>
+      'Cobra una cuota al inscribirse. El dinero llega a tu propia cuenta de pagos, no a la del club, y solo puede cobrar un evento presencial.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Configura los cobros en la web para cobrar por los eventos.';
+
+  @override
+  String get eventFormPrice => 'Precio';
+
+  @override
+  String get eventFormCurrency => 'Moneda';
+
+  @override
+  String get eventFormErrPrice => 'Introduce un precio de al menos 0,50.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Usa un código de moneda de tres letras, como EUR.';
+
+  @override
+  String get eventFormSalesClose => 'Cerrar ventas (minutos antes del inicio)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'Cuánto antes del inicio se cierra la inscripción. Cero la mantiene abierta hasta la hora de comienzo.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Introduce un número entero de minutos entre 0 y 10080.';
+
+  @override
+  String get eventFormRefundPolicy => 'Política de reembolso';
+
+  @override
+  String get eventFormRefundFullUntilStart =>
+      'Reembolso completo hasta la hora de inicio';
+
+  @override
+  String get eventFormRefundFullUntil24h =>
+      'Reembolso completo hasta 24 h antes';
+
+  @override
+  String get eventFormRefundNone => 'Sin reembolsos';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Evento creado, pero no se pudo guardar el precio. Fíjalo desde la página del evento en la web.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Evento creado, pero no se pudo adjuntar el plan de sesión. Adjúntalo desde la página del evento.';
+
+  @override
+  String get eventFormGymRoutine => 'Rutina de gimnasio';
+
+  @override
+  String get eventFormGymRoutineNone => 'Ninguna';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Una plantilla de rutina de este club. Los asistentes registran la clase ya rellenada con ella. Una clase lleva una rutina o un plan de sesión, no ambos.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Este club aún no tiene plantillas de rutina. Publica primero una rutina en el club.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Evento creado, pero no se pudo adjuntar la rutina. Adjúntala desde la página del evento.';
+
+  @override
+  String get clubEventGymRoutineTitle => 'Rutina de la clase';
+
+  @override
+  String get clubEventGymRoutineAttach => 'Adjuntar una rutina';
+
+  @override
+  String get clubEventGymRoutineNone => 'No hay ninguna rutina adjunta.';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count series',
+      one: '1 serie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => 'Guardar';
+
+  @override
+  String get clubEventGymRoutineSaved => 'Rutina de la clase actualizada.';
+
+  @override
+  String get clubEventGymRoutineSaveFailed =>
+      'No se pudo actualizar la rutina de la clase.';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'Al adjuntar una rutina se quita el plan de sesión: una clase lleva uno u otro.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Secuencia de la sesión';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Asociar a un evento de clase';
+
+  @override
+  String get clubEventSessionPlanSave => 'Guardar';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Plan de sesión actualizado.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed =>
+      'No se pudo actualizar el plan de sesión.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Al adjuntar un plan de sesión se quita la rutina de gimnasio: una clase lleva uno u otro.';
+
+  @override
+  String get audienceTitle => 'Quién puede ver esto';
+
+  @override
+  String get audienceLevelPrivate => 'Solo yo';
+
+  @override
+  String get audienceLevelPrivateHint => 'Nadie más puede abrirlo.';
+
+  @override
+  String get audienceLevelFollowers => 'Seguidores';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'Las personas que te siguen pueden abrirlo desde un enlace. No aparece en los feeds, las notificaciones ni la búsqueda.';
+
+  @override
+  String get audienceLevelSpecific => 'Personas concretas';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Solo las personas que elijas pueden abrirlo. Puedes dejar de compartir con cualquiera en cualquier momento.';
+
+  @override
+  String get audienceLevelPublic => 'Público';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Cualquiera con el enlace puede abrirlo, y puede aparecer en los feeds y la búsqueda.';
+
+  @override
+  String get audienceClipNote =>
+      'Todos menos tú ven el mapa sin tus zonas de privacidad.';
+
+  @override
+  String get audienceSharedWith => 'Compartido con';
+
+  @override
+  String get audienceSharedWithNobody => 'Aún no lo has compartido con nadie.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Dejar de compartir con $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name ya no puede abrirlo.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'No se pudo dejar de compartir: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Añadir personas';
+
+  @override
+  String get audienceSearchHint =>
+      'Busca a personas que sigues o que te siguen';
+
+  @override
+  String get audienceShareAction => 'Compartir';
+
+  @override
+  String get audienceAlreadyShared => 'Compartido';
+
+  @override
+  String audienceShared(String name) {
+    return '$name ya puede abrirlo.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'No se pudo compartir: $error';
+  }
+
+  @override
+  String get audienceLoadFailed =>
+      'No se pudo cargar con quién está compartido.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'No se pudieron cargar las personas con las que puedes compartir.';
+
+  @override
+  String get audienceNoPeople =>
+      'Puedes compartir con personas que sigues o que te siguen, y todavía no tienes ninguna.';
+
+  @override
+  String get audienceNoMatches => 'Nadie coincide con ese nombre.';
+
+  @override
+  String get audienceRetry => 'Reintentar';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'No se pudo cambiar quién puede ver esto: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Visibilidad actualizada.';
+
+  @override
+  String get audienceRevokeAllTitle => '¿Dejar de compartir con todos?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Todas las personas con las que lo compartiste dejarán de poder abrirlo.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Solo yo';
+
+  @override
+  String get audienceShareLink => 'Enlace para compartir';
+
+  @override
+  String get audienceSharedWithYou => 'Compartido contigo';
+
+  @override
+  String get audienceSharedWithYouHint =>
+      'Compartido contigo. No es público: solo las personas con las que se ha compartido pueden abrirlo.';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'Corredor #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'Corredor';
+
+  @override
+  String get logMoreTitle => 'Más opciones';
+
+  @override
+  String get logMoreLongPressHint => 'mostrar más opciones';
+
+  @override
+  String get logMoreTodaysWorkout => 'Iniciar el entrenamiento de hoy';
+
+  @override
+  String get runnerMenuFollowRoute => 'Seguir una ruta';
+
+  @override
+  String get runnerMenuAllRoutes => 'Todas las rutas…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return 'Seguir $name';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pasos',
+      one: '$count paso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesTitle => 'Mensajes';
+
+  @override
+  String get messagesEmptyTitle => 'Aún no hay conversaciones';
+
+  @override
+  String get messagesEmptyBody =>
+      'Abre el perfil de un corredor y toca Mensaje para empezar una conversación.';
+
+  @override
+  String get messagesLoadError => 'No se pudieron cargar tus conversaciones.';
+
+  @override
+  String get messagesThreadLoadError => 'No se pudo cargar esta conversación.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Tú: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensajes sin leer',
+      one: '$count mensaje sin leer',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Aún no hay mensajes. Saluda.';
+
+  @override
+  String get messagesComposerHint => 'Mensaje…';
+
+  @override
+  String get messagesSend => 'Enviar';
+
+  @override
+  String get messagesSending => 'Enviando…';
+
+  @override
+  String get messagesSendFailed =>
+      'No se pudo enviar tu mensaje. Inténtalo de nuevo.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Puedes enviar mensajes a quienes sigues o te siguen, o a alguien con quien compartes un club o un evento, salvo que uno de los dos haya bloqueado al otro.';
+
+  @override
+  String get messagesLoadEarlier => 'Cargar mensajes anteriores';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'No se pudieron cargar los mensajes anteriores.';
+
+  @override
+  String get messagesViewProfile => 'Ver perfil';
+
+  @override
+  String get messagesRouteEyebrow => 'Ruta';
+
+  @override
+  String get messagesRouteUntitled => 'Ruta sin título';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Esta ruta ya no está disponible para ti.';
+
+  @override
+  String get messagesRouteLoading => 'Cargando ruta';
+
+  @override
+  String get messagesDeletedAccount => 'Cuenta eliminada';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Esta cuenta se ha eliminado. Aún puedes leer los mensajes que enviaste, pero no puedes responder.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Mensaje anulado';
+
+  @override
+  String messagesSeenAt(String time) {
+    return 'Visto $time';
+  }
+
+  @override
+  String get messagesUnsend => 'Anular envío';
+
+  @override
+  String get messagesUnsendConfirmTitle => '¿Anular el envío de este mensaje?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'El texto se eliminará para las dos personas. Esto no se puede deshacer. Si el mensaje ya se había denunciado, la denuncia conserva una copia.';
+
+  @override
+  String get messagesUnsendFailed => 'No se pudo anular el envío del mensaje.';
+
+  @override
+  String get messagesEdit => 'Editar';
+
+  @override
+  String get messagesEdited => 'Editado';
+
+  @override
+  String get messagesEditTitle => 'Editar mensaje';
+
+  @override
+  String get messagesEditSave => 'Guardar';
+
+  @override
+  String get messagesEditFailed => 'No se pudo editar el mensaje.';
+
+  @override
+  String get messagesEditClosed => 'Este mensaje ya no se puede editar.';
+
+  @override
+  String get messagesReport => 'Denunciar';
+
+  @override
+  String get messagesOptionsHint => 'mostrar las opciones del mensaje';
+
+  @override
+  String get messagesBlock => 'Bloquear';
+
+  @override
+  String get messagesUnblock => 'Desbloquear';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Ninguno de los dos podrá enviar mensajes al otro, y esa persona no podrá seguirte, dar kudos a tus carreras ni comentarlas. Cualquier seguimiento entre ambos, en cualquier dirección, se eliminará, y desbloquear no lo restablecerá.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Has bloqueado a $name, así que ninguno de los dos puede enviar mensajes al otro.';
+  }
+
+  @override
+  String get messagesMute => 'Silenciar';
+
+  @override
+  String get messagesUnmute => 'Dejar de silenciar';
+
+  @override
+  String get messagesArchive => 'Archivar';
+
+  @override
+  String get messagesUnarchive => 'Desarchivar';
+
+  @override
+  String get messagesDeleteConversation => 'Eliminar conversación';
+
+  @override
+  String get messagesConversationDeleted => 'Conversación eliminada';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Has eliminado esta conversación para ti. La otra persona conserva su copia, y un mensaje nuevo la hará volver.';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Has eliminado esta conversación. La otra cuenta ya no existe, así que nada la hará volver, y los mensajes se borran en un plazo de un día.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'No se pudo actualizar la conversación: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archivadas ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Volver a la bandeja de entrada';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Puedes enviar hasta 3 mensajes hasta que acepten tu solicitud.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Solicitudes ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name quiere enviarte mensajes. No sabrá que lo has leído a menos que aceptes.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Aceptar';
+
+  @override
+  String get messagesRequestDecline => 'Rechazar';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => '¿Rechazar esta solicitud?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'Sus mensajes desaparecen de tus solicitudes y no podrá volver a escribirte a menos que tú le escribas primero. No se le avisará.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Solicitud aceptada';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Solicitud rechazada';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'No se pudo actualizar la solicitud: $error';
+  }
+
+  @override
+  String get messagesMutedMark => 'Silenciada';
+
+  @override
+  String get messagesMutedToast =>
+      'Silenciada. No recibirás avisos de los mensajes nuevos aquí.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archivada. Un mensaje nuevo la devolverá a tu bandeja de entrada.';
+
+  @override
+  String get messagesMarkUnread => 'Marcar como no leída';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como no leída. Seguirá destacada en tu bandeja de entrada hasta que la abras.';
+
+  @override
+  String get profileMessage => 'Mensaje';
+
+  @override
+  String get routeDetailSendToFollower => 'Enviar a un seguidor';
+
+  @override
+  String get routeDetailSendDmTitle => 'Enviar esta ruta';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Elige a alguien a quien sigues o que te sigue. El enlace de la ruta llegará a vuestra conversación.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'Recibirá el enlace público para compartir, así que cualquiera a quien se lo reenvíe también podrá abrirlo.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'Sigue siendo privada: solo la persona a la que se la envías puede abrir el enlace, y puedes dejar de compartir en cualquier momento.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Buscar personas';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'No se pudo cargar a quién puedes enviar la ruta.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'Todavía no sigues a nadie y nadie te sigue.';
+
+  @override
+  String get routeDetailSendDmNoMatches => 'Nadie coincide con esa búsqueda.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'Os seguís mutuamente';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Te sigue';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'Sigues a esta persona';
+
+  @override
+  String get routeDetailSendDmSend => 'Enviar';
+
+  @override
+  String get routeDetailSendDmSending => 'Enviando…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Ruta enviada a $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Abrir conversación';
+
+  @override
+  String get routeDetailSendDmDone => 'Listo';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Mostrar en la página de la carrera';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Quitar de la página de la carrera';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Toca la medalla de una foto para mostrarla en la página pública de esta carrera. Cualquiera puede ver esa página y puedes quitar una foto en cualquier momento.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Haz pública esta actividad para compartir sus fotos en la página de la carrera.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'No se pudo actualizar la página de la carrera: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'Solicitar seguir';
+
+  @override
+  String get profileRequested => 'Solicitado';
+
+  @override
+  String get profileRequestSent => 'Solicitud de seguimiento enviada';
+
+  @override
+  String get profileRequestWithdrawn => 'Solicitud de seguimiento retirada';
+
+  @override
+  String get profilePrivateTitle => 'Este perfil es privado';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Sigue a $name para ver sus carreras y a quién sigue. Cada solicitud se aprueba una a una.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Tu solicitud está pendiente de aprobación. Verás sus carreras cuando la acepten.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name quiere seguirte';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Perfil privado';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Solo los seguidores que apruebes ven tus carreras, actividades y listas de seguidores. Los demás aún pueden encontrarte por tu nombre y pedir seguirte.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'No se pudo cambiar la privacidad del perfil.';
+
+  @override
+  String get followRequestsTitle => 'Solicitudes de seguimiento';
+
+  @override
+  String get followRequestsEmptyTitle => 'No hay solicitudes pendientes';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Cuando alguien pida seguir tu perfil privado, aparecerá aquí.';
+
+  @override
+  String get followRequestsApprove => 'Aprobar';
+
+  @override
+  String get followRequestsDecline => 'Rechazar';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name ya puede ver tu perfil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Solicitud rechazada';
+
+  @override
+  String get followRequestsLoadError =>
+      'No se pudieron cargar las solicitudes de seguimiento.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'No se pudo actualizar la solicitud.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Los mapas omiten las zonas que este atleta oculta con sus zonas de privacidad.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Mapa de la carrera del $date, sin las zonas de privacidad del atleta';
+  }
+
+  @override
+  String get stravaClubsHeading => 'Tus clubes de Strava';
+
+  @override
+  String get stravaClubsIntro =>
+      'Los clubes a los que perteneces en Strava. Solo tú ves esta lista.';
+
+  @override
+  String get stravaClubsEmpty => 'No estás en ningún club de Strava.';
+
+  @override
+  String get stravaClubsLoadError =>
+      'No se pudieron cargar tus clubes de Strava.';
+
+  @override
+  String get stravaClubsReconnectText =>
+      'Tu conexión con Strava ha caducado, así que no se pueden mostrar tus clubes de Strava.';
+
+  @override
+  String get stravaClubsReconnect => 'Volver a conectar Strava';
+
+  @override
+  String get stravaClubsSetUp => 'Crear en Threkir';
+
+  @override
+  String get stravaClubsLinkToMine => 'Vincular a mi club';
+
+  @override
+  String get stravaClubsPickClubLabel => '¿Cuál de tus clubes es este?';
+
+  @override
+  String get stravaClubsAdminOnly =>
+      'Solo un administrador de este club en Strava puede traerlo a Threkir.';
+
+  @override
+  String stravaClubsViewOnThrekir(String name) {
+    return 'Ver $name';
+  }
+
+  @override
+  String get stravaClubsUnlink => 'Desvincular';
+
+  @override
+  String stravaClubsLinked(String name) {
+    return 'Vinculado a $name.';
+  }
+
+  @override
+  String get stravaClubsLinkedNew =>
+      'Tu club está vinculado a su club de Strava.';
+
+  @override
+  String stravaClubsUnlinked(String name) {
+    return '$name se desvinculó de Strava.';
+  }
+
+  @override
+  String get stravaClubsSetUpNote =>
+      'Cuando se cree tu club, quedará vinculado a su club de Strava.';
+
+  @override
+  String stravaClubsCreatedNotLinked(String reason) {
+    return 'Tu club se creó, pero no está vinculado a Strava: $reason';
+  }
+
+  @override
+  String get stravaClubsErrAdminRequired =>
+      'Strava indica que no eres administrador de este club, así que no se puede vincular.';
+
+  @override
+  String get stravaClubsErrAlreadyLinked =>
+      'Este club de Strava ya está vinculado a otro club en Threkir.';
+
+  @override
+  String get stravaClubsErrNotClubAdmin =>
+      'Solo el propietario o un administrador del club de Threkir puede vincularlo.';
+
+  @override
+  String get stravaClubsErrReconnect =>
+      'Vuelve a conectar Strava en Ajustes e inténtalo de nuevo.';
+
+  @override
+  String get stravaClubsErrGeneric =>
+      'No se pudo vincular el club. Inténtalo de nuevo.';
+
+  @override
+  String get stravaClubsErrUnlink =>
+      'No se pudo desvincular el club. Inténtalo de nuevo.';
+
+  @override
+  String get seasonPlanTitle => 'Planificar una temporada';
+
+  @override
+  String get seasonPlanIntro =>
+      'Indica las carreras de tu temporada. Cada carrera A tiene su propio plan, los planes van uno tras otro con recuperación entre ellos y cada carrera B o C entra en el plan en el que cae.';
+
+  @override
+  String get seasonPlanDescribeTitle => 'Describe tu temporada';
+
+  @override
+  String get seasonPlanDescribeHint =>
+      'Indica tus carreras, sus fechas y distancias, y cuáles te importan más. Las carreras aparecen abajo para que las revises; no se planifica nada hasta que las confirmes.';
+
+  @override
+  String get seasonPlanDescribePlaceholder =>
+      'p. ej. Maratón de Richmond el 14 de noviembre, luego Two Oceans el 3 de abril como preparación y Comrades el 13 de junio.';
+
+  @override
+  String get seasonPlanDescribeButton => 'Buscar mis carreras';
+
+  @override
+  String get seasonPlanDescribeWorking => 'Leyendo…';
+
+  @override
+  String get seasonPlanDescribeFound =>
+      'Carreras encontradas en tu descripción. Revisa cada una antes de continuar.';
+
+  @override
+  String get seasonPlanErrorConsent =>
+      'El asistente de temporada necesita el aviso de IA actualizado. Aun así puedes añadir tus carreras abajo.';
+
+  @override
+  String get seasonPlanErrorDailyLimit =>
+      'Ya usaste tus solicitudes de IA de hoy. Añade tus carreras abajo tú mismo o inténtalo mañana.';
+
+  @override
+  String get seasonPlanErrorNotUnderstood =>
+      'No se encontraron carreras. Añádelas abajo tú mismo.';
+
+  @override
+  String get seasonPlanErrorInvalid =>
+      'No se pudo usar esa descripción. Añade tus carreras abajo tú mismo.';
+
+  @override
+  String get seasonPlanErrorSignIn =>
+      'Vuelve a iniciar sesión para usar el asistente. Aun así puedes añadir tus carreras abajo.';
+
+  @override
+  String get seasonPlanErrorUnavailable =>
+      'El asistente no está disponible ahora. Añade tus carreras abajo tú mismo.';
+
+  @override
+  String get seasonPlanRacesTitle => 'Tus carreras';
+
+  @override
+  String get seasonPlanRacesHint =>
+      'Las carreras A son los objetivos de la temporada y cada una tiene su plan. Las B son carreras de preparación que corres a fondo; las C las corres como entrenamiento.';
+
+  @override
+  String get seasonPlanNoRaces =>
+      'Aún no hay carreras. Describe tu temporada arriba o añade una carrera.';
+
+  @override
+  String seasonPlanRaceLegend(int n) {
+    return 'Carrera $n';
+  }
+
+  @override
+  String seasonPlanRemoveRace(int n) {
+    return 'Quitar la carrera $n';
+  }
+
+  @override
+  String get seasonPlanRaceName => 'Nombre';
+
+  @override
+  String get seasonPlanRaceDate => 'Fecha';
+
+  @override
+  String seasonPlanRaceDistance(String unit) {
+    return 'Distancia ($unit)';
+  }
+
+  @override
+  String get seasonPlanRacePriority => 'Prioridad';
+
+  @override
+  String get seasonPlanPriorityA => 'A — carrera objetivo';
+
+  @override
+  String get seasonPlanPriorityB => 'B — preparación';
+
+  @override
+  String get seasonPlanPriorityC => 'C — carrera de entrenamiento';
+
+  @override
+  String get seasonPlanRaceGoal => 'Tiempo objetivo (opcional)';
+
+  @override
+  String get seasonPlanAddRace => 'Añadir una carrera';
+
+  @override
+  String get seasonPlanDaysPerWeek => 'Días por semana';
+
+  @override
+  String get seasonPlanDaysPerWeekHint =>
+      'Cuántos días a la semana puedes entrenar; se usa en cada plan de la temporada.';
+
+  @override
+  String get seasonPlanPreviewButton => 'Confirmar carreras y ver los planes';
+
+  @override
+  String get seasonPlanPreviewTitle => 'Tu temporada';
+
+  @override
+  String get seasonPlanRefusedEmpty => 'Añade al menos una carrera.';
+
+  @override
+  String seasonPlanRefusedInvalid(String races) {
+    return 'Revisa estas carreras: $races. Cada una necesita un nombre de hasta 80 caracteres, una fecha y una distancia.';
+  }
+
+  @override
+  String seasonPlanRefusedNotAhead(String races) {
+    return 'Estas carreras son hoy o ya pasaron: $races. Quítalas o cambia la fecha.';
+  }
+
+  @override
+  String get seasonPlanRefusedNoA =>
+      'Marca al menos una carrera como A. Los planes de la temporada se crean para las carreras A.';
+
+  @override
+  String seasonPlanRefusedFirstTooSoon(String races) {
+    return 'Faltan menos de cuatro semanas para $races, demasiado pronto para un plan. Hazla B o C, o planifica para una carrera A posterior.';
+  }
+
+  @override
+  String seasonPlanRefusedTooClose(String races) {
+    return '$races están demasiado cerca para una recuperación y un plan de al menos cuatro semanas entre ellas. Haz una de ellas B.';
+  }
+
+  @override
+  String seasonPlanPreviewHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count planes',
+      one: '$count plan',
+    );
+    return '$_temp0, creados por el generador propio de la app. Revísalos y luego créalos.';
+  }
+
+  @override
+  String seasonPlanPlanWindow(String start, String end, int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    return '$start – $end · $_temp0';
+  }
+
+  @override
+  String seasonPlanPlanGoal(String distance, String date) {
+    return 'Objetivo: $distance el $date';
+  }
+
+  @override
+  String seasonPlanPlanGoalTime(String time) {
+    return 'tiempo objetivo $time';
+  }
+
+  @override
+  String get seasonPlanPlanRaces => 'Carreras de este plan';
+
+  @override
+  String seasonPlanPlanRaceLine(
+    String priority,
+    String name,
+    String distance,
+    String date,
+  ) {
+    return '$priority · $name · $distance · $date';
+  }
+
+  @override
+  String get seasonPlanPlanCreated => 'Creado';
+
+  @override
+  String seasonPlanRecoveryLine(String race, int days, String from, String to) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '$days día',
+    );
+    return 'Recuperación tras $race: $_temp0 sin plan ($from – $to)';
+  }
+
+  @override
+  String get seasonPlanUnplacedTitle => 'En ningún plan';
+
+  @override
+  String seasonPlanUnplacedBefore(String race, String date) {
+    return '$race el $date es antes de que empiece el primer plan.';
+  }
+
+  @override
+  String seasonPlanUnplacedBetween(String race, String date) {
+    return '$race el $date cae en la recuperación entre dos planes.';
+  }
+
+  @override
+  String seasonPlanUnplacedAfter(String race, String date) {
+    return '$race el $date es después de la última carrera A.';
+  }
+
+  @override
+  String seasonPlanUnplacedSameDay(String race, String date) {
+    return '$race el $date coincide con otra carrera de su plan.';
+  }
+
+  @override
+  String get seasonPlanUnplacedHint =>
+      'Estas carreras no se añadirán. Cambia su fecha o prioridad para incluirlas.';
+
+  @override
+  String get seasonPlanCreating => 'Creando…';
+
+  @override
+  String get seasonPlanRetry => 'Crear los planes restantes';
+
+  @override
+  String seasonPlanCreateButton(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Crear $count planes',
+      one: 'Crear $count plan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String seasonPlanBlocked(String plan, String existing) {
+    return '$plan se solaparía con tu plan $existing. No se creó nada. Termina o mueve ese plan primero.';
+  }
+
+  @override
+  String seasonPlanFailedNone(String error) {
+    return 'No se creó ningún plan: $error';
+  }
+
+  @override
+  String seasonPlanFailedPartial(String created, String failed, String error) {
+    return 'Creados: $created. Aún sin crear: $failed ($error).';
+  }
+
+  @override
+  String get seasonPlanReviewDisclosure => 'Revisar el aviso de IA';
+
+  @override
+  String get seasonPlanRaceDatePick => 'Elige el día de la carrera';
+
+  @override
+  String get seasonPlanRaceGoalHint =>
+      'h:mm:ss, p. ej. 3:45:00. Déjalo vacío si no tienes tiempo objetivo.';
+
+  @override
+  String seasonPlanRowInvalid(int n) {
+    return 'La carrera $n necesita un nombre, un día de carrera, una distancia y, o ningún tiempo objetivo, o uno con formato h:mm:ss.';
+  }
+
+  @override
+  String get workoutMoveAction => 'Mover a otro día';
+
+  @override
+  String get workoutMoveHint =>
+      'Elige un día de esta semana. Un entrenamiento que ya esté en ese día pasa al día que deja este.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Se intercambia con $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'No se pudo mover este entrenamiento: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Guarda o descarta tus cambios antes de mover este entrenamiento.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run corriendo / $walk caminando)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run corriendo';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration de calentamiento';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de enfriamiento';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'unos $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zona $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zona $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'trote';
+
+  @override
+  String get workoutEffortEasy => 'suave';
+
+  @override
+  String get workoutEffortWalk => 'caminando';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Sesión de caminar-correr. Alterna correr y caminar según el temporizador.';
+
+  @override
+  String get workoutMetricSession => 'Sesión';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recuperación';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ suave';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel =>
+      'Línea de tiempo de los segmentos del entrenamiento';
+
+  @override
+  String get workoutFreeFormTitle => 'Carrera libre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Sin segmentos que seguir: solo corre la distancia al ritmo sugerido.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Entrenamiento estructurado: sigue cada segmento tal como está.';
+
+  @override
+  String get workoutTaglineEasy =>
+      'Esfuerzo suave libre. Corre según las sensaciones.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Tirada larga libre. Dosifícate para la segunda mitad.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Día de descanso. Movimiento ligero solo si te apetece.';
+
+  @override
+  String get workoutTaglineRace =>
+      'Día de carrera. Confía en la puesta a punto.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Carrera libre.';
+
+  @override
+  String get workoutKindShortEasy => 'S';
+
+  @override
+  String get workoutKindShortLong => 'TL';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Ser';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Carr';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', completado';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', omitido';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', no realizado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoy';
+
+  @override
+  String get planDetailNextUp => 'A continuación';
+
+  @override
+  String get planDetailGoAndRunIt => '¡A correr!';
+
+  @override
+  String get planDetailRestDayTitle => 'Día de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'No hay entrenamiento programado: recupérate y sigue mañana.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoy';
+
+  @override
+  String get planDetailRaceDayTitle => 'Día de carrera';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Progreso de entrenamientos';
+
+  @override
+  String get planDetailFirstWeek => 'Primera semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Asignado por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Asignado por tu entrenador';
+
+  @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Creado para $race · $date';
+  }
+
+  @override
+  String planDetailStartedFrom(String author) {
+    return 'Empezado a partir del plan de $author';
+  }
+
+  @override
+  String get planDetailStartedFromRunner =>
+      'Empezado a partir del plan de otro corredor';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'En pausa';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total hechos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
+  String get planDetailGoToThisWeek => 'Ir a esta semana';
+
+  @override
+  String get planNewStartingPoint => '¿Desde dónde empiezas?';
+
+  @override
+  String get planNewStartingPointNew => 'Nunca he corrido';
+
+  @override
+  String get planNewStartingPointNewHint =>
+      'Un plan de caminar y correr de 2 o 3 días por semana que te lleva a correr sin pausas para caminar.';
+
+  @override
+  String get planNewStartingPointBuilding => 'Corro un poco y quiero ir a más';
+
+  @override
+  String get planNewStartingPointBuildingHint =>
+      'Sin carrera a la vista: elige una distancia como meta, sin tiempo objetivo.';
+
+  @override
+  String get planNewStartingPointRace => 'Me preparo para una carrera';
+
+  @override
+  String get planNewStartingPointRaceHint =>
+      'Una carrera objetivo y, si lo tienes, un tiempo objetivo.';
+
+  @override
+  String get planNewStartDateHintWalkRun =>
+      'Aquí empieza la semana 1. Un plan de caminar y correr puede empezar cualquier día, incluido hoy.';
+
+  @override
+  String get planNewDaysPerWeekHint =>
+      'Cuántos días por semana el plan programa una carrera; el resto son días de descanso. Elige el número que puedas mantener cada semana, no el de tu mejor semana.';
+
+  @override
+  String get planNewDaysPerWeekWalkRunHint =>
+      'Un plan de caminar y correr pone un día de descanso después de cada sesión, así que se hace 2 o 3 días por semana.';
+
+  @override
+  String get planNewGoalRaceHint =>
+      'Determina cuántas semanas dura el plan y hasta dónde crecen las tiradas largas. Elige la distancia para la que te preparas, no una que ya hayas corrido.';
+
+  @override
+  String get planNewGoalTimeHint =>
+      'Define los ritmos objetivo. Déjalo en blanco para un plan solo de volumen.';
+
+  @override
+  String get planNewOverrideHelp =>
+      'Déjalo en blanco para la duración habitual de tu carrera objetivo. Ponle un valor si cuentas hacia atrás desde una fecha de carrera más cercana o más lejana.';
+
+  @override
+  String get planNewNameHelp =>
+      'El nombre con el que el plan aparece en tu lista de planes y encima de cada semana. No afecta al calendario.';
+
+  @override
+  String get planNewRecent5kConfirmHint =>
+      'Si no lo marcas, tus ritmos salen de tu tiempo objetivo en lugar del tiempo de arriba.';
+
+  @override
+  String planNewGoalAheadOfRecent(String predicted) {
+    return 'Tu objetivo es más rápido de lo que indican tus carreras recientes: apuntan a unos $predicted para esta distancia. Los ritmos salen del objetivo, así que si es ambicioso, todos los ritmos del plan también lo son. Un objetivo más lento, o un 5K reciente que confirmes abajo, los ajusta a lo que puedes correr ahora.';
+  }
+
+  @override
+  String get planNewReturnTitle => 'Volver tras un parón';
+
+  @override
+  String planNewReturnBody(int weeks, String pre, String cap) {
+    return 'Has estado unas $weeks semanas sin correr. Antes hacías de media $pre por semana, así que la semana 1 no pide más de $cap y cada semana suma como mucho un 10 % hasta que el plan alcanza su propio calendario. Las sesiones de velocidad de esas semanas pasan a ser rodajes suaves.';
+  }
+
+  @override
+  String get planNewReturnEaseBack => 'Volver poco a poco';
+
+  @override
+  String get planNewReturnWalkRun =>
+      'Volver con intervalos de caminar y correr';
+
+  @override
+  String planNewThinHistory(String opening) {
+    return 'Has corrido en menos de 3 de las últimas 4 semanas, así que este plan no se puede comparar con tu entrenamiento reciente. Si la semana 1 ($opening) es más de lo que has estado corriendo, menos días o intervalos de caminar y correr son un comienzo más suave.';
+  }
+
+  @override
+  String get planNewThinHistoryWalkRun =>
+      'Empezar con intervalos de caminar y correr';
+
+  @override
+  String planNewStarterSummary(int weeks, int days) {
+    return '$weeks semanas · $days días por semana';
+  }
+
+  @override
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
+    return '$weeks semanas · $days días por semana · $min–$max min por sesión';
+  }
+
+  @override
+  String plansStarterStarts(String date) {
+    return 'Empieza el $date';
+  }
+
+  @override
+  String get plansStarterStart => 'Empezar este plan';
+
+  @override
+  String get planNewStartDateHint =>
+      'Aquí empieza la semana 1. Las semanas del plan van de domingo a sábado, así que solo se puede elegir un domingo.';
+
+  @override
+  String get planNewStartDatePickerHelp => 'Elige un domingo';
+
+  @override
+  String get planNewStartDatePickerHelpWalkRun => 'Elige cualquier día';
+
+  @override
+  String get planNewHoursLabel => 'Horas';
+
+  @override
+  String get planNewMinutesLabel => 'Minutos';
+
+  @override
+  String get planNewSecondsLabel => 'Segundos';
+
+  @override
+  String get planNewNameRequired => 'Ponle un nombre al plan.';
+
+  @override
+  String get planNewReadyMadeTitle => 'Empezar con un plan ya hecho';
+
+  @override
+  String get planNewReadyMadeBody =>
+      'Un plan integrado o uno que haya publicado un club al que perteneces. Puedes editarlo después.';
+
+  @override
+  String get planNewReadyMadeButton => 'Ver planes ya hechos';
+
+  @override
+  String get planNewReadyMadeBuiltIn => 'Planes integrados';
+
+  @override
+  String get planNewReadyMadeClubs => 'De tus clubes';
+
+  @override
+  String get planNewBuildOwn => 'O crea el tuyo';
+
+  @override
+  String planNewSummary(int weeks, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    return '$_temp0 · termina el $date';
+  }
+
+  @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'Estás creando enlaces de calendario demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitRestartPlan(String wait) {
+    return 'Estás reiniciando planes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String get planCalendarFeedTitle => 'Calendario del plan de entrenamiento';
+
+  @override
+  String get planCalendarFeedTileSubtitle =>
+      'Los entrenamientos de tu plan en Google Calendar, Calendario de Apple u Outlook';
+
+  @override
+  String get planCalendarFeedDescription =>
+      'Suscríbete desde Google Calendar, Calendario de Apple u Outlook para ver los entrenamientos de tu plan activo como eventos de todo el día. Siguen a tu plan cuando cambia.';
+
+  @override
+  String get planCalendarFeedLoadFailed =>
+      'No se pudo cargar tu enlace de calendario.';
+
+  @override
+  String get planCalendarFeedRetry => 'Reintentar';
+
+  @override
+  String get planCalendarFeedCreate => 'Crear enlace de calendario';
+
+  @override
+  String get planCalendarFeedCreateFailed =>
+      'No se pudo crear el enlace de calendario. Inténtalo de nuevo.';
+
+  @override
+  String get planCalendarFeedRevokeFailed =>
+      'No se pudo desactivar el enlace de calendario. Inténtalo de nuevo.';
+
+  @override
+  String get planCalendarFeedUrlLabel => 'Enlace de calendario';
+
+  @override
+  String get planCalendarFeedShownOnce =>
+      'Copia este enlace ahora. Solo se muestra una vez; si lo pierdes, crea uno nuevo.';
+
+  @override
+  String get planCalendarFeedCopy => 'Copiar enlace';
+
+  @override
+  String get planCalendarFeedCopied => 'Enlace copiado';
+
+  @override
+  String get planCalendarFeedSubscribe => 'Abrir en la app de calendario';
+
+  @override
+  String planCalendarFeedActiveSince(String date) {
+    return 'Enlace de calendario creado: $date';
+  }
+
+  @override
+  String planCalendarFeedLastRead(String date) {
+    return 'Última lectura de un calendario: $date';
+  }
+
+  @override
+  String get planCalendarFeedNeverRead =>
+      'Ningún calendario lo ha leído todavía.';
+
+  @override
+  String get planCalendarFeedLostLink =>
+      'El enlace no se puede volver a mostrar. Crea uno nuevo si lo necesitas; el anterior dejará de funcionar.';
+
+  @override
+  String get planCalendarFeedRotate => 'Crear un enlace nuevo';
+
+  @override
+  String get planCalendarFeedRevoke => 'Desactivar';
+
+  @override
+  String get planCalendarFeedRotateTitle =>
+      '¿Crear un enlace de calendario nuevo?';
+
+  @override
+  String get planCalendarFeedRotateMessage =>
+      'El enlace actual deja de funcionar de inmediato. Un calendario suscrito a él deja de actualizarse hasta que te suscribas con el enlace nuevo.';
+
+  @override
+  String get planCalendarFeedRevokeTitle =>
+      '¿Desactivar el enlace de calendario?';
+
+  @override
+  String get planCalendarFeedRevokeMessage =>
+      'El enlace deja de funcionar de inmediato y los calendarios suscritos dejan de actualizarse. Los eventos ya copiados pueden quedarse hasta que el calendario se actualice.';
+
+  @override
+  String get planCalendarFeedPrivacy =>
+      'Quien tenga el enlace puede ver las fechas, tipos y objetivos de tus entrenamientos. No incluye ubicación, notas ni el nombre del plan. Crea un enlace nuevo si lo compartiste por error.';
+
+  @override
+  String get commonStaleOffline =>
+      'No tienes conexión. Se muestra lo último que se cargó.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'No se pudo actualizar. Se muestra lo último que se cargó.';
+
+  @override
+  String get planDetailMoreActions => 'Más acciones del plan';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Acciones de la semana $n';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Mover fechas…';
+
+  @override
+  String get planDetailShiftTitle => '¿Mover todo el plan?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'Esto mueve todos los entrenamientos y la fecha de tu carrera. Puedes volver a moverlo para deshacerlo.';
+
+  @override
+  String get planDetailShiftDaysLabel => 'Días a mover (negativo = antes)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Introduce un número entero de días entre -366 y 366, distinto de 0.';
+
+  @override
+  String get planDetailShiftApply => 'Mover fechas';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan movido $n días',
+      one: 'Plan movido $n día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      '¿Mover también los planes siguientes?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mover $n días choca con los planes que vienen después. Si los mueves lo mismo, se mantiene la separación.',
+      one:
+          'Mover $n día choca con los planes que vienen después. Si los mueves lo mismo, se mantiene la separación.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Moverlos también';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'Estas fechas chocan con un plan anterior a este. Elige un desplazamiento menor o termina antes ese plan.';
+
+  @override
+  String get planDetailMarkRecovery => 'Convertir en semana de recuperación';
+
+  @override
+  String get planDetailRecoveryConfirmTitle =>
+      '¿Convertir esta semana en semana de recuperación?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'Esto reduce el volumen de la semana $n a aproximadamente el 60 % y convierte las sesiones de calidad en rodajes suaves. Los ritmos y distancias originales no se pueden recuperar.';
+  }
+
+  @override
+  String get planDetailRecoveryDone =>
+      'Semana convertida en semana de recuperación';
+
+  @override
+  String get planDetailExportMarkdown => 'Exportar como Markdown';
+
+  @override
+  String get planDetailExportJson => 'Exportar como JSON';
+
+  @override
+  String get planDetailAbandonPlan => 'Abandonar plan';
+
+  @override
+  String get planDetailDeletePlan => 'Eliminar plan';
+
+  @override
+  String get planDetailEditDetails => 'Editar detalles del plan';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Introduce un tiempo objetivo mayor que cero, con minutos y segundos hasta 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Cambiarlo recalcula los ritmos objetivo de los entrenamientos que quedan. Los pasados, hechos y saltados conservan los suyos, y un plan creado a partir de un 5K reciente conserva sus ritmos.';
+
+  @override
+  String get planDetailNotesLabel => 'Notas';
+
+  @override
+  String get planDetailRulesLabel => 'Reglas del plan, una por línea';
+
+  @override
+  String get planDetailSaveDetails => 'Guardar';
+
+  @override
+  String get planDetailDetailsSaved => 'Plan actualizado.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Plan actualizado. Ritmos recalculados para $n entrenamientos próximos.',
+      one:
+          'Plan actualizado. Ritmos recalculados para $n entrenamiento próximo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'Ajustar a mi ciclo';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => 'Ajustar al embarazo';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle =>
+      '¿Ajustar las semanas restantes?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Los próximos entrenamientos en tus días menstruales y de fase lútea tardía se suavizarán: una reducción moderada del volumen y sesiones de calidad por sensaciones. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Los próximos entrenamientos se ajustarán al embarazo: las sesiones duras y las carreras pasan a ser rodajes suaves y el volumen se reduce por trimestre. Esto no es consejo médico: sigue a tu profesional sanitario. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Semanas próximas ajustadas.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'Ningún entrenamiento próximo necesitaba ajuste.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Suaviza los próximos entrenamientos en los días menstruales y de fase lútea tardía de tu ciclo. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailResumeShiftTitle => '¿Reanudar y retrasar?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan $n semanas, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el $date.',
+      one:
+          'Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan $n semana, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan reanudado y retrasado $n semanas.',
+      one: 'Plan reanudado y retrasado $n semana.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailRestartPlan => 'Reiniciar el plan…';
+
+  @override
+  String get planDetailRestartTitle => 'Reiniciar este plan';
+
+  @override
+  String get planDetailRestartChangeDate => 'Cambiar la fecha de inicio';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'La nueva copia empieza el $date y termina el $end. Este plan, y cualquier plan activo con el que se solapen esas fechas, se archiva como abandonado. Se conservan sus semanas, entrenamientos y enlaces a carreras.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'La nueva copia empieza el $date y termina el $end. Cualquier plan activo con el que se solapen esas fechas se archiva como abandonado. Este plan conserva sus semanas, entrenamientos y enlaces a carreras.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'El día de la carrera pasa al $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'La carrera de este plan, el $date, todavía no ha llegado. Reiniciarlo movería el día de la carrera, así que cambia la fecha de la carrera o empieza un plan nuevo.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'Este plan tiene una carrera que aún no ha llegado, así que no se puede reiniciar.';
+
+  @override
+  String get planDetailRestartBeforeTodayError =>
+      'Esa fecha de inicio es anterior a hoy en la zona horaria de tu cuenta. Elige una fecha posterior.';
+
+  @override
+  String get planDetailRestartConfirm => 'Reiniciar el plan';
+
+  @override
+  String get planDetailRestartDone =>
+      'Plan reiniciado. Esta es tu nueva copia.';
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Cambiar fecha de carrera…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'Nueva fecha de carrera';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => '¿Cambiar la fecha de carrera?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Tu carrera pasa al $date. Se añaden $n semanas de desarrollo antes de la puesta a punto, que se queda como está. Las semanas que ya empezaste no cambian.',
+      one:
+          'Tu carrera pasa al $date. Se añade $n semana de desarrollo antes de la puesta a punto, que se queda como está. Las semanas que ya empezaste no cambian.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Tu carrera pasa al $date. Se quitan $n semanas de desarrollo y la puesta a punto se queda como está. Las semanas que ya empezaste no cambian.',
+      one:
+          'Tu carrera pasa al $date. Se quita $n semana de desarrollo y la puesta a punto se queda como está. Las semanas que ya empezaste no cambian.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Tu carrera pasa al $date, en la misma semana. No se añaden ni se quitan semanas, y la puesta a punto se queda como está.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Cambiar fecha de carrera';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Fecha de carrera cambiada al $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return 'El $date es demasiado pronto para mantener tu puesta a punto, incluso quitando el desarrollo. La fecha de carrera más temprana que alcanza este plan es el $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast =>
+      'Elige una fecha de carrera posterior a hoy.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'Esa fecha no es válida.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Tu carrera ya es ese día.';
+
+  @override
+  String get planDetailRaceDateNoRace =>
+      'Este plan no tiene ninguna carrera pendiente que mover.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'La semana de carrera ya empezó, así que no se pueden añadir semanas antes. Elige un día de esta semana o crea un plan nuevo para la carrera posterior.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'Eso es más de un año después. Crea mejor un plan nuevo para esa carrera.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'Este plan no tiene ninguna semana de desarrollo que repetir, así que no se puede alargar.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Hay otra carrera o una sesión completada en las semanas que se moverían. Cámbiala primero.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'La nueva fecha de carrera se solapa con otro plan activo. Mueve o termina primero ese plan.';
+
+  @override
+  String get phoneSurfaceVibrationCues => 'Avisos por vibración';
+
+  @override
+  String get phoneSurfaceVibrationCuesSubtitle =>
+      'Vibra en cada cambio de fase del entrenamiento, al terminarlo y con las alertas de ritmo, incluso con la pantalla apagada.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Hoy';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'Sin plan de entrenamiento';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Elige un plan';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nada programado';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Abre Threkir para actualizar';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Día de descanso';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Hecho';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Omitido';
+
+  @override
+  String get dashboardTrainForSomething => 'Entrena para algo';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Elige una carrera o una distancia y obtén un plan semana a semana con ritmos ajustados a tu forma.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Tus 5 km en $time el $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Crea un plan a partir de él. Antes de que marque tus ritmos, confirmarás que sigue reflejando tu forma.';
+
+  @override
+  String get dashboardRecent5kCta => 'Crear un plan';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Ahora no';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'No se pudo guardar, así que la sugerencia puede volver a aparecer.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Rellenado con tus 5 km recientes. Activa el interruptor de abajo solo si refleja tu forma de hoy.';
+
+  @override
+  String get planBreakTitle => 'Volver después de un descanso';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '$days día',
+    );
+    return 'Sin carreras ni entrenamientos del plan registrados desde el $date: $_temp0.';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return 'Puedes retomar el plan donde lo dejaste. El día de la carrera sigue siendo el $date y se mantiene la puesta a punto; cada semana que repitas sustituye a una semana de desarrollo posterior.';
+  }
+
+  @override
+  String get planBreakHintNoRace =>
+      'Puedes retomar el plan donde lo dejaste; el resto del plan se retrasa para hacer sitio.';
+
+  @override
+  String get planBreakRepeat => 'Repetir esta semana';
+
+  @override
+  String get planBreakWeeksLabel => 'Semanas';
+
+  @override
+  String get planBreakPushBack => 'Retrasar el plan';
+
+  @override
+  String get planBreakShortenBuild => 'Acortar el desarrollo';
+
+  @override
+  String get planBreakDismiss => 'Dejar el plan como está';
+
+  @override
+  String get planBreakConfirmTitle => '¿Cambiar tu plan?';
+
+  @override
+  String get planBreakConfirmApply => 'Cambiar plan';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Las últimas $n semanas se repiten a partir de la semana que viene.',
+      one: 'Esta semana se repite la semana que viene.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Se quitan $n semanas de desarrollo posteriores',
+      one: 'Se quita $n semana de desarrollo posterior',
+    );
+    return '$_temp0 para hacer sitio; la puesta a punto no cambia.';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'El día de la carrera sigue siendo el $date.';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return 'Las semanas siguientes se retrasan y el plan termina ahora el $date.';
+  }
+
+  @override
+  String get planBreakPreviewPast =>
+      'Las semanas que ya has corrido y lo que ya has hecho no cambian.';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'Plan actualizado. Termina el $date.';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'No se pudo cambiar el plan: $error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String get planBreakUnavailable =>
+      'No se pueden repetir tantas semanas en este plan.';
+
+  @override
+  String get planBreakWeeksFewer => 'Una semana menos';
+
+  @override
+  String get planBreakWeeksMore => 'Una semana más';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Te saltaste: $kind el $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Recupérala alargando tu próxima tirada larga de $from a $to. Verás el cambio antes de que se guarde.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Tu próxima tirada larga ya lo cubre, así que no hay nada que añadir.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'Estás en la puesta a punto, así que déjala pasar: llegar fresco el día de la carrera importa más que otra tirada larga.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'Lo siguiente es una semana de recuperación, así que déjala pasar y deja que esa semana lo absorba.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Solo vale la pena recuperar una tirada larga. Deja pasar esta en lugar de meterla en los próximos días.';
+
+  @override
+  String get missedPromptMakeUp => 'Recuperarla';
+
+  @override
+  String get missedPromptLetGo => 'Dejarla pasar';
+
+  @override
+  String get missedPromptRecommended => 'Recomendado';
+
+  @override
+  String get missedPromptLetGoDone => 'Hecho. Tu plan sigue igual.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'No se pudo guardar tu respuesta: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'Ya no queda nada que recuperar.';
+
+  @override
+  String get planDetailRepeatWeek => 'Repetir esta semana';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => '¿Demasiado duro?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Repite esta semana la próxima semana. Lo que ya hiciste queda hecho y el resto del plan se retrasa una semana.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return '¿Repetir la semana $n?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'La semana $n se repite como semana $copy, a partir del $start. Cada semana posterior se retrasa una, y el plan ahora termina el $end. Los entrenamientos que ya hiciste se quedan como están.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'La semana $n se repite como semana $copy, a partir del $start. Para mantener la carrera el $race, sale una semana posterior antes de la puesta a punto. Los entrenamientos que ya hiciste se quedan como están.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Repetir semana';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'La semana $n se repite a partir del $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'No queda ninguna semana antes de la puesta a punto para hacer sitio, así que repetir esta semana movería el día de la carrera. Cambia la fecha de la carrera en su lugar.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'Una semana que se movería tiene una carrera o un entrenamiento ya hecho, así que esta semana no se puede repetir.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'Esta es la última semana del plan, así que no hay nada que retrasar.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Solo se puede repetir esta semana o la anterior de un plan activo.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'Estás repitiendo semanas del plan demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitCreateOverlayLink(String wait) {
+    return 'Estás creando enlaces de overlay demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Repetir esta semana haría que el plan se solapara con otro plan activo. Mueve o termina primero ese plan.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Saltarte una sesión no te cuesta nada. Sigue adelante o, si esta semana se te hizo dura, repítela antes de subir de nivel. Repetir una semana no te penaliza.';
+
+  @override
+  String get walkRunGraduationTitle => 'Lo lograste: del sofá a los 5 km';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'Corriste 5 km sin parar. Empezaste con un minuto de carrera entre tramos caminando.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'Terminaste el plan corriendo todo el rato, sin pausas para caminar. Empezaste con un minuto de carrera entre tramos caminando.';
+
+  @override
+  String get walkRunGraduationNextTitle => '¿Y ahora qué?';
+
+  @override
+  String get walkRunGraduationTenK => 'Entrenar para 10 km';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'O mantén el hábito: tres carreras suaves por semana conservan lo que has construido, sin necesidad de plan.';
+
+  @override
+  String planRecapTitle(String name) {
+    return 'Así fue $name';
+  }
+
+  @override
+  String get planRecapLoading => 'Cargando el resumen…';
+
+  @override
+  String get planRecapLoadFailed => 'No se pudo cargar el resumen.';
+
+  @override
+  String get planRecapRetry => 'Reintentar';
+
+  @override
+  String get planRecapSessionsLabel => 'Sesiones';
+
+  @override
+  String planRecapSessionsValue(int done, int total) {
+    return '$done de $total';
+  }
+
+  @override
+  String planRecapSessionsPct(int pct) {
+    return '$pct % hecho';
+  }
+
+  @override
+  String planRecapSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count omitidas',
+      one: '$count omitida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planRecapMissed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count perdidas',
+      one: '$count perdida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planRecapLongRunsLabel => 'Tiradas largas';
+
+  @override
+  String planRecapLongRunsRange(String first, String longest) {
+    return 'De $first a $longest';
+  }
+
+  @override
+  String planRecapLongRunsLongest(String longest) {
+    return 'La más larga: $longest';
+  }
+
+  @override
+  String get planRecapDistanceLabel => 'Distancia';
+
+  @override
+  String get planRecapTimeLabel => 'Tiempo';
+
+  @override
+  String planRecapVolumeValue(String done, String planned) {
+    return '$done de $planned';
+  }
+
+  @override
+  String planRecapTimeValue(int h, int m) {
+    return '$h h $m min';
+  }
+
+  @override
+  String get planRecapRaceLabel => 'Día de carrera';
+
+  @override
+  String planRecapRaceRun(String time, String distance) {
+    return '$time en $distance';
+  }
+
+  @override
+  String get planRecapRaceDnf => 'No terminó';
+
+  @override
+  String get planRecapRaceNoRun => 'Marcada como hecha, sin carrera vinculada';
+
+  @override
+  String get planRecapRaceNotRun => 'Ninguna carrera el día de la prueba';
+
+  @override
+  String get planRecapRecordsLabel => 'Récords personales';
+
+  @override
+  String get planRecapRecordsNone =>
+      'Ningún récord personal nuevo durante este plan.';
+
+  @override
+  String get planRecapBracketMile => 'Milla';
+
+  @override
+  String get planRecapBracket5k => '5 km';
+
+  @override
+  String get planRecapBracket8k => '8 km';
+
+  @override
+  String get planRecapBracket10k => '10 km';
+
+  @override
+  String get planRecapBracket12k => '12 km';
+
+  @override
+  String get planRecapBracketHalf => 'Medio maratón';
+
+  @override
+  String get planRecapBracketMarathon => 'Maratón';
+
+  @override
+  String get planRecapNextTitle => 'Qué sigue';
+
+  @override
+  String planRecapRecovery(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días suaves',
+      one: '$days día suave',
+    );
+    return 'Primero recupera: $_temp0, hasta el $date.';
+  }
+
+  @override
+  String planRecapNextPlan(String date) {
+    return 'Tu próximo plan puede empezar el $date.';
+  }
+
+  @override
+  String planRecapNextPlanSeeded(String date, String time) {
+    return 'Tu próximo plan puede empezar el $date, con ritmos de un 5 km en $time, el equivalente de tu carrera. Lo confirmas en el asistente.';
+  }
+
+  @override
+  String get planRecapNextPlanCta => 'Crear tu próximo plan';
+
+  @override
+  String get prefsExtraRecovery => 'Más recuperación entre días duros';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'Los planes nuevos dejan 72 horas entre tu tirada larga y la siguiente sesión dura, y aflojan una semana de cada tres en lugar de una de cada cuatro. Los planes ya lo hacen a partir de los 50 si tu fecha de nacimiento está registrada.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Separa más las sesiones duras y afloja una semana de cada tres. Se guarda en tus ajustes de entrenamiento, así que todos los planes nuevos lo usan.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'No se pudo guardar el ajuste. Inténtalo de nuevo.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Como tienes 50 años o más, este plan separa más las sesiones duras y afloja una semana de cada tres.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Los planes dan automáticamente más recuperación a quienes corren con 50 años o más.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Añade tu fecha de nacimiento';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Los planes solo pueden usar tu fecha de nacimiento para ajustarse a tu edad con tu consentimiento para el uso de datos de salud.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Revisar el consentimiento';
+
+  @override
+  String get messagesAiTag => 'IA';
+
+  @override
+  String get messagesAiTagSr => 'Generado por IA';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Pregunta sobre tu entrenamiento, tu plan o una carrera.';
+
+  @override
+  String get messagesCoachPin => 'Fijar el Entrenador IA arriba';
+
+  @override
+  String get messagesCoachUnpin => 'Dejar de fijar el Entrenador IA';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'No se pudo guardar la posición del Entrenador IA. Inténtalo de nuevo.';
+
+  @override
+  String get prefsSectionMessages => 'Mensajes';
+
+  @override
+  String get prefsCoachInMessages => 'Entrenador IA en Mensajes';
+
+  @override
+  String get prefsReadReceipts => 'Confirmaciones de lectura';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Muestra a los demás cuándo has leído sus mensajes. Si lo desactivas, tampoco verás cuándo han leído los tuyos.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'No se pudieron cambiar las confirmaciones de lectura.';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Fijado arriba';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Con tus conversaciones';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Oculto';
+
+  @override
+  String get prefsDisclosureLevel => 'Cuánto detalle';
+
+  @override
+  String get prefsHomeCards => 'Tarjetas de Inicio';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Desmarca un grupo para quitarlo de Inicio. La elección te sigue en todos tus dispositivos.';
+
+  @override
+  String get prefsDisclosureAuto => 'Automático';
+
+  @override
+  String get prefsDisclosureSimple => 'Solo lo básico';
+
+  @override
+  String get prefsDisclosureStandard => 'Lo habitual';
+
+  @override
+  String get prefsDisclosureFull => 'Todo';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'Cuánto muestra la app antes de que pidas más. Automático lee el objetivo que fijaste y cuántas carreras llevas registradas, y hoy elige $level. Nunca se oculta nada para siempre: una sección plegada está a un toque de abrirse.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Carga de entrenamiento';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Preferencias.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'Mi $period corriendo';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'en $count carreras',
+      one: 'en 1 carrera',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'En movimiento';
+
+  @override
+  String get recapCardClimbed => 'Desnivel';
+
+  @override
+  String get recapCardActiveMonths => 'Meses activos';
+
+  @override
+  String get recapShareSheetTitle => 'Comparte tu resumen';
+
+  @override
+  String get recapShareAspectSquare => 'Cuadrado';
+
+  @override
+  String get recapShareAspectStory => 'Historia';
+
+  @override
+  String get recapShareStyleVideo => 'Vídeo';
+
+  @override
+  String get recapShareVideoBody =>
+      'Convierte este resumen en un vídeo vertical corto. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.';
+
+  @override
+  String get recapSharePreviewLabel => 'Vista previa de la imagen del resumen';
+
+  @override
+  String get recapShareImage => 'Compartir imagen';
+
+  @override
+  String get recapShareAsText => 'Compartir como texto';
+
+  @override
+  String get recapShareImageError =>
+      'No se pudo crear la imagen del resumen. Inténtalo de nuevo.';
+
+  @override
+  String get shareCardStyleVideo => 'Vídeo';
+
+  @override
+  String get shareCardVideoBody =>
+      'Convierte esta carrera en un vídeo vertical de sobrevuelo en 3D. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.';
+
+  @override
+  String get shareCardVideoOpen => 'Abrir exportación de vídeo';
+
+  @override
+  String get shareCardVideoError =>
+      'No se pudo abrir el navegador. Inténtalo de nuevo.';
+
+  @override
+  String get headToHeadCompare => 'Comparar con un amigo';
+
+  @override
+  String get headToHeadTitle => 'Cara a cara';
+
+  @override
+  String get headToHeadStyleVersus => 'Duelo';
+
+  @override
+  String get headToHeadFriend => 'Amigo';
+
+  @override
+  String get headToHeadLoading => 'Buscando amigos para comparar…';
+
+  @override
+  String get headToHeadEmpty =>
+      'Aún no hay nadie con quien comparar aquí. Hace falta un amigo al que sigas y que te siga, con perfil público, y una carrera pública aquí de cada uno.';
+
+  @override
+  String get headToHeadLoadFailed => 'No se pudo cargar la comparación.';
+
+  @override
+  String get headToHeadRetry => 'Reintentar';
+
+  @override
+  String get headToHeadMe => 'Yo';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'Gané por $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name ganó por $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Empate';
+
+  @override
+  String get headToHeadFriendFallback => 'Un amigo';
+
+  @override
+  String get headToHeadPreview => 'Vista previa de la tarjeta cara a cara';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Solo puedes comparar con amigos que te siguen y tienen perfil público, y solo con carreras públicas.';
+
+  @override
+  String get streamerOverlayTitle => 'Overlay para streaming';
+
+  @override
+  String get streamerOverlayIntro =>
+      'Añade este enlace en OBS o en tu app de streaming como fuente de navegador. Muestra tus datos en directo sin hacer pública tu carrera.';
+
+  @override
+  String get streamerOverlayCreate => 'Crear enlace del overlay';
+
+  @override
+  String get streamerOverlayCreated => 'Enlace del overlay listo';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'No se pudo crear el enlace del overlay. Inténtalo de nuevo.';
+
+  @override
+  String get streamerOverlayUrlLabel => 'URL de la fuente de navegador';
+
+  @override
+  String get streamerOverlayCopy => 'Copiar enlace';
+
+  @override
+  String get streamerOverlayCopied => 'Enlace copiado';
+
+  @override
+  String get streamerOverlayCopyFailed => 'No se pudo copiar el enlace.';
+
+  @override
+  String get streamerOverlayReplace => 'Sustituir enlace';
+
+  @override
+  String get streamerOverlayReplaceTitle => '¿Sustituir el enlace del overlay?';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      'El enlace anterior deja de funcionar al instante. Actualiza la fuente de navegador en tu app de streaming.';
+
+  @override
+  String get streamerOverlayRevoke => 'Desactivar overlay';
+
+  @override
+  String get streamerOverlayRevokeTitle =>
+      '¿Desactivar el overlay para streaming?';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'El enlace deja de funcionar al instante. Puedes crear uno nuevo más tarde.';
+
+  @override
+  String get streamerOverlayRevoked => 'Overlay para streaming desactivado';
+
+  @override
+  String get streamerOverlayRevokeFailed =>
+      'No se pudo desactivar el overlay. Inténtalo de nuevo.';
+
+  @override
+  String get streamerOverlayDelayLabel => 'Retraso del stream';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      'Los espectadores ven tus datos con este retraso. Se aplica en nuestro servidor, así que nadie puede saltárselo.';
+
+  @override
+  String get streamerOverlayDelayNone => 'Sin retraso';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => 'Retraso guardado';
+
+  @override
+  String get streamerOverlayDelayFailed =>
+      'No se pudo cambiar el retraso. Inténtalo de nuevo.';
+
+  @override
+  String get streamerOverlayLoadFailed =>
+      'No se pudo cargar tu overlay para streaming.';
+
+  @override
+  String get streamerOverlayRetry => 'Reintentar';
+
+  @override
+  String get streamerOverlayUnavailable =>
+      'El overlay para streaming no está disponible ahora mismo.';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'Activa el trazado de la ruta y la frecuencia cardiaca en Ajustes → Privacidad y uso compartido en la web.';
+
+  @override
+  String get liveSpectatorHeartRate => 'Frecuencia cardíaca';
+
+  @override
+  String get shareCardStylePr => 'Tarjeta de marca';
+
+  @override
+  String get shareCardPrHeadline => 'Nueva marca personal';
+
+  @override
+  String get shareCardPrHeld => 'Marca personal';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time más rápido';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Marca anterior $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Primer $distance registrado';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Marca';
+
+  @override
+  String get shareCardPrHint =>
+      'Tus marcas siguen siendo privadas. Al compartir solo sale esta imagen.';
+
+  @override
+  String get shareCardKind => 'Destacado';
+
+  @override
+  String get shareCardKindStats => 'Datos';
+
+  @override
+  String get shareCardKindSplits => 'Parciales';
+
+  @override
+  String get shareCardKindPr => 'Mejor marca';
+
+  @override
+  String get shareCardKindStreak => 'Racha';
+
+  @override
+  String get shareCardKindRace => 'Carrera';
+
+  @override
+  String get shareCardKindBadge => 'Insignia';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciales · media $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'días seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Insignia conseguida';
+
+  @override
+  String get shareCardKindCourse => 'Recorrido de parque';
+
+  @override
+  String get shareCardCourseKicker => 'Tiempo en recorrido de parque';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return 'N.º $rank en $season';
+  }
+
+  @override
+  String get runDetailSharePr => 'Compartir tarjeta de marca';
+
+  @override
+  String get profileNotifPersonalRecord =>
+      'Has conseguido una nueva marca personal';
+
+  @override
+  String get badgesMakePublic => 'Hacer pública';
+
+  @override
+  String get badgesMakePrivate => 'Hacer privada';
+
+  @override
+  String get badgesPrivate => 'Privada';
+
+  @override
+  String get badgesShare => 'Compartir insignia';
+
+  @override
+  String get badgesToggleError =>
+      'No se pudo cambiar la visibilidad. Inténtalo de nuevo.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'He conseguido la insignia «$badge» en Threkir: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Haz pública esta insignia para compartirla.';
+
+  @override
+  String get sharesTitle => 'Tus enlaces';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visitas, registros y uniones desde tus enlaces';
+
+  @override
+  String get sharesTagline =>
+      'Cómo les fue a tus enlaces compartidos en los últimos 90 días. Solo son recuentos: nadie que abre un enlace queda identificado.';
+
+  @override
+  String get sharesLoadFailed => 'No se pudieron cargar tus enlaces.';
+
+  @override
+  String get sharesEmptyTitle => 'Aún no has compartido nada';
+
+  @override
+  String get sharesEmptyBody =>
+      'Comparte un plan público, un reto, una sesión, un entreno o tu perfil y sus cifras aparecerán aquí.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Reto';
+
+  @override
+  String get sharesKindProfile => 'Perfil';
+
+  @override
+  String get sharesKindSession => 'Sesión';
+
+  @override
+  String get sharesKindWorkout => 'Entreno';
+
+  @override
+  String get sharesYourProfile => 'Tu perfil';
+
+  @override
+  String get sharesUntitled => 'Sin título';
+
+  @override
+  String get sharesVisits => 'Visitas';
+
+  @override
+  String get sharesSignups => 'Registros';
+
+  @override
+  String get sharesStarts => 'Planes iniciados';
+
+  @override
+  String get sharesJoins => 'Uniones al reto';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count desde tu enlace',
+      one: '$count desde tu enlace',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Además, $count visitas de rastreadores, no incluidas arriba.',
+      one: 'Además, $count visita de un rastreador, no incluida arriba.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Un registro cuenta cuando alguien crea una cuenta desde un enlace que compartiste. Tus propias visitas no cuentan.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'No se pudo cargar la línea de la ruta. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Esta ruta no tiene ninguna línea que mostrar.';
+
+  @override
+  String get routeDetailLineRetry => 'Reintentar';
+
+  @override
+  String get locationErrorPermissionDenied =>
+      'el permiso de ubicación está desactivado';
+
+  @override
+  String get locationErrorServicesOff =>
+      'la ubicación está desactivada en este dispositivo';
+
+  @override
+  String get locationErrorNoFix =>
+      'aún no hay posición, inténtalo de nuevo en un momento';
+
+  @override
+  String get routesImportNoTrack =>
+      'Error al importar: ese archivo no contiene ninguna ruta con al menos dos puntos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Usa solo números enteros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Los minutos deben estar entre 0 y 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Los segundos deben estar entre 0 y 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Una carrera no puede durar más de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Revisa la duración';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Es mucho más lento que caminar para esta distancia. ¿Has puesto un número en la casilla equivocada?';
+
+  @override
+  String get manualDurationSlowSave => 'Guardar igualmente';
+
+  @override
+  String get manualDurationSlowFix => 'Corregir';
+
+  @override
+  String get addRunStartInFuture =>
+      'La hora de inicio no puede estar en el futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta carrera dura más de $hours horas, algo imposible para una carrera, así que la nube la rechaza y volver a intentarlo nunca funcionará. Corrige su duración para subirla.';
+  }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'En $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'En $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Ahora: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Ahora: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Acabas de pasar: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Acabas de pasar: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Servicios: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance a cerca del $grade por ciento.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Corte a las $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Corte a $time de la salida.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Notas del recorrido activadas.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Tramo $done completado. El tramo $next está listo.';
+  }
+
+  @override
+  String get ttsDriveFinished =>
+      'Has llegado a la meta. Notas del recorrido detenidas.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'Llevas un rato fuera del recorrido, así que las notas se han detenido.';
+
+  @override
+  String get courseDriveTitle => 'Conducir el recorrido';
+
+  @override
+  String get courseDriveNoticeTitle => 'Antes de conducir';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Úsalo con un acompañante o con el móvil en un soporte, y no lo toques mientras conduces. Respeta las normas y señales de tráfico. Las calles del recorrido pueden estar cortadas el día de la carrera, y la ruta de la app de mapas puede no coincidir con el recorrido.';
+
+  @override
+  String get courseDriveNoticeAccept => 'Entendido';
+
+  @override
+  String get courseDriveMapsApp => 'Abrir en';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Mapas de Apple';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Ir a la salida';
+
+  @override
+  String get courseDriveLegsHeading => 'Tramos';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Tramo $n: de $from a $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'La ruta de la app de mapas es solo orientativa. Las notas siguen el recorrido real.';
+
+  @override
+  String get courseDriveChecking =>
+      'Comprobando qué tramos puede seguir la app de mapas…';
+
+  @override
+  String get courseDriveAllDrivable =>
+      'La app de mapas puede seguir todo el recorrido.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'No pudimos comprobar qué tramos puede seguir la app de mapas.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'La app de mapas no puede seguir estos tramos';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return 'De $from a $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Notas del recorrido';
+
+  @override
+  String get courseDriveNoNotes =>
+      'Este recorrido no tiene marcadores que leer.';
+
+  @override
+  String get courseDriveStart => 'Iniciar notas habladas';
+
+  @override
+  String get courseDriveStop => 'Detener';
+
+  @override
+  String get courseDriveWaiting =>
+      'Dirígete al recorrido. Las notas empiezan cuando llegues.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Próxima nota en $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'No hay más notas por delante.';
+
+  @override
+  String get courseDriveFinished => 'Has llegado a la meta.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Detenido: llevabas 10 minutos fuera del recorrido.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'La ubicación está desactivada, así que las notas no pueden seguirte.';
+
+  @override
+  String get courseDriveLoadFailed => 'No se pudo cargar este recorrido.';
+
+  @override
+  String get courseDriveOpenFailed => 'No se pudo abrir la app de mapas.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Corte a las $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Corte a $time de la salida';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance a cerca del $grade %';
+  }
+
+  @override
+  String get parksTitle => 'Recorridos de parques';
+
+  @override
+  String get parksIntro =>
+      'Recorridos contrarreloj permanentes en parques estatales y nacionales. Corre uno cuando el parque esté abierto y tu tiempo entra en la clasificación de este año.';
+
+  @override
+  String get parksLoading => 'Cargando recorridos…';
+
+  @override
+  String get parksLoadFailed => 'No se pudieron cargar los recorridos.';
+
+  @override
+  String get parksRetry => 'Reintentar';
+
+  @override
+  String get parksEmpty =>
+      'Todavía no hay recorridos. Los primeros están en camino.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n recorridos',
+      one: '$n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'Todos los recorridos';
+
+  @override
+  String get parksParkNotFoundTitle => 'Parque no encontrado';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'Este parque no aparece, o ya no aparece, en la lista.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Recorrido no encontrado';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'Este recorrido no aparece, o ya no aparece, en la lista.';
+
+  @override
+  String get parksWebsite => 'Sitio web del parque';
+
+  @override
+  String get parksNoCourses => 'Todavía no hay recorridos en este parque.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'Parque estatal';
+
+  @override
+  String get parksAgencyCounty => 'Parque del condado';
+
+  @override
+  String get parksAgencyOther => 'Parque';
+
+  @override
+  String get parksShapeLoop => 'Circular';
+
+  @override
+  String get parksShapeOutAndBack => 'Ida y vuelta';
+
+  @override
+  String get parksShapePointToPoint => 'De punto a punto';
+
+  @override
+  String get parksStatusOpen => 'Abierto';
+
+  @override
+  String get parksStatusClosed => 'Cerrado';
+
+  @override
+  String get parksStatusSeasonal => 'De temporada';
+
+  @override
+  String get parksClosedBanner =>
+      'Este recorrido está cerrado. Sus tiempos y clasificaciones se conservan, pero no lo corras hasta que vuelva a abrir.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Estado comprobado el $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Fácil';
+
+  @override
+  String get parksDifficultyModerate => 'Moderado';
+
+  @override
+  String get parksDifficultyHard => 'Difícil';
+
+  @override
+  String get parksStatDistance => 'Distancia';
+
+  @override
+  String get parksStatElevation => 'Desnivel positivo';
+
+  @override
+  String get parksStatShape => 'Forma';
+
+  @override
+  String get parksStatSurface => 'Superficie';
+
+  @override
+  String get parksStatDifficulty => 'Dificultad';
+
+  @override
+  String get parksBoardFastest => 'Más rápidos';
+
+  @override
+  String get parksBoardCompletions => 'Más completados';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'Este año ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'Histórico';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n días',
+      one: '$n día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'Todavía no hay tiempos en esta clasificación. Corre el recorrido y el tuyo será el primero.';
+
+  @override
+  String get parksSignInForBoards =>
+      'Inicia sesión para ver las clasificaciones de este recorrido.';
+
+  @override
+  String get parksSignIn => 'Iniciar sesión';
+
+  @override
+  String get parksBoardFailed => 'No se pudo cargar esta clasificación.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Mantente en el sendero señalizado. El cronometraje necesita cada punto de control, así que un atajo nunca cuenta. Es una contrarreloj, no una carrera: el sendero sigue abierto a todos y nadie lo controla.';
+
+  @override
+  String get parksNotAffiliated =>
+      'Threkir publica estos recorridos. No los organiza, patrocina ni respalda el parque ni el organismo que lo gestiona. Se aplican las normas, horarios, tarifas y cierres del parque.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Recorrido largo. Sal con tiempo suficiente para terminar antes de que cierre el parque. Cuenta con senderos compartidos con bicicletas y caballos, y con vadeos que pueden quedar intransitables después de la lluvia.';
+
+  @override
+  String get parksTimesNotEventResults =>
+      'Los tiempos que aparecen aquí son tiempos de Threkir en estos senderos. No son resultados de ningún evento celebrado en ellos.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Hay grupos organizados que usan estos senderos los sábados por la mañana. Cédeles el paso y evita hacer un intento cronometrado en medio de ellos.';
+
+  @override
+  String get parksAttributionOsm =>
+      'Trazado del recorrido © colaboradores de OpenStreetMap';
+
+  @override
+  String get parksAttributionNps =>
+      'Trazado del recorrido según los datos de senderos del National Park Service';
+
+  @override
+  String get parksAttributionAgency =>
+      'Trazado del recorrido según los datos de senderos del propio parque';
+
+  @override
+  String get parksAttributionTraced =>
+      'Trazado del recorrido dibujado sobre el mapa publicado del parque';
+
+  @override
+  String get parksNavigate => 'Navegar este recorrido';
+
+  @override
+  String get parksShareGpx => 'Compartir GPX';
+
+  @override
+  String get parksBrowseLink => 'Recorridos de parques';
+
+  @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n vueltas',
+      one: '$n vuelta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation de subida';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed =>
+      'No se pudo abrir el sitio web del parque.';
+
+  @override
+  String get parksElevationProfile => 'Perfil de elevación';
+
+  @override
+  String get parksBoardEmptyTitle =>
+      'Todavía no hay tiempos. El tuyo podría ser el primero.';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Corre este recorrido grabando con Threkir. Cuando tu carrera cubra todo el recorrido y pase por cada punto de control, tu tiempo aparecerá aquí solo. No tienes que enviar nada.';
+
+  @override
+  String get parksLegendTitle => 'Leyenda del mapa';
+
+  @override
+  String get parksLegendStart => 'Salida';
+
+  @override
+  String get parksLegendFinish => 'Meta';
+
+  @override
+  String get parksLegendStartFinish => 'Salida y meta';
+
+  @override
+  String get parksLegendCheckpoints =>
+      'Punto de control: tu carrera debe pasar por él';
+
+  @override
+  String get parksLegendDirection => 'Sentido de carrera';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mapa del recorrido con $n puntos de control. La leyenda de abajo explica cada marca.',
+      one:
+          'Mapa del recorrido con 1 punto de control. La leyenda de abajo explica cada marca.',
+      zero: 'Mapa del recorrido. La leyenda de abajo explica cada marca.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Mapa de los $n recorridos del parque',
+      one: 'Mapa del recorrido del parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa de las líneas de salida y meta del recorrido';
+
+  @override
+  String get eventCourseLinesMapStart =>
+      'Mapa de la línea de salida del recorrido';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa de la línea de meta del recorrido';
+
+  @override
+  String get eventRacePreflightTitle =>
+      'Revisa los recorridos antes de preparar la carrera';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta carrera aún no se puede preparar';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Las líneas del recorrido se editan en el editor de eventos de la web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Preparar de todos modos';
+
+  @override
+  String get eventRacePreflightOk => 'Aceptar';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sin línea ni punto de meta, así que los corredores terminan a mano.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sin línea de salida. Una carrera con cronometraje propio la necesita.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: la ruta cruza su propia línea de meta antes del final, así que una llegada por la línea podría adelantarse.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: la línea de salida está a más de 100 m de la ruta.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: la línea de meta está a más de 100 m de la ruta.';
+  }
+
+  @override
+  String get runRaceScheduled => 'Salida programada';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label empieza en $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Cronometraje propio';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Ventana de cronometraje propio';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label: toca «Esta carrera es mi intento», luego Iniciar, y cruza la línea de salida. Abierta hasta $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label abre a las $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance hasta la línea de salida';
+  }
+
+  @override
+  String get runRaceStartCrossed => 'Línea de salida cruzada, cronometrando';
+
+  @override
+  String get runRaceUndoResume => '¿No has terminado? Reanudar';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Llegada anulada. Cuando termines, toca «Detener» y luego «Terminar carrera».';
+
+  @override
+  String get runRaceThisIsMyAttempt => 'Esta carrera es mi intento';
+
+  @override
+  String get runRaceAttemptReady => 'Intento listo: toca Iniciar';
+
+  @override
+  String get eventRaceArmEarly => 'Preparar antes';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Empieza sola a la hora programada. Prepárala antes para revisar las líneas ahora.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'Se abre sola. Prepárala antes para revisar las líneas ahora.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'Salida a las $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Abre a las $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Abierta hasta $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Termina sola a las $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Retrasar salida';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Ampliar ventana';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'Cerrar la ventana ahora';
+
+  @override
+  String get eventRaceJoinAttempt => 'Unirme e intentarlo';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Carrera con cronometraje propio abierta hasta las $time. Únete y cronometra tu intento desde la pantalla de carrera.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'Una carrera a la que vas empieza en unos 10 minutos';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '«$title» empieza en unos 10 minutos';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'La salida de una carrera a la que vas ha cambiado';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'La salida de «$title» ha cambiado';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Carrera a punto de empezar';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'Una notificación push unos 10 minutos antes de que empiece una carrera programada a la que vas, y cuando cambie su salida. Nunca por correo.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificación oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como la presencia oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organización oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'La solicitud de $org está pendiente de revisión. Aún no hay prueba del dominio.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'La solicitud de $org está pendiente de revisión. Prueba del dominio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'La última solicitud no se aprobó: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'Se quitó la insignia: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'Se quitó la insignia tras un cambio en el club o en su dominio, y necesita una nueva revisión.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'La última solicitud se retiró.';
+
+  @override
+  String get clubVerificationStatusNone => 'No verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Las solicitudes y las pruebas de dominio se gestionan en la web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'No se pudo cargar el estado de verificación.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Reintentar';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Hay novedades sobre la verificación de tu club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Hay novedades sobre la verificación de $club';
+  }
+
+  @override
+  String get provenanceVerifiedSource => 'Fuente verificada';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Fuente verificada: publicada por un socio de datos de carreras';
+
+  @override
+  String get provenanceTraced => 'Trazado';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Trazado: dibujado por un club verificado a partir del mapa publicado de la carrera';
+
+  @override
+  String get provenanceCommunity => 'Comunidad';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Comunidad: añadido por un corredor, sin revisar por la organización';
+
+  @override
+  String get courseAlertsHeading => 'Avisos del recorrido';
+
+  @override
+  String get courseAlertsEmpty =>
+      'No hay avisos. Publica uno cuando cambie el recorrido y se avisará a quienes entrenan para ella.';
+
+  @override
+  String get courseAlertsLoadFailed =>
+      'No se pudieron cargar los avisos del recorrido.';
+
+  @override
+  String get courseAlertsRetry => 'Reintentar';
+
+  @override
+  String get courseAlertsKindReroute => 'Desvío';
+
+  @override
+  String get courseAlertsKindClosure => 'Cierre';
+
+  @override
+  String get courseAlertsKindDirection => 'Sentido del recorrido';
+
+  @override
+  String get courseAlertsKindNotice => 'Aviso';
+
+  @override
+  String get courseAlertsKindLabel => 'Tipo';
+
+  @override
+  String get courseAlertsMessageLabel => 'Qué ha cambiado';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Se avisa una vez a quienes entrenan para esta carrera y a quienes guardaron su recorrido.';
+
+  @override
+  String get courseAlertsPost => 'Publicar aviso';
+
+  @override
+  String get courseAlertsPosted => 'Aviso del recorrido publicado.';
+
+  @override
+  String get courseAlertsPostFailed =>
+      'No se pudo publicar el aviso. Inténtalo de nuevo.';
+
+  @override
+  String get courseAlertsRemove => 'Quitar';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Quitar el aviso «$kind»';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Aviso del recorrido quitado.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'No se pudo quitar el aviso.';
+
+  @override
+  String get courseAlertsNotFound => 'Este aviso ya no está disponible';
+
+  @override
+  String get profileNotifCourseAlert =>
+      'La organización publicó un aviso del recorrido';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club publicó un aviso del recorrido';
+  }
+
+  @override
+  String get reportReasonOrganiserDispute =>
+      'Suplanta o copia a mi organización';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      'Para propietarios y administradores de un club verificado. Decide una persona de revisión; no se oculta nada automáticamente.';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return 'Denuncias en nombre de $club.';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => 'Denunciar en nombre de';
+
+  @override
+  String get reportErrNotOrganiser =>
+      'Solo el propietario o un administrador de un club verificado puede denunciar esto.';
+
+  @override
+  String get profileNotifOrganiserDispute =>
+      'Hay novedades sobre una disputa de nombre';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return 'Hay novedades sobre una disputa de nombre con $club';
+  }
+
+  @override
+  String get coachShareAction => 'Compartir con el entrenador';
+
+  @override
+  String get coachShareTitle => 'Compartir con tu entrenador';
+
+  @override
+  String get coachShareIntro =>
+      'Elige las partes de esta respuesta que quieres enviar. Tu entrenador las verá como una cita de tu Entrenador IA, no como palabras tuyas.';
+
+  @override
+  String get coachShareCoachLegend => 'Enviar a';
+
+  @override
+  String coachShareTo(String name) {
+    return 'Enviando a $name';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => 'Partes que compartir';
+
+  @override
+  String coachShareTooLong(int max) {
+    return 'Supera los $max caracteres. Quita alguna parte.';
+  }
+
+  @override
+  String get coachShareLabelNote =>
+      'Aparece marcado como IA en la conversación. No se envía nada nuevo a la IA.';
+
+  @override
+  String get coachShareSend => 'Compartir';
+
+  @override
+  String get coachShareSending => 'Compartiendo…';
+
+  @override
+  String coachShareSent(String name) {
+    return 'Compartido con $name.';
+  }
+
+  @override
+  String get coachShareOpenThread => 'Abrir conversación';
+
+  @override
+  String get coachShareDone => 'Listo';
+
+  @override
+  String get coachShareCardLabel => 'Respuesta del Entrenador IA';
+
+  @override
+  String get coachShareCardFromMe =>
+      'Has compartido esto desde tu Entrenador IA';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$name ha compartido esto desde su Entrenador IA';
+  }
+
+  @override
+  String get coachShareOpenSource => 'Abrir en el Entrenador IA';
+
+  @override
+  String get coachShareUnavailable =>
+      'Todavía no se puede compartir con tu entrenador.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'Para entrenadores que usan el asistente para entrenadores: lo que le pides y, solo de un atleta que lo haya permitido en su vínculo de entrenamiento contigo, sus mensajes recientes contigo, su plan y sus próximos entrenamientos, y sus carreras recientes, usados solo para redactar un mensaje que solo ves tú. Tú lo editas y lo envías, y se marca como asistido por IA.';
+
+  @override
+  String get coachAssistMarker => 'Asistido por IA';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Escrito por el entrenador con ayuda de un borrador de IA';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Permitir que $name use la asistencia de IA';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'Qué se comparte';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'Cuando $name pide un borrador al asistente para entrenadores, Threkir envía esto a Anthropic, el proveedor de IA, para que lo redacte:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Tus mensajes recientes con este entrenador (el texto y cuándo se envió).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'El plan que sigues: su nombre, la carrera objetivo y el tiempo objetivo, sus fechas y tus entrenamientos de las próximas dos semanas (fecha, tipo, distancia o tiempo, ritmo, y si los has completado u omitido).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Tus 10 actividades más recientes: la fecha, la distancia, la duración y el tipo de actividad. Nunca tu frecuencia cardíaca, tu ruta ni nada que hayas escrito sobre una carrera.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Solo $name ve los borradores. Edita y envía personalmente cualquier mensaje, y este se marca como asistido por IA. No se envía nada mientras esta opción esté desactivada, y puedes desactivarla en cualquier momento.';
+  }
+
+  @override
+  String get coachAssistConsentFailed =>
+      'No se pudo guardar. Inténtalo de nuevo.';
+
+  @override
+  String get parkGuideTitle => 'Guía del recorrido';
+
+  @override
+  String get parkGuidePending =>
+      'Redactada con datos del mapa, aún sin comprobar sobre el terreno.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Comprobada sobre el terreno el $date.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Cómo llegar';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Sal por $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Sal por la pista forestal.';
+
+  @override
+  String get parkGuideStartRoad => 'Sal por la carretera del parque.';
+
+  @override
+  String get parkGuideStartPath => 'Sal por el sendero.';
+
+  @override
+  String get parkGuideClockwise =>
+      'Corre el circuito en el sentido de las agujas del reloj.';
+
+  @override
+  String get parkGuideCounterclockwise =>
+      'Corre el circuito en sentido contrario a las agujas del reloj.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return 'Deja $landmark a tu izquierda.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return 'Deja $landmark a tu derecha.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Pasa por todos los puntos de control en orden, o la carrera no se cronometra.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at: gira a la izquierda hacia $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at: gira a la derecha hacia $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at: sigue recto hacia $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at: gira a la izquierda por la pista forestal.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at: gira a la derecha por la pista forestal.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at: sigue recto por la pista forestal.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at: gira a la izquierda por la carretera del parque.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at: gira a la derecha por la carretera del parque.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at: sigue recto por la carretera del parque.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at: gira a la izquierda por el sendero.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at: gira a la derecha por el sendero.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at: sigue recto por el sendero.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at: cruza el puente.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at: cruza el vado. No hay puente, así que cuenta con mojarte.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at: asfaltado desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at: grava desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at: sendero de tierra desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at: sin asfaltar desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at: pasarela de madera desde aquí.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at: subida de $gain en $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at: punto de control $n de $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at: empieza la vuelta $n de $total y repite el circuito.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at: meta.';
+  }
+
+  @override
+  String get parkCourseReportAction =>
+      'Informar de un problema con este recorrido';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Cuéntanos si hay un peligro, un cierre o un trazado que se sale del sendero. Una persona de Threkir revisa cada aviso. Un aviso no cierra el recorrido por sí solo.';
+
+  @override
+  String get parkCourseReportReasonLegend => '¿Cuál es el problema?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Un peligro en el recorrido';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'El recorrido o el sendero está cerrado';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'El trazado se sale del sendero señalizado';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Una solicitud de la administración del parque';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Para el personal del parque o del organismo gestor. Pídenos que retiremos el recorrido y lo cerramos en un plazo de dos días hábiles.';
+
+  @override
+  String get parkCourseReportReasonRightsHolder =>
+      'Una solicitud de titulares de derechos';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'Para quien tenga los derechos sobre un nombre, una marca o datos de recorrido que se usan aquí, o quien actúe en su nombre. Cuéntanos qué es tuyo y qué quieres que cambiemos. Confirmamos que hemos recibido tu solicitud en un plazo de dos días hábiles.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Otra cosa';
+
+  @override
+  String get parkCourseReportNotesLabel => '¿Qué debemos saber?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Dónde en el recorrido, qué viste y cuándo.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Tu correo (opcional)';
+
+  @override
+  String get parkCourseReportEmailLabelRequired => 'Tu correo';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Solo si quieres una respuesta. Lo usamos para responder a este aviso y lo borramos 30 días después de resolverlo.';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      'Es necesario para una solicitud de titulares de derechos, para poder responderte. Lo borramos 30 días después de resolverla.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancelar';
+
+  @override
+  String get parkCourseReportSubmit => 'Enviar aviso';
+
+  @override
+  String get parkCourseReportSent =>
+      'Gracias. Tu aviso ya está con el equipo de Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'No se pudo enviar el aviso. Inténtalo de nuevo.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Hay demasiados avisos ahora mismo. Inténtalo más tarde.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Ya informaste de este recorrido y ese aviso sigue abierto.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Este recorrido ya no está disponible.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Revisa el aviso e inténtalo de nuevo.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Esa dirección de correo no parece correcta.';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      'Una solicitud de titulares de derechos necesita una dirección de correo para poder responderla.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Se informó de un problema en un recorrido de parque';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'Estás reaccionando demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return 'Has enviado muchas fotos: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'Estás creando grupos demasiado rápido: espera $wait y vuelve a intentarlo.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'Hoy has enviado muchas invitaciones a grupos: espera $wait y vuelve a intentarlo.';
+  }
+
+  @override
+  String get prefsMessageRequests => 'Solicitudes de mensaje';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      'Permite que te escriban primero las personas con las que compartes un club o un evento. Si lo desactivas, solo podrán iniciar una conversación contigo las personas a las que sigues o que te siguen.';
+
+  @override
+  String get prefsMessageRequestsFailed =>
+      'No se pudieron cambiar las solicitudes de mensaje.';
+
+  @override
+  String get messagesReact => 'Reaccionar';
+
+  @override
+  String get messagesReactPickerLabel => 'Elige una reacción';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction, $count';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'Pulgar arriba';
+
+  @override
+  String get messagesReactionHeart => 'Corazón';
+
+  @override
+  String get messagesReactionLaugh => 'Risa';
+
+  @override
+  String get messagesReactionSurprised => 'Sorpresa';
+
+  @override
+  String get messagesReactionSad => 'Tristeza';
+
+  @override
+  String get messagesReactionFire => 'Fuego';
+
+  @override
+  String get messagesReactionRefused => 'No puedes reaccionar a este mensaje.';
+
+  @override
+  String get messagesSearchPlaceholder => 'Buscar mensajes';
+
+  @override
+  String get messagesSearchLabel => 'Buscar en tus mensajes';
+
+  @override
+  String get messagesSearchEmpty => 'Ningún mensaje coincide.';
+
+  @override
+  String get messagesSearchFailed =>
+      'No se pudieron buscar tus mensajes. Inténtalo de nuevo.';
+
+  @override
+  String get messagesPhotoAttach => 'Adjuntar una foto';
+
+  @override
+  String get messagesPhotoRemove => 'Quitar foto';
+
+  @override
+  String get messagesPhotoDraftAlt => 'Foto para enviar';
+
+  @override
+  String get messagesPhotoAlt => 'Foto del mensaje';
+
+  @override
+  String get messagesPhotoProcessing => 'Preparando foto…';
+
+  @override
+  String get messagesPhotoRejected => 'No se pudo enviar esta foto.';
+
+  @override
+  String get messagesPhotoUnavailableToView => 'Foto no disponible';
+
+  @override
+  String get messagesPhotoPreview => 'Foto';
+
+  @override
+  String get messagesPhotoTooLarge =>
+      'Esa foto es demasiado grande para enviarla.';
+
+  @override
+  String get messagesPhotoUnreadable =>
+      'No se pudo leer ese archivo como foto.';
+
+  @override
+  String get messagesPhotoUnavailable =>
+      'Las fotos en los mensajes aún no están disponibles.';
+
+  @override
+  String get messagesPhotoUploadFailed =>
+      'No se pudo subir la foto. Inténtalo de nuevo.';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      'Puedes enviar fotos a quienes sigues o te siguen, o en una conversación que esa persona haya aceptado, salvo que uno de los dos haya bloqueado al otro.';
+
+  @override
+  String get messagesLinkOpenFailed => 'No se pudo abrir ese enlace.';
+
+  @override
+  String get groupsNewGroup => 'Nuevo grupo';
+
+  @override
+  String get groupsGroupFallback => 'Grupo';
+
+  @override
+  String groupsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miembros',
+      one: '$count miembro',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsMembersTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miembros',
+      one: '$count miembro',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsMembersButton => 'Miembros';
+
+  @override
+  String get groupsYouLeftPreview => 'Saliste de este grupo';
+
+  @override
+  String groupsRenamedPreview(String title) {
+    return 'Grupo renombrado a $title';
+  }
+
+  @override
+  String get groupsNoMessagesYet => 'Aún no hay mensajes';
+
+  @override
+  String get groupsInvitesHeading => 'Invitaciones a grupos';
+
+  @override
+  String groupsInviteLine(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miembros',
+      one: '$count miembro',
+    );
+    return '$name te invitó · $_temp0';
+  }
+
+  @override
+  String get groupsInviteAccept => 'Unirme';
+
+  @override
+  String get groupsInviteDecline => 'Rechazar';
+
+  @override
+  String get groupsInviteReport => 'Denunciar';
+
+  @override
+  String groupsInviteAcceptedToast(String title) {
+    return 'Te uniste a $title';
+  }
+
+  @override
+  String get groupsInviteDeclinedToast => 'Invitación rechazada';
+
+  @override
+  String groupsInviteActionFailed(String error) {
+    return 'No se pudo responder a la invitación: $error';
+  }
+
+  @override
+  String groupsInviteDeclineConfirmTitle(String title) {
+    return '¿Rechazar la invitación a $title?';
+  }
+
+  @override
+  String get groupsInviteDeclineConfirmMessage =>
+      'No te unirás al grupo, y no podrá invitarte de nuevo durante 14 días. Nadie sabrá el motivo.';
+
+  @override
+  String get groupsCreateTitle => 'Nuevo grupo';
+
+  @override
+  String get groupsTitleLabel => 'Nombre del grupo';
+
+  @override
+  String get groupsCreateHint =>
+      'Elige al menos dos personas. Cada una recibe una invitación y solo se une si la acepta. Los mensajes se ven desde el momento en que alguien se une.';
+
+  @override
+  String get groupsCreateSubmit => 'Crear grupo';
+
+  @override
+  String get groupsCreating => 'Creando…';
+
+  @override
+  String groupsCreatedToast(String title) {
+    return '$title creado. Invitaciones enviadas.';
+  }
+
+  @override
+  String get groupsCreateFailed => 'No se pudo crear el grupo.';
+
+  @override
+  String get groupsPeopleLoadFailed =>
+      'No se pudieron cargar las personas que puedes invitar.';
+
+  @override
+  String get groupsPeopleEmpty =>
+      'Todavía no hay nadie a quien invitar. Puedes invitar a quienes sigues o te siguen.';
+
+  @override
+  String get groupsPeopleSearch => 'Buscar personas';
+
+  @override
+  String groupsPeopleSelected(int count, int max) {
+    return '$count de $max seleccionadas';
+  }
+
+  @override
+  String get groupsPeopleNoMatches => 'Nadie coincide con ese nombre.';
+
+  @override
+  String groupsPeopleFull(int max) {
+    return 'Un grupo admite como máximo 32 personas, invitaciones incluidas. Puedes invitar a $max más.';
+  }
+
+  @override
+  String get groupsUnavailable =>
+      'Las conversaciones de grupo no están disponibles ahora mismo.';
+
+  @override
+  String get groupsNotFound => 'Este grupo no está disponible.';
+
+  @override
+  String get groupsNotAvailable => 'Este grupo no está disponible.';
+
+  @override
+  String get groupsActionRefused => 'No puedes hacer eso en este grupo.';
+
+  @override
+  String get groupsInviteRefused =>
+      'Una de estas personas no puede ser invitada.';
+
+  @override
+  String get groupsCapReached =>
+      'Un grupo admite como máximo 32 personas, invitaciones incluidas.';
+
+  @override
+  String get groupsTitleInvalid =>
+      'El nombre de un grupo tiene de 1 a 60 caracteres.';
+
+  @override
+  String get groupsSendNotAllowed => 'No puedes escribir en este grupo.';
+
+  @override
+  String groupsActionFailed(String error) {
+    return 'No funcionó: $error';
+  }
+
+  @override
+  String get groupsHistoryNote =>
+      'No se muestran los mensajes anteriores a tu llegada.';
+
+  @override
+  String get groupsEmptyThread => 'Aún no hay mensajes. Saluda.';
+
+  @override
+  String get groupsBlockedPlaceholder =>
+      'Mensaje de alguien a quien bloqueaste';
+
+  @override
+  String groupsRenamedLine(String name, String title) {
+    return '$name renombró el grupo a $title';
+  }
+
+  @override
+  String groupsRenamedLineYou(String title) {
+    return 'Renombraste el grupo a $title';
+  }
+
+  @override
+  String get groupsLeftNotice =>
+      'Saliste de este grupo. Todavía puedes anular el envío de tus propios mensajes.';
+
+  @override
+  String groupsComposerLabel(String title) {
+    return 'Mensaje a $title';
+  }
+
+  @override
+  String get groupsLeave => 'Salir';
+
+  @override
+  String groupsLeaveConfirmTitle(String title) {
+    return '¿Salir de $title?';
+  }
+
+  @override
+  String get groupsLeaveConfirmMessage =>
+      'Dejarás de ver los mensajes del grupo al instante y necesitarás una nueva invitación para volver. Tus propios mensajes se quedan en el grupo hasta que anules su envío. Lo que ya esté en los dispositivos de otros miembros se queda allí.';
+
+  @override
+  String groupsLeftToast(String title) {
+    return 'Saliste de $title';
+  }
+
+  @override
+  String get groupsRename => 'Renombrar';
+
+  @override
+  String get groupsRenameSave => 'Guardar';
+
+  @override
+  String get groupsRenamedToast => 'Grupo renombrado';
+
+  @override
+  String get groupsInviteMore => 'Invitar';
+
+  @override
+  String groupsInviteSend(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Invitar a $count personas',
+      one: 'Invitar a $count persona',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsInvitedToast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count invitaciones enviadas',
+      one: 'Invitación enviada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsRoleInvited => 'Invitado';
+
+  @override
+  String get groupsYouSuffix => '(tú)';
+
+  @override
+  String get groupsMakeAdmin => 'Hacer admin';
+
+  @override
+  String get groupsRemoveAdmin => 'Quitar como admin';
+
+  @override
+  String groupsMadeAdminToast(String name) {
+    return '$name ahora es admin';
+  }
+
+  @override
+  String groupsRemovedAdminToast(String name) {
+    return '$name ya no es admin';
+  }
+
+  @override
+  String get groupsMakeOwner => 'Hacer propietario';
+
+  @override
+  String groupsTransferConfirmTitle(String name) {
+    return '¿Hacer propietario a $name?';
+  }
+
+  @override
+  String get groupsTransferConfirmMessage =>
+      'Pasas a ser admin. Solo el nuevo propietario puede devolverte la propiedad.';
+
+  @override
+  String groupsTransferredToast(String name) {
+    return '$name ahora es el propietario';
+  }
+
+  @override
+  String get groupsRemove => 'Quitar';
+
+  @override
+  String groupsRemoveConfirmTitle(String name) {
+    return '¿Quitar a $name del grupo?';
+  }
+
+  @override
+  String get groupsRemoveConfirmMessage =>
+      'Deja de ver los mensajes del grupo al instante y necesitará una nueva invitación para volver. Sus propios mensajes se quedan. No sabrá quién lo quitó.';
+
+  @override
+  String groupsRemovedToast(String name) {
+    return 'Se quitó a $name';
+  }
+
+  @override
+  String get groupsCancelInvite => 'Cancelar invitación';
+
+  @override
+  String groupsCancelInviteConfirmTitle(String name) {
+    return '¿Cancelar la invitación a $name?';
+  }
+
+  @override
+  String get groupsCancelInviteConfirmMessage =>
+      'No podrá unirse con ella. Puedes volver a invitarle más adelante.';
+
+  @override
+  String groupsInviteCancelledToast(String name) {
+    return 'Invitación a $name cancelada';
+  }
+
+  @override
+  String profileNotifGroupMessage(String name) {
+    return '$name escribió en un grupo';
+  }
+
+  @override
+  String profileNotifGroupInvite(String name) {
+    return '$name te invitó a un grupo';
+  }
 }

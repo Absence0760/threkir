@@ -1,0 +1,748 @@
+// Nothing reaches a third party before the viewer has said yes. Each guard
+// here pins one outbound hop behind its gate: the map tiles and static
+// maps behind cookie consent, the fonts and the geocoder behind having no
+// uncontracted hop at all, the routing proxy behind the server, and the
+// Anthropic fan-out behind the versioned AI disclosure.
+
+import { test } from 'node:test';
+import { strict as assert } from 'node:assert';
+import { readdirSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { stripComments } from './core/strip_comments';
+
+function read(...parts: string[]): string {
+	return readFileSync(resolve(...parts), 'utf-8');
+}
+
+test('track-preview thumbnails gate the MapTiler static map on consent', () => {
+	// Reason: both previews render on anon surfaces (public /clubs/[slug],
+	// /u/[id], feed), and MapTiler's static-map endpoint logs the requester
+	// IP per fetch — an ePrivacy/GDPR third-party request before consent.
+	// The MapTiler `buildStaticMapUrl` branch must sit behind a
+	// `consent.accepted ?` ternary (the self-hosted local override is
+	// exempt). audit/cookie-consent. The run-detail page is in the list
+	// because its off-screen share-card <img> lives in the DOM (fixed,
+	// top:-9999px — not display:none), so the browser fetches it on
+	// every run view, not only on the Share-as-image tap.
+	//
+	// The two list previews reach MapTiler through trackThumbnailUrlFromEnv,
+	// whose `allowThirdParty` gates only the MapTiler rung — static_map.test.ts
+	// pins that it returns null for MapTiler without it (decisions § 1749).
+	for (const file of [
+		'src/lib/components/RouteTrackPreview.svelte',
+		'src/lib/components/RunTrackPreview.svelte',
+	]) {
+		assert.match(
+			read(file),
+			/trackThumbnailUrlFromEnv\([\s\S]*?allowThirdParty:\s*consent\.accepted\b/,
+			`${file} must pass allowThirdParty: consent.accepted — otherwise it fires a MapTiler request (logging the visitor IP) before consent on anon surfaces.`,
+		);
+	}
+	const shareCard = 'src/routes/runs/[id]/+page.svelte';
+	assert.match(
+		read(shareCard),
+		/consent\.accepted\s*\?[\s\S]*buildStaticMapUrl/,
+		`${shareCard} must gate buildStaticMapUrl behind a consent.accepted ternary — otherwise it fires a MapTiler request (logging the visitor IP) before consent.`,
+	);
+});
+
+test('event meet-point static map gates MapTiler on consent', () => {
+	// Reason: audit/cookie-consent (2026-07-02) Medium — the meet-point
+	// <img> on /clubs/[slug]/events/[id] fired a MapTiler static-map
+	// request for any signed-in club member before (or against) their
+	// cookie-banner choice. A session is not consent under ePrivacy
+	// Art 5(3); the URL must only be built once consent is recorded or
+	// the member taps the Load-map placeholder.
+	const source = read('src/routes/clubs/[slug]/events/[id]/+page.svelte');
+	assert.match(
+		source,
+		/\(consent\.accepted \|\| meetMapConsented\)[\s\S]{0,200}buildStaticMarkerMapUrl/,
+		'the event page must gate buildStaticMarkerMapUrl behind consent.accepted or the explicit Load-map opt-in.',
+	);
+	assert.doesNotMatch(
+		source,
+		/meetMapConsented\s*=\s*\$state\(\s*true\s*\)/,
+		'meetMapConsented must not default to true — the placeholder tap is the affirmative act.',
+	);
+});
+
+test('interactive MapTiler maps gate maplibregl init on consent (authed surfaces too)', () => {
+	// Reason: audit/gdpr (2026-05-31) High — RunMap + PersonalHeatmap
+	// initialised MapTiler on authenticated surfaces (/runs/[id],
+	// /routes/[id], /runs/heatmap) without checking consent, on the
+	// theory that a signed-in session is "implicit consent". That is not
+	// a lawful basis under ePrivacy Art 5(3). Both components must guard
+	// `new maplibregl.Map` behind a `mapConsented` flag that is seeded
+	// from `hasAcceptedConsent()`, not unconditionally true.
+	for (const file of [
+		'src/lib/components/RunMap.svelte',
+		'src/lib/components/PersonalHeatmap.svelte',
+	]) {
+		const source = read(file);
+		assert.match(
+			source,
+			/hasAcceptedConsent/,
+			`${file} must import + consult hasAcceptedConsent() so the map does not auto-init before the cookie banner is accepted.`,
+		);
+		assert.doesNotMatch(
+			source,
+			/\$state\(\s*true\s*\)[^\n]*mapConsented|mapConsented\s*=\s*\$state\(\s*true\s*\)/,
+			`${file} must not hard-code mapConsented to true — seed it from hasAcceptedConsent() instead.`,
+		);
+	}
+});
+
+test('app.html + app.css do not load Google Fonts (audit/cookie-consent Critical)', () => {
+	// Reason: audit/cookie-consent (May 2026) flagged that the prior
+	// shape fetched the Material Symbols font from fonts.googleapis.com
+	// / fonts.gstatic.com unconditionally on every page hit. EU IPs
+	// reached a US sub-processor before the consent banner rendered —
+	// ePrivacy Art 5(3) Critical. Self-hosted since, and since
+	// decisions § 780 from a subset built by scripts/gen_web_icon_font.mjs
+	// and @font-face'd by app.css against a repo-relative path — so what
+	// this guard has to hold is that the src stays local, not that any
+	// particular module imports any particular stylesheet.
+	const stripRepeatedly = (s: string, re: RegExp): string => {
+		let prev;
+		let next = s;
+		do {
+			prev = next;
+			next = prev.replace(re, '');
+		} while (next !== prev);
+		return next;
+	};
+	const stripHtmlComments = (s: string) => stripRepeatedly(s, /<!--[\s\S]*?-->/g);
+	const stripCssComments = (s: string) => stripRepeatedly(s, /\/\*[\s\S]*?\*\//g);
+	const layout = read('src/routes/+layout.svelte');
+	const html = stripHtmlComments(read('src/app.html'));
+	const css = stripCssComments(read('src/app.css'));
+	for (const [name, surface] of [
+		['app.html', html],
+		['app.css', css],
+	] as const) {
+		// Extract the host of every absolute URL the file references and
+		// compare with exact equality — the CodeQL-recommended shape for a
+		// host check. A host-literal regex trips
+		// js/regex/missing-regexp-anchor and a `.includes('host')` trips
+		// js/incomplete-url-substring-sanitization; both warn about
+		// *partial* host matching, which exact-equality on a parsed host
+		// sidesteps entirely. The capture is a generic URL tokenizer (no
+		// host literal), so it isn't itself a host-checking regex. We only
+		// need to catch our own accidental authoring of an absolute Google
+		// Fonts URL — protocol-relative `//host` is not a realistic
+		// regression vector here.
+		const hosts = new Set<string>();
+		for (const m of surface.matchAll(/https?:\/\/([^/?#"'\s)]+)/gi)) {
+			hosts.add(m[1].split(':')[0].toLowerCase());
+		}
+		assert.ok(
+			!hosts.has('fonts.googleapis.com'),
+			`${name} must not reference fonts.googleapis.com — ` +
+				'the font is self-hosted via material-symbols (npm).',
+		);
+		assert.ok(
+			!hosts.has('fonts.gstatic.com'),
+			`${name} must not reference fonts.gstatic.com.`,
+		);
+	}
+	assert.match(
+		css,
+		/@font-face\s*\{[^}]*src:\s*url\('\.\/lib\/assets\/material-symbols-subset\.woff2'\)/,
+		'app.css must @font-face the self-hosted subset by a repo-relative path, so ' +
+			'the .woff2 is emitted from our own origin and never fetched from a CDN.',
+	);
+	assert.doesNotMatch(
+		layout,
+		/from\s+['"]https?:/,
+		'+layout.svelte must not pull the font from anywhere but the bundle.',
+	);
+});
+
+test('/cookie-notice carries a Manage-cookie-preferences button wired to consent.reset', () => {
+	// Reason: audit/cookie-consent (May 2026). Pre-fix the page told
+	// users to use a "Cookie settings" link in the footer that did
+	// not exist anywhere in the app. GDPR Art 7(3) requires withdrawal
+	// to be as easy as giving consent; a missing UI is an illusory
+	// right that a DPA audit would reject.
+	const source = read('src/routes/cookie-notice/+page.svelte');
+	assert.match(
+		source,
+		/consent\.reset\(\)/,
+		'/cookie-notice must call consent.reset() to clear the stored choice',
+	);
+	assert.match(
+		source,
+		/data-testid="manage-cookie-preferences"/,
+		'/cookie-notice must surface a manage-cookie-preferences button so ' +
+			'the GDPR Art 7(3) withdrawal path has a discoverable test handle',
+	);
+	// Strip the <script> block so the doesNotMatch check fires on
+	// rendered copy only — the comment in the script intentionally
+	// references the old phrasing for history. Loop the replace + case-
+	// insensitive flag so nested or upper-case <SCRIPT> tags can't slip
+	// rendered copy past the guard (js/incomplete-multi-character-
+	// sanitization). The end tag is matched the way a parser closes one —
+	// `</script` followed by whitespace, `/` or `>`, then junk up to the
+	// first `>` — because `</script\t\n bar>` closes the block in a browser
+	// and `</script\s*>` does not see it (js/bad-tag-filter).
+	let renderedOnly = source;
+	let prev;
+	const scriptRe = /<script\b[\s\S]*?<\/script(?=[\s/>])[^>]*>/gi;
+	do {
+		prev = renderedOnly;
+		renderedOnly = prev.replace(scriptRe, '');
+	} while (renderedOnly !== prev);
+	assert.doesNotMatch(
+		renderedOnly,
+		/"Cookie settings" link in the footer/,
+		"/cookie-notice rendered copy must not point users at a footer " +
+			"'Cookie settings' link that does not exist " +
+			'(audit/cookie-consent pre-fix wording)',
+	);
+});
+
+test('route-builder OSRM traffic goes through the server-side proxy, never browser-direct', () => {
+	// Reason: issue #198 (persona-hunt route-builder review, 2026-07). Pre-fix,
+	// routing.ts + RouteBuilder.svelte fetched the OSRM host straight from the
+	// browser over PUBLIC_OSRM_URL, so a user's pin coordinates (routinely
+	// their home) left the client with no server boundary — the exact exposure
+	// the GraphHopper hop closed on the generate path. The OSRM base is now
+	// server-only (`OSRM_URL`), and every client call rides the
+	// /api/routes/osrm proxy via osrmProxyFetch.
+	//
+	// The claims below are made over the code a user actually runs (§ 1119).
+	// They used to be made over three exported helpers in routing.ts that
+	// nothing imported, while RouteBuilder — the tree's only OSRM caller —
+	// built its paths inline and was checked by a COUNT of osrmProxyFetch call
+	// sites, which a bare fetch() added beside them would not have moved.
+	const routingSource = read('src/lib/routes/routing.ts');
+	assert.doesNotMatch(
+		routingSource,
+		/PUBLIC_OSRM_URL|\$app\/env\/public|router\.project-osrm\.org/,
+		'routing.ts must not read a PUBLIC_ OSRM env or reference the OSRM ' +
+			'host/demo — the browser only ever talks to /api/routes/osrm.',
+	);
+	assert.match(
+		routingSource,
+		/OSRM_PROXY_BASE = '\/api\/routes\/osrm'/,
+		'routing.ts must route through the /api/routes/osrm proxy base.',
+	);
+
+	// routing.ts is the proxy client and nothing else. A second exported
+	// function here is a second way to reach OSRM, and one that no caller
+	// imports is how the invariant came to be enforced over dead code.
+	const routing = stripComments(routingSource);
+	assert.deepEqual(
+		[...routing.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_$]+)/g)].map(
+			(m) => m[1],
+		),
+		['osrmProxyFetch'],
+		'routing.ts must export exactly one function, osrmProxyFetch.',
+	);
+	const routingFetches = [...routing.matchAll(/(?<![\w$.])fetch\(/g)];
+	assert.equal(
+		routingFetches.length,
+		1,
+		`routing.ts must reach the network exactly once — found ${routingFetches.length} bare fetch() calls.`,
+	);
+	assert.match(
+		routing.slice(routingFetches[0].index),
+		/^fetch\(`\$\{OSRM_PROXY_BASE\}/,
+		"routing.ts's one fetch() must be prefixed with OSRM_PROXY_BASE — an " +
+			'absolute URL here is the browser-direct coordinate leak.',
+	);
+
+	// RouteBuilder.svelte builds OSRM paths inline (custom retry + batching +
+	// radius / version cancellation) rather than through a helper, so the
+	// invariant is asserted over the path literals themselves: each must be
+	// handed to osrmProxyFetch, inline at the call or through a const the call
+	// is given, and no bare fetch() may carry one.
+	const rbSource = read('src/lib/components/RouteBuilder.svelte');
+	assert.doesNotMatch(
+		rbSource,
+		/OSRM_BASE_URL|PUBLIC_OSRM_URL|router\.project-osrm\.org/,
+		'RouteBuilder.svelte must not reference the OSRM host directly.',
+	);
+	const rb = stripComments(rbSource);
+	const osrmPaths = [...rb.matchAll(/`\/(?:nearest|route|match|trip|table)\/v1\/[^`]*`/g)];
+	assert.ok(
+		osrmPaths.length >= 2,
+		'population: RouteBuilder.svelte must still build its OSRM service ' +
+			'paths (snapWaypointsToRoads + recalculateRoute). A scan matching ' +
+			`nothing satisfies every per-path claim below; found ${osrmPaths.length}.`,
+	);
+	for (const hit of osrmPaths) {
+		const before = rb.slice(Math.max(0, hit.index - 120), hit.index);
+		const bound = /(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*(?::[^=\n]*)?=\s*$/.exec(before);
+		const viaConst =
+			bound !== null &&
+			(rb.includes(`osrmProxyFetch(${bound[1]},`) || rb.includes(`osrmProxyFetch(${bound[1]})`));
+		assert.ok(
+			/osrmProxyFetch\(\s*$/.test(before) || viaConst,
+			`RouteBuilder.svelte builds the OSRM path ${hit[0].slice(0, 40)}… ` +
+				'without handing it to osrmProxyFetch — a bare fetch() here ' +
+				'reopens the browser-direct coordinate leak of issue #198.',
+		);
+	}
+	for (const hit of rb.matchAll(/(?<![\w$.])fetch\(/g)) {
+		assert.doesNotMatch(
+			rb.slice(hit.index, hit.index + 200),
+			/\/v1\//,
+			'RouteBuilder.svelte passes an OSRM service path to a bare fetch() ' +
+				'instead of osrmProxyFetch — the coordinates leave the browser ' +
+				'with no server boundary (issue #198).',
+		);
+	}
+
+	// The demo fallback now lives server-side and is dev-only: the proxy core
+	// must gate it on allowDemoFallback, and the production Lambda must pin
+	// that gate to false so an unset OSRM_URL can never ship waypoints to the
+	// uncontracted community endpoint (GDPR Art 28 — no DPA).
+	const handler = read('src/lib/routes/osrm_proxy/handler.ts');
+	assert.match(
+		handler,
+		/config\.allowDemoFallback \? OSRM_DEMO_URL : undefined/,
+		'osrm_proxy handler must only use the demo URL behind allowDemoFallback.',
+	);
+	const lambda = read('lambda/osrm-proxy/src/index.ts');
+	assert.match(
+		lambda,
+		/allowDemoFallback: false/,
+		'The osrm-proxy Lambda must hard-code allowDemoFallback: false.',
+	);
+});
+
+test('MapTiler tile fetches on anon public pages are gated on consent', () => {
+	// Reason: audit/cookie-consent (2026-05-25). MapTiler logs the
+	// requester IP per tile fetch. /live/[id], /share/route/[id], and
+	// /share/run/[id] are anon-accessible — the visitor's IP must
+	// not reach MapTiler until they have either accepted the cookie
+	// banner or tapped "Load map" on the placeholder.
+	const liveSrc = read('src/routes/live/[id]/+page.svelte');
+	assert.match(
+		liveSrc,
+		/hasAcceptedConsent\(\)/,
+		'/live/[id] must consult hasAcceptedConsent() before auto-mounting the map.',
+	);
+	assert.match(
+		liveSrc,
+		/{#if mapConsented}/,
+		'/live/[id] must conditionally render the map container so the ' +
+			'MapTiler init only fires after consent.',
+	);
+	assert.match(
+		liveSrc,
+		/onclick={loadMapNow}/,
+		'/live/[id] must offer a "Load map" button that flips mapConsented.',
+	);
+
+	const runMapSrc = read('src/lib/components/RunMap.svelte');
+	assert.match(
+		runMapSrc,
+		/requireExplicitConsent\?:\s*boolean/,
+		'RunMap must expose requireExplicitConsent so anon callers can gate map init.',
+	);
+	assert.match(
+		runMapSrc,
+		/if \(!mapConsented\) return;/,
+		'RunMap.onMount must short-circuit when consent is pending — no maplibregl.Map() until the user opts in.',
+	);
+	// The consent state is decided once, at init, from requireExplicitConsent
+	// and the banner. A later "banner accepted" flip inside onMount is what
+	// blanked the share-page map: it bypassed requireExplicitConsent, hid the
+	// "Load map" card, and called initMap before the container had mounted.
+	// The tap is the only later flip, and it waits a microtask for the DOM.
+	const runMapCode = stripComments(runMapSrc);
+	assert.match(
+		runMapCode,
+		/mapConsented\s*=\s*\$state\(untrack\(\(\)\s*=>\s*\(requireExplicitConsent \? false : hasAcceptedConsent\(\)\)\)\)/,
+		'RunMap must start unconsented when requireExplicitConsent is set, and otherwise from the banner.',
+	);
+	assert.equal(
+		(runMapCode.match(/hasAcceptedConsent\(\)/g) ?? []).length,
+		1,
+		'RunMap must read the banner only in the mapConsented initialiser, where requireExplicitConsent wins.',
+	);
+	const flips = [...runMapCode.matchAll(/mapConsented\s*=\s*true/g)];
+	assert.equal(flips.length, 1, 'RunMap must flip mapConsented only from the Load map tap.');
+	assert.match(
+		runMapCode,
+		/function loadMapNow\(\) \{\s*mapConsented = true;\s*queueMicrotask\(initMap\);/,
+		'loadMapNow must defer initMap until the map container has mounted.',
+	);
+
+	// The three map-bearing share surfaces must pass the consent-required prop.
+	const routeShareSrc = read('src/routes/share/route/[id]/+page.svelte');
+	assert.match(
+		routeShareSrc,
+		/<RunMap[^>]*requireExplicitConsent/,
+		'/share/route/[id] must pass requireExplicitConsent to RunMap.',
+	);
+	const courseShareSrc = read('src/routes/share/course/[region]/[park]/[course]/+page.svelte');
+	assert.match(
+		courseShareSrc,
+		/<RunMap[^>]*requireExplicitConsent/,
+		'/share/course/[region]/[park]/[course] must pass requireExplicitConsent to RunMap.',
+	);
+	const runShareSrc = read('src/lib/components/RunShareView.svelte');
+	assert.match(
+		runShareSrc,
+		/<RunMap[\s\S]*?requireExplicitConsent[\s\S]*?\/>/,
+		'RunShareView (used by /share/run/[id]) must pass requireExplicitConsent.',
+	);
+});
+
+test('the 3D course preview on /share/route/[id] asks for its own consent tap and flies the clipped line', () => {
+	// Reason: issue #1282 opened the 3D preview to logged-out visitors. Its
+	// dialog fetches basemap AND terrain tiles (MapTiler, or the AWS Open Data
+	// bucket on a keyless build), both of which log the requester IP, so on the
+	// anonymous share page it takes the same per-view tap as the page's 2D map,
+	// even after the cookie banner was accepted. The line it flies is the
+	// page's own `waypoints`, which fetchRouteById filled from
+	// clip_route_for_viewer for a non-owner — never a second, unclipped read.
+	const routeShareSrc = stripComments(read('src/routes/share/route/[id]/+page.svelte'));
+	assert.match(
+		routeShareSrc,
+		/<CoursePreviewButton[^>]*requireExplicitConsent[^>]*\/>/,
+		'/share/route/[id] must pass requireExplicitConsent to CoursePreviewButton.',
+	);
+	assert.match(
+		routeShareSrc,
+		/<CoursePreviewButton[^>]*points=\{previewPoints\}/,
+		'/share/route/[id] must fly previewPoints.',
+	);
+	assert.match(
+		routeShareSrc,
+		/previewPoints\s*=\s*\$derived\(routePathPoints\(waypoints\)\)/,
+		'previewPoints must come from the waypoints fetchRouteById returned (the clipped line for a non-owner).',
+	);
+	assert.match(
+		routeShareSrc,
+		/waypoints\s*=\s*\(r\.waypoints[^)]*\)/,
+		'the share page waypoints must be the fetchRouteById result.',
+	);
+	assert.doesNotMatch(
+		routeShareSrc,
+		/<CoursePreviewButton[^>]*videoSource/,
+		'/share/route/[id] must not offer the video export: an owner viewing it holds the unclipped line.',
+	);
+
+	const buttonSrc = stripComments(read('src/lib/components/CoursePreviewButton.svelte'));
+	assert.match(
+		buttonSrc,
+		/<CoursePreview3D[\s\S]*?\{requireExplicitConsent\}[\s\S]*?\/>/,
+		'CoursePreviewButton must forward requireExplicitConsent to the dialog.',
+	);
+
+	const dialogSrc = stripComments(read('src/lib/components/CoursePreview3D.svelte'));
+	assert.match(
+		dialogSrc,
+		/mapConsented\s*=\s*\$state\(untrack\(\(\)\s*=>\s*\(requireExplicitConsent \? false : hasAcceptedConsent\(\)\)\)\)/,
+		'CoursePreview3D must start unconsented when requireExplicitConsent is set.',
+	);
+	assert.match(
+		dialogSrc,
+		/if \(open && !requireExplicitConsent && hasAcceptedConsent\(\)\) mapConsented = true/,
+		'An accepted banner must not skip the tap when requireExplicitConsent is set.',
+	);
+});
+
+test('Coach handler gates the Anthropic fan-out behind the versioned AI disclosure', () => {
+	// Reason: audit/gdpr (2026-05-25), re-scoped by issue #734. Coach
+	// forwards health-adjacent data to Anthropic (US sub-processor). Art
+	// 6(1)(a) requires an affirmative consent act before the first dispatch
+	// — opening /coach is not affirmative. The handler must read the
+	// consent record (via the get_my_profile RPC, since neither column is
+	// in the public-safe grant list — migration 20260707_001) and grade it
+	// against the Coach minimum before the provider stream runs.
+	const source = read('src/lib/coach/handler.ts');
+	assert.match(
+		source,
+		/\.rpc\('get_my_profile', undefined, \{ get: true \}\)/,
+		'handler.ts must call get_my_profile() to load the self row including the consent record.',
+	);
+	assert.match(
+		source,
+		/checkAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_COACH/,
+		'handler.ts must grade the record with checkAiDisclosure at the Coach minimum version.',
+	);
+	assert.match(
+		source,
+		/return jsonError\(\s*403,\s*'Coach consent required[\s\S]*?\)/,
+		'handler.ts must return 403 when the disclosure check fails — failing closed.',
+	);
+	// The gate must sit BEFORE any provider stream invocation. We
+	// assert ordering by checking that the consent lookup appears
+	// before the first `tier ===` reference (which is the start of
+	// the rate-limit / provider-dispatch block).
+	const consentIdx = source.indexOf("rpc('get_my_profile', undefined, { get: true })");
+	const tierIdx = source.indexOf('tier === ');
+	assert.ok(
+		consentIdx > 0 && consentIdx < tierIdx,
+		'the consent lookup must precede the tier / provider dispatch.',
+	);
+});
+
+test('the AI route endpoints gate on the widened disclosure, above the Coach version', () => {
+	// Reason: issue #734. /api/coach/route-describe and
+	// /api/coach/route-request shipped with no consent gate at all — a Pro
+	// user who never accepted (or who withdrew) the AI disclosure still had
+	// their typed request and location label sent to Anthropic. They must
+	// require AI_DISCLOSURE_VERSION_ROUTE_AI, which is strictly above the
+	// Coach version, so an old Coach-only acceptance does not satisfy them.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(
+		gate,
+		/AI_DISCLOSURE_VERSION_ROUTE_AI\s*=\s*2/,
+		'the route-AI minimum must stay above the Coach minimum.',
+	);
+	for (const file of [
+		'src/lib/routes/route_describe/handler.ts',
+		'src/lib/routes/route_request/handler.ts',
+	]) {
+		const source = read(file);
+		assert.match(
+			source,
+			/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_ROUTE_AI/,
+			`${file} must gate on the widened AI disclosure before calling Anthropic.`,
+		);
+		// Ordering: the gate must precede the Anthropic client construction.
+		const gateIdx = source.indexOf('gateAiDisclosure(');
+		const anthropicIdx = source.indexOf('new Anthropic(');
+		assert.ok(
+			gateIdx > 0 && gateIdx < anthropicIdx,
+			`${file} must run the consent gate before constructing the Anthropic client.`,
+		);
+		// The dev paywall bypass must not reach into the consent branch —
+		// BYPASS_PAYWALL skips a billing check, not a lawful basis.
+		const bypassInGate = source
+			.slice(gateIdx, source.indexOf('Paywall gate', gateIdx))
+			.includes('bypassPaywallEnabled');
+		assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+	}
+});
+
+test('the AI route clients tell a consent gap apart from the Pro paywall', () => {
+	// Reason: issue #734. Both gates answer 403 on these endpoints. A client
+	// that reads the status alone shows the Pro upsell to someone whose
+	// actual problem is a missing consent record — selling them something
+	// that would not unlock the feature. The body's `code` is the
+	// discriminator, so each client must read it.
+	for (const file of [
+		'src/lib/routes/route_request_client.ts',
+		'src/lib/routes/route_describe_client.ts',
+	]) {
+		const source = read(file);
+		assert.match(
+			source,
+			/AI_DISCLOSURE_ERROR/,
+			`${file} must branch on the AI-disclosure code, not on the 403 status alone.`,
+		);
+	}
+	// The pages must then render the consent-specific copy rather than the
+	// generic failure banner.
+	assert.match(
+		read('src/routes/routes/new/+page.svelte'),
+		/kind === 'consent'[\s\S]{0,120}aiRequestConsentRequired/,
+		'/routes/new must render the consent copy for a consent denial.',
+	);
+	assert.match(
+		read('src/routes/routes/[id]/+page.svelte'),
+		/AI_DISCLOSURE_ERROR[\s\S]{0,160}describeConsentRequired/,
+		'/routes/[id] must render the consent copy for a consent denial.',
+	);
+});
+
+test('Nominatim fallback uses a reachable contact email (no protomaps placeholder)', () => {
+	// Reason: audit/third-party-data-flows (2026-05-25). The
+	// Nominatim `email=` parameter is the usage-policy contact path
+	// — OSM Foundation requires a reachable address so they can
+	// reach the operator on abuse / takedown. The previous value
+	// (`protomaps-dev@localhost`) was a placeholder copied from a
+	// different project and violates the policy.
+	const source = read('src/lib/routes/geocoding_math.ts');
+	assert.ok(
+		!source.includes('protomaps-dev@localhost'),
+		'geocoding_math.ts must not retain the protomaps-dev placeholder email.',
+	);
+	assert.match(
+		source,
+		/email:\s*'privacy@threkir\.com'/,
+		'Nominatim fallback must declare privacy@threkir.com (the operator-' +
+			'reachable contact alias) per OSM usage policy.',
+	);
+});
+
+test('the AI plan assistant and the season request gate on the plan disclosure, above the route-AI version', () => {
+	// /api/coach/plan-request ships the runner's description of their goals and
+	// fitness to Anthropic, a payload and purpose neither the Coach nor the
+	// route copy described; /api/coach/season-request ships the same kind of
+	// description (goal races, dates, target times) for the same purpose, so it
+	// rides the same rung. Both must require AI_DISCLOSURE_VERSION_PLAN_AI, so
+	// an older acceptance does not satisfy them, and the dev paywall bypass
+	// must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(
+		gate,
+		/AI_DISCLOSURE_VERSION_PLAN_AI\s*=\s*3/,
+		'the plan-AI minimum must sit above the route-AI minimum.',
+	);
+	for (const file of [
+		'src/lib/training/plan_request/handler.ts',
+		'src/lib/training/season_request/handler.ts',
+	]) {
+		const source = read(file);
+		assert.match(
+			source,
+			/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_AI/,
+			`${file} must gate on the plan AI disclosure before calling Anthropic.`,
+		);
+		const gateIdx = source.indexOf('gateAiDisclosure(');
+		const anthropicIdx = source.indexOf('new Anthropic(');
+		const counterIdx = source.indexOf('spendCoachMessage(');
+		assert.ok(
+			gateIdx > 0 && gateIdx < anthropicIdx && gateIdx < counterIdx,
+			`${file} must run the consent gate before the daily counter and the Anthropic client.`,
+		);
+		const bypassInGate = source
+			.slice(gateIdx, source.indexOf('Cost cap', gateIdx))
+			.includes('bypassPaywallEnabled');
+		assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+	}
+});
+
+test('AI plan edits gate on the v4 plan-edit disclosure, before the plan read, the counter and the model', () => {
+	// /api/coach/plan-edit ships the runner's plan and change request to
+	// Anthropic so a model can propose changes to the plan — a purpose the v1
+	// copy's "the active plan" did not describe (decisions § 571, § 1980). It
+	// must require AI_DISCLOSURE_VERSION_PLAN_EDIT_AI, and the dev paywall
+	// bypass must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(gate, /AI_DISCLOSURE_VERSION_PLAN_EDIT_AI\s*=\s*4/);
+	const file = 'src/lib/training/plan_edit/handler.ts';
+	const source = read(file);
+	assert.match(source, /gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_EDIT_AI/);
+	const gateIdx = source.indexOf('gateAiDisclosure(');
+	const loadIdx = source.indexOf('await loadPlan(');
+	const counterIdx = source.indexOf('spendCoachMessage(');
+	const anthropicIdx = source.indexOf('new Anthropic(');
+	assert.ok(
+		gateIdx > 0 && gateIdx < loadIdx && gateIdx < counterIdx && gateIdx < anthropicIdx,
+		`${file} must run the consent gate before it reads the plan, spends a slot or builds a client.`,
+	);
+	const bypassInGate = source
+		.slice(gateIdx, source.indexOf('ANTHROPIC_API_KEY', gateIdx))
+		.includes('bypassPaywallEnabled');
+	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});
+
+test('the plate-photo logger gates on the v5 disclosure before Pro, the throttle and the model', () => {
+	// /api/coach/plate-photo ships a photo of the runner's meal to Anthropic, a
+	// payload no earlier disclosure described (decisions § 1972). It must
+	// require AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI, ahead of every billed step,
+	// and the dev bypass must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(gate, /AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI\s*=\s*5/);
+	const file = 'src/lib/nutrition/plate_photo/handler.ts';
+	const source = read(file);
+	assert.match(
+		source,
+		/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI/,
+		`${file} must gate on the plate-photo disclosure before calling Anthropic.`,
+	);
+	const gateIdx = source.indexOf('gateAiDisclosure(');
+	for (const later of ["rpc('is_pro'", 'spendRouteRateLimitSlot(', 'new Anthropic(']) {
+		const idx = source.indexOf(later);
+		assert.ok(gateIdx > 0 && idx > gateIdx, `${file}: the consent gate must precede ${later}.`);
+	}
+	const bypassInGate = source
+		.slice(gateIdx, source.indexOf('Paywall', gateIdx))
+		.includes('bypassPaywallEnabled');
+	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});
+
+test('every AI consent prompt sends the runner to the one place that can record it', () => {
+	// The AI features used to point at two places: the plate-photo logger and
+	// the plan assistant at /coach, AI plan edits at /settings/account. /coach
+	// only asks a runner with NO record, so a stale acceptance sent there met a
+	// working chat and nothing to accept. Every `*ConsentLink` anchor now
+	// takes AI_CONSENT_HREF, and that target must accept from every state.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	const href = gate.match(/export const AI_CONSENT_HREF = '([^']+)'/)?.[1];
+	assert.ok(href, 'ai_disclosure.ts must export AI_CONSENT_HREF');
+	const [path, anchor] = href.split('#');
+	assert.equal(path, '/settings/account');
+
+	const settings = stripComments(read('src/routes/settings/account/+page.svelte'));
+	assert.ok(settings.includes(`id="${anchor}"`), `the ${path} consent section must carry id="${anchor}"`);
+	const accepts = settings.match(/onclick=\{acceptAiDisclosure\}/g) ?? [];
+	assert.equal(accepts.length, 2, `${path} must offer acceptance both for a stale record and for none`);
+
+	const files = [
+		'src/lib/components/PlatePhotoLogger.svelte',
+		'src/lib/components/PlanAiAdjust.svelte',
+		'src/lib/components/CoachPlanEditCard.svelte',
+		'src/lib/components/PlanEditor.svelte',
+		'src/lib/components/SeasonPlanner.svelte',
+		'src/lib/components/CoachAssistPanel.svelte',
+	];
+	const found = new Set<string>();
+	const walk = (dir: string) => {
+		for (const e of readdirSync(dir, { withFileTypes: true })) {
+			const p = `${dir}/${e.name}`;
+			if (e.isDirectory()) walk(p);
+			else if (e.name.endsWith('.svelte') && /ConsentLink'\)/.test(read(p))) found.add(p);
+		}
+	};
+	walk('src');
+	assert.deepEqual([...found].sort(), [...files].sort(), 'a new AI consent link must be added to this guard');
+	for (const file of files) {
+		const source = read(file);
+		const links = source.match(/<a [^>]*>\{[mt]\('[\w.]+ConsentLink'\)\}<\/a>/g) ?? [];
+		assert.ok(links.length > 0, `${file}: consent link not found`);
+		for (const a of links) {
+			assert.ok(a.startsWith('<a href={AI_CONSENT_HREF}>'), `${file}: ${a} must use AI_CONSENT_HREF`);
+		}
+	}
+});
+
+test('every surface that resolves a terrain source gates the map on consent', () => {
+	// Reason: the 3D course preview's elevation tiles come from MapTiler or the
+	// AWS Open Data Terrain Tiles bucket, and both log the requester IP per
+	// tile (decisions § 2251) — the same third-party hop as the 2D basemap. So
+	// any file that calls resolveTerrainSource must hold the map behind the
+	// cookie-consent gate RunMap uses: seed from hasAcceptedConsent(), never
+	// start consented, and stop init until consent is given. The scan is over
+	// the call, not a file list, so a later surface is bound the moment it
+	// reaches for terrain; the module exports no other source a file could
+	// take instead.
+	const srcRoot = resolve('src');
+	const callers: string[] = [];
+	const walk = (dir: string) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = resolve(dir, entry.name);
+			if (entry.isDirectory()) walk(full);
+			else if (/\.(ts|svelte)$/.test(entry.name) && !entry.name.endsWith('.test.ts')) {
+				const code = stripComments(read(full));
+				if (/\bresolveTerrainSource\(|\bAWS_TERRAIN_SOURCE\b/.test(code) && !full.endsWith('terrain_source.ts')) {
+					callers.push(full);
+				}
+			}
+		}
+	};
+	walk(srcRoot);
+	for (const file of callers) {
+		const code = stripComments(read(file));
+		assert.match(
+			code,
+			/mapConsented\s*=\s*\$state\([^;]*\bhasAcceptedConsent\(\)/,
+			`${file} resolves a terrain source but does not seed mapConsented from hasAcceptedConsent() — terrain tiles would load before the cookie banner is accepted.`,
+		);
+		assert.match(
+			code,
+			/if\s*\((?:[^()]*[\s|])?!mapConsented\b[^()]*\)\s*return/,
+			`${file} must short-circuit map init while consent is pending (an \`if (… !mapConsented …) return\` guard), as RunMap does.`,
+		);
+	}
+});

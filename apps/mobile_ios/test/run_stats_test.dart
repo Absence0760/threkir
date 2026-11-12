@@ -1,8 +1,108 @@
+import 'dart:math';
+
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/run_altitude.dart';
 import '../lib/run_stats.dart';
 
 void main() {
+  group('live moving time (issue #1300)', () {
+    final t0 = DateTime(2026, 11, 7, 7, 0, 0);
+    Waypoint at(int s, double cumM) => Waypoint(
+          lat: 47.37,
+          lng: 8.54 + cumM / (111320 * 0.6773),
+          timestamp: t0.add(Duration(seconds: s)),
+        ).withCumulativeDistance(cumM);
+
+    // 60 s at 3 m/s, a 90 s stop the filter credits 0.3 m/s of drift over,
+    // then 30 s at 3 m/s.
+    final stopAndGo = <Waypoint>[
+      for (var s = 0; s <= 60; s++) at(s, 3.0 * s),
+      for (var s = 70; s <= 150; s += 10) at(s, 180 + 0.3 * (s - 60)),
+      for (var s = 151; s <= 180; s++) at(s, 207 + 3.0 * (s - 150)),
+    ];
+
+    test('extending as the line grows matches the finished movingTimeOf', () {
+      final acc = MovingTimeAccumulator();
+      for (var n = 1; n <= stopAndGo.length; n += 7) {
+        acc.extend(stopAndGo.sublist(0, n));
+      }
+      acc.extend(stopAndGo);
+      expect(acc.movingTime, movingTimeOf(stopAndGo));
+      expect(acc.movingTime, const Duration(seconds: 90));
+    });
+
+    test('an unstamped track measures on positions, as movingTimeOf does', () {
+      final unstamped = [
+        for (final w in stopAndGo) w.withCumulativeDistance(null),
+      ];
+      final acc = MovingTimeAccumulator()..extend(unstamped);
+      expect(acc.movingTime, movingTimeOf(unstamped));
+    });
+
+    test('a stop adds no moving time, so the average it divides holds', () {
+      final acc = MovingTimeAccumulator()..extend(stopAndGo.sublist(0, 61));
+      final before = acc.movingTime;
+      acc.extend(stopAndGo.sublist(0, 70));
+      expect(acc.movingTime, before);
+      expect(acc.lastMovingAt, t0.add(const Duration(seconds: 60)));
+    });
+
+    test('a shorter line is a new recording and starts over', () {
+      final acc = MovingTimeAccumulator()..extend(stopAndGo);
+      acc.extend(stopAndGo.sublist(0, 11));
+      expect(acc.movingTime, const Duration(seconds: 10));
+    });
+
+    test('averagingTime takes moving time on GPS and the clock otherwise', () {
+      const moving = Duration(minutes: 5);
+      const elapsed = Duration(minutes: 7);
+      expect(
+          averagingTime(
+              gpsMeasured: true, movingTime: moving, elapsed: elapsed),
+          moving);
+      expect(
+          averagingTime(
+              gpsMeasured: false, movingTime: Duration.zero, elapsed: elapsed),
+          elapsed);
+    });
+
+    group('isStandingStill', () {
+      DateTime s(int sec) => t0.add(Duration(seconds: sec));
+
+      test('says Stopped once the latest fix is 10 s past the last movement',
+          () {
+        expect(
+            isStandingStill(latestFixAt: s(69), lastMovingAt: s(60), since: s(0)),
+            isFalse);
+        expect(
+            isStandingStill(latestFixAt: s(70), lastMovingAt: s(60), since: s(0)),
+            isTrue);
+      });
+
+      test('a standing start counts from the first fix', () {
+        expect(isStandingStill(latestFixAt: s(9), lastMovingAt: null, since: s(0)),
+            isFalse);
+        expect(isStandingStill(latestFixAt: s(10), lastMovingAt: null, since: s(0)),
+            isTrue);
+      });
+
+      test('a resume counts from its own first fix, not the old movement', () {
+        expect(
+            isStandingStill(
+                latestFixAt: s(305), lastMovingAt: s(60), since: s(300)),
+            isFalse);
+      });
+
+      test('no fix yet, or no anchor yet, is never Stopped', () {
+        expect(isStandingStill(latestFixAt: null, lastMovingAt: null, since: s(0)),
+            isFalse);
+        expect(isStandingStill(latestFixAt: s(99), lastMovingAt: null, since: null),
+            isFalse);
+      });
+    });
+  });
+
   group('movingTimeOf', () {
     // Zürich coordinates, moving eastward. ~0.00001 degree of longitude at
     // 47.37°N is ~0.75 m — usable for constructing realistic short segments.
@@ -387,6 +487,346 @@ void main() {
     test('zero (or negative) elapsed returns null', () {
       expect(averagePaceSecPerKm(2000, 0), isNull);
       expect(averagePaceSecPerKm(2000, -1), isNull);
+    });
+  });
+
+  group('fastestWindowOf boundary', () {
+    const mPerDeg = 6371000 * pi / 180;
+
+    List<Waypoint> evenEquatorTrack(int legs, double stepM, int stepS) => [
+          for (var i = 0; i <= legs; i++)
+            Waypoint(
+              lat: 0,
+              lng: i * stepM / mPerDeg,
+              timestamp: DateTime.utc(2026, 1, 1, 9, 0, i * stepS),
+            ),
+        ];
+
+    test('a track that measures exactly the window still yields a best', () {
+      // Fifty 100 m legs at the equator IS a 5 km run at 5:00/km, and the
+      // accumulated haversine sum of it lands a hair under 5 000 m. Compared
+      // strictly, that decided there was no 5 km effort in a 5 km run on the
+      // last bit of a float. [windowToleranceRatio] scales with the window
+      // because the drift does. Web's twin case is in
+      // `integrations/embedded_best_efforts.test.ts`.
+      final track = evenEquatorTrack(50, 100, 30);
+      var cum = 0.0;
+      for (var i = 1; i < track.length; i++) {
+        cum += haversineMetres(
+          track[i - 1].lat,
+          track[i - 1].lng,
+          track[i].lat,
+          track[i].lng,
+        );
+      }
+      expect(cum, lessThan(5000),
+          reason: 'fixture must land short of the window, measured $cum');
+      expect(5000 - cum, lessThan(1e-9),
+          reason: 'and only just, measured ${5000 - cum}');
+      expect(fastestWindowOf(track, 5000)?.inSeconds, 1500);
+    });
+
+    test('the tolerance is relative, so it never admits a real shortfall', () {
+      // A millimetre short is a real shortfall at every distance the app
+      // measures: the ratio of the marathon window is 42 um, twenty times
+      // less than a millimetre, so the answer stays null.
+      expect(windowToleranceRatio * 42195, lessThan(0.001));
+      expect(fastestWindowOf(evenEquatorTrack(50, 100 - 0.001 / 50, 30), 5000),
+          isNull);
+    });
+  });
+
+  test('haversineMetres clamps instead of returning NaN near antipodal', () {
+    // web clamps with 2*asin(min(1, sqrt(a))); the unclamped atan2 form went
+    // NaN when rounding pushed `a` past 1, and NaN then propagates silently
+    // (Dart's NaN.clamp(0, 1) is 1.0, so interpolateAlongRoute returned the
+    // END waypoint rather than the midpoint).
+    final d = haversineMetres(-87.5, 0, 87.5, 180);
+    expect(d.isFinite, isTrue);
+    expect(d, closeTo(20015086.796, 1.0));
+  });
+
+  test('degenerate tracks — no moving time, no splits, never NaN', () {
+    // The tracks a brand-new account's first recordings reach: nothing, a
+    // single fix, a 10 s / 3 m blip (slower than the moving floor), a
+    // stand-still pair, and an untimed pair. Same table as the degenerate
+    // tracks test in web's run_stats.test.ts.
+    final start = DateTime.utc(2026, 4, 1, 7);
+    Waypoint p(double lngM, int? s) => Waypoint(
+          lat: 0,
+          lng: lngM / 111320,
+          timestamp: s == null ? null : start.add(Duration(seconds: s)),
+        );
+    final cases = <(String, List<Waypoint>)>[
+      ('empty', const []),
+      ('one fix', [p(0, 0)]),
+      ('10 s / 3 m', [p(0, 0), p(3, 10)]),
+      ('stand-still', [p(0, 0), p(0, 10)]),
+      ('untimed', [p(0, null), p(3000, null)]),
+    ];
+    for (final (name, t) in cases) {
+      expect(movingTimeOf(t), Duration.zero, reason: name);
+      expect(computeSplitDurations(t, 1000, start), isEmpty, reason: name);
+      expect(computeSplitDurations(t, 1609.344, start), isEmpty, reason: name);
+    }
+    final real = [for (var i = 0; i < 400; i++) p(i * 10.0, i * 3)];
+    expect(computeSplitDurations(real, 0, start), isEmpty);
+    expect(computeSplitDurations(real, -1000, start), isEmpty);
+    expect(computeSplitDurations(real, double.nan, start), isEmpty);
+  });
+
+  // The recorder's cumulative credited distance as the split and moving-time
+  // axis. Same cases as the trackCumulativeMetres / recorded-track tests in
+  // web's run_stats.test.ts.
+  group('recorded distance axis', () {
+    final start = DateTime.utc(2026, 4, 1, 7);
+    Waypoint at(double lngM, int s, {double? distM, double? smoothedLngM}) =>
+        Waypoint(
+          lat: 0,
+          lng: lngM / 111320,
+          timestamp: start.add(Duration(seconds: s)),
+          cumulativeDistanceMetres: distM,
+          smoothedLat: smoothedLngM == null ? null : 0,
+          smoothedLng: smoothedLngM == null ? null : smoothedLngM / 111320,
+        );
+
+    test('reads the recorded distance, scaled so the last point is the run '
+        'distance', () {
+      final t = [
+        at(0, 0, distM: 0),
+        at(410, 100, distM: 400),
+        at(790, 200, distM: 800),
+        at(1010, 250, distM: 1000),
+      ];
+      expect(trackCumulativeMetres(t), [0, 400, 800, 1000]);
+      final scaled = trackCumulativeMetres(t, totalDistanceMetres: 1100);
+      for (final (i, m) in [0.0, 440.0, 880.0, 1100.0].indexed) {
+        expect(scaled[i], closeTo(m, 1e-9), reason: 'scaled[$i]');
+      }
+      expect(trackCumulativeMetres(t, totalDistanceMetres: null),
+          [0, 400, 800, 1000]);
+      expect(trackCumulativeMetres(t, totalDistanceMetres: 0),
+          [0, 400, 800, 1000]);
+      expect(trackCumulativeMetres(t, totalDistanceMetres: double.nan),
+          [0, 400, 800, 1000]);
+    });
+
+    test('positions unless every point carries a non-decreasing distance', () {
+      final missing = [at(0, 0, distM: 0), at(100, 30), at(200, 60, distM: 200)];
+      final backwards = [
+        at(0, 0, distM: 0),
+        at(100, 30, distM: 120),
+        at(200, 60, distM: 110),
+      ];
+      final negative = [at(0, 0, distM: -1), at(100, 30, distM: 100)];
+      for (final t in [missing, backwards, negative]) {
+        expect(hasRecordedDistances(t), isFalse);
+        final cum = trackCumulativeMetres(t, totalDistanceMetres: 5000);
+        expect(cum.last, closeTo(haversineMetres(0, 0, 0, t.last.lng), 0.01));
+      }
+      expect(hasRecordedDistances([at(0, 0, distM: 0)]), isFalse);
+      expect(
+          hasRecordedDistances([at(0, 0, distM: 0), at(100, 30, distM: 100)]),
+          isTrue);
+      expect(trackCumulativeMetres(const []), isEmpty);
+    });
+
+    test('the position fallback measures the smoothed line, else raw', () {
+      final smoothed = [
+        at(0, 0, smoothedLngM: 0),
+        at(100, 30, smoothedLngM: 60),
+      ];
+      expect(trackCumulativeMetres(smoothed, totalDistanceMetres: 5000)[1],
+          closeTo(haversineMetres(0, 0, 0, 60 / 111320), 0.01));
+      expect(trackCumulativeMetres([at(0, 0), at(100, 30)])[1],
+          closeTo(haversineMetres(0, 0, 0, 100 / 111320), 0.01));
+    });
+
+    test('a recorded track splits on its distance and ends on the run '
+        'distance', () {
+      // 2.5 m/s for 2120 s, a fix every 2 s, raw positions zig-zagging 12 m
+      // across the line. The estimator credited 5300 m to the last stored fix
+      // and the run saved 5312 m.
+      final pts = [
+        for (var i = 0; i <= 1060; i++)
+          Waypoint(
+            lat: (i.isEven ? 6 : -6) / 111320,
+            lng: i * 5 / 111320,
+            timestamp: start.add(Duration(seconds: i * 2)),
+            cumulativeDistanceMetres: i * 5.0,
+          ),
+      ];
+      final splits =
+          computeSplitDurations(pts, 1000, start, totalDistanceMetres: 5312);
+      expect(splits, hasLength(5));
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(399.1, 1));
+      }
+      final unscaled = computeSplitDurations(pts, 1000, start);
+      for (final s in unscaled) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(400, 0.01));
+      }
+      final raw = computeSplitDurations(
+        [for (final w in pts) w.withCumulativeDistance(null)],
+        1000,
+        start,
+        totalDistanceMetres: 5312,
+      );
+      expect(raw.length, greaterThan(7), reason: 'raw zig-zag reads long');
+    });
+
+    test('a stop the estimator held still is not moving time', () {
+      // Raw fixes wander 5 m a second while the runner stands; the recorder
+      // credited nothing over those 60 s.
+      final pts = [
+        for (var i = 0; i <= 60; i++) at(i.isEven ? 0 : 5, i, distM: 100),
+      ];
+      expect(movingTimeOf(pts), Duration.zero);
+      expect(
+        movingTimeOf([for (final w in pts) w.withCumulativeDistance(null)]),
+        const Duration(seconds: 60),
+      );
+    });
+
+    test('mile splits on the recorded distance land on the mile boundaries',
+        () {
+      // 2.5 m/s for 2120 s on the recorded distance, raw positions zig-zagging
+      // off the line: three whole miles at 643.7 s each.
+      final pts = [
+        for (var i = 0; i <= 1060; i++)
+          Waypoint(
+            lat: (i.isEven ? 6 : -6) / 111320,
+            lng: i * 5 / 111320,
+            timestamp: start.add(Duration(seconds: i * 2)),
+            cumulativeDistanceMetres: i * 5.0,
+          ),
+      ];
+      final splits = computeSplitDurations(pts, 1609.344, start);
+      expect(splits.map((s) => s.tick), [1, 2, 3]);
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(643.7376, 0.002));
+      }
+    });
+
+    test('a recorded run, stop, run counts only the credited stretches', () {
+      // 3 m/s for 60 s, 60 s held still while the raw fixes wander 5 m, then
+      // 3 m/s for 60 s more.
+      final pts = [
+        for (var i = 0; i <= 180; i++)
+          () {
+            final d = i <= 60
+                ? 3.0 * i
+                : i <= 120
+                    ? 180.0
+                    : 180.0 + 3 * (i - 120);
+            final stopped = i > 60 && i < 120;
+            return at(d + (stopped && i.isOdd ? 5 : 0), i, distM: d);
+          }(),
+      ];
+      expect(movingTimeOf(pts), const Duration(seconds: 120));
+      expect(
+        movingTimeOf([for (final w in pts) w.withCumulativeDistance(null)]),
+        const Duration(seconds: 180),
+      );
+    });
+  });
+  group('split elevation', () {
+    final start = DateTime.utc(2026, 4, 1, 7);
+    // A barometer run whose GPS altitude disagrees with it in shape and level:
+    // the barometer climbs 2 m per 100 m, GPS altitude falls 1 m per 100 m and
+    // sits 50 m above it. 2.1 km on the recorded distance, a fix every 10 m
+    // and 3 s. Twin of `baroRun` in run_stats.test.ts.
+    List<Waypoint> baroRun([double? Function(int i)? baroAt]) => [
+          for (var i = 0; i <= 210; i++)
+            Waypoint(
+              lat: 0,
+              lng: i * 10 / 111320,
+              timestamp: start.add(Duration(seconds: i * 3)),
+              cumulativeDistanceMetres: i * 10.0,
+              elevationMetres: 150 - 0.1 * i + (i.isEven ? -6 : 6),
+              baroElevationMetres:
+                  baroAt == null ? 100 + 0.2 * i : baroAt(i),
+            ),
+        ];
+
+    test('a barometer run reads split elevation off the barometer, as the '
+        'climb does', () {
+      final pts = baroRun();
+      final splits =
+          computeSplitDurations(pts, 1000, start, totalDistanceMetres: 2100);
+      // Whole ticks only: the 100 m tail web shows as a third split is not one
+      // here.
+      expect(splits.map((s) => s.elevationMetres), [20, 20]);
+      final line = runAltitude(pts, RunSource.app).track;
+      expect(
+        [
+          line[100].elevationMetres! - line[0].elevationMetres!,
+          line[200].elevationMetres! - line[100].elevationMetres!,
+        ].map((d) => d.round()),
+        [20, 20],
+      );
+      final gpsOnly = computeSplitDurations(
+        [
+          for (final w in pts)
+            Waypoint(
+              lat: w.lat,
+              lng: w.lng,
+              timestamp: w.timestamp,
+              cumulativeDistanceMetres: w.cumulativeDistanceMetres,
+              elevationMetres: w.elevationMetres,
+            ),
+        ],
+        1000,
+        start,
+        totalDistanceMetres: 2100,
+      );
+      expect(gpsOnly.map((s) => s.elevationMetres), [-10, -10]);
+    });
+
+    test('split elevation carries a dropout across and never reads an '
+        'off-track fix', () {
+      // No barometer reading until the anchor levels (the first five fixes)
+      // and none through a stall from 500 m to 1490 m; an off-track canopy fix
+      // at 1010 m, inside the stall and beside the 1 km boundary, carries a
+      // wild altitude in both series.
+      final pts = baroRun(
+          (i) => i < 5 || (i >= 50 && i < 150) ? null : 100 + 0.2 * i);
+      final w = pts[101];
+      pts[101] = Waypoint(
+        lat: w.lat,
+        lng: w.lng,
+        timestamp: w.timestamp,
+        cumulativeDistanceMetres: w.cumulativeDistanceMetres,
+        elevationMetres: 999,
+        baroElevationMetres: 999,
+        offTrack: true,
+      );
+      final splits =
+          computeSplitDurations(pts, 1000, start, totalDistanceMetres: 2100);
+      // The first reading (101 m at 50 m) holds back to the start.
+      expect(splits.map((s) => s.elevationMetres), [19, 20]);
+      // A barometer that stops for good at 890 m: the split it reaches into
+      // holds its last reading, the ones after it read nothing rather than
+      // 0 m.
+      final stalled = computeSplitDurations(
+          baroRun((i) => i < 90 ? 100 + 0.2 * i : null), 1000, start,
+          totalDistanceMetres: 2100);
+      expect(stalled.map((s) => s.elevationMetres), [18, null]);
+    });
+
+    test('a half-metre split elevation rounds toward +infinity, as the web '
+        'twin does', () {
+      final pts = [
+        for (var i = 0; i <= 110; i++)
+          Waypoint(
+            lat: 0,
+            lng: i * 10 / 111320,
+            timestamp: start.add(Duration(seconds: i * 3)),
+            cumulativeDistanceMetres: i * 10.0,
+            baroElevationMetres: 10 - 0.025 * i,
+          ),
+      ];
+      expect(computeSplitDurations(pts, 1000, start).first.elevationMetres, -2);
     });
   });
 }

@@ -105,12 +105,13 @@ void main() {
     );
     expect(
       source,
-      contains('throw LocationPermissionWhileInUseError()'),
-      reason: 'prepare() must throw LocationPermissionWhileInUseError on '
-          'Android when permission is whileInUse — without this, runs '
-          'silently freeze the moment another app takes focus because '
-          'Android stops delivering background fixes without "Allow all '
-          'the time", even though the foreground service is still alive.',
+      contains('_backgroundLocationLimited = _foregroundOnlyGrant('),
+      reason: 'prepare() must record a foreground-only ("While using the '
+          'app") grant as backgroundLocationLimited and open the stream '
+          'anyway. Refusing the grant recorded NOTHING — no fixes, a map '
+          'stuck on "Waiting for GPS", a run saved as indoor — which is a '
+          'worse failure than the background freeze it was avoiding, and '
+          'it is what Android\'s first-run dialog grants by default.',
     );
   });
 
@@ -207,14 +208,11 @@ void main() {
   test(
       'GPS retry loop gates on the SAME permission predicate as prepare() (#671)',
       () {
-    // Reason: _startGpsRetryLoop() used to precheck denied/deniedForever
-    // only, missing the Android whileInUse case prepare() refuses on. That
-    // let the retry timer silently reopen the position stream ~3s after
-    // prepare() had just thrown LocationPermissionWhileInUseError for the
-    // same permission state — reintroducing the background-freeze prepare()
-    // exists to prevent. Both gates must call the same shared predicate so
-    // they cannot drift apart again; this pins that both bodies reference it
-    // rather than re-deriving the condition inline.
+    // Reason: the two gates decide the same question — may this permission
+    // open a position stream — in two places, and they drifted once already
+    // (#671), leaving the retry timer reopening a stream prepare() had just
+    // refused. Both must call the same shared predicate; this pins that both
+    // bodies reference it rather than re-deriving the condition inline.
     final prepareBody = _extractMethodBody(
       source,
       r'Future<void> prepare\(\{[^)]*\}\)\s*async\s*\{',
@@ -223,7 +221,7 @@ void main() {
       prepareBody,
       contains('_permissionAllowsStream('),
       reason: 'prepare() must gate the stream-opening decision through '
-          '_permissionAllowsStream, not an inline whileInUse condition.',
+          '_permissionAllowsStream, not an inline permission condition.',
     );
     final retryLoopBody = _extractMethodBody(
       source,
@@ -234,8 +232,8 @@ void main() {
       contains('_permissionAllowsStream('),
       reason: '_startGpsRetryLoop() must precheck permission through the '
           'SAME _permissionAllowsStream predicate prepare() uses — a '
-          'hand-rolled denied/deniedForever-only check silently drifts '
-          'from prepare()\'s gate (see #671).',
+          'hand-rolled copy of the condition silently drifts from '
+          'prepare()\'s gate (see #671).',
     );
   });
 
@@ -288,29 +286,69 @@ void main() {
     // GPX/TCX/FIT exports also embed Run.track[i].timestamp, so wall-clock
     // would mean "process time" rather than "GPS time" in shared files.
     // Fixed in decisions.md §46 — this guard pins the policy.
-    final assignment = RegExp(
-      r'_currentWaypoint\s*=\s*Waypoint\((?:[^()]|\([^()]*\))*\)',
-      multiLine: true,
+    //
+    // The fix's waypoint is built by _waypointFor (shared with the stored
+    // track, which flags off-line fixes), and _storeFix re-assigns the
+    // current position to that same waypoint restamped with distance. So
+    // the guard pins both halves: every assignment comes from one of those
+    // sources, and the builder reads the fix's own timestamp.
+    final assignments = RegExp(r'_currentWaypoint\s*=\s*([^;]+);')
+        .allMatches(source)
+        .map((m) => m.group(1)!.trim())
+        .toList();
+    expect(
+      assignments,
+      isNotEmpty,
+      reason: 'Could not find any _currentWaypoint assignment — rename? '
+          'Update the guard to match the new shape.',
+    );
+    for (final rhs in assignments) {
+      expect(
+        rhs == 'null' ||
+            rhs == 'stamped' ||
+            rhs.startsWith('_waypointFor(pos'),
+        isTrue,
+        reason: '_currentWaypoint = $rhs — the current position must be '
+            'the waypoint of the fix itself (built by _waypointFor(pos, '
+            '...), or that waypoint restamped by _storeFix), so its '
+            'timestamp is the GPS time. A new source needs the same '
+            'pos.timestamp proof here.',
+      );
+    }
+
+    final builder = RegExp(
+      r'Waypoint _waypointFor\([\s\S]*?=>\s*Waypoint\((?:[^()]|\([^()]*\))*\)',
     ).firstMatch(source)?.group(0);
     expect(
-      assignment,
+      builder,
       isNotNull,
-      reason: 'Could not find the _currentWaypoint = Waypoint(...) '
-          'assignment — rename? Update the guard to match the new shape.',
+      reason: 'Could not find the _waypointFor(...) => Waypoint(...) '
+          'builder — rename? Update the guard to match the new shape.',
     );
     expect(
-      assignment,
+      builder,
       contains('timestamp: pos.timestamp'),
-      reason: 'The _currentWaypoint constructor must read timestamp from '
+      reason: 'The waypoint of a fix must read timestamp from '
           'pos.timestamp (GPS-reported), not DateTime.now() — see '
           'decisions.md §46. Reverting this re-introduces the silent '
           '_calculatePace = null bug under fix-batching.',
     );
     expect(
-      assignment,
+      builder,
       isNot(contains('DateTime.now()')),
       reason: 'Same as above — DateTime.now() must not appear inside the '
-          '_currentWaypoint constructor.',
+          'waypoint builder.',
+    );
+
+    final store = RegExp(r'void _storeFix\([\s\S]*?\n  \}')
+        .firstMatch(source)
+        ?.group(0);
+    expect(store, isNotNull, reason: '_storeFix moved — update the guard.');
+    expect(
+      store,
+      isNot(contains('DateTime.now()')),
+      reason: '_storeFix hands its waypoint to _currentWaypoint, so it '
+          'must not restamp it with wall-clock time.',
     );
   });
 

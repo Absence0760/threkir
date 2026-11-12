@@ -174,4 +174,42 @@ void main() {
       expect(r.plannedMetres, 0);
     });
   });
+
+  group('planWorkoutProgress', () {
+    test('ticking a rest day cannot push the plan over 100%', () {
+      final workouts = [
+        const CountableWorkout(kind: 'easy', manuallyCompleted: true),
+        const CountableWorkout(kind: 'tempo', completedRunId: 'r1'),
+        const CountableWorkout(kind: 'long', manuallyCompleted: true),
+        const CountableWorkout(kind: 'rest', manuallyCompleted: true),
+        const CountableWorkout(kind: 'rest', manuallyCompleted: true),
+        const CountableWorkout(kind: 'rest'),
+        const CountableWorkout(kind: 'rest'),
+      ];
+      expect(planWorkoutProgress(workouts),
+          const PlanWorkoutProgress(3, 3, 100));
+    });
+
+    test('skipped sessions leave both sides of the ratio', () {
+      final workouts = [
+        const CountableWorkout(kind: 'easy', manuallyCompleted: true),
+        const CountableWorkout(kind: 'tempo'),
+        const CountableWorkout(
+            kind: 'long', skippedAt: '2026-07-01T00:00:00Z'),
+      ];
+      expect(planWorkoutProgress(workouts),
+          const PlanWorkoutProgress(1, 2, 50));
+    });
+
+    test('a rest-only plan is zero, not a division by zero', () {
+      expect(
+          planWorkoutProgress(
+              [const CountableWorkout(kind: 'rest', manuallyCompleted: true)]),
+          const PlanWorkoutProgress(0, 0, 0));
+    });
+
+    test('empty plan is zero / zero', () {
+      expect(planWorkoutProgress(const []), const PlanWorkoutProgress(0, 0, 0));
+    });
+  });
 }

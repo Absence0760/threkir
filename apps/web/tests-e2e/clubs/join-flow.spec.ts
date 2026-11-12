@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { readCount, readMaybeRow } from '../fixtures/db-read';
 
 /**
  * /clubs/join/[token] — branch coverage for the polished invite
@@ -124,13 +125,9 @@ test.describe('/clubs/join/[token] — error branch (signed-in, bad token)', () 
 			page.getByRole('heading', { level: 1, name: 'Invite problem' })
 		).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.kicker', { hasText: 'Hmm' })).toBeVisible();
-		// The catch block surfaces either the RPC error message
-		// ("invalid invite token") or a generic fallback ("This invite is
-		// invalid or expired.") depending on whether the client wraps the
-		// PostgrestError as an Error instance. Accept both.
-		await expect(page.locator('.error')).toContainText(
-			/invalid invite token|invalid or expired/i
-		);
+		// The page's own sentence, never the RPC's "invalid invite token".
+		await expect(page.locator('.error')).toContainText(/invalid or expired/i);
+		await expect(page.locator('.error')).not.toContainText(/invalid invite token/i);
 		await expect(
 			page.getByText(/may have been rotated|share a fresh one/i)
 		).toBeVisible();
@@ -194,12 +191,15 @@ test.describe('/clubs/join/[token] — successful redemption (cross-user)', () =
 		).toBeVisible({ timeout: 10_000 });
 
 		// DB sanity — the row was inserted, not just the URL redirected.
-		const { data: membership } = await getAdminClient()
-			.from('club_members')
-			.select('role, status')
-			.eq('club_id', SYDNEY_RUN_CLUB_ID)
-			.eq('user_id', USER_C_PRO.id)
-			.maybeSingle();
+		const membership = await readMaybeRow(
+			'club_members by club_id+user_id',
+			getAdminClient()
+				.from('club_members')
+				.select('role, status')
+				.eq('club_id', SYDNEY_RUN_CLUB_ID)
+				.eq('user_id', USER_C_PRO.id)
+				.maybeSingle()
+		);
 		expect(membership).not.toBeNull();
 		expect((membership as { status: string }).status).toBe('active');
 
@@ -248,11 +248,14 @@ test.describe('/clubs/join/[token] — already-a-member (existing member upsert)
 			page.getByRole('heading', { level: 1, name: 'Richmond Run Club' })
 		).toBeVisible({ timeout: 10_000 });
 
-		const { count } = await getAdminClient()
-			.from('club_members')
-			.select('user_id', { count: 'exact', head: true })
-			.eq('club_id', SYDNEY_RUN_CLUB_ID)
-			.eq('user_id', USER_B.id);
+		const count = await readCount(
+			'club_members by club_id+user_id',
+			getAdminClient()
+				.from('club_members')
+				.select('user_id', { count: 'exact', head: true })
+				.eq('club_id', SYDNEY_RUN_CLUB_ID)
+				.eq('user_id', USER_B.id)
+		);
 		expect(count).toBe(1);
 	});
 });

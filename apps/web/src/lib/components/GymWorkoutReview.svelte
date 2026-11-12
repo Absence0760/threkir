@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { RoutineAdherence, SetAdherenceStatus } from '$lib/gym/gym_adherence';
-	import type { GymStepResult, NextTargetHint } from '$lib/gym/gym_session_types';
-	import { reviewRowKey } from '$lib/gym/gym_workout_review';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import type { RoutineAdherence, SetAdherenceStatus } from '#lib/gym/gym_adherence.ts';
+	import type { GymStepResult, NextTargetHint } from '#lib/gym/gym_session_types.ts';
+	import { reviewRowKey } from '#lib/gym/gym_workout_review.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		adherence: RoutineAdherence | null;

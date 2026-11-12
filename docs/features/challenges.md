@@ -6,6 +6,10 @@
 > - **`challenge_leaderboard` is SECURITY DEFINER, not invoker** (gated on `is_challenge_visible`). The "public runs readable by anyone" RLS policy on `runs` was retired (public access now flows through the `public_runs` view / `clip-public-track`), so a SECURITY INVOKER aggregate would see only the caller's own runs and zero every competitor. DEFINER + a visibility gate lets the board sum each opted-in participant's runs (incl. private ones — only the per-user SUM is exposed, never the rows, exactly like `event_results`). The completion RPC + sweep are likewise DEFINER and read base `runs` directly.
 > - **`vert` was added in a follow-on slice** (`20270302_001`, ADR §186): it first-classes total ascent as a real `runs.elevation_gain_m` column (backfilled from `metadata.elevation_m`), summed as `sum(coalesce(elevation_gain_m, 0))` and projected into `activities.summary` + `public_runs`. The metric set is now distance / duration / vert / activity_count / streak_days.
 
+## Park courses metric (2026-11-08, decisions § 2405)
+
+`park_courses` counts distinct park courses (not closed, in an active park) completed on in-window, non-DNF runs of the challenge's activity type; a team board counts distinct courses across the team. `challenges.park_region_code` (ISO 3166-2, refused on any other metric) narrows it to one region's parks, which is how the official yearly passport is set up; the create forms offer the metric without a region, and both detail pages say which region a regional challenge counts. Goals are a bare course count (`challengeGoalUnit` → `courses`). The clients cannot estimate it offline (`metricFromActivity` returns 0): efforts live in `global_segment_efforts`, so a new effort re-checks the runner's open park challenges and the daily sweep is the backstop. Migration `20271123002404`; pgTAP `park_course_badges_test.sql`; see [park_courses.md § Collections](park_courses.md#collections).
+
 ## On-pace projection (2026-07-01)
 
 A joined, time-boxed **goal** challenge shows an on-pace hint alongside the
@@ -29,6 +33,25 @@ formats the rate through the existing metric formatters. 22 mirror unit tests
 each side (`challenge_progress.test.ts` / `challenge_progress_test.dart`), a web
 Playwright `pace.spec.ts`, and a `challenge_detail_screen_test.dart` widget test
 pin it.
+
+## Invite links and the public share page (2026-11-03, decisions § 2261)
+
+Issue #1273 item 4: a creator posts "Run 50 km with me in November", followers tap the link, see the challenge, sign up and join in one tap.
+
+- **Invite link** — `https://threkir.com/challenges/join/<token>`. One revocable token per challenge in `private.challenge_invite_tokens` (migration `20271103000001`), never a column on `challenges`, so no client read can return it. The creator or an admin of the anchoring club mints it with `get_challenge_invite_token` and replaces it with `rotate_challenge_invite_token` ("Reset link", behind a confirm; the old link stops working, nobody already in is removed). `club_vs_club` challenges get no link: a link has no way to pick a team.
+- **Join page** — web `/challenges/join/[token]` (shell-less, anon-allowed, `noindex`) reads `challenge_invite_preview` (anon-callable: the challenge's own fields, its participant count and the creator's id and name under `profile_visible_to`, both null together where the profile is not visible so the page shows the anonymous runner label rather than an id-derived handle, never the participant list) and joins with `join_challenge_by_token`, which works for a non-public challenge. A signed-out visitor gets sign-up / sign-in links with `return_to`; `lib/core/pending_return.ts` carries that target across the email confirmation link and the OAuth round trip, so a new account comes back to the Join button. Mobile `ChallengeInviteScreen` does the same; signed out, the tap goes through sign-in and joins on return.
+- **What the link refuses** — the join inserts as the definer, so the `challenge_participants` insert policy never sees it; `join_challenge_by_token` checks for itself and returns NULL, exactly as for an unknown token and with the attempt still counted, when the joiner and the creator have blocked each other either way, when the challenge has ended (`ends_at <= now()`), or when the creator is shadow-hidden. The preview is empty for a shadow-hidden creator (except to the creator) and for a caller blocked either way, so the page never offers a Join the RPC would refuse.
+- **Rate limit** — `join_challenge_by_token` spends the `join_challenge_by_token` bucket, 30 attempts per user per hour, and an unknown token counts: the RPC returns NULL rather than raising so the counter commits.
+- **Public share page** — `/share/challenge/[id]` + `/og/challenge/[id].png` through the share-entity Lambda (seo.md). Public challenges only: a non-public id is "not found" there even for a token holder. The board shows the top five through `challenge_leaderboard`, whose names already follow the profile rules, with the `Runner #ABCD` handle where a name is null. Signed-out CTA returns to the same page after sign-up (share pages skip the onboarding gates), then Join is one tap.
+- **Mobile links** — Android intent filters (`/challenges/join/`, `/share/challenge/<uuid>`, `com.threkir.app://challenges/join/`) and the matching `apple-app-site-association` components; `lib/challenge_invite_link.dart` hands the link to `HomeScreen`, which opens the join screen or the challenge. The creator's invite card (`widgets/challenge_invite_card.dart`) sits under the leaderboard on `ChallengeDetailScreen`.
+- **Free.** No paywall.
+
+**Pre-deploy checklist (privacy boundary, § 150).** Who can see and join a non-public challenge changes, so the token path ships closed: no migration writes the `challenge_invite_links` row of `private.feature_flags`; `seed.sql` opens it for local and CI. While it is closed the token RPCs return null, the preview is empty, `join_challenge_by_token` raises `challenge_invite_links_disabled`, and both clients hide the invite card and show the join page's dead-link state. Before prod:
+
+- [ ] CISO / Security Analyst review of `20271103000001` (token storage, the anon-callable preview's projection, the rate limit) and the web/mobile join surfaces.
+- [ ] Then add `"challenge_invite_links": { "enabled": true, "signoff": "<link>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR, and the next backend release applies it (decisions § 2430). Closing it again is the same edit with `"enabled": false`.
+
+The public share page needs no flag: a public challenge and its board were already anon-readable. The creator's own copy of it carries their `?ref=` and its visits, sign-ups and joins are counted for them under the separate `share_attribution` gate (decisions § 2268).
 
 ## Goal & user value
 
@@ -77,12 +100,22 @@ create table challenges (
   metric        text not null,   -- CHECK below (ChallengeMetric union)
   scope         text not null,   -- CHECK below (ChallengeScope union)
   goal_value    numeric,         -- target in metric base unit; null for pure-ranking individual boards
+                                 -- (positive, and window-bounded for streak_days: challenges_goal_ck)
   activity_type text,            -- null = any; else one of ActivityType ('run'|'walk'|'hike'|'cycle'|'stroller')
   starts_at     timestamptz not null,
   ends_at       timestamptz not null,
   is_public     boolean not null default true,
   created_at    timestamptz not null default now(),
   constraint challenges_window_ck check (ends_at > starts_at),
+  -- 20270615_001. A stored 0 is not "no goal": recompute_challenge_completion
+  -- returns early only on NULL, then compares value >= goal, so it completes
+  -- for every participant. streak_days is the only metric the window bounds;
+  -- a duration sum is over runs whose START is inside it, so one long run can
+  -- exceed the window. Mirrored by checkChallengeGoal on both clients.
+  constraint challenges_goal_ck check (
+    goal_value is null or (goal_value > 0 and (
+      metric <> 'streak_days'
+      or goal_value <= floor(extract(epoch from (ends_at - starts_at)) / 86400) + 1))),
   constraint challenges_metric_ck check (
     metric in ('distance','duration','vert','activity_count','streak_days')),
   constraint challenges_scope_ck check (
@@ -129,7 +162,7 @@ create index challenge_badges_user on challenge_badges (user_id, awarded_at desc
 RLS shape (copy `club_members` / `events` policies):
 - `challenges` SELECT: `is_public = true` OR caller is creator OR (club_id is not null AND caller is an active member of that club via the `club_members` exists-subquery) OR caller is a participant. Fail-closed.
 - `challenges` INSERT: `auth.uid() = creator_id` AND, when `club_id is not null`, `is_club_admin(club_id)` (only club admins create club-anchored challenges; open challenges anyone may create — revisit in Open Questions). UPDATE/DELETE: creator or `is_club_admin(club_id)`.
-- `challenge_participants` SELECT: anyone who can SELECT the parent challenge (exists-subquery on `challenges` visibility — single source of truth, mirrors the event_attendees-inherits-events idiom). INSERT: `auth.uid() = user_id` AND the parent challenge is visible AND (for club-anchored / club_vs_club) the user is an active member of `team_club_id`. DELETE (leave): `auth.uid() = user_id`. `completed_at` is **column-locked** and written only by the SECURITY DEFINER progress RPC (copy the `event_attendees` attendance column-grant lockdown from `20270102_001`).
+- `challenge_participants` SELECT: anyone who can SELECT the parent challenge (exists-subquery on `challenges` visibility — single source of truth, mirrors the event_attendees-inherits-events idiom). INSERT: `auth.uid() = user_id` AND the parent challenge is visible AND (for club-anchored / club_vs_club) the user is an active member of `team_club_id`. DELETE (leave): `auth.uid() = user_id`. `completed_at` is **column-locked** and written only by the SECURITY DEFINER progress RPC (copy the `event_attendees` attendance column-grant lockdown from `20270102_001`). INSERT is column-scoped too, to `(challenge_id, user_id, team_club_id)` — `20270616_001`. It was table-wide, and since join and leave are both own-row verbs a participant could delete their row and re-insert it with `completed_at` already set, forging the completion in two statements ([decisions § 763](../architecture/decisions.md), the [§ 584](../architecture/decisions.md) class).
 - `challenge_badges` SELECT: `auth.uid() = user_id` OR the badge's challenge is public (so a profile can show earned badges). INSERT: closed to clients — only the SECURITY DEFINER completion path. No client UPDATE/DELETE.
 
 ### `20270204_001_challenge_progress_rpc.sql` — the no-N+1 progress + completion engine
@@ -148,11 +181,11 @@ Two RPCs, both `security invoker` for reads (RLS on `activities`/base tables gov
 
 3. `recompute_challenge_completion(p_challenge_id uuid, p_user_id uuid) returns void` — SECURITY DEFINER. Recomputes the caller's value via the same aggregate, and when `goal_value` is met and no badge row exists, inserts `challenge_badges` + stamps `challenge_participants.completed_at` + inserts a `challenge_complete` notification. Idempotent (the `unique(user_id, challenge_id)` badge row guards double-award). Called opportunistically by the client after a run saves (cheap, fail-closed) and/or by a daily pg_cron sweep (`enqueue`-style) for robustness. **Do not** put completion in a per-run trigger that fans out across all challenges — keep it on the explicit RPC + cron sweep to bound write amplification.
 
-4. `browse_public_challenges(p_search text, p_limit int, p_offset int) returns table(<challenge fields>, participant_count integer)` — **SECURITY DEFINER**, `stable` (migration `20270308_001`, ADR §190). The ranked, paginated, searchable **Browse discovery feed**: public challenges the caller hasn't joined, still open (`ends_at > now()`), ordered by **popularity** `participant_count + joins_7d*2` (size + a 7-day join-velocity boost so momentum outranks a stale big board), tie-break `ends_at asc, created_at desc, id`. Throwaway suppression hides participant-less boards past a 7-day grace window unless the caller created them. DEFINER (unlike the two reader RPCs above) because the velocity term counts ALL recent joins — a non-participant's RLS on `challenge_participants` would undercount it — and the function only ever returns public challenges + aggregate counts, no per-user rows. `participant_count` is read from the trigger-maintained cache column (below), so Browse never aggregates participants at read time. Client: `browsePublicChallenges()` in `data.ts`; web `/challenges` Browse uses it with a debounced search box + Load-more pagination.
+4. `browse_public_challenges(p_search text, p_limit int, p_offset int) returns table(<challenge fields>, participant_count integer)` — **SECURITY DEFINER**, `stable` (migration `20270308_001`, ADR §190). The ranked, paginated, searchable **Browse discovery feed**: public challenges the caller hasn't joined, still open (`ends_at > now()`), ordered by **popularity** `participant_count + joins_7d*2` (size + a 7-day join-velocity boost so momentum outranks a stale big board), tie-break `ends_at asc, created_at desc, id`. Throwaway suppression hides participant-less boards past a 7-day grace window unless the caller created them or an official publisher did (`20271211000003`, decisions § 2446: the official catalogue opens each recurring board before its window, so next month's board would otherwise vanish before its month). DEFINER (unlike the two reader RPCs above) because the velocity term counts ALL recent joins — a non-participant's RLS on `challenge_participants` would undercount it — and the function only ever returns public challenges + aggregate counts, no per-user rows. `participant_count` is read from the trigger-maintained cache column (below), so Browse never aggregates participants at read time. Client: `browsePublicChallenges()` in `data.ts`; web `/challenges` Browse uses it with a debounced search box + Load-more pagination.
 
 **`challenges.participant_count` cache (migration `20270308_001`):** a denormalised `integer` column on `challenges`, recompute-from-`count(*)` on every join/leave via the `challenge_participants_count_sync` trigger (SECURITY DEFINER — a joiner has no UPDATE grant on the challenge row). Registered in [`derived_state.md`](../backend/derived_state.md). Authoritative query: `count(*) from challenge_participants where challenge_id = …`.
 
-**Spam backstop (resolves Open Question 2):** a `before insert on challenges` trigger (`enforce_challenge_create_rate_limit`) throttles authenticated creation to 30/hour via the shared `check_rate_limit('create_challenge', …)` bucket. Guarded: `auth.uid() is null` (seed/service inserts) passes through, and any rate-limit RPC error fails OPEN so a hiccup can't block legitimate creation.
+**Spam backstop (resolves Open Question 2):** a `before insert on challenges` trigger (`enforce_challenge_create_rate_limit`) throttles authenticated creation to 30/hour on the `create_challenge` bucket. Since migration `20270610_001` the body is one `perform enforce_create_rate_limit('create_challenge', new.creator_id, 30, 3600)` ([decisions § 747](../architecture/decisions.md)), so it inherits the shared helper's skips (`service_role`, `auth.uid() is null` for seed/service inserts, and a `creator_id` the caller does not own — that one is left to the RLS `WITH CHECK` to refuse with 42501) and, more to the point, the helper's refusal message: `rate limit exceeded for create_challenge, retry in Ns`, which is the literal both client parsers read. The original body raised the bare string `challenge_create_rate_limited` and wrapped the RPC call in a fail-open `exception when others`; both are gone.
 
 **Resolved (migration `20270302_001`, ADR §186):** elevation gain is now the first-class `runs.elevation_gain_m` column (backfilled from `metadata.elevation_m`), summed directly off base `runs` like the other metrics. The `activities` view's runs branch projects `'elevation_gain_m', r.elevation_gain_m` into its `summary jsonb_build_object` so the client-side `metricFromActivity` estimate reads the SAME number the server sum does. (The view re-state in that migration also carries forward the lift branch's materialized `set_count`/`volume_kg` columns from `20261214_001` — the bare-body trap applies to views too.)
 
@@ -169,13 +202,13 @@ Seed: add one live open `distance` challenge + one club-anchored `group_goal` fo
 ## Web implementation (canonical)
 
 Routes (new, under the run-vs-social split — challenges are a social/engagement surface, mount in the `/social` hub + a dedicated detail route):
-- `apps/web/src/routes/challenges/+page.svelte` — list/browse: My challenges (joined, via `fetchChallenges({mine:true})`) and a **ranked Browse** section (public, popularity-ordered, debounced search + Load-more pagination) backed by the `browse_public_challenges` RPC via `browsePublicChallenges()`. The two lists load independently. Thin; reuses the panel.
-- `apps/web/src/routes/challenges/[id]/+page.svelte` — detail: hero (title, metric, window countdown), the user's **progress bar** (value vs `goal_value`, `prefers-reduced-motion`-safe), live leaderboard (individual rows or club-vs-club team cards or a single co-op group-goal bar), Join/Leave button, creator/admin edit + delete.
+- `apps/web/src/routes/challenges/+page.svelte` — list/browse: My challenges (joined, via `fetchChallenges({mine:true})`) and a **ranked Browse** section (public, popularity-ordered, debounced search + Load-more pagination) backed by the `browse_public_challenges` RPC via `browsePublicChallenges()`. The two lists load independently. Thin; reuses the panel. The joined rows carry a real value: `fetchChallenges({mine:true})` folds `my_active_challenges` in (the `challenges` row itself has no per-caller number), and `myProgressView` in `lib/social/challenge_list.ts` decides what each row may claim — `known` / `not_started` (a true zero, the aggregate's window opens at `starts_at`) / `unknown`, which renders "Progress unavailable" rather than a 0 % bar. ADR §603.
+- `apps/web/src/routes/challenges/[id]/+page.svelte` — detail: hero (title, metric, window countdown), the user's **progress bar** (value vs `goal_value`, `prefers-reduced-motion`-safe), live leaderboard (individual rows or club-vs-club team cards or a single co-op group-goal bar), Join/Leave button, creator/admin edit, and a creator/admin **Delete challenge** in a `DangerZone` after the leaderboard, behind its confirm (decisions § 1634). Mobile `challenge_detail_screen.dart` offers the creator the same delete as a labelled `AppBarActions` overflow item.
 - `apps/web/src/routes/challenges/new/` — thin page wrapper around the `ChallengeEditor` modal component (create-flow modal pattern; deep-link parity).
 
 Components (`apps/web/src/lib/components/`):
-- `ChallengeEditor.svelte` — create/edit form (title, description, metric select, scope select, optional goal, optional activity-type filter, club anchor select from `fetchMyClubs` admin subset, start/end pickers). `class="editor-form"`, `oncreated`/`oncancel` callbacks. Hosted by the modal on `/challenges` AND the `/challenges/new` wrapper.
-- `ChallengeLeaderboard.svelte` — renders the `challenge_leaderboard` rows; switches layout by scope.
+- `ChallengeEditor.svelte` — create/edit form (title, description, metric select, scope select, optional goal, optional activity-type filter, club anchor select from `fetchMyClubs` admin subset, start/end pickers). `class="editor-form"`, `oncreated`/`oncancel` callbacks. Hosted by the modal on `/challenges` AND the `/challenges/new` wrapper. The goal is typed in the reader's own unit and converted through the `challenge_goal` pair; it reads the stored figure back through the leaderboard's formatter, states the window's active-day ceiling for `streak_days`, clears the number when the metric changes, and names both `challenges_goal_ck` refusals plus the end-after-start rule inline (ADR §758).
+- `ChallengeLeaderboard.svelte` — renders the `challenge_leaderboard` rows; switches layout by scope. Team rows resolve their club name through `teamLabel` (`lib/social/challenge_list.ts`) and never fall back to the raw `team_club_id` — the detail page feeds it `fetchClubNames(board team ids)` merged over `fetchMyClubs()`, because a club-vs-club board is mostly clubs the viewer is not in. ADR §603. Above the list it renders the viewer's **standing** (`standingFor`, `lib/social/leaderboard_standing.ts`): their rank out of the board size, how many share their rank, and the metric gap to the entrants immediately above and below. On a board of any size the viewer's own row can sit off screen, and "#7 of 24" alone doesn't say whether sixth place is 200 m or 40 km away. The detail page supplies `meTeamId` — on a club-vs-club board the entrant is a club, and it is the club the viewer JOINED under, carried on `ChallengeWithMeta.my_team_club_id` off their own `challenge_participants` row. Nothing stops a runner belonging to two clubs that both field a team on one board, so picking whichever of their clubs appears there credits them to the wrong side (and can tell the trailing team it is winning).
 - `ChallengeProgressBar.svelte` — the pure progress bar (value/goal → pct + label).
 - `ChallengesPanel.svelte` — **the self-hiding entry point**: calls `myActiveChallenges()`; renders `null`/nothing when the result is empty. Mounted as a strip on `/dashboard` (above or below the stat grid) AND as a new `?tab=challenges` panel in `/social`.
 
@@ -184,12 +217,14 @@ Components (`apps/web/src/lib/components/`):
 `data.ts` helpers (`apps/web/src/lib/core/data.ts`):
 - `fetchChallenges(opts)`, `fetchChallengeById(id)`, `createChallenge(input)`, `updateChallenge(id, patch)`, `deleteChallenge(id)`, `joinChallenge(id, teamClubId?)`, `leaveChallenge(id)`.
 - `fetchChallengeLeaderboard(id, byTeam?)` → wraps `challenge_leaderboard` RPC.
+- `fetchClubNames(ids)` → one `.in()` read resolving club ids to display names, RLS-scoped to public clubs plus the caller's own. Backs the club-vs-club team column.
 - `myActiveChallenges()` → wraps `my_active_challenges` RPC (the self-hide driver).
 - `recomputeChallengeCompletion(id)` → wraps the SECURITY DEFINER RPC. It is fired from the run-save success path via `recomputeChallengesForRun(runStartedAtIso)`, which fans it out over the runner's joined challenges whose window covers the run's `started_at` (the `challengesToRecomputeForRun` parity helper picks the set). Wired into `createManualRun` + `saveRun` (best-effort, swallow-to-debug like the plan-workout auto-match) so a finished run that crosses the line awards the badge promptly instead of waiting up to ~24h for the cron sweep. On mobile (offline-first), the fan-out fires after `saveRunsBatch` lands, from `SyncService` → `SocialService.recomputeChallengesForRuns` over the just-synced runs' `started_at`.
 - Route all `.from('challenges' | 'challenge_participants' | 'challenge_badges')` through `core/schema.ts` TABLES registry (add the three names) so the `core/schema.test.ts` bare-string guard stays green.
 
 Pure logic (`apps/web/src/lib/social/`):
 - `challenge_progress.ts` — see parity section.
+- `leaderboard_standing.ts` — `standingFor(rows, viewerKey)` → the viewer's rank, the board size, how many share their rank, and the nearest entry strictly above / strictly below with the metric units separating them. Rank is derived as one plus the number of strictly better values, which *is* `rank() over (order by value desc)`, so it cannot disagree with the rank the SQL sent and the list renders. Neighbours tie-break on `entryKey` ascending, mirroring the board's `order by rank, <key> nulls last`, so two refreshes name the same entrant. Returns entries, not labels — unit formatting and name/team resolution stay at the UI edge. A pure re-shape of rows the caller already holds: no new query, no new data, and nothing on screen the board below doesn't already show. Twinned by `leaderboard_standing.dart` and registered in both parity registries, as `challenge_list.ts` now is (`challenge_list.dart`, ADR §694) — `check_parity_pair_registry.mjs` polices both.
 
 types.ts overlays (`apps/web/src/lib/types.ts`):
 ```ts
@@ -209,8 +244,9 @@ export type ChallengeWithMeta = Challenge & { participant_count: number; my_valu
 Mirror after web lands. The mobile nav is at its 5-slot ceiling (`Home / Fitness / Log / Social / You`) — **do not add a 6th tab.** Mount challenges as a **sub-tab inside the Social hub** (`social_screen.dart`), matching how web puts it in `/social`, plus a self-hiding card on the Home dashboard.
 
 Files (under `apps/mobile_android/lib/`, then mirror byte-identical to `apps/mobile_ios/lib/` in the **same commit**):
-- `screens/challenges_screen.dart` — Social hub's new Challenges sub-tab (`embedded: true` mode, body-only). Browse + My challenges.
-- `screens/challenge_detail_screen.dart` — hero + progress bar + leaderboard + Join/Leave; admin/creator edit + delete behind `AlertDialog` (destructive-confirm idiom).
+- `screens/challenges_screen.dart` — Social hub's new Challenges sub-tab (`embedded: true` mode, body-only). Browse + My challenges. The joined rows carry the caller's own value, bar, rank and earned badge, folded in from `my_active_challenges` by `mergeMyProgress` and gated by `myProgressView`: a challenge outside that RPC's live-plus-7-day window renders "Progress unavailable" rather than a 0 % bar (ADR §694).
+- `screens/challenge_detail_screen.dart` — hero + progress bar + leaderboard + Join/Leave; admin/creator edit + delete behind `AlertDialog` (destructive-confirm idiom). The caller's value comes off the board the page already holds — `fetchChallengeById` carries none — and the club-vs-club team column resolves through `teamLabel`, never printing a raw club uuid.
+- `widgets/challenge_progress_bar.dart` — the shared bar (value/goal label, complete chip, `ProgressBar`, on-pace hint) plus `challengeValueLabel`, rendered by both screens exactly as web shares `ChallengeProgressBar.svelte`.
 - `widgets/challenge_form_sheet.dart` — create/edit bottom sheet (mirror `club_form_sheet.dart` / `event_form_sheet.dart`).
 - `widgets/challenge_progress_card.dart` — the self-hiding Home dashboard card; renders nothing when `myActiveChallenges` is empty (data-presence self-hide, matching the gym/nutrition cards).
 - `social_service.dart` — add `fetchChallenges`, `fetchChallengeById`, `createChallenge`, `joinChallenge`, `leaveChallenge`, `fetchChallengeLeaderboard`, `myActiveChallenges`, `recomputeChallengeCompletion` (route through `packages/api_client`, not direct `.from`).
@@ -225,6 +261,8 @@ Verify twin parity: `diff -rq apps/mobile_android/lib apps/mobile_ios/lib` empty
 
 One new pair (register it in the conventions parity list + watch with `shared-library-syncer`):
 - **`challenge_progress`** — web `apps/web/src/lib/social/challenge_progress.ts` ↔ mobile `apps/mobile_android/lib/challenge_progress.dart`. Pure functions: `progressFraction(value, goal)` (clamp 0..1, null-goal → null), `formatProgressLabel`-feeding parts (locale/unit-agnostic structured parts, NOT formatted strings — the caller localises), `rankParticipants(entries)` (deterministic sort mirroring `compareLeaderboard`: value desc → user_id asc, assigning dense ranks), and `metricFromActivity(summary, metric, activityTypeFilter)` (the SAME metric-extraction math the SQL aggregate uses — so an offline-optimistic client estimate from local stores can't drift from the server board). Matching test counts both sides (target ~12 each, keep identical).
+- **`challenge_list`** (added 2026-08-19, ADR §694) — web `apps/web/src/lib/social/challenge_list.ts` ↔ mobile `apps/mobile_android/lib/challenge_list.dart`. `mergeMyProgress` folds the `my_active_challenges` aggregate onto a joined-challenge list, `myProgressView` decides what a row may claim (`known` / `notStarted` — the one true zero, the window has not opened — / `unknown`, which must NOT render a bar), and `teamLabel` resolves a club-vs-club row's club without ever falling back to the raw uuid. 18 web / 17 Dart tests: the web unparseable-`starts_at` guard has no analogue against a typed `DateTime`.
+- **`challenge_goal`** (added 2026-08-27, ADR §758) — web `apps/web/src/lib/social/challenge_goal.ts` ↔ mobile `apps/mobile_android/lib/challenge_goal.dart`. `challengeGoalUnit` names the unit the field asks for, `challengeGoalToStored` converts into the column, `maxStreakDaysInWindow` computes the window's active-day ceiling, and `checkChallengeGoal` is the client half of `challenges_goal_ck` — a third rail, since the SQL computes the same ceiling. 16 web / 14 Dart tests: `challengeGoalFromStored` is web-only glue for the edit path, and web's non-finite window guards have no Dart analogue against a typed `int`.
 - Reuse the existing `streaks` pair for the `streak_days` metric — do not re-implement streak math.
 
 ## Tests
@@ -233,6 +271,8 @@ Playwright (`apps/web/tests-e2e/challenges/` — new dir; follow `tests-e2e/club
 - `create.spec.ts` — create an individual distance challenge via the editor; appears in My challenges.
 - `join-leave.spec.ts` — join → participant count increments → leave → removed.
 - `leaderboard.spec.ts` — two seeded users with in-window runs rank correctly; ranks deterministic on reload.
+- `standing.spec.ts` — a trailing entrant's standing card names their rank, the board size, and the formatted gap to the runner ahead (and claims no one behind when nobody is); a second case pins that tied for the lead reports the tie rather than a bare "Leading".
+- `standing-team.spec.ts` — on a club-vs-club board a runner in TWO competing clubs is credited to the one they joined under, not their newest club. Both standing specs filter the challenge to an `activity_type` no other spec seeds, so a sibling spec's in-window run can't move the asserted gap.
 - `progress-completion.spec.ts` — a run that crosses `goal_value` flips the progress bar to complete + a badge/notification appears.
 - `club-vs-club.spec.ts` — team aggregation ranks clubs.
 - `self-hide.spec.ts` — a user in no challenge sees no challenges strip on `/dashboard` and an empty My-challenges section.
@@ -242,19 +282,20 @@ pgtap (`apps/backend/supabase/tests/`):
 - `challenges_rls_test.sql` — SELECT/INSERT/UPDATE/DELETE policy matrix (creator vs member vs outsider vs anon); fail-closed on private. Use the double-quoted `set local "request.jwt.claims"` idiom; seed `runs` rows WITH `metadata.activity_type`; valid hex UUIDs.
 - `challenge_leaderboard_test.sql` — the aggregate returns correct sums/counts/ranks for a fixture of participants + in-window/out-of-window runs (proves the window filter + the single-query shape).
 - `challenge_completion_test.sql` — `recompute_challenge_completion` awards exactly one badge, is idempotent, and respects `goal_value`.
-- `challenge_participants_completed_lockdown_test.sql` — direct client UPDATE of `completed_at` is rejected (column-grant lockdown); the RPC succeeds.
+- `challenge_participants_completed_lockdown_test.sql` — direct client UPDATE of `completed_at` is rejected (column-grant lockdown); the RPC succeeds; and the DELETE + re-INSERT round trip that used to reach the column is rejected too, with an honest rejoin leaving `completed_at` unset.
 
 Mobile (Flutter, in the same commit as each Dart piece, mirrored to iOS twin):
 - `test/challenge_progress_test.dart` — the parity helper (count matches the TS side).
 - `test/challenges_screen_test.dart` — list renders, self-hide when empty (use `tester.runAsync` for store I/O; dialog-scoped finders for duplicate labels per the mobile-test gotchas).
-- `test/challenge_detail_screen_test.dart` — progress bar + Join/Leave + destructive-confirm dialog.
+- `test/challenge_list_test.dart` — the `challenge_list` parity helper (17 Dart against 18 web).
+- `test/challenge_detail_screen_test.dart` — progress bar + Join/Leave + destructive-confirm dialog; plus the board-derived value (never a fabricated zero) and the two `teamLabel` fallbacks.
 - `test/social_service_test.dart` — extend with challenge methods (the file is already in the modified set).
 
 Web unit (`apps/web/src/lib/social/challenge_progress.test.ts`) — `npx tsx --test`, count matches Dart.
 
 CHECK↔union guard: `apps/web/scripts/check_constraint_unions.mjs` extended (covered by the existing `parity-types` job).
 
-## i18n keys to add (all six web locales + all mobile ARBs)
+## i18n keys to add (every web locale + all mobile ARBs)
 
 Representative web keys (`src/lib/i18n/locales/en.ts` template + de/fr/es/ja/pt-BR, real translations — parity test enforces non-empty + placeholder fidelity):
 - `challenges.title`, `challenges.myChallenges`, `challenges.browse`, `challenges.empty`
@@ -262,6 +303,7 @@ Representative web keys (`src/lib/i18n/locales/en.ts` template + de/fr/es/ja/pt-
 - `challenges.metricDistance`, `challenges.metricDuration`, `challenges.metricVert`, `challenges.metricActivityCount`, `challenges.metricStreak`
 - `challenges.scopeIndividual`, `challenges.scopeClubVsClub`, `challenges.scopeGroupGoal`
 - `challenges.goalProgress` (`"{value} of {goal}"`), `challenges.progressComplete`, `challenges.endsIn` (`"ends in {n} days"`), `challenges.leaderboardRank` (`"#{rank}"`)
+- `challenges.standingTitle` / `challenges.standingTitleTeam`, `challenges.standingRank` (`"#{rank} of {total}"`), `challenges.standingTiedOne` / `challenges.standingTiedMany`, `challenges.standingBehind` / `challenges.standingAhead` (`"{gap} behind|ahead of {name}"`), `challenges.standingLeading`
 - `challenges.completeNotification` (`"You completed {title}!"`), `challenges.badgeEarned`
 - `challenges.deleteConfirm`, `challenges.leaveConfirm`
 
@@ -299,7 +341,7 @@ Mobile ARB equivalents camelCased (`challengesTitle`, `challengesJoin`, `challen
 ## Open questions / decisions owed by the user
 
 1. **Elevation/vert source.** ✅ **Resolved (2026-06-20, migration `20270302_001`, ADR §186).** Total elevation gain lived only in `runs.metadata.elevation_m`. Option (a) was taken: `vert` shipped in a follow-on slice that first-classed total ascent as `runs.elevation_gain_m` (backfilled from the metadata key, which stays for the existing recap/export/Strava/worker/backup readers), summed off base `runs` like the other metrics and projected into `activities.summary` + `public_runs`. Create is web-only; mobile is read-only (label + unit-aware display).
-2. **Who can create open (non-club) challenges?** ✅ **Resolved (2026-06-23, migration `20270308_001`, ADR §190).** Anyone authenticated, as planned — but a `before insert on challenges` trigger now throttles creation to 30/hour per user via the shared `check_rate_limit('create_challenge', …)` bucket (the spam backstop this question flagged), guarded to fail open and to skip seed/service inserts. Discovery side is handled too: `browse_public_challenges` ranks popular boards over throwaway ones and suppresses dead ones, so spam that does get created sinks out of Browse.
+2. **Who can create open (non-club) challenges?** ✅ **Resolved (2026-06-23, migration `20270308_001`, ADR §190).** Anyone authenticated, as planned — but a `before insert on challenges` trigger now throttles creation to 30/hour per user on the `create_challenge` bucket (the spam backstop this question flagged), skipping seed/service inserts. Migration `20270610_001` moved the body onto the shared `enforce_create_rate_limit` helper so the refusal is one the clients can read ([decisions § 747](../architecture/decisions.md)). Discovery side is handled too: `browse_public_challenges` ranks popular boards over throwaway ones and suppresses dead ones, so spam that does get created sinks out of Browse.
 3. **club_vs_club team membership at completion.** If a user leaves their club mid-challenge, does their in-window contribution stay with the old team or move? Plan stamps `team_club_id` at join and keeps contributions on that team (simplest, deterministic). Confirm.
 4. **streak_days metric definition** — full Strava-grace streak (reuse `streaks.ts`) vs. simple distinct-active-days-in-window count. Plan recommends distinct-active-days for the leaderboard (cheap, unambiguous ranking) and notes the grace-rule streak is a display nicety. Confirm.
 5. **Lifts/meals in challenges?** The `activities` view also carries `lift`/`meal`. v1 scopes challenges to runs (`kind='run'`) only. Confirm runs-only for v1; a future "training-minutes" or "activity-count across modalities" metric is an easy extension.
@@ -313,7 +355,7 @@ Mobile ARB equivalents camelCased (`challengesTitle`, `challengesJoin`, `challen
 4. Write `20270204_001_challenge_progress_rpc.sql` (the leaderboard + my_active + completion RPCs, and the activities-view vert append if Q1 says vert ships now); reset + regen; write the three pgtap files. Commit (piece 2).
 5. Write `apps/web/src/lib/social/challenge_progress.ts` + tests (`npx tsx --test`). Commit (piece 3).
 6. Add `data.ts` helpers + `schema.ts` table names. Commit (piece 4).
-7. Build the web UI (editor → detail/leaderboard → self-hiding panel + /social tab + dashboard strip), i18n keys in all six locales, Playwright specs. Verify `npm run check --workspace=apps/web` and the specs pass. Commit per-sub-piece (piece 5).
+7. Build the web UI (editor → detail/leaderboard → self-hiding panel + /social tab + dashboard strip), i18n keys in every web locale, Playwright specs. Verify `npm run check --workspace=apps/web` and the specs pass. Commit per-sub-piece (piece 5).
 8. Seed challenges (piece 6).
 9. Mirror to mobile: parity helper + tests (piece 7), service methods (piece 8), screens + nav + ARBs + gen-l10n + tests, **mirrored byte-identical to the iOS twin and verified with `diff -rq`** (piece 9).
 10. Docs sweep — roadmap/parity/feature doc/api_database/conventions/decisions/index (piece 10).

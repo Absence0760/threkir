@@ -379,6 +379,34 @@ void main() {
       expect(computeLiftStress(typo), kLiftStressCap);
     });
 
+    test('a non-finite rep or weight contributes nothing, never NaN', () {
+      // NaN <= 0 is false, so a NaN set slipped past both the per-set guard
+      // here and aggregateDailyLiftStress' `stress <= 0` skip, and then turned
+      // every subsequent atl/ctl/tsb point in the series into NaN. Infinity is
+      // just as bad the other way: min(Infinity, cap) silently reports a
+      // full-sized phantom session. Mirrors the web twin's numericOrNull.
+      final nan = LiftForLoad(
+        startedAt: DateTime.utc(2026, 4, 1),
+        sets: const [LiftSetForLoad(reps: double.nan, weightKg: 100)],
+      );
+      expect(computeLiftStress(nan), 0);
+
+      final inf = LiftForLoad(
+        startedAt: DateTime.utc(2026, 4, 1),
+        sets: const [LiftSetForLoad(reps: double.infinity, weightKg: 100)],
+      );
+      expect(computeLiftStress(inf), 0);
+
+      final infWeight = LiftForLoad(
+        startedAt: DateTime.utc(2026, 4, 1),
+        sets: const [LiftSetForLoad(reps: 5, weightKg: double.infinity)],
+      );
+      expect(computeLiftStress(infWeight), 0);
+
+      // And the poisoned session never reaches the daily roll-up.
+      expect(aggregateDailyLiftStress([nan]).isEmpty, isTrue);
+    });
+
     test('aggregateDailyLiftStress sums by local day, skips empty sessions', () {
       final when = DateTime.utc(2026, 4, 1);
       final daily = aggregateDailyLiftStress([
@@ -483,5 +511,35 @@ void main() {
       expect(series.every((p) => p.liftStress == 0), isTrue);
       expect(series.every((p) => p.stress == p.runStress), isTrue);
     });
+  });
+
+  test('isTrimpLowConfidence — only an HR-read curve for a medication-affected runner',
+      () {
+    expect(isTrimpLowConfidence(true, true), isTrue);
+    expect(isTrimpLowConfidence(true, false), isFalse);
+    expect(isTrimpLowConfidence(false, true), isFalse);
+    expect(isTrimpLowConfidence(false, false), isFalse);
+  });
+
+  // Issue #1300 § 5: TRIMP is linear in duration, so a 12,333-hour row would
+  // put one day's load in the hundreds of thousands and flatten every curve.
+  test('a duration past the ten-day bound falls back to the distance proxy',
+      () {
+    final bad = _run(
+      distanceM: 2000,
+      durationS: 44400094,
+      startedAt: DateTime.utc(2026, 4, 1, 7),
+      metadata: {'avg_bpm': 150},
+    );
+    const prefs = HrPrefs(restingHrBpm: 50, maxHrBpm: 190);
+    expect(computeStress(bad, prefs), 20);
+    expect(
+      computeStress(
+        bad,
+        prefs,
+        const StressCalibration(mode: 'trimp', trimpPerKmFallback: 7),
+      ),
+      14,
+    );
   });
 }

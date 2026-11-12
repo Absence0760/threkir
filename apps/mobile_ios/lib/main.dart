@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:api_client/api_client.dart';
@@ -13,10 +11,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import 'active_plan_cache.dart';
+import 'apple_watch_route_bridge.dart';
 import 'audio_cues.dart';
+import 'auth_stream_error.dart';
 import 'background_sync.dart';
 import 'dev_auto_login.dart';
 import 'firebase_push_messaging.dart';
+import 'foreign_row_cleanup.dart';
 import 'in_progress_recovery.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
@@ -26,6 +28,7 @@ import 'local_gym_store.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
 import 'offline_store_wipe.dart';
+import 'parkrun_barcode_cache.dart';
 import 'offline_sync_store.dart';
 import 'preferences.dart';
 import 'push_messaging_bridge.dart';
@@ -35,6 +38,9 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'settings_cache.dart';
 import 'settings_sync.dart';
+import 'challenge_invite_link.dart';
+import 'club_invite_link.dart';
+import 'entity_link.dart';
 import 'shared_file_import.dart';
 import 'social_service.dart';
 import 'sync_service.dart';
@@ -42,6 +48,8 @@ import 'ble_heart_rate.dart';
 import 'ble_treadmill.dart';
 import 'tile_cache.dart';
 import 'training_service.dart';
+import 'today_widget.dart' show TodayWidgetBridge;
+import 'watch_ingest.dart';
 import 'watch_ingest_queue.dart';
 import 'wear_auth_bridge.dart';
 import 'wear_routes_bridge.dart';
@@ -64,6 +72,7 @@ PushMessagingBridge? _pushBridge;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
 
   // Load the locale-specific date symbols so `intl`'s DateFormat renders
   // month / weekday names in the active language. Cheap, idempotent, and
@@ -133,6 +142,13 @@ void main() async {
   // through `--dart-define` (merged on top below, winning); on mobile
   // that is the override path, not a `.env.local` file, because
   // flutter_dotenv loads from the asset bundle (decisions §137).
+  //
+  // EVERY key any surface reads from dotenv must appear here, or it is
+  // debug-only by accident: three sign-off-gated feature flags sat unreadable
+  // in release builds because they did not (decisions §709). The
+  // `env_flag_test.dart` reachability guard fails the build when a new read
+  // is added without its bridge entry. Whether a release WORKFLOW passes a
+  // given define is a separate, deploy-time decision.
   const mapTilerKey = String.fromEnvironment('MAPTILER_KEY');
   const webBaseUrl = String.fromEnvironment('WEB_BASE_URL');
   const stravaClientId = String.fromEnvironment('STRAVA_CLIENT_ID');
@@ -144,8 +160,23 @@ void main() async {
   const liveHubUrlDef = String.fromEnvironment('LIVE_HUB_URL');
   const sentryDsnDef = String.fromEnvironment('SENTRY_DSN');
   const googleWebClientIdDef = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  const appleServiceClientIdDef =
+      String.fromEnvironment('APPLE_SERVICE_CLIENT_ID');
+  const appleRedirectUriDef = String.fromEnvironment('APPLE_REDIRECT_URI');
   const revenueCatAndroidDef = String.fromEnvironment('REVENUECAT_API_KEY_ANDROID');
   const revenueCatIosDef = String.fromEnvironment('REVENUECAT_API_KEY_IOS');
+  const enableNearbyRunnersDef = String.fromEnvironment('ENABLE_NEARBY_RUNNERS');
+  const offRouteEscalationDef =
+      String.fromEnvironment('OFF_ROUTE_ESCALATION_ENABLED');
+  const adaptiveFitnessGateDef = String.fromEnvironment('ADAPTIVE_FITNESS_GATE');
+  const weighInGateDef = String.fromEnvironment('WEIGH_IN_GATE');
+  const weightFluidDef = String.fromEnvironment('WEIGHT_FLUID_ENABLED');
+  const cyclePlansDef = String.fromEnvironment('CYCLE_PLANS_ENABLED');
+  const flyoverVideoDef =
+      String.fromEnvironment('FLYOVER_VIDEO_MAPTILER_ENABLED');
+  const courseDriveDef = String.fromEnvironment('COURSE_DRIVE_ENABLED');
+  const tileUrlTemplateDef = String.fromEnvironment('TILE_URL_TEMPLATE');
+  const usdaFdcApiKeyDef = String.fromEnvironment('USDA_FDC_API_KEY');
   dotenv.loadFromString(
     envString: [
       if (supabaseUrlDef.isNotEmpty) 'SUPABASE_URL=$supabaseUrlDef',
@@ -159,8 +190,26 @@ void main() async {
       if (liveHubUrlDef.isNotEmpty) 'LIVE_HUB_URL=$liveHubUrlDef',
       if (sentryDsnDef.isNotEmpty) 'SENTRY_DSN=$sentryDsnDef',
       if (googleWebClientIdDef.isNotEmpty) 'GOOGLE_WEB_CLIENT_ID=$googleWebClientIdDef',
+      if (appleServiceClientIdDef.isNotEmpty)
+        'APPLE_SERVICE_CLIENT_ID=$appleServiceClientIdDef',
+      if (appleRedirectUriDef.isNotEmpty)
+        'APPLE_REDIRECT_URI=$appleRedirectUriDef',
       if (revenueCatAndroidDef.isNotEmpty) 'REVENUECAT_API_KEY_ANDROID=$revenueCatAndroidDef',
       if (revenueCatIosDef.isNotEmpty) 'REVENUECAT_API_KEY_IOS=$revenueCatIosDef',
+      if (enableNearbyRunnersDef.isNotEmpty)
+        'ENABLE_NEARBY_RUNNERS=$enableNearbyRunnersDef',
+      if (offRouteEscalationDef.isNotEmpty)
+        'OFF_ROUTE_ESCALATION_ENABLED=$offRouteEscalationDef',
+      if (adaptiveFitnessGateDef.isNotEmpty)
+        'ADAPTIVE_FITNESS_GATE=$adaptiveFitnessGateDef',
+      if (weighInGateDef.isNotEmpty) 'WEIGH_IN_GATE=$weighInGateDef',
+      if (weightFluidDef.isNotEmpty) 'WEIGHT_FLUID_ENABLED=$weightFluidDef',
+      if (cyclePlansDef.isNotEmpty) 'CYCLE_PLANS_ENABLED=$cyclePlansDef',
+      if (flyoverVideoDef.isNotEmpty)
+        'FLYOVER_VIDEO_MAPTILER_ENABLED=$flyoverVideoDef',
+      if (courseDriveDef.isNotEmpty) 'COURSE_DRIVE_ENABLED=$courseDriveDef',
+      if (tileUrlTemplateDef.isNotEmpty) 'TILE_URL_TEMPLATE=$tileUrlTemplateDef',
+      if (usdaFdcApiKeyDef.isNotEmpty) 'USDA_FDC_API_KEY=$usdaFdcApiKeyDef',
     ].join('\n'),
     isOptional: true,
   );
@@ -255,16 +304,16 @@ void main() async {
   syncActiveLocaleTag();
   localeNotifier.addListener(syncActiveLocaleTag);
 
+  // The home-screen widget's snapshot carries strings already translated and
+  // unit-formatted, so a locale or unit change re-renders it. Registered
+  // after the tag sync above, which has to run first.
+  TodayWidgetBridge().refreshOn(Listenable.merge([prefs, localeNotifier]));
+
   // Recover a run that was in progress when the app was last killed
-  // (crash, force-stop, OOM). We promote the partial data to a regular
-  // completed run so at least the user keeps whatever was captured. Only
-  // runs with meaningful content are kept — tiny "I tapped start then
-  // backgrounded" runs are dropped silently.
-  //
-  // An indoor (pedometer-only) run has no track and its distance came
-  // from `steps × stride`. For those, we accept the run if duration ≥ 60s
-  // instead of requiring GPS waypoints — a treadmill session that crashed
-  // after 10 minutes shouldn't evaporate just because there are no fixes.
+  // (crash, force-stop, OOM). The thresholds live in
+  // `evaluateInProgressPartial`: a recent partial with any distance or a
+  // minute of elapsed time is offered back, a stale one is finalized when it
+  // clears the size floor, and only an empty one is dropped — with a banner.
   cm.Run? recoveredRun;
   // A recent, non-empty partial is RESUMABLE — instead of finalizing it into a
   // separate finished Run (which split one continuous multi-day effort into two
@@ -273,12 +322,11 @@ void main() async {
   // in-progress file is deliberately NOT cleared in this branch; the run screen
   // appends to it on resume (or clears it on Finish / Discard).
   cm.Run? resumablePartial;
-  // Persona-hunt Casual #3: surface a one-time banner when a partial
-  // is recovered OR discarded, so a "the app ate my run" suspicion
-  // becomes "the app noticed and dropped a 38 m partial". Null when
-  // nothing happened (and null for the resumable branch, which prompts
-  // interactively on the run screen rather than passively).
-  String? recoveryBannerMessage;
+  // Persona-hunt Casual #3: Home words a one-time banner from this when a
+  // partial is recovered OR discarded, so "the app ate my run" becomes "the
+  // app noticed and dropped an empty recording". Worded there, not here,
+  // because the catalogue and the runner's unit only exist under `runApp`.
+  InProgressEvaluation? recoveryEvaluation;
 
   final audioCues = AudioCues();
 
@@ -300,6 +348,7 @@ void main() async {
         preferences: prefs,
         cache: SharedPrefsSettingsCache(sp),
       );
+      registerActiveSettingsSync(settingsSync);
     } catch (e) {
       debugPrint('ApiClient construction failed: $e');
     }
@@ -344,7 +393,7 @@ void main() async {
       case InProgressOutcome.none:
         break;
     }
-    recoveryBannerMessage = evaluation.bannerMessage;
+    recoveryEvaluation = evaluation;
   } catch (e) {
     debugPrint('In-progress recovery failed: $e');
   }
@@ -355,6 +404,12 @@ void main() async {
     runStore: store,
     routeStore: routeStore,
     socialService: social,
+    watchQueue: watchQueue,
+    foreignRowCleanup: ForeignRowCleanup(
+      preferences: prefs,
+      runStore: store,
+      routeStore: routeStore,
+    ),
   );
   syncService.start();
 
@@ -364,7 +419,8 @@ void main() async {
   if (hasSupabase && api != null) {
     unawaited(raceController.start());
   }
-  final training = TrainingService();
+  final training = TrainingService()
+    ..followRunsLanded(Listenable.merge([store.landed, watchQueue.landed]));
   final heartRate = BleHeartRate();
   // Kick off auto-reconnect in the background. If the user has paired a
   // strap previously, HR is ready when they tap Start; otherwise it's a
@@ -381,9 +437,10 @@ void main() async {
   // the `run_app/watch_ingest` MethodChannel. On Android the channel
   // isn't registered, so `WatchIngest.attach` fires `MissingPluginException`
   // (caught) and the no-op is invisible — keeps the bootstrap identical
-  // across both apps.
+  // across both apps. Attached whatever the auth state: a run that lands
+  // signed out is queued on disk, never left unanswered (decisions § 1801).
+  WatchIngest.attach(api, watchQueue);
   if (api != null && api.userId != null) {
-    WatchIngest.attach(api, watchQueue);
     // Bootstrap with whoever is currently signed in (cached session
     // from a previous launch). Any payloads enqueued during a future
     // signed-out window will carry this stamp, so a different user
@@ -422,7 +479,6 @@ void main() async {
         _lastSignedInUserId = sessionUserId;
       }
       if (event.event == AuthChangeEvent.signedIn) {
-        WatchIngest.attach(apiNonNull, watchQueue);
         // Stamp the queue with the freshly-signed-in user BEFORE
         // draining. The drain below skips files whose stamp names a
         // different user — without this update the drain would still
@@ -495,6 +551,11 @@ void main() async {
         // stores aren't user-namespaced on disk (decisions §73/§122 deferred
         // the `created_by_user_id` tag), so sign-out wipes them outright,
         // mirroring the settings cache's drop-on-sign-out (§72).
+        // The active plan saved for offline reads (today's workout on Home,
+        // the Run tab and the dashboard) belongs to the departing account.
+        unawaited(clearActivePlanCache());
+        // So is the week the home-screen widget shows.
+        unawaited(TodayWidgetBridge().clear());
         for (final s in <OfflineSyncStore>[gearStore, gymStore, foodStore]) {
           s.clear().catchError((Object e) {
             debugPrint('Offline store clear on signedOut failed: $e');
@@ -513,13 +574,31 @@ void main() async {
         // future edit happens to fire the listener. attach() re-pushes and
         // drops the diff cache, so it is the right idempotent nudge.
         WearRoutesBridge().attach(routeStore);
+        AppleWatchRouteBridge().attach(routeStore);
         wipeScreenOwnedOfflineStores().catchError((Object e) {
           debugPrint('Screen-owned store wipe on signedOut failed: $e');
         });
+        // The run store's rows are owner-tagged and stay (a re-signing-in
+        // account keeps its own history), but the in-progress snapshot is
+        // not tagged and would be adopted by whoever signs in next.
+        wipeInProgressRecording(store);
+        // Queued race finisher times are filed under whoever is signed in
+        // when they replay; the departing account's go with it, as on Wear.
+        clearPendingRaceResults();
+        // The device's copy of the parkrun athlete number is the departing
+        // runner's; the next account reads only its own, but sign-out is the
+        // boundary where none of it should remain.
+        const ParkrunBarcodeCache().clear();
       }
+    }, onError: (Object e) {
+      debugPrint('Auth state stream error: $e');
+      showAuthStreamError(e);
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);
     WearRoutesBridge().attach(routeStore);
+    // The same list on the other wrist. `AppleWatchRouteBridge` no-ops off
+    // iOS, so this costs an Android build one early return.
+    AppleWatchRouteBridge().attach(routeStore);
     // Native-push device-token registration. No-ops when Firebase isn't
     // configured on the device (FirebasePushMessaging.isAvailable == false).
     // L4 auxiliary effect — attach() never throws into the startup path.
@@ -548,8 +627,8 @@ void main() async {
           debugPrint('Auto sign-in failed: $e');
         }
       }
-      // Best-effort — the service stores `lastError` for the settings
-      // screen to surface.
+      // Best-effort — a failed load leaves `synced` false and the settings
+      // screen reads that.
       try {
         await settingsSync?.onSignedIn();
       } catch (e) {
@@ -592,7 +671,7 @@ void main() async {
       heartRate: heartRate,
       treadmill: treadmill,
       recoveredRun: recoveredRun,
-      recoveryBannerMessage: recoveryBannerMessage,
+      recoveryEvaluation: recoveryEvaluation,
       resumablePartial: resumablePartial,
     ));
   }
@@ -639,6 +718,40 @@ void main() async {
   } catch (e) {
     debugPrint('shared-file import init failed: $e');
   }
+
+  // Club invite links (`/clubs/join/<token>` on the web host, or the
+  // `com.threkir.app://clubs/join/<token>` scheme): HomeScreen drains
+  // pendingClubInviteToken into ClubInviteScreen. Guarded the same way.
+  try {
+    final inviteLinks = ClubInviteLinkService()..start();
+    unawaited(inviteLinks.processInitial());
+  } catch (e) {
+    debugPrint('club invite link init failed: $e');
+  }
+
+  // Challenge links (`/challenges/join/<token>` and `/share/challenge/<id>` on
+  // the web host, or `com.threkir.app://challenges/join/<token>`): HomeScreen
+  // drains pendingChallengeLink. Guarded the same way.
+  try {
+    final challengeLinks = ChallengeLinkService()..start();
+    unawaited(challengeLinks.processInitial());
+  } catch (e) {
+    debugPrint('challenge link init failed: $e');
+  }
+
+  // Run and route links (`/runs/<id>`, `/routes/<id>` on the web host, or the
+  // `com.threkir.app://runs|routes/<id>` scheme), the links an owner hands out
+  // to followers and named people: HomeScreen drains pendingEntityLink.
+  try {
+    // Plan links (the home-screen widget's `com.threkir.app://plans/...`)
+    // take the push-target handoff, which already opens plan screens.
+    final entityLinks = EntityLinkService(
+      onPlanLink: (target) => pendingPushTarget.value = target,
+    )..start();
+    unawaited(entityLinks.processInitial());
+  } catch (e) {
+    debugPrint('entity link init failed: $e');
+  }
 }
 
 class ThemeModeNotifier extends ValueNotifier<ThemeMode> {
@@ -667,6 +780,17 @@ final ValueNotifier<Locale?> localeNotifier = ValueNotifier<Locale?>(null);
 /// HomeScreen, so a single notifier centralises the handoff.
 final ValueNotifier<cm.PlanWorkoutRow?> pendingStartWorkout =
     ValueNotifier<cm.PlanWorkoutRow?>(null);
+
+/// Cross-screen handoff for "arm this guided run on the recorder". Set by the
+/// guided-run detail screen (reachable from the Coach tab and from Settings),
+/// which pops back to the shell straight after; HomeScreen listens and
+/// switches to the Run tab, RunScreen drains it and arms the script through
+/// the same path its own picker uses. Sibling of [pendingStartWorkout].
+///
+/// The library ID travels rather than the resolved run: the library is
+/// rebuilt per locale, so the recorder re-resolves it against its own
+/// [AppLocalizations] instead of holding a title built somewhere else.
+final ValueNotifier<String?> pendingArmGuidedRun = ValueNotifier<String?>(null);
 
 /// Cross-screen handoff for "start a run following this route now". Set by
 /// any route surface that isn't hosted under HomeScreen's route-list flow —
@@ -710,7 +834,7 @@ class RunApp extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final cm.Run? recoveredRun;
-  final String? recoveryBannerMessage;
+  final InProgressEvaluation? recoveryEvaluation;
   final cm.Run? resumablePartial;
   const RunApp({
     super.key,
@@ -730,7 +854,7 @@ class RunApp extends StatefulWidget {
     required this.heartRate,
     required this.treadmill,
     this.recoveredRun,
-    this.recoveryBannerMessage,
+    this.recoveryEvaluation,
     this.resumablePartial,
   });
 
@@ -760,167 +884,54 @@ class _RunAppState extends State<RunApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([themeModeNotifier, localeNotifier]),
-      builder: (context, _) {
-        return MaterialApp(
-          title: 'Threkir',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: themeModeNotifier.value,
-          locale: localeNotifier.value,
-          supportedLocales: supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          // `locale` (when the user has picked) or the device's ordered
-          // locale list is negotiated down to one of our six catalogues.
-          localeListResolutionCallback: (locales, supported) =>
-              negotiateLocale(null, locales?.toList() ?? const []),
-          home: widget.preferences.onboarded
-              ? HomeScreen(
-                  apiClient: widget.apiClient,
-                  runStore: widget.runStore,
-                  routeStore: widget.routeStore,
-                  gearStore: widget.gearStore,
-                  gymStore: widget.gymStore,
-                  foodStore: widget.foodStore,
-                  preferences: widget.preferences,
-                  audioCues: widget.audioCues,
-                  social: widget.social,
-                  raceController: widget.raceController,
-                  training: widget.training,
-                  heartRate: widget.heartRate,
-                  treadmill: widget.treadmill,
-                  settingsSync: widget.settingsSync,
-                  recoveredRun: widget.recoveredRun,
-                  recoveryBannerMessage: widget.recoveryBannerMessage,
-                  resumablePartial: widget.resumablePartial,
-                )
-              : OnboardingScreen(
-                  preferences: widget.preferences,
-                  settingsSync: widget.settingsSync,
-                  onDone: () => setState(() {}),
-                ),
-        );
-      },
-    );
-  }
-}
-
-/// Receives runs from the paired Apple Watch via a method channel owned
-/// by `Runner/AppDelegate.swift` + `Runner/WatchIngestBridge.swift` on
-/// iOS. Android doesn't register the channel, so the `setMethodCallHandler`
-/// installation is a harmless no-op and the bridge never fires.
-///
-/// Each call carries: `{id, started_at, duration_s, distance_m, source,
-/// avg_bpm?, track: [{lat, lng, ele?, ts?}]}`. We construct a
-/// `core_models.Run` and upload via `ApiClient.saveRun` — same path
-/// any other recording source uses, so web sees it identically.
-///
-/// When the user is not authenticated, the payload is persisted to the
-/// [WatchIngestQueue] on disk and replayed on the next sign-in.
-class WatchIngest {
-  static const _channel = MethodChannel('run_app/watch_ingest');
-
-  static void attach(ApiClient api, WatchIngestQueue queue) {
-    _channel.setMethodCallHandler((call) async {
-      if (call.method != 'run') return null;
-      final args = call.arguments as Map<Object?, Object?>?;
-      if (args == null) return false;
-
-      if (api.userId == null) {
-        try {
-          final payload = Map<String, dynamic>.fromEntries(
-            args.entries
-                .where((e) => e.key is String)
-                .map((e) => MapEntry(e.key as String, e.value)),
+    return UndoSessionGuard(
+      api: widget.apiClient,
+      child: ListenableBuilder(
+        listenable: Listenable.merge([themeModeNotifier, localeNotifier]),
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'Threkir',
+            navigatorKey: appNavigatorKey,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeModeNotifier.value,
+            locale: localeNotifier.value,
+            supportedLocales: supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            // `locale` (when the user has picked) or the device's ordered
+            // locale list is negotiated down to one of our six catalogues.
+            localeListResolutionCallback: (locales, supported) =>
+                negotiateLocale(null, locales?.toList() ?? const []),
+            home: widget.preferences.onboarded
+                ? HomeScreen(
+                    apiClient: widget.apiClient,
+                    runStore: widget.runStore,
+                    routeStore: widget.routeStore,
+                    gearStore: widget.gearStore,
+                    gymStore: widget.gymStore,
+                    foodStore: widget.foodStore,
+                    preferences: widget.preferences,
+                    audioCues: widget.audioCues,
+                    social: widget.social,
+                    raceController: widget.raceController,
+                    training: widget.training,
+                    heartRate: widget.heartRate,
+                    treadmill: widget.treadmill,
+                    settingsSync: widget.settingsSync,
+                    syncService: widget.syncService,
+                    recoveredRun: widget.recoveredRun,
+                    recoveryEvaluation: widget.recoveryEvaluation,
+                    resumablePartial: widget.resumablePartial,
+                  )
+                : OnboardingScreen(
+                    preferences: widget.preferences,
+                    settingsSync: widget.settingsSync,
+                    onDone: () => setState(() {}),
+                  ),
           );
-          await queue.enqueue(payload);
-        } catch (e) {
-          debugPrint('Watch ingest queue write failed: $e');
-        }
-        return false;
-      }
-
-      try {
-        final run = _runFromArgs(args);
-        await api.saveRun(run);
-        return true;
-      } catch (e) {
-        debugPrint('Watch ingest failed: $e');
-        return false;
-      }
-    });
-  }
-
-  static cm.Run _runFromArgs(Map<Object?, Object?> raw) {
-    final id = raw['id'] as String? ?? '';
-    final startedAt = DateTime.parse(raw['started_at'] as String);
-    final durationS = (raw['duration_s'] as num).toInt();
-    final distanceM = (raw['distance_m'] as num).toDouble();
-    // This channel only carries payloads from the Apple Watch
-    // (see `Runner/WatchIngestBridge.swift`), so a missing `source`
-    // means watch — never web/mobile-app. The fallback in
-    // `_parseSource` matches.
-    final source = raw['source'] as String? ?? 'watch';
-    final trackRaw = raw['track'];
-    final track = <cm.Waypoint>[];
-    if (trackRaw is List) {
-      for (final p in trackRaw) {
-        if (p is Map) {
-          track.add(cm.Waypoint(
-            lat: (p['lat'] as num).toDouble(),
-            lng: (p['lng'] as num).toDouble(),
-            elevationMetres: (p['ele'] as num?)?.toDouble(),
-            timestamp: (p['ts'] as String?) != null
-                ? DateTime.tryParse(p['ts'] as String)
-                : null,
-          ));
-        }
-      }
-    } else if (trackRaw is String) {
-      final decoded = jsonDecode(trackRaw);
-      if (decoded is List) {
-        for (final p in decoded) {
-          if (p is Map) {
-            track.add(cm.Waypoint(
-              lat: (p['lat'] as num).toDouble(),
-              lng: (p['lng'] as num).toDouble(),
-              elevationMetres: (p['ele'] as num?)?.toDouble(),
-              timestamp: (p['ts'] as String?) != null
-                  ? DateTime.tryParse(p['ts'] as String)
-                  : null,
-            ));
-          }
-        }
-      }
-    }
-
-    final metadata = <String, dynamic>{};
-    final avgBpm = raw['avg_bpm'];
-    if (avgBpm is num) metadata[cm.MetadataKeys.avgBpm] = avgBpm.toDouble();
-    final activity = raw['activity_type'];
-    if (activity is String) metadata[cm.MetadataKeys.activityType] = activity;
-    final lastModified = raw['last_modified_at'];
-    if (lastModified is String) {
-      metadata[cm.MetadataKeys.lastModifiedAt] = lastModified;
-    }
-
-    return cm.Run(
-      id: id,
-      startedAt: startedAt,
-      duration: Duration(seconds: durationS),
-      distanceMetres: distanceM,
-      track: track,
-      source: _parseSource(source),
-      metadata: metadata.isEmpty ? null : metadata,
+        },
+      ),
     );
-  }
-
-  static cm.RunSource _parseSource(String raw) {
-    for (final s in cm.RunSource.values) {
-      if (s.name == raw) return s;
-    }
-    return cm.RunSource.watch;
   }
 }

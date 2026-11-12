@@ -1,20 +1,20 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../basemap_credits.dart' show tileEnv;
 import '../l10n/gen/app_localizations.dart';
-import '../preferences.dart' show ActivityType, activeMapStyle;
+import 'package:core_models/core_models.dart' show ActivityType;
+import '../preferences.dart' show activeMapStyle;
 import '../tile_cache.dart';
+import '../course_gates.dart' show CourseGate;
+import 'course_lines_map.dart' show courseGateLayers;
 import 'map_attribution.dart';
 import 'pace_segments.dart';
 import 'track_decorations.dart';
 import 'track_segment.dart';
-
-const double _metresPerMile = 1609.344;
 
 /// Apply a 1-2-3-2-1 weighted moving average to the track so GPS jitter
 /// shows as a smoother line instead of a visible zig-zag. The first two
@@ -39,8 +39,18 @@ List<LatLng> smoothTrack(List<LatLng> points) {
 LatLng _kernel(List<LatLng> p, int i) {
   final a = p[i - 2], b = p[i - 1], c = p[i], d = p[i + 1], e = p[i + 2];
   return LatLng(
-    (a.latitude + b.latitude * 2 + c.latitude * 3 + d.latitude * 2 + e.latitude) / 9,
-    (a.longitude + b.longitude * 2 + c.longitude * 3 + d.longitude * 2 + e.longitude) / 9,
+    (a.latitude +
+            b.latitude * 2 +
+            c.latitude * 3 +
+            d.latitude * 2 +
+            e.latitude) /
+        9,
+    (a.longitude +
+            b.longitude * 2 +
+            c.longitude * 3 +
+            d.longitude * 2 +
+            e.longitude) /
+        9,
   );
 }
 
@@ -70,13 +80,10 @@ List<LatLng> smoothTrackIncremental(
   final from = prevLen - 4; // prevLen >= 5 ⇒ from >= 1
   final s1from = from - 2 < 0 ? 0 : from - 2;
   // First pass over just the window the suffix needs: indices [s1from, m).
-  final s1 = List<LatLng>.generate(
-    m - s1from,
-    (k) {
-      final j = s1from + k;
-      return (j < 2 || j >= m - 2) ? raw[j] : _kernel(raw, j);
-    },
-  );
+  final s1 = List<LatLng>.generate(m - s1from, (k) {
+    final j = s1from + k;
+    return (j < 2 || j >= m - 2) ? raw[j] : _kernel(raw, j);
+  });
   return List<LatLng>.generate(m, (i) {
     if (i < from) return prev[i];
     if (i < 2 || i >= m - 2) return s1[i - s1from];
@@ -86,8 +93,18 @@ List<LatLng> smoothTrackIncremental(
         d = s1[i + 1 - s1from],
         e = s1[i + 2 - s1from];
     return LatLng(
-      (a.latitude + b.latitude * 2 + c.latitude * 3 + d.latitude * 2 + e.latitude) / 9,
-      (a.longitude + b.longitude * 2 + c.longitude * 3 + d.longitude * 2 + e.longitude) / 9,
+      (a.latitude +
+              b.latitude * 2 +
+              c.latitude * 3 +
+              d.latitude * 2 +
+              e.latitude) /
+          9,
+      (a.longitude +
+              b.longitude * 2 +
+              c.longitude * 3 +
+              d.longitude * 2 +
+              e.longitude) /
+          9,
     );
   });
 }
@@ -99,10 +116,10 @@ List<LatLng> smoothTrackIncremental(
 /// tile-usage policy — appropriate for the no-config dev path but
 /// NOT for production. The fallback exists so the map renders
 /// SOMETHING when neither MAPTILER_KEY nor TILE_URL_TEMPLATE is
-/// set in `.env.local`; MissingMapTilesHint surfaces the diagnostic
+/// set (via `--dart-define` or `.env.development`); MissingMapTilesHint
+/// surfaces the diagnostic
 /// alongside.
-const _kOsmTileUrl =
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const _kOsmTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 /// MapTiler raster style slug for a [kMapStyles] preference. Mirrors the
 /// slug switch in web's `buildMapStyleUrl`
@@ -136,7 +153,7 @@ String _maptilerSlug(String mapStyle, bool prefersDark) {
 /// `Map<String, String>` rather than poking dotenv.
 ///
 /// Whitespace-only overrides are treated as absent — a stray space
-/// after `TILE_URL_TEMPLATE=` in `.env.local` shouldn't silently
+/// after `TILE_URL_TEMPLATE=` in `.env.development` shouldn't silently
 /// disable MapTiler. Matches the Kotlin `buildTileUrl` `isNotBlank`
 /// semantics on the Wear OS side; see `decisions.md § 68`.
 ///
@@ -185,6 +202,45 @@ bool resolveBasemapIsDark(
   return slug == 'streets-v2-dark' || slug == 'satellite';
 }
 
+/// Static-image URL for a track thumbnail, on the basemap [resolveTileUrl]
+/// resolves under the same arguments — same `TILE_URL_TEMPLATE` override,
+/// same MapTiler slug for [mapStyle] × [brightness]. Null when neither is
+/// configured, so the caller paints its polyline-only fallback rather than
+/// requesting a keyless MapTiler URL that can only 4xx.
+///
+/// [width] × [height] are logical pixels; density is applied here. MapTiler
+/// takes an `@2x` suffix. tileserver-gl's static endpoint has none, so the
+/// local request is made at twice the size and the widget downsamples it.
+/// MapTiler's Static Maps API takes any MapTiler map id, so every slug
+/// [_maptilerSlug] returns has a static counterpart and none is remapped.
+///
+/// [path] is the already-encoded `path=` value. Twin of web's
+/// `buildTrackThumbnailUrl` (`routes/static_map.ts`), decisions § 1749.
+String? resolveStaticMapUrl(
+  Map<String, String> env, {
+  required String mapStyle,
+  required Brightness brightness,
+  required int width,
+  required int height,
+  required String path,
+}) {
+  final override = (env['TILE_URL_TEMPLATE'] ?? '').trim();
+  if (override.isNotEmpty) {
+    final base = override.replaceFirst(
+      RegExp(r'/\{z\}/\{x\}/\{y\}(@2x)?\.png$'),
+      '',
+    );
+    if (base != override) {
+      return '$base/static/auto/${width * 2}x${height * 2}.png?path=$path';
+    }
+  }
+  final key = (env['MAPTILER_KEY'] ?? '').trim();
+  if (key.isEmpty) return null;
+  final slug = _maptilerSlug(mapStyle, brightness == Brightness.dark);
+  return 'https://api.maptiler.com/maps/$slug/static/auto/${width}x$height@2x.png'
+      '?key=$key&path=$path';
+}
+
 /// Tile URL for an explicit basemap choice. The share cards call this with
 /// a pinned dark basemap; every on-screen map goes through
 /// [currentTileUrl].
@@ -199,10 +255,10 @@ String currentTileUrl(BuildContext context) =>
 /// Companion to [currentTileUrl] — whether the basemap it just resolved is
 /// dark, so overlays can pick a separator that shows against it.
 bool currentBasemapIsDark(BuildContext context) => resolveBasemapIsDark(
-      tileEnv(),
-      mapStyle: activeMapStyle,
-      brightness: Theme.of(context).brightness,
-    );
+  tileEnv(),
+  mapStyle: activeMapStyle,
+  brightness: Theme.of(context).brightness,
+);
 
 /// Colour behind the tile grid. `flutter_map` paints its own `#E0E0E0`
 /// default under every layer, which on the dark basemap the app was locked
@@ -232,34 +288,28 @@ int _tileFailures = 0;
 /// so a flaky network can't drown the log the recording stack writes to.
 TileLayer basemapTileLayer({
   required String urlTemplate,
-  TileProvider? tileProvider,
+  String? offlinePackRouteId,
   int maxNativeZoom = 19,
   double maxZoom = 19,
   TileBuilder? tileBuilder,
-}) =>
-    TileLayer(
-      urlTemplate: urlTemplate,
-      userAgentPackageName: 'com.threkir.app',
-      maxNativeZoom: maxNativeZoom,
-      maxZoom: maxZoom,
-      tileBuilder: tileBuilder,
-      evictErrorTileStrategy: EvictErrorTileStrategy.notVisibleRespectMargin,
-      errorTileCallback: (tile, error, _) {
-        _tileFailures++;
-        if (_tileFailures == 1 || _tileFailures % 100 == 0) {
-          debugPrint(
-            'basemap tile failed (${tile.coordinates}, '
-            '$_tileFailures so far): $error',
-          );
-        }
-      },
-      tileProvider: tileProvider ??
-          CachedTileProvider(
-            store: TileCache.store,
-            maxStale: const Duration(days: 30),
-            dio: TileCache.dio,
-          ),
-    );
+}) => TileLayer(
+  urlTemplate: urlTemplate,
+  userAgentPackageName: 'com.threkir.app',
+  maxNativeZoom: maxNativeZoom,
+  maxZoom: maxZoom,
+  tileBuilder: tileBuilder,
+  evictErrorTileStrategy: EvictErrorTileStrategy.notVisibleRespectMargin,
+  errorTileCallback: (tile, error, _) {
+    _tileFailures++;
+    if (_tileFailures == 1 || _tileFailures % 100 == 0) {
+      debugPrint(
+        'basemap tile failed (${tile.coordinates}, '
+        '$_tileFailures so far): $error',
+      );
+    }
+  },
+  tileProvider: TileCache.tileProviderForRoute(offlinePackRouteId),
+);
 
 /// Separator between an overlay and the basemap: the casing under the
 /// recorded track, and the ring around a coloured marker dot.
@@ -268,9 +318,91 @@ TileLayer basemapTileLayer({
 /// fixed `#1E1B4B` casing computes to 1.08:1 — it did nothing at all on
 /// the dark basemap every map was locked to. Flipped by basemap it reads
 /// 15.5:1 (white on dark) and 13.9:1 (`#1E1B4B` on an OSM light fill).
-@visibleForTesting
 Color mapOverlayOutline({required bool darkBasemap}) =>
     darkBasemap ? Colors.white : const Color(0xFF1E1B4B);
+
+/// The saved / recorded track line drawn as one colour — the list
+/// thumbnails. The theme's coral (decisions § 1772): bright coral on a dark
+/// basemap, a deep coral on a light one, where it also holds 3:1 over water.
+/// Same two rungs as web's `mapTrackLine` (`basemap_contrast.ts`), and the
+/// middle stop of [trackGradientColours] on each basemap.
+Color mapTrackLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFFF08A5D) : const Color(0xFFA33D1A);
+
+/// A planned course drawn under a live recording, so the coral track laid
+/// over it reads as the distance done and this line as the way ahead. Web's
+/// `mapHintLine` rungs: 6.7:1 on the dark land sample, 6.6:1 on the light
+/// one and 4.8:1 over light water.
+Color mapCourseGuideLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+
+/// The route being drafted in the route builder. Twin of web's
+/// `mapDraftLine`.
+Color mapDraftLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8);
+
+/// The stretch of a drafted route that doubles back over itself. Twin of
+/// web's `mapOverlapLine`.
+Color mapOverlapLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFFC084FC) : const Color(0xFF7E22CE);
+
+/// The previewed route on the routes heatmap. Twin of web's `mapHoverLine`.
+Color mapHoverLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF22D3EE) : const Color(0xFF0E7490);
+
+/// A route pinned ("kept on map") on the routes heatmap, distinct from
+/// [mapHoverLine]. Twin of web's `mapPinnedLine`.
+Color mapPinnedLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
+
+/// The opacity the personal heatmap's cells and its track lines rest at.
+/// Each rung of [mapHeatRamp] and the [mapTrackLine] it crossfades into is
+/// held to 3:1 composited at this value. Twin of web's `MAP_HEAT_OPACITY`.
+const double mapHeatOpacity = 0.85;
+
+/// The personal heatmap's density ramp, low to high, for the basemap it is
+/// drawn over. Twin of web's `mapHeatRamp` (`basemap_contrast.ts`): the
+/// cool-to-hot hue order of the fixed set it replaced, at the rung of each
+/// hue that clears the floor on every ground of its own basemap.
+List<Color> mapHeatRamp({required bool darkBasemap}) => darkBasemap
+    ? const [
+        Color(0xFF60A5FA),
+        Color(0xFF34D399),
+        Color(0xFFFBBF24),
+        Color(0xFFF87171),
+      ]
+    : const [
+        Color(0xFF1D4ED8),
+        Color(0xFF065F46),
+        Color(0xFF92400E),
+        Color(0xFF991B1B),
+      ];
+
+/// Dark casing under every solid map line, wider than the line so a 1.5 px
+/// edge shows either side and holds it apart from the raster's road
+/// strokes, which are baked into the tile and cannot be drawn under it.
+const Color mapLineCasing = Color(0x8C0B0A14);
+const double mapLineCasingWidth = 8;
+const double mapLineWidth = 5;
+
+/// [points] as one opaque line over its casing, round-capped and
+/// round-joined so a hairpin does not spike.
+List<Polyline> solidMapLine(List<LatLng> points, Color color) => [
+  Polyline(
+    points: points,
+    strokeWidth: mapLineCasingWidth,
+    color: mapLineCasing,
+    strokeCap: StrokeCap.round,
+    strokeJoin: StrokeJoin.round,
+  ),
+  Polyline(
+    points: points,
+    strokeWidth: mapLineWidth,
+    color: color,
+    strokeCap: StrokeCap.round,
+    strokeJoin: StrokeJoin.round,
+  ),
+];
 
 /// Amber accent for the map's transient overlays — the selected-segment
 /// highlight, the coarse last-seen ring, and the elevation-chart hover dot.
@@ -286,15 +418,13 @@ Color mapOverlayOutline({required bool darkBasemap}) =>
 Color mapAccentColour({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFFF59E0B) : const Color(0xFFB45309);
 
-/// Gradient stops for the recorded track, oldest → newest. Both ramps
-/// start at the same mid indigo and move away from the basemap, so the
-/// newest stretch is always the most prominent and every stop clears 3:1
-/// against its basemap — the old pale `#C7D2FE` tail computes to 1.30:1
-/// over an OSM light fill.
+/// Gradient stops for the recorded track, oldest → newest. Both coral ramps
+/// move away from the basemap, so the newest stretch is always the most
+/// prominent and every stop clears 3:1 against its basemap.
 @visibleForTesting
 List<Color> trackGradientColours({required bool darkBasemap}) => darkBasemap
-    ? const [Color(0xFF6366F1), Color(0xFF818CF8), Color(0xFFC7D2FE)]
-    : const [Color(0xFF6366F1), Color(0xFF4F46E5), Color(0xFF3730A3)];
+    ? const [Color(0xFFD9683A), Color(0xFFF08A5D), Color(0xFFF8B597)]
+    : const [Color(0xFFB5461F), Color(0xFFA33D1A), Color(0xFF7A2C12)];
 
 /// Point at a fractional [index] along [line], linearly interpolated
 /// between the two adjacent vertices (clamped to the line's range).
@@ -371,7 +501,19 @@ class LiveRunMap extends StatefulWidget {
   /// drawn as a per-segment pace heatmap (NRC-style) with an age-based
   /// alpha fade; when null it falls back to the legacy single gradient
   /// polyline — used by route_detail (no pace data) and manual-entry runs.
+  /// Ignored when [finishedRun] is set.
   final ActivityType? activity;
+
+  /// Draw [track] as a finished run rather than a live one: one solid line
+  /// over a thin dark casing, with no glow and no age fade (both are
+  /// recording-time signals), or — with [colourByPace] — a smoothed pace
+  /// gradient on the run's own scale.
+  final bool finishedRun;
+
+  /// With [finishedRun], colour the line by smoothed pace
+  /// ([buildPaceGradientPolylines]). Falls back to the solid line when the
+  /// track carries no timing.
+  final bool colourByPace;
 
   /// When true, decorate the recorded track with km / mile distance
   /// markers and direction chevrons (mirrors web's run-detail map).
@@ -430,6 +572,19 @@ class LiveRunMap extends StatefulWidget {
   /// precise current position.
   final bool coarsePosition;
 
+  /// When true the current-position marker is the live dot inside a wide
+  /// translucent halo: a weak-GPS fix (migration 20271112000030) the
+  /// recorder kept for distance but not for its line, so the spectator
+  /// reads it as "somewhere around here". [coarsePosition] wins when both
+  /// are set.
+  final bool weakPosition;
+
+  /// The live run records under an approximate location grant. With no fix
+  /// to centre on, the empty map says so instead of a "Waiting for GPS"
+  /// spinner, because no precise fix is coming until the runner turns
+  /// precision on; the run screen's strip carries the settings action.
+  final bool approximateLocation;
+
   const LiveRunMap({
     super.key,
     required this.track,
@@ -439,6 +594,8 @@ class LiveRunMap extends StatefulWidget {
     this.followRunner = true,
     this.bottomPadding = 0,
     this.activity,
+    this.finishedRun = false,
+    this.colourByPace = false,
     this.showDecorations = false,
     this.useMilesForDecorations = false,
     this.totalDistanceM,
@@ -447,22 +604,30 @@ class LiveRunMap extends StatefulWidget {
     this.hoverIdx,
     this.previewPosition,
     this.coarsePosition = false,
+    this.weakPosition = false,
+    this.approximateLocation = false,
     this.courseMarkers = const [],
+    this.courseStartGate,
+    this.courseFinishGate,
     this.markerPlacing = false,
     this.onMarkerPlace,
     this.onMarkerTap,
-    this.offlineTileProvider,
+    this.offlinePackRouteId,
   });
 
-  /// Optional read-through tile provider serving a followed route's offline
-  /// pack from disk first, falling through to the network/LRU cache (set by
-  /// the recorder when following a route that has an offline pack pinned).
-  /// Null → the normal network-cached tile path (decisions §167).
-  final TileProvider? offlineTileProvider;
+  /// The route this map is showing or following. Its offline pack, if one
+  /// was pinned, is read first and the network/LRU cache fills the rest
+  /// (decisions § 170). Null → the network/LRU cache alone.
+  final String? offlinePackRouteId;
 
   /// Course markers (aid stations, cutoffs, …) painted as coloured pins
   /// with a label above the trace. Empty = no marker layer.
   final List<MapMarkerPin> courseMarkers;
+
+  /// A race course's start and finish lines (decisions § 2390), drawn under
+  /// the markers. Null for no line at that end.
+  final CourseGate? courseStartGate;
+  final CourseGate? courseFinishGate;
 
   /// When true, a map tap reports its lat/lng up via [onMarkerPlace]
   /// (the marker-editor "tap to drop a pin" mode) instead of doing
@@ -537,6 +702,10 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
   int _cachedPaceSegmentsForLength = -1;
   ActivityType? _cachedPaceSegmentsForActivity;
 
+  // Cached finished-run pace gradient, keyed by the track it was built from.
+  List<Polyline>? _cachedPaceGradient;
+  List<Waypoint>? _cachedPaceGradientFor;
+
   // Cached halo + casing polylines for the recorded track. Without this,
   // the 45 Hz position-tween setState path re-allocates three Polyline +
   // three PolylineLayer widgets every frame even though their points are
@@ -595,8 +764,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
       final t = _positionController.value;
       final fi = idxStart + (idxEnd - idxStart) * t;
       _animatedIdx = fi;
-      final next =
-          latLngAtFractionalIndex(_smoothedTrackFor(widget.track), fi);
+      final next = latLngAtFractionalIndex(_smoothedTrackFor(widget.track), fi);
       if (next == null) return;
       setState(() => _animatedLatLng = next);
       if (widget.followRunner && !_userPanned) {
@@ -668,8 +836,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     // explicit index path above to avoid snap-to-start.
     for (int i = 0; i < widget.track.length; i++) {
       final w = widget.track[i];
-      if ((w.lat - pos.lat).abs() < 1e-9 &&
-          (w.lng - pos.lng).abs() < 1e-9) {
+      if ((w.lat - pos.lat).abs() < 1e-9 && (w.lng - pos.lng).abs() < 1e-9) {
         final smoothed = _smoothedTrackFor(widget.track);
         if (i < smoothed.length) return smoothed[i];
         return null;
@@ -688,7 +855,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
         _cachedSmoothedForLength == track.length) {
       return _cachedSmoothedTrack!;
     }
-    final raw = track.map((w) => LatLng(w.lat, w.lng)).toList();
+    final raw = track.map((w) => LatLng(w.lineLat, w.lineLng)).toList();
     final smoothed = smoothTrackIncremental(
       raw,
       _cachedSmoothedTrack,
@@ -749,6 +916,33 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     return segs;
   }
 
+  List<Polyline> _paceGradientFor(List<Waypoint> track, List<LatLng> rendered) {
+    if (_cachedPaceGradient != null &&
+        identical(_cachedPaceGradientFor, track)) {
+      return _cachedPaceGradient!;
+    }
+    final out = buildPaceGradientPolylines(track: track, rendered: rendered);
+    _cachedPaceGradient = out;
+    _cachedPaceGradientFor = track;
+    return out;
+  }
+
+  /// A finished run's line: a thin dark casing for separation from the
+  /// basemap, then either the pace gradient or one solid track colour.
+  List<Widget> _finishedRunLayers(List<LatLng> rendered, bool darkBasemap) {
+    final pace = widget.colourByPace
+        ? _paceGradientFor(widget.track, rendered)
+        : const <Polyline>[];
+    final solid = solidMapLine(
+      rendered,
+      mapTrackLine(darkBasemap: darkBasemap),
+    );
+    return [
+      PolylineLayer(polylines: [solid.first]),
+      PolylineLayer(polylines: pace.isNotEmpty ? pace : [solid.last]),
+    ];
+  }
+
   /// Halo + casing polylines for [rendered], cached by length + basemap.
   /// Three Polylines bundled into a single layer (replacing three
   /// PolylineLayers in the previous version) — fewer Layer widgets means
@@ -798,13 +992,12 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     final cb = widget.onSegmentSelect;
     if (cb == null || track.length < 2) return;
 
-    if (_cachedCumulative == null ||
-        _cachedCumulativeForLen != track.length) {
+    if (_cachedCumulative == null || _cachedCumulativeForLen != track.length) {
       _cachedCumulative = buildCumulativeDistances(track);
       _cachedCumulativeForLen = track.length;
     }
     final idx = nearestTrackIdx(tap, track);
-    final nearest = LatLng(track[idx].lat, track[idx].lng);
+    final nearest = LatLng(track[idx].lineLat, track[idx].lineLng);
     final distanceToTrack = const Distance().as(LengthUnit.Meter, tap, nearest);
     if (distanceToTrack > _tapMatchRadiusMetres) {
       if (_selectedSegment != null) {
@@ -820,7 +1013,8 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
 
   void _moveCamera(LatLng target, {double? zoom}) {
     if (!_mapReady) return;
-    final z = zoom ??
+    final z =
+        zoom ??
         (_mapController.camera.zoom < 17 ? 19.0 : _mapController.camera.zoom);
     _mapController.move(target, z, offset: _cameraOffset);
   }
@@ -834,7 +1028,8 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     // the tween endpoints, and the user-panned flag. Without this, the
     // next run's first fix would tween from the previous run's location
     // and the camera would stay parked where the last run ended.
-    final resetDetected = oldWidget.track.isNotEmpty &&
+    final resetDetected =
+        oldWidget.track.isNotEmpty &&
         widget.track.isEmpty &&
         widget.currentPosition == null;
     if (resetDetected) {
@@ -880,8 +1075,10 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
         _animatedIdx = target;
         _idxTweenStart = target;
         _idxTweenEnd = target;
-        final snapped =
-            latLngAtFractionalIndex(_smoothedTrackFor(widget.track), target);
+        final snapped = latLngAtFractionalIndex(
+          _smoothedTrackFor(widget.track),
+          target,
+        );
         if (snapped != null) _animatedLatLng = snapped;
         return;
       }
@@ -938,22 +1135,39 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final trackLatLngs = _smoothedTrackFor(widget.track);
-    final plannedLatLngs = widget.plannedRoute
-            ?.map((w) => LatLng(w.lat, w.lng))
-            .toList() ??
-        [];
+    final plannedLatLngs =
+        widget.plannedRoute?.map((w) => LatLng(w.lat, w.lng)).toList() ?? [];
     final latest = _latestPosition;
     // Prefer the interpolated (tweened) position when available so
     // the dot glides between GPS fixes instead of hopping. Fall back
     // to the SMOOTHED snap of the latest fix so the dot stays on the
     // rendered polyline (which is also smoothed) — see
     // `_smoothedDotLatLng` for the why.
-    final currentLatLng = _animatedLatLng ??
+    final currentLatLng =
+        _animatedLatLng ??
         _smoothedDotLatLng() ??
         (latest != null ? LatLng(latest.lat, latest.lng) : null);
 
     // No GPS fix yet and no planned route — wait for GPS
     if (currentLatLng == null && plannedLatLngs.isEmpty) {
+      if (widget.approximateLocation) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.location_disabled),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).liveRunMapApproximateLocation,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -971,8 +1185,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     // When not following the runner (detail screen), fit the camera to the
     // full track so the user sees the whole run at a glance.
     final allPoints = trackLatLngs.isNotEmpty ? trackLatLngs : plannedLatLngs;
-    final fitBounds = !widget.followRunner &&
-        allPoints.length >= 2;
+    final fitBounds = !widget.followRunner && allPoints.length >= 2;
 
     final darkBasemap = currentBasemapIsDark(context);
     final outline = mapOverlayOutline(darkBasemap: darkBasemap);
@@ -1006,8 +1219,9 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
               // Apply the bottom-padding offset once we know the viewport.
               final pos = _animatedLatLng;
               if (pos != null && widget.followRunner && !_userPanned) {
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => _moveCamera(pos));
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _moveCamera(pos),
+                );
               }
             },
             onPositionChanged: (pos, hasGesture) {
@@ -1017,8 +1231,9 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                 ? null
                 : (tapPos, latLng) {
                     if (widget.markerPlacing) {
-                      widget.onMarkerPlace
-                          ?.call(Waypoint(lat: latLng.latitude, lng: latLng.longitude));
+                      widget.onMarkerPlace?.call(
+                        Waypoint(lat: latLng.latitude, lng: latLng.longitude),
+                      );
                       return;
                     }
                     _handleMapTap(tapPos, latLng);
@@ -1033,21 +1248,23 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             // the polyline floating on a white background.
             basemapTileLayer(
               urlTemplate: _tileUrl,
-              tileProvider: widget.offlineTileProvider,
+              offlinePackRouteId: widget.offlinePackRouteId,
               maxNativeZoom: 19,
               maxZoom: 22,
             ),
 
-            // Planned route (underneath) — dashed-looking with lighter color
+            // On a detail surface the route is the subject and takes the
+            // track's coral; under a live recording it is the guide the
+            // coral track is laid over.
             if (plannedLatLngs.length >= 2)
               PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: plannedLatLngs,
-                    strokeWidth: 6,
-                    color: const Color(0x80A78BFA), // Translucent violet
-                  ),
-                ],
+                key: const ValueKey('planned-route'),
+                polylines: solidMapLine(
+                  plannedLatLngs,
+                  widget.followRunner
+                      ? mapCourseGuideLine(darkBasemap: darkBasemap)
+                      : mapTrackLine(darkBasemap: darkBasemap),
+                ),
               ),
 
             // Recorded track — Nike-Run-Club-style glowing line.
@@ -1058,9 +1275,12 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             //      per-segment border, which would show visible seams
             //      between coalesced pace buckets)
             //   4. pace heatmap OR legacy gradient on top
-            if (trackLatLngs.length >= 2) ...[
+            if (trackLatLngs.length >= 2 && widget.finishedRun)
+              ..._finishedRunLayers(trackLatLngs, darkBasemap)
+            else if (trackLatLngs.length >= 2) ...[
               PolylineLayer(
-                  polylines: _haloPolylinesFor(trackLatLngs, darkBasemap)),
+                polylines: _haloPolylinesFor(trackLatLngs, darkBasemap),
+              ),
               if (widget.activity != null)
                 PolylineLayer(
                   polylines: _pacedSegmentsFor(
@@ -1075,8 +1295,9 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                     Polyline(
                       points: trackLatLngs,
                       strokeWidth: 6,
-                      gradientColors:
-                          trackGradientColours(darkBasemap: darkBasemap),
+                      gradientColors: trackGradientColours(
+                        darkBasemap: darkBasemap,
+                      ),
                     ),
                   ],
                 ),
@@ -1104,44 +1325,11 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             // already has a pulsing dot so direction is implicit; cluttering
             // the live map with arrows would compete with that signal.
             if (widget.showDecorations && trackLatLngs.length >= 2) ...[
-              MarkerLayer(
-                markers: [
-                  for (final c in computeChevrons(
-                    trackLatLngs,
-                    stepMetres: widget.useMilesForDecorations
-                        ? _metresPerMile / 2
-                        : 500,
-                  ))
-                    Marker(
-                      point: c.position,
-                      width: 18,
-                      height: 18,
-                      child: Transform.rotate(
-                        angle: c.angleRadians,
-                        child: const Icon(
-                          Icons.play_arrow,
-                          size: 16,
-                          color: Color(0xFF1D4ED8),
-                          shadows: [Shadow(color: Colors.white, blurRadius: 3)],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              MarkerLayer(
-                markers: [
-                  for (final m in computeDistanceMarkers(
-                    trackLatLngs,
-                    useMiles: widget.useMilesForDecorations,
-                    totalDistanceM: widget.totalDistanceM,
-                  ))
-                    Marker(
-                      point: m.position,
-                      width: 26,
-                      height: 26,
-                      child: _DistanceMarkerPin(label: m.label),
-                    ),
-                ],
+              _ChevronLayer(coords: trackLatLngs),
+              _DistanceMarkerLayer(
+                coords: trackLatLngs,
+                useMiles: widget.useMilesForDecorations,
+                totalDistanceM: widget.totalDistanceM,
               ),
             ],
 
@@ -1177,8 +1365,8 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                 markers: [
                   Marker(
                     point: LatLng(
-                      widget.track[widget.hoverIdx!].lat,
-                      widget.track[widget.hoverIdx!].lng,
+                      widget.track[widget.hoverIdx!].lineLat,
+                      widget.track[widget.hoverIdx!].lineLng,
                     ),
                     width: 28,
                     height: 28,
@@ -1215,6 +1403,12 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                 ],
               ),
 
+            ...courseGateLayers(
+              start: widget.courseStartGate,
+              finish: widget.courseFinishGate,
+              darkBasemap: darkBasemap,
+            ),
+
             // Course markers (aid stations, cutoffs, …). Coloured pins
             // above the trace with a label; tapping one (in edit mode)
             // reports its id up so the host can edit / delete it.
@@ -1243,12 +1437,11 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                             onTap: widget.onMarkerTap == null
                                 ? null
                                 : () => widget.onMarkerTap!(m.id),
-                            child:
-                                _CourseMarkerPin(
-                                  label: m.label,
-                                  color: m.color,
-                                  ringColour: outline,
-                                ),
+                            child: _CourseMarkerPin(
+                              label: m.label,
+                              color: m.color,
+                              ringColour: outline,
+                            ),
                           ),
                         ),
                       ),
@@ -1269,10 +1462,18 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                     height: 48,
                     child: widget.coarsePosition
                         ? _CoarseDot(accent: accent)
-                        : _PulsingDot(
-                            animation: _pulseAnimation,
-                            ringColour: outline,
-                          ),
+                        : widget.weakPosition
+                            ? _WeakHalo(
+                                accent: accent,
+                                child: _PulsingDot(
+                                  animation: _pulseAnimation,
+                                  ringColour: outline,
+                                ),
+                              )
+                            : _PulsingDot(
+                                animation: _pulseAnimation,
+                                ringColour: outline,
+                              ),
                   ),
                 ],
               ),
@@ -1317,7 +1518,7 @@ class _DistanceMarkerPin extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF4F46E5), width: 2),
+        border: Border.all(color: const Color(0xFFC24E24), width: 2),
         boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 3, spreadRadius: 0.5),
         ],
@@ -1368,7 +1569,11 @@ class _CourseMarkerPin extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: ringColour, width: 2),
             boxShadow: const [
-              BoxShadow(color: Colors.black26, blurRadius: 3, spreadRadius: 0.5),
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 3,
+                spreadRadius: 0.5,
+              ),
             ],
           ),
         ),
@@ -1410,10 +1615,7 @@ class _GhostDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: const Color(0x55FFFFFF),
-        border: Border.all(
-          color: const Color(0xCC818CF8),
-          width: 2,
-        ),
+        border: Border.all(color: const Color(0xCCC24E24), width: 2),
       ),
     );
   }
@@ -1452,6 +1654,31 @@ class _CoarseDot extends StatelessWidget {
   }
 }
 
+class _WeakHalo extends StatelessWidget {
+  final Color accent;
+  final Widget child;
+  const _WeakHalo({required this.accent, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      key: const Key('weak-position-halo'),
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent.withValues(alpha: 0.18),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
 class _PulsingDot extends StatelessWidget {
   final Animation<double> animation;
   final Color ringColour;
@@ -1468,14 +1695,10 @@ class _PulsingDot extends StatelessWidget {
       height: 14,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF818CF8),
+        color: const Color(0xFFC24E24),
         border: Border.all(color: ringColour, width: 2.5),
         boxShadow: const [
-          BoxShadow(
-            color: Color(0x66818CF8),
-            blurRadius: 8,
-            spreadRadius: 2,
-          ),
+          BoxShadow(color: Color(0x66C24E24), blurRadius: 8, spreadRadius: 2),
         ],
       ),
     );
@@ -1493,7 +1716,9 @@ class _PulsingDot extends StatelessWidget {
                 height: 48 * (0.5 + animation.value),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF818CF8).withValues(alpha: animation.value),
+                  color: const Color(
+                    0xFFC24E24,
+                  ).withValues(alpha: animation.value),
                 ),
               ),
               if (child != null) child,
@@ -1561,5 +1786,134 @@ class _HoverMarkerDot extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+/// Direction-chevron ink: navy, over a crisp white outline ([chevronOutline]).
+///
+/// One flat colour cannot read on both track rungs: navy is 6.3:1 on the
+/// dark-basemap coral and only 2.4:1 on the deep light-basemap coral, where
+/// white is 6.5:1 and navy-on-white is the edge that carries the shape. The
+/// outline is what makes a single ink work everywhere, the pace gradient
+/// included (>= 3.2:1 on its red end).
+const Color chevronInk = Color(0xFF172554);
+
+/// A 1 px white ring around the chevron glyph, built from eight unblurred
+/// offset shadows because `Icon` has no stroke.
+const List<Shadow> chevronOutline = [
+  Shadow(color: Colors.white, offset: Offset(1, 0)),
+  Shadow(color: Colors.white, offset: Offset(-1, 0)),
+  Shadow(color: Colors.white, offset: Offset(0, 1)),
+  Shadow(color: Colors.white, offset: Offset(0, -1)),
+  Shadow(color: Colors.white, offset: Offset(1, 1)),
+  Shadow(color: Colors.white, offset: Offset(-1, -1)),
+  Shadow(color: Colors.white, offset: Offset(1, -1)),
+  Shadow(color: Colors.white, offset: Offset(-1, 1)),
+];
+
+/// The km / mile badges, thinned to the ones that fit at the current zoom
+/// (`thinDistanceMarkers`). The zoom is snapped down to the half level, as
+/// the chevrons do, so a pinch doesn't re-walk the track every frame.
+class _DistanceMarkerLayer extends StatefulWidget {
+  final List<LatLng> coords;
+  final bool useMiles;
+  final double? totalDistanceM;
+  const _DistanceMarkerLayer({
+    required this.coords,
+    required this.useMiles,
+    required this.totalDistanceM,
+  });
+
+  @override
+  State<_DistanceMarkerLayer> createState() => _DistanceMarkerLayerState();
+}
+
+class _DistanceMarkerLayerState extends State<_DistanceMarkerLayer> {
+  List<LatLng>? _forCoords;
+  bool? _forMiles;
+  double? _forTotal;
+  double? _forZoom;
+  List<DistanceMarker> _all = const [];
+  List<Marker> _markers = const [];
+
+  @override
+  Widget build(BuildContext context) {
+    final zoom = (MapCamera.of(context).zoom * 2).floor() / 2;
+    final walk =
+        !identical(_forCoords, widget.coords) ||
+        _forMiles != widget.useMiles ||
+        _forTotal != widget.totalDistanceM;
+    if (walk) {
+      _forCoords = widget.coords;
+      _forMiles = widget.useMiles;
+      _forTotal = widget.totalDistanceM;
+      _all = computeDistanceMarkers(
+        widget.coords,
+        useMiles: widget.useMiles,
+        totalDistanceM: widget.totalDistanceM,
+      );
+    }
+    if (walk || _forZoom != zoom) {
+      _forZoom = zoom;
+      _markers = [
+        for (final m in thinDistanceMarkers(_all, zoom: zoom))
+          Marker(
+            point: m.position,
+            width: 26,
+            height: 26,
+            child: _DistanceMarkerPin(label: m.label),
+          ),
+      ];
+    }
+    return MarkerLayer(markers: _markers);
+  }
+}
+
+/// Direction chevrons along [coords], spaced [chevronSpacingPx] apart on
+/// screen at whatever zoom the map is at. Reads the camera so a pinch
+/// re-spaces them, and caches per snapped zoom level so a pan doesn't
+/// re-walk the track.
+class _ChevronLayer extends StatefulWidget {
+  final List<LatLng> coords;
+  const _ChevronLayer({required this.coords});
+
+  @override
+  State<_ChevronLayer> createState() => _ChevronLayerState();
+}
+
+class _ChevronLayerState extends State<_ChevronLayer> {
+  List<LatLng>? _forCoords;
+  double? _forStep;
+  List<Marker> _markers = const [];
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = MapCamera.of(context);
+    final step = chevronStepMetresForZoom(
+      camera.zoom,
+      widget.coords[widget.coords.length ~/ 2].latitude,
+    );
+    if (!identical(_forCoords, widget.coords) || _forStep != step) {
+      _forCoords = widget.coords;
+      _forStep = step;
+      _markers = [
+        for (final c in computeChevrons(widget.coords, stepMetres: step))
+          Marker(
+            point: c.position,
+            width: 18,
+            height: 18,
+            child: Transform.rotate(
+              angle: c.angleRadians,
+              child: const Icon(
+                Icons.play_arrow,
+                size: 16,
+                color: chevronInk,
+                shadows: chevronOutline,
+              ),
+            ),
+          ),
+      ];
+    }
+    return MarkerLayer(markers: _markers);
   }
 }

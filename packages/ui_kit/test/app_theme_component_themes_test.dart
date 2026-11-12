@@ -53,6 +53,31 @@ void main() {
         }
       });
 
+      test('a family that sets its own text style keeps the app font', () {
+        // ButtonStyleButton applies the resolved textStyle as-is rather than
+        // merging it into the theme's text theme, so a family-less style
+        // drops the button to the platform default font.
+        for (final e in styles.entries) {
+          final textStyle = _resolve(e.value?.textStyle);
+          if (textStyle == null) continue;
+          expect(textStyle.fontFamily, AppTheme.fontFamily,
+              reason: '${e.key} in ${entry.key}');
+        }
+      });
+
+      testWidgets('a FilledButton label renders in the app font',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: FilledButton(onPressed: () {}, child: const Text('Follow')),
+          ),
+        ));
+        final style = DefaultTextStyle.of(tester.element(find.text('Follow')))
+            .style;
+        expect(style.fontFamily, AppTheme.fontFamily);
+      });
+
       test('filled, elevated, and outlined share horizontal padding too', () {
         for (final name in ['FilledButton', 'ElevatedButton', 'OutlinedButton']) {
           final padding =

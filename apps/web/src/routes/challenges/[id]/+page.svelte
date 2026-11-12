@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
 		fetchChallengeById,
@@ -7,40 +7,32 @@
 		joinChallenge,
 		leaveChallenge,
 		deleteChallenge,
-		fetchMyClubs
-	} from '$lib/core/data';
-	import type { ChallengeWithMeta, ChallengeLeaderboardRow, ClubWithMeta } from '$lib/types';
-	import ChallengeProgressBar from '$lib/components/ChallengeProgressBar.svelte';
-	import ChallengeLeaderboard from '$lib/components/ChallengeLeaderboard.svelte';
-	import ChallengeEditor from '$lib/components/ChallengeEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatDistance, formatElevation } from '$lib/format/units.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import type { ChallengeMetric } from '$lib/types';
+		fetchMyClubs,
+		fetchClubNames
+	} from '#lib/core/data.ts';
+	import type { ChallengeWithMeta, ChallengeLeaderboardRow, ClubWithMeta } from '#lib/types.ts';
+	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
+	import ChallengeLeaderboard from '#lib/components/ChallengeLeaderboard.svelte';
+	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DangerZone from '#lib/components/DangerZone.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import {
+		challengeWindowLabel as windowLabel,
+		formatChallengeGoal as formatGoal
+	} from '#lib/format/challenge_labels.svelte.ts';
+	import ChallengeInviteLink from '#lib/components/ChallengeInviteLink.svelte';
 
-	const id = $derived($page.params.id ?? '');
-
-	function formatGoal(metric: ChallengeMetric, v: number): string {
-		switch (metric) {
-			case 'distance':
-				return formatDistance(v);
-			case 'duration':
-				return formatDuration(Math.round(v));
-			case 'vert':
-				return formatElevation(v);
-			case 'streak_days':
-				return m('challenges.unitDays', { n: Math.round(v) });
-			case 'activity_count':
-				return m('challenges.unitActivities', { n: Math.round(v) });
-		}
-	}
+	const id = $derived(page.params.id ?? '');
 
 	let challenge = $state<ChallengeWithMeta | null>(null);
 	let notFound = $state(false);
+	let loadFailed = $state(false);
 	let board = $state<ChallengeLeaderboardRow[]>([]);
 	let clubNames = $state<Record<string, string>>({});
 	let myClubs = $state<ClubWithMeta[]>([]);
@@ -62,8 +54,12 @@
 	);
 	const canManageChallenge = $derived(isCreator || isClubAdminForChallenge);
 
+	// A challenge that isn't there and a challenge we couldn't read are
+	// different answers. Collapsing both into `notFound` told a creator
+	// their own challenge was gone whenever the read failed.
 	async function load() {
 		notFound = false;
+		loadFailed = false;
 		try {
 			const c = await fetchChallengeById(id);
 			if (!c) {
@@ -76,8 +72,24 @@
 				myClubs = await fetchMyClubs();
 				clubNames = Object.fromEntries(myClubs.map((cl) => [cl.id, cl.name]));
 			}
-		} catch {
-			notFound = true;
+			// A club-vs-club board is mostly clubs the viewer is NOT in, so
+			// fetchMyClubs resolves almost none of them — every rival team used to
+			// render as its raw uuid. Resolve the board's own ids in one read.
+			// Auxiliary to the challenge itself: a failure degrades the team column
+			// to its unresolved label, it must not fail the page.
+			if (c.scope === 'club_vs_club') {
+				try {
+					const teamIds = board
+						.map((r) => r.team_club_id)
+						.filter((cid): cid is string => typeof cid === 'string' && cid.length > 0);
+					clubNames = { ...(await fetchClubNames(teamIds)), ...clubNames };
+				} catch (e) {
+					console.debug('challenge team name resolution failed', e);
+				}
+			}
+		} catch (e) {
+			console.error('challenge load failed', e);
+			loadFailed = true;
 		}
 	}
 	$effect(() => {
@@ -88,6 +100,14 @@
 		challenge?.scope === 'club_vs_club'
 			? null
 			: board.find((r) => r.user_id === auth.user?.id) ?? null
+	);
+
+	// On a team board the entrant is a club, not the viewer — and it is the club
+	// they JOINED under, off their own participant row. Nothing stops a runner
+	// belonging to two clubs both fielding a team here, so picking whichever of
+	// their clubs is on the board would credit them to the wrong side.
+	const myTeamId = $derived(
+		challenge?.scope === 'club_vs_club' ? challenge.my_team_club_id ?? null : null
 	);
 
 	async function doJoin() {
@@ -130,19 +150,6 @@
 		}
 	}
 
-	function daysLeft(endsIso: string): number {
-		return Math.ceil((new Date(endsIso).getTime() - Date.now()) / 86400000);
-	}
-
-	function windowLabel(c: ChallengeWithMeta): string {
-		const now = Date.now();
-		if (now < new Date(c.starts_at).getTime()) {
-			return m('challenges.startsIn', { n: Math.ceil((new Date(c.starts_at).getTime() - now) / 86400000) });
-		}
-		if (now >= new Date(c.ends_at).getTime()) return m('challenges.ended');
-		const d = daysLeft(c.ends_at);
-		return d <= 1 ? m('challenges.endsToday') : m('challenges.endsIn', { n: d });
-	}
 </script>
 
 <svelte:head>
@@ -155,13 +162,20 @@
 		{m('challenges.backToList')}
 	</a>
 
-	{#if notFound}
+	{#if loadFailed}
+		<p class="muted load-error" role="alert" data-testid="challenge-load-error">
+			{m('challenges.detailLoadFailed')}
+			<button type="button" class="btn btn-outline btn-sm" onclick={() => void load()}>
+				{m('challenges.retry')}
+			</button>
+		</p>
+	{:else if notFound}
 		<p class="muted">{m('challenges.notFound')}</p>
 	{:else if !challenge}
 		<p class="muted">…</p>
 	{:else}
 		<header class="hero">
-			<h1>{challenge.title}</h1>
+			<h1>{challenge.title}{#if challenge.is_official}<OfficialBadge size={18} />{/if}</h1>
 			<div class="hero-chips">
 				<span class="window-chip">
 					<span class="material-symbols" aria-hidden="true">schedule</span>
@@ -176,6 +190,22 @@
 			</div>
 			{#if challenge.description}
 				<p class="desc">{challenge.description}</p>
+			{/if}
+			{#if challenge.is_public && !isCreator}
+				<div class="dispute-row">
+					<OrganiserDisputeAction
+						targetKind="challenge"
+						targetId={challenge.id}
+						targetLabel={challenge.title}
+						targetClubId={challenge.club_id ?? null}
+						ownerId={challenge.creator_id}
+					/>
+				</div>
+			{/if}
+			{#if challenge.metric === 'park_courses' && challenge.park_region_code}
+				<p class="desc" data-testid="challenge-park-region">
+					{m('challenges.parkRegion', { region: challenge.park_region_code })}
+				</p>
 			{/if}
 		</header>
 
@@ -211,11 +241,15 @@
 				<button type="button" class="btn btn-secondary" onclick={() => (editing = true)}>
 					{m('challenges.edit')}
 				</button>
-				<button type="button" class="btn btn-danger" disabled={busy} onclick={() => (confirmDelete = true)}>
-					{m('challenges.delete')}
-				</button>
 			{/if}
 		</div>
+
+		<ChallengeInviteLink
+			challengeId={challenge.id}
+			creatorId={challenge.creator_id}
+			isPublic={challenge.is_public}
+			canManage={canManageChallenge && challenge.scope !== 'club_vs_club'}
+		/>
 
 		<section class="board">
 			<h2>{m('challenges.leaderboard')}</h2>
@@ -225,8 +259,20 @@
 				scope={challenge.scope}
 				{clubNames}
 				meId={auth.user?.id ?? null}
+				meTeamId={myTeamId}
 			/>
 		</section>
+
+		{#if canManageChallenge}
+			<DangerZone
+				heading={m('challenges.dangerZoneHeading')}
+				description={m('challenges.dangerZoneDesc')}
+			>
+				<button type="button" class="btn btn-danger" disabled={busy} onclick={() => (confirmDelete = true)}>
+					{m('challenges.deleteChallenge')}
+				</button>
+			</DangerZone>
+		{/if}
 	{/if}
 </div>
 
@@ -264,8 +310,17 @@
 />
 
 <style>
+	.dispute-row {
+		margin-top: 0.5rem;
+	}
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
+	}
+	.load-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
 	}
 	.back {
 		display: inline-flex;

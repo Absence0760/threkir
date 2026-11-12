@@ -3,6 +3,7 @@ package livehub
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -387,6 +388,61 @@ func TestRedisHub_HistoryRollsOffPastCap(t *testing.T) {
 // SubscribeWithHistory returns the recent history snapshot AND a live
 // channel that streams subsequent publishes — the Redis transport's
 // half of the no-drop/no-duplicate late-joiner contract.
+// livePingDeadline is how long a live ping may take to cross Redis, the
+// forwarder goroutine and the buffered channel. livePingGrace is the extra
+// wait a MISSED deadline then buys, purely to tell a slow path from a lost
+// message — it is diagnosis, not tolerance, and both branches still fail.
+const (
+	livePingDeadline = time.Second
+	livePingGrace    = 4 * time.Second
+)
+
+// The subscribe path must not return until the server has acknowledged the
+// SUBSCRIBE. `rdb.Subscribe` writes the command and reads no reply, so without
+// the explicit confirmation a ping published immediately afterwards reaches
+// nobody: measured at 8 losses in 400 rounds under two-core CPU saturation,
+// each one with PUBLISH reporting zero receivers.
+//
+// PUBLISH's receiver count is the assertion because it is the server's own
+// answer about its subscriber set, taken at the instant that matters. Reading
+// the ping off the channel instead would only prove delivery on the runs where
+// nothing raced.
+func TestRedisHub_SubscribeRegistersBeforeReturning(t *testing.T) {
+	hub, _, teardown := newRedisTestHub(t)
+	defer teardown()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	for i := 0; i < 25; i++ {
+		runID := fmt.Sprintf("run-confirm-%d", i)
+
+		ch, unsub, err := hub.Subscribe(ctx, runID)
+		if err != nil {
+			t.Fatalf("Subscribe(%s) err = %v", runID, err)
+		}
+		if recv := hub.Publish(runID, Ping{Lat: 1, Lng: 1, DistanceM: float64(i)}); recv != 1 {
+			unsub()
+			t.Fatalf("round %d: PUBLISH reached %d subscriber(s) right after Subscribe returned, "+
+				"want 1 — the ping is lost", i, recv)
+		}
+		unsub()
+		_ = ch
+
+		hist, hch, hunsub, err := hub.SubscribeWithHistory(ctx, runID+"-h", 0)
+		if err != nil {
+			t.Fatalf("SubscribeWithHistory(%s) err = %v", runID, err)
+		}
+		if recv := hub.Publish(runID+"-h", Ping{Lat: 1, Lng: 1, DistanceM: float64(i)}); recv != 1 {
+			hunsub()
+			t.Fatalf("round %d: PUBLISH reached %d subscriber(s) right after SubscribeWithHistory "+
+				"returned, want 1 — the ping is lost", i, recv)
+		}
+		hunsub()
+		_, _ = hist, hch
+	}
+}
+
 func TestRedisHub_SubscribeWithHistoryReplaysThenStreams(t *testing.T) {
 	hub, _, teardown := newRedisTestHub(t)
 	defer teardown()
@@ -414,14 +470,43 @@ func TestRedisHub_SubscribeWithHistoryReplaysThenStreams(t *testing.T) {
 
 	// A publish after the subscribe streams live and is not duplicated
 	// into the already-returned history snapshot.
-	hub.Publish("run-A", Ping{Lat: 1, Lng: 1, DistanceM: 3})
+	//
+	// PUBLISH's own receiver count is kept, because "timed out waiting for
+	// the live ping" cannot say WHY on its own and this test has failed that
+	// way on CI. A zero here means the server had no subscriber registered
+	// when the ping went out, so it was never sent to us and no amount of
+	// waiting would have found it; a one means it was, and any wait that then
+	// expires is this process being slow rather than a message being lost.
+	recv := hub.Publish("run-A", Ping{Lat: 1, Lng: 1, DistanceM: 3})
+	if recv != 1 {
+		t.Fatalf("PUBLISH reached %d subscriber(s), want 1 — the SUBSCRIBE was not "+
+			"registered before the publish, so this ping is lost", recv)
+	}
+	start := time.Now()
 	select {
-	case got := <-ch:
+	case got, ok := <-ch:
+		if !ok {
+			t.Fatal("the live channel closed before the ping arrived")
+		}
 		if got.DistanceM != 3 {
 			t.Fatalf("live ping DistanceM = %v, want 3", got.DistanceM)
 		}
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for the live ping")
+	case <-time.After(livePingDeadline):
+		// Missed the deadline with the ping demonstrably delivered to this
+		// process. Keep waiting rather than failing blind: arriving late says
+		// scheduling latency, never arriving says it was lost downstream of
+		// Redis, and those need different fixes.
+		select {
+		case got, ok := <-ch:
+			t.Fatalf("the live ping arrived after %v (deadline %v, PUBLISH reached %d "+
+				"subscriber(s), ok=%v, DistanceM=%v). It was not lost — this is "+
+				"scheduling latency on the forwarder goroutine.",
+				time.Since(start), livePingDeadline, recv, ok, got.DistanceM)
+		case <-time.After(livePingGrace):
+			t.Fatalf("the live ping never arrived within %v, though PUBLISH reached %d "+
+				"subscriber(s) — Redis sent it and the forwarder did not deliver it.",
+				livePingDeadline+livePingGrace, recv)
+		}
 	}
 	for _, p := range history {
 		if p.DistanceM == 3 {
@@ -455,5 +540,88 @@ func TestRedisHub_DedupHistoryTail(t *testing.T) {
 	// Differing BPM at the same distance is NOT an overlap.
 	if got := dedupHistoryTail([]Ping{mk(2, bpm(130))}, []Ping{mk(2, bpm(131))}); len(got) != 1 {
 		t.Fatalf("dedupHistoryTail must compare BPM by value; trimmed a non-matching ping")
+	}
+}
+
+// TestRedisHub_UnsubDuringPublishDoesNotPanic pins the teardown race on the
+// Redis path. pubsub.Close() does not wait for the forwarder goroutine, so a
+// message already handed to it is forwarded AFTER the subscription is torn
+// down. Closing the subscriber channel from unsub while that send is in flight
+// panicked with "send on closed channel" — a select's default arm does not
+// rescue a send on a closed channel, and the panic is on a bare goroutine
+// outside any handler's recover, so it killed the whole worker process
+// (job-drain loop included) on an ordinary spectator disconnect.
+func TestRedisHub_UnsubDuringPublishDoesNotPanic(t *testing.T) {
+	for round := 0; round < 40; round++ {
+		hub, _, teardown := newRedisTestHub(t)
+		ctx, cancel := context.WithCancel(context.Background())
+
+		_, ch, unsub, err := hub.SubscribeWithHistory(ctx, "run-A", 0)
+		if err != nil {
+			t.Fatalf("round %d: subscribe: %v", round, err)
+		}
+		stop := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					hub.Publish("run-A", Ping{Lat: 51.5, Lng: -0.1})
+				}
+			}
+		}()
+		// Let pings start flowing, and keep the buffer draining so the
+		// forwarder's send case stays live rather than falling to `default`.
+		go func() {
+			for range ch {
+			}
+		}()
+		time.Sleep(2 * time.Millisecond)
+
+		unsub()
+		close(stop)
+		cancel()
+		teardown()
+	}
+}
+
+// TestRedisHub_RunGCDropsIdleRoomCaches pins the reaper on the Redis backend's
+// per-process room map. Redis owns the fan-out and its per-run keys carry a 24h
+// TTL, but the zone + run-meta caches these rooms hold are process-local and
+// had no eviction at all: the map grew one entry per distinct run the replica
+// ever authorised and kept it for the process lifetime.
+func TestRedisHub_RunGCDropsIdleRoomCaches(t *testing.T) {
+	hub, _, teardown := newRedisTestHub(t)
+	defer teardown()
+
+	ctx := context.Background()
+	zones := &fakeZoneFetcher{}
+	for i := 0; i < 500; i++ {
+		if _, err := hub.LoadZones(ctx, fmt.Sprintf("run-%d", i), zones); err != nil {
+			t.Fatalf("LoadZones: %v", err)
+		}
+	}
+	hub.roomsMu.Lock()
+	before := len(hub.rooms)
+	hub.roomsMu.Unlock()
+	if before != 500 {
+		t.Fatalf("expected 500 cached rooms, got %d", before)
+	}
+
+	// A fresh cache must survive a sweep whose idle window it is inside.
+	if dropped := hub.RunGC(time.Hour); dropped != 0 {
+		t.Fatalf("fresh rooms dropped by an hour-wide sweep: %d", dropped)
+	}
+	// Past the window they go — the entries are well beyond CacheRefreshTTL by
+	// then and would be re-fetched on next touch regardless.
+	if dropped := hub.RunGC(-time.Second); dropped != 500 {
+		t.Fatalf("idle sweep dropped %d rooms, want 500", dropped)
+	}
+	hub.roomsMu.Lock()
+	after := len(hub.rooms)
+	hub.roomsMu.Unlock()
+	if after != 0 {
+		t.Fatalf("rooms map still holds %d entries after the sweep", after)
 	}
 }

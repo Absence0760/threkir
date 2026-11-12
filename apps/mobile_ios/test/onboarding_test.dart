@@ -36,8 +36,82 @@ void main() {
       expect(primaryGoalValues.length, 6);
     });
 
-    test('onboardingTotalSteps matches web (7)', () {
-      expect(onboardingTotalSteps, 7);
+    test('onboardingTotalSteps matches web (9)', () {
+      expect(onboardingTotalSteps, 9);
+      // The constant is written out (a list length is not a constant
+      // expression), so pin it against the list it describes.
+      expect(setupWizardSteps.length, onboardingTotalSteps);
+    });
+
+    test('setupWizardSteps are web\'s ONBOARDING_STEPS ids, in order', () {
+      expect(setupWizardSteps, [
+        'name',
+        'units',
+        'goal',
+        'about',
+        'run-privacy',
+        'notifications',
+        'track',
+        'import',
+        'done',
+      ]);
+    });
+
+    test('visibleSetupWizardSteps drops run-privacy once the launch flow '
+        'already asked, and nothing else', () {
+      final asked = visibleSetupWizardSteps(privacyAlreadyChosen: true);
+      expect(asked.contains('run-privacy'), isFalse);
+      expect(asked.length, onboardingTotalSteps - 1);
+      expect(asked, setupWizardSteps.where((s) => s != 'run-privacy'));
+      // Order is preserved — the wizard indexes this list.
+      expect(asked.first, 'name');
+      expect(asked.last, 'done');
+    });
+
+    test('visibleSetupWizardSteps walks every step when privacy is unanswered',
+        () {
+      final steps = visibleSetupWizardSteps(privacyAlreadyChosen: false);
+      expect(steps, setupWizardSteps);
+    });
+
+    test('the track and import steps sit just before done, in that order',
+        () {
+      for (final asked in [true, false]) {
+        final steps = visibleSetupWizardSteps(privacyAlreadyChosen: asked);
+        expect(steps.where((s) => s == setupWizardTrackStep), hasLength(1));
+        expect(steps.where((s) => s == setupWizardImportStep), hasLength(1));
+        expect(steps[steps.length - 3], setupWizardTrackStep);
+        expect(steps[steps.length - 2], setupWizardImportStep);
+        expect(steps.last, 'done');
+      }
+    });
+
+    test('the import step offers the device\'s own health platform only', () {
+      final ios = setupWizardImportSources(isIOS: true);
+      expect(ios, ['healthkit', 'strava']);
+      expect(ios.contains('health_connect'), isFalse);
+
+      final android = setupWizardImportSources(isIOS: false);
+      expect(android, ['health_connect', 'strava']);
+      expect(android.contains('healthkit'), isFalse);
+    });
+
+    test('the import step never offers parkrun, whose import was a scrape', () {
+      for (final isIOS in [true, false]) {
+        expect(setupWizardImportSources(isIOS: isIOS).contains('parkrun'),
+            isFalse);
+      }
+    });
+
+    test('the import step never offers a web-only source', () {
+      // Garmin's export upload is a web importer; a phone reaches Garmin
+      // through the health platform instead.
+      for (final isIOS in [true, false]) {
+        expect(
+          setupWizardImportSources(isIOS: isIOS).contains('garmin'),
+          isFalse,
+        );
+      }
     });
 
     test('planPresetForGoal maps distance goals 1:1 and seeds beginners into '

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 
 import '../auth_error.dart';
@@ -15,9 +14,11 @@ import '../live_watch_forwarder.dart';
 import '../privacy.dart';
 import '../reactive_ble_watch_transport.dart';
 import '../settings_sync.dart';
+import '../share_sheet.dart';
 import '../sim_watch_sync.dart';
 import '../watch_ingest_queue.dart';
 import '../watch_status_link.dart';
+import '../web_base_url.dart';
 import '../widgets/top_banner.dart';
 
 /// Settings → Integrations → Custom watch: relays the watch's per-second BLE
@@ -243,12 +244,10 @@ class _WatchLiveScreenState extends State<WatchLiveScreen> {
   Future<void> _share() async {
     final runId = _forwarder?.runId;
     if (runId == null) return;
-    final base = _env('WEB_BASE_URL');
-    final root = base.isEmpty
-        ? 'https://threkir.com'
-        : base.replaceAll(RegExp(r'/+$'), '');
+    final root = resolveWebBaseUrl();
     try {
-      await Share.share('$root/live/$runId', subject: _l10n.runShareSubject);
+      await shareTextFrom(context,
+          text: '$root/live/$runId', subject: _l10n.runShareSubject);
     } catch (e) {
       debugPrint('[WatchLiveScreen] share failed: $e');
       if (mounted) {
@@ -283,8 +282,10 @@ class _WatchLiveScreenState extends State<WatchLiveScreen> {
             : _l10n.simWatchResult(result.synced, result.total));
       }
     } catch (e) {
+      debugPrint('[WatchLiveScreen] watch sync failed: $e');
       if (mounted) {
-        setState(() => _syncMessage = _l10n.simWatchSyncFailed('$e'));
+        setState(() => _syncMessage =
+            _l10n.simWatchSyncFailed(friendlyError(_l10n, e)));
       }
     } finally {
       if (wasArmed && mounted) await _arm();

@@ -32,23 +32,26 @@ rtc1: Timers.NRF52840_RTC_Overflow @ sysbus 0x40011000
     -> nvic@17
 """
 
-# MAX86177 optical-HR AFE on the TWISPI0 I2C bus (0x40003000, address 0x62 —
-# the bus + address boards/nrf52840_dk's HrPort assigns and the hr task
-# probes). Two models: the stock platform's twi0 is the legacy-TWI-only
-# NRF52840_I2C, which implements none of the TWIM EasyDMA registers
-# embassy-nrf's Twim driver programs (ENABLE=6, TXD/RXD PTR+MAXCNT, the
-# LASTTX/LASTRX shorts, EVENTS_STOPPED) — the hr task's presence probe timed
-# out against it and the whole optical-HR path was bench-gated.
-# NRF52840_TWIM.cs is the TWIM (EasyDMA) master; Max86177.cs synthesizes a
-# deterministic tagged MEAS1(PPG)/MEAS2(ambient) sample stream at 100 Hz off
-# the virtual clock (~72 BPM by default). Scenario knobs, settable live from
-# the monitor (documented in Max86177.cs):
-#   sysbus.twi0.max86177 AmbientLevel 200000    # common-mode ambient bleed
-#   sysbus.twi0.max86177 PulseAmplitude 0       # 0 = no pulse (off-wrist)
-#   sysbus.twi0.max86177 DcBaseline 500         # reflected DC at drive 0x40
-#   sysbus.twi0.max86177 PulsePeriodSamples 83  # BPM = 6000 / period
+# MAX30101 optical-HR AFE on the TWISPI0 I2C bus (0x40003000, address 0x57 —
+# the bus boards/nrf52840_dk's HrPort assigns and the address the hr task
+# probes; the part changed from the MAX86177 with decisions.md § 623, and the
+# ELF the sim boots is the one the bench will flash). Two models: the stock
+# platform's twi0 is the legacy-TWI-only NRF52840_I2C, which implements none of
+# the TWIM EasyDMA registers embassy-nrf's Twim driver programs (ENABLE=6,
+# TXD/RXD PTR+MAXCNT, the LASTTX/LASTRX shorts, EVENTS_STOPPED) — the hr task's
+# presence probe timed out against it and the whole optical-HR path was
+# bench-gated. NRF52840_TWIM.cs is the TWIM (EasyDMA) master; Max30101.cs
+# synthesizes a deterministic green-PPG + LED-off-ambient sample stream at
+# 100 Hz off the virtual clock (~72 BPM by default), UNTAGGED and in slot order
+# like the real part — so the driver's positional tagging is exercised rather
+# than assumed. Scenario knobs, settable live from the monitor (documented in
+# Max30101.cs):
+#   sysbus.twi0.max30101 AmbientLevel 100000    # common-mode ambient bleed
+#   sysbus.twi0.max30101 PulseAmplitude 0       # 0 = no pulse (off-wrist)
+#   sysbus.twi0.max30101 DcBaseline 250         # reflected DC at drive 0x24
+#   sysbus.twi0.max30101 PulsePeriodSamples 83  # BPM = 6000 / period
 include @NRF52840_TWIM.cs
-include @Max86177.cs
+include @Max30101.cs
 # BMP581 barometer on the TWIM1 bus (the baro task probes TWISPI1 at 0x46).
 # Two pieces in one block: the stock platform's twi1 is the legacy nRF51-style
 # TWI byte-interface model, which maps none of the TWIM EasyDMA registers
@@ -68,7 +71,7 @@ machine LoadPlatformDescriptionFromString
 twi0: I2C.NRF52840_TWIM @ sysbus 0x40003000
     -> nvic@3
 
-max86177: Sensors.MAX86177 @ twi0 0x62
+max30101: Sensors.MAX30101 @ twi0 0x57
 
 twi1: I2C.NRF52840_TWIM @ sysbus 0x40004000
     -> nvic@4
@@ -85,7 +88,7 @@ bmp581: Sensors.BMP581 @ twi1 0x46
 # (which also defeats the read-modify-write the driver does to set the bit).
 # The counter then climbs monotonically past 2 * rx_len and BufferedUarte's own
 # guard (`rxdrdy > rx_buf.len() * 2` -> 0) pins the derived write position at
-# zero for the rest of the run — about a kilobyte of NMEA, ~1 s at 9600 baud,
+# zero for the rest of the run — about a kilobyte of NMEA, a couple of epochs,
 # in. sim/NRF52840_Timer_Shorts.cs is the upstream v1.16.1 model plus a real
 # SHORTS (COMPARE[n]_CLEAR + COMPARE[n]_STOP, honoured in the TASKS_COUNT path
 # as well as the clocked one — counter mode is the one the driver uses). All
@@ -120,6 +123,40 @@ timer3: Timers.NRF52840_Timer_Shorts @ sysbus 0x4001A000
 timer4: Timers.NRF52840_Timer_Shorts @ sysbus 0x4001B000
     numberOfEvents: 6
     -> nvic@27
+"""
+
+# UARTE0/UARTE1 that publish their EVENTS_* to the PPI matrix. Renode's PPI
+# resolves an event endpoint by casting the peripheral that owns the address in
+# EVENTP[n] to INRFEventProvider, and the v1.16.1 UART model does not implement
+# it — so every PPI channel sourced from a UARTE event is refused outright:
+#
+#   [ERROR] ppi: Failed to register PPI from 0x40002108 for channel 2
+#
+# Two firmware paths ride exactly those chains. UARTE1's settings receiver puts
+# EVENTS_RXDRDY on TIMER1's TASKS_COUNT so a read can end at the sender's gap
+# and still report a byte count (decisions.md § 407 / § 420 — that chain has
+# never actually fired under the sim, which is why the software gap timeout
+# carried it). UARTE0's BufferedUarte RX ring needs both EVENTS_RXDRDY ->
+# TASKS_COUNT, because its ring write index IS that counter, and EVENTS_ENDRX ->
+# TASKS_STARTRX, the hardware pre-arm that makes the ~85 ms NVMC page-erase CPU
+# halt survivable (§ 419 / § 698). With the counter frozen at 0 the ring delivers
+# nothing at all, so § 421's SHORTS model was necessary and not sufficient.
+# sim/NRF52840_UARTE_Events.cs is the v1.16.1 model plus UPSTREAM'S OWN
+# event-provider delta; everything else in it is verbatim. Both instances are
+# replaced, not just UARTE0, so the two chains cannot disagree about whether a
+# UARTE event exists.
+include @NRF52840_UARTE_Events.cs
+machine UnregisterFromParent sysbus.uart0
+machine UnregisterFromParent sysbus.uart1
+machine LoadPlatformDescriptionFromString
+"""
+uart0: UART.NRF52840_UARTE_Events @ sysbus 0x40002000
+    easyDMA: true
+    -> nvic@2
+
+uart1: UART.NRF52840_UARTE_Events @ sysbus 0x40028000
+    easyDMA: true
+    -> nvic@40
 """
 
 # Board LEDs. We declare these inline instead of loading
@@ -184,6 +221,19 @@ macro reset
     sysbus LoadELF $elf
 """
 runMacro $reset
+
+# Stage markers. The monitor does NOT put an error raised inside an include
+# into the log file, so an include that stops half-way leaves nothing behind to
+# read: the only symptom bin/watch-sim.sh could see was the GPS pty that never
+# appeared, and its diagnosis had to guess at which command failed. Each marker
+# is the last line the log carries when the command AFTER it is the one that
+# died, which turns that guess into a reading.
+python
+"""
+def resc_stage(name):
+    monitor.Machine.SystemBus.GetCPUs()[0].InfoLog("watch.resc stage: " + name)
+"""
+python "resc_stage('platform built, ELF loaded')"
 
 include @defmt_rtt.py
 setup_defmt_rtt $defmt_out
@@ -292,6 +342,7 @@ led.StateChanged += led_changed
 # makes the first frame a client reads the current one.
 emulation CreateServerSocketTerminal $phone_port "phone" false true
 connector Connect sysbus.uart1 phone
+python "resc_stage('phone link socket bound')"
 
 # GPS rail: the u-blox breakout's NMEA stream arrives on uart0 (UARTE0).
 # The pty end is where the host feeder writes canned sentences. The firmware
@@ -301,5 +352,7 @@ connector Connect sysbus.uart1 phone
 # symlink appearing as proof the whole script executed.
 emulation CreateUartPtyTerminal "gps" $gps_pty true
 connector Connect sysbus.uart0 gps
+python "resc_stage('gps pty created')"
 
 start
+python "resc_stage('machine started')"

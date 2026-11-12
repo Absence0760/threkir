@@ -62,7 +62,16 @@ class RecapExtras {
   final int photoCount;
   final int personalRecordCount;
 
-  const RecapExtras({this.photoCount = 0, this.personalRecordCount = 0});
+  /// Distinct park courses completed in the period, and the parks they are in.
+  final int parkCourseCount;
+  final int parkCount;
+
+  const RecapExtras({
+    this.photoCount = 0,
+    this.personalRecordCount = 0,
+    this.parkCourseCount = 0,
+    this.parkCount = 0,
+  });
 }
 
 class YearInRunningRecap {
@@ -86,6 +95,8 @@ class YearInRunningRecap {
   final String? mostUsedActivity;
   final int photoCount;
   final int personalRecordCount;
+  final int parkCourseCount;
+  final int parkCount;
   final List<RecapBadge> badges;
 
   const YearInRunningRecap({
@@ -107,6 +118,8 @@ class YearInRunningRecap {
     required this.mostUsedActivity,
     required this.photoCount,
     required this.personalRecordCount,
+    this.parkCourseCount = 0,
+    this.parkCount = 0,
     required this.badges,
   });
 }
@@ -216,10 +229,24 @@ List<RecapBadge> computeRecapBadges(_BadgeInputs i) {
 }
 
 /// Monday of the local week as a YYYY-MM-DD string.
+///
+/// Deliberately ISO-8601 Monday-anchored and NOT the runner's `week_start`
+/// preference, which `current_week.dart` does honour over the same runs. The
+/// two answer different questions in different frames: the dashboard strip
+/// says what the runner has done THIS week, which is their own calendar; the
+/// recap is a snapshot PUBLISHED to `public_recaps` (this side writes it
+/// through `recapSnapshotJson`) and re-rendered by the web `/recap/share/[id]`
+/// page and the OG image for readers who are not the runner. A week boundary
+/// that varied with a preference would make one artifact mean two things with
+/// nothing in the payload saying which.
 String _mondayOf(DateTime d) {
   final local = DateTime(d.year, d.month, d.day);
   final dow = (local.weekday + 6) % 7; // 0=Mon, 6=Sun (matches JS)
-  final mon = local.subtract(Duration(days: dow));
+  // Step calendar days, matching web's `local.setDate(local.getDate() - dow)`.
+  // `subtract(Duration(days:))` walks absolute time, so in the week of a DST
+  // fall-back it lands at 23:00 the previous Sunday and that week's runs split
+  // across two buckets — deflating the "top week" the recap reports.
+  final mon = DateTime(local.year, local.month, local.day - dow);
   final y = mon.year.toString().padLeft(4, '0');
   final m = mon.month.toString().padLeft(2, '0');
   final day = mon.day.toString().padLeft(2, '0');
@@ -229,23 +256,49 @@ String _mondayOf(DateTime d) {
 String _hhmm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
+/// The day the "current streak" walk may count back from: the earlier of the
+/// period's last day and [now].
+///
+/// `computeRunStreaks` ignores runs after its anchor and starts the walk at the
+/// anchor (or its grace day), so an anchor in the future is not merely
+/// imprecise — it puts the walk on two empty days and returns 0 for every live
+/// streak there is.
+DateTime _currentAnchor(DateTime periodEnd, DateTime now) =>
+    now.isBefore(periodEnd) ? now : periodEnd;
+
+/// The stored ascent for [r], mirroring `key_stats.ts`'s `storedElevationGainM`
+/// over the one reading a domain [Run] carries.
+///
+/// Migration `20270302_001` promoted total ascent to `runs.elevation_gain_m`
+/// and the TS half reads that column first, falling back to the bag key. A
+/// `Run` has no column to read, so the column-wins rule is applied one layer
+/// down instead: `ApiClient._runFromRow` surfaces `elevation_gain_m` back onto
+/// this key, alongside `activity_type`, `is_dnf` and the four `fastest_*_s`
+/// (decisions § 1240). Reading the bag here is therefore reading the column.
+///
+/// A non-finite value is no reading, exactly as the TS half's `Number.isFinite`
+/// says: the bag is schemaless and a NaN summed into the year total takes every
+/// other run's climb with it.
 double _elevationOf(Run r) {
-  // Run.metadata.elevation_m is the canonical key (jsonb).
-  final m = r.metadata;
-  if (m == null) return 0;
-  final raw = m['elevation_m'];
-  if (raw is num) return raw.toDouble();
+  final raw = r.metadata?['elevation_m'];
+  if (raw is num && raw.isFinite) return raw.toDouble();
   return 0;
 }
 
 /// Build the year-in-running aggregate. Pass ALL runs, not just the
 /// target year — internal filter lets the streak computation extend
 /// across the year boundary.
+///
+/// [now] is the reader's clock, stateable so a test does not inherit it; Dart
+/// cannot default a parameter to `DateTime.now()`, so it is nullable here where
+/// the TS half takes `now: Date = new Date()`.
 YearInRunningRecap buildYearInRunningRecap(
   List<Run> runs,
   int year, [
   RecapExtras extras = const RecapExtras(),
+  DateTime? now,
 ]) {
+  final at = now ?? DateTime.now();
   final inYear = <Run>[];
   for (final r in runs) {
     // Classify by the run's *local* calendar year — the per-month / per-week
@@ -275,7 +328,10 @@ YearInRunningRecap buildYearInRunningRecap(
   for (final r in inYear) {
     final d = r.startedAt.toLocal();
     totalDistance += r.distanceMetres;
-    totalDuration += r.duration.inSeconds;
+    final countedS = isPlausibleRunDuration(r.duration.inSeconds)
+        ? r.duration.inSeconds
+        : 0;
+    totalDuration += countedS;
     totalElevation += _elevationOf(r);
 
     // "Longest run" + "fastest pace" are run-family headline stats — exclude
@@ -285,7 +341,10 @@ YearInRunningRecap buildYearInRunningRecap(
     final isRunFamily = ((r.metadata?['activity_type'] as String?) ?? 'run') != 'cycle';
     if (isRunFamily && r.distanceMetres > longest) longest = r.distanceMetres;
 
-    if (isRunFamily && r.distanceMetres > 500 && r.duration.inSeconds > 0) {
+    if (isRunFamily &&
+        r.distanceMetres > 500 &&
+        r.duration.inSeconds > 0 &&
+        isPlausibleRunDuration(r.duration.inSeconds)) {
       final pace = r.duration.inSeconds / (r.distanceMetres / 1000);
       if (fastestPace == null || pace < fastestPace) fastestPace = pace;
     }
@@ -302,7 +361,7 @@ YearInRunningRecap buildYearInRunningRecap(
 
     final md = monthly[d.month]!;
     md.distance += r.distanceMetres;
-    md.duration += r.duration.inSeconds;
+    md.duration += countedS;
     md.runCount += 1;
 
     final wk = _mondayOf(d);
@@ -335,10 +394,18 @@ YearInRunningRecap buildYearInRunningRecap(
     }
   });
 
+  // Bound `best` at Jan 1 so a streak that ended before this year is somebody
+  // else's card's headline, not this one's. The "current" anchor is the EARLIER
+  // of 31 Dec and now: anchoring unconditionally at 31 Dec meant that for the
+  // year you are living in — the only card anyone opens while a streak is
+  // running — the walk looked for a run on 31 Dec, then on the grace day of
+  // 30 Dec, found neither, and reported `current: 0`. `best` keeps the period's
+  // own end so a past year's card still clamps at its own 31 Dec.
   final endOfYear = DateTime(year, 12, 31, 23, 59);
   final streaks = computeRunStreaks(
     runs.map((r) => r.startedAt).toList(),
-    endOfYear,
+    _currentAnchor(endOfYear, at),
+    DateTime(year, 1, 1),
   );
 
   final monthlyList = <RecapMonthBucket>[
@@ -354,6 +421,8 @@ YearInRunningRecap buildYearInRunningRecap(
   final photoCount = extras.photoCount < 0 ? 0 : extras.photoCount;
   final personalRecordCount =
       extras.personalRecordCount < 0 ? 0 : extras.personalRecordCount;
+  final parkCourseCount = extras.parkCourseCount < 0 ? 0 : extras.parkCourseCount;
+  final parkCount = extras.parkCount < 0 ? 0 : extras.parkCount;
   final earliestStartLocal = earliestRun == null ? null : _hhmm(earliestRun);
   final latestStartLocal = latestRun == null ? null : _hhmm(latestRun);
 
@@ -389,6 +458,8 @@ YearInRunningRecap buildYearInRunningRecap(
     mostUsedActivity: mostUsedActivity,
     photoCount: photoCount,
     personalRecordCount: personalRecordCount,
+    parkCourseCount: parkCourseCount,
+    parkCount: parkCount,
     badges: badges,
   );
 }
@@ -402,8 +473,10 @@ YearInRunningRecap buildMonthInRunningRecap(
   int year,
   int month, [
   RecapExtras extras = const RecapExtras(),
+  DateTime? now,
 ]) {
-  final yearRecap = buildYearInRunningRecap(runs, year, extras);
+  final at = now ?? DateTime.now();
+  final yearRecap = buildYearInRunningRecap(runs, year, extras, at);
   final bucket = (month >= 1 && month <= 12)
       ? yearRecap.monthly[month - 1]
       : RecapMonthBucket(month: month, distanceM: 0, durationS: 0, runCount: 0);
@@ -430,7 +503,10 @@ YearInRunningRecap buildMonthInRunningRecap(
     totalElevation += _elevationOf(r);
     final isRunFamily = ((r.metadata?['activity_type'] as String?) ?? 'run') != 'cycle';
     if (isRunFamily && r.distanceMetres > longest) longest = r.distanceMetres;
-    if (isRunFamily && r.distanceMetres > 500 && r.duration.inSeconds > 0) {
+    if (isRunFamily &&
+        r.distanceMetres > 500 &&
+        r.duration.inSeconds > 0 &&
+        isPlausibleRunDuration(r.duration.inSeconds)) {
       final pace = r.duration.inSeconds / (r.distanceMetres / 1000);
       if (fastestPace == null || pace < fastestPace) fastestPace = pace;
     }
@@ -475,12 +551,15 @@ YearInRunningRecap buildMonthInRunningRecap(
   final endOfMonth = DateTime(year, month + 1, 0, 23, 59);
   final streaks = computeRunStreaks(
     runs.map((r) => r.startedAt).toList(),
-    endOfMonth,
+    _currentAnchor(endOfMonth, at),
+    DateTime(year, month, 1),
   );
 
   final photoCount = extras.photoCount < 0 ? 0 : extras.photoCount;
   final personalRecordCount =
       extras.personalRecordCount < 0 ? 0 : extras.personalRecordCount;
+  final parkCourseCount = extras.parkCourseCount < 0 ? 0 : extras.parkCourseCount;
+  final parkCount = extras.parkCount < 0 ? 0 : extras.parkCount;
   final earliestStartLocal = earliestRun == null ? null : _hhmm(earliestRun);
   final latestStartLocal = latestRun == null ? null : _hhmm(latestRun);
 
@@ -517,6 +596,8 @@ YearInRunningRecap buildMonthInRunningRecap(
     mostUsedActivity: mostUsedActivity,
     photoCount: photoCount,
     personalRecordCount: personalRecordCount,
+    parkCourseCount: parkCourseCount,
+    parkCount: parkCount,
     badges: badges,
   );
 }
@@ -558,6 +639,8 @@ Map<String, dynamic> recapSnapshotJson(YearInRunningRecap r) => {
       'mostUsedActivity': r.mostUsedActivity,
       'photoCount': r.photoCount,
       'personalRecordCount': r.personalRecordCount,
+      'parkCourseCount': r.parkCourseCount,
+      'parkCount': r.parkCount,
       'badges': [
         for (final b in r.badges)
           {'id': b.id, 'icon': b.icon, 'label': b.label, 'detail': b.detail},

@@ -12,8 +12,10 @@
 // mirroring CoachChat + route_describe_client.
 
 import { supabase } from '../core/supabase';
+import { AI_DISCLOSURE_ERROR } from '../core/ai_disclosure';
 import { payloadSha256Hex } from '../util/payload_hash';
 import type { RouteConstraints } from './route_request/constraints';
+import { promptLocationLabel } from './route_request/location_label';
 
 export type { RouteConstraints } from './route_request/constraints';
 
@@ -24,6 +26,7 @@ export type { RouteConstraints } from './route_request/constraints';
 export type RouteRequestErrorKind =
 	| 'not_authenticated'
 	| 'upgrade'
+	| 'consent'
 	| 'invalid'
 	| 'not_understood'
 	| 'unavailable';
@@ -37,9 +40,13 @@ export class RouteRequestError extends Error {
 	}
 }
 
-function errorForStatus(status: number): RouteRequestErrorKind {
+/// 403 is overloaded on this endpoint — the paywall and the AI-disclosure
+/// gate both use it — so the body's `code` decides. Showing a Pro upsell to
+/// someone whose actual problem is a missing consent record sends them to
+/// buy something that would not unlock the feature.
+function errorForStatus(status: number, code: string | undefined): RouteRequestErrorKind {
 	if (status === 401) return 'not_authenticated';
-	if (status === 403) return 'upgrade';
+	if (status === 403) return code === AI_DISCLOSURE_ERROR ? 'consent' : 'upgrade';
 	if (status === 400) return 'invalid';
 	if (status === 422) return 'not_understood';
 	return 'unavailable';
@@ -56,7 +63,7 @@ export async function requestRouteConstraints(
 ): Promise<RouteConstraints> {
 	const body = JSON.stringify({
 		request,
-		location_label: locationLabel ?? null,
+		location_label: promptLocationLabel(locationLabel),
 	});
 	// CloudFront's Lambda OAC can't hash the body itself — the client
 	// supplies the sigv4 payload hash or the Function URL 403s (#590).
@@ -88,7 +95,8 @@ export async function requestRouteConstraints(
 	}
 
 	if (!res.ok) {
-		throw new RouteRequestError(errorForStatus(res.status));
+		const body = (await res.json().catch(() => null)) as { code?: string } | null;
+		throw new RouteRequestError(errorForStatus(res.status, body?.code));
 	}
 
 	const data = (await res.json().catch(() => null)) as {

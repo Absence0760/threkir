@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertComment, insertKudos, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { readCount } from '../fixtures/db-read';
 
 /**
  * /social?tab=feed — in-feed engagement (the SocialFeed `.kudos-pill`
@@ -80,11 +81,14 @@ test.describe('/social?tab=feed — kudos pill + comment count', () => {
 		// survive (proves it wasn't a paint-only flip).
 		const admin = getAdminClient();
 		await expect(async () => {
-			const { count } = await admin
-				.from('run_kudos')
-				.select('*', { count: 'exact', head: true })
-				.eq('run_id', runId!)
-				.eq('user_id', USER_B.id);
+			const count = await readCount(
+				'run_kudos by run_id+user_id',
+				admin
+					.from('run_kudos')
+					.select('*', { count: 'exact', head: true })
+					.eq('run_id', runId!)
+					.eq('user_id', USER_B.id)
+			);
 			expect(count).toBe(1);
 		}).toPass({ timeout: 5_000 });
 
@@ -102,11 +106,14 @@ test.describe('/social?tab=feed — kudos pill + comment count', () => {
 		});
 		await expect(cardAfter.locator('.kudos-pill')).toContainText('0');
 		await expect(async () => {
-			const { count } = await admin
-				.from('run_kudos')
-				.select('*', { count: 'exact', head: true })
-				.eq('run_id', runId!)
-				.eq('user_id', USER_B.id);
+			const count = await readCount(
+				'run_kudos by run_id+user_id',
+				admin
+					.from('run_kudos')
+					.select('*', { count: 'exact', head: true })
+					.eq('run_id', runId!)
+					.eq('user_id', USER_B.id)
+			);
 			expect(count).toBe(0);
 		}).toPass({ timeout: 5_000 });
 	});
@@ -161,14 +168,12 @@ test.describe('/social?tab=feed — kudos pill + comment count', () => {
 		await page.goto('/social?tab=feed');
 		const card = page.locator('article.entry').filter({ hasText: title });
 		await expect(card).toBeVisible({ timeout: 10_000 });
-		// The comment-pill shows the count and links to the PUBLIC run page —
-		// anon-reachable and indexable, unlike the auth-gated /runs/[id]. It
-		// used to point at /runs/[id], which sent a follower to a "Run not
-		// found" page (fixed both ways: the link moved, and /runs/[id] gained
-		// a non-owner branch in issue #666).
+		// The comment-pill shows the count and links to the in-app run page,
+		// whose non-owner branch (issue #666) mounts the same comments. The
+		// public /share/run page would take a signed-in reader out of the app.
 		const commentPill = card.locator('.comment-pill');
 		await expect(commentPill).toContainText('2', { timeout: 10_000 });
-		await expect(commentPill).toHaveAttribute('href', new RegExp(`/share/run/${runId}`));
+		await expect(commentPill).toHaveAttribute('href', `/runs/${runId}`);
 	});
 });
 

@@ -2,7 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	ONBOARDING_STEPS,
 	ONBOARDING_TOTAL_STEPS,
+	visibleOnboardingSteps,
+	ONBOARDING_IMPORT_SOURCES,
 	PRIMARY_GOAL_KEY,
 	PRIMARY_GOAL_VALUES,
 	planPresetForGoal,
@@ -69,8 +72,75 @@ test('planPresetForGoal covers every PRIMARY_GOAL_VALUE', () => {
 
 test('ONBOARDING_TOTAL_STEPS matches the wizard step count', () => {
 	// Drives the progress-dot indicator. Drift would mean the user
-	// sees "step 4 of 7" while there are 8 actual steps, or vice
+	// sees "step 4 of 8" while there are 9 actual steps, or vice
 	// versa. Pin the constant; the page-level test counts the
 	// rendered <section> blocks.
-	assert.equal(ONBOARDING_TOTAL_STEPS, 7);
+	assert.equal(ONBOARDING_TOTAL_STEPS, 9);
+});
+
+test('the full wizard is the nine steps, in order', () => {
+	assert.deepEqual(
+		[...ONBOARDING_STEPS],
+		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'track', 'import', 'done'],
+	);
+	assert.equal(ONBOARDING_TOTAL_STEPS, ONBOARDING_STEPS.length);
+});
+
+test('the notifications step appears only when push can be turned on here', () => {
+	const withPush = visibleOnboardingSteps({ supported: true, permission: 'default', subscribed: false });
+	assert.deepEqual(withPush, [...ONBOARDING_STEPS]);
+
+	for (const [why, push] of [
+		['no browser support or no deployed key', { supported: false, permission: 'default', subscribed: false }],
+		['blocked in the browser', { supported: true, permission: 'denied', subscribed: false }],
+		['no Notification API at all', { supported: true, permission: 'unsupported', subscribed: false }],
+		['already on for this device', { supported: true, permission: 'granted', subscribed: true }],
+	] as const) {
+		const steps = visibleOnboardingSteps(push);
+		assert.ok(!steps.includes('notifications'), why);
+		assert.equal(steps.length, ONBOARDING_TOTAL_STEPS - 1, why);
+		assert.equal(steps[steps.length - 1], 'done', `${why}: the wizard still ends on done`);
+	}
+});
+
+test('granted but not yet subscribed still offers the step', () => {
+	// Permission granted to the site does not mean this device is subscribed.
+	const steps = visibleOnboardingSteps({ supported: true, permission: 'granted', subscribed: false });
+	assert.ok(steps.includes('notifications'));
+});
+
+test('the import step hands each source to the import surface that already exists', () => {
+	// The step builds no importer: Strava (connection + archive upload) and the
+	// Garmin export upload live on /settings/integrations.
+	const hrefs = Object.fromEntries(ONBOARDING_IMPORT_SOURCES.map((s) => [s.source, s.href]));
+	assert.deepEqual(hrefs, {
+		strava: '/settings/integrations',
+		garmin: '/settings/integrations',
+	});
+});
+
+test('the web import step offers no health platform', () => {
+	// HealthKit and Health Connect are on-device frameworks with no web binding.
+	const sources = ONBOARDING_IMPORT_SOURCES.map((s) => s.source as string);
+	for (const health of ['healthkit', 'health_connect', 'health']) {
+		assert.ok(!sources.includes(health), health);
+	}
+});
+
+test('every import source has a translated description', () => {
+	const labels = en as Record<string, string>;
+	for (const { source } of ONBOARDING_IMPORT_SOURCES) {
+		const key = `onboarding.import${source[0].toUpperCase()}${source.slice(1)}Desc`;
+		assert.ok(labels[key]?.trim(), `en has no "${key}"`);
+	}
+});
+
+test('the import step sits between track and done whichever steps are walked', () => {
+	for (const push of [
+		{ supported: true, permission: 'default', subscribed: false },
+		{ supported: false, permission: 'default', subscribed: false },
+	] as const) {
+		const steps = visibleOnboardingSteps(push);
+		assert.deepEqual(steps.slice(-3), ['track', 'import', 'done']);
+	}
 });

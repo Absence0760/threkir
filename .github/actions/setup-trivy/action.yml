@@ -1,0 +1,108 @@
+name: Setup Trivy
+description: >
+  Install a pinned Trivy release onto PATH, verifying its checksum and
+  retrying a failed download. Callers then run `aquasecurity/trivy-action`
+  with `skip-setup-trivy: true`.
+
+  Why not the install `trivy-action` does for itself: it calls
+  `aquasecurity/setup-trivy`, which runs Trivy's `contrib/install.sh`, and
+  since upstream's "add client option to install script" (#9962) that script
+  fetches the tarball from `get.trivy.dev`, a download-tracking redirector,
+  with one `curl` and no retry. On 2026-11-03 the connection to it failed
+  (curl exit 7) on the push of 85c6aa30c to main, so `Trivy (job_worker
+  container)` produced no SARIF, its `upload-sarif` step then failed on
+  "Path does not exist", and the Security tab flagged Trivy with a
+  configuration error while `trivy-job-worker` sat one commit behind main.
+  Nothing was wrong with the image; the scanner never got installed.
+
+  So the download is ours, the same shape as `setup-supabase-cli`: the
+  tarball comes from the GitHub release itself, `curl` retries, the sha256 in
+  the release's own checksums file is verified before the binary is trusted,
+  and a verified binary is cached on its version so later jobs do not touch
+  the network at all. TRUST BOUNDARY, as there: a cache hit is checked
+  against a digest that was itself cached, which catches a truncated restore,
+  not an attacker who can write this repository's cache; a miss still
+  verifies against upstream's checksums file.
+
+  Linux x86_64 only, which is every caller (the two image scans in
+  security.yml and the IaC scan in terraform.yml).
+
+inputs:
+  version:
+    # The one place the Trivy version is pinned. Bump it to a release whose
+    # `trivy_<ver>_Linux-64bit.tar.gz` and `trivy_<ver>_checksums.txt` assets
+    # exist; nothing else needs editing, because every caller skips
+    # trivy-action's own install and so ignores its `version` input.
+    description: Trivy version to install, without a leading "v".
+    required: false
+    default: '0.70.0'
+
+# The verified binary is installed into /usr/local/bin, which every runner
+# already has on PATH, rather than its directory appended to GITHUB_PATH: an
+# environment-file write changes PATH for every later step of the caller's
+# job, and this action cannot see what those steps are or what triggered them.
+runs:
+  using: composite
+  steps:
+    - name: Restore the cached Trivy binary
+      id: restore
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/trivy-bin
+        key: trivy-bin-${{ runner.os }}-x64-${{ inputs.version }}
+
+    - name: Put a cached Trivy on PATH
+      id: cached
+      if: steps.restore.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        TRIVY_VERSION: ${{ inputs.version }}
+      run: |
+        set -uo pipefail
+        dest="$HOME/.cache/trivy-bin"
+        if [ -x "$dest/trivy" ] \
+          && [ -f "$dest/trivy.sha256" ] \
+          && (cd "$dest" && sha256sum -c trivy.sha256 >/dev/null 2>&1) \
+          && sudo install -m 0755 "$dest/trivy" /usr/local/bin/trivy; then
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+          echo "Trivy ${TRIVY_VERSION} restored from cache; digest verified."
+        else
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Cached Trivy ${TRIVY_VERSION} did not verify; downloading instead."
+        fi
+
+    - name: Install Trivy
+      if: steps.restore.outputs.cache-hit != 'true' || steps.cached.outputs.ok != 'true'
+      shell: bash
+      env:
+        TRIVY_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        ver="$TRIVY_VERSION"
+        dest="$HOME/.cache/trivy-bin"
+        base="https://github.com/aquasecurity/trivy/releases/download/v${ver}"
+        tarball="trivy_${ver}_Linux-64bit.tar.gz"
+        sums="trivy_${ver}_checksums.txt"
+        rm -rf "$dest"
+        mkdir -p "$dest"
+
+        for attempt in 1 2 3 4 5; do
+          if curl -fsSL --connect-timeout 20 --max-time 60 \
+                -o "$dest/$sums" "$base/$sums" \
+            && curl -fsSL --connect-timeout 20 --max-time 300 \
+                -o "$dest/$tarball" "$base/$tarball" \
+            && (cd "$dest" && grep "  ${tarball}\$" "$sums" | sha256sum -c - >/dev/null) \
+            && tar -xzf "$dest/$tarball" -C "$dest" trivy; then
+            rm -f "$dest/$tarball" "$dest/$sums"
+            (cd "$dest" && sha256sum trivy > trivy.sha256)
+            sudo install -m 0755 "$dest/trivy" /usr/local/bin/trivy
+            echo "Trivy ${ver} installed on attempt ${attempt}; checksum verified."
+            exit 0
+          fi
+          rm -f "$dest/$tarball" "$dest/$sums"
+          echo "::warning::Trivy ${ver} install attempt ${attempt} failed (download or checksum); retrying."
+          sleep $((attempt * 10))
+        done
+
+        echo "::error::Could not install Trivy ${ver} after 5 attempts. Every attempt either failed to download ${tarball} from the GitHub release or failed its sha256 against ${sums}. This is the install step, so nothing has been scanned yet."
+        exit 1

@@ -33,7 +33,10 @@ final class RunCheckpointCodableTests: XCTestCase {
             pausedIntervalSeconds: 120,
             trackPointCount: 312,
             cacheFileURL: URL(fileURLWithPath: "/tmp/run.ndjson"),
-            averageBPM: 152.0
+            averageBPM: 152.0,
+            hrCoverage: 0.75,
+            steps: nil,
+            laps: nil
         )
         let data = try encoder().encode(cp)
         let back = try decoder().decode(RunCheckpoint.self, from: data)
@@ -45,6 +48,65 @@ final class RunCheckpointCodableTests: XCTestCase {
         XCTAssertEqual(back.pausedIntervalSeconds, 120, accuracy: 0.0001)
         XCTAssertEqual(back.trackPointCount, 312)
         XCTAssertEqual(back.averageBPM, 152.0)
+        XCTAssertEqual(back.hrCoverage, 0.75)
+    }
+
+    func testTheWorkoutReviewRoundTripsAndAnOlderCheckpointHasNone() throws {
+        let review = WorkoutReview(
+            planWorkoutId: "pw-1",
+            adherence: "partial",
+            steps: [WorkoutStepResultRecord(
+                stepIndex: 0, kind: "rep", repIndex: 1, repTotal: 2,
+                targetDistanceMetres: 400, targetDurationSeconds: nil,
+                actualDistanceMetres: 380, targetPaceSecondsPerKm: 240,
+                actualPaceSecondsPerKm: 250, toleranceSecondsPerKm: 10,
+                durationSeconds: 95, status: "skipped"
+            )]
+        )
+        let cp = RunCheckpoint(
+            id: "run-1",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            distanceMetres: 380,
+            activeDurationSeconds: 95,
+            pausedIntervalSeconds: 0,
+            trackPointCount: 90,
+            cacheFileURL: URL(fileURLWithPath: "/tmp/run.ndjson"),
+            averageBPM: nil,
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil,
+            workoutReview: review
+        )
+        let decoded = try decoder().decode(RunCheckpoint.self, from: encoder().encode(cp))
+        XCTAssertEqual(decoded.workoutReview, review)
+
+        let older = #"{"id":"run-1","distanceMetres":1}"#.data(using: .utf8)!
+        XCTAssertNil(try decoder().decode(RunCheckpoint.self, from: older).workoutReview)
+    }
+
+    func testTheStepOverChordMetresRoundTripAndAnOlderCheckpointHasNone() throws {
+        let cp = RunCheckpoint(
+            id: "run-1",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            distanceMetres: 480,
+            activeDurationSeconds: 120,
+            pausedIntervalSeconds: 0,
+            trackPointCount: 90,
+            cacheFileURL: URL(fileURLWithPath: "/tmp/run.ndjson"),
+            averageBPM: nil,
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil,
+            distanceEstimator: WorkoutManager.distanceEstimatorTag,
+            distanceStepFilledMetres: 104,
+            distanceStepOverChordMetres: 48.6
+        )
+        let decoded = try decoder().decode(RunCheckpoint.self, from: encoder().encode(cp))
+        XCTAssertEqual(decoded.distanceStepFilledMetres, 104)
+        XCTAssertEqual(decoded.distanceStepOverChordMetres, 48.6)
+
+        let older = #"{"id":"run-1","distanceMetres":1,"distanceStepFilledMetres":104}"#.data(using: .utf8)!
+        XCTAssertNil(try decoder().decode(RunCheckpoint.self, from: older).distanceStepOverChordMetres)
     }
 
     func testCurrentVersionIsOne() {
@@ -55,7 +117,7 @@ final class RunCheckpointCodableTests: XCTestCase {
         let cp = RunCheckpoint(
             id: "x", startedAt: Date(), distanceMetres: 0, activeDurationSeconds: 0,
             pausedIntervalSeconds: 0, trackPointCount: 0,
-            cacheFileURL: URL(fileURLWithPath: "/tmp/x"), averageBPM: nil
+            cacheFileURL: URL(fileURLWithPath: "/tmp/x"), averageBPM: nil, hrCoverage: nil, steps: nil, laps: nil
         )
         XCTAssertEqual(cp.version, RunCheckpoint.currentVersion)
     }
@@ -101,6 +163,29 @@ final class RunCheckpointCodableTests: XCTestCase {
         XCTAssertEqual(cp.trackPointCount, 200)
     }
 
+    func testDecodesCheckpointWithAverageButNoCoverageAsUnmeasured() throws {
+        // A checkpoint written by a build between § 1156 and § 1207: it graded
+        // the average but never persisted the share. Nil is UNMEASURED, and a
+        // recovered run must omit `hr_coverage` rather than claim the sensor
+        // delivered nothing for the whole run.
+        let json = """
+        {
+          "version": 1,
+          "id": "pre-coverage",
+          "startedAt": "2026-04-15T07:30:00Z",
+          "distanceMetres": 9000.0,
+          "activeDurationSeconds": 3000.0,
+          "pausedIntervalSeconds": 0.0,
+          "trackPointCount": 600,
+          "cacheFileURL": "file:///tmp/pre-coverage.ndjson",
+          "averageBPM": 149.0
+        }
+        """.data(using: .utf8)!
+        let cp = try decoder().decode(RunCheckpoint.self, from: json)
+        XCTAssertEqual(cp.averageBPM, 149.0)
+        XCTAssertNil(cp.hrCoverage, "Absent hrCoverage must decode as unmeasured, never as 0")
+    }
+
     func testDecodesAlmostEmptyObjectWithSafeDefaults() throws {
         // A truncated / partially-written checkpoint must not crash recovery:
         // every absent field falls back rather than throwing. The only field
@@ -115,6 +200,7 @@ final class RunCheckpointCodableTests: XCTestCase {
         XCTAssertEqual(cp.pausedIntervalSeconds, 0)
         XCTAssertEqual(cp.trackPointCount, 0)
         XCTAssertNil(cp.averageBPM)
+        XCTAssertNil(cp.hrCoverage)
     }
 
     func testDecodesNewerShapeWithUnknownFutureKeys() throws {

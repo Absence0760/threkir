@@ -16,7 +16,7 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/runs_screen.dart';
 import '../lib/widgets/run_list_tile.dart';
-import '../lib/widgets/surface_peer_strip.dart';
+import 'pump_until.dart';
 
 /// Signed-in fake with no remote runs — keeps `_fetchRemote` off the network
 /// so the run-list mode renders purely from the seeded local store.
@@ -25,10 +25,15 @@ class _FakeApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async =>
+      (runs: const <Run>[], cursor: cursor);
+
+  @override
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async =>
       const [];
 }
@@ -65,8 +70,7 @@ void main() {
   }
 
   /// Mount the run-list surface (no gymStore) the way the Fitness hub's Runs
-  /// sub-tab does, with the labelled peer strip wired so the screen is as
-  /// crowded as it gets in production.
+  /// sub-tab does.
   Future<void> pumpRunList(
     WidgetTester tester, {
     List<Run> runs = const [],
@@ -91,12 +95,6 @@ void main() {
         runStore: runStore,
         routeStore: LocalRouteStore(),
         preferences: prefs,
-        surfacePeers: [
-          const SurfacePeer(label: 'Runs'),
-          SurfacePeer(label: 'Routes', onTap: () {}),
-          SurfacePeer(label: 'Plans', onTap: () {}),
-          SurfacePeer(label: 'Races', onTap: () {}),
-        ],
       ),
     ));
     await tester.pumpAndSettle();
@@ -154,15 +152,18 @@ void main() {
           distanceMetres: 5000,
           source: RunSource.app,
         );
-    // Recent dates: the run list's default range filter windows out older
-    // runs, and a filtered-out row cannot be long-pressed into selection.
     final now = DateTime.now().toUtc();
     final runs = [
       mk('r1', now.subtract(const Duration(days: 1))),
       mk('r2', now.subtract(const Duration(days: 2))),
     ];
     await tester.runAsync(() async => runStore.saveManyFromRemote(runs));
-    SharedPreferences.setMockInitialValues({});
+    // Range pinned to 'all': a filtered-out row cannot be long-pressed into
+    // selection, and the default "this week" window drops both of these on
+    // the weekday the week rolls over (CI at 00:24 on a Monday saw no rows).
+    SharedPreferences.setMockInitialValues({
+      'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
+    });
     final prefs = Preferences();
     await prefs.init();
 
@@ -211,16 +212,11 @@ void main() {
         isNull);
 
     // Releasing the delete finishes the pass and leaves selection mode. The
-    // tail does real store file I/O, so alternate real-clock delays (which let
-    // that I/O complete) with pumps (which flush the fake-zone microtasks that
-    // resume the awaiting UI code) until it lands — a fixed delay never drains
-    // it. Same shape as gym_screen_test's `_pumpUntil`.
+    // tail does real store file I/O, which only completes on the real event
+    // loop.
     await tester.runAsync(() async => api.gate.complete());
-    for (var i = 0; i < 40 && tester.any(find.text('1 selected')); i++) {
-      await tester.runAsync(
-          () async => Future<void>.delayed(const Duration(milliseconds: 20)));
-      await tester.pump();
-    }
+    await pumpUntil(tester, () => !tester.any(find.text('1 selected')),
+        describe: 'the delete pass to finish and leave selection mode');
     expect(api.deleteCalls, 1, reason: 'exactly one pass over the selection');
     // Selection mode ended, so its AppBar (and with it the guarded controls)
     // is gone. Asserted on the selection title rather than the trash glyph,

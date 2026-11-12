@@ -267,6 +267,7 @@ fn whole_fixture_file_parses() {
             Sentence::Vtg { .. } => {}
             Sentence::Zda(_) => {}
             Sentence::Gst(_) => {}
+            Sentence::NavPvt(_) | Sentence::UbxAck { .. } => panic!("UBX frame in an NMEA fixture"),
             Sentence::Other => other += 1,
         }
     }

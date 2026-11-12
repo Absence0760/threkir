@@ -7,7 +7,10 @@ import {
 	computeEffortsFromTrack,
 	computeGlobalSegmentEffort,
 	computeGlobalSegmentEfforts,
+	globalSegmentGeometry,
+	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type GlobalSegmentGeometry,
+	linesChain,
 	assignCompetitionRanks,
 	crownLabel,
 	SEGMENT_AGE_BANDS,
@@ -388,6 +391,49 @@ test('global: tolerates start/end falling between run samples', () => {
 	assert.ok(Math.abs(eff!.time_seconds - 100) < 2);
 });
 
+test('checkpoints: a run passing every checkpoint in order matches', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		checkpoints: [coordAt(250), coordAt(450)],
+	});
+	assert.notEqual(eff, null);
+	assert.ok(Math.abs(eff!.time_seconds - 100) < 1);
+});
+
+test('checkpoints: a checkpoint the run never passes refuses the match', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		// ~1 km east of the track: the far side of a cut-through.
+		checkpoints: [{ lat: 37.0 + 350 / 111_320, lng: -121.988 }],
+	});
+	assert.equal(eff, null);
+});
+
+test('checkpoints: checkpoints passed out of order refuse the match', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		checkpoints: [coordAt(450), coordAt(250)],
+	});
+	assert.equal(eff, null);
+});
+
+test('checkpoints: a checkpoint outside the start-end window refuses the match', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		// On the track, but after the end crossing.
+		checkpoints: [coordAt(800)],
+	});
+	assert.equal(eff, null);
+});
+
 // ─── computeGlobalSegmentEfforts (catalogue sweep) ───
 
 /**
@@ -651,3 +697,187 @@ test('global sweep: the extent test never rejects a segment the full scan matche
 	}
 	assert.ok(matched >= 10, `oracle produced too few matches to be meaningful (${matched})`);
 });
+
+// ─── Line position: the smoother's fix over the raw one ───
+
+/**
+ * `straightTrack` whose raw fixes alternate 20 m either side of the meridian
+ * while each fix's `smoothedLat` / `smoothedLng` sits on it — a run that
+ * followed the line but whose raw positions zig-zag. Raw hops are ~40 m
+ * against the line's ~5 m, so raw-summed distance reads ~8x long.
+ */
+function zigZagTrack(
+	pair: 'both' | 'latOnly' | 'lngOnly' | 'none',
+): TrackPoint[] {
+	const lngOff = 20 / (111_320 * Math.cos((37 * Math.PI) / 180));
+	return straightTrack({ points: 200, stepM: 5, stepS: 1 }).map((p, i) => {
+		const raw = { ...p, lng: p.lng + (i % 2 === 0 ? lngOff : -lngOff) };
+		if (pair === 'both') return { ...raw, smoothedLat: p.lat, smoothedLng: p.lng };
+		if (pair === 'latOnly') return { ...raw, smoothedLat: p.lat };
+		if (pair === 'lngOnly') return { ...raw, smoothedLng: p.lng };
+		return raw;
+	});
+}
+
+test('line: a global segment is matched on the smoothed line through a raw zig-zag', () => {
+	const segment = { points: [coordAt(100), coordAt(600)], distance_m: 500 };
+	// Raw: ~4026 m covered between the crossings fails the 25% end-to-end guard.
+	assert.equal(computeGlobalSegmentEffort(zigZagTrack('none'), segment), null);
+	const eff = computeGlobalSegmentEffort(zigZagTrack('both'), segment);
+	assert.notEqual(eff, null);
+	// The crossings land on fixes 20 and 120, 1 s apart each: 100 s from t0+20 s.
+	assert.ok(Math.abs(eff!.time_seconds - 100) < 1e-6);
+	assert.equal(eff!.started_at, '2026-01-01T00:00:20.000Z');
+});
+
+test('line: a route slice is timed on the smoothed line distance', () => {
+	const slice = { start_distance_m: 100, end_distance_m: 600 };
+	// Raw-summed distance reaches 600 m after ~15 s: a 12.4 s "effort".
+	const raw = computeEffortFromTrack(zigZagTrack('none'), slice);
+	assert.notEqual(raw, null);
+	assert.ok(raw!.time_seconds < 13);
+	// On the line the slice is the ~100.1 s it took, crossed at ~t0+20.02 s.
+	const eff = computeEffortFromTrack(zigZagTrack('both'), slice);
+	assert.notEqual(eff, null);
+	assert.ok(Math.abs(eff!.time_seconds - 100.11) < 0.01);
+	assert.equal(eff!.started_at, '2026-01-01T00:00:20.022Z');
+});
+
+test('line: half a smoothed pair falls back to the raw fix', () => {
+	const slice = { start_distance_m: 100, end_distance_m: 600 };
+	const segment = { points: [coordAt(100), coordAt(600)], distance_m: 500 };
+	const raw = computeEffortFromTrack(zigZagTrack('none'), slice);
+	for (const pair of ['latOnly', 'lngOnly'] as const) {
+		assert.deepEqual(computeEffortFromTrack(zigZagTrack(pair), slice), raw, pair);
+		assert.equal(computeGlobalSegmentEffort(zigZagTrack(pair), segment), null, pair);
+	}
+});
+
+// ─── the shared gate-matching cases (#1308, decisions § 2402) ─────────────
+//
+// The TS reader of fixtures/segments_gate_cases.json, the case table the
+// `segments` pair shares with apps/mobile_android/test/segments_test.dart.
+
+interface FixtureGate {
+	lat: number;
+	lng: number;
+	bearing_deg: number;
+	half_width_m: number;
+}
+interface GateCase {
+	name: string;
+	segment: {
+		points: { lat: number; lng: number }[];
+		distance_m: number;
+		checkpoints?: { lat: number; lng: number }[];
+		start_gate?: FixtureGate;
+		end_gate?: FixtureGate;
+	};
+	track: { lat: number; lng: number; t: number; off_track?: boolean }[];
+	expect: { matched_by: string; time_seconds: number; started_offset_ms: number } | null;
+}
+const gateFixture = JSON.parse(
+	readFileSync(resolve(import.meta.dirname, '../../../../../fixtures/segments_gate_cases.json'), 'utf8'),
+) as { base_time: string; cases: GateCase[] };
+const gateBaseMs = Date.parse(gateFixture.base_time);
+
+function fixtureGate(g: FixtureGate | undefined) {
+	return g ? { lat: g.lat, lng: g.lng, bearingDeg: g.bearing_deg, halfWidthM: g.half_width_m } : null;
+}
+
+for (const c of gateFixture.cases) {
+	test(`gate fixture: ${c.name}`, () => {
+		const track: TrackPoint[] = c.track.map((p) => ({
+			lat: p.lat,
+			lng: p.lng,
+			ts: new Date(gateBaseMs + Math.round(p.t * 1000)).toISOString(),
+			...(p.off_track ? { offTrack: true } : {}),
+		}));
+		const got = computeGlobalSegmentEffort(track, {
+			points: c.segment.points,
+			distance_m: c.segment.distance_m,
+			checkpoints: c.segment.checkpoints,
+			startGate: fixtureGate(c.segment.start_gate),
+			endGate: fixtureGate(c.segment.end_gate),
+		});
+		if (c.expect === null) {
+			assert.equal(got, null);
+			return;
+		}
+		assert.ok(got, 'expected an effort');
+		assert.equal(got.matched_by, c.expect.matched_by);
+		assert.ok(
+			Math.abs(got.time_seconds - c.expect.time_seconds) < 0.001,
+			`time ${got.time_seconds} vs ${c.expect.time_seconds}`,
+		);
+		assert.equal(Date.parse(got.started_at) - gateBaseMs, c.expect.started_offset_ms);
+	});
+}
+
+test('the gate fixture covers every case the issue lists', () => {
+	const names = gateFixture.cases.map((c) => c.name).join('\n');
+	for (const needle of [
+		'parallel path 20 m',
+		'hairpin',
+		'wrong direction',
+		'two passes',
+		'loop',
+		'no lines falls back',
+		'interpolated time',
+		'off-track',
+	]) {
+		assert.ok(names.includes(needle), `no case for "${needle}"`);
+	}
+});
+
+test('globalSegmentGeometry reads a row\'s lines, and a row missing one value has no line', () => {
+	const row = {
+		waypoints: [
+			{ lat: '37.5', lng: -77.5 },
+			{ lat: 37.504, lng: -77.5 },
+		],
+		distance_m: '445',
+		start_gate_lat: 37.5,
+		start_gate_lng: -77.5,
+		start_gate_bearing_deg: 0,
+		start_gate_half_width_m: 15,
+		end_gate_lat: 37.504,
+		end_gate_lng: -77.5,
+		end_gate_bearing_deg: null,
+		end_gate_half_width_m: 15,
+	};
+	const g = globalSegmentGeometry(row, [{ lat: 37.502, lng: -77.5 }]);
+	assert.deepEqual(g.points, [
+		{ lat: 37.5, lng: -77.5 },
+		{ lat: 37.504, lng: -77.5 },
+	]);
+	assert.equal(g.distance_m, 445);
+	assert.deepEqual(g.startGate, { lat: 37.5, lng: -77.5, bearingDeg: 0, halfWidthM: 15 });
+	assert.equal(g.endGate, null);
+	assert.deepEqual(g.checkpoints, [{ lat: 37.502, lng: -77.5 }]);
+	assert.equal(globalSegmentGeometry({ waypoints: null, distance_m: 100 }).points.length, 0);
+});
+
+test('a circle match reports matched_by zone, and the matcher version is past the two-pass loop rule of 2', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [track[10], track[100]],
+		distance_m: 450,
+	});
+	assert.equal(eff?.matched_by, 'zone');
+	assert.equal(GLOBAL_SEGMENT_MATCHER_VERSION, 3);
+});
+
+test('linesChain: a loop finishing on its start line, facing within 90 degrees of it, chains its laps', () => {
+	const at = { lat: 37.5, lng: -77.5, halfWidthM: 15 };
+	// Beaver Lake: one point, the finish facing 38 degrees off the start.
+	assert.equal(linesChain({ ...at, bearingDeg: 153.1 }, { ...at, bearingDeg: 191.5 }), true);
+	// Across north: 350 and 20 are 30 degrees apart, not 330.
+	assert.equal(linesChain({ ...at, bearingDeg: 350 }, { ...at, bearingDeg: 20 }), true);
+	// A lollipop finishes facing back the way it started: the runner turns first.
+	assert.equal(linesChain({ ...at, bearingDeg: 48.5 }, { ...at, bearingDeg: 228.5 }), false);
+	// 14 m off is within the start line's reach, 20 m is not.
+	assert.equal(linesChain({ ...at, bearingDeg: 90 }, { ...at, lat: 37.5 + 14 / 111_195, bearingDeg: 90 }), true);
+	assert.equal(linesChain({ ...at, bearingDeg: 90 }, { ...at, lat: 37.5 + 20 / 111_195, bearingDeg: 90 }), false);
+});
+

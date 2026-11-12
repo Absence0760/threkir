@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
+import { readCount } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * AI-coach conversation-LIFECYCLE journey — one fresh runner walks the
@@ -54,13 +56,6 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 
 const PLAN_NULL_URL = '/coach?plan=none';
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
-
 test.describe('AI coach — conversation lifecycle (active → archive → History → delete)', () => {
 	let user: SagaUser;
 
@@ -87,7 +82,7 @@ test.describe('AI coach — conversation lifecycle (active → archive → Histo
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		// Distinct from the AI-coach consent: pre-accept the GDPR cookie
 		// banner so it can't float over the composer / context strip.
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {
@@ -272,11 +267,14 @@ test.describe('AI coach — conversation lifecycle (active → archive → Histo
 				await expect(archiveRow).toHaveCount(0, { timeout: 10_000 });
 
 				// ...and gone from the backend — both planted rows deleted.
-				const { count } = await admin
-					.from('coach_messages')
-					.select('id', { count: 'exact', head: true })
-					.eq('user_id', user.id);
-				expect(count ?? 0).toBe(0);
+				const count = await readCount(
+					'coach_messages by user_id',
+					admin
+						.from('coach_messages')
+						.select('id', { count: 'exact', head: true })
+						.eq('user_id', user.id)
+				);
+				expect(count).toBe(0);
 			});
 		} finally {
 			// Teardown: drop every coach_messages row + the planted run for

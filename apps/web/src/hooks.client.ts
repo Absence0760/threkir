@@ -1,37 +1,32 @@
 import * as Sentry from "@sentry/sveltekit";
-import { dev } from "$app/environment";
-import { env } from "$env/dynamic/public";
-import type { HandleClientError } from "@sveltejs/kit";
+import { dev } from "$app/env";
+import { PUBLIC_APP_RELEASE, PUBLIC_SENTRY_DSN } from "$app/env/public";
+import type { HandleClientError } from "@sveltejs/kit/hooks";
 import {
 	redactBreadcrumb,
 	redactEventSignedUrls,
+	redactStreamedSpan,
 	type SentryEventWithSpans,
-} from "$lib/sentry/redact";
-import { hasAcceptedConsent } from "$lib/settings/consent.svelte";
+} from "#lib/sentry/redact.ts";
+import { SENTRY_DATA_COLLECTION } from "#lib/sentry/data_collection.ts";
+import { hasAcceptedConsent } from "#lib/settings/consent.svelte.ts";
+import { logClientError } from "#lib/core/client_error_log.ts";
 
-const dsn = env.PUBLIC_SENTRY_DSN ?? "";
-const release = env.PUBLIC_APP_RELEASE || "dev";
+const dsn = PUBLIC_SENTRY_DSN ?? "";
+const release = PUBLIC_APP_RELEASE || "dev";
 
 if (!dev && dsn && hasAcceptedConsent()) {
 	Sentry.init({
 		dsn,
 		release,
 		environment: release !== "dev" ? "production" : "development",
+		dataCollection: SENTRY_DATA_COLLECTION,
 		tracesSampleRate: 0.1,
 		replaysSessionSampleRate: 0,
 		replaysOnErrorSampleRate: 0,
-		beforeBreadcrumb: (breadcrumb) => {
-			if (
-				breadcrumb.category === 'fetch' ||
-				breadcrumb.category === 'xhr' ||
-				breadcrumb.category === 'console'
-			) {
-				return redactBreadcrumb(breadcrumb);
-			}
-			return breadcrumb;
-		},
+		beforeBreadcrumb: (breadcrumb) => redactBreadcrumb(breadcrumb),
 		beforeSend: (event) => redactEventSignedUrls(event as SentryEventWithSpans) as typeof event,
-		beforeSendTransaction: (event) => redactEventSignedUrls(event as SentryEventWithSpans) as typeof event,
+		beforeSendSpan: (span) => redactStreamedSpan(span),
 	});
 }
 
@@ -48,6 +43,7 @@ if (!dev && dsn && hasAcceptedConsent()) {
 // only the static types differ.
 const handleErrorViaSentry = Sentry.handleErrorWithSentry() as unknown as HandleClientError;
 export const handleError: HandleClientError = (input) => {
+	logClientError(input);
 	if (!hasAcceptedConsent()) return;
 	return handleErrorViaSentry(input);
 };

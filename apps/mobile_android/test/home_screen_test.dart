@@ -4,30 +4,65 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/entity_link.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
+import '../lib/main.dart'
+    show pendingArmGuidedRun, pendingPushTarget, pendingStartWorkout;
+import '../lib/push_target.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
+import '../lib/run_stop_dock.dart';
+import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/screens/add_run_screen.dart';
+import '../lib/screens/confirm_age_screen.dart';
+import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/gym_screen.dart';
+import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
+import '../lib/screens/nutrition_screen.dart';
+import '../lib/screens/public_route_screen.dart';
+import '../lib/screens/public_run_screen.dart';
+import '../lib/screens/route_picker_screen.dart';
+import '../lib/screens/run_detail_screen.dart';
 import '../lib/screens/run_screen.dart';
+import '../lib/screens/settings_about_screen.dart';
+import '../lib/screens/settings_account_screen.dart';
+import '../lib/screens/settings_body_metrics_screen.dart';
+import '../lib/screens/settings_integrations_screen.dart';
+import '../lib/screens/settings_preferences_screen.dart';
+import '../lib/screens/settings_pro_screen.dart';
+import '../lib/screens/settings_safety_screen.dart';
 import '../lib/screens/setup_wizard_screen.dart';
+import 'pump_until.dart';
 
 /// Drives auth transitions for the setup-wizard gate (#232): a fresh
 /// account (onboarded_at null) signs in after launch.
 class _WizardApi extends ApiClient {
   String? uid;
+
+  /// Whether the account's profile row exists, and whether it records the
+  /// Art 8 age + terms confirmation. The defaults are an account that
+  /// consented at sign-up and has not seen the wizard.
+  bool hasRow;
+  bool consented;
+  int confirmCalls = 0;
   final _controller = StreamController<String?>.broadcast();
+
+  _WizardApi({this.hasRow = true, this.consented = true});
 
   @override
   String? get userId => uid;
@@ -36,14 +71,71 @@ class _WizardApi extends ApiClient {
   Stream<String?> get authUserChanges => _controller.stream;
 
   @override
-  Future<cm.UserProfileRow?> fetchMyProfile() async => uid == null
-      ? null
-      : cm.UserProfileRow(shadowHidden: false, id: uid!, displayName: null);
+  Future<cm.UserProfileRow?> fetchMyProfile() async {
+    if (uid == null || !hasRow) return null;
+    final stamp = consented ? DateTime.utc(2026, 10, 6) : null;
+    return cm.UserProfileRow(profilePrivate: false, 
+      shadowHidden: false,
+      id: uid!,
+      displayName: null,
+      ageConfirmedAt: stamp,
+      termsAcceptedAt: stamp,
+    );
+  }
+
+  @override
+  Future<void> confirmAgeAndTerms() async {
+    confirmCalls++;
+    hasRow = true;
+    consented = true;
+  }
 
   void emit() => _controller.add(uid);
 }
 
 Directory? _runsDir;
+
+/// Answers the active-plan read with [overview] instead of reaching Supabase.
+class _PlanTraining extends TrainingService {
+  final ActivePlanOverview? overview;
+  _PlanTraining(this.overview);
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
+}
+
+/// An active plan with one open easy run scheduled for today.
+ActivePlanOverview _planWithWorkoutToday() {
+  final now = DateTime.now();
+  final today = cm.PlanWorkoutRow(
+    id: 'wo-today',
+    weekId: 'wk-1',
+    scheduledDate: DateTime(now.year, now.month, now.day),
+    kind: 'easy',
+    targetDistanceM: 5000,
+    manuallyCompleted: false,
+  );
+  return ActivePlanOverview(
+    plan: cm.TrainingPlanRow(
+      id: 'plan-1',
+      userId: 'u1',
+      name: 'Spring 10k',
+      goalEvent: '10k',
+      goalDistanceM: 10000,
+      startDate: now.subtract(const Duration(days: 28)),
+      endDate: now.add(const Duration(days: 56)),
+      daysPerWeek: 4,
+      status: 'active',
+      source: 'app',
+      isTemplate: false,
+      isPublicTemplate: false,
+    ),
+    weeks: const [],
+    workouts: [today],
+    todayWorkout: today,
+    completionPct: 0,
+    currentWeekIndex: 0,
+  );
+}
 
 Future<({
   LocalRunStore runStore,
@@ -58,7 +150,7 @@ Future<({
   BleTreadmill treadmill,
   AudioCues audioCues,
   RaceController raceController,
-})> _makeStores() async {
+})> _makeStores({TrainingService? training}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = Preferences();
   await prefs.init();
@@ -80,7 +172,7 @@ Future<({
       overrideDirectory:
           Directory.systemTemp.createTempSync('food_store_test_'));
   final social = SocialService();
-  final training = TrainingService();
+  final trainingService = training ?? TrainingService();
   final heartRate = BleHeartRate();
   final treadmill = BleTreadmill();
   final audioCues = AudioCues();
@@ -94,7 +186,7 @@ Future<({
     foodStore: foodStore,
     prefs: prefs,
     social: social,
-    training: training,
+    training: trainingService,
     heartRate: heartRate,
     treadmill: treadmill,
     audioCues: audioCues,
@@ -130,6 +222,62 @@ Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
   await tester.pump();
 }
 
+/// A logged lift is what puts the fan back on the Log button's tap: with no
+/// gym and no food data the shell derives a one-tap run start instead
+/// (decisions § 63 self-hiding).
+Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
+  await tester.runAsync(() async {
+    await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
+  });
+}
+
+/// [text] inside the long-press menu's sheet, so a page's own copy of the
+/// same label cannot answer for it.
+Finder _inMenu(String text) =>
+    find.descendant(of: find.byType(BottomSheet), matching: find.text(text));
+
+/// The centre button's `Semantics` wrapper carrying [label] — read off the widget, so the test
+/// needs no semantics tree.
+Finder _semanticsLabelled(String label) => find.ancestor(
+    of: find.byType(FloatingActionButton),
+    matching: find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label));
+
+/// Answers the non-owner reads as "nothing you can see", so a pushed
+/// PublicRunScreen / PublicRouteScreen settles on its empty state offline.
+class _LinkApi extends _WizardApi {
+  @override
+  Future<({cm.RunRow? row, bool shared})> fetchViewableRunById(
+    String runId,
+  ) async =>
+      (row: null, shared: false);
+
+  @override
+  Future<({cm.Route? route, String? ownerId})> fetchRouteById(
+    String routeId,
+  ) async =>
+      (route: null, ownerId: null);
+}
+
+/// A signed-in account that has finished onboarding, so no wizard covers
+/// the shell.
+class _OnboardedApi extends _LinkApi {
+  @override
+  Future<cm.UserProfileRow?> fetchMyProfile() async {
+    final row = await super.fetchMyProfile();
+    if (row == null) return null;
+    return cm.UserProfileRow(
+      profilePrivate: false,
+      shadowHidden: false,
+      id: row.id,
+      displayName: 'Runner',
+      ageConfirmedAt: row.ageConfirmedAt,
+      termsAcceptedAt: row.termsAcceptedAt,
+      onboardedAt: DateTime.utc(2026, 10, 6),
+    );
+  }
+}
+
 class _StampApi extends ApiClient {
   int markOnboardedCalls = 0;
   bool failStamp = false;
@@ -149,6 +297,7 @@ void main() {
     // The swipe-lock signal is a process-global ValueNotifier; reset it so a
     // recording-active test can't leak the lock into the next test (#490).
     runRecordingActive.value = false;
+    runSummaryShowing.value = false;
     // Null when the test never built the stores (the pure gate-helper
     // group below has no run store on disk).
     if (_runsDir?.existsSync() ?? false) {
@@ -213,6 +362,7 @@ void main() {
         'shows Home/Fitness/Social/You nav labels; Run/History/Settings are not nav labels',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
       for (final label in ['Home', 'Fitness', 'Social', 'You']) {
@@ -233,12 +383,39 @@ void main() {
       }
     });
 
+    testWidgets('with Gym and Nutrition hidden the hub is Training, under a '
+        'runner', (tester) async {
+      // "Fitness" under a dumbbell was chosen because the hub holds gym and
+      // nutrition too (decisions § 139). With both hidden it holds runs,
+      // routes, plans and races, and a runner scanned past a gym icon.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Training')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Fitness')),
+          findsNothing);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.directions_run)),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+          findsNothing);
+
+      // Switching a modality on brings Fitness back, without a restart.
+      await s.prefs.setShowNutrition(true);
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Fitness')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+          findsOneWidget);
+    });
+
     testWidgets('the centre Log action shows a visible text label (#256)',
         (tester) async {
       // Every nav tab carries a text label; the centre Log action used to be
       // an unlabelled "+" FAB with a tooltip only. It now caption's "Log"
       // inside the bar so the affordance is discoverable without a hover.
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
       expect(
@@ -246,6 +423,71 @@ void main() {
         findsOneWidget,
         reason: 'the centre Log action must carry a visible label in the bar',
       );
+      expect(_semanticsLabelled('Log an activity'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton),
+            matching: find.byIcon(Icons.add)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when a tap starts a run, the centre button says so',
+        (tester) async {
+      // "+ Log" read as "add an entry" for a runner whose tap opened the GPS
+      // recorder; they only found out what it did by pressing it.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Log')), findsNothing);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton),
+            matching: find.byIcon(Icons.play_arrow)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'the centre button names the default activity a tap records '
+        '(#1230)', (tester) async {
+      // A cyclist whose default is `cycle` tapped "Start run" and recorded a
+      // ride: RunScreen seeds its activity from this same preference.
+      final s = await _makeStores();
+      await tester.runAsync(() => s.prefs.setDefaultActivityType('cycle'));
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start ride')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsNothing);
+      expect(_semanticsLabelled('Start a ride'), findsOneWidget);
+
+      await tester.runAsync(() => s.prefs.setDefaultActivityType('run'));
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+    });
+
+    testWidgets('the centre button turns back into Log once a lift exists',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+
+      await _seedLoggedLift(tester, s);
+      await tester.pump();
+
+      expect(find.descendant(of: bar, matching: find.text('Log')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsNothing);
     });
 
     testWidgets('initial page is Home (welcome empty state)', (tester) async {
@@ -253,6 +495,80 @@ void main() {
       await _pump(tester, s);
       await tester.pump();
       expect(find.text('Welcome!'), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('the first-run gym link switches Gym on and lands on it',
+        (tester) async {
+      // A new account is exactly the one whose Gym starts hidden, so the
+      // welcome card's "Log a gym session" used to select a tab the hub did
+      // not have and leave the runner on History.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pump();
+      expect(s.prefs.showGym, isNull);
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(s.prefs.showGym, isTrue);
+      expect(find.byType(GymScreen), findsOneWidget);
+      // The hub's tab label and the Gym screen's own title.
+      expect(find.text('Gym'), findsNWidgets(2));
+      // It changed what the centre button does, so it says so.
+      expect(find.text('Gym is now shown'), findsOneWidget);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('Undo on the switched-on banner restores no choice, not off',
+        (tester) async {
+      // One stray tap on the first-run link used to re-modalise the app with
+      // no way back but a Settings switch. The prior value here is null — no
+      // choice yet — and writing false instead would pin Gym hidden for a
+      // runner who later logs a lift.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pump();
+      expect(s.prefs.showGym, isNull);
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(s.prefs.showGym, isTrue);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(s.prefs.showGym, isNull);
+      expect(find.byType(GymScreen), findsNothing);
+      expect(find.text('Gym is now shown'), findsNothing);
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('an account that said it lifts follows the first-run gym link '
+        'to Gym, with nothing switched on to announce', (tester) async {
+      // The link stays for a lifter with nothing logged (decisions § 2041).
+      // Gym is already shown, so the tap only navigates: no "now shown"
+      // banner, and its Undo cannot rewrite the answer the account gave.
+      final s = await _makeStores();
+      await s.prefs.setShowGym(true);
+      await _pump(tester, s);
+      await tester.pump();
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(GymScreen), findsOneWidget);
+      expect(s.prefs.showGym, isTrue);
+      expect(find.text('Gym is now shown'), findsNothing);
+      expect(find.text('Undo'), findsNothing);
+      await tester.pump(const Duration(seconds: 8));
     });
 
     testWidgets('body is a PageView', (tester) async {
@@ -264,6 +580,8 @@ void main() {
     testWidgets('tapping the Log FAB fans the capture speed-dial (default mode)',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -278,6 +596,7 @@ void main() {
     testWidgets('keepRunPrimary: tapping the Log FAB starts a run, no menu',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await s.prefs.setKeepRunPrimary(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
@@ -289,6 +608,7 @@ void main() {
 
     testWidgets('picking Log lift lands on the Gym dwell-in page', (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -297,15 +617,19 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       // Not a modal composer — the Log action navigates the PageView to the
-      // in-shell Gym page (same model as the run recorder), so the bottom nav
-      // stays visible alongside the page's own "Gym" AppBar title.
-      expect(find.text('Gym'), findsOneWidget);
+      // Fitness hub's Gym tab (same dwell-in model as the run recorder), so
+      // the bottom nav stays visible alongside the surface's own "Gym" AppBar
+      // title. Twice: the hub's tab label, and that title 48dp below it.
+      expect(find.text('Gym'), findsNWidgets(2));
+      expect(find.byType(GymScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
     });
 
     testWidgets('picking Log food lands on the Nutrition dwell-in page',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -313,7 +637,8 @@ void main() {
       await tester.tap(find.byTooltip('Log food'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Nutrition'), findsOneWidget);
+      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.byType(NutritionScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
     });
 
@@ -337,6 +662,61 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(SetupWizardScreen), findsOneWidget);
     });
+
+    for (final (label, hasRow) in [
+      ('a row with no consent stamps', true),
+      ('no profile row at all', false),
+    ]) {
+      testWidgets(
+          'consent gate holds an account with $label, then hands on to the '
+          'setup wizard once both boxes are ticked (#1065)', (tester) async {
+        final s = await _makeStores();
+        final api = _WizardApi(hasRow: hasRow, consented: false);
+        await _pump(tester, s, api: api);
+        await tester.pump();
+
+        api.uid = 'u10';
+        api.emit();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(ConfirmAgeScreen), findsOneWidget);
+        expect(find.byType(SetupWizardScreen), findsNothing);
+
+        final confirm = find.widgetWithText(FilledButton, 'Continue');
+        expect(tester.widget<FilledButton>(confirm).onPressed, isNull,
+            reason: 'nothing is recorded until both boxes are ticked');
+        await tester.tap(find.byType(Checkbox).at(0));
+        await tester.pump();
+        await tester.tap(find.byType(Checkbox).at(1));
+        await tester.pump();
+        await tester.tap(confirm);
+        // The gate's reverse transition needs a frame past its end to drop
+        // the route, and the wizard push that follows needs its own frames.
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+
+        expect(api.confirmCalls, 1);
+        expect(find.byType(ConfirmAgeScreen), findsNothing);
+        expect(find.byType(SetupWizardScreen), findsOneWidget);
+      });
+    }
+
+    testWidgets('an account that consented at sign-up never sees the gate',
+        (tester) async {
+      final s = await _makeStores();
+      final api = _WizardApi();
+      await _pump(tester, s, api: api);
+      await tester.pump();
+      api.uid = 'u11';
+      api.emit();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ConfirmAgeScreen), findsNothing);
+      expect(api.confirmCalls, 0);
+    });
   });
 
   group('HomeScreen expanded (tablet) shell', () {
@@ -351,7 +731,8 @@ void main() {
       expect(find.byType(BottomAppBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.text('Home'), findsWidgets);
-      expect(find.text('Fitness'), findsOneWidget);
+      // A pure runner's hub label; the rail derives it as the bar does.
+      expect(find.text('Training'), findsOneWidget);
     });
 
     testWidgets('rail destinations navigate and the Log FAB fans the dial',
@@ -360,6 +741,8 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.text('Fitness'));
       await tester.pump();
@@ -453,12 +836,1415 @@ void main() {
       await _pump(tester, s);
       runRecordingActive.value = true;
       await tester.pump();
-      await tester.tap(find.text('Fitness'));
+      await tester.tap(find.text('Training'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Runs'), findsWidgets,
           reason: 'the Fitness hub mounted, so the tap navigated the PageView '
               'despite the locked swipe physics');
+    });
+  });
+
+  group('the centre button mid-run', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets('says the run is recording, in the error colour',
+        (tester) async {
+      // Away from the recorder the shell looked exactly as it does idle, and
+      // the way back was a "+" that reads as "start another".
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Recording')),
+          findsOneWidget);
+      expect(_semanticsLabelled('Return to your run'), findsOneWidget);
+      final fab = tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton));
+      final scheme = Theme.of(tester.element(find.byType(FloatingActionButton)))
+          .colorScheme;
+      expect(fab.backgroundColor, scheme.error);
+
+      runRecordingActive.value = false;
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Recording')),
+          findsNothing);
+    });
+
+    testWidgets('a tap returns to the recorder rather than fanning the menu',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('a long-press returns to the recorder too', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2);
+      tester.takeException();
+    });
+  });
+
+  group('the docked centre button is the Stop on the Run page', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Finder caption(String text) =>
+        find.descendant(of: find.byType(BottomAppBar), matching: find.text(text));
+
+    // Identical whether the Log button is run-primary (Gym and Nutrition
+    // hidden) or the "+" fan (a modality shown): mid-run the centre button is
+    // the way back to the run everywhere but the Run page, and the Stop there.
+    for (final fanMode in [false, true]) {
+      final mode = fanMode ? 'the "+" fan' : 'run-primary';
+
+      testWidgets(
+          '$mode: elsewhere a tap returns to the run without stopping it; on '
+          'the Run page a press does not stop it and a hold does',
+          (tester) async {
+        var requests = 0;
+        void listener() => requests++;
+        runStopRequests.addListener(listener);
+        addTearDown(() => runStopRequests.removeListener(listener));
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+        runRecordingActive.value = true;
+        await tester.pump();
+
+        expect(find.byType(HoldToStopButton), findsNothing,
+            reason: 'away from the Run page the button is the way back');
+        expect(caption('Recording'), findsOneWidget);
+        expect(_semanticsLabelled('Return to your run'), findsOneWidget);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+        expect(requests, 0, reason: 'returning to the run must not stop it');
+        tester.takeException();
+
+        expect(find.byType(FloatingActionButton), findsNothing);
+        final stop = find.byType(HoldToStopButton);
+        expect(stop, findsOneWidget);
+        expect(caption('Stop'), findsOneWidget);
+        expect(caption('Recording'), findsNothing);
+        expect(
+            find.descendant(
+                of: stop,
+                matching: find.byWidgetPredicate((w) =>
+                    w is Semantics &&
+                    w.properties.label == 'Stop and save run' &&
+                    w.properties.hint == 'Hold to stop the run')),
+            findsOneWidget);
+        expect(tester.widget<HoldToStopButton>(stop).size, 56,
+            reason: 'it fills the FAB slot');
+
+        // A press shorter than the 800 ms gate does nothing.
+        final press = await tester.startGesture(tester.getCenter(stop));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 300));
+        await press.up();
+        await tester.pump();
+        expect(requests, 0, reason: 'a short press must not stop the run');
+
+        // The full hold does.
+        final hold = await tester.startGesture(tester.getCenter(stop));
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 120));
+        }
+        expect(find.descendant(of: stop, matching: find.byType(CircularProgressIndicator)),
+            findsOneWidget,
+            reason: 'the progress ring fills during the hold');
+        expect(requests, 0);
+        await tester.pump(const Duration(milliseconds: 900));
+        expect(requests, 1, reason: 'an 800 ms hold stops the run');
+        await hold.up();
+        await tester.pump();
+        tester.takeException();
+      });
+
+      testWidgets('$mode: once the run ends the button reverts', (tester) async {
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+        runRecordingActive.value = true;
+        await tester.pump();
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(HoldToStopButton), findsOneWidget);
+
+        // The recorder's finished state releases the flag.
+        runRecordingActive.value = false;
+        await tester.pump();
+
+        expect(find.byType(HoldToStopButton), findsNothing);
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+        expect(caption('Stop'), findsNothing);
+        expect(caption(fanMode ? 'Log' : 'Start run'), findsOneWidget);
+        tester.takeException();
+      });
+    }
+
+    testWidgets('leaving the Run page mid-run turns the Stop back into the way '
+        'back', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(HoldToStopButton), findsOneWidget);
+
+      await tester.tap(find.text('Training'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(HoldToStopButton), findsNothing);
+      expect(caption('Recording'), findsOneWidget);
+      tester.takeException();
+    });
+
+    testWidgets('the phone shell docks the Stop; the rail docks nothing',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isTrue);
+
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      await tester.pump();
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isFalse,
+          reason: 'the rail has no docked button, so the panel keeps Stop');
+    });
+
+    testWidgets('on the rail the leading button never becomes the Stop',
+        (tester) async {
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 2);
+
+      expect(
+          find.descendant(
+              of: find.byType(NavigationRail),
+              matching: find.byType(HoldToStopButton)),
+          findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      tester.takeException();
+    });
+
+    // The caption cut to "Recordi…" on an iPhone 17 Pro Max at the default
+    // text size. It is a whole word or nothing: scaled to fit, never clipped.
+    for (final scale in [1.0, 1.3, 1.6]) {
+      testWidgets('the caption fits its slot at text scale $scale',
+          (tester) async {
+        final s = await _makeStores();
+        await tester.pumpWidget(MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: HomeScreen(
+              runStore: s.runStore,
+              routeStore: s.routeStore,
+              gearStore: s.gearStore,
+              gymStore: s.gymStore,
+              foodStore: s.foodStore,
+              preferences: s.prefs,
+              audioCues: s.audioCues,
+              social: s.social,
+              raceController: s.raceController,
+              training: s.training,
+              heartRate: s.heartRate,
+              treadmill: s.treadmill,
+            ),
+          ),
+        ));
+        await tester.pump();
+        runRecordingActive.value = true;
+        await tester.pump();
+
+        for (final label in ['Recording', 'Stop']) {
+          if (label == 'Stop') {
+            await tester.tap(find.byType(FloatingActionButton));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 400));
+          }
+          final text = caption(label);
+          expect(text, findsOneWidget);
+          final paragraph = tester.renderObject<RenderParagraph>(text);
+          expect(paragraph.didExceedMaxLines, isFalse,
+              reason: '"$label" must not be ellipsised');
+          final slot = tester.getRect(find
+              .ancestor(of: text, matching: find.byType(SizedBox))
+              .first);
+          final drawn = tester.getRect(text);
+          expect(drawn.width, lessThanOrEqualTo(slot.width + 0.01),
+              reason: '"$label" must be drawn inside its slot');
+        }
+        tester.takeException();
+      });
+    }
+  });
+
+  group('docked Log FAB clearance', () {
+    testWidgets(
+        'the phone shell keeps the Log button and tells its pages how far '
+        'it rises into them', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      expect(find.byType(FloatingActionButton), findsOneWidget,
+          reason: 'the Log button stays available during a run');
+      final inset = tester.widget<DockedFabInset>(find.byType(DockedFabInset));
+      expect(inset.height, kDockedFabOverhang);
+    });
+
+    // The phone Scaffold resizes for the keyboard, which lifted the docked
+    // button over the recorder's START (decisions § 2286).
+    testWidgets('the docked button steps aside while the keyboard is up',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 900);
+      addTearDown(tester.view.reset);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(tester.widget<DockedFabInset>(find.byType(DockedFabInset)).height,
+          0,
+          reason: 'nothing docked, so no page owes it clearance');
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isFalse,
+          reason: 'with the docked button gone the panel keeps its own Stop');
+
+      tester.view.resetViewInsets();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isTrue);
+    });
+  });
+
+  // Each page's own Scaffold floated its FAB at plain `endFloat`, 16dp above
+  // the bar, while the centre button rises 28dp into the page; a long
+  // extended label reached across the middle into it (issue #1300 § 4).
+  group('page FABs clear the docked centre button', () {
+    const pages = <(String, String)>[
+      ('Fitness', 'Runs'),
+      ('Fitness', 'Gym'),
+      ('Social', 'Clubs'),
+      ('Social', 'Challenges'),
+    ];
+
+    Finder fabInPage({required bool inPage}) => find.byElementPredicate((e) =>
+        e.widget is FloatingActionButton &&
+        (e.findAncestorWidgetOfExactType<PageView>() != null) == inPage);
+    Finder pageFab() => fabInPage(inPage: true).hitTestable();
+
+    // Through the controller: at a large text size the scrolling strip can
+    // hold the tab off-screen, and the geometry under test is the FAB's.
+    Future<void> selectTab(WidgetTester tester, String tab) async {
+      final bar = find.byType(TabBar).hitTestable().first;
+      final labels = find
+          .descendant(of: bar, matching: find.byType(Text))
+          .evaluate()
+          .map((e) => (e.widget as Text).data)
+          .toList();
+      expect(labels, contains(tab));
+      (tester.widget<TabBar>(bar).controller ??
+              DefaultTabController.of(tester.element(bar)))
+          .index = labels.indexOf(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> openPage(WidgetTester tester, String nav, String tab) async {
+      // By the item's semantics label: past text scale 1.6 the bar drops
+      // its visible labels.
+      await tester.tap(find.descendant(
+          of: find.byType(BottomAppBar),
+          matching: find.byWidgetPredicate(
+              (w) => w is Semantics && w.properties.label == nav)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await selectTab(tester, tab);
+      await pumpUntil(tester, () => pageFab().evaluate().isNotEmpty,
+          describe: 'the $nav → $tab page FAB');
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> pumpPhone(WidgetTester tester, {double textScale = 1}) async {
+      tester.view.physicalSize = const Size(411, 891);
+      tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      // Signed in, so Social mounts its tabs rather than the sign-in state.
+      await _pump(tester, s, api: _OnboardedApi()..uid = 'u1');
+    }
+
+    for (final textScale in [1.0, 2.0]) {
+      for (final (nav, tab) in pages) {
+        testWidgets('$nav → $tab at 411dp, text scale $textScale',
+            (tester) async {
+          await pumpPhone(tester, textScale: textScale);
+          await openPage(tester, nav, tab);
+          final centre = tester.getRect(fabInPage(inPage: false));
+          final page = tester.getRect(pageFab());
+          expect(centre.center.dx, closeTo(411 / 2, 1),
+              reason: 'the shell\'s button sits in the middle of the bar');
+          expect(page.overlaps(centre), isFalse,
+              reason: 'the $tab FAB ($page) covers the centre button '
+                  '($centre)');
+          expect(page.bottom, lessThanOrEqualTo(centre.top - 16 + 0.01),
+              reason: 'a page FAB keeps its own 16dp margin above the '
+                  'centre button');
+        });
+      }
+    }
+
+    // Past text scale 1.6 the items drop their labels and the bar is 56dp;
+    // the centre caption kept its 64dp slot and overflowed it.
+    testWidgets('the bar lays out at text scale 2.0, captions dropped',
+        (tester) async {
+      await pumpPhone(tester, textScale: 2.0);
+      expect(tester.takeException(), isNull);
+      expect(
+          find.descendant(
+              of: find.byType(BottomAppBar), matching: find.byType(Text)),
+          findsNothing);
+    });
+
+    testWidgets('the rail docks nothing, so a page FAB stays at endFloat',
+        (tester) async {
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      await tester.tap(find.descendant(
+          of: find.byType(NavigationRail), matching: find.text('Fitness')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await selectTab(tester, 'Runs');
+      await pumpUntil(tester, () => pageFab().evaluate().isNotEmpty,
+          describe: 'the Runs page FAB on the rail');
+      expect(tester.widget<DockedFabInset>(find.byType(DockedFabInset)).height,
+          0);
+      final page = tester.widget<Scaffold>(find
+          .ancestor(of: pageFab(), matching: find.byType(Scaffold))
+          .first);
+      expect(page.floatingActionButtonLocation,
+          FloatingActionButtonLocation.endFloat);
+    });
+  });
+
+  // A kept-alive page kept its focused field after the runner left it, and
+  // the pop of any route above the shell (the route picker) handed focus
+  // back to it, raising the keyboard over the Run page (decisions § 2286).
+  group('focus left behind on a page', () {
+    testWidgets('is dropped when the runner moves to another page, so a '
+        'later pop cannot restore it', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final pageContext = tester.element(find.byType(DashboardScreen));
+      final field = FocusNode(debugLabel: 'a field on the Home page');
+      final attachment = field.attach(pageContext);
+      attachment.reparent();
+      addTearDown(() {
+        attachment.detach();
+        field.dispose();
+      });
+      field.requestFocus();
+      await tester.pump();
+      expect(field.hasPrimaryFocus, isTrue);
+
+      await tester.tap(find.text('You'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(field.hasFocus, isFalse,
+          reason: 'the Home page is no longer on screen');
+
+      final shellNavigator = Navigator.of(pageContext);
+      unawaited(shellNavigator.push(MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => const Scaffold(body: TextField()),
+      )));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.showKeyboard(find.byType(TextField));
+      shellNavigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(field.hasFocus, isFalse,
+          reason: 'the pop must not restore focus to a page the runner left');
+      expect(FocusManager.instance.primaryFocus,
+          FocusScope.of(pageContext, createDependency: false),
+          reason: 'focus rests on the shell itself, which raises no keyboard');
+      expect(tester.testTextInput.hasAnyClients, isFalse);
+    });
+
+    testWidgets('stays put on the page the runner is still on', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final pageContext = tester.element(find.byType(DashboardScreen));
+      final field = FocusNode(debugLabel: 'a field on the Home page');
+      final attachment = field.attach(pageContext);
+      attachment.reparent();
+      addTearDown(() {
+        attachment.detach();
+        field.dispose();
+      });
+      field.requestFocus();
+      await tester.pump();
+
+      final shellNavigator = Navigator.of(pageContext);
+      unawaited(shellNavigator.push(MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(),
+      )));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      shellNavigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(field.hasPrimaryFocus, isTrue,
+          reason: 'returning to the page you were typing on keeps your place');
+    });
+  });
+
+  group('system back walks toward Home and guards a live run', () {
+    /// Records the one platform call that closes the app, so a test can tell
+    /// "back navigated" from "back exited" — which is the whole distinction
+    /// the shell had no `PopScope` to make.
+    List<String> watchAppExit(WidgetTester tester) {
+      final calls = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemNavigator.pop') calls.add(call.method);
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      return calls;
+    }
+
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    // These shells have no lift or meal, so the hub is labelled Training.
+    Future<void> goToFitness(WidgetTester tester) async {
+      await tester.tap(find.text('Training'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('back from another tab returns to Home instead of exiting',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      expect(shellPage(tester), 1);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(shellPage(tester), 0, reason: 'back moves toward Home');
+      expect(exits, isEmpty, reason: 'back from a tab must not close the app');
+    });
+
+    testWidgets('back from Home exits the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(exits, ['SystemNavigator.pop'],
+          reason: 'Home is the one destination back leaves from');
+    });
+
+    testWidgets('back from the Run page mid-recording lands on Home, not out',
+        (tester) async {
+      // The Run page locks the swipe mid-run (#490), so back is the only
+      // gesture left there — it has to be an exit from the PAGE, never from
+      // the app.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 2);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(shellPage(tester), 0);
+      expect(exits, isEmpty);
+      tester.takeException();
+    });
+
+    testWidgets('back from Home mid-recording confirms before leaving',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Run still recording'), findsOneWidget);
+      expect(exits, isEmpty,
+          reason: 'nothing leaves until the runner says so');
+    });
+
+    testWidgets('keeping the recording stays in the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Keep recording'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Run still recording'), findsNothing);
+      expect(exits, isEmpty);
+    });
+
+    testWidgets('confirming the leave closes the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Leave anyway'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(exits, ['SystemNavigator.pop']);
+    });
+  });
+
+  group('the centre Log button — one tap for the runner, one meaning for the '
+      'long-press', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets('a runner with no lift or meal logged starts a run in one tap',
+        (tester) async {
+      // Every run used to cost FAB -> fan -> "Log run" -> Start unless the
+      // runner found a Settings switch. The fan is derived from data now, so
+      // a pure runner never sees one they have nothing to pick from.
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('one logged lift brings the fan back on tap', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsOneWidget);
+      expect(shellPage(tester), 0, reason: 'the fan is a picker, not a jump');
+    });
+
+    testWidgets('the explicit preference still pins the run start',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2);
+      tester.takeException();
+    });
+
+    testWidgets('a Log action for the page already showing says so',
+        (tester) async {
+      // Log -> Lift while the Gym page is already up navigated nowhere and
+      // showed nothing, so the fan just closed and the tap read as dropped.
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
+      // carries its own add FAB, so byType matches two here.
+      await tester.tap(find.byTooltip('Log'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      // Gym is the Fitness hub's tab, not a page of its own — there is exactly
+      // one of it in the shell (decisions § 1654).
+      expect(shellPage(tester), 1);
+
+      // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
+      // carries its own add FAB, so byType matches two here.
+      await tester.tap(find.byTooltip('Log'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text("You're already on Gym"), findsOneWidget);
+      expect(shellPage(tester), 1);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets(
+        'Start run over the finished summary closes it rather than claiming '
+        'the runner is already on Run', (tester) async {
+      // Stopping a run leaves its summary on the Run page itself, so the
+      // shell read a runner looking at their last run as already on the
+      // start screen: the centre button answered "You're already on Run" and
+      // offered no way to a new run.
+      var dismissals = 0;
+      void listener() => dismissals++;
+      runSummaryDismissRequests.addListener(listener);
+      addTearDown(() => runSummaryDismissRequests.removeListener(listener));
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runSummaryShowing.value = true;
+
+      // From another page: the tap lands on Run with the summary closing.
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(shellPage(tester), 2);
+      expect(dismissals, 1);
+
+      // On the Run page itself: closing it is the whole navigation.
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(dismissals, 2);
+      expect(find.textContaining('already on'), findsNothing);
+      expect(shellPage(tester), 2);
+
+      // Once the start screen is what shows, the banner is true again.
+      runSummaryShowing.value = false;
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(dismissals, 2);
+      expect(find.text("You're already on Run"), findsOneWidget);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('long-press for a pure runner opens the runner menu, not a '
+        'second start', (tester) async {
+      // With Gym and Nutrition hidden the fan had one item, Log run, so the
+      // long-press was the tap (decisions § 1739). It now opens what the tap
+      // does not: here, with no plan and no saved route, the past-run entry.
+      // The last-logged type does not bring a hidden Nutrition back.
+      final s = await _makeStores();
+      await s.prefs.setLastLogType('food');
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(_inMenu('More options'), findsOneWidget);
+      expect(_inMenu('Add past run'), findsOneWidget);
+      expect(_inMenu("Start today's workout"), findsNothing,
+          reason: 'no plan, so no workout row to dead-end on');
+      expect(_inMenu('Follow a route'), findsNothing,
+          reason: 'no saved route, so no route section with nothing in it');
+      expect(_inMenu('Log food'), findsNothing);
+      expect(_inMenu('Log lift'), findsNothing);
+      expect(find.byTooltip('Log run'), findsNothing, reason: 'not the fan');
+      expect(shellPage(tester), 0,
+          reason: 'a long press opens a menu, it never navigates on its own');
+    });
+
+    testWidgets('Add past run opens the manual entry', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(_inMenu('Add past run'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(AddRunScreen), findsOneWidget);
+    });
+
+    testWidgets("today's plan workout is offered, and loads on the recorder",
+        (tester) async {
+      final loaded = <String>[];
+      void record() {
+        final w = pendingStartWorkout.value;
+        if (w != null) loaded.add(w.id);
+      }
+
+      pendingStartWorkout.addListener(record);
+      addTearDown(() {
+        pendingStartWorkout.removeListener(record);
+        pendingStartWorkout.value = null;
+      });
+      final s =
+          await _makeStores(training: _PlanTraining(_planWithWorkoutToday()));
+      await _pump(tester, s);
+      // The shell reads the plan once its first frame is up.
+      await tester.pump();
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu("Start today's workout"), findsOneWidget);
+      expect(_inMenu('Easy'), findsOneWidget,
+          reason: 'the row names the session');
+
+      await tester.tap(_inMenu("Start today's workout"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(loaded, ['wo-today']);
+      expect(shellPage(tester), 2, reason: 'the workout loads on the recorder');
+      tester.takeException();
+    });
+
+    Future<void> seedRoutes(WidgetTester tester, dynamic s, int n) async {
+      await tester.runAsync(() async {
+        await s.routeStore.init(
+            overrideDirectory:
+                Directory.systemTemp.createTempSync('home_route_store_'));
+        for (var i = 1; i <= n; i++) {
+          await s.routeStore.save(cm.Route(
+            id: 'route-$i',
+            userId: 'u1',
+            name: i == 1 ? 'Park loop' : 'Route $i',
+            waypoints: const [
+              cm.Waypoint(lat: 47.37, lng: 8.54),
+              cm.Waypoint(lat: 47.371, lng: 8.541),
+            ],
+            distanceMetres: 5000,
+            isPublic: false,
+            isStarred: false,
+            createdAt: DateTime(2026, 10, i),
+          ));
+        }
+      });
+    }
+
+    testWidgets('a saved route sits in the menu and one tap starts the '
+        'recorder on it', (tester) async {
+      final s = await _makeStores();
+      await seedRoutes(tester, s, 1);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('All routes…'), findsNothing,
+          reason: 'the one route is already inline');
+      await tester.tap(_inMenu('Park loop'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(RoutePickerScreen), findsNothing,
+          reason: 'an inline route needs no second picker');
+      expect(shellPage(tester), 2, reason: 'the recorder opens on the route');
+      tester.takeException();
+    });
+
+    testWidgets('All routes opens the picker, which starts the recorder on '
+        'the pick', (tester) async {
+      final s = await _makeStores();
+      await seedRoutes(tester, s, 4);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Park loop'), findsNothing,
+          reason: 'the oldest of four routes is past the three inline');
+      await tester.tap(_inMenu('All routes…'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(RoutePickerScreen), findsOneWidget);
+
+      // The shell behind the picker may also show the route's name, so the
+      // tap is scoped to the picker's own row.
+      await tester.tap(find.descendant(
+        of: find.byType(RoutePickerScreen),
+        matching: find.text('Park loop'),
+      ));
+      // A popped route stays in the tree until its exit transition ends, so
+      // advance the clock until it is gone (bounded) instead of a fixed pump.
+      for (var i = 0;
+          i < 30 && find.byType(RoutePickerScreen).evaluate().isNotEmpty;
+          i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.byType(RoutePickerScreen), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the recorder opens on the route');
+      tester.takeException();
+    });
+
+    testWidgets('when the tap fans, the long-press does not repeat its items',
+        (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setShowNutrition(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(_inMenu('Add past run'), findsOneWidget);
+      expect(_inMenu('Log food'), findsNothing,
+          reason: 'a tap already fans Log food');
+      expect(find.byTooltip('Log food'), findsNothing, reason: 'not the fan');
+      expect(shellPage(tester), 0);
+    });
+
+    testWidgets('a screen reader reaches the menu through a custom action, '
+        'with the long-press announced', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      final semantics =
+          tester.widget<Semantics>(_semanticsLabelled('Start a run'));
+      expect(semantics.properties.hintOverrides?.onLongPressHint,
+          'show more options');
+      final actions = semantics.properties.customSemanticsActions!;
+      final open = actions.entries
+          .singleWhere((e) => e.key.label == 'More options')
+          .value;
+      open();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(_inMenu('Add past run'), findsOneWidget);
+    });
+
+    testWidgets('switching Nutrition on with nothing logged brings the fan '
+        'back, with Log food and without Log lift', (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setShowNutrition(true);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 0);
+    });
+
+    testWidgets('switching Gym off restores the one-tap run start despite a '
+        'logged lift', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowGym(false);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('with the preference on, the long-press is the way to a '
+        'shown modality', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Log lift'), findsOneWidget);
+      expect(_inMenu('Log food'), findsNothing, reason: 'Nutrition is hidden');
+
+      await tester.tap(_inMenu('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(GymScreen), findsOneWidget);
+      expect(shellPage(tester), 1);
+    });
+
+    testWidgets('with the preference on, Log food in the long-press menu '
+        'lands on the Nutrition dwell-in page', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Log food'), findsOneWidget);
+
+      await tester.tap(_inMenu('Log food'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.byType(NutritionScreen), findsOneWidget);
+      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(shellPage(tester), 1);
+    });
+  });
+
+  group('the guided-run handoff brings the Run tab forward', () {
+    setUp(() => pendingArmGuidedRun.value = null);
+    tearDown(() => pendingArmGuidedRun.value = null);
+
+    testWidgets('a parked guided run switches the shell to the recorder',
+        (tester) async {
+      // The guided-run detail screen is several pops below the shell and has
+      // no way to reach the PageView; naming the run has to be enough.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byType(RunScreen), findsNothing,
+          reason: 'the shell opens on Home');
+
+      pendingArmGuidedRun.value = 'easy-30';
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+
+      expect(find.byType(RunScreen), findsOneWidget);
+    });
+  });
+
+  group('Settings destination seam (decisions § 710)', () {
+    // The shell is the host for "open a Settings sub-screen" because it is
+    // the one place holding every dependency those screens take. A surface
+    // buried in a tab names the destination; these pin that the name is what
+    // actually reaches the screen.
+    setUp(() => pendingSettingsDestination.value = null);
+    tearDown(() => pendingSettingsDestination.value = null);
+
+    /// Lets the pushed route's transition run without pumpAndSettle, which
+    /// hangs on the shell's rescheduling async tabs.
+    Future<void> openAndSettle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('a parked preferences intent opens SettingsPreferencesScreen',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byType(SettingsPreferencesScreen), findsNothing);
+
+      openSettings(SettingsDestination.preferences);
+      await openAndSettle(tester);
+
+      expect(find.byType(SettingsPreferencesScreen), findsOneWidget,
+          reason: 'the People tab holds neither a Preferences nor a '
+              'SettingsSyncService — naming the destination has to be enough');
+    });
+
+    testWidgets('the shell clears the slot as it navigates', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      openSettings(SettingsDestination.preferences);
+      await openAndSettle(tester);
+
+      expect(pendingSettingsDestination.value, isNull,
+          reason: 'a slot left full would swallow the next identical request, '
+              'since a ValueNotifier is silent on an unchanged value');
+    });
+
+    testWidgets('each name reaches its own screen', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      openSettings(SettingsDestination.about);
+      await openAndSettle(tester);
+
+      expect(find.byType(SettingsAboutScreen), findsOneWidget);
+      expect(find.byType(SettingsPreferencesScreen), findsNothing);
+    });
+
+    testWidgets('an unrequested shell pushes nothing', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await openAndSettle(tester);
+      expect(find.byType(SettingsPreferencesScreen), findsNothing);
+      expect(find.byType(SettingsAboutScreen), findsNothing);
+    });
+
+    testWidgets('a request parked before the shell mounts still opens',
+        (tester) async {
+      // Same contract pendingPushTarget carries: a cold start drains on the
+      // first frame, so an intent set before any Navigator existed is not lost.
+      final s = await _makeStores();
+      openSettings(SettingsDestination.preferences);
+      await _pump(tester, s);
+      await openAndSettle(tester);
+
+      expect(find.byType(SettingsPreferencesScreen), findsOneWidget);
+    });
+
+    // Only `preferences` and `about` were ever driven end to end, so five of
+    // the seven arms of `_settingsDestinationScreen` were unexercised — a
+    // switch wired to the wrong screen, or a new destination added with no
+    // arm at all, would have shipped. The loop is over the enum rather than
+    // over a hand-written list, so a destination added without a case here
+    // fails at compile time in the map below and at run time in the switch.
+    const expectedScreen = <SettingsDestination, Type>{
+      SettingsDestination.preferences: SettingsPreferencesScreen,
+      SettingsDestination.account: SettingsAccountScreen,
+      SettingsDestination.safety: SettingsSafetyScreen,
+      SettingsDestination.integrations: SettingsIntegrationsScreen,
+      SettingsDestination.bodyMetrics: SettingsBodyMetricsScreen,
+      SettingsDestination.about: SettingsAboutScreen,
+      SettingsDestination.pro: SettingsProScreen,
+    };
+
+    test('every destination in the enum is named here', () {
+      expect(expectedScreen.keys.toSet(), SettingsDestination.values.toSet(),
+          reason: 'a destination the shell can be asked for but that no test '
+              'ever opens is an arm nobody has run');
+    });
+
+    for (final entry in expectedScreen.entries) {
+      testWidgets('${entry.key.name} opens ${entry.value}', (tester) async {
+        final s = await _makeStores();
+        await _pump(tester, s);
+        expect(find.byType(entry.value), findsNothing,
+            reason: 'negative control: the screen must not already be up, or '
+                'the assertion below proves nothing');
+
+        openSettings(entry.key);
+        await openAndSettle(tester);
+
+        expect(find.byType(entry.value), findsOneWidget,
+            reason: 'the caller holds none of the dependencies '
+                '${entry.value} takes — naming it has to be enough');
+        // No other settings screen came up: a switch arm returning its
+        // neighbour would otherwise read as a pass on both.
+        for (final other in expectedScreen.values.toSet()) {
+          if (other == entry.value) continue;
+          expect(find.byType(other), findsNothing,
+              reason: '${entry.key.name} also opened $other');
+        }
+        tester.takeException();
+      });
+    }
+
+    testWidgets('the push lands on the current tab, not on You', (tester) async {
+      // Contract, not incident: a runner sent to Preferences from the nearby
+      // list wants one Back to return to the list they were reading, rather
+      // than to be relocated into the Settings tab.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final before = tester.widget<PageView>(find.byType(PageView).first);
+      final beforeIndex = before.controller?.page ?? before.controller?.initialPage;
+
+      openSettings(SettingsDestination.about);
+      await openAndSettle(tester);
+      expect(find.byType(SettingsAboutScreen), findsOneWidget);
+
+      final after = tester.widget<PageView>(find.byType(PageView).first);
+      expect(after.controller?.page ?? after.controller?.initialPage, beforeIndex,
+          reason: 'the shell must not switch tabs on the way to a pushed '
+              'settings screen');
+    });
+
+    testWidgets('the same destination twice opens twice', (tester) async {
+      // The slot-clearing drain is what makes this possible: a ValueNotifier
+      // is silent on an unchanged value, so a shell that left the slot full
+      // would swallow the second request in silence.
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      openSettings(SettingsDestination.about);
+      await openAndSettle(tester);
+      expect(find.byType(SettingsAboutScreen), findsOneWidget);
+
+      final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
+      nav.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(SettingsAboutScreen), findsNothing);
+
+      openSettings(SettingsDestination.about);
+      await openAndSettle(tester);
+      expect(find.byType(SettingsAboutScreen), findsOneWidget,
+          reason: 'an identical second request must reach the shell');
+      tester.takeException();
+    });
+
+    testWidgets('a request after the shell is gone is inert', (tester) async {
+      // The seam is global, so a request parked by a surface after the shell
+      // unmounted must not reach a dead listener. It stays parked for the
+      // next shell instead.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      openSettings(SettingsDestination.safety);
+      await tester.pump();
+
+      expect(tester.takeException(), isNull,
+          reason: 'the shell removes its listener on dispose');
+      expect(pendingSettingsDestination.value, SettingsDestination.safety,
+          reason: 'nothing drained it, so it waits');
+    });
+  });
+
+  group('run and route links (decisions § 1879)', () {
+    const id = '0b6f2f4e-8c1d-4a7e-9f3b-2d5c6a7b8c9d';
+    setUp(() {
+      pendingEntityLink.value = null;
+      pendingPushTarget.value = null;
+    });
+    tearDown(() {
+      pendingEntityLink.value = null;
+      pendingPushTarget.value = null;
+    });
+
+    Future<void> seedOwnRun(WidgetTester tester, dynamic s) async {
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: id,
+          startedAt: DateTime.utc(2026, 10, 1, 7),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          track: const [],
+          source: cm.RunSource.app,
+        ));
+      });
+    }
+
+    // One decision for every way a run is opened — an OS link, a push, and an
+    // inbox row handed over with openRunLink — so the runner's own run is
+    // never shown to them as a stranger's (web's /runs/[id] is owner-aware).
+    testWidgets('the runner\'s own run on this device opens the owner screen '
+        'from an inbox row', (tester) async {
+      final s = await _makeStores();
+      await seedOwnRun(tester, s);
+      await _pump(tester, s, api: _LinkApi());
+      openRunLink(id);
+      await pumpUntil(
+        tester,
+        () => find.byType(RunDetailScreen).evaluate().isNotEmpty,
+        describe: 'the owner run screen',
+      );
+
+      expect(find.byType(RunDetailScreen), findsOneWidget);
+      expect(find.byType(PublicRunScreen), findsNothing);
+      expect(pendingEntityLink.value, isNull);
+      tester.takeException();
+    });
+
+    testWidgets('a run push for the runner\'s own run opens the owner screen',
+        (tester) async {
+      final s = await _makeStores();
+      await seedOwnRun(tester, s);
+      await _pump(tester, s, api: _LinkApi());
+      pendingPushTarget.value = const PushTarget(PushTargetKind.run, id);
+      await pumpUntil(
+        tester,
+        () => find.byType(RunDetailScreen).evaluate().isNotEmpty,
+        describe: 'the owner run screen',
+      );
+
+      expect(find.byType(RunDetailScreen), findsOneWidget);
+      expect(find.byType(PublicRunScreen), findsNothing);
+      tester.takeException();
+    });
+
+    testWidgets('a run push for a run not on the device opens the non-owner '
+        'view', (tester) async {
+      // Someone else's run, or an older one of the runner's own the history
+      // list never paged in: the non-owner view serves both, reading the
+      // owner's unclipped track when the viewer owns it.
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingPushTarget.value = const PushTarget(PushTargetKind.run, id);
+      await pumpUntil(
+        tester,
+        () => find.byType(PublicRunScreen).evaluate().isNotEmpty,
+        describe: 'the non-owner run view',
+      );
+
+      expect(find.byType(PublicRunScreen), findsOneWidget);
+      expect(find.byType(RunDetailScreen), findsNothing);
+    });
+
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+    }
+
+    testWidgets('a run link for a run not on the device opens the non-owner '
+        'view', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.run, id);
+      // The own-run lookup reads the run store from disk, which the fake
+      // clock never completes on its own.
+      await pumpUntil(
+        tester,
+        () => find.byType(PublicRunScreen).evaluate().isNotEmpty,
+        describe: 'the non-owner run view',
+      );
+
+      expect(find.byType(PublicRunScreen), findsOneWidget);
+      expect(pendingEntityLink.value, isNull);
+    });
+
+    testWidgets('a route link for a route not on the device opens the '
+        'non-owner view', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.route, id);
+      await settle(tester);
+
+      expect(find.byType(PublicRouteScreen), findsOneWidget);
+    });
+
+    testWidgets('a link parked before the shell mounts still opens',
+        (tester) async {
+      final s = await _makeStores();
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.run, id);
+      await _pump(tester, s, api: _LinkApi());
+      await pumpUntil(
+        tester,
+        () => find.byType(PublicRunScreen).evaluate().isNotEmpty,
+        describe: 'the non-owner run view',
+      );
+
+      expect(find.byType(PublicRunScreen), findsOneWidget);
+    });
+
+    testWidgets('with no backend a link pushes nothing', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.route, id);
+      await settle(tester);
+
+      expect(find.byType(PublicRouteScreen), findsNothing);
+      expect(find.byType(PublicRunScreen), findsNothing);
     });
   });
 }

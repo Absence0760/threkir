@@ -1,16 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../fixtures/test';
 
 import { getAdminClient } from '../../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../../fixtures/seeded-data';
 import { clearNotifications } from '../../fixtures/simulate';
 import { USER_A, USER_B } from '../../fixtures/users';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../../fixtures/helpers';
 
 /**
  * Cross-user comment saga: USER_B (alex) posts a top-level comment on
@@ -48,7 +42,8 @@ test.describe('saga: alex comments runner → runner inbox row + bell + click-th
 	});
 
 	test('inbox row carries the comment preview + click navigates to the run', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const ctxAlex = await browser.newContext({
 			storageState: USER_B.storageStatePath
@@ -56,13 +51,13 @@ test.describe('saga: alex comments runner → runner inbox row + bell + click-th
 		const ctxRunner = await browser.newContext({
 			storageState: USER_A.storageStatePath
 		});
-		await ctxAlex.addInitScript(setConsentAccepted);
-		await ctxRunner.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctxAlex);
+		await acceptCookieConsent(ctxRunner);
 		const alex = await ctxAlex.newPage();
 		const runner = await ctxRunner.newPage();
 
 		try {
-			await alex.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alex, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

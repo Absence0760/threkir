@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/adaptive_width.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/feed_screen.dart';
 import '../lib/widgets/error_state.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 
@@ -18,10 +18,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -36,7 +33,7 @@ RunFeedEntry _runEntry({
   String? authorName = 'Alex Runner',
 }) =>
     RunFeedEntry(
-      run: RunRow(
+      run: RunRow(safetyAudience: false, 
         id: id,
         userId: authorId,
         startedAt: DateTime.utc(2026, 6, 10, 7),
@@ -45,12 +42,13 @@ RunFeedEntry _runEntry({
         source: 'manual',
         activityType: 'run',
         isDnf: false,
+        followersOnly: false,
         isPublic: true,
       ),
       author: _author(id: authorId, name: authorName),
     );
 
-UserProfileRow _profileRow(String id, String name) => UserProfileRow(shadowHidden: false, 
+UserProfileRow _profileRow(String id, String name) => UserProfileRow(profilePrivate: false, shadowHidden: false, 
       id: id,
       displayName: name,
     );
@@ -117,10 +115,10 @@ class _FakeApi extends ApiClient {
 
   int followingCalls = 0;
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-      {int limit = 100, int offset = 0}) async {
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+      {int limit = 100, List<Object?>? after}) async {
     followingCalls++;
-    return followees;
+    return KeysetPage(followees, null);
   }
 
   @override
@@ -166,8 +164,8 @@ class _ThrowingApi extends _FakeApi {
 class _FollowingFailApi extends _FakeApi {
   _FollowingFailApi({super.entries, super.engagement});
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 100, int offset = 0}) async =>
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 100, List<Object?>? after}) async =>
       throw Exception('followees down');
 }
 
@@ -309,8 +307,10 @@ void main() {
         (tester) async {
       await _pump(tester, _FakeApi(entries: const [], followees: const []));
       await _settle(tester);
-      // The empty state renders with the groups glyph and no toolbar.
-      expect(find.byIcon(Icons.groups_outlined), findsOneWidget);
+      // The empty state renders with Grisnir in place of the groups glyph
+      // (show_mascot is on unless set false) and no toolbar.
+      expect(find.byKey(const Key('empty-state-grisnir')), findsOneWidget);
+      expect(find.byIcon(Icons.groups_outlined), findsNothing);
       expect(find.byType(ChoiceChip), findsNothing);
     });
 

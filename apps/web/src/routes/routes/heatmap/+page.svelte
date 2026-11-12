@@ -17,8 +17,8 @@
 	/// The `/routes?tab=heatmap` URL still works — the tab switcher
 	/// in `/routes/+page.svelte` redirects there client-side so
 	/// pre-existing deep links keep functioning.
-	import RouteHeatmap from '$lib/components/RouteHeatmap.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import RouteHeatmap from '#lib/components/RouteHeatmap.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 </script>
 
 <svelte:head>

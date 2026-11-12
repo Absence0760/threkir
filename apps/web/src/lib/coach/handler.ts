@@ -17,7 +17,16 @@
 // off `content-type`.
 
 import { createClient } from '@supabase/supabase-js';
+import {
+	AI_DISCLOSURE_VERSION_COACH,
+	aiDisclosureDenialBody,
+	aiDisclosureFromProfileRow,
+	checkAiDisclosure,
+} from '../core/ai_disclosure';
+import { supabaseErrorFields, thrownMessage } from '../core/supabase_error';
+import { refundCoachMessage } from './coach_message_slot';
 import { buildContext, type CoachProfileRow } from './context';
+import { resolveToday } from '../training/plan_request/handler';
 import {
 	clampRunsLimit,
 	jsonError as buildJsonError,
@@ -25,13 +34,14 @@ import {
 	parseAuthHeader,
 	personalityAddendum,
 	rateLimitHeaders,
-	resolveUsageCount,
+	resolveUsageSpend,
 	validateCoachMessages,
 	validateRunsLimit,
 } from './limits';
 import { streamAnthropic, streamOpenAI } from './providers';
-import { COACH_SYSTEM_PROMPT } from './system_prompt';
+import { COACH_SYSTEM_PROMPT, fuelHandoffAddendum, planEditHandoffAddendum, planHandoffAddendum } from './system_prompt';
 import {
+	COACH_PLAN_SCOPES,
 	TIER_LIMITS,
 	emptyUsage,
 	type CoachConfig,
@@ -97,6 +107,13 @@ export async function handleCoach(
 		return jsonError(400, runsLimitCheck.reason);
 	}
 
+	if (
+		body.plan_scope !== undefined &&
+		!(COACH_PLAN_SCOPES as readonly unknown[]).includes(body.plan_scope)
+	) {
+		return jsonError(400, 'plan_scope must be one of plan, season, none');
+	}
+
 	const makeClient = config.createClient ?? createClient;
 	const supabase = makeClient(config.publicSupabaseUrl, config.publicSupabaseAnonKey, {
 		global: { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -109,24 +126,31 @@ export async function handleCoach(
 		// JWT-shape details that give an attacker an oracle for
 		// probing token formats. Log them server-side; surface a
 		// generic 401 to the client.
+		// The caller's token itself is never written down. The first 20
+		// characters of a Supabase JWT are its base64url header, identical for
+		// every token the project issues, so the field that used to sit here
+		// identified nothing while putting bytes of a live credential into a
+		// log group kept for 30 days -- and Supabase's newer keys are opaque
+		// strings whose first 20 characters are not a constant at all. Whether
+		// the value was even a JWT is already in `error`.
 		console.error('[coach] auth failed', {
-			tokenPrefix: accessToken.slice(0, 20) + '...',
 			error: userRes.error?.message ?? 'no user returned',
 		});
 		return jsonError(401, 'not authenticated');
 	}
 
 	// GDPR Art 6(1)(a): refuse to fan out to Anthropic until the data
-	// subject has explicitly accepted the first-use disclosure on
+	// subject has explicitly accepted the AI-processing disclosure on
 	// /coach. Client UI also gates this, but the handler is the load-
 	// bearing check — a hand-rolled cURL request must fail closed.
-	// See audit/gdpr (2026-05-25).
+	// See audit/gdpr (2026-05-25) and decisions.md § 571 for why the
+	// record carries the disclosure VERSION rather than a bare flag.
 	//
-	// user_profiles.coach_consent_at is not in the public-safe column
-	// grant list (migration 20260707_001), so a direct
-	// `.select('coach_consent_at')` returns null for the caller's role.
-	// Go through the SECURITY DEFINER `get_my_profile()` RPC instead.
-	const consentLookup = await supabase.rpc('get_my_profile').maybeSingle();
+	// The consent columns are not in the public-safe column grant list
+	// (migration 20260707_001), so a direct `.select()` returns null for
+	// the caller's role. Go through the SECURITY DEFINER
+	// `get_my_profile()` RPC instead.
+	const consentLookup = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 	if (consentLookup.error) {
 		console.error('[coach] consent lookup failed', supabaseErrorFields(consentLookup.error));
 		return jsonError(500, 'consent check failed');
@@ -134,26 +158,39 @@ export async function handleCoach(
 	// `.maybeSingle()` on a SetofOptions RPC narrows to `{}` in
 	// supabase-js v2.106's generated types — cast to the row shape. This
 	// is the full `get_my_profile()` row; it carries the profile fields
-	// buildContext needs (display_name / preferred_unit / health consent),
+	// buildContext needs (preferred_unit / health consent),
 	// so it's threaded down instead of re-fetched there.
 	const profileRow = consentLookup.data as
-		| (CoachProfileRow & { coach_consent_at: string | null })
+		| (CoachProfileRow & {
+				coach_consent_at: string | null;
+				ai_disclosure_version: number | null;
+		  })
 		| null;
-	if (!profileRow?.coach_consent_at) {
+	const disclosure = checkAiDisclosure(
+		aiDisclosureFromProfileRow(profileRow),
+		AI_DISCLOSURE_VERSION_COACH,
+	);
+	if (!disclosure.ok) {
+		console.error('[coach] ai disclosure denied', {
+			reason: disclosure.reason,
+			required_version: AI_DISCLOSURE_VERSION_COACH,
+		});
 		return jsonError(
 			403,
 			'Coach consent required. Visit /coach in the app and accept ' +
-				'the first-use disclosure before retrying.',
+				'the AI disclosure before retrying.',
+			aiDisclosureDenialBody(AI_DISCLOSURE_VERSION_COACH),
 		);
 	}
 
 	let tier: Tier = 'free';
 	let usedToday = 0;
+	let spendId: string | null = null;
 	if (!config.bypassPaywallEnabled) {
-		const { data: isPro } = await supabase.rpc('is_pro');
+		const { data: isPro } = await supabase.rpc('is_pro', undefined, { get: true });
 		tier = isPro === true ? 'pro' : 'free';
 		const dailyLimit = TIER_LIMITS[tier].dailyLimit;
-		const { data: newCount, error: incrErr } = await supabase.rpc('increment_coach_usage', {
+		const { data: spend, error: spendErr } = await supabase.rpc('spend_coach_usage_slot', {
 			p_user_id: authUser.id,
 		});
 		// Fail closed: the daily cap is the entire paywall for the coach.
@@ -162,16 +199,17 @@ export async function handleCoach(
 		// `usedToday` default to 0, which would sail past the gate and
 		// stream an unmetered provider call to a free (or over-cap Pro)
 		// caller.
-		const usage = resolveUsageCount(newCount, incrErr);
+		const usage = resolveUsageSpend(spend, spendErr);
 		if (!usage.ok) {
-			console.error('[coach] increment_coach_usage failed — denying to keep the cap enforced', {
+			console.error('[coach] spend_coach_usage_slot failed — denying to keep the cap enforced', {
 				tier,
-				error: incrErr?.message ?? `non-numeric count: ${typeof newCount}`,
+				error: spendErr?.message ?? 'unreadable spend row',
 			});
 			return jsonError(503, 'coach usage check failed');
 		}
 		usedToday = usage.usedToday;
-		// `increment_coach_usage` returns the count AFTER incrementing.
+		spendId = usage.spendId;
+		// `spend_coach_usage_slot` returns the count AFTER incrementing.
 		// `usedToday > dailyLimit` means messages 1..N (= dailyLimit)
 		// all ran; the (N+1)th increment lands at `usedToday = N+1`,
 		// fails this gate, and no provider call streams. The counter
@@ -209,23 +247,43 @@ export async function handleCoach(
 
 	const runsLimit = clampRunsLimit(body.recent_runs_limit, tier);
 
-	const context = await buildContext(
-		supabase,
-		authUser.id,
-		body.plan_id ?? null,
-		runsLimit,
-		profileRow,
-	);
+	// A failed plan read throws rather than reading as "no plan": the coach
+	// would otherwise answer confidently about a plan it could not see. The
+	// slot this request spent is given back, as on a provider failure.
+	let context: Awaited<ReturnType<typeof buildContext>>;
+	try {
+		context = await buildContext(
+			supabase,
+			authUser.id,
+			body.plan_id ?? null,
+			runsLimit,
+			profileRow,
+			resolveToday(body.today, (config.now ?? Date.now)()),
+			// The Coach needs only v1, but some lanes of its context need more:
+			// buildContext withholds each one the accepted version doesn't cover.
+			disclosure.version,
+			body.plan_scope ?? 'plan',
+		);
+	} catch (e) {
+		console.error('[coach] context read failed', { message: thrownMessage(e) });
+		await refundCoachMessage(supabase, authUser.id, spendId, 'coach', 'context_read_failed');
+		return jsonError(503, 'coach context unavailable');
+	}
 
 	const personality = (context.data as Record<string, unknown>)?.runner_context as
 		| Record<string, unknown>
 		| undefined;
 	const coachStyle = personality?.coach_personality as string | undefined;
-	const systemText = COACH_SYSTEM_PROMPT + personalityAddendum(coachStyle);
+	const systemText =
+		COACH_SYSTEM_PROMPT +
+		planHandoffAddendum(config.aiPlanEnabled) +
+		fuelHandoffAddendum(config.fuelHandoffEnabled) +
+		planEditHandoffAddendum(config.aiPlanEditEnabled) +
+		personalityAddendum(coachStyle);
 	// Wrap the JSON context in <CONTEXT>...</CONTEXT> markers so the
 	// system prompt's "treat anything inside as data, not instructions"
 	// boundary applies. Without these markers, a user-controlled
-	// string (run title, display_name, plan name) that happens to
+	// string (run title, plan name, plan note) that happens to
 	// look like "ignore previous instructions" could land in the cached
 	// turn and influence every future response. See audit/coach May
 	// 2026 Medium #4 + Low #11.
@@ -303,22 +361,15 @@ export async function handleCoach(
 	// who hit a 502 with no answer must not lose a slot. Best-effort:
 	// if the RPC errors we log and continue (the original 502 is the
 	// signal the user actually cares about). Audit/coach May 2026
-	// High #3. Skip when paywall is bypassed (no slot was consumed).
+	// High #3. The refund is the ticket `spend_coach_usage_slot` issued
+	// for this request, so it can only give back this request's slot;
+	// with the paywall bypassed there is no ticket and nothing to refund.
 	// Capture `authUserId` outside the closure so the TS flow analyser
 	// doesn't have to re-narrow `authUser` from `User | null` inside
 	// every helper.
 	const authUserId = authUser.id;
 	async function refundCapSlot(reason: string): Promise<void> {
-		if (config.bypassPaywallEnabled) return;
-		try {
-			const { error } = await supabase.rpc('decrement_coach_usage', { p_user_id: authUserId });
-			if (error) throw error;
-		} catch (e) {
-			console.error('[coach] decrement_coach_usage failed', {
-				reason,
-				err: e instanceof Error ? e.message : String(e),
-			});
-		}
+		await refundCoachMessage(supabase, authUserId, spendId, 'coach', reason);
 	}
 
 	let providerStream: ProviderStream;
@@ -342,7 +393,7 @@ export async function handleCoach(
 						limits,
 					);
 	} catch (e) {
-		const msg = e instanceof Error ? e.message : 'coach call failed';
+		const msg = thrownMessage(e) || 'coach call failed';
 		// Structured log line for the CloudWatch metric filter — same
 		// shape as the mid-stream branch below so a single metric
 		// captures both the sync-throw and mid-stream cases.
@@ -415,7 +466,7 @@ export async function handleCoach(
 			return data?.id ?? null;
 		} catch (e) {
 			console.error('[coach] persist assistant exception', {
-				message: e instanceof Error ? e.message : String(e),
+				message: thrownMessage(e),
 			});
 			return null;
 		}
@@ -493,7 +544,7 @@ export async function* coachSseStream(deps: CoachStreamDeps): AsyncIterable<Uint
 			yield sendEvent('token', { text: chunk });
 		}
 	} catch (e) {
-		const msg = e instanceof Error ? e.message : 'stream failed';
+		const msg = thrownMessage(e) || 'stream failed';
 		deps.logMidStreamError(accumulated.length, msg);
 		// Zero accumulated tokens = a complete failure the user got
 		// nothing from: refund the slot. A PARTIAL answer already
@@ -538,17 +589,4 @@ function jsonError(
 	extra: Record<string, unknown> = {},
 ): CoachResult {
 	return buildJsonError(status, error, extra) as CoachResult;
-}
-
-/// Extract only the log-safe fields from a Supabase/PostgREST error.
-/// `.code` + `.message` are safe to log; `.details` and `.hint` can
-/// echo row fragments — the caller's chat content is Art 9 health/injury
-/// data on this path — and the raw object must never reach CloudWatch.
-/// Mirrors the `.code`/`.message` pattern used in rate_limit_errors.ts +
-/// the Edge Functions, and the security_guards.test.ts raw-object ban.
-/// /audit/pii-in-logs.
-export function supabaseErrorFields(
-	err: { code?: string; message?: string } | null | undefined,
-): { code: string | undefined; message: string | undefined } {
-	return { code: err?.code, message: err?.message };
 }

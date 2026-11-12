@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Session planner P3 (session_planner.md) — club-published session templates.
@@ -57,12 +58,15 @@ test.describe('/sessions — club session templates', () => {
 		await expect(publishRow.locator('select')).toHaveValue('', { timeout: 10_000 });
 
 		// A club-owned copy now exists.
-		const { data: clubCopies } = await admin
-			.from('session_plans')
-			.select('id')
-			.eq('club_id', RICHMOND_CLUB_ID)
-			.eq('title', title);
-		expect(clubCopies?.length).toBe(1);
+		const clubCopies = await readRows(
+			'session_plans by club_id+title',
+			admin
+				.from('session_plans')
+				.select('id')
+				.eq('club_id', RICHMOND_CLUB_ID)
+				.eq('title', title)
+		);
+		expect(clubCopies.length).toBe(1);
 
 		// It surfaces on the club's Templates tab, and Adopt clones it.
 		await page.goto('/clubs/richmond-run-club?tab=templates');
@@ -76,14 +80,17 @@ test.describe('/sessions — club session templates', () => {
 		await expect(page.getByText('Session added to your plans.')).toBeVisible({ timeout: 10_000 });
 		await expect(page).toHaveURL(/\/clubs\/richmond-run-club\?tab=templates$/);
 
-		const { data: personalClones } = await admin
-			.from('session_plans')
-			.select('id')
-			.eq('author_id', USER_A.id)
-			.is('club_id', null)
-			.eq('title', title);
+		const personalClones = await readRows(
+			'session_plans by author_id+title',
+			admin
+				.from('session_plans')
+				.select('id')
+				.eq('author_id', USER_A.id)
+				.is('club_id', null)
+				.eq('title', title)
+		);
 		// The original source + the adopted clone are both personal + club-less.
-		expect((personalClones?.length ?? 0)).toBeGreaterThanOrEqual(2);
+		expect((personalClones.length)).toBeGreaterThanOrEqual(2);
 	});
 
 	test('opening a session template from the club, then Back, returns to the club', async ({

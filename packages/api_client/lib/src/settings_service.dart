@@ -28,6 +28,15 @@ class SettingsKeys {
   /// `search_user_profiles` RPC (migration 20261015_001) reads
   /// this key.
   static const discoverableInSearch = 'discoverable_in_search';
+  /// Opt-IN (default absent/false) for coarse-location "runners nearby"
+  /// discovery (issue #466, migration `20270424000005`). Read SERVER-SIDE by
+  /// the `discoverable_runners_near` SECURITY DEFINER reader, which also
+  /// requires a `user_settings.discoverable_area` centroid to be set and
+  /// honours [discoverableInSearch] — a search opt-out also removes you from
+  /// nearby. Fail-closed: absent/false and nobody appears. The client surfaces
+  /// are additionally gated behind the default-off `ENABLE_NEARBY_RUNNERS`
+  /// deploy flag pending owner + CISO/counsel sign-off (decisions §270).
+  static const discoverableNearby = 'discoverable_nearby';
   /// DEPRECATED (2026-07-06, docs/features/safety.md): the inert
   /// trusted-contacts scaffold was removed — `safety_contacts` (double
   /// opt-in, real delivery) is the single contact list, and the overdue
@@ -76,13 +85,51 @@ class SettingsKeys {
   /// Go worker's `lifecycle_drip` handler; the send is gated separately
   /// (migration 20270223_001).
   static const emailLifecycleDrip = 'email_lifecycle_drip';
+  /// Opt-OUT for the new-device sign-in alert — `'on'` | `'off'` (default
+  /// `'on'`; only the literal `'off'` mutes). A security notice, so unlike the
+  /// two engagement opt-ins an absent choice means the runner hears about it.
+  /// Read at send time by the Go worker's `security_email` handler (migration
+  /// 20270804000002). The password-changed notice has no key: it cannot be
+  /// turned off.
+  static const emailNewDeviceAlerts = 'email_new_device_alerts';
+  /// Opt-OUT for the morning "today's workout" reminder — `'on'` | `'off'`
+  /// (default `'on'`; only the literal `'off'` mutes). Read by
+  /// `enqueue_workout_reminders()`, which raises no notification at all for a
+  /// muted runner, and by the Go worker's `kindMuted` on email and push
+  /// (migration 20270913000001).
+  static const notifyWorkoutReminder = 'notify_workout_reminder';
+  /// Opt-OUT for the two race-start notices of a scheduled race,
+  /// `race_starting_soon` and `race_start_moved` — `'on'` | `'off'` (default
+  /// `'on'`; only the literal `'off'` mutes). Read by `race_sessions_tick()`,
+  /// which raises no starting-soon row for a muted runner, and by the Go
+  /// worker's `kindMuted` on push (migration 20271121002400).
+  static const notifyRaceStartingSoon = 'notify_race_starting_soon';
+  /// Where the AI Coach sits in the Messages inbox — `'pinned'` (default) |
+  /// `'listed'` | `'hidden'`; anything else reads as pinned
+  /// (`parseCoachInboxPlacement`, decisions § 2227). Never read in SQL.
+  static const messagesCoachRow = 'messages_coach_row';
   /// The user's preferred language for server-sent email, as a BCP-47 tag
   /// (`en`/`de`/`fr`/`es`/`ja`/`pt-BR`). Written by the clients as a side
   /// effect of the language picker so the Go worker can localize email
   /// (decisions §120). Distinct from the per-device UI locale (§113).
   static const locale = 'locale';
+
+  /// The runner's IANA time zone (`Europe/Berlin`), written by the clients
+  /// from the device zone when it changes. Read server-side by
+  /// `coach_roster_summary`, so a coach's roster picks the athlete's current
+  /// plan by the athlete's local date (issue #1182); the server refuses a
+  /// name Postgres does not know.
+  static const timeZone = 'time_zone';
   static const weeklyMileageGoalMetres = 'weekly_mileage_goal_m';
   static const weekStartDay = 'week_start_day';
+  /// GDPR Art 9 reproductive-health settings behind the cycle / pregnancy
+  /// plan adjustment (decisions § 231): written only under the cycle-plans
+  /// gate AND health-data consent, nulled on withdrawal, so a value present
+  /// here is consented data. Read on mobile only under `cyclePlansGate`.
+  static const cycleTrackingMode = 'cycle_tracking_mode';
+  static const cycleLengthDays = 'cycle_length_days';
+  static const cycleLastPeriodStart = 'cycle_last_period_start';
+  static const pregnancyDueDate = 'pregnancy_due_date';
   static const mapStyle = 'map_style';
   static const unitsPaceFormat = 'units_pace_format';
   /// Display + entry unit for body weight and lift weights (Phase 4
@@ -96,6 +143,10 @@ class SettingsKeys {
   /// can opt out entirely). Display-only opt-out; mirrors web's
   /// `show_calories` read on `/runs/[id]`.
   static const showCalories = 'show_calories';
+  /// Show Grisnir, the Threkir mascot — default `true`. When `false`, Home's
+  /// rest-day card and the run share card leave him out. Mirrors web's
+  /// `show_mascot` on `/dashboard` and the run share card.
+  static const showMascot = 'show_mascot';
   /// Activity multiplier for the Mifflin-St Jeor nutrition target
   /// (`nutrition_targets.ts`/`.dart`) — `'sedentary' | 'light' | 'moderate'
   /// (default) | 'active' | 'very_active'`. An effort label, not a body
@@ -120,6 +171,22 @@ class SettingsKeys {
   /// + lift→load math elsewhere are unaffected; only the readiness series
   /// drops lifts. Web twin: `exclude_gym_from_readiness` (decisions §134).
   static const excludeGymFromReadiness = 'exclude_gym_from_readiness';
+  /// Art 9: "my heart rate is affected by medication" (e.g. a beta blocker).
+  /// Marks the HR-derived training load low-confidence and prompts for a
+  /// measured max. Server-gated on health-data consent and dropped on its
+  /// withdrawal (decisions § 2092). Web twin: `hr_medication_affected`.
+  static const hrMedicationAffected = 'hr_medication_affected';
+  /// Ask new training plans for the masters recovery calibration (72 h
+  /// hard-day spacing + a 3-week cycle) at any age; it only ever adds
+  /// recovery (decisions § 93). Web twin: `EXTRA_RECOVERY_KEY`.
+  static const extraRecovery = 'extra_recovery';
+  /// Explicit show/hide choice for the mobile Gym surfaces (Fitness hub tab,
+  /// Log action, Home cards). Absent = shown only once a lift is logged.
+  /// Mobile-only reader; web has no equivalent toggle (settings.md).
+  static const showGym = 'show_gym';
+  /// Explicit show/hide choice for the mobile Nutrition surfaces. Absent =
+  /// shown only once a meal is logged. Mobile-only reader.
+  static const showNutrition = 'show_nutrition';
   /// How long a destructive action stays reversible before its deferred
   /// server mutation commits — `8` (default) | `30` | `0` = no time limit.
   /// `0` is the WCAG 2.2.1 *Timing Adjustable* ("Turn off") route: a
@@ -134,10 +201,25 @@ class SettingsKeys {
   /// Distance values map 1:1 to the training goal-event enum. Web twin:
   /// `primary_goal` (`onboarding.ts`). See settings.md.
   static const primaryGoal = 'primary_goal';
+  /// Whether Home's "Training load" expander is open (`bool`, absent reads
+  /// as closed). Only drawn, and only written, while the effective
+  /// `disclosure_level` is `simple`; written by the expander itself, so it has
+  /// no settings control. Web twin: `/dashboard`'s `TRAINING_LOAD_EXPANDED_KEY`.
+  /// See settings.md.
+  static const dashboardTrainingLoadExpanded =
+      'dashboard_training_load_expanded';
+  /// Trend groups hidden from Home (a list of `volume` / `fitness` /
+  /// `performance` / `effort` / `recent`), read through `parseHiddenCards`.
+  /// Web twin: `DASHBOARD_HIDDEN_CARDS_KEY` (`dashboard_layout.ts`). See
+  /// settings.md.
+  static const dashboardHiddenCards = 'dashboard_hidden_cards';
 
   // Device (D)
   static const voiceFeedbackEnabled = 'voice_feedback_enabled';
   static const voiceFeedbackVerbosity = 'voice_feedback_verbosity';
+  /// Which pace the split cue reads out (`split` | `average` | `both`).
+  /// Universal, so web Settings can set it. See settings.md.
+  static const voiceSplitPaceMode = 'voice_split_pace_mode';
   static const voiceFeedbackIntervalKm = 'voice_feedback_interval_km';
   /// Per-cue voice toggles as a map of cue id → bool (splits,
   /// start_finish, off_route, pace_alerts, workout_steps, cutoff_catch_up,
@@ -165,6 +247,21 @@ class SettingsKeys {
   /// property of the recording phone. L4 (read/write failure never
   /// touches the recording).
   static const safetyNudgeDismissedAt = 'safety_nudge_dismissed_at';
+
+  /// When the runner last dismissed Home's "build a plan from your recent
+  /// 5K" suggestion, as a UTC ISO-8601 instant; absent = never. Universal so
+  /// web and phone agree. Only a run started after it brings the suggestion
+  /// back (`pickRecent5k`, `recent_5k_suggestion.dart`).
+  static const planSuggestionDismissedAt = 'plan_suggestion_dismissed_at';
+
+  /// Home plan-card occurrences the runner dismissed or reviewed, each
+  /// `<plan id>:<kind>:<week index>`, newest last, at most 20
+  /// (`withDismissedNudge`, `plan_nudges.dart`).
+  static const planNudgesDismissed = 'plan_nudges_dismissed';
+  /// The last break-of-a-week-or-more offer the runner answered, as
+  /// `{plan_id, from, until}` (decisions § 2128). Universal so web and phone
+  /// stop offering the same break, and so the plan nudge skips its weeks.
+  static const planBreakDismissed = 'plan_break_dismissed';
 }
 
 /// Pluggable on-device cache for the two prefs bags. The mobile app
@@ -461,10 +558,10 @@ class SettingsService {
   /// down, server returns 5xx, etc.) the change is queued to a pending
   /// list and replayed on the next successful [load].
   ///
-  /// **Concurrency note:** the server push re-fetches the current row
-  /// before merging so a concurrent write from another device isn't
-  /// silently overwritten. Mirrors the read-merge-write pattern in
-  /// `apps/web/src/lib/settings.ts: updateUniversal`.
+  /// **Concurrency note:** the server push merges the delta in one
+  /// statement (`merge_my_settings`), so a concurrent writer — another
+  /// device, or this app's own time-zone sync — is never overwritten.
+  /// Same RPC as `apps/web/src/lib/settings/settings.ts: updateUniversal`.
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     final userId = _requireUser();
     _universal = applyPrefsChanges(_universal, changes);
@@ -497,59 +594,43 @@ class SettingsService {
     }
   }
 
+  /// The merge runs server-side in one statement (`merge_my_settings`,
+  /// issue #1212). A read-merge-write here lost updates: two writers in
+  /// flight each read the bag before the other's write landed, and the
+  /// later write put the earlier one's key back. The RPC is also an upsert,
+  /// so a missing client-provisioned row is created rather than 0-row
+  /// no-op'd (#234). A null value in [changes] removes the key.
   Future<void> _pushUniversal(
       String userId, Map<String, dynamic> changes) async {
-    final fresh = await _client
-        .from(UserSettingRow.table)
-        .select(UserSettingRow.colPrefs)
-        .eq(UserSettingRow.colUserId, userId)
-        .maybeSingle();
-    final base = _asMap(fresh?[UserSettingRow.colPrefs]);
-    final merged = applyPrefsChanges(base, changes);
-    // Upsert, not update: rows are client-provisioned, so a missing row
-    // makes an update match 0 rows and report success — the change is
-    // neither stored nor queued, and the next load reverts it (#234).
-    // This bag carries privacy_zones + safety_overdue_minutes, so a
-    // silent drop here is a privacy/safety failure, not a lost nicety.
-    await _client.from(UserSettingRow.table).upsert(
-      <String, dynamic>{
-        UserSettingRow.colUserId: userId,
-        UserSettingRow.colPrefs: merged,
-        UserSettingRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
-      },
-      onConflict: UserSettingRow.colUserId,
+    final merged = await _client.rpc(
+      'merge_my_settings',
+      params: <String, dynamic>{'p_changes': changes},
     );
-    _universal = merged;
-    await _cache.writeUniversal(userId, _universal);
+    // Stamp with the server's union so this device picks up the other
+    // writers' keys, not just its own delta.
+    if (merged is Map) {
+      _universal = _asMap(merged);
+      await _cache.writeUniversal(userId, _universal);
+    }
   }
 
+  /// Same atomic merge as [_pushUniversal]; the insert arm needs platform
+  /// (NOT NULL) + label, matching the load() provision row.
   Future<void> _pushDevice(
       String userId, Map<String, dynamic> changes) async {
-    final fresh = await _client
-        .from(UserDeviceSettingRow.table)
-        .select(UserDeviceSettingRow.colPrefs)
-        .eq(UserDeviceSettingRow.colUserId, userId)
-        .eq(UserDeviceSettingRow.colDeviceId, _deviceId)
-        .maybeSingle();
-    final base = _asMap(fresh?[UserDeviceSettingRow.colPrefs]);
-    final merged = applyPrefsChanges(base, changes);
-    // Upsert for the same 0-row reason as _pushUniversal; the insert arm
-    // needs platform (NOT NULL) + label, matching the load() provision row.
-    await _client.from(UserDeviceSettingRow.table).upsert(
-      <String, dynamic>{
-        UserDeviceSettingRow.colUserId: userId,
-        UserDeviceSettingRow.colDeviceId: _deviceId,
-        UserDeviceSettingRow.colPlatform: _platform,
-        if (_label != null) UserDeviceSettingRow.colLabel: _label,
-        UserDeviceSettingRow.colPrefs: merged,
-        UserDeviceSettingRow.colUpdatedAt:
-            DateTime.now().toUtc().toIso8601String(),
+    final merged = await _client.rpc(
+      'merge_my_device_settings',
+      params: <String, dynamic>{
+        'p_device_id': _deviceId,
+        'p_changes': changes,
+        'p_platform': _platform,
+        'p_label': _label,
       },
-      onConflict:
-          '${UserDeviceSettingRow.colUserId},${UserDeviceSettingRow.colDeviceId}',
     );
-    _device = merged;
-    await _cache.writeDevice(userId, _deviceId, _device);
+    if (merged is Map) {
+      _device = _asMap(merged);
+      await _cache.writeDevice(userId, _deviceId, _device);
+    }
   }
 
   String _requireUser() {
@@ -572,7 +653,7 @@ class SettingsService {
   /// concurrency fix — can be unit-tested without standing up
   /// Supabase.
   ///
-  /// Mirrors the merge loop in `apps/web/src/lib/settings.ts:
+  /// Mirrors the merge loop in `apps/web/src/lib/settings/settings.ts:
   /// updateUniversal` / `updateDevice`. Subtle difference vs the
   /// JS version: Dart maps don't have a JS-style `undefined`, so the
   /// "delete key" trigger is purely `value == null`. JS treats both

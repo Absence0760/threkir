@@ -1,8 +1,11 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Coach <-> athlete roster lifecycle JOURNEY, told from the angle the existing
@@ -56,12 +59,6 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 	let privateRunId = '';
 	let planId = '';
 
-	function isoDate(offsetDays: number): string {
-		const d = new Date();
-		d.setDate(d.getDate() + offsetDays);
-		return d.toISOString().slice(0, 10);
-	}
-
 	test.beforeAll(async () => {
 		users = await createSagaUsers(2, { displayNames: ['Saga Coach', 'Saga Athlete'] });
 		[coach, athlete] = users;
@@ -93,8 +90,8 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 				name: 'Saga Compliance Plan',
 				goal_event: 'distance_10k',
 				goal_distance_m: 10000,
-				start_date: isoDate(-7),
-				end_date: isoDate(21),
+				start_date: browserDate(-7),
+				end_date: browserDate(21),
 				status: 'active'
 			})
 			.select('id')
@@ -113,9 +110,9 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 		// unions keys across the array and writes an explicit NULL for any row that
 		// omits a key the batch otherwise carries, which the NOT NULL column rejects.
 		const { error: woErr } = await admin.from('plan_workouts').insert([
-			{ week_id: week.id, scheduled_date: isoDate(-2), kind: 'easy', manually_completed: true },
-			{ week_id: week.id, scheduled_date: isoDate(-3), kind: 'easy', manually_completed: false },
-			{ week_id: week.id, scheduled_date: isoDate(-4), kind: 'easy', manually_completed: false }
+			{ week_id: week.id, scheduled_date: browserDate(-2), kind: 'easy', manually_completed: true },
+			{ week_id: week.id, scheduled_date: browserDate(-3), kind: 'easy', manually_completed: false },
+			{ week_id: week.id, scheduled_date: browserDate(-4), kind: 'easy', manually_completed: false }
 		]);
 		if (woErr) throw new Error(`workouts seed failed: ${woErr.message}`);
 	});
@@ -127,10 +124,9 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 	});
 
 	test('a coach links an athlete, reviews their public AND private runs, then revoke severs private-run visibility', async ({
-		browser
+		browser,
+		baseURL
 	}) => {
-		const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:7777';
-
 		// The coach owns the primary context; the athlete acts in a second one.
 		const coachContext: BrowserContext = await browser.newContext({
 			baseURL,
@@ -139,7 +135,13 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 		await coachContext.grantPermissions(['clipboard-read', 'clipboard-write']);
 		const coachPage: Page = await coachContext.newPage();
 
-		let athleteContext: BrowserContext | null = null;
+		// Created up front, not inside the step that first uses it: a value
+		// assigned only from inside a closure is still its initialiser to the
+		// checker at the `finally` below, so the teardown could not see it.
+		const athleteContext: BrowserContext = await browser.newContext({
+			baseURL,
+			storageState: athlete.storageStatePath
+		});
 		let inviteToken = '';
 
 		try {
@@ -166,21 +168,20 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 				inviteToken = match![1];
 				expect(inviteToken.length).toBeGreaterThan(0);
 
-				const { data } = await getAdminClient()
-					.from('coach_athletes')
-					.select('invite_token, status, athlete_id')
-					.eq('coach_id', coach.id)
-					.is('athlete_id', null)
-					.single();
-				expect(data?.invite_token).toBe(inviteToken);
-				expect(data?.status).toBe('pending');
+				const data = await readRow(
+					'coach_athletes by coach_id+athlete_id',
+					getAdminClient()
+						.from('coach_athletes')
+						.select('invite_token, status, athlete_id')
+						.eq('coach_id', coach.id)
+						.is('athlete_id', null)
+						.single()
+				);
+				expect(data.invite_token).toBe(inviteToken);
+				expect(data.status).toBe('pending');
 			});
 
 			await test.step('athlete redeems the invite in a second context', async () => {
-				athleteContext = await browser.newContext({
-					baseURL,
-					storageState: athlete.storageStatePath
-				});
 				const athletePage = await athleteContext.newPage();
 
 				// The public accept landing redeems via redeem_coach_invite and, on
@@ -195,14 +196,17 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 				});
 
 				// The link is active in the DB — the invite was consumed by THIS athlete.
-				const { data } = await getAdminClient()
-					.from('coach_athletes')
-					.select('status, athlete_id')
-					.eq('coach_id', coach.id)
-					.eq('invite_token', inviteToken)
-					.single();
-				expect(data?.status).toBe('active');
-				expect(data?.athlete_id).toBe(athlete.id);
+				const data = await readRow(
+					'coach_athletes by coach_id+invite_token',
+					getAdminClient()
+						.from('coach_athletes')
+						.select('status, athlete_id')
+						.eq('coach_id', coach.id)
+						.eq('invite_token', inviteToken)
+						.single()
+				);
+				expect(data.status).toBe('active');
+				expect(data.athlete_id).toBe(athlete.id);
 
 				await athletePage.close();
 			});
@@ -243,20 +247,23 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 				// Belt-and-braces at the data layer: both run ids are the athlete's two
 				// seeded runs (one public, one private), confirming the page isn't
 				// silently dropping the private row before render.
-				const { data: visible } = await getAdminClient()
-					.from('runs')
-					.select('id, is_public')
-					.eq('user_id', athlete.id);
-				const ids = (visible ?? []).map((r) => r.id).sort();
+				const visible = await readRows(
+					'runs by user_id',
+					getAdminClient()
+						.from('runs')
+						.select('id, is_public')
+						.eq('user_id', athlete.id)
+				);
+				const ids = visible.map((r) => r.id).sort();
 				expect(ids).toEqual([publicRunId, privateRunId].sort());
-				expect((visible ?? []).filter((r) => r.is_public === false)).toHaveLength(1);
+				expect(visible.filter((r) => r.is_public === false)).toHaveLength(1);
 			});
 
 			await test.step('plan compliance renders real counts on the review surface', async () => {
 				await expect(
 					coachPage.getByRole('heading', { level: 2, name: 'Plan compliance' })
 				).toBeVisible({ timeout: 10_000 });
-				await expect(coachPage.getByText('Saga Compliance Plan')).toBeVisible();
+				await expect(coachPage.getByRole('link', { name: 'Saga Compliance Plan' })).toBeVisible();
 				await expect(coachPage.getByText('1/3 done')).toBeVisible();
 				await expect(coachPage.getByText('2 missed')).toBeVisible();
 				await expect(coachPage.locator('.status-pill.status-done').first()).toBeVisible();
@@ -289,17 +296,20 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 
 				// The link row is ended (not deleted) — `is_active_coach_of` only
 				// matches 'active', so this severs the §98 private-run visibility.
-				const { data } = await getAdminClient()
-					.from('coach_athletes')
-					.select('status')
-					.eq('coach_id', coach.id)
-					.eq('athlete_id', athlete.id)
-					.single();
-				expect(data?.status).toBe('ended');
+				const data = await readRow(
+					'coach_athletes by coach_id+athlete_id',
+					getAdminClient()
+						.from('coach_athletes')
+						.select('status')
+						.eq('coach_id', coach.id)
+						.eq('athlete_id', athlete.id)
+						.single()
+				);
+				expect(data.status).toBe('ended');
 			});
 
 			await test.step('the athlete no longer sees the coach (link ended on both sides)', async () => {
-				const athletePage = await athleteContext!.newPage();
+				const athletePage = await athleteContext.newPage();
 				await athletePage.goto('/coaching');
 				await expect(
 					athletePage.getByRole('heading', { level: 1, name: 'Athletes & coaches' })
@@ -313,7 +323,7 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 				await athletePage.close();
 			});
 		} finally {
-			if (athleteContext) await athleteContext.close();
+			await athleteContext.close();
 			await coachContext.close();
 		}
 	});

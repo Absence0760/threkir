@@ -36,6 +36,13 @@ use heapless::{String, Vec};
 
 use crate::current_week::dow_of;
 use crate::locale_defaults::DistanceUnit;
+use crate::run_duration::is_plausible_run_duration;
+/// The streak walk and its day-buffer cap, taken from [`crate::streaks`] rather
+/// than restated here. This module carried a second, private copy of the whole
+/// algorithm and its own 512 cap beside it — one crate, two implementations of
+/// one rule, only one of them registered as a parity port, so a divergence
+/// between them was undetectable by construction.
+use crate::streaks::{compute_run_streaks, MAX_STREAK_DAYS};
 
 /// Distinct weeks a single year can touch. A year's runs span at most ~54
 /// Mon-anchored weeks (the first can back-anchor into the prior December).
@@ -45,9 +52,6 @@ const MAX_WEEKS: usize = 56;
 const MAX_ROUTES: usize = 256;
 /// Distinct activity types tallied (`run` / `walk` / `hike` / `cycle` / …).
 const MAX_ACTIVITIES: usize = 8;
-/// Run days fed to the streak walk. The full run set is passed for streaks so a
-/// December streak counts into the year; beyond this cap the extras are dropped.
-const MAX_STREAK_DAYS: usize = 512;
 /// One badge per catalogue category; the catalogue has 11 categories.
 pub const MAX_RECAP_BADGES: usize = 11;
 
@@ -308,54 +312,6 @@ fn clamp_count(x: f64) -> u32 {
     }
 }
 
-/// `{ current, best }` run streaks from a set of day indices, anchored on
-/// `today`. A streak is consecutive local days with a run; a missing today does
-/// not break it (Strava grace: count from yesterday). Port of web
-/// `runs/streaks.ts` `computeRunStreaks`, day keys already being day indices.
-fn compute_run_streaks(run_days: &[i32], today: i32) -> (u32, u32) {
-    if run_days.is_empty() {
-        return (0, 0);
-    }
-    let mut days: Vec<i32, MAX_STREAK_DAYS> = Vec::new();
-    for &d in run_days {
-        if d <= today && !days.contains(&d) {
-            let _ = days.push(d);
-        }
-    }
-    if days.is_empty() {
-        return (0, 0);
-    }
-    days.sort_unstable();
-
-    let mut best = 1u32;
-    let mut run = 1u32;
-    for w in days.windows(2) {
-        if w[1] == w[0] + 1 {
-            run += 1;
-            if run > best {
-                best = run;
-            }
-        } else {
-            run = 1;
-        }
-    }
-
-    let has = |d: i32| days.binary_search(&d).is_ok();
-    let mut anchor = today;
-    if !has(anchor) {
-        anchor -= 1;
-        if !has(anchor) {
-            return (0, best);
-        }
-    }
-    let mut current = 0u32;
-    while has(anchor) {
-        current += 1;
-        anchor -= 1;
-    }
-    (current, best)
-}
-
 fn top_week_of(weekly: &[(i32, f64, u32)]) -> Option<RecapWeekTop> {
     let mut top: Option<RecapWeekTop> = None;
     for &(wk, dist, count) in weekly {
@@ -389,6 +345,43 @@ fn most_used_of<'a>(counts: &[(&'a str, u32)]) -> Option<&'a str> {
 /// Build the year-in-running aggregate. Pass *all* of the user's runs, not just
 /// the target year's; streaks read the full set so a streak crossing the year
 /// boundary still counts, and the helper filters the rest internally.
+/// Distinct run days on or before `anchor`, keeping the MOST RECENT
+/// [`MAX_STREAK_DAYS`] of them.
+///
+/// The buffer is bounded and the caller hands over an unbounded history, so
+/// WHICH days are dropped is a decision, not an implementation detail. The
+/// oldest, because a recap card is a window that ends at its anchor and a
+/// streak is built backwards from there. Filling in input order instead —
+/// which is what both call sites did — capped on RUNS rather than on days
+/// despite the cap's own name, so a runner logging twice a day lost the second
+/// half of their year: 730 chronological runs across 2026 reported
+/// `{best: 256, current: 0}` where web reports `{best: 365, current: 365}`,
+/// and the streak badges were awarded off the truncated figure.
+///
+/// The filter is [`compute_run_streaks`]'s own, applied one layer earlier so
+/// its buffer cannot overflow behind this one: only the anchor is known here,
+/// and only here.
+fn recent_distinct_days(runs: &[RecapRun<'_>], anchor: i32) -> Vec<i32, MAX_STREAK_DAYS> {
+    let mut days: Vec<i32, MAX_STREAK_DAYS> = Vec::new();
+    for r in runs {
+        if r.day > anchor || days.contains(&r.day) {
+            continue;
+        }
+        if days.push(r.day).is_err() {
+            let mut oldest = 0;
+            for (i, &d) in days.iter().enumerate() {
+                if d < days[oldest] {
+                    oldest = i;
+                }
+            }
+            if r.day > days[oldest] {
+                days[oldest] = r.day;
+            }
+        }
+    }
+    days
+}
+
 pub fn build_year_in_running_recap<'a>(
     runs: &[RecapRun<'a>],
     year: i32,
@@ -420,14 +413,23 @@ pub fn build_year_in_running_recap<'a>(
         }
         in_year_count += 1;
         total_distance += r.distance_m;
-        total_duration += r.duration_s;
+        let counted_s = if is_plausible_run_duration(r.duration_s) {
+            r.duration_s
+        } else {
+            0.0
+        };
+        total_duration += counted_s;
         total_elevation += r.elevation_m;
 
         let is_run_family = r.activity.unwrap_or("run") != "cycle";
         if is_run_family && r.distance_m > longest {
             longest = r.distance_m;
         }
-        if is_run_family && r.distance_m > 500.0 && r.duration_s > 0.0 {
+        if is_run_family
+            && r.distance_m > 500.0
+            && r.duration_s > 0.0
+            && is_plausible_run_duration(r.duration_s)
+        {
             let pace = r.duration_s / (r.distance_m / 1000.0);
             fastest = Some(fastest.map_or(pace, |f| f.min(pace)));
         }
@@ -437,7 +439,7 @@ pub fn build_year_in_running_recap<'a>(
 
         let md = &mut monthly[(rm - 1) as usize];
         md.distance_m += r.distance_m;
-        md.duration_s += r.duration_s;
+        md.duration_s += counted_s;
         md.run_count += 1;
 
         let wk = monday_of(r.day);
@@ -462,11 +464,19 @@ pub fn build_year_in_running_recap<'a>(
         }
     }
 
-    let mut all_days: Vec<i32, MAX_STREAK_DAYS> = Vec::new();
-    for r in runs {
-        let _ = all_days.push(r.day);
-    }
-    let (current, best) = compute_run_streaks(&all_days, days_from_civil(year, 12, 31));
+    // Bound `best` at 1 January: the full run set is passed so a streak crossing
+    // the year boundary still counts the days it covered inside the year, but a
+    // streak that ENDED before it is somebody else's card's headline, not this
+    // one's. Without the bound this reported the all-time best on a card titled
+    // with one year — and fed it to `compute_recap_badges`, so the streak
+    // trophies were awarded off it too.
+    let year_end = days_from_civil(year, 12, 31);
+    let streaks = compute_run_streaks(
+        &recent_distinct_days(runs, year_end),
+        year_end,
+        Some(days_from_civil(year, 1, 1)),
+    );
+    let (current, best) = (streaks.current, streaks.best);
 
     let photo_count = clamp_count(extras.photo_count);
     let personal_record_count = clamp_count(extras.personal_record_count);
@@ -551,7 +561,11 @@ pub fn build_month_in_running_recap<'a>(
         if is_run_family && r.distance_m > longest {
             longest = r.distance_m;
         }
-        if is_run_family && r.distance_m > 500.0 && r.duration_s > 0.0 {
+        if is_run_family
+            && r.distance_m > 500.0
+            && r.duration_s > 0.0
+            && is_plausible_run_duration(r.duration_s)
+        {
             let pace = r.duration_s / (r.distance_m / 1000.0);
             fastest = Some(fastest.map_or(pace, |f| f.min(pace)));
         }
@@ -581,11 +595,13 @@ pub fn build_month_in_running_recap<'a>(
         }
     }
 
-    let mut all_days: Vec<i32, MAX_STREAK_DAYS> = Vec::new();
-    for r in runs {
-        let _ = all_days.push(r.day);
-    }
-    let (current, best) = compute_run_streaks(&all_days, end_of_month(year, month));
+    let month_end = end_of_month(year, month);
+    let streaks = compute_run_streaks(
+        &recent_distinct_days(runs, month_end),
+        month_end,
+        Some(first_of_month(year, month as i32 - 1)),
+    );
+    let (current, best) = (streaks.current, streaks.best);
 
     let photo_count = clamp_count(extras.photo_count);
     let personal_record_count = clamp_count(extras.personal_record_count);
@@ -672,6 +688,137 @@ mod tests {
             route_id: None,
             activity: None,
         }
+    }
+
+    #[test]
+    fn a_duration_past_the_ten_day_bound_adds_no_time() {
+        let ok = run(2026, 11, 4, 10, 0, 5000.0, 1500.0);
+        let bad = run(2026, 11, 5, 10, 0, 2000.0, 44_400_094.0);
+        let r = build_year_in_running_recap(&[ok, bad], 2026, &RecapExtras::default());
+        assert_eq!(r.run_count, 2);
+        assert_eq!(r.total_distance_m, 7000.0);
+        assert_eq!(r.total_duration_s, 1500.0);
+        assert_eq!(r.monthly[10].duration_s, 1500.0);
+        let lone = build_year_in_running_recap(&[bad], 2026, &RecapExtras::default());
+        assert_eq!(lone.fastest_pace_s_per_km, None);
+    }
+
+    #[test]
+    fn a_twice_a_day_year_is_not_truncated_to_the_first_512_runs() {
+        // `MAX_STREAK_DAYS` is a cap on DISTINCT DAYS, and both builders filled
+        // a buffer of that size with raw runs — so the card capped on run count
+        // instead. Two runs a day through 2026 puts the 512th run on the
+        // evening of 12 September, and every day after it was dropped: the
+        // streak ended in September and `current` collapsed to 0, on a card
+        // whose whole subject is the year that just ended. Web has no cap and
+        // reports 365 / 365.
+        let mut runs: Vec<RecapRun<'static>, 730> = Vec::new();
+        for d in 0..365 {
+            let day = days_from_civil(2026, 1, 1) + d;
+            for hh in [7u16, 18] {
+                let _ = runs.push(RecapRun {
+                    day,
+                    start_minute: hh * 60,
+                    distance_m: 5000.0,
+                    duration_s: 1500.0,
+                    elevation_m: 0.0,
+                    route_id: None,
+                    activity: None,
+                });
+            }
+        }
+        assert_eq!(runs.len(), 730);
+        let r = build_year_in_running_recap(&runs, 2026, &RecapExtras::default());
+        assert_eq!(
+            (r.best_streak_days, r.current_streak_days),
+            (365, 365),
+            "the streak input is distinct days, not the first 512 runs"
+        );
+        assert!(
+            r.badges.iter().any(|b| b.id == "streak-30"),
+            "a 365-day streak earns the top streak trophy"
+        );
+    }
+
+    #[test]
+    fn a_history_longer_than_the_day_buffer_keeps_the_days_the_card_is_about() {
+        // The other half of the same decision: 600 consecutive days ending
+        // today overflows a 512-day buffer, so something must be dropped. The
+        // oldest, because the card ends at its anchor — keeping the first 512
+        // seen would report a streak that stopped 88 days before the card's own
+        // last day and a `current` of 0.
+        let mut runs: Vec<RecapRun<'static>, 600> = Vec::new();
+        let last = days_from_civil(2026, 12, 31);
+        for i in 0..600 {
+            let _ = runs.push(RecapRun {
+                day: last - 599 + i,
+                start_minute: 420,
+                distance_m: 5000.0,
+                duration_s: 1500.0,
+                elevation_m: 0.0,
+                route_id: None,
+                activity: None,
+            });
+        }
+        let r = build_year_in_running_recap(&runs, 2026, &RecapExtras::default());
+        assert_eq!(r.current_streak_days, MAX_STREAK_DAYS as u32);
+        assert_eq!(r.best_streak_days, MAX_STREAK_DAYS as u32);
+    }
+
+    #[test]
+    fn a_year_recap_does_not_headline_a_streak_from_another_year() {
+        // The defect the `best_since_day` bound exists for, and the reason web
+        // added it (#747): a 40-day streak from two years ago was the headline
+        // number on a card titled "My 2026 in running". Twelve consecutive days
+        // in March 2024 against three in March 2026.
+        let mut runs: Vec<RecapRun<'static>, 32> = Vec::new();
+        for d in 1..=12 {
+            let _ = runs.push(run(2024, 3, d, 8, 0, 5000.0, 1500.0));
+        }
+        for d in 1..=3 {
+            let _ = runs.push(run(2026, 3, d, 8, 0, 5000.0, 1500.0));
+        }
+        let r = build_year_in_running_recap(&runs, 2026, &RecapExtras::default());
+        assert_eq!(r.best_streak_days, 3);
+        // And the badge grid is graded off the same number, so an unbounded
+        // best would have awarded a streak trophy for a different year's work.
+        assert!(
+            !r.badges.iter().any(|b| b.id.starts_with("streak")),
+            "a 3-day streak earns no streak badge"
+        );
+    }
+
+    #[test]
+    fn a_streak_crossing_new_year_counts_at_its_full_length() {
+        // The other half of the bound, and the subtle one: a qualifying streak
+        // counts at its FULL length, days before the bound included, so one
+        // running 28 Dec to 3 Jan is seven days long on the January card. The
+        // bound admits a streak the moment it REACHES the period; it does not
+        // clip it.
+        let mut runs: Vec<RecapRun<'static>, 16> = Vec::new();
+        for d in 28..=31 {
+            let _ = runs.push(run(2025, 12, d, 8, 0, 5000.0, 1500.0));
+        }
+        for d in 1..=3 {
+            let _ = runs.push(run(2026, 1, d, 8, 0, 5000.0, 1500.0));
+        }
+        let r = build_year_in_running_recap(&runs, 2026, &RecapExtras::default());
+        assert_eq!(r.best_streak_days, 7);
+    }
+
+    #[test]
+    fn a_month_recap_bounds_its_best_streak_at_the_first() {
+        // Same rule one window down: eight consecutive days in January must not
+        // be March's headline.
+        let mut runs: Vec<RecapRun<'static>, 32> = Vec::new();
+        for d in 1..=8 {
+            let _ = runs.push(run(2026, 1, d, 8, 0, 5000.0, 1500.0));
+        }
+        for d in 10..=11 {
+            let _ = runs.push(run(2026, 3, d, 8, 0, 5000.0, 1500.0));
+        }
+        let r = build_month_in_running_recap(&runs, 2026, 3, &RecapExtras::default());
+        assert_eq!(r.best_streak_days, 2);
     }
 
     #[test]

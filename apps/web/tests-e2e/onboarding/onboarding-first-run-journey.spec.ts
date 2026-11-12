@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { switchRunsToAllTime } from '../fixtures/helpers';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow, readRow } from '../fixtures/db-read';
 
 /**
  * Onboarding → first activity → dashboard-reflects-it journey. Heavier
@@ -39,7 +40,8 @@ import { USER_A } from '../fixtures/users';
  *   5. The run appears in the /runs list (All-time filter).
  *   6. /dashboard recent-runs panel shows the run (the `a.run-row`
  *      links to /runs/<id>, so we match on the href suffix).
- *   7. The dashboard This-Week strip (ThisWeekStrip.svelte) reflects the
+ *   7. The This-Week strip (ThisWeekStrip.svelte, in the weekly summary
+ *      the dashboard's week lead opens, decisions § 2283) reflects the
  *      run: because it started today, exactly one of the seven day
  *      cells carries the `.logged` class — the strip is the "your week
  *      so far" ribbon that a brand-new run must light up.
@@ -167,14 +169,16 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				await page.getByRole('radio', { name: /Private/i }).click();
 				await page.getByRole('button', { name: 'Continue' }).click();
 
-				// Step 6 — notifications. Continue past (CDP-tier permission
-				// is out of scope, same as wizard.spec.ts).
+				// No notifications step: this build has no push key, so there
+				// is nothing to turn on (same as wizard.spec.ts). The track step
+				// is left untouched, which writes no choice.
 				await expect(
-					page.getByRole('heading', { name: /Notifications/i })
+					page.getByRole('heading', { name: /What do you want to track/i })
 				).toBeVisible();
 				await page.getByRole('button', { name: 'Continue' }).click();
-
-				// Step 7 — done. The "Open dashboard" button persists the
+				// Import step — nothing to bring in for a brand-new account.
+				await page.getByRole('button', { name: 'Skip for now' }).click();
+				// Done. The "Open dashboard" button persists the
 				// answers + stamps onboarded_at, then full-page-navs.
 				await expect(
 					page.getByRole('heading', { name: /All set/i })
@@ -188,20 +192,26 @@ test.describe('onboarding → first run → dashboard journey', () => {
 
 			// ── 3. The wizard's writes landed (gate won't re-fire) ──────
 			await test.step('onboarding-completed flag + answers are persisted', async () => {
-				const { data: profile } = await admin
-					.from('user_profiles')
-					.select('display_name, preferred_unit, onboarded_at')
-					.eq('id', USER_A.id)
-					.maybeSingle();
-				expect(profile?.onboarded_at).not.toBeNull();
-				expect(profile?.display_name).toBe('E2E First-Run');
-				expect(profile?.preferred_unit).toBe('mi');
+				const profile = await readRow(
+					'user_profiles by id',
+					admin
+						.from('user_profiles')
+						.select('display_name, preferred_unit, onboarded_at')
+						.eq('id', USER_A.id)
+						.maybeSingle()
+				);
+				expect(profile.onboarded_at).not.toBeNull();
+				expect(profile.display_name).toBe('E2E First-Run');
+				expect(profile.preferred_unit).toBe('mi');
 
-				const { data: settings } = await admin
-					.from('user_settings')
-					.select('prefs')
-					.eq('user_id', USER_A.id)
-					.maybeSingle();
+				const settings = await readMaybeRow(
+					'user_settings by user_id',
+					admin
+						.from('user_settings')
+						.select('prefs')
+						.eq('user_id', USER_A.id)
+						.maybeSingle()
+				);
 				const p = (settings?.prefs ?? {}) as Record<string, unknown>;
 				expect(p.primary_goal).toBe('10k');
 				expect(p.privacy_default).toBe('private');
@@ -221,7 +231,7 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				// number inputs are distance (#0), duration-min (#1),
 				// duration-sec (#2). The single <textarea> is the run notes.
 				await page.locator('input[type="number"]').first().fill('5'); // distance (mi pref)
-				await page.locator('input[type="number"]').nth(1).fill('30'); // duration min
+				await page.getByTestId('run-editor-minutes').fill('30'); // duration min
 				await page.locator('textarea').fill(runNotes);
 
 				await page.locator('form button[type="submit"]').click();
@@ -232,13 +242,16 @@ test.describe('onboarding → first run → dashboard journey', () => {
 
 				// Settle the INSERT before the service-role read.
 				await page.waitForLoadState('networkidle');
-				const { data: row } = await admin
-					.from('runs')
-					.select('user_id, distance_m')
-					.eq('id', runId)
-					.single();
-				expect(row?.user_id).toBe(USER_A.id);
-				expect((row?.distance_m ?? 0) > 0).toBe(true);
+				const row = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('user_id, distance_m')
+						.eq('id', runId)
+						.single()
+				);
+				expect(row.user_id).toBe(USER_A.id);
+				expect((row.distance_m) > 0).toBe(true);
 			});
 
 			// ── 5. The run shows in the /runs list ──────────────────────
@@ -268,7 +281,8 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				// shared user happens to fall in the same week — the contract
 				// under test is "the new run lights up the strip", not the
 				// exact count.
-				const strip = page.locator('.week-strip');
+				await page.getByTestId('dash-week-lead-open').click();
+				const strip = page.getByRole('dialog').locator('.week-strip');
 				await expect(strip).toBeVisible({ timeout: 10_000 });
 				await expect(
 					strip.locator('.day.logged').first()
@@ -277,17 +291,20 @@ test.describe('onboarding → first run → dashboard journey', () => {
 
 			// ── 8. Backend cross-check: the run is in the current week ──
 			await test.step('the run row is owned by the user and falls in the current week', async () => {
-				const { data: row } = await admin
-					.from('runs')
-					.select('user_id, started_at, source')
-					.eq('id', runId)
-					.single();
-				expect(row?.user_id).toBe(USER_A.id);
-				expect(row?.source).toBe('app');
+				const row = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('user_id, started_at, source')
+						.eq('id', runId)
+						.single()
+				);
+				expect(row.user_id).toBe(USER_A.id);
+				expect(row.source).toBe('app');
 				// started_at is "now" ± the wizard/create wall-clock — assert
 				// it's within the last hour so the This-Week placement is
 				// genuinely "today", not a stale fixture row.
-				const ageMs = Date.now() - new Date(row!.started_at).getTime();
+				const ageMs = Date.now() - new Date(row.started_at).getTime();
 				expect(ageMs).toBeGreaterThanOrEqual(0);
 				expect(ageMs).toBeLessThan(60 * 60 * 1000);
 			});

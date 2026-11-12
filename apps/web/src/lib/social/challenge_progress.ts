@@ -7,7 +7,9 @@
 /// offline-optimistic client estimate computed from local stores can't drift
 /// from the server board.
 
-export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
+import { isPlausibleRunDuration } from '../runs/run_duration';
+
+export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days' | 'park_courses';
 
 /** Fraction of the goal reached, clamped to 0..1. Null goal (pure-ranking
  * board) → null: there is no bar to fill. */
@@ -79,14 +81,20 @@ export function metricFromActivity(
 	switch (metric) {
 		case 'distance':
 			return numberOf(summary.distance_m);
-		case 'duration':
-			return numberOf(summary.duration_s);
+		case 'duration': {
+			const d = numberOf(summary.duration_s);
+			return isPlausibleRunDuration(d) ? d : 0;
+		}
 		case 'vert':
 			return numberOf(summary.elevation_gain_m);
 		case 'activity_count':
 			return 1;
 		case 'streak_days':
 			return 1;
+		case 'park_courses':
+			// A course completion lands in global_segment_efforts, not in the
+			// activity summary, so only the server board can count it.
+			return 0;
 	}
 }
 
@@ -111,7 +119,8 @@ export interface RankedEntry<T extends RankableEntry> {
  * SQL `rank() over (order by value desc)` plus a stable tie-break: value
  * descending, then user_id ascending (team_club_id for a team board), so two
  * refreshes never swap equal rows. Equal values share a rank (1,1,3 — standard
- * competition ranking, matching SQL `rank()`). */
+ * competition ranking, matching SQL `rank()`). An entry with neither key sorts
+ * LAST inside its rank group — see `compareEntries`. */
 export function rankParticipants<T extends RankableEntry>(entries: T[]): RankedEntry<T>[] {
 	const sorted = [...entries].sort(compareEntries);
 	const out: RankedEntry<T>[] = [];
@@ -129,11 +138,24 @@ export function rankParticipants<T extends RankableEntry>(entries: T[]): RankedE
 	return out;
 }
 
+function tieKey(e: RankableEntry): string | null {
+	return e.user_id ?? e.team_club_id ?? null;
+}
+
+// The SQL tie-break is `order by rank, <key> nulls last` (challenge_leaderboard,
+// both branches, unchanged since 20270210_001), so a keyless row sorts AFTER
+// every keyed row inside its rank group. Do NOT collapse the missing key to ''
+// — that sorts it FIRST and puts the unaffiliated bucket above named clubs. The
+// bucket is real: `challenge_participants.team_club_id` is nullable, the join
+// RLS policy explicitly permits `team_club_id is null`, and the FK is
+// `on delete set null`, so deleting a club creates one.
 function compareEntries(a: RankableEntry, b: RankableEntry): number {
 	const byValue = b.value - a.value;
 	if (byValue !== 0) return byValue;
-	const ak = a.user_id ?? a.team_club_id ?? '';
-	const bk = b.user_id ?? b.team_club_id ?? '';
+	const ak = tieKey(a);
+	const bk = tieKey(b);
+	if (ak === null) return bk === null ? 0 : 1;
+	if (bk === null) return -1;
 	return ak < bk ? -1 : ak > bk ? 1 : 0;
 }
 

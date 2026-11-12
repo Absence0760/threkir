@@ -1,0 +1,10 @@
+{
+	"slug": "virginia-park-passport",
+	"recurrence": "yearly",
+	"title": "Run 10 Virginia park courses in {period}",
+	"description": "An official Threkir challenge. Every park course you complete in a Virginia park from 1 January to 31 December counts once, in UTC.",
+	"metric": "park_courses",
+	"goal_value": 10,
+	"activity_type": "run",
+	"park_region_code": "US-VA"
+}

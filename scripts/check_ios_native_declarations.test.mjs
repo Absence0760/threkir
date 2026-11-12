@@ -1,0 +1,1233 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+	APS_SUBSTITUTION,
+	BACKGROUND_MODES,
+	BUNDLE_MANIFESTS,
+	ENTITLEMENTS,
+	FIREBASE_CORE_IMPORT,
+	FIREBASE_VALIDATED_FIELDS,
+	FIREBASE_VALIDATION_DIAGNOSTIC,
+	GOOGLE_REDIRECT_PHASE,
+	GOOGLE_REVERSED_SCHEME,
+	GOOGLE_SIGN_IN_IMPORT,
+	IOS_ROOT,
+	MESSAGING_UISCENE_FLOOR,
+	PLIST_FLAGS,
+	PRIVACY_API_TYPES,
+	PRIVACY_DATA_TYPES,
+	PURPOSE_STRINGS,
+	collectDartSources,
+	collectSwiftSources,
+	compareVersions,
+	evaluate,
+	evaluateBundleManifests,
+	lockedVersion,
+	parseBuildConfigurations,
+	readBundles,
+	parsePlist,
+	stripWholeLineComments,
+	swiftRuleKeys,
+} from './check_ios_native_declarations.mjs';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** @typedef {import('./check_ios_native_declarations.mjs').EvaluateInput} EvaluateInput */
+
+/**
+ * `parsePlist` is nullable and a null is a parser failure, not a fixture that
+ * happens to be empty — so every reader asserts before it reads.
+ * @param {string} xml
+ * @returns {Map<string, unknown>}
+ */
+function parsed(xml) {
+	const dict = parsePlist(xml);
+	assert.ok(dict, 'parsePlist returned no dictionary for this fixture');
+	return dict;
+}
+
+// --- the parser -------------------------------------------------------------
+
+test('parsePlist reads scalars, arrays and booleans out of a dict', () => {
+	const dict = parsed(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Threkir</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>location</string>
+	</array>
+</dict>
+</plist>`);
+	assert.equal(dict.get('CFBundleDisplayName'), 'Threkir');
+	assert.equal(dict.get('ITSAppUsesNonExemptEncryption'), false);
+	assert.deepEqual(dict.get('UIBackgroundModes'), ['audio', 'location']);
+});
+
+test('parsePlist ignores keys that appear only inside a comment', () => {
+	const dict = parsed(`<plist version="1.0">
+<dict>
+	<!-- <key>UIBackgroundModes</key><array><string>audio</string></array> -->
+	<key>CFBundleName</key>
+	<string>Threkir</string>
+</dict>
+</plist>`);
+	assert.equal(dict.has('UIBackgroundModes'), false);
+	assert.equal(dict.get('CFBundleName'), 'Threkir');
+});
+
+test('parsePlist strips comments to a fixpoint, not in a single pass', () => {
+	// Removing the inner span leaves the outer delimiters spelling a fresh
+	// comment. A single pass drops one and hands the tokenizer the remainder,
+	// where the key inside it reads as a declaration the binary never carries.
+	const dict = parsed(`<plist version="1.0">
+<dict>
+	<!--<!-- <key>UIBackgroundModes</key><array><string>audio</string></array> -->-->
+	<key>CFBundleName</key>
+	<string>Threkir</string>
+</dict>
+</plist>`);
+	assert.equal(dict.has('UIBackgroundModes'), false);
+	assert.equal(dict.get('CFBundleName'), 'Threkir');
+});
+
+test('parsePlist walks past a nested dict-in-array without losing the next key', () => {
+	const dict = parsed(`<plist version="1.0">
+<dict>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>GPS Exchange Format</string>
+			<key>LSItemContentTypes</key>
+			<array><string>com.topografix.gpx</string></array>
+		</dict>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array><string>audio</string></array>
+</dict>
+</plist>`);
+	assert.deepEqual(dict.get('UIBackgroundModes'), ['audio']);
+});
+
+test('parseBuildConfigurations pairs each configuration name with its settings', () => {
+	const configs = parseBuildConfigurations(
+		`\t\tAAA /* Debug */ = {\n` +
+			`\t\t\tisa = XCBuildConfiguration;\n` +
+			`\t\t\tbuildSettings = {\n` +
+			`\t\t\t\tAPS_ENVIRONMENT = development;\n` +
+			`\t\t\t\tCODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;\n` +
+			`\t\t\t};\n` +
+			`\t\t\tname = Debug;\n` +
+			`\t\t};\n` +
+			`\t\tBBB /* Release */ = {\n` +
+			`\t\t\tisa = XCBuildConfiguration;\n` +
+			`\t\t\tbuildSettings = {\n` +
+			`\t\t\t\tAPS_ENVIRONMENT = production;\n` +
+			`\t\t\t};\n` +
+			`\t\t\tname = Release;\n` +
+			`\t\t};\n`,
+	);
+	assert.deepEqual(
+		configs.map((c) => c.name),
+		['Debug', 'Release'],
+	);
+	assert.match(configs[0].settings, /CODE_SIGN_ENTITLEMENTS/);
+	assert.doesNotMatch(configs[1].settings, /CODE_SIGN_ENTITLEMENTS/);
+});
+
+test('stripWholeLineComments blanks prose but keeps a trailing comment line intact', () => {
+	const src = [
+		'// Workmanager().registerProcessingTask is what iOS calls processing.',
+		'  /// allowBackgroundLocationUpdates: true',
+		'   * IosTextToSpeechAudioCategory.playback',
+		"  final category = 'spoken'; // playback",
+	].join('\n');
+	const out = stripWholeLineComments(src);
+	assert.doesNotMatch(out, /registerProcessingTask/);
+	assert.doesNotMatch(out, /allowBackgroundLocationUpdates/);
+	assert.doesNotMatch(out, /IosTextToSpeechAudioCategory/);
+	assert.match(out, /final category = 'spoken';/);
+});
+
+// --- the verdict ------------------------------------------------------------
+
+/** @param {string} text */
+const dart = (text) => [{ path: join(REPO_ROOT, 'apps/mobile_ios/lib/x.dart'), text }];
+/** @param {string} text */
+const swift = (text) => [{ path: join(IOS_ROOT, 'Runner/X.swift'), text }];
+
+/// A structurally faithful PrivacyInfo.xcprivacy carrying exactly the entries
+/// the baseline's sources oblige — the two fixed API categories, the two fixed
+/// data types, and the no-tracking stance.
+/**
+ * @param {{ apis?: string[], data?: string[] | null, tracking?: boolean }} [options]
+ */
+function fakeManifest({ apis = ['3EC4.1', 'E174.1'], data = null, tracking = false } = {}) {
+	/**
+	 * @param {string} type
+	 * @param {string} reason
+	 */
+	const apiEntry = (type, reason) =>
+		`\t\t<dict>\n\t\t\t<key>NSPrivacyAccessedAPIType</key>\n` +
+		`\t\t\t<string>${type}</string>\n` +
+		`\t\t\t<key>NSPrivacyAccessedAPITypeReasons</key>\n` +
+		`\t\t\t<array><string>${reason}</string></array>\n\t\t</dict>`;
+	/** @param {string} type */
+	const dataEntry = (type) =>
+		`\t\t<dict>\n\t\t\t<key>NSPrivacyCollectedDataType</key>\n` +
+		`\t\t\t<string>${type}</string>\n\t\t</dict>`;
+	// DeviceID is here rather than in the fixed pair because the baseline's
+	// Dart imports firebase_messaging, which is what derives it.
+	const types =
+		data ??
+		[
+			'NSPrivacyCollectedDataTypeName',
+			'NSPrivacyCollectedDataTypeOtherUserContent',
+			'NSPrivacyCollectedDataTypeDeviceID',
+		];
+	return (
+		`<plist version="1.0">\n<dict>\n` +
+		`\t<key>NSPrivacyTracking</key>\n\t<${tracking}/>\n` +
+		`\t<key>NSPrivacyAccessedAPITypes</key>\n\t<array>\n` +
+		[
+			apis.includes('3EC4.1')
+				? apiEntry('NSPrivacyAccessedAPICategoryActiveKeyboards', '3EC4.1')
+				: null,
+			apis.includes('E174.1')
+				? apiEntry('NSPrivacyAccessedAPICategoryDiskSpace', 'E174.1')
+				: null,
+		]
+			.filter(Boolean)
+			.join('\n') +
+		`\n\t</array>\n` +
+		`\t<key>NSPrivacyCollectedDataTypes</key>\n\t<array>\n` +
+		types.map(dataEntry).join('\n') +
+		`\n\t</array>\n</dict>\n</plist>`
+	);
+}
+
+const PBX =
+	`\t\t\tisa = XCBuildConfiguration;\n` +
+	`\t\t\tbuildSettings = {\n` +
+	`\t\t\t\tAPS_ENVIRONMENT = production;\n` +
+	`\t\t\t\tCODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;\n` +
+	`\t\t\t};\n` +
+	`\t\t\tname = Release;\n` +
+	`\t\t};\n`;
+
+const APP_DELEGATE =
+	'isExcludedFromBackup = true\n.documentDirectory\n' +
+	'WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.threkir.backgroundSync")\n' +
+	'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()';
+
+/** @param {string} version */
+const lockWith = (version) =>
+	'packages:\n' +
+	'  firebase_core:\n' +
+	'    dependency: transitive\n' +
+	'    version: "4.15.2"\n' +
+	'  firebase_messaging:\n' +
+	'    dependency: transitive\n' +
+	'    description:\n' +
+	'      name: firebase_messaging\n' +
+	'      url: "https://pub.dev"\n' +
+	'    source: hosted\n' +
+	`    version: "${version}"\n` +
+	'  fixnum:\n' +
+	'    version: "1.1.1"\n';
+
+const BACKGROUND_SYNC_DART =
+	"const backgroundSyncTaskName = 'com.threkir.backgroundSync';\n" +
+	'final registered = Platform.isIOS\n' +
+	'    ? Workmanager().registerProcessingTask(backgroundSyncTaskName)\n' +
+	'    : Workmanager().registerPeriodicTask(backgroundSyncTaskName);';
+
+/// The smallest tree that satisfies every rule, so a mutation below is the
+/// only difference between green and red.
+/**
+ * @param {Partial<EvaluateInput>} [overrides]
+ * @returns {EvaluateInput}
+ */
+function baseline(overrides = {}) {
+	return {
+		infoPlist: new Map(
+			/** @type {[string, unknown][]} */ ([
+				['UIBackgroundModes', ['audio']],
+				['BGTaskSchedulerPermittedIdentifiers', ['com.threkir.backgroundSync']],
+				['ITSAppUsesNonExemptEncryption', false],
+				['NSPhotoLibraryAddUsageDescription', 'Threkir saves cards.'],
+				['NSSupportsLiveActivities', true],
+			]),
+		),
+		entitlements: new Map([['aps-environment', APS_SUBSTITUTION]]),
+		privacyManifest: fakeManifest(),
+		appDelegate: APP_DELEGATE,
+		pbxproj: PBX,
+		backgroundSyncDart: BACKGROUND_SYNC_DART,
+		pubspecLock: lockWith('16.7.1'),
+		dartSources: dart(
+			'IosTextToSpeechAudioCategory.playback\n' + "import 'package:firebase_messaging/x.dart';",
+		),
+		swiftSources: swift(''),
+		root: REPO_ROOT,
+		...overrides,
+	};
+}
+
+/**
+ * The baseline's Info.plist with one key replaced. Built by copy-then-set
+ * rather than by spreading into a `new Map([...])` literal, which infers the
+ * added pair as an array rather than as an entry tuple.
+ * @param {string} key
+ * @param {unknown} value
+ */
+const plistWith = (key, value) => new Map(baseline().infoPlist).set(key, value);
+
+test('the baseline passes, so every mutation below is the only cause of its failure', () => {
+	const { errors } = evaluate(baseline());
+	assert.deepEqual(errors, []);
+});
+
+test('a firebase_messaging below the UIScene floor fails (issue #1300 BUG-002)', () => {
+	const errors = evaluate(baseline({ pubspecLock: lockWith('15.2.10') })).errors;
+	assert.equal(errors.filter((e) => e.includes('below 16.7.0')).length, 1);
+	assert.deepEqual(evaluate(baseline({ pubspecLock: lockWith(MESSAGING_UISCENE_FLOOR) })).errors, []);
+	assert.deepEqual(evaluate(baseline({ pubspecLock: lockWith('17.0.1') })).errors, []);
+});
+
+test('a lockfile that resolves no firebase_messaging is a blind guard, not a pass', () => {
+	const errors = evaluate(baseline({ pubspecLock: 'packages:\n  fixnum:\n    version: "1.1.1"\n' }))
+		.errors;
+	assert.equal(errors.filter((e) => e.includes('resolves no version')).length, 1);
+	assert.equal(
+		evaluate(baseline({ pubspecLock: null })).errors.filter((e) => e.includes('resolves no version'))
+			.length,
+		1,
+	);
+});
+
+test('the notification-centre delegate call is required, and a commented-out one does not count', () => {
+	const without = APP_DELEGATE.replace(
+		'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
+		'// FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
+	);
+	const errors = evaluate(baseline({ appDelegate: without })).errors;
+	assert.equal(errors.filter((e) => e.includes('configureNotificationCenterDelegate')).length, 1);
+});
+
+test('no firebase_messaging import, no push obligations', () => {
+	const errors = evaluate(
+		baseline({
+			dartSources: dart('IosTextToSpeechAudioCategory.playback'),
+			entitlements: new Map(),
+			pubspecLock: lockWith('15.2.10'),
+			appDelegate: APP_DELEGATE.replace(
+				'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
+				'',
+			),
+		}),
+	).errors;
+	assert.equal(errors.filter((e) => /firebase_messaging|configureNotificationCenterDelegate/.test(e)).length, 0);
+});
+
+test('lockedVersion reads the named package only, and compareVersions orders numerically', () => {
+	const lock = lockWith('16.7.1');
+	assert.equal(lockedVersion(lock, 'firebase_messaging'), '16.7.1');
+	assert.equal(lockedVersion(lock, 'firebase_core'), '4.15.2');
+	assert.equal(lockedVersion(lock, 'firebase_messaging_web'), null);
+	assert.ok(compareVersions('16.10.0', '16.7.0') > 0);
+	assert.ok(compareVersions('16.6.9', '16.7.0') < 0);
+	assert.equal(compareVersions('16.7.0+1', '16.7.0'), 0);
+});
+
+test('importing app_links obliges switching off Flutter deep-link routing', () => {
+	const sources = dart(
+		'IosTextToSpeechAudioCategory.playback\n' +
+			"import 'package:firebase_messaging/x.dart';\n" +
+			"import 'package:app_links/app_links.dart';",
+	);
+	const missing = evaluate(baseline({ dartSources: sources })).errors;
+	assert.equal(missing.filter((e) => e.includes('FlutterDeepLinkingEnabled')).length, 1);
+	const on = evaluate(
+		baseline({ dartSources: sources, infoPlist: plistWith('FlutterDeepLinkingEnabled', true) }),
+	).errors;
+	assert.equal(on.filter((e) => e.includes('FlutterDeepLinkingEnabled')).length, 1);
+	const off = evaluate(
+		baseline({ dartSources: sources, infoPlist: plistWith('FlutterDeepLinkingEnabled', false) }),
+	).errors;
+	assert.deepEqual(off, []);
+	assert.ok(PLIST_FLAGS.some((f) => f.key === 'FlutterDeepLinkingEnabled'));
+});
+
+test('declaring document types obliges saying how they are opened', () => {
+	const docTypes = plistWith('CFBundleDocumentTypes', [new Map()]);
+	const missing = evaluate(baseline({ infoPlist: docTypes })).errors;
+	assert.equal(missing.filter((e) => e.includes('90737')).length, 1);
+	for (const [key, value] of /** @type {[string, unknown][]} */ ([
+		['LSSupportsOpeningDocumentsInPlace', false],
+		['LSSupportsOpeningDocumentsInPlace', true],
+		['UISupportsDocumentBrowser', true],
+	])) {
+		const plist = new Map(docTypes).set(key, value);
+		assert.deepEqual(evaluate(baseline({ infoPlist: plist })).errors, [], `${key}=${value}`);
+	}
+	const asString = new Map(docTypes).set('LSSupportsOpeningDocumentsInPlace', 'NO');
+	assert.equal(evaluate(baseline({ infoPlist: asString })).errors.filter((e) => e.includes('90737')).length, 1);
+});
+
+test('a playback TTS session with no `audio` background mode fails', () => {
+	const { errors } = evaluate(
+		baseline({ infoPlist: plistWith('UIBackgroundModes', []) }),
+	);
+	assert.equal(errors.filter((e) => e.includes('`audio`')).length, 1);
+});
+
+test('deleting the playback call deletes the requirement with it', () => {
+	const { errors, ok } = evaluate(
+		baseline({
+			infoPlist: plistWith('UIBackgroundModes', []),
+			dartSources: dart("import 'package:firebase_messaging/x.dart';"),
+		}),
+	);
+	assert.deepEqual(errors, []);
+	assert.equal(
+		ok.some((line) => line.includes('`audio`')),
+		false,
+	);
+});
+
+// The extension's container lookup is the only code that obliges the App
+// Group, and it lives outside `ios/Runner/` — which is why SWIFT_ROOTS is a
+// list. Both directions, because an entitlement no code claims is exactly the
+// shape § 742 is about.
+test('the App Group container lookup obliges the application-groups entitlement', () => {
+	const lookingUpTheContainer = baseline({
+		swiftSources: swift('FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id)'),
+	});
+	const { errors } = evaluate(lookingUpTheContainer);
+	assert.equal(errors.filter((e) => e.includes('application-groups')).length, 1);
+
+	const declared = evaluate({
+		...lookingUpTheContainer,
+		entitlements: new Map(baseline().entitlements).set('com.apple.security.application-groups', [
+			'group.com.threkir.app.share',
+		]),
+	});
+	assert.deepEqual(declared.errors, []);
+	assert.deepEqual(declared.warnings, []);
+});
+
+test('parsing https threkir.com links obliges the applinks entitlement', () => {
+	const parsingWebLinks = baseline({
+		dartSources: dart(
+			'IosTextToSpeechAudioCategory.playback\n' +
+				"import 'package:firebase_messaging/x.dart';\n" +
+				"if (uri.host == 'threkir.com') {}",
+		),
+	});
+	const { errors } = evaluate(parsingWebLinks);
+	assert.equal(errors.filter((e) => e.includes('associated-domains')).length, 1);
+
+	const wrongDomain = evaluate({
+		...parsingWebLinks,
+		entitlements: new Map(baseline().entitlements).set('com.apple.developer.associated-domains', [
+			'applinks:preview.threkir.com',
+		]),
+	});
+	assert.equal(wrongDomain.errors.filter((e) => e.includes('unusable')).length, 1);
+
+	const declared = evaluate({
+		...parsingWebLinks,
+		entitlements: new Map(baseline().entitlements).set('com.apple.developer.associated-domains', [
+			'applinks:threkir.com',
+		]),
+	});
+	assert.deepEqual(declared.errors, []);
+	assert.deepEqual(declared.warnings, []);
+});
+
+test('an application-groups value that is not a group. array fails', () => {
+	const { errors } = evaluate(
+		baseline({
+			swiftSources: swift('containerURL(forSecurityApplicationGroupIdentifier: id)'),
+			entitlements: new Map(baseline().entitlements).set(
+				'com.apple.security.application-groups',
+				['com.threkir.app.share'],
+			),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('unusable')).length, 1);
+});
+
+test('deleting the share extension leaves the entitlement claimed by nothing', () => {
+	const { errors, warnings } = evaluate(
+		baseline({
+			entitlements: new Map(baseline().entitlements).set('com.apple.security.application-groups', [
+				'group.com.threkir.app.share',
+			]),
+		}),
+	);
+	assert.deepEqual(errors, []);
+	assert.equal(warnings.filter((w) => w.includes('application-groups')).length, 1);
+});
+
+test('firebase_messaging with no aps-environment entitlement fails', () => {
+	const { errors } = evaluate(baseline({ entitlements: new Map() }));
+	assert.equal(errors.filter((e) => e.includes('aps-environment')).length, 1);
+});
+
+test('an aps-environment value that is neither a substitution nor a legal literal fails', () => {
+	const { errors } = evaluate(
+		baseline({ entitlements: new Map([['aps-environment', 'sandbox']]) }),
+	);
+	assert.equal(errors.filter((e) => e.includes('unusable')).length, 1);
+});
+
+test('the macOS spelling of the APNs entitlement fails, even beside the iOS one', () => {
+	const { errors } = evaluate(
+		baseline({
+			entitlements: new Map([
+				['aps-environment', APS_SUBSTITUTION],
+				['com.apple.developer.aps-environment', APS_SUBSTITUTION],
+			]),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('macOS spelling')).length, 1);
+});
+
+test('the macOS spelling alone does not satisfy firebase_messaging', () => {
+	const { errors } = evaluate(
+		baseline({
+			entitlements: new Map([['com.apple.developer.aps-environment', APS_SUBSTITUTION]]),
+		}),
+	);
+	assert.ok(errors.some((e) => e.includes('macOS spelling')));
+	assert.ok(errors.some((e) => e.includes('`aps-environment`') && !e.includes('macOS spelling')));
+});
+
+test('a background mode nothing claims is an error, not a warning', () => {
+	const { errors } = evaluate(
+		baseline({ infoPlist: plistWith('UIBackgroundModes', ['audio', 'fetch']) }),
+	);
+	assert.equal(errors.filter((e) => e.includes('`fetch`')).length, 1);
+});
+
+test('the substitution obliges every Runner configuration to define APS_ENVIRONMENT', () => {
+	const { errors } = evaluate(
+		baseline({
+			pbxproj: PBX.replace('\t\t\t\tAPS_ENVIRONMENT = production;\n', ''),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('does not define')).length, 1);
+});
+
+test('a Release configuration minting sandbox tokens fails', () => {
+	const { errors } = evaluate(
+		baseline({ pbxproj: PBX.replace('production', 'development') }),
+	);
+	assert.equal(errors.filter((e) => e.includes('expected production')).length, 1);
+});
+
+test('a renamed background-sync identifier is caught in each of the three files', () => {
+	/** @type {[string, Partial<EvaluateInput>][]} */
+	const mutations = [
+		[
+			'background_sync.dart',
+			{
+				backgroundSyncDart: BACKGROUND_SYNC_DART.replace(
+					'com.threkir.backgroundSync',
+					'com.threkir.other',
+				),
+			},
+		],
+		['Info.plist', { infoPlist: plistWith('BGTaskSchedulerPermittedIdentifiers', ['other']) }],
+		[
+			'AppDelegate.swift',
+			{
+				appDelegate: APP_DELEGATE.replace(
+					'com.threkir.backgroundSync',
+					'com.threkir.other',
+				),
+			},
+		],
+	];
+	for (const [what, mutated] of mutations) {
+		const { errors } = evaluate(baseline(mutated));
+		assert.ok(errors.length > 0, `mutating ${what} produced no error`);
+	}
+});
+
+test('an iOS branch submitting the periodic task type fails', () => {
+	const { errors } = evaluate(
+		baseline({
+			backgroundSyncDart: BACKGROUND_SYNC_DART.replace(
+				'? Workmanager().registerProcessingTask(backgroundSyncTaskName)',
+				'? Workmanager().registerPeriodicTask(backgroundSyncTaskName)',
+			),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('registerProcessingTask')).length, 1);
+});
+
+test('a missing CODE_SIGN_ENTITLEMENTS wiring fails', () => {
+	const { errors } = evaluate({
+		...baseline(),
+		pbxproj: PBX.replace('CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;', ''),
+	});
+	assert.equal(errors.filter((e) => e.includes('CODE_SIGN_ENTITLEMENTS')).length, 1);
+});
+
+test('a usage string naming a different product than CFBundleDisplayName fails', () => {
+	const { errors } = evaluate(
+		baseline({
+			infoPlist: new Map(baseline().infoPlist)
+				.set('CFBundleDisplayName', 'Threkir')
+				.set('NSMotionUsageDescription', 'Run App counts your steps.'),
+			dartSources: dart('import \'package:pedometer/pedometer.dart\';'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('does not name the app')).length, 1);
+});
+
+test('a required-reason API the manifest omits fails', () => {
+	const { errors } = evaluate(baseline({ privacyManifest: fakeManifest({ apis: ['3EC4.1'] }) }));
+	assert.equal(errors.filter((e) => e.includes('DiskSpace')).length, 1);
+});
+
+test('a collected data type the code implies but the manifest omits fails', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart("import 'package:health/health.dart';") }),
+	);
+	assert.equal(
+		errors.filter((e) => e.includes('NSPrivacyCollectedDataTypeHealth')).length,
+		1,
+	);
+});
+
+// The two PrivacyInfo arrays were read in one direction only: an entry no
+// rule claimed stood unchallenged, which is how NSPrivacyCollectedDataTypeDeviceID
+// lived here for months backed by a hand-written comment rather than by the
+// import that obliges it. The nutrition label is answered from this array, so
+// an over-declaration is a public claim about what the app takes.
+test('a collected data type no rule claims is an error', () => {
+	const { errors } = evaluate(
+		baseline({
+			privacyManifest: fakeManifest({
+				data: [
+					'NSPrivacyCollectedDataTypeName',
+					'NSPrivacyCollectedDataTypeOtherUserContent',
+					'NSPrivacyCollectedDataTypeDeviceID',
+					'NSPrivacyCollectedDataTypeContacts',
+				],
+			}),
+		}),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /NSPrivacyCollectedDataTypeContacts/);
+	assert.match(errors[0], /no rule in this script claims it/);
+});
+
+test('deleting the push import obliges deleting the DeviceID claim with it', () => {
+	const withoutPush = { dartSources: dart('IosTextToSpeechAudioCategory.playback') };
+	// The entitlement the same import obliges goes too, so only the manifest
+	// entry is left over — which is the half this direction exists to catch.
+	const stillClaimed = evaluate(
+		baseline({ ...withoutPush, entitlements: new Map() }),
+	);
+	assert.equal(stillClaimed.errors.length, 1);
+	assert.match(stillClaimed.errors[0], /NSPrivacyCollectedDataTypeDeviceID/);
+	const dropped = evaluate(
+		baseline({
+			...withoutPush,
+			entitlements: new Map(),
+			privacyManifest: fakeManifest({
+				data: [
+					'NSPrivacyCollectedDataTypeName',
+					'NSPrivacyCollectedDataTypeOtherUserContent',
+				],
+			}),
+		}),
+	);
+	assert.deepEqual(dropped.errors, []);
+});
+
+test('a required-reason category no rule claims is an error', () => {
+	const { errors } = evaluate(
+		baseline({
+			privacyManifest: fakeManifest().replace(
+				'NSPrivacyAccessedAPICategoryDiskSpace',
+				'NSPrivacyAccessedAPICategoryFileTimestamp',
+			),
+		}),
+	);
+	// DiskSpace is now absent (the fixed rule reports it) and FileTimestamp is
+	// present with nothing deriving it, since the baseline imports no
+	// path_provider. Both halves of the same swap.
+	assert.equal(errors.length, 2);
+	assert.ok(errors.some((e) => /NSPrivacyAccessedAPICategoryDiskSpace/.test(e)));
+	assert.ok(
+		errors.some(
+			(e) =>
+				/NSPrivacyAccessedAPICategoryFileTimestamp/.test(e) &&
+				/no rule in this\s+script claims it/.test(e),
+		),
+	);
+});
+
+test('claiming tracking fails the no-IDFA stance', () => {
+	const { errors } = evaluate(baseline({ privacyManifest: fakeManifest({ tracking: true }) }));
+	assert.equal(errors.filter((e) => e.includes('NSPrivacyTracking')).length, 1);
+});
+
+test('an absent PrivacyInfo.xcprivacy fails rather than skipping every check under it', () => {
+	// The manifest reader is the only input whose absence used to be silent:
+	// Info.plist and Runner.entitlements hard-fail, a null AppDelegate and a
+	// null pbxproj each fall through to a named error — but a null manifest
+	// skipped the whole block, so deleting the file took the unconditional
+	// required-reason and collected-data checks with it and reported nothing.
+	const { errors } = evaluate(baseline({ privacyManifest: null }));
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /No PrivacyInfo\.xcprivacy was read/);
+});
+
+test('a NSPrivacyAccessedAPITypes that is not an array of dicts reports rather than throwing', () => {
+	const { errors } = evaluate(
+		baseline({
+			privacyManifest:
+				'<plist version="1.0">\n<dict>\n' +
+				'\t<key>NSPrivacyTracking</key>\n\t<false/>\n' +
+				'\t<key>NSPrivacyAccessedAPITypes</key>\n\t<string>see the wiki</string>\n' +
+				'\t<key>NSPrivacyCollectedDataTypes</key>\n\t<array></array>\n' +
+				'</dict>\n</plist>',
+		}),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /something other than an array of\s+dictionaries/);
+});
+
+test('a required-reason category whose reasons are not an array reports rather than throwing', () => {
+	const { errors } = evaluate(
+		baseline({
+			privacyManifest: fakeManifest().replace(
+				'<array><string>3EC4.1</string></array>',
+				'<string>3EC4.1</string>',
+			),
+		}),
+	);
+	assert.equal(
+		errors.filter((e) => e.includes('NSPrivacyAccessedAPITypeReasons that is not an array')).length,
+		1,
+	);
+});
+
+test('an empty Dart source set fails rather than passing vacuously', () => {
+	const { errors } = evaluate(baseline({ dartSources: [] }));
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /vacuously/);
+});
+
+test('an unparseable Info.plist fails rather than passing vacuously', () => {
+	const { errors } = evaluate(baseline({ infoPlist: null }));
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /blind/);
+});
+
+// --- decisions § 773 — the Swift half ---------------------------------------
+
+// `walk` swallows a readdirSync failure, so moving CalendarBridge.swift out of
+// ios/Runner/ made both EventKit rules stop enforcing and printed nothing: two
+// fewer [OK] lines out of 43 and an exit code of 0. dartSources had this check
+// from the day it was written; swiftSources did not.
+test('an empty Swift source set fails rather than passing vacuously', () => {
+	const { errors } = evaluate(baseline({ swiftSources: [] }));
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /vacuously/);
+	assert.match(errors[0], /NSCalendarsUsageDescription/);
+});
+
+test('the Swift rules the blindness check names are derived, not counted', () => {
+	assert.deepEqual(swiftRuleKeys(), [
+		...ENTITLEMENTS.filter((r) => r.source === 'swift').map((r) => r.key),
+		...PURPOSE_STRINGS.filter((r) => r.source === 'swift').map((r) => r.key),
+	]);
+	assert.ok(swiftRuleKeys().length > 0, 'a rule reads Swift, so the check has a subject');
+});
+
+// The other half of the same hole: a Swift rule can fall silent while some
+// OTHER Swift file keeps the tree non-empty, and the purpose string it obliged
+// then stands with nothing claiming it. Every other derived declaration was
+// read both ways; this one was not.
+test('a usage string no rule claims is an error', () => {
+	const { errors } = evaluate(
+		baseline({ infoPlist: plistWith('NSCalendarsUsageDescription', 'Threkir files events.') }),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /no rule in this script claims it/);
+});
+
+test('deleting the EventKit import obliges deleting the usage string with it', () => {
+	const withEventKit = baseline({
+		swiftSources: swift('import EventKit'),
+		infoPlist: new Map(baseline().infoPlist)
+			.set('NSCalendarsUsageDescription', 'Threkir files events.')
+			.set('NSCalendarsWriteOnlyAccessUsageDescription', 'Threkir files events.'),
+	});
+	assert.deepEqual(evaluate(withEventKit).errors, []);
+	const gone = evaluate({ ...withEventKit, swiftSources: swift('import UIKit') });
+	assert.equal(gone.errors.length, 2);
+	assert.ok(gone.errors.every((e) => /no rule in this script claims it/.test(e)));
+});
+
+test('a usage string named in FIXED_PLIST_KEYS is claimed by that admission', () => {
+	assert.deepEqual(evaluate(baseline()).errors, []);
+	const { errors } = evaluate(
+		baseline({ infoPlist: plistWith('NSRemindersUsageDescription', 'Threkir reminds.') }),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /NSRemindersUsageDescription/);
+});
+
+test('the committed ios/Runner tree is not empty, so the Swift rules have a subject', () => {
+	assert.ok(collectSwiftSources().length > 0);
+});
+
+// --- the Google Sign-In redirect --------------------------------------------
+// The scheme is a credential, so unlike every other declaration here it is
+// injected into the BUILT plist rather than committed. Both directions matter:
+// the phase has to exist while the plugin does, and the credential must not
+// turn up in the source tree after all.
+
+// The baseline's own Dart plus the import, not instead of it: replacing the
+// source set would delete the TTS and push derivations the baseline's plist
+// and privacy manifest are checked against, and every assertion below would
+// then be reading those failures.
+const GOOGLE_DART =
+	'IosTextToSpeechAudioCategory.playback\n' +
+	"import 'package:firebase_messaging/x.dart';\n" +
+	"import 'package:google_sign_in/google_sign_in.dart';";
+
+const PBX_WITH_GOOGLE_PHASE =
+	PBX +
+	'\t\t\tshellScript = "REVERSED=$(PlistBuddy -c \\"Print :REVERSED_CLIENT_ID\\" ...)' +
+	'\\nplutil -insert CFBundleURLTypes -json ... -append $INFO";\n';
+
+/** @param {string[]} schemes */
+const urlTypes = (schemes) => [
+	new Map(/** @type {[string, unknown][]} */ ([
+		['CFBundleURLName', 'com.threkir.app.auth'],
+		['CFBundleURLSchemes', schemes],
+	])),
+];
+
+test('importing google_sign_in with no redirect-injecting build phase fails', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart(GOOGLE_DART), pbxproj: PBX }),
+	);
+	assert.equal(
+		errors.filter((e) => e.includes('reversed-client-id URL scheme')).length,
+		1,
+	);
+});
+
+test('the build phase satisfies the rule the import obliges', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart(GOOGLE_DART), pbxproj: PBX_WITH_GOOGLE_PHASE }),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('deleting the google_sign_in import deletes the phase requirement with it', () => {
+	const { errors, ok } = evaluate(baseline({ pbxproj: PBX }));
+	assert.deepEqual(errors, []);
+	assert.equal(ok.filter((o) => o.includes('redirect scheme')).length, 0);
+});
+
+test('a reversed client id committed to Info.plist is an error, not a convenience', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith(
+				'CFBundleURLTypes',
+				urlTypes(['com.threkir.app', 'com.googleusercontent.apps.111-aaa']),
+			),
+		}),
+	);
+	assert.equal(
+		errors.filter((e) => e.includes('com.googleusercontent.apps.111-aaa')).length,
+		1,
+	);
+});
+
+test('the Supabase scheme alone is not mistaken for a credential', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith('CFBundleURLTypes', urlTypes(['com.threkir.app'])),
+		}),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('a committed GIDClientID is an error', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith('GIDClientID', '111-aaa.apps.googleusercontent.com'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('GIDClientID')).length, 1);
+});
+
+test('a CFBundleURLTypes that is not an array of dicts reports rather than throwing', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith('CFBundleURLTypes', 'com.threkir.app'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('array of')).length, 1);
+});
+
+test('the Google patterns read the committed tree the way the guard claims', () => {
+	assert.ok(
+		collectDartSources().some((s) => GOOGLE_SIGN_IN_IMPORT.test(s.text)),
+		'no committed Dart imports google_sign_in — the rule is inert',
+	);
+	assert.ok(
+		GOOGLE_REDIRECT_PHASE.test(
+			readFileSync(join(IOS_ROOT, 'Runner.xcodeproj/project.pbxproj'), 'utf-8'),
+		),
+		'no build phase reads REVERSED_CLIENT_ID into CFBundleURLTypes',
+	);
+	// The leak detector's subject is meant to be absent. Asserting that here
+	// keeps it from being the one pattern nothing ever exercises.
+	assert.ok(GOOGLE_REVERSED_SCHEME.test('com.googleusercontent.apps.111-aaa'));
+	assert.ok(!GOOGLE_REVERSED_SCHEME.test('com.threkir.app'));
+});
+
+// --- the Firebase config, validated at build time ---------------------------
+// The one credential here whose correctness the APP cannot check: firebase_core
+// configures during plugin registration, before Dart exists, so a malformed
+// field aborts at launch. These pin that the check lives in the build instead.
+
+const FIREBASE_DART =
+	'IosTextToSpeechAudioCategory.playback\n' +
+	"import 'package:firebase_messaging/x.dart';\n" +
+	"import 'package:firebase_core/firebase_core.dart';";
+
+const PBX_WITH_FIREBASE_VALIDATION =
+	PBX +
+	'\t\t\tshellScript = "APP_ID=$(key GOOGLE_APP_ID)\\nAPI_KEY=$(key API_KEY)' +
+	'\\nPROJECT_ID=$(key PROJECT_ID)\\necho \\"error: GoogleService-Info.plist: $1\\"";\n';
+
+test('importing firebase_core with no validating build phase fails', () => {
+	const { errors } = evaluate(baseline({ dartSources: dart(FIREBASE_DART), pbxproj: PBX }));
+	assert.equal(
+		errors.filter((e) => e.includes('validates the')).length,
+		1,
+	);
+});
+
+test('the validating build phase satisfies the rule the import obliges', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart(FIREBASE_DART), pbxproj: PBX_WITH_FIREBASE_VALIDATION }),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('deleting the firebase_core import deletes the validation requirement', () => {
+	const { errors, ok } = evaluate(baseline({ pbxproj: PBX }));
+	assert.deepEqual(errors, []);
+	assert.equal(ok.filter((o) => o.includes('before bundling')).length, 0);
+});
+
+test('a phase that checks only some of the raising fields names the rest', () => {
+	for (const dropped of FIREBASE_VALIDATED_FIELDS) {
+		const { errors } = evaluate(
+			baseline({
+				dartSources: dart(FIREBASE_DART),
+				pbxproj: PBX_WITH_FIREBASE_VALIDATION.split(dropped).join('SOMETHING_ELSE'),
+			}),
+		);
+		assert.equal(
+			errors.filter((e) => e.includes(`unchecked: ${dropped}`)).length,
+			1,
+			`dropping ${dropped} was not reported`,
+		);
+	}
+});
+
+test('naming the fields without failing the build is not validation', () => {
+	// The three reads alone are what an unchecked copy phase already does; the
+	// diagnostic is the only evidence that a bad value stops the build.
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(FIREBASE_DART),
+			pbxproj: PBX_WITH_FIREBASE_VALIDATION.replace('error: GoogleService-Info.plist:', 'note:'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('validates the')).length, 1);
+});
+
+test('the Firebase patterns read the committed tree the way the guard claims', () => {
+	assert.ok(
+		collectDartSources().some((s) => FIREBASE_CORE_IMPORT.test(s.text)),
+		'no committed Dart imports firebase_core — the rule is inert',
+	);
+	const pbx = readFileSync(join(IOS_ROOT, 'Runner.xcodeproj/project.pbxproj'), 'utf-8');
+	assert.ok(FIREBASE_VALIDATION_DIAGNOSTIC.test(pbx), 'no build phase reports a bad config');
+	for (const field of FIREBASE_VALIDATED_FIELDS) {
+		assert.ok(pbx.includes(field), `${field} is not read by any build phase`);
+	}
+});
+
+// --- the committed tree -----------------------------------------------------
+// Last, so a stale plist reports as column drift rather than as a broken guard.
+
+test('every derivation pattern still matches something in the committed tree', () => {
+	const dartSources = collectDartSources();
+	// The whole Swift tree the guard itself reads, not a hand-listed file:
+	// naming one file here made this assertion answer for that file rather
+	// than for the tree, so a rule deriving from a bundle outside `Runner/`
+	// reported inert while the guard was enforcing it.
+	const swiftSources = collectSwiftSources();
+	// A rule whose pattern matches nothing is not necessarily wrong — the
+	// feature may be gone — but every rule in the table today has a live
+	// consumer, and a pattern that silently stops matching is how a derived
+	// guard turns permissive.
+	for (const rule of [
+		...BACKGROUND_MODES,
+		...ENTITLEMENTS,
+		...PURPOSE_STRINGS,
+		...PRIVACY_API_TYPES,
+		...PRIVACY_DATA_TYPES,
+	]) {
+		const sources = rule.source === 'swift' ? swiftSources : dartSources;
+		assert.ok(
+			sources.some((s) => rule.pattern.test(s.text)),
+			`${rule.pattern} matched no ${rule.source} source — the rule is now inert`,
+		);
+	}
+});
+
+test('the committed iOS tree satisfies every rule', () => {
+	const { errors } = evaluate({
+		infoPlist: parsePlist(readFileSync(join(IOS_ROOT, 'Runner/Info.plist'), 'utf-8')),
+		entitlements: parsePlist(readFileSync(join(IOS_ROOT, 'Runner/Runner.entitlements'), 'utf-8')),
+		privacyManifest: readFileSync(join(IOS_ROOT, 'Runner/PrivacyInfo.xcprivacy'), 'utf-8'),
+		appDelegate: readFileSync(join(IOS_ROOT, 'Runner/AppDelegate.swift'), 'utf-8'),
+		pbxproj: readFileSync(join(IOS_ROOT, 'Runner.xcodeproj/project.pbxproj'), 'utf-8'),
+		backgroundSyncDart: readFileSync(
+			join(REPO_ROOT, 'apps/mobile_ios/lib/background_sync.dart'),
+			'utf-8',
+		),
+		pubspecLock: readFileSync(join(REPO_ROOT, 'pubspec.lock'), 'utf-8'),
+		dartSources: collectDartSources(),
+		swiftSources: [
+			{ path: 'x', text: readFileSync(join(IOS_ROOT, 'Runner/CalendarBridge.swift'), 'utf-8') },
+		],
+	});
+	assert.deepEqual(errors, []);
+});
+
+/**
+ * @param {[string, string[]][]} api
+ * @param {string[]} [collected]
+ */
+function manifestXml(api, tracking = 'false', collected = []) {
+	const entries = api
+		.map(
+			([type, reasons]) =>
+				`<dict><key>NSPrivacyAccessedAPIType</key><string>${type}</string>` +
+				`<key>NSPrivacyAccessedAPITypeReasons</key><array>${reasons.map((r) => `<string>${r}</string>`).join('')}</array></dict>`,
+		)
+		.join('');
+	return (
+		'<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+		`<key>NSPrivacyTracking</key><${tracking}/>` +
+		`<key>NSPrivacyAccessedAPITypes</key><array>${entries}</array>` +
+		`<key>NSPrivacyCollectedDataTypes</key><array>${collected
+			.map((t) => `<dict><key>NSPrivacyCollectedDataType</key><string>${t}</string></dict>`)
+			.join('')}</array></dict></plist>`
+	);
+}
+
+const UD = 'NSPrivacyAccessedAPICategoryUserDefaults';
+
+/** @param {string} body */
+const infoPlistXml = (body) =>
+	`<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>${body}</dict></plist>`;
+
+/** @param {Partial<import('./check_ios_native_declarations.mjs').BundleInput>} over */
+function bundle(over = {}) {
+	return {
+		target: 'ShareExtension',
+		infoPlistPath: 'ShareExtension/Info.plist',
+		infoPlist: infoPlistXml('<key>CFBundleDisplayName</key><string>Threkir</string>'),
+		manifestPath: 'ShareExtension/PrivacyInfo.xcprivacy',
+		manifest: manifestXml([[UD, ['1C8F.1']]]),
+		membership: [{ project: 'Runner.xcodeproj', resources: ['PrivacyInfo.xcprivacy'] }],
+		swiftSources: [{ path: 'ShareViewController.swift', text: 'let d = UserDefaults(suiteName: group)' }],
+		unresolved: [],
+		...over,
+	};
+}
+
+test('the committed tree ships a manifest in every bundle and declares what each compiles', () => {
+	const bundles = readBundles();
+	assert.equal(bundles.length, BUNDLE_MANIFESTS.length);
+	assert.deepEqual(evaluateBundleManifests(bundles).errors, []);
+});
+
+test('a bundle with no CFBundleDisplayName fails, even one whose name the OS never shows', () => {
+	for (const infoPlist of [
+		infoPlistXml('<key>CFBundleName</key><string>RunActivityExtension</string>'),
+		infoPlistXml('<key>CFBundleDisplayName</key><string>  </string>'),
+		infoPlistXml('<!-- <key>CFBundleDisplayName</key><string>Threkir</string> -->'),
+	]) {
+		const { errors } = evaluateBundleManifests([bundle({ target: 'RunActivityExtension', infoPlist })]);
+		assert.equal(errors.filter((e) => e.includes('90360')).length, 1, infoPlist);
+	}
+	const missing = evaluateBundleManifests([bundle({ infoPlist: null })]).errors;
+	assert.ok(missing.some((e) => e.includes('ShareExtension/Info.plist does not exist')));
+});
+
+test('a bundle that uploads data itself must declare collecting it, read both ways', () => {
+	const upload = {
+		path: 'SupabaseService.swift',
+		text: 'let body = ["email": email]\nlet u = "/auth/v1/token?grant_type=password"\nlet p = RunPayload(user_id: id, distance_m: d)',
+	};
+	const missing = evaluateBundleManifests([
+		bundle({ target: 'WatchApp', manifest: manifestXml([], 'false', []), swiftSources: [upload] }),
+	]).errors;
+	for (const t of ['EmailAddress', 'UserID', 'Fitness']) {
+		assert.ok(missing.some((e) => e.includes(`collecting \`NSPrivacyCollectedDataType${t}\``)), t);
+	}
+	assert.ok(!missing.some((e) => e.includes('PreciseLocation')));
+	const declared = evaluateBundleManifests([
+		bundle({
+			target: 'WatchApp',
+			manifest: manifestXml([], 'false', [
+				'NSPrivacyCollectedDataTypeEmailAddress',
+				'NSPrivacyCollectedDataTypeUserID',
+				'NSPrivacyCollectedDataTypeFitness',
+			]),
+			swiftSources: [upload],
+		}),
+	]).errors;
+	assert.deepEqual(declared, []);
+	const overClaim = evaluateBundleManifests([
+		bundle({ manifest: manifestXml([[UD, ['1C8F.1']]], 'false', ['NSPrivacyCollectedDataTypeHealth']) }),
+	]).errors;
+	assert.ok(overClaim.some((e) => e.includes('nothing ShareExtension compiles sends it')));
+});
+
+test('an upload mentioned only in a comment obliges no collected-data entry', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			swiftSources: [
+				{ path: 'A.swift', text: 'let d = UserDefaults(suiteName: group)\n// posts avg_bpm: later' },
+			],
+		}),
+	]);
+	assert.deepEqual(errors, []);
+});
+
+test('a manifest on disk that the target does not copy fails', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({ membership: [{ project: 'Runner.xcodeproj', resources: ['Assets.xcassets'] }] }),
+	]);
+	assert.equal(errors.filter((e) => e.includes('does not carry')).length, 1);
+});
+
+test('a watch bundle missing from either project fails for that project only', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			target: 'WatchApp',
+			membership: [
+				{ project: 'Runner.xcodeproj', resources: ['PrivacyInfo.xcprivacy'] },
+				{ project: 'WatchApp.xcodeproj', resources: [] },
+			],
+		}),
+	]);
+	assert.deepEqual(
+		errors.filter((e) => e.includes('does not carry')).map((e) => e.includes('WatchApp.xcodeproj')),
+		[true],
+	);
+});
+
+test('a required-reason API the bundle compiles, undeclared, fails naming the file', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			swiftSources: [
+				{ path: 'ShareViewController.swift', text: 'let d = UserDefaults(suiteName: group)' },
+				{ path: 'Clock.swift', text: 'let t = ProcessInfo.processInfo.systemUptime' },
+			],
+		}),
+	]);
+	assert.ok(errors.some((e) => e.includes('SystemBootTime') && e.includes('Clock.swift')));
+});
+
+test('the right category with the wrong reason fails', () => {
+	const { errors } = evaluateBundleManifests([bundle({ manifest: manifestXml([[UD, ['CA92.1']]]) })]);
+	assert.ok(errors.some((e) => e.includes('with 1C8F.1')));
+	assert.ok(errors.some((e) => e.includes('CA92.1 and nothing')));
+});
+
+test('a use mentioned only in a comment obliges nothing', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			manifest: manifestXml([]),
+			swiftSources: [{ path: 'A.swift', text: '// reads UserDefaults(suiteName: group) elsewhere\nlet x = 1' }],
+		}),
+	]);
+	assert.deepEqual(errors, []);
+});
+
+test('a tracking manifest, a missing manifest and an unresolved source each fail', () => {
+	assert.ok(
+		evaluateBundleManifests([bundle({ manifest: manifestXml([[UD, ['1C8F.1']]], 'true') })]).errors.some((e) =>
+			e.includes('NSPrivacyTracking'),
+		),
+	);
+	assert.ok(evaluateBundleManifests([bundle({ manifest: null })]).errors.some((e) => e.includes('does not exist')));
+	assert.ok(
+		evaluateBundleManifests([bundle({ unresolved: ['Gone.swift'] })]).errors.some((e) => e.includes('Gone.swift')),
+	);
+	assert.ok(evaluateBundleManifests([]).errors.some((e) => e.includes('ran on nothing')));
+});
+
+test('receive_sharing_intent obliges the App Group reason on UserDefaults, not just the category', () => {
+	const sources = dart(
+		'IosTextToSpeechAudioCategory.playback\n' +
+			"import 'package:firebase_messaging/x.dart';\n" +
+			"import 'package:shared_preferences/x.dart';\n" +
+			"import 'package:receive_sharing_intent/x.dart';",
+	);
+	/** @param {string[]} reasons */
+	const withUserDefaults = (reasons) =>
+		fakeManifest().replace(
+			'<key>NSPrivacyAccessedAPITypes</key>\n\t<array>\n',
+			'<key>NSPrivacyAccessedAPITypes</key>\n\t<array>\n' +
+				`\t\t<dict><key>NSPrivacyAccessedAPIType</key><string>${UD}</string>` +
+				`<key>NSPrivacyAccessedAPITypeReasons</key><array>${reasons.map((r) => `<string>${r}</string>`).join('')}</array></dict>\n`,
+		);
+	const missing = evaluate(baseline({ dartSources: sources, privacyManifest: withUserDefaults(['CA92.1']) }));
+	assert.equal(missing.errors.filter((e) => e.includes('without reason code 1C8F.1')).length, 1);
+	const both = evaluate(baseline({ dartSources: sources, privacyManifest: withUserDefaults(['CA92.1', '1C8F.1']) }));
+	assert.equal(both.errors.filter((e) => e.includes('1C8F.1')).length, 0);
+});

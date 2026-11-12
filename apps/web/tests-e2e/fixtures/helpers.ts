@@ -1,8 +1,81 @@
-import { chromium, expect, type Browser, type Page } from '@playwright/test';
+import { chromium, expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { PLAN_DETAIL_DISCLOSURE_DEFAULTS, PLAN_DETAIL_DISCLOSURE_SCOPE } from '../../src/lib/training/plan_detail_sections.ts';
+import { disclosureStorageKey } from '../../src/lib/util/disclosure_state.ts';
 import type { SeededUser } from './users';
+
+/**
+ * What `setStorageOnLoad` writes into every document before the app's own
+ * scripts run. Steps apply in this field order: the two clears, the prefix
+ * sweep, the consent record, then `local` and `session` entries in insertion
+ * order. A `null` entry removes the key.
+ */
+export interface StorageOnLoad {
+	clearLocal?: boolean;
+	clearSession?: boolean;
+	/** Every `localStorage` key starting with one of these is removed. */
+	removeLocalPrefixes?: readonly string[];
+	/**
+	 * The `cookie_consent` record, stamped with the document's own `Date.now()`
+	 * on each load — so a spec that installs a fake clock sees a stamp from it.
+	 */
+	consent?: 'accepted' | 'rejected';
+	local?: Readonly<Record<string, string | null>>;
+	session?: Readonly<Record<string, string | null>>;
+}
+
+/**
+ * The one way a spec seeds web storage from an init script.
+ *
+ * A context's init scripts also run in each new page's initial `about:blank`,
+ * whose opaque origin has no storage: touching `localStorage` there throws a
+ * SecurityError the crash net (`fixtures/test.ts`) records as a pageerror.
+ * Nothing of the app runs on that document, so the script skips it. The
+ * guard in `init-storage-adoption.test.ts` keeps hand-rolled storage init
+ * scripts from coming back.
+ */
+export async function setStorageOnLoad(
+	target: BrowserContext | Page,
+	plan: StorageOnLoad
+): Promise<void> {
+	await target.addInitScript((p: StorageOnLoad) => {
+		if (location.protocol === 'about:') return;
+		const apply = (store: Storage, entries: Readonly<Record<string, string | null>>) => {
+			for (const [key, value] of Object.entries(entries)) {
+				if (value === null) store.removeItem(key);
+				else store.setItem(key, value);
+			}
+		};
+		if (p.clearLocal) localStorage.clear();
+		if (p.clearSession) sessionStorage.clear();
+		for (const prefix of p.removeLocalPrefixes ?? []) {
+			for (const key of Object.keys(localStorage)) {
+				if (key.startsWith(prefix)) localStorage.removeItem(key);
+			}
+		}
+		if (p.consent) {
+			localStorage.setItem(
+				'cookie_consent',
+				JSON.stringify({ choice: p.consent, timestamp: Date.now() })
+			);
+		}
+		if (p.local) apply(localStorage, p.local);
+		if (p.session) apply(sessionStorage, p.session);
+	}, plan);
+}
+
+/**
+ * Pre-accepts the cookie banner in every document `target` opens, before the
+ * consent module reads it on first import, then writes any `local` entries.
+ */
+export async function acceptCookieConsent(
+	target: BrowserContext | Page,
+	local?: StorageOnLoad['local']
+): Promise<void> {
+	await setStorageOnLoad(target, { consent: 'accepted', local });
+}
 
 /**
  * Drive the email-password sign-in form. Shared by globalSetup
@@ -34,12 +107,7 @@ export async function signIn(page: Page, user: SeededUser) {
 	// fires on every navigation in this page, so the consent module
 	// sees the accepted choice on /login AND on the post-sign-in
 	// redirect to /dashboard.
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
-	});
+	await acceptCookieConsent(page);
 
 	await page.goto('/login');
 	await page.waitForLoadState('networkidle');
@@ -105,19 +173,6 @@ export async function signOut(page: Page) {
 }
 
 /**
- * The nutrition page's water tracker persists to a user-scoped
- * localStorage key — `water_ml_<userId>_<Y-M-D>` with UNPADDED local
- * month/day — mirroring `waterStorageKey()` in routes/nutrition/+page.svelte
- * (user-scoped per issue #231). Specs that seed or clear the counter
- * must build the key identically or they silently touch a key the
- * page never reads.
- */
-export function waterStorageKey(userId: string): string {
-	const d = new Date();
-	return `water_ml_${userId}_${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-
-/**
  * The /runs page defaults its date filter to "today" (so cold loads
  * aren't slow on heavy users). For seed-data assertions we always
  * want everything — switch to "All time" via the toolbar select.
@@ -129,4 +184,34 @@ export function waterStorageKey(userId: string): string {
  */
 export async function switchRunsToAllTime(page: Page) {
 	await page.getByLabel('Date range').selectOption('all');
+}
+
+/// /plans/[id] opens with every named section shut (decisions § 2375). A spec
+/// about what sits inside one seeds the state a runner who had opened them all
+/// would have remembered, so it reads the section rather than the default.
+/// The result is `local` storage for `acceptCookieConsent` / `setStorageOnLoad`;
+/// it is rewritten on every load, so a spec that toggles a section itself
+/// leaves this out.
+export function planSectionsOpen(userId: string): Record<string, string> {
+	const open = Object.fromEntries(Object.keys(PLAN_DETAIL_DISCLOSURE_DEFAULTS).map((k) => [k, true]));
+	return { [disclosureStorageKey(PLAN_DETAIL_DISCLOSURE_SCOPE, userId)]: JSON.stringify(open) };
+}
+
+/// /plans/[id] starts the **Week by week** section shut (decisions § 2375)
+/// and folds the weeks before the current one into one summary row while the
+/// plan runs (§ 2366). A spec that reads the whole plan's week grid opens both
+/// first, through the same clicks a runner would; either step is a no-op when
+/// it is already open or there is nothing folded.
+export async function showAllPlanWeeks(page: Page) {
+	const section = page.locator('section.weeks details');
+	await expect(section).toBeAttached({ timeout: 10_000 });
+	if ((await section.getAttribute('open')) === null) {
+		await page.locator('#plan-weeks-title').click();
+		await expect(section).toHaveAttribute('open', '');
+	}
+	await expect(page.locator('section.weeks .week').first()).toBeVisible({ timeout: 10_000 });
+	const earlier = page.getByTestId('plan-earlier-weeks');
+	if ((await earlier.count()) === 0) return;
+	if ((await earlier.getAttribute('aria-expanded')) !== 'true') await earlier.click();
+	await expect(earlier).toHaveAttribute('aria-expanded', 'true');
 }

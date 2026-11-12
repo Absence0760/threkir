@@ -1,17 +1,23 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
-	import { page } from '$app/stores';
-	import { handleTablistKeydown } from '$lib/util/tablist';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatDuration, formatRelativeTime, activeFormatLocale } from '$lib/format/time';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPE_ICONS } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import { page } from '$app/state';
+	import { handleTablistKeydown } from '#lib/util/tablist.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { formatDuration, formatRelativeTime, activeFormatLocale } from '#lib/format/time.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { goto } from '$app/navigation';
-	import { supabase } from '$lib/core/supabase';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { queryChunked } from '#lib/social/feed_merge.ts';
 	import {
 		fetchPublicProfile,
 		fetchPublicRunsByUser,
+		fetchProfileRunCounts,
 		fetchFollowers,
 		fetchFollowing,
 		FOLLOW_PAGE_SIZE,
@@ -19,6 +25,7 @@
 		fetchEngagementSummaries,
 		followUser,
 		unfollowUser,
+		cancelFollowRequest,
 		blockUser,
 		unblockUser,
 		isBlockedByViewer,
@@ -28,41 +35,48 @@
 		fetchUserBadges,
 		setBadgeVisibility,
 		type FeedEntry,
+		type ProfileRunCounts,
 		type ProfileSummary,
 		type PublicProfile,
-	} from '$lib/core/data';
-	import BadgeGrid from '$lib/components/BadgeGrid.svelte';
-	import type { Achievement } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import BadgeGrid from '#lib/components/BadgeGrid.svelte';
+	import type { Achievement } from '#lib/types.ts';
 	
-	import { formatDistance, formatPace } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { env } from '$env/dynamic/public';
-	import { buildBadgeShareCanonical } from '$lib/share/share_badge_meta';
-	import { buildProfileShareCanonical } from '$lib/share/share_profile_meta';
-	import RunShareView from '$lib/components/RunShareView.svelte';
-	import RunTrackPreview from '$lib/components/RunTrackPreview.svelte';
-	import NotificationsList from '$lib/components/NotificationsList.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import type { Run } from '$lib/types';
+	import { formatDistance, formatPace } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildBadgeShareCanonical } from '#lib/share/share_badge_meta.ts';
+	import { buildProfileShareCanonical } from '#lib/share/share_profile_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
+	import RunShareView from '#lib/components/RunShareView.svelte';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import NotificationsList from '#lib/components/NotificationsList.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
-	let userId = $derived($page.params.id as string);
+	let userId = $derived(page.params.id as string);
 	// Fold this in-app (CSR, often login-gated) profile onto the public,
 	// crawlable /share/profile/[id] twin so search engines consolidate
 	// ranking signal there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildProfileShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, userId)
+		buildProfileShareCanonical(siteOrigin(PUBLIC_SITE_URL), userId)
 	);
 	let profile = $state<ProfileSummary | null>(null);
 	let loadError = $state<string | null>(null);
 	let runs = $state<Run[]>([]);
+	let runCounts = $state<ProfileRunCounts | null>(null);
 	let followers = $state<PublicProfile[]>([]);
 	let following = $state<PublicProfile[]>([]);
 	let followersHasMore = $state(false);
 	let followingHasMore = $state(false);
+	// The keyset cursor for each tab's next page (see fetchFollowers).
+	let followersNext = $state<KeysetCursor | null>(null);
+	let followingNext = $state<KeysetCursor | null>(null);
 	let followersLoadingMore = $state(false);
 	let followingLoadingMore = $state(false);
 	// Each independent section owns its own loading + error so a failure in one
@@ -106,20 +120,32 @@
 	// rows for a non-owner; the query is identical either way. Hydrates
 	// lazily when the viewer first lands on the Achievements tab.
 	let badges = $state<Achievement[]>([]);
-	let badgesLoaded = $state(false);
+	// The profile these badges belong to — NOT a plain loaded flag. `/u/[id]` is
+	// one component reused across profiles (the followers list links are
+	// same-route client navs), so a bare `badgesLoaded` early-return kept the
+	// FIRST profile's badges and rendered them under the second profile's name.
+	// Viewing your own achievements and then opening a follower's showed YOUR
+	// badges as theirs — including `is_public = false` ones, since
+	// fetchUserBadges returns every row for self.
+	let badgesFor = $state<string | null>(null);
 	// A load *failure* is kept distinct from the genuinely-no-badges state so a
 	// broken fetch surfaces an error + retry instead of rendering the same empty
 	// grid a badge-less runner sees (issue #357).
 	let badgesError = $state<string | null>(null);
 
 	async function loadBadges() {
-		if (badgesLoaded && !badgesError) return;
+		if (badgesFor === userId && badgesError === null) return;
 		badgesError = null;
 		try {
-			badges = await fetchUserBadges(userId);
-			badgesLoaded = true;
+			// Capture the id this request was for: a slow response must not be
+			// written under a profile the viewer has since navigated away from.
+			const forUser = userId;
+			const rows = await fetchUserBadges(forUser);
+			if (forUser !== userId) return;
+			badges = rows;
+			badgesFor = forUser;
 		} catch (e) {
-			badgesError = e instanceof Error ? e.message : String(e);
+			badgesError = errorCopy(e, m, 'u/[id]: badgesError');
 		}
 	}
 
@@ -184,7 +210,7 @@
 		try {
 			const p = await fetchPublicProfile(userId);
 			profile = p.profile;
-			loadError = p.error;
+			loadError = p.error ? errorCopy(p.error, m, 'u/[id]: loadError') : null;
 			if (auth.loggedIn && auth.user?.id !== userId) {
 				try {
 					viewerHasBlocked = await isBlockedByViewer(userId);
@@ -195,7 +221,7 @@
 		} catch (e) {
 			// A rejected fetch would otherwise leave the profile stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'u/[id]: loadError');
 		} finally {
 			loading = false;
 		}
@@ -207,7 +233,7 @@
 		try {
 			runs = await fetchPublicRunsByUser(userId, 20);
 		} catch (e) {
-			runsError = e instanceof Error ? e.message : String(e);
+			runsError = errorCopy(e, m, 'u/[id]: runsError');
 		} finally {
 			runsLoading = false;
 		}
@@ -218,11 +244,12 @@
 		followersError = null;
 		try {
 			const fr = await fetchFollowers(userId, { limit: FOLLOW_PAGE_SIZE });
-			followers = fr;
-			followersHasMore = fr.length === FOLLOW_PAGE_SIZE;
+			followers = fr.rows;
+			followersNext = fr.next;
+			followersHasMore = fr.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			followersError = e instanceof Error ? e.message : String(e);
+			followersError = errorCopy(e, m, 'u/[id]: followersError');
 		} finally {
 			followersLoading = false;
 		}
@@ -233,47 +260,50 @@
 		followingError = null;
 		try {
 			const fg = await fetchFollowing(userId, { limit: FOLLOW_PAGE_SIZE });
-			following = fg;
-			followingHasMore = fg.length === FOLLOW_PAGE_SIZE;
+			following = fg.rows;
+			followingNext = fg.next;
+			followingHasMore = fg.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			followingError = e instanceof Error ? e.message : String(e);
+			followingError = errorCopy(e, m, 'u/[id]: followingError');
 		} finally {
 			followingLoading = false;
 		}
 	}
 
 	async function loadMoreFollowers() {
-		if (followersLoadingMore || !followersHasMore) return;
+		if (followersLoadingMore || !followersHasMore || !followersNext) return;
 		followersLoadingMore = true;
 		try {
 			const more = await fetchFollowers(userId, {
 				limit: FOLLOW_PAGE_SIZE,
-				offset: followers.length,
+				after: followersNext,
 			});
-			followers = [...followers, ...more];
-			followersHasMore = more.length === FOLLOW_PAGE_SIZE;
+			followers = appendPage(followers, more.rows, (p) => p.id);
+			followersNext = more.next;
+			followersHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreFollowersError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreFollowersError', { error: errorCopy(e, m, 'profile.loadMoreFollowersError') }), 'error');
 		} finally {
 			followersLoadingMore = false;
 		}
 	}
 
 	async function loadMoreFollowing() {
-		if (followingLoadingMore || !followingHasMore) return;
+		if (followingLoadingMore || !followingHasMore || !followingNext) return;
 		followingLoadingMore = true;
 		try {
 			const more = await fetchFollowing(userId, {
 				limit: FOLLOW_PAGE_SIZE,
-				offset: following.length,
+				after: followingNext,
 			});
-			following = [...following, ...more];
-			followingHasMore = more.length === FOLLOW_PAGE_SIZE;
+			following = appendPage(following, more.rows, (p) => p.id);
+			followingNext = more.next;
+			followingHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			followingLoadingMore = false;
 		}
@@ -289,11 +319,15 @@
 		for (const p of followers) if (p.id !== viewerId) ids.add(p.id);
 		for (const p of following) if (p.id !== viewerId) ids.add(p.id);
 		if (ids.size === 0) return;
-		const { data, error } = await supabase
-			.from('user_follows')
-			.select('followee_id')
-			.eq('follower_id', viewerId)
-			.in('followee_id', [...ids]);
+		// Followers + Following both page in on demand, so the union outgrows
+		// one `in` filter (decisions § 653) — read it in bounded chunks.
+		const { data, error } = await queryChunked([...ids], (part) =>
+			supabase
+				.from('user_follows')
+				.select('followee_id')
+				.eq('follower_id', viewerId)
+				.in('followee_id', part)
+		);
 		if (error || !data) return;
 		viewerFollows = new Set(data.map((r) => r.followee_id as string));
 	}
@@ -302,16 +336,33 @@
 		if (userId) load();
 	});
 
+	// Its own effect so it re-runs once auth hydrates and `isSelf` flips. The
+	// header falls back to the loaded page's length if the count fails.
+	$effect(() => {
+		const id = userId;
+		const self = isSelf;
+		if (!id) return;
+		fetchProfileRunCounts(id, self).then(
+			(c) => {
+				if (id === userId) runCounts = c;
+			},
+			(e) => {
+				console.warn('profile run counts failed', e);
+				runCounts = null;
+			},
+		);
+	});
+
 	// Deep-link the followers / following / notifications tab via
 	// `?tab=…`. The activity feed used to live here too as a self-only
 	// tab — it's now hosted at /social?tab=feed, so any legacy ?tab=feed
 	// link bounces over there.
 	$effect(() => {
-		const t = $page.url.searchParams.get('tab');
+		const t = page.url.searchParams.get('tab');
 		if (t === 'feed') {
 			// Out-of-band navigation — defer so we don't fire during the
 			// initial $effect chain.
-			queueMicrotask(() => goto('/social?tab=feed', { replaceState: true }));
+			queueMicrotask(() => goto('/social?tab=feed', { replace: true }));
 			return;
 		}
 		if (t === 'followers' || t === 'following' || t === 'runs' || t === 'achievements') tab = t;
@@ -321,6 +372,9 @@
 	// Lazy-load badges when the viewer first lands on the Achievements tab.
 	$effect(() => {
 		if (tab !== 'achievements') return;
+		// Read userId so the effect re-runs on navigation — loadBadges' early
+		// return would otherwise consume it before it became a dependency.
+		void userId;
 		loadBadges();
 	});
 
@@ -342,7 +396,7 @@
 			feedExhausted = feedEntries.length < 20;
 			feedEngagement = await fetchEngagementSummaries(feedEntries.map((e) => e.id));
 		} catch (e) {
-			showToast(m('profile.loadFeedError', { error: String(e) }), 'error');
+			showToast(m('profile.loadFeedError', { error: errorCopy(e, m, 'profile.loadFeedError') }), 'error');
 		} finally {
 			feedLoading = false;
 			feedLoaded = true;
@@ -369,7 +423,7 @@
 			// Without this catch the explicit "load more" scroll
 			// trigger silently swallowed network errors and the user
 			// scrolled forever waiting for entries that never arrived.
-			showToast(m('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			feedLoadingMore = false;
 		}
@@ -400,7 +454,7 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('profile.updateKudosError', { error: String(e) }), 'error');
+			showToast(m('profile.updateKudosError', { error: errorCopy(e, m, 'profile.updateKudosError') }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);
@@ -408,7 +462,9 @@
 		}
 	}
 
-
+	// Three states, not two: following, a pending request to a private profile,
+	// or neither. Unfollowing a private profile closes its content again, so
+	// the sections reload rather than keep what an approved follower saw.
 	async function toggleFollow() {
 		if (!profile || !auth.loggedIn || isSelf) return;
 		busy = true;
@@ -419,17 +475,32 @@
 					...profile,
 					viewer_follows: false,
 					follower_count: Math.max(profile.follower_count - 1, 0),
+					content_visible: !profile.profile_private,
 				};
+				if (profile.profile_private) {
+					runs = [];
+					followers = [];
+					following = [];
+				}
+			} else if (profile.viewer_requested) {
+				await cancelFollowRequest(profile.id);
+				profile = { ...profile, viewer_requested: false };
+				showToast(m('profile.requestWithdrawn'), 'success');
 			} else {
-				await followUser(profile.id);
-				profile = {
-					...profile,
-					viewer_follows: true,
-					follower_count: profile.follower_count + 1,
-				};
+				const outcome = await followUser(profile.id);
+				if (outcome === 'requested') {
+					profile = { ...profile, viewer_requested: true };
+					showToast(m('profile.requestSent'), 'success');
+				} else {
+					profile = {
+						...profile,
+						viewer_follows: true,
+						follower_count: profile.follower_count + 1,
+					};
+				}
 			}
 		} catch (e) {
-			showToast(m('profile.updateFollowError', { error: String(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: errorCopy(e, m, 'profile.updateFollowError') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -453,7 +524,7 @@
 			};
 			showToast(m('profile.blockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.blockError', { error: String(e) }), 'error');
+			showToast(m('profile.blockError', { error: errorCopy(e, m, 'profile.blockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -467,7 +538,7 @@
 			viewerHasBlocked = false;
 			showToast(m('profile.unblockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.unblockError', { error: String(e) }), 'error');
+			showToast(m('profile.unblockError', { error: errorCopy(e, m, 'profile.unblockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -494,7 +565,17 @@
 		}
 		try {
 			if (wasFollowing) await unfollowUser(targetId);
-			else await followUser(targetId);
+			else if ((await followUser(targetId)) === 'requested') {
+				// A private profile: nothing is followed yet, so undo the
+				// optimistic flip and say a request went out instead.
+				const pending = new Set(viewerFollows);
+				pending.delete(targetId);
+				viewerFollows = pending;
+				if (isSelf && profile) {
+					profile.following_count = Math.max(profile.following_count - 1, 0);
+				}
+				showToast(m('profile.requestSent'), 'success');
+			}
 		} catch (e) {
 			// Roll back the optimistic flip.
 			const rollback = new Set(viewerFollows);
@@ -506,7 +587,7 @@
 					? profile.following_count + 1
 					: Math.max(profile.following_count - 1, 0);
 			}
-			showToast(m('profile.updateFollowError', { error: String(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: errorCopy(e, m, 'profile.updateFollowError') }), 'error');
 		} finally {
 			const done = new Set(rowBusy);
 			done.delete(targetId);
@@ -546,7 +627,13 @@
 	}
 
 	async function shareProfile() {
-		const url = new URL(`/u/${userId}`, location.origin).toString();
+		// Your own profile, shared with attribution live, goes out as the public
+		// share page carrying your ref, which counts its visits and sign-ups
+		// (decisions § 2268); anyone else's stays the in-app profile link.
+		const ref = await ownShareRef(userId);
+		const url = ref
+			? withShareRef(buildProfileShareCanonical(location.origin, userId), ref)
+			: new URL(`/u/${userId}`, location.origin).toString();
 		const title = profile?.display_name ?? m('profile.runnerFallback');
 		// Try the OS share sheet first (mobile + Safari desktop). Fall
 		// back to clipboard copy on everything else.
@@ -578,19 +665,19 @@
 		<span class="material-symbols" aria-hidden="true">error</span>
 		<div>
 			<strong>{m('profile.sectionLoadError')}</strong>
-			<span class="error-detail">{detail}</span>
+			{#if detail}<span class="error-detail">{detail}</span>{/if}
 		</div>
 		<button class="btn btn-outline" onclick={retry}>{m('profile.retry')}</button>
 	</div>
 {/snippet}
 
 {#snippet sectionLoading()}
-	<div class="section-loading" role="status">
-		<span class="sr-only">{m('profile.loadingShort')}</span>
-		<span class="skel skel-line skel-w-60"></span>
-		<span class="skel skel-line skel-w-40"></span>
-		<span class="skel skel-line skel-w-50"></span>
+	<div class="section-loading" aria-hidden="true">
+		<SkeletonBlock height="0.85rem" width="60%" />
+		<SkeletonBlock height="0.85rem" width="40%" />
+		<SkeletonBlock height="0.85rem" width="50%" />
 	</div>
+	<p class="visually-hidden" role="status">{m('profile.loadingShort')}</p>
 {/snippet}
 
 <div class="page">
@@ -601,31 +688,28 @@
 
 	{#if loading}
 		<div class="profile-head skel-head" aria-hidden="true">
-			<span class="skel skel-avatar-xl"></span>
+			<SkeletonBlock height="6rem" width="6rem" radius="50%" />
 			<div class="skel-info">
-				<span class="skel skel-line skel-w-50"></span>
-				<span class="skel skel-line skel-w-40"></span>
+				<SkeletonBlock height="0.85rem" width="50%" />
+				<SkeletonBlock height="0.85rem" width="40%" />
 			</div>
 		</div>
-		<p class="sr-only" role="status">{m('profile.loadingProfile')}</p>
-	{:else if loadError}
+		<p class="visually-hidden" role="status">{m('profile.loadingProfile')}</p>
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('profile.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>
 	{:else if !profile}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">person_off</span>
-			<h3>{m('profile.notFoundTitle')}</h3>
-			<p class="empty-text">
-				{m('profile.notFoundText')}
-			</p>
-			<a href="/dashboard" class="btn btn-primary">{m('profile.backToDashboard')}</a>
-		</div>
+		<EmptyState icon="person_off" title={m('profile.notFoundTitle')} text={m('profile.notFoundText')}>
+			{#snippet actions()}
+				<a href="/dashboard" class="btn btn-primary">{m('profile.backToDashboard')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<header class="profile-head">
 			<div class="avatar-xl" aria-hidden="true">
@@ -636,10 +720,20 @@
 				{/if}
 			</div>
 			<div class="profile-info">
-				<h1>{profile.display_name ?? m('profile.runnerFallback')}</h1>
+				<h1>
+					{profile.display_name ?? m('profile.runnerFallback')}
+					{#if profile.profile_private}
+						<span
+							class="material-symbols private-mark"
+							title={m('profile.privateBadge')}
+							aria-label={m('profile.privateBadge')}
+							role="img">lock</span
+						>
+					{/if}
+				</h1>
 				<div class="counts">
 					<button class="count" type="button" onclick={() => setTab('runs')}>
-						<span class="count-num">{runs.length}</span>
+						<span class="count-num" data-testid="profile-run-count">{runCounts?.publicCount ?? runs.length}</span>
 						<span class="count-label">{m('profile.tabRuns')}</span>
 					</button>
 					<button class="count" type="button" onclick={() => setTab('followers')}>
@@ -655,16 +749,31 @@
 			<div class="head-actions">
 				{#if !isSelf && auth.loggedIn}
 					<button
-						class="btn {profile.viewer_follows ? 'btn-outline' : 'btn-primary'} btn-follow"
+						class="btn {profile.viewer_follows || profile.viewer_requested ? 'btn-outline' : 'btn-primary'} btn-follow"
 						type="button"
 						disabled={busy}
 						onclick={toggleFollow}
-						aria-label={profile.viewer_follows ? m('profile.unfollow') : m('profile.follow')}
+						data-testid="profile-follow-button"
+						aria-label={profile.viewer_follows
+							? m('profile.unfollow')
+							: profile.viewer_requested
+								? m('profile.withdrawRequest')
+								: profile.profile_private
+									? m('profile.requestToFollow')
+									: m('profile.follow')}
 					>
 						<span class="material-symbols" aria-hidden="true">
-							{profile.viewer_follows ? 'check' : 'person_add'}
+							{profile.viewer_follows ? 'check' : profile.viewer_requested ? 'schedule' : 'person_add'}
 						</span>
-						<span>{profile.viewer_follows ? m('profile.following') : m('profile.follow')}</span>
+						<span>
+							{profile.viewer_follows
+								? m('profile.following')
+								: profile.viewer_requested
+									? m('profile.requested')
+									: profile.profile_private
+										? m('profile.requestToFollow')
+										: m('profile.follow')}
+						</span>
 					</button>
 					<a
 						class="btn btn-outline btn-message"
@@ -710,7 +819,7 @@
 				{/if}
 				{#if isSelf}
 					<a
-						href="/settings"
+						href="/settings/account"
 						class="btn btn-outline btn-icon-only"
 						aria-label={m('profile.editProfile')}
 						title={m('profile.editProfile')}
@@ -781,21 +890,40 @@
 			{/if}
 		</div>
 
-		{#if tab === 'runs'}
-			{#if runsError}
+		{#if !profile.content_visible && tab !== 'notifications'}
+			<EmptyState
+				icon="lock"
+				title={m('profile.privateTitle')}
+				text={profile.viewer_requested
+					? m('profile.privateRequestedText')
+					: m('profile.privateText', { name: profile.display_name ?? m('profile.thisRunner') })}
+				data-testid="profile-private-panel"
+			/>
+		{:else if tab === 'runs'}
+			{#if isSelf && runCounts?.privateCount}
+				<p class="private-runs-note" data-testid="profile-private-runs-note">
+					<span class="material-symbols" aria-hidden="true">lock</span>
+					<span>
+						{runCounts.privateCount === 1
+							? m('profile.privateRunsNoteOne')
+							: m('profile.privateRunsNoteMany', { n: runCounts.privateCount })}
+						<a href="/runs?view=list">{m('profile.privateRunsNoteLink')}</a>
+					</span>
+				</p>
+			{/if}
+			{#if runsError !== null}
 				{@render sectionError(runsError, loadRuns)}
 			{:else if runsLoading}
 				{@render sectionLoading()}
 			{:else if runs.length === 0}
-				<div class="empty-card">
-					{#if isSelf}
-						<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-						<h3>{m('profile.runsEmptySelfTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.runsEmptySelfText')}
-						</p>
-						<div class="empty-actions">
-							<a href="/history" class="btn btn-primary">
+				{#if isSelf}
+					<EmptyState
+						icon="directions_run"
+						title={m('profile.runsEmptySelfTitle')}
+						text={m('profile.runsEmptySelfText')}
+					>
+						{#snippet actions()}
+							<a href="/runs" class="btn btn-primary">
 								<span class="material-symbols" aria-hidden="true">history</span>
 								{m('profile.openRunHistory')}
 							</a>
@@ -803,15 +931,15 @@
 								<span class="material-symbols" aria-hidden="true">sync</span>
 								{m('profile.connectIntegration')}
 							</a>
-						</div>
-					{:else}
-						<span class="material-symbols empty-icon" aria-hidden="true">directions_run</span>
-						<h3>{m('profile.runsEmptyTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.runsEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
-						</p>
-					{/if}
-				</div>
+						{/snippet}
+					</EmptyState>
+				{:else}
+					<EmptyState
+						icon="directions_run"
+						title={m('profile.runsEmptyTitle')}
+						text={m('profile.runsEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+					/>
+				{/if}
 			{:else}
 				<div class="run-grid">
 					{#each runs as r (r.id)}
@@ -850,12 +978,12 @@
 				</div>
 			{/if}
 		{:else if tab === 'achievements'}
-			{#if badgesError}
+			{#if badgesError !== null}
 				<div class="error-banner" role="alert">
 					<span class="material-symbols" aria-hidden="true">error</span>
 					<div>
 						<strong>{m('badges.loadFailed')}</strong>
-						<span class="error-detail">{badgesError}</span>
+						{#if badgesError}<span class="error-detail">{badgesError}</span>{/if}
 					</div>
 					<button class="btn btn-outline" onclick={loadBadges}>{m('profile.retry')}</button>
 				</div>
@@ -865,31 +993,31 @@
 					isOwner={isSelf}
 					onToggleVisibility={toggleBadgeVisibility}
 					onShare={shareBadge}
+					focusId={page.url.searchParams.get('badge')}
 				/>
 			{/if}
 		{:else if tab === 'followers'}
-			{#if followersError}
+			{#if followersError !== null}
 				{@render sectionError(followersError, loadFollowers)}
 			{:else if followersLoading}
 				{@render sectionLoading()}
 			{:else if followers.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">group_add</span>
-					<h3>{m('profile.followersEmptyTitle')}</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="group_add"
+					title={m('profile.followersEmptyTitle')}
+					text={isSelf
+						? m('profile.followersEmptySelfText')
+						: m('profile.followersEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+				>
+					{#snippet actions()}
 						{#if isSelf}
-							{m('profile.followersEmptySelfText')}
-						{:else}
-							{m('profile.followersEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+							<a href="/clubs" class="btn btn-primary">
+								<span class="material-symbols" aria-hidden="true">groups</span>
+								{m('profile.findClub')}
+							</a>
 						{/if}
-					</p>
-					{#if isSelf}
-						<a href="/clubs" class="btn btn-primary">
-							<span class="material-symbols" aria-hidden="true">groups</span>
-							{m('profile.findClub')}
-						</a>
-					{/if}
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="people-list">
 					{#each followers as p (p.id)}
@@ -930,30 +1058,27 @@
 				{/if}
 			{/if}
 		{:else if tab === 'following'}
-			{#if followingError}
+			{#if followingError !== null}
 				{@render sectionError(followingError, loadFollowing)}
 			{:else if followingLoading}
 				{@render sectionLoading()}
 			{:else if following.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">person_search</span>
-					<h3>
-						{isSelf ? m('profile.followingEmptySelfTitle') : m('profile.followingEmptyTitle')}
-					</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="person_search"
+					title={isSelf ? m('profile.followingEmptySelfTitle') : m('profile.followingEmptyTitle')}
+					text={isSelf
+						? m('profile.followingEmptySelfText')
+						: m('profile.followingEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+				>
+					{#snippet actions()}
 						{#if isSelf}
-							{m('profile.followingEmptySelfText')}
-						{:else}
-							{m('profile.followingEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+							<a href="/clubs" class="btn btn-primary">
+								<span class="material-symbols" aria-hidden="true">groups</span>
+								{m('profile.browseClubs')}
+							</a>
 						{/if}
-					</p>
-					{#if isSelf}
-						<a href="/clubs" class="btn btn-primary">
-							<span class="material-symbols" aria-hidden="true">groups</span>
-							{m('profile.browseClubs')}
-						</a>
-					{/if}
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="people-list">
 					{#each following as p (p.id)}
@@ -1018,64 +1143,64 @@
 				<div class="feed" aria-hidden="true">
 					{#each Array(6) as _, i (i)}
 						<div class="skel-card">
-							<span class="skel skel-map"></span>
+							<SkeletonBlock height="9rem" radius="0" />
 							<div class="skel-card-body">
 								<div class="skel-card-top">
-									<span class="skel skel-line skel-w-40"></span>
-									<span class="skel skel-pill"></span>
+									<SkeletonBlock height="0.85rem" width="40%" />
+									<SkeletonBlock height="1rem" width="3.5rem" radius="9999px" />
 								</div>
 								<div class="skel-card-stats">
 									<div class="skel-card-stat">
-										<span class="skel skel-line skel-w-60"></span>
-										<span class="skel skel-line skel-w-30"></span>
+										<SkeletonBlock height="0.85rem" width="60%" />
+										<SkeletonBlock height="0.85rem" width="30%" />
 									</div>
 									<div class="skel-card-stat">
-										<span class="skel skel-line skel-w-50"></span>
-										<span class="skel skel-line skel-w-30"></span>
+										<SkeletonBlock height="0.85rem" width="50%" />
+										<SkeletonBlock height="0.85rem" width="30%" />
 									</div>
 									<div class="skel-card-stat">
-										<span class="skel skel-line skel-w-50"></span>
-										<span class="skel skel-line skel-w-30"></span>
+										<SkeletonBlock height="0.85rem" width="50%" />
+										<SkeletonBlock height="0.85rem" width="30%" />
 									</div>
 								</div>
 							</div>
 						</div>
 					{/each}
 				</div>
-				<p class="sr-only" role="status">{m('profile.loadingFeed')}</p>
+				<p class="visually-hidden" role="status">{m('profile.loadingFeed')}</p>
 			{:else if feedEntries.length === 0}
-				<div class="empty-card">
-					{#if !followsAnyone}
-						<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-						<h3>{m('profile.feedEmptyTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.feedEmptyText')}
-						</p>
-						<a href="/clubs" class="btn btn-primary">
-							<span class="material-symbols" aria-hidden="true">groups</span>
-							{m('profile.browseClubs')}
-						</a>
-					{:else if activityFilter !== 'all'}
-						<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-						<h3>{m('profile.feedNoMatchesTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.feedNoMatchesText', { days: FEED_WINDOW_DAYS })}
-						</p>
-						<button
-							class="btn btn-primary"
-							type="button"
-							onclick={() => (activityFilter = 'all')}
-						>
-							{m('profile.clearFilters')}
-						</button>
-					{:else}
-						<span class="material-symbols empty-icon" aria-hidden="true">schedule</span>
-						<h3>{m('profile.feedNoActivityTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.feedNoActivityText', { days: FEED_WINDOW_DAYS })}
-						</p>
-					{/if}
-				</div>
+				{#if !followsAnyone}
+					<EmptyState icon="dynamic_feed" title={m('profile.feedEmptyTitle')} text={m('profile.feedEmptyText')}>
+						{#snippet actions()}
+							<a href="/clubs" class="btn btn-primary">
+								<span class="material-symbols" aria-hidden="true">groups</span>
+								{m('profile.browseClubs')}
+							</a>
+						{/snippet}
+					</EmptyState>
+				{:else if activityFilter !== 'all'}
+					<EmptyState
+						icon="filter_alt_off"
+						title={m('profile.feedNoMatchesTitle')}
+						text={m('profile.feedNoMatchesText', { days: FEED_WINDOW_DAYS })}
+					>
+						{#snippet actions()}
+							<button
+								class="btn btn-primary"
+								type="button"
+								onclick={() => (activityFilter = 'all')}
+							>
+								{m('profile.clearFilters')}
+							</button>
+						{/snippet}
+					</EmptyState>
+				{:else}
+					<EmptyState
+						icon="schedule"
+						title={m('profile.feedNoActivityTitle')}
+						text={m('profile.feedNoActivityText', { days: FEED_WINDOW_DAYS })}
+					/>
+				{/if}
 			{:else}
 				<div class="feed">
 					{#each feedEntries as entry (entry.id)}
@@ -1253,6 +1378,12 @@
 		font-size: 1.75rem;
 		font-weight: 700;
 		margin: 0 0 var(--space-sm) 0;
+	}
+
+	.private-mark {
+		font-size: 1.1rem;
+		vertical-align: middle;
+		color: var(--color-text-secondary);
 	}
 
 	.counts {
@@ -1534,61 +1665,21 @@
 		}
 	}
 
-
-
 	/* Empty-state card — same shape as /clubs, /routes, /runs. Card with
 	   icon (or brand mark) + h3 + explainer + CTA. */
-	.empty-card {
+	.private-runs-note {
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		margin: 0 0 var(--space-md);
 		font-size: 0.9rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
 	}
-
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-
-	.empty-actions .material-symbols,
-	.empty-card .btn .material-symbols {
+	.private-runs-note .material-symbols {
 		font-size: 1.1rem;
+		line-height: 1.4;
+		color: var(--color-text-tertiary);
 	}
 
 	/* ── Feed tab (self-only) ─────────────────────────────────────
@@ -1816,30 +1907,9 @@
 		padding: var(--space-xl);
 	}
 
-	/* Skeletons — same shimmer language as /clubs, /runs, /routes. */
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-
+	/* Skeleton layout; the blocks are SkeletonBlock. */
 	.skel-head {
 		pointer-events: none;
-	}
-
-	.skel-avatar-xl {
-		width: 6rem;
-		height: 6rem;
-		border-radius: 50%;
-		flex-shrink: 0;
 	}
 
 	.skel-info {
@@ -1850,23 +1920,12 @@
 		min-width: 0;
 	}
 
-	.skel-line {
-		height: 0.85rem;
-	}
-
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		pointer-events: none;
-	}
-
-	.skel-map {
-		display: block;
-		height: 9rem;
-		width: 100%;
-		border-radius: 0;
 	}
 
 	.skel-card-body {
@@ -1883,13 +1942,6 @@
 		gap: 0.5rem;
 	}
 
-	.skel-pill {
-		display: block;
-		height: 1rem;
-		width: 3.5rem;
-		border-radius: 9999px;
-	}
-
 	.skel-card-stats {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1901,32 +1953,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
-	}
-
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-50 { width: 50%; }
-	.skel-w-60 { width: 60%; }
-
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	.section-loading {

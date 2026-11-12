@@ -7,7 +7,7 @@
 -- and the 'achievement' notification on a new award.
 
 begin;
-select plan(17);
+select plan(20);
 
 -- ── Synthetic users ─────────────────────────────────────────────────────────
 do $$
@@ -140,23 +140,51 @@ select lives_ok(
   'owner can toggle is_public on their own badge'
 );
 
--- No client INSERT.
+-- ...and nothing else. The visibility toggle is the ONLY client-writable
+-- column (20270506_001): a table-wide UPDATE grant would let the owner of any
+-- award rename it into a badge they never earned, which then renders on their
+-- profile, in every follower's feed, and on the logged-out share page.
+select throws_ok(
+  $$update achievements set tier = 'platinum', badge_key = 'distance_lifetime',
+                            value_num = 1000000
+      where user_id = '99999999-9999-9999-9999-9999aaaa0001' and badge_key = 'pr'$$,
+  '42501',
+  null,
+  'owner cannot rewrite the award itself (tier / badge_key / value_num)'
+);
+select ok(
+  not exists (select 1 from achievements
+                where user_id = '99999999-9999-9999-9999-9999aaaa0001'
+                  and value_num = 1000000),
+  'no forged award survives the attempt'
+);
+
+-- No client INSERT or DELETE. Both were refused by RLS alone until
+-- 20270616_001 (there is no permissive INSERT or DELETE policy), and both are
+-- now refused one layer earlier by the absent grant. The privilege layer is the
+-- better place for it: an RLS-only refusal on DELETE affected zero rows without
+-- raising, so a future permissive policy would have re-opened a DELETE +
+-- re-INSERT path onto every column the is_public UPDATE grant withholds — the
+-- decisions.md 584 class, pinned schema-wide by
+-- column_grant_write_lockdown_registry_test.
 select throws_ok(
   $$insert into achievements (user_id, badge_key, tier, source_kind, value_num)
       values ('99999999-9999-9999-9999-9999aaaa0001', 'fake', 'bronze', 'distance', 1)$$,
   '42501',
   null,
-  'a client cannot INSERT an achievement (no insert policy)'
+  'a client cannot INSERT an achievement (no insert grant, no insert policy)'
 );
-
--- No client DELETE: with no DELETE policy, RLS makes the rows invisible to the
--- delete (0 rows affected) rather than raising — fail-closed. Assert the row
--- survives the attempted delete.
-delete from achievements where user_id = '99999999-9999-9999-9999-9999aaaa0001';
+select throws_ok(
+  $$delete from achievements
+      where user_id = '99999999-9999-9999-9999-9999aaaa0001'$$,
+  '42501',
+  null,
+  'a client cannot DELETE an achievement (no delete grant, no delete policy)'
+);
 select ok(
   exists (select 1 from achievements
             where user_id = '99999999-9999-9999-9999-9999aaaa0001'),
-  'a client DELETE removes nothing (no delete policy, fail-closed)'
+  'no forged delete survives the attempt'
 );
 
 reset role;

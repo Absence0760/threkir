@@ -1,3 +1,4 @@
+import 'iso_parse.dart';
 import 'metadata_keys.dart';
 import 'run.dart';
 import 'run_source.dart';
@@ -53,6 +54,20 @@ class RunSummary {
     this.synced = false,
   });
 
+  /// A [Run.metadata] value of the expected type, or null.
+  ///
+  /// `metadata` is a jsonb bag with no schema and no type-level protection, so
+  /// a value of the wrong type is a thing it can hold — written by another
+  /// client, an import, or a hand-edited row. A hard cast made that throw out
+  /// of the projection, which the store's save path does not catch, so ONE
+  /// malformed bag value discarded the whole run rather than the one field it
+  /// applied to. `last_modified_at` is the worst of the five to lose that way:
+  /// it is the clock deciding which copy of a run survives a merge
+  /// (decisions § 1377).
+  static String? _string(dynamic v) => v is String ? v : null;
+
+  static num? _number(dynamic v) => v is num ? v : null;
+
   /// Project a full [Run] into a summary. [synced] comes from the store's
   /// sync-state sidecar, not the run itself.
   factory RunSummary.fromRun(Run run, {required bool synced}) {
@@ -63,14 +78,14 @@ class RunSummary {
       duration: run.duration,
       distanceMetres: run.distanceMetres,
       source: run.source,
-      activityType: meta?[MetadataKeys.activityType] as String?,
+      activityType: _string(meta?[MetadataKeys.activityType]),
       externalId: run.externalId,
-      avgBpm: (meta?[MetadataKeys.avgBpm] as num?)?.toDouble(),
-      elevationM: (meta?[MetadataKeys.elevationM] as num?)?.toDouble(),
+      avgBpm: _number(meta?[MetadataKeys.avgBpm])?.toDouble(),
+      elevationM: _number(meta?[MetadataKeys.elevationM])?.toDouble(),
       indoor: meta?[MetadataKeys.indoor] == true,
       routeId: run.routeId,
-      lastModifiedAt: meta?[MetadataKeys.lastModifiedAt] as String?,
-      createdByUserId: meta?[MetadataKeys.createdByUserId] as String?,
+      lastModifiedAt: _string(meta?[MetadataKeys.lastModifiedAt]),
+      createdByUserId: _string(meta?[MetadataKeys.createdByUserId]),
       synced: synced,
     );
   }
@@ -144,11 +159,42 @@ class RunSummary {
         'synced': synced,
       };
 
+  /// A field the index cannot be read without, as its own named refusal.
+  ///
+  /// The alternative is the bare cast this replaces, whose `TypeError` names
+  /// the Dart types and neither the column nor the row — so the store's
+  /// recovery logged `type 'Null' is not a subtype of type 'String'` about a
+  /// file with thousands of rows in it.
+  static T _required<T>(Map<String, dynamic> j, String field) {
+    final v = j[field];
+    if (v is! T) throw FormatException('index row: $field is not usable', v);
+    return v;
+  }
+
+  /// Rebuild a summary from one row of the on-disk index.
+  ///
+  /// Unlike [fromRun], which reads a jsonb bag another client may have
+  /// written and therefore tolerates a wrong type per field, this reads a file
+  /// [toIndexJson] wrote in this same build: a field it cannot read means the
+  /// index is CORRUPT, not that a writer disagreed. So every unreadable field
+  /// throws, and the throw is the point — `LocalRunStore._readIndex` catches
+  /// it, discards the index, and rebuilds from the per-run files, which is
+  /// lossless. Skipping the row instead would drop a run that is still on
+  /// disk and then persist that omission on the next index write, and
+  /// defaulting the field would persist the wrong value; both defeat the
+  /// recovery this reaches (decisions § 1431).
+  ///
+  /// `started_at` is why this matters and not merely why it is tidy: it read
+  /// through `DateTime.parse`, which ROLLS an impossible instant through the
+  /// calendar rather than refusing it, so a corrupt date never threw, never
+  /// reached the rebuild, sorted the run list by a day the runner never ran
+  /// and was written back on the next flush.
   factory RunSummary.fromIndexJson(Map<String, dynamic> j) => RunSummary(
-        id: j['id'] as String,
-        startedAt: DateTime.parse(j['started_at'] as String),
-        duration: Duration(microseconds: (j['duration_us'] as num).toInt()),
-        distanceMetres: (j['distance_m'] as num).toDouble(),
+        id: _required<String>(j, 'id'),
+        startedAt: parseIsoStrictRequired(j['started_at'], 'started_at'),
+        duration: Duration(
+            microseconds: _required<num>(j, 'duration_us').toInt()),
+        distanceMetres: _required<num>(j, 'distance_m').toDouble(),
         source: _sourceFromName(j['source'] as String?),
         activityType: j['activity_type'] as String?,
         externalId: j['external_id'] as String?,

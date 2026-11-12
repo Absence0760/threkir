@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { browserDayAt } from '../fixtures/dates';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Training-consistency card on /dashboard (backlog #11, advanced analytics
@@ -15,13 +17,6 @@ import { insertRun } from '../fixtures/simulate';
  * stat; a runner with only a single week of activity never sees it (the
  * < 2-active-weeks self-hide).
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('dashboard training-consistency card', () => {
 	let consistent: SagaUser;
@@ -46,16 +41,15 @@ test.describe('dashboard training-consistency card', () => {
 
 		// Two runs a couple of hours apart on the SAME calendar day → exactly
 		// ONE active week no matter which weekday CI runs on. Anchoring to
-		// local midday keeps the pair from straddling a week boundary the way
-		// a today/yesterday pair does (a Sunday+Monday split under the default
-		// Monday week-start would read as two active weeks). The card must
-		// stay hidden (< 2 active weeks).
-		const midday = new Date();
-		midday.setHours(12, 0, 0, 0);
-		for (const hoursBack of [0, 2]) {
+		// midday keeps the pair from straddling a week boundary the way a
+		// today/yesterday pair does (a Sunday+Monday split under the default
+		// Monday week-start would read as two active weeks) — and it is the
+		// BROWSER's midday, because the page buckets into weeks in its own
+		// zone. The card must stay hidden (< 2 active weeks).
+		for (const hour of [12, 10]) {
 			await insertRun({
 				user_id: oneWeek.id,
-				started_at: new Date(midday.getTime() - hoursBack * 3_600_000).toISOString(),
+				started_at: browserDayAt(0, hour),
 				distance_m: 5_000,
 				duration_s: 1_500,
 				source: 'app',
@@ -71,7 +65,7 @@ test.describe('dashboard training-consistency card', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: consistent.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -91,7 +85,7 @@ test.describe('dashboard training-consistency card', () => {
 
 	test('hides the card for a runner with only a single active week', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: oneWeek.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

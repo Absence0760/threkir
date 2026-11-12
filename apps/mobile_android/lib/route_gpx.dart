@@ -3,15 +3,17 @@
 /// by every Garmin/Coros/Suunto so the runner sees "Aid 2 in 1.3 km" on the
 /// wrist mid-race.
 ///
-/// Pure + deterministic (no `DateTime.now()`): the GPX `<metadata>` carries
-/// only a `<name>`, so the output is byte-stable for tests. GPX 1.1 schema
-/// requires `<wpt>` elements BEFORE `<trk>`, so waypoints are emitted first.
+/// Pure + deterministic (no `DateTime.now()`): the GPX `<metadata>` carries a
+/// `<name>` and, for a line someone else holds rights in, its attribution, so
+/// the output is byte-stable for tests. GPX 1.1 schema requires `<wpt>`
+/// elements BEFORE `<trk>`, so waypoints are emitted first.
 ///
 /// Twin of `apps/web/src/lib/routes/route_gpx.ts` — keep the element order,
 /// `<sym>` mapping, `<desc>` construction, escaping, and test count in
 /// lockstep.
 
 import 'route_markers.dart';
+import 'xml_text.dart';
 
 class RouteGpxMarker {
   final String label;
@@ -33,6 +35,59 @@ class RouteGpxMarker {
   });
 }
 
+/// Credit for a line drawn from third-party data (a park course traced from
+/// OpenStreetMap or National Park Service trails). It travels in the file's
+/// `<metadata>` because the file outlives the page that credited it, and
+/// OpenStreetMap's licence requires the credit on the exported work too.
+class GpxAttribution {
+  /// One canonical-English sentence, written to `<desc>`.
+  final String notice;
+
+  /// Rights holder for `<copyright author>`; null when no third party holds
+  /// rights.
+  final String? author;
+
+  /// Licence URL for `<copyright><license>`.
+  final String? licenseUrl;
+
+  /// Credit link for `<link href>`; null writes no `<link>`.
+  final String? linkHref;
+
+  /// `<link><text>`.
+  final String linkText;
+
+  const GpxAttribution({
+    required this.notice,
+    required this.author,
+    required this.licenseUrl,
+    required this.linkHref,
+    required this.linkText,
+  });
+}
+
+/// The `<desc>`, `<copyright>` and `<link>` lines of a GPX 1.1 `<metadata>`,
+/// in the schema's order (they follow `<name>` and precede `<time>`), each
+/// indented four spaces and newline-terminated. Empty for no attribution.
+String gpxAttributionMetadata(GpxAttribution? attribution) {
+  if (attribution == null) return '';
+  final lines = ['    <desc>${escapeXmlText(attribution.notice)}</desc>'];
+  final author = attribution.author;
+  if (author != null && author.isNotEmpty) {
+    final licenseUrl = attribution.licenseUrl;
+    final license = licenseUrl != null && licenseUrl.isNotEmpty
+        ? '<license>${escapeXmlText(licenseUrl)}</license>'
+        : '';
+    lines.add(
+        '    <copyright author="${escapeXmlText(author)}">$license</copyright>');
+  }
+  final href = attribution.linkHref;
+  if (href != null && href.isNotEmpty) {
+    lines.add('    <link href="${escapeXmlText(href)}">'
+        '<text>${escapeXmlText(attribution.linkText)}</text></link>');
+  }
+  return lines.map((l) => '$l\n').join();
+}
+
 /// Garmin-recognised `<sym>` name per marker kind; absent → no `<sym>`.
 const Map<String, String> _symByKind = {
   'aid_station': 'Water Source',
@@ -45,20 +100,31 @@ const Map<String, String> _symByKind = {
 
 /// Generate a GPX 1.1 document for a route line plus its course markers.
 /// [coordinates] are `[lng, lat]` pairs (same order as the web `toGpx`).
+/// [trackDesc], when set, is the `<trk>`'s `<desc>`, after its `<name>`.
 String toRouteGpxWithMarkers(
   String name,
   List<List<double>> coordinates,
   List<double> elevations,
-  List<RouteGpxMarker> markers,
-) {
-  final waypoints = markers.map(_renderWaypoint).join('\n');
+  List<RouteGpxMarker> markers, [
+  GpxAttribution? attribution,
+  String? trackDesc,
+]) {
+  final waypoints =
+      markers.map(_renderWaypoint).whereType<String>().join('\n');
 
+  // A point or marker without finite coordinates is dropped rather than
+  // written as `lat="NaN"`, which every GPX reader refuses; a missing or
+  // non-finite elevation keeps the existing 0 fallback.
   final trackpoints = <String>[];
   for (var i = 0; i < coordinates.length; i++) {
     final lng = coordinates[i][0];
     final lat = coordinates[i][1];
-    final ele = i < elevations.length ? elevations[i] : 0;
-    trackpoints.add('      <trkpt lat="$lat" lon="$lng"><ele>$ele</ele></trkpt>');
+    if (!lat.isFinite || !lng.isFinite) continue;
+    final num ele =
+        i < elevations.length && elevations[i].isFinite ? elevations[i] : 0;
+    trackpoints.add(
+        '      <trkpt lat="${_gpxNum(lat)}" lon="${_gpxNum(lng)}">'
+        '<ele>${_gpxNum(ele)}</ele></trkpt>');
   }
 
   return '''<?xml version="1.0" encoding="UTF-8"?>
@@ -67,27 +133,28 @@ String toRouteGpxWithMarkers(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${_escapeXml(name)}</name>
-  </metadata>
+    <name>${escapeXmlText(name)}</name>
+${gpxAttributionMetadata(attribution)}  </metadata>
 ${waypoints.isNotEmpty ? '$waypoints\n' : ''}  <trk>
-    <name>${_escapeXml(name)}</name>
-    <trkseg>
+    <name>${escapeXmlText(name)}</name>
+${trackDesc != null && trackDesc.isNotEmpty ? '    <desc>${escapeXmlText(trackDesc)}</desc>\n' : ''}    <trkseg>
 ${trackpoints.join('\n')}
     </trkseg>
   </trk>
 </gpx>''';
 }
 
-String _renderWaypoint(RouteGpxMarker m) {
+String? _renderWaypoint(RouteGpxMarker m) {
+  if (!m.lat.isFinite || !m.lng.isFinite) return null;
   final parts = <String>[
-    '  <wpt lat="${m.lat}" lon="${m.lng}">',
-    '<name>${_escapeXml(m.label)}</name>',
-    '<type>${_escapeXml(m.kind)}</type>',
+    '  <wpt lat="${_gpxNum(m.lat)}" lon="${_gpxNum(m.lng)}">',
+    '<name>${escapeXmlText(m.label)}</name>',
+    '<type>${escapeXmlText(m.kind)}</type>',
   ];
   final sym = _symByKind[m.kind];
   if (sym != null) parts.add('<sym>$sym</sym>');
   final desc = _buildDesc(m.meta);
-  if (desc.isNotEmpty) parts.add('<desc>${_escapeXml(desc)}</desc>');
+  if (desc.isNotEmpty) parts.add('<desc>${escapeXmlText(desc)}</desc>');
   parts.add('</wpt>');
   return parts.join('');
 }
@@ -115,11 +182,21 @@ String _buildDesc(Map<String, dynamic> meta) {
   return segments.join(' | ');
 }
 
-String _escapeXml(String str) {
-  return str
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&apos;');
+/// Render a coordinate the way the web twin's template literal does, so the
+/// exported file is byte-identical on both platforms.
+///
+/// Dart's `$double` interpolation always writes a decimal point, so a whole
+/// degree came out `lat="47.0"` here and `lat="47"` on web, and an integral
+/// elevation `<ele>400.0</ele>` against `<ele>400</ele>`. The Dart side was
+/// also internally inconsistent: the missing-elevation fallback is an `int 0`,
+/// so it emitted `<ele>0</ele>` while a supplied `0.0` emitted `<ele>0.0</ele>`.
+/// Both forms are schema-valid GPX, but the two suites pinned DIFFERENT bytes
+/// for the same input while the docs claimed lockstep.
+String _gpxNum(num v) {
+  if (v is int) return v.toString();
+  final d = v.toDouble();
+  if (d.isFinite && d == d.roundToDouble() && d.abs() < 1e21) {
+    return d.toInt().toString();
+  }
+  return d.toString();
 }

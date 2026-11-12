@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_C_PRO } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * /plans/[id] RaceDayPanel goal-feasibility signal (lib/runs/race_day.ts
@@ -43,14 +44,17 @@ test.describe('/plans/[id] race-day goal feasibility', () => {
 			// Precondition: the planted 50:00 10K (marathon projection ~13804s)
 			// must be the runner's best recent effort, or the panel anchors on
 			// a different run and the expected verdict/delta are meaningless.
-			const { data: recent } = await admin
-				.from('runs')
-				.select('distance_m, duration_s')
-				.eq('user_id', USER_C_PRO.id)
-				.gte('started_at', new Date(Date.now() - 90 * dayMs).toISOString())
-				.gte('distance_m', 1000);
+			const recent = await readRows(
+				'runs by user_id+started_at+distance_m',
+				admin
+					.from('runs')
+					.select('distance_m, duration_s')
+					.eq('user_id', USER_C_PRO.id)
+					.gte('started_at', new Date(Date.now() - 90 * dayMs).toISOString())
+					.gte('distance_m', 1000)
+			);
 			const bestExisting = Math.min(
-				...(recent ?? [])
+				...recent
 					.filter((r) => (r.duration_s ?? 0) > 0)
 					.map((r) => r.duration_s! * Math.pow(42195 / r.distance_m!, 1.06)),
 				Infinity
@@ -96,6 +100,15 @@ test.describe('/plans/[id] race-day goal feasibility', () => {
 			await expect(feas).toHaveText(/behind goal/i);
 			// The delta magnitude (13:21 slower) is rendered.
 			await expect(feas).toHaveText(/13:21/);
+
+			// The headline is the goal, labelled as one; the fitness projection
+			// it is graded against is the line labelled a prediction (#1288).
+			const goal = page.getByTestId('race-day-goal');
+			await expect(goal).toHaveText(/Goal finish\s+3:36:40/);
+			await expect(goal).not.toHaveText(/Predicted/);
+			await expect(page.getByTestId('race-day-projection')).toHaveText(
+				/Predicted finish at\s+3:50:\d\d/,
+			);
 
 			// The verdict pill reads on the hero's fixed canvas. contrast_guard
 			// computes the ratio from the stylesheet; what only a browser can

@@ -86,6 +86,61 @@ void main() {
       expect(out.status, PlaceSearchStatus.unavailable);
     });
 
+    test('a coordinate that is not a coordinate is dropped, both providers',
+        () async {
+      // `double.tryParse('NaN')` is NaN and `jsonDecode('1e400')` is Infinity
+      // (both measured), so a null check saw neither. A non-finite coordinate
+      // reaches `LatLng`, which carries no assertion of its own, and the map
+      // camera silently stops rendering; on the nearby-area path it reaches
+      // `jsonEncode`, which refuses it, and the runner is told the save
+      // failed. Out of range is the same class — a latitude is +/-90 by
+      // definition. decisions § 1011.
+      // Written as a literal body rather than through `jsonEncode`, which
+      // refuses the very value under test — that refusal is the downstream
+      // failure this guards against, and it is the wire that carries it here.
+      final maptiler = await searchPlaces(
+        'London',
+        apiKey: 'k',
+        fetcher: (_) async => '{"features":['
+            '{"place_name":"Infinite","center":[1e400,-1e400]},'
+            '{"place_name":"Off the globe","center":[200.0,95.0]},'
+            '{"place_name":"Real","center":[-0.1276,51.5072]}]}',
+      );
+      expect(maptiler.status, PlaceSearchStatus.ok);
+      expect(maptiler.results.map((r) => r.name), ['Real']);
+
+      // Nominatim serialises coordinates as STRINGS, which is the only path
+      // that can spell NaN at all.
+      final nominatim = await searchPlaces(
+        'London',
+        apiKey: '',
+        fetcher: (_) async => jsonEncode([
+          {'display_name': 'Not a number', 'lat': 'NaN', 'lon': '0'},
+          {'display_name': 'Overflowed', 'lat': '1e400', 'lon': '0'},
+          {'display_name': 'Off the globe', 'lat': '95', 'lon': '0'},
+          {'display_name': 'Real', 'lat': '51.5072', 'lon': '-0.1276'},
+        ]),
+        // The strings above are strings on the wire too, so jsonEncode is
+        // safe here — it is the PARSE that manufactures the non-finite.
+      );
+      expect(nominatim.status, PlaceSearchStatus.ok);
+      expect(nominatim.results.map((r) => r.name), ['Real']);
+    });
+
+    test('the poles and the antimeridian are places, not overflow', () async {
+      // The bound is inclusive: +/-90 and +/-180 are real coordinates and a
+      // guard that rejected them would drop legitimate answers.
+      final out = await searchPlaces(
+        'edge',
+        apiKey: '',
+        fetcher: (_) async => jsonEncode([
+          {'display_name': 'South Pole', 'lat': '-90', 'lon': '180'},
+          {'display_name': 'North Pole', 'lat': '90', 'lon': '-180'},
+        ]),
+      );
+      expect(out.results.length, 2);
+    });
+
     test('ok-empty outcome when the provider genuinely matched nothing',
         () async {
       // The one case the dropdown is entitled to call "no places found".
@@ -264,17 +319,6 @@ void main() {
     });
   });
 
-  group('haversineM', () {
-    test('zero distance for identical points', () {
-      expect(haversineM(0, 0, 0, 0), closeTo(0, 1e-9));
-    });
-    test('matches a known city pair to within 1 km', () {
-      // London (-0.1278, 51.5074) ↔ Paris (2.3522, 48.8566) ~344 km.
-      final d = haversineM(-0.1278, 51.5074, 2.3522, 48.8566);
-      expect(d, closeTo(344000, 1000));
-    });
-  });
-
   group('bboxRadius', () {
     test('returns half-diagonal for a square bbox around the centroid', () {
       // 1-degree square at the equator → each corner is 0.5° from the
@@ -388,6 +432,117 @@ void main() {
         fetcher: bomb,
       );
       expect(out, isNull);
+    });
+
+    test('returns null when the centre longitude decodes non-finite',
+        () async {
+      // jsonDecode('1e400') is Infinity, measured — it is a `num`, so the
+      // old `as num` cast let it through to a LatLng that silently stops a
+      // map camera rendering.
+      final stub = _StubFetcher(
+        '{"features":[{"place_name":"Overflow","center":[1e400,37.0]}]}',
+      );
+      final out = await geocodePlace(
+        'Overflow',
+        apiKey: 'k',
+        fetcher: stub.call,
+      );
+      expect(out, isNull);
+    });
+
+    test('returns null when the centre latitude is out of range', () async {
+      final stub = _StubFetcher(jsonEncode({
+        'features': [
+          {
+            'place_name': 'Past the pole',
+            'center': [-78.0, 91.0],
+          },
+        ],
+      }));
+      final out = await geocodePlace(
+        'Past the pole',
+        apiKey: 'k',
+        fetcher: stub.call,
+      );
+      expect(out, isNull);
+    });
+
+    test('returns null when a centre member is not a number', () async {
+      final stub = _StubFetcher(jsonEncode({
+        'features': [
+          {
+            'place_name': 'Stringly typed',
+            'center': ['-78.0', 37.0],
+          },
+        ],
+      }));
+      final out = await geocodePlace(
+        'Stringly typed',
+        apiKey: 'k',
+        fetcher: stub.call,
+      );
+      expect(out, isNull);
+    });
+
+    test(
+        'keeps the centroid and defaults the radius on a non-numeric bbox '
+        'corner', () async {
+      // The regression this pins: reading the corner through `as num` threw
+      // a TypeError into the catch-all, so a malformed bbox lost the whole
+      // geocode instead of degrading to the 5 km default.
+      final stub = _StubFetcher(jsonEncode({
+        'features': [
+          {
+            'place_name': 'Bad corner',
+            'center': [-78.0, 37.0],
+            'bbox': ['-83.6754', 36.5407, -75.2422, 39.4660],
+          },
+        ],
+      }));
+      final out = await geocodePlace(
+        'Bad corner',
+        apiKey: 'k',
+        fetcher: stub.call,
+      );
+      expect(out, isNotNull);
+      expect(out!.lng, closeTo(-78.0, 1e-9));
+      expect(out.lat, closeTo(37.0, 1e-9));
+      expect(out.radiusM, closeTo(5000, 1e-9));
+    });
+
+    test('defaults the radius when a bbox corner decodes non-finite',
+        () async {
+      final stub = _StubFetcher(
+        '{"features":[{"place_name":"Overflow bbox",'
+        '"center":[-78.0,37.0],"bbox":[1e400,36.5,-75.2,39.4]}]}',
+      );
+      final out = await geocodePlace(
+        'Overflow bbox',
+        apiKey: 'k',
+        fetcher: stub.call,
+      );
+      expect(out, isNotNull);
+      expect(out!.radiusM, closeTo(5000, 1e-9));
+      expect(out.radiusM.isNaN, isFalse);
+    });
+
+    test('defaults the radius when a bbox corner is out of range', () async {
+      final stub = _StubFetcher(jsonEncode({
+        'features': [
+          {
+            'place_name': 'Wide bbox',
+            'center': [-78.0, 37.0],
+            'bbox': [-83.6754, 36.5407, -75.2422, 95.0],
+          },
+        ],
+      }));
+      final out = await geocodePlace(
+        'Wide bbox',
+        apiKey: 'k',
+        fetcher: stub.call,
+      );
+      expect(out, isNotNull);
+      expect(out!.radiusM, closeTo(5000, 1e-9));
     });
 
     test('falls back to "text" when "place_name" is absent', () async {

@@ -9,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_routine_store.dart';
 import '../lib/screens/gym_session_screen.dart';
+import 'pump_until.dart';
 
 /// No-op so the session screen's `WakelockPlus.enable()` / `.disable()` don't
 /// hit the real pigeon channel (which throws under flutter_test).
@@ -195,18 +196,10 @@ Finder _inDialog(String text) => find.descendant(
 Future<void> _pumpUntil(
   WidgetTester tester,
   bool Function() done, {
+  required String describe,
   Duration timeout = const Duration(seconds: 10),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (!done()) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail('timed out after $timeout waiting for the expected state');
-    }
-    await tester
-        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
-    await tester.pump();
-  }
-}
+}) =>
+    pumpUntil(tester, done, describe: describe, timeout: timeout);
 
 void main() {
   setUpAll(() {
@@ -256,12 +249,13 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    // Finish writes the file; let the (api == null) save path settle.
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Finish'));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
+    // Finish writes the file; the (api == null) save path only lands on the
+    // real event loop. The saved banner is raised AFTER the atomic write and
+    // the index flush, so it is the one signal that outlives the temp dir's
+    // teardown — the in-memory row is populated before the write.
+    await tester.runAsync(() => tester.tap(find.text('Finish')));
+    await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+        describe: 'the finished session to be persisted and confirmed');
 
     final sets = g.store.workouts.single.sets;
     expect(sets.length, 1);
@@ -326,11 +320,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Finish'));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
+    await tester.runAsync(() => tester.tap(find.text('Finish')));
+    await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+        describe: 'the finished session to be persisted and confirmed');
 
     // Distance has no gym_sets column, so the flat set list stays empty — the
     // real distance travels in the metadata step-results instead.
@@ -357,11 +349,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Finish'));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
+    await tester.runAsync(() => tester.tap(find.text('Finish')));
+    await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+        describe: 'the finished session to be persisted and confirmed');
 
     final results = ((g.store.workouts.single.row['metadata']
         as Map)['gym_step_results'] as List);
@@ -477,7 +467,8 @@ void main() {
 
     // Leave writes the draft file before popping; poll the pop through.
     await tester.tap(_inDialog('Leave — keep draft'));
-    await _pumpUntil(tester, () => tester.any(find.text('open session')));
+    await _pumpUntil(tester, () => tester.any(find.text('open session')),
+        describe: 'the draft to be saved and the launcher to report it');
     final draft = g.store.workouts.single;
     expect(draft.sets.length, 1, reason: 'the logged set must survive');
     final meta = draft.row['metadata'] as Map;
@@ -507,7 +498,8 @@ void main() {
 
     await tester.tap(_inDialog('Leave — keep draft'));
     await _pumpUntil(
-        tester, () => tester.any(find.textContaining("Couldn't save your draft")));
+        tester, () => tester.any(find.textContaining("Couldn't save your draft")),
+        describe: 'the draft-save failure banner');
 
     // Still on the session with the logged set intact — not popped back to the
     // launcher with the work thrown away.
@@ -515,8 +507,6 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Complete set'), findsOneWidget);
     expect(g.store.workouts, isEmpty);
 
-    // showTopBanner leaves an auto-dismiss timer pending.
-    await tester.pump(const Duration(seconds: 4));
   });
 
   testWidgets('back → Discard pops and deletes the draft', (tester) async {
@@ -534,7 +524,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(_inDialog('Discard'));
-    await _pumpUntil(tester, () => tester.any(find.text('open session')));
+    await _pumpUntil(tester, () => tester.any(find.text('open session')),
+        describe: 'the discard to return to the launcher');
     expect(g.store.workouts, isEmpty,
         reason: 'Discard must not leave an orphan draft row');
   });
@@ -554,13 +545,11 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    // Finish → createLocal writes a file; run it on the real event loop and let
-    // the (api == null) save path settle before asserting on the store.
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Finish'));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
+    // Finish → createLocal writes a file; run it on the real event loop and
+    // wait for the (api == null) save path to land in the store.
+    await tester.runAsync(() => tester.tap(find.text('Finish')));
+    await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+        describe: 'the finished session to be persisted and confirmed');
 
     // One workout landed, titled from the routine, with both completed sets
     // and the routine-id metadata stamped (the cross-modal review trio).
@@ -600,11 +589,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Complete set'));
     await tester.pump();
 
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Finish'));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
+    await tester.runAsync(() => tester.tap(find.text('Finish')));
+    await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+        describe: 'the finished session to be persisted and confirmed');
 
     final w = g.store.workouts.single;
     expect(
@@ -660,11 +647,9 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Skip set'));
     await tester.pump();
 
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Finish'));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
+    await tester.runAsync(() => tester.tap(find.text('Finish')));
+    await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+        describe: 'the finished session to be persisted and confirmed');
 
     final set = g.store.workouts.single.sets.single;
     expect(set['reps'], 8);
@@ -681,5 +666,65 @@ void main() {
 
     // Blank title → the localised "Routines" fallback, never an empty AppBar.
     expect(find.text('Routines'), findsOneWidget);
+  });
+
+  group('the set-entry row', () {
+    /// Mount the session at a surface size + OS text scale.
+    Future<void> pumpAt(
+      WidgetTester tester,
+      LocalGymStore store,
+      StoredRoutine routine, {
+      required double scale,
+      required double width,
+    }) async {
+      await tester.binding.setSurfaceSize(Size(width, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(scale)),
+          child: child!,
+        ),
+        home: GymSessionScreen(api: null, routine: routine, gymStore: store),
+      ));
+      await tester.pump();
+    }
+
+    testWidgets('Log set sits below the fields it commits', (tester) async {
+      final g = await _gymStore(tester);
+      addTearDown(() => g.dir.deleteSync(recursive: true));
+
+      await tester.pumpWidget(_screen(g.store, _routine()));
+      await tester.pump();
+
+      final logSet =
+          tester.getRect(find.widgetWithText(FilledButton, 'Complete set'));
+      for (final label in ['Reps', 'kg', 'RPE']) {
+        final field = tester.getRect(find.widgetWithText(TextField, label));
+        expect(logSet.top, greaterThanOrEqualTo(field.bottom),
+            reason: '$label must be entered before the control that logs it');
+      }
+    });
+
+    // Pins the DERIVATION, not a dp fit: flutter_test's font is fixed-advance
+    // (conventions.md § 500), so "it fits here" is not a claim about a device.
+    // What is checkable is that the row keeps its 1.0x shape and gives the
+    // labels more width as the OS text size grows.
+    testWidgets('keeps the three fields on one row at 1.0x', (tester) async {
+      final g = await _gymStore(tester);
+      addTearDown(() => g.dir.deleteSync(recursive: true));
+
+      await pumpAt(tester, g.store, _routine(), scale: 1.0, width: 400);
+
+      final reps = tester.getRect(find.widgetWithText(TextField, 'Reps'));
+      final weight = tester.getRect(find.widgetWithText(TextField, 'kg'));
+      final rpe = tester.getRect(find.widgetWithText(TextField, 'RPE'));
+      expect(weight.top, reps.top);
+      expect(rpe.top, reps.top);
+      expect(weight.left, greaterThan(reps.right));
+      expect(rpe.left, greaterThan(weight.right));
+    });
   });
 }

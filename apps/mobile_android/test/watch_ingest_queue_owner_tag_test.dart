@@ -32,7 +32,7 @@ class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceM
 /// classification.
 class _FailingUploadApi extends _FakeApiClient {
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     throw StateError('network down');
   }
 }
@@ -40,13 +40,15 @@ class _FailingUploadApi extends _FakeApiClient {
 class _FakeApiClient extends ApiClient {
   String? fakeUserId;
   final List<Run> saved = [];
+  final List<bool?> savedIsPublic = [];
 
   @override
   String? get userId => fakeUserId;
 
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     saved.add(run);
+    savedIsPublic.add(isPublic);
   }
 }
 
@@ -76,6 +78,38 @@ void main() {
 
   tearDown(() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+  });
+
+  // ── Overlapping owner stamps (§ 828) ────────────────────────────────
+  group('setLastKnownOwner — overlapping calls', () {
+    File ownerFile() => File('${tempDir.path}/watch_ingest_queue/last_owner.txt');
+
+    test('a clear fired against an in-flight stamp is not undone', () async {
+      // Both call sites in main.dart fire this unawaited, so a sign-out
+      // landing on a sign-in put a delete and an atomic write over one file in
+      // flight together: the delete found no target yet, the write's rename
+      // put the stamp back, and the next cold start hydrated an owner the
+      // store had been told to forget.
+      await queue.setLastKnownOwner('user-a');
+
+      final stamp = queue.setLastKnownOwner('user-b');
+      final clear = queue.setLastKnownOwner(null);
+      await Future.wait([stamp, clear]);
+
+      expect(queue.debugLastKnownOwner, isNull);
+      expect(ownerFile().existsSync(), isFalse,
+          reason: 'a cold start must not hydrate a stamp the store was told '
+              'to clear — an adopted watch run lands in the wrong account');
+    });
+
+    test('the last stamp wins on disk as well as in memory', () async {
+      final a = queue.setLastKnownOwner('user-a');
+      final b = queue.setLastKnownOwner('user-b');
+      await Future.wait([a, b]);
+
+      expect(queue.debugLastKnownOwner, 'user-b');
+      expect(ownerFile().readAsStringSync(), 'user-b');
+    });
   });
 
   // ── Headline guarantee ──────────────────────────────────────────────
@@ -116,6 +150,27 @@ void main() {
       expect(api.saved.single.id, 'a-run-1');
       expect(queue.pendingCount, 0,
           reason: 'drained file must be deleted on success');
+    });
+
+    test('a queued run keeps the visibility the wrist stamped on it',
+        () async {
+      // The runner's `privacy_default` is snapshotted on the watch when the
+      // run stops; a run that waited out a signed-out window must still land
+      // public when the runner had chosen public, and must not be forced
+      // public when they had not.
+      await queue.setLastKnownOwner('user-a');
+      await queue.enqueue({..._payload(id: 'public-run'), 'is_public': true});
+      await queue.enqueue({..._payload(id: 'private-run'), 'is_public': false});
+      await queue.enqueue(_payload(id: 'unstamped-run'));
+
+      final api = _FakeApiClient()..fakeUserId = 'user-a';
+      await queue.drain(api);
+
+      final byId = {
+        for (var i = 0; i < api.saved.length; i++)
+          api.saved[i].id: api.savedIsPublic[i],
+      };
+      expect(byId, {'public-run': true, 'private-run': null, 'unstamped-run': null});
     });
 
     test('mixed queue (a + b) drains only a\'s under a\'s session', () async {

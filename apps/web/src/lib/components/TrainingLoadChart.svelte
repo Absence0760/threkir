@@ -1,13 +1,19 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { TrainingLoadPoint } from '$lib/training/training_load';
+	import { trainingLoadTickValues } from '#lib/training/load_chart_ticks.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { formatInteger } from '#lib/format/number.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import type { TrainingLoadPoint } from '#lib/training/training_load.ts';
 
 	interface Props {
 		points: TrainingLoadPoint[];
 		hasHr: boolean;
+		/// The runner said their heart rate is medication-affected and the
+		/// curve reads it (`isTrimpLowConfidence`, decisions § 2092).
+		lowConfidence?: boolean;
 	}
-	let { points, hasHr }: Props = $props();
+	let { points, hasHr, lowConfidence = false }: Props = $props();
 
 	// Fixed viewBox; we let the host stretch the SVG and use
 	// preserveAspectRatio so points stay legible at any width.
@@ -59,28 +65,12 @@
 
 	let zeroY = $derived(yAt(0));
 
-	/// Round tick step on the 1 / 2 / 5 x 10^n ladder. The plot is
-	/// min/max-normalised, so without labelled ticks CTL 45 and CTL 450 draw
-	/// pixel-identically — shape without magnitude. Mirrors mobile's
-	/// `trainingLoadTickStep`.
-	function tickStep(span: number, maxTicks = 4): number {
-		if (!Number.isFinite(span) || span <= 0) return 1;
-		const raw = span / maxTicks;
-		const mag = 10 ** Math.floor(Math.log10(raw));
-		const norm = raw / mag;
-		const mult = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-		return mult * mag;
-	}
-
-	let ticks = $derived.by(() => {
-		const { min, max } = valueRange;
-		const step = tickStep(max - min);
-		const out: Array<{ value: number; y: number }> = [];
-		for (let v = Math.ceil(min / step) * step; v <= max + step * 0.001; v += step) {
-			out.push({ value: Math.round(v), y: yAt(v) });
-		}
-		return out;
-	});
+	let ticks = $derived(
+		trainingLoadTickValues(valueRange.min, valueRange.max).map((value) => ({
+			value,
+			y: yAt(value),
+		})),
+	);
 
 	let last = $derived(points.at(-1));
 	// Honest signal that gym load is folded into these curves — the
@@ -93,7 +83,7 @@
 
 	function fmtNum(n: number | undefined): string {
 		if (n == null) return '—';
-		return n.toFixed(0);
+		return formatInteger(n, activeFormatLocale());
 	}
 
 	function fmtDateLabel(iso: string): string {
@@ -109,11 +99,16 @@
 		<h2>{t('trainingLoad.heading')}</h2>
 		<p class="hint">
 			{#if hasHr}
-				{t('trainingLoad.hintTrimp', { n: points.length })}
+				<MetricLabel metric="trimp" sentence="trainingLoad.hintTrimp" params={{ n: points.length }} />
 			{:else}
 				{t('trainingLoad.hintVolume')}
 			{/if}
 		</p>
+		{#if lowConfidence}
+			<p class="hint hint-low-confidence" data-testid="training-load-low-confidence">
+				{t('trainingLoad.lowConfidenceMedication')}
+			</p>
+		{/if}
 		{#if hasLiftLoad}
 			<p class="hint hint-lifts">{t('trainingLoad.includesLifts')}</p>
 		{/if}

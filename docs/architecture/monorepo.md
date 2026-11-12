@@ -10,12 +10,49 @@ A step-by-step guide to bootstrapping the monorepo from scratch, understanding t
 
 | Tool | Version | Install |
 |---|---|---|
-| Flutter | 3.19+ | `flutter.dev/docs/get-started/install` |
-| Dart | 3.3+ | Bundled with Flutter |
-| Melos | 7.x | `dart pub global activate melos` |
-| Node.js | 20 LTS | `nodejs.org` |
+| Flutter | 3.47.0 | `flutter.dev/docs/get-started/install` |
+| Dart | bundled with Flutter | — |
+| Melos | 7.8.2 | `dart pub global activate melos 7.8.2` |
+| Node.js | 24.20.0 | `nodejs.org`, or `asdf install` — see below |
 | Xcode | 15+ | Mac App Store (macOS only) |
 | Android Studio | Hedgehog+ | `developer.android.com/studio` |
+
+The first three are **exact versions, not floors**, and
+`scripts/check_toolchain_pins.mjs` reads this table against the places the repo
+pins them — `env.FLUTTER_VERSION` in every workflow, `pubspec.lock`, and every
+`actions/setup-node` step. It said 3.19+, 7.x and Node 20 LTS against a CI
+running 3.47.0, 7.8.2 and 24.20.0 until [§ 1536](decisions.md); a prerequisite
+table is a pin like any other and was simply the one nothing compared.
+
+**Every row is in one of two states, and a new row must declare which**
+([§ 1587](decisions.md)). If the repo pins the tool somewhere a guard can read,
+the row states that **exact version** and is added to `PREREQ_ROWS` naming the
+pin — the guard then fails when the two disagree. If nothing in the repo pins
+it, the row states a **floor** (`15+`) and is added to `PREREQ_UNPINNED` with
+the reason no pin exists. A row in neither register is unread, which is how the
+three above drifted; the guard now fails on one, and fails on a floor row that
+states an exact version, since an exact version nothing compares is the one kind
+of pin that cannot go stale loudly.
+
+Xcode and Android Studio are floors because there is genuinely nothing to
+compare them to, re-checked 2026-09-08: `release-ios.yml` and the watchOS jobs
+run on `macos-latest` and take whatever Xcode that image ships (the repo holds
+no `xcode-select`, `DEVELOPER_DIR` or `xcode-version` anywhere), and no workflow
+names an Android Studio version at all. The Gradle plugin (`settings.gradle.kts`
+— 8.13.2 for the Flutter host, 9.4.0 for Wear OS) and the JDK
+(`actions/setup-java`) **are** pinned, but they are build inputs the wrapper
+resolves rather than the IDE this row tells a contributor to install, so neither
+belongs in the Android Studio cell.
+
+**`.tool-versions` is a pin REGISTRY, not an install manifest.** Six of its
+seven lines are commented on purpose: Flutter, Rust, Go, Terraform, Deno and
+Python are each installed by their own manager (the Flutter SDK from
+flutter.dev, `rustup`, the distro's Go, `tfenv`, Deno's installer), and having
+`asdf install` materialise a second copy of any of them is not what anyone
+wants. `nodejs` is the one active line because Node is the one toolchain here
+with no other manager. Every line is checked against the repo's own pin whether
+commented or not ([§ 911](decisions.md)) — a commented pin is a claim the next
+reader will uncomment.
 
 ---
 
@@ -52,7 +89,7 @@ run-app/
 │   ├── watch_garmin/        # Native Monkey C / Connect IQ data field for existing Garmin watches (research-tier Vector 1 spike)
 │   ├── custom_watch/        # Rust + Embassy firmware for the ultra-marathon watch (research-tier, tier-1 bench prototype)
 │   ├── graph_cycle/         # Go street-graph cycle-search sidecar for route loop generation
-│   ├── web/                 # SvelteKit 2 + Svelte 5 runes
+│   ├── web/                 # SvelteKit 3 + Svelte 5 runes
 │   ├── backend/             # Supabase project — migrations, functions, seed
 │   └── job_worker/          # Go background worker (Fly.io)
 ├── packages/
@@ -230,9 +267,9 @@ pnpm dev:db:up              # wraps `cd apps/backend && supabase start` —
                             # brings up Postgres + Auth + Storage + Studio
 pnpm dev:run:fns            # wraps `supabase functions serve --env-file .env.local`
 
-# Functions available at http://localhost:54321/functions/v1/{function-name}
-# Studio UI: pnpm dev:db:studio   (http://127.0.0.1:54323)
-# Mail catcher: pnpm dev:db:mailpit (http://127.0.0.1:54324)
+# Functions available at http://localhost:24321/functions/v1/{function-name}
+# Studio UI: pnpm dev:db:studio   (http://127.0.0.1:24323)
+# Mail catcher: pnpm dev:db:mailpit (http://127.0.0.1:24324)
 # psql shell: pnpm dev:db:psql
 # Reset to a clean seed: pnpm dev:db:reset
 ```
@@ -298,7 +335,7 @@ STRAVA_CLIENT_SECRET=abc...   # server-side only — no PUBLIC_ prefix
 # apps/backend/.env.local (used by supabase functions serve)
 STRAVA_CLIENT_ID=12345
 STRAVA_CLIENT_SECRET=abc...
-PARKRUN_USER_AGENT=RunApp/1.0 (contact@threkir.com)
+RACE_IMPORT_USER_AGENT=RunApp/1.0 (contact@threkir.com)
 ```
 
 ### GitHub Actions secrets
@@ -313,7 +350,7 @@ notes in `reviews/`). Repo secrets exist only for the release workflows:
 | `AWS_DEPLOY_ROLE_ARN_PROD` | Web deployment — IAM role assumed via OIDC when a `web@*` GitHub Release is published (see [releasing.md § Web (AWS deploy)](../ops/releasing.md#web-aws-deploy)) |
 | `AWS_DEPLOY_ROLE_ARN_PREVIEW` | Web deployment — same shape for the preview env (push to `main`) |
 | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` | Web build — inlined into `apps/web/.env` (deliberately not `.env.production`; see the comment in `release-web.yml`) before `npm run build` |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `PUBLIC_COACH_ENABLED`, `PUBLIC_ROUTE_GEN_ENABLED`, `PUBLIC_LIVE_HUB_URL` | Web build, optional — unset values inline as empty and each surface degrades (Pro not sold, no Sentry, Supabase Realtime live path) |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `PUBLIC_COACH_ENABLED`, `PUBLIC_ROUTE_GEN_ENABLED`, `PUBLIC_AI_PLAN_ENABLED`, `PUBLIC_PLATE_PHOTO_ENABLED`, `PUBLIC_COACH_FUEL_ENABLED`, `PUBLIC_AI_PLAN_EDIT_ENABLED`, `PUBLIC_LIVE_HUB_URL` | Web build, optional — unset values inline as empty and each surface degrades (Pro not sold, no Sentry, no AI plan assistant or AI plan edits, Supabase Realtime live path) |
 | `FLY_API_TOKEN` | `worker@*` / `osrm@*` / `graph-cycle@*` release workflows |
 
 A stale bare `AWS_DEPLOY_ROLE_ARN` (pre-dating the prod/preview split)
@@ -392,19 +429,21 @@ Svelte 5 runes syntax (`$state`, `$derived`, `$effect`, `$props`) is used throug
 
 ## CI/CD
 
-Full pipeline defined in `.github/workflows/ci.yml`. Seventeen jobs run on every PR + push to `main`:
+Full pipeline defined in `.github/workflows/ci.yml`, which is the full list. The load-bearing jobs, all of them running on every PR + push to `main`:
 
 | Job | Runner | What it does |
 |---|---|---|
-| `test-packages` | ubuntu-latest | `melos bootstrap` → scoped `flutter test` on `run_recorder` + `mobile_android` + `api_client` + `gpx_parser` |
+| `test-packages` | ubuntu-latest | `melos bootstrap` → scoped `flutter test` on `run_recorder` + `api_client` + `gpx_parser` + `ui_kit` + `core_models`, then `melos exec -- dart analyze` over the whole workspace (incl. `mobile_android`) |
+| `test-mobile-android` | ubuntu-latest ×4 | `flutter test` on `apps/mobile_android`, a 4-entry matrix sharded by file (every fourth sorted `*_test.dart`); split out of `test-packages` after one runner was shut down mid-suite on PR #1164 — see [testing.md § Which runner a package takes](../testing/testing.md) |
 | `test-worker` | ubuntu-latest | `go vet ./...` + `go test ./...` for `apps/job_worker` (incl. the GDPR Art 20 export-completeness guard) |
 | `test-graph-cycle` | ubuntu-latest | `go vet ./...` + `go test ./...` for the `apps/graph_cycle` street-graph cycle-search sidecar |
-| `parity-types` | ubuntu-latest | `supabase start` → `npm run gen:types:check` |
+| `parity-types` | ubuntu-latest | migration version-key + online-safety guards, `check_pnpm_overrides.mjs` (the security pins are declared in both lockfiles and actually resolved to, [§ 730](decisions.md)), `sync_deno_lock.mjs --check` ([§ 706](decisions.md)), `check_constraint_unions.mjs`, the web TS unit suite, the four `apps/web` tsc roots + their coverage guard ([§ 749](decisions.md) / [§ 752](decisions.md)), the two repo-root tsc roots + their coverage guard (`check:script-types`, `check:cloudfront-types`, `check:tsconfig-coverage` — [§ 757](decisions.md)), then `supabase start` → `npm run gen:types:check`. Every step prints its own `::error::` — the job name covers more than type drift, so it cannot say which one broke ([decisions.md § 711](decisions.md)) |
 | `build-web` | ubuntu-latest | `npm run build --workspace=apps/web` — SvelteKit compile check, no deploy |
-| `parity-matrix` | ubuntu-latest | `dart run scripts/check_parity_matrix.dart` — keeps `docs/product/parity.md` honest |
-| `build-watch-wear` | ubuntu-latest | Gradle build of `apps/watch_wear` (Compose-for-Wear smoke) |
+| `env-isolation` | ubuntu-latest | the dev-env guard's suite (`env_isolation.test.mjs`), the release-build env guard's suite (`check_production_env.test.mjs`), and a scan of every committed `.env.example` / `.env.development` for a live Stripe / Anthropic / Supabase value. Install-free, stdlib only. Was `env-isolation.yml`, a workflow of its own on a path filter and therefore in no `needs:` of the gate ([§ 862](decisions.md)) |
+| `parity-matrix` | ubuntu-latest | `dart run scripts/check_parity_matrix.dart` (table structure + legal symbols) and `node scripts/check_parity_ios_column.mjs` (the iOS column matches the one rule the doc states for it, decisions § 739) — keeps `docs/product/parity.md` honest. Ungated: a parity.md edit is a docs-only diff, so a guard for it in a `code`-gated job would never run |
+| `build-watch-wear` | ubuntu-latest | `./gradlew assembleDebug testDebugUnitTest` in `apps/watch_wear/android` — the Compose-for-Wear smoke build AND the 816 `@Test` methods it carries, which hang on that second task word alone. `scripts/check_gradle_test_coverage.mjs` in `workflow-lint` reads the task list handed to Gradle, so deleting the word fails the PR ([§ 1393](decisions.md)). **No workflow declares `GRADLE_UNTESTED` any more** — [§ 1439](decisions.md) wired up the last excused project and deleted both the value and the step that echoed it, and the guard treats an absent declaration as the empty list it is meant to end at ([§ 1500](decisions.md)). Should one ever come back, it is a `<path>=<count>=<reason>` value that a `run:` step in the declaring job must print, which the guard now requires rather than assumes ([§ 1533](decisions.md)) |
 | `build-firmware` | ubuntu-latest | `cargo build` + clippy + host tests of `apps/custom_watch` (Rust + Embassy, `thumbv7em-none-eabihf`); build + `clippy -D warnings` run over three feature sets — default, `ble` (`--no-default-features`), and the sim set — so the off-by-default builds can't rot |
-| `build-mobile-android` | ubuntu-latest | `flutter build appbundle` |
+| `build-mobile-android` | ubuntu-latest | `flutter build apk --release --no-tree-shake-icons --target-platform android-arm64` in `apps/mobile_android` — a toolchain smoke test, not a shipped artifact (the AAB is built on tag by `release-android.yml`). It configures and assembles the whole `android/` Gradle host, so an AGP / KGP / plugin-subproject break surfaces here rather than at a release tag; then a second step runs `./gradlew :app:testDebugUnitTest` in the same directory, which is where that project's 32 `@Test` methods execute — `assembleRelease` has no dependency on a test task, so until [§ 1439](decisions.md) committed the wrapper and added that step they ran nowhere. The `:app:` qualifier is load-bearing: unqualified, the task runs every subproject's, and the Flutter plugins are subprojects here |
 | `twin-parity` | ubuntu-latest | `diff -rq apps/mobile_android/lib apps/mobile_ios/lib` + `test/` |
 | `schema-codegen-drift` | ubuntu-latest | re-run `gen_dart_models.dart` (regenerates `db_rows.dart` + `DbRows.kt`), fail if working tree dirty |
 | `api-client-integration` | ubuntu-latest | `packages/api_client` integration suite against local Supabase |
@@ -489,19 +528,24 @@ After changing `assets/icon.svg`, regenerate them all in one command:
 
 The script is deterministic and idempotent: it re-renders each target at its
 committed pixel size (iOS/watchOS icons come out opaque truecolor, no alpha, as
-the App Store requires). The web header + PWA use `apps/web/static/logo-mark.svg`
-and `wordmark.svg`, which are separate hand-authored vector lockups derived from
-the same mark — edit those directly.
+the App Store requires). The web header + PWA use `apps/web/static/logo-mark.svg`,
+a hand-authored vector derived from the same mark (edit it directly), and the
+`wordmark.svg` / `wordmark-light.svg` lockups, which are GENERATED by
+`./assets/gen-wordmark.sh`: it outlines "Threkir" in Noto Sans Bold with Inkscape
+and sizes the canvas to the outlined name. Don't hand-edit them back to live
+`<text>` — an `<img>` SVG renders live text in the viewer's own fallback font,
+which clipped the name to "Threki" on CI's DejaVu Sans;
+`brand_icon_color_guard.test.ts` fails on a `<text>` in any shipped brand SVG.
 
 The Android status-bar notification small icon is a third hand-authored
 derivative: `apps/mobile_android/android/app/src/main/res/drawable/ic_stat_threkir.xml`,
 a white-on-transparent monochrome glyph (Android masks a small icon to its alpha
 silhouette, so the full-colour launcher mipmap renders as a solid square — that
 was the #483 bug). Its accent colour comes from `res/values/colors.xml`
-(`brand_ember = #FFFE5932`, the master's ember gradient stop). If you change the
-mark's glyph or the ember colour, update this drawable/colour to match.
+(`brand_coral = #FFC24E24`, the master's coral gradient stop). If you change the
+mark's glyph or the coral colour, update this drawable/colour to match.
 `apps/web/src/lib/brand_icon_color_guard.test.ts` pins the canonical
-`#FE5932 → #A01E77` pair across every machine-readable brand surface (master SVG,
+`#C24E24 → #5B4B8A` pair across every machine-readable brand surface (master SVG,
 manifest, `app.html` theme-color, the web SVG lockups, the Android colour + the
 notification drawable) so a single-platform edit can't silently drift the icon
 colour again.
@@ -511,7 +555,7 @@ colour again.
 ```bash
 # One per directory under apps/backend/supabase/functions/
 # (clip-public-track, delete-account, events-checkout, events-connect-onboard,
-#  export-data, parkrun-import, refresh-tokens, revenuecat-webhook,
+#  export-data, race-results-import, refresh-tokens, revenuecat-webhook,
 #  strava-import, strava-webhook, stripe-events-webhook)
 for fn in apps/backend/supabase/functions/*/; do
   name=$(basename "$fn")

@@ -10,29 +10,48 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../column_limits.dart';
+import '../course_gates.dart'
+    show CourseGate, PreflightCourse, SessionStartMode, racePreflight;
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../calendar_intent.dart';
 import '../event_category.dart';
 import '../event_gym_template.dart';
+import '../event_host_cancel.dart';
+import '../event_occurrence.dart';
+import '../event_waitlist_offer.dart';
 import '../finisher_certificate.dart';
+import '../gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
 import '../local_gym_store.dart';
+import '../web_base_url.dart';
 import 'checkpoint_checkin_screen.dart';
+import 'session_detail_screen.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
-import '../l10n/number_format.dart';
 import '../preferences.dart';
+import '../runner_handle.dart';
 import '../recurrence.dart';
+import '../session_step_label.dart';
 import '../session_steps.dart';
+import '../race_start_modes.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
+import '../widgets/course_lines_map.dart';
 import '../widgets/error_state.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/event_photos.dart';
 import '../widgets/fundraiser_section.dart';
 import '../widgets/finisher_certificate_card.dart';
 import '../widgets/gym_compose_sheet.dart';
+import '../widgets/gym_routine_picker.dart';
+import '../widgets/help_button.dart';
+import 'help_screen.dart' show openGuide;
+import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
+import '../widgets/race_preflight_dialog.dart';
 
 /// Host-only attendance marking is offered iff the viewer organises the
 /// event's club AND the event is a `class` (instructor_business.md M6).
@@ -40,6 +59,16 @@ import '../widgets/top_banner.dart';
 @visibleForTesting
 bool canMarkEventAttendance(ClubView? club, String category) =>
     club?.isEventOrganiser == true && category == 'class';
+
+/// The event page on the web, where a held waitlist seat is paid for: the
+/// phone has no checkout (club_events.md P3 is the web-checkout handoff). The
+/// host comes from `WEB_BASE_URL`, falling back to production, as every other
+/// web link does.
+@visibleForTesting
+String eventWebUrl(String clubSlug, String eventId, {String? webBase}) {
+  final base = resolveWebBaseUrl(override: webBase);
+  return '$base/clubs/${Uri.encodeComponent(clubSlug)}/events/${Uri.encodeComponent(eventId)}';
+}
 
 SessionItemKind _sessionKindFromString(String raw) {
   switch (raw) {
@@ -53,11 +82,13 @@ SessionItemKind _sessionKindFromString(String raw) {
 }
 
 /// The gym-composer seed for the event-detail "Log as workout" action,
-/// mirroring web's `logWorkoutPrefill`. With an attached, expanded session plan
-/// the seed carries one set per expanded step (a per-side step stays two rows)
-/// and a title of the class discipline / plan title falling back to the flat
-/// gym_template title; without one it is title-only (the flat gym_template
-/// path, [sets] == null).
+/// mirroring web's `logWorkoutPrefill`. With an attached gym routine the seed
+/// carries one set per planned set ([workoutDraftFromRoutine]) and a title of
+/// the class discipline / routine title; with an attached, expanded session
+/// plan it carries one set per expanded step (a per-side step stays two rows)
+/// and a title of the class discipline / plan title. Either falls back to the
+/// flat gym_template title; without content the seed is title-only (the flat
+/// gym_template path, [sets] == null).
 @visibleForTesting
 ({String? title, List<GymSetInput>? sets}) logWorkoutSeed({
   required EventGymTemplate? gymTemplate,
@@ -65,8 +96,27 @@ SessionItemKind _sessionKindFromString(String raw) {
   required String? discipline,
   ExpandedSession? expansion,
   String? sessionPlanTitle,
+  PlannedRoutine? routine,
 }) {
   final base = workoutDraftFromTemplate(gymTemplate, eventTitle);
+  if (routine != null) {
+    final draft = workoutDraftFromRoutine(routine, discipline);
+    return (
+      title: draft.title ?? base.title,
+      sets: [
+        for (final s in draft.sets)
+          (
+            exerciseName: s.exerciseName,
+            reps: s.reps,
+            weightKg: s.weightKg,
+            rpe: s.rpe,
+            setType: null,
+            durationS: null,
+            exerciseId: null,
+          ),
+      ],
+    );
+  }
   if (expansion == null) return (title: base.title, sets: null);
   final draft = workoutDraftFromSession(expansion, sessionPlanTitle, discipline);
   return (
@@ -90,11 +140,16 @@ class EventDetailScreen extends StatefulWidget {
   final SocialService social;
   final String clubSlug;
   final String eventId;
+
+  /// The class-content reads (attached gym routine, session plan). Null in
+  /// production, which resolves `ApiClient()` lazily on first use.
+  final ApiClient? api;
   const EventDetailScreen({
     super.key,
     required this.social,
     required this.clubSlug,
     required this.eventId,
+    this.api,
   });
 
   @override
@@ -107,13 +162,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   List<AttendeeView> _attendees = const [];
   String? _markingAttendance;
   List<EventResultView> _results = const [];
+  /// The courses a race offers (`event_courses`). Empty for a single-route
+  /// event, which RSVPs and races exactly as before courses existed.
+  List<EventCourseView> _courses = const [];
   RaceSessionRow? _raceSession;
+
+  /// The occurrence's courses as frozen when its race session was created
+  /// (decisions § 2391), keyed by course id. Empty without a frozen copy, in
+  /// which case the course map reads the live course row.
+  Map<String, FrozenRaceCourse> _frozenCourses = const {};
   DateTime? _activeInstance;
   List<DateTime> _instances = const [];
   // Instance starts cancelled via `event_exceptions`. Filtered out of the
   // picker and banner-flagged when the active one is cancelled, so a member
   // can't RSVP to an occurrence that was called off.
   Set<DateTime> _cancelled = const {};
+  /// The series as a platform recurrence rule, or null for a one-off event and
+  /// for the rare recurring shape the rule grammar cannot state without
+  /// diverging from the occurrences this screen lists.
+  CalendarSeries? _calendarSeries;
   /// Members-only meetup coordinates via get_event_meet_point (null for
   /// non-members / no point set). Persona-hunt social-group #10.
   ({double lat, double lng})? _meetPoint;
@@ -126,10 +193,23 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// the other.
   bool _raceBusy = false;
   bool _autoApproveOnArm = true;
+  /// Set while a director's approve / unverify / edit is in flight.
+  bool _resultActionBusy = false;
+  /// Set while a host cancel or reinstate is in flight, so a second press
+  /// cannot start a second refund run.
+  bool _cancelBusy = false;
   _EventLoadError? _loadError;
 
   RealtimeChannel? _channel;
   Timer? _debounce;
+
+  /// Rebuilds a scheduled or self-timed race's panel as the server clock
+  /// passes its instants, so GO and the window's close show without a poll.
+  Timer? _raceClock;
+
+  /// The server clock minus this device's, sampled when the screen loads a
+  /// scheduled or self-timed race (#1306 m3).
+  Duration _serverOffset = Duration.zero;
 
   /// The class -> gym seam writes through this store (inform-tier: the composer
   /// is what saves). Created + initialised lazily on first use so a run/social
@@ -149,9 +229,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   ExpandedSession? _sessionExpansion;
   String? _sessionPlanTitle;
 
+  /// The class's attached gym routine (decisions § 1869), loaded best-effort
+  /// when a `class` event carries a `gym_routine_id`. It is the club's
+  /// template, read and never cloned: it only seeds the attendee's own log.
+  PlannedRoutine? _gymRoutine;
+
+  /// Set while an organiser's routine or session-plan attach / change / clear
+  /// is in flight. One flag for both: each write clears the other column
+  /// (decisions § 1884), so two in flight at once would race on the same row.
+  bool _contentBusy = false;
+
   @override
   void initState() {
     super.initState();
+    _api = widget.api;
     _load();
   }
 
@@ -163,9 +254,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return parseGymTemplate(e.row.gymTemplate);
   }
 
-  bool get _canLogAsWorkout =>
-      _gymTemplate != null &&
-      Supabase.instance.client.auth.currentUser != null;
+  bool get _canLogAsWorkout {
+    final e = _event;
+    if (e == null || e.row.category != 'class') return false;
+    return (_gymTemplate != null || e.row.gymRoutineId != null) &&
+        Supabase.instance.client.auth.currentUser != null;
+  }
 
   Future<void> _logAsWorkout() async {
     final e = _event;
@@ -176,6 +270,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       discipline: e.row.discipline,
       expansion: _sessionExpansion,
       sessionPlanTitle: _sessionPlanTitle,
+      routine: _gymRoutine,
     );
     final store = _gymStore ??= LocalGymStore();
     await store.init();
@@ -197,16 +292,75 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  /// Best-effort load of the class's attached gym routine, the counterpart of
+  /// [_maybeLoadSessionPlan] and of web's `loadGymRoutine`. A routine the
+  /// viewer cannot read leaves the flat gym_template path intact (L4).
+  Future<void> _maybeLoadGymRoutine(EventView event) async {
+    final routineId =
+        event.row.category == 'class' ? event.row.gymRoutineId : null;
+    if (routineId == null) {
+      if (mounted && _gymRoutine != null) setState(() => _gymRoutine = null);
+      return;
+    }
+    try {
+      final data = await (_api ??= ApiClient()).fetchGymRoutineDetail(routineId);
+      // An organiser may have changed the routine while this read was out.
+      if (!mounted || _event?.row.gymRoutineId != routineId) return;
+      if (data == null) {
+        setState(() => _gymRoutine = null);
+        return;
+      }
+      setState(() {
+        _gymRoutine = PlannedRoutine(
+          title: data.routine.title,
+          exercises: [
+            for (final e in data.exercises)
+              PlannedExercise(
+                exerciseName: e.exercise.exerciseName,
+                position: e.exercise.position,
+                supersetGroup: e.exercise.supersetGroup,
+                supersetOrder: e.exercise.supersetOrder,
+                sets: [
+                  for (final st in e.sets)
+                    PlannedSet(
+                      setIndex: st.setIndex,
+                      targetRepsMin: st.targetRepsMin,
+                      targetRepsMax: st.targetRepsMax,
+                      targetWeightKg: st.targetWeightKg,
+                      targetRpe: st.targetRpe,
+                      setType: st.setType,
+                    ),
+                ],
+              ),
+          ],
+        );
+      });
+    } catch (e) {
+      debugPrint('EventDetailScreen gym-routine load failed: $e');
+    }
+  }
+
   /// Best-effort load + expand the class's attached session plan so
   /// [_logAsWorkout] can seed the composer from the class content. Mirrors
   /// web's `loadSessionPlan` + `sessionExpansion`. A failure leaves the flat
   /// gym_template path intact (L4).
   Future<void> _maybeLoadSessionPlan(EventView event) async {
-    final planId = event.row.sessionPlanId;
-    if (planId == null || event.row.category != 'class') return;
+    final planId =
+        event.row.category == 'class' ? event.row.sessionPlanId : null;
+    if (planId == null) {
+      // Attaching a routine detaches the plan (decisions § 1884), so a stale
+      // expansion must not keep seeding Log-as-workout.
+      if (mounted) _clearSessionPlan();
+      return;
+    }
     try {
       final data = await (_api ??= ApiClient()).fetchSessionPlan(planId);
-      if (!mounted || data == null) return;
+      // An organiser may have changed the plan while this read was out.
+      if (!mounted || _event?.row.sessionPlanId != planId) return;
+      if (data == null) {
+        _clearSessionPlan();
+        return;
+      }
       final input = SessionPlanInput(
         blocks: [
           for (final b in data.blocks)
@@ -234,7 +388,305 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       });
     } catch (e) {
       debugPrint('EventDetailScreen session-plan load failed: $e');
+      if (mounted && _event?.row.sessionPlanId == planId) _clearSessionPlan();
     }
+  }
+
+  void _clearSessionPlan() {
+    if (_sessionExpansion == null && _sessionPlanTitle == null) return;
+    setState(() {
+      _sessionExpansion = null;
+      _sessionPlanTitle = null;
+    });
+  }
+
+  /// Attach, change or clear the class's gym routine after creation, web's
+  /// `openRoutineAttach` + `saveRoutineAttach`. The picker lists the club's
+  /// templates (decisions § 1884 (4)); attaching one detaches any session plan
+  /// in the same write, which the sheet says before the organiser saves.
+  Future<void> _editGymRoutine(EventView e) async {
+    if (_contentBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _contentBusy = true);
+    final options = [
+      ...await widget.social.fetchClubGymRoutineOptions(e.row.clubId),
+    ];
+    // The attached routine may not be in a failed or narrowed options read; it
+    // stays selectable so opening the sheet never reads as "none".
+    final current = e.row.gymRoutineId;
+    final title = _gymRoutine?.title;
+    if (current != null &&
+        title != null &&
+        !options.any((o) => o.id == current)) {
+      options.insert(0, (id: current, title: title));
+    }
+    if (!mounted) return;
+    setState(() => _contentBusy = false);
+    final picked = await showModalBottomSheet<({String? id})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _GymRoutineAttachSheet(
+        initial: current,
+        routines: options,
+        hasSessionPlan: e.row.sessionPlanId != null,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _contentBusy = true);
+    try {
+      await widget.social.setEventGymRoutine(e.row.id, picked.id);
+    } catch (err) {
+      debugPrint('EventDetailScreen setEventGymRoutine failed: $err');
+      if (mounted) {
+        setState(() => _contentBusy = false);
+        showTopBanner(context, l10n.clubEventGymRoutineSaveFailed);
+      }
+      return;
+    }
+    if (!mounted) return;
+    showTopBanner(context, l10n.clubEventGymRoutineSaved);
+    await _rereadClassContent(e.row.id);
+  }
+
+  /// After an organiser's routine or session-plan write lands: re-read the row
+  /// so both cards and the Log-as-workout seed follow it — either write may
+  /// have cleared the other column (decisions § 1884). A failed re-read leaves
+  /// the old cards until the next load rather than reporting a save that
+  /// happened as failed.
+  Future<void> _rereadClassContent(String eventId) async {
+    try {
+      final fresh = await widget.social.fetchEventById(eventId);
+      if (!mounted) return;
+      if (fresh != null) {
+        setState(() => _event = fresh);
+        await Future.wait([
+          _maybeLoadGymRoutine(fresh),
+          _maybeLoadSessionPlan(fresh),
+        ]);
+      }
+    } catch (err) {
+      debugPrint('EventDetailScreen event re-read after class content save: $err');
+    } finally {
+      if (mounted) setState(() => _contentBusy = false);
+    }
+  }
+
+  /// Attach, change or clear the class's session plan after creation, web's
+  /// `openAttach` + `saveAttach`. The picker lists the organiser's own plans
+  /// and their clubs' (the create form's list); attaching one detaches any gym
+  /// routine in the same write, which the sheet says before the organiser
+  /// saves.
+  Future<void> _editSessionPlan(EventView e) async {
+    if (_contentBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _contentBusy = true);
+    final options = [...await widget.social.fetchSessionPlanOptions()];
+    // The attached plan may not be in a failed or narrowed options read; it
+    // stays selectable so opening the sheet never reads as "none".
+    final current = e.row.sessionPlanId;
+    final title = _sessionPlanTitle;
+    if (current != null &&
+        title != null &&
+        !options.any((o) => o.id == current)) {
+      options.insert(0, (id: current, title: title));
+    }
+    if (!mounted) return;
+    setState(() => _contentBusy = false);
+    final picked = await showModalBottomSheet<({String? id})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _SessionPlanAttachSheet(
+        initial: current,
+        plans: options,
+        hasGymRoutine: e.row.gymRoutineId != null,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _contentBusy = true);
+    try {
+      await widget.social.setEventSessionPlan(e.row.id, picked.id);
+    } catch (err) {
+      debugPrint('EventDetailScreen setEventSessionPlan failed: $err');
+      if (mounted) {
+        setState(() => _contentBusy = false);
+        showTopBanner(context, l10n.clubEventSessionPlanSaveFailed);
+      }
+      return;
+    }
+    if (!mounted) return;
+    showTopBanner(context, l10n.clubEventSessionPlanSaved);
+    await _rereadClassContent(e.row.id);
+  }
+
+  /// The class's session-sequence card, web's `session-sequence` section: the
+  /// plan's title (opening the plan) and its expanded steps with their cues
+  /// for anyone who can read it, and for the organiser an attach / change
+  /// control and a "none" line.
+  Widget _buildSessionPlanCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    EventView e, {
+    required bool isOrganiser,
+  }) {
+    final expansion = _sessionExpansion;
+    final planId = e.row.sessionPlanId;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Card(
+      key: const Key('session-sequence'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.clubEventSessionPlanTitle,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (isOrganiser)
+                  TextButton(
+                    key: const Key('session-sequence-attach'),
+                    onPressed: _contentBusy ? null : () => _editSessionPlan(e),
+                    child: Text(l10n.clubEventSessionPlanAttach),
+                  ),
+              ],
+            ),
+            if (expansion != null && planId != null) ...[
+              InkWell(
+                onTap: () => _openSessionPlan(planId),
+                child: Text(
+                  _sessionPlanTitle ?? '',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final (i, step) in expansion.steps.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              sessionStepLabel(l10n, step),
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            if (step.cue != null && step.cue!.isNotEmpty)
+                              Text(step.cue!, style: muted),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ] else
+              Text(l10n.eventFormSessionPlanNone, style: muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The attached plan's own screen, web's `/sessions/{id}` link: the full
+  /// sequence and the follow-along runner, which logs into the viewer's gym
+  /// history.
+  Future<void> _openSessionPlan(String planId) async {
+    final store = _gymStore ??= LocalGymStore();
+    await store.init();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionDetailScreen(
+          api: _api ??= ApiClient(),
+          gymStore: store,
+          planId: planId,
+          titleHint: _sessionPlanTitle,
+        ),
+      ),
+    );
+  }
+
+  /// The class's routine card, web's `class-routine` section: the routine's
+  /// exercises with their planned set counts for anyone who can read it, and
+  /// for the organiser an attach / change control and a "none" line.
+  Widget _buildGymRoutineCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    EventView e, {
+    required bool isOrganiser,
+  }) {
+    final routine = _gymRoutine;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Card(
+      key: const Key('class-routine'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.clubEventGymRoutineTitle,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (isOrganiser)
+                  TextButton(
+                    key: const Key('class-routine-attach'),
+                    onPressed: _contentBusy ? null : () => _editGymRoutine(e),
+                    child: Text(l10n.clubEventGymRoutineAttach),
+                  ),
+              ],
+            ),
+            if (routine != null) ...[
+              Text(routine.title, style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 4),
+              for (final (i, ex) in routine.exercises.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                      Expanded(
+                        child: Text(
+                          ex.exerciseName,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.clubEventGymRoutineSets(ex.sets.length),
+                        style: muted,
+                      ),
+                    ],
+                  ),
+                ),
+            ] else
+              Text(l10n.clubEventGymRoutineNone, style: muted),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -260,8 +712,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       // default cap, so a weekly series' weeks 7+ are reachable in the picker
       // rather than truncated at 6. expandInstances still honours
       // recurrence_until / recurrence_count.
+      // elapsed-time: a loose one-year expansion horizon, not a calendar date.
       final horizon = now.add(const Duration(days: 365));
       final instances = expandInstances(event.toRecurrence(), now, horizon);
+      // A scheduled or self-timed session is created lazily; the screen's
+      // first read creates it when it is due (ensure_race_session).
+      if (event.row.raceStartMode != 'host_go') {
+        await widget.social.ensureRaceSession(event.row.id, _activeInstance!);
+        final offset = await widget.social.fetchServerClockOffset();
+        if (offset != null) _serverOffset = offset;
+      }
       final bodyResults = await Future.wait([
         widget.social.fetchAttendees(event.row.id, _activeInstance!),
         widget.social.fetchEventResults(event.row.id, _activeInstance!),
@@ -282,9 +742,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           for (final d in instances)
             if (!_cancelled.contains(d.toUtc())) d,
         ];
+        _calendarSeries = calendarSeriesFor(
+          event.toRecurrence(),
+          cancelled: _cancelled,
+          now: now,
+        );
         _loading = false;
       });
       unawaited(_maybeLoadSessionPlan(event));
+      unawaited(_maybeLoadGymRoutine(event));
+      unawaited(_loadFrozenCourses());
+      if (isAthleticEventCategory(event.row.category)) {
+        unawaited(_loadCourses(event.row.id));
+      }
       if (_channel == null && club != null) {
         _channel = widget.social.subscribeToEvent(
           event.row.id,
@@ -311,11 +781,177 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  /// Off the main load's critical path: a slow or failed course read must
+  /// not hold up the page, and RSVP without a course still works — the
+  /// server names the missing pick if the event turns out to need one.
+  Future<void> _loadCourses(String eventId) async {
+    try {
+      final courses = await widget.social.fetchEventCourses(eventId);
+      if (mounted) setState(() => _courses = courses);
+    } catch (e) {
+      debugPrint('EventDetailScreen._loadCourses: ${safeErrorLabel(e)}');
+    }
+  }
+
+  /// The frozen copy of the courses for the occurrence on screen, read only
+  /// once its race session says one exists. Off the critical path, like the
+  /// courses: a failed read leaves the map on the live course row.
+  Future<void> _loadFrozenCourses() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    if (e == null || inst == null || race?.coursesFrozenAt == null) {
+      if (_frozenCourses.isNotEmpty && mounted) {
+        setState(() => _frozenCourses = const {});
+      }
+      return;
+    }
+    try {
+      final frozen =
+          await widget.social.fetchRaceSessionCourses(e.row.id, inst);
+      if (mounted && identical(race, _raceSession)) {
+        setState(() => _frozenCourses = frozen);
+      }
+    } catch (err) {
+      debugPrint(
+          'EventDetailScreen._loadFrozenCourses: ${safeErrorLabel(err)}');
+    }
+  }
+
+  /// Arm, after the course preflight (#1305): warnings ask, errors block.
+  /// The courses are read fresh, so a line edited on the web since the page
+  /// loaded is what is checked; a failed read checks what the page holds.
+  /// The phone never reads a course's route, so the far-from-route row
+  /// (a warning the web editor shows inline) is not checked here.
+  Future<void> _armWithPreflight() async {
+    final e = _event;
+    if (e == null || _raceBusy) return;
+    var courses = _courses;
+    try {
+      courses = await widget.social.fetchEventCourses(e.row.id);
+    } catch (err) {
+      debugPrint(
+          'EventDetailScreen._armWithPreflight: ${safeErrorLabel(err)}');
+    }
+    if (!mounted) return;
+    final issues = racePreflight([
+      for (final c in courses)
+        PreflightCourse(
+          id: c.id,
+          startGate: c.startGate,
+          finishGate: c.finishGate,
+          hasFinishPoint: c.finishLat != null && c.finishLng != null,
+          selfCross: c.finishLineSelfCross,
+          route: null,
+        ),
+    ], _raceMode);
+    final names = {for (final c in courses) c.id: c.name};
+    final go =
+        await confirmRacePreflight(context, issues, (id) => names[id] ?? '');
+    if (go && mounted) await _raceMutation(_RaceAction.arm);
+  }
+
+  /// The course on the viewer's own RSVP for the occurrence on screen.
+  String? get _myCourseId {
+    final uid = widget.social.currentUserId;
+    if (uid == null) return null;
+    for (final a in _attendees) {
+      if (a.userId == uid) return a.courseId;
+    }
+    return null;
+  }
+
+  bool get _viewerGoing {
+    final uid = widget.social.currentUserId;
+    return uid != null &&
+        _attendees.any((a) => a.userId == uid && a.status == 'going');
+  }
+
+  /// Ask which course to run. Null when dismissed — the caller then writes
+  /// nothing, so a runner never lands on a course they did not choose.
+  Future<String?> _pickCourse() {
+    final l10n = AppLocalizations.of(context);
+    final current = _myCourseId;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.eventCoursePickTitle),
+        children: [
+          for (final c in _courses)
+            SimpleDialogOption(
+              key: Key('course-option-${c.id}'),
+              onPressed: () => Navigator.pop(ctx, c.id),
+              child: Row(
+                children: [
+                  Icon(
+                    c.id == current
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(c.name)),
+                  if (c.distanceM != null)
+                    Text(formatDistanceForPref(c.distanceM!)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changeCourse() async {
+    final e = _event;
+    final inst = _activeInstance;
+    if (e == null || inst == null || _busy) return;
+    final picked = await _pickCourse();
+    if (picked == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.social.rsvpEvent(e.row.id, 'going', inst, courseId: picked);
+      await _load();
+    } catch (err) {
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).eventCourseChangeFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _onRealtimeChange() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 250), () {
       if (mounted) _load();
     });
+  }
+
+  /// The public `/share/event/{id}` page the calendar entry links back to,
+  /// matching web's canonical for the same event.
+  String _eventShareUrl(String eventId) =>
+      '${resolveWebBaseUrl()}/share/event/$eventId';
+
+  /// L4: a calendar hand-off that can't open says so and leaves the page as it
+  /// was. Nothing on this screen depends on it.
+  Future<void> _addToCalendar(EventView e, {CalendarSeries? series}) async {
+    final opened = await addToDeviceCalendar(
+      title: e.row.title,
+      start: series?.anchor ?? _activeInstance ?? e.row.startsAt,
+      durationMin: e.row.durationMin,
+      description: e.row.description,
+      location: e.row.meetLabel,
+      url: _eventShareUrl(e.row.id),
+      rrule: series?.rrule,
+      timeZone: series?.timeZone,
+    );
+    if (!opened && mounted) {
+      showTopBanner(
+        context,
+        AppLocalizations.of(context).clubEventCalendarUnavailable,
+      );
+    }
   }
 
   /// MapTiler static map centred on the meetup point with a marker.
@@ -338,7 +974,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
     if (Platform.isAndroid) {
-      final q = label != null ? '?q=$lat,$lng(${Uri.encodeComponent(label)})' : '';
+      // The label sits inside `(...)`, which `encodeComponent` leaves as is,
+      // so a ")" in it closed the label early; parentheses are encoded too
+      // (the web `geoUri` in static_map.ts does the same).
+      final encodedLabel = label == null
+          ? ''
+          : Uri.encodeComponent(label)
+              .replaceAll('(', '%28')
+              .replaceAll(')', '%29');
+      final q = label != null ? '?q=$lat,$lng($encodedLabel)' : '';
       final geo = Uri.parse('geo:$lat,$lng$q');
       try {
         if (await canLaunchUrl(geo)) {
@@ -397,6 +1041,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   void dispose() {
+    _raceClock?.cancel();
     _debounce?.cancel();
     final channel = _channel;
     if (channel != null) {
@@ -411,6 +1056,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (e == null) return;
     final attendees = await widget.social.fetchAttendees(e.row.id, dt);
     final results = await widget.social.fetchEventResults(e.row.id, dt);
+    if (e.row.raceStartMode != 'host_go') {
+      await widget.social.ensureRaceSession(e.row.id, dt);
+    }
     final race = await widget.social.fetchRaceSession(e.row.id, dt);
     if (mounted) {
       setState(() {
@@ -418,6 +1066,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _results = results;
         _raceSession = race;
       });
+      unawaited(_loadFrozenCourses());
     }
   }
 
@@ -497,7 +1146,57 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
-  /// Arm / Fire Go / End dispatcher. Uses the current `_raceSession`
+  /// A race director's approve or unverify. An account row goes through the
+  /// `approve_event_result` RPC; a bib-only row has no account to key on and
+  /// is updated by its id, as on web.
+  Future<void> _approveResult(EventResultView r, bool approve) async {
+    final e = _event;
+    final inst = _activeInstance;
+    if (e == null || inst == null || _resultActionBusy) return;
+    final uid = r.userId;
+    await _resultAction(() => uid != null
+        ? widget.social.approveEventResult(
+            eventId: e.row.id, instance: inst, userId: uid, approve: approve)
+        : widget.social.approveEventResultById(r.id, approve));
+  }
+
+  Future<void> _editResult(EventResultView r) async {
+    if (_resultActionBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final edit = await showDialog<ResultEdit>(
+      context: context,
+      builder: (_) => ResultEditDialog(
+        result: r,
+        name: r.displayName ?? l10n.eventResultRunner,
+      ),
+    );
+    if (edit == null || !mounted) return;
+    await _resultAction(() => widget.social.editEventResultAsHost(
+          resultId: r.id,
+          durationS: edit.durationS,
+          priorGunTimeS: r.gunTimeS,
+          finisherStatus: edit.finisherStatus,
+        ));
+  }
+
+  Future<void> _resultAction(Future<void> Function() write) async {
+    setState(() => _resultActionBusy = true);
+    try {
+      await write();
+      await _load();
+    } catch (err) {
+      debugPrint('event result action failed: ${safeErrorLabel(err)}');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+            context, l10n.eventResultActionFailed(friendlyError(l10n, err)));
+      }
+    } finally {
+      if (mounted) setState(() => _resultActionBusy = false);
+    }
+  }
+
+  /// Arm / GO / End dispatcher. Uses the current `_raceSession`
   /// state to decide which mutation to run. Errors surface as a
   /// snackbar; successful writes leave the realtime channel to push
   /// the UI back into sync (belt-and-suspenders: we also reload on
@@ -532,6 +1231,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       };
       if (mounted) {
         setState(() => _raceSession = row);
+        unawaited(_loadFrozenCourses());
       }
     } catch (err) {
       debugPrint('event race control failed: $err');
@@ -546,17 +1246,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   /// End / Cancel are irreversible and affect every participant, so they
   /// confirm before firing (mirrors the web ConfirmDialog gate). Arm and
-  /// Fire Go stay one-tap.
+  /// GO stay one-tap.
   Future<void> _confirmRaceAction(_RaceAction action) async {
-    final l10n = AppLocalizations.of(context);
     final isCancel = action == _RaceAction.cancel;
+    final e = _event;
+    final inst = _activeInstance;
+    // End states how many racers it will mark DNF, as web's End does; a
+    // count that cannot be read is omitted rather than guessed.
+    final dnf = isCancel || e == null || inst == null
+        ? null
+        : await widget.social.fetchRaceDnfPreview(e.row.id, inst);
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(isCancel ? l10n.eventRaceCancelRace : l10n.eventRaceEnd),
             content: Text(isCancel
                 ? l10n.eventRaceCancelConfirmBody
-                : l10n.eventRaceEndConfirmBody),
+                : dnf != null && dnf > 0
+                    ? l10n.eventRaceEndConfirmBodyDnf(dnf)
+                    : l10n.eventRaceEndConfirmBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -585,15 +1295,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       return;
     }
     if (!mounted) return;
+    // If user taps the same status they already have for the NEXT instance,
+    // clear it. Otherwise (or for non-next instances) write the RSVP.
+    final isSameNext = inst == e.nextInstanceStart && e.viewerRsvp == status;
+    // Going to a race means going on a course: with several, the runner
+    // picks one here, so the start line knows which finish to watch for.
+    String? courseId;
+    if (status == 'going' && !isSameNext && _courses.isNotEmpty) {
+      if (_courses.length == 1) {
+        courseId = _courses.single.id;
+      } else {
+        courseId = await _pickCourse();
+        if (courseId == null || !mounted) return;
+      }
+    }
     setState(() => _busy = true);
     try {
-      // If user taps the same status they already have for the NEXT instance,
-      // clear it. Otherwise (or for non-next instances) write the RSVP.
-      final isSameNext = inst == e.nextInstanceStart && e.viewerRsvp == status;
       if (isSameNext) {
         await widget.social.clearRsvp(e.row.id, inst);
       } else {
-        await widget.social.rsvpEvent(e.row.id, status, inst);
+        await widget.social
+            .rsvpEvent(e.row.id, status, inst, courseId: courseId);
       }
       await _load();
     } catch (err) {
@@ -629,6 +1351,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   userId: a.userId,
                   status: a.status,
                   displayName: a.displayName,
+                  avatarUrl: a.avatarUrl,
                   attendance: next,
                 )
               else
@@ -647,13 +1370,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // An idempotent start or stop of the panel's clock tick; no rebuild.
+    _syncRaceClock();
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        appBar: AppBar(),
+        body: contentColumn(
+          context,
+          SectionedDetailSkeleton(
+            label: l10n.commonLoading,
+            hasAction: true,
+            hasLeading: true,
+          ),
         ),
       );
     }
@@ -689,7 +1419,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final canMarkAttendance = canMarkEventAttendance(_club, e.row.category);
 
     return Scaffold(
-      appBar: AppBar(title: Text(e.row.title)),
+      appBar: AppBar(
+        title: Text(e.row.title),
+        actions: const [
+          HelpButton(routes: ['/clubs/[slug]/events/[id]']),
+        ],
+      ),
       body: contentColumn(
         context,
         ListView(
@@ -793,6 +1528,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               ),
             ],
+            if (e.row.category == 'class' &&
+                (_gymRoutine != null || _club?.isEventOrganiser == true)) ...[
+              const SizedBox(height: 12),
+              _buildGymRoutineCard(
+                theme,
+                l10n,
+                e,
+                isOrganiser: _club?.isEventOrganiser == true,
+              ),
+            ],
+            if (e.row.category == 'class' &&
+                (_sessionExpansion != null ||
+                    _club?.isEventOrganiser == true)) ...[
+              const SizedBox(height: 12),
+              _buildSessionPlanCard(
+                theme,
+                l10n,
+                e,
+                isOrganiser: _club?.isEventOrganiser == true,
+              ),
+            ],
             if (e.row.description != null && e.row.description!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(e.row.description!, style: theme.textTheme.bodyMedium),
@@ -823,6 +1579,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               const SizedBox(height: 16),
             ],
+            if (_instances.isEmpty &&
+                isSeriesCancelled(e.toRecurrence(), _cancelled) &&
+                !_cancelled.contains(active.toUtc())) ...[
+              _cancelledBanner(theme, l10n.eventSeriesWasCancelled,
+                  key: const Key('series-cancelled')),
+              const SizedBox(height: 12),
+            ],
             if (_activeInstance != null &&
                 _cancelled.contains(_activeInstance!.toUtc()))
               // A cancelled occurrence reached by a direct link (the picker
@@ -841,7 +1604,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        l10n.eventOccurrenceCancelled,
+                        e.freq == null
+                            ? l10n.eventEventCancelled
+                            : l10n.eventOccurrenceCancelled,
                         style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onErrorContainer),
                       ),
@@ -851,6 +1616,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               )
             else
               _buildRsvpRow(theme, e),
+            if (athletic && _courses.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildCourses(theme),
+            ],
+            ..._buildWaitlistOffer(theme, e),
+            ..._buildCalendarActions(theme, e),
+            ..._buildHostCancelActions(theme, e),
             if (athletic &&
                 (e.row.distanceM != null || e.row.paceTargetSec != null)) ...[
               const SizedBox(height: 16),
@@ -863,9 +1635,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ],
                   if (e.row.paceTargetSec != null)
                     _metric(theme, l10n.eventTargetPace,
-                        fmtPace(e.row.paceTargetSec!)),
+                        formatPaceForPref(e.row.paceTargetSec!.toDouble())),
                 ],
               ),
+            ],
+            if (athletic &&
+                _club?.isRaceDirector != true &&
+                _raceMode == SessionStartMode.selfTimed &&
+                _raceStatus == 'running') ...[
+              const SizedBox(height: 24),
+              _buildSelfTimedParticipant(theme),
             ],
             if (athletic && _club?.isRaceDirector == true) ...[
               const SizedBox(height: 24),
@@ -889,8 +1668,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               eventId: e.row.id,
               instanceStart: active,
               canAdd: widget.social.currentUserId != null,
+              currentUserId: widget.social.currentUserId,
               myEventRunId: _myEventRunId(),
-              fetchRecentRuns: () => widget.social.fetchRecentRuns(limit: 20),
+              fetchWindowRuns: () =>
+                  widget.social.fetchRunsForEventPhoto(active),
             ),
             const SizedBox(height: 24),
             FundraiserSection(social: widget.social, eventId: e.row.id),
@@ -928,11 +1709,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         children: [
                           IdentityAvatar(
                               seed: a.userId,
-                              name: a.displayName,
+                              name: _shownName(l10n, a.displayName, a.userId),
+                              imageUrl: a.avatarUrl,
                               size: 18,
                               fontSize: 10),
                           const SizedBox(width: 6),
-                          Text(a.displayName ?? l10n.eventAttendeeMember,
+                          Text(_shownName(l10n, a.displayName, a.userId),
                               style: theme.textTheme.bodySmall),
                           if (a.status != 'going') ...[
                             const SizedBox(width: 4),
@@ -1005,6 +1787,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 eventTitle: e.row.title,
                 clubName: _club?.row.name,
                 certificateDate: _activeInstance ?? e.row.startsAt,
+                courses: _courses,
+                moderation: _club?.isRaceDirector == true
+                    ? ResultModeration(
+                        busy: _resultActionBusy,
+                        onApprove: _approveResult,
+                        onEdit: _editResult,
+                      )
+                    : null,
               ),
             ],
             if (isMember) ...[
@@ -1027,6 +1817,380 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
       ),
     );
+  }
+
+  /// "Add to calendar" for the occurrence on screen, plus "Add whole series"
+  /// when the series has an expressible recurrence rule. Withheld for a past or
+  /// called-off occurrence — a calendar entry for either is noise.
+  List<Widget> _buildCalendarActions(ThemeData theme, EventView e) {
+    final active = _activeInstance;
+    if (active == null ||
+        active.isBefore(DateTime.now()) ||
+        _cancelled.contains(active.toUtc())) {
+      return const [];
+    }
+    final l10n = AppLocalizations.of(context);
+    final series = _calendarSeries;
+    return [
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          OutlinedButton.icon(
+            key: const Key('add-to-calendar'),
+            onPressed: () => _addToCalendar(e),
+            icon: const Icon(Icons.event_available, size: 18),
+            label: Text(e.freq == null
+                ? l10n.clubEventAddToCalendar
+                : l10n.clubEventAddOccurrenceToCalendar),
+          ),
+          if (series != null)
+            OutlinedButton.icon(
+              key: const Key('add-series-to-calendar'),
+              onPressed: () => _addToCalendar(e, series: series),
+              icon: const Icon(Icons.event_repeat, size: 18),
+              label: Text(l10n.clubEventAddSeriesToCalendar),
+            ),
+        ],
+      ),
+      if (series != null && series.unsubtractedCancellations.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            l10n.clubEventCalendarCancelledNote(
+              series.unsubtractedCancellations.length,
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+    ];
+  }
+
+  Widget _cancelledBanner(ThemeData theme, String text, {Key? key}) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.event_busy,
+              size: 18, color: theme.colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The viewer's held waitlist seat on a paid occurrence, with its deadline
+  /// and the way to claim it (decisions § 1840). Mirrors web's register box:
+  /// a waiting place is already shown by the RSVP row, and a lapsed offer
+  /// promises nothing.
+  List<Widget> _buildWaitlistOffer(ThemeData theme, EventView e) {
+    final me = widget.social.currentUserId;
+    final active = _activeInstance;
+    if (me == null || active == null || _cancelled.contains(active.toUtc())) {
+      return const [];
+    }
+    AttendeeView? mine;
+    for (final a in _attendees) {
+      if (a.userId == me) mine = a;
+    }
+    final state = waitlistOfferState(
+      status: mine?.status,
+      offerExpiresAt: mine?.offerExpiresAt,
+      now: DateTime.now(),
+    );
+    if (state is! WaitlistOffered) return const [];
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    return [
+      const SizedBox(height: 12),
+      Container(
+        key: const Key('waitlist-offer'),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.tertiaryContainer,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.hourglass_top,
+                    size: 18, color: theme.colorScheme.onTertiaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.eventWaitlistOfferHeld(
+                        formatDateTime(state.deadline.toLocal(), locale)),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onTertiaryContainer),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.eventWaitlistOfferClaimHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const Key('waitlist-claim'),
+              onPressed: () => _claimOnWeb(e),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(l10n.eventWaitlistOfferClaim),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _claimOnWeb(EventView e) async {
+    final slug = _club?.row.slug ?? widget.clubSlug;
+    final url = eventWebUrl(slug, e.row.id);
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    } catch (err) {
+      debugPrint('EventDetailScreen claim link failed: $err');
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    }
+  }
+
+  /// The organiser's cancel controls, mirroring web: call off the occurrence
+  /// on screen (a one-off event is its own single occurrence), cancel the
+  /// whole series, or reinstate what was called off. A paid occurrence is
+  /// refunded by the server in the same request.
+  List<Widget> _buildHostCancelActions(ThemeData theme, EventView e) {
+    if (_club?.isEventOrganiser != true) return const [];
+    final active = _activeInstance;
+    if (active == null) return const [];
+    final l10n = AppLocalizations.of(context);
+    final recurring = e.freq != null;
+    final activeCancelled = _cancelled.contains(active.toUtc());
+    // An occurrence past the end of a series no longer exists, so reinstating
+    // its cancel would bring nothing back (web hides it the same way).
+    final until = e.row.recurrenceUntil;
+    final pastSeriesEnd = recurring && until != null && active.isAfter(until);
+    final canCancelActive = !activeCancelled &&
+        (recurring ? _instances.isNotEmpty : active.isAfter(DateTime.now()));
+    final canCancelSeries = recurring && _instances.isNotEmpty;
+    final canReinstate = activeCancelled && !pastSeriesEnd;
+    if (!canReinstate && !canCancelActive && !canCancelSeries) {
+      return const [];
+    }
+    return [
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (canReinstate)
+            OutlinedButton.icon(
+              key: const Key('reinstate-occurrence'),
+              onPressed: _cancelBusy ? null : () => _reinstate(e, active),
+              icon: const Icon(Icons.event_available, size: 18),
+              label: Text(recurring
+                  ? l10n.eventReinstateOccurrence
+                  : l10n.eventReinstateEvent),
+            ),
+          if (canCancelActive)
+            OutlinedButton.icon(
+              key: const Key('cancel-occurrence'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
+              onPressed: _cancelBusy ? null : () => _cancelActive(e, active),
+              icon: const Icon(Icons.event_busy, size: 18),
+              label: Text(recurring
+                  ? l10n.eventCancelOccurrence
+                  : l10n.eventCancelEvent),
+            ),
+          if (canCancelSeries)
+            OutlinedButton.icon(
+              key: const Key('cancel-series'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
+              onPressed: _cancelBusy ? null : () => _cancelSeries(e),
+              icon: const Icon(Icons.event_repeat, size: 18),
+              label: Text(l10n.eventCancelSeries),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  /// Asks for confirmation and an optional reason. Null when the organiser
+  /// backs out; the (possibly empty) reason otherwise.
+  Future<String?> _confirmCancel({
+    required String title,
+    required String body,
+    required String confirmLabel,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final reason = TextEditingController();
+    try {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(body),
+                const SizedBox(height: 8),
+                Text(l10n.eventCancelPaidNote,
+                    key: const Key('cancel-paid-note')),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reason,
+                  maxLength: 300,
+                  maxLines: 2,
+                  decoration:
+                      InputDecoration(labelText: l10n.eventCancelReasonLabel),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.eventCancelKeep),
+            ),
+            TextButton(
+              key: const Key('cancel-confirm'),
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(ctx).colorScheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      );
+      return ok == true ? reason.text : null;
+    } finally {
+      reason.dispose();
+    }
+  }
+
+  Future<void> _cancelActive(EventView e, DateTime active) async {
+    final l10n = AppLocalizations.of(context);
+    final recurring = e.freq != null;
+    final reason = await _confirmCancel(
+      title: recurring ? l10n.eventCancelOccurrence : l10n.eventCancelEvent,
+      body: recurring
+          ? l10n.eventCancelOccurrenceBody
+          : l10n.eventCancelEventBody,
+      confirmLabel:
+          recurring ? l10n.eventCancelOccurrence : l10n.eventCancelEvent,
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      final refunds = await widget.social
+          .cancelEventOccurrence(e.row.id, active, reason: reason);
+      if (!mounted) return;
+      _reportCancel(refunds, series: false);
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen cancel failed: $err');
+      if (mounted) showTopBanner(context, _cancelErrorMessage(err));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  Future<void> _cancelSeries(EventView e) async {
+    final l10n = AppLocalizations.of(context);
+    final reason = await _confirmCancel(
+      title: l10n.eventCancelSeries,
+      body: l10n.eventCancelSeriesBody,
+      confirmLabel: l10n.eventCancelSeries,
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      final refunds =
+          await widget.social.cancelEventSeries(e.row.id, reason: reason);
+      if (!mounted) return;
+      _reportCancel(refunds, series: true);
+      _activeInstance = null;
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen series cancel failed: $err');
+      if (mounted) showTopBanner(context, _cancelErrorMessage(err));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  Future<void> _reinstate(EventView e, DateTime active) async {
+    setState(() => _cancelBusy = true);
+    try {
+      await widget.social.reinstateEventOccurrence(e.row.id, active);
+      if (!mounted) return;
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen reinstate failed: $err');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).eventReinstateFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  /// A failed refund is reported as such, never folded into a success.
+  void _reportCancel(OccurrenceRefundSummary? refunds, {required bool series}) {
+    final l10n = AppLocalizations.of(context);
+    if (refunds != null && !refunds.complete) {
+      showTopBanner(context, l10n.eventCancelRefundsIncomplete(refunds.failed));
+      return;
+    }
+    if (refunds != null && refunds.refunded > 0) {
+      showTopBanner(context, l10n.eventCancelRefundsStarted(refunds.refunded));
+      return;
+    }
+    showTopBanner(context,
+        series ? l10n.eventSeriesCancelledToast : l10n.eventCancelledToast);
+  }
+
+  String _cancelErrorMessage(Object err) {
+    final l10n = AppLocalizations.of(context);
+    final code = err is EventCancelRefused ? err.code : null;
+    switch (code) {
+      case 'stripe_not_configured':
+        return l10n.eventCancelNotConfigured;
+      case 'not_event_organiser':
+        return l10n.eventCancelNotOrganiser;
+      default:
+        return l10n.eventCancelFailed;
+    }
   }
 
   Widget _buildRsvpRow(ThemeData theme, EventView e) {
@@ -1089,6 +2253,89 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  /// A course's lines: the frozen copy while the occurrence has one, else
+  /// the live course row.
+  (CourseGate?, CourseGate?) _courseLines(EventCourseView c) {
+    final frozen = _frozenCourses[c.id];
+    if (frozen != null) return (frozen.startGate, frozen.finishGate);
+    return (c.startGate, c.finishGate);
+  }
+
+  Widget _buildCourses(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
+    final mine = _myCourseId;
+    final canPick = _viewerGoing && _courses.length > 1;
+    return Column(
+      key: const Key('event-courses'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.eventCoursesTitle.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            letterSpacing: 0.8,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final c in _courses) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.route, size: 18, color: theme.colorScheme.outline),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(c.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight:
+                            c.id == mine ? FontWeight.w700 : FontWeight.w500,
+                      )),
+                ),
+                if (c.id == mine) ...[
+                  StatusPill(
+                    label: l10n.eventYourCourse,
+                    foreground: theme.colorScheme.onPrimaryContainer,
+                    fill: theme.colorScheme.primaryContainer,
+                    icon: Icons.check,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (c.distanceM != null)
+                  Text(formatDistanceForPref(c.distanceM!),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )),
+              ],
+            ),
+          ),
+          if (_courseLines(c) case (final start, final finish)
+              when start != null || finish != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: CourseLinesMap(
+                key: Key('course-lines-map-${c.id}'),
+                start: start,
+                finish: finish,
+              ),
+            ),
+        ],
+        if (canPick)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('change-course'),
+              onPressed: _busy ? null : _changeCourse,
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: Text(mine == null
+                  ? l10n.eventCoursePickTitle
+                  : l10n.eventChangeCourse),
+            ),
+          ),
+      ],
+    );
+  }
+
   /// The viewer's own finished run for this event instance, if any — a
   /// finisher's photo attaches straight to it (web's `myEventRunId`).
   String? _myEventRunId() {
@@ -1121,9 +2368,177 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// race directors. Renders the state machine as a single status line
   /// + primary CTA; secondary destructive actions (cancel / reset)
   /// sit below at reduced visual weight.
+  /// How this occurrence's race starts (#1306): the session's copy once it
+  /// exists, the event's setting before.
+  SessionStartMode get _raceMode => sessionStartModeFromWire(
+      _raceSession?.startMode ?? _event?.row.raceStartMode);
+
+  /// The session's status on the server clock: a scheduled race whose GO has
+  /// passed is running before the per-minute job moves it.
+  String? get _raceStatus {
+    final race = _raceSession;
+    if (race == null) return null;
+    final eff = effectiveRaceStatus(
+      StartModeSession(
+        status: raceStatusFromWire(race.status) ?? RaceStatus.armed,
+        startMode: sessionStartModeFromWire(race.startMode),
+        scheduledStartAt: race.scheduledStartAt,
+        windowOpensAt: race.windowOpensAt,
+        windowClosesAt: race.windowClosesAt,
+      ),
+      DateTime.now().add(_serverOffset).toUtc(),
+    );
+    return eff.name;
+  }
+
+  void _syncRaceClock() {
+    final needed = _raceMode != SessionStartMode.hostGo &&
+        (_raceStatus == 'armed' || _raceStatus == 'running');
+    if (needed && _raceClock == null) {
+      _raceClock = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!needed) {
+      _raceClock?.cancel();
+      _raceClock = null;
+    }
+  }
+
+  String _clock(DateTime? t) => t == null
+      ? ''
+      : MaterialLocalizations.of(context)
+          .formatTimeOfDay(TimeOfDay.fromDateTime(t.toLocal()));
+
+  /// Delay a scheduled GO or a window's opening by a few minutes. Reversible
+  /// (it can be delayed again), so no confirm; the server refuses once the
+  /// start has passed and the snackbar says so.
+  Future<void> _delayRace() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    if (e == null || inst == null || race == null || _raceBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.eventRaceDelay),
+        children: [
+          for (final m in const [5, 10, 15, 30, 60])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, m),
+              child: Text(l10n.eventRaceDelayBy('$m')),
+            ),
+        ],
+      ),
+    );
+    if (minutes == null || !mounted) return;
+    final selfTimed = _raceMode == SessionStartMode.selfTimed;
+    final current = selfTimed ? race.windowOpensAt : race.scheduledStartAt;
+    if (current == null) return;
+    final serverNow = DateTime.now().add(_serverOffset);
+    final base = current.isAfter(serverNow) ? current : serverNow;
+    await _raceWrite(() => widget.social.delayRaceStart(
+          eventId: e.row.id,
+          instance: inst,
+          selfTimed: selfTimed,
+          start: base.add(Duration(minutes: minutes)),
+        ));
+  }
+
+  /// Keep a self-timed window open longer, capped at 7 days from its opening.
+  Future<void> _extendRace() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    final opens = race?.windowOpensAt;
+    final closes = race?.windowClosesAt;
+    if (e == null || inst == null || opens == null || closes == null || _raceBusy) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final hours = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.eventRaceExtend),
+        children: [
+          for (final h in const [1, 6, 24])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, h),
+              child: Text(l10n.eventRaceExtendBy('$h')),
+            ),
+        ],
+      ),
+    );
+    if (hours == null || !mounted) return;
+    final cap = opens.add(const Duration(seconds: kRaceWindowMaxS));
+    var next = closes.add(Duration(hours: hours));
+    if (next.isAfter(cap)) next = cap;
+    await _raceWrite(() => widget.social
+        .setRaceWindowClose(eventId: e.row.id, instance: inst, closes: next));
+  }
+
+  Future<void> _raceWrite(Future<RaceSessionRow> Function() write) async {
+    setState(() => _raceBusy = true);
+    try {
+      final row = await write();
+      if (mounted) setState(() => _raceSession = row);
+    } catch (err) {
+      debugPrint('event race control failed: ${safeErrorLabel(err)}');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(context,
+            l10n.eventRaceControlFailed(friendlyError(l10n, err)));
+      }
+    } finally {
+      if (mounted) setState(() => _raceBusy = false);
+    }
+  }
+
+  /// A runner's view of an open self-timed race (#1306 m16): a runner who is
+  /// not going can join from here (course first on a multi-course race), and
+  /// the attempt itself is the run screen's "This run is my attempt".
+  Widget _buildSelfTimedParticipant(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      key: const ValueKey('self-timed-participant'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.eventRaceSelfTimedParticipant(
+                  _clock(_raceSession?.windowClosesAt)),
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (!_viewerGoing) ...[
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                key: const ValueKey('self-timed-join'),
+                onPressed: _busy ? null : () => _rsvp('going'),
+                icon: const Icon(Icons.flag_outlined),
+                label: Text(l10n.eventRaceJoinAttempt),
+              ),
+            ],
+            TextButton(
+              key: const ValueKey('self-timed-guide'),
+              onPressed: () => openGuide(context, 'run-a-self-timed-race'),
+              child: Text(l10n.infoTipReadGuide),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRaceControl(ThemeData theme, DateTime active) {
     final l10n = AppLocalizations.of(context);
     final race = _raceSession;
+    final mode = _raceMode;
+    if (mode != SessionStartMode.hostGo) {
+      return _buildModeRaceControl(theme, mode);
+    }
     final status = race?.status ?? 'idle';
     final banner = switch (status) {
       'armed' => l10n.eventRaceArmed,
@@ -1182,7 +2597,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
               ),
               FilledButton.icon(
-                onPressed: _raceBusy ? null : () => _raceMutation(_RaceAction.arm),
+                onPressed: _raceBusy ? null : _armWithPreflight,
                 icon: const Icon(Icons.bolt),
                 label: Text(l10n.eventRaceArm),
               ),
@@ -1225,6 +2640,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  // No Cancel once running: the server refuses running ->
+                  // cancelled, and web offers only End here.
                   FilledButton.icon(
                     onPressed: _raceBusy
                         ? null
@@ -1232,16 +2649,134 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     icon: const Icon(Icons.stop_circle),
                     label: Text(l10n.eventRaceEnd),
                   ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancelRace),
-                  ),
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The race director's panel for a Scheduled GO or Self-timed race: the
+  /// server fires GO and opens the window, so there is no GO button; Delay
+  /// and Cancel until the start passes, Extend and End while a window is
+  /// open, End while a scheduled race runs.
+  Widget _buildModeRaceControl(ThemeData theme, SessionStartMode mode) {
+    final l10n = AppLocalizations.of(context);
+    final race = _raceSession;
+    final status = _raceStatus ?? 'idle';
+    final selfTimed = mode == SessionStartMode.selfTimed;
+    final muted = theme.textTheme.bodySmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    return Card(
+      key: const ValueKey('race-mode-control'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.eventRaceControlLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('race-mode-guide'),
+                  onPressed: () =>
+                      openGuide(context, 'choose-how-your-race-starts'),
+                  child: Text(l10n.infoTipReadGuide),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (race == null || status == 'idle') ...[
+              Text(
+                selfTimed ? l10n.eventRaceSelfTimedNotYet : l10n.eventRaceScheduledNotYet,
+                style: muted,
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                key: const ValueKey('race-arm-early'),
+                onPressed: _raceBusy ? null : _armWithPreflight,
+                icon: const Icon(Icons.bolt),
+                label: Text(l10n.eventRaceArmEarly),
+              ),
+            ] else if (status == 'armed') ...[
+              Text(
+                selfTimed
+                    ? l10n.eventRaceOpensAt(_clock(race.windowOpensAt))
+                    : l10n.eventRaceGoAt(_clock(race.scheduledStartAt)),
+                key: const ValueKey('race-mode-start'),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: theme.colorScheme.tertiary),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    key: const ValueKey('race-delay'),
+                    onPressed: _raceBusy ? null : _delayRace,
+                    icon: const Icon(Icons.schedule),
+                    label: Text(l10n.eventRaceDelay),
+                  ),
+                  TextButton(
+                    key: const ValueKey('race-cancel'),
+                    onPressed: _raceBusy
+                        ? null
+                        : () => _confirmRaceAction(_RaceAction.cancel),
+                    child: Text(l10n.eventRaceCancel),
+                  ),
+                ],
+              ),
+            ] else if (status == 'running') ...[
+              Text(
+                selfTimed
+                    ? l10n.eventRaceOpenUntil(_clock(race.windowClosesAt))
+                    : l10n.eventRaceRunning,
+                key: const ValueKey('race-mode-live'),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: theme.colorScheme.primary),
+              ),
+              if (!selfTimed)
+                Text(l10n.eventRaceAutoEnds(_clock(race.windowClosesAt)),
+                    style: muted),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (selfTimed)
+                    OutlinedButton.icon(
+                      key: const ValueKey('race-extend'),
+                      onPressed: _raceBusy ? null : _extendRace,
+                      icon: const Icon(Icons.more_time),
+                      label: Text(l10n.eventRaceExtend),
+                    ),
+                  FilledButton.icon(
+                    key: const ValueKey('race-end'),
+                    onPressed: _raceBusy
+                        ? null
+                        : () => _confirmRaceAction(_RaceAction.end),
+                    icon: const Icon(Icons.stop_circle),
+                    label: Text(selfTimed ? l10n.eventRaceEndEarly : l10n.eventRaceEnd),
+                  ),
+                ],
+              ),
+            ] else
+              Text(
+                status == 'cancelled' ? l10n.eventRaceCancelled : l10n.eventRaceFinished,
+                style: muted,
+              ),
           ],
         ),
       ),
@@ -1318,7 +2853,7 @@ class _AdminUpdateComposerState extends State<_AdminUpdateComposer> {
           TextField(
             controller: _ctrl,
             maxLines: 3,
-            maxLength: 1200,
+            maxLength: columnLength('club_posts.body'),
             decoration: InputDecoration(
               hintText: AppLocalizations.of(context).eventUpdateHint,
               border: InputBorder.none,
@@ -1418,6 +2953,11 @@ class EventResultsSection extends StatelessWidget {
   final String eventTitle;
   final String? clubName;
   final DateTime certificateDate;
+  /// With more than one course, results are listed per course.
+  final List<EventCourseView> courses;
+  /// Present for a race director: each row then offers approve / unverify
+  /// and edit, as the web results card does.
+  final ResultModeration? moderation;
   const EventResultsSection({
     super.key,
     required this.results,
@@ -1428,6 +2968,8 @@ class EventResultsSection extends StatelessWidget {
     required this.eventTitle,
     required this.clubName,
     required this.certificateDate,
+    this.courses = const [],
+    this.moderation,
   });
 
   // The result removal is destructive (it deletes the runner's
@@ -1500,17 +3042,215 @@ class EventResultsSection extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           )
+        else if (courses.length > 1)
+          for (final group in groupResultsByCourse(results, courses)) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 2),
+              child: Text(
+                group.course?.name ?? l10n.eventResultsOtherCourse,
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            ...group.results.map(_row),
+          ]
         else
-          ...results.map((r) => _ResultRow(
-                row: r,
-                isMe: r.userId == myUserId,
-                eventTitle: eventTitle,
-                clubName: clubName,
-                certificateDate: certificateDate,
-              )),
+          ...results.map(_row),
       ],
     );
   }
+
+  Widget _row(EventResultView r) => _ResultRow(
+        row: r,
+        isMe: r.userId == myUserId,
+        eventTitle: eventTitle,
+        clubName: clubName,
+        certificateDate: certificateDate,
+        moderation: moderation,
+      );
+}
+
+/// What a race director can do to a result row, and whether a write is in
+/// flight.
+@visibleForTesting
+class ResultModeration {
+  final bool busy;
+  final void Function(EventResultView result, bool approve) onApprove;
+  final void Function(EventResultView result) onEdit;
+  const ResultModeration({
+    required this.busy,
+    required this.onApprove,
+    required this.onEdit,
+  });
+}
+
+/// The approval a director is offered on [r], as the web results card offers
+/// it: true (Approve) on a pending row, false (Unverify) on an approved one,
+/// and null on the director's own approved row, which they do not unverify.
+@visibleForTesting
+bool? resultApprovalAction(EventResultView r, {required String? myUserId}) {
+  if (!r.organiserApproved) return true;
+  if (r.userId != null && r.userId == myUserId) return null;
+  return false;
+}
+
+/// A director's edit: the new ranked time and status.
+typedef ResultEdit = ({int durationS, String finisherStatus});
+
+/// Seconds in an organiser-typed finish time: `h:mm:ss`, `m:ss` or plain
+/// seconds, every field a plain decimal count and minutes / seconds below
+/// 60 — web's `parseDurationToSeconds`. Null when malformed.
+@visibleForTesting
+int? parseResultTimeS(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) return null;
+  final field = RegExp(r'^\d+(?:\.\d+)?$');
+  final parts = s.split(':');
+  if (parts.length > 3) return null;
+  var total = 0.0;
+  for (var i = 0; i < parts.length; i++) {
+    final p = parts[i].trim();
+    if (!field.hasMatch(p)) return null;
+    final n = double.parse(p);
+    if (i > 0 && n >= 60) return null;
+    total = total * 60 + n;
+  }
+  return total.round();
+}
+
+/// The organiser's edit of one result: a time and a status. A finished
+/// result needs a time; a DNF or DNS keeps the row's time when none is typed.
+@visibleForTesting
+class ResultEditDialog extends StatefulWidget {
+  final EventResultView result;
+  final String name;
+  const ResultEditDialog({super.key, required this.result, required this.name});
+
+  @override
+  State<ResultEditDialog> createState() => _ResultEditDialogState();
+}
+
+class _ResultEditDialogState extends State<ResultEditDialog> {
+  late final TextEditingController _time = TextEditingController(
+    text: widget.result.durationS > 0
+        ? _ResultRow._formatDuration(widget.result.durationS)
+        : '',
+  );
+  late String _status = widget.result.finisherStatus;
+  bool _invalid = false;
+
+  @override
+  void dispose() {
+    _time.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final parsed = parseResultTimeS(_time.text);
+    if (_status == 'finished' && (parsed == null || parsed <= 0)) {
+      setState(() => _invalid = true);
+      return;
+    }
+    Navigator.pop<ResultEdit>(context, (
+      durationS: parsed ?? widget.result.durationS,
+      finisherStatus: _status,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: Text(l10n.eventResultEditTitle(widget.name)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.eventResultEditHelp,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _time,
+              keyboardType: TextInputType.datetime,
+              decoration: InputDecoration(
+                labelText: l10n.eventResultEditTime,
+                hintText: '1:02:03',
+                errorText: _invalid ? l10n.eventResultEditTimeInvalid : null,
+              ),
+              onChanged: (_) {
+                if (_invalid) setState(() => _invalid = false);
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _status,
+              decoration:
+                  InputDecoration(labelText: l10n.eventResultEditStatus),
+              items: [
+                DropdownMenuItem(
+                    value: 'finished',
+                    child: Text(l10n.eventResultStatusFinished)),
+                DropdownMenuItem(
+                    value: 'dnf', child: Text(l10n.eventResultStatusDnf)),
+                DropdownMenuItem(
+                    value: 'dns', child: Text(l10n.eventResultStatusDns)),
+              ],
+              onChanged: (v) => setState(() {
+                _status = v ?? _status;
+                _invalid = false;
+              }),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.eventSubmitCancel),
+        ),
+        TextButton(
+          onPressed: _save,
+          child: Text(l10n.eventResultEditSave),
+        ),
+      ],
+    );
+  }
+}
+
+/// [results] split by course in the host's course order, server order kept
+/// within each; results on no listed course trail as one group with a null
+/// course. Empty groups are dropped.
+@visibleForTesting
+List<({EventCourseView? course, List<EventResultView> results})>
+    groupResultsByCourse(
+        List<EventResultView> results, List<EventCourseView> courses) {
+  final known = {for (final c in courses) c.id};
+  final groups = [
+    for (final c in courses)
+      (
+        course: c,
+        results: [
+          for (final r in results)
+            if (r.courseId == c.id) r
+        ],
+      ),
+    (
+      course: null,
+      results: [
+        for (final r in results)
+          if (!known.contains(r.courseId)) r
+      ],
+    ),
+  ];
+  return [
+    for (final g in groups)
+      if (g.results.isNotEmpty) g
+  ];
 }
 
 class _ResultRow extends StatelessWidget {
@@ -1519,21 +3259,25 @@ class _ResultRow extends StatelessWidget {
   final String eventTitle;
   final String? clubName;
   final DateTime certificateDate;
+  final ResultModeration? moderation;
   const _ResultRow({
     required this.row,
     required this.isMe,
     required this.eventTitle,
     required this.clubName,
     required this.certificateDate,
+    this.moderation,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rank = row.rank?.toString() ?? '—';
+    final l10n = AppLocalizations.of(context);
+    // A pending result holds no place yet, as on web.
+    final rank =
+        row.organiserApproved ? (row.rank?.toString() ?? '—') : '…';
     final time = _formatDuration(row.durationS);
-    final distKm =
-        formatFixed(row.distanceM / 1000, 2, activeLocaleTag);
+    final distance = formatDistanceForPref(row.distanceM);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -1571,6 +3315,23 @@ class _ResultRow extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       )),
                 ],
+                if (!row.organiserApproved) ...[
+                  const SizedBox(width: 6),
+                  StatusPill(
+                    label: l10n.eventResultPending,
+                    foreground: theme.colorScheme.onTertiaryContainer,
+                    fill: theme.colorScheme.tertiaryContainer,
+                  ),
+                ],
+                if (_finishMethodLabel(context, row.finishMethod)
+                    case final method?) ...[
+                  const SizedBox(width: 6),
+                  StatusPill(
+                    label: method,
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    fill: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ],
                 if (row.finisherStatus != 'finished') ...[
                   const SizedBox(width: 6),
                   Text(
@@ -1585,12 +3346,27 @@ class _ResultRow extends StatelessWidget {
             ),
           ),
           if (row.finisherStatus == 'finished') ...[
-            Text(time,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                )),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(time,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    )),
+                if (row.chipTimeS case final chip?
+                    when row.gunTimeS != null && chip != row.durationS)
+                  Text(
+                    AppLocalizations.of(context)
+                        .eventResultChipTime(_formatDuration(chip)),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(width: 10),
-            Text('$distKm km',
+            Text(distance,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 )),
@@ -1617,9 +3393,46 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
           ],
+          if (moderation case final mod?) _actions(context, mod),
         ],
       ),
     );
+  }
+
+  Widget _actions(BuildContext context, ResultModeration mod) {
+    final l10n = AppLocalizations.of(context);
+    final approve =
+        resultApprovalAction(row, myUserId: isMe ? row.userId : null);
+    return PopupMenuButton<String>(
+      enabled: !mod.busy,
+      tooltip: l10n.eventResultActions(
+          row.displayName ?? l10n.eventResultRunner),
+      icon: const Icon(Icons.more_vert, size: 20),
+      onSelected: (v) => switch (v) {
+        'approve' => mod.onApprove(row, true),
+        'unverify' => mod.onApprove(row, false),
+        _ => mod.onEdit(row),
+      },
+      itemBuilder: (_) => [
+        if (approve == true)
+          PopupMenuItem(value: 'approve', child: Text(l10n.eventResultApprove)),
+        if (approve == false)
+          PopupMenuItem(
+              value: 'unverify', child: Text(l10n.eventResultUnverify)),
+        PopupMenuItem(value: 'edit', child: Text(l10n.eventResultEdit)),
+      ],
+    );
+  }
+
+  /// The badge flags a time the finish rule did NOT measure, so a device's
+  /// automatic finish wears none, as on web (decisions § 1862).
+  static String? _finishMethodLabel(BuildContext context, String? method) {
+    final l10n = AppLocalizations.of(context);
+    return switch (method) {
+      'manual' => l10n.eventFinishMethodManual,
+      'host' => l10n.eventFinishMethodHost,
+      _ => null,
+    };
   }
 
   static String _formatDuration(int s) {
@@ -1792,3 +3605,174 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
   static String _dateLabel(DateTime dt, String localeTag) =>
       formatDateMed(dt.toLocal(), localeTag);
 }
+
+/// The organiser's routine attach sheet: the shared [GymRoutinePicker], the
+/// note that a routine replaces the session plan, and Cancel / Save. Pops
+/// `(id: <choice>)`, where a null id clears the routine; dismissing pops null.
+class _GymRoutineAttachSheet extends StatefulWidget {
+  final String? initial;
+  final List<({String id, String title})> routines;
+  final bool hasSessionPlan;
+  const _GymRoutineAttachSheet({
+    required this.initial,
+    required this.routines,
+    required this.hasSessionPlan,
+  });
+
+  @override
+  State<_GymRoutineAttachSheet> createState() => _GymRoutineAttachSheetState();
+}
+
+class _GymRoutineAttachSheetState extends State<_GymRoutineAttachSheet> {
+  late String? _choice = widget.routines.any((r) => r.id == widget.initial)
+      ? widget.initial
+      : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.clubEventGymRoutineAttach,
+                style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            GymRoutinePicker(
+              fieldKey: const Key('class-routine-picker'),
+              value: _choice,
+              routines: widget.routines,
+              onChanged: (v) => setState(() => _choice = v),
+            ),
+            if (widget.hasSessionPlan && _choice != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.clubEventGymRoutineReplacesPlan,
+                key: const Key('class-routine-replaces-plan'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.commonCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const Key('class-routine-save'),
+                  onPressed: () =>
+                      Navigator.of(context).pop((id: _choice)),
+                  child: Text(l10n.clubEventGymRoutineSave),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The organiser's session-plan attach sheet: the shared [SessionPlanPicker],
+/// the note that a plan replaces the gym routine, and Cancel / Save. Pops
+/// `(id: <choice>)`, where a null id clears the plan; dismissing pops null.
+class _SessionPlanAttachSheet extends StatefulWidget {
+  final String? initial;
+  final List<({String id, String title})> plans;
+  final bool hasGymRoutine;
+  const _SessionPlanAttachSheet({
+    required this.initial,
+    required this.plans,
+    required this.hasGymRoutine,
+  });
+
+  @override
+  State<_SessionPlanAttachSheet> createState() =>
+      _SessionPlanAttachSheetState();
+}
+
+class _SessionPlanAttachSheetState extends State<_SessionPlanAttachSheet> {
+  late String? _choice =
+      widget.plans.any((p) => p.id == widget.initial) ? widget.initial : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.clubEventSessionPlanAttach,
+                style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            SessionPlanPicker(
+              fieldKey: const Key('session-sequence-picker'),
+              value: _choice,
+              plans: widget.plans,
+              onChanged: (v) => setState(() => _choice = v),
+            ),
+            if (widget.hasGymRoutine && _choice != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.clubEventSessionPlanReplacesRoutine,
+                key: const Key('session-sequence-replaces-routine'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.commonCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const Key('session-sequence-save'),
+                  onPressed: () => Navigator.of(context).pop((id: _choice)),
+                  child: Text(l10n.clubEventSessionPlanSave),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// An attendee with no display name is shown as their runner handle rather
+/// than an indistinguishable "Member" (decisions § 2365).
+String _shownName(AppLocalizations l10n, String? name, String userId) =>
+    name ??
+    runnerHandle(
+      userId,
+      handle: (slug) => l10n.liveRunnerHandle(slug),
+      anonymous: l10n.liveRunnerAnonymous,
+    );

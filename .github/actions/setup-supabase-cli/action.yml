@@ -1,0 +1,141 @@
+name: Setup Supabase CLI
+description: >
+  Install a pinned Supabase CLI release onto PATH, verifying its checksum
+  and retrying a failed download.
+
+  Why a composite action rather than `supabase/setup-cli`: that action
+  installs the `supabase` npm package, whose postinstall fetches the release
+  tarball from GitHub unauthenticated and pipes it straight into gunzip. A
+  throttled or truncated response is therefore not retried and not detected
+  as corrupt -- it reaches gunzip as garbage and the job dies on
+  `Error: incorrect header check` about 30 seconds in, before any test runs.
+
+  On 2026-09-14 that took out a job on seven of eleven open PRs at once,
+  across `Edge Function tests`, `pgtap RLS suite`, `Schema / type drift`,
+  `Cross-client round-trip` and four Playwright shards. Nothing was wrong
+  with any of those diffs, and re-running each PR until it happened to land
+  a clean download is not a fix -- the same class is recorded against
+  earlier sweeps too.
+
+  So the download is ours: `curl` retries at the transport layer, the
+  sha256 in the release's own checksums file is verified before the tarball
+  is trusted, and a failure at either step re-downloads rather than
+  poisoning the job. Verifying the checksum is also the point at which a
+  corrupt body stops being indistinguishable from a valid one -- which is
+  what made the old failure so confusing to read.
+
+  Linux x86_64 only, which is every caller today (all ten `ci.yml` jobs and
+  `release-backend` run on `ubuntu-latest`). A macOS or arm64 caller should
+  add its asset here rather than reach past this action.
+
+  The retry + checksum above fixed INTEGRITY: a corrupt download is detected
+  instead of silently poisoning the job. It cannot fix AVAILABILITY, and on
+  2026-09-21 that half came due -- GitHub's release CDN returned 504 for long
+  enough to exhaust all five attempts, failing this step on three PRs at once
+  across six jobs, every one of them before a test ran. Five sequential
+  retries against one origin is still one origin.
+
+  So the tarball is cached, keyed on the version, and every `ci.yml` job after
+  the first reads it instead of fetching. TRUST BOUNDARY, stated rather than
+  implied: a cache hit is verified against a digest that was itself cached, so
+  the check catches a truncated or partially-restored entry -- NOT an attacker
+  who can write the repository's cache. What it does not weaken is the
+  upstream guarantee: a MISS still downloads and still verifies against the
+  release's own checksums file before anything is trusted, and a hit that
+  fails its check falls through to exactly that path. The cache is scoped by
+  GitHub to this repository, and a pull request's own writes cannot reach the
+  base branch's scope.
+
+inputs:
+  version:
+    description: Supabase CLI version to install, without a leading "v".
+    required: true
+
+# The verified binary is installed into /usr/local/bin, which every runner
+# already has on PATH, rather than its directory appended to GITHUB_PATH: an
+# environment-file write changes PATH for every later step of the caller's
+# job, and this action cannot see what those steps are or what triggered them.
+runs:
+  using: composite
+  steps:
+    # Keyed on the version alone: a published release is immutable, so the
+    # asset for a given tag cannot change under the key.
+    - name: Restore the cached CLI
+      id: restore
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/supabase-cli
+        key: supabase-cli-${{ runner.os }}-x64-${{ inputs.version }}
+
+    - name: Put a cached CLI on PATH
+      id: cached
+      if: steps.restore.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        SUPABASE_CLI_VERSION: ${{ inputs.version }}
+      run: |
+        set -uo pipefail
+        dest="$HOME/.cache/supabase-cli"
+        # A restore that lost bytes, or an entry written by an older layout,
+        # is a miss rather than a failure -- fall through to the download.
+        if [ -x "$dest/supabase" ] \
+          && [ -f "$dest/supabase.sha256" ] \
+          && (cd "$dest" && sha256sum -c supabase.sha256 >/dev/null 2>&1) \
+          && sudo install -m 0755 "$dest/supabase" /usr/local/bin/supabase; then
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+          echo "Supabase CLI ${SUPABASE_CLI_VERSION} restored from cache; digest verified."
+        else
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Cached Supabase CLI ${SUPABASE_CLI_VERSION} did not verify; downloading instead."
+        fi
+
+    - name: Install the Supabase CLI
+      if: steps.restore.outputs.cache-hit != 'true' || steps.cached.outputs.ok != 'true'
+      shell: bash
+      env:
+        SUPABASE_CLI_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        ver="$SUPABASE_CLI_VERSION"
+        dest="$HOME/.cache/supabase-cli"
+        base="https://github.com/supabase/cli/releases/download/v${ver}"
+        rm -rf "$dest"
+        mkdir -p "$dest"
+
+        # Upstream renamed both halves of this between 2.84.2 and 2.109.1: the
+        # checksums asset went `supabase_<ver>_checksums.txt` -> `checksums.txt`,
+        # and the tarball it lists went `supabase_linux_amd64.tar.gz` ->
+        # `supabase_<ver>_linux_amd64.tar.gz`. Both names still resolve as
+        # download URLs, so pinning either one keeps working until the day the
+        # checksum line stops matching and the verify fails instead. Fetch
+        # whichever checksums asset exists, then take the tarball's name FROM it
+        # — the file that states the digest is the file that names what it is
+        # for, so the two can never drift apart again.
+        for attempt in 1 2 3 4 5; do
+          if { curl -fsSL --connect-timeout 20 --max-time 60 \
+                -o "$dest/checksums.txt" "$base/checksums.txt" \
+            || curl -fsSL --connect-timeout 20 --max-time 60 \
+                -o "$dest/checksums.txt" "$base/supabase_${ver}_checksums.txt"; } \
+            && tarball="$(awk '$2 ~ /_linux_amd64\.tar\.gz$/ { print $2; exit }' "$dest/checksums.txt")" \
+            && [ -n "$tarball" ] \
+            && curl -fsSL --connect-timeout 20 --max-time 300 \
+                -o "$dest/$tarball" "$base/$tarball" \
+            && (cd "$dest" && grep " ${tarball}\$" checksums.txt | sha256sum -c - >/dev/null) \
+            && tar -xzf "$dest/$tarball" -C "$dest" supabase; then
+            # Recorded here, from the binary this job just verified against the
+            # release's checksums, so a later cache hit has something to check
+            # itself against. The tarball is not kept: it is the largest part
+            # of the entry and nothing reads it again.
+            rm -f "$dest/$tarball"
+            (cd "$dest" && sha256sum supabase > supabase.sha256)
+            sudo install -m 0755 "$dest/supabase" /usr/local/bin/supabase
+            echo "Supabase CLI ${ver} installed on attempt ${attempt}; checksum verified."
+            exit 0
+          fi
+          rm -f "$dest/$tarball" "$dest/checksums.txt"
+          echo "::warning::Supabase CLI ${ver} install attempt ${attempt} failed (download or checksum); retrying."
+          sleep $((attempt * 10))
+        done
+
+        echo "::error::Could not install the Supabase CLI ${ver} after 5 attempts. Every attempt either failed to download ${tarball} or failed its sha256 against the release checksums -- this is the install step, so no test has run yet."
+        exit 1

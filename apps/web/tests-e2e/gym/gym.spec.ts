@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * /gym — the Phase 4 multi-modal gym module (decisions §63,
@@ -48,12 +49,15 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		await expect(row.locator('.pr-badge')).toBeVisible();
 
 		// Backend row exists, owned by USER_A.
-		const { data: created } = await admin
-			.from('gym_workouts')
-			.select('id, title')
-			.eq('user_id', USER_A.id)
-			.eq('title', title);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'gym_workouts by user_id+title',
+			admin
+				.from('gym_workouts')
+				.select('id, title')
+				.eq('user_id', USER_A.id)
+				.eq('title', title)
+		);
+		expect(created.length).toBe(1);
 		const workoutId = created![0].id as string;
 
 		// Detail screen: the exercise block, its PR chip, and the set value.
@@ -83,11 +87,14 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		await expect(page.locator('.workout-row', { hasText: title })).toHaveCount(0);
 
 		// Backend row is gone (sets cascade with it).
-		const { data: afterDelete } = await admin
-			.from('gym_workouts')
-			.select('id')
-			.eq('id', workoutId);
-		expect(afterDelete?.length ?? 0).toBe(0);
+		const afterDelete = await readRows(
+			'gym_workouts by id',
+			admin
+				.from('gym_workouts')
+				.select('id')
+				.eq('id', workoutId)
+		);
+		expect(afterDelete.length).toBe(0);
 	});
 
 	test('a failed workout-list load shows an error + retry, and retry recovers', async ({
@@ -114,16 +121,16 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		await page.goto('/gym');
 		// Error state, not an empty card masquerading as "no workouts".
 		await expect(page.locator('.error-banner')).toBeVisible({ timeout: 10_000 });
-		await expect(page.locator('.empty-card')).toHaveCount(0);
+		await expect(page.getByTestId('gym-empty')).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Retry' }).click();
 		// Retry re-fetches (now unblocked) → the real empty-or-list state renders.
 		await expect(page.locator('.error-banner')).toHaveCount(0, { timeout: 10_000 });
 	});
 
-	test('Gym → Sessions link surfaces when the user has a session plan', async ({ page }) => {
-		// Session plans are otherwise undiscoverable from the main nav — the Gym
-		// header surfaces a Sessions link, self-hiding on session-plan presence
+	test('Gym → Session plans link surfaces when the user has a session plan', async ({ page }) => {
+		// Session plans are otherwise undiscoverable from the main nav — /gym
+		// surfaces a Session plans link, self-hiding on session-plan presence
 		// (independent of gym-workout count). Seed one plan, assert the link
 		// appears and lands on /sessions.
 		const admin = getAdminClient();
@@ -171,20 +178,26 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		const row = page.locator('.workout-row', { hasText: title });
 		await expect(row).toBeVisible({ timeout: 10_000 });
 
-		const { data: created } = await admin
-			.from('gym_workouts')
-			.select('id')
-			.eq('user_id', USER_A.id)
-			.eq('title', title);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'gym_workouts by user_id+title',
+			admin
+				.from('gym_workouts')
+				.select('id')
+				.eq('user_id', USER_A.id)
+				.eq('title', title)
+		);
+		expect(created.length).toBe(1);
 		const workoutId = created![0].id as string;
 
 		try {
-			const { data: sets } = await admin
-				.from('gym_sets')
-				.select('duration_s, reps, weight_kg')
-				.eq('workout_id', workoutId);
-			expect(sets?.length).toBe(1);
+			const sets = await readRows(
+				'gym_sets by workout_id',
+				admin
+					.from('gym_sets')
+					.select('duration_s, reps, weight_kg')
+					.eq('workout_id', workoutId)
+			);
+			expect(sets.length).toBe(1);
 			expect(sets![0].duration_s).toBe(90);
 			expect(sets![0].reps).toBeNull();
 			expect(sets![0].weight_kg).toBeNull();
@@ -237,20 +250,26 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		const row = page.locator('.workout-row', { hasText: title });
 		await expect(row).toBeVisible({ timeout: 10_000 });
 
-		const { data: created } = await admin
-			.from('gym_workouts')
-			.select('id')
-			.eq('user_id', USER_A.id)
-			.eq('title', title);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'gym_workouts by user_id+title',
+			admin
+				.from('gym_workouts')
+				.select('id')
+				.eq('user_id', USER_A.id)
+				.eq('title', title)
+		);
+		expect(created.length).toBe(1);
 		const workoutId = created![0].id as string;
 
 		try {
-			const { data: sets } = await admin
-				.from('gym_sets')
-				.select('exercise_name, exercise_id')
-				.eq('workout_id', workoutId);
-			expect(sets?.length).toBe(1);
+			const sets = await readRows(
+				'gym_sets by workout_id',
+				admin
+					.from('gym_sets')
+					.select('exercise_name, exercise_id')
+					.eq('workout_id', workoutId)
+			);
+			expect(sets.length).toBe(1);
 			expect(sets![0].exercise_name).toBe('Bench Press');
 			// The catalogue link was bound from the typed name.
 			expect(sets![0].exercise_id).toBe(benchId);
@@ -310,20 +329,26 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		const row = page.locator('.workout-row', { hasText: title });
 		await expect(row).toBeVisible({ timeout: 10_000 });
 
-		const { data: created } = await admin
-			.from('gym_workouts')
-			.select('id')
-			.eq('user_id', USER_A.id)
-			.eq('title', title);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'gym_workouts by user_id+title',
+			admin
+				.from('gym_workouts')
+				.select('id')
+				.eq('user_id', USER_A.id)
+				.eq('title', title)
+		);
+		expect(created.length).toBe(1);
 		const workoutId = created![0].id as string;
 
 		try {
-			const { data: sets } = await admin
-				.from('gym_sets')
-				.select('exercise_name, exercise_id')
-				.eq('workout_id', workoutId);
-			expect(sets?.length).toBe(1);
+			const sets = await readRows(
+				'gym_sets by workout_id',
+				admin
+					.from('gym_sets')
+					.select('exercise_name, exercise_id')
+					.eq('workout_id', workoutId)
+			);
+			expect(sets.length).toBe(1);
 			expect(sets![0].exercise_name).toBe('Deadlift');
 			expect(sets![0].exercise_id).toBe(deadliftId);
 		} finally {
@@ -379,11 +404,14 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		const workoutId = created![0].id as string;
 
 		try {
-			const { data: sets } = await admin
-				.from('gym_sets')
-				.select('exercise_name, exercise_id')
-				.eq('workout_id', workoutId);
-			expect(sets?.length).toBe(1);
+			const sets = await readRows(
+				'gym_sets by workout_id',
+				admin
+					.from('gym_sets')
+					.select('exercise_name, exercise_id')
+					.eq('workout_id', workoutId)
+			);
+			expect(sets.length).toBe(1);
 			expect(sets![0].exercise_id).toBe(customId);
 		} finally {
 			await admin.from('gym_workouts').delete().eq('id', workoutId);
@@ -421,21 +449,27 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 			const row = page.locator('.workout-row', { hasText: title });
 			await expect(row).toBeVisible({ timeout: 10_000 });
 
-			const { data: created } = await admin
-				.from('gym_workouts')
-				.select('id')
-				.eq('user_id', USER_A.id)
-				.eq('title', title);
-			expect(created?.length).toBe(1);
+			const created = await readRows(
+				'gym_workouts by user_id+title',
+				admin
+					.from('gym_workouts')
+					.select('id')
+					.eq('user_id', USER_A.id)
+					.eq('title', title)
+			);
+			expect(created.length).toBe(1);
 			const workoutId = created![0].id as string;
 
 			try {
 				// 135 lbs -> ~61.23 kg stored (canonical), not 135.
-				const { data: sets } = await admin
-					.from('gym_sets')
-					.select('weight_kg')
-					.eq('workout_id', workoutId);
-				expect(sets?.length).toBe(1);
+				const sets = await readRows(
+					'gym_sets by workout_id',
+					admin
+						.from('gym_sets')
+						.select('weight_kg')
+						.eq('workout_id', workoutId)
+				);
+				expect(sets.length).toBe(1);
 				expect(sets![0].weight_kg).toBeGreaterThan(61);
 				expect(sets![0].weight_kg).toBeLessThan(61.5);
 

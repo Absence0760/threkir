@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /share/run/[id] — read-only gear chip on the public share page.
@@ -27,12 +28,7 @@ test.describe('/share/run/[id] — gear chip (anon)', () => {
 	let plantedRunId: string | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 
 		const admin = getAdminClient();
 		const inserted = await admin
@@ -70,8 +66,8 @@ test.describe('/share/run/[id] — gear chip (anon)', () => {
 		}
 	});
 
-	test('anon viewer sees the gear chip but no edit affordance', async ({ page }) => {
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+	test('anon viewer sees the gear chip but no edit affordance', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',

@@ -1,6 +1,8 @@
 package com.runapp.watchwear
 
 import android.app.Application
+import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -8,18 +10,35 @@ import androidx.lifecycle.viewModelScope
 import com.runapp.watchwear.recording.Checkpoint
 import com.runapp.watchwear.recording.CheckpointStore
 import com.runapp.watchwear.recording.checkpointActiveDurationS
+import com.runapp.watchwear.recording.GpsDistanceEstimator
+import com.runapp.watchwear.recording.heartRateClaim
 import com.runapp.watchwear.recording.RecordingRepository
+import com.runapp.watchwear.recording.RecoveryAction
+import com.runapp.watchwear.recording.recoveryActionFor
+import com.runapp.watchwear.recording.sealTrackFileOrNull
+import com.runapp.watchwear.recording.trackFileSegmentCount
 import com.runapp.watchwear.recording.RunRecordingService
+import com.runapp.watchwear.recording.TrackStorage
+import com.runapp.watchwear.recording.sweepOrphanTracks
 import com.runapp.watchwear.system.BatteryOptimization
 import com.runapp.watchwear.system.BatteryStatus
 import com.runapp.watchwear.system.NetworkWatcher
 import java.io.File
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import java.time.Instant
@@ -62,16 +81,30 @@ internal fun classifyDrainError(e: Throwable): DrainAction {
             else -> DrainAction.SkipAndContinue
         }
     }
-    // Network-layer failures must classify transient so the drain loop
-    // short-circuits and arms backoff, mirroring the Go worker's isTransient
-    // (apps/job_worker/internal/worker.go). OkHttp / java.net surface a
-    // dropped connection as "Failed to connect to …", "ECONNREFUSED
-    // (Connection refused)", "Connection reset", or a truncated body as
-    // "unexpected end of stream" — none of which match a bare "timeout", so
-    // without these markers a real outage was mis-classified permanent,
-    // hammered every queued run, and reset backoff via onSuccess.
+    return if (isTransientNetworkFailure(e)) {
+        DrainAction.StopAndRetryLater
+    } else {
+        DrainAction.SkipAndContinue
+    }
+}
+
+/// Did the request fail below HTTP — before any server had a chance to answer?
+///
+/// Network-layer failures must classify transient so the drain loop
+/// short-circuits and arms backoff, mirroring the Go worker's isTransient
+/// (apps/job_worker/internal/worker.go). OkHttp / java.net surface a dropped
+/// connection as "Failed to connect to …", "ECONNREFUSED (Connection
+/// refused)", "Connection reset", or a truncated body as "unexpected end of
+/// stream" — none of which match a bare "timeout", so without these markers a
+/// real outage was mis-classified permanent, hammered every queued run, and
+/// reset backoff via onSuccess.
+///
+/// One home for the marker list because the sign-in path asks the same
+/// question of the same OkHttp stack, and a second copy would answer it
+/// differently the first time a marker was added to only one of them.
+internal fun isTransientNetworkFailure(e: Throwable): Boolean {
     val msg = e.message.orEmpty()
-    val transientMarkers = listOf(
+    val markers = listOf(
         "timeout",
         "Unable to resolve",
         "Software caused",
@@ -81,8 +114,7 @@ internal fun classifyDrainError(e: Throwable): DrainAction {
         "no such host",
         "unexpected end of stream",
     )
-    val transient = transientMarkers.any { msg.contains(it, ignoreCase = true) }
-    return if (transient) DrainAction.StopAndRetryLater else DrainAction.SkipAndContinue
+    return markers.any { msg.contains(it, ignoreCase = true) }
 }
 
 data class UiState(
@@ -91,14 +123,81 @@ data class UiState(
     val distanceM: Double = 0.0,
     val paceSecPerKm: Double? = null,
     val bpm: Int? = null,
+    /// Why [bpm] is what it is. Threaded through so `RunningScreen` can
+    /// tell "waiting for the first sample" from "there will be none"
+    /// (decisions § 1052).
+    val hrAvailability: HeartRateAvailability = HeartRateAvailability.Off,
     val locationAvailable: Boolean = true,
     val online: Boolean = true,
     val queuedCount: Int = 0,
+    /// The last read of the run queue failed, so [queuedCount] is stale rather
+    /// than current. DataStore reports a corrupt or unreadable file by failing
+    /// the read, and the two facts are orthogonal: the count is the last figure
+    /// anyone saw, this is whether it still stands (decisions § 1104).
+    ///
+    /// A failed queue MUTATION raises it too, and for the same reason rather
+    /// than by analogy: DataStore applies a write by reading the file, editing
+    /// and replacing it, so an `edit` that throws has failed on the same file
+    /// this flag is about, and the count on the arc no longer stands either
+    /// way. That is how the PostRun discard reports a drop it could not make
+    /// (decisions § 1491).
+    val queueUnreadable: Boolean = false,
+    /// Queue entries the server has permanently REFUSED — a 400/404/409/422
+    /// that no retry will ever move. They stay in the queue by design (§ 17:
+    /// dropping one silently loses a run), so without this the count on the
+    /// PreRun chip never falls while every Sync tap reports success
+    /// (decisions § 1347).
+    ///
+    /// Ids rather than a count, because the only remedy is destructive and a
+    /// discard must name exactly the entries the last pass judged — not
+    /// "however many are queued now", which would take a run that has never
+    /// been tried with it.
+    ///
+    /// Not persisted. A cold start starts empty and the first drain pass
+    /// re-derives it, which is honest: the fact is a server verdict, not a
+    /// property of the file.
+    val rejectedRunIds: Set<String> = emptySet(),
     val authed: Boolean = false,
-    val authError: String? = null,
+    /// Why the watch could not authenticate, as a member of a catalogued
+    /// vocabulary rather than as the throwable's own message.
+    ///
+    /// The same defect § 1490 closed one screen over: it held GoTrue's own
+    /// English error prose, or — on the refresh path — that prose interpolated
+    /// into a translated frame, so the half of the sentence carrying the
+    /// meaning was in nobody's language but English. The raw text goes to
+    /// `Log.e` where a bug report can reach it (decisions § 1492).
+    val authFault: AuthFault? = null,
     val signInLoading: Boolean = false,
     val syncing: Boolean = false,
-    val syncError: String? = null,
+    /// Why the last sync attempt did not get through, as a member of a
+    /// catalogued vocabulary rather than as the throwable's own message.
+    ///
+    /// It held `e.message ?: e.javaClass.simpleName` — English, technical and
+    /// unbounded, on a 1.4-inch display where every other caption is a
+    /// `caption3` resource, and in all seven locales alike. The raw text is
+    /// still what a bug report needs, so it goes to `Log.e` at the point of
+    /// failure instead of to the wrist (decisions § 1490).
+    val syncFault: SyncFault? = null,
+    /// What stopped the last COMPLETED drain pass, or null if it got through.
+    /// Non-null is also what armed `drainBackoff`.
+    ///
+    /// Deliberately not carried on [syncFault], which is the PostRun banner
+    /// and a fact about one pass: `startNextRun` clears it, and PreRun is the
+    /// screen the runner is on for every drain but the first, so the banner's
+    /// lifetime is exactly wrong for the surface that needed it. This is the
+    /// same split § 1347 drew for [rejectedRunIds] — a standing fact about the
+    /// queue rather than about a pass (decisions § 1390).
+    ///
+    /// A fault rather than the boolean it replaced, because "Retry N" is an
+    /// affordance that can never succeed when what stopped the pass was a
+    /// session the server will not renew: it is enabled, it fires, and every
+    /// tap re-runs the same drain, 401s again and fails the same refresh. The arc needs to offer the sign-in instead, and the
+    /// only thing that separates the two cases is which fault it was
+    /// (decisions § 1544).
+    ///
+    /// Not persisted, and re-derived by the next completed pass in both
+    /// directions: a pass that gets through clears it.
+    val syncBlockedBy: SyncFault? = null,
     val thisRunId: String? = null,
     val thisRunSynced: Boolean = false,
     val lastRunSummary: FinishedSummary? = null,
@@ -108,6 +207,13 @@ data class UiState(
     val activityType: String = "run",
     val lapCount: Int = 0,
     val activeRace: ActiveRaceState? = null,
+    /// Metres to the centre of the race's start line while a recording is
+    /// being timed by the lines and its start is not yet committed (#1307).
+    val raceToStartM: Double? = null,
+    /// Race mode for the run being recorded, or null for an ordinary run.
+    /// Drives the running screen's gun clock and the Stop button's
+    /// pause-then-finish meaning.
+    val raceRun: RaceRunState? = null,
     /// Routes the user has saved, populated from `LocalRouteStore` on
     /// launch and refreshed from Supabase whenever PreRun is entered.
     val routes: List<SavedRoute> = emptyList(),
@@ -116,9 +222,15 @@ data class UiState(
     /// banner + "X to go" badge have a polyline to work against.
     val selectedRoute: SavedRoute? = null,
     val routesLoading: Boolean = false,
+    /// The last attempt to load the route list did not produce one — no
+    /// session yet, or the fetch threw. Distinct from "this runner has
+    /// saved no routes", which is what the picker used to say either way:
+    /// a signed-out or offline watch told a runner with fifty saved routes
+    /// to go and build one.
+    val routesUnavailable: Boolean = false,
     /// Live off-route distance in metres (perpendicular distance to the
     /// nearest segment). Null when no route is loaded. Published by the
-    /// recording service per GPS sample via `RouteMath.offRouteDistanceM`.
+    /// recording service per GPS sample via `RouteMath.routeProgress`.
     val offRouteDistanceM: Double? = null,
     /// Live "distance to end of route" in metres. Null when no route.
     val routeRemainingM: Double? = null,
@@ -135,6 +247,18 @@ data class UiState(
     /// Universal `show_calories` opt-out (default on). When false the
     /// PostRun summary renders no calorie line at all.
     val showCalories: Boolean = true,
+    /// Universal `voice_feedback_enabled` (default on) — whether the watch
+    /// speaks split / pace cues at all. Flows through `ACTION_START` to the
+    /// recording service, which owns the TTS engine; nothing on the watch
+    /// itself can set it, because the watch has no settings screen.
+    val voiceFeedbackEnabled: Boolean = true,
+    /// Universal `voice_feedback_verbosity`, handed to the recording service
+    /// with [voiceFeedbackEnabled] so a spoken workout cue is gated the way
+    /// the phone gates it.
+    val voiceFeedbackVerbosity: com.runapp.watchwear.workout.VoiceVerbosity =
+        com.runapp.watchwear.workout.VoiceVerbosity.FULL,
+    /// `voice_cue_types.workout_steps` from the universal bag (absent = on).
+    val workoutStepCuesEnabled: Boolean = true,
     /// Distance-display unit resolved from `user_settings.prefs
     /// .preferred_unit`. Drives the distance / pace read-outs on the
     /// running + post-run screens and the route "to go" badge. Defaults
@@ -156,6 +280,16 @@ data class UiState(
     /// Null means "no target — don't fire pace alerts". Set via the
     /// pre-run Pace chip; flows through `ACTION_START` to the service.
     val targetPaceSecPerKm: Int? = null,
+    /// Today's planned workout as the phone last pushed it, on the watch's
+    /// own calendar day. Null: no push, nothing today, or a push from
+    /// another day.
+    val todaysWorkout: com.runapp.watchwear.workout.PushedWorkout? = null,
+    /// Whether Start runs [todaysWorkout]. On by default, so a runner with a
+    /// session today gets it without a tap; the pre-run chip turns it off
+    /// for a free run.
+    val followWorkout: Boolean = true,
+    /// The live step, while a run follows a workout.
+    val workoutView: com.runapp.watchwear.workout.WorkoutView? = null,
     /// Live step count for the current run from the pedometer. Null
     /// when the device has no step sensor or no samples have arrived.
     val steps: Int? = null,
@@ -167,16 +301,31 @@ data class UiState(
     val lastKnownLatLng: com.runapp.watchwear.recording.RouteMath.LatLng? = null,
 )
 
-data class ActiveRaceState(
-    val eventId: String,
-    val instanceStart: String,
-    val status: String,
-    val startedAtMs: Long?,
-    val eventTitle: String?,
-) {
-    val isArmed: Boolean get() = status == "armed"
-    val isRunning: Boolean get() = status == "running"
-}
+data class RaceRunState(
+    /// The gun on the DEVICE clock (server `started_at` less the measured
+    /// offset), so the running screen can tick it from `currentTimeMillis`.
+    val gunStartDeviceMs: Long?,
+    /// The host pressed End before this runner finished: no result is owed,
+    /// and Stop means Stop again.
+    val ended: Boolean = false,
+    /// The End arrived after the runner pressed Stop: the paused screen still
+    /// offers Finish, filed at that Stop (decisions § 1857).
+    val finishPending: Boolean = false,
+    /// Started more than five minutes after GO, or the first fix was more than
+    /// 200 m from the course's start point ([raceLateStart]). Shown on the
+    /// running screen; not carried on the result, as on the phone
+    /// (decisions § 1843).
+    val lateStart: Boolean = false,
+    /// A finish-line crossing filed the result and paused the run: "Not
+    /// finished? Resume" is open for [RACE_UNDO_WINDOW_MS] (#1307 m11).
+    val undoOpen: Boolean = false,
+)
+
+/// What the PostRun screen says about a race result this run produced.
+data class RaceSummary(
+    val finished: Boolean,
+    val durationS: Int,
+)
 
 data class FinishedSummary(
     val distanceM: Double,
@@ -190,6 +339,7 @@ data class FinishedSummary(
     /// `PostRunScreen` to render a thumbnail of the actual shape the
     /// runner ran. Empty when the run had no GPS fixes (indoor).
     val trackLatLngs: List<com.runapp.watchwear.recording.RouteMath.LatLng> = emptyList(),
+    val race: RaceSummary? = null,
 )
 
 data class FinishedLap(
@@ -279,6 +429,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionBridge = SessionBridge(application)
     private val routeStore = LocalRouteStore(application)
     private val routesBridge = RoutesBridge(application)
+    private val workoutBridge = WorkoutBridge(application)
     private val checkpoints = CheckpointStore(application)
     private val networkWatcher = NetworkWatcher(application)
     /// MapTiler tile source — process-wide singleton shared with
@@ -300,6 +451,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         baseUrl = BuildConfig.SUPABASE_URL,
         anonKey = BuildConfig.SUPABASE_ANON_KEY,
     )
+    private val raceResults = RaceResultStore(application)
+    private val raceOutbox = RaceResultOutbox(
+        store = raceResults,
+        submit = { token, r -> raceClient.submitResult(token, r) },
+        deleteAuto = { token, uid, eventId, instance ->
+            raceClient.deleteOwnAutoResult(token, uid, eventId, instance)
+        },
+        onFailure = { what, e -> Log.w(TAG, what, e) },
+    )
+    private val lastRunStore = com.runapp.watchwear.complications.LastRunStore(application)
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -314,12 +475,109 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// the Dart `SyncService` on phones — see `DrainBackoff` for details.
     private val drainBackoff = DrainBackoff()
 
+    /// Serialises `drainQueue`. Cold start alone fires two — the cached-
+    /// session restore and the phone-bridge restore — and neither is held
+    /// off by backoff at zero failures. Two passes over the same snapshot
+    /// upload every queued run twice (a multi-MB ultra track over LTE) and
+    /// race each other's queue removal and track-file deletion. Whoever
+    /// arrives second now waits and re-reads the queue, which by then is
+    /// drained.
+    private val drainMutex = Mutex()
+
+    /// Set once the cache→files track migration + orphan sweep have run.
+    /// Guarded by `drainMutex`, which is what orders it ahead of the first
+    /// upload: a drain must never read a queue entry whose path still points
+    /// at the purgeable location.
+    private var trackStorageReconciled = false
+
+    /// Last-resort net under every coroutine this view model starts.
+    ///
+    /// `viewModelScope` carries a `SupervisorJob`, which stops one failing
+    /// child from cancelling its siblings but does NOT stop an unhandled throw
+    /// from reaching the thread's uncaught handler — and on Android that ends
+    /// the process the recording service is in. Twenty-three `launch` sites
+    /// each had to remember their own `try` for a run not to die of a route
+    /// cache write; § 1055 closed the one that had already cost a run, and the
+    /// residual was every site nobody had reached yet.
+    ///
+    /// It is a net, not a substitute. A site whose failure the runner should
+    /// hear about still catches and says so — this only decides what happens
+    /// to the ones that say nothing, and "logged" beats "process gone".
+    private val crashGuard = CoroutineExceptionHandler { _, e ->
+        Log.e(TAG, "unhandled failure in a view-model coroutine", e)
+    }
+
+    /// Every `launch` in this class goes through here. `ViewModelStreamResilienceTest`
+    /// fails the build on a bare `viewModelScope.launch`, because a handler
+    /// installed on 22 of 23 sites is the same defect with better odds.
+    private fun launchGuarded(block: suspend CoroutineScope.() -> Unit): Job =
+        viewModelScope.launch(crashGuard, block = block)
+
     private var queueWatchJob: Job? = null
     private var recordingObserverJob: Job? = null
     private var connectivityJob: Job? = null
     private var racePollJob: Job? = null
     private var racePingJob: Job? = null
     private var lastRacePingAtMs: Long = 0L
+
+    // Race-mode recording state. Everything below is auxiliary to the run
+    // (layer L4): a fault in any of it is caught where it happens and leaves
+    // the recording, the foreground service and the queued run untouched.
+    /// Server-minus-device clock offset, sampled off every race ping's
+    /// server-stamped `at`, or restored off the watch after a restart.
+    private var serverClock = ServerClockOffset()
+    /// The round trip of the offset [serverClock] holds, so a sample that
+    /// beats it is kept on the watch; null until one lands or is restored.
+    private var serverClockRttMs: Long? = null
+    /// The kept offset is read back once per session, before the race is.
+    private var clockRestoreTried = false
+    /// The race the current recording belongs to.
+    private var boundRace: ActiveRaceState? = null
+    private var boundRunId: String? = null
+    /// A run the host ended the race under; it is never re-bound.
+    private var raceEndedRunId: String? = null
+    /// The race kept on the watch is read back once per session, so a
+    /// restart with no signal still times it (#1307 offline).
+    private var raceRestoreTried = false
+    /// What the watch's race cache was last written to, so an unchanged poll
+    /// writes nothing; [raceCacheWritten] false until the first write.
+    private var raceCacheEntry: CachedActiveRace? = null
+    private var raceCacheWritten = false
+    /// The active race whose course came off the watch's cache at restore,
+    /// re-read from the server on the first poll with signal.
+    private var raceCourseFromCacheKey: String? = null
+    /// Timing by the lines from the recording's Start (#1307), bound to a
+    /// race or not yet.
+    private val raceTimer = RaceLineTimer().apply {
+        onStartLineCrossed = { cueRaceCrossing(RunRecordingService.RACE_CUE_START) }
+        onFailure = { what, e -> Log.w(TAG, what, e) }
+    }
+    /// The run [raceTimer] follows; a new run id starts it afresh.
+    private var raceTimerRunId: String? = null
+    /// The line finish the runner took back on this recording, kept on the
+    /// watch so a restart mid-recording keeps its start and re-arms the line.
+    private var raceUndone: UndoneRaceFinish? = null
+    /// The latest finish taken back on this recording (device clock), kept
+    /// past a later finish so the saved run still names it.
+    private var raceUndoneAtMs: Long? = null
+    /// Closes "Not finished? Resume" and stops the run when it runs out.
+    private var raceUndoJob: Job? = null
+    /// The line finish filed at the crossing, so an undo waits for it.
+    private var raceFilingJob: Job? = null
+    /// The last fix offered to the detector, by its GPS time: a dedupe key.
+    private var lastRaceFixKey: Long = Long.MIN_VALUE
+    private var raceStopDecision: RaceStopDecision? = null
+    /// The device-clock instant the runner stopped racing (Stop or pause on
+    /// a bound race), while the paused screen's choice is open. A Finish is
+    /// timed here, not at the press that chose it.
+    private var raceStoppedAtMs: Long? = null
+    /// The host ended the race after that Stop; a Resume now drops the race.
+    private var raceEndedAfterStop = false
+    /// The bound run's first finite fix and Start, held so the late-start
+    /// check can run again when the course lands after that fix.
+    private var raceFirstFixLat: Double? = null
+    private var raceFirstFixLng: Double? = null
+    private var raceRecordingStartedMs: Long? = null
 
     init {
         observeRecording()
@@ -332,6 +590,75 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         checkRecovery()
         loadCachedRoutes()
         observeRoutesBridge()
+        observeWorkoutBridge()
+    }
+
+    /// The latest today's-workout push the watch applied. Held whole rather
+    /// than as the offered workout, so the day check runs again at Start: a
+    /// pre-run screen left open past midnight must not arm yesterday's
+    /// session.
+    private var workoutDelivery: WorkoutPushDelivery? = null
+    private var lastAppliedWorkoutPushMs: Long = 0L
+    /// The workout this watch last started a run on. It is not offered again
+    /// once that run exists, until the phone pushes something else: the phone
+    /// only learns the workout is done when it next reads the plan, and a
+    /// second Start must not run the same session twice.
+    private var startedWorkoutId: String? = null
+
+    /// Listen for today's planned workout from the paired phone
+    /// (`WearWorkoutBridge`). The Data Layer keeps the item in the watch's
+    /// own graph, so the cold-start read answers with no phone in range.
+    private fun observeWorkoutBridge() {
+        launchGuarded {
+            try {
+                workoutBridge.current()?.let(::applyWorkoutPush)
+            } catch (e: Throwable) {
+                Log.w(TAG, "today's workout cold-start read failed", e)
+            }
+        }
+        launchGuarded {
+            workoutBridge.events
+                .catch { e -> Log.w(TAG, "workout bridge stream failed", e) }
+                .collect { delivery ->
+                    try {
+                        applyWorkoutPush(delivery)
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "workout bridge event failed", e)
+                    }
+                }
+        }
+    }
+
+    private fun applyWorkoutPush(delivery: WorkoutPushDelivery) {
+        if (!shouldApplyRoutesPush(lastAppliedWorkoutPushMs, delivery.updatedAtMs)) return
+        lastAppliedWorkoutPushMs = maxOf(lastAppliedWorkoutPushMs, delivery.updatedAtMs)
+        workoutDelivery = delivery
+        refreshTodaysWorkout()
+    }
+
+    private fun refreshTodaysWorkout() {
+        val offered = com.runapp.watchwear.workout.offeredWorkout(
+            workoutDelivery?.push,
+            java.time.LocalDate.now(),
+        )?.takeIf { it.planWorkoutId != startedWorkoutId }
+        _state.value = _state.value.copy(todaysWorkout = offered)
+    }
+
+    /// The "today" tile's tap: land on the pre-run screen with [planWorkoutId]
+    /// armed, even if the runner had switched the chip to a free run earlier
+    /// in this process. Only when it is still the workout on offer — a tap on
+    /// a tile rendered before midnight, or before a newer push, arms nothing.
+    fun followWorkoutFromTile(planWorkoutId: String) {
+        if (_state.value.stage != Stage.PreRun) return
+        refreshTodaysWorkout()
+        if (_state.value.todaysWorkout?.planWorkoutId != planWorkoutId) return
+        _state.value = _state.value.copy(followWorkout = true)
+    }
+
+    /// The pre-run chip: follow today's workout, or run free.
+    fun toggleFollowWorkout() {
+        if (_state.value.stage != Stage.PreRun) return
+        _state.value = _state.value.copy(followWorkout = !_state.value.followWorkout)
     }
 
     /// Tracks the `updated_at_ms` of the last phone push the watch
@@ -350,7 +677,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// `refreshRoutes()` remains the canonical refresh path when the
     /// watch has its own connectivity.
     private fun observeRoutesBridge() {
-        viewModelScope.launch {
+        launchGuarded {
             try {
                 routesBridge.current()?.let { push ->
                     if (push.routes.isNotEmpty() &&
@@ -366,27 +693,31 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (_: Throwable) { /* best-effort cold-start hydrate */ }
         }
-        viewModelScope.launch {
-            routesBridge.events.collect { push ->
-                try {
-                    if (!shouldApplyRoutesPush(lastAppliedRoutesPushMs, push.updatedAtMs)) {
-                        // Stale or out-of-order delivery — keep the
-                        // current state, don't roll back.
-                        return@collect
+        launchGuarded {
+            routesBridge.events
+                .catch { e -> Log.w(TAG, "routes bridge stream failed", e) }
+                .collect { push ->
+                    try {
+                        if (!shouldApplyRoutesPush(lastAppliedRoutesPushMs, push.updatedAtMs)) {
+                            // Stale or out-of-order delivery — keep the
+                            // current state, don't roll back.
+                            return@collect
+                        }
+                        routeStore.save(push.routes)
+                        val recents = routeStore.recentIds.first()
+                        _state.value = _state.value.copy(
+                            routes = sortByRecency(push.routes, recents),
+                        )
+                        lastAppliedRoutesPushMs = push.updatedAtMs
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "routes bridge event failed", e)
                     }
-                    routeStore.save(push.routes)
-                    val recents = routeStore.recentIds.first()
-                    _state.value = _state.value.copy(
-                        routes = sortByRecency(push.routes, recents),
-                    )
-                    lastAppliedRoutesPushMs = push.updatedAtMs
-                } catch (_: Throwable) { /* swallow — picker keeps prior list */ }
-            }
+                }
         }
     }
 
     private fun observeRecording() {
-        recordingObserverJob = viewModelScope.launch {
+        recordingObserverJob = launchGuarded {
             RecordingRepository.metrics.collect { m ->
                 when (m.stage) {
                     RecordingRepository.Stage.Recording,
@@ -398,6 +729,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                             distanceM = m.distanceM,
                             paceSecPerKm = m.paceSecPerKm,
                             bpm = m.bpm,
+                            hrAvailability = m.hrAvailability,
                             locationAvailable = m.locationAvailable,
                             activityType = m.activityType,
                             lapCount = m.laps.size,
@@ -407,8 +739,43 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                             routeWaypoints = m.routeWaypoints,
                             trackOverlayPoints = m.trackOverlayPoints,
                             steps = m.steps,
+                            workoutView = m.workoutView,
                         )
                         maybePushRacePing(m)
+                        try {
+                            syncRaceTimerRun(m)
+                            maybeBindRace(m)
+                            updateRaceTimer()
+                            maybeNoteRaceFirstFix(m)
+                            maybeAdvanceRaceFinish(m)
+                            handleRaceTimer(m)
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "race finish tracking failed; the run records on", e)
+                        }
+                        // Debug builds only: the line-calibration capture
+                        // (#1304 § 6) takes fixes by the race feed's own rule.
+                        try {
+                            if (BuildConfig.DEBUG) {
+                                val p = m.latestPoint
+                                if (p != null) LineCalibrationCapture.shared.offer(
+                                    runId = m.runId,
+                                    recording = m.stage == RecordingRepository.Stage.Recording,
+                                    fixKey = p.epochMs,
+                                    fix = GateFix(
+                                        p.lat,
+                                        p.lng,
+                                        raceFixDeviceMs(
+                                            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
+                                            nowWallMs = System.currentTimeMillis(),
+                                            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                                        ).toDouble(),
+                                        m.distanceM,
+                                    ),
+                                )
+                            }
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "line calibration capture failed; the run records on", e)
+                        }
                     }
                     RecordingRepository.Stage.Finished -> handleFinishedRun(m)
                     RecordingRepository.Stage.Idle -> Unit
@@ -418,16 +785,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun maybePushRacePing(m: RecordingRepository.Metrics) {
-        val race = _state.value.activeRace ?: return
-        if (!race.isRunning) return
+        val race = boundRace ?: _state.value.activeRace?.takeIf { it.isRunning } ?: return
         val point = m.latestPoint ?: return
         val now = System.currentTimeMillis()
         if (now - lastRacePingAtMs < 10_000) return
         lastRacePingAtMs = now
         val token = supabase.currentAccessToken ?: return
         val uid = supabase.authedUserId ?: return
-        racePingJob = viewModelScope.launch {
-            try {
+        val sinceStart = raceSinceStartLineS(raceTimer.start, now)
+        racePingJob = launchGuarded {
+            val sample = try {
                 raceClient.pushPing(
                     accessToken = token,
                     userId = uid,
@@ -438,28 +805,102 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceM = m.distanceM,
                     elapsedS = (m.elapsedMs / 1000).toInt(),
                     bpm = m.bpm,
+                    sinceStartLineS = sinceStart,
                 )
             } catch (_: Throwable) {
                 // ignore — pings are best-effort.
+                null
+            }
+            sample?.let { onClockSample(it) }
+        }
+    }
+
+    private fun onClockSample(sample: RaceSessionClient.ClockSample) {
+        val wins = clockSampleWins(sample.receivedAtMs - sample.sentAtMs, serverClockRttMs)
+        serverClock.addSample(sample.sentAtMs, sample.receivedAtMs, sample.serverAtMs)
+        if (wins) rememberClockOffset(sample)
+        val race = boundRace ?: return
+        val run = _state.value.raceRun ?: return
+        val gun = gunStartDeviceMs(race.goAtMs, serverClock.offsetMs)
+        if (gun != run.gunStartDeviceMs) {
+            _state.value = _state.value.copy(raceRun = run.copy(gunStartDeviceMs = gun))
+        }
+    }
+
+    /// Keep the offset a winning sample gave on the watch, so a restart with
+    /// no signal still knows it. L4: a failed write costs only that.
+    private fun rememberClockOffset(sample: RaceSessionClient.ClockSample) {
+        val entry = clockOffsetEntry(sample) ?: return
+        serverClockRttMs = entry.rttMs
+        if (supabase.authedUserId == null) return
+        launchGuarded {
+            try {
+                raceResults.cacheClockOffset(entry)
+            } catch (e: Throwable) {
+                Log.w(TAG, "clock offset not kept; it holds while the app runs", e)
             }
         }
     }
 
+    /// After a restart, the offset kept within the last day stands in until a
+    /// ping measures one, so the restored race is judged on the server clock.
+    private suspend fun restoreClockOffset() {
+        if (clockRestoreTried) return
+        clockRestoreTried = true
+        val kept = try {
+            raceResults.cachedClockOffset()
+        } catch (e: Throwable) {
+            Log.w(TAG, "kept clock offset unreadable; the next ping measures one", e)
+            null
+        } ?: return
+        val entry = restorableClockOffset(kept, System.currentTimeMillis())
+        if (entry == null) {
+            try {
+                raceResults.cacheClockOffset(null)
+            } catch (e: Throwable) {
+                Log.w(TAG, "stale clock offset not dropped; it is ignored again next time", e)
+            }
+            return
+        }
+        if (serverClock.offsetMs != null) return
+        serverClock.seed(entry)
+        serverClockRttMs = entry.rttMs
+    }
+
+    /// `Flow.catch` was the wrong operator here and its cost was total: catch
+    /// COMPLETES the flow, so one failed read froze `queuedCount` at its last
+    /// value for the life of the process — 0 on a cold start — and the pre-run
+    /// "Sync N runs" chip, gated on `queuedCount > 0`, never appeared again. A
+    /// runner rebooting into a corrupt queue was shown nothing at all. Catching
+    /// is not a judgement about corruption; it is a judgement that the FIRST
+    /// failure is the LAST one, which nothing establishes. Retrying makes the
+    /// cheap distinguishing test — read it again — and costs one file open
+    /// (decisions § 1104).
     private fun observeQueue() {
-        queueWatchJob = viewModelScope.launch {
-            store.queue.collect { list ->
+        queueWatchJob = launchGuarded {
+            store.queue
+                .retryWhen { e, attempt ->
+                    Log.w(TAG, "run queue stream failed, retry $attempt", e)
+                    _state.value = _state.value.copy(queueUnreadable = true)
+                    delay(queueReadRetryDelayMs(attempt))
+                    true
+                }
+                .collect { list ->
+                val wasUnreadable = _state.value.queueUnreadable
                 _state.value = _state.value.copy(
                     queuedCount = list.size,
+                    queueUnreadable = false,
                     thisRunSynced = _state.value.thisRunId?.let { id ->
                         list.none { it.id == id }
                     } ?: _state.value.thisRunSynced,
                 )
+                onQueueBecameReadable(wasUnreadable)
             }
         }
     }
 
     private fun observeConnectivity() {
-        connectivityJob = viewModelScope.launch {
+        connectivityJob = launchGuarded {
             var seeded = false
             networkWatcher.availability().collect { online ->
                 _state.value = _state.value.copy(online = online)
@@ -473,8 +914,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// has no realtime client today so we poll — 30s cadence is fine
     /// because the organiser usually arms a few minutes before GO.
     private fun observeRace() {
-        racePollJob = viewModelScope.launch {
+        racePollJob = launchGuarded {
             while (true) {
+                if (authReady.value) restoreCachedRace()
                 kotlinx.coroutines.delay(5_000)
                 if (authReady.value) refreshRace()
                 kotlinx.coroutines.delay(25_000)
@@ -482,40 +924,536 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /// After a restart the watch knows its race before any poll answers: the
+    /// one kept at the last poll, with its course, unless it has finished or
+    /// its window has closed since. The poll replaces it once it has signal.
+    private suspend fun restoreCachedRace() {
+        restoreClockOffset()
+        if (raceRestoreTried || boundRace != null || _state.value.activeRace != null) return
+        val uid = supabase.authedUserId ?: return
+        raceRestoreTried = true
+        val restored = try {
+            raceResults.restoreActiveRace(uid, System.currentTimeMillis() + (serverClock.offsetMs ?: 0L))
+        } catch (e: Throwable) {
+            Log.w(TAG, "cached race unreadable; the race is found by the next poll", e)
+            null
+        } ?: return
+        if (boundRace != null || _state.value.activeRace != null) return
+        if (restored.course != null) raceCourseFromCacheKey = "${restored.eventId}|${restored.instanceStart}"
+        _state.value = _state.value.copy(activeRace = restored)
+    }
+
+    /// Keep the race this poll found on the watch, or forget it; a write only
+    /// when it changed. L4: a failed write leaves the race timed while the
+    /// app runs.
+    private suspend fun cacheActiveRace(uid: String?, race: ActiveRaceState?) {
+        val entry = uid?.let { activeRaceCacheEntry(it, race) }
+        if (raceCacheWritten && entry == raceCacheEntry) return
+        try {
+            raceResults.cacheActiveRace(entry)
+            raceCacheEntry = entry
+            raceCacheWritten = true
+        } catch (e: Throwable) {
+            Log.w(TAG, "race not cached; it is still timed while the app runs", e)
+        }
+    }
+
     private suspend fun refreshRace() {
         val token = supabase.currentAccessToken ?: return
         val uid = supabase.authedUserId ?: return
+        // Withdrawn finishes first, then every result this account owes.
+        raceOutbox.replay(token, uid)
+        boundRace?.let { bound ->
+            refreshBoundRace(token, uid, bound)
+            return
+        }
         try {
             val active = raceClient.fetchActive(token, uid)
+            val previous = _state.value.activeRace
             val newState = active?.let {
+                val sameRace = previous != null &&
+                    previous.eventId == it.eventId &&
+                    previous.instanceStart == it.instanceStart
+                val key = "${it.eventId}|${it.instanceStart}"
+                // A course restored off the cache is read again now there
+                // is signal; one read this session is kept.
+                val keepCourse = sameRace && raceCourseFromCacheKey != key
+                raceCourseFromCacheKey = null
                 ActiveRaceState(
                     eventId = it.eventId,
                     instanceStart = it.instanceStart,
                     status = it.status,
-                    startedAtMs = it.startedAtIso?.let { iso ->
-                        runCatching { java.time.Instant.parse(iso).toEpochMilli() }
-                            .getOrNull()
-                    },
+                    startedAtMs = it.startedAtIso?.let(::parseServerInstantMs),
                     eventTitle = it.eventTitle,
+                    course = previous?.course?.takeIf { keepCourse }
+                        ?: loadRaceCourse(token, uid, it.eventId, it.instanceStart),
+                    startMode = it.startMode,
+                    startInstantMs = it.startInstantIso?.let(::parseServerInstantMs),
+                    attemptArmed = sameRace && previous?.attemptArmed == true,
+                    windowClosesAtMs = it.windowClosesAtIso?.let(::parseServerInstantMs),
                 )
             }
             if (newState != _state.value.activeRace) {
                 _state.value = _state.value.copy(activeRace = newState)
             }
+            cacheActiveRace(uid, newState)
+            forgetUndoneUnlessPolled(newState)
         } catch (_: Throwable) {
             // Polling is advisory; swallow failures so a flaky connection
-            // doesn't spam the UI with errors.
+            // doesn't spam the UI with errors. With no signal the race kept
+            // on the watch stands in.
+            restoreCachedRace()
         }
     }
 
+    /// The course is optional twice over: the runner may have picked none,
+    /// and a read can fail. Either way the race still runs, finishing by hand.
+    /// A course read is kept on the watch, and a failed read falls back to it,
+    /// so a race found with signal times by its lines without (#1307
+    /// offline).
+    private suspend fun loadRaceCourse(
+        token: String,
+        uid: String,
+        eventId: String,
+        instanceStart: String,
+    ): RaceSessionClient.RaceCourse? {
+        val fetched = try {
+            raceClient.fetchCourse(token, uid, eventId, instanceStart)
+        } catch (e: Throwable) {
+            Log.w(TAG, "race course not loaded; trying the watch's cached copy", e)
+            return try {
+                raceResults.cachedCourse(uid, eventId, instanceStart)
+            } catch (e2: Throwable) {
+                Log.w(TAG, "cached race course unreadable; finish falls back to manual", e2)
+                null
+            }
+        }
+        if (fetched != null) {
+            try {
+                raceResults.cacheCourse(CachedRaceCourse(uid, eventId, instanceStart, fetched))
+            } catch (e: Throwable) {
+                Log.w(TAG, "race course not cached; it still times this race while the app runs", e)
+            }
+        }
+        return fetched
+    }
+
+    /// While a race run records, the only questions are whether the host has
+    /// ended it and whether the course has arrived late.
+    private suspend fun refreshBoundRace(token: String, uid: String, bound: ActiveRaceState) {
+        try {
+            val status = raceClient.fetchSessionStatus(token, bound.eventId, bound.instanceStart)
+            val end = raceHostEnd(
+                status,
+                decided = raceStopDecision != null,
+                stopPending = raceStoppedAtMs != null,
+            )
+            when (end) {
+                RaceHostEnd.END -> {
+                    onRaceEndedByHost()
+                    return
+                }
+                RaceHostEnd.END_AFTER_STOP -> {
+                    onRaceEndedAfterStop()
+                    return
+                }
+                RaceHostEnd.NONE -> Unit
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "race session status poll failed", e)
+        }
+        if (bound.course == null) {
+            val course = loadRaceCourse(token, uid, bound.eventId, bound.instanceStart) ?: return
+            if (boundRace !== bound) return
+            boundRace = bound.copy(course = course)
+            evaluateRaceLateStart()
+        }
+    }
+
+    /// The host ended the race: a restart must not bring it back.
+    private fun forgetCachedRace() {
+        launchGuarded { cacheActiveRace(null, null) }
+    }
+
+    private fun onRaceEndedAfterStop() {
+        forgetCachedRace()
+        raceEndedAfterStop = true
+        _state.value = _state.value.copy(
+            activeRace = null,
+            raceRun = _state.value.raceRun?.copy(ended = true, finishPending = true),
+        )
+    }
+
+    private fun onRaceEndedByHost() {
+        forgetCachedRace()
+        forgetUndoneFinish()
+        raceEndedAfterStop = false
+        raceStoppedAtMs = null
+        raceEndedRunId = boundRunId
+        boundRace = null
+        boundRunId = null
+        // Nothing more is timed for this run: the host ended its race.
+        raceTimer.endRecording()
+        _state.value = _state.value.copy(
+            activeRace = null,
+            raceRun = _state.value.raceRun?.copy(ended = true),
+        )
+    }
+
+    /// "This run is my attempt" on the watch, and its undo, for an open
+    /// self-timed window. Nothing binds in that mode without it.
+    fun toggleAttempt() {
+        val race = _state.value.activeRace ?: return
+        if (!race.isSelfTimed) return
+        _state.value = _state.value.copy(activeRace = race.copy(attemptArmed = !race.attemptArmed))
+    }
+
+    private fun maybeBindRace(m: RecordingRepository.Metrics) {
+        val race = raceToBind(
+            alreadyBound = boundRace != null,
+            runId = m.runId,
+            endedRunId = raceEndedRunId,
+            active = raceToRebindAfterUndo(_state.value.activeRace, raceUndone),
+        ) ?: return
+        boundRace = race
+        boundRunId = m.runId
+        raceTimer.bind()
+        raceStopDecision = null
+        raceStoppedAtMs = null
+        raceEndedAfterStop = false
+        raceFirstFixLat = null
+        raceFirstFixLng = null
+        raceRecordingStartedMs = m.startedAtMs.takeIf { it > 0L }
+        _state.value = _state.value.copy(
+            raceRun = RaceRunState(
+                gunStartDeviceMs = gunStartDeviceMs(race.goAtMs, serverClock.offsetMs),
+            ),
+        )
+    }
+
+    /// The first finite fix of a bound race run, recording and undecided,
+    /// whether or not the course has landed: the phone's `offerFix` takes it
+    /// the same way.
+    private fun maybeNoteRaceFirstFix(m: RecordingRepository.Metrics) {
+        if (boundRace == null || raceFirstFixLat != null || raceStopDecision != null) return
+        if (m.stage != RecordingRepository.Stage.Recording) return
+        val p = m.latestPoint ?: return
+        if (!p.lat.isFinite() || !p.lng.isFinite()) return
+        raceFirstFixLat = p.lat
+        raceFirstFixLng = p.lng
+        evaluateRaceLateStart()
+    }
+
+    /// Runs on the first fix and again when the course lands, whichever is
+    /// second. Once flagged it stays flagged for the run.
+    private fun evaluateRaceLateStart() {
+        val race = boundRace ?: return
+        val run = _state.value.raceRun ?: return
+        if (run.lateStart || run.ended || raceStopDecision != null) return
+        val late = raceLateStart(
+            gunMs = race.goAtMs,
+            recordingStartedDeviceMs = raceRecordingStartedMs,
+            serverOffsetMs = serverClock.offsetMs,
+            firstFixLat = raceFirstFixLat,
+            firstFixLng = raceFirstFixLng,
+            course = race.course,
+        )
+        if (late) _state.value = _state.value.copy(raceRun = run.copy(lateStart = true))
+    }
+
+    /// A new run starts the timer afresh; it follows the recording from its
+    /// Start, bound to a race or not (#1307 M1).
+    private fun syncRaceTimerRun(m: RecordingRepository.Metrics) {
+        val id = m.runId ?: return
+        if (id == raceTimerRunId) return
+        raceTimerRunId = id
+        lastRaceFixKey = Long.MIN_VALUE
+        raceTimer.beginRecording()
+        raceUndone = null
+        raceUndoneAtMs = null
+        restoreUndoneFinish(id)
+    }
+
+    /// The app restarted mid-recording after an undo: the start that finish
+    /// was measured from stands, and the finish line is armed again for a
+    /// later crossing, never the one taken back (#1307 m11). L4: an unreadable
+    /// entry leaves the recording timed as a fresh one.
+    private fun restoreUndoneFinish(runId: String) {
+        launchGuarded {
+            val stored = try {
+                raceResults.undoneFinish()
+            } catch (e: Throwable) {
+                Log.w(TAG, "undone race finish unreadable; this recording times afresh", e)
+                null
+            } ?: return@launchGuarded
+            val entry = undoneFinishFor(stored, runId)
+            if (entry == null) {
+                dropKeptUndone()
+                return@launchGuarded
+            }
+            if (raceTimerRunId != runId) return@launchGuarded
+            raceUndone = entry
+            raceUndoneAtMs = maxOf(raceUndoneAtMs ?: entry.undoneFinishMs, entry.undoneFinishMs)
+            raceTimer.restoreUndone("${entry.eventId}|${entry.instanceStart}", entry.start?.toStart(), entry.undoneFinishMs)
+        }
+    }
+
+    /// Keep the finish just taken back with its race, recording and start.
+    private fun keepUndoneFinish(entry: UndoneRaceFinish?) {
+        raceUndone = entry ?: return
+        launchGuarded {
+            try {
+                raceResults.keepUndoneFinish(entry)
+            } catch (e: Throwable) {
+                Log.w(TAG, "undone race finish not kept; a restart would time this run afresh", e)
+            }
+        }
+    }
+
+    /// The undo no longer applies: the race finished, ended, or the recording
+    /// did.
+    private fun forgetUndoneFinish() {
+        if (raceUndone == null) return
+        raceUndone = null
+        launchGuarded { dropKeptUndone() }
+    }
+
+    private suspend fun dropKeptUndone() {
+        try {
+            raceResults.keepUndoneFinish(null)
+        } catch (e: Throwable) {
+            Log.w(TAG, "undone race finish not forgotten; it names a recording that is over", e)
+        }
+    }
+
+    /// A poll with no recording bound that no longer finds the undone
+    /// finish's race forgets it: that race is over or gone.
+    private suspend fun forgetUndoneUnlessPolled(active: ActiveRaceState?) {
+        if (boundRace != null) return
+        val kept = raceUndone ?: try {
+            raceResults.undoneFinish()
+        } catch (e: Throwable) {
+            Log.w(TAG, "undone race finish unreadable; left for the next poll", e)
+            return
+        } ?: return
+        if (undoneFinishOutlivesPoll(kept, active)) return
+        raceUndone = null
+        dropKeptUndone()
+    }
+
+    /// The race the timer follows, its course (off the bound race, the
+    /// active race, or the watch's cache) and the offset. A finish a replay
+    /// finds is acted on in [handleRaceTimer].
+    private fun updateRaceTimer() {
+        val target = raceTargetFor(boundRace, _state.value.activeRace, raceTimer.recording)
+        val course = target?.let { t ->
+            boundRace?.course
+                ?: _state.value.activeRace
+                    ?.takeIf { it.eventId == t.eventId && it.instanceStart == t.instanceStart }
+                    ?.course
+                ?: cachedRaceCourse?.takeIf { it.first == t.key }?.second
+        }
+        if (target != null && course == null) loadCachedRaceCourse(target)
+        raceTimer.update(target, course, serverClock.offsetMs)
+    }
+
+    /// The course cached on the watch for the race the timer follows, read
+    /// once per race: the course with no signal (#1307 offline).
+    private var cachedRaceCourse: Pair<String, RaceSessionClient.RaceCourse>? = null
+    private var cachedRaceCourseAsked: String? = null
+
+    private fun loadCachedRaceCourse(target: RaceTarget) {
+        if (cachedRaceCourseAsked == target.key) return
+        cachedRaceCourseAsked = target.key
+        val uid = supabase.authedUserId ?: return
+        launchGuarded {
+            val course = try {
+                raceResults.cachedCourse(uid, target.eventId, target.instanceStart)
+            } catch (e: Throwable) {
+                Log.w(TAG, "cached race course unreadable; the race finishes by hand", e)
+                null
+            } ?: return@launchGuarded
+            cachedRaceCourse = target.key to course
+        }
+    }
+
+    private fun maybeAdvanceRaceFinish(m: RecordingRepository.Metrics) {
+        val p = m.latestPoint ?: return
+        val offerable = raceFixOfferable(
+            recording = m.stage == RecordingRepository.Stage.Recording,
+            decided = raceStopDecision != null,
+            fixKey = p.epochMs,
+            lastFixKey = lastRaceFixKey,
+        )
+        if (!offerable) return
+        lastRaceFixKey = p.epochMs
+        val atMs = raceFixDeviceMs(
+            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
+            nowWallMs = System.currentTimeMillis(),
+            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+        )
+        raceTimer.offer(RaceFinish.Fix(p.lat, p.lng, atMs, m.distanceM))
+    }
+
+    /// Publish the distance to the start line, and act on a finish the timer
+    /// found once the recording is bound to its race.
+    private fun handleRaceTimer(m: RecordingRepository.Metrics) {
+        val toStart = raceTimer.distanceToStartM
+        if (toStart != _state.value.raceToStartM) _state.value = _state.value.copy(raceToStartM = toStart)
+        if (boundRace == null || raceStopDecision != null) return
+        val finish = raceTimer.takePendingFinish() ?: return
+        onRaceAutoFinish(finish, m)
+    }
+
+    /// The runner reached the finish. A finish-line crossing files the result
+    /// at once and holds the run paused for [RACE_UNDO_WINDOW_MS] behind "Not
+    /// finished? Resume" (#1307 m11), then stops; any other automatic finish
+    /// stops the run, which files it in [handleFinishedRun].
+    private fun onRaceAutoFinish(finish: RaceFinish.Finish, m: RecordingRepository.Metrics) {
+        val race = boundRace ?: return
+        val decision = RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, finish.epochMs, finish.coveredM, finish)
+        forgetUndoneFinish()
+        cueRaceCrossing(RunRecordingService.RACE_CUE_FINISH)
+        if (finish.detection != RaceFinish.FinishDetection.GATE) {
+            stopForRace(decision)
+            return
+        }
+        raceStopDecision = decision
+        fileLineFinish(race, decision, m)
+        RunRecordingService.pause(getApplication())
+        _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = true))
+        raceUndoJob?.cancel()
+        raceUndoJob = launchGuarded {
+            delay(RACE_UNDO_WINDOW_MS)
+            if (_state.value.raceRun?.undoOpen != true) return@launchGuarded
+            _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = false))
+            RunRecordingService.stop(getApplication())
+        }
+    }
+
+    /// The line finish reaches the leaderboard at the line, without `run_id`:
+    /// the run row does not exist until Stop saves it, and Stop files the
+    /// same finish again with the run.
+    private fun fileLineFinish(race: ActiveRaceState, decision: RaceStopDecision, m: RecordingRepository.Metrics) {
+        val uid = supabase.authedUserId ?: return
+        val result = try {
+            buildRaceResult(
+                race = race,
+                decision = decision,
+                userId = uid,
+                runId = null,
+                runStartedAtMs = m.startedAtMs,
+                elapsedS = (m.elapsedMs / 1000).toInt(),
+                serverOffsetMs = serverClock.offsetMs,
+                start = raceTimer.start,
+            )
+        } catch (e: Throwable) {
+            Log.e(TAG, "line finish not built; Stop files it with the run", e)
+            return
+        }
+        raceFilingJob = launchGuarded { raceOutbox.file(supabase.currentAccessToken, result) }
+    }
+
+    /// "Not finished? Resume": void the line finish and record on. The rest
+    /// of this run finishes by hand (Stop, then Finish), from the same start:
+    /// a line that finished the runner once where they were not finishing
+    /// would do it again.
+    private fun undoRaceFinish() {
+        raceUndoJob?.cancel()
+        raceUndoJob = null
+        val race = boundRace
+        val undoneAtMs = raceStopDecision?.finishEpochMs
+        if (undoneAtMs != null) raceUndoneAtMs = undoneAtMs
+        raceTimer.voidAutoFinish()
+        keepUndoneFinish(undoneRaceFinishEntry(race, boundRunId, undoneAtMs, raceTimer.start))
+        raceStopDecision = null
+        raceStoppedAtMs = null
+        _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = false))
+        RunRecordingService.resume(getApplication())
+        val uid = supabase.authedUserId ?: return
+        if (race == null) return
+        val filing = raceFilingJob
+        launchGuarded {
+            filing?.join()
+            raceOutbox.void(supabase.currentAccessToken, uid, race.eventId, race.instanceStart)
+        }
+    }
+
+    /// One round trip to the server clock, for the debug calibration screen.
+    suspend fun sampleServerClock(): RaceSessionClient.ClockSample? = try {
+        raceClient.sampleServerNow(supabase.currentAccessToken)
+    } catch (e: Throwable) {
+        Log.w(TAG, "server clock sample failed", e)
+        null
+    }
+
+    /// The watch's last known position, for centring a line where it stands.
+    suspend fun lastKnownPosition(): GpsPoint? = try {
+        gpsForPrefetch.lastLocation()
+    } catch (e: Throwable) {
+        Log.w(TAG, "no last known position", e)
+        null
+    }
+
+    /// The haptic and the spoken line for a start- or finish-line crossing,
+    /// played by the recording service, which owns the vibrator and the TTS
+    /// engine. L4: a cue that cannot be sent costs nothing but the cue.
+    private fun cueRaceCrossing(kind: String) {
+        try {
+            RunRecordingService.raceCue(getApplication(), kind)
+        } catch (e: Throwable) {
+            Log.w(TAG, "race $kind cue not sent; timing carries on", e)
+        }
+    }
+
+    private fun stopForRace(decision: RaceStopDecision) {
+        raceStopDecision = decision
+        RunRecordingService.stop(getApplication())
+    }
+
+    private fun finishRaceNow(race: ActiveRaceState) {
+        stopForRace(
+            raceFinishDecision(
+                settled = settleRaceTimer(),
+                coveredM = _state.value.distanceM,
+                courseDistanceM = race.course?.distanceM,
+                stoppedAtMs = raceStoppedAtMs ?: System.currentTimeMillis(),
+                lapsMet = raceLapsMet(_state.value.distanceM),
+            ),
+        )
+    }
+
+    /// The runner stopped racing: remember when, so a Finish chosen on the
+    /// paused screen is timed here.
+    private fun markRaceStopped() {
+        if (boundRace == null || raceStopDecision != null) return
+        if (raceStoppedAtMs == null) raceStoppedAtMs = System.currentTimeMillis()
+    }
+
+    /// The lap rule at [coveredM] for a hand finish; null (the distance
+    /// decides) when the timer has none or fails.
+    private fun raceLapsMet(coveredM: Double): Boolean? = try {
+        raceTimer.lapsMet(coveredM)
+    } catch (e: Throwable) {
+        Log.w(TAG, "race lap rule failed; judged by distance", e)
+        null
+    }
+
+    private fun settleRaceTimer(): RaceFinish.Finish? = try {
+        raceTimer.settle()
+    } catch (e: Throwable) {
+        Log.w(TAG, "race finish detector failed to settle; judged by distance", e)
+        null
+    }
+
     private fun bootstrapAuth() {
-        viewModelScope.launch {
+        launchGuarded {
             val cached = sessionStore.current()
             if (cached != null) {
                 applySession(cached)
                 refreshIfExpired(cached)
                 drainQueue()
-                return@launch
+                return@launchGuarded
             }
             if (BuildConfig.BYPASS_LOGIN) {
                 try {
@@ -523,7 +1461,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (_: Throwable) { /* sign-in screen will surface */ }
             }
         }
-        viewModelScope.launch {
+        launchGuarded {
             try {
                 sessionBridge.current()?.let { payload ->
                     val stored = StoredSession.fromPayload(payload)
@@ -534,18 +1472,33 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (_: Throwable) { /* no paired phone, fine */ }
         }
-        viewModelScope.launch {
-            sessionBridge.events.collect { event ->
-                when (event) {
-                    is SessionEvent.Updated -> {
-                        val stored = StoredSession.fromPayload(event.payload)
-                        sessionStore.save(stored)
-                        applySession(stored)
-                        drainQueue()
+        launchGuarded {
+            sessionBridge.events
+                .catch { e -> Log.w(TAG, "session bridge stream failed", e) }
+                .collect { event ->
+                    try {
+                        when (event) {
+                            is SessionEvent.Updated -> {
+                                val stored = StoredSession.fromPayload(event.payload)
+                                sessionStore.save(stored)
+                                applySession(stored)
+                                drainQueue()
+                            }
+                            SessionEvent.Cleared -> tearDownSession()
+                        }
+                    } catch (e: Throwable) {
+                        // Encrypted-store I/O, the route + run + tile wipes and
+                        // the drain all run from here. The sibling one-shot
+                        // read of the same payload was already guarded; this
+                        // one was not, so a throw reached the thread's
+                        // uncaught handler and took the recording service
+                        // down with the process. `launchGuarded` is the net
+                        // under that now; this stays because a failure the
+                        // runner's session depends on is worth naming here
+                        // rather than reading as an anonymous crash.
+                        Log.w(TAG, "session bridge event failed", e)
                     }
-                    SessionEvent.Cleared -> tearDownSession()
                 }
-            }
         }
     }
 
@@ -562,28 +1515,84 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     ///   - the upload queue + its on-disk track files (`store`) — see
     ///     `LocalRunStore.clear` for why this is fail-closed against
     ///     cross-user upload
+    ///   - the crash checkpoint + its track file (`checkpoints`), which is
+    ///     the SAME payload on a parallel path and used to outlive the
+    ///     queue wipe entirely
     ///   - cached map tiles (`TileSource`)
     private suspend fun tearDownSession() {
         supabase.clearCredentials()
         sessionStore.clear()
         routeStore.clear()
+        // A result owed under this account must not be replayed under the
+        // next one's session; the user-id check in the replay is the second
+        // lock on the same door.
+        try {
+            raceResults.clear()
+        } catch (e: Throwable) {
+            Log.w(TAG, "pending race results not cleared on sign-out", e)
+        }
         // Drop unsynced runs (+ their track files) so they can't upload
         // under the next user's credentials. See LocalRunStore.clear.
         store.clear()
+        // And the crash checkpoint, on exactly the same reasoning. It is the
+        // same run payload — distance, start, laps, steps, privacy default and
+        // a track file — reached by a different door, and it survived the wipe
+        // above: `sweepOrphanTracks` deliberately KEEPS the file a checkpoint
+        // names, so after a sign-out `gradeRecovery` still graded `Offer` (no
+        // live recording, nothing queued, the file present) and the next user
+        // to sign in was shown a prompt carrying the previous user's distance.
+        // Accepting it queued that run and drained it under the NEW
+        // credentials — user A's GPS trace into user B's account and Storage
+        // prefix, public if A's privacy default was public. Fail-closed, at
+        // the cost of a crashed run that is never recovered because the runner
+        // signed out before recovering it (decisions § 1301).
+        val stranded = checkpoints.current()
+        checkpoints.clear()
+        if (stranded != null) {
+            withContext(Dispatchers.IO) {
+                // The checkpoint naming this file is cleared on the line above,
+                // so a throw here leaves an orphan and nothing to retry from.
+                // `sweepOrphanTracks` is the second pass over it.
+                runCatching { File(stranded.trackFilePath).delete() }
+            }
+        }
         // Drop cached map tiles too — prefetched route tiles reveal where
         // the signed-out user runs, so they don't carry over to the next
         // user on this watch.
         try {
             com.runapp.watchwear.ui.TileSource.get(getApplication()).clear()
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            // Not cosmetic: the cache that survives is a map of where the
+            // signed-out user runs. Nothing here can force it, but a
+            // silent failure left no trace that it had happened.
+            Log.w(TAG, "tile cache not cleared on sign-out", e)
         }
+        // The watch face shows the last run to anyone who looks at the wrist,
+        // so it goes with the account that ran it.
+        forgetLastRun { lastRunStore.clear() }
         authReady.value = false
+        raceRestoreTried = false
+        serverClock = ServerClockOffset()
+        serverClockRttMs = null
+        clockRestoreTried = false
+        raceUndone = null
+        raceCacheEntry = null
+        raceCacheWritten = false
+        raceCourseFromCacheKey = null
         _state.value = _state.value.copy(
             authed = false,
-            authError = null,
+            authFault = null,
+            // The race found for the account leaving goes with it, as its
+            // cached copy did above.
+            activeRace = null,
             stage = Stage.PreRun,
             routes = emptyList(),
             selectedRoute = null,
+            // The prompt may already be on screen — `checkRecovery` runs from
+            // `init` — and it outlived the checkpoint it was raised for, so a
+            // tap after sign-out would have queued a run the store above just
+            // dropped.
+            pendingRecovery = null,
         )
     }
 
@@ -604,13 +1613,73 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    /// Re-raise the recovery prompt `checkRecovery` withheld because the queue
+    /// could not be read. Called from wherever the unreadable flag is CLEARED,
+    /// which is both readers of that one file — the stream, which retries on
+    /// its own backoff, and the drain, which is what the runner's own retry
+    /// goes through.
+    ///
+    /// Until the read recovers there is nothing to re-raise: `gradeRecovery`
+    /// answers `Ignore` and changes nothing, deliberately, because the queue
+    /// is the only thing that can say whether the run is already banked
+    /// somewhere better than this snapshot (decisions § 1107). The checkpoint
+    /// survives to the next launch either way, so this is not what makes the
+    /// run safe — it is what stops a runner being made to relaunch the app for
+    /// a fault that has already cleared underneath them.
+    ///
+    /// Gated on the TRANSITION so the ordinary per-save emission does not
+    /// re-read the checkpoint store on every queue change, and skipped while a
+    /// prompt is already up so an arriving emission cannot swap the checkpoint
+    /// under a decision the runner is mid-way through making (decisions § 1154).
+    private fun onQueueBecameReadable(wasUnreadable: Boolean) {
+        if (!wasUnreadable) return
+        if (_state.value.pendingRecovery != null) return
+        checkRecovery()
+    }
+
     private fun checkRecovery() {
-        viewModelScope.launch {
-            val cp = checkpoints.current()
-            if (cp != null) {
-                _state.value = _state.value.copy(pendingRecovery = cp)
+        launchGuarded {
+            val cp = checkpoints.current() ?: return@launchGuarded
+            when (gradeRecovery(cp)) {
+                RecoveryAction.Offer ->
+                    _state.value = _state.value.copy(pendingRecovery = cp)
+                RecoveryAction.Discard -> checkpoints.clear()
+                RecoveryAction.Ignore -> Unit
             }
         }
+    }
+
+    /// `store.contains` reads the same DataStore-backed queue the drain and the
+    /// pre-run count read, and it fails the same way: a corrupt file THROWS
+    /// rather than reads empty. It threw straight out of both callers into
+    /// `launchGuarded`, which logs and swallows — so a cold start into an
+    /// unreadable queue silently withheld the recovery prompt for a crashed
+    /// run whose checkpoint is its only durable record, and a tap on that
+    /// prompt did nothing at all (decisions § 1107).
+    ///
+    /// The two answers the failure could stand in for are not symmetric and
+    /// the destructive one is not the cautious one: reading it as "already
+    /// queued" grades `Discard`, which DELETES the checkpoint on precisely the
+    /// condition under which the queue cannot be holding the run instead.
+    /// Reading it as "not queued" grades `Offer`, and the recovery it offers
+    /// cannot complete — `store.save` reads the same file. So the failure is
+    /// its own answer: `Ignore` already means "leave it completely alone,
+    /// neither prompt nor clear", the net stays armed, and the grade is retaken
+    /// on the next launch.
+    private suspend fun gradeRecovery(cp: Checkpoint): RecoveryAction {
+        val alreadyQueued = try {
+            store.contains(cp.runId)
+        } catch (e: Throwable) {
+            Log.e(TAG, "run queue unreadable — checkpoint left armed, ungraded", e)
+            _state.value = _state.value.copy(queueUnreadable = true)
+            return RecoveryAction.Ignore
+        }
+        return recoveryActionFor(
+            activeRecording = RecordingRepository.metrics.value.stage !=
+                RecordingRepository.Stage.Idle,
+            alreadyQueued = alreadyQueued,
+            trackFileExists = withContext(Dispatchers.IO) { File(cp.trackFilePath).exists() },
+        )
     }
 
     /// User accepted the recovery prompt. Treat the checkpointed run as
@@ -618,13 +1687,54 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// already sealed on disk (the writer closes on service destroy), but
     /// may be an unclosed JSON array if the process was killed mid-flush;
     /// we re-seal it defensively before queueing.
+    ///
+    /// The grade is taken again here, not just when the prompt was raised:
+    /// `bootstrapAuth` drains the queue on the same cold start, so a run that
+    /// was merely queued when the prompt appeared can be uploaded — and its
+    /// track file deleted — while the prompt sits on screen waiting for a tap.
     fun recoverCheckpoint() {
         val cp = _state.value.pendingRecovery ?: return
-        viewModelScope.launch {
+        launchGuarded {
+            when (gradeRecovery(cp)) {
+                RecoveryAction.Offer -> Unit
+                // The run is captured somewhere strictly better than this
+                // snapshot, so the snapshot goes. This is the only grade that
+                // may clear it.
+                RecoveryAction.Discard -> {
+                    checkpoints.clear()
+                    _state.value = _state.value.copy(pendingRecovery = null)
+                    return@launchGuarded
+                }
+                // Nothing may be destroyed on this one. `Ignore` is either a
+                // live recording whose crash-safety net this checkpoint IS, or
+                // a queue that could not be read at all — and the old
+                // `!= Offer` branch cleared the checkpoint on both, disarming
+                // the net in the first case and dropping the run's only
+                // durable record in the second. The prompt stays up too, so
+                // the affordance is not silently taken away; the tap does
+                // nothing until the read recovers, which is filed
+                // (decisions § 1107).
+                RecoveryAction.Ignore -> return@launchGuarded
+            }
             val durationS = checkpointActiveDurationS(cp)
-            val avgBpm = if (cp.bpmCount == 0L) null
-                else cp.bpmSum.toDouble() / cp.bpmCount
-            val sealed = sealTrackFile(cp.trackFilePath)
+            // A recovered run is graded the same way the normal stop path
+            // grades one; a checkpoint carrying no coverage measurement claims
+            // none and keeps its average (decisions § 1083).
+            val hr = heartRateClaim(
+                bpmSum = cp.bpmSum,
+                bpmCount = cp.bpmCount,
+                hrAvailableMs = cp.hrAvailableMs,
+                activeElapsedMs = durationS * 1000L,
+            )
+            val avgBpm = hr.avgBpm
+            val sealed = sealTrackFile(cp.trackFilePath) ?: run {
+                checkpoints.clear()
+                _state.value = _state.value.copy(pendingRecovery = null)
+                return@launchGuarded
+            }
+            // Counted off the sealed file, as the server's replay will count
+            // it: fixes written after the last checkpoint can open a segment.
+            val segments = withContext(Dispatchers.IO) { trackFileSegmentCount(sealed) }
             store.save(
                 QueuedRun(
                     id = cp.runId,
@@ -633,6 +1743,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceM = cp.distanceM,
                     trackFilePath = sealed.absolutePath,
                     avgBpm = avgBpm,
+                    hrCoverage = hr.coverage,
                     activityType = cp.activityType,
                     laps = cp.laps.map { QueuedLap(it.number, it.atMs, it.distanceM) },
                     steps = cp.steps,
@@ -641,6 +1752,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     // time, so a recovered run uploads with the runner's
                     // visibility, not the always-non-public DB default.
                     isPublic = isPublicFromPrivacyDefault(cp.privacyDefault),
+                    distanceEstimator = cp.distanceEstimator,
+                    distanceStepFilledM = cp.distanceStepFilledM,
+                    distanceStepOverChordM = cp.distanceStepOverChordM,
+                    distanceSegments = segments?.takeIf { it >= 1 },
+                    locationProvider = cp.locationProvider,
+                    gnssSignal = cp.gnssSignal,
+                    trackComplete = cp.trackComplete,
+                    workoutReview = cp.workoutReview,
                 )
             )
             checkpoints.clear()
@@ -662,32 +1781,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /// If a track file is missing a closing `]` (process killed before
-    /// `TrackWriter.close` ran), append one so it parses as JSON. Missing
-    /// file → write an empty array stub so downstream code still has a
-    /// path to upload.
-    private suspend fun sealTrackFile(path: String): File =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val f = File(path)
-            if (!f.exists()) {
-                f.parentFile?.mkdirs()
-                f.writeText("[]")
-                return@withContext f
-            }
-            val len = f.length()
-            if (len == 0L) {
-                f.writeText("[]")
-                return@withContext f
-            }
-            val last = java.io.RandomAccessFile(f, "r").use { raf ->
-                raf.seek((len - 1).coerceAtLeast(0))
-                raf.read()
-            }
-            if (last != ']'.code) f.appendText("]")
-            f
-        }
+    /// `TrackWriter.close` ran), append one so it parses as JSON. Null when
+    /// the file is gone — see `sealTrackFileOrNull` for why that is not
+    /// stubbed into an empty array.
+    private suspend fun sealTrackFile(path: String): File? =
+        withContext(Dispatchers.IO) { sealTrackFileOrNull(File(path)) }
 
     fun discardCheckpoint() {
-        viewModelScope.launch {
+        launchGuarded {
             checkpoints.clear()
             _state.value = _state.value.copy(pendingRecovery = null)
         }
@@ -703,7 +1804,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             baseUrl = s.baseUrl,
             anonKey = s.anonKey,
         )
-        _state.value = _state.value.copy(authed = true, authError = null)
+        _state.value = _state.value.copy(authed = true, authFault = null)
         authReady.value = true
         // Pull the universal prefs bag once per session restore so the
         // pre-run activity picker opens on the user's phone-side
@@ -736,8 +1837,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     ///     `followers` / `private` → false. The phone/web social layer
     ///     is the authoritative path for the `followers` nuance.
     private fun applyUniversalPrefsAsync() {
-        viewModelScope.launch {
-            val settings = supabase.fetchUniversalSettings() ?: return@launch
+        launchGuarded {
+            val settings = supabase.fetchUniversalSettings() ?: return@launchGuarded
             // privacy_default — stash regardless of stage; the snapshot
             // matters at handleFinishedRun, which can run minutes or
             // hours after the fetch returns.
@@ -752,15 +1853,18 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 hrZoneCutoffs = resolved,
                 bodyWeightKg = settings.bodyWeightKg,
                 showCalories = settings.showCalories,
+                voiceFeedbackEnabled = settings.voiceFeedbackEnabled,
+                voiceFeedbackVerbosity = settings.voiceFeedbackVerbosity,
+                workoutStepCuesEnabled = settings.workoutStepCuesEnabled,
                 preferredUnit = com.runapp.watchwear.recording.DistanceUnit
                     .fromPref(settings.preferredUnit),
             )
             // default_activity_type — only prime; never override a
             // started run or a manual chip choice.
-            val preferred = settings.defaultActivityType ?: return@launch
+            val preferred = settings.defaultActivityType ?: return@launchGuarded
             val s = _state.value
-            if (s.stage != Stage.PreRun) return@launch
-            if (s.activityType != "run") return@launch
+            if (s.stage != Stage.PreRun) return@launchGuarded
+            if (s.activityType != "run") return@launchGuarded
             _state.value = s.copy(activityType = preferred)
         }
     }
@@ -784,12 +1888,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
         } catch (e: Throwable) {
-            _state.value = _state.value.copy(
-                authError = getApplication<Application>().getString(
-                    R.string.token_refresh_failed,
-                    e.message ?: e.javaClass.simpleName,
-                ),
-            )
+            // A refused refresh grant is a spent session, never a mistyped
+            // password — the runner typed nothing. `refreshFaultFor` is what
+            // keeps the two endpoints' identical status codes from reaching
+            // the wrist as the same sentence (decisions § 1492).
+            Log.e(TAG, "token refresh failed", e)
+            _state.value = _state.value.copy(authFault = refreshFaultFor(e))
         }
     }
 
@@ -800,18 +1904,26 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         checkBatteryLevel()
         val runId = UUID.randomUUID().toString()
         val route = _state.value.selectedRoute
+        refreshTodaysWorkout()
+        val followed = _state.value.todaysWorkout?.takeIf { _state.value.followWorkout }
+        val workoutJson = followed?.let { workoutDelivery?.workoutJson }
+        if (workoutJson != null) startedWorkoutId = followed.planWorkoutId
         _state.value = _state.value.copy(
             stage = Stage.Running,
             elapsedMs = 0,
             distanceM = 0.0,
             paceSecPerKm = null,
             bpm = null,
+            hrAvailability = HeartRateAvailability.Off,
             lapCount = 0,
-            syncError = null,
+            syncFault = null,
             thisRunId = runId,
             thisRunSynced = false,
             offRouteDistanceM = null,
             routeRemainingM = null,
+            raceRun = null,
+            raceToStartM = null,
+            workoutView = null,
         )
         RunRecordingService.start(
             context = getApplication(),
@@ -821,6 +1933,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             targetPaceSecPerKm = _state.value.targetPaceSecPerKm,
             preferredUnit = _state.value.preferredUnit,
             privacyDefault = universalPrivacyDefault,
+            voiceFeedbackEnabled = _state.value.voiceFeedbackEnabled,
+            voiceFeedbackVerbosity = _state.value.voiceFeedbackVerbosity,
+            workoutStepCuesEnabled = _state.value.workoutStepCuesEnabled,
+            workoutJson = workoutJson,
         )
     }
 
@@ -852,7 +1968,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// network refresh in `refreshRoutes` fires when the user opens
     /// the picker.
     private fun loadCachedRoutes() {
-        viewModelScope.launch {
+        launchGuarded {
             try {
                 val cached = routeStore.current()
                 if (cached.isNotEmpty()) {
@@ -872,18 +1988,25 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// "starred + recently-tapped-here" is a stronger signal than
     /// either dimension alone.
     fun refreshRoutes() {
-        if (!authReady.value) return
+        if (!authReady.value) {
+            _state.value = _state.value.copy(routesUnavailable = true)
+            return
+        }
         _state.value = _state.value.copy(routesLoading = true)
-        viewModelScope.launch {
+        launchGuarded {
             try {
                 val fresh = supabase.fetchRoutes()
                 routeStore.save(fresh)
                 _state.value = _state.value.copy(
                     routes = sortByRecency(fresh, routeStore.recentIds.first()),
                     routesLoading = false,
+                    routesUnavailable = false,
                 )
             } catch (_: Throwable) {
-                _state.value = _state.value.copy(routesLoading = false)
+                _state.value = _state.value.copy(
+                    routesLoading = false,
+                    routesUnavailable = true,
+                )
             }
         }
     }
@@ -910,9 +2033,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// fix is available (indoor, GPS off) or when a planned route is
     /// already selected (its tiles were prefetched on selectRoute).
     fun prefetchTilesForRunStart() {
-        viewModelScope.launch {
+        launchGuarded {
             try {
-                val fix = gpsForPrefetch.lastLocation() ?: return@launch
+                val fix = gpsForPrefetch.lastLocation() ?: return@launchGuarded
                 val latLng = com.runapp.watchwear.recording.RouteMath.LatLng(fix.lat, fix.lng)
                 // Publish the fix so the countdown screen can render
                 // a preview of the running-screen map under the digit
@@ -939,10 +2062,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             selectedRoute = route,
             stage = Stage.PreRun,
         )
-        viewModelScope.launch {
+        launchGuarded {
             // Bump LRU so the next picker open puts this route at
             // the top regardless of `updated_at` on the server.
-            try { routeStore.pushRecent(route.id) } catch (_: Throwable) { }
+            try {
+                routeStore.pushRecent(route.id)
+            } catch (e: Throwable) {
+                Log.w(TAG, "route LRU not updated", e)
+            }
             // Eagerly download street-zoom tiles along the route
             // while we still have connectivity (paired phone, wifi).
             try {
@@ -968,53 +2095,150 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         RunRecordingService.lap(getApplication())
     }
 
+    /// In a race, Stop before the finish is a pause, and Stop while paused is
+    /// "Finish race". The gun keeps running across the pause either way —
+    /// it is the server's, not the recorder's.
     fun stop() {
-        if (_state.value.stage != Stage.Running && _state.value.stage != Stage.Paused) return
-        RunRecordingService.stop(getApplication())
+        val stage = _state.value.stage
+        if (stage != Stage.Running && stage != Stage.Paused) return
+        val race = boundRace
+        val action = raceStopAction(
+            paused = stage == Stage.Paused,
+            raceBound = race != null,
+            decided = raceStopDecision != null,
+        )
+        when (action) {
+            RaceStopAction.PAUSE -> {
+                markRaceStopped()
+                RunRecordingService.pause(getApplication())
+            }
+            RaceStopAction.FINISH_RACE -> race?.let { finishRaceNow(it) }
+            RaceStopAction.STOP -> RunRecordingService.stop(getApplication())
+        }
     }
 
     fun pause() {
         if (_state.value.stage != Stage.Running) return
+        markRaceStopped()
         RunRecordingService.pause(getApplication())
     }
 
+    /// Resuming takes back the Stop. If the host ended the race in between,
+    /// the runner is now running on after End, which owes no result.
+    ///
+    /// Resuming a run held open after a line finish IS "Not finished?
+    /// Resume", from whichever control: a plain resume would leave the finish
+    /// filed and the window about to stop the run.
     fun resume() {
         if (_state.value.stage != Stage.Paused) return
+        if (_state.value.raceRun?.undoOpen == true) {
+            undoRaceFinish()
+            return
+        }
+        raceStoppedAtMs = null
+        if (raceEndedAfterStop) onRaceEndedByHost()
         RunRecordingService.resume(getApplication())
     }
 
     /// Called from the recording observer when the service publishes a
     /// `Finished` state. Persists the run to LocalRunStore + drains.
-    private fun handleFinishedRun(m: RecordingRepository.Metrics) {
+    private suspend fun handleFinishedRun(m: RecordingRepository.Metrics) {
         val runId = m.runId ?: return
         val trackPath = m.trackFilePath ?: return
         val durationS = (m.elapsedMs / 1000).toInt()
-        // Snapshot race context before we reset; we need it below to
-        // submit the result after the upload drains.
-        val race = _state.value.activeRace
-            ?.takeIf { it.isRunning }
+        // Take the race context and release it before anything can throw, so
+        // the next run starts unbound whatever happens to this one's result.
+        val race = boundRace?.takeIf { boundRunId == runId }
+        val decision = raceStopDecision
+        val stoppedAt = raceStoppedAtMs
+        // A run that reached `Finished` without Stop or a finish (a recovered
+        // or system-stopped run) is judged as if "Finish race" had been
+        // pressed at its Stop, or now. Settled before the timer is released.
+        val settled = if (race != null && decision == null) settleRaceTimer() else null
+        val start = raceTimer.start
+        val undoneFinishAt = raceUndoneFinishAtIso(raceUndoneAtMs, serverClock.offsetMs)
+        raceUndoneAtMs = null
+        raceUndoJob?.cancel()
+        raceUndoJob = null
+        boundRace = null
+        boundRunId = null
+        raceStopDecision = null
+        raceStoppedAtMs = null
+        raceEndedAfterStop = false
+        lastRaceFixKey = Long.MIN_VALUE
+        raceTimer.endRecording()
+        raceTimerRunId = null
+        forgetUndoneFinish()
+        val uidForRace = supabase.authedUserId
+        val raceResult = if (race != null && uidForRace != null) {
+            try {
+                buildRaceResult(
+                    race = race,
+                    // A line finish filed at the crossing is filed again here
+                    // with its run: the same timing, so the race guard treats
+                    // it as no timing write at all.
+                    decision = decision ?: raceFinishDecision(
+                        settled = settled,
+                        coveredM = m.distanceM,
+                        courseDistanceM = race.course?.distanceM,
+                        stoppedAtMs = stoppedAt ?: System.currentTimeMillis(),
+                        lapsMet = raceLapsMet(m.distanceM),
+                    ),
+                    userId = uidForRace,
+                    runId = runId,
+                    runStartedAtMs = m.startedAtMs,
+                    elapsedS = durationS,
+                    serverOffsetMs = serverClock.offsetMs,
+                    start = start,
+                )
+            } catch (e: Throwable) {
+                Log.e(TAG, "race result not built; the run is still saved", e)
+                null
+            }
+        } else {
+            null
+        }
         val laps = buildFinishedLaps(m, durationS)
         // Parse the on-disk track JSON to lat/lng pairs so the post-run
         // screen can preview the shape the runner ran. Falls back to
         // an empty list if the file is missing or malformed (indoor
         // mode produces a `[]` stub via TrackWriter.close).
         val trackPoints = readTrackForPreview(trackPath)
+        // The graded claim, and there is no ungraded one to read by mistake:
+        // `Metrics` carries the finished pair or nothing (decisions § 1105).
+        // Null is a `Finished` transition made by something other than
+        // `stopRecording`, and it claims no heart rate rather than falling
+        // back to a figure nothing measured.
+        val hr = m.finishedHr
         val summary = FinishedSummary(
             distanceM = m.distanceM,
             durationS = durationS,
-            avgBpm = m.avgBpm,
+            avgBpm = hr?.avgBpm,
             lapCount = m.laps.size,
             activityType = m.activityType,
             laps = laps,
             trackLatLngs = trackPoints,
+            race = raceResult?.let {
+                RaceSummary(finished = it.finisherStatus == "finished", durationS = it.durationS)
+            },
         )
         _state.value = _state.value.copy(
+            raceRun = null,
+            raceToStartM = null,
             stage = Stage.PostRun,
             thisRunId = runId,
             thisRunSynced = false,
             lastRunSummary = summary,
         )
-        viewModelScope.launch {
+        if (raceResult != null) {
+            // The runner is off the course now; the next poll would
+            // re-populate a race still running, but not for this run.
+            _state.value = _state.value.copy(activeRace = null)
+        }
+        launchGuarded {
+            // Banked before anything else in this job can throw: the result
+            // is the one part of a race run that cannot be rebuilt later.
+            if (raceResult != null) raceOutbox.file(null, raceResult)
             store.save(
                 QueuedRun(
                     id = runId,
@@ -1022,7 +2246,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     durationS = durationS,
                     distanceM = m.distanceM,
                     trackFilePath = trackPath,
-                    avgBpm = m.avgBpm,
+                    avgBpm = hr?.avgBpm,
+                    hrCoverage = hr?.coverage,
                     activityType = m.activityType,
                     laps = m.laps.map { QueuedLap(it.number, it.atMs, it.distanceM) },
                     steps = m.steps,
@@ -1031,40 +2256,83 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     // even if the user toggles the pref while the upload
                     // is pending or while the watch is offline.
                     isPublic = snapshotIsPublic(),
+                    distanceEstimator = GpsDistanceEstimator.SPEC_ID,
+                    distanceStepFilledM = m.distanceStepFilledM,
+                    distanceStepOverChordM = m.distanceStepOverChordM,
+                    distanceSegments = m.distanceSegments,
+                    locationProvider = m.locationProvider,
+                    gnssSignal = m.gnssSignal,
+                    trackComplete = m.trackComplete,
+                    workoutReview = m.workoutReview,
+                    raceUndoneFinishAt = undoneFinishAt,
                 )
             )
-            RecordingRepository.reset()
+            rememberLastRun(m, runId, durationS)
+            // Only now is the run recorded somewhere the checkpoint is no
+            // longer needed for, so only now may the checkpoint go. The
+            // service used to clear it as it tore itself down, in parallel
+            // with this write: a kill between the two — likeliest right
+            // there, since the process has just left foreground-service
+            // state — erased the queue entry and the snapshot that would
+            // have rebuilt it. Clearing after the write means the worst
+            // case is a checkpoint outliving a banked run, which
+            // `recoveryActionFor` discards without prompting.
+            //
+            // Both are scoped to this run: the next one can start before this
+            // job reaches them, and an unscoped clear or reset would take its
+            // checkpoint and its live state with them.
+            checkpoints.clearIfFor(runId)
+            RecordingRepository.resetIfFinished(runId)
             drainQueue(force = true)
-            if (race != null) {
+            // After the drain, so the run the result points at is uploaded
+            // first; a result that still loses that race stays queued.
+            if (raceResult != null) {
                 val token = supabase.currentAccessToken
-                val uid = supabase.authedUserId
-                if (token != null && uid != null) {
-                    try {
-                        raceClient.submitResult(
-                            accessToken = token,
-                            userId = uid,
-                            eventId = race.eventId,
-                            instanceStart = race.instanceStart,
-                            runId = runId,
-                            durationS = durationS,
-                            distanceM = m.distanceM,
-                        )
-                    } catch (_: Throwable) {
-                        // Leaderboard write is best-effort; the run is queued.
-                    }
-                }
-                // Clear the active race once we've reported. If the race
-                // is still running on the server, the next poll will
-                // re-populate it — but at that point the user isn't on
-                // it anymore (they've finished).
-                _state.value = _state.value.copy(activeRace = null)
+                if (token != null) raceOutbox.replay(token, raceResult.userId)
             }
         }
     }
 
+    /// Bank the finished run for the watch-face complication's idle state and
+    /// ask the face to re-read it. Called only after the queue write, so the
+    /// complication never names a run the watch failed to keep. An L4 effect:
+    /// a failure here costs the complication its last-run line, never the run.
+    private suspend fun rememberLastRun(
+        m: RecordingRepository.Metrics,
+        runId: String,
+        durationS: Int,
+    ) {
+        try {
+            lastRunStore.save(
+                com.runapp.watchwear.complications.LastRun(
+                    runId = runId,
+                    distanceM = m.distanceM,
+                    durationS = durationS,
+                    unit = if (m.preferredUnit == com.runapp.watchwear.recording.DistanceUnit.MI) "mi" else "km",
+                    finishedAtMs = System.currentTimeMillis(),
+                    planWorkoutId = m.workoutReview?.planWorkoutId,
+                ),
+            )
+        } catch (e: Throwable) {
+            Log.w(TAG, "last run not kept for the complication", e)
+        }
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+        com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(getApplication())
+    }
+
+    private suspend fun forgetLastRun(clear: suspend () -> Unit) {
+        try {
+            clear()
+        } catch (e: Throwable) {
+            Log.w(TAG, "last run not cleared from the complication", e)
+        }
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+        com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(getApplication())
+    }
+
     fun sync() {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(syncing = true, syncError = null)
+        launchGuarded {
+            _state.value = _state.value.copy(syncing = true, syncFault = null)
             drainQueue(force = true)
             _state.value = _state.value.copy(syncing = false)
         }
@@ -1075,14 +2343,42 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             stage = Stage.PreRun,
             thisRunId = null,
             thisRunSynced = false,
-            syncError = null,
+            syncFault = null,
+            workoutView = null,
         )
+        refreshTodaysWorkout()
     }
 
+    /// Drop the run the PostRun `×` is showing — the queue entry and the track
+    /// file it points at, through the one path that orders those two.
+    ///
+    /// It removed the queue entry and nothing else, which left a track of
+    /// several megabytes on an ultra alive until `sweepOrphanTracks` reached
+    /// it — once per process, and not at all while a recording is live, so
+    /// the file could outlive the run by a whole session (decisions § 1388).
+    ///
+    /// `thisRunId` may name a run the queue never held: an already-synced one,
+    /// whose entry and file the drain dropped together when it uploaded. The
+    /// snapshot lookup then finds nothing and only the no-op removal runs,
+    /// which is the right answer rather than a case to special-case — there is
+    /// no file left to delete.
+    /// The advance is unconditional, and that is the decision. A `×` that could
+    /// not remove the entry has left the run QUEUED — the safe direction for a
+    /// destructive action that did not happen, since the next drain will still
+    /// upload it — so holding the runner on the screen buys nothing and costs
+    /// them the thing § 1107 already refused to cost them: stranding someone
+    /// who wants to record now behind a corrupt file takes the next run as well
+    /// as this one. What the failure does buy is a sentence, on the screen they
+    /// land on rather than the one they just left.
     fun discard() {
         val id = _state.value.thisRunId
-        viewModelScope.launch {
-            if (id != null) store.remove(id)
+        launchGuarded {
+            if (id != null) forgetLastRun { lastRunStore.clearIfFor(id) }
+            val outcome = discardRun(id) { dropQueuedRun(it, store.queue.first()) }
+            if (outcome is DiscardOutcome.Failed) {
+                Log.e(TAG, "discard could not drop the queued run", outcome.error)
+                _state.value = _state.value.copy(queueUnreadable = true)
+            }
             startNextRun()
         }
     }
@@ -1090,33 +2386,53 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     // ----- Sign in / out -----
 
     fun signOut() {
-        viewModelScope.launch { tearDownSession() }
+        launchGuarded { tearDownSession() }
     }
 
+    /// Where leaving the sign-in screen goes back to.
+    ///
+    /// Hardcoding PreRun was fine while PreRun was the only way in. PostRun
+    /// now offers the sign-in too — it is the screen the `SyncFault.
+    /// SignInRequired` banner renders on, and the one that had no way to act
+    /// on it (decisions § 1545) — and sending a runner who signs in from there
+    /// to PreRun throws away the summary of the run they had just finished, at
+    /// the exact moment the sign-in has made it uploadable.
+    private var signInReturnStage: Stage = Stage.PreRun
+
+    /// The stage to leave the sign-in screen for.
+    ///
+    /// Anything that moved the stage on while the runner was typing keeps it:
+    /// the return is a restore, not a claim about where they should be.
+    private fun stageAfterSignIn(): Stage =
+        if (_state.value.stage == Stage.SignIn) signInReturnStage else _state.value.stage
+
     fun openSignIn() {
-        _state.value = _state.value.copy(stage = Stage.SignIn, authError = null)
+        val from = _state.value.stage
+        if (from != Stage.SignIn) signInReturnStage = from
+        _state.value = _state.value.copy(stage = Stage.SignIn, authFault = null)
     }
 
     fun cancelSignIn() {
-        _state.value = _state.value.copy(stage = Stage.PreRun)
+        _state.value = _state.value.copy(stage = stageAfterSignIn())
     }
 
     fun signInWithEmail(email: String, password: String) {
-        viewModelScope.launch {
+        launchGuarded {
             _state.value = _state.value.copy(
                 authed = false,
-                authError = null,
+                authFault = null,
                 signInLoading = true,
             )
             try {
                 signInWithEmailInternal(email, password)
                 _state.value = _state.value.copy(
-                    stage = Stage.PreRun,
+                    stage = stageAfterSignIn(),
                     signInLoading = false,
                 )
             } catch (e: Throwable) {
+                Log.e(TAG, "sign-in failed", e)
                 _state.value = _state.value.copy(
-                    authError = e.message ?: e.javaClass.simpleName,
+                    authFault = signInFaultFor(e),
                     signInLoading = false,
                 )
             }
@@ -1153,14 +2469,52 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun drainQueue(force: Boolean = false) {
+        // Outside the lock: a 3 s wait for a session that may never arrive
+        // must not make a runner's manual Sync chip queue behind it.
         if (!awaitAuth()) return
+        drainMutex.withLock { drainQueueLocked(force) }
+    }
+
+    private suspend fun drainQueueLocked(force: Boolean) {
+        reconcileTrackStorage()
         if (!force && drainBackoff.isInBackoff()) {
             // Auto-trigger (network-flap, auth-bootstrap) inside the backoff
             // window — don't hammer the backend. User-initiated drains pass
             // force=true so a manual Sync chip always fires.
             return
         }
-        val snapshot = store.queue.first()
+        // An unreadable queue is not an empty one, and the three things this
+        // could do are not equivalent. DataStore reports a corrupt or
+        // unreadable file by FAILING the read, so treating the failure as an
+        // empty list drains nothing, arms no backoff and clears the error
+        // banner — the runner is told their runs are synced by the same code
+        // path that could not open the file holding them. Letting it throw is
+        // worse still: this runs under `drainMutex` inside a coroutine, and
+        // before `launchGuarded` it ended the process the recording service
+        // was in. So it is reported, and it arms backoff because the condition
+        // persists — every network flap would otherwise retry a read that
+        // cannot succeed — while a `force` drain (the Sync chip, a fresh
+        // sign-in) still gets through, which is the one thing that makes a
+        // retry after a reboot possible.
+        val snapshot = try {
+            store.queue.first()
+        } catch (e: Throwable) {
+            Log.e(TAG, "run queue unreadable — drain skipped", e)
+            drainBackoff.onFailure()
+            // The same flag the stream raises. Two readers of one file, so
+            // whichever read last decides whether the count on screen still
+            // stands — otherwise tapping the retry chip could fix the drain
+            // and leave the chip claiming the queue is still unreadable, or
+            // the reverse.
+            _state.value = _state.value.copy(
+                queueUnreadable = true,
+                syncFault = SyncFault.QueueUnreadable,
+            )
+            return
+        }
+        val wasUnreadable = _state.value.queueUnreadable
+        _state.value = _state.value.copy(queueUnreadable = false)
+        onQueueBecameReadable(wasUnreadable)
         // The loop body itself is in the pure `drainQueueLoop` helper
         // so the per-error-class semantics, refresh-then-retry shape,
         // and transient-vs-permanent split can be unit-tested in
@@ -1171,43 +2525,161 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         val result = drainQueueLoop(
             snapshot = snapshot,
             push = { run -> pushRun(run) },
+            // Deliberately NOT wrapped: the loop catches, and catching here
+            // instead discarded the only account of why the session could not
+            // be renewed. A spent refresh token and a socket that died between
+            // the 401 and the refresh both arrived as a bare `false`, and the
+            // one diagnostic a wrist ever produces was the one thing thrown
+            // away.
             refresh = {
-                try {
-                    val refreshed = supabase.refreshAccessToken()
-                    val cached = sessionStore.current()
-                    if (cached != null) {
-                        sessionStore.save(
-                            cached.copy(
-                                accessToken = refreshed.accessToken,
-                                refreshToken = refreshed.refreshToken,
-                                expiresAtMs = refreshed.expiresAtMs,
-                            )
+                val refreshed = supabase.refreshAccessToken()
+                val cached = sessionStore.current()
+                if (cached != null) {
+                    sessionStore.save(
+                        cached.copy(
+                            accessToken = refreshed.accessToken,
+                            refreshToken = refreshed.refreshToken,
+                            expiresAtMs = refreshed.expiresAtMs,
                         )
-                    }
-                    true
-                } catch (_: Throwable) {
-                    false
+                    )
                 }
+                true
             },
-            onSuccessfulDrain = OnSuccessfulDrain { id -> store.remove(id) },
+            onSuccessfulDrain = OnSuccessfulDrain { id -> dropQueuedRun(id, snapshot) },
+            // Every failure the pass meets, with its throwable, because this is
+            // the only place the raw text survives now that the wrist states a
+            // catalogued fault instead (decisions § 1490). Reported per failure
+            // rather than once at the end: a pass that refuses four runs and
+            // then drains a fifth clears the banner and still has four things a
+            // bug report needs.
+            //
+            // A required parameter rather than a list on the result the caller
+            // reads back, because nothing held the caller to reading it: the
+            // whole diagnostic could be dropped and every test still passed.
+            report = DrainFailureReport { failure ->
+                Log.e(TAG, "drain failed for ${failure.runId} (${failure.fault})", failure.error)
+            },
         )
         if (result.anyTransientFailure) {
             drainBackoff.onFailure()
         } else {
             drainBackoff.onSuccess()
         }
-        _state.value = _state.value.copy(syncError = result.lastError)
+        // `syncFault` keeps its clear-on-success semantics — a trailing
+        // success clearing the banner is a stated decision, pinned twice in
+        // `DrainQueueLoopTest`, and this does not reverse it. The permanent
+        // rejections ride a separate field precisely because they must
+        // survive that clear: the banner is about this pass, a refused entry
+        // is about the queue (decisions § 1347).
+        _state.value = _state.value.copy(
+            syncFault = result.lastFault,
+            syncBlockedBy = result.blockedBy,
+            rejectedRunIds = rejectedAfterPass(
+                previouslyRejected = _state.value.rejectedRunIds,
+                queuedIdsBeforePass = snapshot.map { it.id },
+                result = result,
+            ),
+        )
+    }
+
+    /// Drop the queue entries the server has permanently refused, and their
+    /// tracks with them.
+    ///
+    /// The only exit from a stuck entry. `drainQueue` cannot clear it — the
+    /// server refuses it on every pass — and the PostRun `discard` acts on
+    /// `thisRunId`, the run the runner just finished, so it stops being
+    /// reachable the moment they leave that screen. Guarded by the estate's
+    /// two-press confirm at the call site (decisions § 1347).
+    ///
+    /// Scoped to the ids the last drain pass judged rather than to the queue
+    /// as it stands: a run saved between the pass and the tap has never been
+    /// tried, and clearing "everything queued" would destroy it unasked.
+    ///
+    /// Entry first, file second — the same ordering the drain uses, so a
+    /// process death between the two leaves a stranded file for
+    /// `sweepOrphanTracks` rather than an entry pointing at a payload that is
+    /// gone.
+    fun discardRejectedRuns() {
+        val ids = _state.value.rejectedRunIds
+        if (ids.isEmpty()) return
+        launchGuarded {
+            val snapshot = try {
+                store.queue.first()
+            } catch (e: Throwable) {
+                // Same surface the drain raises for the same fault, so the two
+                // readers of one file cannot leave the screen claiming
+                // different things about it.
+                Log.e(TAG, "run queue unreadable — discard skipped", e)
+                _state.value = _state.value.copy(
+                    queueUnreadable = true,
+                    syncFault = SyncFault.QueueUnreadable,
+                )
+                return@launchGuarded
+            }
+            for (id in ids) {
+                dropQueuedRun(id, snapshot)
+            }
+            _state.value = _state.value.copy(
+                rejectedRunIds = emptySet(),
+                syncFault = null,
+            )
+        }
+    }
+
+    /// Drop one queue entry and the track file it points at, in that order.
+    ///
+    /// Queue entry first, file second. The reverse order lets a process death
+    /// between the two leave an entry pointing at a payload that is gone,
+    /// which the next drain would then re-post with a null `track_url` —
+    /// clobbering the track it had in fact already uploaded. This way the only
+    /// crash residue is a stranded file, swept by `reconcileTrackStorage`.
+    ///
+    /// One home for that ordering because both callers need it and neither is
+    /// the obvious owner: the drain drops a run it has just uploaded, the
+    /// rejected-queue discard drops one that never will. It was two
+    /// byte-identical copies until § 1347 added the second caller.
+    ///
+    /// `snapshot` is the queue as the caller read it — the path is looked up
+    /// there rather than re-read, so a concurrent write cannot make the delete
+    /// miss the file the entry named.
+    private suspend fun dropQueuedRun(id: String, snapshot: List<QueuedRun>) {
+        store.remove(id)
+        snapshot.firstOrNull { it.id == id }?.let { run ->
+            withContext(Dispatchers.IO) {
+                // The queue entry is removed first, so a failed delete costs
+                // bytes rather than correctness and has nothing left to point
+                // at. `sweepOrphanTracks` reclaims it on the next pass.
+                runCatching { File(run.trackFilePath).delete() }
+            }
+        }
     }
 
     private suspend fun pushRun(run: QueuedRun) {
+        // A queued run whose payload is gone is uploaded without one rather
+        // than left in the queue promising a sync that can never happen. The
+        // file is only ever deleted after the entry is removed, so a missing
+        // file means the track was never uploaded — posting a null
+        // `track_url` cannot erase one already in Storage.
+        val trackFile = withContext(Dispatchers.IO) {
+            File(run.trackFilePath).takeIf { it.exists() }
+        }
         val metadata: JsonObject = buildRunMetadata(
             activityType = run.activityType,
             avgBpm = run.avgBpm,
+            hrCoverage = run.hrCoverage,
             steps = run.steps,
             laps = run.laps,
             lastModifiedAtIso = Instant.now().toString(),
+            distanceEstimator = run.distanceEstimator,
+            distanceStepFilledM = run.distanceStepFilledM,
+            distanceStepOverChordM = run.distanceStepOverChordM,
+            distanceSegments = run.distanceSegments,
+            locationProvider = run.locationProvider,
+            gnssSignal = run.gnssSignal,
+            trackComplete = run.trackComplete && trackFile != null,
+            workout = run.workoutReview,
+            raceUndoneFinishAt = run.raceUndoneFinishAt,
         )
-        val trackFile = File(run.trackFilePath)
         supabase.saveRun(
             runId = run.id,
             startedAtIso = run.startedAtIso,
@@ -1217,13 +2689,39 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             metadata = metadata,
             isPublic = run.isPublic,
         )
-        // Once the track is safely in Storage, clear the cache file. On
-        // retry paths we'll already be past this line (pushRun threw) so
-        // the file stays on disk until the next successful drain.
-        runCatching { trackFile.delete() }
     }
 
-    /// Turn the service's raw lap list (cumulative marks) into split-per-lap
+    /// Bring the track directory and the upload queue back into agreement.
+    /// Runs once per process, under `drainMutex` so no upload can observe a
+    /// half-migrated queue.
+    private suspend fun reconcileTrackStorage() {
+        if (trackStorageReconciled) return
+        trackStorageReconciled = true
+        val app = getApplication<Application>()
+        val durableDir = TrackStorage.durableDir(app)
+        val queued = try {
+            store.migrateTrackFiles(TrackStorage.legacyCacheDir(app), durableDir)
+        } catch (_: Throwable) {
+            // A failed migration must not block the drain — the entries that
+            // did move are already persisted, the rest retry next launch.
+            return
+        }
+        // Sweeping while a recording is live would race the open writer, whose
+        // file is not in the queue yet — leave it to a later launch.
+        if (RecordingRepository.metrics.value.stage != RecordingRepository.Stage.Idle) return
+        val keep = buildSet {
+            queued.forEach { add(it.trackFilePath) }
+            // The crash checkpoint's track is the payload a pending recovery
+            // rebuilds the run from; it is not queued until the runner
+            // accepts the prompt.
+            checkpoints.current()?.trackFilePath?.let { add(it) }
+            RecordingRepository.metrics.value.trackFilePath?.let { add(it) }
+        }
+        withContext(Dispatchers.IO) {
+            sweepOrphanTracks(durableDir, keep, System.currentTimeMillis())
+        }
+    }
+
     /// Read the just-finished track JSON off disk so the post-run
     /// screen can render a preview thumbnail. Decimates to ≤ 256
     /// points (geometric every-other halving, same shape-preserving
@@ -1231,21 +2729,25 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// thousands of points still draws cheaply on a 96 dp canvas.
     /// Returns empty on any failure — caller treats that as
     /// "indoor / no track to preview".
-    private fun readTrackForPreview(
+    ///
+    /// On `Dispatchers.IO`, like every other disk touch in this class. It was
+    /// the one that was not, and it is the largest: `handleFinishedRun` runs
+    /// in the `RecordingRepository.metrics` collect body, which is
+    /// `Dispatchers.Main.immediate`, so a 100-hour ultra's ~36,000-record,
+    /// ~2.8 MB track was read AND fully materialised as a `JsonArray` on the
+    /// UI thread between the runner pressing Stop and the post-run screen
+    /// appearing (decisions § 1302). The decimation runs here too — it is
+    /// the parse that is expensive, and there is nothing to hand back until
+    /// it is done.
+    private suspend fun readTrackForPreview(
         path: String,
-    ): List<com.runapp.watchwear.recording.RouteMath.LatLng> {
-        return try {
-            val raw = File(path).takeIf { it.exists() }?.readText() ?: return emptyList()
-            val arr = (kotlinx.serialization.json.Json.parseToJsonElement(raw)
-                as? kotlinx.serialization.json.JsonArray) ?: return emptyList()
-            val all = arr.mapNotNull { el ->
-                val obj = el as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
-                val lat = (obj["lat"] as? kotlinx.serialization.json.JsonPrimitive)
-                    ?.content?.toDoubleOrNull() ?: return@mapNotNull null
-                val lng = (obj["lng"] as? kotlinx.serialization.json.JsonPrimitive)
-                    ?.content?.toDoubleOrNull() ?: return@mapNotNull null
-                com.runapp.watchwear.recording.RouteMath.LatLng(lat, lng)
-            }.toMutableList()
+    ): List<com.runapp.watchwear.recording.RouteMath.LatLng> = withContext(Dispatchers.IO) {
+        try {
+            val raw = File(path).takeIf { it.exists() }?.readText()
+                ?: return@withContext emptyList()
+            // The post-run map draws the line the live map drew; a fix stored
+            // only for the server's distance replay is not on it.
+            val all = com.runapp.watchwear.recording.trackLineLatLngs(raw).toMutableList()
             while (all.size > 256) {
                 com.runapp.watchwear.recording.TrackOverlayBuffer.halveIfOverflowing(all, 256)
             }
@@ -1255,6 +2757,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /// Turn the service's raw lap list (cumulative marks) into split-per-lap
     /// rows suitable for the post-run table. The final "bonus" row is the
     /// partial between the last lap mark and the stop — only included when
     /// it's non-trivial (≥ 1s and ≥ 1m).
@@ -1269,6 +2772,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val AUTH_WAIT_MS = 3_000L
+        private const val TAG = "RunViewModel"
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {

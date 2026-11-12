@@ -1,12 +1,16 @@
 <script lang="ts">
-	import { fetchChallenges, browsePublicChallenges } from '$lib/core/data';
-	import type { ChallengeWithMeta } from '$lib/types';
-	import ChallengeEditor from '$lib/components/ChallengeEditor.svelte';
-	import ChallengeProgressBar from '$lib/components/ChallengeProgressBar.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
+	import type { ChallengeWithMeta } from '#lib/types.ts';
+	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
+	import { myProgressView } from '#lib/social/challenge_list.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { goto } from '$app/navigation';
-	import { smartBack } from '$lib/util/smart_back';
+	import { smartBack } from '#lib/util/smart_back.ts';
 
 	const back = smartBack();
 	const BROWSE_PAGE = 24;
@@ -15,13 +19,20 @@
 	// public feed of ones I haven't (popularity-ordered in browse_public_challenges).
 	let mine = $state<ChallengeWithMeta[] | null>(null);
 	let mineError = $state<string | null>(null);
+	// Stamped when the list lands so every row grades its window against one
+	// instant, instead of each render sampling a slightly different clock.
+	let mineAt = $state(Date.now());
 	let browse = $state<ChallengeWithMeta[] | null>(null);
 	let creating = $state(false);
 	let search = $state('');
 	let browseOffset = $state(0);
 	let browseDone = $state(false);
 	let browseLoading = $state(false);
+	let browseError = $state<string | null>(null);
 	let activeSearch = $state('');
+	// Latest-wins sequencing for Browse, matching SocialPeople/SocialClubs: a
+	// newer search must invalidate an older response, never be refused by it.
+	let browseGen = 0;
 
 	// A load *failure* is kept distinct from the genuinely-empty state so a
 	// broken fetch surfaces an error + retry instead of masquerading as
@@ -30,26 +41,39 @@
 		mineError = null;
 		try {
 			mine = await fetchChallenges({ mine: true });
+			mineAt = Date.now();
 		} catch (e) {
-			mineError = e instanceof Error ? e.message : String(e);
+			mineError = errorCopy(e, m, 'challenges: mineError');
 		}
 	}
 
 	async function loadBrowse(reset: boolean, term: string) {
-		if (browseLoading) return;
+		// Only the append path (Load more) may be refused while one is in
+		// flight; refusing a *new search* would leave the list showing an
+		// older term's results — and `activeSearch` pointing at that older
+		// term, so the next Load more would page a query the box no longer
+		// shows. A new search supersedes instead.
+		if (!reset && browseLoading) return;
+		const gen = ++browseGen;
 		browseLoading = true;
+		browseError = null;
 		const offset = reset ? 0 : browseOffset;
 		try {
 			const rows = await browsePublicChallenges({ search: term, limit: BROWSE_PAGE, offset });
+			if (gen !== browseGen) return;
 			browse = reset ? rows : [...(browse ?? []), ...rows];
 			browseOffset = offset + rows.length;
 			browseDone = rows.length < BROWSE_PAGE;
 			activeSearch = term;
-		} catch {
+		} catch (e) {
+			if (gen !== browseGen) return;
+			// Same reasoning as `mine` above: a failed browse must not render
+			// as "no public challenges to join", which is a different fact.
+			browseError = errorCopy(e, m, 'challenges: browseError');
 			if (reset) browse = [];
 			browseDone = true;
 		} finally {
-			browseLoading = false;
+			if (gen === browseGen) browseLoading = false;
 		}
 	}
 
@@ -77,6 +101,8 @@
 				return m('challenges.metricActivityCount');
 			case 'streak_days':
 				return m('challenges.metricStreak');
+			case 'park_courses':
+				return m('challenges.metricParkCourses');
 		}
 	}
 
@@ -85,7 +111,8 @@
 		duration: 'timer',
 		vert: 'terrain',
 		activity_count: 'format_list_numbered',
-		streak_days: 'local_fire_department'
+		streak_days: 'local_fire_department',
+		park_courses: 'park'
 	};
 </script>
 
@@ -109,39 +136,62 @@
 
 	<section>
 		<h2>{m('challenges.myChallenges')}</h2>
-		{#if mineError}
+		{#if mineError !== null}
 			<div class="error-banner" role="alert">
 				<span class="material-symbols" aria-hidden="true">error</span>
 				<div>
 					<strong>{m('challenges.loadFailed')}</strong>
-					<span class="error-detail">{mineError}</span>
+					{#if mineError}<span class="error-detail">{mineError}</span>{/if}
 				</div>
 				<button class="btn btn-outline btn-sm" onclick={loadMine}>{m('plansPage.retry')}</button>
 			</div>
 		{:else if mine === null}
 			<p class="muted">…</p>
 		{:else if mine.length === 0}
-			<div class="empty-state">
-				<span class="material-symbols" aria-hidden="true">trophy</span>
-				<p>{m('challenges.empty')}</p>
-			</div>
+			<EmptyState icon="trophy" headingLevel={3} title={m('challenges.empty')} />
 		{:else}
 			<ul class="list">
 				{#each mine as c (c.id)}
+					{@const progress = myProgressView(c, mineAt)}
 					<li class="card-elevated">
 						<a href={`/challenges/${c.id}`}>
 							<div class="row-top">
-								<span class="title">{c.title}</span>
+								<span class="title">{c.title}{#if c.is_official}<OfficialBadge />{/if}</span>
 								<span class="badge">
 									<span class="material-symbols" aria-hidden="true">{METRIC_ICON[c.metric]}</span>
 									{metricLabel(c.metric)}
 								</span>
 							</div>
-							<ChallengeProgressBar metric={c.metric} value={c.my_value ?? 0} goal={c.goal_value} />
-							<span class="meta">
-								<span class="material-symbols" aria-hidden="true">group</span>
-								{m('challenges.participants', { n: c.participant_count })}
-							</span>
+							{#if progress.state === 'unknown'}
+								<span class="meta" data-testid="challenge-progress-unavailable">
+									{m('challenges.progressUnavailable')}
+								</span>
+							{:else}
+								<ChallengeProgressBar
+									metric={c.metric}
+									value={progress.value}
+									goal={c.goal_value}
+									startsAt={c.starts_at}
+									endsAt={c.ends_at}
+								/>
+							{/if}
+							<div class="meta-row">
+								<span class="meta">
+									<span class="material-symbols" aria-hidden="true">group</span>
+									{m('challenges.participants', { n: c.participant_count })}
+								</span>
+								{#if c.my_rank !== null}
+									<span class="rank" data-testid="challenge-my-rank">
+										{m('challenges.leaderboardRank', { rank: c.my_rank })}
+									</span>
+								{/if}
+								{#if c.completed_at}
+									<span class="earned">
+										<span class="material-symbols" aria-hidden="true">military_tech</span>
+										{m('challenges.badgeEarned')}
+									</span>
+								{/if}
+							</div>
 						</a>
 					</li>
 				{/each}
@@ -162,20 +212,28 @@
 				/>
 			</div>
 		</div>
-		{#if browse === null}
+		{#if browseError !== null}
+			<div class="error-banner" role="alert">
+				<span class="material-symbols" aria-hidden="true">error</span>
+				<div>
+					<strong>{m('challenges.loadFailed')}</strong>
+					{#if browseError}<span class="error-detail">{browseError}</span>{/if}
+				</div>
+				<button class="btn btn-outline btn-sm" onclick={() => loadBrowse(true, search.trim())}>
+					{m('plansPage.retry')}
+				</button>
+			</div>
+		{:else if browse === null}
 			<p class="muted">…</p>
 		{:else if browse.length === 0}
-			<div class="empty-state">
-				<span class="material-symbols" aria-hidden="true">search</span>
-				<p>{m('challenges.browseEmpty')}</p>
-			</div>
+			<EmptyState icon="search" headingLevel={3} title={m('challenges.browseEmpty')} />
 		{:else}
 			<ul class="list">
 				{#each browse as c (c.id)}
 					<li class="card-elevated">
 						<a href={`/challenges/${c.id}`}>
 							<div class="row-top">
-								<span class="title">{c.title}</span>
+								<span class="title">{c.title}{#if c.is_official}<OfficialBadge />{/if}</span>
 								<span class="badge">
 									<span class="material-symbols" aria-hidden="true">{METRIC_ICON[c.metric]}</span>
 									{metricLabel(c.metric)}
@@ -341,12 +399,43 @@
 		width: 0.95rem;
 		height: 0.95rem;
 	}
+	.meta-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-2xs) var(--space-sm);
+	}
 	.meta {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2xs);
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
+	}
+	.rank {
+		padding: 0.05rem 0.45rem;
+		border-radius: 999px;
+		background: var(--color-primary-light);
+		color: var(--color-primary);
+		font-size: 0.78rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	.earned {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		padding: 0.05rem 0.45rem;
+		border-radius: 999px;
+		background: var(--color-success-light);
+		color: var(--color-success-text);
+		font-size: 0.78rem;
+		font-weight: 600;
+	}
+	.earned .material-symbols {
+		font-size: 0.95rem;
+		width: 0.95rem;
+		height: 0.95rem;
 	}
 	.meta .material-symbols {
 		font-size: 1rem;
@@ -356,26 +445,6 @@
 	}
 	.muted {
 		color: var(--color-text-secondary);
-	}
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-lg);
-		color: var(--color-text-secondary);
-		text-align: center;
-	}
-	.empty-state .material-symbols {
-		font-size: 2rem;
-		width: 2rem;
-		height: 2rem;
-		color: var(--color-text-tertiary);
-	}
-	.empty-state p {
-		margin: 0;
 	}
 	.error-banner {
 		display: flex;

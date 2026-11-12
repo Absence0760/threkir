@@ -42,18 +42,36 @@ backend@1.2.3          → .github/workflows/release-backend.yml
 worker@1.2.3           → .github/workflows/release-worker.yml
 osrm@1.2.3             → .github/workflows/release-osrm.yml
 graph-cycle@1.2.3      → .github/workflows/release-graph-cycle.yml
+graphhopper@1.2.3      → .github/workflows/release-graphhopper.yml
 ```
-
-(GraphHopper — the other Fly map sidecar at `apps/job_worker/graphhopper/` — has **no** release workflow yet; it's deployed by a hand-rolled `flyctl deploy`.)
 
 The glob is `<app>@*`, so any suffix works — `1.2.3`, `1.2.3-rc.1`,
 `2.0.0-beta.4`. The workflow parses the suffix as the `versionName` and
 derives a monotonic `versionCode` from `git rev-list --count HEAD`.
 
-**Apple Watch ships inside the iOS app.** Publishing a `watch_ios@*`
-Release runs a build smoke-check only (no artifact, nothing written back
-to the Release); the canonical user-facing release is `mobile_ios@*`,
-which bundles the watchOS target.
+**Apple Watch ships inside the iOS app.** A `mobile_ios@*` release archives
+the phone app with the watch app embedded ([decisions § 1679](../architecture/decisions.md)),
+signs each with its own App Store profile, and uploads the one `.ipa` to
+TestFlight ([§ 1701](../architecture/decisions.md)). That is why `watch_ios@*`
+runs a build smoke-check only -- no artifact, nothing written back to the
+Release.
+
+That bundling is real as of 2026-09-18 and was not before —
+`Runner.xcodeproj` referenced nothing under `apps/watch_ios/` until
+[decisions § 1679](../architecture/decisions.md) added a `WatchApp`
+target and an Embed Watch Content phase. **Verified on this Mac** (Xcode
+26.4): `flutter build ios --release --no-codesign` puts
+`Runner.app/Watch/WatchApp.app` in place with `CFBundleDisplayName =
+Threkir`, `WKCompanionAppBundleIdentifier = com.threkir.app`, all seven
+`.lproj` compiled, and the same `0.1.0` version on both bundles — that
+last one matters, because Apple rejects an upload whose watch app and
+companion disagree. **Not verified yet:** the signed archive,
+which `release-ios.yml` builds for the first time on the first `mobile_ios@*`
+release (§ 1701), and -- device-gated -- one run syncing end to end from a
+paired physical watch, which is § 1256 step 5 and the one checkbox nobody has
+been able to tick. Test that one on TestFlight before approving a release:
+the approval is now the last human step before App Review
+([decisions § 2040](../architecture/decisions.md)).
 
 ## Cutting a release
 
@@ -65,6 +83,32 @@ which bundles the watchOS target.
 git checkout main && git pull
 gh release create mobile_android@1.2.3 --title "Android 1.2.3" --generate-notes
 ```
+
+**An iOS Release needs a `## What's New` section in its body.** It is the note
+App Store users read, so the owner writes it; the generated notes below it are a
+developer changelog and are never used in its place. `release-ios.yml` fails in
+its first minute, before the build, when the section is missing, empty (an HTML
+comment alone counts as empty) or over App Store Connect's 4000 characters.
+The heading is level 2 and reads `What's New` (any case, either apostrophe); the
+section runs to the next level-1 or level-2 heading, so `### Fixed` inside it is
+kept. Fix the Release body and re-run the job: it reads the body live, not
+from the publish event. **Until the app's first App Store version is
+released** nothing submits a note, so a missing section is allowed then (one
+that is present is still checked), and the submission step ends green with a
+notice that the build is in TestFlight for the manual first submission
+(#1113). If App Store Connect cannot be read to tell, the strict rule applies.
+
+```bash
+gh release create mobile_ios@1.0.12 --title "iOS 1.0.12" --generate-notes --notes-start-tag mobile_ios@1.0.11 --notes "## What's New
+
+- Training plans can follow one another.
+- Fixes distance under tree cover.
+"
+```
+
+`--notes` with `--generate-notes` puts the owner's text first and the
+generated list after it, under its own `## What's Changed` heading, which is
+where the What's New section ends.
 
 You can also publish from the **Releases → Draft a new release** UI (pick
 or type the `<app>@<version>` tag, write notes, **Publish**), or via the
@@ -98,20 +142,113 @@ create` / UI / `/release`). The last column is what the workflow attaches
 
 | Release tag | Runs | Signs | Publishes to | Attaches back to the Release |
 |---|---|---|---|---|
-| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
-| `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` + `.apk` |
-| `mobile_ios@*` | macos-latest | *unsigned today* (skeleton until app ships) | — | `.ipa` |
+| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2478](../architecture/decisions.md)) | `.aab` |
+| `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
+| `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
-| `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |
+| `backend@*` | ubuntu-latest | — | Supabase (migrations, then the production state sync, then functions on linked project) | — |
 | `worker@*` | ubuntu-latest | — | Fly.io `job_worker` app via `flyctl deploy --remote-only` | — |
 | `osrm@*` | ubuntu-latest | — | Fly.io `osrm` app (image only — graph on the volume rides along) | — |
 | `graph-cycle@*` | ubuntu-latest | — | Fly.io `graph-cycle` app (image only — OSM PBF stays on the `graph_cycle_data` volume; reparsed on boot) | — |
+| `graphhopper@*` | ubuntu-latest | — | Fly.io `graphhopper` app (image only — the PBF + built `graph-cache/` stay on the `graphhopper_data` volume) | — |
 
-Promoting Android + Wear from the Internal track to Beta or Production
-is done manually in the Play Console after you've smoke-tested the
-Internal build. The workflow deliberately stops at Internal so a tag
-doesn't immediately reach users.
+**Why an iOS upload failed.** The upload runs through `altool`, so Apple's validation errors (ITMS codes) are in the Release iOS run's "Upload to TestFlight" step, not only in an email. The default `appstore-api` backend validated out of band: `mobile_ios@1.0.0` uploaded, never appeared in App Store Connect and sent no email, leaving no reason anywhere.
+
+**What the iOS submission does, and when it stops.** After the upload,
+`scripts/asc_submit.mjs` waits up to an hour for Apple's processing, then puts
+the build on the App Store version whose number is the tag's (creating it when
+no version is in progress), writes the Release's What's New into every
+localization that version has, sets it to release automatically after approval
+as a 7-day phased release, and submits it for review. Re-running is safe: a
+build App Store Connect already holds is not uploaded again, and each step is a
+no-op when already done. It fails the job, changing nothing it cannot finish,
+when another version is in progress under a different number, when App Review
+returned a rejection that is waiting for a reply, or when a submitted version
+holds another build. The app's first version is left to the owner, because
+Apple takes no What's New on it: while nothing is released, the step ends
+green with a `::notice::` saying so, not red. Pause the rollout with **Pause Phased
+Release** on the version page in App Store Connect. The runbook is
+[`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md#app-store-submission).
+
+**Where the signed IPA is if TestFlight refuses it.** `mobile_ios@*` attaches
+nothing back to the Release; the signed `.ipa` is kept as a workflow **artifact**
+named `mobile_ios@<version>-ipa` on the release run, for 90 days. Open the run
+under Actions and download it from the Summary page. It moved off the Release so
+the job needs no `contents: write` at all ([decisions § 1720](../architecture/decisions.md)) --
+which also means it is no longer a signed production binary anyone on the
+internet can download from a public repo. `mobile_android@*` and `watch_wear@*`
+still attach their `.aab`, so the table above is the authority per tag, not this
+paragraph generalised.
+
+**What a backend release does last.** After the migrations and the Edge
+Functions, the "Sync production state" step (`apps/backend/scripts/sync-production-state.sh`, stages in
+`scripts/prod_sync/run.mjs`, [decisions § 2429](../architecture/decisions.md))
+runs over the migration step's connection, with no secret of its own. Its
+first stage loads every committed park catalogue through
+`private.load_park_catalogue` and writes a created / updated / unchanged /
+closed row per course to the job's step summary; read it on the release run.
+An unchanged catalogue writes nothing. The rest apply
+[`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)
+([decisions § 2430](../architecture/decisions.md)): feature flags, allow-listed
+Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
+entries in Vault (each newly armed one invoked once and required to answer
+2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
+against the `private.ops_task_runs` ledger (after the functions deploy, which
+is what `20271219001313_rematch_segments_matcher_v3` relies on: it re-matches
+every open park segment under matcher v3 and fails, staying pending, if the
+migration that defines `private.global_segment_course_closed` has not
+applied; [decisions § 2465](../architecture/decisions.md)). The same stage
+retires the Edge Functions and secrets listed under `retired_functions` /
+`retired_function_env`; the one-time `parkrun-import` retirement and its
+check are in [deployment.md § Retired scraper functions and secrets](deployment.md)
+([decisions § 2467](../architecture/decisions.md)). Last, it publishes the official
+content catalogue (`scripts/official/`, [decisions § 2446](../architecture/decisions.md),
+[official_content.md](../features/official_content.md)) through
+`private.load_official_catalogue`: library plans, gym routines and challenge
+boards as the official club, a created / updated / unchanged / retired / held
+row each, race courses `gated` while `official_race_courses` is off. The file's `web_env` flags are
+applied by the next `web@*` release instead, when `release-web.yml` writes
+`apps/web/.env`. An entry absent from the file is left untouched, so a release
+with nothing declared changes nothing. The config is guarded before any stage
+runs, and the cron and Edge Function stages commit as they go, so a failure
+there says what was already applied. It runs last so a sync failure can
+never leave migrations applied and functions undeployed: each stage is one
+transaction, and a failed stage rolls back and fails the job loudly, with
+the schema and functions already live; fix the cause and re-run the sync
+with a dispatch. To preview it without releasing, run **Release Backend** by hand
+(Actions, Run workflow): that runs only the sync, behind the `production`
+approval, with `dry_run` on by default (every stage rolled back). A dispatch
+with `dry_run` off commits, and is refused anywhere but `main`; it is how a
+merged `prod_config.json` change goes live without cutting a release. A dry
+run never sets a function secret or sends a cron request; it runs pending ops
+tasks and rolls them back, so their results preview in the summary.
+
+**What the Android promotion does, and when it stops.** After the Internal
+upload, `scripts/play_release.mjs promote` puts the version code on the Play
+production track with the Release's `## What's New` (at most 500 characters,
+never truncated, no fallback to generated notes) as its en-US notes, as a
+staged rollout at 1%, and commits the edit, which sends it for review. The
+`production` environment approval the job already waits on is the human gate,
+as on iOS ([decisions § 2478](../architecture/decisions.md), [§ 2040](../architecture/decisions.md)).
+Re-running is safe: an upload Play already holds is skipped, and production
+already carrying the build is a no-op. It fails the job, changing nothing,
+when a different build is still rolling out on production (complete or halt
+it first) or when other changes are already in review (it never cancels a
+review to send its own). The app's first production release goes out in
+full, because Play offers staged rollouts for updates only. Once Play has
+published the release, `play-rollout.yml` moves it 1% → 2% → 5% → 10% → 20%
+→ 50% → 100%, one step a day at 15:00 UTC, mirroring Apple's 7-day phased
+release; it skips a day while anything is in review, and a **Halt rollout**
+in Play Console stops it for good, since nothing here resumes a halt. To send
+a build Play already holds to production without rebuilding it, run
+**Release Android** by hand with the tag (Actions → Run workflow); that job
+waits for the same approval. The runbook is
+[`apps/mobile_android/deployment.md`](../../apps/mobile_android/deployment.md#release-workflow--mobile_android).
+
+The Wear OS release (`watch_wear@*`) still stops at Internal:
+`com.threkir.watchwear` is its own Play listing, with no production access
+yet. Promote it by hand in Play Console.
 
 ## Required GitHub Secrets
 
@@ -125,7 +262,7 @@ Configure at **Settings → Secrets and variables → Actions**.
 | `ANDROID_KEYSTORE_PASSWORD` | store password |
 | `ANDROID_KEY_ALIAS` | alias inside the keystore |
 | `ANDROID_KEY_PASSWORD` | key password (often same as store) |
-| `PLAY_SERVICE_ACCOUNT_JSON` | Google Play service-account JSON key |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Google Play service-account JSON key, with "Release to production, exclude devices, and use Play App Signing" and "Release apps to testing tracks" on `com.threkir.app`. A copy also lives on the reviewer-less `play-rollout` environment (restricted to `main`) for the daily rollout step |
 | `SENTRY_DSN` | Sentry mobile project DSN. Passed as `--dart-define=SENTRY_DSN=...` at build time; empty disables (`sentry_flutter` init in `lib/main.dart` is gated). |
 | `APP_RELEASE` | `mobile_android@<version>` tag — passed as `--dart-define=APP_RELEASE=...` so Sentry events are tagged with the release. Defaults to `dev` when unset. |
 
@@ -146,43 +283,83 @@ account in Google Cloud → download the JSON key → paste into
 
 Same shape as Android, different keystore (the Wear app has its own
 `applicationId`, `com.threkir.watchwear`, so it needs its own upload
-identity):
+identity).
 
-| Secret | What |
-|---|---|
-| `WATCH_WEAR_KEYSTORE_BASE64` | base64-encoded Wear keystore |
-| `WATCH_WEAR_KEYSTORE_PASSWORD` | |
-| `WATCH_WEAR_KEY_ALIAS` | |
-| `WATCH_WEAR_KEY_PASSWORD` | |
-| `SUPABASE_URL` | production Supabase URL (injected at build time) |
-| `SUPABASE_ANON_KEY` | production anon key |
-| `SENTRY_DSN` | Sentry watch_wear project DSN. Read via `BuildConfig.SENTRY_DSN` from `.env.local` at Gradle-configure time; CI sets it from this secret. Empty disables. |
-| `APP_RELEASE` | `watch_wear@<version>` tag for Sentry release tagging. Defaults to `dev`. |
+The job runs in the `production` environment, so the four keystore
+secrets and `PLAY_SERVICE_ACCOUNT_JSON` must be **environment** secrets
+there (`gh secret set NAME --env production`). A repo-level copy is not
+read.
+
+| Secret | Scope | What |
+|---|---|---|
+| `WATCH_WEAR_KEYSTORE_BASE64` | `production` | base64-encoded Wear upload keystore (`base64 -i wear-upload-keystore.jks`) |
+| `WATCH_WEAR_KEYSTORE_PASSWORD` | `production` | store password |
+| `WATCH_WEAR_KEY_ALIAS` | `production` | alias inside the keystore |
+| `WATCH_WEAR_KEY_PASSWORD` | `production` | key password |
+| `WATCH_WEAR_SENTRY_DSN` | `production` | optional. Sentry watch_wear project DSN, passed as `-PSENTRY_DSN`. Unset leaves Sentry off (decisions § 1763) |
+| `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` | repo | shared with web and Android, passed as `-P` flags |
+
+`APP_RELEASE` is not a secret: the workflow passes the release tag
+(`watch_wear@<version>`) as `-PAPP_RELEASE`.
 
 `PLAY_SERVICE_ACCOUNT_JSON` can be shared with the Android release if
 the service account has Release-manager on both apps.
 
-### iOS (when ready to flip on signing)
+### iOS
+
+The first step of `release-ios.yml` fails in seconds, naming every required
+secret that is unset. [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md)
+is the runbook for making each one.
 
 | Secret | What |
 |---|---|
-| `IOS_BUILD_CERTIFICATE_BASE64` | Apple distribution `.p12` |
-| `IOS_P12_PASSWORD` | `.p12` password |
-| `IOS_PROVISIONING_PROFILE_BASE64` | App Store provisioning profile |
-| `KEYCHAIN_PASSWORD` | throwaway — gate for the ephemeral keychain on the runner |
-| `APP_STORE_CONNECT_API_KEY_ID` | |
-| `APP_STORE_CONNECT_API_ISSUER_ID` | |
-| `APP_STORE_CONNECT_API_KEY_BASE64` | `.p8` from App Store Connect |
-| `SENTRY_DSN` | Sentry mobile project DSN — same DSN as Android (Sentry tags by platform automatically). Passed as `--dart-define=SENTRY_DSN=...`. |
-| `APP_RELEASE` | `mobile_ios@<version>` tag for Sentry release tagging. Defaults to `dev`. |
+| `IOS_BUILD_CERTIFICATE_BASE64` | base64 of the Apple Distribution certificate + private key, exported as a `.p12` |
+| `IOS_P12_PASSWORD` | the `.p12` export password |
+| `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app` |
+| `IOS_SHARE_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.ShareExtension`, the share extension the phone app embeds; its App ID must carry the `group.com.threkir.app.share` App Group |
+| `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.RunActivity`, the Live Activity widget extension the phone app embeds |
+| `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp` |
+| `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp.widget`, the WidgetKit complication the watch app embeds |
+| `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key id (App Manager role) |
+| `APP_STORE_CONNECT_API_ISSUER_ID` | that key's issuer id |
+| `APP_STORE_CONNECT_API_PRIVATE_KEY` | the key's `.p8` file contents as they are -- **not** base64; the upload action reads PKCS#8 text |
+| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | base64 of `GoogleService-Info.plist` from the Firebase project's `com.threkir.app` iOS app |
+| `MOBILE_REVENUECAT_API_KEY_IOS` | RevenueCat's Apple app key (`appl_…`). Optional: unset, Pro is not for sale on iOS, because iOS may not fall back to the web checkout ([decisions § 1700](../architecture/decisions.md)) |
+| `WATCH_IOS_SENTRY_DSN` | `production` environment. Optional: the Apple Watch Sentry project's DSN, written into the embedded watch app (below). Unset leaves the watch's Sentry off, as `WATCH_WEAR_SENTRY_DSN` does on Wear OS ([decisions § 1819](../architecture/decisions.md)) |
 
-These blocks are commented out in `release-ios.yml` today — uncomment
-when the Flutter iOS app is feature-complete (see `apps/mobile_ios/CLAUDE.md`).
-The watch_ios target reads `SENTRY_DSN` + `APP_RELEASE` from the
-build's Info.plist (set via Xcode build settings or a `xcrun
-agvtool`-style script step in CI); the Sentry SwiftPM package needs
-to be added to the watchOS target before the init in `RunApp.init()`
-activates (gated on `canImport(Sentry)`).
+The runtime config otherwise reuses the Android release's secrets:
+`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` and `PUBLIC_MAPTILER_KEY`
+(required), `MOBILE_OSRM_URL`, `PUBLIC_SENTRY_DSN`, `MOBILE_LIVE_HUB_URL` and
+`MOBILE_STRAVA_CLIENT_ID` (optional). The signing secrets go in the
+`production` environment, beside Android's keystore. `APP_RELEASE` is the tag's version.
+There is no keychain-password secret: the runner generates one per run. The
+team id is not a secret either -- it is read out of the five profiles.
+
+`PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` also reach the embedded
+Apple Watch app, which cannot read `dart_defines.json`: the workflow writes
+them into the untracked `apps/mobile_ios/ios/Flutter/WatchRuntime.xcconfig`
+and then fails unless the built IPA's `WatchApp.app/Info.plist` carries both
+([decisions § 1810](../architecture/decisions.md)). That step also refuses a
+URL that is not an https origin and an anon key that is not a client key
+(`sb_publishable_…` or an anon-role JWT), so a misfiled `sb_secret_` key
+fails the release instead of shipping.
+
+The same file and the same post-build check carry the watch's Sentry config
+([decisions § 1819](../architecture/decisions.md)). `RunApp.init()` reads
+`SENTRY_DSN` and `APP_RELEASE` from the watch's Info.plist, which expands them
+from build settings of the same names. `SENTRY_DSN` comes from
+`WATCH_IOS_SENTRY_DSN` and is optional: unset, the file defines it as empty and
+the watch starts no Sentry; set, it must be a Sentry DSN
+(`https://<32-hex key>@<host>/<project id>`, no legacy `key:secret` form) or the
+release fails. `APP_RELEASE` is the release tag itself, `mobile_ios@<version>`
+-- the watch has no tag of its own and ships only inside that one. The check
+fails if a set DSN is missing, unexpanded or different in the built watch app,
+or if the watch carries a DSN the release did not set; it prints lengths only.
+**The DSN is not yet sufficient on its own:** the init is gated on
+`canImport(Sentry)`, and no target that builds the watch links the
+`sentry-cocoa` package (the phone's copy arrives through Flutter's plugin
+package, for iOS only), so the init compiles out until that package is added
+to the `WatchApp` target in both Xcode projects (`followups.md`).
 
 ### Web (AWS deploy)
 
@@ -195,12 +372,12 @@ The web workflow assumes an IAM role via GitHub OIDC — there is **no** `AWS_AC
 | `PUBLIC_SUPABASE_URL` | Production Supabase REST URL — the raw `https://<ref>.supabase.co` (`api.threkir.com` is a Pro-only custom domain, not provisioned on the current Free tier). Inlined into the build. |
 | `PUBLIC_SUPABASE_ANON_KEY` | Supabase **publishable** key. Inlined into the build. |
 | `PUBLIC_MAPTILER_KEY` | MapTiler key shared with mobile + Wear OS. Inlined into the build. |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | RevenueCat hosted Web Paywall Link (`https://pay.rev.cat/<token>`). Inlined into the build; the prod-env guard fails the release if unset. |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | RevenueCat hosted Web Paywall Link (`https://pay.rev.cat/<token>`). Inlined into the build. Optional: unset with `PUBLIC_COACH_ENABLED` / `PUBLIC_ROUTE_GEN_ENABLED` on is the app-only storefront (Pro sold in the iPhone app, decisions § 1826) and the prod-env guard prints a `::notice::`; a value that is set must be `https://pay.rev.cat/<token>` or the guard fails the release. |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | RevenueCat no-code customer-portal link. Optional — empty degrades the manage-subscription button to a hint. |
 | `PUBLIC_SENTRY_DSN` | Frontend Sentry DSN. Optional — empty disables client-side capture. |
 | `APP_RELEASE` | `web@<version>` tag — passed as `PUBLIC_APP_RELEASE` for Sentry release tagging. Defaults to `dev`. |
 
-Server-only secrets (`ANTHROPIC_API_KEY`, server-side `SENTRY_DSN`) live **sops-encrypted in the PRIVATE estate repo** at `../infra-secrets/running/<env>.sops.yaml` (never in this public repo — see the secrets row in the root CLAUDE.md), with one AWS KMS key per env decrypting them. Terraform reads them at apply time (via the `carlpett/sops` provider) and writes them into the Lambda's `environment.variables` block. The Lambda gets them as plain env vars at runtime — no AWS SDK calls, no cold-start secret-fetch latency. Rotation is `sops <file>` → save → `terraform apply` (or `bin/secret-set.sh <env> <KEY> < value-file` for non-interactive single-key rotation, then `terraform apply`). No secret values touch GitHub Secrets.
+Server-only secrets (`ANTHROPIC_API_KEY`, server-side `SENTRY_DSN`) live **sops-encrypted in the PRIVATE estate repo** at `../infra-secrets/threkir/<env>.sops.yaml` (never in this public repo — see the secrets row in the root CLAUDE.md), with one AWS KMS key per env decrypting them. Terraform reads them at apply time (via the `carlpett/sops` provider). Non-credential values (`SENTRY_DSN`, the coach's provider/endpoint/model config) go into the Lambda's `environment.variables` block as plain env vars; **the credentials do not** — `lambda:UpdateFunctionCode` returns a function's environment to anything that can deploy, so they are re-encrypted into an `aws_kms_ciphertext` blob per function and decrypted by the handler at cold start ([decisions § 1671](../architecture/decisions.md)). One `kms:Decrypt` per cold container, none per request. Rotation is `sops <file>` → save → `terraform apply` (or `bin/secret-set.sh <env> <KEY> < value-file` for non-interactive single-key rotation, then `terraform apply`) — **the apply is not optional for a credential**, because the blob is a resource and a function holding the old one decrypts the old value. No secret values touch GitHub Secrets.
 
 For the AWS-side deploy + rotation flows (preflight, orchestrated apply, sops bootstrap, post-deploy health check, interactive disaster recovery) see [`bin/README.md`](../../bin/README.md).
 
@@ -210,7 +387,8 @@ For the AWS-side deploy + rotation flows (preflight, orchestrated apply, sops bo
 |---|---|
 | `SUPABASE_ACCESS_TOKEN` | CLI personal access token |
 | `SUPABASE_PROJECT_REF` | target project's ref (e.g. `abcd1234xyz`) |
-| `SUPABASE_DB_PASSWORD` | Postgres password for `supabase db push` |
+| `SUPABASE_DB_URL` | Session-pooler connection string; the migration apply and the production state sync both use it, with its password stripped |
+| `SUPABASE_DB_PASSWORD` | Postgres password the migration apply and the production state sync authenticate with (`PGPASSWORD`) |
 | `SENTRY_DSN` | Sentry backend project DSN. Set via `supabase secrets set` against the linked project; the EFs' `_shared/sentry.ts` no-ops when unset. |
 | `APP_RELEASE` | `backend@<version>` tag for Sentry release tagging. Set alongside `SENTRY_DSN` via `supabase secrets set`. |
 
@@ -218,7 +396,7 @@ For the AWS-side deploy + rotation flows (preflight, orchestrated apply, sops bo
 
 | Secret | What |
 |---|---|
-| `FLY_API_TOKEN` | Fly.io API token scoped to the `project-running` org — named to match the AWS account slug (`374902171933`), which was itself renamed from the retired `runonward` brand. Same token covers the `worker@*`, `osrm@*`, and `graph-cycle@*` workflows. |
+| `FLY_API_TOKEN` | Fly.io API token scoped to the `project-running` org. The org keeps that name: Fly org slugs are embedded in billing and token scoping, so they are painful to change (see `apps/job_worker/deployment.md`). It no longer matches the AWS account, which is `Threkir` as of 2026-09-14 — account `374902171933`, previously carrying the auto-generated name `Unabashed6416` rather than the `project-running` this line used to claim. Same token covers the `worker@*`, `osrm@*`, `graph-cycle@*`, and `graphhopper@*` workflows. |
 
 ## Rollback
 
@@ -266,8 +444,13 @@ If you catch yourself running `flutter build apk` + `adb install`
 against a physical device you use normally, stop. The release APK is
 signed with a key your laptop doesn't have; it'll install as a *second*
 app alongside the Play Store one and won't sync the same installation.
-Use `flutter run` for testing, or pull the signed AAB/APK from the
-latest GitHub Release and `adb install` that.
+Use `flutter run` (or `./gradlew installDebug` for Wear) for testing.
+
+Every release workflow attaches an `.aab` and never a `.apk` — a bundle
+isn't directly installable, so there is nothing on a GitHub Release to
+`adb install`. That's deliberate: see the registration gate below. To
+test the exact signed build that shipped, join the Play Internal track
+and install from there.
 
 ## Before cutting a release
 
@@ -275,6 +458,89 @@ latest GitHub Release and `adb install` that.
 - The app compiles locally — don't rely on CI to catch build breakage.
 - Schema changes: if you deployed `backend@X`, apps that depend on the
   new schema should tag after (or at least not ahead of) `backend@X`.
+- **The job_worker that reads `distance_step_over_chord_m` ships before the
+  first watch build that writes it** (GPS distance spec v1.7, [decisions
+  § 2444](../architecture/decisions.md)). A `watch_wear@*` or `watch_ios@*`
+  release from v1.7 on is recomputed on arrival; a worker that predates the
+  key credits the run's gaps by the run-total rule, stamps it, and the run is
+  never queued again. Check the deployed worker carries `gapStepCreditM`
+  before tagging the first such watch release; after that, nothing to do.
+- **GPS distance spec v1.8 ships in three steps: the job_worker that reads
+  the segment marks, then the phone builds that keep them, then the watch
+  builds that write them** (issue #1361, [decisions
+  § 2466](../architecture/decisions.md)). A v1.8 watch marks each segment's
+  first stored fix `segmentStart`, saves the count as
+  `metadata.distance_segments`, and banks each segment's
+  `distance_step_over_chord_m` whole, which is exact only when the replay
+  ends each segment at its own last fix.
+  1. **`worker@*` first.** A worker that predates the marks replays the
+     track as one stream and ignores the count, so it credits the chord of a
+     gap still open at a pause or a Wear OS source switch on top of those
+     steps (a handover in a gap: 285.52 m against the wrist's 238.00 m),
+     stamps the run, and it is never queued again. Confirm the deployed
+     worker's `replayRecordedTrack` reads `SegmentStart` and its
+     `gapStepCreditM` reads `distance_segments`.
+  2. **Then the phones** (`mobile_android@*`, `mobile_ios@*`) whose watch
+     ingest keeps `segmentStart` and forwards `distance_segments`. A watch run
+     that reaches Storage through an older phone loses both, and the worker
+     keeps the run-total rule for it: never long, but short of the wrist where
+     its gaps fall on both sides of their chords, and stamped. `mobile_ios@*`
+     carries the Apple Watch app too, so the watchOS half of step 3 can ship
+     in the same release.
+  3. **Then the watches** (`watch_wear@*`, and the watchOS app). Wear OS
+     uploads directly, so only step 1 gates it.
+
+  After the first release of each, nothing to do.
+- **`race_finish v3` and the result course lock ship with the `backend@*`
+  release before any client build that reads them** (migrations
+  `20271222002471`, `20271222002472` + `…012472`, decisions § 2471 / § 2472).
+  A v3 client reads `race_session_courses.finish_lap_count`, which exists
+  only after the migration; the migration backfills sessions still `armed`
+  whose live lines match the frozen copy, and any other race without a
+  count falls back to scaling by the runner's own measured lap on the
+  device. An older client keeps working against the
+  new database: it never reads the column, and the only change it meets is
+  the course/distance refusal after the 24 h window, which it surfaces as
+  the window-closed error it already handles. Order: `backend@*`, then
+  `web@*`, the store builds and the Wear build in any order.
+- **`file_event_result` ships with the `backend@*` release before any
+  client build that calls it, and the last `event_results` column revoke
+  waits for the minimum supported builds** (migration `20271225000100`,
+  [decisions § 2474](../architecture/decisions.md)). A web, phone or Wear
+  build that files a result through the RPC gets PostgREST's `PGRST202`
+  (404) against a database without it, so the order is `backend@*`, then
+  `web@*`, the store builds and the Wear build in any order. If a phone or
+  Wear build reaches runners first anyway, a queued finisher time is kept,
+  not lost: both clients treat `PGRST202` as retryable (unlike every other
+  404) and replay it once the backend release lands. Web keeps no queue, so
+  a web result filed in that gap fails in front of the runner. Released builds
+  still file with the merge upsert, which needs SELECT on the eight columns
+  it writes back from `EXCLUDED`, so those stay granted to `authenticated`.
+  **Trigger for the revoke:** once the minimum supported `mobile_android@*`,
+  `mobile_ios@*` and `watch_wear@*` builds (the force-update floor, or the
+  oldest build still reporting in) all call `file_event_result` — watchOS
+  relays its finish to the phone and needs nothing of its own — ship a
+  migration with exactly:
+  `revoke select (age_grade_pct, note, run_id, start_at, finish_at, start_detection, finish_detection, clock_offset_ms) on public.event_results from authenticated;`
+  and in the same change move those eight into the `authenticated` withheld
+  set of `column_grant_lockdown_registry_test.sql` and flip
+  `event_results_column_lock_test.sql`'s upsert case to a refusal. A build
+  older than that floor then fails every result it files with
+  `42501 permission denied for table event_results`.
+- **The job_worker that handles `duration_repair` ships before the
+  `backend@*` release carrying `20271218000001`–`…03`** (issue #1300 § 5,
+  [decisions § 2464](../architecture/decisions.md)). `…02` caps every run
+  stored above ten days and enqueues one `duration_repair` job per capped run
+  that has a track; a worker without the handler fails each one as an unknown
+  kind, and nothing enqueues them again. Order: tag `worker@*` (the
+  job_worker's release tag, `release-worker.yml`), confirm the deployed
+  worker's dispatch has `case "duration_repair"`, then tag `backend@*`. `…03` validates `runs_duration_s_max_check` in the same
+  release; it does not wait for the jobs, because the cap alone satisfies
+  it. After the release, a capped run with no usable track keeps the cap and
+  `metadata.duration_repaired` until its owner edits the duration; to see
+  which remain:
+  `select id, user_id, metadata->>'duration_s_original' from runs where metadata ? 'duration_repaired';`
+  (read-only).
 - **Health Connect permission changes block the Android release.** If the
   diff since the last `mobile_android@*` tag adds or removes an
   `android.permission.health.*` entry in `AndroidManifest.xml` /
@@ -285,8 +551,45 @@ latest GitHub Release and `adb install` that.
   the very last step. Details + the API-vs-Console trap in
   [`apps/mobile_android/deployment.md` § Health Connect permission
   changes](../../apps/mobile_android/deployment.md#health-connect-permission-changes-gate-the-release).
+- **Android developer verification — gates any non-Play distribution.**
+  From **2026-09-30** (Brazil, Indonesia, Singapore and Thailand first;
+  global through 2027) an Android app must be registered by a verified
+  developer to install on certified devices. Distributing through Play
+  registers a package automatically: `com.threkir.app` has been
+  registered since 2026-07-14, and `com.threkir.watchwear` registers
+  itself the first time a `watch_wear@*` release reaches the Internal
+  track — no manual step, and nothing to do before that first Wear
+  release. The gate is the other direction: **do not attach an
+  installable `.apk` to a GitHub Release, or ship through any non-Play
+  channel, until that package is registered by hand** in the Android
+  Developer Console, which needs an APK signed with the release key.
+  This is why every workflow attaches an `.aab` only. `adb install` for
+  local development stays exempt. Confirm the second row appears on the
+  Play Console verification page after the first Wear release.
 - No uncommitted secrets. `grep -r SUPABASE_SERVICE_ROLE_KEY apps/` and
   friends should return only `.env.example` hits.
+- **The one-off SPA-shell cutover gates the next `web@*` release, per
+  environment.** Since [decisions § 1268](../architecture/decisions.md) the
+  SPA shell is `build/200.html` and `build/index.html` is the prerendered
+  landing page. The repo half is merged and guarded; the live distributions
+  have to be walked through a three-step order separately, and `prod` and
+  `preview` are independent. Publishing a `web@*` Release to an environment
+  that has not been through it makes CloudFront serve the *landing page* as
+  the body of every deep link -- broken, since its asset URLs resolve under
+  the deep link's own directory -- until the `terraform apply` catches up.
+  Check before tagging, don't assume:
+  `aws cloudfront get-distribution-config --id <DIST_ID> --query 'DistributionConfig.CustomErrorResponses.Items[?ErrorCode==`403`].ResponsePagePath' --output text`
+  -- `/200.html` means done, `/index.html` means do the cutover first.
+  **`prod` was cut over on 2026-09-10 and `web@1.5.0` shipped on top of it**,
+  so it needs nothing further; the check above still costs one command and is
+  still worth running, because this note is a record of one distribution's
+  state and not a guarantee about it. `preview` has never been cut over and
+  cannot be: the account holds exactly one distribution and
+  `preview.threkir.com` resolves to nothing, so that environment is unbuilt
+  rather than pending. The order, its rollback and the claim in it that is now
+  measured rather than derived are in [`deployment.md` § One-off: the
+  SPA-shell cutover from
+  `index.html` to `200.html`](deployment.md#one-off-the-spa-shell-cutover-from-indexhtml-to-200html).
 - **Supabase Auth URL configuration (every release, web or mobile).**
   In the hosted project's dashboard, confirm **Authentication → URL
   Configuration**: **Site URL** is the prod origin (`https://threkir.com`,

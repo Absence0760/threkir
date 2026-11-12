@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { switchRunsToAllTime } from '../fixtures/helpers';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -35,6 +36,8 @@ test.describe('/runs — load failure', () => {
 		// Error state, not the "no runs yet" onboarding card.
 		await expect(page.getByTestId('runs-load-error')).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('runs-empty-no-data')).toHaveCount(0);
+		// The detail line is catalogue copy, not the response's own English.
+		await expect(page.getByTestId('runs-load-error')).not.toContainText('simulated failure');
 
 		// Retry recovers — the second runs fetch is allowed through, so the
 		// list resolves and the error card clears.
@@ -49,13 +52,25 @@ test.describe('/runs — load failure', () => {
 		// back as zero rows, cleared hasMore, and unmounted the button — the
 		// runner's history silently stopped at the first page with no hint
 		// that anything had gone wrong.
+		//
+		// The affordance only exists in paginated mode, which is "All time"
+		// with both other filters at "all". USER_A's seeded back-history is
+		// deep enough to fill more than one 50-run page.
 		await page.goto('/runs');
+		await switchRunsToAllTime(page);
+
 		const loadMore = page.getByRole('button', { name: /Load \d+ more/ });
 		await expect(loadMore).toBeVisible({ timeout: 15_000 });
 
+		// Fail the page-two read only. It is the one runs GET carrying the
+		// keyset cursor — an `or` filter opening on `started_at.lt.` — so
+		// that identifies it exactly; matching on "the next runs GET" instead
+		// would fire on whichever read happened to be in flight.
 		let failNext = true;
 		await page.route('**/rest/v1/runs**', async (route) => {
-			if (route.request().method() === 'GET' && failNext) {
+			const url = new URL(route.request().url());
+			const isPageTwo = (url.searchParams.get('or') ?? '').startsWith('(started_at.lt.');
+			if (route.request().method() === 'GET' && isPageTwo && failNext) {
 				failNext = false;
 				await route.fulfill({
 					status: 500,

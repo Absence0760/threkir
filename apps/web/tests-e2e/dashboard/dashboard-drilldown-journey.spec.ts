@@ -1,7 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Dashboard overview → period-summary drilldown journey.
@@ -13,8 +15,8 @@ import { insertRun } from '../fixtures/simulate';
  *
  *   - cross-cutting/dashboard-journey.spec.ts exercises goal reactivity
  *     (Total Runs, goal pct), never PeriodSummary.
- *   - dashboard/page.spec.ts clicks the "This Week" + "Longest Run" stat
- *     tiles and asserts the modal OPENS (toggle visible) — but never the
+ *   - dashboard/page.spec.ts clicks the week lead's Week summary and the
+ *     "Longest Run" tile and asserts the modal OPENS (toggle visible) — but never the
  *     distance / time / runs / pace the summary computes.
  *   - dashboard/period.spec.ts deep-links /dashboard/period/[type]/[date]
  *     and asserts the toggle MOUNTS against the seed — never the numbers,
@@ -24,11 +26,12 @@ import { insertRun } from '../fixtures/simulate';
  * saga user (no seed noise to perturb the totals), then verifies end to
  * end:
  *
- *   1. Overview: stat grid (This Week distance + activity count), the
- *      ThisWeekStrip ribbon total, and Recent Runs all reflect the plant.
- *   2. Drill into "This Week" stat card → PeriodSummary modal → its four
+ *   1. Overview: the week lead (this week's distance + activity count),
+ *      the all-time stat grid, and Recent Runs all reflect the plant.
+ *   2. Drill into the week lead's Week summary → PeriodSummary modal → its
  *      computed stat cards (Distance / Time / Runs / Avg pace) match the
- *      week's plant, and its run list lists exactly the week's runs.
+ *      week's plant, the ThisWeekStrip ribbon it now carries (§ 2283) totals
+ *      the same week, and its run list lists exactly the week's runs.
  *   3. Toggle the modal Week → All time → re-windows to the FULL set
  *      (week runs + an older out-of-week run), proving the toggle drives
  *      the derivation, not just the label.
@@ -87,16 +90,6 @@ function kmLabel(metres: number): string {
 // for the week-strip-total assertion only.
 function stripKmLabel(metres: number): string {
 	return `${(metres / METRES_PER_KM).toFixed(1)} km`;
-}
-
-// Pre-accept the cookie banner before any context paint — the consent
-// dialog is role="dialog" and floats over modals, which has eaten clicks
-// on the stat tiles in prior rounds. Saga users have never accepted it.
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
 }
 
 // The PeriodSummary modal's four stat cards in DOM order: Distance, Time,
@@ -164,31 +157,23 @@ test.describe('dashboard drilldown journey', () => {
 		if (user) await deleteSagaUsers([user]);
 	});
 
-	test('overview stat grid + week strip → "This Week" drilldown stats → all-time toggle → "Longest Run" drilldown → deep-link agreement', async ({
+	test('overview week lead + stat grid → week drilldown stats + strip → all-time toggle → "Longest Run" drilldown → deep-link agreement', async ({
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {
 			// ── Phase 1: overview reflects the plant ───────────────────
-			await test.step('dashboard overview: This Week stat + week-strip total + Recent Runs', async () => {
+			await test.step('dashboard overview: week lead + all-time stats + Recent Runs', async () => {
 				await page.goto('/dashboard');
 
-				// "This Week" stat card value = sum of this week's run distances.
-				const thisWeekCard = page
-					.locator('.stat-grid .stat-card')
-					.filter({ has: page.locator('.stat-label', { hasText: 'This Week' }) })
-					.first();
-				await expect(thisWeekCard.locator('.stat-value')).toHaveText(
-					kmLabel(weekDistance),
-					{ timeout: 15_000 }
-				);
-				// Sub-line: "3 activities" (activityCountOther). Pin the count.
-				await expect(thisWeekCard.locator('.stat-sub')).toContainText(
-					`${weekCount} activities`
-				);
+				// The week lead's value = sum of this week's run distances.
+				const lead = page.getByTestId('dash-week-lead-distance');
+				await expect(lead).toContainText(kmLabel(weekDistance), { timeout: 15_000 });
+				// "3 activities" (activityCountOther). Pin the count.
+				await expect(lead).toContainText(`${weekCount} activities`);
 
 				// Total Runs counts ALL runs (no current-week window) → 4.
 				const totalCard = page
@@ -206,23 +191,14 @@ test.describe('dashboard drilldown journey', () => {
 					kmLabel(longestAllMetres)
 				);
 
-				// ThisWeekStrip ribbon total (current_week.ts) must match the
-				// "This Week" stat — same week, same source-filtered runs.
-				const stripTotal = page.locator('.week-strip .week-strip-total');
-				await expect(stripTotal).toContainText(stripKmLabel(weekDistance));
-				await expect(stripTotal).toContainText(`${weekCount} activities`);
-
 				// Recent Runs lists every planted run (4 ≤ the 7-row cap).
 				const recentDistances = page.locator('.run-row .run-distance');
 				await expect(recentDistances).toHaveCount(allCount);
 			});
 
-			// ── Phase 2: drill into the This-Week stat card ────────────
-			await test.step('"This Week" tile opens PeriodSummary with this week\'s computed stats + run list', async () => {
-				await page
-					.getByRole('button', { name: /This Week/ })
-					.first()
-					.click();
+			// ── Phase 2: drill into the week through the week lead ─────
+			await test.step('the week lead opens PeriodSummary with this week\'s computed stats, strip + run list', async () => {
+				await page.getByTestId('dash-week-lead-open').click();
 
 				// Modal mounts in 'week' mode (Week toggle active).
 				const modal = page.locator('.modal');
@@ -239,6 +215,12 @@ test.describe('dashboard drilldown journey', () => {
 				// Avg pace is rendered with a /km suffix; just assert it's a
 				// real m:ss value, not the empty-state em dash.
 				await expectModalStat(page, 'Avg pace', /^\d{1,2}:\d{2} \/km$/);
+
+				// ThisWeekStrip ribbon total (current_week.ts) must match the
+				// week's stats — same week, same source-filtered runs.
+				const stripTotal = modal.locator('.week-strip .week-strip-total');
+				await expect(stripTotal).toContainText(stripKmLabel(weekDistance));
+				await expect(stripTotal).toContainText(`${weekCount} activities`);
 
 				// The run list inside the modal lists exactly this week's runs.
 				await expect(modal.locator('.run-list .run-row')).toHaveCount(weekCount);

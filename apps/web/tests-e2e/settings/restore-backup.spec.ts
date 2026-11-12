@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -81,15 +81,15 @@ async function cleanup(ids: string[]): Promise<void> {
 	await admin.from('runs').delete().in('id', ids);
 }
 
-/** Read the current week's distance from the dashboard hero card.
- *  The "This Week" card renders e.g. "12.4 km" or "7.7 mi" — we just
- *  scrape the numeric prefix. Returns 0 when the card is absent
- *  (empty-state). */
+/** Read the current week's distance from the dashboard week lead, Home's
+ *  one this-week view (decisions § 2283). It renders e.g. "12.4 km" or
+ *  "7.7 mi" — we just scrape the numeric prefix. Returns 0 for an empty
+ *  week, which the lead says in words. */
 async function thisWeekDistanceKm(page: import('@playwright/test').Page): Promise<number> {
 	await page.goto('/dashboard');
-	const card = page.getByRole('button', { name: /This Week/i }).first();
+	const card = page.getByTestId('dash-week-lead');
 	await expect(card).toBeVisible({ timeout: 10_000 });
-	const text = (await card.innerText()).trim();
+	const text = (await card.locator('.week-lead-value').innerText()).trim();
 	const m = text.match(/([0-9]+(?:\.[0-9]+)?)\s*(km|mi)/i);
 	if (!m) return 0;
 	const value = parseFloat(m[1]);
@@ -104,7 +104,7 @@ test.describe('/settings/account — restore-from-backup propagation', () => {
 		await cleanup([RESTORE_ID_1, RESTORE_ID_2, RESTORE_ID_3]);
 	});
 
-	test('importing a backup with this-week runs updates the Dashboard "This Week" card',
+	test('importing a backup with this-week runs updates the Dashboard week lead',
 		async ({ page }) => {
 			// Baseline — what the dashboard says BEFORE the import.
 			const before = await thisWeekDistanceKm(page);

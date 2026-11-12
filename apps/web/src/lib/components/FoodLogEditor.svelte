@@ -1,22 +1,37 @@
 <script lang="ts">
-	import { searchFoodSources, scalePortion, type FoodSearchResult } from '$lib/nutrition/food_search';
-	import { createFoodEntry } from '$lib/core/data';
-	import { MEAL_SLOTS, type MealSlot } from '$lib/nutrition/nutrition_totals';
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { env } from '$env/dynamic/public';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { searchFoodSources, scalePortion, type FoodSearchResult } from '#lib/nutrition/food_search.ts';
+	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
+	import { createFoodEntry } from '#lib/core/data.ts';
+	import { MEAL_SLOTS, type MealSlot } from '#lib/nutrition/nutrition_totals.ts';
+	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { PUBLIC_USDA_FDC_API_KEY } from '$app/env/public';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
+	import { noteModalityData } from '#lib/stores/modality_visibility.svelte.ts';
 
 	// Fail-closed USDA gate: with PUBLIC_USDA_FDC_API_KEY unset the USDA source
 	// is simply not queried — Open Food Facts still works, no error, no broken
-	// UI. Read via $env/dynamic/public so an unconfigured build doesn't 500.
-	const usdaApiKey = env.PUBLIC_USDA_FDC_API_KEY ?? '';
+	// UI. Declared optional in src/env.ts so an unconfigured build doesn't fail.
+	const usdaApiKey = PUBLIC_USDA_FDC_API_KEY ?? '';
 
 	interface Props {
 		oncreated: () => void;
+		/// Local `YYYY-MM-DD` the entry belongs to. Omitted (the default) logs at
+		/// the current instant; a host showing an earlier diary day passes that
+		/// day so the entry lands on it instead of on today.
+		diaryDate?: string;
 	}
-	let { oncreated }: Props = $props();
+	let { oncreated, diaryDate }: Props = $props();
+
+	/// Resolved at save time, not at open time: a composer left open across
+	/// midnight would otherwise stamp the entry onto the day it was opened,
+	/// where the host's own view can no longer show it.
+	function startedAt(): string | undefined {
+		return diaryDate ? entryTimestampFor(diaryDate, new Date()) : undefined;
+	}
 
 	let query = $state('');
 	let searching = $state(false);
@@ -120,12 +135,14 @@
 				saturated_fat_g: portionMacros.saturatedFatG,
 				cholesterol_mg: portionMacros.cholesterolMg,
 				external_id: `${picked.source}:${picked.code}`,
+				started_at: startedAt(),
 			});
+			noteModalityData('nutrition');
 			showToast(m('nutrition.added'), 'success');
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: errorCopy(e, m, 'nutrition.addFailed') }), 'error');
 			saving = false;
 		}
 	}
@@ -147,12 +164,14 @@
 				sodium_mg: manualSodium,
 				saturated_fat_g: manualSatFat,
 				cholesterol_mg: manualCholesterol,
+				started_at: startedAt(),
 			});
+			noteModalityData('nutrition');
 			showToast(m('nutrition.added'), 'success');
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: errorCopy(e, m, 'nutrition.addFailed') }), 'error');
 			saving = false;
 		}
 	}
@@ -170,8 +189,18 @@
 				</button>
 				<span class="portion-name">{picked.name}</span>
 			</div>
-			<label class="field"><span class="section-label">{m('nutrition.portionGrams')}</span>
-				<input type="number" min="1" inputmode="numeric" bind:value={portionG} data-testid="portion-grams" /></label>
+			<div class="field">
+				<label><span class="section-label">{m('nutrition.portionGrams')}</span>
+					<input
+						type="number"
+						min="1"
+						inputmode="numeric"
+						bind:value={portionG}
+						data-testid="portion-grams"
+						aria-describedby="food-portion-hint"
+					/></label>
+				<span class="field-hint" id="food-portion-hint">{m('nutrition.portionGramsHint')}</span>
+			</div>
 			{#if portionMacros}
 				<div class="portion-macros">
 					<div class="portion-cal">
@@ -212,24 +241,34 @@
 					placeholder={m('nutrition.searchPlaceholder')}
 					data-testid="food-search"
 					aria-label={m('nutrition.searchPlaceholder')}
+					aria-describedby="food-search-hint"
 				/>
 			</div>
-			<label class="slot-select">
-				<span class="section-label">{m('nutrition.mealSlot')}</span>
-				<select class="toolbar-select" bind:value={mealSlot} data-testid="meal-slot">
-					{#each MEAL_SLOTS as s (s)}
-						<option value={s}>{m(`nutrition.slot_${s}`)}</option>
-					{/each}
-				</select>
-			</label>
+			<span class="field-hint" id="food-search-hint">{m('nutrition.searchHint')}</span>
+			<div class="slot-select">
+				<label>
+					<span class="section-label">{m('nutrition.mealSlot')}</span>
+					<select
+						class="toolbar-select"
+						bind:value={mealSlot}
+						data-testid="meal-slot"
+						aria-describedby="food-slot-hint"
+					>
+						{#each MEAL_SLOTS as s (s)}
+							<option value={s}>{m(`nutrition.slot_${s}`)}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="field-hint" id="food-slot-hint">{m('nutrition.mealSlotHint')}</span>
+			</div>
 		</div>
 
 		{#if searching}
 			<div class="results-state" data-testid="searching">
 				{#each Array(4) as _, i (i)}
-					<div class="skel-result" aria-hidden="true"></div>
+					<SkeletonBlock height="3.5rem" radius="var(--radius-md)" />
 				{/each}
-				<span class="visually-hidden">{m('nutrition.searching')}</span>
+				<span class="visually-hidden" role="status">{m('nutrition.searching')}</span>
 			</div>
 		{:else if results.length > 0}
 			<ul class="results" data-testid="food-results">
@@ -272,28 +311,91 @@
 
 			{#if manualOpen}
 				<section class="manual" data-testid="manual-entry">
-					<label class="field"><span class="section-label">{m('nutrition.itemName')}</span>
-						<input type="text" bind:value={manualName} data-testid="manual-name" /></label>
+					<div class="field">
+						<label><span class="section-label">{m('nutrition.itemName')}</span>
+							<input
+								type="text"
+								bind:value={manualName}
+								data-testid="manual-name"
+								aria-describedby="food-manual-name-hint"
+							/></label>
+						<span class="field-hint" id="food-manual-name-hint">{m('nutrition.itemNameHint')}</span>
+					</div>
 					<div class="macro-grid">
 						<label class="field"><span class="section-label">{m('nutrition.calories')}</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualKcal} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualKcal}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.protein')} (g)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualProtein} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualProtein}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.carbs')} (g)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualCarbs} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualCarbs}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.fat')} (g)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualFat} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualFat}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.fiber')} (g)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualFiber} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualFiber}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.sugar')} (g)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualSugar} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualSugar}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.saturatedFat')} (g)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualSatFat} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualSatFat}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.sodium')} (mg)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualSodium} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualSodium}
+								aria-describedby="food-macro-hint"
+							/></label>
 						<label class="field"><span class="section-label">{m('nutrition.cholesterol')} (mg)</span>
-							<input type="number" min="0" inputmode="numeric" bind:value={manualCholesterol} /></label>
+							<input
+								type="number"
+								min="0"
+								inputmode="numeric"
+								bind:value={manualCholesterol}
+								aria-describedby="food-macro-hint"
+							/></label>
 					</div>
+					<span class="field-hint" id="food-macro-hint">{m('nutrition.macroHint')}</span>
 					<button class="btn btn-primary manual-save" type="button" disabled={saving || !manualName.trim()} onclick={saveManual}>
 						{m('nutrition.add')}
 					</button>
@@ -411,20 +513,6 @@
 	}
 	.results-state.empty p { margin: 0; }
 	.empty-icon { font-size: 2.25rem; color: var(--color-text-tertiary); opacity: 0.7; }
-	.skel-result {
-		height: 3.5rem;
-		border-radius: var(--radius-md);
-		background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-secondary) 50%, var(--color-bg-tertiary) 75%);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel-result { animation: none; }
-	}
 
 	.manual-section { display: flex; flex-direction: column; gap: var(--space-md); }
 	.manual-toggle {
@@ -437,6 +525,18 @@
 	.manual { display: flex; flex-direction: column; gap: var(--space-md); }
 	.macro-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
 	.field { display: flex; flex-direction: column; gap: var(--space-xs); }
+	/* This editor is not an .editor-form, so the label-as-column and the
+	   explanation line under a control are set here rather than inherited. */
+	.field label,
+	.slot-select label {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.field-hint {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
 	.field input {
 		width: 100%;
 		padding: var(--space-sm) var(--space-md);

@@ -10,6 +10,7 @@ import '../preferences.dart';
 import '../route_geometry.dart';
 import '../route_markers.dart';
 import '../route_snap.dart';
+import '../typed_decimal.dart';
 import '../undo_queue.dart';
 import 'live_run_map.dart';
 import 'top_banner.dart';
@@ -75,6 +76,7 @@ class RouteMarkersPanel extends StatefulWidget {
 class RouteMarkersPanelState extends State<RouteMarkersPanel> {
   List<RouteMarkerRow> _markers = const [];
   bool _loaded = false;
+  bool _loadFailed = false;
   bool _placing = false;
   // True while an add/update round-trip is in flight, so the panel shows a
   // progress bar instead of no feedback until the list refreshes.
@@ -97,21 +99,29 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
 
   Future<void> _reload() async {
     final api = widget.api;
-    List<RouteMarkerRow> fetched;
+    List<RouteMarkerRow>? fetched;
     try {
       fetched =
           api == null ? const [] : await api.fetchRouteMarkers(widget.routeId);
     } catch (e) {
-      // L4 auxiliary effect: a course-markers load failure must never break
-      // route detail (name / stats / map are the core). Log and show none.
+      // L3 overlay: a failed read must never break route detail (name /
+      // stats / map are the core), and must not be reported as "no markers"
+      // either — that invites an owner to re-add markers they have.
       debugPrint('route markers load failed for ${widget.routeId}: $e');
-      fetched = const [];
+    }
+    if (!mounted) return;
+    if (fetched == null) {
+      setState(() {
+        _loadFailed = true;
+        _loaded = true;
+      });
+      return;
     }
     final markers = sortMarkerRows(fetched);
-    if (!mounted) return;
     setState(() {
       _markers = markers;
       _loaded = true;
+      _loadFailed = false;
     });
     // Defer to after the frame: with a null api this whole method runs
     // synchronously inside initState (no await is reached), so publishing
@@ -310,10 +320,10 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
     final spec = kindSpec(m.kind);
     final parts = <String>[];
     if (spec.hasServices && meta is Map && meta['services'] is List) {
-      // whereType, not cast: meta is a schemaless jsonb bag, and a cast that
-      // throws mid-build takes the whole route-detail list down with it (L4
-      // breaking L1) over one malformed marker.
-      final services = (meta['services'] as List).whereType<String>().toList();
+      // parseAidServices, not cast: meta is a schemaless jsonb bag, and a cast
+      // that throws mid-build takes the whole route-detail list down with it
+      // (L4 breaking L1) over one malformed marker.
+      final services = parseAidServices(meta['services']);
       if (services.isNotEmpty) {
         parts.add(services.map((s) => serviceLabel(l10n, s)).join(' · '));
       }
@@ -429,7 +439,25 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
             ],
           ),
         ],
-        if (_loaded && _markers.isEmpty && !_placing)
+        if (_loadFailed)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              key: const Key('route-markers-load-error'),
+              children: [
+                Expanded(
+                  child: Text(l10n.routeMarkerLoadFailed,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.error)),
+                ),
+                TextButton(
+                  onPressed: _reload,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ],
+            ),
+          )
+        else if (_loaded && _markers.isEmpty && !_placing)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(l10n.routeMarkerEmpty,
@@ -582,7 +610,7 @@ List<RouteMarkerRow> sortMarkerRows(List<RouteMarkerRow> rows) => [
     ];
 
 double? parseMarkerCoordinate(String text, double max) {
-  final v = double.tryParse(text.trim());
+  final v = parseTypedDecimal(text);
   if (v == null || v.isNaN || v.abs() > max) return null;
   return v;
 }
@@ -600,7 +628,7 @@ String formatMarkerCoordinate(double v) {
 /// fraction clamp, so callers get a valid on-route point for an over-long
 /// value rather than a rejection.
 double? parseDistanceAlong(String text, {required DistanceUnit unit}) {
-  final v = double.tryParse(text.trim());
+  final v = parseTypedDecimal(text);
   if (v == null || !v.isFinite || v < 0) return null;
   return unit == DistanceUnit.mi ? v * kMetresPerMile : v * 1000;
 }

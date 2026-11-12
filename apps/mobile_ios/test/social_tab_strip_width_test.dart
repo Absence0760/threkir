@@ -8,12 +8,13 @@ import 'package:ui_kit/ui_kit.dart' show AppTabBar, AppTheme;
 /// (decisions § 533), so the answer is a function of the phone and the OS
 /// text scale, not of the author's guess.
 ///
-/// Measured on the default text scale, the strip the five English labels need
-/// is **609.3 dp** wide and the four that preceded Challenges needed
-/// **436.3 dp**. So on a 360 dp phone the finding is true — but it was
-/// already true of the FOURTH tab before Challenges existed, which is the
-/// correction: this is the derivation behaving, not a regression the fifth
-/// tab introduced. Both fit from 840 dp.
+/// A filled strip gives every tab an EQUAL share of the width, so whether it
+/// fits is the widest label times the tab count — not the sum of the labels.
+/// The sum rule called five labels a fit at 840 dp while each tab's 168 dp
+/// share was narrower than "Challenges", which then clipped. On a 360 dp
+/// phone the finding is true, and it was already true of the FOURTH tab
+/// before Challenges existed: this is the derivation behaving, not a
+/// regression the fifth tab introduced.
 void main() {
   Future<({bool scrollable, double lastTabRight, double width})> measure(
     WidgetTester tester, {
@@ -75,17 +76,41 @@ void main() {
     expect(m.lastTabRight, greaterThan(m.width));
   });
 
-  testWidgets('both strips fit once the width is a tablet width',
+  /// The width a filled strip of [labels] needs: the widest label plus
+  /// Material's per-tab padding, once per tab. Measured with the tab style the
+  /// mounted strip resolves, so the number holds under any test font.
+  double fillWidth(WidgetTester tester, List<String> labels) {
+    final ctx = tester.element(find.byType(TabBar));
+    final theme = Theme.of(ctx);
+    final style = theme.tabBarTheme.labelStyle ?? theme.textTheme.titleSmall;
+    var widest = 0.0;
+    for (final l in labels) {
+      final p = TextPainter(
+        text: TextSpan(text: l, style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: MediaQuery.textScalerOf(ctx),
+      )..layout();
+      widest = widest > p.width ? widest : p.width;
+      p.dispose();
+    }
+    return (widest + kTabLabelPadding.horizontal) * labels.length;
+  }
+
+  testWidgets('both strips fill once every tab holds its widest label',
       (tester) async {
     // Assert the population, not only the property: the strip is not
     // scrollable for everything, so the two results above are about these
     // labels at that width and not about AppTabBar always scrolling.
-    final five840 = await measure(tester, width: 840, labels: five);
-    expect(five840.scrollable, isFalse);
-    expect(five840.lastTabRight, lessThanOrEqualTo(five840.width));
+    for (final labels in [five, four]) {
+      await measure(tester, width: 360, labels: labels);
+      final fits = fillWidth(tester, labels).ceilToDouble() + 1;
+      final m = await measure(tester, width: fits, labels: labels);
+      expect(m.scrollable, isFalse, reason: '${labels.length} labels at $fits');
+      expect(m.lastTabRight, lessThanOrEqualTo(m.width));
 
-    final four600 = await measure(tester, width: 600, labels: four);
-    expect(four600.scrollable, isFalse);
-    expect(four600.lastTabRight, lessThanOrEqualTo(four600.width));
+      final short = await measure(tester, width: fits - 2, labels: labels);
+      expect(short.scrollable, isTrue,
+          reason: 'one dp short of an equal share for the widest label');
+    }
   });
 }

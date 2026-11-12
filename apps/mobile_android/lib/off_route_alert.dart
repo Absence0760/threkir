@@ -16,6 +16,8 @@
 /// is canonical, the wiring is the platform-additive surface).
 library;
 
+import 'env_flag.dart';
+
 /// How far off the planned route (metres) the runner must be for the alert
 /// clock to run. Deliberately larger than the 40 m off-route *banner*
 /// threshold (`_offRouteThresholdMetres` on the run screen): the banner is a
@@ -54,15 +56,32 @@ class OffRouteAlertDetector {
   /// and false while on-route or still within the debounce window.
   bool update(double? offRouteDistanceMetres, int nowMs) {
     if (_fired) return false;
+    // A non-finite reading is the SAME epistemic state as null — we do not
+    // know how far off route the runner is — and must be read that way rather
+    // than fall through the `<=` comparison, which every non-finite value
+    // fails. Treating one as "off route" starts the sustain clock and then
+    // spends the once-per-run latch on a reading that measured nothing,
+    // leaving a runner who later goes genuinely off course with a silently
+    // dead safety net. Reachable: the recorder's route projection leaves its
+    // running minimum at +Infinity when every segment yields a NaN distance,
+    // which a route whose waypoints carry non-finite coordinates does.
     if (offRouteDistanceMetres == null ||
+        !offRouteDistanceMetres.isFinite ||
         offRouteDistanceMetres <= thresholdM) {
       // Back on (or near enough) the route — reset the sustain clock.
       _sinceMs = null;
       return false;
     }
-    // Beyond the threshold. Start the clock on the first such snapshot.
+    // Beyond the threshold. Start the clock on the first such snapshot, and
+    // re-anchor it whenever the wall clock steps BACKWARDS (an NTP correction,
+    // a manual clock change, a timezone-database update mid run). Without the
+    // re-anchor the anchor stays stranded in the future and the elapsed
+    // comparison stays negative for as long as the step was large — an hour's
+    // correction disarms the alert for an hour of genuine off-course running.
+    // Restarting the measurement is the honest answer: across a clock jump we
+    // cannot say how long the departure has lasted.
     final since = _sinceMs;
-    if (since == null) {
+    if (since == null || nowMs < since) {
       _sinceMs = nowMs;
       return false;
     }
@@ -80,14 +99,11 @@ class OffRouteAlertDetector {
   }
 }
 
-/// Pure parse of the off-route-escalation deploy flag. Truthy only for an
-/// explicit `1` / `true` / `yes` / `on` (case-insensitive, trimmed); anything
-/// else — including unset / empty / `false` / `0` — is off. Fail-closed: the
-/// whole off-route auto-notify path stays unreachable until owner + CISO +
-/// counsel sign-off flips the flag at deploy time. The run screen passes
-/// `dotenv.env['OFF_ROUTE_ESCALATION_ENABLED']`; the web binding lives in
-/// `off_route_flag.ts` — both call this so the parse can't drift.
-bool offRouteEscalationEnabled(String? raw) {
-  final v = (raw ?? '').trim().toLowerCase();
-  return v == '1' || v == 'true' || v == 'yes' || v == 'on';
-}
+/// Pure parse of the off-route-escalation deploy flag, delegating to the one
+/// canonical [isTruthyFlagValue] so the accepted-affirmative set is a single
+/// contract across every gate on both platforms (decisions § 709).
+/// Fail-closed: the whole off-route auto-notify path stays unreachable until
+/// owner + CISO + counsel sign-off flips the flag at deploy time. The run
+/// screen passes `dotenv.env['OFF_ROUTE_ESCALATION_ENABLED']`; the web
+/// binding lives in `off_route_flag.ts`.
+bool offRouteEscalationEnabled(String? raw) => isTruthyFlagValue(raw);

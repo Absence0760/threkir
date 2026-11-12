@@ -2,15 +2,21 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, StatusPill, StatusPillSize;
 
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
+import '../official_distance.dart';
 import '../preferences.dart';
+import '../quiet_location.dart';
+import '../route_surface_label.dart';
+import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../park_course_routes.dart';
 import '../widgets/route_track_preview.dart';
 import 'route_detail_screen.dart';
 import '../widgets/top_banner.dart';
@@ -25,14 +31,17 @@ class ExploreRoutesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRouteStore routeStore;
   final Preferences preferences;
-  final void Function(cm.Route route)? onStartRun;
+
+  /// Test seam for the "Near me" fix. Production callers leave it null and
+  /// get [locateForBrowse].
+  final Future<Position> Function()? locateFn;
 
   const ExploreRoutesScreen({
     super.key,
     this.apiClient,
     required this.routeStore,
     required this.preferences,
-    this.onStartRun,
+    this.locateFn,
   });
 
   @override
@@ -44,8 +53,21 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   final _scrollController = ScrollController();
 
   List<cm.Route> _results = [];
+  late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup((
+    ids,
+  ) async {
+    final api = widget.apiClient;
+    if (api == null) return <String>{};
+    return api.fetchParkCourseRouteIds(ids);
+  });
   bool _loading = false;
   bool _hasMore = true;
+  // The search the shown results came from, and the cursor for its next
+  // page. Load more continues THAT search: the cursor is a position in one
+  // sort's order and means nothing under another, and text typed since but not
+  // submitted must not splice a different result set onto this one.
+  Future<cm.KeysetPage<cm.Route>> Function(List<Object?>? after)? _activeSearch;
+  List<Object?>? _resultsNext;
   String? _error;
 
   _DistanceFilter _distanceFilter = _DistanceFilter.any;
@@ -55,6 +77,8 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   bool _featuredOnly = false;
   String _sort = 'popular';
   List<String> _popularTags = const [];
+  Set<String> _bookmarkedIds = const {};
+  final Set<String> _bookmarkBusy = {};
 
   static const _pageSize = 30;
 
@@ -69,6 +93,20 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       if (mounted) _search();
     });
     _loadPopularTags();
+    _loadBookmarkedIds();
+  }
+
+  /// Ids the viewer has bookmarked, for the row icons. A failure leaves every
+  /// icon unfilled rather than claiming a state nothing confirmed.
+  Future<void> _loadBookmarkedIds() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final saved = await api.fetchBookmarkedRoutes(limit: 1000);
+      if (mounted) setState(() => _bookmarkedIds = {for (final r in saved) r.id});
+    } catch (e) {
+      debugPrint('fetchBookmarkedRoutes failed: $e');
+    }
   }
 
   Future<void> _loadPopularTags() async {
@@ -86,8 +124,13 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _parkCourses.dispose();
     super.dispose();
   }
+
+  void _checkParkCourses() => unawaited(
+    _parkCourses.check(_results.where((r) => r.official).map((r) => r.id)),
+  );
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
@@ -111,28 +154,42 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       _error = null;
       _results = [];
       _hasMore = true;
+      _activeSearch = null;
+      _resultsNext = null;
     });
 
+    final text = _searchController.text.trim();
+    final query = text.isEmpty ? null : text;
+    final minDistanceM = _minDistance;
+    final maxDistanceM = _maxDistance;
+    final surface = _surfaceValue;
+    final tags = _selectedTags.isEmpty ? null : _selectedTags.toList();
+    final featuredOnly = _featuredOnly;
+    final sort = _sort;
+    Future<cm.KeysetPage<cm.Route>> read(List<Object?>? after) =>
+        api.searchPublicRoutes(
+          query: query,
+          minDistanceM: minDistanceM,
+          maxDistanceM: maxDistanceM,
+          surface: surface,
+          tags: tags,
+          featuredOnly: featuredOnly,
+          sort: sort,
+          limit: _pageSize,
+          after: after,
+        );
+
     try {
-      final results = await api.searchPublicRoutes(
-        query: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        minDistanceM: _minDistance,
-        maxDistanceM: _maxDistance,
-        surface: _surfaceValue,
-        tags: _selectedTags.isEmpty ? null : _selectedTags.toList(),
-        featuredOnly: _featuredOnly,
-        sort: _sort,
-        limit: _pageSize,
-        offset: 0,
-      ).timeout(kBackendLoadTimeout);
+      final page = await read(null).timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
-        _results = results;
-        _hasMore = results.length >= _pageSize;
+        _results = page.rows;
+        _resultsNext = page.next;
+        _activeSearch = read;
+        _hasMore = page.next != null;
         _loading = false;
       });
+      _checkParkCourses();
     } on TimeoutException catch (e) {
       debugPrint('ExploreRoutesScreen._search timed out: $e');
       if (!mounted) return;
@@ -151,30 +208,21 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   }
 
   Future<void> _loadMore() async {
-    final api = widget.apiClient;
-    if (api == null || _loading || !_hasMore) return;
+    final read = _activeSearch;
+    final after = _resultsNext;
+    if (read == null || after == null || _loading || !_hasMore) return;
 
     setState(() => _loading = true);
     try {
-      final results = await api.searchPublicRoutes(
-        query: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        minDistanceM: _minDistance,
-        maxDistanceM: _maxDistance,
-        surface: _surfaceValue,
-        tags: _selectedTags.isEmpty ? null : _selectedTags.toList(),
-        featuredOnly: _featuredOnly,
-        sort: _sort,
-        limit: _pageSize,
-        offset: _results.length,
-      );
+      final page = await read(after);
       if (!mounted) return;
       setState(() {
-        _results.addAll(results);
-        _hasMore = results.length >= _pageSize;
+        _results = cm.appendPage(_results, page.rows, (r) => r.id);
+        _resultsNext = page.next;
+        _hasMore = page.next != null;
         _loading = false;
       });
+      _checkParkCourses();
     } catch (e, s) {
       debugPrint('ExploreRoutesScreen._loadMore failed: $e\n$s');
       if (mounted) {
@@ -201,15 +249,15 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       _error = null;
       _results = [];
       _hasMore = false;
+      _activeSearch = null;
+      _resultsNext = null;
     });
 
     try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
+      final Position pos;
+      try {
+        pos = await (widget.locateFn ?? locateForBrowse)();
+      } on PermissionDeniedException {
         if (mounted) {
           setState(() {
             _error = AppLocalizations.of(context)
@@ -218,14 +266,21 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
           });
         }
         return;
+      } catch (e) {
+        // Caught here, not below: a fix that never arrives is a
+        // TimeoutException too, and the outer catch would call it a
+        // backend timeout.
+        debugPrint('ExploreRoutesScreen._searchNearby locate failed: $e');
+        if (mounted) {
+          final l10n = AppLocalizations.of(context);
+          setState(() {
+            _error = l10n.exploreRoutesNearbyLocationUnavailable(
+                browseLocateErrorText(l10n, e));
+            _loading = false;
+          });
+        }
+        return;
       }
-
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
 
       final results = await api.nearbyPublicRoutes(
         lat: pos.latitude,
@@ -238,6 +293,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         _results = results;
         _loading = false;
       });
+      _checkParkCourses();
     } on TimeoutException catch (e) {
       debugPrint('ExploreRoutesScreen._searchNearby timed out: $e');
       if (!mounted) return;
@@ -307,55 +363,55 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     }
   }
 
-  Future<void> _saveRoute(cm.Route route) async {
-    // Browse-list rows come back from `search_public_routes` /
-    // `nearby_routes` / `routes_within_box` with no waypoints (the
-    // public_routes view strips them — see migration
-    // 20260703_001_public_routes_view.sql). Pull the privacy-zone-
-    // clipped polyline via `fetchRouteById` before persisting so the
-    // locally-cached copy doesn't carry the original author's
-    // unclipped start coordinate. Owner-of-route gets their full
-    // unclipped polyline through the same call. Audit/privacy-zones
-    // High fix.
+  /// Saving a public route to the library is a `saved_routes` reference, not
+  /// a private copy (decisions § 30), and a second tap removes it — as on web
+  /// and on the route detail screen. This used to clone the route into the
+  /// local store and never rebuild the row, so the bookmark stayed unfilled
+  /// after a save and could not be undone from here.
+  ///
+  /// The icon flips before the request so the tap visibly lands, and flips
+  /// back if it fails. A tap while that row's request is in flight is
+  /// dropped, so a double tap cannot save and then unsave.
+  Future<void> _toggleBookmark(cm.Route route) async {
     final api = widget.apiClient;
-    cm.Route toSave = route;
-    // Browse rows carry no waypoints; the fetch is what makes the saved
-    // copy usable. If it fails we must NOT persist a polyline-less route
-    // and then claim success — that produced an empty-thumbnail "saved"
-    // route that looked like the bookmark silently did nothing.
-    var hasGeometry = route.waypoints.length >= 2;
-    if (api != null) {
-      try {
-        final result = await api.fetchRouteById(route.id);
-        if (result.route != null && result.route!.waypoints.length >= 2) {
-          toSave = result.route!;
-          hasGeometry = true;
-        }
-      } catch (e) {
-        debugPrint('save-route clip fetch failed: $e');
+    if (api == null || api.userId == null) return;
+    if (_bookmarkBusy.contains(route.id)) return;
+    final l10n = AppLocalizations.of(context);
+    final wasSaved = _bookmarkedIds.contains(route.id);
+    setState(() {
+      _bookmarkBusy.add(route.id);
+      _bookmarkedIds = wasSaved
+          ? ({..._bookmarkedIds}..remove(route.id))
+          : {..._bookmarkedIds, route.id};
+    });
+    try {
+      if (wasSaved) {
+        await api.unbookmarkRoute(route.id);
+      } else {
+        await api.bookmarkRoute(route.id);
       }
-    }
-    if (!hasGeometry) {
       if (!mounted) return;
       showTopBanner(
         context,
-        AppLocalizations.of(context)
-            .exploreRoutesSaveCheckConnection(route.name),
+        wasSaved
+            ? l10n.exploreRoutesRemoved(route.name)
+            : l10n.exploreRoutesSaved(route.name),
       );
-      return;
-    }
-    try {
-      await widget.routeStore.save(toSave);
     } catch (e) {
-      debugPrint('save-route persist failed: $e');
+      debugPrint('explore bookmark toggle failed: $e');
       if (!mounted) return;
+      setState(() {
+        _bookmarkedIds = wasSaved
+            ? {..._bookmarkedIds, route.id}
+            : ({..._bookmarkedIds}..remove(route.id));
+      });
       showTopBanner(
-          context, AppLocalizations.of(context).exploreRoutesSaveFailed(route.name));
-      return;
+        context,
+        l10n.routeDetailBookmarkFailed(friendlyError(l10n, e)),
+      );
+    } finally {
+      if (mounted) setState(() => _bookmarkBusy.remove(route.id));
     }
-    if (!mounted) return;
-    showTopBanner(
-        context, AppLocalizations.of(context).exploreRoutesSaved(route.name));
   }
 
   @override
@@ -626,18 +682,17 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         }
 
         final route = _results[index];
-        final alreadySaved = widget.routeStore.routes.any((r) =>
-            r.id == route.id || r.name == route.name);
 
         return _RouteCard(
+          parkCourses: _parkCourses,
           route: route,
           unit: unit,
           theme: theme,
-          alreadySaved: alreadySaved,
+          saved: _bookmarkedIds.contains(route.id),
           onTap: () async {
-            final picked = await Navigator.push<cm.Route?>(
+            await Navigator.push<void>(
               context,
-              MaterialPageRoute(
+              MaterialPageRoute<void>(
                 builder: (_) => RouteDetailScreen(
                   route: route,
                   routeStore: widget.routeStore,
@@ -646,9 +701,10 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
                 ),
               ),
             );
-            if (picked != null) widget.onStartRun?.call(picked);
+            // The detail screen carries its own bookmark toggle.
+            _loadBookmarkedIds();
           },
-          onSave: () => _saveRoute(route),
+          onToggleBookmark: () => _toggleBookmark(route),
         );
       },
     );
@@ -659,17 +715,19 @@ class _RouteCard extends StatelessWidget {
   final cm.Route route;
   final DistanceUnit unit;
   final ThemeData theme;
-  final bool alreadySaved;
+  final bool saved;
   final VoidCallback onTap;
-  final VoidCallback onSave;
+  final VoidCallback onToggleBookmark;
+  final ParkCourseRouteLookup parkCourses;
 
   const _RouteCard({
     required this.route,
+    required this.parkCourses,
     required this.unit,
     required this.theme,
-    required this.alreadySaved,
+    required this.saved,
     required this.onTap,
-    required this.onSave,
+    required this.onToggleBookmark,
   });
 
   @override
@@ -726,6 +784,11 @@ class _RouteCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (route.official)
+                          OfficialRouteBadge(
+                            routeId: route.id,
+                            lookup: parkCourses,
+                          ),
                         if (route.featured)
                           Padding(
                             padding: const EdgeInsets.only(left: 6),
@@ -742,14 +805,19 @@ class _RouteCard extends StatelessWidget {
                       spacing: 12,
                       runSpacing: 4,
                       children: [
-                        _tag(Icons.straighten,
-                            UnitFormat.distance(route.distanceMetres, unit)),
+                        _tag(
+                            Icons.straighten,
+                            UnitFormat.distance(
+                                routeDisplayDistanceM(route.distanceMetres,
+                                    route.officialDistanceMetres),
+                                unit)),
                         if (route.elevationGainMetres > 0)
                           _tag(Icons.trending_up,
-                              '${route.elevationGainMetres.round()}m'),
+                              UnitFormat.elevation(
+                                  route.elevationGainMetres, unit)),
                         if (route.surface != null)
                           _tag(_surfaceIcon(route.surface),
-                              _surfaceLabel(l10n, route.surface)),
+                              routeSurfaceLabel(l10n, route.surface!)),
                         if (route.runCount > 0)
                           _tag(Icons.directions_run, '${route.runCount}'),
                       ],
@@ -776,15 +844,15 @@ class _RouteCard extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(
-                  alreadySaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: alreadySaved
+                  saved ? Icons.bookmark : Icons.bookmark_border,
+                  color: saved
                       ? theme.colorScheme.primary
                       : theme.colorScheme.outline,
                 ),
-                tooltip: alreadySaved
-                    ? l10n.exploreRoutesAlreadySaved
+                tooltip: saved
+                    ? l10n.exploreRoutesRemoveFromLibrary
                     : l10n.exploreRoutesSaveToLibrary,
-                onPressed: alreadySaved ? null : onSave,
+                onPressed: onToggleBookmark,
               ),
             ],
           ),
@@ -817,17 +885,6 @@ class _RouteCard extends StatelessWidget {
         return Icons.alt_route;
       default:
         return Icons.route;
-    }
-  }
-
-  static String _surfaceLabel(AppLocalizations l10n, String? surface) {
-    switch (surface) {
-      case 'trail':
-        return l10n.exploreRoutesSurfaceTrailShort;
-      case 'mixed':
-        return l10n.exploreRoutesSurfaceMixedShort;
-      default:
-        return l10n.exploreRoutesSurfaceRoadShort;
     }
   }
 }

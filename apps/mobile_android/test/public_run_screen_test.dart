@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/live_broadcast.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import '../lib/screens/public_run_screen.dart';
+import '../lib/widgets/loading_skeletons.dart';
+import 'supabase_test_init.dart';
 
 /// Test seam: returns a canned public run + author profile so `_load`
 /// resolves without a backend. Track fetches are stubbed to empty so
@@ -33,7 +33,7 @@ class _FakeApi extends ApiClient {
       const [];
 }
 
-RunRow _run() => RunRow(
+RunRow _run() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
       startedAt: DateTime(2026, 6, 1, 8),
@@ -42,11 +42,12 @@ RunRow _run() => RunRow(
       source: 'app',
       activityType: 'run',
       isDnf: false,
+      followersOnly: false,
     );
 
 /// A 100-hour, 240-mile ultra: the widest the stat cells ever get
 /// ("104:32:11" / "386.24"), which is what overflowed the row.
-RunRow _ultraRun() => RunRow(
+RunRow _ultraRun() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
       startedAt: DateTime(2026, 6, 1, 8),
@@ -55,11 +56,12 @@ RunRow _ultraRun() => RunRow(
       source: 'app',
       activityType: 'run',
       isDnf: false,
+      followersOnly: false,
     );
 
 /// The stub row `beginLiveBroadcast` upserts: 0 duration, 0 distance, public,
 /// never concluded.
-RunRow _liveStub() => RunRow(
+RunRow _liveStub() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
       startedAt: DateTime(2026, 6, 1, 8),
@@ -68,9 +70,10 @@ RunRow _liveStub() => RunRow(
       source: 'app',
       activityType: 'run',
       isDnf: false,
+      followersOnly: false,
     );
 
-UserProfileRow _author(String displayName) => UserProfileRow(
+UserProfileRow _author(String displayName) => UserProfileRow(profilePrivate: false, 
       id: 'u1',
       displayName: displayName,
       shadowHidden: false,
@@ -85,10 +88,7 @@ Future<void> _ensureSupabase() async {
   // those reads return '' instead of throwing NotInitializedError.
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -125,7 +125,7 @@ void main() {
       await _pump(tester);
       // Single pump only — the post-fetch frame swaps in either
       // ErrorState or the run body once Supabase resolves.
-      expect(find.byType(ActivityLoader), findsOneWidget);
+      expect(find.byType(MapDetailSkeleton), findsOneWidget);
     });
   });
 
@@ -192,7 +192,7 @@ void main() {
     });
 
     test('concluded_at wins over a stale zero duration', () {
-      final concluded = RunRow(
+      final concluded = RunRow(safetyAudience: false, 
         id: 'r1',
         userId: 'u1',
         startedAt: DateTime(2026, 6, 1, 8),
@@ -201,6 +201,7 @@ void main() {
         source: 'app',
         activityType: 'run',
         isDnf: false,
+        followersOnly: false,
         concludedAt: DateTime(2026, 6, 1, 9),
       );
       expect(isLiveBroadcast(concluded), isFalse);

@@ -1,6 +1,6 @@
 ---
 name: moab240-solo-runner
-description: Persona-driven bug hunter for the Moab 240 SOLO runner — runs the 240.3-mile, ~29,000 ft Moab 240 Endurance Run with NO crew and NO pacer, relying entirely on drop bags staged at aid stations plus the app on a single phone. A harsher reliability test than the crewed moab240-runner: there is no second pair of hands, nobody to read the phone for them at hour 60, and no pacer to carry the recording while they nap at a sleep station. The recorder must survive 100+ hours fully unattended, naps happen with nobody minding the phone, and the "I am alone and in trouble" SOS path is the only safety net. Distinct from moab240-runner (crewed + paced): every dependency on another human is removed. Reads code first to spot persona-specific edge cases. Read-only by design.
+description: Persona-driven bug hunter for the Moab 240 SOLO runner — runs the 240.3-mile, ~29,000 ft Moab 240 Endurance Run with NO crew and NO pacer, relying entirely on drop bags staged at aid stations plus the app on a single phone. A harsher reliability test than the crewed moab240-runner: there is no second pair of hands, nobody to read the phone for them at hour 60, and no pacer to carry the recording while they nap at a sleep station. The recorder must survive 100+ hours fully unattended, naps happen with nobody minding the phone, and the "I am alone and in trouble" SOS path is the only safety net. Distinct from moab240-runner (crewed + paced): every dependency on another human is removed.
 tools: Bash, Read, Grep, Glob, Write
 model: sonnet
 ---
@@ -84,4 +84,4 @@ Cap at **5 findings**. The bar: does the app survive 100+ hours **completely una
 
 ## Output → `reviews/`
 
-Persist your triage findings to `reviews/persona-moab240-solo-runner.md` (gitignored working notes — see [`reviews/README.md`](../../../reviews/README.md)), not only as chat output. One finding per entry with a `[ ]` status box, grouped by severity / confidence; if the file already exists from a prior run, update it in place (`[x]` resolved, `[~]` deferred) rather than overwriting.
+Persist your triage findings to `reviews/persona-moab240-solo-runner.md` (gitignored working notes — see [`reviews/README.md`](../../../../../reviews/README.md)), not only as chat output. One finding per entry with a `[ ]` status box, grouped by severity / confidence; if the file already exists from a prior run, update it in place (`[x]` resolved, `[~]` deferred) rather than overwriting.

@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/preferences.dart';
 import '../lib/route_geometry.dart' show markerPointAtDistance;
 import '../lib/widgets/route_markers_panel.dart';
 import '../lib/widgets/undo_bar.dart';
@@ -95,6 +94,23 @@ class _MarkersApi extends ApiClient {
 
   @override
   Future<void> deleteRouteMarker(String id) async => deletedIds.add(id);
+}
+
+/// Fails the first marker read, then answers with [markers].
+class _FlakyMarkersApi extends ApiClient {
+  final List<RouteMarkerRow> markers;
+  int calls = 0;
+  _FlakyMarkersApi(this.markers);
+
+  @override
+  String? get userId => 'owner-1';
+
+  @override
+  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
+    calls++;
+    if (calls == 1) throw Exception('502 upstream');
+    return markers;
+  }
 }
 
 /// Marker add blocks on a gate the test controls, to observe the save spinner.
@@ -210,8 +226,6 @@ void main() {
 
       await tester.pump(const Duration(seconds: 9));
       expect(api.deletedIds, isEmpty);
-      // Drain the Restored banner's auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 4));
     });
   });
 
@@ -344,6 +358,44 @@ void main() {
     expect(find.byIcon(Icons.delete_outline), findsNothing);
   });
 
+  testWidgets(
+      'a failed marker read says so and retries, instead of claiming none',
+      (tester) async {
+    final api = _FlakyMarkersApi([
+      _marker(id: 'm1', kind: 'aid_station', label: 'Water', positionM: 500),
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: RouteMarkersPanel(
+            api: api,
+            routeId: 'route-1',
+            isOwner: true,
+            viewerId: 'owner-1',
+            routeOwnerId: 'owner-1',
+            routeLine: const [],
+            onPinsChanged: (_) {},
+            onPlacingChanged: (_) {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byKey(const Key('route-markers-load-error')), findsOneWidget);
+    expect(find.textContaining('No course markers yet'), findsNothing);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(api.calls, 2);
+    expect(find.byKey(const Key('route-markers-load-error')), findsNothing);
+    expect(find.text('Water'), findsOneWidget);
+  });
+
   testWidgets('empty state renders when there are no markers', (tester) async {
     await tester.pumpWidget(_host(isOwner: true, markers: const []));
     await tester.pump();
@@ -386,10 +438,6 @@ void main() {
         reason: 'lat ${api.addedLat}');
     expect((api.addedLng! - -0.11).abs() < 1e-6, isTrue,
         reason: 'lng ${api.addedLng}');
-
-    // Drain the "tap to place" banner timer.
-    await tester.pump(const Duration(seconds: 4));
-    await tester.pumpAndSettle();
   });
 
   testWidgets('marker save shows a progress bar while the add is in flight',
@@ -426,9 +474,6 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.byType(LinearProgressIndicator), findsNothing);
-    // Drain the "Tap to place" banner auto-dismiss timer from _startAdd.
-    await tester.pump(const Duration(seconds: 4));
-    await tester.pump();
   });
 
   testWidgets('typed coordinates create a marker without any map tap',

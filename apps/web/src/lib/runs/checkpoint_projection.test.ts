@@ -114,3 +114,88 @@ test('a cutoff co-located with the last-reached checkpoint is graded on the exac
 	assert.equal(gate.cutoff!.marginS, 200);
 	assert.equal(gate.cutoff!.status, 'tight');
 });
+
+test('a crossing stamped at elapsed 0 leaves future cutoffs ungraded, not "safe"', () => {
+	// A volunteer's tablet running a minute fast (or the RD firing Go after a
+	// start-area checkpoint already scanned) clamps to elapsed 0 upstream. Pace
+	// then computed as 0 s/m — finite, so every remaining checkpoint projected
+	// an arrival of 0 and graded "safe" with the full cutoff as its margin: the
+	// board told the race director a runner was clear of every gate ahead.
+	const p = projectRunner(cps, [{ checkpointId: 'a', elapsedS: 0 }]);
+	assert.equal(p.paceSPerM, null, 'a zero-elapsed sample yields no usable pace');
+	for (const leg of p.legs.filter((l) => !l.reached)) {
+		assert.equal(leg.projectedElapsedS, null, `${leg.checkpointId} must not project`);
+		assert.equal(leg.cutoff, null, `${leg.checkpointId} must stay ungraded`);
+	}
+});
+
+test('a negative elapsed crossing is equally unusable', () => {
+	const p = projectRunner(cps, [{ checkpointId: 'a', elapsedS: -120 }]);
+	assert.equal(p.paceSPerM, null);
+	assert.equal(p.legs.filter((l) => l.cutoff !== null).length, 0);
+});
+
+test('the smallest genuinely-positive elapsed still projects', () => {
+	// The guard must reject only the unusable sample, not clamp real early data:
+	// a fast runner through a near-start checkpoint is legitimate.
+	const p = projectRunner(cps, [{ checkpointId: 'a', elapsedS: 1 }]);
+	assert.notEqual(p.paceSPerM, null);
+	const b = p.legs.find((l) => l.checkpointId === 'b')!;
+	assert.notEqual(b.projectedElapsedS, null);
+	assert.notEqual(b.cutoff, null);
+});
+
+test('a zero-elapsed crossing does not mask a later usable one', () => {
+	// Two stamps: the bogus start-area one and a real mid-course crossing. The
+	// later checkpoint is the one that sets pace, so the board still works.
+	const p = projectRunner(cps, [
+		{ checkpointId: 'a', elapsedS: 0 },
+		{ checkpointId: 'b', elapsedS: 7_200 }
+	]);
+	assert.notEqual(p.paceSPerM, null);
+	assert.equal(p.lastElapsedS, 7_200);
+});
+
+test('a crossing with a non-finite elapsed time is not a crossing', () => {
+	// The board derives elapsed from `new Date(in_time).getTime() - start`, so
+	// an unparseable stamp arrives here as NaN. It used to be admitted: the
+	// runner read as REACHED at that checkpoint, `NaN < 0` and
+	// `NaN < CUTOFF_TIGHT_S` both answered false, and the ladder's terminal
+	// branch told a race director `safe` about a crossing nothing could time.
+	const p = projectRunner(cps, [{ checkpointId: 'b', elapsedS: NaN }]);
+	const b = p.legs.find((l) => l.checkpointId === 'b');
+	assert.equal(b?.reached, false);
+	assert.equal(b?.cutoff, null);
+	assert.equal(p.lastCheckpointId, null);
+	assert.equal(p.lastElapsedS, null);
+	assert.equal(p.paceSPerM, null);
+	assert.equal(p.status, 'racing');
+});
+
+test('an unusable stamp on the last checkpoint does not read as finished', () => {
+	// The status ladder is `blownCutoff ? dnf : reachedLast ? finished`, so an
+	// admitted NaN at the final checkpoint promoted the runner to `finished`
+	// with every cutoff on the board graded safe.
+	const p = projectRunner(cps, [{ checkpointId: 'c', elapsedS: Infinity }]);
+	assert.equal(p.status, 'racing');
+	assert.ok(p.legs.every((l) => !l.reached));
+	assert.ok(p.legs.every((l) => l.cutoff === null));
+});
+
+test('an unusable stamp does not mask a usable one at the same checkpoint', () => {
+	const p = projectRunner(cps, [
+		{ checkpointId: 'b', elapsedS: NaN },
+		{ checkpointId: 'b', elapsedS: 6_000 }
+	]);
+	assert.equal(p.lastElapsedS, 6_000);
+	assert.equal(p.legs.find((l) => l.checkpointId === 'b')?.cutoff?.status, 'tight');
+});
+
+test('a cutoff that is not a number leaves the leg ungraded', () => {
+	const bad: ProjectionCheckpoint[] = [
+		{ id: 'a', positionM: 10_000, cutoffElapsedS: NaN }
+	];
+	const p = projectRunner(bad, [{ checkpointId: 'a', elapsedS: 3_600 }]);
+	assert.equal(p.legs[0].reached, true);
+	assert.equal(p.legs[0].cutoff, null);
+});

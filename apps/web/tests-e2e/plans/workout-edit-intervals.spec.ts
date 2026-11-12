@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * Workout structured-interval edit (web).
@@ -25,12 +27,7 @@ test.describe('Workout structured-interval edit (web)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	test('edit interval structure (warmup + reps + recovery) and persist', async ({
@@ -47,12 +44,15 @@ test.describe('Workout structured-interval edit (web)', () => {
 			.select('id')
 			.eq('plan_id', SYDNEY_HALF_PLAN_ID);
 		const weekIds = (weeks ?? []).map((w) => (w as { id: string }).id);
-		const { data: wo } = await admin
-			.from('plan_workouts')
-			.select('id, structure')
-			.in('week_id', weekIds)
-			.eq('scheduled_date', await seedDateToLive('2026-04-14'))
-			.maybeSingle();
+		const wo = await readMaybeRow(
+			'plan_workouts by week_id+scheduled_date',
+			admin
+				.from('plan_workouts')
+				.select('id, structure')
+				.in('week_id', weekIds)
+				.eq('scheduled_date', await seedDateToLive('2026-04-14'))
+				.maybeSingle()
+		);
 		expect(wo).not.toBeNull();
 		const workoutId = (wo as { id: string }).id;
 		const beforeStructure = (wo as { structure: unknown }).structure;
@@ -153,12 +153,15 @@ test.describe('Workout structured-interval edit (web)', () => {
 			.select('id, week_index')
 			.eq('plan_id', SYDNEY_HALF_PLAN_ID);
 		const weekIds = (weeks ?? []).map((w) => (w as { id: string }).id);
-		const { data: wo } = await admin
-			.from('plan_workouts')
-			.select('id, kind, structure, target_distance_m, scheduled_date')
-			.in('week_id', weekIds)
-			.eq('scheduled_date', await seedDateToLive('2026-04-14'))
-			.maybeSingle();
+		const wo = await readMaybeRow(
+			'plan_workouts by week_id+scheduled_date',
+			admin
+				.from('plan_workouts')
+				.select('id, kind, structure, target_distance_m, scheduled_date')
+				.in('week_id', weekIds)
+				.eq('scheduled_date', await seedDateToLive('2026-04-14'))
+				.maybeSingle()
+		);
 		expect(wo).not.toBeNull();
 		const workoutId = (wo as { id: string }).id;
 		const beforeKind = (wo as { kind: string }).kind;
@@ -179,15 +182,18 @@ test.describe('Workout structured-interval edit (web)', () => {
 
 			const modal = page.locator('.modal');
 			await expect(modal).toBeVisible({ timeout: 5_000 });
-			await modal.locator('select').first().selectOption('easy');
+			await modal.getByLabel('Kind', { exact: true }).selectOption('easy');
 			await modal.getByRole('button', { name: /^Save/ }).click();
 			await expect(modal).toHaveCount(0);
 
-			const { data: after } = await admin
-				.from('plan_workouts')
-				.select('kind, structure')
-				.eq('id', workoutId)
-				.maybeSingle();
+			const after = await readMaybeRow(
+				'plan_workouts by id',
+				admin
+					.from('plan_workouts')
+					.select('kind, structure')
+					.eq('id', workoutId)
+					.maybeSingle()
+			);
 			expect((after as { kind: string }).kind).toBe('easy');
 			expect((after as { structure: unknown }).structure).toBeNull();
 		} finally {

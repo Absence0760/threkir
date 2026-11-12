@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core_models/core_models.dart' as cm;
+import 'package:core_models/core_models.dart' show ActivityType;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
@@ -20,6 +20,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'package:run_recorder/run_recorder.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 late Directory _runsDir;
@@ -28,10 +29,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -301,15 +299,22 @@ void main() {
       // The toggle lives in the recording view (_buildLive). Pairing a belt
       // must not surface it on the idle screen — it only appears once a run
       // is in flight. This also guards the new plumbing renders idle cleanly.
-      await tester.runAsync(() async {
-        SharedPreferences.setMockInitialValues({
-          'treadmill_device_id': 'AA:BB:CC:DD:EE:FF',
-          'treadmill_device_name': 'NordicTrack T9',
-        });
-      });
+      //
+      // The keys must be seeded AFTER _makeStores, which resets the mock
+      // store: seeded before it, the pairing was wiped and this asserted
+      // nothing (the toggle is hidden at idle whether or not a belt exists).
       final s = await _makeStores();
+      SharedPreferences.setMockInitialValues({
+        'treadmill_device_id': 'AA:BB:CC:DD:EE:FF',
+        'treadmill_device_name': 'NordicTrack T9',
+      });
+      expect(await s.treadmill.pairedName(), 'NordicTrack T9',
+          reason: 'the precondition this case is named for must actually hold');
       await _pump(tester, s);
       // Let the post-frame pairedName() read settle.
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
       await tester.pump();
       expect(find.text('Treadmill mode'), findsNothing);
     });
@@ -405,6 +410,34 @@ void main() {
       expect(find.byType(RunDetailScreen), findsOneWidget,
           reason: 'tapping the card opens the run detail for that run');
       semantics.dispose();
+    });
+
+    testWidgets('states its distance and pace in the runner\'s unit',
+        (tester) async {
+      // Both pills were built from private km-only formatters with the unit
+      // written into the string, so a mile-unit runner's own last run read as
+      // kilometres on the screen they see most.
+      final s = await _makeStores();
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: 'last-run-mi',
+          startedAt: DateTime.now().subtract(const Duration(hours: 3)),
+          duration: const Duration(minutes: 40),
+          distanceMetres: 8046.72,
+          source: cm.RunSource.app,
+        ));
+      });
+      SharedPreferences.setMockInitialValues({'use_miles': true});
+      final milePrefs = Preferences();
+      await milePrefs.init();
+      registerActivePreferences(milePrefs);
+      addTearDown(resetActivePreferencesForTest);
+
+      await _pump(tester, s);
+
+      expect(find.text('5.00 mi'), findsOneWidget);
+      // 2400 s over 5 mi is 8:00 /mi.
+      expect(find.text('8:00 /mi'), findsOneWidget);
     });
   });
 

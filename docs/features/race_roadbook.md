@@ -36,15 +36,39 @@ model allocates by raw distance. With no elevation data the effort model
 offers a one-tap **Add elevation** that backfills per-waypoint vert from
 Open-Meteo (`routes/elevation.ts`) so effort can fire on any route.
 
+Each segment's grade is measured over an **anchored window** that accumulates
+horizontal distance until it clears `MIN_SEGMENT_M` (5 m), the same walk
+`gradeAdjustedPaceSecPerKm` performs — a short segment is carried forward, not
+graded on its own and not discarded. Grading each point-pair in isolation made
+effort allocation collapse onto even pace on any course sampled finer than 5 m,
+silently, since `hasElevation` and `totalGainM` kept reporting the full climb
+(decisions § 600). A trailing window that never clears the threshold is graded
+flat. The allocation is therefore a property of the terrain, not of the GPX's
+sampling interval.
+
+The per-leg **target pace** — the pace that leg has to be run at to hold the
+goal — is what the effort model actually produces, and it is a column on the
+web crew sheet (and in the copied text) beside the arrival. The `even` model
+prints the same pace on every leg; the effort model prints a slower one on the
+climbs. Mobile shows cumulative arrival only; the mirror is in `followups.md`.
+
 ### Cutoff verdict
 
 `parseCutoff(marker.meta)` (reused from `route_markers`) yields a limit:
 `cutoff_elapsed_s` directly, or `cutoff_clock − startClock` (needs a start
-clock). A bare clock carries no day, so for a race longer than 24h that raw
-offset is ambiguous — `14:00` on an `08:00` start is hour 6 *or* hour 30. The
-limit snaps to the whole day nearest that leg's projected arrival (`k ≥ 0` days
-added, never resolving before the start), so a 30h checkpoint resolves to 30h,
-not the same-day 6h; an at-or-before-start clock still wraps to ≥ 24h.
+clock). A bare clock carries no day, so it resolves to that wall clock's **first
+occurrence after the start** and nothing else — `14:00` on an `08:00` start is
+hour 6, and a clock equal to the start reads as the 24h limit it is meant to
+express rather than a 0-second window. A limit past 24h has to be authored as
+`cutoff_elapsed_s`, the only field that carries a day.
+
+The limit used to snap to whichever whole day sat nearest that leg's projected
+arrival, which made it a function of the goal time: a slower goal pushed the
+projection over a day boundary and turned a blown cutoff into "safe, 12h to
+spare", and two spectators of the same live run saw different limits for the
+same checkpoint. A cutoff is a property of the race, so it may not depend on how
+fast anyone is expected to run.
+
 `marginS = limit − projectedElapsed`; `status` is
 `miss` (negative), `tight` (within `CUTOFF_TIGHT_S` = 30 min), else `safe`.
 
@@ -105,6 +129,25 @@ that writes each positioned marker's projected arrival into its meta —
 the one-click seed, hand-tunable per marker afterwards. During a mobile
 recording that follows the route, crossing a targeted marker speaks
 ahead/behind-plan (run_recording.md, `voice_cue_types.marker_targets`).
+
+`buildRoadbook` grades a target the way it grades a cutoff: every leg whose
+marker carries one gets a `target` verdict — the resolved `targetElapsedS`, a
+`marginS` signed like the cutoff's (positive is time in hand), and an
+`ahead` / `on` / `behind` status. A clock-only target resolves through the same
+first-occurrence-after-the-start rule as `cutoff_clock`, so the two cannot
+disagree about what "06:00" means on one row. The **on-schedule band is
+proportional** — `max(60 s, 1 % of the target)` — because two minutes down at a
+30-minute checkpoint is a real problem and two minutes down at hour twenty of a
+200-miler is noise; a flat band would grade every ultra checkpoint off-plan and
+every 10K one on it. Web renders a **Target** column beside Arrival that appears
+only once a checkpoint carries one (no empty column on an unplanned route),
+states the verdict in words rather than by colour alone, and carries into
+copy-as-text and the printed sheet. Mobile renders the same verdict as a chip
+on the checkpoint row, above the cut-off chip and in the same words, and
+carries it into share-as-text; on-plan is neutral there rather than a third
+alert colour, so a row that needs looking at is the only coloured one. This
+closes the loop on "Save as marker targets": save the projections, change the goal or the pacing model, and the
+sheet says how far the new plan has drifted from the one the crew agreed.
 
 ## Deferred (follow-ups)
 

@@ -13,31 +13,36 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+# Read-only by default. Only `report`, which runs no repository code and
+# installs nothing, may write issues: the audit job runs `pnpm install`, and
+# a token that can edit issues has no business beside third-party packages.
 permissions:
   contents: read
-  issues: write
 
 jobs:
   audit:
     runs-on: ubuntu-latest
+    outputs:
+      exit_code: ${{ steps.audit.outputs.exit_code }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
 
       - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # Matches the rest of the workflows in this repo (ci.yml,
-          # release-web.yml, env-isolation.yml, compliance-drift.yml,
-          # web-bundle-budget.yml) — was 22, bumped to 24 per
-          # /audit/deps May 2026 to close the workflow-Node-version
-          # drift Low.
-          node-version: 24
+          # release-web.yml, compliance-drift.yml)
+          # — was 22, bumped to 24 per /audit/deps May 2026 to close
+          # the workflow-Node-version drift Low.
+          node-version: 24.20.0
           cache: pnpm
 
       - name: Install dependencies
@@ -85,8 +90,27 @@ jobs:
           } > audit-summary.md
           cat audit-summary.md
 
+      - name: Keep the findings for the report job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audit-summary
+          path: audit-summary.md
+          retention-days: 7
+
+  report:
+    needs: audit
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # open, update or close the dependency-audit issue
+    steps:
+      - name: Fetch the findings
+        if: needs.audit.outputs.exit_code != '0'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: audit-summary
+
       - name: Open or update tracking issue on findings
-        if: steps.audit.outputs.exit_code != '0'
+        if: needs.audit.outputs.exit_code != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -117,7 +141,7 @@ jobs:
           fi
 
       - name: Close tracking issue on clean run
-        if: steps.audit.outputs.exit_code == '0'
+        if: needs.audit.outputs.exit_code == '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -128,4 +152,36 @@ jobs:
           if [ -n "$existing" ]; then
             gh issue close "$existing" --repo "$REPO" \
               --comment "Audit clean as of $(date -u +%Y-%m-%d) — closing automatically."
+          fi
+
+  # esm.sh rebuilds a versioned URL while serving it as immutable, and its CDN
+  # can serve the old and new builds at once, so a deno.lock integrity pin can
+  # go stale without any commit here. A run that restores the DENO_DIR cache
+  # never notices; the first cold resolve fails the edge-functions job on
+  # whatever PR or merge it lands on (main, 2026-11-03, decisions § 2257).
+  # Resolving cold each week moves that failure here, off the merge path.
+  deno-lock-pins:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.20.0
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.9.6
+
+      - name: Resolve the Edge Function graph cold against deno.lock
+        run: |
+          if ! node scripts/refresh_deno_lock_remote.mjs --check; then
+            echo "::error::An esm.sh integrity pin in deno.lock no longer matches what its URL serves, so the next cold Edge Function test run will fail. Nothing here is about the npm audit above."
+            echo "Run 'pnpm refresh:deno-lock-remote' locally, review each moved pin it prints, and commit deno.lock."
+            exit 1
           fi

@@ -1,81 +1,87 @@
-// Paged identity collection for the cross-provider dedupe guard. Pre-fix the
+// Walked identity collection for the cross-provider dedupe guard. Pre-fix the
 // guard did a bare `.select().eq('user_id', uid)` which PostgREST silently
 // caps at 1000 rows — so a pro with 1000+ runs compared against an arbitrary
-// slice and re-imported duplicates anyway. `collectRunIdentities` pages the
-// read the same way `fetchRuns` does. These pin the paging + stop conditions.
+// slice and re-imported duplicates anyway. Then it paged with `.range()`,
+// whose OFFSET drops a row at a page boundary when a sync lands mid-import.
+// `collectRunIdentities` now walks by keyset cursor (`walkKeyset`, whose
+// paging is pinned in core/keyset_page.test.ts). These pin the collector.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-	collectRunIdentities,
-	RUN_IDENTITY_PAGE_SIZE,
-	type RawRunRow,
-} from './garmin_dedupe';
+import { KEYSET_WALK_PAGE_SIZE } from '../core/keyset_page';
+import { collectRunIdentities, RUN_DEDUPE_ORDER, type RawRunRow } from './garmin_dedupe';
 
-/// A fake paged source of `count` runs, one second apart, so we can assert the
-/// loop pulls EVERY page (not just the first PostgREST cap) and records each
-/// call's [from, to] range.
-function pagedSource(count: number, pageSize: number) {
+/// A fake keyset source of `count` runs, newest first, one second apart. It
+/// answers the cursor filter `walkKeyset` sends by locating the row the
+/// cursor names (ids are unique and the rows are already in walk order).
+function keysetSource(count: number) {
 	const rows: RawRunRow[] = Array.from({ length: count }, (_, i) => ({
-		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(),
+		id: `r-${String(count - i).padStart(5, '0')}`,
+		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, count - i)).toISOString(),
 		distance_m: 5000 + i,
 	}));
-	const calls: Array<[number, number]> = [];
-	const fetchPage = async (from: number, to: number): Promise<RawRunRow[] | null> => {
-		calls.push([from, to]);
-		return rows.slice(from, Math.min(to + 1, count));
+	const calls: Array<{ after: string | null; limit: number }> = [];
+	const fetchPage = async (after: string | null, limit: number) => {
+		calls.push({ after, limit });
+		let from = 0;
+		if (after !== null) {
+			const id = /id\.lt\."([^"]+)"/.exec(after)?.[1];
+			from = rows.findIndex((r) => r.id === id) + 1;
+			assert.ok(from > 0, `cursor names no row: ${after}`);
+		}
+		return { data: rows.slice(from, from + limit), error: null };
 	};
 	return { fetchPage, calls };
 }
 
-test('collectRunIdentities — a single sub-page fetch stops after one call', async () => {
-	const { fetchPage, calls } = pagedSource(10, 1000);
-	const ids = await collectRunIdentities(fetchPage);
-	assert.equal(ids.length, 10);
-	assert.equal(calls.length, 1);
-	assert.deepEqual(calls[0], [0, 999]);
-});
-
-test('collectRunIdentities — 1200 runs are ALL collected across two pages (not capped at 1000)', async () => {
-	const { fetchPage, calls } = pagedSource(1200, 1000);
+test('collectRunIdentities — 1200 runs are ALL collected (not capped at 1000)', async () => {
+	const { fetchPage, calls } = keysetSource(1200);
 	const ids = await collectRunIdentities(fetchPage);
 	assert.equal(ids.length, 1200, 'every run must be compared, not just the first 1000');
-	assert.equal(calls.length, 2);
-	assert.deepEqual(calls[0], [0, 999]);
-	assert.deepEqual(calls[1], [1000, 1999]);
+	assert.equal(calls[0].after, null);
+	assert.match(calls[1].after ?? '', /started_at\.lt\./, 'page 2 starts after the last row of page 1');
 });
 
-test('collectRunIdentities — an exact full page is followed by one more (empty) page', async () => {
-	const { fetchPage, calls } = pagedSource(1000, 1000);
-	const ids = await collectRunIdentities(fetchPage);
-	assert.equal(ids.length, 1000);
-	// A full 1000-row page can't distinguish "exactly 1000" from "more to
-	// come", so the loop fetches once more and gets an empty page.
-	assert.equal(calls.length, 2);
+test('collectRunIdentities — walks newest first with the id tie-break', () => {
+	assert.deepEqual(
+		RUN_DEDUPE_ORDER.map((k) => `${k.column} ${k.ascending ? 'asc' : 'desc'}`),
+		['started_at desc', 'id desc'],
+	);
 });
 
-test('collectRunIdentities — a page error stops the loop without throwing', async () => {
+test('collectRunIdentities — a page error ends the walk without throwing', async () => {
 	let call = 0;
 	const ids = await collectRunIdentities(async () => {
 		call++;
-		return call === 1 ? [{ started_at: '2026-01-01T09:00:00Z', distance_m: 5000 }] : null;
+		return call === 1
+			? { data: [{ id: 'a', started_at: '2026-01-01T09:00:00Z', distance_m: 5000 }], error: null }
+			: { data: null, error: new Error('reset') };
 	}, 1);
-	// pageSize 1 → first page returns 1 row (== pageSize, keep going), second
-	// page errors (null) → stop. Exactly one identity collected.
 	assert.equal(ids.length, 1);
 });
 
 test('collectRunIdentities — non-finite start times are dropped', async () => {
-	const ids = await collectRunIdentities(async () => [
-		{ started_at: 'not-a-date', distance_m: 5000 },
-		{ started_at: null, distance_m: 5000 },
-		{ started_at: '2026-01-01T09:00:00Z', distance_m: 5000 },
-	]);
+	let served = false;
+	const ids = await collectRunIdentities(async () => {
+		if (served) return { data: [], error: null };
+		served = true;
+		return {
+			data: [
+				{ id: 'a', started_at: 'not-a-date', distance_m: 5000 },
+				{ id: 'b', started_at: null, distance_m: 5000 },
+				{ id: 'c', started_at: '2026-01-01T09:00:00Z', distance_m: 5000 },
+			],
+			error: null,
+		};
+	});
 	assert.equal(ids.length, 1);
 	assert.equal(ids[0].distanceM, 5000);
 });
 
-test('RUN_IDENTITY_PAGE_SIZE matches PostgREST cap', () => {
-	assert.equal(RUN_IDENTITY_PAGE_SIZE, 1000);
+test('the walk asks for the PostgREST cap per page', async () => {
+	const { fetchPage, calls } = keysetSource(3);
+	await collectRunIdentities(fetchPage);
+	assert.equal(calls[0].limit, KEYSET_WALK_PAGE_SIZE);
+	assert.equal(KEYSET_WALK_PAGE_SIZE, 1000);
 });

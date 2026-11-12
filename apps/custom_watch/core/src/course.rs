@@ -4,12 +4,13 @@
 //! `route_snap.ts` `snapToPolyline` (web canonical, the nearest perpendicular
 //! foot on the closest segment — not merely the nearest vertex — in a local
 //! equirectangular frame per segment) and its along-course accumulation, the
-//! same shape `route_geometry.ts` `distanceAlongRoute` resolves for the
-//! predictive-live-tracking input. The off-course detector reproduces the
+//! same shape `route_geometry.ts` `progressAlongRoute` resolves for a live
+//! runner. The off-course detector reproduces the
 //! mobile run screen's route-overlay behaviour: alert past 40 m, re-arm only
 //! once back within half that, so the boundary can't flap an alert on GPS
-//! jitter. Tests mirror `route_snap.test.ts` + the `distanceAlongRoute` cases
-//! in `route_geometry.test.ts` case-for-case, plus firmware-specific ones.
+//! jitter. Tests mirror `route_snap.test.ts` + the no-previous-reading
+//! `progressAlongRoute` cases in `route_geometry.test.ts` (once
+//! `distanceAlongRoute`'s), plus firmware-specific ones.
 //!
 //! [`Course::project_from`] layers a watch-local forward-progress bias on top
 //! of that ported geometry so along-course distance stays monotonic-friendly
@@ -297,7 +298,7 @@ impl Course {
     /// perpendicular offset. `None` for a non-finite position (a course always
     /// has >= 2 points by construction). Mirrors `snapToPolyline`.
     pub fn project(&self, lat_deg: f64, lon_deg: f64) -> Option<Projection> {
-        self.project_biased(lat_deg, lon_deg, None)
+        self.project_biased(lat_deg, lon_deg, None, true)
     }
 
     /// [`Course::project`] biased toward forward progress along the course.
@@ -325,7 +326,21 @@ impl Course {
         lon_deg: f64,
         prev_along_m: f64,
     ) -> Option<Projection> {
-        self.project_biased(lat_deg, lon_deg, Some(prev_along_m))
+        self.project_biased(lat_deg, lon_deg, Some(prev_along_m), true)
+    }
+
+    /// [`Course::project_from`] for the first fix of a course, anchored at the
+    /// start and NOT wrapping round a loop.
+    ///
+    /// A runner with no reading yet has run nothing, so on a closed course the
+    /// finish is a whole lap away rather than "just behind" the start the way
+    /// [`Course::project_from`]'s circle reads it. Unbiased, a first fix a
+    /// metre nearer the closing leg than the opening one read a full lap done
+    /// before the runner had taken a step; here the bias charges the closing
+    /// leg for that lap, capped as ever below [`MAX_ALONG_BIAS_M`], so a fix
+    /// genuinely nearer some other part of the course still lands there.
+    pub fn project_from_start(&self, lat_deg: f64, lon_deg: f64) -> Option<Projection> {
+        self.project_biased(lat_deg, lon_deg, Some(0.0), false)
     }
 
     fn project_biased(
@@ -333,12 +348,14 @@ impl Course {
         lat_deg: f64,
         lon_deg: f64,
         prev_along_m: Option<f64>,
+        wrap: bool,
     ) -> Option<Projection> {
         if !lat_deg.is_finite() || !lon_deg.is_finite() {
             return None;
         }
         let mut best: Option<Projection> = None;
         let mut best_cost = f64::INFINITY;
+        let cos_query = libm::cos(to_rad(lat_deg));
         let mut cumulative = 0.0;
         for i in 0..self.points.len() - 1 {
             let a = self.points[i];
@@ -368,13 +385,37 @@ impl Course {
 
             let s_lat = a.lat_deg + (b.lat_deg - a.lat_deg) * t;
             let s_lon = wrap_lon_deg(a.lon_deg + b_east_deg * t);
-            // Perpendicular offset in the same planar frame: the fix minus the
-            // foot `t * (bx, by)`. A great-circle distance here would be no more
-            // accurate — the foot point was only ever located by this same
-            // planar projection — and would cost a second haversine per segment.
-            let fx = px - bx * t;
-            let fy = py - by * t;
-            let off = libm::sqrt(fx * fx + fy * fy);
+            // Offset measured in ONE frame shared by every candidate, not in
+            // each segment's own.
+            //
+            // `t` is found in the per-segment frame and that is fine — it is one
+            // segment's internal parameter. The offset is not: it is COMPARED
+            // across segments, and each per-segment frame scales east by its own
+            // start latitude's cosine, so the numbers were not commensurate. On a
+            // north-south out-and-back with limbs 20 m apart, true offsets
+            // agreeing to 1e-12 m read 9.988765 vs 9.981872 in their own frames —
+            // a systematic ~7 mm bias toward the pole-ward-starting limb, enough
+            // to anchor on the wrong leg, after which the along-bias defends the
+            // mistake. Web hit the identical defect in distanceAlongRoute
+            // (5ffceec94).
+            //
+            // The scale is the cosine of the QUERY's own latitude, computed once
+            // per call (`cos_query`) — not per segment, and not the course's
+            // mid-latitude.
+            //
+            // It has to be common to every candidate, or the numbers are not
+            // comparable; and it has to be evaluated near the fix, or it is
+            // merely wrong by a bigger constant. `cos_mid_lat` bought
+            // commensurability at the cost of accuracy — its error is bounded by
+            // the WHOLE course's latitude span rather than one segment's, which
+            // on a 256-point serpentine measured ~39x worse than the
+            // per-segment frames it replaced, enough to cross the 40 m
+            // off-course latch on candidates 0.3 m apart. The query latitude is
+            // both common and locally accurate, for one transcendental per fix —
+            // the same budget as the winner's haversine below.
+            let off_east = to_rad(lon_delta_deg(s_lon, lon_deg)) * R_M * cos_query;
+            let off_north = to_rad(lat_deg - s_lat) * R_M;
+            let off = libm::sqrt(off_east * off_east + off_north * off_north);
             let along = cumulative + seg_len * t;
 
             // Unbiased (`prev_along_m` is `None`): pure nearest offset, the
@@ -385,7 +426,7 @@ impl Course {
             // of snapping onto the outbound leg, while a clearly-closer segment
             // still wins.
             let cost = match prev_along_m {
-                Some(prev) => off + self.along_bias_m(along, prev),
+                Some(prev) => off + self.along_bias_m(along, prev, wrap),
                 None => off,
             };
 
@@ -402,6 +443,15 @@ impl Course {
             }
             cumulative += seg_len;
         }
+        // `off_m` is not just a ranking key — it is the off-course distance the
+        // nav page shows and the 40 m / 20 m latch tests — so the WINNER's is
+        // restated as a true great-circle distance to its foot. One
+        // transcendental per fix, not one per segment: this runs on every
+        // published fix over up to MAX_COURSE_POINTS segments, which is the cost
+        // `seg_cos_lat` exists to avoid.
+        if let Some(p) = best.as_mut() {
+            p.off_m = haversine_metres(lat_deg, lon_deg, p.lat_deg, p.lon_deg);
+        }
         best
     }
 
@@ -411,7 +461,8 @@ impl Course {
     ///
     /// The gap is measured on the course's own topology: on a closed course
     /// ([`Course::is_loop`]) the along-axis is a circle, so it is taken the
-    /// short way round. Without that, every traversal after the first reports
+    /// short way round — unless `wrap` is false, for an anchor at the start of
+    /// a run that has covered nothing yet ([`Course::project_from_start`]). Without that, every traversal after the first reports
     /// the runner a lap ahead — the anchor still reads the full loop length
     /// while the runner is metres into the next lap, and a backward charge of
     /// `ALONG_BACK_BIAS_PER_M * total_m` buys the finish segment most of the
@@ -430,10 +481,10 @@ impl Course {
     /// [`ALONG_CONTINUITY_PER_M`] then settles the one pair the circle leaves
     /// indistinguishable — the two ends of a loop's along-axis at their shared
     /// vertex.
-    fn along_bias_m(&self, along_m: f64, prev_along_m: f64) -> f64 {
+    fn along_bias_m(&self, along_m: f64, prev_along_m: f64, wrap: bool) -> f64 {
         let unwrapped = along_m - prev_along_m;
         let mut gap = unwrapped;
-        if self.is_loop {
+        if self.is_loop && wrap {
             if gap > self.total_m / 2.0 {
                 gap -= self.total_m;
             } else if gap < -self.total_m / 2.0 {
@@ -1538,22 +1589,49 @@ mod tests {
     }
 
     #[test]
-    fn a_planar_offset_still_agrees_with_the_great_circle_distance_to_the_foot() {
-        // The claim the frame swap rests on: measuring the perpendicular offset
-        // inside the same planar frame that located the foot point gives the
-        // same metres a great-circle call to that foot point would, so the
-        // 40 m / 20 m off-course thresholds see an unchanged number.
+    fn the_ranking_picks_the_truly_nearest_segment() {
+        // `off_m` is ASSIGNED from haversine_metres(fix, foot), so asserting it
+        // equals that same call is a tautology — it was, and it was the only
+        // guard on the offset. What actually needs pinning is the RANKING: the
+        // planar key that chooses the winner must choose the segment a
+        // great-circle sweep over every segment would.
         let c = max_capacity_serpentine();
         for k in 0..40 {
             let lat = 40.0 + k as f64 * 0.0025;
             let lon = -105.0 + libm::sin(k as f64 * 0.9) * 0.0006;
             let p = c.project(lat, lon).unwrap();
-            let great_circle = haversine_metres(lat, lon, p.lat_deg, p.lon_deg);
+
+            // Independent brute force: the true great-circle distance to the
+            // nearest point of the whole polyline, each segment measured in its
+            // OWN frame (accurate per segment) and compared as real metres.
+            let pts = c.points();
+            let mut truth = f64::INFINITY;
+            for w in pts.windows(2) {
+                let (a, b) = (w[0], w[1]);
+                let cos_a = libm::cos(to_rad(a.lat_deg));
+                let b_east = lon_delta_deg(a.lon_deg, b.lon_deg);
+                let bx = to_rad(b_east) * R_M * cos_a;
+                let by = to_rad(b.lat_deg - a.lat_deg) * R_M;
+                let px = to_rad(lon_delta_deg(a.lon_deg, lon)) * R_M * cos_a;
+                let py = to_rad(lat - a.lat_deg) * R_M;
+                let len_sq = bx * bx + by * by;
+                let t = if len_sq > 0.0 {
+                    ((px * bx + py * by) / len_sq).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                let s_lat = a.lat_deg + (b.lat_deg - a.lat_deg) * t;
+                let s_lon = wrap_lon_deg(a.lon_deg + b_east * t);
+                let d = haversine_metres(lat, lon, s_lat, s_lon);
+                if d < truth {
+                    truth = d;
+                }
+            }
             assert!(
-                (p.off_m - great_circle).abs() < PINNED_OFF_TOLERANCE_M,
-                "off {} vs great-circle {} at {} {}",
+                (p.off_m - truth).abs() < PINNED_OFF_TOLERANCE_M,
+                "winner off {} vs true nearest {} at {} {}",
                 p.off_m,
-                great_circle,
+                truth,
                 lat,
                 lon
             );
@@ -1587,5 +1665,42 @@ mod tests {
             p.off_m
         );
         assert!(p.off_m > OFF_COURSE_THRESHOLD_M);
+    }
+
+    #[test]
+    fn an_out_and_back_snaps_to_the_limb_the_runner_is_on() {
+        // Two north-south limbs 20 m apart, queried at the exact midpoint. The
+        // true ground offsets are identical to 1e-12 m, but ranking candidates
+        // in each segment's OWN planar frame (each scaled by its own start
+        // latitude's cosine) put a systematic ~7 mm bias on the
+        // pole-ward-starting limb — enough to snap onto the return leg and flip
+        // along-route distance by the full out-and-back length.
+        let lat0 = 51.5_f64;
+        let dlat = 3_500.0 / 111_320.0;
+        let dlon = 20.0 / (111_320.0 * libm::cos(lat0 * core::f64::consts::PI / 180.0));
+        let pts = [
+            (lat0, 0.0),
+            (lat0 + dlat, 0.0),
+            (lat0 + dlat, dlon),
+            (lat0, dlon),
+        ];
+        let c = Course::from_points(&[
+            pt(pts[0].0, pts[0].1),
+            pt(pts[1].0, pts[1].1),
+            pt(pts[2].0, pts[2].1),
+            pt(pts[3].0, pts[3].1),
+        ])
+        .expect("builds");
+        // Midpoint of the OUTBOUND limb, offset half way between the two.
+        let q_lat = lat0 + dlat / 2.0;
+        let q_lon = dlon / 2.0;
+        let p = c.project(q_lat, q_lon).expect("projects");
+        // The outbound limb runs 0 -> 3500 m; the return limb starts past
+        // 3500 + 20. A correct rank lands on the outbound one.
+        assert!(
+            p.along_m < 3_600.0,
+            "snapped to the return limb: along_m = {}",
+            p.along_m
+        );
     }
 }

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { setClubMemberRole } from '../fixtures/simulate';
 import { USER_B } from '../fixtures/users';

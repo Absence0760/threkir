@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { fetchEventClubSlug } from '$lib/core/data';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { fetchEventClubSlug } from '#lib/core/data.ts';
 
 	let { data } = $props();
 	let resolving = $state(true);
@@ -16,7 +17,7 @@
 	onMount(async () => {
 		const slug = await fetchEventClubSlug(data.id);
 		if (slug) {
-			await goto(`/clubs/${slug}/events/${data.id}`, { replaceState: true });
+			await goto(`/clubs/${slug}/events/${data.id}`, { replace: true });
 			return;
 		}
 		resolving = false;
@@ -31,12 +32,11 @@
 	{#if resolving}
 		<p class="muted">{m('shell.loading')}</p>
 	{:else}
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('clubEvent.notFoundTitle')}</h3>
-			<p class="muted">{m('clubEvent.notFoundBody')}</p>
-			<a href="/clubs" class="btn btn-primary">{m('clubJoin.browseClubs')}</a>
-		</div>
+		<EmptyState icon="event_busy" title={m('clubEvent.notFoundTitle')} text={m('clubEvent.notFoundBody')}>
+			{#snippet actions()}
+				<a href="/clubs" class="btn btn-primary">{m('clubJoin.browseClubs')}</a>
+			{/snippet}
+		</EmptyState>
 	{/if}
 </div>
 
@@ -46,20 +46,5 @@
 	}
 	.muted {
 		color: var(--color-text-tertiary);
-	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
-		text-align: center;
-		padding: var(--space-2xl);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		max-width: 32rem;
-		margin-inline: auto;
-	}
-	.empty-mark {
-		opacity: 0.5;
 	}
 </style>

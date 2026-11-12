@@ -40,8 +40,13 @@
 	<string>Threkir uses your location to track runs.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Threkir continues tracking runs in the background so you don't lose data if you take a call or lock your phone.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseRunTracking</key>
+		<string>Threkir needs your precise location to map this run and measure its distance accurately.</string>
+	</dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Threkir reads workout summaries from Apple Health so runs you've recorded on Apple Watch, Nike Run Club, Strava, and other apps can be imported into your history.</string>
+	<string>Threkir reads workouts, distance, heart rate and body weight from Apple Health so runs you've recorded in other apps can be imported into your history and your calorie estimate uses your real weight.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Threkir writes recorded runs back to Apple Health so the rest of your iOS health record stays in sync with what you've logged here.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -49,13 +54,26 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Threkir connects to your Bluetooth heart-rate strap so it can stream live BPM into your run.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Threkir uses motion data to count steps and estimate cadence on treadmill runs without GPS.</string>
+	<string>Threkir uses motion data to count steps and estimate cadence, and the barometer to measure the climb on your runs.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Threkir lets you attach photos from your library to your runs.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Threkir saves shared run cards back to your Photos library when you tap "Save to Photos."</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Threkir uses the camera to scan a food product's barcode so it can look up its nutrition and log it for you.</string>
+	<string>Threkir uses the camera to scan a food product's barcode, or to photograph a meal you want to log, so it can look up or estimate the nutrition for you.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Threkir adds a club event you choose to your calendar. It never reads what else is in there.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Threkir adds a club event you choose to your calendar. It never reads what else is in there.</string>
+	<!-- Licenses the RunActivityExtension Live Activity: the in-progress run
+	     on the lock screen and the Dynamic Island, iOS's counterpart to the
+	     Android ongoing notification. Without this key
+	     ActivityAuthorizationInfo().areActivitiesEnabled is false and
+	     Activity.request throws, so the run records normally and the lock
+	     screen simply stays empty — a silent failure, which is why
+	     LiveActivityBridge.swift treats it as an ordinary outcome. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -79,8 +97,17 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- `audio` is what licenses the AVAudioSession to keep SOUNDING once the
+	     app backgrounds. `location` keeps the process alive for GPS but says
+	     nothing about audio, so without this entry the spoken cues stop the
+	     moment the runner pockets the phone — the case they exist for — while
+	     the recording carries on, which makes the failure silent. audio_cues.dart
+	     puts the TTS session in the `playback` category, which is the claim this
+	     entry backs; scripts/check_ios_native_declarations.mjs derives the
+	     requirement from that call rather than from this list. decisions.md § 742. -->
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>location</string>
 		<string>processing</string>
 	</array>
@@ -110,7 +137,23 @@
 	     supabase_flutter's app_links listener catches it and completes
 	     the PKCE session in-app. Scheme must match
 	     ApiClient.kAuthDeepLinkRedirect, the Android manifest
-	     intent-filter, AND the Auth -> Redirect URLs allow-list. -->
+	     intent-filter, AND the Auth -> Redirect URLs allow-list.
+
+	     This is the only scheme committed here. Google Sign-In needs a second
+	     one (the iOS OAuth client id reversed, which GIDSignIn hands the
+	     browser back through) and that string IS the credential, so in a
+	     public repo it cannot be written down. The Runner target's last
+	     build phase, "Register the Google Sign-In redirect scheme", appends it
+	     to the BUILT Info.plist from the operator's untracked
+	     GoogleService-Info.plist, after these entries. A build without that file
+	     registers nothing and google_auth.dart renders no Google button, so
+	     the claim and the capability arrive together. decisions.md. -->
+	<!-- Incoming URLs are routed by app_links listeners (the auth callback
+	     and club invites, both on the com.threkir.app scheme below), never by
+	     Flutter's own deep-link handler, which would push the URL path as a
+	     named route the app does not define. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -123,15 +166,79 @@
 				<string>com.threkir.app</string>
 			</array>
 		</dict>
+		<!-- How the Share Extension wakes this app once it has written the
+		     shared route file into the App Group container. The scheme is
+		     `<kSchemePrefix>-<host bundle id>`, which receive_sharing_intent
+		     matches on exactly so that two apps built on the plugin cannot
+		     open each other; it is not a user-facing deep link. Mirrored in
+		     SharedRouteHandoff.swift. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.threkir.app.share</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ShareMedia-com.threkir.app</string>
+			</array>
+		</dict>
 	</array>
-	<!-- OS "Open with" for GPX/KML route files (decisions §24 device-led).
-	     Neither type is system-declared, so Threkir imports a UTI for each
-	     and registers as a Viewer; receive_sharing_intent delivers the
-	     opened document to lib/shared_file_import.dart, which imports it as
-	     a route. This covers document "Open with" — the iOS *system share
-	     sheet* additionally needs a Share Extension target (deferred). -->
+	<!-- The App Group the Share Extension hands a shared route file over in.
+	     receive_sharing_intent's host half reads this key by name
+	     (`kAppGroupIdKey`) to find the UserDefaults suite the extension wrote
+	     to; with the key absent it falls back to `group.<bundle id>`, which
+	     nothing declares, and every share silently yields nothing. Must equal
+	     `SharedRouteHandoff.appGroup` and the entry in both entitlements
+	     files — ShareExtensionHandoffTests compares them. -->
+	<key>AppGroupId</key>
+	<string>group.com.threkir.app.share</string>
+	<!-- Declaring CFBundleDocumentTypes obliges an answer to "open in place
+	     or import a copy" (ITMS 90737). Threkir imports: shared_file_import.dart
+	     reads the bytes once and keeps its own route, never holding the
+	     original or a security-scoped bookmark to it, so iOS hands over a
+	     copy in Documents/Inbox, which DocumentOpenHandoff.swift moves out. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<!-- OS "Open with" for route files (decisions §24 device-led). None of
+	     these types is system-declared, so Threkir imports a UTI for each.
+	     The opened document arrives as a file:// URL that
+	     receive_sharing_intent does not answer; DocumentOpenHandoff.swift
+	     puts it through the Share Extension's handoff so it reaches
+	     lib/shared_file_import.dart the same way a share does. The iOS
+	     *system share sheet* is the ShareExtension target, whose activation
+	     rule accepts exactly the types declared here. -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
+	<dict>
+			<key>CFBundleTypeName</key>
+			<string>Keyhole Markup Language (zipped)</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.google.earth.kmz</string>
+			</array>
+		</dict>
+	<dict>
+			<key>CFBundleTypeName</key>
+			<string>GeoJSON</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.geojson</string>
+			</array>
+		</dict>
+	<dict>
+			<key>CFBundleTypeName</key>
+			<string>Training Center XML</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.garmin.tcx</string>
+			</array>
+		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>GPS Exchange Format</string>
@@ -159,6 +266,69 @@
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.google.earth.kmz</string>
+			<key>UTTypeDescription</key>
+			<string>Keyhole Markup Language (zipped)</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>kmz</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.google-earth.kmz</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>public.geojson</string>
+			<key>UTTypeDescription</key>
+			<string>GeoJSON</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>geojson</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/geo+json</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.garmin.tcx</string>
+			<key>UTTypeDescription</key>
+			<string>Training Center XML</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.xml</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tcx</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.garmin.tcx+xml</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>com.topografix.gpx</string>

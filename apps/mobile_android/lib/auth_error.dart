@@ -19,6 +19,7 @@ enum AuthErrorKind {
   notSignedIn,
   emailExists,
   emailNotConfirmed,
+  linkExpired,
   weakPassword,
   generic,
 }
@@ -28,21 +29,27 @@ enum AuthErrorKind {
 /// `AuthException` carries both) and falls back to matching the
 /// stringified message, so it works for `SocketException`, `http`'s
 /// `ClientException`, and Supabase auth errors without importing them.
+/// A database code is never overridden by a word in its message.
 AuthErrorKind classifyAuthError(Object error) {
   if (error is SocketException) return AuthErrorKind.offline;
 
   final code = _stringProp(error, (e) => e.code)?.toLowerCase();
   final status = _statusCode(error);
   final msg = error.toString().toLowerCase();
+  final readMsg = !databaseCodeDecides(code);
+  bool says(String text) => readMsg && msg.contains(text);
 
-  if (_looksOffline(msg)) return AuthErrorKind.offline;
+  if (readMsg && _looksOffline(msg)) return AuthErrorKind.offline;
 
   if (status == 429 ||
       (code != null && code.contains('rate')) ||
       code == 'over_email_send_rate_limit' ||
       code == 'over_request_rate_limit' ||
-      msg.contains('rate limit') ||
-      msg.contains('too many requests')) {
+      says('rate limit') ||
+      // The Edge Functions' shared limiter answers 429 with this code, and a
+      // caller that rethrows the code as its message loses the status.
+      says('rate_limit_exceeded') ||
+      says('too many requests')) {
     return AuthErrorKind.rateLimited;
   }
 
@@ -53,33 +60,42 @@ AuthErrorKind classifyAuthError(Object error) {
   // invalidCredentials branch below also matches invalid_grant, so this
   // specific-message check has to win first — otherwise the user gets a
   // wrong-password message for an unconfirmed account (issue #486).
-  if (code == 'email_not_confirmed' || msg.contains('email not confirmed')) {
+  if (code == 'email_not_confirmed' || says('email not confirmed')) {
     return AuthErrorKind.emailNotConfirmed;
+  }
+
+  // An emailed magic / confirmation / reset link opened after it expired
+  // or a second time. The fix is a fresh link, which no other kind says.
+  if (code == 'otp_expired' || says('link is invalid or has expired')) {
+    return AuthErrorKind.linkExpired;
   }
 
   if (code == 'invalid_credentials' ||
       code == 'invalid_grant' ||
-      msg.contains('invalid login credentials') ||
-      msg.contains('invalid credentials')) {
+      says('invalid login credentials') ||
+      says('invalid credentials')) {
     return AuthErrorKind.invalidCredentials;
   }
 
   if (code == 'user_already_exists' ||
       code == 'email_exists' ||
-      msg.contains('already registered')) {
+      says('already registered')) {
     return AuthErrorKind.emailExists;
   }
 
   if (code == 'weak_password' ||
-      msg.contains('weak password') ||
-      msg.contains('password should be at least') ||
-      msg.contains('password should contain at least')) {
+      says('weak password') ||
+      says('password should be at least') ||
+      says('password should contain at least')) {
     return AuthErrorKind.weakPassword;
   }
 
   // ApiClient guards throw Exception('Not authenticated') when an action
   // needs a session — actionable ("sign in"), so don't collapse to generic.
-  if (msg.contains('not authenticated')) return AuthErrorKind.notSignedIn;
+  // The RPCs raise the same words under 42501 when auth.uid() is null.
+  if ((readMsg || code == '42501') && msg.contains('not authenticated')) {
+    return AuthErrorKind.notSignedIn;
+  }
 
   return AuthErrorKind.generic;
 }
@@ -99,6 +115,8 @@ String friendlyAuthError(AppLocalizations l10n, Object error) {
       return l10n.authErrorEmailExists;
     case AuthErrorKind.emailNotConfirmed:
       return l10n.authErrorEmailNotConfirmed;
+    case AuthErrorKind.linkExpired:
+      return l10n.authErrorLinkExpired;
     case AuthErrorKind.weakPassword:
       return l10n.authErrorWeakPassword(kPasswordMinLength);
     // "Sign in to do this" makes no sense on the sign-in screens
@@ -142,6 +160,8 @@ String friendlyError(AppLocalizations l10n, Object error) {
       return l10n.authErrorRateLimited;
     case AuthErrorKind.notSignedIn:
       return l10n.authErrorNotSignedIn;
+    case AuthErrorKind.linkExpired:
+      return l10n.authErrorLinkExpired;
     case AuthErrorKind.invalidCredentials:
     case AuthErrorKind.emailExists:
     case AuthErrorKind.emailNotConfirmed:
@@ -164,6 +184,44 @@ bool isSignedOutError(Object error) {
   final msg = error.toString().toLowerCase();
   return msg.contains('not signed in') || msg.contains('not authenticated');
 }
+
+/// SQLSTATE classes a database error can carry: every class Postgres and
+/// PL/pgSQL define, plus the classes this project's own RPCs raise (`RR`
+/// restart_training_plan, `RW` the recurrence dry run, `TR`
+/// trim_training_plan, `PC` the propose_plan_change dry run), and `PT`, PostgREST's
+/// escape for a chosen HTTP status (`PT429`, park-course reports). A test reads every `errcode` in the migrations and
+/// fails when a new one is not covered here.
+const _sqlstateClasses = {
+  '00', '01', '02', '03', '08', '09', '0A', '0B', '0F', '0L', '0P', '0Z', //
+  '20', '21', '22', '23', '24', '25', '26', '27', '28', '2B', '2D', '2F', //
+  '34', '38', '39', '3B', '3D', '3F', '40', '42', '44', '53', '54', '55', //
+  '57', '58', '72', 'F0', 'HV', 'P0', 'XX', //
+  'RR', 'RW', 'TR', 'PC', 'PT',
+};
+
+final _pgrst = RegExp(r'^PGRST\d{3}$');
+final _sqlstate = RegExp(r'^[0-9A-Z]{5}$');
+
+/// Whether [code] is a SQLSTATE or a PostgREST `PGRST` code, in any case.
+/// A bare five-character test also took an errno like `EPIPE` and any
+/// five-letter word an auth or storage service might send; a SQLSTATE is
+/// five characters of `[0-9A-Z]` whose first two name a known class, and
+/// GoTrue's snake_case codes and Storage's CamelCase ones can never be one.
+/// Mirrors `isDatabaseCode` in web's `core/auth_errors.ts`.
+bool isDatabaseCode(String? code) {
+  if (code == null || code.isEmpty) return false;
+  final c = code.toUpperCase();
+  if (_pgrst.hasMatch(c)) return true;
+  return _sqlstate.hasMatch(c) && _sqlstateClasses.contains(c.substring(0, 2));
+}
+
+/// A database code that decides the category on its own, so the message is
+/// not read for one its code does not have. `P0001` is the exception: a
+/// bare `raise exception` carries it whatever the failure is, and its
+/// message is all there is. Mirrors `databaseCodeDecides` in web's
+/// `core/auth_errors.ts`.
+bool databaseCodeDecides(String? code) =>
+    isDatabaseCode(code) && code!.toUpperCase() != 'P0001';
 
 bool _looksOffline(String msg) =>
     msg.contains('failed host lookup') ||

@@ -11,6 +11,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_body_metrics_screen.dart';
 import '../lib/settings_sync.dart';
+import 'pump_until.dart';
 
 /// A settings-sync whose universal-bag write always fails — drives the
 /// _putBag error-surfacing path for the activity / goal pickers.
@@ -31,7 +32,7 @@ class _ConsentedApi extends ApiClient {
   @override
   String? get userId => 'u1';
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(shadowHidden: false, 
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, shadowHidden: false, 
         id: 'u1',
         healthDataConsentAt: DateTime.utc(2026, 1, 1),
         heightCm: 175,
@@ -40,6 +41,74 @@ class _ConsentedApi extends ApiClient {
   Future<double?> fetchLatestBodyWeightKg() async => 70.0;
   @override
   Future<void> withdrawHealthDataConsent() async => withdrawCalled = true;
+}
+
+/// Consented, with a birth date on file. Records whether the withdrawal
+/// path writes the age record back — since decisions § 721 the server keeps
+/// the column, so the screen must not touch it.
+class _ConsentedWithDobApi extends ApiClient {
+  bool withdrawCalled = false;
+  int ageRecordCalls = 0;
+
+  @override
+  String? get userId => 'u1';
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
+        shadowHidden: false,
+        id: 'u1',
+        healthDataConsentAt: DateTime.utc(2026, 1, 1),
+        heightCm: 175,
+        dateOfBirth: DateTime.utc(1990, 1, 15),
+      );
+  @override
+  Future<double?> fetchLatestBodyWeightKg() async => 70.0;
+  @override
+  Future<void> withdrawHealthDataConsent() async => withdrawCalled = true;
+  @override
+  Future<void> setMyDateOfBirth(DateTime? dateOfBirth) async =>
+      ageRecordCalls++;
+}
+
+/// Consented, recording what a Save writes — the weight-mirror half of
+/// decisions § 1811.
+class _ConsentedSaveApi extends ApiClient {
+  final List<double> recorded = [];
+
+  @override
+  String? get userId => 'u1';
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
+        shadowHidden: false,
+        id: 'u1',
+        healthDataConsentAt: DateTime.utc(2026, 1, 1),
+        heightCm: 175,
+      );
+  @override
+  Future<double?> fetchLatestBodyWeightKg() async => 70.0;
+  @override
+  Future<void> setMyHeightCm(double? heightCm) async {}
+  @override
+  Future<void> recordBodyWeightKg(double weightKg) async =>
+      recorded.add(weightKg);
+}
+
+/// Records the universal-bag writes so the Art 9 mirror clear is observable.
+class _RecordingSync extends SettingsSyncService {
+  _RecordingSync(Preferences prefs) : super(preferences: prefs);
+
+  final List<Map<String, dynamic>> writes = [];
+
+  @override
+  bool get synced => true;
+
+  @override
+  SettingsService? get service => null;
+
+  @override
+  Future<void> updateUniversal(Map<String, dynamic> changes) async {
+    writes.add(changes);
+    notifyListeners();
+  }
 }
 
 /// The profile read fails. Before the fail-closed guard the screen fell back
@@ -136,6 +205,61 @@ void main() {
       expect(find.text('Weight'), findsOneWidget);
     });
 
+    testWidgets('a height or weight outside the column range is refused here',
+        (tester) async {
+      // `body_metrics.weight_kg` is CHECK-bounded `> 0 and <= 500` and
+      // `user_profiles.height_cm` `> 0 and <= 300`; this screen guarded only
+      // `> 0`, so a typed 600 kg reached the insert as a raw 23514 naming a
+      // constraint and no field (decisions § 792).
+      await _pump(tester, await _prefs());
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pump();
+
+      final weight = find.widgetWithText(TextField, 'Weight');
+      await tester.enterText(weight, '600');
+      await tester.pump();
+      expect(find.text('Enter a weight between 20 and 250 kg.'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+
+      await tester.enterText(weight, '72');
+      await tester.pump();
+      expect(find.text('Enter a weight between 20 and 250 kg.'), findsNothing);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
+
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '500');
+      await tester.pump();
+      expect(find.text('Enter a height between 50 and 300 cm.'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('the refused range is stated in the unit the field is typed in',
+        (tester) async {
+      // The field takes lbs when the runner's weight unit is lbs but the
+      // column is kilograms, so a bound stated in kg would name numbers the
+      // field never shows. The floor rounds UP through the conversion, so the
+      // number offered is one the kg gate actually accepts.
+      SharedPreferences.setMockInitialValues({'weight_unit': 'lbs'});
+      final prefs = Preferences();
+      await prefs.init();
+      await _pump(tester, prefs);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pump();
+
+      await tester.enterText(find.widgetWithText(TextField, 'Weight'), '1200');
+      await tester.pump();
+      expect(find.text('Enter a weight between 44.1 and 551.1 lbs.'),
+          findsOneWidget);
+    });
+
     testWidgets('activity level + goal show defaults and open a picker',
         (tester) async {
       await _pump(tester, await _prefs());
@@ -178,8 +302,6 @@ void main() {
 
       expect(find.textContaining('Could not save'), findsOneWidget);
 
-      // Drain the showTopBanner auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 4));
     });
   });
 
@@ -282,8 +404,284 @@ void main() {
       await tester.pumpAndSettle();
       expect(api.withdrawCalled, isTrue);
 
-      // Drain the showTopBanner auto-dismiss timer.
+    });
+
+    testWidgets('withdrawal clears the Art 9 mirror and leaves the age record '
+        'to the server', (tester) async {
+      // Two DOB stores, two lawful bases (§ 718). The prefs-bag mirror is
+      // the Art 9 health-use copy and goes with the consent; the
+      // `user_profiles` column is the child-safety age record the under-18
+      // discoverability floor reads, and since § 721 the withdrawal RPC
+      // leaves it standing. This screen used to write it back straight after
+      // the RPC — a compensation whose whole failure mode was a crash
+      // between the two calls leaving a declared minor discoverable.
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      await prefs.setBodyWeightKg(70);
+      final api = _ConsentedWithDobApi();
+      final sync = _RecordingSync(prefs);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync,
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '');
+      await tester.enterText(find.widgetWithText(TextField, 'Weight'), '');
+      await tester.pump();
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pump();
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+          () => tester.tap(find.widgetWithText(TextButton, 'Withdraw & erase')));
+      await tester.pumpAndSettle();
+
+      expect(api.withdrawCalled, isTrue);
+      expect(api.ageRecordCalls, 0,
+          reason: 'the age record is the server\'s to keep, not this '
+              'screen\'s to re-assert');
+      expect(sync.writes.any((w) => w.containsKey(SettingsKeys.dateOfBirth) &&
+              w[SettingsKeys.dateOfBirth] == null), isTrue,
+          reason: 'the Art 9 prefs-bag mirror must be cleared');
+      expect(sync.writes.any((w) => w.containsKey(SettingsKeys.bodyWeightKg) &&
+              w[SettingsKeys.bodyWeightKg] == null), isTrue,
+          reason: 'the weight series\' mirror goes with the series (§ 1811)');
+      expect(prefs.bodyWeightKg, isNull,
+          reason: 'the on-device calorie weight must not outlive the withdrawal');
+
       await tester.pump(const Duration(seconds: 4));
+    });
+  });
+
+  group('SettingsBodyMetricsScreen — calorie weight mirror (§ 1811)', () {
+    testWidgets('a saved weight lands in the series AND the bag key every '
+        'calorie estimate reads', (tester) async {
+      // The screen used to append to body_metrics only, so the run-detail
+      // estimate here, on web and on the Wear OS post-run line kept reading
+      // a bag key nothing on this screen wrote — 70 kg for a runner who had
+      // just told us their weight.
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      final api = _ConsentedSaveApi();
+      final sync = _RecordingSync(prefs);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync,
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Weight'), '81.5');
+      await tester.pump();
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+
+      expect(api.recorded, [81.5]);
+      expect(
+          sync.writes.any((w) => w[SettingsKeys.bodyWeightKg] == 81.5), isTrue,
+          reason: 'the bag mirror is what the calorie estimates read');
+      expect(prefs.bodyWeightKg, 81.5);
+
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('re-saving an unchanged weight repairs a stale mirror without '
+        'padding the series', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      final api = _ConsentedSaveApi();
+      final sync = _RecordingSync(prefs);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync,
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+
+      expect(api.recorded, isEmpty);
+      expect(sync.writes.any((w) => w[SettingsKeys.bodyWeightKg] == 70.0), isTrue);
+      expect(prefs.bodyWeightKg, 70.0);
+
+      await tester.pump(const Duration(seconds: 4));
+    });
+  });
+
+  group('SettingsBodyMetricsScreen — each section says how it saves', () {
+    Future<void> pumpScreen(WidgetTester tester,
+        {ApiClient? api, SettingsSyncService? sync}) async {
+      final prefs = await _prefs();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync ?? (api == null ? null : _RecordingSync(prefs)),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('Save sits under the demographics, above the auto-saving tiles',
+        (tester) async {
+      // Below the activity + goal tiles, Save read as covering them, though
+      // those tiles had already saved on pick.
+      await pumpScreen(tester, api: _ConsentedSaveApi());
+      final save = tester.getTopLeft(find.widgetWithText(FilledButton, 'Save'));
+      expect(save.dy,
+          greaterThan(tester.getTopLeft(find.widgetWithText(TextField, 'Weight')).dy));
+      expect(save.dy, lessThan(tester.getTopLeft(find.text('Activity level')).dy));
+      expect(save.dy, lessThan(tester.getTopLeft(find.text('Nutrition targets')).dy));
+      expect(find.text('Changes here save automatically.'), findsOneWidget);
+    });
+
+    testWidgets('editing height flips the save hint to Unsaved changes',
+        (tester) async {
+      await pumpScreen(tester, api: _ConsentedSaveApi());
+      expect(find.text('This section saves only when you tap Save.'),
+          findsOneWidget);
+      expect(find.text('Unsaved changes'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '180');
+      await tester.pump();
+      expect(find.text('Unsaved changes'), findsOneWidget);
+      expect(find.text('This section saves only when you tap Save.'),
+          findsNothing);
+
+      // Back to the loaded value is nothing to save.
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '175');
+      await tester.pump();
+      expect(find.text('Unsaved changes'), findsNothing);
+    });
+
+    testWidgets('a successful Save re-takes the baseline', (tester) async {
+      await pumpScreen(tester, api: _ConsentedSaveApi());
+      await tester.enterText(find.widgetWithText(TextField, 'Weight'), '81.5');
+      await tester.pump();
+      expect(find.text('Unsaved changes'), findsOneWidget);
+
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await pumpUntil(
+        tester,
+        () => find.text('Unsaved changes').evaluate().isEmpty,
+        describe: 'the hint to drop Unsaved changes after the save',
+      );
+      expect(find.text('This section saves only when you tap Save.'),
+          findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('picking an activity level says Saved in the nutrition section',
+        (tester) async {
+      final prefs = await _prefs();
+      final sync = _RecordingSync(prefs);
+      await pumpScreen(tester, sync: sync);
+
+      await tester.tap(find.text('Activity level'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+          () => tester.tap(find.text('Mostly sitting (desk job)')));
+      final saved = find.byKey(const ValueKey('body-metrics-pref-saved'));
+      await pumpUntil(
+        tester,
+        () => saved.evaluate().isNotEmpty,
+        describe: 'the nutrition section to confirm the pick saved',
+      );
+      expect(find.descendant(of: saved, matching: find.text('Saved')),
+          findsOneWidget);
+      expect(find.text('Changes here save automatically.'), findsNothing);
+      expect(
+          sync.writes.any(
+              (w) => w[SettingsKeys.nutritionActivityLevel] == 'sedentary'),
+          isTrue);
+      // An auto-saved pick is not a demographics edit.
+      expect(find.text('Unsaved changes'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 3));
+      expect(saved, findsNothing);
+      expect(find.text('Changes here save automatically.'), findsOneWidget);
+    });
+
+    testWidgets('leaving with unsaved demographics asks first', (tester) async {
+      final prefs = await _prefs();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => SettingsBodyMetricsScreen(
+                  api: _ConsentedSaveApi(),
+                  settingsSync: _RecordingSync(prefs),
+                  preferences: prefs,
+                ),
+              )),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await pumpUntil(
+        tester,
+        () => find.widgetWithText(TextField, 'Height').evaluate().isNotEmpty,
+        describe: 'the body-metrics form to load',
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '180');
+      await tester.pump();
+      await tester.pageBack();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Discard changes?'), findsOneWidget);
+      expect(
+          find.text("You changed your body metrics but haven't saved them. "
+              'Leave without saving?'),
+          findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Discard'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(SettingsBodyMetricsScreen), findsNothing);
+      expect(find.text('open'), findsOneWidget);
     });
   });
 }

@@ -1,16 +1,21 @@
 <script lang="ts">
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { englishBadge, type AchievementTier } from '$lib/social/badges';
-	import { formatDateStable } from '$lib/share/share_meta';
-	import { buildBadgeOgImageUrl } from '$lib/share/share_badge_meta';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { formatDateStable } from '#lib/share/share_meta.ts';
+	import { buildBadgeOgImageUrl } from '#lib/share/share_badge_meta.ts';
 
 	let { data } = $props();
 
-	let resolved = $derived(
-		data.badge ? englishBadge(data.badge.badge_key, data.badge.tier as AchievementTier) : null
-	);
+	// The reader's own language. The crawler-facing head is English, but the
+	// share Lambda writes that (share_badge_meta.ts); this is the page a person
+	// reads. Resolving through m() rather than englishBadge() also keeps the
+	// whole English catalogue out of the client graph (decisions § 1802).
+	let resolved = $derived.by(() => {
+		const t = data.badge ? tierFor(data.badge.badge_key, data.badge.tier as AchievementTier) : null;
+		return t ? { label: m(t.labelKey), desc: m(t.descKey), icon: t.icon } : null;
+	});
 	let hasBadge = $derived(!!data.badge && !!resolved);
 	let label = $derived(resolved?.label ?? '');
 	let title = $derived(
@@ -39,7 +44,7 @@
 	<meta name="twitter:description" content={description} />
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell appHref={data.badge?.user_id ? `/u/${data.badge.user_id}?tab=achievements&badge=${data.id}` : null}>
 	<main class="share-badge" id="main-content">
 		{#if hasBadge}
 			<div class="badge-card tier-{tier}">

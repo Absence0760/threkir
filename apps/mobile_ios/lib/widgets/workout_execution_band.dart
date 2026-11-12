@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:run_recorder/run_recorder.dart';
@@ -8,6 +9,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../preferences.dart';
 import '../training.dart' show fmtPace;
+import '../workout_step_name.dart';
 
 /// Top-of-map overlay that surfaces the current [WorkoutRunner] step
 /// while the run screen is recording. Mirrors the spec in
@@ -22,12 +24,17 @@ class WorkoutExecutionBand extends StatelessWidget {
   final VoidCallback onRewind;
   final VoidCallback onAbandon;
 
+  /// The workout's effort / heart-rate target as one line ("RPE 3–4 · Cap
+  /// 125 bpm"), the same for every step; null hides it (decisions § 2092).
+  final String? effortTarget;
+
   const WorkoutExecutionBand({
     super.key,
     required this.state,
     required this.onSkip,
     required this.onRewind,
     required this.onAbandon,
+    this.effortTarget,
   });
 
   @override
@@ -39,6 +46,7 @@ class WorkoutExecutionBand extends StatelessWidget {
         onSkip: onSkip,
         onRewind: onRewind,
         onAbandon: onAbandon,
+        effortTarget: effortTarget,
       ),
     );
   }
@@ -84,16 +92,20 @@ class WorkoutBandState {
   );
 }
 
+enum _BandAction { abandon }
+
 class _Band extends StatelessWidget {
   final WorkoutBandState state;
   final VoidCallback onSkip;
   final VoidCallback onRewind;
   final VoidCallback onAbandon;
+  final String? effortTarget;
   const _Band({
     required this.state,
     required this.onSkip,
     required this.onRewind,
     required this.onAbandon,
+    this.effortTarget,
   });
 
   @override
@@ -130,19 +142,38 @@ class _Band extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  l10n.runWorkoutStepHeader(
-                    step.label,
-                    _fmtTarget(step),
-                    fmtPace(step.targetPaceSecPerKm),
-                  ),
+                  // A walk-run step has no pace target: the easy pace it
+                  // carries is only the plan's distance estimate.
+                  step.paced
+                      ? l10n.runWorkoutStepHeader(
+                          workoutStepName(step, l10n),
+                          _fmtTarget(step),
+                          fmtPace(step.targetPaceSecPerKm),
+                        )
+                      : l10n.runWorkoutStepHeaderUnpaced(
+                          workoutStepName(step, l10n),
+                          _fmtTarget(step),
+                        ),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              _PacePip(adherence: state.adherence, delta: _delta(step)),
+              // A walk-run step is effort-led: no target to be on or off.
+              if (step.paced)
+                _PacePip(adherence: state.adherence, delta: _delta(step)),
             ],
           ),
+          if (effortTarget != null)
+            Text(
+              effortTarget!,
+              key: const Key('workoutBandEffortTarget'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           const SizedBox(height: 6),
           ProgressBar(value: state.progress.clamp(0.0, 1.0)),
           const SizedBox(height: 4),
@@ -169,44 +200,64 @@ class _Band extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
+          // One labelled button: three equal labelled thirds broke "Rewind"
+          // and "Abandon" mid-word on a phone (issue #1300). Abandon sits in
+          // the menu because it ends the workout; run_screen confirms it.
           Row(
             children: [
-              // Rewind only enabled after the first step has advanced —
-              // there's nothing to rewind to on step 0. WorkoutRunner
-              // returns false safely in that case, but greying the
-              // button matches user expectation.
-              Expanded(
-                child: OutlinedButton.icon(
+              // Disabled on step 0: there is nothing to rewind to.
+              Tooltip(
+                message: l10n.runWorkoutRewind,
+                excludeFromSemantics: true,
+                child: IconButton(
+                  key: const Key('workoutBandRewind'),
                   onPressed: state.currentIndex == 0 ? null : onRewind,
-                  icon: const Icon(Icons.skip_previous, size: 16),
-                  label: Text(l10n.runWorkoutRewind),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  icon: Icon(Icons.skip_previous,
+                      semanticLabel: l10n.runWorkoutRewind),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
                 child: OutlinedButton.icon(
+                  key: const Key('workoutBandSkip'),
                   onPressed: onSkip,
-                  icon: const Icon(Icons.skip_next, size: 16),
-                  label: Text(l10n.runWorkoutSkip),
+                  icon: const Icon(Icons.skip_next, size: 18),
+                  label: Text(
+                    l10n.runWorkoutSkip,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onAbandon,
-                  icon: const Icon(Icons.cancel_outlined, size: 16),
-                  label: Text(l10n.runWorkoutAbandon),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: theme.colorScheme.error,
+              const SizedBox(width: 4),
+              PopupMenuButton<_BandAction>(
+                key: const Key('workoutBandMore'),
+                tooltip: l10n.runWorkoutMoreActions,
+                icon: const Icon(Icons.more_vert),
+                onSelected: (action) => switch (action) {
+                  _BandAction.abandon => onAbandon(),
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem<_BandAction>(
+                    value: _BandAction.abandon,
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel_outlined,
+                            color: theme.colorScheme.error),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            l10n.runWorkoutAbandon,
+                            style: TextStyle(color: theme.colorScheme.error),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -287,13 +338,8 @@ class _Band extends StatelessWidget {
       return l10n.runWorkoutRemainingDuration(
           _fmtDuration(state.remainingDuration));
     }
-    // Sub-1-unit fragments are the typical case mid-rep, so always
-    // render in the small unit (m / yd).
-    if (activeDistanceUnit == DistanceUnit.mi) {
-      final yards = (state.remainingMetres * 1.09361).round();
-      return l10n.runWorkoutRemainingYards(yards);
-    }
-    return l10n.runWorkoutRemainingMetres(state.remainingMetres.round());
+    return l10n.runWorkoutRemainingDistance(
+        UnitFormat.shortDistance(state.remainingMetres, activeDistanceUnit));
   }
 }
 
@@ -312,13 +358,9 @@ class _PacePip extends StatelessWidget {
       PaceAdherence.wayAhead || PaceAdherence.wayBehind =>
         theme.colorScheme.error,
     };
-    String label;
-    if (delta == null) {
-      label = '—';
-    } else {
-      final sign = delta! >= 0 ? '+' : '−';
-      label = '$sign${delta!.abs()}s';
-    }
+    final label = delta == null
+        ? '—'
+        : UnitFormat.paceDelta(delta!, activeDistanceUnit);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

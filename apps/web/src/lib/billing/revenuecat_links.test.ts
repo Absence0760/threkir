@@ -1,12 +1,18 @@
 // Tests for the pure RevenueCat hosted-checkout URL builder.
-// `revenuecat.ts` (which imports `$env/dynamic/public`) can't be imported
+// `revenuecat.ts` (which imports `$app/env/public`) can't be imported
 // under node:test — this helper carries the testable behaviour.
 //   npx tsx --test src/lib/billing/revenuecat_links.test.ts
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCheckoutUrl } from './revenuecat_links';
+import {
+	annualSavingPercent,
+	buildCheckoutUrl,
+	checkoutBaseProblem,
+	PRO_PACKAGE_IDS,
+	proStorefront,
+} from './revenuecat_links';
 
 const BASE = 'https://pay.rev.cat/abc123';
 
@@ -39,4 +45,122 @@ test('omits the redirect_url query when no return URL is given', () => {
 test('returns null when the base is empty (fail-closed / unconfigured)', () => {
 	assert.equal(buildCheckoutUrl('', 'user-1'), null);
 	assert.equal(buildCheckoutUrl('   ', 'user-1', 'https://x/y'), null);
+});
+
+test('returns null for a base that is not a Web Purchase Link', () => {
+	assert.equal(buildCheckoutUrl('http://pay.rev.cat/abc123', 'user-1'), null);
+	assert.equal(buildCheckoutUrl('https://evil.example/abc123', 'user-1'), null);
+	assert.equal(buildCheckoutUrl('https://pay.rev.cat/placeholder', 'user-1'), null);
+});
+
+test('checkoutBaseProblem accepts a real Web Purchase Link, trimmed', () => {
+	assert.equal(checkoutBaseProblem(BASE), null);
+	assert.equal(checkoutBaseProblem(`  ${BASE}/\n`), null);
+});
+
+test('checkoutBaseProblem refuses empty, non-URL, plaintext, foreign-host, bare-host and placeholder values', () => {
+	for (const bad of [
+		'',
+		'   ',
+		'abc123',
+		'TODO',
+		'http://pay.rev.cat/abc123',
+		'https://pay.rev.cat.evil.example/abc123',
+		'https://checkout.stripe.com/abc123',
+		'https://pay.rev.cat',
+		'https://pay.rev.cat/',
+		'https://pay.rev.cat/placeholder',
+		'https://pay.rev.cat/TODO',
+		'https://pay.rev.cat/xxxx',
+		'https://pay.rev.cat/your-token',
+	]) {
+		assert.notEqual(checkoutBaseProblem(bad), null, `expected a problem for ${JSON.stringify(bad)}`);
+	}
+});
+
+test('proStorefront: nothing to sell without a live perk, whatever the checkout', () => {
+	assert.equal(proStorefront(false, false), 'coming_soon');
+	assert.equal(proStorefront(false, true), 'coming_soon');
+});
+
+test('proStorefront: a live perk sells on the web only where web checkout exists', () => {
+	assert.equal(proStorefront(true, true), 'checkout');
+	assert.equal(proStorefront(true, false), 'app_only');
+});
+
+test('appends the documented package_id for a preselected plan', () => {
+	assert.equal(
+		buildCheckoutUrl(BASE, 'user-1', undefined, PRO_PACKAGE_IDS.annual),
+		`${BASE}/user-1?package_id=%24rc_annual`,
+	);
+	assert.equal(
+		buildCheckoutUrl(BASE, 'user-1', undefined, PRO_PACKAGE_IDS.monthly),
+		`${BASE}/user-1?package_id=%24rc_monthly`,
+	);
+});
+
+test('carries package_id and redirect_url together', () => {
+	const url = buildCheckoutUrl(BASE, 'user-1', 'https://app.example.com/settings/upgrade', '$rc_annual');
+	assert.equal(
+		url,
+		`${BASE}/user-1?package_id=%24rc_annual&redirect_url=${encodeURIComponent('https://app.example.com/settings/upgrade')}`,
+	);
+});
+
+test('the two plans map to the default offering packages', () => {
+	assert.deepEqual(PRO_PACKAGE_IDS, { monthly: '$rc_monthly', annual: '$rc_annual' });
+});
+
+test('annualSavingPercent rounds down so the saving is never overstated', () => {
+	// 1 - 79.99 / 119.88 = 33.27%.
+	assert.equal(annualSavingPercent(9.99, 79.99), 33);
+	// 1 - 9,800 / 14,400 = 31.94%: rounding would claim 32.
+	assert.equal(annualSavingPercent(1200, 9800), 31);
+});
+
+test('annualSavingPercent does not floor an exact percentage below itself', () => {
+	assert.equal(annualSavingPercent(10, 90), 25);
+	assert.equal(annualSavingPercent(10, 60), 50);
+});
+
+test('annualSavingPercent states nothing when the year is no cheaper', () => {
+	assert.equal(annualSavingPercent(9.99, 119.88), null);
+	assert.equal(annualSavingPercent(9.99, 130), null);
+});
+
+test('annualSavingPercent states nothing under one percent', () => {
+	assert.equal(annualSavingPercent(10, 119.5), null);
+});
+
+test('annualSavingPercent states nothing for a zero or negative price', () => {
+	assert.equal(annualSavingPercent(0, 79.99), null);
+	assert.equal(annualSavingPercent(9.99, 0), null);
+	assert.equal(annualSavingPercent(-1, 79.99), null);
+});
+
+// buildCheckoutUrl appends `/<user id>` and its own query to the base, so a
+// base carrying a query, fragment, second segment, port or credentials put the
+// App User ID somewhere RevenueCat never reads it — a purchase keyed to no one.
+test('checkoutBaseProblem refuses a base whose extra parts would swallow the appended user id', () => {
+	for (const bad of [
+		'https://pay.rev.cat/abc123?ref=web',
+		'https://pay.rev.cat/abc123#pro',
+		'https://pay.rev.cat/abc123/extra',
+		'https://pay.rev.cat:8443/abc123',
+		'https://user:pass@pay.rev.cat/abc123',
+	]) {
+		assert.notEqual(checkoutBaseProblem(bad), null, bad);
+		assert.equal(buildCheckoutUrl(bad, 'user-1'), null, `${bad} must not build a URL`);
+	}
+});
+
+test('every URL built from an accepted base ends its path in the encoded user id', () => {
+	for (const base of [BASE, `${BASE}/`, `  ${BASE}  `]) {
+		const url = new URL(buildCheckoutUrl(base, 'a/b c', 'https://threkir.com/upgrade', '$rc_annual')!);
+		assert.equal(url.host, 'pay.rev.cat');
+		assert.equal(url.pathname, '/abc123/a%2Fb%20c');
+		assert.equal(url.searchParams.get('package_id'), '$rc_annual');
+		assert.equal(url.searchParams.get('redirect_url'), 'https://threkir.com/upgrade');
+		assert.equal(url.hash, '');
+	}
 });

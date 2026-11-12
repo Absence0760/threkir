@@ -10,9 +10,12 @@ import 'package:health/health.dart';
 /// Health Connect is Android-only; callers gate this behind
 /// `Platform.isAndroid` AND the per-device "write to Health Connect"
 /// preference (off by default — writing user data to a third-party store
-/// is opt-in). On iOS the `health` package targets HealthKit, which
-/// needs separate entitlements we don't ship, so the write path is not
-/// invoked there.
+/// is opt-in). The iOS declarations for a HealthKit write-back are already
+/// in place (`com.apple.developer.healthkit` +
+/// `NSHealthUpdateUsageDescription`), but the write itself is not built:
+/// [HealthDataType.DISTANCE_DELTA] below is Android-only in `health`, so the
+/// iOS grant would come back without the distance share and `writeWorkoutData`
+/// would post a workout it has no permission to attach a distance to.
 class HealthConnectExporter {
   static final _health = Health();
 

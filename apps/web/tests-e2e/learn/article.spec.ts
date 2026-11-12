@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * `/learn/<slug>` — a single prerendered guide article.
@@ -37,5 +37,26 @@ test.describe('/learn/road-running-101 (article)', () => {
 		await expect(
 			page.getByRole('link', { name: 'Create a free account' })
 		).toHaveAttribute('href', '/login?signup=1');
+	});
+
+	test('an article ends with more guides to read, not just a CTA', async ({ page }) => {
+		// A guide whose only exit is the CTA is a dead end for a reader who
+		// wants a second one.
+		await page.goto('/learn/road-running-101');
+		const related = page.locator('.related .guide-card');
+		await expect(related).toHaveCount(3);
+		// Never itself.
+		for (const href of await related.evaluateAll((els) =>
+			els.map((el) => el.getAttribute('href'))
+		)) {
+			expect(href).not.toBe('/learn/road-running-101');
+		}
+		// Nearest first: a same-category guide leads.
+		await expect(related.first().locator('.category-pill')).toHaveText(/getting started/i);
+	});
+
+	test('the article header states a reading time beside the updated date', async ({ page }) => {
+		await page.goto('/learn/road-running-101');
+		await expect(page.locator('.updated')).toContainText(/min read/i);
 	});
 });

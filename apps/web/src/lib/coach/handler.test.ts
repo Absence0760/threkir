@@ -25,7 +25,13 @@ import assert from 'node:assert/strict';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { coachSseStream, handleCoach, supabaseErrorFields, type CoachStreamDeps } from './handler';
+import type Anthropic from '@anthropic-ai/sdk';
+
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { coachSseStream, handleCoach, type CoachStreamDeps } from './handler';
+import { resolveToday } from '../training/plan_request/handler';
+import { anthropicTextTokens } from './providers';
 import { emptyUsage, type CoachConfig, type ProviderStream } from './types';
 
 /// Run `fn` with console.error captured, returning every line emitted.
@@ -51,9 +57,12 @@ function baseConfig(): CoachConfig {
 	return {
 		provider: 'anthropic',
 		anthropicApiKey: 'sk-ant-test-FAKE-KEY-NEVER-USED',
-		publicSupabaseUrl: 'http://127.0.0.1:54321',
+		publicSupabaseUrl: 'http://127.0.0.1:24321',
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
+		aiPlanEnabled: false,
+		fuelHandoffEnabled: false,
+		aiPlanEditEnabled: false,
 	};
 }
 
@@ -86,7 +95,7 @@ test('returns 503 when provider=anthropic but anthropicApiKey is unset', async (
 });
 
 test('503 message does NOT leak the COACH_PROVIDER value to the wire', async () => {
-	// Reason: security_guards.test.ts pins that the 503 doesn't
+	// Reason: lambda_guards.test.ts pins that the 503 doesn't
 	// interpolate the provider name (that's an operator hint that
 	// goes to console.error). The contract is "the wire sees a
 	// generic 'not configured'; the operator reads the logs". Pin
@@ -146,7 +155,7 @@ test('returns 401 when Authorization is empty / non-Bearer', async () => {
 });
 
 test('401 wire message is the static "not authenticated" string', async () => {
-	// Reason: security_guards.test.ts pins this so the GoTrue
+	// Reason: lambda_guards.test.ts pins this so the GoTrue
 	// internal-identifier oracle stays closed. Reverify here for
 	// the no-token path specifically — a different upstream string
 	// would change the wire shape clients depend on.
@@ -193,40 +202,6 @@ test('bypassPaywallEnabled=false does NOT emit the bypass_paywall_active line', 
 	);
 });
 
-// ─────────── supabaseErrorFields (PII-safe error logging) ───────────
-
-test('supabaseErrorFields keeps only code + message, drops details/hint', () => {
-	// Reason: the AI-coach path logs Supabase errors on the Art 9
-	// health/injury chat flow. A raw PostgrestError carries `.details`
-	// and `.hint`, which can echo row fragments (the caller's chat
-	// content, emails, injury free text) straight into CloudWatch.
-	// This helper is the scrub every log site routes through — pin
-	// that it never carries the leaky fields through. /audit/pii-in-logs.
-	const raw = {
-		code: '23505',
-		message: 'duplicate key value violates unique constraint',
-		details: "Key (user_id, content)=(uuid, 'left knee ITB flare, DNF at mile 62') already exists.",
-		hint: 'runner@example.com',
-	};
-	const safe = supabaseErrorFields(raw);
-	assert.deepEqual(safe, {
-		code: '23505',
-		message: 'duplicate key value violates unique constraint',
-	});
-	// The scrubbed object, serialised the way console.error would emit
-	// it, must not carry any PII fragment from details/hint.
-	const serialised = JSON.stringify(safe);
-	assert.doesNotMatch(serialised, /ITB flare/);
-	assert.doesNotMatch(serialised, /runner@example\.com/);
-	assert.doesNotMatch(serialised, /details|hint/);
-});
-
-test('supabaseErrorFields tolerates null / undefined / empty errors', () => {
-	assert.deepEqual(supabaseErrorFields(null), { code: undefined, message: undefined });
-	assert.deepEqual(supabaseErrorFields(undefined), { code: undefined, message: undefined });
-	assert.deepEqual(supabaseErrorFields({}), { code: undefined, message: undefined });
-});
-
 // ──────────────────────── 400 (body shape) ────────────────────────
 
 test('returns 400 when rawBody is null', async () => {
@@ -268,8 +243,12 @@ test('returns 400 when body.messages is invalid (missing, wrong shape)', async (
 /// delete calls are recorded on `calls` so a test can assert nothing was
 /// written. `coach_messages.maybeSingle()` returns `{ data: null }` — the
 /// anchor-miss the fail-closed path must catch.
-function makeSupabaseStub(calls: { inserts: string[]; deletes: string[] }) {
+function makeSupabaseStub(
+	calls: { inserts: string[]; deletes: string[]; reads?: string[] },
+	profileOverride?: Record<string, unknown> | null,
+) {
 	function builder(table: string): Record<string, unknown> {
+		calls.reads?.push(table);
 		const result = { data: null as unknown, error: null };
 		const b: Record<string, unknown> = {
 			select: () => b,
@@ -303,12 +282,16 @@ function makeSupabaseStub(calls: { inserts: string[]; deletes: string[] }) {
 			if (name === 'get_my_profile') {
 				return {
 					maybeSingle: async () => ({
-						data: {
-							coach_consent_at: '2026-01-01T00:00:00Z',
-							display_name: 'Test Runner',
-							preferred_unit: 'km',
-							health_data_consent_at: null,
-						},
+						data:
+							profileOverride === undefined
+								? {
+										coach_consent_at: '2026-01-01T00:00:00Z',
+										ai_disclosure_version: 1,
+										display_name: 'Test Runner',
+										preferred_unit: 'km',
+										health_data_consent_at: null,
+									}
+								: profileOverride,
 						error: null,
 					}),
 				};
@@ -339,7 +322,7 @@ test('regenerate with a missing anchor fails closed with 409 and inserts nothing
 			},
 			{
 				...baseConfig(),
-				// Bypass the paywall so the is_pro / increment_coach_usage RPCs
+				// Bypass the paywall so the is_pro / spend_coach_usage_slot RPCs
 				// are skipped — the stub only needs to satisfy auth + consent +
 				// buildContext + the anchor lookup.
 				bypassPaywallEnabled: true,
@@ -365,6 +348,96 @@ test('regenerate with a missing anchor fails closed with 409 and inserts nothing
 		lines.some((l) => l.includes('regenerate_anchor_miss')),
 		`expected a "regenerate_anchor_miss" log line, got: ${JSON.stringify(lines)}`,
 	);
+});
+
+// ───────────── AI-disclosure consent gate (issue #734) ─────────────
+
+async function coachWithProfile(
+	profileOverride: Record<string, unknown> | null,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+	const calls = { inserts: [] as string[], deletes: [] as string[] };
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{ messages: [{ role: 'user', content: 'hi' }] },
+			{
+				...baseConfig(),
+				bypassPaywallEnabled: true,
+				createClient: () => makeSupabaseStub(calls, profileOverride),
+			},
+		);
+	});
+	assert.equal(result.kind, 'json', 'a consent denial must not start an SSE stream');
+	assert.deepEqual(calls.inserts, [], 'no message may be persisted on a consent denial');
+	return parseJsonResult(result) as { status: number; body: Record<string, unknown> };
+}
+
+test('coach refuses when no consent record is on file', async () => {
+	// Reason: audit/gdpr (2026-05-25) + issue #734. The record is now
+	// versioned, so "consented" means a known version at or above the
+	// Coach minimum — not merely a non-null timestamp.
+	const { status, body } = await coachWithProfile({
+		coach_consent_at: null,
+		ai_disclosure_version: null,
+		display_name: 'Test Runner',
+		preferred_unit: 'km',
+	});
+	assert.equal(status, 403);
+	assert.equal(body.code, 'ai_disclosure_required');
+	assert.equal(body.required_version, 1);
+});
+
+test('coach refuses a half-written or unknown-version consent record', async () => {
+	// A timestamp with no version (or a version this build cannot render)
+	// is not proof of an affirmative act — deny rather than assume.
+	for (const profile of [
+		{ coach_consent_at: '2026-01-01T00:00:00Z', ai_disclosure_version: null },
+		{ coach_consent_at: '2026-01-01T00:00:00Z', ai_disclosure_version: 99 },
+		{ coach_consent_at: null, ai_disclosure_version: 1 },
+	]) {
+		const { status, body } = await coachWithProfile({
+			...profile,
+			display_name: 'Test Runner',
+			preferred_unit: 'km',
+		});
+		assert.equal(status, 403, `expected 403 for ${JSON.stringify(profile)}`);
+		assert.equal(body.code, 'ai_disclosure_required');
+	}
+});
+
+test('coach accepts the widened disclosure as well as the Coach one', async () => {
+	// The ladder is monotone: v2 is a superset of v1, so a route-AI
+	// acceptance must not lock the caller out of the Coach. Asserted via
+	// the regenerate anchor-miss branch, which sits after the consent gate
+	// and before the provider — a 409 here proves the gate let v2 through
+	// without spending a real Anthropic call to find out.
+	const calls = { inserts: [] as string[], deletes: [] as string[] };
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{
+				messages: [{ role: 'user', content: 'try again' }],
+				mode: 'regenerate',
+				anchor_message_id: 'stale-anchor-id',
+			},
+			{
+				...baseConfig(),
+				bypassPaywallEnabled: true,
+				createClient: () =>
+					makeSupabaseStub(calls, {
+						coach_consent_at: '2026-01-01T00:00:00Z',
+						ai_disclosure_version: 2,
+						display_name: 'Test Runner',
+						preferred_unit: 'km',
+					}),
+			},
+		);
+	});
+	const { status, body } = parseJsonResult(result);
+	assert.equal(status, 409, 'a v2 holder must clear the Coach consent gate');
+	assert.equal((body as Record<string, unknown>).code, undefined);
 });
 
 test('returns 400 with the canonical jsonError shape (kind + content-type)', async () => {
@@ -475,7 +548,7 @@ test('the mid-stream error event carries no upstream detail', async () => {
 		providerStream: fakeStream([], true, 'Coach upstream 400: {"type":"error",' +
 			'"error":{"type":"invalid_request_error","message":"messages.2.role: ' +
 			'Input tag \'system\' found using \'role\' does not match any of the ' +
-			'expected tags"}} model=claude-sonnet-4-5'),
+			'expected tags"}} model=claude-sonnet-5-5'),
 	});
 	const out = await drain(coachSseStream(deps));
 
@@ -499,6 +572,27 @@ test('mid-stream failure with ZERO tokens refunds the slot and persists nothing'
 	assert.match(out, /event: error/);
 });
 
+test('an Anthropic refusal with no text refunds the slot through the mid-stream path', async () => {
+	async function* refusal(): AsyncIterable<Anthropic.MessageStreamEvent> {
+		for (const e of [
+			{ type: 'message_start' },
+			{ type: 'message_delta', delta: { stop_reason: 'refusal' } },
+			{ type: 'message_stop' },
+		]) {
+			yield e as Anthropic.MessageStreamEvent;
+		}
+	}
+	const { deps, persisted, refunds } = streamDeps({
+		providerStream: { tokens: anthropicTextTokens(refusal()), finalUsage: async () => emptyUsage() },
+	});
+	const out = await drain(coachSseStream(deps));
+
+	assert.deepEqual(persisted, []);
+	assert.deepEqual(refunds, ['mid_stream_error_zero_tokens']);
+	assert.match(out, /event: error/);
+	assert.doesNotMatch(out, /event: done/);
+});
+
 test('happy path persists the full reply, emits done, refunds nothing', async () => {
 	// Reason: the extraction must not regress the success path — the full
 	// accumulated reply persists once, the done event carries the row id,
@@ -513,4 +607,331 @@ test('happy path persists the full reply, emits done, refunds nothing', async ()
 	assert.match(out, /event: done/);
 	assert.match(out, /assistant-row-1/, 'done event carries the persisted assistant_message_id');
 	assert.match(out, /"used_today":1/);
+});
+
+// ───────────── plan handoff addendum (decisions § 1930) ─────────────
+
+/// Drive one `send` turn through the OpenAI-compatible provider with
+/// `fetch` stubbed, and return the system text the provider was handed.
+/// The stubbed upstream answers 500, so the turn ends in the mid-stream
+/// error path — only the request body matters here.
+async function systemTextFor(
+	aiPlanEnabled: boolean,
+	fuelHandoffEnabled = false,
+	aiPlanEditEnabled = false,
+): Promise<string> {
+	const calls = { inserts: [] as string[], deletes: [] as string[] };
+	const originalFetch = globalThis.fetch;
+	let sent: { messages?: { role: string; content: string }[] } | null = null;
+	globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
+		sent = JSON.parse(String(init?.body ?? 'null'));
+		return new Response('upstream down', { status: 500 });
+	}) as typeof fetch;
+	try {
+		await captureConsoleError(async () => {
+			const result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'Generate a half marathon training plan' }] },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://127.0.0.1:1/v1',
+					bypassPaywallEnabled: true,
+					aiPlanEnabled,
+					fuelHandoffEnabled,
+					aiPlanEditEnabled,
+					createClient: () => makeSupabaseStub(calls),
+				},
+			);
+			if (result.kind === 'sse') {
+				for await (const chunk of result.body) void chunk;
+			}
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	const system = (sent as { messages?: { role: string; content: string }[] } | null)?.messages?.find(
+		(m) => m.role === 'system',
+	);
+	assert.ok(system, 'the provider must receive a system message');
+	return system!.content;
+}
+
+/// Drive one `send` turn as a runner holding `version` and return the tables
+/// the context build read.
+async function tablesReadAt(version: number, extra: Record<string, unknown> = {}): Promise<string[]> {
+	const calls = { inserts: [] as string[], deletes: [] as string[], reads: [] as string[] };
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = (async () => new Response('upstream down', { status: 500 })) as typeof fetch;
+	try {
+		await captureConsoleError(async () => {
+			const result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'Should I run today?' }], ...extra },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://127.0.0.1:1/v1',
+					bypassPaywallEnabled: true,
+					createClient: () =>
+						makeSupabaseStub(calls, {
+							coach_consent_at: '2026-01-01T00:00:00Z',
+							ai_disclosure_version: version,
+							display_name: 'Test Runner',
+							preferred_unit: 'km',
+							health_data_consent_at: '2026-01-01T00:00:00Z',
+						}),
+				},
+			);
+			if (result.kind === 'sse') {
+				for await (const chunk of result.body) void chunk;
+			}
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	return calls.reads;
+}
+
+test('the handler hands the accepted disclosure to the context build (issue #1217)', async () => {
+	// A v1 holder keeps the Coach but its context reads no gym or food data;
+	// a v6 holder with health consent gets both lanes. Without the version
+	// threaded through, both would read the same tables.
+	const v1 = await tablesReadAt(1);
+	assert.ok(v1.includes('runs'), 'the Coach still builds a context at v1');
+	assert.equal(v1.includes('gym_workouts'), false);
+	assert.equal(v1.includes('food_log'), false);
+	const v6 = await tablesReadAt(6);
+	assert.ok(v6.includes('gym_workouts'));
+	assert.ok(v6.includes('food_log'));
+});
+
+test('the handler hands plan_scope to the context build, and "none" reads no plan (issue #1213)', async () => {
+	assert.ok((await tablesReadAt(1)).includes('training_plans'), 'an absent scope still reads the plan');
+	assert.ok((await tablesReadAt(1, { plan_scope: 'season' })).includes('training_plans'));
+	const none = await tablesReadAt(1, { plan_scope: 'none' });
+	assert.ok(none.includes('runs'), 'the rest of the context is still built');
+	assert.equal(none.includes('training_plans'), false);
+});
+
+test('returns 400 on a plan_scope outside plan, season and none', async () => {
+	for (const bad of ['all', '', 1, null, ['season']]) {
+		const result = await handleCoach(
+			'Bearer x',
+			{ messages: [{ role: 'user', content: 'hi' }], plan_scope: bad },
+			baseConfig(),
+		);
+		const { status, body } = parseJsonResult(result);
+		assert.equal(status, 400, `expected 400 for ${JSON.stringify(bad)}`);
+		assert.equal(body.error, 'plan_scope must be one of plan, season, none');
+	}
+});
+
+test('the system text carries the describe-link handoff when the AI plan assistant is on', async () => {
+	const text = await systemTextFor(true);
+	assert.ok(text.includes('[Build this plan](/plans/new?describe='), text.slice(-1200));
+	assert.match(text, /do not write workouts or a schedule yourself/);
+});
+
+test('the system text points at the bare plan builder when the AI plan assistant is off', async () => {
+	const text = await systemTextFor(false);
+	assert.ok(text.includes('[plan builder](/plans/new)'), text.slice(-1200));
+	assert.ok(!text.includes('describe='), 'no assistant link while the flag is off');
+});
+
+// ───────────── fuelling handoff addendum (decisions § 1975) ─────────────
+
+test('the system text carries the fuelling handoff when the coach fuelling flag is on', async () => {
+	const text = await systemTextFor(false, true);
+	assert.ok(text.includes('[Plan your fuelling](/nutrition/fuel?duration=<seconds>)'), text.slice(-1600));
+	assert.match(text, /never name a food, drink, product, brand or supplement/);
+});
+
+test('the system text carries no fuelling handoff when the coach fuelling flag is off', async () => {
+	const text = await systemTextFor(true, false);
+	assert.ok(!text.includes('/nutrition/fuel'), 'no fuelling link while the flag is off');
+	assert.ok(!text.includes('Fuelling requests'), text.slice(-1600));
+});
+
+test('the system text carries the plan-edit handoff only when AI plan edits are on', async () => {
+	const on = await systemTextFor(false, false, true);
+	assert.ok(on.includes('?adjust=<request>'), on.slice(-1500));
+	const off = await systemTextFor(false, false, false);
+	assert.ok(!off.includes('adjust='), 'no plan-edit link while the flag is off');
+});
+
+// ───────────── daily-cap spend + ticketed refund (decisions § 1990) ─────────────
+//
+// The refund's only authority is the ticket `spend_coach_usage_slot` returns.
+// These drive handleCoach end to end with the paywall ON, through the
+// OpenAI-compatible provider (whose only I/O is `fetch`, stubbed per test), and
+// read the RPCs the handler made: a reply that streamed keeps the slot, a
+// failed call refunds exactly the ticket its own spend was issued.
+
+const TICKET = '5e5e0000-0000-0000-0000-00000000c0a1';
+
+type RpcCall = { name: string; args: unknown };
+
+function paywalledStub(rpcs: RpcCall[], used = 1, spendId: string | null = TICKET) {
+	const base = makeSupabaseStub({ inserts: [], deletes: [] }) as unknown as {
+		rpc: (name: string, args?: unknown, opts?: unknown) => unknown;
+	};
+	const baseRpc = base.rpc;
+	base.rpc = (name: string, args?: unknown, opts?: unknown) => {
+		rpcs.push({ name, args });
+		if (name === 'is_pro') return Promise.resolve({ data: false, error: null });
+		if (name === 'spend_coach_usage_slot') {
+			return Promise.resolve({ data: [{ used, spend_id: spendId }], error: null });
+		}
+		if (name === 'refund_coach_usage_slot') return Promise.resolve({ data: true, error: null });
+		return baseRpc(name, args, opts);
+	};
+	return base as unknown as SupabaseClient;
+}
+
+async function coachWithUpstream(
+	upstream: () => Response,
+	used = 1,
+	spendId: string | null = TICKET,
+): Promise<{ result: Awaited<ReturnType<typeof handleCoach>>; rpcs: RpcCall[]; sse: string }> {
+	const rpcs: RpcCall[] = [];
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = (async () => upstream()) as typeof fetch;
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	let sse = '';
+	try {
+		await captureConsoleError(async () => {
+			result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'how was my week?' }] },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://upstream.test/v1',
+					createClient: () => paywalledStub(rpcs, used, spendId),
+				},
+			);
+			if (result.kind === 'sse') sse = await drain(result.body);
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	return { result, rpcs, sse };
+}
+
+const names = (rpcs: RpcCall[]) => rpcs.map((c) => c.name);
+
+test('a reply that streams keeps the slot: one spend, no refund', async () => {
+	const { result, rpcs, sse } = await coachWithUpstream(
+		() =>
+			new Response(
+				'data: {"choices":[{"delta":{"content":"Solid week."}}]}\n\ndata: [DONE]\n\n',
+				{ status: 200 },
+			),
+	);
+	assert.equal(result.kind, 'sse');
+	assert.match(sse, /Solid week\./);
+	assert.deepEqual(
+		rpcs.find((c) => c.name === 'spend_coach_usage_slot')?.args,
+		{ p_user_id: 'user-1' },
+	);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'), names(rpcs).join(','));
+	assert.ok(!names(rpcs).includes('increment_coach_usage'));
+});
+
+test('a provider failure with nothing streamed refunds the ticket its own spend was issued', async () => {
+	const { result, rpcs } = await coachWithUpstream(() => new Response('upstream down', { status: 503 }));
+	assert.equal(result.kind, 'sse');
+	const refunds = rpcs.filter((c) => c.name === 'refund_coach_usage_slot');
+	assert.equal(refunds.length, 1, names(rpcs).join(','));
+	assert.deepEqual(refunds[0].args, { p_user_id: 'user-1', p_spend_id: TICKET });
+});
+
+test('an over-cap spend answers 429 and refunds nothing', async () => {
+	const { result, rpcs } = await coachWithUpstream(
+		() => {
+			throw new Error('the provider must not be called over the cap');
+		},
+		3,
+	);
+	assert.equal(parseJsonResult(result).status, 429);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('a spend that returns no ticket still enforces, and a failure then refunds nothing', async () => {
+	const { result, rpcs } = await coachWithUpstream(() => new Response('down', { status: 503 }), 1, null);
+	assert.equal(result.kind, 'sse');
+	assert.ok(names(rpcs).includes('spend_coach_usage_slot'));
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('an unreadable spend denies with 503 before any provider call', async () => {
+	const rpcs: RpcCall[] = [];
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{ messages: [{ role: 'user', content: 'hi' }] },
+			{
+				...baseConfig(),
+				createClient: () => {
+					const sb = paywalledStub(rpcs) as unknown as {
+						rpc: (n: string, a?: unknown, o?: unknown) => unknown;
+					};
+					const inner = sb.rpc;
+					sb.rpc = (n, a, o) =>
+						n === 'spend_coach_usage_slot'
+							? Promise.resolve({ data: null, error: { message: 'boom' } })
+							: inner(n, a, o);
+					return sb as unknown as SupabaseClient;
+				},
+			},
+		);
+	});
+	assert.equal(parseJsonResult(result).status, 503);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('a failed plan read answers 503 and refunds the slot instead of coaching as if there were no plan', async () => {
+	const rpcs: RpcCall[] = [];
+	const stub = paywalledStub(rpcs) as unknown as { from: (t: string) => unknown };
+	const baseFrom = stub.from;
+	stub.from = (table: string) => {
+		if (table !== 'training_plans') return baseFrom(table);
+		const failed = { data: null, error: { message: 'timeout', code: '57014' } };
+		const b: Record<string, unknown> = {};
+		for (const k of ['select', 'eq', 'order']) b[k] = () => b;
+		b.maybeSingle = async () => failed;
+		b.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+			Promise.resolve(failed).then(resolve, reject);
+		return b;
+	};
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{ messages: [{ role: 'user', content: 'what is today?' }], today: '2026-06-15' },
+			{
+				...baseConfig(),
+				provider: 'openai',
+				openaiBaseUrl: 'http://upstream.test/v1',
+				createClient: () => stub as unknown as SupabaseClient,
+			},
+		);
+	});
+	assert.equal(parseJsonResult(result).status, 503);
+	const refunds = rpcs.filter((c) => c.name === 'refund_coach_usage_slot');
+	assert.equal(refunds.length, 1, names(rpcs).join(','));
+});
+
+test('the coach reads today from the request only within a day of the server clock', () => {
+	// The handler hands buildContext resolveToday(body.today, now) — the same
+	// skew window plan_request uses, so a forged date cannot move the plan pick
+	// further than a real timezone could.
+	const src = readFileSync(resolve(import.meta.dirname ?? '.', 'handler.ts'), 'utf8');
+	assert.match(src, /resolveToday\(body\.today, \(config\.now \?\? Date\.now\)\(\)\)/);
+	const NOW = Date.UTC(2026, 9, 15, 12);
+	assert.equal(resolveToday('2026-10-16', NOW), '2026-10-16');
+	assert.equal(resolveToday('2026-10-17', NOW), '2026-10-15');
+	assert.equal(resolveToday(undefined, NOW), '2026-10-15');
 });

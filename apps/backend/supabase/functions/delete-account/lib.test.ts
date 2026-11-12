@@ -11,6 +11,7 @@ import {
 	formatDeletedCounts,
 	hashUserIdForAudit,
 	normalizeReceiptLocale,
+	RECEIPT_LOCALES,
 	revenueCatSubscriberUrl,
 	stripeAccountUrl,
 } from './lib.ts';
@@ -59,6 +60,16 @@ Deno.test('fcmBatchRemoveBody truncates at 1000 tokens', () => {
 	const body = fcmBatchRemoveBody(many);
 	const parsed = JSON.parse(body) as { registration_tokens: string[] };
 	assertEquals(parsed.registration_tokens.length, 1000);
+});
+
+// Account deletion must unregister every device it can. Blanks and repeats
+// filtered AFTER the 1000-token cap used up slots, so a real token past them
+// was never sent and that phone kept its registration.
+Deno.test('fcmBatchRemoveBody spends the cap on real, distinct tokens only', () => {
+	const padded = [...Array.from({ length: 1000 }, () => ''), 'real-device'];
+	assertEquals(JSON.parse(fcmBatchRemoveBody(padded)), { registration_tokens: ['real-device'] });
+	const repeated = [...Array.from({ length: 1000 }, () => 'phone-a'), 'phone-b'];
+	assertEquals(JSON.parse(fcmBatchRemoveBody(repeated)), { registration_tokens: ['phone-a', 'phone-b'] });
 });
 
 Deno.test('formatDeletedCounts returns null for an empty map', () => {
@@ -126,6 +137,10 @@ Deno.test('hashUserIdForAudit is stable across calls', async () => {
 	const a = await hashUserIdForAudit('abc');
 	const b = await hashUserIdForAudit('abc');
 	assertEquals(a, b);
+	// Stability alone is what a constant satisfies, so the stable value is
+	// pinned too: SHA-256 of `<default salt>:abc`, which fixes the primitive,
+	// the salt and the hex encoding the deletion_audit_log CHECK expects.
+	assertEquals(a, '72aeadc1a0a0ca346d19d51e7fd169f32271333afc6787a50721fe607680c14b');
 });
 
 Deno.test('hashUserIdForAudit differentiates inputs', async () => {
@@ -168,16 +183,59 @@ Deno.test('hashUserIdForAudit empty-string key falls back to unkeyed mode', asyn
 	const empty = await hashUserIdForAudit('user', { key: '' });
 	const unset = await hashUserIdForAudit('user');
 	assertEquals(empty, unset);
+	// And that the shared answer is the UNKEYED one rather than both calls
+	// having quietly engaged HMAC with a zero-length key.
+	const keyed = await hashUserIdForAudit('user', { key: 'secret-a-32-bytes-min-yyyyyyyyyy' });
+	assert(empty !== keyed, 'an empty key must not engage HMAC');
 });
 
+// The two Portuguese rows here used to pin the OPPOSITE rule — `pt` and, by
+// prefix, `pt-PT` both asserted to be `pt-BR` — which is what kept the
+// erasure receipt, the last mail a departing Lisbon reader ever gets from us,
+// in Brazilian Portuguese (decisions § 761).
 Deno.test('normalizeReceiptLocale maps supported + region tags', () => {
 	const cases: Record<string, string> = {
 		en: 'en', de: 'de', fr: 'fr', es: 'es', ja: 'ja', 'pt-BR': 'pt-BR',
-		'de-DE': 'de', 'en-US': 'en', 'pt': 'pt-BR', 'PT-br': 'pt-BR',
+		'de-DE': 'de', 'en-US': 'en', 'de_AT': 'de', 'PT-br': 'pt-BR',
+		// Brazilian by its own tag; the bare tag and the other
+		// European-orthography regions have nowhere else to land.
+		'pt': 'pt-PT', 'pt-PT': 'pt-PT', 'pt_PT': 'pt-PT',
+		'pt-AO': 'pt-PT', 'pt-MZ': 'pt-PT', 'pt-CV': 'pt-PT',
 		'': 'en', xx: 'en', 'zh-CN': 'en',
 	};
 	for (const [input, want] of Object.entries(cases)) {
 		assertEquals(normalizeReceiptLocale(input), want, `locale ${input}`);
+	}
+});
+
+// The receipt is rendered by the Go worker from ITS catalogue, so a locale
+// this function can emit but that catalogue does not carry silently falls
+// back to English — a half-declared locale, delivered. Nothing can import the
+// Go map from Deno, so the guard reads the source: RECEIPT_LOCALES must be
+// exactly the locales the worker's account_deleted copy exists in.
+Deno.test('every locale the receipt can carry has worker copy behind it', async () => {
+	const src = await Deno.readTextFile(
+		new URL(
+			'../../../../job_worker/internal/email_i18n.go',
+			import.meta.url,
+		),
+	);
+	const catalogue = src.slice(src.indexOf('var emailCatalogue = map[string]map[string]emailStrings{'));
+	const workerLocales = [
+		...catalogue.matchAll(/^\t"([A-Za-z-]+)": \{$/gm),
+	].map((m) => m[1]).sort();
+	assert(workerLocales.length > 0, 'could not parse the worker catalogue');
+	assertEquals(
+		[...RECEIPT_LOCALES],
+		workerLocales,
+		'the receipt can name a locale the worker has no account_deleted copy for (or vice versa)',
+	);
+	for (const locale of RECEIPT_LOCALES) {
+		assertEquals(
+			normalizeReceiptLocale(locale),
+			locale,
+			`${locale} is unreachable by its own tag`,
+		);
 	}
 });
 

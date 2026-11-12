@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { computeReadiness } from './readiness';
 
-test('neutral inputs → 75 baseline, moderate band', () => {
+test('neutral inputs → 75 baseline, high band', () => {
 	const r = computeReadiness({ tsb: 0 });
 	assert.equal(r.score, 75);
 	assert.equal(r.band, 'high');
@@ -61,7 +61,7 @@ test('clamps to 0..100 on extreme inputs', () => {
 test('TSB > +25 (over-tapered) → small negative not positive', () => {
 	const r = computeReadiness({ tsb: 30 });
 	assert.equal(r.score, 75 - 3);
-	const tsb = r.contributors.find((c) => c.name === 'Form (TSB)');
+	const tsb = r.contributors.find((c) => c.kind === 'form');
 	assert.equal(tsb!.delta, -3);
 	assert.match(tsb!.note, /Over-tapered/);
 });
@@ -110,4 +110,60 @@ test('score is deterministic — same inputs → same output', () => {
 	assert.equal(a.score, b.score);
 	assert.equal(a.band, b.band);
 	assert.equal(a.advice, b.advice);
+});
+
+test('a tie in |delta| is broken by insertion order, not by the sort', () => {
+	// A TSB of -12 and six hours of sleep both score -12, and the two carry
+	// DIFFERENT advice, so which one wins has to be a contract.
+	// `Array.prototype.sort` is stable so the first contributor added wins;
+	// the Dart twin's `List.sort` is NOT and carries an explicit index
+	// tiebreak to match.
+	const r = computeReadiness({ tsb: -12, sleepHours: 6 });
+	assert.equal(r.contributors[0].delta, -12);
+	assert.equal(r.contributors[1].delta, -12);
+	assert.match(r.advice, /^Fatigued from recent training\./);
+});
+
+test('an all-zero tie still resolves to the first contributor', () => {
+	const r = computeReadiness({
+		tsb: 0,
+		sleepHours: 10,
+		restingHrBpm: 50,
+		baselineRestingHrBpm: 50,
+	});
+	assert.equal(r.contributors.length, 3);
+	assert.deepEqual(
+		r.contributors.map((c) => c.kind),
+		['form', 'sleep', 'resting_hr'],
+	);
+	assert.deepEqual(
+		r.contributors.map((c) => c.delta),
+		[0, 0, 0],
+	);
+	assert.match(r.advice, /^Form is neutral\./);
+});
+
+test('the tiebreak does not override a genuinely larger contributor', () => {
+	// Sleep at -25 beats a TSB of -12 even though TSB was added first.
+	const r = computeReadiness({ tsb: -12, sleepHours: 4 });
+	assert.match(r.advice, /^Very little sleep/);
+});
+
+// Every comparison is false for NaN, so a NaN fell through to each scorer's
+// last branch: "Over-tapered" (-3) for TSB, "Extended sleep" for sleep. A
+// signal that is not a number is no signal, exactly like null.
+test('a non-finite TSB or sleep figure is ignored, not scored as over-tapered or extended sleep', () => {
+	for (const bad of [Number.NaN, Infinity, -Infinity]) {
+		const r = computeReadiness({ tsb: bad, sleepHours: bad });
+		assert.equal(r.contributors.length, 0, String(bad));
+		assert.equal(r.score, 75, String(bad));
+	}
+});
+
+test('a non-finite resting HR reading is ignored, the other signals still count', () => {
+	const r = computeReadiness({ tsb: 10, restingHrBpm: Number.NaN, baselineRestingHrBpm: 50 });
+	assert.deepEqual(
+		r.contributors.map((c) => c.kind),
+		['form'],
+	);
 });

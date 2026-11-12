@@ -4,7 +4,8 @@ import {
 	DEFAULT_UNDO_WINDOW_S,
 	type DeferredDestruction,
 	type PendingUndo,
-} from '$lib/core/undo_queue';
+	type UndoOwner,
+} from '#lib/core/undo_queue.ts';
 
 /// Reactive shell around the deferred-commit undo queue. The contract,
 /// the one-slot rule, and the WCAG rationale all live in
@@ -13,6 +14,7 @@ import {
 
 let pending = $state<PendingUndo | null>(null);
 let windowS = $state(DEFAULT_UNDO_WINDOW_S);
+let ownerId: UndoOwner = undefined;
 
 const queue = createUndoQueue({
 	windowMs: () => windowS * 1000,
@@ -22,10 +24,19 @@ const queue = createUndoQueue({
 	onChange: (next) => {
 		pending = next;
 	},
+	owner: () => ownerId,
 });
 
+/// The signed-in account, set by the root layout: its id, `null` once the
+/// session has ended, `undefined` while a live session's profile is still
+/// loading. A held delete whose commit fails after it provably changed is
+/// logged, not toasted or restored (`undoOwnerChanged`).
+export function setUndoOwner(userId: UndoOwner): void {
+	ownerId = userId;
+}
+
 /// Hydrated from the `undo_window_s` pref by the root layout and by
-/// `/settings/preferences` on change. Read at defer time, so changing it
+/// `/settings/display` on change. Read at defer time, so changing it
 /// never shortens a window already running.
 export function setUndoWindowS(raw: unknown): void {
 	windowS = undoWindowSFromPref(raw);

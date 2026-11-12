@@ -1,10 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createClient } from '@supabase/supabase-js';
 
 import { getAdminClient, getUserClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Storage RLS boundaries — the layer the runs / public_runs table
@@ -35,8 +36,8 @@ test.describe('Storage RLS — runs bucket', () => {
 			duration_s: 1_500,
 			is_public: false,
 			track: [
-				{ lat: -33.89, lng: 151.27, ele: 10, t: '2026-04-01T08:00:00Z' },
-				{ lat: -33.89, lng: 151.28, ele: 11, t: '2026-04-01T08:01:00Z' }
+				{ lat: -33.89, lng: 151.27, ele: 10, ts: '2026-04-01T08:00:00Z' },
+				{ lat: -33.89, lng: 151.28, ele: 11, ts: '2026-04-01T08:01:00Z' }
 			]
 		});
 
@@ -44,10 +45,11 @@ test.describe('Storage RLS — runs bucket', () => {
 			// Confirm via service-role that the Storage object exists at
 			// the canonical path.
 			const trackPath = `${USER_A.id}/${planted}.json.gz`;
-			const { data: list } = await admin.storage
-				.from('runs')
-				.list(USER_A.id, { search: planted });
-			const matched = list?.find((f) => f.name.startsWith(planted));
+			const list = await readRows(
+				'runs Storage objects under the owner prefix',
+				admin.storage.from('runs').list(USER_A.id, { search: planted })
+			);
+			const matched = list.find((f) => f.name.startsWith(planted));
 			expect(matched).toBeDefined();
 
 			// Anon attempt — fresh client with the anon key only.
@@ -88,7 +90,7 @@ test.describe('Storage RLS — runs bucket', () => {
 			duration_s: 1_500,
 			is_public: false,
 			track: [
-				{ lat: -33.89, lng: 151.27, ele: 10, t: '2026-04-01T08:00:00Z' }
+				{ lat: -33.89, lng: 151.27, ele: 10, ts: '2026-04-01T08:00:00Z' }
 			]
 		});
 
@@ -132,10 +134,11 @@ test.describe('Storage RLS — runs bucket', () => {
 		expect(error).not.toBeNull();
 		// Sanity: the object must not exist now.
 		const admin = getAdminClient();
-		const { data: list } = await admin.storage
-			.from('runs')
-			.list(USER_A.id, { search: 'e2e-cross-user-upload' });
-		const found = list?.find((f) =>
+		const list = await readRows(
+			'runs Storage objects under the owner prefix',
+			admin.storage.from('runs').list(USER_A.id, { search: 'e2e-cross-user-upload' })
+		);
+		const found = list.find((f) =>
 			f.name.includes('e2e-cross-user-upload')
 		);
 		expect(found).toBeUndefined();

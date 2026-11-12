@@ -12,8 +12,10 @@ import '../event_gym_template.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
 import '../local_gym_store.dart';
+import '../session_step_label.dart';
 import '../session_steps.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/top_banner.dart';
 
 /// Read-only mobile view of a session plan's expanded sequence
@@ -52,6 +54,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   bool _loading = true;
   bool _error = false;
   String? _title;
+  bool _isOfficial = false;
   String? _discipline;
   List<SessionStep> _steps = const [];
   bool _isPublic = false;
@@ -100,6 +103,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       );
       setState(() {
         _title = data.plan.title;
+        _isOfficial = data.isOfficial;
         _discipline = data.plan.discipline;
         _steps = expandSessionSteps(input).steps;
         _isPublic = data.plan.isPublic;
@@ -130,29 +134,6 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       if (mounted) showTopBanner(context, l10n.sessionVisibilityError);
     } finally {
       if (mounted) setState(() => _visibilityBusy = false);
-    }
-  }
-
-  String _stepName(AppLocalizations l10n, SessionStep s) {
-    switch (s.side) {
-      case SessionSide.left:
-        return l10n.sessionSideLeft(s.movementName);
-      case SessionSide.right:
-        return l10n.sessionSideRight(s.movementName);
-      case null:
-        return s.movementName;
-    }
-  }
-
-  String _stepLabel(AppLocalizations l10n, SessionStep s) {
-    final name = _stepName(l10n, s);
-    switch (s.kind) {
-      case SessionItemKind.reps:
-        return l10n.sessionStepReps(name, s.reps ?? 0);
-      case SessionItemKind.flow:
-        return l10n.sessionStepFlow(name, s.durationS ?? 0);
-      case SessionItemKind.hold:
-        return l10n.sessionStepHold(name, s.durationS ?? 0);
     }
   }
 
@@ -242,17 +223,25 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   padding: EdgeInsets.fromLTRB(
                       16, 16, 16, fabScrollClearance(context)),
                   children: [
+                    if (_isOfficial) ...[
+                      const Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OfficialBadge(size: 16),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Text(l10n.sessionSteps,
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     for (final s in _steps)
                       ListTile(
                         dense: true,
-                        title: Text(_stepLabel(l10n, s)),
+                        title: Text(sessionStepLabel(l10n, s)),
                         subtitle: s.cue == null ? null : Text(s.cue!),
                       ),
                   ],
                 ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: (_loading || _steps.isEmpty || widget.gymStore == null)
           ? null
           : FloatingActionButton.extended(

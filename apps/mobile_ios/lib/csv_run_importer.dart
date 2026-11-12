@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 
+import 'import_failures.dart';
 import 'imported_run_id.dart';
 
 /// One-shot bulk-import path for CSV exports. Accepts both shapes the
@@ -54,16 +55,14 @@ class CsvRunImporter {
     final distanceIdx = col(const ['distance_m', 'distance']);
     final durationIdx = col(const ['duration_s', 'duration']);
     if (startedAtIdx == null || distanceIdx == null || durationIdx == null) {
-      return CsvImportResult(
-        runs: const [],
-        errors: [
-          CsvImportError(
-            row: 0,
-            message:
-                'CSV header missing required columns (need started_at / date, distance_m, duration_s).',
-          ),
-        ],
+      final headerFailure = newImportFailureLog();
+      recordImportFailure(
+        headerFailure,
+        name: 'CSV header',
+        error: 'Malformed CSV header: missing required columns '
+            '(need started_at / date, distance_m, duration_s).',
       );
+      return CsvImportResult(runs: const [], failures: headerFailure);
     }
     final sourceIdx = col(const ['source']);
     final activityIdx = col(const ['activity_type']);
@@ -74,7 +73,7 @@ class CsvRunImporter {
     final metadataIdx = col(const ['metadata']);
 
     final runs = <Run>[];
-    final errors = <CsvImportError>[];
+    final failures = newImportFailureLog();
     for (var i = 1; i < lines.length; i++) {
       final raw = lines[i].trim();
       if (raw.isEmpty) continue;
@@ -85,22 +84,45 @@ class CsvRunImporter {
         final minLen = [startedAtIdx, distanceIdx, durationIdx]
             .reduce((a, b) => a > b ? a : b);
         if (cells.length <= minLen) {
-          errors.add(CsvImportError(
-              row: i + 1, message: 'Row has fewer columns than the header.'));
+          recordImportFailure(failures,
+              name: 'Row ${i + 1}',
+              error: 'Malformed row: fewer columns than the header.');
           continue;
         }
         final startedAt = DateTime.tryParse(cells[startedAtIdx]);
         if (startedAt == null) {
-          errors.add(CsvImportError(
-              row: i + 1, message: 'Invalid date "${cells[startedAtIdx]}".'));
+          recordImportFailure(failures,
+              name: 'Row ${i + 1}',
+              error: 'Could not parse the date "${cells[startedAtIdx]}".');
           continue;
         }
         final distance = double.tryParse(cells[distanceIdx]);
         final durationSeconds = int.tryParse(cells[durationIdx]);
         if (distance == null || durationSeconds == null) {
-          errors.add(CsvImportError(
-              row: i + 1,
-              message: 'Invalid distance / duration on row ${i + 1}.'));
+          recordImportFailure(failures,
+              name: 'Row ${i + 1}',
+              startedAt: startedAt.toUtc().toIso8601String(),
+              error: 'Could not parse the distance / duration.');
+          continue;
+        }
+        // Parsing is not validating. `double.tryParse` accepts the literals
+        // `NaN` and `Infinity`, and neither parse rejects a negative, so a
+        // hand-edited or third-party CSV could import a run of -5 km. Nothing
+        // downstream re-checks: `runs.distance_m` is `numeric(10, 2)` with no
+        // CHECK and postgres numeric holds NaN, so one such row makes every
+        // SQL aggregate that touches it -- weekly volume, the challenge
+        // leaderboard, the coach roster's workload -- read NaN or come out
+        // short. A non-finite value used to be refused only by accident,
+        // because `_syntheticExternalId` calls `.round()` on it and that
+        // throws; the row then reached the runner as an unexplained error
+        // rather than as a bad measurement.
+        if (!distance.isFinite || distance < 0 || durationSeconds < 0) {
+          recordImportFailure(failures,
+              name: 'Row ${i + 1}',
+              startedAt: startedAt.toUtc().toIso8601String(),
+              error: 'Distance and duration must be zero or more, and a real '
+                  'number: got distance "${cells[distanceIdx]}", duration '
+                  '"${cells[durationIdx]}".');
           continue;
         }
 
@@ -118,18 +140,47 @@ class CsvRunImporter {
               if (decoded is Map) {
                 metadata = Map<String, dynamic>.from(decoded);
               }
-            } catch (_) {
-              // Bad metadata JSON shouldn't sink the row — note it and
-              // fall through to whatever the per-column fields give us.
-              errors.add(CsvImportError(
-                  row: i + 1,
-                  message: 'metadata column was not valid JSON; ignored.'));
+            } catch (e) {
+              // Bad metadata JSON shouldn't sink the row — report the
+              // parse error itself and fall through to whatever the
+              // per-column fields give us.
+              debugPrint('CSV row ${i + 1}: metadata column not valid JSON: $e');
+              recordImportFailure(failures,
+                  name: 'Row ${i + 1}',
+                  startedAt: startedAt.toUtc().toIso8601String(),
+                  // The decoder's own message ("Unexpected character") does
+                  // not say what was being decoded, and reaches the runner
+                  // as an unknown error rather than an unreadable file.
+                  error: 'Malformed metadata JSON, ignored: $e');
             }
           }
         }
+        // The activity type is a CHECK-constrained column
+        // (`runs_activity_type_check`), not free text, and the vocabulary is
+        // read off the registered `ActivityType` rail rather than retyped
+        // here so a sixth value cannot reach one and not the other. An
+        // unrecognised value used to be written through verbatim: the import
+        // reported success, and the row then failed to sync forever on a
+        // postgres 23514 the runner never saw. Refusing here says so at the
+        // moment the file is read. Case is normalised first -- our own export
+        // writes lowercase, a hand edit may not, and refusing `Run` would be
+        // pedantry. A genuinely different activity (`Ride`, `Swim`) is
+        // refused rather than defaulted to `run`, because filing a bike ride
+        // as a run is worse than not filing it.
         if (activityIdx != null && activityIdx < cells.length) {
           final v = cells[activityIdx].trim();
-          if (v.isNotEmpty) metadata[MetadataKeys.activityType] = v;
+          if (v.isNotEmpty) {
+            final canonical = v.toLowerCase();
+            if (!ActivityType.values.any((a) => a.name == canonical)) {
+              recordImportFailure(failures,
+                  name: 'Row ${i + 1}',
+                  startedAt: startedAt.toUtc().toIso8601String(),
+                  error: 'Unknown activity type "$v". Supported: '
+                      '${ActivityType.values.map((a) => a.name).join(', ')}.');
+              continue;
+            }
+            metadata[MetadataKeys.activityType] = canonical;
+          }
         }
         if (titleIdx != null && titleIdx < cells.length) {
           final v = cells[titleIdx].trim();
@@ -190,10 +241,10 @@ class CsvRunImporter {
           metadata: metadata,
         ));
       } catch (e) {
-        errors.add(CsvImportError(row: i + 1, message: e.toString()));
+        recordImportFailure(failures, name: 'Row ${i + 1}', error: e);
       }
     }
-    return CsvImportResult(runs: runs, errors: errors);
+    return CsvImportResult(runs: runs, failures: failures);
   }
 
   static RunSource _parseSource(String raw) {
@@ -290,18 +341,14 @@ class CsvRunImporter {
 
 class CsvImportResult {
   final List<Run> runs;
-  final List<CsvImportError> errors;
-  const CsvImportResult({required this.runs, required this.errors});
-  factory CsvImportResult.empty() =>
-      const CsvImportResult(runs: [], errors: []);
-}
 
-class CsvImportError {
-  /// 1-based row number in the source CSV (header is row 1, first
-  /// data row is row 2).
-  final int row;
-  final String message;
-  const CsvImportError({required this.row, required this.message});
-  @override
-  String toString() => 'row $row: $message';
+  /// Every row that did not import, each classified so the runner can tell
+  /// a fixable file from an unfixable one. `name` is the 1-based CSV row
+  /// (header is row 1, first data row is row 2) — for a CSV the row IS the
+  /// identity, and a summary row need not carry a title.
+  final ImportFailureLog failures;
+
+  const CsvImportResult({required this.runs, required this.failures});
+  factory CsvImportResult.empty() =>
+      CsvImportResult(runs: const [], failures: newImportFailureLog());
 }

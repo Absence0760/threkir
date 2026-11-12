@@ -2,13 +2,18 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // fakeOSRM stands in for an osrm-routed instance. Each test wires a
@@ -21,7 +26,7 @@ func TestOSRMMatcher_AlgorithmAndVersion(t *testing.T) {
 	if m.Algorithm() != "osrm" {
 		t.Errorf("algorithm=%q", m.Algorithm())
 	}
-	if m.Version() != "v1" {
+	if m.Version() != "v2" {
 		t.Errorf("version=%q", m.Version())
 	}
 	// AlgVersion override survives.
@@ -93,16 +98,17 @@ func TestOSRMMatcher_SuccessfulMatch(t *testing.T) {
 		if !strings.Contains(r.URL.Path, "-0.100000,51.500000") {
 			t.Errorf("path missing first coordinate (lng,lat order): %s", r.URL.Path)
 		}
-		if r.URL.Query().Get("geometries") != "geojson" {
-			t.Errorf("missing geometries=geojson: %s", r.URL.RawQuery)
+		// The route geometry is not what this matcher reads any more, and
+		// `tidy` drops input points — which is now a lost heart-rate
+		// sample rather than a tidier line.
+		if r.URL.Query().Get("overview") != "false" {
+			t.Errorf("expected overview=false: %s", r.URL.RawQuery)
 		}
-		if r.URL.Query().Get("overview") != "full" {
-			t.Errorf("missing overview=full: %s", r.URL.RawQuery)
+		if r.URL.Query().Has("tidy") {
+			t.Errorf("tidy must not be requested: %s", r.URL.RawQuery)
 		}
-		// Mirror back two snapped points slightly nudged from the
-		// originals — what a real OSRM response looks like.
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"code":"Ok","matchings":[{"confidence":0.9,"geometry":{"coordinates":[[-0.1001,51.5001],[-0.1101,51.5101]]}}]}`)
+		fmt.Fprint(w, osrmSnapped([][2]float64{{-0.1001, 51.5001}, {-0.1101, 51.5101}}))
 	}))
 	defer srv.Close()
 
@@ -122,6 +128,124 @@ func TestOSRMMatcher_SuccessfulMatch(t *testing.T) {
 	}
 	if out[1].Lat != 51.5101 || out[1].Lng != -0.1101 {
 		t.Errorf("p1 = %+v", out[1])
+	}
+}
+
+// osrmSnapped renders a /match response that snaps each input coordinate to
+// the matching entry of `locs`. A nil entry stands for OSRM's outlier signal.
+func osrmSnapped(locs [][2]float64, null ...int) string {
+	skip := map[int]bool{}
+	for _, i := range null {
+		skip[i] = true
+	}
+	var sb strings.Builder
+	sb.WriteString(`{"code":"Ok","matchings":[{"confidence":1.0}],"tracepoints":[`)
+	for i, c := range locs {
+		if i > 0 {
+			sb.WriteByte(',')
+		}
+		if skip[i] {
+			sb.WriteString("null")
+			continue
+		}
+		fmt.Fprintf(&sb, `{"location":[%.6f,%.6f]}`, c[0], c[1])
+	}
+	sb.WriteString(`]}`)
+	return sb.String()
+}
+
+// The whole point of reading `tracepoints` rather than the route geometry:
+// `ele`, `ts` and `bpm` are measurements belonging to a SAMPLE, and the
+// geometry is road-network vertices belonging to none of them. Reading it is
+// what emptied the elevation profile and the pace heatmap on /runs/[id] for
+// every run recorded with altitude or a strap (decisions § 1171).
+func TestOSRMMatcher_CarriesElevationTimestampAndBpmAcross(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, osrmSnapped([][2]float64{{-0.1001, 51.5001}, {-0.1101, 51.5101}}))
+	}))
+	defer srv.Close()
+
+	ele := 42.5
+	ts := time.Date(2026, 9, 5, 6, 30, 0, 0, time.UTC)
+	bpm := 148
+	in := []TrackPoint{
+		{Lat: 51.5, Lng: -0.1, Elevation: &ele, Timestamp: &ts, Bpm: &bpm},
+		{Lat: 51.51, Lng: -0.11},
+	}
+	out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out[0].Elevation == nil || *out[0].Elevation != ele {
+		t.Errorf("ele dropped: %+v", out[0])
+	}
+	if out[0].Timestamp == nil || !out[0].Timestamp.Equal(ts) {
+		t.Errorf("ts dropped: %+v", out[0])
+	}
+	if out[0].Bpm == nil || *out[0].Bpm != bpm {
+		t.Errorf("bpm dropped: %+v", out[0])
+	}
+	if out[0].Lat != 51.5001 || out[0].Lng != -0.1001 {
+		t.Errorf("position not snapped: %+v", out[0])
+	}
+	if out[1].Elevation != nil || out[1].Timestamp != nil || out[1].Bpm != nil {
+		t.Errorf("fields invented on a point that carried none: %+v", out[1])
+	}
+}
+
+// A `null` tracepoint is OSRM calling that one sample an outlier. Dropping it
+// would lose the measurement it carries, which is the defect this matcher was
+// fixed for, one sample at a time — so it carries through raw and the output
+// stays one point per input point.
+func TestOSRMMatcher_NullTracepointCarriesThatSampleRaw(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, osrmSnapped([][2]float64{{-0.1001, 51.5001}, {0, 0}, {-0.1201, 51.5201}}, 1))
+	}))
+	defer srv.Close()
+
+	bpm := 151
+	in := []TrackPoint{
+		{Lat: 51.5, Lng: -0.1},
+		{Lat: 51.51, Lng: -0.11, Bpm: &bpm},
+		{Lat: 51.52, Lng: -0.12},
+	}
+	out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 3 {
+		t.Fatalf("len out=%d, want 3", len(out))
+	}
+	if out[1] != in[1] {
+		t.Errorf("out[1]=%+v, want raw passthrough %+v", out[1], in[1])
+	}
+	if out[0].Lat != 51.5001 || out[2].Lat != 51.5201 {
+		t.Errorf("neighbours should still be snapped: %+v %+v", out[0], out[2])
+	}
+}
+
+// One tracepoint per input coordinate is what makes the pairing sound. A
+// response of any other length indexes something else, and pairing against it
+// would attach one sample's heart rate to another sample's position.
+func TestOSRMMatcher_TracepointCountMismatchFallsBackToRaw(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, osrmSnapped([][2]float64{{-0.1001, 51.5001}}))
+	}))
+	defer srv.Close()
+
+	in := []TrackPoint{
+		{Lat: 51.5, Lng: -0.1},
+		{Lat: 51.51, Lng: -0.11},
+	}
+	out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 || out[0] != in[0] || out[1] != in[1] {
+		t.Errorf("out=%+v, want the raw input carried through", out)
 	}
 }
 
@@ -187,16 +311,11 @@ func TestOSRMMatcher_ChunksLongTracks(t *testing.T) {
 		n := strings.Count(coords, ";") + 1
 		// Fabricate a matched line of n points, just nudged.
 		w.Header().Set("Content-Type", "application/json")
-		var sb strings.Builder
-		sb.WriteString(`{"code":"Ok","matchings":[{"confidence":1.0,"geometry":{"coordinates":[`)
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				sb.WriteByte(',')
-			}
-			fmt.Fprintf(&sb, "[%.4f,%.4f]", -0.1+float64(i)*0.0001, 51.5+float64(i)*0.0001)
+		locs := make([][2]float64, n)
+		for i := range locs {
+			locs[i] = [2]float64{-0.1 + float64(i)*0.0001, 51.5 + float64(i)*0.0001}
 		}
-		sb.WriteString(`]}}]}`)
-		fmt.Fprint(w, sb.String())
+		fmt.Fprint(w, osrmSnapped(locs))
 	}))
 	defer srv.Close()
 
@@ -230,16 +349,11 @@ func TestOSRMMatcher_TailChunkOfOnePassedThrough(t *testing.T) {
 		if n < 2 {
 			t.Errorf("OSRM called with %d points (must be >= 2)", n)
 		}
-		var sb strings.Builder
-		sb.WriteString(`{"code":"Ok","matchings":[{"confidence":1.0,"geometry":{"coordinates":[`)
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				sb.WriteByte(',')
-			}
-			fmt.Fprintf(&sb, "[%.4f,%.4f]", -0.1, 51.5)
+		locs := make([][2]float64, n)
+		for i := range locs {
+			locs[i] = [2]float64{-0.1, 51.5}
 		}
-		sb.WriteString(`]}}]}`)
-		fmt.Fprint(w, sb.String())
+		fmt.Fprint(w, osrmSnapped(locs))
 	}))
 	defer srv.Close()
 
@@ -277,16 +391,11 @@ func TestOSRMMatcher_PartialMatchCoversWholeRunWithRawFallback(t *testing.T) {
 			fmt.Fprint(w, `{"code":"NoMatch","message":"Could not match the trace."}`)
 			return
 		}
-		var sb strings.Builder
-		sb.WriteString(`{"code":"Ok","matchings":[{"confidence":1.0,"geometry":{"coordinates":[`)
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				sb.WriteByte(',')
-			}
-			fmt.Fprintf(&sb, "[%.4f,%.4f]", -0.1+float64(i)*0.0001, 51.5+float64(i)*0.0001)
+		locs := make([][2]float64, n)
+		for i := range locs {
+			locs[i] = [2]float64{-0.1 + float64(i)*0.0001, 51.5 + float64(i)*0.0001}
 		}
-		sb.WriteString(`]}}]}`)
-		fmt.Fprint(w, sb.String())
+		fmt.Fprint(w, osrmSnapped(locs))
 	}))
 	defer srv.Close()
 
@@ -312,25 +421,70 @@ func TestOSRMMatcher_PartialMatchCoversWholeRunWithRawFallback(t *testing.T) {
 	}
 }
 
-func TestOSRMMatcher_StitchedTooShortReturnsEmpty(t *testing.T) {
-	// OSRM can reply code="Ok" with an empty coordinate list (a degenerate
-	// matching). That chunk contributes nothing AND isn't a not-matched
-	// signal, so there's no raw fallback — the stitched total stays < 2
-	// points. handleMapMatch translates that into status='skipped'.
+func TestOSRMMatcher_DegenerateOkCarriesRawPointsThrough(t *testing.T) {
+	// OSRM can reply code="Ok" with nothing usable — an empty matchings list,
+	// or a tracepoints array that is absent altogether. Neither is a signal
+	// about the samples, so the chunk carries through raw and the matched
+	// track still covers the whole run. It used to return empty here, which
+	// handleMapMatch wrote as status='skipped'.
+	for _, body := range []string{
+		`{"code":"Ok","matchings":[]}`,
+		`{"code":"Ok","matchings":[{"confidence":0.0}]}`,
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, body)
+		}))
+		in := []TrackPoint{
+			{Lat: 51.5, Lng: -0.1},
+			{Lat: 51.51, Lng: -0.11},
+		}
+		out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in)
+		srv.Close()
+		if err != nil {
+			t.Fatalf("%s: %v", body, err)
+		}
+		if len(out) != 2 || out[0] != in[0] || out[1] != in[1] {
+			t.Errorf("%s: out=%+v, want the raw input carried through", body, out)
+		}
+	}
+}
+
+// The property every consumer of a matched track now gets to rely on, stated
+// once rather than inferred from the cases above: one output point per input
+// point, in order, whatever the engine said. It is what lets a caller index
+// the matched track against the raw one.
+func TestOSRMMatcher_IsLengthPreserving(t *testing.T) {
+	var call atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"code":"Ok","matchings":[{"confidence":0.0,"geometry":{"coordinates":[]}}]}`)
+		n := strings.Count(r.URL.Path[len("/match/v1/foot/"):], ";") + 1
+		w.Header().Set("Content-Type", "application/json")
+		switch call.Add(1) % 3 {
+		case 0:
+			fmt.Fprint(w, `{"code":"NoMatch","message":"Could not match the trace."}`)
+		case 1:
+			locs := make([][2]float64, n)
+			for i := range locs {
+				locs[i] = [2]float64{-0.1, 51.5}
+			}
+			fmt.Fprint(w, osrmSnapped(locs, 0, n-1))
+		default:
+			fmt.Fprint(w, `{"code":"Ok","matchings":[{"confidence":0.1}],"tracepoints":[]}`)
+		}
 	}))
 	defer srv.Close()
-	m := NewOSRMMatcher(srv.URL)
-	out, err := m.Match(context.Background(), []TrackPoint{
-		{Lat: 51.5, Lng: -0.1},
-		{Lat: 51.51, Lng: -0.11},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out != nil {
-		t.Errorf("expected nil output, got %v", out)
+
+	for _, n := range []int{2, 99, 100, 101, 250} {
+		in := make([]TrackPoint, n)
+		for i := range in {
+			in[i] = TrackPoint{Lat: 51.5 + float64(i)*0.001, Lng: -0.1 + float64(i)*0.001}
+		}
+		out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in)
+		if err != nil {
+			t.Fatalf("n=%d: %v", n, err)
+		}
+		if len(out) != n {
+			t.Errorf("n=%d: len out=%d", n, len(out))
+		}
 	}
 }
 
@@ -348,5 +502,275 @@ func TestOSRMMatcher_MalformedJSONIsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "decode osrm response") {
 		t.Errorf("err=%v, expected wrapper", err)
+	}
+}
+
+func capturedQueries(t *testing.T, in []TrackPoint) []url.Values {
+	t.Helper()
+	var mu sync.Mutex
+	var qs []url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := strings.Count(r.URL.Path[len("/match/v1/foot/"):], ";") + 1
+		mu.Lock()
+		qs = append(qs, osrmQuery(t, r.URL.RawQuery))
+		mu.Unlock()
+		locs := make([][2]float64, n)
+		for i := range locs {
+			locs[i] = [2]float64{-0.1, 51.5}
+		}
+		fmt.Fprint(w, osrmSnapped(locs))
+	}))
+	defer srv.Close()
+	if _, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in); err != nil {
+		t.Fatal(err)
+	}
+	return qs
+}
+
+// osrmQuery parses a raw query the way OSRM reads it. url.ParseQuery drops
+// any pair whose value holds ';', and OSRM separates list items with ';'.
+func osrmQuery(t *testing.T, raw string) url.Values {
+	t.Helper()
+	q := url.Values{}
+	for _, pair := range strings.Split(raw, "&") {
+		if pair == "" {
+			continue
+		}
+		k, v, _ := strings.Cut(pair, "=")
+		key, err := url.QueryUnescape(k)
+		if err != nil {
+			t.Fatalf("query key %q: %v", k, err)
+		}
+		val, err := url.PathUnescape(v)
+		if err != nil {
+			t.Fatalf("query value %q: %v", v, err)
+		}
+		q.Add(key, val)
+	}
+	return q
+}
+
+func fptr(v float64) *float64 { return &v }
+
+func TestOSRMMatcher_RadiusesFromAccuracyClampedWithDefault(t *testing.T) {
+	ts := time.Date(2026, 10, 15, 7, 0, 0, 0, time.UTC)
+	accs := []*float64{fptr(12.4), fptr(2), fptr(180), nil, fptr(math.NaN()), fptr(-3), fptr(50), fptr(5)}
+	in := make([]TrackPoint, len(accs))
+	for i, a := range accs {
+		at := ts.Add(time.Duration(i) * time.Second)
+		in[i] = TrackPoint{Lat: 51.5, Lng: -0.1, Timestamp: &at, AccuracyMetres: a}
+	}
+	qs := capturedQueries(t, in)
+	if len(qs) != 1 {
+		t.Fatalf("calls=%d, want 1", len(qs))
+	}
+	if got, want := qs[0].Get("radiuses"), "12;5;50;5;5;5;50;5"; got != want {
+		t.Errorf("radiuses=%q, want %q", got, want)
+	}
+}
+
+func TestOSRMMatcher_NoAccuracyAnywhereSendsTheDefaultRadius(t *testing.T) {
+	in := []TrackPoint{{Lat: 51.5, Lng: -0.1}, {Lat: 51.5001, Lng: -0.1}, {Lat: 51.5002, Lng: -0.1}}
+	qs := capturedQueries(t, in)
+	if got := qs[0].Get("radiuses"); got != "5;5;5" {
+		t.Errorf("radiuses=%q, want 5;5;5", got)
+	}
+	if qs[0].Has("timestamps") || qs[0].Has("gaps") {
+		t.Errorf("timestamps/gaps sent for an untimed track: %v", qs[0])
+	}
+}
+
+func TestOSRMMatcher_TimestampsAreUnixSecondsWithGapsIgnored(t *testing.T) {
+	t0 := time.Unix(1_800_000_000, 0).UTC()
+	offs := []time.Duration{0, 400 * time.Millisecond, 1100 * time.Millisecond, 120 * time.Second}
+	in := make([]TrackPoint, len(offs))
+	for i, o := range offs {
+		at := t0.Add(o)
+		in[i] = TrackPoint{Lat: 51.5, Lng: -0.1, Timestamp: &at}
+	}
+	q := capturedQueries(t, in)[0]
+	if got, want := q.Get("timestamps"), "1800000000;1800000000;1800000001;1800000120"; got != want {
+		t.Errorf("timestamps=%q, want %q", got, want)
+	}
+	if q.Get("gaps") != "ignore" {
+		t.Errorf("gaps=%q, want ignore", q.Get("gaps"))
+	}
+}
+
+func TestOSRMMatcher_TimestampsOmittedWhenAnyMissingOrBackwards(t *testing.T) {
+	t0 := time.Unix(1_800_000_000, 0).UTC()
+	t1, tBack := t0.Add(time.Second), t0.Add(-time.Second)
+	cases := map[string][]TrackPoint{
+		"missing":   {{Lat: 51.5, Lng: -0.1, Timestamp: &t0}, {Lat: 51.5, Lng: -0.1}, {Lat: 51.5, Lng: -0.1, Timestamp: &t1}},
+		"backwards": {{Lat: 51.5, Lng: -0.1, Timestamp: &t0}, {Lat: 51.5, Lng: -0.1, Timestamp: &t1}, {Lat: 51.5, Lng: -0.1, Timestamp: &tBack}},
+	}
+	for name, in := range cases {
+		q := capturedQueries(t, in)[0]
+		if q.Has("timestamps") || q.Has("gaps") {
+			t.Errorf("%s: timestamps/gaps sent: %v", name, q)
+		}
+		if q.Get("radiuses") != "5;5;5" {
+			t.Errorf("%s: radiuses=%q", name, q.Get("radiuses"))
+		}
+	}
+}
+
+func TestOSRMMatcher_HintsArePerChunkAndFitTheURL(t *testing.T) {
+	t0 := time.Unix(1_800_000_000, 0).UTC()
+	in := make([]TrackPoint, 250)
+	for i := range in {
+		at := t0.Add(time.Duration(i) * time.Second)
+		in[i] = TrackPoint{Lat: -33.8688 - float64(i)*1e-5, Lng: 151.2093 + float64(i)*1e-5, Timestamp: &at, AccuracyMetres: fptr(float64(i % 60))}
+	}
+	var mu sync.Mutex
+	var urls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		urls = append(urls, r.URL.String())
+		mu.Unlock()
+		n := strings.Count(r.URL.Path[len("/match/v1/foot/"):], ";") + 1
+		locs := make([][2]float64, n)
+		fmt.Fprint(w, osrmSnapped(locs))
+	}))
+	defer srv.Close()
+	if _, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in); err != nil {
+		t.Fatal(err)
+	}
+	if len(urls) != 3 {
+		t.Fatalf("calls=%d, want 3", len(urls))
+	}
+	for i, raw := range urls {
+		u, err := url.Parse(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		coords := strings.Count(u.Path[len("/match/v1/foot/"):], ";") + 1
+		q := osrmQuery(t, u.RawQuery)
+		if r := strings.Count(q.Get("radiuses"), ";") + 1; r != coords {
+			t.Errorf("chunk %d: %d radiuses for %d coordinates", i, r, coords)
+		}
+		if s := strings.Count(q.Get("timestamps"), ";") + 1; s != coords {
+			t.Errorf("chunk %d: %d timestamps for %d coordinates", i, s, coords)
+		}
+		if len(raw) > 6000 {
+			t.Errorf("chunk %d: request URI is %d bytes", i, len(raw))
+		}
+	}
+	if got := mustQuery(t, urls[1]).Get("timestamps"); !strings.HasPrefix(got, "1800000100;") {
+		t.Errorf("second chunk does not start at point 100: %.24s", got)
+	}
+}
+
+func mustQuery(t *testing.T, raw string) url.Values {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return osrmQuery(t, u.RawQuery)
+}
+
+func TestTrackPoint_DecodesRecorderAccuracy(t *testing.T) {
+	var pts []TrackPoint
+	if err := json.Unmarshal([]byte(`[{"lat":1,"lng":2,"accuracyMetres":17.5},{"lat":1,"lng":2}]`), &pts); err != nil {
+		t.Fatal(err)
+	}
+	if pts[0].AccuracyMetres == nil || *pts[0].AccuracyMetres != 17.5 || pts[1].AccuracyMetres != nil {
+		t.Errorf("accuracy not decoded: %+v", pts)
+	}
+	if osrmRadiusM(pts[0]) != 17.5 || osrmRadiusM(pts[1]) != osrmDefaultRadiusM {
+		t.Errorf("radius %v / %v", osrmRadiusM(pts[0]), osrmRadiusM(pts[1]))
+	}
+}
+
+func TestTrackPoint_RoundTripsRecordedDistance(t *testing.T) {
+	var pts []TrackPoint
+	if err := json.Unmarshal([]byte(`[{"lat":1,"lng":2,"distM":812.4},{"lat":1,"lng":2}]`), &pts); err != nil {
+		t.Fatal(err)
+	}
+	if pts[0].DistM == nil || *pts[0].DistM != 812.4 || pts[1].DistM != nil {
+		t.Fatalf("distM not decoded: %+v", pts)
+	}
+	out, err := json.Marshal(pts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(out); got != `[{"lat":1,"lng":2,"distM":812.4},{"lat":1,"lng":2}]` {
+		t.Errorf("encoded %s", got)
+	}
+}
+
+// A track as the phone uploads it (api_client's _waypointToJson): `ts` in
+// UTC ISO-8601 with microseconds, `ele` null, accuracy on most fixes. The
+// request carries one radius and one whole-second timestamp per point, in
+// track order. The raw query is split by hand: net/url drops any pair whose
+// value holds OSRM's `;` list separator.
+func TestOSRMMatcher_RecorderTrackSendsRadiusesAndTimestampsInOrder(t *testing.T) {
+	raw := `[
+		{"lat":51.50000,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:00.000Z","accuracyMetres":3.2},
+		{"lat":51.50002,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:00.950123Z","accuracyMetres":8.6},
+		{"lat":51.50004,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:02.010000Z","accuracyMetres":27.5},
+		{"lat":51.50006,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:03.000Z"},
+		{"lat":51.50008,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:04.500Z","accuracyMetres":64}
+	]`
+	var in []TrackPoint
+	if err := json.Unmarshal([]byte(raw), &in); err != nil {
+		t.Fatal(err)
+	}
+	var rawQueries []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQueries = append(rawQueries, r.URL.RawQuery)
+		fmt.Fprint(w, osrmSnapped(make([][2]float64, len(in))))
+	}))
+	defer srv.Close()
+	if _, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in); err != nil {
+		t.Fatal(err)
+	}
+	if len(rawQueries) != 1 {
+		t.Fatalf("calls=%d, want 1", len(rawQueries))
+	}
+	q := map[string]string{}
+	for _, kv := range strings.Split(rawQueries[0], "&") {
+		k, v, _ := strings.Cut(kv, "=")
+		q[k] = v
+	}
+	if got, want := q["radiuses"], "5;9;28;5;50"; got != want {
+		t.Errorf("radiuses=%q, want %q", got, want)
+	}
+	t0 := time.Date(2026, 10, 15, 7, 0, 0, 0, time.UTC).Unix()
+	want := fmt.Sprintf("%d;%d;%d;%d;%d", t0, t0, t0+2, t0+3, t0+4)
+	if got := q["timestamps"]; got != want {
+		t.Errorf("timestamps=%q, want %q", got, want)
+	}
+	if q["gaps"] != "ignore" {
+		t.Errorf("gaps=%q, want ignore", q["gaps"])
+	}
+}
+
+// A matched track keeps one point per stored fix, so the recorder's credited
+// distance rides through a snap with the sample it belongs to.
+func TestOSRMMatcher_CarriesRecordedDistanceAcross(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, osrmSnapped([][2]float64{{-0.1001, 51.5001}, {-0.1101, 51.5101}}, 1))
+	}))
+	defer srv.Close()
+
+	d0, d1 := 0.0, 1402.5
+	out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), []TrackPoint{
+		{Lat: 51.5, Lng: -0.1, DistM: &d0},
+		{Lat: 51.51, Lng: -0.11, DistM: &d1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("len out=%d want 2", len(out))
+	}
+	if out[0].DistM == nil || *out[0].DistM != d0 || out[0].Lat != 51.5001 {
+		t.Errorf("snapped point lost distM: %+v", out[0])
+	}
+	if out[1].DistM == nil || *out[1].DistM != d1 || out[1].Lat != 51.51 {
+		t.Errorf("raw-carried point lost distM: %+v", out[1])
 	}
 }

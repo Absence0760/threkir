@@ -22,68 +22,87 @@ package schema
 
 // Table is a PostgREST table name — the `<table>` in `/rest/v1/<table>`.
 const (
-	TableRuns                    = "runs"
-	TableRunMatchedTracks        = "run_matched_tracks"
-	TableRunPhotos               = "run_photos"
-	TableRunGear                 = "run_gear"
-	TableGear                    = "gear"
-	TableGearWearLogs            = "gear_wear_logs"
-	TableGearRotations           = "gear_rotations"
-	TableRoutes                  = "routes"
-	TableRouteReviews            = "route_reviews"
-	TableRouteMarkers            = "route_markers"
-	TableRouteConditions         = "route_conditions"
-	TableSavedRoutes             = "saved_routes"
-	TableIntegrations            = "integrations"
-	TableWebhookEvents           = "webhook_events"
-	TableJobs                    = "jobs"
-	TableUserProfiles            = "user_profiles"
-	TableUserSettings            = "user_settings"
-	TableUserDeviceSettings      = "user_device_settings"
-	TableUserCoachUsage          = "user_coach_usage"
-	TableUserFollows             = "user_follows"
-	TableUserBlocks              = "user_blocks"
-	TableNotifications           = "notifications"
-	TableLifecycleEmailLog       = "lifecycle_email_log"
-	TableAccountDeletionReceipts = "account_deletion_receipts"
-	TableCoachMessages           = "coach_messages"
-	TableCoachAthletes           = "coach_athletes"
-	TableTrainingPlans           = "training_plans"
-	TableRunKudos                = "run_kudos"
-	TableRunComments             = "run_comments"
-	TableSegmentEfforts          = "segment_efforts"
-	TableGlobalSegmentEfforts    = "global_segment_efforts"
-	TableFitnessSnapshots        = "fitness_snapshots"
-	TablePersonalRecords         = "personal_records"
-	TableDeviceTokens            = "device_tokens"
-	TableLiveRunPings            = "live_run_pings"
-	TableRacePings               = "race_pings"
-	TableEventAttendees          = "event_attendees"
-	TableEventResults            = "event_results"
-	TableEventResultClaims       = "event_result_claims"
-	TableCheckpointCrossings     = "checkpoint_crossings"
-	TableEventExceptions         = "event_exceptions"
-	TableClubMembers             = "club_members"
-	TableClubPosts               = "club_posts"
-	TableClubPhotos              = "club_photos"
-	TableReports                 = "reports"
-	TableDirectMessages          = "direct_messages"
-	TableGymWorkouts             = "gym_workouts"
-	TableExercises               = "exercises"
-	TableGymRoutines             = "gym_routines"
-	TableFoodLog                 = "food_log"
-	TableMealTemplates           = "meal_templates"
-	TableRecipes                 = "recipes"
-	TableBodyMetrics             = "body_metrics"
-	TableSafetyContacts          = "safety_contacts"
-	TableSessionPlans            = "session_plans"
-	TableRoutePhotos             = "route_photos"
-	TableEventOrders             = "event_orders"
-	TableEventPricing            = "event_pricing"
-	TableAchievements            = "achievements"
-	TableChallengeParticipants   = "challenge_participants"
-	TableChallengeBadges         = "challenge_badges"
-	TablePublicRecaps            = "public_recaps"
+	TableRuns                     = "runs"
+	TableRunMatchedTracks         = "run_matched_tracks"
+	TableRunPhotos                = "run_photos"
+	TableRunGear                  = "run_gear"
+	TableGear                     = "gear"
+	TableGearWearLogs             = "gear_wear_logs"
+	TableGearRotations            = "gear_rotations"
+	TableRoutes                   = "routes"
+	TableRouteReviews             = "route_reviews"
+	TableRouteMarkers             = "route_markers"
+	TableRouteConditions          = "route_conditions"
+	TableSavedRoutes              = "saved_routes"
+	TableIntegrations             = "integrations"
+	TableWebhookEvents            = "webhook_events"
+	TableJobs                     = "jobs"
+	TableDataExportJobs           = "data_export_jobs"
+	TableUserProfiles             = "user_profiles"
+	TableUserSettings             = "user_settings"
+	TableUserDeviceSettings       = "user_device_settings"
+	TableUserCoachUsage           = "user_coach_usage"
+	TableUserFollows              = "user_follows"
+	TableFollowRequests           = "follow_requests"
+	TableUserBlocks               = "user_blocks"
+	TableNotifications            = "notifications"
+	TableLifecycleEmailLog        = "lifecycle_email_log"
+	TableAccountDeletionReceipts  = "account_deletion_receipts"
+	TableCoachMessages            = "coach_messages"
+	TableCoachAthletes            = "coach_athletes"
+	TablePlanChangeRequests       = "plan_change_requests"
+	TableTrainingPlans            = "training_plans"
+	TableRunKudos                 = "run_kudos"
+	TableRunComments              = "run_comments"
+	TableRunReactions             = "run_reactions"
+	TableRunCommentLikes          = "run_comment_likes"
+	TableSegmentEfforts           = "segment_efforts"
+	TableGlobalSegmentEfforts     = "global_segment_efforts"
+	TableFitnessSnapshots         = "fitness_snapshots"
+	TablePersonalRecords          = "personal_records"
+	TableDeviceTokens             = "device_tokens"
+	TableSignInDevices            = "sign_in_devices"
+	TableLiveRunPings             = "live_run_pings"
+	TableRacePings                = "race_pings"
+	TableEventAttendees           = "event_attendees"
+	TableEventResults             = "event_results"
+	TableEventResultClaims        = "event_result_claims"
+	TableRaceCourseSuggestions    = "race_course_suggestions"
+	TableRaceListingAudit         = "race_listing_audit"
+	TableClubVerificationRequests = "club_verification_requests"
+	TableClubVerificationAudit    = "club_verification_audit"
+	TableCourseAlerts             = "course_alerts"
+	TableOrganiserDisputeActions  = "organiser_dispute_actions"
+	TableCheckpointCrossings      = "checkpoint_crossings"
+	TableEventExceptions          = "event_exceptions"
+	TableClubMembers              = "club_members"
+	TableClubPosts                = "club_posts"
+	TableClubPhotos               = "club_photos"
+	TableReports                  = "reports"
+	TableDirectMessages           = "direct_messages"
+	TableDirectMessageImages      = "direct_message_images"
+	TableDirectMessageReactions   = "direct_message_reactions"
+	TableConversationParticipants = "conversation_participants"
+	TableGymWorkouts              = "gym_workouts"
+	TableExercises                = "exercises"
+	TableGymRoutines              = "gym_routines"
+	TableFoodLog                  = "food_log"
+	TableMealTemplates            = "meal_templates"
+	TableRecipes                  = "recipes"
+	TableNutritionPlans           = "nutrition_plans"
+	TableNutritionAssignments     = "nutrition_plan_assignments"
+	TableBodyMetrics              = "body_metrics"
+	TableSafetyContacts           = "safety_contacts"
+	TableRunShares                = "run_shares"
+	TableRouteShares              = "route_shares"
+	TableSessionPlans             = "session_plans"
+	TableRoutePhotos              = "route_photos"
+	TableEventOrders              = "event_orders"
+	TableEventPricing             = "event_pricing"
+	TableAchievements             = "achievements"
+	TableChallengeParticipants    = "challenge_participants"
+	TableChallengeBadges          = "challenge_badges"
+	TablePublicRecaps             = "public_recaps"
 	// TableEmailSuppressions is the hard-block list (bounce / complaint /
 	// explicit unsubscribe) the weekly-digest builder + handler MUST consult
 	// before any send. Migration 20270108_001. Fail-closed RLS — worker-only.
@@ -94,6 +113,11 @@ const (
 	TableInstructorPayoutAccounts = "instructor_payout_accounts"
 )
 
+// TablePersonalRecordImprovements logs each time a run beat the user's
+// personal_records cache, with the time it replaced. Owner-only; exported by
+// the DSAR spec.
+const TablePersonalRecordImprovements = "personal_record_improvements"
+
 // Bucket is a Supabase Storage bucket name — the `<bucket>` in
 // `/storage/v1/object/<bucket>/`. Distinct from the like-named tables
 // (`run_photos` the table vs `run-photos` the bucket).
@@ -102,7 +126,16 @@ const (
 	BucketRunPhotos   = "run-photos"
 	BucketRoutePhotos = "route-photos"
 	BucketClubPhotos  = "club-photos"
-	BucketAvatars     = "avatars"
+	// BucketDmImages holds direct-message photos (issue #1216):
+	// `{owner}/{image}/upload` is the client's raw upload, which only the
+	// worker reads, and `{owner}/{image}.jpg` the re-encode it writes.
+	BucketDmImages = "dm-images"
+	BucketAvatars  = "avatars"
+	// BucketExports holds Art 20 export artifacts (migration
+	// 20270602_001). Separate from `runs` because `file_size_limit` is
+	// per bucket: `runs` caps an object at 25 MB, which is right for a
+	// single gzipped track and far below a full-history archive.
+	BucketExports = "exports"
 )
 
 // MetadataKey is a key inside the `runs.metadata` jsonb bag. The bag
@@ -115,12 +148,68 @@ const (
 const (
 	MetaTitle              = "title"
 	MetaAvgBPM             = "avg_bpm"
+	MetaHRCoverage         = "hr_coverage"
 	MetaSteps              = "steps"
 	MetaElevationM         = "elevation_m"
 	MetaStravaID           = "strava_id"
 	MetaStravaActivityType = "strava_activity_type"
 	MetaImportedFrom       = "imported_from"
 	MetaImportedAt         = "imported_at"
+
+	// Read by the distance recompute (kind='distance_recompute') to decide
+	// whether a run's distance is GPS-measured and the estimator's to
+	// replace.
+	MetaInProgress      = "in_progress"
+	MetaManualEntry     = "manual_entry"
+	MetaIndoor          = "indoor"
+	MetaIndoorEstimated = "indoor_estimated"
+	MetaDistanceSource  = "distance_source"
+	// Written by the distance recompute. distance_recorded_m keeps the
+	// recorder's original figure across repeated recomputes.
+	MetaDistanceRecordedM    = "distance_recorded_m"
+	MetaDistanceEstimator    = "distance_estimator"
+	MetaDistanceRecomputedAt = "distance_recomputed_at"
+	// Metres a recorder credited from the pedometer across GPS gaps, already
+	// in distance_m. The stored track carries no steps, so a recompute adds
+	// it back to its replay.
+	MetaDistanceStepFilledM = "distance_step_filled_m"
+	// What of distance_step_filled_m the gaps' chord lower bounds would not
+	// have credited (spec v1.7): per gap max(chord, steps) - chord, summed.
+	// A watch recorder writes it beside distance_step_filled_m, and it is
+	// exactly what a stepless replay of the track lacks.
+	MetaDistanceStepOverChordM = "distance_step_over_chord_m"
+	// How many estimator segments a watch stored, each later one's first fix
+	// marked segmentStart (spec v1.8). distance_step_over_chord_m is read only
+	// when the replay finds as many, so a track that lost its marks on the way
+	// to storage keeps the run-total rule.
+	MetaDistanceSegments = "distance_segments"
+	// Stamped true by a recorder whose stored track holds every fix its
+	// distance estimator took, the off-track ones flagged `offTrack`. A
+	// live watch stamp from spec v1.4 on without it names a track that
+	// omits its canopy fixes, which a replay would read short.
+	MetaTrackComplete = "track_complete"
+	// Which of the smoother's passes the recompute kept: "smoothed", or
+	// "forward" for a position-only track that is not a road run.
+	MetaDistanceEstimatorPass = "distance_estimator_pass"
+	// Read by the map_match road-distance step to rule out a run that is
+	// not on a road, and written by it: the matched length along the road
+	// graph, beside distance_m and never in place of it.
+	MetaSubSport            = "sub_sport"
+	MetaDistanceMapMatchedM = "distance_map_matched_m"
+	// Written by the distance recompute and the map_match watch step: the
+	// SHA-256 of the track bytes the smoothed-position sidecar was built
+	// for, present only while that sidecar is stored, so a reader fetches
+	// the sidecar only for the track it names.
+	MetaSmoothedSidecarSHA256 = "smoothed_sidecar_sha256"
+	// The Storage version of the track bytes distance_map_matched_m was
+	// measured on. Written with it; the runs_road_distance_matches_track
+	// trigger drops the pair when it no longer names the stored object.
+	MetaDistanceMapMatchedTrackVersion = "distance_map_matched_track_version"
+	// Set true by migration 20271218000002 on a run it capped at the
+	// ten-day bound, while duration_s is that placeholder. Read by the
+	// duration repair (kind='duration_repair'); the runs_keep_duration_repair
+	// trigger drops it on the write that changes duration_s.
+	MetaDurationRepaired = "duration_repaired"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

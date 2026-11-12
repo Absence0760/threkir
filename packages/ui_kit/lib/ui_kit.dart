@@ -2,7 +2,6 @@
 library ui_kit;
 
 export 'src/motion.dart';
-export 'src/widgets/activity_loader.dart';
 export 'src/widgets/app_tab_bar.dart';
 export 'src/widgets/stat_tile.dart';
 export 'src/widgets/status_pill.dart';
@@ -19,5 +18,6 @@ export 'src/widgets/selection_hint.dart';
 export 'src/theme/app_theme.dart';
 export 'src/theme/chart_palette.dart';
 export 'src/theme/corner_radii.dart';
+export 'src/theme/font_licenses.dart';
 export 'src/theme/icon_sizes.dart';
 export 'src/theme/section_accents.dart';

@@ -4,11 +4,18 @@
 ///  1. Weekly mileage drift — flags when actual weekly volume runs more
 ///     than ±20% off the plan. BOTH directions matter: under-running loses
 ///     the adaptation; over-running the easy weeks is the classic way a
-///     motivated runner digs a fatigue hole.
+///     motivated runner digs a fatigue hole. `weeklyDrift` takes a finished
+///     week's two totals; a week still in progress goes through
+///     `weeklyDriftToDate`, which windows both sides to the days that have
+///     already ended.
 ///
 ///  2. Missed-long-run advice — a make-up / skip recommendation for a long
 ///     run the runner blew past, driven by training phase and proximity to
-///     a recovery week.
+///     a recovery week. A missed walk-run session is answered with "repeat
+///     the week".
+///
+/// A week holding a walk-run session is never judged in distance
+/// (`weekJudgedByDistance`): it is judged by its sessions.
 ///
 /// Dart twin of `apps/web/src/lib/training/plan_adherence.ts` — keep the
 /// algorithm, edge cases, outputs, and test counts in lockstep.
@@ -76,9 +83,104 @@ WeeklyDrift weeklyDrift(
   );
 }
 
+/// Whether a plan week's volume can be judged in distance. A week holding a
+/// walk-run session cannot: that session is prescribed in time (decisions
+/// § 91), and its `target_distance_m` is an estimate at a pace nobody chose,
+/// so a km drift against it tells a beginner they under- or over-ran a
+/// number the plan made up. Such a week is judged by its sessions instead:
+/// done, or missed and answered through the missed-workout prompt.
+bool weekJudgedByDistance(Iterable<String> kinds) =>
+    !kinds.any((k) => k == 'walk_run');
+
+/// One plan workout, reduced to what the to-date baseline needs.
+class DriftWorkout {
+  /// Local ISO date (YYYY-MM-DD) the workout is scheduled for.
+  final String scheduledDate;
+
+  /// Workout kind from the plan (`long`, `rest`, …).
+  final String kind;
+  final double? targetDistanceM;
+
+  const DriftWorkout({
+    required this.scheduledDate,
+    required this.kind,
+    required this.targetDistanceM,
+  });
+}
+
+/// One logged run, already scoped by the caller to the plan week.
+class DriftRun {
+  /// Local ISO date (YYYY-MM-DD) the run started on.
+  final String date;
+  final double distanceM;
+
+  const DriftRun({required this.date, required this.distanceM});
+}
+
+/// Current-week drift measured against the plan TO DATE rather than the whole
+/// week. The window is the week's days that have already ended —
+/// `scheduledDate < today` on the planned side, run date `< today` on the
+/// actual side — so a session still due at the end of today counts on neither.
+/// Against the full seven-day target, a runner who had done exactly what
+/// Monday to Wednesday asked for was told they were far under plan, every
+/// week, until Sunday night.
+///
+/// The week's declared `target_volume_m` stays authoritative on how much the
+/// week is worth; the per-workout distances only supply its shape, scaled onto
+/// that total. A week that declares a volume but places none of it on a
+/// workout cannot be placed in time at all, and yields the neutral unflagged
+/// result rather than a baseline guessed from elapsed days, as does a week
+/// [weekJudgedByDistance] refuses.
+WeeklyDrift weeklyDriftToDate({
+  required List<DriftWorkout> workouts,
+  required List<DriftRun> runs,
+
+  /// Local ISO date (YYYY-MM-DD) for the runner's today.
+  required String today,
+
+  /// The week's declared volume target, when the plan sets one.
+  double? weekTargetVolumeM,
+  double threshold = planDriftThreshold,
+}) {
+  if (!weekJudgedByDistance(workouts.map((w) => w.kind))) {
+    return weeklyDrift(0, 0, threshold: threshold);
+  }
+  var plannedElapsed = 0.0;
+  var plannedWeek = 0.0;
+  for (final w in workouts) {
+    if (w.kind == 'rest') continue;
+    final d = (w.targetDistanceM ?? 0) < 0 ? 0.0 : (w.targetDistanceM ?? 0);
+    plannedWeek += d;
+    if (w.scheduledDate.compareTo(today) < 0) plannedElapsed += d;
+  }
+
+  final target =
+      (weekTargetVolumeM ?? 0) < 0 ? 0.0 : (weekTargetVolumeM ?? 0);
+  final planned = target > 0
+      ? (plannedWeek > 0 ? target * plannedElapsed / plannedWeek : 0.0)
+      : plannedElapsed;
+
+  var actual = 0.0;
+  for (final r in runs) {
+    if (r.date.compareTo(today) < 0) {
+      actual += r.distanceM < 0 ? 0.0 : r.distanceM;
+    }
+  }
+
+  return weeklyDrift(planned, actual, threshold: threshold);
+}
+
 enum MakeUpRecommendation { makeUp, skip }
 
-enum MissedWorkoutReason { keySession, taper, recoverySoon, notLongRun }
+enum MissedWorkoutReason {
+  keySession,
+  taper,
+  recoverySoon,
+  notLongRun,
+
+  /// A walk-run session: carry on, or run the week again; no penalty.
+  repeatWeek,
+}
 
 class MissedWorkoutAdvice {
   final MakeUpRecommendation recommendation;
@@ -108,7 +210,13 @@ class MissedWorkoutInput {
 /// earns a make-up decision; everything else is cheaper to drop than to cram.
 /// For a long run: skip in the taper (freshness > one more long run) or when a
 /// recovery week is about to absorb the deficit anyway; otherwise make it up.
+/// A walk-run session is never crammed in: a beginner who misses one carries
+/// on, or runs the week again before moving up, and neither costs anything.
 MissedWorkoutAdvice missedWorkoutAdvice(MissedWorkoutInput input) {
+  if (input.kind == 'walk_run') {
+    return const MissedWorkoutAdvice(
+        MakeUpRecommendation.skip, MissedWorkoutReason.repeatWeek);
+  }
   if (input.kind != 'long') {
     return const MissedWorkoutAdvice(
         MakeUpRecommendation.skip, MissedWorkoutReason.notLongRun);

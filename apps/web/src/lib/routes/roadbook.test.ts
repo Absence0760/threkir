@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRoadbook, type RoadbookWaypoint, type RoadbookMarker } from './roadbook';
+import {
+	buildRoadbook,
+	targetBandS,
+	TARGET_BAND_FLOOR_S,
+	type RoadbookWaypoint,
+	type RoadbookMarker
+} from './roadbook';
 
 // ~1 km of waypoints heading north from (0,0). Each 0.001° lat ≈ 111 m.
 // Build a flat first half and a climbing second half so the effort model has
@@ -155,18 +161,33 @@ test('cutoff_clock equal to the start clock resolves to a 24h limit, not 0s', ()
 	assert.equal(rb.legs[1].cutoff!.status, 'safe');
 });
 
-test('cutoff_clock past 24h snaps to the day nearest the projection, not same-day', () => {
+test('cutoff_clock resolves from the start alone, never from the projection', () => {
 	const wp = course();
 	const total = buildRoadbook(wp, [], { goalSeconds: 1, model: 'even' }).totalDistM;
-	// 40h goal, a cutoff at 75% distance → projected arrival ≈ 30h. Start 08:00,
-	// cutoff clock 14:00: the raw same-day offset is only +6h, but the runner is
-	// expected there at hour 30 (14:00 the next day). Must resolve to 30h.
-	const rb = buildRoadbook(
+	// Start 08:00, cutoff clock 14:00 → the limit is hour 6, whoever is running
+	// and however slowly. Snapping the day to the nearest projection made the
+	// limit move with the goal time: a 40h goal put the projected arrival at
+	// hour 30, which pulled the limit out to 14:00 the NEXT day and reported a
+	// 24h-blown cutoff as merely tight.
+	const limits = [4 * 3600, 10 * 3600, 40 * 3600, 100 * 3600].map(
+		(goalSeconds) =>
+			buildRoadbook(wp, [marker(total * 0.75, 'cutoff', 'Gate', { cutoff_clock: '14:00' })], {
+				goalSeconds,
+				startClockMin: 480,
+				model: 'even'
+			}).legs[1].cutoff!.limitElapsedS
+	);
+	assert.deepEqual(limits, [21_600, 21_600, 21_600, 21_600]);
+
+	// And the blown cutoff reads as blown: 40h goal → arrival ≈ hour 30 against
+	// an hour-6 limit.
+	const slow = buildRoadbook(
 		wp,
 		[marker(total * 0.75, 'cutoff', 'Gate', { cutoff_clock: '14:00' })],
 		{ goalSeconds: 40 * 3600, startClockMin: 480, model: 'even' }
 	);
-	assert.equal(rb.legs[1].cutoff!.limitElapsedS, 108_000); // 30h, not 21600 (6h)
+	assert.equal(slow.legs[1].cutoff!.status, 'miss');
+	assert.ok(slow.legs[1].cutoff!.marginS < -20 * 3600);
 });
 
 test('projected clock advances from the start and wraps past midnight', () => {
@@ -195,6 +216,178 @@ test('aid services flow through to the leg', () => {
 		{ goalSeconds: 3600, model: 'even' }
 	);
 	assert.deepEqual(rb.legs[1].services, ['water', 'food']);
+});
+
+test('aid services reach the leg as a set of strings', () => {
+	// The roadbook page keys its service chips on the name, so a duplicate in
+	// the schemaless meta bag threw each_key_duplicate and took the page down.
+	const wp = course();
+	const rb = buildRoadbook(
+		wp,
+		[marker(500, 'aid_station', 'Aid', { services: ['water', 'water', 7, 'food', 'water'] })],
+		{ goalSeconds: 3600, model: 'even' }
+	);
+	assert.deepEqual(rb.legs[1].services, ['water', 'food']);
+});
+
+// A 4 km 25 % climb then 4 km flat, sampled every `spacingM` metres. The
+// terrain is fixed; only the file's point density changes.
+function climbCourse(spacingM: number): RoadbookWaypoint[] {
+	const pts: RoadbookWaypoint[] = [];
+	const mPerDegLat = 111_320;
+	const climbM = 4000;
+	for (let d = 0; d <= climbM * 2; d += spacingM) {
+		pts.push({ lat: 45 + d / mPerDegLat, lng: 7, ele: Math.min(d, climbM) * 0.25 });
+	}
+	return pts;
+}
+
+function midArrivalS(wp: RoadbookWaypoint[], model: 'effort' | 'even'): number {
+	const rb = buildRoadbook(wp, [marker(4000, 'aid_station', 'Top', {})], {
+		goalSeconds: 5400,
+		model
+	});
+	return rb.legs[1].projectedElapsedS;
+}
+
+test('effort allocation survives a densely-sampled course', () => {
+	// Every point-pair is under MIN_SEGMENT_M here, so grading each pair on its
+	// own read the whole climb as flat and effort collapsed onto even pace.
+	const dense = climbCourse(3);
+	const effort = midArrivalS(dense, 'effort');
+	const even = midArrivalS(dense, 'even');
+	assert.ok(effort > even * 1.4, `effort ${effort} vs even ${even}`);
+});
+
+test('effort allocation is a property of the terrain, not the sampling density', () => {
+	const coarse = midArrivalS(climbCourse(20), 'effort');
+	for (const spacing of [10, 3, 1]) {
+		const dense = midArrivalS(climbCourse(spacing), 'effort');
+		assert.ok(
+			Math.abs(dense - coarse) / coarse < 0.01,
+			`spacing ${spacing}m gave ${dense}s vs ${coarse}s at 20m`
+		);
+	}
+});
+
+test('a trailing sub-threshold segment is graded flat, not amplified', () => {
+	// 1 km of flat at 20 m spacing, then one last point 3 m on with a 1 m rise:
+	// a 33 % grade no altimeter can support over 3 m. That trailing window never
+	// clears MIN_SEGMENT_M, so it must stay flat — grading it on its own span
+	// would bill it as ~3.9x effort and pull every arrival before it earlier.
+	const wp: RoadbookWaypoint[] = [];
+	for (let d = 0; d <= 1000; d += 20) wp.push({ lat: 45 + d / 111_320, lng: 7, ele: 0 });
+	wp.push({ lat: 45 + 1003 / 111_320, lng: 7, ele: 1 });
+	const mid = [marker(500, 'aid_station', 'Mid', {})];
+	const effort = buildRoadbook(wp, mid, { goalSeconds: 5400, model: 'effort' });
+	const even = buildRoadbook(wp, mid, { goalSeconds: 5400, model: 'even' });
+	assert.ok(effort.hasElevation, 'the effort model must actually be in play');
+	assert.ok(
+		Math.abs(effort.legs[1].projectedElapsedS - even.legs[1].projectedElapsedS) < 1e-6,
+		`effort ${effort.legs[1].projectedElapsedS} vs even ${even.legs[1].projectedElapsedS}`
+	);
+});
+
+test('a checkpoint target grades the projection ahead / on / behind', () => {
+	const wp = course();
+	const total = buildRoadbook(wp, [], { goalSeconds: 3600, model: 'even' }).totalDistM;
+	// Mid at an even 3600 s goal projects to ~1800 s. The band there is the
+	// 60 s floor, so 1900 is comfortably ahead and 1700 comfortably behind.
+	const at = (targetElapsedS: number) =>
+		buildRoadbook(wp, [marker(total / 2, 'aid_station', 'Aid', { target_elapsed_s: targetElapsedS })], {
+			goalSeconds: 3600,
+			model: 'even'
+		}).legs[1].target;
+	assert.equal(at(1900)!.status, 'ahead');
+	assert.ok(at(1900)!.marginS > 0);
+	assert.equal(at(1800)!.status, 'on');
+	assert.equal(at(1700)!.status, 'behind');
+	assert.ok(at(1700)!.marginS < 0);
+	assert.equal(at(1700)!.targetElapsedS, 1700);
+});
+
+test('a marker with no target time gets no target verdict', () => {
+	const wp = course();
+	const total = buildRoadbook(wp, [], { goalSeconds: 3600, model: 'even' }).totalDistM;
+	const rb = buildRoadbook(wp, [marker(total / 2, 'aid_station', 'Aid', {})], {
+		goalSeconds: 3600,
+		model: 'even'
+	});
+	assert.equal(rb.legs[1].target, undefined);
+	// The synthetic start / finish rows carry no meta and so never do either.
+	assert.equal(rb.legs[0].target, undefined);
+	assert.equal(rb.legs[2].target, undefined);
+});
+
+test('a target may sit on any kind, including a cutoff, alongside its limit', () => {
+	const wp = course();
+	const total = buildRoadbook(wp, [], { goalSeconds: 3600, model: 'even' }).totalDistM;
+	const rb = buildRoadbook(
+		wp,
+		[marker(total / 2, 'cutoff', 'Gate', { cutoff_elapsed_s: 2400, target_elapsed_s: 1500 })],
+		{ goalSeconds: 3600, model: 'even' }
+	);
+	assert.equal(rb.legs[1].cutoff!.limitElapsedS, 2400);
+	assert.equal(rb.legs[1].target!.targetElapsedS, 1500);
+	// Both margins are signed the same way — positive is time in hand.
+	assert.ok(rb.legs[1].cutoff!.marginS > 0);
+	assert.ok(rb.legs[1].target!.marginS < 0);
+});
+
+test('target_clock resolves against the start clock, like a cutoff clock', () => {
+	const wp = course();
+	const total = buildRoadbook(wp, [], { goalSeconds: 3600, model: 'even' }).totalDistM;
+	// Start 06:00 (360 min); target 06:45 → 2700 s elapsed.
+	const rb = buildRoadbook(
+		wp,
+		[marker(total / 2, 'aid_station', 'Aid', { target_clock: '06:45' })],
+		{ goalSeconds: 3600, startClockMin: 360, model: 'even' }
+	);
+	assert.equal(rb.legs[1].target!.targetElapsedS, 2700);
+	// A clock equal to the start is the 24h reading, never a 0 s target.
+	const sameClock = buildRoadbook(
+		wp,
+		[marker(total / 2, 'aid_station', 'Aid', { target_clock: '06:00' })],
+		{ goalSeconds: 3600, startClockMin: 360, model: 'even' }
+	);
+	assert.equal(sameClock.legs[1].target!.targetElapsedS, 86_400);
+	// Without a start clock a clock-only target can't resolve — and must not
+	// silently read as 0, which would grade every checkpoint as behind.
+	const noStart = buildRoadbook(
+		wp,
+		[marker(total / 2, 'aid_station', 'Aid', { target_clock: '06:45' })],
+		{ goalSeconds: 3600, model: 'even' }
+	);
+	assert.equal(noStart.legs[1].target, undefined);
+});
+
+test('the on-schedule band scales with the target, floored for early checkpoints', () => {
+	// The floor governs anything under 100 min; past that it is 1 %.
+	assert.equal(targetBandS(0), TARGET_BAND_FLOOR_S);
+	assert.equal(targetBandS(1800), TARGET_BAND_FLOOR_S);
+	assert.equal(targetBandS(6000), TARGET_BAND_FLOOR_S);
+	assert.equal(targetBandS(14_400), 144);
+	assert.equal(targetBandS(72_000), 720);
+});
+
+test('a fixed band would misgrade one scale or the other', () => {
+	const wp = course();
+	const total = buildRoadbook(wp, [], { goalSeconds: 3600, model: 'even' }).totalDistM;
+	// Same 5-minute slip judged at two race scales. At an hour goal it is a
+	// real problem; at a 24 h goal it is inside the noise of the projection.
+	const slip = 300;
+	const short = buildRoadbook(
+		wp,
+		[marker(total / 2, 'aid_station', 'Aid', { target_elapsed_s: 1800 - slip })],
+		{ goalSeconds: 3600, model: 'even' }
+	);
+	const long = buildRoadbook(
+		wp,
+		[marker(total / 2, 'aid_station', 'Aid', { target_elapsed_s: 43_200 - slip })],
+		{ goalSeconds: 86_400, model: 'even' }
+	);
+	assert.equal(short.legs[1].target!.status, 'behind');
+	assert.equal(long.legs[1].target!.status, 'on');
 });
 
 function rbHalf(wp: RoadbookWaypoint[]): number {

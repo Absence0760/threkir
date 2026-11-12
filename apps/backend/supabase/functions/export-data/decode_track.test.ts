@@ -10,6 +10,7 @@ import {
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
 	MAX_TRACK_GZIP_BYTES,
+	TrackShapeError,
 	TrackTooLargeError,
 	decodeTrack,
 } from './decode_track.ts';
@@ -34,13 +35,17 @@ Deno.test('decodeTrack — small valid track round-trips', async () => {
 });
 
 Deno.test('decodeTrack — bytes at exactly the cap are accepted', async () => {
-	// Build a "blob" that is exactly MAX bytes but ALSO decodes to a
-	// valid track. Easy way: pad a valid JSON with whitespace until
-	// the gzip is exactly the cap; but predictable cap-edge testing
-	// is brittle. Instead assert the inverse: a one-byte-over Blob
-	// throws (Cap+1 test below) and a small valid Blob succeeds
-	// (test above). The cap is an inequality, so this is sufficient
-	// coverage; just sanity-check the cap value is the expected 5 MB.
+	// This case is named for the boundary and used to assert only the constant,
+	// which a decoder rejecting every track at any size also satisfies. Building
+	// exactly MAX bytes of VALID gzip is brittle, so the boundary is observed the
+	// other way round: a blob of exactly the cap must get PAST the guard and fail
+	// in the decompressor instead. That distinguishes `>` from `>=` — which is
+	// the whole content of "at exactly the cap" — without needing the payload to
+	// be well formed.
+	const atCap = new Blob([new Uint8Array(MAX_TRACK_GZIP_BYTES)]);
+	const err = await decodeTrack(atCap).then(() => null, (e: unknown) => e);
+	assertEquals(err instanceof TrackTooLargeError, false, 'the cap must be exclusive');
+	assertEquals(err !== null, true, 'and the bytes are still not a track');
 	assertEquals(MAX_TRACK_GZIP_BYTES, 5 * 1024 * 1024);
 });
 
@@ -71,3 +76,41 @@ Deno.test(
 		assertEquals(err.message, 'track too large');
 	},
 );
+
+Deno.test('a blob that decodes to something other than a list is refused', async () => {
+	// The return type promised `TrackPoint[]`; `JSON.parse` promised nothing.
+	// An object reached the GPX renderer's `for…of` — and the caller's guard
+	// (`track.length < 2`) is false for `undefined`, so the TypeError escaped
+	// the per-run tolerance and failed the WHOLE export on one bad blob.
+	// Throwing puts it back inside the caller's `catch`, which skips the run.
+	for (const payload of ['{}', '{"points":[]}', 'null', '42', '"a"', 'true']) {
+		const blob = new Blob([await gzipString(payload) as BlobPart]);
+		const err = await decodeTrack(blob).then(() => null, (e: unknown) => e);
+		assertEquals(
+			err instanceof TrackShapeError,
+			true,
+			`${payload} decoded without a refusal`,
+		);
+	}
+});
+
+Deno.test('a real list of points still decodes, so the refusal is not blanket', async () => {
+	// The positive control beside the negative above: an empty array and a
+	// populated one are both lists and must both come back.
+	const empty = new Blob([await gzipString('[]') as BlobPart]);
+	assertEquals(await decodeTrack(empty), []);
+	const two = new Blob([
+		await gzipString(JSON.stringify([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }])) as BlobPart,
+	]);
+	assertEquals((await decodeTrack(two)).length, 2);
+});
+
+// The compressed cap above cannot see a gzip bomb: a few KB that inflate past
+// the isolate's heap. The inflated stream is bounded too, and an over-cap
+// track is the same skipped-run TrackTooLargeError the GPX loop already counts.
+Deno.test('decodeTrack — a small blob that inflates past the cap throws TrackTooLargeError', async () => {
+	const huge = '[' + ' '.repeat(20 * 1024 * 1024) + ']';
+	const gz = await gzipString(huge);
+	assertEquals(gz.byteLength < MAX_TRACK_GZIP_BYTES, true, 'passes the compressed cap');
+	await assertRejects(() => decodeTrack(new Blob([gz as Uint8Array<ArrayBuffer>])), TrackTooLargeError, 'track too large');
+});

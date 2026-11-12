@@ -6,9 +6,11 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'foreign_row_cleanup.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
 import 'social_service.dart';
+import 'watch_ingest_queue.dart';
 
 /// Pushes unsynced runs to the backend whenever:
 ///
@@ -38,6 +40,16 @@ class SyncService with WidgetsBindingObserver {
   /// mobile analogue of web's on-save fan-out). When null, the daily cron sweep
   /// remains the only completion path.
   final SocialService? socialService;
+  /// Optional — when provided, every cycle that gets past the auth and
+  /// backoff gates also drains the Apple Watch ingest queue, so a watch run
+  /// whose upload failed offline is retried when connectivity returns rather
+  /// than on the next sign-in (decisions § 1801).
+  final WatchIngestQueue? watchQueue;
+  /// Optional — when provided, the first cycle with a session reconciles the
+  /// local stores against the caller's owned rows, once per account
+  /// (decisions § 1938). Runs before the drains so a foreign row's refused
+  /// push is gone before this cycle would send it.
+  final ForeignRowCleanup? foreignRowCleanup;
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _syncing = false;
@@ -66,12 +78,36 @@ class SyncService with WidgetsBindingObserver {
     required this.runStore,
     this.routeStore,
     this.socialService,
+    this.watchQueue,
+    this.foreignRowCleanup,
   });
 
   void start() {
     WidgetsBinding.instance.addObserver(this);
     _connectivitySub = Connectivity().onConnectivityChanged.listen(_onConnectivity);
-    _trySync('startup');
+    _fireSync('startup');
+  }
+
+  /// The cycle a fire-and-forget trigger started, until it finishes.
+  ///
+  /// [start] and [didChangeAppLifecycleState] cannot await a cycle — an
+  /// observer callback returns `void` — but discarding the future left
+  /// NOTHING able to know when one had finished, and a cycle outlives the
+  /// call that started it by however long its store writes take. Holding it
+  /// is what lets a caller (today, a test whose teardown deletes the store
+  /// directory the cycle is still writing into) wait for the real thing
+  /// rather than for a proxy that happens to be fast enough.
+  Future<void>? _inFlight;
+
+  @visibleForTesting
+  Future<void>? get debugInFlightSync => _inFlight;
+
+  void _fireSync(String reason) {
+    final cycle = _trySync(reason);
+    _inFlight = cycle;
+    cycle.whenComplete(() {
+      if (identical(_inFlight, cycle)) _inFlight = null;
+    });
   }
 
   /// Public entry point for callers that need to drive a sync from a
@@ -89,16 +125,16 @@ class SyncService with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _trySync('foreground');
+      _fireSync('foreground');
     }
   }
 
-  void _onConnectivity(List<ConnectivityResult> results) {
+  Future<void> _onConnectivity(List<ConnectivityResult> results) async {
     final online = results.any((r) =>
         r == ConnectivityResult.wifi ||
         r == ConnectivityResult.mobile ||
         r == ConnectivityResult.ethernet);
-    if (online) _trySync('connectivity');
+    if (online) await _trySync('connectivity');
   }
 
   /// Test-only: drives the same code path the connectivity / lifecycle
@@ -110,8 +146,14 @@ class SyncService with WidgetsBindingObserver {
   /// Test-only: drives the connectivity branch directly without the
   /// `Connectivity().onConnectivityChanged` stream subscription.
   /// Production calls land here via [_onConnectivity].
+  ///
+  /// Returns the cycle's future so a caller can await it. A test that
+  /// fires this and then pumps the event queue is racing real disk I/O
+  /// inside the cycle: while it is still in flight [_trySync]'s
+  /// reentrancy guard silently drops the next trigger, so a second
+  /// event asserts against one push instead of two.
   @visibleForTesting
-  void debugOnConnectivity(List<ConnectivityResult> results) =>
+  Future<void> debugOnConnectivity(List<ConnectivityResult> results) =>
       _onConnectivity(results);
 
   /// Test-only: read the current backoff state for assertions.
@@ -171,6 +213,27 @@ class SyncService with WidgetsBindingObserver {
     }
     final api = apiClient;
     if (api == null || api.userId == null) return;
+    // Unawaited and outside `_syncing`: the queue serialises its own drains,
+    // and a stalled watch upload must not hold the run-store cycle behind it.
+    final queue = watchQueue;
+    if (queue != null && queue.pendingCount > 0) {
+      queue.drain(api).catchError((Object e) {
+        debugPrint('SyncService: watch ingest drain failed: $e');
+      });
+    }
+    final cleanup = foreignRowCleanup;
+    if (cleanup != null) {
+      // Held under `_syncing` so a trigger landing mid-reconcile cannot start
+      // a drain against rows the reconcile is about to delete.
+      _syncing = true;
+      try {
+        await cleanup.runOnce(api);
+      } catch (e) {
+        debugPrint('SyncService: foreign-row cleanup failed: $e');
+      } finally {
+        _syncing = false;
+      }
+    }
     final allUnsynced = runStore.unsyncedRuns;
     // Owner-tag filter: skip runs whose `metadata.created_by_user_id`
     // names a different user. Without this, on a shared device where
@@ -210,7 +273,9 @@ class SyncService with WidgetsBindingObserver {
     final hasPendingRouteDeletes =
         routeStore?.pendingRemoteDeletesForUser(api.userId).isNotEmpty ??
             false;
+    final hasPendingEdits = runStore.pendingEditIds.isNotEmpty;
     if (unsynced.isEmpty &&
+        !hasPendingEdits &&
         !hasPendingDeletes &&
         unsyncedRoutes.isEmpty &&
         !hasPendingRouteDeletes) return;
@@ -221,20 +286,31 @@ class SyncService with WidgetsBindingObserver {
       if (unsynced.isNotEmpty) {
         debugPrint('SyncService: pushing ${unsynced.length} runs ($reason)');
         try {
-          final failed = await api.saveRunsBatch(unsynced);
+          final outcome = await api.saveRunsBatch(unsynced);
           // Mark only the runs whose track upload succeeded — the
           // failed-track set comes back from saveRunsBatch so a single
           // corrupted run no longer blocks the rest of the queue.
           // (The full batch-throw path stays for catastrophic
           // failures like an auth error — we land in the catch below.)
+          // A blocked run is parked rather than left queued: retrying it is
+          // re-sending a payload the server has already refused, and the
+          // residency invariant would hold its track for the whole session
+          // to do it (decisions § 1070).
+          if (outcome.blocked.isNotEmpty) {
+            await runStore.markBlocked(outcome.blocked);
+          }
+          final failed = outcome.failedIds;
           final succeeded =
               unsynced.where((r) => !failed.contains(r.id)).toList();
-          await runStore.markManySynced(succeeded.map((r) => r.id));
+          await runStore.markManySynced(succeeded);
           debugPrint(
             'SyncService: pushed ${unsynced.length - failed.length} '
-            '(skipped ${failed.length} on track-upload failure)',
+            '(${outcome.retryable.length} deferred, '
+            '${outcome.blocked.length} parked)',
           );
-          if (failed.isNotEmpty) anyFailure = true;
+          // A parked run is not a failure to retry — scheduling a backoff
+          // retry for it would be the same forever-loop one layer up.
+          if (outcome.retryable.isNotEmpty) anyFailure = true;
           if (succeeded.isNotEmpty) {
             await socialService
                 ?.recomputeChallengesForRuns(succeeded.map((r) => r.startedAt));
@@ -243,6 +319,10 @@ class SyncService with WidgetsBindingObserver {
           debugPrint('SyncService: batch push failed ($reason): $e');
           anyFailure = true;
         }
+      }
+      if (hasPendingEdits) {
+        final ok = await pushPendingRunEdits(api, runStore, reason: reason);
+        if (!ok) anyFailure = true;
       }
       if (hasPendingDeletes) {
         final ok = await drainPendingDeletes(api, runStore, reason: reason);
@@ -312,6 +392,87 @@ Future<bool> drainPendingDeletes(
   }
   debugPrint('Sync: drained $ok / ${ids.length} pending deletes');
   return failed == 0;
+}
+
+/// Push every pending field edit to a synced run of the signed-in runner's
+/// (decisions § 2147), skipping a run queued for remote deletion. Returns
+/// `true` iff every edit landed. Shared by the foreground [SyncService] and
+/// the WorkManager cycle for the same reason [drainPendingDeletes] is.
+Future<bool> pushPendingRunEdits(
+  ApiClient api,
+  LocalRunStore runStore, {
+  String reason = 'background',
+}) async {
+  final deleting = runStore.pendingRemoteDeletesForUser(api.userId);
+  final ids =
+      runStore.pendingEditIds.where((id) => !deleting.contains(id)).toList();
+  if (ids.isEmpty) return true;
+  debugPrint('Sync: pushing ${ids.length} pending run edits ($reason)');
+  var settled = true;
+  for (final id in ids) {
+    if (!await pushPendingRunEdit(api, runStore, id)) settled = false;
+  }
+  return settled;
+}
+
+/// Push [runId]'s pending field edit as a compare-and-swap on the server
+/// `updated_at` it was made on, so no device clock decides which edit wins
+/// (decisions § 2147). A swap that finds the row moved reads it again,
+/// re-bases the edit onto it — the server's changes to other fields kept,
+/// this edit's fields laid on top, since it is the later arrival — and tries
+/// once more. A row the server no longer has takes the local copy and the
+/// edit with it, as a server-side delete does everywhere else.
+///
+/// Returns `true` when nothing is left pending for the run. Never throws: a
+/// failure leaves the edit pending for the next sync (layered resilience).
+Future<bool> pushPendingRunEdit(
+  ApiClient api,
+  LocalRunStore runStore,
+  String runId,
+) async {
+  final initial = runStore.pendingEdit(runId);
+  if (initial == null) return true;
+  try {
+    var reread = initial.baseUpdatedAt == null;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final local = await runStore.runById(runId);
+      if (local == null ||
+          filterRunsForCurrentUser([local], api.userId).isEmpty) {
+        return true;
+      }
+      if (reread) {
+        final rows = await api.getRunsByIds([runId]);
+        if (rows.isEmpty) {
+          await runStore.delete(runId);
+          return true;
+        }
+        await runStore.rebasePendingEdit(rows.first);
+      }
+      final edit = runStore.pendingEdit(runId);
+      if (edit == null) return true;
+      final rebased = await runStore.runById(runId);
+      if (rebased == null) return true;
+      final landed = await api.updateRunFieldsIfUnchanged(
+        rebased,
+        fields: edit.fields,
+        baseUpdatedAt: edit.baseUpdatedAt,
+      );
+      if (landed != null) {
+        await runStore.adoptPushedEdit(landed, edit);
+        if (runStore.pendingEdit(runId) == null) return true;
+        // Edited again while the swap was in flight: the newer edit is
+        // already re-based onto the row that came back.
+        reread = false;
+      } else {
+        reread = true;
+      }
+    }
+    debugPrint('Sync: edit to $runId still pending after a re-based retry');
+    return false;
+  } catch (e) {
+    debugPrint('Sync: pushing the edit to $runId failed: $e');
+    return false;
+  }
 }
 
 /// Push routes the user created offline (signed-out, network down,
@@ -408,6 +569,12 @@ Future<bool> drainPendingRouteDeletes(
       await routeStore.delete(id);
       await routeStore.clearPendingRemoteDelete(id);
       ok++;
+    } on RouteDeleteRefusedException {
+      // The server refuses this session's delete outright, so a retry can
+      // never succeed: drop it from the queue and keep the local copy.
+      debugPrint('Sync: route delete refused for $id; dropping it from the queue');
+      await routeStore.clearPendingRemoteDelete(id);
+      failed++;
     } catch (e) {
       debugPrint('Sync: retry route delete failed for $id: $e');
       failed++;

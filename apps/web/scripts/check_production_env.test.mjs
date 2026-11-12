@@ -4,15 +4,46 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { checkProductionEnv } from './check_production_env.mjs';
+import {
+	checkProductionEnv,
+	productionUrlProblem,
+	redactCredentials,
+	vapidPublicKeyProblem,
+} from './check_production_env.mjs';
+
+/**
+ * A valid VAPID application server key — 65 bytes, leading 0x04, base64url-raw,
+ * the exact shape `web-push generate-vapid-keys` prints as `Public Key:`.
+ *
+ * Generated per run rather than committed as a literal. A 65-byte uncompressed
+ * point beside the word VAPID is precisely what gitleaks' entropy gate flags,
+ * and allowlisting a constant nobody holds the private half of would suppress
+ * the scanner for a value the generator can produce honestly. It also makes the
+ * assertion stronger: every run checks a real point, not one known-good string.
+ *
+ * @returns {string}
+ */
+function freshVapidPublicKey() {
+	const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+	const jwk = publicKey.export({ format: 'jwk' });
+	return Buffer.concat([
+		Buffer.from([0x04]),
+		Buffer.from(String(jwk.x), 'base64url'),
+		Buffer.from(String(jwk.y), 'base64url'),
+	]).toString('base64url');
+}
+
+const VALID_VAPID_PUBLIC = freshVapidPublicKey();
 
 const SCRIPT_PATH = fileURLToPath(new URL('./check_production_env.mjs', import.meta.url));
 
 /**
- * Run the script as its own CLI process. The script's `import.meta.url ===
- * file:${argv[1]}` entry-point guard only fires when invoked as a binary,
+ * Run the script as its own CLI process. The script's entry-point guard
+ * (argv[1] resolved against `import.meta.url`) only fires when invoked as a binary,
  * so the in-process import above wouldn't exercise the process.exit /
  * stderr-write paths; this wrapper covers them.
  *
@@ -77,9 +108,9 @@ test('rejects the CI bundle-budget placeholder URL', () => {
 
 test('rejects a loopback URL', () => {
 	const cases = [
-		'http://127.0.0.1:54321',
-		'http://localhost:54321',
-		'http://10.0.2.2:54321/',
+		'http://127.0.0.1:24321',
+		'http://localhost:24321',
+		'http://10.0.2.2:24321/',
 	];
 	for (const url of cases) {
 		const r = checkProductionEnv({
@@ -108,7 +139,7 @@ test('reports every missing required var together', () => {
 	// should surface ALL the required keys at once rather than fail
 	// after the first one, so the operator gets a single readable list
 	// instead of N edit-rerun cycles. (RevenueCat checkout is absent
-	// here: with both Pro perk flags off it isn't required.)
+	// here: an unset link is never a finding, decisions § 1826.)
 	const r = checkProductionEnv({});
 	assert.equal(r.ok, false);
 	assert.equal(r.findings.length, 3);
@@ -119,8 +150,7 @@ test('reports every missing required var together', () => {
 		'PUBLIC_SUPABASE_URL',
 	]);
 	const withProFlag = checkProductionEnv({ PUBLIC_COACH_ENABLED: 'true' });
-	assert.equal(withProFlag.findings.length, 4);
-	assert.ok(withProFlag.findings.some((f) => f.envVar === 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL'));
+	assert.equal(withProFlag.findings.length, 3);
 });
 
 test('rejects an empty PUBLIC_MAPTILER_KEY', () => {
@@ -138,42 +168,198 @@ test('rejects an empty PUBLIC_MAPTILER_KEY', () => {
 	assert.equal(r.findings[0].envVar, 'PUBLIC_MAPTILER_KEY');
 });
 
-test('rejects an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL when a Pro perk flag is on', () => {
-	// `/settings/upgrade` redirects to this hosted-checkout link; with a
-	// Pro perk advertised (coach or route-gen flag truthy) an empty value
-	// disables the purchase flow silently (the CTA degrades to a "not
-	// configured" toast). Fail the build. Both flags trigger it.
+const RELEASE_BASE = {
+	PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+	PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+	PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
+};
+
+test('passes an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL with a Pro perk flag on, as the app-only storefront, with a notice', () => {
+	// Owner decision 2026-10-10 (decisions § 1826): Pro goes live through the
+	// iPhone app's In-App Purchase before web checkout exists. With the Coach
+	// on and no checkout link, /settings/upgrade renders the app-only
+	// storefront rather than a dead buy button, so this is a supported
+	// release config. It used to fail here, and failed web@1.11.1.
 	for (const flags of [
 		{ PUBLIC_COACH_ENABLED: 'true' },
 		{ PUBLIC_ROUTE_GEN_ENABLED: '1' },
 	]) {
 		const r = checkProductionEnv({
-			PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
-			PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
-			PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
-			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: '',
-			...flags,
-		});
-		assert.equal(r.ok, false, `expected reject with ${JSON.stringify(flags)}`);
-		assert.equal(r.findings[0].envVar, 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL');
-	}
-});
-
-test('allows an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL when Pro is not sellable', () => {
-	// The rock-bottom tier (deployment_lean.md) deliberately ships with
-	// both Pro perk flags off — /settings/upgrade shows the "coming soon"
-	// teaser instead of selling, so an empty checkout link is the
-	// intended config and must not block the release.
-	for (const flags of [{}, { PUBLIC_COACH_ENABLED: 'false' }, { PUBLIC_ROUTE_GEN_ENABLED: '' }]) {
-		const r = checkProductionEnv({
-			PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
-			PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
-			PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
+			...RELEASE_BASE,
 			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: '',
 			...flags,
 		});
 		assert.equal(r.ok, true, `expected pass with ${JSON.stringify(flags)}`);
+		assert.equal(r.notices.length, 1);
+		assert.match(r.notices[0], /Web checkout is off/);
+		assert.match(r.notices[0], /iPhone app/);
 	}
+});
+
+test('allows an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL when Pro is not sellable, without a notice', () => {
+	// The rock-bottom tier (deployment_lean.md) deliberately ships with
+	// both Pro perk flags off — /settings/upgrade shows the "coming soon"
+	// teaser, and there is no checkout to be missing.
+	for (const flags of [{}, { PUBLIC_COACH_ENABLED: 'false' }, { PUBLIC_ROUTE_GEN_ENABLED: '' }]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: '',
+			...flags,
+		});
+		assert.equal(r.ok, true, `expected pass with ${JSON.stringify(flags)}`);
+		assert.deepEqual(r.notices, []);
+	}
+});
+
+test('a set PUBLIC_REVENUECAT_WEB_CHECKOUT_URL produces no notice', () => {
+	const r = checkProductionEnv({
+		...RELEASE_BASE,
+		PUBLIC_COACH_ENABLED: 'true',
+		PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+	});
+	assert.equal(r.ok, true);
+	assert.deepEqual(r.notices, []);
+});
+
+test('rejects a set PUBLIC_REVENUECAT_WEB_CHECKOUT_URL that is not a Web Purchase Link, perk flags or not', () => {
+	// Unset is a decision; a malformed value is a mistake. The page would
+	// hide the buy button for any of these (same checkoutBaseProblem test),
+	// so shipping one means believing web checkout is live when it is not.
+	for (const bad of [
+		'TODO',
+		'abc123',
+		'http://pay.rev.cat/abc123',
+		'https://pay.rev.cat',
+		'https://pay.rev.cat/placeholder',
+		'https://checkout.stripe.com/c/pay/abc123',
+		'https://pay.rev.cat.evil.example/abc123',
+	]) {
+		for (const flags of [{}, { PUBLIC_COACH_ENABLED: 'true' }]) {
+			const r = checkProductionEnv({
+				...RELEASE_BASE,
+				PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: bad,
+				...flags,
+			});
+			assert.equal(r.ok, false, `expected reject for ${JSON.stringify(bad)} with ${JSON.stringify(flags)}`);
+			assert.equal(r.findings.length, 1);
+			assert.equal(r.findings[0].envVar, 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL');
+		}
+	}
+});
+
+test('the AI plan flag without the Coach flag passes with a notice that the box stays hidden', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_AI_PLAN_ENABLED: 'true' });
+	assert.equal(r.ok, true);
+	assert.equal(r.notices.length, 1);
+	assert.match(r.notices[0], /AI plan assistant stays hidden/);
+	assert.match(r.notices[0], /PUBLIC_COACH_ENABLED/);
+});
+
+test('the AI plan flag with the Coach flag, or off, adds no plan notice', () => {
+	for (const flags of [
+		{ PUBLIC_AI_PLAN_ENABLED: 'true', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_ENABLED: '', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_ENABLED: 'false' },
+	]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+			...flags,
+		});
+		assert.equal(r.ok, true, JSON.stringify(flags));
+		assert.deepEqual(r.notices, [], JSON.stringify(flags));
+	}
+});
+
+test('the plate-photo flag without the Coach flag passes with a notice that the control stays hidden', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_PLATE_PHOTO_ENABLED: 'true' });
+	assert.equal(r.ok, true);
+	assert.equal(r.notices.length, 1);
+	assert.match(r.notices[0], /plate-photo logger stays hidden/);
+	assert.match(r.notices[0], /PUBLIC_COACH_ENABLED/);
+});
+
+test('the plate-photo flag with the Coach flag, or off, adds no plate notice', () => {
+	for (const flags of [
+		{ PUBLIC_PLATE_PHOTO_ENABLED: 'true', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_PLATE_PHOTO_ENABLED: '', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_PLATE_PHOTO_ENABLED: 'false' },
+	]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+			...flags,
+		});
+		assert.equal(r.ok, true, JSON.stringify(flags));
+		assert.deepEqual(r.notices, [], JSON.stringify(flags));
+	}
+});
+
+test('the coach fuelling flag without the Coach flag passes with a notice that nothing links to the page', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_COACH_FUEL_ENABLED: 'true' });
+	assert.equal(r.ok, true);
+	assert.equal(r.notices.length, 1);
+	assert.match(r.notices[0], /fuelling handoff has no way in/);
+	assert.match(r.notices[0], /PUBLIC_COACH_ENABLED/);
+});
+
+test('the coach fuelling flag with the Coach flag, or off, adds no fuelling notice', () => {
+	for (const flags of [
+		{ PUBLIC_COACH_FUEL_ENABLED: 'true', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_COACH_FUEL_ENABLED: '', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_COACH_FUEL_ENABLED: 'false' },
+	]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+			...flags,
+		});
+		assert.equal(r.ok, true, JSON.stringify(flags));
+		assert.deepEqual(r.notices, [], JSON.stringify(flags));
+	}
+});
+
+test('the AI plan-edit flag without the Coach flag passes with a notice that the option stays hidden', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_AI_PLAN_EDIT_ENABLED: 'true' });
+	assert.equal(r.ok, true);
+	assert.equal(r.notices.length, 1);
+	assert.match(r.notices[0], /AI plan edits stay hidden/);
+	assert.match(r.notices[0], /PUBLIC_COACH_ENABLED/);
+});
+
+test('the AI plan-edit flag with the Coach flag, or off, adds no plan-edit notice', () => {
+	for (const flags of [
+		{ PUBLIC_AI_PLAN_EDIT_ENABLED: 'true', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_EDIT_ENABLED: '', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_EDIT_ENABLED: 'false' },
+	]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+			...flags,
+		});
+		assert.equal(r.ok, true, JSON.stringify(flags));
+		assert.deepEqual(r.notices, [], JSON.stringify(flags));
+	}
+});
+
+test('CLI prints a ::notice:: for the app-only storefront and exits 0', () => {
+	const r = runScript({
+		...RELEASE_BASE,
+		PUBLIC_COACH_ENABLED: 'true',
+	});
+	assert.equal(r.status, 0, r.stderr);
+	assert.match(r.stdout, /^::notice title=check-production-env::Web checkout is off/m);
+});
+
+test('CLI exits 1 on a placeholder checkout link and no longer lists it as a required secret', () => {
+	const r = runScript({
+		...RELEASE_BASE,
+		PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/placeholder',
+	});
+	assert.equal(r.status, 1);
+	assert.match(r.stderr, /PUBLIC_REVENUECAT_WEB_CHECKOUT_URL = https:\/\/pay\.rev\.cat\/placeholder/);
+	assert.doesNotMatch(r.stderr, /^ {2}- PUBLIC_REVENUECAT_WEB_CHECKOUT_URL$/m);
 });
 
 test('does NOT enforce PUBLIC_REVENUECAT_WEB_PORTAL_URL (management portal is optional)', () => {
@@ -187,6 +373,70 @@ test('does NOT enforce PUBLIC_REVENUECAT_WEB_PORTAL_URL (management portal is op
 		// PUBLIC_REVENUECAT_WEB_PORTAL_URL deliberately omitted
 	});
 	assert.equal(r.ok, true);
+});
+
+test('an unset PUBLIC_DONATE_URL passes silently; donations are optional', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE });
+	assert.equal(r.ok, true);
+	assert.deepEqual(r.notices, []);
+});
+
+test('accepts a Stripe Payment Link as PUBLIC_DONATE_URL', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_DONATE_URL: 'https://donate.stripe.com/abc123' });
+	assert.equal(r.ok, true);
+});
+
+test('fails a PUBLIC_DONATE_URL that is not a Stripe Payment Link', () => {
+	// The placeholder that shipped for months: GitHub redirects it to its own
+	// marketing page, so every Donate click went nowhere that takes money.
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_DONATE_URL: 'https://github.com/sponsors' });
+	assert.equal(r.ok, false);
+	assert.equal(r.findings.length, 1);
+	assert.equal(r.findings[0].envVar, 'PUBLIC_DONATE_URL');
+	assert.match(r.findings[0].reason, /not donate\.stripe\.com or buy\.stripe\.com/);
+});
+
+test('accepts a valid PUBLIC_VAPID_PUBLIC_KEY', () => {
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real_maptiler_key',
+		PUBLIC_VAPID_PUBLIC_KEY: VALID_VAPID_PUBLIC,
+	});
+	assert.equal(r.ok, true);
+});
+
+test('allows an unset PUBLIC_VAPID_PUBLIC_KEY (web push reports itself off)', () => {
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real_maptiler_key',
+		PUBLIC_VAPID_PUBLIC_KEY: '',
+	});
+	assert.equal(r.ok, true);
+});
+
+test('rejects the private half pasted into PUBLIC_VAPID_PUBLIC_KEY, without echoing it', () => {
+	const privateHalf = Buffer.alloc(32, 7).toString('base64url');
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real_maptiler_key',
+		PUBLIC_VAPID_PUBLIC_KEY: privateHalf,
+	});
+	assert.equal(r.ok, false);
+	const finding = r.findings.find((f) => f.envVar === 'PUBLIC_VAPID_PUBLIC_KEY');
+	assert.ok(finding);
+	assert.match(finding.reason, /PRIVATE half/);
+	assert.doesNotMatch(finding.value, /7777/);
+});
+
+test('vapidPublicKeyProblem names the shape it refuses', () => {
+	assert.equal(vapidPublicKeyProblem(VALID_VAPID_PUBLIC), null);
+	assert.match(String(vapidPublicKeyProblem('not base64!')), /base64url/);
+	// 65 bytes but a compressed-point prefix — right length, wrong key.
+	const wrongPrefix = Buffer.concat([Buffer.from([2]), Buffer.alloc(64, 1)]).toString('base64url');
+	assert.match(String(vapidPublicKeyProblem(wrongPrefix)), /uncompressed P-256 point/);
 });
 
 test('does NOT enforce PUBLIC_SENTRY_DSN (error reporting is optional)', () => {
@@ -270,4 +520,147 @@ test('CLI exits 1 on the CI placeholder URL', () => {
 	});
 	assert.equal(r.status, 1);
 	assert.match(r.stderr, /placeholder/i);
+});
+
+// --- What the two deny-lists let through. decisions § 774.
+//
+// The rule read "must be a real https://*.supabase.co URL" and was implemented
+// as a placeholder-host match plus a four-entry loopback list, so every
+// misconfiguration outside those two lists passed. All of these did.
+
+test('refuses a value that is not a URL at all', () => {
+	for (const url of ['abcdefghijklmnopqrst', 'TODO-set-me', 'db.abcd.supabase.co']) {
+		assert.match(productionUrlProblem(url) ?? '', /Not a URL/, url);
+	}
+});
+
+test('refuses a plaintext endpoint on an otherwise real host', () => {
+	assert.match(productionUrlProblem('http://abcd.supabase.co') ?? '', /not https/);
+	assert.equal(productionUrlProblem('https://abcd.supabase.co'), null);
+});
+
+test('refuses a Postgres connection string, and does not echo its password', () => {
+	// PUBLIC_* is inlined into every client bundle by Vite, so this one
+	// publishes a database password — and the finding that refuses it must not
+	// print the password into a CI log either.
+	const url = 'postgresql://postgres:hunter2@db.abcd.supabase.co:5432/postgres';
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: url,
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
+		PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+	});
+	assert.equal(r.ok, false);
+	assert.match(r.findings[0].reason, /not https/);
+	assert.doesNotMatch(r.findings[0].value, /hunter2/);
+	assert.doesNotMatch(r.findings[0].value, /postgres:/);
+	assert.equal(redactCredentials('https://abcd.supabase.co/x'), 'https://abcd.supabase.co/x');
+});
+
+test('refuses a host that resolves only on a private network or inside a container', () => {
+	for (const url of [
+		'http://192.168.1.10:24321',
+		'https://172.16.4.4',
+		'http://169.254.1.1',
+		'https://supabase.internal',
+		'https://db.local',
+		'http://[::1]:24321',
+	]) {
+		assert.match(productionUrlProblem(url) ?? '', /loopback \/ private \/ emulator/, url);
+	}
+	assert.match(productionUrlProblem('http://kong:8000') ?? '', /no dot/);
+});
+
+test('a public https host on a domain that is not supabase.co is allowed', () => {
+	// A self-hosted Supabase behind a custom domain is a legitimate production
+	// config, so the rule is https-on-a-public-host, not `*.supabase.co`.
+	assert.equal(productionUrlProblem('https://supabase.threkir.com'), null);
+});
+
+/** A release env with nothing wrong in it, so a case adds exactly one fault. */
+const RELEASE_ENV = {
+	PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+	PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+	PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
+};
+
+test('the optional origins may be absent — unset is a real configuration', () => {
+	// siteOrigin folds an empty value to DEFAULT_SITE_URL, the live hub
+	// reports itself off, and the export hub falls back to the Edge Function.
+	// None of the three is required, so absence must not fail a release.
+	const r = checkProductionEnv({ ...RELEASE_ENV });
+	assert.equal(r.ok, true);
+});
+
+test('a loopback PUBLIC_SITE_URL is refused — it bakes localhost canonicals', () => {
+	// The one that fails most quietly: every prerendered share page carries a
+	// <link rel="canonical"> and an og:url built off this origin, so a value
+	// inherited from .env.development ships localhost to every crawler and
+	// every unfurl, with nothing at runtime to notice.
+	const r = checkProductionEnv({ ...RELEASE_ENV, PUBLIC_SITE_URL: 'http://localhost:7777' });
+	assert.equal(r.ok, false);
+	assert.deepEqual(r.findings.map((f) => f.envVar), ['PUBLIC_SITE_URL']);
+	assert.match(r.findings[0].reason, /loopback/);
+});
+
+test('a loopback live or export hub is refused', () => {
+	// Both are absolute bases the client concatenates paths onto, so a
+	// loopback value posts each runner's telemetry at their own machine and
+	// enqueues each export against nothing.
+	const r = checkProductionEnv({
+		...RELEASE_ENV,
+		PUBLIC_LIVE_HUB_URL: 'http://127.0.0.1:8080',
+		PUBLIC_EXPORT_HUB_URL: 'http://host.docker.internal:8080',
+	});
+	assert.equal(r.ok, false);
+	assert.deepEqual(
+		r.findings.map((f) => f.envVar).sort(),
+		['PUBLIC_EXPORT_HUB_URL', 'PUBLIC_LIVE_HUB_URL'],
+	);
+});
+
+test('real optional origins pass', () => {
+	const r = checkProductionEnv({
+		...RELEASE_ENV,
+		PUBLIC_SITE_URL: 'https://threkir.com',
+		PUBLIC_LIVE_HUB_URL: 'https://live.threkir.com',
+		PUBLIC_EXPORT_HUB_URL: 'https://export.threkir.com/',
+	});
+	assert.equal(r.ok, true);
+});
+
+test('an optional origin that is not a URL at all is refused', () => {
+	const r = checkProductionEnv({ ...RELEASE_ENV, PUBLIC_EXPORT_HUB_URL: 'TODO-set-me' });
+	assert.equal(r.ok, false);
+	assert.deepEqual(r.findings.map((f) => f.envVar), ['PUBLIC_EXPORT_HUB_URL']);
+});
+
+test('every origin env_isolation guards on the dev side is answered on the prod side', () => {
+	// The two guards are mirrors: one refuses these when they are NOT loopback
+	// in dev, the other when they ARE in a release. A var named on only one
+	// side is a direction nobody is watching, which is what left the two
+	// route-generation engines unguarded in dev and the three origins here
+	// unguarded in prod. Server-only vars are dev-side only by design — they
+	// never reach a client bundle — so the mirror is over the PUBLIC_ ones.
+	const guardSrc = readFileSync(
+		fileURLToPath(new URL('./env_isolation.mjs', import.meta.url)),
+		'utf-8',
+	);
+	const listBlock = guardSrc.match(/KNOWN_ENV_VARS\s*=\s*\[([\s\S]*?)\];/);
+	assert.ok(listBlock, 'Could not locate KNOWN_ENV_VARS in env_isolation.mjs.');
+	const devPublicOrigins = [...listBlock[1].matchAll(/'(PUBLIC_[A-Z0-9_]*)'/g)].map((m) => m[1]);
+	assert.ok(devPublicOrigins.length >= 4, 'KNOWN_ENV_VARS unexpectedly small.');
+
+	const prodSrc = readFileSync(SCRIPT_PATH, 'utf-8');
+	for (const name of devPublicOrigins) {
+		// PUBLIC_OSRM_URL is guarded in dev only because a stale value in a
+		// .env.local should still be flagged; nothing reads it since the proxy
+		// landed, so a release has nothing to bake it into.
+		if (name === 'PUBLIC_OSRM_URL') continue;
+		assert.match(
+			prodSrc,
+			new RegExp(`\\b${name}\\b`),
+			`${name} is guarded against a prod value in dev but nothing checks it in a release build.`,
+		);
+	}
 });

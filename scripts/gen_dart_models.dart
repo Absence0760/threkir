@@ -74,8 +74,10 @@ const _tables = <String>{
   'clubs',
   'club_members',
   'club_photos',
+  'club_verification_requests',
   'events',
   'event_attendees',
+  'event_courses',
   'club_posts',
   'training_plans',
   'plan_weeks',
@@ -90,16 +92,24 @@ const _tables = <String>{
   'device_tokens',
   'fitness_snapshots',
   'personal_records',
+  'personal_record_improvements',
   'coach_messages',
   'user_follows',
+  'follow_requests',
   'run_kudos',
+  'run_reactions',
+  'run_comment_likes',
   'run_comments',
   'run_photos',
+  'run_shares',
+  'route_shares',
   'saved_routes',
   'segments',
   'segment_efforts',
   'global_segments',
   'global_segment_efforts',
+  'parks',
+  'park_courses',
   'notifications',
   'run_matched_tracks',
   'gear',
@@ -108,6 +118,7 @@ const _tables = <String>{
   'gear_rotation_members',
   'run_gear',
   'coach_athletes',
+  'plan_change_requests',
   'gym_workouts',
   'gym_sets',
   'exercises',
@@ -119,6 +130,8 @@ const _tables = <String>{
   'meal_template_items',
   'recipes',
   'recipe_ingredients',
+  'nutrition_plans',
+  'nutrition_plan_assignments',
   'body_metrics',
   'safety_contacts',
   'instructor_payout_accounts',
@@ -136,6 +149,9 @@ const _tables = <String>{
   'fundraisers',
   'donations',
   'race_listings',
+  'direct_messages',
+  'direct_message_images',
+  'direct_message_reactions',
 };
 
 // Tables whose pluralised name doesn't follow the strip-trailing-`s` rule
@@ -322,11 +338,10 @@ void _parseCreateTable(String stmt, Map<String, Map<String, _Column>> schema) {
     final line = part.trim();
     if (line.isEmpty) continue;
     final lower = line.toLowerCase();
-    if (lower.startsWith('primary key') ||
-        lower.startsWith('unique') ||
-        lower.startsWith('foreign key') ||
-        lower.startsWith('check') ||
-        lower.startsWith('constraint')) {
+    // Matched as whole keywords: a bare prefix test skipped a column NAMED
+    // `checkpoints` (park_courses) as if it were a table CHECK constraint.
+    if (RegExp(r'^(primary\s+key|unique|foreign\s+key|check|constraint)\b')
+        .hasMatch(lower)) {
       continue;
     }
     final col = _parseColumn(line);
@@ -418,14 +433,16 @@ void _parseAlterTable(String stmt, Map<String, Map<String, _Column>> schema) {
       }
     }
   } else if (lower.startsWith('alter column')) {
-    // Handles:
+    // Handles, alone or as a comma-separated list of clauses:
     //   alter table t alter column col set not null
     //   alter table t alter column col drop not null
-    final parts = lower
+    //   alter table t alter column a drop not null, alter column b drop not null
+    final clauses = lower
         .substring('alter column'.length)
-        .trim()
-        .split(RegExp(r'\s+'));
-    if (parts.length >= 4) {
+        .split(RegExp(r',\s*alter\s+column\s+'));
+    for (final clause in clauses) {
+      final parts = clause.trim().split(RegExp(r'\s+'));
+      if (parts.length < 4) continue;
       final colName = parts[0];
       final op = parts[1];
       if (op == 'set' && parts[2] == 'not' && parts[3] == 'null') {
@@ -436,6 +453,27 @@ void _parseAlterTable(String stmt, Map<String, Map<String, _Column>> schema) {
     }
   }
   // `alter table ... enable row level security` and other forms ignored.
+}
+
+/// [text] with every `check (...)` group removed, parentheses balanced.
+String _withoutCheckBodies(String text) {
+  final out = StringBuffer();
+  final check = RegExp(r'\bcheck\s*\(', caseSensitive: false);
+  var i = 0;
+  for (final m in check.allMatches(text)) {
+    if (m.start < i) continue;
+    out.write(text.substring(i, m.start));
+    var depth = 1;
+    var j = m.end;
+    while (j < text.length && depth > 0) {
+      if (text[j] == '(') depth++;
+      if (text[j] == ')') depth--;
+      j++;
+    }
+    i = j;
+  }
+  out.write(text.substring(i));
+  return out.toString();
 }
 
 /// Parse a single column definition: `name type [constraints]`.
@@ -459,8 +497,10 @@ _Column? _parseColumn(String line) {
   final isArray =
       RegExp(r'\[\s*\]', caseSensitive: false).hasMatch(remainder);
 
+  // A CHECK body can say `other_col is not null`, which says nothing about
+  // this column's own nullability.
   final hasNotNull = RegExp(r'\bnot\s+null\b', caseSensitive: false)
-      .hasMatch(remainder);
+      .hasMatch(_withoutCheckBodies(remainder));
   // Primary keys are implicitly NOT NULL in Postgres.
   final isPrimaryKey = RegExp(r'\bprimary\s+key\b', caseSensitive: false)
       .hasMatch(remainder);
@@ -489,6 +529,35 @@ String? _extractType(String remainder) {
   return match.group(1)!.toLowerCase();
 }
 
+/// Emitted verbatim at the top of `db_rows.dart`.
+///
+/// Postgres renders a `numeric` / `float8` value JSON has no literal for as a
+/// JSON *string* — measured against the local stack, `json_agg` (the shape
+/// PostgREST builds its response with) yields `{"distance_m":"NaN"}` — so a
+/// bare `as num` cast is a `TypeError` on a wire shape the server really
+/// produces, thrown inside `fromJson` where the whole screen dies rather than
+/// one field. A column's own CHECK is no protection: `'NaN'::numeric >= 100`
+/// is true, so `global_segments_distance_m_check` admits it.
+///
+/// An unusable value therefore resolves to each field type's own "no number":
+/// `null` for a nullable column, `double.nan` for a non-nullable one — which
+/// is also exactly what the web twin's `Number(...)` yields, so a row renders
+/// on both platforms and the finiteness screens already in place (e.g.
+/// `sortCatalogue`'s "absent or non-finite sorts LAST") decide what to say
+/// about it. Zero is deliberately not the fallback: a 0 m segment is a
+/// plausible-looking lie where a NaN is unmistakably no answer.
+const String _doubleHelpers = '''
+double? _toDoubleOrNull(Object? value) {
+  final num? n =
+      value is num ? value : (value is String ? num.tryParse(value) : null);
+  if (n == null) return null;
+  final double d = n.toDouble();
+  return d.isFinite ? d : null;
+}
+
+double _toDouble(Object? value) => _toDoubleOrNull(value) ?? double.nan;
+''';
+
 String _emit(Map<String, Map<String, _Column>> schema, Set<String> enums) {
   final out = StringBuffer()
     ..writeln('// GENERATED FILE — DO NOT EDIT.')
@@ -498,7 +567,10 @@ String _emit(Map<String, Map<String, _Column>> schema, Set<String> enums) {
     ..writeln('//')
     ..writeln('// Do not hand-edit. To add a column, add it to the SQL')
     ..writeln('// migration, rerun the generator, and commit both files.')
-    ..writeln();
+    ..writeln()
+    ..writeln("import '../iso_parse.dart';")
+    ..writeln()
+    ..writeln(_doubleHelpers);
 
   final tableOrder = _tables.toList()..sort();
   for (final table in tableOrder) {
@@ -561,6 +633,24 @@ void _emitClass(
     out.writeln('    col${_pascal(c.name)}: ${_toJsonExpr(c, enums)},');
   }
   out.writeln('  };');
+  out.writeln();
+
+  // copyWith — the only way a client should derive a changed row. A
+  // hand-written `XRow(...)` rebuild silently drops every column added after
+  // it was written (decisions § 1836). An argument left null keeps the
+  // current value, so this cannot clear a nullable column back to null.
+  out.writeln('  $className copyWith({');
+  for (final c in cols.values) {
+    final dartType = _dartType(c, enums);
+    final nullable = dartType != 'dynamic' ? '?' : '';
+    out.writeln('    $dartType$nullable ${_camel(c.name)},');
+  }
+  out.writeln('  }) => $className(');
+  for (final c in cols.values) {
+    final f = _camel(c.name);
+    out.writeln('    $f: $f ?? this.$f,');
+  }
+  out.writeln('  );');
 
   out.writeln('}');
 }
@@ -595,9 +685,7 @@ String _fromJsonExpr(_Column c, Set<String> enums) {
           ? '($key as num?)?.toInt()'
           : '($key as num).toInt()';
     case 'double':
-      return c.nullable
-          ? '($key as num?)?.toDouble()'
-          : '($key as num).toDouble()';
+      return c.nullable ? '_toDoubleOrNull($key)' : '_toDouble($key)';
     case 'bool':
       // Non-nullable booleans get the safe-false fallback even though
       // the DB-side NOT NULL guarantees the value is present in fresh
@@ -613,9 +701,18 @@ String _fromJsonExpr(_Column c, Set<String> enums) {
           ? '$key as bool?'
           : '($key as bool?) ?? false';
     case 'DateTime':
+      // Never `DateTime.parse`: it rolls an impossible component through the
+      // calendar rather than refusing it, so an unusable column yields a
+      // confident WRONG instant no caller can tell from a real one. The strict
+      // reader refuses instead (decisions § 1344 / § 1377). A nullable column
+      // degrades to `null` — the same shape `_toDoubleOrNull` takes, and an
+      // answer the field can already hold — while a required one throws, as
+      // the cast it replaces already did; there is no DateTime analogue of
+      // `double.nan` to stand for "no answer", and a sentinel instant would be
+      // exactly the plausible-looking lie § 985 rejected for numbers.
       return c.nullable
-          ? '$key == null ? null : DateTime.parse($key as String)'
-          : 'DateTime.parse($key as String)';
+          ? 'parseIsoStrictValue($key)'
+          : "parseIsoStrictRequired($key, '${c.name}')";
     case 'Map<String, dynamic>':
       return '$key as Map<String, dynamic>$nullCast';
     case 'dynamic':

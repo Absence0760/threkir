@@ -1,0 +1,98 @@
+#!/usr/bin/env node
+// Print the SQL that loads one park's built catalogue into the database
+// (issue #1342, decisions § 2425). Reads the park's `manifest.json` and course
+// GeoJSON, validates them, and writes ONE statement to stdout calling
+// `private.load_park_catalogue`. It connects to nothing: the operator runs the
+// statement as the service role (Studio's SQL editor, or psql on the
+// service-role connection), which creates or updates the park, every course's
+// catalogue segment, its park_courses row and its official route.
+//
+// Run: node scripts/parks/load.mjs scripts/parks/catalogue/us-va/pocahontas \
+//        --club-id <official club uuid> --author-id <club owner/admin uuid> [--enqueue-backfill] > load.sql
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { cataloguePayload, loadSql } from './lib/catalogue_payload.mjs';
+import { parseRelease } from './lib/catalogue_release.mjs';
+
+const USAGE =
+	'usage: node scripts/parks/load.mjs <catalogue/park dir> --club-id <uuid> --author-id <uuid> [--enqueue-backfill]';
+
+/**
+ * @param {string[]} args
+ * @returns {{ dir: string, clubId: string, authorId: string, enqueueBackfill: boolean }}
+ */
+export function parseArgs(args) {
+	/** @type {string[]} */
+	const positional = [];
+	/** @type {Record<string, string>} */
+	const values = {};
+	let enqueueBackfill = false;
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === '--enqueue-backfill') enqueueBackfill = true;
+		else if (arg === '--club-id' || arg === '--author-id') {
+			const value = args[++i];
+			if (value === undefined || value.startsWith('--')) throw new Error(`${arg} needs a value\n${USAGE}`);
+			values[arg] = value;
+		} else if (arg.startsWith('--')) throw new Error(`unknown option ${arg}\n${USAGE}`);
+		else positional.push(arg);
+	}
+	if (positional.length !== 1 || !values['--club-id'] || !values['--author-id']) throw new Error(USAGE);
+	return { dir: positional[0], clubId: values['--club-id'], authorId: values['--author-id'], enqueueBackfill };
+}
+
+/** @param {string} dir */
+export function readPayload(dir) {
+	const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+	return cataloguePayload(manifest, (file) => {
+		if (typeof file !== 'string' || file !== path.basename(file)) {
+			throw new Error(`course GeoJSON ${file} must be a file name inside ${dir}`);
+		}
+		return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+	});
+}
+
+/**
+ * The park's `release` from its built manifest (decisions § 2460).
+ *
+ * @param {string} dir
+ */
+export function readRelease(dir) {
+	const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+	return parseRelease(manifest.release, path.join(dir, 'manifest.json'));
+}
+
+/**
+ * The one park's load statement, refused for a staged park: this fallback
+ * holds a park back exactly as the release sync does.
+ *
+ * @param {string} dir
+ * @param {{ clubId: string, authorId: string, enqueueBackfill: boolean }} opts
+ */
+export function parkLoadSql(dir, opts) {
+	const release = readRelease(dir);
+	const payload = readPayload(dir);
+	if (release.status === 'staged') {
+		throw new Error(`${payload.park.slug} is staged and does not load until its park.json release is { "status": "live" }. Reason: ${release.reason}`);
+	}
+	return { payload, sql: loadSql(payload, opts) };
+}
+
+function main() {
+	try {
+		const { dir, clubId, authorId, enqueueBackfill } = parseArgs(process.argv.slice(2));
+		const { payload, sql } = parkLoadSql(dir, { clubId, authorId, enqueueBackfill });
+		process.stdout.write(sql);
+		console.error(
+			`${payload.park.slug}: ${payload.courses.length} courses (${payload.courses.map((c) => c.slug).join(', ')})`,
+		);
+	} catch (err) {
+		console.error(err instanceof Error ? err.message : String(err));
+		process.exit(2);
+	}
+}
+
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

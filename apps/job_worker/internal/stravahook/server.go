@@ -46,14 +46,20 @@ import (
 //   - POST /v1/strava/webhook  — activity event (we parse, gate by
 //     freshness + dedupe, enqueue a `strava_event` job, return 200).
 //
-// Both methods require the URL-query `?secret=<STRAVA_WEBHOOK_SECRET>`
-// (timing-safe compared) — Strava preserves the configured URL's
-// query string on every callback so the secret rides along on both
-// GET and POST.
+// Both methods require the shared secret, timing-safe compared. It is
+// accepted from the `X-Webhook-Secret` header (preferred) or from the
+// URL-query `?secret=<STRAVA_WEBHOOK_SECRET>` — Strava preserves the
+// configured URL's query string on every callback, and its subscription
+// API accepts only a URL, so the query path is the only one Strava
+// itself can use today. That path writes the secret into every request
+// log line, which is why the header exists and wins when present;
+// retiring the query path needs a Strava re-registration plus a
+// rotation (a pre-deploy ops item, see docs/ops/deployment.md).
 type Server struct {
-	// WebhookSecret is the shared secret embedded in the registered
-	// callback URL's `?secret=` query param. Without this set every
-	// request is rejected — the deployed worker must populate it.
+	// WebhookSecret is the shared secret the caller presents in the
+	// `X-Webhook-Secret` header or the registered callback URL's
+	// `?secret=` query param. Without this set every request is
+	// rejected — the deployed worker must populate it.
 	WebhookSecret string
 
 	// VerifyToken is the value Strava sends back to us on the GET
@@ -122,13 +128,42 @@ type WebhookEventsStore interface {
 // subscription URL. Kept in this package (rather than importing
 // `internal`) so the hook package stays a leaf — tests don't
 // need to pull in the worker.
+//
+// SubscriptionID and Updates are declared because the decoder refuses
+// unknown fields and Strava sends both on every event; without them every
+// real delivery was a 400.
 type StravaEventPayload struct {
-	ObjectType string `json:"object_type"`
-	ObjectID   int64  `json:"object_id"`
-	AspectType string `json:"aspect_type"`
-	OwnerID    int64  `json:"owner_id"`
-	EventTime  int64  `json:"event_time"`
+	ObjectType     string         `json:"object_type"`
+	ObjectID       int64          `json:"object_id"`
+	AspectType     string         `json:"aspect_type"`
+	OwnerID        int64          `json:"owner_id"`
+	EventTime      int64          `json:"event_time"`
+	SubscriptionID int64          `json:"subscription_id,omitempty"`
+	Updates        map[string]any `json:"updates,omitempty"`
 }
+
+// isAthleteDeauthorization mirrors internal.StravaEventPayload's method of
+// the same name (this package stays a leaf).
+func (p StravaEventPayload) isAthleteDeauthorization() bool {
+	if p.ObjectType != "athlete" || p.AspectType != "update" {
+		return false
+	}
+	switch v := p.Updates["authorized"].(type) {
+	case string:
+		return v == "false"
+	case bool:
+		return !v
+	}
+	return false
+}
+
+// WebhookSecretHeader is the request header a caller may carry the
+// shared secret in instead of the URL query string. A query-string
+// secret is written verbatim into every request log line; a header is
+// not. Mirrors WEBHOOK_SECRET_HEADER in the Edge Function twin
+// (apps/backend/supabase/functions/_shared/webhook_security.ts) — the
+// two receivers must not drift on the name.
+const WebhookSecretHeader = "X-Webhook-Secret"
 
 // RegisterRoutes mounts the GET + POST handlers on [mux].
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
@@ -153,12 +188,19 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	// Per-IP throttle BEFORE the secret-compare. Matches the EF
 	// pattern (60/hour fail-closed). /audit/strava Critical #2.
-	if !s.ipLimiter().allow(clientIP(r)) {
+	if !s.ipLimiter().allow(clientIP(r), s.now()) {
 		w.Header().Set("Retry-After", "60")
 		http.Error(w, `{"error":"rate_limited"}`, http.StatusTooManyRequests)
 		return
 	}
-	supplied := r.URL.Query().Get("secret")
+	// Header first, and NOT as a preference among equals: when the
+	// caller supplies it, it is the value we judge, so a wrong header
+	// gets no second try at the query param. Both collapse to one
+	// value so both go through the same constant-time compare.
+	supplied := r.Header.Get(WebhookSecretHeader)
+	if supplied == "" {
+		supplied = r.URL.Query().Get("secret")
+	}
 	if !timingSafeEqual(supplied, s.WebhookSecret) {
 		http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 		return
@@ -223,8 +265,30 @@ func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// An athlete revoking our access. Strava API terms require acting on
+	// it, so it is enqueued for the worker to disconnect the integration.
+	// Every exit is a 200: Strava retries a non-200 and a retry cannot do
+	// what this attempt could not. Not deduped (disconnecting is
+	// idempotent) but freshness-gated, so a captured POST replayed later
+	// cannot cut a re-established connection.
+	if event.isAthleteDeauthorization() {
+		if event.OwnerID == 0 || event.EventTime == 0 || !s.freshnessOK(event.EventTime) {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "skipped": "unusable_deauthorization"})
+			return
+		}
+		jobID, err := s.Enqueuer.EnqueueStravaEvent(r.Context(), event)
+		if err != nil {
+			s.log().Error("strava webhook: deauthorization enqueue failed",
+				"err", err, "owner_id", event.OwnerID)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "enqueue_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job_id": jobID})
+		return
+	}
+
 	// Strava sends webhook events for every subscribed object type
-	// (activity / athlete). We only act on activity events; everything
+	// (activity / athlete). Beyond a deauthorization we only act on activity events; everything
 	// else gets a fast 200 so Strava drops the event from its retry
 	// queue without us burning a `webhook_events` row.
 	if event.ObjectType != "activity" {
@@ -311,10 +375,7 @@ func (s *Server) freshnessOK(eventTimeSec int64) bool {
 	if skew <= 0 {
 		skew = 60 * time.Second
 	}
-	now := time.Now()
-	if s.Now != nil {
-		now = s.Now()
-	}
+	now := s.now()
 	eventTime := time.Unix(eventTimeSec, 0)
 	age := now.Sub(eventTime)
 	if age > window {
@@ -388,6 +449,13 @@ func clientIP(r *http.Request) string {
 // requests / hour matches the EF rate-limit (`audit/strava` Critical
 // #2). A legitimate Strava callback IP set sees << 60/hour on this
 // endpoint; an attacker grinding the secret gets throttled fast.
+func (s *Server) now() time.Time {
+	if s.Now != nil {
+		return s.Now()
+	}
+	return time.Now()
+}
+
 func (s *Server) ipLimiter() *ipRateLimiter {
 	s.ipLimitOnce.Do(func() {
 		s.ipLimitImpl = newIPRateLimiter(60, time.Hour)
@@ -395,31 +463,42 @@ func (s *Server) ipLimiter() *ipRateLimiter {
 	return s.ipLimitImpl
 }
 
+// maxIPBuckets bounds the limiter's table. The key comes from clientIP, which
+// trusts caller-supplied forwarding headers, and the throttle runs BEFORE the
+// shared-secret compare — so an unauthenticated caller mints one bucket per
+// fabricated header value. Retained for the process lifetime that is an OOM,
+// and the process is the one the job-drain loop runs in (500k fabricated IPs
+// held ~88 MB and were never released).
+const maxIPBuckets = 4096
+
 type ipRateLimiter struct {
 	rate     int
 	interval time.Duration
-	buckets  sync.Map // ip → *ipBucket
+
+	mu       sync.Mutex
+	buckets  map[string]*ipBucket
+	lastEvic time.Time
 }
 
 type ipBucket struct {
-	mu       sync.Mutex
 	tokens   float64
 	lastFill time.Time
 }
 
 func newIPRateLimiter(rate int, interval time.Duration) *ipRateLimiter {
-	return &ipRateLimiter{rate: rate, interval: interval}
+	return &ipRateLimiter{rate: rate, interval: interval, buckets: map[string]*ipBucket{}}
 }
 
-func (l *ipRateLimiter) allow(ip string) bool {
-	now := time.Now()
-	v, _ := l.buckets.LoadOrStore(ip, &ipBucket{
-		tokens:   float64(l.rate),
-		lastFill: now,
-	})
-	b := v.(*ipBucket)
-	b.mu.Lock()
-	defer b.mu.Unlock()
+func (l *ipRateLimiter) allow(ip string, now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	b, ok := l.buckets[ip]
+	if !ok {
+		l.evict(now)
+		b = &ipBucket{tokens: float64(l.rate), lastFill: now}
+		l.buckets[ip] = b
+	}
 	elapsed := now.Sub(b.lastFill).Seconds()
 	refill := elapsed * float64(l.rate) / l.interval.Seconds()
 	if refill > 0 {
@@ -437,3 +516,27 @@ func (l *ipRateLimiter) allow(ip string) bool {
 	return false
 }
 
+// evict runs under l.mu, on the one path about to add a key.
+func (l *ipRateLimiter) evict(now time.Time) {
+	if len(l.buckets) < maxIPBuckets && now.Sub(l.lastEvic) < l.interval {
+		return
+	}
+	l.lastEvic = now
+	for ip, b := range l.buckets {
+		// A bucket idle longer than the refill interval is back at the full
+		// token cap, so dropping it loses no throttle state.
+		if now.Sub(b.lastFill) >= l.interval {
+			delete(l.buckets, ip)
+		}
+	}
+	if len(l.buckets) < maxIPBuckets {
+		return
+	}
+	// Still full with every bucket live: the table is being filled faster than
+	// it drains, which takes a flood of fabricated forwarding headers. Reset
+	// it. Forgetting throttle state for one window is a far smaller failure
+	// than exhausting the process — and the secret behind this gate is
+	// timing-safe compared and refused below 32 chars, so the throttle is
+	// defence in depth, not the thing holding the door.
+	clear(l.buckets)
+}

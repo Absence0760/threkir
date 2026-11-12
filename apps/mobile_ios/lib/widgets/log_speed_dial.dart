@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppMotion, motionDuration;
 
@@ -31,6 +29,10 @@ const List<Offset> _kSlotUnits = [
   Offset(0.74, 0.67), // right, a bit lower
 ];
 
+// With only two actions (one modality switched off) the top slot would leave
+// the pair lopsided, so they take the two flanking slots instead.
+const List<int> _kPairSlots = [1, 2];
+
 // Slot units when fanning from an [anchor] (the NavigationRail Log button on
 // expanded layouts): a shallow arc opening to the right of the anchor.
 const List<Offset> _kAnchoredSlotUnits = [
@@ -39,50 +41,55 @@ const List<Offset> _kAnchoredSlotUnits = [
   Offset(0.67, -0.74), // right, below
 ];
 
-/// Fan the three capture actions (Run / Lift / Food) out as labelled buttons
+/// Fan the capture actions (Run / Lift / Food, less any switched off) out as labelled buttons
 /// in a shallow arc around the centre Log FAB, over a dismiss scrim. Resolves
 /// to the picked [LogAction], or null on scrim tap / back — same contract as
 /// [showLogSheet] so the caller (HomeScreen) still owns the navigation.
 /// Distinct from the History Log FAB, which keeps the bottom sheet.
+///
+/// The fan is a transparent route rather than a bare `OverlayEntry`, because
+/// only what sits on the Navigator answers the system back gesture: as an
+/// overlay entry, back reached past the open fan and closed the app with it
+/// still on screen. The route carries no transition of its own — the arc's
+/// own stagger is the entrance.
 Future<LogAction?> showLogSpeedDial({
   required BuildContext context,
   LogAction? recent,
+  Set<LogAction> hidden = const {},
   Offset? anchor,
 }) {
-  final overlay = Overlay.of(context);
-  final completer = Completer<LogAction?>();
   final fabCentreFromBottom = MediaQuery.paddingOf(context).bottom + _kBarHeight;
-  late OverlayEntry entry;
-  entry = OverlayEntry(
-    builder: (_) => _LogSpeedDial(
-      recent: recent,
-      fabCentreFromBottom: fabCentreFromBottom,
-      anchor: anchor,
-      onClose: (action) {
-        entry.remove();
-        if (!completer.isCompleted) completer.complete(action);
-      },
+  return Navigator.of(context).push<LogAction>(
+    PageRouteBuilder<LogAction>(
+      opaque: false,
+      barrierDismissible: false,
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      pageBuilder: (_, _, _) => _LogSpeedDial(
+        recent: recent,
+        hidden: hidden,
+        fabCentreFromBottom: fabCentreFromBottom,
+        anchor: anchor,
+      ),
     ),
   );
-  overlay.insert(entry);
-  return completer.future;
 }
 
 class _LogSpeedDial extends StatefulWidget {
   final LogAction? recent;
+  final Set<LogAction> hidden;
   final double fabCentreFromBottom;
 
   /// Global centre of the launching button. Null means the default
   /// bottom-docked centre FAB; non-null fans the arc to the right of the
   /// anchor instead (the NavigationRail Log button on expanded layouts).
   final Offset? anchor;
-  final void Function(LogAction? action) onClose;
 
   const _LogSpeedDial({
     required this.recent,
+    required this.hidden,
     required this.fabCentreFromBottom,
     required this.anchor,
-    required this.onClose,
   });
 
   @override
@@ -113,18 +120,18 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
   }
 
   // Hand the result straight to the caller so navigation is as snappy as the
-  // old bottom sheet; the overlay is torn down at once (the fan-out is the
+  // old bottom sheet; the route is torn down at once (the fan-out is the
   // entrance flourish, there's no exit dance to wait on).
   void _close(LogAction? action) {
     if (_closing) return;
     _closing = true;
-    widget.onClose(action);
+    Navigator.of(context).pop(action);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final actions = orderedLogActions(widget.recent);
+    final actions = orderedLogActions(widget.recent, hidden: widget.hidden);
     final screen = MediaQuery.sizeOf(context);
     return Stack(
       children: [
@@ -173,8 +180,9 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
       LogAction.lift => (Icons.fitness_center, l10n.logLift),
       LogAction.food => (Icons.restaurant, l10n.logFood),
     };
+    final slot = count == 2 ? _kPairSlots[index] : index;
     final unit =
-        widget.anchor == null ? _kSlotUnits[index] : _kAnchoredSlotUnits[index];
+        widget.anchor == null ? _kSlotUnits[slot] : _kAnchoredSlotUnits[slot];
     // Stagger the entrance so the icons pop out of the button in turn.
     final start = (index / count) * 0.4;
     final anim = CurvedAnimation(

@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/route_description.dart';
@@ -139,6 +140,46 @@ void main() {
     expect(
       text,
       'Track is a 5.0 km road loop route with little to no elevation change.',
+    );
+  });
+  test('assembleEnglish states miles and feet for a miles viewer', () {
+    final parts = describeRoute(const RouteDescriptionInput(
+      name: 'Summit Trail',
+      distanceM: 12000,
+      elevationM: 480,
+      surface: 'trail',
+      start: LatLng(51.5, -0.12),
+      end: LatLng(51.7, 0.0),
+    ));
+    final text = assembleEnglish(parts, 'Summit Trail', DistanceUnit.mi);
+    expect(
+      text,
+      'Summit Trail is a 7.5 mi trail point-to-point route with 1575 ft of '
+      'climbing (hilly, about 211 ft per mile).',
+    );
+    expect(text, isNot(matches(RegExp(r'\bkm\b|\d m\b'))));
+    final short = describeRoute(const RouteDescriptionInput(
+      name: 'Strides',
+      distanceM: 800,
+      elevationM: 0,
+    ));
+    expect(
+      assembleEnglish(short, 'Strides', DistanceUnit.mi),
+      'Strides is a 0.50 mi point-to-point route with little to no elevation '
+      'change.',
+    );
+  });
+  test('shownDescription keeps the localised template unless the model wrote the text', () {
+    const localised = 'Parcours est une boucle de 5,0 km.';
+    expect(
+      shownDescription(localised,
+          description: 'Parcours is a 5.0 km loop route.', source: 'template'),
+      localised,
+    );
+    expect(
+      shownDescription(localised,
+          description: 'A quick, flat loop.', source: 'ai'),
+      'A quick, flat loop.',
     );
   });
 }

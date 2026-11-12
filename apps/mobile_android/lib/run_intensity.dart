@@ -87,6 +87,8 @@ IntensityBreakdown computeIntensityBreakdown(
   }
   if (windowDays <= 0) return IntensityBreakdown.empty;
 
+  // elapsed-time: web's twin computes `nowMs - windowDays * 86_400_000`, so an
+  // absolute span is the matched semantics — a calendar step would diverge.
   final cutoff = now.subtract(Duration(days: windowDays));
   final zoneSeconds = <int>[0, 0, 0, 0, 0];
   var hrTracked = 0;
@@ -114,7 +116,9 @@ IntensityBreakdown computeIntensityBreakdown(
     } else {
       idx = 4;
     }
-    zoneSeconds[idx] += r.duration.inSeconds;
+    if (isPlausibleRunDuration(r.duration.inSeconds)) {
+      zoneSeconds[idx] += r.duration.inSeconds;
+    }
   }
   final total = zoneSeconds.fold<int>(0, (a, b) => a + b);
   return IntensityBreakdown(

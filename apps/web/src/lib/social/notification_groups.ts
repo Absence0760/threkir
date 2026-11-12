@@ -19,6 +19,9 @@ export interface GroupableNotification {
 	plan_id: string | null;
 	achievement_id: string | null;
 	challenge_id: string | null;
+	course_alert_id?: string | null;
+	/** The group a message or group_invite is about (20271217000001). */
+	conversation_id?: string | null;
 	read_at: string | null;
 	created_at: string;
 }
@@ -56,25 +59,67 @@ function targetKeyFor(n: GroupableNotification): string {
 		case 'comment':
 		case 'comment_reply':
 		case 'run_completed':
+		case 'reaction':
+		case 'comment_like':
+		case 'mention':
 			return n.run_id ? `run:${n.run_id}` : solo;
 		case 'follow':
 			// Followers all target the recipient — collapse them together.
 			return 'follow';
+		case 'follow_request':
+			return 'follow_request';
 		case 'event_rsvp':
 		case 'event_cancel':
 		case 'event_reminder':
+		case 'event_updated':
+		case 'race_starting_soon':
+		case 'race_start_moved':
 			return n.event_id ? `event:${n.event_id}` : solo;
 		case 'club_post':
+		case 'club_join_request':
+		case 'club_join_approved':
+		case 'club_verification':
 			return n.club_id ? `club:${n.club_id}` : solo;
 		case 'plan_update':
 		case 'plan_assigned':
+		case 'plan_ai_edit':
+		case 'plan_change_request':
+		case 'plan_change_decision':
 			return n.plan_id ? `plan:${n.plan_id}` : solo;
 		case 'achievement':
 			return n.achievement_id ? `achievement:${n.achievement_id}` : solo;
 		case 'challenge_complete':
 			return n.challenge_id ? `challenge:${n.challenge_id}` : solo;
 		case 'message':
+			// A group message is about its group, not its sender: two members
+			// writing in one group is one burst, and one person writing in two
+			// groups and to the viewer 1:1 is three (decisions § 2468).
+			if (n.conversation_id) return `group:${n.conversation_id}`;
 			return n.actor_id ? `message:${n.actor_id}` : solo;
+		case 'group_invite':
+			// Each is a decision to join or decline one group: "and 1 other"
+			// would hide an invitation.
+			return solo;
+		case 'personal_record':
+			// One per run (the trigger collapses the brackets a run improved),
+			// and two runs are two records: "and 1 other" would hide one.
+			return solo;
+		case 'course_alert':
+			// One notice per recipient per alert, and two alerts are two
+			// different course changes: never collapse them.
+			return solo;
+		case 'park_course_report':
+			// An admin notice with no target: each points at a course in the
+			// queue, and "and 1 other" would hide a land-manager deadline.
+			return solo;
+		case 'organiser_dispute':
+			// Each is a reviewer's decision on one dispute, and a rename notice
+			// carries its own deadline: "and 1 other" would hide one.
+			return solo;
+		case 'workout_reminder':
+			// One a day, each about that day's session: yesterday's is not a
+			// second actor on today's, so they never collapse.
+			return solo;
 		default:
 			return solo;
 	}

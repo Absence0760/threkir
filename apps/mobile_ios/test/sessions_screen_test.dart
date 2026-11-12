@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/screens/session_detail_screen.dart';
 import '../lib/screens/sessions_screen.dart';
+import '../lib/widgets/official_badge.dart';
 
 SessionPlanRow _plan(String id, String title,
         {String? discipline, int? estMin}) =>
@@ -47,29 +48,44 @@ SessionPlanItemRow _item(
     );
 
 class _FakeApi extends ApiClient {
-  _FakeApi({this.plans = const [], this.items = const []});
+  _FakeApi({
+    this.plans = const [],
+    this.items = const [],
+    this.officialIds = const {},
+  });
 
   final List<SessionPlanRow> plans;
+  final Set<String> officialIds;
   final List<SessionPlanItemRow> items;
 
   @override
-  Future<List<SessionPlanRow>> fetchSessionPlans() async => plans;
+  Future<List<({SessionPlanRow plan, bool isOfficial})>>
+      fetchSessionPlans() async => [
+            for (final p in plans) (plan: p, isOfficial: officialIds.contains(p.id)),
+          ];
 
   @override
   Future<({
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async {
     final p = plans.where((e) => e.id == id).firstOrNull;
     if (p == null) return null;
-    return (plan: p, blocks: const <SessionPlanBlockRow>[], items: items);
+    return (
+      plan: p,
+      blocks: const <SessionPlanBlockRow>[],
+      items: items,
+      isOfficial: false,
+    );
   }
 }
 
 class _FailingApi extends ApiClient {
   @override
-  Future<List<SessionPlanRow>> fetchSessionPlans() async {
+  Future<List<({SessionPlanRow plan, bool isOfficial})>>
+      fetchSessionPlans() async {
     throw Exception('network down');
   }
 }
@@ -81,10 +97,11 @@ class _FailThenSucceedApi extends ApiClient {
   int calls = 0;
 
   @override
-  Future<List<SessionPlanRow>> fetchSessionPlans() async {
+  Future<List<({SessionPlanRow plan, bool isOfficial})>>
+      fetchSessionPlans() async {
     calls++;
     if (calls == 1) throw Exception('network down');
-    return plans;
+    return [for (final p in plans) (plan: p, isOfficial: false)];
   }
 }
 
@@ -127,6 +144,36 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Morning Flow'), findsOneWidget);
       expect(find.textContaining('Vinyasa'), findsOneWidget);
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('an official plan carries the Official badge; a personal one not',
+      (tester) async {
+    final dir = Directory.systemTemp.createTempSync('sessions_official');
+    try {
+      final gym = await _gymStore(dir);
+      final api = _FakeApi(
+        plans: [
+          _plan('p1', 'Organiser Flow', discipline: 'Vinyasa'),
+          _plan('p2', 'My Flow', discipline: 'Yin'),
+        ],
+        officialIds: const {'p1'},
+      );
+      await tester
+          .pumpWidget(_wrap(SessionsScreen(api: api, gymStore: gym)));
+      await tester.pumpAndSettle();
+      final official = find.byType(OfficialBadge);
+      expect(official, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: official, matching: find.byType(ListTile)),
+          matching: find.text('Organiser Flow'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Official'), findsOneWidget);
     } finally {
       dir.deleteSync(recursive: true);
     }

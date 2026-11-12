@@ -8,6 +8,23 @@ void main() {
     dotenv.loadFromString(isOptional: true);
   });
 
+  group('stravaWebConnectUrl', () {
+    tearDown(() => dotenv.loadFromString(isOptional: true));
+
+    test('follows the build\'s web origin, not production', () {
+      dotenv.loadFromString(
+        envString: 'WEB_BASE_URL=https://preview.threkir.com',
+      );
+      expect(stravaWebConnectUrl(),
+          'https://preview.threkir.com/settings/integrations');
+    });
+
+    test('falls back to production when no origin is set', () {
+      expect(stravaWebConnectUrl(),
+          'https://threkir.com/settings/integrations');
+    });
+  });
+
   group('isStravaConfigured', () {
     test('false when STRAVA_CLIENT_ID is absent', () {
       expect(isStravaConfigured(), isFalse);

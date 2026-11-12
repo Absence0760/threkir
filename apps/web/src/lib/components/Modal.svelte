@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		open: boolean;
@@ -8,6 +8,9 @@
 		title: string;
 		wide?: boolean;
 		narrow?: boolean;
+		/// Fill the viewport (less a small inset) — for a surface that is
+		/// itself the content, like the 3D course preview's map.
+		fullscreen?: boolean;
 		bodyClass?: string;
 		/// When false, the backdrop is fully transparent — outside-
 		/// click-to-close still works, but the page underneath isn't
@@ -29,6 +32,7 @@
 		title,
 		wide = false,
 		narrow = false,
+		fullscreen = false,
 		bodyClass = '',
 		dimBackdrop = true,
 		children,
@@ -135,6 +139,7 @@
 		class="modal"
 		class:modal-wide={wide}
 		class:modal-narrow={narrow}
+		class:modal-fullscreen={fullscreen}
 		role="dialog"
 		aria-modal="true"
 		aria-label={title}

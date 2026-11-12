@@ -45,14 +45,29 @@ import type { Database } from './database.types';
 
 type RunRow = Database['public']['Tables']['runs']['Row'];
 
-export type Run = Omit<RunRow, 'source' | 'metadata'> & {
-	source: RunSource;                          // narrow from string
-	metadata: Record<string, unknown> | null;   // loosen from Json
-	track: TrackPoint[] | null;                 // lazy-loaded, not a column
+export type Run = Omit<RunRow, 'source' | 'metadata' | 'activity_type'> & {
+	source: RunSource;                  // narrow from string
+	activity_type: ActivityType;        // narrow from string
+	metadata: JsonObject | null;        // the bag `Json`'s object member describes
+	track: TrackPoint[] | null;         // lazy-loaded, not a column
 };
 ```
 
 The `Omit<...> & { ... }` pattern is deliberate: start from what the DB gives us, override only the fields where the client has better knowledge than the schema.
+
+**A narrowed field has to be narrowed on the way in, not merely declared.** `Run.source` says `RunSource`; the row says `string`; nothing makes the second become the first except a call to `parseRunSource` at the read. `types.ts` carries one such parser per narrowed union (`parseRunSource`, `parseRouteSurface`, `parseActivityType`, `parseIntegrationProvider`, `parseJoinPolicy`, `parsePreferredUnit`, `parseSubscriptionTier`) and every read boundary in `data.ts` goes through the right one — `asRun`, `asRoute`, `asClub`, `asGlobalSegment` do it once per table so the several reads of a table cannot drift into doing different subsets of it. Two of the fallbacks are load-bearing: `parseSubscriptionTier` fails closed to `'free'` because the paywall reads it, and `parseJoinPolicy` to `'request'`. See [decisions § 1364](decisions.md).
+
+**A jsonb column is `JsonObject`, not `Record<string, unknown>`.** `unknown` admits a `Date`, a `Map` and a function — none of which survive `JSON.stringify` as themselves, and none of which the column can hold — and it is not assignable to the generated `Json`, so the bag needs a cast at every point it meets the column it lives in. Note the TypeScript rule behind this: an object type gets an implicit index signature only as a type **alias**, never as an `interface`, so a shape written `export interface X {}` is refused as a `Json` however JSON-shaped it is. Declare anything destined for a jsonb column as an alias. [decisions § 1363](decisions.md).
+
+**The Edge Functions read this same file — it is the only artifact, not the web one.** Every Supabase client under `apps/backend/supabase/functions/` is built as `createClient<Database>(...)` and every client-shaped parameter is typed `DbClient`, both imported from `_shared/database.ts`, which re-exports `apps/web/src/lib/database.types.ts` across the tree boundary. That relative path is deliberately the only one in the functions tree that leaves `apps/backend`: a second generated copy would need a second drift check and would rot between the two, and if the generated file ever moves, exactly one line changes. Nothing crosses the boundary at runtime — every re-export is `export type`, so the specifier is erased before the Supabase CLI bundles a function (the generated file carries a runtime `Constants` export that would otherwise be dragged into sixteen deploy bundles). What holds the functions to it is the `deno check` step in CI's `edge-functions` job; see [decisions § 762](decisions.md).
+
+### The one correction the generated schema needs — `apps/web/src/lib/core/database.ts`
+
+`supabase gen types` emits every function parameter as its bare postgres type and records only whether it carries a SQL default, as a `?`. It carries **no nullability**: `mark_attendance(p_attendance text)` — a function whose own body branches on `p_attendance is not null` — is emitted `p_attendance: string`, so a caller that means NULL does not compile. `database.types.ts` cannot be hand-corrected, because `gen:types:check` compares it byte-for-byte with a fresh generator run.
+
+So `core/database.ts` exports `AppDatabase`, a **derivation** of the generated `Database` that widens every function's `Args` field to `T | null`, and both Supabase clients plus `App.Locals.supabase` take that instead. The function name, the argument key set and the return type stay checked exactly as generated. It also exports `Insertable<'table'>` / `Updatable<'table'>` — the write shapes a patch object should be declared as — and `Join<T, D>`, which restates a select list built from a column tuple as the string literal that tuple spells (`Array.prototype.join` returns `string`, and supabase-js answers `GenericStringError` for a non-literal select, which silently degrades the row to something no consumer can be checked against).
+
+Never re-declare `Database` here; derive from it, or the correction rots on the next migration. `core/database.test.ts` pins both — that the two clients still pass the schema, and that this module imports the generated type rather than shadowing it.
 
 ### Mobile — `packages/core_models/lib/src/generated/db_rows.dart`
 
@@ -74,8 +89,13 @@ class RunRow {
   const RunRow({ required this.id, required this.userId, /*...*/ });
   factory RunRow.fromJson(Map<String, dynamic> json) => /*...*/;
   Map<String, dynamic> toJson() => /*...*/;
+  RunRow copyWith({ String? id, String? userId, /*...*/ }) => /*...*/;
 }
 ```
+
+Derive a changed row with `copyWith`, never by calling the constructor field by field: a hand-written rebuild silently drops every column added after it was written. A null argument means "keep the current value", so `copyWith` cannot clear a nullable column — see [decisions § 1836](decisions.md).
+
+Every `double` column reads through the `_toDoubleOrNull` / `_toDouble` helpers the generator emits at the top of the file, never through a bare `as num` cast: Postgres renders a `numeric` value JSON has no literal for as a JSON *string* (`{"distance_m":"NaN"}`), which a cast can only throw on. An unusable value resolves to `null` for a nullable column and `double.nan` for a non-nullable one — see [decisions § 985](decisions.md). Integer columns keep the cast; no integer Postgres type has a value `to_json` quotes.
 
 `ApiClient` uses these rows as the wire format. It constructs a `RunRow` from a domain `Run` before upserting, and runs `RunRow.fromJson` before building a domain `Run` back. Column names are always referenced through the generated constants — `RunRow.colStartedAt`, never the string literal `'started_at'` — so a rename propagates as a compile error.
 
@@ -114,9 +134,10 @@ dart run scripts/gen_dart_models.dart   # writes packages/core_models/lib/src/ge
 # 4. Build the clients to find every drift site
 cd apps/web && npm run check
 cd ../.. && melos exec -- dart analyze
+cd apps/backend && deno check $(find supabase/functions -type f -name '*.ts' | sort)
 ```
 
-Steps 3 and 4 are where the drift protection pays off. If the schema change breaks a consumer, the compiler names the file and line.
+Steps 3 and 4 are where the drift protection pays off. If the schema change breaks a consumer, the compiler names the file and line. The Edge Functions are the **second** consumer of `database.types.ts` — the Dart and Kotlin clients read their own generated files instead — and the `deno check` line is how a column rename reaches them. Before [§ 762](decisions.md) they read the schema through no types at all, so a dropped column surfaced as a PostgREST error in production rather than as a build failure here.
 
 ### When you pull someone else's schema change
 
@@ -290,22 +311,25 @@ Supabase only marks a column as optional in the `Row` type when it has a databas
 
 ### The "narrow union" columns drifted out of sync with reality
 
-Nineteen columns carry both a CHECK constraint on the SQL side and a narrow TS union on the client — among them `runs.source` (`RunSource`), `runs.activity_type` (`ActivityType`), `routes.surface` (`RouteSurface`), `integrations.provider` (`IntegrationProvider`), `user_profiles.preferred_unit` (`PreferredUnit`), `user_profiles.subscription_tier` (`SubscriptionTier`), `club_members.role` (`ClubRole`), plus the typed-event and gym-routine columns (`events.category`, `event_orders.status`, `gym_routine_sets.set_type`, …). See the full `PAIRS` array in `apps/web/scripts/check_constraint_unions.mjs` for all nineteen. The first four `RunSource`/`RouteSurface`/`IntegrationProvider`/`PreferredUnit` landed in `20260505_001_narrow_union_check_constraints.sql`; `subscription_tier` in `20260429_001_subscription_paywall.sql`; `role` in `20260428_001_role_permissions.sql`.
+**Sixty-seven** columns carry a set-shaped CHECK constraint (`check (col in (…))`, or its nullable form) — among them `runs.source` (`RunSource`), `runs.activity_type` (`ActivityType`), `routes.surface` (`RouteSurface`), `integrations.provider` (`IntegrationProvider`), `user_profiles.preferred_unit` (`PreferredUnit`), `user_profiles.subscription_tier` (`SubscriptionTier`), `club_members.role` (`ClubRole`), plus the typed-event, gym-routine, nutrition and moderation columns. **52 of them are enumerated by at least one client, across 121 declarations in 46 files — 87 on web, 34 in the Flutter tree.** The `PAIRS` array in `apps/web/scripts/check_constraint_unions.mjs` is the single registry: it is keyed on `<table>.<column>` and lists every rail. The first four `RunSource`/`RouteSurface`/`IntegrationProvider`/`PreferredUnit` landed in `20260505_001_narrow_union_check_constraints.sql`; `subscription_tier` in `20260429_001_subscription_paywall.sql`; `role` in `20260428_001_role_permissions.sql`.
 
-`apps/web/scripts/check_constraint_unions.mjs` runs in the `parity-types` CI job and fails PRs that drift — extracting the values from both the migration and the TS union and comparing equality. To add a new value:
+`apps/web/scripts/check_constraint_unions.mjs` runs in the `parity-types` CI job (step **"CHECK constraints vs client vocabularies"**, followed by the guard's own `node --test` suite) and fails PRs that drift — extracting the values from the migration and from every registered client declaration and comparing equality. **It reads far more than `types.ts`**: a rail declares its `shape` — `union` (a TS `type X = 'a' | 'b'`), `strings` (a const array, in `.ts`, `.svelte` or `.dart`), `keys` (an object-key map), `records` (a list of specs plus the `field` to read) or `enum` (a Dart enum, compared as snake_case, so `activityCount` reads as `activity_count`). A `Record<Union, X>` icon or label map is deliberately not registered: `tsc` already makes those exhaustive.
+
+To add a new value:
 
 1. Update the CHECK constraint in a migration.
-2. Update the TS union in `apps/web/src/lib/types.ts`.
-3. Regenerate types (`npm run gen:types --workspace=apps/backend`).
-4. If you're introducing a brand-new column+CHECK+TS-union triple, append it to the `PAIRS` array in `apps/web/scripts/check_constraint_unions.mjs` so the guard knows about it.
+2. Regenerate types (`npm run gen:types --workspace=apps/backend` + `dart run scripts/gen_dart_models.dart`).
+3. Run `npm run check:check-constraints --workspace=apps/web`. It names **every** rail that has drifted, file and declaration — the TS union, the Svelte option list, the Dart dropdown array. Update each.
 
-Dart treats these columns as raw `String` (no Dart enum to update), but the DB-level CHECK rejects invalid writes anyway. CI catches drift; runtime defends against it.
+To add a new set-shaped CHECK **column**, you must also add a `PAIRS` entry in the same change — the guard fails on an unregistered one rather than passing silently. Register every client declaration that enumerates it, or an empty `clients` list plus a `note` saying no client does (15 of the 67 are that shape: server-owned vocabularies like `jobs.kind`, and four spelled only as inline unions). Registering a column `database.types.ts` no longer has fails too, so a dropped column's phantom CHECK cannot linger. A client value the column cannot hold — or a column value a client deliberately omits — goes in that rail's `allowExtra` / `allowMissing` with a reason; the guard fails once such an exemption is stale.
+
+Dart is **not** exempt, and this section used to say it was. The `core_models` leaves `activity_type.dart`'s `ActivityType` and `distance_unit.dart`'s `DistanceUnit`, `challenge_progress.dart`'s `ChallengeMetric`, `route_markers.dart`'s `routeMarkerKinds`, `run_stats.dart`'s two PR-bracket maps and 23 more enumerate a CHECK-constrained set; all are registered. Rails name `apps/mobile_android` only — the byte-identical twin ([decisions § 39](decisions.md)) covers iOS, and the guard's suite pins that premise. See [decisions § 791](decisions.md).
 
 ---
 
 ## What this does not solve
 
-- **Ephemeral / undeclared fields inside `jsonb` columns** — `runs.metadata` is `jsonb` in the DB and `Record<string, unknown>` / `Map<String, dynamic>` on both clients. If mobile writes `metadata.avg_bpm` and web doesn't read it, no generator will catch that (this is why load-bearing keys like `activity_type` / `is_dnf` were promoted to real columns — `20261207_001`, F3 — so codegen *does* cover them; only the telemetry bag stays undeclared). The roadmap's Phase 3 cross-client integration test is designed to cover this.
+- **Ephemeral / undeclared fields inside `jsonb` columns** — `runs.metadata` is `jsonb` in the DB and `JsonObject` / `Map<String, dynamic>` on both clients. If mobile writes `metadata.avg_bpm` and web doesn't read it, no generator will catch that (this is why load-bearing keys like `activity_type` / `is_dnf` were promoted to real columns — `20261207_001`, F3 — so codegen *does* cover them; only the telemetry bag stays undeclared). The roadmap's Phase 3 cross-client integration test is designed to cover this.
 - **Semantic parity** — generators catch "this column exists", not "this column means the same thing on both platforms". `moving_time` computed differently on web vs Android is still a human-review problem.
 - **UI parity** — whether both platforms actually *show* a field is covered by the Phase 2 parity matrix, not codegen.
 

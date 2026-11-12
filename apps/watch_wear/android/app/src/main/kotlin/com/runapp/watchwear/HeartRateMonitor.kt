@@ -14,23 +14,49 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 /// Wraps `HealthServices.getClient(context).measureClient` to produce a
-/// `Flow<Int>` of live BPM samples. Samples are only emitted when the
-/// sensor is reporting `AVAILABLE` — ACQUIRING / unreliable wrist-off
-/// / out-of-range samples are dropped so stale or obviously-bad values
+/// `Flow<HeartRateUpdate>` of live BPM samples and the sensor-state
+/// changes between them. Samples are only carried when the sensor is
+/// reporting `AVAILABLE` — ACQUIRING / unreliable wrist-off /
+/// out-of-range samples are dropped so stale or obviously-bad values
 /// don't pollute `avg_bpm`.
+///
+/// The flow used to be a bare `Flow<Int>`, which threw the state away:
+/// every reason for having no bpm arrived as the same silence, and the
+/// running screen could only render it as the same blank space. The
+/// availability now rides every emission, so the recorder can say which
+/// of the four it is (decisions § 1052).
+///
+/// Acquisition can fail three ways and all three end the same: the flow
+/// closes and the run records without heart rate. `MeasureCallback`
+/// gives `onRegistrationFailed` an empty default body, so leaving it
+/// unimplemented — as this did — turns "Health Services refused" into
+/// total silence: no samples, no error, an `avg_bpm` of null and
+/// nothing anywhere that says why. The synchronous throw is worse than
+/// silent: `registerMeasureCallback` raises `SecurityException` when
+/// BODY_SENSORS was declined, which escaped the collector's `launch`
+/// and took the whole process down mid-run, GPS trace included.
 class HeartRateMonitor(context: Context) {
     private val client = HealthServices.getClient(context).measureClient
 
-    fun stream(): Flow<Int> = callbackFlow {
+    fun stream(): Flow<HeartRateUpdate> = callbackFlow {
         var isAvailable = false
         val callback = object : MeasureCallback {
+            override fun onRegistrationFailed(throwable: Throwable) {
+                // Sent before the close: a channel that is closed
+                // gracefully still delivers what was already sent, so
+                // the collector learns why the flow ended instead of
+                // seeing it simply stop.
+                trySend(HeartRateUpdate(HeartRateAvailability.Unavailable))
+                close()
+            }
+
             override fun onAvailabilityChanged(
                 dataType: DeltaDataType<*, *>,
                 availability: Availability,
             ) {
-                if (availability is DataTypeAvailability) {
-                    isAvailable = availability == DataTypeAvailability.AVAILABLE
-                }
+                if (availability !is DataTypeAvailability) return
+                isAvailable = availability == DataTypeAvailability.AVAILABLE
+                trySend(HeartRateUpdate(availabilityOf(availability)))
             }
 
             override fun onDataReceived(data: DataPointContainer) {
@@ -43,18 +69,50 @@ class HeartRateMonitor(context: Context) {
                     // device; the cascade survives either shape.
                     val rawValue = (p as? SampleDataPoint<*>)?.value ?: p.value
                     val bpm = bpmFromSampleValue(rawValue) ?: continue
-                    trySend(bpm)
+                    trySend(HeartRateUpdate(HeartRateAvailability.Available, bpm))
                 }
             }
         }
 
-        client.registerMeasureCallback(DataType.HEART_RATE_BPM, callback)
+        try {
+            client.registerMeasureCallback(DataType.HEART_RATE_BPM, callback)
+        } catch (_: Throwable) {
+            trySend(HeartRateUpdate(HeartRateAvailability.Unavailable))
+            close()
+        }
         awaitClose {
-            client.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, callback)
+            // Same as NetworkWatcher's: the flow is closing, so a refusal here
+            // reaches no collector. Health Services throws on a callback it has
+            // already released, which is the case in which the unregister was
+            // unnecessary anyway.
+            runCatching {
+                client.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, callback)
+            }
         }
     }
 
     companion object {
+        /// Translate Health Services' sensor state into the one the
+        /// recorder publishes.
+        ///
+        /// `UNAVAILABLE_DEVICE_OFF_BODY` is kept separate from
+        /// `UNAVAILABLE` because it is the only one of the two a runner
+        /// can act on — pushing the watch back up the wrist — and
+        /// collapsing them would have cost the caption its only useful
+        /// instruction. `UNKNOWN` reads as acquiring rather than as a
+        /// failure: it is what the sensor reports before it has decided,
+        /// and telling a runner there is no heart rate a second before
+        /// the first sample lands is worse than telling them to wait.
+        fun availabilityOf(availability: DataTypeAvailability): HeartRateAvailability =
+            when (availability) {
+                DataTypeAvailability.AVAILABLE -> HeartRateAvailability.Available
+                DataTypeAvailability.ACQUIRING -> HeartRateAvailability.Acquiring
+                DataTypeAvailability.UNKNOWN -> HeartRateAvailability.Acquiring
+                DataTypeAvailability.UNAVAILABLE_DEVICE_OFF_BODY ->
+                    HeartRateAvailability.OffWrist
+                else -> HeartRateAvailability.Unavailable
+            }
+
         /// Resting human HR floor. A real watch sensor can briefly emit
         /// values below this during wrist-off / startup-acquire — those
         /// are sensor noise, not a real reading. Inclusive bound: 30 is

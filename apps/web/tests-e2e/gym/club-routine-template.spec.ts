@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Gym programming — club-published gym-routine templates (migration
@@ -68,12 +69,15 @@ test.describe('/gym/routines — club gym-routine templates', () => {
 		await expect(publishRow.locator('select')).toHaveValue('', { timeout: 10_000 });
 
 		// A club-owned copy now exists, with the set copied across.
-		const { data: clubCopies } = await admin
-			.from('gym_routines')
-			.select('id')
-			.eq('club_id', RICHMOND_CLUB_ID)
-			.eq('title', title);
-		expect(clubCopies?.length).toBe(1);
+		const clubCopies = await readRows(
+			'gym_routines by club_id+title',
+			admin
+				.from('gym_routines')
+				.select('id')
+				.eq('club_id', RICHMOND_CLUB_ID)
+				.eq('title', title)
+		);
+		expect(clubCopies.length).toBe(1);
 
 		// It surfaces on the club's Templates tab, and Adopt clones it.
 		await page.goto('/clubs/richmond-run-club?tab=templates');
@@ -83,14 +87,17 @@ test.describe('/gym/routines — club gym-routine templates', () => {
 
 		// Adopt navigates to the new personal clone's detail page.
 		await page.waitForURL(/\/gym\/routines\/[0-9a-f-]+$/, { timeout: 10_000 });
-		const { data: personalClones } = await admin
-			.from('gym_routines')
-			.select('id')
-			.eq('author_id', USER_A.id)
-			.is('club_id', null)
-			.eq('title', title);
+		const personalClones = await readRows(
+			'gym_routines by author_id+title',
+			admin
+				.from('gym_routines')
+				.select('id')
+				.eq('author_id', USER_A.id)
+				.is('club_id', null)
+				.eq('title', title)
+		);
 		// The original source + the adopted clone are both personal + club-less.
-		expect(personalClones?.length ?? 0).toBeGreaterThanOrEqual(2);
+		expect(personalClones.length).toBeGreaterThanOrEqual(2);
 
 		// Regression: the back control on the adopted clone must return to the
 		// CLUB it was adopted from (the page we soft-navigated from), not the

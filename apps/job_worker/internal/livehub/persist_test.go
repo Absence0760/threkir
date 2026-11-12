@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -61,7 +62,8 @@ func newPersistServer(t *testing.T, srv *Server) (string, func()) {
 func TestPersist_MirrorsAcceptedPushToLiveRunPings(t *testing.T) {
 	persister := newFakePersister()
 	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
-	base, teardown := newPersistServer(t, &Server{Persister: persister, RunMeta: meta})
+	consent := &fakeHeartRateConsent{shared: map[string]bool{"user-A": true}}
+	base, teardown := newPersistServer(t, &Server{Persister: persister, RunMeta: meta, HeartRate: consent})
 	defer teardown()
 
 	pushOK(t, base, "run-1", `{"lat":51.5,"lng":-0.1,"distance_m":500,"elapsed_s":120,"bpm":150,"ele":42.5}`)
@@ -134,5 +136,136 @@ func TestPersist_SkippedWhenRunRowMissing(t *testing.T) {
 		t.Fatalf("insert attempted with missing run row: %+v", got)
 	case <-time.After(300 * time.Millisecond):
 		// Expected: no insert.
+	}
+}
+
+// bpm is Art 9 data: an owner who may not share it has it removed before the
+// ping is published or persisted (decisions § 2265).
+func TestPush_StripsBPMWhenHeartRateNotShared(t *testing.T) {
+	persister := newFakePersister()
+	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
+	consent := &fakeHeartRateConsent{shared: map[string]bool{"user-A": false}}
+	hub := NewHub()
+	base, teardown := newPersistServer(t, &Server{Hub: hub, Persister: persister, RunMeta: meta, HeartRate: consent})
+	defer teardown()
+
+	pushOK(t, base, "run-1", `{"lat":51.5,"lng":-0.1,"distance_m":500,"elapsed_s":120,"bpm":150}`)
+
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM != nil {
+		t.Fatalf("published ping must carry no bpm, got %+v", last)
+	}
+	select {
+	case got := <-persister.ch:
+		if got.ping.BPM != nil {
+			t.Fatalf("persisted ping must carry no bpm, got %+v", got.ping)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("push did not trigger a persist within the deadline")
+	}
+}
+
+func TestPush_StripsBPMWithoutARunMetaFetcher(t *testing.T) {
+	hub := NewHub()
+	base, teardown := newPersistServer(t, &Server{Hub: hub})
+	defer teardown()
+	pushOK(t, base, "run-1", `{"lat":1,"lng":2,"distance_m":0,"elapsed_s":0,"bpm":140}`)
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM != nil {
+		t.Fatalf("unknown consent must withhold bpm, got %+v", last)
+	}
+}
+
+type fakeHeartRateConsent struct {
+	mu     sync.Mutex
+	shared map[string]bool
+	err    error
+	calls  int
+}
+
+func (f *fakeHeartRateConsent) HeartRateShared(_ context.Context, userID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	if f.err != nil {
+		return false, f.err
+	}
+	return f.shared[userID], nil
+}
+
+func (f *fakeHeartRateConsent) set(userID string, shared bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.shared[userID] = shared
+}
+
+func (f *fakeHeartRateConsent) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
+
+// Withdrawing health-data consent (or the overlay heart-rate opt-in) must
+// stop bpm reaching hub spectators within HeartRateTTL, not within the room
+// meta's minute-long CacheRefreshTTL, which this test leaves untouched.
+func TestPush_ConsentWithdrawalStopsBPMWithinHeartRateTTL(t *testing.T) {
+	t.Cleanup(SetHeartRateTTL(20 * time.Millisecond))
+	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
+	consent := &fakeHeartRateConsent{shared: map[string]bool{"user-A": true}}
+	hub := NewHub()
+	base, teardown := newPersistServer(t, &Server{Hub: hub, RunMeta: meta, HeartRate: consent})
+	defer teardown()
+
+	ping := `{"lat":1,"lng":2,"distance_m":0,"elapsed_s":0,"bpm":140}`
+	pushOK(t, base, "run-1", ping)
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM == nil || *last.BPM != 140 {
+		t.Fatalf("a consenting owner's bpm must be published, got %+v", last)
+	}
+
+	consent.set("user-A", false)
+	time.Sleep(40 * time.Millisecond)
+	pushOK(t, base, "run-1", ping)
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM != nil {
+		t.Fatalf("bpm must stop once consent is withdrawn and HeartRateTTL passes, got %+v", last)
+	}
+	if meta.calls != 1 {
+		t.Fatalf("the room meta must still come from its cache, fetched %d times", meta.calls)
+	}
+}
+
+func TestPush_HeartRateConsentIsReusedWithinHeartRateTTL(t *testing.T) {
+	t.Cleanup(SetHeartRateTTL(time.Hour))
+	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
+	consent := &fakeHeartRateConsent{shared: map[string]bool{"user-A": true}}
+	base, teardown := newPersistServer(t, &Server{RunMeta: meta, HeartRate: consent})
+	defer teardown()
+	for i := 0; i < 3; i++ {
+		pushOK(t, base, "run-1", `{"lat":1,"lng":2,"distance_m":0,"elapsed_s":0,"bpm":140}`)
+	}
+	if n := consent.callCount(); n != 1 {
+		t.Fatalf("consent fetched %d times within one HeartRateTTL, want 1", n)
+	}
+}
+
+// A failed consent lookup withholds bpm, is not cached, and never denies the
+// ping: heart rate is auxiliary to the location feed.
+func TestPush_HeartRateLookupFailureWithholdsBPMOnly(t *testing.T) {
+	t.Cleanup(SetHeartRateTTL(time.Hour))
+	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
+	consent := &fakeHeartRateConsent{shared: map[string]bool{"user-A": true}, err: errors.New("supabase down")}
+	hub := NewHub()
+	base, teardown := newPersistServer(t, &Server{Hub: hub, RunMeta: meta, HeartRate: consent})
+	defer teardown()
+
+	ping := `{"lat":1,"lng":2,"distance_m":0,"elapsed_s":0,"bpm":140}`
+	pushOK(t, base, "run-1", ping)
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM != nil {
+		t.Fatalf("a failed consent lookup must withhold bpm, got %+v", last)
+	}
+
+	consent.mu.Lock()
+	consent.err = nil
+	consent.mu.Unlock()
+	pushOK(t, base, "run-1", ping)
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM == nil {
+		t.Fatalf("a failure must not be cached as a refusal, got %+v", last)
 	}
 }

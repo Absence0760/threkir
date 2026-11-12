@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart' show ApiClient;
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -6,13 +7,19 @@ import 'package:ui_kit/ui_kit.dart' show TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
+import '../lib/course_gates.dart' show CourseGate, GateSource;
 import '../lib/event_category.dart';
 import '../lib/event_gym_template.dart';
+import '../lib/gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/preferences.dart';
 import '../lib/screens/event_detail_screen.dart';
 import '../lib/session_steps.dart';
 import '../lib/social_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
+import 'pump_until.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 ClubView _club(String? viewerRole) => ClubView(
   row: ClubRow(
@@ -50,6 +57,7 @@ class _RsvpFailSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: 'host_go',
       id: 'e1',
       clubId: 'club-1',
       title: 'Saturday Long Run',
@@ -86,11 +94,16 @@ class _RsvpFailSocial extends SocialService {
   Future<void> rsvpEvent(
     String eventId,
     String status,
-    DateTime instance,
-  ) async {
+    DateTime instance, {
+    String? courseId,
+  }) async {
     rsvpCalls++;
     throw Exception('network down');
   }
+
+  @override
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async =>
+      const [];
 }
 
 /// Configurable fake that drives the happy paths: a club (role configurable),
@@ -107,12 +120,33 @@ class _EventSocial extends SocialService {
     this.attendees = const [],
     this.viewerRsvp,
     this.cancelled = const {},
+    this.paceTargetSec,
+    this.courses = const [],
+    this.raceStatus,
+    this.dnfCount,
+    this.frozen = const {},
+    this.startMode = 'host_go',
   });
+  /// The event's race start mode (#1306), copied onto its session.
+  String startMode;
+  int delayCalls = 0;
+  List<EventCourseView> courses;
+  /// The occurrence's frozen courses; a non-empty map also stamps the race
+  /// session's courses_frozen_at.
+  Map<String, FrozenRaceCourse> frozen;
+  int armCalls = 0;
+  /// The occurrence's race session status, or null for none.
+  String? raceStatus;
+  /// What `race_pending_dnf_count` answers; null when it cannot be read.
+  int? dnfCount;
+  int dnfPreviewCalls = 0;
+  String? lastRsvpCourseId;
   ClubView? club;
   String category;
   List<AttendeeView> attendees;
   String? viewerRsvp;
   Set<DateTime> cancelled;
+  int? paceTargetSec;
   int rsvpCalls = 0;
   int clearCalls = 0;
   String? lastRsvpStatus;
@@ -122,6 +156,7 @@ class _EventSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: startMode,
       id: 'e1',
       clubId: 'club-1',
       title: 'Saturday Long Run',
@@ -129,6 +164,7 @@ class _EventSocial extends SocialService {
       authorId: 'host',
       category: category,
       distanceM: 21097,
+      paceTargetSec: paceTargetSec,
       isPublic: true,
     ),
     byday: null,
@@ -154,7 +190,94 @@ class _EventSocial extends SocialService {
   Future<RaceSessionRow?> fetchRaceSession(
     String eventId,
     DateTime instance,
-  ) async => null;
+  ) async {
+    final status = raceStatus;
+    if (status == null) return null;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    // A scheduled or self-timed start an hour ahead while armed, an hour
+    // behind while running, on the real clock the panel reads.
+    final start = status == 'armed'
+        ? DateTime.now().toUtc().add(const Duration(hours: 1))
+        : DateTime.now().toUtc().subtract(const Duration(hours: 1));
+    return RaceSessionRow(
+      startMode: startMode,
+      scheduledStartAt: startMode == 'scheduled' ? start : null,
+      windowOpensAt: startMode == 'self_timed' ? start : null,
+      windowClosesAt: startMode == 'host_go'
+          ? null
+          : start.add(const Duration(hours: 3)),
+      eventId: eventId,
+      instanceStart: instance,
+      status: status,
+      startedAt: status == 'armed' ? null : at,
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: true,
+      coursesFrozenAt: frozen.isEmpty ? null : at,
+    );
+  }
+
+  @override
+  Future<Map<String, FrozenRaceCourse>> fetchRaceSessionCourses(
+    String eventId,
+    DateTime instance,
+  ) async => frozen;
+
+  @override
+  Future<RaceSessionRow> armRace({
+    required String eventId,
+    required DateTime instance,
+    bool isAutoApprove = true,
+  }) async {
+    armCalls++;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      startMode: 'host_go',
+      eventId: eventId,
+      instanceStart: instance,
+      status: 'armed',
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: isAutoApprove,
+    );
+  }
+
+  @override
+  Future<bool> ensureRaceSession(String eventId, DateTime instance) async =>
+      true;
+
+  @override
+  Future<Duration?> fetchServerClockOffset() async => Duration.zero;
+
+  @override
+  Future<RaceSessionRow> delayRaceStart({
+    required String eventId,
+    required DateTime instance,
+    required bool selfTimed,
+    required DateTime start,
+  }) async {
+    delayCalls++;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      startMode: startMode,
+      scheduledStartAt: selfTimed ? null : start,
+      windowOpensAt: selfTimed ? start : null,
+      windowClosesAt: start.add(const Duration(hours: 3)),
+      eventId: eventId,
+      instanceStart: instance,
+      status: 'armed',
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: true,
+    );
+  }
+
+  @override
+  Future<int?> fetchRaceDnfPreview(String eventId, DateTime instance) async {
+    dnfPreviewCalls++;
+    return dnfCount;
+  }
+
   @override
   Future<({double lat, double lng})?> fetchEventMeetPoint(
     String eventId,
@@ -163,11 +286,17 @@ class _EventSocial extends SocialService {
   Future<void> rsvpEvent(
     String eventId,
     String status,
-    DateTime instance,
-  ) async {
+    DateTime instance, {
+    String? courseId,
+  }) async {
     rsvpCalls++;
     lastRsvpStatus = status;
+    lastRsvpCourseId = courseId;
   }
+
+  @override
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async =>
+      courses;
 
   @override
   Future<void> clearRsvp(String eventId, DateTime instance) async {
@@ -217,9 +346,208 @@ class _SubmitFailSocial extends _EventSocial {
     String finisherStatus = 'finished',
     double? ageGradePct,
     String? note,
+    String? courseId,
+    int? gunTimeS,
+    int? chipTimeS,
+    String? finishMethod,
+    RaceCrossings crossings = RaceCrossings.none,
   }) async {
     submitCalls++;
     throw Exception('network down');
+  }
+}
+
+/// A class event carrying an attached gym routine (decisions § 1869) or
+/// session plan. The fake applies the organiser's writes the way the database
+/// does: attaching either one clears the other in the same write (§ 1884).
+class _ClassRoutineSocial extends _EventSocial {
+  _ClassRoutineSocial({super.club, this.gymRoutineId, this.sessionPlanId})
+      : super(category: 'class');
+  String? gymRoutineId;
+  String? sessionPlanId;
+  bool failWrite = false;
+  bool failPlanWrite = false;
+  final List<String?> routineWrites = [];
+  final List<String?> planWrites = [];
+
+  @override
+  Future<List<({String id, String title})>> fetchSessionPlanOptions() async =>
+      const [
+        (id: 'plan-flow', title: 'Morning Flow'),
+        (id: 'plan-core', title: 'Core Pilates'),
+      ];
+
+  @override
+  Future<void> setEventSessionPlan(String eventId, String? id) async {
+    planWrites.add(id);
+    if (failPlanWrite) throw Exception('rls');
+    sessionPlanId = id;
+    if (id != null) gymRoutineId = null;
+  }
+
+  @override
+  Future<EventView?> fetchEventById(String eventId) async => EventView(
+    row: EventRow(
+      raceStartMode: 'host_go',
+      id: 'e1',
+      clubId: 'club-1',
+      title: 'Strength Class',
+      startsAt: DateTime.utc(2026, 6, 20, 8),
+      authorId: 'host',
+      category: 'class',
+      isPublic: true,
+      gymRoutineId: gymRoutineId,
+      sessionPlanId: sessionPlanId,
+    ),
+    byday: null,
+    attendeeCount: 0,
+    viewerRsvp: null,
+    nextInstanceStart: DateTime.utc(2026, 6, 20, 8),
+  );
+
+  @override
+  Future<List<({String id, String title})>> fetchClubGymRoutineOptions(
+    String clubId,
+  ) async => const [
+    (id: 'r-lower', title: 'Lower Body'),
+    (id: 'r-upper', title: 'Upper Body'),
+  ];
+
+  @override
+  Future<void> setEventGymRoutine(String eventId, String? id) async {
+    routineWrites.add(id);
+    if (failWrite) throw Exception('rls');
+    gymRoutineId = id;
+    if (id != null) sessionPlanId = null;
+  }
+}
+
+/// Answers the routine read for the routines this viewer can read; any other
+/// id reads as null, which is what RLS hands a non-member.
+class _RoutineApi extends ApiClient {
+  _RoutineApi({
+    this.readable = const {'r-lower', 'r-upper'},
+    this.readablePlans = const {},
+  });
+  final Set<String> readable;
+
+  /// Session plans this viewer can read, as [readable] is for routines.
+  final Set<String> readablePlans;
+
+  static final _at = DateTime.utc(2026, 6, 1);
+
+  static GymRoutineExerciseRow _exercise(String routineId, String name, int pos) =>
+      GymRoutineExerciseRow(
+        id: '$routineId-$pos',
+        routineId: routineId,
+        exerciseName: name,
+        exerciseKey: name.toLowerCase(),
+        position: pos,
+        modality: 'reps',
+        progression: 'none',
+        progressionParams: const <String, dynamic>{},
+      );
+
+  static List<GymRoutineSetRow> _sets(String exerciseId, int n) => [
+    for (var i = 0; i < n; i++)
+      GymRoutineSetRow(
+        id: '$exerciseId-s$i',
+        routineExerciseId: exerciseId,
+        setIndex: i,
+        setType: 'working',
+        targetRepsMin: 5,
+      ),
+  ];
+
+  @override
+  Future<({
+    GymRoutineRow routine,
+    List<({GymRoutineExerciseRow exercise, List<GymRoutineSetRow> sets})> exercises,
+  })?> fetchGymRoutineDetail(String id) async {
+    if (!readable.contains(id)) return null;
+    final lower = id == 'r-lower';
+    final plan = lower
+        ? [('Back Squat', 3), ('Romanian Deadlift', 1)]
+        : [('Bench Press', 2)];
+    final exercises = [
+      for (final (i, (name, _)) in plan.indexed) _exercise(id, name, i),
+    ];
+    return (
+      routine: GymRoutineRow(
+        id: id,
+        authorId: 'host',
+        title: lower ? 'Lower Body' : 'Upper Body',
+        periodisation: 'none',
+        exerciseCount: exercises.length,
+        lastModifiedAt: _at,
+        createdAt: _at,
+        clubId: 'club-1',
+        isPublicTemplate: false,
+      ),
+      exercises: [
+        for (final (i, ex) in exercises.indexed)
+          (exercise: ex, sets: _sets(ex.id, plan[i].$2)),
+      ],
+    );
+  }
+
+  @override
+  Future<({
+    SessionPlanRow plan,
+    List<SessionPlanBlockRow> blocks,
+    List<SessionPlanItemRow> items,
+    bool isOfficial,
+  })?> fetchSessionPlan(String id) async {
+    if (!readablePlans.contains(id)) return null;
+    final flow = id == 'plan-flow';
+    return (
+      plan: SessionPlanRow(
+        id: id,
+        authorId: 'host',
+        title: flow ? 'Morning Flow' : 'Core Pilates',
+        isPublic: false,
+        createdAt: _at,
+        updatedAt: _at,
+      ),
+      blocks: [SessionPlanBlockRow(id: '$id-b0', planId: id, position: 0)],
+      items: flow
+          ? [
+              SessionPlanItemRow(
+                id: '$id-i0',
+                planId: id,
+                blockId: '$id-b0',
+                position: 0,
+                movementName: 'Cat-Cow',
+                kind: 'flow',
+                durationS: 30,
+                perSide: false,
+                cue: 'Breathe with the spine',
+              ),
+              SessionPlanItemRow(
+                id: '$id-i1',
+                planId: id,
+                blockId: '$id-b0',
+                position: 1,
+                movementName: 'Pigeon',
+                kind: 'hold',
+                durationS: 45,
+                perSide: true,
+              ),
+            ]
+          : [
+              SessionPlanItemRow(
+                id: '$id-i0',
+                planId: id,
+                blockId: '$id-b0',
+                position: 0,
+                movementName: 'Hundred',
+                kind: 'reps',
+                reps: 100,
+                perSide: false,
+              ),
+            ],
+      isOfficial: false,
+    );
   }
 }
 
@@ -229,10 +557,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -254,19 +579,24 @@ void main() {
   setUpAll(_ensureSupabase);
 
   group('EventDetailScreen — initial render', () {
-    realtimeWidgetTest('first frame shows the full-body loader', (
+    realtimeWidgetTest('first frame shows a skeleton of the detail page', (
       tester,
     ) async {
-      // Reason: while _loading is true the screen returns a bare
-      // Scaffold carrying nothing but the loader.
+      // Reason: while _loading is true the screen holds the layout it will
+      // settle into, not a centred figure on an empty page (decisions § 2288).
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 
-    realtimeWidgetTest('initial Scaffold has no AppBar yet', (tester) async {
+    realtimeWidgetTest('the loading frame already carries the app bar',
+        (tester) async {
+      // Back is reachable while the fetch is in flight, and the bar does not
+      // pop in when the content lands.
       await _pump(tester);
-      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing,
+          reason: 'a pumped root route has nothing to go back to');
     });
   });
 
@@ -296,15 +626,17 @@ void main() {
       (tester) async {
         // event_exceptions was never read on mobile, so a cancelled occurrence
         // stayed selectable and RSVP-able with nothing saying it was called off.
+        // The fixture is a one-off event, whose only occurrence is the event
+        // itself, so the banner names the event.
         await pumpWith(tester, {DateTime.utc(2026, 6, 20, 8)});
-        expect(find.text('This occurrence was cancelled.'), findsOneWidget);
+        expect(find.text('This event was cancelled.'), findsOneWidget);
         expect(find.text("I'm in"), findsNothing);
       },
     );
 
     realtimeWidgetTest('a live occurrence keeps the RSVP row', (tester) async {
       await pumpWith(tester, const {});
-      expect(find.text('This occurrence was cancelled.'), findsNothing);
+      expect(find.text('This event was cancelled.'), findsNothing);
       expect(find.text("I'm in"), findsOneWidget);
     });
   });
@@ -519,6 +851,125 @@ void main() {
       expect(find.text('Not armed'), findsNothing);
     });
 
+    realtimeWidgetTest('a running race offers End and no Cancel, as on web', (
+      tester,
+    ) async {
+      // The server refuses running -> cancelled, so a Cancel here could
+      // only ever fail.
+      final social = _EventSocial(club: _club('owner'), raceStatus: 'running');
+      await pumpEvent(tester, social);
+      expect(find.text('End race'), findsOneWidget);
+      expect(find.text('Cancel race'), findsNothing);
+      expect(find.text('Cancel'), findsNothing);
+    });
+
+    realtimeWidgetTest('an armed race offers GO and Cancel', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), raceStatus: 'armed');
+      await pumpEvent(tester, social);
+      expect(find.text('GO'), findsOneWidget);
+      expect(find.text('Tap GO when the race begins. '
+          "Participants' watches show the armed banner now."), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a scheduled race offers Delay and Cancel, never GO (#1306)', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'armed',
+        startMode: 'scheduled',
+      );
+      await pumpEvent(tester, social);
+      expect(find.byKey(const ValueKey('race-mode-control')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-guide')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-delay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-cancel')), findsOneWidget);
+      expect(find.text('GO'), findsNothing);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('race-delay')));
+      await tester.tap(find.byKey(const ValueKey('race-delay')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('+15 min'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.delayCalls, 1);
+    });
+
+    realtimeWidgetTest('an open self-timed window offers Extend and End, and a runner Join and attempt', (
+      tester,
+    ) async {
+      final director = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'running',
+        startMode: 'self_timed',
+      );
+      await pumpEvent(tester, director);
+      expect(find.byKey(const ValueKey('race-extend')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-end')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-live')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a member not going sees Join and attempt on an open self-timed race', (
+      tester,
+    ) async {
+      final runner = _EventSocial(
+        club: _club('member'),
+        raceStatus: 'running',
+        startMode: 'self_timed',
+      );
+      await pumpEvent(tester, runner);
+      expect(find.byKey(const ValueKey('self-timed-participant')), findsOneWidget);
+      expect(find.byKey(const ValueKey('self-timed-join')), findsOneWidget);
+      expect(find.byKey(const ValueKey('self-timed-guide')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-control')), findsNothing);
+    });
+
+    realtimeWidgetTest('End states how many racers it will mark DNF', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'running',
+        dnfCount: 2,
+      );
+      await pumpEvent(tester, social);
+      await tester.ensureVisible(find.text('End race'));
+      await tester.tap(find.text('End race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.dnfPreviewCalls, 1);
+      expect(
+        find.text(
+          "End the race? 2 racers who started have no result and will be "
+          "marked DNF. This can't be undone.",
+        ),
+        findsOneWidget,
+      );
+    });
+
+    realtimeWidgetTest('End with no count to state keeps the plain body', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), raceStatus: 'running');
+      await pumpEvent(tester, social);
+      await tester.ensureVisible(find.text('End race'));
+      await tester.tap(find.text('End race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.text(
+          "End the race? This finalizes the event for every runner and can't "
+          'be undone.',
+        ),
+        findsOneWidget,
+      );
+    });
+
     realtimeWidgetTest('a class event hides Race control even for an organiser', (
       tester,
     ) async {
@@ -616,6 +1067,41 @@ void main() {
         expect(seed.sets, isNotNull);
       },
     );
+
+    test('with an attached gym routine → one seeded set per planned set', () {
+      final seed = logWorkoutSeed(
+        gymTemplate: null,
+        eventTitle: 'Evening Class',
+        discipline: null,
+        routine: const PlannedRoutine(
+          title: 'Lower Body',
+          exercises: [
+            PlannedExercise(
+              exerciseName: 'Back Squat',
+              position: 0,
+              sets: [
+                PlannedSet(
+                  setIndex: 0,
+                  targetRepsMin: 5,
+                  targetWeightKg: 60,
+                  targetRpe: 8,
+                ),
+                PlannedSet(setIndex: 1, targetRepsMin: 5, targetWeightKg: 60),
+              ],
+            ),
+          ],
+        ),
+      );
+      // No discipline: the routine title names the workout.
+      expect(seed.title, 'Lower Body');
+      final sets = seed.sets!;
+      expect(sets.length, 2);
+      expect(sets[0].exerciseName, 'Back Squat');
+      expect(sets[0].reps, 5);
+      expect(sets[0].weightKg, 60.0);
+      expect(sets[0].rpe, 8.0);
+      expect(sets[1].rpe, isNull);
+    });
   });
 
   group('M6 attendance — host-gating predicate', () {
@@ -712,8 +1198,6 @@ void main() {
 
         expect(social.submitCalls, 2);
         expect(find.text('Submit your time'), findsNothing);
-        // Drain the replacement banner's auto-dismiss timer.
-        await tester.pump(const Duration(seconds: 6));
       },
     );
   });
@@ -779,6 +1263,7 @@ void main() {
               EventResultsSection(
                 results: [
                   EventResultView(
+                    id: 'r-1',
                     userId: 'u-1',
                     displayName: 'Backmarker',
                     runId: null,
@@ -827,6 +1312,691 @@ void main() {
       final lane = find.byType(TextLane).first;
       expect(tester.getSize(lane).width,
           greaterThanOrEqualTo(tester.widget<TextLane>(lane).width * 2));
+    });
+
+    testWidgets('a finisher row states the distance in the runner\'s unit',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'use_miles': true});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+      addTearDown(resetActivePreferencesForTest);
+
+      await pumpResults(tester);
+      expect(find.text('26.22 mi'), findsOneWidget);
+      expect(find.text('42.20 km'), findsNothing);
+    });
+  });
+
+  group('EventDetailScreen — the event metrics row', () {
+    realtimeWidgetTest('distance and target pace follow the unit pref', (
+      tester,
+    ) async {
+      // The target-pace metric read through a second, km-hardcoded fmtPace
+      // that lived in social_service.dart, so a mile-unit runner saw the
+      // event's target as a per-kilometre pace beside a distance in miles.
+      SharedPreferences.setMockInitialValues({'use_miles': true});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+      addTearDown(resetActivePreferencesForTest);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EventDetailScreen(
+            social: _EventSocial(club: _club('member'), paceTargetSec: 300),
+            clubSlug: 'fake-slug',
+            eventId: 'fake-event-id',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('13.11 mi'), findsOneWidget);
+      // 300 s/km -> 300 * 1.609344 = 482.8 s/mi -> rounds to 483 -> 8:03.
+      expect(find.text('8:03 /mi'), findsOneWidget);
+      expect(find.text('5:00 /km'), findsNothing);
+    });
+  });
+
+  group('EventDetailScreen — race courses (decisions § 1843)', () {
+    const fiveK = EventCourseView(
+      id: 'c-5k',
+      eventId: 'e1',
+      routeId: 'r-5k',
+      name: '5K loop',
+      distanceM: 5000,
+      sortOrder: 0,
+    );
+    const tenK = EventCourseView(
+      id: 'c-10k',
+      eventId: 'e1',
+      routeId: 'r-10k',
+      name: '10K out-and-back',
+      distanceM: 10000,
+      sortOrder: 1,
+    );
+
+    Future<void> pumpCourses(WidgetTester tester, _EventSocial social) async {
+      await pumpEvent(tester, social);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    const lineStart = CourseGate(
+      lat: 51.5,
+      lng: -0.1,
+      bearingDeg: 0,
+      halfWidthM: 15,
+      source: GateSource.derived,
+    );
+    const lineFinish = CourseGate(
+      lat: 51.501,
+      lng: -0.1,
+      bearingDeg: 0,
+      halfWidthM: 15,
+      source: GateSource.derived,
+    );
+    const lined = EventCourseView(
+      id: 'c-lined',
+      eventId: 'e1',
+      routeId: 'r-lined',
+      name: 'Lined 5K',
+      distanceM: 5000,
+      sortOrder: 0,
+      finishLat: 51.501,
+      finishLng: -0.1,
+      startGate: lineStart,
+      finishGate: lineFinish,
+    );
+
+    realtimeWidgetTest('a course with lines shows its course map (#1305)', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [lined, tenK],
+      );
+      await pumpCourses(tester, social);
+      expect(find.byKey(const Key('course-lines-map-c-lined')), findsOneWidget);
+      expect(find.byKey(const Key('course-lines-map-c-10k')), findsNothing);
+      expect(find.byKey(const ValueKey('course-gate-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('course-gate-finish')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the course map reads the frozen copy once armed', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [lined],
+        raceStatus: 'armed',
+        frozen: const {
+          'c-lined': FrozenRaceCourse(courseId: 'c-lined', finishGate: lineFinish),
+        },
+      );
+      await pumpCourses(tester, social);
+      await tester.pump(const Duration(milliseconds: 50));
+      // The frozen copy has no start line, so the live row's is not drawn.
+      expect(find.byKey(const ValueKey('course-gate-start')), findsNothing);
+      expect(find.byKey(const ValueKey('course-gate-finish')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('Arm warns about a hand-finish course; Cancel arms nothing', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [fiveK]);
+      await pumpCourses(tester, social);
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('race-preflight-dialog')), findsOneWidget);
+      expect(find.textContaining('5K loop: no finish line'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('race-preflight-cancel')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.armCalls, 0);
+    });
+
+    realtimeWidgetTest('Arm anyway arms through a warning', (tester) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [fiveK]);
+      await pumpCourses(tester, social);
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const Key('race-preflight-arm')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.armCalls, 1);
+    });
+
+    realtimeWidgetTest('a course with a finish point arms with no dialog', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [lined]);
+      await pumpCourses(tester, social);
+      // The course map lands after the first layout; settle it before
+      // scrolling the Arm button into view.
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.pump();
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('race-preflight-dialog')), findsNothing);
+      expect(social.armCalls, 1);
+    });
+
+    realtimeWidgetTest('the courses are listed under the RSVP row', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+      expect(find.byKey(const Key('event-courses')), findsOneWidget);
+      expect(find.text('5K loop'), findsOneWidget);
+      expect(find.text('10K out-and-back'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a single-course race RSVPs onto it with no picker', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(social.rsvpCalls, 1);
+      expect(social.lastRsvpCourseId, 'c-5k');
+    });
+
+    realtimeWidgetTest('a multi-course race asks which course on Going', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Pick your course'), findsOneWidget);
+      expect(social.rsvpCalls, 0, reason: 'nothing is written before a pick');
+
+      await tester.tap(find.byKey(const Key('course-option-c-10k')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(social.rsvpCalls, 1);
+      expect(social.lastRsvpStatus, 'going');
+      expect(social.lastRsvpCourseId, 'c-10k');
+    });
+
+    realtimeWidgetTest('dismissing the course picker writes no RSVP', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(social.rsvpCalls, 0);
+    });
+
+    realtimeWidgetTest('Maybe on a multi-course race needs no course', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Maybe'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(social.lastRsvpCourseId, isNull);
+    });
+
+    realtimeWidgetTest('a going racer sees their course and can change it', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+        viewerRsvp: 'going',
+        attendees: const [
+          AttendeeView(userId: 'u-viewer', status: 'going', courseId: 'c-5k'),
+        ],
+      );
+      await pumpCourses(tester, social);
+
+      expect(find.text('Your course'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('change-course')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const Key('course-option-c-10k')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(social.lastRsvpStatus, 'going');
+      expect(social.lastRsvpCourseId, 'c-10k');
+    });
+  });
+
+  group('EventDetailScreen — class gym routine card (decisions § 1869)', () {
+    Future<void> pumpClass(
+      WidgetTester tester,
+      _ClassRoutineSocial social, {
+      _RoutineApi? api,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EventDetailScreen(
+            social: social,
+            clubSlug: 'club-1',
+            eventId: 'e1',
+            api: api ?? _RoutineApi(),
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => find.byType(SectionedDetailSkeleton).evaluate().isEmpty,
+        describe: 'the event to load',
+      );
+    }
+
+    Future<void> openSheetAndPick(WidgetTester tester, String label) async {
+      final attach = find.byKey(const Key('class-routine-attach'));
+      await tester.ensureVisible(attach);
+      await tester.tap(attach);
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('class-routine-picker')).evaluate().isNotEmpty,
+        describe: 'the routine attach sheet',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const Key('class-routine-picker')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(label).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    realtimeWidgetTest('an attendee sees the routine with its set counts', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      final card = find.byKey(const Key('class-routine'));
+      expect(card, findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('Class routine')),
+          findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('Lower Body')),
+          findsOneWidget);
+      expect(find.text('3 sets'), findsOneWidget);
+      expect(find.text('Romanian Deadlift'), findsOneWidget);
+      expect(find.text('1 set'), findsOneWidget);
+      // Only the organiser can change it.
+      expect(find.byKey(const Key('class-routine-attach')), findsNothing);
+    });
+
+    realtimeWidgetTest('a viewer who cannot read the routine sees no card', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social, api: _RoutineApi(readable: const {}));
+      await tester.pump();
+      expect(find.byKey(const Key('class-routine')), findsNothing);
+      expect(find.text('Class routine'), findsNothing);
+    });
+
+    realtimeWidgetTest('the organiser changes the routine after creation', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      await openSheetAndPick(tester, 'Upper Body');
+      await tester.tap(find.byKey(const Key('class-routine-save')));
+      await pumpUntil(
+        tester,
+        () => find.text('Bench Press').evaluate().isNotEmpty,
+        describe: 'the card to show the new routine',
+      );
+      expect(social.routineWrites, ['r-upper']);
+      expect(find.text('Back Squat'), findsNothing);
+      expect(find.text('2 sets'), findsOneWidget);
+      expect(find.text('Class routine updated.'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the organiser clears the routine', (tester) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      await openSheetAndPick(tester, 'None');
+      await tester.tap(find.byKey(const Key('class-routine-save')));
+      await pumpUntil(
+        tester,
+        () => find.text('No routine attached.').evaluate().isNotEmpty,
+        describe: 'the card to show no routine',
+      );
+      expect(social.routineWrites, [null]);
+      expect(find.text('Back Squat'), findsNothing);
+      // The organiser keeps the card, so a routine can be attached again.
+      expect(find.byKey(const Key('class-routine-attach')), findsOneWidget);
+    });
+
+    realtimeWidgetTest(
+      'attaching a routine to a class with a session plan says it replaces it',
+      (tester) async {
+        final social = _ClassRoutineSocial(
+          club: _club('event_organiser'),
+          sessionPlanId: 'plan-1',
+        );
+        await pumpClass(tester, social);
+        expect(find.text('No routine attached.'), findsOneWidget);
+        await openSheetAndPick(tester, 'Lower Body');
+        expect(find.byKey(const Key('class-routine-replaces-plan')),
+            findsOneWidget);
+        await tester.tap(find.byKey(const Key('class-routine-save')));
+        await pumpUntil(
+          tester,
+          () => find.text('Back Squat').evaluate().isNotEmpty,
+          describe: 'the card to show the attached routine',
+        );
+        expect(social.routineWrites, ['r-lower']);
+        expect(social.sessionPlanId, isNull);
+      },
+    );
+
+    realtimeWidgetTest('a failed write says so and keeps the routine', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        gymRoutineId: 'r-lower',
+      )..failWrite = true;
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      await openSheetAndPick(tester, 'Upper Body');
+      await tester.tap(find.byKey(const Key('class-routine-save')));
+      await pumpUntil(
+        tester,
+        () => find
+            .text("Couldn't update the class routine.")
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the failure banner',
+      );
+      expect(social.routineWrites, ['r-upper']);
+      expect(find.text('Back Squat'), findsOneWidget);
+    });
+  });
+
+  group('EventDetailScreen — class session-plan card (session_planner.md P1)', () {
+    const plans = {'plan-flow', 'plan-core'};
+
+    Future<void> pumpClass(
+      WidgetTester tester,
+      _ClassRoutineSocial social, {
+      Set<String> readablePlans = plans,
+    }) async {
+      // Tall enough that the session card, below the routine card, is built
+      // by the lazy ListView without a scroll.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EventDetailScreen(
+            social: social,
+            clubSlug: 'club-1',
+            eventId: 'e1',
+            api: _RoutineApi(readablePlans: readablePlans),
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => find.byType(SectionedDetailSkeleton).evaluate().isEmpty,
+        describe: 'the event to load',
+      );
+    }
+
+    Future<void> openSheetAndPick(WidgetTester tester, String label) async {
+      final attach = find.byKey(const Key('session-sequence-attach'));
+      await tester.ensureVisible(attach);
+      await tester.tap(attach);
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('session-sequence-picker'))
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the session plan attach sheet',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const Key('session-sequence-picker')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(label).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Finder inCard(String text) => find.descendant(
+      of: find.byKey(const Key('session-sequence')),
+      matching: find.text(text),
+    );
+
+    realtimeWidgetTest('an attendee sees the sequence with its cues', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      expect(inCard('Session sequence'), findsOneWidget);
+      expect(inCard('Morning Flow'), findsOneWidget);
+      expect(inCard('Breathe with the spine'), findsOneWidget);
+      // A per-side item expands into a left and a right step.
+      expect(inCard('Pigeon (Left) · hold 45s'), findsOneWidget);
+      expect(inCard('Pigeon (Right) · hold 45s'), findsOneWidget);
+      // Only the organiser can change it.
+      expect(find.byKey(const Key('session-sequence-attach')), findsNothing);
+    });
+
+    realtimeWidgetTest('a viewer who cannot read the plan sees no card', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social, readablePlans: const {});
+      await tester.pump();
+      expect(find.byKey(const Key('session-sequence')), findsNothing);
+      expect(find.text('Session sequence'), findsNothing);
+    });
+
+    realtimeWidgetTest('the organiser changes the plan after creation', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      await openSheetAndPick(tester, 'Core Pilates');
+      // No routine is attached, so there is nothing to warn about replacing.
+      expect(find.byKey(const Key('session-sequence-replaces-routine')),
+          findsNothing);
+      await tester.tap(find.byKey(const Key('session-sequence-save')));
+      await pumpUntil(
+        tester,
+        () => inCard('Hundred · 100 reps').evaluate().isNotEmpty,
+        describe: 'the card to show the new plan',
+      );
+      expect(social.planWrites, ['plan-core']);
+      expect(inCard('Cat-Cow · flow 30s'), findsNothing);
+      expect(inCard('Core Pilates'), findsOneWidget);
+      expect(find.text('Session plan updated.'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the organiser clears the plan', (tester) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      await openSheetAndPick(tester, 'None');
+      await tester.tap(find.byKey(const Key('session-sequence-save')));
+      await pumpUntil(
+        tester,
+        () => inCard('None').evaluate().isNotEmpty,
+        describe: 'the card to show no plan',
+      );
+      expect(social.planWrites, [null]);
+      expect(social.sessionPlanId, isNull);
+      expect(inCard('Cat-Cow · flow 30s'), findsNothing);
+      // The organiser keeps the card, so a plan can be attached again.
+      expect(find.byKey(const Key('session-sequence-attach')), findsOneWidget);
+    });
+
+    realtimeWidgetTest(
+      'attaching a plan to a class with a routine says it replaces it',
+      (tester) async {
+        final social = _ClassRoutineSocial(
+          club: _club('event_organiser'),
+          gymRoutineId: 'r-lower',
+        );
+        await pumpClass(tester, social);
+        await pumpUntil(
+          tester,
+          () => find.text('Back Squat').evaluate().isNotEmpty,
+          describe: 'the routine card',
+        );
+        expect(inCard('None'), findsOneWidget);
+        await openSheetAndPick(tester, 'Morning Flow');
+        expect(find.byKey(const Key('session-sequence-replaces-routine')),
+            findsOneWidget);
+        await tester.tap(find.byKey(const Key('session-sequence-save')));
+        await pumpUntil(
+          tester,
+          () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+          describe: 'the card to show the attached plan',
+        );
+        expect(social.planWrites, ['plan-flow']);
+        expect(social.gymRoutineId, isNull);
+        // The re-read follows the cleared routine, so its card empties too.
+        expect(find.text('Back Squat'), findsNothing);
+        expect(find.text('No routine attached.'), findsOneWidget);
+      },
+    );
+
+    realtimeWidgetTest('a failed write says so and keeps the plan', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        sessionPlanId: 'plan-flow',
+      )..failPlanWrite = true;
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      await openSheetAndPick(tester, 'Core Pilates');
+      await tester.tap(find.byKey(const Key('session-sequence-save')));
+      await pumpUntil(
+        tester,
+        () => find
+            .text("Couldn't update the session plan.")
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the failure banner',
+      );
+      expect(social.planWrites, ['plan-core']);
+      expect(social.sessionPlanId, 'plan-flow');
+      expect(inCard('Cat-Cow · flow 30s'), findsOneWidget);
     });
   });
 }

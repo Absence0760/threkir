@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatDistance, formatElevation } from '$lib/format/units.svelte';
-	import { formatDuration } from '$lib/format/time';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		progressFraction,
 		isComplete,
 		challengePace,
 		type ChallengeMetric
-	} from '$lib/social/challenge_progress';
+	} from '#lib/social/challenge_progress.ts';
 
 	let {
 		metric,
@@ -46,6 +46,8 @@
 				return m('challenges.unitDays', { n: Math.round(v) });
 			case 'activity_count':
 				return m('challenges.unitActivities', { n: Math.round(v) });
+			case 'park_courses':
+				return m('challenges.unitParkCourses', { n: Math.round(v) });
 		}
 	}
 </script>

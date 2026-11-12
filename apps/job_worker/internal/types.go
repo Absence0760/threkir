@@ -34,6 +34,15 @@ type TrackPoint struct {
 	Elevation *float64   `json:"ele,omitempty"`
 	Timestamp *time.Time `json:"ts,omitempty"`
 	Bpm       *int       `json:"bpm,omitempty"`
+	// AccuracyMetres is the recorder's reported horizontal accuracy,
+	// absent on imports and older recordings. The OSRM matcher turns it
+	// into a per-point search radius.
+	AccuracyMetres *float64 `json:"accuracyMetres,omitempty"`
+	// DistM is the run's distance credited up to this fix as the recorder
+	// saved it (docs/features/gps_distance.md § Waypoint fields). Carried
+	// so a matched track, which keeps one point per on-track stored fix,
+	// keeps it too; the worker reads none of it.
+	DistM *float64 `json:"distM,omitempty"`
 }
 
 // MatchOutput is what a Matcher hands back to the worker. The matched
@@ -46,8 +55,18 @@ type MatchOutput struct {
 	AlgorithmVersion string
 }
 
+// TrackSource is the stored track a map_match job matches: its path, and
+// the version the Storage API stamped on the bytes behind that path when
+// the worker read it. track_url never changes once set (the
+// runs_track_url_path_shape CHECK), so Version is what tells one upload of
+// the track from the next; every result the job writes is conditional on it.
+type TrackSource struct {
+	URL     string
+	Version string
+}
+
 // MatchedTrackRow is the subset of run_matched_tracks the worker writes
-// after a successful match. PATCH'd via PostgREST.
+// after a match, through the record_map_match_result RPC.
 type MatchedTrackRow struct {
 	Status string `json:"status"`
 	// Pointer, not string: the run_matched_tracks_matched_track_url_shape
@@ -122,6 +141,27 @@ type StravaEventPayload struct {
 	AspectType string `json:"aspect_type"` // "create" | "update" | "delete"
 	OwnerID    int64  `json:"owner_id"`    // Strava athlete id (== integrations.external_id for the user)
 	EventTime  int64  `json:"event_time"`  // unix seconds
+	// Updates carries the changed fields of an "update" event. The one the
+	// worker acts on is an athlete's `authorized: "false"` (deauthorization).
+	Updates map[string]any `json:"updates,omitempty"`
+}
+
+// IsAthleteDeauthorization reports Strava's athlete-revoked-access event:
+// object_type "athlete", aspect_type "update", `updates.authorized` the
+// string "false" (a boolean false is accepted too). Mirrors
+// `isAthleteDeauthorization` in the Edge Function's
+// `_shared/strava_disconnect.ts`.
+func (p StravaEventPayload) IsAthleteDeauthorization() bool {
+	if p.ObjectType != "athlete" || p.AspectType != "update" {
+		return false
+	}
+	switch v := p.Updates["authorized"].(type) {
+	case string:
+		return v == "false"
+	case bool:
+		return !v
+	}
+	return false
 }
 
 // NotificationEmailPayload is the payload the notifications AFTER INSERT
@@ -150,7 +190,18 @@ type NotificationRow struct {
 	PlanID        *string `json:"plan_id"`
 	AchievementID *string `json:"achievement_id"`
 	ChallengeID   *string `json:"challenge_id"`
-	EmailSentAt   *string `json:"email_sent_at"`
+	// CourseAlertID names an organiser's course alert (migration
+	// 20271124002408); pathForKind links it through /course-alerts/{id}.
+	CourseAlertID *string `json:"course_alert_id"`
+	// ConversationID names the group a 'message' or 'group_invite' row is
+	// about (migration 20271217000001); null on a 1:1 message. copyKeyFor
+	// reads it for the group wording and pathForKind for the group's thread.
+	ConversationID *string `json:"conversation_id"`
+	// Refunded is set on an event_cancel row whose recipient held a paid order
+	// on the cancelled occurrence (migration 20270725000002); copyKeyFor reads
+	// it to pick the copy that says the payment is being refunded.
+	Refunded    bool    `json:"refunded"`
+	EmailSentAt *string `json:"email_sent_at"`
 	// WebPushSentAt is the web-push channel's idempotency guard — the
 	// sibling of EmailSentAt for the kind='web_push' consumer (migration
 	// 20261219_001). Only the FetchNotificationForWebPush projection selects
@@ -247,6 +298,12 @@ type LifecycleEmailPayload struct {
 //     a sustained departure from the planned route. Same times-only payload
 //     shape as "overdue".
 //
+// ViewToken is set on an "overdue" / "off_route" job when the run was a live
+// share on the safety-contacts audience (migration 20270821000001, decisions
+// § 1964): this contact's own capability link, appended to the live URL as a
+// fragment so it never reaches a server log or a Referer. Absent for a public
+// live share, whose bare link already works.
+//
 // ContactEmail is always set (the address the alert goes to). ContactUserID
 // is set only for a contact linked to an app account — used purely to
 // localize the mail to their language; it is NOT a preference gate (a safety
@@ -263,6 +320,27 @@ type SafetyEmailPayload struct {
 	ConfirmToken  string  `json:"confirm_token"`
 	StartedAt     string  `json:"started_at,omitempty"`
 	LastSeenAt    string  `json:"last_seen_at,omitempty"`
+	ViewToken     string  `json:"view_token,omitempty"`
+}
+
+// SecurityEmailPayload is the payload for `kind='security_email'` jobs
+// (migration 20270804000001): account-security mail that is neither a
+// notification mirror nor lifecycle mail. One template today:
+//   - "new_device_sign_in": enqueued by the auth.sessions triggers in
+//     20270804000002 the first time a (browser, platform) class signs in to
+//     an account that already had one. Browser and Platform are the
+//     sign_in_devices CHECK vocabularies — coarse classes, never a raw
+//     User-Agent — and SignedInAt is an RFC 3339 UTC instant. No IP and no
+//     location ever reach the payload.
+//
+// The password-changed notice is NOT a job: GoTrue emits it through the
+// send-email hook (auth-email Edge Function), decisions 1893.
+type SecurityEmailPayload struct {
+	UserID     string `json:"user_id"`
+	Template   string `json:"template"`
+	Browser    string `json:"browser"`
+	Platform   string `json:"platform"`
+	SignedInAt string `json:"signed_in_at"`
 }
 
 // SafetySmsPayload is the payload for `kind='safety_sms'` jobs (migration
@@ -276,6 +354,7 @@ type SafetyEmailPayload struct {
 // email-specific fields: ContactPhone is the E.164 destination; ContactUserID
 // (when the contact is a linked app user) localizes the copy only; StartedAt
 // and, when a ping landed, LastSeenAt carry the times. Never coordinates.
+// ViewToken is the contact's own safety-audience link, as on the email.
 type SafetySmsPayload struct {
 	Template      string  `json:"template"`
 	ContactUserID *string `json:"contact_user_id"`
@@ -284,6 +363,7 @@ type SafetySmsPayload struct {
 	RunID         *string `json:"run_id"`
 	StartedAt     string  `json:"started_at,omitempty"`
 	LastSeenAt    string  `json:"last_seen_at,omitempty"`
+	ViewToken     string  `json:"view_token,omitempty"`
 }
 
 // WeeklyDigestPayload is the payload for `kind='weekly_digest'` jobs
@@ -376,4 +456,13 @@ type StravaActivityResult struct {
 type IngestedRunInfo struct {
 	ID     string `json:"id"`
 	UserID string `json:"user_id"`
+}
+
+// StorageObject is one file in a Supabase Storage bucket, as the list API
+// reports it. `CreatedAt` is zero when the API sent none — see
+// [SupabaseClient.ListStorageObjectsWithMeta] for why that must not be read
+// as "very old".
+type StorageObject struct {
+	Path      string
+	CreatedAt time.Time
 }

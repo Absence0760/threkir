@@ -1,24 +1,29 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatDistance, formatElevation } from '$lib/format/units.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import type { ChallengeLeaderboardRow, ChallengeMetric, ChallengeScope } from '$lib/types';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import type { ChallengeLeaderboardRow, ChallengeMetric, ChallengeScope } from '#lib/types.ts';
+	import { teamLabel } from '#lib/social/challenge_list.ts';
+	import { standingFor } from '#lib/social/leaderboard_standing.ts';
 
 	let {
 		rows,
 		metric,
 		scope,
 		clubNames = {},
-		meId = null
+		meId = null,
+		meTeamId = null
 	}: {
 		rows: ChallengeLeaderboardRow[];
 		metric: ChallengeMetric;
 		scope: ChallengeScope;
 		clubNames?: Record<string, string>;
 		meId?: string | null;
+		meTeamId?: string | null;
 	} = $props();
 
 	const byTeam = $derived(scope === 'club_vs_club');
+	const standing = $derived(standingFor(rows, byTeam ? meTeamId : meId));
 
 	function fmt(v: number): string {
 		switch (metric) {
@@ -32,18 +37,57 @@
 				return m('challenges.unitDays', { n: Math.round(v) });
 			case 'activity_count':
 				return m('challenges.unitActivities', { n: Math.round(v) });
+			case 'park_courses':
+				return m('challenges.unitParkCourses', { n: Math.round(v) });
 		}
 	}
 
 	function nameFor(row: ChallengeLeaderboardRow): string {
-		if (byTeam) return clubNames[row.team_club_id ?? ''] ?? row.team_club_id ?? '—';
-		return row.display_name ?? m('checkpoint.anonymousRunner');
+		if (!byTeam) return row.display_name ?? m('checkpoint.anonymousRunner');
+		const label = teamLabel(row.team_club_id, clubNames);
+		if (label.kind === 'named') return label.name;
+		return label.kind === 'no_club' ? m('challenges.teamNoClub') : m('challenges.teamPrivateClub');
 	}
 </script>
 
 {#if rows.length === 0}
 	<p class="empty">{m('challenges.leaderboardEmpty')}</p>
 {:else}
+	{#if standing && rows.length > 1}
+		<div class="standing" data-testid="challenge-standing">
+			<span class="standing-label"
+				>{byTeam ? m('challenges.standingTitleTeam') : m('challenges.standingTitle')}</span
+			>
+			<span class="standing-rank"
+				>{m('challenges.standingRank', { rank: standing.rank, total: standing.total })}</span
+			>
+			{#if standing.tiedWith > 0}
+				<span class="standing-gap">
+					{standing.tiedWith === 1
+						? m('challenges.standingTiedOne')
+						: m('challenges.standingTiedMany', { n: standing.tiedWith })}
+				</span>
+			{/if}
+			{#if standing.chasing}
+				<span class="standing-gap">
+					{m('challenges.standingBehind', {
+						gap: fmt(standing.chasing.delta),
+						name: nameFor(standing.chasing.entry)
+					})}
+				</span>
+			{:else if standing.tiedWith === 0}
+				<span class="standing-gap leading">{m('challenges.standingLeading')}</span>
+			{/if}
+			{#if standing.chasedBy}
+				<span class="standing-gap">
+					{m('challenges.standingAhead', {
+						gap: fmt(standing.chasedBy.delta),
+						name: nameFor(standing.chasedBy.entry)
+					})}
+				</span>
+			{/if}
+		</div>
+	{/if}
 	<ol class="board" aria-label={m('challenges.leaderboard')}>
 		{#each rows as row (byTeam ? row.team_club_id : row.user_id)}
 			<li class="row" class:me={!byTeam && meId && row.user_id === meId}>
@@ -58,6 +102,35 @@
 {/if}
 
 <style>
+	.standing {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-2xs, 0.25rem) var(--space-sm);
+		margin-bottom: var(--space-md);
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-md);
+		background: var(--color-primary-light);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+		font-size: 0.875rem;
+	}
+	.standing-label {
+		font-weight: 700;
+		color: var(--color-text);
+	}
+	.standing-rank {
+		font-variant-numeric: tabular-nums;
+		font-weight: 700;
+		color: var(--color-primary);
+	}
+	.standing-gap {
+		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+	.standing-gap.leading {
+		color: var(--color-success-text);
+		font-weight: 600;
+	}
 	.board {
 		list-style: none;
 		margin: 0;

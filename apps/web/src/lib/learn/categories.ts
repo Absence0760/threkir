@@ -6,7 +6,7 @@
 /// (`/learn/category/<id>`). `labelKey` resolves through the i18n `m()`
 /// helper; `order` controls section ordering on the hub.
 
-import type { MessageKey } from '$lib/i18n/messages';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 
 export type LearnCategory = {
 	id: string;
@@ -50,10 +50,11 @@ export const CTA_TARGETS: CtaTarget[] = [
 	{ feature: 'route-builder', route: '/routes/new', labelKey: 'learn.ctaRouteBuilder' },
 	{ feature: 'gear', route: '/settings', labelKey: 'learn.ctaGear' },
 	{ feature: 'nutrition', route: '/nutrition', labelKey: 'learn.ctaNutrition' },
-	{ feature: 'ai-coach', route: '/coach', labelKey: 'learn.ctaAiCoach' },
+	{ feature: 'ai-coach', route: '/messages/coach', labelKey: 'learn.ctaAiCoach' },
 	{ feature: 'clubs', route: '/social?tab=clubs', labelKey: 'learn.ctaClubs' },
 	{ feature: 'racing', route: '/races', labelKey: 'learn.ctaRacing' },
 	{ feature: 'explore', route: '/routes?tab=explore', labelKey: 'learn.ctaExplore' },
+	{ feature: 'parks', route: '/parks', labelKey: 'learn.ctaParks' },
 ];
 
 const CTA_BY_FEATURE = new Map(CTA_TARGETS.map((t) => [t.feature, t]));

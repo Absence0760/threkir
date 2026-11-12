@@ -197,6 +197,49 @@ void main() {
       final frame = encodeWorkoutSteps(steps);
       expect(frame[5], steps.length);
       expect(frame.length, _headerLen + steps.length * _stepLen + _crcLen);
+      expect(frame[6], kWorkoutFlagUnpaced,
+          reason: 'a walk-run session travels unpaced');
+    });
+
+    test('a walk-run frame matches the firmware golden vector', () {
+      WorkoutStep walk(WorkoutStepKind kind, int? i, int? n, int sec) =>
+          WorkoutStep(
+            kind: kind,
+            repIndex: i,
+            repTotal: n,
+            targetDistanceMetres: 0,
+            targetDurationSec: sec,
+            targetPaceSecPerKm: 360,
+            label: 'test',
+            paced: false,
+          );
+      final frame = encodeWorkoutSteps([
+        walk(WorkoutStepKind.warmup, null, null, 300),
+        walk(WorkoutStepKind.rep, 1, 1, 1500),
+        walk(WorkoutStepKind.cooldown, null, null, 300),
+      ]);
+      expect(
+        frame,
+        _hex('574b54310103010000000a000000002c0168010101010a00000000dc056801'
+            '0500000a000000002c0168013f285589'),
+      );
+    });
+
+    test('rejects a list mixing paced and unpaced steps', () {
+      expect(
+        () => encodeWorkoutSteps([
+          _dist(kind: WorkoutStepKind.warmup, distanceM: 1000, pace: 360),
+          const WorkoutStep(
+            kind: WorkoutStepKind.walk,
+            targetDistanceMetres: 0,
+            targetDurationSec: 90,
+            targetPaceSecPerKm: 360,
+            label: 'test',
+            paced: false,
+          ),
+        ]),
+        throwsArgumentError,
+      );
     });
   });
 

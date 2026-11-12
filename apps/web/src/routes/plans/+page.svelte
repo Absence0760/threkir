@@ -1,19 +1,40 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { formatDateShort } from '$lib/format/time';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { formatDateShort } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { fetchMyPlansWithError, deletePlan, updatePlanStatus } from '$lib/core/data';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { page } from '$app/state';
+	import {
+		fetchMyPlansWithError,
+		deletePlan,
+		updatePlanStatus,
+		createTrainingPlan
+	} from '#lib/core/data.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
+	import { STARTER_PLANS, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { starterName, starterStartIso, starterSummaryText } from '#lib/training/starter_labels.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import PlanEditor from '$lib/components/PlanEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import type { TrainingPlan, PlanStatus } from '$lib/types';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import PlanEditor from '#lib/components/PlanEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import type { TrainingPlan, PlanStatus } from '#lib/types.ts';
 	import type { Snapshot } from './$types';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	let plans = $state<TrainingPlan[]>([]);
 	let loading = $state(true);
@@ -21,16 +42,25 @@
 	let confirmTarget = $state<TrainingPlan | null>(null);
 	let confirmAction = $state<'abandon' | 'delete' | null>(null);
 	let showPlanModal = $state(false);
+	// The AI plan assistant lives on the full wizard page, not in the modal:
+	// `#ai-plan` is the box's id in PlanEditor.
+	const showAiPlan = coachEnabled() && aiPlanEnabled();
+	const AI_PLAN_HREF = '/plans/new?type=training#ai-plan';
 
 	type StatusFilter = 'all' | PlanStatus;
 	let statusFilter = $state<StatusFilter>('all');
+	/// The list-freshness token `plans` was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 
 	async function load() {
 		loading = true;
 		loadError = null;
+		const token = listToken('plans');
 		const result = await fetchMyPlansWithError();
 		plans = result.plans;
-		loadError = result.error;
+		loadError = result.error ? errorCopy(result.error, m, 'plans: loadError') : null;
+		if (!result.error) loadedToken = token;
 		loading = false;
 	}
 
@@ -38,31 +68,35 @@
 		// Snapshot restore (below) repopulates `plans` synchronously
 		// when navigating back, so skip the fetch — otherwise a flash
 		// of "loading" replaces the restored list and breaks scroll.
-		if (!(plans.length > 0 && !loading)) await load();
+		if (!(plans.length > 0 && !loading)) {
+			await auth.ready();
+			await load();
+		}
 		// Deep-link from the dashboard's "Pick a goal race" CTA: opening
 		// `/plans?new=1` lands here with the create-plan modal already
 		// open. Strip the query so a refresh doesn't re-open the modal.
-		if ($page.url.searchParams.get('new') === '1') {
+		if (page.url.searchParams.get('new') === '1') {
 			showPlanModal = true;
-			goto('/plans', { replaceState: true, noScroll: true });
+			goto('/plans', { replace: true, reset: false });
 		}
 	});
 
-	export const snapshot: Snapshot<{ plans: TrainingPlan[]; statusFilter: StatusFilter }> = {
-		capture: () => ({ plans, statusFilter }),
+	export const snapshot: Snapshot<{
+		plans: TrainingPlan[];
+		statusFilter: StatusFilter;
+		listToken: string;
+	}> = {
+		capture: () => ({ plans, statusFilter, listToken: loadedToken }),
 		restore: (s) => {
-			plans = s.plans;
 			statusFilter = s.statusFilter;
+			// A plan was written since the list was loaded (created here and
+			// opened on its detail page, or edited / abandoned there): keep the
+			// filter, leave `plans` empty and `loading` set so onMount fetches.
+			if (isListStale('plans', s.listToken)) return;
+			plans = s.plans;
+			loadedToken = s.listToken;
 			loading = false;
 		}
-	};
-
-	const eventLabels: Record<string, () => string> = {
-		distance_5k: () => '5K',
-		distance_10k: () => '10K',
-		distance_half: () => m('plansPage.eventHalf'),
-		distance_full: () => m('plansPage.eventFull'),
-		custom: () => m('plansPage.eventCustom')
 	};
 
 	const statusIcon: Record<PlanStatus, string> = {
@@ -115,13 +149,11 @@
 	/// Calendar-week index within the plan, 1-based. Capped to [1, total].
 	/// Used only as a coarse position indicator on the card — the plan
 	/// detail page has the authoritative "completed workouts" progress.
+	///
+	/// Bucketed through the same `currentPlanWeekIndex` the detail page uses,
+	/// so the two surfaces cannot name different weeks for the same plan.
 	function currentWeek(p: TrainingPlan): number {
-		const today = todayMidnight();
-		const start = planMidnight(p.start_date);
-		const total = totalWeeks(p);
-		if (today < start) return 1;
-		const week = Math.floor((today.getTime() - start.getTime()) / (7 * 86_400_000)) + 1;
-		return Math.min(Math.max(1, week), total);
+		return currentPlanWeekIndex(p.start_date, todayISO(), totalWeeks(p)) + 1;
 	}
 
 	/// Calendar progress (0–100) for the timeline bar on active cards.
@@ -165,7 +197,7 @@
 		out.sort((a, b) => {
 			const r = rank[a.status] - rank[b.status];
 			if (r !== 0) return r;
-			return b.start_date.localeCompare(a.start_date);
+			return compareOrdinal(b.start_date, a.start_date);
 		});
 		return out;
 	});
@@ -178,6 +210,47 @@
 		for (const p of plans) c[p.status] = (c[p.status] ?? 0) + 1;
 		return c;
 	});
+
+	/// A paused plan is still a plan the runner has not finished with, so it
+	/// can be abandoned like an active one; only a plan that is already over
+	/// (completed or abandoned) offers Delete. One action per card.
+	function canAbandon(p: TrainingPlan): boolean {
+		return p.status === 'active' || p.status === 'paused';
+	}
+
+	let creatingStarterId = $state<string | null>(null);
+
+	/// The list is empty, so there is no plan of the runner's own for the new
+	/// one to overlap: the server is asked to refuse one anyway, and a refusal
+	/// (a plan created in another tab since) lands as the create-failed toast.
+	async function createStarter(id: string) {
+		if (creatingStarterId) return;
+		const starter = STARTER_PLANS.find((s) => s.id === id);
+		const start = starterStartIso(id, todayISO());
+		if (!starter) return;
+		creatingStarterId = id;
+		const c = auth.user ? await loadPlanCalibration(auth.user.id) : null;
+		const generated = instantiateStarter(id, start, c?.age, c?.extraRecovery);
+		if (!generated) {
+			creatingStarterId = null;
+			return;
+		}
+		try {
+			const plan = await createTrainingPlan({
+				name: starterName(id),
+				goalEvent: starter.goalEvent,
+				goalDistanceM: generated.goalDistanceM,
+				startDate: start,
+				daysPerWeek: starter.daysPerWeek,
+				generated,
+				overlap: 'refuse'
+			});
+			goto(`/plans/${plan.id}`);
+		} catch (e) {
+			showToast(m('plansNew.toastCreateFailed', { error: errorCopy(e, m, 'plansNew.toastCreateFailed') }), 'error');
+			creatingStarterId = null;
+		}
+	}
 
 	function abandon(p: TrainingPlan) {
 		confirmTarget = p;
@@ -203,7 +276,7 @@
 			// Keep the dialog open so the user can retry or cancel — the
 			// plan still exists, so silently closing would be a lie.
 			showToast(
-				m('plansPage.actionFailed', { error: e instanceof Error ? e.message : String(e) }),
+				m('plansPage.actionFailed', { error: errorCopy(e, m, 'plansPage.actionFailed') }),
 				'error'
 			);
 			return;
@@ -234,32 +307,42 @@
 	<RunSurfaceTabs active="plans" />
 	<header class="page-header">
 		<div class="toolbar">
-			<div class="activity-group" role="group" aria-label={m('plansPage.filterGroupLabel')}>
-				{#each statusFilters as f}
-					<button
-						class="activity-btn"
-						class:active={statusFilter === f.value}
-						onclick={() => (statusFilter = f.value)}
-						aria-label={f.label()}
-						aria-pressed={statusFilter === f.value}
-						type="button"
-					>
-						<span class="material-symbols">{f.icon}</span>
-						<span class="activity-label">{f.label()}</span>
-						{#if counts[f.value] > 0}
-							<span class="count-pill">{counts[f.value]}</span>
-						{/if}
-					</button>
-				{/each}
-			</div>
+			<!-- A filter over nothing is noise: with no plans every bucket is 0.
+			     Shown while loading so a populated list doesn't shift on arrival. -->
+			{#if loading || plans.length > 0}
+				<div class="activity-group" role="group" aria-label={m('plansPage.filterGroupLabel')}>
+					{#each statusFilters as f}
+						<button
+							class="activity-btn"
+							class:active={statusFilter === f.value}
+							onclick={() => (statusFilter = f.value)}
+							aria-label={f.label()}
+							aria-pressed={statusFilter === f.value}
+							type="button"
+						>
+							<span class="material-symbols" aria-hidden="true">{f.icon}</span>
+							<span class="activity-label">{f.label()}</span>
+							{#if counts[f.value] > 0}
+								<span class="count-pill">{counts[f.value]}</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 
 			<div class="toolbar-actions">
 				<a class="add-btn add-btn-outline" href="/plans/library">
-					<span class="material-symbols">public</span>
+					<span class="material-symbols" aria-hidden="true">public</span>
 					{m('plansPage.browseLibrary')}
 				</a>
+				{#if showAiPlan}
+					<a class="add-btn add-btn-outline" href={AI_PLAN_HREF}>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
+						{m('plansPage.describeWithAi')}
+					</a>
+				{/if}
 				<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
-					<span class="material-symbols">add</span>
+					<span class="material-symbols" aria-hidden="true">add</span>
 					{m('plansPage.newPlan')}
 				</button>
 			</div>
@@ -271,20 +354,20 @@
 			{#each Array(4) as _, i (i)}
 				<div class="skel-card">
 					<div class="skel-card-top">
-						<span class="skel skel-line skel-w-50"></span>
-						<span class="skel skel-pill"></span>
+						<SkeletonBlock height="0.75rem" width="50%" />
+						<SkeletonBlock height="1rem" width="4rem" radius="9999px" />
 					</div>
 					<div class="skel-card-meta">
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-30"></span>
+						{#each Array(3) as _, j (j)}
+							<SkeletonBlock height="0.75rem" width="30%" />
+						{/each}
 					</div>
-					<span class="skel skel-bar"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.4rem" radius="9999px" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('plansPage.loadingPlans')}</p>
+		<p class="visually-hidden" role="status">{m('plansPage.loadingPlans')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -295,37 +378,84 @@
 			<button class="btn btn-outline" onclick={load}>{m('plansPage.retry')}</button>
 		</div>
 	{:else if plans.length === 0}
-		<section class="empty">
-			<span class="material-symbols empty-icon" aria-hidden="true">calendar_month</span>
-			<h2>{m('plansPage.emptyTitle')}</h2>
-			<p class="empty-lead">
-				{m('plansPage.emptyLead')}
-			</p>
-			<button class="btn-primary" type="button" onclick={() => (showPlanModal = true)}>
-				<span class="material-symbols">add</span>
-				{m('plansPage.createFirst')}
-			</button>
-		</section>
+		<EmptyState
+			icon="calendar_month"
+			title={m('plansPage.emptyTitle')}
+			text={m('plansPage.emptyLead')}
+		>
+			{#snippet actions()}
+				<button class="btn btn-primary" type="button" onclick={() => (showPlanModal = true)}>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('plansPage.createFirst')}
+				</button>
+				{#if showAiPlan}
+					<a class="btn btn-outline" href={AI_PLAN_HREF}>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
+						{m('plansPage.describeWithAi')}
+					</a>
+				{/if}
+			{/snippet}
+			<div class="starters" role="group" aria-labelledby="starters-heading">
+				<h3 id="starters-heading">{m('plansNew.starterHeading')}</h3>
+				<ul class="starter-list">
+					{#each STARTER_PLANS as s (s.id)}
+						<li>
+							<button
+								class="starter-tile"
+								type="button"
+								disabled={creatingStarterId !== null}
+								aria-busy={creatingStarterId === s.id}
+								aria-labelledby="starter-{s.id}-name"
+								aria-describedby="starter-{s.id}-summary"
+								onclick={() => createStarter(s.id)}
+							>
+								<span class="starter-name" id="starter-{s.id}-name">{starterName(s.id)}</span>
+								<span class="starter-summary" id="starter-{s.id}-summary">
+									{starterSummaryText(s.id)} · {m('plansPage.starterStarts', {
+										date: formatDateShort(starterStartIso(s.id, todayISO()))
+									})}
+								</span>
+								<span class="starter-cta" aria-hidden="true">
+									{creatingStarterId === s.id ? m('plansNew.creating') : m('plansNew.createStarter')}
+									<span class="material-symbols" aria-hidden="true">arrow_forward</span>
+								</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</EmptyState>
 	{:else}
 		<div class="grid">
 			{#each filteredPlans as p (p.id)}
 				{@const total = totalWeeks(p)}
 				{@const isActive = p.status === 'active'}
+				{@const isUpcoming = isActive && p.start_date > todayISO()}
 				{@const week = isActive ? currentWeek(p) : null}
 				{@const pct = isActive ? calendarPct(p) : null}
-				<a class="card" class:card-active={isActive} href="/plans/{p.id}">
+				<!-- The card is not itself a link: it holds Abandon / Delete, and a
+				     button inside an <a> is an interactive element nested in another.
+				     The title link stretches over the card instead (.card-link::after). -->
+				<div class="card" class:card-active={isActive}>
 					<div class="card-head">
-						<h3>{p.name}</h3>
-						<span class="badge status-{p.status}">
-							<span class="material-symbols">{statusIcon[p.status] ?? 'help'}</span>
-							{statusLabel(p.status)}
-						</span>
+						<h3><a class="card-link" href="/plans/{p.id}">{p.name}</a></h3>
+						{#if isUpcoming}
+							<span class="badge status-upcoming">
+								<span class="material-symbols" aria-hidden="true">event_upcoming</span>
+								{m('plansPage.statusUpcoming')}
+							</span>
+						{:else}
+							<span class="badge status-{p.status}">
+								<span class="material-symbols" aria-hidden="true">{statusIcon[p.status] ?? 'help'}</span>
+								{statusLabel(p.status)}
+							</span>
+						{/if}
 					</div>
 
 					<div class="hero">
 						<div class="hero-metric">
 							<span class="section-label">{m('plansPage.heroGoal')}</span>
-							<span class="hero-value">{eventLabels[p.goal_event]?.() ?? p.goal_event}</span>
+							<span class="hero-value">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
 						</div>
 						<div class="hero-metric">
 							<span class="section-label">{m('plansPage.heroTarget')}</span>
@@ -333,7 +463,7 @@
 						</div>
 						{#if p.vdot}
 							<div class="hero-metric">
-								<span class="section-label">VDOT</span>
+								<span class="section-label"><MetricLabel metric="vdot" /></span>
 								<span class="hero-value">{Number(p.vdot).toFixed(1)}</span>
 							</div>
 						{/if}
@@ -341,14 +471,12 @@
 
 					<div class="meta">
 						<span class="meta-item">
-							<span class="material-symbols">date_range</span>
+							<span class="material-symbols" aria-hidden="true">date_range</span>
 							{formatDateShort(p.start_date)} → {formatDateShort(p.end_date)}
 						</span>
 						<span class="meta-item">
-							<span class="material-symbols">view_week</span>
-							{total === 1
-								? m('plansPage.metaWeeksSingular', { days: p.days_per_week })
-								: m('plansPage.metaWeeksPlural', { total, days: p.days_per_week })}
+							<span class="material-symbols" aria-hidden="true">view_week</span>
+							{planLengthLabel(m, total, p.days_per_week)}
 						</span>
 					</div>
 
@@ -371,38 +499,37 @@
 					{/if}
 
 					<div class="card-actions">
-						{#if isActive}
+						{#if canAbandon(p)}
 							<button
 								class="card-action-btn"
 								type="button"
-								onclick={(e) => {
-									e.preventDefault();
-									abandon(p);
-								}}>{m('plansPage.abandon')}</button
+								onclick={() => abandon(p)}>{m('plansPage.abandon')}</button
 							>
 						{:else}
 							<button
 								class="card-action-btn danger"
 								type="button"
-								onclick={(e) => {
-									e.preventDefault();
-									remove(p);
-								}}>{m('plansPage.delete')}</button
+								onclick={() => remove(p)}>{m('plansPage.delete')}</button
 							>
 						{/if}
 					</div>
-				</a>
+				</div>
 			{/each}
 		</div>
 
 		{#if filteredPlans.length === 0}
-			<div class="filter-empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-				<p class="empty-text">{m('plansPage.noFilteredPlans', { status: statusFilter })}</p>
-				<button class="link-btn" type="button" onclick={() => (statusFilter = 'all')}>
-					{m('plansPage.showAllPlans')}
-				</button>
-			</div>
+			<EmptyState
+				icon="filter_alt_off"
+				title={m('plansPage.noFilteredPlans', {
+					status: statusFilter === 'all' ? '' : statusLabel(statusFilter)
+				})}
+			>
+				{#snippet actions()}
+					<button class="btn btn-outline" type="button" onclick={() => (statusFilter = 'all')}>
+						{m('plansPage.showAllPlans')}
+					</button>
+				{/snippet}
+			</EmptyState>
 		{/if}
 	{/if}
 </div>
@@ -545,6 +672,9 @@
 			margin-inline-start: 0;
 			width: 100%;
 			justify-content: flex-end;
+			/* Three actions outgrow a phone; flex-end without wrapping pushes
+			   the first ones off the left edge, where nothing can scroll to. */
+			flex-wrap: wrap;
 		}
 	}
 	@media (max-width: 30rem) {
@@ -568,6 +698,7 @@
 	}
 
 	.card {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
@@ -586,9 +717,22 @@
 		box-shadow: var(--shadow-md);
 		transform: translateY(-2px);
 	}
-	.card:focus-visible {
+	.card:has(.card-link:focus-visible) {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
+	}
+	.card-link {
+		color: inherit;
+		text-decoration: none;
+	}
+	.card-link:focus-visible {
+		outline: none;
+	}
+	.card-link::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
 	}
 	.card-active {
 		border-color: var(--color-primary-light);
@@ -627,6 +771,14 @@
 	.status-active {
 		background: var(--color-primary-light);
 		color: var(--color-primary);
+	}
+	.status-upcoming {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+	}
+	.status-paused {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
 	}
 	.status-completed {
 		background: var(--color-success-light);
@@ -712,6 +864,8 @@
 	}
 
 	.card-actions {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		justify-content: flex-end;
 		margin-top: auto;
@@ -741,65 +895,92 @@
 		color: var(--color-danger-text);
 	}
 
-	.empty {
-		max-width: 38rem;
-		margin: var(--space-2xl) 0;
-		padding: var(--space-2xl);
-		text-align: center;
-		background: var(--color-surface);
-		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-lg);
+	.starters {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
 		gap: var(--space-md);
 	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.7;
+	.starters h3 {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--color-text);
 	}
-	.empty h2 {
-		font-size: 1.25rem;
-		font-weight: 700;
+	/* Three tiles, so the cascade is 1 → 3 columns: a 2-column step would
+	   strand the third tile on a row of its own. */
+	.starter-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-md);
 	}
-	.empty-lead {
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-		line-height: 1.55;
-		max-width: 32rem;
+	@media (min-width: 56rem) {
+		.starter-list {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
 	}
-
-	.filter-empty {
+	.starter-list li {
+		display: flex;
+	}
+	.starter-tile {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-md);
-		color: var(--color-text-tertiary);
-	}
-	.filter-empty .empty-icon {
-		font-size: 2.25rem;
-	}
-	.filter-empty .empty-text {
-		font-size: 0.95rem;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		min-height: var(--tap-target-min);
+		padding: var(--space-md) var(--space-lg);
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
 		color: var(--color-text);
-		padding: 0;
-	}
-	.link-btn {
-		background: transparent;
-		border: none;
-		color: var(--color-primary);
 		font: inherit;
+		text-align: start;
+		cursor: pointer;
+		transition: border-color var(--transition-fast),
+			background var(--transition-fast);
+	}
+	.starter-tile:hover:not(:disabled) {
+		border-color: var(--color-primary);
+		background: var(--color-primary-light);
+	}
+	.starter-tile:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.starter-tile:disabled {
+		cursor: default;
+		opacity: 0.6;
+	}
+	.starter-tile[aria-busy='true'] {
+		opacity: 1;
+		border-color: var(--color-primary);
+	}
+	.starter-name {
+		font-size: 0.95rem;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+	.starter-summary {
+		font-size: 0.85rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
+	.starter-cta {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		margin-top: auto;
+		padding-top: var(--space-xs);
 		font-size: 0.875rem;
 		font-weight: 600;
-		cursor: pointer;
-		padding: var(--space-xs);
+		color: var(--color-primary);
 	}
-	.link-btn:hover {
-		color: var(--color-primary-hover);
+	.starter-cta .material-symbols {
+		font-size: 1.1rem;
 	}
-
 	/* Skeleton placeholders for the initial load. Layout matches the
 	   real card so the page lands at its true height immediately. */
 	.skel-card {
@@ -823,52 +1004,7 @@
 		display: flex;
 		gap: var(--space-md);
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-pill {
-		width: 4rem;
-		height: 1rem;
-		border-radius: 9999px;
-	}
-	.skel-bar {
-		height: 0.4rem;
-		border-radius: 9999px;
-	}
-	.skel-w-30 {
-		width: 30%;
-	}
-	.skel-w-50 {
-		width: 50%;
-	}
-	.skel-w-60 {
-		width: 60%;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
 	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
 		.card:hover {
 			transform: none;
 		}
@@ -877,17 +1013,6 @@
 		}
 	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 
 	.error-banner {
 		display: flex;

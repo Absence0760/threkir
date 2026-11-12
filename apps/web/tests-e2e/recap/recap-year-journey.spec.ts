@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun, insertRoute } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Year-in-Running recap data journey — the uncovered, data-driven arc.
@@ -53,13 +54,6 @@ function dayAt(month1: number, day: number, hour = 12, minute = 0): string {
 // distance < 1000 km so there is never a thousands separator to locale-format.
 function km1(metres: number): string {
 	return `${(metres / 1000).toFixed(1)} km`;
-}
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
 }
 
 // A Monday in mid-March of TARGET_YEAR (UTC). recap.ts buckets the top week
@@ -212,7 +206,7 @@ test.describe('recap year-in-running data journey', () => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		// Pre-accept the consent banner — it is itself role="dialog" and floats
 		// over the page, intercepting the Share-recap click below.
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {

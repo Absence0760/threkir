@@ -1,0 +1,304 @@
+// Unit tests for the icon extractor, and the repo invariant it exists for: the
+// subset font that ships carries every icon apps/web names.
+//
+// The invariant is checked by re-running the generator's SELECTION step — the
+// same `selectIcons` over the same sources and the same committed vocabulary —
+// and comparing it with the manifest the generator wrote beside the font. That
+// makes the failure mode of a new icon loud: adding `<span
+// class="material-symbols">rocket_launch</span>` fails here with the name in
+// the message, instead of shipping a 1.25em box with the word `rocket_launch`
+// clipped inside it. The font work itself is not repeated (it needs fontTools);
+// what pins the manifest to the bytes on disk is the digest below, which the
+// generator wrote in the same run.
+//
+// CI: the `build-web` job in .github/workflows/ci.yml, which is in the
+//     `CI gate` aggregator's `needs:` list.
+
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import test from 'node:test';
+import { gzipSync } from 'node:zlib';
+
+import { ASSET_EXEMPTIONS, MAX_ASSET_KB } from './check_web_bundle_budget.mjs';
+
+import {
+	MANIFEST,
+	PINNED_AXES,
+	REPO_ROOT,
+	SUBSET_FONT,
+	UPSTREAM_FONT,
+	VOCABULARY_FILE,
+	WEB_SRC,
+	collectSources,
+	TEST_SOURCE,
+	parseVocabulary,
+	pinnedAxisConflicts,
+	selectIcons,
+	sha256Bytes,
+} from './web_icon_font.mjs';
+
+const vocabulary = parseVocabulary(readFileSync(VOCABULARY_FILE, 'utf8'));
+const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
+
+/** @param {string} path @param {string} text */
+const source = (path, text) => [{ path, text }];
+
+test('an icon written as element text is taken from the render site', () => {
+	const { icons, unrenderable, unreadable } = selectIcons(
+		source('a.svelte', '<span class="material-symbols">arrow_back</span>'),
+		new Set(['arrow_back']),
+	);
+	assert.deepEqual(icons, ['arrow_back']);
+	assert.deepEqual(unrenderable, []);
+	assert.deepEqual(unreadable, []);
+});
+
+test('an attribute expression between the class and the tag end does not hide the icon', () => {
+	// The one site rendering `push_pin` writes `title={m('…')}` after the class,
+	// which a class-anchored match that stopped at the first `{` used to drop.
+	const { icons } = selectIcons(
+		source(
+			'a.svelte',
+			'<span class="pin material-symbols" title={m(\'routeHeatmap.keptOnMap\')}>push_pin</span>',
+		),
+		new Set(['push_pin']),
+	);
+	assert.deepEqual(icons, ['push_pin']);
+});
+
+test('an icon that arrives through an expression is found where its name is written', () => {
+	// `{item.icon}` names nothing at the render site. The literal that feeds it
+	// is somewhere else entirely, which is why the second rule scans every
+	// quoted token in every file rather than only the render sites.
+	const { icons, unreadable } = selectIcons(
+		[
+			{ path: 'nav.ts', text: "const items = [{ icon: 'directions_run' }];" },
+			{ path: 'a.svelte', text: '<span class="nav-icon material-symbols">{item.icon}</span>' },
+		],
+		new Set(['directions_run']),
+	);
+	assert.deepEqual(icons, ['directions_run']);
+	assert.deepEqual(unreadable, [], 'an expression is a shape the extractor reads, not one it cannot');
+});
+
+test('a quoted token the font cannot render is not an icon', () => {
+	const { icons } = selectIcons(
+		source('a.ts', "const label = 'not_a_material_symbol';"),
+		new Set(['directions_run']),
+	);
+	assert.deepEqual(icons, []);
+});
+
+test('element text the font has no ligature for is an error, not a filtered candidate', () => {
+	// This name is rendered today and would render as text; excluding it
+	// silently would hide a broken icon rather than report one.
+	const { icons, unrenderable } = selectIcons(
+		source('a.svelte', '<span class="material-symbols">rocket_lunch</span>'),
+		new Set(['rocket_launch']),
+	);
+	assert.deepEqual(icons, []);
+	assert.deepEqual(unrenderable, [{ name: 'rocket_lunch', path: 'a.svelte' }]);
+});
+
+test('a dynamic class is reported rather than read as carrying no icons', () => {
+	const { icons, unreadable } = selectIcons(
+		source('a.svelte', '<span class={`material-symbols ${extra}`}>arrow_back</span>'),
+		new Set(['arrow_back']),
+	);
+	assert.deepEqual(icons, [], 'the name is still found by the literal rule only if quoted');
+	assert.equal(unreadable.length, 1);
+	assert.match(unreadable[0].name, /material-symbols/);
+});
+
+test('an icon span with no content renders no icon and is not an unreadable shape', () => {
+	const { icons, unreadable } = selectIcons(
+		source('a.svelte', '<span class="material-symbols" title={seg.role}></span>'),
+		new Set(['arrow_back']),
+	);
+	assert.deepEqual(icons, []);
+	assert.deepEqual(unreadable, []);
+});
+
+test('the vocabulary is the font\'s, not the package\'s type declaration', () => {
+	// `material-symbols/index.d.ts` lists 3899 names and omits every alias whose
+	// ligature resolves to a differently-named glyph. These five are rendered by
+	// apps/web and are absent from it; a guard built on that list would have
+	// dropped them.
+	for (const alias of ['terrain', 'expand_more', 'emoji_events', 'place', 'loop']) {
+		assert.ok(vocabulary.has(alias), `${alias} must be in the committed vocabulary`);
+	}
+	assert.equal(vocabulary.size, manifest.upstream.ligatures);
+});
+
+test('every icon apps/web names is in the shipped subset', () => {
+	const { icons, unrenderable, unreadable } = selectIcons(collectSources(WEB_SRC), vocabulary);
+	assert.deepEqual(
+		unreadable.map((u) => `${u.path}: ${u.name}`),
+		[],
+		'an icon class on an element whose content the extractor cannot read — extend ' +
+			'CLASS_ATTRIBUTE / ELEMENT_TEXT in scripts/web_icon_font.mjs',
+	);
+	assert.deepEqual(
+		unrenderable.map((u) => `${u.path}: ${u.name}`),
+		[],
+		'element text with no ligature in the upstream font — that icon does not render',
+	);
+	assert.deepEqual(
+		icons.filter((name) => !manifest.icons.includes(name)),
+		[],
+		'apps/web names icons the subset does not carry. Re-run ' +
+			'`node scripts/gen_web_icon_font.mjs` and commit the font + manifest.',
+	);
+	assert.deepEqual(
+		manifest.icons.filter((/** @type {string} */ name) => !icons.includes(name)),
+		[],
+		'the subset carries icons apps/web no longer names. Re-run ' +
+			'`node scripts/gen_web_icon_font.mjs` and commit the font + manifest.',
+	);
+});
+
+test('the manifest describes the font that is actually committed', () => {
+	const font = readFileSync(SUBSET_FONT);
+	assert.equal(font.length, manifest.subset.bytes);
+	assert.equal(sha256Bytes(font), manifest.subset.sha256);
+	assert.deepEqual(manifest.pinnedAxes, PINNED_AXES);
+	assert.deepEqual(manifest.variableAxes, ['FILL', 'wght']);
+});
+
+test('app.css serves the subset and nothing imports the unsubsetted package stylesheet', () => {
+	const css = readFileSync(join(WEB_SRC, 'app.css'), 'utf8');
+	assert.match(
+		css,
+		/src:\s*url\('\.\/lib\/assets\/material-symbols-subset\.woff2'\)/,
+		'the @font-face must point at the committed subset',
+	);
+	assert.match(css, /font-display:\s*block;/);
+
+	const offenders = collectSources(WEB_SRC)
+		.filter((s) => /['"]material-symbols\/[\w.-]+\.css['"]/.test(s.text))
+		.map((s) => s.path);
+	assert.deepEqual(
+		offenders,
+		[],
+		"importing the package's own stylesheet @font-face's the complete 3866 KB " +
+			'font again, on the root layout, in front of every reader',
+	);
+});
+
+test('the upstream font the subset was cut from is the one installed', {
+	skip: existsSync(UPSTREAM_FONT) ? false : 'material-symbols is not installed',
+}, () => {
+	const upstream = readFileSync(UPSTREAM_FONT);
+	assert.equal(
+		sha256Bytes(upstream),
+		manifest.upstream.sha256,
+		`the installed ${manifest.upstream.file} is not the one the subset was cut ` +
+			'from. Re-run `node scripts/gen_web_icon_font.mjs` after a version bump — ' +
+			'the vocabulary moves with the font, and a stale one cannot see a new icon.',
+	);
+	const version = JSON.parse(
+		readFileSync(join(REPO_ROOT, 'node_modules', 'material-symbols', 'package.json'), 'utf8'),
+	).version;
+	assert.equal(manifest.upstream.package, `material-symbols@${version}`);
+});
+
+/// decisions.md § 780 pinned two axes out of the variable font, which creates a
+/// failure mode that did not exist before it: a rule asking for a pinned axis
+/// at some other value is not refused, it is ignored. Read back out of the
+/// source rather than assumed, the way the glyph set is.
+test('the committed sources ask for every pinned axis at the value it is pinned at', () => {
+	const conflicts = pinnedAxisConflicts(collectSources(WEB_SRC));
+	assert.deepEqual(
+		conflicts.map((c) => `${c.path}: '${c.axis}' ${c.value} (font carries ${c.pinnedAt})`),
+		[],
+		'the subset instantiates these axes, so the declaration silently does nothing — ' +
+			'drop it, or re-cut the font keeping that axis variable and re-measure the budget',
+	);
+});
+
+test('a request for a pinned axis at another value is named, not ignored', () => {
+	const conflicts = pinnedAxisConflicts(
+		source('a.svelte', "font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 200, 'opsz' 20;"),
+	);
+	assert.deepEqual(
+		conflicts.map((c) => `${c.axis}=${c.value}`),
+		['GRAD=200', 'opsz=20'],
+	);
+});
+
+test('a variable axis is never reported, whatever value it is set to', () => {
+	assert.deepEqual(
+		pinnedAxisConflicts(source('a.svelte', "font-variation-settings: 'FILL' 1, 'wght' 500;")),
+		[],
+	);
+});
+
+test('a pinned axis named outside a variation-settings declaration is not a request', () => {
+	// `'GRAD' 0` in prose, or in an unrelated property, asks the font for
+	// nothing — reading it as a request would fail the build over a comment.
+	assert.deepEqual(
+		pinnedAxisConflicts(source('a.css', "/* the 'GRAD' 200 axis is gone */\ncolor: red;")),
+		[],
+	);
+});
+
+/// The whole point of § 780 was the per-asset ceiling, and the number that
+/// clears it lives in an ADR rather than in an assertion. Checked here because
+/// it costs a gzip of one committed file: the bundle budget's own measurement
+/// needs a full production build first.
+test('the committed subset clears the per-asset ceiling with no exemption', () => {
+	const kb = Math.ceil(gzipSync(readFileSync(SUBSET_FONT)).length / 1024);
+	assert.ok(
+		kb <= MAX_ASSET_KB,
+		`the subset font is ${kb} KB gzipped against the ${MAX_ASSET_KB} KB per-asset ceiling`,
+	);
+	assert.deepEqual(
+		ASSET_EXEMPTIONS,
+		[],
+		'an exemption nothing needs is a hole nobody is watching (decisions § 780)',
+	);
+});
+
+test('a ligature spelled inside a test module is not a render site', () => {
+	// The reader's last pass takes any quoted bare token in the vocabulary, and
+	// the vocabulary is full of ordinary English. A fixture quoting one is not
+	// an icon: nothing under a *.test.ts name reaches a bundle.
+	const walked = collectSources(WEB_SRC).map((s) => s.path);
+	assert.equal(
+		walked.filter((p) => TEST_SOURCE.test(p)).length,
+		0,
+		'collectSources walked a test module',
+	);
+
+	const shipped = walked.filter((p) => /\.(ts|svelte)$/.test(p));
+	assert.ok(shipped.length > 100, 'the walk still reads the shipped sources');
+});
+
+test('the exclusion is what keeps a quoted vocabulary word out of the subset', () => {
+	// Positive control for the rule above: feed the reader the shape a test
+	// fixture has, and it does select the word. The exclusion is load-bearing,
+	// not a tidy-up -- 24 glyphs entered the subset this way.
+	const fixture = [{ path: 'apps/web/src/lib/x.test.ts', text: '<div class="stack">' }];
+	assert.deepEqual(selectIcons(fixture, vocabulary).icons, ['stack']);
+	assert.ok(vocabulary.has('padding') && vocabulary.has('privacy'));
+});
+
+test("the root CLAUDE.md's vocabulary figure is the vocabulary's own size", () => {
+	// The orientation file tells a session to name a CSS class something
+	// outside the vocabulary, and cites its size to say how wide that net is.
+	// That is a count restated away from the thing it counts, so it drifts on
+	// an upstream bump like any other -- it read 4,275 against 4,284 until
+	// this case was written. Same shape the guard in check_ci_diagnostics
+	// holds ci.yml's job figures to.
+	const claude = readFileSync(join(REPO_ROOT, 'CLAUDE.md'), 'utf8');
+	const cited = [...claude.matchAll(/([\d,]+)-ligature vocabulary/g)].map((m) =>
+		Number(m[1].replace(/,/g, '')),
+	);
+	assert.equal(cited.length, 1, 'CLAUDE.md should cite the vocabulary size exactly once');
+	assert.equal(
+		cited[0],
+		vocabulary.size,
+		`CLAUDE.md says ${cited[0]} ligatures, ${VOCABULARY_FILE} holds ${vocabulary.size}`,
+	);
+});

@@ -1,19 +1,37 @@
 # Toolchain versions for asdf / mise / rtx.
 #
-# Run `asdf install` (or `mise install`) in this directory to materialise
-# everything listed below. The format is `<plugin> <version>` per line.
+# This is a pin REGISTRY, not an install manifest. `asdf install` here
+# materialises exactly ONE toolchain — Node — because that is the only one in
+# this list with no manager of its own: the Flutter SDK comes from flutter.dev,
+# Rust from rustup, Go from the distro, Terraform from tfenv, Deno from its own
+# installer, and having asdf put a second copy of any of them on the machine is
+# not what anyone wants. The other six lines are therefore COMMENTED on purpose
+# (decisions § 1536); what a contributor installs from is the Prerequisites
+# table in docs/architecture/monorepo.md, which is read against these same pins.
 #
-# Per-template adjustments: uncomment the toolchains this project actually
-# uses and delete the ones it doesn't. Pinning a version here is a stronger
-# guarantee than `engines` in package.json or `requires-python` in
-# pyproject.toml because asdf shims the binary itself.
+# The format is `<plugin> <version>` per line. Every version here is CHECKED
+# against the pin the repo itself enforces, by scripts/check_toolchain_pins.mjs
+# — including the commented lines, because a commented pin is a claim the next
+# reader will uncomment (decisions § 911). The sources of truth are:
+#
+#   nodejs    — every workflow's `actions/setup-node` step (exact, not a major:
+#               CI names the patch since decisions § 1214, so a bare major here
+#               would be a pin nothing compares — § 1216)
+#   rust      — apps/custom_watch/rust-toolchain.toml
+#   golang    — apps/*/go.mod (each module's Dockerfile builder is held to it too)
+#   flutter   — each workflow's top-level env.FLUTTER_VERSION
+#   terraform — .github/workflows/terraform.yml
+#   deno      — each workflow's `denoland/setup-deno` step (exact, not a
+#               channel: a Deno minor carries new `deno check` diagnostics)
+#
+# The rest carry no in-repo pin, so nothing can check them: python3 / zola are
+# whatever the runner ships.
 
-nodejs 22
+nodejs 24.20.0
 
+# rust 1.98.0
+# golang 1.27.4
+# flutter 3.47.0
+# terraform 1.13.0
+# deno 2.9.6
 # python 3.14
-# rust 1.84.0
-# golang 1.23.5
-# flutter 3.27.1
-# terraform 1.15.0
-# zola 0.22.1
-# deno 2.1.5

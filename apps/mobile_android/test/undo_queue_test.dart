@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/undo_queue.dart';
 
-/// Mirror of web `core/undo_queue.test.ts` — same 14 cases, same order.
+/// Mirror of web `core/undo_queue.test.ts`, in the same order.
 /// Deterministic clock + timer pair: `advance` fires every timer whose
 /// deadline has passed, in deadline order, so a re-armed timer created
 /// mid-advance still lands correctly.
@@ -9,6 +11,8 @@ class _Harness {
   _Harness([this.windowMs = 8000]);
 
   int windowMs;
+  String? owner = 'a';
+  final List<(String, Object)> logged = [];
   int _clock = 0;
   int _nextHandle = 1;
   final Map<int, _FakeTimer> _timers = {};
@@ -26,6 +30,8 @@ class _Harness {
       clearTimer: (handle) => _timers.remove(handle as int),
       now: () => _clock,
       onChange: published.add,
+      owner: () => owner,
+      log: (message, error) => logged.add((message, error)),
     ));
     return this;
   }
@@ -150,6 +156,94 @@ void main() {
     expect(onCommitError.args, [boom]);
   });
 
+  // Reason: a commit already running when the session ended failed with no
+  // session, and the queue showed "couldn't delete" to the signed-out reader
+  // and restored the row into whatever list was showing.
+  test('a commit that fails after its account signed out is logged, not '
+      'bannered or restored', () async {
+    final h = _Harness().init();
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    final flushing = h.queue.flush();
+    h.owner = null;
+    final boom = StateError('no session');
+    held.completeError(boom);
+    await flushing;
+    expect(restore.count, 0);
+    expect(onCommitError.count, 0);
+    expect(h.logged, hasLength(1));
+    expect(h.logged.single.$2, boom);
+  });
+
+  test('a commit that fails after another account signed in leaves that '
+      'account alone', () async {
+    final h = _Harness().init();
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    await h.advance(8000);
+    h.owner = 'b';
+    held.completeError(StateError('JWT expired'));
+    for (var i = 0; i < 5; i++) {
+      await Future<void>.value();
+    }
+    expect(restore.count, 0);
+    expect(onCommitError.count, 0);
+  });
+
+  test('a commit that fails while its account is still signed in still '
+      'restores and reports', () async {
+    final h = _Harness().init();
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    final flushing = h.queue.flush();
+    final boom = StateError('23503');
+    held.completeError(boom);
+    await flushing;
+    expect(restore.count, 1);
+    expect(onCommitError.args, [boom]);
+  });
+
+  test('the owner is the account signed in when the delete was queued, not '
+      'when it commits', () async {
+    final h = _Harness().init();
+    h.owner = 'b';
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    final flushing = h.queue.flush();
+    held.completeError(StateError('boom'));
+    await flushing;
+    expect(restore.count, 1);
+    expect(onCommitError.count, 1);
+  });
+
   // -------------------------------------------------------------------------
   // One slot
   // -------------------------------------------------------------------------
@@ -207,6 +301,71 @@ void main() {
     await h.queue.flush();
     await h.queue.flush();
     expect(commit.count, 1);
+  });
+
+  // Reason: flush returned at once when the slot was already empty, so a
+  // sign-out that awaited it went ahead while a commit the window timer (or a
+  // second delete) had started was still on the wire, and that commit's
+  // failure was only logged to a signed-out reader instead of restored and
+  // reported.
+  test('flush waits for a commit the window timer already started, and its '
+      'failure reports first', () async {
+    final h = _Harness().init();
+    final order = <String>[];
+    final commit = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => commit.future,
+      restore: () => order.add('restore'),
+      onCommitError: (_) => order.add('report'),
+    ));
+    await h.advance(8000);
+    expect(h.queue.hasPending(), isFalse, reason: 'the timer took the entry');
+    final flushed = h.queue.flush().then((_) => order.add('flushed'));
+    await Future<void>.value();
+    await Future<void>.value();
+    expect(order, isEmpty,
+        reason: 'flush is still waiting on the in-flight commit');
+    commit.completeError(StateError('500'));
+    await flushed;
+    expect(order, ['restore', 'report', 'flushed']);
+  });
+
+  test('flush waits for the commit a second destruction displaced', () async {
+    final h = _Harness().init();
+    final order = <String>[];
+    final land = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'One',
+      commit: () => land.future,
+      restore: () {},
+    ));
+    h.queue.defer(DeferredDestruction(
+      message: 'Two',
+      commit: () async => order.add('two'),
+      restore: () {},
+    ));
+    final flushed = h.queue.flush().then((_) => order.add('flushed'));
+    await Future<void>.value();
+    await Future<void>.value();
+    expect(order, ['two'],
+        reason: 'the slot committed, the displaced one has not landed');
+    land.complete();
+    await flushed;
+    expect(order, ['two', 'flushed']);
+  });
+
+  test('a settled commit is no longer waited on', () async {
+    final h = _Harness().init();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () async {},
+      restore: () {},
+    ));
+    await h.advance(8000);
+    var done = false;
+    await h.queue.flush().then((_) => done = true);
+    expect(done, isTrue);
   });
 
   // -------------------------------------------------------------------------

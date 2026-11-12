@@ -5,15 +5,18 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import '../lib/ai_disclosure.dart';
+import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/screens/guided_runs_screen.dart';
+import '../lib/widgets/ai_tag.dart';
 import '../lib/widgets/surface_peer_strip.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Reports a non-null consent timestamp so the screen renders its main
 /// (consented) Scaffold — the one whose left drawer used to swallow the
@@ -24,7 +27,10 @@ class _ConsentedApi extends ApiClient {
   @override
   String? get userId => 'u-viewer';
   @override
-  Future<DateTime?> fetchCoachConsentAt() async => DateTime(2026, 1, 1);
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async => const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      };
 }
 
 /// Consented, but the message fetch never resolves — so the thread's own
@@ -44,16 +50,64 @@ class _HangingThreadApi extends _ConsentedApi {
   Future<bool> isPro() async => false;
 }
 
+/// The consent read never answers (or answers [answer] once released), so
+/// the frame the screen draws BEFORE the server speaks stays observable.
+class _SlowConsentApi extends _HangingThreadApi {
+  _SlowConsentApi({this.answer});
+  final Map<String, dynamic>? answer;
+  final release = Completer<void>();
+  @override
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async {
+    await release.future;
+    return answer;
+  }
+}
+
+/// Consented, with a conversation of two Coach replies around one of the
+/// runner's own turns — drives the per-message AI label.
+class _ThreadApi extends _ConsentedApi {
+  @override
+  Future<List<CoachMessageRow>> fetchCoachMessages({String? planId}) async => [
+        CoachMessageRow(
+          id: 'a1',
+          userId: 'u-viewer',
+          role: 'assistant',
+          content: 'First reply',
+          createdAt: DateTime.utc(2026, 6, 1, 8),
+        ),
+        CoachMessageRow(
+          id: 'u1',
+          userId: 'u-viewer',
+          role: 'user',
+          content: 'And tomorrow?',
+          createdAt: DateTime.utc(2026, 6, 1, 8, 1),
+        ),
+        CoachMessageRow(
+          id: 'a2',
+          userId: 'u-viewer',
+          role: 'assistant',
+          content: 'Second reply',
+          createdAt: DateTime.utc(2026, 6, 1, 8, 2),
+        ),
+      ];
+
+  @override
+  Future<List<DateTime>> listCoachArchives({String? planId}) async => const [];
+
+  @override
+  Future<int> getCoachUsage() async => 0;
+
+  @override
+  Future<bool> isPro() async => false;
+}
+
 bool _supabaseReady = false;
 
 Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -82,7 +136,10 @@ class _ArchiveFailApi extends ApiClient {
   String? get userId => 'u-viewer';
 
   @override
-  Future<DateTime?> fetchCoachConsentAt() async => DateTime(2026, 1, 1);
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async => const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      };
 
   @override
   Future<List<CoachMessageRow>> fetchCoachMessages({String? planId}) async => [
@@ -121,7 +178,10 @@ class _ArchivesApi extends ApiClient {
   String? get userId => 'u-viewer';
 
   @override
-  Future<DateTime?> fetchCoachConsentAt() async => DateTime(2026, 1, 1);
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async => const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      };
 
   @override
   Future<List<CoachMessageRow>> fetchCoachMessages({String? planId}) async =>
@@ -169,6 +229,9 @@ Future<void> _pump(WidgetTester tester, {ApiClient? api}) {
 
 void main() {
   setUpAll(_ensureSupabase);
+  // The consent memo is process-wide; a grant one case records must not open
+  // the chat in the next.
+  setUp(AiDisclosureMemo.forget);
 
   group('CoachScreen — initial render', () {
     testWidgets('the thread pane stands message blocks while it loads',
@@ -241,13 +304,12 @@ void main() {
     });
 
     testWidgets(
-      'does not render the plan-switcher dropdown when there is at most one plan',
+      'does not render the plan picker when the runner has no plans',
       (tester) async {
-        // Reason: the title-row dropdown only mounts when _plans has
-        // more than one entry — in tests there's no Supabase data so
-        // the list stays empty and the dropdown stays hidden.
+        // In tests there's no Supabase data, so the plan list stays empty
+        // and there is nothing to pick between.
         await _pump(tester);
-        expect(find.byType(DropdownButton<String>), findsNothing);
+        expect(find.byKey(const Key('coach-plan-picker')), findsNothing);
         await _drain(tester);
       },
     );
@@ -263,31 +325,125 @@ void main() {
       expect(find.text('Before you chat with Coach'), findsNothing);
     });
 
-    testWidgets('without coach_consent_at the chat is gated behind the GDPR '
-        'disclosure (audit/gdpr 2026-05-25)', (tester) async {
+    testWidgets('without an AI-disclosure record the chat is gated behind the '
+        'GDPR disclosure (audit/gdpr 2026-05-25)', (tester) async {
       // Reason: Coach forwards health-adjacent data to Anthropic
       // (US sub-processor) — GDPR Art 6(1)(a) requires an
       // affirmative consent act before the first dispatch. The
       // _bootstrap fetch fails against the unconnected local
-      // Supabase, so _consentAt resolves to null, which must render
+      // Supabase, so the record resolves empty, which must render
       // the disclosure copy instead of the chat composer.
       await _pump(tester);
       // Pump past the post-frame fetch attempt + the 100ms safety
       // margin to let _consentChecked flip true on failure.
       await tester.pump(const Duration(milliseconds: 200));
       expect(
-        find.text('Before you chat with Coach'),
+        find.text("Before you use Threkir's AI features"),
         findsOneWidget,
         reason:
-            'consent disclosure must be visible when '
-            'coach_consent_at is null — see audit/gdpr (2026-05-25).',
+            'consent disclosure must be visible when there is no '
+            'record — see audit/gdpr (2026-05-25).',
       );
       expect(
-        find.text('I consent — start Coach'),
+        find.text('I consent — enable AI features'),
         findsOneWidget,
         reason:
             'the I-consent CTA must be reachable from the '
             'gate so the user can accept.',
+      );
+      await _drain(tester);
+    });
+  });
+
+  group('CoachScreen — remembered consent', () {
+    const granted = AiDisclosureRecord(
+      version: 2,
+      acceptedAt: '2026-01-01T00:00:00Z',
+    );
+
+    testWidgets('a remembered grant opens the chat before the server answers',
+        (tester) async {
+      AiDisclosureMemo.remember('u-viewer', granted);
+      final api = _SlowConsentApi(answer: const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      });
+      await _pump(tester, api: api);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsNothing);
+      expect(find.text("Before you use Threkir's AI features"), findsNothing);
+      expect(find.byType(ListSkeleton), findsOneWidget,
+          reason: 'the chat surface is up, waiting on its thread');
+      api.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('a first open remembers the server grant, so the next opens '
+        'straight into the chat', (tester) async {
+      final first = _SlowConsentApi(answer: const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      });
+      await _pump(tester, api: first);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
+      first.release.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final remembered = AiDisclosureMemo.peek('u-viewer');
+      expect(remembered, isNotNull);
+      expect(checkAiDisclosure(remembered!, kAiDisclosureVersionCoach).ok,
+          isTrue);
+      await _drain(tester);
+
+      final second = _SlowConsentApi();
+      await _pump(tester, api: second);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsNothing);
+      expect(find.text("Before you use Threkir's AI features"), findsNothing);
+      second.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('with nothing remembered it waits for the server',
+        (tester) async {
+      final api = _SlowConsentApi();
+      await _pump(tester, api: api);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
+      api.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('a grant someone else remembered does not open it',
+        (tester) async {
+      AiDisclosureMemo.remember('another-user', granted);
+      final api = _SlowConsentApi();
+      await _pump(tester, api: api);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
+      api.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('the server withdrawing a remembered grant swaps to the '
+        'disclosure', (tester) async {
+      AiDisclosureMemo.remember('u-viewer', granted);
+      final api = _SlowConsentApi(answer: const {
+        'ai_disclosure_version': null,
+        'coach_consent_at': null,
+      });
+      await _pump(tester, api: api);
+      expect(find.text("Before you use Threkir's AI features"), findsNothing);
+      api.release.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text("Before you use Threkir's AI features"), findsOneWidget);
+      expect(
+        checkAiDisclosure(
+                AiDisclosureMemo.peek('u-viewer')!, kAiDisclosureVersionCoach)
+            .ok,
+        isFalse,
+        reason: 'the fresh record replaces the memo, so the next open waits',
       );
       await _drain(tester);
     });
@@ -405,6 +561,25 @@ void main() {
 
       expect(api.deleteCalls, 1);
       expect(find.byTooltip('Conversation actions'), findsNothing);
+      await _drain(tester);
+    });
+  });
+
+  group('CoachScreen — AI label (decisions § 2227)', () {
+    testWidgets('every Coach message carries the AI byline, the runner\'s '
+        'own turns do not', (tester) async {
+      await _pump(tester, api: _ThreadApi());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('First reply'), findsOneWidget);
+      expect(find.text('Second reply'), findsOneWidget);
+      final bylines = find.byKey(const ValueKey('coach-ai-byline'));
+      expect(bylines, findsNWidgets(2));
+      expect(
+        find.descendant(of: bylines, matching: find.byType(AiTag)),
+        findsNWidgets(2),
+      );
       await _drain(tester);
     });
   });

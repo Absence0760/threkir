@@ -50,13 +50,22 @@ const _register = <String, int>{
   // ICON, `onSurfaceVariant@0.7` on the page — 3.861/5.899, clears 3:1. The
   // 48 px empty-state glyph, with its title and body text beside it.
   'lib/screens/people_screen.dart': 1,
-  // The plan-detail "today" row fill (1.003/1.140). Not the cue: the row's
-  // leading slot carries a dot labelled `planDetailToday` and its weekday
-  // abbreviation goes w700.
-  'lib/screens/plan_detail_screen.dart': 1,
-  // The two create-plan card fills (1.065/1.256). Washes now that each card's
-  // border is full `primary` and carries the boundary at 10.337/7.260.
-  'lib/screens/plan_new_screen.dart': 2,
+  // The catalogue leaderboard's viewer row — the same `primaryContainer@0.5`
+  // fill as `segments_panel`'s, and the same numbers (1.078/1.013) rather than
+  // a fresh measurement, because `cardTheme.color` IS `surface` in both themes,
+  // so the bare ListView here composites the tint over exactly the colour that
+  // entry's derivation already used. Not the cue: the row carries a `navYou`
+  // label beside the name and the name goes w700.
+  'lib/screens/global_segments_screen.dart': 1,
+  // The park course board's viewer row: `primaryContainer@0.5` over the
+  // SCAFFOLD, not a card, so it has its own case in
+  // thinned_token_contrast_test.dart ("the park course board viewer row").
+  // Not the cue: the row carries a `navYou` label and the name goes w700.
+  'lib/screens/park_courses_screen.dart': 1,
+  // The DM search match highlight, `primary@0.18` behind the ListTile
+  // subtitle on the page (1.274/1.334) — a wash. Not the cue: the match goes
+  // w700. The subtitle type on it reads 6.286/8.056, clearing 4.5:1.
+  'lib/screens/messages_screen.dart': 1,
   // A privacy-zone disc drawn on basemap TILES, so no ratio is computable at
   // all. The same call sets `borderColor` to full `primary` at 2 px, and a
   // full-strength cancel glyph sits at the centre — the boundary is carried by
@@ -68,14 +77,12 @@ const _register = <String, int>{
   // Two map overlay panels. Their `onSurface` type clears 4.5:1 against both
   // tile extremes (>= 14.272/12.715), which bounds every tile between them.
   'lib/screens/route_builder_screen.dart': 2,
-  // `onSurface@0.08` — the elevation chart's "no pace derivable here" fill, at
-  // 1.173/1.196 an absence rather than a fourth band: deliberately fainter
-  // than the palette's own 1.5:1 band floor and deliberately not in the
-  // legend. Nothing is owed by a mark that is meant to read as the page.
-  'lib/screens/run_detail_screen.dart': 1,
   // Two map overlay panels plus three washes (1.109/1.087, 1.143/1.162,
-  // 1.184/1.207); the type and glyph on each is full strength.
-  'lib/screens/run_screen.dart': 5,
+  // 1.184/1.207); the type and glyph on each is full strength. Plus the
+  // START disc's halo ring (primary@0.3) and glow (primary@0.25): both sit
+  // outside a solid primary disc that carries the boundary itself (>= 3:1 on
+  // the scaffold in both themes), so neither owes a floor of its own.
+  'lib/screens/run_screen.dart': 7,
   // The live stats panel, blurred over the map. Type >= 11.292/9.165 at both
   // tile extremes.
   'lib/widgets/collapsible_panel.dart': 1,
@@ -96,6 +103,12 @@ const _register = <String, int>{
   // TEXT, `onInverseSurface@0.75` on the opaque inverse-surface card —
   // 7.295/5.135. 0.75 rather than 0.70 was already a computed choice.
   'lib/widgets/safety_nudge_banner.dart': 1,
+  // The given-reaction chip fill, `primary@0.12` on the page (1.173/1.191).
+  // Not the cue: the count beside the glyph goes w700, the border goes full
+  // `primary` (3.869/6.382 on the fill) and the chip is `Semantics(toggled:)`.
+  // The count stays `onSurfaceVariant` (6.828/9.026): `primary` type on this
+  // fill reads 3.869 in light, under AA.
+  'lib/widgets/run_social_section.dart': 1,
   // The viewer's own leaderboard row (1.078/1.013 re-derived). Not the cue: the
   // row carries a `navYou` label beside the name and the name goes w700.
   'lib/widgets/segments_panel.dart': 1,
@@ -124,7 +137,7 @@ const _fixtures = <(String, bool)>[
   // must not: the bare token, a non-scheme colour, and the three §510 owns.
   ('color: theme.colorScheme.primary', false),
   ('color: Colors.black.withValues(alpha: 0.55)', false),
-  ('color: AppTheme.parchment.withOpacity(0.55)', false),
+  ('color: AppTheme.mist.withOpacity(0.55)', false),
   ('color: theme.colorScheme.outline.withValues(alpha: 0.6)', false),
   ('color: theme.colorScheme.outlineVariant.withOpacity(0.5)', false),
 ];

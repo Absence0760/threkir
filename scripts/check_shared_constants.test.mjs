@@ -1,0 +1,1536 @@
+// Unit tests for scripts/check_shared_constants.mjs.
+//
+// Two halves, and the split matters. The fixture cases drive the comparison
+// and the four extractors with text this file owns, so a rule stays exercised
+// after the production sources stop containing an example of it — the trap
+// `check_watch_ble_uuids.test.mjs` records about its own UNCLAIMED rule. The
+// last cases run the real registry against the real tree, which is what makes
+// the guard's verdict about this repo rather than about its fixtures.
+//
+// Run: node --test scripts/check_shared_constants.test.mjs
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import {
+	MOBILE_COLUMN_LIMITS,
+	RATE_LIMIT_DOC,
+	REGISTRY,
+	RUNS_TRACK_UPLOAD_ENTRY,
+	WEB_COLUMN_LIMITS,
+	checkRunsTrackUploadAllowed,
+	parseKotlinConstString,
+	parseRunsBucketUploadTypes,
+	boundFromCheck,
+	bucketMimeSites,
+	check,
+	checkColumnBounds,
+	checkColumnCheckMaxima,
+	checkEntry,
+	defaultContext,
+	indexMigrations,
+	numericCeiling,
+	parseColumnCheckMaxima,
+	parseColumnLimits,
+	rateLimitCeilingDocSites,
+	rateLimitCeilingSqlSites,
+	sqlColumnBound,
+	parseAwarderLadders,
+	parseBadgeCatalogue,
+	parseKotlinIntRange,
+	parseSwiftStaticInt,
+	parseDartConstInt,
+	parseNamedInt,
+	parseNamedNumber,
+	parseNearbyCase,
+	parseNumberList,
+	parseStringList,
+	parseGuidedRunLibrary,
+	parseGuidedSeconds,
+	parseCaseFoldPair,
+	parseFoldTableList,
+	parseSqlFoldTable,
+	parseSqlUnicodeLiteral,
+	checkExerciseFoldTable,
+	parseWhitespaceClass,
+	MOBILE_GUIDED_RUNS,
+	WEB_GUIDED_RUNS,
+	PUBLIC_RUNS_DENYLIST_TEST,
+	jsonbBuildObjectKeys,
+	parseMetadataDenylist,
+	parsePgtapDenylist,
+	parseSeedDenylist,
+	pgtapDenylistSites,
+	publicRunsViewSites,
+} from './check_shared_constants.mjs';
+
+/** @param {Record<string, string>} files */
+function migrationsFixture(files) {
+	const dir = mkdtempSync(join(tmpdir(), 'shared-constants-'));
+	for (const [name, body] of Object.entries(files)) writeFileSync(join(dir, name), body);
+	return dir;
+}
+
+/**
+ * @param {{ label: string, sites: { key: string, where: string, values: string[] }[] }[]} rails
+ * @param {'all' | 'key'} match
+ * @param {'set' | 'ordered'} compare
+ */
+function entryOf(rails, match, compare) {
+	return {
+		name: 'fixture',
+		why: 'because.',
+		match,
+		compare,
+		rails: rails.map((r) => ({ label: r.label, sites: () => r.sites })),
+	};
+}
+
+const NO_CTX = /** @type {any} */ ({});
+
+// ── indexMigrations: the replay, not the snapshot ───────────────────────────
+
+test('the live body of a function is the last one the migrations wrote', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql': "create or replace function f() returns int language sql as $$ select 1; $$;",
+		'20260102_001_b.sql': "create or replace function f() returns int language sql as $$ select 2; $$;",
+	});
+	const { live } = indexMigrations(dir);
+	assert.equal(live.get('f')?.file, '20260102_001_b.sql');
+	assert.match(live.get('f')?.sql ?? '', /select 2/);
+});
+
+test('a dropped function stops being live', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql':
+			'create function f() returns int language sql as $$ select 1; $$;\n' +
+			'create function g() returns int language sql as $$ select 2; $$;',
+		'20260102_001_b.sql': 'drop function if exists f();',
+	});
+	const { live } = indexMigrations(dir);
+	assert.equal(live.has('f'), false);
+	assert.equal(live.has('g'), true);
+});
+
+// A `$$` body carries semicolons of its own, so a naive split on `;` would
+// register the fragments as statements and lose the tail of every function.
+test('a semicolon inside a function body does not end the statement', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql':
+			'create or replace function f() returns int language sql as $$ select 1; select 2; $$;',
+	});
+	assert.match(indexMigrations(dir).live.get('f')?.sql ?? '', /select 2/);
+});
+
+// A historic definition preserved in a comment is exactly how the GATT guard
+// went blind (decisions § 773); the lexer is what stops it here.
+test('a commented-out definition does not register as live', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql': 'create or replace function f() returns int language sql as $$ select 1; $$;',
+		'20260102_001_b.sql': '-- create or replace function f() returns int language sql as $$ select 99; $$;\nselect 1;',
+	});
+	assert.equal(indexMigrations(dir).live.get('f')?.file, '20260101_001_a.sql');
+});
+
+test('a migration set with no functions throws rather than reporting agreement', () => {
+	const dir = migrationsFixture({ '20260101_001_a.sql': 'select 1;' });
+	assert.throws(() => indexMigrations(dir), /parsed no function definitions/);
+});
+
+// ── The extractors ─────────────────────────────────────────────────────────
+
+test('a number list is read from the named declaration, not the first array', () => {
+	const src = "const kOther = [1, 2];\nconst kWanted = [2000, 5000, 10000];\n";
+	assert.deepEqual(parseNumberList(src, 'kWanted'), ['2000', '5000', '10000']);
+	assert.deepEqual(parseNumberList(src, 'kOther'), ['1', '2']);
+});
+
+test('a TypeScript type annotation between the name and the array does not hide it', () => {
+	const src = 'export const BOUNDS_M: readonly number[] = [2000, 5000];';
+	assert.deepEqual(parseNumberList(src, 'BOUNDS_M'), ['2000', '5000']);
+});
+
+test('a declaration that is not there reads as no values, which the caller reports', () => {
+	assert.deepEqual(parseNumberList('const kOther = [1];', 'kWanted'), []);
+});
+
+test('the nearby CASE yields its bounds in course order', () => {
+	const body = `case
+      when ST_Distance(a, b) < 2000  then 0
+      when ST_Distance(a, b) < 5000  then 1
+      when ST_Distance(a, b) < 25000 then 2
+      else 3
+    end as bucket`;
+	assert.deepEqual(parseNearbyCase(body), ['2000', '5000', '25000']);
+});
+
+test('a badge catalogue is read the same way in TypeScript and in Dart', () => {
+	const ts = `[
+	{ id: 'streak', tiers: [
+		{ tier: 'bronze', threshold: 7 },
+		{ tier: 'silver', threshold: 30 },
+	] },
+	{ id: 'pr', tiers: [ { tier: 'bronze', threshold: 1 } ] },
+]`;
+	const dart = `[
+  Badge(id: 'streak', tiers: [
+    BadgeTier(tier: 'bronze', threshold: 7),
+    BadgeTier(tier: 'silver', threshold: 30),
+  ]),
+  Badge(id: 'pr', tiers: [BadgeTier(tier: 'bronze', threshold: 1)]),
+]`;
+	const expected = [
+		{ key: 'streak', where: 'streak catalogue entry', values: ['7', '30'] },
+		{ key: 'pr', where: 'pr catalogue entry', values: ['1'] },
+	];
+	assert.deepEqual(parseBadgeCatalogue(ts), expected);
+	assert.deepEqual(parseBadgeCatalogue(dart), expected);
+});
+
+test('the awarder ladder is keyed by the family the branch selects', () => {
+	const body = `select 'streak'::text as badge_key, t.tier
+    from (values ('bronze',7,1),('silver',30,2)) as t(tier,thr,rank)
+    where v >= t.thr
+    union all
+    select 'pr', t.tier
+    from (values ('bronze',1,1)) as t(tier,thr,rank)`;
+	assert.deepEqual(parseAwarderLadders(body), [
+		{ key: 'streak', where: 'streak branch', values: ['7', '30'] },
+		{ key: 'pr', where: 'pr branch', values: ['1'] },
+	]);
+});
+
+test('a Dart list written with an explicit type argument is read like the TS one', () => {
+	const ts = "export const MIME: readonly string[] = ['image/jpeg', 'image/png'];";
+	const dart = "const List<String> kMime = <String>[\n  'image/jpeg',\n  'image/png',\n];";
+	assert.deepEqual(parseStringList(ts, 'MIME'), ['image/jpeg', 'image/png']);
+	assert.deepEqual(parseStringList(dart, 'kMime'), ['image/jpeg', 'image/png']);
+});
+
+// The class has three spellings - a JS regex literal, a Dart RegExp source
+// string (backslashes doubled), and a Postgres ARE inside a SQL literal - and
+// the registered value is the SET OF CODE POINTS behind them. Reading all
+// three with one parser is what makes "the three rails agree" a property of
+// the parse rather than of three regexes that could drift the way their
+// subjects can.
+test('the exercise whitespace class is read the same way from JS, Dart and SQL', () => {
+	const ts = 'const EXERCISE_WS =\n\t/[\\u0009-\\u000b\\u00a0]+/g;';
+	const dart = "final RegExp kExerciseWhitespace = RegExp(\n  '[\\\\u0009-\\\\u000b\\\\u00a0]+',\n);";
+	const sql = "as $$ select btrim(regexp_replace(lower(p_name), '[\\u0009-\\u000b\\u00a0]+', ' ', 'g'), ' '); $$";
+	const expected = ['U+0009', 'U+000A', 'U+000B', 'U+00A0'];
+	assert.deepEqual(parseWhitespaceClass(ts, 'EXERCISE_WS ='), expected);
+	assert.deepEqual(parseWhitespaceClass(dart, 'kExerciseWhitespace ='), expected);
+	assert.deepEqual(parseWhitespaceClass(sql, 'regexp_replace'), expected);
+});
+
+// A range and the code points it covers are the same set. If the parser
+// compared spellings, rewriting one rail's range as separate escapes would
+// read as a disagreement and a rail quietly dropping a code point out of a
+// range would not.
+test('a range expands, so two spellings of one set compare equal', () => {
+	const ranged = '/[\\u2000-\\u2003]+/g';
+	const spelled = '/[\\u2000\\u2001\\u2002\\u2003]+/g';
+	assert.deepEqual(parseWhitespaceClass(ranged, '/['), parseWhitespaceClass(spelled, '/['));
+	assert.deepEqual(parseWhitespaceClass(ranged, '/['), ['U+2000', 'U+2001', 'U+2002', 'U+2003']);
+});
+
+test('a whitespace class whose anchor moved reads as no values, which the caller reports', () => {
+	assert.deepEqual(parseWhitespaceClass('/[\\u0009]+/g', 'RENAMED ='), []);
+	assert.deepEqual(parseWhitespaceClass('const RENAMED = 3;', 'RENAMED ='), []);
+});
+
+// One shape, three spellings: TS and Dart escape a code point as \uXXXX and
+// Postgres as U&'\XXXX', so the parser accepts the 'u' or its absence and
+// nothing else. A pair short of two code points is no pair at all — returning
+// the one it found would let a rail that lost its target compare equal to a
+// rail that lost its source.
+test('a case-fold pair is read from all three rails and normalises to code points', () => {
+	const ts = "const EXERCISE_CASE_PRE_FOLD = ['\\u0130', '\\u0069'] as const;";
+	const dart = "const List<String> kExerciseCasePreFold = ['\\u0130', '\\u0069'];";
+	const sql = 'translate(p_name, ' + "U&'\\0130', U&'\\0069')";
+	assert.deepEqual(parseCaseFoldPair(ts, 'EXERCISE_CASE_PRE_FOLD = ['), ['U+0130', 'U+0069']);
+	assert.deepEqual(parseCaseFoldPair(dart, 'kExerciseCasePreFold = ['), ['U+0130', 'U+0069']);
+	assert.deepEqual(parseCaseFoldPair(sql, 'translate(p_name,'), ['U+0130', 'U+0069']);
+});
+
+test('a case-fold pair reads as no values when its anchor moved or it lost a half', () => {
+	assert.deepEqual(parseCaseFoldPair("['\\u0130', '\\u0069']", 'RENAMED = ['), []);
+	assert.deepEqual(parseCaseFoldPair("const PAIR = ['\\u0130'];", 'PAIR = ['), []);
+});
+
+test('a named integer is read from its declaration in Dart and in Kotlin', () => {
+	assert.deepEqual(parseNamedInt('  static const kMaxRoutesPerPush = 30;', 'kMaxRoutesPerPush'), ['30']);
+	assert.deepEqual(parseNamedInt('        const val MAX_ROUTES = 30', 'MAX_ROUTES'), ['30']);
+	assert.deepEqual(parseNamedInt('const val OTHER = 30', 'MAX_ROUTES'), []);
+});
+
+// `parseNamedInt` reads `1e-9` as `1`, so a tolerance registered through it
+// would certify agreement between three rails carrying three different
+// numbers. The value, not the spelling, is what has to agree.
+test('a named number is read by value, in every spelling of the same number', () => {
+	assert.deepEqual(parseNamedNumber('export const R = 1e-9;', 'R'), ['1e-9']);
+	assert.deepEqual(parseNamedNumber('const double r = 0.000000001;', 'r'), ['1e-9']);
+	assert.deepEqual(parseNamedNumber('const R = 1E-9', 'R'), ['1e-9']);
+	assert.deepEqual(parseNamedNumber('const R = 42;', 'R'), ['42']);
+	assert.deepEqual(parseNamedNumber('const OTHER = 1e-9;', 'R'), []);
+	// The exponent is part of the literal: reading only the mantissa is the
+	// failure this helper exists to avoid.
+	assert.notDeepEqual(parseNamedNumber('const R = 1e-9;', 'R'), ['1']);
+});
+
+// A Kotlin range is ONE declaration where the other rails carry two constants.
+// parseNamedInt stops at the first integer, so reading a range with it would
+// silently compare the watch's floor against the other rails' ceiling and
+// report agreement between two different numbers.
+test('both ends of a Kotlin int range are read', () => {
+	assert.deepEqual(parseKotlinIntRange('internal val MAX_HR_BPM_RANGE = 80..240', 'MAX_HR_BPM_RANGE'), [
+		'80',
+		'240',
+	]);
+	assert.deepEqual(parseKotlinIntRange('val R = 80 .. 240', 'R'), ['80', '240']);
+	assert.deepEqual(parseKotlinIntRange('val OTHER = 80..240', 'R'), []);
+	// A plain scalar is not a range, and must not read as one end of one.
+	assert.deepEqual(parseKotlinIntRange('val R = 240', 'R'), []);
+});
+
+// A Swift `static let` is the shape the two Apple-Watch rails are written in,
+// and it sits in a file whose doc comments discuss the same constants by name.
+// parseNamedInt's `name … = digits` shape reaches a prose line and a
+// `count <= NAME` guard is one character from matching too, so this reads the
+// declaration keywords or nothing.
+test('a Swift static let int is read from its declaration and nowhere else', () => {
+	assert.deepEqual(parseSwiftStaticInt('    static let maxRoutes = 12\n', 'maxRoutes'), ['12']);
+	assert.deepEqual(parseSwiftStaticInt('static let maxRoutes: Int = 12\n', 'maxRoutes'), ['12']);
+	// A prose mention and a comparison are not declarations.
+	assert.deepEqual(parseSwiftStaticInt('/// maxRoutes = 30 in an older draft\n', 'maxRoutes'), []);
+	assert.deepEqual(parseSwiftStaticInt('guard n <= maxRoutes else { return }\n', 'maxRoutes'), []);
+	// A computed constant cannot be compared across languages by reading, so
+	// the rail reports blind rather than passing on the first integer in it.
+	assert.deepEqual(parseSwiftStaticInt('static let maxRoutes = maxPoints / 4\n', 'maxRoutes'), []);
+	assert.deepEqual(parseSwiftStaticInt('static let other = 12\n', 'maxRoutes'), []);
+});
+
+// The regression the Apple-Watch entry exists for: the phone queues a
+// `transferUserInfo` the watch refuses on every retry, and the runner was
+// already told the route was sent.
+test('an Apple Watch cap raised on the phone alone is caught in the real entry shape', () => {
+	const sources = {
+		'apps/watch_ios/WatchApp/ArmedRoute.swift':
+			'    static let maxPoints = 512\n    static let maxRoutes = 12\n    static let maxPointsPerRoute = 128\n',
+		'apps/mobile_ios/ios/Runner/WatchIngestBridge.swift':
+			'    static let maxRoutePoints = 512\n    static let maxSavedRoutes = 30\n    static let maxSavedRoutePoints = 128\n',
+		'apps/mobile_android/lib/apple_watch_route_bridge.dart':
+			'const int kMaxAppleWatchRoutePoints = 512;\n' +
+			'const int kMaxAppleWatchSavedRoutes = 30;\n' +
+			'const int kMaxAppleWatchSavedRoutePoints = 128;\n',
+	};
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'Apple Watch route-push budgets'));
+	const { errors } = checkEntry(entry, {
+		read: (/** @type {string} */ rel) => /** @type {any} */ (sources)[rel],
+		sql: /** @type {any} */ ({}),
+	});
+	assert.equal(errors.length, 1, errors.join('\n'));
+	assert.match(errors[0], /"list routes" disagrees across rails/);
+	assert.match(errors[0], /SavedRoutes\.maxRoutes: \[12\]/);
+	assert.match(errors[0], /WatchIngestBridge\.maxSavedRoutes: \[30\]/);
+});
+
+// A bucket's allowlist is created by an insert and narrowed by a later update,
+// so reading the creating migration alone reports the value the bucket had
+// before the narrowing — which is the drift, not the state.
+test('a bucket allowlist is the last statement that set it, not the first', () => {
+	const dir = migrationsFixture({
+		'20260101_001_create.sql':
+			"insert into storage.buckets (id, name, allowed_mime_types) values ('run-photos', 'run-photos', array['image/jpeg', 'image/heic']);\n" +
+			'create or replace function f() returns int language sql as $$ select 1; $$;',
+		'20260102_001_narrow.sql':
+			"update storage.buckets set allowed_mime_types = array['image/jpeg'] where id in ('run-photos');",
+	});
+	assert.deepEqual(bucketMimeSites(indexMigrations(dir), ['run-photos']), [
+		{ key: 'run-photos', where: 'run-photos in 20260102_001_narrow.sql', values: ['image/jpeg'] },
+	]);
+});
+
+// Both of these used to yield fewer sites, and the entry compares with
+// match 'all', which has no key coverage check — three buckets agreeing with
+// each other is a pass, so a bucket the reader lost is a rail going blind on
+// it in silence. The rail-level "produced no sites" guard cannot see it
+// either: the rail is not empty.
+test('a bucket nothing ever set is refused, not quietly dropped from the comparison', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql': 'create or replace function f() returns int language sql as $$ select 1; $$;',
+	});
+	assert.throws(() => bucketMimeSites(indexMigrations(dir), ['run-photos']), /no migration sets allowed_mime_types/);
+});
+
+// And skipping the unreadable statement is worse than not reading it at all:
+// the loop would keep the value from the migration BEFORE it, which is the
+// state this statement exists to change — here, a bucket that still looks
+// narrowed while it accepts anything storage-api will take. A concatenation
+// (`= allowed_mime_types || array['image/heic']`) is the one unreadable shape
+// that does NOT need this: the reader finds that array and reports the
+// appended element as the whole list, which disagrees with the client rails
+// and fails on its own.
+test('a statement that clears the column is refused, not skipped back to the older one', () => {
+	const dir = migrationsFixture({
+		'20260101_001_create.sql':
+			"insert into storage.buckets (id, name, allowed_mime_types) values ('run-photos', 'run-photos', array['image/jpeg']);",
+		'20260102_001_clear.sql':
+			"update storage.buckets set allowed_mime_types = null where id = 'run-photos';\n" +
+			'create or replace function f() returns int language sql as $$ select 1; $$;',
+	});
+	assert.throws(() => bucketMimeSites(indexMigrations(dir), ['run-photos']), /shape this reader does not understand/);
+});
+
+// A statement naming the bucket but not the column is not its business.
+test('a statement that names the bucket without touching its allowlist is passed over', () => {
+	const dir = migrationsFixture({
+		'20260101_001_create.sql':
+			"insert into storage.buckets (id, name, allowed_mime_types) values ('run-photos', 'run-photos', array['image/jpeg']);",
+		'20260102_001_private.sql':
+			"update storage.buckets set public = false where id = 'run-photos';\n" +
+			'create or replace function f() returns int language sql as $$ select 1; $$;',
+	});
+	assert.deepEqual(bucketMimeSites(indexMigrations(dir), ['run-photos']), [
+		{ key: 'run-photos', where: 'run-photos in 20260101_001_create.sql', values: ['image/jpeg'] },
+	]);
+});
+
+// ── Comparison: match 'all' ────────────────────────────────────────────────
+
+test('sites carrying the same values in a different order agree under set compare', () => {
+	const entry = entryOf(
+		[
+			{ label: 'sql', sites: [{ key: 'k', where: 'the constraint', values: ['a', 'b'] }] },
+			{ label: 'web', sites: [{ key: 'k', where: 'the union', values: ['b', 'a'] }] },
+		],
+		'all',
+		'set',
+	);
+	assert.deepEqual(checkEntry(entry, NO_CTX).errors, []);
+});
+
+test('the same reordering is a failure under ordered compare', () => {
+	const entry = entryOf(
+		[
+			{ label: 'sql', sites: [{ key: 'k', where: 'the CASE', values: ['1', '2'] }] },
+			{ label: 'web', sites: [{ key: 'k', where: 'the constant', values: ['2', '1'] }] },
+		],
+		'all',
+		'ordered',
+	);
+	assert.equal(checkEntry(entry, NO_CTX).errors.length, 1);
+});
+
+// The message has to name BOTH homes and the difference between them, because
+// a reader who has to go and diff the two files themselves is a reader the
+// guard has not helped.
+test('a disagreement names both rails, both sites and the missing values', () => {
+	const entry = entryOf(
+		[
+			{ label: 'the column vocabulary', sites: [{ key: 'k', where: 'the constraint', values: ['app', 'watch', 'race'] }] },
+			{ label: 'live SQL functions', sites: [{ key: 'k', where: 'legacy_fn() in 20260710_001.sql', values: ['app'] }] },
+		],
+		'all',
+		'set',
+	);
+	const { errors } = checkEntry(entry, NO_CTX);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /the column vocabulary/);
+	assert.match(errors[0], /legacy_fn\(\) in 20260710_001\.sql/);
+	assert.match(errors[0], /missing there: watch, race/);
+});
+
+test('a value present only on the second rail is reported as such', () => {
+	const entry = entryOf(
+		[
+			{ label: 'a', sites: [{ key: 'k', where: 'a', values: ['app'] }] },
+			{ label: 'b', sites: [{ key: 'k', where: 'b', values: ['app', 'ghost'] }] },
+		],
+		'all',
+		'set',
+	);
+	assert.match(checkEntry(entry, NO_CTX).errors[0], /only there: {4}ghost/);
+});
+
+test('every site on a multi-site rail is compared, not just the first', () => {
+	const entry = entryOf(
+		[
+			{ label: 'a', sites: [{ key: 'k', where: 'a', values: ['app'] }] },
+			{
+				label: 'b',
+				sites: [
+					{ key: 'k', where: 'fn_ok', values: ['app'] },
+					{ key: 'k', where: 'fn_drifted', values: ['app', 'extra'] },
+				],
+			},
+		],
+		'all',
+		'set',
+	);
+	const { errors } = checkEntry(entry, NO_CTX);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /fn_drifted/);
+});
+
+// ── Comparison: match 'key' ────────────────────────────────────────────────
+
+test('ladders are paired by family, not by position', () => {
+	const entry = entryOf(
+		[
+			{
+				label: 'web',
+				sites: [
+					{ key: 'pr', where: 'pr', values: ['1'] },
+					{ key: 'streak', where: 'streak', values: ['7'] },
+				],
+			},
+			{
+				label: 'sql',
+				sites: [
+					{ key: 'streak', where: 'streak', values: ['7'] },
+					{ key: 'pr', where: 'pr', values: ['1'] },
+				],
+			},
+		],
+		'key',
+		'ordered',
+	);
+	assert.deepEqual(checkEntry(entry, NO_CTX).errors, []);
+});
+
+// A badge family a client renders but the awarder never inserts is a badge
+// nobody can earn; the reverse is one no surface explains. Both are a key
+// present on one rail only.
+test('a family present on one rail only is reported by name', () => {
+	const entry = entryOf(
+		[
+			{ label: 'web', sites: [{ key: 'vert', where: 'vert', values: ['500'] }] },
+			{ label: 'sql', sites: [{ key: 'pr', where: 'pr', values: ['1'] }] },
+		],
+		'key',
+		'ordered',
+	);
+	const { errors } = checkEntry(entry, NO_CTX);
+	assert.equal(errors.length, 2);
+	assert.match(errors.join('\n'), /"vert" is written on 1 of 2 rails — missing from sql/);
+	assert.match(errors.join('\n'), /"pr" is written on 1 of 2 rails — missing from web/);
+});
+
+test('a threshold that differs inside a matched family is reported with both ladders', () => {
+	const entry = entryOf(
+		[
+			{ label: 'web', sites: [{ key: 'streak', where: 'catalogue', values: ['7', '30', '100'] }] },
+			{ label: 'sql', sites: [{ key: 'streak', where: 'awarder', values: ['7', '30', '90'] }] },
+		],
+		'key',
+		'ordered',
+	);
+	const { errors } = checkEntry(entry, NO_CTX);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /7, 30, 100/);
+	assert.match(errors[0], /7, 30, 90/);
+});
+
+// ── Anti-vacuity ───────────────────────────────────────────────────────────
+
+test('a rail that finds no sites is an error, not an agreement', () => {
+	const entry = entryOf(
+		[
+			{ label: 'web', sites: [{ key: 'k', where: 'w', values: ['a'] }] },
+			{ label: 'sql', sites: [] },
+		],
+		'all',
+		'set',
+	);
+	assert.match(checkEntry(entry, NO_CTX).errors[0], /rail "sql" produced no sites/);
+});
+
+test('a site whose extractor read no values is an error, not an agreement', () => {
+	const entry = entryOf(
+		[
+			{ label: 'web', sites: [{ key: 'k', where: 'the constant', values: [] }] },
+			{ label: 'sql', sites: [{ key: 'k', where: 'the CASE', values: [] }] },
+		],
+		'all',
+		'ordered',
+	);
+	const { errors } = checkEntry(entry, NO_CTX);
+	assert.equal(errors.length, 2);
+	assert.match(errors[0], /read no values at the constant/);
+});
+
+test('two rails that both read nothing do not certify each other', () => {
+	const entry = entryOf([{ label: 'a', sites: [] }, { label: 'b', sites: [] }], 'all', 'set');
+	assert.equal(checkEntry(entry, NO_CTX).errors.length, 2);
+});
+
+// ── The real registry against the real tree ────────────────────────────────
+
+test('every registered entry has at least two rails and a stated cost', () => {
+	assert.ok(REGISTRY.length > 0);
+	for (const entry of REGISTRY) {
+		assert.ok(entry.rails.length >= 2, `${entry.name} needs more than one home to be a shared constant`);
+		assert.ok(entry.why.length > 40, `${entry.name} must say what a drift costs`);
+	}
+});
+
+test('the committed tree agrees on every registered shared constant', () => {
+	const { errors, ok } = check(REGISTRY, defaultContext());
+	assert.deepEqual(errors, []);
+	assert.ok(ok.length >= REGISTRY.length);
+});
+
+// The regression this guard was built from, replayed: a live function whose
+// run-source filter is the pre-#378 list while the constraint carries the full
+// vocabulary. It is the fixture and not the tree because the tree is fixed.
+test('a run-source filter that missed a widening is caught in the real entry shape', () => {
+	const dir = migrationsFixture({
+		'20260505_001_check.sql':
+			"alter table runs add constraint runs_source_check check (source in ('app','watch','parkrun'));",
+		'20260710_001_hardening.sql':
+			"create or replace function personal_records() returns int language sql as $$ select 1 from runs where source in ('app'); $$;",
+	});
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name.startsWith('runs.source')));
+	const { errors } = checkEntry(entry, { read: () => '', sql: indexMigrations(dir) });
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /runs_source_check/);
+	assert.match(errors[0], /personal_records\(\) in 20260710_001_hardening\.sql/);
+	assert.match(errors[0], /missing there: watch, parkrun/);
+});
+
+// ── Column bounds: a client input against the column's own CHECK ───────────
+
+test('one extractor reads the bound out of both languages', () => {
+	const ts = parseColumnLimits(
+		"'body_metrics.weight_kg': { kind: 'value', min: 20, max: 250 },\n" +
+			"'club_posts.body': { kind: 'length', max: 1200 },",
+	);
+	const dart = parseColumnLimits(
+		"'body_metrics.weight_kg': ColumnLimit.value(20, 250),\n" +
+			"'club_posts.body': ColumnLimit.length(1200),",
+	);
+	assert.deepEqual([...ts.entries()], [...dart.entries()]);
+	assert.deepEqual(ts.get('body_metrics.weight_kg'), { kind: 'value', values: [20, 250] });
+	assert.deepEqual(ts.get('club_posts.body'), { kind: 'length', values: [1200] });
+});
+
+test('boundFromCheck reads every form the migrations write a bound in', () => {
+	assert.deepEqual(boundFromCheck('weight_kg > 0 and weight_kg <= 500', 'weight_kg'), {
+		min: 0,
+		minExclusive: true,
+		max: 500,
+		maxExclusive: false,
+		lengthMax: null,
+	});
+	assert.deepEqual(
+		boundFromCheck('body_weight_kg is null or body_weight_kg between 20 and 400', 'body_weight_kg'),
+		{ min: 20, minExclusive: false, max: 400, maxExclusive: false, lengthMax: null },
+	);
+	assert.equal(boundFromCheck('description is null or char_length(description) <= 2000', 'description').lengthMax, 2000);
+	// A bound on a DIFFERENT column in the same body is not this column's.
+	assert.deepEqual(boundFromCheck('reps >= 0 and rpe <= 10', 'reps'), {
+		min: 0,
+		minExclusive: false,
+		max: null,
+		maxExclusive: false,
+		lengthMax: null,
+	});
+});
+
+test('numericCeiling is the largest magnitude the declaration can hold', () => {
+	assert.equal(numericCeiling(5, 2), 999.99);
+	assert.equal(numericCeiling(5, 1), 9999.9);
+});
+
+test('a column bound is the intersection of every live CHECK, and a drop removes one', () => {
+	const dir = migrationsFixture({
+		'0001_create.sql': 'create table body_metrics (weight_kg numeric(5, 2) not null check (weight_kg > 0));',
+		'0002_cap.sql': 'alter table body_metrics add constraint bm_cap check (weight_kg <= 500);',
+		'0003_tighter.sql': 'alter table body_metrics add constraint bm_tight check (weight_kg <= 300);',
+	});
+	const sql = indexMigrations2(dir);
+	assert.equal(sqlColumnBound(sql, 'body_metrics', 'weight_kg').max, 300);
+	const dropped = indexMigrations2(
+		migrationsFixture({
+			'0001_create.sql': 'create table body_metrics (weight_kg numeric(5, 2) not null check (weight_kg > 0));',
+			'0002_cap.sql': 'alter table body_metrics add constraint bm_cap check (weight_kg <= 300);',
+			'0003_drop.sql': 'alter table body_metrics drop constraint bm_cap;',
+		}),
+	);
+	// With the cap gone the only ceiling left is what numeric(5, 2) can hold.
+	assert.equal(sqlColumnBound(dropped, 'body_metrics', 'weight_kg').max, 999.99);
+});
+
+/**
+ * indexMigrations needs a function to exist; these fixtures are DDL only.
+ * @param {string} dir
+ */
+function indexMigrations2(dir) {
+	writeFileSync(join(dir, '9999_fn.sql'), 'create function noop() returns int language sql as $$ select 1 $$;');
+	return indexMigrations(dir);
+}
+
+/**
+ * The committed clients, with one entry rewritten.
+ * @param {(rel: string, src: string) => string} mutate
+ * @returns {any}
+ */
+function boundsCtx(mutate) {
+	const real = defaultContext();
+	return {
+		sql: real.sql,
+		read: (/** @type {string} */ rel) => mutate(rel, real.read(rel)),
+	};
+}
+
+test('the committed clients bound every registered column inside its own CHECK', () => {
+	const { errors, ok } = checkColumnBounds(defaultContext());
+	assert.deepEqual(errors, []);
+	assert.ok(ok.length >= 8);
+});
+
+test('MUTATION: a client cap raised above the column CHECK fails', () => {
+	const { errors } = checkColumnBounds(
+		boundsCtx((rel, src) =>
+			rel === WEB_COLUMN_LIMITS || rel === MOBILE_COLUMN_LIMITS ? src.replace(/\b1200\b/g, '9999') : src,
+		),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /club_posts\.body/);
+	assert.match(errors[0], /capped ABOVE its own CHECK/);
+});
+
+test('MUTATION: a value range that leaves the column CHECK fails at either end', () => {
+	const above = checkColumnBounds(
+		boundsCtx((rel, src) =>
+			rel === WEB_COLUMN_LIMITS || rel === MOBILE_COLUMN_LIMITS
+				? src.replace(/(weight_kg'[^\n]*?)\b250\b/g, '$1600')
+				: src,
+		),
+	);
+	assert.equal(above.errors.length, 1);
+	assert.match(above.errors[0], /body_metrics\.weight_kg/);
+	assert.match(above.errors[0], /max 600 is not <= the database's 500/);
+
+	// The exclusive `> 0` half: a client floor of 0 is admitted by the client
+	// and rejected by the column, which is what `min="0"` did on the web.
+	const below = checkColumnBounds(
+		boundsCtx((rel, src) =>
+			rel === WEB_COLUMN_LIMITS || rel === MOBILE_COLUMN_LIMITS
+				? src.replace(/(height_cm'[^\n]*?)\b50\b/g, '$10')
+				: src,
+		),
+	);
+	assert.equal(below.errors.length, 1);
+	assert.match(below.errors[0], /user_profiles\.height_cm/);
+	assert.match(below.errors[0], /min 0 is not > the database's 0/);
+});
+
+test('MUTATION: the two clients disagreeing on one field fails, naming both', () => {
+	const { errors } = checkColumnBounds(
+		boundsCtx((rel, src) => (rel === MOBILE_COLUMN_LIMITS ? src.replace("ColumnLimit.length(32)", 'ColumnLimit.length(20)') : src)),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /user_profiles\.parkrun_number/);
+	assert.match(errors[0], /web:\s+length \[32\]/);
+	assert.match(errors[0], /mobile:\s+length \[20\]/);
+});
+
+test('MUTATION: a field bounded on one client only fails', () => {
+	const { errors } = checkColumnBounds(
+		boundsCtx((rel, src) =>
+			rel === MOBILE_COLUMN_LIMITS ? src.replace(/'recipes\.servings':[^\n]*\n/, '') : src,
+		),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /recipes\.servings/);
+	assert.match(errors[0], /bounded on web only/);
+});
+
+test('a client module the extractor can no longer read is reported as blindness', () => {
+	const { errors } = checkColumnBounds(boundsCtx((rel, src) => (rel === WEB_COLUMN_LIMITS ? '' : src)));
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /guard going blind/);
+});
+
+// ── DB caps: equality, not containment ─────────────────────────────────────
+
+test('the DB-cap extractor reads its own map, not the input bounds beside it', () => {
+	const web = parseColumnCheckMaxima(defaultContext().read(WEB_COLUMN_LIMITS));
+	const mobile = parseColumnCheckMaxima(defaultContext().read(MOBILE_COLUMN_LIMITS));
+	// `COLUMN_LIMITS` sits in the same file and is keyed identically; a reader
+	// that swept the whole file would pick up its object literals too.
+	assert.deepEqual([...web.keys()].sort(), ['body_metrics.weight_kg', 'user_profiles.height_cm']);
+	assert.deepEqual([...web.entries()].sort(), [...mobile.entries()].sort());
+});
+
+test('every declared DB cap equals its column own CHECK in the committed tree', () => {
+	const { errors, ok } = checkColumnCheckMaxima(defaultContext());
+	assert.deepEqual(errors, []);
+	assert.equal(ok.length, 2);
+});
+
+test('MUTATION: a CHECK widened past the declared cap fails, where containment does not', () => {
+	const dir = migrationsFixture({
+		'0001_create.sql':
+			'create table body_metrics (weight_kg numeric(5, 2) not null check (weight_kg > 0 and weight_kg <= 600));',
+		'0002_height.sql':
+			'alter table user_profiles add column height_cm numeric(5, 1) check (height_cm is null or (height_cm > 0 and height_cm <= 300));',
+	});
+	const real = defaultContext();
+	const ctx = { read: real.read, sql: indexMigrations2(dir) };
+	// The containment guard is BLIND to this: 250 is still inside 600. (The
+	// fixture holds only these two columns, so the other registered keys report
+	// a missing CHECK; the point is that weight_kg is not among them.)
+	assert.deepEqual(
+		checkColumnBounds(ctx).errors.filter((e) => e.includes('body_metrics.weight_kg')),
+		[],
+	);
+	const { errors } = checkColumnCheckMaxima(ctx);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /body_metrics\.weight_kg/);
+	assert.match(errors[0], /declared as 500, but the column's own CHECK admits up to 600/);
+});
+
+test('MUTATION: a cap NARROWER than the CHECK fails too — the direction is not one-sided', () => {
+	const { errors } = checkColumnCheckMaxima(
+		boundsCtx((rel, src) =>
+			rel === WEB_COLUMN_LIMITS || rel === MOBILE_COLUMN_LIMITS
+				? src.replace(/('body_metrics\.weight_kg':\s*)500/g, '$1400')
+				: src,
+		),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /declared as 400, but the column's own CHECK admits up to 500/);
+});
+
+test('MUTATION: the two clients disagreeing on a DB cap fails, naming both values', () => {
+	const { errors } = checkColumnCheckMaxima(
+		boundsCtx((rel, src) =>
+			rel === MOBILE_COLUMN_LIMITS
+				? src.replace("'user_profiles.height_cm': 300", "'user_profiles.height_cm': 250")
+				: src,
+		),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /user_profiles\.height_cm.*web 300, mobile 250/);
+});
+
+test('a column whose CHECK is gone certifies nothing rather than passing', () => {
+	const dir = migrationsFixture({
+		'0001_create.sql': 'create table body_metrics (weight_kg numeric(5, 2) not null);',
+	});
+	const real = defaultContext();
+	const { errors } = checkColumnCheckMaxima({ read: real.read, sql: indexMigrations2(dir) });
+	assert.ok(errors.some((e) => /no CHECK in the .*migrations bounds that column/s.test(e)));
+});
+
+test('an exclusive CHECK is refused rather than read as an inclusive maximum', () => {
+	const dir = migrationsFixture({
+		'0001_create.sql':
+			'create table body_metrics (weight_kg numeric(5, 2) not null check (weight_kg > 0 and weight_kg < 500));',
+	});
+	const real = defaultContext();
+	const { errors } = checkColumnCheckMaxima({ read: real.read, sql: indexMigrations2(dir) });
+	assert.ok(errors.some((e) => /bounds it EXCLUSIVELY \(< 500\)/.test(e)));
+});
+
+test('a DB-cap map the extractor can no longer read is reported as blindness', () => {
+	const { errors } = checkColumnCheckMaxima(
+		boundsCtx((rel, src) => (rel === MOBILE_COLUMN_LIMITS ? src.replace('kColumnCheckMax', 'kRenamed') : src)),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /guard going blind/);
+});
+
+// ── Rate-limit ceilings ────────────────────────────────────────────────────
+
+test('one bucket debited with two different ceilings throws rather than picking one', () => {
+	const dir = migrationsFixture({
+		'0001_a.sql':
+			"create function a() returns void language plpgsql as $$ begin perform enforce_create_rate_limit('create_club', x, 5, 3600); end $$;",
+		'0002_b.sql':
+			"create function b() returns void language plpgsql as $$ begin perform enforce_create_rate_limit('create_club', x, 50, 3600); end $$;",
+	});
+	assert.throws(
+		() => rateLimitCeilingSqlSites({ read: () => '', sql: indexMigrations(dir) }),
+		/two ceilings/,
+	);
+});
+
+test('a re-issued function replaces its own ceiling rather than conflicting with it', () => {
+	const dir = migrationsFixture({
+		'0001_a.sql':
+			"create function a() returns void language plpgsql as $$ begin perform enforce_create_rate_limit('create_club', x, 5, 3600); end $$;",
+		'0002_a.sql':
+			"create or replace function a() returns void language plpgsql as $$ begin perform enforce_create_rate_limit('create_club', x, 9, 3600); end $$;",
+	});
+	const sites = rateLimitCeilingSqlSites({ read: () => '', sql: indexMigrations(dir) });
+	assert.deepEqual(sites, [{ key: 'create_club', where: 'a() in 0002_a.sql', values: ['9', '3600'] }]);
+});
+
+test('the doc table row is read off the backticked bucket, not the first numbers on the line', () => {
+	const sites = rateLimitCeilingDocSites({
+		read: () => '| Bucket | Max | Window |\n|---|---|---|\n| `create_club` | 5 | 3600 | see 20260907_001 |\n',
+		sql: /** @type {any} */ ({}),
+	});
+	assert.deepEqual(sites, [
+		{ key: 'create_club', where: `${RATE_LIMIT_DOC} bucket table`, values: ['5', '3600'] },
+	]);
+});
+
+test('MUTATION: the doc table stating a ceiling the SQL does not enforce fails', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'create rate-limit ceilings'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		sql: real.sql,
+		read: (/** @type {string} */ rel) =>
+			rel === RATE_LIMIT_DOC
+				? real.read(rel).replace('| `send_direct_message_burst` | 30 | 60 |', '| `send_direct_message_burst` | 60 | 60 |')
+				: real.read(rel),
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /send_direct_message_burst/);
+	assert.match(errors[0], /\[30, 60\]/);
+	assert.match(errors[0], /\[60, 60\]/);
+});
+
+test('MUTATION: a bucket the SQL raises and the doc table omits fails', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'create rate-limit ceilings'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		sql: real.sql,
+		read: (/** @type {string} */ rel) =>
+			rel === RATE_LIMIT_DOC ? real.read(rel).replace(/^\| `create_club` \|.*$/m, '') : real.read(rel),
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"create_club" is written on 1 of 2 rails/);
+});
+
+// ── The guided-run cue library ─────────────────────────────────────────────
+
+const GUIDED_ANCHOR_TS = 'guidedRunLibrary(t: GuidedTranslate';
+const GUIDED_ANCHOR_DART = 'guidedRunLibrary(AppLocalizations';
+
+const GUIDED_TS = `
+export function guidedRunLibrary(t: GuidedTranslate): GuidedRun[] {
+	return [
+		{
+			id: 'easy-30',
+			title: t('guidedRuns.easy30.title'),
+			duration_sec: 30 * 60,
+			cues: [
+				{ at_sec: 0, text: t('guidedRuns.easy30.cue0') },
+				{ at_sec: 5 * 60, text: t('guidedRuns.easy30.cue1') },
+			],
+		},
+		{
+			id: 'brisk-10',
+			title: t('guidedRuns.brisk10.title'),
+			duration_sec: 600,
+			cues: [{ at_sec: 0, text: t('guidedRuns.brisk10.cue0') }],
+		},
+	];
+}
+`;
+
+const GUIDED_DART = `
+List<GuidedRun> guidedRunLibrary(AppLocalizations l10n) => [
+      GuidedRun(
+        id: 'easy-30',
+        title: l10n.guidedEasy30Title,
+        durationSec: 30 * 60,
+        cues: [
+          GuidedCue(atSec: 0, text: l10n.guidedEasy30Cue0),
+          GuidedCue(atSec: 5 * 60, text: l10n.guidedEasy30Cue1),
+        ],
+      ),
+      GuidedRun(
+        id: 'brisk-10',
+        title: l10n.guidedBrisk10Title,
+        durationSec: 600,
+        cues: [GuidedCue(atSec: 0, text: l10n.guidedBrisk10Cue0)],
+      ),
+    ];
+`;
+
+// The same two workouts, listed the other way round. Nothing about either run
+// changes — which is the point: a set comparison would call this agreement.
+const GUIDED_DART_REORDERED = `
+List<GuidedRun> guidedRunLibrary(AppLocalizations l10n) => [
+      GuidedRun(
+        id: 'brisk-10',
+        durationSec: 600,
+        cues: [GuidedCue(atSec: 0, text: l10n.guidedBrisk10Cue0)],
+      ),
+      GuidedRun(
+        id: 'easy-30',
+        durationSec: 30 * 60,
+        cues: [
+          GuidedCue(atSec: 0, text: l10n.guidedEasy30Cue0),
+          GuidedCue(atSec: 5 * 60, text: l10n.guidedEasy30Cue1),
+        ],
+      ),
+    ];
+`;
+
+// Two languages, one parse. Comparing the two outputs directly is what makes
+// "web and mobile agree" a property of the extractor rather than of two
+// regexes that could drift the way their subjects can.
+test('one extractor reads the TypeScript and the Dart spelling of the same library', () => {
+	const ts = parseGuidedRunLibrary(GUIDED_TS, GUIDED_ANCHOR_TS, 'lib');
+	const dart = parseGuidedRunLibrary(GUIDED_DART, GUIDED_ANCHOR_DART, 'lib');
+	assert.deepEqual(ts, dart);
+	assert.deepEqual(ts, [
+		{ key: 'library order', where: 'run ids in lib', values: ['easy-30', 'brisk-10'] },
+		{ key: 'easy-30', where: 'easy-30 in lib', values: ['duration=1800', 'cue@0', 'cue@300'] },
+		{ key: 'brisk-10', where: 'brisk-10 in lib', values: ['duration=600', 'cue@0'] },
+	]);
+});
+
+test('a second mark is evaluated from minutes, and a bare integer is taken as seconds', () => {
+	assert.equal(parseGuidedSeconds('29 * 60', 'w'), 1740);
+	assert.equal(parseGuidedSeconds(' 0 ', 'w'), 0);
+	assert.equal(parseGuidedSeconds('600', 'w'), 600);
+});
+
+// Skipping an unreadable mark would shorten one rail's cue list, which the
+// other rail cannot see and the comparison would read as the run it knows.
+test('a second mark in a form the parser does not know throws rather than being skipped', () => {
+	assert.throws(() => parseGuidedSeconds('const Duration(minutes: 5).inSeconds', 'easy-30 in lib'), /easy-30 in lib/);
+	assert.throws(() => parseGuidedSeconds('5 * 60 + 30', 'w'), /teach it the new form/);
+});
+
+test('a library whose anchor is gone throws rather than reading nothing', () => {
+	assert.throws(() => parseGuidedRunLibrary(GUIDED_TS, 'buildGuidedRuns(', 'lib'), /agrees with every other one/);
+});
+
+test('a run carrying no cue marks throws — a cue-less run matches a cue-less run', () => {
+	const cueless = GUIDED_DART.replace(/cues: \[GuidedCue\(atSec: 0, text: l10n\.guidedBrisk10Cue0\)\],/, 'cues: [],');
+	assert.throws(() => parseGuidedRunLibrary(cueless, GUIDED_ANCHOR_DART, 'lib'), /"brisk-10".*no cue marks/s);
+});
+
+test('a run carrying no duration throws', () => {
+	const undated = GUIDED_TS.replace('duration_sec: 600,', '');
+	assert.throws(() => parseGuidedRunLibrary(undated, GUIDED_ANCHOR_TS, 'lib'), /"brisk-10".*no duration/s);
+});
+
+test('a parse that yields fewer runs than a library holds throws', () => {
+	const oneRun = GUIDED_TS.slice(0, GUIDED_TS.indexOf("id: 'brisk-10'")) + '];\n}\n';
+	assert.throws(() => parseGuidedRunLibrary(oneRun, GUIDED_ANCHOR_TS, 'lib'), /read 1 guided run\(s\)/);
+});
+
+test('MUTATION: two rails holding the same runs in a different order fail on the order', () => {
+	const entry = entryOf(
+		[
+			{ label: 'web', sites: parseGuidedRunLibrary(GUIDED_TS, GUIDED_ANCHOR_TS, 'web') },
+			{ label: 'mobile', sites: parseGuidedRunLibrary(GUIDED_DART_REORDERED, GUIDED_ANCHOR_DART, 'mobile') },
+		],
+		'key',
+		'ordered',
+	);
+	const { errors } = checkEntry(entry, NO_CTX);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"library order" disagrees/);
+});
+
+test('MUTATION: a cue mark moved on the phone alone fails, naming the run', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'guided-run cue library'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		sql: real.sql,
+		read: (/** @type {string} */ rel) =>
+			rel === MOBILE_GUIDED_RUNS
+				? real.read(rel).replace('GuidedCue(atSec: 25 * 60,', 'GuidedCue(atSec: 26 * 60,')
+				: real.read(rel),
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"easy-30" disagrees/);
+	assert.match(errors[0], /cue@1500/);
+	assert.match(errors[0], /cue@1560/);
+});
+
+test('MUTATION: a workout renamed on the web alone fails as a key missing from each rail in turn', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'guided-run cue library'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		sql: real.sql,
+		read: (/** @type {string} */ rel) =>
+			rel === WEB_GUIDED_RUNS ? real.read(rel).replace("id: 'first-timer-15',", "id: 'first-timer-15-v2',") : real.read(rel),
+	});
+	assert.match(errors.join('\n'), /"first-timer-15" is written on 1 of 2 rails/);
+	assert.match(errors.join('\n'), /"first-timer-15-v2" is written on 1 of 2 rails/);
+	assert.match(errors.join('\n'), /"library order" disagrees/);
+});
+
+// ── The public_runs metadata denylist ──────────────────────────────────────
+
+const VIEW_HEAD = `create or replace view public_runs as
+select
+  r.id,
+  coalesce(r.metadata, '{}'::jsonb)
+`;
+const VIEW_TAIL = `    as metadata
+from runs r
+where r.is_public = true;
+`;
+
+/** @param {string[]} keys */
+function viewSql(keys) {
+	return VIEW_HEAD + keys.map((k) => `    - '${k}'\n`).join('') + VIEW_TAIL;
+}
+
+// The replay a filename cannot stand in for, and the reason this rail reads
+// the migration SET rather than the file whose name is about the view: the
+// `expected_return_at` strip really did arrive in a migration called
+// `_safety_sms_escalation`, three files after the last one named for the view.
+test('the live public_runs projection is the last one written, not the last one named for it', () => {
+	const dir = migrationsFixture({
+		'20260101_001_public_runs_view.sql':
+			'create or replace function f() returns int language sql as $$ select 1; $$;\n' + viewSql(['strava_id']),
+		'20260102_001_safety_escalation.sql': viewSql(['strava_id', 'expected_return_at']),
+		'20260103_001_public_runs_index.sql': 'create index runs_public_idx on runs (is_public);',
+	});
+	const { views } = indexMigrations(dir);
+	assert.equal(views.get('public_runs')?.file, '20260102_001_safety_escalation.sql');
+	assert.deepEqual(parseMetadataDenylist(views.get('public_runs')?.sql ?? '', 'fixture'), [
+		'strava_id',
+		'expected_return_at',
+	]);
+});
+
+test('a dropped view stops being live', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql':
+			'create or replace function f() returns int language sql as $$ select 1; $$;\n' + viewSql(['strava_id']),
+		'20260102_001_b.sql': 'drop view if exists public.public_runs;',
+	});
+	assert.equal(indexMigrations(dir).views.has('public_runs'), false);
+});
+
+// The same trap the GATT guard fell into (decisions § 773), one relation over.
+test('a commented-out view definition does not register as live', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql':
+			'create or replace function f() returns int language sql as $$ select 1; $$;\n' + viewSql(['strava_id']),
+		'20260102_001_b.sql': '-- ' + viewSql(['ghost']).replace(/\n/g, '\n-- ') + '\nselect 1;',
+	});
+	assert.equal(indexMigrations(dir).views.get('public_runs')?.file, '20260101_001_a.sql');
+	assert.deepEqual(parseMetadataDenylist(indexMigrations(dir).views.get('public_runs')?.sql ?? '', 'f'), [
+		'strava_id',
+	]);
+});
+
+// Anchored at the start of the statement: a function that issues DDL of its
+// own would otherwise register as a definition of the view it names, and the
+// rail would then grade a body that never ran.
+test('a view definition inside a function body does not register as live', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql':
+			'create or replace function f() returns int language sql as $$ select 1; $$;\n' + viewSql(['strava_id']),
+		'20260102_001_b.sql':
+			'create or replace function rebuild() returns void language plpgsql as $$ begin execute $q$ ' +
+			viewSql(['ghost']) +
+			' $q$; end; $$;',
+	});
+	assert.equal(indexMigrations(dir).views.get('public_runs')?.file, '20260101_001_a.sql');
+});
+
+test('the denylist is the subtraction chain between the coalesce and `as metadata`', () => {
+	const sql = `create or replace view public_runs as
+select
+  r.id - 'not_a_key' as offset_col,
+  coalesce(r.metadata, '{}'::jsonb)
+    - 'strava_id'
+    - 'garmin_id'
+    as metadata,
+  r.concluded_at
+from runs r;`;
+	assert.deepEqual(parseMetadataDenylist(sql, 'fixture'), ['strava_id', 'garmin_id']);
+});
+
+test('a projection whose shape changed throws rather than reading nothing', () => {
+	assert.throws(
+		() => parseMetadataDenylist("create or replace view public_runs as select r.metadata from runs r;", 'fixture'),
+		/no metadata projection in fixture/,
+	);
+});
+
+test('a projection that subtracts nothing throws — an empty denylist is not a denylist', () => {
+	assert.throws(() => parseMetadataDenylist(viewSql([]), 'fixture'), /subtracts no keys/);
+});
+
+test('a migration set with no public_runs view throws rather than reading nothing', () => {
+	const dir = migrationsFixture({
+		'20260101_001_a.sql': 'create or replace function f() returns int language sql as $$ select 1; $$;',
+	});
+	assert.throws(
+		() => publicRunsViewSites(/** @type {any} */ ({ sql: indexMigrations(dir) })),
+		/defines no `public_runs` view/,
+	);
+});
+
+const PGTAP_SRC = `begin;
+insert into runs (metadata) values (
+  jsonb_build_object(
+    -- Audit / import linkage
+    'strava_id', '12345',
+    'garmin_id', '67890',
+    -- Public-safe, included to confirm it survives
+    'event', 'parkrun'
+  )
+);
+do $$
+declare
+  denylist text[] := array[
+    'strava_id',
+    -- A group comment naming its source migration
+    'garmin_id'
+  ];
+begin
+  null;
+end $$;
+rollback;
+`;
+
+// The array's own `--` group comments name migrations, which carry digits and
+// underscores; reading the array as raw text would sweep them in. The lexer is
+// what stops that, and the same pass is what makes a commented-out array
+// unreadable as the live one.
+test('the pgtap array is read past its group comments', () => {
+	assert.deepEqual(parsePgtapDenylist(PGTAP_SRC, 'fixture'), ['strava_id', 'garmin_id']);
+});
+
+test('a renamed pgtap array throws rather than reading nothing', () => {
+	assert.throws(
+		() => parsePgtapDenylist(PGTAP_SRC.replace('denylist text[]', 'stripped_keys text[]'), 'fixture'),
+		/no `denylist text\[\] := array\[…\]` in fixture/,
+	);
+});
+
+test('an empty pgtap array throws — the loop would then pass against any view', () => {
+	assert.throws(
+		() => parsePgtapDenylist(PGTAP_SRC.replace(/array\[[\s\S]*?\]/, 'array[]'), 'fixture'),
+		/is empty/,
+	);
+});
+
+const SEED_SRC = `
+do $$
+declare
+  v_public_metadata jsonb;
+begin
+  IF NOT (v_public_metadata ? 'activity_type') THEN
+    RAISE EXCEPTION 'public_runs: activity_type must survive (it is public-safe)';
+  END IF;
+
+  IF v_public_metadata ? 'strava_id'
+     -- A group comment naming its source migration
+     OR v_public_metadata ? 'garmin_id' THEN
+    RAISE EXCEPTION 'public_runs: metadata strip list incomplete';
+  END IF;
+end $$;
+`;
+
+// The same `v_public_metadata ? 'key'` spelling asserts a few lines earlier
+// that activity_type SURVIVES. A parser reading the file at large folds that
+// into the denylist and then reports a disagreement that is really two
+// assertions pointing in opposite directions.
+test('the seed rail reads only the strip-list block, not the survives-assertions above it', () => {
+	assert.deepEqual(parseSeedDenylist(SEED_SRC, 'fixture'), ['strava_id', 'garmin_id']);
+});
+
+test('a renamed seed strip-list exception throws rather than reading nothing', () => {
+	assert.throws(
+		() => parseSeedDenylist(SEED_SRC.replace('strip list incomplete', 'something else'), 'fixture'),
+		/no public_runs strip-list assertion in fixture/,
+	);
+});
+
+// Reachable only when the chain stops naming literals — a rewrite to `? v_key`
+// over a loop variable keeps the anchor and takes the key names out of the
+// file, which is a rail reading nothing while looking untouched.
+test('a seed strip-list assertion naming no literal keys throws', () => {
+	assert.throws(
+		() => parseSeedDenylist(SEED_SRC.replace(/\? '[a-z_]*'/g, '? v_key'), 'fixture'),
+		/names no keys/,
+	);
+});
+
+// seed.sql annotates each group of keys with the migration that added it, and
+// those comments live inside a dollar-quoted body the lexer leaves intact --
+// correctly, since it is a string literal. A key-position match that did not
+// tolerate them read every commented group as unbuilt.
+test('a fixture key written after a comment line still counts as built', () => {
+	const keys = jsonbBuildObjectKeys([
+		"jsonb_build_object('a', 1,\n  -- 20270430_001 strip-list addition:\n  'b', 2)",
+	]);
+	assert.deepEqual([...keys].sort(), ['a', 'b']);
+});
+
+test('a fixture bag yields its keys, not its values', () => {
+	const keys = jsonbBuildObjectKeys([
+		"jsonb_build_object('a', 'garmin_id', 'b', jsonb_build_object('c', 1), 'd', '{\"x\": 1, \"y\": 2}'::jsonb)",
+	]);
+	assert.deepEqual([...keys].sort(), ['a', 'b', 'c', 'd']);
+});
+
+// The anti-vacuity the set comparison cannot make: the test reads its row back
+// and asserts each named key is ABSENT, so a key the fixture never built is
+// asserted against a bag that could not have carried it.
+test('a key the array asserts but the fixture never builds throws', () => {
+	const src = PGTAP_SRC.replace("    'garmin_id', '67890',\n", '');
+	assert.throws(
+		() => pgtapDenylistSites(/** @type {any} */ ({ read: () => src })),
+		/asserts garmin_id but its fixture never puts that key in the row/,
+	);
+});
+
+test('MUTATION: a key dropped from the pgtap array fails, naming the key and both homes', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'public_runs metadata denylist'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		sql: real.sql,
+		read: (/** @type {string} */ rel) =>
+			rel === PUBLIC_RUNS_DENYLIST_TEST
+				? real.read(rel).replace(/^\s*'guided_run_id',\n/m, '')
+				: real.read(rel),
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /the live public_runs projection/);
+	assert.ok(errors[0].includes(PUBLIC_RUNS_DENYLIST_TEST));
+	assert.match(errors[0], /missing there: guided_run_id/);
+});
+
+test('MUTATION: a view redefined without a strip line fails, naming the key only the test has', () => {
+	const real = defaultContext();
+	const live = /** @type {{ file: string, sql: string }} */ (real.sql.views.get('public_runs'));
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'public_runs metadata denylist'));
+	const { errors } = checkEntry(entry, {
+		read: real.read,
+		sql: {
+			live: real.sql.live,
+			statements: real.sql.statements,
+			views: new Map(real.sql.views).set('public_runs', {
+				file: live.file,
+				sql: live.sql.replace(/^\s*- 'watch_workout'\n/m, ''),
+			}),
+		},
+	});
+	// One error per rail that still strips the key: the shared_runs view, the
+	// pgtap array and the seed's assertion each disagree with the view
+	// independently, which is the point of holding several homes rather than two.
+	assert.equal(errors.length, 3);
+	for (const error of errors) assert.match(error, /only there: {4}watch_workout/);
+});
+
+test('MUTATION: shared_runs dropping a strip line fails, so a recipient never reads more than a stranger', () => {
+	const real = defaultContext();
+	const live = /** @type {{ file: string, sql: string }} */ (real.sql.views.get('shared_runs'));
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'public_runs metadata denylist'));
+	const { errors } = checkEntry(entry, {
+		read: real.read,
+		sql: {
+			live: real.sql.live,
+			statements: real.sql.statements,
+			views: new Map(real.sql.views).set('shared_runs', {
+				file: live.file,
+				sql: live.sql.replace(/^\s*- 'plan_workout_id'\n/m, ''),
+			}),
+		},
+	});
+	assert.ok(errors.length >= 1);
+	assert.ok(errors.some((e) => /shared_runs/.test(e) && /plan_workout_id/.test(e)));
+});
+
+test('a fold table is read the same way from the TypeScript and the Dart rail', () => {
+	const ts = 'export const EXERCISE_FOLD_KEYS: readonly number[] = [\n\t0x0041, 0x00C0,\n\t0x10D50,\n];';
+	const dart = 'const List<int> kExerciseFoldKeys = <int>[\n  0x0041, 0x00C0,\n  0x10D50,\n];';
+	assert.deepEqual(parseFoldTableList(ts, 'EXERCISE_FOLD_KEYS'), [0x41, 0xc0, 0x10d50]);
+	assert.deepEqual(parseFoldTableList(dart, 'kExerciseFoldKeys'), [0x41, 0xc0, 0x10d50]);
+	assert.deepEqual(parseFoldTableList(ts, 'kNotThere'), []);
+});
+
+test('a wrapped U& literal reads as its code points, BMP and supplementary alike', () => {
+	// Postgres string continuation: adjacent quoted literals separated by a
+	// newline are one literal, which is how a 1,488-entry table stays reviewable.
+	const literal = "U&'\\0041\\00C0'\n    '\\+010D50'";
+	assert.deepEqual(parseSqlUnicodeLiteral(literal), [0x41, 0xc0, 0x10d50]);
+});
+
+test('both halves of the SQL fold are read, and a shape it does not know reads as empty', () => {
+	const sql = [
+		'select case',
+		"  when octet_length(p_name) = length(p_name)",
+		"    then translate(p_name, 'AB', 'ab')",
+		'    else translate(',
+		'      p_name,',
+		"      U&'\\0041\\0042'",
+		"      '\\+010D50',",
+		"      U&'\\0061\\0062'",
+		"      '\\+010D70'",
+		'    )',
+		'end;',
+	].join('\n');
+	const parsed = parseSqlFoldTable(sql);
+	assert.deepEqual(parsed.keys, [0x41, 0x42, 0x10d50]);
+	assert.deepEqual(parsed.values, [0x61, 0x62, 0x10d70]);
+	assert.equal(parsed.asciiFrom, 'AB');
+	assert.equal(parsed.asciiTo, 'ab');
+	assert.deepEqual(parseSqlFoldTable('select lower(p_name);'), {
+		keys: [],
+		values: [],
+		asciiFrom: '',
+		asciiTo: '',
+	});
+});
+
+test('a fold rail that reads nothing is reported as blindness, not as agreement', () => {
+	// Two empty tables compare equal, which is exactly the failure a 1,488-pair
+	// comparison cannot see on its own.
+	const real = defaultContext();
+	const { errors } = checkExerciseFoldTable({
+		read: (path) => (path.endsWith('.dart') ? 'library;' : real.read(path)),
+		sql: real.sql,
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /read 0 keys and 0 values/);
+});
+
+test('a fold table that drifts on one code point is named, with its total', () => {
+	const real = defaultContext();
+	const { errors, ok } = checkExerciseFoldTable({
+		read: (path) =>
+			path.endsWith('exercise_fold_table.dart')
+				? real.read(path).replace('0x00E0,', '0x00E1,')
+				: real.read(path),
+		sql: real.sql,
+	});
+	assert.equal(ok.length, 0);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /disagree at 1 code point\(s\)/);
+	assert.match(errors[0], /U\+00C0 U\+00E0 here, U\+00E1 there/);
+});
+
+test('the shipped fold table agrees across all three rails', () => {
+	const { errors, ok } = checkExerciseFoldTable(defaultContext());
+	assert.deepEqual(errors, []);
+	assert.equal(ok.length, 1);
+	assert.match(ok[0], /folds agree across 3 rails/);
+});
+
+// The phone is the pace gate's third home, and its constants sit in a file that
+// also compares against them — `diff.abs() > kPaceAlertDriftSecPerKm` — so the
+// reader is anchored on the declaration, not on the name.
+test('a Dart const int is read from its declaration and nowhere else', () => {
+	assert.deepEqual(parseDartConstInt('const int kPaceAlertDriftSecPerKm = 30;\n', 'kPaceAlertDriftSecPerKm'), ['30']);
+	assert.deepEqual(parseDartConstInt('  static const kCap = 12;', 'kCap'), ['12']);
+	assert.deepEqual(parseDartConstInt('if (diff.abs() > kCap) { x = 5;', 'kCap'), []);
+	assert.deepEqual(parseDartConstInt('/// kCap = 99 is the old figure.', 'kCap'), []);
+	assert.deepEqual(parseDartConstInt('final kCap = 12;', 'kCap'), []);
+});
+
+test('the phone rail of the pace-drift gate reports a drifted threshold', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'pace-drift alert gate'));
+	assert.ok(entry, 'the pace-drift gate entry is registered');
+	assert.ok(entry.rails.some((/** @type {any} */ r) => r.label.includes('run_screen.dart')));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		read: (/** @type {string} */ rel) =>
+			rel.endsWith('run_screen.dart')
+				? real.read(rel).replace('kPaceAlertDriftSecPerKm = 30;', 'kPaceAlertDriftSecPerKm = 15;')
+				: real.read(rel),
+		sql: real.sql,
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"drift_s_per_km" disagrees/);
+	assert.match(errors[0], /kPaceAlertDriftSecPerKm: \[15\]/);
+});
+
+test('the pace-drift gate goes blind, not green, when the phone constant is inlined again', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'pace-drift alert gate'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		read: (/** @type {string} */ rel) =>
+			rel.endsWith('run_screen.dart')
+				? real.read(rel).replace(/const int kPaceAlertRateLimitSeconds = 30;/, '')
+				: real.read(rel),
+		sql: real.sql,
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /read no values at kPaceAlertRateLimitSeconds/);
+});
+
+// ── runs-bucket track upload content type ──────────────────────────────────
+
+test('every runs-bucket upload call is read, in the TS and the Dart spelling', () => {
+	const ts =
+		"await supabase.storage\n\t.from(BUCKETS.runs)\n\t.upload(path, new Blob([g], { type: 'application/gzip' }), {\n\t\tcontentType: 'application/gzip',\n\t});\n" +
+		"await supabase.storage.from('runs').upload(p, b, { contentType: 'text/csv' });\n" +
+		"await supabase.storage.from(BUCKETS.photos).upload(p, b, { contentType: 'image/png' });";
+	assert.deepEqual(parseRunsBucketUploadTypes(ts, 'a.ts'), [
+		{ key: 'runs', where: 'a.ts:2', values: ['application/gzip'] },
+		{ key: 'runs', where: 'a.ts:6', values: ['text/csv'] },
+	]);
+	const dart =
+		"await _client.storage.from(StorageBuckets.runs).uploadBinary(\n  path,\n  bytes,\n  fileOptions: const FileOptions(\n    // (a comment with parens)\n    contentType: 'application/gzip',\n  ),\n);";
+	assert.deepEqual(parseRunsBucketUploadTypes(dart, 'b.dart'), [
+		{ key: 'runs', where: 'b.dart:1', values: ['application/gzip'] },
+	]);
+});
+
+test('an upload whose type is not a literal reads as no values, which the caller reports', () => {
+	const src = 'await supabase.storage.from(BUCKETS.runs).upload(p, b, { contentType: mime });';
+	assert.deepEqual(parseRunsBucketUploadTypes(src, 'c.ts'), [{ key: 'runs', where: 'c.ts:1', values: [] }]);
+});
+
+test('a Kotlin const string is read from its declaration', () => {
+	const src = 'internal const val TRACK_UPLOAD_CONTENT_TYPE = "application/gzip"\nval other = "x"';
+	assert.deepEqual(parseKotlinConstString(src, 'TRACK_UPLOAD_CONTENT_TYPE'), ['application/gzip']);
+	assert.deepEqual(parseKotlinConstString(src, 'MISSING'), []);
+});
+
+test('a track writer whose type the runs bucket does not allow fails, naming both', () => {
+	const dir = migrationsFixture({
+		'20260101_001_runs.sql':
+			"update storage.buckets set allowed_mime_types = array['application/gzip', 'text/csv'] where id = 'runs';\n" +
+			'create or replace function f() returns int language sql as $$ select 1; $$;',
+	});
+	/** @type {any} */
+	const registry = [
+		{
+			name: RUNS_TRACK_UPLOAD_ENTRY,
+			rails: [
+				{ label: 'phone', sites: () => [{ key: 'runs', where: 'p.dart:1', values: ['application/gzip'] }] },
+				{ label: 'watch', sites: () => [{ key: 'runs', where: 'W.kt', values: ['application/json'] }] },
+			],
+		},
+	];
+	const { errors, ok } = checkRunsTrackUploadAllowed({ read: () => '', sql: indexMigrations(dir) }, registry);
+	assert.equal(ok.length, 0);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /watch uploads to the runs bucket as 'application\/json' at W\.kt/);
+	assert.match(errors[0], /20260101_001_runs\.sql/);
+});
+
+test('the real watch rail fails when the watch goes back to application/json', () => {
+	const real = defaultContext();
+	const ctx = {
+		read: (/** @type {string} */ rel) =>
+			rel.endsWith('SupabaseUrlBuilders.kt')
+				? real
+						.read(rel)
+						.replace('TRACK_UPLOAD_CONTENT_TYPE = "application/gzip"', 'TRACK_UPLOAD_CONTENT_TYPE = "application/json"')
+				: real.read(rel),
+		sql: real.sql,
+	};
+	const { errors } = checkRunsTrackUploadAllowed(ctx);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /watch_wear .* 'application\/json'/);
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === RUNS_TRACK_UPLOAD_ENTRY));
+	assert.match(checkEntry(entry, ctx).errors.join('\n'), /two homes disagree/);
+});

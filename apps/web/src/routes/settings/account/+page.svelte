@@ -1,41 +1,94 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { onMount } from 'svelte';
+	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
+	import { AppError } from '#lib/core/app_error.ts';
+	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { changePassword, type PasswordChangeReason } from '$lib/core/password_change';
-	import { PASSWORD_MIN_LENGTH } from '$lib/core/auth_rules';
-	import { TEXT_LIMITS } from '$lib/core/text_limits';
-	import { TABLES } from '$lib/core/schema';
-	import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-	import { downloadFile } from '$lib/routes/gpx';
-	import { fetchRunsWithError, uploadAvatar, removeAvatar } from '$lib/core/data';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { undoStore } from '#lib/stores/undo.svelte.ts';
+	import { settleBeforeSessionEnds } from '#lib/stores/sign_out.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DangerZone from '#lib/components/DangerZone.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import AvatarCropDialog from '#lib/components/AvatarCropDialog.svelte';
+	import { AVATAR_SOURCE_MAX_BYTES } from '#lib/util/avatar_render.ts';
+	import AiDisclosureNotice from '#lib/components/AiDisclosureNotice.svelte';
+	import { supabase } from '#lib/core/supabase.ts';
+	import {
+		LINK_REFUSAL_STASH_KEY,
+		OAUTH_LINK_STASH_KEY,
+		authRedirectErrorDetail,
+		decodeLinkRefusal,
+		type LinkRefusal,
+	} from '#lib/core/auth_redirect_error.ts';
+	import { linkRefusalMessageKey } from '#lib/core/link_refusal_message.ts';
+	import {
+		AI_DISCLOSURE_CURRENT_VERSION,
+		aiDisclosureFromProfileRow,
+		checkAiDisclosure,
+		type AiDisclosureRecord,
+	} from '#lib/core/ai_disclosure.ts';
+	import { changePassword, type PasswordChangeReason } from '#lib/core/password_change.ts';
+	import { PASSWORD_MIN_LENGTH } from '#lib/core/auth_rules.ts';
+	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { TABLES } from '#lib/core/schema.ts';
+	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+	import { downloadFile } from '#lib/routes/gpx.ts';
+	import { fetchRunsWithError, uploadAvatar, removeAvatar } from '#lib/core/data.ts';
 	import {
 		createBackup,
 		restoreBackup,
 		type BackupProgress,
 		type RestoreProgress,
 		type RestoreResult,
-	} from '$lib/backup/backup';
+	} from '#lib/backup/backup.ts';
+	import { transferStageKey } from '#lib/backup/stage_labels.ts';
+	import { backupShortfall as gradeBackupShortfall, type BackupShortfall } from '#lib/backup/shortfall.ts';
 	import {
 		isPushSupported,
 		pushPermission,
 		subscribeToPush,
 		unsubscribeFromPush,
 		getCurrentSubscription,
-	} from '$lib/util/push';
-	import { cloudExport } from '$lib/backup/cloud_export';
-	import { m } from '$lib/i18n/store.svelte';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
-	import { isCyclePlansEnabled } from '$lib/training/cycle_plan_flag';
+	} from '#lib/util/push.ts';
+	import {
+		CloudExportError,
+		fetchCloudExportJob,
+		startCloudExport
+	} from '#lib/backup/cloud_export.ts';
+	import { rateLimitWait } from '#lib/i18n/rate_limit_message.ts';
+	import {
+		type CloudExportFormat,
+		type CloudExportJob,
+		type CloudExportResponse,
+		type CloudExportShortfall,
+		cloudExportPollDelayMs,
+		cloudExportShortfall,
+		isCloudExportJobActive,
+	} from '#lib/backup/cloud_export_helpers.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
+	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
+	import { numberInputValue } from '#lib/settings/number_input.ts';
+	import { updateUniversal, type PrefsBag } from '#lib/settings/settings.ts';
+	import type { Updatable } from '#lib/core/database.ts';
+	import {
+		MAX_HR_BPM_MIN,
+		MAX_HR_BPM_MAX,
+		isUsableMaxHrBpm,
+		RESTING_HR_BPM_MIN,
+		RESTING_HR_BPM_MAX,
+		isUsableRestingHrBpm
+	} from '#lib/training/hr_zones.ts';
 	import {
 		MIN_CYCLE_LENGTH_DAYS,
 		MAX_CYCLE_LENGTH_DAYS,
-	} from '$lib/training/cycle_plan';
+	} from '#lib/training/cycle_plan.ts';
 
 	let displayName = $state(auth.user?.display_name ?? '');
 	// Public @handle (issue #465). Claimed / edited through the set_my_handle
@@ -46,6 +99,11 @@
 	let handleSaved = $state(false);
 	let handleError = $state<string | null>(null);
 	let handleChanged = $derived(handle.trim().toLowerCase() !== handleInitial);
+	// The profile card edits values read on mount, so it stays closed until
+	// that read lands: input typed sooner is overwritten when it does, and a
+	// save after a failed read writes blanks over the stored profile.
+	let profileLoad = $state<'loading' | 'ready' | 'failed'>('loading');
+	let profileLoadError = $state<string | null>(null);
 	let avatarUrl = $state<string | null>(auth.user?.avatar_url ?? null);
 	let avatarBusy = $state(false);
 	let avatarFileInput: HTMLInputElement;
@@ -53,6 +111,25 @@
 	let dateOfBirth = $state('');
 	let restingHr = $state('');
 	let maxHr = $state('');
+	// This card has no <form> element at all, so `min`/`max` on the max-HR
+	// input never trigger constraint validation — it saves from a button's
+	// onclick. `max_hr_bpm` is a jsonb prefs key with no column and therefore
+	// no CHECK, so this is the only gate anywhere on the write side; without
+	// it a typed 300 is stored and then silently ignored by every one of the
+	// three readers that derive zones from it (decisions § 1407).
+	const maxHrParsed = $derived(numberInputValue(maxHr));
+	const maxHrOutOfRange = $derived(maxHrParsed !== null && !isUsableMaxHrBpm(maxHrParsed));
+	const maxHrBounds = { min: MAX_HR_BPM_MIN, max: MAX_HR_BPM_MAX };
+	// Same shape for the sibling field, for the same reason (decisions § 1409).
+	const restingHrParsed = $derived(numberInputValue(restingHr));
+	const restingHrOutOfRange = $derived(
+		restingHrParsed !== null && !isUsableRestingHrBpm(restingHrParsed)
+	);
+	const restingHrBounds = { min: RESTING_HR_BPM_MIN, max: RESTING_HR_BPM_MAX };
+	// The same shape the `user_profiles.parkrun_number` CHECK accepts, so a
+	// number saved here is one the barcode can render.
+	const parkrunNormalized = $derived(normalizeParkrunAthleteNumber(parkrunNumber));
+	const parkrunNumberInvalid = $derived(parkrunNumber.trim().length > 0 && parkrunNormalized === null);
 	// Cycle/pregnancy-aware training inputs (persona runner-woman, decisions
 	// §231). Art 9 reproductive-health data — persistence is gated on the
 	// SAME health-data consent as DOB below, AND the whole section is hidden
@@ -62,24 +139,58 @@
 	let cycleLengthDays = $state('28');
 	let cycleLastPeriodStart = $state('');
 	let pregnancyDueDate = $state('');
-	// Date of birth is Art 9 demographic data — its persistence is gated
-	// on explicit health-data consent, mirroring the Demographics section
-	// of /settings/preferences. Without this, the account page was an
-	// unguarded second write path for DOB into user_settings.prefs
-	// (the DB lock trigger only protects user_profiles.health_data_consent_at).
+	// Date of birth is split across two stores with two rules, identical to
+	// /settings/preferences and /onboarding (decisions § 718): the
+	// `user_settings.prefs` mirror is the Art 9 HEALTH-USE copy the coach
+	// context + HR-max derivation read, so it persists only under explicit
+	// health-data consent and is nulled on withdrawal; the
+	// `user_profiles.date_of_birth` column is the AGE RECORD backing the
+	// under-18 discoverability floor, a child-protection purpose written
+	// whenever the runner supplies a date.
 	let healthDataConsent = $state(false);
 	let healthDataConsentAt = $state<string | null>(null);
-	let coachConsentAt = $state<string | null>(null);
+	// The versioned AI-processing consent record (decisions.md § 571). This
+	// is the surface where a user who accepted an older disclosure reads the
+	// widened one and accepts it — the AI route assistant refuses until they
+	// do, and a stale acceptance is not something the Coach surface should
+	// nag about (it covers the Coach fine).
+	let aiDisclosure = $state<AiDisclosureRecord>({ version: null, acceptedAt: null });
+	let aiConsentGranted = $derived(checkAiDisclosure(aiDisclosure, 1).ok);
+	let aiConsentStale = $derived(
+		aiConsentGranted && !checkAiDisclosure(aiDisclosure, AI_DISCLOSURE_CURRENT_VERSION).ok,
+	);
 	let coachConsentWithdrawing = $state(false);
+	let aiConsentAccepting = $state(false);
 	let saving = $state(false);
 	let saved = $state(false);
 	let exporting = $state(false);
 	let exportingJson = $state(false);
 	let exportingGpx = $state(false);
 	let exportingArchive = $state(false);
+	/// Last server-built export that came back short of the account's run
+	/// history. Kept on the page rather than only toasted: a truncated
+	/// Art. 20 export is a claim the runner has to be able to re-read
+	/// after the toast has gone, and the archive itself only says so
+	/// inside manifest.json.
+	let exportShortfall = $state<CloudExportShortfall | null>(null);
+	/// State of the subject's most recent QUEUED export (decisions.md
+	/// § 717). The archive is built off a job now, so the page has to be
+	/// able to say what is happening across a reload — the status
+	/// endpoint answers for the latest export rather than by id, so
+	/// nothing has to be persisted here to find the way back to it.
+	/// Null on the legacy Edge Function transport, which still builds
+	/// inline and has no job to watch.
+	let exportJob = $state<CloudExportJob | null>(null);
+	let exportStatusUnreadable = $state(false);
+	let exportPollTimer: ReturnType<typeof setTimeout> | null = null;
+	let exportPollFailures = 0;
+	const exportJobBuilding = $derived(
+		exportJob !== null && isCloudExportJobActive(exportJob.status),
+	);
 
 	let backingUp = $state(false);
 	let backupProgress = $state<BackupProgress | null>(null);
+	let backupShortfall = $state<BackupShortfall | null>(null);
 	let restoring = $state(false);
 	let restoreProgress = $state<RestoreProgress | null>(null);
 	let restoreResult = $state<RestoreResult | null>(null);
@@ -134,7 +245,9 @@
 		);
 		emailChanging = false;
 		if (error) {
-			emailChangeError = m('settingsAccount.emailChangeFailed', { error: error.message });
+			emailChangeError = m('settingsAccount.emailChangeFailed', {
+				error: errorCopy(error, m, 'settingsAccount.emailChangeFailed'),
+			});
 			return;
 		}
 		pendingOldEmail = current;
@@ -149,108 +262,140 @@
 		emailChangeError = null;
 	}
 
-	let parkrunImporting = $state(false);
-
-	/// Kick the existing `parkrun-import` Edge Function with the
-	/// user's stashed athlete number. The function does the scrape +
-	/// runs insert; we just surface a status toast with what came
-	/// back. One-button import — no OAuth, no tokens to manage.
-	async function handleParkrunImport() {
-		if (!parkrunNumber || parkrunNumber.trim().length === 0 || parkrunImporting) return;
-		parkrunImporting = true;
-		try {
-			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
-			const url = `${PUBLIC_SUPABASE_URL}/functions/v1/parkrun-import`;
-			const resp = await fetch(url, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${session.access_token}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ athleteNumber: parkrunNumber.trim() }),
-			});
-			if (!resp.ok) {
-				const body = await resp.json().catch(() => ({}));
-				throw new Error(body.error ?? `HTTP ${resp.status}`);
-			}
-			const body = await resp.json().catch(() => ({}));
-			const imported = (body.imported as number) ?? 0;
-			showToast(
-				imported > 0
-					? m('settingsAccount.parkrunImported', { n: imported })
-					: m('settingsAccount.parkrunNoneNew'),
-				'success',
-			);
-		} catch (err) {
-			showToast(m('settingsAccount.parkrunImportFailed', { error: (err as Error).message }), 'error');
-		} finally {
-			parkrunImporting = false;
-		}
-	}
-
 	onMount(async () => {
 		// `auth.svelte.ts` flips loading=false before the async fetchUser
 		// resolves, so a hard reload onto /settings/account can mount
 		// with auth.user still null. The $state declarations above
 		// initialised from `auth.user?.X ?? ''` at module-evaluate time
-		// — empty if auth wasn't ready yet. Wait for the form to hydrate
-		// with the saved profile values before the user can type into an
-		// empty field and clobber them on save.
+		// — empty if auth wasn't ready yet.
 		await auth.ready();
 		if (!auth.user) return;
-		displayName = auth.user.display_name ?? '';
-		parkrunNumber = auth.user.parkrun_number ?? '';
-		// Load settings bag for DOB / HR fields.
-		const { data } = await supabase
-			.from('user_settings')
-			.select('prefs')
-			.eq('user_id', auth.user.id)
-			.maybeSingle();
-		if (data?.prefs && typeof data.prefs === 'object') {
-			const p = data.prefs as Record<string, unknown>;
-			dateOfBirth = (p.date_of_birth as string) ?? '';
-			restingHr = (p.resting_hr_bpm as number)?.toString() ?? '';
-			maxHr = (p.max_hr_bpm as number)?.toString() ?? '';
-			const mode = p.cycle_tracking_mode;
-			cycleMode = mode === 'cycle' || mode === 'pregnancy' ? mode : 'off';
-			cycleLengthDays = (p.cycle_length_days as number)?.toString() ?? '28';
-			cycleLastPeriodStart = (p.cycle_last_period_start as string) ?? '';
-			pregnancyDueDate = (p.pregnancy_due_date as string) ?? '';
-		}
-		// Self-read goes through the get_my_profile() SECURITY DEFINER RPC:
-		// health_data_consent_at is deny-by-default for direct authenticated
-		// SELECTs (column lockdown, 20260707_001) — a direct select 403s.
-		const { data: prof } = await supabase.rpc('get_my_profile');
-		// Sync the avatar from the freshly-read profile — the $state was seeded
-		// from auth.user at component init, which may not have hydrated yet.
-		avatarUrl = (prof?.avatar_url as string | null) ?? null;
-		handleInitial = (prof?.handle as string | null) ?? '';
-		handle = handleInitial;
-		healthDataConsentAt = (prof?.health_data_consent_at as string | null) ?? null;
-		coachConsentAt = (prof?.coach_consent_at as string | null) ?? null;
-		// Pre-tick the box if consent is already on record so a user can
-		// edit DOB / HR without re-consenting on every visit.
-		healthDataConsent = healthDataConsentAt != null;
+		await loadProfile();
 		await loadIdentities();
+		await showLinkRefusal();
 		await refreshPushState();
+		await resumeExportJob();
 	});
+
+	async function loadProfile() {
+		const user = auth.user;
+		if (!user) return;
+		profileLoad = 'loading';
+		profileLoadError = null;
+		try {
+			displayName = user.display_name ?? '';
+			parkrunNumber = user.parkrun_number ?? '';
+			// Load settings bag for DOB / HR fields.
+			const { data, error: settingsError } = await supabase
+				.from('user_settings')
+				.select('prefs')
+				.eq('user_id', user.id)
+				.maybeSingle();
+			if (settingsError) throw new Error(settingsError.message);
+			if (data?.prefs && typeof data.prefs === 'object') {
+				const p = data.prefs as Record<string, unknown>;
+				// Legacy fallback only — the canonical age record read below wins.
+				dateOfBirth = (p.date_of_birth as string) ?? '';
+				restingHr = (p.resting_hr_bpm as number)?.toString() ?? '';
+				maxHr = (p.max_hr_bpm as number)?.toString() ?? '';
+				const mode = p.cycle_tracking_mode;
+				cycleMode = mode === 'cycle' || mode === 'pregnancy' ? mode : 'off';
+				cycleLengthDays = (p.cycle_length_days as number)?.toString() ?? '28';
+				cycleLastPeriodStart = (p.cycle_last_period_start as string) ?? '';
+				pregnancyDueDate = (p.pregnancy_due_date as string) ?? '';
+			}
+			// Self-read goes through the get_my_profile() SECURITY DEFINER RPC:
+			// health_data_consent_at is deny-by-default for direct authenticated
+			// SELECTs (column lockdown, 20260707_001) — a direct select 403s.
+			const { data: prof, error: profileError } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+			if (profileError) throw new Error(profileError.message);
+			// Sync the avatar from the freshly-read profile — the $state was seeded
+			// from auth.user at component init, which may not have hydrated yet.
+			avatarUrl = (prof?.avatar_url as string | null) ?? null;
+			handleInitial = (prof?.handle as string | null) ?? '';
+			handle = handleInitial;
+			healthDataConsentAt = (prof?.health_data_consent_at as string | null) ?? null;
+			// The age record is the source of truth for the field; the prefs bag
+			// read above only covers a legacy account that never wrote the
+			// column (§ 718). A withdrawal clears the mirror but not the record,
+			// so reading the bag alone would blank a DOB that is still on file.
+			dateOfBirth = (prof?.date_of_birth as string | null) ?? dateOfBirth;
+			aiDisclosure = aiDisclosureFromProfileRow(prof);
+			// Pre-tick the box if consent is already on record so a user can
+			// edit DOB / HR without re-consenting on every visit.
+			healthDataConsent = healthDataConsentAt != null;
+			profileLoad = 'ready';
+		} catch (e) {
+			console.warn('Profile load failed', e);
+			profileLoadError = errorCopy(e, m, 'settings/account: profileLoadError');
+			profileLoad = 'failed';
+		}
+	}
+
+	/// Pick up an export that was already building (or has since
+	/// finished) when the page mounts. The whole point of the queued
+	/// rail is that the subject can close the tab, so the page has to be
+	/// able to find its way back with nothing stored locally — the
+	/// status endpoint answers for their LATEST export, so this is the
+	/// entire mechanism. A read that fails is silent here: a subject who
+	/// never asked for an export must not be shown an error about one.
+	async function resumeExportJob() {
+		try {
+			const job = await fetchCloudExportJob();
+			if (job.status === 'none') return;
+			exportJob = job;
+			if (job.status === 'ready') exportShortfall = cloudExportShortfall(job);
+			scheduleExportPoll(0);
+		} catch {
+			// Nothing to say. The subject learns of any real problem when
+			// they ask for an export.
+		}
+	}
 
 	async function withdrawCoachConsent() {
 		if (coachConsentWithdrawing) return;
 		coachConsentWithdrawing = true;
 		try {
-			// Sanctioned inverse of record_coach_consent(): clears the
-			// server-held stamp. The coach handler's 403 gate then re-blocks
-			// the Coach until the user re-consents on the Coach surface.
-			const { error } = await supabase.rpc('withdraw_coach_consent');
+			// Sanctioned inverse of record_ai_disclosure_consent(): clears the
+			// whole server-held record. Art 7(3) — there is one acceptance of
+			// one disclosure, so withdrawal is all of it, and every AI
+			// endpoint's 403 gate re-engages until the user consents again.
+			const { error } = await supabase.rpc('withdraw_ai_disclosure_consent');
 			if (error) throw new Error(error.message);
-			coachConsentAt = null;
+			aiDisclosure = { version: null, acceptedAt: null };
 			showToast(m('settingsAccount.coachConsentWithdrawn'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.saveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.saveFailed', { error: errorCopy(e, m, 'settingsAccount.saveFailed') }), 'error');
 		} finally {
 			coachConsentWithdrawing = false;
+		}
+	}
+
+	async function acceptAiDisclosure() {
+		if (aiConsentAccepting) return;
+		const wasStale = aiConsentStale;
+		aiConsentAccepting = true;
+		try {
+			const { data, error } = await supabase
+				.rpc('record_ai_disclosure_consent', { p_version: AI_DISCLOSURE_CURRENT_VERSION })
+				.maybeSingle();
+			if (error) throw new Error(error.message);
+			// Take the server's word for what was recorded — a locally
+			// synthesised version/timestamp would clear the "update
+			// available" notice off a write that never landed (§ 560).
+			const row = data as { version: number | null; accepted_at: string | null } | null;
+			if (row?.version == null || !row.accepted_at) {
+				throw new Error('consent not recorded');
+			}
+			aiDisclosure = { version: row.version, acceptedAt: row.accepted_at };
+			showToast(
+				m(wasStale ? 'settingsAccount.aiConsentUpdatedToast' : 'settingsAccount.aiConsentAcceptedToast'),
+				'success',
+			);
+		} catch (e) {
+			showToast(m('settingsAccount.saveFailed', { error: errorCopy(e, m, 'settingsAccount.saveFailed') }), 'error');
+		} finally {
+			aiConsentAccepting = false;
 		}
 	}
 
@@ -274,7 +419,7 @@
 			await refreshPushState();
 			showToast(m('settingsAccount.notificationsEnabled'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.notificationsEnableFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.notificationsEnableFailed', { error: errorCopy(e, m, 'settingsAccount.notificationsEnableFailed') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -292,7 +437,7 @@
 			// network drop / Service Worker hiccup on disable left the
 			// user looking at a non-changing toggle with no feedback.
 			showToast(
-				m('settingsAccount.notificationsDisableFailed', { error: (e as Error).message }),
+				m('settingsAccount.notificationsDisableFailed', { error: errorCopy(e, m, 'settingsAccount.notificationsDisableFailed') }),
 				'error',
 			);
 		} finally {
@@ -300,21 +445,34 @@
 		}
 	}
 
-	async function handleAvatarSelect(e: Event) {
+	// The picked file waits here while the crop dialog is open; only the
+	// cropped, re-encoded square is ever uploaded.
+	let avatarCropFile = $state<File | null>(null);
+
+	function handleAvatarSelect(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = ''; // allow re-picking the same file after an error
 		if (!file) return;
+		if (file.size > AVATAR_SOURCE_MAX_BYTES) {
+			showToast(m('settingsAccount.avatarFailed', { error: m('avatarCrop.tooLarge') }), 'error');
+			return;
+		}
+		avatarCropFile = file;
+	}
+
+	async function handleAvatarCropped(cropped: File) {
+		avatarCropFile = null;
 		avatarBusy = true;
 		try {
-			avatarUrl = await uploadAvatar(file);
+			avatarUrl = await uploadAvatar(cropped);
 			// Re-hydrate the auth store so the sidebar + feed avatars update too.
 			await auth.fetchUser();
 			showToast(m('settingsAccount.avatarSaved'), 'success');
 		} catch (err) {
 			showToast(
 				m('settingsAccount.avatarFailed', {
-					error: err instanceof Error ? err.message : String(err),
+					error: errorCopy(err, m, 'settingsAccount.avatarFailed'),
 				}),
 				'error',
 			);
@@ -339,7 +497,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsAccount.avatarFailed', {
-					error: err instanceof Error ? err.message : String(err),
+					error: errorCopy(err, m, 'settingsAccount.avatarFailed'),
 				}),
 				'error',
 			);
@@ -349,7 +507,7 @@
 	}
 
 	async function saveHandle() {
-		if (!auth.user || handleSaving) return;
+		if (!auth.user || handleSaving || profileLoad !== 'ready') return;
 		handleSaving = true;
 		handleSaved = false;
 		handleError = null;
@@ -363,7 +521,9 @@
 			} else if (error.message.includes('handle_invalid')) {
 				handleError = m('settingsAccount.handleErrorInvalid');
 			} else {
-				handleError = m('settingsAccount.handleErrorGeneric', { error: error.message });
+				handleError = m('settingsAccount.handleErrorGeneric', {
+					error: errorCopy(error, m, 'settingsAccount.handleErrorGeneric'),
+				});
 			}
 			handleSaving = false;
 			return;
@@ -375,20 +535,31 @@
 	}
 
 	async function handleSave() {
-		if (!auth.user) return;
+		if (!auth.user || profileLoad !== 'ready') return;
+		// Checked here as well as on the button's disabled state so the value
+		// cannot reach the prefs upsert through any other path.
+		if (maxHrOutOfRange) {
+			showToast(m('limits.maxHrOutOfRange', maxHrBounds), 'error');
+			return;
+		}
+		if (restingHrOutOfRange) {
+			showToast(m('limits.restingHrOutOfRange', restingHrBounds), 'error');
+			return;
+		}
+		if (parkrunNumberInvalid) {
+			showToast(m('settingsAccount.parkrunNumberInvalid'), 'error');
+			return;
+		}
 		saving = true;
 		saved = false;
 
-		// Date of birth is consent-gated. Fail loudly rather than silently
-		// dropping it, mirroring /settings/preferences.
-		if (dateOfBirth && !healthDataConsent) {
-			showToast(
-				m('settingsAccount.dobConsentRequired'),
-				'error',
-			);
-			saving = false;
-			return;
-		}
+		// No DOB-without-consent abort. It used to refuse the whole save,
+		// which both denied a non-consenting minor the age record the
+		// discoverability floor keys off AND deadlocked the page: the DOB
+		// input is populated from storage, so a runner who withdrew consent
+		// elsewhere could not save their display name and could not clear
+		// the DOB either. Consent gates the Art 9 mirror below, not the age
+		// record (§ 718).
 		if (healthDataConsent && healthDataConsentAt == null) {
 			// Grant — stamp the consent timestamp server-side via the
 			// SECURITY DEFINER RPC (first-stamp-wins; a direct write of
@@ -404,9 +575,36 @@
 			if (stampedAt) healthDataConsentAt = stampedAt as string;
 		}
 
-		const profileUpdate: Record<string, unknown> = {
+		const withdrawing = !healthDataConsent && healthDataConsentAt != null;
+		if (withdrawing) {
+			// Withdrawal (Art 7(3)) — the SECURITY DEFINER RPC nulls the
+			// consent stamp + gender + height and erases the weight series
+			// atomically; insert-or-update server-side so a missing profile
+			// row can't 0-row silent no-op (issue #233). Local state flips
+			// only after the server confirms. The Art 9 DOB mirror is cleared
+			// from prefs below; the age record is not this RPC's to touch
+			// (§ 721), so nothing here has to put it back.
+			const { error: withdrawError } = await supabase.rpc(
+				'withdraw_health_data_consent',
+			);
+			if (withdrawError) {
+				showToast(
+					m('settingsAccount.saveFailed', { error: withdrawError.message }),
+					'error',
+				);
+				saving = false;
+				return;
+			}
+			healthDataConsentAt = null;
+		}
+		const profileUpdate: Updatable<'user_profiles'> = {
 			display_name: displayName || null,
-			parkrun_number: parkrunNumber || null,
+			parkrun_number: parkrunNormalized,
+			// The age record, carrying no consent term (§ 718) — ending the
+			// Art 9 processing does not end the under-18 discoverability
+			// floor, and since § 721 the withdrawal RPC leaves the column
+			// alone rather than needing this write to undo it.
+			date_of_birth: dateOfBirth || null,
 		};
 		// Row-count-verified: user_profiles rows are client-provisioned, so a
 		// plain update against a missing row matches 0 rows and reports
@@ -434,32 +632,21 @@
 				return;
 			}
 		}
-		if (!healthDataConsent && healthDataConsentAt != null) {
-			// Withdrawal (Art 7(3)) — the SECURITY DEFINER RPC nulls the
-			// consent stamp + gender/DOB/height and erases the weight series
-			// atomically; insert-or-update server-side so a missing profile
-			// row can't 0-row silent no-op (issue #233). Local state flips
-			// only after the server confirms. DOB is cleared from prefs below.
-			const { error: withdrawError } = await supabase.rpc(
-				'withdraw_health_data_consent',
-			);
-			if (withdrawError) {
-				showToast(
-					m('settingsAccount.saveFailed', { error: withdrawError.message }),
-					'error',
-				);
-				saving = false;
-				return;
-			}
-			healthDataConsentAt = null;
-		}
+
+		// The integrations page's barcode card reads the number from the auth
+		// store, which only loads it at sign-in.
+		auth.user.parkrun_number = parkrunNormalized;
+		parkrunNumber = parkrunNormalized ?? '';
 
 		// Persist DOB + HR into user_settings.prefs. DOB only when consented;
 		// on withdrawal it is explicitly nulled so the stored value is cleared.
-		const prefs: Record<string, unknown> = {};
+		const prefs: PrefsBag = {};
 		prefs.date_of_birth = healthDataConsent && dateOfBirth ? dateOfBirth : null;
-		if (restingHr) prefs.resting_hr_bpm = parseInt(restingHr, 10) || null;
-		if (maxHr) prefs.max_hr_bpm = parseInt(maxHr, 10) || null;
+		// The weight series' mirror, read by every calorie estimate — it goes
+		// with the series on a withdrawal, as `/settings/body` does (§ 1811).
+		if (withdrawing) prefs.body_weight_kg = null;
+		prefs.resting_hr_bpm = restingHrParsed;
+		prefs.max_hr_bpm = maxHrParsed;
 		// Cycle/pregnancy inputs are Art 9 reproductive-health data — write
 		// them only when the flag is on AND consent is granted; on withdrawal
 		// (or flag off) they are explicitly nulled so nothing lingers.
@@ -477,20 +664,15 @@
 			prefs.cycle_last_period_start = null;
 			prefs.pregnancy_due_date = null;
 		}
+		// Through the shared atomic merge (issue #1212): a read-merge-write here
+		// put back any key another writer changed between the read and the
+		// upsert, and an unchecked failed read merged into `{}` and replaced the
+		// whole bag. A null value removes the key.
 		if (Object.keys(prefs).length > 0) {
-			const { data } = await supabase
-				.from('user_settings')
-				.select('prefs')
-				.eq('user_id', auth.user.id)
-				.maybeSingle();
-			const merged = { ...((data?.prefs as Record<string, unknown>) ?? {}), ...prefs };
-			const { error: settingsError } = await supabase.from('user_settings').upsert({
-				user_id: auth.user.id,
-				prefs: merged,
-				updated_at: new Date().toISOString(),
-			});
-			if (settingsError) {
-				showToast(m('settingsAccount.saveFailed', { error: settingsError.message }), 'error');
+			try {
+				await updateUniversal(auth.user.id, prefs);
+			} catch (e) {
+				showToast(m('settingsAccount.saveFailed', { error: errorCopy(e, m, 'settingsAccount.saveFailed') }), 'error');
 				saving = false;
 				return;
 			}
@@ -530,7 +712,11 @@
 				},
 				updatePassword: async (password) => {
 					const { error } = await supabase.auth.updateUser({ password });
-					return { error: error?.message ?? null };
+					return {
+						error: error
+							? errorCopy(error, m, 'settingsAccount.passwordUpdateFailed', 'settingsAccount.passwordUpdateFailed')
+							: null,
+					};
 				},
 			},
 		);
@@ -556,7 +742,7 @@
 			redirectTo: `${window.location.origin}/auth/reset`,
 		});
 		resetLinkSending = false;
-		if (error) passwordError = error.message;
+		if (error) passwordError = errorCopy(error, m, 'settingsAccount.resetLinkFailed', 'settingsAccount.resetLinkFailed');
 		else passwordStatus = m('settingsAccount.resetLinkSent');
 	}
 
@@ -569,7 +755,7 @@
 		exporting = true;
 		try {
 			const { runs, error } = await fetchRunsWithError();
-			if (error) throw new Error(error);
+			if (error) throw dbError(error);
 			const header = 'date,distance_m,duration_s,pace_s_per_km,source\n';
 			const rows = runs.map((r) => {
 				const pace = r.distance_m > 0 ? Math.round(r.duration_s / (r.distance_m / 1000)) : 0;
@@ -577,7 +763,7 @@
 			}).join('\n');
 			downloadFile(header + rows, 'runs_export.csv', 'text/csv');
 		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.exportFailed', { error: errorCopy(e, m, 'settingsAccount.exportFailed') }), 'error');
 		} finally { exporting = false; }
 	}
 
@@ -596,7 +782,7 @@
 				.select('*')
 				.eq('user_id', userId)
 				.order('started_at', { ascending: false });
-			if (error) throw error;
+			if (error) throw dbError(error);
 			const runs = (data ?? []).map((r) => {
 				const { user_id: _uid, ...rest } = r as Record<string, unknown>;
 				return rest;
@@ -604,42 +790,52 @@
 			const ts = new Date().toISOString().replace(/[:.]/g, '-');
 			downloadFile(JSON.stringify(runs, null, 2), `runs-${ts}.json`, 'application/json');
 		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.exportFailed', { error: errorCopy(e, m, 'settingsAccount.exportFailed') }), 'error');
 		} finally {
 			exportingJson = false;
 		}
 	}
 
-	/// Server-built GPX zip download. Calls /v1/export on the Go
-	/// service (or the legacy `export-data` Edge Function when
-	/// PUBLIC_EXPORT_HUB_URL is unset). The server builds the zip
-	/// from up to 5,000 runs — including GPX-with-HR-extensions per
-	/// run — uploads to Storage, and returns a 10-minute signed URL.
-	/// Different from `handleBackup` (the in-page Full backup) in
-	/// three ways: GPX format instead of raw row JSON + gz tracks;
-	/// server-side memory budget instead of client-heap; subject to
-	/// the tiered rate limit (free 2/hour, pro 8/hour).
+	/// Report a finished server-built export. A whole archive gets the
+	/// success toast it always got; a short one says so instead of
+	/// claiming it is ready, and leaves the counts on the page.
+	function announceExport(res: CloudExportResponse) {
+		const short = cloudExportShortfall(res);
+		exportShortfall = short;
+		if (short) {
+			showToast(
+				m('settingsAccount.exportPartialReady', {
+					count: short.count,
+					total: short.total,
+				}),
+				'info',
+			);
+			return;
+		}
+		showToast(m('settingsAccount.exportReady', { count: res.count }), 'success');
+	}
+
+	/// Server-built GPX zip download. Enqueues a `data_export` job on
+	/// the Go service (or calls the legacy `export-data` Edge Function
+	/// when PUBLIC_EXPORT_HUB_URL is unset — the only synchronous
+	/// export rail left, decisions §724). The server streams the zip —
+	/// including GPX-with-HR-extensions per run — into Storage and the
+	/// status read mints a 10-minute signed URL. Different from
+	/// `handleBackup` (the in-page Full backup) in three ways: GPX
+	/// format instead of raw row JSON + gz tracks; server-side build
+	/// instead of client-heap; subject to the tiered rate limit
+	/// (free 2/hour, pro 8/hour).
 	async function handleCloudGpxExport() {
 		exportingGpx = true;
 		try {
-			const res = await cloudExport('gpx');
-			// Trigger the download via the signed URL. `target=_blank`
-			// preserves the user's settings tab — the browser swaps to
-			// a download tab, then auto-closes after the GET completes.
-			window.open(res.url, '_blank', 'noopener');
-			showToast(
-				m('settingsAccount.exportReady', { count: res.count }),
-				'success',
-			);
-		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: (e as Error).message }), 'error');
+			await requestCloudExport('gpx');
 		} finally {
 			exportingGpx = false;
 		}
 	}
 
-	/// Comprehensive GDPR Art. 20 archive. Asks the server (Go
-	/// `/v1/export` or the legacy `export-data` EF) to build the
+	/// Comprehensive GDPR Art. 20 archive. Asks the server (the Go
+	/// queued rail, or the legacy `export-data` EF) to build the
 	/// `run-app-backup` zip that bundles EVERY personal-data table —
 	/// coach chat, direct messages, health / body metrics, the
 	/// financial ledger, integrations, social graph — not just runs.
@@ -652,30 +848,150 @@
 	async function handleFullAccountArchive() {
 		exportingArchive = true;
 		try {
-			const res = await cloudExport('backup');
-			window.open(res.url, '_blank', 'noopener');
-			showToast(
-				m('settingsAccount.exportReady', { count: res.count }),
-				'success',
-			);
-		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: (e as Error).message }), 'error');
+			await requestCloudExport('backup');
 		} finally {
 			exportingArchive = false;
 		}
 	}
 
-	async function handleBackup() {
-		backingUp = true; backupProgress = null;
+	/// Ask for an export on whichever rail is configured.
+	///
+	/// The Go service enqueues and answers immediately, so nothing here
+	/// waits for the archive — the page starts watching the job instead,
+	/// and the subject may close the tab. The legacy Edge Function still
+	/// builds inline, so its finished archive comes straight back and
+	/// opens in a download tab exactly as before.
+	async function requestCloudExport(format: CloudExportFormat) {
 		try {
-			const blob = await createBackup((p) => (backupProgress = p));
-			const url = URL.createObjectURL(blob);
+			const started = await startCloudExport(format);
+			if (started.kind === 'ready') {
+				// Trigger the download via the signed URL. `target=_blank`
+				// preserves the user's settings tab — the browser swaps to
+				// a download tab, then auto-closes after the GET completes.
+				window.open(started.response.url, '_blank', 'noopener');
+				announceExport(started.response);
+				return;
+			}
+			exportStatusUnreadable = false;
+			exportPollFailures = 0;
+			exportJob = started.job;
+			showToast(m('settingsAccount.exportQueued'), 'info');
+			scheduleExportPoll(0);
+		} catch (e) {
+			// Both transports answer in one small vocabulary, so the reason is
+			// resolved to LOCALIZED copy rather than interpolated raw. This
+			// slot used to carry supabase-js's "Edge Function returned a
+			// non-2xx status code" — a sentence about our transport, in
+			// English, in front of a subject asking for their own data.
+			const code = refusalCode(e);
+			const reason =
+				code === 'unauthorized'
+					? m('settingsAccount.exportReasonSignedOut')
+					: code === 'rate_limited'
+						? m('settingsAccount.exportReasonRateLimited', {
+								wait: rateLimitWait(
+									m,
+									e instanceof CloudExportError ? e.retryAfterS : null,
+								),
+							})
+						: errorCopy(e, m, 'settingsAccount.exportFailed', 'settingsAccount.exportReasonServer');
+			showToast(m('settingsAccount.exportFailed', { error: reason }), 'error');
+		}
+	}
+
+	function clearExportPoll() {
+		if (exportPollTimer !== null) {
+			clearTimeout(exportPollTimer);
+			exportPollTimer = null;
+		}
+	}
+
+	/// One timer, two jobs. While the archive is building it backs off
+	/// from 2s to 15s; once it is ready it re-reads at half the signed
+	/// URL's lifetime, because the URL is minted per read and a download
+	/// link left on the page would otherwise expire under the subject
+	/// while they are looking at it.
+	function scheduleExportPoll(attempt: number) {
+		clearExportPoll();
+		const job = exportJob;
+		if (!job) return;
+		let delay: number;
+		if (isCloudExportJobActive(job.status)) {
+			delay = cloudExportPollDelayMs(attempt);
+		} else if (job.status === 'ready') {
+			delay = Math.max(((job.expires_in ?? 600) * 1000) / 2, 30_000);
+		} else {
+			return;
+		}
+		exportPollTimer = setTimeout(() => {
+			void readExportJob(attempt + 1);
+		}, delay);
+	}
+
+	async function readExportJob(attempt: number) {
+		exportPollTimer = null;
+		let job: CloudExportJob;
+		try {
+			job = await fetchCloudExportJob();
+		} catch {
+			// A status read that failed is not an export that failed. Try
+			// again a few times before saying anything, and never rewrite
+			// the job the page is already showing on the strength of a
+			// network blip.
+			exportPollFailures += 1;
+			if (exportPollFailures >= 5) {
+				exportStatusUnreadable = true;
+				return;
+			}
+			scheduleExportPoll(attempt);
+			return;
+		}
+		exportPollFailures = 0;
+		exportStatusUnreadable = false;
+		const wasBuilding = exportJob !== null && isCloudExportJobActive(exportJob.status);
+		exportJob = job;
+		if (wasBuilding && job.status === 'ready') {
+			// Deliberately no window.open: this runs on a timer, not a
+			// user gesture, so a popup would be blocked. The subject gets
+			// a real download link on the page instead, which also serves
+			// the reload case identically.
+			exportShortfall = cloudExportShortfall(job);
+			if (exportShortfall) {
+				showToast(
+					m('settingsAccount.exportPartialReady', {
+						count: exportShortfall.count,
+						total: exportShortfall.total,
+					}),
+					'info',
+				);
+			} else {
+				showToast(m('settingsAccount.exportReady', { count: job.count ?? 0 }), 'success');
+			}
+		}
+		scheduleExportPoll(attempt);
+	}
+
+	onDestroy(clearExportPoll);
+
+	async function handleBackup() {
+		backingUp = true; backupProgress = null; backupShortfall = null;
+		try {
+			const archive = await createBackup((p) => (backupProgress = p));
+			// A track whose download failed is skipped so one dead blob can't
+			// sink the file, and a row read that died half-way ships flagged
+			// rather than silently short. The archive's manifest says so, but
+			// nobody reads a manifest before trusting a backup — so the
+			// download surface says it too, and says WHICH of the two it was:
+			// reporting a short `runs` read as a track count read as an
+			// all-clear.
+			backupShortfall = gradeBackupShortfall(archive);
+			const url = URL.createObjectURL(archive.blob);
 			const a = document.createElement('a');
 			const ts = new Date().toISOString().replace(/[:.]/g, '-');
 			a.href = url; a.download = `run-app-backup-${ts}.zip`;
 			document.body.appendChild(a); a.click(); a.remove();
 			URL.revokeObjectURL(url);
-		} catch (e) { showToast(m('settingsAccount.backupFailed', { error: (e as Error).message }), 'error'); }
+		} catch (e) { showToast(m('settingsAccount.backupFailed', { error: errorCopy(e, m, 'settingsAccount.backupFailed') }), 'error'); }
 		finally { backingUp = false; backupProgress = null; }
 	}
 
@@ -695,7 +1011,7 @@
 		try {
 			const res = await restoreBackup(file, { onProgress: (p) => (restoreProgress = p) });
 			restoreResult = res;
-		} catch (err) { restoreError = (err as Error).message; }
+		} catch (err) { restoreError = errorCopy(err, m, 'settings/account: restoreError'); }
 		finally { restoring = false; restoreProgress = null; restoreFileInput.value = ''; }
 	}
 
@@ -737,27 +1053,67 @@
 		identityError = null;
 		try {
 			const { data, error } = await supabase.auth.getUserIdentities();
-			if (error) throw error;
+			if (error) throw dbError(error);
 			identities = (data?.identities ?? []) as unknown as Identity[];
 		} catch (e) {
-			identityError = m('settingsAccount.identitiesLoadFailed', { error: e instanceof Error ? e.message : String(e) });
+			identityError = m('settingsAccount.identitiesLoadFailed', { error: errorCopy(e, m, 'settingsAccount.identitiesLoadFailed') });
 		} finally {
 			identitiesLoading = false;
 		}
 	}
 
+	// Set by /auth/callback when GoTrue refused a link; shown apart from
+	// identityError so a later identity reload cannot wipe it.
+	let linkRefusal = $state<string | null>(null);
+
+	function linkRefusalText(refusal: LinkRefusal): string {
+		return m(linkRefusalMessageKey(refusal.code), {
+			provider: PROVIDER_LABEL[refusal.provider],
+			backup: m('settingsAccount.downloadBackup'),
+			delete: m('settingsAccount.deleteAccount'),
+			error: authRedirectErrorDetail(refusal),
+		});
+	}
+
+	async function showLinkRefusal() {
+		let raw: string | null = null;
+		try {
+			raw = sessionStorage.getItem(LINK_REFUSAL_STASH_KEY);
+			sessionStorage.removeItem(LINK_REFUSAL_STASH_KEY);
+		} catch (_) {
+			return;
+		}
+		const refusal = decodeLinkRefusal(raw);
+		if (!refusal) return;
+		linkRefusal = linkRefusalText(refusal);
+		await tick();
+		document.getElementById('sign-in-methods')?.scrollIntoView({ block: 'start' });
+	}
+
+	function setLinkMarker(provider: LinkableProvider | null) {
+		try {
+			if (provider) sessionStorage.setItem(OAUTH_LINK_STASH_KEY, provider);
+			else sessionStorage.removeItem(OAUTH_LINK_STASH_KEY);
+		} catch (e) {
+			console.error('settings/account: could not stash the link marker:', e);
+		}
+	}
+
 	async function linkProvider(provider: LinkableProvider) {
 		linkingProvider = provider;
+		linkRefusal = null;
+		setLinkMarker(provider);
 		try {
 			const { error } = await supabase.auth.linkIdentity({
 				provider,
 				options: { redirectTo: `${window.location.origin}/auth/callback` },
 			});
-			if (error) throw error;
+			if (error) throw dbError(error);
 			// Successful path navigates away to the OAuth provider. If we
 			// reach here without redirect, surface a generic failure.
 		} catch (e) {
-			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: e instanceof Error ? e.message : String(e) });
+			setLinkMarker(null);
+			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: errorCopy(e, m, 'settingsAccount.linkFailed') });
 			linkingProvider = null;
 		}
 	}
@@ -796,11 +1152,11 @@
 			const { error } = await supabase.auth.unlinkIdentity(
 				identity as unknown as Parameters<typeof supabase.auth.unlinkIdentity>[0]
 			);
-			if (error) throw error;
+			if (error) throw dbError(error);
 			showToast(m('settingsAccount.unlinked', { provider: label }));
 			await loadIdentities();
 		} catch (e) {
-			identityError = m('settingsAccount.unlinkFailed', { provider: label, error: e instanceof Error ? e.message : String(e) });
+			identityError = m('settingsAccount.unlinkFailed', { provider: label, error: errorCopy(e, m, 'settingsAccount.unlinkFailed') });
 		} finally {
 			unlinkingProvider = null;
 		}
@@ -822,7 +1178,7 @@
 			// Fail closed: the local session is still live because the global
 			// revocation didn't land, so keep the user here with an error to
 			// retry rather than silently pretending they were signed out.
-			showToast(m('settingsAccount.signoutEverywhereFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.signoutEverywhereFailed', { error: errorCopy(e, m, 'settingsAccount.signoutEverywhereFailed') }), 'error');
 		} finally {
 			signingOutEverywhere = false;
 		}
@@ -835,8 +1191,12 @@
 		showDeleteAccount = false;
 		deleting = true;
 		try {
+			// A delete still inside its undo window commits while the account
+			// exists; settled afterwards (by the logout below) it would run
+			// against an account that is already gone.
+			await settleBeforeSessionEnds(undoStore.flush);
 			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
+			if (!session) throw new AppError('settingsAccount.notSignedIn', { message: m('settingsAccount.notSignedIn') });
 			const resp = await fetch(
 				`${PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
 				{
@@ -854,7 +1214,7 @@
 			await auth.logout();
 			goto('/login');
 		} catch (e) {
-			showToast(m('settingsAccount.deleteFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.deleteFailed', { error: errorCopy(e, m, 'settingsAccount.deleteFailed') }), 'error');
 		} finally {
 			deleting = false;
 		}
@@ -873,223 +1233,245 @@
 	<!-- Profile -->
 	<section class="card">
 		<h2>{m('settingsAccount.profileHeading')}</h2>
-		<div class="avatar-row">
-			<Avatar url={avatarUrl} name={displayName} size="4rem" font="1.5rem" />
-			<div class="avatar-actions">
-				<input
-					bind:this={avatarFileInput}
-					type="file"
-					accept="image/jpeg,image/png,image/webp"
-					onchange={handleAvatarSelect}
-					style="display: none"
-					data-testid="avatar-file-input"
-				/>
-				<button
-					type="button"
-					class="btn btn-outline btn-sm"
-					onclick={() => avatarFileInput.click()}
-					disabled={avatarBusy}
-					data-testid="avatar-change"
-				>
-					{avatarBusy ? m('settingsAccount.avatarUploading') : m('settingsAccount.avatarChange')}
-				</button>
-				{#if avatarUrl}
+		{#if profileLoad === 'failed'}
+			<div class="load-error-banner" role="alert" data-testid="profile-load-error">
+				<span class="material-symbols" aria-hidden="true">error</span>
+				<div>
+					<strong>{m('settingsAccount.profileLoadFailed')}</strong>
+					{#if profileLoadError}<span class="load-error-detail">{profileLoadError}</span>{/if}
+				</div>
+				<button class="btn btn-outline" type="button" onclick={() => void loadProfile()} data-testid="profile-load-retry">{m('settingsAccount.retry')}</button>
+			</div>
+		{/if}
+		<fieldset class="profile-fields" disabled={profileLoad !== 'ready'} aria-busy={profileLoad === 'loading'}>
+			<div class="avatar-row">
+				<Avatar url={avatarUrl} name={displayName} size="4rem" font="1.5rem" />
+				<div class="avatar-actions">
+					<input
+						bind:this={avatarFileInput}
+						type="file"
+						accept="image/jpeg,image/png,image/webp"
+						onchange={handleAvatarSelect}
+						style="display: none"
+						data-testid="avatar-file-input"
+					/>
 					<button
 						type="button"
 						class="btn btn-outline btn-sm"
-						onclick={() => (showAvatarRemoveConfirm = true)}
+						onclick={() => avatarFileInput.click()}
 						disabled={avatarBusy}
-						data-testid="avatar-remove"
+						data-testid="avatar-change"
 					>
-						{m('settingsAccount.avatarRemove')}
+						{avatarBusy ? m('settingsAccount.avatarUploading') : m('settingsAccount.avatarChange')}
 					</button>
-				{/if}
-				<p class="section-desc avatar-hint">{m('settingsAccount.avatarHint')}</p>
-			</div>
-		</div>
-		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('settingsAccount.displayName')}</span>
-				<input type="text" bind:value={displayName} maxlength={TEXT_LIMITS.displayName} />
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.handleLabel')}</span>
-				<div class="handle-row">
-					<span class="handle-at" aria-hidden="true">@</span>
-					<input
-						type="text"
-						class="handle-input"
-						bind:value={handle}
-						placeholder={m('settingsAccount.handlePlaceholder')}
-						autocomplete="off"
-						autocapitalize="none"
-						spellcheck="false"
-						maxlength="30"
-						data-testid="handle-input"
-						oninput={() => {
-							handleSaved = false;
-							handleError = null;
-						}}
-					/>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm handle-save-btn"
-						onclick={saveHandle}
-						disabled={handleSaving || !handleChanged}
-						data-testid="handle-save"
-					>
-						{handleSaving
-							? m('settingsAccount.handleSaving')
-							: handleSaved
-								? m('settingsAccount.handleSaved')
-								: m('settingsAccount.handleSave')}
-					</button>
-				</div>
-				<span class="handle-help">{m('settingsAccount.handleHelp')}</span>
-				{#if handleError}<p class="error-text" role="alert" data-testid="handle-error">{handleError}</p>{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.email')}</span>
-				<input type="email" value={auth.user?.email ?? ''} disabled />
-				{#if !emailEditing}
-					<button
-						type="button"
-						class="btn btn-outline btn-sm email-change-btn"
-						onclick={() => {
-							emailEditing = true;
-							emailChangeError = null;
-						}}
-						data-testid="change-email"
-					>
-						{m('settingsAccount.changeEmail')}
-					</button>
-				{:else}
-					<input
-						type="email"
-						bind:value={newEmail}
-						placeholder={m('settingsAccount.newEmailPlaceholder')}
-						autocomplete="email"
-						data-testid="new-email-input"
-					/>
-					<div class="btn-row email-change-actions">
-						<button
-							type="button"
-							class="btn btn-primary btn-sm"
-							onclick={handleChangeEmail}
-							disabled={emailChanging || !newEmail}
-							data-testid="submit-email-change"
-						>
-							{emailChanging
-								? m('settingsAccount.emailChangeSending')
-								: m('settingsAccount.emailChangeSubmit')}
-						</button>
+					{#if avatarUrl}
 						<button
 							type="button"
 							class="btn btn-outline btn-sm"
-							onclick={cancelEmailChange}
-							disabled={emailChanging}
+							onclick={() => (showAvatarRemoveConfirm = true)}
+							disabled={avatarBusy}
+							data-testid="avatar-remove"
 						>
-							{m('settingsAccount.emailChangeCancel')}
+							{m('settingsAccount.avatarRemove')}
+						</button>
+					{/if}
+					<p class="section-desc avatar-hint">{m('settingsAccount.avatarHint')}</p>
+				</div>
+			</div>
+			<div class="form-grid">
+				<label>
+					<span class="label-text">{m('settingsAccount.displayName')}</span>
+					<input type="text" bind:value={displayName} maxlength={TEXT_LIMITS.displayName} />
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.handleLabel')}</span>
+					<div class="handle-row">
+						<span class="handle-at" aria-hidden="true">@</span>
+						<input
+							type="text"
+							class="handle-input"
+							bind:value={handle}
+							placeholder={m('settingsAccount.handlePlaceholder')}
+							autocomplete="off"
+							autocapitalize="none"
+							spellcheck="false"
+							maxlength="30"
+							data-testid="handle-input"
+							oninput={() => {
+								handleSaved = false;
+								handleError = null;
+							}}
+						/>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm handle-save-btn"
+							onclick={saveHandle}
+							disabled={handleSaving || !handleChanged}
+							data-testid="handle-save"
+						>
+							{handleSaving
+								? m('settingsAccount.handleSaving')
+								: handleSaved
+									? m('settingsAccount.handleSaved')
+									: m('settingsAccount.handleSave')}
 						</button>
 					</div>
-				{/if}
-				{#if emailChangeError}<p class="error-text" role="alert">{emailChangeError}</p>{/if}
-				{#if pendingEmail}
-					<p class="ok-text" data-testid="email-change-pending">
-						{m('settingsAccount.emailChangePending', {
-							old: pendingOldEmail,
-							new: pendingEmail,
-						})}
-					</p>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.parkrunNumber')}</span>
-				<input type="text" bind:value={parkrunNumber} placeholder="A123456" />
-				{#if parkrunNumber && parkrunNumber.trim().length > 0}
-					<button
-						type="button"
-						class="btn btn-outline btn-sm parkrun-import-btn"
-						onclick={handleParkrunImport}
-						disabled={parkrunImporting}
-					>
-						{parkrunImporting ? m('settingsAccount.importing') : m('settingsAccount.pullParkrun')}
-					</button>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.dateOfBirth')}</span>
-				<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} disabled={!healthDataConsent} />
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.restingHr')}</span>
-				<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min="30" max="120" />
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.maxHr')}</span>
-				<input type="number" bind:value={maxHr} placeholder={m('settingsAccount.maxHrPlaceholder')} min="100" max="230" />
-			</label>
-		</div>
-		<label class="consent-checkbox">
-			<input type="checkbox" bind:checked={healthDataConsent} />
-			<span>
-				{m('settingsAccount.healthConsentLabel')}
-			</span>
-		</label>
-		{#if healthDataConsentAt}
-			<p class="section-desc consent-recorded">
-				{m('settingsAccount.consentRecorded', { date: new Date(healthDataConsentAt).toLocaleDateString() })}
-			</p>
-		{/if}
-		{#if cyclePlansEnabled}
-			<div class="cycle-block" data-testid="cycle-plans-inputs">
-				<h3 class="cycle-heading">{m('settingsAccount.cycleHeading')}</h3>
-				<p class="section-desc">{m('settingsAccount.cycleDescription')}</p>
-				<label>
-					<span class="label-text">{m('settingsAccount.cycleMode')}</span>
-					<select bind:value={cycleMode} disabled={!healthDataConsent}>
-						<option value="off">{m('settingsAccount.cycleModeOff')}</option>
-						<option value="cycle">{m('settingsAccount.cycleModeCycle')}</option>
-						<option value="pregnancy">{m('settingsAccount.cycleModePregnancy')}</option>
-					</select>
+					<span class="handle-help">{m('settingsAccount.handleHelp')}</span>
+					{#if handleError}<p class="error-text" role="alert" data-testid="handle-error">{handleError}</p>{/if}
 				</label>
-				{#if cycleMode === 'cycle'}
-					<label>
-						<span class="label-text">{m('settingsAccount.cycleLength')}</span>
+				<label>
+					<span class="label-text">{m('settingsAccount.email')}</span>
+					<input type="email" value={auth.user?.email ?? ''} disabled />
+					{#if !emailEditing}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm email-change-btn"
+							onclick={() => {
+								emailEditing = true;
+								emailChangeError = null;
+							}}
+							data-testid="change-email"
+						>
+							{m('settingsAccount.changeEmail')}
+						</button>
+					{:else}
 						<input
-							type="number"
-							bind:value={cycleLengthDays}
-							disabled={!healthDataConsent}
-							min={MIN_CYCLE_LENGTH_DAYS}
-							max={MAX_CYCLE_LENGTH_DAYS}
+							type="email"
+							bind:value={newEmail}
+							placeholder={m('settingsAccount.newEmailPlaceholder')}
+							autocomplete="email"
+							data-testid="new-email-input"
 						/>
-					</label>
-					<label>
-						<span class="label-text">{m('settingsAccount.cycleLastPeriod')}</span>
-						<input type="date" bind:value={cycleLastPeriodStart} disabled={!healthDataConsent} />
-					</label>
-				{:else if cycleMode === 'pregnancy'}
-					<label>
-						<span class="label-text">{m('settingsAccount.pregnancyDueDate')}</span>
-						<input type="date" bind:value={pregnancyDueDate} disabled={!healthDataConsent} />
-					</label>
-					<p class="section-desc cycle-disclaimer" data-testid="pregnancy-disclaimer">
-						{m('settingsAccount.pregnancyDisclaimer')}
-					</p>
-				{/if}
+						<div class="btn-row email-change-actions">
+							<button
+								type="button"
+								class="btn btn-primary btn-sm"
+								onclick={handleChangeEmail}
+								disabled={emailChanging || !newEmail}
+								data-testid="submit-email-change"
+							>
+								{emailChanging
+									? m('settingsAccount.emailChangeSending')
+									: m('settingsAccount.emailChangeSubmit')}
+							</button>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								onclick={cancelEmailChange}
+								disabled={emailChanging}
+							>
+								{m('settingsAccount.emailChangeCancel')}
+							</button>
+						</div>
+					{/if}
+					{#if emailChangeError}<p class="error-text" role="alert">{emailChangeError}</p>{/if}
+					{#if pendingEmail}
+						<p class="ok-text" data-testid="email-change-pending">
+							{m('settingsAccount.emailChangePending', {
+								old: pendingOldEmail,
+								new: pendingEmail,
+							})}
+						</p>
+					{/if}
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.parkrunNumber')}</span>
+					<input
+						type="text"
+						bind:value={parkrunNumber}
+						maxlength={lengthLimit('user_profiles.parkrun_number')}
+						placeholder="A123456"
+						autocomplete="off"
+						spellcheck="false"
+						aria-invalid={parkrunNumberInvalid}
+						data-testid="parkrun-number"
+					/>
+					{#if parkrunNumberInvalid}
+						<span class="field-error" data-testid="parkrun-number-error">{m('settingsAccount.parkrunNumberInvalid')}</span>
+					{/if}
+				</label>
+				<!-- Not consent-disabled: the column it writes is the under-18
+				     discoverability floor's age record (§ 718). Consent gates
+				     the Art 9 prefs mirror, not the field. -->
+				<DateOfBirthInput bind:value={dateOfBirth} label={m('settingsAccount.dateOfBirth')} />
+				<label>
+					<span class="label-text">{m('settingsAccount.restingHr')}</span>
+					<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" />
+					{#if restingHrOutOfRange}
+						<span class="field-error" data-testid="resting-hr-error">{m('limits.restingHrOutOfRange', restingHrBounds)}</span>
+					{/if}
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.maxHr')}</span>
+					<input type="number" bind:value={maxHr} placeholder={m('settingsAccount.maxHrPlaceholder')} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} aria-invalid={maxHrOutOfRange} data-testid="max-hr" />
+					{#if maxHrOutOfRange}
+						<span class="field-error" data-testid="max-hr-error">{m('limits.maxHrOutOfRange', maxHrBounds)}</span>
+					{/if}
+				</label>
 			</div>
-		{/if}
-		<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving}>
-			{saving ? m('settingsAccount.saving') : saved ? m('settingsAccount.savedDone') : m('settingsAccount.saveProfile')}
-		</button>
+			<label class="consent-checkbox">
+				<input type="checkbox" bind:checked={healthDataConsent} />
+				<span>
+					{m('settingsAccount.healthConsentLabel')}
+				</span>
+			</label>
+			{#if healthDataConsentAt}
+				<p class="section-desc consent-recorded">
+					{m('settingsAccount.consentRecorded', { date: new Date(healthDataConsentAt).toLocaleDateString() })}
+				</p>
+			{/if}
+			{#if cyclePlansEnabled}
+				<div class="cycle-block" data-testid="cycle-plans-inputs">
+					<h3 class="cycle-heading">{m('settingsAccount.cycleHeading')}</h3>
+					<p class="section-desc">{m('settingsAccount.cycleDescription')}</p>
+					<label>
+						<span class="label-text">{m('settingsAccount.cycleMode')}</span>
+						<select bind:value={cycleMode} disabled={!healthDataConsent}>
+							<option value="off">{m('settingsAccount.cycleModeOff')}</option>
+							<option value="cycle">{m('settingsAccount.cycleModeCycle')}</option>
+							<option value="pregnancy">{m('settingsAccount.cycleModePregnancy')}</option>
+						</select>
+					</label>
+					{#if cycleMode === 'cycle'}
+						<label>
+							<span class="label-text">{m('settingsAccount.cycleLength')}</span>
+							<input
+								type="number"
+								bind:value={cycleLengthDays}
+								disabled={!healthDataConsent}
+								min={MIN_CYCLE_LENGTH_DAYS}
+								max={MAX_CYCLE_LENGTH_DAYS}
+							/>
+						</label>
+						<label>
+							<span class="label-text">{m('settingsAccount.cycleLastPeriod')}</span>
+							<input type="date" bind:value={cycleLastPeriodStart} disabled={!healthDataConsent} />
+						</label>
+					{:else if cycleMode === 'pregnancy'}
+						<label>
+							<span class="label-text">{m('settingsAccount.pregnancyDueDate')}</span>
+							<input type="date" bind:value={pregnancyDueDate} disabled={!healthDataConsent} />
+						</label>
+						<p class="section-desc cycle-disclaimer" data-testid="pregnancy-disclaimer">
+							{m('settingsAccount.pregnancyDisclaimer')}
+						</p>
+					{/if}
+				</div>
+			{/if}
+			<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange || parkrunNumberInvalid}>
+				{saving ? m('settingsAccount.saving') : saved ? m('settingsAccount.savedDone') : m('settingsAccount.saveProfile')}
+			</button>
+		</fieldset>
 	</section>
 
 	<!-- Sign-in methods -->
-	<section class="card">
+	<section class="card" id="sign-in-methods">
 		<h2>{m('settingsAccount.signinMethodsHeading')}</h2>
 		<p class="section-desc">
 			{m('settingsAccount.signinMethodsDesc')}
 		</p>
+
+		{#if linkRefusal}<p class="error-text" role="alert" data-testid="link-refusal">{linkRefusal}</p>{/if}
 
 		{#if identitiesLoading}
 			<p class="muted">{m('shell.loading')}</p>
@@ -1224,7 +1606,7 @@
 		<h2>{m('settingsAccount.notificationsHeading')}</h2>
 		{#if !pushSupported}
 			<p class="section-desc">
-				{m('settingsAccount.pushUnsupportedPrefix')}<code>PUBLIC_VAPID_PUBLIC_KEY</code>{m('settingsAccount.pushUnsupportedSuffix')}
+				{m('settingsAccount.pushUnsupported')}
 			</p>
 		{:else if pushPermissionState === 'denied'}
 			<p class="section-desc">
@@ -1259,21 +1641,53 @@
 		<div class="btn-row">
 			<button class="btn btn-primary" onclick={handleBackup} disabled={backingUp || restoring}>
 				<span class="material-symbols">archive</span>
-				{backingUp ? (backupProgress ? `${backupProgress.stage}...` : m('settingsAccount.backingUp')) : m('settingsAccount.downloadBackup')}
+				{backingUp
+					? backupProgress
+						? m(transferStageKey(backupProgress.stage))
+						: m('settingsAccount.backingUp')
+					: m('settingsAccount.downloadBackup')}
 			</button>
 			<button class="btn btn-outline" onclick={() => restoreFileInput.click()} disabled={backingUp || restoring}>
 				<span class="material-symbols">unarchive</span>
-				{restoring ? (restoreProgress ? `${restoreProgress.stage}...` : m('settingsAccount.restoring')) : m('settingsAccount.restoreBackup')}
+				{restoring
+					? restoreProgress
+						? m(transferStageKey(restoreProgress.stage))
+						: m('settingsAccount.restoring')
+					: m('settingsAccount.restoreBackup')}
 			</button>
 			<input bind:this={restoreFileInput} type="file" accept=".zip" onchange={handleRestoreFile} style="display: none" />
 		</div>
+		{#if backupShortfall}
+			<p class="warn-text" role="status" data-testid="backup-shortfall">
+				{#if backupShortfall.missingTracks > 0}
+					{m('settingsAccount.backupPartialNotice', {
+						missing: backupShortfall.missingTracks,
+						wanted: backupShortfall.wantedTracks,
+					})}
+				{/if}
+				{#if backupShortfall.sections.length > 0}
+					{m('settingsAccount.backupPartialSections', {
+						sections: backupShortfall.sections.join(', '),
+					})}
+				{/if}
+			</p>
+		{/if}
+		{#if restoreResult?.archiveIncomplete}
+			<p class="warn-text" role="status" data-testid="restore-incomplete-archive">
+				{restoreResult.archiveIncompleteSections.length > 0
+					? m('settingsAccount.restoreArchiveIncomplete', {
+							sections: restoreResult.archiveIncompleteSections.join(', '),
+						})
+					: m('settingsAccount.restoreArchiveIncompleteUnnamed')}
+			</p>
+		{/if}
 		{#if restoreResult}
 			<p class="ok-text">
 				{m('settingsAccount.restoreResult', { runs: restoreResult.runsImported, tracks: restoreResult.tracksUploaded, routes: restoreResult.routesImported })}
 				{#if restoreResult.warnings.length > 0}<br /><small>{m('settingsAccount.restoreWarnings', { n: restoreResult.warnings.length })}</small>{/if}
 			</p>
 		{/if}
-		{#if restoreError}<p class="error-text" role="alert">{m('settingsAccount.restoreFailed', { error: restoreError })}</p>{/if}
+		{#if restoreError !== null}<p class="error-text" role="alert">{m('settingsAccount.restoreFailed', { error: restoreError })}</p>{/if}
 	</section>
 
 	<!-- Data Export -->
@@ -1283,22 +1697,24 @@
 			{m('settingsAccount.dataExportDescPrefix')}<code>runs.json</code>{m('settingsAccount.dataExportDescBetween')}<code>runs.json</code>{m('settingsAccount.dataExportDescSuffix')}
 		</p>
 		<div class="btn-row">
-			<button class="btn btn-outline" onclick={handleExportCsv} disabled={exporting || exportingJson || exportingGpx || exportingArchive}>
+			<button class="btn btn-outline" onclick={handleExportCsv} disabled={exporting || exportingJson || exportingGpx || exportingArchive || exportJobBuilding}>
 				<span class="material-symbols">download</span>
 				{exporting ? m('settingsAccount.exporting') : m('settingsAccount.exportCsv')}
 			</button>
-			<button class="btn btn-outline" onclick={handleExportJson} disabled={exporting || exportingJson || exportingGpx || exportingArchive}>
+			<button class="btn btn-outline" onclick={handleExportJson} disabled={exporting || exportingJson || exportingGpx || exportingArchive || exportJobBuilding}>
 				<span class="material-symbols">code</span>
 				{exportingJson ? m('settingsAccount.exporting') : m('settingsAccount.exportJson')}
 			</button>
 			<button
 				class="btn btn-outline"
 				onclick={handleCloudGpxExport}
-				disabled={exporting || exportingJson || exportingGpx || exportingArchive}
+				disabled={exporting || exportingJson || exportingGpx || exportingArchive || exportJobBuilding}
 				title={m('settingsAccount.cloudExportTitle')}
 			>
 				<span class="material-symbols">cloud_download</span>
-				{exportingGpx ? m('settingsAccount.buildingZip') : m('settingsAccount.cloudExport')}
+				{exportingGpx || (exportJobBuilding && exportJob?.format === 'gpx')
+					? m('settingsAccount.buildingZip')
+					: m('settingsAccount.cloudExport')}
 			</button>
 		</div>
 		<p class="section-desc" style="margin-top: 0.5rem; font-size: 0.85rem;">
@@ -1309,24 +1725,80 @@
 			<button
 				class="btn btn-outline"
 				onclick={handleFullAccountArchive}
-				disabled={exporting || exportingJson || exportingGpx || exportingArchive}
+				disabled={exporting || exportingJson || exportingGpx || exportingArchive || exportJobBuilding}
 				title={m('settingsAccount.fullArchiveTitle')}
 				data-testid="full-account-archive"
 			>
 				<span class="material-symbols">database</span>
-				{exportingArchive ? m('settingsAccount.buildingZip') : m('settingsAccount.fullArchive')}
+				{exportingArchive || (exportJobBuilding && exportJob?.format === 'backup')
+					? m('settingsAccount.buildingZip')
+					: m('settingsAccount.fullArchive')}
 			</button>
 		</div>
 		<p class="section-desc" style="margin-top: 0.5rem; font-size: 0.85rem;">
 			<strong>{m('settingsAccount.fullArchiveFootnotePrefix')}</strong>{m('settingsAccount.fullArchiveFootnoteSuffix')}
 		</p>
+		{#if exportJob && exportJob.status !== 'none'}
+			<p class="section-desc" role="status" data-testid="export-job-state">
+				{#if exportJob.status === 'queued' || exportJob.status === 'running'}
+					{m('settingsAccount.exportBuildingNotice')}
+				{:else if exportJob.status === 'ready' && exportJob.url}
+					{m('settingsAccount.exportReadyNotice')}
+					<a
+						class="btn btn-outline"
+						href={exportJob.url}
+						target="_blank"
+						rel="noopener"
+						data-testid="export-job-download"
+					>
+						<span class="material-symbols">download</span>
+						{m('settingsAccount.exportDownload')}
+					</a>
+				{:else if exportJob.status === 'expired'}
+					{m('settingsAccount.exportExpiredNotice')}
+				{:else if exportJob.status === 'stalled'}
+					{m('settingsAccount.exportStalledNotice')}
+				{:else}
+					{m('settingsAccount.exportFailedNotice', { error: exportJob.error_code ?? 'unknown' })}
+				{/if}
+			</p>
+		{/if}
+		{#if exportStatusUnreadable}
+			<p class="warn-text" role="status" data-testid="export-status-unreadable">
+				{m('settingsAccount.exportStatusUnavailable')}
+			</p>
+		{/if}
+		{#if exportShortfall}
+			<p class="warn-text" role="status" data-testid="export-shortfall">
+				{m('settingsAccount.exportPartialNotice', {
+					count: exportShortfall.count,
+					total: exportShortfall.total,
+				})}
+			</p>
+		{/if}
 	</section>
 
-	<section class="card">
+	<section class="card" id="ai-consent" data-testid="ai-consent">
 		<h2>{m('settingsAccount.coachConsentHeading')}</h2>
-		{#if coachConsentAt}
+		{#if aiConsentGranted}
 			<p class="section-desc">{m('settingsAccount.coachConsentActive')}</p>
+			{#if aiConsentStale}
+				<p class="section-desc" role="status">{m('settingsAccount.aiConsentUpdatedNotice')}</p>
+				<AiDisclosureNotice />
+			{/if}
 			<div class="btn-row">
+				{#if aiConsentStale}
+					<button
+						class="btn btn-primary"
+						onclick={acceptAiDisclosure}
+						disabled={aiConsentAccepting}
+					>
+						<span class="material-symbols">verified_user</span>
+						{aiConsentAccepting
+							? m('settingsAccount.aiConsentAccepting')
+							: m('settingsAccount.aiConsentAcceptUpdate')}
+					</button>
+				{/if}
 				<button
 					class="btn btn-outline"
 					onclick={withdrawCoachConsent}
@@ -1340,6 +1812,20 @@
 			</div>
 		{:else}
 			<p class="section-desc">{m('settingsAccount.coachConsentInactive')}</p>
+			{#if profileLoad === 'ready'}
+				<AiDisclosureNotice />
+				<div class="btn-row">
+					<button
+						class="btn btn-primary"
+						onclick={acceptAiDisclosure}
+						disabled={aiConsentAccepting}
+						data-testid="ai-consent-accept"
+					>
+						<span class="material-symbols">verified_user</span>
+						{aiConsentAccepting ? m('settingsAccount.aiConsentAccepting') : m('coachPage.consentAccept')}
+					</button>
+				</div>
+			{/if}
 		{/if}
 	</section>
 
@@ -1370,15 +1856,21 @@
 		danger
 	/>
 
-	<!-- Danger zone -->
-	<section class="card card-danger">
-		<h2 class="danger-heading">{m('settingsAccount.dangerZoneHeading')}</h2>
-		<p class="section-desc">{m('settingsAccount.dangerZoneDesc')}</p>
+	<DangerZone
+		heading={m('settingsAccount.dangerZoneHeading')}
+		description={m('settingsAccount.dangerZoneDesc')}
+	>
 		<button class="btn btn-danger" onclick={() => (showDeleteAccount = true)} disabled={deleting}>
 			{deleting ? m('settingsAccount.deleting') : m('settingsAccount.deleteAccount')}
 		</button>
-	</section>
+	</DangerZone>
 </div>
+
+<AvatarCropDialog
+	file={avatarCropFile}
+	onconfirm={handleAvatarCropped}
+	oncancel={() => (avatarCropFile = null)}
+/>
 
 <ConfirmDialog
 	open={showAvatarRemoveConfirm}
@@ -1405,8 +1897,8 @@
 	message={m('settingsAccount.deleteConfirmMessage')}
 	confirmLabel={m('settingsAccount.deleteConfirmLabel')}
 	danger
-	requireText={auth.user?.email ?? 'DELETE'}
-	requireTextLabel={m('settingsAccount.deleteRequireTextLabel', { email: auth.user?.email ?? 'DELETE' })}
+	requireText={m('settingsAccount.deleteChallengeWord')}
+	requireTextLabel={m('settingsAccount.deleteRequireTextLabel', { word: m('settingsAccount.deleteChallengeWord') })}
 	onconfirm={handleDeleteAccount}
 	oncancel={() => (showDeleteAccount = false)}
 />
@@ -1445,7 +1937,32 @@
 	}
 	h2 { font-size: 0.9rem; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-lg); }
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl); }
-	.card-danger { border-color: rgba(229, 57, 53, 0.3); }
+	.profile-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+	.load-error-banner {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-md) var(--space-lg);
+		margin-bottom: var(--space-lg);
+		background: var(--color-danger-light);
+		border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+		border-radius: var(--radius-md);
+		color: var(--color-text);
+	}
+	.load-error-banner > div {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	.load-error-detail {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+	}
+	.load-error-banner .material-symbols {
+		color: var(--color-danger-text);
+		font-size: 1.4rem;
+	}
 	.avatar-row { display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); }
 	.avatar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 	.avatar-hint { flex-basis: 100%; margin-bottom: 0; }
@@ -1465,6 +1982,7 @@
 
 	input:disabled { opacity: 0.6; cursor: not-allowed; }
 	.section-desc { font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: var(--space-md); line-height: 1.5; }
+	.field-error { display: block; font-size: 0.78rem; color: var(--color-danger-text); line-height: 1.45; margin-block-start: var(--space-2xs); }
 	.consent-checkbox { display: flex; gap: var(--space-sm); align-items: flex-start; font-size: 0.9rem; line-height: 1.45; margin-bottom: var(--space-md); }
 	.consent-checkbox input { margin-top: 0.2rem; flex-shrink: 0; width: auto; }
 	.consent-recorded { font-size: 0.8rem; }
@@ -1479,7 +1997,7 @@
 	.handle-help { display: block; font-size: 0.78rem; color: var(--color-text-tertiary); margin-top: var(--space-xs); }
 	.error-text { color: var(--color-danger-text); font-size: 0.85rem; margin-top: var(--space-sm); }
 	.ok-text { color: var(--color-success-text); font-size: 0.85rem; margin-top: var(--space-sm); }
-	.danger-heading { color: var(--color-danger-text); }
+	.warn-text { color: var(--color-warning-text); font-size: 0.85rem; margin-top: var(--space-sm); }
 	.material-symbols { font-family: 'Material Symbols Outlined'; font-size: 1.1rem; }
 	.muted { color: var(--color-text-tertiary); font-size: 0.9rem; }
 	.identity-list { list-style: none; padding: 0; margin: 0 0 var(--space-md); display: flex; flex-direction: column; gap: var(--space-sm); }

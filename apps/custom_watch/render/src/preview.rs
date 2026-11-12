@@ -132,6 +132,8 @@ fn sample_fix() -> Fix {
             day: 8,
         }),
         uptime_s: 100,
+        h_acc_m: None,
+        s_acc_mps: None,
     }
 }
 

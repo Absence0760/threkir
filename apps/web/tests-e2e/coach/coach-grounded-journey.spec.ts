@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * AI-coach grounded-context journey — one runner with real training
@@ -83,16 +84,12 @@ test.describe('AI coach grounded-context journey', () => {
 	test.beforeEach(async ({ context }) => {
 		// Pre-accept consent so the GDPR banner can't float over the
 		// composer / context strip (mirrors the upgrade-unlock journey).
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('runner opens Coach → sees the grounded plan + runs window → asks → switches the window/plan and the grounding follows', async ({
 		page,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 
@@ -107,7 +104,7 @@ test.describe('AI coach grounded-context journey', () => {
 				// fetchMyPlans() orders by created_at DESC; an extra plan
 				// would push Richmond Half off the first dropdown row and
 				// desync the switcher. Sweep non-seed plans + force Richmond
-				// active (a prior Replace-plan run could have completed it) —
+				// active (a prior Replace run could have completed it) —
 				// same guard the per-surface page.spec uses.
 				await admin
 					.from('training_plans')
@@ -160,7 +157,7 @@ test.describe('AI coach grounded-context journey', () => {
 
 			// Install the SSE stub for the whole journey; record each body.
 			let nextReply = 'Run easy today — target 5:30/km for 6 km.';
-			await page.route('**/api/coach', async (route) => {
+			await mockRoute(page, '**/api/coach', async (route) => {
 				const post = route.request().postDataJSON() as Record<string, unknown>;
 				coachPosts.push(post);
 				await route.fulfill({
@@ -236,6 +233,7 @@ test.describe('AI coach grounded-context journey', () => {
 				expect(coachPosts.length).toBe(before + 1);
 				const body = coachPosts[coachPosts.length - 1];
 				expect(body.plan_id).toBe(SEED_PLAN_ID);
+				expect(body.plan_scope).toBe('plan');
 				expect(body.recent_runs_limit).toBe(20);
 			});
 
@@ -311,6 +309,9 @@ test.describe('AI coach grounded-context journey', () => {
 				// runs window reset to 20 on the per-plan remount (the window
 				// is scoped to the chat-host instance, not global).
 				expect(body.plan_id ?? null).toBeNull();
+				// The server reads no plan for 'none'; a null plan_id alone used
+				// to read as "the current plan" (issue #1213).
+				expect(body.plan_scope).toBe('none');
 				expect(body.recent_runs_limit).toBe(20);
 			});
 		} finally {

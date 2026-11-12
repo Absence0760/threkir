@@ -29,7 +29,7 @@ package internal
 // could ship missing from the export with nothing to flag it (the
 // 2026-06-20 GDPR Art 20 finding). The guard now keys on ANY owner-style
 // FK to auth.users — user_id / author_id / owner_id / buyer_user_id /
-// host_user_id / contact_user_id. `user_id` is matched by name (some
+// host_user_id / contact_user_id / client_id. `user_id` is matched by name (some
 // user_id columns declare their FK as a separate constraint or live in an
 // RPC return table, so a name match is the crisp signal there); the other
 // owner names are matched only when the column declaration also carries
@@ -64,6 +64,12 @@ var exportGuardExclusions = map[string]string{
 	// deletion (Art 17) instead — see the delete-account EF.
 	"rate_limits":         "operational throttle counters; drained on deletion, not part of an Art 20 export",
 	"lifecycle_email_log": "internal send-once guard for transactional mail; operational, not Art 20 portable data",
+	// The state of the subject's own export REQUESTS (queued/running/
+	// ready, the artifact's Storage key, a failure code) — metadata about
+	// fulfilling an Art 20 request rather than data the subject provided,
+	// and shipping it inside the archive it describes would be circular.
+	// Cascades away with the account (Art 17) via its auth.users FK.
+	"data_export_jobs": "state of the subject's own Art 20 export requests; operational fulfilment metadata, not portable data they provided — cascades away on deletion",
 
 	// Internal access-control allow-list, not subject-provided personal data:
 	// admin status is controller-assigned (an org decision, not data the user
@@ -81,6 +87,19 @@ var exportGuardExclusions = map[string]string{
 	// shipped as "the subject's data". Drained/transferred on account deletion
 	// (Art 17), not part of the Art 20 portability export.
 	// CISO/counsel to confirm this exclusion stands (org SOC 2 / GovRAMP scope).
+	// A Vault reference to the Sign in with Apple refresh token, kept only so
+	// delete-account can revoke it (App Store Guideline 5.1.1(v)). It is a
+	// live credential Apple issued, not data the subject provided, and putting
+	// it in an archive would hand out a token that can act on their Apple
+	// grant. Taken and revoked on deletion (Art 17).
+	"apple_sign_in_tokens": "Sign in with Apple revocation credential (Vault ref); not subject-provided data, and exporting it would leak a live token — revoked and deleted on account deletion",
+
+	// The private calendar-subscription link for the subject's plans. The
+	// row holds only the SHA-256 of the URL secret plus when it was made and
+	// last read — a credential's hash, not data the subject provided
+	// (docs/compliance/retention.md). Cascades away with the account (Art 17).
+	"plan_calendar_feeds": "hash of the plan calendar link's URL secret plus its made/last-read stamps; a credential, not subject-provided data (docs/compliance/retention.md) — cascades away on deletion",
+
 	"clubs": "shared collective entity (owner_id is the founder); the subject's link ships via club_members — not Art-20 portable personal data of the subject",
 }
 
@@ -100,7 +119,7 @@ func TestPersonalDataExport_EveryOwnerFkTableIsCoveredOrExcluded(t *testing.T) {
 	// so a regression in either matching path is loud.
 	for _, sentinel := range []string{
 		"runs", "coach_messages", "race_pings", "gym_workouts",
-		"session_plans", "route_photos", "event_orders",
+		"session_plans", "route_photos", "event_orders", "nutrition_plan_assignments",
 	} {
 		if !ownerTables[sentinel] {
 			t.Fatalf("parser failed to detect an owner-style FK to auth.users on %q — the "+
@@ -124,7 +143,7 @@ func TestPersonalDataExport_EveryOwnerFkTableIsCoveredOrExcluded(t *testing.T) {
 	if len(missing) > 0 {
 		sort.Strings(missing)
 		t.Errorf("these tables carry an owner-style FK to auth.users (user_id / author_id / "+
-			"owner_id / buyer_user_id / host_user_id / contact_user_id) but are not in the "+
+			"owner_id / buyer_user_id / host_user_id / contact_user_id / client_id) but are not in the "+
 			"GDPR Art 20 export spec (exportPersonalDataSpecs) nor in exportGuardExclusions: %v\n"+
 			"Wire each into exportPersonalDataSpecs (and its TS twin backup_spec.test.ts), "+
 			"or add it to exportGuardExclusions with a reason if it is genuinely not "+
@@ -204,7 +223,7 @@ var (
 	// table (a hypothetical `owner_id references clubs`) can't false-positive.
 	// `[^,]*` keeps the match inside the single (comma-separated) column def.
 	reOwnerFkCol = regexp.MustCompile(
-		`(?:^|[\s,(])(?:author_id|owner_id|buyer_user_id|host_user_id|contact_user_id)\s+uuid[^,]*references\s+auth\.users`)
+		`(?:^|[\s,(])(?:author_id|owner_id|buyer_user_id|host_user_id|contact_user_id|client_id)\s+uuid[^,]*references\s+auth\.users`)
 )
 
 // ownerFkTablesFromMigrations parses every *.sql migration and returns
@@ -261,4 +280,87 @@ func balancedParenBody(s string, openIdx int) string {
 		}
 	}
 	return ""
+}
+
+// ─────────────────── paging order guard ───────────────────
+//
+// Offset paging is only stable under a TOTAL order, and PostgREST
+// applies none by default: two pages of an unordered read can repeat one
+// row and skip another, and a skipped row is one the data subject never
+// receives. Every export read is therefore ordered by the table's
+// primary key, defaulting to `id` with orderByTable holding the
+// exceptions. A new export table whose key is not `id` has to be added
+// there — this test fails the build until it is.
+
+var (
+	reIDCol = regexp.MustCompile(`(?:^|[\s,(])id\s`)
+	// A column added after the fact — `event_results.id` arrived that way
+	// (20261028_001), so a create-table-only scan reads it as key-less.
+	reAddColumn = regexp.MustCompile(
+		`(?is)alter\s+table\s+(?:if\s+exists\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+add\s+column\s+(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?`)
+)
+
+// createTableBodies parses every migration and returns table -> the text
+// inside its CREATE TABLE parens, with any later-added columns appended.
+func createTableBodies(t *testing.T) map[string]string {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(migrationsDir(t), "*.sql"))
+	if err != nil {
+		t.Fatalf("glob migrations: %v", err)
+	}
+	out := map[string]string{}
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		sql := reLineComment.ReplaceAllString(string(raw), "")
+		sql = reDollarBody.ReplaceAllString(sql, "")
+		lower := strings.ToLower(sql)
+		for _, m := range reCreateTable.FindAllStringSubmatchIndex(lower, -1) {
+			out[lower[m[2]:m[3]]] = balancedParenBody(lower, m[1]-1)
+		}
+		for _, m := range reAddColumn.FindAllStringSubmatch(lower, -1) {
+			if _, ok := out[m[1]]; ok {
+				out[m[1]] += ", " + m[2] + " "
+			}
+		}
+	}
+	return out
+}
+
+func TestExportPaging_EveryExportedTableIsOrderedByItsKey(t *testing.T) {
+	bodies := createTableBodies(t)
+	if len(bodies) == 0 {
+		t.Fatal("parsed no create-table bodies")
+	}
+	missing := []string{}
+	for table := range exportSpecCoveredTables() {
+		body, parsed := bodies[table]
+		if !parsed {
+			continue
+		}
+		if _, overridden := orderByTable[table]; overridden {
+			continue
+		}
+		if !reIDCol.MatchString(body) {
+			missing = append(missing, table)
+		}
+	}
+	sort.Strings(missing)
+	if len(missing) > 0 {
+		t.Errorf("exported tables with no `id` column and no orderByTable entry — "+
+			"offset paging over them can skip rows: %v", missing)
+	}
+
+	stale := []string{}
+	for table := range orderByTable {
+		if body, parsed := bodies[table]; parsed && reIDCol.MatchString(body) {
+			stale = append(stale, table)
+		}
+	}
+	sort.Strings(stale)
+	if len(stale) > 0 {
+		t.Errorf("orderByTable overrides tables that do have an `id`: %v", stale)
+	}
 }

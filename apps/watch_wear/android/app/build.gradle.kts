@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -19,13 +20,26 @@ val envProps = Properties().apply {
     rootProject.file(".env.local").takeIf { it.exists() }
         ?.inputStream()?.use { load(it) }
 }
-fun envFlag(key: String, default: Boolean = false): Boolean {
+// The accepted-affirmative set is the repo's, not this file's: `1`, `true`,
+// `yes`, `on`, trimmed and case-insensitive. It used to be `== "true"` alone,
+// which is the decisions.md § 709 defect on a fourth rail — and the two flags
+// it carries are NEGATIVE, so the narrow parse failed OPEN. `DISABLE_HR=1`
+// left the emulator's synthetic heart-rate samples streaming into the runs
+// table, which is the exact thing the flag exists to stop. Canonical rails:
+// `apps/web/src/lib/core/env_flag.ts` + `apps/mobile_android/lib/env_flag.dart`;
+// `EnvFlagParityTest` reads the web one and fails when this drifts from it.
+fun envFlag(key: String): Boolean {
     val raw = envProps.getProperty(key) ?: project.findProperty(key) as? String
-    return raw?.trim()?.lowercase() == "true"
+    val v = (raw ?: "").trim().lowercase()
+    return v == "1" || v == "true" || v == "yes" || v == "on"
 }
+// A key present but empty falls back to `default` rather than to "" — an
+// operator who writes `APP_RELEASE=` has supplied no release name, and the
+// difference is visible: Sentry tags anything that is not "dev" as the
+// production environment.
 fun envString(key: String, default: String = ""): String {
     val raw = envProps.getProperty(key) ?: project.findProperty(key) as? String
-    return raw?.trim() ?: default
+    return raw?.trim()?.takeIf { it.isNotEmpty() } ?: default
 }
 
 kotlin {
@@ -168,11 +182,100 @@ android {
     }
 }
 
+// Several unit tests are source-level guards over files the compiler never
+// sees: the locale string sets under `src/main/res` and these build scripts
+// (LocaleReachTest, L10nResourceParityTest, ActivityTypeVocabularyTest).
+// Neither is an input to the test task by default, so adding an undeclared
+// `values-xx/strings.xml` leaves `testDebugUnitTest` UP-TO-DATE and reports
+// green on exactly the change the guards exist to catch.
+//
+// Six more of those files live OUTSIDE this Gradle build entirely, reached via
+// `WearLocales.findUp`, and the same hole was open on all of them. Measured,
+// not inferred: renaming `anon_key` to `anonKey` in the phone's
+// `WearAuthBridge.kt` — the /supabase_session drift `DataLayerContractTest`
+// exists to catch, whose consequence is a wrist that is never signed in —
+// left `testDebugUnitTest` UP-TO-DATE and the build SUCCESSFUL. CI escapes it
+// only because it checks out clean each run, so nothing there is ever
+// up to date; a local `./gradlew testDebugUnitTest` reported green.
+//
+// A missing file in an input collection is not an error, so a checkout without
+// the sibling trees still builds — and the guards themselves already assert
+// they located what they read, so a tree that is genuinely absent fails loudly
+// in the test rather than quietly here.
+val repoRoot: File? = generateSequence(rootProject.projectDir) { it.parentFile }
+    .firstOrNull { File(it, "apps/watch_wear/android/app/build.gradle.kts").isFile }
+
+tasks.withType<Test>().configureEach {
+    inputs.dir("src/main/res")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("guardedResourceSet")
+    // The main source read AS TEXT. `SilentFailureGuardTest` walks every `.kt`
+    // under here and `ViewModelStreamResilienceTest` reads one of them, and
+    // neither reads a class: a unit test's classpath carries the compiled
+    // output, so what makes a source change re-run this task is bytecode
+    // moving. A COMMENT does not move it — and a comment is precisely what
+    // both guards accept as a swallow's stated reason, so deleting the reason
+    // beside a `runCatching` that drops its Result would leave this task
+    // UP-TO-DATE on the exact edit the rule exists to refuse. Same shape as
+    // the resource set above and the cross-tree files below.
+    inputs.dir("src/main/kotlin")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("guardedMainSources")
+    // ManifestGuardsTest + ManifestPermissionCoverageTest read this directly.
+    // It is not on a unit test's classpath, so nothing else makes it an input.
+    inputs.file("src/main/AndroidManifest.xml")
+        .withPathSensitivity(PathSensitivity.NAME_ONLY)
+        .withPropertyName("guardedManifest")
+    inputs.files(
+        project.file("build.gradle.kts"),
+        rootProject.file("build.gradle.kts"),
+        rootProject.file("settings.gradle.kts"),
+    )
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("guardedBuildScripts")
+    repoRoot?.let { root ->
+        inputs.files(
+            // DataLayerContractTest: both halves of the two Wearable Data
+            // Layer contracts.
+            root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearAuthBridge.kt"),
+            root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt"),
+            root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearWorkoutBridge.kt"),
+            // WorkoutPushFixtureTest + WorkoutRunnerTest: the payload and the
+            // step-runner vectors the phone and watchOS are held to, and the
+            // phone writer's payload version.
+            root.resolve("fixtures/watch_workout_payload.json"),
+            root.resolve("apps/mobile_android/lib/watch_workout_push.dart"),
+            // EnvFlagParityTest: the canonical accepted-affirmative set.
+            root.resolve("apps/web/src/lib/core/env_flag.ts"),
+            // MetadataRegistryTest: the runs.metadata key registry.
+            root.resolve("docs/backend/metadata.md"),
+            // GpsDistanceEstimatorTest: the cross-port golden vectors.
+            root.resolve("fixtures/gps_distance_vectors.json"),
+            // RaceFinishTest: the race_finish case table the phone reads too.
+            root.resolve("fixtures/race_finish_cases.json"),
+            // GateCrossingTest: the gate_crossing case table web and the
+            // phone read too.
+            root.resolve("fixtures/gate_crossing_cases.json"),
+        )
+            .withPathSensitivity(PathSensitivity.NAME_ONLY)
+            .withPropertyName("guardedCrossTreeFiles")
+        // ActivityTypeVocabularyTest: the activity_type CHECK and the two
+        // client label catalogues it is held against.
+        inputs.files(
+            fileTree(root.resolve("apps/backend/supabase/migrations")),
+            fileTree(root.resolve("apps/web/src/lib/i18n/locales")),
+            fileTree(root.resolve("apps/mobile_android/lib/l10n")),
+        )
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+            .withPropertyName("guardedCrossTreeSets")
+    }
+}
+
 dependencies {
     testImplementation("junit:junit:4.13.2")
 
     // Compose
-    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
@@ -180,9 +283,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
 
     // Compose-for-Wear
-    implementation("androidx.wear.compose:compose-material:1.6.2")
-    implementation("androidx.wear.compose:compose-foundation:1.6.2")
-    implementation("androidx.wear.compose:compose-navigation:1.6.2")
+    implementation("androidx.wear.compose:compose-material:1.7.0")
+    implementation("androidx.wear.compose:compose-foundation:1.7.0")
+    implementation("androidx.wear.compose:compose-navigation:1.7.0")
     implementation("androidx.wear:wear-ongoing:1.1.0")
     // AmbientLifecycleObserver + AmbientAware lives here.
     implementation("androidx.wear:wear:1.4.0")
@@ -198,12 +301,18 @@ dependencies {
     implementation("androidx.wear.protolayout:protolayout-expression:1.4.2")
     debugImplementation("androidx.wear.tiles:tiles-renderer:1.6.2")
 
+    // Watch-face complication data source (the active-run / last-run
+    // complication). The `-data` artefact with the ComplicationData builders
+    // comes in through this one's api scope; the `-ktx` suspending wrapper is
+    // not used, the service runs its own scope.
+    implementation("androidx.wear.watchface:watchface-complications-data-source:1.3.0")
+
     // Health Services (live HR). 1.1.0-rc01 is the latest pre-stable; 1.0.0
     // is the last stable tag but lacks the flow helpers we want. Move to
     // 1.1.0 stable when it ships.
-    implementation("androidx.health:health-services-client:1.1.0-rc02")
+    implementation("androidx.health:health-services-client:1.1.0")
     implementation("androidx.concurrent:concurrent-futures-ktx:1.3.0")
-    implementation("com.google.guava:guava:33.6.0-android")
+    implementation("com.google.guava:guava:33.8.0-android")
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.4.0")
@@ -212,10 +321,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
 
     // Networking
-    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
 
     // Local persistence
-    implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
 
     // Encrypted storage for the auth session (access + refresh tokens are
     // bearer credentials — they live in EncryptedSharedPreferences, not
@@ -224,14 +333,14 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0")
 
     // Serialization + coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
-    // Sentry crash reporting. Init in MainActivity.onCreate; gated on a
-    // non-empty BuildConfig.SENTRY_DSN so dev / debug builds are
-    // no-ops. The Android SDK auto-captures unhandled JVM exceptions;
+    // Sentry crash reporting. Init in WatchWearApplication.onCreate (the
+    // SDK's manifest auto-init is off); gated on a non-blank
+    // BuildConfig.SENTRY_DSN so a build without one is a no-op. The Android SDK auto-captures unhandled JVM exceptions;
     // we additionally wire breadcrumbs in long-running paths via
     // Sentry.captureException calls from coroutine catch blocks.
-    implementation("io.sentry:sentry-android:8.51.0")
+    implementation("io.sentry:sentry-android:8.63.0")
 }

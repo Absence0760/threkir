@@ -4,7 +4,7 @@ import '../lib/event_gym_template.dart';
 import '../lib/social_service.dart';
 
 /// Parity tests for `SocialService.createEvent` — the insert-body
-/// shape must match `apps/web/src/lib/data.ts:createEvent` so events
+/// shape must match `apps/web/src/lib/core/data.ts:createEvent` so events
 /// created on either platform store identically.
 ///
 /// History: mobile + web diverged in four ways before this round
@@ -68,6 +68,38 @@ void main() {
         startsAt: startsAt,
       );
       expect(body['recurrence_until'], isNull);
+    });
+  });
+
+  group('buildCreateEventBody — the event zone (parity with web)', () {
+    test('the organiser zone is written to events.timezone', () {
+      // The recurrence fields are wall-clock in this zone; web's createEvent
+      // stamps the browser zone, and a row without one expands in every
+      // viewer's own zone instead.
+      final body = SocialService.buildCreateEventBody(
+        authorId: userId,
+        clubId: clubId,
+        title: 'Wednesday night run',
+        startsAt: DateTime.utc(2026, 10, 22, 1, 30),
+        recurrenceFreq: 'weekly',
+        recurrenceByDay: const ['WE'],
+        timezone: 'America/New_York',
+      );
+      expect(body['timezone'], 'America/New_York');
+    });
+
+    test('no zone, or a blank one, is written as null rather than guessed', () {
+      for (final tz in [null, '', '  ']) {
+        final body = SocialService.buildCreateEventBody(
+          authorId: userId,
+          clubId: clubId,
+          title: 'One-off',
+          startsAt: startsAt,
+          timezone: tz,
+        );
+        expect(body.containsKey('timezone'), isTrue);
+        expect(body['timezone'], isNull);
+      }
     });
   });
 

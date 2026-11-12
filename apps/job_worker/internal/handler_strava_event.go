@@ -18,6 +18,9 @@ import (
 //
 // Error semantics:
 //
+//   - Athlete deauthorization (`athlete` / `update`, `authorized:
+//     "false"`) → drop the Vault tokens and stamp the integration
+//     disconnected (handleStravaDeauthorization).
 //   - Aspect != "create" → finish_job(done). Updates / deletes are
 //     a no-op for now (mobile import handles edits on the next
 //     manual sync); ack and move on.
@@ -39,13 +42,16 @@ import (
 // re-claim of the same job (process restart mid-run) sees the
 // dedupe row and exits cleanly.
 func (w *Worker) handleStravaEvent(ctx context.Context, job *Job) error {
-	if w.Strava == nil {
-		return errors.New("strava_event: Strava client not configured (missing STRAVA_CLIENT_ID/SECRET)")
-	}
-
 	var p StravaEventPayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
 		return fmt.Errorf("strava_event: bad payload: %w", err)
+	}
+	// Needs no Strava API call, so it must not wait on the client config.
+	if p.IsAthleteDeauthorization() {
+		return w.handleStravaDeauthorization(ctx, p)
+	}
+	if w.Strava == nil {
+		return errors.New("strava_event: Strava client not configured (missing STRAVA_CLIENT_ID/SECRET)")
 	}
 	if p.ObjectType != "activity" || p.AspectType != "create" {
 		// Strava ack'd 200 already at the webhook endpoint for these;
@@ -233,6 +239,35 @@ func (w *Worker) handleStravaEvent(ctx context.Context, job *Job) error {
 // computed when it inserted the `webhook_events` row. Kept in this
 // file so the rollback path doesn't need to round-trip the key
 // through the job payload.
+// handleStravaDeauthorization acts on the athlete revoking our access from
+// their Strava settings, which Strava API terms require: the tokens are
+// already dead at Strava's end, so the grant is forgotten locally the way
+// a user-initiated Disconnect forgets it (the Edge Function's
+// `disconnectStravaLocally`) — Vault rows dropped, row stamped
+// `disconnected_at` with reason `athlete_deauthorized`. A store failure
+// returns an error so the job retries; both steps are idempotent.
+func (w *Worker) handleStravaDeauthorization(ctx context.Context, p StravaEventPayload) error {
+	if p.OwnerID <= 0 {
+		return fmt.Errorf("strava_event: deauthorization without owner_id")
+	}
+	userID, err := w.Backend.FindIntegrationUserByAthlete(ctx, "strava", p.OwnerID)
+	if err != nil {
+		return fmt.Errorf("strava_event: deauthorization lookup: %w", err)
+	}
+	if userID == "" {
+		w.Log.Info("strava_event: deauthorization for an unlinked athlete; nothing to do", "owner_id", p.OwnerID)
+		return nil
+	}
+	if err := w.Backend.DeleteUserProviderSecrets(ctx, userID, "strava"); err != nil {
+		return fmt.Errorf("strava_event: deauthorization vault cleanup: %w", err)
+	}
+	if err := w.Backend.MarkIntegrationDisconnected(ctx, userID, "strava", "athlete_deauthorized"); err != nil {
+		return fmt.Errorf("strava_event: deauthorization stamp: %w", err)
+	}
+	w.Log.Info("strava_event: athlete deauthorized; integration disconnected", "user_id", userID)
+	return nil
+}
+
 func stravaEventID(p StravaEventPayload) string {
 	return fmt.Sprintf("%d:%d:%s:%d", p.OwnerID, p.ObjectID, p.AspectType, p.EventTime)
 }

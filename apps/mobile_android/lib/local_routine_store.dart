@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 
+import 'gym_prs.dart';
 import 'offline_sync_store.dart';
 
 /// Sync state for a single routine. Alias of the shared [SyncState] so the
@@ -161,10 +162,7 @@ class StoredRoutine implements SyncEntry {
                 StoredRoutineExercise.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
         syncState: syncStateFromWire(json['sync_state'] as String?),
-        lastModifiedAt:
-            DateTime.tryParse(json['last_modified_at'] as String? ?? '')
-                    ?.toUtc() ??
-                DateTime.now().toUtc(),
+        lastModifiedAt: storedClockOrEpoch(json['last_modified_at']),
       );
 }
 
@@ -248,7 +246,7 @@ class LocalRoutineStore extends OfflineSyncStore<StoredRoutine> {
     final id = OfflineSyncStore.newUuid();
     final now = DateTime.now().toUtc();
     final kept = exercises
-        .where((e) => e.exerciseName.trim().isNotEmpty)
+        .where((e) => namesAnExercise(e.exerciseName))
         .toList(growable: false);
     final row = <String, dynamic>{
       'id': id,
@@ -321,7 +319,7 @@ class LocalRoutineStore extends OfflineSyncStore<StoredRoutine> {
     if (id is! String) return;
     final existing = rowsById[id];
     if (existing != null && existing.syncState != SyncState.synced) return;
-    final serverTs = _parseTs(routine['last_modified_at']);
+    final serverTs = parseServerTimestamp(routine['last_modified_at']);
     if (existing != null &&
         serverTs != null &&
         existing.lastModifiedAt.isAfter(serverTs)) {
@@ -353,10 +351,11 @@ class LocalRoutineStore extends OfflineSyncStore<StoredRoutine> {
         serverRoutines, {
     int? fetchLimit,
   }) async {
+    requireInitialised('replaceFromServer');
     DateTime? windowStart;
     if (fetchLimit != null && serverRoutines.length >= fetchLimit) {
       for (final r in serverRoutines) {
-        final ts = _parseTs(r.routine['last_modified_at']);
+        final ts = parseServerTimestamp(r.routine['last_modified_at']);
         if (ts != null && (windowStart == null || ts.isBefore(windowStart))) {
           windowStart = ts;
         }
@@ -367,8 +366,8 @@ class LocalRoutineStore extends OfflineSyncStore<StoredRoutine> {
     for (final entry in rowsById.entries) {
       if (entry.value.syncState != SyncState.synced) {
         preserved[entry.key] = entry.value;
-      } else if (windowStart != null &&
-          entry.value.lastModifiedAt.isBefore(windowStart)) {
+      } else if (outsideFetchWindow(
+          entry.value.lastModifiedAt, windowStart, null)) {
         preserved[entry.key] = entry.value;
       } else {
         syncedLocal[entry.key] = entry.value;
@@ -382,7 +381,7 @@ class LocalRoutineStore extends OfflineSyncStore<StoredRoutine> {
         continue;
       }
       final local = syncedLocal[id];
-      final serverTs = _parseTs(r.routine['last_modified_at']);
+      final serverTs = parseServerTimestamp(r.routine['last_modified_at']);
       if (local != null &&
           serverTs != null &&
           local.lastModifiedAt.isAfter(serverTs)) {
@@ -399,11 +398,6 @@ class LocalRoutineStore extends OfflineSyncStore<StoredRoutine> {
     rowsById.addAll(preserved);
     await rewriteAll();
     notifyListeners();
-  }
-
-  static DateTime? _parseTs(dynamic v) {
-    if (v is String && v.isNotEmpty) return DateTime.tryParse(v)?.toUtc();
-    return null;
   }
 
   @override

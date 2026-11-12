@@ -1,6 +1,9 @@
 package graph
 
-import "container/heap"
+import (
+	"container/heap"
+	"context"
+)
 
 // dijkstra runs a single-source shortest-path search over the foot graph.
 //
@@ -27,18 +30,44 @@ import "container/heap"
 //     it, defeating the whole point of penalised reuse.
 //   - penalised:  undirected keys whose cost is scaled; nil for an unpenalised
 //     search.
+//   - pref:       a route-design preference whose per-edge multiplier is folded
+//     into the cost alongside the reuse penalty. PrefNone skips the multiply
+//     entirely rather than multiplying by 1.0, so an unpreferenced search is
+//     bit-identical to the one that shipped.
 //
-// Returns the (penalised) distance map and predecessor map. A node absent from
-// distTo was not reached within the cap. For an unpenalised search the penalised
-// distance equals the real distance, so distTo is exact real metres (the forward
-// far-point search relies on this).
-func (g *Graph) dijkstra(src, target int32, maxRadiusM float64, penalised map[uint64]struct{}) (distTo map[int32]float64, prev map[int32]int32) {
+// Returns the (penalised) cost map, the TRUE metres along each node's chosen
+// path, and the predecessor map. A node absent from distTo was not reached
+// within the cap. realTo is what the far-point search must read: under a
+// preference the cost map is no longer metres, and picking far-points by a
+// weighted cost would systematically mis-size the loop.
+// dijkstra explores until the radius bound, the target, or [ctx] is done.
+//
+// The ctx check is load-shedding, not an optimisation: work here scales with
+// the square of the accepted target distance, and at the top of the accepted
+// range the forward tree alone can settle millions of nodes. Without it a
+// client disconnect stopped nothing — the server's WriteTimeout only sets a
+// write deadline, so the handler ran to completion regardless and repeated
+// requests amplified with no way to shed them. Cancellation returns whatever
+// has been settled so far; the caller treats a short/absent path as no result.
+func (g *Graph) dijkstra(ctx context.Context, src, target int32, maxRadiusM float64, penalised map[uint64]struct{}, pref Preference) (distTo, realTo map[int32]float64, prev map[int32]int32) {
 	distTo = map[int32]float64{src: 0}
+	realTo = map[int32]float64{src: 0}
 	prev = map[int32]int32{src: -1}
 	settled := map[int32]struct{}{}
 
 	pq := &nodeHeap{{node: src, dist: 0, real: 0}}
+	// Checking ctx every pop would cost an atomic load per node. 512 is ~0.3 ms
+	// at the measured ~500-680 ns/node — 4096 was too coarse to fire at all on
+	// the short searches SearchCycle actually issues (it makes ~61 of them
+	// rather than one long one), so the check never ran at realistic targets.
+	// SearchCycle also bails between legs, which is the coarse-grained half.
+	const ctxCheckEvery = 512
+	pops := 0
 	for pq.Len() > 0 {
+		pops++
+		if pops%ctxCheckEvery == 0 && ctx.Err() != nil {
+			return distTo, realTo, prev
+		}
 		top := heap.Pop(pq).(heapItem)
 		u := top.node
 		if _, done := settled[u]; done {
@@ -46,7 +75,7 @@ func (g *Graph) dijkstra(src, target int32, maxRadiusM float64, penalised map[ui
 		}
 		settled[u] = struct{}{}
 		if u == target {
-			return distTo, prev
+			return distTo, realTo, prev
 		}
 		du := top.dist
 		duReal := top.real
@@ -57,6 +86,9 @@ func (g *Graph) dijkstra(src, target int32, maxRadiusM float64, penalised map[ui
 			v := g.edgeTo[e]
 			realW := float64(g.edgeLen[e])
 			w := realW
+			if pref != PrefNone {
+				w *= g.prefCost(e, pref)
+			}
 			if penalised != nil {
 				if _, p := penalised[edgeKey(u, v)]; p {
 					w *= reusePenalty
@@ -69,12 +101,13 @@ func (g *Graph) dijkstra(src, target int32, maxRadiusM float64, penalised map[ui
 			nd := du + w
 			if old, ok := distTo[v]; !ok || nd < old {
 				distTo[v] = nd
+				realTo[v] = ndReal
 				prev[v] = u
 				heap.Push(pq, heapItem{node: v, dist: nd, real: ndReal})
 			}
 		}
 	}
-	return distTo, prev
+	return distTo, realTo, prev
 }
 
 // reconstruct walks prev from dst back to src, returning the node-index path in

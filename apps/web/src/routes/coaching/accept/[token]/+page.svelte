@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { redeemCoachInvite } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { redeemCoachInvite } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
-	let token = $derived($page.params.token as string);
+	let token = $derived(page.params.token as string);
 	let status = $state<'joining' | 'error' | 'not-authed'>('joining');
 	let errorMsg = $state<string | null>(null);
 
@@ -37,22 +39,21 @@
 			goto('/coaching');
 		} catch (e: unknown) {
 			status = 'error';
-			// Surface the real reason the redeem RPC raised (self-coaching, already
-			// linked, already redeemed). A Supabase PostgrestError is a plain object,
-			// NOT an Error instance, so an `instanceof Error` gate alone always fell
-			// through to the misleading "invalid or expired" fallback — swallowing
-			// the accurate, user-actionable reason.
-			const raw =
-				e instanceof Error
-					? e.message
-					: e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string'
-						? (e as { message: string }).message
-						: '';
-			errorMsg = raw.trim() !== '' ? raw : m('coachingAccept.inviteInvalidOrExpired');
+			// Name the reason the redeem RPC raised (self-coaching, already
+			// linked) in the reader's language; anything else is the invite itself.
+			if (e instanceof Error && e.message.includes('invite not found')) {
+				errorMsg = m('coachingAccept.inviteInvalidOrExpired');
+			} else if (e instanceof Error && e.message.includes('already linked')) {
+				errorMsg = m('coachingAccept.alreadyLinked');
+			} else if (e instanceof Error && e.message.includes('cannot coach yourself')) {
+				errorMsg = m('coachingAccept.cannotCoachSelf');
+			} else {
+				errorMsg = errorCopy(e, m, 'coachingAccept.redeem', 'coachingAccept.inviteInvalidOrExpired');
+			}
 		}
 	}
 
-	let returnTo = $derived(encodeURIComponent($page.url.pathname));
+	let returnTo = $derived(encodeURIComponent(page.url.pathname));
 </script>
 
 <div class="invite-page">
@@ -63,9 +64,13 @@
 		</a>
 	</header>
 
-	<main class="invite-main" id="main-content">
+	<!-- The live region is the permanently-mounted <main>, not the joining
+	     card: the card is the page's FIRST state, so a region on it is in the
+	     tree before anything changes and the result that replaces it is
+	     announced by nothing (decisions.md § 736). -->
+	<main class="invite-main" id="main-content" aria-live="polite">
 		{#if status === 'joining'}
-			<section class="invite-card joining-card" aria-live="polite">
+			<section class="invite-card joining-card">
 				<p class="kicker">{m('coachingAccept.joiningKicker')}</p>
 				<h1>{m('coachingAccept.joiningHeading')}</h1>
 				<p class="muted">{m('coachingAccept.joiningBody')}</p>

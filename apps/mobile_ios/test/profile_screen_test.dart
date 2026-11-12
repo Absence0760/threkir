@@ -6,15 +6,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/help_destination.dart';
+import '../lib/help_guides.dart' show HelpDestination;
 import '../lib/screens/profile_screen.dart';
+import '../lib/widgets/error_state.dart';
+import 'supabase_test_init.dart';
 
 /// Signed-in viewer looking at their own profile — the five-tab shape
 /// that carries Notifications.
 class _SelfApi extends ApiClient {
+  _SelfApi({
+    this.counts = (publicCount: 0, privateCount: 0),
+    this.countsThrow = false,
+  });
+
+  final ({int publicCount, int? privateCount}) counts;
+  final bool countsThrow;
+  bool? countsAskedAsSelf;
+
   @override
   String? get userId => 'me';
+
+  @override
+  Future<({int publicCount, int? privateCount})> fetchProfileRunCounts(
+    String userId, {
+    required bool isSelf,
+  }) async {
+    countsAskedAsSelf = isSelf;
+    if (countsThrow) throw Exception('counts boom');
+    return counts;
+  }
 
   @override
   Future<ProfileSummary?> fetchProfileSummary(String userId) async =>
@@ -32,14 +54,14 @@ class _SelfApi extends ApiClient {
       const [];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async => const [];
@@ -62,10 +84,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -89,6 +108,7 @@ Future<void> _pump(
 
 void main() {
   setUpAll(_ensureSupabase);
+  _privateRunsNoteTests();
 
   group('ProfileScreen — initial render', () {
     testWidgets('renders the Profile fallback title before the summary loads',
@@ -244,10 +264,16 @@ void main() {
           reason:
               'Tapping a club_post notification must open ClubDetailScreen '
               'for the linked club slug.');
-      expect(source.contains("kind == 'run_completed'"), isTrue,
+      final runKinds = RegExp(r'_kRunNotificationKinds = \{([^}]*)\}')
+          .firstMatch(source)
+          ?.group(1);
+      expect(runKinds, contains("'run_completed'"),
+          reason: 'run_completed must be one of the run kinds a tap opens.');
+      expect(source.contains('openRunLink(item.row.runId!)'), isTrue,
           reason:
-              'run_completed tap must route to PublicRunScreen via the '
-              'row runId.');
+              'a run-kind tap hands the row runId to the shell, which opens '
+              'the owner screen for the runner\'s own run and '
+              'PublicRunScreen for anyone else\'s.');
     });
   });
 
@@ -376,12 +402,12 @@ void main() {
     final source =
         File('lib/screens/profile_screen.dart').readAsStringSync();
 
-    test('Block IconButton renders in the AppBar for non-self viewers', () {
+    test('Block / Unblock is in the AppBar overflow for non-self viewers', () {
       expect(
-          source.contains('tooltip: _blocked ? l10n.profileUnblock'),
+          source.contains('_blocked ? l10n.profileUnblock : l10n.profileBlock'),
           isTrue,
           reason:
-              'AppBar must surface a Block / Unblock IconButton when the '
+              'The AppBar overflow must offer Block / Unblock when the '
               'viewer is not viewing their own profile. Without it the '
               'block_user RPC is unreachable from this screen — the '
               'persona-hunt Round 3 W1 finding.');
@@ -416,11 +442,10 @@ void main() {
   });
 
   group('profile header (issue #666 C12)', () {
-    // The header is a fixed band above `Expanded(TabBarView)` in a
-    // non-scrolling `Column`, and `user_profiles.display_name` has no DB
-    // length constraint. The derivation, not an absolute: name LENGTH must
-    // not move the header/tabs split — font-independent, where an absolute
-    // "the tabs get N dp" would not be measurable in CI (decisions § 500).
+    // `user_profiles.display_name` has no DB length constraint. The name is
+    // the AppBar title only, so its length must not move the header/tabs
+    // split at all — asserted as a derivation, not an absolute (decisions
+    // § 500).
     testWidgets('display-name length does not move the header/tabs split',
         (tester) async {
       await _ensureSupabase();
@@ -434,8 +459,7 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             // Keyed by the name: without it the second pump reuses the first
-            // State, which never re-fetches, and the assertions would run
-            // against the first name twice.
+            // State, which never re-fetches.
             home: ProfileScreen(
               key: ValueKey(name),
               api: _NamedApi(name),
@@ -445,15 +469,12 @@ void main() {
         );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
-        // The AppBar title carries the same string; the header copy is the
-        // one that can grow the band, and it is the capped one.
         expect(find.byType(IdentityAvatar), findsOneWidget);
+        // Printed once, in the AppBar; the header no longer repeats it.
+        expect(find.text(name), findsOneWidget);
         expect(
-          tester
-              .widgetList<Text>(find.text(name))
-              .map((t) => t.maxLines)
-              .toList(),
-          contains(kProfileNameMaxLines),
+          find.descendant(of: find.byType(AppBar), matching: find.text(name)),
+          findsOneWidget,
         );
         return tester.getSize(find.byType(TabBarView)).height;
       }
@@ -464,13 +485,297 @@ void main() {
 
       expect(atCap, greaterThan(0));
       expect(tester.takeException(), isNull);
+      expect(tenTimesLonger, atCap,
+          reason: 'a longer display name still eats the tab bodies');
+    });
+
+    Future<void> pumpOther(WidgetTester tester, ApiClient api) async {
+      await _ensureSupabase();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(api: api, userId: 'other'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('the counts select the tab that lists them', (tester) async {
+      await pumpOther(tester, _OtherApi());
+      expect(find.text('48'), findsOneWidget);
+      expect(find.text('61'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('profile-stat-following')));
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Following');
+      await tester.tap(find.byKey(const ValueKey('profile-stat-followers')));
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Followers');
+      await tester.tap(find.byKey(const ValueKey('profile-stat-runs')));
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Runs');
+    });
+
+    Finder runStat(String text) => find.descendant(
+          of: find.byKey(const ValueKey('profile-stat-runs')),
+          matching: find.text(text),
+        );
+
+    testWidgets('the run count is the counted total, not the loaded page',
+        (tester) async {
+      final api = _OtherApi(
+        runCount: 30,
+        counts: (publicCount: 142, privateCount: null),
+      );
+      await pumpOther(tester, api);
+      expect(runStat('142'), findsOneWidget);
+      expect(runStat('30+'), findsNothing);
+      expect(api.countsAskedAsSelf, isFalse);
+    });
+
+    testWidgets('a failed count falls back to the page, read as N+',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(runCount: 30, countsThrow: true));
+      expect(runStat('30+'), findsOneWidget);
+      expect(find.byType(ErrorState), findsNothing,
+          reason: 'the count is auxiliary; its failure must not error a tab');
+    });
+
+    testWidgets('a failed count with a short page shows the page length',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(runCount: 3, countsThrow: true));
+      expect(runStat('3'), findsOneWidget);
+    });
+
+    testWidgets('signed out hides the follow counts, not the run count',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(signedIn: false));
+      expect(find.byKey(const ValueKey('profile-stat-runs')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile-stat-followers')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-message')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-follow')), findsOneWidget);
+    });
+
+    testWidgets('another runner gets labelled Follow + Message buttons and an '
+        'overflow with Report and Block', (tester) async {
+      await pumpOther(tester, _OtherApi());
       expect(
-        tenTimesLonger,
-        atCap,
-        reason: 'a longer display name still eats the tab bodies',
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Follow'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-message')),
+          matching: find.text('Message'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('profile-more')));
+      await tester.pumpAndSettle();
+      expect(find.text('Report user'), findsOneWidget);
+      expect(find.text('Block this profile'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a private profile shows the lock panel and Request to follow; a tap '
+        'files a request and the button reads Requested', (tester) async {
+      final api = _PrivateApi();
+      await pumpOther(tester, api);
+      expect(find.byKey(const ValueKey('profile-private-panel')), findsOneWidget);
+      expect(find.text('This profile is private'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Request to follow'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('profile-follow')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(api.followCalls, 1);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Requested'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('profile-private-panel')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4)); // drain banner timer
+    });
+
+    testWidgets('an approved follower of a private profile sees the runs',
+        (tester) async {
+      await pumpOther(tester, _PrivateApi(approved: true));
+      expect(find.byKey(const ValueKey('profile-private-panel')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Following'),
+        ),
+        findsOneWidget,
       );
     });
+
+    testWidgets('your own profile has no follow, message or overflow',
+        (tester) async {
+      await _ensureSupabase();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(api: _SelfApi(), userId: 'me'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const ValueKey('profile-follow')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-message')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-more')), findsNothing);
+    });
   });
+}
+
+Future<void> _pumpSelf(WidgetTester tester, _SelfApi api) async {
+  await _ensureSupabase();
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ProfileScreen(api: api, userId: 'me'),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
+}
+
+void _privateRunsNoteTests() {
+  group('private runs note (owner only)', () {
+    const note = "7 of your runs aren't public, so they aren't listed here.";
+
+    testWidgets('the owner is told how many runs the profile leaves out',
+        (tester) async {
+      final api = _SelfApi(counts: (publicCount: 2, privateCount: 7));
+      await _pumpSelf(tester, api);
+      expect(api.countsAskedAsSelf, isTrue);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-stat-runs')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsOneWidget);
+      expect(find.text(note), findsOneWidget);
+    });
+
+    testWidgets('one private run reads in the singular', (tester) async {
+      await _pumpSelf(
+          tester, _SelfApi(counts: (publicCount: 0, privateCount: 1)));
+      expect(find.text("1 of your runs isn't public, so it isn't listed here."),
+          findsOneWidget);
+    });
+
+    testWidgets('the link asks the shell for the full run list',
+        (tester) async {
+      addTearDown(() => pendingHelpDestination.value = null);
+      await _pumpSelf(
+          tester, _SelfApi(counts: (publicCount: 2, privateCount: 7)));
+      await tester.tap(find.byKey(const ValueKey('profile-private-runs-link')));
+      await tester.pump();
+      expect(pendingHelpDestination.value, HelpDestination.runs);
+    });
+
+    testWidgets('no note when every run is public', (tester) async {
+      await _pumpSelf(
+          tester, _SelfApi(counts: (publicCount: 5, privateCount: 0)));
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsNothing);
+    });
+
+    testWidgets('no note on another runner\'s profile', (tester) async {
+      final api = _OtherApi(counts: (publicCount: 3, privateCount: 7));
+      await _ensureSupabase();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(api: api, userId: 'other'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsNothing,
+          reason: 'even a fake that hands back a private figure must not '
+              'surface it to a non-owner');
+    });
+
+    testWidgets('no note, and no broken tab, when the count fails',
+        (tester) async {
+      await _pumpSelf(tester, _SelfApi(countsThrow: true));
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsNothing);
+      expect(find.byType(ErrorState), findsNothing);
+    });
+  });
+}
+
+/// Another runner's profile, viewed signed in (or not), with [runCount]
+/// public runs.
+class _OtherApi extends _SelfApi {
+  _OtherApi({
+    this.runCount = 3,
+    this.signedIn = true,
+    super.counts = (publicCount: 3, privateCount: null),
+    super.countsThrow,
+  });
+
+  final int runCount;
+  final bool signedIn;
+
+  @override
+  String? get userId => signedIn ? 'me' : null;
+
+  @override
+  Future<ProfileSummary?> fetchProfileSummary(String userId) async =>
+      const ProfileSummary(
+        id: 'other',
+        displayName: 'Grace',
+        followerCount: 48,
+        followingCount: 61,
+        viewerFollows: false,
+      );
+
+  @override
+  Future<bool> isBlockedByViewer(String targetUserId) async => false;
+
+  @override
+  Future<List<RunRow>> fetchPublicRunsByUser(String userId,
+          {int limit = 50}) async =>
+      [
+        for (var i = 0; i < runCount; i++)
+          RunRow(safetyAudience: false, 
+            id: 'r$i',
+            userId: 'other',
+            startedAt: DateTime.utc(2026, 10, 1).add(Duration(days: i)),
+            durationS: 1800,
+            distanceM: 5000,
+            source: 'app',
+            activityType: 'run',
+            isDnf: false,
+            isPublic: true,
+            followersOnly: false,
+          ),
+      ];
 }
 
 /// Self-profile whose display name the caller chooses, so the header's
@@ -489,4 +794,31 @@ class _NamedApi extends _SelfApi {
         followingCount: 0,
         viewerFollows: false,
       );
+}
+
+/// A private profile, viewed by a stranger (or, with [approved], by an
+/// approved follower).
+class _PrivateApi extends _OtherApi {
+  _PrivateApi({this.approved = false});
+
+  final bool approved;
+  int followCalls = 0;
+
+  @override
+  Future<ProfileSummary?> fetchProfileSummary(String userId) async =>
+      ProfileSummary(
+        id: 'other',
+        displayName: 'Grace',
+        followerCount: 48,
+        followingCount: 61,
+        viewerFollows: approved,
+        profilePrivate: true,
+        contentVisible: approved,
+      );
+
+  @override
+  Future<FollowOutcome> followUser(String targetUserId) async {
+    followCalls++;
+    return FollowOutcome.requested;
+  }
 }

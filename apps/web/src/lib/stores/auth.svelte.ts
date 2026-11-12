@@ -1,12 +1,18 @@
-import { browser } from '$app/environment';
-import { supabase } from '$lib/core/supabase';
-import { dropUserCache } from '$lib/settings/settings';
-import { setUnit } from '$lib/format/units.svelte';
-import { defaultUnitForLocale } from '$lib/format/locale_defaults';
-import { showToast } from '$lib/stores/toast.svelte';
-import { m } from '$lib/i18n/store.svelte';
+import { browser } from '$app/env';
+import { supabase } from '#lib/core/supabase.ts';
+import { dbError } from '#lib/core/supabase_error.ts';
+import { dropUserCache } from '#lib/settings/settings.ts';
+import { setUnit } from '#lib/format/units.svelte.ts';
+import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
+import { showToast } from '#lib/stores/toast.svelte.ts';
+import { undoStore } from '#lib/stores/undo.svelte.ts';
+import { m } from '#lib/i18n/store.svelte.ts';
+import { parsePreferredUnit, parseSubscriptionTier } from '#lib/types.ts';
 import { createReadyGate, isAuthSettled } from './auth_ready';
-import { signOutWithScope } from './sign_out';
+import { signOutWithScope, trackSessionUser } from './sign_out';
+import { OAUTH_PROVIDER_STASH_KEY } from '#lib/core/apple_revocation.ts';
+import { OAUTH_LINK_STASH_KEY } from '#lib/core/auth_redirect_error.ts';
+import { consentRecorded } from '#lib/core/auth_confirmation.ts';
 
 /// Longest QUIET gap a `ready()` waiter tolerates before resolving
 /// anyway — the deadline re-arms on every unsettled auth lifecycle
@@ -14,6 +20,12 @@ import { signOutWithScope } from './sign_out';
 /// in flight) keeps waiting while a genuinely wedged session check
 /// still bails in ~one gap. Matches the old per-page poll loops (~1–3 s).
 const AUTH_READY_TIMEOUT_MS = 3000;
+
+/// How long the root layout may hold a signed-in session's app shell on
+/// the neutral loading state while the first profile read is in flight.
+/// Past it the read counts as failed and the shell renders as it did
+/// before the hold existed, so a wedged request cannot strand the user.
+const PROFILE_HOLD_TIMEOUT_MS = 10_000;
 
 interface User {
 	id: string;
@@ -38,32 +50,88 @@ interface User {
 	/// The auth-shell layout reads this to decide whether to
 	/// redirect to /onboarding on login.
 	onboarded_at: string | null;
+	/// Both GDPR Art 8 stamps (`age_confirmed_at` + `terms_accepted_at`)
+	/// are on the profile row. False sends the layout to
+	/// /auth/confirm-age before any feature surface renders — the only
+	/// gate an OAuth account that skipped the sign-in hop, or a row
+	/// that was never stamped, ever meets (issue #1065).
+	consent_recorded: boolean;
 }
 
 function createAuthStore() {
 	let user = $state<User | null>(null);
 	let loggedIn = $state(false);
 	let loading = $state(true);
+	// Set when the self-read or bootstrap insert fails (or outlives
+	// PROFILE_HOLD_TIMEOUT_MS) while no profile is hydrated. Releases the
+	// layout's shell hold; it never routes anyone to a gate.
+	let profileFailed = $state(false);
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function clearHoldTimer() {
+		if (holdTimer != null) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
+
+	function markProfileFailed() {
+		clearHoldTimer();
+		if (user == null) profileFailed = true;
+	}
+
+	/// Every lifecycle hook loads the profile through here so a thrown
+	/// error counts as a failure rather than leaving the hold up.
+	function loadProfile(userId: string, email: string) {
+		if (user == null && holdTimer == null) {
+			holdTimer = setTimeout(() => {
+				holdTimer = null;
+				if (user == null) profileFailed = true;
+			}, PROFILE_HOLD_TIMEOUT_MS);
+		}
+		return fetchUser(userId, email).catch((e) => {
+			console.error(e);
+			markProfileFailed();
+		});
+	}
+
+	function resetProfileState() {
+		clearHoldTimer();
+		profileFailed = false;
+	}
 
 	const gate = createReadyGate({
 		isSettled: () => isAuthSettled({ loading, user, loggedIn }),
 		timeoutMs: AUTH_READY_TIMEOUT_MS,
 	});
 
+	/// /auth/callback reads this back to tell an Apple sign-in, whose
+	/// refresh token must be kept for revocation, from a Google one.
+	/// A sign-in also drops any link marker an abandoned link left behind,
+	/// so the callback does not mistake this sign-in for that link.
+	function stashOAuthProvider(provider: 'google' | 'apple') {
+		try {
+			sessionStorage.removeItem(OAUTH_LINK_STASH_KEY);
+			sessionStorage.setItem(OAUTH_PROVIDER_STASH_KEY, provider);
+		} catch (e) {
+			console.error('auth: could not stash the OAuth provider:', e);
+		}
+	}
+
 	async function signInWithGoogle() {
+		stashOAuthProvider('google');
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'google',
 			options: { redirectTo: `${window.location.origin}/auth/callback` }
 		});
-		if (error) throw error;
+		if (error) throw dbError(error);
 	}
 
 	async function signInWithApple() {
+		stashOAuthProvider('apple');
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'apple',
 			options: { redirectTo: `${window.location.origin}/auth/callback` }
 		});
-		if (error) throw error;
+		if (error) throw dbError(error);
 	}
 
 	async function refreshSession() {
@@ -76,16 +144,17 @@ function createAuthStore() {
 			// later (one extra DB round-trip). The background fetch on
 			// onAuthStateChange is intentionally not awaited (it fires on every
 			// visibility change and we don't want to block there).
-			await fetchUser(session.user.id, session.user.email ?? '').catch(console.error);
+			await loadProfile(session.user.id, session.user.email ?? '');
 		} else {
 			loggedIn = false;
 			user = null;
+			resetProfileState();
 			loading = false;
 		}
 		gate.markSettled();
 	}
 
-	async function fetchUser(userId?: string, email?: string) {
+	async function fetchUser(userId?: string, email?: string, retriedAfterConflict = false) {
 		if (!userId) {
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) return;
@@ -97,7 +166,7 @@ function createAuthStore() {
 		// because `subscription_tier`, `subscription_at`, and
 		// `parkrun_number` are column-level revoked from authenticated
 		// callers on `user_profiles` (migration 20260707_001).
-		const { data: profile, error: readErr } = await supabase.rpc('get_my_profile');
+		const { data: profile, error: readErr } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 
 		// A failed self-read must NOT fall through to the create branch: that
 		// path treats the user as brand-new and, if its write also fails,
@@ -109,6 +178,7 @@ function createAuthStore() {
 		if (readErr) {
 			console.error('[auth] get_my_profile failed', readErr);
 			showToast(m('shell.profileLoadError'), 'error');
+			markProfileFailed();
 			gate.markSettled();
 			return;
 		}
@@ -120,10 +190,11 @@ function createAuthStore() {
 				display_name: profile.display_name,
 				avatar_url: profile.avatar_url,
 				parkrun_number: profile.parkrun_number,
-				preferred_unit: profile.preferred_unit ?? 'km',
-				subscription_tier: profile.subscription_tier ?? 'free',
+				preferred_unit: parsePreferredUnit(profile.preferred_unit),
+				subscription_tier: parseSubscriptionTier(profile.subscription_tier),
 				billing_issue_at: profile.billing_issue_at ?? null,
 				onboarded_at: profile.onboarded_at ?? null,
+				consent_recorded: consentRecorded(profile),
 			};
 			setUnit(user.preferred_unit);
 		} else {
@@ -141,18 +212,27 @@ function createAuthStore() {
 			// skip-onboarding path — and stays overridable in Settings
 			// afterward (issue #488).
 			const defaultUnit = browser ? defaultUnitForLocale(navigator.language) : 'km';
-			const { error: createErr } = await supabase.from('user_profiles').upsert({
+			// A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT
+			// on the columns it sets, and `subscription_tier` is withheld by the
+			// column lockdown (20260707_001), so the upsert was refused with
+			// 42501 on every attempt. A 23505 means another tab or device
+			// created the row first; read that row instead.
+			const { error: createErr } = await supabase.from('user_profiles').insert({
 				id: userId,
 				preferred_unit: defaultUnit,
 				subscription_tier: 'free',
 			});
+			if (createErr?.code === '23505' && !retriedAfterConflict) {
+				return fetchUser(userId, email, true);
+			}
 			if (createErr) {
 				// Bootstrap write failed (e.g. a missing table grant). Don't
 				// fall through to a phantom `onboarded_at = null` user — that
 				// silently loops them through /onboarding against a row that
 				// was never created. Surface + leave un-hydrated instead.
-				console.error('[auth] profile bootstrap upsert failed', createErr);
+				console.error('[auth] profile bootstrap insert failed', createErr);
 				showToast(m('shell.profileSetupError'), 'error');
+				markProfileFailed();
 				gate.markSettled();
 				return;
 			}
@@ -166,9 +246,11 @@ function createAuthStore() {
 				subscription_tier: 'free',
 				billing_issue_at: null,
 				onboarded_at: null,
+				consent_recorded: false,
 			};
 			setUnit(defaultUnit);
 		}
+		resetProfileState();
 		gate.markSettled();
 	}
 
@@ -180,9 +262,10 @@ function createAuthStore() {
 		// everywhere is the separate `logoutEverywhere()` affordance,
 		// not the default Sign out button.
 		const priorUserId = user?.id;
-		await signOutWithScope(supabase.auth, 'local');
+		await signOutWithScope(supabase.auth, 'local', undoStore.flush);
 		user = null;
 		loggedIn = false;
+		resetProfileState();
 		// Drop the prior user's cached prefs so a subsequent sign-in
 		// as a different user on the same browser can't read the
 		// previous user's universal / device bags or replay their
@@ -200,22 +283,26 @@ function createAuthStore() {
 		// down the local session and imply success; surface it and let the
 		// caller keep the user signed in so they can retry.
 		const priorUserId = user?.id;
-		const error = await signOutWithScope(supabase.auth, 'global');
+		const error = await signOutWithScope(supabase.auth, 'global', undoStore.flush);
 		if (error) throw new Error(error.message ?? 'sign-out-everywhere failed');
 		user = null;
 		loggedIn = false;
+		resetProfileState();
 		if (priorUserId) dropUserCache(priorUserId);
 	}
 
 	// Listen for auth state changes
 	if (browser) {
+		const sessionUser = trackSessionUser(dropUserCache);
 		supabase.auth.onAuthStateChange((event, session) => {
+			sessionUser(session?.user.id ?? null);
 			if (session) {
 				loggedIn = true;
-				fetchUser(session.user.id, session.user.email ?? '').catch(console.error);
+				loadProfile(session.user.id, session.user.email ?? '');
 			} else {
 				loggedIn = false;
 				user = null;
+				resetProfileState();
 			}
 			loading = false;
 			gate.markSettled();
@@ -225,7 +312,7 @@ function createAuthStore() {
 		supabase.auth.getSession().then(({ data: { session } }) => {
 			if (session) {
 				loggedIn = true;
-				fetchUser(session.user.id, session.user.email ?? '').catch(console.error);
+				loadProfile(session.user.id, session.user.email ?? '');
 			}
 			loading = false;
 			gate.markSettled();
@@ -236,6 +323,9 @@ function createAuthStore() {
 		get user() { return user; },
 		get loggedIn() { return loggedIn; },
 		get loading() { return loading; },
+		/// The first profile read for this session failed or timed out.
+		/// See post_auth_route.ts holdAppShell.
+		get profileFailed() { return profileFailed; },
 		get isPro() { return user?.subscription_tier === 'pro' || user?.subscription_tier === 'lifetime'; },
 		/// Resolves once auth has settled — a user row has hydrated, or
 		/// the session is definitively anon. Replaces the open-coded

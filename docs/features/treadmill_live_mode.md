@@ -1,6 +1,8 @@
 # Treadmill live-mode run-screen toggle — implementation plan
 
 > **Status:** Shipped mobile 2026-06-19. Specced 2026-06-15; the plan below was executed as written, so it now reads as the design record rather than a to-do. On disk: `_toggleTreadmillMode` in `apps/mobile_android/lib/screens/run_screen.dart` (paired-belt-gated toggle, own `_treadmillSub` / `_treadmillStatusSub`, L4 try/catch + banner-revert) against the already-shipped `BleTreadmill` reader and `RunRecorder.setTreadmillSample` seam; `BleTreadmill` is now the app-owned singleton threaded `main.dart` → `HomeScreen` → `RunScreen` and → `TreadmillTile`. Byte-identical iOS twin. No recorder change, no migration. Tracked in [roadmap.md § Planned features](../product/roadmap.md#planned-features--specced-2026-06-15).
+>
+> **Amended 2026-08-21 ([decisions § 704](../architecture/decisions.md)).** The toggle as built computed its subtitle from the belt speed, so `disconnected` / `connectFailed` / `connecting` all rendered as an engaged switch with no subtitle — indistinguishable from "connected, first sample pending" while distance was really coming from GPS, and `connecting` kept the last speed painted because it fell through on a bare `break` with no `setState`. The subtitle now switches on `BleTreadmillStatus` and `connected` is the only arm that can format a speed. Two new ARB keys (`runTreadmillConnecting`, `runTreadmillNoBeltData`) in all seven locales. The "Tests" section below is superseded: the three cases that landed replicated the screen's wiring in unit tests rather than driving it, and are replaced by twelve widget tests in `run_screen_recording_flow_test.dart` that drive the real screen through the real toggle + status listener via the `BleTreadmill` emit seams. **Hardware-in-the-loop verification against a real FTMS belt is still owed** (a device gate, not unwritten code).
 
 ## Goal & user value
 A runner on a treadmill can flip "Treadmill mode" on (and off) from the live run
@@ -12,8 +14,9 @@ backlog #13 (C3). **Mobile-only, no recorder change, no migration.**
 
 ## What already exists to build on (verified)
 - **Recorder seam (shipped).** `packages/run_recorder/lib/src/run_recorder.dart`:
-  - `void setTreadmillSample(double speedMps, {double? totalDistanceMetres})` (line ~613) — first call flips `_treadmillMode = true`; belt distance overrides GPS; wrapped in its own try/catch (L1/L4 contract honoured inside the recorder); no-op until `begin()`; excludes paused advance.
-  - `void clearTreadmillMode()` (line ~657) — reverts to the GPS distance path.
+  - `void setTreadmillSample(double speedMps, {double? totalDistanceMetres})` — first call flips `_treadmillMode = true` and **carries the distance already run across** (the belt then adds to it, rather than restarting the headline at the belt's own zero); wrapped in its own try/catch (L1/L4 contract honoured inside the recorder); no-op until `begin()`; excludes paused advance.
+  - `void clearTreadmillMode()` — hands the accumulated total back to the GPS accumulator, the mirror of the carry on the way in.
+  - **The run distance is one continuous total handed between sources, not two rival accumulators.** Mid-run is the only way the belt ever engages (open question 3 below), so every activation lands on an already-accumulating run: anchoring at the belt's own total used to zero the headline distance the instant the belt engaged and make the next lap split a negative delta, which `lapsToCanonicalJson` clamped into a silent 0 m lap. Both directions of the switch are continuous, and both are pinned in `packages/run_recorder/test/run_recorder_test.dart`.
   - `bool get treadmillMode` (line ~218) — current mode.
   - On `stop()` the recorder (when it was in treadmill mode) writes `metadata['indoor'] = true` + `metadata['indoor_source'] = 'treadmill'` + `metadata['distance_source'] = 'treadmill'` — already done, no UI work needed for persistence. (`indoor: true` is what keeps a belt-measured run out of the VDOT ceiling, same as the pedometer-estimated path.)
 - **BLE reader (shipped).** `apps/mobile_android/lib/ble_treadmill.dart` — `BleTreadmill` with:

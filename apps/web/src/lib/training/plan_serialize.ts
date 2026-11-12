@@ -16,12 +16,17 @@
  * and duration-based steps aren't represented in the table, so a parsed
  * plan carries distance + pace + notes per workout and nulls the rest.
  * Phase + weekly volume are *recomputed* on import (phase from week
- * position, volume from the summed distances) rather than trusted from
+ * position and the goal distance, as the generator assigns them; volume
+ * from the summed distances) rather than trusted from
  * the text.
+ *
+ * Dart twin of the parse half: `apps/mobile_android/lib/plan_serialize.dart`
+ * (decisions § 2053) — keep `parsePlanMarkdown` / `parsePlanJson` in lockstep.
  */
 
-import { GOAL_DISTANCES_M, phaseFor } from './training';
-import type { GeneratedPlan, GoalEvent, PlanPhase, WorkoutKind } from './training';
+import { GOAL_DISTANCES_M, planPhaseFor } from './training';
+import type { GeneratedPlan, GoalEvent, WorkoutKind } from './training';
+import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from './plan_races';
 
 const METRES_PER_MILE = 1609.344;
 
@@ -54,6 +59,13 @@ export interface ExportWorkout {
 	target_distance_m: number | null;
 	target_pace_sec_per_km: number | null;
 	notes: string | null;
+	target_duration_seconds?: number | null;
+	race_name?: string | null;
+	race_priority?: string | null;
+	/// JSON only: when a B/C race taper eased this workout (decisions § 2063).
+	/// The Markdown table is a prescription people edit by hand, so it does not
+	/// carry the stamp; the JSON export is the machine round-trip and does.
+	race_taper_applied_at?: string | null;
 }
 
 export interface ExportPlan {
@@ -119,17 +131,38 @@ export function planToMarkdown(plan: ExportPlan): string {
 	}
 	lines.push(`- Start date: ${plan.startDate}`);
 	lines.push('');
-	lines.push('| Week | Date | Type | Distance | Pace | Notes |');
-	lines.push('| --- | --- | --- | --- | --- | --- |');
+	// The race columns appear only when a race carries one of them, so a plan
+	// without named races exports the six-column table older importers read.
+	const raceCols = plan.workouts.some(
+		(w) =>
+			w.kind === 'race' &&
+			(!!w.race_name || !!w.race_priority || (w.target_duration_seconds ?? 0) > 0),
+	);
+	if (raceCols) {
+		lines.push('| Week | Date | Type | Distance | Pace | Notes | Race | Priority | Goal |');
+		lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+	} else {
+		lines.push('| Week | Date | Type | Distance | Pace | Notes |');
+		lines.push('| --- | --- | --- | --- | --- | --- |');
+	}
 	const sorted = [...plan.workouts].sort((a, b) =>
 		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0,
 	);
 	for (const w of sorted) {
-		lines.push(
-			`| ${w.week_index + 1} | ${w.scheduled_date} | ${w.kind} | ${fmtKmCell(
-				w.target_distance_m,
-			)} | ${fmtPaceCell(w.target_pace_sec_per_km)} | ${sanitizeCell(w.notes)} |`,
-		);
+		const base = `| ${w.week_index + 1} | ${w.scheduled_date} | ${w.kind} | ${fmtKmCell(
+			w.target_distance_m,
+		)} | ${fmtPaceCell(w.target_pace_sec_per_km)} | ${sanitizeCell(w.notes)} |`;
+		if (!raceCols) {
+			lines.push(base);
+		} else if (w.kind === 'race') {
+			lines.push(
+				`${base} ${sanitizeCell(w.race_name ?? null)} | ${w.race_priority ?? ''} | ${fmtHmsCell(
+					w.target_duration_seconds ?? null,
+				)} |`,
+			);
+		} else {
+			lines.push(`${base}  |  |  |`);
+		}
 	}
 	return lines.join('\n') + '\n';
 }
@@ -138,15 +171,49 @@ export function planToJson(plan: ExportPlan): string {
 	return JSON.stringify(plan, null, 2);
 }
 
-class PlanParseError extends Error {}
+/// Why a pasted plan could not be read. The UI renders `code` + `params`
+/// through the catalogue (`plan_parse_message.ts`); `message` is the English
+/// reading, kept for logs and tests. Dart twin: `PlanParseError` in
+/// `plan_serialize.dart`, with the same codes and params.
+export type PlanParseCode =
+	| 'badDistance'
+	| 'badPace'
+	| 'duplicateColumn'
+	| 'missingColumn'
+	| 'raceNameTooLong'
+	| 'badRacePriority'
+	| 'badGoalTime'
+	| 'badWeek'
+	| 'badDate'
+	| 'unknownKind'
+	| 'raceFieldsOnNonRace'
+	| 'noRows'
+	| 'noGoalDistance'
+	| 'beforeStart'
+	| 'notJson'
+	| 'noWorkoutsArray'
+	| 'badJsonShape'
+	| 'badTaperStamp';
+
+export class PlanParseError extends Error {
+	readonly code: PlanParseCode;
+	readonly params: Readonly<Record<string, string>>;
+
+	constructor(code: PlanParseCode, params: Record<string, string>, message: string) {
+		super(message);
+		this.name = 'PlanParseError';
+		this.code = code;
+		this.params = params;
+	}
+}
 
 function parseDistanceCell(cell: string): number | null {
 	const t = cell.trim();
 	if (!t) return null;
 	const m = t.match(/^([\d.]+)\s*(km|mi|m)?$/i);
-	if (!m) throw new PlanParseError(`Couldn't read distance "${cell}".`);
+	if (!m) throw new PlanParseError('badDistance', { cell }, `Couldn't read distance "${cell}".`);
 	const num = parseFloat(m[1]);
-	if (Number.isNaN(num)) throw new PlanParseError(`Couldn't read distance "${cell}".`);
+	if (Number.isNaN(num)) throw new PlanParseError('badDistance', { cell }, `Couldn't read distance "${cell}".`);
 	const unit = (m[2] ?? 'km').toLowerCase();
 	if (unit === 'mi') return num * METRES_PER_MILE;
 	if (unit === 'm') return num;
@@ -157,7 +224,7 @@ function parsePaceCell(cell: string): number | null {
 	const t = cell.trim();
 	if (!t) return null;
 	const m = t.match(/^(\d{1,2}):(\d{2})$/);
-	if (!m) throw new PlanParseError(`Couldn't read pace "${cell}" — use m:ss.`);
+	if (!m) throw new PlanParseError('badPace', { cell }, `Couldn't read pace "${cell}" — use m:ss.`);
 	return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
@@ -173,6 +240,8 @@ function parseHms(t: string): number | null {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+const RACE_NAME_MAX = 120;
+
 interface ParsedRow {
 	weekIndex: number;
 	scheduled_date: string;
@@ -180,6 +249,102 @@ interface ParsedRow {
 	target_distance_m: number | null;
 	target_pace_sec_per_km: number | null;
 	notes: string | null;
+	race_name: string | null;
+	race_priority: RacePriority | null;
+	target_duration_seconds: number | null;
+}
+
+type Column =
+	| 'week'
+	| 'date'
+	| 'type'
+	| 'distance'
+	| 'pace'
+	| 'notes'
+	| 'race'
+	| 'priority'
+	| 'goal';
+
+const COLUMN_ALIASES: Record<string, Column> = {
+	week: 'week',
+	date: 'date',
+	type: 'type',
+	kind: 'type',
+	distance: 'distance',
+	pace: 'pace',
+	notes: 'notes',
+	note: 'notes',
+	race: 'race',
+	priority: 'priority',
+	goal: 'goal',
+};
+
+const LEGACY_COLUMNS: readonly Column[] = ['week', 'date', 'type', 'distance', 'pace', 'notes'];
+
+/// Maps a header row to column positions, or null when the header is the
+/// legacy six-column one (or a prefix of it) or names a column this parser
+/// does not know — both of which keep the positional reading.
+function headerColumns(cells: string[]): Map<Column, number> | null {
+	const names = cells.map((c) => COLUMN_ALIASES[c.trim().toLowerCase()]);
+	if (names.some((n) => !n)) return null;
+	if (names.every((n, i) => n === LEGACY_COLUMNS[i])) return null;
+	const map = new Map<Column, number>();
+	names.forEach((n, i) => {
+		if (map.has(n)) {
+			throw new PlanParseError('duplicateColumn', { column: cells[i] }, `Column "${cells[i]}" appears twice.`);
+		}
+		map.set(n, i);
+	});
+	for (const required of ['week', 'date', 'type'] as const) {
+		if (!map.has(required)) {
+			throw new PlanParseError('missingColumn', { column: required }, `The table has no ${required} column.`);
+		}
+	}
+	return map;
+}
+
+function parseRaceName(cell: string): string | null {
+	const t = cell.trim();
+	if (!t) return null;
+	if (t.length > RACE_NAME_MAX) {
+		throw new PlanParseError(
+			'raceNameTooLong',
+			{ name: `${t.slice(0, 40)}…`, max: String(RACE_NAME_MAX) },
+			`Race name "${t.slice(0, 40)}…" is longer than ${RACE_NAME_MAX} characters.`,
+		);
+	}
+	return t;
+}
+
+function parsePriorityCell(cell: string): RacePriority | null {
+	const t = cell.trim().toUpperCase();
+	if (!t) return null;
+	if (!(RACE_PRIORITIES as readonly string[]).includes(t)) {
+		throw new PlanParseError('badRacePriority', { cell }, `Bad race priority "${cell}" — use A, B or C.`);
+	}
+	return t as RacePriority;
+}
+
+/// A race goal cell: h:mm:ss with at most RACE_GOAL_MAX_HOURS hours, or m:ss
+/// under the same ceiling, minutes and seconds 0-59 where they are not the
+/// leading field.
+function parseGoalCell(cell: string): number | null {
+	const t = cell.trim();
+	if (!t) return null;
+	const m = /^(\d+):(\d{2})(?::(\d{2}))?$/.exec(t);
+	let sec: number | null = null;
+	if (m) {
+		const fields = m.slice(1).filter((f) => f != null).map(Number);
+		const inner = fields.slice(1);
+		const total = parseHms(t);
+		if (inner.every((f) => f <= 59) && total != null && total <= RACE_GOAL_MAX_HOURS * 3600 + 59 * 60 + 59) {
+			sec = total;
+		}
+	}
+	if (sec == null || sec <= 0) {
+		throw new PlanParseError('badGoalTime', { cell }, `Couldn't read goal time "${cell}" — use h:mm:ss.`);
+	}
+	return sec;
 }
 
 function isSeparatorRow(cells: string[]): boolean {
@@ -198,6 +363,7 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 	let startDate: string | null = null;
 	const rows: ParsedRow[] = [];
 	let sawHeaderRow = false;
+	let columns: Map<Column, number> | null = null;
 
 	for (const raw of rawLines) {
 		const line = raw.trim();
@@ -228,24 +394,50 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 			// Kind, Distance, Pace). Require those five — fewer is a non-table
 			// line to skip; a short-but-present row then surfaces a readable
 			// validation error below instead of being silently dropped.
-			if (cells.length < 5) continue;
 			if (isSeparatorRow(cells)) continue;
-			// Header row (the `Week | Date | …` titles) — skip once.
-			if (!sawHeaderRow && /week/i.test(cells[0]) && /date/i.test(cells[1])) {
-				sawHeaderRow = true;
-				continue;
+			// Header row (the `Week | Date | …` titles) — read once. A header
+			// naming the race columns, or ordering columns differently, maps
+			// cells by name; the legacy one keeps the positional reading.
+			if (!sawHeaderRow) {
+				const legacyHeader = cells.length >= 2 && /week/i.test(cells[0]) && /date/i.test(cells[1]);
+				const named = rows.length === 0 && cells.some((c) => c.trim().toLowerCase() === 'week');
+				if (legacyHeader || named) {
+					sawHeaderRow = true;
+					columns = rows.length === 0 ? headerColumns(cells) : null;
+					continue;
+				}
 			}
-			const [weekCell, dateCell, kindCell, distCell, paceCell, ...noteCells] = cells;
+			if (!columns && cells.length < 5) continue;
+			const cell = (col: Column): string => {
+				const i = columns?.get(col);
+				return i == null ? '' : (cells[i] ?? '');
+			};
+			const [weekCell, dateCell, kindCell, distCell, paceCell, ...noteCells] = columns
+				? [cell('week'), cell('date'), cell('type'), cell('distance'), cell('pace'), cell('notes')]
+				: cells;
 			const weekNum = parseInt(weekCell, 10);
 			if (Number.isNaN(weekNum) || weekNum < 1) {
-				throw new PlanParseError(`Bad week number "${weekCell}".`);
+				throw new PlanParseError('badWeek', { cell: weekCell }, `Bad week number "${weekCell}".`);
 			}
 			if (!ISO_DATE.test(dateCell)) {
-				throw new PlanParseError(`Bad date "${dateCell}" — use YYYY-MM-DD.`);
+				throw new PlanParseError('badDate', { cell: dateCell }, `Bad date "${dateCell}" — use YYYY-MM-DD.`);
 			}
 			const kind = kindCell.trim().toLowerCase() as WorkoutKind;
 			if (!WORKOUT_KINDS.includes(kind)) {
-				throw new PlanParseError(`Unknown workout type "${kindCell}".`);
+				throw new PlanParseError('unknownKind', { cell: kindCell }, `Unknown workout type "${kindCell}".`);
+			}
+			const race_name = parseRaceName(cell('race'));
+			const race_priority = parsePriorityCell(cell('priority'));
+			const target_duration_seconds = parseGoalCell(cell('goal'));
+			if (
+				kind !== 'race' &&
+				(race_name != null || race_priority != null || target_duration_seconds != null)
+			) {
+				throw new PlanParseError(
+					'raceFieldsOnNonRace',
+					{ date: dateCell, kind },
+					`Race, Priority and Goal only apply to race rows — ${dateCell} is a ${kind} workout.`,
+				);
 			}
 			rows.push({
 				weekIndex: weekNum - 1,
@@ -254,12 +446,15 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 				target_distance_m: parseDistanceCell(distCell),
 				target_pace_sec_per_km: parsePaceCell(paceCell),
 				notes: noteCells.join('|').trim() || null,
+				race_name,
+				race_priority,
+				target_duration_seconds,
 			});
 		}
 	}
 
 	if (rows.length === 0) {
-		throw new PlanParseError('No workout rows found. Expected a | Week | Date | … | table.');
+		throw new PlanParseError('noRows', {}, 'No workout rows found. Expected a | Week | Date | … | table.');
 	}
 
 	rows.sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0));
@@ -271,29 +466,6 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 		list.push(r);
 		byWeek.set(r.weekIndex, list);
 	}
-
-	const weeks = [...byWeek.keys()]
-		.sort((a, b) => a - b)
-		.map((weekIndex) => {
-			const wos = byWeek.get(weekIndex)!;
-			const target_volume_m = wos.reduce((s, w) => s + (w.target_distance_m ?? 0), 0);
-			return {
-				week_index: weekIndex,
-				phase: phaseFor(weekIndex, totalWeeks) as PlanPhase,
-				target_volume_m,
-				notes: null,
-				workouts: wos.map((w) => ({
-					scheduled_date: w.scheduled_date,
-					kind: w.kind,
-					target_distance_m: w.target_distance_m,
-					target_duration_seconds: null,
-					target_pace_sec_per_km: w.target_pace_sec_per_km,
-					target_pace_tolerance_sec: null,
-					structure: null,
-					notes: w.notes,
-				})),
-			};
-		});
 
 	const goalEvent: GoalEvent =
 		goalEventToken && GOAL_EVENTS.includes(goalEventToken as GoalEvent)
@@ -312,10 +484,47 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 		resolvedDistance = Math.max(0, ...rows.map((r) => r.target_distance_m ?? 0));
 	}
 	if (!(resolvedDistance > 0)) {
-		throw new PlanParseError('Could not determine a goal distance.');
+		throw new PlanParseError('noGoalDistance', {}, 'Could not determine a goal distance.');
 	}
 
+	const weeks = [...byWeek.keys()]
+		.sort((a, b) => a - b)
+		.map((weekIndex) => {
+			const wos = byWeek.get(weekIndex)!;
+			const target_volume_m = wos.reduce((s, w) => s + (w.target_distance_m ?? 0), 0);
+			return {
+				week_index: weekIndex,
+				// The generator's own rule, so a pasted ultra plan tapers as one.
+				phase: planPhaseFor(weekIndex, totalWeeks, resolvedDistance),
+				target_volume_m,
+				notes: null,
+				workouts: wos.map((w) => ({
+					scheduled_date: w.scheduled_date,
+					kind: w.kind,
+					target_distance_m: w.target_distance_m,
+					target_duration_seconds: w.target_duration_seconds,
+					target_pace_sec_per_km: w.target_pace_sec_per_km,
+					target_pace_tolerance_sec: null,
+					structure: null,
+					notes: w.notes,
+					race_name: w.race_name,
+					race_priority: w.race_priority,
+				})),
+			};
+		});
+
+
 	const start = startDate && ISO_DATE.test(startDate) ? startDate : rows[0].scheduled_date;
+	// create_training_plan refuses a workout outside the plan's window, so a
+	// hand-written table dated before its own "Start date" line is refused
+	// here, readably, rather than as a raw server code on create.
+	if (rows[0].scheduled_date < start) {
+		throw new PlanParseError(
+			'beforeStart',
+			{ date: rows[0].scheduled_date, start },
+			`The workout on ${rows[0].scheduled_date} is before the plan's start date, ${start}.`,
+		);
+	}
 	const endDate = rows[rows.length - 1].scheduled_date;
 
 	return {
@@ -342,22 +551,78 @@ export function parsePlanJson(text: string): ParsedPlan {
 	try {
 		obj = JSON.parse(text);
 	} catch {
-		throw new PlanParseError('Not valid JSON.');
+		throw new PlanParseError('notJson', {}, 'Not valid JSON.');
 	}
 	const p = obj as Partial<ExportPlan>;
 	if (!p || !Array.isArray(p.workouts)) {
-		throw new PlanParseError('JSON is missing a workouts array.');
+		throw new PlanParseError('noWorkoutsArray', {}, 'JSON is missing a workouts array.');
 	}
 	// Re-route through the Markdown builder so JSON + Markdown share one
 	// reconstruction path (phase recompute, volume summing, validation).
-	return parsePlanMarkdown(
+	const workouts = p.workouts as ExportWorkout[];
+	// A workouts array whose entries are not export-shaped objects would
+	// otherwise surface as a TypeError from the exporter, which the UI cannot
+	// say in the runner's language.
+	if (
+		workouts.some(
+			(w) =>
+				w == null ||
+				typeof w !== 'object' ||
+				Array.isArray(w) ||
+				typeof w.week_index !== 'number' ||
+				typeof w.scheduled_date !== 'string',
+		)
+	) {
+		throw new PlanParseError('badJsonShape', {}, 'JSON workouts are not in the export shape.');
+	}
+	const parsed = parsePlanMarkdown(
 		planToMarkdown({
 			name: p.name ?? 'Imported plan',
 			goalEvent: p.goalEvent ?? 'custom',
 			goalDistanceM: p.goalDistanceM ?? 0,
 			goalTimeSec: p.goalTimeSec ?? null,
 			startDate: p.startDate ?? '',
-			workouts: p.workouts as ExportWorkout[],
+			workouts,
 		}),
 	);
+	return withTaperStamps(parsed, workouts);
+}
+
+const TAPER_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/// The table drops `race_taper_applied_at`, so the JSON import lays each
+/// workout's stamp back onto the parsed plan, matching the n-th workout of a
+/// date and kind to the n-th the table produced (every sort on the way is
+/// stable). Without it a tapered plan re-imported would be offered, and cut
+/// by, the same taper again.
+function withTaperStamps(parsed: ParsedPlan, workouts: ExportWorkout[]): ParsedPlan {
+	const queues = new Map<string, (string | null)[]>();
+	const ordered = [...workouts].sort((a, b) =>
+		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0,
+	);
+	for (const w of ordered) {
+		const raw = w.race_taper_applied_at ?? null;
+		if (raw != null && (typeof raw !== 'string' || !TAPER_STAMP.test(raw))) {
+			throw new PlanParseError(
+				'badTaperStamp',
+				{ value: String(raw), date: w.scheduled_date },
+				`Couldn't read race_taper_applied_at "${String(raw)}" on ${w.scheduled_date}.`,
+			);
+		}
+		const key = `${w.scheduled_date}|${w.kind}`;
+		queues.set(key, [...(queues.get(key) ?? []), raw]);
+	}
+	return {
+		...parsed,
+		generated: {
+			...parsed.generated,
+			weeks: parsed.generated.weeks.map((wk) => ({
+				...wk,
+				workouts: wk.workouts.map((wo) => ({
+					...wo,
+					race_taper_applied_at: queues.get(`${wo.scheduled_date}|${wo.kind}`)?.shift() ?? null,
+				})),
+			})),
+		},
+	};
 }

@@ -23,6 +23,73 @@ struct RunCheckpoint: Codable {
     // Optional as nil, which is exactly the recover-an-in-flight-run-
     // after-app-upgrade path we must not break.
     let averageBPM: Double?
+    // Added alongside `averageBPM`: the share of the run's active time the
+    // sensor was delivering when the checkpoint was written, so a recovered
+    // run states the same thing about its heart rate that a stopped one
+    // would. Optional for the same reason, and decoded the same way — a
+    // checkpoint from a build predating the field is UNMEASURED, which is
+    // what nil means here and everywhere else this figure travels. It must
+    // never decode as 0: that would claim the sensor delivered nothing.
+    let hrCoverage: Double?
+    // Added alongside the heart-rate pair, and for the reason Wear OS learned
+    // in issue #389: a crash-recovered run that kept its distance and lost its
+    // step count uploads silently short, and nothing on the row says a
+    // pedometer was ever running. Nil is UNMEASURED — no step-counting
+    // hardware, a declined Motion & Fitness grant, or a checkpoint from a
+    // build predating the field — and must never decode as 0, which would
+    // claim the runner stood still.
+    let steps: Int?
+    // The runner's lap marks so far, in the cumulative shape `markLap` records
+    // them. Laps have the same exposure as steps and are the same kind of
+    // input: a mid-run act the runner performed, held nowhere else until the
+    // run syncs. Absent in an older checkpoint, which decodes as no marks.
+    let laps: [LapMark]?
+    // Added alongside the pre-run activity picker: what the runner chose, so a
+    // crash-recovered run is stamped with the activity it was recorded as
+    // rather than silently reverting to a run. Stored as the raw token because
+    // the checkpoint is a wire format and the column's vocabulary — not this
+    // build's enum — is what it has to survive. A checkpoint from a build
+    // predating the field decodes as "run", the value the column defaults to.
+    // Mirrors Wear OS's `Checkpoint.activityType`.
+    let activityType: String
+    // The `privacy_default` snapshot as `runs.is_public`, so a recovered run
+    // is saved with the visibility it was recorded under rather than
+    // defaulting private — Wear OS's `Checkpoint.privacyDefault`, #389. Nil is
+    // "the phone never said", the same statement the stop path makes.
+    let isPublic: Bool?
+    // The estimator that produced `distanceMetres`, and the metres it filled
+    // from the pedometer. Nil in a checkpoint from a build that summed raw
+    // hops, so a recovered run is never labelled with an algorithm it was
+    // not measured by.
+    let distanceEstimator: String?
+    let distanceStepFilledMetres: Double?
+    // What of those metres the gaps' chords would not have credited. Nil in a
+    // checkpoint from a build predating it, whose run then omits the key.
+    let distanceStepOverChordMetres: Double?
+    // When the run was paused, if it was paused at this checkpoint. A run
+    // that is continued after the app was terminated resumes paused rather
+    // than silently crediting the pause as running time. Nil in a recording
+    // checkpoint and in one from a build predating the field, which wrote no
+    // checkpoint at all while paused — see `RunResumePlan`.
+    let pausedAt: Date?
+    // The UNGRADED mean and the covered seconds behind `averageBPM` /
+    // `hrCoverage`. Those two are what a saved run claims, and the graded
+    // mean is nil below half coverage, so a run continued from them could
+    // not carry its pre-crash heart rate forward to be graded again at the
+    // finish. Nil from an older build; `RunResumePlan.heartRatePrior` falls
+    // back to the graded pair.
+    let hrMeanUngraded: Double?
+    let hrCoveredSeconds: Double?
+    // Whether the track file holds every fix the distance estimator took,
+    // those past the 30 m gate flagged `offTrack`
+    // (docs/features/gps_distance.md § Stored track). Nil from a build that
+    // stored only the gated fixes, so a run continued or recovered from it
+    // claims no complete track.
+    let trackComplete: Bool?
+    // The workout review so far, the step in progress as a skipped row, so a
+    // recovered or continued run keeps its link to the plan workout. Nil on a
+    // free run and from an older build.
+    let workoutReview: WorkoutReview?
 
     init(
         id: String,
@@ -33,6 +100,19 @@ struct RunCheckpoint: Codable {
         trackPointCount: Int,
         cacheFileURL: URL,
         averageBPM: Double?,
+        hrCoverage: Double?,
+        steps: Int?,
+        laps: [LapMark]?,
+        activityType: String = RunActivityType.run.rawValue,
+        isPublic: Bool? = nil,
+        distanceEstimator: String? = nil,
+        distanceStepFilledMetres: Double? = nil,
+        distanceStepOverChordMetres: Double? = nil,
+        pausedAt: Date? = nil,
+        hrMeanUngraded: Double? = nil,
+        hrCoveredSeconds: Double? = nil,
+        trackComplete: Bool? = nil,
+        workoutReview: WorkoutReview? = nil,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -44,6 +124,19 @@ struct RunCheckpoint: Codable {
         self.trackPointCount = trackPointCount
         self.cacheFileURL = cacheFileURL
         self.averageBPM = averageBPM
+        self.hrCoverage = hrCoverage
+        self.steps = steps
+        self.laps = laps
+        self.activityType = activityType
+        self.isPublic = isPublic
+        self.distanceEstimator = distanceEstimator
+        self.distanceStepFilledMetres = distanceStepFilledMetres
+        self.distanceStepOverChordMetres = distanceStepOverChordMetres
+        self.pausedAt = pausedAt
+        self.hrMeanUngraded = hrMeanUngraded
+        self.hrCoveredSeconds = hrCoveredSeconds
+        self.trackComplete = trackComplete
+        self.workoutReview = workoutReview
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -66,6 +159,20 @@ struct RunCheckpoint: Codable {
         cacheFileURL = try c.decodeIfPresent(URL.self, forKey: .cacheFileURL)
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         averageBPM = try c.decodeIfPresent(Double.self, forKey: .averageBPM)
+        hrCoverage = try c.decodeIfPresent(Double.self, forKey: .hrCoverage)
+        steps = try c.decodeIfPresent(Int.self, forKey: .steps)
+        laps = try c.decodeIfPresent([LapMark].self, forKey: .laps)
+        activityType = try c.decodeIfPresent(String.self, forKey: .activityType)
+            ?? RunActivityType.run.rawValue
+        isPublic = try c.decodeIfPresent(Bool.self, forKey: .isPublic)
+        distanceEstimator = try c.decodeIfPresent(String.self, forKey: .distanceEstimator)
+        distanceStepFilledMetres = try c.decodeIfPresent(Double.self, forKey: .distanceStepFilledMetres)
+        distanceStepOverChordMetres = try c.decodeIfPresent(Double.self, forKey: .distanceStepOverChordMetres)
+        pausedAt = try c.decodeIfPresent(Date.self, forKey: .pausedAt)
+        hrMeanUngraded = try c.decodeIfPresent(Double.self, forKey: .hrMeanUngraded)
+        hrCoveredSeconds = try c.decodeIfPresent(Double.self, forKey: .hrCoveredSeconds)
+        trackComplete = try c.decodeIfPresent(Bool.self, forKey: .trackComplete)
+        workoutReview = try? c.decodeIfPresent(WorkoutReview.self, forKey: .workoutReview)
     }
 }
 
@@ -98,24 +205,14 @@ class CheckpointStore {
     private var pointsSinceSync = 0
 
     init(runId: String) {
-        let dir = CheckpointStore.checkpointDirectory
         // A failure here means every subsequent track append silently drops
-        // (the file can't be created), so surface it rather than swallowing
-        // with `try?` — matches the logging in `appendTrackPoints`.
-        do {
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        } catch {
-            #if DEBUG
-            print("CheckpointStore: failed to create checkpoint dir \(dir.path): \(error)")
-            #endif
-        }
+        // (the file can't be created); `createDirectory` logs it rather than
+        // swallowing with `try?` — matches the logging in `appendTrackPoints`.
+        RunPayloadStorage.createDirectory(at: CheckpointStore.checkpointDirectory)
         trackFileURL = CheckpointStore.trackFile(runId: runId)
     }
 
-    private static var checkpointDirectory: URL {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("run_checkpoint", isDirectory: true)
-    }
+    private static var checkpointDirectory: URL { RunPayloadStorage.directory }
 
     /// Where a run's NDJSON track lives, without touching the filesystem —
     /// so a caller that only needs the path (a finished run's payload) does
@@ -247,9 +344,19 @@ class CheckpointStore {
     /// Number of decodable points on disk. Streams — the count is never
     /// derived from an array that had to exist first.
     func countTrackPoints() -> Int {
-        var count = 0
-        forEachTrackPoint { _ in count += 1 }
-        return count
+        countTrackPointsAndSegments().points
+    }
+
+    /// The decodable points on disk and the estimator segments they hold
+    /// (`TrackPointRecord.opensSegment`), in one streamed pass.
+    func countTrackPointsAndSegments() -> (points: Int, segments: Int) {
+        var points = 0
+        var segments = 0
+        forEachTrackPoint { record in
+            if record.opensSegment(pointsBefore: points) { segments += 1 }
+            points += 1
+        }
+        return (points, segments)
     }
 
     func clear() {
@@ -263,8 +370,8 @@ class CheckpointStore {
     /// The NDJSON now outlives the UserDefaults checkpoint — a finished run
     /// streams its payload straight from the file, so `stop()` can no longer
     /// delete it — which means a discarded recovery, or a process kill
-    /// between stop and reset, can strand one in Caches. Starting a new run
-    /// is the moment nothing can still want the old ones.
+    /// between stop and reset, can strand one. Starting a new run is the
+    /// moment nothing can still want the old ones.
     static func purgeTrackFiles(except keep: URL) {
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: checkpointDirectory,
@@ -292,4 +399,32 @@ struct TrackPointRecord: Codable {
     let lng: Double
     let ele: Double?
     let ts: String
+    var accuracyMetres: Double? = nil
+    var speedMps: Double? = nil
+    var speedAccuracyMps: Double? = nil
+    var bearingDeg: Double? = nil
+    /// The run's distance credited up to and including this fix
+    /// (docs/features/gps_distance.md § Waypoint fields).
+    var distM: Double? = nil
+    /// `true` on a fix the distance estimator took past the 30 m track gate:
+    /// stored for the server's replay, skipped by the mini-map and every
+    /// other reader of the line. Nil, and so omitted, on every other fix
+    /// (docs/features/gps_distance.md § Stored track).
+    var offTrack: Bool? = nil
+    /// `true` on the first fix after a pause or a continued run closed the
+    /// distance estimator's segment, so the server replays each segment apart
+    /// (spec v1.8, docs/features/gps_distance.md § Stored track). Nil, and so
+    /// omitted, on every other fix.
+    var segmentStart: Bool? = nil
+
+    var isOffTrack: Bool { offTrack == true }
+
+    /// Whether this point opens an estimator segment as the server's replay
+    /// counts them: the track's first point, and every later one marked
+    /// `segmentStart`. Summed into `metadata.distance_segments`, so the server
+    /// can tell a track that lost its marks on the way to storage
+    /// (docs/features/gps_distance.md § Server recompute).
+    func opensSegment(pointsBefore: Int) -> Bool {
+        pointsBefore == 0 || segmentStart == true
+    }
 }

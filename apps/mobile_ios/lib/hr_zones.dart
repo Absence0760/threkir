@@ -63,11 +63,57 @@ List<HrZoneBucket> hrZoneBreakdown(
   });
 }
 
+/// The range a stored `max_hr_bpm` has to fall in to be used as one. It is a
+/// jsonb prefs key with no column and therefore no CHECK, so every reader
+/// carries this bound itself; a value outside it is ignored rather than
+/// trusted, and the derivation falls through to age or to the legacy ladder.
+const int kMaxHrBpmMin = 80;
+const int kMaxHrBpmMax = 240;
+
+/// Whether a stored `max_hr_bpm` may be used as one. Every reader ignores a
+/// value outside the range, so every WRITER has to refuse the same one, or the
+/// runner types a figure the app accepts and then silently declines to use
+/// (decisions § 1407). Stating the test once is the point: the bound was
+/// already named per rail, and it was the three separate spellings of it that
+/// let the Wear OS rail apply a value the other two ignored (§ 1245).
+bool isUsableMaxHrBpm(int? value) =>
+    value != null && value >= kMaxHrBpmMin && value <= kMaxHrBpmMax;
+
+/// The range a stored `resting_hr_bpm` has to fall in to be used as one. The
+/// second jsonb HR pref with no column and therefore no CHECK, so it is named
+/// beside the max-HR range rather than in `training_load` (its only reader):
+/// "what range is an HR pref allowed to be" having one home is the whole
+/// lesson of § 1245, where three separate spellings of the max-HR bound let
+/// one rail use a value the other two ignored.
+///
+/// 20..200 is the WIDER of the two ranges the tree already shipped — this
+/// screen's own picker took 20..200 while both web inputs carry an advisory
+/// `min="30" max="120"` that never reaches constraint validation — so naming
+/// it refuses nothing any rail accepts today.
+const int kRestingHrBpmMin = 20;
+const int kRestingHrBpmMax = 200;
+
+/// Whether a typed `resting_hr_bpm` may be stored as one. Unlike
+/// `isUsableMaxHrBpm` this is a WRITE-side test only: `training_load` reads the
+/// key with no bound of its own beyond requiring `rest < max`, so nothing here
+/// is claiming the readers ignore what it refuses.
+bool isUsableRestingHrBpm(int? value) =>
+    value != null && value >= kRestingHrBpmMin && value <= kRestingHrBpmMax;
+
+/// The age range Tanaka is applied over, for the same reason.
+const int kTanakaAgeMin = 5;
+const int kTanakaAgeMax = 120;
+
 /// Tanaka (2001) age-predicted maximal heart rate: 208 − 0.7 × age.
 /// More accurate for masters runners than the classic 220 − age, which
 /// systematically overestimates HR-max past ~40 and pushed older
-/// runners into falsely-low zones (persona-hunt Older #8). Kept in
-/// lockstep with `apps/web/src/lib/hr_zones.ts` (`tanakaMaxHr`).
+/// runners into falsely-low zones (persona-hunt Older #8). The Dart twin of
+/// `apps/web/src/lib/training/hr_zones.ts` (`tanakaMaxHr`), which also has a
+/// THIRD rail outside the enforced pair: the Wear OS `resolveZoneCutoffs` in
+/// `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/SupabaseClient.kt`.
+/// All three share the derivation and the input range; the watch alone returns
+/// null rather than the legacy 190 ladder when there is no usable signal, which
+/// is deliberate and stated on all three rails (decisions § 1245).
 int tanakaMaxHr(int ageYears) => (208 - 0.7 * ageYears).round();
 
 /// Zone upper bounds (Z1..Z5) at 60/70/80/90/100 % of a max HR.
@@ -79,10 +125,10 @@ List<int> zoneCutoffsFromMaxHr(int maxHr) =>
 /// the legacy 190-bpm fallback (`zoneCutoffsFromMaxHr(190)` ==
 /// `[114, 133, 152, 171, 190]`). Mirrors the TS `defaultZoneCutoffs`.
 List<int> defaultZoneCutoffs({int? maxHrBpm, int? ageYears}) {
-  if (maxHrBpm != null && maxHrBpm >= 80 && maxHrBpm <= 240) {
-    return zoneCutoffsFromMaxHr(maxHrBpm);
+  if (isUsableMaxHrBpm(maxHrBpm)) {
+    return zoneCutoffsFromMaxHr(maxHrBpm!);
   }
-  if (ageYears != null && ageYears >= 5 && ageYears <= 120) {
+  if (ageYears != null && ageYears >= kTanakaAgeMin && ageYears <= kTanakaAgeMax) {
     return zoneCutoffsFromMaxHr(tanakaMaxHr(ageYears));
   }
   return zoneCutoffsFromMaxHr(190);

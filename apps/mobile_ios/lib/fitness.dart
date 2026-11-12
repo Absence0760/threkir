@@ -6,7 +6,7 @@ import 'training_load.dart' show kLayoffResetDays;
 
 /// Fitness metrics — VO2 max + training-load math.
 ///
-/// Dart port of `apps/web/src/lib/fitness.ts`. Pure functions; inputs are
+/// Dart port of `apps/web/src/lib/training/fitness.ts`. Pure functions; inputs are
 /// plain `Run` objects, outputs are scalars / small structs. No
 /// Supabase or auth calls. Keep the formulas in sync with the web module
 /// — the same numbers should appear on every surface.
@@ -55,22 +55,40 @@ const double kMinQualifyingDistanceM = 1500;
 /// Qualifying runs for fitness math: an actual recording or reliable
 /// import, distance >= kMinQualifyingDistanceM, duration >= 5 min. Indoor /
 /// treadmill runs are excluded — belt-/estimate-derived distance must not feed
-/// VDOT (#16).
+/// VDOT (#16). Cycling is excluded for the same reason goals.dart excludes it
+/// from pace: bike speed is not running speed, and currentVdot takes the MAX
+/// over runs, so one commute rides straight to the top and takes the threshold
+/// pace, TSS and race predictions with it.
 List<Run> qualifyingRuns(Iterable<Run> runs) {
   return [
     for (final r in runs)
       if (r.distanceMetres >= kMinQualifyingDistanceM &&
           r.duration.inSeconds >= 300 &&
+          r.metadata?['activity_type'] != 'cycle' &&
           r.metadata?['indoor'] != true &&
-          (r.source == RunSource.app ||
-              r.source == RunSource.watch ||
-              r.source == RunSource.strava ||
-              r.source == RunSource.garmin ||
-              r.source == RunSource.healthkit ||
-              r.source == RunSource.healthconnect))
+          _sourceQualifies[r.source] == true)
         r,
   ];
 }
+
+/// Which [RunSource] values carry a trustworthy distance + duration for
+/// fitness math. Declared as a total map over the enum rather than an `||`
+/// chain so adding a value is a missing-key here until it is consciously
+/// classified — the previous chain silently omitted `parkrun` and `race`, the
+/// two most authoritative sources there are (a certified weekly 5K and a
+/// chip-timed official result). Migration
+/// `20270424_001_pr_achievements_include_parkrun_race` fixed exactly this
+/// omission in the SQL PR + achievement filters; the client copy was missed.
+const Map<RunSource, bool> _sourceQualifies = {
+  RunSource.app: true,
+  RunSource.watch: true,
+  RunSource.strava: true,
+  RunSource.garmin: true,
+  RunSource.healthkit: true,
+  RunSource.healthconnect: true,
+  RunSource.parkrun: true,
+  RunSource.race: true,
+};
 
 /// Runner's VDOT from a single run. Inverts Daniels' "%VO2max at a
 /// given race pace" tables:
@@ -106,6 +124,7 @@ double? vdotFromRun(double distanceM, int durationS) {
 /// A runner's fitness ceiling is what their hardest recent run proved.
 double? currentVdot(Iterable<Run> runs, {DateTime? now}) {
   final t = now ?? DateTime.now();
+  // elapsed-time: rolling 90-day recency cutoff compared against run instants.
   final cutoff = t.subtract(const Duration(days: 90));
   double? best;
   for (final r in qualifyingRuns(runs)) {
@@ -128,7 +147,7 @@ double? vo2MaxFromVdot(double? vdot) => vdot;
 ///
 /// Spot checks against Daniels' published table — VDOT 50 → 4:15/km,
 /// VDOT 60 → 3:40/km, VDOT 70 → 3:14/km — match within a couple of
-/// seconds across VDOT 30-70. Mirrors apps/web/src/lib/fitness.ts.
+/// seconds across VDOT 30-70. Mirrors apps/web/src/lib/training/fitness.ts.
 double? thresholdPaceSecPerKmFromVdot(double? vdot) {
   if (vdot == null || vdot <= 0) return null;
   final target = 0.88 * vdot + 4.6;
@@ -144,7 +163,9 @@ double? thresholdPaceSecPerKmFromVdot(double? vdot) {
 
 /// Training stress score for a single run.
 double runTss(double distanceM, int durationS, double thresholdPaceSecPerKm) {
-  if (distanceM < 100 || durationS < 30 || thresholdPaceSecPerKm <= 0) {
+  // Negated so a NaN fails the floor: `NaN < 100` is false, and one NaN TSS
+  // poisons every later day of the CTL/ATL EWMA.
+  if (!(distanceM >= 100) || durationS < 30 || !(thresholdPaceSecPerKm > 0)) {
     return 0;
   }
   final runPaceSecPerKm = durationS / (distanceM / 1000);

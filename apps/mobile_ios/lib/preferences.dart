@@ -1,22 +1,21 @@
 import 'dart:convert';
 
+import 'package:core_models/core_models.dart'
+    show DistanceUnit, kMetresPerMile, parseIsoStrictValue;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import 'apple_watch_prefs_bridge.dart';
+import 'audience_level.dart';
+import 'column_limits.dart';
 import 'goals.dart';
 import 'l10n/locale_support.dart';
 import 'l10n/number_format.dart';
+import 'typed_decimal.dart';
 import 'undo_queue.dart';
 
-enum DistanceUnit { km, mi }
-
 enum WeightUnit { kg, lbs }
-
-/// Metres in one statute mile. The single definition — `UnitFormat` and the
-/// split-interval defaults both read it, and the course-marker panel used to
-/// keep a second copy of the same number.
-const double kMetresPerMile = 1609.344;
 
 /// Basemaps the user can pick in Settings → Preferences. Same four values,
 /// in the same order, as web's `MapStyle` union
@@ -33,145 +32,6 @@ const String kDefaultMapStyle = 'streets';
 String normaliseMapStyle(String? raw) =>
     kMapStyles.contains(raw) ? raw! : kDefaultMapStyle;
 
-enum ActivityType {
-  run,
-  walk,
-  cycle,
-  hike,
-  stroller;
-
-  /// The user-facing name is NOT here: it needs an [AppLocalizations], and
-  /// keeping it as a hardcoded getter printed five English words in all six
-  /// non-English locales. Resolve it through
-  /// `activity_type_labels.dart#activityTypeLabel`.
-
-  IconData get icon {
-    switch (this) {
-      case ActivityType.run:
-        return Icons.directions_run;
-      case ActivityType.walk:
-        return Icons.directions_walk;
-      case ActivityType.cycle:
-        return Icons.directions_bike;
-      case ActivityType.hike:
-        return Icons.terrain;
-      case ActivityType.stroller:
-        return Icons.child_friendly;
-    }
-  }
-
-  /// Cycling shows speed (km/h, mph) instead of pace (min/km, min/mi).
-  bool get usesSpeed => this == ActivityType.cycle;
-
-  /// Calories burned per kilogram of body weight per kilometre travelled.
-  /// Approximate metabolic equivalents.
-  double get kcalPerKgPerKm {
-    switch (this) {
-      case ActivityType.run:
-        return 1.0;
-      case ActivityType.walk:
-        return 0.5;
-      case ActivityType.cycle:
-        return 0.4;
-      case ActivityType.hike:
-        return 0.7;
-      case ActivityType.stroller:
-        // Running while pushing a stroller — a touch above open running.
-        return 1.1;
-    }
-  }
-
-  /// Distance interval (metres) for split notifications, in the runner's own
-  /// unit. Larger for cycling so a 30 km ride doesn't fire 30 announcements.
-  ///
-  /// Unit-aware because a split is a landmark, not a raw distance: an
-  /// imperial runner expects to be told when they pass a MILE. Defaulting
-  /// everyone to a kilometre gave them splits at 0.6 mi, 1.2 mi, 1.9 mi — the
-  /// settings screen has always offered a "1 mi" option, the default just
-  /// didn't follow the preference. The values match the presets that screen
-  /// lists, so the default is one of the choices rather than a fourth number.
-  double splitIntervalMetresFor(DistanceUnit unit) {
-    final imperial = unit == DistanceUnit.mi;
-    switch (this) {
-      case ActivityType.cycle:
-        return imperial ? 5 * kMetresPerMile : 5000;
-      default:
-        return imperial ? kMetresPerMile : 1000;
-    }
-  }
-
-  /// GPS distance filter in metres — how far the runner must move before
-  /// the next position update is fired. Larger for cycling.
-  int get gpsDistanceFilter {
-    switch (this) {
-      case ActivityType.cycle:
-        return 5;
-      default:
-        return 3;
-    }
-  }
-
-  /// Minimum movement (metres) between GPS samples that counts as real
-  /// motion. Anything below this is treated as GPS jitter.
-  double get minMovementMetres {
-    switch (this) {
-      case ActivityType.cycle:
-        return 4;
-      default:
-        return 2;
-    }
-  }
-
-  /// Average stride / step length in metres. Used as a fallback distance
-  /// estimate for indoor / treadmill runs where GPS never produces a fix —
-  /// the pedometer still counts steps, so `steps × strideMetres` gives a
-  /// rough distance that's better than the `0.00 km` we'd otherwise show.
-  /// Values are average-adult estimates; individual stride varies with
-  /// height, cadence, and fatigue. Cycling has no pedometer so its value
-  /// is unused.
-  double get strideMetres {
-    switch (this) {
-      case ActivityType.run:
-        return 1.1; // ~2000 steps/km at a moderate pace
-      case ActivityType.walk:
-        return 0.73; // ~1370 steps/km
-      case ActivityType.cycle:
-        return 0.0; // pedometer not meaningful for cycling
-      case ActivityType.hike:
-        return 0.85; // shorter than running, longer than walking
-      case ActivityType.stroller:
-        return 1.1; // running stride
-    }
-  }
-
-  /// Maximum plausible speed (metres/second). Position deltas implying
-  /// anything faster than this are discarded as GPS corruption — the line
-  /// shouldn't teleport across town because of one bad fix.
-  ///
-  /// Values are deliberately generous (faster than realistic peak) to avoid
-  /// dropping genuine fast segments, while still catching outright glitches.
-  double get maxSpeedMps {
-    switch (this) {
-      case ActivityType.run:
-        return 10; // ~2:45/km, faster than world records — pure corruption above this
-      case ActivityType.walk:
-        return 5; // brisk walk ~1.7 m/s; 5 gives headroom
-      case ActivityType.cycle:
-        return 25; // 90 km/h — higher than any sane cyclist
-      case ActivityType.hike:
-        return 6; // slow running overlap for scrambling / downhill
-      case ActivityType.stroller:
-        return 9; // running with a pram — a touch under open-run peak
-    }
-  }
-
-  static ActivityType fromName(String? name) {
-    return ActivityType.values.firstWhere(
-      (a) => a.name == name,
-      orElse: () => ActivityType.run,
-    );
-  }
-}
 
 /// Wire ids for the per-cue voice toggles — the `voice_cue_types` map in
 /// both the local mirror and the device settings bag. A cue id absent from
@@ -189,6 +49,7 @@ class VoiceCue {
   static const cutoffCatchUp = 'cutoff_catch_up';
   static const markerTargets = 'marker_targets';
   static const phaseTransitions = 'phase_transitions';
+  static const guidedRun = 'guided_run';
 
   static const all = [
     splits,
@@ -199,13 +60,15 @@ class VoiceCue {
     cutoffCatchUp,
     markerTargets,
     phaseTransitions,
+    guidedRun,
   ];
 }
 
 /// How the split cue reads pace out loud: the split's own pace
 /// ([split], the default + prior behaviour), the cumulative average
-/// pace since the run started ([average]), or [both]. Device-local (a
-/// per-device audio preference, not roamed).
+/// pace since the run started ([average]), or [both]. Roams through the
+/// universal `voice_split_pace_mode` bag key; web `SPLIT_PACE_MODES` in
+/// `settings/voice_cues.ts` must list the same values.
 class SplitPaceMode {
   SplitPaceMode._();
 
@@ -221,6 +84,36 @@ class SplitPaceMode {
   static String coerce(String? raw) => all.contains(raw) ? raw! : split;
 }
 
+/// Whether the centre Log button's tap starts a run outright rather than
+/// fanning the three capture actions.
+///
+/// Derived from data presence, like every other §63 self-hiding rule: until
+/// a lift or a meal has been logged the fan has nothing to choose between,
+/// so it costs a pure runner a tap and an animation on every single run —
+/// which is the downgrade `multi_modal.md § Protect the core runner` says
+/// that runner must never take. [keepRunPrimary] is the explicit override,
+/// for someone who logs other modalities and still wants the one-tap start.
+///
+/// The fan stays reachable either way: the Log button's long-press always
+/// opens it, and Fitness → Gym / Nutrition are always-present destinations.
+bool runIsPrimaryLogAction({
+  required bool keepRunPrimary,
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    keepRunPrimary || (!gymShown && !nutritionShown);
+
+/// Whether a non-running modality (Gym, Nutrition) is surfaced on mobile —
+/// its Fitness hub tab, its Log action, its Home cards.
+///
+/// [explicit] is the runner's own choice from Settings and always wins. Left
+/// unset, the modality shows only once it [hasData]: a runner who has never
+/// logged a lift or a meal gets a run-only app, while someone who already
+/// logs them (here or on web) keeps the surfaces they use without having to
+/// find a toggle first.
+bool modalityShown({required bool? explicit, required bool hasData}) =>
+    explicit ?? hasData;
+
 /// App-wide user preferences (units, audio cues, etc.).
 class Preferences extends ChangeNotifier {
   static const _kUseMiles = 'use_miles';
@@ -235,7 +128,8 @@ class Preferences extends ChangeNotifier {
   static const _kAdvancedGps = 'advanced_gps';
   static const _kSplitIntervalMetres = 'split_interval_metres';
   static const _kUndoWindowS = 'undo_window_s';
-  // Device-local: which pace the split cue reads out (SplitPaceMode).
+  // Mirrors the universal `voice_split_pace_mode` settings-bag key: which
+  // pace the split cue reads out (SplitPaceMode).
   static const _kSplitPaceMode = 'split_pace_mode';
   // Mirrors the universal `default_activity_type` settings-bag key.
   // Drives the run screen's initial activity selection. One of
@@ -255,6 +149,11 @@ class Preferences extends ChangeNotifier {
   // on a long run. Defaults false — the historical behaviour is a
   // full-brightness screen.
   static const _kDimScreenWhileRecording = 'dim_screen_while_recording';
+  // Mirrors the device-scoped `haptic_feedback_enabled` settings-bag key:
+  // vibrate on workout step changes, workout completion and pace alerts.
+  // Defaults true — the buzz is the cue that still reaches a runner with
+  // the audio off or the voice set to minimal.
+  static const _kHapticFeedback = 'haptic_feedback_enabled';
   // Per-device, never synced: write completed runs back to Android
   // Health Connect so they flow on to Google Fit / Samsung Health / etc.
   // Off by default — writing user data to a third-party store is opt-in
@@ -264,14 +163,20 @@ class Preferences extends ChangeNotifier {
   // Timestamp of the last successful runs-list fetch. Drives the
   // delta-fetch path in RunsScreen so refreshes only pull rows modified
   // since, instead of re-paging the entire history every time.
-  static const _kRunsLastFetchedAt = 'runs_last_fetched_at';
+  static const _kRunsSyncCursor = 'runs_sync_cursor';
 
   static const _kBatteryOptHintShown = 'battery_opt_hint_shown';
 
   static const _kBackgroundLocationNudgeDismissed =
       'background_location_nudge_dismissed';
+  static const _kLearnedStridePrefix = 'learned_stride_m';
 
   static const _kNotifDeniedHintShown = 'notif_denied_hint_shown';
+
+  // Account ids this install has run the one-time foreign-row reconcile for
+  // (decisions § 1938). Device-scoped on purpose: the reconcile cleans THIS
+  // device's stores, and a shared device's second account needs its own run.
+  static const _kForeignRowCleanupDoneFor = 'foreign_row_cleanup_done_for';
 
   // Stable per-install identifier used to scope `user_device_settings`
   // rows. Minted on first launch and never rotated — rotating would
@@ -325,6 +230,10 @@ class Preferences extends ChangeNotifier {
   // repeat-last gesture and the Log sheet's most-recent-floats-to-top
   // ordering. Per-device.
   static const _kLastLogType = 'last_log_type';
+  // Mirror the universal `show_gym` / `show_nutrition` settings-bag keys.
+  // Absent = no explicit choice, resolved by [modalityShown].
+  static const _kShowGym = 'show_gym';
+  static const _kShowNutrition = 'show_nutrition';
 
   // Per-device debug/verification toggle: force the run-detail map to
   // render the RAW recorded GPS track even when the backend has produced
@@ -373,6 +282,7 @@ class Preferences extends ChangeNotifier {
   String _voiceFeedbackVerbosity = 'full';
   bool _keepScreenOn = true;
   bool _dimScreenWhileRecording = false;
+  bool _hapticFeedback = true;
   bool _writeToHealthConnect = false;
   ThemeMode _themeMode = ThemeMode.dark;
   Locale? _locale;
@@ -384,9 +294,29 @@ class Preferences extends ChangeNotifier {
   WeightUnit _weightUnit = WeightUnit.kg;
   bool _keepRunPrimary = false;
   String? _lastLogType;
+  bool? _showGym;
+  bool? _showNutrition;
   bool _showRawTrack = false;
   bool _sentryOptOut = false;
   bool _setupWizardDismissed = false;
+
+  /// The Apple Watch mirror seam. Injectable so a test can observe the push
+  /// without a platform channel; see [_pushAppleWatchPrefs].
+  @visibleForTesting
+  Future<bool> Function({
+    required String preferredUnit,
+    required bool audioCues,
+    String? defaultActivityType,
+    String? privacyDefault,
+    List<int>? hrZoneCutoffs,
+    String? voiceFeedbackVerbosity,
+    bool? workoutStepCues,
+  }) appleWatchPrefsPush = AppleWatchPrefsBridge.push;
+
+  /// The zone ladder the wrist badges live heart rate against, resolved by
+  /// [SettingsSyncService] from the bag. Null until the bag has been read this
+  /// launch, which the push reads as "say nothing" rather than "no zones".
+  List<int>? _appleWatchHrZoneCutoffs;
 
   DistanceUnit get unit => _useMiles ? DistanceUnit.mi : DistanceUnit.km;
   bool get useMiles => _useMiles;
@@ -430,6 +360,12 @@ class Preferences extends ChangeNotifier {
   /// screen already allowed to sleep there is nothing to dim). Mirrors
   /// the device-scoped `dim_screen_while_recording` settings-bag key.
   bool get dimScreenWhileRecording => _dimScreenWhileRecording;
+
+  /// Whether the run screen vibrates on workout step changes, workout
+  /// completion and pace alerts. Independent of [audioCues] and the voice
+  /// verbosity: it is the non-audio channel. Mirrors the device-scoped
+  /// `haptic_feedback_enabled` settings-bag key.
+  bool get hapticFeedback => _hapticFeedback;
 
   /// Whether completed runs are written back to Android Health Connect
   /// (persona #36). Local-only, off by default, Android-only at the call
@@ -503,17 +439,25 @@ class Preferences extends ChangeNotifier {
   /// True only when `privacyDefault == 'public'`. `followers` /
   /// `private` / unknown all return false. Wired into the run-save
   /// path on `run_screen` + `add_run_screen`.
-  bool get newRunsArePublic => _privacyDefault == 'public';
+  bool get newRunsArePublic =>
+      privacyDefaultToAudience(_privacyDefault).isPublic;
+
+  /// Should newly-saved runs be born at the followers level
+  /// (`followers_only`)? True only when `privacyDefault == 'followers'`,
+  /// which used to collapse to private (decisions § 1875). The server
+  /// stores it private until audience sharing is switched on.
+  bool get newRunsAreFollowersOnly =>
+      privacyDefaultToAudience(_privacyDefault).followersOnly;
 
   /// Display + entry unit for body / lift weights, mirrored from the
   /// universal `weight_unit` settings-bag key. Storage stays canonical
   /// kg — see [WeightFormat]. Defaults to kg.
   WeightUnit get weightUnit => _weightUnit;
 
-  /// Phase 4 multi-modal nav: when true the centre Log button starts a run
-  /// on a single tap (long-press opens the full Log sheet), preserving the
-  /// one-tap run start a pure runner relies on. Defaults to false (tap opens
-  /// the sheet; long-press repeats the last logged modality).
+  /// Phase 4 multi-modal nav: pins the centre Log button's tap to "start a
+  /// run", for someone who logs other modalities too. Off by default, at
+  /// which point [runIsPrimaryLogAction] derives the same behaviour from
+  /// data presence for as long as the user has logged no lift and no meal.
   bool get keepRunPrimary => _keepRunPrimary;
 
   Future<void> setKeepRunPrimary(bool v) async {
@@ -522,9 +466,45 @@ class Preferences extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The runner's explicit Gym visibility choice, or null when they have
+  /// never made one. Resolve through [gymShown], not this.
+  bool? get showGym => _showGym;
+
+  /// The runner's explicit Nutrition visibility choice, or null when they
+  /// have never made one. Resolve through [nutritionShown], not this.
+  bool? get showNutrition => _showNutrition;
+
+  bool gymShown({required bool hasData}) =>
+      modalityShown(explicit: _showGym, hasData: hasData);
+
+  bool nutritionShown({required bool hasData}) =>
+      modalityShown(explicit: _showNutrition, hasData: hasData);
+
+  /// Null clears the choice back to the data-presence default.
+  Future<void> setShowGym(bool? v) async {
+    _showGym = v;
+    await _setOptionalBool(_kShowGym, v);
+    notifyListeners();
+  }
+
+  /// Null clears the choice back to the data-presence default.
+  Future<void> setShowNutrition(bool? v) async {
+    _showNutrition = v;
+    await _setOptionalBool(_kShowNutrition, v);
+    notifyListeners();
+  }
+
+  Future<void> _setOptionalBool(String key, bool? v) async {
+    if (v == null) {
+      await _prefs.remove(key);
+    } else {
+      await _prefs.setBool(key, v);
+    }
+  }
+
   /// The capture type last logged via the Log button — `run` / `lift` /
-  /// `meal` / `snack`, or null when nothing has been logged yet. Drives the
-  /// long-press repeat-last gesture and the Log sheet's ordering.
+  /// `meal` / `snack`, or null when nothing has been logged yet. Floats that
+  /// action to the top of the Log fan.
   String? get lastLogType => _lastLogType;
 
   Future<void> setLastLogType(String type) async {
@@ -588,25 +568,31 @@ class Preferences extends ChangeNotifier {
     }
   }
 
-  /// Timestamp of the last successful `getRuns` call. Used to drive the
-  /// delta-fetch path so refreshing the Runs tab only pulls rows updated
-  /// since the last visit. Null means "never fetched" — the first fetch
-  /// is full, subsequent ones are deltas.
-  DateTime? get runsLastFetchedAt {
-    final iso = _prefs.getString(_kRunsLastFetchedAt);
-    return iso == null ? null : DateTime.tryParse(iso);
+  /// The largest server `runs.updated_at` the delta pull has seen — a SERVER
+  /// instant, never the device clock, so skew cannot open a gap
+  /// (`ApiClient.getRunsModifiedSince`). Null means "never pulled", and the
+  /// next pull walks every owned row.
+  ///
+  /// A new key rather than the old `runs_last_fetched_at`: that one was a
+  /// device instant compared against the phone-only `last_modified_at`
+  /// stamp, and a device upgrading from it holds copies of runs edited on
+  /// web that no `updated_at` cursor would ever return. Starting from null
+  /// re-reads them once (decisions § 2118).
+  DateTime? get runsSyncCursor {
+    final iso = _prefs.getString(_kRunsSyncCursor);
+    return iso == null ? null : parseIsoStrictValue(iso);
   }
 
-  Future<void> setRunsLastFetchedAt(DateTime when) async {
-    await _prefs.setString(_kRunsLastFetchedAt, when.toIso8601String());
+  Future<void> setRunsSyncCursor(DateTime when) async {
+    await _prefs.setString(_kRunsSyncCursor, when.toUtc().toIso8601String());
   }
 
   /// Back to "never fetched" so the next signed-in account's first runs
   /// fetch takes the FULL path — a delta fetch against the prior
   /// account's watermark would silently skip the new account's older
   /// history on this device (issue #231).
-  Future<void> clearRunsLastFetchedAt() async {
-    await _prefs.remove(_kRunsLastFetchedAt);
+  Future<void> clearRunsSyncCursor() async {
+    await _prefs.remove(_kRunsSyncCursor);
   }
 
   /// Reset every account-scoped preference — the local mirrors of the
@@ -627,10 +613,13 @@ class Preferences extends ChangeNotifier {
     await setCarbsPerHourG(null);
     await setFluidPerHourMl(null);
     await setPrivacyDefault('private');
+    await setAppleWatchHrZoneCutoffs(const []);
     await setMapStyle(kDefaultMapStyle);
     await setWeightUnit(WeightUnit.kg);
+    await setShowGym(null);
+    await setShowNutrition(null);
     await clearGoals();
-    await clearRunsLastFetchedAt();
+    await clearRunsSyncCursor();
     // The deferred-onboarding flag belongs to the account that dismissed
     // the wizard offline — the next account must get its own gate decision.
     await setSetupWizardDismissed(false);
@@ -642,7 +631,24 @@ class Preferences extends ChangeNotifier {
     await setSplitPaceMode(SplitPaceMode.split);
     await setKeepScreenOn(true);
     await setDimScreenWhileRecording(false);
+    await setHapticFeedback(true);
     await clearVoiceCueTypes();
+  }
+
+  /// The stride the GPS distance estimator last learned for [userId] doing
+  /// [activity] on this device, in metres, or null. Seeds the next run's
+  /// estimator, so a GPS gap before that run has learned its own stride is
+  /// still step-filled. Device-local and never synced: it calibrates this
+  /// phone's pedometer against the runner's GPS. Keyed by account, so a
+  /// second account on the phone never inherits the first one's stride.
+  double? learnedStrideM(String userId, String activity) =>
+      _prefs.getDouble('$_kLearnedStridePrefix:$userId:$activity');
+
+  Future<void> setLearnedStrideM(
+      String userId, String activity, double strideM) async {
+    if (!strideM.isFinite || strideM <= 0) return;
+    await _prefs.setDouble(
+        '$_kLearnedStridePrefix:$userId:$activity', strideM);
   }
 
   /// Whether the one-time OEM battery-optimisation hint has been shown. Many
@@ -677,6 +683,19 @@ class Preferences extends ChangeNotifier {
 
   Future<void> setNotifDeniedHintShown() async {
     await _prefs.setBool(_kNotifDeniedHintShown, true);
+  }
+
+  /// Whether the one-time foreign-row reconcile has completed for [userId]
+  /// on this device (decisions § 1938).
+  bool foreignRowCleanupDone(String userId) =>
+      (_prefs.getStringList(_kForeignRowCleanupDoneFor) ?? const <String>[])
+          .contains(userId);
+
+  Future<void> markForeignRowCleanupDone(String userId) async {
+    final done =
+        _prefs.getStringList(_kForeignRowCleanupDoneFor) ?? const <String>[];
+    if (done.contains(userId)) return;
+    await _prefs.setStringList(_kForeignRowCleanupDoneFor, [...done, userId]);
   }
 
   /// Target pace in seconds per km (0 means no target). Audio cue triggers
@@ -718,6 +737,7 @@ class Preferences extends ChangeNotifier {
     _keepScreenOn = _prefs.getBool(_kKeepScreenOn) ?? true;
     _dimScreenWhileRecording =
         _prefs.getBool(_kDimScreenWhileRecording) ?? false;
+    _hapticFeedback = _prefs.getBool(_kHapticFeedback) ?? true;
     _themeMode = _themeModeFromString(_prefs.getString(_kThemeMode));
     _locale = localeFromTag(_prefs.getString(_kLocale));
     final bw = _prefs.getDouble(_kBodyWeightKg);
@@ -731,6 +751,8 @@ class Preferences extends ChangeNotifier {
     _weightUnit = WeightFormat.unitFromWire(_prefs.getString(_kWeightUnit));
     _keepRunPrimary = _prefs.getBool(_kKeepRunPrimary) ?? false;
     _lastLogType = _prefs.getString(_kLastLogType);
+    _showGym = _prefs.getBool(_kShowGym);
+    _showNutrition = _prefs.getBool(_kShowNutrition);
     _showRawTrack = _prefs.getBool(_kShowRawTrack) ?? false;
     _sentryOptOut = _prefs.getBool(_kSentryOptOut) ?? false;
     _setupWizardDismissed = _prefs.getBool(_kSetupWizardDismissed) ?? false;
@@ -769,18 +791,53 @@ class Preferences extends ChangeNotifier {
     if (_prefs.containsKey(_kLegacyWeeklyGoalKm)) {
       await _prefs.remove(_kLegacyWeeklyGoalKm);
     }
+    // Seed the wrist at launch. The application context the push writes is
+    // retained by WCSession and re-offered on every contact, so a change made
+    // while the watch was away lands without this — but a watch paired or
+    // reinstalled since the last change has never been offered anything at
+    // all, and would record under its own defaults forever.
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setUseMiles(bool v) async {
     _useMiles = v;
     await _prefs.setBool(_kUseMiles, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setAudioCues(bool v) async {
     _audioCues = v;
     await _prefs.setBool(_kAudioCues, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
+  }
+
+  /// Mirror the preferences the paired Apple Watch reads and cannot set.
+  ///
+  /// Here rather than at the settings screen because every writer of either
+  /// value passes through the setters above — the preferences page, the setup
+  /// wizard, the sign-out reset, and `SettingsSyncService` applying a value
+  /// the runner set on the WEB. A push wired at any one call site is a wrist
+  /// left stale by the others, and a stale `audio_cues` is a watch that keeps
+  /// talking after the runner switched it off.
+  ///
+  /// L4: its own try/catch and a log. Nothing above it can observe a failure,
+  /// and the bridge itself already falls closed off iOS.
+  Future<void> _pushAppleWatchPrefs() async {
+    try {
+      await appleWatchPrefsPush(
+        preferredUnit: _useMiles ? 'mi' : 'km',
+        audioCues: _audioCues,
+        defaultActivityType: _defaultActivityType,
+        privacyDefault: _privacyDefault,
+        hrZoneCutoffs: _appleWatchHrZoneCutoffs,
+        voiceFeedbackVerbosity: _voiceFeedbackVerbosity,
+        workoutStepCues: voiceCueEnabled(VoiceCue.workoutSteps),
+      );
+    } catch (e) {
+      debugPrint('Apple Watch preference push failed: $e');
+    }
   }
 
   Future<void> setTurnByTurnCues(bool v) async {
@@ -801,6 +858,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, cueId: v};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Overlay the device-bag `voice_cue_types` map onto the local mirror
@@ -811,6 +869,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, ...incoming};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Sign-out reset. Because [applyVoiceCueTypes] merges without erasing,
@@ -820,6 +879,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {};
     await _prefs.remove(_kVoiceCueTypes);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setOnboarded(bool v) async {
@@ -862,12 +922,14 @@ class Preferences extends ChangeNotifier {
     _defaultActivityType = v;
     await _prefs.setString(_kDefaultActivityType, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setVoiceFeedbackVerbosity(String v) async {
     _voiceFeedbackVerbosity = v;
     await _prefs.setString(_kVoiceFeedbackVerbosity, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setSentryOptOut(bool v) async {
@@ -885,6 +947,12 @@ class Preferences extends ChangeNotifier {
   Future<void> setDimScreenWhileRecording(bool v) async {
     _dimScreenWhileRecording = v;
     await _prefs.setBool(_kDimScreenWhileRecording, v);
+    notifyListeners();
+  }
+
+  Future<void> setHapticFeedback(bool v) async {
+    _hapticFeedback = v;
+    await _prefs.setBool(_kHapticFeedback, v);
     notifyListeners();
   }
 
@@ -907,6 +975,21 @@ class Preferences extends ChangeNotifier {
     _privacyDefault = next;
     await _prefs.setString(_kPrivacyDefault, next);
     notifyListeners();
+    await _pushAppleWatchPrefs();
+  }
+
+  /// Hand the paired Apple Watch a new zone ladder. Not persisted and not
+  /// observed: nothing on the phone reads it, and the bag it is derived from
+  /// is re-read on every launch.
+  Future<void> setAppleWatchHrZoneCutoffs(List<int> cutoffs) async {
+    final current = _appleWatchHrZoneCutoffs;
+    if (current != null &&
+        current.length == cutoffs.length &&
+        Iterable<int>.generate(current.length).every((i) => current[i] == cutoffs[i])) {
+      return;
+    }
+    _appleWatchHrZoneCutoffs = List.unmodifiable(cutoffs);
+    await _pushAppleWatchPrefs();
   }
 
   /// Update the cached map_style. Unknown values resolve to `streets`,
@@ -1032,6 +1115,25 @@ class UnitFormat {
     return formatFixed(value, 2, activeLocaleTag);
   }
 
+  /// A distance in the unit a runner reads at that size: "4.99 mi" from one
+  /// mile up and "437 yd" below it, "5.23 km" / "400 m" for metric. For a
+  /// value that shrinks through the small unit (what is left of a step, a
+  /// segment's length); [distance] always uses the large one. Twin of web's
+  /// `formatShortDistance` in apps/web/src/lib/format/short_distance.ts.
+  static String shortDistance(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final tag = localeTag ?? activeLocaleTag;
+    if (unit == DistanceUnit.mi) {
+      final miles = metres / kMetresPerMile;
+      if (miles >= 1) return '${formatFixed(miles, 2, tag)} mi';
+      return '${formatInteger(metres * _yardsPerMetre, tag)} yd';
+    }
+    if (metres >= 1000) return '${formatFixed(metres / 1000, 2, tag)} km';
+    return '${formatInteger(metres, tag)} m';
+  }
+
+  static const _yardsPerMetre = 1.09361;
+
   /// Distance unit label.
   static String distanceLabel(DistanceUnit unit) =>
       unit == DistanceUnit.mi ? 'mi' : 'km';
@@ -1052,7 +1154,11 @@ class UnitFormat {
 
   /// Format pace: "5:30" (per km/mi based on unit).
   static String pace(double? secondsPerKm, DistanceUnit unit) {
-    if (secondsPerKm == null || secondsPerKm <= 0) return '--:--';
+    // `.round()` below throws on NaN and Infinity, and Infinity is what a
+    // 0 m distance divides to — a crash in the widget's build, not a label.
+    if (secondsPerKm == null || !secondsPerKm.isFinite || secondsPerKm <= 0) {
+      return '--:--';
+    }
     final secondsPerUnit = paceSecPerUnit(secondsPerKm, unit);
     // Round to whole seconds first, then split. Truncating the seconds field
     // in isolation diverged from web's formatPace (which rounds) on a
@@ -1063,6 +1169,18 @@ class UnitFormat {
     final m = total ~/ 60;
     final s = total % 60;
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  /// A pace difference stored as seconds per km, in the unit the pace beside
+  /// it is read in and saying so: "+16s/mi", "−10s/km". A bare "+428s" next
+  /// to a /mi target was s/km (issue #1300). Twin of web's `paceDeltaLabel`
+  /// in apps/web/src/lib/format/pace_delta.ts.
+  static String paceDelta(num deltaSecPerKm, DistanceUnit unit) {
+    // floor(x + 0.5) is JS Math.round; Dart's round() takes -0.5 to -1.
+    final d = (paceSecPerUnit(deltaSecPerKm.toDouble(), unit) + 0.5).floor();
+    final sign = d > 0 ? '+' : (d < 0 ? '−' : '');
+    final label = unit == DistanceUnit.mi ? 'mi' : 'km';
+    return '$sign${d.abs()}s/$label';
   }
 
   /// Pace unit label e.g. "/km" or "/mi".
@@ -1084,7 +1202,9 @@ class UnitFormat {
 
   /// Format speed: "12.5 km/h" or "7.8 mph" (localised separator).
   static String speed(double? secondsPerKm, DistanceUnit unit) {
-    if (secondsPerKm == null || secondsPerKm <= 0) return '--';
+    if (secondsPerKm == null || !secondsPerKm.isFinite || secondsPerKm <= 0) {
+      return '--';
+    }
     final kmh = 3600 / secondsPerKm;
     final value = unit == DistanceUnit.mi ? kmh / 1.609344 : kmh;
     return formatFixed(value, 1, activeLocaleTag);
@@ -1096,18 +1216,46 @@ class UnitFormat {
 
   static const _feetPerMetre = 3.28084;
 
-  /// Format cumulative elevation gain: "120 m" / "394 ft". Integer
+  /// Format cumulative elevation gain: "120 m" / "394 ft", whole units
+  /// grouped by the locale ("10,000 ft" en, "10.000 ft" de). Integer
   /// rounding because sub-metre precision on cumulative gain is the
-  /// GPS-noise floor. Null renders as em-dash. Mirrors web
-  /// `formatElevation` in `apps/web/src/lib/units.svelte.ts`.
-  static String elevation(double? metres, DistanceUnit unit) {
+  /// GPS-noise floor. Null renders as em-dash. Twin of web's
+  /// `formatElevationIn` in apps/web/src/lib/format/elevation.ts.
+  static String elevation(double? metres, DistanceUnit unit,
+      [String? localeTag]) {
     if (metres == null) return '—';
-    if (unit == DistanceUnit.mi) {
-      final ft = (metres * _feetPerMetre).round().toDouble();
-      return '${formatFixed(ft, 0, activeLocaleTag)} ft';
-    }
-    return '${formatFixed(metres.round().toDouble(), 0, activeLocaleTag)} m';
+    return '${elevationValue(metres, unit, localeTag)} ${elevationLabel(unit)}';
   }
+
+  /// [elevation] without its unit label, for a layout that sets the number
+  /// and the unit in different type. Twin of web's `formatElevationValue`.
+  static String elevationValue(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final value = unit == DistanceUnit.mi ? metres * _feetPerMetre : metres;
+    // floor(x + 0.5) is JS Math.round; Dart's round() takes -0.5 to -1.
+    return formatInteger(
+        (value + 0.5).floorToDouble(), localeTag ?? activeLocaleTag);
+  }
+
+  /// Elevation unit label, "m" or "ft".
+  static String elevationLabel(DistanceUnit unit) =>
+      unit == DistanceUnit.mi ? 'ft' : 'm';
+
+  /// A stride length as metres or feet to two decimals: "1.18 m" /
+  /// "3.87 ft". Twin of web's `formatStrideLengthIn`.
+  static String strideLength(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final value = unit == DistanceUnit.mi ? metres * _feetPerMetre : metres;
+    return '${formatFixed(value, 2, localeTag ?? activeLocaleTag)} '
+        '${elevationLabel(unit)}';
+  }
+
+  /// The inverse of [elevation]'s conversion. An editor that collects a
+  /// gain in the runner's own unit must come back through here before the
+  /// value is stored, so entry and display can't drift on the factor —
+  /// the same entry/exit split [paceSecPerUnit] / [paceSecPerKm] keeps.
+  static double elevationToMetres(double value, DistanceUnit unit) =>
+      unit == DistanceUnit.mi ? value / _feetPerMetre : value;
 }
 
 /// Weight formatting + parsing helpers that respect the user's
@@ -1146,6 +1294,25 @@ class WeightFormat {
   static String label(WeightUnit unit) =>
       unit == WeightUnit.lbs ? 'lbs' : 'kg';
 
+  /// A weight column's client bound expressed in the unit the field is TYPED
+  /// in, for the out-of-range sentence.
+  ///
+  /// Rounding is directional on purpose: the floor rounds UP and the ceiling
+  /// DOWN, so every value the displayed range admits converts back to a
+  /// kilogram figure [withinColumnLimit] also accepts. Rounding both to
+  /// nearest would put 44.0 lb (19.96 kg) inside a range whose real gate then
+  /// refuses it, which is the shape of error the range exists to prevent.
+  /// Mirrors web's `weightBoundsIn` in `format/weight.ts`.
+  static ({double min, double max}) boundsIn(String key, WeightUnit unit) {
+    final min = columnMin(key).toDouble();
+    final max = columnMax(key).toDouble();
+    if (unit == WeightUnit.kg) return (min: min, max: max);
+    return (
+      min: (toDisplay(min, unit) * 10).ceil() / 10,
+      max: (toDisplay(max, unit) * 10).floor() / 10,
+    );
+  }
+
   /// Parse a user-entered display-unit string into canonical kg. Tolerates
   /// the active locale's decimal comma and a trailing unit suffix. Returns
   /// null on empty / unparseable input.
@@ -1153,8 +1320,7 @@ class WeightFormat {
     var s = raw.trim().toLowerCase();
     if (s.isEmpty) return null;
     s = s.replaceAll('kg', '').replaceAll('lbs', '').replaceAll('lb', '').trim();
-    s = s.replaceAll(',', '.');
-    final v = double.tryParse(s);
+    final v = parseTypedDecimal(s);
     if (v == null) return null;
     return toKg(v, unit);
   }
@@ -1204,7 +1370,7 @@ String formatDistanceForPref(double metres) =>
     UnitFormat.distance(metres, activeDistanceUnit);
 
 /// Format an elevation gain using the active user unit pref. Mirrors
-/// `formatElevation` in `apps/web/src/lib/units.svelte.ts`. Null →
+/// `formatElevation` in `apps/web/src/lib/format/units.svelte.ts`. Null →
 /// em-dash.
 String formatElevationForPref(double? metres) =>
     UnitFormat.elevation(metres, activeDistanceUnit);
@@ -1212,10 +1378,29 @@ String formatElevationForPref(double? metres) =>
 /// Format a pace (seconds per km) using the active user unit pref,
 /// including the unit label (`/km` or `/mi`). Drop-in for surfaces that
 /// don't carry a Preferences dep — fixes feed/spectator/profile cards
-/// hard-coding `/km` for mile-unit users. Non-positive → em-dash.
-String formatPaceForPref(double secPerKm) => secPerKm <= 0
+/// hard-coding `/km` for mile-unit users. Non-positive or non-finite →
+/// em-dash.
+String formatPaceForPref(double secPerKm) => !secPerKm.isFinite || secPerKm <= 0
     ? '—'
     : '${UnitFormat.pace(secPerKm, activeDistanceUnit)} ${UnitFormat.paceLabel(activeDistanceUnit)}';
+
+/// A segment effort time as `h:mm:ss` past the hour and `m:ss` below it.
+/// Unit-independent (a clock is a clock in km and mi alike), but it lives beside
+/// the other pref-free formatters because every surface that shows an effort
+/// time also shows a distance from here.
+String formatEffortTime(double seconds) {
+  // `.round()` throws on NaN and Infinity; a negative renders as "-1:-30".
+  // Mirrors the guard in web's formatDuration.
+  if (!seconds.isFinite || seconds < 0) return '—';
+  final total = seconds.round();
+  final h = total ~/ 3600;
+  final m = (total % 3600) ~/ 60;
+  final s = total % 60;
+  if (h > 0) {
+    return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+  return '$m:${s.toString().padLeft(2, '0')}';
+}
 
 /// Current user weight-unit pref. Returns kg when no Preferences has
 /// been registered (host-test runner, very early app start). Used by

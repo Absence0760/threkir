@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Drives the predictive next-cutoff card on `live_spectator_screen.dart`.
 /// The fake api returns a live (non-terminal) run linked to a public route
@@ -22,18 +22,21 @@ class _FakeApi extends ApiClient {
   final List<Map<String, dynamic>> pings;
   final cm.Route? route;
   final List<RouteMarkerRow> markers;
+  final bool failMarkers;
   _FakeApi({
     this.run,
     this.pings = const [],
     this.route,
     this.markers = const [],
+    this.failMarkers = false,
   });
 
   @override
   Future<RunRow?> fetchPublicRunById(String runId) async => run;
 
   @override
-  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async =>
+  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId,
+          {String? since}) async =>
       pings;
 
   @override
@@ -42,14 +45,16 @@ class _FakeApi extends ApiClient {
   ) async => (route: route, ownerId: route?.userId);
 
   @override
-  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async =>
-      markers;
+  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
+    if (failMarkers) throw Exception('502 upstream');
+    return markers;
+  }
 }
 
 /// A live, never-finished run linked to [routeId] (started 5 min ago, no
 /// saved duration) so the screen takes the predictive path, not a terminal
 /// freeze.
-RunRow _liveRun(String routeId) => RunRow(
+RunRow _liveRun(String routeId) => RunRow(safetyAudience: false, 
   id: 'r1',
   userId: 'u1',
   startedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 5)),
@@ -58,6 +63,7 @@ RunRow _liveRun(String routeId) => RunRow(
   source: 'app',
   activityType: 'run',
   isDnf: false,
+  followersOnly: false,
   routeId: routeId,
 );
 
@@ -132,10 +138,7 @@ Future<void> _ensureSupabase() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -222,6 +225,37 @@ void main() {
     });
 
     realtimeWidgetTest(
+      'a failed marker read hides the card and leaves the live view standing',
+      (tester) async {
+        final now = DateTime.now();
+        final api = _FakeApi(
+          run: _liveRun('route-1'),
+          route: _route('route-1'),
+          markers: [_cutoff(limitS: 3 * 3600)],
+          failMarkers: true,
+          pings: [
+            _ping(
+              at: now.subtract(const Duration(minutes: 2)),
+              distanceM: 1500,
+              elapsedS: 480,
+            ),
+            _ping(at: now, distanceM: 2000, elapsedS: 600),
+          ],
+        );
+        await tester.runAsync(() async {
+          await _pump(tester, api);
+          await tester.pump();
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+          expect(find.byType(LiveSpectatorScreen), findsOneWidget);
+          expect(find.text('Aid 1'), findsNothing);
+          expect(find.textContaining('to spare'), findsNothing);
+          await tester.pumpWidget(const SizedBox());
+        });
+      },
+    );
+
+    realtimeWidgetTest(
       'a stale fixture suppresses the verdict with the signal-lost line',
       (tester) async {
         // The only ping is > 90 s old → freshness is stale → nextCutoffEta
@@ -293,7 +327,7 @@ void main() {
       // A live run without a route_id can't resolve cutoff legs, so the
       // predictive card never mounts — only the trace + freshness baseline.
       final api = _FakeApi(
-        run: RunRow(
+        run: RunRow(safetyAudience: false, 
           id: 'r1',
           userId: 'u1',
           startedAt: DateTime.now().toUtc().subtract(
@@ -304,6 +338,7 @@ void main() {
           source: 'app',
           activityType: 'run',
           isDnf: false,
+          followersOnly: false,
         ),
         pings: [_ping(at: DateTime.now(), distanceM: 2000, elapsedS: 600)],
       );

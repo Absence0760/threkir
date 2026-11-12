@@ -6,12 +6,12 @@
 // Output: apps/web/lambda/share-run/dist/share-run.zip
 //
 // Strategy: esbuild bundles src/index.ts (and everything it imports
-// transitively from $lib/*) into a single index.mjs. supabase-js is
+// transitively from #lib/*) into a single index.mjs. supabase-js is
 // inlined. @resvg/resvg-js is a NATIVE addon — esbuild can't inline a
 // `.node` binary, so the loader package + its arm64 binary are marked
 // external and copied into the zip's node_modules instead (see
-// RESVG_EXTERNAL + copyResvgPackages below). The SPA-shell index.html
-// is read from apps/web/build/index.html (built by `npm run build`)
+// RESVG_EXTERNAL + copyResvgPackages below). The SPA shell 200.html
+// is read from apps/web/build/200.html (built by `npm run build`)
 // and substituted in as the __SPA_SHELL_HTML__ constant via esbuild's
 // `define`.
 //
@@ -38,10 +38,12 @@ import {
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
+import { copyOgFonts, OG_FONT_DIR_NAME } from '../og_fonts_bundle.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(here, '..', '..');
 const distDir = resolve(here, 'dist');
-const spaShellPath = resolve(webRoot, 'build', 'index.html');
+const spaShellPath = resolve(webRoot, 'build', '200.html');
 
 // The native PNG rasteriser. The arm64 binary package must ship in the
 // zip; the JS loader (`@resvg/resvg-js`) require()s it at runtime by
@@ -53,7 +55,7 @@ const RESVG_EXTERNAL = [RESVG_LOADER, RESVG_ARM64];
 if (!existsSync(spaShellPath)) {
 	console.error(
 		`[share-run build] missing SPA shell at ${spaShellPath}. ` +
-			`Run \`npm run build\` (from apps/web/) first so the index.html template exists.`,
+			`Run \`npm run build\` (from apps/web/) first so the 200.html shell exists.`,
 	);
 	process.exit(1);
 }
@@ -76,7 +78,7 @@ await build({
 	outfile: resolve(distDir, 'index.mjs'),
 	// Bundle everything except the native PNG rasteriser. Lambda's
 	// managed runtime only ships AWS SDK v3, which we don't use, so
-	// supabase-js + $lib helpers get inlined. @resvg/resvg-js is a
+	// supabase-js + #lib helpers get inlined. @resvg/resvg-js is a
 	// native addon — kept external and copied into node_modules below.
 	external: RESVG_EXTERNAL,
 	// Some transitive deps (e.g. inside @supabase/realtime-js) still
@@ -87,7 +89,14 @@ await build({
 	// Substitute the SPA shell at bundle time so the Lambda doesn't
 	// need to load it from S3 / disk at runtime. The handler treats
 	// __SPA_SHELL_HTML__ as an opaque string.
+	// The release identifies the ARTIFACT, so it is baked in here rather than
+	// read from the Lambda env at runtime. Terraform owns `environment`, so
+	// CI writing APP_RELEASE there would be reverted by the next apply, and
+	// tfvars cannot know the tag. release-web.yml passes APP_RELEASE on this
+	// bundle step; a local build leaves it unset and Sentry tags the events
+	// `dev`, which is the honest answer for a bundle built off a tag.
 	define: {
+		'process.env.APP_RELEASE': JSON.stringify(process.env.APP_RELEASE ?? 'dev'),
 		__SPA_SHELL_HTML__: JSON.stringify(spaShellHtml),
 	},
 	minify: true,
@@ -101,8 +110,9 @@ writeFileSync(
 );
 
 copyResvgPackages();
+copyOgFonts(distDir);
 
-execSync('zip -qr share-run.zip index.mjs index.mjs.map package.json node_modules', {
+execSync(`zip -qr share-run.zip index.mjs index.mjs.map package.json node_modules ${OG_FONT_DIR_NAME}`, {
 	cwd: distDir,
 	stdio: 'inherit',
 });

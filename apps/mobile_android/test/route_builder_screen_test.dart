@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,20 +6,29 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_map/flutter_map.dart' show FlutterMap;
+import 'package:flutter_map/flutter_map.dart'
+    show FlutterMap, MapCamera, Polyline, PolylineLayer, TileLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show PostgrestException, Supabase;
+    show PostgrestException;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
+import '../lib/rate_limit_message.dart';
 import '../lib/route_overlap.dart';
 import '../lib/screens/route_builder_screen.dart';
+import '../lib/widgets/app_bar_actions.dart';
+import '../lib/widgets/live_run_map.dart'
+    show mapDraftLine, mapLineCasing, mapLineWidth;
+import '../lib/widgets/map_attribution.dart';
+import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
   final Directory _tmp;
@@ -111,10 +121,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -209,7 +216,11 @@ void main() {
       (tester) async {
     final store = await _store();
     await _pumpScreen(tester, store);
-    await tester.tap(find.byTooltip('Generate loop'));
+    // Generate loop lives in the toolbar's overflow menu.
+    await tester.tap(find.byTooltip('More'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Generate loop'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     const body = "Target distance — we'll build a radial loop "
@@ -222,6 +233,339 @@ void main() {
       find.descendant(of: sem, matching: find.byType(TextField)),
     );
     expect(field.label, body);
+  });
+
+  // Field report: "when I open the generate routes map, it loads a random
+  // location and not at my location." The builder opened on a hard-coded
+  // London whenever the caller named no centre, and only located on a Locate
+  // tap — so Generate loop, which builds around the camera centre, built the
+  // loop in London too.
+  group('opening camera', () {
+    const london = LatLng(51.5074, -0.1278);
+    const lastKnown = LatLng(40.0150, -105.2705);
+    const fresh = LatLng(40.0160, -105.2710);
+
+    Position fix(LatLng at) => Position(
+          latitude: at.latitude,
+          longitude: at.longitude,
+          timestamp: DateTime.now(),
+          accuracy: 5,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+
+    Future<void> pumpBuilder(
+      WidgetTester tester,
+      LocalRouteStore store, {
+      Stream<Position> Function()? fixes,
+      LatLng? initialCenter,
+    }) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RouteBuilderScreen(
+          apiClient: ApiClient(),
+          routeStore: store,
+          initialCenter: initialCenter,
+          osrmFetcher: _stubOsrm,
+          elevationFetcher: _stubElev,
+          geocodingFetcher: _stubGeocoding,
+          locateFn: _stubLocate,
+          initialFixesFn: fixes ?? () => const Stream<Position>.empty(),
+          snapAvailableOverride: true,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    MapCamera camera(WidgetTester tester) => MapCamera.of(tester.element(
+        find.descendant(
+            of: find.byType(FlutterMap), matching: find.byType(TileLayer))));
+
+    void expectAt(WidgetTester tester, LatLng at) {
+      final c = camera(tester).center;
+      expect(c.latitude, closeTo(at.latitude, 1e-6));
+      expect(c.longitude, closeTo(at.longitude, 1e-6));
+    }
+
+    testWidgets('with no fix and no routes it opens on the world, not London',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      await pumpBuilder(tester, store);
+      final c = camera(tester);
+      expect(c.center.latitude, isNot(closeTo(london.latitude, 1)));
+      expect(c.zoom, lessThanOrEqualTo(3));
+    });
+
+    testWidgets('a fix moves the camera: the cached one, then the fresh one',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      final ctl = StreamController<Position>();
+      addTearDown(ctl.close);
+      await pumpBuilder(tester, store, fixes: () => ctl.stream);
+      // A fix is delivered after the frame that flushed it, so the camera
+      // shows it on the frame after.
+      ctl.add(fix(lastKnown));
+      await tester.pump();
+      await tester.pump();
+      expectAt(tester, lastKnown);
+      ctl.add(fix(fresh));
+      await tester.pump();
+      await tester.pump();
+      expectAt(tester, fresh);
+      expect(camera(tester).zoom, 15);
+      // Drain the tile requests the new viewport scheduled.
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('without a fix it opens on the start of the latest route',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      await tester.runAsync(() async {
+        await store.save(cm.Route(
+          id: 'old',
+          name: 'Old',
+          waypoints: [cm.Waypoint(lat: 10, lng: 10)],
+          distanceMetres: 1000,
+          createdAt: DateTime.utc(2025, 1, 1),
+        ));
+        await store.save(cm.Route(
+          id: 'new',
+          name: 'New',
+          waypoints: [
+            cm.Waypoint(lat: lastKnown.latitude, lng: lastKnown.longitude),
+          ],
+          distanceMetres: 1000,
+          createdAt: DateTime.utc(2026, 6, 1),
+        ));
+      });
+      await pumpBuilder(tester, store);
+      expectAt(tester, lastKnown);
+    });
+
+    testWidgets('a fix that lands after the runner pans does not move the map',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      final ctl = StreamController<Position>();
+      addTearDown(ctl.close);
+      await pumpBuilder(tester, store, fixes: () => ctl.stream);
+      await tester.drag(find.byType(FlutterMap), const Offset(-80, 0));
+      await tester.pump();
+      final panned = camera(tester).center;
+      ctl.add(fix(fresh));
+      await tester.pump();
+      await tester.pump();
+      expect(camera(tester).center, panned);
+      // Let the drag's fling settle so no timer outlives the test.
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('a caller-named centre wins and no fix is followed',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      var listened = false;
+      await pumpBuilder(tester, store,
+          initialCenter: lastKnown,
+          fixes: () => Stream<Position>.value(fix(fresh))
+              .handleError((_) {})
+              .map((p) {
+            listened = true;
+            return p;
+          }));
+      await tester.pump();
+      expectAt(tester, lastKnown);
+      expect(listened, isFalse);
+    });
+
+    testWidgets('a location source that throws leaves the map working',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      await pumpBuilder(tester, store,
+          fixes: () => Stream<Position>.error(StateError('no GPS')));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(FlutterMap), findsOneWidget);
+    });
+  });
+
+  // Field report from a 1080x2340 phone at ~1.3x OS text: the toolbar's four
+  // icons + Save left the search field a sliver, the mode selector wrapped to
+  // two rows beside the Locate FAB, and the map credit sat under the
+  // gesture/navigation bar. flutter_test's font is fixed-advance and wider
+  // than Roboto (decisions § 500), so these pin structure — one run, no
+  // overlap, above the inset, the toolbar slot count — never a dp fit.
+  group('layout on a 360 dp phone at raised text scale', () {
+    const navBar = 48.0;
+    const screen = Size(360, 780);
+
+    Future<void> pumpPhone(WidgetTester tester, double textScale) async {
+      tester.view.physicalSize = screen;
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: navBar);
+      tester.view.viewPadding =
+          const FakeViewPadding(top: 24, bottom: navBar);
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final store = await tester.runAsync(_store);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          // Pushed over a root route, as in the app, so the toolbar carries
+          // its back button.
+          initialRoute: '/builder',
+          routes: {
+            '/': (_) => const SizedBox.shrink(),
+            '/builder': (_) => RouteBuilderScreen(
+                  apiClient: ApiClient(),
+                  routeStore: store!,
+                  osrmFetcher: _stubOsrm,
+                  elevationFetcher: _stubElev,
+                  geocodingFetcher: _stubGeocoding,
+                  locateFn: _stubLocate,
+                  snapAvailableOverride: true,
+                ),
+          },
+        ),
+      );
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    // Toolbar icon slots after the title. The overflow's PopupMenuButton
+    // draws an IconButton of its own, so it counts once.
+    Finder toolbarSlots() => find.descendant(
+          of: find.byType(AppBarActions),
+          matching: find.byType(IconButton),
+        );
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('${scale}x: nothing overflows', (tester) async {
+        await pumpPhone(tester, scale);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('${scale}x: the mode selector is one run', (tester) async {
+        await pumpPhone(tester, scale);
+        final tops = [
+          for (final label in ['Trail', 'Road', 'Straight'])
+            tester
+                .getRect(find.ancestor(
+                    of: find.text(label), matching: find.byType(ChoiceChip)))
+                .top,
+        ];
+        expect(tops.toSet(), hasLength(1),
+            reason: 'chips on different rows: $tops');
+      });
+
+      testWidgets('${scale}x: the mode selector never meets the Locate FAB',
+          (tester) async {
+        await pumpPhone(tester, scale);
+        final selector = tester.getRect(find.ancestor(
+          of: find.text('Trail'),
+          matching: find.byType(SingleChildScrollView),
+        ));
+        final fab = tester.getRect(find.byType(FloatingActionButton));
+        expect(selector.overlaps(fab), isFalse,
+            reason: 'selector $selector, FAB $fab');
+        expect(selector.right, lessThanOrEqualTo(screen.width));
+      });
+
+      testWidgets('${scale}x: the map credit sits above the navigation bar',
+          (tester) async {
+        await pumpPhone(tester, scale);
+        final credits = find.descendant(
+            of: find.byType(MapAttribution), matching: find.byType(Text));
+        expect(credits, findsWidgets);
+        for (final credit in credits.evaluate()) {
+          final rect = tester.getRect(find.byWidget(credit.widget));
+          expect(rect.bottom, lessThanOrEqualTo(screen.height - navBar),
+              reason: 'credit $rect is under the navigation bar');
+          expect(rect.top, greaterThanOrEqualTo(0));
+        }
+        // And under the controls rather than beneath them.
+        final fab = tester.getRect(find.byType(FloatingActionButton));
+        final strip = tester.getRect(find.byType(MapAttribution));
+        expect(strip.top, greaterThanOrEqualTo(fab.bottom));
+      });
+
+      testWidgets('${scale}x: the toolbar keeps two icon slots beside Save, '
+          'so the search field gets the rest', (tester) async {
+        await pumpPhone(tester, scale);
+        // Undo + the overflow menu; Generate loop, Route points and Clear fold.
+        expect(toolbarSlots(), findsNWidgets(2));
+        expect(find.byTooltip('Undo'), findsOneWidget);
+        expect(find.byTooltip('More'), findsOneWidget);
+        // The title takes what the toolbar leaves: 72 dp before it, 16 after
+        // the actions (AppBarActions' derivation).
+        final save = tester.getRect(find.widgetWithText(TextButton, 'Save'));
+        final field = tester.getRect(find.byType(TextField));
+        expect(find.byType(BackButton), findsOneWidget);
+        expect(field.width, greaterThan(0));
+        expect(field.width,
+            closeTo(screen.width - 72 - 2 * 48 - save.width - 16, 1.0));
+        expect(save.right, lessThanOrEqualTo(screen.width));
+      });
+    }
+
+    testWidgets('the overflow carries Generate loop, Route points and Clear, with '
+        'Clear last', (tester) async {
+      await pumpPhone(tester, 1.3);
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final items = tester
+          .widgetList<ListTile>(find.descendant(
+              of: find.byType(PopupMenuItem<int>),
+              matching: find.byType(ListTile)))
+          .map((t) => (t.title! as Text).data)
+          .toList();
+      expect(items, ['Generate loop', 'Route points', 'Clear']);
+    });
+
+    testWidgets('a focused search field folds Undo too', (tester) async {
+      await pumpPhone(tester, 1.3);
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(toolbarSlots(), findsOneWidget);
+      expect(find.byTooltip('Undo'), findsNothing);
+      // The selector hides so it cannot cover the results dropdown.
+      expect(find.text('Trail'), findsNothing);
+    });
+  });
+
+  // The draft line was the app theme's primary at 5 px with no casing, so
+  // its colour followed the app theme rather than the basemap under it.
+  testWidgets('the drafted line is the basemap-keyed draft colour over a casing',
+      (tester) async {
+    final store = await _store();
+    await _pumpScreen(tester, store);
+    await tester.tap(find.text('Straight'));
+    await tester.pump();
+    final map = tester.getRect(find.byType(FlutterMap));
+    await tester.tapAt(map.center.translate(-60, 0));
+    await tester.pump();
+    await tester.tapAt(map.center.translate(60, 40));
+    await tester.pump();
+
+    final draft = find.byKey(const ValueKey('builder-draft-line'));
+    await pumpUntil(tester, () => draft.evaluate().isNotEmpty,
+        describe: 'the two-waypoint draft line');
+    final lines = tester.widget<PolylineLayer>(draft).polylines;
+    expect(lines, hasLength(2));
+    final Polyline casing = lines.first, line = lines.last;
+    // No MAPTILER_KEY in the test env, so the basemap is the light OSM
+    // fallback.
+    expect(line.color, mapDraftLine(darkBasemap: false));
+    expect(line.strokeWidth, mapLineWidth);
+    expect(casing.color, mapLineCasing);
+    expect(casing.strokeWidth, greaterThan(line.strokeWidth));
   });
 
   testWidgets('mode toggle has Trail / Road / Straight segments',
@@ -247,9 +591,6 @@ void main() {
       find.textContaining('Road snapping is unavailable'),
       findsOneWidget,
     );
-    // Drain the banner's 3s auto-dismiss timer (pumpAndSettle hangs on
-    // the flutter_map animation, so pump the fixed duration instead).
-    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('no snapping-unavailable banner when snapping works',
@@ -285,6 +626,80 @@ void main() {
         code: 'P0001',
       ));
       expect(msg, contains('creating clubs too quickly'));
+    });
+
+    // § 744's point: the branch used to sit ABOVE the context check, so it
+    // discarded a localizer it was already holding and every reader got
+    // English. These drive the production shape — a context IS passed at the
+    // single real call site — and pin that the sentence comes out of the
+    // catalogue rather than out of the helper.
+    testWidgets('a German context gets German, not the English fallback',
+        (tester) async {
+      late BuildContext ctx;
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('de'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(builder: (c) {
+          ctx = c;
+          return const SizedBox.shrink();
+        }),
+      ));
+
+      final msg = formatSaveRouteError(
+        PostgrestException(
+          message: 'rate limit exceeded for create_route, retry in 42s',
+          code: 'P0001',
+        ),
+        ctx,
+      );
+      final de = lookupAppLocalizations(const Locale('de'));
+      expect(msg, de.rateLimitCreateRoute(rateLimitWait(de, 42)));
+      expect(msg, isNot(contains('too quickly')),
+          reason: 'a hardcoded copy of a translated string is exactly what '
+              '§ 744 removed');
+    });
+
+    testWidgets('every shipped locale renders its own refusal here',
+        (tester) async {
+      for (final locale in AppLocalizations.supportedLocales) {
+        late BuildContext ctx;
+        await tester.pumpWidget(MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(builder: (c) {
+            ctx = c;
+            return const SizedBox.shrink();
+          }),
+        ));
+        final l10n = lookupAppLocalizations(locale);
+        final msg = formatSaveRouteError(
+          PostgrestException(
+            message: 'rate limit exceeded for create_route, retry in 42s',
+            code: 'P0001',
+          ),
+          ctx,
+        );
+        expect(msg, l10n.rateLimitCreateRoute(rateLimitWait(l10n, 42)),
+            reason: '$locale renders through the catalogue');
+        expect(msg.contains('{'), isFalse,
+            reason: '$locale left a slot unsubstituted: $msg');
+      }
+    });
+
+    test('with no context it looks English up rather than re-spelling it', () {
+      // Only the unit tests reach this arm, and it must still come out of
+      // the catalogue — a literal here is a second copy of a translated
+      // string that no catalogue parity suite can see.
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(
+        formatSaveRouteError(PostgrestException(
+          message: 'rate limit exceeded for create_route, retry in 42s',
+          code: 'P0001',
+        )),
+        en.rateLimitCreateRoute(rateLimitWait(en, 42)),
+      );
     });
 
     // The raw exception used to be interpolated into this string so a
@@ -464,19 +879,6 @@ void main() {
     // loud rather than silently breaking Straight-segment taps. See
     // user-reported bug: "the straight button is covered by the
     // locate position button".
-    test('mode toggle Positioned.right clears the FAB column', () {
-      final source =
-          File('lib/screens/route_builder_screen.dart').readAsStringSync();
-      expect(
-        source.contains('right: 16 + 56 + 12'),
-        isTrue,
-        reason:
-            "Mode toggle's right edge must leave room for the 56-dp FAB "
-            "(plus 16 margin + 12 gap) so the Straight segment isn't "
-            "covered by the Locate FAB.",
-      );
-    });
-
     test('empty-state hint suffixes the current mode', () {
       // Pin both the empty hint and the one-waypoint hint so flipping
       // the mode toggle has visible feedback before the user has
@@ -1347,4 +1749,168 @@ void _registerOfflineSaveTests() {
     });
   });
 
+
+  // Draw mode (route art, decisions § 2263).
+  group('Draw mode', () {
+    Future<void> pumpDraw(
+      WidgetTester tester, {
+      Future<String> Function(Uri)? osrm,
+    }) async {
+      final store = (await tester.runAsync(() async {
+        final dir = Directory.systemTemp.createTempSync('rb_draw_test_');
+        addTearDown(() {
+          try {
+            dir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+        final s = LocalRouteStore();
+        await s.init(overrideDirectory: dir);
+        return s;
+      }))!;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RouteBuilderScreen(
+            apiClient: ApiClient(),
+            routeStore: store,
+            initialCenter: const LatLng(51.5074, -0.1278),
+            osrmFetcher: osrm ?? _stubOsrm,
+            elevationFetcher: _stubElev,
+            geocodingFetcher: _stubGeocoding,
+            locateFn: _stubLocate,
+            snapAvailableOverride: true,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    Future<void> turnOn(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('route-builder-draw-toggle')));
+      await tester.pump();
+    }
+
+    /// Drag a square of [side] logical pixels around the draw surface's
+    /// centre, ending where it began.
+    Future<void> drawSquare(WidgetTester tester, double side) async {
+      final c = tester.getCenter(
+          find.byKey(const Key('route-builder-draw-surface')));
+      final h = side / 2;
+      final corners = [
+        c + Offset(-h, -h),
+        c + Offset(h, -h),
+        c + Offset(h, h),
+        c + Offset(-h, h),
+        c + Offset(-h, -h),
+      ];
+      final g = await tester.startGesture(corners.first);
+      for (var k = 0; k < corners.length - 1; k++) {
+        for (var i = 1; i <= 10; i++) {
+          await g.moveTo(Offset.lerp(corners[k], corners[k + 1], i / 10)!);
+        }
+      }
+      await g.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    TextButton saveButton(WidgetTester tester) =>
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Save'));
+
+    testWidgets('the toggle swaps panning for drawing and shows the hint',
+        (tester) async {
+      await pumpDraw(tester);
+      expect(find.byKey(const Key('route-builder-draw-surface')), findsNothing);
+      await turnOn(tester);
+      expect(
+          find.byKey(const Key('route-builder-draw-surface')), findsOneWidget);
+      expect(find.text('Drag on the map to draw your shape'), findsOneWidget);
+      expect(find.byTooltip('Draw a shape'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('route-builder-draw-toggle')));
+      await tester.pump();
+      expect(find.byKey(const Key('route-builder-draw-surface')), findsNothing);
+    });
+
+    testWidgets('a drawing the roads follow becomes the route with its score',
+        (tester) async {
+      final calls = <Uri>[];
+      await pumpDraw(tester, osrm: (u) {
+        calls.add(u);
+        return _stubOsrm(u);
+      });
+      await turnOn(tester);
+      await drawSquare(tester, 200);
+      expect(find.textContaining('Matches your drawing: 100%'), findsOneWidget);
+      expect(find.textContaining('Close match'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNotNull);
+      expect(calls, isNotEmpty);
+      for (final u in calls) {
+        final pairs = u.pathSegments.last.split(';');
+        expect(pairs.length, lessThanOrEqualTo(60));
+      }
+    });
+
+    testWidgets('a drawing the roads cannot follow is refused, not saved',
+        (tester) async {
+      await pumpDraw(tester, osrm: (u) async {
+        final pairs = u.pathSegments.last.split(';');
+        List<double> pt(String s) =>
+            [double.parse(s.split(',')[0]), double.parse(s.split(',')[1])];
+        return jsonEncode({
+          'code': 'Ok',
+          'routes': [
+            {
+              'distance': 10.0,
+              'geometry': {
+                'coordinates': [pt(pairs.first), pt(pairs.last)],
+              },
+            },
+          ],
+        });
+      });
+      await turnOn(tester);
+      await drawSquare(tester, 200);
+      expect(find.textContaining('Too far from your drawing'), findsOneWidget);
+      expect(find.textContaining('match only'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a drawing with no road nearby names the problem',
+        (tester) async {
+      await pumpDraw(tester,
+          osrm: (u) async => jsonEncode({'code': 'NoSegment'}));
+      await turnOn(tester);
+      await drawSquare(tester, 200);
+      expect(find.textContaining('no road or path nearby'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a scribble too small to route asks for a bigger shape',
+        (tester) async {
+      await pumpDraw(tester);
+      await turnOn(tester);
+      await drawSquare(tester, 12);
+      expect(find.textContaining('Draw a bigger shape'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('${scale}x: the draw status wraps instead of overflowing',
+          (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pumpDraw(tester);
+        await turnOn(tester);
+        await drawSquare(tester, 200);
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('route-builder-draw-status')),
+            findsOneWidget);
+      });
+    }
+  });
 }

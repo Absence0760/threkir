@@ -1,42 +1,66 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { fetchRouteById, fetchRouteMarkers, updateRouteMarker } from '$lib/core/data';
-	import type { Route, RouteMarker } from '$lib/types';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import {
+		fetchRouteById,
+		fetchRouteCourseAttribution,
+		fetchRouteMarkers,
+		updateRouteMarker,
+	} from '#lib/core/data.ts';
+	import type { Route, RouteMarker } from '#lib/types.ts';
 	import {
 		buildRoadbook,
 		type RoadbookWaypoint,
 		type RoadbookMarker,
 		type PacingModel,
-		type CutoffStatus
-	} from '$lib/routes/roadbook';
-	import { kindSpec } from '$lib/routes/route_markers';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '$lib/routes/route_gpx';
-	import { downloadFile } from '$lib/routes/gpx';
+		type CutoffStatus,
+		type TargetStatus
+	} from '#lib/routes/roadbook.ts';
+	import { kindSpec } from '#lib/routes/route_markers.ts';
+	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { downloadFile } from '#lib/routes/gpx.ts';
 	import {
 		buildFuelPlan,
 		DEFAULT_CARBS_PER_HOUR_G,
 		DEFAULT_FLUID_PER_HOUR_ML,
 		HEAT_FLUID_FACTOR
-	} from '$lib/routes/fuel_plan';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { fetchElevations } from '$lib/routes/elevation';
-	import { fmtSplitTime } from '$lib/runs/race_day';
-	import { formatDistance, formatElevation } from '$lib/format/units.svelte';
+	} from '#lib/routes/fuel_plan.ts';
+	import {
+		FUEL_MAX_CARBS_PER_HOUR_G,
+		FUEL_MAX_FLUID_PER_HOUR_ML,
+		parseFuelRate,
+		resolveFluidRate
+	} from '#lib/routes/fuel_params.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { fetchLatestWeightKg } from '#lib/core/data.ts';
+	import { healthUseWeightKg } from '#lib/core/health_consent.ts';
+	import { weightFluidEnabled } from '#lib/nutrition/weight_fluid_flag.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { fetchElevations } from '#lib/routes/elevation.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { formatDistance, formatElevation, formatPace } from '#lib/format/units.svelte.ts';
 
 	let { data }: { data: { id: string } } = $props();
 
 	let route = $state<Route | null>(null);
 	let markers = $state<RouteMarker[]>([]);
 	let loading = $state(true);
+	let loadFailed = $state(false);
 	// The signed-in user's fueling-rate defaults (Settings → Preferences). The
 	// roadbook can override these per-page via ?carbs= / ?fluid= (shareable),
 	// falling back to these prefs, then the fuel_plan.ts constants when unset.
 	let carbsPrefG = $state(DEFAULT_CARBS_PER_HOUR_G);
 	let fluidPrefMl = $state(DEFAULT_FLUID_PER_HOUR_ML);
+	// A weight the Art 9 gate lets the fluid rate use, or null (decisions
+	// § 1976): the runner's own latest body-metrics weight, only under consent.
+	let consentedWeightKg = $state<number | null>(null);
+	// Off, no body weight is read and the flat rate stands.
+	const weightFluid = weightFluidEnabled();
 	// Open-Meteo elevations fetched on demand when the route lacks stored ele.
 	let fetchedEle = $state<number[] | null>(null);
 	let fetchingEle = $state(false);
@@ -54,10 +78,19 @@
 
 	async function load() {
 		loading = true;
-		route = await fetchRouteById(data.id);
-		markers = route ? await fetchRouteMarkers(data.id) : [];
-		await loadFuelPrefs();
-		loading = false;
+		loadFailed = false;
+		try {
+			route = await fetchRouteById(data.id);
+			markers = route ? await fetchRouteMarkers(data.id) : [];
+			await loadFuelPrefs();
+		} catch (e) {
+			console.error('roadbook route load failed', e);
+			route = null;
+			markers = [];
+			loadFailed = true;
+		} finally {
+			loading = false;
+		}
 	}
 
 	async function loadFuelPrefs() {
@@ -65,6 +98,13 @@
 		if (!auth.user) return;
 		try {
 			const settings = await loadSettings(auth.user.id);
+			if (weightFluid) {
+				const [weight, profileRes] = await Promise.all([
+					fetchLatestWeightKg(),
+					supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle()
+				]);
+				consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
+			}
 			carbsPrefG = effective<number>(settings, 'carbs_per_hour', DEFAULT_CARBS_PER_HOUR_G) ?? DEFAULT_CARBS_PER_HOUR_G;
 			fluidPrefMl = effective<number>(settings, 'fluid_per_hour', DEFAULT_FLUID_PER_HOUR_ML) ?? DEFAULT_FLUID_PER_HOUR_ML;
 		} catch {
@@ -73,7 +113,7 @@
 	}
 
 	// ---- URL-backed controls (shareable) ----
-	const params = $derived($page.url.searchParams);
+	const params = $derived(page.url.searchParams);
 
 	let goalSeconds = $derived.by(() => {
 		// The `goal` param is raw seconds (the input below converts H:MM:SS → s).
@@ -95,25 +135,33 @@
 	// `?heat=1` bumps fluid by the heat factor.
 	let fuelOn = $derived(params.get('fuel') === '1');
 	let heatOn = $derived(params.get('heat') === '1');
+	// `?bw=1` asks for the weight-based fluid rate; it applies only with the
+	// deploy gate on and a consented weight on record, else the flat rate stands.
+	let weightOn = $derived(weightFluid && params.get('bw') === '1');
 
 	// Effective intake rates: a per-page ?carbs= / ?fluid= override wins, then
-	// the user's settings pref, then the fuel_plan.ts default.
-	let carbsPerHourG = $derived.by(() => {
-		const raw = params.get('carbs');
-		const n = raw ? Number(raw) : NaN;
-		return Number.isFinite(n) && n >= 0 ? n : carbsPrefG;
-	});
-	let fluidPerHourMl = $derived.by(() => {
-		const raw = params.get('fluid');
-		const n = raw ? Number(raw) : NaN;
-		return Number.isFinite(n) && n >= 0 ? n : fluidPrefMl;
-	});
+	// the user's settings pref, then the fuel_plan.ts default. The override is
+	// a pasted or Coach-written link, so it goes through parseFuelRate and an
+	// out-of-range value falls back to the pref rather than reaching the plan.
+	let carbsPerHourG = $derived(
+		parseFuelRate(params.get('carbs'), FUEL_MAX_CARBS_PER_HOUR_G) ?? carbsPrefG
+	);
+	let fluidRate = $derived(
+		resolveFluidRate({
+			useWeight: weightOn,
+			weightKg: consentedWeightKg,
+			linkValue: parseFuelRate(params.get('fluid'), FUEL_MAX_FLUID_PER_HOUR_ML),
+			pref: fluidPrefMl,
+			fallback: DEFAULT_FLUID_PER_HOUR_ML
+		})
+	);
+	let fluidPerHourMl = $derived(fluidRate.value);
 
 	function updateParam(key: string, value: string | null) {
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (value == null || value === '') url.searchParams.delete(key);
 		else url.searchParams.set(key, value);
-		goto(`${url.pathname}${url.search}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	// ---- roadbook computation ----
@@ -178,7 +226,7 @@
 			markers = await fetchRouteMarkers(data.id);
 			showToast(m('roadbook.saveTargetsDone', { count: String(saved) }), 'success');
 		} catch (e) {
-			showToast(m('roadbook.saveTargetsFailed', { error: `${e}` }), 'error');
+			showToast(m('roadbook.saveTargetsFailed', { error: errorCopy(e, m, 'roadbook.saveTargetsFailed') }), 'error');
 		} finally {
 			savingTargets = false;
 		}
@@ -208,6 +256,22 @@
 		return leg.checkpoint.label;
 	}
 
+	/** Seconds allocated to the leg arriving at `i` — the goal-time slice the
+	 * pacing model gave that stretch. The start row has no preceding leg. */
+	function legSeconds(i: number): number {
+		const legs = roadbook.legs;
+		return i <= 0 ? 0 : legs[i].projectedElapsedS - legs[i - 1].projectedElapsedS;
+	}
+
+	/** The pace this leg has to be run at to hold the goal. Under the effort
+	 * model this is the number that differs between a climb and a flat — the
+	 * whole point of the model, and invisible from cumulative arrivals alone. */
+	function legPace(i: number): string {
+		const leg = roadbook.legs[i];
+		if (i <= 0 || leg.legDistM <= 0) return '—';
+		return formatPace(legSeconds(i), leg.legDistM);
+	}
+
 	function checkpointColor(leg: (typeof roadbook)['legs'][number]): string {
 		if (leg.checkpoint === 'start') return '#22c55e';
 		if (leg.checkpoint === 'finish') return '#ef4444';
@@ -218,9 +282,23 @@
 		return status === 'miss' ? 'cut-miss' : status === 'tight' ? 'cut-tight' : 'cut-safe';
 	}
 
+	// The column appears only once a checkpoint actually carries a target, so a
+	// route nobody has planned times for doesn't grow an empty column.
+	const hasTargets = $derived(roadbook.legs.some((leg) => leg.target != null));
+
+	function targetClass(status: TargetStatus): string {
+		return status === 'behind' ? 'tgt-behind' : status === 'ahead' ? 'tgt-ahead' : 'tgt-on';
+	}
+
+	function targetStatusLabel(status: TargetStatus): string {
+		if (status === 'ahead') return m('roadbook.targetAhead');
+		if (status === 'behind') return m('roadbook.targetBehind');
+		return m('roadbook.targetOn');
+	}
+
 	function fmtMargin(seconds: number): string {
 		const sign = seconds < 0 ? '−' : '+';
-		return `${sign}${fmtSplitTime(Math.abs(seconds))}`;
+		return `${sign}${formatDuration(Math.abs(seconds))}`;
 	}
 
 	function fmtClock(min: number | undefined): string {
@@ -245,7 +323,7 @@
 	}
 
 	// Goal input bound as H:MM:SS.
-	let goalInput = $derived(fmtSplitTime(goalSeconds));
+	let goalInput = $derived(formatDuration(goalSeconds));
 	let startInput = $derived(startClockMin == null ? '' : fmtClock(startClockMin));
 
 	function onGoalChange(e: Event) {
@@ -256,17 +334,22 @@
 
 	async function copyAsText() {
 		const lines = [`${route?.name ?? m('roadbook.heading')} — ${m('roadbook.heading')}`, ''];
-		lines.push(`${m('roadbook.colCheckpoint')} | ${m('roadbook.colDistance')} | ${m('roadbook.colArrival')} | ${m('roadbook.colCutoff')}`);
-		for (const leg of roadbook.legs) {
+		lines.push(
+			`${m('roadbook.colCheckpoint')} | ${m('roadbook.colDistance')} | ${m('roadbook.colLegPace')} | ${m('roadbook.colArrival')}${hasTargets ? ` | ${m('roadbook.colTarget')}` : ''} | ${m('roadbook.colCutoff')}`
+		);
+		for (const [i, leg] of roadbook.legs.entries()) {
+			const target = leg.target
+				? `${formatDuration(leg.target.targetElapsedS)} ${fmtMargin(leg.target.marginS)} ${targetStatusLabel(leg.target.status)}`
+				: '';
 			const cut = leg.cutoff
 				? `${
 						startClockMin != null
 							? fmtClock(startClockMin + leg.cutoff.limitElapsedS / 60)
-							: fmtSplitTime(leg.cutoff.limitElapsedS)
+							: formatDuration(leg.cutoff.limitElapsedS)
 					} ${fmtMargin(leg.cutoff.marginS)}`
 				: '';
 			lines.push(
-				`${checkpointLabel(leg)} | ${formatDistance(leg.cumDistM)} | ${fmtSplitTime(leg.projectedElapsedS)}${leg.projectedClockMin != null ? ` (${fmtClock(leg.projectedClockMin)})` : ''} | ${cut}`
+				`${checkpointLabel(leg)} | ${formatDistance(leg.cumDistM)} | ${legPace(i)} | ${formatDuration(leg.projectedElapsedS)}${leg.projectedClockMin != null ? ` (${fmtClock(leg.projectedClockMin)})` : ''}${hasTargets ? ` | ${target}` : ''} | ${cut}`
 			);
 		}
 		try {
@@ -281,10 +364,23 @@
 		return m(`routeMarker.service.${s}` as 'routeMarker.service.water');
 	}
 
-	function handleExportGpxWithMarkers() {
+	async function handleExportGpxWithMarkers() {
 		if (!route) return;
 		const wps = route.waypoints ?? [];
 		if (!wps.length) return;
+		// A park course's route exports with its geometry credit; a failed
+		// check refuses the export rather than writing it uncredited, unless
+		// the route is known not to be official (park course routes are).
+		let attribution = null;
+		try {
+			attribution = await fetchRouteCourseAttribution(route.id);
+		} catch (e) {
+			console.error('roadbook export attribution failed', e);
+			if (route.is_official !== false) {
+				showToast(m('routeDetail.exportCreditFailed'), 'error');
+				return;
+			}
+		}
 		const coords: [number, number][] = wps.map((w) => [w.lng, w.lat]);
 		const eles = wps.map((w, i) => w.ele ?? fetchedEle?.[i] ?? 0);
 		const gpxMarkers: RouteGpxMarker[] = markers.map((mk) => ({
@@ -294,7 +390,7 @@
 			kind: mk.kind,
 			meta: mk.meta
 		}));
-		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers);
+		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers, attribution);
 		const filename =
 			route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '_with_markers.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');
@@ -308,6 +404,13 @@
 <div class="roadbook-page">
 	{#if loading}
 		<p class="muted">{m('roadbook.loading')}</p>
+	{:else if loadFailed}
+		<p class="muted load-error" role="alert" data-testid="roadbook-load-error">
+			{m('routeDetail.loadFailedBody')}
+			<button type="button" class="btn btn-outline btn-sm" onclick={() => void load()}>
+				{m('routeDetail.retry')}
+			</button>
+		</p>
 	{:else if !route}
 		<p class="muted">{m('roadbook.routeNotFound')}</p>
 	{:else}
@@ -387,8 +490,31 @@
 					>
 						{m('roadbook.heat')}
 					</button>
+					{#if weightFluid}
+						<button
+							class:active={weightOn && consentedWeightKg != null}
+							aria-pressed={weightOn && consentedWeightKg != null}
+							disabled={consentedWeightKg == null}
+							aria-describedby="roadbook-weight-hint"
+							data-testid="roadbook-fuel-weight"
+							onclick={() => updateParam('bw', weightOn ? null : '1')}
+						>
+							{m('fuelPlan.weightToggle')}
+						</button>
+					{/if}
 				{/if}
 			</div>
+			{#if fuelOn && weightFluid}
+				<p class="weight-hint" id="roadbook-weight-hint" data-testid="roadbook-weight-hint">
+					{#if consentedWeightKg == null}
+						{m('fuelPlan.weightUnavailable')}
+					{:else if fluidRate.source === 'fromWeight'}
+						{m('fuelPlan.weightUsing', { ml: String(fluidRate.value) })}
+					{:else}
+						{m('fuelPlan.weightHint')}
+					{/if}
+				</p>
+			{/if}
 		</section>
 
 		{#if markers.length === 0}
@@ -398,7 +524,7 @@
 				{m('roadbook.summary', {
 					distance: formatDistance(roadbook.totalDistM),
 					vert: formatElevation(roadbook.totalGainM),
-					time: fmtSplitTime(roadbook.totalSeconds)
+					time: formatDuration(roadbook.totalSeconds)
 				})}
 				{#if model === 'effort' && !roadbook.hasElevation}
 					<button class="link-btn no-print" onclick={addElevation} disabled={fetchingEle}>
@@ -412,8 +538,12 @@
 					<tr>
 						<th>{m('roadbook.colCheckpoint')}</th>
 						<th class="num">{m('roadbook.colDistance')}</th>
-						<th class="num">{m('roadbook.colVert')}</th>
+						<th class="num"><MetricLabel metric="vert" /></th>
+						<th class="num">{m('roadbook.colLegPace')}</th>
 						<th class="num">{m('roadbook.colArrival')}</th>
+						{#if hasTargets}
+							<th>{m('roadbook.colTarget')}</th>
+						{/if}
 						<th>{m('roadbook.colCutoff')}</th>
 						{#if fuelOn}
 							<th class="num">{m('roadbook.colCarbs')}</th>
@@ -436,14 +566,28 @@
 									<span class="down">−{Math.round(leg.legLossM)}</span>
 								{:else}—{/if}
 							</td>
+							<td class="num" data-testid="roadbook-leg-pace">{legPace(i)}</td>
 							<td class="num">
-								{fmtSplitTime(leg.projectedElapsedS)}
+								{formatDuration(leg.projectedElapsedS)}
 								{#if leg.projectedClockMin != null}<span class="clock">{fmtClock(leg.projectedClockMin)}</span>{/if}
 							</td>
+							{#if hasTargets}
+								<td data-testid="roadbook-target">
+									{#if leg.target}
+										<span class="cut {targetClass(leg.target.status)}">
+											{formatDuration(leg.target.targetElapsedS)}
+											<small>
+												{fmtMargin(leg.target.marginS)}
+												{targetStatusLabel(leg.target.status)}
+											</small>
+										</span>
+									{/if}
+								</td>
+							{/if}
 							<td>
 								{#if leg.cutoff}
 									<span class="cut {cutoffClass(leg.cutoff.status)}">
-										{fmtClock(startClockMin != null ? (startClockMin + leg.cutoff.limitElapsedS / 60) : undefined) || fmtSplitTime(leg.cutoff.limitElapsedS)}
+										{fmtClock(startClockMin != null ? (startClockMin + leg.cutoff.limitElapsedS / 60) : undefined) || formatDuration(leg.cutoff.limitElapsedS)}
 										<small>{fmtMargin(leg.cutoff.marginS)}</small>
 									</span>
 								{/if}
@@ -479,6 +623,12 @@
 	.roadbook-page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 64rem;
+	}
+	.load-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
 	}
 	.rb-header {
 		display: flex;
@@ -605,7 +755,8 @@
 		font-size: 0.75rem;
 		opacity: 0.85;
 	}
-	.cut-safe {
+	.cut-safe,
+	.tgt-ahead {
 		background: var(--color-success-light);
 		color: color-mix(in srgb, var(--color-success) 50%, var(--color-text));
 	}
@@ -613,9 +764,14 @@
 		background: color-mix(in srgb, var(--color-warning) 18%, transparent);
 		color: color-mix(in srgb, var(--color-warning) 45%, var(--color-text));
 	}
-	.cut-miss {
+	.cut-miss,
+	.tgt-behind {
 		background: var(--color-danger-light);
 		color: color-mix(in srgb, var(--color-danger) 65%, var(--color-text));
+	}
+	.tgt-on {
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
 	}
 	.services .svc {
 		display: inline-block;
@@ -626,6 +782,13 @@
 		margin: 0 4px 2px 0;
 		font-size: 0.78rem;
 	}
+	.weight-hint {
+		flex-basis: 100%;
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
 	.fuel-cell {
 		white-space: nowrap;
 	}

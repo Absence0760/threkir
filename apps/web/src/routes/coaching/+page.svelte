@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		fetchMyAthletesWithError,
 		fetchPendingCoachInvites,
@@ -14,14 +15,35 @@
 		type CoachAthleteLink,
 		type CoachRosterRow,
 		type PendingCoachInvite
-	} from '$lib/core/data';
-	import { formatRelativeTime } from '$lib/format/time';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { injuryRiskBand, loadTrend } from '$lib/training/coach_load';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	} from '#lib/core/data.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import {
+		CONSECUTIVE_MISS_FLAG,
+		consecutiveMissedWorkouts,
+		isEasyHrDriftFlagged,
+		loadTrend
+	} from '#lib/training/coach_load.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
+	import { rosterRisk, sortRoster, type RosterSortKey } from './roster_sort';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import CoachAssistConsent from '#lib/components/CoachAssistConsent.svelte';
+	import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
+
+	const assistOn = coachAssistEnabled();
+
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
+
+	function missStreak(r: CoachRosterRow): number {
+		return r.athlete_today ? consecutiveMissedWorkouts(r.recent_workouts, r.athlete_today) : 0;
+	}
 
 	let athletes = $state<CoachAthleteLink[]>([]);
 	let pending = $state<PendingCoachInvite[]>([]);
@@ -57,8 +79,8 @@
 		pending = p;
 		coaches = c;
 		roster = rosterResult.rows;
-		rosterError = rosterResult.error;
-		loadError = athletesResult.error;
+		rosterError = rosterResult.error ? errorCopy(rosterResult.error, m, 'coaching: rosterError') : null;
+		loadError = athletesResult.error ? errorCopy(athletesResult.error, m, 'coaching: loadError') : null;
 		loading = false;
 	}
 
@@ -66,21 +88,8 @@
 
 	// Sort defaults to "risk first, then most-stale last-run first" so the
 	// athletes who need attention float to the top of the roster.
-	type RosterSortKey = 'risk' | 'lastRun' | 'load' | 'plan' | 'name';
 	let sortKey = $state<RosterSortKey>('risk');
 	let sortDir = $state<'asc' | 'desc'>('desc');
-
-	const RISK_RANK: Record<string, number> = {
-		high: 4,
-		elevated: 3,
-		optimal: 2,
-		low: 1,
-		insufficient: 0
-	};
-
-	function rosterRisk(r: CoachRosterRow): string {
-		return injuryRiskBand(r.load_acute, r.load_chronic);
-	}
 
 	function setSort(key: RosterSortKey) {
 		if (sortKey === key) {
@@ -91,37 +100,7 @@
 		}
 	}
 
-	const sortedRoster = $derived.by(() => {
-		const dir = sortDir === 'desc' ? -1 : 1;
-		const rows = [...roster];
-		rows.sort((a, b) => {
-			let cmp = 0;
-			switch (sortKey) {
-				case 'risk':
-					cmp = RISK_RANK[rosterRisk(a)] - RISK_RANK[rosterRisk(b)];
-					if (cmp === 0) cmp = lastRunMs(a) - lastRunMs(b);
-					break;
-				case 'lastRun':
-					cmp = lastRunMs(a) - lastRunMs(b);
-					break;
-				case 'load':
-					cmp = a.load_acute - b.load_acute;
-					break;
-				case 'plan':
-					cmp = a.plan_completion_pct - b.plan_completion_pct;
-					break;
-				case 'name':
-					cmp = (a.display_name ?? '').localeCompare(b.display_name ?? '');
-					break;
-			}
-			return cmp * dir;
-		});
-		return rows;
-	});
-
-	function lastRunMs(r: CoachRosterRow): number {
-		return r.last_run_at ? new Date(r.last_run_at).getTime() : 0;
-	}
+	const sortedRoster = $derived(sortRoster(roster, sortKey, sortDir));
 
 	function riskLabel(band: string): string {
 		switch (band) {
@@ -170,7 +149,7 @@
 			await copyLink(token);
 			pending = await fetchPendingCoachInvites();
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('coaching.createInviteFailed'), 'error');
+			showToast(errorCopy(e, m, 'coaching.createInviteFailed', 'coaching.createInviteFailed'), 'error');
 		} finally {
 			minting = false;
 		}
@@ -228,11 +207,11 @@
 		} catch (e: unknown) {
 			const fallback =
 				a.kind === 'revoke'
-					? m('coaching.revokeInviteFailed')
+					? 'coaching.revokeInviteFailed'
 					: a.kind === 'remove'
-						? m('coaching.removeAthleteFailed')
-						: m('coaching.endLinkFailed');
-			showToast(e instanceof Error ? e.message : fallback, 'error');
+						? 'coaching.removeAthleteFailed'
+						: 'coaching.endLinkFailed';
+			showToast(errorCopy(e, m, fallback, fallback), 'error');
 		} finally {
 			acting = false;
 		}
@@ -324,6 +303,7 @@
 							<tbody>
 								{#each sortedRoster as r (r.athlete_id)}
 									{@const band = rosterRisk(r)}
+									{@const misses = missStreak(r)}
 									<tr
 										class="roster-row"
 										data-testid="roster-row"
@@ -335,7 +315,7 @@
 												href="/coaching/athletes/{r.athlete_id}"
 												onclick={(e) => e.stopPropagation()}
 											>
-												<Avatar name={r.display_name} size="2rem" font="0.78rem" />
+												<Avatar url={r.avatar_url} name={r.display_name} size="2rem" font="0.78rem" />
 												<span class="athlete-name">{r.display_name ?? m('coaching.runner')}</span>
 											</a>
 										</td>
@@ -355,6 +335,11 @@
 										<td>
 											{#if r.active_plan_id}
 												<span>{r.plan_completion_pct}%</span>
+												{#if misses >= CONSECUTIVE_MISS_FLAG}
+													<span class="flag-chip" data-testid="roster-miss-flag">
+														<MetricLabel metric="missStreak" variant="chip" params={{ n: misses }} />
+													</span>
+												{/if}
 											{:else}
 												<span class="muted">{m('coaching.roster.noPlan')}</span>
 											{/if}
@@ -363,6 +348,15 @@
 											<span class="risk-chip risk-{band}" data-testid="risk-chip">
 												{riskLabel(band)}
 											</span>
+											{#if hrPrescription && isEasyHrDriftFlagged(r.easy_hr_drift_pct)}
+												<span class="flag-chip" data-testid="roster-hr-drift-flag">
+													<MetricLabel
+														metric="easyHrDrift"
+														variant="chip"
+														params={{ pct: Math.round(r.easy_hr_drift_pct ?? 0) }}
+													/>
+												</span>
+											{/if}
 										</td>
 									</tr>
 								{/each}
@@ -416,7 +410,7 @@
 				<ul class="link-list">
 					{#each athletes as a (a.id)}
 						<li class="link-row">
-							<Avatar name={a.display_name} size="2.25rem" font="0.85rem" />
+							<Avatar url={a.avatar_url} name={a.display_name} size="2.25rem" font="0.85rem" />
 							<div class="link-body">
 								<a class="link-name" href="/coaching/athletes/{a.user_id}">{a.display_name ?? m('coaching.runner')}</a>
 								<span class="link-sub">{m('coaching.coachingSince', { date: sinceLabel(a.accepted_at) })}</span>
@@ -448,7 +442,7 @@
 				<ul class="link-list">
 					{#each coaches as c (c.id)}
 						<li class="link-row">
-							<Avatar name={c.display_name} size="2.25rem" font="0.85rem" />
+							<Avatar url={c.avatar_url} name={c.display_name} size="2.25rem" font="0.85rem" />
 							<div class="link-body">
 								<a class="link-name" href="/u/{c.user_id}">{c.display_name ?? m('coaching.coach')}</a>
 								<span class="link-sub">{m('coaching.linkedSince', { date: sinceLabel(c.accepted_at) })}</span>
@@ -461,6 +455,17 @@
 								>
 							</div>
 						</li>
+						{#if assistOn}
+							<li class="assist-row">
+								<CoachAssistConsent
+									linkId={c.id}
+									coachName={c.display_name ?? m('coaching.coach')}
+									version={c.ai_assist_consent_version}
+									onchange={(v) =>
+										(coaches = coaches.map((x) => (x.id === c.id ? { ...x, ai_assist_consent_version: v } : x)))}
+								/>
+							</li>
+						{/if}
 					{/each}
 				</ul>
 			{/if}
@@ -682,6 +687,16 @@
 		border-radius: var(--radius-sm);
 		font-size: 0.76rem;
 		font-weight: 700;
+	}
+	.flag-chip {
+		display: inline-block;
+		margin-inline-start: var(--space-2xs);
+		padding: 0.1rem 0.5rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.76rem;
+		font-weight: 700;
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
 	}
 	.risk-high {
 		background: var(--color-danger-light);

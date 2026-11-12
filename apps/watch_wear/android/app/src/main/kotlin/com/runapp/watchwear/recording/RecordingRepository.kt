@@ -1,9 +1,11 @@
 package com.runapp.watchwear.recording
 
 import com.runapp.watchwear.GpsPoint
+import com.runapp.watchwear.HeartRateAvailability
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /// Process-wide singleton holding live recording state. Owned by
 /// `RunRecordingService` (which writes), observed by `RunViewModel`
@@ -32,12 +34,62 @@ object RecordingRepository {
         val startedAtMs: Long = 0L,
         val elapsedMs: Long = 0L,
         val distanceM: Double = 0.0,
+        /// The share of a FINISHED run's [distanceM] the estimator credited
+        /// from pedometer steps across GPS gaps rather than from fixes. Written
+        /// once, at the `Finished` transition, and null at every other stage.
+        val distanceStepFilledM: Double? = null,
+        /// What of [distanceStepFilledM] the gaps' chord lower bounds would
+        /// not have credited (`GpsDistanceEstimator.stepOverChordM`). Written
+        /// with it, and null at every other stage.
+        val distanceStepOverChordM: Double? = null,
+        /// The estimator segments a FINISHED run's track holds
+        /// (`TrackWriter.segmentCount`). Written with it, and null at every
+        /// other stage.
+        val distanceSegments: Int? = null,
+        /// Which stream recorded a FINISHED run's track (`gps` / `fused` /
+        /// `mixed`, see `LocationSourceArbiter`). Written once, at the
+        /// `Finished` transition, and null at every other stage or when the
+        /// run has no track.
+        val locationProvider: String? = null,
+        /// The receiver's signal quality over a FINISHED run
+        /// (`metadata.gnss_signal`). Written once, at the `Finished`
+        /// transition, and null at every other stage or when no status
+        /// reading arrived.
+        val gnssSignal: GnssSignalSummary? = null,
         val paceSecPerKm: Double? = null,
         val bpm: Int? = null,
-        val avgBpm: Double? = null,
+        /// What the FINISHED run may claim about its heart rate: the graded
+        /// average and the share of active elapsed time the sensor covered
+        /// (decisions § 1083). Written once, by whichever party makes the
+        /// `Finished` transition, and null at every other stage.
+        ///
+        /// There is deliberately no ungraded live average beside it. This
+        /// field used to be a bare `avgBpm` that the heart-rate collect
+        /// updated on every sample and `stopRecording` then overwrote with
+        /// the graded figure, so one name carried two different claims at two
+        /// different times and `handleFinishedRun` was correct only because
+        /// the overwrite happened first — an ordering, pinned by a source
+        /// guard, between two writers on a CAS loop that exists precisely
+        /// because writes here can land out of order. The live rolling mean
+        /// had no reader at all: the running screen renders the INSTANTANEOUS
+        /// [bpm], and the grader takes the raw `bpmSum`/`bpmCount` off the
+        /// service rather than off this state. So the write was dead and its
+        /// only effect was the hazard (decisions § 1105).
+        val finishedHr: HeartRateClaim? = null,
+        /// Why there is (or is not) a live [bpm]. A null bpm is four
+        /// different situations and the running screen rendered them as
+        /// one blank space; this is what lets it say which
+        /// (decisions § 1052). `Off` on a build with `ENABLE_HR` false,
+        /// so a build that deliberately has no heart rate does not
+        /// caption every run with its absence.
+        val hrAvailability: HeartRateAvailability = HeartRateAvailability.Off,
         val trackPointCount: Int = 0,
         val latestPoint: GpsPoint? = null,
         val trackFilePath: String? = null,
+        /// Set on `Finished`: the file at [trackFilePath] holds every fix the
+        /// distance estimator took, off-track ones flagged, and is not empty.
+        /// Becomes `metadata.track_complete`.
+        val trackComplete: Boolean = false,
         val locationAvailable: Boolean = true,
         val activityType: String = "run",
         val laps: List<Lap> = emptyList(),
@@ -70,6 +122,10 @@ object RecordingRepository {
         /// the active-run tile (a separate process reading this StateFlow)
         /// render distance / pace in the runner's chosen unit.
         val preferredUnit: DistanceUnit = DistanceUnit.KM,
+        /// The live step of today's workout, null on a free run.
+        val workoutView: com.runapp.watchwear.workout.WorkoutView? = null,
+        /// Set with `Finished` on a run that followed a workout.
+        val workoutReview: com.runapp.watchwear.workout.WorkoutReview? = null,
     ) {
         val isActive: Boolean get() = stage == Stage.Recording || stage == Stage.Paused
     }
@@ -77,11 +133,43 @@ object RecordingRepository {
     private val _metrics = MutableStateFlow(Metrics())
     val metrics: StateFlow<Metrics> = _metrics.asStateFlow()
 
+    /// Atomic read-modify-write. This MUST stay a CAS loop
+    /// (`MutableStateFlow.update`), not `_metrics.value = transform(...)`:
+    /// five writers hit it concurrently — the GPS, HR, steps and ticker jobs
+    /// on `Dispatchers.Default`, plus pause/resume/lap/stop on the main
+    /// thread via `onStartCommand`.
+    ///
+    /// A plain read-then-assign loses whichever write lands second. The worst
+    /// case is losing the run: the ticker reads a `Recording` snapshot,
+    /// `stopRecording()` writes `stage = Finished`, the ticker's stale
+    /// assignment reverts it, and `stopRecording` then clears the checkpoint —
+    /// so `RunViewModel.observeRecording` never sees `Finished`, never queues
+    /// the run, and recovery has just been deleted. Cancelling the ticker does
+    /// not help: cancellation cannot interrupt a non-suspending call already
+    /// in flight. The same clobber silently un-pauses a paused run and
+    /// permanently under-counts distance (the accumulator is read back out of
+    /// the repository on each fix, so a lost write is never made up).
+    ///
+    /// With a CAS loop the transform re-runs against the latest value, so a
+    /// concurrent `stage` change survives — none of the per-metric transforms
+    /// writes `stage` itself.
     fun update(transform: (Metrics) -> Metrics) {
-        _metrics.value = transform(_metrics.value)
+        _metrics.update(transform)
     }
 
     fun reset() {
         _metrics.value = Metrics()
+    }
+
+    /// Back to idle, but only from the finished run [runId].
+    ///
+    /// `RunViewModel.handleFinishedRun` resets after the queue write, on a
+    /// background job, and the next run can start before that job gets there:
+    /// the service only refuses a start while a run is active, and `Finished`
+    /// is not active. An unconditional reset landing then wiped the NEW run
+    /// back to idle while the service kept recording it, so the running screen
+    /// froze at zero and its stop was dropped on the null run id.
+    fun resetIfFinished(runId: String) {
+        _metrics.update { if (it.runId == runId && it.stage == Stage.Finished) Metrics() else it }
     }
 }

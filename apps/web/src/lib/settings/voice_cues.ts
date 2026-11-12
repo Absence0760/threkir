@@ -30,6 +30,7 @@ export const VOICE_CUE_IDS = [
 	'cutoff_catch_up',
 	'marker_targets',
 	'phase_transitions',
+	'guided_run',
 ] as const;
 
 export type VoiceCueId = (typeof VOICE_CUE_IDS)[number];
@@ -54,4 +55,22 @@ export function isVoiceCueEnabled(map: VoiceCueMap, id: string): boolean {
 
 export function setVoiceCueEnabled(map: VoiceCueMap, id: string, on: boolean): VoiceCueMap {
 	return { ...map, [id]: on };
+}
+
+/// Which pace the split cue reads out — the `voice_split_pace_mode` bag key.
+/// The split's own pace (`split`, the default), the cumulative average since
+/// the run started (`average`), or `both`. Values are the Dart `SplitPaceMode`
+/// wire contract; `voice_cues.test.ts` pins them against `preferences.dart`.
+export const SPLIT_PACE_MODES = ['split', 'average', 'both'] as const;
+
+export type SplitPaceMode = (typeof SPLIT_PACE_MODES)[number];
+
+export const SPLIT_PACE_MODE_DEFAULT: SplitPaceMode = 'split';
+
+/// An unknown or malformed value reads as `split`, so a corrupt bag can only
+/// fall back to the original split cue — never to a mode this build can't speak.
+export function readSplitPaceMode(raw: unknown): SplitPaceMode {
+	return (SPLIT_PACE_MODES as readonly unknown[]).includes(raw)
+		? (raw as SplitPaceMode)
+		: SPLIT_PACE_MODE_DEFAULT;
 }

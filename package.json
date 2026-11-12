@@ -18,14 +18,14 @@
     "dev:full:status": "bin/dev-full.sh status",
     "dev:full:logs": "bin/dev-full.sh logs",
 
-    "//-- db --": "Local Supabase stack. Ports: API 54321, DB 54322, Studio 54323, Mailpit 54324.",
+    "//-- db --": "Local Supabase stack. Ports: API 24321, DB 24322, Studio 24323, Mailpit 24324.",
     "dev:db:up": "cd apps/backend && supabase start",
     "dev:db:down": "cd apps/backend && supabase stop",
     "dev:db:reset": "cd apps/backend && supabase db reset && cd ../.. && node scripts/seed-run-tracks.mjs",
     "dev:db:status": "cd apps/backend && supabase status",
-    "dev:db:studio": "xdg-open http://127.0.0.1:54323",
-    "dev:db:mailpit": "xdg-open http://127.0.0.1:54324",
-    "dev:db:psql": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+    "dev:db:studio": "xdg-open http://127.0.0.1:24323",
+    "dev:db:mailpit": "xdg-open http://127.0.0.1:24324",
+    "dev:db:psql": "psql postgresql://postgres:postgres@127.0.0.1:24322/postgres",
     "dev:db:logs": "docker logs -f supabase_db_backend",
     "dev:db:seed-tracks": "node scripts/seed-run-tracks.mjs",
 
@@ -81,11 +81,21 @@
     "watch:preview": "bin/watch-preview.sh",
     "watch:monitor": "bin/watch-monitor.sh",
 
-    "//-- gen --": "Schema codegen — run gen:all after every migration; both outputs are committed and CI's parity-types job fails on drift (docs/architecture/schema_codegen.md).",
+    "//-- gen --": "Committed generated artifacts. Schema codegen: run gen:all after every migration; both outputs are committed and CI's parity-types job fails on drift (docs/architecture/schema_codegen.md). gen:icon-font re-cuts the web icon font when an icon is added; the build-web job fails on drift (decisions § 780).",
     "gen:all": "pnpm gen:types && pnpm gen:dart",
     "gen:types": "pnpm -C apps/backend gen:types",
     "gen:types:check": "pnpm -C apps/backend gen:types:check",
     "gen:dart": "dart run scripts/gen_dart_models.dart",
+		"gen:icon-font": "node scripts/gen_web_icon_font.mjs",
+		"gen:exercise-fold-table": "node scripts/gen_exercise_fold_table.mjs",
+		"gen:help-guides": "node scripts/gen_help_guides.mjs",
+		"gen:edge-segment-matcher": "node scripts/gen_edge_segment_matcher.mjs",
+		"gen:park-course-runs": "node scripts/gen_park_course_runs.mjs",
+
+    "//-- sync --": "deno.lock's `workspace` section is generated from the npm workspace's package.json files — re-sync it after any npm dep bump. Needs deno, but no network, no node_modules and no Docker. CI's parity-types job runs the :check half.",
+    "sync:deno-lock": "node scripts/sync_deno_lock.mjs",
+    "refresh:deno-lock-remote": "node scripts/refresh_deno_lock_remote.mjs",
+    "sync:deno-lock:check": "node scripts/sync_deno_lock.mjs --check",
 
     "//-- build --": "Production builds + install-to-device.",
     "build:web": "pnpm -C apps/web build",
@@ -95,9 +105,16 @@
     "install:android": "cd apps/mobile_android && adb install build/app/outputs/flutter-apk/app-release.apk",
     "install:android:debug": "cd apps/mobile_android && adb install build/app/outputs/flutter-apk/app-debug.apk",
 
-    "//-- check --": "Static analysis. check:flutter exits non-zero on info-level lints — only warning/error matter (see CLAUDE.md).",
+    "//-- check --": "Static analysis. check:flutter exits non-zero on info-level lints — only warning/error matter (see CLAUDE.md). check:pnpm-overrides verifies the security pins are declared in both lockfiles AND actually resolved to; it never rewrites a lockfile — fix drift with 'pnpm install --lockfile-only'. CI's parity-types job runs it. check:script-types and check:cloudfront-types are the two tsc roots at this level — this repo has no root tsconfig.json, so until decisions §757 every guard script here was in no tsc program at all; check:tsconfig-coverage is what stops a new tree slipping back outside them.",
     "check:web": "pnpm -C apps/web check",
     "check:flutter": "melos exec -- dart analyze",
+    "check:pnpm-overrides": "node scripts/check_pnpm_overrides.mjs",
+    "check:script-types": "tsc -p tsconfig.scripts.json",
+    "check:cloudfront-types": "tsc -p tsconfig.cloudfront.json",
+    "check:tsconfig-coverage": "node --test scripts/tsconfig_coverage.test.mjs",
+    "check:doc-links": "node scripts/check_doc_links.mjs",
+    "check:test-inventory": "node scripts/check_test_inventory_counts.mjs",
+    "check:conflict-markers": "node scripts/check_conflict_markers.mjs",
 
     "//-- test --": "Test suites per surface; test:scripts validates this file's script targets.",
     "test:web:unit": "pnpm -C apps/web test:unit",
@@ -107,32 +124,19 @@
     "test:worker": "cd apps/job_worker && go test ./...",
     "test:scripts": "node scripts/check_root_scripts.mjs"
   },
-  "dependencies": {
-    "html-to-image": "^1.11.13"
-  },
   "devDependencies": {
-    "svelte": "5.56.8"
+    "@supabase/supabase-js": "2.119.0",
+    "@types/node": "^26.6.6",
+    "stripe": "23.1.0",
+    "svelte": "5.57.3"
   },
   "overrides": {
-    "cookie": "^1.0.2",
-    "devalue": "^5.8.1",
-    "undici": "^7.28.0",
-    "brace-expansion": "^5.0.8",
-    "@sveltejs/kit": {
-      "cookie": "^1.0.2",
-      "devalue": "^5.8.1"
-    }
+    "devalue": "^5.9.4",
+    "glob": "^14.0.3",
+    "source-map-js": "^1.2.2"
   },
-  "pnpm": {
-    "overrides": {
-      "cookie": "^1.0.2",
-      "devalue": "^5.8.1",
-      "undici": "^7.28.0",
-      "brace-expansion": "^5.0.8",
-      "@sveltejs/kit>cookie": "^1.0.2",
-      "@sveltejs/kit>devalue": "^5.8.1"
-    }
-  },
-  "_overrides_rationale": "/audit/all High (deps): @sveltejs/kit@2.59.x pulls cookie@^0.6.0, which has GHSA-pxg6-pf52-xh8x (out-of-bounds chars in name/path/domain). Upstream hasn't bumped yet. Top-level override deduplicates direct copies but npm leaves SvelteKit's nested node_modules/@sveltejs/kit/node_modules/cookie@0.6.0 in place because the v0.x → v1.x range jump is outside SvelteKit's declared dependency range. The nested @sveltejs/kit > cookie override forces that transitive copy too. The API surface SvelteKit uses is the v0.x compatible subset, so the bump is safe in practice. Drop both entries once @sveltejs/kit ships its own bump. devalue override: @sveltejs/kit@2.59.1 declares devalue ^5.6.4 which still resolves to 5.8.0 (GHSA-77vg-94rm-hx3p — sparse-array DoS). Patch fix is in 5.8.1, inside Kit's declared range, so the override just nudges resolution to the patched version. Drop once Kit's lockfile picks it up upstream. undici override: the only undici in the tree is transitive via isomorphic-dompurify > jsdom > undici, pinned by jsdom@29.1.1 to ^7.25.0 which resolved to 7.27.2 — vulnerable to GHSA-vmh5-mc38-953g / GHSA-p88m-4jfj-68fv / GHSA-vxpw-j846-p89q / GHSA-hm92-r4w5-c3mj / GHSA-pr7r-676h-xcf6 (issue #103, all the SOCKS5/cookie/websocket/cache CVEs fixed in 7.28.0). ^7.28.0 sits inside jsdom's ^7.25.0 range so it's a safe nudge to the patched line. Drop once jsdom ships a lockfile past 7.28.0 upstream. brace-expansion override: apps/web > @sentry/sveltekit > @sentry/vite-plugin > @sentry/bundler-plugins > glob > minimatch pins brace-expansion@5.0.7 (GHSA-mh99-v99m-4gvg / issue #633 — unbounded expand() result length in chained brace groups causes an uncatchable OOM crash from a ~7.5KB input). Patched in 5.0.8. ^5.0.8 sits inside minimatch's declared brace-expansion range, so this is a safe nudge to the patched line for a build-time-only (Sentry source-map upload) dependency. Drop once @sentry/bundler-plugins ships a lockfile past 5.0.8 upstream.",
-  "_svelte_root_pin_rationale": "svelte is declared here at the workspace root (not only in apps/web) so the copy @sveltejs/vite-plugin-svelte resolves from the hoisted root node_modules is pinned. apps/web's own svelte dep lands nested in apps/web/node_modules, invisible to the hoisted build tooling, so the plugin would otherwise resolve a separate root peer copy that npm settled on 5.56.0. 5.56.0 has a parser regression that misparses a text-expression tag starting with the bare identifier `type` (`{type === ...}`) as a declaration tag — it broke the web build in run 26844715187; 5.56.1 fixes it. An `overrides` entry can't do this because npm overrides don't rewrite peerDependencies edges, which is what the tooling's svelte is. Keep this in lockstep with apps/web's svelte pin; drop once both move past 5.56.x."
+  "_overrides_rationale": "/audit/all High (deps). The cookie overrides (top-level and @sveltejs/kit > cookie, GHSA-pxg6-pf52-xh8x against Kit 2's cookie@^0.6.0) were dropped with the move to @sveltejs/kit 3, which declares cookie ^2.0.1 itself; the only other dependent, @supabase/ssr, declares ^1.0.2. devalue override: @sveltejs/kit@2.59.1 declares devalue ^5.6.4 which still resolves to 5.8.0 (GHSA-77vg-94rm-hx3p — sparse-array DoS). Patch fix is in 5.8.1, inside Kit's declared range, so the override just nudges resolution to the patched version. Raised to ^5.9.1 for GHSA-9rgm-9g3h-6x36 (DoS via malformed input, <5.9.1, issue #988): the ^5.8.1 floor let package-lock.json keep resolving 5.8.1 while pnpm had already moved to 5.9.1, so the floor is the patched version, not merely a range that contains it. Raised to ^5.9.4 for GHSA-j22f-vq7h-c4qm / GHSA-mcm9-63f2-9j32 / GHSA-x5rw-q4pp-hg5g (high) and GHSA-hx4r-w6wj-j8fg / GHSA-4q55-j62x-fr9h / GHSA-wf3x-273g-mvxv (shared-memory serialisation, quadratic and sparse-array uneval amplification, stringifyAsync unhandled rejection, __proto__ bypass; all <=5.9.2, issue #1037): @sveltejs/kit@2.70.3 still declares devalue ^5.8.1, and the ^5.9.1 floor kept Kit's copy on 5.9.1 while svelte had already moved to 5.9.4. The floor is 5.9.4 rather than 5.9.3 because 5.9.4 is the copy the tree already carries, so the pin collapses the two to one. The nested @sveltejs/kit > devalue entry was dropped with @sveltejs/kit 3, which declares ^5.9.4 itself; the top-level pin stays because svelte@5.57.2 still declares ^5.9.2. Drop it once svelte declares ^5.9.3 or later. glob override: apps/web > @sentry/sveltekit and @sentry/node > @sentry/bundler-plugins declare glob ^13.0.6, and every 13.x is inside GHSA-3g3m-2fjr-6pw4 (>=9.0.0 <=14.0.1, an aborted async walk keeps reading directories in the background) while 13.0.6 pulls minimatch 10.2.6, inside GHSA-g3hv-75wg-m249 (<11.0.1, globParts amplification DoS); issue #1266. @sentry/*@11.10.0 is the latest release and still declares ^13.0.6, so no parent bump clears it. This pin crosses a major: glob 14's breaks (minimatch 11 matcher, Pattern/Walker internals renamed, the debug option removed, leading-slash ignore patterns anchored at root) do not touch the one call @sentry/bundler-plugins makes, glob(patterns, { absolute, nodir, root?, ignore? }), and that call only runs for source-map upload, which vite.config.ts turns off (autoUploadSourceMaps: false). The floor is 14.0.3, not the patched 14.0.2, because 14.0.2 still declares minimatch ^11.0.0 and so admits the vulnerable 11.0.0; 14.0.3 declares ^11.0.2, so the one pin clears both advisories. Drop it once @sentry/bundler-plugins declares glob ^14.0.3 or later. The brace-expansion override (^5.0.12, issues #633 and #1037) was removed with this change: its own drop condition was minimatch declaring ^5.0.12, and minimatch 11 does. source-map-js override: apps/web > vite > postcss and apps/web > isomorphic-dompurify > jsdom > css-tree both reach source-map-js@1.2.1 (GHSA-68fv-2mgg-jv7q, high, <1.2.2, issue #1037). postcss@8.5.29 already declares ^1.2.2, but css-tree@3.2.1 (the latest) still declares ^1.2.1, so a lockfile refresh alone cannot clear it. ^1.2.2 sits inside both parents' declared range, a safe nudge to the patched line. Drop once css-tree declares ^1.2.2 or later. The undici override (^7.28.0, issue #103) was removed under issue #1037: jsdom@30 declares undici ^8.9.0, so the 7.x pin had stopped nudging a patched line and was instead forcing jsdom onto a major it does not declare — 7.29.0 on the npm side, inside the <7.29.1 range of ten newer advisories. Without it jsdom resolves its own declared 8.x line.",
+  "_svelte_root_pin_rationale": "svelte is declared here at the workspace root (not only in apps/web) so the copy @sveltejs/vite-plugin-svelte resolves from the hoisted root node_modules is pinned. apps/web's own svelte dep lands nested in apps/web/node_modules, invisible to the hoisted build tooling, so the plugin would otherwise resolve a separate root peer copy that npm settled on 5.56.0. 5.56.0 has a parser regression that misparses a text-expression tag starting with the bare identifier `type` (`{type === ...}`) as a declaration tag — it broke the web build in run 26844715187; 5.56.1 fixes it. An `overrides` entry can't do this because npm overrides don't rewrite peerDependencies edges, which is what the tooling's svelte is. Keep this in lockstep with apps/web's svelte pin; drop once both move past 5.56.x.",
+  "_stripe_root_pin_rationale": "stripe is declared here, exact, only so `deno install` puts its declarations on disk for the Edge Function `deno check` lane: the root package.json puts deno in node_modules mode, so `npm:stripe@23.1.0` in apps/backend/supabase/functions/_shared/stripe.ts resolves its types from node_modules/stripe. Nothing in apps/web imports it. The Edge Functions moved off esm.sh's stripe build because esm.sh's CDN served two builds of one transitive module at once and no deno.lock pin could match both (decisions § 2257). Keep this version equal to the specifier in _shared/stripe.ts; stripe_boundary.test.ts fails otherwise.",
+  "_supabase_js_root_pin_rationale": "@supabase/supabase-js is declared here, exact, for the same reason stripe is: so `deno install` puts its declarations on disk for the Edge Function `deno check` lane, where `npm:@supabase/supabase-js@2.119.0` (in every function but clip-public-track, and in _shared/database.ts for the client type) resolves from node_modules. It must be the SAME version apps/web resolves: at 2.110.0 beside apps/web's 2.118.0, npm hoisted the root copy, @supabase/ssr took its peer from it, and the web client bundled two supabase-js builds (+41 KB gzipped). The Edge Functions moved off esm.sh's supabase-js build because esm.sh's CDN served two builds of its tslib dependency under one versioned URL and no deno.lock pin could match both (decisions § 2341). Keep this version equal to the specifier in the functions and to apps/web's resolved version; offline_worker_boot_guard.test.ts fails on the first."
 }

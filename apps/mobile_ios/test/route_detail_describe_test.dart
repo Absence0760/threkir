@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/ai_disclosure.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
 import '../lib/route_describe_client.dart';
@@ -24,14 +25,19 @@ cm.Route _route() => cm.Route(
 Future<void> _pump(
   WidgetTester tester, {
   Future<bool> Function()? checkPro,
-  Future<AiDescriptionResult> Function(RouteDescriptionInput)? describeAi,
+  Future<AiDescriptionResult> Function(
+          RouteDescriptionInput, cm.DistanceUnit, String, String)?
+      describeAi,
+  bool useMiles = false,
+  Locale? locale,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
   await tester.runAsync(() => prefs.init());
 
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: RouteDetailScreen(
@@ -76,7 +82,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => false,
-        describeAi: (_) async {
+        describeAi: (_, __, ___, ____) async {
           aiCalled = true;
           return const AiDescriptionResult(
               description: 'AI', source: 'ai', upgrade: false);
@@ -101,7 +107,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_) async => const AiDescriptionResult(
+        describeAi: (_, __, ___, ____) async => const AiDescriptionResult(
           description: 'A gorgeous riverside trail loop with a steady climb.',
           source: 'ai',
           upgrade: false,
@@ -119,12 +125,88 @@ void main() {
           findsNothing);
     });
 
+    testWidgets("a server template keeps the viewer's localised sentence",
+        (tester) async {
+      // The endpoint's fallback is its English assembler, so taking it would
+      // swap a French viewer's sentence for an English one.
+      await _pump(
+        tester,
+        locale: const Locale('fr'),
+        checkPro: () async => true,
+        describeAi: (_, __, ___, ____) async => const AiDescriptionResult(
+          description: 'River Loop is a 5.0 km trail point-to-point route.',
+          source: 'template',
+          upgrade: false,
+        ),
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump();
+      await tester.tap(find.text('Décrire cet itinéraire'));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+
+      expect(
+        find.textContaining(
+            'River Loop est un itinéraire point à point sur sentier'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('River Loop is a'), findsNothing);
+    });
+
+    for (final unit in cm.DistanceUnit.values) {
+      testWidgets("hands the viewer's unit (${unit.name}) to the AI call",
+          (tester) async {
+        final sent = <cm.DistanceUnit>[];
+        await _pump(
+          tester,
+          checkPro: () async => true,
+          useMiles: unit == cm.DistanceUnit.mi,
+          describeAi: (_, u, __, ___) async {
+            sent.add(u);
+            return const AiDescriptionResult(
+                description: 'A loop.', source: 'ai', upgrade: false);
+          },
+        );
+        await _tapDescribe(tester);
+        expect(sent, [unit]);
+      });
+    }
+
+    for (final (shown, tag) in const [
+      (Locale('en'), 'en'),
+      (Locale('fr'), 'fr'),
+      (Locale('ja'), 'ja'),
+      (Locale('pt', 'BR'), 'pt-BR'),
+    ]) {
+      testWidgets("hands the app's resolved locale ($tag) to the AI call",
+          (tester) async {
+        final sent = <String>[];
+        await _pump(
+          tester,
+          locale: shown,
+          checkPro: () async => true,
+          describeAi: (_, __, locale, ___) async {
+            sent.add(locale);
+            return const AiDescriptionResult(
+                description: 'A loop.', source: 'ai', upgrade: false);
+          },
+        );
+        await tester.drag(find.byType(ListView), const Offset(0, -600));
+        await tester.pump();
+        await tester
+            .tap(find.text(lookupAppLocalizations(shown).routeDetailDescribe));
+        await tester.pump();
+        await tester.pump(Duration.zero);
+        expect(sent, [tag]);
+      });
+    }
+
     testWidgets('AI failure keeps the templated baseline + shows the error',
         (tester) async {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_) async => throw StateError('boom'),
+        describeAi: (_, __, ___, ____) async => throw StateError('boom'),
       );
       await _tapDescribe(tester);
 
@@ -135,5 +217,89 @@ void main() {
       // No AI attribution since the model call failed.
       expect(find.text("Written by AI from this route's stats"), findsNothing);
     });
+
+    testWidgets('a consent gap keeps the baseline and points at the '
+        'disclosure, not a retry', (tester) async {
+      // Issue #734: /api/coach/route-describe now refuses a caller who has
+      // not accepted the widened AI disclosure. That is not a transient
+      // failure, so "please try again" would be a lie — and the paywall
+      // shares the same 403, so it must not read as an upsell either.
+      await _pump(
+        tester,
+        checkPro: () async => true,
+        describeAi: (_, __, ___, ____) async => throw StateError(kAiDisclosureError),
+      );
+      await _tapDescribe(tester);
+
+      expect(find.textContaining('River Loop is a'), findsOneWidget);
+      expect(
+        find.text(
+            'AI descriptions need your consent to the updated AI disclosure.'),
+        findsOneWidget,
+      );
+      expect(find.text("Couldn't generate a description. Please try again."),
+          findsNothing);
+      expect(find.text('AI descriptions are a Pro feature. Upgrade to enhance.'),
+          findsNothing);
+    });
+  });
+
+  group('isAiDisclosureDenial', () {
+    test('only a 403 whose body carries the code is a consent denial', () {
+      const body = '{"code":"ai_disclosure_required","required_version":2}';
+      expect(isAiDisclosureDenial(403, body), isTrue);
+      // The paywall's own 403 must not be read as a consent gap.
+      expect(isAiDisclosureDenial(403, '{"error":"upgrade required"}'), isFalse);
+      expect(isAiDisclosureDenial(500, body), isFalse);
+      expect(isAiDisclosureDenial(403, 'not json'), isFalse);
+      expect(isAiDisclosureDenial(403, ''), isFalse);
+      expect(isAiDisclosureDenial(403, '[]'), isFalse);
+    });
+  });
+
+  test('the request body carries the unit the server writes the paragraph in',
+      () {
+    const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
+    expect(routeDescribeBody(input, cm.DistanceUnit.mi, 'en', 'r1')['unit'], 'mi');
+    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'en', 'r1')['unit'], 'km');
+  });
+
+  test('the request body carries the locale the server writes the paragraph in',
+      () {
+    const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
+    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'pt-BR', 'r1')['locale'],
+        'pt-BR');
+  });
+
+  test('the request body carries the route id the server scopes the name by',
+      () {
+    const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
+    expect(
+        routeDescribeBody(input, cm.DistanceUnit.km, 'en', 'r1')['route_id'],
+        'r1');
+  });
+
+  testWidgets("hands the route's id to the AI call", (tester) async {
+    final sent = <String>[];
+    await _pump(
+      tester,
+      checkPro: () async => true,
+      describeAi: (_, __, ___, routeId) async {
+        sent.add(routeId);
+        return const AiDescriptionResult(
+            description: 'A loop.', source: 'ai', upgrade: false);
+      },
+    );
+    await _tapDescribe(tester);
+    expect(sent, ['r1']);
+  });
+
+  test('the locale tag is the canonical identifier web sends', () {
+    expect(routeDescribeLocaleTag(const Locale('en')), 'en');
+    expect(routeDescribeLocaleTag(const Locale('ja')), 'ja');
+    expect(routeDescribeLocaleTag(const Locale('pt', 'BR')), 'pt-BR');
+    expect(routeDescribeLocaleTag(const Locale('pt', 'PT')), 'pt-PT');
+    // gen-l10n's bare base is the European catalogue.
+    expect(routeDescribeLocaleTag(const Locale('pt')), 'pt-PT');
   });
 }

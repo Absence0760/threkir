@@ -10,10 +10,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_detail_screen.dart';
+import '../lib/widgets/official_badge.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 
@@ -21,10 +24,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -72,8 +72,14 @@ class _FakeSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
       Supabase.instance.client.channel('test-$clubId');
@@ -84,7 +90,12 @@ class _FakeApi extends ApiClient {
 
   /// Held open so a test can observe the Templates tab's loading frame.
   final Completer<void>? templatesGate;
-  _FakeApi(this.routines, {this.templatesGate});
+  final Set<String> officialRoutineIds;
+  _FakeApi(this.routines, {this.templatesGate, this.officialRoutineIds = const {}});
+
+  @override
+  Future<Set<String>> fetchOfficialGymRoutineIds(List<String> routineIds) async =>
+      officialRoutineIds.intersection(routineIds.toSet());
 
   /// The screen gates on the viewer id, so a fake must declare who is
   /// looking rather than falling through to a real Supabase read.
@@ -142,15 +153,21 @@ class _PendingSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [
-        ClubMemberRow(
-          clubId: 'club-1',
+        ClubMemberView(
           userId: 'pendinguser-0001',
           role: 'member',
           status: 'pending',
+          displayName: 'Pat Pending',
         ),
       ];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> approveJoinRequest({
     required String clubId,
@@ -180,15 +197,21 @@ class _DenySocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [
-        ClubMemberRow(
-          clubId: 'club-1',
+        ClubMemberView(
           userId: 'pendinguser-0001',
           role: 'member',
           status: 'pending',
+          displayName: 'Pat Pending',
         ),
       ];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> denyJoinRequest({
     required String clubId,
@@ -235,8 +258,14 @@ class _ReplySocial extends SocialService {
     int limit = 200,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> createPost({
     required String clubId,
@@ -270,8 +299,14 @@ class _ComposeSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> createPost({
     required String clubId,
@@ -313,10 +348,22 @@ class _AdoptTraining extends TrainingService {
     ),
   ];
 
+  /// Holds the overlap lookup open until completed, when set.
+  Completer<void>? lookupGate;
+  int lookupCalls = 0;
+
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    lookupCalls++;
+    await lookupGate?.future;
+    return const [];
+  }
+
   @override
   Future<String> clonePlanTemplate({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     cloneCalls++;
     await cloneGate.future;
@@ -336,23 +383,152 @@ GymRoutineRow _routine(String id, String title, int count) => GymRoutineRow(
   createdAt: DateTime.utc(2026, 5, 1),
 );
 
+/// A member club whose one post's author has uploaded an avatar.
+class _AvatarPostSocial extends _ReplySocial {
+  @override
+  Future<List<ClubPostView>> fetchClubPosts(
+    String clubId, {
+    int limit = 20,
+  }) async => [
+    ClubPostView(
+      row: ClubPostRow(
+        id: 'post-1',
+        clubId: 'club-1',
+        authorId: 'someone',
+        body: 'Saturday long run?',
+        createdAt: DateTime.utc(2026, 5, 1),
+      ),
+      authorName: 'Sam',
+      authorAvatarUrl: 'https://example.test/sam.jpg',
+      replyCount: 0,
+    ),
+  ];
+}
+
+/// Admin club whose roster comes in two keyset pages, recording every cursor
+/// it was asked for and every role change / removal.
+class _RosterSocial extends SocialService {
+  final List<List<Object?>?> afters = [];
+  final List<String> removed = [];
+  final Map<String, String> roles = {};
+  bool failFirst = false;
+
+  @override
+  String? get currentUserId => 'u-viewer';
+  // The viewer is an admin, so the Members tab also mounts the verification
+  // status card; answer its read here rather than reaching the network.
+  @override
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+    String clubId,
+  ) async =>
+      const [];
+  @override
+  Future<ClubView?> fetchClubBySlug(String slug) async => _adminClub();
+  @override
+  Future<List<EventView>> fetchUpcomingEvents(String clubId) async => const [];
+  @override
+  Future<List<ClubPostView>> fetchClubPosts(
+    String clubId, {
+    int limit = 20,
+  }) async => const [];
+  @override
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
+      const [
+        ClubMemberView(
+          userId: 'pendinguser-0001',
+          role: 'member',
+          status: 'pending',
+          displayName: 'Pat Pending',
+        ),
+      ];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async {
+    if (failFirst) {
+      failFirst = false;
+      throw Exception('network down');
+    }
+    afters.add(after);
+    if (after == null) {
+      return const KeysetPage([
+        ClubMemberView(
+          userId: 'owner',
+          role: 'owner',
+          status: 'active',
+          displayName: 'Olive Owner',
+        ),
+        ClubMemberView(
+          userId: 'u-admin',
+          role: 'admin',
+          status: 'active',
+          displayName: 'Ada Admin',
+        ),
+        ClubMemberView(userId: 'u-noname', role: 'member', status: 'active'),
+      ], ['2026-01-03T00:00:00Z', 'u-noname']);
+    }
+    return const KeysetPage([
+      ClubMemberView(
+        userId: 'u-late',
+        role: 'member',
+        status: 'active',
+        displayName: 'Late Joiner',
+      ),
+      ClubMemberView(
+        userId: 'b1a2-blank',
+        role: 'member',
+        status: 'active',
+        displayName: '   ',
+      ),
+    ], null);
+  }
+
+  @override
+  Future<void> setMemberRole({
+    required String clubId,
+    required String userId,
+    required String role,
+  }) async {
+    roles[userId] = role;
+  }
+
+  @override
+  Future<void> removeMember({
+    required String clubId,
+    required String userId,
+  }) async {
+    removed.add(userId);
+  }
+
+  @override
+  RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
+      Supabase.instance.client.channel('test-$clubId');
+}
+
 void main() {
   setUpAll(_ensureSupabase);
 
   group('ClubDetailScreen — initial render', () {
-    realtimeWidgetTest('first frame shows the full-body loader', (
+    realtimeWidgetTest('first frame shows a skeleton of the detail page', (
       tester,
     ) async {
-      // Reason: while _loading is true the screen returns a bare
-      // Scaffold carrying nothing but the loader.
+      // Reason: while _loading is true the screen holds the layout it will
+      // settle into, not a centred figure on an empty page (decisions § 2288).
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(TabbedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 
-    realtimeWidgetTest('initial Scaffold has no AppBar yet', (tester) async {
+    realtimeWidgetTest('the loading frame already carries the app bar',
+        (tester) async {
+      // Back is reachable while the fetch is in flight, and the bar does not
+      // pop in when the content lands.
       await _pump(tester);
-      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing,
+          reason: 'a pumped root route has nothing to go back to');
     });
   });
 
@@ -401,7 +577,10 @@ void main() {
           home: ClubDetailScreen(
             social: _FakeSocial(),
             training: _FakeTraining(),
-            apiClient: _FakeApi([_routine('r-1', 'Club push day', 3)]),
+            apiClient: _FakeApi(
+              [_routine('r-1', 'Club push day', 3), _routine('r-2', 'Member legs', 2)],
+              officialRoutineIds: const {'r-1'},
+            ),
             slug: 'track-club',
           ),
         ),
@@ -421,6 +600,15 @@ void main() {
       expect(find.text('Club push day'), findsOneWidget);
       expect(find.text('3 exercises'), findsOneWidget);
       expect(find.text('Adopt'), findsWidgets);
+      // Only the verified organiser's routine carries the Official badge.
+      expect(find.byType(OfficialBadge), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: find.text('Club push day'), matching: find.byType(Card)),
+          matching: find.byType(OfficialBadge),
+        ),
+        findsOneWidget,
+      );
     });
 
     realtimeWidgetTest(
@@ -460,6 +648,46 @@ void main() {
         expect(training.cloneCalls, 1);
         // Gate left pending intentionally: completing it would navigate to
         // PlanDetailScreen (unstubbed). cloneCalls is the assertion.
+      },
+    );
+
+    realtimeWidgetTest(
+      'a second Adopt tap during the overlap lookup clones only once',
+      (tester) async {
+        final training = _AdoptTraining()..lookupGate = Completer<void>();
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: ClubDetailScreen(
+              social: _FakeSocial(),
+              training: training,
+              apiClient: _FakeApi(const []),
+              slug: 'track-club',
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.tap(find.text('Templates'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        final adopt = find.widgetWithText(FilledButton, 'Adopt');
+        await tester.tap(adopt);
+        await tester.pump();
+        await tester.tap(adopt, warnIfMissed: false);
+        await tester.pump();
+        expect(training.lookupCalls, 1);
+
+        training.lookupGate!.complete();
+        await tester.pump();
+        await tester.pump();
+        expect(training.cloneCalls, 1);
+        // The clone gate stays pending: completing it would navigate to the
+        // unstubbed PlanDetailScreen.
       },
     );
   });
@@ -586,6 +814,204 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(social.denyCalls, 1);
+    });
+  });
+
+  group('ClubDetailScreen — a member with no display name (#1300)', () {
+    Future<void> openMembers(WidgetTester tester, {String? viewerName}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: _ViewerSocial(),
+            training: _FakeTraining(),
+            apiClient: _ProfileApi(viewerName),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Members'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    realtimeWidgetTest('an unnamed member is told how others see them', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      expect(find.byKey(const Key('club-name-hint')), findsOneWidget);
+      expect(
+        find.text('Club members see you as Runner #ABCD.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('You can add your name in your account settings.'),
+        findsOneWidget,
+      );
+    });
+
+    realtimeWidgetTest('a named member sees no hint', (tester) async {
+      await openMembers(tester, viewerName: 'Ana Souza');
+      expect(find.byKey(const Key('club-name-hint')), findsNothing);
+    });
+  });
+
+  group('ClubDetailScreen — Members tab roster (#1228)', () {
+    Future<_RosterSocial> openMembers(
+      WidgetTester tester, {
+      _RosterSocial? social,
+    }) async {
+      final s = social ?? _RosterSocial();
+      // Tall enough for the whole roster below the admin's verification card,
+      // which the ListView would otherwise never build.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: s,
+            training: _FakeTraining(),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Members'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      return s;
+    }
+
+    realtimeWidgetTest('lists every member by name, with the owner badged', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      expect(find.text('Olive Owner'), findsOneWidget);
+      expect(find.text('Ada Admin'), findsOneWidget);
+      expect(find.text('Owner'), findsOneWidget);
+      // A member with no profile name reads as their runner handle
+      // (decisions § 2365), never the raw id.
+      expect(find.text('Runner #UNON'), findsOneWidget);
+      expect(find.textContaining('u-noname'), findsNothing);
+    });
+
+    realtimeWidgetTest('a pending request shows the requester by name', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      expect(find.text('Pat Pending'), findsOneWidget);
+      expect(find.textContaining('pendingu'), findsNothing);
+    });
+
+    realtimeWidgetTest('Load more fetches the next page after the cursor', (
+      tester,
+    ) async {
+      final social = await openMembers(tester);
+      expect(find.text('Late Joiner'), findsNothing);
+      final more = find.widgetWithText(OutlinedButton, 'Load more');
+      await tester.ensureVisible(more);
+      await tester.pump();
+      await tester.tap(more);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(social.afters, [null, ['2026-01-03T00:00:00Z', 'u-noname']]);
+      expect(find.text('Late Joiner'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Load more'), findsNothing);
+    });
+
+    realtimeWidgetTest(
+        'a whitespace display name reads as the runner handle, as the name hint promises', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      final more = find.widgetWithText(OutlinedButton, 'Load more');
+      await tester.ensureVisible(more);
+      await tester.pump();
+      await tester.tap(more);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('Runner #B1A2'), findsOneWidget);
+    });
+
+    realtimeWidgetTest(
+        'removing a member asks first, and only then removes them', (
+      tester,
+    ) async {
+      final social = await openMembers(tester);
+      expect(find.byTooltip('Member actions'), findsNWidgets(2),
+          reason: 'the owner row carries no admin menu');
+      await tester.tap(find.byTooltip('Member actions').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from club'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove Ada Admin from Track Club?'), findsOneWidget);
+      expect(social.removed, isEmpty);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Remove'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(social.removed, ['u-admin']);
+      expect(find.text('Ada Admin'), findsNothing);
+    });
+
+    realtimeWidgetTest('choosing a role from the menu changes it', (
+      tester,
+    ) async {
+      final social = await openMembers(tester);
+      await tester.tap(find.byTooltip('Member actions').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Race director').last);
+      await tester.pumpAndSettle();
+      expect(social.roles, {'u-noname': 'race_director'});
+      expect(find.text('Race director'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a failed roster read says so and retries', (
+      tester,
+    ) async {
+      final social = _RosterSocial()..failFirst = true;
+      await openMembers(tester, social: social);
+      expect(find.text('Could not load members'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('Olive Owner'), findsOneWidget);
+    });
+  });
+
+
+  group('ClubDetailScreen — post author avatar', () {
+    // fetchClubPosts selected only display_name, so a member who had uploaded
+    // a photo still showed an initial beside every post (web had the same
+    // gap on its feed and Members tab).
+    realtimeWidgetTest('a post renders its author avatar url', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: _AvatarPostSocial(),
+            training: _FakeTraining(),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final author = tester
+          .widgetList<IdentityAvatar>(find.byType(IdentityAvatar))
+          .where((a) => a.seed == 'someone');
+      expect(author, hasLength(1));
+      expect(author.single.imageUrl, 'https://example.test/sam.jpg');
     });
   });
 
@@ -848,6 +1274,75 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
         expect(social.joinCalls, 1);
+        expect(social.acks, [false]);
+      },
+    );
+
+    Future<void> pumpWaiverClub(
+      WidgetTester tester,
+      _NonMemberSocial social,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: social,
+            training: _FakeTraining(),
+            apiClient: _FakeApi(const []),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    realtimeWidgetTest(
+      'a waiver club asks for the acknowledgement and joins with it',
+      (tester) async {
+        final social = _NonMemberSocial(requiresWaiver: true);
+        await pumpWaiverClub(tester, social);
+
+        final dialog = find.byType(AlertDialog);
+        expect(dialog, findsOneWidget);
+        expect(social.joinCalls, 0);
+        final accept = find.descendant(
+          of: dialog,
+          matching: find.widgetWithText(FilledButton, 'Accept and join'),
+        );
+        expect(tester.widget<FilledButton>(accept).onPressed, isNull);
+        await tester.tap(find.descendant(
+          of: dialog,
+          matching: find.byType(CheckboxListTile),
+        ));
+        await tester.pump();
+        await tester.tap(accept);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(social.joinCalls, 1);
+        expect(social.acks, [true]);
+      },
+    );
+
+    realtimeWidgetTest(
+      'cancelling the acknowledgement joins nothing',
+      (tester) async {
+        final social = _NonMemberSocial(requiresWaiver: true);
+        await pumpWaiverClub(tester, social);
+        await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(TextButton, 'Cancel'),
+        ));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(social.joinCalls, 0);
       },
     );
   });
@@ -894,8 +1389,6 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
 
         expect(social.createCalls, 2);
-        // Drain the replacement banner's auto-dismiss timer.
-        await tester.pump(const Duration(seconds: 6));
       },
     );
   });
@@ -962,7 +1455,7 @@ void main() {
   });
 }
 
-ClubView _nonMemberClub() => ClubView(
+ClubView _nonMemberClub({bool requiresWaiver = false}) => ClubView(
   row: ClubRow(
     shadowHidden: false,
     id: 'club-1',
@@ -973,7 +1466,7 @@ ClubView _nonMemberClub() => ClubView(
     joinPolicy: 'open',
     memberCount: 5,
     isVerified: false,
-    requiresActivityWaiver: false,
+    requiresActivityWaiver: requiresWaiver,
   ),
   memberCount: 5,
   viewerRole: null,
@@ -1009,8 +1502,14 @@ class _AdminSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
       Supabase.instance.client.channel('test-$clubId');
@@ -1031,8 +1530,14 @@ class _PostFailSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> createPost({
     required String clubId,
@@ -1051,9 +1556,14 @@ class _PostFailSocial extends SocialService {
 }
 
 class _NonMemberSocial extends SocialService {
+  _NonMemberSocial({this.requiresWaiver = false});
+
+  final bool requiresWaiver;
   int joinCalls = 0;
+  final List<bool> acks = [];
   @override
-  Future<ClubView?> fetchClubBySlug(String slug) async => _nonMemberClub();
+  Future<ClubView?> fetchClubBySlug(String slug) async =>
+      _nonMemberClub(requiresWaiver: requiresWaiver);
   @override
   Future<List<EventView>> fetchUpcomingEvents(String clubId) async => const [];
   @override
@@ -1062,11 +1572,22 @@ class _NonMemberSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
   @override
-  Future<String> joinClub(String clubId, String policy) async {
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
+  @override
+  Future<String> joinClub(
+    String clubId,
+    String policy, {
+    bool ackWaiver = false,
+  }) async {
     joinCalls++;
+    acks.add(ackWaiver);
     return 'active';
   }
 
@@ -1082,6 +1603,7 @@ class _EventSocial extends _FakeSocial {
   Future<List<EventView>> fetchUpcomingEvents(String clubId) async => [
         EventView(
           row: EventRow(
+            raceStartMode: 'host_go',
             id: 'event-1',
             clubId: 'club-1',
             title: 'Long run',
@@ -1096,4 +1618,32 @@ class _EventSocial extends _FakeSocial {
           nextInstanceStart: DateTime.utc(2026, 3, 28, 10, 35),
         ),
       ];
+}
+
+class _ViewerSocial extends _FakeSocial {
+  @override
+  String? get currentUserId => 'abcd1234-0000-4000-8000-000000000001';
+}
+
+class _ProfileApi extends ApiClient {
+  final String? displayName;
+  _ProfileApi(this.displayName);
+
+  @override
+  String? get userId => 'abcd1234-0000-4000-8000-000000000001';
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+    profilePrivate: false,
+    shadowHidden: false,
+    id: 'abcd1234-0000-4000-8000-000000000001',
+    displayName: displayName,
+  );
+  @override
+  Future<List<GymRoutineRow>> fetchClubGymRoutineTemplates(
+    String clubId,
+  ) async => const [];
+  @override
+  Future<List<SessionPlanRow>> fetchClubSessionTemplates(
+    String clubId,
+  ) async => const [];
 }

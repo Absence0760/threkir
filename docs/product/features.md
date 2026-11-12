@@ -38,6 +38,8 @@ On receipt, the file is parsed into a `Route` object (name, waypoint list, total
 
 Routes are stored locally in JSON files (mobile Android via `path_provider` + `dart:convert`) and synced to Supabase in the background.
 
+A route its owner no longer wants, such as an import with bad elevation, is deleted from its detail page on web and mobile. The confirm names what depends on the route first (race listings and club events using it as a course, other runners' bookmarks, segments and reviews, the runs that followed it, its photos and markers); runs, events and race listings keep living with the link removed. See [decisions § 2293](../architecture/decisions.md).
+
 **Done when:**
 - User can export a KML from Google My Maps on iPhone and open it in the app via share sheet
 - Route appears on map within 2 seconds of opening
@@ -69,7 +71,7 @@ During recording, the screen shows a dark full-screen map with:
 
 **Collapsible stats panel**: tap or flick down the drag handle to collapse the panel to a minimal bar showing the time and a stop button. The map's follow-cam automatically offsets the blue dot by half the panel height so the dot sits in the centre of the *visible* map area above the panel, and re-centres itself when the panel is collapsed.
 
-**Manual pause only — no live auto-pause.** The clock runs continuously during a run. If the runner stops at a traffic light, the elapsed clock keeps ticking. An earlier version had live auto-pause with several layers of hardening, but it was the single most bug-prone feature in the recorder and still produced occasional false pauses at slow walking pace. It was removed in favour of the approach Strava and Nike Run Club use: compute **moving time** as a derived metric on the finished-run screen by walking the GPS track and excluding segments where speed fell below ~0.5 m/s. The user can still manually tap pause/resume mid-run.
+**Manual pause only — no live auto-pause.** The clock runs continuously during a run. If the runner stops at a traffic light, the elapsed clock keeps ticking. An earlier version had live auto-pause with several layers of hardening, but it was the single most bug-prone feature in the recorder and still produced occasional false pauses at slow walking pace. It was removed in favour of the approach Strava and Nike Run Club use: compute **moving time** as a derived metric of the GPS track, excluding segments where speed fell below ~0.5 m/s. The phone keeps it live too, so Avg pace / Avg speed hold still while the runner does and match the finished screen, and a **Stopped** chip appears beside the clock after ~10 s without movement; it pauses nothing (issue #1300). The user can still manually tap pause/resume mid-run.
 
 **Hold-to-stop**: the red stop button requires an 800 ms press before the run ends. A circular progress ring animates around the button during the hold; releasing early cancels. Prevents accidental one-tap stops mid-run.
 
@@ -77,7 +79,7 @@ During recording, the screen shows a dark full-screen map with:
 
 **Background recording**: GPS tracking continues when the screen is off or the user switches apps, via the foreground service notification. Requires the user to grant location permission as "Allow all the time" and to disable battery optimisation for the app.
 
-**Crash-safe persistence**: the current run state is serialised to disk every 10 seconds. If the app is killed mid-run (OOM, force-stop, battery), the next launch promotes the partial data to a completed run tagged `recovered_from_crash` and shows a snackbar: *"Recovered unfinished run — X.XX km, Y min"*. Tiny runs (< 3 waypoints or < 50 m) are dropped silently.
+**Crash-safe persistence**: the current run state is serialised to disk every 10 seconds. If the app is killed mid-run (OOM, force-stop, battery), the next launch offers **Resume** / **Finish now** / **Discard** for any partial saved within 48 h that has some distance or a minute of time, showing its distance and elapsed time; only an empty one is dropped, with a banner. An older partial is saved as a completed run tagged `recovered_from_crash` when it has ≥ 3 waypoints and ≥ 50 m, and dropped with a banner otherwise (decisions § 230, § 2355).
 
 **Hardening**: the GPS filter chain rejects fixes with accuracy > 20 m, implausible speeds (per-activity, e.g. > 10 m/s for run), and single-hop jumps > 100 m. The elapsed-time clock is a monotonic `Stopwatch` so NTP sync or timezone changes can't corrupt the duration. The pedometer stream auto-resubscribes on error with exponential backoff. A permission watchdog polls `Geolocator.checkPermission()` every 5 seconds and surfaces a banner if the user revokes location mid-run. Activity type is locked once the user has tapped Start.
 
@@ -86,10 +88,10 @@ On hold-to-stop: the run finalises, the in-progress save file is cleared, and th
 **Done when:**
 - Recording continues accurately through a 10km run with the screen locked and the app backgrounded
 - The elapsed clock never stops unless the user taps manual pause
-- The finished-run screen shows both Time (elapsed) and Moving (derived from the track), with pace computed against moving time
+- The finished-run screen shows both Time (elapsed) and Moving (derived from the track), with pace computed against moving time by the same rule the live Avg pace used
 - Hold-to-stop prevents accidental ends and the user can still reach it from the collapsed stats bar
 - A force-killed run is recovered on next launch with all its data
-- A persistent notification showing live time, distance, and pace appears in the notification shade and on the lock screen for the entire duration of the run (Android; iOS not yet implemented)
+- A persistent notification showing live time, distance, and pace appears in the notification shade and on the lock screen for the entire duration of the run (Android ongoing notification; iOS Live Activity). During a structured workout it also shows the current step: "Rep 3 of 6 · 400 m to go · @ 4:00 /km"
 
 See [run_recording.md](../features/run_recording.md) for the full technical reference.
 
@@ -128,7 +130,7 @@ The map auto-centres on the user's position during the run (follow mode). Users 
 
 **Spec:**
 
-A chronological list of all runs, newest first. Each row shows: date, distance, duration, pace, and source badge (if imported from Strava, parkrun, etc.).
+A chronological list of all runs, newest first. Each row shows: date, distance, duration, pace, and source badge (if imported from Strava, a health platform, etc.; runs imported from parkrun before its import was removed keep their parkrun badge).
 
 Tapping a run opens the detail view:
 - Full-screen map showing the GPS trace
@@ -136,6 +138,8 @@ Tapping a run opens the detail view:
 - Source label ("Recorded", "Strava", "parkrun")
 
 A weekly summary card at the top of the history list shows total distance and run count for the current week.
+
+A run added by hand is graded before it is saved: the duration is typed as hours, minutes and seconds (minutes and seconds 0–59), it must be above zero and at most ten days, a pace slower than 1 km/h over the typed distance asks first, and the start cannot be in the future. Every duration total — the weekly summary, period summaries, the recap, goals, training load and the `duration` challenge board — skips a stored run longer than ten days rather than summing it, so one bad legacy or imported row cannot swamp a week ([decisions § 2359](../architecture/decisions.md), issue #1300 § 5).
 
 **Done when:**
 - All recorded and synced runs appear in list within 1 second of opening
@@ -155,6 +159,8 @@ A weekly summary card at the top of the history list shows total distance and ru
 Auth providers: Apple Sign-In (required on iOS per App Store guidelines) and Google Sign-In.
 
 On first launch, users see a sign-in screen. After auth, all subsequent app opens check for a valid session silently — no login screen unless the session has expired (30 days).
+
+After sign-up, the setup wizard ends with an optional "Bring your running history" step that opens the existing Strava, Garmin export and (on mobile) Health Connect / Apple Health imports, so the dashboard, PRs and badges can fill on day one — see [integrations.md § Onboarding entry point](../features/integrations.md#onboarding-entry-point).
 
 Sync strategy: write-to-local-first, sync-in-background. Runs are written to JSON files on disk (`LocalRunStore`) immediately on save. A background sync process (foreground triggers + connectivity change + hourly WorkManager on Android) uploads pending runs to Supabase. Conflicts (same run modified on two devices) resolve via `metadata.last_modified_at` — last-write-wins.
 
@@ -286,6 +292,8 @@ Controls panel (left sidebar):
 
 Drag-to-reshape: users can drag any point on the route polyline to redirect it, adding an implicit waypoint.
 
+Draw a shape (route art, #1273 item 6): with "Draw a shape" on, a drag on the map draws a freehand line — a heart, a letter, a logo — instead of panning. On release the stroke is simplified, densified and matched to roads and paths in batches inside the OSRM proxy's limits, and the sidebar shows how closely the result follows the drawing ("Matches your drawing: 87 % · Close match"). A match under 60 % is refused with that score rather than saved as a different shape. A kept drawing becomes the route with a few draggable pins, and dragging one re-routes only the pieces beside it. Placing points by click is unchanged with the toggle off. See [decisions § 2263](../architecture/decisions.md).
+
 Saved routes appear immediately in the mobile apps on next open.
 
 **Done when:**
@@ -334,7 +342,8 @@ Full-page view for a single run:
 - **Map (left, ~60% width):** full GPS trace on a MapLibre satellite/terrain hybrid. Start and finish markers. Option to animate the trace (replay the run as a moving dot). Hover on the trace highlights the corresponding point on the elevation and pace charts.
 - **Stats sidebar (right, ~40% width):**
   - Distance, duration, average pace, average HR, elevation gain
-  - Splits table: one row per km (or mile), showing pace, HR, elevation delta
+  - Splits table: one row per km (or mile), showing pace, HR, elevation delta, and — when the terrain moves the number by at least 2 s/km — a grade-adjusted pace column beside the raw one
+  - Pacing summary above the table: first-half vs second-half pace, a negative / even / positive verdict, and a grade-adjusted second opinion when effort and raw pace disagree (`lib/runs/pace_analysis.ts`)
   - HR zone breakdown: time in each of 5 HR zones as a horizontal stacked bar
   - Comparison: "vs. your best on this route" (if the user has run this route before)
 
@@ -366,6 +375,8 @@ A simplified version of the web route builder, optimised for touch:
 
 Gesture UX: pinch to zoom, long-press to undo last waypoint, double-tap to finish.
 
+Draw a shape: the gesture button beside the mode chips turns one-finger drags into drawing (turn it off to pan again). The stroke is matched to roads and paths with the same shared helpers as web (`route_art.dart`), and a card above the controls shows the score and verdict; a match under 60 % is refused with a banner naming the score.
+
 **Done when:**
 - User can plan a 5km loop in under 3 minutes on a phone
 - Route appears in web app and on watch within 60 seconds of saving
@@ -380,7 +391,7 @@ Gesture UX: pinch to zoom, long-press to undo last waypoint, double-tap to finis
 
 **Spec:**
 
-Price: **$9.99 / month**. Managed via RevenueCat (abstracts App Store + Play Store + Stripe web checkout). The Pro tier is the only paying tier marketed today; the `lifetime` tier exists in the schema as a future option.
+Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; yearly is the preselected plan on web and mobile). Managed via RevenueCat (abstracts App Store + Play Store + Stripe web checkout). The Pro tier is the only paying tier marketed today; the `lifetime` tier exists in the schema as a future option.
 
 **Free forever:**
 - Every feature. Recording, routes, plans, clubs, sync, imports, dashboard, public share pages.
@@ -391,7 +402,7 @@ Price: **$9.99 / month**. Managed via RevenueCat (abstracts App Store + Play Sto
 - **Higher AI Coach daily cap** — 10 messages / day (5× the free cap). Both tiers share the same `increment_coach_usage` + `usedToday > TIER_LIMITS[tier].dailyLimit` gate in `handler.ts`; only the resolved cap differs.
 - **Priority processing** — Pro requests routed ahead of the free queue when the service is under heavy load (front-of-queue for `map_match` jobs today). Tier-aware rate-limiting on other endpoints lands over time.
 
-**Donations:** a one-off "Donate" button on `/settings/upgrade` links to an external payment provider (GitHub Sponsors placeholder today). Donations are kept alongside the subscription because a chunk of users will want to chip in without committing to a recurring charge.
+**Donations:** a one-off "Donate" button on `/settings/upgrade` links to a Stripe Payment Link (`PUBLIC_DONATE_URL`), and is hidden while that is unset. Donations are kept alongside the subscription because a chunk of users will want to chip in without committing to a recurring charge.
 
 **Done when:**
 - RevenueCat web SDK is wired behind the "Get Pro" button.
@@ -421,6 +432,120 @@ Price: **$9.99 / month**. Managed via RevenueCat (abstracts App Store + Play Sto
 
 ---
 
+### 3D course preview
+
+**Phase:** 3 | **Platform:** Web (mobile not started) | **Parity:** [see matrix](parity.md#builder-and-library) | **Issue:** #1270
+
+**Why:** Runners study a course before race day. Seeing where the hills sit, in 3D, answers "where will this hurt?" better than a flat map and a chart, and it pairs with the elevation profile and grade-adjusted pace the app already shows. The social "course flyover" videos film this view directly.
+
+**Spec:**
+
+- **Entry points:** "Preview in 3D" on `/routes/[id]`, on the public share page `/share/route/[id]` for any visitor, signed in or not (issue #1282: the logged-out social hook), and on `/races/[id]` when the race's course is a public route (titled with the race's name); "Replay in 3D" on `/runs/[id]` for the owner and for a non-owner who can read the run. The button shows only when the line has length to fly (`hasPreviewableCourse`). The dialog loads on the first click, so the page bundles don't carry the 3D engine.
+- **View:** the course on MapLibre terrain (1.5x exaggeration, raised in inverse proportion for a course with under 100 m of relief up to a 3x bound, and a hillshade drawn from the same elevation tiles under the labels and the line, so a 20-30 m road climb reads from the camera; decisions § 2295; pitch about 60), the camera following a smoothed bearing with a look-ahead point, its turn rate limited along the course so an out-and-back turnaround swings round over about 600 m instead of flipping (decisions § 2275), at a constant ground speed with a speed control; play, pause and scrub. The position dot sits on the camera's centre and is painted in the same frame as the map under it (the map is redrawn synchronously on each flight frame, and the dot is placed to the subpixel), so it holds still while the course moves beneath it rather than shaking a frame ahead of its own spot. When the flight reaches the finish the camera eases out over 2 s to a north-up overview of the whole course at pitch 30, turns 30° round it over 3 s and stops (decisions § 2296); Play from there flies again. Whole-km or whole-mile markers in the viewer's unit, Start and Finish markers (a green "Start" pill and a red, chequer-flagged "Finish" pill, or one flagged green "Start / Finish" pill when the line ends within 50 m of where it began, so a loop or an out-and-back; drawn in the exported video too; decisions § 2423), an elevation strip synced to the camera, and named climbs (on a route or race course, 20 m of rise within 2 km, so a road race's 1-1.5 % hills are marked; on a recorded run the watch's 2 % rule, which rejects GPS altitude noise; decisions § 2294; on a route or course the foot is where the rise reaches 1 %, so an approach gentler than that is not counted in the gain) with each climb's **net height to crest** (foot to crest, the figure a split's elevation and the watch's climb page use) and average grade. That is not total ascent: a dip inside a climb is not counted twice.
+- **Privacy:** the preview flies only what the page already draws. A non-owner's route, on `/routes/[id]` and on the share page, is the `fetchRouteById` clipped waypoints (`clip_route_for_viewer`); a race's course is the `fetchPublicRoute` read of the route id `public_race_listings` exposes only while the route is public; a non-owner's run is the `clip-public-track` output `RunShareView` already fetched. Climb names come from the route's `climb` markers, placed by projecting each onto the flown line, so a marker inside a clipped-away stretch is left out.
+- **Degrade:** terrain loads only behind the map consent the 2D maps use; on the share page the dialog's "Load preview" tap is required even after the cookie banner was accepted, as the page's own 2D map requires its tap (`requireExplicitConsent`), and the preview is a client-side addition that leaves the server-rendered head and the 2D page untouched if it fails. No WebGL2 or a slow device shows the flat map; `prefers-reduced-motion` shows the static 3D view without the flight.
+- **Free:** a view, not analysis, with no per-user cost.
+- **Video export (#1273, decisions § 2259):** **Export video** renders the flyover offscreen at 1080x1920 on a fixed frame clock (the flight takes as long as the default speed would, held between 8 and 20 s, then the same 5 s overview and orbit as the dialog, then a 3 s end card), with the distance ticking up against the course total, the elevation strip and its cursor, the current climb's label and the tile credits in frame, and encodes it in the browser: WebCodecs H.264 into an MP4 muxed in `mp4_mux.ts`, `MediaRecorder` as the fallback. **Share or save video** is a second tap, because a share sheet needs a fresh gesture. It records a clipped line only (the owner's run through `shareCardTrack`; a non-owner's replay, route or race course), is hidden on the flat fallback and offered under reduced motion, and is offered only with a basemap a published video may record: MapTiler once `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is set, or a local `PUBLIC_TILE_STYLE_URL` tileserver. Otherwise it is hidden, because the only basemap left is the OSM raster fallback, whose tile policy forbids bulk rendering (decisions § 2270); the preview itself is unchanged. The phone's run share sheet has a **Video** style that opens `/runs/<id>?video=1`, which opens this dialog.
+- **Not yet:** a mobile renderer; video for a route or race course its owner is viewing (their read is unclipped); video and climb names on the share page (its viewer can be the owner, and it loads no route markers).
+
+**Done when:**
+- A route with geometry shows "Preview in 3D", opens the dialog, and Esc closes it and returns focus to the button
+- A route without geometry shows no button
+- A logged-out visitor to a public route's share page gets the button; the dialog asks for its tap before any tile or terrain request and flies the privacy-clipped line
+- A race whose course is a public route shows the course map and the button; a race with no course, or a private one, shows neither
+- A non-owner's preview or replay never shows geometry the 2D map hides
+
+
+### Run share images
+
+**Phase:** 3 | **Platform:** Android + iOS twin (§ 2248, § 2250), Web (§ 2258) | **Parity:** [see matrix](parity.md) | **Issue:** #1269 (mobile), #1273 item 2 (web)
+
+**Why:** a run reaches a runner's followers as a picture: a map card in the feed, the stats over a photo from the run, or a sticker dropped onto a story. Every one carries the Threkir mark, so it is also how the app's name reaches people who do not use it yet.
+
+**Spec:**
+
+- **Styles:** a map card, the runner's own photo under a scrim (9:16 story or 4:5 post), or a transparent sticker cropped to its own content.
+- **Look:** four layouts (stack, route, strip, big number), three inks (white, black, coral) and up to four stats from what the run measured: distance, pace (speed for a ride), time, plus climb and average heart rate when present. The look is remembered on the device, under `share_look`.
+- **Export:** fixed logical canvases rasterised 1080 px across. Mobile shares or saves to Photos; web shares through the Web Share API where the browser has one and downloads everywhere.
+- **Privacy:** every outline is the privacy-zone-clipped share line (`shareCardTrack` / `runShareCardTrack`), and the image cannot be made before the zones are known. A photo is re-encoded, so its EXIF and location never leave the device. The map card's basemap waits for cookie consent, and the card prints its tile credit.
+- **PR card (#1273 item 7, decisions § 2266):** a run that beat a personal record gets a **PR** style showing the bracket, the time, how much faster and the time it beat (a record from before the improvement log existed prints with no "faster" line). It opens from run detail and from the `personal_record` notification (`/runs/<id>?share=pr`). The times stay owner-only; only the exported image leaves.
+- **Occasion stickers (#1295, decisions § 2346):** the Sticker and Photo styles carry a **Highlight** picker beside the stats: the run's **splits** (one table column up to the budget's row count, two columns up to twice that, then one bar per split, the fastest in the ink's accent; computed from the full track, never the clipped line), its personal **record** (the transparent sibling of the PR card), the **streak** day it was (counted as of the run's own day, every activity in the runs table, two days or more), the **race** it finished (the race stamped on the run, with its official chip time when there is one and `Finisher` otherwise), the **badge** it earned (`distance_single` only: no other family records its run), and the **route** alone. A kind is offered only when the run has its data, and a remembered kind the run cannot print draws the stats. Inks, the mark switch, the 1080 px export, the transparent ground and the photo placement are the stats sticker's.
+- **Versus (#1273 item 9):** a run on a route also offers the head-to-head card; see [Head-to-head card](#head-to-head-card).
+- **Video (#1273 item 1):** the phone's **Video** style opens the web flyover export; see [3D course preview](#3d-course-preview).
+- **Free:** a growth feature with no per-user cost.
+
+**Done when:**
+- Each style exports a 1080 px PNG; the sticker's ground is transparent and it is no larger than what it draws
+- A photo's EXIF block is not in the export
+- A stat the run did not measure is never offered
+- An occasion sticker is never offered for a run that lacks its data, and no splits sticker grows past half the usable story height at a 12 px digit floor
+- The look chosen for one run is the one the next share opens with
+
+### Head-to-head card
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 9
+
+**Why:** "me vs @friend" on a route both have run is a post a creator's followers react to, and it carries the Threkir mark to people who do not use the app yet.
+
+**Spec:**
+
+- **Targets:** a route, a route segment or a catalogue segment. Each side is that runner's fastest public attempt of the same activity type: the whole run on a route, the effort on a segment.
+- **Who:** mutual follows only, no block either way, and the friend's profile neither private nor hidden. Both runs must be public (not followers-only, not a DNF). The `head_to_head` read returns only friends who qualify, so the picker never offers one it would refuse, and every refusal looks the same as having nobody to compare.
+- **Card:** 360×450 logical, exported 1080×1350: the target's name, both names (the friend as `@handle` when they have one), both times with the winner's in the accent colour, the outcome line and the mark. No line, no map, so no track is read and no tile credit is owed.
+- **Not read:** `personal_records`, any track, the age record or gender.
+- **Free, no flag:** it returns a subset of what the caller can already see on the friend's public profile and the segment leaderboards (decisions § 2267).
+
+**Done when:**
+- The picker lists only friends with a public attempt, and a failed read shows an error with a retry, never the empty state
+- The card exports at 1080×1350 on web and shares or saves on mobile
+- pgTAP pins each rule and that every refusal is an empty result
+
+### Recap share image and video
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin (image); Web (video) | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 8
+
+**Why:** a month or a year of running is the post a runner makes at the end of it, as a story as often as a square.
+
+**Spec:**
+
+- **Image (decisions § 2260):** the monthly and yearly recap share image comes square or as a 1080x1920 story, from one layout pair (`recap_card_layout.ts` ↔ `recap_card_layout.dart`). Mobile's share action opens a sheet with the aspect choice, a preview, the image share and the old text share. Web labels come from the locale catalogue.
+- **Video (decisions § 2269):** **Make a video** on `/recap/[year]` and `/recap/[year]/[month]` renders a 1080x1920, 30 fps slideshow in the browser: a title, at most six earned stat slides, then a Threkir end card, about 22 s for a full year. It uses the flyover's encoder from `lib/video/`. No map is drawn, so no consent or tile credit is involved. A browser that can encode nothing gets a note instead of the action. The phone's recap share sheet has a **Video** option that opens `/recap/<year>[/<month>]?video=1`.
+- **Free.**
+
+### Challenge invite links
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 4
+
+**Why:** a creator posts "Run 50 km with me in November" and their followers should be in the challenge one tap after signing up.
+
+**Spec:** a revocable join link per challenge, minted and reset by the creator or a club admin; a join page that previews the challenge to anyone; joining rate-limited to 30 attempts an hour; no link for club-vs-club. Public challenges also get `/share/challenge/[id]` and an og card. Behind the default-off `challenge_invite_links` flag. Full spec: [challenges.md § Invite links](../features/challenges.md#invite-links-and-the-public-share-page-2026-11-03-decisions--2261), decisions § 2261.
+
+### "Train with me" plan share
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 5
+
+**Why:** a creator's link to a plan they published should open for a follower who has never signed in, and let them start the same plan.
+
+**Spec:** `/share/plan/[id]` shows a public-library plan's goal and weeks through a redacted anonymous RPC (no paces, VDOT, HR, goal time, notes, dates or owner id); **Start this plan** goes through sign-up to the library preview; a copy started from it shows "Started from @creator's plan". Behind the default-off `public_plan_share` flag. Full spec: [training.md § Train with me](../features/training.md#train-with-me--public-plan-share-page), decisions § 2262.
+
+### Streamer overlay
+
+**Phase:** 3 | **Platform:** Web (the overlay page and its settings), Android + iOS twin (settings from the live-share sheet) | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 3
+
+**Why:** a creator streaming a run wants their distance, pace and time on screen without making the run public or showing where they are right now.
+
+**Spec:** `/live/overlay` is a transparent OBS browser source reached through one revocable token per user, carried in the URL fragment. The server returns only pings older than the creator's delay (0-900 s, default 60). The route trace and heart rate are opt-in; heart rate also needs health-data consent, and `bpm` is now stripped from every live ping unless both hold. Behind the default-off `live_overlay` flag. Full spec: [flows.md § Streamer overlay](../features/flows.md#streamer-overlay), decisions § 2265.
+
+### Share-link attribution and Your shares
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 10
+
+**Why:** a creator wants to know which of their shares brought people in, without an analytics vendor.
+
+**Spec:** a creator's own share links carry an opaque `?ref=` code; the share page counts visits into aggregate daily buckets with no cookie, IP, user agent or user id; a sign-up, plan start or challenge join made through the link counts for it. **Your shares** (web `/settings/shares`, mobile Settings) lists visits, sign-ups, plan starts and challenge joins per link over 90 days. Behind the default-off `share_attribution` flag. Full spec: [seo.md § Share-link attribution](../features/seo.md#share-link-attribution-the-ref-parameter-and-the-visit-count), decisions § 2268.
+
+---
+
 ## AI Coach
 
 **Phase:** 3 (shipped) | **Platform:** Web | **Parity:** [see matrix](parity.md#ai-coach)
@@ -429,7 +554,11 @@ Price: **$9.99 / month**. Managed via RevenueCat (abstracts App Store + Play Sto
 
 **Spec:**
 
-Chat surface delivered two ways: as a top-level `/coach` page (with a plan switcher when the user has more than one plan and a configurable run-window selector) and embedded inline anywhere it's contextually useful (today: a deep-link card on `/plans/[id]`). The reusable component is `CoachChat.svelte`. The server endpoint at `/api/coach/+server.ts` sends the user's active or selected training plan, the last N runs (user-chosen, default 20, capped at 100), and profile/preferences as cached context, then returns the assistant turn. Two prompt-cache breakpoints (system prompt + context dump) keep repeat turns cheap.
+Chat surface delivered two ways: as a conversation pinned at the top of Messages, at `/messages/coach` (with a plan switcher when the user has more than one plan and a configurable run-window selector) and embedded inline anywhere it's contextually useful (today: a deep-link card on `/plans/[id]`). The reusable component is `CoachChat.svelte`. The server endpoint at `/api/coach/+server.ts` sends the user's active or selected training plan, the last N runs (user-chosen, default 20, capped at 100), and profile/preferences as cached context, then returns the assistant turn. Two prompt-cache breakpoints (system prompt + context dump) keep repeat turns cheap.
+
+**A conversation in Messages (issue #1215 Phase 1, decisions § 2227):** the Coach has no sidebar row; it is the pinned top row of the Messages inbox on web and mobile, which a runner can unpin (sorted among their conversations by its latest message) or hide, free on every tier (`messages_coach_row`). The tables stay separate and the AI never joins a conversation with a person. The row quotes the newest Coach message only once the runner has consented to the Coach; every Coach message carries an avatar and an "AI" tag (EU AI Act Art. 50). `/coach` redirects into Messages with its query kept. Behaviour reference: [direct_messages.md § The AI Coach in the inbox](../features/direct_messages.md#the-ai-coach-in-the-inbox).
+
+**Plan changes from the chat (web, issue #1213, decisions § 2230):** asked to move, skip, ease or add a little to the plan, the Coach answers with an Adjust my plan link, and on web the chat shows the suggested change as a card under the reply: a before/after diff, graded for load, with **Apply** and **Discard**. Nothing changes until Apply, which saves every change in one transaction. When the change eases or builds whole weeks and more blocks are queued in the season, the runner picks This block only or This block and the following blocks. On mobile the link opens the plan page on web. Behind the AI plan edit flags (default off); behaviour reference: [training.md § AI plan edits](../features/training.md#ai-plan-edits-web).
 
 **Provider switch:** `COACH_PROVIDER` selects the backend. Default `anthropic` uses Claude with prompt caching (production). Setting `COACH_PROVIDER=openai` routes to any OpenAI-compatible `/v1/chat/completions` endpoint (`OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`). The default base URL `http://localhost:11434/v1` matches a local Ollama install, so contributors can iterate on prompt + UI changes without burning tokens. The wire format from the endpoint is identical regardless of provider.
 
@@ -441,7 +570,7 @@ Chat surface delivered two ways: as a top-level `/coach` page (with a plan switc
 
 **Conversation history (cross-device):** Messages persist to `coach_messages` (RLS owner-only, scoped per `user × plan`). "Start new" archives the current thread by setting `archived_at = now()` rather than deleting; the sidebar lists each archive titled by its first user message and lets the runner view (read-only) or delete an archive. Pre-existing localStorage threads migrate once on first read and the legacy key is removed.
 
-**Streaming + markdown:** The endpoint emits Server-Sent Events; the client renders tokens as they arrive into the assistant bubble. A bouncing-dot indicator runs while waiting for the first token and persists across reload mid-stream via a Realtime subscription on `coach_messages`. Replies render through `marked` + `DOMPurify` so lists, **bold**, code, and links work. The system prompt instructs Claude to format references to specific runs as markdown links pointing to `/runs/<id>`, constrained to runs actually in the context.
+**Streaming + markdown:** The endpoint emits Server-Sent Events; the client renders tokens as they arrive into the assistant bubble. A bouncing-dot indicator runs while waiting for the first token and persists across reload mid-stream via a Realtime subscription on `coach_messages`. The chat follows the reply down only while the reader is at the bottom; scrolling up to read holds the position, and a **Jump to latest** button appears when more text arrives below. Sending a message always scrolls down. Replies render through `marked` + `DOMPurify` so lists, **bold**, code, and links work. The system prompt instructs Claude to format references to specific runs as markdown links pointing to `/runs/<id>`, constrained to runs actually in the context.
 
 **Inline bubble actions:** Hover a message to reveal copy (both roles), regenerate (assistant), edit-and-resend (user — inline textarea), and thumbs-up / thumbs-down (assistant). Reactions persist via column-level UPDATE on `coach_messages.reaction`; `content` and `role` are immutable to clients (column-level GRANT enforcement). Regenerate / edit pass `mode` + `anchor_message_id` to the server, which truncates the active thread from the anchor onward and re-runs without duplicating user messages.
 
@@ -480,15 +609,37 @@ See `decisions.md #12` for the rationale.
 The `/settings/upgrade` page shows a single Donate card below the Pro plan card:
 
 - A short headline + one sentence of copy.
-- A single "Donate" button that opens an external payment provider (GitHub Sponsors placeholder today; swap for Stripe / Ko-fi / Buy Me a Coffee as preferred).
+- A single "Donate" button that opens a Stripe Payment Link from the `PUBLIC_DONATE_URL` build secret. The card, the hero's donation sentence and the `/compare` footer's donate link all render only when that secret holds a valid `donate.stripe.com` / `buy.stripe.com` link (decisions § 2217).
 - No in-app amount picker, no recurring option, no progress bars, no cost breakdown.
 
 The `monthly_funding` table stays in the schema but is no longer read by the page. If transparent funding ever returns as a marketing angle, reviving it is a one-page revert — history is preserved in git.
 
 **Done when:**
-- Clicking Donate opens the external link in a new tab.
+- Clicking Donate opens the Stripe Payment Link in a new tab; with no link configured, no donate affordance renders anywhere.
 - Pro users see the same Donate card (a subscription doesn't preclude one-offs).
 - No references to `monthly_funding` remain on the upgrade page.
+
+---
+
+## Meal plans and day adherence (nutrition programming P1)
+
+**Phase:** 4 (P1 shipped web) | **Platform:** Web (mobile is P4) | **Parity:** [see matrix](parity.md)
+
+**Why:** Runners who already log food hand-tune the computed calorie target; a prescribed plan with a "did I hit it" verdict is the structured version of that behaviour, and P1's uptake is the signal that decides whether the professional console (P3) is built. Full design: [nutrition_programming.md](../features/nutrition_programming.md); decisions: [§ 1922](../architecture/decisions.md).
+
+**Spec:**
+
+- A plan is a name, a goal phase, a daily calorie target with optional protein / carbs / fat, and an optional training-day override for calories and carbs.
+- Following a plan from today makes it govern every day until stopped; on a governed day `/nutrition`'s rings use the plan's numbers instead of the computed target, the training override applies on a day a run or gym session is logged, and the card names the plan.
+- The adherence panel judges each prescribed macro met / under / over — ceilings (calories, fat) at up to +10 %, floors (protein, carbs) from −10 % — and the day on target / off target, or partial when under half the calories were logged. Glyph and label carry each verdict, never colour alone.
+- Everything self-hides until a plan exists. Before then the only entry is Save as plan (seeded from the rest-day target) or, without body metrics, a blank plan.
+- `/nutrition/plans/[id]` follows, stops following (today reverts to the computed target), edits, and deletes behind a confirm; deleting never touches the food diary.
+
+**Done when:**
+- A plan built and followed today seeds today's rings and shows the panel; stopping removes both.
+- A past governed day is judged against the plan it was lived under; a day before the plan started shows no panel.
+- A failed plan read shows the load error, never the computed target in its place.
+- Plans and assignments are in the Art 20 export and erased with the account.
 
 ---
 
@@ -522,17 +673,18 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 **Stub:** plan → weeks → workouts data model (already partially sketched in `roadmap.md § Premium tier`); web plan editor; "today's workout" dashboard card; execution loop in the run screen; auto-match planned vs actual.
 
 ### External platform sync (OAuth)
-**Closes:** Strava, Garmin Connect, Apple Health, Health Connect, parkrun, RunSignUp.
+**Closes:** Strava, Garmin Connect, Apple Health, Health Connect, RunSignUp. (parkrun was here until its scraped import was removed, [decisions § 2467](../architecture/decisions.md).)
 **Stub:** one OAuth Edge Function per provider with token refresh, webhook or polling ingest, bidirectional for Strava. Garmin Connect is gated on business approval — do not block on it.
 
 ### Segments + leaderboards
 **Closes:** Strava.
 **Stub:** user-authored GPS segments; PostGIS line-matching RPC invoked on run insert to produce `segment_efforts`; weekly + all-time boards per segment; KOM/CR equivalent per segment.
+**Head-to-head:** any segment, route segment or route can be compared with a mutual-follow friend on a share card; see [Head-to-head card](#head-to-head-card).
 
 ### Heatmap / popular-route discovery
 **Closes:** Strava, Komoot.
 **Stub:** anonymised GPS aggregation into raster or vector tiles served from CDN. Privacy default is opt-out (user data included unless they toggle off) — this is the decision knob worth re-litigating before shipping.
-**Shipped (web):** two distinct surfaces. (1) The community "where people run" heatmap on `/routes/heatmap` (public-routes-only, PostGIS RPC). Beyond the raw heat blob it now works as a **route browser** laid out as a results sidebar beside the map (search + a **Filters** popover + a scrollable results list — nothing floats over the map). The Filters popover holds the lens (`popular` / `friends` / `featured` / `hidden_gems` → `discoverable_routes_in_bbox`'s `p_filter`), **multi-select race-distance bands** (5K / 10K / Half / Marathon / Ultra, combinable in any permutation, filtered server-side via the parallel `p_dist_min[]`/`p_dist_max[]` bound arrays), and the heat/clubs layer toggles, with an active-filter badge + Reset. The route pins cluster (MapLibre native) so a dense area is one count bubble instead of an unclickable pile; list rows carry a distance-band badge; the **density heat layer is off by default** (opt-in via Filters → Heat — it traces each route's path, which fights the hidden-until-hover model, and its points aren't fetched until enabled, so the default view does zero heat compute). **Route lines are hidden by default** — hovering a route's map dot *or* its list row reveals just that one route's line plus a halo on its dot and tints the matching row (synchronized hover), rather than drawing every nearby route at once. Clicking still opens the route everywhere, so touch (no hover) loses nothing. Pins that share (or nearly share) a start collapse into a cluster, and hovering one (or hovering an overlapping stack past the cluster zoom) opens a **list popup** of those routes so you can pick — overlapping starts can't be zoomed apart, so the list is the only way to reach them. A **keep-on-map / pin** affordance (a pin button on each list row, a "Keep on map" button in the route popup, "Clear N kept" in the header) draws a route's line in violet and keeps it visible across pan + filter changes so you can compare several at once; only pinned routes are fetched, so the default view stays zero-cost. `friends` shows public routes *created by* people you follow (no retained run↔route link exists for "run by friends"); `hidden_gems` shows un-run public routes past a 1 km sanity floor. **Mobile** (`routes_heatmap_screen.dart`, byte-identical twin) mirrors the full browser — lens + race-distance band filters, clustered pins, tap-to-preview, the cluster list (tap → sheet), and keep-on-map — adapted for touch (decisions § 102). (2) A **personal** run-track heatmap on `/runs/heatmap` (persona-hunt #53) — a Strava-style map of the signed-in runner's OWN tracks, aggregated client-side from their own Storage blobs via the pure `run_heatmap.ts` grid-weighting helper. Owner-only data path, no cross-user aggregation, so the opt-out privacy knob above doesn't apply to it.
+**Shipped (web):** two distinct surfaces. (1) The community "where people run" heatmap on `/routes/heatmap` (public-routes-only, PostGIS RPC). Beyond the raw heat blob it now works as a **route browser** laid out as a results sidebar beside the map (search + a **Filters** popover + a scrollable results list — nothing floats over the map). The Filters popover holds the lens (`popular` / `official` / `friends` / `featured` / `hidden_gems` → `discoverable_routes_in_bbox`'s `p_filter`; official routes, published by a verified club's owner or admin, rank first, at most a quarter of the viewport ahead of community routes and carry the Official badge, decisions § 2228), **multi-select race-distance bands** (5K / 10K / Half / Marathon / Ultra, combinable in any permutation, filtered server-side via the parallel `p_dist_min[]`/`p_dist_max[]` bound arrays), and the heat/clubs layer toggles, with an active-filter badge + Reset. The route pins cluster (MapLibre native) so a dense area is one count bubble instead of an unclickable pile; list rows carry a distance-band badge; the **density heat layer is off by default** (opt-in via Filters → Heat — it traces each route's path, which fights the hidden-until-hover model, and its points aren't fetched until enabled, so the default view does zero heat compute). **Route lines are hidden by default** — hovering a route's map dot *or* its list row reveals just that one route's line plus a halo on its dot and tints the matching row (synchronized hover), rather than drawing every nearby route at once. Clicking still opens the route everywhere, so touch (no hover) loses nothing. Pins that share (or nearly share) a start collapse into a cluster, and hovering one (or hovering an overlapping stack past the cluster zoom) opens a **list popup** of those routes so you can pick — overlapping starts can't be zoomed apart, so the list is the only way to reach them. A **keep-on-map / pin** affordance (a pin button on each list row, a "Keep on map" button in the route popup, "Clear N kept" in the header) draws a route's line in violet and keeps it visible across pan + filter changes so you can compare several at once; only pinned routes are fetched, so the default view stays zero-cost. `friends` shows public routes *created by* people you follow (no retained run↔route link exists for "run by friends"); `hidden_gems` shows un-run public routes past a 1 km sanity floor. **Mobile** (`routes_heatmap_screen.dart`, byte-identical twin) mirrors the full browser — lens + race-distance band filters, clustered pins, tap-to-preview, the cluster list (tap → sheet), and keep-on-map — adapted for touch (decisions § 102). (2) A **personal** run-track heatmap on `/runs/heatmap` (persona-hunt #53) — a Strava-style map of the signed-in runner's OWN tracks, aggregated client-side from their own Storage blobs via the pure `run_heatmap.ts` grid-weighting helper. Owner-only data path, no cross-user aggregation, so the opt-out privacy knob above doesn't apply to it.
 
 ### Trail / offline navigation
 **Closes:** AllTrails, Komoot.
@@ -541,7 +693,9 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 ### Social graph
 **Closes:** Strava, Nike Run Club.
 **Stub:** `follows` table; activity feed of people you follow; kudos (one-tap); threaded comments on runs; per-user privacy zones that blur start/end within radius.
-**Shipped (web):** 1:1 **direct messages** (persona #55) — `/messages`, gated on the follow graph + blocks, with a `message` notification. Realtime delivery + a non-follower "message requests" inbox are deferred.
+**Shipped (web, Android + iOS):** 1:1 **direct messages** (persona #55) — `/messages` on web, the Messages inbox + conversation screens on mobile (decisions § 1916), gated on the follow graph + blocks, with a `message` notification. Either side can block from inside the conversation. Realtime delivery + a non-follower "message requests" inbox are deferred; both platforms poll an open inbox (30 s) and conversation (10 s) instead ([direct_messages.md](../features/direct_messages.md)).
+
+**Shipped behind the default-off `group_messages` flag (web, Android + iOS):** group conversations (issue #1365, [group_messages.md](../features/group_messages.md), decisions § 2461 / § 2463 / § 2468): invite-only groups of up to 32 people from your follow graph, invitations under Requests, a thread with sender names, rename lines, mute, leave and per-group drafts, and a members sheet for invites, roles, ownership hand-over and removal. The 1:1 tools (edit, unsend, reactions, photos, report) work inside a group. Realtime and club channels are later slices.
 
 ### Gear tracking
 **Closes:** Strava, Garmin.
@@ -557,7 +711,7 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 
 ### Race calendar + results import
 **Closes:** Garmin, Runna.
-**Stub:** `races` table seeded from RunSignUp + parkrun imports; discovery by location; "register" deep-links to the organiser's page; auto-match recorded runs on race day to produce a result entry.
+**Stub:** `races` table seeded from RunSignUp listings; discovery by location; "register" deep-links to the organiser's page; auto-match recorded runs on race day to produce a result entry.
 
 ### Advanced analytics
 **Closes:** Garmin, Runna.

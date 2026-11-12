@@ -1,10 +1,9 @@
-import {
-  createClient,
-  type SupabaseClient,
-} from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
+import type { Database, DbClient } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   type DeletionAuditResult,
   FCM_BATCH_REMOVE_URL,
@@ -19,6 +18,7 @@ import {
   stripeAccountUrl,
 } from './lib.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import { appleKeyConfigFromEnv, revokeAppleToken } from '../_shared/apple_auth.ts';
 
 const PAGE = 1000;
 
@@ -39,7 +39,7 @@ const PAGE = 1000;
 // Returns the number of objects removed so the caller can record a
 // per-bucket count in the deletion audit trail.
 async function deletePrefix(
-  client: SupabaseClient,
+  client: DbClient,
   bucket: string,
   prefix: string,
 ): Promise<number> {
@@ -91,7 +91,7 @@ async function deletePrefix(
 // (20260603_001), which returns the decrypted tokens to a service_role
 // caller for any user_id.
 async function deauthorizeOAuthProvider(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
   provider: 'strava' | 'garmin',
   revoke: (accessToken: string) => Promise<Response>,
@@ -133,7 +133,7 @@ async function deauthorizeOAuthProvider(
 }
 
 function deauthorizeStrava(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<ThirdPartyOutcome> {
   return deauthorizeOAuthProvider(adminClient, userId, 'strava', (accessToken) =>
@@ -160,7 +160,7 @@ function deauthorizeStrava(
 // `garmin_deauth: 'failed'` (visible in the audit log) instead of a
 // false success. The endpoint must be supplied with that integration.
 function deauthorizeGarmin(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<ThirdPartyOutcome> {
   return deauthorizeOAuthProvider(adminClient, userId, 'garmin', () => {
@@ -170,6 +170,53 @@ function deauthorizeGarmin(
         '(docs/features/integrations.md § Garmin Connect, Phase 3)',
     );
   });
+}
+
+// App Store Guideline 5.1.1(v): deleting an account that signed in with
+// Apple must revoke its Apple tokens. apple-token-exchange stored the refresh
+// token at sign-in. This reads it without consuming it and runs last, just
+// before admin.deleteUser: a deletion that aborts earlier keeps the token for
+// the retry, and the auth.users cascade removes the row and its Vault secret
+// only once the account is actually gone. A token on file with the Apple key
+// unset is 'failed', not 'skipped' — the Stripe Connect posture below.
+async function revokeAppleSignIn(
+  adminClient: DbClient,
+  userId: string,
+): Promise<ThirdPartyOutcome> {
+  let stored: { client_id: string; refresh_token: string } | undefined;
+  try {
+    const { data, error } = await adminClient.rpc('get_apple_refresh_token', {
+      p_user_id: userId,
+    });
+    if (error) {
+      console.error('delete-account: apple token lookup failed:', error.message);
+      return 'failed';
+    }
+    stored = data?.[0];
+  } catch (e) {
+    console.error(
+      'delete-account: apple token lookup failed:',
+      e instanceof Error ? e.message : String(e),
+    );
+    return 'failed';
+  }
+  if (!stored) return 'skipped';
+  const cfg = appleKeyConfigFromEnv();
+  if (!cfg) {
+    console.error('delete-account: apple revoke impossible — APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_PRIVATE_KEY unset');
+    return 'failed';
+  }
+  try {
+    return (await revokeAppleToken({ cfg, clientId: stored.client_id, token: stored.refresh_token }))
+      ? 'ok'
+      : 'failed';
+  } catch (e) {
+    console.error(
+      'delete-account: apple revoke failed:',
+      e instanceof Error ? e.message : String(e),
+    );
+    return 'failed';
+  }
 }
 
 async function deleteRevenueCatSubscriber(userId: string): Promise<ThirdPartyOutcome> {
@@ -209,7 +256,7 @@ async function deleteRevenueCatSubscriber(userId: string): Promise<ThirdPartyOut
 // trail (with the account id in the logs) so an operator can replay
 // once the balance settles.
 async function deleteStripeConnectAccount(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<ThirdPartyOutcome> {
   let accountId: string | null = null;
@@ -264,7 +311,7 @@ async function deleteStripeConnectAccount(
 }
 
 async function invalidatePushTokens(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<ThirdPartyOutcome> {
   // Enumerate every platform's tokens. The DB cascade from
@@ -343,7 +390,7 @@ async function invalidatePushTokens(
 // audit/account-deletion-completeness High: drain pre-cascade.
 // Mandatory — failure aborts the delete so the user can retry.
 async function drainUserJobs(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<{ ok: true; count: number } | { ok: false; reason: string }> {
   try {
@@ -365,7 +412,7 @@ async function drainUserJobs(
 // closes the audit/gdpr High #1 "deleted UUID survives 24h" gap
 // at deletion time; the hourly cron is the long-tail sweep.
 async function drainUserRateLimits(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<{ ok: true; count: number } | { ok: false; reason: string }> {
   try {
@@ -388,7 +435,7 @@ async function drainUserRateLimits(
 // row keeps working but the author identity is unrecoverable.
 // Mandatory — failure aborts the delete.
 async function anonymiseAuthoredSegments(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<{ ok: true; count: number } | { ok: false; reason: string }> {
   try {
@@ -415,7 +462,7 @@ async function anonymiseAuthoredSegments(
 // RPC `delete_user_integration_secrets(p_user_id uuid)` that does
 // the vault.secrets DELETE on behalf of the service-role caller.
 async function cleanupVaultSecrets(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   try {
@@ -433,9 +480,11 @@ async function cleanupVaultSecrets(
 // target can be a user / club / route). When target_kind = 'user',
 // the row stores the deleted user's id indefinitely — no cascade.
 // Delete those rows explicitly before the auth-row cascade so the
-// UUID doesn't outlive the user.
+// UUID doesn't outlive the user — except a report under legal hold,
+// which a moderator placed so the reported person could not erase it
+// by leaving (Art 17(3)(e), decisions § 2231).
 async function deleteUserReports(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
 ): Promise<{ ok: true; count: number } | { ok: false; reason: string }> {
   try {
@@ -443,7 +492,8 @@ async function deleteUserReports(
       .from('reports')
       .delete({ count: 'exact' })
       .eq('target_kind', 'user')
-      .eq('target_id', userId);
+      .eq('target_id', userId)
+      .eq('legal_hold', false);
     if (error) return { ok: false, reason: error.message };
     return { ok: true, count: count ?? 0 };
   } catch (e) {
@@ -452,7 +502,7 @@ async function deleteUserReports(
 }
 
 async function recordAudit(
-  adminClient: SupabaseClient,
+  adminClient: DbClient,
   userId: string,
   result: DeletionAuditResult,
   notes: string | null = null,
@@ -478,7 +528,7 @@ async function recordAudit(
   }
 }
 
-Deno.serve(withSentry('delete-account', async (req: Request) => {
+Deno.serve(withCors(withSentry('delete-account', async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -493,7 +543,7 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
   if (!authHeader) {
     return Response.json({ error: 'unauthorized' }, { status: 401 });
   }
-  const userClient = createClient(
+  const userClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     publishableKey(),
     { global: { headers: { Authorization: authHeader } } },
@@ -513,7 +563,7 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
   });
   if (denied) return denied;
 
-  const adminClient = createClient(
+  const adminClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     secretKey(),
   );
@@ -544,6 +594,9 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
     revenuecat_delete: await deleteRevenueCatSubscriber(user.id),
     fcm_remove: await invalidatePushTokens(adminClient, user.id),
     stripe_connect_delete: await deleteStripeConnectAccount(adminClient, user.id),
+    // Filled in just before admin.deleteUser; an audit row written by an
+    // earlier abort records that the revoke was never reached.
+    apple_revoke: 'not_reached',
   };
 
   // Per-table deleted-row counts for the audit trail. Only the tables
@@ -667,8 +720,9 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
   }
   deletedCounts.segments_anonymised = segs.count;
 
-  // Delete Storage files. The `runs` bucket holds gzipped tracks +
-  // per-user export blobs at `{user.id}/exports/<ts>.{csv,zip}`; the
+  // Delete Storage files. The `runs` bucket holds gzipped tracks + the
+  // LEGACY per-user export blobs at `{user.id}/exports/<ts>.{csv,zip}`
+  // (new ones land in `exports`, migration `20270602_001`); the
   // photo buckets hold user-uploaded imagery, all keyed under the
   // owner's `{user.id}/` prefix (each bucket's path-shape CHECK or
   // policy enforces it). The route-photos / club-photos rows cascade
@@ -679,8 +733,19 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
   // drained. A partial drain followed by the auth-row cascade orphans
   // blobs with no row to point at them, so we abort before deleting
   // the auth user — the user can retry once Storage recovers.
+  //
+  // `dm-images` is deliberately NOT prefix-drained: a direct-message photo
+  // a report holds is moderation evidence that must outlive its sender's
+  // account (issue #1216, decisions § 2231), and a prefix drain cannot tell
+  // it apart without a check-then-delete race against a report filed
+  // meanwhile. Erasure is row-driven instead: the auth-user cascade
+  // deletes the sender's messages, which detaches and deletes every image
+  // row no report names (migration 20271213121604), each delete queues a
+  // dm_image_orphan_sweep job for its two objects, and the worker erases
+  // them; dm_image_orphan_paths never returns an object a row still
+  // names, and the nightly backstop sweeps anything left over.
   try {
-    for (const bucket of ['runs', 'run-photos', 'route-photos', 'club-photos']) {
+    for (const bucket of ['runs', 'exports', 'run-photos', 'route-photos', 'club-photos']) {
       deletedCounts[`storage_${bucket}`] = await deletePrefix(
         adminClient,
         bucket,
@@ -729,6 +794,8 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
   // where eight tables had `references auth.users` without
   // `on delete cascade`, which used to make this admin.deleteUser
   // call 23503 for any user with even a user_profiles row.
+
+  thirdPartyOutcomes.apple_revoke = await revokeAppleSignIn(adminClient, user.id);
 
   const { error } = await adminClient.auth.admin.deleteUser(user.id);
   if (error) {
@@ -783,4 +850,4 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
     thirdPartyOutcomes,
   );
   return Response.json({ ok: true });
-}));
+})));

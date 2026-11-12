@@ -7,6 +7,7 @@ import {
 	sortMarkers,
 	parseCutoff,
 	parseTarget,
+	parseAidServices,
 	isOfficialMarker
 } from './route_markers';
 
@@ -35,6 +36,25 @@ test('kindSpec falls back to custom for an unknown kind', () => {
 
 test('aid services vocabulary is stable', () => {
 	assert.deepEqual(AID_SERVICES, ['water', 'food', 'medical', 'toilets', 'drop_bag']);
+});
+
+test('parseAidServices drops duplicates, keeping each service at its first position', () => {
+	assert.deepEqual(parseAidServices(['water', 'food', 'water', 'food', 'medical']), [
+		'water',
+		'food',
+		'medical'
+	]);
+});
+
+test('parseAidServices drops non-string entries and keeps unknown names', () => {
+	assert.deepEqual(parseAidServices(['water', 7, null, { s: 'food' }, 'shower']), ['water', 'shower']);
+});
+
+test('parseAidServices reads anything that is not an array as no services', () => {
+	assert.deepEqual(parseAidServices(undefined), []);
+	assert.deepEqual(parseAidServices(null), []);
+	assert.deepEqual(parseAidServices('water'), []);
+	assert.deepEqual(parseAidServices({ water: true }), []);
 });
 
 test('sortMarkers orders by position_m, nulls last, stable by created_at', () => {
@@ -127,4 +147,18 @@ test('isOfficialMarker — a viewer\'s personal overlay is not official', () => 
 test('isOfficialMarker — null / undefined owner id is never official (fail closed)', () => {
 	assert.equal(isOfficialMarker({ user_id: 'owner-1' }, null), false);
 	assert.equal(isOfficialMarker({ user_id: 'owner-1' }, undefined), false);
+});
+
+test('sortMarkers orders same-second created_at by timestamp, fractional part or not', () => {
+	// `localeCompare` treats the fractional-second `.` as variable punctuation,
+	// so the fraction-less spelling Postgres writes at exactly zero microseconds
+	// sorted after a later marker in the same second.
+	const markers = [
+		{ id: 'second', position_m: 900, created_at: '2026-06-15T09:00:00.4+00:00' },
+		{ id: 'first', position_m: 900, created_at: '2026-06-15T09:00:00+00:00' }
+	];
+	assert.deepEqual(
+		sortMarkers(markers).map((m) => m.id),
+		['first', 'second']
+	);
 });

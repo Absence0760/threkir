@@ -10,7 +10,7 @@ import (
 )
 
 // EmailSender is the transport the email handlers send through. Production
-// wires *SMTPSender (Mailpit in local dev on 127.0.0.1:54325; Resend / SES
+// wires *SMTPSender (Mailpit in local dev on 127.0.0.1:24325; Resend / SES
 // SMTP in prod). Tests substitute a fake recorder so the handler logic is
 // exercised without a live SMTP server.
 type EmailSender interface {
@@ -40,12 +40,19 @@ type Email struct {
 	ListUnsubscribeOneClick bool
 }
 
-// Brand tokens — kept in lockstep with apps/web/src/app.css (--color-primary
-// deep teal). Email clients can't read CSS variables, so the values are
-// inlined here.
+// Brand tokens — kept in lockstep with apps/web/src/app.css: the CTA is the
+// light --color-primary coral, and the header bar is the light --color-text
+// ink, which the coral-to-violet mark reads against where coral would not.
+// Email clients can't read CSS variables, so the values are inlined here.
 const (
-	brandName  = "Threkir"
-	brandColor = "#2C5F6E"
+	brandName   = "Threkir"
+	brandColor  = "#C24E24"
+	headerColor = "#1A1722"
+
+	// emailLogoPath is the brand mark the HTML header renders, served off
+	// the apex CloudFront distribution from apps/web/static/. Regenerate
+	// the asset with assets/gen-email-logo.sh.
+	emailLogoPath = "/email-logo.png"
 )
 
 // SMTPSender sends via a plain SMTP server. Auth is nil for an
@@ -160,6 +167,7 @@ func extractAddr(from string) string {
 // adding a template is just filling these fields.
 type emailContent struct {
 	lang              string // <html lang> (BCP-47); "" → "en"
+	logoURL           string // absolute URL of the header mark ("" → wordmark only)
 	subject           string
 	preheader         string   // inbox preview snippet
 	heading           string   // H1
@@ -206,6 +214,38 @@ func renderTextBody(c emailContent) string {
 	return b.String()
 }
 
+// renderBrandLockup is the header bar's contents: the brand mark beside the
+// wordmark. The mark carries alt="" deliberately — the wordmark next to it
+// already says "Threkir", so a populated alt makes a screen reader announce
+// the brand twice. With no logo URL the wordmark stands alone, which is also
+// what every client that blocks remote images shows.
+func renderBrandLockup(logoURL string) string {
+	wordmark := fmt.Sprintf(
+		`<span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">%s</span>`,
+		brandName)
+	if logoURL == "" {
+		return wordmark
+	}
+	return fmt.Sprintf(
+		`<table role="presentation" cellpadding="0" cellspacing="0"><tr>`+
+			`<td style="padding-right:12px;line-height:0;"><img src="%s" width="32" height="32" alt="" style="display:block;border:0;"></td>`+
+			`<td style="vertical-align:middle;">%s</td>`+
+			`</tr></table>`,
+		html.EscapeString(logoURL), wordmark)
+}
+
+// emailLogoURL resolves the header mark against the deployment's base URL.
+// An empty base yields "", which renders the header as the wordmark alone
+// rather than a broken image — a preview/dev worker with no APP_BASE_URL set
+// still sends a coherent email.
+func emailLogoURL(baseURL string) string {
+	base := strings.TrimRight(baseURL, "/")
+	if base == "" {
+		return ""
+	}
+	return base + emailLogoPath
+}
+
 // renderHTMLBody builds an email-client-safe HTML message: table layout,
 // inline styles, ≤600px centred card, a branded header bar, an H1, body
 // paragraphs, a bulletproof CTA button, and a muted footer. The preheader
@@ -248,12 +288,12 @@ func renderHTMLBody(c emailContent) string {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">%s</div>
 <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="background:%s;padding:20px 32px;"><span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">%s</span></td></tr>
+<tr><td style="background:%s;padding:20px 32px;">%s</td></tr>
 <tr><td style="padding:32px;"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;">%s</h1>%s%s</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">%s</p></td></tr>
 </table></td></tr></table>
 </body></html>`,
-		lang, html.EscapeString(c.preheader), brandColor, brandName,
+		lang, html.EscapeString(c.preheader), headerColor, renderBrandLockup(c.logoURL),
 		html.EscapeString(c.heading), paras.String(), cta, footer)
 }
 
@@ -274,12 +314,149 @@ const (
 // noise (kudos, comment, comment_reply, follow, club_post, run_completed,
 // event_rsvp) is emailed only under "all". event_reminder / event_cancel
 // are the Phase 4b event-day items; message is a DM; plan_update is a
-// coach changing the user's training.
+// coach changing the user's training; data_export_ready is the literal
+// definition of the category — the subject asked for the archive minutes
+// ago and is waiting to be told it exists. refund_failed is money we hold
+// and owe back: it belongs to the default set for the same reason a receipt
+// does, and it deliberately gets no kindMutePrefKey entry — a per-kind
+// opt-out of being told we still have your money is not a control anyone
+// benefits from having.
 var importantKinds = map[string]bool{
-	"event_reminder": true,
-	"event_cancel":   true,
-	"plan_update":    true,
-	"message":        true,
+	"event_reminder":    true,
+	"event_cancel":      true,
+	"plan_update":       true,
+	"message":           true,
+	"data_export_ready": true,
+	"refund_failed":     true,
+	// A seat held for the recipient that lapses to the next person if they
+	// don't act: the definition of something they are waiting on.
+	"event_waitlist_slot": true,
+	// Someone addressed the recipient by name, which is closer to a direct
+	// message than to the social loop. reaction / comment_like stay out: they
+	// are the same kind of signal as kudos (decisions § 1971).
+	"mention": true,
+	// A private profile's owner is the only one who can let the asker in,
+	// and the asker sees nothing until they do. A plain follow stays out:
+	// it has already happened and asks nothing of the recipient.
+	"follow_request": true,
+	// The club notices of decisions § 2358. A join request is a follow request
+	// for a club: the asker sees nothing until an owner or admin acts. An
+	// approval answers a request the member is waiting on. An edit to an event
+	// the recipient is going to changes their plans the way a cancel does.
+	"club_join_request":  true,
+	"club_join_approved": true,
+	"event_updated":      true,
+	// A suggested change to a coach-assigned plan waits on the coach, and the
+	// athlete is waiting on the answer (decisions § 2382).
+	"plan_change_request":  true,
+	"plan_change_decision": true,
+	// A club's verified badge was granted, refused, revoked or dropped; the
+	// owner may have to act to get it back (decisions § 2398).
+	"club_verification": true,
+	// A verified organiser's reroute or closure on a race the recipient is
+	// training for changes their race day (decisions § 2407).
+	"course_alert": true,
+	// A reviewer acted on a naming dispute: the owner may have a deadline to
+	// rename, and the organiser is waiting on the outcome (decisions § 2441).
+	"organiser_dispute": true,
+	// A park course was reported to the app admins; a land manager's request
+	// is due within two business days (decisions § 2449).
+	"park_course_report": true,
+}
+
+// pushImportantKinds are carried by the default "important" PUSH mode but not
+// by the default email mode. workout_reminder is the runner's own plan on the
+// morning it asks something of them, at most one a day (20270913000001): a
+// push is the right weight for that, and a daily email by default is not, so
+// email is opt-in through email_notifications = all (decisions § 2098).
+var pushImportantKinds = map[string]bool{
+	"workout_reminder": true,
+	// An organiser plans the run around who is coming, and a run they cannot
+	// see RSVPs for is the complaint that put this here (decisions § 2358). A
+	// busy event raises one per RSVP, so the default is the push only; the
+	// email is opt-in through email_notifications = all.
+	"event_rsvp": true,
+	// A scheduled race about to fire, and an organiser moving its start
+	// (decisions § 2400). Both matter only in the minutes before a start, so
+	// they are pushed by default and never emailed (pushOnlyKinds).
+	"race_starting_soon": true,
+	"race_start_moved":   true,
+}
+
+// pushOnlyKinds are never emailed, whatever the email mode. A warning about a
+// race starting in ten minutes, or that its start just moved, is stale by the
+// time a mailbox is read, so "all" must not turn it into mail either. Both
+// still land in the inbox and on the push channels.
+var pushOnlyKinds = map[string]bool{
+	"race_starting_soon": true,
+	"race_start_moved":   true,
+}
+
+// kindMutePrefKey maps a notification kind to the user_settings.prefs key
+// that silences it on the OUTBOUND channels — email and both pushes. The
+// inbox row is never withheld; this is the same scope
+// email_notifications / push_notifications have.
+//
+// It exists for kinds where the three-mode channel setting is too blunt an
+// instrument. Muting `email_notifications` to silence "your data export is
+// ready" would also silence direct messages and event-day reminders, so a
+// runner who wants no mail about their own data-rights requests has no
+// proportionate control without this.
+//
+// The direction is opt-OUT, and that is the opposite of email_weekly_digest
+// / email_lifecycle_drip on purpose. Those are marketing, where the absence
+// of a choice is the absence of consent. This is transactional: the subject
+// requested the export, and an opt-IN default would mean the feature does
+// nothing at all for everyone who has never opened Settings — which is the
+// gap it was built to close. The fail-closed property that IS preserved is
+// that a key here can only ever SUBTRACT: it is consulted alongside the
+// channel mode, never instead of it, so `email_notifications = "off"` still
+// silences the kind and no per-kind key can promote a kind past a channel
+// mute. See docs/backend/settings.md + decisions.md § 729.
+var kindMutePrefKey = map[string]string{
+	"data_export_ready": "notify_data_export_ready",
+	// The social signals from decisions § 1971. A mention reaches the default
+	// "important" set, so a runner who wants every other message but not
+	// these needs a control narrower than the channel; reaction and
+	// comment_like only go out under "all", where the same is true.
+	"reaction":     "notify_reaction",
+	"comment_like": "notify_comment_like",
+	"mention":      "notify_mention",
+	// Important for the same reason a mention is, and raised by someone else,
+	// so the owner needs a control narrower than the whole channel.
+	"follow_request": "notify_follow_request",
+	// A daily reminder in the default set needs a control narrower than the
+	// channel. enqueue_workout_reminders reads the same key and raises no row
+	// at all for a muted runner; this entry holds the mute for a row that was
+	// raised before the runner turned it off.
+	"workout_reminder": "notify_workout_reminder",
+	// Each raised by someone else's action and each in a default set
+	// (decisions § 2358), so each needs a control narrower than the channel.
+	"event_rsvp":         "notify_event_rsvp",
+	"club_join_request":  "notify_club_join_request",
+	"club_join_approved": "notify_club_join_approved",
+	"event_updated":      "notify_event_updated",
+	// Raised by the race organiser and in the default set, so it gets a
+	// control narrower than the channel (decisions § 2407).
+	"course_alert": "notify_course_alert",
+	// One key for both race notices: a runner who does not want to be told
+	// about a start wants neither the countdown warning nor the move. The
+	// per-minute job also reads it and raises no starting-soon row at all.
+	"race_starting_soon": "notify_race_starting_soon",
+	"race_start_moved":   "notify_race_starting_soon",
+}
+
+// kindMuted reports whether the recipient silenced this one kind. Only the
+// literal "off" mutes: an absent key is a runner who never chose, and a
+// non-string or unrecognised value is a corrupt bag, neither of which is a
+// decision to stop being told about their own export.
+func kindMuted(kind string, prefs map[string]interface{}) bool {
+	key, ok := kindMutePrefKey[kind]
+	if !ok {
+		return false
+	}
+	v, _ := prefs[key].(string)
+	return v == "off"
 }
 
 // inAppOnlyKinds never leave the notifications inbox, whatever channel mode
@@ -302,6 +479,13 @@ var importantKinds = map[string]bool{
 // on "all" would still be emailed and pushed.
 var inAppOnlyKinds = map[string]bool{
 	"content_hidden": true,
+	// A coach is told that an athlete applied AI-suggested changes to a plan
+	// the coach assigned (decisions § 2230). It is an awareness note on the
+	// coach's own roster work, not something they are waiting on, and an
+	// athlete tweaking their week several times would otherwise reach the
+	// coach's mailbox and tray each time; the unread row is refreshed rather
+	// than repeated for that reason too.
+	"plan_ai_edit": true,
 }
 
 // emailMode reads the channel preference out of the user_settings.prefs
@@ -320,13 +504,18 @@ func emailMode(prefs map[string]interface{}) string {
 	}
 }
 
-// shouldEmail decides whether a notification of the given kind is emailed
-// under the resolved mode.
-func shouldEmail(kind, mode string) bool {
-	if inAppOnlyKinds[kind] {
+// shouldEmail decides whether a notification of the given kind is emailed,
+// given the recipient's whole prefs bag.
+//
+// It takes the bag rather than a pre-resolved mode so that every gate the
+// bag carries is consulted in one place. A caller that had to remember to
+// check the per-kind mute separately would eventually be a channel that
+// forgot to — and the miss is invisible, because the mail still sends.
+func shouldEmail(kind string, prefs map[string]interface{}) bool {
+	if inAppOnlyKinds[kind] || pushOnlyKinds[kind] || kindMuted(kind, prefs) {
 		return false
 	}
-	switch mode {
+	switch emailMode(prefs) {
 	case emailModeOff:
 		return false
 	case emailModeAll:
@@ -345,9 +534,10 @@ func shouldEmail(kind, mode string) bool {
 func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 	base := strings.TrimRight(baseURL, "/")
 	loc := normalizeEmailLocale(locale)
-	s := lookupEmailStrings(loc, keyForKind(n.Kind))
+	s := lookupEmailStrings(loc, copyKeyFor(n))
 	shared := lookupEmailShared(loc)
 	return composeEmail(emailContent{
+		logoURL:         emailLogoURL(baseURL),
 		lang:            loc,
 		subject:         s.subject,
 		preheader:       s.preheader,
@@ -356,12 +546,18 @@ func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 		ctaLabel:        s.cta,
 		ctaURL:          pathForKind(n.Kind, base, n),
 		footer:          shared.footerNotification,
-		prefsURL:        base + "/settings/preferences",
+		prefsURL:        base + notificationPrefsPath,
 		prefsLabel:      shared.managePrefsLabel,
 		prefsTextPrefix: shared.managePrefsTextPrefix,
-		listUnsub:       base + "/settings/preferences",
+		listUnsub:       base + notificationPrefsPath,
 	})
 }
+
+// notificationPrefsPath is where an email's "manage preferences" footer and its
+// List-Unsubscribe header send the reader: the web page holding the email and
+// push channels and the optional-email toggles. /settings/preferences, the URL
+// older mail carries, is now a landing page that links there.
+const notificationPrefsPath = "/settings/notifications"
 
 // pathForKind maps a notification kind to its deep link. One place so a new
 // kind is a single edit alongside its catalogue entry, shared by the email,
@@ -376,42 +572,143 @@ func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 // UUID fallback on /clubs/[slug].
 func pathForKind(kind, base string, n NotificationRow) string {
 	switch kind {
-	case "event_reminder", "event_cancel", "event_rsvp":
+	case "event_reminder", "event_rsvp", "event_waitlist_slot", "event_updated":
 		return eventPath(base, n)
+	case "race_starting_soon", "race_start_moved":
+		// The occurrence's event page, which carries the race panel and its
+		// countdown (decisions § 2400).
+		return eventPath(base, n)
+	case "event_cancel":
+		// A deleted event's notice links no event, because the delete's cascade
+		// would erase a row that did (20271112000013); its club is the nearest
+		// page that still exists.
+		if n.EventID == nil && n.ClubID != nil {
+			return clubPath(base, n)
+		}
+		return eventPath(base, n)
+	case "club_join_request", "club_join_approved":
+		// The club home, where a request's approve and decline sit for its
+		// admins and where an approved member lands.
+		return clubPath(base, n)
+	case "club_verification":
+		// The club home, whose verification card says what changed and why
+		// (decisions § 2398).
+		return clubPath(base, n)
 	case "plan_update", "plan_assigned":
 		// Training plans live at /plans — there is no /training route, so the
 		// old target was a dead deep link. Both kinds carry plan_id and both
 		// go to the plan's OWNER (notify_plan_update notifies the owner of an
 		// edit someone else made; notify_plan_assigned notifies the athlete,
 		// who owns the assigned plan), so the owner-scoped detail page is
-		// correct for each — the /runs/{id} trap that caught run_completed
-		// doesn't apply here.
+		// correct for each.
+		return planPath(base, n)
+	case "plan_ai_edit":
+		// The recipient is the coach who assigned the plan, not its owner;
+		// /plans/{id} renders the coach's view of an active athlete's plan
+		// (coach_plan_access), which is where the change is to be read.
+		return planPath(base, n)
+	case "plan_change_request", "plan_change_decision":
+		// The athlete's plan, where both the athlete and the coach (through
+		// coach_plan_access) see the request with its approve and decline
+		// (decisions § 2382).
+		return planPath(base, n)
+	case "park_course_report":
+		// The admins' moderation queue, where course reports sort by the
+		// land-manager deadline; the row carries no target (decisions § 2449).
+		return base + "/admin/reports"
+	case "organiser_dispute":
+		// Both sides read the decision and any rename deadline on the disputes
+		// page; the row carries only the reporting club (decisions § 2441).
+		return base + "/disputes"
+	case "course_alert":
+		// The stable-id resolver, which opens the race or route the alert is
+		// on; the projection carries only the alert's id (decisions § 2407).
+		if n.CourseAlertID != nil {
+			return base + "/course-alerts/" + *n.CourseAlertID
+		}
+		return inboxPath(base, n)
+	case "workout_reminder":
+		// The runner's active plan, whose detail page opens on the current
+		// week with today's workout in it. The row carries plan_id and the
+		// recipient owns the plan.
 		return planPath(base, n)
 	case "message":
+		// A group message opens its group; a 1:1 one the inbox, as the row
+		// names no partner route of its own.
+		if n.ConversationID != nil {
+			return base + "/messages/group/" + *n.ConversationID
+		}
 		return base + "/messages"
+	case "group_invite":
+		// Accept and decline sit in the inbox's Requests list; the invitee
+		// cannot open the group itself until they accept (decisions § 2463).
+		return base + "/messages?view=requests"
 	case "club_post":
 		return clubPath(base, n)
-	case "kudos", "comment", "comment_reply":
+	case "kudos", "comment", "comment_reply", "reaction":
 		// The recipient owns the run these fire on, so the owner-scoped
 		// /runs/{id} detail page is correct.
 		return runPath(base, n)
+	case "comment_like", "mention":
+		// The recipient need not own the run, but they could read it when the
+		// row was written (the mention gate checks exactly that), and
+		// /runs/{id} serves a non-owner the shared view of any run their
+		// audience admits.
+		return runPath(base, n)
 	case "run_completed":
-		// Fires on a followee's run, so the recipient is NOT the owner —
-		// /runs/{id} fetches owner-scoped and renders "run not found" for
-		// them. The public share page is the only run surface a non-owner
-		// can read, matching notificationLinkFor on web.
+		// Fires on a followee's run, so the recipient is NOT the owner, and
+		// only on a public one (notify_run_completed skips is_public false).
+		// The anon-readable public share page renders it for anyone, signed
+		// in or not, matching notificationLinkFor on web. /runs/{id} would
+		// also serve it — a public run gets that page's non-owner branch
+		// since issue #666 — but that view needs a session.
 		return sharedRunPath(base, n)
 	case "follow":
 		// The recipient's own profile (/u/{id}), where their followers are
 		// shown — there is no /profile route, so the old target 404'd.
 		return profilePath(base, n)
+	case "follow_request":
+		// The recipient's pending requests, where approve and decline live.
+		// The actor's profile would be the wrong target: it is closed to the
+		// recipient unless that profile happens to be public.
+		return base + "/follow-requests"
 	case "challenge_complete":
 		return challengePath(base, n)
+	case "personal_record":
+		// The recipient's own run, with the PR card open in its share editor
+		// (decisions § 2266). The record times are owner-only, and so is the
+		// run detail page that reads them.
+		if n.RunID != nil {
+			return base + "/runs/" + *n.RunID + "?share=pr"
+		}
+		return inboxPath(base, n)
 	case "achievement":
 		// The public badge share page, not a profile tab: the recipient earned
 		// it, the page is readable without a session, and it is the surface
 		// they'd share — matching notificationLinkFor on web.
 		return badgePath(base, n)
+	case "data_export_ready":
+		// Settings → Account, where the export card lives. The message
+		// carries no download URL of its own and must not: a signed URL
+		// minted when the worker finished would already be spending its
+		// ten minutes by the time the subject opened the mail, which is
+		// the exact objection that kept this notification unbuilt. The
+		// page mints it at the tap instead (decisions.md § 717 + § 729).
+		// No FK: the export lives in data_export_jobs, which the
+		// notifications row has no column for and does not need.
+		return base + "/settings/account"
+	case "refund_failed":
+		// Two ledgers, two shapes. An event order carries event_id and lands
+		// on the page whose banner explains the same thing at length
+		// (decisions § 825); a DONATION carries no FK at all, because
+		// `donations` has no client SELECT policy and there is no donor-facing
+		// row to point at. eventPath's own fallback is /clubs, which would
+		// answer "we still have your money" with a club directory, so the
+		// null case goes to the inbox instead — where the message itself is.
+		if n.EventID != nil {
+			return eventPath(base, n)
+		}
+		return inboxPath(base, n)
 	case "content_hidden":
 		// A provisional moderation notice with no destination — web's
 		// notificationLinkFor returns null for it, and inAppOnlyKinds keeps it
@@ -493,9 +790,10 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 	// account_deleted has no account left to manage — no prefs link, no CTA
 	// (the catalogue leaves the CTA empty), and its own footer. Render it
 	// before the standard transactional path so it never grows a dead
-	// /settings/preferences link a deleted user can't use.
+	// notification-preferences link a deleted user can't use.
 	if template == "account_deleted" {
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   s.subject,
 			preheader: s.preheader,
@@ -516,6 +814,7 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 	}
 
 	return composeEmail(emailContent{
+		logoURL:         emailLogoURL(baseURL),
 		lang:            loc,
 		subject:         s.subject,
 		preheader:       s.preheader,
@@ -524,7 +823,7 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 		ctaLabel:        s.cta,
 		ctaURL:          lifecycleCtaURL(template, base),
 		footer:          footer,
-		prefsURL:        base + "/settings/preferences",
+		prefsURL:        base + notificationPrefsPath,
 		prefsLabel:      shared.managePrefsLabel,
 		prefsTextPrefix: shared.managePrefsTextPrefix,
 		// transactional — no List-Unsubscribe.
@@ -560,6 +859,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 	case "finish":
 		s := lookupEmailStrings(loc, "safety_finish")
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -575,6 +875,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 	case "confirm":
 		s := lookupEmailStrings(loc, "safety_confirm")
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -600,11 +901,9 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -627,11 +926,9 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -643,6 +940,121 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		}), true
 	default:
 		return Email{}, false
+	}
+}
+
+// ─────────────────── account-security templates (pure) ───────────────────
+
+// securityTemplates is the closed set renderSecurityEmail knows.
+var securityTemplates = map[string]bool{
+	"new_device_sign_in": true,
+}
+
+// securityResetPath is the CTA of every security notice: the sign-in page's
+// password-reset form. It is the one step that helps whether or not the reader
+// can still sign in — an intruder who changed the password has locked them
+// out, and the reset link goes to this mailbox, not to whoever is in the
+// account.
+const securityResetPath = "/login?reset=1"
+
+// renderSecurityEmail renders an account-security notice. Transactional, so
+// no List-Unsubscribe header; the footer still links the email preferences,
+// because that page holds this alert's own opt-out.
+//
+// The device line is built from the payload's coarse classes and the sign-in
+// time is rendered in explicit UTC — the recipient's zone is not known to the
+// worker. No IP and no location: the payload carries neither, by design.
+func renderSecurityEmail(p SecurityEmailPayload, baseURL, locale string) (Email, bool) {
+	if !securityTemplates[p.Template] {
+		return Email{}, false
+	}
+	base := strings.TrimRight(baseURL, "/")
+	loc := normalizeEmailLocale(locale)
+	shared := lookupEmailShared(loc)
+	s := lookupEmailStrings(loc, "new_device_sign_in")
+	return composeEmail(emailContent{
+		logoURL:   emailLogoURL(baseURL),
+		lang:      loc,
+		subject:   s.subject,
+		preheader: s.preheader,
+		heading:   s.heading,
+		body: []string{
+			fmt.Sprintf(s.body[0], deviceLabel(p.Browser, p.Platform, shared), formatInstantUTC(p.SignedInAt)),
+			s.body[1],
+			s.body[2],
+		},
+		ctaLabel:        s.cta,
+		ctaURL:          base + securityResetPath,
+		footer:          shared.footerSecurity,
+		prefsURL:        base + notificationPrefsPath,
+		prefsLabel:      shared.managePrefsLabel,
+		prefsTextPrefix: shared.managePrefsTextPrefix,
+	}), true
+}
+
+// deviceBrowserLabel names a sign_in_devices.browser class. Browser names are
+// proper nouns and stay untranslated; "" means the class has no name to give.
+func deviceBrowserLabel(browser string) string {
+	switch browser {
+	case "chrome":
+		return "Chrome"
+	case "edge":
+		return "Edge"
+	case "firefox":
+		return "Firefox"
+	case "safari":
+		return "Safari"
+	case "opera":
+		return "Opera"
+	case "samsung":
+		return "Samsung Internet"
+	default:
+		return ""
+	}
+}
+
+// devicePlatformLabel names a sign_in_devices.platform class, "" for `other`.
+func devicePlatformLabel(platform string) string {
+	switch platform {
+	case "android":
+		return "Android"
+	case "ios":
+		return "iOS"
+	case "windows":
+		return "Windows"
+	case "macos":
+		return "macOS"
+	case "linux":
+		return "Linux"
+	case "chromeos":
+		return "ChromeOS"
+	default:
+		return ""
+	}
+}
+
+// deviceLabel composes the localized device phrase. The mobile app's
+// User-Agent names no OS, so its class stands alone; a known platform with an
+// unnamed browser still says which platform; nothing recognisable at all says
+// so rather than inventing a name.
+func deviceLabel(browser, platform string, shared emailShared) string {
+	pl := devicePlatformLabel(platform)
+	if browser == "threkir_app" {
+		if pl == "" {
+			return shared.deviceApp
+		}
+		return fmt.Sprintf(shared.deviceOnPlatform, shared.deviceApp, pl)
+	}
+	br := deviceBrowserLabel(browser)
+	switch {
+	case br != "" && pl != "":
+		return fmt.Sprintf(shared.deviceOnPlatform, br, pl)
+	case br != "":
+		return br
+	case pl != "":
+		return fmt.Sprintf(shared.deviceOnPlatform, shared.deviceUnknownBrowser, pl)
+	default:
+		return shared.deviceUnknown
 	}
 }
 
@@ -681,6 +1093,7 @@ func renderWeeklyDigest(s DigestSummary, baseURL, locale, unsubURL string) Email
 	}
 
 	return composeEmail(emailContent{
+		logoURL:         emailLogoURL(baseURL),
 		lang:            loc,
 		subject:         cat.subject,
 		preheader:       cat.preheader,
@@ -735,6 +1148,7 @@ func renderLifecycleDrip(template, baseURL, locale, unsubURL string) (Email, boo
 	shared := lookupEmailShared(loc)
 
 	return composeEmail(emailContent{
+		logoURL:           emailLogoURL(baseURL),
 		lang:              loc,
 		subject:           cat.subject,
 		preheader:         cat.preheader,
@@ -788,6 +1202,18 @@ func formatTimeUTC(iso string) string {
 		return iso
 	}
 	return t.UTC().Format("15:04 UTC on 2 Jan")
+}
+
+// formatInstantUTC renders an RFC 3339 instant as "2006-01-02 15:04 UTC" —
+// numeric, so it reads the same in every locale's sentence, and explicitly
+// UTC because the recipient's zone is unknown here. Unparseable input falls
+// back to the raw string rather than dropping the fact.
+func formatInstantUTC(iso string) string {
+	t, err := time.Parse(time.RFC3339, iso)
+	if err != nil {
+		return iso
+	}
+	return t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
 // formatDurationHM renders seconds as "Hh MMm" (or "Mm" under an hour).

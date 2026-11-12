@@ -1,41 +1,46 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapFeaturedHalo,
 		mapHoverLine,
 		mapLabelInk,
 		mapOverlayOutline,
 		mapPinnedLine,
-	} from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
+	} from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import {
 		fetchHeatmapPoints,
 		fetchRouteById,
 		fetchClubsInBbox,
 		fetchDiscoverableRoutesInBbox,
+		fetchUpcomingRacesInBbox,
 		type DiscoverFilter,
 		type DiscoverableRoutePin,
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { searchPlaces, type PlaceSearchResult } from '$lib/routes/geocoding';
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { searchPlaces, type PlaceSearchResult } from '#lib/routes/geocoding.ts';
 	import {
 		DISTANCE_BANDS,
 		bandForDistance,
 		type DistanceBandKey,
-	} from '$lib/routes/distance_bands';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { escapeHtml, safeHref } from '$lib/util/html_escape';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/distance_bands.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { escapeHtml, safeHref } from '#lib/util/html_escape.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 
 	let mapEl: HTMLDivElement;
 	let map: maplibregl.Map | null = null;
@@ -63,7 +68,7 @@
 	let wantDataFit = false;
 
 	// --- Search ---
-	// Uses `$lib/routes/geocoding.searchPlaces`, which transparently picks
+	// Uses `#lib/routes/geocoding.searchPlaces`, which transparently picks
 	// MapTiler when its key is set and falls back to Nominatim
 	// (OSM's free geocoder) otherwise. Either path lets the user
 	// pan the map to a named place — works whether or not we have
@@ -137,6 +142,8 @@
 	const ROUTE_PINNED_LAYER = 'heatmap-routes-pinned-line';
 	const CLUB_PINS_SOURCE = 'heatmap-clubs';
 	const CLUB_PINS_LAYER = 'heatmap-clubs-layer';
+	const RACE_PINS_SOURCE = 'heatmap-race-pins';
+	const RACE_PINS_LAYER = 'heatmap-race-pins-layer';
 	const ROUTE_PINS_SOURCE = 'heatmap-route-pins';
 	const ROUTE_PINS_LAYER = 'heatmap-route-pins-layer';
 	const ROUTE_CLUSTER_LAYER = 'heatmap-route-pins-cluster';
@@ -150,17 +157,21 @@
 	// in Filters to get the ambient "where people run" density.
 	let showClubPins = $state(true);
 	let showRoutePins = $state(true);
+	// Upcoming verified races (issue #1190 § 4): on by default, like clubs.
+	let showRacePins = $state(true);
 	let showHeatmapLayer = $state(false);
 	let clubPinsCount = $state(0);
+	let racePinsCount = $state(0);
 	let routePinsCount = $state(0);
 
 	// Route-discovery lens. The chip bar swaps which routes the pin
-	// layer fetches (popular / featured / friends / hidden gems) so the
+	// layer fetches (popular / official / featured / friends / hidden gems) so the
 	// map stops being one undifferentiated blob and becomes a route
 	// browser. Mirrors the RPC's p_filter arms — see data.ts.
 	let routeFilter = $state<DiscoverFilter>('popular');
 	const FILTERS = $derived<{ id: DiscoverFilter; label: string; hint: string }[]>([
 		{ id: 'popular', label: m('routeHeatmap.lensPopular'), hint: m('routeHeatmap.lensPopularHint') },
+		{ id: 'official', label: m('routeHeatmap.lensOfficial'), hint: m('routeHeatmap.lensOfficialHint') },
 		{ id: 'friends', label: m('routeHeatmap.lensFriends'), hint: m('routeHeatmap.lensFriendsHint') },
 		{ id: 'featured', label: m('routeHeatmap.lensFeatured'), hint: m('routeHeatmap.lensFeaturedHint') },
 		{
@@ -173,6 +184,10 @@
 	// list (and the count) render straight off the same fetch the map
 	// pins use.
 	let routePins = $state<DiscoverableRoutePin[]>([]);
+	const parkCourseRoutes = new ParkCourseRouteLookup();
+	$effect(() => {
+		void parkCourseRoutes.check(routePins.filter((r) => r.is_official).map((r) => r.id));
+	});
 
 	// Selected race-distance bands (5k / 10k / half / marathon / ultra),
 	// multi-select. Empty = no distance filter. Combines with the lens.
@@ -274,6 +289,13 @@
 		// reach this branch, so there's no leak.
 		if (import.meta.env.DEV && typeof window !== 'undefined') {
 			(window as unknown as { __heatmapMap?: unknown }).__heatmapMap = map;
+			// The map's own idle state can't see the app's camera moves that
+			// are still owed: the one-shot initial framing (geolocation fix or
+			// fit-to-data, which awaits a fetch before it animates) and the
+			// debounced pin refresh after a move. A test that clicks a pin
+			// before both have landed clicks a camera that is about to move.
+			(window as unknown as { __heatmapPinsSettled?: () => boolean }).__heatmapPinsSettled = () =>
+				didInitialFit && pendingPinsFetch === null && !loading;
 		}
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 		// "Locate me" button. Built-in MapLibre primitive — no
@@ -469,9 +491,10 @@
 				const memberCount = (f.properties?.member_count as number) ?? 0;
 				const locationLabel = (f.properties?.location_label as string) ?? '';
 				const avatarUrl = (f.properties?.avatar_url as string) ?? '';
+				const isVerified = f.properties?.is_verified === true;
 				const href = slug ? `/clubs/${slug}` : id ? `/clubs/${id}` : '#';
 				const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
-				openClubPopup(coords, { name, memberCount, locationLabel, avatarUrl, href });
+				openClubPopup(coords, { name, memberCount, locationLabel, avatarUrl, href, isVerified });
 			});
 			map.on('mouseenter', CLUB_PINS_LAYER, (e) => {
 				if (!map) return;
@@ -483,6 +506,57 @@
 				openHoverTip(coords, name);
 			});
 			map.on('mouseleave', CLUB_PINS_LAYER, () => {
+				if (map) map.getCanvas().style.cursor = '';
+				closeHoverTip();
+			});
+
+			// Upcoming verified races, at the course start when the course is
+			// public. A race claimed by a verified organiser takes the featured
+			// halo, the same ring an editorial route pick carries.
+			map.addSource(RACE_PINS_SOURCE, {
+				type: 'geojson',
+				data: { type: 'FeatureCollection', features: [] },
+			});
+			map.addLayer({
+				id: RACE_PINS_LAYER,
+				type: 'circle',
+				source: RACE_PINS_SOURCE,
+				layout: { visibility: showRacePins ? 'visible' : 'none' },
+				paint: {
+					'circle-color': '#9C7FD6',
+					'circle-radius': 9,
+					'circle-stroke-color': [
+						'case',
+						['get', 'is_official'],
+						mapFeaturedHalo(darkBasemap),
+						mapOverlayOutline(darkBasemap),
+					],
+					'circle-stroke-width': ['case', ['get', 'is_official'], 3, 2],
+					'circle-opacity': 0.92,
+				},
+			});
+			map.on('click', RACE_PINS_LAYER, (e) => {
+				const f = e.features?.[0];
+				if (!f || !map) return;
+				const p = f.properties ?? {};
+				const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+				openRacePopup(coords, {
+					id: p.id as string,
+					name: (p.name as string) || m('routeHeatmap.raceFallbackName'),
+					raceDate: p.race_date as string,
+					distanceM: typeof p.distance_m === 'number' ? p.distance_m : null,
+					locationLabel: (p.location_label as string) ?? '',
+				});
+			});
+			map.on('mouseenter', RACE_PINS_LAYER, (e) => {
+				if (!map) return;
+				map.getCanvas().style.cursor = 'pointer';
+				const f = e.features?.[0];
+				if (!f) return;
+				const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+				openHoverTip(coords, (f.properties?.name as string) ?? '');
+			});
+			map.on('mouseleave', RACE_PINS_LAYER, () => {
 				if (map) map.getCanvas().style.cursor = '';
 				closeHoverTip();
 			});
@@ -505,7 +579,7 @@
 				source: ROUTE_PINS_SOURCE,
 				filter: ['has', 'point_count'],
 				paint: {
-					'circle-color': '#F2A07B',
+					'circle-color': '#F08A5D',
 					'circle-opacity': 0.92,
 					'circle-stroke-color': mapOverlayOutline(darkBasemap),
 					'circle-stroke-width': 2,
@@ -602,7 +676,7 @@
 					// the colour reads as "this is a route" across the
 					// whole product. Featured routes get a thicker gold
 					// halo via the `case` expression below.
-					'circle-color': '#F2A07B',
+					'circle-color': '#F08A5D',
 					'circle-radius': 8,
 					'circle-stroke-color': [
 						'case',
@@ -752,7 +826,10 @@
 			if (pendingFetch) clearTimeout(pendingFetch);
 			pendingFetch = setTimeout(refresh, 350);
 			if (pendingPinsFetch) clearTimeout(pendingPinsFetch);
-			pendingPinsFetch = setTimeout(refreshPins, 350);
+			pendingPinsFetch = setTimeout(() => {
+				pendingPinsFetch = null;
+				void refreshPins();
+			}, 350);
 		});
 
 		// Kick off the first fetch immediately. The HTTP RPC doesn't
@@ -777,6 +854,7 @@
 	onDestroy(() => {
 		if (import.meta.env.DEV && typeof window !== 'undefined') {
 			(window as unknown as { __heatmapMap?: unknown }).__heatmapMap = undefined;
+			(window as unknown as { __heatmapPinsSettled?: unknown }).__heatmapPinsSettled = undefined;
 		}
 		stopResizeWatch?.();
 		currentPopup?.remove();
@@ -858,6 +936,7 @@
 		locationLabel: string;
 		avatarUrl: string;
 		href: string;
+		isVerified: boolean;
 	}
 	function openClubPopup(coords: [number, number], d: ClubPopupData) {
 		const avatar = d.avatarUrl
@@ -877,12 +956,43 @@
 					<div class="pin-popup-titleblock">
 						<span class="pin-popup-title">${escapeHtml(d.name)}</span>
 						<span class="pin-popup-meta">${memberLine}</span>
+						${d.isVerified ? `<span class="pin-popup-verified">${escapeHtml(m('verifiedBadge.tooltip'))}</span>` : ''}
 					</div>
 				</div>
 				${subtitle}
 				<a class="pin-popup-action" href="${escapeHtml(safeHref(d.href))}"
 					data-sveltekit-preload-data="hover">
 					${escapeHtml(m('routeHeatmap.viewClub'))} &rarr;
+				</a>
+			</div>
+		`;
+		openPopupRaw(coords, html);
+	}
+
+	interface RacePopupData {
+		id: string;
+		name: string;
+		raceDate: string;
+		distanceM: number | null;
+		locationLabel: string;
+	}
+	function openRacePopup(coords: [number, number], d: RacePopupData) {
+		const meta = [formatDate(d.raceDate), d.distanceM ? formatDistance(d.distanceM) : '']
+			.filter(Boolean)
+			.join(' · ');
+		const subtitle = d.locationLabel
+			? `<span class="pin-popup-location">${escapeHtml(d.locationLabel)}</span>`
+			: '';
+		const html = `
+			<div class="pin-popup pin-popup-race">
+				<div class="pin-popup-titleblock">
+					<span class="pin-popup-title">${escapeHtml(d.name)}</span>
+					<span class="pin-popup-meta">${escapeHtml(meta)}</span>
+				</div>
+				${subtitle}
+				<a class="pin-popup-action" href="${escapeHtml(safeHref(`/races/${encodeURIComponent(d.id)}`))}"
+					data-sveltekit-preload-data="hover">
+					${escapeHtml(m('routeHeatmap.viewRace'))} &rarr;
 				</a>
 			</div>
 		`;
@@ -966,11 +1076,13 @@
 				maxLng: b.getEast(),
 				maxLat: b.getNorth(),
 			};
-			const [clubs, routes] = await Promise.all([
+			const [clubs, routes, races] = await Promise.all([
 				fetchClubsInBbox(bbox),
 				fetchDiscoverableRoutesInBbox({ ...bbox, filter: routeFilter, bands: selectedBands }),
+				fetchUpcomingRacesInBbox({ ...bbox, officialOnly: routeFilter === 'official' }),
 			]);
 			clubPinsCount = clubs.length;
+			racePinsCount = races.length;
 			routePinsCount = routes.length;
 			routePins = routes;
 			// If geolocation has already bowed out, frame the view on this
@@ -992,8 +1104,27 @@
 						// rendered feature, not just the fetched row.
 						avatar_url: c.avatar_url,
 						location_label: c.location_label,
+						is_verified: c.is_verified,
 					},
 					geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
+				})),
+			});
+			const raceSrc = map.getSource(RACE_PINS_SOURCE) as
+				| maplibregl.GeoJSONSource
+				| undefined;
+			raceSrc?.setData({
+				type: 'FeatureCollection',
+				features: races.map((r) => ({
+					type: 'Feature',
+					properties: {
+						id: r.id,
+						name: r.name,
+						race_date: r.race_date,
+						distance_m: r.distance_m,
+						location_label: r.location_label,
+						is_official: r.is_official,
+					},
+					geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
 				})),
 			});
 			const routeSrc = map.getSource(ROUTE_PINS_SOURCE) as
@@ -1037,6 +1168,11 @@
 		const visible = showClubPins;
 		if (!map || !mapLoaded) return;
 		map.setLayoutProperty(CLUB_PINS_LAYER, 'visibility', visible ? 'visible' : 'none');
+	});
+	$effect(() => {
+		const visible = showRacePins;
+		if (!map || !mapLoaded) return;
+		map.setLayoutProperty(RACE_PINS_LAYER, 'visibility', visible ? 'visible' : 'none');
 	});
 	$effect(() => {
 		const visible = showRoutePins;
@@ -1122,7 +1258,13 @@
 	async function drawRouteLine(id: string) {
 		let coords = geomCache.get(id);
 		if (!coords) {
-			const route = await fetchRouteById(id);
+			// The line preview is an L4 overlay on top of a map that already
+			// works — a failed read leaves the pin unhighlighted rather than
+			// escaping as an unhandled rejection.
+			const route = await fetchRouteById(id).catch((e) => {
+				console.debug('route line preview failed', e);
+				return null;
+			});
 			// The cursor may have moved on while the fetch was in flight.
 			if (hoveredRouteId !== id) return;
 			if (!route?.waypoints || route.waypoints.length < 2) return;
@@ -1168,7 +1310,10 @@
 	async function ensureGeom(id: string): Promise<[number, number][] | null> {
 		const cached = geomCache.get(id);
 		if (cached) return cached;
-		const route = await fetchRouteById(id);
+		const route = await fetchRouteById(id).catch((e) => {
+			console.debug('pinned route line fetch failed', e);
+			return null;
+		});
 		if (!route?.waypoints || route.waypoints.length < 2) return null;
 		const coords = route.waypoints.map((w) => [w.lng, w.lat] as [number, number]);
 		geomCache.set(id, coords);
@@ -1431,7 +1576,7 @@
 					</div>
 				{:else}
 					<ul class="search-results">
-						{#each searchResults as result (result.lat + ':' + result.lng)}
+						{#each searchResults as result, i (i)}
 							<li>
 								<button onmousedown={() => selectSearchResult(result)}>
 									{result.name}
@@ -1485,6 +1630,11 @@
 							<input type="checkbox" bind:checked={showClubPins} />
 							<span>{m('routeHeatmap.clubs')}</span>
 							<span class="layer-count">{clubPinsCount}</span>
+						</label>
+						<label class="layer-row" title={m('routeHeatmap.racesHint')}>
+							<input type="checkbox" bind:checked={showRacePins} data-testid="race-pins-toggle" />
+							<span>{m('routeHeatmap.races')}</span>
+							<span class="layer-count" data-testid="race-pins-count">{racePinsCount}</span>
 						</label>
 					</div>
 				</div>
@@ -1548,11 +1698,14 @@
 								>{/if}
 							{#if r.is_featured}<span class="result-star" title={m('routeHeatmap.featured')}>★</span>{/if}
 							{r.name}
+							{#if r.is_official && parkCourseRoutes.known(r.id)}<OfficialBadge
+									parkCourse={parkCourseRoutes.isParkCourse(r.id)}
+								/>{/if}
 						</span>
 						<span class="result-meta">
 							{#if band}<span class="result-band">{band.label}</span>{/if}
 							<span>{formatDistance(r.distance_m)}</span>
-							{#if r.surface}<span>· {r.surface}</span>{/if}
+							{#if r.surface}<span>· {routeSurfaceLabel(r.surface)}</span>{/if}
 							{#if r.run_count > 0}<span>· {r.run_count === 1 ? m('routeHeatmap.runCountOne', { n: r.run_count }) : m('routeHeatmap.runCountMany', { n: r.run_count })}</span>{/if}
 						</span>
 					</button>
@@ -2131,6 +2284,11 @@
 	:global(.heatmap-pin-popup .pin-popup-meta) {
 		font-size: 0.72rem;
 		color: var(--color-text-tertiary);
+	}
+	:global(.heatmap-pin-popup .pin-popup-verified) {
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--color-text);
 	}
 	/* Avatar — circle 32px. Image OR initials fallback. */
 	:global(.heatmap-pin-popup .pin-avatar) {

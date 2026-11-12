@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show dedupeShadowedExercises;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show TextLane;
 
+import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gym_store.dart';
+import '../metrics.dart';
 import '../preferences.dart';
+import '../typed_decimal.dart';
 import 'exercise_catalogue_picker.dart';
 import 'full_screen_form.dart';
 
@@ -14,11 +21,19 @@ import 'full_screen_form.dart';
 /// a logged set when the typed name matches by normalised key. [category] is
 /// the muscle-group bucket the browse/picker groups + filters by; [authorId]
 /// is null for a seeded global, set for an owner custom.
+///
+/// [nameKey] is the row's STORED `exercises.name_key`, carried rather than
+/// re-derived because it is what the two partial uniques are enforced on and so
+/// what makes two rows one exercise — the question
+/// [dedupeShadowedExercises] answers. Matching a TYPED name is the other
+/// question and stays a fold, because a string a user typed has no stored key
+/// (decisions § 1334).
 typedef GymCatalogueEntry = ({
   String name,
   String id,
   String category,
   String? authorId,
+  String nameKey,
 });
 
 /// The logged-set role vocabulary (DB CHECK union, migration 20270224_001),
@@ -63,6 +78,18 @@ String _gymSetTypeLabel(String s, AppLocalizations l10n) {
 /// history autocomplete plus inline sets (reps / weight / RPE). Writes
 /// through [LocalGymStore] so logging a lift works offline. Presentation
 /// goes through [showFullScreenForm], the shared create/edit-entity wrapper.
+/// A host's catalogue as it stands right now: the entries it has, and whether
+/// that list is known to be the whole catalogue (§ 1332's third state).
+///
+/// Carried as one value because the two are one claim — a list is only as good
+/// as the knowledge of whether it is complete — and because a route builder
+/// that has to be handed a live view can be handed one listenable rather than
+/// two that could disagree between rebuilds.
+typedef GymCatalogueState = ({
+  List<GymCatalogueEntry> entries,
+  bool unavailable,
+});
+
 Future<bool?> showGymComposeSheet({
   required BuildContext context,
   required LocalGymStore store,
@@ -71,8 +98,11 @@ Future<bool?> showGymComposeSheet({
   String? seedTitle,
   List<String> suggestions = const [],
   List<GymCatalogueEntry> catalogue = const [],
+  bool catalogueUnavailable = false,
+  ValueListenable<GymCatalogueState>? catalogueSource,
   String? prefillTitle,
   ApiClient? api,
+  GymComposeDraftStore? draftStore,
 }) {
   final l10n = AppLocalizations.of(context);
   final formKey = GlobalKey<_GymComposeSheetState>();
@@ -88,8 +118,11 @@ Future<bool?> showGymComposeSheet({
       seedTitle: seedTitle,
       suggestions: suggestions,
       catalogue: catalogue,
+      catalogueUnavailable: catalogueUnavailable,
+      catalogueSource: catalogueSource,
       prefillTitle: prefillTitle,
       api: api,
+      draftStore: draftStore,
     ),
   );
 }
@@ -109,6 +142,26 @@ class GymComposeSheet extends StatefulWidget {
   /// matches a catalogue entry by normalised key binds its id onto the set.
   final List<GymCatalogueEntry> catalogue;
 
+  /// The catalogue read failed, or has not answered yet. [catalogue] is then
+  /// whatever was last known rather than a statement about what exists, so the
+  /// picker must not offer to create a name it cannot prove is free — and the
+  /// browse affordance stays reachable, because a feature that silently
+  /// vanishes on a transient error explains nothing.
+  final bool catalogueUnavailable;
+
+  /// A LIVE view of the host's catalogue, which wins over [catalogue] +
+  /// [catalogueUnavailable] whenever it is supplied.
+  ///
+  /// The plain props cannot track a late read in production and never could:
+  /// this sheet is presented through [showFullScreenForm], which pushes a
+  /// `MaterialPageRoute` whose builder runs ONCE, so the values that builder
+  /// closed over are fixed for the life of the route no matter what the host
+  /// does afterwards. Reading `widget.catalogue` on every build (§ 1513) is
+  /// necessary and was never sufficient — it is only reachable from a harness
+  /// that rebuilds this widget in place, which nothing in the app does. A host
+  /// whose catalogue arrives from an async read passes this instead.
+  final ValueListenable<GymCatalogueState>? catalogueSource;
+
   /// Seed for a NEW workout (the class -> gym seam). Pre-fills the title; sets
   /// stay empty for the user to fill. Ignored when [existing] is set.
   final String? prefillTitle;
@@ -117,6 +170,12 @@ class GymComposeSheet extends StatefulWidget {
   /// the catalogue browse/picker's create-custom path; the picker hides the
   /// create affordance when it's null.
   final ApiClient? api;
+
+  /// Where the crash-recoverable draft of this form is kept. Defaults to
+  /// [GymComposeDraftStore.shared]; a test passes its own so the draft lands
+  /// in a temp directory instead of app documents.
+  final GymComposeDraftStore? draftStore;
+
   const GymComposeSheet({
     super.key,
     required this.store,
@@ -125,8 +184,11 @@ class GymComposeSheet extends StatefulWidget {
     this.seedTitle,
     this.suggestions = const [],
     this.catalogue = const [],
+    this.catalogueUnavailable = false,
+    this.catalogueSource,
     this.prefillTitle,
     this.api,
+    this.draftStore,
   });
 
   @override
@@ -134,6 +196,11 @@ class GymComposeSheet extends StatefulWidget {
 }
 
 class _GymComposeSheetState extends State<GymComposeSheet> {
+  /// Same cadence the guided session runner durable-saves at
+  /// (`gym_session_screen._saveInterval`) — a half-built workout is worth
+  /// exactly as much as a half-run session.
+  static const _draftSaveInterval = Duration(seconds: 10);
+
   late final TextEditingController _titleCtl;
   late bool _isPublic;
   late List<_EditExercise> _exercises;
@@ -144,10 +211,75 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
   String? _error;
   bool _saving = false;
 
-  /// Local, growable catalogue copy. Seeded from the prop; a custom created
-  /// from the picker is appended so it binds + autocompletes immediately,
-  /// without waiting for the host to reload from the server.
-  late List<GymCatalogueEntry> _catalogue;
+  Timer? _draftTimer;
+
+  /// A draft left behind by a composer that was killed rather than closed —
+  /// what the recover card offers back. Null once resolved (restored,
+  /// discarded, or superseded by this session's own first durable save).
+  GymComposeDraft? _recoverable;
+
+  GymComposeDraftStore get _drafts =>
+      widget.draftStore ?? GymComposeDraftStore.shared;
+
+  /// Only the create path drafts. An edit already has a stored workout behind
+  /// it, so the unsaved state is a diff against a row that still exists —
+  /// losing it loses a revision, not the session.
+  bool get _draftable => widget.existing == null;
+
+  /// Customs created from the picker this session, kept locally so they bind +
+  /// autocomplete immediately without waiting for the host to reload.
+  List<GymCatalogueEntry> _createdCustoms = const [];
+
+  /// The effective catalogue: the CURRENT prop unioned with this session's
+  /// created customs, under the read's own shadow precedence.
+  ///
+  /// Read off `widget` on every access rather than snapshotted in `initState`,
+  /// because the host fills it from an async read — a snapshot binds every
+  /// typed name to nothing whenever the catalogue lands after the sheet opens.
+  ///
+  /// The union goes through [dedupeShadowedExercises] rather than an `id` test,
+  /// which cannot see a shadow: a custom created here under a seeded global's
+  /// name is a SECOND id under one folded key (the author's partial unique
+  /// cannot see a row whose `author_id` is null, so the insert succeeds), and
+  /// holding both left the list showing one exercise twice and
+  /// [_catalogueByKey]'s last-wins map deciding which id a logged set bound to.
+  List<GymCatalogueEntry> get _catalogue => dedupeShadowedExercises(
+        [..._hostCatalogue.entries, ..._createdCustoms],
+        nameKey: (e) => e.nameKey,
+        authorId: (e) => e.authorId,
+      );
+
+  /// The host's catalogue right now — the live view when one was supplied,
+  /// else the props. See [GymComposeSheet.catalogueSource] for why a host that
+  /// reads asynchronously has to supply one.
+  GymCatalogueState get _hostCatalogue =>
+      widget.catalogueSource?.value ??
+      (entries: widget.catalogue, unavailable: widget.catalogueUnavailable);
+
+  /// Whether [_catalogue] is known to be the whole catalogue.
+  bool get _catalogueUnavailable => _hostCatalogue.unavailable;
+
+  /// What the picker's route renders from.
+  ///
+  /// The picker is pushed as a route too, and its builder runs once for the
+  /// same reason this sheet's does — so a value read there is frozen at push
+  /// time even when this sheet is tracking its host perfectly. Publishing the
+  /// composer's own effective catalogue through a listenable is what carries a
+  /// read that answers, or a custom created in the picker, across that seam.
+  late final ValueNotifier<GymCatalogueState> _pickerCatalogue =
+      ValueNotifier(_pickerState);
+
+  GymCatalogueState get _pickerState =>
+      (entries: _catalogue, unavailable: _catalogueUnavailable);
+
+  /// Republish for the picker's route. Always notifies: [_catalogue] builds a
+  /// new list every call, so the record never compares equal to the last one.
+  void _publishCatalogue() => _pickerCatalogue.value = _pickerState;
+
+  void _onHostCatalogue() {
+    if (!mounted) return;
+    setState(_publishCatalogue);
+  }
 
   /// normalised name -> catalogue id, for binding a typed name at save time.
   Map<String, String> get _catalogueByKey => {
@@ -171,7 +303,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
   @override
   void initState() {
     super.initState();
-    _catalogue = [...widget.catalogue];
+    widget.catalogueSource?.addListener(_onHostCatalogue);
     final existing = widget.existing;
     _titleCtl = TextEditingController(
         text:
@@ -194,6 +326,88 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                   },
               ]));
     _initialSnapshot = _snapshot();
+    if (_draftable) {
+      _draftTimer = Timer.periodic(_draftSaveInterval, (_) => _saveDraft());
+      unawaited(_loadRecoverable());
+    }
+  }
+
+  /// Offer back whatever the last composer left on disk.
+  ///
+  /// L4 auxiliary: a failed read degrades to "no card", never to a composer
+  /// that won't open.
+  Future<void> _loadRecoverable() async {
+    final draft = await _drafts.read();
+    if (!mounted || draft == null || !draft.hasContent) return;
+    setState(() => _recoverable = draft);
+  }
+
+  GymComposeDraft _draftSnapshot() => GymComposeDraft(
+        title: _titleCtl.text,
+        isPublic: _isPublic,
+        savedAt: DateTime.now().toUtc(),
+        exercises: [
+          for (final ex in _exercises)
+            GymComposeDraftExercise(
+              name: ex.name.text,
+              sets: [
+                for (final s in ex.sets)
+                  GymComposeDraftSet(
+                    reps: s.reps.text,
+                    weight: s.weight.text,
+                    rpe: s.rpe.text,
+                    duration: s.duration.text,
+                    setType: s.setType,
+                  ),
+              ],
+            ),
+        ],
+      );
+
+  /// Crash-safe incremental persistence, mirroring
+  /// `gym_session_screen._durableSave`. Writes only once the form has actually
+  /// been touched, so a seeded-but-untouched composer can't replace a real
+  /// draft with its own prefill.
+  Future<void> _saveDraft() async {
+    if (!_draftable || _saving || !isDirty) return;
+    await _drafts.write(_draftSnapshot());
+    // The card would now be offering work this session has already replaced.
+    if (mounted && _recoverable != null) setState(() => _recoverable = null);
+  }
+
+  void _restoreRecoverable(GymComposeDraft draft) {
+    setState(() {
+      _titleCtl.text = draft.title;
+      _isPublic = draft.isPublic;
+      for (final ex in _exercises) {
+        ex.dispose();
+      }
+      _exercises = [
+        for (final e in draft.exercises)
+          _EditExercise(
+            name: e.name,
+            sets: [
+              for (final s in e.sets)
+                _EditSet(
+                  reps: s.reps,
+                  weight: s.weight,
+                  rpe: s.rpe,
+                  duration: s.duration,
+                  setType: s.setType,
+                ),
+            ],
+          ),
+      ];
+      if (_exercises.isEmpty) _exercises = [_EditExercise()];
+      _needExercise = false;
+      _error = null;
+      _recoverable = null;
+    });
+  }
+
+  void _discardRecoverable() {
+    unawaited(_drafts.clear());
+    setState(() => _recoverable = null);
   }
 
   late final String _initialSnapshot;
@@ -255,7 +469,11 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
         setType: (s['set_type'] as String?) ?? 'working',
       );
       final last = blocks.isEmpty ? null : blocks.last;
-      if (last != null && last.name.text == name) {
+      // Adjacency on the canonical key, not the spelling: the web twin's
+      // initExercises has grouped this way since decisions 1322, and comparing
+      // raw strings here rendered one lift logged under two spellings as two
+      // editor blocks beside a header stat that counts one.
+      if (last != null && sameExerciseName(last.name.text, name)) {
         last.sets.add(row);
       } else {
         blocks.add(_EditExercise(name: name, sets: [row]));
@@ -265,7 +483,26 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
   }
 
   @override
+  void didUpdateWidget(covariant GymComposeSheet old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.catalogueSource, widget.catalogueSource)) {
+      old.catalogueSource?.removeListener(_onHostCatalogue);
+      widget.catalogueSource?.addListener(_onHostCatalogue);
+    }
+    _publishCatalogue();
+  }
+
+  @override
   void dispose() {
+    _draftTimer?.cancel();
+    // Every way this route LEAVES resolves the draft: a save has written the
+    // workout, and a back-out has already been confirmed through the
+    // DiscardGuard. So the only thing that must survive is the one path that
+    // never reaches dispose at all — the process being killed while the
+    // composer is open, which is the case this whole mechanism exists for.
+    if (_draftable) unawaited(_drafts.clear());
+    widget.catalogueSource?.removeListener(_onHostCatalogue);
+    _pickerCatalogue.dispose();
     _titleCtl.dispose();
     for (final ex in _exercises) {
       ex.dispose();
@@ -276,7 +513,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
   void _addExercise() => setState(() => _exercises.add(_EditExercise()));
 
   bool _exerciseHasData(_EditExercise ex) {
-    if (ex.name.text.trim().isNotEmpty) return true;
+    if (namesAnExercise(ex.name.text)) return true;
     for (final s in ex.sets) {
       if (s.reps.text.trim().isNotEmpty) return true;
       if (s.weight.text.trim().isNotEmpty) return true;
@@ -325,18 +562,24 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
   Future<void> _openPicker(_EditExercise ex) async {
     final picked = await Navigator.of(context).push<GymCatalogueEntry>(
       MaterialPageRoute<GymCatalogueEntry>(
-        builder: (_) => ExerciseCataloguePickerScreen(
-          catalogue: _catalogue,
-          api: widget.api,
-          onCreated: (created) {
-            if (!_catalogue.any((e) => e.id == created.id)) {
-              _catalogue = [..._catalogue, created];
-            }
-          },
+        // The builder runs once, so the picker cannot be handed the catalogue
+        // by value: a read answering while browse is open would never reach it.
+        builder: (_) => ValueListenableBuilder<GymCatalogueState>(
+          valueListenable: _pickerCatalogue,
+          builder: (_, state, _) => ExerciseCataloguePickerScreen(
+            catalogue: state.entries,
+            unavailable: state.unavailable,
+            api: widget.api,
+            onCreated: (created) {
+              _createdCustoms = [..._createdCustoms, created];
+              _publishCatalogue();
+            },
+          ),
         ),
       ),
     );
     if (picked == null) return;
+    if (!mounted) return;
     setState(() {
       ex.name.text = picked.name;
       _needExercise = false;
@@ -357,7 +600,11 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     final out = <GymSetInput>[];
     for (final ex in _exercises) {
       final name = ex.name.text.trim();
-      if (name.isEmpty) continue;
+      // Blank on the KEY, never on the trim. This runtime's trim() happens to
+      // strip exactly the folded class, so the two agree here -- and the web
+      // twin's does not, which is the whole reason the test has a name
+      // (decisions 1367).
+      if (!namesAnExercise(name)) continue;
       // Bind to a catalogue entry when the typed name matches by normalised
       // key; otherwise stay free-text (exerciseId null).
       final exerciseId = _catalogueByKey[normaliseExerciseName(name)];
@@ -368,7 +615,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
           reps: int.tryParse(s.reps.text.trim()),
           // Entry is in the user's display unit; store canonical kg.
           weightKg: WeightFormat.parseToKg(s.weight.text, activeWeightUnit),
-          rpe: double.tryParse(s.rpe.text.trim()),
+          rpe: parseTypedDecimal(s.rpe.text),
           setType: s.setType,
           // duration_s is a non-negative integer column; clamp a stray negative.
           durationS: durationS == null ? null : (durationS < 0 ? 0 : durationS),
@@ -426,8 +673,14 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    final recoverable = _recoverable;
+
     return FullScreenFormBody(
       children: [
+        if (recoverable != null) ...[
+          _recoverCard(recoverable, theme, l10n),
+          const SizedBox(height: 16),
+        ],
         FormSectionLabel(l10n.gymEditorTitleLabel),
         const SizedBox(height: 8),
             TextField(
@@ -494,6 +747,61 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
         );
   }
 
+  Widget _recoverCard(
+      GymComposeDraft draft, ThemeData theme, AppLocalizations l10n) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.history, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.gymComposeDraftTitle,
+                          style: theme.textTheme.titleSmall),
+                      Text(
+                        l10n.gymComposeDraftBody,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: _discardRecoverable,
+                    style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error),
+                    child: Text(l10n.gymSessionDiscardConfirm),
+                  ),
+                  FilledButton(
+                    onPressed: () => _restoreRecoverable(draft),
+                    child: Text(l10n.gymDraftResume),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _exerciseCard(
       _EditExercise ex, int i, ThemeData theme, AppLocalizations l10n) {
     return Card(
@@ -506,7 +814,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             Row(
               children: [
                 Expanded(child: _nameField(ex, l10n)),
-                if (_catalogue.isNotEmpty)
+                if (_catalogue.isNotEmpty || _catalogueUnavailable)
                   IconButton(
                     tooltip: l10n.gymCatalogueBrowse,
                     icon: const Icon(Icons.menu_book_outlined),
@@ -581,7 +889,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                     Expanded(
                       child: _setNumberField(
                         ex.sets[si].rpe,
-                        l10n.gymRpe,
+                        metricText(l10n, Metric.rpe),
                         const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),
@@ -632,7 +940,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           hintText: l10n.gymEditorExercisePlaceholder,
-          errorText: _needExercise && ex.name.text.trim().isEmpty
+          errorText: _needExercise && !namesAnExercise(ex.name.text)
               ? l10n.gymEditorNeedExercise
               : null,
         );
@@ -656,10 +964,10 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
       textEditingController: ex.name,
       focusNode: ex.nameFocus,
       optionsBuilder: (value) {
-        final q = value.text.trim().toLowerCase();
+        final q = normaliseExerciseName(value.text);
         if (q.isEmpty) return const Iterable<String>.empty();
         return _datalistNames
-            .where((s) => s.toLowerCase().contains(q))
+            .where((s) => normaliseExerciseName(s).contains(q))
             .take(6);
       },
       fieldViewBuilder: (context, controller, focusNode, onSubmit) => Semantics(

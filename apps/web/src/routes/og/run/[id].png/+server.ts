@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { renderRunOgPng } from '$lib/share/og_run_png';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { renderRunOgPng } from '#lib/share/og_run_png.ts';
 
 // Per-run og:image PNG renderer. Served at REQUEST time, never
 // prerendered: under adapter-static a prerendered route only exists

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The map, with the course on it -->
+  <rect x="8" y="8" width="304" height="184" rx="18" fill="#ff00a5"/>
+  <path d="M40 160 C80 160 70 60 130 70 S190 160 240 130 S280 50 290 40" stroke="#ff00a4" stroke-width="12"/>
+  <path d="M40 160 C80 160 70 60 130 70 S190 160 240 130 S280 50 290 40" stroke="#ff00a3" stroke-width="3" stroke-dasharray="1 9"/>
+  <circle cx="40" cy="160" r="7" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <!-- The finish -->
+  <path d="M290 40 V12" stroke="currentColor" stroke-width="3"/>
+  <path d="M290 12 H306 L300 19 L306 26 H290" fill="#ff00a6" stroke="currentColor" stroke-width="2"/>
+  <!-- Runners: each a dot with a short trail of their recent path -->
+  <path d="M78 109 L81 104 L83 99 L86 94" stroke="#ff00a1" stroke-width="5" stroke-opacity="0.4"/>
+  <circle cx="88" cy="90" r="8" fill="#ff00a1" stroke="#ff00a4" stroke-width="3"/>
+  <path d="M149 76 L154 79 L158 82 L163 85" stroke="#ff00a6" stroke-width="5" stroke-opacity="0.4"/>
+  <circle cx="167" cy="89" r="8" fill="#ff00a6" stroke="#ff00a4" stroke-width="3"/>
+  <path d="M197 124 L200 127 L203 130 L206 132" stroke="#ff00a7" stroke-width="5" stroke-opacity="0.4"/>
+  <circle cx="209" cy="134" r="8" fill="#ff00a7" stroke="#ff00a4" stroke-width="3"/>
+  <path d="M268 104 L270 100 L273 96 L275 92" stroke="currentColor" stroke-width="5" stroke-opacity="0.4"/>
+  <circle cx="276" cy="88" r="8" fill="currentColor" stroke="#ff00a4" stroke-width="3"/>
+</svg>

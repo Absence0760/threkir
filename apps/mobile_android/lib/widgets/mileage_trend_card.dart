@@ -19,12 +19,17 @@ import '../preferences.dart';
 class MileageTrendCard extends StatefulWidget {
   final List<Run> runs;
   final DistanceUnit unit;
+
+  /// The runner's `week_start_day`. Required, not defaulted: a default is
+  /// how this card came to bucket Monday-first beside a Sunday-first tile.
+  final String weekStartDay;
   final DateTime now;
 
   const MileageTrendCard({
     super.key,
     required this.runs,
     required this.unit,
+    required this.weekStartDay,
     required this.now,
   });
 
@@ -50,6 +55,7 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
       minBuckets: 3,
       padYearlyToMin: true,
       localeTag: localeToTag(Localizations.localeOf(context)),
+      weekStartDay: widget.weekStartDay,
     );
     if (periods.isEmpty) return const SizedBox.shrink();
 
@@ -84,9 +90,11 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
             // wraps on the narrow weekly view + look cramped on the
             // wider yearly view).
             const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+            // A Wrap, so at a large text size the label takes its own line
+            // rather than overflowing beside the figure.
+            Wrap(
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.end,
               children: [
                 Text(
                   UnitFormat.distance(latest.distanceM.toDouble(), widget.unit),
@@ -94,16 +102,10 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    latestLabel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
+                Text(
+                  latestLabel,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -138,30 +140,16 @@ class _ViewToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Chips rather than a SegmentedButton. § 486 exempted SegmentedButton
-    // from the narrow-width sweep because it has no knob to bind — which is
-    // also why it cannot survive text scaling: the control takes its
-    // intrinsic width whatever the parent offers, and at 2x the three
-    // French labels want 90 px more than a 360 dp card, more than a line of
-    // its own would give it. Chips in a Wrap reflow instead, and the M3
-    // checkmark the segmented control suppressed for width is kept, so
-    // selection is not signalled by fill colour alone (§ 488).
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final (value, label) in [
-          (MileageView.weekly, l10n.mileageWeek),
-          (MileageView.monthly, l10n.mileageMonth),
-          (MileageView.yearly, l10n.mileageYear),
-        ])
-          ChoiceChip(
-            label: Text(label),
-            selected: view == value,
-            onSelected: (_) => onChanged(value),
-            visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+    // The shared reflowing single-select (§ 500), not a SegmentedButton: it
+    // keeps the checkmark, so selection is not fill colour alone (§ 488), and
+    // reserves the checkmark's slot so a switch does not resize the chips.
+    return ChoiceChipRow<MileageView>(
+      selected: view,
+      onChanged: onChanged,
+      options: [
+        ChoiceChipOption(value: MileageView.weekly, label: l10n.mileageWeek),
+        ChoiceChipOption(value: MileageView.monthly, label: l10n.mileageMonth),
+        ChoiceChipOption(value: MileageView.yearly, label: l10n.mileageYear),
       ],
     );
   }

@@ -64,7 +64,7 @@ jobs:
 
     permissions:
       id-token: write    # OIDC AssumeRoleWithWebIdentity
-      contents: write    # softprops/action-gh-release writes a Release
+      contents: write    # gh release upload attaches the build zip
 
     env:
       AWS_REGION: us-east-1
@@ -72,6 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Determine env + version
@@ -87,14 +88,18 @@ jobs:
             echo "is_prod=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # Node 24 (current Active LTS). Must match the Lambda
           # runtime in infra/modules/web-stack/main.tf so the bundle
           # esbuild produces actually runs in Lambda. Node 22+ is
           # also a hard requirement for @supabase/realtime-js >=2.105
           # which the coach Lambda transitively imports.
-          node-version: "24"
+          node-version: "24.20.0"
+          # setup-node turns its npm cache on by itself when package.json
+          # names a packageManager. A release must not restore a cache any
+          # default-branch run can write, so it installs cold.
+          package-manager-cache: false
 
       - run: npm ci
 
@@ -122,26 +127,56 @@ jobs:
         # stripped after the build step so they don't leak into the
         # uploaded build zip's source artifacts.
         #
-        # We write `.env` (not `.env.production`) because the preceding
-        # `npm run check` step runs `svelte-kit sync` in default
-        # (development) mode, which loads `.env` and `.env.local` but
-        # NOT `.env.production`. Without `.env`, the env-typegen produces
-        # an empty `$env/static/public` and svelte-check fails on every
-        # PUBLIC_* import. `vite build` reads `.env` in either mode too,
-        # so the build step picks the values up the same way.
+        # We write `.env` (not `.env.production`) because `vite build`
+        # reads `.env` in either mode, and so does the preceding `npm run
+        # check` step's `svelte-kit sync`, which runs in default
+        # (development) mode and never loads `.env.production`. The
+        # variables' types come from apps/web/src/env.ts, not from this file;
+        # their values come from here, and the build fails `env_invalid` if
+        # one src/env.ts requires is missing.
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
           PUBLIC_MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
           PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL }}
           PUBLIC_REVENUECAT_WEB_PORTAL_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_PORTAL_URL }}
+          # Optional — a Stripe Payment Link (donate.stripe.com / buy.stripe.com).
+          # Unset hides every donate link on the site.
+          PUBLIC_DONATE_URL: ${{ secrets.PUBLIC_DONATE_URL }}
           PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
+          # Every fail-closed PUBLIC_*_ENABLED gate in apps/web/src/lib has to
+          # be listed here AND in the heredoc below, or the repo secret reaches
+          # no build and the flag can only ever be off — which reads exactly
+          # like a flag nobody set. ci_workflow_guards.test.ts derives the set
+          # from the *_flag.ts modules and fails the PR on a missing one.
           PUBLIC_COACH_ENABLED: ${{ secrets.PUBLIC_COACH_ENABLED }}
           PUBLIC_ROUTE_GEN_ENABLED: ${{ secrets.PUBLIC_ROUTE_GEN_ENABLED }}
+          PUBLIC_AI_PLAN_ENABLED: ${{ secrets.PUBLIC_AI_PLAN_ENABLED }}
+          PUBLIC_PLATE_PHOTO_ENABLED: ${{ secrets.PUBLIC_PLATE_PHOTO_ENABLED }}
+          PUBLIC_COACH_FUEL_ENABLED: ${{ secrets.PUBLIC_COACH_FUEL_ENABLED }}
+          PUBLIC_AI_PLAN_EDIT_ENABLED: ${{ secrets.PUBLIC_AI_PLAN_EDIT_ENABLED }}
+          PUBLIC_COACH_ASSIST_ENABLED: ${{ secrets.PUBLIC_COACH_ASSIST_ENABLED }}
+          PUBLIC_GOOGLE_AUTH_ENABLED: ${{ secrets.PUBLIC_GOOGLE_AUTH_ENABLED }}
+          PUBLIC_APPLE_AUTH_ENABLED: ${{ secrets.PUBLIC_APPLE_AUTH_ENABLED }}
+          PUBLIC_FUNDRAISING_ENABLED: ${{ secrets.PUBLIC_FUNDRAISING_ENABLED }}
+          PUBLIC_CYCLE_PLANS_ENABLED: ${{ secrets.PUBLIC_CYCLE_PLANS_ENABLED }}
+          PUBLIC_WEIGH_IN_ENABLED: ${{ secrets.PUBLIC_WEIGH_IN_ENABLED }}
+          PUBLIC_OFF_ROUTE_ESCALATION_ENABLED: ${{ secrets.PUBLIC_OFF_ROUTE_ESCALATION_ENABLED }}
+          PUBLIC_ENABLE_NEARBY_RUNNERS: ${{ secrets.PUBLIC_ENABLE_NEARBY_RUNNERS }}
+          PUBLIC_ADAPTIVE_FITNESS_GATE: ${{ secrets.PUBLIC_ADAPTIVE_FITNESS_GATE }}
+          PUBLIC_WEIGHT_FLUID_ENABLED: ${{ secrets.PUBLIC_WEIGHT_FLUID_ENABLED }}
+          PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED: ${{ secrets.PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED }}
+          PUBLIC_COURSE_DRIVE_ENABLED: ${{ secrets.PUBLIC_COURSE_DRIVE_ENABLED }}
           # Optional — unset keeps the web client on the Supabase
           # Realtime live path; set to https://live.threkir.com once the
           # Fly live hub is deployed (apps/job_worker/deployment.md).
           PUBLIC_LIVE_HUB_URL: ${{ secrets.PUBLIC_LIVE_HUB_URL }}
+          # Optional — unset leaves the browser-push card reading "not
+          # configured" and nobody subscribes. Must be the PUBLIC half of the
+          # pair whose private half is the worker's VAPID_PRIVATE_KEY Fly
+          # secret; a mismatch means every send is signed with a key the
+          # subscription was not taken out against. docs/features/native_push.md.
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.PUBLIC_VAPID_PUBLIC_KEY }}
           PUBLIC_APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: |
           cat <<EOF > apps/web/.env
@@ -150,19 +185,45 @@ jobs:
           PUBLIC_MAPTILER_KEY=${PUBLIC_MAPTILER_KEY}
           PUBLIC_REVENUECAT_WEB_CHECKOUT_URL=${PUBLIC_REVENUECAT_WEB_CHECKOUT_URL}
           PUBLIC_REVENUECAT_WEB_PORTAL_URL=${PUBLIC_REVENUECAT_WEB_PORTAL_URL}
+          PUBLIC_DONATE_URL=${PUBLIC_DONATE_URL}
           PUBLIC_SENTRY_DSN=${PUBLIC_SENTRY_DSN}
           PUBLIC_COACH_ENABLED=${PUBLIC_COACH_ENABLED}
           PUBLIC_ROUTE_GEN_ENABLED=${PUBLIC_ROUTE_GEN_ENABLED}
+          PUBLIC_AI_PLAN_ENABLED=${PUBLIC_AI_PLAN_ENABLED}
+          PUBLIC_PLATE_PHOTO_ENABLED=${PUBLIC_PLATE_PHOTO_ENABLED}
+          PUBLIC_COACH_FUEL_ENABLED=${PUBLIC_COACH_FUEL_ENABLED}
+          PUBLIC_AI_PLAN_EDIT_ENABLED=${PUBLIC_AI_PLAN_EDIT_ENABLED}
+          PUBLIC_COACH_ASSIST_ENABLED=${PUBLIC_COACH_ASSIST_ENABLED}
+          PUBLIC_GOOGLE_AUTH_ENABLED=${PUBLIC_GOOGLE_AUTH_ENABLED}
+          PUBLIC_APPLE_AUTH_ENABLED=${PUBLIC_APPLE_AUTH_ENABLED}
+          PUBLIC_FUNDRAISING_ENABLED=${PUBLIC_FUNDRAISING_ENABLED}
+          PUBLIC_CYCLE_PLANS_ENABLED=${PUBLIC_CYCLE_PLANS_ENABLED}
+          PUBLIC_WEIGH_IN_ENABLED=${PUBLIC_WEIGH_IN_ENABLED}
+          PUBLIC_OFF_ROUTE_ESCALATION_ENABLED=${PUBLIC_OFF_ROUTE_ESCALATION_ENABLED}
+          PUBLIC_ENABLE_NEARBY_RUNNERS=${PUBLIC_ENABLE_NEARBY_RUNNERS}
+          PUBLIC_ADAPTIVE_FITNESS_GATE=${PUBLIC_ADAPTIVE_FITNESS_GATE}
+          PUBLIC_WEIGHT_FLUID_ENABLED=${PUBLIC_WEIGHT_FLUID_ENABLED}
+          PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED=${PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED}
+          PUBLIC_COURSE_DRIVE_ENABLED=${PUBLIC_COURSE_DRIVE_ENABLED}
           PUBLIC_LIVE_HUB_URL=${PUBLIC_LIVE_HUB_URL}
+          PUBLIC_VAPID_PUBLIC_KEY=${PUBLIC_VAPID_PUBLIC_KEY}
           PUBLIC_APP_RELEASE=${PUBLIC_APP_RELEASE}
           EOF
+
+      # Production config as code (issue #1350, decisions § 2430): a PUBLIC_*
+      # flag declared in apps/backend/ops/prod_config.json's web_env replaces
+      # its repo secret in apps/web/.env, so a reviewed PR flips it and no
+      # secret is edited. An undeclared flag keeps the secret. The step fails
+      # when the file fails its guard.
+      - name: Apply web flags from prod_config.json
+        run: node scripts/prod_sync/web_env.mjs apps/web/.env
 
       - run: npm run check --workspace=apps/web
 
       - name: Guard production env (no placeholder / empty secrets)
         # Without this, a missing repo secret in the release workflow
         # writes an empty PUBLIC_SUPABASE_URL into apps/web/.env, the
-        # build's `entries()` calls all return [], svelte.config.js's
+        # build's `entries()` calls all return [], vite.config.ts's
         # `handleUnseenRoutes: 'warn'` quietly accepts the empty set,
         # and we ship a static artifact whose share + og pages are
         # all missing. The guard fails loud instead. See
@@ -172,8 +233,15 @@ jobs:
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
           PUBLIC_MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
           PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL }}
+          PUBLIC_DONATE_URL: ${{ secrets.PUBLIC_DONATE_URL }}
           PUBLIC_COACH_ENABLED: ${{ secrets.PUBLIC_COACH_ENABLED }}
           PUBLIC_ROUTE_GEN_ENABLED: ${{ secrets.PUBLIC_ROUTE_GEN_ENABLED }}
+          PUBLIC_AI_PLAN_ENABLED: ${{ secrets.PUBLIC_AI_PLAN_ENABLED }}
+          PUBLIC_PLATE_PHOTO_ENABLED: ${{ secrets.PUBLIC_PLATE_PHOTO_ENABLED }}
+          PUBLIC_COACH_FUEL_ENABLED: ${{ secrets.PUBLIC_COACH_FUEL_ENABLED }}
+          PUBLIC_AI_PLAN_EDIT_ENABLED: ${{ secrets.PUBLIC_AI_PLAN_EDIT_ENABLED }}
+          PUBLIC_COACH_ASSIST_ENABLED: ${{ secrets.PUBLIC_COACH_ASSIST_ENABLED }}
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.PUBLIC_VAPID_PUBLIC_KEY }}
         run: node apps/web/scripts/check_production_env.mjs
 
       - run: npm run build --workspace=apps/web
@@ -185,52 +253,70 @@ jobs:
 
       - name: Bundle coach Lambda
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/coach/build.mjs
 
       - name: Bundle share-run Lambda
         # Persona-hunt finding Casual #4. Per-request SSR handler for
         # /share/run/* + /og/run/*.png. Must run AFTER the web build so
-        # apps/web/build/index.html (the SPA shell the Lambda embeds)
-        # exists. See apps/web/lambda/share-run/README.md.
+        # apps/web/build/200.html (the SPA shell the Lambda embeds) exists.
+        # The shell is adapter-static's `fallback`, and it moved off
+        # index.html so the prerendered landing page could occupy that
+        # name — an embed still reading index.html would bake the LANDING
+        # PAGE into every share handler, 200s and 404s alike. See
+        # apps/web/lambda/share-run/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-run/build.mjs
 
       - name: Bundle share-route Lambda
         # Web SEO parity with share-run. Per-request SSR handler for
         # /share/route/* + /og/route/*.png. Same post-build ordering
-        # constraint — it embeds apps/web/build/index.html. See
+        # constraint — it embeds apps/web/build/200.html. See
         # apps/web/lambda/share-route/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-route/build.mjs
 
       - name: Bundle share-recap Lambda
         # Year-in-Running "Wrapped" share parity with share-run/route.
         # Per-request SSR handler for /recap/share/* + /og/recap/*.png.
         # Same post-build ordering constraint — it embeds
-        # apps/web/build/index.html. See apps/web/lambda/share-recap/README.md.
+        # apps/web/build/200.html. See apps/web/lambda/share-recap/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-recap/build.mjs
 
       - name: Bundle share-badge Lambda
         # Per-badge achievement share parity with share-run/route/recap.
         # Per-request SSR handler for /share/badge/* + /og/badge/*.png.
         # Same post-build ordering constraint — it embeds
-        # apps/web/build/index.html. See apps/web/lambda/share-badge/README.md.
+        # apps/web/build/200.html. See apps/web/lambda/share-badge/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-badge/build.mjs
 
       - name: Bundle share-entity Lambda
         # One HTML-only Lambda serving /share/{event,profile,club,race}
         # per-request SSR. Same post-build ordering constraint — it embeds
-        # apps/web/build/index.html. See apps/web/lambda/share-entity/README.md.
+        # apps/web/build/200.html. See apps/web/lambda/share-entity/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-entity/build.mjs
 
       - name: Bundle generate-route Lambda
         # Server-side loop generation for POST /api/routes/generate. Pure
-        # esbuild bundle, no build/index.html dependency. See
+        # esbuild bundle, no SPA-shell dependency. See
         # apps/web/lambda/generate-route/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/generate-route/build.mjs
 
       - name: Bundle osrm-proxy Lambda
@@ -238,6 +324,8 @@ jobs:
         # snapping/routing (GET /api/routes/osrm/*, issue #198). Pure esbuild
         # bundle. See apps/web/lambda/osrm-proxy/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/osrm-proxy/build.mjs
 
       # ──────────────────── AWS auth via OIDC ────────────────────
@@ -247,8 +335,9 @@ jobs:
         env:
           ARN_PROD: ${{ secrets.AWS_DEPLOY_ROLE_ARN_PROD }}
           ARN_PREVIEW: ${{ secrets.AWS_DEPLOY_ROLE_ARN_PREVIEW }}
+          IS_PROD: ${{ steps.env.outputs.is_prod }}
         run: |
-          if [[ "${{ steps.env.outputs.is_prod }}" == "true" ]]; then
+          if [[ "$IS_PROD" == "true" ]]; then
             ARN="$ARN_PROD"
           else
             ARN="$ARN_PREVIEW"
@@ -263,7 +352,7 @@ jobs:
           echo "::add-mask::$ARN"
           echo "arn=$ARN" >> "$GITHUB_OUTPUT"
 
-      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ steps.role.outputs.arn }}
           aws-region: ${{ env.AWS_REGION }}
@@ -276,8 +365,10 @@ jobs:
 
       - name: Resolve target resources
         id: aws
+        env:
+          DEPLOY_ENV: ${{ steps.env.outputs.env }}
         run: |
-          ENV="${{ steps.env.outputs.env }}"
+          ENV="$DEPLOY_ENV"
           echo "bucket=threkir-web-${ENV}-site" >> "$GITHUB_OUTPUT"
           echo "lambda=threkir-web-${ENV}-coach" >> "$GITHUB_OUTPUT"
           echo "share_run_lambda=threkir-web-${ENV}-share-run" >> "$GITHUB_OUTPUT"
@@ -301,141 +392,190 @@ jobs:
       # ──────────────────── Deploy ────────────────────
 
       - name: Sync static build to S3
+        env:
+          BUCKET: ${{ steps.aws.outputs.bucket }}
         run: |
-          # Hashed assets get a year-long immutable cache; HTML gets
-          # a short cache so route-table changes propagate within the
-          # next page load. app-capabilities.json rides with the HTML:
-          # the native clients read it to decide whether Pro is sellable
-          # (decisions §466), so an immutable year-long cache would keep
-          # a mobile storefront selling a perk the deploy has turned off.
-          aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
+          # Only `_app/immutable/*` gets the year-long immutable cache,
+          # because only those names carry a content hash: a changed file is
+          # a new URL, so a browser holding the old one is never wrong.
+          # Everything else keeps its name across deploys and rides the 60 s
+          # revalidating cache. The rule is the path, not a list of
+          # exceptions (decisions § 2006): when the exceptions were the
+          # list, `_app/env.js` -- the runtime PUBLIC_* flags, unhashed --
+          # was pinned for a year, and browsers that loaded it before
+          # PUBLIC_COACH_ENABLED was set kept hiding the Coach after it was
+          # on. `_app/version.json`, robots.txt, the web manifest and the
+          # app-capabilities.json the native storefronts read (decisions
+          # § 466) were pinned the same way.
+          #
+          # Both passes `--delete`, each over its own half of the tree:
+          # filters apply to the destination listing too, so pass 1 prunes
+          # only stale hashed chunks and pass 2 everything else that the
+          # build no longer has. Pass 2 runs second so new HTML never points
+          # at a chunk not yet uploaded.
+          #
+          # apple-app-site-association is the one file the extension rule
+          # cannot type: Apple requires the name with no extension, and
+          # `aws s3 sync` would guess a non-JSON Content-Type for it, which
+          # iOS's associated-domains fetch rejects. So pass 2 leaves it out
+          # (which also keeps its `--delete` off it) and a dedicated `cp`
+          # sets application/json with the same short cache (decisions
+          # § 1924). The rest of .well-known/ takes its Content-Type from
+          # the extension, which is what Android's verifier requires
+          # (decisions § 1923).
+          #
+          # `apps/web/src/lib/release_web_cache.test.ts` evaluates these
+          # filters the way the CLI does and fails on any unhashed path
+          # that would land on the immutable cache.
+          aws s3 sync apps/web/build/ "s3://${BUCKET}/" \
             --delete \
             --cache-control "public,max-age=31536000,immutable" \
-            --exclude "index.html" \
-            --exclude "*.html" \
-            --exclude "app-capabilities.json"
-          aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
-            --cache-control "public,max-age=60,must-revalidate" \
             --exclude "*" \
-            --include "*.html" \
-            --include "app-capabilities.json"
+            --include "_app/immutable/*"
+          aws s3 sync apps/web/build/ "s3://${BUCKET}/" \
+            --delete \
+            --cache-control "public,max-age=60,must-revalidate" \
+            --exclude "_app/immutable/*" \
+            --exclude ".well-known/apple-app-site-association"
+          aws s3 cp apps/web/build/.well-known/apple-app-site-association \
+            "s3://${BUCKET}/.well-known/apple-app-site-association" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=60,must-revalidate"
 
       - name: Update coach Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/coach/dist/coach.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Coach Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update share-run Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.share_run_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.share_run_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/share-run/dist/share-run.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.share_run_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Share-run Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update share-route Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.share_route_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.share_route_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/share-route/dist/share-route.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.share_route_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Share-route Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update share-recap Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.share_recap_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.share_recap_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/share-recap/dist/share-recap.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.share_recap_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Share-recap Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update share-badge Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.share_badge_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.share_badge_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/share-badge/dist/share-badge.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.share_badge_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Share-badge Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update share-entity Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.share_entity_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.share_entity_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/share-entity/dist/share-entity.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.share_entity_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Share-entity Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update generate-route Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.generate_route_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.generate_route_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/generate-route/dist/generate-route.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.generate_route_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Generate-route Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Update osrm-proxy Lambda
+        env:
+          FUNCTION_NAME: ${{ steps.aws.outputs.osrm_proxy_lambda }}
         run: |
           NEW_VERSION=$(aws lambda update-function-code \
-            --function-name "${{ steps.aws.outputs.osrm_proxy_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --zip-file "fileb://apps/web/lambda/osrm-proxy/dist/osrm-proxy.zip" \
             --publish \
             --query Version \
             --output text)
           aws lambda update-alias \
-            --function-name "${{ steps.aws.outputs.osrm_proxy_lambda }}" \
+            --function-name "$FUNCTION_NAME" \
             --name live \
             --function-version "$NEW_VERSION"
           echo "Osrm-proxy Lambda alias 'live' now points at version $NEW_VERSION"
 
       - name: Invalidate CloudFront
+        env:
+          DISTRIBUTION_ID: ${{ steps.aws.outputs.distribution }}
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id "${{ steps.aws.outputs.distribution }}" \
+            --distribution-id "$DISTRIBUTION_ID" \
             --paths "/*" > /dev/null
 
       # ──────────────────── Attach build to the Release (prod only) ────────────────────
@@ -447,13 +587,22 @@ jobs:
 
       - name: Package build for release
         if: steps.env.outputs.is_prod == 'true'
+        env:
+          VERSION: ${{ steps.env.outputs.version }}
         run: |
           cd apps/web
-          zip -qr "../../web-build-${{ steps.env.outputs.version }}.zip" build
+          zip -qr "../../web-build-${VERSION}.zip" build
 
       - name: Attach build zip to the Release
         if: steps.env.outputs.is_prod == 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: web-build-${{ steps.env.outputs.version }}.zip
+        # `gh release upload` exits non-zero on a path that does not exist,
+        # so a moved zip fails here rather than attaching nothing (decisions.md
+        # § 1674). `--clobber` replaces an asset of the same name, so a re-run
+        # re-attaches instead of failing.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.env.outputs.version }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "web-build-${VERSION}.zip"

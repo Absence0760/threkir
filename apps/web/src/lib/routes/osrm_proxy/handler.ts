@@ -33,6 +33,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import { parseAuthHeader } from '../../coach/limits';
 import { checkRouteRateLimit } from '../rate_limit';
+import { thrownMessage } from '../../core/supabase_error';
 
 export const OSRM_DEMO_URL = 'https://router.project-osrm.org';
 
@@ -89,7 +90,7 @@ export interface OsrmProxyDeps {
 
 export type OsrmProxyResult =
 	| { status: 200; body: unknown }
-	| { status: 400 | 401 | 429 | 500 | 501 | 502; body: { error: string } };
+	| { status: 400 | 401 | 422 | 429 | 500 | 501 | 502; body: { error: string } };
 
 interface ParsedOsrmPath {
 	service: 'nearest' | 'route';
@@ -178,7 +179,6 @@ function supabaseAuthChecker(config: OsrmProxyConfig) {
 			// Log the detail, return a generic verdict so the GoTrue error can't
 			// be used as a token-shape oracle (mirrors the coach handler).
 			console.error('[osrm-proxy] auth failed', {
-				tokenPrefix: accessToken.slice(0, 20) + '...',
 				error: userRes.error?.message ?? 'no user returned',
 			});
 			return 'unauthenticated';
@@ -235,15 +235,22 @@ export async function handleOsrmProxy(
 	try {
 		const res = await fetcher(url, { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
 		if (!res.ok) {
-			// OSRM's own 4xx (NoSegment / InvalidQuery on a coordinate outside the
-			// extract) collapses to a 502 — the client already treats any non-200
-			// as "this segment failed, fall back to a straight line", and hiding
-			// upstream status keeps the engine's error surface internal.
+			// An OSRM 4xx means the engine ANSWERED and rejected these
+			// coordinates — `NoSegment` for a pin outside the loaded extract, or
+			// off any routable way. That is the caller's geography, not an
+			// outage, and it must not reach the `engine_unreachable` log line the
+			// Lambda emits on a 502: a user dropping one pin in the sea would
+			// otherwise raise "the OSRM engine is unreachable, all users
+			// degraded". The engine's own status/code stays internal; 422 is the
+			// stable app-level signal.
+			if (res.status >= 400 && res.status < 500) {
+				return { status: 422, body: { error: 'no_route_for_coordinates' } };
+			}
 			return { status: 502, body: { error: 'routing engine unavailable' } };
 		}
 		return { status: 200, body: await res.json() };
 	} catch (e) {
-		console.warn('[osrm-proxy] upstream error:', e instanceof Error ? e.message : String(e));
+		console.warn('[osrm-proxy] upstream error:', thrownMessage(e));
 		return { status: 502, body: { error: 'routing engine unavailable' } };
 	}
 }

@@ -12,9 +12,12 @@
 
 # Pinned by digest (in addition to tag) to satisfy OpenSSF Scorecard
 # PinnedDependenciesID — resolve a new digest with
-# `docker manifest inspect golang:<tag>` when bumping. Kept identical to
-# apps/job_worker/Dockerfile so both Go services share one base.
-FROM golang:1.26-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS build
+# `docker manifest inspect golang:<tag>` when bumping. The tag names the exact
+# patch, equal to go.mod's `go` directive — scripts/check_toolchain_pins.mjs
+# holds every Go module's builder to it, which is what keeps this identical to
+# apps/job_worker/Dockerfile (a comment saying so did not: this file sat on
+# 1.26 while that one moved to 1.27).
+FROM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS build
 WORKDIR /src
 
 # Cache go.mod / go.sum first so dependency-only changes don't invalidate the
@@ -25,7 +28,12 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/graph_cycle .
 
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:d093aa3e30dbadd3efe1310db061a14da60299baff8450a17fe0ccc514a16639
+# Debian 13, not 12: bookworm is in LTS, and its data packages trail
+# trixie's — on 2026-09-28 the newest static-debian12 still shipped tzdata
+# 2026b (Trivy DLA-4792-1) while static-debian13 carried 2026c. The binary
+# is static, so the base supplies only ca-certificates, tzdata and the
+# nonroot user.
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:d62067879de890a1def9da0e7766b7d20810a5e5555cef8506b752437d7a3e88
 COPY --from=build /out/graph_cycle /graph_cycle
 
 # Public guarded port (the Go server binds it; Fly's http_service forwards here).

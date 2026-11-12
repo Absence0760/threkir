@@ -1,6 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
+import type { Page } from '@playwright/test';
 
+import { resetRateLimit } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
+import { settleTransitions } from '../fixtures/transitions';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -381,32 +384,40 @@ test.describe('/routes/new — Route Builder control surface', () => {
 
 		// Baseline: cursor outside the map area, opacity = 1.
 		await page.locator('aside.sidebar').hover();
-		// Wait for the 180ms CSS transition.
-		await page.waitForTimeout(250);
+		await settleTransitions(card, { subtree: false });
 		const baseline = await card.evaluate((el) => getComputedStyle(el).opacity);
 		expect(parseFloat(baseline)).toBeGreaterThan(0.9);
 
 		// Hover the map area — the card fades toward 0.15.
 		await page.locator('.map-area').hover();
-		await page.waitForTimeout(250);
+		await settleTransitions(card, { subtree: false });
 		const hovered = await card.evaluate((el) => getComputedStyle(el).opacity);
 		expect(parseFloat(hovered)).toBeLessThan(0.5);
 	});
 
-	test('OSRM total failure → routed stays false → Save button stays disabled', async ({
+	test('OSRM total failure → amber warning, straight lines, Save still enabled', async ({
 		page
 	}) => {
-		// Regression: a failed OSRM run must not leave Save enabled with
-		// a stale or empty polyline. Routing is now automatic — dropping
-		// the second waypoint kicks off the snap with no button press.
-		// Intercept every OSRM segment with a 503 so the auto-route
-		// fails, drop two waypoints via the builder's dev-exposed
-		// addWaypoint API (synthetic canvas clicks don't land reliably on
-		// MapLibre's WebGL pointer pipeline in headless chromium), and
-		// assert the gate stays armed. All OSRM traffic rides the
+		// An engine outage is not a dead end. A deploy with no OSRM_URL
+		// answers 501 on every segment (that is what prod did), and the
+		// builder used to throw on okSegments === 0, clear the polyline
+		// and leave `routed` false — which disabled Save, GPX and KML
+		// with no way back short of reloading. Every segment already
+		// carries a straight-line fallback, so the route the user drew
+		// stays saveable and the banner is amber, not red.
+		//
+		// Routing is automatic — dropping the second waypoint kicks off
+		// the snap with no button press. Waypoints go in via the
+		// builder's dev-exposed addWaypoint API (synthetic canvas clicks
+		// don't land reliably on MapLibre's WebGL pointer pipeline in
+		// headless chromium). All OSRM traffic rides the
 		// /api/routes/osrm proxy (issue #198), so that's the intercept.
 		await page.route('**/api/routes/osrm/**', (route) =>
-			route.fulfill({ status: 503, body: '{}' })
+			route.fulfill({
+				status: 501,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'waypoint routing is not configured' })
+			})
 		);
 
 		await page.goto('/routes/new');
@@ -418,18 +429,21 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		]);
 
 		// The auto-route fires after the debounce and settles (1 segment
-		// × 2 retries × 8s timeout cap). Error banner is red
-		// (.routing-error without .routing-warning).
+		// × 2 retries × 8s timeout cap). Amber, not red: the route is
+		// degraded, not lost.
 		const banner = page.locator('.routing-error');
 		await expect(banner).toBeVisible({ timeout: 30_000 });
-		await expect(banner).not.toHaveClass(/routing-warning/);
+		await expect(banner).toHaveClass(/routing-warning/);
 
-		// Save button stays disabled — routed didn't flip true.
-		await expect(page.getByRole('button', { name: /Save Route/ })).toBeDisabled();
+		// The three actions that depend on `routed` all stay usable.
+		await expect(page.getByRole('button', { name: /Save Route/ })).toBeEnabled();
+		await expect(page.getByRole('button', { name: 'GPX' })).toBeEnabled();
+		await expect(page.getByRole('button', { name: 'KML' })).toBeEnabled();
 	});
 
 	test('auto-routing fetches only the new segment per added waypoint (cache)', async ({
 		page,
+		mockRoute
 	}) => {
 		// The headline behaviour ported from mobile: dropping the Nth pin
 		// re-routes only the one new segment, reusing the N-2 already
@@ -441,7 +455,7 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		let routeCalls = 0;
 		// Host-agnostic so the per-segment counter works against both CI's
 		// demo host and the local localhost:5000 OSRM override.
-		await page.route('**/route/v1/**', (route) => {
+		await mockRoute(page, '**/route/v1/**', (route) => {
 			routeCalls++;
 			route.fulfill({
 				status: 200,
@@ -1585,6 +1599,11 @@ test.describe('/routes/new — save flow', () => {
 	// The new route row is written for real; delete it after each test so
 	// the suite stays idempotent (same shape as save-as-route.spec.ts).
 	let routeId: string | null = null;
+	// `rate_limits` holds one row per (user, bucket, hour) shared by every
+	// spec in the run, so a create budget is whatever the last test left.
+	test.beforeEach(async () => {
+		await resetRateLimit(USER_A.id, 'create_route');
+	});
 	test.afterEach(async () => {
 		if (routeId) {
 			try {

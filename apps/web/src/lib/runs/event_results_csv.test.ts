@@ -31,6 +31,40 @@ test('parseDurationToSeconds rejects out-of-range minute/second fields', () => {
 	assert.equal(parseDurationToSeconds('100:00:00'), 360000);
 });
 
+test('a time cell holding only separators is rejected, not read as zero', () => {
+	// `Number('')` is 0, so an empty component in a colon-separated cell used
+	// to parse: a lone ':' scored 0 s, '1:' scored 60 s, and '1::30' scored
+	// 3630 s off a component nobody typed. On a finished row a 0 s time ranks
+	// first and stands as the event record, so the blank must be an error the
+	// organiser sees, exactly as a wholly empty cell already is.
+	assert.equal(parseDurationToSeconds(':'), null);
+	assert.equal(parseDurationToSeconds('::'), null);
+	assert.equal(parseDurationToSeconds('  :  '), null);
+	assert.equal(parseDurationToSeconds('1:'), null);
+	assert.equal(parseDurationToSeconds(':30'), null);
+	assert.equal(parseDurationToSeconds('1::30'), null);
+});
+
+test('parseDurationToSeconds reads only plain decimal counts', () => {
+	// `Number` accepts hex, exponent and sign forms that no timing system
+	// emits; reading '0x10' as 16 s silently invents a finish time.
+	assert.equal(parseDurationToSeconds('0x10'), null);
+	assert.equal(parseDurationToSeconds('1e3'), null);
+	assert.equal(parseDurationToSeconds('+5'), null);
+	assert.equal(parseDurationToSeconds('0x1:00'), null);
+	assert.equal(parseDurationToSeconds('Infinity'), null);
+	// Per-component whitespace stays tolerated -- a hand-typed sheet spaces
+	// its colons, and that is still a time.
+	assert.equal(parseDurationToSeconds('1 : 00 : 30'), 3630);
+	assert.equal(parseDurationToSeconds('24.5'), 25);
+});
+
+test('a finished row whose time cell is only a colon is an error row', () => {
+	const { rows, errors } = parseChipTimingCsv('bib,name,time\n7,Ann,:\n', D);
+	assert.equal(rows.length, 0);
+	assert.ok(errors.some((e) => e.includes('Row 2') && e.includes('unparseable')));
+});
+
 test('parses a clean chip-timing CSV', () => {
 	const csv = 'Bib,Name,Time\n101,Alice Anon,00:24:00\n102,Bob Bibonly,00:27:00\n';
 	const { rows, errors } = parseChipTimingCsv(csv, D);
@@ -195,4 +229,15 @@ test('resultsToCsv output round-trips through parseChipTimingCsv', () => {
 	assert.deepEqual(rows[0], { bib: '101', finisherName: 'Alice Anon', durationS: 1440, distanceM: 10000, finisherStatus: 'finished' });
 	assert.equal(rows[2].finisherStatus, 'dnf');
 	assert.equal(rows[2].durationS, 0);
+});
+
+// The guard moved to util/csv_formula.ts this round; the results export keeps
+// its own shape on top of it: only fields that need it are quoted, and a
+// neutralised cell that also holds a delimiter is both prefixed and quoted.
+test('resultsToCsv quotes a neutralised cell only when it also carries a delimiter', () => {
+	const csv = resultsToCsv([
+		{ bib: '-12', finisherName: '=A1, "x"', durationS: 61, distanceM: 5000, finisherStatus: 'finished', rank: 2 },
+	]);
+	const row = csv.split('\r\n')[1];
+	assert.equal(row, `2,'-12,"'=A1, ""x""",1:01,5000,finished`);
 });

@@ -6,7 +6,7 @@
 // Output: apps/web/lambda/coach/dist/coach.zip
 //
 // Strategy: esbuild bundles src/index.ts (and everything it imports
-// transitively from $lib/coach/) into a single index.mjs. Anthropic
+// transitively from #lib/coach/) into a single index.mjs. Anthropic
 // SDK + supabase-js are inlined because the Lambda runtime doesn't
 // ship them. The createRequire shim keeps any CJS-only transitive
 // deps importable from ESM.
@@ -43,6 +43,15 @@ await build({
 	// ship CJS. Provide a `require` in the ESM bundle so they load.
 	banner: {
 		js: 'import { createRequire as __cr } from "module"; const require = __cr(import.meta.url);',
+	},
+	// The release identifies the ARTIFACT, so it is baked in here rather than
+	// read from the Lambda env at runtime. Terraform owns `environment`, so
+	// CI writing APP_RELEASE there would be reverted by the next apply, and
+	// tfvars cannot know the tag. release-web.yml passes APP_RELEASE on this
+	// bundle step; a local build leaves it unset and Sentry tags the events
+	// `dev`, which is the honest answer for a bundle built off a tag.
+	define: {
+		'process.env.APP_RELEASE': JSON.stringify(process.env.APP_RELEASE ?? 'dev'),
 	},
 	minify: true,
 	sourcemap: 'linked',

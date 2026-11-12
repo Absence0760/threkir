@@ -32,7 +32,7 @@ The classic launch bug: a user signs up from a country where Stripe isn't suppor
    - UK OFSI.
    - Apple + Google enforce these at the store-availability layer; we don't have to screen signups directly, but if we ship via web outside the stores, signup-time check is required.
 6. **In-app integrations with regional bias.**
-   - **parkrun**: UK-founded, present in ~25 countries. Don't show the integration prompt to users in countries with no parkrun events; or surface it with "no events near you" instead.
+   - **RunSignUp**: US-only (its listings search takes a US ZIP). A runner outside the US should see manual paste, not a dead RunSignUp prompt. (The parkrun import, whose regional footprint this line used to cover, was removed — decisions § 2467.)
    - **Strava / Garmin / Health Connect / HealthKit**: global.
    - **MapTiler tiles**: global; some countries (Crimea) may render incomplete.
 7. **Locale-dependent feature defaults.**

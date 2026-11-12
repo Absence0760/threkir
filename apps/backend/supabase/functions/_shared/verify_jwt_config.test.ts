@@ -15,9 +15,24 @@ import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.t
 const ANON_REACHABLE = [
   'auth-email',
   'clip-public-track',
+  // pg_cron's hourly re-check, authorised in-handler by the CRON_SECRET bearer.
+  'club-verification-recheck',
   'donations-checkout',
+  'events-refund-sweep',
+  // A subscribed calendar app sends no header at all; the 96-hex URL token
+  // is checked in-handler against a stored SHA-256 (plan-calendar/handler.ts).
+  'plan-calendar',
+  // A signed-out land manager or runner reporting a park course; the handler
+  // verifies a JWT when sent and files through a service-role-only RPC.
+  'park-course-report',
+  // pg_cron's daily NPS alerts read, authorised in-handler by the CRON_SECRET bearer.
+  'park-closures-sweep',
+  'race-listings-sweep',
   'refresh-tokens',
   'revenuecat-webhook',
+  // The job worker's server key is not a JWT on new-format projects; the key is
+  // compared in-handler against the project's own (segment-match/lib.ts).
+  'segment-match',
   'strava-webhook',
   'stripe-events-webhook',
 ].sort()

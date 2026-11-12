@@ -1,23 +1,30 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { formatDate, formatDuration } from '$lib/format/time';
+	import { onMount } from 'svelte';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchActivities,
 		fetchActivitiesWithError,
 		fetchGymExerciseNames,
 		type ActivityRow,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RunEditor from '$lib/components/RunEditor.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import FoodLogEditor from '$lib/components/FoodLogEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RunEditor from '#lib/components/RunEditor.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
+	import { groupByLocalDay } from '#lib/timeline/day_groups.ts';
 	import { goto } from '$app/navigation';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { MenuButton } from '#lib/util/menu_button.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { hasNonRunData, modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Snapshot } from './$types';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	// The unified, cross-modal History timeline (multi_modal.md § History).
 	// The full run-list management surface lives at /runs (parallel to /gym +
@@ -61,27 +68,32 @@
 	let timelineRows = $derived(
 		kindFilter === 'all' ? activityFeed : activityFeed.filter((a) => a.kind === kindFilter),
 	);
-	let timelineGroups = $derived.by(() => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const yesterday = new Date(today);
-		yesterday.setDate(yesterday.getDate() - 1);
-		const groups: { key: string; label: string; rows: ActivityRow[] }[] = [];
-		let cur: { key: string; label: string; rows: ActivityRow[] } | null = null;
-		for (const a of timelineRows) {
-			const d = new Date(a.started_at);
-			d.setHours(0, 0, 0, 0);
-			let label: string;
-			if (d.getTime() === today.getTime()) label = m('history.today');
-			else if (d.getTime() === yesterday.getTime()) label = m('history.yesterday');
-			else label = formatDate(a.started_at);
-			if (!cur || cur.key !== label) {
-				cur = { key: label, label, rows: [] };
-				groups.push(cur);
-			}
-			cur.rows.push(a);
-		}
-		return groups;
+	let timelineGroups = $derived(
+		groupByLocalDay(
+			timelineRows.map((a): TimelineItem & { startedAt: string } => {
+				const sum = activitySummary(a);
+				return {
+					id: a.id,
+					kind: a.kind,
+					glyph: activityGlyph(a.kind),
+					href: activityHref(a),
+					primary: sum.primary,
+					secondary: sum.secondary,
+					startedAt: a.started_at,
+				};
+			}),
+			(item) => item.startedAt,
+		),
+	);
+
+	// A runner who has logged nothing but runs gets nothing here that /runs
+	// does not already show, so the sidebar hides History for them and a
+	// direct visit lands on the run list's day-grouped view instead, over all
+	// time as History was (decisions § 2117). Waits for the presence reads:
+	// null is "not known yet", never "no".
+	let runOnly = $derived(auth.user != null && hasNonRunData() === false);
+	$effect(() => {
+		if (runOnly) void goto('/runs?view=list&range=all', { replace: true });
 	});
 	function activitySummary(a: ActivityRow): { primary: string; secondary: string } {
 		const s = a.summary;
@@ -133,6 +145,9 @@
 	/// (by restore or a newer fetch) discards its result instead of
 	/// overwriting the current feed.
 	let fetchGen = $state(0);
+	/// The list-freshness token the feed was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 	// Pull the unified activities feed (windowed to the most recent 200). The
 	// full per-modality history lives on /runs, /gym, /nutrition; the "View
 	// all" link on each single-modality tab points there. Surfaces a real
@@ -143,14 +158,18 @@
 		loadError = null;
 		activitiesLoaded = false;
 		const gen = ++fetchGen;
+		const token = listToken('history');
 		fetchActivitiesWithError(200)
 			.then((res) => {
 				if (gen !== fetchGen) return;
-				if (res.error) loadError = res.error;
-				else activityFeed = res.activities;
+				if (res.error) loadError = errorCopy(res.error, m, 'history: loadError');
+				else {
+					activityFeed = res.activities;
+					loadedToken = token;
+				}
 			})
 			.catch((e) => {
-				if (gen === fetchGen) loadError = (e as Error)?.message ?? 'Failed to load history';
+				if (gen === fetchGen) loadError = errorCopy(e, m, 'history: loadError');
 			})
 			.finally(() => {
 				if (gen === fetchGen) activitiesLoaded = true;
@@ -172,9 +191,17 @@
 	let showRunModal = $state(false);
 	let showWorkoutModal = $state(false);
 	let showFoodModal = $state(false);
-	let logMenuOpen = $state(false);
-	let logMenuTrigger = $state<HTMLButtonElement | null>(null);
-	let logMenuPanel = $state<HTMLDivElement | null>(null);
+	const logMenu = new MenuButton();
+
+	/// The Log actions on offer. Run always; Workout and Food only while Gym and
+	/// Nutrition are surfaced (show_gym / show_nutrition, decisions § 1739). The
+	/// Lifts and Meals chips stay data-gated regardless: they filter the record
+	/// of what was logged, which is not a way into either modality.
+	let logKinds = $derived<('run' | 'workout' | 'meal')[]>([
+		'run',
+		...(modalityVisible('gym') ? (['workout'] as const) : []),
+		...(modalityVisible('nutrition') ? (['meal'] as const) : []),
+	]);
 
 	/// Per-tab action descriptor for a single-modality view. `null` in the
 	/// All view, which uses the Log menu instead.
@@ -206,7 +233,7 @@
 	}
 
 	function openLog(kind: 'run' | 'workout' | 'meal') {
-		logMenuOpen = false;
+		logMenu.open = false;
 		if (kind === 'run') {
 			showRunModal = true;
 		} else if (kind === 'workout') {
@@ -223,9 +250,13 @@
 	/// in-flight mount-time fetch.
 	async function reloadActivities() {
 		const gen = ++fetchGen;
+		const token = listToken('history');
 		try {
 			const rows = await fetchActivities(200);
-			if (gen === fetchGen) activityFeed = rows;
+			if (gen === fetchGen) {
+				activityFeed = rows;
+				loadedToken = token;
+			}
 		} catch (_) {
 			/* silent — keep the current feed */
 		}
@@ -248,68 +279,7 @@
 		goto(`/runs/${run.id}`);
 	}
 
-	onMount(() => {
-		function onDocClick(e: MouseEvent) {
-			if (!logMenuOpen) return;
-			const target = e.target as Node | null;
-			if (logMenuPanel?.contains(target ?? null)) return;
-			if (logMenuTrigger?.contains(target ?? null)) return;
-			logMenuOpen = false;
-		}
-		function onKeydown(e: KeyboardEvent) {
-			if (logMenuOpen && e.key === 'Escape') {
-				logMenuOpen = false;
-				logMenuTrigger?.focus();
-			}
-		}
-		document.addEventListener('mousedown', onDocClick);
-		document.addEventListener('keydown', onKeydown);
-		return () => {
-			document.removeEventListener('mousedown', onDocClick);
-			document.removeEventListener('keydown', onKeydown);
-		};
-	});
-
-	// --- Log menu keyboard support (ARIA menu-button pattern) ---
-	function logMenuItems(): HTMLButtonElement[] {
-		return logMenuPanel
-			? Array.from(logMenuPanel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
-			: [];
-	}
-	function focusLogItem(i: number) {
-		const items = logMenuItems();
-		if (items.length === 0) return;
-		items[(i + items.length) % items.length]?.focus();
-	}
-	async function toggleLogMenu() {
-		logMenuOpen = !logMenuOpen;
-		if (logMenuOpen) {
-			// Move focus into the menu so arrow keys + Escape work immediately.
-			await tick();
-			focusLogItem(0);
-		}
-	}
-	/// Roving focus among the three menu items. Items stay tabbable too (Tab
-	/// still works); this just adds the arrow/Home/End navigation the menu
-	/// role implies. Escape is handled by the document listener above.
-	function onLogMenuKeydown(e: KeyboardEvent) {
-		const items = logMenuItems();
-		if (items.length === 0) return;
-		const cur = items.indexOf(document.activeElement as HTMLButtonElement);
-		if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			focusLogItem(cur + 1);
-		} else if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			focusLogItem(cur - 1);
-		} else if (e.key === 'Home') {
-			e.preventDefault();
-			focusLogItem(0);
-		} else if (e.key === 'End') {
-			e.preventDefault();
-			focusLogItem(items.length - 1);
-		}
-	}
+	onMount(() => logMenu.listen());
 
 	/// Preserve the loaded feed + active tab + scroll position across in-app
 	/// navigation so tapping a row then `back` lands where the user was,
@@ -319,14 +289,23 @@
 		activitiesLoaded: boolean;
 		kindFilter: KindFilter;
 		scrollY: number;
+		listToken: string;
 	}> = {
 		capture: () => ({
 			activityFeed,
 			activitiesLoaded,
 			kindFilter,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
+			listToken: loadedToken,
 		}),
 		restore: (s) => {
+			kindFilter = s.kindFilter;
+			// A run, workout or meal was written since the feed was loaded
+			// (logged from the Log menu and opened on its detail page, or
+			// edited there), so the captured feed is the pre-write one. Keep
+			// the tab and let the fetch effect load the feed as on a fresh
+			// visit.
+			if (isListStale('history', s.listToken)) return;
 			// Invalidate any in-flight mount-time fetch the fresh instance may
 			// have kicked off before restore ran, then mark the feed restored so
 			// the fetch effect stays out — gating on the user id alone is unsafe
@@ -337,7 +316,7 @@
 			restoredFeed = true;
 			activityFeed = s.activityFeed;
 			activitiesLoaded = s.activitiesLoaded;
-			kindFilter = s.kindFilter;
+			loadedToken = s.listToken;
 			activitiesLoadedFor = auth.user?.id ?? null;
 			if (typeof window !== 'undefined' && s.scrollY > 0) {
 				queueMicrotask(() => {
@@ -361,28 +340,11 @@
 	<h1 class="visually-hidden">{m('history.timelineHeading')}</h1>
 
 	{#snippet timelineSkeleton()}
-		<div class="timeline timeline-skel" aria-hidden="true">
-			{#each Array(2) as _, g (g)}
-				<div class="timeline-group">
-					<span class="skel skel-line skel-day"></span>
-					<ul class="timeline-list card-elevated">
-						{#each Array(4) as _, i (i)}
-							<li class="timeline-item">
-								<span class="skel skel-glyph"></span>
-								<span class="skel-rows">
-									<span class="skel skel-line skel-w-50"></span>
-									<span class="skel skel-line skel-w-30"></span>
-								</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/each}
-		</div>
+		<TimelineDayList groups={[]} placeholder />
 		<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
 	{/snippet}
 
-	{#if !activitiesReady}
+	{#if !activitiesReady || runOnly}
 		{@render timelineSkeleton()}
 	{:else}
 		<!-- One consistent header per tab: kind chips on the leading edge (only
@@ -413,41 +375,58 @@
 						{m('history.viewAll')}
 						<span class="material-symbols" aria-hidden="true">chevron_right</span>
 					</a>
-					<button type="button" class="add-btn" onclick={() => openLog(singleAction.kind)}>
+					{#if logKinds.includes(singleAction.kind)}
+						<button type="button" class="add-btn" onclick={() => openLog(singleAction.kind)}>
+							<span class="material-symbols" aria-hidden="true">add</span>
+							{singleAction.label}
+						</button>
+					{/if}
+				{:else if logKinds.length === 1}
+					<!-- Gym and Nutrition both hidden: a one-item menu is a click
+					     that offers no choice, so Log run stands on its own. -->
+					<button type="button" class="add-btn" onclick={() => openLog('run')}>
 						<span class="material-symbols" aria-hidden="true">add</span>
-						{singleAction.label}
+						{m('history.logRun')}
 					</button>
 				{:else}
 					<div class="log-menu">
 						<button
-							bind:this={logMenuTrigger}
+							bind:this={logMenu.trigger}
 							type="button"
 							class="add-btn"
 							aria-haspopup="menu"
-							aria-expanded={logMenuOpen}
-							onclick={toggleLogMenu}
-							onkeydown={(e) => {
-								if (!logMenuOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-									e.preventDefault();
-									void toggleLogMenu();
-								}
-							}}
+							aria-expanded={logMenu.open}
+							onmousedown={logMenu.onTriggerMousedown}
+							onclick={() => void logMenu.toggle()}
+							onkeydown={logMenu.onTriggerKeydown}
 						>
 							<span class="material-symbols" aria-hidden="true">add</span>
 							{m('history.logAction')}
-							<span class="material-symbols caret" class:open={logMenuOpen} aria-hidden="true">expand_more</span>
+							<span class="material-symbols caret" class:open={logMenu.open} aria-hidden="true">expand_more</span>
 						</button>
-						{#if logMenuOpen}
-							<div bind:this={logMenuPanel} class="log-menu-panel" role="menu" tabindex="-1" onkeydown={onLogMenuKeydown}>
+						{#if logMenu.open}
+							<div
+								bind:this={logMenu.panel}
+								class="log-menu-panel"
+								role="menu"
+								tabindex="-1"
+								aria-label={m('history.logAction')}
+								onkeydown={logMenu.onPanelKeydown}
+								onfocusout={logMenu.onPanelFocusout}
+							>
 								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('run')}>
 									<span class="material-symbols" aria-hidden="true">directions_run</span>{m('history.logRun')}
 								</button>
-								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('workout')}>
-									<span class="material-symbols" aria-hidden="true">fitness_center</span>{m('history.logWorkout')}
-								</button>
-								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('meal')}>
-									<span class="material-symbols" aria-hidden="true">restaurant</span>{m('history.logFood')}
-								</button>
+								{#if logKinds.includes('workout')}
+									<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('workout')}>
+										<span class="material-symbols" aria-hidden="true">fitness_center</span>{m('history.logWorkout')}
+									</button>
+								{/if}
+								{#if logKinds.includes('meal')}
+									<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('meal')}>
+										<span class="material-symbols" aria-hidden="true">restaurant</span>{m('history.logFood')}
+									</button>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -456,64 +435,33 @@
 		</div>
 
 		{#if loadError}
-			<div class="card-elevated empty load-error" role="alert" data-testid="history-load-error">
-				<span class="material-symbols empty-icon" aria-hidden="true">error</span>
-				<h2 class="empty-text">{m('history.loadFailed')}</h2>
-				<p class="empty-hint load-error-detail">{loadError}</p>
-				<button
-					type="button"
-					class="btn btn-primary"
-					data-testid="history-load-error-retry"
-					onclick={() => loadActivities()}
-				>
-					{m('history.retry')}
-				</button>
-			</div>
+			<EmptyState
+				icon="error"
+				tone="danger"
+				title={m('history.loadFailed')}
+				text={loadError}
+				role="alert"
+				data-testid="history-load-error"
+			>
+				{#snippet actions()}
+					<button
+						type="button"
+						class="btn btn-primary"
+						data-testid="history-load-error-retry"
+						onclick={() => loadActivities()}
+					>
+						{m('history.retry')}
+					</button>
+				{/snippet}
+			</EmptyState>
 		{:else if timelineRows.length === 0}
-			<div class="card-elevated empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">inbox</span>
-				<h2 class="empty-text">{m('history.emptyTimeline')}</h2>
-			</div>
+			<EmptyState icon="inbox" title={m('history.emptyTimeline')} data-testid="history-empty" />
 		{:else}
 			<!-- Unified reverse-chronological timeline over the activities view.
 			     Each row taps through to its own detail route; meals have no
 			     detail screen yet (nutrition module pending) so they render
 			     read-only rather than linking to a 404. -->
-			<div class="timeline">
-				{#each timelineGroups as g (g.key)}
-					<section class="timeline-group">
-						<h2 class="timeline-day">{g.label}</h2>
-						<ul class="timeline-list card-elevated">
-							{#each g.rows as a (a.id)}
-								{@const sum = activitySummary(a)}
-								{@const href = activityHref(a)}
-								<li class="timeline-item">
-									<svelte:element
-										this={href ? 'a' : 'div'}
-										href={href ?? undefined}
-										class="timeline-row"
-										class:timeline-row-link={href != null}
-										data-kind={a.kind}
-									>
-										<span class="timeline-glyph" data-kind={a.kind} aria-hidden="true">
-											<span class="material-symbols">{activityGlyph(a.kind)}</span>
-										</span>
-										<span class="timeline-main">
-											<span class="timeline-primary">{sum.primary}</span>
-											{#if sum.secondary}
-												<span class="timeline-secondary">{sum.secondary}</span>
-											{/if}
-										</span>
-										{#if href}
-											<span class="material-symbols timeline-arrow" aria-hidden="true">chevron_right</span>
-										{/if}
-									</svelte:element>
-								</li>
-							{/each}
-						</ul>
-					</section>
-				{/each}
-			</div>
+			<TimelineDayList groups={timelineGroups} />
 		{/if}
 	{/if}
 </div>
@@ -544,7 +492,7 @@
 	narrow
 	onclose={() => (showFoodModal = false)}
 >
-	<FoodLogEditor oncreated={onFoodLogged} />
+	<LogFoodPanel oncreated={onFoodLogged} />
 </Modal>
 
 <style>
@@ -725,201 +673,6 @@
 		.timeline-actions {
 			margin-inline-start: 0;
 		}
-	}
-
-	/* --- Timeline --- */
-	/* Day groups flow into a responsive multi-column grid on wide canvases
-	   so the timeline fills the page instead of stranding the right ~40% as
-	   dead space, while each day card keeps a readable row width. Collapses to
-	   one column below ~64rem (and on mobile). Most-recent day is top-left;
-	   cells read left-to-right, top-to-bottom. */
-	.timeline {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(30rem, 100%), 1fr));
-		gap: var(--space-xl);
-		align-items: start;
-	}
-	.timeline-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-sm);
-	}
-	.timeline-day {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin: 0;
-		padding-inline-start: var(--space-2xs);
-	}
-	/* One elevated panel per day; rows are separated by hairline
-	   dividers rather than each being its own bordered box. */
-	.timeline-list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		overflow: hidden;
-	}
-	.timeline-item + .timeline-item {
-		border-top: 1px solid var(--color-border);
-	}
-	.timeline-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-sm) var(--space-md);
-		text-decoration: none;
-		color: inherit;
-		transition: background var(--transition-fast);
-	}
-	.timeline-row-link:hover { background: var(--color-bg-secondary); }
-	.timeline-row-link:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: -2px;
-		border-radius: var(--radius-sm);
-	}
-	/* card-elevated gives the resting shadow + border; zero its default
-	   padding so timeline rows fill edge to edge. */
-	.timeline-list.card-elevated {
-		padding: 0;
-	}
-	.timeline-glyph {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-		color: var(--color-text-secondary);
-		background: var(--color-bg-tertiary);
-	}
-	/* Per-kind accent on the glyph chip — a secondary cue; the glyph
-	   shape + the row text carry the type, never colour alone. Each kind
-	   reads the shared --section-* pair, so a chip here is the same hue as
-	   its sidebar entry; the fixed inks these replaced were 2.359 / 2.396:1
-	   on the dark card (decisions § 529). */
-	.timeline-glyph[data-kind='lift'] { color: var(--section-gym-ink); background: color-mix(in srgb, var(--section-gym) 18%, transparent); }
-	.timeline-glyph[data-kind='meal'] { color: var(--section-nutrition-ink); background: color-mix(in srgb, var(--section-nutrition) 20%, transparent); }
-	.timeline-glyph[data-kind='run'] { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
-	.timeline-glyph .material-symbols { font-size: 1.25rem; }
-	.timeline-main {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		min-width: 0;
-	}
-	.timeline-primary {
-		font-weight: 600;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.timeline-secondary {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-		font-variant-numeric: tabular-nums;
-	}
-	.timeline-arrow {
-		color: var(--color-text-tertiary);
-		font-size: 1.2rem;
-		flex-shrink: 0;
-	}
-
-	/* --- Empty + skeleton --- */
-	.empty {
-		text-align: center;
-		padding: var(--space-2xl) var(--space-md);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		max-width: 32rem;
-		margin-inline: auto;
-	}
-	.empty-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 3.25rem;
-		height: 3.25rem;
-		border-radius: 50%;
-		background: var(--color-bg-tertiary);
-		font-size: 1.75rem;
-		color: var(--color-text-secondary);
-		margin-bottom: var(--space-2xs);
-	}
-	.empty .empty-text {
-		margin: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-		padding: 0;
-	}
-	.empty-hint {
-		margin: 0;
-		font-size: 0.85rem;
-		color: var(--color-text-tertiary);
-		max-width: 28rem;
-	}
-	.load-error .empty-icon {
-		background: rgba(239, 68, 68, 0.12);
-		color: var(--color-danger-text);
-	}
-	.load-error-detail {
-		font-size: 0.78rem;
-		word-break: break-word;
-	}
-	.load-error .btn {
-		margin-top: var(--space-sm);
-	}
-
-	/* Skeleton mirrors the timeline shape so the page renders to roughly its
-	   true height immediately — no shift when the feed lands. */
-	.timeline-skel .timeline-item {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-sm) var(--space-md);
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-day { width: 6rem; height: 0.7rem; }
-	.skel-glyph {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-rows {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-xs);
-	}
-	.skel-w-30 { width: 30%; }
-	.skel-w-50 { width: 50%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 
 	/* .modal-* + .card-elevated classes live in app.css. */

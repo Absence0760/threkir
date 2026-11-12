@@ -20,6 +20,10 @@ import 'sim_watch_sync.dart' show crc32;
 /// tolerance_s_per_km(1) | target_distance_m(4, u32 LE) |
 /// target_duration_s(2, u16 LE) | target_pace_s_per_km(2, u16 LE)`.
 ///
+/// Flag bit 0 ([kWorkoutFlagUnpaced]) marks a walk-run session, every step
+/// [WorkoutStep.paced] false; the firmware then grades no step's pace. The
+/// flag is whole-frame, so a list mixing paced and unpaced steps throws.
+///
 /// The CRC32 trailer is mandatory from v1 (the CRS1 v3 reasoning): a flipped
 /// byte in a target distance decodes as a plausible *different* workout, and
 /// per-step validation can't tell 400 m from 4496 m. The firmware rejects a
@@ -31,6 +35,9 @@ import 'sim_watch_sync.dart' show crc32;
 /// tests (`watch_core::workout_store`), reusing the run-sync module's [crc32]
 /// like `watch_course.dart` / `watch_settings.dart`.
 const int _workoutVersion = 0x01;
+
+/// `watch_core::workout_store::WORKOUT_FLAG_UNPACED`.
+const int kWorkoutFlagUnpaced = 0x01;
 
 /// Tier-1 step capacity — mirrors `watch_core::workout::MAX_WORKOUT_STEPS`.
 const int kMaxWorkoutSteps = 64;
@@ -82,6 +89,12 @@ Uint8List encodeWorkoutSteps(List<WorkoutStep> steps) {
       'workout must have 1..$kMaxWorkoutSteps steps, got ${steps.length}',
     );
   }
+  final unpaced = steps.where((s) => !s.paced).length;
+  if (unpaced != 0 && unpaced != steps.length) {
+    throw ArgumentError(
+      'workout mixes paced and unpaced steps; the wire flag is whole-frame',
+    );
+  }
   final out = ByteData(
     _workoutHeaderLen + steps.length * _workoutStepLen + _workoutCrcLen,
   );
@@ -91,7 +104,7 @@ Uint8List encodeWorkoutSteps(List<WorkoutStep> steps) {
   out.setUint8(3, 0x31); // 1
   out.setUint8(4, _workoutVersion);
   out.setUint8(5, steps.length);
-  out.setUint8(6, 0);
+  out.setUint8(6, unpaced == 0 ? 0 : kWorkoutFlagUnpaced);
 
   var off = _workoutHeaderLen;
   for (final s in steps) {

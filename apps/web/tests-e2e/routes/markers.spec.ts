@@ -1,8 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /routes/[id] — course markers (aid stations, cutoffs, …) via the
@@ -58,12 +61,7 @@ test.describe('/routes/[id] — course markers', () => {
 	let routeId: string | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.afterEach(async () => {
@@ -105,6 +103,38 @@ test.describe('/routes/[id] — course markers', () => {
 		await expect(rows.nth(1).locator('.marker-kind')).toHaveText('Aid station');
 		await expect(rows.nth(1).locator('.marker-detail')).toContainText('Water');
 		await expect(rows.nth(1).locator('.marker-detail')).toContainText('Food');
+	});
+
+	test('a failed marker read says so and retries, instead of "no markers yet"', async ({
+		page,
+		mockRoute
+	}) => {
+		routeId = await insertOwnedRoute();
+		await insertMarker(routeId, 'aid_station', 'Aid 2', 51.5098, -0.1298, { services: ['water'] });
+
+		// Kong's 502 for a request it will not replay (decisions § 1703). The
+		// editor used to answer it with "No course markers yet", inviting an
+		// owner to re-add a marker they already have.
+		let failing = true;
+		await mockRoute(page, '**/rest/v1/rpc/route_markers_for_viewer*', (route) =>
+			failing
+				? route.fulfill({
+						status: 502,
+						contentType: 'application/json; charset=utf-8',
+						body: JSON.stringify({ message: 'An invalid response was received from the upstream server' })
+					})
+				: route.continue()
+		);
+
+		await page.goto(`/routes/${routeId}`);
+		const loadError = page.locator('[data-testid="markers-load-error"]');
+		await expect(loadError).toBeVisible();
+		await expect(page.getByText('No course markers yet')).toHaveCount(0);
+
+		failing = false;
+		await loadError.getByRole('button', { name: 'Retry' }).click();
+		await expect(page.locator('.markers-list .marker-row')).toHaveCount(1);
+		await expect(loadError).toHaveCount(0);
 	});
 
 	test('a long marker label is clipped to one line, not overflowed', async ({ page }) => {
@@ -252,6 +282,20 @@ test.describe('/routes/[id] — course markers', () => {
 		await expect(detail).toContainText('Target 1:45:00');
 	});
 
+	test('schedule shows a Target chip for a clock-only target', async ({ page }) => {
+		routeId = await insertOwnedRoute();
+		await insertMarker(routeId, 'note', 'Turn', 51.5005, -0.1205, {
+			note: 'Sharp left',
+			target_clock: '14:30'
+		});
+
+		await page.goto(`/routes/${routeId}`);
+
+		const detail = page.locator('.markers-list .marker-row .marker-detail');
+		await expect(detail).toContainText('Sharp left');
+		await expect(detail).toContainText('Target 14:30');
+	});
+
 	test('owner sets a target time via the editor and it persists across reload', async ({ page }) => {
 		routeId = await insertOwnedRoute();
 		await insertMarker(routeId, 'cutoff', 'Gate', 51.5005, -0.1205, {
@@ -331,20 +375,14 @@ test.describe('/routes/[id] — course markers', () => {
 			locale: 'de-DE'
 		});
 		const page = await context.newPage();
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-			// The seeded storageState may carry a stored locale that wins over
-			// the browser locale — force German so the fallback is exercised.
-			localStorage.setItem('locale', 'de');
-		});
+		// The seeded storageState may carry a stored locale that wins over
+		// the browser locale — force German so the fallback is exercised.
+		await acceptCookieConsent(page, { locale: 'de' });
 		await page.goto(`/routes/${routeId}`);
 
 		// The share affordance on a private route opens the make-public
 		// confirm, which passes no cancelLabel.
-		await page.getByTestId('route-share-btn').click();
+		await shareChoosingPublic(page, page.getByTestId('route-share-btn'));
 		const dialog = page.getByTestId('share-confirm-dialog');
 		await expect(dialog).toBeVisible({ timeout: 10_000 });
 
@@ -377,11 +415,14 @@ test.describe('/routes/[id] — course markers', () => {
 		await expect(page.locator('.markers-list .marker-row')).toHaveCount(1, { timeout: 5_000 });
 		// Asserted after the undo so it cannot race the window: the marker
 		// never left the table, so its server-derived position_m is intact.
-		const { data: survived } = await admin
-			.from('route_markers')
-			.select('id')
-			.eq('route_id', routeId);
-		expect((survived ?? []).length).toBe(1);
+		const survived = await readRows(
+			'route_markers by route_id',
+			admin
+				.from('route_markers')
+				.select('id')
+				.eq('route_id', routeId)
+		);
+		expect(survived.length).toBe(1);
 
 		// Dismiss commits the held delete.
 		await page.locator('.markers-list .marker-row').first().getByTitle('Delete').click();

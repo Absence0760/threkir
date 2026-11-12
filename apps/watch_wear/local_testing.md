@@ -46,7 +46,7 @@ cd apps/watch_wear/android
 Then launch the **Run** app from the Wear OS emulator's app launcher.
 
 A fresh clone needs no `-P` flags: the committed `apps/watch_wear/android/.env.development`
-(overlaid by a gitignored `.env.local` if you add one) points the **debug** build at the local stack (`SUPABASE_URL=http://127.0.0.1:54321`,
+(overlaid by a gitignored `.env.local` if you add one) points the **debug** build at the local stack (`SUPABASE_URL=http://127.0.0.1:24321`,
 seed-user auto-login, local Protomaps tiles). Run `npm run dev:core` from the repo
 root first — it starts the local stack and runs `adb reverse` so `127.0.0.1`
 reaches the host from the emulator/watch.
@@ -66,7 +66,7 @@ Point a **release** build at staging / prod (release ignores `.env.local`):
 ### Standalone run recording
 
 1. Tap **Start** on the watch.
-2. The app requests `ACCESS_FINE_LOCATION` + `BODY_SENSORS` on first launch — grant both.
+2. The app requests `ACCESS_FINE_LOCATION`, `BODY_SENSORS`, `ACTIVITY_RECOGNITION` and (API 33+) `POST_NOTIFICATIONS` on the first GO tap. Only the location one blocks the run; decline any of the others and the pre-run notice names what you gave up before it lets you start (`decisions.md § 1018`). Decline location and the same notice says so instead of the tap doing nothing.
 3. GPS recording begins using the emulator's simulated location.
 4. Tap **Stop** to end the workout.
 5. The app saves the run to its local DataStore queue and immediately tries to push to Supabase. Check the **Runs** screen in the web app (`:7777/runs`) or the Android phone app to confirm it landed.
@@ -80,7 +80,9 @@ In Android Studio's emulator controls (`...` button on the emulator toolbar):
 
 ### Heart rate simulation
 
-The Wear OS emulator does **not** synthesise heart-rate samples — `HealthServices.getClient(...).measureClient` produces nothing in the emulator. Test HR end-to-end on a physical Wear OS 3+ watch. In the emulator, the "HR" field stays at `— bpm`; the rest of the run records normally.
+The Wear OS emulator does **not** synthesise heart-rate samples — `HealthServices.getClient(...).measureClient` produces nothing in the emulator. Test HR end-to-end on a physical Wear OS 3+ watch.
+
+In the emulator the running screen's HR slot now reads **`HR…`** and stays there: the registration succeeds, so the sensor state is `Acquiring` and no sample ever follows. The rest of the run records normally. What this paragraph used to claim — that the field "stays at `— bpm`" — was never true: before `decisions.md § 1052` the slot rendered *nothing at all* when `bpm` was null, which is exactly the defect that entry closed. The four states you can now tell apart on the wrist are `HR…` (registered, no sample yet), a reading such as `146 bpm · Z3`, `HR off wrist` (Health Services reports `UNAVAILABLE_DEVICE_OFF_BODY` — take the watch off a real wrist mid-run to see it), and `No HR` (registration refused, the stream threw, or the sensor reports `UNAVAILABLE`; declining `BODY_SENSORS` is the easy way to reproduce this one). A build with `DISABLE_HR` set renders no HR text at all, deliberately — a build with no heart rate should not caption every run with its absence.
 
 ### Distance-unit preference (km / mi)
 
@@ -108,6 +110,56 @@ device check:
 on phone / web. The unit is sampled once at run start, so flipping it on the
 phone mid-run does not change the cue until the next run — same stamping the
 active-run tile uses.)
+
+### Today's workout on the tile and the complication
+
+Needs a paired phone with an active training plan that has a structured
+workout scheduled for today (the phone pushes it to `/todays_workout`).
+
+1. Add the **Active run** tile and put the **Run stats** complication on a
+   face. Do not open the watch app.
+2. Open the phone app so it pushes today's workout. Within a few seconds the
+   tile's idle state becomes **TODAY** with the kind ("Intervals"), the shape
+   ("6 × 400 m", or a total distance / time) and the step count; the
+   complication's short slot shows the kind code ("Int") under "Today", the
+   long slot "Intervals" over the shape. `TodaysWorkoutListenerService` is
+   what wakes them, so this must work with the app closed.
+3. Tap the tile: the app opens on the pre-run screen with the workout chip
+   on. Switch the chip off, leave, tap the tile again: it is back on.
+4. Run the workout and stop. The tile and the complication drop back to the
+   plain idle prompt and the last run respectively (the finished run names
+   the workout it followed). Discarding that run brings the offer back.
+5. Midnight: set the watch clock to 23:59 with the tile showing a workout.
+   At 00:00 the tile shows the plain idle prompt and the complication the
+   last run, with no app or phone involvement (both serve the workout as a
+   timeline entry that ends at local midnight).
+
+The decision and formatting are pinned host-side by `TodayWorkoutGlanceTest`
+and the wiring by `TodayGlanceWiringTest`; what they cannot see is the
+renderer honouring the timeline, which is step 5.
+
+### Spoken workout steps
+
+Needs a phone-pushed workout for today (above) and headphones paired to the
+watch, or the watch speaker.
+
+1. Start the run with the workout chip on. Within a second or two of "Run
+   started" the first step is spoken ("Warmup. 1 kilometre at 6 minutes per
+   kilometre."). Each later step change buzzes and then speaks its sentence;
+   the last one says "Workout complete. Nice work."
+2. Near the end of a distance step longer than 100 m: three ticks and
+   "Fifty metres to go" ("Fifty yards to go" with **mi**); on a timed step
+   over 20 s, "Ten seconds to go".
+3. On web Settings → Recording & voice set verbosity to **minimal** and start
+   a new run: step changes and completion still speak, the warning and the
+   drift nudge only buzz. Turn the **workout steps** cue off, or voice
+   feedback off: the workout says nothing and still buzzes.
+4. Let a step change land while a split is being spoken: the split finishes
+   and the step follows it, not the other way round.
+
+The decisions and sentences are pinned by `WorkoutSpeechTest` and
+`CueQueueTest`, the wiring by `WorkoutSpeechWiringTest`; the voice, the
+queue order on a real engine and the audio routing need an ear.
 
 ### Offline queue behaviour
 
@@ -158,11 +210,11 @@ Wear OS emulators take 1–2 minutes to boot on first launch. Wait for the watch
 
 ### "Connection refused" from the watch
 
-The committed default is `http://127.0.0.1:54321`, which reaches the host only
-once `adb reverse tcp:54321 tcp:54321` is set — `npm run dev:core` does this for
+The committed default is `http://127.0.0.1:24321`, which reaches the host only
+once `adb reverse tcp:24321 tcp:24321` is set — `npm run dev:core` does this for
 every attached device/emulator. If you skipped `dev:core`, either run those
 `adb reverse` lines (also 8080 for tiles) or, on the emulator only, change
-`SUPABASE_URL` to `http://10.0.2.2:54321` in `.env.local` (the emulator's host
+`SUPABASE_URL` to `http://10.0.2.2:24321` in `.env.local` (the emulator's host
 alias; don't commit that edit). Plain `localhost`/`127.0.0.1` without
 `adb reverse` resolves to the emulator itself, not the host.
 
@@ -172,7 +224,7 @@ Check `adb devices` — the emulator should appear as `online`. If it's `offline
 
 ### App crashes on first launch with `SecurityException: BODY_SENSORS`
 
-You granted `ACCESS_FINE_LOCATION` but not `BODY_SENSORS`. The permission launcher in `RunWatchApp.kt` only `start()`s the run after *all* requested permissions are granted; if `start` never fires, re-tap Start and approve both.
+**Fixed — if you see this on a current build, it is a new defect.** The old explanation here was wrong: the permission launcher gates the countdown on `ACCESS_FINE_LOCATION` alone, never on all of them, so granting location and declining body sensors did start a run — whose `registerMeasureCallback` then threw out of an unhandled `launch` and killed the process. Heart rate now fails closed and the run records without it (`decisions.md § 1017`), and the pre-run notice tells you that is what happened.
 
 ### APK install fails with `INSTALL_FAILED_OLDER_SDK`
 

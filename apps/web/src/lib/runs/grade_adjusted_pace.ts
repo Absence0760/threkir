@@ -1,4 +1,5 @@
 import type { TrackPoint } from '../types';
+import { haversineMetres } from './run_stats';
 
 /**
  * Grade-adjusted pace (GAP): the flat-ground pace that would cost the same
@@ -30,11 +31,46 @@ export const MINETTI_FLAT_COST = 3.6;
 export const MAX_GRADE = 0.45;
 
 /**
- * Minimum horizontal travel before a grade sample is trusted. GPS altitude is
- * jittery point-to-point, so grade is measured over a segment, mirroring the
- * watch field. 5 m matches `GradeAdjustedPaceView.mc`.
+ * Minimum horizontal travel before a grade sample is trusted. Altitude is
+ * jittery point-to-point, so grade is measured over a segment rather than over
+ * a point pair.
+ *
+ * The window has a floor, and the 5 m it shipped with was below it:
+ * `ELEVATION_GAIN_MIN_DELTA_M / MAX_GRADE` = 6.67 m. Under that, the smallest
+ * altitude change this codebase is willing to call climb rather than noise is,
+ * on its own, past the steepest grade Minetti's fit is defined at — 3 m over
+ * 5 m is a 60% grade, which clamps and yields a factor of 5.396. A rise the
+ * elevation-gain path discards outright therefore reported a pace 5.4x faster
+ * than raw, and a single 1 m step did it at 2.50.
+ *
+ * Only the horizontal leg is gated, and a gate on the RISE cannot replace it:
+ * the rise a real grade produces over the window scales with the window
+ * exactly as the noise does, so a threshold large enough to suppress the noise
+ * suppresses every real grade below `threshold / window` with it. Measured, a
+ * 3 m rise gate at this window zeroes every real grade under 15% — on a clean,
+ * noise-free 3.3% climb it read 19.5% slow — while the GPS-altitude noise it
+ * aims at has a 3.8 m sigma and walks straight through it.
+ *
+ * 20 m is where the noise floor stops being able to more than double the
+ * reported effort (3 m over 20 m is a 15% grade, factor 2.06), and it is the
+ * largest window whose cost on real oscillating terrain stays under 3%.
+ * Measured over an AR(1) altitude-error model on 30-minute runs (decisions
+ * §992): a flat track under GPS-altitude error reported GAP 47.9% faster than
+ * truth at 5 m against 26.8% at 20 m, and under barometric error 2.1% -> 0.5%
+ * at running pace and 9.0% -> 2.1% at power-hike pace. The cost is 2.5% on the
+ * most oscillatory profile measured, against 5.2% at 30 m and 13.1% at 50 m.
+ *
+ * Matches `GradeAdjustedPaceView.mc`, the Dart twin and the firmware port; the
+ * four are held equal by `scripts/check_watch_wire_vectors.mjs`.
+ *
+ * The roadbook is a SECOND consumer, deliberately: `routes/roadbook.ts` and
+ * its Dart and firmware ports allocate a goal time by grade-adjusted effort
+ * over this same anchored window, so a change here moves the arrival times a
+ * race crew holds drop bags against as well as the pace a runner is shown.
+ * Two windows would grade one course two ways. The same guard's consumer block
+ * fails the day a roadbook rail stops importing this.
  */
-export const MIN_SEGMENT_M = 5.0;
+export const MIN_SEGMENT_M = 20.0;
 
 /** Minetti 2002 5th-order fit: C(i) in J/kg/m, i fractional gradient. */
 export function minettiCostAtGrade(i: number): number {
@@ -87,12 +123,26 @@ export function gradeAdjustedPaceSecPerKm(track: TrackPoint[] | null | undefined
 		const dtMs = a.ts && b.ts ? Date.parse(b.ts) - Date.parse(a.ts) : NaN;
 		if (Number.isFinite(dtMs) && dtMs > 0) {
 			let factor = 1;
+			let measuredGrade = false;
 			if (a.ele != null && b.ele != null) {
-				sawEle = true;
+				measuredGrade = true;
 				factor = gradeFactor((b.ele - a.ele) / segHoriz);
 			}
-			adjDistM += segHoriz * factor;
-			timeS += dtMs / 1000;
+			// A segment whose equivalent-flat distance is not a number is
+			// unusable in exactly the way a segment with no timestamps is, and
+			// is skipped the same way. It reaches here when a track point
+			// carries a non-finite lat/lng (`segHoriz` goes NaN, and
+			// `NaN < MIN_SEGMENT_M` is false so the walk never resets) or a
+			// non-finite altitude. Poisoning `adjDistM` instead used to erase
+			// the GAP of a three-hour ultra over one bad fix — and did it by
+			// returning NaN out of a `number | null`, which the Dart twin's
+			// `.round()` threw on, from inside a widget build (§ 1226).
+			const adj = segHoriz * factor;
+			if (Number.isFinite(adj)) {
+				if (measuredGrade) sawEle = true;
+				adjDistM += adj;
+				timeS += dtMs / 1000;
+			}
 		}
 		// Advance the anchor whether or not the segment was usable — a chunk
 		// without timestamps shouldn't wedge the walk forever.
@@ -100,19 +150,6 @@ export function gradeAdjustedPaceSecPerKm(track: TrackPoint[] | null | undefined
 		segHoriz = 0;
 	}
 
-	if (!sawEle || adjDistM <= 0 || timeS <= 0) return null;
+	if (!sawEle || !(adjDistM > 0) || !(timeS > 0)) return null;
 	return Math.round(timeS / (adjDistM / 1000));
-}
-
-/** Great-circle distance between two lat/lng points, in metres. */
-function haversineMetres(lat1: number, lng1: number, lat2: number, lng2: number): number {
-	const r = 6371000;
-	const dLat = ((lat2 - lat1) * Math.PI) / 180;
-	const dLng = ((lng2 - lng1) * Math.PI) / 180;
-	const sinLat = Math.sin(dLat / 2);
-	const sinLng = Math.sin(dLng / 2);
-	const a =
-		sinLat * sinLat +
-		Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * sinLng * sinLng;
-	return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

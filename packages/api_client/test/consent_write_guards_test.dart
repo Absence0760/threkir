@@ -30,14 +30,28 @@ void main() {
       expect(api.withdrawHealthDataConsent(), throwsStateError);
     });
 
-    test('withdrawCoachConsent', () {
+    test('withdrawAiDisclosureConsent', () {
       final api = ApiClient.withClient(signedOut);
-      expect(api.withdrawCoachConsent(), throwsStateError);
+      expect(api.withdrawAiDisclosureConsent(), throwsStateError);
+    });
+
+    test('recordAiDisclosureConsent', () {
+      final api = ApiClient.withClient(signedOut);
+      expect(api.recordAiDisclosureConsent(2), throwsStateError);
     });
 
     test('setMyHeightCm', () {
       final api = ApiClient.withClient(signedOut);
       expect(api.setMyHeightCm(180), throwsStateError);
+    });
+
+    // Not itself consent-gated (§ 718 — the column is the child-safety age
+    // record), but it is a user_profiles writer in the same §248 family:
+    // a silent return would leave a declared minor with no age record while
+    // the caller reports the birth date saved.
+    test('setMyDateOfBirth', () {
+      final api = ApiClient.withClient(signedOut);
+      expect(api.setMyDateOfBirth(DateTime.utc(1990, 6, 15)), throwsStateError);
     });
 
     test('recordBodyWeightKg (pre-existing contract, kept)', () {

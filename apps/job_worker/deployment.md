@@ -61,9 +61,22 @@ If the database ever moves to an EU region, this flips back to `lhr`/`cdg` — a
 
 ### Sizing
 
-- `shared-cpu-1x`, 256 MB RAM. The worker is mostly idle on a poll loop; matching is delegated to OSRM. RAM ceiling is during a Storage upload of a matched gzip (~hundreds of KB in flight). The hub's in-process pub/sub state is negligible — a `map[string]*room` with at most a few hundred bytes per active run.
+- `shared-cpu-1x`, 256 MB RAM. The worker is mostly idle on a poll loop; matching is delegated to OSRM. The RAM peak is a `dm_image_process` job: `DmImageMaxPixels` admits an 8.4 MP decode (~35 MB at 4:4:4), plus the downscaled 2048 px copy (~17 MB), the 5 MB upload and the re-encoded JPEG, so ~60 MB live for one job (jobs run one at a time). The hub's in-process pub/sub state is negligible — a `map[string]*room` with at most a few hundred bytes per active run.
+- `GOMEMLIMIT = "180MiB"` in `fly.toml`'s `[env]`. Go's default GC lets the heap reach twice the live set before collecting, so two image jobs back to back could carry ~120 MB of heap plus garbage past the 256 MB VM and take the live hub down with an OOM kill. The soft limit makes the GC collect harder as the heap nears it; 180 MiB (about 70% of the VM) leaves ~64 MiB for the kernel, Fly's init, the binary and goroutine stacks. It is a soft limit, so it never fails an allocation itself: a live set above it only means more GC work. Raise it with `[[vm]] memory`, keeping the ratio.
 - 1 machine baseline. Add a second when the active set in `jobs.status='queued' AND scheduled_at <= now()` regularly exceeds ~50, or when concurrent live-spectator viewers regularly exceed ~500. (Per-room fan-out is in-process, so a second machine roughly halves the per-machine viewer load.)
 - `auto_start_machines = true`, `auto_stop_machines = false`. The worker is supposed to be always-on; auto-stop would just delay the next claim by the cold-start time. Live-hub WS subscribers also drop if the machine stops.
+
+### `segment_match` depends on an Edge Function
+
+The worker scores catalogue segments by POSTing each `segment_match` job to the
+`segment-match` Edge Function (decisions § 2393), at `SUPABASE_URL` with the
+worker's own server key, so it needs no new secret. Deploy the function (the
+`backend@` release deploys every function) before or with the worker build that
+carries the kind. A worker that runs ahead of it gets a 404 for each job, which
+fails the job; `select enqueue_segment_backfill('<segment>')` per catalogue
+segment rescores whatever was missed. A
+backfill batch can take longer than the shared 30 s client timeout, so the call
+has its own 150 s clock (`SegmentMatchTimeout`), inside the 5-minute job clock.
 
 ### `fly.toml`
 
@@ -148,6 +161,20 @@ STRAVA_CLIENT_SECRET=<optional — Strava OAuth rotation>
 
 `SUPABASE_JWT_SECRET` is deliberately absent from that list — see below: the prod project signs ES256, so the hub verifies against the JWKS derived from `SUPABASE_URL` and the shared-secret variable only matters for a legacy HS256 project or a local stack.
 
+**Push delivery is a second `secrets import`** — the same stdin rule, and every one of these is optional in the sense that its absence disables one channel and drains its jobs without stamping the notification rows, so a later credentialed deploy still sends the backlog:
+
+```
+VAPID_PUBLIC_KEY=<must equal the web build's PUBLIC_VAPID_PUBLIC_KEY>
+VAPID_PRIVATE_KEY=<private half of the same pair>
+VAPID_SUBJECT=mailto:<contact>
+FCM_SERVICE_ACCOUNT_JSON=<the service-account JSON minified to ONE line: jq -c . key.json>
+FCM_PROJECT_ID=<the same JSON's project_id>
+```
+
+**There is no APNs group, and the `.p8` never reaches this worker.** iOS is delivered by FCM, so the APNs auth key is uploaded in the Firebase console (Project settings → Cloud Messaging → APNs authentication key) and `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` serve both platforms. That removes the one value this stdin form could not carry: `secrets import` reads **`NAME=VALUE` pairs**, one per line, and a `.p8` is multi-line PEM that `pem.Decode` needs real newlines for — while `flyctl secrets set APNS_KEY_P8="$(cat …)"`, the obvious way round it, puts the key in shell history and in `ps` output, which is the rule this section opens with. The service-account JSON has no such problem minified (`jq -c . key.json`): its `private_key` newlines are JSON `\n` escapes that `json.Unmarshal` restores before `pem.Decode` sees them.
+
+An invalid credential exits the worker 2 at boot rather than dropping sends silently; a mismatched VAPID pair is caught the same way, because `NewSender` derives the public point from the private scalar. Full provisioning order: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+
 `flyctl secrets list --app threkir-worker` confirms names and digests afterwards; values are never echoed back.
 
 **Where these live in the Supabase dashboard.** The old single "Settings → API" page has been split, so navigate by direct link rather than by sidebar:
@@ -170,7 +197,7 @@ curl -s https://<ref>.supabase.co/auth/v1/.well-known/jwks.json | jq '.keys[] | 
 
 An `ES256` / `RS256` key means JWKS verification and no secret. An empty key set means the project is still on the legacy HS256 secret, which then must be set.
 
-`SUPABASE_SECRET_KEY` is **multi-use**: the worker reads it to claim jobs (PostgREST RPCs `claim_next_job` / `finish_job` / `defer_job` are granted only to `service_role`), the live hub reads it via `SupabaseZoneFetcher` to fetch a runner's privacy zones for server-side ping clipping, AND it powers `SupabaseRunMetaFetcher` (the per-room `(user_id, is_public)` lookup that backs the JWT authorizer). One secret, one identity — there's no per-concern split.
+`SUPABASE_SECRET_KEY` is **multi-use**: the worker reads it to claim jobs (PostgREST RPCs `claim_next_job` / `finish_job` / `defer_job` are granted only to `service_role`), the live hub reads it via `SupabaseZoneFetcher` to fetch a runner's privacy zones for server-side ping clipping, AND it powers `SupabaseRunMetaFetcher` (the per-room `(user_id, is_public)` lookup that backs the JWT authorizer, plus the service-role-only `live_heart_rate_shared` RPC that decides whether a ping keeps its `bpm` before it is fanned out, decisions § 2265). One secret, one identity — there's no per-concern split.
 
 `SUPABASE_JWT_SECRET` is the HS256 signing key a *legacy* Supabase project mints user tokens with. This project is on ES256, so it stays unset and the JWKS path (derived from `SUPABASE_URL`) does the verifying. **The hub refuses to accept production traffic when neither path resolves** — the authorizer goes nil and the hub falls back to permissive mode, which is fine for a local smoke flow and a hard blocker for the public route. `LIVEHUB_REQUIRE_AUTH=1` turns that into a refusal to boot. Confirm the boot log shows `livehub auth: enabled (Supabase JWT)` and a `verification=` value naming the scheme you expect.
 
@@ -209,12 +236,30 @@ The worker dispatches by `jobs.kind`. Today:
 | `photo_process` | `run_photos` AFTER INSERT trigger (migration `20260825_001`) | Server-side EXIF strip + 512w thumbnail for uploaded run photos. Downloads from the `run-photos` bucket, re-uploads the stripped JPEG in place, uploads a `{owner}/{photo_id}_512.jpg` thumbnail, PATCHes `run_photos.thumb_512_path`. No extra env. |
 | `route_photo_process` | `route_photos` triggers (migration `20270224_001`) | The route sibling of `photo_process` — same download → strip → 512w thumbnail → PATCH, against the `route-photos` bucket + `route_photos` table. Two enqueue triggers cover the web (insert-with-path) and mobile (insert-placeholder-then-PATCH-path) upload shapes. No extra env. |
 | `club_photo_process` | `club_photos` AFTER INSERT + AFTER UPDATE OF `storage_path` triggers (migration `20270301_001`) | The `photo_process` sibling against the `club-photos` bucket + `club_photos` table. Same download → strip → thumbnail → service-role PATCH. The AFTER-UPDATE trigger catches the mobile insert-then-PATCH placeholder path. No extra env. |
+| `notification_email` | `notifications` AFTER INSERT trigger `notifications_enqueue_email` (migration `20261130_001`) | One job per notification; the handler re-checks the recipient's per-kind email preference at send time. |
+| `web_push` | `notifications` AFTER INSERT trigger (migration `20261219_001`) | Same rows as `notification_email`, own `web_push_sent_at` guard. Enqueued only when the recipient has a browser subscription. |
+| `native_push` | `notifications` AFTER INSERT trigger (migration `20270212_001`) | FCM sibling of `web_push` (iOS included — FCM forwards to Apple), own `native_push_sent_at` guard. With the credentials unset the worker drains the jobs to `done` and leaves the rows pending, so a later credentialed deploy can re-send. |
+| `lifecycle_email` | SQL at the lifecycle moment — welcome (migration `20261202_001`), subscription state changes (`20261203_001`) | Not a queue-wide sweep: each moment enqueues its own row. |
+| `lifecycle_drip` | pg_cron `enqueue-lifecycle-drip` → `enqueue_lifecycle_drip()` (migration `20270223_001`) | The onboarding drip series. Dedupes against already-sent steps. |
+| `weekly_digest` | pg_cron `enqueue-weekly-digest` → `enqueue_weekly_digests()` (migration `20270220_001`) | Monday 08:00 UTC, one job per subscribed user. |
+| `safety_email` | Safety-contact escalation (migration `20261218_001`) + pg_cron `enqueue-safety-overdue-emails` every 5 min (`20270401_001`) | Trusted-contact notification for an overdue or finished run. |
+| `safety_sms` | The SMS sibling of `safety_email` (migration `20270410_001`) | Requires the SMS provider env; without it the handler no-ops rather than failing the job. |
+| `data_export` | `enqueue_data_export()`, called by `POST /v1/export/jobs` on this service (migration `20270603_001`) | The Art 20 archive build. See the endpoint table below. |
+| `export_blob_reap` | pg_cron `enqueue-export-blob-reap` → `enqueue_export_blob_reap()` at 04:13 UTC (migration `20270708000010`) | The Art 20 retention **erasure**. Lists the `exports` bucket through the Storage API and deletes objects past 7 days, because a `storage.objects` row delete is not an object delete ([decisions § 1049](../../docs/architecture/decisions.md)). Singleton — a night the worker was down leaves one queued job, not a stack. Empty payload = the `exports` bucket at the default window; an operator can scope a run with `{"bucket":"exports"\|"runs","prefix":"<uid>","retention_days":N}`, and no other bucket is accepted. No extra env. |
+| `route_photo_orphan_sweep` | `route_photos` AFTER DELETE statement trigger (the deleted paths) + pg_cron `enqueue-route-photo-orphan-sweep` → `enqueue_route_photo_orphan_sweep()` at 04:43 UTC (the backstop), migration `20271106000020` | Erases `route-photos` objects no `route_photos` row references, through the Storage API: the paths a route or photo delete left behind (a failed client sweep, or a club admin deleting another member's photos), and nightly every unreferenced object last written over 24 h ago. Worklist from `route_photo_orphan_paths`, 100 per batch, 20 batches per run; logs counts only. Ships closed: nothing is queued and the worklist is empty until `private.feature_flags` `route_photo_orphan_sweep` is enabled ([deployment.md § Route-photo orphan sweep](../../docs/ops/deployment.md#route-photo-orphan-sweep--after-the-ciso--security-analyst-review)). Deploy this worker build before opening the flag. |
+
+`Worker.dispatch` in [`internal/worker.go`](internal/worker.go) is the authoritative list; `internal/worker_dispatch_coverage_test.go` fails the build if it and `jobs_kind_chk` disagree in either direction, so this table cannot silently fall behind by a whole kind again.
 
 **Data export** is the other Edge-Function move that lives in the Go service:
 
 | Endpoint | Replaces | Notes |
 |---|---|---|
-| `POST /v1/export` on the Go service | `export-data` Edge Function | JWT-authed (same `SUPABASE_JWT_SECRET` the live hub uses). Tiered rate limit (free 2/h, pro 8/h) via `check_rate_limit_tiered`. Builds CSV or GPX zip of up to 5000 runs, uploads to `runs/{user_id}/exports/<ts>.{csv,zip}`, returns a 10-min signed URL. Body shape: `{format: 'csv'|'gpx'}`. |
+| `POST /v1/export/jobs` on the Go service | `export-data` Edge Function | JWT-authed (same `SUPABASE_JWT_SECRET` the live hub uses). Tiered rate limit (free 2/h, pro 8/h) via `check_rate_limit_tiered`; an export already in flight is returned with `reused: true` and spends no token. Answers **202** with a job id and builds nothing on the caller's connection — the archive is a `data_export` job the worker drains. Body shape: `{format: 'csv'\|'gpx'\|'backup'}`. **No run cap and no per-section row ceiling** since [decisions § 708](../../docs/architecture/decisions.md) — every section is read page by page and written as it arrives, so peak memory is one chunk plus the blob in flight and does not grow with the history. |
+| `GET /v1/export/jobs/latest` on the Go service | — | The subject's most recent export: `{status, job_id, format, requested_at}` plus, on `ready`, `{url, expires_in, count, total, complete}`. Streams the archive into `exports/{user_id}/exports/<ts>.{csv,zip}` in 6 MiB tus chunks and mints the 10-min signed URL **here**, so the clock starts when the subject asks rather than when the worker finished. `stalled` is derived at read time, never stored. |
+
+**The synchronous `POST /v1/export` was deleted 2026-08-24** ([decisions § 724](../../docs/architecture/decisions.md)). It held the caller's connection open for the whole build and survived § 717 only for the un-migrated mobile client; both clients enqueue now. A deploy that still has clients calling it will see 404s — the rollback is the `export-data` Edge Function, which is unchanged and still synchronous.
+
+**Operator note — the artifact bucket and its ceiling.** The export writes to the `exports` bucket (migration `20270602_001`), not `runs`: `file_size_limit` is per bucket, and `runs` caps an object at 25 MB, which on a full-history archive was a tighter bound than either of the row caps § 708 deleted. `exports` admits 5 GiB, but Supabase also enforces a **project-level upload limit** (Dashboard → Storage → Settings, 50 MB by default) and the effective ceiling is the lower of the two. Raising the project limit is the one pre-deploy step that is not expressible in SQL; until it is raised, the project setting is the export's honest bound and a subject past it gets a failed upload (a 500 with no artifact), never a short archive.
 
 **Premium endpoints** are the Pro-tier compute surface — VDOT, Riegel, training-load, plan generation. All four mount on the existing health/live-hub listener and gate on `user_profiles.subscription_tier` (`pro` + `lifetime` count; `free` → 402):
 
@@ -268,6 +313,8 @@ Once the `release-worker.yml` workflow lands (see § CI wiring below), tagging `
 | Per-machine metrics (CPU, RAM, restarts) | Fly.io dashboard → Metrics |
 | Queue lag | Custom: `select count(*) from jobs where status='queued' and scheduled_at <= now()` — wire to a Better Stack heartbeat that PG-queries every minute and alerts if >50 |
 | Failed jobs | A `jobs-failed-alert` pg_cron entry runs `jobs_failed_summary()` every 10 min (migration `20261201_001_jobs_failed_alert.sql`); its `{failed_count, by_kind, sample}` JSON lands in `cron.job_run_details.return_message`. **This is the safety net the async webhook needs** — a `strava_event` job that fails after the 200 ack surfaces here instead of vanishing. Route a Sentry/Slack scraper on `failed_count > 0`. Note `defer_job` now flips an exhausted-retry job to `status='failed'` so it shows up here rather than stalling un-claimable in `queued`. |
+| Backlogged jobs | A `jobs-backlog-alert` pg_cron entry runs `jobs_backlog_summary()` every 10 min (migration `20270710000004`); its `{backlogged_count, by_kind, sample}` JSON lands in `cron.job_run_details.return_message`. Route a scraper on `backlogged_count > 0`. This is the gap the failed-jobs alert cannot see: `find_stuck_jobs` wants `status='running'` with a non-null `locked_at` and `find_failed_jobs` wants `status='failed'`, so a job that was never claimed at all -- `queued`, `locked_at` null, which is what a DOWN worker produces for every kind -- appears in neither. |
+| Export retention overrun | An `export-retention-overrun-alert` pg_cron entry runs `export_retention_overrun()` daily at `43 4 * * *` (migration `20270710000004`), after the `13 4 * * *` reap enqueue. Route a scraper on `overrun_count > 0`. [decisions § 1172](../../docs/architecture/decisions.md) took the retention sweep off the clock deliberately, so a worker down long enough to overrun the GDPR retention window otherwise says nothing louder than a queued `jobs` row. |
 | Worker liveness | Heartbeat: have the worker `update jobs set scheduled_at = ... where ...` once per claim; alert if no claim observed in >10 min while queued > 0 |
 | Hub liveness | The `/health` HTTP check above also covers the hub — both concerns share the binary, so a hub crash trips the same probe |
 | Hub fan-out / drop counts | Logged on each push (room subscriber count, drops from zone clip). No metrics endpoint yet — `flyctl logs` + a `jq`-friendly filter is the path until Prometheus lands |
@@ -636,24 +683,10 @@ The graph itself is on the volume, not in the image, so a redeploy doesn't touch
 
 ### `.github/workflows/release-graphhopper.yml`
 
-Triggered by `graphhopper@*`. Same shape as `release-osrm.yml` — redeploys the container (which rebuilds the jar from the pinned `GH_VERSION`) without touching the graph on the volume:
+**Shipped.** Same shape as `release-osrm.yml` — redeploys the container (which rebuilds the jar from the pinned `GH_VERSION`) without touching the graph on the volume. Read the workflow for the current text; the two things worth knowing here:
 
-```yaml
-on:
-  push:
-    tags: [ 'graphhopper@*' ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@v1
-      - run: flyctl deploy --app graphhopper --remote-only
-        working-directory: apps/job_worker/graphhopper
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-```
+- It fires on a **published GitHub Release** whose tag starts `graphhopper@`, not on a bare tag push, and the actions are SHA-pinned — the house convention every Fly release workflow follows. (An earlier sketch in this file showed `on: push: tags:` with floating `@v4` / `@v1` refs; that predates the convention and is not what shipped.)
+- After `flyctl status` it **probes the public `/health`** and fails the job if the engine has not answered 200 within 10 minutes. A cold volume imports the graph for minutes while the machine already reads healthy, so status alone can green-light a tag over an engine that is not serving. `/health` is the one path the Caddy front leaves unauthenticated, so this needs no `GRAPHHOPPER_API_KEY` — that secret stays a Fly app secret and never enters a GitHub Actions context.
 
 The graph is on the volume, so a redeploy never re-imports — image deploys are safe at any time.
 
@@ -748,6 +781,8 @@ The trigger queues fresh `map_match` jobs. The worker drains them at its claim r
 - [ ] Single machine deployed; `flyctl logs` shows `"matcher selected" engine=osrm` (or `engine=passthrough` on a hub-first deploy)
 - [ ] Drained at least one real `map_match` job end-to-end (insert test run, watch `run_matched_tracks` flip to matched)
 - [ ] Queue-lag alert wired
+- [x] Backlogged-jobs alert wired (`jobs-backlog-alert` pg_cron -> `jobs_backlog_summary()`; route a scraper on `backlogged_count > 0`)
+- [x] Export-retention-overrun alert wired (`export-retention-overrun-alert` pg_cron -> `export_retention_overrun()`; route a scraper on `overrun_count > 0`)
 - [x] Failed-jobs alert wired (`jobs-failed-alert` pg_cron → `jobs_failed_summary()`; route a scraper on `failed_count > 0`)
 - [ ] `release-worker.yml` workflow merged
 - [ ] `FLY_API_TOKEN` GitHub secret configured
@@ -776,4 +811,4 @@ The trigger queues fresh `map_match` jobs. The worker drains them at its claim r
 - [ ] `GRAPHHOPPER_URL` set on the generate-route Lambda (Terraform), server-only, not `PUBLIC_`
 - [ ] Health probe wired (Better Stack against the public `/health`)
 - [ ] Public-abuse posture decided (Lambda-only caller for now; CloudFront+WAF or shared-secret header is the follow-up if needed)
-- [ ] `release-graphhopper.yml` workflow merged
+- [x] `release-graphhopper.yml` workflow merged

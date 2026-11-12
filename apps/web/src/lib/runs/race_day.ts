@@ -57,7 +57,7 @@ export function evenSplitPacing(
 	totalSec: number,
 	unitMetres = 1000,
 ): PacingStrategy {
-	if (distanceM <= 0 || totalSec <= 0) {
+	if (!(distanceM > 0) || !(totalSec > 0) || !(unitMetres > 0)) {
 		return { avgSecPerKm: 0, splitsSec: [], label: 'even' };
 	}
 	const units = Math.ceil(distanceM / unitMetres);
@@ -79,12 +79,23 @@ export function evenSplitPacing(
 }
 
 /**
- * Negative-split pacing — second half faster than the first by
- * `deltaPercent`. A 2% negative split for a 4:30/km marathon means
- * first half ~4:33, second half ~4:27. Halves are by *distance*, not
- * unit count, so the math works on 5k as well as on full marathons.
- * Pass `unitMetres=1000` for per-km splits (default) or `MILE_METRES`
- * for per-mile splits.
+ * Negative-split pacing — `deltaPercent` is applied to EACH half, so the first
+ * half runs `deltaPercent` slower than average and the second `deltaPercent`
+ * faster, a total spread of twice it. A 2% negative split for a 4:30/km
+ * marathon is first half 4:35, second half 4:25.
+ *
+ * That reading of the parameter is the one `race_phases.ts` independently
+ * implements for the same named strategy (`HOLD_BACK_FACTOR = 1.02` with a
+ * derived 0.98 second half), and `race_phases` is a registered TS<->Dart pair
+ * with a firmware port besides — so the mobile race-strategy sheet and the
+ * watch Pacer page grade a "2% negative split" this way. This header used to
+ * document a total spread of 2% instead (first half ~4:33, second ~4:27, i.e.
+ * ±1.11%), which is off by 2x, and the only thing pinning the real semantics
+ * was a comment in the test file (decisions § 1227).
+ *
+ * Halves are by *distance*, not unit count, so the math works on 5k as well as
+ * on full marathons. Pass `unitMetres=1000` for per-km splits (default) or
+ * `MILE_METRES` for per-mile splits.
  */
 export function negativeSplitPacing(
 	distanceM: number,
@@ -92,7 +103,12 @@ export function negativeSplitPacing(
 	deltaPercent = 2,
 	unitMetres = 1000,
 ): PacingStrategy {
-	if (distanceM <= 0 || totalSec <= 0) {
+	if (
+		!(distanceM > 0) ||
+		!(totalSec > 0) ||
+		!(unitMetres > 0) ||
+		!Number.isFinite(deltaPercent)
+	) {
 		return { avgSecPerKm: 0, splitsSec: [], label: 'negative-split' };
 	}
 	const avgSecPerKm = totalSec / (distanceM / 1000);
@@ -103,16 +119,32 @@ export function negativeSplitPacing(
 	const units = Math.ceil(distanceM / unitMetres);
 	const totalUnits = distanceM / unitMetres;
 	const halfUnits = totalUnits / 2;
-	const splits: number[] = [];
+	const ideal: number[] = [];
 	for (let i = 0; i < units; i++) {
-		const startU = i;
-		const endU = Math.min(i + 1, totalUnits);
-		const segU = endU - startU;
+		const segU = Math.min(i + 1, totalUnits) - i;
 		// Pace for the split is the pace at its midpoint unit.
-		const midU = startU + segU / 2;
-		const pace = midU < halfUnits ? firstHalfPace : secondHalfPace;
-		splits.push(Math.round(pace * segU));
+		const midU = i + segU / 2;
+		ideal.push((midU < halfUnits ? firstHalfPace : secondHalfPace) * segU);
 	}
+	// The half-distance mark rarely lands on a split boundary, so the two halves
+	// cover slightly different distances and the symmetric ±delta no longer sums
+	// to totalSec; scaling to the target restores that while leaving the first-
+	// to-second-half ratio untouched. Splits are then emitted as differences of
+	// rounded cumulative times, so per-split rounding can't accumulate — a
+	// marathon's 43 independently-rounded splits summed 15 s past the finish
+	// time printed directly above them. Same invariant evenSplitPacing keeps.
+	const idealTotal = ideal.reduce((a, b) => a + b, 0);
+	const scale = idealTotal > 0 ? totalSec / idealTotal : 1;
+	const splits: number[] = [];
+	let cumIdeal = 0;
+	let emitted = 0;
+	for (let i = 0; i < units - 1; i++) {
+		cumIdeal += ideal[i] * scale;
+		const cut = Math.round(cumIdeal);
+		splits.push(cut - emitted);
+		emitted = cut;
+	}
+	splits.push(Math.round(totalSec) - emitted);
 	return { avgSecPerKm, splitsSec: splits, label: 'negative-split' };
 }
 
@@ -236,12 +268,3 @@ export function goalFeasibility(goalSec: number, predictedSec: number): GoalFeas
 	return { verdict, deltaSec: Math.round(deltaSec) };
 }
 
-/** Pretty-print seconds as MM:SS (or H:MM:SS for splits > 1h). */
-export function fmtSplitTime(seconds: number): string {
-	const total = Math.round(seconds);
-	const h = Math.floor(total / 3600);
-	const m = Math.floor((total % 3600) / 60);
-	const s = total % 60;
-	if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-	return `${m}:${String(s).padStart(2, '0')}`;
-}

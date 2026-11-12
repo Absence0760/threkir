@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 
@@ -30,6 +30,22 @@ test.describe('/plans', () => {
 		// Close without creating.
 		await page.locator('.modal-close').click();
 		await expect(page.locator('.modal')).toHaveCount(0);
+	});
+
+	test('"Describe a plan with AI" opens the wizard at the plan assistant box', async ({ page }) => {
+		// The assistant lives on the full /plans/new wizard, not in the
+		// New-plan modal, so the list offers a link straight to its box.
+		await page.goto('/plans');
+		await page
+			.locator('.toolbar-actions')
+			.getByRole('link', { name: 'Describe a plan with AI' })
+			.click();
+
+		await expect(page).toHaveURL(/\/plans\/new\?type=training#ai-plan$/);
+		const box = page.locator('#ai-plan');
+		await expect(box).toBeVisible({ timeout: 10_000 });
+		await expect(box.getByRole('textbox', { name: 'Describe the plan you want' })).toBeVisible();
+		await expect(page.getByTestId('kind-training')).toHaveCount(0);
 	});
 
 	test('seeded Richmond Half 2026 plan renders + drill into detail', async ({
@@ -75,7 +91,7 @@ test.describe('/plans', () => {
 	test('Plans is reachable from the /runs run-surface tab strip', async ({
 		page
 	}) => {
-		// /plans is nested under the run surface (Runs · Routes · Plans),
+		// /plans is nested under the run surface (Runs · Plans · Races & courses · Routes · Segments),
 		// reached from the same RunSurfaceTabs strip /runs + /routes render.
 		// Pin (a) the strip shows all three links, (b) clicking Plans lands
 		// on /plans with the Plans tab marked aria-current=page.
@@ -85,6 +101,9 @@ test.describe('/plans', () => {
 		await expect(strip).toBeVisible({ timeout: 10_000 });
 		await expect(strip.getByRole('link', { name: 'Runs' })).toBeVisible();
 		await expect(strip.getByRole('link', { name: 'Routes' })).toBeVisible();
+		// Park courses are the "Run any time" half of Races & courses (issue
+		// #1352), so the strip carries no Parks tab of its own.
+		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);
 		const plansLink = strip.getByRole('link', { name: 'Plans' });
 		await expect(plansLink).toBeVisible();
 

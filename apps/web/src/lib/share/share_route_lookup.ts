@@ -21,11 +21,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import type { TrackPoint } from '../types';
+import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedRoute {
 	id: string;
 	name: string | null;
 	distance_m: number | null;
+	official_distance_m: number | null;
 	surface: string | null;
 	elevation_m: number | null;
 }
@@ -64,11 +67,19 @@ export async function lookupSharedRoute(
 		return { route: null, track: [] };
 	}
 	const withTrack = options.withTrack ?? true;
+	// A non-uuid segment — `/share/run/hello`, a crawler's mangled link, a
+	// truncated paste — makes Postgres raise 22P02 on the uuid column. That
+	// surfaces as a PostgREST error, so it took the `upstream_unreachable`
+	// branch below: the tagged line a CloudWatch metric filter alarms on. Ten
+	// such URLs inside ten minutes therefore paged the on-call engineer, from
+	// anonymous traffic, and there is no WAF rate rule on /share/* or /og/*.
+	// A malformed id is a clean not-found, not an outage.
+	if (!isEntityId(id)) return { route: null, track: [] };
 	try {
 		const supabase = makeClient(config.supabaseUrl, config.supabaseAnonKey);
 		const { data: route, error } = await supabase
 			.from('public_routes')
-			.select('id, name, distance_m, surface, elevation_m')
+			.select('id, name, distance_m, official_distance_m, surface, elevation_m')
 			.eq('id', id)
 			.maybeSingle();
 		// Non-null error (vs a clean data:null not-found) = Supabase unreachable
@@ -85,9 +96,11 @@ export async function lookupSharedRoute(
 			try {
 				// The route may not be loadable for anon (private + clip
 				// RPC denies). The PNG card still renders title-only.
-				const { data: clipped } = await supabase.rpc('clip_route_for_viewer', {
-					p_route_id: id,
-				});
+				const { data: clipped } = await supabase.rpc(
+					'clip_route_for_viewer',
+					{ p_route_id: id },
+					{ get: true },
+				);
 				if (Array.isArray(clipped)) {
 					track = (clipped as unknown[]).map((p) => p as TrackPoint);
 				}
@@ -99,7 +112,7 @@ export async function lookupSharedRoute(
 	} catch (err) {
 		console.error(
 			'[share-route] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { route: null, track: [] };
 	}

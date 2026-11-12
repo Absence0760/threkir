@@ -62,6 +62,22 @@ RouteMarkerKindSpec kindSpec(String kind) =>
 /// Aid-station service vocabulary (stored in `meta.services`).
 const List<String> aidServices = ['water', 'food', 'medical', 'toilets', 'drop_bag'];
 
+/// An aid station's `meta.services` read as the set it is meant to be: string
+/// entries only, each kept at its first position. `meta` is schemaless jsonb,
+/// so neither a duplicate nor a non-string entry is stopped by the database —
+/// a `cast<String>()` over one throws on iteration, and a duplicate reads as
+/// "Water · Water". Unknown strings are kept, so a service added by a newer
+/// client still round-trips. Mirrors `parseAidServices` in
+/// apps/web/src/lib/routes/route_markers.ts.
+List<String> parseAidServices(Object? raw) {
+  if (raw is! List) return const [];
+  final seen = <String>{};
+  for (final s in raw) {
+    if (s is String) seen.add(s);
+  }
+  return seen.toList();
+}
+
 /// Minimal shape the ordering helpers need.
 abstract class MarkerLike {
   double? get positionM;

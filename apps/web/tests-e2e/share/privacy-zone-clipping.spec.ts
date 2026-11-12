@@ -1,9 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { isInAnyZone } from '../../src/lib/routes/privacy';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { shareChoosingPublic } from '../fixtures/share';
 import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const PRIVACY_ZONES_KEY = 'privacy_zones';
 const SEEDED_ZONE = { lat: -37.8136, lng: 144.9631, radius_m: 200, label: 'home' };
@@ -55,12 +57,7 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -94,12 +91,7 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 
 	test('authenticated non-owner (USER_B) receives the same clipped set', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -127,12 +119,7 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			let efHit = false;
@@ -157,6 +144,89 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 			await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 			await page.waitForTimeout(500);
 			expect(efHit).toBe(false);
+		} finally {
+			await ctx.close();
+		}
+	});
+});
+
+// ~390 m north of the zone centre (outside the 300 m zone) with a smoothed
+// position ~170 m north (inside it). Every line reader draws the smoothed
+// pair, so a clipper that tests the raw fix alone hands a non-owner a drawn
+// vertex inside the zone (migration 20270719000005).
+const SMOOTHED_INTO_ZONE_FIX = {
+	lat: ZONE_LAT + 0.0035,
+	lng: ZONE_LNG,
+	ele: 11,
+	smoothedLat: ZONE_LAT + 0.0015,
+	smoothedLng: ZONE_LNG
+};
+
+test.describe('/share/run/[id] — a smoothed position inside a zone is clipped too', () => {
+	let plantedRunId: string | null = null;
+
+	test.beforeEach(async () => {
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [TEST_ZONE]);
+		plantedRunId = await insertRun({
+			user_id: USER_A.id,
+			started_at: new Date('2026-05-10T10:00:00Z').toISOString(),
+			duration_s: 1500,
+			distance_m: 4500,
+			is_public: true,
+			metadata: { activity_type: 'run', title: 'e2e smoothed-position clip' },
+			track: [SMOOTHED_INTO_ZONE_FIX, ...OUT_OF_ZONE_TRACK, SMOOTHED_INTO_ZONE_FIX]
+		});
+	});
+
+	test.afterEach(async () => {
+		if (plantedRunId) {
+			try {
+				await deleteRun(plantedRunId);
+			} catch {
+				/* best-effort */
+			}
+			plantedRunId = null;
+		}
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [SEEDED_ZONE]);
+	});
+
+	test('the non-owner response drops an edge fix whose smoothed position is in the zone', async ({
+		browser
+	}) => {
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			const efPromise = page.waitForResponse(
+				(r) =>
+					r.url().includes('/functions/v1/clip-public-track') &&
+					r.request().method() === 'POST',
+				{ timeout: 15_000 }
+			);
+			await page.goto(`/share/run/${plantedRunId}`);
+			const ef = await efPromise;
+
+			expect(ef.status()).toBe(200);
+			const body = (await ef.json()) as {
+				points: Array<{ lat: number; lng: number; smoothedLat?: number; smoothedLng?: number }>;
+			};
+			const zones = [{ lat: ZONE_LAT, lng: ZONE_LNG, radius_m: ZONE_RADIUS_M }];
+			// The planted edge fix really is the case under test: raw out, smoothed in.
+			expect(isInAnyZone(SMOOTHED_INTO_ZONE_FIX, zones)).toBe(false);
+			expect(
+				isInAnyZone(
+					{ lat: SMOOTHED_INTO_ZONE_FIX.smoothedLat, lng: SMOOTHED_INTO_ZONE_FIX.smoothedLng },
+					zones
+				)
+			).toBe(true);
+
+			expect(body.points.length).toBe(OUT_OF_ZONE_TRACK.length);
+			for (const p of body.points) {
+				expect(isInAnyZone(p, zones)).toBe(false);
+				if (typeof p.smoothedLat === 'number' && typeof p.smoothedLng === 'number') {
+					expect(isInAnyZone({ lat: p.smoothedLat, lng: p.smoothedLng }, zones)).toBe(false);
+				}
+			}
 		} finally {
 			await ctx.close();
 		}
@@ -199,12 +269,7 @@ test.describe('/share/run/[id] — owner-zone clipping uses owner zones, not vie
 		]);
 
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -222,6 +287,63 @@ test.describe('/share/run/[id] — owner-zone clipping uses owner zones, not vie
 				expect(isInAnyZone(p, ownerZones)).toBe(false);
 			}
 			expect(body.points.length).toBe(OUT_OF_ZONE_TRACK.length);
+		} finally {
+			await ctx.close();
+		}
+	});
+});
+
+test.describe('/runs/[id] share confirm — a smoothed position inside a zone warns the owner', () => {
+	let plantedRunId: string | null = null;
+
+	test.beforeEach(async () => {
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [TEST_ZONE]);
+		plantedRunId = await insertRun({
+			user_id: USER_A.id,
+			started_at: new Date('2026-05-10T11:00:00Z').toISOString(),
+			duration_s: 1500,
+			distance_m: 4500,
+			is_public: false,
+			metadata: { activity_type: 'run', title: 'e2e smoothed-position share warning' },
+			track: [SMOOTHED_INTO_ZONE_FIX, ...OUT_OF_ZONE_TRACK]
+		});
+	});
+
+	test.afterEach(async () => {
+		if (plantedRunId) {
+			try {
+				await deleteRun(plantedRunId);
+			} catch {
+				/* best-effort */
+			}
+			plantedRunId = null;
+		}
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [SEEDED_ZONE]);
+	});
+
+	test('the make-public dialog says the run enters a zone though every raw fix is outside it', async ({
+		browser
+	}) => {
+		const zones = [{ lat: ZONE_LAT, lng: ZONE_LNG, radius_m: ZONE_RADIUS_M }];
+		for (const p of [SMOOTHED_INTO_ZONE_FIX, ...OUT_OF_ZONE_TRACK]) {
+			expect(isInAnyZone(p, zones)).toBe(false);
+		}
+
+		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			await page.goto(`/runs/${plantedRunId}`);
+			// The share check reads the loaded track; GPX download enables
+			// only once it has arrived.
+			await expect(page.locator('button[title="Download GPX"]')).toBeEnabled({
+				timeout: 15_000
+			});
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
+
+			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
+			await expect(dialog).toBeVisible({ timeout: 5_000 });
+			await expect(dialog).toContainText('inside one of your privacy zones');
 		} finally {
 			await ctx.close();
 		}

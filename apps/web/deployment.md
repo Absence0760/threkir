@@ -1,10 +1,10 @@
 # Web app deployment plan
 
-How `apps/web/` (SvelteKit 2 + Svelte 5) ships to production.
+How `apps/web/` (SvelteKit 3 + Svelte 5) ships to production.
 
 Operational counterpart of [`apps/web/CLAUDE.md`](CLAUDE.md) (stack, conventions, file layout) and [`apps/web/local_testing.md`](local_testing.md) (running it locally). For the cross-service overview see [`docs/ops/deployment.md`](../../docs/ops/deployment.md). For the rationale behind hosting choices see [`docs/architecture/decisions.md § 53`](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages).
 
-**Status: plan.** Today the web app exists as a working dev server only.
+**Status: live.** threkir.com has served from S3 + CloudFront since 2026-07-20; see [`docs/ops/deployment.md`](../../docs/ops/deployment.md) for the running topology.
 
 ---
 
@@ -14,7 +14,7 @@ The web app has two parts:
 
 1. **Static site** — every route except the server-backed `/api/*` paths. SvelteKit prerenders / SPA-renders these. Served from S3 (private bucket) via CloudFront with Origin Access Control (OAC).
 2. **Server-side `/api/coach/+server.ts`** — needs a runtime that can stream Anthropic responses back to the client. Deployed as a Node 24 Lambda Function URL; CloudFront routes `/api/coach/*` to it as a separate behaviour on the same distribution.
-3. **Server-side `/api/routes/generate/+server.ts`** — distance-targeted loop generation. Calls the self-hosted GraphHopper `round_trip` engine, which must never be reachable from the browser (the user's start coordinates would otherwise leave our infra). Deployed as its own Node 24 Lambda Function URL; CloudFront routes `/api/routes/generate*` to it as a separate behaviour. See [decisions.md § 137](../../docs/architecture/decisions.md#137-generate-a-route-by-distance-moves-server-side-to-a-dedicated-lambda--self-hosted-graphhopper-round_trip).
+3. **Server-side `/api/routes/generate/+server.ts`** — distance-targeted loop generation. Calls the self-hosted GraphHopper `round_trip` engine, which must never be reachable from the browser (the user's start coordinates would otherwise leave our infra). Deployed as its own Node 24 Lambda Function URL; CloudFront routes `/api/routes/generate*` to it as a separate behaviour. See [decisions.md § 575](../../docs/architecture/decisions.md#575-generate-a-route-by-distance-moves-server-side-to-a-dedicated-lambda--self-hosted-graphhopper-round_trip).
 
 Same domain, same CORS posture for both halves. No API Gateway in front of the Lambda — Function URLs are free, support response streaming, and skip the per-request API Gateway cost. ACM cert lives in `us-east-1` (CloudFront only reads from there, regardless of where the rest of the stack runs).
 
@@ -71,15 +71,15 @@ Provisioned via Terraform — matches the workstation toolchain (`/home/jhoward/
 ```
 infra/
 ├── modules/
-│   └── web-stack/         # Reusable: S3 + CloudFront + 4 Lambdas (coach + generate-route +
-│                          # share-run + share-route) + Function URLs + IAM + per-env KMS key
-│                          # + sops integration
+│   └── web-stack/         # Reusable: S3 + CloudFront + 8 Lambdas (coach, generate-route,
+│                          # osrm-proxy, share-run/-route/-recap/-badge/-entity) + Function
+│                          # URLs + IAM + per-env KMS key + sops integration
 ├── envs/
 │   ├── prod/              # Root module — calls web-stack module
 │   │   ├── main.tf
 │   │   ├── backend.tf     # Remote state in S3 with native lockfile
-│   │   ├── terraform.tfvars
-│   │   └── secrets.enc.yaml   # sops-encrypted (KMS key from this env's stack)
+│   │   ├── variables.tf   # `secrets_file` — defaults to the estate's threkir/prod.sops.yaml
+│   │   └── terraform.tfvars   # symlink into the estate repo (infra-secrets/threkir/prod.tfvars)
 │   └── preview/           # Same shape, separate state, separate resources
 ├── dns/                   # Route 53 hosted zone, ACM cert in us-east-1
 │   └── ...                # One stack — both envs share the zone
@@ -92,8 +92,17 @@ infra/
 │   │                      # required. Run once with local state, then
 │   │                      # ignored.
 │   └── ...
-└── .sops.yaml             # Routes each env's secrets.enc.yaml to that env's KMS key
+└── .sops.yaml             # DELIBERATELY rule-less: `sops --encrypt` under infra/ fails
+                           # closed. The creation rules live in the estate's own .sops.yaml
+
+../infra-secrets/          # PRIVATE estate repo (Absence0760/infra-secrets), cloned as a sibling
+├── .sops.yaml             # Routes threkir/<env>.sops.yaml to that env's KMS key
+└── threkir/
+    ├── prod.sops.yaml     # sops-encrypted runtime secrets (KMS key from this env's stack)
+    └── prod.tfvars        # plaintext, non-secret tfvars (publishable keys, emails)
 ```
+
+No ciphertext is ever committed to this public repo: `infra/.gitignore` blocks any `secrets.enc.yaml` as a second fail-safe behind the rule-less `.sops.yaml` ([decisions § 53](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). The slot name `threkir` is defined once, in `bin/lib/estate.sh`, and every operator script resolves the estate through it.
 
 **Bootstrap** (one-time, before any other Terraform runs):
 
@@ -123,7 +132,7 @@ The `dns` stack outputs the hosted zone ID and cert ARN; per-env stacks read tho
 
 **Region.** Everything sits in `us-east-1`. The ACM cert for CloudFront *has* to live there regardless of where the rest of the stack runs, so `dns/main.tf` declares an explicit `us_east_1` provider alias — that's a no-op while the primary region is also `us-east-1`, but it's load-bearing if the stack ever moves.
 
-**Runtime secrets via sops + AWS KMS.** `infra/envs/<env>/secrets.enc.yaml` is sops-encrypted with that env's KMS key (created by `web-stack`). Terraform reads it via the [`carlpett/sops`](https://registry.terraform.io/providers/carlpett/sops/latest) provider at apply time and writes the values into the Lambda's `environment.variables` block. Rotation is `sops infra/envs/prod/secrets.enc.yaml` → save → `terraform apply` → `bin/lambda-alias-sync.sh prod`. The apply publishes a new Lambda version in seconds, but the CI-owned `live` aliases (which the Function URLs target) stay on the old version's frozen env until the sync script repoints them — an apply alone does not put the rotated value on the serving path (issue #590 defect 2). For non-interactive rotation use [`bin/secret-set.sh <env> <KEY> < value-file`](../../bin/README.md) (value comes via stdin/file, never argv, so it doesn't land in shell history).
+**Runtime secrets via sops + AWS KMS.** The secrets live in the PRIVATE estate repo at `../infra-secrets/threkir/<env>.sops.yaml`, sops-encrypted under that env's KMS key (created by `web-stack`). Each env root's `secrets_file` var points at it (empty = that default path; set `TF_VAR_secrets_file` if your estate clone lives elsewhere), and Terraform reads it via the [`carlpett/sops`](https://registry.terraform.io/providers/carlpett/sops/latest) provider at apply time. The credentials do **not** go into the Lambda environment in the clear: the apply encrypts the coach's and generate-route's credential set into `aws_kms_ciphertext` resources, the blob rides in an ordinary env var, and `apps/web/src/lib/core/lambda_secrets.ts` decrypts it once per cold start, failing closed to 503 ([decisions § 1671](../../docs/architecture/decisions.md)). `SENTRY_DSN` is the one sops value still merged into every function's environment. First-time setup is `bin/sops-init.sh <env>`, which wires the env's KMS ARN into the estate `.sops.yaml` and seeds the encrypted file. Rotation is `bin/secret-set.sh <env> <KEY>` (value via stdin / `--from-file`, never argv, so it stays out of shell history) or `sops ../infra-secrets/threkir/<env>.sops.yaml` in place, then commit in the estate repo, then `bin/deploy-<env>.sh`, which applies `infra/envs/<env>` and then repoints the aliases (`bin/lambda-alias-sync.sh <env> --after-apply`, [decisions § 1825](../../docs/architecture/decisions.md)); after a bare `terraform apply` instead, run `bin/lambda-alias-sync.sh <env>` by hand. **Both halves after the edit are required.** The re-apply is needed because the ciphertext is a resource, so a function still holding the old blob decrypts the old value. The alias sync is needed because the apply publishes a new Lambda version while the CI-owned `live` aliases (which the Function URLs target) stay on the old one (issue #590 defect 2). The scripted steps are in [`bin/README.md`](../../bin/README.md) and the manual equivalent in [`infra/README.md`](../../infra/README.md).
 
 ---
 
@@ -136,19 +145,52 @@ The static SvelteKit build inlines `PUBLIC_*` vars at build time. The CI workflo
 | `PUBLIC_SUPABASE_URL` | `PUBLIC_SUPABASE_URL` | the raw `https://<ref>.supabase.co` (`api.threkir.com` is a Pro-only custom domain, not provisioned on Free) |
 | `PUBLIC_SUPABASE_ANON_KEY` | `PUBLIC_SUPABASE_ANON_KEY` | the **publishable** key, not service-role |
 | `PUBLIC_MAPTILER_KEY` | `PUBLIC_MAPTILER_KEY` | shared with mobile + Wear OS |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | hosted Web Paywall Link; required for prod (build guard) |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | hosted Web Paywall Link; optional — unset with a Pro perk on sells Pro in the iPhone app only (decisions § 1826), a set value must be `https://pay.rev.cat/<token>` (build guard) |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | optional customer-portal link |
 | `PUBLIC_SENTRY_DSN` | `PUBLIC_SENTRY_DSN` | optional — empty disables client-side capture |
+| `PUBLIC_LIVE_HUB_URL` | `PUBLIC_LIVE_HUB_URL` | optional — unset keeps the live path on Supabase Realtime |
+| `PUBLIC_VAPID_PUBLIC_KEY` | `PUBLIC_VAPID_PUBLIC_KEY` | optional — unset leaves the browser-push card reading "not configured" ([native_push.md](../../docs/features/native_push.md)) |
 | `PUBLIC_APP_RELEASE` | derived from CI tag (e.g. `web@1.2.3`) | tags Sentry events |
+
+**Fail-closed feature gates.** Each reads one `PUBLIC_*` key, treats
+unset / empty / `false` / `0` as off, and is written by the same step. Most of
+them reached no release step at all until 2026-09-19, so the surface behind each
+was off in production permanently and no secret could change it
+([decisions § 1683](../../docs/architecture/decisions.md)); a PR that adds an
+unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
+`true` **is** the deploy-time action a compliance sign-off authorises.
+
+| Variable | Gates | Flipping it needs |
+|---|---|---|
+| `PUBLIC_COACH_ENABLED` | the AI coach (a Pro perk) | an Anthropic key on the coach Lambda |
+| `PUBLIC_ROUTE_GEN_ENABLED` | route generation (a Pro perk) | the graph-cycle sidecar deployed |
+| `PUBLIC_PLATE_PHOTO_ENABLED` | the plate-photo logger on `/nutrition/log` (a Pro perk; also needs `PUBLIC_COACH_ENABLED`, and `PLATE_PHOTO_ENABLED` on the coach Lambda) | counsel + CISO sign-off on the v5 AI-disclosure copy, owner sign-off on the vision spend |
+| `PUBLIC_AI_PLAN_ENABLED` | the AI plan assistant box on `/plans/new` (also needs `PUBLIC_COACH_ENABLED`; not a Pro perk). Flip it together with `AI_PLAN_ENABLED=true` in the coach Lambda's sops config, the endpoint's server half | owner + counsel sign-off on superseding decisions §12, and sign-off on the v3 AI-disclosure copy |
+| `PUBLIC_AI_PLAN_EDIT_ENABLED` | Adjust with AI on `/plans/[id]` (also needs `PUBLIC_COACH_ENABLED`; not a Pro perk). Flip it together with `AI_PLAN_EDIT_ENABLED=true` in the coach Lambda's sops config, the endpoint's server half, which also turns on the Coach's plan-edit handoff | owner + counsel sign-off on decisions § 1979, and sign-off on the v4 AI-disclosure copy |
+| `PUBLIC_COACH_FUEL_ENABLED` | `/nutrition/fuel`, the deterministic fuelling page the Coach links a fuelling question to. Flip it together with `COACH_FUEL_ENABLED=true` in the coach Lambda's sops config, which adds the handoff to the Coach's system prompt. Adds no model call and no AI-disclosure rung (decisions § 1975) | owner + counsel sign-off ([race_fueling_plan.md § Pre-deploy checklist (Coach fuelling handoff)](../../docs/features/race_fueling_plan.md)) |
+| `PUBLIC_GOOGLE_AUTH_ENABLED` | Google sign-in on `/login` | the Supabase `google` provider configured ([google_provisioning.md](../../docs/ops/google_provisioning.md)) |
+| `PUBLIC_OFF_ROUTE_ESCALATION_ENABLED` | off-route → auto-notify-contact | owner + CISO + counsel |
+| `PUBLIC_WEIGH_IN_ENABLED` | the Art 9 weigh-in / medical UI | owner + CISO + counsel |
+| `PUBLIC_ENABLE_NEARBY_RUNNERS` | the nearby-runners discovery surface | owner + CISO + counsel |
+| `PUBLIC_ADAPTIVE_FITNESS_GATE` | fitness-directed plan generation (P2) | CISO / Security Analyst |
+| `PUBLIC_WEIGHT_FLUID_ENABLED` | the "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976); off, neither page reads a body weight and the flat rate stands. Flip together with mobile's `WEIGHT_FLUID_ENABLED` | CISO + counsel review of a new Art 9 use of body weight against the health-data consent copy ([race_fueling_plan.md § Pre-deploy checklist (weight-based fluid)](../../docs/features/race_fueling_plan.md)) |
+| `PUBLIC_FUNDRAISING_ENABLED` | donations / fundraiser pages | Stripe Connect + owner + CISO + counsel |
+| `PUBLIC_CYCLE_PLANS_ENABLED` | the Art 9 cycle / pregnancy plan-adjust UI | owner + CISO + counsel |
+| `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` | MapTiler's basemap and terrain in the flyover **video** export (decisions § 2259); off, and with no local `PUBLIC_TILE_STYLE_URL` override, the export is not offered at all (§ 2270), and the on-screen 3D preview is unaffected. Flip together with mobile's `FLYOVER_VIDEO_MAPTILER_ENABLED`, which offers the phone's run **Video** share style (§ 2271) | operator confirms MapTiler's plan terms permit its terrain and imagery in published video (§ 2251 checklist) |
+| `PUBLIC_COURSE_DRIVE_ENABLED` | Drive this course on the route and race pages: the Maps hand-off, the "can't follow" check and the notes list ([course_drive.md](../../docs/features/course_drive.md), decisions § 2380); unset → no entry point renders. Flip together with mobile's `COURSE_DRIVE_ENABLED`, which adds the spoken notes | counsel signs off on the driver safety notice wording (decisions § 150; [deployment.md](../../docs/ops/deployment.md) pre-deploy checklist) |
 
 **Anything that should stay server-side does NOT have the `PUBLIC_` prefix and lives in the Lambda's env**, set by Terraform from the sops-encrypted file — not in the SvelteKit build, not in GitHub Secrets. The coach Lambda reads:
 
 | Lambda env var | Source | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | sops-encrypted at `infra/envs/<env>/secrets.enc.yaml` (env-specific AWS KMS key) | server-only — `/api/coach` reads it |
+| `ANTHROPIC_API_KEY` | sops-encrypted in the private estate repo (env-specific AWS KMS key), then re-encrypted by Terraform into `aws_kms_ciphertext.coach` | server-only — never a plaintext Lambda env var; `/api/coach` decrypts the blob at cold start ([decisions § 1671](../../docs/architecture/decisions.md)) |
 | `SENTRY_DSN` | same sops file | optional — server-side capture |
 | `APP_RELEASE` | passed at deploy time as a Terraform variable, derived from the CI tag | tags Sentry events |
 | `COACH_PROVIDER` / `OPENAI_BASE_URL` | optional — set in `terraform.tfvars` per env | for self-hosted Ollama / OpenAI-compatible service |
+| `AI_PLAN_ENABLED` | non-credential config in the same sops file (`coach_config_keys` in `infra/modules/web-stack/main.tf`) | server half of `PUBLIC_AI_PLAN_ENABLED`: `/api/coach/plan-request` and `/api/coach/season-request` answer 503 unless truthy. Unset means off |
+| `AI_PLAN_EDIT_ENABLED` | same | server half of `PUBLIC_AI_PLAN_EDIT_ENABLED`: `/api/coach/plan-edit` answers 503 unless truthy, and the Coach links into AI plan edits only when it is (decisions § 1979) |
+| `PLATE_PHOTO_ENABLED` | same | server half of `PUBLIC_PLATE_PHOTO_ENABLED`: `/api/coach/plate-photo` answers 503 unless truthy (decisions § 1972) |
+| `COACH_FUEL_ENABLED` | same | server half of `PUBLIC_COACH_FUEL_ENABLED`: the Coach's system prompt carries the fuelling handoff only when truthy (decisions § 1975) |
 | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` | non-secret — passed as Terraform vars from CI environment, written to Lambda env directly | the Lambda needs them to validate the user's JWT and call `is_pro()` / `increment_coach_usage` RPCs |
 
 The generate-route Lambda reads one additional non-secret var:
@@ -189,9 +231,9 @@ Preview environment fires on every push to `main` against the `preview` env's bu
 
 The only SSR route in the app, and the only one that costs money to run.
 
-**Cost model.** Each chat turn is a streaming call to `claude-sonnet-4-5` (`apps/web/src/lib/coach/providers.ts:49`). At ~3k input tokens + 1k output per turn × ~5k turns/month at launch ≈ $15. The hard ceiling is the per-user daily cap in `TIER_LIMITS` (2/day for free, 10/day for pro per [paywall.md](../../docs/features/paywall.md)), enforced server-side in the Lambda via the shared `increment_coach_usage` + `usedToday > TIER_LIMITS[tier].dailyLimit` gate before any provider call streams. Per-turn token spend is bounded by `TIER_LIMITS.{free,pro}.maxTokens` (768 / 2048). Worst-case Anthropic spend per Pro user is ~$0.50/day (10 turns × 2048 output × $15/M + ~50k input × $3/M) — comfortably under the $9.99/mo price. Adjust any of these knobs in `apps/web/src/lib/coach/types.ts` if costs spike.
+**Cost model.** Each chat turn is a streaming call to `claude-sonnet-5-5` (`COACH_ANTHROPIC_MODEL` in `apps/web/src/lib/coach/providers.ts`) at $2 / $10 per million input / output tokens, $0.20 for a prompt-cache read. At ~3k input tokens + 1k output per turn × ~5k turns/month at launch that is $50 of output plus $3–30 of input depending on how much of the system prompt + context turn is served from the cache — **≈ $53–80/month**. (This line used to say ≈ $15, which did not follow from its own inputs even at the old $3 / $15 pricing: those gave ≈ $120.) The hard ceiling is the per-user daily cap in `TIER_LIMITS` (2/day for free, 10/day for pro per [paywall.md](../../docs/features/paywall.md)), enforced server-side in the Lambda via the shared `increment_coach_usage` + `usedToday > TIER_LIMITS[tier].dailyLimit` gate before any provider call streams. Per-turn token spend is bounded by `TIER_LIMITS.{free,pro}.maxTokens` (768 / 2048). Worst-case Anthropic spend per Pro user is ~$0.30/day (10 turns × 2048 output × $10/M ≈ $0.20 + ~50k input × $2/M = $0.10) — comfortably under the $9.99/mo price. Adjust any of these knobs in `apps/web/src/lib/coach/types.ts` if costs spike.
 
-**Anthropic console hard spend cap — REQUIRED before first prod traffic.** Set a workspace-level monthly spend ceiling at <https://console.anthropic.com/settings/limits> on the production API key. This is the second of two ceilings on Anthropic spend — the first is the Lambda-level cap (`lambda_reserved_concurrency = 20` × per-turn `maxTokens` × per-day cap = bounded burst even with a leaked WAF). The console-side cap is the only thing that bounds spend if the key itself leaks: an attacker with the key reaches Anthropic directly, never touches CloudFront / WAF / the Lambda. Suggested initial cap: $50/mo (≈ 3× the projected at-launch spend of $15). Tracked in [audit/cost-controls](../../.claude/commands/audit/cost-controls.md) — that audit re-flags this each pass until the cap is confirmed set in the console (no programmatic check possible).
+**Anthropic console hard spend cap — REQUIRED before first prod traffic.** Set a workspace-level monthly spend ceiling at <https://console.anthropic.com/settings/limits> on the production API key. This is the second of two ceilings on Anthropic spend — the first is the Lambda-level cap (`lambda_reserved_concurrency = 20` × per-turn `maxTokens` × per-day cap = bounded burst even with a leaked WAF). The console-side cap is the only thing that bounds spend if the key itself leaks: an attacker with the key reaches Anthropic directly, never touches CloudFront / WAF / the Lambda. Suggested initial cap: $50/mo, chosen as ≈ 3× a projected at-launch spend of $15 — but that projection was wrong (see the cost model above: ≈ $53–80/month at 5k turns), so $50 sits **below** the corrected projection and would start refusing coach turns before 5k turns/month. Revisit the console value against real usage before traffic approaches that volume. Tracked in [audit/cost-controls](../../.claude/commands/audit/cost-controls.md) — that audit re-flags this each pass until the cap is confirmed set in the console (no programmatic check possible). **Confirmed set by hand 2026-09-18**, so the audit should record it satisfied rather than re-flag; the cap itself is only visible in the console.
 
 **Latency.** First-token latency is ~300-500 ms from `us-east-1` Lambda → Anthropic. Lambda response streaming is enabled (`InvokeMode = RESPONSE_STREAM` on the Function URL); CloudFront passes the stream through without buffering on the `/api/coach/*` behaviour by setting `OriginRequestPolicy.AllViewerExceptHostHeader` and disabling response buffering on the cache policy.
 
@@ -207,7 +249,7 @@ The only SSR route in the app, and the only one that costs money to run.
 
 ## Generate-route `/api/routes/generate` specifics — Lambda
 
-Distance-targeted loop generation (decisions §137). `apps/web/lambda/generate-route/` wraps `$lib/routes/generate/handler` as a non-streaming JSON Function URL handler (mirroring `lambda/coach` + `lambda/share-route`); `build.mjs` bundles via esbuild → `dist/generate-route.zip`. CloudFront routes `/api/routes/generate*` to it; CI's `release-web.yml` updates the Lambda code on every published `web@*` GitHub Release.
+Distance-targeted loop generation (decisions §575). `apps/web/lambda/generate-route/` wraps `#lib/routes/generate/handler` as a non-streaming JSON Function URL handler (mirroring `lambda/coach` + `lambda/share-route`); `build.mjs` bundles via esbuild → `dist/generate-route.zip`. CloudFront routes `/api/routes/generate*` to it; CI's `release-web.yml` updates the Lambda code on every published `web@*` GitHub Release.
 
 **Why a server-side hop at all.** The browser must never call GraphHopper directly — the request carries the user's start coordinates, and `GRAPHHOPPER_URL` is a server-only env (never `PUBLIC_`) so those coordinates stay inside our infra. The Lambda is the only thing that talks to the engine. The same posture now holds on the OSRM side: the route builder's manual snapping/routing rides the osrm-proxy Lambda below (issue #198), so no routing engine is reachable from the browser.
 
@@ -223,9 +265,9 @@ Distance-targeted loop generation (decisions §137). `apps/web/lambda/generate-r
 
 **CloudWatch alarms (wired by the `web-stack` module, same SNS topic as coach):**
 
-- generate-route Lambda error rate >2% over 5 min → `web-prod-alerts`
+- generate-route Lambda error rate >2% across two 5-min windows → `threkir-web-<env>-alerts`
 - generate-route Lambda p95 duration >12 s over 5 min (approaching the 15 s timeout, a sign the engine is slow / overloaded) → same topic
-- generate-route Lambda throttles >0 in any 1 min window → same topic
+- generate-route Lambda throttles ≥ the per-env threshold → same topic (the reserved concurrency is the engine's load ceiling; a throttle increments `Throttles`, never `Errors`, so the error-rate alarm above cannot see it)
 
 A spike in `502`s is the engine-down signal — the alarms above plus a Better Stack probe of the GraphHopper Fly app's health endpoint catch it; the client degrades to the OSRM heuristic in the meantime, so an engine outage is a quality regression, not an outage of the route builder.
 
@@ -233,7 +275,7 @@ A spike in `502`s is the engine-down signal — the alarms above plus a Better S
 
 ## OSRM proxy `/api/routes/osrm/*` specifics — Lambda
 
-The server hop for the route builder's manual waypoint snapping (`/nearest/v1/...`) and per-segment routing (`/route/v1/...`) against the self-hosted OSRM engine (issue #198). `apps/web/lambda/osrm-proxy/` wraps `$lib/routes/osrm_proxy/handler` as a GET-only JSON Function URL handler (same two-wrapper shape as generate-route); CloudFront routes `/api/routes/osrm*` to it; CI's `release-web.yml` updates the code on every published `web@*` Release.
+The server hop for the route builder's manual waypoint snapping (`/nearest/v1/...`) and per-segment routing (`/route/v1/...`) against the self-hosted OSRM engine (issue #198). `apps/web/lambda/osrm-proxy/` wraps `#lib/routes/osrm_proxy/handler` as a GET-only JSON Function URL handler (same two-wrapper shape as generate-route); CloudFront routes `/api/routes/osrm*` to it; CI's `release-web.yml` updates the code on every published `web@*` Release.
 
 **Why it exists.** The builder used to fetch the OSRM host directly from the browser over `PUBLIC_OSRM_URL`, shipping the user's pin coordinates (routinely their home) + client IP with no server boundary — the exact exposure the GraphHopper hop closed on the generate path. `OSRM_URL` is server-only; the browser only ever sees the same-origin proxy path.
 
@@ -241,11 +283,11 @@ The server hop for the route builder's manual waypoint snapping (`/nearest/v1/..
 
 **Response contract.** Passes the OSRM JSON through on success. `400` malformed path/query, `401` unauthenticated, `501` when `OSRM_URL` is unconfigured, `502` when the engine is down (or answered non-200), `503` on an unhandled error. The client treats any non-200 exactly as it treated a failed OSRM call before: a failed snap returns the un-snapped pin, a failed segment falls back to a straight line with the existing warning banner.
 
-**Demo fallback is dev-only.** The dev SvelteKit wrapper may fall back to `router.project-osrm.org` when `OSRM_URL` is unset (local convenience, NODE_ENV-gated); the Lambda hard-codes the fallback off, so production can never leak coordinates to the uncontracted community endpoint. `security_guards.test.ts` pins both halves.
+**Demo fallback is dev-only.** The dev SvelteKit wrapper may fall back to `router.project-osrm.org` when `OSRM_URL` is unset (local convenience, NODE_ENV-gated); the Lambda hard-codes the fallback off, so production can never leak coordinates to the uncontracted community endpoint. `consent_guards.test.ts` pins both halves.
 
 **Memory + timeout.** 256 MB, 15 s. Each invocation is one auth round trip + one engine fetch (10 s upstream timeout inside the handler).
 
-**CloudWatch alarms (same SNS topic as coach):** error rate >2% over two 5-min windows, plus an `engine_unreachable` log-metric alarm mirroring generate-route's — a down OSRM engine is a clean 502, not a Lambda throw, so the Errors metric alone would sleep through the outage while every user silently degrades to straight-line segments.
+**CloudWatch alarms (same SNS topic as coach):** error rate >2% over two 5-min windows, a p95 duration alarm at >12 s against the 15 s timeout, a throttle alarm, and an `engine_unreachable` log-metric alarm mirroring generate-route's — a down OSRM engine is a clean 502, not a Lambda throw, so the Errors metric alone would sleep through the outage while every user silently degrades to straight-line segments. A *slow* engine is the same story one step earlier: the duration climbs toward the timeout with a flat error rate, which is why the p95 alarm matters here and why it was the one this Lambda shipped without (added 2026-09-02, [decisions § 890](../../docs/architecture/decisions.md)).
 
 ---
 
@@ -267,9 +309,9 @@ Both run Node 24 / arm64 / 512 MB (the @resvg PNG rasteriser needs the headroom)
 `apps/web/static/sw.js` registers as the push-notification service worker (decisions §38). Two prerequisites for it to work in production:
 
 1. **HTTPS only.** CloudFront + ACM handle this — the distribution forces `redirect-to-https` and serves a valid cert.
-2. **VAPID keys.** Generated once with `npx web-push generate-vapid-keys`. The public key is checked into `apps/web/src/lib/push.ts`; the private key lives in Supabase EF env (`VAPID_PRIVATE_KEY`) so the EF can sign push messages. Update both halves together if rotated.
+2. **VAPID keys.** Generated once with `npx web-push generate-vapid-keys`. The public half is a build input, not a checked-in constant: `PUBLIC_VAPID_PUBLIC_KEY` (a repo secret, declared in `src/env.ts` and read by `src/lib/util/push.ts` from `$app/env/public`), and an unset one leaves `isPushConfigured()` false so no browser ever subscribes. The private half is a **Fly secret on the worker** (`VAPID_PRIVATE_KEY`, beside `VAPID_PUBLIC_KEY` + `VAPID_SUBJECT`) — no Edge Function signs push; the sender is `apps/job_worker/internal/webpush`. The worker refuses to boot on a mismatched pair, but it cannot see a web build carrying a third key, so rotate the two ends together. Runbook: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
-The `Notifications` row in the database carries the user's subscription endpoint (in `user_device_settings.prefs.push_subscription`); EF triggers (`notify_run_kudos` etc.) issue HTTP POSTs to those endpoints.
+A subscription is stored per device on `user_device_settings.prefs.push_subscription` (written by the `set_push_subscription` RPC). Delivery is a **sibling consumer of the `notifications` table**, not a trigger that POSTs: an insert enqueues a `web_push` job, the Go worker drains it, gates on the `push_notifications` pref, sends, and prunes a dead endpoint (404/410) via `clear_push_subscription`.
 
 ---
 
@@ -287,13 +329,37 @@ The `Notifications` row in the database carries the user's subscription endpoint
 
 **CloudWatch alarms (wired by the `web-stack` module):**
 
-- Coach Lambda error rate >2% over 5 min → SNS topic `web-prod-alerts`
-- Coach Lambda p95 duration >25 s over 5 min (approaching the 30 s timeout) → same topic
-- Coach Lambda throttles >0 in any 1 min window → same topic
-- generate-route Lambda error rate / p95 duration / throttles → same topic (thresholds in the generate-route section above — its timeout is 15 s, so the duration alarm fires at >12 s)
-- Each of the four share Lambdas (run / route / recap / badge): error rate / p95 duration → same topic; plus a `share-<surface>-upstream-unreachable` log-metric-filter alarm that fires when the lookup logs `[share-<surface>] upstream_unreachable` (Supabase down → every unfurl silently degrades to the branded fallback card at HTTP 200/404, which the `Errors` metric can't see — the sibling of generate-route's `engine_unreachable` alarm)
-- 4xx rate at the CloudFront distribution >5% over 5 min → same topic (catches mass auth failures, SPA fallback misconfig, etc.)
-- 5xx rate at the distribution >1% over 5 min → same topic
+Every alarm evaluates two consecutive 5-minute windows and treats missing data
+as not-breaching, so a quiet preview env never sits in ALARM.
+
+> **Which of these exist is per env, via `alarm_tier`.** The list below is the
+> `"full"` set. Prod runs `"essential"` — coach error rate, CloudFront 5xx, the
+> three throttle alarms and the bypass-paywall tripwire (7 alarm metrics) — and
+> preview runs `"none"`, because the CloudWatch free tier is 10 alarm metrics
+> shared across the whole AWS Organization, and the full set is ~40 per env. The
+> p95, per-share-surface, `engine_unreachable` and CloudFront 4xx alarms are
+> declared but not created in prod; those signals are still in the metrics and
+> logs, just unpaged. Set `alarm_tier = "full"` in an env's `main.tf` to restore
+> them (~$0.10 per alarm metric per month past the free 10).
+
+- Coach Lambda error rate >2% → SNS topic `threkir-web-<env>-alerts`
+- Coach Lambda p95 duration >25 s (approaching the 30 s timeout) → same topic
+- Throttles ≥ `lambda_throttle_alarm_threshold` (prod 1, preview 5) on **coach, generate-route and osrm-proxy** → same topic. A throttled invocation increments `Throttles` and never `Errors`, so no error-rate alarm can see one; these three are the functions whose reserved concurrency is a deliberate ceiling on spend or on an engine's load. The five share Lambdas deliberately have none — concurrency-capped buffered reads whose degradation their upstream alarms already cover.
+- generate-route Lambda error rate >2% / p95 duration >12 s (its timeout is 15 s) → same topic
+- osrm-proxy Lambda error rate >2% / p95 duration >12 s → same topic
+- Each of the **five** share Lambdas (run / route / recap / badge / entity): error rate >2% / p95 duration >12 s → same topic; plus a `share-<surface>-upstream-unreachable` log-metric-filter alarm that fires when the lookup logs `[share-<surface>] upstream_unreachable` (Supabase down → every unfurl silently degrades to the branded fallback card at HTTP 200/404, which the `Errors` metric can't see — the sibling of generate-route's `engine_unreachable` alarm). The shared entity Lambda serves six surfaces, so it carries six of those filters against its one log group.
+- 4xx rate at the CloudFront distribution >5% → same topic (mass auth failure, a behaviour that stopped routing, an SPA fallback that stopped falling back)
+- 5xx rate at the distribution >1% → same topic
+
+> The two distribution alarms landed 2026-09-02. Until then this list claimed
+> them and `alarms.tf` declared neither, so the v1 observability bar below —
+> "someone gets paged when the site is down" — was met by per-Lambda alarms
+> alone. `scripts/check_infra_coverage.mjs` now fails the PR if either is
+> removed. Note what even the 5xx alarm cannot see: CloudFront applies custom
+> error responses per **distribution**, so this stack's SPA `403/404 →
+> /index.html at 200` fallback rewrites a Lambda-origin 403 or 404 before it is
+> ever counted ([decisions § 890](../../docs/architecture/decisions.md)). The
+> per-Lambda alarms are the only witness to those.
 
 The SNS topic forks to email (oncall) and PagerDuty if/when set up. For pre-launch a single email subscription is enough; route to `oncall@threkir.com` once the team is real.
 
@@ -360,7 +426,7 @@ If the AWS account itself is lost, recovery is roughly:
 2. `cd infra/bootstrap && terraform init && terraform apply` — recreates the state bucket.
 3. `cd ../dns && terraform init && terraform apply` — recreates the hosted zone + ACM cert.
 4. `cd ../github-oidc && terraform init && terraform apply -var "github_repo=<owner>/<repo>"` — recreates the OIDC trust + deploy roles.
-5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated; the existing `secrets.enc.yaml` files are encrypted with the OLD KMS key and unrecoverable.** Re-issue the secrets fresh (Anthropic key, Sentry DSN), `sops` them against the new KMS key ARN, then re-apply.
+5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated. The estate's existing `../infra-secrets/threkir/*.sops.yaml` ciphertext is encrypted under the OLD key and cannot be recovered**, because KMS keys don't survive the account. The estate repo backs up the encrypted blobs, not the key. Re-issue the secrets fresh (Anthropic key, Supabase secret key, Sentry DSN). Run `bin/sops-init.sh prod` to wire the new KMS ARN into the estate `.sops.yaml` and seed a new encrypted file, and `bin/secret-set.sh prod <KEY>` for each value. Then re-apply, so the `aws_kms_ciphertext` blobs are rebuilt under the new key.
 6. Update the domain registrar's NS records to point at the new Route 53 hosted zone.
 7. Push the desired tag to trigger a deploy.
 
@@ -372,23 +438,30 @@ RTO: ~2 hours from a cold-start of a new account if the domain is at a registrar
 
 ## Production readiness checklist
 
-- [ ] AWS account created (or sub-account in an org), root MFA enabled
-- [ ] `infra/envs/prod/terraform.tfvars` sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED)
-- [ ] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native)
-- [ ] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless)
-- [ ] Domain `threkir.com` registered (Route 53 or external + delegated)
-- [ ] Route 53 hosted zone live, NS records propagated
-- [ ] ACM cert issued in `us-east-1`, DNS-validated
-- [ ] Terraform applied (in order): `infra/dns`, `infra/github-oidc`, `infra/envs/preview`, `infra/envs/prod`
-- [ ] GitHub OIDC role trust policy verified (only the repo + ref scopes intended can assume it)
-- [ ] sops file populated: `infra/envs/prod/secrets.enc.yaml` (with `ANTHROPIC_API_KEY`, `SENTRY_DSN`); same for `preview/`
-- [ ] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW`
-- [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com`
-- [ ] First prod deploy green via tag `web@0.1.0`
-- [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`)
-- [ ] Push notification flow verified end-to-end (subscribe in Settings, trigger via a kudos on another account)
-- [ ] CloudWatch alarms wired to SNS → email (or PagerDuty)
-- [ ] Sentry frontend + server projects receiving events
+Reconciled 2026-09-28 against what the prod deploys actually did (`web@1.6.0` run 35290005290, 2026-09-18, through `web@1.8.0` run 35556025161, 2026-09-21), public DNS / TLS / HTTP, and GitHub secret *names*. A box is ticked only where that evidence exists; `preview` has never been built (the account holds one distribution and `preview.threkir.com` resolves to nothing, see [`docs/ops/deployment.md`](../../docs/ops/deployment.md)), so every preview leg stays open.
+
+- [x] AWS account created (or sub-account in an org) — the `Threkir` member account of the personal AWS Organization; every `release-web.yml` prod run since `web@1.0.3` assumes its deploy role
+- [ ] AWS account root MFA enabled — not verifiable from the repo or GitHub; confirm in the org's IAM console
+- [x] Prod tfvars sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED) — both keys present in the estate's `infra-secrets/threkir/prod.tfvars` (the canonical copy `infra/envs/prod/terraform.tfvars` symlinks to; key names checked 2026-09-28, values not read)
+- [x] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native) — every later stack's `backend.tf` initialises against it; `infra/dns` planned clean and `infra/github-oidc` applied through it on 2026-09-18 (#922, #928)
+- [x] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless) — CloudFront serves the ACM cert below, which it only accepts from `us-east-1`
+- [x] Domain `threkir.com` registered (Route 53 or external + delegated) — registered 2026-05-24 through Amazon Registrar (`whois`, checked 2026-09-28)
+- [x] Route 53 hosted zone live, NS records propagated — `dig NS threkir.com` returns the four `awsdns` servers the registrar lists (2026-09-28)
+- [x] ACM cert issued in `us-east-1`, DNS-validated — Amazon RSA 2048 M04, SANs `threkir.com` / `www.threkir.com` / `preview.threkir.com`, valid 2026-07-11 to 2027-01-24 (served on `:443`, checked 2026-09-28)
+- [x] Terraform applied: `infra/dns`, `infra/github-oidc`, `infra/envs/prod` — `dns` plans clean (#922, 2026-09-18); `github-oidc` applied 2026-09-18 for the immutable-subject fix (#928); `envs/prod` is what the deploy runs resolve (`threkir-web-prod-site`, the eight `threkir-web-prod-*` Lambdas, the distribution aliased `threkir.com`)
+- [ ] Terraform applied: `infra/envs/preview` — never applied; no `preview.tfvars` in the estate, and no preview distribution exists
+- [x] GitHub OIDC role trust policy verified (only the repo + ref scopes intended can assume it) — the prod role trusts only `…:environment:production` under the repo's immutable subject (#928, 2026-09-18), and `scripts/check_infra_iam.mjs` pins that shape on every PR
+- [x] sops file populated for prod: `infra-secrets/threkir/prod.sops.yaml` (with `ANTHROPIC_API_KEY`, `SENTRY_DSN`) — key names read off the encrypted file 2026-09-21 (#922); in-repo `secrets.enc.yaml` is ruled out (decisions § 53)
+- [ ] sops file populated for preview: `infra-secrets/threkir/preview.sops.yaml` — only `preview.sops.yaml.example` exists
+- [ ] The sops values reach the serving Lambdas — needs the `infra/envs/prod` apply in [`docs/ops/deployment.md` § Lambda secrets](../../docs/ops/deployment.md) (`bin/deploy-prod.sh` repoints the `live` aliases itself since [decisions § 1825](../../docs/architecture/decisions.md)); `POST https://threkir.com/api/coach` still answers 503 (2026-09-28)
+- [x] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_SENTRY_DSN`, `PUBLIC_VAPID_PUBLIC_KEY`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW` — all on `gh secret list` (2026-09-28); the release's `check_production_env.mjs` guard passed on every run above
+- [ ] GitHub Secrets `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` + `PUBLIC_REVENUECAT_WEB_PORTAL_URL` — unset, and the live bundle ships both empty. `PUBLIC_COACH_ENABLED=true` is set (2026-10-10), so Pro is sold through the iPhone app only and `/settings/upgrade` says so (the `app_only` storefront, decisions § 1826); the release guard prints a `::notice::` for it rather than failing. Set the checkout URL after live Stripe activation + the tax decision (#1081 S6.x) to turn web checkout on
+- [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com` — blocked on the preview stack above; `release-web.yml` also has no preview trigger yet
+- [x] First prod deploy green — `web@1.0.3`, run 29143725709, 2026-07-11 (a tag push, before the published Release became the deploy gate; a bare `web@*` tag deploys nothing now). Latest: `web@1.8.0`, run 35556025161, 2026-09-21
+- [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`) — 503 today and `PUBLIC_COACH_ENABLED` is empty on the live bundle
+- [ ] Push notification flow verified end-to-end (enable in Settings → Notifications, then request a data export — `data_export_ready` is an important kind; a kudos is not, and is filtered by the default `push_notifications` pref, #952) — the key reached the bundle with `web@1.7.1`, but nobody has received a browser push yet (#922)
+- [ ] CloudWatch alarms wired to SNS → email (or PagerDuty) — alarms + topic are Terraformed in the applied prod stack and `alert_emails` is set in the estate tfvars; the email subscription's confirmation has not been checked
+- [ ] Sentry frontend + server projects receiving events — `PUBLIC_SENTRY_DSN` has been in the build since `web@1.7.0`; no event has been confirmed
 - [ ] Better Stack probe configured
 - [ ] Anthropic cost alert set
 - [ ] Rollback drill: deploy a known-bad commit, run the rollback procedure, confirm the site recovers within 60 s

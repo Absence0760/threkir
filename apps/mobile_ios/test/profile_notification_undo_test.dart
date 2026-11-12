@@ -13,11 +13,11 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/widgets/undo_bar.dart';
+import 'supabase_test_init.dart';
 
 NotificationRow _row(String id, {String actorId = 'a1'}) => NotificationRow(
       id: id,
@@ -25,6 +25,7 @@ NotificationRow _row(String id, {String actorId = 'a1'}) => NotificationRow(
       actorId: actorId,
       kind: 'follow',
       createdAt: DateTime.utc(2026, 8, 5, 12),
+      refunded: false,
     );
 
 class _NotifApi extends ApiClient {
@@ -52,14 +53,14 @@ class _NotifApi extends ApiClient {
       const [];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async => const [];
@@ -82,10 +83,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

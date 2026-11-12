@@ -1,34 +1,64 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatPace, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration } from '$lib/format/time';
-	import { fetchPublicRun, fetchClippedTrackForRun, fetchTrackByPath } from '$lib/core/data';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import RunSocial from '$lib/components/RunSocial.svelte';
-	import RunPhotos from '$lib/components/RunPhotos.svelte';
-	import RunGearChips from '$lib/components/RunGearChips.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { resolveTrackOwnership } from '$lib/runs/track_ownership';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run, TrackPoint } from '$lib/types';
+	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { fetchViewableRun, fetchClippedTrackForRun, fetchTrackByPath } from '#lib/core/data.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
+	import { elevationSourceTrack } from '#lib/runs/key_stats.ts';
+	import { runAltitude } from '#lib/runs/run_altitude.ts';
+	import RunSocial from '#lib/components/RunSocial.svelte';
+	import RunPhotos from '#lib/components/RunPhotos.svelte';
+	import RunGearChips from '#lib/components/RunGearChips.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { resolveTrackOwnership } from '#lib/runs/track_ownership.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Run, TrackPoint } from '#lib/types.ts';
 
 	let {
 		runId,
 		compact = false,
 		headerless = false,
 		hideAnonCta = false,
-	}: { runId: string; compact?: boolean; headerless?: boolean; hideAnonCta?: boolean } = $props();
+		ontrack,
+	}: {
+		runId: string;
+		compact?: boolean;
+		headerless?: boolean;
+		hideAnonCta?: boolean;
+		/** The track this view drew (clipped for a non-owner), the run's heading and source, once loaded. */
+		ontrack?: (track: TrackPoint[], title: string, source: string | null) => void;
+	} = $props();
 
 	let run = $state<Run | null>(null);
 	let track = $state<TrackPoint[]>([]);
 	let loading = $state(true);
 	let notFound = $state(false);
+	// Distinct from `notFound`: this page is mostly reached by someone the
+	// runner shared a link with, and a stranger cannot tell a broken read from
+	// a deleted run. Telling them the run does not exist is a claim; telling
+	// them it could not be loaded is the truth, and it is the one they can act
+	// on by retrying.
+	let loadError = $state(false);
+	/// The run is not public: it reached this viewer through its owner's
+	/// followers level or a named-person share (decisions § 1874).
+	let sharedWithMe = $state(false);
 
-	onMount(async () => {
-		const r = await fetchPublicRun(runId);
+	async function load() {
+		loading = true;
+		notFound = false;
+		loadError = false;
+		const { run: r, error, shared } = await fetchViewableRun(runId);
+		sharedWithMe = shared;
+		if (error) {
+			loadError = true;
+			loading = false;
+			return;
+		}
 		if (r) {
 			run = r;
 			// Owner views render the unclipped track via a direct Storage
@@ -84,13 +114,21 @@
 					track = [];
 				}
 			}
+			ontrack?.(track, runTitle || formatDate(r.started_at), r.source ?? null);
 		} else {
 			notFound = true;
 		}
 		loading = false;
-	});
+	}
 
-	let elevations = $derived(track.map((p) => p.ele ?? 0));
+	onMount(load);
+
+	let altitude = $derived(runAltitude(track, run?.source));
+	let elevations = $derived(altitude.track.map((p) => p.ele ?? 0));
+	let elevationGainM = $derived.by(() => {
+		const source = elevationSourceTrack(altitude.track);
+		return source ? Math.round(computeElevationGain(source, altitude.minDeltaM)) : null;
+	});
 
 	// Linked-cursor index — same shape as /runs/[id]. ElevationProfile
 	// onhover sets it; RunMap reads it. Idx-space is shared because
@@ -119,6 +157,11 @@
 
 {#if loading}
 	<p class="status">{m('shell.loading')}</p>
+{:else if loadError}
+	<p class="status" role="alert">
+		{m('runDetail.loadErrorTitle')}
+		<button class="btn btn-outline" onclick={load}>{m('runDetail.retry')}</button>
+	</p>
 {:else if notFound}
 	<p class="status">{m('runShareView.runNotFound')}</p>
 {:else if run}
@@ -141,6 +184,13 @@
 		<span>{formatPace(run.duration_s, run.distance_m)}</span>
 		<span class="meta-sep">&middot;</span>
 		<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+		{#if sharedWithMe}
+			<span class="meta-sep">&middot;</span>
+			<span class="shared-chip" data-testid="run-shared-with-you" title={m('audience.sharedWithYouHint')}>
+				<span class="material-symbols" aria-hidden="true">group</span>
+				{m('audience.sharedWithYou')}
+			</span>
+		{/if}
 		{#if canReport}
 			<button
 				type="button"
@@ -157,11 +207,10 @@
 	{#if track.length > 0}
 		<div class="map-container" class:compact>
 			<!--
-				requireExplicitConsent=true gates MapTiler init behind a
-				"Load map" tap until the user has accepted the cookie
-				banner (auto-passes when accepted). Anon visitors on
-				/share/run/[id] are the load-bearing case for this
-				audit/cookie-consent (2026-05-25) finding.
+				requireExplicitConsent holds MapTiler behind this view's
+				"Load map" tap even after the cookie banner was accepted:
+				the banner covers error reporting only (decisions § 2298
+				amendment).
 			-->
 			<RunMap
 				{track}
@@ -177,11 +226,14 @@
 			<h2>{m('runShareView.elevationProfile')}</h2>
 			<ElevationProfile
 				{elevations}
+				totalGain={elevationGainM}
 				totalDistance={run.distance_m}
 				onhover={(idx) => (chartHoverIdx = idx)}
 			/>
 		</section>
 	{/if}
+
+	<FundraiserSection runId={run.id} isOwner={false} />
 
 	<RunGearChips runId={run.id} runOwnerId={run.user_id} />
 
@@ -304,5 +356,14 @@
 	.cta p {
 		margin-bottom: var(--space-md);
 		color: var(--color-text-secondary);
+	}
+	.shared-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--color-text-secondary);
+	}
+	.shared-chip .material-symbols {
+		font-size: 1rem;
 	}
 </style>

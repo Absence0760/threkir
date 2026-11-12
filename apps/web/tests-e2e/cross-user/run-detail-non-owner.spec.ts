@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
 
 /**
  * /runs[id] — the NON-OWNER branch (issue #666).
@@ -44,11 +45,11 @@ test.describe('/runs/[id] — non-owner branch', () => {
 	let publicRunId: string | null = null;
 	let privateRunId: string | null = null;
 
-	test.beforeEach(async ({ page }) => {
+	test.beforeEach(async ({ page, mockRoute }) => {
 		// The non-owner branch fetches its track through the EF; stub it so
 		// the spec doesn't depend on a planted Storage blob (the clip itself
 		// is pinned by the privacy-zone journey).
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -129,12 +130,15 @@ test.describe('/runs/[id] — non-owner branch', () => {
 
 		// Wire-level: the row exists with alex as author. Rules out a purely
 		// optimistic render.
-		const { data } = await getAdminClient()
-			.from('run_comments')
-			.select('author_id, body')
-			.eq('run_id', publicRunId)
-			.eq('body', body)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'run_comments by run_id+body',
+			getAdminClient()
+				.from('run_comments')
+				.select('author_id, body')
+				.eq('run_id', publicRunId)
+				.eq('body', body)
+				.maybeSingle()
+		);
 		expect(data?.author_id).toBe(USER_B.id);
 	});
 
@@ -156,16 +160,27 @@ test.describe('/runs/[id] — non-owner branch', () => {
 		await kudosBtn.click();
 		await expect(kudosBtn).toHaveClass(/given/);
 
-		const { data } = await getAdminClient()
-			.from('run_kudos')
-			.select('user_id')
-			.eq('run_id', publicRunId)
-			.eq('user_id', USER_B.id)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'run_kudos by run_id+user_id',
+			getAdminClient()
+				.from('run_kudos')
+				.select('user_id')
+				.eq('run_id', publicRunId)
+				.eq('user_id', USER_B.id)
+				.maybeSingle()
+		);
 		expect(data?.user_id).toBe(USER_B.id);
 	});
 
-	test('a PRIVATE run by runner still lands on the not-found state', async ({ page }) => {
+	test('a PRIVATE run by runner still lands on the not-found state', async ({
+		page,
+		mockRoute
+	}) => {
+		mockRoute.neverFires(
+			'**/functions/v1/clip-public-track',
+			'the run resolves to not-found, so the non-owner track branch is never reached — ' +
+				'an invocation means the row leaked far enough to fetch its trace'
+		);
 		// Entitlement is the public_runs row, not "the viewer isn't the
 		// owner". A regression that dropped the is_public gate — or that
 		// widened the non-owner fetch to the base table — would render the

@@ -6,12 +6,13 @@
 		deleteClubPhoto,
 		updateClubPhotoCaption,
 		type ClubPhoto,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { safeImageSrc } from '$lib/util/safe_image_src';
+	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
 	interface Props {
 		clubId: string;
@@ -48,12 +49,12 @@
 		try {
 			const res = await fetchClubPhotosWithError(clubId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'ClubPhotos: loadError');
 				return;
 			}
 			photos = res.photos;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'ClubPhotos: loadError');
 		} finally {
 			loading = false;
 		}
@@ -85,7 +86,7 @@
 			pendingCaption = '';
 			if (fileInput) fileInput.value = '';
 		} catch (e: any) {
-			showToast(m('clubPhotos.uploadFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('clubPhotos.uploadFailed', { error: errorCopy(e, m, 'clubPhotos.uploadFailed') }), 'error');
 		} finally {
 			uploading = false;
 		}
@@ -106,7 +107,7 @@
 			photos = photos.filter((p) => p.id !== target.id);
 			if (lightbox?.id === target.id) lightbox = null;
 		} catch (e: any) {
-			showToast(m('clubPhotos.deleteFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('clubPhotos.deleteFailed', { error: errorCopy(e, m, 'clubPhotos.deleteFailed') }), 'error');
 		}
 	}
 
@@ -124,12 +125,12 @@
 			await updateClubPhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
 		} catch (e: any) {
-			showToast(m('clubPhotos.captionUpdateFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('clubPhotos.captionUpdateFailed', { error: errorCopy(e, m, 'clubPhotos.captionUpdateFailed') }), 'error');
 		}
 	}
 </script>
 
-{#if canUpload || loading || photos.length > 0 || loadError}
+{#if canUpload || loading || photos.length > 0 || loadError !== null}
 <section class={wrapperClass}>
 <div class="photos">
 	<header class="hd">
@@ -149,6 +150,7 @@
 	<input
 		bind:this={fileInput}
 		type="file"
+		data-testid="club-photos-file-input"
 		accept="image/jpeg,image/png,image/webp"
 		hidden
 		onchange={onFileChange}
@@ -182,12 +184,12 @@
 
 	{#if loading}
 		<p class="muted">{m('clubPhotos.loadingPhotos')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('socialClubs.loadErrorText')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('socialClubs.retry')}</button>
 		</div>

@@ -1,16 +1,36 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
+import { dateOfBirth } from '../fixtures/date-of-birth';
+import { browserDate, browserYear } from '../fixtures/dates';
 
 /**
  * /settings/account — profile + email / password / parkrun number /
  * DOB / HR fields. Covers the display-name round-trip + the
- * change-password validation branches; future depth: parkrun number
- * import button, profile avatar upload, account deletion.
+ * change-password validation branches; future depth: profile avatar
+ * upload. The delete-account confirm
+ * challenge is pinned here without deleting anything; the destructive
+ * round-trip lives in cross-user/sagas/account-deletion.spec.ts.
  */
 
 const uniqueText = (prefix: string) =>
 	`${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+/**
+ * GoTrue's user endpoint, with or without the query string an
+ * `emailRedirectTo` puts on it.
+ *
+ * A Playwright glob is anchored at both ends, so `**\/auth/v1/user`
+ * compiles to `^(.*\/)auth/v1/user$` and matches the bare path only —
+ * `updateUser({ email }, { emailRedirectTo })` reaches GoTrue as
+ * `PUT /auth/v1/user?redirect_to=...` and slips straight past it. A
+ * pattern that never matches is worse than no mock at all: the request
+ * escapes to the real server, and every "was never sent" assertion is
+ * then scored against a handler nothing ever invoked.
+ */
+const AUTH_USER_ENDPOINT = /\/auth\/v1\/user(\?|$)/;
 
 test.describe('/settings/account', () => {
 	test.use({ storageState: USER_A.storageStatePath });
@@ -57,8 +77,7 @@ test.describe('/settings/account', () => {
 		page
 	}) => {
 		// parkrun_number is a text column on user_profiles that the
-		// parkrun importer uses to find the user's results page. A
-		// regression that dropped the field from the save payload
+		// barcode card renders. A regression that dropped the field from the save payload
 		// would surface here. Use a placeholder-style value (no real
 		// athletes hit by leaking it) and restore.
 		await page.goto('/settings/account');
@@ -86,6 +105,58 @@ test.describe('/settings/account', () => {
 		await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({
 			timeout: 5_000
 		});
+	});
+
+	test('a parkrun athlete number outside A-plus-digits blocks the save', async ({ page }) => {
+		// The barcode and the column's CHECK both need `A` + digits, so the
+		// field refuses anything else rather than storing a number neither
+		// accepts.
+		// Nothing is saved, so the seed user's number is left alone.
+		await page.goto('/settings/account');
+		await page.waitForLoadState('networkidle');
+
+		const input = page.getByTestId('parkrun-number');
+		await input.fill('123456');
+		await expect(page.getByTestId('parkrun-number-error')).toBeVisible();
+		await expect(input).toHaveAttribute('aria-invalid', 'true');
+		await expect(page.getByRole('button', { name: /Save Profile/ })).toBeDisabled();
+
+		await input.fill(' a123456 ');
+		await expect(page.getByTestId('parkrun-number-error')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: /Save Profile/ })).toBeEnabled();
+	});
+
+	test('a saved athlete number is stored canonical and is the one the barcode shows', async ({
+		page
+	}) => {
+		// The Integrations barcode card reads the stored value, so a number
+		// typed loosely here must come back canonical on both surfaces.
+		await page.goto('/settings/account');
+		await page.waitForLoadState('networkidle');
+		const input = page.getByTestId('parkrun-number');
+		const before = await input.inputValue();
+		const digits = String(Date.now()).slice(-7);
+		const canonical = `A${digits}`;
+
+		try {
+			await input.fill(` a${digits} `);
+			await page.getByRole('button', { name: /Save Profile/ }).click();
+			await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({ timeout: 5_000 });
+
+			await page.reload();
+			await expect(page.getByTestId('parkrun-number')).toHaveValue(canonical);
+			await expect(page.getByRole('button', { name: /parkrun results/i })).toHaveCount(0);
+
+			await page.goto('/settings/integrations');
+			const card = page.getByTestId('parkrun-barcode-card');
+			await expect(card.locator('figcaption')).toHaveText(canonical, { timeout: 10_000 });
+		} finally {
+			await page.goto('/settings/account');
+			await page.waitForLoadState('networkidle');
+			await page.getByTestId('parkrun-number').fill(before);
+			await page.getByRole('button', { name: /Save Profile/ }).click();
+			await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({ timeout: 5_000 });
+		}
 	});
 
 	test('Resting HR save persists across reload', async ({ page }) => {
@@ -119,20 +190,49 @@ test.describe('/settings/account', () => {
 		});
 	});
 
-	test('Date of birth input caps at today and leaves birth years unbounded', async ({
+	test('Date of birth picker reaches 120 years back and refuses a date after today', async ({
 		page
 	}) => {
-		// Mirrors /settings/preferences + /onboarding: `max` of today
-		// blocks a future DOB, and no `min` fences off realistic birth
-		// years decades back (issue #222).
+		// Mirrors /settings/body + /onboarding: the year list starts at this
+		// year and reaches 120 years back, so no realistic birth year is fenced
+		// off (issue #222), and a date after today is refused, not saved.
 		await page.goto('/settings/account');
-		const dob = page.getByLabel('Date of Birth', { exact: true });
-		const max = await dob.getAttribute('max');
-		expect(max).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-		expect(Math.abs(Date.parse(`${max}T00:00:00Z`) - Date.now())).toBeLessThan(
-			48 * 3600 * 1000
+		const dob = dateOfBirth(page);
+		const thisYear = browserYear();
+		await expect(dob.year.locator('option')).toHaveCount(122);
+		await expect(dob.year.locator('option').nth(1)).toHaveAttribute('value', String(thisYear));
+		await expect(dob.year.locator('option').last()).toHaveAttribute(
+			'value',
+			String(thisYear - 120)
 		);
-		expect(await dob.getAttribute('min')).toBeNull();
+
+		await dob.year.selectOption(String(thisYear));
+		await dob.month.selectOption('12');
+		await dob.day.selectOption('31');
+		if (!browserDate().endsWith('-12-31')) {
+			await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
+		}
+	});
+
+	test('the DOB field is not disabled by the health-data consent box', async ({
+		page
+	}) => {
+		// decisions § 718: this input feeds the user_profiles age record
+		// behind the under-18 discoverability floor, which does not rest on
+		// Art 9 consent. Disabling it also deadlocked the page — the save
+		// aborted on a stored DOB the runner could not clear. In-memory only:
+		// the box is restored and nothing is saved.
+		await page.goto('/settings/account');
+		const consent = page
+			.locator('label.consent-checkbox')
+			.locator('input[type="checkbox"]')
+			.first();
+		const startedChecked = await consent.isChecked();
+		if (startedChecked) await consent.uncheck();
+		await expect(page.getByTestId('date-of-birth-year')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-month')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-day')).toBeEnabled();
+		if (startedChecked) await consent.check();
 	});
 
 	// Change-password validation. This section MINTS a password
@@ -149,9 +249,12 @@ test.describe('/settings/account', () => {
 		// (issue #381, OWASP ASVS V2.1.14). Belt-and-braces for the shared
 		// fixture: PUT /auth/v1/user is aborted, so even a regression that
 		// skipped the current-password proof can't change USER_A's password.
-		const guardUpdateUser = async (page: import('@playwright/test').Page) => {
+		const guardUpdateUser = async (
+			mockRoute: MockRoute,
+			page: import('@playwright/test').Page
+		) => {
 			const seen = { put: 0 };
-			await page.route('**/auth/v1/user', async (route) => {
+			await mockRoute(page, AUTH_USER_ENDPOINT, async (route) => {
 				if (route.request().method() !== 'PUT') {
 					await route.continue();
 					return;
@@ -163,13 +266,14 @@ test.describe('/settings/account', () => {
 		};
 
 		test('a wrong current password is rejected and never reaches updateUser', async ({
-			page
+			page,
+			mockRoute
 		}) => {
-			const seen = await guardUpdateUser(page);
+			const seen = await guardUpdateUser(mockRoute, page);
 			// Only the password grant is stubbed — the refresh_token grant
 			// on the same endpoint has to keep working or the session dies
 			// mid-test.
-			await page.route('**/auth/v1/token**', async (route) => {
+			await mockRoute(page, '**/auth/v1/token**', async (route) => {
 				if (!route.request().url().includes('grant_type=password')) {
 					await route.continue();
 					return;
@@ -210,14 +314,25 @@ test.describe('/settings/account', () => {
 		});
 
 		test('mismatched entries are rejected before the current password is sent', async ({
-			page
+			page,
+			mockRoute
 		}) => {
-			const seen = await guardUpdateUser(page);
+			const seen = await guardUpdateUser(mockRoute, page);
 			let sawGrant = false;
-			await page.route('**/auth/v1/token**', async (route) => {
-				if (route.request().url().includes('grant_type=password')) sawGrant = true;
-				await route.continue();
-			});
+			await mockRoute(
+				page,
+				'**/auth/v1/token**',
+				async (route) => {
+					if (route.request().url().includes('grant_type=password')) sawGrant = true;
+					await route.continue();
+				},
+				{
+					neverFires:
+						'the local mismatch check returns before any grant is attempted, and the ' +
+						'session minted in globalSetup is nowhere near needing a refresh inside ' +
+						'this case'
+				}
+			);
 
 			await page.goto('/settings/account');
 			await page.getByLabel('Current Password').fill('irrelevant');
@@ -257,12 +372,21 @@ test.describe('/settings/account', () => {
 	// spec that signs in as them.
 	test.describe('change email — request path', () => {
 		test('an invalid or unchanged address is rejected before any request', async ({
-			page
+			page,
+			mockRoute
 		}) => {
 			let sawRequest = false;
-			await page.route('**/auth/v1/user', async (route) => {
-				if (route.request().method() === 'PUT') sawRequest = true;
-				await route.continue();
+			// Aborted, not continued: this case exists because the guard can
+			// regress, and a regression that lets the request through would
+			// otherwise start a real GoTrue address change on the shared
+			// fixture user before the assertion below reported it.
+			await mockRoute(page, AUTH_USER_ENDPOINT, async (route) => {
+				if (route.request().method() !== 'PUT') {
+					await route.continue();
+					return;
+				}
+				sawRequest = true;
+				await route.abort();
 			});
 
 			await page.goto('/settings/account');
@@ -278,13 +402,16 @@ test.describe('/settings/account', () => {
 		});
 
 		test('a valid new address requests the change and shows the pending state', async ({
-			page
+			page,
+			mockRoute
 		}) => {
-			await page.route('**/auth/v1/user', async (route) => {
+			let stubbed = 0;
+			await mockRoute(page, AUTH_USER_ENDPOINT, async (route) => {
 				if (route.request().method() !== 'PUT') {
 					await route.continue();
 					return;
 				}
+				stubbed += 1;
 				// GoTrue returns the user row unchanged (email flips only
 				// after both confirmations); a bare 200 is enough for the
 				// SDK to resolve without an error.
@@ -307,6 +434,73 @@ test.describe('/settings/account', () => {
 			await expect(pending).toContainText(next);
 			await expect(pending).toContainText(USER_A.email);
 			await expect(page.getByTestId('new-email-input')).toHaveCount(0);
+			// The stub is the only thing standing between this case and a
+			// real address change on the shared fixture user, and a route
+			// pattern that stops matching says nothing at all. Assert it
+			// fired, so the silence can never pass for a pass.
+			expect(stubbed).toBe(1);
+		});
+	});
+
+	// Issue #1064: the delete-account challenge is one fixed localized word,
+	// not the account email — a Sign in with Apple "Hide My Email" user has
+	// never seen their privaterelay address. The EF call is aborted so a
+	// regression that let the confirm through can't delete USER_A.
+	test.describe('delete account — confirm challenge', () => {
+		const DELETE_EF = /\/functions\/v1\/delete-account/;
+		const NEVER_DELETE = 'the dialog is cancelled or left open; reaching the EF would delete USER_A';
+
+		test('the fixed word confirms; the account email does not', async ({ page, mockRoute }) => {
+			await mockRoute(page, DELETE_EF, (route) => route.abort(), { neverFires: NEVER_DELETE });
+
+			await page.goto('/settings/account');
+			await page.getByRole('button', { name: 'Delete Account' }).click();
+			const dialog = page.getByRole('dialog');
+			await expect(dialog.getByRole('heading', { name: /Delete your account\?/ })).toBeVisible();
+			await expect(dialog).toContainText('Type "DELETE" to confirm');
+			await expect(dialog).not.toContainText(USER_A.email);
+
+			const confirmBtn = dialog.getByRole('button', { name: /Delete my account/ });
+			const input = page.getByTestId('confirm-challenge-input');
+			await expect(confirmBtn).toBeDisabled();
+
+			await input.fill(USER_A.email);
+			await expect(confirmBtn).toBeDisabled();
+
+			await input.fill('  delete ');
+			await expect(confirmBtn).toBeEnabled();
+
+			await dialog.getByRole('button', { name: 'Cancel' }).click();
+			await expect(dialog).toHaveCount(0);
+		});
+
+		test('the word follows the locale', async ({ browser, mockRoute }) => {
+			const context = await browser.newContext({
+				locale: 'de-DE',
+				storageState: USER_A.storageStatePath
+			});
+			// The saved storage state carries a stored `locale` choice, which
+			// wins over the browser language. This context is thrown away, so
+			// overriding it here can't leak German into other specs.
+			await setStorageOnLoad(context, { local: { locale: 'de' } });
+			const page = await context.newPage();
+			try {
+				await mockRoute(page, DELETE_EF, (route) => route.abort(), { neverFires: NEVER_DELETE });
+				await page.goto('/settings/account');
+				await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+				await page.getByRole('button', { name: 'Konto löschen' }).click();
+				const dialog = page.getByRole('dialog');
+				await expect(dialog).toContainText('„LÖSCHEN“');
+
+				const confirmBtn = dialog.getByRole('button', { name: /Mein Konto löschen/ });
+				const input = page.getByTestId('confirm-challenge-input');
+				await input.fill('DELETE');
+				await expect(confirmBtn).toBeDisabled();
+				await input.fill('löschen');
+				await expect(confirmBtn).toBeEnabled();
+			} finally {
+				await context.close();
+			}
 		});
 	});
 });

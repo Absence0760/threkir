@@ -119,6 +119,8 @@ export function makeAuthEmailHandler(
       const rendered = renderAuthEmail(locale, send, {
         supabaseUrl,
         redirectTo: emailData.redirect_to,
+        appBaseUrl: deps.getEnv('APP_BASE_URL'),
+        sentAtMs: (deps.now ?? Date.now)(),
       });
       const mime = buildMime(
         smtpFrom,

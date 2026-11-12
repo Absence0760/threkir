@@ -10,34 +10,47 @@ import 'package:core_models/core_models.dart' hide Route;
 
 import 'package:api_client/api_client.dart';
 
+import '../club_role_labels.dart';
+import '../column_limits.dart';
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../race_service.dart';
 import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_routine_store.dart';
+import '../plan_overlap.dart';
 import '../preferences.dart';
+import '../runner_handle.dart';
 import '../social_service.dart';
+import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../backend_timeout.dart';
+import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
+import '../widgets/club_invite_card.dart';
+import '../widgets/club_verification_status_card.dart';
 import '../widgets/club_photos.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
 import '../widgets/event_form_sheet.dart';
+import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_track_preview.dart';
 import '../widgets/verified_badge.dart';
 import 'event_detail_screen.dart';
 import 'plan_detail_screen.dart';
+import 'profile_screen.dart';
 import 'routine_detail_screen.dart';
 import 'session_detail_screen.dart';
 import 'public_route_screen.dart';
 import 'route_builder_screen.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 
 class ClubDetailScreen extends StatefulWidget {
   final SocialService social;
@@ -68,14 +81,24 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   ClubView? _club;
   List<EventView> _upcoming = const [];
   List<ClubPostView> _posts = const [];
-  List<ClubMemberRow> _pending = const [];
+  List<ClubMemberView> _pending = const [];
   final Set<String> _pendingBusy = {};
+  List<ClubMemberView> _members = const [];
+  /// Whether the signed-in member has no display name, so the Members tab
+  /// can tell them how others see them (decisions § 2365).
+  bool _viewerUnnamed = false;
+  List<Object?>? _membersNext;
+  bool _membersLoading = true;
+  bool _membersLoadingMore = false;
+  bool _membersFailed = false;
+  final Set<String> _memberBusy = {};
   final Set<String> _replyBusy = {};
   List<TrainingPlanRow> _templates = const [];
   List<SessionPlanRow> _sessionTemplates = const [];
   String? _adoptingSessionId;
   String? _adoptingPlanId;
   List<GymRoutineRow> _gymRoutineTemplates = const [];
+  Set<String> _officialGymRoutineIds = const {};
   String? _adoptingRoutineId;
   List<cm.Route> _routes = const [];
   bool _loading = true;
@@ -121,16 +144,18 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         // RLS will return [] for non-admins; keep the call simple.
         club.isAdmin
             ? widget.social.fetchPendingRequests(club.row.id)
-            : Future.value(const <ClubMemberRow>[]),
+            : Future.value(const <ClubMemberView>[]),
       ]).timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
         _club = club;
         _upcoming = results[0] as List<EventView>;
         _posts = results[1] as List<ClubPostView>;
-        _pending = results[2] as List<ClubMemberRow>;
+        _pending = results[2] as List<ClubMemberView>;
         _loading = false;
       });
+      unawaited(_loadMembers());
+      if (club.isMember) unawaited(_checkViewerName());
       if (_channel == null) {
         _channel = widget.social.subscribeToClub(club.row.id, _onRealtimeChange);
       }
@@ -153,6 +178,127 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     }
   }
 
+  /// The roster's first page. Its own load and its own failure, so a roster
+  /// read that fails leaves the rest of the club readable.
+  Future<void> _loadMembers() async {
+    final c = _club;
+    if (c == null) return;
+    setState(() {
+      _membersLoading = true;
+      _membersFailed = false;
+    });
+    try {
+      final page = await widget.social
+          .fetchClubMembers(c.row.id)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      setState(() {
+        _members = page.rows;
+        _membersNext = page.next;
+        _membersLoading = false;
+      });
+    } catch (e) {
+      debugPrint('ClubDetailScreen._loadMembers failed: $e');
+      if (mounted) {
+        setState(() {
+          _membersLoading = false;
+          _membersFailed = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreMembers() async {
+    final c = _club;
+    final after = _membersNext;
+    if (c == null || after == null || _membersLoadingMore) return;
+    setState(() => _membersLoadingMore = true);
+    try {
+      final page = await widget.social
+          .fetchClubMembers(c.row.id, after: after)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      setState(() {
+        _members = appendPage(_members, page.rows, (m) => m.userId);
+        _membersNext = page.next;
+      });
+    } catch (e) {
+      debugPrint('ClubDetailScreen._loadMoreMembers failed: $e');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(context, l10n.clubDetailMembersLoadFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _membersLoadingMore = false);
+    }
+  }
+
+  Future<void> _changeRole(ClubMemberView m, String role) async {
+    final c = _club;
+    if (c == null || role == m.role || _memberBusy.contains(m.userId)) return;
+    setState(() => _memberBusy.add(m.userId));
+    try {
+      await widget.social.setMemberRole(
+        clubId: c.row.id,
+        userId: m.userId,
+        role: role,
+      );
+      if (mounted) {
+        setState(() => _members = [
+              for (final x in _members)
+                x.userId == m.userId ? x.withRole(role) : x,
+            ]);
+      }
+    } catch (e) {
+      debugPrint('club detail role change failed: $e');
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(
+          context, l10n.clubDetailRoleChangeFailed(friendlyError(l10n, e)));
+    } finally {
+      if (mounted) setState(() => _memberBusy.remove(m.userId));
+    }
+  }
+
+  Future<void> _removeMember(ClubMemberView m) async {
+    final c = _club;
+    if (c == null || _memberBusy.contains(m.userId)) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.clubDetailRemoveMemberTitle,
+      body: l10n.clubDetailRemoveMemberBody(
+        _shownName(l10n, m.displayName, m.userId),
+        c.row.name,
+      ),
+      confirmLabel: l10n.clubDetailRemoveMemberConfirm,
+    );
+    if (!ok || !mounted || _memberBusy.contains(m.userId)) return;
+    setState(() => _memberBusy.add(m.userId));
+    try {
+      await widget.social.removeMember(clubId: c.row.id, userId: m.userId);
+      if (mounted) {
+        setState(() =>
+            _members = _members.where((x) => x.userId != m.userId).toList());
+      }
+    } catch (e) {
+      debugPrint('club detail remove member failed: $e');
+      if (!mounted) return;
+      showTopBanner(
+          context, l10n.clubDetailRemoveMemberFailed(friendlyError(l10n, e)));
+    } finally {
+      if (mounted) setState(() => _memberBusy.remove(m.userId));
+    }
+  }
+
+  void _openMemberProfile(String userId) {
+    final api = widget.apiClient;
+    if (api == null) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ProfileScreen(api: api, userId: userId),
+    ));
+  }
+
   Future<void> _join() async {
     final c = _club;
     if (c == null || _busy) return;
@@ -163,9 +309,16 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       return;
     }
     if (!mounted) return;
+    final needsWaiver = c.row.requiresActivityWaiver;
+    if (needsWaiver && !await confirmActivityWaiver(context)) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
-      final status = await widget.social.joinClub(c.row.id, c.joinPolicy);
+      final status = await widget.social.joinClub(
+        c.row.id,
+        c.joinPolicy,
+        ackWaiver: needsWaiver,
+      );
       if (status == 'pending' && mounted) {
         showTopBanner(
             context, AppLocalizations.of(context).clubDetailRequestSent);
@@ -336,8 +489,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
+        appBar: AppBar(),
+        body: TabbedDetailSkeleton(
           label: AppLocalizations.of(context).commonLoading,
         ),
       );
@@ -377,6 +530,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         ),
         actions: [
           if (c.isAdmin)
+            ClubInviteButton(social: widget.social, club: c)
+          else if (canShareClub(c))
+            ClubShareButton(club: c),
+          if (c.isAdmin)
             IconButton(
               tooltip: AppLocalizations.of(context).clubDetailEditClub,
               icon: const Icon(Icons.edit_outlined),
@@ -390,6 +547,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               api: ApiClient(),
               targetKind: 'club',
               targetId: c.row.id,
+              organiserClubs: (c.row.isPublic ?? true)
+                  ? () => RaceService().fetchMyOrganiserClubs()
+                  : null,
+              targetClubId: c.row.id,
             ),
           ),
         ],
@@ -638,7 +799,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             Text(
               AppLocalizations.of(context).clubDetailNextEvent,
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
+                color: theme.colorScheme.onPrimaryContainer,
                 letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
               ),
@@ -654,7 +815,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             Row(
               children: [
                 Icon(Icons.calendar_today, size: 14,
-                    color: theme.colorScheme.outline),
+                    color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
@@ -666,7 +827,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                 ),
                 const SizedBox(width: 12),
                 Icon(Icons.group, size: 14,
-                    color: theme.colorScheme.outline),
+                    color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(
                   AppLocalizations.of(context)
@@ -694,7 +855,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           TextField(
             controller: _postCtrl,
             maxLines: 3,
-            maxLength: 1200,
+            maxLength: columnLength('club_posts.body'),
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: AppLocalizations.of(context).clubDetailShareUpdateHint,
@@ -731,7 +892,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             children: [
               IdentityAvatar(
                   seed: p.row.authorId,
-                  name: p.authorName,
+                  name: _shownName(l10n, p.authorName, p.row.authorId),
+                  imageUrl: p.authorAvatarUrl,
                   size: 32,
                   fontSize: 14),
               const SizedBox(width: 10),
@@ -740,7 +902,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      p.authorName ?? l10n.clubDetailMemberFallback,
+                      _shownName(l10n, p.authorName, p.row.authorId),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
@@ -810,7 +972,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                             children: [
                               Text(
                                 l10n.clubDetailReplyAuthorLine(
-                                    r.authorName ?? l10n.clubDetailMemberFallback,
+                                    _shownName(l10n, r.authorName, r.row.authorId),
                                     fmtRelative(
                                         r.row.createdAt ?? DateTime.now(),
                                         localeToTag(Localizations.localeOf(context)))),
@@ -871,7 +1033,11 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       clubId: c.row.id,
       clubIsPublic: c.row.isPublic ?? true,
     );
-    if (ok != null) _load();
+    if (ok == null) return;
+    // Anything but 'ok' is the form's message for a follow-up write (the
+    // price, the session plan) that failed after the event was created.
+    if (ok != 'ok' && mounted) showTopBanner(context, ok);
+    _load();
   }
 
   Widget _buildEventsTab(ThemeData theme, ClubView c) {
@@ -1035,6 +1201,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       if (mounted) {
         setState(() => _pending =
             _pending.where((m) => m.userId != userId).toList());
+        unawaited(_loadMembers());
       }
     } catch (e) {
       debugPrint('club detail approve failed: $e');
@@ -1090,6 +1257,20 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     }
   }
 
+  /// L4: a failed profile read only leaves the hint hidden.
+  Future<void> _checkViewerName() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final profile = await api.fetchMyProfile();
+      if (!mounted) return;
+      setState(() => _viewerUnnamed =
+          profile != null && namedOrNull(profile.displayName) == null);
+    } catch (e) {
+      debugPrint('ClubDetailScreen._checkViewerName failed: $e');
+    }
+  }
+
   Widget _buildMembersTab(ThemeData theme, ClubView c) {
     final l10n = AppLocalizations.of(context);
     return RefreshIndicator(
@@ -1098,6 +1279,26 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          if (c.isMember && _viewerUnnamed) ...[
+            Card(
+              key: const Key('club-name-hint'),
+              child: ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(l10n.clubDetailNameHint(_shownName(
+                    l10n, null, widget.social.currentUserId ?? ''))),
+                subtitle: Text(l10n.clubDetailNameHintAction),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (c.isAdmin) ...[
+            ClubVerificationStatusCard(
+              social: widget.social,
+              clubId: c.row.id,
+              isVerified: c.row.isVerified,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (c.isAdmin && _pending.isNotEmpty) ...[
             Text(
               l10n.clubDetailPendingRequests(_pending.length),
@@ -1110,9 +1311,17 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: Row(
                     children: [
+                      IdentityAvatar(
+                        seed: m.userId,
+                        name: _shownName(l10n, m.displayName, m.userId),
+                        imageUrl: m.avatarUrl,
+                        size: 32,
+                        fontSize: 14,
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          l10n.clubDetailUserShort(m.userId.substring(0, 8)),
+                          _shownName(l10n, m.displayName, m.userId),
                           style: theme.textTheme.bodyMedium,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1137,21 +1346,142 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               ),
             const SizedBox(height: 24),
           ],
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(
-                l10n.clubDetailMemberCountLine(c.memberCount),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+          Text(
+            l10n.clubDetailMemberCountLine(c.memberCount),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 8),
+          ..._rosterBody(theme, l10n, c),
         ],
       ),
     );
   }
+
+  List<Widget> _rosterBody(
+      ThemeData theme, AppLocalizations l10n, ClubView c) {
+    if (_membersLoading && _members.isEmpty) {
+      return [ListSkeleton.section(label: l10n.commonLoading)];
+    }
+    if (_membersFailed && _members.isEmpty) {
+      return [
+        ErrorState(
+          message: l10n.clubDetailMembersLoadFailed,
+          onRetry: _loadMembers,
+        ),
+      ];
+    }
+    if (_members.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            children: [
+              Text(l10n.clubDetailMembersEmptyTitle,
+                  style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                l10n.clubDetailMembersEmptyBody,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+    return [
+      for (final m in _members) _memberTile(theme, l10n, c, m),
+      if (_membersNext != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Center(
+            child: OutlinedButton(
+              onPressed: _membersLoadingMore ? null : _loadMoreMembers,
+              child: _membersLoadingMore
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.clubDetailMembersLoadMore),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  Widget _memberTile(
+    ThemeData theme,
+    AppLocalizations l10n,
+    ClubView c,
+    ClubMemberView m,
+  ) {
+    final isOwner = m.role == 'owner' || m.userId == c.row.ownerId;
+    // Same rule as web: an admin manages everyone but the owner, and the
+    // role menu stands in for the badge on the rows it can change.
+    final manageable = c.isAdmin && !isOwner;
+    final showBadge = m.role != 'member' && !manageable;
+    final busy = _memberBusy.contains(m.userId);
+    return ListTile(
+      key: ValueKey('club-member-${m.userId}'),
+      contentPadding: EdgeInsets.zero,
+      onTap: widget.apiClient == null
+          ? null
+          : () => _openMemberProfile(m.userId),
+      leading: IdentityAvatar(
+        seed: m.userId,
+        name: _shownName(l10n, m.displayName, m.userId),
+        imageUrl: m.avatarUrl,
+        size: 36,
+        fontSize: 15,
+      ),
+      title: Text(
+        _shownName(l10n, m.displayName, m.userId),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: showBadge || manageable
+          ? Text(clubRoleLabel(l10n, m.role))
+          : null,
+      trailing: !manageable
+          ? null
+          : PopupMenuButton<String>(
+              enabled: !busy,
+              tooltip: l10n.clubDetailMemberActions,
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) {
+                if (v == _removeAction) {
+                  _removeMember(m);
+                } else {
+                  _changeRole(m, v);
+                }
+              },
+              itemBuilder: (_) => [
+                for (final r in assignableClubRoles)
+                  CheckedPopupMenuItem<String>(
+                    value: r,
+                    checked: r == m.role,
+                    child: Text(clubRoleLabel(l10n, r)),
+                  ),
+                if (m.userId != widget.social.currentUserId) ...[
+                  const PopupMenuDivider(),
+                  PopupMenuItem<String>(
+                    value: _removeAction,
+                    child: Text(
+                      l10n.clubDetailRemoveFromClub,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+    );
+  }
+
+  static const _removeAction = '__remove__';
 
   void _onTabChanged() {
     if (_tabs.indexIsChanging) return;
@@ -1216,11 +1546,15 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       final routines =
           await widget.apiClient?.fetchClubGymRoutineTemplates(c.row.id) ??
               const <GymRoutineRow>[];
+      final officialRoutines = await widget.apiClient
+              ?.fetchOfficialGymRoutineIds([for (final r in routines) r.id]) ??
+          const <String>{};
       if (!mounted) return;
       setState(() {
         _templates = list;
         _sessionTemplates = sessions;
         _gymRoutineTemplates = routines;
+        _officialGymRoutineIds = officialRoutines;
         _templatesLoaded = true;
       });
     } catch (_) {
@@ -1333,9 +1667,24 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
 
   Future<void> _adoptTemplate(TrainingPlanRow t) async {
     if (_adoptingPlanId != null) return;
+    final today = DateTime.now();
+    final startIso = toIsoDate(today);
+    final endIso = clonedPlanEndIso(t, startIso,
+        start: planRowStartIso, end: planRowEndIso);
+    // Held across the overlap lookup too: it is a network read, and a second
+    // tap inside it would otherwise clone the template twice.
     setState(() => _adoptingPlanId = t.id);
+    final action = await confirmPlanOverlap(context, widget.training,
+        startIso: startIso, endIso: endIso);
+    if (!mounted) return;
+    if (action == null) {
+      setState(() => _adoptingPlanId = null);
+      return;
+    }
     try {
-      final newId = await widget.training.clonePlanTemplate(templateId: t.id);
+      final newId = await widget.training
+          .clonePlanTemplate(templateId: t.id, startDate: today, onOverlap: action)
+          .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       showTopBanner(
           context, AppLocalizations.of(context).clubDetailTemplateAdded);
@@ -1351,8 +1700,11 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     } catch (e) {
       debugPrint('club detail adopt failed: $e');
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       showTopBanner(
-          context, AppLocalizations.of(context).clubDetailAdoptFailed(friendlyError(AppLocalizations.of(context), e)));
+          context,
+          planOverlapErrorText(context, e) ??
+              l10n.clubDetailAdoptFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _adoptingPlanId = null);
     }
@@ -1439,7 +1791,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               title: Text(r.name),
               subtitle: Text(
                 '${formatDistanceForPref(r.distanceMetres)}'
-                '  •  ${r.elevationGainMetres.round()}m gain',
+                '  •  ${formatElevationForPref(r.elevationGainMetres)} ↑',
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.push(
@@ -1587,6 +1939,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(g.title, style: theme.textTheme.titleSmall),
+                            if (_officialGymRoutineIds.contains(g.id)) ...[
+                              const SizedBox(height: 2),
+                              const OfficialBadge(),
+                            ],
                             const SizedBox(height: 4),
                             Text(
                               l10n.clubDetailRoutineExerciseCount(
@@ -1726,3 +2082,14 @@ class _ClubDescription extends StatelessWidget {
     );
   }
 }
+
+/// A member with no display name is shown as their runner handle rather than
+/// an indistinguishable "Member" (decisions § 2365). Twin of the web club
+/// pages' `shownName`.
+String _shownName(AppLocalizations l10n, String? displayName, String userId) =>
+    namedOrNull(displayName) ??
+    runnerHandle(
+      userId,
+      handle: (slug) => l10n.liveRunnerHandle(slug),
+      anonymous: l10n.liveRunnerAnonymous,
+    );

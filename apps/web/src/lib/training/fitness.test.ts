@@ -15,13 +15,14 @@ import {
 	isReturningFromLayoff,
 	isReturningFromGap,
 } from './fitness';
-import type { Run } from '../types';
+import type { Run, RunSource } from '../types';
 
 function r(partial: {
 	started_at: string;
 	distance_m: number;
 	duration_s: number;
 	source?: Run['source'];
+	activity_type?: string;
 	metadata?: Record<string, unknown> | null;
 }): Run {
 	return {
@@ -31,6 +32,7 @@ function r(partial: {
 		distance_m: partial.distance_m,
 		duration_s: partial.duration_s,
 		source: partial.source ?? 'app',
+		activity_type: partial.activity_type ?? 'run',
 		track_url: null,
 		track: null,
 		route_id: null,
@@ -62,6 +64,23 @@ test('qualifyingRuns — admits a sustained 1.5-2km comeback run', () => {
 	assert.deepEqual(qualifyingRuns([comeback]), [comeback]);
 });
 
+test('qualifyingRuns — drops cycling, so one commute cannot set the VDOT ceiling', () => {
+	// currentVdot takes the MAX over qualifying runs, so a 20 km/h bike ride
+	// scored as a run doubles the runner's VDOT and every figure derived from it.
+	const runs = [
+		r({ started_at: '2026-04-21T07:00:00Z', distance_m: 5000, duration_s: 1800 }),
+		r({ started_at: '2026-04-24T07:00:00Z', distance_m: 5000, duration_s: 1800 }),
+	];
+	const ride = r({
+		started_at: '2026-04-27T07:00:00Z',
+		distance_m: 25000,
+		duration_s: 4500,
+		activity_type: 'cycle',
+	});
+	assert.deepEqual(qualifyingRuns([...runs, ride]), runs);
+	assert.equal(currentVdot([...runs, ride], NOW), currentVdot(runs, NOW));
+});
+
 test('qualifyingRuns — drops sub-5min runs (sprint efforts)', () => {
 	const longEnough = r({ started_at: '2026-04-01T07:00:00Z', distance_m: 5000, duration_s: 1500 });
 	const tooShort = r({ started_at: '2026-04-02T07:00:00Z', distance_m: 5000, duration_s: 200 });
@@ -80,18 +99,58 @@ test('qualifyingRuns — drops indoor/treadmill runs (belt distance is not VDOT-
 	assert.deepEqual(qualifyingRuns([outdoor, treadmill]), [outdoor]);
 });
 
-test('qualifyingRuns — accepts every recognised source, drops others', () => {
-	const accepted = (['app', 'watch', 'strava', 'garmin', 'healthkit', 'healthconnect'] as const).map((s) =>
-		r({ started_at: '2026-04-01T07:00:00Z', distance_m: 5000, duration_s: 1500, source: s }),
-	);
-	const rejected = r({
-		started_at: '2026-04-01T07:00:00Z',
+test('qualifyingRuns — accepts every value of the RunSource union', () => {
+	// This test used to list six sources and call that "every recognised
+	// source", checking the reverse with a fabricated value outside the union.
+	// It therefore passed while `parkrun` and `race` — a certified weekly 5K
+	// and a chip-timed official result, the two most authoritative sources
+	// there are — were silently dropped from every fitness calculation.
+	// Enumerate the real union so a new value fails here until classified.
+	const ALL_SOURCES: RunSource[] = [
+		'app',
+		'watch',
+		'healthkit',
+		'healthconnect',
+		'strava',
+		'garmin',
+		'parkrun',
+		'race',
+	];
+	for (const source of ALL_SOURCES) {
+		const run = r({
+			started_at: '2026-04-01T07:00:00Z',
+			distance_m: 5000,
+			duration_s: 1500,
+			source,
+		});
+		assert.equal(qualifyingRuns([run]).length, 1, `source ${source} must qualify`);
+	}
+});
+
+test('a parkrun result anchors VDOT like any other timed effort', () => {
+	// The concrete consequence: a runner whose best effort is a 19:30 parkrun
+	// 5K, with slower app-recorded runs otherwise, had their whole fitness
+	// picture (threshold pace, every run's TSS, ATL/CTL/TSB, and the race
+	// predictor's anchor pool) computed off the slower run.
+	const parkrun = r({
+		started_at: '2026-04-01T08:00:00Z',
 		distance_m: 5000,
-		duration_s: 1500,
-		source: 'manual_entry' as Run['source'],
+		duration_s: 1170,
+		source: 'parkrun',
 	});
-	const out = qualifyingRuns([...accepted, rejected]);
-	assert.equal(out.length, accepted.length);
+	const tempo = r({
+		started_at: '2026-04-02T08:00:00Z',
+		distance_m: 8000,
+		duration_s: 2160,
+		source: 'app',
+	});
+	const withParkrun = currentVdot([parkrun, tempo], Date.parse('2026-04-05T00:00:00Z'));
+	const without = currentVdot([tempo], Date.parse('2026-04-05T00:00:00Z'));
+	assert.ok(withParkrun !== null && without !== null);
+	assert.ok(
+		withParkrun! > without! + 5,
+		`parkrun must lift VDOT (got ${withParkrun} vs ${without})`,
+	);
 });
 
 // ─────────────── vdotFromRun ───────────────
@@ -199,6 +258,24 @@ test('runTss — sub-100m or sub-30s or zero threshold returns 0', () => {
 	assert.equal(runTss(50, 60, 300), 0);
 	assert.equal(runTss(1000, 10, 300), 0);
 	assert.equal(runTss(5000, 1500, 0), 0);
+});
+
+test('runTss + vdotFromRun — degenerate runs contribute nothing, never NaN', () => {
+	// A 0 m run, a 10 s / 3 m blip, a 0 s run, and a corrupt NaN field. One NaN
+	// TSS used to poison every later day of the CTL/ATL EWMA. Same table as
+	// fitness_test.dart.
+	const cases: Array<[number, number, number]> = [
+		[0, 0, 300],
+		[3, 10, 300],
+		[1000, 0, 300],
+		[Number.NaN, 600, 300],
+		[500, 600, Number.NaN],
+	];
+	for (const [distanceM, durationS, threshold] of cases) {
+		const label = `${distanceM} m / ${durationS} s / ${threshold}`;
+		assert.equal(runTss(distanceM, durationS, threshold), 0, label);
+		assert.equal(vdotFromRun(distanceM, durationS), null, label);
+	}
 });
 
 test('runTss — pace at threshold yields an intensity of 1.0 → ~100 TSS per hour', () => {

@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { repurposeTodayWorkout, seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent, showAllPlanWeeks, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * Workout-runner-adjacent surfaces (web).
@@ -66,12 +68,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 		// Pre-accept cookie consent so the CookieConsentBanner doesn't
 		// layer over modal pointer events. See calendar.spec.ts for the
 		// same fix.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	test.describe('Today card on /plans/[id]', () => {
@@ -184,7 +181,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			const distance = modal.locator('input[type="number"]').first();
 			await expect(distance).toBeVisible();
 			// Switch kind to rest.
-			await modal.locator('select').selectOption('rest');
+			await modal.getByLabel('Kind', { exact: true }).selectOption('rest');
 			await expect(distance).toHaveCount(0);
 			// Cancel without saving.
 			await modal.getByRole('button', { name: 'Cancel' }).click();
@@ -199,7 +196,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// host's onSaved → load() re-fetch. The button label is
 			// derived from wasCompleted. Use a SPECIFIC workout
 			// (2026-04-07 tempo) so we can re-open the same cell — a
-			// `.day.completed .day-link .first()` would land on the
+			// `.day[data-status="done"] .day-link .first()` would land on the
 			// seed-completed Apr 5 long run which has a linked run and
 			// thus a disabled Mark button (different test case).
 			const wo = await findWorkoutByDate('2026-04-07');
@@ -211,7 +208,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// specifically.
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 			const tempoDay = page.locator(
-				'.weeks .week .day:not(.completed) .day-link',
+				'.weeks .week .day:not([data-status="done"]) .day-link',
 				{ hasText: /Tempo/ }
 			).first();
 			await tempoDay.click();
@@ -223,7 +220,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// Re-open the SAME Tempo day — it now carries .completed.
 			// The editor's label should read "Mark not done".
 			const doneTempo = page.locator(
-				'.weeks .week .day.completed .day-link',
+				'.weeks .week .day[data-status="done"] .day-link',
 				{ hasText: /Tempo/ }
 			).first();
 			await expect(doneTempo).toBeVisible({ timeout: 10_000 });
@@ -274,8 +271,9 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// week-grid `.day-link` (stable click target). Apr 5 is the
 			// completed Long day.
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+			await showAllPlanWeeks(page);
 			const linkedDay = page.locator(
-				'.weeks .week .day.completed .day-link',
+				'.weeks .week .day[data-status="done"] .day-link',
 				{ hasText: /Long/ }
 			).first();
 			await linkedDay.click();
@@ -306,11 +304,14 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// navigation noise.
 			const wo = await findWorkoutByDate('2026-04-08');
 			const admin = getAdminClient();
-			const { data: before } = await admin
-				.from('plan_workouts')
-				.select('target_distance_m')
-				.eq('id', wo.id)
-				.maybeSingle();
+			const before = await readMaybeRow(
+				'plan_workouts by id',
+				admin
+					.from('plan_workouts')
+					.select('target_distance_m')
+					.eq('id', wo.id)
+					.maybeSingle()
+			);
 			const beforeDistance = (before as { target_distance_m: number | null })
 				?.target_distance_m;
 			expect(beforeDistance).toBe(7000);
@@ -326,6 +327,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 				// string (no other Easy day in the plan has these exact
 				// notes).
 				await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+				await showAllPlanWeeks(page);
 				// .day-link contains the kind label as text. There are
 				// multiple Easy days; pick the one inside week-1
 				// (week_index = 1 → second .week in DOM order).
@@ -346,11 +348,14 @@ test.describe('Workout-runner surfaces (web)', () => {
 				await expect(modal).toHaveCount(0);
 
 				// 9 km → 9000 m in canonical storage.
-				const { data: after } = await admin
-					.from('plan_workouts')
-					.select('target_distance_m')
-					.eq('id', wo.id)
-					.maybeSingle();
+				const after = await readMaybeRow(
+					'plan_workouts by id',
+					admin
+						.from('plan_workouts')
+						.select('target_distance_m')
+						.eq('id', wo.id)
+						.maybeSingle()
+				);
 				expect(
 					(after as { target_distance_m: number | null }).target_distance_m
 				).toBe(9000);
@@ -438,12 +443,12 @@ test.describe('Workout-runner surfaces (web)', () => {
 		});
 
 		test('Pace tolerance ± seconds renders when set', async ({ page }) => {
-			// `target_pace_tolerance_sec` is rendered as
-			// `<span class="tol">±{n}s</span>`. The seed has 8s on the
-			// tempo (2026-04-07). Pin the chip.
+			// `target_pace_tolerance_sec` is seconds per km, rendered in the
+			// pace's own unit and labelled with it (`paceToleranceLabel`). The
+			// seed has 8s on the tempo (2026-04-07) and runner is metric.
 			const wo = await findWorkoutByDate('2026-04-07');
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}/workouts/${wo.id}`);
-			await expect(page.locator('.tol')).toHaveText('±8s', { timeout: 10_000 });
+			await expect(page.locator('.tol')).toHaveText('±8s/km', { timeout: 10_000 });
 		});
 	});
 
@@ -503,11 +508,14 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// completed_run_id non-null.
 			const wo = await findWorkoutByDate('2026-04-05');
 			const admin = getAdminClient();
-			const { data: before } = await admin
-				.from('plan_workouts')
-				.select('completed_run_id')
-				.eq('id', wo.id)
-				.maybeSingle();
+			const before = await readMaybeRow(
+				'plan_workouts by id',
+				admin
+					.from('plan_workouts')
+					.select('completed_run_id')
+					.eq('id', wo.id)
+					.maybeSingle()
+			);
 			expect((before as { completed_run_id: string | null }).completed_run_id)
 				.not.toBeNull();
 
@@ -523,11 +531,14 @@ test.describe('Workout-runner surfaces (web)', () => {
 
 			// Cancel — completed_run_id must remain set.
 			await dialog.getByRole('button', { name: 'Cancel' }).click();
-			const { data: after } = await admin
-				.from('plan_workouts')
-				.select('completed_run_id')
-				.eq('id', wo.id)
-				.maybeSingle();
+			const after = await readMaybeRow(
+				'plan_workouts by id',
+				admin
+					.from('plan_workouts')
+					.select('completed_run_id')
+					.eq('id', wo.id)
+					.maybeSingle()
+			);
 			expect((after as { completed_run_id: string | null }).completed_run_id)
 				.not.toBeNull();
 		});
@@ -565,11 +576,14 @@ test.describe('Workout-runner surfaces (web)', () => {
 				await expect(page.locator('.completed-card'))
 					.toHaveCount(0, { timeout: 10_000 });
 				// And the DB row reflects it.
-				const { data: after } = await admin
-					.from('plan_workouts')
-					.select('completed_run_id, manually_completed')
-					.eq('id', wo.id)
-					.maybeSingle();
+				const after = await readMaybeRow(
+					'plan_workouts by id',
+					admin
+						.from('plan_workouts')
+						.select('completed_run_id, manually_completed')
+						.eq('id', wo.id)
+						.maybeSingle()
+				);
 				expect((after as { completed_run_id: string | null }).completed_run_id)
 					.toBeNull();
 			} finally {

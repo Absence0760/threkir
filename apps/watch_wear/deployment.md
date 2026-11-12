@@ -23,7 +23,7 @@ We picked **#3** ([decisions.md § 15](../../docs/architecture/decisions.md#15-w
 - Independent release cadence — a watch UI tweak shouldn't require shipping a phone build.
 - Independent crash + ANR metrics in the Play Console.
 
-So: `com.threkir.app` (phone) and `app.threkir.watchwear` (Wear OS) are two Play listings under the same developer account.
+So: `com.threkir.app` (phone) and `com.threkir.watchwear` (Wear OS) are two Play listings under the same developer account.
 
 ---
 
@@ -31,7 +31,7 @@ So: `com.threkir.app` (phone) and `app.threkir.watchwear` (Wear OS) are two Play
 
 Same Play Console developer account as `mobile_android`. Setup is largely identical to `apps/mobile_android/deployment.md` § One-time Play Console setup, with these differences:
 
-- Application ID: `app.threkir.watchwear`
+- Application ID: `com.threkir.watchwear`, the Play package name, which is fixed once the listing exists. It must match `applicationId` in `android/app/build.gradle.kts` and `packageName` in `release-watch-wear.yml`. The Kotlin `namespace` (`com.runapp.watchwear`) is a separate setting that only names the source packages; Play never sees it.
 - Form factor: Wear OS (declare in the Console under "Form factors")
 - Listing screenshots: Wear OS-specific (round + square watch face previews)
 - The store listing description should call out "Wear OS standalone — no phone required"
@@ -54,15 +54,21 @@ Different upload key from the phone app — different `applicationId` requires d
 
 ### Generate the upload keystore (one-time)
 
-```bash
-keytool -genkey -v -keystore wear-upload-keystore.jks -alias upload \
-  -keyalg RSA -keysize 2048 -validity 10000 \
-  -dname "CN=Runonward Wear, O=Runonward, L=London, ST=England, C=GB"
+Done 2026-10-06. Only a re-key after a Play upload-key reset would run this again:
 
-base64 -w0 -i wear-upload-keystore.jks | xclip -selection clipboard
+```bash
+keytool -genkey -v -keystore wear-upload-keystore.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Threkir Wear, O=Threkir, C=US"
 ```
 
-Same estate-secrets-repo (sops backup) + GitHub Secret discipline as the phone-app keystore (`apps/mobile_android/deployment.md` § Signing setup) — losing the keystore is a 2–7 day Play support recovery flow.
+A PKCS12 keystore (the JDK 21 default) holds one password, so `WATCH_WEAR_KEYSTORE_PASSWORD` and `WATCH_WEAR_KEY_PASSWORD` carry the same value.
+
+**Canonical backup: the private estate secrets repo** (`Absence0760/infra-secrets`, cloned as a sibling at `../infra-secrets`) at `threkir/wear-upload-keystore.sops.yaml` — the `.jks` (base64), the key alias, and both passwords, sops-encrypted under the same threkir prod web-stack KMS key as the phone keystore (backed up 2026-10-06 and verified byte-identical). The GitHub Secrets on the `production` environment are a **signing copy, not a backup**: they are write-only, so nobody can read the keystore back out of them. No workstation keeps a working copy; restore one when you need it:
+
+```bash
+AWS_PROFILE=threkir sops --decrypt --extract '["keystore_jks_base64"]' ../infra-secrets/threkir/wear-upload-keystore.sops.yaml | base64 -d > wear-upload-keystore.jks
+```
+
+The passwords live in the same file (`sops ../infra-secrets/threkir/wear-upload-keystore.sops.yaml` to view), and in the owner's Bitwarden. Losing the keystore is a 2–7 day Play support recovery flow.
 
 ### GitHub Secrets required
 
@@ -95,10 +101,10 @@ These are passed to Gradle via `-PSUPABASE_URL=...` and end up in `BuildConfig` 
 ```kotlin
 android {
     defaultConfig {
-        applicationId = "app.threkir.watchwear"
+        applicationId = "com.threkir.watchwear"
         minSdk = 30           // Wear OS 3+
         targetSdk = 35
-        compileSdk = 36
+        compileSdk = 37
         versionCode = ...     // derived from git rev-list --count HEAD
         versionName = ...     // derived from the tag
     }
@@ -114,12 +120,12 @@ Same shape as the phone app: `dev` and `production`. The dev flavour reads from 
 `apps/watch_wear/android/app/src/main/AndroidManifest.xml`:
 
 - `<uses-feature android:name="android.hardware.type.watch" />` — REQUIRED, makes the app eligible for Wear listing
-- `android.permission.ACCESS_FINE_LOCATION` + `BACKGROUND_LOCATION`
+- `android.permission.ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` — both are requested together (Android 12+ ignores a fine request without coarse), and a runner who grants Approximate only is stopped at a Precise-location notice before the run starts. `ACCESS_BACKGROUND_LOCATION` is **not** declared and never has been; this list used to claim it (`decisions.md § 1020`). Do not disclose it.
 - `android.permission.ACTIVITY_RECOGNITION`
-- `android.permission.BODY_SENSORS` — Health Services HR
-- `android.permission.BODY_SENSORS_BACKGROUND` — keeps HR samples flowing once the display goes ambient (Wear OS 3.5+ / API 34+); declare it in the Data Safety form too
+- `android.permission.BODY_SENSORS` — Health Services HR via `MeasureClient`
+- `android.permission.BODY_SENSORS_BACKGROUND` — **removed, do not re-add without changing the client.** It gates `PassiveMonitoringClient`; `HeartRateMonitor` uses `MeasureClient`, whose documented background access is no. It was declared and never requested, so it was inert as well as inapplicable (`decisions.md § 1015`). `ManifestGuardsTest` fails if it comes back.
 - `android.permission.FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_LOCATION`
-- `android.permission.FOREGROUND_SERVICE_HEALTH` — `RunRecordingService` reads HR via Health Services while recording (`foregroundServiceType="location|health"`); required on targetSdk 34+ or the service start throws `SecurityException`
+- `android.permission.FOREGROUND_SERVICE_HEALTH` — `RunRecordingService` reads HR via Health Services while recording. Both the manifest (`foregroundServiceType="location|health"`) and the runtime `startForeground` mask must carry `health`, and it is the runtime mask the platform enforces from API 34 (`decisions.md § 1016`); the type is passed only once `BODY_SENSORS` or `ACTIVITY_RECOGNITION` has been granted, which is the platform's prerequisite for it.
 - `android.permission.POST_NOTIFICATIONS`
 - `android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — for the long-run battery whitelist UX
 - `android.permission.WAKE_LOCK` — partial wake-lock during recording
@@ -184,7 +190,7 @@ A Wear OS-specific rollback consideration: when the phone app + watch app deploy
 
 ### Lost upload keystore
 
-Same Play support recovery flow as the phone app. Keep `wear-upload-keystore.jks` sops-encrypted in the estate secrets repo (`../infra-secrets`, same pattern as the phone keystore) + cold storage.
+Same Play support recovery flow as the phone app. The sops copy at `../infra-secrets/threkir/wear-upload-keystore.sops.yaml` (§ Signing setup) is the only readable copy; no cold copy is kept, for the reason the phone app's § Lost upload keystore gives.
 
 ### Lost Play Console access
 
@@ -198,18 +204,18 @@ A Wear OS-specific edge: Google occasionally tightens Wear OS-specific guideline
 
 ## Production readiness checklist
 
-- [ ] Play Console listing for `app.threkir.watchwear` created
+- [ ] Play Console listing for `com.threkir.watchwear` created
 - [ ] Form factor: Wear OS declared
 - [ ] Wear OS standalone meta-data set to `true`
 - [ ] Store listing complete (description, screenshots — round + square watch faces, feature graphic)
 - [ ] Privacy policy URL set (same one as the phone app — both apps are governed by the same policy)
 - [ ] Data safety questionnaire submitted
-- [ ] Upload keystore generated, sops-backed-up in the estate secrets repo + cold storage + GitHub Secrets
+- [x] Upload keystore generated, set as `production` GitHub Secrets, and sops-backed-up in the estate secrets repo (2026-10-06)
 - [ ] Play service account granted Release manager on this app
 - [ ] Production Gradle properties verified (Supabase URL, anon key, MapTiler)
 - [ ] Manifest reviewed against the permissions list
 - [ ] Active-run tile service declared with the right permission
 - [ ] First `watch_wear@*` tag built clean, AAB landed on Internal track
 - [ ] Internal smoke test on real watch (Pixel Watch / Galaxy Watch — emulator-only is not sufficient for haptics, BLE HR, tile freshness)
-- [ ] Sentry receiving events
+- [ ] Sentry receiving events — set the `WATCH_WEAR_SENTRY_DSN` secret on the `production` environment; `release-watch-wear.yml` passes it as `-PSENTRY_DSN`, and while it is unset a release build ships with Sentry off. The manifest's `io.sentry.auto-init=false` is what makes an empty DSN safe: without it the SDK's init provider throws and the app dies on launch (`decisions.md § 1763`)
 - [ ] [`docs/product/parity.md`](../../docs/product/parity.md) Wear OS column reflects shipped state

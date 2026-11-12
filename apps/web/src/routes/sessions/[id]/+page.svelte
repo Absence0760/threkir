@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
+	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchSessionPlan,
 		deleteSessionPlan,
@@ -11,25 +11,29 @@
 		fetchMyClubs,
 		createGymWorkout,
 		type SessionPlanWithItems
-	} from '$lib/core/data';
-	import type { ClubWithMeta } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
 	import {
 		expandSessionSteps,
 		type SessionPlanInput,
 		type SessionStepResult,
 		type SessionAdherence
-	} from '$lib/social/session_steps';
-	import { workoutDraftFromSession } from '$lib/social/event_gym_template';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import SessionPlanEditor from '$lib/components/SessionPlanEditor.svelte';
-	import SessionRunner from '$lib/components/SessionRunner.svelte';
+	} from '#lib/social/session_steps.ts';
+	import { workoutDraftFromSession } from '#lib/social/event_gym_template.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
+	import SessionRunner from '#lib/components/SessionRunner.svelte';
 	import { goto } from '$app/navigation';
-	import { smartBack } from '$lib/util/smart_back';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { env } from '$env/dynamic/public';
-	import { buildSessionShareCanonical } from '$lib/share/share_session_meta';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildSessionShareCanonical } from '#lib/share/share_session_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
 
 	let plan = $state<SessionPlanWithItems | null>(null);
 	let loading = $state(true);
@@ -46,12 +50,13 @@
 	let failedFinish = $state<{ results: SessionStepResult[]; adherence: SessionAdherence } | null>(
 		null
 	);
+	let savingFinish = $state(false);
 
 	const back = smartBack();
-	const planId = $derived($page.params.id ?? '');
+	const planId = $derived(page.params.id ?? '');
 	const isOwner = $derived(!!plan && !!auth.user && plan.author_id === auth.user.id);
 	const canonicalUrl = $derived(
-		buildSessionShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, planId)
+		buildSessionShareCanonical(siteOrigin(PUBLIC_SITE_URL), planId)
 	);
 
 	// fetchSessionPlan rethrows the Postgres error, and `loading` used to be
@@ -66,7 +71,7 @@
 		try {
 			plan = await fetchSessionPlan(planId);
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'sessions/[id]: loadError');
 			return;
 		} finally {
 			loading = false;
@@ -165,10 +170,16 @@
 	}
 
 	async function onSessionFinish(results: SessionStepResult[], adherence: SessionAdherence) {
+		// `failedFinish` only clears on success, so the retry banner stays
+		// mounted for the whole in-flight retry: without this guard a second
+		// click logs the same session as a second gym workout, which then
+		// double-counts into history, exercise calories and training load.
+		if (savingFinish) return;
 		if (!plan) {
 			running = false;
 			return;
 		}
+		savingFinish = true;
 		const draft = workoutDraftFromSession(expanded, plan.title, plan.discipline);
 		try {
 			await createGymWorkout({
@@ -203,6 +214,7 @@
 			failedFinish = { results, adherence };
 			showToast(t('session.run.saveFailed'), 'error');
 		} finally {
+			savingFinish = false;
 			running = false;
 		}
 	}
@@ -244,8 +256,9 @@
 		confirmShare = false;
 		// Same builder as the canonical, but based on the CURRENT origin: a
 		// preview-host user must get a preview link, not a prod one.
-		const url = buildSessionShareCanonical(location.origin, plan.id);
+		const base = buildSessionShareCanonical(location.origin, plan.id);
 		try {
+			const url = withShareRef(base, await ownShareRef(plan.author_id));
 			if (!plan.is_public) {
 				await setSessionPlanPublic(plan.id, true);
 				plan = { ...plan, is_public: true };
@@ -271,12 +284,12 @@
 
 	{#if loading}
 		<p class="muted">…</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="session-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('session.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{t('session.run.retry')}</button>
 		</div>
@@ -286,14 +299,19 @@
 		{#if failedFinish}
 			<div class="save-failed" role="alert" data-testid="session-save-failed">
 				<span>{t('session.run.saveFailed')}</span>
-				<button class="btn btn-sm" onclick={retrySessionSave} data-testid="session-retry-save">
-					{t('session.run.retry')}
+				<button
+					class="btn btn-sm"
+					onclick={retrySessionSave}
+					disabled={savingFinish}
+					data-testid="session-retry-save"
+				>
+					{savingFinish ? t('shell.loading') : t('session.run.retry')}
 				</button>
 			</div>
 		{/if}
 		<header class="detail-head">
 			<div>
-				<h1>{plan.title || t('session.untitled')}</h1>
+				<h1>{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge size={18} />{/if}</h1>
 				<p class="muted">
 					{#if plan.discipline}{plan.discipline}{/if}
 					{#if plan.equipment}· {plan.equipment}{/if}

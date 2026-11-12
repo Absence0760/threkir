@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 /// Deferred-commit undo — the widget-free core of the mobile app's undo
 /// contract, and the Dart twin of web `core/undo_queue.ts`.
@@ -21,7 +22,11 @@ import 'dart:async';
 /// done) while `commit` is held. Undo cancels the pending commit and
 /// calls `restore`; the server was never touched. A commit that later
 /// fails also calls `restore`, so a list never claims a row is gone
-/// while the server still holds it.
+/// while the server still holds it — unless the account that queued it
+/// is no longer the one signed in (the session ended while the commit
+/// was in flight). That failure is logged and nothing else: no banner to
+/// a signed-out reader, and no restore into what is now another
+/// account's list.
 ///
 /// One slot, deliberately: a second destruction commits the first
 /// immediately rather than stacking bars whose ordering the user would
@@ -97,6 +102,8 @@ class UndoQueueDeps {
     required this.clearTimer,
     required this.now,
     required this.onChange,
+    this.owner,
+    this.log,
   });
 
   /// The undo window in ms, read at defer time. `0` or less disables
@@ -106,11 +113,20 @@ class UndoQueueDeps {
   final void Function(Object handle) clearTimer;
   final int Function() now;
   final void Function(PendingUndo? pending) onChange;
+
+  /// The signed-in account, read when a destruction is queued and again
+  /// when its commit fails. Absent, every destruction has one owner.
+  final String? Function()? owner;
+
+  /// Where a commit that failed after its account changed is reported.
+  /// Absent, it goes to `dart:developer`'s log.
+  final void Function(String message, Object error)? log;
 }
 
 class _Entry {
   _Entry({
     required this.id,
+    required this.owner,
     required this.destruction,
     required this.windowMs,
     required this.remainingMs,
@@ -118,6 +134,7 @@ class _Entry {
   });
 
   final int id;
+  final String? owner;
   final DeferredDestruction destruction;
   final int windowMs;
   int remainingMs;
@@ -131,6 +148,18 @@ class UndoQueue {
   UndoQueue(this._deps);
 
   final UndoQueueDeps _deps;
+
+  String? _owner() => _deps.owner?.call();
+
+  void _log(String message, Object error) {
+    final log = _deps.log;
+    if (log != null) {
+      log(message, error);
+    } else {
+      developer.log(message, name: 'undo', error: error);
+    }
+  }
+
   int _nextId = 1;
   _Entry? _current;
 
@@ -166,27 +195,64 @@ class UndoQueue {
 
   /// Detaches the pending entry so a concurrent flush/undo/defer can't
   /// act on it twice. Returns null when there was nothing pending.
-  DeferredDestruction? _take() {
+  _Entry? _take() {
     final c = _current;
     if (c == null || c.settled) return null;
     c.settled = true;
     _disarm();
     _current = null;
     _publish();
-    return c.destruction;
+    return c;
+  }
+
+  /// Commits that have left the slot and not yet settled. [_take] detaches
+  /// an entry before its commit runs, so without this a flush that found
+  /// the slot empty could not see a commit the timer or [defer] had already
+  /// started.
+  final Set<Future<void>> _inFlight = {};
+
+  Future<void> _settle(_Entry taken) {
+    final destruction = taken.destruction;
+    Future<void> run() async {
+      try {
+        await destruction.commit();
+      } catch (error) {
+        if (_owner() != taken.owner) {
+          _log(
+            'undo: a held delete failed after the account that made it '
+            'signed out',
+            error,
+          );
+          return;
+        }
+        destruction.restore();
+        destruction.onCommitError?.call(error);
+      }
+    }
+
+    final settling = run();
+    _inFlight.add(settling);
+    settling.then(
+      (_) => _inFlight.remove(settling),
+      onError: (Object _) => _inFlight.remove(settling),
+    );
+    return settling;
   }
 
   /// Commit the pending destruction now — the dismiss button, a
-  /// navigation, or a second destruction arriving.
+  /// navigation, a second destruction arriving, or a sign-out. Completes
+  /// once every commit this queue has started has settled, including one
+  /// the window timer or a later [defer] set going before this call: a
+  /// sign-out that awaits it ends the session only after a failure has
+  /// restored and reported to the account that made the delete.
   Future<void> flush() async {
-    final destruction = _take();
-    if (destruction == null) return;
-    try {
-      await destruction.commit();
-    } catch (error) {
-      destruction.restore();
-      destruction.onCommitError?.call(error);
-    }
+    final taken = _take();
+    final own = taken == null ? null : _settle(taken);
+    final others = _inFlight.where((f) => !identical(f, own)).toList();
+    await Future.wait(
+      others.map((f) => f.then((_) {}, onError: (Object _) {})),
+    );
+    if (own != null) await own;
   }
 
   void defer(DeferredDestruction destruction) {
@@ -195,6 +261,7 @@ class UndoQueue {
     final windowMs = requested < 0 ? 0 : requested;
     _current = _Entry(
       id: _nextId++,
+      owner: _owner(),
       destruction: destruction,
       windowMs: windowMs,
       remainingMs: windowMs,
@@ -205,9 +272,9 @@ class UndoQueue {
   }
 
   void undo() {
-    final destruction = _take();
-    if (destruction == null) return;
-    destruction.restore();
+    final taken = _take();
+    if (taken == null) return;
+    taken.destruction.restore();
   }
 
   void pause() {

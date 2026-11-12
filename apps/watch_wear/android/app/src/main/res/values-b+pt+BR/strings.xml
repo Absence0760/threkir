@@ -8,10 +8,14 @@
     <string name="pace_per_km">%1$s /km</string>
     <string name="distance_mi">%1$s mi</string>
     <string name="distance_mi_to_go">faltam %1$s mi</string>
+    <string name="distance_mi_recorded">%1$s mi registradas</string>
     <string name="pace_per_mi">%1$s /mi</string>
     <string name="bpm">%1$d bpm</string>
     <string name="bpm_zone">%1$d bpm · Z%2$d</string>
     <string name="bpm_avg">%1$d bpm méd.</string>
+    <string name="hr_acquiring">FC…</string>
+    <string name="hr_off_wrist">FC fora do pulso</string>
+    <string name="hr_none">Sem FC</string>
     <string name="kcal">%1$d kcal</string>
     <string name="kcal_est">%1$d kcal (est.)</string>
     <plurals name="steps">
@@ -26,9 +30,32 @@
     <string name="tile_tap_to_start">Toque para iniciar</string>
     <string name="tile_running">CORRENDO</string>
     <string name="tile_paused">PAUSADO</string>
-    <string name="tile_stat_row">%1$s · %2$s</string>
-    <string name="pace_placeholder">—:—/km</string>
-    <string name="pace_per_km_compact">%1$s/km</string>
+    <!-- Watch-face complication -->
+    <string name="complication_label">Dados da corrida</string>
+    <string name="complication_last_short">Última</string>
+    <string name="complication_last_run">Última corrida</string>
+    <string name="complication_desc_recording">Gravando, %1$s decorridos, %2$s</string>
+    <string name="complication_desc_paused">Pausado em %1$s, %2$s</string>
+    <string name="complication_desc_last_run">Última corrida: %1$s em %2$s</string>
+    <string name="tile_today">HOJE</string>
+    <string name="complication_today_short">Hoje</string>
+    <string name="complication_desc_today">Treino de hoje: %1$s, %2$s</string>
+    <string name="workout_kind_easy">Leve</string>
+    <string name="workout_kind_long">Longão</string>
+    <string name="workout_kind_recovery">Recuperação</string>
+    <string name="workout_kind_tempo">Tempo</string>
+    <string name="workout_kind_interval">Intervalado</string>
+    <string name="workout_kind_marathon_pace">Ritmo de maratona</string>
+    <string name="workout_kind_walk_run">Caminhada-corrida</string>
+    <string name="workout_kind_race">Prova</string>
+    <string name="workout_kind_short_easy">L</string>
+    <string name="workout_kind_short_long">Lg</string>
+    <string name="workout_kind_short_recovery">Rec</string>
+    <string name="workout_kind_short_tempo">T</string>
+    <string name="workout_kind_short_interval">Int</string>
+    <string name="workout_kind_short_marathon_pace">RM</string>
+    <string name="workout_kind_short_walk_run">C/C</string>
+    <string name="workout_kind_short_race">Prova</string>
 
     <string name="notif_recording_run">Registrando corrida</string>
     <string name="notif_paused">Pausado</string>
@@ -39,19 +66,66 @@
 
     <string name="start">Iniciar</string>
     <string name="sync_count">Sincronizar %1$d</string>
+    <string name="sync_retry">Tentar de novo</string>
+    <string name="sync_retry_count">Repetir %1$d</string>
+    <plurals name="cd_sync_queued">
+        <item quantity="one">%1$d corrida salva aguardando sincronização. Toque para sincronizar agora.</item>
+        <item quantity="other">%1$d corridas salvas aguardando sincronização. Toque para sincronizar agora.</item>
+    </plurals>
+    <plurals name="cd_sync_failed_retry">
+        <item quantity="one">%1$d corrida salva aguardando. A última sincronização não foi concluída. Toque para tentar de novo.</item>
+        <item quantity="other">%1$d corridas salvas aguardando. A última sincronização não foi concluída. Toque para tentar de novo.</item>
+    </plurals>
+    <plurals name="cd_sync_sign_in_required">
+        <item quantity="one">%1$d corrida salva aguardando. Sua sessão expirou. Toque para entrar novamente.</item>
+        <item quantity="other">%1$d corridas salvas aguardando. Sua sessão expirou. Toque para entrar novamente.</item>
+    </plurals>
+    <string name="cd_sync_unreadable_retry">Corridas salvas ilegíveis, toque para tentar de novo</string>
+    <plurals name="sync_rejected">
+        <item quantity="one">%1$d recusada</item>
+        <item quantity="other">%1$d recusadas</item>
+    </plurals>
+    <string name="sync_rejected_discard">Descartar %1$d?</string>
+    <plurals name="cd_sync_rejected">
+        <item quantity="one">%1$d corrida salva recusada pelo servidor. Toque para descartar.</item>
+        <item quantity="other">%1$d corridas salvas recusadas pelo servidor. Toque para descartar.</item>
+    </plurals>
+    <plurals name="cd_sync_rejected_confirm">
+        <item quantity="one">Confirmar o descarte de %1$d corrida. Não salva em nenhum outro lugar.</item>
+        <item quantity="other">Confirmar o descarte de %1$d corridas. Não salvas em nenhum outro lugar.</item>
+    </plurals>
     <string name="offline">Off-line</string>
-    <string name="race_armed">PROVA PRONTA</string>
+    <string name="not_signed_in">Sem sessão iniciada</string>
+    <string name="race_armed">PROVA PREPARADA</string>
     <string name="race_live">PROVA AO VIVO</string>
     <string name="event">Evento</string>
     <string name="race_wait_for_go">%1$s · aguarde o GO</string>
+    <string name="race_self_timed">TEMPO PRÓPRIO</string>
+    <string name="race_self_timed_how">%1$s · toque em Tentativa, depois Iniciar, e cruze a linha de largada</string>
+    <string name="race_attempt">Esta corrida é a minha tentativa</string>
+    <string name="race_attempt_ready">Tentativa pronta · toque em Iniciar</string>
     <string name="race_tap_start">%1$s · toque em Iniciar</string>
+    <string name="race_finish_short">Fim</string>
+    <string name="cd_finish_race">Finalizar prova</string>
+    <string name="race_ended">Corrida encerrada</string>
+    <string name="race_late_start">Largada tardia</string>
+    <string name="race_clock">Corrida %1$s</string>
+    <string name="race_result_finished">Chegada %1$s</string>
+    <string name="race_result_dnf">Corrida DNF</string>
+    <string name="race_to_start_line">%1$s até a linha de largada</string>
+    <string name="race_start_crossed">Linha de largada cruzada, cronometrando</string>
+    <string name="race_finish_recorded">Chegada registrada</string>
+    <string name="race_undo_resume">Não terminou? Retomar</string>
     <string name="battery_consider_charging">Bateria %1$d%% · considere carregar</string>
     <string name="route">Rota</string>
     <string name="pace">Ritmo</string>
+    <string name="pace_off">Desativado</string>
+    <string name="activity">Atividade</string>
     <string name="activity_run">Corrida</string>
     <string name="activity_walk">Caminhada</string>
     <string name="activity_hike">Trilha</string>
     <string name="activity_cycle">Ciclismo</string>
+    <string name="activity_stroller">Carrinho</string>
     <string name="sign_in">Entrar</string>
     <string name="sign_out">Sair</string>
     <string name="cd_cancel_countdown">Cancelar a contagem regressiva</string>
@@ -66,6 +140,11 @@
     <string name="recover_unsaved_run">Recuperar corrida não salva?</string>
     <string name="save_it">Salvar</string>
     <string name="discard">Descartar</string>
+    <string name="discard_confirm">Descartar?</string>
+    <plurals name="discard_stake">
+        <item quantity="one">Não salva em nenhum outro lugar</item>
+        <item quantity="other">Não salvas em nenhum outro lugar</item>
+    </plurals>
 
     <string name="battery_allow_background">Permitir atividade em segundo plano</string>
     <string name="battery_samsung_summary">Os relógios Samsung gerenciam isso no Galaxy Wearable no seu celular.</string>
@@ -76,12 +155,36 @@
     <string name="battery_try_auto_open">Abrir automaticamente</string>
     <string name="done">Concluído</string>
 
+    <string name="perm_title_blocked">Localização necessária</string>
+    <string name="perm_title_precise">Localização precisa desligada</string>
+    <string name="perm_title_degraded">Alguns recursos desligados</string>
+    <string name="perm_cost_location">Sem localização esta corrida registra só o tempo — sem rota, distância ou ritmo.</string>
+    <string name="perm_cost_precise_location">A localização aproximada não basta para registrar rota, distância ou ritmo. Escolha “Precisa” ou ative “Usar local exato”.</string>
+    <string name="perm_cost_heart_rate">A frequência cardíaca não será registrada.</string>
+    <string name="perm_cost_steps">Os passos não serão registrados.</string>
+    <string name="perm_cost_notification">Sem indicador de corrida no mostrador durante a gravação.</string>
+    <string name="perm_watch_steps">No relógio: Configurações → Apps → Threkir → Permissões.</string>
+    <string name="perm_try_again">Pedir de novo</string>
+    <string name="perm_open_settings">Abrir configurações</string>
+    <string name="perm_start_anyway">Começar assim mesmo</string>
+
     <string name="email">E-mail</string>
     <string name="password">Senha</string>
     <string name="tap_here">Toque aqui</string>
     <string name="submit">Enviar</string>
     <string name="cancel">Cancelar</string>
-    <string name="token_refresh_failed">Falha ao renovar o token: %1$s</string>
+    <string name="auth_fault_credentials">E-mail ou senha incorretos</string>
+    <string name="auth_fault_rate_limited">Muitas tentativas — espere um minuto</string>
+    <string name="auth_fault_server">Servidor ocupado — tente de novo</string>
+    <string name="auth_fault_offline">Sem conexão</string>
+    <string name="auth_fault_session_expired">Sessão expirada — entre novamente</string>
+    <string name="auth_fault_unknown">Falha ao entrar</string>
+    <string name="sync_queue_unreadable">Corridas salvas ilegíveis</string>
+    <string name="sync_fault_offline">Sem conexão — vamos tentar de novo</string>
+    <string name="sync_fault_server">Servidor ocupado — vamos tentar de novo</string>
+    <string name="sync_fault_sign_in">Entre novamente para sincronizar</string>
+    <string name="sync_fault_refused">O servidor recusou esta corrida</string>
+    <string name="sync_fault_unknown">Falha na sincronização</string>
 
     <string name="no_gps_time_only">Sem GPS — somente tempo</string>
     <string name="gps_lost">GPS perdido</string>
@@ -95,6 +198,7 @@
 
     <string name="route_none">Nenhuma</string>
     <string name="route_picker_empty">Nenhuma rota salva. Crie uma rota no celular ou na web primeiro.</string>
+    <string name="route_picker_unavailable">Não foi possível carregar suas rotas. Verifique se o relógio está conectado e online.</string>
 
     <string name="synced">Sincronizado</string>
     <string name="sync">Sinc.</string>
@@ -104,6 +208,7 @@
     <string name="cd_start_next_run">Iniciar a próxima corrida</string>
     <string name="cd_sync_run">Sincronizar corrida</string>
     <string name="cd_discard_unsaved_run">Descartar corrida não salva</string>
+    <string name="cd_discard_confirm">Confirmar descarte. Não salva em nenhum outro lugar.</string>
 
     <string name="tts_run_started">Corrida iniciada</string>
     <plurals name="tts_split_unit_km">
@@ -121,4 +226,60 @@
     <string name="tts_run_complete_mi">Corrida concluída. %1$s milhas em %2$d minutos.</string>
     <string name="tts_pace_alert_fast">Acelere o ritmo</string>
     <string name="tts_pace_alert_slow">Diminua o ritmo</string>
+
+    <string name="tts_workout_complete">Treino concluído. Bom trabalho.</string>
+    <string name="tts_step_warmup">Aquecimento</string>
+    <string name="tts_step_warmup_walk">Caminhada de aquecimento</string>
+    <string name="tts_step_rep">Repetição</string>
+    <string name="tts_step_run">Corrida</string>
+    <string name="tts_step_rep_of">Repetição %1$d de %2$d</string>
+    <string name="tts_step_run_of">Corrida %1$d de %2$d</string>
+    <string name="tts_step_recovery">Recuperação</string>
+    <string name="tts_step_walk">Caminhada</string>
+    <string name="tts_step_walk_of">Caminhada %1$d de %2$d</string>
+    <string name="tts_step_steady">Ritmo constante</string>
+    <string name="tts_step_cooldown">Desaquecimento</string>
+    <string name="tts_step_cooldown_walk">Caminhada de desaquecimento</string>
+    <string name="tts_step_duration">%1$s. %2$s.</string>
+    <string name="tts_step_distance_pace">%1$s. %2$s a %3$s.</string>
+    <string name="tts_step_distance">%1$s. %2$s.</string>
+    <string name="tts_step_pace_km">%1$d minutos %2$d segundos por quilômetro</string>
+    <string name="tts_step_pace_mi">%1$d minutos %2$d segundos por milha</string>
+    <string name="tts_step_pace_km_whole">%1$d minutos por quilômetro</string>
+    <string name="tts_step_pace_mi_whole">%1$d minutos por milha</string>
+    <string name="tts_distance_km">%1$s quilômetros</string>
+    <string name="tts_distance_mi">%1$s milhas</string>
+    <string name="tts_distance_short_km">%1$d metros</string>
+    <string name="tts_distance_short_mi">%1$d jardas</string>
+    <string name="tts_duration_seconds">%1$d segundos</string>
+    <string name="tts_duration_minutes_seconds">%1$s %2$d segundos</string>
+    <string name="tts_step_last_fifty_km">Faltam cinquenta metros</string>
+    <string name="tts_step_last_fifty_mi">Faltam cinquenta jardas</string>
+    <string name="tts_step_last_ten_seconds">Faltam dez segundos</string>
+    <string name="tts_pace_drift_ahead_km">Alivie um pouco — %1$d segundos por quilômetro rápido demais.</string>
+    <string name="tts_pace_drift_ahead_mi">Alivie um pouco — %1$d segundos por milha rápido demais.</string>
+    <string name="tts_pace_drift_behind_km">Acelere um pouco — %1$d segundos por quilômetro lento demais.</string>
+    <string name="tts_pace_drift_behind_mi">Acelere um pouco — %1$d segundos por milha lento demais.</string>
+    <plurals name="tts_duration_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+
+    <!-- Today's workout, pushed by the phone (WorkoutBridge) -->
+    <string name="workout">Treino</string>
+    <string name="workout_off">Desativado</string>
+    <plurals name="workout_step_count">
+        <item quantity="one">%1$d etapa</item>
+        <item quantity="other">%1$d etapas</item>
+    </plurals>
+    <string name="cd_workout_on">Treino de hoje, %1$s, ativado, toque para correr livre</string>
+    <string name="cd_workout_off">Treino de hoje, desativado, toque para segui-lo</string>
+    <string name="workout_step_warmup">Aquecimento</string>
+    <string name="workout_step_rep">Rep.</string>
+    <string name="workout_step_recovery">Recuperação</string>
+    <string name="workout_step_walk">Caminhada</string>
+    <string name="workout_step_steady">Constante</string>
+    <string name="workout_step_cooldown">Desaquecimento</string>
+    <string name="workout_done">Treino concluído</string>
+    <string name="cd_mark_lap_skip_step">Marcar volta e pular para a próxima etapa</string>
 </resources>

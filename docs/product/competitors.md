@@ -65,14 +65,13 @@ The Android app already covers a surprising amount of ground for an in-developme
 
 ### What's deliberately not in the app yet (and why)
 
-Most of what this section used to gate has shipped — OAuth (Google + Apple sign-in), Strava live OAuth + webhook sync, parkrun athlete-number import, BLE chest-strap HR, persistent disk tile cache, premium training endpoints + the matching UI (training plans, VDOT / VO₂ max, training load, recovery advice), the **live structured-workout execution loop** (Android — band overlay + planned-vs-actual review, see [workout_execution.md](../features/workout_execution.md)), **audio-coached / guided runs** (web preview library + mobile TTS execution), live spectator (Supabase Realtime path), segments + leaderboards (v1 + v2 tiered with KOM/QOM crowns), follows + kudos + comments + notifications inbox, clubs + events + posts, gear tracking, photos on runs, heatmap discovery (web + mobile). Today's genuinely deferred items, sourced from the `[ ]` rows in [roadmap.md](roadmap.md) Phase 3 + the unphased competitor-parity backlog:
+Most of what this section used to gate has shipped — OAuth (Google + Apple sign-in), Strava live OAuth + webhook sync, BLE chest-strap HR, persistent disk tile cache, premium training endpoints + the matching UI (training plans, VDOT / VO₂ max, training load, recovery advice), the **live structured-workout execution loop** (Android — band overlay + planned-vs-actual review, see [workout_execution.md](../features/workout_execution.md)), **audio-coached / guided runs** (web preview library + mobile TTS execution), live spectator (Supabase Realtime path), segments + leaderboards (v1 + v2 tiered with KOM/QOM crowns), follows + kudos + comments + notifications inbox, clubs + events + posts, gear tracking, photos on runs, heatmap discovery (web + mobile). Today's genuinely deferred items, sourced from the `[ ]` rows in [roadmap.md](roadmap.md) Phase 3 + the unphased competitor-parity backlog:
 
 - **Training-plan re-planning around missed sessions** — the generator emits a static plan and the adherence layer (`plan_adherence.ts`) now *detects* drift + a missed long run, but the plan doesn't auto-adjust. This is the last real training-engine gap and Runna's headline feature.
 - **Push notifications (FCM / APNs)** — `device_tokens` table is shipped; the sender + client-side token registration are blocked on user-supplied Firebase / APNs credentials.
 - **Garmin Connect OAuth** — hard-blocked on the multi-day Garmin Developer Program application.
 - **Live spectator transport upgrade** — the Realtime fallback is live and shipping; the Go WebSocket hub at `apps/job_worker/internal/livehub/` is code-complete and awaits a Fly deploy.
 - **Offline tile packs + turn-by-turn voice nav** — partial. Per-route "Save for offline" pin shipped (decisions.md § 64) — flags individual routes to keep on the phone — and the disk-backed tile cache is shipped for normal browsing. **Still pending:** pre-downloading a region's raster tiles before a no-signal trail run, plus turn-by-turn voice cues against a loaded route. The pin reserves the route data side; tile packs + cues are the remaining work.
-- **Race calendar + results** — needs a RunSignUp API key; otherwise patterned after the existing parkrun import.
 - **Phase 4: gym + nutrition modules** — see the [multi-modal section below](#multi-modal-competitive-landscape-phase-4--run--lift--meal) and [roadmap.md § Phase 4](roadmap.md#phase-4--multi-modal-gym--nutrition).
 
 ### Migration paths shipped today
@@ -81,14 +80,14 @@ Bringing your existing run history with you is the single biggest barrier to swi
 
 - **Strava ZIP import** — every Strava user can request a full data export from Settings → My Account → Download or Delete Your Account. The exporter unzips it, parses `activities.csv`, walks each `.gpx`/`.tcx`/`.gpx.gz` track file, and bulk-creates runs in the local store. Pushes to the cloud automatically if signed in. FIT files are skipped (re-export from Strava as GPX).
 - **Health Connect import** — on Android 14+, every fitness app syncs into Health Connect: Google Fit, Samsung Health, Garmin Connect, Fitbit, Runna, even Nike Run Club via the Strava bridge. The importer reads workout summaries from the last year. The trade-off is that Health Connect doesn't expose GPS routes for workouts written by other apps, so imported runs from this path don't have a map trace.
-- **CSV summary re-import** — accepts both the 5-column mobile/web Settings CSV export and the 17-column backend GDPR export from `/v1/export?format=csv`. Each row becomes a manual-entry run (no GPS); idempotent on re-import via a stable `external_id`. The card copy says "won't have a route line" so the user isn't surprised by trackless rows. See `decisions.md § 65`.
+- **CSV summary re-import** — accepts both the 5-column mobile/web Settings CSV export and the 17-column backend GDPR export (`format: 'csv'` on either export rail). Each row becomes a manual-entry run (no GPS); idempotent on re-import via a stable `external_id`. The card copy says "won't have a route line" so the user isn't surprised by trackless rows. See `decisions.md § 65`.
 - **Full Backup ZIP restore** — the lossless round-trip. Manifest + `runs.json` + `routes.json` + `profile.json` + per-run gzipped tracks. **Works without signing in** — runs hydrate into `LocalRunStore` + `LocalRouteStore` and ride the next `SyncService` cycle to Supabase. Surfaces on the Import screen alongside the other three paths AND on Settings → "Restore from backup". See `decisions.md § 66`.
 
 Together these cover the realistic migration cases. A user migrating from Strava gets full GPS tracks; a user migrating from any other app gets workout summaries with no map; a user moving between this app's own devices gets the lossless Backup ZIP path. Either way, they walk in with their full history on day one.
 
 Storage was redesigned in the same release: GPS tracks now live as gzipped JSON files in Supabase Storage instead of inline `jsonb` columns. A 5-year power-user import (≈600 MB raw) compresses to ~75 MB and costs cents per user per year instead of dollars. **Bulk import would have been economically unviable on the old schema.**
 
-Backup at scale was rebuilt in May 2026 to stream to disk via `ZipFileEncoder` (mobile) / `@zip.js/zip.js` `BlobWriter` (web), with bounded-concurrency track downloads (6× in flight). Peak heap drops from ~300 MB to ~5 MB at 5 000 runs — the OOM ceiling that bricks every other client-side ZIP builder at scale is gone. For typical sub-5 000-run users, mobile prefers the Go service's `POST /v1/export?format=backup` path (server does the fan-out, mobile streams the signed URL straight to disk); falls back to the local writer on any failure or library size beyond the server cap. See `decisions.md § 66`.
+Backup at scale was rebuilt in May 2026 to stream to disk via `ZipFileEncoder` (mobile) / `@zip.js/zip.js` `BlobWriter` (web), with bounded-concurrency track downloads (6× in flight). Peak heap drops from ~300 MB to ~5 MB at 5 000 runs — the OOM ceiling that bricks every other client-side ZIP builder at scale is gone. The server-built Art 20 archive is a separate, queued path on both clients (`POST /v1/export/jobs`, `decisions.md § 717` + `§ 724`): it survives a closed tab or a killed app, and the on-device writer is offered beside it rather than substituted for it. See `decisions.md § 66`.
 
 ### Lines worth defending
 
@@ -311,7 +310,6 @@ Same legend as above. The **This app** column notes the platform(s) each feature
 | Community routes | ✓ (web, Android) | ✓ | — | — | ✓ | ✓ | — | — |
 | Route-condition reports | Backlog | — | — | — | ✓ | ✓ | — | — |
 | **Integrations & import** | | | | | | | | |
-| parkrun sync | ✓ | — | — | — | — | — | — | — |
 | Strava import | ✓ | Native | ✓ | ✓ | Limited | ✓ | ✓ | — (export-out only) |
 | HealthKit sync | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
 | Health Connect sync | ✓ | ✓ | ✓ | — | — | — | Partial | Partial |
@@ -346,7 +344,7 @@ Backlog items are tracked in `docs/product/roadmap.md § Competitor-parity backl
 
 | App | Free tier | Paid tier | What's paywalled |
 |---|---|---|---|
-| **This app** | Full core features incl. training plans + 5 / day AI coach | ~$9.99/month (Pro) | Unlimited AI coach + priority job-queue processing (see [decisions.md § 23](../architecture/decisions.md)) |
+| **This app** | Full core features incl. training plans + 2 / day AI coach | ~$9.99/month (Pro) | 10 / day AI coach + priority processing + server route generation (see [paywall.md](../features/paywall.md)) |
 | Strava | Basic tracking + social | ~$11.99/month | Route builder, GPX, segment leaderboards, training plans |
 | Garmin Connect | Everything | N/A (hardware cost) | Nothing — hardware is the business model |
 | Nike Run Club | Everything | N/A | Nothing |
@@ -416,7 +414,7 @@ The realistic upside is being the runner's chosen destination across all three m
 Strava profile pages are not well-indexed by Google. A public route library with proper metadata (location, distance, surface type, elevation) can rank for "[city] running routes" searches. Each user who shares a route creates an indexed page.
 
 ### parkrun community
-parkrun has millions of registered participants worldwide and a famously engaged community. Being "the app that actually tracks your parkrun history alongside your other runs" is a specific, shareable hook that no major app delivers.
+parkrun has millions of registered participants worldwide and a famously engaged community. The app carries a runner's parkrun barcode (their own number, nothing read from parkrun). Importing parkrun history is **not** on offer: parkrun has no API and opposes scraping, so the importer was removed ([decisions § 2467](../architecture/decisions.md)). Revisit only with parkrun's written permission or an official API.
 
 ### Wear OS users with no good option
 NRC dropping Wear OS support leaves a gap. Android users with a Pixel Watch or Galaxy Watch running Wear OS have no dedicated running app with standalone GPS. The two strongest training-analytics ecosystems — Garmin and COROS — both refuse to run on any watch but their own, so neither helps a Wear OS owner. This is a specific, searchable pain point.

@@ -18,13 +18,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import TrackPreview from './TrackPreview.svelte';
-	import { fetchClippedRouteForViewer } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
-	import { buildStaticMapUrl, buildLocalStaticMapUrl } from '$lib/routes/static_map';
+	import StaticMapImage from './StaticMapImage.svelte';
+	import { fetchClippedRouteForViewer } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { trackThumbnailUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+	import { thumbnailSize } from '#lib/routes/static_map.ts';
+
+	// Same OS read RunMap makes, so `streets` resolves to the same light or
+	// dark rung here as on the live map.
+	const prefersDark =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 	let {
 		routeId,
@@ -55,14 +61,17 @@
 	const cacheKey = $derived(`${shouldClip ? 'clip' : 'raw'}:${routeId}`);
 
 	let el: HTMLDivElement;
+	// The box the image is drawn into, so the request matches it (thumbnailSize).
+	let boxW = $state(0);
+	let boxH = $state(0);
 	let points = $state<Waypoint[] | null>(null);
 	let attempted = $state(false);
 
 	onMount(() => {
 		// Owner case + waypoints present: use them directly (no fetch).
 		// Some call sites (e.g. RouteExplorer cards, where the
-		// `search_public_routes` RPC returns the redacted
-		// `public_routes` view with NO waypoints column) pass
+		// public-route search reads the redacted `public_routes` view,
+		// which has NO waypoints column) pass
 		// `waypoints=[]`. Fall through to the clip RPC in that case
 		// so the card still gets a polyline — `clip_route_for_viewer`
 		// returns the unclipped polyline for the owner anyway.
@@ -106,46 +115,41 @@
 	}
 </script>
 
-<div bind:this={el} class="wrap">
+<div bind:this={el} bind:clientWidth={boxW} bind:clientHeight={boxH} class="wrap">
 	{#if points && points.length > 1}
+		{@const track = points}
+		{@const size = thumbnailSize(boxW, boxH)}
 		{@const mapUrl =
-			buildLocalStaticMapUrl(points, {
-				w: 220,
-				h: 140,
-				styleUrl: PUBLIC_TILE_STYLE_URL,
-			}) ??
-			// MapTiler's static-map endpoint logs the requester IP per
-			// fetch, and this preview renders on anon surfaces (e.g. a
-			// public /clubs/[slug]). Hold the third-party request until
-			// consent; until then fall through to the bare SVG below.
-			// The self-hosted local tile override above is exempt — no
-			// third party. audit/cookie-consent.
-			(consent.accepted
-				? buildStaticMapUrl(points, {
-						w: 220,
-						h: 140,
-						style: 'streets-v2',
+			boxW > 0 && boxH > 0
+				? trackThumbnailUrlFromEnv(points, {
+						w: size.w,
+						h: size.h,
 						key: PUBLIC_MAPTILER_KEY,
+						prefersDark,
+						allowThirdParty: consent.accepted,
 					})
-				: null)}
+				: null}
+		<!-- MapTiler logs the requester IP per static-map fetch, and this
+		     preview renders on anon surfaces (e.g. a public /clubs/[slug]),
+		     so the third-party rung waits for consent; the self-hosted
+		     override is exempt. audit/cookie-consent. -->
+
 		{#if mapUrl}
 			<!-- Static map background: shows the route polyline overlaid
 			     on real tiles (roads, parks, water) so users can scan a
 			     card and recognise where the route is. Falls back to the
-			     bare SVG when PUBLIC_MAPTILER_KEY isn't set or the route
-			     has <2 points. The img is lazy-loaded so a long list
-			     doesn't fire 50 static-map requests on page load — only
-			     the cards inside the viewport hit MapTiler. -->
-			<img
-				src={mapUrl}
-				class="map-img"
-				loading="lazy"
-				decoding="async"
-				alt=""
-				data-testid="route-preview-map"
-			/>
+			     bare SVG when PUBLIC_MAPTILER_KEY isn't set, the route
+			     has <2 points, or the image request itself fails. The img
+			     is lazy-loaded so a long list doesn't fire 50 static-map
+			     requests on page load — only the cards inside the
+			     viewport hit MapTiler. -->
+			<StaticMapImage src={mapUrl} alt="" class="map-img" testid="route-preview-map" lazy>
+				{#snippet fallback()}
+					<TrackPreview points={track} />
+				{/snippet}
+			</StaticMapImage>
 		{:else}
-			<TrackPreview {points} />
+			<TrackPreview points={track} />
 		{/if}
 	{:else}
 		<span class="material-symbols placeholder">map</span>
@@ -161,7 +165,7 @@
 		justify-content: center;
 		overflow: hidden;
 	}
-	.map-img {
+	.wrap :global(.map-img) {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;

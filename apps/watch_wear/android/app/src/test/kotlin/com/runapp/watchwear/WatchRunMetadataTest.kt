@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -36,11 +37,57 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
         )
         assertFalse("avg_bpm must be absent when null", md.containsKey("avg_bpm"))
+    }
+
+    @Test
+    fun `null hrCoverage omits the key rather than claiming zero`() {
+        // A run recorded before the field existed, or on a build with heart
+        // rate off. Absent and zero are different claims: zero says the sensor
+        // was on and delivered nothing (decisions § 1083).
+        val md = buildRunMetadata(
+            activityType = "run",
+            avgBpm = 145.7,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+        )
+        assertFalse("hr_coverage must be absent when null", md.containsKey("hr_coverage"))
+    }
+
+    @Test
+    fun `a zero coverage is written, and is not confused with absence`() {
+        val md = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = 0.0,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+        )
+        assertTrue("hr_coverage 0 is a measurement", md.containsKey("hr_coverage"))
+        assertEquals(0.0, md["hr_coverage"]!!.jsonPrimitive.double, 0.0001)
+        assertFalse("no samples means no average", md.containsKey("avg_bpm"))
+    }
+
+    @Test
+    fun `coverage rides beside the average it qualifies`() {
+        val md = buildRunMetadata(
+            activityType = "run",
+            avgBpm = 145.7,
+            hrCoverage = 0.82,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+        )
+        assertEquals(145.7, md["avg_bpm"]!!.jsonPrimitive.double, 0.0001)
+        assertEquals(0.82, md["hr_coverage"]!!.jsonPrimitive.double, 0.0001)
     }
 
     @Test
@@ -51,6 +98,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = 145.7,
+            hrCoverage = null,
             steps = null,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -66,6 +114,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -83,6 +132,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = 0,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -95,6 +145,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = 4_521,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -112,6 +163,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -131,6 +183,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = laps,
             lastModifiedAtIso = isoStamp,
@@ -160,6 +213,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = laps,
             lastModifiedAtIso = isoStamp,
@@ -201,6 +255,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = laps,
             lastModifiedAtIso = isoStamp,
@@ -229,6 +284,7 @@ class WatchRunMetadataTest {
             val md = buildRunMetadata(
                 activityType = kind,
                 avgBpm = null,
+                hrCoverage = null,
                 steps = null,
                 laps = emptyList(),
                 lastModifiedAtIso = isoStamp,
@@ -252,6 +308,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -272,6 +329,7 @@ class WatchRunMetadataTest {
         val md = buildRunMetadata(
             activityType = "run",
             avgBpm = null,
+            hrCoverage = null,
             steps = null,
             laps = emptyList(),
             lastModifiedAtIso = isoStamp,
@@ -281,5 +339,163 @@ class WatchRunMetadataTest {
         assertNull(md["avg_bpm"])
         assertNull(md["steps"])
         assertNull(md["laps"])
+    }
+
+    private fun withEstimator(estimator: String?, stepFilledM: Double?, overChordM: Double? = null) = buildRunMetadata(
+        activityType = "run",
+        avgBpm = null,
+        hrCoverage = null,
+        steps = null,
+        laps = emptyList(),
+        lastModifiedAtIso = isoStamp,
+        distanceEstimator = estimator,
+        distanceStepFilledM = stepFilledM,
+        distanceStepOverChordM = overChordM,
+    )
+
+    @Test
+    fun `an estimator run stamps distance_estimator`() {
+        val md = withEstimator("kalman_v1", 0.0)
+        assertEquals("kalman_v1", md["distance_estimator"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `distance_step_filled_m is written only when the pedometer filled something`() {
+        assertEquals(105.7, withEstimator("kalman_v1", 105.7)["distance_step_filled_m"]!!.jsonPrimitive.double, 1e-9)
+        assertFalse(withEstimator("kalman_v1", 0.0).containsKey("distance_step_filled_m"))
+        assertFalse(withEstimator("kalman_v1", null).containsKey("distance_step_filled_m"))
+    }
+
+    @Test
+    fun `distance_step_over_chord_m rides with distance_step_filled_m, zero included`() {
+        assertEquals(
+            48.6,
+            withEstimator("kalman_v1", 104.0, 48.6)["distance_step_over_chord_m"]!!.jsonPrimitive.double,
+            1e-9,
+        )
+        assertEquals(0.0, withEstimator("kalman_v1", 57.6, 0.0)["distance_step_over_chord_m"]!!.jsonPrimitive.double, 0.0)
+        assertFalse(withEstimator("kalman_v1", 57.6, null).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator("kalman_v1", 57.6, Double.NaN).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator("kalman_v1", 57.6, -1.0).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator("kalman_v1", 0.0, 0.0).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator(null, 57.6, 10.0).containsKey("distance_step_over_chord_m"))
+    }
+
+    @Test
+    fun `distance_segments rides with the estimator stamp, one or more`() {
+        fun md(estimator: String?, segments: Int?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            distanceEstimator = estimator,
+            distanceSegments = segments,
+        )
+        assertEquals(3, md("kalman_v4", 3)["distance_segments"]!!.jsonPrimitive.int)
+        assertEquals(1, md("kalman_v4", 1)["distance_segments"]!!.jsonPrimitive.int)
+        assertFalse(md("kalman_v4", 0).containsKey("distance_segments"))
+        assertFalse(md("kalman_v4", null).containsKey("distance_segments"))
+        assertFalse(md(null, 2).containsKey("distance_segments"))
+    }
+
+    @Test
+    fun `a run queued by a hop-summing build claims no estimator`() {
+        val md = withEstimator(null, null)
+        assertFalse(md.containsKey("distance_estimator"))
+        assertFalse(md.containsKey("distance_step_filled_m"))
+    }
+
+    @Test
+    fun `track_complete is written only for a run that stored every estimator fix`() {
+        fun md(complete: Boolean) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            distanceEstimator = "kalman_v4",
+            trackComplete = complete,
+        )
+        assertEquals(true, md(true)["track_complete"]!!.jsonPrimitive.content.toBoolean())
+        assertFalse(md(false).containsKey("track_complete"))
+    }
+
+    @Test
+    fun `location_provider is written when the run names one and omitted otherwise`() {
+        fun md(provider: String?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            locationProvider = provider,
+        )
+        for (provider in listOf("gps", "fused", "mixed")) {
+            assertEquals(provider, md(provider)["location_provider"]!!.jsonPrimitive.content)
+        }
+        assertFalse(md(null).containsKey("location_provider"))
+    }
+
+    @Test
+    fun `gnss_signal is written whole when the run read satellite status`() {
+        fun md(summary: GnssSignalSummary?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            gnssSignal = summary,
+        )
+        val summary = GnssSignalSummary(samples = 100, usedMedian = 14, cn0MedianDbHz = 39.1, cn0P10DbHz = 27.9, l5Fraction = 0.6)
+        val full = md(summary)["gnss_signal"]!!.jsonObject
+        assertEquals(100, full["samples"]!!.jsonPrimitive.int)
+        assertEquals(14, full["used_median"]!!.jsonPrimitive.int)
+        assertEquals(39.1, full["cn0_median_dbhz"]!!.jsonPrimitive.double, 0.0)
+        assertEquals(27.9, full["cn0_p10_dbhz"]!!.jsonPrimitive.double, 0.0)
+        assertEquals(0.6, full["l5_fraction"]!!.jsonPrimitive.double, 0.0)
+
+        val noFix = md(GnssSignalSummary(samples = 2, usedMedian = 0))["gnss_signal"]!!.jsonObject
+        assertEquals(setOf("samples", "used_median"), noFix.keys)
+        assertFalse(md(null).containsKey("gnss_signal"))
+    }
+
+    @Test
+    fun `a run that followed a workout carries the three review keys, a free run none`() {
+        fun md(review: com.runapp.watchwear.workout.WorkoutReview?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            workout = review,
+        )
+        val review = com.runapp.watchwear.workout.WorkoutReview(
+            planWorkoutId = "pw-1",
+            adherence = "completed",
+            steps = listOf(
+                com.runapp.watchwear.workout.WorkoutStepResultRecord(
+                    stepIndex = 0, kind = "steady", targetDistanceM = 5000.0,
+                    actualDistanceM = 5000.0, targetPaceSPerKm = 330,
+                    actualPaceSPerKm = 328, toleranceSPerKm = 10,
+                    durationS = 1640, status = "completed",
+                ),
+            ),
+        )
+        val with = md(review)
+        assertEquals("pw-1", with["plan_workout_id"]!!.jsonPrimitive.content)
+        assertEquals("completed", with["workout_adherence"]!!.jsonPrimitive.content)
+        val row = with["workout_step_results"]!!.jsonArray.single().jsonObject
+        assertEquals(0, row["step_index"]!!.jsonPrimitive.int)
+        assertEquals(328, row["actual_pace_sec_per_km"]!!.jsonPrimitive.int)
+        val without = md(null)
+        for (k in listOf("plan_workout_id", "workout_step_results", "workout_adherence")) {
+            assertFalse(k, without.containsKey(k))
+        }
     }
 }

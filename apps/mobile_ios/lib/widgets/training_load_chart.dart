@@ -6,7 +6,9 @@ import 'package:ui_kit/ui_kit.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../metrics.dart';
 import '../training_load.dart';
+import 'metric_label.dart';
 
 /// The three curves, in `ChartPalette.series` order: fitness, fatigue, form.
 /// The legend swatch and the painted line read the SAME list, so a key can
@@ -28,11 +30,16 @@ class TrainingLoadChart extends StatelessWidget {
   /// running (multi_modal.md Tier-1 lift→load).
   final bool includesLifts;
 
+  /// The runner said their heart rate is medication-affected and the curve
+  /// reads it (`isTrimpLowConfidence`, decisions § 2092).
+  final bool lowConfidence;
+
   const TrainingLoadChart({
     super.key,
     required this.points,
     required this.hasHr,
     this.includesLifts = false,
+    this.lowConfidence = false,
   });
 
   @override
@@ -49,14 +56,24 @@ class TrainingLoadChart extends StatelessWidget {
           children: [
             ChartCardHeader(title: l10n.trainingLoadTitle),
             const SizedBox(height: 4),
-            Text(
-              hasHr
-                  ? l10n.trainingLoadSubtitleHr(points.length)
-                  : l10n.trainingLoadSubtitleVolume,
+            MetricSentence(
+              metric: Metric.trimp,
+              sentence: hasHr ? 'hr' : 'volume',
+              args: {'days': '${points.length}'},
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (lowConfidence) ...[
+              const SizedBox(height: 4),
+              Text(
+                l10n.trainingLoadLowConfidenceMedication,
+                key: const Key('trainingLoadLowConfidence'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             if (includesLifts) ...[
               const SizedBox(height: 4),
               Text(
@@ -236,7 +253,24 @@ double trainingLoadTickStep(double span, {int maxTicks = 4}) {
           : norm <= 5
               ? 5.0
               : 10.0;
-  return mult * mag;
+  // Labels print `tick.round()`, so a sub-1 step (a near-zero load, e.g. one
+  // 10 s run) labels neighbouring gridlines with the same number.
+  return math.max(1.0, mult * mag);
+}
+
+/// Whole-number tick values from [min] to [max], ascending and distinct —
+/// the web `trainingLoadTickValues` pair (`load_chart_ticks.ts`).
+@visibleForTesting
+List<int> trainingLoadTickValues(double min, double max) {
+  if (!min.isFinite || !max.isFinite || max < min) return const [];
+  final step = trainingLoadTickStep(max - min);
+  final out = <int>[];
+  for (var v = (min / step).ceil() * step;
+      v <= max + step * 0.001;
+      v += step) {
+    out.add(v.round());
+  }
+  return out;
 }
 
 class _ChartPainter extends CustomPainter {
@@ -302,11 +336,8 @@ class _ChartPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = gridColor
       ..strokeWidth = 1;
-    final step = trainingLoadTickStep(maxV - minV);
-    for (var tick = (minV / step).ceil() * step;
-        tick <= maxV + step * 0.001;
-        tick += step) {
-      final y = yAt(tick);
+    for (final tick in trainingLoadTickValues(minV, maxV)) {
+      final y = yAt(tick.toDouble());
       if (tick != 0) {
         canvas.drawLine(
           Offset(padL, y),
@@ -315,7 +346,7 @@ class _ChartPainter extends CustomPainter {
         );
       }
       final label = TextPainter(
-        text: TextSpan(text: tick.round().toString(), style: labelStyle),
+        text: TextSpan(text: tick.toString(), style: labelStyle),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: padL - 4);
       label.paint(

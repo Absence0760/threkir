@@ -14,19 +14,77 @@
 --      onboarding needs.
 --   3. The column-SELECT lockdown on user_profiles is preserved (no
 --      table-level SELECT leaked back in).
+--   4. The same for the two payment tables, which this migration granted a
+--      table-level SELECT while its own header claimed it "never grants
+--      table-level SELECT on a column-locked table". It was generated from
+--      the fully-migrated schema, and 20261229_001 / 20270213_001 had written
+--      their lockdowns as COLUMN-level revokes — a no-op under a table-level
+--      grant, leaving no column ACL for the generator to see. 20270621_001
+--      re-cut both to the prescribed shape; these pin that the matrix does not
+--      widen them back, and that the columns the payout UI reads survived.
 
 begin;
 
-select plan(7);
+select plan(12);
 
--- (1) Catch-all — readability. Only app_quota + deletion_audit_log are
--- intentionally service_role-only (no anon/authenticated grant at all).
+-- (1) Catch-all — readability. Only app_quota, deletion_audit_log,
+-- data_export_jobs, payment_refunds, apple_sign_in_tokens, platform_fees,
+-- us_zcta_points, plan_calendar_feeds, run_track_extents and
+-- club_verification_email_challenges are intentionally service_role-only (no
+-- anon/authenticated grant at all). data_export_jobs (20270603_001) holds the
+-- state of an Art 20 export request; the row is useless to a client without a
+-- signed URL, which only the service role can mint, so the whole read goes
+-- through the Go worker's JWT-authed status endpoint and the table needs no
+-- client grant. payment_refunds (20270630000001) is one row per Stripe Refund
+-- on either money ledger: the amounts it holds reach a donor through
+-- fundraiser_feed's net figure and an operator through the service role, and
+-- there is no client surface that reads a refund row itself — so it takes the
+-- 20270621_001 lockdown at TABLE level rather than re-granting a column set
+-- nothing would call. apple_sign_in_tokens (20270714000001) is a Vault
+-- reference to a live Sign in with Apple refresh token: only
+-- apple-token-exchange writes it and only delete-account reads it, both as
+-- the service role, so no client role may hold any grant on it.
+-- platform_fees (20270716000001) is the application-fee rate the checkouts
+-- read as the service role; a client that could read it gains nothing, and one
+-- that could write it would set its own fee, so no client grant at all.
+-- us_zcta_points (20270805000001) is 33,791 Census ZIP centroids that only
+-- race-listings-sync reads, as the service role, to place a provider race; no
+-- client surface reads a centroid, so no client role holds a grant
+-- (us_zcta_points_test.sql pins that side).
+-- plan_calendar_feeds (20270910000001) holds the SHA-256 of each calendar
+-- feed's URL secret: the plan-calendar Edge Function reads it as the service
+-- role, and the owner's Settings card reads its two timestamps through
+-- plan_calendar_feed_status(), so no client role holds a grant on the table
+-- (plan_calendar_feeds_test.sql pins that side).
+-- run_track_extents (20271117002392) is the lat/lng extent of each scored run
+-- track, read only by the segment-match backfill as the service role; it is
+-- location-derived, so no client role holds a grant (segment_match_jobs_test.sql
+-- pins that side).
+-- club_verification_email_challenges (20271120000004) holds the SHA-256 of a
+-- club verification's mailed confirm token: only the definer RPCs read and
+-- write it, so no client role holds a grant (club_verification_test.sql pins
+-- that side).
+-- organiser_dispute_actions (20271202000003) is the naming-dispute audit log;
+-- it names the reviewing site admin, whom neither side may learn, so it is
+-- read only through definer RPCs that project the reviewer away
+-- (organiser_disputes_test.sql pins that side).
+-- park_course_status_actions (20271213000003) is the operator's park course
+-- close and reopen log; it names the site admin and is read only through the
+-- admin-gated park_course_status_history (park_course_reports_test.sql pins
+-- that side).
+-- park_course_nps_alerts (20271214131303) is the NPS closures review queue;
+-- it names the reviewing site admin and is read only through the admin-gated
+-- admin_park_nps_alerts (park_course_nps_alerts_test.sql pins that side).
 select is(
   (select count(*)::int
      from pg_class c
      join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
      where c.relkind = 'r'
-       and c.relname not in ('app_quota', 'deletion_audit_log')
+       and c.relname not in ('app_quota', 'deletion_audit_log', 'data_export_jobs',
+                             'payment_refunds', 'apple_sign_in_tokens', 'platform_fees',
+                             'us_zcta_points', 'plan_calendar_feeds', 'run_track_extents',
+                             'club_verification_email_challenges', 'organiser_dispute_actions',
+                             'park_course_status_actions', 'park_course_nps_alerts')
        and not has_table_privilege('authenticated', c.oid, 'SELECT')
        and not exists (
          select 1 from information_schema.role_column_grants g
@@ -68,6 +126,34 @@ select ok(
 select ok(
   has_column_privilege('authenticated', 'public.user_profiles', 'display_name', 'SELECT'),
   'user_profiles.display_name stays column-readable by authenticated'
+);
+
+-- (4) The two payment tables 20270621_001 re-cut. Assertion (1) above is
+-- satisfied by their per-column grants, so it cannot tell a lockdown from a
+-- table-wide grant; these say which one is in force.
+select ok(
+  not has_table_privilege('authenticated', 'public.donations', 'SELECT'),
+  'donations has NO table-level SELECT for authenticated — 20270213_001''s '
+  'column revoke bites now instead of being absorbed by a table grant'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.donations', 'stripe_payment_intent_id', 'SELECT'),
+  'donations.stripe_payment_intent_id is withheld from authenticated'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.donations', 'amount_cents', 'SELECT'),
+  'donations.amount_cents keeps the column grant that satisfies the catch-all above'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.instructor_payout_accounts',
+                           'stripe_connect_account_id', 'SELECT'),
+  'the raw Stripe Connect account id is withheld from the host''s own-row read'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.instructor_payout_accounts',
+                       'charges_enabled', 'SELECT'),
+  'instructor_payout_accounts.charges_enabled stays readable — fetchPayoutAccount '
+  'selects it on /settings/payouts'
 );
 
 select * from finish();

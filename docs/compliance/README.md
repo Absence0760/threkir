@@ -10,12 +10,13 @@ Operating docs that back the project's international-launch posture. The `/audit
 | [sub-processor-changelog.md](sub-processor-changelog.md) | The GDPR Art 28(2) change-disclosure history — every sub-processor addition / replacement, landed ≥30 days before activation. `sub-processors.md` is the snapshot; this is the history |
 | [dpia.md](dpia.md) | GDPR Art 35 Data Protection Impact Assessment for live-location + heart-rate tracking |
 | [breach-runbook.md](breach-runbook.md) | 72-hour Art 33/34 notification flow — who calls what, in what order |
+| [assessments.md](assessments.md) | Incidents assessed and found not to be a breach, with the reasoning and who decided |
 | [eu-representative.md](eu-representative.md) | Art 27 placeholder — required for non-EU controllers offering services to EU residents |
 | [age-of-consent.md](age-of-consent.md) | Per-member-state age of consent (GDPR Art 8) + how the product enforces it |
 
 ## Status
 
-The public legal pages these docs feed (`/privacy`, `/terms`, `/cookie-notice`, `/health-data-notice` in `apps/web/src/routes/`) carry **complete text synced to these registries** as of 2026-07-14 (decisions §243); the remaining operator items (counsel review, postal address, governing-law state, Art 27 reps, DMCA agent registration) are the "Legal pages — before public launch" checklist in [docs/ops/deployment.md](../ops/deployment.md). Keep the pages in lockstep with `sub-processors.md` + `retention.md` — `tests-e2e/legal/pages.spec.ts` pins the load-bearing facts.
+The public legal pages these docs feed (`/privacy`, `/terms`, `/cookie-notice`, `/health-data-notice` in `apps/web/src/routes/`) carry **complete text synced to these registries** as of 2026-07-14 (decisions §243), with `/terms` § 4 rewritten on 2026-11-11 as "Copyright and trade mark complaints" (decisions § 2469; counsel review before that release is on the same checklist); the remaining operator items (counsel review, postal address, governing-law state, Art 27 reps, DMCA agent registration) are the "Legal pages — before public launch" checklist in [docs/ops/deployment.md](../ops/deployment.md). Keep the pages in lockstep with `sub-processors.md` + `retention.md` — `tests-e2e/legal/pages.spec.ts` pins the load-bearing facts.
 
 Every doc here is a **scaffold** generated alongside the international-compliance audit infrastructure. None of these are legal advice. Before a real EU / UK launch, every doc needs:
 

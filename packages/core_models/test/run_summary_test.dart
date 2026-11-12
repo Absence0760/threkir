@@ -171,11 +171,102 @@ void main() {
       expect(RunSummary.fromIndexJson(j).source, RunSource.app);
     });
 
+    test('an impossible start is refused, never rolled onto another day', () {
+      // `DateTime.parse` reads this as 2027-02-18 — an answer that never threw,
+      // so it never reached `LocalRunStore`'s index rebuild: the run list was
+      // ordered by a day the runner never ran and the value was written back
+      // on the next index flush (decisions § 1431).
+      expect(DateTime.parse('2026-13-45T99:99:99Z'),
+          DateTime.utc(2027, 2, 18, 4, 40, 39));
+      final j = RunSummary.fromRun(buildRun(), synced: false).toIndexJson()
+        ..['started_at'] = '2026-13-45T99:99:99Z';
+      expect(
+        () => RunSummary.fromIndexJson(j),
+        throwsA(isA<FormatException>()
+            .having((e) => e.message, 'message', contains('started_at'))),
+      );
+    });
+
+    test('an unreadable required field names itself rather than a Dart type',
+        () {
+      // The bare casts this replaced threw a `TypeError` naming neither the
+      // column nor the row, which is all the store's recovery had to log.
+      const unusable = <String, List<Object?>>{
+        'id': [null, 42, <String, dynamic>{}],
+        'duration_us': [null, 'thirty minutes', <String, dynamic>{}],
+        'distance_m': [null, '5k', <String, dynamic>{}],
+      };
+      for (final field in unusable.keys) {
+        for (final bad in unusable[field]!) {
+          final j = RunSummary.fromRun(buildRun(), synced: false).toIndexJson()
+            ..[field] = bad;
+          expect(
+            () => RunSummary.fromIndexJson(j),
+            throwsA(isA<FormatException>()
+                .having((e) => e.message, 'message', contains(field))),
+            reason: '$field = $bad',
+          );
+        }
+      }
+    });
+
+    test('a readable row is unaffected by the refusals around it', () {
+      final j = RunSummary.fromRun(buildRun(), synced: false).toIndexJson();
+      final restored = RunSummary.fromIndexJson(j);
+      expect(restored.startedAt, DateTime.parse(j['started_at'] as String));
+      expect(restored.distanceMetres, j['distance_m']);
+      expect(restored.duration.inMicroseconds, j['duration_us']);
+    });
+
     test('wire keys are the compact snake_case shape', () {
       final j = RunSummary.fromRun(buildRun(), synced: true).toIndexJson();
       expect(j.keys,
           containsAll(<String>['id', 'started_at', 'duration_us', 'distance_m']));
       expect(j['duration_us'], const Duration(minutes: 30, seconds: 47).inMicroseconds);
+    });
+  });
+
+  group('a malformed metadata bag costs its own field, not the run', () {
+    test('a value of the wrong type reads as absent rather than throwing', () {
+      // `metadata` is jsonb with no schema, so a value of the wrong type is a
+      // thing it can hold. The hard casts this replaced threw out of the
+      // projection, and the store's save path does not catch — so ONE bad
+      // value discarded the whole run (decisions § 1377).
+      final summary = RunSummary.fromRun(
+        buildRun(metadata: {
+          'activity_type': 7,
+          'avg_bpm': 'one hundred',
+          'elevation_m': <String, dynamic>{},
+          'last_modified_at': 12345,
+          'created_by_user_id': false,
+        }),
+        synced: false,
+      );
+      expect(summary.activityType, isNull);
+      expect(summary.avgBpm, isNull);
+      expect(summary.elevationM, isNull);
+      expect(summary.lastModifiedAt, isNull);
+      expect(summary.createdByUserId, isNull);
+      expect(summary.distanceMetres, 5234.5,
+          reason: 'the run itself still projects');
+    });
+
+    test('a well-formed bag is unchanged', () {
+      final summary = RunSummary.fromRun(
+        buildRun(metadata: {
+          'activity_type': 'trail_run',
+          'avg_bpm': 142,
+          'elevation_m': 310.5,
+          'last_modified_at': '2026-04-23T09:00:00.000Z',
+          'created_by_user_id': 'user-a',
+        }),
+        synced: false,
+      );
+      expect(summary.activityType, 'trail_run');
+      expect(summary.avgBpm, 142.0);
+      expect(summary.elevationM, 310.5);
+      expect(summary.lastModifiedAt, '2026-04-23T09:00:00.000Z');
+      expect(summary.createdByUserId, 'user-a');
     });
   });
 

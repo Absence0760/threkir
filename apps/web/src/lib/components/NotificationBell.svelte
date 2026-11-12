@@ -1,19 +1,22 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import {
 		fetchNotifications,
 		markNotificationRead,
 		markAllNotificationsRead,
 		type NotificationView,
-	} from '$lib/core/data';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { notificationLinkFor } from '$lib/social/notification_link';
+	} from '#lib/core/data.ts';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
+	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
+	import { notificationLinkFor } from '#lib/social/notification_link.ts';
 
 	let open = $state(false);
 	let loading = $state(false);
@@ -109,7 +112,7 @@
 				row: { ...x.row, read_at: x.row.read_at ?? new Date().toISOString() },
 			}));
 		} catch (e) {
-			showToast(m('notificationBell.markAllFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('notificationBell.markAllFailed', { error: errorCopy(e, m, 'notificationBell.markAllFailed') }), 'error');
 		}
 	}
 
@@ -130,16 +133,62 @@
 					: m('notificationBell.commentNoDistance', { name });
 			case 'comment_reply':
 				return m('notificationBell.commentReply', { name });
+			case 'reaction':
+				return m('notificationBell.reaction', { name });
+			case 'comment_like':
+				return m('notificationBell.commentLike', { name });
+			case 'mention':
+				return m('notificationBell.mention', { name });
 			case 'follow':
 				return m('notificationBell.follow', { name });
+			case 'follow_request':
+				return m('notificationBell.followRequest', { name });
 			case 'event_rsvp':
 				return item.event_title
 					? m('notificationBell.eventRsvpTitled', { name, title: item.event_title })
 					: m('notificationBell.eventRsvp', { name });
-			case 'event_cancel':
+			case 'event_cancel': {
+				const msg = eventCancelMessage('notificationBell', item.row, item.event_title);
+				return m(msg.key, msg.params);
+			}
+			case 'event_updated':
 				return item.event_title
-					? m('notificationBell.eventCancelTitled', { title: item.event_title })
-					: m('notificationBell.eventCancel');
+					? m('notificationBell.eventUpdatedTitled', { title: item.event_title })
+					: m('notificationBell.eventUpdated');
+			case 'course_alert':
+				return item.club_name
+					? m('notificationBell.courseAlertNamed', { club: item.club_name })
+					: m('notificationBell.courseAlert');
+			case 'organiser_dispute':
+				return item.club_name
+					? m('notificationBell.organiserDisputeNamed', { club: item.club_name })
+					: m('notificationBell.organiserDispute');
+			case 'park_course_report':
+				return m('notificationBell.parkCourseReport');
+			case 'race_starting_soon':
+				return item.event_title
+					? m('notificationBell.raceStartingSoonTitled', { title: item.event_title })
+					: m('notificationBell.raceStartingSoon');
+			case 'race_start_moved':
+				return item.event_title
+					? m('notificationBell.raceStartMovedTitled', { title: item.event_title })
+					: m('notificationBell.raceStartMoved');
+			case 'club_join_request':
+				return item.club_name
+					? m('notificationBell.clubJoinRequestNamed', { name, club: item.club_name })
+					: m('notificationBell.clubJoinRequest', { name });
+			case 'club_join_approved':
+				return item.club_name
+					? m('notificationBell.clubJoinApprovedNamed', { club: item.club_name })
+					: m('notificationBell.clubJoinApproved');
+			case 'club_verification':
+				return item.club_name
+					? m('notificationBell.clubVerificationNamed', { club: item.club_name })
+					: m('notificationBell.clubVerification');
+			case 'event_waitlist_slot': {
+				const msg = waitlistSlotMessage('notificationBell', item.event_title);
+				return m(msg.key, msg.params);
+			}
 			case 'event_reminder':
 				return item.event_title
 					? m('notificationBell.eventReminderTitled', { title: item.event_title })
@@ -148,8 +197,20 @@
 				return m('notificationBell.planUpdate', { name });
 			case 'plan_assigned':
 				return m('notificationBell.planAssigned', { name });
+			case 'plan_ai_edit':
+				return m('notificationBell.planAiEdit', { name });
+			case 'plan_change_request':
+				return m('notificationBell.planChangeRequest', { name });
+			case 'plan_change_decision':
+				return m('notificationBell.planChangeDecision', { name });
+			case 'workout_reminder':
+				return m('notificationBell.workoutReminder');
 			case 'message':
-				return m('notificationBell.message', { name });
+				return item.row.conversation_id
+					? m('notificationBell.groupMessage', { name })
+					: m('notificationBell.message', { name });
+			case 'group_invite':
+				return m('notificationBell.groupInvite', { name });
 			case 'club_post':
 				return item.club_name
 					? m('notificationBell.clubPostNamed', { name, club: item.club_name })
@@ -162,8 +223,14 @@
 				return m('notificationBell.achievement');
 			case 'challenge_complete':
 				return m('notificationBell.challengeComplete');
+			case 'personal_record':
+				return m('notificationBell.personalRecord');
 			case 'content_hidden':
 				return m('notificationBell.contentHidden');
+			case 'data_export_ready':
+				return m('notificationBell.dataExportReady');
+			case 'refund_failed':
+				return m('notificationBell.refundFailed');
 			default:
 				return m('notificationBell.generic');
 		}

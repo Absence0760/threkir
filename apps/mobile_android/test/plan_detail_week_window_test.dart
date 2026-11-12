@@ -90,7 +90,11 @@ void main() {
             'adherence banner and the re-plan input.',
       );
       expect(src, contains('addDays(plan.startDate, weekIndex * 7)'));
-      expect(src, contains('addDays(plan.startDate, w.weekIndex * 7)'));
+      // The re-plan input is built by the shared `buildReplanWeeks`
+      // (plan_nudges.dart), which steps whole calendar days on ISO dates, so
+      // no clock hour can move a boundary there (decisions § 2125).
+      final input = src.substring(src.indexOf('List<ReplanWeek> _buildReplanInput('));
+      expect(input.substring(0, input.indexOf(';\n')), contains('buildReplanWeeks('));
       expect(
         RegExp(r'weekStart\.add\(').hasMatch(src),
         isFalse,
@@ -99,7 +103,7 @@ void main() {
             'disagree by an hour across a transition and `isComplete` grades '
             'the wrong week.',
       );
-      expect(RegExp(r'addDays\(weekStart, 7\)').allMatches(src).length, 2);
+      expect(RegExp(r'addDays\(weekStart, 7\)').allMatches(src).length, 1);
     });
 
     test('the current-week index counts epoch days, not 24-hour spans', () {

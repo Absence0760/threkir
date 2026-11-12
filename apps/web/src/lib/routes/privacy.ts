@@ -5,16 +5,27 @@
 //
 // Pure functions. Unit-testable. No Svelte / Supabase dependencies.
 
-export interface PrivacyZone {
+import { haversineMetres } from '../runs/run_stats';
+import { hasSmoothedPosition, type LinePointSource } from '../runs/track_line';
+
+/// Declared as an ALIAS, not an interface, and that is load-bearing rather
+/// than stylistic: TypeScript gives an object type an implicit index signature
+/// only when it is an alias — an interface stays open to declaration merging
+/// and so never gets one — and without one a zone list cannot be assigned to
+/// the `Json` of the `user_settings.prefs` bag it is persisted into (§ 1363).
+/// An interface here does not fail the write; it pushes every writer into
+/// restating the fields by hand, which is a second declaration of the privacy
+/// contract § 33 makes.
+export type PrivacyZone = {
 	lat: number;
 	lng: number;
 	radius_m: number;
-}
+};
 
-export interface LatLng {
+export type LatLng = {
 	lat: number;
 	lng: number;
-}
+};
 
 export const PRIVACY_ZONES_KEY = 'privacy_zones';
 
@@ -27,42 +38,69 @@ export function isInAnyZone(point: LatLng, zones: PrivacyZone[]): boolean {
 	return false;
 }
 
-/// Walk forward from index 0 and drop points in any zone; walk
+/// True when either position a stored fix carries is inside a zone: the raw
+/// `lat` / `lng`, or the GPS smoother's `smoothedLat` / `smoothedLng` when both
+/// halves are finite. The run line draws the smoothed position, and the
+/// smoother can pull a fix just outside the edge to just inside it, so a raw
+/// test alone would let a drawn endpoint sit in the zone. Mirrors the
+/// end-walk predicate of `clip_track_for_user`
+/// (migration 20270719000005).
+export function isFixInAnyZone(point: LinePointSource, zones: PrivacyZone[]): boolean {
+	if (isInAnyZone(point, zones)) return true;
+	return (
+		hasSmoothedPosition(point) &&
+		isInAnyZone({ lat: point.smoothedLat as number, lng: point.smoothedLng as number }, zones)
+	);
+}
+
+/// Whether any fix of `track` sits in a zone at its raw or its smoothed
+/// position (`isFixInAnyZone`). The share confirm warns on this, so a fix
+/// whose raw position is outside a zone but whose drawn vertex is inside
+/// still counts. Mirrors `trackEntersAnyZone` in `privacy.dart`.
+export function trackEntersAnyZone(track: LinePointSource[], zones: PrivacyZone[]): boolean {
+	if (zones.length === 0) return false;
+	return track.some((p) => isFixInAnyZone(p, zones));
+}
+
+function hasRawPosition(p: LinePointSource): boolean {
+	return Number.isFinite(p.lat) && Number.isFinite(p.lng);
+}
+
+function isHiddenAtEdge(p: LinePointSource | null | undefined, zones: PrivacyZone[]): boolean {
+	if (!p || typeof p !== 'object') return true;
+	if (!hasRawPosition(p) && !hasSmoothedPosition(p)) return true;
+	return isFixInAnyZone(p, zones);
+}
+
+/// Walk forward from index 0 and drop fixes in any zone; walk
 /// backward from the end with the same predicate; keep the
-/// contiguous middle. We deliberately don't slice out *interior*
-/// in-zone segments (e.g. a loop that returns home mid-run and
-/// leaves again) because (a) the leak we're protecting is "where
-/// you live," not "where you've ever been," and (b) gapping the
-/// polyline mid-track looks broken.
+/// contiguous middle. A fix is in a zone when its raw OR its
+/// smoothed position is (`isFixInAnyZone`), the rule the server's
+/// `clip_track_for_user` applies for non-owners, so an image the
+/// owner exports carries the same trimmed line a stranger is served.
+/// We deliberately don't slice out *interior* in-zone segments
+/// (e.g. a loop that returns home mid-run and leaves again) because
+/// (a) the leak we're protecting is "where you live," not "where
+/// you've ever been," and (b) gapping the polyline mid-track looks
+/// broken.
+///
+/// A fix with no usable position (neither a finite raw pair nor a smoothed
+/// one) draws nothing, so the walks drop it and keep going: stopping there
+/// would publish every in-zone fix behind it. Mirrors the server's walk
+/// (migration 20270724000001).
 ///
 /// When the result would be empty (every point is in a zone), we
 /// return an empty array — callers should render no polyline at all
 /// rather than a single point that gives the location away.
-export function clipPointsToZones<T extends LatLng>(points: T[], zones: PrivacyZone[]): T[] {
+export function clipPointsToZones<T extends LinePointSource>(points: T[], zones: PrivacyZone[]): T[] {
 	if (zones.length === 0 || points.length === 0) return points;
 
 	let start = 0;
-	while (start < points.length && isInAnyZone(points[start], zones)) start++;
+	while (start < points.length && isHiddenAtEdge(points[start], zones)) start++;
 	if (start >= points.length) return [];
 
 	let end = points.length - 1;
-	while (end > start && isInAnyZone(points[end], zones)) end--;
+	while (end > start && isHiddenAtEdge(points[end], zones)) end--;
 
 	return points.slice(start, end + 1);
-}
-
-/// Great-circle distance between two lat/lng points, in metres.
-function haversineMetres(lat1: number, lng1: number, lat2: number, lng2: number): number {
-	const r = 6371000;
-	const dLat = ((lat2 - lat1) * Math.PI) / 180;
-	const dLng = ((lng2 - lng1) * Math.PI) / 180;
-	const sinLat = Math.sin(dLat / 2);
-	const sinLng = Math.sin(dLng / 2);
-	const a =
-		sinLat * sinLat +
-		Math.cos((lat1 * Math.PI) / 180) *
-			Math.cos((lat2 * Math.PI) / 180) *
-			sinLng *
-			sinLng;
-	return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

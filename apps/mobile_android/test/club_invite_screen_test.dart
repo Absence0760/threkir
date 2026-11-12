@@ -11,22 +11,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_invite_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -40,17 +37,25 @@ class _FakeSocialService extends SocialService {
 
   String? capturedToken;
   Object? errorToThrow;
-  String returnSlug = 'richmond-run-club';
+  String? returnSlug = 'richmond-run-club';
   int joinCalls = 0;
   // Gates the redeem future so the busy-spinner state can be observed.
   Completer<void>? gate;
+  // Mirrors the RPC: a waiver club refuses until the acknowledgement rides.
+  bool requiresWaiver = false;
+  final List<bool> acks = [];
 
   @override
-  Future<String> joinClubByToken(String token) async {
+  Future<String?> joinClubByToken(
+    String token, {
+    bool ackWaiver = false,
+  }) async {
     joinCalls++;
     capturedToken = token;
+    acks.add(ackWaiver);
     if (gate != null) await gate!.future;
     if (errorToThrow != null) throw errorToThrow!;
+    if (requiresWaiver && !ackWaiver) throw const ActivityWaiverRequired();
     return returnSlug;
   }
 }
@@ -111,10 +116,6 @@ void main() {
       // block on its in-flight network call.
       await tester.pump();
       expect(social.capturedToken, 'ABC-123-XYZ');
-      // Drain the success top-banner's auto-dismiss timer + give
-      // ClubDetailScreen's mount-time fetches a moment to settle
-      // so the test ends cleanly.
-      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('a failure shows friendly generic copy, not the raw exception',
@@ -174,9 +175,6 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(social.capturedToken, 'deeplink-token');
-      // Drain pending timers (banner + ClubDetailScreen mount
-      // fetches) so the test ends cleanly.
-      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('initialToken whitespace-only does NOT auto-redeem',
@@ -250,8 +248,6 @@ void main() {
       await tester.pump();
       expect(social.joinCalls, 2);
       expect(social.capturedToken, 'good-token');
-      // Drain banner + ClubDetailScreen mount fetches so teardown is clean.
-      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('a token with internal spaces is trimmed at the edges only',
@@ -268,6 +264,119 @@ void main() {
       await tester.pump();
       expect(social.capturedToken, 'abc def');
       await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('a pasted full invite link redeems only its token',
+        (tester) async {
+      final social = _FakeSocialService();
+      await _pump(tester, social: social);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Invite code'),
+        'https://threkir.com/clubs/join/c3fr13nd50fj4r3d?utm_source=chat',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pump();
+      expect(social.capturedToken, 'c3fr13nd50fj4r3d');
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('a pasted link that is not an invite asks for the code',
+        (tester) async {
+      final social = _FakeSocialService();
+      await _pump(tester, social: social);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Invite code'),
+        'https://threkir.com/clubs/track-club',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pump();
+      expect(social.joinCalls, 0);
+      expect(find.textContaining('Enter the invite code'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a waiver club asks for the acknowledgement, then joins with it',
+        (tester) async {
+      final social = _FakeSocialService()
+        ..requiresWaiver = true
+        ..returnSlug = null;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ClubInviteScreen(
+                      social: social,
+                      training: TrainingService(),
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Invite code'),
+        'waiver-token',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final dialog = find.byType(AlertDialog);
+      expect(dialog, findsOneWidget);
+      final accept = find.descendant(
+        of: dialog,
+        matching: find.widgetWithText(FilledButton, 'Accept and join'),
+      );
+      expect(tester.widget<FilledButton>(accept).onPressed, isNull);
+
+      await tester.tap(find.descendant(
+        of: dialog,
+        matching: find.byType(CheckboxListTile),
+      ));
+      await tester.pump();
+      expect(tester.widget<FilledButton>(accept).onPressed, isNotNull);
+      await tester.tap(accept);
+      await tester.pump();
+      await tester.pump();
+
+      expect(social.acks, [false, true]);
+      expect(social.capturedToken, 'waiver-token');
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('cancelling the acknowledgement joins nothing',
+        (tester) async {
+      final social = _FakeSocialService()..requiresWaiver = true;
+      await _pump(tester, social: social);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Invite code'),
+        'waiver-token',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(TextButton, 'Cancel'),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(social.acks, [false]);
+      expect(find.widgetWithText(FilledButton, 'Join'), findsOneWidget);
     });
   });
 }

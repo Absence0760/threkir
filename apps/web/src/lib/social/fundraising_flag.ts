@@ -14,9 +14,9 @@
  * Unset / empty / "false" / "0" → off. Mirrors the coach_flag.ts pattern; local
  * dev + e2e turn it on via `PUBLIC_FUNDRAISING_ENABLED=true` in .env.development.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_FUNDRAISING_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from '../core/env_flag';
 
 export function fundraisingEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_FUNDRAISING_ENABLED);
+	return isTruthyFlagValue(PUBLIC_FUNDRAISING_ENABLED);
 }

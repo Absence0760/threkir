@@ -36,7 +36,10 @@ final class WorkoutManagerRecoveryTests: XCTestCase {
             pausedIntervalSeconds: 60,
             trackPointCount: 2,
             cacheFileURL: store.trackFileURL,
-            averageBPM: 148.0
+            averageBPM: 148.0,
+            hrCoverage: 0.75,
+            steps: nil,
+            laps: nil
         ))
         defer { store.clear() }
 
@@ -49,7 +52,45 @@ final class WorkoutManagerRecoveryTests: XCTestCase {
         XCTAssertEqual(recovered?.trackFileURL, store.trackFileURL)
         XCTAssertEqual(recovered?.trackPointCount, 2)
         XCTAssertEqual(recovered?.averageBPM, 148.0, "avg HR must survive recovery, not drop to nil")
+        XCTAssertEqual(
+            recovered?.hrCoverage, 0.75,
+            "the share the average was taken over must survive recovery beside it — a run " +
+                "that keeps its avg_bpm and loses its hr_coverage states the mean with " +
+                "nothing saying what it covered"
+        )
         XCTAssertEqual(wm.trackPointCount, 2, "trackPointCount is counted off the recovered track")
+        XCTAssertEqual(recovered?.distanceSegments, 1, "an unmarked track is one segment")
+    }
+
+    /// The segment count is the file's, as the server's replay will count it:
+    /// a fix stored after the last checkpoint can open a segment too.
+    func testRecoverRunCountsTheSegmentsTheTrackFileHolds() {
+        let id = "recover-\(UUID().uuidString.lowercased())"
+        let store = CheckpointStore(runId: id)
+        store.appendTrackPoints([
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z"),
+            TrackPointRecord(lat: 51.4514, lng: -0.1961, ele: nil, ts: "2026-04-15T07:31:01Z", segmentStart: true),
+            TrackPointRecord(lat: 51.4515, lng: -0.1960, ele: nil, ts: "2026-04-15T07:31:02Z"),
+        ])
+        store.closeAppendHandle()
+        store.write(checkpoint: RunCheckpoint(
+            id: id,
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            distanceMetres: 30.0,
+            activeDurationSeconds: 60,
+            pausedIntervalSeconds: 0,
+            trackPointCount: 1,
+            cacheFileURL: store.trackFileURL,
+            averageBPM: nil,
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil
+        ))
+        defer { store.clear() }
+
+        let recovered = WorkoutManager().recoverRun()
+        XCTAssertEqual(recovered?.trackPointCount, 3)
+        XCTAssertEqual(recovered?.distanceSegments, 2)
     }
 
     func testRecoverRunReturnsNilWithNoCheckpoint() {
@@ -65,13 +106,17 @@ final class WorkoutManagerRecoveryTests: XCTestCase {
         store.closeAppendHandle()
         store.write(checkpoint: RunCheckpoint(
             id: id, startedAt: Date(), distanceMetres: 100, activeDurationSeconds: 60,
-            pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil
+            pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil,
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil
         ))
         defer { store.clear() }
 
         let recovered = WorkoutManager().recoverRun()
         XCTAssertNotNil(recovered)
         XCTAssertNil(recovered?.averageBPM)
+        XCTAssertNil(recovered?.hrCoverage)
     }
 
     // MARK: - formattedElapsed

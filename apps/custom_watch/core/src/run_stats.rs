@@ -92,23 +92,36 @@ pub fn moving_time_seconds(track: &[TrackPoint], min_speed_mps: f64) -> i32 {
     js_round(moving_ms / 1000.0)
 }
 
-/// Total positive elevation gain in metres. Sums upward deltas between
-/// consecutive points, ignoring descents; a pair missing either `ele` is
-/// skipped.
+/// Total positive elevation gain in metres, rounded.
+///
+/// The rule itself lives in [`crate::route_simplify::compute_elevation_gain`]
+/// and is deliberately not restated here. This used to sum every upward delta
+/// with no noise gate, which made the watch answer the same question twice with
+/// different numbers: a run's vert read one way and the course the runner had
+/// loaded for the same terrain read another, because the route summary has
+/// always gated at
+/// [`ELEVATION_GAIN_MIN_DELTA_M`](crate::route_simplify::ELEVATION_GAIN_MIN_DELTA_M).
+/// Web collapsed the same split in the other direction (decisions.md § 981)
+/// and mobile never had the second rule at all, so the ungated sum was a
+/// faithful port of something no other rail still does.
+///
+/// The gate is not a rounding preference on this device in particular. Altitude
+/// error is autocorrelated, so an ungated sum integrates the drift rather than
+/// cancelling it, and cumulative climb is the headline ultra metric here.
+///
+/// Points without an `ele` are skipped and the last valid reading is CARRIED
+/// FORWARD across the gap, so an intermittent altitude dropout does not
+/// silently erase the climb spanning the missing samples. On this device that
+/// gap is routine rather than exotic: [`crate::elevation::plausible_alt`] /
+/// `plausible_gps` drop an implausible reading, so a mountain track carries
+/// `None` exactly where the vert is.
 pub fn elevation_gain_metres(track: &[TrackPoint]) -> i32 {
     if track.len() < 2 {
         return 0;
     }
-    let mut gain = 0.0_f64;
-    for w in track.windows(2) {
-        let (Some(prev), Some(curr)) = (w[0].ele, w[1].ele) else {
-            continue;
-        };
-        if curr > prev {
-            gain += curr - prev;
-        }
-    }
-    js_round(gain)
+    js_round(crate::route_simplify::elevation_gain_from_samples(
+        track.iter().map(|p| p.ele),
+    ))
 }
 
 struct SplitStart {
@@ -124,7 +137,9 @@ struct SplitStart {
 /// track has no elevation data.
 pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split, MAX_SPLITS> {
     let mut splits: Vec<Split, MAX_SPLITS> = Vec::new();
-    if track.len() < 2 {
+    // A non-positive tick puts every boundary at or behind 0 m, so each
+    // segment would close a split of its own. Same guard as web and mobile.
+    if track.len() < 2 || tick_metres.is_nan() || tick_metres <= 0.0 {
         return splits;
     }
     if !track.iter().any(|p| p.ts.is_some()) {
@@ -427,7 +442,7 @@ mod tests {
     }
 
     #[test]
-    fn elevation_gain_null_elevations_skipped() {
+    fn elevation_gain_climb_across_a_missing_elevation_gap_is_carried_forward() {
         let pts = [
             TrackPoint {
                 lat: 0.0,
@@ -448,7 +463,9 @@ mod tests {
                 ele: Some(110.0),
             },
         ];
-        assert_eq!(elevation_gain_metres(&pts), 0);
+        // The runner climbed 10 m across the dropout; skipping the gap
+        // entirely (the old adjacent-pair behaviour) wrongly reported 0.
+        assert_eq!(elevation_gain_metres(&pts), 10);
     }
 
     #[test]
@@ -478,6 +495,14 @@ mod tests {
             KM_TICK_METRES
         )
         .is_empty());
+    }
+
+    #[test]
+    fn splits_non_positive_tick_yields_none() {
+        let pts = track(10.0, 3.0, 400, TrackOpts::default());
+        assert!(compute_real_splits(&pts, 0.0).is_empty());
+        assert!(compute_real_splits(&pts, -1000.0).is_empty());
+        assert!(compute_real_splits(&pts, f64::NAN).is_empty());
     }
 
     #[test]
@@ -590,5 +615,122 @@ mod tests {
         for s in &splits {
             assert_eq!(s.elevation_m, None);
         }
+    }
+
+    #[test]
+    fn elevation_gain_carries_the_last_elevation_across_a_dropout() {
+        // A kilometre of climb with one sample missing in the middle of it.
+        // Pairing adjacent points finds no pair carrying two elevations, so
+        // the whole climb reads as zero.
+        let pts = [
+            TrackPoint {
+                lat: 0.0,
+                lng: 0.0,
+                ts: None,
+                ele: Some(1000.0),
+            },
+            TrackPoint {
+                lat: 0.0,
+                lng: 0.001,
+                ts: None,
+                ele: None,
+            },
+            TrackPoint {
+                lat: 0.0,
+                lng: 0.002,
+                ts: None,
+                ele: Some(2000.0),
+            },
+        ];
+        assert_eq!(elevation_gain_metres(&pts), 1000);
+    }
+
+    #[test]
+    fn elevation_gain_is_the_route_summarys_own_gated_rule_and_not_a_second_one() {
+        // A +/-1 m sawtooth on a dead-flat road. Every delta is below
+        // `ELEVATION_GAIN_MIN_DELTA_M`, so none of it is climb — and the route
+        // this same track would be saved as has always said so. The ungated
+        // positive-delta sum this function used to be answered 15 m for the
+        // same 30 samples, which is the whole defect: one device, one terrain,
+        // two numbers.
+        let mut pts = [TrackPoint {
+            lat: 0.0,
+            lng: 0.0,
+            ts: None,
+            ele: Some(100.0),
+        }; 30];
+        for (i, p) in pts.iter_mut().enumerate() {
+            p.lng = i as f64 * 0.0001;
+            p.ele = Some(100.0 + if i % 2 == 0 { 0.0 } else { 1.0 });
+        }
+        assert_eq!(elevation_gain_metres(&pts), 0);
+
+        // And the two entry points answer identically over the same altitudes,
+        // which is what "one rule" means. `route_simplify` takes the route
+        // shape, `run_stats` the run shape; nothing else may differ.
+        let route: heapless::Vec<crate::route_simplify::LatLng, 30> = pts
+            .iter()
+            .map(|p| crate::route_simplify::LatLng {
+                lat: p.lat,
+                lng: p.lng,
+                ele: p.ele,
+            })
+            .collect();
+        assert_eq!(
+            elevation_gain_metres(&pts),
+            js_round(crate::route_simplify::compute_elevation_gain(&route))
+        );
+    }
+
+    #[test]
+    fn elevation_gain_agrees_with_the_route_summary_on_a_real_climb() {
+        // Deltas well past the gate: both rules bank the same 300 m, so the
+        // gate costs nothing where there is signal.
+        let ele = |e: f64, lng: f64| TrackPoint {
+            lat: 0.0,
+            lng,
+            ts: None,
+            ele: Some(e),
+        };
+        let pts = [
+            ele(100.0, 0.0),
+            ele(200.0, 0.001),
+            ele(150.0, 0.002),
+            ele(350.0, 0.003),
+        ];
+        let route: heapless::Vec<crate::route_simplify::LatLng, 4> = pts
+            .iter()
+            .map(|p| crate::route_simplify::LatLng {
+                lat: p.lat,
+                lng: p.lng,
+                ele: p.ele,
+            })
+            .collect();
+        assert_eq!(elevation_gain_metres(&pts), 300);
+        assert_eq!(
+            js_round(crate::route_simplify::compute_elevation_gain(&route)),
+            300
+        );
+    }
+
+    #[test]
+    fn elevation_gain_carries_the_last_elevation_across_a_multi_point_gap() {
+        let ele = |e: Option<f64>, lng: f64| TrackPoint {
+            lat: 0.0,
+            lng,
+            ts: None,
+            ele: e,
+        };
+        let pts = [
+            ele(Some(100.0), 0.0),
+            ele(None, 0.001),
+            ele(None, 0.002),
+            ele(Some(130.0), 0.003),
+            // A descent is still ignored, so the carry-forward cannot turn
+            // one into gain.
+            ele(Some(120.0), 0.004),
+            ele(Some(125.0), 0.005),
+        ];
+        assert_eq!(elevation_gain_metres(&pts), 35);
     }
 }

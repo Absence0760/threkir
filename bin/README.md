@@ -2,7 +2,7 @@
 
 Operator scripts. Most wrap an AWS / sops / terraform sequence so the deploy and rotation flows fit on one line and are idempotent.
 
-All scripts source `bin/lib/common.sh` for the color helpers + `need_cmd` / `need_aws_auth` checks.
+All scripts source `bin/lib/common.sh` for the color helpers + `need_cmd` / `need_aws_auth` checks. The ones that touch the private estate secrets repo also source `bin/lib/estate.sh`: the one place the estate slot (`threkir/`) is named, and the lookup for the sops creation rule that governs a file in it — the first rule whose `path_regex` matches the file's path, which is how sops itself chooses. `scripts/check_estate_slot.mjs` fails CI if anything else in `bin/`, `infra/` or the ops docs names a different slot.
 
 ## First deploy (or rebuild)
 
@@ -15,9 +15,9 @@ the stack is re-applied so the Lambda gets them. Run the rows top-to-bottom:
 | 0 | Prod secrets live in the private estate repo — clone it once as a sibling | `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets` |
 | 1 | Before any `terraform apply` | `bin/aws-preflight.sh` |
 | 2 | Stand up the env (S3 + CloudFront + Lambda + KMS) — Lambda comes up *without* the coach key on this first pass (coach → 503, expected) | `bin/deploy-preview.sh` |
-| 3 | Wire the new env KMS ARN into `../infra-secrets/.sops.yaml` + seed `running/preview.sops.yaml` | `bin/sops-init.sh preview` |
+| 3 | Wire the new env KMS ARN into `../infra-secrets/.sops.yaml` + seed `threkir/preview.sops.yaml` | `bin/sops-init.sh preview` |
 | 4 | Put the real Anthropic key in (value via **stdin**, never argv — keeps it out of shell history) | `echo -n "sk-ant-…" \| bin/secret-set.sh preview ANTHROPIC_API_KEY` (or `--prompt`) |
-| 5 | Commit the encrypted file in the private repo | `(cd ../infra-secrets && git commit -am 'running: preview secrets')` |
+| 5 | Commit the encrypted file in the private repo | `(cd ../infra-secrets && git add threkir/preview.sops.yaml .sops.yaml && git commit -m 'threkir: preview secrets')` |
 | 6 | Re-apply so the Lambda picks up the secret (now coach → 401, not 503) | `bin/deploy-preview.sh` (idempotent — only the Lambda env changes) |
 | 7 | Verify the env is healthy | `bin/preview-status.sh preview` |
 | — | If the entire AWS stack needs rebuilding | `bin/disaster-recovery.sh` |
@@ -29,8 +29,10 @@ the stack is re-applied so the Lambda gets them. Run the rows top-to-bottom:
 | When | Run |
 |---|---|
 | AWS session expired | `bin/aws-login.sh` |
+| Checking a deployed env is serving (5 checks: `/` 200, **every API behaviour answers `application/json`**, coach anon gate, distribution Deployed, recent Lambda logs) | `bin/preview-status.sh preview` |
+| Asking only "is this host's API answering as its handler, or as the SPA shell?" — derives the `/api/*` behaviours from the Terraform and asserts the content type of each, because the distribution's `403 -> 200 /200.html` mapping makes a refusal from any origin look like a healthy 200 ([decisions § 1664](../docs/architecture/decisions.md)) | `node scripts/probe_api_content_type.mjs --host threkir.com` |
 | Debugging a Lambda response | `bin/lambda-logs.sh preview --tail` |
-| After an env-only `terraform apply` (secret / env rotation) — repoint every web Lambda's CI-owned `live` alias to the freshly published version, so the rotation actually serves (issue #590) | `bin/lambda-alias-sync.sh preview` (`--dry-run` to just report drift) |
+| After an env-only `terraform apply` made **outside** `deploy-env.sh` (a bare `terraform apply`), or when a deploy reported the alias sync failed — repoint every web Lambda's CI-owned `live` alias to the freshly published version, so the rotation actually serves (issue #590). `deploy-preview` / `deploy-prod` already do this after every apply of `infra/envs/<env>`, advancing only aliases that were current before it and holding one already behind (a possible rollback) with a warning ([decisions § 1825](../docs/architecture/decisions.md)) | `bin/lambda-alias-sync.sh preview` (`--dry-run` to just report drift) |
 | Dependabot left ghost CI runs | `bin/cancel-stale-runs.sh --apply` |
 | Local dev without burning the MapTiler quota | `bin/protomaps-dev.sh start` (then paste the printed env vars into each app's `.env.local`; full recipe at [`docs/ops/protomaps_local_setup.md`](../docs/ops/protomaps_local_setup.md), design at [decisions.md § 68](../docs/architecture/decisions.md#68-tile-rendering-honours-an-env-override-so-local-dev-can-use-self-hosted-protomaps-without-touching-prod-code-paths)) |
 | Testing Stripe / RevenueCat payments locally | `bin/payments-dev.sh start` (= `pnpm dev:payments`: boots Supabase + functions serve with `.env.local` + `stripe listen`; `… replay` POSTs a signed RevenueCat event to flip the tier — full recipe at [`docs/testing/local_testing_stubs.md § Stripe`](../docs/testing/local_testing_stubs.md)) |
@@ -63,5 +65,5 @@ Wrappers around `cargo` + `probe-rs` (and Renode, for the simulator) for the Rus
 
 - Read-only by default. Gated by a prompt (or `--auto-approve`): `deploy-preview`, `deploy-prod`, `onboard-operator`, `disaster-recovery`, `lambda-alias-sync`. Gated by an explicit flag: `cancel-stale-runs` (`--apply`). Ungated but local-file-only, idempotent, and verified with a decrypt round-trip: `secret-set`, `sops-init`, `key-rotate` (they rewrite the estate repo's `.sops.yaml` / encrypted file — the mutation is the point).
 - Idempotent. Re-running on an already-completed step prints "skipping" and exits 0.
-- Profile selection: scripts honour `$AWS_PROFILE` (set it once in `~/.bashrc.d/26-aliases-aws.sh`). If unset, `running` (this account's workstation SSO profile) is the default.
+- Profile selection: scripts honour `$AWS_PROFILE` (set it once in `~/.bashrc.d/26-aliases-aws.sh`). If unset, `threkir` (this account's workstation SSO profile) is the default.
 - Region: pinned to `us-east-1` everywhere (CloudFront + ACM constraint).

@@ -1,0 +1,349 @@
+import { test } from 'node:test';
+import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+	applySigning,
+	exportOptionsPlist,
+	planSigning,
+	profileFromFields,
+	readSetting,
+	signedTargets,
+} from './ios_release_signing.mjs';
+import { settingValue, targetConfigurations } from './check_watch_ios_source.mjs';
+
+/**
+ * Every case runs against the committed `Runner.xcodeproj`, because the only
+ * question worth asking of this script is whether it still edits THAT project
+ * correctly. A fixture project would keep passing after Xcode restructured the
+ * real one, and the first sign of it would be a failed release on a Mac runner.
+ */
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PBXPROJ = readFileSync(resolve(root, 'apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'), 'utf8');
+const WORKFLOW_PATH = '.github/workflows/release-ios.yml';
+const WORKFLOW = readFileSync(resolve(root, WORKFLOW_PATH), 'utf8');
+const PROFILE_DOCS = ['docs/ops/releasing.md', 'docs/ops/apple_provisioning.md'];
+
+const TEAM = 'ABCDE12345';
+const PHONE = profileFromFields({
+	path: 'phone.mobileprovision',
+	uuid: '11111111-2222-3333-4444-555555555555',
+	name: 'Threkir App Store',
+	teamId: TEAM,
+	applicationIdentifier: `${TEAM}.com.threkir.app`,
+	listsDevices: false,
+	provisionsAllDevices: false,
+	getTaskAllow: false,
+});
+const WATCH = profileFromFields({
+	path: 'watch.mobileprovision',
+	uuid: '66666666-7777-8888-9999-000000000000',
+	name: 'Threkir Watch App Store',
+	teamId: TEAM,
+	applicationIdentifier: `${TEAM}.com.threkir.app.watchapp`,
+	listsDevices: false,
+	provisionsAllDevices: false,
+	getTaskAllow: false,
+});
+const SHARE = profileFromFields({
+	path: 'share.mobileprovision',
+	uuid: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+	name: 'Threkir Share Extension App Store',
+	teamId: TEAM,
+	applicationIdentifier: `${TEAM}.com.threkir.app.ShareExtension`,
+	listsDevices: false,
+	provisionsAllDevices: false,
+	getTaskAllow: false,
+});
+const RUN_ACTIVITY = profileFromFields({
+	path: 'run-activity.mobileprovision',
+	uuid: 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+	name: 'Threkir Run Activity App Store',
+	teamId: TEAM,
+	applicationIdentifier: `${TEAM}.com.threkir.app.RunActivity`,
+	listsDevices: false,
+	provisionsAllDevices: false,
+	getTaskAllow: false,
+});
+const COMPLICATION = profileFromFields({
+	path: 'complication.mobileprovision',
+	uuid: 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff',
+	name: 'Threkir Watch Complication App Store',
+	teamId: TEAM,
+	applicationIdentifier: `${TEAM}.com.threkir.app.watchapp.widget`,
+	listsDevices: false,
+	provisionsAllDevices: false,
+	getTaskAllow: false,
+});
+const ALL = [PHONE, WATCH, SHARE, RUN_ACTIVITY, COMPLICATION];
+
+/**
+ * Where one configuration's buildSettings body sits: from the line after its
+ * opening brace to the start of the line that closes it. Found by the
+ * configuration's object id, because the watch app's Release and Profile
+ * bodies are identical text and a search by content would find the wrong one.
+ * @param {string} src
+ * @param {string} configId
+ */
+function bodySpan(src, configId) {
+	const at = src.indexOf(`\n\t\t${configId} `);
+	assert.notEqual(at, -1, `configuration ${configId} is in the project`);
+	const open = src.indexOf('buildSettings = {\n', at) + 'buildSettings = {\n'.length;
+	return { open, close: src.indexOf('\n\t\t\t};', open - 1) + 1 };
+}
+
+/** @param {string} src @param {string} configId */
+const settingsOf = (src, configId) => {
+	const { open, close } = bodySpan(src, configId);
+	return src.slice(open, close);
+};
+
+/** @param {string} src @param {string} configId */
+const withoutBody = (src, configId) => {
+	const { open, close } = bodySpan(src, configId);
+	return src.slice(0, open) + src.slice(close);
+};
+
+test('the committed project signs exactly the phone app, the bundles it embeds, and the watch complication', () => {
+	const targets = signedTargets(PBXPROJ).map((t) => `${t.name} ${t.bundleId}`);
+	assert.deepEqual(targets.sort(), [
+		'RunActivityExtension com.threkir.app.RunActivity',
+		'Runner com.threkir.app',
+		'ShareExtension com.threkir.app.ShareExtension',
+		'WatchApp com.threkir.app.watchapp',
+		'WatchAppComplication com.threkir.app.watchapp.widget',
+	]);
+});
+
+test('each Release configuration is switched to manual App Store signing with its own profile', () => {
+	const plan = planSigning(PBXPROJ, ALL);
+	const out = applySigning(PBXPROJ, plan);
+	for (const { target, profile } of plan.assignments) {
+		const body = settingsOf(out, target.releaseConfigId);
+		assert.equal(readSetting(body, 'CODE_SIGN_STYLE'), 'Manual', target.name);
+		assert.equal(readSetting(body, 'DEVELOPMENT_TEAM'), TEAM, target.name);
+		assert.equal(readSetting(body, 'PROVISIONING_PROFILE_SPECIFIER'), profile.uuid, target.name);
+		for (const key of ['CODE_SIGN_IDENTITY', 'CODE_SIGN_IDENTITY[sdk=iphoneos*]', 'CODE_SIGN_IDENTITY[sdk=watchos*]']) {
+			assert.equal(readSetting(body, key), 'Apple Distribution', `${target.name} ${key}`);
+		}
+		assert.doesNotMatch(body, /CODE_SIGN_STYLE = Automatic/, `${target.name} keeps no automatic-signing line`);
+		assert.equal(readSetting(body, 'PRODUCT_BUNDLE_IDENTIFIER'), target.bundleId, 'the rest of the body survives');
+	}
+});
+
+test('nothing outside the assigned Release bodies changes, so Debug and Profile still sign automatically', () => {
+	const plan = planSigning(PBXPROJ, ALL);
+	const out = applySigning(PBXPROJ, plan);
+	let strippedIn = PBXPROJ;
+	let strippedOut = out;
+	for (const { target } of plan.assignments) {
+		strippedIn = withoutBody(strippedIn, target.releaseConfigId);
+		strippedOut = withoutBody(strippedOut, target.releaseConfigId);
+	}
+	assert.equal(strippedOut, strippedIn);
+	/** @param {string} text */
+	const automatic = (text) => (text.match(/CODE_SIGN_STYLE = Automatic;/g) ?? []).length;
+	const inRelease = plan.assignments.reduce((n, { target }) => n + automatic(settingsOf(PBXPROJ, target.releaseConfigId)), 0);
+	assert.equal(inRelease, 4, 'the watch app, the share extension, the Live Activity extension and the watch complication each lose their automatic Release line; the phone app never had one');
+	assert.equal(automatic(out), automatic(PBXPROJ) - inRelease);
+});
+
+test('applying twice is the same as applying once', () => {
+	const plan = planSigning(PBXPROJ, ALL);
+	const once = applySigning(PBXPROJ, plan);
+	assert.equal(applySigning(once, planSigning(once, ALL)), once);
+});
+
+test('a target whose object ids are not 24 hex characters is still read', () => {
+	// The watch complication target was added by hand with 12-character ids,
+	// and a reader that assumed Xcode's generated 24 failed with "has no build
+	// configuration list". The ids below must not already name an object, or
+	// the rename would merge two objects into one.
+	const [shortList, shortRelease] = ['5407E0000001', '5407E0000002'];
+	for (const id of [shortList, shortRelease]) assert.equal(PBXPROJ.includes(id), false, `${id} is unused in the project`);
+	const watch = signedTargets(PBXPROJ).find((t) => t.name === 'WatchApp');
+	assert.ok(watch);
+	const listId = /buildConfigurationList = (\w+) \/\* Build configuration list for PBXNativeTarget "WatchApp"/.exec(PBXPROJ);
+	assert.ok(listId);
+	const shortened = PBXPROJ.split(listId[1]).join(shortList).split(watch.releaseConfigId).join(shortRelease);
+	const again = signedTargets(shortened).find((t) => t.name === 'WatchApp');
+	assert.deepEqual(again, { name: 'WatchApp', bundleId: 'com.threkir.app.watchapp', releaseConfigId: shortRelease });
+	const out = applySigning(shortened, { teamId: TEAM, assignments: [{ target: again, profile: WATCH }] });
+	assert.equal(readSetting(settingsOf(out, shortRelease), 'PROVISIONING_PROFILE_SPECIFIER'), WATCH.uuid);
+});
+
+test('a missing watch profile fails naming the watch bundle id, not inside xcodebuild', () => {
+	assert.throws(() => planSigning(PBXPROJ, [PHONE, SHARE, RUN_ACTIVITY, COMPLICATION]), /com\.threkir\.app\.watchapp \(target WatchApp\)/);
+});
+
+test('a missing Live Activity profile fails naming its bundle id, not inside xcodebuild', () => {
+	assert.throws(() => planSigning(PBXPROJ, [PHONE, WATCH, SHARE, COMPLICATION]), /com\.threkir\.app\.RunActivity \(target RunActivityExtension\)/);
+});
+
+test('a missing complication profile fails naming the complication, since the watch app embeds it', () => {
+	assert.throws(
+		() => planSigning(PBXPROJ, [PHONE, WATCH, SHARE, RUN_ACTIVITY]),
+		/com\.threkir\.app\.watchapp\.widget \(target WatchAppComplication\)/,
+	);
+});
+
+test('a profile for a bundle no target builds fails', () => {
+	const stray = { ...WATCH, bundleId: 'com.threkir.app.widgets', name: 'Stray' };
+	assert.throws(() => planSigning(PBXPROJ, [...ALL, stray]), /"Stray" is for com\.threkir\.app\.widgets/);
+});
+
+test('profiles from two teams fail', () => {
+	assert.throws(() => planSigning(PBXPROJ, [PHONE, { ...WATCH, teamId: 'ZZZZZ99999' }, RUN_ACTIVITY]), /2 teams/);
+});
+
+test('only an explicit App Store profile is accepted', () => {
+	const base = {
+		path: 'p.mobileprovision',
+		uuid: 'u',
+		name: 'n',
+		teamId: TEAM,
+		applicationIdentifier: `${TEAM}.com.threkir.app`,
+		listsDevices: false,
+		provisionsAllDevices: false,
+		getTaskAllow: false,
+	};
+	assert.throws(() => profileFromFields({ ...base, listsDevices: true }), /not an App Store profile/);
+	assert.throws(() => profileFromFields({ ...base, provisionsAllDevices: true }), /not an App Store profile/);
+	assert.throws(() => profileFromFields({ ...base, getTaskAllow: true }), /not an App Store profile/);
+	assert.throws(() => profileFromFields({ ...base, applicationIdentifier: `${TEAM}.*` }), /wildcard/);
+	assert.throws(() => profileFromFields({ ...base, applicationIdentifier: 'OTHER12345.com.threkir.app' }), /not under its own team/);
+	assert.throws(() => profileFromFields({ ...base, uuid: null }), /not a readable provisioning profile/);
+	assert.equal(profileFromFields(base).bundleId, 'com.threkir.app');
+});
+
+test('the export options name every signed bundle with its profile', () => {
+	const xml = exportOptionsPlist(planSigning(PBXPROJ, ALL));
+	assert.match(xml, /<key>method<\/key>\n\t<string>app-store-connect<\/string>/);
+	assert.match(xml, /<key>signingStyle<\/key>\n\t<string>manual<\/string>/);
+	assert.match(xml, new RegExp(`<key>teamID</key>\\n\\t<string>${TEAM}</string>`));
+	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app</key>\\n\\t\\t<string>${PHONE.uuid}</string>`));
+	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.watchapp</key>\\n\\t\\t<string>${WATCH.uuid}</string>`));
+	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.RunActivity</key>\\n\\t\\t<string>${RUN_ACTIVITY.uuid}</string>`));
+	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.watchapp\\.widget</key>\\n\\t\\t<string>${COMPLICATION.uuid}</string>`));
+	assert.equal((xml.match(/<dict>/g) ?? []).length, (xml.match(/<\/dict>/g) ?? []).length);
+});
+
+test('readSetting reads a quoted per-SDK key literally', () => {
+	const body = '\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";\n\t\t\t\tCODE_SIGN_IDENTITY = X;\n';
+	assert.equal(readSetting(body, 'CODE_SIGN_IDENTITY[sdk=iphoneos*]'), 'iPhone Developer');
+	assert.equal(readSetting(body, 'CODE_SIGN_IDENTITY'), 'X');
+});
+
+/**
+ * The profile secrets release-ios.yml's header declares, each with the bundle
+ * id it says the profile is for.
+ * @param {string} workflow
+ * @returns {Map<string, string>}
+ */
+function headerProfileSecrets(workflow) {
+	/** @type {Map<string, string>} */
+	const out = new Map();
+	const header = workflow.slice(0, workflow.indexOf('\non:'));
+	for (const m of header.matchAll(/^# {3}(IOS_\w*PROVISIONING_PROFILE_BASE64)\b([\s\S]*?)(?=^# {3}[A-Z]|^#\s*$)/gm)) {
+		const bundle = /App Store profile for (com\.[A-Za-z0-9.]*[A-Za-z0-9])/.exec(m[2]);
+		assert.ok(bundle, `${WORKFLOW_PATH}'s header says which bundle ${m[1]} is the profile for`);
+		out.set(m[1], bundle[1]);
+	}
+	return out;
+}
+
+/** @param {string} workflow @param {string} name */
+function stepBody(workflow, name) {
+	const at = workflow.indexOf(`- name: ${name}\n`);
+	assert.notEqual(at, -1, `${WORKFLOW_PATH} has a step named "${name}"`);
+	const next = workflow.indexOf('\n      - ', at + 1);
+	return workflow.slice(at, next === -1 ? undefined : next);
+}
+
+/**
+ * Every place a profile secret has to reach for the archive to sign: the
+ * preflight that names it when unset, the signing step's env, a decode to a
+ * file, and that file on the signing script's command line.
+ * @param {string} workflow
+ */
+function profileWiring(workflow) {
+	const secrets = headerProfileSecrets(workflow);
+	const preflight = stepBody(workflow, 'Every secret this release needs is set');
+	const signing = stepBody(workflow, 'Point the archive at the App Store profiles');
+	const command = signing.split('\n').find((line) => line.includes('node scripts/ios_release_signing.mjs')) ?? '';
+	const passed = [...command.matchAll(/"\$RUNNER_TEMP\/([^"]+\.mobileprovision)"/g)].map((m) => m[1]);
+	/** @type {string[]} */
+	const problems = [];
+	for (const [secret, bundleId] of secrets) {
+		if (!preflight.includes(`HAS_${secret}: \${{ secrets.${secret} != '' }}`)) {
+			problems.push(`${secret} (${bundleId}) is not in the preflight, so an unset one fails inside the build instead of naming itself`);
+		}
+		if (!signing.includes(`${secret}: \${{ secrets.${secret} }}`)) problems.push(`${secret} (${bundleId}) is not in the signing step's env`);
+		const decode = new RegExp(`echo "\\$${secret}" \\| base64 -d > "\\$RUNNER_TEMP/([^"]+\\.mobileprovision)"`).exec(signing);
+		if (decode === null) problems.push(`${secret} (${bundleId}) is never decoded to a profile file`);
+		else if (!passed.includes(decode[1])) problems.push(`${secret} (${bundleId}) decodes to ${decode[1]}, which the signing script is never handed`);
+	}
+	return { secrets, passed, problems };
+}
+
+test('release-ios.yml hands the signing script one profile secret per signed target, and names each in its preflight', () => {
+	const { secrets, passed, problems } = profileWiring(WORKFLOW);
+	assert.deepEqual(problems, []);
+	assert.deepEqual(
+		[...secrets.values()].sort(),
+		signedTargets(PBXPROJ).map((t) => t.bundleId).sort(),
+		`every signed target in the project has a profile secret in ${WORKFLOW_PATH}'s header, and no secret is for a bundle the project does not build`,
+	);
+	assert.equal(new Set(passed).size, passed.length, 'no profile file is passed twice');
+	assert.equal(passed.length, secrets.size, 'the signing script is handed exactly the declared profiles');
+});
+
+test('a profile secret missing from the preflight or the command line is reported by name', () => {
+	const secret = 'IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64';
+	assert.ok(WORKFLOW.includes(secret));
+	const withoutPreflight = WORKFLOW.replace(new RegExp(`\\n *HAS_${secret}: [^\\n]*`), '');
+	assert.match(profileWiring(withoutPreflight).problems.join('\n'), /IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64 \(com\.threkir\.app\.RunActivity\) is not in the preflight/);
+	const onCommandLine = '"$RUNNER_TEMP/share.mobileprovision" "$RUNNER_TEMP/run-activity.mobileprovision"';
+	assert.ok(WORKFLOW.includes(onCommandLine));
+	const unpassed = WORKFLOW.replace(onCommandLine, '"$RUNNER_TEMP/share.mobileprovision"');
+	assert.match(profileWiring(unpassed).problems.join('\n'), /decodes to run-activity\.mobileprovision, which the signing script is never handed/);
+});
+
+test('every profile secret is documented beside its bundle id where the operator makes it', () => {
+	for (const doc of PROFILE_DOCS) {
+		const text = readFileSync(resolve(root, doc), 'utf8');
+		for (const [secret, bundleId] of headerProfileSecrets(WORKFLOW)) {
+			assert.ok(text.includes(secret), `${doc} names ${secret}`);
+			assert.ok(text.includes(`\`${bundleId}\``), `${doc} names \`${bundleId}\``);
+		}
+	}
+});
+
+test('every bundle the archive embeds takes its version from the release, not a literal', () => {
+	// App Store Connect rejects an upload whose embedded bundles disagree with
+	// the app containing them on CFBundleShortVersionString / CFBundleVersion.
+	// The complication once carried MARKETING_VERSION = 1.0 and
+	// CURRENT_PROJECT_VERSION = 1 on the target, overriding WatchApp.xcconfig,
+	// so mobile_ios@1.0.0 shipped it as 1.0 (1) inside a 1.0.0 (5024) app.
+	const allowed = {
+		MARKETING_VERSION: '$(FLUTTER_BUILD_NAME)',
+		CURRENT_PROJECT_VERSION: '$(FLUTTER_BUILD_NUMBER)',
+	};
+	const targets = signedTargets(PBXPROJ).map((t) => t.name);
+	assert.ok(targets.includes('WatchAppComplication'), targets.join(', '));
+	/** @type {string[]} */ const literal = [];
+	for (const name of targets) {
+		const configs = targetConfigurations(PBXPROJ, name);
+		assert.ok(configs.length > 0, `${name} has no readable configurations`);
+		for (const { name: config, settings } of configs) {
+			for (const [key, value] of Object.entries(allowed)) {
+				const set = settingValue(settings, key);
+				if (set !== null && set !== value) literal.push(`${name} ${config}: ${key} = ${set}`);
+			}
+		}
+	}
+	assert.deepEqual(literal, []);
+});

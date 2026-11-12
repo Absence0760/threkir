@@ -2,17 +2,33 @@ name: Release Android
 
 # Per-app tag convention: `mobile_android@1.2.3`. The workflow parses the
 # version out of the tag, injects it into the AAB, signs it with the
-# release keystore from Secrets, uploads to Play Internal track, and
-# attaches the AAB to a GitHub Release so there's an audit trail.
+# release keystore from Secrets, attaches the AAB to the GitHub Release so
+# there's an audit trail, uploads it to the Play Internal track, and sends it
+# to production as a staged rollout (1% on approval; play-rollout.yml walks it
+# up the ramp once a day). The `production` environment's approval is the
+# human gate, as on iOS (decisions § 2040, § 2478). The Release body must
+# carry an owner-written `## What's New` section of at most 500 characters,
+# which becomes the en-US Play release notes; the job fails in its first
+# minute without one.
+#
+# `workflow_dispatch` with a tag promotes a build Play already holds without
+# rebuilding it (the `promote` job), still behind the `production` approval.
 #
 # Signing / upload secrets (configure under Settings → Secrets → Actions):
 #   ANDROID_KEYSTORE_BASE64       base64-encoded upload-keystore.jks
 #   ANDROID_KEYSTORE_PASSWORD     store password
 #   ANDROID_KEY_ALIAS             alias inside the keystore
 #   ANDROID_KEY_PASSWORD          key password (often same as store)
-#   PLAY_SERVICE_ACCOUNT_JSON     Google Play service-account JSON key
-#                                 (grant the account "Release apps to testing
-#                                 tracks" on the Play Console)
+#   PLAY_SERVICE_ACCOUNT_JSON     Google Play service-account JSON key. Play
+#                                 Console → Users and permissions → the account
+#                                 → app permissions for com.threkir.app: "Release
+#                                 to production, exclude devices, and use Play
+#                                 App Signing" (production) as well as "Release
+#                                 apps to testing tracks" (the Internal upload)
+#   GOOGLE_SERVICES_JSON_BASE64   base64-encoded google-services.json from the
+#                                 Firebase project's Android app. Optional: an
+#                                 AAB built without it receives no push
+#                                 notifications (docs/features/native_push.md).
 #
 # Production runtime config, injected as `--dart-define`s at build time
 # (main.dart seeds each non-empty one into dotenv — decisions §137). Leave a
@@ -27,11 +43,18 @@ name: Release Android
 # (WEB_BASE_URL is a literal https://threkir.com in the build step — no secret.)
 #
 # MOBILE-SPECIFIC (create these):
-#   MOBILE_OSRM_URL               https://osrm.threkir.com — REQUIRED or the
-#                                 release route builder throws on first use
+#   MOBILE_OSRM_URL               https://osrm.threkir.com (optional; empty →
+#                                 the route builder places straight lines and
+#                                 says so, instead of snapping to roads)
 #   MOBILE_LIVE_HUB_URL           Go live-hub base URL (optional; empty →
 #                                 falls back to Supabase live pings)
 #   MOBILE_GOOGLE_WEB_CLIENT_ID   Google Sign-In web client id (optional)
+#   MOBILE_APPLE_SERVICE_CLIENT_ID  Apple Services ID, com.threkir.web
+#                                 (optional; Android-only — iOS uses the
+#                                 native flow. Both Apple values or
+#                                 neither: the button gates on the pair)
+#   MOBILE_APPLE_REDIRECT_URI     The Services ID's registered return
+#                                 URL, which is Supabase's callback
 #   MOBILE_STRAVA_CLIENT_ID       Strava OAuth client id (optional)
 #   MOBILE_REVENUECAT_API_KEY_ANDROID  RevenueCat Android key (optional; empty
 #                                 → Subscribe falls back to the web page)
@@ -45,6 +68,12 @@ name: Release Android
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing mobile_android@<version> tag whose build Play already holds, to send to production without rebuilding"
+        required: true
+        type: string
 
 # Least-privilege default; the release job opts up to `contents: write`
 # for the GitHub Release step.
@@ -53,14 +82,22 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Must equal ci.yml's FLUTTER_VERSION: CI is what validates the code this
+  # workflow ships, so a release built on a different SDK than CI tested is
+  # an untested binary. A release has no green/red signal to tell you the
+  # toolchain moved either — an unpinned `channel: stable` here would ship
+  # whatever Flutter was newest at tag time. `scripts/check_toolchain_pins.mjs`
+  # (the `workflow-lint` job) fails CI if the three workflows disagree, so
+  # bump them together. Rationale: decisions.md § 595.
+  FLUTTER_VERSION: "3.47.0"
 
 jobs:
   release:
-    name: Build, sign, upload to Play Internal
+    name: Build, sign, upload to Play and send to production
     runs-on: ubuntu-latest
     # Guard: `on: release` fires for every published release in the repo,
     # so only act on mobile_android@* releases.
-    if: startsWith(github.event.release.tag_name, 'mobile_android@')
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mobile_android@')
     # Pause on the `production` environment's required-reviewer rule
     # before any prod credentials/steps run (repo Settings → Environments).
     environment: production
@@ -69,7 +106,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0   # git rev-list --count needs full history
+
+      # Before the build, so a Release with no note fails in seconds. Read
+      # through the API rather than the event payload, which is frozen at
+      # publish time: editing the Release and re-running the job picks the
+      # edit up. Never falls back to the generated notes (decisions § 2040).
+      - name: The GitHub Release carries a What's New for Google Play
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""' > "$RUNNER_TEMP/release-body.md"
+          node scripts/play_release.mjs notes "$RUNNER_TEMP/release-body.md" "$RUNNER_TEMP/play-notes.txt"
 
       - name: Parse version from tag
         id: version
@@ -86,18 +136,22 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - run: dart pub global activate melos
+      - run: dart pub global activate melos 7.8.2
       - run: melos bootstrap
 
       - name: Pin versionName / versionCode from tag
         working-directory: apps/mobile_android
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           # Flutter reads `version:` from pubspec.yaml as
           # `{versionName}+{versionCode}`. Rewrite it in place so the
           # AAB carries the tag's numbers rather than whatever's
           # committed.
-          sed -i "s/^version: .*/version: ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }}/" pubspec.yaml
+          sed -i "s/^version: .*/version: ${VERSION_NAME}+${VERSION_CODE}/" pubspec.yaml
           grep '^version:' pubspec.yaml
 
       - name: Decode release keystore
@@ -133,6 +187,41 @@ jobs:
           keytool -list -keystore apps/mobile_android/android/app/upload-keystore.jks \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" > /dev/null
 
+      - name: Decode the Firebase config
+        # A missing secret is a warning, not a failure: android/app/build.gradle.kts
+        # applies the google-services plugin only when this file exists, so the
+        # build still produces a shippable AAB — one that registers no FCM token.
+        # The warning names that consequence because nothing downstream will.
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON_BASE64 unset — this AAB will receive no push notifications. See docs/features/native_push.md."
+            exit 0
+          fi
+          dest=apps/mobile_android/android/app/google-services.json
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$dest"
+          # The google-services plugin fails mid-build, and obscurely, on a
+          # config whose client list has no entry for this applicationId — the
+          # usual cause being a file exported for a different app. Read it here
+          # instead, where the message can say so.
+          node -e '
+            const fs = require("node:fs");
+            const path = process.argv[1];
+            let cfg;
+            try {
+              cfg = JSON.parse(fs.readFileSync(path, "utf8"));
+            } catch (err) {
+              console.error(`::error::${path} is not JSON (${err.message}) — GOOGLE_SERVICES_JSON_BASE64 is probably not base64 of google-services.json.`);
+              process.exit(1);
+            }
+            const pkgs = (cfg.client ?? []).map((c) => c?.client_info?.android_client_info?.package_name).filter(Boolean);
+            if (!pkgs.includes("com.threkir.app")) {
+              console.error(`::error::${path} carries no com.threkir.app client (found: ${pkgs.join(", ") || "none"}). Add an Android app with that package name to the Firebase project and re-download.`);
+              process.exit(1);
+            }
+          ' "$dest"
+
       - name: Stub the bundled dotenv asset
         # pubspec ships `.env.development` as an asset, so the file must
         # exist for the build to resolve. Release builds NEVER read it at
@@ -165,8 +254,17 @@ jobs:
           OSRM_URL: ${{ secrets.MOBILE_OSRM_URL }}
           LIVE_HUB_URL: ${{ secrets.MOBILE_LIVE_HUB_URL }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.MOBILE_GOOGLE_WEB_CLIENT_ID }}
+          # Apple sign-in on ANDROID only. `sign_in_with_apple` 8.x
+          # hard-requires webAuthenticationOptions off-iOS, so the
+          # button fails closed until both land; iOS takes the native
+          # flow and needs neither. The Services ID and its return URL
+          # are Apple-portal values, not secrets, but they travel the
+          # same way as the rest.
+          APPLE_SERVICE_CLIENT_ID: ${{ secrets.MOBILE_APPLE_SERVICE_CLIENT_ID }}
+          APPLE_REDIRECT_URI: ${{ secrets.MOBILE_APPLE_REDIRECT_URI }}
           STRAVA_CLIENT_ID: ${{ secrets.MOBILE_STRAVA_CLIENT_ID }}
           REVENUECAT_API_KEY_ANDROID: ${{ secrets.MOBILE_REVENUECAT_API_KEY_ANDROID }}
+          APP_RELEASE: ${{ steps.version.outputs.name }}
         run: |
           flutter build appbundle --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
@@ -177,9 +275,11 @@ jobs:
             --dart-define=LIVE_HUB_URL="$LIVE_HUB_URL" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
+            --dart-define=APPLE_SERVICE_CLIENT_ID="$APPLE_SERVICE_CLIENT_ID" \
+            --dart-define=APPLE_REDIRECT_URI="$APPLE_REDIRECT_URI" \
             --dart-define=STRAVA_CLIENT_ID="$STRAVA_CLIENT_ID" \
             --dart-define=REVENUECAT_API_KEY_ANDROID="$REVENUECAT_API_KEY_ANDROID" \
-            --dart-define=APP_RELEASE="${{ steps.version.outputs.name }}"
+            --dart-define=APP_RELEASE="$APP_RELEASE"
 
       - name: Attach AAB to the Release
         # The Release already exists — it triggered this run. Upload the
@@ -189,12 +289,30 @@ jobs:
         # rule), the signed AAB must still land somewhere durable so it
         # can be hand-uploaded — run 29344377051 built a good bundle and
         # lost it with the runner.
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
+        #
+        # `gh release upload` exits non-zero on a path that does not exist,
+        # so a moved build output fails here rather than attaching nothing
+        # (decisions.md § 1674). `--clobber` replaces an asset of the same
+        # name, so re-running the job re-attaches instead of failing.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
+
+      # A re-run rebuilds the same commit, so the same version code, and Play
+      # refuses a version code it already holds. This lets the upload skip a
+      # bundle Play has, so a re-run after a failed promotion gets to it.
+      - name: Is this build already on Google Play
+        id: uploaded
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: node scripts/play_release.mjs uploaded --version-code "$VERSION_CODE"
 
       - name: Upload to Play Internal
+        if: steps.uploaded.outputs.uploaded != 'true'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -202,6 +320,63 @@ jobs:
           releaseFiles: apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
-          # Rolling out to a fraction isn't meaningful on the internal
-          # track — always 100% there. Promote to beta / prod manually
-          # via the Play Console once tested.
+
+      # Puts the bundle on production with the What's New as its en-US notes
+      # and sends it for review: a staged rollout at 1%, or, for the app's
+      # first production release, a full one (Play stages updates only).
+      # Production already carrying it is a no-op, so re-running is safe; a
+      # different build still rolling out, or other changes in review, fail
+      # the job rather than being cancelled (scripts/play_release.mjs).
+      - name: Send the build to production as a staged rollout
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: node scripts/play_release.mjs promote --version-code "$VERSION_CODE" --notes "$RUNNER_TEMP/play-notes.txt"
+
+  # workflow_dispatch: send a build Play already holds to production without
+  # rebuilding it. The scripts come from the ref the workflow runs on, not the
+  # tag, so a tag cut before play_release.mjs existed (mobile_android@1.24.0)
+  # can still go out. The version code is the tag's commit count, exactly as
+  # the release job derived it when it built the bundle.
+  promote:
+    name: Send an uploaded build to production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve the tag's version code
+        id: version
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          case "$TAG" in
+            mobile_android@*) ;;
+            *) echo "::error::\"$TAG\" is not a mobile_android@<version> tag."; exit 1 ;;
+          esac
+          if ! git rev-parse --verify --quiet "refs/tags/$TAG^{commit}" > /dev/null; then
+            echo "::error::There is no tag $TAG."
+            exit 1
+          fi
+          echo "code=$(git rev-list --count "refs/tags/$TAG")" >> "$GITHUB_OUTPUT"
+
+      - name: The GitHub Release carries a What's New for Google Play
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""' > "$RUNNER_TEMP/release-body.md"
+          node scripts/play_release.mjs notes "$RUNNER_TEMP/release-body.md" "$RUNNER_TEMP/play-notes.txt"
+
+      # promote fails, naming the version code, when Play holds no such bundle.
+      - name: Send the build to production as a staged rollout
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: node scripts/play_release.mjs promote --version-code "$VERSION_CODE" --notes "$RUNNER_TEMP/play-notes.txt"

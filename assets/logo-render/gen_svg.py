@@ -17,7 +17,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 SVG = os.path.join(BASE, "svg")
 os.makedirs(SVG, exist_ok=True)
 
-EMBER, MAGENTA = "#FE5932", "#A01E77"
+CORAL, ROSE, VIOLET = "#C24E24", "#A8426A", "#5B4B8A"
 
 # geometry (100x100 space), per-mark centre + icon scale (mark ~610px on 1024)
 MARKS = {
@@ -44,9 +44,9 @@ MARKS = {
 def grad(gid, x2, y2):
     return (f'<linearGradient id="{gid}" x1="0" y1="0" x2="{x2}" y2="{y2}" '
             f'gradientUnits="userSpaceOnUse">'
-            f'<stop offset="0" stop-color="{EMBER}"/>'
-            f'<stop offset="0.58" stop-color="{EMBER}"/>'
-            f'<stop offset="1" stop-color="{MAGENTA}"/></linearGradient>')
+            f'<stop offset="0" stop-color="{CORAL}"/>'
+            f'<stop offset="0.5" stop-color="{ROSE}"/>'
+            f'<stop offset="1" stop-color="{VIOLET}"/></linearGradient>')
 
 for name, m in MARKS.items():
     cx, cy = m["c"]; s = m["s"]

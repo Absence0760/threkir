@@ -19,6 +19,27 @@ locals {
   # 503 because ANTHROPIC_API_KEY isn't set.
   has_secrets = var.secrets_file != null && fileexists(var.secrets_file)
 
+  # Every Lambda in this module reports to the same Sentry project, so the
+  # DSN is one local rather than the same line repeated eight times. It comes
+  # from the sops file; absent -> the reporter in
+  # apps/web/src/lib/core/lambda_sentry.ts never initialises, which is the
+  # dev/CI default and the fail-closed direction.
+  #
+  # APP_RELEASE is deliberately NOT here. It identifies the artifact, not the
+  # environment, so each build.mjs bakes it into the bundle from the tag that
+  # release-web.yml passes on the bundle step. Setting it here as well would
+  # be dead config that reads as though it works: esbuild substitutes
+  # `process.env.APP_RELEASE` at compile time, so the runtime env is never
+  # consulted. It also could not have worked from this side -- terraform owns
+  # `environment`, so a CI-written value would be reverted by the next apply,
+  # and tfvars cannot know the tag.
+  #
+  # This is deliberately NOT folded into base_lambda_env: only the coach
+  # Lambda merges that, and all eight need the DSN.
+  sentry_env = merge(
+    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "SENTRY_DSN" } : {},
+  )
+
   base_lambda_env = merge(
     {
       PUBLIC_SUPABASE_URL      = var.public_supabase_url
@@ -27,9 +48,82 @@ locals {
     var.extra_lambda_env,
   )
 
+  # The coach Lambda's half of the secrets file, split by what the value IS.
+  #
+  # Narrowing the env to the keys one function reads (rather than merging the
+  # decrypted map whole) closed the over-sharing between functions. It did not
+  # close the one that matters most: a plaintext `environment { variables }` is
+  # returned by every API that returns a FunctionConfiguration, INCLUDING
+  # `lambda:UpdateFunctionCode` — which the release genuinely calls. Any
+  # principal that can deploy could therefore read ANTHROPIC_API_KEY and
+  # SUPABASE_SECRET_KEY by uploading the same zip and reading the response.
+  #
+  # So the CREDENTIALS never enter the environment in the clear at all. They
+  # are encrypted at apply time into one `aws_kms_ciphertext` blob per function
+  # and the handler decrypts it once per cold start under the EXECUTION role
+  # (apps/web/src/lib/core/lambda_secrets.ts, decisions § 1671). The blob is
+  # still handed out by GetFunctionConfiguration and is worth nothing without
+  # kms:Decrypt on this env's secrets CMK.
+  #
+  # `kms_key_arn` on the function is deliberately NOT the mechanism: it would
+  # have Lambda decrypt the environment for the caller, which returns the same
+  # plaintext to the same principals, and it would demand the DEPLOY role hold
+  # kms:Decrypt on the CMK — the grant decisions § 1021 removed.
+  coach_credential_keys = [
+    "ANTHROPIC_API_KEY",
+    "SUPABASE_SECRET_KEY",
+    "OPENAI_API_KEY",
+  ]
+
+  # The coach's non-credential config, which stays a plain environment
+  # variable. None of these authorises anything: two name an endpoint and a
+  # model, and COACH_PROVIDER selects between providers — and the handler's
+  # provider gate reads it before it has a bag to read.
+  coach_config_keys = [
+    "COACH_PROVIDER",
+    "OPENAI_BASE_URL",
+    "OPENAI_MODEL",
+    # Server half of PUBLIC_AI_PLAN_ENABLED: /api/coach/plan-request and
+    # /api/coach/season-request answer 503 unless this is truthy (decisions
+    # § 1930). Unset in the sops file means off.
+    "AI_PLAN_ENABLED",
+    # Server half of PUBLIC_PLATE_PHOTO_ENABLED: /api/coach/plate-photo answers
+    # 503 unless this is truthy (decisions § 1972). Unset means off.
+    "PLATE_PHOTO_ENABLED",
+    # Server half of PUBLIC_COACH_FUEL_ENABLED: the coach system prompt carries
+    # the fuelling handoff only when this is truthy (decisions § 1975). Unset
+    # in the sops file means off.
+    "COACH_FUEL_ENABLED",
+    # Server half of PUBLIC_AI_PLAN_EDIT_ENABLED: /api/coach/plan-edit answers
+    # 503 unless this is truthy (decisions § 1979), and the Coach links into
+    # AI plan edits only when it is. Unset in the sops file means off.
+    "AI_PLAN_EDIT_ENABLED",
+    # Server half of PUBLIC_COACH_ASSIST_ENABLED: /api/coach/assist answers 503
+    # unless this is truthy (issue #1215 Phase 4). Unset means off; set it only
+    # after the CISO + counsel sign-off and the DPIA update.
+    "COACH_ASSIST_ENABLED",
+  ]
+
+  # The two X-Engine-Key credentials the generate-route handler sends. Same
+  # treatment, its own blob: the execution role is shared by all eight
+  # functions, so per-function encryption context is what stops one function's
+  # blob from being decryptable as another's.
+  generate_route_credential_keys = [
+    "GRAPHHOPPER_API_KEY",
+    "GRAPH_CYCLE_API_KEY",
+  ]
+
+  coach_secrets_context          = { function = "${local.resource_prefix}-coach" }
+  generate_route_secrets_context = { function = "${local.resource_prefix}-generate-route" }
+
   lambda_env = merge(
     local.base_lambda_env,
-    local.has_secrets ? data.sops_file.secrets[0].data : {},
+    local.sentry_env,
+    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_config_keys, k) } : {},
+    local.has_secrets ? {
+      SECRETS_CIPHERTEXT = aws_kms_ciphertext.coach[0].ciphertext_blob
+      SECRETS_CONTEXT    = jsonencode(local.coach_secrets_context)
+    } : {},
   )
 
   # share-run Lambda env. Doesn't need any sops-decrypted secrets —
@@ -42,6 +136,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-route Lambda env. Same shape + posture as the share-run env
@@ -55,6 +150,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-recap Lambda env. Same shape + posture as the share-run /
@@ -69,6 +165,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-badge Lambda env. Same shape + posture as the share-run /
@@ -83,10 +180,12 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
-  # share-entity Lambda env. One HTML-only Lambda serving the six public
-  # /share/{event,profile,club,race,session,workout} entity paths; same
+  # share-entity Lambda env. One Lambda serving the public
+  # /share/{event,profile,club,race,session,workout,challenge} entity paths
+  # and the /og/challenge card; same
   # anon-key posture
   # as the other share Lambdas (reads only anon-readable public rows;
   # PUBLIC_SITE_URL for env-specific absolute canonical / og:url URLs).
@@ -96,6 +195,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # generate-route Lambda env. Engine URLs (GRAPH_CYCLE_URL + GRAPHHOPPER_URL)
@@ -104,13 +204,16 @@ locals {
   # (GRAPH_CYCLE_URL unset → skip graph-cycle, fall to round_trip; both unset →
   # 501 and the client falls back to the OSRM heuristic). The matching API keys
   # (GRAPH_CYCLE_API_KEY + GRAPHHOPPER_API_KEY) are the shared secrets the handler
-  # sends as X-Engine-Key to clear each engine's guard — pulled from the sops file
-  # (ONLY those keys, not the whole secret bag the coach Lambda gets). Absent in
-  # sops → no header sent; if the engine's guard is active it 403s, the handler
-  # falls back, and (for round_trip) the engine-unreachable alarm fires. The
-  # Supabase pair backs the Pro gate's is_pro() check (decisions §204) — both
-  # are public client values, not secrets; if they're ever absent the handler
-  # fails the tier check closed (500) rather than skipping the gate.
+  # sends as X-Engine-Key to clear each engine's guard. They arrive as ONE KMS
+  # ciphertext blob, never as plaintext env vars — see local.coach_credential_keys
+  # above for why, and decisions § 1671. No blob at all (a first apply, before
+  # the env has a sops file) is now a 503 from the handler rather than the old
+  # "send no header and let the engine 403 us into the fallback": a credential
+  # this function cannot read is a misconfiguration, and degrading quietly is
+  # what hid it. The Supabase pair backs the Pro gate's is_pro() check
+  # (decisions §204) — both are public client values, not secrets; if they're
+  # ever absent the handler fails the tier check closed (500) rather than
+  # skipping the gate.
   generate_route_lambda_env = merge(
     {
       PUBLIC_SUPABASE_URL      = var.public_supabase_url
@@ -118,7 +221,11 @@ locals {
     },
     var.graph_cycle_url != "" ? { GRAPH_CYCLE_URL = var.graph_cycle_url } : {},
     var.graphhopper_url != "" ? { GRAPHHOPPER_URL = var.graphhopper_url } : {},
-    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "GRAPHHOPPER_API_KEY" || k == "GRAPH_CYCLE_API_KEY" } : {},
+    local.has_secrets ? {
+      SECRETS_CIPHERTEXT = aws_kms_ciphertext.generate_route[0].ciphertext_blob
+      SECRETS_CONTEXT    = jsonencode(local.generate_route_secrets_context)
+    } : {},
+    local.sentry_env,
   )
 
   # osrm-proxy Lambda env. OSRM_URL is a non-secret internal engine URL passed
@@ -134,6 +241,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
     },
     var.osrm_url != "" ? { OSRM_URL = var.osrm_url } : {},
+    local.sentry_env,
   )
 }
 
@@ -168,21 +276,62 @@ locals {
 
 # ──────────────────────────── KMS key for sops ────────────────────────────
 
-# Explicit key policy. The AWS-default policy grants the account root
-# all KMS actions, which means anyone with `AdministratorAccess`
-# through Identity Center could decrypt sops-encrypted secrets via
-# the console — defeating the workflow-driven access posture.
+# Explicit key policy, enumerating four statements rather than taking the
+# AWS default.
 #
-# This policy:
-#   - Lets the account root manage the key (revoke / re-grant), but
-#     not call Decrypt directly without going through a delegated
-#     principal.
-#   - Lets the Lambda execution role call Decrypt at cold-start
-#     (sops in the deployment env decrypts the env's secrets file —
-#     ../infra-secrets/running/<env>.sops.yaml — into the Lambda
-#     environment).
-#   - Lets the GitHub OIDC deploy role call Decrypt at terraform-apply
-#     time so `data.sops_file` resolves the encrypted .yaml.
+# READ THE POSTURE HONESTLY: an Identity Center principal with
+# `AdministratorAccess` CAN decrypt this env's sops secrets. The
+# `AllowOperatorSopsUseViaIamPolicies` statement below delegates
+# Encrypt/Decrypt/GenerateDataKey to the account root, which means
+# "whatever this account's own IAM policies allow" — and an admin's do.
+# That is deliberate and load-bearing, not an oversight: `sops <file>`,
+# `sops --set` (bin/secret-set.sh) and `sops updatekeys`
+# (bin/key-rotate.sh) all decrypt before they re-encrypt, so an operator
+# with no Decrypt has no way to rotate a secret. This comment used to
+# claim the opposite — that root could manage the key "but not call
+# Decrypt directly" — which was true only for the two weeks before that
+# statement was added, and is the sentence a reader would otherwise
+# carry into a threat model. The residual risk (any account admin can
+# read prod secrets) is tracked in docs/product/followups.md; narrowing
+# it means a dedicated operator principal, not deleting the statement.
+#
+# What the enumeration DOES buy over the AWS default: the default grants
+# root every KMS action including `kms:*` on future ones, while this
+# lists them, so a new privileged action is a deliberate edit; and
+# CloudWatch Logs + the delegated roles are each scoped to what they
+# need rather than inheriting the whole surface.
+#
+# The four statements:
+#   - Account root may ADMINISTER the key (create / describe / enable /
+#     tag / schedule deletion). No data-plane action here.
+#   - The CloudWatch Logs service principal may use the key for the
+#     Lambda log groups, scoped by encryption context to this env's
+#     `/aws/lambda/<prefix>-*` groups.
+#   - Account root may Encrypt/Decrypt/GenerateDataKey via IAM policies,
+#     for the local operator sops flows described above.
+#   - Decrypt + DescribeKey for the Lambda execution role. NEITHER
+#     principal in that statement has ever been shown to exercise it,
+#     and the sentence this comment used to carry — that the execution
+#     role "decrypts the sops env at cold-start" — is not what happens:
+#     data.sops_file decrypts at APPLY time and `local.lambda_env` puts
+#     the result into `environment { variables }` as plaintext, so the
+#     handler reads process.env and calls no KMS API (measured: no
+#     `kms` reference anywhere under apps/web/lambda/). The env vars are
+#     encrypted at rest by the AWS-managed `aws/lambda` key, not by this
+#     CMK — no aws_lambda_function here sets `kms_key_arn`, and none may:
+#     that field would have Lambda decrypt the environment on the
+#     caller's behalf, returning the plaintext to every principal that
+#     can call GetFunctionConfiguration, and it would demand the DEPLOY
+#     role hold kms:Decrypt on this key (decisions § 1021).
+#
+#     What the execution role's grant below IS for, since § 1671: the
+#     coach and generate-route credentials reach those two functions as
+#     an `aws_kms_ciphertext` blob in an ordinary environment variable,
+#     and the handler calls kms:Decrypt on it once per cold start
+#     (apps/web/src/lib/core/lambda_secrets.ts). The grant was
+#     unexercised until then and is load-bearing now: delete it and
+#     every coach turn answers 503 on its first invocation in a fresh
+#     container. scripts/check_infra_iam.mjs holds both premises.
 data "aws_iam_policy_document" "kms_secrets" {
   statement {
     sid    = "AllowKeyAdministrationByAccountRoot"
@@ -275,17 +424,28 @@ data "aws_iam_policy_document" "kms_secrets" {
         # cycle. Audit pass 3 caught a name mismatch (was `-lambda`,
         # actual role is `-coach-lambda`); keep these in lockstep.
         "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.resource_prefix}-coach-lambda",
-        # Deploy role(s) that need to decrypt at terraform-apply time.
-        # Optional — empty list means deploys decrypt out-of-band.
+        # Load-bearing since § 1671: this role is what decrypts
+        # SECRETS_CIPHERTEXT at cold start on the coach and generate-route
+        # functions. Removing it is not a least-privilege win, it is an
+        # outage on both.
+        #
+        # An extra principal that genuinely needs apply-time decrypt.
+        # BOTH env stacks now leave this "" and `compact()` drops it: the
+        # only apply that reads data.sops_file is the operator's own, under
+        # a principal already covered by AllowOperatorSopsUseViaIamPolicies.
+        # The Sid is historic — the statement holds one identifier now, and
+        # decisions § 892 named it before § 1021 emptied the deploy half.
         var.kms_decrypt_principal_arn,
       ])
     }
-    # Decrypt path ONLY. The Lambda decrypts the sops env at cold-start and the
-    # deploy role decrypts via `data.sops_file` at terraform-apply — neither ever
-    # ENCRYPTS, so kms:GenerateDataKey is deliberately omitted (audit/infra M1,
-    # least-privilege). Encryption (sops --encrypt / --set / updatekeys, in
-    # sops-init / secret-set / key-rotate) is a LOCAL operator action run under
-    # the operator's own admin/SSO principal, not these roles.
+    # Decrypt path ONLY — kms:GenerateDataKey is deliberately omitted
+    # (audit/infra M1, least-privilege). Encryption is never this role's: the
+    # sops flows (sops --encrypt / --set / updatekeys, in sops-init /
+    # secret-set / key-rotate) run under the operator's own admin/SSO
+    # principal, and the two aws_kms_ciphertext resources encrypt during the
+    # operator's own apply. Decrypt is exercised by the Lambda at cold start
+    # (decisions § 1671) — the comment that said so was wrong for the two
+    # years before that and is true now.
     actions = [
       "kms:Decrypt",
       "kms:DescribeKey",
@@ -302,7 +462,7 @@ resource "aws_kms_key" "secrets" {
   tags                    = var.tags
 
   # Losing this key during a careless `terraform destroy` makes the env's
-  # secrets file (../infra-secrets/running/<env>.sops.yaml) permanently
+  # secrets file (../infra-secrets/threkir/<env>.sops.yaml) permanently
   # undecryptable. The
   # 30-day deletion window doesn't help when Terraform is the thing
   # initiating the destroy — prevent_destroy forces a manual
@@ -310,6 +470,36 @@ resource "aws_kms_key" "secrets" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# The two credential bags, encrypted at apply time under the env's own CMK.
+#
+# A RESOURCE rather than the `aws_kms_ciphertext` DATA SOURCE: the data source
+# re-encrypts on every plan, and KMS encryption is non-deterministic, so every
+# plan would show both functions' environments changing. The resource keeps the
+# blob in state and re-encrypts only when the plaintext, the key or the context
+# changes.
+#
+# The plaintext is in state — but it already was, via data.sops_file, so this
+# moves nothing. What it moves is the LAMBDA ENVIRONMENT, which is readable by
+# every principal that can call UpdateFunctionCode and is not a place a
+# credential belongs (decisions § 1671).
+#
+# The encryption context is per function and the handler passes it back on
+# Decrypt. All eight functions share one execution role, so without it a blob
+# lifted from one function's configuration would decrypt under any of them.
+resource "aws_kms_ciphertext" "coach" {
+  count     = local.has_secrets ? 1 : 0
+  key_id    = aws_kms_key.secrets.key_id
+  context   = local.coach_secrets_context
+  plaintext = jsonencode({ for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_credential_keys, k) })
+}
+
+resource "aws_kms_ciphertext" "generate_route" {
+  count     = local.has_secrets ? 1 : 0
+  key_id    = aws_kms_key.secrets.key_id
+  context   = local.generate_route_secrets_context
+  plaintext = jsonencode({ for k, v in data.sops_file.secrets[0].data : k => v if contains(local.generate_route_credential_keys, k) })
 }
 
 resource "aws_kms_alias" "secrets" {
@@ -437,10 +627,15 @@ resource "aws_iam_role_policy_attachment" "lambda_xray" {
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.resource_prefix}-coach"
   retention_in_days = 30
-  # Reuse the same CMK that already encrypts the lambda env vars.
-  # KMS rotation + access policy are managed in one place; the log
-  # group only contains coach request traces, which can carry the
-  # same secrecy class as the env vars themselves.
+  # Reuse the CMK that encrypts the sops file the env vars come OUT of.
+  # (Lambda still holds the environment MAP under the AWS-managed
+  # `aws/lambda` key — no aws_lambda_function in this module sets
+  # `kms_key_arn`. What this CMK protects inside that map is the
+  # `SECRETS_CIPHERTEXT` blob, which is encrypted under it at apply time
+  # and decrypted by the handler at cold start — decisions § 1671.)
+  # KMS rotation + access policy are managed in one
+  # place; the log group only contains coach request traces, which can
+  # carry the same secrecy class as the env vars themselves.
   kms_key_id = aws_kms_key.secrets.arn
   tags       = var.tags
 }
@@ -511,9 +706,10 @@ resource "aws_lambda_alias" "live" {
   # this module): an env-only `terraform apply` publishes a fresh
   # version (`publish = true`) carrying the new env, but the alias —
   # and the Function URL, which targets the alias — keeps serving the
-  # old version with its FROZEN env snapshot. After any secret / env
-  # rotation apply, run `bin/lambda-alias-sync.sh <env>` (or cut a
-  # release) so the rotation actually reaches the serving path.
+  # old version with its FROZEN env snapshot. bin/deploy-env.sh runs
+  # `bin/lambda-alias-sync.sh <env> --after-apply` after every apply of
+  # an env root; after a bare `terraform apply`, run the sync by hand
+  # (or cut a release) so the rotation actually reaches the serving path.
   lifecycle {
     ignore_changes = [function_version]
   }
@@ -1142,13 +1338,13 @@ resource "aws_lambda_permission" "cloudfront_invoke_function_share_badge" {
   }
 }
 
-# ─── Shared entity-SSR Lambda (/share/{event,profile,club,race,session,workout}) ───
+# ─── Shared entity-SSR Lambda (/share/{event,profile,club,race,session,workout,challenge}) ───
 #
-# One HTML-only Lambda serving the six public entity share paths (see
+# One Lambda serving the public entity share paths (see
 # apps/web/lambda/share-entity/README.md). Same execution role + log
 # group naming + CI-owns-code / Terraform-owns-shape lifecycle as the
-# other share Lambdas. No @resvg / PNG path, so it runs comfortably at
-# 256 MB (vs 512 for the image-rendering share Lambdas).
+# other share Lambdas. HTML only except /og/challenge/<id>.png, which
+# rasterises with @resvg like the image-rendering share Lambdas.
 
 resource "aws_cloudwatch_log_group" "lambda_share_entity" {
   name              = "/aws/lambda/${local.resource_prefix}-share-entity"
@@ -1165,9 +1361,9 @@ resource "aws_lambda_function" "share_entity" {
   # requires the esbuild target in apps/web/lambda/share-entity/build.mjs.
   runtime       = "nodejs24.x"
   architectures = ["arm64"]
-  # 256 MB — pure HTML handler (no PNG rasteriser), so it needs less
-  # headroom than the 512 MB image-rendering share Lambdas.
-  memory_size                    = 256
+  # 512 MB — the /og/challenge card rasterises with resvg, the same
+  # headroom the other image-rendering share Lambdas run at.
+  memory_size                    = 512
   timeout                        = 15
   reserved_concurrent_executions = var.lambda_reserved_concurrency
 
@@ -1550,7 +1746,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
     # `script-src 'unsafe-inline'` is kept HERE on purpose, but it is no
     # longer the binding policy. The static build inlines a per-page
     # hydration script, so this header must permit inline scripts at all —
-    # but SvelteKit's `kit.csp` (hash mode) now emits a SECOND CSP as a
+    # but the `csp` option of the `sveltekit()` Vite plugin (hash mode) now emits a SECOND CSP as a
     # per-page `<meta http-equiv>` tag whose `script-src` is `'self'` plus
     # the SHA-256 hash of that page's inline script and NOTHING else (no
     # `'unsafe-inline'`). Browsers enforce header + meta as separate
@@ -1575,20 +1771,51 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # `data:text/html` XSS regression is the avatar_url CHECK
         # constraint (`~* '^https?://'`, migration 20260808_001),
         # not this CSP line. /audit/owasp May 2026 Medium #4.
-        "img-src 'self' data: https://*.supabase.co https://*.maptiler.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
+        # `blob:` is for object URLs the page mints itself: photo upload
+        # previews and the generated share-card PNGs. An injected script
+        # could only point an <img> at a blob it already holds, so it
+        # opens no exfiltration path the script did not already have.
+        "img-src 'self' data: blob: https://*.supabase.co https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
         # `connect-src` covers fetch / XHR / EventSource / WebSocket —
-        # everything the browser sends OUT. `*.ingest.sentry.io` is
+        # everything the browser sends OUT. `*.ingest.de.sentry.io` is
         # where @sentry/sveltekit's browser SDK posts errors; without
-        # it errors are silently CSP-blocked. `*.supabase.co` covers
-        # REST + Realtime + Storage; `*.maptiler.com` covers tile
-        # fetches. `wss://*.threkir.com` covers the Go live-hub WS
-        # upgrade — the spectator page would otherwise be CSP-blocked
-        # the moment PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp
-        # May 2026 High #2a.
-        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.sentry.io wss://*.threkir.com",
+        # it errors are silently CSP-blocked. The `de.` is load-bearing
+        # and is NOT a typo: the Sentry org is in the EU (Frankfurt)
+        # region, so it ingests at `o<id>.ingest.de.sentry.io`. A CSP
+        # host wildcard matches only whole labels from the right, so
+        # `*.ingest.sentry.io` does NOT cover that host — it requires
+        # the host to end in `.ingest.sentry.io`, and the EU host ends
+        # in `.ingest.de.sentry.io`. That mismatch blocks every event
+        # with no server-side symptom at all. A SaaS org's region
+        # cannot be changed after creation, so this will not drift
+        # back to the US host without a new org. `https://*.supabase.co`
+        # covers REST + Auth + Storage; Realtime is a WebSocket to
+        # `wss://<ref>.supabase.co/realtime/v1` and needs its own entry,
+        # because an `https` scheme-part does not match a `wss` URL
+        # (CSP3 § 6.7.2.9 lets only http→https, ws→wss/http/https and
+        # wss→https match; nothing upgrades https to wss). Without it
+        # every postgres_changes channel — the live spectator page,
+        # notifications, club and event pages — fails to connect with
+        # no server-side symptom. `*.maptiler.com` covers tile fetches,
+        # including MapTiler's terrain-rgb-v2 elevation tiles.
+        # `elevation-tiles-prod.s3.amazonaws.com` is the keyless AWS Open
+        # Data Terrain Tiles bucket the 3D course preview falls back to
+        # (decisions § 2251); MapLibre fetches DEM tiles with fetch() and
+        # falls back to <img>, so it sits in img-src too. It is the
+        # virtual-hosted bucket name on purpose: allowing the path-style
+        # `s3.amazonaws.com` would let a page post to ANY bucket.
+        # `wss://*.threkir.com` covers the Go live-hub WS upgrade — the
+        # spectator page would otherwise be CSP-blocked the moment
+        # PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp May 2026
+        # High #2a.
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        # The recap video is encoded in the browser and previewed from an
+        # object URL; without this it falls back to default-src and the
+        # <video> stays blank.
+        "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",
@@ -1671,6 +1898,24 @@ resource "aws_cloudfront_origin_request_policy" "lambda" {
   # CreateOriginRequestPolicy API rejects it outright (InvalidArgument)
   # — CloudFront owns that header; the cacheable behaviors forward a
   # normalized form via the cache policies' enable_accept_encoding_*.
+  # `x-amz-content-sha256` must NOT be added here, and CloudFront enforces
+  # that: UpdateOriginRequestPolicy answers `InvalidArgument: The parameter
+  # Headers contains x-amz-content-sha256 that is not allowed`. Same class as
+  # the `Accept-Encoding` exclusion above -- CloudFront owns the header.
+  #
+  # It owns it because it USES it. A POST to a Lambda Function URL behind OAC
+  # does require the viewer to send the sigv4 payload hash (the client does,
+  # via `payloadSha256Hex` at each fetch site, #590), but CloudFront reads it
+  # off the viewer request itself and folds it into the signature. Forwarding
+  # is neither needed nor permitted.
+  #
+  # The trap this comment exists for: a POST that omits the header gets a 403
+  # from the Function URL, which the distribution's `403 -> /200.html` mapping
+  # turns into `200 text/html`. That looks exactly like a broken origin, and a
+  # hand-rolled curl omitting the header reproduces it perfectly. It is a
+  # malformed request, not an outage -- send the header and the same path
+  # answers 401. Adding the header here was tried on 2026-09-18 and CloudFront
+  # refused it.
   headers_config {
     header_behavior = "whitelist"
     headers {
@@ -2350,10 +2595,10 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
-  # Shared entity-SSR Lambda: per-request SSR HTML for the six public
-  # entity share paths so a newly-created/edited entity unfurls with the
-  # right per-entity head regardless of build cadence. HTML only (no
-  # og:image PNG). See apps/web/lambda/share-entity/README.md.
+  # Shared entity-SSR Lambda: per-request SSR HTML for the public entity
+  # share paths so a newly-created/edited entity unfurls with the right
+  # per-entity head regardless of build cadence. HTML only except the
+  # challenge card below. See apps/web/lambda/share-entity/README.md.
   ordered_cache_behavior {
     path_pattern               = "/share/event/*"
     target_origin_id           = "lambda-share-entity"
@@ -2474,12 +2719,124 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
-  # SPA fallback — SvelteKit static fallback is index.html.
-  # The Lambda-served behaviours above run BEFORE this fallback, so
-  # a 404 on a /share/run/<id> returned by the Lambda surfaces as a
-  # real 404 (the Lambda's own not-found HTML), not the SPA shell.
+  ordered_cache_behavior {
+    path_pattern               = "/share/plan/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  # Park courses (issue #1313, decisions § 2394): the indexable course page,
+  # keyed by the in-app path's three slugs. HTML only, no card.
+  ordered_cache_behavior {
+    path_pattern               = "/share/course/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  # Creator challenges (decisions § 2261): the public share page and its
+  # og:image card. The one share-entity surface with a PNG, so the bundle
+  # carries the resvg addon the share-badge Lambda already ships.
+  ordered_cache_behavior {
+    path_pattern               = "/share/challenge/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  ordered_cache_behavior {
+    path_pattern               = "/og/challenge/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  # SPA fallback — adapter-static's fallback is build/200.html, and the
+  # mapping below is what serves it. It was index.html until § 1268 moved
+  # the shell so the prerendered landing page could take that name; this
+  # line said `index.html` for a day after the move, contradicting the
+  # paragraph 30 lines down that states the opposite outright.
   #
-  # Both 403 AND 404 map to the shell: the S3 bucket policy grants
+  # These apply to EVERY origin on the distribution, not just S3.
+  # CloudFront models custom error responses per DISTRIBUTION; there is no
+  # per-cache-behaviour form, so a 403 returned by any of the eight Lambda
+  # origins above is rewritten to the shell at 200 as well — which is the
+  # subject of an open followup, because it reaches an API caller as a
+  # 200 text/html body where a refusal was sent. 404 is NOT mapped: § 1022
+  # added one and § 1084 removed it again, so the sentence that used to sit
+  # here describing "a 404 to the shell at 404" outlived its own mapping and
+  # disagreed with the block immediately below. The comment
+  # here used to claim the opposite — that a Lambda's own 404 surfaced as a real
+  # 404 because its behaviour ran first — and the `cloudfront_invoke_function`
+  # block above records the measurement that disproves it: with only one of the
+  # two OAC grants the Function URL 403s before invocation, this fallback
+  # rewrites that 403 into the shell at 200, and the surface reads healthy while
+  # the Lambda never runs (issue #590, proven 2026-07-21). Two comments in one
+  # file cannot both be true; this is the one that was wrong.
+  #
+  # The consequence is a monitoring contract, not a config one: a Lambda-origin
+  # failure is invisible to a viewer AND to a synthetic check, so every Lambda
+  # in this module carries an error-rate alarm and a p95 alarm in alarms.tf, and
+  # the two engine-backed ones additionally carry an `engine_unreachable` log
+  # filter for the clean-502 path the Errors metric never sees. That coverage is
+  # the only signal these failures have; `scripts/check_infra_coverage.mjs`
+  # fails the PR when a function is added without it.
+  #
+  # 403 is the one status mapped to the shell, and it is mapped because the
+  # S3 bucket policy grants
   # s3:GetObject only (no s3:ListBucket), so S3 answers a missing key
   # with 403 AccessDenied, not 404 — a deep-link / hard-refresh / crawl
   # of a dynamic client route (/dashboard, /runs/<id>, /u/<id>, …) hits
@@ -2488,17 +2845,47 @@ resource "aws_cloudfront_distribution" "this" {
   # SPA idiom; the distribution serves no genuinely access-protected S3
   # keys (all objects are the public static build), so nothing legitimate
   # is masked by turning 403 into the shell.
+  #
+  # The shell is /200.html and NOT /index.html: since decisions § 1268 the
+  # landing page is prerendered onto index.html, and that document is not a
+  # shell — its asset URLs are relative (`./_app/…`, resolved against the
+  # request path, so nothing loads under /runs/<id>) and its hydration payload
+  # names route "/". Pointing this back at /index.html serves the landing page,
+  # broken, for every client route. `apps/web/src/lib/seo/spa_shell_filename.test.ts`
+  # reads this block, apps/web/vite.config.ts's adapter fallback and the five
+  # share Lambdas' build scripts, and fails when they disagree.
+  #
+  # Changing this value has a deploy order: /200.html must exist in the bucket
+  # BEFORE the apply, or every deep link resolves to a missing error page. See
+  # docs/features/seo.md § Deploying a change to the shell filename, and
+  # docs/ops/deployment.md § One-off: the SPA-shell cutover for the operator
+  # sequence with its rollback.
   custom_error_response {
     error_code         = 403
     response_code      = 200
-    response_page_path = "/index.html"
+    response_page_path = "/200.html"
   }
 
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
+  # There is deliberately NO `custom_error_response` for 404, and
+  # `scripts/check_infra_error_responses.mjs` fails the PR if one comes back.
+  #
+  # § 1022 added one because the five share Lambdas' own 404 bodies were a
+  # single unstyled English sentence, so the shell had to be substituted for
+  # them; the cost was that the substitution also discarded the `noindex` those
+  # bodies carried, which is the tag the whole crawler fix was about. § 1036
+  # made all five return the SPA shell AT 404 themselves — through the same
+  # `injectEntityHead` that strips a stale `og:*`/canonical/JSON-LD — so the
+  # premise is gone and the mapping now only replaces an honest body with an
+  # identical one, minus the tag. Dropping it is what puts the `noindex` on the
+  # wire. It also stops `/api/coach*` answering a JSON 404 as an HTML shell.
+  #
+  # S3 never reaches this path anyway: the bucket policy grants s3:GetObject
+  # with no s3:ListBucket, so a missing key is 403 AccessDenied and lands on
+  # the block above. decisions § 1084.
+  #
+  # 403 stays at 200 and MUST: that is the deep-link path (every dynamic
+  # client route is a missing S3 key), and answering it 403 would break the
+  # whole SPA. decisions § 1022.
 
   restrictions {
     geo_restriction {

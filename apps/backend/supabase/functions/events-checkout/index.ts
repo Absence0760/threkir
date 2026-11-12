@@ -13,33 +13,67 @@
 ///   - the event is visible to the caller,
 ///   - there is event_pricing for (event, instance) with modality
 ///     'in_person' (a 'virtual' price is reserved for P4 -> 400),
-///   - the instance is not a cancelled occurrence (event_exceptions),
+///   - the instance is a real occurrence of the event (404
+///     instance_not_found — `event_occurrence_exists`, decisions § 1921),
+///     not a cancelled one (event_exceptions) and not past the series end,
 ///   - the sales window is still open,
 ///   - the host has a charges-enabled payout account (else 409),
-///   - capacity is not already full counting going + non-expired pending.
+///   - capacity is not already full counting going + non-expired pending
+///     + seats held for someone else by a waitlist offer (20270726000002).
+///     A waitlister who has been OFFERED a seat claims it here: their own
+///     offer is the one hold the count leaves out.
 ///
 /// PCI: Checkout is fully Stripe-hosted — SAQ A. No card form here.
-/// Idempotency: the Stripe create call carries a stable idempotency key
-/// derived from (buyer, event, instance) so a double-click reuses the
-/// same session instead of opening a second hold.
+/// Idempotency: the Stripe create call is keyed on the pending ORDER, and
+/// every field of its body is derived from that order's persisted
+/// creation instant. A double-click inside the live 15-min hold therefore
+/// replays byte-identically and Stripe returns the session already open;
+/// a hold that has lapsed is expired at Stripe and replaced under a fresh
+/// key, so no key is ever reused against a body that has moved.
 ///
 /// TEST MODE ONLY in P1: STRIPE_SECRET_KEY must be an sk_test_ key.
 
-import Stripe from 'https://esm.sh/stripe@17.5.0?target=deno';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import Stripe, {
+  type AssertNoUnknownParamKeys,
+  type UnknownParamKeys,
+} from '../_shared/stripe.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
+import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
+import { selectEffectivePricing } from '../_shared/event_instance.ts';
+import { readPlatformFeeBps } from '../_shared/platform_fees.ts';
+import { isValidTimestamptz, isValidUuid } from '../_shared/input_validation.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   buildCheckoutSessionParams,
-  capacityDecision,
+  checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
   isSalesWindowOpen,
+  type PendingOrderRow,
   reservationExpiry,
+  resolveHold,
 } from './lib.ts';
 import { validateReturnUrl } from '../events-connect-onboard/lib.ts';
+import { precheckCapacity } from './capacity.ts';
+import { gateOccurrence } from './occurrence.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import { parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
+
+/// Every key of the hand-shaped params must be one Stripe declares.
+/// Assignability at the call site does not check that: what is handed to
+/// `create` is a function return, not a fresh object literal, so no
+/// excess-property check runs and a misspelled optional field would
+/// compile and come back from Stripe as `Received unknown parameter`.
+/// Nothing references the alias — declaring it is the check.
+type CheckoutParamsAreStripeParams = AssertNoUnknownParamKeys<
+  UnknownParamKeys<
+    ReturnType<typeof buildCheckoutSessionParams>,
+    Stripe.Checkout.SessionCreateParams
+  >
+>;
 
 interface CheckoutBody {
   event_id?: string;
@@ -48,7 +82,7 @@ interface CheckoutBody {
   cancel_url?: string;
 }
 
-Deno.serve(withSentry('events-checkout', async (req: Request) => {
+Deno.serve(withCors(withSentry('events-checkout', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -57,10 +91,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   if (!stripeSecretKey) {
     return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
   }
-  const allowlist = (Deno.env.get('STRIPE_EVENTS_ALLOWED_REDIRECTS') ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const allowlist = parseRedirectAllowlist(Deno.env.get('STRIPE_EVENTS_ALLOWED_REDIRECTS'));
   if (allowlist.length === 0) {
     return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
   }
@@ -73,8 +104,13 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   if (!eventId || !instanceStart) {
     return Response.json({ error: 'missing_event_or_instance' }, { status: 400 });
   }
-  const instanceMs = Date.parse(instanceStart);
-  if (!Number.isFinite(instanceMs)) {
+  if (!isValidUuid(eventId)) {
+    return Response.json({ error: 'invalid_event_id' }, { status: 400 });
+  }
+  // Stricter than the `Date.parse` this replaces: that accepted forms
+  // Postgres rejects, so the value passed validation and 22007'd on the
+  // `.eq('instance_start', …)` below.
+  if (!isValidTimestamptz(instanceStart)) {
     return Response.json({ error: 'invalid_instance_start' }, { status: 400 });
   }
 
@@ -82,7 +118,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   if (!authHeader) {
     return Response.json({ error: 'unauthorized' }, { status: 401 });
   }
-  const userClient = createClient(
+  const userClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     publishableKey(),
     { global: { headers: { Authorization: authHeader } } },
@@ -92,7 +128,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     return Response.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const service = createClient(
+  const service = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     secretKey(),
   );
@@ -128,7 +164,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   // event id.
   const { data: event, error: eventErr } = await service
     .from('events')
-    .select('host_user_id, capacity, starts_at, title')
+    .select('host_user_id, capacity, title, recurrence_until')
     .eq('id', eventId)
     .maybeSingle();
   if (eventErr || !event) {
@@ -140,12 +176,21 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     return Response.json({ error: 'event_has_no_host' }, { status: 409 });
   }
 
+  // The instant must be a live occurrence of the series, asked before
+  // pricing: pricing resolves to the series default for ANY instant, so a
+  // fabricated session would otherwise price, pass an open sales window and
+  // be sold (decisions § 1921).
+  const refusal = await gateOccurrence(service, eventId, instanceStart, event.recurrence_until);
+  if (refusal) {
+    return Response.json({ error: refusal.error }, { status: refusal.status });
+  }
+
   // Pricing for this (event, instance): per-instance override wins, else
   // the series default (instance_start is null). Read as the user (RLS
   // allows reading pricing with the event).
   const { data: pricingRows, error: pricingErr } = await userClient
     .from('event_pricing')
-    .select('instance_start, price_cents, currency, modality, platform_fee_bps, sales_close_offset_minutes')
+    .select('instance_start, price_cents, currency, modality, sales_close_offset_minutes')
     .eq('event_id', eventId);
   if (pricingErr) {
     console.error('pricing read failed (code):', pricingErr?.code ?? 'unknown');
@@ -156,11 +201,9 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     price_cents: number;
     currency: string;
     modality: string;
-    platform_fee_bps: number;
     sales_close_offset_minutes: number;
   }>;
-  const pricing = rows.find((r) => r.instance_start === instanceStart)
-    ?? rows.find((r) => r.instance_start === null);
+  const pricing = selectEffectivePricing(rows, instanceStart);
   if (!pricing) {
     return Response.json({ error: 'event_not_priced' }, { status: 404 });
   }
@@ -169,20 +212,20 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     return Response.json({ error: 'modality_not_supported' }, { status: 400 });
   }
 
-  // Cancelled-occurrence guard: a cancelled instance is un-buyable.
-  const { data: exception } = await userClient
-    .from('event_exceptions')
-    .select('event_id')
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .maybeSingle();
-  if (exception) {
-    return Response.json({ error: 'instance_cancelled' }, { status: 409 });
+  // Read before anything is reserved, so a refusal here holds no seat.
+  const platformFeeBps = await readPlatformFeeBps(service, 'event');
+  if (platformFeeBps === null) {
+    return Response.json({ error: 'platform_fee_not_configured' }, { status: 503 });
   }
 
-  // Sales window.
+  // Sales window, graded against the OCCURRENCE being bought. `events.
+  // starts_at` is the SERIES row — the first occurrence — so grading on it
+  // closed every later occurrence of a recurring class the moment the first
+  // one began, and a weekly class was permanently `sales_closed` from week
+  // two on. `events-cancel` already measures its refund cutoff from
+  // `instanceStart`; the two now bound the same instant.
   if (!isSalesWindowOpen(
-    Date.parse(event.starts_at as string),
+    Date.parse(instanceStart),
     pricing.sales_close_offset_minutes,
     Date.now(),
   )) {
@@ -213,35 +256,48 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   }
   const hostAccountId = hostAccount.stripe_connect_account_id as string;
 
-  // Capacity precheck (service role — counts every buyer's pending
-  // reservation, not just the caller's). going + non-expired pending.
-  const capacityOutcome = await precheckCapacity(
-    service,
-    eventId,
-    instanceStart,
-    (event.capacity as number | null) ?? null,
-  );
-  if (capacityOutcome === 'full') {
-    return Response.json({ error: 'event_full' }, { status: 409 });
-  }
-
-  // Idempotent order insert: a retried checkout for the same
-  // (buyer, event, instance) reuses the existing live pending order
-  // rather than stacking a second hold.
+  // The buyer's newest pending order for this instance. A still-live
+  // reservation is reused (same order, same session); a lapsed one is
+  // superseded below.
   const nowMs = Date.now();
   const reservedUntil = reservationExpiry(nowMs);
-  const { data: livePending } = await service
+  const { data: newestPending } = await service
     .from('event_orders')
-    .select('id, stripe_checkout_session_id')
+    .select('id, created_at, reserved_until, stripe_checkout_session_id')
     .eq('buyer_user_id', user.id)
     .eq('event_id', eventId)
     .eq('instance_start', instanceStart)
     .eq('status', 'pending')
-    .gt('reserved_until', new Date(nowMs).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  const orderId = livePending?.id as string | undefined ?? crypto.randomUUID();
-  const applicationFee = computeApplicationFeeCents(pricing.price_cents, pricing.platform_fee_bps);
+  const hold = resolveHold((newestPending ?? null) as PendingOrderRow | null, nowMs);
+  const orderId = hold.orderId ?? crypto.randomUUID();
+  const anchorMs = hold.anchorMs ?? nowMs;
+
+  // Capacity precheck (service role — counts every buyer's pending
+  // reservation, not just the caller's). going + non-expired pending.
+  // Skipped when reusing a live hold: that reservation is the caller's
+  // own and is already inside the count, so re-checking it would 409 a
+  // double-click on any class the caller has themselves filled.
+  if (!hold.orderId) {
+    const capacityOutcome = await precheckCapacity(
+      service,
+      eventId,
+      instanceStart,
+      (event.capacity as number | null) ?? null,
+      user.id,
+    );
+    if (capacityOutcome === 'unknown') {
+      return Response.json({ error: 'checkout_failed' }, { status: 500 });
+    }
+    if (capacityOutcome === 'full') {
+      return Response.json({ error: 'event_full' }, { status: 409 });
+    }
+  }
+
+  const applicationFee = computeApplicationFeeCents(pricing.price_cents, platformFeeBps);
 
   const successUrl = body.success_url && validateReturnUrl(body.success_url, allowlist)
     ? body.success_url
@@ -253,6 +309,21 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   const stripe = new Stripe(stripeSecretKey, {
     httpClient: Stripe.createFetchHttpClient(),
   });
+
+  if (hold.supersedeSessionId) {
+    // The old hold released its seat 15 min in but its session stays
+    // payable for another 15 — two open sessions would let one buyer be
+    // charged twice for one registration. Best-effort: an already
+    // expired / completed session throws and the webhook reconciles.
+    try {
+      await stripe.checkout.sessions.expire(hold.supersedeSessionId);
+    } catch (e) {
+      console.error(
+        'superseded checkout session expire failed:',
+        e instanceof Error ? e.message : 'unknown',
+      );
+    }
+  }
 
   let session;
   try {
@@ -271,26 +342,27 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
           buyer_user_id: user.id,
           order_id: orderId,
         },
-        // Stripe requires expires_at >= now + 30 min; the local
-        // reservation is tighter (15 min) and the webhook releases on
-        // the definitive checkout.session.expired.
-        expiresAtUnix: Math.floor(nowMs / 1000) + 30 * 60,
+        // Anchored on the ORDER, never on the clock — a body that moves
+        // between attempts is what makes a reused key an error rather
+        // than a replay.
+        expiresAtUnix: checkoutExpiresAtUnix(anchorMs),
       }),
-      { idempotencyKey: checkoutIdempotencyKey(user.id, eventId, instanceStart) },
+      { idempotencyKey: checkoutIdempotencyKey(orderId) },
     );
   } catch (e) {
     console.error('stripe checkout create failed:', e instanceof Error ? e.message : 'unknown');
     return Response.json({ error: 'stripe_checkout_failed' }, { status: 502 });
   }
 
-  if (livePending) {
-    // Refresh the existing hold's session id + extend the reservation.
+  if (hold.orderId) {
+    // Repair the session id if the first attempt died between the Stripe
+    // create and this write. `reserved_until` is deliberately NOT
+    // extended: the hold is 15 min from the FIRST click, so it can never
+    // outlive the session backing it, and re-clicking cannot hold a seat
+    // indefinitely.
     const { error: updErr } = await service
       .from('event_orders')
-      .update({
-        stripe_checkout_session_id: session.id,
-        reserved_until: reservedUntil.toISOString(),
-      })
+      .update({ stripe_checkout_session_id: session.id })
       .eq('id', orderId);
     if (updErr) {
       console.error('order refresh failed (code):', updErr?.code ?? 'unknown');
@@ -300,6 +372,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
       .from('event_orders')
       .insert({
         id: orderId,
+        created_at: new Date(nowMs).toISOString(),
         event_id: eventId,
         instance_start: instanceStart,
         buyer_user_id: user.id,
@@ -318,33 +391,4 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   }
 
   return Response.json({ checkout_url: session.url, order_id: orderId });
-}));
-
-/// going + non-expired-pending count against capacity, the single shared
-/// decision. Pending orders whose reserved_until has lapsed do not count
-/// (they're swept / released on expiry).
-async function precheckCapacity(
-  service: ReturnType<typeof createClient>,
-  eventId: string,
-  instanceStart: string,
-  capacity: number | null,
-): Promise<'available' | 'full'> {
-  if (capacity === null) return 'available';
-
-  const { count: goingCount } = await service
-    .from('event_attendees')
-    .select('event_id', { count: 'exact', head: true })
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .eq('status', 'going');
-
-  const { count: pendingCount } = await service
-    .from('event_orders')
-    .select('id', { count: 'exact', head: true })
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .eq('status', 'pending')
-    .gt('reserved_until', new Date().toISOString());
-
-  return capacityDecision(goingCount ?? 0, pendingCount ?? 0, capacity);
-}
+})));

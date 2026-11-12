@@ -12,7 +12,13 @@
 // the same parser works if a server surface (e.g. the coach Lambda) ever
 // needs it.
 
-export const SUPPORTED_LOCALES = ['en', 'de', 'fr', 'es', 'ja', 'pt-BR'] as const;
+// Order matters on the phone — Flutter resolves a device locale against this
+// list directly, so `pt-PT` sitting before `pt-BR` is what makes a device
+// reporting a bare `pt` land where BASE_TO_LOCALE says it should. Web never
+// negotiates off the order (BASE_TO_LOCALE is consulted explicitly) and uses
+// it only to order the picker, but the two lists are kept identical so the
+// twin reads as one thing.
+export const SUPPORTED_LOCALES = ['en', 'de', 'fr', 'es', 'ja', 'pt-PT', 'pt-BR'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
@@ -25,6 +31,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 	es: 'Español',
 	ja: '日本語',
 	'pt-BR': 'Português (Brasil)',
+	'pt-PT': 'Português (Portugal)',
 };
 
 // Case-insensitive exact-tag map. Keys are lowercased; values are the
@@ -36,17 +43,26 @@ const EXACT: Record<string, Locale> = {
 	es: 'es',
 	ja: 'ja',
 	'pt-br': 'pt-BR',
+	'pt-pt': 'pt-PT',
 };
 
-// Base-language fallback: a tag we don't carry exactly (fr-CA, pt-PT,
-// de-AT) still resolves to the one variant we ship for that language.
+// Base-language fallback: a tag we don't carry exactly (fr-CA, de-AT)
+// still resolves to the one variant we ship for that language. Portuguese
+// is the exception with two catalogues, and its base points at the
+// EUROPEAN one, matching the phone (locale_support.dart): every Brazilian
+// client sends the region — `pt-BR` is what Android, iOS and every browser
+// report — and reaches its own catalogue through EXACT above, while the
+// bare tag and the other European-orthography regions (`pt-AO`, `pt-MZ`,
+// `pt-CV`) have nowhere else to land. Pointing it at Brazilian instead
+// would put a Lisbon reader on a different catalogue in the browser than
+// on the phone, which is the divergence this locale exists to close.
 const BASE_TO_LOCALE: Record<string, Locale> = {
 	en: 'en',
 	de: 'de',
 	fr: 'fr',
 	es: 'es',
 	ja: 'ja',
-	pt: 'pt-BR',
+	pt: 'pt-PT',
 };
 
 // RTL base languages. None of the current starter set is RTL, but the

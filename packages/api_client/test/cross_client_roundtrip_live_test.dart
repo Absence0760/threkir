@@ -50,7 +50,7 @@ import 'package:test/test.dart';
 /// route round-trips). Run locally with:
 /// ```
 /// cd apps/backend && supabase status -o env   # copy ANON_KEY
-/// export SUPABASE_TEST_URL=http://127.0.0.1:54321
+/// export SUPABASE_TEST_URL=http://127.0.0.1:24321
 /// export SUPABASE_TEST_ANON_KEY=<ANON_KEY>
 /// export CROSS_CLIENT_LIVE_FIXTURE_OUT=/abs/path/to/live_fixture.json
 /// cd packages/api_client
@@ -154,6 +154,7 @@ void main() {
           ele: p['ele']! as double,
           distanceM: p['distance_m']! as double,
           elapsedS: p['elapsed_s']! as int,
+          weakGps: identical(p, pings.last),
         );
       }
 
@@ -178,6 +179,10 @@ void main() {
         // and is NOT written by insertLivePing. An out-of-zone ping stays
         // false; the read half asserts the round-trip.
         'coarse': false,
+        // The last ping is published as a weak-GPS fix (migration
+        // 20271112000030); the first is precise.
+        'first_weak_gps': false,
+        'last_weak_gps': true,
       };
 
       // Sanity-check the write from the Dart side before handing off to

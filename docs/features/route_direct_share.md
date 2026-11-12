@@ -1,6 +1,6 @@
 # In-app "Send a route to a follower" — spec (web-first)
 
-**Status:** specced, not built. **Owner surface:** web (canonical, [decisions §24](../architecture/decisions.md#24-web-is-the-canonical-feature-surface-mobile-and-watches-are-platform-additive)). **Related:** the shipped mobile "Share link" + the link-based send ([decisions §298](../architecture/decisions.md#298-route-sharing-gets-a-mobile-share-link-starting-a-public-route-you-dont-own-is-a-first-class-action-and-both-ride-a-global-start-run-handoff)).
+**Status: v1 SHIPPED on web (2026-08-25, [decisions §734](../architecture/decisions.md)); v2 (typed attachment) SHIPPED on web (2026-08-28, [decisions §772](../architecture/decisions.md)). The mobile leg is still gated.** **Owner surface:** web (canonical, [decisions §24](../architecture/decisions.md#24-web-is-the-canonical-feature-surface-mobile-and-watches-are-platform-additive)). **Related:** the shipped mobile "Share link" + the link-based send ([decisions §298](../architecture/decisions.md#298-route-sharing-gets-a-mobile-share-link-starting-a-public-route-you-dont-own-is-a-first-class-action-and-both-ride-a-global-start-run-handoff)).
 
 ## Why
 
@@ -10,27 +10,66 @@
 
 A direct-message feature already ships on web: the `direct_messages` table (migration `20261026_001`; `body text` 1–4000 chars, `sender_id` / `recipient_id`) and the `/messages/[[id]]` surface, driven by `sendDm(recipientId, body)` / `fetchDmThread(otherId)` in `core/data.ts`. Route sharing plugs into it.
 
-### v1 — send the share link as a DM (no schema change)
+### v1 — send the share link as a DM (no schema change) — SHIPPED
 
-The cheapest, shippable-now version:
+Built exactly as specced, no migration, no new RLS, no new column — it is a normal DM whose body happens to be a route URL.
 
-1. A **"Send to a follower"** action on `/routes/[id]` (next to Share): opens a follower picker (reuse the follower list from the profile/People surface), then calls `sendDm(followerId, routeShareUrl(routeId))` — the message body is the public `/share/route/[id]` URL.
-2. Ensure-public first, exactly like `handleShare` (a private route's link is dead) — reuse that path so the two share affordances share one "make it reachable" step.
-3. The recipient sees the URL in their thread; tapping it opens the share page (or deep-links into the app once universal/app links land).
+1. A **"Send to a follower"** button on `/routes/[id]`, beside Share (`data-testid="route-send-dm-btn"`), gated to `auth.user && (is_public || isOwner)` so a non-owner can never offer a dead link — the same gate mobile's Share-link menu item carries (§298).
+2. It opens `SendRouteDialog.svelte`, which calls `sendDm(recipientId, shareLink)` with the public `/share/route/[id]` URL as the body — the *same* string the copy-link share bar shows, built once by `doShare` from `buildRouteShareCanonical`.
+3. **Ensure-public first, through the one shared step.** Both affordances call `runShare()`; a `shareIntent` flag records which asked, and a still-private route opens the existing `share-confirm-dialog` before anything is flipped. Cancelling leaves the route private *and* leaves the picker closed.
+4. The recipient sees the URL in their thread at `/messages/{sender}` and opens the share page from there.
 
-No migration, no new RLS, no new column — it's a normal DM whose body happens to be a route URL. Gate: both users must be able to DM (existing DM eligibility rules — follower/mutual, whatever `/messages` already enforces).
+**The picker is the DM-eligible set, not the follower list.** `social/dm_recipients.ts` (`dmRecipientCandidates` + `filterDmRecipients`, 16 unit tests) merges `fetchFollowers` and `fetchFollowing` into one deduped list, ordered by folded name (`compareFoldedNames`, so its Dart twin gives the same order — decisions § 1956), tagged `mutual` / `follows_you` / `you_follow`. That union *is* the `direct_messages` INSERT policy's follow condition, which admits an edge in either direction: a followers-only picker would hide people the send would in fact accept, and an open people search would offer sends RLS is going to refuse. The block half of that gate is deliberately not modelled client-side — `user_blocks` is owner-read only, so a client cannot see a block placed *on* it, and rendering a "can't message" marker would leak exactly that. Those sends are refused server-side and surfaced by `sendDm`'s 42501 branch.
 
-### v2 — typed route attachment (renders as a card)
+**Fail-closed reads and writes.** A failed follower fetch renders an error + Retry, never the empty-picker copy — the two answers are different and only one is actionable. A refused or thrown send renders the reason in the dialog and never the sent confirmation. One send is in flight at a time.
 
-Once v1 validates the demand, make the route render as a **card in the thread** instead of a raw URL:
+**Abuse posture: the rail's, unchanged.** v1 adds no new insert path, so it inherits the `direct_messages` INSERT policy (no block either way + a follow edge) plus the rail's own send throttle. That throttle arrived after this feature and is exactly the shape the feature declined to build locally: a `before insert` trigger over the existing `check_rate_limit` (migration `20270608_001`, [decisions § 737](../architecture/decisions.md)) debiting 30/minute and 250/hour per sender, so `/messages` and this dialog are covered by one mechanism rather than two. A refused send surfaces through `sendDm`'s shared `rateLimitErrorMessage` branch, beside the 42501 one — localized per reader since [decisions § 744](../architecture/decisions.md).
 
-- Add a nullable typed reference to `direct_messages` — either `route_id uuid references routes(id)` or a small `attachment jsonb` (`{kind: 'route', route_id}`) if other entity types (a run, an event) will follow. Prefer the jsonb bag only if ≥2 entity kinds are actually coming; otherwise a plain `route_id` FK is cleaner and RLS-simpler.
-- The thread renderer shows a `TrackPreview` + name + distance card for a message carrying a route ref (falling back to the body text for plain messages).
-- RLS: a message row is already scoped to its two participants; the *route* it references still resolves through the route's own visibility (public / owner / club), so a card for a route the recipient can't see degrades to "a route" — never leaks the polyline. Reuse `clip_track_for_user` / `clipRouteForViewer` for the preview.
+`dm_recipients.ts` is a parity pair with `apps/mobile_android/lib/dm_recipients.dart` since the mobile send shipped; see Mobile below.
 
-## Mobile
+Pinned by `tests-e2e/routes/send-to-follower.spec.ts` (5 specs: the full send → recipient-opens-it journey across two browser contexts, the one-way-follow candidate, the private-route confirm in both directions, the failed-load retry, the refused send).
 
-Mirror **after** web ships, per §24 — the DM surface itself isn't on mobile yet, so the mobile leg is gated on a mobile `/messages` twin existing first. Until then, mobile's "send to a follower" is the shipped **Share link → OS share sheet** (pick the messaging app), which already reaches any follower through WhatsApp / SMS / etc.
+### v2 — typed route attachment (renders as a card) — SHIPPED 2026-08-28
+
+Built as the plain FK this section preferred. Migration `20270619_001` adds `direct_messages.route_id uuid references routes(id) on delete set null` with its covering partial index; `ON DELETE SET NULL` because a message is the sender's own correspondence and must outlive the thing it named — a third party tidying up their routes must not delete someone's private conversation.
+
+**The INSERT gate is sender-side.** The existing policy admits the send on the follow graph plus the symmetric block check and says nothing about the route, so an unconstrained column accepts any uuid a client sends. The added clause is `route_id is null or private.is_route_visible_to(route_id, auth.uid())` — the same oracle `route_markers`, `route_conditions` and `route_photos` gate their own INSERTs on. A recipient-side check would accept or refuse the identical insert depending on who it is addressed to (a club route is visible to a club-mate and to nobody else) and raise a 42501 the sender cannot act on; the recipient-side answer is a render that degrades honestly.
+
+**The card resolves through `fetchRouteById`, not through the message row.** `DmRouteAttachment.svelte` reads the route by id and only then hands the points to `TrackPreview` — so the polyline a non-owner recipient sees has already been through `clip_route_for_viewer` server-side. Passing a waypoints array in from anywhere, or reading the bare `routes` table here, would hand over the unclipped line; two guards in `privacy_guards.test.ts` pin it, beside the three that already keep `/routes/[id]`, the routes list and the clubs Routes tab off bare `<TrackPreview>`. The bare SVG is used rather than `RouteTrackPreview`'s static-map path, so a private conversation makes no third-party tile request.
+
+**Four render states, kept apart in `social/dm_attachment.ts` (12 unit tests).** No attachment renders as text exactly as before; a pending resolution renders a skeleton and never an empty card; a resolved route renders the card; and a route the reader may not see renders "this route isn't available to you any more" and **never** falls back to the body — a URL that 404s for that reader is otherwise indistinguishable from a link someone typed. A clip that returned `[]` still renders name and distance and drops only the thumbnail: the route resolving and its polyline resolving are different facts.
+
+**The body still carries the share URL, deliberately.** It is the forwardable artifact the dialog's own copy promises (see Privacy below), and `dm_threads()` returns only `last_body` while the Art 20 export selects `*` — both read the body and neither resolves an attachment. `bodyRestatesAttachment` suppresses it **on screen only**, and only when it is a URL pointing at this route's own share or detail path; a note the sender typed, or a link to another route, renders beside the card.
+
+Pinned by `tests-e2e/messages/dm-route-attachment.spec.ts` (3 specs: the send storing both the typed id and the URL with the recipient seeing the card, a route the recipient cannot see saying so, and a route delete nulling the reference while the message survives) and `direct_message_route_attachment_test.sql` (6 pgtap assertions).
+
+**Not taken, and measured rather than forgotten.** The inbox preview line still shows the URL — `dm_threads()` returns `last_body` and nothing else, so changing it means changing the RPC's return type, and the URL being visible there is consistent with what the send discloses. And the public flip stays on the send path even though a **club** route could now be sent to a club-mate without publishing anything: deciding that needs `is_route_visible_to(route, recipient)` per candidate at picker time, which no client-reachable RPC offers, and a silently unrenderable card is worse for the sender than a route they chose to publish.
+
+## Mobile — the inbox and the send
+
+The gate this section used to hold closed on 2026-10-14 ([decisions § 1916](../architecture/decisions.md)): the phone has a direct-message inbox and conversation (`messages_screen.dart`, `message_thread_screen.dart`), and a received route attachment draws as the same card web draws, through `widgets/dm_route_attachment.dart`, which resolves via the owner-aware `ApiClient.fetchRouteById` — so a non-owner recipient's thumbnail is privacy-zone-clipped server-side exactly as on web. `social/dm_attachment.ts` is therefore a parity pair with `apps/mobile_android/lib/dm_attachment.dart`.
+
+The sending half shipped 2026-10-15 ([decisions § 1956](../architecture/decisions.md)). Route detail's share menu carries **Send to a follower**, offered when the viewer is signed in and the route is public or theirs — web's gate. It opens `widgets/send_route_sheet.dart`, the mirror of `SendRouteDialog.svelte`:
+
+- **The same DM-eligible set.** The sheet reads both follow directions and builds the list with `dm_recipients.dart`, the Dart twin of `social/dm_recipients.ts`, registered in both parity registries with 16 mirror tests a side. The block half stays unmodelled for the same reason as on web.
+- **The same exposure step.** A still-private route goes through the confirm Share link uses — the two now share one `_ensurePublic` helper, as web's two share one `runShare` — and a cancel leaves the route private with the picker never opened. With the audience-sharing gate open, an owner's private route instead stays private: the body is the in-app `/routes/{id}` link and each send first adds a `route_shares` grant for that one recipient, and a refused grant stops the message.
+- **The same attachment.** `ApiClient.sendDm` gained the optional `routeId`, written as `direct_messages.route_id`; the INSERT policy's `private.is_route_visible_to` clause is the gate, as on web.
+- **The same failure honesty.** A failed read is an error with Retry, never the empty copy; one send is in flight at a time; a refusal reads through `dm_send_error.dart`'s four sentences and never as sent. After a send, Open conversation pushes `message_thread_screen.dart`.
+
+One difference, on purpose: the phone reads up to 500 rows of each follow direction (the size `fetchShareCandidates` already uses), where web's dialog reads the first page of 50, so a runner with a large graph sees more people on the phone. Pinned by `test/send_route_sheet_test.dart` (14 widget tests).
+
+## Privacy — a targeted send widens nothing the link share didn't
+
+A route polyline can start at someone's front door, so "who can now see this line" is the load-bearing question, and v1's answer is **exactly the copy-link share's answer, deliberately**:
+
+- **The message carries a link and an id, never a trace.** Neither the body nor `route_id` is a copy of the polyline. What the recipient can see is decided at *read* time by the route's own visibility — `/share/route/[id]` resolves through the `public_routes` view and fetches the track via the `clip_route_for_viewer` SECURITY DEFINER RPC, so a non-owner gets the owner's privacy zones clipped out server-side. The DM is not a second, unclipped copy of anything.
+- **A private route cannot be made readable as a side effect of a send.** The single exposure-widening act is the public flip, and the send path reaches it through the *same* `share-confirm-dialog` the copy-link share added in §298's amendment, with the same copy about Explore and about being reversible. Cancel leaves the route private and opens no picker.
+- **Only the owner can flip it.** The button is gated to `is_public || isOwner`, and `setRoutePublic` is owner-scoped by RLS regardless — a non-owner can send a link to an already-public route and nothing else.
+- **Targeted is not narrower than public, and the copy says so.** The dialog states outright that the recipient gets the public share link, so anyone they forward it to can open it too. Sending to one person is a delivery choice, not an access-control one; pretending otherwise would be the actual privacy failure here. Narrowing that — a per-recipient grant on a route that stays private — is a different feature and would need its own table and RLS, not a DM body.
+
+## Private send
+
+Built with audience sharing ([sharing.md](sharing.md), decisions § 1874), and only while its server gate is on. When the owner sends a **non-public** route to a follower, the send no longer goes through the public flip: `SendRouteDialog` first writes a `route_shares` grant for that one recipient, then sends the in-app `/routes/{id}` link, which opens only for the people the route is shared with. The dialog says so ("It stays private"), a refused grant stops the send, and the owner can revoke it from **Who can see this**. With the gate off, the public-flip path above is unchanged. The phone has no route-send action yet, so on mobile the same narrowing is reached through Specific people in the audience sheet.
 
 ## Non-goals
 

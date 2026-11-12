@@ -1,5 +1,9 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
+import com.runapp.watchwear.recording.toJson
+import com.runapp.watchwear.workout.WorkoutReview
+import com.runapp.watchwear.workout.metadataEntries
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -23,18 +27,64 @@ import kotlinx.serialization.json.put
 fun buildRunMetadata(
     activityType: String,
     avgBpm: Double?,
+    hrCoverage: Double?,
     steps: Int?,
     laps: List<QueuedLap>,
     lastModifiedAtIso: String,
+    distanceEstimator: String? = null,
+    distanceStepFilledM: Double? = null,
+    distanceStepOverChordM: Double? = null,
+    distanceSegments: Int? = null,
+    locationProvider: String? = null,
+    gnssSignal: GnssSignalSummary? = null,
+    trackComplete: Boolean = false,
+    workout: WorkoutReview? = null,
+    raceUndoneFinishAt: String? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
+    // Written independently of `avg_bpm`, and its most useful reading is when
+    // the average is absent: `MeasureClient` is foreground-only, so a mean over
+    // a fraction of a twelve-hour run used to be saved as the run's average
+    // with nothing recording that it was. See docs/backend/metadata.md and
+    // decisions § 1083.
+    if (hrCoverage != null) put("hr_coverage", hrCoverage)
     if (steps != null && steps > 0) put("steps", steps)
     // Mobile's delta-fetch path (`runs_screen._fetchRemote`) filters
     // on `metadata->>'last_modified_at' > since`. Without this stamp
     // the row is invisible to every refresh after the first full
     // pull. See docs/backend/metadata.md § last_modified_at.
     put("last_modified_at", lastModifiedAtIso)
+    if (distanceEstimator != null) put("distance_estimator", distanceEstimator)
+    if (distanceEstimator != null && distanceStepFilledM != null && distanceStepFilledM > 0) {
+        put("distance_step_filled_m", distanceStepFilledM)
+        // The part of those metres the gaps' chords would not have credited,
+        // which the server's stepless replay needs per run to match the watch
+        // (docs/features/gps_distance.md § Server recompute).
+        if (distanceStepOverChordM != null && distanceStepOverChordM.isFinite() && distanceStepOverChordM >= 0) {
+            put("distance_step_over_chord_m", distanceStepOverChordM)
+        }
+    }
+    // How many estimator segments the track holds; the server reads the key
+    // above only when its replay finds as many, so a track that lost its
+    // `segmentStart` marks keeps the run-total rule.
+    if (distanceEstimator != null && distanceSegments != null && distanceSegments >= 1) {
+        put("distance_segments", distanceSegments)
+    }
+    if (locationProvider != null) put("location_provider", locationProvider)
+    if (gnssSignal != null) put("gnss_signal", gnssSignal.toJson())
+    // The uploaded track holds every fix the estimator took, those past the
+    // 30 m gate flagged `offTrack`, so the server's replay sees the watch's
+    // own input (docs/features/gps_distance.md § Stored track).
+    if (trackComplete) put("track_complete", true)
+    // The database matcher links the run to the plan workout by
+    // `plan_workout_id` (decisions § 2079); the other two are the review both
+    // run detail screens render.
+    if (workout != null) {
+        for ((key, value) in workout.metadataEntries()) put(key, value)
+    }
+    // The finish the runner undid, so a later re-time does not find it again.
+    if (raceUndoneFinishAt != null) put("race_undone_finish_at", raceUndoneFinishAt)
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

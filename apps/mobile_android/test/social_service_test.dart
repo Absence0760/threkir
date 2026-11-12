@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/challenge_list.dart';
 import '../lib/event_gym_template.dart';
 import '../lib/recurrence.dart';
 import '../lib/social_service.dart';
@@ -241,6 +242,37 @@ void main() {
     });
   });
 
+  group('SocialService.rsvpRow', () {
+    final instance = DateTime.utc(2026, 10, 18, 8);
+
+    test('carries the chosen course', () {
+      final row = SocialService.rsvpRow(
+        eventId: 'e1',
+        userId: 'u1',
+        status: 'going',
+        instance: instance,
+        courseId: 'c-10k',
+      );
+      expect(row, {
+        'event_id': 'e1',
+        'user_id': 'u1',
+        'status': 'going',
+        'instance_start': '2026-10-18T08:00:00.000Z',
+        'course_id': 'c-10k',
+      });
+    });
+
+    test('omits course_id when none was chosen, keeping an earlier pick', () {
+      final row = SocialService.rsvpRow(
+        eventId: 'e1',
+        userId: 'u1',
+        status: 'maybe',
+        instance: instance,
+      );
+      expect(row.containsKey('course_id'), isFalse);
+    });
+  });
+
   group('SocialService.normaliseClubLink', () {
     test('returns null for empty / whitespace input', () {
       expect(SocialService.normaliseClubLink(null), isNull);
@@ -401,6 +433,7 @@ void main() {
 
   group('EventView.toRecurrence / freq', () {
     EventRow eventRow({String? freq}) => EventRow(
+          raceStartMode: 'host_go',
           id: 'e1',
           clubId: 'c1',
           title: 'T',
@@ -439,15 +472,94 @@ void main() {
     });
   });
 
-  group('fmtPace', () {
-    test('null → empty string', () {
-      expect(fmtPace(null), '');
+  group('ChallengeView.withProgress', () {
+    ChallengeView ch({num? myValue, int? myRank, DateTime? completedAt}) =>
+        ChallengeView(
+          id: 'c1',
+          creatorId: 'creator',
+          clubId: null,
+          title: 'June 100k',
+          description: 'desc',
+          metric: 'distance',
+          scope: 'individual',
+          goalValue: 100000,
+          activityType: 'run',
+          startsAt: DateTime.utc(2026, 6, 1),
+          endsAt: DateTime.utc(2026, 7, 1),
+          isPublic: true,
+          joined: true,
+          myValue: myValue,
+          myRank: myRank,
+          participantCount: 7,
+          completedAt: completedAt,
+          myTeamClubId: 'club-1',
+        );
+
+    test('replaces only the caller-relative half of the row', () {
+      final before = ch();
+      final after = before.withProgress(MergedProgress(
+        row: before,
+        myValue: 42000,
+        myRank: 3,
+        completedAt: DateTime.utc(2026, 6, 20),
+      ));
+      expect(after.myValue, 42000);
+      expect(after.myRank, 3);
+      expect(after.completedAt, DateTime.utc(2026, 6, 20));
+      expect(after.id, 'c1');
+      expect(after.title, 'June 100k');
+      expect(after.description, 'desc');
+      expect(after.metric, 'distance');
+      expect(after.scope, 'individual');
+      expect(after.goalValue, 100000);
+      expect(after.activityType, 'run');
+      expect(after.startsAt, DateTime.utc(2026, 6, 1));
+      expect(after.endsAt, DateTime.utc(2026, 7, 1));
+      expect(after.isPublic, isTrue);
+      expect(after.joined, isTrue);
+      expect(after.participantCount, 7);
+      expect(after.myTeamClubId, 'club-1');
     });
 
-    test('formats sec/km as m:ss /km with zero-padded seconds', () {
-      expect(fmtPace(300), '5:00 /km');
-      expect(fmtPace(305), '5:05 /km');
-      expect(fmtPace(65), '1:05 /km');
+    test('carries a null value through rather than defaulting it to zero', () {
+      final before = ch(myValue: 5);
+      final after = before.withProgress(MergedProgress(
+        row: before,
+        myValue: null,
+        myRank: null,
+        completedAt: null,
+      ));
+      expect(after.myValue, isNull);
+      expect(after.myRank, isNull);
+      expect(after.completedAt, isNull);
+    });
+  });
+
+  group('race control writes', () {
+    final now = DateTime.utc(2026, 5, 22, 18, 30);
+
+    test('End stamps finished_at; Cancel does not', () {
+      // The temporal CHECK requires finished_at null on cancelled, so a
+      // cancel that stamped it was refused and the phone's Cancel never
+      // landed (web's endRace had the same bug, pgtap 9 pins it).
+      expect(raceEndPatch('finished', now), {
+        'status': 'finished',
+        'finished_at': '2026-05-22T18:30:00.000Z',
+        'updated_at': '2026-05-22T18:30:00.000Z',
+      });
+      expect(raceEndPatch('cancelled', now), {
+        'status': 'cancelled',
+        'updated_at': '2026-05-22T18:30:00.000Z',
+      });
+    });
+
+    test('a host edit moves the gun time only on a row that has one', () {
+      expect(hostTimeEditPatch(2450, 2600),
+          {'duration_s': 2450, 'gun_time_s': 2450});
+      expect(hostTimeEditPatch(-3, 2600), {'duration_s': 0, 'gun_time_s': 0});
+      expect(hostTimeEditPatch(2450, 0),
+          {'duration_s': 2450, 'gun_time_s': 2450});
+      expect(hostTimeEditPatch(2450, null), {'duration_s': 2450});
     });
   });
 }

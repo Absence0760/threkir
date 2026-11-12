@@ -5,12 +5,17 @@
 // a reason a future editor can read before deciding it's safe to break.
 //
 // Runs with cwd = apps/web (the `test:unit` script), so `read` resolves
-// cwd-relative paths — same convention as security_guards.test.ts.
+// cwd-relative paths — same convention as privacy_guards.test.ts.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+import { stripComments } from './strip_comments';
+// Type-only, so nothing in `data.ts` (the supabase singleton, `$app/env/public`)
+// is evaluated when this file runs under `tsx --test`.
+import type { PeriodSummaryRun, RunColumns } from './data';
 
 function read(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
@@ -45,8 +50,29 @@ test('fetchRunsForDashboard is bounded + column-narrowed, not the unbounded sele
 	);
 	assert.match(
 		body,
-		/\.select\(\s*['"`][^'"`]*started_at[^'"`]*distance_m/,
-		'fetchRunsForDashboard must select the explicit consumer columns (started_at, distance_m, …).',
+		// Whitespace-tolerant: the select is a multi-line expression since the
+		// join's result gained the `Join<>` restatement that keeps supabase-js
+		// from inferring `string`. What the guard is about is which tuple is
+		// projected, not how the call is wrapped.
+		/\.select\(\s*DASHBOARD_RUN_COLUMNS\.join\(/,
+		'fetchRunsForDashboard must project the declared tuple, not a second column list.',
+	);
+	// Anchored on the tuple's CONTENTS, not on the identifier: since § 1330 the
+	// select string is joined from `DASHBOARD_RUN_COLUMNS`, so naming it proves
+	// nothing about which columns it holds.
+	const dashTuple = /const DASHBOARD_RUN_COLUMNS = \[([^\]]*)\]/.exec(source);
+	assert.ok(dashTuple, 'DASHBOARD_RUN_COLUMNS must be a column tuple — re-anchor.');
+	for (const c of ['started_at', 'distance_m', 'duration_s', 'source', 'activity_type']) {
+		assert.match(
+			dashTuple[1],
+			new RegExp(`'${c}'`),
+			`DASHBOARD_RUN_COLUMNS must carry ${c} — every card on /dashboard derives from it.`,
+		);
+	}
+	assert.match(
+		dashTuple[1],
+		/'fastest_5k_s'/,
+		'DASHBOARD_RUN_COLUMNS must carry fastest_5k_s — the no-plan recent-5K plan suggestion reads it.',
 	);
 	// The dashboard page must call the bounded reader, not the unbounded one.
 	const page = read('src/routes/dashboard/+page.svelte');
@@ -141,10 +167,16 @@ test('fetchRunsForPeriodSummary ships the whole history column-narrowed, and sur
 		/throwOnError:\s*true/,
 		'a failed history fetch must throw, not degrade to an incomplete total.',
 	);
+	// Anchored on the whole tuple, not its first line: since § 1330 the
+	// constant is a multi-line `as const satisfies RunColumns` array, so
+	// reading one line proved nothing about what it names.
+	const tuple = /const PERIOD_SUMMARY_RUN_COLUMNS = \[([^\]]*)\]/.exec(source);
+	assert.ok(tuple, 'PERIOD_SUMMARY_RUN_COLUMNS must be a column tuple — re-anchor.');
 	assert.doesNotMatch(
-		source.slice(source.indexOf('PERIOD_SUMMARY_RUN_COLUMNS =')).split('\n')[0],
-		/\*/,
-		'PERIOD_SUMMARY_RUN_COLUMNS must be an explicit column list, never `*`.',
+		tuple[1],
+		/[*]|metadata/,
+		'PERIOD_SUMMARY_RUN_COLUMNS must be an explicit column list, never `*` ' +
+			'and never the metadata jsonb bag the drilldown does not read.',
 	);
 	// The standalone deep-link route shares the narrowed reader.
 	const route = read('src/routes/dashboard/period/[type]/[date]/+page.svelte');
@@ -157,6 +189,66 @@ test('fetchRunsForPeriodSummary ships the whole history column-narrowed, and sur
 		route,
 		/\bfetchRuns\(\)/,
 		'/dashboard/period must not call the unbounded select(*) fetchRuns().',
+	);
+});
+
+test('fetchRuns states its row shape and narrows through the shared helpers', () => {
+	// Reason: the select list is `.join()`ed from a caller's tuple, so it is
+	// `string`, the supabase-js parser answers `GenericStringError`, and the
+	// rows used to be walked as `any[]`. `any` is not a narrower claim than
+	// the truth — it is no claim at all, and it is what let this reader
+	// declare `Run` (three narrowed columns) while applying `parseRunSource`
+	// alone: `activity_type` and `metadata` reached every consumer raw behind
+	// a type promising the unions (§ 1519). The honest shape is what a
+	// projection of `runs` can return, and the two branches must route
+	// through the tested narrowers rather than re-spelling the map.
+	// Comments stripped: this guard's own reason names the shape it bans.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	// The last of the three: two overload declarations, then the body.
+	const start = source.lastIndexOf('export async function fetchRuns(');
+	assert.ok(start >= 0, 'Could not locate the fetchRuns implementation — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.doesNotMatch(
+		body,
+		/\bany\b/,
+		'fetchRuns must not walk its rows as `any` — that is the claim that hid two missing narrows.',
+	);
+	assert.match(
+		body,
+		/overrideTypes<Partial<RunRow>\[\]>/,
+		'the read must state the row shape a projection can return.',
+	);
+	assert.match(
+		body,
+		/rows\.map\(asProjectedRun\)/,
+		'the narrowed branch must use the shared projected narrower.',
+	);
+	assert.match(
+		body,
+		/asRun\(r, null\)/,
+		'the select(*) branch must use `asRun`, the one normaliser this table has.',
+	);
+	// Reason for the negative: `track` is a lazy Storage download, never a
+	// column, so since § 1468 it cannot be a member of `C[number]` and the
+	// narrowed overload's `Pick<Run, C[number]>` cannot declare it. Setting
+	// it on every row put a property on the object that its own type denies
+	// and no caller can read, and made the two run readers disagree about
+	// what a narrowed row carries (§ 1520).
+	// Reason: `asRun` is the ONE normaliser this table has, and `fetchRuns`
+	// carried its own partial copy of it — two of the three narrows missing —
+	// which is exactly the drift the one-normaliser-per-table rule names.
+	assert.doesNotMatch(
+		source,
+		/function asRun\(/,
+		'`asRun` must live in run_narrow.ts, not be re-declared here.',
+	);
+	const narrow = stripComments(read('src/lib/core/run_narrow.ts'));
+	const projected = narrow.slice(narrow.indexOf('export function asProjectedRun'));
+	assert.doesNotMatch(
+		projected,
+		/track/,
+		'a narrowed row must not carry `track` — its row type cannot declare it.',
 	);
 });
 
@@ -175,14 +267,18 @@ test('fetchRouteById clips waypoints for non-owner club members (RLS is not the 
 	);
 	assert.ok(fnMatch, 'Could not locate fetchRouteById body — rename?');
 	const body = fnMatch![0];
+	// Anchored on the comparison, not on what the destructured row is called:
+	// the guard is about the owner check existing, and the local has been
+	// `rest` and `owned`.
+	const ownerCheck = /\w+\.user_id\s*!==\s*viewerId/;
 	assert.match(
 		body,
-		/rest\.user_id\s*!==\s*viewerId/,
+		ownerCheck,
 		'fetchRouteById must compare the row owner against the viewer — RLS surfacing the base row to a club member is not consent to see the unclipped polyline.',
 	);
 	// The non-owner branch (everything after the owner-check) must clip
 	// and strip the raw geometry columns.
-	const nonOwnerBranch = body.slice(body.indexOf('rest.user_id !== viewerId'));
+	const nonOwnerBranch = body.slice(ownerCheck.exec(body)!.index);
 	assert.match(
 		nonOwnerBranch,
 		/fetchClippedRouteForViewer/,
@@ -214,34 +310,30 @@ test('fetchRoutesWithError selects a narrowed column set, never geom, for the ro
 	// must enumerate ROUTE_LIST_COLS (base table) / PUBLIC_ROUTE_LIST_COLS (view)
 	// — omitting geom + start_point but covering every column the "My routes" list
 	// AND the route pickers (RunEditor / EventEditor / club transfer) read.
+	//
+	// The COLUMN SET itself is no longer declared here: `routes/route_list_columns.ts`
+	// owns it and derives both the select string and `RouteListItem` from one
+	// tuple, and its own suite pins the contents — including a compile-time
+	// proof that `publicRouteListFill` covers exactly the difference between
+	// the two lists. What this guard still owns is the QUERIES: that they
+	// enumerate those constants rather than reaching for `select('*')` again.
 	const source = read('src/lib/core/data.ts');
 
-	const listCols = source.match(/const ROUTE_LIST_COLS\s*=\s*\n?\s*'([^']*)'/);
-	assert.ok(listCols, 'Could not locate the ROUTE_LIST_COLS constant — rename?');
-	const cols = listCols![1].split(',').map((c) => c.trim());
-	assert.ok(!cols.includes('geom'), 'ROUTE_LIST_COLS must not select geom — server-spatial-only, doubles the wire payload.');
-	assert.ok(!cols.includes('start_point'), 'ROUTE_LIST_COLS must not select start_point — no client reader.');
-	// Every column a consumer of fetchRoutes / fetchRoutesWithError reads:
-	// the /routes list, plus the RunEditor / EventEditor / club-transfer pickers.
-	for (const needed of [
-		'id',
-		'user_id',
-		'club_id',
-		'name',
-		'distance_m',
-		'elevation_m',
-		'surface',
-		'waypoints',
-		'is_starred',
-		'run_count',
-		'created_at',
-	]) {
-		assert.ok(cols.includes(needed), `ROUTE_LIST_COLS must include ${needed} — a routes-list/picker consumer reads it.`);
-	}
+	assert.match(
+		source,
+		/import \{[^;]*\bROUTE_LIST_COLS\b[^;]*\bPUBLIC_ROUTE_LIST_COLS\b[^;]*\} from '\.\.\/routes\/route_list_columns'/,
+		'core/data.ts must take both column lists from routes/route_list_columns — a local copy is the drift the module exists to close.',
+	);
 
-	const fnMatch = source.match(/export async function fetchRoutesWithError[\s\S]*?\n}/);
-	assert.ok(fnMatch, 'Could not locate fetchRoutesWithError — rename?');
-	const body = fnMatch![0];
+	// Anchored on the NEXT top-level export rather than on the first `\n}`,
+	// which is the idiom the guards further down this file use. The lazy
+	// brace form read the whole body until the return type became a
+	// multi-line object literal, at which point `\n}> {` closed the match on
+	// the SIGNATURE and every assertion below was made against it.
+	const start = source.indexOf('export async function fetchRoutesWithError(');
+	assert.ok(start >= 0, 'Could not locate fetchRoutesWithError — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
 	assert.doesNotMatch(
 		body,
 		/\.select\('\*'\)/,
@@ -294,13 +386,25 @@ test('api_client.dart round-trips runs.route_id on read and both write paths', (
 	assert.match(
 		source,
 		/routeId:\s*r\.routeId/,
-		'_runFromRow (read) + saveRunsBatch (write) must set routeId: r.routeId.',
+		'_runFromRow (read) must set routeId: r.routeId.',
 	);
+	// The write half moved: runRowFromRun in core_models is now the only
+	// place a Run becomes a runs row, so the link is carried there and the
+	// writers are checked for delegating to it rather than for the literal.
+	const shaper = read('../../packages/core_models/lib/src/run_row_shape.dart');
 	assert.match(
-		source,
+		shaper,
 		/routeId:\s*run\.routeId/,
-		'saveRun (write) must set routeId: run.routeId — omitting it re-writes route_id = null on upsert.',
+		'runRowFromRun must set routeId: run.routeId — omitting it re-writes route_id = null on upsert.',
 	);
+	for (const writer of ['saveRun', 'saveRunsBatch']) {
+		const start = source.search(new RegExp(`Future<[\\w<>, ]*>\\s+${writer}\\(`));
+		assert.ok(start >= 0, `Could not locate ${writer} in api_client.dart — rename?`);
+		assert.ok(
+			source.slice(start, start + 4000).includes('runRowFromRun('),
+			`${writer} must build its row through runRowFromRun, or route_id stops round-tripping.`,
+		);
+	}
 });
 
 test('fetchRouteById anon/public branch assembles waypoints from the server clip', () => {
@@ -370,11 +474,11 @@ test('live spectator next-cutoff card sources waypoints through the clipped rout
 	assert.doesNotMatch(
 		source,
 		/\.from\('public_routes'\)/,
-		'Route reads on this page go through $lib/core/data, not inline view queries.',
+		'Route reads on this page go through #lib/core/data, not inline view queries.',
 	);
 });
 
-test('plans/new loads club templates with one batched query, not one per club', () => {
+test('plans/new loads club templates in bounded chunks, not one query per club', () => {
 	// Reason: the template picker used to call fetchClubTemplates inside a
 	// clubs.map — one round-trip per club (N+1, audit/db-performance
 	// Medium). The scope is a single training_plans read filtered on all
@@ -396,10 +500,18 @@ test('plans/new loads club templates with one batched query, not one per club', 
 		/export async function fetchClubTemplatesForClubs[\s\S]*?\n}/,
 	);
 	assert.ok(fnMatch, 'Could not locate fetchClubTemplatesForClubs — rename?');
+	// One query per FEED_FOLLOWEE_CHUNK of clubs, not one per club: the id
+	// list is the viewer's whole club set, which has no ceiling under the
+	// in-filter bound (decisions § 653).
 	assert.match(
 		fnMatch![0],
-		/\.in\('club_id', clubIds\)/,
-		'fetchClubTemplatesForClubs must filter all club ids in ONE query.',
+		/queryChunked\(clubIds, \(part\) =>[\s\S]*?\.in\('club_id', part\)/,
+		'fetchClubTemplatesForClubs must filter the club ids per bounded chunk, not per club.',
+	);
+	assert.match(
+		fnMatch![0],
+		/\.limit\(limitPerClub \* part\.length\)/,
+		'Each chunk scales its limit by the clubs IN that chunk, so no club is starved.',
 	);
 });
 
@@ -435,23 +547,45 @@ test('enrichClubs reads the trigger-maintained member_count cache, not a per-mem
 	);
 });
 
-test('deleteNotifications batches into one .in() delete, guards empty, surfaces errors', () => {
-	// Reason: bulk-dismissing a collapsed notification group used to await
-	// deleteNotification(id) in a for-loop — one DELETE round-trip per
-	// member, so dismissing a 20-member group fired 20 sequential requests
-	// (issue #350). The batched path must delete all ids in ONE query via
-	// .in('id', ids), short-circuit an empty list (an empty .in() would
-	// match nothing but still round-trips), and throw the supabase error
-	// (supabase-js resolves {error}, never throws — dropping the check
-	// silently swallows a failed bulk-dismiss while the row vanishes).
+test('deleteNotifications is one delete_notifications RPC call, guards empty, surfaces errors', () => {
+	// Reason: bulk-dismissing a collapsed group used to await
+	// deleteNotification(id) in a for-loop — one DELETE per member (issue
+	// #350). Batching it into `.in('id', ids)` fixed the N+1 and inherited a
+	// worse failure: PostgREST serialises an `in` filter into the request
+	// URL, so a large dismiss is at the mercy of the gateway's request-line
+	// budget — a 414 refusal on the local stack past roughly 200 ids, an
+	// empty 200 on the gateway decisions § 653 observed. Chunking to dodge
+	// that bound is not the fix either; it trades the failure for a partial
+	// dismiss, and the undo offer is already spent by the time chunk 3 of 5
+	// fails.
+	//
+	// The array rides the RPC's POST body, which has no such bound, so the
+	// whole dismiss is ONE statement in ONE transaction (migration
+	// 20270529_001). That atomicity is what this file can observe: a single
+	// awaited call with the full id list, never a loop and never a re-chunk.
 	const source = read('src/lib/core/data.ts');
 	const fnMatch = source.match(/export async function deleteNotifications[\s\S]*?\n}/);
 	assert.ok(fnMatch, 'Could not locate deleteNotifications — rename?');
 	const body = fnMatch![0];
 	assert.match(
 		body,
-		/\.in\('id', ids\)/,
-		'deleteNotifications must delete every id in ONE query via .in(\'id\', ids) — a per-id loop is the N+1 issue #350 fixed.',
+		/supabase\.rpc\('delete_notifications', \{ p_ids: ids \}\)/,
+		'deleteNotifications must hand the whole id list to the delete_notifications RPC — that is what makes the dismiss one transaction.',
+	);
+	assert.doesNotMatch(
+		body,
+		/\.in\(/,
+		'deleteNotifications must not go back to an `in` filter — past the gateway request-line budget it fails, and which way it fails is a property of the deployment (decisions § 653).',
+	);
+	assert.doesNotMatch(
+		body,
+		/for \(|\.map\(|while \(|chunk/i,
+		'deleteNotifications must not loop or chunk — either shape can leave the dismiss partial, which is the whole reason the RPC exists.',
+	);
+	assert.equal(
+		(body.match(/await /g) ?? []).length,
+		1,
+		'deleteNotifications must await exactly one call — a second round-trip is a second transaction.',
 	);
 	assert.match(
 		body,
@@ -460,8 +594,40 @@ test('deleteNotifications batches into one .in() delete, guards empty, surfaces 
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
-		'deleteNotifications must throw the supabase error — a swallowed failure leaves the row gone from the UI but present in the DB.',
+		/if \(error\) throw dbError\(error\);/,
+		'deleteNotifications must throw the supabase error — a swallowed failure leaves the row gone from the UI but present in the DB. The RPC also RAISES past its 1000-id cap rather than truncating, and that refusal must reach the caller.',
+	);
+});
+
+test('answerMissedWorkouts sends the stretch and the answer in one RPC, and surfaces errors', () => {
+	// Reason: "Make it up" stretches the next long run AND records the miss as
+	// answered (decisions § 2122). Two calls — apply_workout_adjustments, then
+	// an answer write — could land the stretch and lose the answer, and the
+	// prompt would ask again and stretch the same run a second time. The RPC
+	// applies both in one transaction only if the wrapper hands it both.
+	const source = read('src/lib/core/data.ts');
+	const fnMatch = source.match(/export async function answerMissedWorkouts[\s\S]*?\n}/);
+	assert.ok(fnMatch, 'Could not locate answerMissedWorkouts — rename?');
+	const body = fnMatch![0];
+	assert.match(
+		body,
+		/supabase\.rpc\('answer_missed_workouts', \{\s*p_plan_id: planId,\s*p_workout_ids: workoutIds,\s*p_changes: changes\s*\}\)/,
+		'answerMissedWorkouts must pass the plan, the answered ids and the make-up to answer_missed_workouts together.',
+	);
+	assert.match(
+		body,
+		/changes: WorkoutAdjustment\[\] = \[\]/,
+		'"Let it go" sends no changes — the default must be an empty list, never undefined.',
+	);
+	assert.equal(
+		(body.match(/await /g) ?? []).length,
+		1,
+		'answerMissedWorkouts must await exactly one call — a second round-trip is a second transaction.',
+	);
+	assert.match(
+		body,
+		/if \(error\) throw dbError\(error\);/,
+		'answerMissedWorkouts must throw — the prompt keeps its question and says the save failed only if the error reaches it.',
 	);
 });
 
@@ -527,7 +693,7 @@ test('setRunPublic is a real toggle: writes the caller boolean and surfaces erro
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
+		/if \(error\) throw dbError\(error\);/,
 		'setRunPublic must throw the supabase error — callers surface it as a toast, not a silent no-op.',
 	);
 	assert.doesNotMatch(
@@ -537,12 +703,13 @@ test('setRunPublic is a real toggle: writes the caller boolean and surfaces erro
 	);
 });
 
-test('the profile-join fetchers chunk `.in()` so >~100 members do not silently empty', () => {
+test('the profile-join fetchers chunk `.in()` so >~100 members are not lost', () => {
 	// Reason: PostgREST serialises `.in('id', ids)` into the request URL.
 	// A club / event with more than ~100 members overflows the gateway's
-	// request-line limit and the profile-join leg silently returns null —
-	// every display_name/avatar_url degrades to a placeholder with no error
-	// (issue #325). The fix routes every such leg through fetchProfilesByIds,
+	// request-line budget and the profile-join leg is lost — every
+	// display_name/avatar_url degrades to a placeholder, and which way the
+	// gateway refuses is a property of the deployment (decisions § 653,
+	// issue #325). The fix routes every such leg through fetchProfilesByIds,
 	// which chunks the id set. This guard pins that (a) the helper chunks and
 	// (b) no fetcher rebuilds the inline unchunked profile-join it replaced.
 	const source = read('src/lib/core/data.ts');
@@ -578,6 +745,44 @@ test('the profile-join fetchers chunk `.in()` so >~100 members do not silently e
 			`${fn} must not rebuild the unchunked inline profile-join (issue #325).`,
 		);
 	}
+});
+
+test('the club roster lists active members only', () => {
+	// Reason: RLS lets a private club's members read its pending and rejected
+	// rows too, so an unfiltered roster listed a rejected requester as a
+	// member (#1228). Mobile's SocialService.fetchClubMembers filters the same.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchClubMembers(');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.match(body, /\.eq\('status', 'active'\)/);
+});
+
+test('the follow-request and mention-handle joins read their `in` list through readChunked', () => {
+	// Reason: neither id list has a ceiling under FEED_FOLLOWEE_CHUNK —
+	// fetchIncomingFollowRequests reads up to 200 requests and
+	// resolveMentionHandles takes up to 200 handles — and an `in` filter past
+	// the gateway's request-line budget can come back as an empty 200 rather
+	// than an error (decisions § 653): every request would render nameless,
+	// every @mention as plain text. Both route through readChunked.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const cases: [string, RegExp][] = [
+		['async function profilesInEdgeOrder(', /\.in\('id', ids\)/],
+		['export async function resolveMentionHandles(', /\.in\('handle', wanted\)/],
+	];
+	for (const [decl, unchunked] of cases) {
+		const start = source.indexOf(decl);
+		assert.ok(start >= 0, `Could not locate ${decl} — rename?`);
+		const body = source.slice(start, source.indexOf('\n}', start));
+		assert.match(body, /await readChunked\(/, `${decl} must read through readChunked.`);
+		assert.match(body, /\.in\('(id|handle)', part\)/, `${decl} must filter on the chunk.`);
+		assert.doesNotMatch(body, unchunked, `${decl} must not filter on the whole list.`);
+	}
+	const reqs = source.slice(source.indexOf('export async function fetchIncomingFollowRequests('));
+	assert.match(
+		reqs.slice(0, reqs.indexOf('\n}')),
+		/await profilesInEdgeOrder\(/,
+		'fetchIncomingFollowRequests must join profiles through the chunked profilesInEdgeOrder.',
+	);
 });
 
 test('fetchFollowingBadgeAwards chunks the followee `.in()` (no silently-empty badge feed)', () => {
@@ -635,7 +840,7 @@ test('updateEvent scopes the write to a single event row and throws on error', (
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
+		/if \(error\) throw dbError\(error\);/,
 		'updateEvent must throw on a DB error, not swallow it.',
 	);
 });
@@ -685,25 +890,37 @@ test('/live/[id] hydrateBacklog fetches newest-first + capped, then replays reve
 	assert.ok(start >= 0, 'Could not locate hydrateBacklog — rename?');
 	const next = source.indexOf('\n\tfunction subscribeLive', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
-	// Isolate the Supabase-Realtime fallback query (the Go-hub branch above
-	// it returns early before this fetch).
-	const queryStart = body.indexOf(".from('live_run_pings')");
-	assert.ok(queryStart >= 0, 'hydrateBacklog must still read live_run_pings.');
-	const query = body.slice(queryStart);
+	// The Supabase-Realtime fallback reads through fetchTablePings with no
+	// cursor; the Go-hub branch above it returns early before this fetch.
 	assert.match(
-		query,
+		body,
+		/fetchTablePings\(null\)/,
+		'hydrateBacklog must read the backlog through fetchTablePings(null).',
+	);
+	const fetchStart = source.indexOf('async function fetchTablePings');
+	assert.ok(fetchStart >= 0, 'Could not locate fetchTablePings — rename?');
+	const fetchBody = source.slice(fetchStart, source.indexOf('\n\t}\n', fetchStart));
+	assert.ok(
+		fetchBody.includes(".from('live_run_pings')"),
+		'fetchTablePings must still read live_run_pings.',
+	);
+	// The no-cursor branch is the backlog; the cursor branch only asks for
+	// rows after the newest one already drawn, so ascending is right there.
+	const backlog = /since == null\s*\?([\s\S]*?)\n\s*:\s*base\.gt/.exec(fetchBody)?.[1] ?? '';
+	assert.match(
+		backlog,
 		/\.order\('at',\s*\{\s*ascending:\s*false\s*\}\)/,
 		'The backlog fetch must be newest-first — an ascending fetch surfaces the OLDEST rows under a row cap (issue #334).',
 	);
 	assert.match(
-		query,
+		backlog,
 		/\.limit\(1000\)/,
 		'The backlog fetch must cap at 1000 rows — mirror fetchRecentRacePings; an unbounded fetch ships ~34.5k rows on an anon load (issue #334).',
 	);
-	assert.doesNotMatch(
-		query,
-		/ascending:\s*true/,
-		'The backlog fetch must not order ascending (issue #334 regression).',
+	assert.match(
+		fetchBody,
+		/\.gt\('at', since\)[\s\S]*\.limit\(1000\)/,
+		'The cursor fetch must stay bounded to rows after the cursor and capped.',
 	);
 	// Descending rows must be replayed in reverse so the last pushPing is the
 	// newest ping (matches the /live/event replay).
@@ -714,36 +931,35 @@ test('/live/[id] hydrateBacklog fetches newest-first + capped, then replays reve
 	);
 });
 
-test('computeGlobalSegmentEffortsForRun bounds its gate and its fetch by ONE shared constant', () => {
-	// Reason: the rescore gate compares an UNCAPPED count(*) of the active
-	// catalogue against a stamp written from a CAPPED fetch. If the gate's
-	// clamp and the fetch's `.limit()` are separate literals they drift, and
-	// once the catalogue passes the fetch cap the stamp saturates —
-	// `activeCount > scored` is then permanently true and every run re-scores
-	// on EVERY view forever, a net pessimisation over having no gate at all
-	// (same heavy fetch, plus a count query and a metadata read + write per
-	// view). The only structural defence is that both sides read the same
-	// exported constant, so a bare numeric literal here is the bug.
+test('computeGlobalSegmentEffortsForRun reads candidates by extent and stamps the count it gated on', () => {
+	// Reason (decisions § 2392): the fallback scorer used to fetch the first
+	// 500 catalogue rows alphabetically, so a catalogue past 500 silently
+	// dropped its tail from scoring, and the stamp was the fetch size, which
+	// had to be clamped against the uncapped gate or every run re-scored on
+	// every view (issue #333). Candidates now come from the bbox lookup the
+	// server uses, and the stamp is the active count itself, which the gate can
+	// always see reached. A whole-catalogue fetch, or a stamp built from the
+	// candidate list's length, would bring back one of those two bugs.
 	const source = read('src/lib/core/data.ts');
 	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
 	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');
 	const next = source.indexOf('\nexport ', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(body, /await fetchGlobalSegmentsInBbox\(extent\)/, 'candidates must come from the bbox lookup');
+	assert.doesNotMatch(body, /fetchGlobalSegmentsWithError\(/, 'no whole-catalogue fetch in the scorer');
 	assert.match(
 		body,
-		/fetchGlobalSegmentsWithError\(GLOBAL_SEGMENT_SCORING_LIMIT\)/,
-		'The catalogue fetch must be bounded by the shared GLOBAL_SEGMENT_SCORING_LIMIT, not a literal.',
+		/stampGlobalSegmentsScored\([\s\S]*?scoredCount,\s*GLOBAL_SEGMENT_MATCHER_VERSION,\s*\)/,
+		'the stamp is the gated count and the matcher that scored it',
 	);
-	assert.doesNotMatch(
-		body,
-		/fetchGlobalSegmentsWithError\(\s*\d+\s*\)/,
-		'A numeric literal here drifts from the gate clamp — that is the saturation bug.',
+	assert.doesNotMatch(body, /segments\.length,\s*\)/, 'never stamp the candidate count');
+
+	const lookup = source.slice(
+		source.indexOf('export async function fetchGlobalSegmentsInBbox'),
+		source.indexOf('export async function computeGlobalSegmentEffortsForRun'),
 	);
-	assert.match(
-		source,
-		/GLOBAL_SEGMENT_SCORING_LIMIT,?\n\}\s*from '\.\/data_normalise'|GLOBAL_SEGMENT_SCORING_LIMIT,/,
-		'data.ts must import the limit from data_normalise (where the gate clamps against it).',
-	);
+	assert.match(lookup, /p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M/);
+	assert.match(lookup, /p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT/);
 });
 
 test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately before the stamp write', () => {
@@ -753,15 +969,14 @@ test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately befor
 	// writing the stamp back. Merging the stamp into that stale copy
 	// silently reverts any title / notes edit the owner made in the window —
 	// the run-detail edit dialog writes the same column. The bag must be
-	// re-read immediately before the write, the same read-adjacent-to-write
-	// discipline updateRunMetadata follows.
+	// re-read immediately before the write.
 	const source = read('src/lib/core/data.ts');
 	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
 	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');
 	const next = source.indexOf('\nexport ', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
 
-	const fetchAt = body.indexOf('fetchGlobalSegmentsWithError(');
+	const fetchAt = body.indexOf('fetchGlobalSegmentsInBbox(');
 	const stampAt = body.indexOf('stampGlobalSegmentsScored(');
 	const writeAt = body.indexOf('.update({ metadata: next })');
 	assert.ok(fetchAt >= 0 && stampAt >= 0 && writeAt >= 0, 'scoring pass / stamp / write missing');
@@ -782,5 +997,1651 @@ test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately befor
 		stampCall,
 		/\brunMetadata\b/,
 		'stampGlobalSegmentsScored must not merge into runMetadata (the pre-pass read) — that is the clobber.',
+	);
+});
+
+test('computeGlobalSegmentEffortsForRun scores park courses with their checkpoints, failing closed', () => {
+	// Reason: a park course's checkpoints are its anti-shortcut rule
+	// (decisions § 2383). Scoring without them times a run that cut the
+	// course, so a failed checkpoint read must score nothing, a course whose
+	// list cannot be read must be left out, and the list must reach the matcher.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
+	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+
+	const readAt = body.indexOf('await fetchParkCourseCheckpoints(');
+	const scoreAt = body.indexOf('computeGlobalSegmentEfforts(');
+	assert.ok(readAt >= 0 && scoreAt > readAt, 'the checkpoint read must precede the matcher');
+	assert.match(
+		body.slice(readAt, scoreAt),
+		/if \(checkpointsBySegment === null\) return 0;/,
+		'a failed checkpoint read must return before scoring (and before the stamp)',
+	);
+	assert.match(
+		body,
+		/checkpointsBySegment\.get\(seg\.id\) !== null/,
+		'a course whose checkpoint list cannot be read must be filtered out of the sweep',
+	);
+	assert.match(
+		body.slice(scoreAt),
+		/globalSegmentGeometry\(seg, checkpointsBySegment\.get\(seg\.id\)\)/,
+		'each geometry handed to the matcher must carry its checkpoints',
+	);
+});
+
+test('computeGlobalSegmentEffortsForRun re-matches by delete then insert, and gates on the matcher version', () => {
+	// Reason (issue #1308): an effort the circles-only matcher wrote must be
+	// re-matched by the line matcher on its next owner view, or one
+	// leaderboard mixes two rules. There is no client UPDATE policy on
+	// global_segment_efforts, so a changed effort is deleted then inserted; an
+	// insert-only pass (ignoreDuplicates alone) would keep the old row forever.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(
+		body,
+		/shouldRescoreGlobalSegments\(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION\)/,
+		'the gate must compare the run\'s matcher version with the current one',
+	);
+	const deleteAt = body.indexOf('.delete().in(\'id\', part)');
+	const insertAt = body.indexOf('.upsert(batch');
+	assert.ok(deleteAt >= 0 && insertAt > deleteAt, 'stale efforts are deleted before the re-matched ones are inserted');
+	assert.match(body, /matched_by: eff\.matched_by/, 'the insert records how the effort was matched');
+	assert.doesNotMatch(body, /\.update\(\{ time_seconds/, 'no client UPDATE of an effort');
+});
+
+test('computeGlobalSegmentEffortsForRun screens each effort against the client bounds before deleting anything', () => {
+	// Reason (audit of PR #1359): the trigger global_segment_efforts_client_bounds
+	// refuses an implausible client-written effort, and the fallback wrote every
+	// effort in one statement after deleting the stale rows. One refused row
+	// failed the statement, so the run lost every effort and was retried and
+	// refused on every view. Each effort is screened by the trigger's own rule
+	// first, and the write isolates any refusal the screen did not foresee.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	const screenAt = body.indexOf('globalSegmentEffortRefusal(');
+	const deleteAt = body.indexOf(".delete().in('id', part)");
+	assert.ok(screenAt >= 0 && deleteAt > screenAt, 'the bounds screen must run before the stale delete');
+	assert.match(body, /select\('metadata, started_at, activity_type'\)/, 'the screen needs the run start and activity');
+	assert.match(body, /writeEffortsIsolatingRefusals\(rows,/, 'the insert must isolate a refused row');
+});
+
+test('one refused effort in a batch does not void the others', async () => {
+	const { writeEffortsIsolatingRefusals } = await import('../segments/effort_bounds');
+	const writes: string[][] = [];
+	const result = await writeEffortsIsolatingRefusals(['a', 'forged', 'c'], async (batch) => {
+		writes.push(batch);
+		if (batch.includes('forged')) return { count: 0, error: { code: '23514' } };
+		return { count: batch.length, error: null };
+	});
+	assert.deepEqual(result, { written: 2, refused: 1, error: null });
+	assert.deepEqual(writes, [['a', 'forged', 'c'], ['a'], ['forged'], ['c']]);
+
+	const transport = await writeEffortsIsolatingRefusals(['a', 'b'], async () => ({
+		count: 0,
+		error: { code: 'PGRST301' },
+	}));
+	assert.equal(transport.written, 0);
+	assert.ok(transport.error, 'a failure that is not a refusal is reported, so the run is not stamped');
+
+	const mixed = await writeEffortsIsolatingRefusals(['forged', 'b'], async (batch) => {
+		if (batch.includes('forged')) return { count: 0, error: { code: '23514' } };
+		return { count: 0, error: { code: '08006' } };
+	});
+	assert.deepEqual([mixed.written, mixed.refused], [0, 1]);
+	assert.ok(mixed.error, 'a non-refusal failure on one row still withholds the stamp');
+});
+
+test('the client effort bounds mirror the trigger: start slack and speed cap, never duration_s', async () => {
+	const { globalSegmentEffortRefusal } = await import('../segments/effort_bounds');
+	const run = { started_at: '2027-06-01T08:00:00Z', activity_type: 'run' };
+	// A paused run: 08:00 start, 3000 s of moving time. 08:52 is inside it.
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 100, started_at: '2027-06-01T08:52:00Z' }, run, 400), null);
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 3300, started_at: '2027-06-01T08:01:00Z' }, run, 4000), null);
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 120, started_at: '2027-06-01T07:59:00Z' }, run, 400), null);
+	assert.equal(
+		globalSegmentEffortRefusal({ time_seconds: 120, started_at: '2027-06-01T07:58:59Z' }, run, 400),
+		'starts_before_run',
+	);
+	assert.equal(
+		globalSegmentEffortRefusal({ time_seconds: 1, started_at: '2027-06-01T08:10:00Z' }, run, 400),
+		'faster_than_activity',
+	);
+	for (const activity_type of ['walk', 'hike', 'stroller']) {
+		assert.equal(
+			globalSegmentEffortRefusal({ time_seconds: 25, started_at: '2027-06-01T08:10:00Z' }, { ...run, activity_type }, 400),
+			'faster_than_activity',
+			`${activity_type} is held to the foot cap`,
+		);
+	}
+	assert.equal(
+		globalSegmentEffortRefusal({ time_seconds: 25, started_at: '2027-06-01T08:10:00Z' }, { ...run, activity_type: 'cycle' }, 400),
+		null,
+	);
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 1, started_at: '2027-06-01T08:10:00Z' }, run, null), null);
+});
+
+test('saveRun writes elevation_gain_m alongside the metadata key', () => {
+	// Reason: migration 20270302_001 promoted total ascent to the first-class
+	// `runs.elevation_gain_m` column because the vert challenge aggregate sums
+	// BASE columns, not the jsonb bag — its contract is "writers populate both".
+	// saveRun is the ONLY writer of elevation on any platform, and it wrote the
+	// metadata key alone, so every vert challenge board summed
+	// coalesce(elevation_gain_m, 0) over nulls and sat at 0 m forever.
+	// Keep BOTH writes: recap's Dart twin still reads metadata.elevation_m, so
+	// setting the column without the key would open a web/mobile divergence.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function saveRun(input');
+	assert.ok(start >= 0, 'Could not locate saveRun — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(
+		body,
+		/row\.elevation_gain_m = input\.elevation_m/,
+		'saveRun must set the promoted elevation_gain_m column'
+	);
+	assert.match(
+		body,
+		/mergedMetadata\[METADATA_KEYS\.elevation_m\] = input\.elevation_m/,
+		'saveRun must keep writing metadata.elevation_m for the readers that use it'
+	);
+});
+
+test('the Strava ZIP importer lands embedded bests like the Garmin one', () => {
+	// Reason: refresh_personal_records_for_user reads the promoted fastest-window
+	// columns (fastest_5k_s etc.), which only arrive via saveRun's embedded_bests.
+	// garmin-zip computes them; strava-zip did not, so a migrating user's 30 km
+	// long run never yielded the 19:30 5K hiding inside its track and five years
+	// of imported history produced zero embedded bests.
+	const source = read('src/lib/integrations/strava-zip.ts');
+	assert.match(
+		source,
+		/embedded_bests: computeEmbeddedBests\(track, activityType, deviceDistance\)/,
+		'strava-zip must pass embedded_bests when it parsed a track'
+	);
+});
+
+test('fetchGymWorkouts windows by date server-side, the way its run sibling does', () => {
+	// Reason: fetchGymWorkoutsWithError used to take a `limit` and nothing else,
+	// so /nutrition pulled the newest N sessions and filtered them in the
+	// browser. A diary day older than the caller's N most recent lifts then
+	// contributed no gym calories to that day's exercise add-on — an under-read
+	// indistinguishable from "the lift isn't logged yet" (decisions.md § 591
+	// shipped it as a stated limitation; § 597 closed it). The bounds must stay
+	// PostgREST filters: a timestamptz comparison in the database is the real
+	// one, where a string compare of the `+00:00` Postgres rendering against a
+	// `…Z` bound drops the row landing exactly on local midnight.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function fetchGymWorkoutsWithError');
+	assert.ok(start >= 0, 'Could not locate fetchGymWorkoutsWithError — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(
+		body,
+		/\.gte\('started_at',\s*opts\.startedAtFrom\)/,
+		'fetchGymWorkoutsWithError must apply startedAtFrom as an inclusive .gte, like fetchRuns.'
+	);
+	assert.match(
+		body,
+		/\.lt\('started_at',\s*opts\.startedAtBefore\)/,
+		'fetchGymWorkoutsWithError must apply startedAtBefore as an exclusive .lt, like fetchRuns.'
+	);
+
+	// And /nutrition must hand it the viewed day's window rather than a bare
+	// row cap — the whole point of the parameters.
+	const page = read('src/routes/nutrition/+page.svelte');
+	assert.match(
+		page,
+		/fetchGymWorkouts\(\{\s*startedAtFrom: dayWindow\.startIso,\s*startedAtBefore: dayWindow\.endIso,?\s*\}\)/,
+		'/nutrition must window the gym fetch by the viewed day, not pull the newest N.'
+	);
+	assert.doesNotMatch(
+		page,
+		/GYM_FETCH_LIMIT/,
+		'the newest-N cap is what the window replaces; keeping it re-creates the under-read.'
+	);
+});
+
+test('the exercise-calorie surfaces decide day membership by instant, never by string', () => {
+	// Reason: Postgres renders a timestamptz as `2026-08-13T04:00:00+00:00`
+	// while a JS bound is built as `…T04:00:00.000Z`. Those are the same moment,
+	// but '+' sorts below '.', so a lexicographic compare drops a row landing
+	// EXACTLY on a local-midnight boundary — which for a day window is precisely
+	// the row most likely to be there (decisions.md § 591). Three surfaces feed
+	// exerciseCaloriesForDay: /nutrition and /nutrition/targets window the fetch
+	// server-side (a real timestamptz comparison), /dashboard cannot — its runs
+	// and gym reads are the shared batch a dozen cards consume — so it filters
+	// through isWithinWindow. None of them may go back to `iso >= startIso`.
+	const targets = read('src/routes/nutrition/targets/+page.svelte');
+	assert.match(
+		targets,
+		/fetchRuns\(\{\s*startedAtFrom: dayWindow\.startIso,\s*startedAtBefore: dayWindow\.endIso,?\s*\}\)/,
+		'/nutrition/targets must window its run fetch by the day, not filter the newest N.'
+	);
+	assert.match(
+		targets,
+		/fetchGymWorkouts\(\{\s*startedAtFrom: dayWindow\.startIso,\s*startedAtBefore: dayWindow\.endIso,?\s*\}\)/,
+		'/nutrition/targets must window its gym fetch by the day too.'
+	);
+	assert.match(
+		targets,
+		/diaryWindow\(isoDateOf\(new Date\(\)\)\)/,
+		'the window must come from diaryWindow, which steps the calendar (a DST day is 23 or 25 h).'
+	);
+
+	const dashboard = read('src/routes/dashboard/+page.svelte');
+	assert.match(
+		dashboard,
+		/runs\.filter\(\(r\) => isWithinWindow\(r\.started_at, today\)\)/,
+		"/dashboard's today filter must compare instants via isWithinWindow."
+	);
+	assert.match(
+		dashboard,
+		/gymWorkouts\.filter\(\(w\) => isWithinWindow\(w\.started_at, today\)\)/,
+		"/dashboard's today gym filter must compare instants via isWithinWindow."
+	);
+
+	// The dashboard's own window is built from the calendar, not from a 24 h
+	// step — that is the § 589 half of the same day bug. (Its unrelated rolling
+	// N-day cutoffs are `Math.round`ed and unaffected, so this is scoped to the
+	// nutrition read rather than grepping the whole file.)
+	const nutritionRead = dashboard.slice(
+		dashboard.indexOf('async function loadTodaysNutrition'),
+		dashboard.indexOf('function applyDashboardSettings')
+	);
+	assert.match(
+		nutritionRead,
+		/new Date\(day\.getFullYear\(\), day\.getMonth\(\), day\.getDate\(\) \+ 1\)/,
+		"/dashboard's tomorrow bound must step the calendar, not add 24 h (decisions § 589)."
+	);
+	assert.doesNotMatch(
+		nutritionRead,
+		/86_?400_?000/,
+		'a local day is 23 or 25 hours across a DST transition (decisions § 589).'
+	);
+
+	for (const [name, source] of [
+		['/nutrition', read('src/routes/nutrition/+page.svelte')],
+		['/nutrition/targets', targets],
+		['/dashboard', nutritionRead],
+	] as const) {
+		assert.doesNotMatch(
+			source,
+			/const isToday = \(iso: string\)/,
+			`${name} must not re-introduce the string-compare isToday predicate.`
+		);
+	}
+});
+test('setEventPricing names the one non-partial arbiter and keeps a single branch', () => {
+	// Reason: event_pricing shipped with two PARTIAL unique indexes, and
+	// Postgres only infers a partial index as an ON CONFLICT arbiter when the
+	// statement carries a matching WHERE clause — which PostgREST never emits.
+	// Every call raised 42P10, so no event could ever be priced and the whole
+	// paid-registration rail was unreachable (decisions §580). Migration
+	// 20270518_001 replaced both with one non-partial `nulls not distinct`
+	// index on (event_id, instance_start); the caller must name exactly that
+	// pair. Naming `event_id` alone — the old series branch — is the specific
+	// regression that reintroduces 42P10, because no index is keyed on it.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function setEventPricing');
+	assert.ok(start >= 0, 'Could not locate setEventPricing — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+
+	assert.match(
+		body,
+		/onConflict:\s*'event_id,instance_start'/,
+		'setEventPricing must arbitrate on (event_id, instance_start) — the only unique on the table.'
+	);
+	assert.doesNotMatch(
+		body,
+		/onConflict:\s*'event_id'/,
+		"the 'event_id' branch names no index and raises 42P10 — the arbiter is non-partial, so one branch covers both shapes."
+	);
+	// A NULL instance_start is the series price. Coercing it away (or dropping
+	// the key) would make every series write land as a per-instance override.
+	assert.match(
+		body,
+		/instance_start:\s*input\.instance_start\s*\?\?\s*null/,
+		'setEventPricing must send instance_start (null = the series price), not omit it.'
+	);
+});
+
+test('fetchGymRoutineHistory aggregates on the server, never re-windows gym_workouts', () => {
+	// Reason: the routine-history panel used to read up to 500 gym_workouts
+	// rows carrying `metadata.routine_id` and reduce them client-side just to
+	// show a count. A count is an aggregate — an unbounded PostgREST select
+	// truncates at db.max-rows and still answers 200, so any client window
+	// silently under-reports a lifter who has run one routine for years. The
+	// read must stay on the gym_routine_history RPC; a `.from(gym_workouts)`
+	// select with a `.limit()` here is the regression.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function fetchGymRoutineHistory');
+	assert.ok(start >= 0, 'Could not locate fetchGymRoutineHistory — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(
+		body,
+		/supabase\.rpc\('gym_routine_history'/,
+		'fetchGymRoutineHistory must read the server-side aggregate RPC.'
+	);
+	assert.doesNotMatch(
+		body,
+		/\.from\(/,
+		'fetchGymRoutineHistory must not fall back to a windowed gym_workouts select.'
+	);
+	assert.match(
+		body,
+		/if \(error\) throw dbError\(error\);/,
+		'a failed read must throw so the panel offers a retry — never an empty history.'
+	);
+	// The panel asks for exactly the rows it lists, and reads the count off the
+	// aggregate rather than off the page it renders.
+	const panel = read('src/lib/components/GymRoutineHistory.svelte');
+	assert.match(
+		panel,
+		/fetchGymRoutineHistory\(routineId, RECENT_LIMIT\)/,
+		'the panel must bound its page explicitly, not take whatever arrives.'
+	);
+	assert.doesNotMatch(
+		panel,
+		/recentSessions\.length/,
+		'the count shown must be the aggregate sessionCount, never the bounded page length.'
+	);
+});
+
+test('the safety-contact list + remove are owner-scoped on BOTH clients, not left to RLS', () => {
+	// Reason: `safety_contacts` carries FOUR permissive policies, not two —
+	// "owner read"/"owner delete" (owner_id = auth.uid()) AND "linked contact
+	// read"/"linked contact delete" (contact_user_id = auth.uid()), both from
+	// migration 20261218_001 and both still present after 20270416_001's
+	// initplan wrap. Permissive policies OR, so an unfiltered select returns
+	// the UNION: your contacts plus every relationship in which someone else
+	// named YOU and you confirmed — rendered as your own list, under your own
+	// email address, with a Remove button. That button was not a no-op: the
+	// linked-contact DELETE policy let it through, so pressing it stripped the
+	// OTHER person's emergency contact. RLS is a security boundary (what you
+	// MAY read), never a query specification (what you WANT) — both clients
+	// must say `owner_id` out loud. Withdrawing from a relationship you are the
+	// contact of is declineSafetyRequest / decline_safety_contact.
+	const web = read('src/lib/core/data.ts');
+	const webFetchStart = web.indexOf('export async function fetchMySafetyContacts');
+	assert.ok(webFetchStart >= 0, 'Could not locate fetchMySafetyContacts — rename?');
+	const webFetch = web.slice(webFetchStart, web.indexOf('\nexport ', webFetchStart + 1));
+	assert.match(
+		webFetch,
+		/\.eq\('owner_id',\s*userId\)/,
+		'fetchMySafetyContacts must filter owner_id — RLS alone returns the contact-of union.'
+	);
+	assert.match(
+		webFetch,
+		/if \(!userId\) return \{ contacts: \[\], error: /,
+		'a signed-out read must report, never render as "you have no emergency contacts".'
+	);
+
+	const webRemoveStart = web.indexOf('export async function removeSafetyContact');
+	assert.ok(webRemoveStart >= 0, 'Could not locate removeSafetyContact — rename?');
+	const webRemove = web.slice(webRemoveStart, web.indexOf('\nexport ', webRemoveStart + 1));
+	assert.match(
+		webRemove,
+		/\.eq\('owner_id',\s*userId\)/,
+		'removeSafetyContact must scope the delete to owner_id — an id-only delete reaches ' +
+			"a row naming the caller as someone else's contact and deletes it."
+	);
+
+	// Mobile runs the same two queries against the same policies.
+	const dart = read('../../packages/api_client/lib/src/api_client.dart');
+	const dartFetchStart = dart.indexOf('Future<List<SafetyContact>> fetchMySafetyContacts(');
+	assert.ok(dartFetchStart >= 0, 'Could not locate the Dart fetchMySafetyContacts — rename?');
+	const dartFetch = dart.slice(dartFetchStart, dart.indexOf('\n  /// ', dartFetchStart + 1));
+	assert.match(
+		dartFetch,
+		/\.eq\(SafetyContactRow\.colOwnerId,\s*userId\)/,
+		'the Dart list read must filter owner_id for the same reason the web one does.'
+	);
+
+	const dartRemoveStart = dart.indexOf('Future<void> removeSafetyContact(');
+	assert.ok(dartRemoveStart >= 0, 'Could not locate the Dart removeSafetyContact — rename?');
+	const dartRemove = dart.slice(dartRemoveStart, dart.indexOf('\n  /// ', dartRemoveStart + 1));
+	assert.match(
+		dartRemove,
+		/\.eq\(SafetyContactRow\.colOwnerId,\s*userId\)/,
+		'the Dart delete must scope to owner_id — the linked-contact DELETE policy is permissive.'
+	);
+});
+
+test('the contact-of section reads the OTHER half deliberately, and withdraws by decline', () => {
+	// Reason: §720 scoped both clients' list read to `owner_id`, which is
+	// exactly the rows this section needs — so it has to ask for the other
+	// half by name. The linked-contact SELECT policy already permits the
+	// query; nothing about it may lean on RLS to supply the predicate.
+	// And the action on such a row is `decline_safety_contact`, NOT
+	// `removeSafetyContact`: the latter is owner-scoped and would match no
+	// row here, so a "withdraw" button wired to it toasts success while the
+	// runner's contact list is untouched — the failure mode that reads as
+	// working, which is the worst kind on a consent surface.
+	const web = read('src/lib/core/data.ts');
+	const start = web.indexOf('export async function fetchSafetyContactOf');
+	assert.ok(start >= 0, 'Could not locate fetchSafetyContactOf — rename?');
+	const body = web.slice(start, web.indexOf('\nexport ', start + 1));
+	assert.match(
+		body,
+		/\.eq\('contact_user_id',\s*userId\)/,
+		'fetchSafetyContactOf must name contact_user_id — RLS is not the scope.'
+	);
+	assert.match(
+		body,
+		/if \(!userId\) return \{ relationships: \[\], error: /,
+		'a signed-out read must report, never render as "you are nobody\'s contact".'
+	);
+
+	const page = read('src/routes/settings/safety/+page.svelte');
+	const withdrawAt = page.indexOf('async function handleWithdraw');
+	assert.ok(withdrawAt >= 0, 'Could not locate handleWithdraw — rename?');
+	const withdraw = page.slice(withdrawAt, page.indexOf('\n\t}', withdrawAt));
+	assert.match(
+		withdraw,
+		/declineSafetyRequest\(rel\.id\)/,
+		'withdrawing from a relationship you are the CONTACT of is decline_safety_contact.'
+	);
+	assert.doesNotMatch(
+		withdraw,
+		/removeSafetyContact/,
+		'removeSafetyContact is owner-scoped — it silently matches nothing on a contact-of row.'
+	);
+});
+
+test('every race-import availability probe asks the results leg, not the listings sync', () => {
+	// Reason: a card that offers an IMPORT has to ask the leg that would run.
+	// The two Edge Functions read different credentials — the sync walks an
+	// upcoming-races feed, the import fetches a finisher list — so a sync
+	// verdict is not binding on the import, and RunSignUp's probe asking the
+	// sync advertised an import whose very next call could 503 (decisions
+	// § 1041 moved every mobile probe; this closes the web half).
+	//
+	// Derived from RACE_IMPORT_PROBES rather than naming the functions,
+	// so a leg added to the map is read here the moment it exists.
+	// Blanked, or the next function's doc comment naming the sync it does NOT
+	// use is read as a use of it.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const map = source.slice(
+		source.indexOf('const RACE_IMPORT_PROBES'),
+		source.indexOf('export function isRaceImportProviderConfigured')
+	);
+	assert.ok(map.length > 0, 'RACE_IMPORT_PROBES moved — re-anchor this guard');
+	const entries = [...map.matchAll(/^\t(\w+):\s*(\w+)/gm)].map((m) => ({
+		leg: m[1],
+		fn: m[2]
+	}));
+
+	// Population: an empty parse would satisfy every assertion below.
+	assert.ok(entries.length >= 2, `parsed only ${entries.length} probes — map reshaped?`);
+
+	for (const { leg, fn } of entries) {
+		const start = source.indexOf(`export async function ${fn}(`);
+		assert.ok(start >= 0, `${fn} is not an exported function in data.ts`);
+		const next = source.indexOf('\nexport ', start + 1);
+		const body = source.slice(start, next > start ? next : undefined);
+		assert.match(
+			body,
+			/invoke\('race-results-import'/,
+			`${fn} must probe race-results-import — the listings sync gates a different credential`
+		);
+		assert.match(
+			body,
+			/probe:\s*true/,
+			`${fn} must pass probe: true — without it the call performs a real import`
+		);
+		assert.match(
+			body,
+			new RegExp(`provider:\\s*'${leg}'`),
+			`${fn} is registered under '${leg}' but does not name that provider`
+		);
+		assert.ok(
+			!body.includes('race-listings-sync'),
+			`${fn} still invokes race-listings-sync`
+		);
+		// A probe asks one question and one answer says yes. Grading the status
+		// instead read a 401 (raised before the function touches a credential)
+		// and a 400 unknown_provider (a leg that does not exist) as proof the
+		// card was live — decisions § 1067.
+		assert.match(
+			body,
+			/return probeSaysConfigured\(error\);/,
+			`${fn} must report through probeSaysConfigured — any failure at all leaves the question unanswered`
+		);
+	}
+});
+
+test('every data.ts RPC names its function as a checked literal, never through a cast', () => {
+	// Reason: `database.types.ts` is generated so that `supabase.rpc()` can
+	// check the function name AND the argument object against the deployed
+	// routine. Casting the name (`'foo' as never`) turns that off for the whole
+	// call — the params cast goes with it — so a renamed function, a dropped
+	// parameter or a mistyped argument would reach production as a runtime 404
+	// / 400 from PostgREST rather than as a build failure. The going-count call
+	// carried both casts for months after the migration that made them
+	// unnecessary landed; the comment excusing them named a regeneration that
+	// had already happened.
+	//
+	// The check is not live yet: `core/supabase.ts` calls `createBrowserClient`
+	// with no `Database` generic, which defaults to `any`, so today every
+	// `.rpc()` and `.from()` in this file is unchecked whatever it is written
+	// as. That is filed separately, measured. This guard is what keeps the call
+	// sites in the shape the generic will check the day it is passed — a cast
+	// survives it silently.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const calls = [...source.matchAll(/\.rpc\(\s*([^,)]+)/g)].map((m) => m[1].trim());
+
+	// Population: an empty parse would satisfy the assertion below.
+	assert.ok(calls.length >= 10, `parsed only ${calls.length} rpc calls — reshaped?`);
+
+	for (const name of calls) {
+		assert.match(
+			name,
+			/^'[a-z0-9_]+'$/,
+			`.rpc(${name}) does not name its function as a bare string literal — a cast or a computed name disables the generated type check`
+		);
+	}
+});
+
+test('fetchUpcomingEvents windows the candidate set server-side, not the club\'s oldest 200', () => {
+	// Reason: the read is `order('starts_at', ascending).limit(200)` over every
+	// event the club has ever had. Without a server-side predicate that is the
+	// OLDEST 200 rows — a weekly series accumulates 200 finished one-offs in
+	// four years — so every future event falls past the cap and the club's
+	// Events tab reports "no upcoming events" permanently, getting worse as the
+	// club gets older. The client-side `next_instance_start >= now` filter
+	// cannot recover a row the query never returned. Same shape
+	// `fetchRunsForDashboard` already carries a guard for.
+	//
+	// The predicate must stay a SUPERSET of what is live: a recurring series
+	// with no until-date has to be admitted (its end may be a `recurrence_count`
+	// only `nextLiveInstance` can evaluate), or a count-limited series
+	// disappears from the tab while it is still running.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchUpcomingEvents');
+	assert.ok(start >= 0, 'fetchUpcomingEvents moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+
+	assert.match(
+		body,
+		/\.or\(/,
+		'the candidate set must be narrowed server-side — an ascending cap over the whole history windows the wrong end of it',
+	);
+	assert.match(
+		body,
+		/starts_at\.gte\.\$\{nowIso\}/,
+		'a one-off is a candidate only when it has not happened yet',
+	);
+	assert.match(
+		body,
+		/recurrence_freq\.not\.is\.null,recurrence_until\.is\.null/,
+		'a recurring series with no until-date must be admitted — its end may be a recurrence_count',
+	);
+	assert.match(
+		body,
+		/recurrence_freq\.not\.is\.null,recurrence_until\.gte\.\$\{nowIso\}/,
+		'and one whose until-date is still ahead',
+	);
+	// Nesting depth: a PostgREST filter this build cannot parse 400s into the
+	// discarded `error` and empties the tab exactly as the bug did, so the
+	// clauses stay at the one `and(...)`-inside-`or=` depth the file already
+	// exercises rather than nesting a second `or(` inside an `and(`.
+	assert.doesNotMatch(
+		body,
+		/and\([^)]*or\(/,
+		'no `or(` nested inside an `and(` — that depth is unexercised in this file',
+	);
+});
+
+test('every "answered empty" read that a stranger can hit reports the failure separately', () => {
+	// Reason: supabase-js RESOLVES `{data: null, error}` rather than throwing,
+	// so `const { data } = await …` turns a transport fault, an RLS refusal and
+	// a genuinely absent row into one indistinguishable null. Each of these
+	// four then rendered a confident falsehood: "Run not found" to every
+	// recipient of a shared link; a routes list with the runner's bookmarks
+	// silently missing and `error: null` beside it; a club owner stripped of
+	// their admin controls and offered "Join"; and a fundraiser page telling a
+	// donor the campaign they followed a link to does not exist.
+	//
+	// `fetchRunById` and `fetchClubBySlug` were each fixed for exactly this and
+	// carry comments saying so. These are the same collapse elsewhere.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const bodyOf = (name: string): string => {
+		const start = source.indexOf(`export async function ${name}(`);
+		assert.ok(start >= 0, `${name} moved — re-anchor this guard`);
+		const next = source.indexOf('\nexport ', start + 1);
+		return source.slice(start, next > start ? next : undefined);
+	};
+
+	// The public run read a stranger hits. PGRST116 is the only "no row".
+	const publicRun = bodyOf('fetchPublicRun');
+	assert.match(
+		publicRun,
+		/Promise<\{ run: Run \| null; error: Error \| null \}>/,
+		'fetchPublicRun must report the failure alongside the row, like fetchRunById',
+	);
+	assert.match(
+		publicRun,
+		/error\.code !== 'PGRST116'/,
+		'only "no rows matched" may read as a genuine miss',
+	);
+	assert.doesNotMatch(
+		publicRun,
+		/const \{ data \} =/,
+		'binding data alone is the defect — the error must be read',
+	);
+
+	// The entitlement read behind /runs/[id]'s non-owner branch.
+	const attribution = bodyOf('fetchPublicRunAttribution');
+	assert.match(
+		attribution,
+		/Promise<\{ attribution: PublicRunAttribution \| null; error: Error \| null \}>/,
+		'fetchPublicRunAttribution must report its failure — a caller cannot otherwise tell "not yours" from "unknown"',
+	);
+	assert.match(
+		attribution,
+		/if \(error\) return \{ attribution: null, error: dbError\(error\) \};/,
+		'the public_runs read is the entitlement; its failure is not a non-entitlement',
+	);
+
+	// The saved half of "My routes" — three reads, none of which was checked.
+	const routes = bodyOf('fetchRoutesWithError');
+	assert.ok(
+		routes.indexOf('if (savedIdsRes.error)') >= 0 &&
+			routes.indexOf('if (savedIdsRes.error)') < routes.indexOf('savedIdsRes.data ?? []'),
+		'the saved-id read must be checked BEFORE its rows are defaulted to [] — a failed read is not an empty bookmark list',
+	);
+	assert.match(
+		routes,
+		/savedBaseRes\.error \?\? savedPublicRes\.error/,
+		'both saved-body reads must be checked — each carries a whole class of bookmark',
+	);
+
+	// Fundraisers: the two sibling reads that swallowed where the third throws.
+	for (const fn of ['fetchFundraiserForRun', 'fetchFundraiserForEvent']) {
+		const body = bodyOf(fn);
+		assert.doesNotMatch(
+			body,
+			/if \(error \|\| !data\) return null;/,
+			`${fn} must not collapse a failed read into "no campaign" — fetchFundraiserById throws and says why`,
+		);
+		assert.match(body, /if \(error\) throw dbError\(error\);/, `${fn} must throw on a failed read`);
+	}
+});
+
+test('enrichClubs reports a failed membership read instead of asserting non-membership', () => {
+	// Reason: `viewer_role` decides whether an owner sees their admin controls
+	// and whether a member is offered "Join". It is derived from one
+	// club_members read whose error was discarded, so a blip logged every
+	// member out of their own club while the enclosing `{ clubs, error }` said
+	// `error: null`. The irony is local: `fetchClubBySlug`'s doc comment
+	// describes precisely this collapse for the club row, one call above the
+	// membership row that still had it.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('async function enrichClubs(');
+	assert.ok(start >= 0, 'enrichClubs moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.match(
+		body,
+		/Promise<\{ clubs: ClubWithMeta\[\]; error: Error \| null \}>/,
+		'enrichClubs must return the failure in the same shape its callers already return',
+	);
+	assert.match(
+		body,
+		/if \(rolesRes\.error\)/,
+		'the membership read must be checked before any role is asserted',
+	);
+
+	// And every caller has to propagate it — three hand the shape straight
+	// back, the fourth is the single-club read.
+	// Counting call sites is not enough: a caller can keep the call and drop the
+	// error (`{ clubs: (await enrichClubs(rows)).clubs, error: null }`), which
+	// is the original defect wearing the new shape. Every site must either hand
+	// the whole result back or branch on its error.
+	const sites = [...source.matchAll(/^.*enrichClubs\(/gm)]
+		.map((m) => m[0])
+		.filter((line) => !line.includes('async function enrichClubs('));
+	assert.equal(
+		sites.length,
+		4,
+		`enrichClubs has ${sites.length} call sites, expected 4 — check the new one propagates the error`,
+	);
+	for (const line of sites) {
+		assert.ok(
+			/return (await )?enrichClubs\(/.test(line) ||
+				/\? enrichClubs\(/.test(line) ||
+				/const \{ clubs: \w+, error: \w+ \} = await enrichClubs\(/.test(line),
+			`this enrichClubs call site drops the error rather than propagating it: ${line.trim()}`,
+		);
+	}
+	assert.match(
+		source,
+		// The argument is written whitespace-and-expression-tolerantly: what the
+		// guard is about is the error being destructured and returned, not how
+		// the single row is spelled on the way in (it is normalised now).
+		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: rolesError \};/,
+		'fetchClubBySlug must surface a membership-read failure rather than returning the club with no role',
+	);
+});
+
+test('the exact tallies are counted by the database, never by a page of rows', () => {
+	// Reason: `.select()` returns at most the deployment's PostgREST row
+	// ceiling and gives NO signal when it truncates, so a tally built by
+	// counting returned rows is a count of the page, presented as a count of
+	// the set. Two of these sit on a money path and a membership check:
+	//
+	//  - fetchEventRsvpSummary's own doc says the going/maybe/declined/
+	//    waitlisted counts "must stay exact even when the displayed roster is
+	//    only its first page", and it then read every attendee row and tallied
+	//    them here. Past the ceiling the capacity + waitlist math believes a
+	//    full event has room, and the viewer's own row can fall outside the
+	//    page — `viewerStatus` reads null and the page re-shows "Register for
+	//    £X" to someone who has already paid, burning a Stripe session and a
+	//    capacity-holding pending order.
+	//  - fetchChallenges / fetchChallengeById lengthed a participants array
+	//    for a number that is already a trigger-maintained column on the row
+	//    (`challenges.participant_count`, 20270308_001, derived_state.md), and
+	//    found the caller's own membership by scanning that same page.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const bodyOf = (name: string): string => {
+		const start = source.indexOf(`export async function ${name}(`);
+		assert.ok(start >= 0, `${name} moved — re-anchor this guard`);
+		const next = source.indexOf('\nexport ', start + 1);
+		return source.slice(start, next > start ? next : undefined);
+	};
+
+	const rsvp = bodyOf('fetchEventRsvpSummary');
+	assert.match(
+		rsvp,
+		/count: 'exact', head: true/,
+		'the per-status tallies must be counted server-side',
+	);
+	assert.doesNotMatch(
+		rsvp,
+		/summary\.\w+ \+= 1/,
+		'tallying returned rows is the defect — the page is not the set',
+	);
+	assert.match(
+		rsvp,
+		/\.eq\('user_id', viewerId\)/,
+		"the viewer's own status must be its own scoped read, not a scan of a page",
+	);
+
+	// Both challenge readers take the count off the cached column.
+	for (const fn of ['fetchChallenges', 'fetchChallengeById']) {
+		const body = bodyOf(fn);
+		assert.match(
+			body,
+			/participant_count: \([\w.]+ as \{ participant_count\?: number \}\)\.participant_count \?\? 0/,
+			`${fn} must read the trigger-maintained challenges.participant_count cache`,
+		);
+		assert.doesNotMatch(
+			body,
+			/\(parts \?\? \[\]\)\.length|counts\.set\(/,
+			`${fn} must not re-derive the count from a participants page`,
+		);
+		assert.match(
+			body,
+			/\.eq\('user_id', userId\)/,
+			`${fn} must scope the participants read to the caller`,
+		);
+	}
+});
+
+test('the club slug is derived by the shared helper, never re-spelled here', () => {
+	// Reason: `clubs.slug` is persisted and becomes the club's public URL, and
+	// the phone derives it too. When both rails spelled out "lower-case, then
+	// [^a-z0-9]+ to -" they read as one expression while being two functions —
+	// the runtimes' `toLowerCase` disagree at U+0130 — so `İzmir` minted
+	// `i-zmir` here and `izmir` on the phone (decisions § 1251 + § 1279). The
+	// derivation must stay in `social/club_slug.ts`, whose mirror suite is what
+	// pins the two platforms to one answer.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	assert.match(
+		source,
+		/import \{[^}]*\bclubSlug\b[^}]*\} from '\.\.\/social\/club_slug'/,
+		'core/data.ts must import the shared clubSlug derivation.',
+	);
+	assert.match(
+		source,
+		/clubSlug\(input\.name\) \|\| CLUB_SLUG_FALLBACK/,
+		'the empty-slug substitute is the shared literal, not a copy of it here.',
+	);
+	assert.doesNotMatch(
+		source,
+		/\[\^a-z0-9\]/,
+		'core/data.ts must not re-spell the slug character class — call clubSlug.',
+	);
+	assert.doesNotMatch(
+		source,
+		/toLowerCase\(\)[\s\S]{0,80}?replace\(/,
+		'a lower-case feeding a strip is the slug derivation re-grown; call clubSlug.',
+	);
+});
+
+/// The three enumerated reads in this file and the row types they are handed
+/// back as have to describe the SAME column set, and every name in them has to
+/// be one the client is granted.
+///
+/// Both halves are derived, never restated: the column sets come out of the
+/// `.select()` literals in `data.ts`, the type sets out of the `Omit<…Row, …>`
+/// overlays in `types.ts` crossed with the generated `database.types.ts`, and
+/// the grant out of a replay of every migration. A literal repeated here would
+/// be a fourth declaration that agrees until it doesn't ([§ 641]).
+/// The generated Row's columns plus the computed fields the client schema
+/// (`core/database.ts`) declares for the table — PostgREST serves a computed
+/// field as a column a select names explicitly, and the CI typegen leaves it
+/// off the Row.
+function generatedColumns(table: string): Set<string> {
+	const cols = generatedRowColumns(table);
+	const app = read('src/lib/core/database.ts');
+	const tables = /type OfficialTables = ([^;]+);/.exec(app);
+	assert.ok(tables, 'could not locate OfficialTables in core/database.ts — re-anchor');
+	if (tables[1].includes(`'${table}'`)) cols.add('is_official');
+	return cols;
+}
+
+function generatedRowColumns(table: string): Set<string> {
+	const types = read('src/lib/database.types.ts');
+	const start = types.indexOf(`      ${table}: {`);
+	assert.ok(start > 0, `could not locate ${table} in database.types.ts — re-anchor`);
+	const row = types.slice(
+		types.indexOf('Row: {', start) + 'Row: {'.length,
+		types.indexOf('Insert: {', start),
+	);
+	return new Set(
+		row
+			.split('\n')
+			.map((l) => l.trim())
+			.filter((l) => l.includes(':'))
+			.map((l) => l.split(':')[0].trim()),
+	);
+}
+
+/// The keys an `Omit<XRow, 'a' | 'b'> & { a: Narrow }` overlay declares: every
+/// generated column, less the omitted ones, plus whatever the intersection
+/// puts back. A column omitted and NOT put back is the deliberate withholding
+/// this guard is about.
+function overlayColumns(alias: string, table: string): Set<string> {
+	const src = read('src/lib/types.ts');
+	const decl = src.slice(src.indexOf(`export type ${alias} = Omit<`));
+	assert.ok(decl.length > 0, `could not locate the ${alias} overlay — re-anchor`);
+	const omitEnd = decl.indexOf('> & {');
+	const intersectionEnd = decl.indexOf('\n};');
+	const omitted = [...decl.slice(0, omitEnd).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+	const readded = [...decl.slice(omitEnd, intersectionEnd).matchAll(/^\t(\w+)\??:/gm)].map(
+		(m) => m[1],
+	);
+	const keys = generatedColumns(table);
+	for (const c of omitted) keys.delete(c);
+	for (const c of readded) keys.add(c);
+	return keys;
+}
+
+/// The columns `authenticated` may SELECT, replayed from every migration in
+/// filename order: a bare `revoke select on <t>` clears the set, a
+/// `grant select (a, b) on <t>` adds to it, a bare `grant select on <t>` means
+/// every column. Column-level REVOKE is deliberately not modelled — it is a
+/// no-op while the role holds the table-level grant, which is precisely why
+/// `20260723_001` was rewritten into the revoke-then-column-grant shape.
+function grantedColumns(table: string): Set<string> | 'all' {
+	const dir = '../backend/supabase/migrations';
+	let granted: Set<string> | 'all' = 'all';
+	for (const f of readdirSync(resolve(dir)).sort()) {
+		if (!f.endsWith('.sql')) continue;
+		const sql = read(dir, f).replace(/--[^\n]*/g, '');
+		const revoke = new RegExp(`revoke\\s+select\\s+on\\s+(?:public\\.)?${table}\\s+from\\b`, 'i');
+		if (revoke.test(sql)) granted = new Set();
+		const grant = new RegExp(
+			`grant\\s+select\\s*(\\(([^)]*)\\))?\\s*on\\s+(?:public\\.)?${table}\\s+to\\b`,
+			'gi',
+		);
+		for (const m of sql.matchAll(grant)) {
+			if (!m[2]) {
+				granted = 'all';
+				continue;
+			}
+			if (granted === 'all') continue;
+			for (const c of m[2].split(',')) granted.add(c.trim());
+		}
+	}
+	return granted;
+}
+
+function selectLiteral(constant: string): string[] {
+	const source = read('src/lib/core/data.ts');
+	const m = source.match(new RegExp(`const ${constant}\\s*=\\s*\\n?\\s*'([^']*)'`));
+	assert.ok(m, `could not locate ${constant} in data.ts — re-anchor`);
+	return m[1].split(',').map((c) => c.trim());
+}
+
+test('the enumerated club / event reads and the row types they are read as name the same columns', () => {
+	// Reason: a narrowed select handed back under the table's full row type is
+	// `undefined` at runtime behind a type that declares it, with no throw and
+	// no error (§ 1294 / § 1327 / § 1329). `routes` shipped that way for eleven
+	// columns and `events` for three. Equality in BOTH directions is the point:
+	// a column added to the overlay without being added to the projection is
+	// the original defect, and one added to the projection without the overlay
+	// is a column paid for on the wire and unreadable.
+	for (const [constant, alias, table] of [
+		['EVENT_SELECT_COLS', 'Event', 'events'],
+		['CLUB_SELECT_COLS', 'Club', 'clubs'],
+	] as const) {
+		assert.deepEqual(
+			[...selectLiteral(constant)].sort(),
+			[...overlayColumns(alias, table)].sort(),
+			`${constant} and the ${alias} overlay describe different column sets`,
+		);
+	}
+});
+
+test('the club roster read and ClubMember name the same columns', () => {
+	// Reason: the same claim for the one enumerated read whose column list is
+	// written inline rather than as a shared constant. `activity_waiver_ack_at`
+	// is left out on purpose — on a public club anyone may read the roster, and
+	// when a member signed the liability waiver is not public roster data — so
+	// the overlay must not promise it either.
+	const source = read('src/lib/core/data.ts');
+	const selects = [...source.matchAll(/\.select\('(club_id, user_id, role, status[^']*)'\)/g)].map(
+		(m) => m[1].split(',').map((c) => c.trim()),
+	);
+	assert.equal(selects.length, 2, 'expected the two club_members roster reads — re-anchor');
+	const declared = [...overlayColumns('ClubMember', 'club_members')].sort();
+	for (const cols of selects) assert.deepEqual([...cols].sort(), declared);
+});
+
+test('no enumerated read, and no row type, names a column the client is not granted', () => {
+	// Reason: SELECT on `clubs` and `events` is revoked wholesale and re-granted
+	// column by column (migration 20260818_001, plus the later per-column
+	// grants), so a name outside that set does not read as null — it raises
+	// 42501 and the whole query fails. `invite_token`, `location_point`,
+	// `host_user_id`, `meet_lat` and `meet_lng` are the withheld five; the
+	// precise meet point is reachable only through the member-gated
+	// `get_event_meet_point` RPC, and the payout recipient not at all.
+	for (const [constant, alias, table] of [
+		['EVENT_SELECT_COLS', 'Event', 'events'],
+		['CLUB_SELECT_COLS', 'Club', 'clubs'],
+	] as const) {
+		const granted = grantedColumns(table);
+		assert.notEqual(granted, 'all', `${table} SELECT is not column-scoped any more — re-anchor`);
+		const allowed = granted as Set<string>;
+		for (const c of selectLiteral(constant)) {
+			assert.ok(allowed.has(c), `${constant} asks for ${c}, which ${table} does not grant`);
+		}
+		for (const c of overlayColumns(alias, table)) {
+			assert.ok(allowed.has(c), `${alias} declares ${c}, which ${table} does not grant`);
+		}
+	}
+});
+
+
+test('direct messages are read as exactly the columns the grant allows, read_at never among them', () => {
+	// Reason: read_at is the recipient's own read time, and migration
+	// 20271113000001 withholds it from every client so a sender cannot read it
+	// past a read-receipts opt-out. `select('*')` is refused under a column
+	// grant, so DM_COLUMNS is the read, and DirectMessage must describe it.
+	const granted = grantedColumns('direct_messages');
+	assert.notEqual(granted, 'all', 'direct_messages SELECT is not column-scoped any more — re-anchor');
+	const allowed = [...(granted as Set<string>)].sort();
+	assert.ok(!allowed.includes('read_at'), 'direct_messages grants read_at to clients');
+	assert.deepEqual([...selectLiteral('DM_COLUMNS')].sort(), allowed);
+	const source = read('src/lib/core/data.ts');
+	const body = source.match(/export interface DirectMessage \{([\s\S]*?)\n\}/);
+	assert.ok(body, 'could not locate DirectMessage in data.ts — re-anchor');
+	const declared = [...body[1].matchAll(/^\t(\w+):/gm)].map((m) => m[1]).sort();
+	assert.deepEqual(declared, allowed);
+	assert.ok(!/from\(TABLES\.direct_messages\)[^;]*\.select\('\*'\)/.test(source), 'a direct_messages read selects *');
+});
+
+// ── Compile-time: a narrowed run read cannot be read for what it did not fetch ──
+//
+// `svelte-check` is the gate for these, not `tsx --test`: a read of an absent
+// field yields `undefined` rather than throwing, so the only assertion that can
+// see the defect is one the compiler makes (§ 1294 / § 1330).
+
+/// The period drilldown projects six of `runs`' twenty-four columns. Each of
+/// these was a field `Run` promised and the query never fetched. The
+/// `@ts-expect-error` is the mutation test: widen the return type back to
+/// `Run[]` and every directive here reports unused, which fails the build.
+export const periodSummaryWithheldReadsDoNotCompile = (r: PeriodSummaryRun) => [
+	// @ts-expect-error — the jsonb bag the drilldown does not read
+	r.metadata,
+	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
+	r.is_dnf,
+	// @ts-expect-error — a lazy Storage download, never a column
+	r.track_url,
+];
+
+/// The six it does read have to stay readable, or the narrowing has gone too
+/// far and the pin above is the only thing still passing.
+export const periodSummaryReadsCompile = (r: PeriodSummaryRun) => [
+	r.id,
+	r.started_at,
+	r.distance_m,
+	r.duration_s,
+	r.source,
+	r.activity_type,
+];
+
+test('every routes read hands back a normalised row, never the raw one', () => {
+	// Reason: a `routes` row differs from `Route` in three ways, and each read
+	// used to do a different subset. `fetchClubRoutes` did none of them — it
+	// selected every column and returned the row verbatim, so a club route
+	// arrived carrying `shadow_hidden` (the server-owned moderation column
+	// § 1327 says every read strips) and a `surface` that had never been
+	// through `parseRouteSurface`. `saveRoute` returned its inserted row the
+	// same way. One normaliser is what keeps the three steps from drifting
+	// apart again.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('function asRoute(');
+	assert.ok(start >= 0, 'asRoute moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.match(body, /shadow_hidden/, 'asRoute must strip the moderation column');
+	assert.match(body, /parseRouteSurface\(/, 'asRoute must narrow the surface union');
+	assert.match(
+		body,
+		/Array\.isArray\(waypoints\)/,
+		'asRoute must check that the jsonb waypoints is an array — § 1229 is the failure of promising a line that is not there',
+	);
+
+	// The two reads that used to skip it.
+	for (const fn of ['fetchClubRoutes', 'saveRoute']) {
+		const at = source.indexOf(`export async function ${fn}(`);
+		assert.ok(at >= 0, `${fn} moved — re-anchor this guard`);
+		const fnBody = source.slice(at, source.indexOf('\nexport ', at + 1));
+		// `\basRoute\b` rather than `asRoute(`: one site calls it, the other
+		// passes it to `.map` by reference.
+		assert.match(
+			fnBody,
+			/\basRoute\b/,
+			`${fn} must return a normalised row — the raw one carries shadow_hidden and an unparsed surface`,
+		);
+	}
+});
+
+test('a to-one embed is read as the object PostgREST returns, not indexed as an array', () => {
+	// Reason: `event_result_claims.result_id` is a FK held by the SOURCE table,
+	// so embedding `event_results` is many-to-one and PostgREST returns a JSON
+	// OBJECT. The organiser's pending-claims read asserted an array and read
+	// `event_results[0]?.bib` off it — which is `undefined` on an object, so
+	// every claim in the approval queue showed a null bib and a null finisher
+	// name, the two fields the queue exists to display ("Bob claims bib 102 —
+	// Alice Anon"). `!inner` filters; it does not change cardinality.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchPendingEventResultClaims(');
+	assert.ok(start >= 0, 'fetchPendingEventResultClaims moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.match(body, /event_results!inner\(/, 'the embed must still be there');
+	assert.doesNotMatch(
+		body,
+		/event_results\s*\[\s*0\s*\]/,
+		'a to-one embed is an object; indexing it yields undefined for every row',
+	);
+	assert.match(
+		body,
+		/r\.event_results\.bib/,
+		'the bib must be read off the embedded object',
+	);
+});
+
+test('the exercise catalogue read is totally ordered, so a name binds to one id', () => {
+	// Reason: the two partial uniques on `exercises.name_key` (20270222_001)
+	// scope uniqueness to the seeded globals and to one author separately, so a
+	// user's custom can carry the same name as a global. `GymEditor` builds
+	// `catalogueByKey` as a Map over the returned list, and a Map keeps the
+	// LAST row under a key — so ordering on `name` alone left the id a typed
+	// name binds to decided by an unspecified Postgres row order, free to
+	// differ between two loads. `api_client.dart` carries the same tiebreak.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchExerciseCatalogue(');
+	assert.ok(start >= 0, 'fetchExerciseCatalogue moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	const order = /const EXERCISE_ORDER[^=]*= \[([^\]]*)\]/.exec(source);
+	assert.ok(order, 'EXERCISE_ORDER moved — re-anchor this guard');
+	assert.deepEqual(
+		[...order[1].matchAll(/column: '(\w+)'/g)].map((m) => m[1]),
+		['name', 'id'],
+		'presented by name, and ordering on a non-unique key alone is not an order — keep the id tiebreak',
+	);
+	assert.match(
+		body,
+		/for \(const k of EXERCISE_ORDER\)[\s\S]*?\.order\(k\.column/,
+		'the read must sort by the order its cursor is taken in',
+	);
+});
+
+test('the exercise catalogue read pages, and says so when it fails', () => {
+	// Reason: PostgREST caps an unranged select at `db.max-rows` and answers
+	// with the truncated page and a 200 — no error, no flag — so a read whose
+	// contract is "the whole catalogue" cannot be a bare `.select()`.
+	// `api_client.dart` has walked the catalogue since it was written; the web half
+	// did not, so the two clients disagreed about a bound and the web one gave
+	// no signal on hitting it. Degrading to `[]` on a real error is the same
+	// class one layer up: an empty catalogue is a state the surfaces ACT on.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchExerciseCatalogue(');
+	assert.ok(start >= 0, 'fetchExerciseCatalogue moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	// Walked by keyset rather than by `.range()`: an OFFSET walk over a
+	// catalogue that gains or loses a custom entry mid-read skips or repeats
+	// a row (§ 1936).
+	assert.match(body, /walkKeyset\(EXERCISE_ORDER,/, 'an unranged select is capped at db.max-rows with no flag');
+	assert.doesNotMatch(body, /\.range\(/, 'the catalogue must not be walked by offset');
+	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: dbError\(walk\.error\)/, 'a failed read must surface, not return []');
+	assert.match(
+		body,
+		/dedupeShadowedExercises\(/,
+		'the two partial uniques let one folded key hold two rows — resolve it at the read',
+	);
+});
+
+test('a signed-out catalogue read is unknown, not a vouched-for empty one', () => {
+	// Reason: the third state is "this list is not known to be the whole
+	// catalogue", and every way of not having read it belongs in it. Signed out
+	// answered `error: null` — the shape the caller turns into
+	// `catalogueUnavailable = false` — so the one branch that has read nothing
+	// at all was the one claiming most confidently that every name is free. The
+	// sole caller never reaches it (the page returns before `load()` with no
+	// user), which is what kept it invisible and is why the branch has to be
+	// right on its own rather than by the grace of its caller.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchExerciseCatalogue(');
+	assert.ok(start >= 0, 'fetchExerciseCatalogue moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	const at = body.indexOf('!auth.user?.id');
+	assert.ok(at >= 0, 'the signed-out branch moved — re-anchor this guard');
+	assert.doesNotMatch(
+		body.slice(at, body.indexOf(';', at) + 1),
+		/error:\s*null/,
+		'a read that never happened is unavailable, not an empty catalogue',
+	);
+});
+
+test('a CHECK-constrained union is narrowed at the read boundary, not asserted', () => {
+	// Reason: the generated row and RPC types spell every one of these columns
+	// `string`, so assigning one straight into its client union is an
+	// assertion, not a check — and the tier one gates the paywall. Each read
+	// goes through the parser that fails closed.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	for (const [fn, parser] of [
+		['fetchIntegrations', 'parseIntegrationProvider'],
+		['fetchPendingEventResultClaims', 'parseClaimStatus'],
+	] as const) {
+		const at = source.indexOf(`export async function ${fn}(`);
+		assert.ok(at >= 0, `${fn} moved — re-anchor this guard`);
+		const body = source.slice(at, source.indexOf('\nexport ', at + 1));
+		assert.match(body, new RegExp(`${parser}\\(`), `${fn} must narrow through ${parser}`);
+	}
+	// The auth store reads the two paywall-relevant ones off get_my_profile().
+	const store = stripComments(read('src/lib/stores/auth.svelte.ts'));
+	assert.match(
+		store,
+		/subscription_tier: parseSubscriptionTier\(/,
+		'the tier must fail closed to free — an unrecognised value read as pro opens every gated surface',
+	);
+	assert.match(store, /preferred_unit: parsePreferredUnit\(/, 'the unit must be narrowed too');
+});
+
+/// The body of a top-level function in `data.ts`, bounded by the closing brace
+/// at column 0. `indexOf('\nexport ')` cannot bound one that isn't exported,
+/// and two of the three exercise writers below are module-private.
+function functionBody(source: string, name: string): string {
+	const start = source.indexOf(`function ${name}(`);
+	assert.ok(start >= 0, `${name} moved — re-anchor this guard`);
+	const end = source.indexOf('\n}\n', start);
+	assert.ok(end > start, `could not find the end of ${name} — re-anchor`);
+	return source.slice(start, end);
+}
+
+test('every exercise write and read decides blankness on the key the column is stamped from', () => {
+	// Reason: a scan is a NEGATIVE instrument — it sees a bad blankness test and
+	// cannot see a function that stopped testing blankness at all, nor one whose
+	// subject is an arrow parameter re-bound from a `.map`, which is what
+	// `fetchExerciseSetHistoryBatch`'s was. This is the positive half, and for
+	// those two shapes it is the only cover there is.
+	//
+	// The negative half is NOT here any more:
+	// `lib/gym/exercise_key_source_guard.test.ts` scans this file like any
+	// other — on a comparison's own receiver, and on the enclosing top-level
+	// declaration's name where the receiver says nothing — and since § 1508 it
+	// sees every shape the local scan this replaced was written for, measured
+	// case for case, plus the one that scan missed (§ 1509).
+	//
+	// The three writes are keyed on a column the SERVER derives —
+	// `exercises.name_key`, `gym_routine_exercises.exercise_key` and
+	// `gym_sets.exercise_key`, each trigger-stamped and each under a
+	// `length >= 1` CHECK — and the two reads match on `normalise_exercise_name`
+	// of what they send. The fold's whitespace class is not the set JS `trim()`
+	// strips, so a name of one U+0085 trims non-empty and folds to nothing: a
+	// spelling test lets through exactly the row the column refuses, as a 23514
+	// the composer cannot act on, and exactly the name the RPC cannot match
+	// (§ 1367).
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const fns = [
+		'createCustomExercise',
+		'replaceGymSets',
+		'createGymRoutine',
+		'fetchExerciseSetHistoryWithError',
+		'fetchExerciseSetHistoryBatch',
+	];
+	for (const fn of fns) {
+		assert.match(
+			functionBody(source, fn),
+			/namesAnExercise\(/,
+			`${fn} must decide blankness on the folded key, not the spelling`,
+		);
+	}
+});
+
+test('a dropped blank set does not leave a hole in the set numbering', () => {
+	// Reason: `replaceGymSets` stamped `set_index` from the map index and then
+	// filtered, so a blank in the middle of a composed workout shipped 0, 2, 3
+	// — the surviving sets claiming positions that were never their order in
+	// the saved workout, on the column every read orders and every planned-vs-
+	// actual match keys on. Filtering first is what makes the index contiguous.
+	const body = functionBody(stripComments(read('src/lib/core/data.ts')), 'replaceGymSets');
+	const filterAt = body.indexOf('.filter(');
+	const mapAt = body.indexOf('.map(');
+	assert.ok(filterAt >= 0 && mapAt >= 0, 'replaceGymSets no longer filters and maps — re-anchor');
+	assert.ok(
+		filterAt < mapAt,
+		'the drop must precede the map, or set_index counts rows that never ship',
+	);
+});
+
+/// The columns one `.select('…')` inside a named function asks for, split into
+/// the top-level list and each embedded resource's own. `nth` picks among the
+/// several a detail reader makes.
+function inlineSelect(
+	source: string,
+	fn: string,
+	nth: number,
+): { columns: Set<string>; embedded: Set<string> } {
+	const selects = [...functionBody(source, fn).matchAll(/\.select\(\s*'([^']*)'/g)];
+	assert.ok(
+		selects.length > nth,
+		`${fn} makes ${selects.length} inline selects, not ${nth + 1} — re-anchor this guard`,
+	);
+	const columns = new Set<string>();
+	const embedded = new Set<string>();
+	let depth = 0;
+	let part = '';
+	const take = () => {
+		const t = part.trim();
+		part = '';
+		if (!t) return;
+		const embed = t.match(/^[\w!]+\(([^)]*)\)$/);
+		if (embed) {
+			for (const c of embed[1].split(',')) embedded.add(c.trim());
+		} else {
+			columns.add(t);
+		}
+	};
+	for (const ch of selects[nth][1]) {
+		if (ch === '(') depth++;
+		if (ch === ')') depth--;
+		if (ch === ',' && depth === 0) take();
+		else part += ch;
+	}
+	take();
+	return { columns, embedded };
+}
+
+/// The keys an `export interface X { … }` in `data.ts` declares. The
+/// counterpart of `overlayColumns` for the reads whose row type is written out
+/// beside the projection rather than derived from a generated row.
+function interfaceKeys(name: string): Set<string> {
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf(`export interface ${name} {`);
+	assert.ok(start >= 0, `could not locate the ${name} interface — re-anchor`);
+	const body = source.slice(start, source.indexOf('\n}', start));
+	return new Set([...body.matchAll(/^\t(\w+)\??:/gm)].map((m) => m[1]));
+}
+
+test('every gym / meal-template / recipe read and the row type it is read as name the same columns', () => {
+	// Reason: the same claim § 1294 / § 1327 / § 1329 made for `routes`,
+	// `events` and `clubs`, for the seventeen reads whose row type is a
+	// hand-written interface beside an inline select rather than a shared
+	// `*_SELECT_COLS` constant plus a `types.ts` overlay — the two-declaration
+	// shape § 641 is about. A narrowed select handed back under a type that
+	// promises more is `undefined` at runtime with no throw and no error; a
+	// column in the select and not the type is paid for on the wire and
+	// unreadable. Neither direction was checked here before, only measured
+	// once by hand.
+	//
+	// Every exception is declared with the reason it is one, and a stale
+	// exception fails as loudly as a drifted column: an `absent` key the select
+	// has started fetching, or an `extra` column the type has started
+	// declaring, is reported.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const pairs: Array<{
+		fn: string;
+		nth?: number;
+		type: string;
+		table: string;
+		/// Selected, deliberately not a field of the row type.
+		extra?: Record<string, string>;
+		/// Declared, deliberately not fetched by THIS select.
+		absent?: Record<string, string>;
+		/// Declared, and fetched through an embedded resource.
+		embedded?: Record<string, string>;
+	}> = [
+		{
+			fn: 'fetchGymSetHistoryWithError',
+			type: 'GymSetWithDate',
+			table: 'gym_sets',
+			embedded: { started_at: "the joined workout's start, the point of the !inner embed" },
+			extra: { user_id: 'embedded so the RLS-scope filter can name it, never read' },
+		},
+		{ fn: 'fetchGymRoutinesWithError', type: 'GymRoutineSummary', table: 'gym_routines' },
+		{
+			fn: 'fetchGymRoutineDetail',
+			type: 'GymRoutineSummary',
+			table: 'gym_routines',
+			extra: {
+				is_official: 'the computed field (20271021000030); GymRoutineDetail carries it as OfficialFlag beside the summary',
+			},
+		},
+		{
+			fn: 'fetchGymRoutineDetail',
+			nth: 1,
+			type: 'GymRoutineSummary',
+			table: 'public_gym_routines',
+			absent: {
+				last_modified_at: 'redacted by the view (20270319_001); created_at stands in',
+			},
+		},
+		{
+			fn: 'fetchGymRoutineDetail',
+			nth: 2,
+			type: 'GymRoutineExercise',
+			table: 'gym_routine_exercises',
+			absent: { sets: 'assembled from the third read, not a column of this one' },
+		},
+		{
+			fn: 'fetchGymRoutineDetail',
+			nth: 3,
+			type: 'GymRoutineSet',
+			table: 'gym_routine_sets',
+			extra: { routine_exercise_id: 'the grouping key the rows are bucketed by, not a field of a set' },
+		},
+		{ fn: 'createGymRoutine', type: 'GymRoutineSummary', table: 'gym_routines' },
+		{
+			fn: 'fetchClubGymRoutineTemplates',
+			type: 'GymRoutineSummary',
+			table: 'gym_routines',
+			extra: {
+				is_official: 'the computed field (20271021000030); the club page reads it as OfficialFlag beside the summary to badge a verified organiser\'s routine',
+			},
+		},
+		{
+			fn: 'fetchPublicGymRoutineLibrary',
+			type: 'GymRoutineSummary',
+			table: 'public_gym_routines',
+			absent: {
+				last_modified_at: 'redacted by the view (20270319_001); created_at stands in',
+			},
+			extra: {
+				is_official: 'PublicGymRoutineEntry carries it; the view derives it (20271211000002)',
+			},
+		},
+		{ fn: 'fetchMealTemplatesWithError', type: 'MealTemplateSummary', table: 'meal_templates' },
+		{ fn: 'fetchMealTemplateDetail', type: 'MealTemplateSummary', table: 'meal_templates' },
+		{
+			fn: 'fetchMealTemplateDetail',
+			nth: 1,
+			type: 'MealTemplateItemRow',
+			table: 'meal_template_items',
+		},
+		{ fn: 'createMealTemplate', type: 'MealTemplateSummary', table: 'meal_templates' },
+		{ fn: 'fetchRecipesWithError', type: 'RecipeSummary', table: 'recipes' },
+		{ fn: 'fetchRecipeDetail', type: 'RecipeSummary', table: 'recipes' },
+		{ fn: 'fetchRecipeDetail', nth: 1, type: 'RecipeIngredientRow', table: 'recipe_ingredients' },
+		{ fn: 'createRecipe', type: 'RecipeSummary', table: 'recipes' },
+	];
+	for (const p of pairs) {
+		const at = `${p.fn}[${p.nth ?? 0}] / ${p.type}`;
+		const { columns, embedded } = inlineSelect(source, p.fn, p.nth ?? 0);
+		const declared = interfaceKeys(p.type);
+		const generated = generatedColumns(p.table);
+		for (const c of columns) {
+			assert.ok(generated.has(c), `${at}: the select asks ${p.table} for ${c}, which it has not got`);
+		}
+		for (const c of columns) {
+			if (declared.has(c)) continue;
+			assert.ok(p.extra?.[c], `${at}: ${c} is fetched and ${p.type} does not declare it`);
+		}
+		for (const k of declared) {
+			if (columns.has(k)) {
+				assert.ok(!p.extra?.[k], `${at}: ${k} is declared an extra but ${p.type} declares it`);
+				continue;
+			}
+			if (embedded.has(k)) {
+				assert.ok(p.embedded?.[k], `${at}: ${k} arrives via the embed undeclared`);
+				continue;
+			}
+			assert.ok(p.absent?.[k], `${at}: ${p.type} promises ${k} and the select never fetches it`);
+		}
+		for (const k of Object.keys(p.absent ?? {})) {
+			assert.ok(!columns.has(k), `${at}: ${k} is declared absent and the select now fetches it`);
+		}
+		for (const c of Object.keys(p.extra ?? {})) {
+			assert.ok(
+				columns.has(c) || embedded.has(c),
+				`${at}: ${c} is declared an extra and the select no longer asks for it`,
+			);
+		}
+	}
+});
+
+// ── Compile-time: a run projection can only name a column `runs` has ──
+//
+// `svelte-check` is the gate for these too. `RunColumns` was `keyof Run`, and
+// the overlay adds two keys that are not columns: `track`, the lazy Storage
+// download, and `has_track`, which only the `public_runs` view carries. Either
+// in a projection is a PostgREST 42703 that fails the WHOLE read — the runner
+// sees no runs at all, not a run missing a field — and both compiled.
+
+// @ts-expect-error — `track` is a lazy Storage download, never a `runs` column
+export const trackIsNotAProjectableRunColumn = ['track'] as const satisfies RunColumns;
+
+// @ts-expect-error — `has_track` is a `public_runs` view field, not a base column
+export const hasTrackIsNotAProjectableRunColumn = ['has_track'] as const satisfies RunColumns;
+
+/// The narrowing has to leave the real columns projectable, or the pins above
+/// are the only thing still passing. `source`, `activity_type` and `metadata`
+/// are the three the overlay re-declares — they stay columns.
+export const realRunColumnsStayProjectable = [
+	'id',
+	'started_at',
+	'distance_m',
+	'track_url',
+	'source',
+	'activity_type',
+	'metadata',
+] as const satisfies RunColumns;
+
+test('every clubs read narrows join_policy, and none of them fails open', () => {
+	// Reason: `join_policy` is a CHECK-constrained union the generated row
+	// types as a bare `string`, and it decides whether a club is free to join.
+	// Four sites asserted it into the union with a `?? 'open'` fallback — the
+	// value that grants entry to anyone — against the one narrower the module
+	// already had, whose fallback is `'request'`. `fetchMyClubsWithError`
+	// reached `enrichClubs` without narrowing at all, which only surfaced when
+	// the `(row: any)` on its embed came off (§ 1330's premise: a typed client
+	// is what turns an assertion into a check).
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const asserted = source
+		.split('\n')
+		.map((text, i) => ({ line: i + 1, text: text.trim() }))
+		.filter(({ text }) => /join_policy\b/.test(text) && /\bas JoinPolicy\b/.test(text));
+	assert.deepEqual(
+		asserted,
+		[],
+		'join_policy must come through parseJoinPolicy, which fails closed to `request`:\n' +
+			asserted.map((h) => `  data.ts:${h.line}  ${h.text}`).join('\n'),
+	);
+	for (const fn of [
+		'browseClubsWithError',
+		'searchClubsWithError',
+		'fetchMyClubsWithError',
+		'fetchClubBySlug',
+		'createClub',
+	]) {
+		assert.match(
+			functionBody(source, fn),
+			/\basClub\b|parseJoinPolicy\(/,
+			`${fn} must narrow join_policy at the read boundary, not assert it`,
+		);
+	}
+});
+
+test('joinClubByToken raises the waiver refusal as an Error the join page can recognise', () => {
+	// Reason: the page asks isActivityWaiverRequired(e) to decide between the
+	// waiver step and the "invalid or expired" banner. A DbError's message
+	// carries the SQLSTATE ("activity_waiver_required (P0001)"), so comparing a
+	// thrown DbError's message to the bare code would send every waiver club to
+	// the error banner. The refusal is re-raised as its own Error before
+	// dbError, the same shape as PAID_EVENT_DELETE_REFUSAL.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function joinClubByToken(');
+	assert.ok(start > 0, 'joinClubByToken not found — rename it here too.');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	const refusal = body.indexOf('throw new Error(ACTIVITY_WAIVER_REQUIRED)');
+	assert.ok(refusal > 0, 'the waiver refusal must be raised as new Error(ACTIVITY_WAIVER_REQUIRED)');
+	assert.ok(refusal < body.indexOf('throw dbError(error)'), 'and before the generic dbError throw');
+	assert.match(
+		source,
+		/export function isActivityWaiverRequired\(e: unknown\): boolean \{\s*return e instanceof Error && e\.message === ACTIVITY_WAIVER_REQUIRED;/,
+	);
+});
+
+test('reschedulePlanAfterBreak sends the previewed change as one RPC and surfaces a refusal', () => {
+	// The break offer applies exactly what its preview showed, in one
+	// transaction (decisions § 2128): the client passes the weeks it chose and
+	// never writes weeks or workouts itself, and a refusal (23P01 overlap,
+	// 22023) must reach the card as a thrown error, not a silent no-op.
+	const source = read('src/lib/core/data.ts');
+	const fnMatch = source.match(/export async function reschedulePlanAfterBreak[\s\S]*?\n}/);
+	assert.ok(fnMatch, 'Could not locate reschedulePlanAfterBreak — rename?');
+	const body = fnMatch![0];
+	assert.match(body, /supabase\.rpc\('reschedule_plan_after_break', \{/);
+	for (const [param, value] of [
+		['p_plan_id', 'planId'],
+		['p_today', 'todayIso'],
+		['p_break_from', 'breakFromIso'],
+		['p_repeat_week_ids', 'change\\.repeatWeekIds'],
+		['p_drop_week_ids', 'change\\.dropWeekIds']
+	]) {
+		assert.match(body, new RegExp(`${param}: ${value}\\b`), `${param} must carry ${value}`);
+	}
+	assert.match(body, /if \(error\) throw dbError\(error\);/);
+	assert.doesNotMatch(body, /\.from\(/, 'the reschedule must not write tables around the RPC');
+});
+
+test('a runner files a race result through file_event_result, never an event_results upsert', () => {
+	// The upsert reads every column it writes back from EXCLUDED, which needs
+	// SELECT on the eight runner-written columns the server withdraws from
+	// authenticated once the supported builds stop upserting (decisions § 2474).
+	const source = stripComments(read('src/lib/core/data.ts'));
+	for (const fn of ['submitEventResult', 'retimeEventResult']) {
+		const start = source.indexOf(`export async function ${fn}(`);
+		assert.ok(start >= 0, `Could not locate ${fn} — rename?`);
+		const next = source.indexOf('\nexport ', start + 1);
+		const body = source.slice(start, next > start ? next : undefined);
+		assert.match(body, /supabase\.rpc\('file_event_result', \{ p_result: result \}\)/, `${fn} must file through the RPC`);
+		assert.doesNotMatch(body, /\.upsert\(/, `${fn} must not upsert event_results`);
+		assert.doesNotMatch(body, /onConflict/, `${fn} must not name an upsert arbiter`);
+	}
+});
+
+test('deleteRoute removes the photo files only after the row delete succeeded, and never fails on them', () => {
+	// Reason: removing the files first and then failing the row delete left a
+	// route whose photos 404 forever; and a storage error after the row is gone
+	// must not report the delete as failed, because the route IS deleted and a
+	// retry would only meet "not found". Orphaned files are logged, not thrown.
+	// The photo path read before the delete only feeds that sweep, so a failed
+	// read must cost the sweep and still let the row delete run.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function deleteRoute(');
+	assert.ok(start >= 0, 'Could not locate deleteRoute — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+
+	const rowDelete = body.search(/\.from\('routes'\)\s*\.delete\(\)/);
+	const rowError = body.indexOf('if (error) throw dbError(error);', rowDelete);
+
+	const photoRead = body.search(/\.from\(TABLES\.route_photos\)\s*\.select\(/);
+	assert.ok(photoRead >= 0 && photoRead < rowDelete, 'deleteRoute must read the photo paths before the row cascade takes them.');
+	const readTry = body.lastIndexOf('try {', photoRead);
+	const readCatch = body.indexOf('} catch (e) {', photoRead);
+	assert.ok(readTry >= 0 && readCatch > photoRead && readCatch < rowDelete, 'the photo path read must sit in its own try/catch that closes before the row delete.');
+	const readCatchBody = body.slice(readCatch, rowDelete);
+	assert.match(readCatchBody, /console\.warn\(/, 'a failed photo path read must be logged.');
+	assert.doesNotMatch(readCatchBody, /\b(throw|return)\b/, 'a failed photo path read must not stop the row delete.');
+	assert.doesNotMatch(body, /throw dbError\(photosError\)/, 'a photo path read error must not be rethrown out of deleteRoute.');
+	const refused = body.indexOf("throw new DbError('route delete refused'");
+	const remove = body.search(/\.storage\.from\(BUCKETS\.route_photos\)\.remove\(/);
+	assert.ok(rowDelete >= 0 && rowError > rowDelete, 'deleteRoute must throw on a failed row delete.');
+	assert.ok(refused > rowError, 'deleteRoute must throw when RLS silently deleted nothing.');
+	assert.ok(remove > refused, 'the storage remove must come after every way the row delete can fail.');
+	assert.equal(
+		body.match(/\.remove\(/g)?.length,
+		1,
+		'deleteRoute must remove the photo files in exactly one place.',
+	);
+
+	const tail = body.slice(remove);
+	const tryAt = body.lastIndexOf('try {', remove);
+	assert.ok(tryAt > refused, 'the storage remove must sit inside its own try, so a thrown error is caught.');
+	assert.match(tail, /catch \(e\) \{\s*removeError = e;\s*\}/, 'a thrown storage error must be captured, not rethrown.');
+	assert.match(tail, /if \(removeError\) \{\s*console\.warn\(/, 'a storage failure must be logged as orphaned files.');
+	assert.doesNotMatch(tail, /\bthrow\b/, 'nothing after the storage remove may throw — the route is already gone.');
+	assert.doesNotMatch(tail, /\breturn\b/, 'deleteRoute resolves void once the row is gone.');
+});
+
+test('a sentence the data layer throws for the reader is an AppError, not English', () => {
+	// Reason: `throw new Error('Image too large (10 MB max)')` reached the page
+	// as English, or as a generic line once `errorCopy` took over the screens.
+	// An `AppError` carries its catalogue key, so the reader gets the specific
+	// sentence in their own language. What is left below either names a
+	// category `errorCopy` already classifies (signed out, not found, owner
+	// only) or reports a malformed server answer no reader can act on.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const thrown = new Set(
+		[...source.matchAll(/throw new Error\((['"`])([^'"`]* [^'"`]*)\1\)/g)].map((m) => m[2]),
+	);
+	const known = new Set([
+		'Not authenticated',
+		'Not signed in',
+		'not signed in',
+		'Source plan not found',
+		'Source session plan not found',
+		'Plan not found.',
+		'Only the plan owner can publish',
+		'No onboarding URL returned',
+		'No checkout URL returned',
+		'clip-public-track returned malformed payload',
+		'route_delete_impact returned no row',
+		'DNF needs a user_id or a bib',
+		'dm_threads failed: ${error.message}',
+		'fetchDmThread failed: ${error.message}',
+	]);
+	assert.deepEqual(
+		[...thrown].filter((t) => !known.has(t)),
+		[],
+		'throw `new AppError(key, { params, message })` (core/app_error.ts) for a sentence the reader should see; `errorCopy` renders its key',
+	);
+	assert.deepEqual(
+		[...known].filter((t) => !thrown.has(t)),
+		[],
+		'these are no longer thrown: take them out of the known list',
 	);
 });

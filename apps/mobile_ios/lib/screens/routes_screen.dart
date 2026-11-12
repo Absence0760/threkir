@@ -1,21 +1,21 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
 
+import '../widgets/grisnir_moments.dart';
 import '../auth_error.dart';
+import '../catalogue_browse.dart' show compareFoldedNames, fold;
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../official_distance.dart';
 import '../preferences.dart';
-import '../shared_file_import.dart' show routesFromImportedFile;
+import '../route_file_import.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
@@ -68,17 +68,16 @@ class RoutesScreen extends StatefulWidget {
   /// local store as well as the server (issue #239).
   final LocalRunStore? runStore;
   final Preferences preferences;
-  final void Function(cm.Route route)? onStartRun;
   /// Optional social service. Threaded into [RouteBuilderScreen] so
   /// the SaveRouteDialog can show a "Save to" picker populated with
   /// the user's clubs. When null, the picker is hidden and saved
   /// routes go to the user's personal library (existing behaviour).
   final SocialService? social;
   /// When true, the screen renders only its body and a hosting parent owns
-  /// the Scaffold/AppBar/FAB chrome. No host uses it today — Routes is pushed
-  /// standalone from the Fitness hub's Runs peer strip since the hub redesign
-  /// relocated it out of `SocialScreen` — but the dual "Build" / "Import" FAB
-  /// column stays exposed via [RoutesScreenState.buildRouteFabs] for one.
+  /// the Scaffold/AppBar/FAB chrome. No host uses it today — the Fitness hub
+  /// mounts Routes as a tab body that keeps its own Scaffold, actions and FAB
+  /// (decisions § 2437) — but the dual "Build" / "Import" FAB column stays
+  /// exposed via [RoutesScreenState.buildRouteFabs] for one.
   /// Same pattern as `ClubsScreen.embedded`.
   final bool embedded;
 
@@ -88,7 +87,6 @@ class RoutesScreen extends StatefulWidget {
     required this.routeStore,
     this.runStore,
     required this.preferences,
-    this.onStartRun,
     this.social,
     this.embedded = false,
   });
@@ -115,6 +113,12 @@ class RoutesScreenState extends State<RoutesScreen> {
   int _visibleCount = _kRoutesPageSize;
   bool _loadingMore = false;
   bool _remoteHasMore = true;
+
+  /// The cursor after the last route the server returned — the server's own
+  /// values, so a `created_at` keeps its microseconds and the next page starts
+  /// exactly after it. Null until the first page lands, which makes a load
+  /// more before then read the first page.
+  List<Object?>? _remoteNext;
 
   // Filter state — mirrors the web `/routes` toolbar. The
   // post-filter list feeds the visible-window paging.
@@ -167,7 +171,7 @@ class RoutesScreenState extends State<RoutesScreen> {
       final starred = await api
           .getRoutes(starredOnly: true, limit: 500)
           .timeout(kBackendLoadTimeout);
-      await widget.routeStore.saveBatch(starred);
+      await widget.routeStore.saveBatch(starred.rows);
       _starredLoaded = true;
       if (mounted) setState(() {});
     } catch (e) {
@@ -179,11 +183,17 @@ class RoutesScreenState extends State<RoutesScreen> {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
     try {
-      final marks = await api.fetchBookmarkedRoutes();
+      final marks =
+          await api.fetchBookmarkedRoutes().timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() => _bookmarks = marks);
-    } catch (_) {
-      // Best-effort; the owned list still renders.
+    } catch (e) {
+      // The owned list still renders; the bookmarks already shown stay.
+      debugPrint('Fetch bookmarked routes failed: $e');
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).routesBookmarksLoadFailed);
+      }
     }
   }
 
@@ -198,12 +208,15 @@ class RoutesScreenState extends State<RoutesScreen> {
       // Initial sync pulls only the first page — older routes flow in
       // through Load more. Cap mirrors `_kRoutesPageSize` so a returning
       // user sees the same shape as the web `/routes` first paint.
-      final remote = await api
+      final page = await api
           .getRoutes(limit: _kRoutesPageSize)
           .timeout(kBackendLoadTimeout);
-      await widget.routeStore.saveBatch(remote);
+      await widget.routeStore.saveBatch(page.rows);
       if (!mounted) return;
-      setState(() => _remoteHasMore = remote.length == _kRoutesPageSize);
+      setState(() {
+        _remoteNext = page.next;
+        _remoteHasMore = page.next != null;
+      });
     } catch (e) {
       debugPrint('Fetch routes failed: $e');
       if (mounted) {
@@ -250,24 +263,23 @@ class RoutesScreenState extends State<RoutesScreen> {
 
     setState(() => _loadingMore = true);
     try {
-      // Cursor over the *oldest owned* route's created_at — bookmarked
-      // routes share createdAt with the original author and would
-      // produce false cursors. Owned routes are the only thing
-      // getRoutes() returns anyway.
-      final owned = widget.routeStore.routes;
-      final cursor = owned.isEmpty || owned.last.createdAt == null
-          ? DateTime.now()
-          : owned.last.createdAt!;
-      final remote = await api
+      // The cursor is the last row the SERVER returned, not the store's last
+      // route: the store keeps insertion order and also holds the starred
+      // routes `_ensureStarredLoaded` pulled from anywhere in the history, so
+      // its last row can sit pages past where this list has read, and a
+      // `created_at` round-tripped through DateTime loses the server's
+      // microseconds.
+      final page = await api
           .getRoutes(
             limit: _kRoutesPageSize,
-            before: cursor,
+            after: _remoteNext,
           )
           .timeout(kBackendLoadTimeout);
-      await widget.routeStore.saveBatch(remote);
+      await widget.routeStore.saveBatch(page.rows);
       if (!mounted) return;
       setState(() {
-        _remoteHasMore = remote.length == _kRoutesPageSize;
+        _remoteNext = page.next;
+        _remoteHasMore = page.next != null;
         _visibleCount += _kRoutesPageSize;
       });
     } catch (e) {
@@ -397,7 +409,15 @@ class RoutesScreenState extends State<RoutesScreen> {
   /// Apply the current filter + sort to the merged owned + bookmarks
   /// list. Pure pass over the input — no setState, no I/O.
   List<cm.Route> _filteredAndSorted(List<cm.Route> all) {
-    final q = _search.trim().toLowerCase();
+    // Folded on BOTH sides of the comparison, never `toLowerCase`. The two
+    // runtimes' own lower-case answers differ at 466 code points, and the one
+    // reachable in Latin text is U+0130: this side's simple mapping turns
+    // `İstanbul Loop` into `istanbul loop`, while a browser emits `i` plus a
+    // combining dot and does NOT match `istanbul`. So the same route was
+    // findable by typing `istanbul` here and not on the web (decisions
+    // § 1337). Folding also strips the accent, which is what lets `zurich`
+    // reach `Zürich Loop` from a keyboard without one.
+    final q = fold(_search.trim());
     Iterable<cm.Route> stream = all;
     if (_starredOnly) stream = stream.where((r) => r.isStarred);
     if (_surfaceFilter != _SurfaceFilter.any) {
@@ -405,10 +425,10 @@ class RoutesScreenState extends State<RoutesScreen> {
     }
     if (_distanceFilter != _DistanceBucket.any) {
       stream = stream
-          .where((r) => _inDistanceBucket(r.distanceMetres, _distanceFilter));
+          .where((r) => _inDistanceBucket(_shownM(r), _distanceFilter));
     }
     if (q.isNotEmpty) {
-      stream = stream.where((r) => r.name.toLowerCase().contains(q));
+      stream = stream.where((r) => fold(r.name).contains(q));
     }
     final out = stream.toList();
     switch (_sort) {
@@ -422,14 +442,13 @@ class RoutesScreenState extends State<RoutesScreen> {
           return bx.compareTo(ax);
         });
       case _RouteSort.longest:
-        out.sort((a, b) => b.distanceMetres.compareTo(a.distanceMetres));
+        out.sort((a, b) => _shownM(b).compareTo(_shownM(a)));
       case _RouteSort.shortest:
-        out.sort((a, b) => a.distanceMetres.compareTo(b.distanceMetres));
+        out.sort((a, b) => _shownM(a).compareTo(_shownM(b)));
       case _RouteSort.mostRun:
         out.sort((a, b) => b.runCount.compareTo(a.runCount));
       case _RouteSort.az:
-        out.sort((a, b) =>
-            a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        out.sort((a, b) => compareFoldedNames(a.name, a.id, b.name, b.id));
     }
     return out;
   }
@@ -504,21 +523,27 @@ class RoutesScreenState extends State<RoutesScreen> {
       ),
     );
     if (ok != true) return;
+    if (!mounted) return;
     setState(() => _deleting = true);
     final ids = Set<String>.from(_selected);
     final failedIds = <String>{};
+    final refusedIds = <String>{};
     final api = widget.apiClient;
     if (api != null && api.userId != null) {
       for (final id in ids) {
         try {
           await api.deleteRoute(id);
+        } on RouteDeleteRefusedException {
+          // Terminal: queueing it would retry a delete the server refuses
+          // forever. The local copy stays, and the banner counts it failed.
+          refusedIds.add(id);
         } catch (e) {
           debugPrint('deleteRoute failed for $id: $e');
           failedIds.add(id);
         }
       }
     }
-    final ok2 = ids.difference(failedIds);
+    final ok2 = ids.difference(failedIds).difference(refusedIds);
     if (ok2.isNotEmpty) await widget.routeStore.deleteMany(ok2);
     if (failedIds.isNotEmpty) {
       // Queue the failed ids for retry so a partial-delete failure
@@ -538,10 +563,10 @@ class RoutesScreenState extends State<RoutesScreen> {
       _selected.clear();
       _deleting = false;
     });
-    if (failedIds.isNotEmpty) {
+    if (failedIds.isNotEmpty || refusedIds.isNotEmpty) {
       showTopBanner(
         context,
-        l10n.routesDeletePartial(ok2.length, failedIds.length),
+        l10n.routesDeletePartial(ok2.length, failedIds.length + refusedIds.length),
       );
     } else {
       showTopBanner(
@@ -627,6 +652,7 @@ class RoutesScreenState extends State<RoutesScreen> {
       name: route.name,
       waypoints: route.waypoints,
       distanceMetres: route.distanceMetres,
+      officialDistanceMetres: route.officialDistanceMetres,
       elevationGainMetres: route.elevationGainMetres,
       isPublic: route.isPublic,
       createdAt: route.createdAt,
@@ -669,67 +695,9 @@ class RoutesScreenState extends State<RoutesScreen> {
     if (_fabBusy) return;
     setState(() => _fabBusy = true);
     try {
-      await _pickAndImport();
+      await pickAndImportRouteFile(context, widget.routeStore);
     } finally {
       if (mounted) setState(() => _fabBusy = false);
-    }
-  }
-
-  Future<void> _pickAndImport() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['gpx', 'kml'],
-    );
-    if (result == null || result.files.isEmpty) return;
-
-    try {
-      // path can be null when the picker hands back a content URI it
-      // couldn't resolve to a real file (Drive / OneDrive document
-      // providers do this). readAsString may also throw on permission
-      // errors or if the user revokes access mid-read — both stay
-      // inside the try so the snackbar handles them, not an uncaught
-      // unhandled-async-error crash.
-      final path = result.files.first.path;
-      if (path == null) {
-        if (mounted) {
-          showTopBanner(context,
-              AppLocalizations.of(context).routesImportFailedLocalOnly);
-        }
-        return;
-      }
-      final ext = result.files.first.extension?.toLowerCase();
-      final content = await File(path).readAsString();
-      final routes =
-          await compute(_parseRouteFile, _RouteParseRequest(ext, content));
-      // A route needs two points to have a line, a distance, or a map. Saving
-      // a degenerate one and reporting success is how a silently-dropped
-      // track became "Route imported!".
-      final usable =
-          routes.where((r) => r.waypoints.length >= 2).toList(growable: false);
-      if (usable.isEmpty) {
-        if (mounted) {
-          showTopBanner(context,
-              AppLocalizations.of(context).routesImportFailedLocalOnly);
-        }
-        return;
-      }
-      for (final route in usable) {
-        await widget.routeStore.save(route);
-      }
-      if (mounted) {
-        final l10n = AppLocalizations.of(context);
-        showTopBanner(
-            context,
-            usable.length == 1
-                ? l10n.routesImported(usable.first.name)
-                : l10n.routesImportedMany(usable.length));
-      }
-    } catch (e) {
-      debugPrint('routes import failed: $e');
-      if (mounted) {
-        showTopBanner(
-            context, AppLocalizations.of(context).routesImportFailed(friendlyError(AppLocalizations.of(context), e)));
-      }
     }
   }
 
@@ -789,76 +757,100 @@ class RoutesScreenState extends State<RoutesScreen> {
             onRetry: _fetchRemoteRoutes,
           )
         : mergedRoutes.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.route,
-                      size: 64,
-                      color: theme.colorScheme.outline,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l10n.routesEmptyTitle,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      // Mention BOTH affordances. The Build FAB is the
-                      // canonical "create from scratch" path; Import
-                      // covers GPX / KML / KMZ / GeoJSON / TCX files.
-                      // The old copy only mentioned Import — users
-                      // missed the in-app builder.
-                      l10n.routesEmptyBody,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+          // Scrolls when it cannot fit (a short phone at a raised text
+          // scale), centred otherwise, as ui_kit's EmptyState does.
+          ? LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints:
+                      BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          grisnirWaitingOrNull() ??
+                              Icon(
+                                Icons.route,
+                                size: 64,
+                                color: theme.colorScheme.outline,
+                              ),
+                          const SizedBox(height: 16),
+                          Text(
+                            l10n.routesEmptyTitle,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            // Mention BOTH affordances. The Build FAB is the
+                            // canonical "create from scratch" path; Import
+                            // covers GPX / KML / GeoJSON / TCX files.
+                            // The old copy only mentioned Import — users
+                            // missed the in-app builder.
+                            l10n.routesEmptyBody,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Compact inline reminder for the Build FAB and the
+                          // Import action's icons, so a user who lands on this
+                          // screen for the first time can match the verbal CTA
+                          // to the visual affordances. A Wrap, so the two
+                          // hints stack on a narrow phone at a raised text scale
+                          // instead of overflowing.
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 16,
+                            runSpacing: 4,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.add_location_alt,
+                                      size: 18,
+                                      color: theme.colorScheme.outline),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l10n.routesBuild,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.upload_file,
+                                      size: 18,
+                                      color: theme.colorScheme.outline),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l10n.routesImport,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // Compact inline reminder for the two FAB icons so
-                    // a user who lands on this screen for the first
-                    // time can match the verbal CTA to the visual
-                    // affordances on the right edge.
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_road,
-                            size: 18,
-                            color: theme.colorScheme.outline),
-                        const SizedBox(width: 4),
-                        Text(
-                          l10n.routesBuild,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(Icons.file_upload,
-                            size: 18,
-                            color: theme.colorScheme.outline),
-                        const SizedBox(width: 4),
-                        Text(
-                          l10n.routesImport,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
             )
           : ListView.builder(
-              // Clears the dual-FAB column (Build + Import) — pre-fix the
-              // last route's star button and chevron sat under them.
-              padding: EdgeInsets.fromLTRB(
-                  16, 16, 16, fabScrollClearance(context, fabCount: 2)),
+              // Clears the Build FAB and the navigation bar, so the last
+              // route's star button can scroll out from under both.
+              padding:
+                  EdgeInsets.fromLTRB(16, 8, 16, fabScrollClearance(context)),
               itemCount: 1 +
                   (emptyAfterFilter ? 1 : routes.length) +
                   (showLoadMore && !emptyAfterFilter ? 1 : 0),
@@ -867,6 +859,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      _discoverStrip(theme, l10n, inList: true),
                       _RoutesFilterHeader(
                         search: _search,
                         surfaceFilter: _surfaceFilter,
@@ -1046,19 +1039,16 @@ class RoutesScreenState extends State<RoutesScreen> {
                         Flexible(
                           child: Text(
                             route.name,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    // Single-line subtitle — same shape as runs'
-                    // `$date  •  $dur`. Distance + elevation is the
-                    // route equivalent.
-                    subtitle: Text(
-                      '${UnitFormat.distance(route.distanceMetres, unit)}'
-                      '  •  ${route.elevationGainMetres.round()} m ↑',
-                    ),
+                    // Same shape as runs' `$date  •  $dur`. Distance +
+                    // elevation is the route equivalent; each figure stays
+                    // glued to its unit when a raised text scale wraps it.
+                    subtitle: Text(routeStatsLine(route, unit)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1117,7 +1107,6 @@ class RoutesScreenState extends State<RoutesScreen> {
                                 : l10n.routesStarForWatch,
                             onPressed: () => _toggleStar(route),
                           ),
-                        const Icon(Icons.chevron_right),
                       ],
                     ),
                     onTap: () async {
@@ -1126,9 +1115,9 @@ class RoutesScreenState extends State<RoutesScreen> {
                         _toggleSelection(route.id);
                         return;
                       }
-                      final picked = await Navigator.push<cm.Route?>(
+                      await Navigator.push<void>(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<void>(
                           builder: (_) => RouteDetailScreen(
                             route: route,
                             routeStore: widget.routeStore,
@@ -1138,9 +1127,6 @@ class RoutesScreenState extends State<RoutesScreen> {
                           ),
                         ),
                       );
-                      if (picked != null) {
-                        widget.onStartRun?.call(picked);
-                      }
                       // Refresh bookmarks so unbookmarks made on the
                       // detail screen flow back into the list.
                       _fetchBookmarks();
@@ -1150,16 +1136,16 @@ class RoutesScreenState extends State<RoutesScreen> {
               },
             );
 
-    // Both mounts share the same body shape: the labelled "Discover" strip
-    // (Public routes / Heatmap / Your heatmap + the compact sync affordance)
-    // over the route list. The strip is the single home of every map/
-    // discovery entry point — icon-only AppBar actions proved
-    // undiscoverable (field reports for both heatmaps).
+    // The "Discover" strip (Public routes / Routes heatmap / Run heatmap +
+    // the compact sync affordance) is the single home of every map/discovery
+    // entry point — icon-only AppBar actions proved undiscoverable (field
+    // reports for both heatmaps). With routes on screen it heads the list and
+    // scrolls away with it; over the empty and error states it stays put.
     final content = Column(
       children: [
         if (_selecting)
           _selectionBanner(theme: theme, visible: routes, ownedIds: ownedIds),
-        ..._discoverHeader(theme, l10n),
+        if (mergedRoutes.isEmpty) _discoverStrip(theme, l10n, inList: false),
         Expanded(child: body),
       ],
     );
@@ -1168,160 +1154,214 @@ class RoutesScreenState extends State<RoutesScreen> {
     if (widget.embedded) return content;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.fitnessRunsRoutes)),
+      appBar: AppBar(
+        title: Text(l10n.fitnessRunsRoutes),
+        actions: buildRouteAppBarActions(context),
+      ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: buildRouteFabs(context),
       body: content,
     );
   }
 
-  /// The "Discover" strip: a titled row with the compact sync affordance,
-  /// then the labelled discovery buttons — Public routes, the community
-  /// routes heatmap (discoverable-route + club pins), and the user's own
-  /// run heatmap. Wrap-laid so three buttons flow to a second line on
-  /// narrow phones instead of overflowing.
-  List<Widget> _discoverHeader(ThemeData theme, AppLocalizations l10n) {
-    return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
-        child: Row(
-          children: [
-            Icon(
-              Icons.travel_explore_outlined,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
+  /// The "Discover" strip: the labelled discovery entry points — Public
+  /// routes, the community routes heatmap (discoverable-route + club pins)
+  /// and the user's own run heatmap — as one row of equal tiles, icon over
+  /// label.
+  ///
+  /// One row at every width and text scale. As chips that wrapped, the three
+  /// stacked into three full-width pills on a phone at a raised text scale and
+  /// pushed the list half a screen down; as a sideways scroll they gave no edge
+  /// cue and "Run heatmap" was never seen (decisions § 1954). A tile's label
+  /// takes a second line instead. Each stays labelled, because icon-only AppBar
+  /// actions proved undiscoverable for both heatmaps. "Discover" names the
+  /// strip for assistive tech rather than spending a row.
+  Widget _discoverStrip(ThemeData theme, AppLocalizations l10n,
+      {required bool inList}) {
+    final api = widget.apiClient;
+    final tiles = <Widget>[
+      _DiscoverTile(
+        icon: Icons.explore,
+        label: l10n.routesPublicRoutes,
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ExploreRoutesScreen(
+              apiClient: widget.apiClient,
+              routeStore: widget.routeStore,
+              preferences: widget.preferences,
             ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.routesDiscover,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (_syncing)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            else if (widget.apiClient?.userId != null)
-              IconButton(
-                icon: const Icon(Icons.cloud_download, size: 20),
-                tooltip: l10n.routesSyncFromCloud,
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                onPressed: _fetchRemoteRoutes,
-              ),
-          ],
+          ),
         ),
       ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              icon: const Icon(Icons.explore, size: 18),
-              label: Text(l10n.routesPublicRoutes),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ExploreRoutesScreen(
-                      apiClient: widget.apiClient,
-                      routeStore: widget.routeStore,
-                      preferences: widget.preferences,
-                      onStartRun: widget.onStartRun,
-                    ),
-                  ),
-                );
-              },
+      if (api != null) ...[
+        // The two heatmaps sit side by side, so both labels carry their
+        // qualifier ("Routes" = community discoverable-route + club pins;
+        // "Run" = the user's own tracks) — a bare "Heatmap" next to a
+        // sibling heatmap says nothing.
+        _DiscoverTile(
+          icon: Icons.local_fire_department,
+          label: l10n.routesHeatmapTooltip,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RoutesHeatmapScreen(api: api),
             ),
-            if (widget.apiClient != null) ...[
-              // The two heatmaps sit side by side, so both labels carry
-              // their qualifier ("Routes" = community discoverable-route +
-              // club pins; "Run" = the user's own tracks) — a bare
-              // "Heatmap" next to a sibling heatmap says nothing.
-              OutlinedButton.icon(
-                icon: const Icon(
-                  Icons.local_fire_department,
-                  size: 18,
-                ),
-                label: Text(l10n.routesHeatmapTooltip),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RoutesHeatmapScreen(
-                      api: widget.apiClient!,
-                    ),
-                  ),
-                ),
+          ),
+        ),
+        _DiscoverTile(
+          icon: Icons.person_pin_circle_outlined,
+          label: l10n.runHeatmapTooltip,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RunHeatmapScreen(
+                api: api,
+                runStore: widget.runStore,
               ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.person_pin_circle_outlined, size: 18),
-                label: Text(l10n.runHeatmapTooltip),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RunHeatmapScreen(
-                      api: widget.apiClient!,
-                      runStore: widget.runStore,
-                    ),
-                  ),
-                ),
-              ),
+            ),
+          ),
+        ),
+      ],
+    ];
+
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: l10n.routesDiscover,
+      child: Padding(
+        // In the list the ListView's own 16 dp gutter applies.
+        padding: inList
+            ? EdgeInsets.zero
+            : const EdgeInsets.fromLTRB(16, 4, 16, 0),
+        child: IntrinsicHeight(
+          child: Row(
+            key: const ValueKey('routes-discover-strip'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(child: tiles[i]),
+              ],
             ],
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// The AppBar actions: Import (when Build holds the FAB) and the cloud
+  /// sync. Public so an `embedded: true` host can mount them in its own
+  /// AppBar beside [buildRouteFabs].
+  List<Widget> buildRouteAppBarActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [
+      if (widget.apiClient != null)
+        IconButton(
+          key: const ValueKey('routes-import-action'),
+          icon: const Icon(Icons.upload_file),
+          tooltip: l10n.routesImport,
+          onPressed: _fabBusy ? null : _importFile,
+        ),
+      if (_syncing)
+        const SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        )
+      else if (widget.apiClient?.userId != null)
+        IconButton(
+          icon: const Icon(Icons.cloud_download),
+          tooltip: l10n.routesSyncFromCloud,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          onPressed: _fetchRemoteRoutes,
+        ),
     ];
   }
 
-  /// Dual-FAB column ("Build" + "Import"). Public so an `embedded: true`
-  /// host can hoist it into its own Scaffold's `floatingActionButton` slot.
+  /// The one FAB: the extended "Build" FAB, with Import in the AppBar
+  /// ([buildRouteAppBarActions]). A second FAB stacked above it covered the
+  /// star button and the title of every card that scrolled under the pair.
+  /// Without an api client there is nothing to build against, so Import is
+  /// the FAB and keeps its label. Public so an `embedded: true` host can
+  /// hoist it into its own Scaffold's `floatingActionButton` slot.
   Widget buildRouteFabs(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (widget.apiClient != null)
-          FloatingActionButton.extended(
-            heroTag: 'routes_build_fab',
-            onPressed: _fabBusy ? null : _openBuilder,
-            icon: const Icon(Icons.add_location_alt),
-            label: Text(l10n.routesBuild),
-          ),
-        const SizedBox(height: 12),
-        FloatingActionButton.extended(
-          heroTag: 'routes_import_fab',
-          onPressed: _fabBusy ? null : _importFile,
-          icon: const Icon(Icons.upload_file),
-          label: Text(l10n.routesImport),
-        ),
-      ],
+    if (widget.apiClient == null) {
+      return FloatingActionButton.extended(
+        heroTag: 'routes_import_fab',
+        onPressed: _fabBusy ? null : _importFile,
+        icon: const Icon(Icons.upload_file),
+        label: Text(l10n.routesImport),
+      );
+    }
+    return FloatingActionButton.extended(
+      heroTag: 'routes_build_fab',
+      onPressed: _fabBusy ? null : _openBuilder,
+      icon: const Icon(Icons.add_location_alt),
+      label: Text(l10n.routesBuild),
     );
   }
 }
 
-class _RouteParseRequest {
-  final String? ext;
-  final String content;
-  const _RouteParseRequest(this.ext, this.content);
+/// One Discover entry: a labelled, outlined tile whose label may take a
+/// second line, so three fit one row on a narrow phone at a raised scale.
+class _DiscoverTile extends StatelessWidget {
+  const _DiscoverTile({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        minimumSize: const Size(0, kMinInteractiveDimension),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-List<cm.Route> _parseRouteFile(_RouteParseRequest req) =>
-    routesFromImportedFile(
-      format: req.ext == 'kml' ? 'kml' : 'gpx',
-      content: req.content,
-    );
+double _shownM(cm.Route r) =>
+    routeDisplayDistanceM(r.distanceMetres, r.officialDistanceMetres);
+
+/// A route card's stats line, "26.48 mi  •  751 ft ↑", in the reader's unit.
+///
+/// Every space inside a figure is non-breaking, so a raised text scale wraps
+/// the line between the two figures and never between a number and its unit.
+@visibleForTesting
+String routeStatsLine(cm.Route route, cm.DistanceUnit unit) {
+  String glued(String s) => s.replaceAll(' ', '\u00A0');
+  return '${glued(UnitFormat.distance(_shownM(route), unit))}'
+      '  •  ${glued('${UnitFormat.elevation(route.elevationGainMetres, unit)} ↑')}';
+}
 
 /// Filter toolbar for the routes list. Stateless — every change goes
 /// through callbacks back to the screen so persistence + paging reset
@@ -1468,53 +1508,49 @@ class _RoutesFilterHeaderState extends State<_RoutesFilterHeader> {
             ),
           ),
           const SizedBox(height: 8),
-          // Single-row filter strip. Starred-first per user
-          // request — it's the most-toggled filter in practice
-          // (people flip the watch-starred set far more often
-          // than they re-pick a surface or sort order), so it
-          // earns the leftmost slot. The four chips reflow into
-          // a horizontal scroll if the device is too narrow. The rail takes
-          // its height from the chips, not a literal: a chip needs 58 px at
-          // 2x OS text scale and was being cropped to 40.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                FilterChip(
-                  label: Text(l10n.routesStarred),
-                  avatar: Icon(
-                    widget.starredOnly ? Icons.star : Icons.star_border,
-                    size: 18,
-                    color: widget.starredOnly
-                        ? AppSemanticColors.of(context).crown
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                  selected: widget.starredOnly,
-                  onSelected: (_) => widget.onStarredOnlyToggled(),
+          // Starred first: it's the most-toggled filter in practice (people
+          // flip the watch-starred set far more often than they re-pick a
+          // surface or sort order). The chips wrap rather than scroll
+          // sideways: a sideways row clipped "Any distance" at the screen
+          // edge with no cue that more followed, and hid the sort chip
+          // entirely (decisions § 1954). Each row takes its height from the
+          // chips, not a literal — a chip needs 58 px at 2x OS text scale.
+          Wrap(
+            key: const ValueKey('routes-filter-chips'),
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilterChip(
+                label: Text(l10n.routesStarred),
+                avatar: Icon(
+                  widget.starredOnly ? Icons.star : Icons.star_border,
+                  size: 18,
+                  color: widget.starredOnly
+                      ? AppSemanticColors.of(context).crown
+                      : theme.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 8),
-                _DropdownChip<_SurfaceFilter>(
-                  value: widget.surfaceFilter,
-                  items: _SurfaceFilter.values,
-                  labelOf: (v) => _surfaceLabel(l10n, v),
-                  onChanged: widget.onSurfaceChanged,
-                ),
-                const SizedBox(width: 8),
-                _DropdownChip<_DistanceBucket>(
-                  value: widget.distanceFilter,
-                  items: _DistanceBucket.values,
-                  labelOf: (v) => _distanceLabel(l10n, v),
-                  onChanged: widget.onDistanceChanged,
-                ),
-                const SizedBox(width: 8),
-                _DropdownChip<_RouteSort>(
-                  value: widget.sort,
-                  items: _RouteSort.values,
-                  labelOf: (v) => _sortLabel(l10n, v),
-                  onChanged: widget.onSortChanged,
-                ),
-              ],
-            ),
+                selected: widget.starredOnly,
+                onSelected: (_) => widget.onStarredOnlyToggled(),
+              ),
+              _DropdownChip<_SurfaceFilter>(
+                value: widget.surfaceFilter,
+                items: _SurfaceFilter.values,
+                labelOf: (v) => _surfaceLabel(l10n, v),
+                onChanged: widget.onSurfaceChanged,
+              ),
+              _DropdownChip<_DistanceBucket>(
+                value: widget.distanceFilter,
+                items: _DistanceBucket.values,
+                labelOf: (v) => _distanceLabel(l10n, v),
+                onChanged: widget.onDistanceChanged,
+              ),
+              _DropdownChip<_RouteSort>(
+                value: widget.sort,
+                items: _RouteSort.values,
+                labelOf: (v) => _sortLabel(l10n, v),
+                onChanged: widget.onSortChanged,
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
@@ -1541,8 +1577,14 @@ class _RoutesFilterHeaderState extends State<_RoutesFilterHeader> {
   }
 }
 
-/// Compact dropdown rendered as a chip — used for surface / distance /
-/// sort so they share the wrap row visually with the starred toggle.
+/// A single-choice picker rendered as a chip — surface / distance / sort — so
+/// it shares the filter row with the starred toggle.
+///
+/// A Material chip rather than a `DropdownButton` in a pill: the button sized
+/// itself to its widest option, so at 2x OS text "Any surface" overflowed the
+/// row; it ignored the 48 dp tap-target floor (26 dp tall at 1.3x); and it sat
+/// visibly shorter than the FilterChip beside it. The chip ellipsizes its
+/// label, pads its target like its neighbour, and opens a menu of the options.
 class _DropdownChip<T> extends StatelessWidget {
   final T value;
   final List<T> items;
@@ -1558,28 +1600,33 @@ class _DropdownChip<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isDense: true,
-          icon: const Icon(Icons.arrow_drop_down, size: 18),
-          style: theme.textTheme.bodyMedium,
-          items: [
-            for (final v in items)
-              DropdownMenuItem(value: v, child: Text(labelOf(v))),
+    return MenuAnchor(
+      menuChildren: [
+        for (final v in items)
+          MenuItemButton(
+            leadingIcon: Icon(v == value ? Icons.check : null, size: 18),
+            onPressed: () {
+              if (v != value) onChanged(v);
+            },
+            child: Text(labelOf(v)),
+          ),
+      ],
+      builder: (context, controller, _) => ActionChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                labelOf(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 18),
           ],
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
         ),
+        onPressed: () =>
+            controller.isOpen ? controller.close() : controller.open(),
       ),
     );
   }

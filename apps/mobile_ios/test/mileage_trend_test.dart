@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import '../lib/goals.dart';
 import '../lib/mileage_trend.dart';
 
 Run _run({
@@ -265,9 +266,10 @@ void main() {
     });
 
     // DST safety. These invariants hold in every timezone, but they can only
-    // FAIL in one that observes a transition — CI runs UTC, so the source-level
-    // guard in architecture_guards_test.dart is what actually catches a
-    // regression. Verified failing under TZ=America/New_York before the fix.
+    // FAIL in one that observes a transition, so they carry the `tz` tag that
+    // CI re-runs under DST zones; the source-level guard in
+    // architecture_guards_test.dart catches the shape in the UTC run too.
+    // Verified failing under TZ=America/New_York before the fix.
     test('every weekly bucket starts at local midnight on a Monday', () {
       for (final anchor in [
         DateTime(2026, 3, 12, 12), // week after a US spring-forward
@@ -292,7 +294,7 @@ void main() {
           expect(out[i].startsAt, DateTime(prev.year, prev.month, prev.day + 7));
         }
       }
-    });
+    }, tags: 'tz');
 
     test('a run in a DST transition week lands in that week, exactly once', () {
       for (final day in [DateTime(2026, 3, 8, 3, 30), DateTime(2026, 11, 1, 23, 30)]) {
@@ -309,6 +311,48 @@ void main() {
         expect(start.isAfter(day), isFalse);
         expect(DateTime(start.year, start.month, start.day + 7).isAfter(day), isTrue);
       }
-    });
+    }, tags: 'tz');
+  });
+
+  // Field report: with week start set to Sunday, the Home "This week" tile read
+  // 22.50 km while the Distance chart beside it said 7.50 km — the chart
+  // bucketed Monday-first whatever the preference. The tile's window is
+  // weekStartLocal; the chart's current-week bucket must be the same seven
+  // days, either side of the local Saturday-night / Sunday-morning seam.
+  group('aggregateMileage — week_start_day', () {
+    final seamNow = DateTime(2026, 5, 23, 22); // Saturday, 22:00 local
+    final seamRuns = [
+      _run(startedAt: DateTime(2026, 5, 16, 23, 30), distanceM: 4000), // Sat, late
+      _run(startedAt: DateTime(2026, 5, 17, 0, 30), distanceM: 3000), // Sun, early
+      _run(startedAt: DateTime(2026, 5, 18, 12), distanceM: 5000), // Mon
+      _run(startedAt: DateTime(2026, 5, 23, 12), distanceM: 7500), // Sat
+    ];
+
+    int tileTotal(String weekStartDay) {
+      final start = weekStartLocal(seamNow, weekStartDay: weekStartDay);
+      return seamRuns
+          .where((r) => !r.startedAt.isBefore(start))
+          .fold<double>(0, (sum, r) => sum + r.distanceMetres)
+          .round();
+    }
+
+    for (final (weekStartDay, expected, prior, startsAt) in [
+      ('sunday', 15500, 4000, DateTime(2026, 5, 17)),
+      ('monday', 12500, 7000, DateTime(2026, 5, 18)),
+    ]) {
+      test('the current-week bucket equals the "this week" tile ($weekStartDay)',
+          () {
+        final out = aggregateMileage(
+          seamRuns,
+          view: MileageView.weekly,
+          now: seamNow,
+          weekStartDay: weekStartDay,
+        );
+        expect(tileTotal(weekStartDay), expected);
+        expect(out.last.startsAt, startsAt);
+        expect(out.last.distanceM, expected);
+        expect(out[out.length - 2].distanceM, prior);
+      });
+    }
   });
 }

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 // audit-findings 2026-05-30 Medium [accessibility] (WCAG 2.4.1 Bypass
 // Blocks): the signed-in shell has a "Skip to main content" link, but the

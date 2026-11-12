@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /settings/integrations — connected-state UI + disconnect flow.
@@ -13,13 +15,13 @@ import { USER_B } from '../fixtures/users';
  * can't reach: connected-state badges, Sync-now affordance, the
  * disconnect ConfirmDialog round-trip, and the DB-side delete.
  *
- * USER_B is used (not USER_A) because USER_A has Strava + parkrun
+ * USER_B is used (not USER_A) because USER_A has Strava
  * pre-seeded, so planting + sweeping would clash with other specs
  * that depend on the seed state. USER_B starts with zero rows in
  * `integrations` and is restored to that state in afterEach.
  */
 
-const PROVIDERS = ['strava', 'parkrun', 'garmin'] as const;
+const PROVIDERS = ['strava', 'garmin'] as const;
 
 async function clearUserBIntegrations() {
 	const admin = getAdminClient();
@@ -65,10 +67,35 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(stravaCard.getByText(/Last synced/i)).toBeVisible();
 		await expect(stravaCard.getByRole('button', { name: /Sync/i })).toBeVisible();
 		await expect(stravaCard.getByRole('button', { name: 'Disconnect' })).toBeVisible();
-		// Sync-history cap notice points to the full-history ZIP path (#20).
-		await expect(stravaCard.getByText(/last 90 days/i)).toBeVisible();
+		// Sync-history notice points to the full-history ZIP path for anything
+		// older than the widest window the sync itself can ask for.
+		await expect(stravaCard.getByText(/up to a year back/i)).toBeVisible();
+		await expect(stravaCard.getByTestId('strava-lookback')).toHaveValue('90');
 	});
 
+	// If this one is red on your machine and green on CI, read this before
+	// debugging the diff. Disconnect goes through the `strava-import` Edge
+	// Function on purpose (it revokes at Strava's end and wipes the vault rows
+	// rather than doing a bare DELETE), so it is the only test in this file
+	// that needs the local functions host to be able to boot a worker at all.
+	//
+	// It does NOT need Strava credentials, and the failure has nothing to do
+	// with them: `plantIntegration` writes no tokens, so `handleDisconnect`
+	// resolves an empty access token and SKIPS the deauthorize call entirely.
+	// CI's `e2e-web` job carries no Strava env either — it runs `supabase
+	// start` and never `functions serve --env-file`, and there is no committed
+	// `apps/backend/supabase/.env` — so an env-keyed auto-skip would skip on
+	// CI too and delete the coverage rather than explain the red.
+	//
+	// What actually breaks locally is the SHARED edge-runtime container: it is
+	// bind-mounted at the worktree it was started from, and once that
+	// directory has been replaced under it every invoke answers
+	// `{"code":"BOOT_ERROR"}` with a 503 — measured 2026-09-02, where the
+	// container's own log showed `failed to determine entrypoint` for
+	// strava-import, race-listings-sync and race-results-import alike. Any
+	// spec that invokes any Edge Function is red in that state, so the fix is
+	// to recreate the local stack, not to touch this file. decisions § 983's
+	// followup box in `docs/testing/test_inventory.md` carries the detail.
 	test('Disconnect Strava → confirm → card flips to disconnected + DB row gone', async ({
 		page,
 	}) => {
@@ -90,9 +117,16 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		await confirm.getByRole('button', { name: 'Disconnect' }).click();
 
-		await expect(stravaCard).not.toHaveClass(/connected/, { timeout: 5_000 });
-		await expect(stravaCard.getByRole('button', { name: 'Connect' })).toBeVisible();
-		await expect(stravaCard.getByRole('button', { name: /Sync/i })).toHaveCount(0);
+		// The card LEAVES on a build with no `PUBLIC_STRAVA_CLIENT_ID` — which is
+		// every local / CI build, and the shape a minimal deployment has. It was
+		// only on screen because a row existed; with the row gone there is no
+		// grant to disconnect and no OAuth redirect this build could start, so
+		// offering Connect would be an invitation to the error toast the gate
+		// exists to precede.
+		await expect(stravaCard).toHaveCount(0, { timeout: 5_000 });
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Strava export' })
+		).toBeVisible();
 
 		// audit/strava May 2026 High #1 — the disconnect flow now
 		// STAMPS `disconnected_at` rather than DELETEing the row.
@@ -100,12 +134,15 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		// "Reconnect Strava" later. Vault secrets get wiped (the
 		// FK columns clear to null). Verify the new shape.
 		const admin = getAdminClient();
-		const { data } = await admin
-			.from('integrations')
-			.select('id, disconnected_at, disconnected_reason, access_token_secret_id, refresh_token_secret_id')
-			.eq('user_id', USER_B.id)
-			.eq('provider', 'strava');
-		expect(data ?? []).toHaveLength(1);
+		const data = await readRows(
+			'integrations by user_id+provider',
+			admin
+				.from('integrations')
+				.select('id, disconnected_at, disconnected_reason, access_token_secret_id, refresh_token_secret_id')
+				.eq('user_id', USER_B.id)
+				.eq('provider', 'strava')
+		);
+		expect(data).toHaveLength(1);
 		expect(data![0].disconnected_at).not.toBeNull();
 		expect(data![0].disconnected_reason).toBe('user_initiated');
 		expect(data![0].access_token_secret_id).toBeNull();
@@ -141,28 +178,176 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(stravaCard).toHaveClass(/connected/);
 	});
 
-	test('Connect failure surfaces an error toast', async ({ page }) => {
-		// Non-Strava providers use the placeholder upsert-connect path.
-		await page.route('**/rest/v1/integrations**', async (route) => {
-			const m = route.request().method();
-			if (m === 'POST' || m === 'PATCH') {
-				await route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ message: 'simulated failure' }),
-				});
-				return;
-			}
-			await route.fallback();
+	test('a truncated Strava sync is reported as partial, not as complete', async ({
+		page,
+		mockRoute
+	}) => {
+		// The backfill has four exits that leave activities in the lookback
+		// window unfetched, and only the throttle case ever carried a field —
+		// which no client declared, so all four rendered as a finished sync.
+		// The window is measured from now, so being told the sync completed is
+		// what stops the runner coming back before the rest ages out of it.
+		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
+
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					imported: 40,
+					skipped: 2,
+					failed: 0,
+					rate_limited: true,
+					complete: false,
+				}),
+			});
 		});
 
 		await page.goto('/settings/integrations');
-		const garminCard = page.locator('.integration-card', { hasText: 'Garmin' });
-		await expect(garminCard).toBeVisible({ timeout: 10_000 });
-		await garminCard.getByRole('button', { name: 'Connect' }).click();
+		const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
+		await expect(stravaCard).toHaveClass(/connected/, { timeout: 10_000 });
 
-		await expect(page.locator('.toast-error')).toBeVisible({ timeout: 5_000 });
-		await expect(garminCard).not.toHaveClass(/connected/);
+		await stravaCard.getByRole('button', { name: 'Sync now' }).click();
+
+		const toast = page.locator('.toast-info');
+		await expect(toast).toBeVisible({ timeout: 5_000 });
+		await expect(toast).toContainText('limiting requests');
+		await expect(page.locator('.toast-success')).toHaveCount(0);
+	});
+
+	test('a widened lookback is what the sync asks the function for', async ({ page, mockRoute }) => {
+		// Neither client could ask for more than 90 days, so a truncation left
+		// long enough for the missed activities to age out of that window had no
+		// in-app recovery at all — the only remaining path was the bulk export.
+		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
+
+		const requested: unknown[] = [];
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
+			requested.push(route.request().postDataJSON());
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					imported: 12,
+					skipped: 0,
+					failed: 0,
+					rate_limited: false,
+					complete: true,
+					resumable: false,
+				}),
+			});
+		});
+
+		await page.goto('/settings/integrations');
+		const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
+		await expect(stravaCard).toHaveClass(/connected/, { timeout: 10_000 });
+
+		await stravaCard.getByTestId('strava-lookback').selectOption('365');
+		await stravaCard.getByRole('button', { name: 'Sync now' }).click();
+		await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5_000 });
+
+		expect(requested).toHaveLength(1);
+		expect(requested[0]).toMatchObject({ action: 'sync', lookbackDays: 365 });
+	});
+
+	test('a truncated sync leaves a note on the card, and a finished one clears it', async ({
+		page,
+		mockRoute
+	}) => {
+		// The toast says it once and the runner dismisses it. The window is
+		// measured from now, so the record of "there is more to fetch" has to
+		// outlive the toast or the rest ages out unnoticed.
+		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
+
+		let complete = false;
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					imported: 1000,
+					skipped: 0,
+					failed: 0,
+					rate_limited: false,
+					complete,
+					resumable: !complete,
+				}),
+			});
+		});
+
+		await page.goto('/settings/integrations');
+		const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
+		await expect(stravaCard).toHaveClass(/connected/, { timeout: 10_000 });
+		await expect(stravaCard.getByTestId('strava-partial-note')).toHaveCount(0);
+
+		await stravaCard.getByRole('button', { name: 'Sync now' }).click();
+		const note = stravaCard.getByTestId('strava-partial-note');
+		await expect(note).toBeVisible({ timeout: 5_000 });
+		await expect(note).toContainText(/picks up where it stopped/i);
+
+		complete = true;
+		await stravaCard.getByRole('button', { name: 'Sync now' }).click();
+		await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5_000 });
+		await expect(stravaCard.getByTestId('strava-partial-note')).toHaveCount(0);
+	});
+
+	test('a truncation that recorded no restart point says so', async ({ page, mockRoute }) => {
+		// A throttle on the first page advances nothing, so "carry on from where
+		// we stopped" would be a claim about a point that does not exist.
+		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
+
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					imported: 0,
+					skipped: 0,
+					failed: 0,
+					rate_limited: true,
+					complete: false,
+					resumable: false,
+				}),
+			});
+		});
+
+		await page.goto('/settings/integrations');
+		const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
+		await expect(stravaCard).toHaveClass(/connected/, { timeout: 10_000 });
+
+		await stravaCard.getByRole('button', { name: 'Sync now' }).click();
+		const note = stravaCard.getByTestId('strava-partial-note');
+		await expect(note).toBeVisible({ timeout: 5_000 });
+		await expect(note).toContainText(/no restart point/i);
+	});
+
+	test('a Strava sync that completes keeps the success toast', async ({ page, mockRoute }) => {
+		// The other half of the pair: a finished walk must not be downgraded
+		// to "sync again", or the honesty fix becomes its own false alarm.
+		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
+
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					imported: 3,
+					skipped: 7,
+					failed: 0,
+					rate_limited: false,
+					complete: true,
+				}),
+			});
+		});
+
+		await page.goto('/settings/integrations');
+		const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
+		await expect(stravaCard).toHaveClass(/connected/, { timeout: 10_000 });
+
+		await stravaCard.getByRole('button', { name: 'Sync now' }).click();
+
+		await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5_000 });
+		await expect(page.locator('.toast-info')).toHaveCount(0);
 	});
 
 	test('Disconnect cancel keeps the integration connected', async ({ page }) => {
@@ -184,12 +369,15 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(stravaCard).toHaveClass(/connected/);
 
 		const admin = getAdminClient();
-		const { data } = await admin
-			.from('integrations')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.eq('provider', 'strava');
-		expect(data ?? []).toHaveLength(1);
+		const data = await readRows(
+			'integrations by user_id+provider',
+			admin
+				.from('integrations')
+				.select('id')
+				.eq('user_id', USER_B.id)
+				.eq('provider', 'strava')
+		);
+		expect(data).toHaveLength(1);
 	});
 
 	test('Strava bulk-import card renders on the integrations page (regardless of connection state)', async ({
@@ -210,9 +398,14 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(bulkCard.locator('input[type="file"]')).toHaveCount(1);
 	});
 
-	test('already-connected Garmin renders connected card + Disconnect button', async ({
+	test('a connected Garmin row is still shown, and says it can no longer sync', async ({
 		page,
 	}) => {
+		// Garmin Connect is gated `unbuilt` — its OAuth leg is blocked on
+		// Garmin's developer programme — so the card is no longer offered to a
+		// runner who has no row. A row that already exists is a different
+		// matter: hiding it would strand it, leaving no surface to disconnect
+		// from. So it renders, without an action that cannot run, and says why.
 		await plantIntegration({
 			provider: 'garmin',
 			lastSyncAt: '2026-05-09T12:30:00Z',
@@ -220,43 +413,112 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		await page.goto('/settings/integrations');
 
-		const garminCard = page.locator('.integration-card', { hasText: 'Garmin Connect' });
+		const garminCard = page.getByTestId('integration-garmin');
 		await expect(garminCard).toBeVisible({ timeout: 10_000 });
 		await expect(garminCard).toHaveClass(/connected/);
 		await expect(garminCard.getByText(/Last synced/i)).toBeVisible();
+		await expect(page.getByTestId('stranded-garmin')).toBeVisible();
 		await expect(garminCard.getByRole('button', { name: 'Disconnect' })).toBeVisible();
 		// Garmin has no live OAuth (bulk-import only), so no Sync-now affordance.
 		await expect(garminCard.getByRole('button', { name: /Sync/i })).toHaveCount(0);
 	});
 
-	test('already-connected parkrun + disconnect round-trip', async ({ page }) => {
+	test('an unconnected Garmin / HealthKit card is not offered at all', async ({ page }) => {
+		// The pair no operator can configure into existence: Garmin Connect's
+		// OAuth is blocked upstream, and HealthKit is an on-device iOS API a
+		// browser has nothing to connect to. Both used to render a live Connect
+		// button that wrote a placeholder row and synced nothing.
+		// USER_B starts with zero `integrations` rows and afterEach keeps it
+		// that way, so nothing needs planting or clearing here.
+		await page.goto('/settings/integrations');
+		// The Garmin path that DOES work on this deployment is still offered,
+		// and is the proof the page rendered before the absences below.
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Garmin export' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await expect(page.getByTestId('integration-garmin')).toHaveCount(0);
+		await expect(page.getByTestId('integration-healthkit')).toHaveCount(0);
+	});
+
+	test('a stranded Garmin row disconnects, and the card leaves with it', async ({ page }) => {
+		// The non-Strava disconnect is a bare DELETE of the row. Garmin is gated
+		// `unbuilt`, so once the row is gone nothing keeps the card on screen.
 		await plantIntegration({
-			provider: 'parkrun',
+			provider: 'garmin',
 			lastSyncAt: '2026-05-08T07:00:00Z',
 		});
 
 		await page.goto('/settings/integrations');
 
-		const parkrunCard = page.locator('.integration-card', { hasText: 'parkrun' });
-		await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
-		await expect(parkrunCard).toHaveClass(/connected/);
-		await expect(parkrunCard.getByText(/Last synced/i)).toBeVisible();
+		const garminCard = page.getByTestId('integration-garmin');
+		await expect(garminCard).toHaveClass(/connected/, { timeout: 10_000 });
 
-		await parkrunCard.getByRole('button', { name: 'Disconnect' }).click();
+		await garminCard.getByRole('button', { name: 'Disconnect' }).click();
 		const confirm = page.locator('.modal', { hasText: 'Disconnect integration?' });
 		await expect(confirm).toBeVisible({ timeout: 5_000 });
-		await expect(confirm.getByText(/parkrun/)).toBeVisible();
+		await expect(confirm.getByText(/Garmin/)).toBeVisible();
 		await confirm.getByRole('button', { name: 'Disconnect' }).click();
 
-		await expect(parkrunCard).not.toHaveClass(/connected/, { timeout: 5_000 });
-		await expect(parkrunCard.getByRole('button', { name: 'Connect' })).toBeVisible();
+		await expect(garminCard).toHaveCount(0, { timeout: 5_000 });
 
 		const admin = getAdminClient();
-		const { data } = await admin
-			.from('integrations')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.eq('provider', 'parkrun');
-		expect(data ?? []).toHaveLength(0);
+		const data = await readRows(
+			'integrations by user_id+provider',
+			admin
+				.from('integrations')
+				.select('id')
+				.eq('user_id', USER_B.id)
+				.eq('provider', 'garmin')
+		);
+		expect(data).toHaveLength(0);
+	});
+
+	test('a truncated FIRST-CONNECT backfill leaves the card saying so', async ({ page, mockRoute }) => {
+		// The connect callback is a different code path from "Sync now",
+		// and it used to grade its result and then drop everything but the
+		// toast (§ 846). It is also the sync MOST likely to come up short —
+		// the only one that walks the whole lookback window — so a silent
+		// card here is where "sync again" would never be said at all, and
+		// the un-imported runs are reachable only until they age out.
+		//
+		// The card renders the note only for a CONNECTED integration, so
+		// the row is planted: the exchange itself is mocked, and this is
+		// the state the page is in once it has refreshed after one.
+		await plantIntegration({ provider: 'strava', lastSyncAt: null });
+
+		// OAuth 2.0 §10.12: completeStravaOAuth refuses to exchange unless
+		// the echoed state matches what it stashed before redirecting out.
+		await setStorageOnLoad(page, { session: { strava_oauth_state: 'e2e-connect-state' } });
+
+		let sawConnect = false;
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
+			const body = route.request().postDataJSON() as { action?: string } | null;
+			if (body?.action === 'connect') sawConnect = true;
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					imported: 5,
+					skipped: 0,
+					failed: 0,
+					rate_limited: false,
+					complete: false,
+					resumable: true,
+				}),
+			});
+		});
+
+		await page.goto(
+			'/settings/integrations?code=e2e-code&scope=read,activity:read_all&state=e2e-connect-state',
+		);
+
+		const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
+		const note = stravaCard.getByTestId('strava-partial-note');
+		await expect(note).toBeVisible({ timeout: 10_000 });
+		await expect(note).toContainText(/picks up where it stopped/i);
+		expect(sawConnect, 'the connect exchange must have been the call that produced it').toBe(
+			true,
+		);
 	});
 });

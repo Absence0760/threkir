@@ -7,7 +7,9 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
+import '../metrics.dart';
 import '../preferences.dart';
+import '../widgets/metric_label.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart' show gymSetHistory;
 
@@ -118,13 +120,14 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
                 ),
               ),
               Text(
-                l10n.gymPrE1rm.toUpperCase(),
+                metricText(l10n, Metric.e1rm, variant: 'best').toUpperCase(),
                 style: theme.textTheme.labelSmall
                     ?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       letterSpacing: 0.8,
                     ),
               ),
+              const MetricInfoButton(metric: Metric.e1rm),
             ],
             if (p.est1RmDeltaKg != null) _deltaChip(p.est1RmDeltaKg!, theme, l10n),
           ],
@@ -206,7 +209,9 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
                           ),
                         ),
                         if (s.isWeightPr) _prBadge(theme, l10n.gymPrWeight),
-                        if (s.isEst1RmPr) _prBadge(theme, l10n.gymPrE1rm),
+                        if (s.isEst1RmPr)
+                          _prBadge(theme,
+                              metricText(l10n, Metric.e1rm, variant: 'best')),
                       ],
                     ),
                   ),
@@ -226,7 +231,8 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
                   spacing: 16,
                   children: [
                     Text(
-                      '${WeightFormat.format(s.bestEst1RmKg, activeWeightUnit)} ${l10n.gymPrE1rm}',
+                      '${WeightFormat.format(s.bestEst1RmKg, activeWeightUnit)} '
+                      '${metricText(l10n, Metric.e1rm, variant: 'best')}',
                       style: theme.textTheme.bodySmall,
                     ),
                     if (s.volumeKg > 0)

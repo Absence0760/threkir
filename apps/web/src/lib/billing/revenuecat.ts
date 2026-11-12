@@ -8,11 +8,11 @@
 /// link does the same job with zero client JS. See
 /// docs/features/paywall.md § "Client → RevenueCat SDK" + decisions.md.
 ///
-/// The CTA on `/settings/upgrade` calls `proCheckoutUrl()`; if the link
-/// isn't configured (local dev, previews, CI), the wrapper reports
-/// `configured = false` and the caller falls back to a "coming soon"
-/// toast. Keeps the settings page usable end-to-end without a real RC
-/// account.
+/// The CTA on `/settings/upgrade` renders only where `webCheckoutAvailable()`
+/// holds. Without a usable link (local dev, previews, and production until
+/// web checkout goes live) a sellable Pro is sold through the iPhone app's
+/// In-App Purchase alone, and the page says so rather than rendering a buy
+/// button that cannot take payment (decisions § 1826).
 ///
 /// Production flow:
 ///   1. The buyer is redirected to the Web Paywall Link with their
@@ -25,35 +25,43 @@
 ///      lookup by email), so no per-user SDK `getCustomerInfo()` call is
 ///      needed to derive a management URL.
 ///
-/// URL construction lives in the `$env`-free `revenuecat_links.ts` so it
+/// URL construction lives in the `$app/env`-free `revenuecat_links.ts` so it
 /// stays unit-testable; this module is the thin env-reading shell.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_REVENUECAT_WEB_CHECKOUT_URL, PUBLIC_REVENUECAT_WEB_PORTAL_URL } from '$app/env/public';
 
-import { buildCheckoutUrl } from './revenuecat_links';
+import {
+	buildCheckoutUrl,
+	checkoutBaseProblem,
+	PRO_PACKAGE_IDS,
+	type ProPlan,
+} from './revenuecat_links';
 
-// Read via `$env/dynamic/public` rather than `static/public` so an
-// unconfigured build returns an empty string and the wrapper reports
-// `configured = false`, instead of failing the SvelteKit build with a
-// 500.
+// Declared optional in src/env.ts rather than required, so an unconfigured
+// build returns an empty string and `webCheckoutAvailable()` reports false,
+// instead of failing the SvelteKit build with `env_invalid`.
 //
 // The checkout base is the project's Web Paywall Link of the form
 // `https://pay.rev.cat/<token>`; `<token>` is a public, per-project value
 // from the RevenueCat dashboard. The portal base is the no-code customer
 // portal link. Both are public by design (they're URLs a browser is
 // redirected to), so the PUBLIC_ prefix is correct.
-const CHECKOUT_BASE = env.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '';
-const PORTAL_URL = env.PUBLIC_REVENUECAT_WEB_PORTAL_URL ?? '';
+const CHECKOUT_BASE = PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '';
+const PORTAL_URL = PUBLIC_REVENUECAT_WEB_PORTAL_URL ?? '';
 
-export function isRevenueCatConfigured(): boolean {
-	return Boolean(CHECKOUT_BASE.trim());
+/// Whether this build can take a Pro payment on the web. Fail-closed: an
+/// unset link and a malformed one (not https, not pay.rev.cat, a placeholder
+/// token) both answer false, by the same `checkoutBaseProblem` test the
+/// release guard applies.
+export function webCheckoutAvailable(): boolean {
+	return checkoutBaseProblem(CHECKOUT_BASE) === null;
 }
 
-/// Build the Pro hosted-checkout URL for a specific Supabase user id.
-/// Returns `null` when the checkout link isn't configured on this build,
-/// so the caller can fail closed to the "coming soon" placeholder.
-export function proCheckoutUrl(userId: string, returnUrl?: string): string | null {
-	return buildCheckoutUrl(CHECKOUT_BASE, userId, returnUrl);
+/// Build the Pro hosted-checkout URL for a specific Supabase user id,
+/// preselecting the package for `plan`. Returns `null` when
+/// `webCheckoutAvailable()` is false, so the caller can fail closed.
+export function proCheckoutUrl(userId: string, plan: ProPlan, returnUrl?: string): string | null {
+	return buildCheckoutUrl(CHECKOUT_BASE, userId, returnUrl, PRO_PACKAGE_IDS[plan]);
 }
 
 /// The hosted subscription-management URL. RevenueCat's no-code customer

@@ -6,7 +6,10 @@
 //! track that preserves its shape within `epsilon_metres` of perpendicular
 //! distance from the straight-line chords; [`summarize_route_from_track`] folds
 //! that into the three numbers a route row carries — simplified waypoints,
-//! equirectangular distance, positive elevation gain. Perpendicular distance
+//! equirectangular distance, positive elevation gain. The gain is always taken
+//! over the RAW track and only counts a change clearing
+//! [`ELEVATION_GAIN_MIN_DELTA_M`]; see [`compute_elevation_gain`] for why both
+//! rules are load-bearing. Perpendicular distance
 //! uses an equirectangular projection centred on the chord's start, which is
 //! cheap and accurate enough at the scale RDP cares about (tens of metres).
 //!
@@ -31,6 +34,8 @@
 use core::f64::consts::PI;
 
 use heapless::Vec;
+
+use crate::geo::{lon_delta_deg, unwrap_lon_deg};
 
 const R_M: f64 = 6_371_000.0;
 
@@ -197,9 +202,19 @@ fn priority_split<const CAP: usize, F: Fn(usize, usize, usize) -> f64>(
 fn perp_distance_metres(p: &LatLng, a: &LatLng, b: &LatLng) -> f64 {
     let lat_rad = a.lat * PI / 180.0;
     let cos_lat = libm::cos(lat_rad);
-    let x = |w: &LatLng| (w.lng * PI / 180.0) * cos_lat * R_M;
+    let x = |lng_deg: f64| (lng_deg * PI / 180.0) * cos_lat * R_M;
     let y = |w: &LatLng| (w.lat * PI / 180.0) * R_M;
-    point_segment_distance(x(p), y(p), x(a), y(a), x(b), y(b))
+    // The frame is absolute — every longitude becomes metres east of the prime
+    // meridian before anything is subtracted — so `b` and `p` are expressed on
+    // `a`'s side of the antimeridian first. Identity inside a hemisphere.
+    point_segment_distance(
+        x(unwrap_lon_deg(a.lng, p.lng)),
+        y(p),
+        x(a.lng),
+        y(a),
+        x(unwrap_lon_deg(a.lng, b.lng)),
+        y(b),
+    )
 }
 
 /// Distance from the planar point `(px, py)` to the segment
@@ -224,26 +239,72 @@ pub fn point_segment_distance(px: f64, py: f64, ax: f64, ay: f64, bx: f64, by: f
     libm::sqrt(fx * fx + fy * fy)
 }
 
-/// Total positive elevation change across the polyline, in metres. A waypoint
-/// pair contributes only when both carry an elevation and the second is higher;
-/// a `None` in the middle breaks the chain rather than bridging it.
+/// The smallest elevation change that counts as climb rather than as barometric
+/// or GNSS-altitude noise. Web's `ELEVATION_GAIN_MIN_DELTA_M` and the Dart
+/// twin's `kElevationGainMinDeltaM`; the three rails must agree or the same
+/// track reports a different vert on each.
+pub const ELEVATION_GAIN_MIN_DELTA_M: f64 = 3.0;
+
+/// Total positive elevation change across the polyline, in metres, over the
+/// RAW track — never a simplified one.
+///
+/// Two rules, both load-bearing:
+///
+/// 1. A waypoint with no elevation is SKIPPED and the last valid reading is
+///    carried across the gap, so an intermittent dropout (tree cover, a tunnel,
+///    satellite reacquisition on a long ultra) does not silently erase the climb
+///    that spans the missing samples. Breaking the chain on a `None` instead
+///    loses most of the real vert on a forested section.
+/// 2. A change only counts once it clears [`ELEVATION_GAIN_MIN_DELTA_M`], and a
+///    real DESCENT moves the reference down so the next climb is measured from
+///    the valley rather than from the previous summit. Summing every positive
+///    pair turns a 1 Hz sawtooth of ±1 m on a flat road into metres of phantom
+///    vert per minute, which over a 100-mile day integrates into thousands —
+///    on a watch whose headline ultra metric is cumulative climb.
+///
+/// Callers must pass the raw track. Running this over an RDP-simplified
+/// polyline reads a hill as flat: RDP measures perpendicular distance in 2-D
+/// only, so a straight road over a summit collapses to its endpoints and the
+/// climb between them disappears.
 pub fn compute_elevation_gain(track: &[LatLng]) -> f64 {
+    elevation_gain_from_samples(track.iter().map(|p| p.ele))
+}
+
+/// The rule above, over bare altitude samples rather than over [`LatLng`].
+///
+/// Web states the rule once and reaches it from both callers because
+/// `computeElevationGain` is typed structurally — a run's `TrackPoint` and a
+/// route's waypoint both satisfy `{ ele }`. Rust has no such subtyping, and the
+/// watch has no allocator to build one shape out of the other, so the seam is
+/// this iterator: [`crate::run_stats::elevation_gain_metres`] feeds it a run's
+/// track and [`compute_elevation_gain`] a route's polyline, and neither
+/// restates the gate. Restating it is exactly how the two came to answer
+/// differently for the same terrain.
+pub fn elevation_gain_from_samples(samples: impl Iterator<Item = Option<f64>>) -> f64 {
     let mut gain = 0.0;
-    for i in 1..track.len() {
-        if let (Some(prev), Some(curr)) = (track[i - 1].ele, track[i].ele) {
-            if curr > prev {
-                gain += curr - prev;
-            }
+    let mut reference: Option<f64> = None;
+    for sample in samples {
+        let Some(ele) = sample else { continue };
+        let Some(reference_m) = reference else {
+            reference = Some(ele);
+            continue;
+        };
+        let delta = ele - reference_m;
+        if delta >= ELEVATION_GAIN_MIN_DELTA_M {
+            gain += delta;
+            reference = Some(ele);
+        } else if delta <= -ELEVATION_GAIN_MIN_DELTA_M {
+            reference = Some(ele);
         }
     }
     gain
 }
 
 /// Turn a raw GPS track into the route-row inputs: simplified waypoints,
-/// summed equirectangular distance, and positive elevation gain over the
-/// simplified polyline. Distance uses a `cos(midLat)` east-west correction, so
-/// it is exact for east-west travel at any latitude and close enough at running
-/// scales elsewhere.
+/// summed equirectangular distance, and positive elevation gain over the RAW
+/// track. Distance uses a `cos(midLat)` east-west correction, so it is exact
+/// for east-west travel at any latitude and close enough at running scales
+/// elsewhere.
 pub fn summarize_route_from_track(track: &[LatLng], epsilon_metres: f64) -> RouteSummary {
     let simplified = simplify_track(track, epsilon_metres);
     let mut waypoints: Vec<LatLng, MAX_SIMPLIFY_POINTS> = Vec::new();
@@ -259,7 +320,7 @@ pub fn summarize_route_from_track(track: &[LatLng], epsilon_metres: f64) -> Rout
         let a = simplified[i - 1];
         let b = simplified[i];
         let d_lat = (b.lat - a.lat) * PI / 180.0;
-        let d_lng = (b.lng - a.lng) * PI / 180.0;
+        let d_lng = lon_delta_deg(a.lng, b.lng) * PI / 180.0;
         let mid_lat = ((a.lat + b.lat) / 2.0) * PI / 180.0;
         let x = d_lng * libm::cos(mid_lat);
         let y = d_lat;
@@ -268,7 +329,10 @@ pub fn summarize_route_from_track(track: &[LatLng], epsilon_metres: f64) -> Rout
     RouteSummary {
         waypoints,
         distance_m: distance,
-        elevation_m: compute_elevation_gain(&simplified),
+        // Gain comes off the RAW track. Measuring it over `simplified` reads a
+        // hill as flat — RDP works in 2-D, so a straight road over a summit
+        // collapses to its endpoints and the climb between them vanishes.
+        elevation_m: compute_elevation_gain(track),
     }
 }
 
@@ -484,9 +548,65 @@ mod tests {
     }
 
     #[test]
-    fn elevation_gain_null_elevations_are_skipped() {
+    fn elevation_gain_a_dropout_carries_the_last_reading_across_the_gap() {
+        // A missing sample is a dropout, not a plateau. Breaking the chain on
+        // it erased the climb spanning the gap - on a tree-covered or tunnelled
+        // section of a long run, most of the real vert.
         let track = [lle(0.0, 0.0, 100.0), ll(0.0, 0.001), lle(0.0, 0.002, 110.0)];
+        assert_eq!(compute_elevation_gain(&track), 10.0);
+        // Multiple consecutive dropouts behave the same.
+        let longer = [
+            lle(0.0, 0.0, 100.0),
+            ll(0.0, 0.001),
+            ll(0.0, 0.002),
+            lle(0.0, 0.003, 130.0),
+            lle(0.0, 0.004, 120.0),
+            lle(0.0, 0.005, 125.0),
+        ];
+        assert_eq!(compute_elevation_gain(&longer), 35.0);
+    }
+
+    #[test]
+    fn elevation_gain_jitter_inside_the_noise_band_is_not_climb() {
+        // A 1 Hz sawtooth of +/-1 m around a flat road. Summing every positive
+        // pair turned this into metres of phantom vert per minute; over a
+        // 100-mile day it integrates into thousands.
+        let track: std::vec::Vec<LatLng> = (0..200)
+            .map(|i| lle(0.0, f64::from(i) * 0.0001, 100.0 + f64::from(i % 2)))
+            .collect();
         assert_eq!(compute_elevation_gain(&track), 0.0);
+    }
+
+    #[test]
+    fn elevation_gain_a_real_climb_through_jitter_is_counted_in_full() {
+        // 100 m of climb delivered in 4 m steps with +/-1 m noise on top.
+        let track: std::vec::Vec<LatLng> = (0..=25)
+            .map(|i| {
+                lle(
+                    0.0,
+                    f64::from(i) * 0.0001,
+                    100.0 + f64::from(i) * 4.0 + f64::from(i % 2),
+                )
+            })
+            .collect();
+        let gain = compute_elevation_gain(&track);
+        assert!(
+            (98.0..=102.0).contains(&gain),
+            "expected ~100 m, got {gain}"
+        );
+    }
+
+    #[test]
+    fn elevation_gain_a_descent_resets_the_reference_to_the_valley() {
+        // Up 50, down 50, up 50 = 100 m of gain, not 50: the second climb must
+        // be measured from the bottom, not from the first summit.
+        let track = [
+            lle(0.0, 0.0, 100.0),
+            lle(0.0, 0.001, 150.0),
+            lle(0.0, 0.002, 100.0),
+            lle(0.0, 0.003, 150.0),
+        ];
+        assert_eq!(compute_elevation_gain(&track), 100.0);
     }
 
     #[test]
@@ -514,6 +634,27 @@ mod tests {
             "expected ~50 m gain, got {}",
             out.elevation_m
         );
+    }
+
+    #[test]
+    fn summarize_a_hill_that_simplifies_away_still_reports_its_climb() {
+        // A dead-straight road over a summit. RDP measures perpendicular
+        // distance in 2-D only, so every intermediate point collapses - and
+        // computing gain over the simplified polyline reported this 50 m climb
+        // as 0.
+        let track: std::vec::Vec<LatLng> = (0..=20)
+            .map(|i| {
+                let up = if i <= 10 { i } else { 20 - i };
+                lle(0.0, f64::from(i) * 0.0001, 100.0 + f64::from(up) * 5.0)
+            })
+            .collect();
+        let out = summarize_route_from_track(&track, 10.0);
+        assert_eq!(
+            out.waypoints.len(),
+            2,
+            "a straight line collapses to its endpoints"
+        );
+        assert_eq!(out.elevation_m, 50.0);
     }
 
     #[test]
@@ -567,6 +708,40 @@ mod tests {
             (ratio - 0.5).abs() < 0.001,
             "expected cos(60) ~ 0.5 ratio, got {}",
             ratio
+        );
+    }
+
+    #[test]
+    fn simplify_a_straight_line_across_the_antimeridian_collapses_to_its_endpoints() {
+        let line = [
+            ll(0.0, 179.98),
+            ll(0.0, 179.99),
+            ll(0.0, -180.0),
+            ll(0.0, -179.99),
+            ll(0.0, -179.98),
+        ];
+        let out = simplify_track(&line, 10.0);
+        assert_eq!(out.len(), 2, "kept {:?}", out.len());
+        assert_eq!(out[0], line[0]);
+        assert_eq!(out[1], line[4]);
+    }
+
+    #[test]
+    fn simplify_a_real_deviation_across_the_antimeridian_survives() {
+        // 50 m north of the chord, well clear of the 10 m tolerance.
+        let off = 50.0 / 111_194.93;
+        let line = [ll(0.0, 179.98), ll(off, -179.99), ll(0.0, -179.96)];
+        let out = simplify_track(&line, 10.0);
+        assert_eq!(out.len(), 3, "a real deviation must survive");
+    }
+
+    #[test]
+    fn summarize_a_leg_across_the_antimeridian_measures_the_short_way() {
+        let out = summarize_route_from_track(&[ll(0.0, 179.98), ll(0.0, -179.96)], 10.0);
+        assert!(
+            libm::fabs(out.distance_m - 6671.7) < 1.0,
+            "got {}",
+            out.distance_m
         );
     }
 }

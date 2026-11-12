@@ -36,7 +36,7 @@ select ok(
 
 select ok(
   pg_temp.has_trgm_gin_index('routes', 'name'),
-  'routes.name has a trgm GIN index (search_public_routes)'
+  'routes.name has a trgm GIN index (public route search on the public_routes view)'
 );
 
 select ok(

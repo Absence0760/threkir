@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/event_gym_template.dart';
+import '../lib/gym_routine.dart';
 import '../lib/session_steps.dart';
 
 SessionStep _step({
@@ -224,6 +225,102 @@ void main() {
       expect(d.sets[0].exerciseName, 'Push-up');
       expect(d.sets[0].durationS, isNull);
       expect(d.sets[0].reps, 12);
+    });
+  });
+
+  group('workoutDraftFromRoutine', () {
+    const routine = PlannedRoutine(
+      title: 'Lower Body',
+      exercises: [
+        PlannedExercise(
+          exerciseName: 'Romanian Deadlift',
+          position: 1,
+          sets: [
+            PlannedSet(
+              setIndex: 0,
+              targetRepsMin: 8,
+              targetRepsMax: 10,
+              targetWeightKg: 50,
+            ),
+          ],
+        ),
+        PlannedExercise(
+          exerciseName: 'Back Squat',
+          position: 0,
+          sets: [
+            PlannedSet(
+              setIndex: 1,
+              targetRepsMin: 5,
+              targetRepsMax: 5,
+              targetWeightKg: 62.5,
+              targetRpe: 8,
+            ),
+            PlannedSet(
+              setIndex: 0,
+              targetRepsMin: 5,
+              targetRepsMax: 5,
+              targetWeightKg: 60,
+              targetRpe: 7.5,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    List<(String, int?, double?, double?)> rows(RoutineWorkoutDraft d) => [
+          for (final s in d.sets) (s.exerciseName, s.reps, s.weightKg, s.rpe),
+        ];
+
+    test('title from discipline when present', () {
+      final d = workoutDraftFromRoutine(routine, 'Strength 101');
+      expect(d.title, 'Strength 101');
+      expect(d.durationS, isNull);
+    });
+
+    test('whitespace-only discipline falls back to the routine title', () {
+      expect(workoutDraftFromRoutine(routine, '  ').title, 'Lower Body');
+      expect(workoutDraftFromRoutine(routine, null).title, 'Lower Body');
+    });
+
+    test('one set per planned set, by position then set index', () {
+      expect(rows(workoutDraftFromRoutine(routine, null)), [
+        ('Back Squat', 5, 60.0, 7.5),
+        ('Back Squat', 5, 62.5, 8.0),
+        ('Romanian Deadlift', 8, 50.0, null),
+      ]);
+    });
+
+    test('a fractional rep target reads as no reps', () {
+      final d = workoutDraftFromRoutine(
+        const PlannedRoutine(title: 'T', exercises: [
+          PlannedExercise(
+            exerciseName: 'Plank',
+            position: 0,
+            sets: [PlannedSet(setIndex: 0, targetRepsMin: 7.5)],
+          ),
+        ]),
+        null,
+      );
+      expect(rows(d), [('Plank', null, null, null)]);
+    });
+
+    test('empty routine has no sets; a set-less exercise keeps one blank row',
+        () {
+      expect(
+        workoutDraftFromRoutine(
+          const PlannedRoutine(title: 'Empty', exercises: []),
+          null,
+        ).sets,
+        isEmpty,
+      );
+      final d = workoutDraftFromRoutine(
+        const PlannedRoutine(title: 'T', exercises: [
+          PlannedExercise(exerciseName: '  ', position: 0, sets: []),
+          PlannedExercise(exerciseName: 'Burpee', position: 1, sets: []),
+        ]),
+        null,
+      );
+      expect(rows(d), [('Burpee', null, null, null)]);
     });
   });
 }

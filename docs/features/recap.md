@@ -17,11 +17,16 @@ top week, unique routes, photo + PR counts, an earned trophy grid, and a
 
 `apps/web/src/lib/runs/recap.ts` ↔ `apps/mobile_android/lib/recap.dart` (kept
 byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
-31 web mirror tests / 30 Dart).
+40 web mirror tests / 36 Dart).
 
 - `buildYearInRunningRecap(runs, year, extras?)` → `YearInRunningRecap`.
   Pass **all** the user's runs (not just the year's) so the streak can extend
-  across the year boundary. Totals + most-used-activity are cross-modal
+  across the year boundary. `bestStreakDays` is the **period's** best, not the
+  all-time best: only a streak reaching the period counts, and one that does
+  counts at its full length (28 Dec → 3 Jan is seven days on the January card).
+  A streak that ended before the period contributes nothing — see
+  [decisions.md § 577](../architecture/decisions.md). Totals +
+  most-used-activity are cross-modal
   (cycling included); **longest run + fastest pace are run-family only** (a bike
   ride can't masquerade as the year's longest run). Filters by **local**
   calendar year so a New Year's Eve evening run files correctly.
@@ -31,9 +36,15 @@ byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
   UI).
 - `computeRecapBadges(...)` → the earned-only trophy grid: one badge per
   category, highest tier reached wins.
-- `RecapExtras { photoCount, personalRecordCount }` — the two counts the engine
-  can't derive from `Run` rows; the page fetches them (`fetchRecapExtras` in
-  `core/data.ts`) and passes them in. Negative inputs clamp to 0.
+- `RecapExtras { photoCount, personalRecordCount, parkCourseCount, parkCount }`.
+  The park pair comes from the period's park course efforts through
+  `recapParkSummary` (`park_courses` pair, decisions § 2405); the recap shows a
+  park courses card when there are any, and the owner's page (not a published
+  snapshot, which keeps only the counts) lists each park run. Mobile reads
+  only the park pair today. None of the four can be derived from `Run` rows;
+  web fetches the photo and PR counts with `fetchRecapExtras` and the park
+  efforts with `fetchRecapParkCourses` (both in `core/data.ts`). Negative
+  inputs clamp to 0.
 - `recapHeadline(recap, 'km'|'mi')` — the one-line share-copy summary.
 - `recapSnapshotJson(recap)` (Dart only) — serialises the recap into the
   frozen-snapshot field shape the web `YearInRunningRecap` object carries, so a
@@ -48,9 +59,35 @@ byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
 - **Web monthly:** `/recap/[year]/[month]` — same `RecapView`, month engine,
   no 12-month strip.
 - **Web in-app share card:** `lib/share/recap_share_image.ts`
-  (`buildRecapShareSvg`, 1080² SVG) → rasterised client-side via
-  `lib/share/svg_to_png.ts` → OS share sheet / download. Pass a `periodLabel`
-  for the monthly kicker.
+  (`buildRecapShareSvg`, a 1080² SVG, or 1080x1920 with `{ aspect: 'story' }`)
+  → rasterised client-side via `lib/format/svg_raster.ts` → OS share sheet /
+  download. The text comes from `lib/share/recap_card_text.ts`
+  (`recapCardText`), which reads the web catalogue (`recap.heroKicker` /
+  `recap.monthHeroKicker`, `recap.card*`), so the image is in the reader's
+  language; pass a `periodLabel` for the monthly kicker. **Share recap** shares
+  the square, **Share as story** the 9:16 one. Both aspects take their
+  coordinates from `lib/share/recap_card_layout.ts` (decisions § 2260).
+- **Web slideshow video (decisions § 2269):** **Make a video** in the recap
+  hero renders a 1080x1920, 30 fps MP4 (WebM where only `MediaRecorder` can
+  encode) in the browser and shows a preview, then **Share or save video**
+  hands it to the OS share sheet or a download. `lib/share/recap_slideshow.ts`
+  picks the slides (title, then up to six of longest run, biggest month with a
+  12-bar chart on a yearly recap, top week, fastest pace, best streak, climb,
+  personal records, trophies, then a Threkir end card) from the text
+  `RecapView` formats with the page's own `fmtKm` / `fmtPace` and catalogue
+  keys; `recap_slideshow_video.ts` draws them on a canvas and encodes through
+  `lib/video/encode_video.ts`, the encoder the flyover export uses. No map, so
+  no tiles and no consent gate. Where the browser can encode nothing the
+  action is replaced by a note. `?video=1` (the phone's Video option) starts
+  it on load. Both chunks load on first use.
+- **Mobile share image:** the share action on `RecapScreen` opens a sheet
+  (`widgets/recap_share_card.dart`) with a Square / Story choice, a preview, an
+  image share and the old text share. `RecapShareCard` paints the web card's
+  six cells in its dark palette from `recap_card_layout.dart`, the Dart half of
+  the `recap_card_layout` parity pair, so both platforms post the same layout.
+  A third **Video** option explains that the video is made on the web and
+  opens `/recap/<year>[/<month>]?video=1` in the browser
+  (`recapVideoExportUrl`), as the run share sheet's Video style does.
 - **Mobile:** `RecapScreen` (from the dashboard). Web's two routes collapse into
   one screen: a Year / Month `SegmentedButton` picks the engine, and the
   chevrons below it step by year or by calendar month (`DateTime` normalises the

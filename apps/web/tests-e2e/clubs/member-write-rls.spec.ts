@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { readCount, readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Server-side permission backstop. The club detail UI hides the post
@@ -64,11 +65,14 @@ test.describe('club write-path RLS — UI gates are not the security boundary', 
 
 		// Belt-and-braces: this exact body never landed.
 		const admin = getAdminClient();
-		const { count } = await admin
-			.from('club_posts')
-			.select('id', { count: 'exact', head: true })
-			.eq('club_id', RICHMOND_ID)
-			.eq('body', body);
+		const count = await readCount(
+			'club_posts by club_id+body',
+			admin
+				.from('club_posts')
+				.select('id', { count: 'exact', head: true })
+				.eq('club_id', RICHMOND_ID)
+				.eq('body', body)
+		);
 		expect(count).toBe(0);
 	});
 
@@ -85,24 +89,30 @@ test.describe('club write-path RLS — UI gates are not the security boundary', 
 
 		try {
 			const alex = await signedInClient(USER_B);
-			const { data } = await alex
-				.from('club_members')
-				.update({ status: 'active' })
-				.eq('club_id', RICHMOND_ID)
-				.eq('user_id', USER_C_PRO.id)
-				.select('user_id');
+			const data = await readRows(
+				'club_members by club_id+user_id',
+				alex
+					.from('club_members')
+					.update({ status: 'active' })
+					.eq('club_id', RICHMOND_ID)
+					.eq('user_id', USER_C_PRO.id)
+					.select('user_id')
+			);
 			// Either a hard reject or (more typically) a silent zero-row
 			// update — the RLS USING clause excludes the row for a non-admin.
-			expect(data ?? []).toEqual([]);
+			expect(data).toEqual([]);
 
 			// Authoritative check: the status is still pending.
-			const { data: row } = await admin
-				.from('club_members')
-				.select('status')
-				.eq('club_id', RICHMOND_ID)
-				.eq('user_id', USER_C_PRO.id)
-				.single();
-			expect(row?.status).toBe('pending');
+			const row = await readRow(
+				'club_members by club_id+user_id',
+				admin
+					.from('club_members')
+					.select('status')
+					.eq('club_id', RICHMOND_ID)
+					.eq('user_id', USER_C_PRO.id)
+					.single()
+			);
+			expect(row.status).toBe('pending');
 		} finally {
 			await admin
 				.from('club_members')
@@ -117,21 +127,27 @@ test.describe('club write-path RLS — UI gates are not the security boundary', 
 		// The admins-only UPDATE policy blocks it — alex stays a member.
 		const admin = getAdminClient();
 		const alex = await signedInClient(USER_B);
-		const { data } = await alex
-			.from('club_members')
-			.update({ role: 'admin' })
-			.eq('club_id', RICHMOND_ID)
-			.eq('user_id', USER_B.id)
-			.select('user_id');
-		expect(data ?? []).toEqual([]);
+		const data = await readRows(
+			'club_members by club_id+user_id',
+			alex
+				.from('club_members')
+				.update({ role: 'admin' })
+				.eq('club_id', RICHMOND_ID)
+				.eq('user_id', USER_B.id)
+				.select('user_id')
+		);
+		expect(data).toEqual([]);
 
-		const { data: row } = await admin
-			.from('club_members')
-			.select('role')
-			.eq('club_id', RICHMOND_ID)
-			.eq('user_id', USER_B.id)
-			.single();
-		expect(row?.role).toBe('member');
+		const row = await readRow(
+			'club_members by club_id+user_id',
+			admin
+				.from('club_members')
+				.select('role')
+				.eq('club_id', RICHMOND_ID)
+				.eq('user_id', USER_B.id)
+				.single()
+		);
+		expect(row.role).toBe('member');
 	});
 
 	test('a plain member cannot remove a different member (DELETE only self or admin)', async () => {
@@ -142,22 +158,28 @@ test.describe('club write-path RLS — UI gates are not the security boundary', 
 		// rows.
 		const admin = getAdminClient();
 		const alex = await signedInClient(USER_B);
-		const { data } = await alex
-			.from('club_members')
-			.delete()
-			.eq('club_id', RICHMOND_ID)
-			.eq('user_id', USER_A.id)
-			.select('user_id');
-		expect(data ?? []).toEqual([]);
+		const data = await readRows(
+			'club_members by club_id+user_id',
+			alex
+				.from('club_members')
+				.delete()
+				.eq('club_id', RICHMOND_ID)
+				.eq('user_id', USER_A.id)
+				.select('user_id')
+		);
+		expect(data).toEqual([]);
 
 		// The owner row is intact.
-		const { data: owner } = await admin
-			.from('club_members')
-			.select('role, status')
-			.eq('club_id', RICHMOND_ID)
-			.eq('user_id', USER_A.id)
-			.single();
-		expect(owner?.role).toBe('owner');
-		expect(owner?.status).toBe('active');
+		const owner = await readRow(
+			'club_members by club_id+user_id',
+			admin
+				.from('club_members')
+				.select('role, status')
+				.eq('club_id', RICHMOND_ID)
+				.eq('user_id', USER_A.id)
+				.single()
+		);
+		expect(owner.role).toBe('owner');
+		expect(owner.status).toBe('active');
 	});
 });

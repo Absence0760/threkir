@@ -1,14 +1,17 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/gate_crossing.dart';
 import '../lib/segments.dart';
 
 /// Synthesises a straight-line track at constant pace. Each step adds
 /// roughly `stepM` of distance and `stepS` seconds. Lat advances along
 /// a meridian (~111_320 m per degree) so haversine-cumulated distance
 /// matches `(i * stepM)` to about half a metre. Mirrors the
-/// `straightTrack` helper in `apps/web/src/lib/segments.test.ts`.
+/// `straightTrack` helper in `apps/web/src/lib/segments/segments.test.ts`.
 List<Waypoint> _straightTrack({
   required int points,
   required double stepM,
@@ -237,6 +240,64 @@ void main() {
     expect((eff!.timeSeconds - 100).abs() < 2, isTrue);
   });
 
+  test('checkpoints: a run passing every checkpoint in order matches', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        checkpoints: [coordAt(250), coordAt(450)],
+      ),
+    );
+    expect(eff, isNotNull);
+    expect((eff!.timeSeconds - 100).abs() < 1, isTrue);
+  });
+
+  test('checkpoints: a checkpoint the run never passes refuses the match', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // ~1 km east of the track: the far side of a cut-through.
+        checkpoints: [
+          const Waypoint(lat: 37.0 + 350 / 111320, lng: -121.988),
+        ],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
+  test('checkpoints: checkpoints passed out of order refuse the match', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        checkpoints: [coordAt(450), coordAt(250)],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
+  test('checkpoints: a checkpoint outside the start-end window refuses the match',
+      () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // On the track, but after the end crossing.
+        checkpoints: [coordAt(800)],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
   // ─── computeGlobalSegmentEfforts (catalogue sweep) ───
 
   /// `n` catalogue geometries spread around the world, none near `coordAt`.
@@ -448,5 +509,193 @@ void main() {
     }
     expect(matched >= 10, isTrue,
         reason: 'oracle produced too few matches to be meaningful ($matched)');
+  });
+
+  // ─── Line position: the smoother's fix over the raw one ───
+
+  /// [_straightTrack] whose raw fixes alternate 20 m either side of the
+  /// meridian while each fix's smoothedLat / smoothedLng sits on it — a run
+  /// that followed the line but whose raw positions zig-zag. Raw hops are
+  /// ~40 m against the line's ~5 m, so raw-summed distance reads ~8x long.
+  /// Mirrors `zigZagTrack` in `apps/web/src/lib/segments/segments.test.ts`.
+  List<Waypoint> zigZagTrack(String pair) {
+    final lngOff = 20 / (111320 * math.cos(37 * math.pi / 180));
+    final straight = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    return [
+      for (var i = 0; i < straight.length; i++)
+        Waypoint(
+          lat: straight[i].lat,
+          lng: straight[i].lng + (i.isEven ? lngOff : -lngOff),
+          timestamp: straight[i].timestamp,
+          smoothedLat:
+              pair == 'both' || pair == 'latOnly' ? straight[i].lat : null,
+          smoothedLng:
+              pair == 'both' || pair == 'lngOnly' ? straight[i].lng : null,
+        ),
+    ];
+  }
+
+  test('line: a global segment is matched on the smoothed line through a raw zig-zag',
+      () {
+    final segment = GlobalSegmentGeometry(
+      points: [coordAt(100), coordAt(600)],
+      distanceM: 500,
+    );
+    // Raw: ~4026 m covered between the crossings fails the 25% end-to-end guard.
+    expect(computeGlobalSegmentEffort(zigZagTrack('none'), segment), isNull);
+    final eff = computeGlobalSegmentEffort(zigZagTrack('both'), segment);
+    expect(eff, isNotNull);
+    // The crossings land on fixes 20 and 120, 1 s apart each: 100 s from t0+20 s.
+    expect((eff!.timeSeconds - 100).abs() < 1e-6, isTrue);
+    expect(eff.startedAt, DateTime.utc(2026, 1, 1, 0, 0, 20));
+  });
+
+  test('line: a route slice is timed on the smoothed line distance', () {
+    const slice = SegmentSlice(startDistanceM: 100, endDistanceM: 600);
+    // Raw-summed distance reaches 600 m after ~15 s: a 12.4 s "effort".
+    final raw = computeEffortFromTrack(zigZagTrack('none'), slice);
+    expect(raw, isNotNull);
+    expect(raw!.timeSeconds < 13, isTrue);
+    // On the line the slice is the ~100.1 s it took, crossed at ~t0+20.02 s.
+    final eff = computeEffortFromTrack(zigZagTrack('both'), slice);
+    expect(eff, isNotNull);
+    expect((eff!.timeSeconds - 100.11).abs() < 0.01, isTrue);
+    expect(eff.startedAt, DateTime.utc(2026, 1, 1, 0, 0, 20, 22));
+  });
+
+  test('line: half a smoothed pair falls back to the raw fix', () {
+    const slice = SegmentSlice(startDistanceM: 100, endDistanceM: 600);
+    final segment = GlobalSegmentGeometry(
+      points: [coordAt(100), coordAt(600)],
+      distanceM: 500,
+    );
+    final raw = computeEffortFromTrack(zigZagTrack('none'), slice)!;
+    for (final pair in ['latOnly', 'lngOnly']) {
+      final eff = computeEffortFromTrack(zigZagTrack(pair), slice);
+      expect(eff, isNotNull, reason: pair);
+      expect(eff!.timeSeconds, raw.timeSeconds, reason: pair);
+      expect(eff.startedAt, raw.startedAt, reason: pair);
+      expect(computeGlobalSegmentEffort(zigZagTrack(pair), segment), isNull,
+          reason: pair);
+    }
+  });
+
+  // ─── the shared gate-matching cases (#1308, decisions § 2402) ──────────
+  //
+  // The Dart reader of fixtures/segments_gate_cases.json, the case table the
+  // `segments` pair shares with apps/web/src/lib/segments/segments.test.ts.
+  final gateFixture = jsonDecode(
+          File('../../fixtures/segments_gate_cases.json').readAsStringSync())
+      as Map<String, dynamic>;
+  final gateBase = DateTime.parse(gateFixture['base_time'] as String);
+  final gateCases =
+      (gateFixture['cases'] as List).cast<Map<String, dynamic>>();
+
+  Gate? fixtureGate(Object? raw) {
+    if (raw == null) return null;
+    final g = raw as Map<String, dynamic>;
+    return Gate(
+      lat: (g['lat'] as num).toDouble(),
+      lng: (g['lng'] as num).toDouble(),
+      bearingDeg: (g['bearing_deg'] as num).toDouble(),
+      halfWidthM: (g['half_width_m'] as num).toDouble(),
+    );
+  }
+
+  List<Waypoint> fixturePoints(Object? raw) => [
+        for (final p in (raw as List? ?? const []).cast<Map<String, dynamic>>())
+          Waypoint(
+            lat: (p['lat'] as num).toDouble(),
+            lng: (p['lng'] as num).toDouble(),
+          ),
+      ];
+
+  for (final c in gateCases) {
+    test('gate fixture: ${c['name']}', () {
+      final segment = c['segment'] as Map<String, dynamic>;
+      final track = [
+        for (final p in (c['track'] as List).cast<Map<String, dynamic>>())
+          Waypoint(
+            lat: (p['lat'] as num).toDouble(),
+            lng: (p['lng'] as num).toDouble(),
+            timestamp: gateBase.add(Duration(
+                milliseconds: ((p['t'] as num) * 1000).round())),
+            offTrack: p['off_track'] == true,
+          ),
+      ];
+      final got = computeGlobalSegmentEffort(
+        track,
+        GlobalSegmentGeometry(
+          points: fixturePoints(segment['points']),
+          distanceM: (segment['distance_m'] as num).toDouble(),
+          checkpoints: fixturePoints(segment['checkpoints']),
+          startGate: fixtureGate(segment['start_gate']),
+          endGate: fixtureGate(segment['end_gate']),
+        ),
+      );
+      final expected = c['expect'] as Map<String, dynamic>?;
+      if (expected == null) {
+        expect(got, isNull);
+        return;
+      }
+      expect(got, isNotNull);
+      expect(got!.matchedBy.name, expected['matched_by']);
+      expect(
+        (got.timeSeconds - (expected['time_seconds'] as num)).abs() < 0.001,
+        isTrue,
+        reason: 'time ${got.timeSeconds} vs ${expected['time_seconds']}',
+      );
+      expect(got.startedAt.difference(gateBase).inMilliseconds,
+          expected['started_offset_ms']);
+    });
+  }
+
+  test('the gate fixture covers every case the issue lists', () {
+    final names = gateCases.map((c) => c['name'] as String).join('\n');
+    for (final needle in [
+      'parallel path 20 m',
+      'hairpin',
+      'wrong direction',
+      'two passes',
+      'loop',
+      'no lines falls back',
+      'interpolated time',
+      'off-track',
+    ]) {
+      expect(names.contains(needle), isTrue, reason: 'no case for "$needle"');
+    }
+  });
+
+  test(
+      'a circle match reports matched_by zone, and the matcher version is '
+      'past the two-pass loop rule of 2', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(points: [track[10], track[100]], distanceM: 450),
+    );
+    expect(eff?.matchedBy, GlobalSegmentMatchedBy.zone);
+    expect(kGlobalSegmentMatcherVersion, 3);
+  });
+
+  test(
+      'linesChain: a loop finishing on its start line, facing within 90 '
+      'degrees of it, chains its laps', () {
+    Gate at(double bearingDeg, {double northM = 0}) => Gate(
+          lat: 37.5 + northM / 111195,
+          lng: -77.5,
+          bearingDeg: bearingDeg,
+          halfWidthM: 15,
+        );
+    // Beaver Lake: one point, the finish facing 38 degrees off the start.
+    expect(linesChain(at(153.1), at(191.5)), isTrue);
+    // Across north: 350 and 20 are 30 degrees apart, not 330.
+    expect(linesChain(at(350), at(20)), isTrue);
+    // A lollipop finishes facing back the way it started: the runner turns
+    // first.
+    expect(linesChain(at(48.5), at(228.5)), isFalse);
+    // 14 m off is within the start line's reach, 20 m is not.
+    expect(linesChain(at(90), at(90, northM: 14)), isTrue);
+    expect(linesChain(at(90), at(90, northM: 20)), isFalse);
   });
 }

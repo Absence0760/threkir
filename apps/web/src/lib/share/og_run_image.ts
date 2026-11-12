@@ -15,10 +15,14 @@
 
 import { formatDateStable, formatKmStable } from './share_meta';
 import { OG_CARD_LIGHT } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
+import { escapeXml } from '../util/html_escape';
+import { grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
 const PAD = 40;
+const RUN_GRISNIR_HEIGHT = 168;
 
 const BG = OG_CARD_LIGHT.bg;
 const BRAND = OG_CARD_LIGHT.brand;
@@ -46,15 +50,20 @@ export function buildRunOgSvg(input: RunImageInput): string {
 
 	// Brand strap, top-left.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 24}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
+		`<text x="${PAD}" y="${PAD + 24}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
 	);
+
+	// Grisnir, top-right: the hero is centred below him and the source tag
+	// holds the bottom-right corner. A little under the shared height, so he
+	// ends above the numeral's glyphs (y 205) however wide it runs.
+	parts.push(grisnirBadgeSvg(W - PAD - grisnirBadgeWidth(RUN_GRISNIR_HEIGHT), PAD - 8, RUN_GRISNIR_HEIGHT));
 
 	// Main stat — distance, centred horizontally. The 1200×630 canvas
 	// scales to ~600 px for a confident, unfurl-card-style hero.
 	const km = formatKmStable(input.distance_m);
 	const heroText = km || 'Run';
 	parts.push(
-		`<text x="${W / 2}" y="${H / 2 + 20}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="180" font-weight="800" fill="${STAT_FILL}" text-anchor="middle">${xmlEscape(heroText)}</text>`,
+		`<text x="${W / 2}" y="${H / 2 + 20}" font-family="${OG_FONT_STACK}" font-size="180" font-weight="800" fill="${STAT_FILL}" text-anchor="middle">${escapeXml(heroText)}</text>`,
 	);
 
 	// Sub-line: "by NAME on DATE" — composed from whatever bits are
@@ -62,14 +71,14 @@ export function buildRunOgSvg(input: RunImageInput): string {
 	const sub = buildSubline(input);
 	if (sub) {
 		parts.push(
-			`<text x="${W / 2}" y="${H / 2 + 100}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="44" font-weight="500" fill="${META_FILL}" text-anchor="middle">${xmlEscape(sub)}</text>`,
+			`<text x="${W / 2}" y="${H / 2 + 100}" font-family="${OG_FONT_STACK}" font-size="44" font-weight="500" fill="${META_FILL}" text-anchor="middle">${escapeXml(sub)}</text>`,
 		);
 	}
 
 	// Source tag (strava / parkrun / etc) bottom-right when present.
 	if (input.source) {
 		parts.push(
-			`<text x="${W - PAD}" y="${H - PAD}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="600" fill="${META_FILL}" text-anchor="end">${xmlEscape(input.source)}</text>`,
+			`<text x="${W - PAD}" y="${H - PAD}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="600" fill="${META_FILL}" text-anchor="end">${escapeXml(input.source)}</text>`,
 		);
 	}
 
@@ -84,13 +93,4 @@ export function buildSubline(input: RunImageInput): string {
 	if (by) return `by ${by}`;
 	if (date) return date;
 	return '';
-}
-
-export function xmlEscape(s: string): string {
-	return s
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
 }

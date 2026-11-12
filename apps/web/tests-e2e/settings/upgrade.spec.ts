@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /settings/upgrade — two-tier Free vs Pro comparison + one-off donate
@@ -9,7 +10,8 @@ import { USER_A, USER_C_PRO } from '../fixtures/users';
  * paywall-feature-gates.spec.ts covers the Free / Pro CTA matrix
  * (Get Pro vs Manage subscription, Active badge). This file pins the
  * polished structure: tier-grid layout, per-tier feature-list shape,
- * "Most popular" flag, donate-link URL, and the responsive stack at
+ * "Most popular" flag, the donate card hidden while no Payment Link is
+ * configured, and the responsive stack at
  * narrow widths.
  */
 
@@ -17,12 +19,7 @@ test.describe('/settings/upgrade — free user', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Pro pricing card renders for a free user', async ({ page }) => {
@@ -38,24 +35,26 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(
 			page.getByRole('heading', { name: 'Pro', exact: true })
 		).toBeVisible();
-		// Monthly price is rendered as $N / month — assert the
-		// "/ month" half is present (PRO_PRICE_MONTHLY is a number
-		// constant, so the literal is robust to price changes).
-		await expect(page.getByText('/ month')).toBeVisible();
+		// Both plans are priced: the card leads with the preselected yearly
+		// plan, and the monthly plan stays one choice away.
+		await expect(page.locator('.tier-pro .price-period')).toHaveText('/ year');
+		await expect(page.locator('.plan-option .plan-price', { hasText: '/ month' })).toBeVisible();
 	});
 
-	test('two-tier grid: Free tier shows $0 forever + 4 features; Pro tier shows the price + 5 features + "Most popular" flag', async ({
+	test('two-tier grid: Free tier shows $0 forever + 4 features; Pro tier shows the price + 6 features + "Most popular" flag', async ({
 		page,
 	}) => {
 		// Pin the polished two-card structure. Each tier carries a
 		// `check_circle` icon per feature — 4 on Free (Recording,
-		// Routes/plans/clubs, Strava/parkrun/Garmin, AI Coach) and 5 on
-		// Pro (AI Coach 10/day, Server route generation, Priority
-		// map-matching, Priority exports, Everything in Free). The Coach
-		// bullets render because PUBLIC_COACH_ENABLED=true in the e2e env;
-		// the route-gen bullet because PUBLIC_ROUTE_GEN_ENABLED=true
-		// (decisions §204) — each flagged perk's bullet hides with its
-		// flag so the card never advertises a dead feature. The Pro
+		// Routes/plans/clubs, Strava/Garmin, AI Coach) and 6 on
+		// Pro (AI Coach 10/day, Log meals from a photo, Server route
+		// generation, Priority map-matching, Priority exports, Everything in
+		// Free). The Coach bullets render because PUBLIC_COACH_ENABLED=true in
+		// the e2e env; the photo bullet because PUBLIC_PLATE_PHOTO_ENABLED=true
+		// as well (decisions § 1972); the route-gen bullet because
+		// PUBLIC_ROUTE_GEN_ENABLED=true (decisions §204) — each flagged
+		// perk's bullet hides with its flag so the card never advertises a
+		// dead feature. The Pro
 		// daily Coach cap was lowered from Unlimited to 10/day in
 		// May 2026 to bound worst-case Anthropic spend per the
 		// cost-controls hardening pass — see TIER_LIMITS.pro.dailyLimit
@@ -75,11 +74,12 @@ test.describe('/settings/upgrade — free user', () => {
 		const proCard = page.locator('.tier-pro');
 		await expect(proCard).toBeVisible();
 		await expect(proCard.locator('.tier-flag')).toHaveText(/Most popular/i);
-		await expect(proCard.locator('.price-amount')).toContainText(/9\.99|9,99/);
-		await expect(proCard.locator('.price-period')).toHaveText('/ month');
-		await expect(proCard.locator('.tier-features > li')).toHaveCount(5);
-		await expect(proCard.locator('.tier-features .check')).toHaveCount(5);
+		await expect(proCard.locator('.price-amount')).toContainText(/79\.99|79,99/);
+		await expect(proCard.locator('.price-period')).toHaveText('/ year');
+		await expect(proCard.locator('.tier-features > li')).toHaveCount(6);
+		await expect(proCard.locator('.tier-features .check')).toHaveCount(6);
 		await expect(proCard).toContainText(/AI Coach\s+—\s+10\/day/i);
+		await expect(proCard.getByTestId('pro-feat-plate-photo')).toContainText('Log meals from a photo');
 		await expect(proCard).toContainText(/Server route generation/i);
 
 		// Free tier carries the "You're on Free." note and NO active
@@ -90,67 +90,83 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(proCard.locator('.tier-fine')).toContainText(/Cancel anytime/i);
 	});
 
-	test('donate card renders heart icon + button + the configured GitHub Sponsors link target', async ({
-		page,
-	}) => {
-		// The bottom card is the "not ready for Pro? chip in" path.
-		// DONATE_URL is set to GitHub Sponsors in
-		// src/routes/settings/upgrade/+page.svelte — assert the click
-		// opens that URL in a new tab.
+	test('plan picker preselects yearly, states the saving, and prices the CTA', async ({ page }) => {
+		// C5: $79.99/year against $9.99/month saves 33% (1 - 79.99 / 119.88,
+		// rounded down). Yearly is preselected and the CTA names its period.
 		await page.goto('/settings/upgrade');
-
-		const donateCard = page.locator('.donate-card');
-		await expect(donateCard).toBeVisible({ timeout: 10_000 });
-		await expect(donateCard.getByRole('heading', { name: /Not ready for a subscription/i }))
-			.toBeVisible();
-
-		const donateBtn = donateCard.getByRole('button', { name: /Donate/i });
-		await expect(donateBtn).toBeVisible();
-		// Heart icon ligature.
-		await expect(donateBtn.locator('.material-symbols')).toHaveText('favorite');
-
-		// Click opens DONATE_URL in a new tab. The page uses
-		// window.open(url, '_blank', 'noopener,noreferrer'), so we
-		// intercept the call instead of waiting for `popup` — the
-		// noopener flag makes the popup unreliable on the Playwright
-		// side. Stubbing window.open guarantees the URL was passed.
-		const donateUrl = await page.evaluate(() => {
-			const calls: string[] = [];
-			(window as unknown as { __donateUrls: string[] }).__donateUrls = calls;
-			window.open = ((url?: string | URL) => {
-				calls.push(String(url ?? ''));
-				return null;
-			}) as typeof window.open;
-			return null;
-		});
-		void donateUrl;
-		await donateBtn.click();
-		const urls = await page.evaluate(
-			() => (window as unknown as { __donateUrls: string[] }).__donateUrls,
-		);
-		expect(urls.length).toBe(1);
-		expect(urls[0]).toMatch(/^https:\/\/github\.com\/sponsors/);
+		const proCard = page.locator('.tier-pro');
+		const yearly = proCard.getByRole('radio', { name: /^Yearly/ });
+		const monthly = proCard.getByRole('radio', { name: /^Monthly/ });
+		await expect(yearly).toBeChecked({ timeout: 10_000 });
+		await expect(monthly).not.toBeChecked();
+		await expect(proCard.locator('.plan-saving')).toHaveText('Save 33% vs monthly');
+		await expect(proCard.getByRole('button', { name: /Get Pro — .*79\.99\/yr/ })).toBeVisible();
 	});
 
-	test('Get Pro on an unconfigured build shows the "not configured" toast and does not navigate', async ({
+	test('choosing monthly reprices the card and the CTA', async ({ page }) => {
+		await page.goto('/settings/upgrade');
+		const proCard = page.locator('.tier-pro');
+		const monthly = proCard.getByRole('radio', { name: /^Monthly/ });
+		await expect(monthly).toBeVisible({ timeout: 10_000 });
+
+		await monthly.check();
+
+		await expect(monthly).toBeChecked();
+		await expect(proCard.locator('.price-amount')).toContainText(/9\.99|9,99/);
+		await expect(proCard.locator('.price-amount')).not.toContainText(/79/);
+		await expect(proCard.locator('.price-period')).toHaveText('/ month');
+		await expect(proCard.getByRole('button', { name: /Get Pro — .*9\.99\/mo/ })).toBeVisible();
+	});
+
+	test('with no donation link configured, the page offers no way to donate', async ({ page }) => {
+		// The donate card, and the hero sentence that points at it, render only
+		// when PUBLIC_DONATE_URL holds a Stripe Payment Link (decisions § 2217).
+		// CI builds leave it unset. The old hard-coded github.com/sponsors
+		// placeholder sent every click to GitHub's marketing page, so a build
+		// with no real link must show nothing rather than a dead button.
+		await page.goto('/settings/upgrade');
+		await expect(page.locator('.tier-pro')).toBeVisible({ timeout: 10_000 });
+
+		await expect(page.getByTestId('donate-card')).toHaveCount(0);
+		await expect(page.getByRole('heading', { name: /Not ready for a subscription/i })).toHaveCount(0);
+		await expect(page.locator('.tagline')).not.toContainText(/chip in/i);
+		await expect(page.locator('a[href*="github.com/sponsors"]')).toHaveCount(0);
+	});
+
+	test('Get Pro redirects to the hosted checkout with the user id, the chosen plan and a way back', async ({
 		page,
 	}) => {
-		// The e2e dev server boots with no PUBLIC_REVENUECAT_WEB_CHECKOUT_URL
-		// (playwright.config.ts forces the localhost services empty), so
-		// `isRevenueCatConfigured()` is false. The hosted-checkout path
-		// must fail closed: clicking "Get Pro" surfaces the info toast and
-		// stays on /settings/upgrade rather than redirecting anywhere.
+		// playwright.config.ts sets PUBLIC_REVENUECAT_WEB_CHECKOUT_URL to a
+		// well-formed fixture link, so the page renders its `checkout`
+		// storefront. The navigation is intercepted: the assertion is on the
+		// URL the page built, which is what RevenueCat keys the purchase on
+		// (App User ID path segment) and what preselects the plan (package_id).
+		let checkoutUrl = '';
+		await page.route('https://pay.rev.cat/**', async (route) => {
+			checkoutUrl = route.request().url();
+			await route.fulfill({ status: 200, contentType: 'text/html', body: '<p>checkout</p>' });
+		});
 		await page.goto('/settings/upgrade');
 		const getPro = page.locator('.tier-pro').getByRole('button', { name: /Get Pro — /i });
 		await expect(getPro).toBeVisible({ timeout: 10_000 });
 
 		await getPro.click();
 
-		await expect(page.locator('.toast-info')).toContainText(/not configured/i, {
-			timeout: 5_000,
-		});
-		// No redirect — we're still on the upgrade page.
-		await expect(page).toHaveURL(/\/settings\/upgrade(\?|$)/);
+		await expect.poll(() => checkoutUrl, { timeout: 10_000 }).not.toBe('');
+		const url = new URL(checkoutUrl);
+		expect(url.pathname).toMatch(/^\/e2e-fixture\/[0-9a-f-]{36}$/);
+		expect(url.searchParams.get('package_id')).toBe('$rc_annual');
+		expect(url.searchParams.get('redirect_url')).toMatch(/\/settings\/upgrade$/);
+	});
+
+	test('the purchase CTA carries working Terms and Privacy links (App Store 3.1.2)', async ({
+		page,
+	}) => {
+		await page.goto('/settings/upgrade');
+		const pro = page.locator('.tier-pro');
+		await expect(pro.getByRole('button', { name: /Get Pro — /i })).toBeVisible({ timeout: 10_000 });
+		await expect(pro.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+		await expect(pro.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
 	});
 
 	test('tier grid stacks (single column) at narrow widths', async ({ page }) => {
@@ -180,12 +196,7 @@ test.describe('/settings/upgrade — Pro user', () => {
 	test.use({ storageState: USER_C_PRO.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Pro tier card flips to active state: "Active" badge + Manage subscription CTA + no Get Pro button', async ({
@@ -216,18 +227,22 @@ test.describe('/settings/upgrade — Pro user', () => {
 			/App Store, Play Store, or the web billing portal/i,
 		);
 	});
+
+	test('a Pro user is shown no plan picker', async ({ page }) => {
+		await page.goto('/settings/upgrade');
+		const proCard = page.locator('.tier-pro');
+		await expect(proCard.getByRole('button', { name: /Manage subscription/i })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(proCard.locator('.plan-picker')).toHaveCount(0);
+	});
 });
 
 test.describe('/settings/upgrade — anon', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor is auth-walled to /login', async ({ page, context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 		// /settings/upgrade is NOT in the anon-allowed list — anon
 		// users must be redirected to /login with a return_to.
 		await page.goto('/settings/upgrade');

@@ -44,6 +44,14 @@ export async function hmacHex(
     .join('');
 }
 
+/// Header a sender may carry a shared webhook secret in, instead of the
+/// URL query string. A query-string secret is recorded verbatim in the
+/// platform's request log on every delivery; a header is not, so this is
+/// the path to prefer wherever the sender can be configured to use it.
+/// Kept here (rather than per-function) so the Edge Function and the Go
+/// worker's twin endpoint cannot drift on the name.
+export const WEBHOOK_SECRET_HEADER = 'x-webhook-secret';
+
 /// Constant-time string compare. Returns false on length mismatch
 /// without short-circuiting on content. The length check itself is
 /// observable, but the digest length is fixed (sha256 hex = 64 chars,
@@ -55,6 +63,79 @@ export function timingSafeEqual(a: string, b: string): boolean {
     mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return mismatch === 0;
+}
+
+/// Verify a `t=<unix-seconds>,v1=<hex hmac-sha256>` signature header.
+///
+/// Stripe (`Stripe-Signature`) and RevenueCat
+/// (`X-RevenueCat-Webhook-Signature`) both sign this way: the signed payload
+/// is the literal string `${t}.${rawBody}`, keyed by the endpoint's signing
+/// secret. There can be several v1 values during a secret rotation, and a
+/// `v0` for older schemes, which we ignore.
+///
+/// Verification runs on the RAW request bytes — NOT a JSON.parse'd and
+/// re-stringified body, which won't round-trip whitespace/key-order and
+/// would break every signature.
+///
+/// Two gates, both required:
+///   1. signature — recompute HMAC over `${t}.${rawBody}`, constant-time
+///      compare against each `v1` value (any match passes — covers the
+///      dual-signature rotation window).
+///   2. freshness — reject if `|now - t|` exceeds the tolerance (default
+///      5 min, the default both providers recommend). `t` is stamped per
+///      delivery attempt, so a provider retry carries a fresh one; the gate
+///      is what makes a captured POST replayed later fail even though its
+///      HMAC is valid.
+export async function verifyTimestampedHmac(
+  rawBody: string,
+  sigHeader: string | null,
+  secret: string,
+  nowMs: number,
+  toleranceSec = 300,
+): Promise<boolean> {
+  if (!sigHeader || !secret) return false;
+
+  const parts = sigHeader.split(',');
+  let timestamp: number | null = null;
+  let timestampText = '';
+  const v1Sigs: string[] = [];
+  for (const part of parts) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key === 't') {
+      // Exactly an integer literal. `Number.parseInt` stops at the first
+      // character it cannot read, so `t=1700000000junk` and `t=+1700000000`
+      // both recovered the real timestamp and verified — and because the
+      // signed payload is rebuilt from the PARSED integer rather than from
+      // the header text, a change to sign the text instead would have been
+      // invisible to every test, since a clean header round-trips. Requiring
+      // the two to be the same string removes the distinction — so the
+      // payload is signed over the header TEXT, which also refuses a
+      // zero-padded `t=01700000000` that parses to a validly-signed value.
+      if (!/^\d+$/.test(value)) continue;
+      const n = Number.parseInt(value, 10);
+      if (Number.isFinite(n)) {
+        timestamp = n;
+        timestampText = value;
+      }
+    } else if (key === 'v1') {
+      v1Sigs.push(value);
+    }
+  }
+
+  if (timestamp === null || v1Sigs.length === 0) return false;
+
+  // Freshness — reject a stale (replayed) or wildly future-dated event.
+  const ageSec = Math.abs(nowMs / 1000 - timestamp);
+  if (ageSec > toleranceSec) return false;
+
+  const expected = await hmacHex(secret, `${timestampText}.${rawBody}`);
+  for (const candidate of v1Sigs) {
+    if (timingSafeEqual(candidate, expected)) return true;
+  }
+  return false;
 }
 
 export type FreshnessOutcome = 'ok' | 'too_old' | 'too_future';
@@ -79,21 +160,19 @@ export function validateFreshness(
   windowMs: number = 7 * 24 * 60 * 60 * 1000,
   clockSkewMs: number = 60 * 1000,
 ): FreshnessOutcome {
+  // A timestamp that is not a number has no age, and every comparison
+  // against NaN is false — so the two gates below both fell through to
+  // 'ok' and the replay window opened for anything a caller could make
+  // unparseable. Both live callers happen to type-check their field
+  // first, which is why nothing had noticed; the gate itself must not
+  // depend on that. `too_old` rather than a fourth outcome: the callers
+  // answer 400 on anything but 'ok', and an unusable stamp is at least
+  // as suspect as a stale one.
+  if (!Number.isFinite(eventTsMs) || !Number.isFinite(nowMs)) return 'too_old';
   const ageMs = nowMs - eventTsMs;
   if (ageMs > windowMs) return 'too_old';
   if (ageMs < -clockSkewMs) return 'too_future';
   return 'ok';
-}
-
-/// RFC 4122 v1-v5 UUID shape (8-4-4-4-12 hex). RevenueCat's app_user_id
-/// should be the Supabase user id, but a misconfiguration could ship
-/// their internal Customer-ID format here. Without this guard the
-/// downstream `.eq('id', userId)` lookup raises Postgres
-/// `22P02 invalid_input_syntax`, which bubbles as a 500 and sends RC
-/// into retry storms.
-export function isValidUuid(s: string): boolean {
-  if (typeof s !== 'string') return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
 /// RevenueCat assigns `$RCAnonymousID:<random>` to users who haven't
@@ -102,4 +181,30 @@ export function isValidUuid(s: string): boolean {
 /// stops RC from retrying.
 export function isAnonymousAppUserId(s: string): boolean {
   return typeof s === 'string' && s.startsWith('$RCAnonymousID');
+}
+
+/// Whether a dispatched handler's response means the insert-first dedupe row
+/// must be given back before returning.
+///
+/// The dedupe row is written BEFORE the side effect so two concurrent
+/// deliveries of one event can't both act. The cost is that a handler which
+/// fails owes the row back: every provider here retries on a non-2xx, and the
+/// retry would otherwise hit the 23505 path, answer 200 `duplicate_event`, and
+/// close the delivery permanently. For `checkout.session.completed` that
+/// leaves a charged card with the order stuck `pending`, no seat issued, and no
+/// corrective event coming — nothing sweeps a lapsed reservation. For a
+/// RevenueCat `NON_RENEWING_PURCHASE` it leaves a paid-for lifetime tier
+/// ungranted, and unlike a subscription there is no later renewal to correct
+/// it.
+///
+/// Keyed on 5xx specifically: the handlers return 200 for every outcome that
+/// is genuinely final (unknown donation, missing metadata, already-terminal
+/// status, an anonymous app user), and reserve 5xx for "we could not complete
+/// this — try again".
+///
+/// It lives beside `validateFreshness` rather than in one webhook's lib
+/// because it is the same rule for all three insert-first dedupers, and the
+/// one that did not have it is the one that grants a paid tier.
+export function shouldReleaseDedupe(status: number): boolean {
+  return status >= 500;
 }

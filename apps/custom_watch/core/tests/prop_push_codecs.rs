@@ -81,6 +81,7 @@ fn a_step() -> impl Strategy<Value = WorkoutStep> {
                 target_duration_s: if by_distance { 0 } else { dur },
                 target_pace_s_per_km: pace,
                 tolerance_s_per_km: tol,
+                paced: true,
             },
         )
 }

@@ -84,3 +84,56 @@ test('GeoJSON import — skips non-numeric lng/lat, no NaN distance', async () =
 	assert.ok(Number.isFinite(routes[0].distance_m), 'distance must be a finite number');
 	assert.ok(routes[0].distance_m > 0);
 });
+
+test('GeoJSON import — an out-of-range coordinate is skipped, never a NaN distance', async () => {
+	// [lng, lat] order: the second and third points are off the globe.
+	const routes = await parseRouteFile(geojsonFile([
+		[-0.1, 51.5],
+		[0, 1e308],
+		[200, 51.5],
+		[-0.1, 51.501],
+	]));
+	assert.equal(routes.length, 1);
+	assert.equal(routes[0].waypoints.length, 2);
+	assert.ok(Number.isFinite(routes[0].distance_m), `distance ${routes[0].distance_m}`);
+	assert.ok(Math.abs(routes[0].distance_m - 111.19) < 0.5, `distance ${routes[0].distance_m}`);
+});
+
+test('GeoJSON import — a lat/lng written in the wrong order is refused, not mapped', async () => {
+	// A [lat, lng] export of a point at 51.5 N, 120 W puts -120 in the
+	// latitude slot; no such latitude exists, so the file has no route.
+	await assert.rejects(
+		parseRouteFile(geojsonFile([[51.5, -120], [51.6, -120.1]])),
+		/no line-based routes/,
+	);
+});
+
+// Issue #1297: a course file sampled from a DEM wobbles a metre or two between
+// points, and the importer summed every rise (Honolulu's GPX read 267 m of
+// climb against 139 m through a 3 m band). A 40 m climb then a flat, with a
+// 2 m wobble on every other point, sums to 120 m raw. Mirrored by the
+// "imported climb goes through the noise band" case in
+// packages/gpx_parser/test/route_parser_test.dart.
+function wobblyCourse(): number[][] {
+	const coords: number[][] = [];
+	for (let i = 0; i <= 100; i++) {
+		const base = i <= 40 ? 10 + i : 50;
+		coords.push([i * 0.001, 0, base + (i % 2 === 1 ? 2 : 0)]);
+	}
+	return coords;
+}
+
+test('buildRoute — imported climb goes through the 3 m noise band, not a raw sum', async () => {
+	const routes = await parseRouteFile(geojsonFile(wobblyCourse()));
+	assert.equal(routes[0].elevation_m, 42);
+});
+
+test('buildRoute — a rise inside the noise band is not climb', async () => {
+	const routes = await parseRouteFile(geojsonFile([
+		[0, 0, 100],
+		[0, 0.001, 102],
+		[0, 0.002, 100],
+		[0, 0.003, 102.5],
+	]));
+	assert.equal(routes[0].elevation_m, null);
+});

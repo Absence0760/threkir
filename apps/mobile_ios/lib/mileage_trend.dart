@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 
+import 'goals.dart' show weekStartLocal;
 import 'l10n/date_format.dart';
 
 /// One bucket on the mileage-trend chart. [label] is the short
@@ -35,9 +36,10 @@ const int _kYearlyMinBuckets = 5;
 /// Returns the most recent [maxBuckets] buckets in chronological
 /// order. Empty when [runs] is empty.
 ///
-/// Weeks start Monday — same anchor as `lib/goals.dart` so the goal
-/// progress card and the trend chart line up exactly. Months are
-/// keyed by `YYYY-MM` internally; years by `YYYY`.
+/// Weeks start on [weekStartDay] via `weekStartLocal` in `lib/goals.dart`,
+/// the window the Home "This week" tile, the weekly goal and the week
+/// summary all use, so the chart's current-week bucket is the tile's seven
+/// days. Months are keyed by `YYYY-MM` internally; years by `YYYY`.
 List<MileagePeriod> aggregateMileage(
   List<Run> runs, {
   required MileageView view,
@@ -57,16 +59,17 @@ List<MileagePeriod> aggregateMileage(
   /// behaviour where the yearly card wanted 5-year context.
   bool padYearlyToMin = false,
   String localeTag = 'en',
+  String weekStartDay = 'monday',
 }) {
   final groups = <String, _Bucket>{};
   for (final r in runs) {
-    final d = r.startedAt.toLocal();
-    final key = _keyFor(d, view);
+    final start = _startOfBucket(r.startedAt.toLocal(), view, weekStartDay);
+    final key = _keyFor(start, view);
     final bucket = groups[key];
     if (bucket == null) {
       groups[key] = _Bucket(
-        startsAt: _startOfBucket(d, view),
-        label: _labelFor(d, view, localeTag),
+        startsAt: start,
+        label: _labelFor(start, view, localeTag),
         distanceM: r.distanceMetres.round(),
       );
     } else {
@@ -94,7 +97,7 @@ List<MileagePeriod> aggregateMileage(
     // idle runner's rightmost bar was a three-week-old total — and the card
     // labels that bar "this week". Back-fill then walks back from now, which
     // is what this parameter has always claimed to do.
-    final anchor = _startOfBucket(now, view);
+    final anchor = _startOfBucket(now, view, weekStartDay);
     final existingKeys =
         ordered.map((b) => _keyForDate(b.startsAt, view)).toSet();
     if (!existingKeys.contains(_keyForDate(anchor, view))) {
@@ -134,7 +137,7 @@ List<MileagePeriod> aggregateMileage(
 }
 
 /// Step back one bucket in the chosen view. Weekly: -7 days from a
-/// Monday-anchored start. Monthly: previous month-start. Yearly:
+/// week-start-anchored start. Monthly: previous month-start. Yearly:
 /// previous January 1st.
 DateTime _previousBucketStart(DateTime d, MileageView view) {
   switch (view) {
@@ -156,7 +159,7 @@ DateTime _previousBucketStart(DateTime d, MileageView view) {
 String _keyForDate(DateTime d, MileageView view) {
   switch (view) {
     case MileageView.weekly:
-      // Already at start-of-bucket (Monday); same shape as _keyFor.
+      // Already at start-of-bucket; same shape as _keyFor.
       final iso = d.toIso8601String().substring(0, 10);
       return iso;
     case MileageView.monthly:
@@ -177,22 +180,22 @@ class _Bucket {
   });
 }
 
-String _keyFor(DateTime d, MileageView view) {
+/// [start] is a bucket start from [_startOfBucket].
+String _keyFor(DateTime start, MileageView view) {
   switch (view) {
     case MileageView.weekly:
-      final start = _mondayOf(d);
       return 'W${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}';
     case MileageView.monthly:
-      return 'M${d.year}-${d.month.toString().padLeft(2, '0')}';
+      return 'M${start.year}-${start.month.toString().padLeft(2, '0')}';
     case MileageView.yearly:
-      return 'Y${d.year}';
+      return 'Y${start.year}';
   }
 }
 
-DateTime _startOfBucket(DateTime d, MileageView view) {
+DateTime _startOfBucket(DateTime d, MileageView view, String weekStartDay) {
   switch (view) {
     case MileageView.weekly:
-      return _mondayOf(d);
+      return weekStartLocal(d, weekStartDay: weekStartDay);
     case MileageView.monthly:
       return DateTime(d.year, d.month);
     case MileageView.yearly:
@@ -200,23 +203,15 @@ DateTime _startOfBucket(DateTime d, MileageView view) {
   }
 }
 
-String _labelFor(DateTime d, MileageView view, String localeTag) {
+/// [start] is a bucket start from [_startOfBucket].
+String _labelFor(DateTime start, MileageView view, String localeTag) {
   switch (view) {
     case MileageView.weekly:
-      return formatDateShort(_mondayOf(d), localeTag);
+      return formatDateShort(start, localeTag);
     case MileageView.monthly:
-      final yy = (d.year % 100).toString().padLeft(2, '0');
-      return "${formatMonthAbbr(d, localeTag)} '$yy";
+      final yy = (start.year % 100).toString().padLeft(2, '0');
+      return "${formatMonthAbbr(start, localeTag)} '$yy";
     case MileageView.yearly:
-      return d.year.toString();
+      return start.year.toString();
   }
-}
-
-DateTime _mondayOf(DateTime d) {
-  // DateTime.weekday: Mon=1..Sun=7. Step back (weekday - 1) days with the
-  // year/month/day constructor so the boundary is local midnight even when the
-  // week spans a DST transition — a fixed Duration lands on 23:00 the previous
-  // day and mis-buckets every run in the seam. See goals.dart weekStartLocal.
-  final local = DateTime(d.year, d.month, d.day);
-  return DateTime(local.year, local.month, local.day - (local.weekday - 1));
 }

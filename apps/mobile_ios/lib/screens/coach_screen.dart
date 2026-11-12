@@ -6,33 +6,46 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
-        ActivityLoaderKind,
-        FullBodyLoader,
         ListSkeleton,
-        motionScrollTo,
+        SkeletonBlock,
         reduceMotion,
         syncMotionLoop;
 
+import '../fitness_surface_requests.dart';
+import '../ai_disclosure.dart';
+import '../ai_disclosure_memo.dart';
 import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
+import '../preferences.dart' show activeDistanceUnit;
+import '../race_service.dart';
+import '../pro_sellable.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
+import '../training.dart' show toIsoDate;
 import '../training_service.dart';
+import '../web_base_url.dart';
+import '../weekly_goal.dart';
+import '../widgets/ai_disclosure_notice.dart';
+import '../widgets/ai_tag.dart';
+import '../widgets/chat_stick_to_bottom.dart';
+import '../widgets/coach_share_sheet.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/surface_peer_strip.dart';
 import '../widgets/top_banner.dart';
 import 'guided_runs_screen.dart';
+import 'message_thread_screen.dart';
+import 'plan_new_screen.dart';
+import 'races_screen.dart';
 
 /// Truncate a coach message to a sidebar-thread title. Strips repeated
 /// whitespace so multi-line user prompts collapse to a single line, then
@@ -94,6 +107,119 @@ CoachSseEvent? parseCoachSseEvent(String block) {
   }
 }
 
+/// The description a Coach link to the plan wizard carries — `''` when it
+/// carries none — or null when [href] is not such a link. The Coach answers
+/// "build me a plan" with `[Build this plan](/plans/new?describe=…)`; only
+/// that same-origin path is recognised, never an absolute URL.
+@visibleForTesting
+String? coachPlanLinkDescription(String href) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (uri.path != '/plans/new') return null;
+  String describe;
+  try {
+    describe = uri.queryParameters['describe'] ?? '';
+  } catch (_) {
+    describe = '';
+  }
+  describe = describe.trim();
+  return describe.length > kPlanDescriptionMaxChars
+      ? describe.substring(0, kPlanDescriptionMaxChars)
+      : describe;
+}
+
+/// The query parameters a Coach fuelling link may carry to the web page.
+const _kCoachFuelLinkParams = ['duration', 'carbs', 'fluid', 'heat'];
+
+/// The web fuelling page a Coach fuelling link opens, or null when [href] is
+/// not such a link. The Coach answers "how should I fuel my long run" with
+/// `[Plan your fuelling](/nutrition/fuel?duration=…)` (decisions § 1975). The
+/// phone has no route-less fuelling screen, so the link opens the web page on
+/// the configured host. Only that same-origin path is recognised and only the
+/// four fuelling parameters are carried across; the page validates each value
+/// itself, because a model-written link is never trusted.
+@visibleForTesting
+String? coachFuelLinkWebUrl(String href, {String? webBase}) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (uri.path != '/nutrition/fuel') return null;
+  Map<String, String> query;
+  try {
+    query = uri.queryParameters;
+  } catch (_) {
+    query = const {};
+  }
+  final kept = <String, String>{
+    for (final k in _kCoachFuelLinkParams)
+      if (query[k] != null && query[k]!.isNotEmpty) k: query[k]!,
+  };
+  final base = resolveWebBaseUrl(override: webBase);
+  final target = Uri.parse('$base/nutrition/fuel');
+  return (kept.isEmpty ? target : target.replace(queryParameters: kept))
+      .toString();
+}
+
+final RegExp _planIdPath = RegExp(
+    r'^/plans/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
+/// The web page a Coach plan-edit link should open, or null when [href] is not
+/// one. With AI plan edits live the Coach answers "move my long run to Sunday"
+/// with `[Adjust my plan](/plans/<id>?adjust=…)`. The feature is web-only
+/// (decisions § 24, § 1979), so the phone hands the link to the browser on
+/// [webBase] rather than tapping a dead link. Only a same-origin plan path is
+/// recognised, and only the `adjust` parameter is carried, re-encoded.
+@visibleForTesting
+Uri? coachPlanAdjustWebUri(String href, String webBase) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (!_planIdPath.hasMatch(uri.path)) return null;
+  String adjust;
+  try {
+    adjust = uri.queryParameters['adjust'] ?? '';
+  } catch (_) {
+    adjust = '';
+  }
+  adjust = adjust.trim();
+  if (adjust.isEmpty) return null;
+  final base = Uri.tryParse(webBase.replaceAll(RegExp(r'/$'), ''));
+  if (base == null || !(base.scheme == 'https' || base.scheme == 'http')) {
+    return null;
+  }
+  return base.replace(
+    path: uri.path,
+    queryParameters: {'adjust': adjust},
+  );
+}
+
+/// The plan-picker value for "My season", the web picker's `?plan=season`.
+/// Plan ids are uuids, so it can never be one.
+const kCoachSeasonOption = 'season';
+
+/// The plan-picker entry that opens the race calendar rather than picking a
+/// plan scope. Plan ids are uuids, so it can never be one.
+const kCoachFindRaceOption = 'find-race';
+
+/// The `/api/coach` request body. `plan_scope` says what the Coach reads:
+/// `plan` (the plan [planId], else the current one), `season` ([planId] and
+/// the plans queued after it) or `none` (no plan); `plan_id` is the plan the
+/// thread is kept under (issue #1213).
+Map<String, dynamic> coachRequestBody({
+  required List<Map<String, String>> messages,
+  required String? planId,
+  required String planScope,
+  required int recentRunsLimit,
+  required String mode,
+  required String? anchorMessageId,
+}) =>
+    {
+      'messages': messages,
+      'plan_id': planId,
+      'plan_scope': planScope,
+      'recent_runs_limit': recentRunsLimit,
+      'mode': mode,
+      'anchor_message_id': anchorMessageId,
+    };
+
 /// AI Coach chat. Mirrors `apps/web/src/lib/components/CoachChat.svelte`
 /// + `/coach/+page.svelte`. One screen file by design — see backlog.
 class CoachScreen extends StatefulWidget {
@@ -101,11 +227,26 @@ class CoachScreen extends StatefulWidget {
   final TrainingService training;
   final String? initialPlanId;
 
+  /// Whether the deploy has the AI plan assistant live. Defaults to the
+  /// capability manifest; tests inject it. Forwarded to the plan wizard a
+  /// "Build this plan" link opens.
+  final Future<bool> Function()? loadAiPlanAvailable;
+
+  /// The wall clock the season is read against. Tests inject it to cross the
+  /// local midnight a season shrinks at.
+  final DateTime Function()? now;
+
+  /// Backs the races list the season hint opens. Tests inject a fake.
+  final RaceService? raceService;
+
   const CoachScreen({
     super.key,
     required this.api,
     required this.training,
     this.initialPlanId,
+    this.loadAiPlanAvailable,
+    this.now,
+    this.raceService,
   });
 
   @override
@@ -128,12 +269,15 @@ class _Msg {
 
 class _ContextSummary {
   final String? planName;
+  /// The Coach reads the season, so the plan chip names it instead of a plan.
+  final bool season;
   final int? planWeeks;
   final int runCount;
   final bool hrZonesLoaded;
   final int? weeklyGoalMetres;
   const _ContextSummary({
     required this.planName,
+    this.season = false,
     required this.planWeeks,
     required this.runCount,
     required this.hrZonesLoaded,
@@ -151,6 +295,7 @@ class _CoachScreenState extends State<CoachScreen> {
   static const _proDailyLimit = 10;
 
   final _scrollCtrl = ScrollController();
+  late final _stick = ChatStickToBottom(_scrollCtrl);
   final _draftCtrl = TextEditingController();
   final _editCtrl = TextEditingController();
   // Generation counter for _loadContext. A plan switch refires the
@@ -160,6 +305,22 @@ class _CoachScreenState extends State<CoachScreen> {
 
   List<TrainingPlanRow> _plans = const [];
   String? _planId;
+  // `plan`, `season` or `none`; see [coachRequestBody].
+  String _planScope = 'plan';
+
+  /// The plans "My season" would send. Offered only when something is queued
+  /// behind the current plan; one plan alone is the plan option.
+  List<TrainingPlanRow> get _seasonPlans => currentSeasonPlans(
+      [for (final p in _plans) if (p.status == 'active') p],
+      toIsoDate((widget.now ?? DateTime.now)()));
+
+  /// The scope actually in force. The season is re-read from the clock on
+  /// every build while the choice is kept from the pick, so a screen left
+  /// open past the night its first block ends can hold `season` with one
+  /// plan left; that is the plan option, and the picker, strip and request
+  /// all read it the same way.
+  String get _effectiveScope =>
+      _planScope == 'season' && _seasonPlans.length <= 1 ? 'plan' : _planScope;
 
   List<_Msg> _messages = [];
   bool _threadLoaded = false;
@@ -180,27 +341,101 @@ class _CoachScreenState extends State<CoachScreen> {
   RealtimeChannel? _realtimeChannel;
   StreamSubscription<dynamic>? _streamSub;
 
-  /// GDPR Art 6(1)(a) first-use consent state. `_consentChecked` is
-  /// false until the bootstrap fetch returns; `_consentAt` is null when
-  /// the user has not yet accepted the disclosure. Until both are set
-  /// the chat surface is not rendered — no SSE request can fire. See
-  /// audit/gdpr (2026-05-25).
+  /// GDPR Art 6(1)(a) first-use consent state. `_consentChecked` is false
+  /// until the bootstrap fetch returns; `_disclosure` holds the versioned
+  /// record. Until it grades at [kAiDisclosureVersionCoach] the chat
+  /// surface is not rendered — no SSE request can fire. The gate is the
+  /// COACH rung, not the current one: a runner who accepted the older
+  /// Coach-only disclosure consented to exactly this, and re-prompting
+  /// them here to unlock a different feature would be bundling. See
+  /// audit/gdpr (2026-05-25) and decisions.md § 571.
   bool _consentChecked = false;
-  DateTime? _consentAt;
+  AiDisclosureRecord _disclosure = const AiDisclosureRecord();
   bool _consentSaving = false;
   String? _consentError;
+
+  // Off until the capability manifest says the AI plan assistant is live.
+  bool _aiPlan = false;
 
   @override
   void initState() {
     super.initState();
     _planId = widget.initialPlanId;
+    // A remembered grant opens the chat at once; _bootstrap still re-reads
+    // the record and swaps to the disclosure if the server disagrees, and the
+    // endpoint grades consent on every turn regardless (ai_disclosure_memo).
+    final remembered = AiDisclosureMemo.peek(widget.api.userId);
+    if (remembered != null &&
+        checkAiDisclosure(remembered, kAiDisclosureVersionCoach).ok) {
+      _disclosure = remembered;
+      _consentChecked = true;
+    }
     _bootstrap();
+    _loadAiPlanAvailability();
+    _loadShareCoaches();
+  }
+
+  // Share with coach (issue #1215 Phase 3): offered on an answer only while
+  // the server gate is open and the runner has an active coach. Each read
+  // fails closed to "not offered" on its own, and neither blocks the chat.
+  List<CoachAthleteLink> _shareCoaches = const [];
+
+  Future<void> _loadShareCoaches() async {
+    var enabled = false;
+    try {
+      enabled = await widget.api.fetchCoachShareEnabled();
+    } catch (e) {
+      debugPrint('coach_screen: share gate lookup failed: $e');
+    }
+    if (!enabled) return;
+    var coaches = const <CoachAthleteLink>[];
+    try {
+      coaches = await widget.api.fetchMyCoaches();
+    } catch (e) {
+      debugPrint('coach_screen: coaches lookup failed: $e');
+    }
+    if (!mounted || coaches.isEmpty) return;
+    setState(() => _shareCoaches = coaches);
+  }
+
+  Future<void> _shareWithCoach(_Msg m) async {
+    final coach = await showCoachShareSheet(
+      context,
+      api: widget.api,
+      messageId: m.id!,
+      content: m.content.value,
+      coaches: _shareCoaches,
+    );
+    if (coach == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MessageThreadScreen(
+          api: widget.api,
+          partnerId: coach.userId,
+          partnerName: coach.displayName,
+          partnerAvatarUrl: coach.avatarUrl,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadAiPlanAvailability() async {
+    var available = false;
+    try {
+      available =
+          await (widget.loadAiPlanAvailable ?? fetchAiPlanAvailable)();
+    } catch (e) {
+      debugPrint('coach_screen: AI plan capability lookup failed: $e');
+    }
+    if (!mounted || !available) return;
+    setState(() => _aiPlan = true);
   }
 
   @override
   void dispose() {
     _streamSub?.cancel();
     _realtimeChannel?.unsubscribe();
+    _stick.dispose();
     _scrollCtrl.dispose();
     _draftCtrl.dispose();
     _editCtrl.dispose();
@@ -213,26 +448,30 @@ class _CoachScreenState extends State<CoachScreen> {
     // _reloadAll + _subscribeRealtime can run regardless — they hit
     // Supabase directly and do not transmit data to the AI provider.
     try {
-      _consentAt = await widget.api.fetchCoachConsentAt();
+      _disclosure =
+          aiDisclosureFromProfileRow(await widget.api.fetchAiDisclosure());
+      final uid = widget.api.userId;
+      if (uid != null) AiDisclosureMemo.remember(uid, _disclosure);
     } catch (e) {
       // Fail closed — a lookup error means the disclosure stays up.
       debugPrint('coach_screen: consent lookup failed: $e');
-      _consentAt = null;
+      _disclosure = const AiDisclosureRecord();
     }
+    // setState even when the memo already opened the chat: the fresh record
+    // may have withdrawn what the memo granted.
     if (mounted) setState(() => _consentChecked = true);
     try {
       _plans = await widget.training.fetchMyPlans();
       if (_planId != null && !_plans.any((p) => p.id == _planId)) {
         _planId = null;
       }
-      if (_planId == null) {
-        for (final p in _plans) {
-          if (p.status == 'active') {
-            _planId = p.id;
-            break;
-          }
-        }
-      }
+      // Default to the plan the dashboard calls current (decisions § 2008),
+      // not whichever active plan the list happens to put first: with a
+      // block queued behind the current one, that could be the later block.
+      _planId ??= currentOrUpcomingPlan(
+              [for (final p in _plans) if (p.status == 'active') p],
+              toIsoDate(DateTime.now()))
+          ?.id;
     } catch (e) {
       debugPrint('coach_screen: initial plans load failed: $e');
     }
@@ -247,10 +486,18 @@ class _CoachScreenState extends State<CoachScreen> {
       _consentError = null;
     });
     try {
-      final at = await widget.api.recordCoachConsent();
+      // The copy above is the current disclosure, so accepting it grants
+      // the current scope — and the record the screen then trusts is the
+      // one the SERVER returned, never a locally synthesised stamp
+      // (decisions § 560).
+      final row = await widget.api
+          .recordAiDisclosureConsent(kAiDisclosureCurrentVersion);
+      final record = aiDisclosureFromProfileRow(row);
+      final uid = widget.api.userId;
+      if (uid != null) AiDisclosureMemo.remember(uid, record);
       if (!mounted) return;
       setState(() {
-        _consentAt = at;
+        _disclosure = record;
         _consentSaving = false;
       });
     } catch (e) {
@@ -291,7 +538,7 @@ class _CoachScreenState extends State<CoachScreen> {
       _threadLoaded = true;
     });
     await _loadContext();
-    _scrollToBottom();
+    _scrollToBottom(force: true);
   }
 
   Future<void> _loadContext() async {
@@ -300,12 +547,20 @@ class _CoachScreenState extends State<CoachScreen> {
     if (viewerId == null) return;
     final gen = ++_ctxGen;
     String? planName;
+    var isSeason = false;
     int? planWeeks;
     int runCount = 0;
     bool hrZonesLoaded = false;
     int? weeklyGoalMetres;
     try {
-      if (_planId != null) {
+      if (_effectiveScope == 'season') {
+        final season = _seasonPlans;
+        isSeason = true;
+        final details = await Future.wait(season.map((p) =>
+            widget.training.fetchPlan(p.id).timeout(kBackendLoadTimeout)));
+        if (gen != _ctxGen) return;
+        planWeeks = details.fold<int>(0, (n, d) => n + d.weeks.length);
+      } else if (_planId != null) {
         final p = _plans.firstWhere(
           (x) => x.id == _planId,
           orElse: () => _plans.isNotEmpty
@@ -360,6 +615,7 @@ class _CoachScreenState extends State<CoachScreen> {
     setState(() {
       _ctx = _ContextSummary(
         planName: planName,
+        season: isSeason,
         planWeeks: planWeeks,
         runCount: runCount,
         hrZonesLoaded: hrZonesLoaded,
@@ -410,15 +666,10 @@ class _CoachScreenState extends State<CoachScreen> {
         .subscribe();
   }
 
-  Future<void> _scrollToBottom() async {
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    if (!mounted || !_scrollCtrl.hasClients) return;
-    await motionScrollTo(
-      context,
-      _scrollCtrl,
-      _scrollCtrl.position.maxScrollExtent,
-    );
-  }
+  /// Follows new content only while the runner is at the bottom of the
+  /// log (issue #1214); [force] is for their own turn and thread switches.
+  Future<void> _scrollToBottom({bool force = false}) =>
+      _stick.scrollToBottom(context, force: force);
 
   Future<void> _send() async {
     final t = _draftCtrl.text.trim();
@@ -461,7 +712,7 @@ class _CoachScreenState extends State<CoachScreen> {
     _messages.add(_Msg(role: 'assistant', content: ''));
     final assistantIdx = _messages.length - 1;
     setState(() {});
-    _scrollToBottom();
+    _scrollToBottom(force: true);
 
     try {
       String? token =
@@ -475,17 +726,16 @@ class _CoachScreenState extends State<CoachScreen> {
           .sublist(0, assistantIdx)
           .map((m) => {'role': m.role, 'content': m.content.value})
           .toList();
-      final body = jsonEncode({
-        'messages': payloadMessages,
-        'plan_id': _planId,
-        'recent_runs_limit': _runsLimit,
-        'mode': mode,
-        'anchor_message_id': anchorId,
-      });
+      final body = jsonEncode(coachRequestBody(
+        messages: payloadMessages,
+        planId: _planId,
+        planScope: _effectiveScope,
+        recentRunsLimit: _runsLimit,
+        mode: mode,
+        anchorMessageId: anchorId,
+      ));
 
-      final base = (dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com')
-          .replaceAll(RegExp(r'/$'), '');
-      final uri = Uri.parse('$base/api/coach');
+      final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach');
 
       // Inline helper so we can retry once after a 401 (stale JWT).
       // Each call uses a fresh HttpClient so a redirect / error
@@ -774,7 +1024,7 @@ class _CoachScreenState extends State<CoachScreen> {
             .toList();
       });
       Navigator.maybePop(context);
-      _scrollToBottom();
+      _scrollToBottom(force: true);
     } catch (e) {
       debugPrint('Open archive failed: $e');
       if (!mounted) return;
@@ -864,6 +1114,30 @@ class _CoachScreenState extends State<CoachScreen> {
   /// tap it).
   Future<void> _onCoachLinkTap(String text, String? href, String title) async {
     if (href == null || href.isEmpty) return;
+    final planDescription = coachPlanLinkDescription(href);
+    if (planDescription != null) {
+      await _openPlanWizard(planDescription);
+      return;
+    }
+    final fuelUrl = coachFuelLinkWebUrl(href);
+    if (fuelUrl != null) {
+      try {
+        await launchUrl(Uri.parse(fuelUrl),
+            mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint('coach fuelling link tap failed: $e');
+      }
+      return;
+    }
+    final adjustUri = coachPlanAdjustWebUri(href, resolveWebBaseUrl());
+    if (adjustUri != null) {
+      try {
+        await launchUrl(adjustUri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint('coach plan-edit link tap failed: $e');
+      }
+      return;
+    }
     final Uri? uri = Uri.tryParse(href);
     if (uri == null) return;
     final scheme = uri.scheme.toLowerCase();
@@ -881,8 +1155,37 @@ class _CoachScreenState extends State<CoachScreen> {
     }
   }
 
+  Future<void> _openPlanWizard(String description) async {
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanNewScreen(
+            training: widget.training,
+            apiClient: widget.api,
+            initialDescription: description.isEmpty ? null : description,
+            loadAiPlanAvailable: widget.loadAiPlanAvailable,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('coach_screen: opening the plan wizard failed: $e');
+    }
+  }
+
   void _onPlanChanged(String? next) {
-    setState(() => _planId = (next ?? '').isEmpty ? null : next);
+    setState(() {
+      if (next == kCoachSeasonOption) {
+        // The season thread is kept under its first plan.
+        _planScope = 'season';
+        _planId = _seasonPlans.first.id;
+      } else if ((next ?? '').isEmpty) {
+        _planScope = 'none';
+        _planId = null;
+      } else {
+        _planScope = 'plan';
+        _planId = next;
+      }
+    });
     _streamSub?.cancel();
     _reloadAll();
     _subscribeRealtime();
@@ -918,18 +1221,32 @@ class _CoachScreenState extends State<CoachScreen> {
 
     // GDPR Art 6(1)(a) gate. _consentChecked stays false until the
     // bootstrap fetch settles so we never flash the chat surface
-    // before the lookup completes. _consentAt being null means the
-    // user must accept the disclosure before any chat fans out.
+    // before the lookup completes. A record that doesn't grade at the
+    // Coach rung means the user must accept the disclosure before any
+    // chat fans out.
     if (!_consentChecked) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.coachTitle)),
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        body: Column(
+          key: const ValueKey('coach-consent-skeleton'),
+          children: [
+            Expanded(
+              child: ListSkeleton(
+                label: l10n.commonLoading,
+                rows: 4,
+                rowHeight: 72,
+                hasLeading: false,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SkeletonBlock(height: 56, radius: 28),
+            ),
+          ],
         ),
       );
     }
-    if (_consentAt == null) {
+    if (!checkAiDisclosure(_disclosure, kAiDisclosureVersionCoach).ok) {
       return _buildCoachConsentScaffold(theme, l10n);
     }
 
@@ -940,42 +1257,7 @@ class _CoachScreenState extends State<CoachScreen> {
         // route. Force the back arrow and open the archive drawer from an
         // explicit action instead.
         leading: const BackButton(),
-        title: Row(
-          children: [
-            Flexible(
-              child: Text(l10n.coachTitle,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            if (_plans.length > 1) ...[
-              const SizedBox(width: 12),
-              Flexible(
-                child: DropdownButton<String>(
-                  value: _planId ?? '',
-                  isExpanded: true,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    DropdownMenuItem(
-                      value: '',
-                      child: Text(l10n.coachNoPlanOption),
-                    ),
-                    ..._plans.map((p) => DropdownMenuItem(
-                          value: p.id,
-                          child: Text(
-                            p.status == 'active'
-                                ? l10n.coachPlanActive(p.name)
-                                : (p.status == 'completed'
-                                    ? l10n.coachPlanDone(p.name)
-                                    : p.name),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )),
-                  ],
-                  onChanged: _busy ? null : _onPlanChanged,
-                ),
-              ),
-            ],
-          ],
-        ),
+        title: Text(l10n.coachTitle),
         actions: [
           if (_messages.isNotEmpty && _viewingArchiveAt == null)
             IconButton(
@@ -995,28 +1277,48 @@ class _CoachScreenState extends State<CoachScreen> {
       drawer: _buildArchivesDrawer(theme, l10n),
       body: Column(
         children: [
-          // Guided runs are coach-driven training content, and web reaches
-          // them from a rail on `/coach`. On mobile they were filed under
-          // Settings → Account, where nothing about the surrounding screen
-          // (sign-in, backup, delete account) suggests a workout library
-          // (#666 I7). A labelled peer is the mobile shape of that rail.
-          SurfacePeerStrip(
-            label: l10n.coachTitle,
-            peers: [
-              SurfacePeer(label: l10n.coachTitle),
-              SurfacePeer(
-                label: l10n.guidedRunsTitle,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const GuidedRunsScreen(),
+          // The header scrolls on its own once it would take more than its
+          // share of the screen: at a large text scale the wrapped strip,
+          // hint and banner together outgrow a phone and pushed the composer
+          // off the bottom.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.4),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Guided runs are coach-driven training content, and web
+                  // reaches them from a rail on `/coach`. On mobile they were
+                  // filed under Settings → Account, where nothing about the
+                  // surrounding screen (sign-in, backup, delete account)
+                  // suggests a workout library (#666 I7). A labelled peer is
+                  // the mobile shape of that rail.
+                  SurfacePeerStrip(
+                    label: l10n.coachTitle,
+                    peers: [
+                      SurfacePeer(label: l10n.coachTitle),
+                      SurfacePeer(
+                        label: l10n.guidedRunsTitle,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const GuidedRunsScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  // The plan picker does not wait for the context read: until
+                  // that lands the runner could not change scope at all.
+                  if (_ctx != null || _plans.isNotEmpty)
+                    _buildContextStrip(theme, l10n),
+                  if (_viewingArchiveAt != null)
+                    _buildArchiveBanner(theme, l10n),
+                  if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
+                ],
               ),
-            ],
+            ),
           ),
-          if (_ctx != null) _buildContextStrip(theme, l10n),
-          if (_viewingArchiveAt != null) _buildArchiveBanner(theme, l10n),
-          if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
           Expanded(
             child: _threadLoaded
                 ? _buildScroll(theme, l10n, hasPlan)
@@ -1051,31 +1353,7 @@ class _CoachScreenState extends State<CoachScreen> {
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 12),
-              Text(
-                l10n.coachConsentIntro,
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• ${l10n.coachConsentBulletProfile}'),
-                    const SizedBox(height: 4),
-                    Text('• ${l10n.coachConsentBulletRuns}'),
-                    const SizedBox(height: 4),
-                    Text('• ${l10n.coachConsentBulletPlan}'),
-                    const SizedBox(height: 4),
-                    Text('• ${l10n.coachConsentBulletMessages}'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.coachConsentProcessing,
-                style: theme.textTheme.bodyMedium,
-              ),
+              const AiDisclosureNotice(),
               const SizedBox(height: 12),
               Text(
                 l10n.coachConsentAction,
@@ -1197,21 +1475,48 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   Widget _buildContextStrip(ThemeData theme, AppLocalizations l10n) {
-    final c = _ctx!;
+    final c = _ctx;
     final cs = theme.colorScheme;
     final chips = <Widget>[];
-    if (c.planName != null) {
-      chips.add(_chip(
-        cs,
-        icon: Icons.calendar_month,
-        label: c.planWeeks != null
-            ? l10n.coachContextPlanWeeks(c.planName!, c.planWeeks!)
-            : c.planName!,
-      ));
+    // The picker names what is in force now. A season read before its first
+    // block ended still sits in [c] until the next load, so its weeks are
+    // only shown while the scope still matches.
+    final season = _effectiveScope == 'season';
+    final planName = season
+        ? l10n.coachSeasonName
+        : (c == null || c.season
+            ? _plans.where((p) => p.id == _planId).firstOrNull?.name
+            : c.planName);
+    final weeks = c != null && season == c.season ? c.planWeeks : null;
+    final planLabel = planName == null
+        ? l10n.coachContextNoPlan
+        : (weeks != null
+            ? l10n.coachContextPlanWeeks(planName, weeks)
+            : planName);
+    if (_plans.isNotEmpty) {
+      chips.add(_buildPlanPicker(theme, l10n, planLabel,
+          muted: planName == null));
     } else {
       chips.add(_chip(cs,
-          icon: Icons.calendar_month, label: l10n.coachContextNoPlan, muted: true));
+          icon: Icons.calendar_month, label: planLabel, muted: true));
     }
+    if (c != null) _addContextChips(chips, theme, l10n, c);
+    // Wrapped, not scrolled sideways: a horizontal scroller clipped the runs
+    // window at the right edge on a 360 dp phone, with nothing saying more
+    // of the strip was off screen.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 6,
+        children: chips,
+      ),
+    );
+  }
+
+  void _addContextChips(List<Widget> chips, ThemeData theme,
+      AppLocalizations l10n, _ContextSummary c) {
+    final cs = theme.colorScheme;
     chips.add(
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1260,16 +1565,102 @@ class _CoachScreenState extends State<CoachScreen> {
     if (c.hrZonesLoaded) {
       chips.add(_chip(cs, icon: Icons.monitor_heart, label: l10n.coachContextHr));
     }
-    if (c.weeklyGoalMetres != null) {
-      final km =
-          formatFixed(c.weeklyGoalMetres! / 1000, 0, activeLocaleTag);
-      chips.add(_chip(cs, icon: Icons.flag_outlined, label: l10n.coachContextWeeklyGoal(km)));
+    final unit = activeDistanceUnit;
+    final goal = weeklyGoalToInput(c.weeklyGoalMetres, unit);
+    if (goal != null) {
+      final distance = formatFixed(
+          goal, goal == goal.roundToDouble() ? 0 : 1, activeLocaleTag);
+      chips.add(_chip(cs,
+          icon: Icons.flag_outlined,
+          label: l10n.coachContextWeeklyGoal(distance, unit.name)));
     }
+  }
+
+  Widget _buildPlanPicker(ThemeData theme, AppLocalizations l10n, String label,
+      {required bool muted}) {
+    final cs = theme.colorScheme;
+    final color = muted ? cs.onSurfaceVariant : cs.onSurface;
+    final value =
+        _effectiveScope == 'season' ? kCoachSeasonOption : (_planId ?? '');
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: chips),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: PopupMenuButton<String>(
+        key: const Key('coach-plan-picker'),
+        enabled: !_busy,
+        tooltip: l10n.coachPlanPickerTooltip,
+        initialValue: value,
+        onSelected: (v) =>
+            v == kCoachFindRaceOption ? _openRaces() : _onPlanChanged(v),
+        itemBuilder: (_) => [
+          PopupMenuItem(value: '', child: Text(l10n.coachNoPlanOption)),
+          if (_seasonPlans.length > 1)
+            PopupMenuItem(
+              value: kCoachSeasonOption,
+              child: Text(l10n.coachSeasonOption),
+            ),
+          for (final p in _plans)
+            PopupMenuItem(
+              value: p.id,
+              child: Text(p.status == 'active'
+                  ? l10n.coachPlanActive(p.name)
+                  : (p.status == 'completed'
+                      ? l10n.coachPlanDone(p.name)
+                      : p.name)),
+            ),
+          // My season is only offered once a plan is queued behind the
+          // current one, so with one plan the menu says how to get it.
+          if (_seasonPlans.length == 1) ...[
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              key: const Key('coach-season-hint-action'),
+              value: kCoachFindRaceOption,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.coachSeasonHint,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 4),
+                  Text(l10n.coachSeasonHintAction,
+                      style: theme.textTheme.labelLarge
+                          ?.copyWith(color: cs.primary)),
+                ],
+              ),
+            ),
+          ],
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: cs.outlineVariant),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.calendar_month, size: 14, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(label,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: color)),
+              ),
+              Icon(Icons.arrow_drop_down, size: 18, color: color),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRaces() {
+    openFitnessSurface(
+      context,
+      FitnessTab.races,
+      fallback: () => RacesScreen(
+        service: widget.raceService ?? RaceService(),
+        api: widget.api,
       ),
     );
   }
@@ -1290,11 +1681,13 @@ class _CoachScreenState extends State<CoachScreen> {
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 6),
-            Text(label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(color: color)),
+            Flexible(
+              child: Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: color)),
+            ),
           ],
         ),
       ),
@@ -1335,13 +1728,20 @@ class _CoachScreenState extends State<CoachScreen> {
     } else {
       text = l10n.coachMessagesLeft(_remaining);
     }
+    // A count of what is left is information, so it sits on the neutral
+    // surface; only an exhausted allowance takes the warning colour.
+    final sem = AppSemanticColors.ofTheme(theme);
+    final background =
+        _limitReached ? sem.warning : cs.surfaceContainerHighest;
+    final foreground = _limitReached ? sem.onWarning : cs.onSurfaceVariant;
     return Container(
+      key: const Key('coach-limit-banner'),
       width: double.infinity,
-      color: cs.tertiaryContainer,
+      color: background,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Text(
         text,
-        style: theme.textTheme.bodySmall?.copyWith(color: cs.onTertiaryContainer),
+        style: theme.textTheme.bodySmall?.copyWith(color: foreground),
       ),
     );
   }
@@ -1349,25 +1749,31 @@ class _CoachScreenState extends State<CoachScreen> {
   Widget _buildScroll(ThemeData theme, AppLocalizations l10n, bool hasPlan) {
     if (_messages.isEmpty && _viewingArchiveAt == null) {
       final isNewRunner = _ctx?.runCount == 0;
+      // With the plan assistant live, a plan-building prompt replaces the
+      // weakest chip so each set stays at four.
       final suggestions = isNewRunner
           ? [
+              if (_aiPlan) l10n.coachSuggestBuildFirst5kPlan,
               l10n.coachSuggestNewFirstRun,
               l10n.coachSuggestNewFirstFeel,
-              l10n.coachSuggestNewHowOften,
+              if (!_aiPlan) l10n.coachSuggestNewHowOften,
               l10n.coachSuggestNewWalkRun,
             ]
           : hasPlan
               ? [
                   l10n.coachSuggestPlanRest,
                   l10n.coachSuggestPlanOnTrack,
-                  l10n.coachSuggestPlanLongRun,
+                  _aiPlan
+                      ? l10n.coachSuggestPlanNextRace
+                      : l10n.coachSuggestPlanLongRun,
                   l10n.coachSuggestPlanToday,
                 ]
               : [
+                  if (_aiPlan) l10n.coachSuggestBuildHalfPlan,
                   l10n.coachSuggestNoPlanLastRun,
                   l10n.coachSuggestNoPlanEasyPace,
                   l10n.coachSuggestNoPlanWeekOff,
-                  l10n.coachSuggestNoPlanTempo,
+                  if (!_aiPlan) l10n.coachSuggestNoPlanTempo,
                 ];
       return ListView(
         controller: _scrollCtrl,
@@ -1401,11 +1807,26 @@ class _CoachScreenState extends State<CoachScreen> {
         ],
       );
     }
-    return ListView.builder(
-      controller: _scrollCtrl,
-      padding: const EdgeInsets.all(16),
-      itemCount: _messages.length,
-      itemBuilder: (context, i) => _buildBubble(theme, l10n, _messages[i]),
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: _scrollCtrl,
+          padding: const EdgeInsets.all(16),
+          itemCount: _messages.length,
+          itemBuilder: (context, i) => _buildBubble(theme, l10n, _messages[i]),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 12,
+          child: Center(
+            child: JumpToLatestButton(
+              controller: _stick,
+              label: l10n.coachJumpToLatest,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1428,6 +1849,9 @@ class _CoachScreenState extends State<CoachScreen> {
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
+                // Every Coach message is labelled, not only the first (EU AI
+                // Act Art. 50, decisions § 2227).
+                if (!isUser) _buildAiByline(theme, l10n),
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 10),
@@ -1475,6 +1899,29 @@ class _CoachScreenState extends State<CoachScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiByline(ThemeData theme, AppLocalizations l10n) {
+    return Padding(
+      key: const ValueKey('coach-ai-byline'),
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CoachAvatar(size: 22),
+          const SizedBox(width: 6),
+          Text(
+            l10n.coachTitle,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          const AiTag(),
         ],
       ),
     );
@@ -1594,6 +2041,15 @@ class _CoachScreenState extends State<CoachScreen> {
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               onPressed: () => _react(m.id!, 'down'),
             ),
+            if (_shareCoaches.isNotEmpty)
+              IconButton(
+                key: const ValueKey('coach-share-action'),
+                tooltip: l10n.coachShareAction,
+                icon: Icon(Icons.forward, size: 16, color: iconColor),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: () => _shareWithCoach(m),
+              ),
           ],
         ],
       ),

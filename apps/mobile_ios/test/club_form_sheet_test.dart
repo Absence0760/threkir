@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipRow;
 
+import '../lib/club_slug.dart';
+import '../lib/text_limits.dart';
 import '../lib/social_service.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/club_form_sheet.dart';
@@ -48,6 +50,7 @@ class _CapturingSocialService extends SocialService {
   String? capturedSlug;
   String? capturedJoinPolicy;
   bool? capturedIsPublic;
+  String? capturedLocation;
   Completer<void>? gate;
 
   @override
@@ -71,6 +74,7 @@ class _CapturingSocialService extends SocialService {
     capturedSlug = slug;
     capturedJoinPolicy = joinPolicy;
     capturedIsPublic = isPublic;
+    capturedLocation = locationLabel;
     if (gate != null) await gate!.future;
     return ClubRow(shadowHidden: false, 
       id: 'club-new',
@@ -91,7 +95,17 @@ class _CapturingSocialService extends SocialService {
 
 class _Launcher extends StatefulWidget {
   final SocialService social;
-  const _Launcher({required this.social});
+  final String? initialName;
+  final String? initialLocation;
+  final int? stravaClubId;
+  final Future<void> Function(String clubId, int stravaClubId)? linkStravaClub;
+  const _Launcher({
+    required this.social,
+    this.initialName,
+    this.initialLocation,
+    this.stravaClubId,
+    this.linkStravaClub,
+  });
 
   @override
   State<_Launcher> createState() => _LauncherState();
@@ -109,7 +123,14 @@ class _LauncherState extends State<_Launcher> {
           children: [
             ElevatedButton(
               onPressed: () async {
-                final r = await showClubFormSheet(context, social: widget.social);
+                final r = await showClubFormSheet(
+                  context,
+                  social: widget.social,
+                  initialName: widget.initialName,
+                  initialLocation: widget.initialLocation,
+                  stravaClubId: widget.stravaClubId,
+                  linkStravaClub: widget.linkStravaClub,
+                );
                 setState(() => _result = r ?? '<cancelled>');
               },
               child: const Text('Open'),
@@ -190,15 +211,14 @@ void main() {
     });
 
     testWidgets(
-        'non-rate-limit errors still surface verbatim (debug info preserved)',
+        'non-rate-limit errors show the classified copy, never the raw text',
         (tester) async {
-      // The catch in club_form_sheet should ONLY translate the rate-
-      // limit path; unrelated PostgrestExceptions (RLS denies, foreign
-      // key violations, etc.) keep their raw text so debugging info
-      // isn't hidden.
+      // Anything but the rate-limit path reads as friendlyError's copy; the
+      // database's own wording names tables and constraints, so it stays in
+      // the log (docs/architecture/conventions.md § Mobile error copy).
       final fake = _FakeSocialService(PostgrestException(
-        message: 'permission denied for table clubs',
-        code: '42501',
+        message: 'insert or update on table clubs violates foreign key',
+        code: '23503',
       ));
       await _openSheet(tester, social: fake);
 
@@ -209,8 +229,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Create'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('permission denied for table clubs'),
-          findsOneWidget);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.authErrorGeneric), findsOneWidget);
+      expect(find.textContaining('violates foreign key'), findsNothing);
       expect(find.textContaining('creating clubs too quickly'),
           findsNothing);
     });
@@ -317,7 +338,9 @@ void main() {
 
     testWidgets('a name with no alphanumerics surfaces the slug error',
         (tester) async {
-      // "!!!" slugifies to empty → friendly inline error, no API call.
+      // "!!!" carries no letter or digit in ANY script → friendly inline
+      // error, no API call. A name that merely has no ASCII (a Cyrillic one,
+      // say) is creatable — see the non-Latin case above.
       final fake = _CapturingSocialService();
       await _openSheet(tester, social: fake);
       await tester.enterText(find.widgetWithText(TextField, 'Name'), '!!!');
@@ -353,6 +376,47 @@ void main() {
       expect(fake.capturedSlug, 'hackney-half-runners');
       // The launcher records the popped slug.
       expect(find.text('result=hackney-half-runners'), findsOneWidget);
+    });
+
+    testWidgets('the persisted slug is the folded one, matching the web rail',
+        (tester) async {
+      // The slug reaches `clubs.slug` and is thereafter the club's public
+      // URL, so the phone and the web must derive the same one. They did not:
+      // the two runtimes' `toLowerCase` disagree at U+0130, so this name
+      // produced `izmir-kosu-kulubu` here and `i-zmir-kosu-kulubu` on the web
+      // (decisions § 1251 + § 1279). Pinned end-to-end at the sheet rather
+      // than only in `club_slug_test.dart`, because the defect was that the
+      // CALLER re-derived it.
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Name'),
+        'İzmir Koşu Kulübü',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(fake.createCalled, isTrue);
+      expect(fake.capturedSlug, 'izmir-kosu-kulubu');
+    });
+
+    testWidgets('a club named in a non-Latin script is creatable, under the '
+        'shared fallback slug', (tester) async {
+      // The refusal used to test the SLUG for emptiness, so every name written
+      // entirely in Cyrillic, Greek, Hebrew, Arabic or CJK was rejected on the
+      // phone — with a message claiming the name had no letter or digit, about
+      // a name made entirely of letters — while the web created it under the
+      // fallback slug (decisions § 1281).
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Name'), 'Бегуны Москвы');
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(fake.createCalled, isTrue);
+      expect(fake.capturedName, 'Бегуны Москвы');
+      expect(fake.capturedSlug, kClubSlugFallback);
     });
 
     testWidgets(
@@ -557,6 +621,113 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);
+    });
+  });
+
+  group('showClubFormSheet — Strava set-up hand-off (decisions § 1959)', () {
+    Future<void> open(WidgetTester tester, _Launcher launcher) async {
+      await tester.binding.setSurfaceSize(const Size(600, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: launcher,
+      ));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the prefilled location is held to the column bound',
+        (tester) async {
+      await open(
+        tester,
+        _Launcher(
+          social: _CapturingSocialService(),
+          initialLocation: '  ${'a' * (kClubLocationLabelMaxLength + 20)}  ',
+        ),
+      );
+      final field = tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Location (optional)'));
+      expect(field.controller!.text, 'a' * kClubLocationLabelMaxLength);
+    });
+
+    testWidgets('a Strava name longer than a club name is held to the bound',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      await open(
+        tester,
+        _Launcher(
+          social: fake,
+          initialName: '  ${'n' * (kClubNameMaxLength + 20)}  ',
+          stravaClubId: 918273645,
+          linkStravaClub: (_, __) async {},
+        ),
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+      expect(fake.capturedName, 'n' * kClubNameMaxLength);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('creates the club with its Strava place, then links it',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      final links = <(String, int)>[];
+      await open(
+        tester,
+        _Launcher(
+          social: fake,
+          initialName: 'Strava Only Striders',
+          initialLocation: 'Leeds, United Kingdom',
+          stravaClubId: 918273645,
+          linkStravaClub: (clubId, stravaClubId) async =>
+              links.add((clubId, stravaClubId)),
+        ),
+      );
+      expect(
+          find.text(
+              'Once your club is created it will be linked to its Strava club.'),
+          findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(fake.capturedName, 'Strava Only Striders');
+      expect(fake.capturedLocation, 'Leeds, United Kingdom');
+      expect(links, [('club-new', 918273645)]);
+      expect(find.text('Your club is linked to its Strava club.'),
+          findsOneWidget);
+      expect(find.text('result=strava-only-striders'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('a refused link keeps the club and says why', (tester) async {
+      await open(
+        tester,
+        _Launcher(
+          social: _CapturingSocialService(),
+          initialName: 'Strava Only Striders',
+          stravaClubId: 918273645,
+          linkStravaClub: (_, __) async => throw const StravaClubLinkFailure(
+              StravaClubLinkError.stravaClubAlreadyLinked),
+        ),
+      );
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text("Your club was created, but it isn’t linked to Strava: "
+              'This Strava club is already linked to another club on Threkir.'),
+          findsOneWidget);
+      expect(find.text('result=strava-only-striders'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('without a Strava club there is no note and no link',
+        (tester) async {
+      await open(tester, _Launcher(social: _CapturingSocialService()));
+      expect(find.byKey(const ValueKey('club-form-strava-note')), findsNothing);
     });
   });
 }

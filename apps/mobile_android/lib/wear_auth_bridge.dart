@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -38,6 +39,10 @@ class WearAuthBridge {
       } else {
         _push(session, url: url, anonKey: anonKey);
       }
+    }, onError: (Object e) {
+      // A refused auth deep link arrives here as an error; the app root
+      // shows it, and the watch keeps whatever session it already has.
+      debugPrint('WearAuthBridge: auth stream error: $e');
     });
   }
 

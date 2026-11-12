@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
  * manual re-plan doesn't exercise: three completed weeks well under plan
  * form a sustained trend, so "Adaptive re-plan" opens the preview WITH a
  * trend reason + confidence badge, and applying writes the make-up.
- * Throwaway plan (status `completed` to dodge the one-active unique index;
+ * Throwaway plan (status `completed` to dodge the active-plan overlap constraint;
  * re-planning gates on dates, not status). Planned volume is set far above
  * any real mileage the seed user might have in-window, so the three weeks
  * are deterministically "under" without seeding runs.
@@ -50,7 +50,8 @@ test.describe('/plans/[id] adaptive re-plan', () => {
 			await expect(page.getByRole('heading', { level: 1, name: 'e2e adaptive replan' }))
 				.toBeVisible({ timeout: 10_000 });
 
-			await page.getByRole('button', { name: 'Adaptive re-plan' }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page.getByTestId('adjust-plan-dialog').getByRole('button', { name: 'Adaptive re-plan' }).click();
 
 			const preview = page.locator('.replan-preview');
 			await expect(preview).toBeVisible({ timeout: 10_000 });

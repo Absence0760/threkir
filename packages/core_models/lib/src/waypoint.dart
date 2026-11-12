@@ -15,16 +15,246 @@ class Waypoint {
   /// FIT/TCX importers, and watch recorders. See `docs/backend/metadata.md`.
   final int? bpm;
 
+  /// Raw fix quality the recorder saw, kept so the server can recompute
+  /// distance from a stored track with the same Doppler input the phone used
+  /// (`docs/features/gps_distance.md` § Waypoint fields). All optional and
+  /// omitted from the JSON when absent, so old tracks parse unchanged and
+  /// recompute through the position-only path.
+  @JsonKey(includeIfNull: false)
+  final double? accuracyMetres;
+  @JsonKey(includeIfNull: false)
+  final double? speedMps;
+  @JsonKey(includeIfNull: false)
+  final double? speedAccuracyMps;
+  @JsonKey(includeIfNull: false)
+  final double? bearingDeg;
+
+  /// The smoothed GPS distance filter's position for this fix (spec v1.2,
+  /// `docs/features/gps_distance.md` § Waypoint fields), written at save.
+  /// [lat] / [lng] stay the raw fix. Omitted when the smoother placed no
+  /// position on the fix, and on every track recorded before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? smoothedLat;
+  @JsonKey(includeIfNull: false)
+  final double? smoothedLng;
+
+  /// The phone barometer's altitude for this fix, metres, anchored to GPS
+  /// altitude over a long window (`docs/features/gps_distance.md`
+  /// § Waypoint fields). [elevationMetres] stays the GPS altitude. Omitted on
+  /// a phone with no barometer, before the anchor has a GPS altitude to
+  /// level against, and on every track recorded before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? baroElevationMetres;
+
+  /// The run's distance credited up to and including this fix, metres: the
+  /// GPS distance estimator's cumulative figure as the recorder saved it
+  /// (`docs/features/gps_distance.md` § Waypoint fields; `distM` in the
+  /// uploaded track). Splits and moving time read it through
+  /// `trackCumulativeMetres`. Omitted on imports and on every track recorded
+  /// before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? cumulativeDistanceMetres;
+
+  /// A fix the GPS distance estimator took that failed the recorder's track
+  /// gate (a 20-50 m canopy fix on the phone, 30-50 m on the watches, or a
+  /// phone fix the movement gate held back). Stored so the server can replay
+  /// the whole estimator input (`docs/features/gps_distance.md` § Stored
+  /// track); everything that draws, matches or measures the line skips it,
+  /// and only a distance replay reads it. Serialised only when true, so every
+  /// older track reads as all on-track.
+  @JsonKey(includeIfNull: false, toJson: _trueOrNull, fromJson: _isTrue)
+  final bool offTrack;
+
+  /// The first fix of a watch run's segment after its first: the watch
+  /// closed its distance estimator at a pause, a Wear OS source switch or a
+  /// continued run and opened a fresh one at this fix, so the server replays
+  /// each segment apart (spec v1.8, `docs/features/gps_distance.md` § Stored
+  /// track). Only the watches write it; the phone keeps it through ingest and
+  /// upload. Serialised only when true, so every older track is one segment.
+  @JsonKey(includeIfNull: false, toJson: _trueOrNull, fromJson: _isTrue)
+  final bool segmentStart;
+
   const Waypoint({
     required this.lat,
     required this.lng,
     this.elevationMetres,
     this.timestamp,
     this.bpm,
+    this.accuracyMetres,
+    this.speedMps,
+    this.speedAccuracyMps,
+    this.bearingDeg,
+    this.smoothedLat,
+    this.smoothedLng,
+    this.baroElevationMetres,
+    this.cumulativeDistanceMetres,
+    this.offTrack = false,
+    this.segmentStart = false,
   });
+
+  /// Whether the stored track carries a usable smoothed position for this
+  /// fix: both halves present and finite, as `hasSmoothedPosition` in web
+  /// `lib/runs/track_line.ts` reads it. A NaN half would otherwise put the
+  /// line vertex nowhere instead of on the raw fix.
+  bool get hasSmoothedPosition =>
+      (smoothedLat?.isFinite ?? false) && (smoothedLng?.isFinite ?? false);
+
+  /// Where the run line, a route match or a hop-sum distance places this
+  /// fix: the smoothed position when both halves are present, else the raw
+  /// fix. Never an estimator input — the estimator always takes [lat] /
+  /// [lng].
+  double get lineLat => hasSmoothedPosition ? smoothedLat! : lat;
+  double get lineLng => hasSmoothedPosition ? smoothedLng! : lng;
+
+  /// This fix with the smoother's position attached (or cleared, with nulls).
+  Waypoint withSmoothedPosition(double? smoothedLat, double? smoothedLng) =>
+      Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
+        segmentStart: segmentStart,
+      );
+
+  /// This fix with its cumulative credited distance set (or cleared).
+  Waypoint withCumulativeDistance(double? cumulativeDistanceMetres) =>
+      Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
+        segmentStart: segmentStart,
+      );
+
+  /// This fix marked off the track line (or back on it).
+  Waypoint withOffTrack(bool offTrack) => Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
+        segmentStart: segmentStart,
+      );
+
+  static Object? _trueOrNull(bool v) => v ? true : null;
+  static bool _isTrue(Object? v) => v == true;
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
       _$WaypointFromJson(json);
 
   Map<String, dynamic> toJson() => _$WaypointToJson(this);
 }
+
+/// The waypoints of [track] that are actually locations, with any non-finite
+/// elevation or fix-quality field dropped to null.
+///
+/// Two reasons, and the second is the one that loses a run. A non-finite
+/// latitude or longitude is not a coordinate but the absence of one
+/// (decisions § 954). And `jsonEncode` REFUSES a non-finite double: it throws
+/// `JsonUnsupportedObjectError`, an `Error` rather than an `Exception`, so a
+/// single such point makes the whole track unencodable — the run cannot be
+/// written to the local store and cannot be uploaded, on every retry forever,
+/// with nothing in the failure to say it will never succeed.
+///
+/// Dropping the point removes nothing real, which is why this is a filter and
+/// not a refusal: the alternative is a four-day effort that never leaves the
+/// phone. Every other boundary in the tree already answers this way — the
+/// recorder refuses to append a non-finite fix (§ 956) and the four route
+/// importers drop one (§ 954); this is the same rule at the two serializers
+/// the producers those guards do not cover all pass through.
+///
+/// Returns the input list itself when nothing needed dropping, so the common
+/// path allocates nothing.
+List<Waypoint> finiteWaypoints(List<Waypoint> track) {
+  var needsFilter = false;
+  for (final w in track) {
+    if (!w.lat.isFinite ||
+        !w.lng.isFinite ||
+        _nonFinite(w.elevationMetres) ||
+        _nonFinite(w.accuracyMetres) ||
+        _nonFinite(w.speedMps) ||
+        _nonFinite(w.speedAccuracyMps) ||
+        _nonFinite(w.bearingDeg) ||
+        _nonFinite(w.smoothedLat) ||
+        _nonFinite(w.smoothedLng) ||
+        _nonFinite(w.baroElevationMetres) ||
+        _nonFinite(w.cumulativeDistanceMetres)) {
+      needsFilter = true;
+      break;
+    }
+  }
+  if (!needsFilter) return track;
+  return <Waypoint>[
+    for (final w in track)
+      if (w.lat.isFinite && w.lng.isFinite)
+        Waypoint(
+          lat: w.lat,
+          lng: w.lng,
+          elevationMetres: _finiteOrNull(w.elevationMetres),
+          timestamp: w.timestamp,
+          bpm: w.bpm,
+          accuracyMetres: _finiteOrNull(w.accuracyMetres),
+          speedMps: _finiteOrNull(w.speedMps),
+          speedAccuracyMps: _finiteOrNull(w.speedAccuracyMps),
+          bearingDeg: _finiteOrNull(w.bearingDeg),
+          // A half-finite smoothed pair is no position: both or neither.
+          smoothedLat: _finiteSmoothedPair(w) ? w.smoothedLat : null,
+          smoothedLng: _finiteSmoothedPair(w) ? w.smoothedLng : null,
+          baroElevationMetres: _finiteOrNull(w.baroElevationMetres),
+          cumulativeDistanceMetres: _finiteOrNull(w.cumulativeDistanceMetres),
+          offTrack: w.offTrack,
+          segmentStart: w.segmentStart,
+        ),
+  ];
+}
+
+/// The fixes of [track] that belong on the run's line: every waypoint not
+/// flagged [Waypoint.offTrack]. The map line, route match, elevation, climb,
+/// segment and pace readers take this; only a distance replay reads the
+/// stored track whole.
+///
+/// Returns the input list itself when no point is flagged, so an older track
+/// (none carry the flag) allocates nothing.
+List<Waypoint> trackLine(List<Waypoint> track) {
+  if (!track.any((w) => w.offTrack)) return track;
+  return <Waypoint>[
+    for (final w in track)
+      if (!w.offTrack) w,
+  ];
+}
+
+bool _nonFinite(double? v) => v != null && !v.isFinite;
+
+bool _finiteSmoothedPair(Waypoint w) =>
+    (w.smoothedLat?.isFinite ?? false) && (w.smoothedLng?.isFinite ?? false);
+
+double? _finiteOrNull(double? v) => (v?.isFinite ?? false) ? v : null;

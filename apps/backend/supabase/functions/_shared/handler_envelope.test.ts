@@ -9,9 +9,8 @@
 // auth-rejection behaviour of the handlers that compose those helpers
 // with `serve()` + `createClient()`.
 //
-// Why only these webhook functions: the five JWT-gated functions
-// (clip-public-track, delete-account, export-data, parkrun-import,
-// strava-import) are 401'd at the platform gateway before the
+// Why only these webhook functions: the JWT-gated functions
+// (clip-public-track, delete-account, export-data, strava-import) are 401'd at the platform gateway before the
 // handler runs, so the handler-body auth surface there is degenerate
 // — the platform's `verify_jwt = true` config IS the test. The five
 // here are the ones where the handler does its own auth, which is
@@ -19,7 +18,7 @@
 //
 // **Skipped unless SUPABASE_TEST_URL is set.** Run locally with:
 //   cd apps/backend && supabase status -o env
-//   export SUPABASE_TEST_URL=http://127.0.0.1:54321
+//   export SUPABASE_TEST_URL=http://127.0.0.1:24321
 //   deno test --no-check --allow-net --allow-env \
 //     supabase/functions/_shared/handler_envelope.test.ts
 
@@ -126,12 +125,47 @@ Deno.test({
   name: 'strava-webhook: 403 on GET with no ?secret=',
   ignore: SKIP,
   fn: async () => {
-    const res = await fetch(endpoint('strava-webhook'));
+    // The handshake carries a CORRECT `hub.verify_token`, so the only
+    // gate left that can answer 403 is the URL-secret one. A bare GET
+    // is 403 either way — the verify-token gate below refuses an
+    // absent token with the same status and the same body — so the
+    // assertion could not tell an open secret gate from a closed one
+    // (decisions § 815).
+    const res = await fetch(
+      `${endpoint('strava-webhook')}?hub.mode=subscribe&hub.challenge=ch_no_secret` +
+      `&hub.verify_token=${STRAVA_VERIFY_TOKEN}`,
+    );
     await res.body?.cancel();
     if (res.status !== 403 && res.status !== 429) {
       throw new Error(
         `expected 403 (or 429), got ${res.status}; the secret ` +
         'gate guards GET (hub.verify_token handshake) too.',
+      );
+    }
+  },
+});
+
+Deno.test({
+  name: 'strava-webhook: 403 on GET with valid ?secret= but wrong hub.verify_token',
+  ignore: SKIP,
+  fn: async () => {
+    // The second, independent gate on the handshake. Strava's verify
+    // token and the URL secret are separate values; an attacker who
+    // has the URL (and so the secret) must still not be able to
+    // complete a subscription handshake. Nothing measured this gate
+    // before § 815 — its mutation killed no test in the file.
+    const res = await fetch(
+      `${endpoint('strava-webhook')}?secret=${STRAVA_WEBHOOK_SECRET}` +
+      '&hub.mode=subscribe&hub.challenge=ch_bad_token' +
+      '&hub.verify_token=not-the-real-strava-verify-token',
+    );
+    const json = await res.json().catch(() => null);
+    if (res.status === 429) return; // rate-limited shared-IP noise; tolerate
+    if (res.status !== 403) {
+      throw new Error(
+        `expected 403 on a wrong hub.verify_token, got ${res.status} ` +
+        `${JSON.stringify(json)}; the handshake must not be completable ` +
+        'with the URL secret alone.',
       );
     }
   },
@@ -160,9 +194,9 @@ Deno.test({
 });
 
 // ── revenuecat-webhook ────────────────────────────────────────────
-// RevenueCat HMAC-signs the raw body with REVENUECAT_WEBHOOK_SECRET
-// and sends the hex digest in `x-revenuecat-hmac`. The handler
-// constant-time compares against its own HMAC of the body. Replay
+// RevenueCat HMAC-signs `${t}.${rawBody}` with REVENUECAT_WEBHOOK_SECRET
+// and sends `t=<unix>,v1=<hex>` in `X-RevenueCat-Webhook-Signature` — the
+// same scheme as Stripe's, verified by the shared `verifyTimestampedHmac`. Replay
 // protection lives downstream of the signature check, so an
 // unsigned request never even reaches the replay window.
 
@@ -183,7 +217,7 @@ Deno.test({
 
 Deno.test({
   name: 'revenuecat-webhook: 401 missing_signature when no ' +
-    'x-revenuecat-hmac header',
+    'x-revenuecat-webhook-signature header',
   ignore: SKIP,
   fn: async () => {
     const res = await fetch(endpoint('revenuecat-webhook'), {
@@ -215,9 +249,10 @@ Deno.test({
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        // A plausible-shape 64-char hex digest that isn't the real one.
-        'x-revenuecat-hmac':
-          '0'.repeat(64),
+        // A fresh timestamp and a plausible-shape digest that isn't the real
+        // one, so the reject is the signature and not the freshness gate.
+        'x-revenuecat-webhook-signature':
+          `t=${Math.floor(Date.now() / 1000)},v1=${'0'.repeat(64)}`,
       },
       body: '{"event":{"id":"evt_test","event_timestamp_ms":1}}',
     });
@@ -362,15 +397,15 @@ function svc(path: string, init: RequestInit = {}): Promise<Response> {
   });
 }
 
-// POST a RevenueCat event with a valid HMAC over the serialized body.
+// POST a RevenueCat event with a valid signature over the serialized body.
 async function postRcEvent(
   ev: Record<string, unknown>,
 ): Promise<{ status: number; json: { new_tier?: unknown; skipped?: unknown } | null }> {
   const body = JSON.stringify({ event: ev });
-  const sig = await hmacHex(REVENUECAT_SECRET, body);
+  const sig = await rcSignature(body);
   const res = await fetch(endpoint('revenuecat-webhook'), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-revenuecat-hmac': sig },
+    headers: { 'content-type': 'application/json', 'x-revenuecat-webhook-signature': sig },
     body,
   });
   const json = await res.json().catch(() => null);
@@ -401,6 +436,13 @@ async function postStripeEvent(
   });
   const json = await res.json().catch(() => null);
   return { status: res.status, json };
+}
+
+// RevenueCat's `X-RevenueCat-Webhook-Signature` value for `body`, stamped
+// now so every call clears the five-minute freshness gate.
+async function rcSignature(body: string): Promise<string> {
+  const t = Math.floor(Date.now() / 1000);
+  return `t=${t},v1=${await hmacHex(REVENUECAT_SECRET, `${t}.${body}`)}`;
 }
 
 // HMAC-SHA256 hex of `body` keyed by `secret`. Matches the EF's
@@ -440,12 +482,12 @@ Deno.test({
       },
     };
     const body = JSON.stringify(event);
-    const sig = await hmacHex(REVENUECAT_SECRET, body);
+    const sig = await rcSignature(body);
     const res = await fetch(endpoint('revenuecat-webhook'), {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-revenuecat-hmac': sig,
+        'x-revenuecat-webhook-signature': sig,
       },
       body,
     });
@@ -482,12 +524,12 @@ Deno.test({
       },
     };
     const body = JSON.stringify(event);
-    const sig = await hmacHex(REVENUECAT_SECRET, body);
+    const sig = await rcSignature(body);
     const res = await fetch(endpoint('revenuecat-webhook'), {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-revenuecat-hmac': sig,
+        'x-revenuecat-webhook-signature': sig,
       },
       body,
     });
@@ -520,12 +562,12 @@ Deno.test({
       },
     };
     const body = JSON.stringify(event);
-    const sig = await hmacHex(REVENUECAT_SECRET, body);
+    const sig = await rcSignature(body);
     const res = await fetch(endpoint('revenuecat-webhook'), {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-revenuecat-hmac': sig,
+        'x-revenuecat-webhook-signature': sig,
       },
       body,
     });
@@ -582,12 +624,21 @@ Deno.test({
     // A `create` event would require an `integrations` row keyed on
     // owner_id, which the seed user doesn't have a Strava
     // connection for under the test fixture.
+    //
+    // `event_time` is deliberately 30 days STALE, which is what makes
+    // the 200 "OK" a claim about the early return rather than about
+    // 200 "OK" in general: the not-connected-athlete branch further
+    // down answers with the identical body, so a fresh timestamp let
+    // the assertion pass with the early return deleted entirely — it
+    // just fell through the dedupe insert it exists to avoid and out
+    // the integrations miss. Stale, the only way to reach a 200 is to
+    // return before the replay-window gate (decisions § 815).
     const body = JSON.stringify({
       object_type: 'athlete',
       object_id: 12345,
       aspect_type: 'update',
       owner_id: 12345,
-      event_time: Math.floor(Date.now() / 1000),
+      event_time: Math.floor(Date.now() / 1000) - 30 * 24 * 3600,
     });
     const res = await fetch(
       `${endpoint('strava-webhook')}?secret=${STRAVA_WEBHOOK_SECRET}`,
@@ -734,10 +785,10 @@ Deno.test({
       // (b) Replay the SAME delivery — identical body → identical event
       // id → 23505 → skipped, and the tier must NOT move again.
       const initialBody = JSON.stringify({ event: initial });
-      const initialSig = await hmacHex(REVENUECAT_SECRET, initialBody);
+      const initialSig = await rcSignature(initialBody);
       const replay = await fetch(endpoint('revenuecat-webhook'), {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-revenuecat-hmac': initialSig },
+        headers: { 'content-type': 'application/json', 'x-revenuecat-webhook-signature': initialSig },
         body: initialBody,
       });
       const replayJson = await replay.json().catch(() => null);
@@ -1037,6 +1088,11 @@ Deno.test({
           object: {
             metadata: { kind: 'donation', donation_id: donationId },
             payment_intent: paymentIntent,
+            // A completed Session is not a payment: a delayed-notification
+            // method completes it `unpaid` and the money lands days later, so
+            // the confirm arm requires an explicit settlement (decisions
+            // § 785). Every real Stripe payload carries this field.
+            payment_status: 'paid',
           },
         },
       };
@@ -1167,9 +1223,12 @@ Deno.test({
         type: 'checkout.session.expired',
         data: { object: { metadata: { order_id: orderId } } },
       });
-      if (r.status !== 200 || r.json?.canceled !== true) {
+      // The arm handles `expired` and `async_payment_failed` together and
+      // reports the state it resolved, since `canceled: true` would be a lie
+      // for the second (decisions § 785).
+      if (r.status !== 200 || r.json?.order_status !== 'canceled') {
         throw new Error(
-          `expected 200 canceled=true, got ${r.status} ${JSON.stringify(r.json)}`,
+          `expected 200 order_status=canceled, got ${r.status} ${JSON.stringify(r.json)}`,
         );
       }
       const read = await svc(
@@ -1192,6 +1251,293 @@ Deno.test({
         .then((x) => x.body?.cancel());
       await svc(`/auth/v1/admin/users/${userId}`, { method: 'DELETE' })
         .then((x) => x.body?.cancel());
+    }
+  },
+});
+
+// ── refresh-tokens: the POSITIVE path, without an upstream ────────
+// The two refresh-tokens cases above are both 403s, so a handler that
+// refused every request would pass both. The gate OPENING is the thing
+// they cannot see, and it is the only part of this function that had no
+// coverage: `refreshExpiringStravaTokens` itself already has a positive
+// path in refresh-tokens/lib.test.ts and sweep_invariants.test.ts, both
+// driven through a stubbed `globalThis.fetch` — the same seam
+// _shared/strava_upstream.test.ts uses for the import path.
+//
+// So no live credential is needed here either, and no upstream call is
+// made. The fixture is an integration whose token IS inside the
+// one-hour window (so the sweep selects it, rather than returning zero
+// off an empty select and proving nothing) but which holds no vault
+// secret, so `get_integration_tokens` yields nothing and the loop
+// `continue`s before `refreshStravaToken` is reached. That the upstream
+// was never called is observable rather than assumed: a real call with
+// an unusable grant would 4xx and stamp `disconnected_at` through the
+// wired onPermanentFailure callback, and the test reads that column
+// back.
+
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ??
+  'ci-cron-secret-at-least-32-chars-ok';
+
+Deno.test({
+  name: 'refresh-tokens: the correct cron bearer is accepted and the ' +
+    'sweep completes without reaching Strava',
+  ignore: SKIP_DB,
+  fn: async () => {
+    const email =
+      `cron-sweep-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`;
+    const createRes = await svc('/auth/v1/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: 'testtest-cron-1', email_confirm: true }),
+    });
+    const created = await createRes.json().catch(() => null);
+    const userId = created?.id as string | undefined;
+    if (!userId) {
+      throw new Error(
+        `failed to create ephemeral user: ${createRes.status} ${JSON.stringify(created)}`,
+      );
+    }
+
+    try {
+      // Inside the sweep's `token_expiry < now + 1h` window, and with
+      // both vault secret ids null.
+      const plant = await svc('/rest/v1/integrations', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          user_id: userId,
+          provider: 'strava',
+          token_expiry: new Date(Date.now() + 60_000).toISOString(),
+        }),
+      });
+      const plantStatus = plant.status;
+      await plant.body?.cancel();
+      if (plantStatus >= 300) {
+        throw new Error(`failed to plant integration: ${plantStatus}`);
+      }
+
+      const res = await fetch(endpoint('refresh-tokens'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${CRON_SECRET}` },
+      });
+      const json = await res.json().catch(() => null);
+      if (res.status !== 200) {
+        throw new Error(
+          `expected 200, got ${res.status} ${JSON.stringify(json)}; 403 means ` +
+          'the bearer and the host\'s CRON_SECRET disagree, 503 means the host ' +
+          'has none (or one under the 32-char floor).',
+        );
+      }
+      // The count is the shape the cron job reads. Zero is the right
+      // answer for a grant with no stored refresh token — a non-zero one
+      // would mean the sweep believed it rotated something.
+      if (json?.refreshed !== 0) {
+        throw new Error(
+          `expected {refreshed: 0}, got ${JSON.stringify(json)}`,
+        );
+      }
+
+      const after = await svc(
+        `/rest/v1/integrations?user_id=eq.${userId}&provider=eq.strava` +
+        '&select=disconnected_at,disconnected_reason',
+      );
+      const rows = await after.json().catch(() => []);
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row) throw new Error('planted integration disappeared');
+      if (row.disconnected_at !== null) {
+        throw new Error(
+          `disconnected_at was stamped (${JSON.stringify(row)}) — the sweep ` +
+          'reached Strava with an unusable grant instead of skipping the row.',
+        );
+      }
+    } finally {
+      await svc(`/auth/v1/admin/users/${userId}`, { method: 'DELETE' })
+        .then((x) => x.body?.cancel());
+    }
+  },
+});
+
+// ── auth-email: the POSITIVE path, end to end into Mailpit ────────
+// The three cases above are all refusals, and a handler that refused
+// everything would pass all three. This one proves the other side: a
+// correctly signed hook renders in the recipient's locale and delivers
+// over SMTP. Nothing here is blocked on a credential — the Standard
+// Webhooks secret is ours (the CI boot step writes it into .env.local
+// beside SMTP_HOST / SMTP_PORT / SMTP_FROM) and the transport is the
+// local Mailpit the stack already runs.
+//
+// The payload carries NO `user.id`, so the handler skips its
+// `user_settings` locale read entirely: this test needs the function
+// host and the mail catcher, not the database, so it is NOT gated on
+// SERVICE_ROLE_KEY. It is not gated on the hook secret either, and that
+// is a deliberate removal rather than an omission. A `SKIP_MAIL = SKIP
+// || SEND_EMAIL_SECRET.length === 0` stood here, and `??` falls back
+// only on undefined: an ABSENT `SEND_EMAIL_HOOK_SECRET` took the
+// literal below and the case ran, while one set to the EMPTY STRING -
+// which is what a `SEND_EMAIL_HOOK_SECRET:` line with nothing after the
+// colon produces - skipped it. That is the opposite of its sibling
+// SKIP_DB (absent means skip) and it made the one shape a workflow edit
+// actually produces the one shape that vanishes silently. Without a
+// gate the same two inputs fail loudly against a host holding a
+// different secret, which is a diagnosis rather than a disappearance
+// (decisions § 1320).
+
+const SEND_EMAIL_SECRET = Deno.env.get('SEND_EMAIL_HOOK_SECRET') ??
+  'v1,Y2ktYXV0aC1lbWFpbC1ob29rLXNlY3JldC0zMmNoYXJz';
+// Read from the RUNNER, which is why this is a published host port and
+// not the `host.docker.internal:24325` the function host dials.
+const MAILPIT_URL = Deno.env.get('MAILPIT_URL') ?? 'http://127.0.0.1:24324';
+
+// Standard Webhooks signs `${id}.${timestamp}.${body}` and carries the
+// result base64, not hex — so this is not `hmacHex`. Mirrors
+// `signSendEmailHook` / `parseHookSecrets` in auth-email/lib.ts; kept
+// hand-rolled here for the same reason `hmacHex` is, so the test does
+// not import the module whose live deployment it is measuring.
+async function signHook(
+  secretConfig: string,
+  id: string,
+  timestamp: string,
+  body: string,
+): Promise<string> {
+  let raw = secretConfig.split('|')[0].trim();
+  if (raw.startsWith('v1,')) raw = raw.slice(3);
+  if (raw.startsWith('whsec_')) raw = raw.slice(6);
+  const bin = atob(raw);
+  const keyBytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) keyBytes[i] = bin.charCodeAt(i);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${id}.${timestamp}.${body}`),
+  );
+  let out = '';
+  for (const b of new Uint8Array(sig)) out += String.fromCharCode(b);
+  return `v1,${btoa(out)}`;
+}
+
+interface MailpitItem {
+  ID: string;
+  To: { Address: string }[];
+  Subject: string;
+}
+
+// Searched by recipient rather than cleared-then-read: `DELETE
+// /api/v1/messages` wipes the whole catcher, and a Playwright shard or
+// another agent's stack may be reading it at the same time.
+async function waitForMail(
+  to: string,
+  timeoutMs = 20_000,
+): Promise<{ subject: string; body: string }> {
+  const deadline = Date.now() + timeoutMs;
+  let lastErr = 'no message matched';
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${MAILPIT_URL}/api/v1/messages?limit=200`);
+      if (res.ok) {
+        const list = await res.json() as { messages?: MailpitItem[] };
+        const hit = (list.messages ?? []).find((m) =>
+          (m.To ?? []).some((t) => t.Address.toLowerCase() === to.toLowerCase())
+        );
+        if (hit) {
+          const detail = await fetch(`${MAILPIT_URL}/api/v1/message/${hit.ID}`);
+          if (detail.ok) {
+            const msg = await detail.json() as {
+              Subject: string;
+              HTML?: string;
+              Text?: string;
+            };
+            return {
+              subject: msg.Subject,
+              body: (msg.HTML ?? '') + (msg.Text ?? ''),
+            };
+          }
+        }
+      } else {
+        lastErr = `mailpit ${res.status}`;
+        await res.body?.cancel();
+      }
+    } catch (err) {
+      lastErr = err instanceof Error ? err.message : 'fetch failed';
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`no mail for ${to} within ${timeoutMs}ms (${lastErr})`);
+}
+
+Deno.test({
+  name: 'auth-email: a correctly signed signup hook renders in the ' +
+    "recipient's locale and delivers over SMTP",
+  ignore: SKIP,
+  fn: async () => {
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const to = `auth-email-pos-${stamp}@example.test`;
+    // Unique per run, so finding it in the delivered body proves the mail
+    // was rendered from THIS payload rather than matched off an older one.
+    const tokenHash = `pkce_${stamp}`;
+    const body = JSON.stringify({
+      user: {
+        email: to,
+        // No settings row exists for a hook payload carrying no user id,
+        // so this is the locale the handler must fall back to — and it
+        // must not be English.
+        user_metadata: { locale: 'fr-FR' },
+      },
+      email_data: {
+        email_action_type: 'signup',
+        token: '123456',
+        token_hash: tokenHash,
+        redirect_to: 'http://127.0.0.1:7777/auth/callback',
+        site_url: 'http://127.0.0.1:7777',
+      },
+    });
+    const id = `msg_pos_${stamp}`;
+    const ts = String(Math.floor(Date.now() / 1000));
+    const res = await fetch(endpoint('auth-email'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'webhook-id': id,
+        'webhook-timestamp': ts,
+        'webhook-signature': await signHook(SEND_EMAIL_SECRET, id, ts, body),
+      },
+      body,
+    });
+    const json = await res.json().catch(() => null);
+    if (res.status !== 200) {
+      throw new Error(
+        `expected 200, got ${res.status} ${JSON.stringify(json)}; ` +
+        '503 smtp_not_configured means the function host has no SMTP_HOST / ' +
+        'SMTP_FROM, 401 means the signature or the secret disagree.',
+      );
+    }
+    if (json?.skipped) {
+      throw new Error(
+        `handler skipped the send (${JSON.stringify(json)}); a planned send ` +
+        'is what this test exists to exercise.',
+      );
+    }
+
+    const mail = await waitForMail(to);
+    // The French signup subject from authEmailCatalogue. Asserting the
+    // localized one rather than any subject is what separates "it sent
+    // something" from "it resolved the locale and rendered that entry".
+    if (mail.subject !== 'Confirmez votre adresse e-mail') {
+      throw new Error(
+        `expected the fr signup subject, got ${JSON.stringify(mail.subject)}; ` +
+        'an English subject means the fr-FR metadata locale was not resolved.',
+      );
+    }
+    if (!mail.body.includes(tokenHash)) {
+      throw new Error(
+        'delivered body carries no verify link for this run\'s token_hash; ' +
+        'the mail was not rendered from this payload.',
+      );
     }
   },
 });

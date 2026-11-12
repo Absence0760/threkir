@@ -13,7 +13,12 @@
 
 import 'dart:math';
 
-import 'training.dart' show riegelPredict, predictionConfidence, PredictionQuality;
+import 'training.dart'
+    show
+        riegelPredict,
+        predictionConfidence,
+        PredictionConfidence,
+        PredictionQuality;
 
 /// The standard race ladder we project, in metres (5K / 10K / Half / Marathon).
 /// Matches `kGoalDistancesM` in training.dart; ordered shortest-to-longest.
@@ -104,8 +109,16 @@ double _recencyWeight(double ageDays) {
 /// whose recency-weighted equivalent time is fastest; the ladder then projects
 /// from the chosen anchor's ACTUAL distance + time.
 RacePrediction? predictRaceLadder(List<EffortForPrediction> efforts) {
+  // `> 0` alone admits an infinite distance (durationS is an int, so only
+  // the double can be one), which projects to NaN, can never win the
+  // anchor, and still counted toward `qualifyingCount` — and a pool of
+  // nothing else left no anchor at all and threw.
   final pool = efforts
-      .where((e) => e.distanceM > 0 && e.durationS > 0 && e.ageDays.isFinite)
+      .where((e) =>
+          e.distanceM.isFinite &&
+          e.distanceM > 0 &&
+          e.durationS > 0 &&
+          e.ageDays.isFinite)
       .toList();
   if (pool.isEmpty) return null;
 
@@ -156,4 +169,45 @@ RacePrediction? predictRaceLadder(List<EffortForPrediction> efforts) {
     qualifyingCount: pool.length,
     rungs: rungs,
   );
+}
+
+/// How much faster than the recent-runs projection a goal has to be before the
+/// plan wizard says so. Generous on purpose: the anchor is usually a training
+/// run rather than a race, so it under-reads race fitness, and a goal a few
+/// percent quicker than it is an ordinary race goal, not an ambitious one.
+const double kGoalAheadMargin = 0.1;
+
+/// Is a plan's goal time faster than the runner's recent running supports?
+///
+/// With no confirmed recent 5K, the plan sets every pace from the goal time,
+/// so an ambitious or stale goal gives easy and interval paces that are too
+/// fast. This projects the goal distance from the same recency-weighted anchor
+/// the race predictor uses and returns that projection (seconds) when the goal
+/// beats it by more than [kGoalAheadMargin], or null otherwise.
+///
+/// Fail-closed: no usable effort, a non-positive goal, or a projection whose
+/// confidence is `low` (a far extrapolation, a stale anchor, a thin pool) all
+/// return null. Telling a runner their goal is unrealistic off a guess would
+/// be worse than saying nothing.
+double? goalAheadOfRecentRuns(
+  double goalDistanceM,
+  int? goalTimeSec,
+  List<EffortForPrediction> efforts,
+) {
+  if (goalTimeSec == null || goalTimeSec <= 0) return null;
+  if (!goalDistanceM.isFinite || goalDistanceM <= 0) return null;
+  final prediction = predictRaceLadder(efforts);
+  if (prediction == null) return null;
+  final anchor = prediction.anchor;
+  final quality = predictionConfidence(
+    knownDistanceM: anchor.distanceM,
+    targetDistanceM: goalDistanceM,
+    daysSinceBest: anchor.ageDays.round(),
+    qualifyingRunCount: prediction.qualifyingCount,
+  );
+  if (quality.confidence == PredictionConfidence.low) return null;
+  final predictedSec =
+      riegelPredict(anchor.distanceM, anchor.durationS, goalDistanceM);
+  if (goalTimeSec >= predictedSec * (1 - kGoalAheadMargin)) return null;
+  return predictedSec;
 }

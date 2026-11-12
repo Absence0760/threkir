@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import {
 	deleteRoute,
@@ -9,6 +9,7 @@ import {
 	insertRun
 } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /live/[id] — the "Next cut-off" card (predictive-live-tracking item 3).
@@ -40,7 +41,10 @@ const RUNNER_NEAR_START = { lat: -37.8, lng: 144.96 };
 // ~90% along — the cutoff sits here.
 const CUTOFF_NEAR_END = { lat: -37.8, lng: 144.99 };
 
-async function seedCourse(opts: { publicRoute: boolean }): Promise<{
+async function seedCourse(opts: {
+	publicRoute: boolean;
+	cutoffElapsedS?: number;
+}): Promise<{
 	routeId: string;
 	cleanup: () => Promise<void>;
 }> {
@@ -59,7 +63,7 @@ async function seedCourse(opts: { publicRoute: boolean }): Promise<{
 		lat: CUTOFF_NEAR_END.lat,
 		lng: CUTOFF_NEAR_END.lng,
 		// Generous limit so a normally-paced runner reads "on pace" (green).
-		meta: { cutoff_elapsed_s: 7_200 }
+		meta: { cutoff_elapsed_s: opts.cutoffElapsedS ?? 7_200 }
 	});
 	return {
 		routeId,
@@ -77,12 +81,7 @@ test.describe('/live/[id] — Next cut-off card (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('fresh pings + cutoff ahead → card + margin chip render', async ({ page }) => {
@@ -168,6 +167,16 @@ test.describe('/live/[id] — Next cut-off card (anon)', () => {
 			await expect(card.locator('.cutoff-waiting')).not.toContainText(
 				/Waiting for a fresh signal/i
 			);
+			// Suppressing the ETA must not suppress the go/no-go number the
+			// crew actually acts on. requiredPace does not depend on recent
+			// pace, so it survives the stale branch — labelled "from the last
+			// fix" so nobody reads it as measured from where the runner is now.
+			await expect(card.locator('[data-testid="cutoff-required"]')).toBeVisible();
+			await expect(card.locator('[data-testid="cutoff-required"]')).toContainText(
+				/last fix/i
+			);
+			// The limit is 2 h out and the runner is ~10 min in — not expired.
+			await expect(card.locator('[data-testid="cutoff-expired"]')).toHaveCount(0);
 		} finally {
 			await deleteRun(runId);
 			await cleanup();
@@ -254,8 +263,64 @@ test.describe('/live/[id] — Next cut-off card (anon)', () => {
 			await page.goto(`/live/${runId}`);
 
 			// The stat strip mounts (proves the page loaded), but no card.
-			await expect(page.locator('.live-stat-label')).toHaveCount(3);
+			// A live run knows its own start instant, so the race clock tile is
+			// there — asserted by identity rather than by tile COUNT, which the
+			// recent-pace tile makes race-dependent.
+			await expect(page.getByTestId('race-clock')).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('runner-timer')).toBeVisible();
 			await expect(page.locator('.cutoff-card')).toHaveCount(0);
+		} finally {
+			await deleteRun(runId);
+			await cleanup();
+		}
+	});
+
+	test('a limit that expired during a dead zone is stated, not hidden behind "signal lost"', async ({
+		page
+	}) => {
+		// The scenario this card exists for: a runner drops out of signal
+		// before their cut-off and the deadline passes while they are dark.
+		// `elapsed_s` stops advancing when the pings stop, so the page has to
+		// run the race clock forward by the ping age — otherwise the limit
+		// never registers as expired and the card says only "Signal lost",
+		// withholding the one fact the crew at the checkpoint is deciding on.
+		//
+		// Limit 700 s; last ping reported 500 s elapsed and landed 5 min ago,
+		// so the honest clock reads 800 s — past the limit.
+		const { routeId, cleanup } = await seedCourse({
+			publicRoute: true,
+			cutoffElapsedS: 700
+		});
+		const startedAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+		const staleAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+		const runId = await insertRun({
+			user_id: USER_A.id,
+			started_at: startedAt,
+			distance_m: 4_400,
+			duration_s: 3_600,
+			is_public: true,
+			route_id: routeId
+		});
+		try {
+			await insertLivePings({
+				run_id: runId,
+				user_id: USER_A.id,
+				points: [{ ...RUNNER_NEAR_START, distance_m: 900, elapsed_s: 500, at: staleAt }]
+			});
+
+			await page.goto(`/live/${runId}`);
+
+			const card = page.locator('.cutoff-card');
+			await expect(card).toBeVisible({ timeout: 10_000 });
+			await expect(card.locator('[data-testid="cutoff-expired"]')).toBeVisible();
+			await expect(card).toHaveClass(/expired/);
+			// Still honest about the fix: the verdict stays suppressed and the
+			// signal-lost line stays put. Expiry is stated ALONGSIDE it.
+			await expect(card.locator('.cutoff-waiting')).toContainText(/Signal lost/i);
+			await expect(card.locator('.cutoff-chip')).toHaveCount(0);
+			// A passed limit cannot be made at any pace — the required-pace
+			// line must not fire from the same null it produces.
+			await expect(card.locator('[data-testid="cutoff-required"]')).toHaveCount(0);
 		} finally {
 			await deleteRun(runId);
 			await cleanup();

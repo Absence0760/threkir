@@ -39,15 +39,6 @@ void main() {
     return;
   }
 
-  // get_my_profile() `returns user_profiles`, so a missing row comes back
-  // as an all-null composite (id == null), not as SQL NULL.
-  Map<String, dynamic>? profileRow(dynamic res) {
-    final row = (res is List ? (res.isEmpty ? null : res.first) : res)
-        as Map<String, dynamic>?;
-    if (row == null || row['id'] == null) return null;
-    return row;
-  }
-
   SupabaseClient newClient() => SupabaseClient(
         url,
         anonKey,
@@ -73,14 +64,14 @@ void main() {
     final api = ApiClient.withClient(client);
     await signUpFresh(client, 'skip');
 
-    final before = profileRow(await client.rpc('get_my_profile'));
+    final before = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     expect(before, isNull,
         reason: 'fresh user must have no client-provisioned profile row — '
             'the 0-row trigger this test exists for');
 
     await api.markOnboarded();
 
-    final after = profileRow(await client.rpc('get_my_profile'));
+    final after = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     expect(after, isNotNull, reason: 'the stamp must land a row, not 0-row');
     expect(after!['onboarded_at'], isNotNull);
   });
@@ -95,7 +86,7 @@ void main() {
     final api = ApiClient.withClient(client);
     await signUpFresh(client, 'finish');
 
-    expect(profileRow(await client.rpc('get_my_profile')), isNull);
+    expect(ApiClient.profileRowFrom(await client.rpc('get_my_profile')), isNull);
 
     await api.completeOnboarding(
       displayName: '  Alex Runner  ',
@@ -103,7 +94,7 @@ void main() {
       healthDataConsent: false,
     );
 
-    final after = profileRow(await client.rpc('get_my_profile'));
+    final after = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     expect(after, isNotNull);
     expect(after!['onboarded_at'], isNotNull);
     expect(after['display_name'], 'Alex Runner');
@@ -126,7 +117,7 @@ void main() {
       healthDataConsent: false,
     );
 
-    final after = profileRow(await client.rpc('get_my_profile'));
+    final after = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     expect(after, isNotNull);
     expect(after!['onboarded_at'], isNotNull,
         reason: 'skipped sections must never block the stamp — finishing '

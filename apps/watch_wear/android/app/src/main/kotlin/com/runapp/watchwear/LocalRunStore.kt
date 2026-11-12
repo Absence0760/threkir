@@ -5,6 +5,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.runapp.watchwear.recording.GnssSignalSummary
+import com.runapp.watchwear.recording.migrateQueuedTracks
+import com.runapp.watchwear.workout.WorkoutReview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -28,6 +31,10 @@ data class QueuedRun(
     /// ultra-length runs where the track file can be multiple megabytes.
     val trackFilePath: String,
     val avgBpm: Double? = null,
+    /// Share of the run's active time the heart-rate sensor covered, 0..1.
+    /// Uploaded as `metadata.hr_coverage`; null omits the key — a run queued
+    /// before the field existed says nothing rather than claiming zero.
+    val hrCoverage: Double? = null,
     val activityType: String = "run",
     val laps: List<QueuedLap> = emptyList(),
     /// Cumulative step count for the run — captured from the
@@ -42,35 +49,95 @@ data class QueuedRun(
     /// pre-change behaviour for runs queued before this field
     /// existed (kotlinx-serialization fills the default on decode).
     val isPublic: Boolean? = null,
+    /// `metadata.distance_estimator` / `metadata.distance_step_filled_m` /
+    /// `metadata.distance_step_over_chord_m` / `metadata.distance_segments`.
+    /// Null on a run queued by a build that summed raw hops, so it uploads
+    /// without claiming an estimator it never ran.
+    val distanceEstimator: String? = null,
+    val distanceStepFilledM: Double? = null,
+    val distanceStepOverChordM: Double? = null,
+    val distanceSegments: Int? = null,
+    /// `metadata.location_provider`. Null on a run queued before the watch
+    /// recorded on the receiver, or with no track, and the key is omitted.
+    val locationProvider: String? = null,
+    /// `metadata.gnss_signal`. Null on a run queued before the watch read
+    /// satellite status, or with no reading, and the key is omitted.
+    val gnssSignal: GnssSignalSummary? = null,
+    /// `metadata.track_complete`. False on a run queued before the watch
+    /// stored its off-track fixes, and the key is omitted.
+    val trackComplete: Boolean = false,
+    /// `metadata.race_undone_finish_at`: the latest line finish the runner
+    /// took back on this recording, on the server clock. Null when none was.
+    val raceUndoneFinishAt: String? = null,
+    /// The planned-vs-actual review of a run started from today's workout:
+    /// `metadata.plan_workout_id`, `workout_step_results`,
+    /// `workout_adherence`. Null on a free run, and on a run queued before
+    /// the watch ran workouts.
+    val workoutReview: WorkoutReview? = null,
 )
 
 private val Context.dataStore by preferencesDataStore(name = "watch_wear")
 private val KEY_QUEUE: Preferences.Key<String> = stringPreferencesKey("queued_runs_v2")
 
+private val queueJson = Json { ignoreUnknownKeys = true }
+private val queueSerializer = ListSerializer(QueuedRun.serializer())
+
+internal fun decodeQueue(raw: String?): List<QueuedRun> = runCatching {
+    queueJson.decodeFromString(queueSerializer, raw ?: "[]")
+}.getOrDefault(emptyList())
+
+internal fun encodeQueue(runs: List<QueuedRun>): String =
+    queueJson.encodeToString(queueSerializer, runs)
+
+/// The three queue mutations, as pure `raw JSON -> raw JSON` reductions.
+///
+/// They exist so the read half of each read-modify-write can happen against
+/// the `Preferences` snapshot **inside** DataStore's `edit` transaction. The
+/// previous shape read through `queue.first()` outside it, so a drain that
+/// removed an uploaded run and a concurrent `save` could each write a whole
+/// list built from a stale snapshot: the removed run reappeared after its
+/// track file had already been deleted, and every later drain then failed on
+/// the missing payload with the entry stuck in the queue forever.
+internal fun queueAfterSave(raw: String?, run: QueuedRun): String =
+    encodeQueue(decodeQueue(raw).filter { it.id != run.id } + run)
+
+internal fun queueAfterRemove(raw: String?, id: String): String =
+    encodeQueue(decodeQueue(raw).filter { it.id != id })
+
 /// DataStore-backed queue of finished runs awaiting upload.
 class LocalRunStore(private val context: Context) {
-    private val json = Json { ignoreUnknownKeys = true }
-    private val listSerializer = ListSerializer(QueuedRun.serializer())
 
     val queue: Flow<List<QueuedRun>> = context.dataStore.data.map { prefs ->
-        val raw = prefs[KEY_QUEUE] ?: "[]"
-        runCatching {
-            json.decodeFromString(listSerializer, raw)
-        }.getOrDefault(emptyList())
+        decodeQueue(prefs[KEY_QUEUE])
     }
 
     suspend fun save(run: QueuedRun) {
-        val current = queue.first().filter { it.id != run.id } + run
-        write(current)
+        context.dataStore.edit { prefs ->
+            prefs[KEY_QUEUE] = queueAfterSave(prefs[KEY_QUEUE], run)
+        }
     }
 
     suspend fun remove(id: String) {
-        val current = queue.first().filter { it.id != id }
-        write(current)
+        context.dataStore.edit { prefs ->
+            prefs[KEY_QUEUE] = queueAfterRemove(prefs[KEY_QUEUE], id)
+        }
     }
 
     suspend fun contains(id: String): Boolean =
         queue.first().any { it.id == id }
+
+    /// Move any queued run whose track still sits in the pre-migration cache
+    /// directory into [durableDir], rewriting the queue entry in the same
+    /// transaction so the pair can never disagree about where the payload is.
+    /// Returns the queue as it stands afterwards.
+    suspend fun migrateTrackFiles(legacyDir: File, durableDir: File): List<QueuedRun> {
+        var migrated: List<QueuedRun> = emptyList()
+        context.dataStore.edit { prefs ->
+            migrated = migrateQueuedTracks(decodeQueue(prefs[KEY_QUEUE]), legacyDir, durableDir)
+            prefs[KEY_QUEUE] = encodeQueue(migrated)
+        }
+        return migrated
+    }
 
     /// Wipe the entire upload queue, including the on-disk track files
     /// the queued runs reference.
@@ -85,18 +152,20 @@ class LocalRunStore(private val context: Context) {
     /// practice the queue is drained on every run-stop and every
     /// offline→online edge, so it's normally empty before a deliberate
     /// sign-out. Deleting the track files too keeps the previous user's
-    /// traces from lingering recoverably in the cache dir.
+    /// traces from lingering recoverably on disk.
     suspend fun clear() {
-        val current = queue.first()
-        for (run in current) {
-            runCatching { File(run.trackFilePath).delete() }
-        }
-        context.dataStore.edit { prefs -> prefs.remove(KEY_QUEUE) }
-    }
-
-    private suspend fun write(runs: List<QueuedRun>) {
+        var dropped: List<QueuedRun> = emptyList()
         context.dataStore.edit { prefs ->
-            prefs[KEY_QUEUE] = json.encodeToString(listSerializer, runs)
+            dropped = decodeQueue(prefs[KEY_QUEUE])
+            prefs.remove(KEY_QUEUE)
+        }
+        for (run in dropped) {
+            // `delete()` answers false rather than throwing on a file that is
+            // already gone, so what this swallows is an I/O fault on a file the
+            // queue entry above no longer names — there is no record left to
+            // retry against. `sweepOrphanTracks` collects whatever survives, so
+            // the previous user's trace is not left on disk indefinitely.
+            runCatching { File(run.trackFilePath).delete() }
         }
     }
 }

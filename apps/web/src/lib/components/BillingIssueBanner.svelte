@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
-	import { formatRelativeTime } from '$lib/format/time';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
 
 	/// Persistent top-of-app banner that surfaces a recent
 	/// `BILLING_ISSUE` event from RevenueCat — a renewal payment failed

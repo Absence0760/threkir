@@ -1,23 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymRoutineDetail,
 		fetchGymSessionDraft,
 		fetchExerciseSetHistoryBatch,
 		type GymRoutineDetail,
 		type GymWorkout,
-	} from '$lib/core/data';
-	import { expandRoutineSteps, type RoutineStep, type PlannedRoutine } from '$lib/gym/gym_routine';
-	import { nextPrescription } from '$lib/gym/gym_progression';
-	import { lastSessionSets } from '$lib/gym/progression_prefill';
-	import { normaliseExerciseName } from '$lib/gym/gym_prs';
-	import GymSessionRunner from '$lib/components/GymSessionRunner.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { expandRoutineSteps, type RoutineStep, type PlannedRoutine } from '#lib/gym/gym_routine.ts';
+	import { nextPrescription } from '#lib/gym/gym_progression.ts';
+	import { lastSessionSets, progressionParamsWithStreak } from '#lib/gym/progression_prefill.ts';
+	import { normaliseExerciseName } from '#lib/gym/gym_prs.ts';
+	import GymSessionRunner from '#lib/components/GymSessionRunner.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
-	const routineId = $derived($page.params.routineId ?? '');
+	const routineId = $derived(page.params.routineId ?? '');
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let steps = $state<RoutineStep[]>([]);
@@ -32,7 +33,7 @@
 		} catch (e) {
 			// Starting a session against a half-read routine would log sets
 			// against a prescription that isn't the real one.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'gym/session/[routineId]: loadError');
 			detail = null;
 			loading = false;
 			return;
@@ -100,7 +101,16 @@
 				lastSets: last,
 				targetRepsMin: firstSet?.target_reps_min ?? null,
 				targetRepsMax: firstSet?.target_reps_max ?? null,
-				params: ex.progression_params,
+				// The 5×5 deload reads a miss count no authored params bag carries;
+				// the same history batch already in hand supplies it.
+				params: progressionParamsWithStreak({
+					scheme: ex.progression,
+					params: ex.progression_params,
+					targetRepsMin: firstSet?.target_reps_min ?? null,
+					targetRepsMax: firstSet?.target_reps_max ?? null,
+					history,
+					exerciseName: ex.exercise_name,
+				}),
 			});
 			if (sug.reason === 'none') continue;
 			suggestions.set(key, {
@@ -150,7 +160,7 @@
 
 	{#if loading}
 		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="not-found" role="alert" data-testid="session-load-error">
 			<p>{t('gym.routine.loadError')}</p>
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>

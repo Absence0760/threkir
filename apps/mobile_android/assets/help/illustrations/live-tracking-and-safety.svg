@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The runner's phone, sharing a live position -->
+  <rect x="20" y="30" width="84" height="144" rx="16" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <rect x="30" y="44" width="64" height="88" rx="8" fill="#ff00a5"/>
+  <path d="M38 120 C50 104 58 116 66 96" stroke="#ff00a1" stroke-width="4"/>
+  <path d="M66 96 C58 86 56 82 56 78 A10 10 0 0 1 76 78 C76 82 74 86 66 96 Z" fill="#ff00a1"/>
+  <circle cx="66" cy="78" r="3" fill="#ff00a4"/>
+  <rect x="44" y="146" width="36" height="14" rx="7" fill="#ff00a1"/>
+  <!-- The live link going out -->
+  <path d="M116 100 H180" stroke="#ff00a1" stroke-width="3" stroke-dasharray="2 10"/>
+  <path d="M122 84 A22 22 0 0 1 122 116 M134 76 A34 34 0 0 1 134 124" stroke="#ff00a1" stroke-width="3"/>
+  <!-- The people it was sent to, each watching on their own screen -->
+  <rect x="192" y="26" width="108" height="66" rx="14" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <circle cx="222" cy="52" r="10" fill="#ff00a2" stroke="currentColor" stroke-width="3"/>
+  <path d="M206 80 C208 70 236 70 238 80" stroke="currentColor" stroke-width="3"/>
+  <rect x="250" y="42" width="38" height="36" rx="6" fill="#ff00a5"/>
+  <circle cx="270" cy="58" r="5" fill="#ff00a1"/>
+  <rect x="192" y="108" width="108" height="66" rx="14" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <circle cx="222" cy="134" r="10" fill="#ff00a2" stroke="currentColor" stroke-width="3"/>
+  <path d="M206 162 C208 152 236 152 238 162" stroke="currentColor" stroke-width="3"/>
+  <rect x="250" y="124" width="38" height="36" rx="6" fill="#ff00a5"/>
+  <circle cx="270" cy="140" r="5" fill="#ff00a1"/>
+</svg>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * /auth/callback — Supabase PKCE OAuth landing page.

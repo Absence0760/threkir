@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppMotion, reduceMotion;
 
+import '../fab_clearance.dart';
 import '../l10n/gen/app_localizations.dart';
 
 /// A bottom-pinned panel with a drag handle that can be toggled between a
@@ -10,7 +11,8 @@ import '../l10n/gen/app_localizations.dart';
 ///
 /// Tap the handle to toggle. Flick the handle up to expand, down to collapse.
 /// The panel provides its own glass-blur container and safe-area padding so
-/// callers only supply the content for each state.
+/// callers only supply the content for each state. It also clears a docked
+/// FAB ([DockedFabInset]), which would otherwise cover its bottom row.
 class CollapsiblePanel extends StatefulWidget {
   final Widget expandedChild;
   final Widget collapsedChild;
@@ -112,7 +114,7 @@ class _CollapsiblePanelState extends State<CollapsiblePanel> {
                     child: widget.expandedChild,
                   ),
                 ),
-              SizedBox(height: bottomSafe + 12),
+              SizedBox(height: bottomSafe + DockedFabInset.of(context) + 12),
             ],
           ),
         ),

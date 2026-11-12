@@ -19,6 +19,11 @@ import {
 // unbalanced brace are all things the real module has and all things a naive
 // brace scan gets wrong.
 
+/**
+ * @param {string[][]} fns
+ * @param {string[][]} aliases
+ * @param {string} [prefix]
+ */
 function fakeTerraform(fns, aliases, prefix = 'threkir-web-${var.env}') {
   const head = `locals {\n  resource_prefix = "${prefix}"\n}\n\n`;
   const funcs = fns
@@ -45,6 +50,10 @@ function fakeTerraform(fns, aliases, prefix = 'threkir-web-${var.env}') {
   return head + funcs + '\n' + als;
 }
 
+/**
+ * @param {string[]} functions
+ * @param {string} [prefix]
+ */
 function fakeScript(functions, prefix = 'threkir-web-${ENV_NAME}') {
   return (
     `#!/usr/bin/env bash\nset -euo pipefail\n\n` +
@@ -63,6 +72,10 @@ function fakeScript(functions, prefix = 'threkir-web-${ENV_NAME}') {
   );
 }
 
+/**
+ * @param {string[][]} entries
+ * @param {string} [prefix]
+ */
 function fakeRelease(entries, prefix = 'threkir-web-${ENV}') {
   const resolve =
     `      - name: Resolve target resources\n        id: aws\n        run: |\n` +
@@ -76,12 +89,13 @@ function fakeRelease(entries, prefix = 'threkir-web-${ENV}') {
   const steps = entries
     .map(
       ([key, suffix]) =>
-        `      - name: Update ${suffix} Lambda\n        run: |\n` +
+        `      - name: Update ${suffix} Lambda\n        env:\n` +
+        '          FUNCTION_NAME: ${{ steps.aws.outputs.' + key + ' }}\n        run: |\n' +
         `          NEW_VERSION=$(aws lambda update-function-code \\\n` +
-        `            --function-name "\${{ steps.aws.outputs.${key} }}" \\\n` +
+        `            --function-name "$FUNCTION_NAME" \\\n` +
         `            --publish --query Version --output text)\n` +
         `          aws lambda update-alias \\\n` +
-        `            --function-name "\${{ steps.aws.outputs.${key} }}" \\\n` +
+        `            --function-name "$FUNCTION_NAME" \\\n` +
         `            --name live \\\n` +
         `            --function-version "$NEW_VERSION"\n`,
     )
@@ -107,6 +121,11 @@ const RELEASE = [
   ['generate_route_lambda', 'generate-route'],
 ];
 
+/**
+ * @param {string} tf
+ * @param {string} sh
+ * @param {string} rel
+ */
 const verdict = (tf, sh, rel) =>
   compareSources(
     parseTerraform(tf),
@@ -114,6 +133,7 @@ const verdict = (tf, sh, rel) =>
     parseReleaseWorkflow(rel),
   );
 
+/** @param {{ tf?: string, sh?: string, rel?: string }} [over] */
 const aligned = (over = {}) =>
   verdict(
     over.tf ?? fakeTerraform(FNS, ALIASES),
@@ -152,11 +172,12 @@ test('the HCL reader pairs aliases by reference, not by declaration order', () =
   // wrong function, which is the class of mistake this guard exists to reject.
   const tf = parseTerraform(fakeTerraform(FNS, [...ALIASES].reverse()));
   const byLabel = new Map(tf.aliases.map((a) => [a.label, a]));
-  assert.equal(byLabel.get('live').functionName, 'threkir-web-<env>-coach');
-  assert.equal(
-    byLabel.get('generate_route_live').functionName,
-    'threkir-web-<env>-generate-route',
-  );
+  const live = byLabel.get('live');
+  const generateRoute = byLabel.get('generate_route_live');
+  assert.ok(live, 'no alias labelled "live" was parsed');
+  assert.ok(generateRoute, 'no alias labelled "generate_route_live" was parsed');
+  assert.equal(live.functionName, 'threkir-web-<env>-coach');
+  assert.equal(generateRoute.functionName, 'threkir-web-<env>-generate-route');
   assert.equal(tf.aliases.length, 3);
 });
 
@@ -249,6 +270,35 @@ test('a renamed alias fails on the alias name, not on the function set', () => {
   assert.match(errors[0], /the sync script asks for: live/);
 });
 
+// The alias-name comparison is a set union across the three sources, so a
+// source that states no name drops out of it silently and the remaining two
+// agree with each other. Each of the three must therefore be made to speak.
+
+test('a Terraform alias with no literal name is loud, not silently dropped', () => {
+  const tf = fakeTerraform(FNS, ALIASES).replace(
+    'name             = "live"',
+    'name             = var.alias_name',
+  );
+  const { errors } = aligned({ tf });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /aws_lambda_alias\."live" sets no literal/);
+  assert.match(errors[0], /never noticed/);
+});
+
+test('a release step that passes no --name is loud', () => {
+  const rel = fakeRelease(RELEASE).replace('            --name live \\\n', '');
+  const { errors } = aligned({ rel });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /passes no `--name`/);
+});
+
+test('a sync script that names no alias is loud', () => {
+  const sh = fakeScript(SUFFIXES).replaceAll('\t\t--name live \\\n', '');
+  const { errors } = aligned({ sh });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /names no alias/);
+});
+
 test('a prefix rename reports once, not once per function', () => {
   const { errors } = aligned({ sh: fakeScript(SUFFIXES, 'threkir-site-${ENV_NAME}') });
   const prefix = errors.filter((e) => /do not agree on the Lambda name prefix/.test(e));
@@ -325,4 +375,131 @@ test('one source going blind on its own still fails', () => {
     errors.filter((e) => /^release-web\.yml repoints /.test(e)).length,
     3,
   );
+});
+
+// ─────────────────── decisions § 773 — first-match-wins ───────────────────
+
+// The filed reproduction, verbatim: a script that sets FUNCTIONS per
+// environment parsed as the FIRST array alone and reported the second Lambda
+// "synced and deployed" on a branch that never repoints it.
+/**
+ * @param {string[]} prod
+ * @param {string[]} preview
+ */
+const perEnvScript = (prod, preview) =>
+  `#!/usr/bin/env bash\nset -euo pipefail\n\n` +
+  `if [[ "$ENV_NAME" == "prod" ]]; then\n` +
+  `\tFUNCTIONS=(${prod.join(' ')})\n` +
+  `else\n` +
+  `\tFUNCTIONS=(${preview.join(' ')})\n` +
+  `fi\n\n` +
+  `for fn in "\${FUNCTIONS[@]}"; do\n` +
+  `\tNAME="threkir-web-\${ENV_NAME}-\${fn}"\n` +
+  `\taws lambda update-alias \\\n` +
+  `\t\t--function-name "$NAME" \\\n` +
+  `\t\t--name live \\\n` +
+  `\t\t--function-version "$NEWEST" >/dev/null\n` +
+  `done\n`;
+
+test('every FUNCTIONS assignment is read, not only the first', () => {
+  const sh = parseSyncScript(perEnvScript(SUFFIXES, ['coach']));
+  assert.deepEqual(sh.assignments, [SUFFIXES, ['coach']]);
+  assert.deepEqual(sh.functions.sort(), [...SUFFIXES].sort());
+});
+
+test('a Lambda missing from one branch’s array is not certified as synced', () => {
+  const { errors, ok } = aligned({ sh: perEnvScript(SUFFIXES, ['coach']) });
+  assert.deepEqual(
+    ok.map((l) => l.split(' ')[0]),
+    ['coach'],
+  );
+  const missed = errors.filter((e) => /never repoints it/.test(e));
+  assert.equal(missed.length, 2);
+  assert.ok(missed.every((e) => /1 of the 2 FUNCTIONS arrays \(#2\)/.test(e)));
+});
+
+test('a Lambda in every branch’s array is still certified', () => {
+  const { errors, ok } = aligned({ sh: perEnvScript(SUFFIXES, SUFFIXES) });
+  assert.deepEqual(errors, []);
+  assert.equal(ok.length, 3);
+});
+
+test('two disagreeing NAME templates are reported rather than the first winning', () => {
+  const sh = fakeScript(SUFFIXES).replace(
+    'done\n',
+    'NAME="threkir-web-${ENV_NAME}-legacy-${fn}"\ndone\n',
+  );
+  const { errors } = aligned({ sh });
+  assert.ok(errors.some((e) => /builds its function name from more than one template/.test(e)));
+});
+
+// The alias name used to be read out of a 400-character window that crossed
+// command boundaries, so the first `--name` in it won — here a decoy inside
+// the alias call's own argument list, while the real `--name` sat past it.
+test('the alias name comes from the alias call, not from a decoy inside it', () => {
+  const sh =
+    `FUNCTIONS=(${SUFFIXES.join(' ')})\n` +
+    `for fn in "\${FUNCTIONS[@]}"; do\n` +
+    `\tNAME="threkir-web-\${ENV_NAME}-\${fn}"\n` +
+    `\taws lambda update-alias \\\n` +
+    `\t\t--function-name "$(aws ssm get-parameter --name live --query X)" \\\n` +
+    `\t\t--name stable \\\n` +
+    `\t\t--function-version "$NEWEST"\n` +
+    `done\n`;
+  assert.deepEqual([...parseSyncScript(sh).aliasNames], ['stable']);
+  const { errors } = aligned({ sh });
+  assert.ok(errors.some((e) => /do not agree on the alias name/.test(e)));
+});
+
+// The same decoy written with backticks. `$( )` had been closed and this
+// spelling had not: the substitution sat inside the alias call's own word list,
+// so its `--name live` came before the real `--name stable` and answered for
+// it. Latent because the committed script writes no backtick substitution —
+// which is the only reason § 773 did not find it too.
+//
+// The outcome is fail-closed rather than correct, and deliberately so: an
+// UNQUOTED substitution of either spelling ends the command containing it, so
+// the alias call reads no `--name` at all and the "names no alias" blindness
+// check fires. Reading nothing is the safe half of the pair; reading the decoy
+// is the half that certifies an alias the script never repoints.
+test('a backtick decoy inside the alias call cannot answer for the alias name', () => {
+  const sh =
+    `FUNCTIONS=(${SUFFIXES.join(' ')})\n` +
+    `for fn in "\${FUNCTIONS[@]}"; do\n` +
+    `\tNAME="threkir-web-\${ENV_NAME}-\${fn}"\n` +
+    `\taws lambda update-alias \\\n` +
+    '\t\t--function-name `aws ssm get-parameter --name live --query X` \\\n' +
+    `\t\t--name stable \\\n` +
+    `\t\t--function-version "$NEWEST"\n` +
+    `done\n`;
+  const names = [...parseSyncScript(sh).aliasNames];
+  assert.ok(!names.includes('live'), `the decoy answered for the alias name: ${names}`);
+  const { errors } = aligned({ sh });
+  assert.ok(
+    errors.some((e) => /names no alias|do not agree on the alias name/.test(e)),
+    `expected a loud refusal, got ${JSON.stringify(errors)}`,
+  );
+});
+
+test('a backtick inside a quoted argument is part of that argument, not a command', () => {
+  // The committed script's only backticks outside comments are the JMESPath
+  // literals in `--query 'Versions[?Version!=`$LATEST`].[Version]'`, and
+  // reading those as a command boundary would truncate the call around them.
+  const live = parseSyncScript(readFileSync(SCRIPT_FILE, 'utf-8'));
+  assert.deepEqual([...live.aliasNames], ['live']);
+});
+
+test('quoting an alias name is not a disagreement', () => {
+  const sh = fakeScript(SUFFIXES).replaceAll('--name live', '--name "live"');
+  assert.deepEqual([...parseSyncScript(sh).aliasNames], ['live']);
+  assert.deepEqual(aligned({ sh }).errors, []);
+});
+
+// Measured while fixing it: the committed script has one flat array, so the
+// misread was latent — which has to be a measurement rather than a claim.
+test('the committed sync script carries exactly one FUNCTIONS assignment', () => {
+  const sh = parseSyncScript(readFileSync(SCRIPT_FILE, 'utf-8'));
+  assert.equal(sh.assignments.length, 1);
+  assert.equal(sh.templates.length, 1);
+  assert.deepEqual([...sh.aliasNames], ['live']);
 });

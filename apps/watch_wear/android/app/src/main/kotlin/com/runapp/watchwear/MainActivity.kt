@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,7 +10,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.wear.ambient.AmbientLifecycleObserver
 import com.runapp.watchwear.ui.RunWatchApp
 import com.runapp.watchwear.ui.TileSource
-import io.sentry.android.core.SentryAndroid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -49,14 +49,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (BuildConfig.SENTRY_DSN.isNotEmpty()) {
-            SentryAndroid.init(applicationContext) { options ->
-                options.dsn = BuildConfig.SENTRY_DSN
-                options.release = BuildConfig.APP_RELEASE
-                options.environment = if (BuildConfig.APP_RELEASE == "dev") "development" else "production"
-                options.tracesSampleRate = 0.1
-            }
-        }
         if (hasWearableLibrary()) {
             lifecycle.addObserver(AmbientLifecycleObserver(this, ambientCallback))
         }
@@ -64,6 +56,19 @@ class MainActivity : ComponentActivity() {
             val isAmbient by ambient.collectAsState()
             RunWatchApp(vm = vm, activity = this, isAmbient = isAmbient)
         }
+        armFromTile(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        armFromTile(intent)
+    }
+
+    /// The "today" tile names the workout it showed; arm it if it is still
+    /// the one on offer (`RunViewModel.followWorkoutFromTile`).
+    private fun armFromTile(intent: Intent?) {
+        val id = intent?.getStringExtra(EXTRA_TODAY_WORKOUT_ID) ?: return
+        vm.followWorkoutFromTile(id)
     }
 
     override fun onResume() {
@@ -76,5 +81,9 @@ class MainActivity : ComponentActivity() {
         // Hand the decoded-tile bitmap cache back to the OS under memory
         // pressure; tiles re-decode from disk on the next draw.
         TileSource.get(this).trimMemory(level)
+    }
+
+    companion object {
+        const val EXTRA_TODAY_WORKOUT_ID = "com.runapp.watchwear.TODAY_WORKOUT_ID"
     }
 }

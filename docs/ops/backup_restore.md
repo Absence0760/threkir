@@ -52,7 +52,9 @@ without a re-encode step.
   "exported_at": "2026-04-15T12:34:56.000Z",
   "exported_by_user_id": "uuid",
   "exported_from": "web" | "mobile_android" | "mobile_ios" | "go-service" | "edge-function",
-  "counts": { "runs": 47, "routes": 3, "goals": 2, "tracks": 45 }
+  "counts": { "runs": 47, "routes": 3, "goals": 2, "tracks": 45 },
+  "complete": true,
+  "incomplete": []
 }
 ```
 
@@ -60,7 +62,44 @@ Version number is checked on import. A version bump means the reader must
 know how to interpret the new layout — older clients reject newer backups
 rather than lose data silently.
 
-The two server writers (`go-service` — the Go worker's `POST /v1/export`
+### `complete` / `incomplete` — the honesty pair
+
+`complete` is a boolean; `incomplete` is the sorted list of section names
+(`runs`, `routes`, `tracks`, `hr_series`, …) that came up short of what the
+writer asked for. `complete` is exactly `incomplete.length == 0`. Every writer
+that emits either emits both.
+
+**Only an explicit `complete: false` claims a shortfall.** An archive with no
+`complete` key says nothing about its own completeness — every mobile or web
+archive built before 2026-08-18 carries no such field, and warning on all of
+those would be its own dishonesty. Readers mirror
+`ServerBackupSummary.fromJson` / `cloudExportShortfall` /
+`noteIncompleteArchive` on this.
+
+What can make each writer short:
+
+| Writer | Can come up short on | Why |
+|---|---|---|
+| `go-service` | any section whose paging genuinely failed mid-read, blobs | **No run cap and no row ceiling** since [decisions § 708](../architecture/decisions.md) — the archive streams into the `exports` bucket in 6 MiB tus chunks and every section is serialised page by page, so nothing but a failed page can shorten it. `counts` for a short *paged* section publishes the **database's** own total, so a file short of it reads as a shortfall rather than as the whole set |
+| `edge-function` | any section the 120 s wall-clock budget cut short, blobs | **No run cap and no row ceiling** since [decisions § 703](../architecture/decisions.md) — the archive streams into the `exports` bucket in 6 MiB tus chunks, so only the platform's request clock can shorten it, and `incomplete` names exactly which sections it reached. (The artifact moved off the `runs` bucket in migration `20270602_001`: `file_size_limit` is per bucket and `runs` caps an object at 25 MB, which was a tighter ceiling on a full-history archive than either removed cap) |
+| `mobile_android` / `mobile_ios` | `tracks`, `hr_series` | The row reads are paged and **uncapped**, so the runs and routes in the archive are the whole account. Only a blob download that failed can leave the file short, and the writer swallows that per-blob so one dead download can't sink the archive |
+| `web` | `runs`, `routes`, `tracks` | Same per-track swallow as mobile. The row reads walk by keyset cursor through `walkKeyset` ([decisions § 1936](../architecture/decisions.md)) and are **uncapped**, so `runs` / `routes` appear only when a page genuinely failed mid-read; a `runs` read that returned nothing at all raises instead of writing a file (decisions § 675) |
+
+The **mobile local writer carries no run ceiling**, deliberately. It streams to
+disk and downloads tracks in bounded batches ([decisions.md § 66]), so peak heap
+is `O(concurrency × avg-track-size)` and does not grow with run count; the only
+per-run cost held in memory is the already-fetched `runs.json` row list, a few
+hundred bytes each. A cap would buy nothing and would reintroduce the silent
+truncation this pair exists to remove. The **Go** server no longer carries one
+either ([decisions § 708](../architecture/decisions.md)): it streams the archive
+into Storage the same way, so the mobile fall-through to the local writer is now
+a failure path rather than the long-tail path it used to be.
+The **Edge Function** no longer has one — it streams into a chunked tus upload
+([decisions § 703](../architecture/decisions.md)) and is bounded only by its
+150 s request clock — so the two server writers are deliberately no longer in
+lockstep on this.
+
+The two server writers (`go-service` — the Go worker's queued rail with
 `format: 'backup'` — and `edge-function` — the deprecated `export-data`
 rollback path) emit the same layout plus the Art 20 extras clients don't
 fetch: `hr/{run_id}.hr.json.gz` sidecars, `photos/` image bytes, the
@@ -96,6 +135,13 @@ cloud rows, so mobile skips that path entirely while anything is local-only.
 
 Optional. Readers must tolerate them being absent. Same shape / semantics
 as their DB rows.
+
+`profile.json` carries `{profile, settings_prefs}`. The `profile` half is a
+`user_profiles` row with `id` stripped (the archive is re-homeable; restore
+stamps the new owner's uid) and is the ONLY path by which that table reaches
+the archive, so its projection is guarded column by column against the
+migrations — see `personal_data_export_profile_guard_test.go` and
+`docs/compliance/data-subject-rights.md`.
 
 ## Round-trip guarantees
 
@@ -134,7 +180,7 @@ as their DB rows.
   backup". Implemented in `apps/web/src/lib/backup/backup.ts`. Uses `JSZip`.
   Both paths require an authenticated session — there's no local
   persistence to stage into.
-- **Mobile Android** → Settings → "Full backup" / "Restore from backup".
+- **Mobile Android** → Settings → Account → "Full backup" / "Restore from backup".
   Implemented in `apps/mobile_android/lib/backup.dart`. Uses the
   `archive` package. **Restore works offline** — if the user isn't
   signed in, runs + routes are hydrated into `LocalRunStore` /
@@ -142,8 +188,29 @@ as their DB rows.
   next sign-in. Profile and `user_settings` keys are skipped in that
   mode with a warning; they need a user id to attach to. Export still
   requires sign-in since the canonical source of truth is the server.
-- Mobile iOS and the watch apps do **not** offer backup — too much UI for
-  a small screen. Use the phone or the web.
+  Since [decisions § 724](../architecture/decisions.md) the two archives are
+  two tiles, because they are two archives. **Account export** enqueues the
+  server's Art 20 build (`POST /v1/export/jobs`), watches it, and resumes from
+  `GET /v1/export/jobs/latest` on mount — so an app the OS killed between
+  asking and finishing finds the export waiting, with nothing persisted on the
+  device. **Full backup** is the on-device writer: runs, routes, profile,
+  prefs, gym and food, but NOT the account-record set, and it says so in a
+  persistent notice once it has produced one. The old silent fall-back from
+  the first to the second is deleted — a refused server export is surfaced,
+  never quietly answered with the narrower archive. The server cannot see a
+  run that has not drained, so the account-export tile discloses how many are
+  outstanding rather than switching rails behind the runner's back. The local
+  writer's completeness verdict still surfaces as a banner plus a persistent
+  notice under the Full backup tile.
+- **Mobile iOS** shares the code — `lib/` is byte-identical (decisions § 39),
+  neither tile carries a `Platform` gate, `BackupService` names no `Platform`,
+  and `archive` / `file_picker` / `share_plus` / `path_provider` all declare
+  iOS. `parity.md`'s iOS backup + restore cells read `Partial` on that basis:
+  wired, never exercised on a Mac (decisions § 707). What is still owed is the
+  device run, tracked by the single iOS-verification item in `followups.md` —
+  not a build.
+- The watch apps do **not** offer backup — too much UI for a small screen. Use
+  the phone or the web.
 
 ## Implementation notes
 
@@ -160,5 +227,63 @@ as their DB rows.
   Settings) and import into the fresh one.
 - Restore is **resumable on conflict**. An `ON CONFLICT (id) DO UPDATE`
   upsert means an interrupted restore can be re-run and will converge.
+- **A blob the archive lacks leaves its column out of the upsert**, rather than
+  nulling it. PostgREST only `SET`s the columns it is handed, so an existing row
+  keeps the `track_url` / `hr_series_url` it already has; writing null instead
+  orphaned the Storage object and cost a run its GPS trace when a track-short
+  archive was restored into the very account it was taken from. A fresh insert
+  still lands with the column null, which is the truthful value there.
+- **A column this build's schema has no home for is dropped, not sent.** (web
+  only so far — see the followup for the Dart half.) PostgREST refuses a
+  payload naming a column the table does not have for the whole row, so an
+  archive written before `runs.kind` was dropped (`20261206_001`) used to fail
+  every run it carried — one 400 at a time, each after that run's track blob
+  had already been uploaded to Storage. `restore_columns.ts` filters each row
+  against the generated `Insert` keys before it is sent and reports the dropped
+  names as ONE warning per section (`profile` / `runs` / `routes`) rather than
+  one per row. The allowlists are `satisfies Record<keyof Insertable<T>, true>`,
+  so a column a migration ADDS fails the build until the restore is taught
+  about it — silently discarding a new column off every archive that carries it
+  is the failure mode that check exists to prevent. Value types are still the
+  server's to refuse: a `distance_m` of `"far"` comes back as a 400 into
+  `result.warnings`.
+- **The archived `handle` is not claimed by the restore.** `20270424000002`
+  makes `user_profiles.handle` a public identity claimed through
+  `set_my_handle` — SECURITY DEFINER, and named there as the ONLY write path —
+  because that function is what enforces the format and the case-insensitive
+  uniqueness and tells a caller which of the two it failed. Upserting the
+  column directly answers neither: into a DIFFERENT account it always collides
+  with `user_profiles_handle_lower_key`, into a FRESH one it silently re-claims
+  a name the deleted account released or collides with whoever took it since,
+  and either way it arrives as a 23505 that fails the whole profile row. It is
+  stripped beside `subscription_tier` / `subscription_at` / `parkrun_number`,
+  so the rest of the profile lands; the archive still CARRIES the handle, and
+  re-claiming it goes through the normal flow, which is the only path that can
+  say whether it is still free.
+- **An archive that declares itself incomplete says so at restore time.**
+  `RestoreResult.archiveIncomplete` + `archiveIncompleteSections` carry the
+  manifest verdict, and both Settings → Account surfaces render a persistent
+  notice under the Restore tile. Mobile additionally inserts a first warning
+  naming it; web keeps the verdict out of `warnings` (which it renders as a
+  bare count) and localizes the notice from the two fields instead. Nothing is lost either
+  way (restore is additive), but a runner about to wipe a phone on the strength
+  of the file needs to know it is not the whole history.
+- **A restore warning is data, not a sentence.** `RestoreResult.warnings` is a
+  list of `RestoreWarning` on both platforms (`restore_warning.dart`,
+  `restore_orchestrator.ts`): a kind, the archive's own row id or position,
+  the dropped column names, and the caught failure in `error`. The failure is
+  logged (`debugPrint` on mobile, `console.warn` on web, both through the
+  `loggable_message` parity pair) and never rendered as text. Both logs become
+  Sentry breadcrumbs once the reader consents, and the archive is a file
+  anyone can edit, so the log line carries nothing the archive wrote: an id
+  only when it is uuid-shaped (else `<invalid>`), a COUNT of dropped columns
+  rather than their names, and the scrubbed failure (`restoreWarningLogFields`
+  on web, `RestoreWarning.toString` on mobile). The mobile import screen shows each warning
+  through `restoreWarningText`, whose only route from `error` to the sentence
+  is `importErrorText`, and web shows the count. Each used to be
+  `'run <id>: <exception>'`, which put PostgREST's English (table and
+  constraint names) on the import screen in every locale.
+  `raw_error_copy_guard_test.dart` pins `RestoreWarning`'s field set and the
+  `warnings` type, so a free-text field cannot come back.
 - A backup contains PII (the user's own data only). It is not encrypted
   at rest — callers should treat the file as sensitive.

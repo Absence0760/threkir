@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/park_courses.dart';
 import '../lib/screens/route_detail_screen.dart';
 
 cm.RouteMarkerRow _marker({
@@ -43,7 +44,11 @@ void main() {
 
     test('emits the route line as trackpoints', () {
       final gpx = routeGpxFromRoute(route, const []);
-      expect(gpx, contains('<trkpt lat="39.0" lon="-120.0">'));
+      // Whole degrees render without a trailing .0, matching the web twin —
+      // Dart's $double interpolation would write lat="39.0" where web writes
+      // lat="39", and the two suites used to pin different bytes for the same
+      // route while the docs claimed lockstep.
+      expect(gpx, contains('<trkpt lat="39" lon="-120">'));
       expect('<trkpt'.allMatches(gpx).length, 2);
       // No markers → no waypoints.
       expect(gpx.contains('<wpt'), isFalse);
@@ -105,4 +110,42 @@ void main() {
       expect('<wpt'.allMatches(gpx).length, 1);
     });
   });
+
+  group('park course route exports carry the geometry credit', () {
+    final route = cm.Route(
+      id: 'route-1',
+      userId: 'user-1',
+      name: 'Lake Loop',
+      waypoints: const [
+        cm.Waypoint(lat: 37.1, lng: -77.5, elevationMetres: 50),
+        cm.Waypoint(lat: 37.2, lng: -77.6),
+      ],
+      distanceMetres: 1500,
+      elevationGainMetres: 0,
+      isPublic: true,
+      createdAt: DateTime.utc(2026, 1, 1),
+    );
+    final osm = courseAttribution('osm', parkName: 'P', parkWebsiteUrl: null);
+
+    test('plain GPX, GPX with markers and KML all carry it; none does without', () {
+      for (final gpx in [routeToGpx(route, osm), routeGpxFromRoute(route, const [], osm)]) {
+        expect(gpx, contains('<copyright author="OpenStreetMap contributors">'));
+        expect(gpx, contains('<link href="https://www.openstreetmap.org/copyright">'));
+      }
+      expect(
+        routeToKml(route, osm),
+        contains('<description>Course line © OpenStreetMap contributors'),
+      );
+      expect(routeToGpx(route), isNot(contains('<copyright')));
+      expect(routeGpxFromRoute(route, const []), isNot(contains('<copyright')));
+      expect(routeToKml(route), isNot(contains('<description>')));
+    });
+
+    test('in plain GPX the credit sits between the name and the time', () {
+      final gpx = routeToGpx(route, osm);
+      expect(gpx.indexOf('<name>Lake Loop</name>'), lessThan(gpx.indexOf('<desc>')));
+      expect(gpx.indexOf('</link>'), lessThan(gpx.indexOf('<time>')));
+    });
+  });
 }
+

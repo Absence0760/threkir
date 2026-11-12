@@ -1,6 +1,6 @@
 # Local testing — Web app (SvelteKit)
 
-The web app is a SvelteKit 2 + Svelte 5 project at `apps/web/`. The canonical package manager is **npm** via the root workspace ([decisions.md § 7](../../docs/architecture/decisions.md)) — that's what CI runs. The historical `apps/web/pnpm-lock.yaml` lets `pnpm` work locally too; either is fine, just don't mix in the same checkout.
+The web app is a SvelteKit 3 + Svelte 5 project at `apps/web/`. The canonical package manager is **npm** via the root workspace ([decisions.md § 7](../../docs/architecture/decisions.md)) — that's what CI runs. The historical `apps/web/pnpm-lock.yaml` lets `pnpm` work locally too; either is fine, just don't mix in the same checkout.
 
 ---
 
@@ -30,7 +30,7 @@ cp .env.example .env.local
 Edit `.env.local` with your local backend values:
 
 ```bash
-PUBLIC_SUPABASE_URL=http://localhost:54321
+PUBLIC_SUPABASE_URL=http://localhost:24321
 PUBLIC_SUPABASE_ANON_KEY=<publishable-key-from-supabase-status>
 PUBLIC_MAPTILER_KEY=<your-maptiler-key>
 ```
@@ -89,12 +89,12 @@ Each integration below is independent — you can skip the ones you're not touch
 The web app supports Google as a sign-in provider on `/login` and as a *link* on `/settings/account` (attaches Google to an existing account).
 
 **Setup**
-1. Google Cloud → APIs & Services → Credentials → create an **OAuth client ID** (type: Web application). Authorized redirect URIs: `http://localhost:7777/auth/callback` *and* the Supabase callback URL printed by `supabase status` (looks like `http://localhost:54321/auth/v1/callback`).
+1. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → **Clients** → **Create client** (type: Web application). Authorized redirect URIs: the Supabase callback URL printed by `supabase status` (looks like `http://localhost:24321/auth/v1/callback`) — that is the only URI Google itself redirects to; `http://localhost:7777/auth/callback` is Supabase's hop afterwards and belongs in its Redirect URLs, though listing it here too is harmless. Prod walkthrough, including the Android + iOS clients: [`docs/ops/google_provisioning.md`](../../docs/ops/google_provisioning.md).
 2. Local Supabase: edit `apps/backend/supabase/config.toml`, find `[auth.external.google]`, set `enabled = true` and paste `client_id` + `secret`. Restart the local stack (`supabase stop && supabase start` from `apps/backend/`).
 3. For the **link-on-existing-account** flow, also flip on **Manual linking** in `[auth]` (`enable_manual_linking = true` in `config.toml`). Without this, `linkIdentity()` returns `manual_linking_disabled`.
 
 **Test path**
-1. Sign-up flow: `/login` → "Continue with Google" → consent screen → land back on `/dashboard` as a brand-new user. Verify a row in `auth.identities` (Studio at `:54323` → schema `auth` → table `identities`).
+1. Sign-up flow: `/login` → "Continue with Google" → consent screen → land back on `/dashboard` as a brand-new user. Verify a row in `auth.identities` (Studio at `:24323` → schema `auth` → table `identities`).
 2. Linking flow: sign in with email → `/settings/account` → **Link Google** → consent for the *same* Google account → return to settings. The "Sign-in Methods" card should now list two rows (email + Google) with the same `user_id`.
 3. Unlink flow: click **Unlink** on Google → confirm. Row disappears; the **Unlink** button on the remaining email identity is disabled with the "you need at least one" tooltip.
 
@@ -119,7 +119,7 @@ The coach endpoint at `/api/coach/+server.ts` supports two providers, picked by 
 
 **Prod path — Anthropic (default)**
 1. `COACH_PROVIDER=anthropic` (or unset), `ANTHROPIC_API_KEY=sk-ant-...`.
-2. Visit `/coach` → confirm the "Grounded in:" strip lists your active plan (or "No active plan"), the runs count, and HR-zone status.
+2. Visit `/coach` → confirm the "Grounded in:" strip lists your current plan (the one covering your local today, else the latest-ended, else the next to start), or "No active plan", or "Plan couldn't load" when the plan read fails, the runs count, and HR-zone status.
 3. Send a message ("How's my pace?") → response arrives within ~3s. The usage bar at the bottom shows cache numbers (`read N · wrote N · in N · out N`); the second message in the same conversation should show non-zero `read` (cache hit).
 4. Switch the **Last N runs** chip to a different value and send another message. `runs_limit` is reflected in the prompt; the chip count updates immediately.
 5. With multiple plans, the header `<select>` lets you swap; URL gains `?plan=<id>` and the chat resets.
@@ -143,6 +143,10 @@ The coach endpoint at `/api/coach/+server.ts` supports two providers, picked by 
 4. Send a message → response headers now read `X-Coach-Tier: pro`, `X-RateLimit-Limit: 10`, `X-RateLimit-Remaining: 9`, `X-RateLimit-MaxTokens: 2048`, `X-RateLimit-MaxRuns: 75`. Pro answers visibly run longer when the question warrants it.
 5. With `BYPASS_PAYWALL=true`, the server reports `tier: 'pro'` regardless of the user's actual subscription so you can dev against the Pro shape without paying RevenueCat. The bypass also skips the daily-cap increment entirely so you can iterate without burning quota.
 
+**The AI features beside the chat.** `.env.development` turns on `PUBLIC_AI_PLAN_ENABLED` (the plan box on `/plans/new`), `PUBLIC_AI_PLAN_EDIT_ENABLED` (Adjust with AI on `/plans/[id]`), `PUBLIC_COACH_FUEL_ENABLED` (`/nutrition/fuel` and the Coach's fuelling link) and `PUBLIC_PLATE_PHOTO_ENABLED` (Log from a photo on `/nutrition/log`, Pro). Each needs `PUBLIC_COACH_ENABLED` too. In dev the SvelteKit wrappers under `src/routes/api/coach/` read these same flags as their server half; in production the coach Lambda reads its own unprefixed keys (`AI_PLAN_ENABLED`, `AI_PLAN_EDIT_ENABLED`, `COACH_FUEL_ENABLED`, `PLATE_PHOTO_ENABLED`; see [deployment.md](deployment.md)). Plan edits and the plate-photo logger need the seed user's AI disclosure at v4 and v5 respectively, so accept the current disclosure in the Coach first, or the endpoints answer 403. Plan edits spend a Coach message. The plate-photo logger needs Pro and takes a slot of its own 20/hour throttle; `BYPASS_PAYWALL=true` skips both, never the disclosure check.
+
+**Season planner.** `/plans/season` (linked from `/plans/new`) works without any AI: add races by hand, confirm, preview, create. The **Describe your season** box shows under the same two flags as the plan box (`PUBLIC_COACH_ENABLED` + `PUBLIC_AI_PLAN_ENABLED`) and posts to `/api/coach/season-request`; when that answers with an error, or the request client is still a stub, the page says the assistant is unavailable and leaves a race to fill in. A season creates several active plans for the seed user, so delete them from `/plans` afterwards or use a throwaway account.
+
 **Common failures**
 - *503 with "Coach is not configured"* → `ANTHROPIC_API_KEY` missing while `COACH_PROVIDER=anthropic`.
 - *502 "coach upstream 4xx"* on Ollama path → model name mismatch (try `ollama list`) or Ollama not running.
@@ -153,15 +157,15 @@ The coach endpoint at `/api/coach/+server.ts` supports two providers, picked by 
 There's no separate sync service — every client writes to the same Supabase project and RLS scopes data by `user_id`. Linking Google or Apple just means multiple sign-in methods point at the same `user_id`, so any device signed in with any of them sees the same runs.
 
 **Test path — emulator on the same machine**
-1. Run web on `:7777` and the local Supabase stack on `:54321`.
-2. Run `apps/mobile_android` in an Android emulator (see `apps/mobile_android/local_testing.md`). Point its Supabase URL at **`http://10.0.2.2:54321`** — Android's emulator alias for the host's loopback. `localhost` from inside the emulator is the emulator itself.
+1. Run web on `:7777` and the local Supabase stack on `:24321`.
+2. Run `apps/mobile_android` in an Android emulator (see `apps/mobile_android/local_testing.md`). Point its Supabase URL at **`http://10.0.2.2:24321`** — Android's emulator alias for the host's loopback. `localhost` from inside the emulator is the emulator itself.
 3. Sign in on both clients as `runner@test.com`. Record a run on Android (or use the manual-add modal on web).
-4. Refresh `/runs` on web (or pull-to-refresh on Android) — the row should appear on the other side. Watch the `runs` table in Studio (`:54323`) for the live insert.
+4. Refresh `/runs` on web (or pull-to-refresh on Android) — the row should appear on the other side. Watch the `runs` table in Studio (`:24323`) for the live insert.
 
 **Test path — real phone over LAN**
 1. Web + Supabase running on your laptop. Note your LAN IP (`ipconfig getifaddr en0` on macOS).
-2. Phone on the same Wi-Fi. Configure the mobile app's Supabase URL as `http://<lan-ip>:54321`.
-3. Add `http://<lan-ip>:54321` to `[auth] additional_redirect_urls` in `config.toml` if you're testing OAuth from the phone.
+2. Phone on the same Wi-Fi. Configure the mobile app's Supabase URL as `http://<lan-ip>:24321`.
+3. Add `http://<lan-ip>:24321` to `[auth] additional_redirect_urls` in `config.toml` if you're testing OAuth from the phone.
 
 **Test path — hosted Supabase project**
 Easiest for cross-network testing: web `.env.local` and the mobile app both point at the same hosted project URL + anon key. No emulator gymnastics.
@@ -223,18 +227,17 @@ Garmin Connect's live OAuth API is gated on Garmin's developer-program approval,
 
 The FIT decoder (`fit-file-parser`) is dynamic-imported so the integrations page is only ~260 KB heavier when a Garmin file is actually picked.
 
-### parkrun import
+### parkrun barcode
 
-No OAuth — the user types their parkrun athlete number into `/settings/account`.
+The parkrun import is gone (it scraped parkrun's site). The athlete number stays, for the barcode only.
 
 **Test path**
-1. Set `parkrun_number` on the profile form (any 6-digit number works for testing the wire-up; real numbers are needed for actual results).
-2. `/settings/integrations` → **Sync parkrun** → results pull in tagged with `metadata.event = 'parkrun'` and `metadata.position = N`.
-3. Verify a row on `/runs` with the **parkrun** source pill.
+1. Set an athlete number (`A` followed by digits) on `/settings/account`; anything else is refused before save.
+2. `/settings/integrations` → the **Your parkrun barcode** card renders it, with a full-screen view.
 
 ### RevenueCat (Pro tier checkout)
 
-Optional — only needed if you're touching the paywall flow. Without `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `/settings/upgrade` falls back to a "coming soon" toast. The web flow is a hosted-checkout redirect now (no embedded SDK).
+Optional — only needed if you're touching the paywall flow. Without `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` (or with one that is not a `https://pay.rev.cat/<token>` link), `/settings/upgrade` shows no buy button: with the Coach on it says Pro is sold in the iPhone app (the `app_only` storefront, decisions § 1826). The web flow is a hosted-checkout redirect now (no embedded SDK).
 
 **Test path**
 1. Set `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` in `.env.local` to your RevenueCat sandbox Web Paywall Link (`https://pay.rev.cat/<token>`); optionally `PUBLIC_REVENUECAT_WEB_PORTAL_URL` for the manage-subscription link.
@@ -263,7 +266,7 @@ A short orientation, organised by capability rather than by folder:
 - **Manual creation**: `routes/runs/new/` (alongside the modal-hosted `RunEditor`).
 - **Lib**: `lib/data.ts` (every Supabase query), `lib/types.ts` (overlays), `lib/training.ts` (VDOT engine), `lib/training_load.ts` (TRIMP / fitness / fatigue / form), `lib/segments.ts`, `lib/privacy.ts`, `lib/route_history.ts`, `lib/strava-zip.ts`, `lib/garmin-zip.ts`, `lib/garmin-fit.ts`, `lib/push.ts`, `lib/settings.ts`, `lib/units.svelte.ts`, `lib/map-style.svelte.ts`, `lib/theme.ts`. Stores under `lib/stores/` (`auth`, `toast`, `notifications`).
 - **Components** (under `lib/components/`): `RunMap`, `RunTrackPreview`, `TrackPreview`, `ElevationProfile`, `RouteBuilder`, `RouteExplorer`, `ImportRoute`, `RunEditor`, `ClubEditor`, `EventEditor`, `PlanEditor`, `PlanMetaEditor`, `PlanCalendar`, `TrainingLoadChart`, `PeriodSummary`, `CoachChat`, `RunSocial`, `RunPhotos`, `RunSegmentEfforts`, `SegmentsPanel`, `RunShareView`, `NotificationBell`, `NotificationsList`, `PrivacyZonePicker`, `LicenseList`, `Modal`, `ConfirmDialog`, `ToastContainer`, `ProGate`, `SplitPane`, `WorkoutEditor`.
-- **Top-level files**: `src/app.html`, `src/app.css`, `src/app.d.ts`, `svelte.config.js`, `vite.config.ts`, `package.json`. The repo bootstrapped with pnpm so `apps/web/pnpm-lock.yaml` exists alongside the npm workspace; CI uses npm.
+- **Top-level files**: `src/app.html`, `src/app.css`, `src/app.d.ts`, `src/env.ts`, `vite.config.ts` (which carries the SvelteKit config — Kit 3 has no `svelte.config.js`), `package.json`. The repo bootstrapped with pnpm so `apps/web/pnpm-lock.yaml` exists alongside the npm workspace; CI uses npm.
 
 ---
 
@@ -284,6 +287,23 @@ Your MapTiler API key is missing or invalid. Sign up at maptiler.com/cloud for a
 ### "Failed to fetch" errors in the browser
 
 The local Supabase backend isn't running. Start it first — see [../backend/local_testing.md](../backend/local_testing.md).
+
+### A POST now and then answers 502 from kong
+
+Something like `POST /rest/v1/rpc/...` answers `502` with kong's `An invalid
+response was received from the upstream server`, while the requests around it
+succeed. Kong reused an idle connection just as PostgREST closed it. Kong
+retries that for a GET, but not for a POST. The stack's defaults allow it:
+kong keeps idle connections for 60 s, and PostgREST closes them after 30–60 s.
+CI shortens kong's side after every start. Do the same after
+`supabase start`, from the repo root:
+
+```bash
+bash .github/actions/start-supabase/tune_kong_keepalive.sh
+```
+
+It lasts until the kong container is recreated. [decisions § 2476](../../docs/architecture/decisions.md)
+has the measurements.
 
 ### Type errors after pulling changes
 

@@ -15,12 +15,36 @@ name: Security
 # Language coverage for this monorepo's mix:
 #   - javascript-typescript covers apps/web + apps/web/lambda/coach
 #     + apps/backend/supabase/functions (Deno EFs)
-#   - go covers apps/job_worker
-#   - java-kotlin covers apps/watch_wear (native Kotlin + Compose) plus
-#     apps/mobile_android/android (Gradle host)
+#   - go covers BOTH Go modules — apps/job_worker and apps/graph_cycle.
+#     The build step below enumerates them from the tree rather than
+#     naming them, because CodeQL analyses only what the build compiles
+#     and a module nobody builds is a module nobody scans (§ 1304).
+#   - java-kotlin covers BOTH Gradle projects — apps/watch_wear (native
+#     Kotlin + Compose) and apps/mobile_android/android (the Flutter
+#     Gradle host, and its platform-channel bridges: MainActivity.kt,
+#     RunActionReceiver.kt (a BroadcastReceiver), and the bridges
+#     mediating health permissions, calendar access and foreground-service
+#     actions). The host went unscanned until § 1672, for the same reason
+#     § 1304 found on the Go leg: CodeQL analyses what the build steps
+#     compile, the only build step was watch_wear's, and the Go-specific
+#     autobuild fallback has no Java/Kotlin analogue. The build step now
+#     enumerates the Gradle projects from the tree and builds every one,
+#     so a third is scanned the day it lands, and
+#     `scripts/check_codeql_coverage.mjs` re-measures that walk against
+#     the tree on every PR rather than trusting this header.
+#     Two things the Flutter host needs and watch_wear does not: the
+#     pinned Flutter SDK (the `FLUTTER_VERSION` below, which
+#     `check_toolchain_pins.mjs` holds equal to ci.yml's), and a Kotlin
+#     Gradle plugin below the CodeQL bundle's extractor ceiling — both
+#     settings.gradle.kts files are pinned there and carry the reason.
 #   - actions covers every workflow under .github/workflows/
-#   - Trivy scans apps/job_worker/Dockerfile (the only Dockerfile in
-#     the repo; multi-stage, final image distroless).
+#   - Trivy scans both Go service images — apps/job_worker and
+#     apps/graph_cycle (multi-stage, final image distroless). They
+#     share one pinned golang builder digest, so an unpatched stdlib
+#     lands in both at once; scanning only one left the other's copy
+#     of the same CVEs invisible (alerts 179-186).
+#     apps/job_worker/graphhopper/Dockerfile is a JVM image built from
+#     a pinned upstream tag and is not scanned here.
 #
 # What's deliberately NOT covered:
 #   - Swift (apps/watch_ios + apps/mobile_ios/ios). CodeQL's Swift
@@ -38,7 +62,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   schedule:
     # Sundays at 06:00 UTC — catches new CodeQL queries / CVEs disclosed
     # since the last commit. Offset by ~24h from audit.yml / gitleaks /
@@ -48,19 +71,41 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # PR pushes cancel the superseded head's analysis (no point analysing a
-  # stale SHA), but every push to main gets its own per-SHA group and is
-  # never cancelled: back-to-back merges would otherwise race the older
-  # commit's analysis into a cancellation and leave that commit without
-  # the completed SAST run Scorecard checks for (code-scanning alert 162).
+  # Every push to main gets its own per-SHA group: back-to-back merges would
+  # otherwise race the older commit's analysis into a cancellation and leave
+  # that commit without the completed SAST run Scorecard checks for
+  # (code-scanning alert 162).
+  #
+  # A PR shares one group per ref, and a run that has STARTED is never
+  # cancelled. It used to be (`cancel-in-progress` on pull_request), and a
+  # CodeQL job killed mid-analysis is not a silent no-op: the init action's
+  # post step sees an analyze that never completed and uploads a "failed run"
+  # SARIF ("unsuccessful execution, exit code: 0") under the leg's category.
+  # One draft-PR session on 2026-11-03 cancelled 36 runs and left 47 such
+  # error analyses on refs/pull/1271/merge, every busy PR since mid-October
+  # carries the same, and they are what the Security tab's "CodeQL is
+  # reporting errors" banner was reading (decisions § 2273).
+  # Without cancel-in-progress GitHub still keeps at most ONE pending run per
+  # group and cancels the older pending one when a newer push arrives; a run
+  # cancelled while pending has started no job, so it uploads nothing. A burst
+  # of pushes therefore costs one extra completed analysis, not one per push.
   group: security-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 # Workflow-level permission is the least-privilege baseline; each job
 # below requests the additional scopes it actually needs. Per Scorecard
 # Token-Permissions guidance: prefer per-job permission blocks over a
 # single elevated top-level set.
 permissions: read-all
+
+# Must equal ci.yml's FLUTTER_VERSION: the `codeql-kotlin` job below drives the
+# Flutter tool over the same Gradle host that ci.yml's `build-mobile-android`
+# builds, and a scan run against an SDK CI never validated is a scan of
+# something that does not ship. A workflow-level `env` is per-file, so it
+# cannot be shared; `scripts/check_toolchain_pins.mjs` in `workflow-lint` fails
+# CI when the declarations disagree (decisions § 595).
+env:
+  FLUTTER_VERSION: "3.47.0"
 
 jobs:
   codeql-javascript:
@@ -77,7 +122,9 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: javascript-typescript
           # Interpreted language — no compile step. Skips the autobuild
@@ -88,7 +135,7 @@ jobs:
           # small codebase the extra noise is manageable and the
           # maintainability/correctness queries are useful.
           queries: security-and-quality
-      - uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:javascript-typescript'
 
@@ -102,48 +149,204 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
+          # Both modules declare the same patch-level Go floor, so one
+          # toolchain serves both; `go build` would resolve a higher one
+          # per-module anyway if that ever stopped being true.
           go-version-file: apps/job_worker/go.mod
-          cache-dependency-path: apps/job_worker/go.sum
-      - uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+          cache-dependency-path: |
+            apps/job_worker/go.sum
+            apps/graph_cycle/go.sum
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: go
-      # CodeQL's Go autobuild detects modules and runs `go build ./...`
-      # in each one. Our only Go module is apps/job_worker; explicit
-      # build below makes the failure mode debuggable if a downstream
-      # dep ever goes ABI-incompatible.
-      - name: Build job_worker for CodeQL
-        working-directory: apps/job_worker
-        run: go build ./...
-      - uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+      - name: Build every Go module for CodeQL
+        # Go has no build-less extraction: "CodeQL will analyze whatever
+        # source code is built by your specified build steps", so the set of
+        # modules built here IS the set of modules scanned.
+        #
+        # This step used to build apps/job_worker alone, under a comment
+        # asserting it was "our only Go module". apps/graph_cycle has been a
+        # second one since the route-loop sidecar landed — security.yml's own
+        # Trivy job builds its image, and ci.yml has a `Test graph_cycle
+        # sidecar (Go)` job — so its source went unscanned by CodeQL for the
+        # whole of its life while its dependencies were scanned, which is the
+        # worse half to be missing on a network-facing service (§ 1304).
+        #
+        # The single build was ALSO what suppressed the safety net. The
+        # analyze action's `runAutobuildIfLegacyGoWorkflow` runs autobuild —
+        # which walks every module — but skips when "at least one file of Go
+        # code has already been extracted", and building job_worker extracts
+        # plenty. So the explicit build did not merely fail to cover
+        # graph_cycle, it turned off the thing that would have.
+        #
+        # Enumerated from the tree, never from a roster: a third module is
+        # scanned the day it lands rather than the day someone remembers this
+        # file. The floor is what keeps that honest — a `find` that stopped
+        # matching would build nothing, and a Go database with no source
+        # extracted is exactly the state the legacy autobuild silently
+        # papers over.
+        #
+        # POSIX `find` only (`-exec dirname`, not GNU `-printf '%h'`):
+        # `scripts/check_codeql_coverage.mjs` runs this expression verbatim and
+        # refuses a GNU-only primary, so the guard runs on a macOS workstation's
+        # BSD find as well as on the runner.
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULES=$(find . -name go.mod \
+            -not -path './node_modules/*' \
+            -not -path './.git/*' \
+            -exec dirname {} + | sort)
+          COUNT=$(printf '%s' "$MODULES" | grep -c . || true)
+          if [ "$COUNT" -lt 2 ]; then
+            echo "::error::found $COUNT Go module(s) under the repo root; this repo has at least 2 (apps/job_worker, apps/graph_cycle). A walk that stopped matching would leave CodeQL analysing no Go source at all, so this fails rather than scanning nothing."
+            exit 1
+          fi
+          echo "Building $COUNT Go module(s) for the CodeQL extractor:"
+          printf '  %s\n' $MODULES
+          for m in $MODULES; do
+            echo "::group::go build ./... ($m)"
+            if ! (cd "$m" && go build ./...); then
+              echo "::error::go build ./... failed in $m, so CodeQL extracted none of its source. This is a build break, not a CodeQL finding; reproduce with: cd $m && go build ./..."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:go'
 
   codeql-kotlin:
     name: CodeQL (Kotlin/Java)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Two Gradle projects, both compiled cold: this job deliberately restores no
+    # `~/.gradle` cache, so nothing a pull request can write decides what the
+    # security scan reads. Derived cost of the Flutter host's half is ~9 min
+    # (decisions § 1672); the ceiling is sized for a cold dependency graph on a
+    # bad network day, not for the measured run.
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
-          java-version: '17'
-      - uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+          # 21 rather than 17 since the Flutter host joined this job: ci.yml's
+          # `build-mobile-android` and release-watch-wear.yml both build these
+          # trees on 21, so it is the one JDK both projects are shipped on.
+          java-version: '21'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: java-kotlin
-      # Pre-fetch Gradle wrappers so CodeQL's autobuild doesn't blow
-      # the network egress allowance on first run. Both Kotlin
-      # surfaces live in their own Gradle projects.
-      - name: Build watch_wear (Wear OS Kotlin)
-        working-directory: apps/watch_wear/android
-        run: ./gradlew --no-daemon compileDebugKotlin
-      - uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+      # Every Gradle project in the tree, enumerated rather than named. This
+      # step used to be a single `working-directory: apps/watch_wear/android`
+      # under a comment claiming "both Kotlin surfaces" were covered by it,
+      # which is the § 1304 defect on the leg it was found on next: CodeQL
+      # analyses what the build steps compile, so the set of projects built
+      # here IS the set of projects scanned, and the java-kotlin analysis
+      # reported clean over 11 files it had never read. There is no fallback
+      # to catch it either — the `runAutobuildIfLegacyGoWorkflow` net that had
+      # quietly been covering the Go side is Go-specific with no Java/Kotlin
+      # analogue, and `build-mode: none` cannot stand in because CodeQL's
+      # buildless Java extractor does not process Kotlin at all.
+      #
+      # Both projects are built now (§ 1672). A project this job cannot build
+      # would still be DECLARED below rather than omitted, so a gap is a value
+      # a guard can read instead of a sentence a reader has to notice; the
+      # declaration is empty because nothing is excluded, and the mechanism
+      # stays because the next unbuildable project should arrive as somebody's
+      # edit. A third Gradle project is built the day it lands; if it cannot be
+      # built here, CI goes red and somebody decides, which is the outcome the
+      # silent version never produced.
+      - name: Build every Gradle project for the CodeQL extractor
+        env:
+          # `<path>=<hidden-source-count>=<reason>`, one per line. Every entry
+          # must name a project the walk below actually finds, so an entry
+          # cannot outlive the directory it excuses, and the count is
+          # RECOMPUTED from the tree rather than read: an exclusion that stops
+          # saying how much it hides is one nobody is deciding any more, and a
+          # bridge added to an excluded project has to be somebody's edit
+          # rather than nobody's (decisions § 1500).
+          # `scripts/check_codeql_coverage.mjs` in the `workflow-lint` job
+          # fails the PR on a stale entry, on a walk that has stopped matching
+          # the tree, on a reason left blank, and on a count that no longer
+          # matches the .kt/.java files under the path.
+          CODEQL_KOTLIN_UNBUILT: ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJECTS=$(find . \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -not -path './node_modules/*' \
+            -not -path './.git/*' \
+            -exec dirname {} + | sort -u)
+          COUNT=$(printf '%s' "$PROJECTS" | grep -c . || true)
+          if [ "$COUNT" -lt 2 ]; then
+            echo "::error::found $COUNT Gradle project(s) under the repo root; this repo has at least 2 (apps/watch_wear/android, apps/mobile_android/android). A walk that stopped matching would build nothing, and a java-kotlin database with no source extracted is indistinguishable from a clean scan."
+            exit 1
+          fi
+          BUILT=0
+          for p in $PROJECTS; do
+            rel=${p#./}
+            reason=""
+            hidden=""
+            while IFS= read -r line; do
+              case "$line" in
+                "$rel="*)
+                  rest=${line#*=}
+                  hidden=${rest%%=*}
+                  reason=${rest#*=}
+                  ;;
+              esac
+            done <<< "$CODEQL_KOTLIN_UNBUILT"
+            if [ -n "$reason" ]; then
+              echo "::warning::$rel is NOT scanned by the java-kotlin analysis; $hidden source file(s) go unread: $reason"
+              continue
+            fi
+            # A Flutter app's `android/` host cannot be CONFIGURED until the
+            # Flutter tool has written local.properties — settings.gradle.kts
+            # `require()`s `flutter.sdk` out of a file no checkout carries.
+            # `flutter pub get` writes it, along with the generated plugin
+            # registrant and the plugin-subproject list, which is why this is
+            # not the second copy of `build-mobile-android` it was assumed to
+            # need: the AOT compile in `flutter build` (325 s there) buys this
+            # job nothing, and the workspace resolve makes a separate melos
+            # bootstrap redundant.
+            if grep -qs 'flutter\.sdk' "$p/settings.gradle" "$p/settings.gradle.kts" && [ ! -f "$p/local.properties" ]; then
+              host=$(dirname "$p")
+              echo "::group::flutter pub get ($host)"
+              if ! (cd "$host" && flutter pub get); then
+                echo "::error::flutter pub get failed in $host, so Gradle cannot configure $rel and CodeQL would extract none of its Kotlin. This is a toolchain break, not a CodeQL finding; reproduce with: cd $host && flutter pub get"
+                exit 1
+              fi
+              echo "::endgroup::"
+            fi
+            echo "::group::gradlew compileDebugKotlin ($rel)"
+            if ! (cd "$p" && ./gradlew --no-daemon compileDebugKotlin); then
+              echo "::error::./gradlew --no-daemon compileDebugKotlin failed in $rel, so CodeQL extracted none of its Kotlin. This is a build break, not a CodeQL finding; reproduce with: cd $rel && ./gradlew compileDebugKotlin. If it names a Kotlin version the extractor calls too recent, the Kotlin Gradle plugin pin in $rel/settings.gradle.kts has moved past the bundle's ceiling."
+              exit 1
+            fi
+            echo "::endgroup::"
+            BUILT=$((BUILT + 1))
+          done
+          if [ "$BUILT" -lt 1 ]; then
+            echo "::error::every Gradle project in the tree is listed in CODEQL_KOTLIN_UNBUILT, so this job extracted no Kotlin and the java-kotlin analysis will report clean over nothing. Build at least one, or delete the language from the init step rather than leaving an empty analysis in place."
+            exit 1
+          fi
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:java-kotlin'
 
@@ -157,30 +360,102 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: actions
           build-mode: none
           # The `actions` language only ships a `security-extended`
           # ceiling; CodeQL silently falls back to that when
-          # security-and-quality isn't available.
+          # security-and-quality isn't available. Asking for the broadest
+          # anyway is the right direction to fail in — the fallback is a
+          # superset of every narrower suite — but the fallback is silent, so
+          # the step below reads what actually ran out of the SARIF instead of
+          # leaving the workflow's request to stand as the record (§ 1503).
           queries: security-and-quality
-          # unnecessary-use-of-advanced-config suggests replacing this
-          # workflow with GitHub's settings-configured "default setup".
-          # The advanced config here is deliberate: explicit language
-          # selection (Swift excluded for macOS-runner cost — see the
-          # header), a pinned Go toolchain + explicit build, the JDK-17
-          # Gradle prebuild for the Kotlin extractor, SHA-pinned actions,
-          # and the Trivy SARIF upload — none of which default setup can
-          # express. Filter the note out instead of dismissing four
-          # alerts by hand every time an init step moves.
+          # Every entry below narrows this analysis, so each one carries its
+          # reason in the comment lines directly above it — inside the block,
+          # where they are comments in the config document CodeQL parses AND
+          # where `scripts/check_codeql_coverage.mjs` reads them. A narrowing
+          # here is a hole in a security scan; the guard fails the PR on one
+          # bought with fewer than 40 characters of prose, on a `paths` glob
+          # that has stopped matching anything, and on a rule id whose family
+          # this leg cannot emit (which would filter nothing while reading as
+          # a deliberate exclusion).
           config: |
             query-filters:
+              # unnecessary-use-of-advanced-config suggests replacing this
+              # workflow with GitHub's settings-configured "default setup".
+              # The advanced config here is deliberate: explicit language
+              # selection (Swift excluded for macOS-runner cost — see the
+              # header), a pinned Go toolchain + explicit build, the JDK-17
+              # Gradle prebuild for the Kotlin extractor, SHA-pinned actions,
+              # and the Trivy SARIF upload — none of which default setup can
+              # express. Filter the note out instead of dismissing four
+              # alerts by hand every time an init step moves.
               - exclude:
                   id: actions/unnecessary-use-of-advanced-config
-      - uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:actions'
+          # Kept on disk as well as uploaded, so the step below can read what
+          # ran. Nothing else in this workflow needs its SARIF locally.
+          output: sarif-results
+      - name: Report the query suite that actually ran
+        # `queries: security-and-quality` above is a REQUEST. CodeQL resolves
+        # it against what the language ships and falls back without saying so,
+        # which left the workflow asserting a suite nothing could confirm we
+        # got: if a release stopped honouring the fallback or renamed the
+        # suite, this leg would run something narrower and every guard reading
+        # the workflow would still be green (decisions § 1503).
+        #
+        # The SARIF is the record of what executed, and the discriminator is
+        # version-independent rather than a rule-id allowlist: the quality half
+        # of `security-and-quality` is exactly the queries tagged for
+        # maintainability / correctness / readability and NOT tagged security,
+        # so if none of those ran, the fallback happened. Reported rather than
+        # failed, because the fallback is CodeQL's decision and the suite we
+        # get is still the widest one available.
+        #
+        # An empty rule set IS a failure: a SARIF naming no queries is an
+        # analysis that ran none, and it reports exactly as clean as one that
+        # ran everything — the state §§ 1304 and 1352 exist to make loud.
+        shell: bash
+        run: |
+          set -euo pipefail
+          # `find` on a missing directory exits non-zero, and under `set -e`
+          # that aborts before any of the diagnoses below are printed — the one
+          # failure mode of this step that would report nothing at all.
+          files=$(find sarif-results -name '*.sarif' -type f 2>/dev/null | sort || true)
+          if [ -z "$files" ]; then
+            echo "::error::the actions analysis wrote no SARIF under sarif-results/, so nothing records which queries ran. A scan whose output cannot be read is one whose scope cannot be checked."
+            exit 1
+          fi
+          rules='[.runs[]?.tool | (.driver.rules // []) + ([.extensions[]?.rules // []] | flatten)] | flatten'
+          total=0
+          quality=0
+          for f in $files; do
+            if ! t=$(jq "$rules | length" "$f"); then
+              echo "::error::jq could not read $f as SARIF. The analysis produced a file this step cannot interpret, which leaves the query suite unmeasured exactly as an absent file would."
+              exit 1
+            fi
+            q=$(jq "$rules
+                    | map(select((.properties.tags // []) | (any(startswith(\"security\")) | not)
+                          and any(. == \"maintainability\" or . == \"correctness\" or . == \"readability\" or . == \"reliability\")))
+                    | length" "$f")
+            total=$((total + t))
+            quality=$((quality + q))
+          done
+          if [ "$total" -eq 0 ]; then
+            echo "::error::the actions analysis names 0 queries across $files. CodeQL reported over an empty rule set, which is indistinguishable from a clean scan of everything; treat this as a broken analysis, not a quiet result."
+            exit 1
+          fi
+          if [ "$quality" -eq 0 ]; then
+            echo "::warning::the actions leg asked for security-and-quality and ran $total queries, none of them from the quality half — so CodeQL resolved the request down to its security-extended ceiling, as the init step's comment expects. Nothing is wrong; this is the fallback being observed rather than assumed."
+          else
+            echo "::notice::the actions leg ran $total queries, $quality of them from the quality half, so security-and-quality resolved rather than falling back."
+          fi
 
   trivy-job-worker-image:
     name: Trivy (job_worker container)
@@ -192,13 +467,24 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build job_worker image
         run: docker build -t job-worker:scan ./apps/job_worker
 
+      # Trivy is installed by our own action, not by trivy-action's
+      # `setup-trivy`, whose single unretried fetch from get.trivy.dev failed
+      # on main on 2026-11-03 and left this category a commit behind with a
+      # configuration error on the Security tab (decisions § 2273). The
+      # action's header has the detail.
+      - uses: ./.github/actions/setup-trivy
+
       - name: Trivy scan
+        id: scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          skip-setup-trivy: true
           image-ref: job-worker:scan
           format: sarif
           output: trivy-job-worker.sarif
@@ -216,8 +502,105 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
-        if: always()
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        # Only once the scan has written its SARIF. `exit-code: '0'` means the
+        # scan step fails on nothing it finds, only on not running at all, and
+        # uploading after that cannot succeed: it fails again on "Path does not
+        # exist" and reports the miss to code scanning as a configuration
+        # error, which reads as a broken setup rather than the install or
+        # build failure it is. The job is already red on the step that failed.
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
         with:
           sarif_file: trivy-job-worker.sarif
           category: trivy-job-worker
+
+  trivy-graph-cycle-image:
+    name: Trivy (graph_cycle container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build graph_cycle image
+        run: docker build -t graph-cycle:scan ./apps/graph_cycle
+
+      - uses: ./.github/actions/setup-trivy
+
+      - name: Trivy scan
+        id: scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          skip-setup-trivy: true
+          image-ref: graph-cycle:scan
+          format: sarif
+          output: trivy-graph-cycle.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
+        with:
+          sarif_file: trivy-graph-cycle.sarif
+          # Distinct category — two uploads sharing one category make the
+          # alert set flip-flop between whichever scan ran last.
+          category: trivy-graph-cycle
+
+  trivy-iac:
+    name: Trivy IaC scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Here rather than behind ci.yml's infra-only gate: the `trivy-iac`
+    # category has to be uploaded on every ref, or each PR that did not
+    # touch infra/ reports "1 configuration present on refs/heads/main was
+    # not found" and code scanning cannot say what the PR introduced.
+    # It costs 24 s (run 42572319317) and builds no image.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Same install as the image scans above: see the header of
+      # .github/actions/setup-trivy/action.yml.
+      - uses: ./.github/actions/setup-trivy
+
+      - name: Trivy config scan
+        id: scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          skip-setup-trivy: true
+          # `scan-type: config` runs the IaC ruleset across HCL / yaml
+          # / json (so it picks up the workflows too, harmlessly).
+          # Trivy bundles tfsec-derived checks so we get the same
+          # coverage without standing up tfsec separately.
+          scan-type: config
+          scan-ref: infra
+          # Centralised suppressions with rationale. Inline
+          # `# trivy:ignore:` comments don't accept trailing text on
+          # the same line; the .trivyignore file at the repo root
+          # keeps the rule IDs + per-rule rationale in one place.
+          trivyignores: .trivyignore
+          format: sarif
+          output: trivy-iac.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy IaC SARIF
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        # Only once the scan has written its SARIF; the job_worker image scan
+        # above carries the reason.
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
+        with:
+          sarif_file: trivy-iac.sarif
+          category: trivy-iac

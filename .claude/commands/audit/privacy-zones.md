@@ -1,8 +1,15 @@
 ---
-description: Verify every non-owner surface routes tracks/waypoints through clipTrackForUser
+description: Verify every non-owner surface routes tracks/waypoints through the server-side clipping path
 ---
 
-Audit every surface that renders a track or polyline owned by another user. Every one must route through `clipTrackForUser` (decisions §33) — or have a documented reason not to.
+Audit every surface that renders a track or polyline owned by another user. Every one must route through the SERVER-SIDE clipping path (decisions §33) — or have a documented reason not to.
+
+**There are two such paths, and they are not the same call.** No client holds a `clipTrackForUser` method; the client-side "fetch the blob then clip the points" pattern was removed by migration `20260619_001`, and `20270521_001` then withdrew `clip_track_for_user` from `authenticated` outright, because a caller who can run it can binary-search the owner's zone centres. What a client has today is:
+
+- **A run's track** — `fetchClippedTrackForRun(runId)`, on both clients (`apps/web/src/lib/core/data.ts`, `packages/api_client/lib/src/api_client.dart`). It invokes the `clip-public-track` Edge Function, which downloads the gzipped track with the service role and passes the points through the SQL `clip_track_for_user`.
+- **A route's waypoints** — web `fetchClippedRouteForViewer(routeId)`, mobile `ApiClient.clipRouteForViewer(routeId)`. Routes carry their waypoints inline as a jsonb column, so this is a straight `clip_route_for_viewer` RPC with no Edge Function and no Storage indirection.
+
+An audit whose acceptance criterion names a symbol the tree does not have reports a clean result having checked nothing, so check for THESE two, per surface kind.
 
 ## Goal
 
@@ -22,8 +29,11 @@ We've fixed three of these — the web feed thumbnail (eb02194), the bound thumb
    isOwner = viewerId != null && viewerId == ownerId
    ```
    A `viewerId == ownerId` comparison without the null-check is a bug — anon viewers compare `null == null` and are treated as owner.
-4. **Verify fail-closed.** `clipTrackForUser` returns `[]` on RPC error. Owner-callsites that always need the unclipped track should bypass the RPC, not call it and fall through on `[]` — otherwise a transient outage blanks the owner's own map.
+4. **Verify fail-closed, and know which way each helper fails.** They are not uniform, so a finding has to name the one it is about. `fetchClippedRouteForViewer` (web) THROWS on an RPC error, and the route reads that must still render metadata catch it as `line_unavailable` with `waypoints: []` (so `/routes/[id]` offers a retry instead of a lineless map); `clipRouteForViewer` (mobile) swallows the failure and returns `[]`. `fetchClippedTrackForRun` THROWS on web (an `error` from `functions.invoke`, or a payload with no `points` array) and returns `[]` on mobile for a malformed payload while letting an invoke failure propagate. In every case the answer to a failure is an empty polyline or an error — never the unclipped input: a `catch` around either route helper that reaches for `route.waypoints` is a High finding, and so is a web caller that turns the throw into a bare `[]` without setting `line_unavailable`. Owner call sites that always need the unclipped track should bypass the clipping path entirely rather than call it and fall through on `[]`, or a transient outage blanks the owner's own map.
 5. **Cache key prefix.** When a thumbnail caches the result, the key must include a `raw:` vs `clip:` prefix so an owner viewing their own card and a follower viewing the same card don't pollute each other's session cache.
+6. **A drawn position is a position.** A stored track waypoint may carry `smoothedLat` / `smoothedLng` beside the raw `lat` / `lng`, and every line reader draws that pair in preference to the raw fix (web `apps/web/src/lib/runs/track_line.ts`, Dart `Waypoint.lineLat`). Any in-zone test on a non-owner path — `clip_track_for_user`, or a new clipper — must treat a point as in-zone when EITHER position is inside a zone, or strip the pair; testing `lat` / `lng` alone hands the viewer a drawn vertex inside the zone (`20270719000005`). The same goes for any new per-point position key a writer adds later. The job_worker's smoothed-position sidecar (`{user_id}/{run_id}.smoothed.json.gz`, merged by `apps/backend/supabase/functions/_shared/smoothed_sidecar.ts`) is such a source: `clip-public-track` must merge it BEFORE calling `clip_track_for_user`, never after, and any new non-owner reader that merges it must do the same.
+7. **A clipped track must not carry a measure of what was clipped.** Each stored waypoint may carry `distM`, the run's distance credited up to that fix (`docs/features/gps_distance.md` § Waypoint fields). On the first point a start-zone clip leaves, it is the distance run inside the zone; on the last, its gap to the run's public `distance_m` is the same for an end zone. `clip_track_for_user` removes it from every point on every path (`20270829000021`) and `clip-public-track` removes it again (`NON_OWNER_WITHHELD_POINT_KEYS` in `non_owner_points.ts`); the owner's return precedes both. Flag any non-owner path that serves `distM`, and any per-point key a writer adds later that measures the run from its start (a cumulative count, a run-relative offset) without being added to both. The same class reaches the live feeds through columns rather than keys: `live_run_pings.distance_m` / `elapsed_s` and `race_pings.distance_m` / `elapsed_s` are cumulative, so the first ping after a start zone states the distance and time inside it — `race_pings` keeps them deliberately as ranking values (`20270309_001`); report the solo live feed's as a finding until it is decided.
+8. **An off-track fix is never served to a non-owner.** A stored waypoint flagged `offTrack: true` is a fix the recorder's distance estimator took that failed its track gate (a 30-50 m canopy fix; `docs/features/gps_distance.md` § Waypoint fields): distance input for the server replay, never line. `clip_track_for_user` drops every such element before its zone walk (`20270829000032`), so one inside a zone is never served, one outside a zone is not served either, and one just outside a zone cannot end the leading / trailing walk and leave in-zone on-track fixes on the line; `clip-public-track` drops them again (`isOffTrackPoint` / `withholdFromNonOwner` in `non_owner_points.ts`). Flag any non-owner path that serves the stored track without both, any in-zone walk that tests an off-track fix rather than skipping it, and any owner surface that draws, exports or shares the line (share card, GPX / TCX / FIT, thumbnails) without the platform's `trackLine` (web `apps/web/src/lib/runs/track_line.ts`, Dart `core_models`).
 
 ## Report
 
@@ -36,6 +46,8 @@ For each: file:line, the missing call or the broken gate, the surface it affects
 ## Useful starting points
 
 - `docs/architecture/decisions.md` §33 — the canonical contract
+- `apps/web/src/lib/core/data.ts` — both web helpers, with the migration history in their doc comments
+- `packages/api_client/lib/src/api_client.dart` — both mobile helpers
 - `apps/web/src/lib/components/RunTrackPreview.svelte` — reference web implementation
 - `apps/mobile_android/lib/widgets/run_track_preview.dart` — reference mobile implementation
 - `apps/mobile_android/lib/screens/public_run_screen.dart` + `public_route_screen.dart` — the most recent fix

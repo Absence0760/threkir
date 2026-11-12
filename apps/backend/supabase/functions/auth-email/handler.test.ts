@@ -18,7 +18,7 @@ const BASE_ENV: Record<string, string> = {
   SEND_EMAIL_HOOK_SECRET: SECRET,
   SMTP_HOST: 'mail.local',
   SMTP_FROM: 'Threkir <noreply@threkir.com>',
-  SUPABASE_URL: 'http://127.0.0.1:54321',
+  SUPABASE_URL: 'http://127.0.0.1:24321',
 };
 
 interface Recorded {
@@ -121,7 +121,7 @@ Deno.test('handler — unconfigured SMTP is 503 after a valid signature', async 
   assertEquals(sent.length, 0);
 });
 
-Deno.test('handler — valid signup sends one localized mail with the verify link', async () => {
+Deno.test('handler — valid signup sends one localized mail with the confirm link', async () => {
   const { deps, sent, localeCalls } = makeDeps({ locale: 'de' });
   const res = await makeAuthEmailHandler(deps)(await signedRequest(SIGNUP_PAYLOAD));
   assertEquals(res.status, 200);
@@ -132,8 +132,32 @@ Deno.test('handler — valid signup sends one localized mail with the verify lin
   assertStringIncludes(sent[0].mime, btoa(new TextEncoder().encode('Bestätige deine E-Mail-Adresse').reduce((s, b) => s + String.fromCharCode(b), '')));
   assertStringIncludes(
     sent[0].mime,
-    'http://127.0.0.1:54321/auth/v1/verify?token=pkce_hash&type=signup&redirect_to=http://localhost:7777/auth/callback',
+    'http://localhost:7777/auth/callback?token_hash=pkce_hash&type=signup',
   );
+});
+
+Deno.test('handler — a mobile deep link keeps the GoTrue verify hop', async () => {
+  // The custom-scheme target is the mobile app, where the flow starts
+  // and finishes in one process that still holds its PKCE verifier —
+  // and supabase_flutter only understands the `?code=` the verify hop
+  // produces. Only an http(s) landing gets the token_hash form.
+  const { deps, sent } = makeDeps({});
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      ...SIGNUP_PAYLOAD,
+      email_data: {
+        ...SIGNUP_PAYLOAD.email_data,
+        redirect_to: 'com.threkir.app://login-callback',
+      },
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(sent.length, 1);
+  assertStringIncludes(
+    sent[0].mime,
+    'http://127.0.0.1:24321/auth/v1/verify?token=pkce_hash&type=signup',
+  );
+  assertStringIncludes(sent[0].mime, 'com.threkir.app://login-callback');
 });
 
 Deno.test('handler — API_EXTERNAL_URL beats the Docker-internal SUPABASE_URL in verify links', async () => {
@@ -141,19 +165,28 @@ Deno.test('handler — API_EXTERNAL_URL beats the Docker-internal SUPABASE_URL i
   // runtime; a verify link built from it is unreachable from any browser
   // (broke the reset-password e2es in CI run 28707481878). The committed
   // supabase/functions/.env pins API_EXTERNAL_URL to the host-reachable
-  // origin — it must win whenever both are set.
+  // origin — it must win whenever both are set. Only the verify-hop
+  // shape embeds that origin, so drive the deep-link payload.
   const { deps, sent } = makeDeps({
     env: {
       SUPABASE_URL: 'http://kong:8000',
-      API_EXTERNAL_URL: 'http://127.0.0.1:54321',
+      API_EXTERNAL_URL: 'http://127.0.0.1:24321',
     },
   });
-  const res = await makeAuthEmailHandler(deps)(await signedRequest(SIGNUP_PAYLOAD));
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      ...SIGNUP_PAYLOAD,
+      email_data: {
+        ...SIGNUP_PAYLOAD.email_data,
+        redirect_to: 'com.threkir.app://login-callback',
+      },
+    }),
+  );
   assertEquals(res.status, 200);
   assertEquals(sent.length, 1);
   assertStringIncludes(
     sent[0].mime,
-    'http://127.0.0.1:54321/auth/v1/verify?token=pkce_hash&type=signup',
+    'http://127.0.0.1:24321/auth/v1/verify?token=pkce_hash&type=signup',
   );
   assert(!sent[0].mime.includes('kong:8000'));
 });
@@ -270,3 +303,83 @@ Deno.test('handler — oversized body is rejected before verification', async ()
   );
   assert(res.status === 413 || res.status === 400);
 });
+
+Deno.test('handler — password changed notice is stamped with the signed hook time and links the reset form', async () => {
+  const { deps, sent } = makeDeps({ env: { APP_BASE_URL: 'https://threkir.test' } });
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      user: { id: '11111111-1111-1111-1111-111111111111', email: 'runner@test.com' },
+      email_data: { email_action_type: 'password_changed_notification', site_url: 'http://localhost:7777' },
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(sent.length, 1);
+  assertEquals(sent[0].to, 'runner@test.com');
+  assertStringIncludes(sent[0].mime, 'Subject: Your password was changed');
+  assertStringIncludes(sent[0].mime, '2025-06-15 15:06 UTC');
+  assertStringIncludes(sent[0].mime, 'https://threkir.test/login?reset=1');
+});
+
+Deno.test('handler — email changed notice reaches the previous address and prints neither address', async () => {
+  const { deps, sent } = makeDeps({ env: { APP_BASE_URL: 'https://threkir.test' } });
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      user: { id: '11111111-1111-1111-1111-111111111111', email: 'new@test.com' },
+      email_data: { email_action_type: 'email_changed_notification', old_email: 'runner@test.com' },
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(sent.map((s) => s.to), ['runner@test.com']);
+  assertStringIncludes(sent[0].mime, 'Subject: Your email address was changed');
+  assertStringIncludes(sent[0].mime, '2025-06-15 15:06 UTC');
+  const body = sent[0].mime.split('\r\n\r\n').slice(1).join('\r\n\r\n');
+  assert(!body.includes('new@test.com') && !body.includes('runner@test.com'), 'an address reached the body');
+  assert(!sent[0].mime.includes('/login?reset=1'), 'a reset from here would mail the new address');
+});
+
+const SECURITY_NOTICES = [
+  {
+    action: 'identity_linked_notification',
+    detail: { provider: 'google' },
+    subject: 'A sign-in method was added to your account',
+    method: 'Sign-in method: Google',
+  },
+  {
+    action: 'identity_unlinked_notification',
+    detail: { provider: 'email' },
+    subject: 'A sign-in method was removed from your account',
+    method: 'Sign-in method: Email and password',
+  },
+  {
+    action: 'mfa_factor_enrolled_notification',
+    detail: { factor_type: 'totp' },
+    subject: 'A verification method was added to your account',
+    method: 'Method: Authenticator app',
+  },
+  {
+    action: 'mfa_factor_unenrolled_notification',
+    detail: { factor_type: 'webauthn' },
+    subject: 'A verification method was removed from your account',
+    method: 'Method: Security key or passkey',
+  },
+];
+
+for (const notice of SECURITY_NOTICES) {
+  Deno.test(`handler — ${notice.action} reaches the account address, names the method, and prints no address`, async () => {
+    const { deps, sent } = makeDeps({ env: { APP_BASE_URL: 'https://threkir.test' } });
+    const res = await makeAuthEmailHandler(deps)(
+      await signedRequest({
+        user: { id: '11111111-1111-1111-1111-111111111111', email: 'runner@test.com' },
+        email_data: { email_action_type: notice.action, ...notice.detail },
+      }),
+    );
+    assertEquals(res.status, 200);
+    assertEquals(sent.map((s) => s.to), ['runner@test.com']);
+    assertStringIncludes(sent[0].mime, `Subject: ${notice.subject}`);
+    assertStringIncludes(sent[0].mime, notice.method);
+    assertStringIncludes(sent[0].mime, '2025-06-15 15:06 UTC');
+    assertStringIncludes(sent[0].mime, 'https://threkir.test/login?reset=1');
+    const body = sent[0].mime.split('\r\n\r\n').slice(1).join('\r\n\r\n');
+    assert(!body.includes('runner@test.com'), 'the address reached the body');
+  });
+}

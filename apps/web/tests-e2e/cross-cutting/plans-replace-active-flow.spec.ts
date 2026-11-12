@@ -1,26 +1,26 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { deletePlan, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /plans Replace-plan ConfirmDialog — Confirm path.
+ * /plans overlap dialog — Replace path.
  *
  * The Cancel branch is already pinned by tests-e2e/plans/create.spec.ts.
  * This saga covers the Confirm path end-to-end:
  *
  *  1. The seed's "Richmond Half 2026" card is showing as active.
  *  2. Open the New-plan wizard, fill it, click "Create plan".
- *  3. Replace-plan ConfirmDialog appears → click "Replace plan".
+ *  3. Overlap dialog appears → click "Replace plan".
  *  4. Land on /plans/<new-id>.
  *  5. Back on /plans: the new plan card has `.card-active`, and the
- *     Richmond Half card now shows the `status-completed` badge (the
- *     seed's plan was auto-demoted by createTrainingPlan so the new
- *     one could take the per-user "one active plan" slot).
+ *     Richmond Half card now shows the `status-abandoned` badge (the
+ *     seed's plan overlapped the new window, and Replace retires the
+ *     overlapping plans as abandoned — decisions § 2008, § 2075).
  *
  * The active-card-class flip is what `.card-active` encodes; absence
  * of `.card-active` on the seed card combined with a visible
- * status-completed badge proves the swap happened.
+ * status-abandoned badge proves the swap happened.
  */
 
 const SEED_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
@@ -46,7 +46,7 @@ test.describe('/plans — Replace active plan confirm path', () => {
 		}
 	});
 
-	test('Replace plan confirm path flips Richmond Half from active to completed', async ({
+	test('Replace plan confirm path flips Richmond Half from active to abandoned', async ({
 		page,
 	}) => {
 		const name = `e2e replace active ${Date.now()}`;
@@ -75,9 +75,7 @@ test.describe('/plans — Replace active plan confirm path', () => {
 			await expect(submit).toBeEnabled({ timeout: 5_000 });
 			await submit.click();
 
-			const confirm = page.locator('.modal.modal-narrow', {
-				hasText: /Replace your active plan/,
-			});
+			const confirm = page.getByTestId('plan-overlap-dialog');
 			await expect(confirm).toBeVisible({ timeout: 5_000 });
 			await expect(confirm).toContainText('Richmond Half 2026');
 			await confirm.getByRole('button', { name: 'Replace plan' }).click();
@@ -91,7 +89,7 @@ test.describe('/plans — Replace active plan confirm path', () => {
 			).toBeVisible({ timeout: 10_000 });
 		});
 
-		await test.step('back on /plans: new card active, Richmond Half flipped to completed', async () => {
+		await test.step('back on /plans: new card active, Richmond Half flipped to abandoned', async () => {
 			await page.goto('/plans');
 			const newCard = page.locator('.card', { hasText: name });
 			await expect(newCard).toBeVisible({ timeout: 10_000 });
@@ -100,7 +98,7 @@ test.describe('/plans — Replace active plan confirm path', () => {
 			const seedCard = page.locator('.card', { hasText: 'Richmond Half 2026' });
 			await expect(seedCard).toBeVisible();
 			await expect(seedCard).not.toHaveClass(/card-active/);
-			await expect(seedCard.locator('.badge.status-completed')).toBeVisible();
+			await expect(seedCard.locator('.badge.status-abandoned')).toBeVisible();
 		});
 	});
 });

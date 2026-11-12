@@ -1,20 +1,25 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] progress header (roadmap Phase 3 — Dashboard + run-tab
  * surfaces): the overall base→build→peak→taper phase marker and the
  * longest-long-run stat. Pure derivations are unit-tested
  * (plan_progress.ts); this pins the Svelte render. Seeds a throwaway
- * plan (status `completed` to dodge the one-active unique index — the
+ * plan (status `completed` to dodge the active-plan overlap constraint — the
  * surface gates on dates/phases, not status) spanning a base + build
  * week with a completed 24 km long run in the current (base) week.
  */
 
 test.describe('/plans/[id] progress header', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('phase marker highlights the current phase + longest long run + distance banked show', async ({ page }) => {
 		const admin = getAdminClient();
@@ -62,13 +67,19 @@ test.describe('/plans/[id] progress header', () => {
 			await expect(page.locator('.phase-marker .phase-step.active')).toHaveText(/Base/);
 
 			// Longest long run stat renders the 24 km figure.
-			const longestValue = page.locator('.stat-chip[title="Longest long run"] .stat-value');
+			const chips = page.locator('.plan-progress-stats .stat-chip');
+			const longestValue = chips
+				.filter({ has: page.locator('.stat-label', { hasText: /^Longest long run$/ }) })
+				.locator('.stat-value');
 			await expect(longestValue).toBeVisible();
 			await expect(longestValue).toHaveText(/24/);
 
 			// Distance-banked stat: the one completed 24 km long run is both
-			// the banked total and the whole planned distance (24 of 24).
-			const bankedValue = page.locator('.stat-chip[title="Distance banked"] .stat-value');
+			// the banked total and the whole planned distance (24 of 24). The
+			// name is a MetricLabel, so the chip is found by the metric it names.
+			const bankedValue = chips
+				.filter({ has: page.locator('[data-metric="distanceBanked"]') })
+				.locator('.stat-value');
 			await expect(bankedValue).toBeVisible();
 			await expect(bankedValue).toHaveText(/24.*24/);
 		} finally {

@@ -20,19 +20,40 @@
 /// TEST MODE ONLY in P1: STRIPE_SECRET_KEY must be an sk_test_ key. The
 /// function fails closed (503) when Stripe is unconfigured.
 
-import Stripe from 'https://esm.sh/stripe@17.5.0?target=deno';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import Stripe, {
+  type AssertNoUnknownParamKeys,
+  type UnknownParamKeys,
+} from '../_shared/stripe.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
+import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
+  type AccountCreateParams,
+  type AccountLinkParams,
   buildAccountCreateParams,
   buildAccountLinkParams,
   validateReturnUrl,
 } from './lib.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import { parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
 
-Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
+/// Every key of the hand-shaped params must be one Stripe declares.
+/// Assignability at the call site does not check that: what is handed to
+/// `create` is a function return, not a fresh object literal, so no
+/// excess-property check runs and a misspelled optional field would
+/// compile and come back from Stripe as `Received unknown parameter`.
+/// Nothing references the alias — declaring it is the check.
+type AccountParamsAreStripeParams = AssertNoUnknownParamKeys<
+  UnknownParamKeys<AccountCreateParams, Stripe.AccountCreateParams>
+>;
+type AccountLinkParamsAreStripeParams = AssertNoUnknownParamKeys<
+  UnknownParamKeys<AccountLinkParams, Stripe.AccountLinkCreateParams>
+>;
+
+Deno.serve(withCors(withSentry('events-connect-onboard', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -45,10 +66,7 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
   // Allowlist the return/refresh origins, the strava-import precedent.
   // Fail closed when unset — a missed `supabase secrets set` must not
   // silently allow an open-redirect target.
-  const allowlist = (Deno.env.get('STRIPE_EVENTS_ALLOWED_REDIRECTS') ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const allowlist = parseRedirectAllowlist(Deno.env.get('STRIPE_EVENTS_ALLOWED_REDIRECTS'));
   if (allowlist.length === 0) {
     return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
   }
@@ -67,7 +85,7 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
   if (!authHeader) {
     return Response.json({ error: 'unauthorized' }, { status: 401 });
   }
-  const userClient = createClient(
+  const userClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     publishableKey(),
     { global: { headers: { Authorization: authHeader } } },
@@ -79,7 +97,7 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
 
   // OAuth-grade path: fail closed on rate-limit RPC error so a DB blip
   // can't let an attacker spray account-create churn.
-  const service = createClient(
+  const service = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     secretKey(),
   );
@@ -119,13 +137,27 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
     return Response.json({ error: 'onboard_failed' }, { status: 500 });
   }
 
-  let accountId = existing?.stripe_connect_account_id as string | undefined;
+  // The column is nullable, so the row can exist with no account attached yet
+  // (a create that failed after the upsert). `null` and "no row" are the same
+  // case here — both mean "create one" — but they are not the same as a cast
+  // to `string | undefined`, which is what this used to be: it erased the null
+  // the read can actually return, and every later use read as a string that
+  // was not one.
+  let accountId = existing?.stripe_connect_account_id ?? null;
 
-  if (!accountId) {
-    let account;
+  if (accountId === null) {
+    let account: Stripe.Account;
     try {
       account = await stripe.accounts.create(
         buildAccountCreateParams(body.country ?? null, null),
+        // Keyed on the host, because a host has exactly one payout account
+        // (`instructor_payout_accounts.user_id`). Unkeyed, an attempt that
+        // created the account and then failed to persist it — a lost response,
+        // a failed upsert, a second click — created a SECOND Stripe account on
+        // the retry and abandoned the first, live and unreachable, on the
+        // platform. The rate limit put the ceiling at eight of those per host
+        // per hour.
+        { idempotencyKey: `events-connect-onboard:${user.id}` },
       );
     } catch (e) {
       console.error('stripe account create failed:', e instanceof Error ? e.message : 'unknown');
@@ -145,6 +177,11 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
     }
   }
 
+  // No idempotency key on the LINK, deliberately: an account link is
+  // single-use and short-lived, so replaying the first one hands a host
+  // returning to finish their onboarding a URL that Stripe has already spent.
+  // A fresh link per call is the correct answer here and a duplicate costs
+  // nothing.
   let link;
   try {
     link = await stripe.accountLinks.create(
@@ -156,4 +193,4 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
   }
 
   return Response.json({ url: link.url });
-}));
+})));

@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * /clubs/[slug]/events/[id] — an organiser edits an existing event (issue #335).
@@ -87,25 +88,34 @@ test.describe('/clubs/[slug]/events/[id] — organiser event edit', () => {
 		await expect(page.getByText('Tan track, boathouse end')).toBeVisible({ timeout: 5_000 });
 
 		// The row was UPDATEd, not delete-and-recreated: same id, new fields.
-		const { data: row } = await admin
-			.from('events')
-			.select('title, meet_label')
-			.eq('id', eventId)
-			.single();
-		expect(row?.title).toBe(newTitle);
-		expect(row?.meet_label).toBe('Tan track, boathouse end');
+		const row = await readRow(
+			'events by id',
+			admin
+				.from('events')
+				.select('title, meet_label')
+				.eq('id', eventId)
+				.single()
+		);
+		expect(row.title).toBe(newTitle);
+		expect(row.meet_label).toBe('Tan track, boathouse end');
 
 		// Attendee + result rows survive the edit (the whole point of #335).
-		const { data: attRows } = await admin
-			.from('event_attendees')
-			.select('event_id')
-			.eq('event_id', eventId);
-		expect(attRows?.length ?? 0).toBe(1);
-		const { data: resRows } = await admin
-			.from('event_results')
-			.select('event_id')
-			.eq('event_id', eventId);
-		expect(resRows?.length ?? 0).toBe(1);
+		const attRows = await readRows(
+			'event_attendees by event_id',
+			admin
+				.from('event_attendees')
+				.select('event_id')
+				.eq('event_id', eventId)
+		);
+		expect(attRows.length).toBe(1);
+		const resRows = await readRows(
+			'event_results by event_id',
+			admin
+				.from('event_results')
+				.select('event_id')
+				.eq('event_id', eventId)
+		);
+		expect(resRows.length).toBe(1);
 	});
 
 	test('switching an event with results to a non-athletic category warns first, then applies on confirm', async ({
@@ -156,19 +166,73 @@ test.describe('/clubs/[slug]/events/[id] — organiser event edit', () => {
 		// row off the warning's disappearance races the request.
 		await expect(warn).toBeHidden({ timeout: 5_000 });
 		await expect(modal).toBeHidden({ timeout: 10_000 });
-		const { data: row } = await admin
-			.from('events')
-			.select('category')
-			.eq('id', eventId)
-			.single();
-		expect(row?.category).toBe('class');
+		const row = await readRow(
+			'events by id',
+			admin
+				.from('events')
+				.select('category')
+				.eq('id', eventId)
+				.single()
+		);
+		expect(row.category).toBe('class');
 
 		// The result row is orphaned, not destroyed — the warning was about
 		// hiding it, and the edit path must never silently delete it.
-		const { data: resRows } = await admin
-			.from('event_results')
-			.select('event_id')
-			.eq('event_id', eventId);
-		expect(resRows?.length ?? 0).toBe(1);
+		const resRows = await readRows(
+			'event_results by event_id',
+			admin
+				.from('event_results')
+				.select('event_id')
+				.eq('event_id', eventId)
+		);
+		expect(resRows.length).toBe(1);
+	});
+
+	test('an organiser in another zone edits a New York series on the New York clock', async ({
+		page
+	}) => {
+		// The browser context runs in UTC (playwright.config.ts); the series is
+		// Wednesdays 21:30 in New York, which is 02:30 Thursday on that clock.
+		const title = `e2e-event-edit-zone ${Date.now()}`;
+		const startsAt = '2027-01-14T02:30:00.000Z';
+		eventId = await insertEvent({
+			club_id: RICHMOND_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: startsAt,
+			timezone: 'America/New_York',
+			recurrence_freq: 'weekly',
+			recurrence_byday: ['WE']
+		});
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible({
+			timeout: 10_000
+		});
+
+		await page.getByTestId('edit-event').click();
+		const modal = page.locator('.modal', { hasText: 'Edit event' });
+		await expect(modal).toBeVisible({ timeout: 5_000 });
+
+		const dateInput = modal.locator('input[type="date"]');
+		const timeInput = modal.locator('input[type="time"]');
+		await expect(dateInput).toHaveValue('2027-01-13');
+		await expect(timeInput).toHaveValue('21:30');
+		await expect(modal.getByTestId('event-when-hint')).toContainText('America/New_York');
+
+		// Moving the start an hour earlier is an hour earlier in New York, not
+		// 20:30 on the editor's clock, and the stored zone is left alone.
+		await timeInput.fill('20:30');
+		await modal.getByRole('button', { name: 'Save changes' }).click();
+		await expect(modal).toBeHidden({ timeout: 10_000 });
+
+		const admin = getAdminClient();
+		const row = await readRow(
+			'events by id',
+			admin.from('events').select('starts_at, timezone, recurrence_byday').eq('id', eventId).single()
+		);
+		expect(new Date(row.starts_at as string).toISOString()).toBe('2027-01-14T01:30:00.000Z');
+		expect(row.timezone).toBe('America/New_York');
+		expect(row.recurrence_byday).toEqual(['WE']);
 	});
 });

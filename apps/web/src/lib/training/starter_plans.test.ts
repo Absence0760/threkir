@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
 	STARTER_PLANS,
 	starterById,
-	instantiateStarter
+	instantiateStarter,
+	starterSummary
 } from './starter_plans';
 import { GOAL_DISTANCES_M, walkRunDefaultWeeks } from './training';
 
@@ -49,4 +50,31 @@ test('an instantiated starter anchors at the given start date', () => {
 	assert.ok(plan);
 	// 12 weeks from 2026-07-01 → end date is in the future, after the start.
 	assert.ok(plan!.endDate > '2026-07-01');
+});
+
+test('an instantiated starter takes the masters schedule from extra recovery as it does from age', () => {
+	assert.deepEqual(
+		instantiateStarter('half_12wk', '2026-07-05', null, true),
+		instantiateStarter('half_12wk', '2026-07-05', 60)
+	);
+	assert.notDeepEqual(
+		instantiateStarter('half_12wk', '2026-07-05'),
+		instantiateStarter('half_12wk', '2026-07-05', 60)
+	);
+});
+
+test('starterSummary describes C25K as 9 weeks, 3 days a week, 30-45 minute sessions', () => {
+	// The shortest session is week 1 (28.5 min) and the longest week 7
+	// (44 min), each rounded to the nearest 5. The graduation 5K lasts as
+	// long as the runner takes, so it does not stretch the range.
+	assert.deepEqual(starterSummary('c25k'), {
+		weeks: 9,
+		daysPerWeek: 3,
+		sessionMinutes: { min: 30, max: 45 }
+	});
+});
+
+test('starterSummary gives a distance-based starter no session length', () => {
+	assert.deepEqual(starterSummary('half_12wk'), { weeks: 12, daysPerWeek: 4, sessionMinutes: null });
+	assert.equal(starterSummary('nope'), null);
 });

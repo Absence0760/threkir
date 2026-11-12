@@ -1,8 +1,10 @@
 # Predictive live tracking — "will they make the next cutoff?"
 
 > **STATUS: shipped web + mobile (2026-06-14).** `/live/[id]` next-cut-off card +
-> `live_spectator_screen.dart`, backed by the `route_geometry` (`distanceAlongRoute`)
-> and `live_cutoff_eta` parity pairs. See [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cutoff-legs-and-fails-to-unknown-when-the-fix-is-stale)
+> `live_spectator_screen.dart`, backed by the `route_geometry` (`progressAlongRoute`,
+> anchored on the runner's recorded distance so a loop's start is not its finish —
+> it replaced the original whole-line `distanceAlongRoute`) and `live_cutoff_eta`
+> parity pairs. See [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cut-off-legs-and-fails-to-unknown-when-the-fix-is-stale)
 > for the staleness/ETA contract and the [flows.md spectator section](flows.md#predictive-next-cut-off-will-they-make-it).
 > The brief below is preserved as the design record.
 >
@@ -91,6 +93,29 @@ over-claiming when the position is stale** (the personas' core complaint).
    `CutoffCard.stale` in the shared `lib/widgets/cutoff_card.dart` + the
    `liveCutoffSignalLost` ARB key in all seven catalogues; the runner's own
    `RunScreen` renders the same widget as of 2026-07-12.)
+
+   Suppressing the *verdict* does not suppress what the card still knows
+   (2026-08-13, decisions § 601). `requiredPaceSecPerKm` does not depend on
+   recent pace, so it survives the stale branch and renders whenever the
+   verdict is not comfortably `on` — labelled `live.cutoffRequiredPaceStale` /
+   `liveCutoffRequiredPaceStale` ("from the last fix") while stale so it can't
+   be read as measured from where the runner is now. `limitPassed` renders as
+   its own danger pill ALONGSIDE the signal-lost line and outranks the amber
+   stale border: the deadline is gone whether or not the fix is current, and it
+   is the fact a crew at the checkpoint is deciding on. The two can never
+   co-render, which is what keeps the "you cannot make it" surface from firing
+   off the *other* null `requiredPaceSecPerKm` produces (a checkpoint under
+   50 m away). Both surfaces feed the helper a **race clock**, because
+   `elapsed_s` stops moving when the pings do and a limit that expires
+   mid-dead-zone would otherwise never register. Since 2026-08-24
+   (decisions § 712) that clock is stated rather than estimated: `raceClockS`
+   subtracts the run's own `started_at` — which `public_runs` already serves an
+   anonymous spectator — from now, and `liveElapsedS`'s ping-age advance is the
+   fallback for a start instant that will not parse. The two are not
+   interchangeable: `liveElapsedS` credits nothing for time the runner had the
+   recording paused, so it is a lower bound. Preferring `started_at` also
+   cancels recorder clock skew, because a `cutoff_clock` limit is resolved as
+   `cutoffClockMin - startClockMin` off that same stamp.
 3. **Pace source:** recent average over the last N pings (decide N), or
    effort-adjusted (GAP) remaining distance for a better hill estimate.
 

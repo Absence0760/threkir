@@ -6,8 +6,10 @@ import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, IdentityAvatar;
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
+import '../typed_decimal.dart';
 import 'confirm_destructive.dart';
 import 'error_state.dart';
+import 'head_to_head_card.dart' show showHeadToHeadSheet;
 import 'top_banner.dart';
 
 /// Route-detail segments panel: lists every segment on the parent
@@ -163,8 +165,8 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
       _toast(AppLocalizations.of(context).segmentsPanelErrNameRequired);
       return;
     }
-    final start = double.tryParse(_startCtrl.text) ?? 0;
-    final end = double.tryParse(_endCtrl.text) ?? 0;
+    final start = parseTypedDecimal(_startCtrl.text) ?? 0;
+    final end = parseTypedDecimal(_endCtrl.text) ?? 0;
     final l10n = AppLocalizations.of(context);
     if (end <= start) {
       _toast(l10n.segmentsPanelErrEndAfterStart);
@@ -306,6 +308,14 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
                     seg.authorId, widget.api.userId, widget.isRouteOwner),
                 onTap: () => _toggleLeaderboard(seg),
                 onDelete: () => _confirmDelete(seg),
+                onCompare: widget.api.userId == null
+                    ? null
+                    : () => showHeadToHeadSheet(
+                          context,
+                          api: widget.api,
+                          kind: 'segment',
+                          targetId: seg.id,
+                        ),
                 genderFilter: _genderFilter,
                 ageFilter: _ageFilter,
                 onGenderChanged: (v) {
@@ -424,6 +434,7 @@ class _SegmentTile extends StatelessWidget {
   final bool canDelete;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onCompare;
   final String? genderFilter;
   final String? ageFilter;
   final ValueChanged<String?> onGenderChanged;
@@ -440,6 +451,7 @@ class _SegmentTile extends StatelessWidget {
     required this.canDelete,
     required this.onTap,
     required this.onDelete,
+    required this.onCompare,
     required this.genderFilter,
     required this.ageFilter,
     required this.onGenderChanged,
@@ -519,6 +531,17 @@ class _SegmentTile extends StatelessWidget {
                     genderFilter: genderFilter,
                     ageFilter: ageFilter,
                   ),
+                  if (onCompare != null)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        key: Key('segment-head-to-head-${seg.id}'),
+                        onPressed: onCompare,
+                        icon: const Icon(Icons.people_outline, size: 18),
+                        label: Text(
+                            AppLocalizations.of(context).headToHeadCompare),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -527,16 +550,8 @@ class _SegmentTile extends StatelessWidget {
     );
   }
 
-  static String _fmt(double m) {
-    final unit = activeDistanceUnit;
-    if (unit == DistanceUnit.mi) {
-      const metresPerMile = 1609.344;
-      if (m >= metresPerMile) return UnitFormat.distance(m, unit);
-      return '${(m * 1.09361).round()} yd';
-    }
-    if (m >= 1000) return UnitFormat.distance(m, unit);
-    return '${m.round()} m';
-  }
+  static String _fmt(double m) =>
+      UnitFormat.shortDistance(m, activeDistanceUnit);
 }
 
 class _TierFilters extends StatelessWidget {
@@ -799,7 +814,7 @@ class _LeaderboardRow extends StatelessWidget {
             const SizedBox(width: 6),
           ],
           Text(
-            _fmtTime(entry.effort.timeSeconds),
+            formatEffortTime(entry.effort.timeSeconds),
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -807,16 +822,5 @@ class _LeaderboardRow extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static String _fmtTime(double seconds) {
-    final total = seconds.round();
-    final h = total ~/ 3600;
-    final m = (total % 3600) ~/ 60;
-    final s = total % 60;
-    if (h > 0) {
-      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    }
-    return '$m:${s.toString().padLeft(2, '0')}';
   }
 }

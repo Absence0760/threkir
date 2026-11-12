@@ -5,7 +5,7 @@
 ///
 /// Keep this file dependency-free — no `Deno.env`, no `createClient`,
 /// no `fetch`, no Stripe import. The Stripe refund + DB writes live in
-/// index.ts; this file only decides.
+/// refund.ts and index.ts; this file only decides.
 ///
 /// The refund-eligibility rule mirrors the web pure helper
 /// (apps/web/src/lib/social/paid_registration.ts resolveRefundEligibility)
@@ -61,9 +61,9 @@ export type CancelAction =
   /// A still-`pending` order (no charge captured yet): release the soft
   /// reservation, no Stripe refund.
   | 'release_reservation'
-  /// A `paid` order whose policy allows a refund: initiate the Stripe refund.
+  /// A charged order whose policy allows a refund: initiate the Stripe refund.
   | 'refund'
-  /// A `paid` order whose policy denies a refund (e.g. inside the no-refund
+  /// A charged order whose policy denies a refund (e.g. inside the no-refund
   /// window): nothing to do — the buyer keeps the seat (we don't free a seat
   /// without refunding their money), the caller reports policy_no_refund.
   | 'policy_no_refund'
@@ -71,17 +71,238 @@ export type CancelAction =
   | 'noop';
 
 /// Decide what the cancel EF should do, given the order's current status and
-/// (for a paid order) its refund eligibility. Pure so the branch logic is
+/// (for a charged order) its refund eligibility. Pure so the branch logic is
 /// unit-tested independently of Stripe.
-///   pending                         -> release_reservation
-///   paid + eligible                 -> refund
-///   paid + not eligible             -> policy_no_refund
-///   anything else (terminal status) -> noop
+///   pending                             -> release_reservation
+///   paid | partially_refunded + eligible-> refund
+///   paid | partially_refunded + not     -> policy_no_refund
+///   anything else (terminal status)     -> noop
+///
+/// `partially_refunded` decides EXACTLY as `paid` does, because it is still a
+/// held seat: `enforce_paid_order_for_priced_event` accepts it as backing a
+/// registration (20270522_001) and the webhook keeps the seat on a partial
+/// refund by design. Reading it as terminal instead was a silent money bug —
+/// the caller's `.in('status', [...])` had already been widened to select such
+/// an order, and the buyer policy in 20270522_001 widened to admit it, so a
+/// buyer cancelling a partially-refunded registration reached here, was told
+/// `noop`, and the web toast reported success while no refund was created and
+/// the seat was never released (decisions § 769). A partial refund is not the
+/// buyer giving up their place; it is money coming back on a place they kept.
 export function cancelAction(
   status: string,
   refundEligible: boolean,
 ): CancelAction {
   if (status === 'pending') return 'release_reservation';
-  if (status === 'paid') return refundEligible ? 'refund' : 'policy_no_refund';
+  if (status === 'paid' || status === 'partially_refunded') {
+    return refundEligible ? 'refund' : 'policy_no_refund';
+  }
   return 'noop';
 }
+
+/// Shape the `stripe.refunds.create` params for a DESTINATION-charge refund.
+///
+/// Both flags are load-bearing and Stripe couples them: "If you refund the
+/// application fee for a destination charge, you must also reverse the
+/// transfer."
+///
+///   - `reverse_transfer` pulls the host's share back out of their connected
+///     account. Without it, "by default the destination account keeps the funds
+///     that were transferred to it, leaving the platform account to cover the
+///     negative balance from the refund" — so the buyer was made whole out of
+///     the PLATFORM's balance and the host kept the whole ticket.
+///   - `refund_application_fee` does NOT claw our cut back to us, which is what
+///     this call was written believing: it "push[es] the application fee funds
+///     back to the connected account". It is the half that leaves the host
+///     whole once the transfer above has been reversed off them.
+///
+/// Together they net every party to zero on a full refund. Set alone, as it was
+/// (decisions § 769), the second one pays the host our fee ON TOP of the ticket
+/// they already kept, so a cancelled $50 class cost the platform the full $50
+/// and paid the host $50 for a class nobody attended.
+///
+/// No `amount`: Stripe refunds the whole remaining unrefunded balance of the
+/// charge, which is what both refundable statuses want — the entire ticket for
+/// a `paid` order, and only what is still owed for a `partially_refunded` one.
+export function buildRefundParams(paymentIntentId: string) {
+  return {
+    payment_intent: paymentIntentId,
+    refund_application_fee: true,
+    reverse_transfer: true,
+  };
+}
+
+/// The one Stripe idempotency key for refunding an order, shared by BOTH
+/// cancel paths. It is derived from the order alone, not from who cancelled,
+/// because what it must dedupe is "a refund of this order": a buyer who cancels
+/// and a host who then calls off the whole occurrence, inside Stripe's 24 h
+/// idempotency window, send byte-identical params under this key and get the
+/// first refund replayed instead of a second one attempted. Past the window the
+/// guard is Stripe's own: the params carry no `amount`, so a second refund of a
+/// fully refunded charge is refused (`charge_already_refunded`, see
+/// `isAlreadyRefundedError`) rather than paid twice.
+export function refundIdempotencyKey(orderId: string): string {
+  return `event-order-refund:${orderId}`;
+}
+
+/// What the cancel EF was asked to do. `self` is the buyer cancelling their own
+/// registration (the original behaviour, and the default when the field is
+/// absent); `occurrence` is an organiser calling off one occurrence (a one-off
+/// event is its own single occurrence), which refunds every registrant of it;
+/// `series` is an organiser ending a recurring event, which calls off every
+/// remaining occurrence anyone signed up for and refunds them all. Anything
+/// else is refused rather than guessed: a typo must not quietly turn a host's
+/// "refund everyone" into a self-cancel of an order they do not have.
+export type CancelScope = 'self' | 'occurrence' | 'series';
+
+export function parseCancelScope(raw: unknown): CancelScope | null {
+  if (raw === undefined || raw === null) return 'self';
+  if (raw === 'self' || raw === 'occurrence' || raw === 'series') return raw;
+  return null;
+}
+
+/// The RSVP statuses whose holders a series cancel tells: the set
+/// `notify_event_cancel` fans out to. A declined member has nothing to hear.
+export const SERIES_CANCEL_RSVP_STATUSES = ['going', 'maybe', 'waitlisted'] as const;
+
+/// Which occurrences a series cancel calls off by name: every distinct instant
+/// at or after `cutoffMs` that holds an order or an RSVP and is not already
+/// cancelled, oldest first. Instants are compared as instants, because the
+/// same occurrence reaches here as `…+00:00` from one table and `….000Z` from
+/// another. An occurrence nobody signed up for needs no row: ending the series
+/// is what removes it.
+export function seriesCancelInstances(
+  rows: readonly { instance_start: string }[],
+  alreadyCancelled: readonly string[],
+  cutoffMs: number,
+): string[] {
+  const cancelled = new Set(
+    alreadyCancelled.map((iso) => Date.parse(iso)).filter((ms) => Number.isFinite(ms)),
+  );
+  const picked = new Map<number, string>();
+  for (const row of rows) {
+    const ms = Date.parse(row.instance_start);
+    if (!Number.isFinite(ms) || ms < cutoffMs || cancelled.has(ms) || picked.has(ms)) continue;
+    picked.set(ms, row.instance_start);
+  }
+  return [...picked.entries()].sort((a, b) => a[0] - b[0]).map(([, iso]) => iso);
+}
+
+/// The `recurrence_until` that ends a series at `cutoffIso`: the cutoff, unless
+/// the series already ends earlier, in which case it is left alone (null means
+/// no write). A cancel must never lengthen a series.
+export function seriesEndUntil(currentUntil: string | null, cutoffIso: string): string | null {
+  if (currentUntil === null) return cutoffIso;
+  const current = Date.parse(currentUntil);
+  const cutoff = Date.parse(cutoffIso);
+  if (!Number.isFinite(current)) return cutoffIso;
+  return current <= cutoff ? null : cutoffIso;
+}
+
+/// `event_exceptions_reason_len_chk` (20270503_001). Checked in the handler so
+/// an over-long reason is a 400 before anything is cancelled, not a 23514 from
+/// the insert.
+export const CANCEL_REASON_MAX_CHARS = 500;
+
+/// Trim a host's free-text cancel reason; blank is no reason. `undefined` means
+/// the value is unusable (wrong type, or longer than the column allows) and the
+/// caller answers 400.
+export function normalizeCancelReason(raw: unknown): string | null | undefined {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  if ([...trimmed].length > CANCEL_REASON_MAX_CHARS) return undefined;
+  return trimmed;
+}
+
+/// The order statuses an occurrence cancel acts on: the set the buyer path
+/// selects, and the set `guard_paid_occurrence_cancel` (20270723000003) refuses
+/// a direct client cancel over. A pending order is a held reservation; a paid
+/// or partially refunded one is a held seat with money behind it.
+export const OCCURRENCE_CANCEL_STATUSES = ['pending', 'paid', 'partially_refunded'] as const;
+
+export type HostCancelAction = 'release_reservation' | 'refund' | 'noop';
+
+/// What an occurrence cancel does to one order. The refund policy is NOT
+/// consulted: the host called the class off, so every registrant is owed their
+/// money whatever window they bought under (club_events.md § Refunds). Beyond
+/// that it decides exactly as `cancelAction` does for an eligible buyer, so the
+/// two paths cannot disagree about which statuses carry money.
+export function hostCancelAction(status: string): HostCancelAction {
+  const action = cancelAction(status, true);
+  if (action === 'release_reservation' || action === 'refund') return action;
+  return 'noop';
+}
+
+/// Whether a failed `stripe.refunds.create` failed because the charge has no
+/// unrefunded balance left. That is not a failure of THIS cancel: an earlier
+/// call (the buyer's own cancel, a previous attempt at this one whose response
+/// was lost, a dashboard refund) already returned the money, and the webhook
+/// reconciles the order off its `charge.refunded`. Read off Stripe's error
+/// `code` only; the message is prose and changes.
+export function isAlreadyRefundedError(e: unknown): boolean {
+  if (typeof e !== 'object' || e === null) return false;
+  return (e as { code?: unknown }).code === 'charge_already_refunded';
+}
+
+/// One order's result inside an occurrence cancel.
+///   initiated        a refund was created at Stripe for this order now.
+///   already_refunded nothing was left to refund; an earlier refund holds.
+///   released         a pending reservation's Checkout Session was expired.
+///   failed           the order still holds money and no refund exists. The
+///                    occurrence stays cancelled; re-running the same cancel
+///                    resumes from here, and the shared key makes that safe.
+export type OrderRefundOutcome = 'initiated' | 'already_refunded' | 'released' | 'failed';
+
+export interface OrderRefundResult {
+  orderId: string;
+  outcome: OrderRefundOutcome;
+  /// Machine reason for a `failed` outcome (`missing_payment_intent`,
+  /// `stripe_refund_failed`, `stamp_failed`). Absent otherwise.
+  code?: string;
+}
+
+export interface OccurrenceRefundSummary {
+  /// `complete` only when no order is left holding money without a refund.
+  outcome: 'complete' | 'incomplete';
+  initiated: number;
+  already_refunded: number;
+  released: number;
+  failed: number;
+  failed_order_ids: string[];
+}
+
+/// Fold the per-order results into what the host is told. One `failed` makes
+/// the whole cancel `incomplete`: a host told "done" while a registrant's money
+/// is still held has no reason to look again.
+export function summarizeOccurrenceRefunds(
+  results: readonly OrderRefundResult[],
+): OccurrenceRefundSummary {
+  const summary: OccurrenceRefundSummary = {
+    outcome: 'complete',
+    initiated: 0,
+    already_refunded: 0,
+    released: 0,
+    failed: 0,
+    failed_order_ids: [],
+  };
+  for (const r of results) {
+    summary[r.outcome] += 1;
+    if (r.outcome === 'failed') summary.failed_order_ids.push(r.orderId);
+  }
+  if (summary.failed > 0) summary.outcome = 'incomplete';
+  return summary;
+}
+
+/// The instant a series cancel works from. Normally now; but a series this
+/// cancel already ended (a retry after a failure part-way through) keeps the
+/// FIRST call's cutoff, its `recurrence_until`, so an occurrence that started
+/// between the two calls is still called off and refunded rather than falling
+/// into the gap between them.
+export function seriesCancelCutoff(currentUntil: string | null, nowIso: string): string {
+  if (currentUntil === null) return nowIso;
+  const until = Date.parse(currentUntil);
+  if (!Number.isFinite(until) || until > Date.parse(nowIso)) return nowIso;
+  return new Date(until).toISOString();
+}
+

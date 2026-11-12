@@ -25,7 +25,17 @@
          foregroundServiceType="location" baked in by the plugin
          and is covered by FOREGROUND_SERVICE_LOCATION above. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Run cues: step changes, workout completion and pace alerts vibrate
+         the phone directly (RunHapticsBridge.kt), because the view-level
+         haptic Flutter offers is dropped with the screen off. A normal
+         permission, granted at install. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16 Live Updates: lets the recording notification ask to be
+         promoted to the lock-screen card and status-bar chip. A normal
+         permission, granted at install; the user can still turn Live
+         Updates off per app in system settings. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <!-- Camera: barcode scan for the nutrition log fast-path (mobile_scanner).
          Declared optional (android:required="false") so the app still installs
@@ -46,6 +56,14 @@
          import lands summary-only; the importer degrades to a trackless
          run rather than failing. Plural, unlike WRITE_EXERCISE_ROUTE. -->
     <uses-permission android:name="android.permission.health.READ_EXERCISE_ROUTES" />
+    <!-- The step count behind an imported workout. The `health` plugin
+         builds a workout's totalSteps by summing every StepsRecord in the
+         session window, so without this grant that sub-read yields nothing
+         and no imported activity can ever show steps or cadence (#664). -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <!-- The latest body-weight sample, read once to seed body_weight_kg for
+         the calorie estimate when the runner has not set one. -->
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <!-- Write recorded runs back to Health Connect (persona #36). Opt-in
          per-device; the workout session + its distance record need these. -->
     <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
@@ -96,6 +114,12 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
                      tools:node="remove" />
 
+    <!-- gal writes a run share image to the photo library through MediaStore,
+         which needs no permission from API 30. API 26-29 still need the legacy
+         write permission, so it is capped there and never requested above it. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                     android:maxSdkVersion="29" />
+
     <!-- workmanager (androidx.work) injects RECEIVE_BOOT_COMPLETED so
          its boot receiver can re-schedule the hourly background-sync
          task after a device reboot. registerBackgroundSync() in
@@ -111,6 +135,7 @@
         android:label="Threkir"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:localeConfig="@xml/locales_config"
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"
@@ -135,6 +160,13 @@
             <meta-data
               android:name="health_permissions"
               android:resource="@xml/health_permissions" />
+            <!-- Incoming links are routed by app_links listeners (auth
+                 callback, club invites), never by Flutter's own deep-link
+                 handler, which would push the URL path as a named route the
+                 app does not define. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -153,6 +185,89 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.threkir.app" android:host="login-callback" />
+            </intent-filter>
+            <!-- Club invite links (lib/club_invite_link.dart). The app scheme
+                 `com.threkir.app://clubs/join/<token>` needs no verification.
+                 The web link `https://threkir.com/clubs/join/<token>` is an
+                 App Link: it opens here without a chooser because
+                 https://threkir.com/.well-known/assetlinks.json (source:
+                 apps/web/static/.well-known/) names this package and its
+                 Play app-signing SHA-256 fingerprint (decisions § 1865,
+                 § 1923). Android checks it at install; if verification
+                 fails it leaves the link to the browser unless the user
+                 enables the link in app settings. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="clubs" android:pathPrefix="/join/" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPrefix="/clubs/join/" />
+            </intent-filter>
+            <!-- Challenge links (lib/challenge_invite_link.dart, decisions
+                 § 2261): a creator's invite `/challenges/join/<token>` and a
+                 public challenge's `/share/challenge/<id>`, plus the app
+                 scheme `com.threkir.app://challenges/join/<token>`. Verified
+                 against the same assetlinks.json as the club invite. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="challenges" android:pathPrefix="/join/" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPrefix="/challenges/join/" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/share/challenge/........-....-....-....-............" />
+            </intent-filter>
+            <!-- Run and route links (lib/entity_link.dart): the in-app
+                 `/runs/<id>` and `/routes/<id>` links an owner hands out to
+                 followers and named people (decisions § 1879), plus the app
+                 scheme `com.threkir.app://runs/<id>` / `routes/<id>`. The
+                 https filter matches a UUID id only, so `/runs/new`,
+                 `/routes/heatmap` and `/routes/<id>/roadbook` stay with the
+                 browser. Same App Link verification caveat as the invite
+                 filter above. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="runs" />
+                <data android:scheme="com.threkir.app" android:host="routes" />
+            </intent-filter>
+            <!-- Plan links (lib/entity_link.dart parsePlanLink): the
+                 home-screen widget's `com.threkir.app://plans`,
+                 `plans/<id>` and `plans/<id>/workouts/<id>`. App scheme
+                 only; the widget's taps target this activity explicitly,
+                 and the filter lets any other in-app surface use them. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="plans" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/runs/........-....-....-....-............" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/routes/........-....-....-....-............" />
+            </intent-filter>
+            <!-- "Train with me" plan links (lib/entity_link.dart parsePlanLink,
+                 decisions § 2262): the public `/share/plan/<id>` page opens
+                 the plan's library preview, where the reader starts it. UUID
+                 ids only. Same App Link verification caveat as above. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/share/plan/........-....-....-....-............" />
             </intent-filter>
             <!-- Health Connect privacy-policy rationale entry-point.
                  Android invokes this intent when the user taps "Privacy
@@ -270,6 +385,26 @@
         <receiver
             android:name=".RunActionReceiver"
             android:exported="false" />
+        <!-- Today's-workout home-screen widget (TodayWorkoutWidgetProvider).
+             Exported because the launcher delivers APPWIDGET_UPDATE; the
+             clock broadcasts are system-only, and DATE_CHANGED is not
+             delivered to a manifest receiver on Android 8+, which is why the
+             provider also arms its own midnight alarm. -->
+        <receiver
+            android:name=".TodayWorkoutWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_workout_widget_info" />
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

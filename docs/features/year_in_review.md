@@ -47,10 +47,10 @@ parity pair into the house lockstep registry so it stops drifting.
   `apps/mobile_android/lib/screens/dashboard_screen.dart`. iOS twin
   byte-identical under `apps/mobile_ios/`.
 - **Aggregates available:** `personal_records` table + the
-  `gym_exercise_records`-style server roll-up pattern; `mv_weekly_mileage`
-  (materialized view, refreshed every 15 min — `20260706_001`,
-  revoked from clients in `20260517_001` so it is **server/RPC-only**, not
-  client-readable). `run_photos` table. The recap engine derives most of its
+  `gym_exercise_records`-style server roll-up pattern, and the `run_photos`
+  table. This list used to offer `mv_weekly_mileage` as a server-side
+  aggregate; **that matview was dropped in `20270530_001`** having never been
+  read, so do not plan against it. The recap engine derives most of its
   numbers from `Run` rows directly; only photo + PR counts need
   `fetchRecapExtras`.
 - **OG/share infra to copy:** `apps/web/src/lib/share/og_run_image.ts`
@@ -190,8 +190,9 @@ answer; flag it as an open question for the user if they want the cheap path.
   parity-pair list in the root `CLAUDE.md`** (it is currently missing) and run
   the `shared-library-syncer` agent after any edit.
 - The share-image builders (`recap_share_image.ts`, `og_recap_image.ts`) are
-  **web-only** (the mobile share path renders natively / links to the web page) —
-  do not create Dart twins for those; note that explicitly.
+  **web-only** — do not create Dart twins for those. Their geometry is shared
+  instead: the recap image's square and 9:16 layouts are the
+  `recap_card_layout` pair (decisions § 2260), which the mobile painter reads.
 
 ## Tests (ship in the same commit as each piece)
 - **Playwright (web):**
@@ -209,7 +210,7 @@ answer; flag it as an open question for the user if they want the cheap path.
   (+ iOS twin) for the monthly builder; keep the test count in lockstep with
   `recap.test.ts`.
 
-## i18n keys to add (all six web locales + all mobile ARBs)
+## i18n keys to add (every web locale + all mobile ARBs)
 Representative new keys (the `recap.*` namespace already exists; add monthly +
 publish):
 - `recap.monthHeroKicker` ("My March 2026 in running")

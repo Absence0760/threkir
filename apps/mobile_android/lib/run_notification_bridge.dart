@@ -1,6 +1,38 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'live_activity_bridge.dart' show LiveActivityFrame;
+
+/// What the ongoing notification shows for one [LiveActivityFrame] — the
+/// same frame the iOS Live Activity renders, so the two lock screens agree.
+///
+/// On a structured workout the step takes the title, because the collapsed
+/// row is a title and one line and the step is what the runner acts on; the
+/// stats keep the line. A paused run keeps its paused title, since the state
+/// of the button just pressed matters more than the step, and the step moves
+/// to the top of the expanded text instead of disappearing.
+({String title, String text, String bigText}) runNotificationContent(
+  LiveActivityFrame frame,
+) {
+  final stats =
+      '${frame.elapsedText}  •  ${frame.distanceText}  •  ${frame.paceText}';
+  final statsBig = '${frame.timeLabel}: ${frame.elapsedText}\n'
+      '${frame.distanceLabel}: ${frame.distanceText}\n'
+      '${frame.paceLabel}: ${frame.paceText}';
+  final step = frame.step;
+  if (step == null) {
+    return (title: frame.title, text: stats, bigText: statsBig);
+  }
+  if (frame.paused) {
+    return (
+      title: frame.title,
+      text: stats,
+      bigText: '${step.line}\n$statsBig',
+    );
+  }
+  return (title: step.line, text: stats, bigText: statsBig);
+}
+
 /// Dart client for the native `RunNotificationBridge` method channel.
 ///
 /// Overrides the geolocator foreground-service notification with live run
@@ -12,14 +44,14 @@ class RunNotificationBridge {
   static const _channel = MethodChannel('run_app/run_notification');
 
   /// Lock-screen action callbacks (Android #14). The native side renders
-  /// Pause/Resume + Stop buttons on the foreground-service notification;
+  /// a Pause/Resume button on the foreground-service notification (no Stop:
+  /// ending a run takes the in-app hold);
   /// tapping one launches MainActivity with a `run_action` extra, which
   /// forwards here over the same channel. The run screen wires these to
   /// the recorder. Null on iOS (the channel has no native handler there,
   /// so the buttons never exist and these never fire).
   void Function()? onPause;
   void Function()? onResume;
-  void Function()? onStop;
 
   RunNotificationBridge() {
     _channel.setMethodCallHandler(_handleNativeCall);
@@ -38,9 +70,6 @@ class RunNotificationBridge {
         case 'resume':
           onResume?.call();
           break;
-        case 'stop':
-          onStop?.call();
-          break;
       }
     }
     return null;
@@ -52,11 +81,16 @@ class RunNotificationBridge {
   /// cheaply. [bigText] is optional multi-line content shown when the
   /// user expands the notification. [paused] flips the Pause action to
   /// Resume so the lock-screen control matches the recorder state.
+  /// [elapsed] anchors the notification's self-ticking clock (the Android 16
+  /// Live Update card and chip); [elapsedText] is what the chip shows frozen
+  /// while paused.
   Future<void> update({
     required String title,
     required String text,
     String? bigText,
     bool paused = false,
+    Duration? elapsed,
+    String? elapsedText,
   }) async {
     try {
       await _channel.invokeMethod<void>('update', {
@@ -64,6 +98,8 @@ class RunNotificationBridge {
         'text': text,
         if (bigText != null) 'big_text': bigText,
         'paused': paused,
+        if (elapsed != null) 'elapsed_ms': elapsed.inMilliseconds,
+        if (elapsedText != null) 'elapsed_text': elapsedText,
       });
     } catch (e) {
       debugPrint('RunNotificationBridge.update failed: $e');

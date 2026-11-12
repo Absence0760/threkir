@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { readCount, readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Social cross-surface journey — discover → follow → feed → engage →
@@ -110,12 +112,7 @@ test.describe('social journey — discover → follow → feed → engage → un
 		// this consent choice, so inject it before the first navigation (the
 		// consent module reads localStorage once on import) — same pattern as
 		// helpers.signIn.
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		const admin = getAdminClient();
 		try {
@@ -164,12 +161,15 @@ test.describe('social journey — discover → follow → feed → engage → un
 			// The edge must land server-side before the follow-scoped feed
 			// can read it.
 			await expect(async () => {
-				const { data } = await admin
-					.from('user_follows')
-					.select('follower_id')
-					.eq('follower_id', alpha.id)
-					.eq('followee_id', bravo.id)
-					.maybeSingle();
+				const data = await readMaybeRow(
+					'user_follows by follower_id+followee_id',
+					admin
+						.from('user_follows')
+						.select('follower_id')
+						.eq('follower_id', alpha.id)
+						.eq('followee_id', bravo.id)
+						.maybeSingle()
+				);
 				expect(data).toBeTruthy();
 			}).toPass({ timeout: 5_000 });
 
@@ -188,11 +188,14 @@ test.describe('social journey — discover → follow → feed → engage → un
 
 			// The optimistic flip must reflect a real run_kudos write.
 			await expect(async () => {
-				const { count } = await admin
-					.from('run_kudos')
-					.select('*', { count: 'exact', head: true })
-					.eq('run_id', runId!)
-					.eq('user_id', alpha.id);
+				const count = await readCount(
+					'run_kudos by run_id+user_id',
+					admin
+						.from('run_kudos')
+						.select('*', { count: 'exact', head: true })
+						.eq('run_id', runId!)
+						.eq('user_id', alpha.id)
+				);
 				expect(count).toBe(1);
 			}).toPass({ timeout: 5_000 });
 
@@ -214,11 +217,14 @@ test.describe('social journey — discover → follow → feed → engage → un
 
 			// And it persisted server-side.
 			await expect(async () => {
-				const { count } = await admin
-					.from('run_comments')
-					.select('*', { count: 'exact', head: true })
-					.eq('run_id', runId!)
-					.eq('author_id', alpha.id);
+				const count = await readCount(
+					'run_comments by run_id+author_id',
+					admin
+						.from('run_comments')
+						.select('*', { count: 'exact', head: true })
+						.eq('run_id', runId!)
+						.eq('author_id', alpha.id)
+				);
 				expect(count).toBe(1);
 			}).toPass({ timeout: 5_000 });
 
@@ -251,12 +257,15 @@ test.describe('social journey — discover → follow → feed → engage → un
 
 			// The edge is gone server-side.
 			await expect(async () => {
-				const { data } = await admin
-					.from('user_follows')
-					.select('follower_id')
-					.eq('follower_id', alpha.id)
-					.eq('followee_id', bravo.id)
-					.maybeSingle();
+				const data = await readMaybeRow(
+					'user_follows by follower_id+followee_id',
+					admin
+						.from('user_follows')
+						.select('follower_id')
+						.eq('follower_id', alpha.id)
+						.eq('followee_id', bravo.id)
+						.maybeSingle()
+				);
 				expect(data).toBeNull();
 			}).toPass({ timeout: 5_000 });
 

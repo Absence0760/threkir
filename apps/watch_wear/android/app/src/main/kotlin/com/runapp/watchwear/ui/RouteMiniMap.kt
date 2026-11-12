@@ -47,10 +47,10 @@ fun RouteMiniMap(
     track: List<RouteMath.LatLng> = emptyList(),
     routeColor: Color = Color(0xFFE5C158),  // DuskPalette.amber-ish
     currentColor: Color = Color.White,
-    trackColor: Color = Color(0xFF818CF8),  // indigo, faded behind route
+    trackColor: Color = DuskPalette.coral,  // the recorded line, faded behind route
     startColor: Color = Color(0xFF34D399),  // emerald — "go"
     endColor: Color = Color(0xFFF87171),    // coral — "finish"
-    backgroundColor: Color = Color(0xFF120D22),  // DuskPalette.midnight
+    backgroundColor: Color = DuskPalette.night,
     // Default RoundedCornerShape(8.dp) gives the small inline mini-map
     // its card-like look. When the map is used as a full-screen
     // background on a round Wear OS device, pass `RectangleShape` so

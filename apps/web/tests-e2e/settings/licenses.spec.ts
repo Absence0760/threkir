@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /settings/licenses — third-party-license attribution page. A static
@@ -35,10 +36,8 @@ const KNOWN_DEPS: { name: string; license: string }[] = [
 	// verified MIT — pinned so the row (and the verification note) can't drift.
 	{ name: '@mapbox/jsonlint-lines-primitives', license: 'MIT (verified upstream)' },
 	{ name: 'mdsvex', license: 'MIT' },
-	{ name: 'normalize.css', license: 'MIT' },
-	{ name: 'unplugin-icons', license: 'MIT' },
-	{ name: '@iconify-json/material-symbols', license: 'Apache-2.0' },
 	{ name: 'MapTiler tiles', license: 'Commercial (MapTiler Cloud)' },
+	{ name: 'Terrain Tiles (AWS Open Data)', license: 'Open data (per source)' },
 	{ name: 'html-to-image', license: 'MIT' },
 ];
 
@@ -106,12 +105,7 @@ test.describe('/settings/licenses (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor is redirected to /login', async ({ page }) => {
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(page);
 
 		await page.goto('/settings/licenses');
 		await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });

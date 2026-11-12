@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { readCount, readMaybeRow, readRows } from '../fixtures/db-read';
 
 /**
  * /settings/gear — current-gear (is_default) star toggle.
@@ -27,14 +28,17 @@ test.describe('/settings/gear — current-gear toggle', () => {
 		const admin = getAdminClient();
 
 		// Pre-condition pin: seed put Pegasus 40 as the current shoe.
-		const before = await admin
-			.from('gear')
-			.select('name, is_default')
-			.eq('owner_id', USER_A.id)
-			.eq('kind', 'shoe')
-			.eq('is_default', true);
-		expect(before.data?.length ?? 0).toBe(1);
-		expect(before.data?.[0]?.name).toBe('Pegasus 40');
+		const before = await readRows(
+			'gear by owner_id+kind+is_default',
+			admin
+				.from('gear')
+				.select('name, is_default')
+				.eq('owner_id', USER_A.id)
+				.eq('kind', 'shoe')
+				.eq('is_default', true)
+		);
+		expect(before.length ?? 0).toBe(1);
+		expect(before[0]?.name).toBe('Pegasus 40');
 
 		await page.goto('/settings/gear');
 		await expect(page.locator('.gear-list')).toBeVisible({ timeout: 10_000 });
@@ -182,12 +186,15 @@ test.describe('/settings/gear — CRUD', () => {
 			page.locator('.gear-row', { hasText: planted })
 		).toBeVisible({ timeout: 10_000 });
 
-		const { data } = await admin
-			.from('gear')
-			.select('kind, brand, model, target_distance_m')
-			.eq('owner_id', USER_A.id)
-			.eq('name', planted)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'gear by owner_id+name',
+			admin
+				.from('gear')
+				.select('kind, brand, model, target_distance_m')
+				.eq('owner_id', USER_A.id)
+				.eq('name', planted)
+				.maybeSingle()
+		);
 		expect(data?.kind).toBe('shoe');
 		expect(data?.brand).toBe('Saucony');
 		expect(data?.model).toBe('Endorphin Pro 4');
@@ -232,11 +239,14 @@ test.describe('/settings/gear — CRUD', () => {
 		await expect(page.locator('.gear-row', { hasText: planted })).toBeVisible({
 			timeout: 10_000
 		});
-		const { data } = await admin
-			.from('gear')
-			.select('target_distance_m')
-			.eq('id', created!.id)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'gear by id',
+			admin
+				.from('gear')
+				.select('target_distance_m')
+				.eq('id', created!.id)
+				.maybeSingle()
+		);
 		expect(data?.target_distance_m).toBe(750_000);
 	});
 
@@ -303,12 +313,15 @@ test.describe('/settings/gear — CRUD', () => {
 		).toBeVisible({ timeout: 10_000 });
 
 		// Backend: kind is bike, target = 5000 km.
-		const { data } = await admin
-			.from('gear')
-			.select('kind, target_distance_m')
-			.eq('owner_id', USER_A.id)
-			.eq('name', planted)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'gear by owner_id+name',
+			admin
+				.from('gear')
+				.select('kind, target_distance_m')
+				.eq('owner_id', USER_A.id)
+				.eq('name', planted)
+				.maybeSingle()
+		);
 		expect(data?.kind).toBe('bike');
 		expect(data?.target_distance_m).toBe(5_000_000);
 
@@ -354,11 +367,14 @@ test.describe('/settings/gear — CRUD', () => {
 			page.locator('.gear-row', { hasText: planted })
 		).toHaveCount(0, { timeout: 5_000 });
 
-		const { data } = await admin
-			.from('gear')
-			.select('id')
-			.eq('id', created!.id)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'gear by id',
+			admin
+				.from('gear')
+				.select('id')
+				.eq('id', created!.id)
+				.maybeSingle()
+		);
 		expect(data).toBeNull();
 	});
 
@@ -486,10 +502,13 @@ test.describe('/settings/gear — wear log', () => {
 			});
 			// Asserted AFTER the undo so it cannot race the window: the row
 			// never left the database, so the restore is byte-identical.
-			const { count: afterUndo } = await admin
-				.from('gear_wear_logs')
-				.select('id', { count: 'exact', head: true })
-				.eq('gear_id', gear!.id);
+			const afterUndo = await readCount(
+				'gear_wear_logs by gear_id',
+				admin
+					.from('gear_wear_logs')
+					.select('id', { count: 'exact', head: true })
+					.eq('gear_id', gear!.id)
+			);
 			expect(afterUndo).toBe(1);
 
 			// Dismiss commits the held delete.
@@ -566,10 +585,13 @@ test.describe('/settings/gear — wear log', () => {
 			await expect(
 				dialog.getByTestId('wear-log').locator('.wear-item', { hasText: note })
 			).toHaveCount(1, { timeout: 5_000 });
-			const { count } = await admin
-				.from('gear_wear_logs')
-				.select('id', { count: 'exact', head: true })
-				.eq('gear_id', gear!.id);
+			const count = await readCount(
+				'gear_wear_logs by gear_id',
+				admin
+					.from('gear_wear_logs')
+					.select('id', { count: 'exact', head: true })
+					.eq('gear_id', gear!.id)
+			);
 			expect(count).toBe(1);
 		} finally {
 			await admin.from('gear').delete().eq('id', gear!.id);
@@ -601,7 +623,7 @@ test.describe('/settings/gear — empty state', () => {
 
 		// CTA inside the empty card opens the same create modal.
 		await page
-			.locator('.empty-card')
+			.getByTestId('gear-empty')
 			.getByRole('button', { name: /Add shoes/ })
 			.click();
 		const planted = `E2E First Pair ${Date.now()}`;
@@ -611,14 +633,17 @@ test.describe('/settings/gear — empty state', () => {
 		await expect(
 			page.locator('.gear-row', { hasText: planted })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(page.locator('.empty-card')).toHaveCount(0);
+		await expect(page.getByTestId('gear-empty')).toHaveCount(0);
 
 		// Sanity: backend row exists with owner_id = USER_C_PRO.
-		const { data } = await admin
-			.from('gear')
-			.select('name')
-			.eq('owner_id', USER_C_PRO.id);
-		expect(data?.map((g) => g.name)).toContain(planted);
+		const data = await readRows(
+			'gear by owner_id',
+			admin
+				.from('gear')
+				.select('name')
+				.eq('owner_id', USER_C_PRO.id)
+		);
+		expect(data.map((g) => g.name)).toContain(planted);
 	});
 });
 
@@ -654,12 +679,15 @@ test.describe('/settings/gear — rotations', () => {
 		await expect(rotRow).toBeVisible({ timeout: 5_000 });
 
 		// Backend: rotation row exists, owned by USER_A.
-		const { data: created } = await admin
-			.from('gear_rotations')
-			.select('id, name')
-			.eq('owner_id', USER_A.id)
-			.eq('name', rotName)
-			.maybeSingle();
+		const created = await readMaybeRow(
+			'gear_rotations by owner_id+name',
+			admin
+				.from('gear_rotations')
+				.select('id, name')
+				.eq('owner_id', USER_A.id)
+				.eq('name', rotName)
+				.maybeSingle()
+		);
 		expect(created?.name).toBe(rotName);
 
 		// Assign the Ghost 16 (a seed shoe) to the rotation via the member modal.
@@ -731,10 +759,13 @@ test.describe('/settings/gear — rotations', () => {
 				{ timeout: 5_000 }
 			)
 			.toBe(0);
-		const { count: ghostStillThere } = await admin
-			.from('gear')
-			.select('id', { count: 'exact', head: true })
-			.eq('id', GHOST_ID);
+		const ghostStillThere = await readCount(
+			'gear by id',
+			admin
+				.from('gear')
+				.select('id', { count: 'exact', head: true })
+				.eq('id', GHOST_ID)
+		);
 		expect(ghostStillThere).toBe(1);
 	});
 
@@ -762,12 +793,173 @@ test.describe('/settings/gear — rotations', () => {
 		await expect(
 			page.locator('.rotation-row', { hasText: renamed })
 		).toBeVisible({ timeout: 5_000 });
-		const { data } = await admin
-			.from('gear_rotations')
-			.select('name')
-			.eq('id', rot!.id)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'gear_rotations by id',
+			admin
+				.from('gear_rotations')
+				.select('name')
+				.eq('id', rot!.id)
+				.maybeSingle()
+		);
 		expect(data?.name).toBe(renamed);
+	});
+});
+
+/**
+ * The rotation → current-pair handoff. A rotation used to be a filter and
+ * nothing more: it named a set of pairs while `is_default` — the flag the
+ * `runs` insert trigger auto-tags with — kept stamping whichever pair last
+ * held the star. So a runner rotating three pairs banked every kilometre on
+ * one of them. The rotation row now names the pair with the most life left
+ * and hands the star over in one click.
+ *
+ * Runs on BIKES so it never disturbs the seeded shoe default (there is no
+ * seeded bike, so there is no bike default to restore either).
+ */
+test.describe('/settings/gear — rotation next-up', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('names the least-worn pair in a rotation and hands it the star', async ({
+		page
+	}) => {
+		const admin = getAdminClient();
+		const stamp = Date.now();
+		const freshName = `E2E Fresh Bike ${stamp}`;
+		const usedName = `E2E Used Bike ${stamp}`;
+
+		const { data: bikes } = await admin
+			.from('gear')
+			.insert([
+				{ owner_id: USER_A.id, kind: 'bike', name: freshName, target_distance_m: 10000 },
+				{ owner_id: USER_A.id, kind: 'bike', name: usedName, target_distance_m: 10000 }
+			])
+			.select('id, name');
+		const fresh = bikes!.find((b) => b.name === freshName)!;
+		const used = bikes!.find((b) => b.name === usedName)!;
+
+		// Half the used bike's target, so it ranks behind the untouched one.
+		const { data: run } = await admin
+			.from('runs')
+			.insert({
+				user_id: USER_A.id,
+				started_at: new Date().toISOString(),
+				distance_m: 5000,
+				duration_s: 900,
+				source: 'app',
+				is_public: false,
+				activity_type: 'cycle',
+				metadata: { activity_type: 'cycle' }
+			})
+			.select('id')
+			.single();
+		await admin.from('run_gear').insert({ run_id: run!.id, gear_id: used.id });
+
+		const { data: rotation } = await admin
+			.from('gear_rotations')
+			.insert({ owner_id: USER_A.id, name: `E2E Bike Rotation ${stamp}` })
+			.select('id, name')
+			.single();
+		await admin.from('gear_rotation_members').insert([
+			{ rotation_id: rotation!.id, gear_id: fresh.id },
+			{ rotation_id: rotation!.id, gear_id: used.id }
+		]);
+
+		try {
+			await page.goto('/settings/gear');
+			await expect(page.locator('.gear-list')).toBeVisible({ timeout: 10_000 });
+			await page.getByRole('button', { name: 'Bikes' }).click();
+
+			// Wait on the rotation row itself: the rotations load after the gear
+			// list, so the list being visible does not mean this row exists yet.
+			const rotRow = page.locator('.rotation-row', { hasText: rotation!.name });
+			await expect(rotRow).toBeVisible();
+			const nextUp = rotRow.getByTestId('rotation-next');
+			await expect(nextUp).toContainText(freshName);
+			await expect(nextUp).not.toContainText(usedName);
+
+			// Neither bike holds the star yet.
+			await expect(page.locator('.gear-row .default-pill')).toHaveCount(0);
+
+			await nextUp
+				.getByRole('button', { name: new RegExp(`Make ${freshName} the current pair`) })
+				.click();
+
+			// The star lands on the fresh bike, and the row stops offering the move.
+			await expect(
+				page.locator('.gear-row', { hasText: freshName }).locator('.default-pill')
+			).toBeVisible({ timeout: 5_000 });
+			await expect(nextUp).toContainText('Already the current pair');
+
+			await expect
+				.poll(
+					async () => {
+						const { data } = await admin
+							.from('gear')
+							.select('name')
+							.eq('owner_id', USER_A.id)
+							.eq('kind', 'bike')
+							.eq('is_default', true);
+						return data?.map((g) => g.name) ?? [];
+					},
+					{ timeout: 5_000 }
+				)
+				.toEqual([freshName]);
+		} finally {
+			await admin.from('gear_rotations').delete().eq('id', rotation!.id);
+			await admin.from('runs').delete().eq('id', run!.id); // cascades run_gear
+			await admin.from('gear').delete().in('id', [fresh.id, used.id]);
+		}
+	});
+
+	test('offers nothing when only one member of the rotation is still in service', async ({
+		page
+	}) => {
+		const admin = getAdminClient();
+		const stamp = Date.now();
+		const liveName = `E2E Live Bike ${stamp}`;
+
+		// Two members, one retired — a membership count of 2, but only one pair
+		// the runner could actually be told to use. There is no choice to make.
+		const { data: bikes } = await admin
+			.from('gear')
+			.insert([
+				{ owner_id: USER_A.id, kind: 'bike', name: liveName, target_distance_m: 10000 },
+				{
+					owner_id: USER_A.id,
+					kind: 'bike',
+					name: `E2E Retired Bike ${stamp}`,
+					target_distance_m: 10000,
+					retired_at: '2026-01-01'
+				}
+			])
+			.select('id, name');
+
+		const { data: rotation } = await admin
+			.from('gear_rotations')
+			.insert({ owner_id: USER_A.id, name: `E2E Thin Rotation ${stamp}` })
+			.select('id, name')
+			.single();
+		await admin
+			.from('gear_rotation_members')
+			.insert(bikes!.map((b) => ({ rotation_id: rotation!.id, gear_id: b.id })));
+
+		try {
+			await page.goto('/settings/gear');
+			await expect(page.locator('.gear-list')).toBeVisible({ timeout: 10_000 });
+			await page.getByRole('button', { name: 'Bikes' }).click();
+
+			const rotRow = page.locator('.rotation-row', { hasText: rotation!.name });
+			await expect(rotRow).toBeVisible();
+			// Both memberships are counted, and still nothing is offered.
+			await expect(rotRow).toContainText('2 items');
+			await expect(rotRow.getByTestId('rotation-next')).toHaveCount(0);
+		} finally {
+			await admin.from('gear_rotations').delete().eq('id', rotation!.id);
+			await admin
+				.from('gear')
+				.delete()
+				.in('id', bikes!.map((b) => b.id));
+		}
 	});
 });
 

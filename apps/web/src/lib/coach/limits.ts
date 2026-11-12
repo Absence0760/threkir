@@ -19,7 +19,7 @@ export function parseAuthHeader(authHeader: string | null | undefined): string |
 }
 
 /// Clamp the caller's requested `recent_runs_limit` against the tier
-/// max (free: 30, pro: 200). Falls back to `DEFAULT_RUNS_LIMIT` when
+/// max (`TIER_LIMITS`: free 30, pro 75). Falls back to `DEFAULT_RUNS_LIMIT` when
 /// the input is missing or non-finite. Floors at 1 — a zero-runs
 /// context is never useful for the coach.
 export function clampRunsLimit(requested: unknown, tier: Tier): number {
@@ -39,12 +39,20 @@ export function validateRunsLimit(
 	requested: unknown,
 ): { ok: true } | { ok: false; reason: string } {
 	if (requested === undefined || requested === null) return { ok: true };
-	if (typeof requested === 'boolean') {
+	// A number, or a string of decimal digits. `Number()` alone also turns
+	// `true`, `[5]`, `'0x10'` and `' 7 '` into integers, none of which a
+	// well-formed client sends.
+	if (typeof requested !== 'number' && !(typeof requested === 'string' && /^\d+$/.test(requested))) {
 		return { ok: false, reason: 'recent_runs_limit must be a number' };
 	}
 	const n = Number(requested);
 	if (!Number.isFinite(n)) {
 		return { ok: false, reason: 'recent_runs_limit must be a finite number' };
+	}
+	// A fraction is not a run count; `clampRunsLimit` would silently floor it,
+	// which is the quiet coercion this check exists to refuse.
+	if (!Number.isInteger(n)) {
+		return { ok: false, reason: 'recent_runs_limit must be a whole number' };
 	}
 	if (n < 1) {
 		return { ok: false, reason: 'recent_runs_limit must be >= 1' };
@@ -57,24 +65,28 @@ export function validateRunsLimit(
 	return { ok: true };
 }
 
-/// Resolve the `increment_coach_usage` RPC result into the post-
-/// increment count, fail-CLOSED. The daily cap is the entire paywall
-/// for the coach, so an RPC error or a non-numeric `data` must DENY
-/// (the handler returns 503) rather than be treated as `usedToday = 0`
-/// — defaulting to 0 would sail past the `usedToday > dailyLimit` gate
-/// and stream an unmetered provider call to a free (or over-cap Pro)
-/// caller. `increment_coach_usage` returns the count AFTER the bump, so
-/// any finite non-negative integer is a valid enforce signal; anything
-/// else is denied.
-export function resolveUsageCount(
+/// Resolve the `spend_coach_usage_slot` RPC result into the post-
+/// increment count and its refund ticket, fail-CLOSED. The daily cap is the
+/// entire paywall for the coach, so an RPC error or an unreadable count must
+/// DENY (the handler returns 503) rather than be treated as `usedToday = 0`
+/// — defaulting to 0 would sail past the `usedToday > dailyLimit` gate and
+/// stream an unmetered provider call to a free (or over-cap Pro) caller. The
+/// RPC returns one `{ used, spend_id }` row; `used` is the rolling count
+/// AFTER the bump, so any finite non-negative integer is a valid enforce
+/// signal. A missing ticket still enforces, and only costs the refund.
+export function resolveUsageSpend(
 	data: unknown,
 	error: unknown,
-): { ok: true; usedToday: number } | { ok: false } {
+): { ok: true; usedToday: number; spendId: string | null } | { ok: false } {
 	if (error) return { ok: false };
-	if (typeof data !== 'number' || !Number.isFinite(data) || data < 0) {
+	if (!Array.isArray(data) || data.length !== 1) return { ok: false };
+	const row = data[0] as { used?: unknown; spend_id?: unknown } | null;
+	const used = row?.used;
+	if (typeof used !== 'number' || !Number.isInteger(used) || used < 0) {
 		return { ok: false };
 	}
-	return { ok: true, usedToday: data };
+	const spendId = typeof row?.spend_id === 'string' ? row.spend_id : null;
+	return { ok: true, usedToday: used, spendId };
 }
 
 /// Pre-stream JSON error response shape. Re-used by every guard

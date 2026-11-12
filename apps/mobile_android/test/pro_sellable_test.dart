@@ -41,6 +41,20 @@ void main() {
       }
     });
 
+    test('reads web_checkout, fail-closed like the perks', () {
+      expect(parseProPerks('{"coach":true,"web_checkout":true}').webCheckout,
+          isTrue);
+      expect(parseProPerks('{"coach":true,"web_checkout":false}').webCheckout,
+          isFalse);
+      // An older web build emits no field: no web checkout.
+      expect(parseProPerks('{"coach":true}').webCheckout, isFalse);
+      expect(parseProPerks('{"web_checkout":"true"}').webCheckout, isFalse);
+      expect(parseProPerks('{"web_checkout":1}').webCheckout, isFalse);
+      expect(parseProPerks('{"webCheckout":true}').webCheckout, isFalse);
+      // Web checkout is somewhere to pay, not a perk: it sells nothing alone.
+      expect(parseProPerks('{"web_checkout":true}').sellable, isFalse);
+    });
+
     test('a snake_case-only contract — camelCase does not enable selling', () {
       // The web manifest emits `route_gen`; accepting `routeGen` too would
       // let a drifted server shape silently re-enable the storefront.
@@ -48,9 +62,145 @@ void main() {
     });
   });
 
+  group('plate_photo capability', () {
+    test('reads plate_photo, available only alongside the coach', () {
+      final p = parseProPerks('{"coach":true,"plate_photo":true}');
+      expect(p.platePhoto, isTrue);
+      expect(p.platePhotoAvailable, isTrue);
+      expect(parseProPerks('{"coach":false,"plate_photo":true}').platePhotoAvailable,
+          isFalse);
+      expect(parseProPerks('{"coach":true,"plate_photo":false}').platePhotoAvailable,
+          isFalse);
+    });
+
+    test('missing, non-boolean and camelCase values read as off, and it sells nothing', () {
+      for (final body in [
+        '{"coach":true}',
+        '{"coach":true,"plate_photo":"true"}',
+        '{"coach":true,"plate_photo":1}',
+        '{"coach":true,"platePhoto":true}',
+      ]) {
+        expect(parseProPerks(body).platePhotoAvailable, isFalse, reason: body);
+      }
+      expect(parseProPerks('{"plate_photo":true}').sellable, isFalse);
+    });
+  });
+
+  group('coach_assist capability', () {
+    test('reads coach_assist, available only alongside the coach', () {
+      final p = parseProPerks('{"coach":true,"coach_assist":true}');
+      expect(p.coachAssist, isTrue);
+      expect(p.coachAssistAvailable, isTrue);
+      expect(
+          parseProPerks('{"coach":false,"coach_assist":true}')
+              .coachAssistAvailable,
+          isFalse);
+      expect(
+          parseProPerks('{"coach":true,"coach_assist":false}')
+              .coachAssistAvailable,
+          isFalse);
+    });
+
+    test('missing, non-boolean and camelCase values read as off, and it sells nothing', () {
+      for (final body in [
+        '{"coach":true}',
+        '{"coach":true,"coach_assist":"true"}',
+        '{"coach":true,"coach_assist":1}',
+        '{"coach":true,"coachAssist":true}',
+        'not json',
+      ]) {
+        expect(parseProPerks(body).coachAssistAvailable, isFalse,
+            reason: body);
+      }
+      expect(parseProPerks('{"coach_assist":true}').sellable, isFalse);
+    });
+  });
+
+  group('ai_plan capability', () {
+    test('reads ai_plan, available only alongside the coach', () {
+      final p = parseProPerks('{"coach":true,"ai_plan":true}');
+      expect(p.aiPlan, isTrue);
+      expect(p.aiPlanAvailable, isTrue);
+      expect(parseProPerks('{"coach":false,"ai_plan":true}').aiPlanAvailable,
+          isFalse);
+      expect(parseProPerks('{"coach":true,"ai_plan":false}').aiPlanAvailable,
+          isFalse);
+    });
+
+    test('missing, non-boolean and camelCase values read as off', () {
+      for (final body in [
+        '{"coach":true}',
+        '{"coach":true,"ai_plan":"true"}',
+        '{"coach":true,"ai_plan":1}',
+        '{"coach":true,"aiPlan":true}',
+        'not json',
+      ]) {
+        expect(parseProPerks(body).aiPlanAvailable, isFalse,
+            reason: 'body: $body');
+      }
+    });
+
+    test('never makes Pro sellable on its own', () {
+      expect(parseProPerks('{"ai_plan":true}').sellable, isFalse);
+      expect(
+          parseProPerks('{"coach":false,"route_gen":false,"ai_plan":true}')
+              .sellable,
+          isFalse);
+    });
+  });
+
   test('ProPerks.none is the fail-closed default', () {
+    expect(ProPerks.none.aiPlan, isFalse);
     expect(ProPerks.none.coach, isFalse);
     expect(ProPerks.none.routeGen, isFalse);
+    expect(ProPerks.none.webCheckout, isFalse);
     expect(ProPerks.none.sellable, isFalse);
+  });
+
+  group('proPurchasable', () {
+    const coachOnly = ProPerks(coach: true, routeGen: false);
+    const coachAndWeb = ProPerks(coach: true, routeGen: false, webCheckout: true);
+
+    test('unknown or no live perk is never purchasable', () {
+      for (final store in [true, false]) {
+        for (final web in [true, false]) {
+          expect(
+              proPurchasable(null, storeConfigured: store, webLinksAllowed: web),
+              isFalse);
+          expect(
+              proPurchasable(
+                  const ProPerks(coach: false, routeGen: false, webCheckout: true),
+                  storeConfigured: store,
+                  webLinksAllowed: web),
+              isFalse);
+        }
+      }
+    });
+
+    test('a configured store sells whatever the web checkout', () {
+      // iOS with the RevenueCat key: In-App Purchase, web irrelevant.
+      expect(
+          proPurchasable(coachOnly, storeConfigured: true, webLinksAllowed: false),
+          isTrue);
+      expect(
+          proPurchasable(coachOnly, storeConfigured: true, webLinksAllowed: true),
+          isTrue);
+    });
+
+    test('without the store, only a live web checkout this platform may link to sells', () {
+      // Android with no RevenueCat key and no web checkout: the dead end
+      // decisions § 1826 closes.
+      expect(
+          proPurchasable(coachOnly, storeConfigured: false, webLinksAllowed: true),
+          isFalse);
+      expect(
+          proPurchasable(coachAndWeb, storeConfigured: false, webLinksAllowed: true),
+          isTrue);
+      // iOS may never link out to pay (decisions § 1700).
+      expect(
+          proPurchasable(coachAndWeb,
+              storeConfigured: false, webLinksAllowed: false),
+          isFalse);
+    });
   });
 }

@@ -1,7 +1,9 @@
-import { expect, test, type Browser } from '@playwright/test';
+import type { Browser } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — full-lifecycle JOURNEY (create → list → detail → publish →
@@ -17,11 +19,9 @@ import { USER_A } from '../fixtures/users';
  * What this journey threads together end-to-end, as USER_A unless noted:
  *   1. CREATE — seed the route via the service-role admin client.
  *      The /routes/new builder is MapLibre + OSRM and map-heavy to drive
- *      reliably in e2e, and routes have NO UI delete affordance at all
- *      (see routes/detail.spec.ts: "the only delete path is service-role
- *      / SQL"). So both the create and the teardown go through the admin
- *      client — mirroring share/route.spec.ts's private-route fixture —
- *      and every assertion in between is driven through the real UI.
+ *      reliably in e2e, so the create goes through the admin client —
+ *      mirroring share/route.spec.ts's private-route fixture — and every
+ *      step after it, the delete included, is driven through the real UI.
  *   2. LIST — the route shows up in My routes on /routes, found by its
  *      unique name through the search box.
  *   3. DETAIL — /routes/[id] renders the name (h1), the key-stats tiles,
@@ -32,9 +32,10 @@ import { USER_A } from '../fixtures/users';
  *   5. PUBLIC SHARE (the key cross-surface step) — a fresh ANONYMOUS
  *      context with NO storageState (logged out) opens /share/route/[id]
  *      and sees the privacy-clipped public page: name + distance + surface.
- *   6. DELETE + GONE — remove the route via the admin client, then assert
- *      it is gone from USER_A's /routes AND that the anon share URL now
- *      renders the not-found state.
+ *   6. DELETE + GONE — delete the route from its detail page's owner
+ *      Delete + confirm, land on /routes, then assert it is gone from
+ *      USER_A's /routes AND that the anon share URL now renders the
+ *      not-found state.
  *
  * Self-contained: the route is created in beforeEach under a unique name
  * and torn down in afterEach (the delete step normally removes it; the
@@ -54,12 +55,7 @@ test.describe('Routes — create → list → detail → publish → anon share 
 		// The seeded user's storageState already carries accepted cookie
 		// consent, but inject it on every navigation too so the GDPR banner
 		// never floats over the map / share surfaces and eats a click.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 
 		// create_route is rate-limited (30/hour per user, migration
 		// 20260907_001). A shared-USER_A shard can blow through the cap;
@@ -96,7 +92,7 @@ test.describe('Routes — create → list → detail → publish → anon share 
 	});
 
 	test.afterEach(async () => {
-		// Belt-and-braces: the delete step removes the row on the happy
+		// Belt-and-braces: the UI delete step removes the row on the happy
 		// path, but sweep here so a mid-journey failure can't leak a route
 		// into USER_A's /routes for the next spec.
 		if (routeId) {
@@ -138,11 +134,14 @@ test.describe('Routes — create → list → detail → publish → anon share 
 				page.getByRole('heading', { name: routeName, level: 1 })
 			).toBeVisible({ timeout: 10_000 });
 
-			// Key-stat tiles: distance + surface are always rendered.
+			// Key-stat tiles: distance + surface are always rendered. The surface
+			// tile names the `routes.surface` value through the one catalogue
+			// namespace (decisions § 572); the lowercase token would also match
+			// the tile's `add_road` icon ligature, so pin the localized name.
 			const keyStats = page.locator('.key-stats');
 			await expect(keyStats).toBeVisible();
 			await expect(keyStats).toContainText('Distance');
-			await expect(keyStats).toContainText('road');
+			await expect(keyStats).toContainText('Road');
 
 			// MapLibre map container mounts.
 			await expect(page.locator('.run-map').first()).toBeVisible({
@@ -172,16 +171,13 @@ test.describe('Routes — create → list → detail → publish → anon share 
 			});
 		});
 
-		await test.step('4. the public toggle confirms the route is published', async () => {
-			// The route was seeded is_public=true, so the owner toggle reads
-			// "Public — tap to make private". (Same title-attribute selector
-			// the detail spec uses; the button label text includes the icon
-			// ligature, so target by the title prefix.)
-			const toggleBtn = page.locator(
-				'button[title^="Public"], button[title^="Private"]'
-			);
-			await expect(toggleBtn).toBeVisible({ timeout: 10_000 });
-			await expect(toggleBtn).toHaveAttribute('title', /^Public/);
+		await test.step('4. the audience control confirms the route is published', async () => {
+			// The route was seeded is_public=true. With audience sharing on (the
+			// seed opens the gate) the owner's visibility control is the audience
+			// button, which names the current level.
+			await expect(page.getByTestId('route-audience-btn')).toContainText('Public', {
+				timeout: 10_000
+			});
 		});
 
 		await test.step('5. an anonymous (logged-out) visitor sees the public share page', async () => {
@@ -199,9 +195,11 @@ test.describe('Routes — create → list → detail → publish → anon share 
 					anonPage.getByRole('heading', { name: routeName, level: 1 })
 				).toBeVisible({ timeout: 10_000 });
 
-				// The body-level .route-meta strip carries surface + distance.
-				await expect(anonPage.locator('.route-meta .surface-tag')).toContainText(
-					'road'
+				// The body-level .route-meta strip carries surface + distance. The
+				// tag renders the localized NAME of the `routes.surface` value, never
+				// the stored token (decisions § 572).
+				await expect(anonPage.locator('.route-meta .surface-tag')).toHaveText(
+					'Road'
 				);
 				await expect(anonPage.locator('.route-meta')).toContainText('8');
 			} finally {
@@ -210,10 +208,18 @@ test.describe('Routes — create → list → detail → publish → anon share 
 		});
 
 		await test.step('6. deleting the route removes it from /routes and the anon share URL', async () => {
-			// Routes have no UI delete; the canonical delete path is
-			// service-role / SQL (see routes/detail.spec.ts). Delete via the
-			// admin client, then assert both surfaces reflect the removal.
-			await getAdminClient().from('routes').delete().eq('id', routeId);
+			// The owner's Delete on the detail page, through its confirm
+			// (routes/delete.spec.ts covers the confirm's contents and the
+			// failure path). It navigates to /routes when the delete lands.
+			await page.goto(`/routes/${routeId}`);
+			await expect(page.getByRole('heading', { name: routeName, level: 1 })).toBeVisible({
+				timeout: 10_000
+			});
+			await page.getByTestId('route-delete-btn').click();
+			const confirm = page.getByTestId('route-delete-confirm-dialog');
+			await expect(confirm).toBeVisible();
+			await confirm.getByRole('button', { name: 'Delete route' }).click();
+			await expect(page).toHaveURL(/\/routes$/, { timeout: 10_000 });
 			const deletedId = routeId;
 			// Null it so the afterEach sweep doesn't double-delete (harmless,
 			// but keeps intent clear).
@@ -224,7 +230,6 @@ test.describe('Routes — create → list → detail → publish → anon share 
 			// rather than waitForLoadState('networkidle') — the page holds an
 			// open Supabase realtime socket and never reaches network-idle, so
 			// that wait would hang to the test timeout.
-			await page.goto('/routes');
 			// The toolbar persists the search box to localStorage, and step 2
 			// left it set to this run's unique name. Clear it first, or the
 			// restored filter hides every card (the deleted route is the only
@@ -267,11 +272,6 @@ async function newAnonContext(browser: Browser) {
 	const ctx = await browser.newContext({
 		storageState: { cookies: [], origins: [] }
 	});
-	await ctx.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
-	});
+	await acceptCookieConsent(ctx);
 	return ctx;
 }

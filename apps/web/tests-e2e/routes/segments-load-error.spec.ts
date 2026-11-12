@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
@@ -37,6 +37,7 @@ test.describe('/routes/[id] — SegmentsPanel load failure', () => {
 		const banner = page.locator('.error-banner', { hasText: "Couldn't load your routes." });
 		await expect(banner).toBeVisible({ timeout: 10_000 });
 		await expect(banner.getByRole('button', { name: 'Retry' })).toBeVisible();
+		await expect(banner).not.toContainText('simulated segments failure');
 		// The perpetual "Loading segments…" must have cleared.
 		await expect(page.getByText('Loading segments…')).toHaveCount(0);
 	});
@@ -64,15 +65,18 @@ test.describe('/routes/[id] — SegmentsPanel load failure', () => {
 		const segId = (seg as { id: string }).id;
 
 		try {
-			// The leaderboard is an RPC (POST /rest/v1/rpc/…). Fulfilling an RPC
-			// POST hangs supabase-js (the CORS preflight for the injected
-			// response is never satisfied), so ABORT it instead — a rejected
-			// fetch surfaces as a PostgREST error the same way a 5xx would, and
-			// exercises the same error/retry branch. The segment-list GET is
-			// left untouched so the row still renders and can be opened.
+			// The leaderboard RPC is `stable` and goes out as a GET (decisions
+			// § 1703). A 500 is a status postgrest-js does not retry, so it
+			// reaches the error/retry branch at once; an aborted GET would be
+			// retried with backoff first. The segment-list GET is left
+			// untouched so the row still renders and can be opened.
 			await page.route('**/rest/v1/rpc/segment_leaderboard_tiered*', async (route) => {
-				if (route.request().method() === 'POST') {
-					await route.abort();
+				if (route.request().method() === 'GET') {
+					await route.fulfill({
+						status: 500,
+						contentType: 'application/json',
+						body: JSON.stringify({ message: 'simulated leaderboard failure' })
+					});
 				} else {
 					await route.continue();
 				}

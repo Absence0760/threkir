@@ -217,7 +217,7 @@ becomes an **action button**, not a tab.
   `Nutrition` tab is 7 slots. Collapsing the three *capture* entry points
   into one action button keeps the nav at five and groups them by the
   verb the user actually has in mind ("I want to log something").
-- **Tap `Log` →** a modality picker (on mobile the centre nav FAB fans these as a **speed-dial of icon-only buttons in a shallow arc around the button** — one top-centre, one down-left, one down-right — `widgets/log_speed_dial.dart`; the History Log FAB keeps a bottom sheet):
+- **Tap `Log` →** a modality picker (on mobile the centre nav FAB fans these as a **speed-dial of icon-only buttons in a shallow arc around the button** — one top-centre, one down-left, one down-right — `widgets/log_speed_dial.dart`; the History Log FAB keeps a bottom sheet, and stands down entirely inside the Fitness hub where the centre button is already visible — [decisions § 1644](../architecture/decisions.md)):
 
 ```
         ┌─────────────────────────────────┐
@@ -230,24 +230,90 @@ becomes an **action button**, not a tab.
               ↑ last-used floats to top
 ```
 
-- **Picking a modality navigates to its dwell-in capture page**, not a
+- **Picking a modality navigates to its dwell-in capture surface**, not a
   one-shot modal. All three behave the same way: `Log run` → the recorder
-  page, `Log lift` → the Gym page, `Log food` → the Nutrition page — each an
-  in-shell keep-alive `PageView` page (bottom nav stays visible) you operate
-  in for as long as the session lasts (record the run, build a workout over
-  several sets, log the day's meals), with that page's own composer one tap
-  away. The keep-alive guarantee means an in-progress recording, a half-built
-  workout, or the day's food log survives swiping to Home and back. (A run is
-  *necessarily* a page — a foreground-service GPS session can't collapse into
-  a modal — so Gym + Nutrition match it rather than the reverse.)
-- **Long-press `Log` = repeat last activity.** Preserves the one-tap
-  "start a run" muscle memory the current `Run` tab gives. A runner who
-  only ever runs effectively still has a one-gesture start.
+  page, `Log lift` → the Fitness hub's **Gym** tab, `Log food` → its
+  **Nutrition** tab — each an in-shell keep-alive surface (bottom nav stays
+  visible) you operate in for as long as the session lasts (record the run,
+  build a workout over several sets, log the day's meals), with its own
+  composer one tap away. The keep-alive guarantee means an in-progress
+  recording, a half-built workout, or the day's food log survives swiping to
+  Home and back. (A run is *necessarily* a page of its own — a
+  foreground-service GPS session can't collapse into a modal, and `RunScreen`
+  the recorder is a different screen from `RunsScreen` the list.)
+
+  Gym and Nutrition are the hub's tabs rather than pages of their own because
+  they have no separate capture screen: the verb-vs-modality split that makes
+  the recorder distinct from the run list has nothing to divide there. They
+  shipped as pages anyway, which meant **two keep-alive copies of one surface
+  with independent state** — a runner who stepped the diary back to yesterday
+  in the hub and then tapped `Log → Food` landed on an identical-looking
+  screen showing today, and filed the backfill into the wrong day. One
+  instance each now, selected through a shared `ValueNotifier<FitnessTab>`
+  ([decisions § 1654](../architecture/decisions.md)).
+- **Tap `Log` = the primary capture action, derived from data presence**
+  (decisions § 1644). Until the user has logged a lift or a meal, the tap
+  starts a run outright — the fan has nothing to choose between, so it
+  would cost a pure runner a tap and an animation on every run. Once
+  either modality has data, the tap fans. `keep_run_primary` stays as the
+  explicit override for someone who logs other modalities and still wants
+  the one-tap start.
+- **Long-press `Log` = the runner's menu: what the tap does not do**
+  (decisions § 1892, replacing § 1644's "long-press opens the fan").
+  A bottom sheet of list rows, at most five:
+  - **Start today's workout**, captioned with the session's kind, only when
+    the active plan has a workout today that is not a rest day, not done,
+    not skipped, and has a structure or a target distance to follow. It
+    loads on the recorder through the same handoff as the plan's own Start.
+  - **Choose route**, only when a route is saved: the route picker, then
+    the recorder with that route selected.
+  - **Add past run**, always: the manual entry, which is what web's Log run
+    is from its History Log menu.
+  - **Log lift / Log food**, only when that modality is shown **and the tap
+    starts a run** (`keep_run_primary`). When the tap fans Run / Lift / Food
+    they are already one tap away and are not repeated.
+
+  A rest day, a finished workout or an empty route list would each open onto
+  a dead end, so those rows are left out rather than disabled. The recorder's
+  idle page keeps all of its controls (activity type, route, guided run,
+  plan): the menu is a shortcut set, and a long-press cannot be the only way
+  to anything. While a run records both gestures still return to the
+  recorder.
+- **The centre button says what a tap does.** When the tap starts recording
+  it shows a play icon and names the runner's default activity, which is
+  what the recorder will capture: the caption "Start run" / "Start walk" /
+  "Start ride" / "Start trail run" / "Start stroller run" and the spoken
+  label "Start a run" / "Start a ride" / ... instead of "+ Log" (#1230; the
+  empty Home's primary button and the empty Runs list follow the same
+  preference); while a run records it turns the error colour,
+  captioned "Recording" and announced "Return to your run". On the Run
+  page itself the phone's docked button is the run's **Stop** instead: the
+  recorder's 800 ms `HoldToStopButton` with its progress ring, captioned
+  "Stop" and announced "Stop and save run" / "Hold to stop the run", and
+  the recorder panel drops its own Stop (decisions § 1750). This holds in
+  both Log-button modes. The rail layout docks nothing, so there the
+  leading button stays the way back and the panel keeps its Stop. When the
+  run finishes the button reverts. The Runs list's
+  manual-entry button reads "Add past run", so the two buttons a thumb apart
+  no longer both read as starting one.
+- **The hub's nav label follows modality visibility.** With Gym and
+  Nutrition both hidden the Fitness item is "Training" under a runner icon
+  (decisions § 139 amendment); otherwise it is "Fitness" under a dumbbell.
+- **Switching a modality on is announced.** A Log action for a hidden Gym or
+  Nutrition switches it on (§ 1739) and now shows a banner with an Undo that
+  restores the prior value, null included.
+- **System back walks toward Home** and only leaves the app from Home; a
+  live recording raises a confirm first (decisions § 1644).
 - The sheet's **order adapts**: the most recently used capture type
   floats to the top, so a daily lifter sees "Log lift" first.
 - **Accessibility:** the `Log` button has an explicit `Semantics` label
   ("Log an activity"); the sheet items are a single focus group; the
   raised button keeps a ≥48 dp touch target.
+  The long-press is announced: TalkBack reads "double-tap and hold to show
+  more options", and since VoiceOver has no long-press the menu is also a
+  "More options" custom action on the button. The menu's rows are one focus
+  group titled "More options", and they scroll rather than overflow at the
+  largest text size.
 
 ## Home — a prioritised, self-hiding card stack
 
@@ -275,12 +341,89 @@ becomes an **action button**, not a tab.
 > the five most-recent sessions, each tapping into gym detail) sits below the
 > training-load chart, self-hiding when the gym store is empty — mirroring web
 > `/dashboard`'s recent-lifts card.
+>
+> **Status (web — shipped 2026-09-16, #905):** an account with **no runs
+> all-time and no gym sessions** does not get the card stack at all. The whole
+> derived-metric block is gated on `isNewAccount` and replaced by
+> `DashboardFirstRun.svelte` — one heading, one primary action (`/runs/new`),
+> an import alternative (`/settings/integrations`), and two quiet hints
+> (record on the phone, log a lift). The plan hero and the upcoming-event card
+> still render above it, because onboarding's closing CTA creates a plan
+> before any run exists; the body copy switches to acknowledge it.
+>
+> This does **not** contradict rule 4 below. That rule governs a *modality*
+> with no data inside an otherwise-populated Home, and it still holds: the
+> lift, nutrition and intensity cards self-hide exactly as before. The
+> whole-account case is a different one — thirteen self-hiding cards that all
+> self-hide at once leave a page with a heading and nothing under it, which is
+> the state a runner lands on straight out of onboarding. Nutrition is
+> deliberately not part of the signal: `todaysFood` only holds the current
+> calendar day, so it cannot answer whether the account has ever done
+> anything. e2e `tests-e2e/dashboard/dashboard-first-run.spec.ts` pins both
+> directions of the branch.
+>
+> **Status (mobile):** `dashboard_screen.dart` swaps its stats stack for
+> `_WelcomeEmpty` on the same signal — no runs all-time (a one-row server
+> probe, so a fresh install of a synced account shows a loader rather than the
+> welcome) and no gym sessions, nutrition ignored — with today's plan-workout
+> card and any goals above it (#923). Its actions are Start a run (the
+> device-side analogue of web's Add a run), Set a goal and Import runs; #905
+> added the plan-aware body variant and web's "Lifting instead? Log a gym
+> session" hint, which lands on the Fitness hub's Gym tab through the shell's
+> Log → Lift action. The hint follows web's rule: hidden only when `show_gym`
+> is an explicit no, shown while it is unanswered or yes (decisions § 2041).
+> The Log → Lift path switches Gym on, with its Undo banner, only while Gym is
+> hidden; for an account that already said yes it just lands on the tab.
+> Web's record-on-your-phone hint has no counterpart, since this is the phone.
+> `test/dashboard_first_run_test.dart`.
+>
+> **Status (mobile, run-only polish, 2026-10-04):** Home carries a **Last
+> run** section under the plan card — the Runs list's own `RunListTile`, so
+> it is unit-aware and brings the unsynced / parked markers — tapping into
+> run detail and absent while there is no run. It is the event summary rule
+> 2 below describes, for the run modality, and the nearest mobile has come
+> to web's week lead. Once the account has a run and no goal, the empty
+> Goals section collapses to a one-line "Set a goal" link under the period
+> stats instead of sitting above them on every visit. The pending-sync
+> banner counts unsynced runs (retried through `SyncService`) and parked
+> runs as well as lifts and meals. With Gym and Nutrition both hidden the
+> Coach card's subtitle names runs, training and recovery rather than
+> lifts and nutrition. The first-run "Lifting
+> instead?" link is hidden once `show_gym` holds an explicit answer.
+>
+> **Status (web, #905 workstream 3):** an account **with** runs opens on
+> `DashboardWeekLead.svelte` above the plan hero — this week's distance against
+> the plan's distance for the calendar week, else the runner's weekly goal
+> (distance, then activity count), else their recent weekly average; the plan's
+> next open session; and **Add a run** plus **Import from Strava / Garmin**
+> above the fold ([decisions § 1792](../architecture/decisions.md)).
+> Nothing below it moved or went away; this is ordering, not removal.
+>
+> **Status (mobile, #905 workstream 3):** the same lead now opens mobile Home
+> for an account with runs — `_DashboardWeekLead` in `dashboard_screen.dart`,
+> at the top of Home (Coach moved below the Today block, § 2280) and above the today's-workout card, fed by the
+> `week_lead.dart` parity pair so the yardstick order is web's to the letter.
+> Its next-session row opens `WorkoutDetailScreen`, **Add a run** opens the
+> manual `AddRunScreen`, and the import action keeps the welcome state's
+> **Import runs** label, since `ImportScreen` takes more than Strava and
+> Garmin ([decisions § 1800](../architecture/decisions.md)). A lifter with no
+> runs, and the runless welcome state, get no lead.
+> **Since 2026-11-03 (#1187, [decisions § 2281](../architecture/decisions.md))
+> the mobile lead is compact:** **Add a run** and **Import runs** left it for
+> the overflow (⋮) on Home's toolbar, which offers both on every Home state,
+> the welcome state included, so neither is more than two taps away.
+> **Web matches since the same day:** `DashboardWeekLead.svelte` carries no
+> actions, and both sit in the **Add or import** menu
+> (`DashboardActionsMenu.svelte`) at the top of every loaded `/dashboard`
+> state. `test/dashboard_week_lead_test.dart`,
+> `tests-e2e/dashboard/week-lead.spec.ts`.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:
 
-1. **Today's actionable card first** — if a training plan has a workout
-   scheduled today, the today's-workout card leads (as it does now).
+1. **Today's actionable card first** — the adaptive Today hero leads Home,
+   above the week lead (#1187, decisions § 2385); on a plan day it is
+   today's workout.
 2. **Today's logged modalities next**, most-recently-touched first
    (today's run summary, today's lift summary, today's nutrition rings).
 3. **Trend cards** the user has data for (training load, fitness,
@@ -289,6 +432,105 @@ user logs**, not a fixed grid. The ordering algorithm:
    a "start logging" placeholder taking a full card. Empty modalities get
    at most a single slim "＋ Log your first meal" affordance at the very
    bottom, below the fold.
+
+> **Status (mobile, 2026-11-03, #1187):** rule 2 is now how mobile Home
+> orders its Today block, on the phone stack and the tablet lead column
+> alike. Under the plan cards (today's workout, then the next race) come
+> the cards for what was logged today, most recently started first: the
+> last run when it started today, and the lift + nutrition pair, placed by
+> the later of today's lift and today's newest meal. "Touched" is read as
+> the entry's start time, the one timestamp all three carry. The **Last
+> run** card stays on Home when its run is from an earlier day — it answers
+> "did that save?" — but it then follows the pair, so a run from last week
+> no longer sits above the lift and the meals logged this morning. The
+> pair keeps its 2-up layout and its internal order. Web has no last-run
+> card in its Today block (recent runs live in the Recent trend group), so
+> this is a mobile-only arrangement of a mobile-only card, not a parity
+> change. `test/dashboard_today_order_test.dart`.
+>
+> **One this-week view (mobile, 2026-11-03, [decisions § 2283](../architecture/decisions.md)):**
+> mobile Home shows this week once, in the week lead. The Week stat cell
+> and the This Week day strip left Home; the lead's chevron opens the
+> weekly summary, which now draws the day strip for the current week and a
+> climb tile for every period. The period strip keeps Month and All time.
+> **Web matches:** `/dashboard`'s week lead is its one this-week view, its
+> **Week summary** opens the weekly `PeriodSummary`, which draws
+> `ThisWeekStrip` for the current week and a Climb tile (`elevation_gain_m`)
+> for every period; the stat grid keeps Total runs, Longest run and Streak,
+> having lost its This Week, this-week vert and this-week pace cells.
+> `test/dashboard_week_lead_test.dart`, `test/period_summary_screen_test.dart`,
+> `tests-e2e/dashboard/week-lead.spec.ts`, `tests-e2e/dashboard/week-strip.spec.ts`.
+>
+> **Next club event (web + mobile, 2026-11-03, [decisions § 2285](../architecture/decisions.md);
+> kept by [§ 2388](../architecture/decisions.md)):**
+> Home's Today block shows the runner's next `going` club event when it
+> starts within seven days, after the next-race card (mobile Home had no card
+> before § 2285; the Run tab keeps its own 48-hour window).
+> `test/dashboard_upcoming_event_test.dart`,
+> `tests-e2e/dashboard/upcoming-event.spec.ts`.
+>
+> **Start, Coach and the week lead (mobile, 2026-11-03; amended
+> 2026-11-08):** Home carries one Start, on today's open plan workout or else
+> on the Today hero (§ 2282, § 2385; it used to sit on the week lead); the
+> Coach entry closes the Today block (§ 2280) as a compact row on both
+> platforms (§ 2387); the lead is compact, with **Add a run** and **Import
+> runs** in the toolbar overflow (§ 2281; web's are in its **Add or import**
+> menu). The **Last run** card is a deliberate mobile-only card: web's Today
+> block has none, though web's hero summarises a run logged today.
+>
+> **The adaptive Today hero (web + mobile, 2026-11-08, #1187,
+> [decisions § 2385](../architecture/decisions.md)):** the first card on
+> `/dashboard` and on mobile Home, above the week lead, in every state.
+> `todayHeroState` (`training/dashboard_layout.ts` ↔ `dashboard_layout.dart`)
+> picks it: on a plan, **race day**, else **plan today** (a non-rest workout),
+> else **rest day**; without one, a **new account**, else **ran today**, else
+> **nothing planned**. Each state is a card Home already had: on web the plan
+> hero, `DashboardFirstRun`, a one-line summary of today's run, or a "Nothing
+> planned today" card with **Add a run**; on mobile today's workout card
+> (with its Start), the next-race card, a rest-day card, the last-run tile, or
+> the welcome block. **Readiness lives in the hero** — the whole card when
+> nothing is planned, one line (score, band, advice) beside a plan session or
+> today's run — so the Fitness and form group no longer carries it, and the
+> group's remaining load views (the fitness snapshot, the load curve, the ramp
+> or comeback card) are **one "Training load" card**. Mobile's hero carries
+> Home's one Start in every state but a new account.
+> `tests-e2e/dashboard/today-hero.spec.ts`, `test/dashboard_today_hero_test.dart`
+> (each state, at 1.0x and 2.0x text).
+>
+> **Hiding a trend group (web + mobile, 2026-11-08,
+> [decisions § 2386](../architecture/decisions.md)):** each trend group can
+> be taken off Home — web's group headings carry a Hide button, mobile's
+> answer a long-press (and a screen-reader action) — and comes back from web
+> `/settings/display` → Home or mobile Settings → Preferences → Home cards.
+> The list is the universal `dashboard_hidden_cards` key
+> ([settings.md](../backend/settings.md)), universal where the folds are per
+> device. Drag-to-reorder is deferred. `test/settings_preferences_home_cards_test.dart`.
+>
+> **Measuring Home (the Coach placement's revisit trigger, decisions § 2387).**
+> There is no product analytics and this change adds none (§ 1922's
+> query-measured pattern; a client event stream would be a new personal-data
+> flow behind a CISO/counsel gate). Two numbers come from tables that already
+> exist, and an administrator reads them at **`/admin/home-metrics`** — nobody
+> hand-runs SQL against prod (decisions § 2440, issue #1362). The page sits on
+> two `app_admins`-gated RPCs that return weekly aggregates over the last 16
+> ISO weeks in UTC, current week partial, with the 2026-11-08 redesign week
+> marked:
+>
+> - **Coach engagement** — `admin_home_coach_engagement_weeks()`: of the users
+>   with a run started in the week, the share with a `user_coach_usage` row
+>   that week with `message_count > 0`. A fall after 2026-11-08 is the trigger
+>   to revisit the Coach placement.
+> - **Plan-day completion** — `admin_home_plan_completion_weeks()`: of the
+>   non-rest `plan_workouts` scheduled in the week up to yesterday, the share
+>   with `completed_run_id` set or `manually_completed`. Templates, abandoned
+>   plans and a paused plan's days from its `paused_at` are left out. Read
+>   beside the hero's plan states.
+>
+> `user_coach_usage` records no entry point, so the first number measures
+> Coach use as a whole, not the Home row against the sidebar or Messages; the
+> page says so. The baseline is whatever the page reports for the weeks before
+> 2026-11-08. Schema and rules: [api_database.md](../backend/api_database.md)
+> § Home metrics.
 
 ```
   Home                                    (today)
@@ -325,6 +567,33 @@ Density rules so it never becomes a wall of cards:
 - Nutrition is the only **always-live ring widget**; gym and run are
   event summaries (they show what happened, they don't animate).
 
+> **Status (web + mobile, 2026-10-16, #1187):** the section rhythm and the
+> v1 collapse are built on both platforms. A hairline with a quiet "Trends"
+> label (`.trends-divider` on web, `_TrendsDivider` on mobile) closes the
+> Today block: on web it sits above the source filter and the stat grid, on
+> a phone above Goals, and on a tablet above the period row. Below it the
+> trend cards fold in five named groups, in one order on both platforms:
+> **Volume** (mileage, plus consistency on web; the heatmap left mobile Home for the weekly summary, § 2284),
+> **Fitness and form** (one Training load card holding the fitness
+> snapshot, load ramp / comeback and the training-load chart; readiness moved
+> to the Today hero in § 2385), **Performance** (race predictor,
+> personal bests), **Effort** (HR-zone intensity, plus the easy/hard balance
+> on web) and **Recent** (recent runs on web, recent lifts). Each group is a
+> `DisclosureSection` remembered per account on this device
+> (`disclosure_state`, scope `dashboard_trends`), opens by default, and
+> mounts only when one of its cards is sure to draw. The period stats, the
+> this-week strip and the streak stay unfolded above the groups. At the
+> `simple` disclosure level (Settings → "How much detail" on both
+> platforms) the fitness snapshot and the training-load chart fold further,
+> into one closed **Training load** expander inside Fitness and form,
+> remembered in the universal `dashboard_training_load_expanded` key
+> ([decisions § 1658](../architecture/decisions.md),
+> [§ 2244](../architecture/decisions.md)). A group can be hidden outright
+> since 2026-11-08 ([§ 2386](../architecture/decisions.md)). Not built: "one
+> expanded at a time" ([decisions § 2080](../architecture/decisions.md)).
+> `tests-e2e/dashboard/layout.spec.ts`, `tests-e2e/dashboard/disclosure.spec.ts`,
+> `test/dashboard_trend_groups_test.dart`, `test/dashboard_disclosure_level_test.dart`.
+
 ## History — one timeline, filter chips, separate detail routes
 
 History becomes a single reverse-chronological timeline backed by the
@@ -353,8 +622,20 @@ redaction-boundary guarantees are pinned by
 > page (`/runs`, `/gym`, `/nutrition`) plus the single matching Log action.
 > Each Log opens the shared editor in an in-place modal (`RunEditor` /
 > `GymEditor` / `FoodLogEditor`) and refreshes the feed on save — no
-> navigation. A pure runner (no second modality) sees a chip-less run timeline
-> and reaches the full list via the sidebar `Runs` item.
+> navigation.
+>
+> **History is data-gated on web (decisions § 2117).** For a pure runner — no
+> lift and no meal logged — the timeline was a plainer copy of `/runs`, so the
+> sidebar shows the History item only once `hasNonRunData()` (the gym + food
+> presence reads in `lib/stores/modality_visibility.svelte.ts`) is true, the
+> same rule the kind chips use, and independent of the `show_gym` /
+> `show_nutrition` switches. A pure runner who opens `/history` directly lands
+> on `/runs?view=list&range=all` once both reads have answered (never while
+> one is pending) — all time, as History was, not the list's own default of
+> today; `/runs` applies a linked `?range=` once and drops it from the URL. `/runs` carries the day-grouped read instead: a **List / Grid**
+> toggle, where List renders the same rows through the shared
+> `TimelineDayList.svelte` over `timeline/day_groups.ts`. Multi-modal runners
+> keep this timeline unchanged.
 >
 > **Status (mobile shipped):** `runs_screen.dart` (the History tab) gains the
 > same All/Runs/Lifts/Meals chips + a day-grouped unified timeline
@@ -398,8 +679,9 @@ redaction-boundary guarantees are pinned by
 > stores). The only place the inline run list still shows on the History tab is
 > a genuine **pure runner** (no lift/meal logged at all — nothing else to put on
 > a timeline) or a run-only mount with no gym store; that's not an offline
-> fallback, just "there is only one modality." Web, having no offline concern
-> and a sidebar, shows the timeline even for a pure runner. Both correct per
+> fallback, just "there is only one modality." Web reaches the same end its own
+> way: a pure runner has no History item and `/history` forwards to
+> `/runs?view=list&range=all` (decisions § 2117). Both correct per
 > [§ 24](../architecture/decisions.md#24-web-is-the-canonical-feature-surface-mobile-and-watches-are-platform-additive).
 
 ```
@@ -499,6 +781,24 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
 > week. **A food database is therefore pulled forward from the depth tier
 > into the first nutrition release — nutrition does not ship without it.**
 
+- **Log from a photo** (built web + mobile, 2026-10-15, default-off behind
+  `PUBLIC_PLATE_PHOTO_ENABLED` / `PLATE_PHOTO_ENABLED`; [decisions § 1972](../architecture/decisions.md)).
+  A Pro L4 extra over the search composer, which stays underneath it and
+  works on every failure. The runner takes or picks a meal photo; it is
+  downscaled to a 1568 px JPEG on the device, metadata-stripped on the
+  device and again on the server (`plate_photo/image.ts`, the `exif_strip`
+  walk), sent once to the vision model in ONE forced tool call
+  (`propose_food_entries`, no thinking), and never stored — no bucket, no
+  worker. `validatePlateEstimate` whitelists and clamps every field (≤ 8
+  items, per-item ceilings such as 3000 kcal, names cleaned and capped at
+  120 chars) before the client sees it. The runner edits or removes each
+  proposed item, picks the meal slot, and only the kept items are written
+  (web `createFoodEntry`, mobile the offline-first `LocalFoodStore`). Gates:
+  AI disclosure v5, `is_pro()`, a 20/hour `plate-photo` throttle. Web
+  `PlatePhotoLogger.svelte` on `/nutrition/log`; mobile `plate_photo_screen.dart`
+  from a camera action on the nutrition screen (a phone camera is the
+  device-led half § 24 allows), shown when `/app-capabilities.json`
+  publishes `plate_photo`.
 - **Search-driven logging via two food sources** (shipped web + mobile,
   2026-06-20). Open Food Facts (free, no API key, open data —
   `world.openfoodfacts.org`) AND USDA FoodData Central
@@ -543,10 +843,53 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
   two). A missing upstream value stays **null**, never a phantom 0, and
   `scalePortion` carries the nulls through. Manual entry exposes the five as
   optional numeric inputs. They surface on the searched-portion preview and as
-  a per-item breakdown on `/nutrition/[date]/[slot]`. They are **not** daily
-  targets yet — `nutrition_targets` / `nutrition_budget` still only budget
-  kcal + the three macros; folding these five into daily targets is a
-  follow-up.
+  a per-item breakdown on `/nutrition/[date]/[slot]`.
+- **Extended-nutrient day roll-up** (shipped web 2026-08-15, mobile
+  2026-08-18; `nutrition/extended_nutrients.ts` ↔ `extended_nutrients.dart`, a
+  registered TS↔Dart parity pair). The five now roll up to a self-hiding
+  **Nutrients** section on `/nutrition` and on `nutrition_screen.dart`, beneath
+  the water card on both. The headline macros keep the rings; these are rows, so
+  the two don't read as equal weight. `nutrition_targets` /
+  `nutrition_budget` are **unchanged** — they still budget kcal + the three
+  macros. Two idiomatic shape differences between the twins, neither a
+  divergence: TypeScript indexes the row structurally with `keyof`, so the Dart
+  side carries a nominal `ExtendedNutrientRow` with a `valueOf(column)` lookup;
+  and `labelKey` is web's dotted `MessageKey` against mobile's camelCase ARB
+  identifier, resolved at the render layer exactly as `badges` does — the key
+  strings are outside the lockstep, the kinds / columns / directions / units /
+  thresholds are in it.
+  - The hard part is **coverage**, not arithmetic. Both food sources carry
+    these fields unevenly, so `sumMacros`' "null counts as 0" rule (right for
+    calories) would be fail-open here: eight items of which two report sodium
+    sum to a number that reads as the day and sits comfortably under a ceiling
+    it may have blown. So a total is accompanied by how many entries reported
+    it, and only the claims that survive partial coverage are offered.
+    `exceeded` (ceiling past target) and `reached` (floor at/past target) are
+    **monotone** — the reported items alone already clear the line — so they
+    hold; `remaining` ("600 mg left") is a claim about the *whole* day's intake
+    and is **withheld** (null) whenever an entry didn't report the nutrient,
+    with the row marked "at least" instead. A nutrient nothing reported is
+    omitted, never a zero row. A **withheld `remaining` is not the same claim
+    as no target**, so neither surface falls back to the "No daily target" chip
+    in its place — the row simply carries no chip.
+  - Targets are public reference intakes, and two of the five deliberately have
+    **none**. **Fibre** is a floor at 14 g/1000 kcal (IOM/DGA), scaled off the
+    *base* calorie goal rather than the exercise-inflated one — a long-run
+    day's extra carbohydrate is deliberately low-residue, and scaling by
+    workout calories would prescribe 50 g+ of fibre on exactly the day a runner
+    wants least of it. **Sodium** is a ceiling of 2300 mg (FDA daily value)
+    that *rises* with logged exercise on the same "base + exercise" model as
+    the calorie goal (§134) and the water goal, at 6 mg/min — derived from
+    `hydration.ts`'s own 480 ml/hr sweat assumption at ~700 mg Na per litre —
+    capped at that module's `MAX_EXERCISE_MINUTES`, past which this is a race
+    fuel plan (`fuel_plan.ts`), not a daily baseline. It is the one target that
+    resolves with **no body metrics**, for the same reason `hydrationTargetMl`
+    always answers. **Saturated fat** is a ceiling at 10 % of the full dynamic
+    calorie goal (DGA). **Sugar** is ungraded — the stored field is *total*
+    sugars while every published ceiling is about *free/added* sugars, so
+    grading it would flag a bowl of fruit as an overshoot. **Cholesterol** is
+    ungraded — the 300 mg/day cap left the Dietary Guidelines in 2015 and no
+    numeric limit replaced it.
 - **Dynamic TDEE ("base + exercise").** The daily calorie goal is the
   Mifflin-St Jeor base (activity level treated as your *non-exercise*
   baseline) **plus** the calories burned by today's logged runs + gym
@@ -640,6 +983,18 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
 > byte-identical iOS twin. In the Art 20 DSAR export (ingredients nested).
 > **Per-ingredient quantity editing + shared/public recipes + an edit path stay deferred.**
 
+> **Status (meal plans + day adherence — nutrition programming P1, shipped web
+> 2026-10-14, migration `20270815000001`, [decisions § 1922](../architecture/decisions.md)):**
+> the depth tier's first slice and its engagement probe. A followed plan
+> replaces the computed target on every day it governs (never a second
+> target beside it), so the day view keeps one set of rings and gains one
+> panel, the adherence verdict, only on a governed day. The Plans section
+> sits with Meal templates and Recipes and self-hides at zero plans; before
+> one exists the only entries are Save as plan on the rings card and, for a
+> user without body metrics, a blank plan beside the Settings link. Full
+> design + phasing: [nutrition_programming.md](nutrition_programming.md).
+> Mobile is that spec's P4.
+
 > **Status (targets peer — shipped web 2026-08-05, issue #666 M1):** the rule
 > below that "each modality owns its planning assets ... nutrition owns
 > targets/recipes" held for recipes and meal templates and **did not hold for
@@ -659,10 +1014,25 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
 > **height / weight / DOB / sex stay editable in Settings only** — they are Art 9
 > special-category data behind an explicit-consent gate, and a second entry
 > point would be a second consent surface. Both surfaces deep-link
-> `/settings/preferences#body-metrics`. Deliberately **not** a new always-on
+> `/settings/preferences#body-metrics` (which, since the #905 settings split, redirects to
+> `/settings/body#body-metrics`). Deliberately **not** a new always-on
 > card on the day view: `/nutrition` keeps exactly one primary action
-> (anti-clutter checklist). Mobile is the follow-up, not drift — see the
-> parity row.
+> (anti-clutter checklist).
+
+> **Status (targets peer — mobile 2026-08-19, [decisions § 695](../architecture/decisions.md)):**
+> mirrored on the phone as `screens/nutrition_targets_screen.dart`, reached from
+> an **ungated** entry on the rings card (`nutrition_screen.dart` previously
+> reached `SettingsBodyMetricsScreen` from its untargeted empty state only,
+> § 490 — so the route vanished the moment the number became real). Same
+> derivation rows and macro split, composed only from what
+> `nutrition_targets.dart` already exported, so **no new pure logic and no
+> parity-pair change**. The two non-sensitive levers edit inline through
+> `SettingsSyncService.updateUniversal` on the same bag keys the consent-gated
+> editor writes; height / weight / DOB / sex are **read-only** here and keep
+> their single Art 9 entry point, guarded at source the way web's
+> `targets_peer_guard.test.ts` guards it. The one deliberate divergence: the
+> exercise add-on is always **today's**, not the host screen's viewed diary
+> day, which is what the peer's own copy claims.
 
 ## Cross-modality touches (Tier 1 — ship with Phase 4; this is the headline)
 
@@ -675,7 +1045,10 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
   + a 7-day rolling nutrition summary, not raw rows — so prompt size + per-
   call cost stay roughly flat as history grows. The daily cap is unchanged.
   *(Shipped — `summarizeRecentLifts` + `summarizeNutrition`, unit-tested;
-  nutrition gated on Art 9 health consent.)*
+  nutrition gated on Art 9 health consent. Both lanes are also gated on AI
+  disclosure v6, the first copy that names them — below it they are not
+  queried and the Coach works on the rest of its context; see
+  `COACH_CONTEXT_REGISTRY`, decisions § 2218, issue #1217.)*
 - **Training-load** factors lift sessions as additional stress — see the
   lift-load spec below. A `training_load` parity-pair change. *(Shipped +
   wired into web `/dashboard`.)* The web Fitness card now **discloses** this:
@@ -797,14 +1170,45 @@ one drag the launch. Corrected order, with explicit gates:
 
 **Protect the core runner.** Moving Run from a tab to a `Log` action is a
 downgrade for the 100%-runner (one tap → two; long-press mitigates but is
-discoverable-only). The protection that shipped is the **`keep_run_primary`
+discoverable-only). The protection that shipped was the **`keep_run_primary`
 Settings toggle** (mobile) that lets a pure runner keep Run as the primary
-one-tap action — *not* the `multi_modal_nav` flag. (The original plan here
+one-tap action — *not* the `multi_modal_nav` flag. **A default-off toggle was
+not enough** (decisions § 1644): a runner who never opened Settings still paid
+the extra tap on every run, so the one-tap start is now **derived from data
+presence** — on until a lift or a meal is logged — with the toggle kept as the
+explicit override. (The original plan here
 proposed keeping the flag default-off as the protection; that was superseded
 by the 2026-06-04 §63 amendment, which **retired the flag** and ungated web
 to match mobile. The cards/chips self-hide on data presence, so a runner who
 never opts into gym/nutrition is never worse off either way.) The runner who
 never logs a lift/meal must never be worse off.
+
+**Gym and Nutrition are off until switched on, on mobile and web alike**
+([decisions § 1739](../architecture/decisions.md)), the mobile half first. The always-present Gym and
+Nutrition hub tabs, and the Log fan's Lift/Food actions, were the remaining
+clutter a pure runner paid for. On mobile they now appear only when
+`modalityShown` says so: the runner's explicit choice from Settings →
+Preferences → "Gym & nutrition" (`show_gym` / `show_nutrition`, see
+[settings.md](../backend/settings.md)) if they have made one, otherwise
+whether that modality already has data. A new runner gets the Runs surface
+alone: with neither modality shown, History would list the same runs as Runs,
+so the hub drops it and renders Runs directly, with no one-tab strip. History
+comes back the moment either modality is shown. Someone already logging lifts
+keeps the Gym tab without having to find a toggle. The post-signup setup
+wizard asks "What do you want to track?" before its last step, on both
+platforms: Running is shown as always on, Gym and Nutrition start off, and
+only a touched step writes an explicit choice. A skipped step leaves the
+data-presence default in force. The same answer gates the Home lift/meal
+cards and decides the Log button's one-tap run start. Web honours the same
+two keys through the same resolution (`modalityShown` in
+`apps/web/src/lib/settings/modality_visibility.ts`): the Gym and Nutrition
+sidebar items, the History Log menu's Log workout / Log food, and the
+Dashboard lift and nutrition cards follow it, and Settings → Units & display
+→ "Gym & nutrition" holds the two switches. The data half on web is one
+`select id … limit 1` per table, read once per session and skipped for a
+modality with an explicit choice. Hiding removes the entry points, not the
+pages: `/gym` and `/nutrition` still load by URL. A first-run "log a lift"
+link for a hidden Gym switches it on before navigating.
 
 ## Body metrics & sensitive data (compliance — do before any real user data)
 
@@ -895,6 +1299,8 @@ reading the **stored** `set_count` + `volume_kg` columns on
 - [ ] History filter chips for empty kinds are hidden, not disabled.
 - [ ] Type is coded by glyph + label, not colour alone (WCAG).
 - [ ] Each screen has exactly one primary action.
+- [ ] A hub has one tab strip: a section is a tab, never a second strip of
+      pushed peers inside one tab (decisions § 2437).
 - [ ] The runner-only experience is within one card of today's app, and a
       pure runner can keep Run as the one-tap primary action.
 - [ ] Lift-load contributions carry a `source` and never corrupt run-only
@@ -915,15 +1321,15 @@ tier where mobile leads). Byte-identical iOS twin per [decisions.md § 39](../ar
 | Home cards | `widgets/nutrition_rings_card.dart`, `widgets/gym_summary_card.dart` — **shipped (G5)** (run summary already lived on the dashboard) |
 | History | `screens/runs_screen.dart` (the History tab — hosts the kind chips + unified timeline) + `widgets/activity_timeline_list.dart` + the pure `activity_timeline.dart` day-grouper, assembled from the local stores via `lib/local_activities.dart` (offline-first, not `fetchActivities`) — **shipped** |
 | Gym | `screens/gym_screen.dart`, `widgets/gym_compose_sheet.dart`, `screens/gym_detail_screen.dart`, `gym_prs.dart` (pure, parity-paired) |
-| Nutrition | `screens/nutrition_screen.dart`, `widgets/nutrition_log_sheet.dart` (search + the v1.1 camera barcode-scan fast-path via `mobile_scanner`), `nutrition_targets.dart` (pure, parity-paired), `food_search.dart` (Open Food Facts + USDA search, source-merged + deduped via `searchFoodSources`, plus `lookupBarcode`/`parseOffProduct` OFF product-by-barcode lookup, pluggable-fetcher seam like `routing.dart`; TS↔Dart parity pair) |
+| Nutrition | `screens/nutrition_screen.dart`, `screens/nutrition_targets_screen.dart` (the targets peer — derivation + the two non-sensitive levers, decisions § 695), `widgets/nutrition_log_sheet.dart` (search + the v1.1 camera barcode-scan fast-path via `mobile_scanner`), `nutrition_targets.dart` (pure, parity-paired), `exercise_day.dart` (pure, **mobile-only** — buckets the `activities` view into a day's exercise inputs; web has no twin because it windows the fetch in PostgREST instead), `food_search.dart` (Open Food Facts + USDA search, source-merged + deduped via `searchFoodSources`, plus `lookupBarcode`/`parseOffProduct` OFF product-by-barcode lookup, pluggable-fetcher seam like `routing.dart`; TS↔Dart parity pair) |
 | Body metrics | `body_metrics` table (migration `20261216_001`) + Settings height/weight entry (**mobile shipped (G5)** — `settings_body_metrics_screen.dart`, Art 9 consent-gated height/weight + activity/goal; api_client `grantHealthDataConsent`/`withdrawHealthDataConsent`/`setMyHeightCm`/`recordBodyWeightKg`/`clearBodyWeightHistory`) |
 | Lift load | `training_load.ts` / `.dart` gain `liftStress` + `source`-tagged daily contributions (**shipped** — `computeLiftStress` + `aggregateDailyLiftStress` + the `lifts` arg to `computeTrainingLoadSeries`). **Consumers wired on both platforms**: web `web/src/lib/gym/lift_load.ts` and mobile `mobile_android/lib/lift_load.dart` (`liftsFromSetHistory`, pure + tested parity pair) feed each dashboard's load curve; `TrainingLoadChart` (web + mobile) shows the "gym sessions included" hint when `liftStress > 0` |
 | Cross-modality | `coach/context.ts` (**web shipped** — bounded `recent_lifts` + 7-day `nutrition_7d` summary, pure `summarizeRecentLifts`/`summarizeNutrition` + tests); web Home gym cards (`/dashboard`); web History timeline (`/history` + `fetchActivities`). **Mobile Home card composition shipped (G5)** — `dashboard_screen.dart` + `widgets/gym_summary_card.dart` + `widgets/nutrition_rings_card.dart` + the recent-lifts trend card (`widgets/recent_lifts_card.dart`); the **unified mobile History timeline is now shipped** (`runs_screen.dart` + `widgets/activity_timeline_list.dart`, assembled from the LOCAL stores via `lib/local_activities.dart` — offline-first, all modalities, not `fetchActivities`) |
-| Runner protection | Settings toggle: keep Run as the one-tap primary action — **shipped (G5)** (`Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch; tap = one-tap run start, long-press = full Log sheet) |
+| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press opens the fan, except that it is the tap when only one action is offered and returns to the recorder mid-run. The centre button wears the run state it is in (Start run / Recording) — see § Bottom nav |
 | Local stores | `local_gym_store.dart`, `local_food_store.dart` (shipped — mirror `LocalGearStore`, §73 / §122; gym stores sets inline). **Now wired into nav/Home (G5):** the gym/nutrition screens + the dashboard hydrate + drain them; still outside the global `main.dart`/`sync_service` sweep |
 | Data access | `packages/api_client` typed gym + food + `fetchLatestBodyWeightKg` + the unified-timeline `fetchActivities` (→ `activities` view) + `fetchRunById` (timeline run-row open) methods (shipped); web gym queries in `core/data.ts` (**shipped** — `fetchGymWorkouts` / `fetchGymWorkoutWithSets` / `fetchGymSetHistory` / `createGymWorkout` / `updateGymWorkout` / `deleteGymWorkout`); **web food + body-metrics queries shipped** (`fetchFoodLog` / `createFoodEntry` / `updateFoodEntry` / `deleteFoodEntry` / `fetchLatestWeightKg` / `recordWeightKg` / `clearWeightHistory`) |
 
-**Web gym surfaces (shipped).** Mirrors the mobile gym plan above on the canonical web surface: `routes/gym/+page.svelte` (list + PR badges + create modal), `routes/gym/[id]/+page.svelte` (detail + per-exercise PR chips + edit/delete + a per-exercise **"vs last time"** hint — the previous weighted session's top set with a +/- delta on the heaviest set, via `gym/exercise_history.ts#previousExerciseSession`, linking to that exercise's progression; the progressive-overload cue the all-time PR chips can't give), `routes/gym/records/+page.svelte` (per-exercise current bests — est. 1RM / heaviest / top volume + last-performed + session count — via the **`gym_exercise_records` RPC** (`fetchExerciseRecords`, migration `20261224_001`): all-time bests can't be served by a windowed client read, so the aggregation moved server-side, mirroring how run PRs live in SQL; the SQL metrics are pinned to the `gym_prs.ts` semantics by pgtap. Linked from the `/gym` header once a weighted set exists. Mobile keeps its own client-side records screen — `gym_records_screen.dart` over `exercise_records.dart` — so the two now compute the same bests via different paths, no longer a byte-identical pair), `routes/gym/exercise/+page.svelte` (per-exercise progression over time — read by `?name=` — headline est.-1RM delta vs the first session + a most-recent-first session list with top set / e1RM / volume / a strength-relative bar / per-kind PR badges (Heaviest + Best est. 1RM — the same single-set metrics `/gym/records` tracks, so a heavy single can flag a Heaviest PR without an e1RM PR) on sessions that beat the running best, each row linking back to its workout; via `gym/exercise_history.ts`, also a pure **web-only** roll-up over the `gym_prs` primitives; reached from each `/gym/records` card), `components/GymEditor.svelte` (the composer — free-text exercise name with history autocomplete, inline sets, share-to-feed toggle), `gym/gym_prs.ts` (pure PR engine, parity pair), and the always-present **Gym** sidebar item in `+layout.svelte` (ungated, §63 amendment). E2e: `tests-e2e/gym/gym.spec.ts` + `tests-e2e/gym/records.spec.ts` + `tests-e2e/gym/exercise_history.spec.ts` + `tests-e2e/gym/vs_last_time.spec.ts`. The `weight_unit` (`'kg' \| 'lbs'`) user-pref is **wired on both platforms** (settings.md, F19): storage stays canonical kg (`gym_sets.weight_kg`); display + entry convert via the pure `format/weight.ts` (`formatWeightKg`/`parseWeightToKg`) ↔ mobile `WeightFormat`, driven by the `weightUnit` signal / `activeWeightUnit` and the Settings → Preferences kg/lbs toggle on each side.
+**Web gym surfaces (shipped).** Mirrors the mobile gym plan above on the canonical web surface: `routes/gym/+page.svelte` (list + PR badges + create modal — the list reads **no raw set rows**: the per-workout PR flag + exercise count come from the **`gym_workout_summaries` RPC** (`fetchGymWorkoutSummariesWithError`, migration `20270510_001`, decisions §568), the volume + set-count stats off the trigger-maintained `gym_workouts.volume_kg` / `set_count` columns, the composer autocomplete from `gym_exercise_names()`, and the Records-link gate from `gym_has_weighted_sets()`. The badge is an all-time question, so the unwindowed client read it used to do was silently truncated at PostgREST's 1000-row cap past ~40 sessions; the RPC also judges across the caller's whole history rather than only the 100 workouts on the page, so the list now agrees with `/gym/[id]`), `routes/gym/[id]/+page.svelte` (detail + per-exercise PR chips + edit/delete + a per-exercise **"vs last time"** hint — the previous weighted session's top set with a +/- delta on the heaviest set, via `gym/exercise_history.ts#previousExerciseSession`, linking to that exercise's progression; the progressive-overload cue the all-time PR chips can't give), `routes/gym/records/+page.svelte` (per-exercise current bests — est. 1RM / heaviest / top volume + last-performed + session count — via the **`gym_exercise_records` RPC** (`fetchExerciseRecords`, migration `20261224_001`): all-time bests can't be served by a windowed client read, so the aggregation moved server-side, mirroring how run PRs live in SQL; the SQL metrics are pinned to the `gym_prs.ts` semantics by pgtap. Linked from the `/gym` header once a weighted set exists. Mobile keeps its own client-side records screen — `gym_records_screen.dart` over `exercise_records.dart` — so the two now compute the same bests via different paths, no longer a byte-identical pair), `routes/gym/exercise/+page.svelte` (per-exercise progression over time — read by `?name=` — headline est.-1RM delta vs the first session + a most-recent-first session list with top set / e1RM / volume / a strength-relative bar / per-kind PR badges (Heaviest + Best est. 1RM — the same single-set metrics `/gym/records` tracks, so a heavy single can flag a Heaviest PR without an e1RM PR) on sessions that beat the running best, each row linking back to its workout; via `gym/exercise_history.ts`, also a pure **web-only** roll-up over the `gym_prs` primitives; reached from each `/gym/records` card), `components/GymEditor.svelte` (the composer — free-text exercise name with history autocomplete, inline sets, share-to-feed toggle), `gym/gym_prs.ts` (pure PR engine, parity pair), and the always-present **Gym** sidebar item in `+layout.svelte` (ungated, §63 amendment). E2e: `tests-e2e/gym/gym.spec.ts` + `tests-e2e/gym/records.spec.ts` + `tests-e2e/gym/exercise_history.spec.ts` + `tests-e2e/gym/vs_last_time.spec.ts`. The `weight_unit` (`'kg' \| 'lbs'`) user-pref is **wired on both platforms** (settings.md, F19): storage stays canonical kg (`gym_sets.weight_kg`); display + entry convert via the pure `format/weight.ts` (`formatWeightKg`/`parseWeightToKg`) ↔ mobile `WeightFormat`, driven by the `weightUnit` signal / `activeWeightUnit` and the Settings → Preferences kg/lbs toggle on each side.
 | DSAR | `gym_workouts` / `gym_sets` (nested) / `food_log` + `body_metrics` (migration `20261216_001`) all in the export path (**shipped** — see the Body-metrics § above); deletion FK-cascades from `auth.users` |
 
 ## Proposed redesign (pending sign-off) — the Train hub + Routes relocation
@@ -934,7 +1340,7 @@ tier where mobile leads). Byte-identical iOS twin per [decisions.md § 39](../ar
 
 The multi-modal expansion left the nav incoherent on **where a modality's *planning tools* live**:
 
-- **Routes is mis-placed on both platforms.** On web it's a **top-level sidebar peer** of Gym/Nutrition (`+layout.svelte` nav item `/routes`), which over-weights a *run-planning tool* as if it were a fourth modality. On mobile it's **buried under Social**, conceptually wrong (a course-planning tool under the people/feed layer) and inconsistent with web. Meanwhile Gym's routines and Nutrition's targets correctly live *inside* their modality surfaces — Routes is the odd one out. *(Correction, 2026-08-05: the targets half of that sentence was not true when written and stayed untrue for over a year — targets lived in Settings on both platforms. Web closed it as the targets peer above; mobile has not. Read the status block, not this line.)*
+- **Routes is mis-placed on both platforms.** On web it's a **top-level sidebar peer** of Gym/Nutrition (`+layout.svelte` nav item `/routes`), which over-weights a *run-planning tool* as if it were a fourth modality. On mobile it's **buried under Social**, conceptually wrong (a course-planning tool under the people/feed layer) and inconsistent with web. Meanwhile Gym's routines and Nutrition's targets correctly live *inside* their modality surfaces — Routes is the odd one out. *(Correction, 2026-08-05: the targets half of that sentence was not true when written and stayed untrue for over a year — targets lived in Settings on both platforms. Web closed it as the targets peer above on 2026-08-05; mobile followed on 2026-08-19 (decisions § 695). Read the status blocks, not this line.)*
 - **Mobile modalities have no persistent front-door.** You can *capture* via `Log` and *review* via History's `View all`, but there's no "go to my running / my gym / my nutrition" home to plan or browse. `Settings` also eats a scarce top-five slot despite being low-frequency.
 
 The fix unifies the rule: **each modality owns its planning assets** — runs own routes + training plans, gym owns routines, nutrition owns targets/recipes — and they all hang off that modality's surface, never as a top-level peer and never under Social.
@@ -962,19 +1368,21 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 
 - **`Train`** is the modality hub. A top sub-tab strip `All · Runs · Gym · Nutrition`:
   - **All** = the unified cross-modal timeline that is the *current* `History` tab — the `History` bottom-nav slot is absorbed here, not deleted. Same offline-first local-store assembly (`lib/local_activities.dart` over the three `Local*Store`s), same `activity_timeline_list.dart` rows, same per-row tap-to-detail. The `History`-tab kind chips become the hub's sub-tabs.
-  - **Runs** = the run-management surface (today's `RunsScreen` reached via History `View all`) under a labelled **peer strip** `Runs · Routes · Plans · Races` — the mobile mirror of web's `RunSurfaceTabs.svelte`. **Shipped 2026-08-04** ([decisions.md § 488](../architecture/decisions.md)) as `widgets/surface_peer_strip.dart`, fed by `RunsScreen.surfacePeers` from the hub. The first shipped shape parked Routes and Plans on tooltip-only AppBar glyphs instead; that is what § 488 replaced.
-  - **Gym** = `GymScreen` under its own peer strip `Log · Routines · Sessions · Records` (mirroring web `/gym`'s header links), also shipped 2026-08-04 by § 488 — Routines waits on the routine store's disk hydration, Sessions needs a signed-in client, Records is data-gated on a weighted set exactly as web is ([gym_programming.md](gym_programming.md), [session_planner.md](session_planner.md)).
+  - **Runs** = the run-management surface (today's `RunsScreen` reached via History `View all`) under a labelled **peer strip** `Runs · Routes · Plans · Races` — the mobile mirror of web's `RunSurfaceTabs.svelte`. **Shipped 2026-08-04** ([decisions.md § 488](../architecture/decisions.md)) as `widgets/surface_peer_strip.dart`, fed by `RunsScreen.surfacePeers` from the hub. The first shipped shape parked Routes and Plans on tooltip-only AppBar glyphs instead; that is what § 488 replaced. **Superseded on mobile 2026-11-10 ([decisions § 2437](../architecture/decisions.md), issue #1354):** the peer strip pushed each surface over the hub, so Plans or Races left the Fitness tab behind a back arrow, and with gym or food on it sat as a second strip under the hub's own. Each run surface is now a tab of the hub itself, one flat strip in every configuration — runner-only `Runs · Plans · Races & courses · Routes · Segments`, with gym or food `History · Runs · Plans · Races & courses · Routes · Segments · Gym · Nutrition` — each tab keeping its own actions and FAB, and a link to one from anywhere else selecting the tab rather than pushing a copy. Races & courses folds the park courses in as its **Run any time** section (#1352), so there is no Parks tab. The anti-clutter rule this answers to is that one strip names every section once: no surface appears twice and no strip stacks on another.
+  - **Gym** = `GymScreen` under its own peer strip `Log · Gym routines · Session plans · Records` (mirroring web `/gym`'s destination links, which add a one-line description each; renamed from Routines / Sessions 2026-09-17, #902 § 7), also shipped 2026-08-04 by § 488 — Routines waits on the routine store's disk hydration, Sessions needs a signed-in client, Records is data-gated on a weighted set exactly as web is ([gym_programming.md](gym_programming.md), [session_planner.md](session_planner.md)).
   - **Nutrition** = `NutritionScreen` (day/week) + targets.
-- **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = repeat last. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
+- **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = open the fan. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
 - **`Social`** is unchanged (Feed / People / Clubs). **Routes leaves Social** — the mobile Social screen drops any routes entry.
 - **`You`** = profile + Settings + subscription + (future) payout account. `Settings` vacates its own slot; the `keepRunPrimary` toggle and all prefs live under `You → Settings`.
-- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
+- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2280](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today, and since [§ 2387](../architecture/decisions.md) it is a compact row on web and mobile; the trigger below is measured at `/admin/home-metrics`, see § Home) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
 - **Home** is unchanged — the prioritised, self-hiding card stack ("what's my day").
 - **Expanded widths (≥840dp — tablets / landscape foldables) swap the chrome, not the IA:** the same four destinations + the Log action render as a `NavigationRail` (Log rides the rail's leading slot and fans its speed-dial from the button's own anchor) instead of the `BottomAppBar` + docked centre FAB. Destinations, keep-alive pages, and the Log contract are identical — only the shell changes (`widthClassOf` gate, see [conventions.md § Mobile adaptive width](../architecture/conventions.md#mobile-adaptive-width--widthclass)).
 
-The **self-hiding contract holds**: a pure runner opening `Train` sees the Runs sub-tab content and an `All` timeline of only runs; the Gym/Nutrition sub-tabs render their empty-onboarding state but are never forced on them (mirroring today's data-gated cards). The Train hub being always-present is the analogue of today's always-present `Log` sheet — it's the entry point, so it can't itself be data-gated (the §63-amendment chicken-and-egg rule).
+The **self-hiding contract holds**: a pure runner opening `Train` sees the Runs sub-tab content and an `All` timeline of only runs; the Gym/Nutrition sub-tabs render their empty-onboarding state but are never forced on them (since [decisions § 1739](../architecture/decisions.md) the mobile hub leaves those two tabs out entirely until the runner switches them on or logs one; see [§ Sequencing, validation gates & risk controls](#sequencing-validation-gates--risk-controls)) (mirroring today's data-gated cards). The Train hub being always-present is the analogue of today's always-present `Log` sheet — it's the entry point, so it can't itself be data-gated (the §63-amendment chicken-and-egg rule).
 
 Keep-alive note: the in-shell `PageView` capture pages (Run/Gym/Nutrition recorders) stay exactly as the §63 2026-06-08 amendment built them — the Train hub is a *review/plan* destination, distinct from the keep-alive *capture* pages the `Log` action lands on. A live recording is unaffected by navigating to `Train`.
+
+> **Superseded for Gym + Nutrition, 2026-09-17** ([decisions § 1654](../architecture/decisions.md)). The capture/review split above is real for runs, where the recorder and the run list are different screens — but Gym and Nutrition never had a capture screen distinct from their review screen, so "distinct pages" meant the *same widget mounted twice*, each keeping its own diary day, filters, scroll and routine store. The hub's Gym and Nutrition tabs are now the app's only instances; the `Log` action selects one. The Run capture page is unchanged.
 
 ### Web — Routes nests under the Run surface; siblings stay
 
@@ -998,7 +1406,7 @@ Web-first per [§ 24](../architecture/decisions.md#24-web-is-the-canonical-featu
 
 1. **Web (smaller):** remove the `/routes` nav item in `+layout.svelte`; add the `Runs · Routes · Plans` sub-tabs to `/runs`; keep `/routes` resolving. Update `tests-e2e/cross-cutting/surfaces.spec.ts` (the sidebar-contract test) + add a Routes-under-Runs nav test.
 2. **Mobile (larger — the real lift):** reshape `home_screen.dart` bottom nav to `Home · Train · + · Social · You`; build the `Train` hub screen with the `All · Runs · Gym · Nutrition` sub-tab strip (All = the existing timeline widgets; Runs = `RunsScreen` + a Routes section); move Settings under a new `You` screen; drop routes from the Social screen. Byte-identical iOS twin per [§ 39](../architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase) — run `mobile-twin-mirror` after every Dart edit. Pin with Flutter widget tests for the hub sub-tab switch + the relocated Routes entry.
-3. **i18n:** new nav labels (`nav.train`, `nav.you`, the Train sub-tab labels) into all six web gen-l10n catalogues + all mobile ARBs.
+3. **i18n:** new nav labels (`nav.train`, `nav.you`, the Train sub-tab labels) into every web catalogue + all mobile ARBs.
 4. **Docs:** flip the relevant rows here + in [parity.md](../product/parity.md); land the ADR (Appendix); update [clubs.md](clubs.md) (Social no longer hosts routes on mobile) and the per-app CLAUDE.md nav notes.
 
 ### Build order across the open proposals (avoid nav thrash)
@@ -1016,7 +1424,7 @@ Gym P1 and nutrition sequencing keep their own gates (gym repeat-rate, nutrition
 
 1. **Hub naming** — *resolved*: shipped as **Fitness** (covers run + gym + nutrition; "Train" was the working title but doesn't cover food).
 2. **Does `All`/History also keep a Home presence?** — Home is the dashboard; the full timeline moves to `Train → All`. Decide whether Home keeps a short "recent activity" strip or sends users to the hub for history.
-3. **Coach prominence** — *resolved* (above): a pinned `Ask your coach…` entry at the top of Home, not a dedicated slot. Revisit only if engagement data argues for a full slot.
+3. **Coach prominence** — *resolved* (above): an always-present `Ask your coach…` entry on Home, not a dedicated slot; it closes the Today block (decisions § 2280). Revisit only if engagement data argues for a full slot.
 
 ### Appendix — proposed ADR (Routes is a run-modality surface; mobile nav is a Train hub)
 

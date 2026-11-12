@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { COMPARE_HEADLINE, COMPARE_SECTIONS } from '../../src/lib/settings/compare_features';
 

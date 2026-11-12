@@ -61,6 +61,53 @@ void main() {
           'source': source,
         };
 
+    group('an Apple Watch run that followed a workout', () {
+      final steps = [
+        {
+          'step_index': 0,
+          'kind': 'rep',
+          'rep_index': 1,
+          'rep_total': 2,
+          'target_distance_m': 400.0,
+          'actual_distance_m': 400.0,
+          'target_pace_sec_per_km': 240,
+          'actual_pace_sec_per_km': 238,
+          'tolerance_sec_per_km': 10,
+          'duration_s': 95,
+          'status': 'completed',
+        },
+      ];
+
+      test('carries the link and the review together', () {
+        final run = runFromWatchPayload({
+          ...baseline(),
+          'plan_workout_id': 'pw-1',
+          'workout_adherence': 'partial',
+          'workout_step_results': steps,
+        });
+        expect(run.metadata![MetadataKeys.planWorkoutId], 'pw-1');
+        expect(run.metadata![MetadataKeys.workoutAdherence], 'partial');
+        expect(run.metadata![MetadataKeys.workoutStepResults], steps);
+      });
+
+      test('a partial or malformed group is dropped whole, and the run kept',
+          () {
+        final cases = <Map<String, dynamic>>[
+          {'plan_workout_id': 'pw-1'},
+          {'plan_workout_id': '', 'workout_adherence': 'partial', 'workout_step_results': steps},
+          {'plan_workout_id': 'pw-1', 'workout_adherence': 'nearly', 'workout_step_results': steps},
+          {'plan_workout_id': 'pw-1', 'workout_adherence': 'partial', 'workout_step_results': 'x'},
+          {'plan_workout_id': 'pw-1', 'workout_adherence': 'partial', 'workout_step_results': [1]},
+          {'plan_workout_id': 7, 'workout_adherence': 'partial', 'workout_step_results': steps},
+        ];
+        for (final extra in cases) {
+          final run = runFromWatchPayload({...baseline(), ...extra});
+          expect(run.id, 'run-123', reason: '$extra');
+          expect(run.metadata, isNull, reason: '$extra');
+        }
+      });
+    });
+
     test('decodes the minimum-valid payload', () {
       final run = runFromWatchPayload(baseline());
       expect(run.id, 'run-123');
@@ -125,6 +172,17 @@ void main() {
       expect(run.track[3].bpm, 142);
       expect(run.track[4].bpm, 148);
       expect(run.track[4].elevationMetres, 30.0);
+    });
+
+    test('each point keeps the credited distance the watch stamped', () {
+      final run = runFromWatchPayload(baseline()
+        ..['track'] = [
+          {'lat': 1.0, 'lng': 2.0, 'ts': '2026-05-19T08:00:00Z', 'distM': 0},
+          {'lat': 1.0, 'lng': 2.0, 'ts': '2026-05-19T08:00:05Z', 'distM': 14.25},
+          {'lat': 1.0, 'lng': 2.0, 'ts': '2026-05-19T08:00:10Z'},
+        ]);
+      expect(run.track.map((w) => w.cumulativeDistanceMetres),
+          [0.0, 14.25, null]);
     });
 
     test('decimal bpm is floored to int (Waypoint.bpm is int?)', () {
@@ -201,6 +259,29 @@ void main() {
       final run = runFromWatchPayload(raw);
       expect(run.metadata!.containsKey('activity_type'), isFalse);
       expect(run.metadata!['avg_bpm'], 145.0);
+    });
+
+    test('steps forwards when positive', () {
+      final raw = baseline();
+      raw['steps'] = 5123;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata!['steps'], 5123);
+    });
+
+    test('a zero or missing step count omits the key', () {
+      // Absent means UNMEASURED — no pedometer hardware, a declined Motion &
+      // Fitness grant — which is a different claim from a run of no steps. A
+      // zero forwarded onto the row makes the two indistinguishable.
+      final zero = baseline();
+      zero['steps'] = 0;
+      expect(runFromWatchPayload(zero).metadata, isNull);
+      expect(runFromWatchPayload(baseline()).metadata, isNull);
+    });
+
+    test('non-numeric steps is dropped from metadata', () {
+      final raw = baseline();
+      raw['steps'] = 'lots';
+      expect(runFromWatchPayload(raw).metadata, isNull);
     });
 
     test('laps array forwards verbatim per docs/backend/metadata.md § laps', () {

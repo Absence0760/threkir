@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
 
 void main() {
+  _runsBucketLimitTests();
+
   group('MetadataKeys', () {
     test('constants carry the snake_case wire value', () {
       expect(MetadataKeys.activityType, 'activity_type');
@@ -9,6 +13,18 @@ void main() {
       expect(MetadataKeys.createdByUserId, 'created_by_user_id');
       expect(MetadataKeys.lastModifiedAt, 'last_modified_at');
       expect(MetadataKeys.trackUrl, 'track_url');
+      expect(MetadataKeys.trackComplete, 'track_complete');
+      expect(MetadataKeys.distanceEstimator, 'distance_estimator');
+      expect(MetadataKeys.distanceRecomputedAt, 'distance_recomputed_at');
+      expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
+      expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
+      expect(
+        MetadataKeys.distanceStepOverChordM,
+        'distance_step_over_chord_m',
+      );
+      expect(MetadataKeys.distanceSegments, 'distance_segments');
+      expect(MetadataKeys.locationProvider, 'location_provider');
+      expect(MetadataKeys.gnssSignal, 'gnss_signal');
       expect(MetadataKeys.isDnf, 'is_dnf');
       expect(MetadataKeys.recoveredFromCrash, 'recovered_from_crash');
       expect(MetadataKeys.workoutStepResults, 'workout_step_results');
@@ -18,6 +34,8 @@ void main() {
       expect(MetadataKeys.sessionPlanId, 'session_plan_id');
       expect(MetadataKeys.sessionStepResults, 'session_step_results');
       expect(MetadataKeys.sessionAdherence, 'session_adherence');
+      expect(MetadataKeys.smoothedSidecarSha256, 'smoothed_sidecar_sha256');
+      expect(MetadataKeys.serverUpdatedAt, 'server_updated_at');
     });
 
     test('every value is unique snake_case', () {
@@ -29,7 +47,13 @@ void main() {
         MetadataKeys.cadenceSpm,
         MetadataKeys.chipTime,
         MetadataKeys.createdByUserId,
+        MetadataKeys.distanceEstimator,
+        MetadataKeys.distanceRecomputedAt,
+        MetadataKeys.distanceRecordedM,
         MetadataKeys.distanceSource,
+        MetadataKeys.distanceStepFilledM,
+        MetadataKeys.distanceStepOverChordM,
+        MetadataKeys.distanceSegments,
         MetadataKeys.elevationM,
         MetadataKeys.event,
         MetadataKeys.fastest10kS,
@@ -50,6 +74,7 @@ void main() {
         MetadataKeys.isDnf,
         MetadataKeys.laps,
         MetadataKeys.lastModifiedAt,
+        MetadataKeys.locationProvider,
         MetadataKeys.manualEntry,
         MetadataKeys.maxBpm,
         MetadataKeys.notes,
@@ -62,15 +87,18 @@ void main() {
         MetadataKeys.routineId,
         MetadataKeys.runningDynamics,
         MetadataKeys.runNumber,
+        MetadataKeys.serverUpdatedAt,
         MetadataKeys.sessionAdherence,
         MetadataKeys.sessionPlanId,
         MetadataKeys.sessionStepResults,
+        MetadataKeys.smoothedSidecarSha256,
         MetadataKeys.sourceFile,
         MetadataKeys.steps,
         MetadataKeys.stravaActivityType,
         MetadataKeys.stravaId,
         MetadataKeys.subSport,
         MetadataKeys.title,
+        MetadataKeys.trackComplete,
         MetadataKeys.trackUrl,
         MetadataKeys.workoutAdherence,
         MetadataKeys.workoutStepResults,
@@ -88,6 +116,32 @@ void main() {
       expect(StorageBuckets.runs, 'runs');
       expect(StorageBuckets.runPhotos, 'run-photos');
       expect(StorageBuckets.routePhotos, 'route-photos');
+    });
+  });
+}
+
+void _runsBucketLimitTests() {
+  group('StorageBuckets.runsBucketMaxBytes', () {
+    test('matches the runs bucket file_size_limit the migration sets', () {
+      // A client rail on a server bound. Storage refuses a larger object with a
+      // 413 whose only stable identity is an English message, so the uploader
+      // carries the number — and it has to be THE number, or it either refuses
+      // a blob Storage would take or sends one it will not.
+      final sql = File(
+        '../../apps/backend/supabase/migrations/'
+        '20260620_001_storage_bucket_limits.sql',
+      ).readAsStringSync();
+      final m = RegExp(
+        r"set file_size_limit = (\d+)[^;]*?where id = 'runs'",
+        dotAll: true,
+      ).firstMatch(sql);
+      expect(m, isNotNull,
+          reason: 'the runs bucket no longer sets file_size_limit in '
+              '20260620_001 — find the migration that does and re-anchor this');
+      expect(
+        StorageBuckets.runsBucketMaxBytes,
+        int.parse(m!.group(1)!),
+      );
     });
   });
 }

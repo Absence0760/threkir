@@ -1,19 +1,23 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 
 import '../auth_error.dart';
+import '../e164.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../off_route_alert.dart';
+import '../off_route_flag.dart';
+import '../safety_live_audience.dart';
 import '../settings_sync.dart';
+import '../widgets/confirm_destructive.dart';
 import '../widgets/top_banner.dart';
 
 /// Settings → Safety contacts (decisions §131). Mirror of the web
 /// `/settings/safety` page: add a safety contact by email, see its
-/// pending/confirmed status, remove it, and confirm/decline incoming
-/// requests where you are the named contact.
+/// pending/confirmed status, remove it, confirm/decline incoming requests
+/// where you are the named contact, and manage the relationships you are
+/// already the confirmed contact OF — the only place the SMS consent given
+/// at confirm time can be changed or withdrawn.
 ///
 /// A safety contact is emailed when the owner finishes a run — even a
 /// private one — via a double opt-in (the owner adds an email; the
@@ -35,6 +39,11 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   static final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   final _emailCtl = TextEditingController();
+  final _phoneCtl = TextEditingController();
+
+  // Per-request SMS opt-in choice. Only offered where the requester stored a
+  // number (`hasPhone`) — an opt-in against no number consents to nothing.
+  final Set<String> _smsOptIn = <String>{};
 
   bool _loading = true;
   bool _adding = false;
@@ -43,6 +52,11 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   String? _respondingId;
   List<SafetyContact> _contacts = const [];
   List<PendingSafetyRequest> _pending = const [];
+  List<SafetyContactOf> _contactOf = const [];
+  // In-flight guard for the contact-of controls, kept separate from
+  // [_respondingId] so a pending-request response and a consent change can't
+  // disable each other's list.
+  String? _contactOfBusyId;
 
   // Overdue escalation (docs/features/safety.md): the universal pref
   // holding the silence window in minutes; null = escalation off
@@ -51,20 +65,46 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   static const List<int> _overdueChoices = [15, 30, 60, 120];
   int? _overdueMinutes;
   bool _autoLiveShare = false;
+  // The device choice as stored; null = never set, so the switch shows the
+  // default [effectiveAutoLiveShare] derives (decisions § 1964).
+  bool? _autoLiveShareExplicit;
   bool _offRouteAlerts = false;
+  // The server's safety_audience gate. Fail closed until the probe answers:
+  // the switch then describes, and defaults to, the public share.
+  bool _safetyAudienceEnabled = false;
 
   // Off-route auto-notify deploy gate (docs/features/safety.md). Hidden until
   // OFF_ROUTE_ESCALATION_ENABLED flips at deploy time (owner+CISO+counsel).
-  // Fail-closed when dotenv isn't loaded (e.g. under widget tests).
-  bool get _offRouteEnabled =>
-      dotenv.isInitialized &&
-      offRouteEscalationEnabled(dotenv.env['OFF_ROUTE_ESCALATION_ENABLED']);
+  bool get _offRouteEnabled => offRouteEscalationGate;
 
   @override
   void initState() {
     super.initState();
     _loadPrefs();
     _load();
+    _probeSafetyAudience();
+  }
+
+  Future<void> _probeSafetyAudience() async {
+    final api = widget.api;
+    if (api == null || api.userId == null) return;
+    final enabled = await api.safetyAudienceEnabled();
+    if (!mounted) return;
+    setState(() {
+      _safetyAudienceEnabled = enabled;
+      _recomputeAutoLiveShare();
+    });
+  }
+
+  void _recomputeAutoLiveShare() {
+    _autoLiveShare = effectiveAutoLiveShare(
+      explicitPref: _autoLiveShareExplicit,
+      safetyAudienceEnabled: _safetyAudienceEnabled,
+      safetyNetArmed: safetyNetArmed(
+        overdueMinutes: _overdueMinutes,
+        offRouteAlerts: _offRouteAlerts,
+      ),
+    );
   }
 
   /// Mirrors the preferences screen's gating: bag-backed controls are
@@ -76,18 +116,16 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     final service = widget.settingsSync?.service;
     if (service == null) return;
     final overdue = service.effective<num>(SettingsKeys.safetyOverdueMinutes);
-    final auto = service.effective<bool>(
-      SettingsKeys.autoLiveShare,
-      fallback: false,
-    );
+    final auto = service.effective<bool>(SettingsKeys.autoLiveShare);
     final offRoute = service.effective<bool>(
       SettingsKeys.safetyOffRouteAlerts,
       fallback: false,
     );
     _overdueMinutes =
         overdue != null && overdue.isFinite && overdue > 0 ? overdue.toInt() : null;
-    _autoLiveShare = auto == true;
+    _autoLiveShareExplicit = auto;
     _offRouteAlerts = offRoute == true;
+    _recomputeAutoLiveShare();
   }
 
   // A safety switch that reads on while the server still has it off is worse
@@ -97,14 +135,22 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   Future<void> _setOverdueMinutes(int? minutes) async {
     final l10n = AppLocalizations.of(context);
     final previous = _overdueMinutes;
-    setState(() => _overdueMinutes = minutes);
+    setState(() {
+      _overdueMinutes = minutes;
+      _recomputeAutoLiveShare();
+    });
     try {
       await widget.settingsSync
           ?.updateUniversal({SettingsKeys.safetyOverdueMinutes: minutes});
       _banner(l10n.safetyOverdueSaved);
     } catch (e) {
       debugPrint('safety overdue save failed: $e');
-      if (mounted) setState(() => _overdueMinutes = previous);
+      if (mounted) {
+        setState(() {
+          _overdueMinutes = previous;
+          _recomputeAutoLiveShare();
+        });
+      }
       _banner(l10n.safetySettingSaveFailed(friendlyError(l10n, e)),
           onRetry: () => _setOverdueMinutes(minutes));
     }
@@ -112,14 +158,22 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
 
   Future<void> _setAutoLiveShare(bool value) async {
     final l10n = AppLocalizations.of(context);
-    final previous = _autoLiveShare;
-    setState(() => _autoLiveShare = value);
+    final previous = _autoLiveShareExplicit;
+    setState(() {
+      _autoLiveShareExplicit = value;
+      _recomputeAutoLiveShare();
+    });
     try {
       await widget.settingsSync
           ?.updateDevice({SettingsKeys.autoLiveShare: value});
     } catch (e) {
       debugPrint('safety auto-live-share save failed: $e');
-      if (mounted) setState(() => _autoLiveShare = previous);
+      if (mounted) {
+        setState(() {
+          _autoLiveShareExplicit = previous;
+          _recomputeAutoLiveShare();
+        });
+      }
       _banner(l10n.safetySettingSaveFailed(friendlyError(l10n, e)),
           onRetry: () => _setAutoLiveShare(value));
     }
@@ -128,13 +182,21 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   Future<void> _setOffRouteAlerts(bool value) async {
     final l10n = AppLocalizations.of(context);
     final previous = _offRouteAlerts;
-    setState(() => _offRouteAlerts = value);
+    setState(() {
+      _offRouteAlerts = value;
+      _recomputeAutoLiveShare();
+    });
     try {
       await widget.settingsSync
           ?.updateUniversal({SettingsKeys.safetyOffRouteAlerts: value});
     } catch (e) {
       debugPrint('safety off-route save failed: $e');
-      if (mounted) setState(() => _offRouteAlerts = previous);
+      if (mounted) {
+        setState(() {
+          _offRouteAlerts = previous;
+          _recomputeAutoLiveShare();
+        });
+      }
       _banner(l10n.safetySettingSaveFailed(friendlyError(l10n, e)),
           onRetry: () => _setOffRouteAlerts(value));
     }
@@ -143,6 +205,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   @override
   void dispose() {
     _emailCtl.dispose();
+    _phoneCtl.dispose();
     super.dispose();
   }
 
@@ -152,11 +215,13 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     final results = await Future.wait([
       api.fetchMySafetyContacts(),
       api.fetchPendingSafetyRequests(),
+      api.fetchSafetyContactOf(),
     ]);
     if (!mounted) return;
     setState(() {
       _contacts = results[0] as List<SafetyContact>;
       _pending = results[1] as List<PendingSafetyRequest>;
+      _contactOf = results[2] as List<SafetyContactOf>;
     });
   }
 
@@ -187,18 +252,26 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
       _banner(l10n.safetyInvalidEmail);
       return;
     }
+    // A number typed on a phone keypad arrives punctuated; normalise before
+    // grading so only a genuinely unreachable entry is refused.
+    final phone = normaliseE164(_phoneCtl.text);
+    if (_phoneCtl.text.trim().isNotEmpty && phone == null) {
+      _banner(l10n.safetyInvalidPhone);
+      return;
+    }
     final api = widget.api;
     if (api == null) return;
     setState(() => _adding = true);
     try {
-      await api.addSafetyContact(value);
+      await api.addSafetyContact(value, phone: phone);
       _emailCtl.clear();
+      _phoneCtl.clear();
       await _reload();
       _banner(l10n.safetyAddedToast);
     } catch (e) {
       debugPrint('safety add failed: $e');
-      // The email text survives (cleared only on success), so a retry
-      // re-submits exactly what the user typed.
+      // The typed text survives (cleared only on success), so a retry
+      // re-submits exactly what the user entered.
       _banner(l10n.safetyAddFailed(friendlyError(l10n, e)), onRetry: _add);
     } finally {
       if (mounted) setState(() => _adding = false);
@@ -244,7 +317,9 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     if (api == null || _respondingId != null) return;
     setState(() => _respondingId = req.id);
     try {
-      await api.confirmSafetyRequest(req.id);
+      await api.confirmSafetyRequest(req.id,
+          smsOptIn: req.hasPhone && _smsOptIn.contains(req.id));
+      _smsOptIn.remove(req.id);
       await _reload();
       _banner(l10n.safetyConfirmedToast);
     } catch (e) {
@@ -271,6 +346,67 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
           onRetry: () => _decline(req));
     } finally {
       if (mounted) setState(() => _respondingId = null);
+    }
+  }
+
+  // The switch reads straight off the reloaded row rather than off an
+  // optimistic local flag: a consent control that shows "on" while the server
+  // still has it off is the one state this surface must never render.
+  Future<void> _setContactOfSms(SafetyContactOf rel, bool value) async {
+    final l10n = AppLocalizations.of(context);
+    final api = widget.api;
+    if (api == null || _contactOfBusyId != null) return;
+    setState(() => _contactOfBusyId = rel.id);
+    try {
+      final ok = await api.setSafetySmsOptIn(rel.id, value);
+      await _reload();
+      _banner(ok
+          ? (value
+              ? l10n.safetyContactOfSmsOnToast
+              : l10n.safetyContactOfSmsOffToast)
+          : l10n.safetyContactOfSmsNoChange);
+    } catch (e) {
+      debugPrint('safety sms opt-in failed: $e');
+      _banner(l10n.safetyContactOfSmsFailed(friendlyError(l10n, e)),
+          onRetry: () => _setContactOfSms(rel, value));
+    } finally {
+      if (mounted) setState(() => _contactOfBusyId = null);
+    }
+  }
+
+  /// Withdrawing from a relationship you are the CONTACT of is
+  /// `decline_safety_contact`, never [ApiClient.removeSafetyContact]: that one
+  /// is scoped to `owner_id` and would match no row here, reporting success
+  /// while the relationship stood (decisions 720).
+  Future<void> _withdrawContactOf(SafetyContactOf rel) async {
+    final l10n = AppLocalizations.of(context);
+    final api = widget.api;
+    if (api == null || _contactOfBusyId != null) return;
+    // Not the sibling `_remove` shape, which the guard exempts because an owner
+    // who drops a contact they added can add them straight back. This direction
+    // is the owner's loss and not the actor's: it ends an emergency-contact
+    // relationship the OTHER person is relying on, they are not asked, and only
+    // they can restart it by sending a fresh request. That earns error emphasis.
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.safetyContactOfTitle,
+      body: l10n.safetyContactOfWithdrawConfirm,
+      confirmLabel: l10n.safetyContactOfWithdraw,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _contactOfBusyId = rel.id);
+    try {
+      final ok = await api.declineSafetyRequest(rel.id);
+      await _reload();
+      _banner(ok
+          ? l10n.safetyContactOfWithdrawnToast
+          : l10n.safetyContactOfSmsNoChange);
+    } catch (e) {
+      debugPrint('safety withdraw failed: $e');
+      _banner(l10n.safetyContactOfWithdrawFailed(friendlyError(l10n, e)),
+          onRetry: () => _withdrawContactOf(rel));
+    } finally {
+      if (mounted) setState(() => _contactOfBusyId = null);
     }
   }
 
@@ -314,6 +450,28 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: TextField(
+                    controller: _phoneCtl,
+                    keyboardType: TextInputType.phone,
+                    autocorrect: false,
+                    enabled: !_adding,
+                    decoration: InputDecoration(
+                      labelText: l10n.safetyPhoneLabel,
+                      hintText: '+447700900123',
+                    ),
+                    onSubmitted: (_) => _adding ? null : _add(),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    l10n.safetyPhoneHint,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: Align(
                     alignment: AlignmentDirectional.centerEnd,
                     child: FilledButton(
@@ -336,16 +494,40 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 else
                   for (final c in _contacts)
                     ListTile(
+                      isThreeLine: c.contactPhone != null,
                       title: Text(c.contactEmail),
-                      subtitle: Text(
-                        c.isConfirmed
-                            ? l10n.safetyStatusConfirmed
-                            : l10n.safetyStatusPending,
-                        style: TextStyle(
-                          color: c.isConfirmed
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            c.isConfirmed
+                                ? l10n.safetyStatusConfirmed
+                                : l10n.safetyStatusPending,
+                            style: TextStyle(
+                              color: c.isConfirmed
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          // The number is the owner's claim; the opt-in is the
+                          // contact's consent. Only both together reach anyone
+                          // by SMS, so a stored-but-unarmed number says so
+                          // outright rather than rendering as silence the
+                          // owner would read as working.
+                          if (c.isSmsReachable)
+                            Text(
+                              l10n.safetySmsBadge,
+                              style: TextStyle(
+                                  color: theme.colorScheme.primary),
+                            )
+                          else if (c.isSmsAwaitingOptIn)
+                            Text(
+                              l10n.safetySmsPending,
+                              style: TextStyle(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                        ],
                       ),
                       trailing: TextButton(
                         onPressed: () => _remove(c),
@@ -392,7 +574,9 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 ),
                 SwitchListTile(
                   title: Text(l10n.safetyAutoLiveShareTitle),
-                  subtitle: Text(l10n.safetyAutoLiveShareSubtitle),
+                  subtitle: Text(_safetyAudienceEnabled
+                      ? l10n.safetyAutoLiveShareSafetySubtitle
+                      : l10n.safetyAutoLiveShareSubtitle),
                   value: _autoLiveShare,
                   onChanged: _prefsEditable ? _setAutoLiveShare : null,
                 ),
@@ -429,7 +613,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                           color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ),
-                  for (final req in _pending)
+                  for (final req in _pending) ...[
                     ListTile(
                       title: Text(
                         l10n.safetyIncomingFrom(
@@ -438,8 +622,26 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                               : req.ownerName,
                         ),
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    ),
+                    // Offered only where the requester stored a number: an
+                    // opt-in against no number consents to nothing, and the
+                    // RPC forces it null anyway.
+                    if (req.hasPhone)
+                      CheckboxListTile(
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: _smsOptIn.contains(req.id),
+                        onChanged: _respondingId != null
+                            ? null
+                            : (v) => setState(() => v == true
+                                ? _smsOptIn.add(req.id)
+                                : _smsOptIn.remove(req.id)),
+                        title: Text(l10n.safetyConfirmSmsLabel),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
                             onPressed: _respondingId != null
@@ -457,6 +659,66 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                         ],
                       ),
                     ),
+                  ],
+                ],
+                if (_contactOf.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                    child: Text(
+                      l10n.safetyContactOfTitle,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(
+                      l10n.safetyContactOfIntro,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  for (final rel in _contactOf) ...[
+                    ListTile(
+                      title: Text(
+                        l10n.safetyContactOfFor(
+                          (rel.ownerName == null || rel.ownerName!.isEmpty)
+                              ? l10n.safetyUnknownRunner
+                              : rel.ownerName!,
+                        ),
+                      ),
+                      trailing: TextButton(
+                        onPressed: _contactOfBusyId != null
+                            ? null
+                            : () => _withdrawContactOf(rel),
+                        style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error),
+                        child: Text(l10n.safetyContactOfWithdraw),
+                      ),
+                    ),
+                    // Offered only where the runner stored a number: a
+                    // consent against no number consents to nothing, and the
+                    // RPC forces it null anyway.
+                    if (rel.hasPhone)
+                      SwitchListTile(
+                        dense: true,
+                        value: rel.isSmsOptedIn,
+                        onChanged: _contactOfBusyId != null
+                            ? null
+                            : (v) => _setContactOfSms(rel, v),
+                        title: Text(l10n.safetyContactOfSmsLabel),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Text(
+                          l10n.safetyContactOfNoPhone,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                  ],
                 ],
               ],
             ),

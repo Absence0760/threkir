@@ -100,6 +100,14 @@ type Server struct {
 	Persister PingPersister
 	RunMeta   RunMetaFetcher
 
+	// HeartRate decides whether a run's pings may carry bpm to an
+	// audience. Nil withholds bpm on every ping. Its answer is cached per
+	// owner for at most HeartRateTTL, not with the room's RunMeta.
+	HeartRate HeartRateConsentFetcher
+
+	heartRateMu    sync.Mutex
+	heartRateCache map[string]heartRateEntry
+
 	// pushLimit is the per-room token bucket protecting against a
 	// runaway / hostile recorder spamming /push at 100 Hz. Lazy-
 	// initialised on first push so dev / tests don't need to wire
@@ -285,7 +293,15 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, runID string,
 	}
 	if err := s.Authorizer(r, runID, action); err != nil {
 		s.bumpAuthFail()
-		http.Error(w, err.Error(), http.StatusForbidden)
+		// The reason goes to the log, never to the caller. The authorizer
+		// separates "unknown run", "not the run owner" and "blocked by run
+		// owner", and handing those back tells an unauthenticated prober
+		// which run ids exist and — the one that actually matters — tells a
+		// blocked person that a specific runner has blocked them. One opaque
+		// body for every denial, the same shape the dataexport and premium
+		// servers already use for their 401s.
+		s.log().Info("livehub: authorization denied", "run_id", runID, "action", action, "err", err)
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return false
 	}
 	return true
@@ -325,6 +341,13 @@ func (s *Server) handlePush(w http.ResponseWriter, r *http.Request, runID string
 	if err := p.Validate(); err != nil {
 		http.Error(w, "invalid ping: "+err.Error(), http.StatusBadRequest)
 		return
+	}
+	// Art 9: bpm reaches an audience only when the owner may share it
+	// (decisions § 2265). The live_run_pings trigger applies the same rule
+	// per insert; the hub's answer can lag a withdrawal by up to
+	// HeartRateTTL.
+	if p.BPM != nil && !s.heartRateShared(r.Context(), runID) {
+		p.BPM = nil
 	}
 	// Privacy-zone clip — fail-closed: if the zone fetch errors we
 	// drop the ping rather than risk publishing through a broken
@@ -410,6 +433,45 @@ func (s *Server) persistLivePing(runID string, p Ping) {
 	if err := s.Persister.InsertLivePing(ctx, runID, meta.UserID, p); err != nil {
 		s.log().Warn("bridge persist: live_run_pings insert failed", "err", err, "run_id", runID)
 	}
+}
+
+// heartRateShared reports whether this run's pings may carry bpm. Unknown
+// is no: without a [RunMetaFetcher] or [HeartRateConsentFetcher] (the dev
+// path) or on a failed lookup the field is withheld. Heart rate is
+// auxiliary to the location feed, so a failure never denies the ping.
+func (s *Server) heartRateShared(ctx context.Context, runID string) bool {
+	if s.RunMeta == nil || s.HeartRate == nil {
+		return false
+	}
+	meta, err := s.Hub.LoadRunMeta(ctx, runID, s.RunMeta)
+	if err != nil || meta == nil {
+		return false
+	}
+	now := time.Now()
+	s.heartRateMu.Lock()
+	e, ok := s.heartRateCache[meta.UserID]
+	s.heartRateMu.Unlock()
+	if ok && now.Sub(e.at) < HeartRateTTL() {
+		return e.shared
+	}
+	shared, err := s.HeartRate.HeartRateShared(ctx, meta.UserID)
+	if err != nil {
+		s.log().Warn("heart-rate consent lookup failed; withholding bpm",
+			"err", err, "run_id", runID)
+		return false
+	}
+	s.heartRateMu.Lock()
+	if s.heartRateCache == nil {
+		s.heartRateCache = make(map[string]heartRateEntry)
+	}
+	s.heartRateCache[meta.UserID] = heartRateEntry{shared: shared, at: now}
+	s.heartRateMu.Unlock()
+	return shared
+}
+
+type heartRateEntry struct {
+	shared bool
+	at     time.Time
 }
 
 // shouldDrop checks the ping against the broadcaster's cached
@@ -528,6 +590,16 @@ func (s *Server) handleSubscribe(w http.ResponseWriter, r *http.Request, runID s
 	// Pro-Round2 #1 + the dedup race.
 	history, ch, unsub, subErr := s.Hub.SubscribeWithHistory(ctx, runID, 0)
 	if subErr != nil {
+		if !errors.Is(subErr, ErrSubscriberCapReached) {
+			// Anything else is the hub failing to reach its backing store —
+			// a SUBSCRIBE the server never acknowledged, most likely. Saying
+			// "cap reached" here would send the operator hunting an
+			// amplification attack that isn't happening, and tell a lone
+			// spectator to back off from a room with no other subscriber.
+			s.log().Error("subscribe failed", "run_id", runID, "err", subErr)
+			_ = c.Close(websocket.StatusInternalError, "live hub unavailable")
+			return
+		}
 		// Per-room subscriber cap reached. Audit/livehub M3. Close
 		// with `1013 Try Again Later` (StatusTryAgainLater) so well-
 		// behaved clients back off rather than reconnect-loop. Also

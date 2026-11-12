@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Depth coverage for the coach <-> athlete relationship that the existing
@@ -26,12 +28,6 @@ import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
  *    active plan: it appears on /plans and the athlete can open /plans/[id]
  *    (owner reads their own plan weeks + workouts).
  */
-
-function isoDate(offsetDays: number): string {
-	const d = new Date();
-	d.setDate(d.getDate() + offsetDays);
-	return d.toISOString().slice(0, 10);
-}
 
 // ─────────────────────────── 1. Multi-athlete roster ───────────────────────────
 
@@ -104,12 +100,15 @@ test.describe('/coaching — a coach with two active athletes (USER_B)', () => {
 		await expect(jaredLink).toBeVisible();
 
 		// DB: Morgan ended, Jared still active.
-		const { data } = await getAdminClient()
-			.from('coach_athletes')
-			.select('athlete_id, status')
-			.eq('coach_id', USER_B.id)
-			.in('athlete_id', [USER_C_PRO.id, USER_A.id]);
-		const byAthlete = new Map((data ?? []).map((r) => [r.athlete_id, r.status]));
+		const data = await readRows(
+			'coach_athletes by coach_id+athlete_id',
+			getAdminClient()
+				.from('coach_athletes')
+				.select('athlete_id, status')
+				.eq('coach_id', USER_B.id)
+				.in('athlete_id', [USER_C_PRO.id, USER_A.id])
+		);
+		const byAthlete = new Map(data.map((r) => [r.athlete_id, r.status]));
 		expect(byAthlete.get(USER_C_PRO.id)).toBe('ended');
 		expect(byAthlete.get(USER_A.id)).toBe('active');
 	});
@@ -142,22 +141,25 @@ test.describe('/coaching/accept/[token] — redeem_coach_invite error branches',
 		});
 		test.afterEach(clearLinks);
 
-		test("the coach redeeming their own token sees 'cannot coach yourself'", async ({ page }) => {
+		test("the coach redeeming their own token is told it is their own invite", async ({ page }) => {
 			await page.goto(`/coaching/accept/${TOKEN}`);
 			await expect(page.getByRole('heading', { name: 'Invite problem' })).toBeVisible({
 				timeout: 10_000
 			});
-			await expect(page.getByRole('alert')).toContainText(/cannot coach yourself/i);
+			await expect(page.getByRole('alert')).toContainText(/your own invite/i);
 			await expect(page).toHaveURL(/\/coaching\/accept\//);
 
 			// The invite stays pending + athlete-less — self-redemption did not consume it.
-			const { data } = await getAdminClient()
-				.from('coach_athletes')
-				.select('status, athlete_id')
-				.eq('invite_token', TOKEN)
-				.single();
-			expect(data?.status).toBe('pending');
-			expect(data?.athlete_id).toBeNull();
+			const data = await readRow(
+				'coach_athletes by invite_token',
+				getAdminClient()
+					.from('coach_athletes')
+					.select('status, athlete_id')
+					.eq('invite_token', TOKEN)
+					.single()
+			);
+			expect(data.status).toBe('pending');
+			expect(data.athlete_id).toBeNull();
 		});
 	});
 
@@ -197,22 +199,28 @@ test.describe('/coaching/accept/[token] — redeem_coach_invite error branches',
 			// The second invite is untouched (still pending) and the athlete still
 			// has exactly one live link to this coach — the original active one.
 			const admin = getAdminClient();
-			const { data: second } = await admin
-				.from('coach_athletes')
-				.select('status, athlete_id')
-				.eq('invite_token', SECOND_TOKEN)
-				.single();
-			expect(second?.status).toBe('pending');
-			expect(second?.athlete_id).toBeNull();
+			const second = await readRow(
+				'coach_athletes by invite_token',
+				admin
+					.from('coach_athletes')
+					.select('status, athlete_id')
+					.eq('invite_token', SECOND_TOKEN)
+					.single()
+			);
+			expect(second.status).toBe('pending');
+			expect(second.athlete_id).toBeNull();
 
-			const { data: live } = await admin
-				.from('coach_athletes')
-				.select('invite_token, status')
-				.eq('coach_id', USER_B.id)
-				.eq('athlete_id', USER_C_PRO.id);
+			const live = await readRows(
+				'coach_athletes by coach_id+athlete_id',
+				admin
+					.from('coach_athletes')
+					.select('invite_token, status')
+					.eq('coach_id', USER_B.id)
+					.eq('athlete_id', USER_C_PRO.id)
+			);
 			expect(live).toHaveLength(1);
-			expect(live![0].invite_token).toBe(ACTIVE_TOKEN);
-			expect(live![0].status).toBe('active');
+			expect(live[0].invite_token).toBe(ACTIVE_TOKEN);
+			expect(live[0].status).toBe('active');
 		});
 	});
 });
@@ -317,8 +325,8 @@ test.describe('/coaching/athletes/[id] — a skipped workout leaves the denomina
 				name: 'E2E Skipped Plan',
 				goal_event: 'distance_10k',
 				goal_distance_m: 10000,
-				start_date: isoDate(-14),
-				end_date: isoDate(14),
+				start_date: browserDate(-14),
+				end_date: browserDate(14),
 				status: 'active',
 				assigned_by_coach_id: USER_B.id
 			})
@@ -333,10 +341,10 @@ test.describe('/coaching/athletes/[id] — a skipped workout leaves the denomina
 
 		// Four real workouts (no rest), so the skipped row is the only thing that
 		// moves between the buggy and correct counts:
-		//   - done (manually_completed)        : isoDate(-5)
-		//   - missed (past, not done/skipped)  : isoDate(-4)
-		//   - SKIPPED (past, skipped_at set)   : isoDate(-3)
-		//   - upcoming (future)                : isoDate(+3)
+		//   - done (manually_completed)        : browserDate(-5)
+		//   - missed (past, not done/skipped)  : browserDate(-4)
+		//   - SKIPPED (past, skipped_at set)   : browserDate(-3)
+		//   - upcoming (future)                : browserDate(+3)
 		// `manually_completed` is set on every row of the batch (PostgREST unions
 		// keys across the array and writes explicit NULL for omitted keys, which
 		// the NOT NULL constraint rejects). Skipped is off the books: the done
@@ -346,28 +354,28 @@ test.describe('/coaching/athletes/[id] — a skipped workout leaves the denomina
 		await admin.from('plan_workouts').insert([
 			{
 				week_id: week!.id,
-				scheduled_date: isoDate(-5),
+				scheduled_date: browserDate(-5),
 				kind: 'easy',
 				manually_completed: true,
 				skipped_at: null
 			},
 			{
 				week_id: week!.id,
-				scheduled_date: isoDate(-4),
+				scheduled_date: browserDate(-4),
 				kind: 'easy',
 				manually_completed: false,
 				skipped_at: null
 			},
 			{
 				week_id: week!.id,
-				scheduled_date: isoDate(-3),
+				scheduled_date: browserDate(-3),
 				kind: 'easy',
 				manually_completed: false,
 				skipped_at: new Date().toISOString()
 			},
 			{
 				week_id: week!.id,
-				scheduled_date: isoDate(3),
+				scheduled_date: browserDate(3),
 				kind: 'easy',
 				manually_completed: false,
 				skipped_at: null
@@ -435,8 +443,8 @@ test.describe('/plans — an assigned plan is the athlete own active plan (USER_
 				name: PLAN_NAME,
 				goal_event: 'distance_full',
 				goal_distance_m: 42195,
-				start_date: isoDate(-3),
-				end_date: isoDate(25),
+				start_date: browserDate(-3),
+				end_date: browserDate(25),
 				status: 'active',
 				assigned_by_coach_id: USER_B.id
 			})
@@ -450,8 +458,8 @@ test.describe('/plans — an assigned plan is the athlete own active plan (USER_
 			.select('id')
 			.single();
 		await admin.from('plan_workouts').insert([
-			{ week_id: week!.id, scheduled_date: isoDate(-1), kind: 'easy', manually_completed: false },
-			{ week_id: week!.id, scheduled_date: isoDate(1), kind: 'long', manually_completed: false }
+			{ week_id: week!.id, scheduled_date: browserDate(-1), kind: 'easy', manually_completed: false },
+			{ week_id: week!.id, scheduled_date: browserDate(1), kind: 'long', manually_completed: false }
 		]);
 	});
 
@@ -463,7 +471,7 @@ test.describe('/plans — an assigned plan is the athlete own active plan (USER_
 		await page.goto('/plans');
 		// The plan card links to its detail by name (the athlete owns it, so it
 		// flows through the normal "users own their plans" read).
-		const planCard = page.locator(`a.card[href="/plans/${planId}"]`);
+		const planCard = page.locator(`.card:has(a.card-link[href="/plans/${planId}"])`);
 		await expect(planCard).toBeVisible({ timeout: 10_000 });
 		await expect(planCard).toContainText(PLAN_NAME);
 		// Badged active.
@@ -471,7 +479,7 @@ test.describe('/plans — an assigned plan is the athlete own active plan (USER_
 
 		// The athlete opens their own plan: owner reads weeks + workouts, so the
 		// detail page renders the plan name as its heading (not the not-found card).
-		await planCard.click();
+		await planCard.locator('a.card-link').click();
 		await page.waitForURL(new RegExp(`/plans/${planId}$`), { timeout: 10_000 });
 		await expect(page.getByRole('heading', { level: 1, name: PLAN_NAME })).toBeVisible({
 			timeout: 10_000

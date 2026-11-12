@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
+	import { onMount, untrack } from 'svelte';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { valueLimit } from '#lib/core/column_limits.ts';
 	import {
 		fetchFoodLogWithError,
 		fetchLatestWeightKg,
@@ -18,37 +21,90 @@
 		createRecipe,
 		deleteRecipe,
 		logRecipe,
+		fetchNutritionPlansWithError,
+		fetchNutritionPlansByIds,
+		fetchMyNutritionAssignmentsWithError,
+		followNutritionPlan,
+		planAssignmentOf,
+		planTargetsOf,
 		type FoodEntry,
 		type MealTemplateSummary,
 		type RecipeSummary,
-	} from '$lib/core/data';
-	import { templateFromEntries } from '$lib/nutrition/meal_template';
-	import { recipeFromEntries } from '$lib/nutrition/recipe';
-	import { loadSettings, effective } from '$lib/settings/settings';
+	} from '#lib/core/data.ts';
+	import {
+		activeAssignmentForDate,
+		planDraftFromTargets,
+		prescribedTargets,
+		type PlanDraft,
+	} from '#lib/nutrition/meal_plan.ts';
+	import { nutritionAdherence } from '#lib/nutrition/nutrition_adherence.ts';
+	import type { NutritionPlan, NutritionPlanAssignment } from '#lib/types.ts';
+	import { templateFromEntries } from '#lib/nutrition/meal_template.ts';
+	import { recipeFromEntries } from '#lib/nutrition/recipe.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import {
 		computeNutritionTargets,
 		ageFromDob,
 		type ActivityLevel,
+		type BodyMetricsInput,
 		type WeightGoal,
 		type NutritionTargets,
-	} from '$lib/nutrition/nutrition_targets';
-	import { exerciseCaloriesForDay } from '$lib/nutrition/exercise_calories';
+	} from '#lib/nutrition/nutrition_targets.ts';
+	import { healthUseDob } from '#lib/core/health_consent.ts';
+	import { exerciseCaloriesForDay } from '#lib/nutrition/exercise_calories.ts';
 	import {
 		sumMacros,
 		groupByMealSlot,
 		ringFraction,
 		type MealSlotGroup,
-	} from '$lib/nutrition/nutrition_totals';
-	import { computeDayBudget, type MacroKind } from '$lib/nutrition/nutrition_budget';
-	import { hydrationTargetMl, hydrationBudget } from '$lib/nutrition/hydration';
-	import { weeklyIntakeSummary, weeklyProteinSummary } from '$lib/nutrition/nutrition_week';
-	import type { FoodMacros } from '$lib/nutrition/food_search';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import FoodLogEditor from '$lib/components/FoodLogEditor.svelte';
+	} from '#lib/nutrition/nutrition_totals.ts';
+	import { macroBudget, type MacroKind } from '#lib/nutrition/nutrition_budget.ts';
+	import { hydrationTargetMl, hydrationBudget } from '#lib/nutrition/hydration.ts';
+	import {
+		extendedNutrientTargets,
+		extendedNutrientBudgets,
+	} from '#lib/nutrition/extended_nutrients.ts';
+	import { weeklyIntakeSummary, weeklyProteinSummary } from '#lib/nutrition/nutrition_week.ts';
+	import {
+		DIARY_DATE_PARAM,
+		diaryWindow,
+		entryTimestampFor,
+		isDiaryToday,
+		isoDateOf,
+		msUntilNextLocalMidnight,
+		resolveDiaryDate,
+		stepDiaryDate,
+		trailingDates,
+		waterDayKey,
+	} from '#lib/nutrition/diary_day.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import type { FoodMacros } from '#lib/nutrition/food_search.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { formatDecimal } from '#lib/format/number.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
+	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
+	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
+	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
+
+	// The diary day the page is showing — today unless `?date=` names an
+	// earlier one. Held as state rather than derived so `load()` and every
+	// write path read exactly the day the header shows.
+	let viewDate = $state(isoDateOf(new Date()));
+	let todayIso = $state(isoDateOf(new Date()));
+	let yesterdayIso = $state(stepDiaryDate(isoDateOf(new Date()), -1, new Date()));
+	let authReady = $state(false);
+	// Deliberately plain `let`, not `$state`: the URL effect below writes them
+	// and must not re-run on its own writes.
+	let loadedDate: string | null = null;
+	let loadGen = 0;
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -56,10 +112,19 @@
 	let entries = $state<FoodEntry[]>([]);
 	let targets = $state<NutritionTargets | null>(null);
 	let exerciseKcal = $state(0);
-	let weekDays = $state<{ label: string; calories: number; protein: number }[]>([]);
+	let weekDays = $state<{ iso: string; label: string; calories: number; protein: number }[]>([]);
 	let waterMl = $state(0);
 	let weightKg = $state<number | null>(null);
 	let exerciseMinutes = $state(0);
+
+	let plans = $state<NutritionPlan[]>([]);
+	let assignments = $state<NutritionPlanAssignment[]>([]);
+	let governingPlan = $state<NutritionPlan | null>(null);
+	let isTrainingDay = $state(false);
+	let bodyInput = $state<BodyMetricsInput | null>(null);
+	let showPlanEditor = $state(false);
+	let planSeed = $state<PlanDraft | null>(null);
+	let followingPlanId = $state<string | null>(null);
 
 	let templates = $state<MealTemplateSummary[]>([]);
 	let templatesError = $state(false);
@@ -74,7 +139,11 @@
 	let recipesError = $state(false);
 	let showSaveRecipe = $state(false);
 	let recipeName = $state('');
-	let recipeServings = $state(1);
+	// `recipes.servings` has a floor of 1 in the column and no ceiling there —
+	// but `numeric(5,1)` has one, so an unbounded field turns a mistyped 9 into
+	// a raw 22003 rather than a 23514 (decisions § 792).
+	const servingsBounds = valueLimit('recipes.servings');
+	let recipeServings = $state(servingsBounds.min);
 	let savingRecipe = $state(false);
 	let loggingRecipeId = $state<string | null>(null);
 	let confirmDeleteRecipe = $state<RecipeSummary | null>(null);
@@ -82,22 +151,8 @@
 
 	const WATER_UNIT_ML = 250;
 
-	function dayStartIso(d: Date): string {
-		const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-		return x.toISOString();
-	}
-	function todayKey(): string {
-		const d = new Date();
-		return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-	}
-
-	/// Zero-padded local YYYY-MM-DD for the per-meal detail route URL.
-	function todayIsoDate(): string {
-		const d = new Date();
-		const mm = String(d.getMonth() + 1).padStart(2, '0');
-		const dd = String(d.getDate()).padStart(2, '0');
-		return `${d.getFullYear()}-${mm}-${dd}`;
-	}
+	/// Days of intake the trend chart covers, ending on the viewed day.
+	const TREND_DAYS = 7;
 
 	const consumed = $derived<FoodMacros>(sumMacros(entries));
 	const groups = $derived<MealSlotGroup<FoodEntry>[]>(groupByMealSlot(entries));
@@ -105,11 +160,12 @@
 	function waterStorageKey(): string {
 		// User-scoped (issue #231): a shared browser profile's next account
 		// must not inherit — or increment — the prior account's water count.
-		return `water_ml_${auth.user?.id ?? 'anon'}_${todayKey()}`;
+		// Day-scoped by the viewed day, so stepping back shows that day's count.
+		return `water_ml_${auth.user?.id ?? 'anon'}_${waterDayKey(viewDate)}`;
 	}
 
 	function litres(ml: number): string {
-		return (ml / 1000).toFixed(2).replace(/\.?0+$/, '');
+		return formatDecimal(ml / 1000, 2, currentLocale()).replace(/[.,]?0+$/, '');
 	}
 
 	onMount(async () => {
@@ -118,97 +174,202 @@
 			loading = false;
 			return;
 		}
-		await load();
+		authReady = true;
+	});
+
+	// The URL owns which day is shown, so a back-filled day is linkable and the
+	// browser's back button steps days. `?date=` is resolved fail-closed —
+	// a malformed or future value lands on today rather than an empty day.
+	$effect(() => {
+		const requested = page.url.searchParams.get(DIARY_DATE_PARAM);
+		const now = new Date();
+		todayIso = isoDateOf(now);
+		yesterdayIso = stepDiaryDate(todayIso, -1, now);
+		const next = resolveDiaryDate(requested, now);
+		viewDate = next;
+		if (!authReady || next === loadedDate) return;
+		loadedDate = next;
+		// The fetch is a side effect of the URL changing, not a dependency of it:
+		// untracked so `load`'s own synchronous reads (`viewDate`, the auth store)
+		// cannot re-arm the effect that just wrote them.
+		untrack(() => void load());
+	});
+
+	// The effect above is the ONLY thing that recomputed the day, and it fires on
+	// a URL or auth change — never on the clock. So a tab left open past local
+	// midnight kept labelling the previous day "Today" and kept the Next-day step
+	// disabled. Nothing was ever written to the wrong day (every write resolves
+	// `entryTimestampFor(viewDate, new Date())` at save time), but the header lied.
+	//
+	// Two triggers, each costing one wakeup a day rather than the 1440 a polling
+	// interval would: a single timeout armed for the next local midnight, which is
+	// the only thing that reaches a tab that stays VISIBLE across it (a kitchen
+	// screen, a second monitor); and a visibility check for the tab that was
+	// backgrounded across it, where the browser throttled that timer or the
+	// machine slept through it entirely.
+	let rolloverTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function armRollover(now: Date) {
+		if (rolloverTimer !== null) clearTimeout(rolloverTimer);
+		rolloverTimer = setTimeout(syncDay, msUntilNextLocalMidnight(now));
+	}
+
+	function syncDay() {
+		const now = new Date();
+		const iso = isoDateOf(now);
+		if (iso !== todayIso) {
+			todayIso = iso;
+			yesterdayIso = stepDiaryDate(iso, -1, now);
+			// Re-resolved from the URL, not stepped from `viewDate`: a bare
+			// `/nutrition` means "today" and must follow the clock onto the new day,
+			// while an explicit past `?date=` stays exactly where it is and only
+			// changes its label. Writing these does not re-arm the effect above —
+			// it reads neither.
+			const next = resolveDiaryDate(page.url.searchParams.get(DIARY_DATE_PARAM), now);
+			if (next !== viewDate) {
+				viewDate = next;
+				loadedDate = next;
+				void load();
+			}
+		}
+		armRollover(now);
+	}
+
+	onMount(() => {
+		const onVisibility = () => {
+			if (document.visibilityState === 'visible') syncDay();
+		};
+		document.addEventListener('visibilitychange', onVisibility);
+		armRollover(new Date());
+		return () => {
+			document.removeEventListener('visibilitychange', onVisibility);
+			if (rolloverTimer !== null) clearTimeout(rolloverTimer);
+		};
 	});
 
 	async function load() {
 		if (!auth.user) return;
+		const day = viewDate;
+		const dayWindow = diaryWindow(day);
+		const trendWindow = diaryWindow(day, TREND_DAYS);
+		if (!dayWindow || !trendWindow) return;
+		// Stepping days faster than the network answers leaves two loads in
+		// flight; only the newest may write, or a slow response repaints the day
+		// the user has already left.
+		const gen = ++loadGen;
+		const current = () => gen === loadGen;
 		loading = true;
 		loadError = null;
 		try {
-			const now = new Date();
-			const todayStart = dayStartIso(now);
-			const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 			// The food-log read is the primary surface: distinguish a real fetch
 			// failure from a genuinely empty day so a transient error doesn't show
 			// "nothing logged" and invite re-logging meals the user already has.
-			const todayFood = await fetchFoodLogWithError(todayStart, tomorrow.toISOString());
-			if (todayFood.error) {
-				loadError = todayFood.error;
+			const dayFood = await fetchFoodLogWithError(dayWindow.startIso, dayWindow.endIso);
+			if (!current()) return;
+			if (dayFood.error) {
+				loadError = errorCopy(dayFood.error, m, 'nutrition: day food');
 				loading = false;
 				return;
 			}
-			entries = todayFood.entries;
+			entries = dayFood.entries;
 
-			// Targets: assemble body metrics + activity/goal prefs, plus today's
-			// runs + gym sessions for the dynamic-TDEE "base + exercise" goal.
-			const [settings, weight, profileRes, recentRuns, recentGym] = await Promise.all([
+			// Targets: assemble body metrics + activity/goal prefs, plus the
+			// viewed day's runs + gym sessions for the "base + exercise" goal.
+			const [settings, weight, profileRes, dayRuns, dayGym] = await Promise.all([
 				loadSettings(auth.user.id),
 				fetchLatestWeightKg(),
-				supabase.rpc('get_my_profile'),
-				fetchRuns({ limit: 50 }),
-				fetchGymWorkouts(50),
+				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+				fetchRuns({
+					startedAtFrom: dayWindow.startIso,
+					startedAtBefore: dayWindow.endIso,
+				}),
+				fetchGymWorkouts({
+					startedAtFrom: dayWindow.startIso,
+					startedAtBefore: dayWindow.endIso,
+				}),
 			]);
+			if (!current()) return;
 			weightKg = weight;
-			const tomorrowIso = tomorrow.toISOString();
-			const isToday = (iso: string) => iso >= todayStart && iso < tomorrowIso;
-			const todayRuns = recentRuns.filter((r) => isToday(r.started_at));
-			const todayGym = recentGym.filter((w) => isToday(w.started_at));
 			exerciseKcal = exerciseCaloriesForDay({
-				runs: todayRuns.map((r) => ({ distanceM: r.distance_m })),
-				gymSessions: todayGym.map((w) => ({ durationS: w.duration_s })),
+				runs: dayRuns.map((r) => ({ distanceM: r.distance_m })),
+				gymSessions: dayGym.map((w) => ({ durationS: w.duration_s })),
 				weightKg: weight,
 			});
-			// Active minutes today = run + gym duration, for the hydration goal's
-			// sweat-replacement add (runs without a duration contribute nothing).
+			// Active minutes that day = run + gym duration, for the hydration
+			// goal's sweat-replacement add (runs without a duration add nothing).
 			const activeSeconds =
-				todayRuns.reduce((s, r) => s + (r.duration_s ?? 0), 0) +
-				todayGym.reduce((s, w) => s + (w.duration_s ?? 0), 0);
+				dayRuns.reduce(
+					(s, r) => s + (isPlausibleRunDuration(r.duration_s ?? 0) ? (r.duration_s ?? 0) : 0),
+					0,
+				) +
+				dayGym.reduce((s, w) => s + (w.duration_s ?? 0), 0);
 			exerciseMinutes = Math.round(activeSeconds / 60);
 			const prof = profileRes.data as
-				| { height_cm: number | null; date_of_birth: string | null; gender: string | null }
+				| { height_cm: number | null; gender: string | null }
 				| null;
-			targets = computeNutritionTargets({
+			const body: BodyMetricsInput = {
 				weightKg,
 				heightCm: prof?.height_cm ?? null,
-				ageYears: ageFromDob(prof?.date_of_birth, Date.now()),
+				// A calorie target is an Art 9 use of the age record, which
+				// carries no consent term of its own (§ 718 / § 722). The
+				// consent stamp rides on the same `get_my_profile()` row.
+				ageYears: ageFromDob(healthUseDob(profileRes.data), Date.now()),
 				sex: prof?.gender ?? null,
 				activityLevel: effective<ActivityLevel>(settings, 'nutrition_activity_level', 'moderate') ?? 'moderate',
 				goal: effective<WeightGoal>(settings, 'nutrition_goal', 'maintain') ?? 'maintain',
-				exerciseKcal,
-			});
+			};
+			bodyInput = body;
+			targets = computeNutritionTargets({ ...body, exerciseKcal });
 
-			// Weekly calorie trend (last 7 days incl. today). Surface a fetch
-			// failure the same way the today's-food path does — otherwise the
-			// swallowed error leaves an empty trend chart indistinguishable from
-			// a week with nothing logged.
-			const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-			const week = await fetchFoodLogWithError(weekStart.toISOString(), tomorrow.toISOString());
-			if (week.error) {
-				loadError = week.error;
+			// The plan governing this day replaces the computed target, so a
+			// failed read of it cannot fall back to the computed numbers: that
+			// would show a follower the wrong target as if it were theirs.
+			const [planRes, assignRes] = await Promise.all([
+				fetchNutritionPlansWithError(),
+				fetchMyNutritionAssignmentsWithError(),
+			]);
+			if (!current()) return;
+			const planError = planRes.error ?? assignRes.error;
+			if (planError !== null) {
+				loadError = errorCopy(planError, m, 'nutrition: plans');
 				loading = false;
 				return;
 			}
-			const weekEntries = week.entries;
+			plans = planRes.plans;
+			assignments = assignRes.assignments;
+			const governing = activeAssignmentForDate(assignments.map(planAssignmentOf), day);
+			let plan = governing ? (plans.find((p) => p.id === governing.planId) ?? null) : null;
+			if (governing && plan === null) {
+				plan = (await fetchNutritionPlansByIds([governing.planId]))[0] ?? null;
+				if (!current()) return;
+			}
+			governingPlan = plan;
+			isTrainingDay = dayRuns.length + dayGym.length > 0;
+
+			// Trend: the seven days ending on the viewed day. Surface a fetch
+			// failure the same way the day's-food path does — otherwise the
+			// swallowed error leaves an empty trend chart indistinguishable from
+			// a week with nothing logged.
+			const week = await fetchFoodLogWithError(trendWindow.startIso, trendWindow.endIso);
+			if (!current()) return;
+			if (week.error) {
+				loadError = errorCopy(week.error, m, 'nutrition: week trend');
+				loading = false;
+				return;
+			}
 			const calByDay = new Map<string, number>();
 			const proByDay = new Map<string, number>();
-			for (const e of weekEntries) {
-				const d = new Date(e.started_at);
-				const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+			for (const e of week.entries) {
+				const key = isoDateOf(new Date(e.started_at));
 				calByDay.set(key, (calByDay.get(key) ?? 0) + (e.calories ?? 0));
 				proByDay.set(key, (proByDay.get(key) ?? 0) + (e.protein_g ?? 0));
 			}
-			const days: { label: string; calories: number; protein: number }[] = [];
-			for (let i = 6; i >= 0; i--) {
-				const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-				const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-				days.push({
-					label: d.toLocaleDateString(undefined, { weekday: 'short' }),
-					calories: Math.round(calByDay.get(key) ?? 0),
-					protein: Math.round(proByDay.get(key) ?? 0),
-				});
-			}
-			weekDays = days;
+			weekDays = trailingDates(day, TREND_DAYS).map((iso) => ({
+				iso,
+				label: new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' }),
+				calories: Math.round(calByDay.get(iso) ?? 0),
+				protein: Math.round(proByDay.get(iso) ?? 0),
+			}));
 
 			const stored = localStorage.getItem(waterStorageKey());
 			waterMl = stored ? Number(stored) || 0 : 0;
@@ -218,11 +379,11 @@
 		} catch (e) {
 			// A failed secondary load (week trend, water, targets) must not render
 			// as an empty page indistinguishable from "nothing logged" — surface
-			// the same load-error banner the primary today's-food path uses.
+			// the same load-error banner the primary day's-food path uses.
 			console.warn('nutrition load failed', e);
-			loadError = (e as Error).message;
+			if (current()) loadError = errorCopy(e, m, 'nutrition: loadError');
 		}
-		loading = false;
+		if (current()) loading = false;
 	}
 
 	async function loadTemplates() {
@@ -240,6 +401,32 @@
 	function onLogged() {
 		showLog = false;
 		void load();
+	}
+
+	/// Navigate the diary to `iso`. Today keeps the bare `/nutrition` URL so the
+	/// canonical entry point never carries a redundant query string.
+	function goToDay(iso: string): Promise<void> {
+		const target = isDiaryToday(iso, new Date())
+			? '/nutrition'
+			: `/nutrition?${DIARY_DATE_PARAM}=${iso}`;
+		return goto(target, { reset: false });
+	}
+
+	let prevDayBtn = $state<HTMLButtonElement | null>(null);
+
+	async function stepForward() {
+		const next = stepDiaryDate(viewDate, 1, new Date());
+		// Landing on today disables the button that was just pressed, which would
+		// drop focus to the document body. Hand it to its sibling instead.
+		const willDisable = next === todayIso;
+		await goToDay(next);
+		if (willDisable) prevDayBtn?.focus();
+	}
+
+	/// Same reason as `stepForward`: the Today button unmounts on arrival.
+	async function goToToday() {
+		await goToDay(todayIso);
+		prevDayBtn?.focus();
 	}
 
 	async function saveMeal() {
@@ -266,10 +453,39 @@
 			mealName = '';
 			await loadTemplates();
 		} catch (e) {
-			showToast(m('nutrition.templateSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.templateSaveFailed', { error: errorCopy(e, m, 'nutrition.templateSaveFailed') }), 'error');
 		} finally {
 			savingMeal = false;
 		}
+	}
+
+	function openPlanEditor(seed: PlanDraft | null) {
+		planSeed = seed;
+		showPlanEditor = true;
+	}
+
+	async function followPlan(plan: NutritionPlan) {
+		if (followingPlanId) return;
+		followingPlanId = plan.id;
+		try {
+			await followNutritionPlan(plan.id, todayIso, assignments);
+			showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
+		} catch (e) {
+			showToast(m('nutrition.plan.followFailed', { error: errorCopy(e, m, 'nutrition.plan.followFailed') }), 'error');
+		} finally {
+			followingPlanId = null;
+		}
+		await load();
+	}
+
+	async function onPlanSaved(plan: NutritionPlan, follow: boolean) {
+		showPlanEditor = false;
+		if (follow) {
+			await followPlan(plan);
+			return;
+		}
+		showToast(m('nutrition.plan.saved'), 'success');
+		await load();
 	}
 
 	async function logTemplate(t: MealTemplateSummary) {
@@ -278,11 +494,13 @@
 		try {
 			const detail = await fetchMealTemplateDetail(t.id);
 			if (!detail) throw new Error('not found');
-			const n = await logMealTemplate(detail);
+			const n = await logMealTemplate(detail, {
+				startedAt: entryTimestampFor(viewDate, new Date()),
+			});
 			showToast(m('nutrition.templateLogged', { n, name: t.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.templateLogFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.templateLogFailed', { error: errorCopy(e, m, 'nutrition.templateLogFailed') }), 'error');
 		} finally {
 			loggingTemplateId = null;
 		}
@@ -297,7 +515,7 @@
 			templates = templates.filter((x) => x.id !== t.id);
 			confirmDeleteTemplate = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteTemplateFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.deleteTemplateFailed', { error: errorCopy(e, m, 'nutrition.deleteTemplateFailed') }), 'error');
 		} finally {
 			deletingTemplate = false;
 		}
@@ -310,7 +528,10 @@
 			const draft = recipeFromEntries(recipeName, entries);
 			await createRecipe({
 				name: draft.name,
-				servings: recipeServings >= 1 ? recipeServings : 1,
+				servings: Math.min(
+					Math.max(recipeServings, servingsBounds.min),
+					servingsBounds.max,
+				),
 				meal_slot: draft.mealSlot,
 				ingredients: draft.ingredients.map((it) => ({
 					position: it.position,
@@ -326,10 +547,10 @@
 			showToast(m('nutrition.recipeSaved'), 'success');
 			showSaveRecipe = false;
 			recipeName = '';
-			recipeServings = 1;
+			recipeServings = servingsBounds.min;
 			await loadRecipes();
 		} catch (e) {
-			showToast(m('nutrition.recipeSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.recipeSaveFailed', { error: errorCopy(e, m, 'nutrition.recipeSaveFailed') }), 'error');
 		} finally {
 			savingRecipe = false;
 		}
@@ -341,11 +562,13 @@
 		try {
 			const detail = await fetchRecipeDetail(r.id);
 			if (!detail) throw new Error('not found');
-			const n = await logRecipe(detail);
+			const n = await logRecipe(detail, {
+				startedAt: entryTimestampFor(viewDate, new Date()),
+			});
 			showToast(m('nutrition.recipeLogged', { n, name: r.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.recipeLogFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.recipeLogFailed', { error: errorCopy(e, m, 'nutrition.recipeLogFailed') }), 'error');
 		} finally {
 			loggingRecipeId = null;
 		}
@@ -360,7 +583,7 @@
 			recipes = recipes.filter((x) => x.id !== r.id);
 			confirmDeleteRecipe = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteRecipeFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.deleteRecipeFailed', { error: errorCopy(e, m, 'nutrition.deleteRecipeFailed') }), 'error');
 		} finally {
 			deletingRecipe = false;
 		}
@@ -391,7 +614,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('nutrition.deleteFailed', { error: e instanceof Error ? e.message : String(e) }),
+					m('nutrition.deleteFailed', { error: errorCopy(e, m, 'nutrition.deleteFailed') }),
 					'error',
 				),
 		});
@@ -408,24 +631,54 @@
 		unit: string;
 		color: string;
 	};
+	// A plan governing the viewed day replaces the computed target outright;
+	// a macro it leaves unprescribed has no target that day.
+	const prescribed = $derived(
+		governingPlan ? prescribedTargets(planTargetsOf(governingPlan), isTrainingDay) : null,
+	);
+	const dayTargets = $derived<{
+		calories: number;
+		proteinG: number | null;
+		carbsG: number | null;
+		fatG: number | null;
+	} | null>(prescribed ?? targets);
+	const adherence = $derived(nutritionAdherence(prescribed, consumed));
+	const trainingOverrideApplies = $derived(
+		prescribed?.isTrainingDay === true &&
+			governingPlan !== null &&
+			(governingPlan.training_calories !== null || governingPlan.training_carbs_g !== null),
+	);
+	const planSeedFromToday = $derived(bodyInput ? planDraftFromTargets(bodyInput) : null);
 	const rings = $derived<RingDef[]>([
-		{ key: 'calories', label: m('nutrition.calories'), consumed: consumed.calories, target: targets?.calories ?? null, unit: 'kcal', color: 'var(--color-primary)' },
-		{ key: 'protein', label: m('nutrition.protein'), consumed: consumed.proteinG, target: targets?.proteinG ?? null, unit: 'g', color: 'var(--color-accent-cyan)' },
-		{ key: 'carbs', label: m('nutrition.carbs'), consumed: consumed.carbsG, target: targets?.carbsG ?? null, unit: 'g', color: 'var(--color-secondary)' },
-		{ key: 'fat', label: m('nutrition.fat'), consumed: consumed.fatG, target: targets?.fatG ?? null, unit: 'g', color: 'var(--color-warning)' },
+		{ key: 'calories', label: m('nutrition.calories'), consumed: consumed.calories, target: dayTargets?.calories ?? null, unit: 'kcal', color: 'var(--color-primary)' },
+		{ key: 'protein', label: m('nutrition.protein'), consumed: consumed.proteinG, target: dayTargets?.proteinG ?? null, unit: 'g', color: 'var(--color-accent-cyan)' },
+		{ key: 'carbs', label: m('nutrition.carbs'), consumed: consumed.carbsG, target: dayTargets?.carbsG ?? null, unit: 'g', color: 'var(--color-secondary)' },
+		{ key: 'fat', label: m('nutrition.fat'), consumed: consumed.fatG, target: dayTargets?.fatG ?? null, unit: 'g', color: 'var(--color-warning)' },
 	]);
-	const dayBudget = $derived(computeDayBudget(consumed, targets));
+	const dayBudget = $derived(
+		dayTargets
+			? {
+					calories: macroBudget(consumed.calories, dayTargets.calories, 'calories'),
+					protein: macroBudget(consumed.proteinG, dayTargets.proteinG, 'protein'),
+					carbs: macroBudget(consumed.carbsG, dayTargets.carbsG, 'carbs'),
+					fat: macroBudget(consumed.fatG, dayTargets.fatG, 'fat'),
+				}
+			: null,
+	);
 	// The arc clamps at full, so an over day is invisible without this.
 	const calorieBudget = $derived(dayBudget?.calories ?? null);
 	const waterTargetMl = $derived(hydrationTargetMl(weightKg, exerciseMinutes));
 	const waterBudget = $derived(hydrationBudget(waterMl, waterTargetMl));
+	const nutrientBudgets = $derived(
+		extendedNutrientBudgets(entries, extendedNutrientTargets(targets, exerciseMinutes)),
+	);
 	const hasMeals = $derived(groups.length > 0);
 	const hasAnyData = $derived(entries.length > 0 || weekDays.some((d) => d.calories > 0));
 	const weekSummary = $derived(
-		weeklyIntakeSummary(weekDays.map((d) => d.calories), targets?.calories ?? null),
+		weeklyIntakeSummary(weekDays.map((d) => d.calories), dayTargets?.calories ?? null),
 	);
 	const proteinSummary = $derived(
-		weeklyProteinSummary(weekDays.map((d) => d.protein), targets?.proteinG ?? null),
+		weeklyProteinSummary(weekDays.map((d) => d.protein), dayTargets?.proteinG ?? null),
 	);
 	// The 7-day chart plots one metric at a time. Both series (calories +
 	// protein) are already collected per day and each has its own logged-day
@@ -437,7 +690,7 @@
 			return {
 				values: weekDays.map((d) => d.protein),
 				avg: proteinSummary.avgProteinG,
-				goal: targets?.proteinG ?? null,
+				goal: dayTargets?.proteinG ?? null,
 				unit: 'g',
 				avgLabel: m('nutrition.trendAvgProtein', { n: proteinSummary.avgProteinG }),
 			};
@@ -445,7 +698,7 @@
 		return {
 			values: weekDays.map((d) => d.calories),
 			avg: weekSummary.avgCalories,
-			goal: targets?.calories ?? null,
+			goal: dayTargets?.calories ?? null,
 			unit: 'kcal',
 			avgLabel: m('nutrition.trendAvgCalories', { n: weekSummary.avgCalories }),
 		};
@@ -454,6 +707,16 @@
 	// its line stays on-chart even when no logged day reaches it.
 	const trendMax = $derived(
 		Math.max(1, ...trendSeries.values, trendSeries.goal ?? 0),
+	);
+
+	const isViewingToday = $derived(viewDate === todayIso);
+	const canGoForward = $derived(viewDate < todayIso);
+	const dayLabel = $derived(
+		isViewingToday
+			? m('dash.today')
+			: viewDate === yesterdayIso
+				? m('nutrition.day.yesterday')
+				: formatDate(viewDate),
 	);
 </script>
 
@@ -474,28 +737,69 @@
 		</div>
 	</header>
 
+	<div class="day-bar">
+		<nav class="day-nav" aria-label={m('nutrition.day.navLabel')}>
+			<button
+				bind:this={prevDayBtn}
+				class="icon-btn day-step"
+				type="button"
+				onclick={() => void goToDay(stepDiaryDate(viewDate, -1, new Date()))}
+				aria-label={m('nutrition.day.previous')}
+				data-testid="diary-prev-day"
+			>
+				<span class="material-symbols" aria-hidden="true">chevron_left</span>
+			</button>
+			<span class="day-label" aria-live="polite" data-testid="diary-day">{dayLabel}</span>
+			<button
+				class="icon-btn day-step"
+				type="button"
+				disabled={!canGoForward}
+				onclick={() => void stepForward()}
+				aria-label={m('nutrition.day.next')}
+				data-testid="diary-next-day"
+			>
+				<span class="material-symbols" aria-hidden="true">chevron_right</span>
+			</button>
+			{#if !isViewingToday}
+				<button
+					class="btn btn-outline btn-sm"
+					type="button"
+					onclick={() => void goToToday()}
+					data-testid="diary-today"
+				>{m('dash.today')}</button>
+			{/if}
+		</nav>
+		{#if !isViewingToday}
+			<p class="section-hint" data-testid="diary-backfill-hint">
+				<span class="material-symbols hint-icon" aria-hidden="true">history</span>
+				{m('nutrition.day.backfillHint')}
+			</p>
+		{/if}
+	</div>
+
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
-			<div class="skel skel-rings"></div>
-			<div class="skel skel-row"></div>
-			<div class="skel skel-block"></div>
+			<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
+			<SkeletonBlock height="5.5rem" radius="var(--radius-lg)" />
+			<SkeletonBlock height="16rem" radius="var(--radius-lg)" />
 		</div>
-	{:else if loadError}
+		<p class="visually-hidden" role="status">{m('nutrition.loading')}</p>
+	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="nutrition-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('nutrition.loadFailed')}</strong>
-				<span class="load-error-detail">{loadError}</span>
+				{#if loadError}<span class="load-error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" type="button" onclick={() => void load()}>{m('nutrition.retry')}</button>
 		</div>
 	{:else}
 		<section class="card-elevated rings-card" data-testid="macro-rings">
-			{#if targets && calorieBudget}
+			{#if dayTargets && calorieBudget}
 				<div class="card-head">
-					<span class="section-label">{m('dash.today')}</span>
+					<span class="section-label">{dayLabel}</span>
 					<div class="budget-head">
-						<span class="card-meta">{consumed.calories} / {targets.calories} kcal</span>
+						<span class="card-meta">{consumed.calories} / {dayTargets.calories} kcal</span>
 						{#if calorieBudget.exceeded}
 							<span class="budget-chip budget-over" data-testid="calorie-budget">{m('nutrition.over', { n: calorieBudget.over })}</span>
 						{:else if calorieBudget.remaining === 0}
@@ -506,7 +810,7 @@
 					</div>
 				</div>
 			{/if}
-			<div class="rings" class:rings-untargeted={!targets}>
+			<div class="rings" class:rings-untargeted={!dayTargets}>
 				{#each rings as r (r.key)}
 					{@const frac = ringFraction(r.consumed, r.target)}
 					{@const pct = frac !== null ? Math.round(frac * 100) : null}
@@ -549,28 +853,63 @@
 					</div>
 				{/each}
 			</div>
-			{#if targets && targets.exerciseKcal > 0}
+			{#if !prescribed && targets && targets.exerciseKcal > 0}
 				<p class="goal-breakdown" data-testid="goal-breakdown">
 					<span class="material-symbols breakdown-icon" aria-hidden="true">local_fire_department</span>
-					{m('nutrition.goalBreakdown', {
+					{m(isViewingToday ? 'nutrition.goalBreakdown' : 'nutrition.day.goalBreakdown', {
 						base: targets.baseCalories,
 						exercise: targets.exerciseKcal,
 					})}
 				</p>
 			{/if}
-			{#if !targets}
+			{#if governingPlan}
+				<p class="plan-strip" data-testid="plan-following">
+					<span class="material-symbols hint-icon" aria-hidden="true">target</span>
+					<a href={`/nutrition/plans/${governingPlan.id}`}>{m('nutrition.plan.followingNamed', { name: governingPlan.title })}</a>
+					{#if trainingOverrideApplies}
+						<span class="plan-training" data-testid="plan-training-day">{m('nutrition.plan.trainingDayApplied')}</span>
+					{/if}
+				</p>
+			{:else if isViewingToday && targets}
+				<p class="plan-strip">
+					<button
+						class="btn btn-outline btn-sm"
+						type="button"
+						onclick={() => openPlanEditor(planSeedFromToday)}
+						data-testid="save-as-plan"
+					>
+						<span class="material-symbols" aria-hidden="true">target</span>
+						{m('nutrition.plan.saveAsPlan')}
+					</button>
+				</p>
+			{/if}
+			{#if !dayTargets}
 				<div class="no-targets" data-testid="no-targets">
 					<p class="section-hint">
 						<span class="material-symbols hint-icon" aria-hidden="true">info</span>
 						{m('nutrition.noTargets')}
 					</p>
-					<a class="btn btn-secondary btn-sm" href="/settings/preferences#body-metrics" data-testid="add-body-metrics">
-						<span class="material-symbols" aria-hidden="true">straighten</span>
-						{m('nutrition.addBodyMetrics')}
-					</a>
+					<div class="no-targets-actions">
+						<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="add-body-metrics">
+							<span class="material-symbols" aria-hidden="true">straighten</span>
+							{m('nutrition.addBodyMetrics')}
+						</a>
+						{#if isViewingToday}
+							<button
+								class="btn btn-outline btn-sm"
+								type="button"
+								onclick={() => openPlanEditor(null)}
+								data-testid="plan-from-scratch"
+							>{m('nutrition.plan.fromScratch')}</button>
+						{/if}
+					</div>
 				</div>
 			{/if}
 		</section>
+
+		{#if adherence}
+			<NutritionAdherencePanel {adherence} isToday={isViewingToday} />
+		{/if}
 
 		{@const drunkPips = Math.round(waterMl / WATER_UNIT_ML)}
 		{@const pipCount = Math.max(8, Math.round(waterTargetMl / WATER_UNIT_ML), drunkPips)}
@@ -582,7 +921,7 @@
 					{#if waterBudget.reached}
 						<span class="budget-chip budget-on" data-testid="water-budget">{m('nutrition.waterGoalReached')}</span>
 					{:else}
-						<span class="budget-chip budget-left" data-testid="water-budget">{m('nutrition.waterRemaining', { n: waterBudget.remainingMl })}</span>
+						<span class="budget-chip budget-left" data-testid="water-budget">{m('nutrition.waterRemaining', { n: litres(waterBudget.remainingMl) })}</span>
 					{/if}
 				</div>
 			</div>
@@ -597,6 +936,58 @@
 				<button class="btn btn-primary btn-sm water-btn" type="button" onclick={addWater} data-testid="add-water" aria-label={m('nutrition.waterAdd')}>＋</button>
 			</div>
 		</section>
+
+		{#if nutrientBudgets.length > 0}
+			<section class="card-elevated nutrients-card" data-testid="nutrients">
+				<div class="card-head">
+					<span class="section-label">{m('nutrition.nutrients')}</span>
+				</div>
+				<ul class="nutrient-list">
+					{#each nutrientBudgets as n (n.kind)}
+						{@const label = m(n.labelKey)}
+						{@const coverage = m('nutrition.nutrientPartial', { reported: n.reportedEntries, total: n.totalEntries, nutrient: label })}
+						<li class="nutrient-row" data-testid={`nutrient-${n.kind}`}>
+							<span class="nutrient-name">{label}</span>
+							<span class="nutrient-amount">
+								{#if n.partial}
+									<!-- The coverage sentence is repeated as visually-hidden text rather
+									     than left in `title` alone: a title tooltip is unreachable by
+									     keyboard and inconsistently announced, and it is the one thing
+									     qualifying the number beside it. -->
+									<span class="nutrient-approx" title={coverage} data-testid={`nutrient-partial-${n.kind}`}>{m('nutrition.nutrientAtLeast')}</span>
+									<span class="visually-hidden">{coverage}</span>
+								{/if}
+								<span class="nutrient-value">{n.consumed}</span>
+								{#if n.target !== null}<span class="nutrient-target">/ {n.target}</span>{/if}
+								<span class="nutrient-unit">{n.unit}</span>
+							</span>
+							{#if n.exceeded}
+								<span class="budget-chip budget-over" data-testid={`nutrient-state-${n.kind}`}>{m('nutrition.nutrientOver', { n: Math.round((n.consumed - (n.target ?? 0)) * 10) / 10, unit: n.unit })}</span>
+							{:else if n.reached}
+								<span class="budget-chip budget-on" data-testid={`nutrient-state-${n.kind}`}>{m('nutrition.nutrientReached')}</span>
+							{:else if n.remaining !== null}
+								<span class="budget-chip budget-left" data-testid={`nutrient-state-${n.kind}`}>{m('nutrition.nutrientLeft', { n: n.remaining, unit: n.unit })}</span>
+							{:else if n.target === null}
+								<span class="budget-chip budget-untargeted" data-testid={`nutrient-state-${n.kind}`}>{m('nutrition.nutrientUntargeted')}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<p class="section-hint">
+					<span class="material-symbols hint-icon" aria-hidden="true">info</span>
+					{m('nutrition.nutrientsHint')}
+				</p>
+			</section>
+		{/if}
+
+		<NutritionPlanLibrary
+			{plans}
+			followingPlanId={governingPlan?.id ?? null}
+			canFollow={isViewingToday}
+			busyPlanId={followingPlanId}
+			onfollow={(p) => void followPlan(p)}
+			onnew={() => openPlanEditor(null)}
+		/>
 
 		{#if templatesError}
 			<section class="card-elevated templates-card" data-testid="templates-error">
@@ -687,16 +1078,20 @@
 		{/if}
 
 		{#if !hasMeals}
-			<section class="card-elevated empty" data-testid="macro-rings-empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">restaurant</span>
-				<h2>{m('nutrition.empty')}</h2>
-				<p class="empty-text">{m('nutrition.searchPlaceholder')}</p>
-				<button class="btn btn-primary" type="button" onclick={() => (showLog = true)}>{m('nutrition.logFood')}</button>
-			</section>
+			<EmptyState
+				icon="restaurant"
+				title={isViewingToday ? m('nutrition.empty') : m('nutrition.day.emptyPast')}
+				text={m('nutrition.searchPlaceholder')}
+				data-testid="macro-rings-empty"
+			>
+				{#snippet actions()}
+					<button class="btn btn-primary" type="button" onclick={() => (showLog = true)}>{m('nutrition.logFood')}</button>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<section class="card-elevated meals-card">
 				<div class="card-head">
-					<span class="section-label">{m('dash.today')}</span>
+					<span class="section-label">{dayLabel}</span>
 					<div class="meals-head-right">
 						<span class="card-meta">{consumed.calories} kcal</span>
 						<button
@@ -713,7 +1108,7 @@
 							type="button"
 							onclick={() => {
 								recipeName = '';
-								recipeServings = 1;
+								recipeServings = servingsBounds.min;
 								showSaveRecipe = true;
 							}}
 							data-testid="save-as-recipe"
@@ -723,7 +1118,7 @@
 				<div class="meal-groups">
 					{#each groups as g (g.slot)}
 						<div class="meal-group">
-							<a class="meal-head meal-head-link" href={`/nutrition/${todayIsoDate()}/${g.slot}`}>
+							<a class="meal-head meal-head-link" href={`/nutrition/${viewDate}/${g.slot}`}>
 								<h2>{m(`nutrition.slot_${g.slot}`)}</h2>
 								<span class="meal-kcal">{g.calories} kcal<span class="material-symbols meal-chevron" aria-hidden="true">chevron_right</span></span>
 							</a>
@@ -754,7 +1149,9 @@
 		{#if hasAnyData}
 			<section class="card-elevated trend-card">
 				<div class="card-head">
-					<span class="section-label">{m('nutrition.weeklyTrend')}</span>
+					<span class="section-label">{isViewingToday
+						? m('nutrition.weeklyTrend')
+						: m('nutrition.day.trendEnding', { date: formatDate(viewDate) })}</span>
 					<div class="trend-meta">
 						{#if trendSeries.avg > 0}<span class="card-meta">{trendSeries.avgLabel}</span>{/if}
 						{#if weekSummary.deltaPerDay !== null}
@@ -811,9 +1208,9 @@
 								aria-hidden="true"
 							></div>
 						{/if}
-						{#each weekDays as d, i (d.label + i)}
+						{#each weekDays as d, i (d.iso)}
 							{@const val = trendSeries.values[i] ?? 0}
-							<div class="trend-col" class:trend-today={i === weekDays.length - 1}>
+							<div class="trend-col" class:trend-viewed={i === weekDays.length - 1}>
 								<span class="trend-val">{val > 0 ? val : ''}</span>
 								<div
 									class="trend-bar"
@@ -824,8 +1221,8 @@
 						{/each}
 					</div>
 					<div class="trend-days">
-						{#each weekDays as d, i (d.label + i)}
-							<span class="trend-day" class:trend-today-day={i === weekDays.length - 1}>{d.label}</span>
+						{#each weekDays as d, i (d.iso)}
+							<span class="trend-day" class:trend-viewed-day={i === weekDays.length - 1}>{d.label}</span>
 						{/each}
 					</div>
 				</div>
@@ -834,8 +1231,31 @@
 	{/if}
 </div>
 
-<Modal open={showLog} title={m('nutrition.logHeading')} narrow onclose={() => (showLog = false)}>
-	<FoodLogEditor oncreated={onLogged} />
+<Modal
+	open={showLog}
+	title={isViewingToday
+		? m('nutrition.logHeading')
+		: m('nutrition.day.logHeadingFor', { date: dayLabel })}
+	narrow
+	onclose={() => (showLog = false)}
+>
+	<LogFoodPanel oncreated={onLogged} diaryDate={viewDate} />
+</Modal>
+
+<Modal
+	open={showPlanEditor}
+	title={planSeed ? m('nutrition.plan.saveAsPlanTitle') : m('nutrition.plan.newTitle')}
+	narrow
+	onclose={() => (showPlanEditor = false)}
+>
+	{#if showPlanEditor}
+		<MealPlanEditor
+			seed={planSeed}
+			offerFollow={isViewingToday}
+			onsaved={(plan, follow) => void onPlanSaved(plan, follow)}
+			oncancel={() => (showPlanEditor = false)}
+		/>
+	{/if}
 </Modal>
 
 <Modal open={showSaveMeal} title={m('nutrition.saveAsMealTitle')} narrow onclose={() => (showSaveMeal = false)}>
@@ -895,7 +1315,8 @@
 			<span class="section-label">{m('nutrition.recipeServings')}</span>
 			<input
 				type="number"
-				min="1"
+				min={servingsBounds.min}
+				max={servingsBounds.max}
 				step="0.5"
 				bind:value={recipeServings}
 				data-testid="recipe-servings"
@@ -944,13 +1365,65 @@
 		flex-wrap: wrap;
 		justify-content: flex-end;
 	}
+	/* Cancels .page-header's bottom margin so the stepper reads as part of the
+	   header rather than as a floating row above the first card. */
+	.day-bar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-block-start: calc(var(--space-xl) * -1);
+	}
+	.day-nav {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		flex-wrap: wrap;
+	}
+	.day-step {
+		width: 2.5rem;
+		height: 2.5rem;
+		color: var(--color-text-secondary);
+	}
+	/* .icon-btn's own hover is the danger tint the delete buttons want; a day
+	   step is navigation, so it follows .btn-outline:hover onto primary. */
+	.day-step:hover:not(:disabled) {
+		background: var(--color-primary-light);
+		color: var(--color-primary);
+	}
+	.day-step:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.day-label {
+		font-weight: 600;
+		min-width: 9rem;
+		text-align: center;
+	}
+	.plan-strip {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-xs) var(--space-sm);
+		margin: var(--space-md) 0 0;
+		font-size: 0.85rem;
+	}
+	.plan-strip a {
+		font-weight: 600;
+	}
+	.plan-training {
+		color: var(--color-text-secondary);
+	}
+	.no-targets-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
 	.no-targets {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
 		flex-wrap: wrap;
 	}
-
 
 	.card-head {
 		display: flex;
@@ -1189,6 +1662,55 @@
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* Extended nutrients — rows, not rings: the four headline macros own the
+	   rings and a second ring stack would read as equal-weight. */
+	.nutrient-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+	.nutrient-row {
+		display: grid;
+		grid-template-columns: 1fr auto auto;
+		align-items: baseline;
+		gap: var(--space-sm) var(--space-md);
+	}
+	.nutrient-name {
+		font-size: 0.9rem;
+		color: var(--color-text);
+	}
+	.nutrient-amount {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 4px;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.nutrient-value { font-weight: 700; }
+	.nutrient-target,
+	.nutrient-unit,
+	.nutrient-approx {
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
+	}
+	.nutrient-approx { font-style: italic; }
+	.budget-untargeted {
+		color: var(--color-text-secondary);
+		background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+	}
+	@media (max-width: 480px) {
+		.nutrient-row {
+			grid-template-columns: 1fr auto;
+		}
+		.nutrient-row .budget-chip {
+			grid-column: 2;
+			justify-self: end;
+		}
+	}
+
 	.save-meal-form { display: flex; flex-direction: column; gap: var(--space-lg); }
 	.save-meal-actions { display: flex; justify-content: flex-end; gap: var(--space-sm); }
 
@@ -1313,21 +1835,6 @@
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
 	}
-	.empty {
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-sm);
-		align-items: center;
-		padding: var(--space-2xl) var(--space-lg);
-	}
-	.empty h2 { margin: 0; font-size: 1.05rem; }
-	.empty .btn { margin-top: var(--space-sm); }
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.7;
-	}
 
 	/* 7-day trend — value labels + a dashed average reference line, today
 	   highlighted in the primary colour. The bar track is its own box so
@@ -1450,8 +1957,8 @@
 		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 		transition: height 0.4s ease;
 	}
-	.trend-today .trend-bar { background: var(--color-primary); }
-	.trend-today .trend-val { color: var(--color-primary); font-weight: 700; }
+	.trend-viewed .trend-bar { background: var(--color-primary); }
+	.trend-viewed .trend-val { color: var(--color-primary); font-weight: 700; }
 	.trend-days { display: flex; gap: var(--space-sm); }
 	.trend-day {
 		flex: 1;
@@ -1459,26 +1966,10 @@
 		font-size: var(--font-size-section-label);
 		color: var(--color-text-secondary);
 	}
-	.trend-today-day { color: var(--color-text); font-weight: 700; }
+	.trend-viewed-day { color: var(--color-text); font-weight: 700; }
 
 	/* Loading skeleton — matches card heights so data arrival doesn't jump. */
 	.skeleton-stack { display: flex; flex-direction: column; gap: var(--space-lg); }
-	.skel {
-		border-radius: var(--radius-lg);
-		background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-secondary) 50%, var(--color-bg-tertiary) 75%);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-rings { height: 12rem; }
-	.skel-row { height: 5.5rem; }
-	.skel-block { height: 16rem; }
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
 
 	@media (max-width: 36rem) {
 		.rings { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }

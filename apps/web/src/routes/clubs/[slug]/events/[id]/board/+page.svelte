@@ -1,14 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { formatDistance, formatWeight, parseWeight, getUnit } from '$lib/format/units.svelte';
-	import { isWeighInEnabled } from '$lib/runs/weigh_in_flag';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { formatDistance, formatWeight, parseWeight, getUnit, getWeightUnit } from '#lib/format/units.svelte.ts';
+	import { weightBoundsIn } from '#lib/format/weight.ts';
+	import { isWeighInEnabled } from '#lib/runs/weigh_in_flag.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import {
 		fetchEventById,
 		fetchEventCheckpoints,
@@ -18,13 +22,13 @@
 		markCheckpointDnf,
 		type EventCheckpoint,
 		type OrganiserCrossing
-	} from '$lib/core/data';
-	import { buildBoard, type BoardCheckpoint, type BoardRunner } from '$lib/runs/checkpoint_board';
-	import type { EventWithMeta } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { buildBoard, type BoardCheckpoint, type BoardRunner } from '#lib/runs/checkpoint_board.ts';
+	import type { EventWithMeta } from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
-	let eventId = $derived($page.params.id as string);
-	let instanceStart = $derived($page.url.searchParams.get('instance') ?? '');
+	let slug = $derived(page.params.slug as string);
+	let eventId = $derived(page.params.id as string);
+	let instanceStart = $derived(page.url.searchParams.get('instance') ?? '');
 
 	let event = $state<EventWithMeta | null>(null);
 	let checkpoints = $state<EventCheckpoint[]>([]);
@@ -93,8 +97,7 @@
 			// The organiser RPC throws 42501 for non-organisers.
 			crossings = await fetchOrganiserCrossings(eventId, instanceStart);
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : '';
-			if (/42501|organiser|permission/i.test(msg)) {
+			if (/42501|organiser|permission/i.test(thrownMessage(e))) {
 				denied = true;
 			} else {
 				showToast(m('checkpoint.loadFailed'), 'error');
@@ -159,7 +162,7 @@
 			showToast(m('checkpoint.statusDnf'), 'success');
 			await load();
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.markDnfFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.markDnfFailed', 'checkpoint.markDnfFailed'), 'error');
 		} finally {
 			busy = null;
 		}
@@ -168,6 +171,15 @@
 	// Weigh-in entry (gated). Records a crossing at the runner's last reached
 	// checkpoint with health fields + explicit consent.
 	let weighTarget = $state<BoardRunner | null>(null);
+	// The field is typed in the runner's own weight unit and stored canonical
+	// kg, so the bound has to be converted too — `checkpoint_crossings
+	// .body_weight_kg` is CHECK-bounded 20..400 kg and an unbounded field made
+	// a 900 lb typo a raw 23514 (decisions § 792). The label reads the SAME
+	// signal `parseWeight` parses against; it used to derive lbs from the
+	// DISTANCE unit, so a km/lbs runner was told kg and parsed as lbs.
+	const weighBounds = $derived(
+		weightBoundsIn('checkpoint_crossings.body_weight_kg', getWeightUnit()),
+	);
 	let wWeight = $state<number | null>(null);
 	let wMedicalHold = $state(false);
 	let wNote = $state('');
@@ -210,7 +222,7 @@
 			showToast(m('checkpoint.weighInSaved'), 'success');
 			await load();
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.weighInFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.weighInFailed', 'checkpoint.weighInFailed'), 'error');
 		} finally {
 			busy = null;
 		}
@@ -228,10 +240,7 @@
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
 	{:else if denied}
-		<div class="empty-card">
-			<h3>{m('checkpoint.boardTitle')}</h3>
-			<p class="empty-text">{m('checkpoint.notOrganiser')}</p>
-		</div>
+		<EmptyState icon="lock" title={m('checkpoint.boardTitle')} text={m('checkpoint.notOrganiser')} />
 	{:else}
 		<header class="board-head">
 			<div>
@@ -245,9 +254,9 @@
 		</header>
 
 		{#if checkpoints.length === 0}
-			<div class="empty-card"><p class="empty-text">{m('checkpoint.boardNoCheckpoints')}</p></div>
+			<EmptyState icon="flag" title={m('checkpoint.boardNoCheckpoints')} />
 		{:else if board.length === 0}
-			<div class="empty-card"><p class="empty-text">{m('checkpoint.boardEmpty')}</p></div>
+			<EmptyState icon="schedule" title={m('checkpoint.boardEmpty')} />
 		{:else}
 			<div class="board-scroll">
 				<table class="board" data-testid="board-table">
@@ -338,8 +347,15 @@
 	>
 		<form class="editor-form" onsubmit={(e) => { e.preventDefault(); saveWeighIn(); }}>
 			<label>
-				{m('checkpoint.bodyWeightLabel', { unit: getUnit() === 'mi' ? 'lbs' : 'kg' })}
-				<input type="number" inputmode="decimal" step="0.1" min="0" bind:value={wWeight} />
+				{m('checkpoint.bodyWeightLabel', { unit: getWeightUnit() })}
+				<input
+					type="number"
+					inputmode="decimal"
+					step="0.1"
+					min={weighBounds.min}
+					max={weighBounds.max}
+					bind:value={wWeight}
+				/>
 			</label>
 			<label class="toggle-row">
 				<input type="checkbox" bind:checked={wMedicalHold} />

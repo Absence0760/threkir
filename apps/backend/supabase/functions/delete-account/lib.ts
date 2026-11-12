@@ -32,7 +32,10 @@ export function fcmBatchRemoveBody(tokens: string[]): string {
 	// The deletion path should never hit this in practice (a user
 	// rarely has more than a handful of devices), but truncate
 	// silently rather than 400 on a freak case.
-	const capped = tokens.slice(0, 1000).filter((t) => t.length > 0);
+	// Empties and repeats are dropped BEFORE the cap: filtered after it, a
+	// list padded with blanks or duplicates spent the 1000 slots on them and
+	// a real device token past that point was never unregistered.
+	const capped = [...new Set(tokens.filter((t) => t.length > 0))].slice(0, 1000);
 	return JSON.stringify({ registration_tokens: capped });
 }
 
@@ -148,41 +151,83 @@ export type DeletionAuditResult =
  *                  Android device / RevenueCat key unset). Distinct
  *                  from `failed` because no recipient notification
  *                  was required.
- *   * `failed`   — the call raised. Operator can replay.
+ *   * `failed`   — the call raised. Operator can replay, except
+ *                  `apple_revoke`: its token goes with the account.
  */
 export type ThirdPartyOutcome = 'ok' | 'skipped' | 'failed';
 
-export interface ThirdPartyOutcomes {
+/// A type alias rather than an interface, and that is load-bearing: this
+/// record is written straight into the `deletion_audit_log.third_party_outcomes`
+/// jsonb column, and TypeScript gives an object-literal type alias an implicit
+/// index signature while an interface gets none — so as an interface it is not
+/// assignable to `Json` and the audit write does not typecheck.
+export type ThirdPartyOutcomes = {
 	strava_deauth: ThirdPartyOutcome;
 	garmin_deauth: ThirdPartyOutcome;
 	revenuecat_delete: ThirdPartyOutcome;
 	fcm_remove: ThirdPartyOutcome;
 	stripe_connect_delete: ThirdPartyOutcome;
-}
+	// 'not_reached' only on an audit row from a deletion that aborted before
+	// the revoke, which runs last so that a retry still holds the token.
+	apple_revoke: ThirdPartyOutcome | 'not_reached';
+};
 
 // ─── account-deletion receipt enqueue ───
 
+// RECEIPT_EXACT / RECEIPT_BASE mirror emailExact / emailBase in the worker's
+// email_i18n.go, which in turn mirror EXACT / BASE_TO_LOCALE in the web
+// negotiator (apps/web/src/lib/i18n/locale.ts). The three tables are the same
+// table; the copies exist because these are three deployment units (a Deno
+// Edge Function, a Go binary, a browser bundle) with no shared module between
+// them, and `RECEIPT_LOCALES` below is what a drift test can compare.
+//
+// The Portuguese rows are why this is a table and not a `switch`: `pt-BR`
+// reaches Brazilian by its own tag — Android, iOS and every browser report
+// the region — while the bare `pt` and the other European-orthography regions
+// (`pt-AO`, `pt-MZ`, `pt-CV`) have nowhere else to land and resolve to
+// European. This was `startsWith('pt')` → `pt-BR`, so the receipt confirming
+// a Lisbon reader's account erasure — the last mail we ever send them —
+// arrived in Brazilian Portuguese (decisions § 761).
+const RECEIPT_EXACT: Record<string, string> = {
+	en: 'en',
+	de: 'de',
+	fr: 'fr',
+	es: 'es',
+	ja: 'ja',
+	'pt-br': 'pt-BR',
+	'pt-pt': 'pt-PT',
+};
+
+const RECEIPT_BASE: Record<string, string> = {
+	en: 'en',
+	de: 'de',
+	fr: 'fr',
+	es: 'es',
+	ja: 'ja',
+	pt: 'pt-PT',
+};
+
+// The locales the worker's account_deleted copy exists in. Derived from the
+// exact table so adding a row there is the whole edit — a hand-kept second
+// list is what let the worker's own set drift out of reach of its guards.
+export const RECEIPT_LOCALES: readonly string[] = Object.values(RECEIPT_EXACT)
+	.filter((v, i, a) => a.indexOf(v) === i)
+	.sort();
+
 // normalizeReceiptLocale mirrors the worker's normalizeEmailLocale
 // (apps/job_worker/internal/email_i18n.go): map an arbitrary BCP-47-ish
-// `user_settings.prefs.locale` to one of the six supported email locales,
-// else 'en'. Doing it here keeps a junk pref value out of the job payload;
-// the worker normalizes again defensively.
+// `user_settings.prefs.locale` to one of the supported email locales, else
+// 'en'. Doing it here keeps a junk pref value out of the job payload; the
+// worker normalizes again defensively.
 export function normalizeReceiptLocale(tag: unknown): string {
 	if (typeof tag !== 'string') return 'en';
-	const t = tag.trim().toLowerCase();
+	const t = tag.trim().toLowerCase().replaceAll('_', '-');
 	if (t === '') return 'en';
-	if (t.startsWith('pt')) return 'pt-BR';
-	const base = t.split(/[-_]/)[0];
-	switch (base) {
-		case 'en':
-		case 'de':
-		case 'fr':
-		case 'es':
-		case 'ja':
-			return base;
-		default:
-			return 'en';
-	}
+	const exact = RECEIPT_EXACT[t];
+	if (exact) return exact;
+	const sep = t.indexOf('-');
+	const base = sep >= 0 ? t.slice(0, sep) : t;
+	return RECEIPT_BASE[base] ?? 'en';
 }
 
 // accountDeletionReceiptJobPayload builds the `lifecycle_email` job the

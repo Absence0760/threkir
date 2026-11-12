@@ -18,8 +18,13 @@ import '../lib/screens/roadbook_screen.dart'
 import '../lib/screens/route_detail_screen.dart';
 import '../lib/sim_watch_sync.dart' show WatchBleTransport;
 import '../lib/watch_course.dart' show kMaxCoursePoints;
+import '../lib/watch_roadbook.dart'
+    show
+        kRoadbookCheckpointLen,
+        kRoadbookCutoffLen,
+        kRoadbookHeaderLen;
 
-const _localBackend = 'http://127.0.0.1:54321';
+const _localBackend = 'http://127.0.0.1:24321';
 const _prodBackend = 'https://abcdefgh.supabase.co';
 
 /// A four-hour goal off an 08:00 gun — a plan the runner already set on the
@@ -109,7 +114,7 @@ class _FakeCourseTransport implements WatchBleTransport {
 
   ({int distM, int elapsedS}) checkpointAt(int i) {
     final view = ByteData.sublistView(roadbookFrame);
-    final off = 8 + i * 14;
+    final off = kRoadbookHeaderLen + i * kRoadbookCheckpointLen;
     return (
       distM: view.getUint32(off, Endian.little),
       elapsedS: view.getUint32(off + 8, Endian.little),
@@ -118,7 +123,9 @@ class _FakeCourseTransport implements WatchBleTransport {
 
   ({int distM, int limitS}) cutoffAt(int i) {
     final view = ByteData.sublistView(roadbookFrame);
-    final off = 8 + checkpointCount * 14 + i * 8;
+    final off = kRoadbookHeaderLen +
+        checkpointCount * kRoadbookCheckpointLen +
+        i * kRoadbookCutoffLen;
     return (
       distM: view.getUint32(off, Endian.little),
       limitS: view.getUint32(off + 4, Endian.little),
@@ -335,14 +342,6 @@ Future<void> _sendToWatch(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
-/// `showTopBanner` arms a dismissal timer; leaving it pending trips the
-/// test binding's "a Timer is still pending" invariant. Call after asserting
-/// on the banner text.
-Future<void> _drainBanner(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 6));
-  await tester.pump();
-}
-
 void main() {
   setUpAll(() {
     dotenv.loadFromString(isOptional: true);
@@ -390,7 +389,6 @@ void main() {
       expect(transport.scans, 1);
       expect(transport.disconnects, 1);
       expect(find.textContaining('Course sent to the watch'), findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('a route past the frame capacity is thinned, not cut',
@@ -410,7 +408,6 @@ void main() {
       );
       expect(find.textContaining('thinned from 1500 points to 256'),
           findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('a route with one position is refused, and nothing is written',
@@ -423,7 +420,6 @@ void main() {
       expect(transport.courseWrites, isEmpty);
       expect(transport.scans, 0);
       expect(find.textContaining('too few points'), findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('a failed write surfaces the failure rather than a success',
@@ -437,7 +433,6 @@ void main() {
       expect(find.textContaining('Course sent to the watch'), findsNothing);
       // The connection is still torn down on the failure path.
       expect(transport.disconnects, 1);
-      await _drainBanner(tester);
     });
 
     testWidgets('a refused push is reported as refused, never as sent',
@@ -456,7 +451,6 @@ void main() {
       expect(find.textContaining('refused the push'), findsOneWidget);
       expect(find.textContaining('Course sent to the watch'), findsNothing);
       expect(transport.disconnects, 1);
-      await _drainBanner(tester);
     });
 
     testWidgets('a non-owner sends the clipped trace, not the stored one',
@@ -481,7 +475,6 @@ void main() {
         transport.pointAt(clipped.length - 1).lng,
         closeTo(clipped.last.lng, 1e-6),
       );
-      await _drainBanner(tester);
     });
   });
 
@@ -511,7 +504,6 @@ void main() {
       expect(transport.cutoffCount, 1);
       expect(find.textContaining('race schedule'), findsOneWidget);
       expect(find.textContaining('4 checkpoints'), findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('a route with no markers pushes the course alone',
@@ -531,7 +523,6 @@ void main() {
       expect(transport.roadbookWrites, isEmpty,
           reason: 'nothing to schedule is not a failure');
       expect(find.textContaining('Course sent to the watch'), findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('an over-cap schedule is thinned and the banner says by how much',
@@ -552,7 +543,6 @@ void main() {
       expect(transport.checkpointCount, 16);
       expect(find.textContaining('thinned from 26 to 16 checkpoints'),
           findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('too many cut-offs refuses the schedule, the course still lands',
@@ -578,7 +568,6 @@ void main() {
       expect(transport.courseWrites, isNotEmpty);
       expect(transport.roadbookWrites, isEmpty);
       expect(find.textContaining('17 cut-offs'), findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('clock-only cut-offs are disclosed, never silently missing',
@@ -604,7 +593,6 @@ void main() {
       expect(transport.roadbookWrites, isNotEmpty);
       expect(transport.cutoffCount, 0);
       expect(find.textContaining('need a race start time'), findsOneWidget);
-      await _drainBanner(tester);
     });
 
     testWidgets('a marker-fetch failure degrades to a course-only push',
@@ -626,8 +614,34 @@ void main() {
           reason: 'the course already landed; an auxiliary failure must not '
               'retroactively report it as failed');
       expect(transport.roadbookWrites, isEmpty);
-      expect(find.textContaining('Course sent to the watch'), findsOneWidget);
-      await _drainBanner(tester);
+      expect(
+          find.textContaining("its course markers couldn't be loaded"),
+          findsOneWidget,
+          reason: 'a failed read must not read as a route with no checkpoints');
+    });
+  });
+
+  group('RouteDetailScreen — GPX + markers share', () {
+    testWidgets('a failed marker read is reported, not shared as a bare GPX',
+        (tester) async {
+      final transport = _FakeCourseTransport();
+      final api = _MarkersApi(const [], failMarkers: true);
+      await _pump(
+        tester,
+        _route(waypoints: _longLine(3)),
+        transport: transport,
+        api: api,
+        isOwner: true,
+      );
+      await _openShareMenu(tester);
+      await tester.tap(find.text('Share as GPX + markers'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(api.fetchCount, 1);
+      expect(find.textContaining("Couldn't load this route's course markers"),
+          findsOneWidget);
+      expect(find.textContaining('Could not share'), findsNothing);
     });
   });
 
@@ -661,7 +675,6 @@ void main() {
       // 08:00 gun, 11:00 barrier: three hours of elapsed race.
       expect(wire.limitS, 3 * 3600);
       final margin = transport.wireMarginAt(5000);
-      await _drainBanner(tester);
 
       // The crew sheet reads the same stored plan, so the margin printed for
       // the crew is the one the watch was handed.
@@ -720,7 +733,6 @@ void main() {
       expect(transport.cutoffCount, 1);
       // 06:00 gun, 11:00 barrier.
       expect(transport.cutoffAt(0).limitS, 5 * 3600);
-      await _drainBanner(tester);
 
       // Answered once, remembered — the crew sheet opens on the same numbers.
       final stored = await tester.runAsync(() async =>
@@ -770,7 +782,6 @@ void main() {
           (await SharedPreferences.getInstance())
               .getString(roadbookPlanPrefsKey('r1')));
       expect(stored, isNull);
-      await _drainBanner(tester);
     });
 
     testWidgets('an unparseable goal is refused in place, not sent',

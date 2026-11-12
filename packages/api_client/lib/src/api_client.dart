@@ -1,15 +1,21 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show compute, debugPrint;
 import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'chunk.dart';
+import 'direct_messages.dart';
+import 'effort_rank.dart';
+import 'live_overlay.dart';
+import 'route_delete.dart';
 import 'segments_rank.dart';
+import 'smoothed_sidecar.dart';
 
 // Column-level grant lockdowns: see migrations 20260801_001 +
 // 20260818_001 (clubs.invite_token) and 20260723_001 + 20260806_001 +
@@ -17,10 +23,6 @@ import 'segments_rank.dart';
 // raises 42501 because the role lacks SELECT on the revoked columns.
 // Every read site enumerates the safe columns. The mobile arch-guard
 // test grep-asserts no `from('clubs').select()` / `from('events').select()`.
-const String _clubSafeCols =
-    'id, owner_id, name, slug, description, avatar_url, location_label, '
-    'is_public, join_policy, created_at, updated_at';
-
 const String _eventSafeCols =
     'id, club_id, title, description, starts_at, duration_min, '
     'meet_label, route_id, distance_m, pace_target_sec, capacity, '
@@ -41,6 +43,31 @@ String safeErrorLabel(Object e) {
   return e.runtimeType.toString();
 }
 
+/// The wire form of an `instance_start` — the recurring-occurrence KEY the
+/// server matches with `=`.
+///
+/// Always UTC-normalised first, and that is the whole point of the function
+/// existing (decisions § 1343). `expandInstances` builds a LOCAL `DateTime`
+/// for an event that declares no timezone, and Dart's `toIso8601String()`
+/// writes no zone designator for one — so the six writers of this key used to
+/// send a bare wall clock, which Postgres re-anchors in the session's own
+/// TimeZone. Two phones in different zones filed the same occurrence under two
+/// different keys, and neither matched what the web app writes: a JS `Date` is
+/// an instant and `toISOString()` always emits `Z`, so web has always sent the
+/// true instant. A phone RSVP therefore did not appear in the web attendee
+/// list for that occurrence.
+///
+/// A no-op for an event that DOES declare a timezone (`expandInstances`
+/// already anchors those in UTC) and for a one-off event's `startsAt`, which
+/// is parsed from a `+00:00` string. Only the legacy zone-less recurring rows
+/// move, and they move onto the value web has been writing all along.
+String instanceStartKey(DateTime at) => at.toUtc().toIso8601String();
+
+/// [instanceStartKey] for a nullable occurrence — `null` stays `null` (a photo
+/// tagged to no event instance), it does not become an epoch.
+String? instanceStartKeyOrNull(DateTime? at) =>
+    at == null ? null : instanceStartKey(at);
+
 /// Typed client for the Supabase REST API.
 ///
 /// Must call [initialize] before using any methods.
@@ -50,6 +77,49 @@ String safeErrorLabel(Object e) {
 /// `Supabase.instance.client`. Tests can use [ApiClient.withClient]
 /// to inject a fake `SupabaseClient` so the wire-level methods can
 /// be driven without booting a real Supabase backend.
+/// A run whose gzipped track exceeds the `runs` bucket's own file_size_limit.
+///
+/// Terminal, not transient: the same waypoints gzip to the same bytes on every
+/// retry, so a drain that treats this like a dropped connection re-sends a
+/// refused payload forever. Reachable only through import — a live recording
+/// would need ~266 hours at 1 Hz to get here, while a single GPX inside a
+/// Strava archive reaches it 60x under that archive's own cap (decisions
+/// § 1009).
+class TrackTooLargeException implements Exception {
+  final String runId;
+  final int bytes;
+  final int limitBytes;
+  final int waypoints;
+
+  const TrackTooLargeException({
+    required this.runId,
+    required this.bytes,
+    required this.limitBytes,
+    required this.waypoints,
+  });
+
+  @override
+  String toString() =>
+      'TrackTooLargeException(run $runId: $waypoints waypoints gzip to $bytes '
+      'bytes, over the maximum allowed size of $limitBytes)';
+}
+
+/// Why `request_distance_recompute` refused to queue a recompute. The RPC
+/// raises 42501 for a missing run and for someone else's run alike, so
+/// [notAuthorized] never says which.
+enum DistanceRecomputeRefusal { notAuthorized, noTrack }
+
+/// A typed refusal from [ApiClient.requestDistanceRecompute], so a caller can
+/// tell "not yours" and "no track" apart from a transport failure.
+class DistanceRecomputeRefused implements Exception {
+  final DistanceRecomputeRefusal reason;
+
+  const DistanceRecomputeRefused(this.reason);
+
+  @override
+  String toString() => 'DistanceRecomputeRefused(${reason.name})';
+}
+
 class ApiClient {
   /// Custom-scheme deep link GoTrue redirects the signup-confirmation /
   /// magic-link auth mail to on mobile. supabase_flutter's app_links
@@ -198,7 +268,7 @@ class ApiClient {
   /// callers route through `rateLimitErrorMessage` for the friendly
   /// wording.
   ///
-  /// Mirrors `apps/web/src/lib/data.ts:submitReport`.
+  /// Mirrors `apps/web/src/lib/core/data.ts:submitReport`.
   Future<String> submitReport({
     required String targetKind,
     required String targetId,
@@ -219,6 +289,57 @@ class ApiClient {
     return result as String;
   }
 
+  /// Report a problem with a park course (issue #1346, decisions § 2449)
+  /// through the `park-course-report` Edge Function, which files it as the
+  /// signed-in user (or signed out, with no session). A refusal throws the
+  /// [FunctionException] the function answered with; its `details` carry
+  /// `{error: code}`. Mirrors web `submitParkCourseReport`.
+  Future<void> submitParkCourseReport({
+    required String courseId,
+    required String reason,
+    required String notes,
+    String? contactEmail,
+  }) async {
+    final email = contactEmail?.trim();
+    await _client.functions.invoke(
+      'park-course-report',
+      body: {
+        'course_id': courseId,
+        'reason': reason,
+        'notes': notes.trim(),
+        'contact_email': (email == null || email.isEmpty) ? null : email,
+      },
+    );
+  }
+
+  /// File an organiser name dispute (issue #1363, decisions § 2441): the
+  /// caller, an active owner or admin of the verified club [clubId], reports
+  /// [targetKind] / [targetId] as impersonating that organisation or copying
+  /// its content. `submit_organiser_dispute` is the gate and raises 42501 for
+  /// anyone else; 23505 and P0001 mean the same as for [submitReport], whose
+  /// rate-limit bucket it shares.
+  ///
+  /// Mirrors `apps/web/src/lib/core/data.ts:submitOrganiserDispute`.
+  Future<String> submitOrganiserDispute({
+    required String targetKind,
+    required String targetId,
+    required String clubId,
+    String? notes,
+  }) async {
+    final trimmed = notes?.trim();
+    final result = await _client.rpc(
+      'submit_organiser_dispute',
+      params: {
+        'p_target_kind': targetKind,
+        'p_target_id': targetId,
+        'p_club_id': clubId,
+        'p_notes':
+            (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+      },
+    );
+    return result as String;
+  }
+
   /// Fetch heatmap-friendly point set within a bbox. Backed by the
   /// `heatmap_points_in_bbox` PostGIS RPC (migration 20260828_001),
   /// capped at [maxPoints] (default 5000) regardless of bbox size —
@@ -226,7 +347,7 @@ class ApiClient {
   /// pan, just spread thinner. Returns an empty list on RPC error
   /// so the caller's map layer renders blank rather than throwing.
   ///
-  /// Mirrors `apps/web/src/lib/data.ts:fetchHeatmapPoints`.
+  /// Mirrors `apps/web/src/lib/core/data.ts:fetchHeatmapPoints`.
   Future<List<HeatmapPoint>> fetchHeatmapPoints({
     required double minLng,
     required double minLat,
@@ -244,6 +365,7 @@ class ApiClient {
           'p_max_lat': maxLat,
           'p_max_points': maxPoints,
         },
+        get: true,
       );
       if (data is! List) return const [];
       return data.map<HeatmapPoint>((row) {
@@ -277,10 +399,10 @@ class ApiClient {
   ///
   /// [ageConfirmedAt] and [termsAcceptedAt] capture the moment the
   /// user ticked the consent checkboxes on the sign-up screen. They
-  /// are stored in `raw_user_meta_data` at the auth layer AND
-  /// re-stamped on `user_profiles` via the `confirm_age_and_terms`
-  /// RPC immediately after signUp succeeds. Server-side enforcement
-  /// of GDPR Art 8 — see migration `20260929_001` and audit/gdpr
+  /// are stored in `raw_user_meta_data` at the auth layer, and a
+  /// trigger on `auth.users` stamps them onto `user_profiles` when the
+  /// account is confirmed (migration `20271023000001`, issue #1229).
+  /// GDPR Art 8 — see migration `20260929_001` and audit/gdpr
   /// (2026-05-25) Critical.
   Future<({String userId, bool needsEmailConfirmation})> signUp({
     required String email,
@@ -291,33 +413,34 @@ class ApiClient {
     final ageIso = (ageConfirmedAt ?? DateTime.now().toUtc()).toIso8601String();
     final termsIso =
         (termsAcceptedAt ?? DateTime.now().toUtc()).toIso8601String();
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-      // Land the confirmation link back in the app via the custom-scheme
-      // deep link, not the project Site URL (which a mobile signup can't
-      // pass). Without this GoTrue falls back to the Site URL and the
-      // link opens a browser instead of returning to the app.
-      emailRedirectTo: kAuthDeepLinkRedirect,
-      data: {
-        'age_confirmed_at': ageIso,
-        'terms_accepted_at': termsIso,
-      },
-    );
-    // Server-side stamp on user_profiles. Fire-and-forget — when
-    // Supabase email-confirmation is enabled the JWT isn't live yet
-    // and the RPC will 401; the sign-in path after confirmation
-    // re-runs the stamp via confirmAgeAndTerms().
+    final settled = _beginAffirmedSignIn();
     try {
-      await _client.rpc('confirm_age_and_terms');
-    } catch (e) {
-      // Tolerated — sign-in path retries.
-      debugPrint('signUp: confirm_age_and_terms failed: ${safeErrorLabel(e)}');
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+        // Land the confirmation link back in the app via the custom-scheme
+        // deep link, not the project Site URL (which a mobile signup can't
+        // pass). Without this GoTrue falls back to the Site URL and the
+        // link opens a browser instead of returning to the app.
+        emailRedirectTo: kAuthDeepLinkRedirect,
+        data: {
+          'age_confirmed_at': ageIso,
+          'terms_accepted_at': termsIso,
+        },
+      );
+      // With email confirmation on there is no session yet; the
+      // `auth.users` confirmation trigger stamps user_profiles from the
+      // `data` above (issue #1229). With a session the trigger has already
+      // run at insert, and this idempotent RPC is the fallback for an
+      // account whose metadata it did not trust.
+      if (response.session != null) await _stampAffirmedConsent('signUp');
+      return (
+        userId: response.user!.id,
+        needsEmailConfirmation: response.session == null,
+      );
+    } finally {
+      settled.complete();
     }
-    return (
-      userId: response.user!.id,
-      needsEmailConfirmation: response.session == null,
-    );
   }
 
   /// Re-send the signup confirmation email for an unconfirmed address.
@@ -335,10 +458,9 @@ class ApiClient {
   }
 
   /// Stamps `age_confirmed_at` + `terms_accepted_at` on the caller's
-  /// user_profiles row. Idempotent — existing timestamps are
-  /// preserved (first-stamp wins). Call this on every post-OAuth
-  /// session refresh whose profile still has either column null,
-  /// once the user has been re-prompted.
+  /// user_profiles row, creating the row if it is missing. Idempotent —
+  /// existing timestamps are preserved (first-stamp wins). Call it only
+  /// once the user has affirmed both in this app.
   Future<void> confirmAgeAndTerms() async {
     await _client.rpc('confirm_age_and_terms');
   }
@@ -356,6 +478,32 @@ class ApiClient {
     return cleared is int ? cleared : 0;
   }
 
+  /// The caller's plan calendar feed as its two timestamps
+  /// (`created_at`, `last_fetched_at`), or null when there is no feed
+  /// (migration 20270910000001). The token itself can never be read back.
+  Future<Map<String, dynamic>?> planCalendarFeedStatus() async {
+    final rows = await _client.rpc('plan_calendar_feed_status', params: const {}, get: true);
+    if (rows is List && rows.isNotEmpty && rows.first is Map) {
+      return Map<String, dynamic>.from(rows.first as Map);
+    }
+    return null;
+  }
+
+  /// Mints a new feed token, replacing any existing feed so the previous URL
+  /// stops working at once. The return value is the only copy of the token.
+  Future<String> rotatePlanCalendarFeed() async {
+    final token = await _client.rpc('rotate_plan_calendar_feed');
+    if (token is! String) {
+      throw StateError('rotate_plan_calendar_feed returned no token');
+    }
+    return token;
+  }
+
+  /// Deletes the caller's feed; its URL stops working at once.
+  Future<void> revokePlanCalendarFeed() async {
+    await _client.rpc('revoke_plan_calendar_feed');
+  }
+
   /// Exchange a Google ID token (obtained by the host app via the native
   /// Android `google_sign_in` flow) for a Supabase session. Returns the
   /// user ID.
@@ -365,16 +513,28 @@ class ApiClient {
   /// See `mobile_android/lib/screens/sign_in_screen.dart` for the caller
   /// and `apps/mobile_android/local_testing.md` for Google Cloud Console +
   /// Supabase dashboard setup instructions.
+  ///
+  /// [affirmedAgeAndTerms] is true when the calling screen collected the
+  /// age + terms affirmation before the tap (the sign-up screen); the
+  /// stamp then lands before [consentStampSettled] resolves, so the
+  /// consent gate never re-asks someone who just answered.
   Future<String> signInWithGoogleIdToken({
     required String idToken,
     String? accessToken,
+    bool affirmedAgeAndTerms = false,
   }) async {
-    final response = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-      accessToken: accessToken,
-    );
-    return response.user!.id;
+    final settled = affirmedAgeAndTerms ? _beginAffirmedSignIn() : null;
+    try {
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+      if (settled != null) await _stampAffirmedConsent('google');
+      return response.user!.id;
+    } finally {
+      settled?.complete();
+    }
   }
 
   /// Exchange an Apple ID token (obtained by the host app via the native
@@ -386,14 +546,113 @@ class ApiClient {
   /// `Supabase.instance.client.auth.signInWithIdToken` directly for
   /// Apple — they should route through this method instead so the
   /// ApiClient abstraction stays uniform for both providers.
+  /// [appleCode] is the credential's one-time authorization code and whether
+  /// the native flow issued it (iOS) or the Services-ID web flow (Android).
+  /// It is handed on without being awaited: sign-in is done either way.
+  /// [affirmedAgeAndTerms] as for [signInWithGoogleIdToken].
+  /// [givenName] and [familyName] are the credential's name parts, which
+  /// Apple sends only on the first authorization and never in the identity
+  /// token. They are written to the user metadata as `full_name`, where a
+  /// trigger fills a still-empty display name from them (decisions § 2365).
   Future<String> signInWithAppleIdToken({
     required String idToken,
+    ({String code, bool nativeFlow})? appleCode,
+    bool affirmedAgeAndTerms = false,
+    String? givenName,
+    String? familyName,
   }) async {
-    final response = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.apple,
-      idToken: idToken,
-    );
-    return response.user!.id;
+    final settled = affirmedAgeAndTerms ? _beginAffirmedSignIn() : null;
+    try {
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+      );
+      final fullName = appleFullName(givenName, familyName);
+      if (fullName != null) {
+        try {
+          await _client.auth
+              .updateUser(UserAttributes(data: {'full_name': fullName}));
+        } catch (e) {
+          debugPrint(
+              'ApiClient.signInWithAppleIdToken name write failed: ${safeErrorLabel(e)}');
+        }
+      }
+      if (appleCode != null && appleCode.code.isNotEmpty) {
+        unawaited(keepAppleRevocationCredential(
+          appleCode.code,
+          nativeFlow: appleCode.nativeFlow,
+        ));
+      }
+      if (settled != null) await _stampAffirmedConsent('apple');
+      return response.user!.id;
+    } finally {
+      settled?.complete();
+    }
+  }
+
+  /// The Apple credential's name parts joined with a space, or null when
+  /// both are empty.
+  @visibleForTesting
+  static String? appleFullName(String? givenName, String? familyName) {
+    final joined = [givenName, familyName]
+        .map((p) => p?.trim() ?? '')
+        .where((p) => p.isNotEmpty)
+        .join(' ');
+    return joined.isEmpty ? null : joined;
+  }
+
+  Completer<void>? _affirmedSignIn;
+
+  /// Resolves once any in-flight sign-in that carried an in-app age +
+  /// terms affirmation has finished trying to stamp it. The auth-change
+  /// event fires inside the sign-in call, before the stamp can run, so a
+  /// consent gate listening for that event awaits this first — otherwise
+  /// it reads the profile in the gap and re-asks someone who just ticked
+  /// both boxes.
+  Future<void> get consentStampSettled =>
+      _affirmedSignIn?.future ?? Future<void>.value();
+
+  Completer<void> _beginAffirmedSignIn() => _affirmedSignIn = Completer<void>();
+
+  /// A failed stamp is not fatal to sign-in: the account is left
+  /// unstamped, and the consent gate asks again.
+  Future<void> _stampAffirmedConsent(String path) async {
+    try {
+      await confirmAgeAndTerms();
+    } catch (e) {
+      debugPrint('$path: confirm_age_and_terms failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  /// Hands Apple's one-time authorization code to `apple-token-exchange`,
+  /// which trades it for a refresh token so `delete-account` can revoke the
+  /// grant later (App Store Guideline 5.1.1(v)). The code expires minutes
+  /// after sign-in, so this is the only moment it can be kept. [nativeFlow]
+  /// names the Apple client that issued it; Apple refuses an exchange
+  /// against the other one.
+  ///
+  /// A failure costs only the later revocation, so it never throws: it
+  /// answers false and logs.
+  Future<bool> keepAppleRevocationCredential(
+    String authorizationCode, {
+    required bool nativeFlow,
+  }) async {
+    try {
+      await _client.functions
+          .invoke(
+            'apple-token-exchange',
+            body: {
+              'authorization_code': authorizationCode,
+              'client': nativeFlow ? 'native' : 'web',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+      return true;
+    } catch (e) {
+      debugPrint(
+          'ApiClient.keepAppleRevocationCredential failed: ${safeErrorLabel(e)}');
+      return false;
+    }
   }
 
   /// Ensure the signed-in user has a `user_profiles` row, creating one
@@ -408,21 +667,27 @@ class ApiClient {
   /// default the readers hard-coded. Now the profile is materialised
   /// on first sign-in.
   ///
-  /// Idempotent — safe to call on every sign-in. The body is the same
-  /// shape web uses, so a user whose row already exists is unchanged
-  /// (the upsert on a present `id` is a no-op for the default columns).
+  /// Idempotent — safe to call on every sign-in: a user whose row already
+  /// exists is left unchanged.
   Future<void> ensureMyProfile() async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) return;
     // Use the SECURITY DEFINER read so the column-revoked fields
     // (`subscription_tier`, `subscription_at`, `parkrun_number`) don't
     // make the SELECT silently return null when the row exists.
-    final existing = await _client.rpc('get_my_profile');
-    if (existing != null) return;
-    await _client.from('user_profiles').upsert(
-      buildDefaultProfileRow(viewerId),
-      onConflict: 'id',
-    );
+    final existing =
+        await _client.rpc('get_my_profile', params: const {}, get: true);
+    if (profileRowFrom(existing) != null) return;
+    // A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT on
+    // the columns it sets, and `subscription_tier` is withheld by the column
+    // lockdown (20260707_001), so the upsert was refused with 42501. A 23505
+    // means the row appeared in between (another device, or the consent
+    // gate's confirm_age_and_terms), which is the outcome this wanted.
+    try {
+      await _client.from('user_profiles').insert(buildDefaultProfileRow(viewerId));
+    } on PostgrestException catch (e) {
+      if (e.code != '23505') rethrow;
+    }
   }
 
   /// Pure helper: the default `user_profiles` row inserted on first
@@ -439,8 +704,8 @@ class ApiClient {
 
   /// The current user ID, or null if not signed in.
   /// Current user id, or null when signed-out. Also null when
-  /// Supabase wasn't initialised (offline-mode boot, dev without
-  /// `.env.local` SUPABASE_URL/ANON_KEY) — `_client` resolves
+  /// Supabase wasn't initialised (offline-mode boot, e.g. a release
+  /// build without SUPABASE_URL/ANON_KEY dart-defines) — `_client` resolves
   /// `Supabase.instance` lazily and that getter asserts when init
   /// hasn't happened. Callers (RoutesScreen, FeedScreen, every
   /// "are we signed in?" guard) expect a tristate of "signed in" /
@@ -494,8 +759,13 @@ class ApiClient {
   /// "signed out".
   Stream<String?> get authUserChanges {
     try {
+      // A refused auth deep link is delivered as a stream error; the app
+      // root reports it, so subscribers here only ever see transitions.
       return _client.auth.onAuthStateChange
-          .map((state) => state.session?.user.id);
+          .map((state) => state.session?.user.id)
+          .handleError((Object e) {
+        debugPrint('ApiClient.authUserChanges error: ${safeErrorLabel(e)}');
+      });
     } catch (e) {
       debugPrint('ApiClient.authUserChanges failed: ${safeErrorLabel(e)}');
       return const Stream<String?>.empty();
@@ -585,16 +855,26 @@ class ApiClient {
   // by an email link or, when they're an app user, in-app via the pending-
   // request flow.
 
-  /// The owner's own safety-contact list (RLS scopes to `owner_id = me`).
+  /// The owner's own safety-contact list, scoped by an explicit `owner_id`
+  /// filter. RLS is NOT the scope here and never was: `safety_contacts` carries
+  /// a second permissive SELECT policy for `contact_user_id = auth.uid()`
+  /// (migration 20261218_001), and permissive policies OR — so an unfiltered
+  /// read returns the union of the rows the caller owns and the rows naming
+  /// THEM as someone else's contact, which the settings screen then renders as
+  /// the caller's own list under their own email address.
   /// Returns an empty list on read failure so the settings screen renders an
   /// empty state rather than throwing.
   Future<List<SafetyContact>> fetchMySafetyContacts() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return const [];
     try {
       final data = await _client
           .from(SafetyContactRow.table)
           .select(
-            'id, contact_email, contact_user_id, confirmed_at, created_at',
+            'id, contact_email, contact_phone, contact_user_id, confirmed_at, '
+            'sms_opt_in_at, created_at',
           )
+          .eq(SafetyContactRow.colOwnerId, userId)
           .order(SafetyContactRow.colCreatedAt, ascending: false);
       return (data as List)
           .map<SafetyContact>(
@@ -606,12 +886,13 @@ class ApiClient {
     }
   }
 
-  /// Add a safety contact by email. The address is stored as-is; the confirm
-  /// email is sent by the AFTER INSERT trigger. `confirmed_at` /
-  /// `contact_user_id` are forced null server-side (the contact must opt in),
-  /// so we never set them here. Throws on RLS / unique / format failure for
-  /// the caller to surface.
-  Future<SafetyContact> addSafetyContact(String email) async {
+  /// Add a safety contact by email, optionally with an E.164 [phone] for the
+  /// SMS escalation leg. The address is stored as-is; the confirm email is
+  /// sent by the AFTER INSERT trigger. `confirmed_at` / `contact_user_id` /
+  /// `sms_opt_in_at` are forced null server-side (the contact must opt in to
+  /// both the relationship and, separately, to SMS), so we never set them
+  /// here. Throws on RLS / unique / format failure for the caller to surface.
+  Future<SafetyContact> addSafetyContact(String email, {String? phone}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
     final data = await _client
@@ -619,8 +900,10 @@ class ApiClient {
         .insert(<String, dynamic>{
           SafetyContactRow.colOwnerId: userId,
           SafetyContactRow.colContactEmail: email,
+          SafetyContactRow.colContactPhone: phone,
         })
-        .select('id, contact_email, contact_user_id, confirmed_at, created_at')
+        .select('id, contact_email, contact_phone, contact_user_id, '
+            'confirmed_at, sms_opt_in_at, created_at')
         .single();
     return SafetyContact.fromJson(data);
   }
@@ -663,12 +946,25 @@ class ApiClient {
     }
   }
 
-  /// Remove a safety contact the owner added (RLS gates to `owner_id = me`).
+  /// Remove a safety contact the owner added, scoped by an explicit `owner_id`
+  /// filter for the same reason the read is: the table's second permissive
+  /// DELETE policy (`contact_user_id = auth.uid()`) means an unscoped
+  /// delete-by-id succeeds against a row naming the caller as SOMEONE ELSE's
+  /// contact — silently stripping that person's emergency contact under a
+  /// button labelled as the caller's own housekeeping. Withdrawing from a
+  /// relationship the caller is the contact of is [declineSafetyRequest],
+  /// which says so.
   Future<void> removeSafetyContact(String id) async {
+    final userId = _client.auth.currentUser?.id;
+    // 'Not authenticated' (not 'not signed in') is the phrasing
+    // classifyAuthError matches, so the screen offers "sign in" rather than a
+    // generic failure with a Retry that could never succeed.
+    if (userId == null) throw Exception('Not authenticated');
     await _client
         .from(SafetyContactRow.table)
         .delete()
-        .eq(SafetyContactRow.colId, id);
+        .eq(SafetyContactRow.colId, id)
+        .eq(SafetyContactRow.colOwnerId, userId);
   }
 
   /// Pending requests where the signed-in user is the named contact (matched
@@ -677,7 +973,8 @@ class ApiClient {
   /// confirming). Fails soft to an empty list.
   Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async {
     try {
-      final data = await _client.rpc('my_pending_safety_requests');
+      final data = await _client.rpc('my_pending_safety_requests',
+          params: const {}, get: true);
       if (data is! List) return const [];
       return data
           .map<PendingSafetyRequest>((row) =>
@@ -690,10 +987,15 @@ class ApiClient {
   }
 
   /// Confirm a pending request addressed to my account email (links my
-  /// account). Returns whether a row was confirmed.
-  Future<bool> confirmSafetyRequest(String id) async {
-    final result =
-        await _client.rpc('confirm_safety_contact', params: {'p_id': id});
+  /// account). [smsOptIn] additionally consents to SMS alerts — the server
+  /// arms it only when the owner stored a phone, so passing true against a
+  /// number-less relationship is a no-op rather than a lie. Returns whether a
+  /// row was confirmed.
+  Future<bool> confirmSafetyRequest(String id, {bool smsOptIn = false}) async {
+    final result = await _client.rpc(
+      'confirm_safety_contact',
+      params: {'p_id': id, 'p_sms_opt_in': smsOptIn},
+    );
     return result == true;
   }
 
@@ -702,6 +1004,72 @@ class ApiClient {
   Future<bool> declineSafetyRequest(String id) async {
     final result =
         await _client.rpc('decline_safety_contact', params: {'p_id': id});
+    return result == true;
+  }
+
+  /// The contact-of direction of `safety_contacts`: the relationships in
+  /// which SOMEONE ELSE named the caller and the caller confirmed. Scoped by
+  /// an explicit `contact_user_id` filter for the same reason the owner list
+  /// scopes on `owner_id` — the table's permissive policies OR, so a query
+  /// has to state which half it wants rather than inherit whatever RLS
+  /// happens to allow. The linked-contact SELECT policy (migration
+  /// 20261218_001) already permits exactly this read. Every row is a
+  /// confirmed relationship by construction: `contact_user_id` is set only by
+  /// `confirm_safety_contact`, which stamps `confirmed_at` in the same UPDATE.
+  ///
+  /// The owner's name comes from a second read; a shadow-hidden or otherwise
+  /// unreadable profile degrades to null rather than dropping the row, since
+  /// the consent controls are the point and the name is decoration. Fails
+  /// soft to an empty list like its siblings on this screen.
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return const [];
+      final rows = await _client
+          .from(SafetyContactRow.table)
+          .select('id, owner_id, contact_phone, sms_opt_in_at, created_at')
+          .eq(SafetyContactRow.colContactUserId, userId)
+          .order(SafetyContactRow.colCreatedAt, ascending: false);
+      if (rows.isEmpty) return const [];
+      final ownerIds = <String>{
+        for (final r in rows) r[SafetyContactRow.colOwnerId] as String,
+      }.toList();
+      // Cross-user reads must stay inside the granted column set
+      // (migration 20260707_001) — a bare select() requests revoked columns
+      // and PostgREST rejects the whole read with 42501.
+      final profiles = await readChunked(
+        ownerIds,
+        (chunk) async => _client
+            .from(UserProfileRow.table)
+            .select('id, display_name')
+            .inFilter(UserProfileRow.colId, chunk),
+      );
+      final nameById = <String, String?>{
+        for (final p in profiles)
+          p['id'] as String: p['display_name'] as String?,
+      };
+      return [
+        for (final r in rows)
+          SafetyContactOf.fromJson(
+            r,
+            nameById[r[SafetyContactRow.colOwnerId] as String],
+          ),
+      ];
+    } catch (e) {
+      debugPrint('fetchSafetyContactOf failed: ${safeErrorLabel(e)}');
+      return const [];
+    }
+  }
+
+  /// Turn SMS consent on or off on a relationship the caller is the confirmed
+  /// contact of. Opting in requires a phone on file (server-enforced, so
+  /// passing true against a number-less relationship clears rather than
+  /// lies). Returns whether a row was updated.
+  Future<bool> setSafetySmsOptIn(String id, bool optIn) async {
+    final result = await _client.rpc(
+      'set_safety_sms_opt_in',
+      params: {'p_id': id, 'p_opt_in': optIn},
+    );
     return result == true;
   }
 
@@ -715,7 +1083,11 @@ class ApiClient {
   /// The upsert body is built from a generated [RunRow], so renaming a column
   /// in a migration forces `scripts/gen_dart_models.dart` to regenerate the
   /// row class — any stale field reference fails to compile here.
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  ///
+  /// [followersOnly] is the followers level a new run is born at (the
+  /// `followers` privacy default, decisions § 1875). Only `true` is ever
+  /// sent: see [_runUpsertBody].
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
 
@@ -727,67 +1099,55 @@ class ApiClient {
       trackUrl = existingTrackUrl;
     }
 
-    // `startedAt` is captured as `DateTime.now()` — a local-tz DateTime.
-    // `toIso8601String()` on a local DateTime emits a naive string with no
-    // Z or offset, which PostgreSQL's `timestamptz` column interprets as
-    // UTC — off by the user's offset and potentially a full calendar day.
-    // Force UTC here so the stored instant is unambiguous.
-    final row = RunRow(
-      id: run.id,
+    final row = runRowFromRun(
+      run,
       userId: userId,
-      startedAt: run.startedAt.toUtc(),
-      durationS: run.duration.inSeconds,
-      distanceM: run.distanceMetres,
-      // Round-trip the route link. Omitting it makes the upsert write
-      // route_id = null, wiping a `linkRunToRoute` on the next sync.
-      routeId: run.routeId,
-      source: run.source.name,
-      activityType: (run.metadata?['activity_type'] as String?) ?? 'run',
-      isDnf: run.metadata?['is_dnf'] == true,
-      fastest5kS: _embeddedBestSeconds(run.metadata, 'fastest_5k_s'),
-      fastest10kS: _embeddedBestSeconds(run.metadata, 'fastest_10k_s'),
-      fastestHalfMarathonS:
-          _embeddedBestSeconds(run.metadata, 'fastest_half_marathon_s'),
-      fastestMarathonS:
-          _embeddedBestSeconds(run.metadata, 'fastest_marathon_s'),
-      externalId: run.externalId,
-      metadata: _metadataWithoutPromotedColumns(run.metadata),
       trackUrl: trackUrl,
       isPublic: isPublic,
+      followersOnly: followersOnly,
     );
-    final json = row.toJson();
-    if (run.externalId != null && run.externalId!.isNotEmpty) {
-      await _client.from(RunRow.table).upsert(json,
-          onConflict: '${RunRow.colUserId},${RunRow.colExternalId}');
-    } else {
-      await _client.from(RunRow.table).upsert(json);
-    }
-    // L4 — best-effort plan-workout link. Mirrors `apps/web/src/lib/core/data.ts`
-    // `saveRun` / `createManualRun`. A match failure must not break the core
-    // upsert above (layered-resilience contract).
-    try {
-      await autoMatchRunToPlanWorkout(
-          run.id, run.startedAt.toUtc(), run.distanceMetres);
-    } catch (e) {
-      debugPrint('autoMatchRunToPlanWorkout failed: $e');
-    }
+    final json = _runUpsertBody(row.toJson());
+    await _upsertRunRows(
+      [json],
+      onConflict: run.externalId != null && run.externalId!.isNotEmpty
+          ? '${RunRow.colUserId},${RunRow.colExternalId}'
+          : null,
+    );
   }
 
-  /// Patch the editable columns of a run row in place — duration, distance,
-  /// the promoted `is_dnf` flag, and the metadata bag — WITHOUT re-uploading
-  /// the track. The web run-detail `saveEdit` writes these columns directly;
-  /// the mobile edit dialog mirrors it so a DNF / title / notes / stat edit
-  /// is reflected on other clients immediately instead of waiting for the
-  /// next batch sync (which would re-gzip + re-upload the whole track for a
-  /// one-flag change). Owner-only by RLS. Best-effort caller — a failure
-  /// just leaves the change to land on the next batch sync.
-  Future<void> updateRunFields(Run run) async {
-    await _client.from(RunRow.table).update({
-      RunRow.colDurationS: run.duration.inSeconds,
-      RunRow.colDistanceM: run.distanceMetres,
-      RunRow.colIsDnf: run.metadata?['is_dnf'] == true,
-      RunRow.colMetadata: _metadataWithoutPromotedColumns(run.metadata),
-    }).eq(RunRow.colId, run.id);
+  /// Push a local edit to a synced run as a compare-and-swap: an UPDATE of
+  /// only the columns [fields] live in ([runEditPatch]), filtered on the id
+  /// AND on `updated_at` still being [baseUpdatedAt], the server stamp of the
+  /// copy the edit was made on (decisions § 2147). Returns the row as the
+  /// server now holds it, carrying its new `updated_at`, or null when no row
+  /// matched — the row moved since the base was read, or is gone — which the
+  /// caller resolves by reading it again ([getRunsByIds]) and re-basing.
+  ///
+  /// The base is sent back exactly as the server sent it. A null base matches
+  /// only a row whose `updated_at` is null, a row no write has touched since
+  /// the column became server-stamped. Owner-filtered by RLS and by the
+  /// explicit `user_id` clause, the same coach-visibility reason [getRuns]
+  /// gives. Never re-uploads the track.
+  Future<Run?> updateRunFieldsIfUnchanged(
+    Run run, {
+    required Set<String> fields,
+    required String? baseUpdatedAt,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final patch = runEditPatch(run, fields, userId: userId);
+    if (patch.isEmpty) return null;
+    final filtered = _client
+        .from(RunRow.table)
+        .update(patch)
+        .eq(RunRow.colId, run.id)
+        .eq(RunRow.colUserId, userId);
+    final rows = await (baseUpdatedAt == null
+            ? filtered.isFilter(RunRow.colUpdatedAt, null)
+            : filtered.eq(RunRow.colUpdatedAt, baseUpdatedAt))
+        .select();
+    if (rows.isEmpty) return null;
+    return _runFromRow(rows.first);
   }
 
   /// Mark a run as publicly visible so it can be viewed at
@@ -821,7 +1181,7 @@ class ApiClient {
   /// background-sync / runs-screen "Sync all" / import screen) should
   /// mark only the runs NOT in this set as synced so the failed ones
   /// retry on the next cycle. Empty set on full success.
-  Future<Set<String>> saveRunsBatch(
+  Future<RunPushOutcome> saveRunsBatch(
     List<Run> runs, {
     int uploadConcurrency = 8,
     int rowChunkSize = 100,
@@ -829,7 +1189,7 @@ class ApiClient {
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
-    if (runs.isEmpty) return const <String>{};
+    if (runs.isEmpty) return const RunPushOutcome();
 
     // Upload tracks in parallel groups. A failure on ANY single
     // upload used to bubble through `Future.wait` and poison the
@@ -841,7 +1201,10 @@ class ApiClient {
     // the batch makes progress.
     final trackUrls = <String, String>{};
     final trackFailures = <String, Object>{};
-    final runsWithTracks = runs.where((r) => r.track.isNotEmpty).toList();
+    final blocked = <String, RunPushBlockReason>{};
+    final pushable = _parkOutOfBoundDurations(runs, blocked);
+    if (pushable.isEmpty) return _outcome(trackFailures, blocked);
+    final runsWithTracks = pushable.where((r) => r.track.isNotEmpty).toList();
     for (var i = 0; i < runsWithTracks.length; i += uploadConcurrency) {
       final batch = runsWithTracks.skip(i).take(uploadConcurrency);
       final futures = batch.map((r) async {
@@ -851,10 +1214,23 @@ class ApiClient {
           trackUrls[r.id] = url;
         } catch (e) {
           trackFailures[r.id] = e;
-          debugPrint(
-            'saveRunsBatch: track upload failed for ${r.id}: $e — '
-            'leaving run unsynced for retry, continuing with batch.',
-          );
+          // A permanent refusal and a dropped connection cost the caller
+          // different things: one is retried next cycle, the other is parked.
+          // Reported as one undifferentiated failure they were the same, so
+          // the drain re-gzipped and re-sent bytes the bucket had already
+          // refused on every cycle, forever (decisions § 1009).
+          if (e is TrackTooLargeException) {
+            blocked[r.id] = RunPushBlockReason.trackTooLarge;
+            debugPrint(
+              'saveRunsBatch: track upload for ${r.id} can never succeed: $e — '
+              'parking the run, continuing with batch.',
+            );
+          } else {
+            debugPrint(
+              'saveRunsBatch: track upload failed for ${r.id}: $e — '
+              'leaving run unsynced for retry, continuing with batch.',
+            );
+          }
         }
       });
       await Future.wait(futures);
@@ -864,11 +1240,16 @@ class ApiClient {
     // otherwise write a `track_url = null` row that masks the failure
     // and loses the GPS data forever. Leaving the row unsynced means
     // the next cycle retries the track upload too.
-    final eligibleRuns = runs.where((r) {
+    final eligibleRuns = pushable.where((r) {
       if (r.track.isEmpty) return true;
       return !trackFailures.containsKey(r.id);
     }).toList();
     if (eligibleRuns.isEmpty) {
+      // A throw here reports "nothing landed" and nothing else, which is all a
+      // caller can act on when every failure is transient. It is the wrong
+      // answer once one of them is terminal: the caller needs the id to park,
+      // and a thrown batch leaves it queued for a retry that cannot work.
+      if (blocked.isNotEmpty) return _outcome(trackFailures, blocked);
       if (trackFailures.isNotEmpty) {
         throw Exception(
           'saveRunsBatch: every run\'s track upload failed '
@@ -876,7 +1257,7 @@ class ApiClient {
           '${trackFailures.values.first}',
         );
       }
-      return const <String>{};
+      return const RunPushOutcome();
     }
 
     // Build rows and upsert in chunks.
@@ -884,28 +1265,11 @@ class ApiClient {
       final trackUrl = trackUrls[r.id] ??
           (r.metadata?['track_url'] as String?) ??
           '';
-      return RunRow(
-        id: r.id,
+      return _runUpsertBody(runRowFromRun(
+        r,
         userId: userId,
-        // Same UTC-normalisation as saveRun — see comment there.
-        startedAt: r.startedAt.toUtc(),
-        durationS: r.duration.inSeconds,
-        distanceM: r.distanceMetres,
-        // Round-trip the route link — see saveRun.
-        routeId: r.routeId,
-        source: r.source.name,
-        activityType: (r.metadata?['activity_type'] as String?) ?? 'run',
-        isDnf: r.metadata?['is_dnf'] == true,
-        fastest5kS: _embeddedBestSeconds(r.metadata, 'fastest_5k_s'),
-        fastest10kS: _embeddedBestSeconds(r.metadata, 'fastest_10k_s'),
-        fastestHalfMarathonS:
-            _embeddedBestSeconds(r.metadata, 'fastest_half_marathon_s'),
-        fastestMarathonS:
-            _embeddedBestSeconds(r.metadata, 'fastest_marathon_s'),
-        externalId: r.externalId,
-        metadata: _metadataWithoutPromotedColumns(r.metadata),
         trackUrl: trackUrl.isEmpty ? null : trackUrl,
-      ).toJson();
+      ).toJson());
     }).toList();
 
     int saved = 0;
@@ -931,44 +1295,110 @@ class ApiClient {
           })
           .toList();
       if (withExtId.isNotEmpty) {
-        await _client.from(RunRow.table).upsert(withExtId,
+        await _upsertRunRows(withExtId,
             onConflict: '${RunRow.colUserId},${RunRow.colExternalId}');
       }
       if (withoutExtId.isNotEmpty) {
-        await _client.from(RunRow.table).upsert(withoutExtId);
+        await _upsertRunRows(withoutExtId);
       }
       saved += chunk.length;
       onProgress?.call(saved);
     }
-    // L4 — best-effort plan-workout link for batch ingest (Strava ZIP,
-    // Health Connect, etc.). Same auto-match the web `saveRun` path
-    // uses; a per-row match failure must not break the batch upsert.
-    // Skip auto-match for runs whose track upload failed — their row
-    // wasn't upserted, so the link would dangle.
-    // The plan/week scope is identical for every run in the batch, so
-    // fetch it once here instead of once per run (a bulk import used to
-    // re-query training_plans N times). If the prefetch itself fails,
-    // fall back to the per-run fetch so a transient error can't silence
-    // matching for the whole batch.
-    List<String>? batchWeekIds;
+    return _outcome(trackFailures, blocked);
+  }
+
+  /// Upsert `runs` rows, landing a run without its `event_id` when that link
+  /// is the only thing Postgres refused.
+  ///
+  /// `event_id` is an L4 link on an L1 write: a watch stamps it at Arm, and an
+  /// event deleted before the run syncs makes `runs_event_id_fkey` refuse the
+  /// whole row with 23503 — which every caller retries forever, so the run
+  /// never lands. Only a violation of that one foreign key drops the stamp,
+  /// and only from rows that carry one; any other failure propagates
+  /// unchanged. A multi-row statement is atomic and its error does not say
+  /// which row's event is gone, so the unstamped rows are sent together and
+  /// each stamped row is tried on its own before its stamp is given up.
+  Future<void> _upsertRunRows(
+    List<Map<String, dynamic>> rows, {
+    String? onConflict,
+  }) async {
     try {
-      batchWeekIds = await _planWeekIdsForUser(userId);
-    } catch (e) {
-      debugPrint('saveRunsBatch: plan week prefetch failed: $e');
-    }
-    if (batchWeekIds == null || batchWeekIds.isNotEmpty) {
-      for (final run in eligibleRuns) {
+      await _sendRunUpsert(rows, onConflict);
+    } on PostgrestException catch (e) {
+      final stamped =
+          rows.where((r) => r.containsKey(RunRow.colEventId)).toList();
+      if (!_isDeadRunEventStamp(e) || stamped.isEmpty) rethrow;
+      final unstamped =
+          rows.where((r) => !r.containsKey(RunRow.colEventId)).toList();
+      if (unstamped.isNotEmpty) await _sendRunUpsert(unstamped, onConflict);
+      if (stamped.length == 1) {
+        await _sendRunUpsertWithoutEventStamp(stamped.single, onConflict);
+        return;
+      }
+      for (final row in stamped) {
         try {
-          await autoMatchRunToPlanWorkout(
-              run.id, run.startedAt.toUtc(), run.distanceMetres,
-              planWeekIds: batchWeekIds);
-        } catch (e) {
-          debugPrint('autoMatchRunToPlanWorkout failed: $e');
+          await _sendRunUpsert([row], onConflict);
+        } on PostgrestException catch (e) {
+          if (!_isDeadRunEventStamp(e)) rethrow;
+          await _sendRunUpsertWithoutEventStamp(row, onConflict);
         }
       }
     }
-    return trackFailures.keys.toSet();
   }
+
+  Future<void> _sendRunUpsertWithoutEventStamp(
+    Map<String, dynamic> row,
+    String? onConflict,
+  ) async {
+    debugPrint('run ${row[RunRow.colId]}: its event no longer exists — '
+        'saving the run without the event link');
+    await _sendRunUpsert(
+        [Map<String, dynamic>.from(row)..remove(RunRow.colEventId)],
+        onConflict);
+  }
+
+  Future<void> _sendRunUpsert(
+    List<Map<String, dynamic>> rows,
+    String? onConflict,
+  ) async {
+    final Object body = rows.length == 1 ? rows.single : rows;
+    if (onConflict == null) {
+      await _client.from(RunRow.table).upsert(body);
+    } else {
+      await _client.from(RunRow.table).upsert(body, onConflict: onConflict);
+    }
+  }
+
+  static bool _isDeadRunEventStamp(PostgrestException e) =>
+      e.code == '23503' &&
+      (e.message.contains('runs_event_id_fkey') ||
+          '${e.details}'.contains('(${RunRow.colEventId})'));
+
+  /// `runs_duration_s_max_check` refuses a run past ten days, and Postgres
+  /// refuses a multi-row upsert whole, so one such run would fail every run in
+  /// its chunk on every cycle. It is parked into [blocked] before anything is
+  /// sent, and the rest are returned (decisions § 2359).
+  static List<Run> _parkOutOfBoundDurations(
+    List<Run> runs,
+    Map<String, RunPushBlockReason> blocked,
+  ) {
+    for (final r in runs) {
+      if (!isPlausibleRunDuration(r.duration.inSeconds)) {
+        blocked[r.id] = RunPushBlockReason.durationOutOfRange;
+      }
+    }
+    if (blocked.isEmpty) return runs;
+    return runs.where((r) => !blocked.containsKey(r.id)).toList();
+  }
+
+  static RunPushOutcome _outcome(
+    Map<String, Object> trackFailures,
+    Map<String, RunPushBlockReason> blocked,
+  ) =>
+      RunPushOutcome(
+        retryable: trackFailures.keys.where((id) => !blocked.containsKey(id)).toSet(),
+        blocked: Map.unmodifiable(blocked),
+      );
 
   /// Delete a run from the backend, including its gzipped track file
   /// and every attached photo's bytes in Storage.
@@ -983,13 +1413,19 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
 
+    // The track, and the job_worker's map-matched track and smoothed-position
+    // sidecar, whose bytes the row cascade never reaches (removing a path that
+    // is not there is a no-op).
     final trackPath = run.metadata?['track_url'] as String?;
-    if (trackPath != null && trackPath.isNotEmpty) {
-      try {
-        await _client.storage.from(StorageBuckets.runs).remove([trackPath]);
-      } catch (e) {
-        // Best-effort — the row delete is more important than the file cleanup.
-      }
+    final runPaths = [
+      if (trackPath != null && trackPath.isNotEmpty) trackPath,
+      smoothedSidecarPath(userId, run.id),
+      '$userId/${run.id}.matched.json.gz',
+    ];
+    try {
+      await _client.storage.from(StorageBuckets.runs).remove(runPaths);
+    } catch (e) {
+      // Best-effort — the row delete is more important than the file cleanup.
     }
 
     try {
@@ -1053,64 +1489,113 @@ class ApiClient {
     return _runFromRow(data);
   }
 
-  /// Delete a route from the backend. Mirrors `apps/web/src/lib/data.ts:
-  /// deleteRoute`. RLS gates the delete to the owner; foreign-key
-  /// cascades clean up `saved_routes`, `segments`, and `route_reviews`
-  /// rows automatically. Throws on RLS rejection or network failure
-  /// so the caller can surface the error and avoid the
-  /// "deleted-locally-but-cloud-row-persists" silent-divergence bug
-  /// that mobile shipped before this method existed — every refresh
-  /// would re-pull the route the user thought they'd deleted.
+  /// Delete a route the caller owns (or administers through a club). Mirrors
+  /// web `data.ts: deleteRoute`. Every reference is handled by its foreign key
+  /// (decisions § 2293): the route's photos, markers, conditions, reviews,
+  /// shares, bookmarks and segments cascade; runs, events, event courses,
+  /// race listings and DMs keep living with the link nulled.
+  ///
+  /// The photo bytes go after the row: their uploader can read their own
+  /// folder, so the sweep still reaches them once the cascade has taken the
+  /// route_photos rows, and a failed route delete never leaves a standing
+  /// route with its photos gone. Bytes a skipped or failed sweep leaves are
+  /// erased by the server's route-photo orphan sweep (behind its feature flag,
+  /// decisions § 2305), and by account deletion's folder sweep in any case.
+  ///
+  /// RLS filters a refused DELETE rather than raising, so an empty result is
+  /// read back: a route the caller can still see throws
+  /// [RouteDeleteRefusedException]; one they cannot see is already gone and
+  /// the delete is done. Throws on network failure so the caller can surface
+  /// it and keep the local copy for a retry.
   Future<void> deleteRoute(String routeId) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
+    // The path read only feeds the photo sweep, so its failure costs the
+    // sweep and never the delete.
+    final paths = <String>[];
     try {
-      // Sweep route-photo blobs before the row delete. The FK cascade
-      // removes the route_photos rows (so the Storage SELECT join hides
-      // the bytes), but the blobs would otherwise orphan in the bucket —
-      // the same gap deleteRun closes for run photos. Best-effort.
       final photoRows = await _client
           .from(RoutePhotoRow.table)
           .select(
             '${RoutePhotoRow.colStoragePath}, ${RoutePhotoRow.colThumb512Path}',
           )
           .eq(RoutePhotoRow.colRouteId, routeId);
-      final paths = <String>[];
       for (final row in photoRows) {
         final storage = row[RoutePhotoRow.colStoragePath] as String?;
         final thumb = row[RoutePhotoRow.colThumb512Path] as String?;
         if (storage != null && storage.isNotEmpty) paths.add(storage);
         if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
       }
-      if (paths.isNotEmpty) {
-        await _client.storage.from(StorageBuckets.routePhotos).remove(paths);
-      }
     } catch (e) {
-      // Best-effort — the row delete matters more than the file cleanup.
-      debugPrint('deleteRoute: photo cleanup failed: ${safeErrorLabel(e)}');
+      debugPrint('deleteRoute: photo path read failed: ${safeErrorLabel(e)}');
     }
-    await _client.from(RouteRow.table).delete().eq(RouteRow.colId, routeId);
+
+    final deleted = await _client
+        .from(RouteRow.table)
+        .delete()
+        .eq(RouteRow.colId, routeId)
+        .select(RouteRow.colId);
+    if (deleted.isEmpty) {
+      final still = await _client
+          .from(RouteRow.table)
+          .select(RouteRow.colId)
+          .eq(RouteRow.colId, routeId)
+          .maybeSingle();
+      if (still != null) throw RouteDeleteRefusedException(routeId);
+    }
+
+    if (paths.isNotEmpty) {
+      try {
+        await _client.storage.from(StorageBuckets.routePhotos).remove(paths);
+      } catch (e) {
+        debugPrint('deleteRoute: photo cleanup failed: ${safeErrorLabel(e)}');
+      }
+    }
+  }
+
+  /// What deleting [routeId] takes with it or detaches, for the confirm the
+  /// owner reads first. Mirrors web `fetchRouteDeleteImpact`. Counts other
+  /// runners' bookmarks and the race listings using it as a course, which the
+  /// owner's own session cannot read. Throws when the caller may not delete
+  /// the route (42501) or the read fails.
+  Future<RouteDeleteImpact> fetchRouteDeleteImpact(String routeId) async {
+    final data = await _client.rpc(
+      'route_delete_impact',
+      params: {'p_route_id': routeId},
+      get: true,
+    );
+    if (data is List && data.isNotEmpty && data.first is Map) {
+      return RouteDeleteImpact.fromRow(
+        Map<String, dynamic>.from(data.first as Map),
+      );
+    }
+    throw StateError('route_delete_impact returned no row');
   }
 
   /// Course markers for a route, ordered by distance along the line. Reads
   /// through the `route_markers_for_viewer` RPC, which gates visibility and
   /// redacts any marker inside the owner's privacy zones for a non-owner.
-  /// Fails closed (empty list) on error so a redaction failure never leaks.
+  /// A failed read throws rather than answering "no markers": nothing leaks
+  /// either way, but an empty list tells an owner to re-add markers they have.
+  ///
+  /// Issued as a GET, not the client's default POST. The function is
+  /// `stable`, and Kong replays an idempotent request whose pooled PostgREST
+  /// connection closed under it, where a POST comes back 502 (decisions § 1703).
   Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
     if (routeId.isEmpty) return const [];
-    try {
-      final data = await _client.rpc('route_markers_for_viewer', params: {
-        'p_route_id': routeId,
-      });
-      if (data is! List) return const [];
-      return data
-          .whereType<Map>()
-          .map((m) => RouteMarkerRow.fromJson(m.cast<String, dynamic>()))
-          .toList();
-    } catch (e) {
-      debugPrint('fetchRouteMarkers failed: ${safeErrorLabel(e)}');
-      return const [];
+    final data = await _client.rpc(
+      'route_markers_for_viewer',
+      params: {'p_route_id': routeId},
+      get: true,
+    );
+    if (data == null) return const [];
+    if (data is! List) {
+      throw const FormatException('route_markers_for_viewer returned a non-list');
     }
+    return data
+        .whereType<Map>()
+        .map((m) => RouteMarkerRow.fromJson(m.cast<String, dynamic>()))
+        .toList();
   }
 
   /// Add a course marker (owner-only at the RLS layer). Returns the inserted
@@ -1175,7 +1660,7 @@ class ApiClient {
     try {
       final data = await _client.rpc('route_conditions_for_viewer', params: {
         'p_route_id': routeId,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data
           .whereType<Map>()
@@ -1236,33 +1721,21 @@ class ApiClient {
   /// [before] paginates backwards — pass the `startedAt` of the oldest
   /// row from a previous page to get the next older batch.
   ///
-  /// [updatedSince] enables delta fetches: only rows whose `last_modified_at`
-  /// (in metadata) is newer than the supplied timestamp are returned. The
-  /// caller stores its `lastFetchedAt` locally and passes it on subsequent
-  /// opens so we don't re-fetch the entire history on every Runs tab
-  /// visit.
+  /// Owner-only, filtered by `user_id` rather than left to RLS: the `runs`
+  /// SELECT policy also admits every run of an athlete the caller actively
+  /// coaches, and those would land in a coach's own run store, history and
+  /// training load. Mirrors web `fetchRuns`.
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async {
-    var query = _client.from(RunRow.table).select();
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    var query =
+        _client.from(RunRow.table).select().eq(RunRow.colUserId, userId);
 
     if (before != null) {
       query = query.lt(RunRow.colStartedAt, before.toIso8601String());
-    }
-    if (updatedSince != null) {
-      // `last_modified_at` lives in metadata as an ISO-8601 string stamped
-      // by LocalRunStore on every write. `->>` projects the JSON field as
-      // text; Postgres lexicographic-compares ISO-8601 strings correctly.
-      // The key must NOT be quoted in PostgREST filter syntax — a quoted
-      // key is treated as the literal JSON key `'last_modified_at'`
-      // (quotes included), which matches nothing and silently turns every
-      // delta pull into an empty result.
-      query = query.gt(
-        '${RunRow.colMetadata}->>last_modified_at',
-        updatedSince.toIso8601String(),
-      );
     }
 
     final data = await query
@@ -1272,15 +1745,154 @@ class ApiClient {
     return data.map<Run>((row) => _runFromRow(row)).toList();
   }
 
-  /// Download and decode the GPS track for a single run.
+  /// How far behind its cursor [getRunsModifiedSince] re-reads. `updated_at`
+  /// is the writing transaction's START (`now()`, decisions § 2118), so a
+  /// write can commit after a later-starting one whose stamp the cursor has
+  /// already passed, carrying a stamp below it. Re-reading a window behind
+  /// the cursor catches it; the rows read twice are harmless, because the
+  /// local merge keeps a copy that is already current.
+  static const Duration runsDeltaOverlap = Duration(minutes: 5);
+
+  /// Every run of the caller's whose server `updated_at` is later than
+  /// [cursor] minus [runsDeltaOverlap], and the cursor to pass next time.
+  ///
+  /// `runs.updated_at` is stamped by the server on every insert and update
+  /// (migration `20270918000005`), so it sees a change made by any writer —
+  /// web, an import, a restore, a job — where the `metadata.last_modified_at`
+  /// stamp this pull used to key on is written by the phone alone (§ 2116).
+  /// The returned cursor is the largest `updated_at` the server sent, never
+  /// the device clock, so clock skew cannot open a gap; with no rows it is
+  /// [cursor] unchanged.
+  ///
+  /// A null [cursor] walks every owned row. Walked by keyset on
+  /// `(updated_at, id)` rather than capped: a statement stamps all its rows
+  /// with one value, so a page boundary inside a tie would skip the rest of
+  /// it under a plain `updated_at >` cursor, and a cap would leave whatever
+  /// it cut off behind the cursor it returned. Owner-filtered for the same
+  /// coach-visibility reason as [getRuns].
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final from = cursor?.toUtc().subtract(runsDeltaOverlap).toIso8601String();
+    final rows = await _walk(_runsModifiedOrder, () {
+      final q =
+          _client.from(RunRow.table).select().eq(RunRow.colUserId, userId);
+      return from == null ? q : q.gt(RunRow.colUpdatedAt, from);
+    });
+    var next = cursor;
+    for (final row in rows) {
+      final stamp = parseIsoStrictValue(row[RunRow.colUpdatedAt]);
+      if (stamp != null && (next == null || stamp.isAfter(next))) next = stamp;
+    }
+    return (runs: rows.map<Run>(_runFromRow).toList(), cursor: next);
+  }
+
+  /// Oldest change first, `id` breaking the ties one statement's shared
+  /// `now()` produces. `updated_at` is nullable on a row no write has touched
+  /// since the column became server-stamped; nulls sort last, so the walk
+  /// from a null cursor still reads them.
+  static const List<KeysetKey> _runsModifiedOrder = [
+    KeysetKey(RunRow.colUpdatedAt, ascending: true, nullsFirst: false),
+    KeysetKey(RunRow.colId, ascending: true, nullsFirst: false),
+  ];
+
+  /// The signed-in user's runs among [ids], as track-less [Run]s like
+  /// [getRuns] returns. An id the caller does not own, or that no longer
+  /// exists, is simply absent. Owner-filtered for the same coach-visibility
+  /// reason as [getRuns], and chunked because the ids ride the request URL.
+  Future<List<Run>> getRunsByIds(Iterable<String> ids) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RunRow.table)
+          .select()
+          .eq(RunRow.colUserId, userId)
+          .inFilter(RunRow.colId, chunk),
+    );
+    return rows.map<Run>((row) => _runFromRow(row)).toList();
+  }
+
+  /// Download and decode the GPS track for a single run of the signed-in
+  /// user's.
   ///
   /// Reads the gzipped JSON from Supabase Storage at the path stored in
   /// `metadata['track_url']` (returned by [getRuns] / [_runFromRow]).
-  /// Returns an empty list if the run has no track.
+  /// Returns an empty list if the run has no track. A track with no smoothed
+  /// pair on any waypoint (a watch run, an old run the server recomputed)
+  /// gets the job_worker's smoothed-position sidecar merged on when the run's
+  /// metadata names these exact bytes ([sidecarNamedFor]) and the sidecar's
+  /// own fingerprint agrees ([mergeSmoothedSidecar]); a run that names no
+  /// sidecar for this track makes no sidecar request, and any failure to
+  /// fetch or read one leaves the raw track, which is what it always was.
   Future<List<Waypoint>> fetchTrack(Run run) async {
     final url = run.metadata?['track_url'] as String?;
     if (url == null || url.isEmpty) return const [];
-    return _downloadTrack(url);
+    final inflated = gzip.decode(
+      await _client.storage.from(StorageBuckets.runs).download(url),
+    );
+    final track = _decodeTrack(inflated);
+    return await _withSmoothedSidecar(run, track, trackSha256Hex(inflated)) ??
+        track;
+  }
+
+  /// The line for a track this device holds (its own recording, or a watch
+  /// run relayed through the phone): [Run.track] with the job_worker's
+  /// smoothed-position sidecar merged on, or null when there is nothing to
+  /// merge — the run names no sidecar for these bytes, the track already
+  /// carries its own pair, or the sidecar is missing or unreadable.
+  ///
+  /// The sidecar names the hash of the bytes the `runs` bucket holds, and the
+  /// local copy is not those bytes, so the fingerprint is taken over the blob
+  /// [_uploadTrack] would store for it ([localTrackSha256]); the merged list
+  /// is over the same finite waypoints that blob holds. For display only:
+  /// persisting it would bake the sidecar into the next upload of the track.
+  Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
+    if (!needsSmoothedSidecar(run.track) ||
+        run.metadata?[MetadataKeys.smoothedSidecarSha256] is! String) {
+      return null;
+    }
+    final usable = finiteWaypoints(run.track);
+    // Off the UI isolate: the hash re-encodes the whole track, and a
+    // multi-day track is the one a runner most wants to see.
+    final sha = await compute(localTrackSha256, usable);
+    return _withSmoothedSidecar(run, usable, sha);
+  }
+
+  /// Lower-case hex SHA-256 of the blob [_uploadTrack] stores for [track],
+  /// before gzip: the fingerprint a sidecar built from that upload names.
+  static String localTrackSha256(List<Waypoint> track) =>
+      trackSha256Hex(utf8.encode(_trackBlobJson(track)));
+
+  Future<List<Waypoint>?> _withSmoothedSidecar(
+    Run run,
+    List<Waypoint> track,
+    String sha256Hex,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null ||
+        !needsSmoothedSidecar(track) ||
+        !sidecarNamedFor(run.metadata, sha256Hex)) {
+      return null;
+    }
+    try {
+      final sidecar = await _client.storage
+          .from(StorageBuckets.runs)
+          .download(smoothedSidecarPath(userId, run.id));
+      final merged = mergeSmoothedSidecar(
+        track,
+        decodeSmoothedSidecar(gzip.decode(sidecar)),
+        points: track.length,
+        sha256Hex: sha256Hex,
+      );
+      return identical(merged, track) ? null : merged;
+    } catch (e) {
+      debugPrint('Smoothed sidecar unreadable for run ${run.id}: $e');
+      return null;
+    }
   }
 
   /// Download a track by its Storage path. Used when a caller has a
@@ -1322,7 +1934,7 @@ class ApiClient {
         lat: 0,
         lng: 0,
         bpm: bpm.round(),
-        timestamp: ts is String ? DateTime.tryParse(ts) : null,
+        timestamp: parseIsoStrictValue(ts),
       ));
     }
     return out;
@@ -1332,10 +1944,12 @@ class ApiClient {
   /// `clip-public-track` Edge Function which downloads the gzipped
   /// track via service-role, passes the points through
   /// `clip_track_for_user`, and returns the clipped result. Use this
-  /// on every non-owner surface where the old pattern was
-  /// "fetchTrackByPath then clipTrackForUser client-side" — that
-  /// pattern leaked the unclipped blob (audit/storage High, closed
-  /// by migration `20260619_001`).
+  /// on every non-owner surface. It is the only clipping path a client
+  /// has: the old "fetchTrackByPath then clip the points client-side"
+  /// pattern leaked the unclipped blob (audit/storage High, closed by
+  /// migration `20260619_001`), and `20270521_001` then withdrew
+  /// `clip_track_for_user` from `authenticated` outright because a
+  /// caller who can run it can binary-search the owner's zone centres.
   Future<List<Waypoint>> fetchClippedTrackForRun(String runId) async {
     if (runId.isEmpty) return const [];
     final res = await _client.functions.invoke(
@@ -1386,9 +2000,7 @@ class ApiClient {
       status: status,
       algorithm: row['algorithm'] as String?,
       algorithmVersion: row['algorithm_version'] as String?,
-      matchedAt: row['matched_at'] == null
-          ? null
-          : DateTime.tryParse(row['matched_at'] as String),
+      matchedAt: parseIsoStrictValue(row['matched_at']),
       track: track,
       trackUnreachable: trackUnreachable,
     );
@@ -1401,9 +2013,31 @@ class ApiClient {
   /// `42501` which surfaces as a PostgrestException here. Idempotent
   /// against in-flight jobs (the `jobs_dedupe_map_match` unique index
   /// coalesces a second call while a previous re-match is queued).
-  /// Mirrors `enqueueRunRematch` in `apps/web/src/lib/data.ts`.
+  /// Mirrors `enqueueRunRematch` in `apps/web/src/lib/core/data.ts`.
   Future<void> enqueueRunRematch(String runId) async {
     await _client.rpc('enqueue_run_rematch', params: {'p_run_id': runId});
+  }
+
+  /// Queue a server-side recompute of a run's distance from its stored GPS
+  /// track (docs/features/gps_distance.md § Server recompute). The
+  /// `request_distance_recompute` SECURITY DEFINER RPC raises 42501 unless the
+  /// caller owns the run and 22000 when it has no track; both surface as a
+  /// [DistanceRecomputeRefused], anything else is rethrown as-is. A second
+  /// request while one is queued is a no-op server-side. Mirrors
+  /// `requestDistanceRecompute` in `apps/web/src/lib/core/data.ts`.
+  Future<void> requestDistanceRecompute(String runId) async {
+    try {
+      await _client
+          .rpc('request_distance_recompute', params: {'p_run_id': runId});
+    } on PostgrestException catch (e) {
+      final refusal = switch (e.code) {
+        '42501' => DistanceRecomputeRefusal.notAuthorized,
+        '22000' => DistanceRecomputeRefusal.noTrack,
+        _ => null,
+      };
+      if (refusal == null) rethrow;
+      throw DistanceRecomputeRefused(refusal);
+    }
   }
 
   /// Escalate a sustained off-route departure to the runner's confirmed
@@ -1476,16 +2110,157 @@ class ApiClient {
   /// backup writer needs every column verbatim so round-trips preserve
   /// source-specific metadata, `event_id`, and anything else added to
   /// the schema later.
+  ///
+  /// Walked: the backup writer consumes this as the COMPLETE history, and an
+  /// unbounded SELECT hands back only the newest 1000 rows, so a 1,400-run
+  /// account archived 1,000 and restored 1,000. Walked by keyset cursor
+  /// rather than by OFFSET, because a run synced or deleted while the backup
+  /// is between two pages moves every later position and an OFFSET walk then
+  /// archives one run twice and drops another (decisions § 1936).
   Future<List<Map<String, dynamic>>> fetchRunRowsRaw() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
-    final data = await _client
-        .from(RunRow.table)
-        .select()
-        .eq(RunRow.colUserId, userId)
-        .order(RunRow.colStartedAt, ascending: false);
-    return (data as List).cast<Map<String, dynamic>>();
+    return _walk(
+      _runRowsOrder,
+      () => _client.from(RunRow.table).select().eq(RunRow.colUserId, userId),
+    );
   }
+
+  /// Newest run first, `id` breaking a `started_at` tie so the walk's order
+  /// is total. Both NOT NULL; nulls-first is Postgres's own placement on a
+  /// descending key, so `runs_user_started_at (user_id, started_at desc)`
+  /// serves the prefix. Web's `RUN_ORDER` is the same order.
+  static const List<KeysetKey> _runRowsOrder = [
+    KeysetKey(RunRow.colStartedAt, ascending: false, nullsFirst: true),
+    KeysetKey(RunRow.colId, ascending: false, nullsFirst: true),
+  ];
+
+  /// Every route row the caller owns, verbatim, for the backup writer —
+  /// walked by keyset cursor on the primary key (`routes` has no natural
+  /// sort), for the reason [fetchRunRowsRaw] gives.
+  Future<List<Map<String, dynamic>>> fetchRouteRowsRaw() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    return _walk(
+      _routeRowsOrder,
+      () => _client.from('routes').select().eq('user_id', userId),
+    );
+  }
+
+  static const List<KeysetKey> _routeRowsOrder = [
+    KeysetKey('id', ascending: true, nullsFirst: false),
+  ];
+
+  /// The id of every run the caller owns, for the device's one-time
+  /// foreign-row reconcile (decisions § 1938). Walked like
+  /// [fetchRunRowsRaw] — the reconcile drops a synced local run this set
+  /// lacks, so a truncated set would delete owned runs — and filtered by
+  /// `user_id` explicitly because the `runs` SELECT policy also admits the
+  /// runs of every athlete the caller coaches. `started_at` rides along only
+  /// because the cursor is read from it.
+  Future<Set<String>> fetchOwnedRunIds() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await _walk(
+      _runRowsOrder,
+      () => _client
+          .from(RunRow.table)
+          .select('${RunRow.colId}, ${RunRow.colStartedAt}')
+          .eq(RunRow.colUserId, userId),
+    );
+    return {for (final r in rows) r[RunRow.colId] as String};
+  }
+
+  /// The id of every route the caller owns — [fetchOwnedRunIds]'s routes
+  /// half. The `routes` SELECT policy also admits every club route of a club
+  /// the caller belongs to, hence the explicit owner filter.
+  Future<Set<String>> fetchOwnedRouteIds() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await _walk(
+      _routeRowsOrder,
+      () => _client
+          .from(RouteRow.table)
+          .select(RouteRow.colId)
+          .eq(RouteRow.colUserId, userId),
+    );
+    return {for (final r in rows) r[RouteRow.colId] as String};
+  }
+
+  /// The id of every route the caller has bookmarked (`saved_routes`), whole.
+  /// A bookmarked route carries its author's `user_id`, so the foreign-row
+  /// reconcile has to recognise it as the caller's by this set instead.
+  /// Unlike [fetchBookmarkedRoutes] this has no 200-row cap: a missed id here
+  /// is a bookmark deleted from the device.
+  Future<Set<String>> fetchSavedRouteIds() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await _walk(
+      _savedRouteIdOrder,
+      () => _client
+          .from(SavedRouteRow.table)
+          .select(SavedRouteRow.colRouteId)
+          .eq(SavedRouteRow.colUserId, userId),
+    );
+    return {for (final r in rows) r[SavedRouteRow.colRouteId] as String};
+  }
+
+  /// `(user_id, route_id)` is the primary key, so under the `user_id` filter
+  /// `route_id` alone is a total order.
+  static const List<KeysetKey> _savedRouteIdOrder = [
+    KeysetKey(SavedRouteRow.colRouteId, ascending: true, nullsFirst: false),
+  ];
+
+  /// The owner of each of [ids] the caller can see in `runs`, as id →
+  /// `user_id`. Deliberately NOT owner-filtered: the reconcile asks it which
+  /// unsynced local runs the server holds under SOMEONE ELSE (a coach's
+  /// copy of an athlete's run), so it reads through RLS as-is. An id the
+  /// caller cannot see is absent, which the reconcile treats as "keep".
+  Future<Map<String, String>> fetchRunOwners(Iterable<String> ids) async {
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RunRow.table)
+          .select('${RunRow.colId}, ${RunRow.colUserId}')
+          .inFilter(RunRow.colId, chunk),
+    );
+    return {
+      for (final r in rows)
+        r[RunRow.colId] as String: r[RunRow.colUserId] as String,
+    };
+  }
+
+  /// [fetchRunOwners] for `routes`: which of [ids] the server holds, and
+  /// under whom, as far as RLS lets the caller see.
+  Future<Map<String, String>> fetchRouteOwners(Iterable<String> ids) async {
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RouteRow.table)
+          .select('${RouteRow.colId}, ${RouteRow.colUserId}')
+          .inFilter(RouteRow.colId, chunk),
+    );
+    return {
+      for (final r in rows)
+        r[RouteRow.colId] as String: r[RouteRow.colUserId] as String,
+    };
+  }
+
+  /// Every row [query] selects, walked by keyset cursor in [order]: each page
+  /// is [query] narrowed to the rows strictly after the previous page's last
+  /// row, sorted by the same spec the cursor is read from. PostgREST caps an
+  /// unranged select at `db.max-rows` with a 200 and no flag, so a read whose
+  /// contract is "every row" has to walk — and an OFFSET walk skips or
+  /// repeats a row that is inserted or deleted while it runs.
+  Future<List<Map<String, dynamic>>> _walk(
+    List<KeysetKey> order,
+    PostgrestFilterBuilder<PostgrestList> Function() query,
+  ) =>
+      walkKeyset(order, (after, limit) async {
+        var q = query();
+        if (after != null) q = q.or(after);
+        return await _orderBy(q, order).limit(limit);
+      });
 
   /// Upsert a raw run row. The backup restore path builds these
   /// directly from the archive so `metadata`, `source`, and every other
@@ -1501,8 +2276,28 @@ class ApiClient {
     required String runId,
     required List<Waypoint> track,
   }) async {
-    final json = jsonEncode(track.map(_waypointToJson).toList());
+    final usable = finiteWaypoints(track);
+    if (usable.length != track.length) {
+      debugPrint(
+        'ApiClient: dropped ${track.length - usable.length} non-finite '
+        'waypoint(s) from run $runId before upload',
+      );
+    }
+    final json = _trackBlobJson(usable);
     final bytes = Uint8List.fromList(gzip.encode(utf8.encode(json)));
+    // Storage refuses a blob past the bucket's own file_size_limit with a 413
+    // whose only stable identity is an English message, and the drain retries
+    // a failed upload forever — so an over-size track re-gzipped and re-sent
+    // the same bytes on every cycle, spending a runner's data plan on a call
+    // that cannot succeed. The limit is knowable here, so ask before sending.
+    if (bytes.length > StorageBuckets.runsBucketMaxBytes) {
+      throw TrackTooLargeException(
+        runId: runId,
+        bytes: bytes.length,
+        limitBytes: StorageBuckets.runsBucketMaxBytes,
+        waypoints: usable.length,
+      );
+    }
     final path = '$userId/$runId.json.gz';
     await _client.storage.from(StorageBuckets.runs).uploadBinary(
           path,
@@ -1520,12 +2315,54 @@ class ApiClient {
     return path;
   }
 
+  /// The exact bytes the `runs` bucket holds for a track, before gzip.
+  ///
+  /// Filters through [finiteWaypoints] because `jsonEncode` REFUSES a
+  /// non-finite double, and a refusal here is permanent: the run fails its
+  /// track upload on every sync cycle forever, with nothing in the failure to
+  /// distinguish it from a lost network. Only one of this method's producers
+  /// screened for one — the recorder (decisions § 956) — leaving the Wear OS
+  /// and watchOS bridges, the Strava API importer, the backup-restore path
+  /// and `resumeSession`'s seeded track able to strand a run.
+  static String _trackBlobJson(List<Waypoint> track) =>
+      jsonEncode(finiteWaypoints(track).map(_waypointToJson).toList());
+
+  /// Test-only: the blob [_uploadTrack] gzips and stores.
+  @visibleForTesting
+  static String debugTrackBlobJson(List<Waypoint> track) =>
+      _trackBlobJson(track);
+
+  /// The stored track blob for [track], gzipped: the exact bytes the `runs`
+  /// bucket holds. A device backup writes local-only tracks through this so
+  /// a restore reads back every per-fix field the upload path keeps.
+  static List<int> encodeTrackBlob(List<Waypoint> track) =>
+      gzip.encode(utf8.encode(_trackBlobJson(track)));
+
+  /// Inverse of [encodeTrackBlob]: decodes a gzipped track blob.
+  static List<Waypoint> decodeTrackBlob(List<int> gzipped) =>
+      _decodeTrack(gzip.decode(gzipped));
+
   Future<List<Waypoint>> _downloadTrack(String path) async {
     final bytes = await _client.storage.from(StorageBuckets.runs).download(path);
-    final json = utf8.decode(gzip.decode(bytes));
-    final list = jsonDecode(json) as List<dynamic>;
-    return list.map((t) => _waypointFromJson(t as Map<String, dynamic>)).toList();
+    return _decodeTrack(gzip.decode(bytes));
   }
+
+  /// A stored entry that is not an object is not a waypoint and is dropped,
+  /// rather than a cast error that loses the whole track. The track then has
+  /// fewer waypoints than the stored array, so a smoothed sidecar (whose point
+  /// count names that array) no longer matches and the raw line is drawn.
+  static List<Waypoint> _decodeTrack(List<int> inflated) {
+    final list = jsonDecode(utf8.decode(inflated)) as List<dynamic>;
+    return [
+      for (final t in list)
+        if (t is Map<String, dynamic>) _waypointFromJson(t),
+    ];
+  }
+
+  /// Test-only: the stored-track decoder [fetchTrack] reads with.
+  @visibleForTesting
+  static List<Waypoint> debugDecodeTrack(List<int> inflated) =>
+      _decodeTrack(inflated);
 
   /// Test-only: exposes the private waypoint codec used by the track
   /// upload/download path. Returns the JSON shape stored inside the
@@ -1544,23 +2381,6 @@ class ApiClient {
   @visibleForTesting
   static Run debugRunFromRow(Map<String, dynamic> row) => _runFromRow(row);
 
-  /// Test-only: exposes the bag-strip that saveRun applies before persisting
-  /// a run, so the activity_type / is_dnf promotion (no double-write into the
-  /// metadata bag) can be pinned without booting Supabase.
-  @visibleForTesting
-  static Map<String, dynamic>? debugMetadataWithoutPromotedColumns(
-    Map<String, dynamic>? metadata,
-  ) =>
-      _metadataWithoutPromotedColumns(metadata);
-
-  /// Test-only: exposes [_embeddedBestSeconds] for the same reason.
-  @visibleForTesting
-  static int? debugEmbeddedBestSeconds(
-    Map<String, dynamic>? metadata,
-    String key,
-  ) =>
-      _embeddedBestSeconds(metadata, key);
-
   /// Test-only: exposes [_routeFromRow] for the same reason.
   @visibleForTesting
   static Route debugRouteFromRow(Map<String, dynamic> row) =>
@@ -1572,14 +2392,35 @@ class ApiClient {
         'ele': w.elevationMetres,
         'ts': w.timestamp?.toUtc().toIso8601String(),
         if (w.bpm != null) 'bpm': w.bpm,
+        if (w.accuracyMetres != null) 'accuracyMetres': w.accuracyMetres,
+        if (w.speedMps != null) 'speedMps': w.speedMps,
+        if (w.speedAccuracyMps != null) 'speedAccuracyMps': w.speedAccuracyMps,
+        if (w.bearingDeg != null) 'bearingDeg': w.bearingDeg,
+        if (w.hasSmoothedPosition) 'smoothedLat': w.smoothedLat,
+        if (w.hasSmoothedPosition) 'smoothedLng': w.smoothedLng,
+        if (w.baroElevationMetres != null) 'baroEle': w.baroElevationMetres,
+        if (w.cumulativeDistanceMetres != null)
+          'distM': w.cumulativeDistanceMetres,
+        if (w.offTrack) 'offTrack': true,
+        if (w.segmentStart) 'segmentStart': true,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
         lat: (m['lat'] as num).toDouble(),
         lng: (m['lng'] as num).toDouble(),
         elevationMetres: (m['ele'] as num?)?.toDouble(),
-        timestamp: m['ts'] != null ? DateTime.tryParse(m['ts'] as String) : null,
+        timestamp: parseIsoStrictValue(m['ts']),
         bpm: (m['bpm'] as num?)?.toInt(),
+        accuracyMetres: (m['accuracyMetres'] as num?)?.toDouble(),
+        speedMps: (m['speedMps'] as num?)?.toDouble(),
+        speedAccuracyMps: (m['speedAccuracyMps'] as num?)?.toDouble(),
+        bearingDeg: (m['bearingDeg'] as num?)?.toDouble(),
+        smoothedLat: (m['smoothedLat'] as num?)?.toDouble(),
+        smoothedLng: (m['smoothedLng'] as num?)?.toDouble(),
+        baroElevationMetres: (m['baroEle'] as num?)?.toDouble(),
+        cumulativeDistanceMetres: (m['distM'] as num?)?.toDouble(),
+        offTrack: m['offTrack'] == true,
+        segmentStart: m['segmentStart'] == true,
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes
@@ -1606,7 +2447,7 @@ class ApiClient {
         'caller_user_id': userId,
         'track_geojson': <String, dynamic>{
           'type': 'LineString',
-          'coordinates': track.map((w) => [w.lng, w.lat]).toList(),
+          'coordinates': track.map((w) => [w.lineLng, w.lineLat]).toList(),
         },
         'tolerance_m': toleranceMetres,
         'max_results': maxResults,
@@ -1628,7 +2469,7 @@ class ApiClient {
   }
 
   /// Saves a [Route] to the backend.
-  /// Persist a new route. Mirrors `apps/web/src/lib/data.ts:saveRoute`:
+  /// Persist a new route. Mirrors `apps/web/src/lib/core/data.ts:saveRoute`:
   /// same column set, same description normalisation (trim → empty
   /// becomes null), same `club_id` handling.
   ///
@@ -1673,6 +2514,7 @@ class ApiClient {
       distanceM: route.distanceMetres,
       elevationM: route.elevationGainMetres,
       isPublic: route.isPublic,
+      followersOnly: false,
       surface: route.surface,
       tags: route.tags,
       isFeatured: route.featured,
@@ -1686,43 +2528,77 @@ class ApiClient {
     // `id` is NOT dropped — we want the client UUID to flow through
     // so local and server agree on row identity (matches `saveRun`).
     // `shadow_hidden` is a moderation column owned by the auto-hide
-    // trigger — never written from the client.
+    // trigger — never written from the client. `followers_only` is left to
+    // its default: a new route starts at Only me, and the audience is chosen
+    // afterwards through [setRouteAudience].
     return Map<String, dynamic>.from(row.toJson())
       ..remove('shadow_hidden')
+      ..remove(RouteRow.colFollowersOnly)
       ..removeWhere((k, v) => v == null);
   }
 
-  /// Fetches the user's saved routes, newest first.
+  /// Fetches the user's saved routes, newest first, one keyset page at a
+  /// time: pass the previous page's `next` as `after` (with the SAME
+  /// `starredOnly`) to load more.
   ///
   /// `limit` caps the number of rows returned (default 200 — kept high
   /// to preserve the existing one-shot semantics for unbounded callers
-  /// like the routes-screen full-sync path). `before` paginates: pass
-  /// the oldest already-loaded route's `created_at` to fetch the next
-  /// page. Cursor over offset because routes are append-only-by-time
-  /// and a cursor is stable against concurrent inserts/deletes.
-  Future<List<Route>> getRoutes({
+  /// like the routes-screen full-sync path). The order is [_routeListOrder]
+  /// — `created_at` with `id` breaking a tie — because a cursor on
+  /// `created_at` alone (`lt created_at`) dropped the second of two routes
+  /// saved in the same instant whenever they straddled a page boundary.
+  ///
+  /// Owner-only, filtered by `user_id` rather than left to RLS: the `routes`
+  /// SELECT policy also admits every club route of a club the caller belongs
+  /// to, and those landed in the local route store as if the caller had
+  /// saved them. Club routes are [fetchClubRoutes]'s. Mirrors web
+  /// `fetchRoutesWithError`.
+  Future<KeysetPage<Route>> getRoutes({
     int limit = 200,
-    DateTime? before,
+    List<Object?>? after,
     bool starredOnly = false,
   }) async {
-    var query = _client.from(RouteRow.table).select();
+    final filter = after == null ? null : keysetAfter(_routeListOrder, after);
+    if (after != null && filter == null) {
+      return const KeysetPage(<Route>[], null);
+    }
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    var query = _client
+        .from(RouteRow.table)
+        .select()
+        .eq(RouteRow.colUserId, userId);
     if (starredOnly) {
       query = query.eq(RouteRow.colIsStarred, true);
     }
-    if (before != null) {
-      query = query.lt(RouteRow.colCreatedAt, before.toIso8601String());
-    }
-    final data = await query
-        .order(RouteRow.colCreatedAt, ascending: false)
-        .limit(limit);
+    if (filter != null) query = query.or(filter);
+    final data = await _orderBy(query, _routeListOrder).limit(limit);
 
-    return data.map<Route>((row) => _routeFromRow(row)).toList();
+    return KeysetPage(
+      data.map<Route>((row) => _routeFromRow(row)).toList(),
+      nextCursor(_routeListOrder, data, limit),
+    );
   }
 
-  /// Search public routes. Supports full-text name search, distance range
-  /// filtering, and surface type filtering. Uses the `routes_public` partial
-  /// index and `routes_name_search` GIN index.
-  Future<List<Route>> searchPublicRoutes({
+  /// Newest route first; `id` breaks a `created_at` tie so the order is
+  /// total. Nulls last on both, which is what postgrest-dart's `.order()`
+  /// sent for the old `created_at`-only order.
+  static const List<KeysetKey> _routeListOrder = [
+    KeysetKey(RouteRow.colCreatedAt, ascending: false, nullsFirst: false),
+    KeysetKey(RouteRow.colId, ascending: false, nullsFirst: false),
+  ];
+
+  /// Search public routes, one keyset page at a time: pass the previous
+  /// page's `next` as `after` (with the SAME filters and sort) to load more.
+  /// `sort` is `newest` / `popular` / `featured` (see [publicRouteOrder]).
+  ///
+  /// Reads the `public_routes` view directly rather than through the
+  /// `search_public_routes` RPC (dropped in 20270817000001), whose `p_offset`
+  /// paging repeated or skipped a route whenever one was published or
+  /// unpublished between two reads, and none of whose orders was total. The view is the RPC's own source (same
+  /// visibility) and is granted to anon + authenticated, so the filters move
+  /// here verbatim. Mirrors web `searchPublicRoutes` in `core/data.ts`.
+  Future<KeysetPage<Route>> searchPublicRoutes({
     String? query,
     double? minDistanceM,
     double? maxDistanceM,
@@ -1731,22 +2607,31 @@ class ApiClient {
     bool featuredOnly = false,
     String sort = 'newest',
     int limit = 50,
-    int offset = 0,
+    List<Object?>? after,
   }) async {
-    final data = await _client.rpc('search_public_routes', params: {
-      'p_query': (query != null && query.trim().isNotEmpty) ? query.trim() : null,
-      'p_min_distance_m': minDistanceM,
-      'p_max_distance_m': maxDistanceM,
-      'p_surface': (surface != null && surface.isNotEmpty) ? surface : null,
-      'p_tags': (tags != null && tags.isNotEmpty) ? tags : null,
-      'p_featured_only': featuredOnly,
-      'p_sort': sort,
-      'p_limit': limit,
-      'p_offset': offset,
-    });
-    return (data as List)
-        .map<Route>((row) => _routeFromRow(row as Map<String, dynamic>))
-        .toList();
+    final order = publicRouteOrder(sort);
+    final filter = after == null ? null : keysetAfter(order, after);
+    if (after != null && filter == null) {
+      return const KeysetPage(<Route>[], null);
+    }
+    var q = _client.from('public_routes').select();
+    final trimmed = query?.trim();
+    // Every character of the query matches literally: `ilike` would read `*`
+    // (PostgREST's alias for `%`), `%`, `_` and `\` as wildcards.
+    if (trimmed != null && trimmed.isNotEmpty) {
+      q = q.imatchRegex('name', literalSubstringPattern(trimmed));
+    }
+    if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
+    if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);
+    if (surface != null && surface.isNotEmpty) q = q.eq('surface', surface);
+    if (tags != null && tags.isNotEmpty) q = q.overlaps('tags', tags);
+    if (featuredOnly) q = q.eq('is_featured', true);
+    if (filter != null) q = q.or(filter);
+    final rows = await _orderBy(q, order).limit(limit);
+    return KeysetPage(
+      rows.map<Route>(_routeFromRow).toList(),
+      nextCursor(order, rows, limit),
+    );
   }
 
   /// Cross-club activity discovery. Searches PUBLIC clubs' events across the
@@ -1767,14 +2652,14 @@ class ApiClient {
   }) async {
     final q = query?.trim();
     final data = await _client.rpc('search_public_events', params: {
-      'p_query': (q != null && q.isNotEmpty) ? q : null,
-      'p_category': category,
-      'p_cadence': cadence,
-      'p_byday': byday,
-      'p_paid': paid,
-      'p_time': time,
+      if (q != null && q.isNotEmpty) 'p_query': q,
+      'p_category': ?category,
+      'p_cadence': ?cadence,
+      'p_byday': ?byday,
+      'p_paid': ?paid,
+      'p_time': ?time,
       'p_limit': limit,
-    });
+    }, get: true);
     return (data as List)
         .map<PublicEventResult>(
             (row) => PublicEventResult.fromRow(row as Map<String, dynamic>))
@@ -1787,7 +2672,7 @@ class ApiClient {
   /// 500 rows down the wire and counting in memory.
   Future<List<String>> fetchPopularRouteTags({int limit = 20}) async {
     final rows = await _client
-        .rpc('popular_route_tags', params: {'tag_limit': limit});
+        .rpc('popular_route_tags', params: {'tag_limit': limit}, get: true);
     return (rows as List)
         .cast<Map<String, dynamic>>()
         .map((r) => r['tag'] as String)
@@ -1814,7 +2699,7 @@ class ApiClient {
       'lng': lng,
       'radius_m': radiusM,
       'max_results': limit,
-    });
+    }, get: true);
     return (data as List)
         .map<Route>((row) => _routeFromRow(row as Map<String, dynamic>))
         .toList();
@@ -1822,10 +2707,13 @@ class ApiClient {
 
   /// Discoverable public routes inside the viewport bbox for the route
   /// discovery map. Mirror of the web `fetchDiscoverableRoutesInBbox`.
-  /// [filter] is the lens: 'popular' (default) | 'featured' | 'friends' |
-  /// 'hidden_gems'. [distMin]/[distMax] are the parallel race-distance
-  /// band bounds (a null [distMax] element = open-ended ultra); omit them
-  /// for no distance filter. Fails soft to an empty list.
+  /// [filter] is the lens: 'popular' (default) | 'official' | 'featured' |
+  /// 'friends' | 'hidden_gems'. Official routes rank first; outside the
+  /// 'official' lens at most a quarter of [limit] rank ahead of community
+  /// routes and the rest backfill after them. [distMin]/[distMax] are the
+  /// parallel race-distance band bounds (a null [distMax] element =
+  /// open-ended ultra); omit them for no distance filter. Fails soft to an
+  /// empty list.
   Future<List<DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
     required double minLng,
     required double minLat,
@@ -1865,6 +2753,7 @@ class ApiClient {
           runCount: (r['run_count'] as num?)?.toInt() ?? 0,
           lat: (r['lat'] as num).toDouble(),
           lng: (r['lng'] as num).toDouble(),
+          official: (r['is_official'] as bool?) ?? false,
         );
       }).toList();
     } catch (e) {
@@ -1889,7 +2778,7 @@ class ApiClient {
         'p_max_lng': maxLng,
         'p_max_lat': maxLat,
         'p_limit': limit,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data.map<ClubPin>((row) {
         final r = row as Map<String, dynamic>;
@@ -1902,6 +2791,7 @@ class ApiClient {
           memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
           lat: (r['lat'] as num).toDouble(),
           lng: (r['lng'] as num).toDouble(),
+          isVerified: (r['is_verified'] as bool?) ?? false,
         );
       }).toList();
     } catch (e) {
@@ -1910,20 +2800,69 @@ class ApiClient {
     }
   }
 
+  /// Upcoming verified races inside the viewport bbox, for the discovery
+  /// map's race pins. Mirror of the web `fetchUpcomingRacesInBbox`;
+  /// [officialOnly] narrows to official organisers' races for the Official
+  /// lens. Fails soft.
+  Future<List<UpcomingRacePin>> fetchUpcomingRacesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    bool officialOnly = false,
+  }) async {
+    try {
+      final data = await _client.rpc('upcoming_races_in_bbox', params: {
+        'p_min_lng': minLng,
+        'p_min_lat': minLat,
+        'p_max_lng': maxLng,
+        'p_max_lat': maxLat,
+        'p_limit': limit,
+        'p_official_only': officialOnly,
+      }, get: true);
+      if (data is! List) return const [];
+      return data.map<UpcomingRacePin>((row) {
+        final r = row as Map<String, dynamic>;
+        return UpcomingRacePin(
+          id: r['id'] as String,
+          name: (r['name'] as String?) ?? '',
+          raceDate: r['race_date'] as String,
+          distanceM: (r['distance_m'] as num?)?.toInt(),
+          locationLabel: r['location_label'] as String?,
+          official: (r['is_official'] as bool?) ?? false,
+          hasCourse: (r['has_course'] as bool?) ?? false,
+          lat: (r['lat'] as num).toDouble(),
+          lng: (r['lng'] as num).toDouble(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('fetchUpcomingRacesInBbox failed: ${safeErrorLabel(e)}');
+      return const [];
+    }
+  }
+
   // -- Route reviews --
 
-  /// Fetch all reviews for a route, newest first.
+  /// Fetch all reviews for a route, newest first, walked by keyset cursor so
+  /// a review posted or withdrawn mid-read is neither repeated nor makes the
+  /// walk skip another.
   Future<List<RouteReviewRow>> getRouteReviews(String routeId) async {
-    final data = await _client
-        .from(RouteReviewRow.table)
-        .select()
-        .eq(RouteReviewRow.colRouteId, routeId)
-        .order(RouteReviewRow.colCreatedAt, ascending: false);
-    return data
-        .map<RouteReviewRow>(
-            (row) => RouteReviewRow.fromJson(row))
-        .toList();
+    final rows = await _walk(
+      _routeReviewOrder,
+      () => _client
+          .from(RouteReviewRow.table)
+          .select()
+          .eq(RouteReviewRow.colRouteId, routeId),
+    );
+    return rows.map(RouteReviewRow.fromJson).toList();
   }
+
+  /// `created_at` is nullable and a null sorts last, as it always has.
+  static const List<KeysetKey> _routeReviewOrder = [
+    KeysetKey(RouteReviewRow.colCreatedAt, ascending: false, nullsFirst: false),
+    KeysetKey(RouteReviewRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// Submit or update a review for a route (one per user per route).
   Future<void> upsertRouteReview({
@@ -1961,24 +2900,325 @@ class ApiClient {
         .eq(RouteRow.colId, routeId);
   }
 
+  /// Whether the heart-rate prescription surfaces are live: the server's
+  /// `hr_prescription` gate, the same row the database enforces on every
+  /// write (decisions § 2108). Mirror of web `hrPrescriptionEnabled`. Fail
+  /// closed: any read failure is "off".
+  Future<bool> hrPrescriptionEnabled() async {
+    try {
+      final result = await _client
+          .rpc('hr_prescription_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('hr_prescription_enabled failed: $e');
+      return false;
+    }
+  }
+
+  // ────────────────── Audience sharing ──────────────────
+  //
+  // Mirror of `apps/web/src/lib/core/data.ts` `audienceSharingEnabled` /
+  // `fetchShares` / `addShare` / `revokeShare` / `setAudience`
+  // (decisions § 1874). The server gates all of it on the
+  // `audience_sharing` flag, so these calls only ever narrow what the
+  // existing public / private controls could already do.
+
+  /// Whether the followers level and named-person shares are live. Fail
+  /// closed: any read failure is "off", and the caller hides the control.
+  Future<bool> audienceSharingEnabled() async {
+    try {
+      final result = await _client
+          .rpc('audience_sharing_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('audience_sharing_enabled failed: $e');
+      return false;
+    }
+  }
+
+  /// The two stored visibility columns of the caller's own run or route, or
+  /// null when RLS returns no row (not the caller's, or deleted).
+  Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
+    ShareableKind kind,
+    String id,
+  ) async {
+    final table = kind == ShareableKind.run ? RunRow.table : RouteRow.table;
+    final row = await _client
+        .from(table)
+        .select('${RunRow.colIsPublic}, ${RunRow.colFollowersOnly}')
+        .eq(RunRow.colId, id)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      isPublic: row[RunRow.colIsPublic] == true,
+      followersOnly: row[RunRow.colFollowersOnly] == true,
+    );
+  }
+
+  /// The live named-person grants on one run or route, oldest first, with
+  /// each recipient's display name. RLS returns only the owner's grants.
+  Future<List<ShareRecipient>> fetchShares(ShareableKind kind, String id) async {
+    final rows = kind == ShareableKind.run
+        ? await _client
+            .from(RunShareRow.table)
+            .select('${RunShareRow.colRecipientId}, ${RunShareRow.colCreatedAt}')
+            .eq(RunShareRow.colRunId, id)
+            .order(RunShareRow.colCreatedAt, ascending: true)
+            .order(RunShareRow.colRecipientId, ascending: true)
+        : await _client
+            .from(RouteShareRow.table)
+            .select(
+                '${RouteShareRow.colRecipientId}, ${RouteShareRow.colCreatedAt}')
+            .eq(RouteShareRow.colRouteId, id)
+            .order(RouteShareRow.colCreatedAt, ascending: true)
+            .order(RouteShareRow.colRecipientId, ascending: true);
+    final ids = rows
+        .map<String>((r) => r[RunShareRow.colRecipientId] as String)
+        .toList();
+    if (ids.isEmpty) return const [];
+    final profiles = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
+    final byId = {for (final p in profiles) p['id'] as String: p};
+    return [
+      for (final id in ids)
+        ShareRecipient(
+          recipientId: id,
+          displayName: byId[id]?['display_name'] as String?,
+          avatarUrl: byId[id]?['avatar_url'] as String?,
+        ),
+    ];
+  }
+
+  /// The people the caller may name on a share: anyone with a follow edge
+  /// either way, the same set the INSERT policy admits (it also drops a
+  /// block either way, which it enforces itself). De-duplicated, by name.
+  Future<List<UserProfileRow>> fetchShareCandidates() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw StateError('not signed in');
+    final lists = await Future.wait([
+      fetchFollowers(userId, limit: 500),
+      fetchFollowing(userId, limit: 500),
+    ]);
+    final byId = <String, UserProfileRow>{};
+    for (final p in [...lists[0].rows, ...lists[1].rows]) {
+      byId[p.id] = p;
+    }
+    final people = byId.values.toList()
+      ..sort((a, b) => (a.displayName ?? '')
+          .toLowerCase()
+          .compareTo((b.displayName ?? '').toLowerCase()));
+    return people;
+  }
+
+  /// Share one run or route with one person. A repeat share of the same
+  /// person is a no-op, not an error.
+  Future<void> addShare(
+    ShareableKind kind,
+    String id,
+    String recipientId,
+  ) async {
+    final ownerId = _client.auth.currentUser?.id;
+    if (ownerId == null) throw StateError('not signed in');
+    try {
+      if (kind == ShareableKind.run) {
+        await _client.from(RunShareRow.table).insert({
+          RunShareRow.colRunId: id,
+          RunShareRow.colOwnerId: ownerId,
+          RunShareRow.colRecipientId: recipientId,
+        });
+      } else {
+        await _client.from(RouteShareRow.table).insert({
+          RouteShareRow.colRouteId: id,
+          RouteShareRow.colOwnerId: ownerId,
+          RouteShareRow.colRecipientId: recipientId,
+        });
+      }
+    } on PostgrestException catch (e) {
+      if (e.code != '23505') rethrow;
+    }
+  }
+
+  /// Revoke one person's access; it ends on their next read. A delete RLS
+  /// refused comes back as zero rows rather than an error, so the count is
+  /// checked and a refusal is thrown instead of being shown as a revoke.
+  Future<void> revokeShare(
+    ShareableKind kind,
+    String id,
+    String recipientId,
+  ) async {
+    final List<dynamic> rows = kind == ShareableKind.run
+        ? await _client
+            .from(RunShareRow.table)
+            .delete()
+            .eq(RunShareRow.colRunId, id)
+            .eq(RunShareRow.colRecipientId, recipientId)
+            .select(RunShareRow.colRecipientId)
+        : await _client
+            .from(RouteShareRow.table)
+            .delete()
+            .eq(RouteShareRow.colRouteId, id)
+            .eq(RouteShareRow.colRecipientId, recipientId)
+            .select(RouteShareRow.colRecipientId);
+    if (rows.isEmpty) throw StateError('share not revoked');
+  }
+
+  /// Move a run or route to a stored level. [revokeGrants] deletes every
+  /// grant first, so a row never claims "only me" while a named reader is
+  /// still admitted. Zero rows updated means RLS refused, and is thrown.
+  Future<void> setAudienceColumns(
+    ShareableKind kind,
+    String id, {
+    required bool isPublic,
+    required bool followersOnly,
+    required bool revokeGrants,
+  }) async {
+    if (revokeGrants) {
+      if (kind == ShareableKind.run) {
+        await _client
+            .from(RunShareRow.table)
+            .delete()
+            .eq(RunShareRow.colRunId, id);
+      } else {
+        await _client
+            .from(RouteShareRow.table)
+            .delete()
+            .eq(RouteShareRow.colRouteId, id);
+      }
+    }
+    final table = kind == ShareableKind.run ? RunRow.table : RouteRow.table;
+    final List<dynamic> rows = await _client
+        .from(table)
+        .update({
+          RunRow.colIsPublic: isPublic,
+          RunRow.colFollowersOnly: followersOnly,
+        })
+        .eq(RunRow.colId, id)
+        .select(RunRow.colId);
+    if (rows.isEmpty) throw StateError('audience not updated');
+  }
+
   // ────────────────── Following + public profiles ──────────────────
   //
-  // Mirror of `apps/web/src/lib/data.ts` — the social engagement loop
+  // Mirror of `apps/web/src/lib/core/data.ts` — the social engagement loop
   // is web-canonical (decisions §31), and the android app needs the
   // same primitives to build feed / profile / notifications screens.
   // Methods are intentionally narrow wrappers over the row classes;
   // any cross-shape (FeedEntry, ProfileSummary) lives in core_models.
 
-  /// Follow `targetUserId`. No-op if already following (composite-PK
-  /// duplicate is swallowed by the unique-violation guard).
-  Future<void> followUser(String targetUserId) async {
+  /// Follow `targetUserId`, or ask to when their profile is private
+  /// (decisions § 1967). One RPC, so the client never reads the target's
+  /// privacy and races its change. Mirrors web `followUser`.
+  Future<FollowOutcome> followUser(String targetUserId) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) throw Exception('Not authenticated');
-    if (viewerId == targetUserId) return;
-    await _client.from(UserFollowRow.table).insert({
-      UserFollowRow.colFollowerId: viewerId,
-      UserFollowRow.colFolloweeId: targetUserId,
-    });
+    if (viewerId == targetUserId) return FollowOutcome.following;
+    final result = await _client.rpc(
+      'request_follow',
+      params: {'p_target': targetUserId},
+    );
+    return result == 'requested'
+        ? FollowOutcome.requested
+        : FollowOutcome.following;
+  }
+
+  /// Withdraw the viewer's pending request to follow `targetUserId`.
+  Future<void> cancelFollowRequest(String targetUserId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client
+        .from(FollowRequestRow.table)
+        .delete()
+        .eq(FollowRequestRow.colRequesterId, viewerId)
+        .eq(FollowRequestRow.colTargetId, targetUserId);
+  }
+
+  /// Requests to follow the signed-in user, newest first. Mirrors web
+  /// `fetchIncomingFollowRequests`.
+  Future<List<IncomingFollowRequest>> fetchIncomingFollowRequests() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return const [];
+    final rows = await _client
+        .from(FollowRequestRow.table)
+        .select()
+        .eq(FollowRequestRow.colTargetId, viewerId)
+        .order(FollowRequestRow.colRequestedAt, ascending: false)
+        .order(FollowRequestRow.colRequesterId, ascending: false)
+        .limit(200);
+    final requests = (rows as List)
+        .map((r) => FollowRequestRow.fromJson(r as Map<String, dynamic>))
+        .toList();
+    if (requests.isEmpty) return const [];
+    final profiles = await readChunked(
+      requests.map((r) => r.requesterId).toList(),
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select(
+              '${UserProfileRow.colId}, ${UserProfileRow.colDisplayName}, ${UserProfileRow.colAvatarUrl}')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
+    final byId = <String, PublicProfile>{
+      for (final p in profiles)
+        p[UserProfileRow.colId] as String: PublicProfile.fromJson(p),
+    };
+    return [
+      for (final r in requests)
+        if (byId[r.requesterId] != null)
+          IncomingFollowRequest(
+            requester: byId[r.requesterId]!,
+            requestedAt: r.requestedAt,
+          ),
+    ];
+  }
+
+  Future<void> approveFollowRequest(String requesterId) async {
+    await _client.rpc(
+      'approve_follow_request',
+      params: {'p_requester': requesterId},
+    );
+  }
+
+  /// A decline is the target deleting the request under RLS. Zero rows
+  /// deleted means it was already gone or refused, and is thrown.
+  Future<void> declineFollowRequest(String requesterId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    final List<dynamic> rows = await _client
+        .from(FollowRequestRow.table)
+        .delete()
+        .eq(FollowRequestRow.colRequesterId, requesterId)
+        .eq(FollowRequestRow.colTargetId, viewerId)
+        .select(FollowRequestRow.colRequesterId);
+    if (rows.isEmpty) throw StateError('follow request not declined');
+  }
+
+  /// The signed-in user's own private-profile switch.
+  Future<bool> fetchMyProfilePrivate() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final row = await _client
+        .from(UserProfileRow.table)
+        .select(UserProfileRow.colProfilePrivate)
+        .eq(UserProfileRow.colId, viewerId)
+        .maybeSingle();
+    return row?[UserProfileRow.colProfilePrivate] == true;
+  }
+
+  /// Turning it off approves every pending request in the same statement
+  /// (a trigger). Zero rows updated means RLS refused, and is thrown.
+  Future<void> setProfilePrivate(bool value) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    final List<dynamic> rows = await _client
+        .from(UserProfileRow.table)
+        .update({UserProfileRow.colProfilePrivate: value})
+        .eq(UserProfileRow.colId, viewerId)
+        .select(UserProfileRow.colId);
+    if (rows.isEmpty) throw StateError('profile privacy not updated');
   }
 
   /// Stop following `targetUserId`.
@@ -1993,7 +3233,7 @@ class ApiClient {
   }
 
   /// Block `targetUserId` via the `block_user` SECURITY DEFINER RPC.
-  /// Mirrors `apps/web/src/lib/data.ts#blockUser`. The RPC also drains
+  /// Mirrors `apps/web/src/lib/core/data.ts#blockUser`. The RPC also drains
   /// existing follow rows in either direction so a viewer-initiated
   /// block subsumes unfollow on both sides — see migration
   /// `20261012_001_user_blocks.sql`.
@@ -2029,63 +3269,112 @@ class ApiClient {
     return rows.isNotEmpty;
   }
 
-  /// People who follow `userId`. `limit` is a protective cap, not a
-  /// pagination cursor — promote to cursor pagination if any user
-  /// approaches the ceiling in practice.
-  Future<List<UserProfileRow>> fetchFollowers(
-    String userId, {
-    int limit = 100,
-    int offset = 0,
+  /// Newest follow first; the other party's id breaks a `followed_at` tie so
+  /// the order is total. Mirrors `FOLLOWERS_ORDER` / `FOLLOWING_ORDER` in web
+  /// `core/data.ts`.
+  static const List<KeysetKey> _followersOrder = [
+    KeysetKey(UserFollowRow.colFollowedAt, ascending: false, nullsFirst: true),
+    KeysetKey(UserFollowRow.colFollowerId, ascending: false, nullsFirst: true),
+  ];
+  static const List<KeysetKey> _followingOrder = [
+    KeysetKey(UserFollowRow.colFollowedAt, ascending: false, nullsFirst: true),
+    KeysetKey(UserFollowRow.colFolloweeId, ascending: false, nullsFirst: true),
+  ];
+
+  /// The `.order()` calls of a keyset order, so the sort and the cursor
+  /// filter are read off one spec and cannot drift apart.
+  static PostgrestTransformBuilder<T> _orderBy<T>(
+    PostgrestTransformBuilder<T> query,
+    List<KeysetKey> keys,
+  ) {
+    var q = query;
+    for (final k in keys) {
+      q = q.order(k.column, ascending: k.ascending, nullsFirst: k.nullsFirst);
+    }
+    return q;
+  }
+
+  /// One keyset page of follow edges anchored on `userId`, resolved to
+  /// profiles in edge order. The cursor is taken from the last EDGE read, so
+  /// an edge whose profile is unreadable neither ends the list early nor
+  /// shifts the next page.
+  Future<KeysetPage<UserProfileRow>> _followPage({
+    required String anchorColumn,
+    required String otherColumn,
+    required List<KeysetKey> order,
+    required String userId,
+    required int limit,
+    required List<Object?>? after,
   }) async {
-    final edges = await _client
+    final filter = after == null ? null : keysetAfter(order, after);
+    if (after != null && filter == null) {
+      return const KeysetPage(<UserProfileRow>[], null);
+    }
+    var query = _client
         .from(UserFollowRow.table)
-        .select(UserFollowRow.colFollowerId)
-        .eq(UserFollowRow.colFolloweeId, userId)
-        .order(UserFollowRow.colFollowedAt, ascending: false)
-        .range(offset, offset + limit - 1);
-    final ids = edges
-        .map<String>((e) => e[UserFollowRow.colFollowerId] as String)
-        .toList();
-    if (ids.isEmpty) return const [];
+        .select('$otherColumn, ${UserFollowRow.colFollowedAt}')
+        .eq(anchorColumn, userId);
+    if (filter != null) query = query.or(filter);
+    final edges = await _orderBy(query, order).limit(limit);
+    final ids = edges.map<String>((e) => e[otherColumn] as String).toList();
+    if (ids.isEmpty) return KeysetPage(const [], nextCursor(order, edges, limit));
     // Cross-user reads must stay inside the granted column set
     // (migration 20260707_001) — a bare select() requests revoked
     // columns and PostgREST rejects the whole read with 42501.
-    final profiles = await _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url, created_at')
-        .inFilter(UserProfileRow.colId, ids);
-    return profiles
-        .map<UserProfileRow>((row) => UserProfileRow.fromJson(row))
-        .toList();
+    final profiles = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url, created_at')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
+    final byId = <String, UserProfileRow>{
+      for (final row in profiles)
+        row[UserProfileRow.colId] as String: UserProfileRow.fromJson(row),
+    };
+    return KeysetPage(
+      [
+        for (final id in ids)
+          if (byId[id] != null) byId[id]!,
+      ],
+      nextCursor(order, edges, limit),
+    );
   }
 
-  /// People `userId` follows.
-  Future<List<UserProfileRow>> fetchFollowing(
+  /// People who follow `userId`, newest follow first, one keyset page at a
+  /// time: pass the previous page's `next` as `after` to load more. A cursor
+  /// rather than an offset because an offset is a position — a follower who
+  /// unfollows between two reads moves every later row up one, and the next
+  /// offset then starts a row late, so one follower is never shown.
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(
     String userId, {
     int limit = 100,
-    int offset = 0,
-  }) async {
-    final edges = await _client
-        .from(UserFollowRow.table)
-        .select(UserFollowRow.colFolloweeId)
-        .eq(UserFollowRow.colFollowerId, userId)
-        .order(UserFollowRow.colFollowedAt, ascending: false)
-        .range(offset, offset + limit - 1);
-    final ids = edges
-        .map<String>((e) => e[UserFollowRow.colFolloweeId] as String)
-        .toList();
-    if (ids.isEmpty) return const [];
-    // Same granted-column constraint as fetchFollowers — a bare
-    // select() here broke the entire feed (42501) once 20260707_001
-    // locked the cross-user grant down.
-    final profiles = await _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url, created_at')
-        .inFilter(UserProfileRow.colId, ids);
-    return profiles
-        .map<UserProfileRow>((row) => UserProfileRow.fromJson(row))
-        .toList();
-  }
+    List<Object?>? after,
+  }) =>
+      _followPage(
+        anchorColumn: UserFollowRow.colFolloweeId,
+        otherColumn: UserFollowRow.colFollowerId,
+        order: _followersOrder,
+        userId: userId,
+        limit: limit,
+        after: after,
+      );
+
+  /// People `userId` follows, newest follow first, one keyset page at a time
+  /// (see [fetchFollowers]).
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(
+    String userId, {
+    int limit = 100,
+    List<Object?>? after,
+  }) =>
+      _followPage(
+        anchorColumn: UserFollowRow.colFollowerId,
+        otherColumn: UserFollowRow.colFolloweeId,
+        order: _followingOrder,
+        userId: userId,
+        limit: limit,
+        after: after,
+      );
 
   /// Free-text people search. Routes through the
   /// `search_user_profiles` SECURITY DEFINER RPC so the search
@@ -2096,8 +3385,8 @@ class ApiClient {
   ///
   /// Display-name search ranked for web parity: public-runs count
   /// desc, then shared-clubs count desc, then display name asc.
-  /// Mirrors `apps/web/src/lib/data.ts:searchPeople` +
-  /// `apps/web/src/lib/search_ranking.ts:comparePeopleRank`.
+  /// Mirrors `apps/web/src/lib/core/data.ts:searchPeople` +
+  /// `apps/web/src/lib/social/search_ranking.ts:comparePeopleRank`.
   Future<List<PeopleSuggestion>> searchPeople(
     String query, {
     int limit = 20,
@@ -2123,7 +3412,7 @@ class ApiClient {
     final profiles = await _client.rpc('search_user_profiles', params: {
       'p_query': term,
       'p_limit': candidateLimit,
-    });
+    }, get: true);
     final ids = (profiles as List<dynamic>)
         .map<String>((p) => (p as Map<String, dynamic>)['id'] as String)
         .where((id) => id != viewerId)
@@ -2153,7 +3442,7 @@ class ApiClient {
   }
 
   /// Pure comparator mirroring `comparePeopleRank` in
-  /// `apps/web/src/lib/search_ranking.ts`. Sorts by:
+  /// `apps/web/src/lib/social/search_ranking.ts`. Sorts by:
   ///   1. `publicRunsCount` desc — active users surface above bots
   ///   2. `sharedClubs` desc — co-members tied on activity surface higher
   ///   3. `displayName` asc — stable alphabetical tie-break
@@ -2176,7 +3465,7 @@ class ApiClient {
   /// Suggested people for the social People surface: members of the
   /// viewer's clubs they don't already follow. Ordered by shared-club
   /// count desc, then by display_name. Mirrors `fetchSuggestedPeople`
-  /// in `apps/web/src/lib/data.ts`.
+  /// in `apps/web/src/lib/core/data.ts`.
   Future<List<PeopleSuggestion>> fetchSuggestedPeople({int limit = 12}) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) return const [];
@@ -2190,12 +3479,15 @@ class ApiClient {
         .toList();
     if (myClubIds.isEmpty) return const [];
 
-    final coMemberRows = await _client
-        .from(ClubMemberRow.table)
-        .select('${ClubMemberRow.colUserId}, ${ClubMemberRow.colClubId}')
-        .inFilter(ClubMemberRow.colClubId, myClubIds)
-        .eq(ClubMemberRow.colStatus, 'active')
-        .neq(ClubMemberRow.colUserId, viewerId);
+    final coMemberRows = await readChunked(
+      myClubIds,
+      (chunk) async => _client
+          .from(ClubMemberRow.table)
+          .select('${ClubMemberRow.colUserId}, ${ClubMemberRow.colClubId}')
+          .inFilter(ClubMemberRow.colClubId, chunk)
+          .eq(ClubMemberRow.colStatus, 'active')
+          .neq(ClubMemberRow.colUserId, viewerId),
+    );
     if (coMemberRows.isEmpty) return const [];
 
     final shared = <String, int>{};
@@ -2204,11 +3496,14 @@ class ApiClient {
       shared[uid] = (shared[uid] ?? 0) + 1;
     }
 
-    final followedRows = await _client
-        .from(UserFollowRow.table)
-        .select(UserFollowRow.colFolloweeId)
-        .eq(UserFollowRow.colFollowerId, viewerId)
-        .inFilter(UserFollowRow.colFolloweeId, shared.keys.toList());
+    final followedRows = await readChunked(
+      shared.keys.toList(),
+      (chunk) async => _client
+          .from(UserFollowRow.table)
+          .select(UserFollowRow.colFolloweeId)
+          .eq(UserFollowRow.colFollowerId, viewerId)
+          .inFilter(UserFollowRow.colFolloweeId, chunk),
+    );
     for (final r in followedRows) {
       shared.remove(r[UserFollowRow.colFolloweeId] as String);
     }
@@ -2234,32 +3529,41 @@ class ApiClient {
     required Map<String, int> sharedCounts,
   }) async {
     if (ids.isEmpty) return const [];
-    final profilesF = _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url, handle')
-        .inFilter(UserProfileRow.colId, ids);
+    final profilesF = readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url, handle')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
+    // Public-run counts come from the SECURITY DEFINER GROUP BY RPC, not from
+    // the base `runs` table: 20260701_001 dropped the public-anyone SELECT
+    // policy, so a client tally over `runs` reads zero rows for every
+    // candidate but the viewer and every suggestion showed "0 public runs" —
+    // which is also comparePeopleRank's primary sort key. See
+    // public_run_counts (migration 20270118_001); web reads the same RPC.
     final runsF = _client
-        .from(RunRow.table)
-        .select(RunRow.colUserId)
-        .inFilter(RunRow.colUserId, ids)
-        .eq(RunRow.colIsPublic, true);
+        .rpc('public_run_counts', params: {'p_user_ids': ids});
     final followsF = viewerId == null
         ? Future.value(<dynamic>[])
-        : _client
-            .from(UserFollowRow.table)
-            .select(UserFollowRow.colFolloweeId)
-            .eq(UserFollowRow.colFollowerId, viewerId)
-            .inFilter(UserFollowRow.colFolloweeId, ids);
-    final results = await Future.wait([profilesF, runsF, followsF]);
+        : readChunked(
+            ids,
+            (chunk) async => _client
+                .from(UserFollowRow.table)
+                .select(UserFollowRow.colFolloweeId)
+                .eq(UserFollowRow.colFollowerId, viewerId)
+                .inFilter(UserFollowRow.colFolloweeId, chunk),
+          );
+    final results = await Future.wait<dynamic>([profilesF, runsF, followsF]);
     final profileRows = results[0];
     final runRows = results[1];
     final followRows = results[2];
 
     final counts = <String, int>{};
-    for (final r in runRows) {
+    for (final r in runRows as List) {
       final row = r as Map<String, dynamic>;
-      final uid = row[RunRow.colUserId] as String;
-      counts[uid] = (counts[uid] ?? 0) + 1;
+      counts[row['user_id'] as String] =
+          (row['public_run_count'] as num?)?.toInt() ?? 0;
     }
     final follows = <String>{};
     for (final r in followRows) {
@@ -2281,78 +3585,88 @@ class ApiClient {
     }).toList();
   }
 
-  /// Best-effort auto-link of a freshly-saved run to a plan workout
-  /// scheduled for the same calendar date, matched within 25% of the
-  /// workout's target distance. Client-side mirror of
-  /// `autoMatchRunToPlanWorkout` in `apps/web/src/lib/core/data.ts` —
-  /// there is no `auto_match_run_to_plan_workout` RPC; web does this with
-  /// direct queries and so do we. Returns the matched workout id, or null
-  /// when nothing matches.
-  Future<String?> autoMatchRunToPlanWorkout(
-    String runId,
-    DateTime runDate,
-    double runDistanceM, {
-    List<String>? planWeekIds,
+  /// Opt-in coarse-location "runners nearby" discovery (issue #466). Calls the
+  /// `discoverable_runners_near` SECURITY DEFINER RPC, which centres on the
+  /// CALLER's own stored coarse area and applies every eligibility filter
+  /// (opt-in, minor exclusion, shadow_hidden, search opt-out, blocks)
+  /// server-side, returning only a coarse distance BUCKET per runner — never a
+  /// coordinate. Mirrors `fetchNearbyRunners` in
+  /// `apps/web/src/lib/core/data.ts`.
+  ///
+  /// Inert (returns `[]`) for a signed-out caller and for anyone who has not
+  /// opted in with an area set — the reciprocity the RPC enforces. The client
+  /// surfaces are additionally gated behind the default-off
+  /// `ENABLE_NEARBY_RUNNERS` deploy flag (`nearby_flag.dart`).
+  Future<List<NearbyRunner>> fetchNearbyRunners({
+    double radiusM = 25000,
   }) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return null;
-    final isoDate = '${runDate.year.toString().padLeft(4, '0')}-'
-        '${runDate.month.toString().padLeft(2, '0')}-'
-        '${runDate.day.toString().padLeft(2, '0')}';
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return const [];
 
-    // [planWeekIds] lets batch callers (saveRunsBatch) fetch the plan/week
-    // scope once for the whole batch instead of once per run.
-    final weekIds = planWeekIds ?? await _planWeekIdsForUser(userId);
-    if (weekIds.isEmpty) return null;
+    final rows = await _client.rpc('discoverable_runners_near', params: {
+      'p_radius_m': radiusM,
+    }, get: true);
+    final list = (rows as List<dynamic>?) ?? const [];
+    if (list.isEmpty) return const [];
 
-    final candidates = await _client
-        .from(PlanWorkoutRow.table)
-        .select('${PlanWorkoutRow.colId}, ${PlanWorkoutRow.colTargetDistanceM}, '
-            '${PlanWorkoutRow.colCompletedRunId}, ${PlanWorkoutRow.colWeekId}')
-        .inFilter(PlanWorkoutRow.colWeekId, weekIds)
-        .eq(PlanWorkoutRow.colScheduledDate, isoDate)
-        .isFilter(PlanWorkoutRow.colCompletedRunId, null);
+    final ids = list
+        .map<String>((r) => (r as Map<String, dynamic>)['id'] as String)
+        .toList();
+    final followedRows = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserFollowRow.table)
+          .select(UserFollowRow.colFolloweeId)
+          .eq(UserFollowRow.colFollowerId, viewerId)
+          .inFilter(UserFollowRow.colFolloweeId, chunk),
+    );
+    final follows = <String>{
+      for (final r in followedRows)
+        r[UserFollowRow.colFolloweeId] as String,
+    };
 
-    // Closest target distance within 25% wins (mirrors web's sort-by-delta).
-    String? bestId;
-    double? bestDelta;
-    for (final c in candidates as List) {
-      final target = (c as Map)[PlanWorkoutRow.colTargetDistanceM];
-      if (target is! num || target <= 0) continue;
-      final delta = (target.toDouble() - runDistanceM).abs();
-      if (delta / target > 0.25) continue;
-      if (bestDelta == null || delta < bestDelta) {
-        bestId = c[PlanWorkoutRow.colId] as String;
-        bestDelta = delta;
-      }
-    }
-    if (bestId == null) return null;
-
-    await _client.from(PlanWorkoutRow.table).update({
-      PlanWorkoutRow.colCompletedRunId: runId,
-      PlanWorkoutRow.colManuallyCompleted: false,
-      PlanWorkoutRow.colCompletedAt: DateTime.now().toUtc().toIso8601String(),
-    }).eq(PlanWorkoutRow.colId, bestId);
-    return bestId;
+    return list.map<NearbyRunner>((r) {
+      final row = r as Map<String, dynamic>;
+      final id = row['id'] as String;
+      return NearbyRunner(
+        id: id,
+        displayName: row['display_name'] as String?,
+        avatarUrl: row['avatar_url'] as String?,
+        bucket: (row['bucket'] as num?)?.toInt() ?? 0,
+        viewerFollows: follows.contains(id),
+      );
+    }).toList();
   }
 
-  /// The caller's plan-week ids, used to constrain the auto-match workout
-  /// query with `inFilter(week_id, ...)`. RLS on `plan_workouts` already
-  /// chains through `plan_weeks -> training_plans.user_id`, but the explicit
-  /// scope is defence in depth: without it a future RLS edit that broke
-  /// the chain could match a run to another user's workout. Mirrors the
-  /// web client-realtime H2 data-isolation fix.
-  Future<List<String>> _planWeekIdsForUser(String userId) async {
-    final plans = await _client
-        .from(TrainingPlanRow.table)
-        .select(
-            '${TrainingPlanRow.colId}, ${PlanWeekRow.table}(${PlanWeekRow.colId})')
-        .eq(TrainingPlanRow.colUserId, userId);
-    return <String>[
-      for (final p in plans as List)
-        for (final w in ((p as Map)[PlanWeekRow.table] as List? ?? const []))
-          (w as Map)[PlanWeekRow.colId] as String,
-    ];
+  /// Store the caller's coarse discoverable area — a geocoded city / area
+  /// centroid, rounded server-side to ~1 km. Never live GPS. Returns the
+  /// stored label so the settings surface can echo it back. Mirrors
+  /// `setDiscoverableArea` on web.
+  Future<String?> setDiscoverableArea(
+    double lng,
+    double lat,
+    String? label,
+  ) async {
+    final stored = await _client.rpc('set_discoverable_area', params: {
+      'p_lng': lng,
+      'p_lat': lat,
+      'p_label': label,
+    });
+    return stored as String?;
+  }
+
+  /// Forget the caller's stored coarse area — removes them from nearby
+  /// discovery regardless of the `discoverable_nearby` pref.
+  Future<void> clearDiscoverableArea() async {
+    await _client.rpc('clear_discoverable_area');
+  }
+
+  /// The caller's own stored area LABEL (never the coordinate), for the
+  /// settings surface. Null when no area is set.
+  Future<String?> fetchMyDiscoverableArea() async {
+    final label = await _client.rpc('my_discoverable_area',
+        params: const {}, get: true);
+    return label as String?;
   }
 
   /// Recent public runs from a single user — drives the runs tab on
@@ -2378,6 +3692,38 @@ class ApiClient {
     return row == null ? null : RunRow.fromJson(row);
   }
 
+  /// The non-owner read of a run that is NOT public but whose audience admits
+  /// the caller: the owner's followers for a followers-only run, or a named
+  /// recipient of a `run_shares` grant (decisions § 1874). `shared_runs`
+  /// carries `public_runs`' redacted projection column for column, never a
+  /// public run and never the caller's own, so the row has no track: the
+  /// clipped one comes from [fetchClippedTrackForRun]. With the server's
+  /// `audience_sharing` gate closed the view returns nothing. Mirrors web
+  /// `fetchSharedRun`.
+  Future<RunRow?> fetchSharedRunById(String runId) async {
+    final row = await _client
+        .from('shared_runs')
+        .select()
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    return row == null ? null : RunRow.fromJson(row);
+  }
+
+  /// Every non-owner read of a run in one call: public first, then shared
+  /// with this caller. A signed-out caller stops at public, because it is in
+  /// no audience and `shared_runs` is not granted to anon. A failed read
+  /// throws rather than answering "not shared with you". Mirrors web
+  /// `fetchViewableRun`.
+  Future<({RunRow? row, bool shared})> fetchViewableRunById(
+    String runId,
+  ) async {
+    final public = await fetchPublicRunById(runId);
+    if (public != null) return (row: public, shared: false);
+    if (userId == null) return (row: null, shared: false);
+    final shared = await fetchSharedRunById(runId);
+    return (row: shared, shared: shared != null);
+  }
+
   /// Toggle the owner's `is_starred` flag on a route. Drives the
   /// watch's starred-only route picker (see watch_wear/SupabaseClient).
   /// RLS restricts updates to the owner.
@@ -2401,7 +3747,8 @@ class ApiClient {
   ///    active club members see the full row, which carries the
   ///    unclipped polyline for owners' own surfaces.
   /// 2. If that returns nothing (anon, or non-owner viewing a public
-  ///    route), falls back to the `public_routes` view (which strips
+  ///    route), falls back to the `public_routes` view, then for a
+  ///    signed-in caller the `shared_routes` view (both strip
   ///    `waypoints` / `geom` / `start_point` / `is_starred` server-
   ///    side) and overlays the polyline from `clip_route_for_viewer`
   ///    so the runner's privacy zones are respected.
@@ -2419,7 +3766,7 @@ class ApiClient {
     final viewerId = _client.auth.currentUser?.id;
     final ownerRow = await _client
         .from(RouteRow.table)
-        .select()
+        .select('*, is_official')
         .eq(RouteRow.colId, routeId)
         .maybeSingle();
     if (ownerRow != null) {
@@ -2437,17 +3784,29 @@ class ApiClient {
       return (route: _routeFromRow(routeRow), ownerId: ownerId);
     }
 
-    final publicRow = await _client
+    // A route that is not public may still be shared with this viewer: a
+    // followers-only route whose owner they follow, or a named-person grant
+    // (decisions § 1874). `shared_routes` has `public_routes`' projection and
+    // `clip_route_for_viewer` admits the same audience, so the assembled shape
+    // is identical. Mirrors web `fetchRouteById`.
+    var viewRow = await _client
         .from('public_routes')
         .select()
         .eq(RouteRow.colId, routeId)
         .maybeSingle();
-    if (publicRow == null) return (route: null, ownerId: null);
+    if (viewRow == null && viewerId != null) {
+      viewRow = await _client
+          .from('shared_routes')
+          .select()
+          .eq(RouteRow.colId, routeId)
+          .maybeSingle();
+    }
+    if (viewRow == null) return (route: null, ownerId: null);
 
-    // public_routes carries no `waypoints`; fetch the clipped polyline
+    // Neither view carries `waypoints`; fetch the clipped polyline
     // separately so the response respects the owner's privacy zones.
-    final ownerId = publicRow[RouteRow.colUserId] as String?;
-    final routeRow = Map<String, dynamic>.from(publicRow);
+    final ownerId = viewRow[RouteRow.colUserId] as String?;
+    final routeRow = Map<String, dynamic>.from(viewRow);
     routeRow['waypoints'] =
         _waypointsToJson(await _clipRouteForViewer(routeId));
     return (route: _routeFromRow(routeRow), ownerId: ownerId);
@@ -2455,13 +3814,15 @@ class ApiClient {
 
   /// Server-side privacy-zone-clipped waypoints for a route the viewer
   /// does not own. Fails closed (empty polyline) on RPC error rather
-  /// than leaking the unclipped track — matches the `clipTrackForUser`
-  /// contract. Used by both non-owner read paths in [fetchRouteById].
+  /// than leaking the unclipped track — the same contract
+  /// [fetchClippedTrackForRun] keeps for runs. Used by both non-owner
+  /// read paths in [fetchRouteById].
   Future<List<Waypoint>> _clipRouteForViewer(String routeId) async {
     try {
       final clip = await _client.rpc(
         'clip_route_for_viewer',
         params: {'p_route_id': routeId},
+        get: true,
       );
       return (clip as List?)
               ?.map((p) {
@@ -2504,6 +3865,36 @@ class ApiClient {
     return data.map<RunRow>((r) => RunRow.fromJson(r)).toList();
   }
 
+  /// Head counts for the profile header, so it can show a total rather than
+  /// the length of the capped page [fetchPublicRunsByUser] returns.
+  ///
+  /// `publicCount` reads the same `public_runs` view the Runs tab lists, so a
+  /// private profile or a followers-only audience is honoured exactly as the
+  /// list honours it; for the owner that is their `is_public = true` runs.
+  /// `privateCount` is the owner's remaining runs (`is_public` false or null)
+  /// and is null for any other viewer. Mirrors web `fetchProfileRunCounts`.
+  Future<({int publicCount, int? privateCount})> fetchProfileRunCounts(
+    String userId, {
+    required bool isSelf,
+  }) async {
+    final counts = await Future.wait<int>([
+      _client
+          .from('public_runs')
+          .count(CountOption.exact)
+          .eq(RunRow.colUserId, userId),
+      if (isSelf)
+        _client
+            .from(RunRow.table)
+            .count(CountOption.exact)
+            .eq(RunRow.colUserId, userId)
+            .or('${RunRow.colIsPublic}.is.null,${RunRow.colIsPublic}.eq.false'),
+    ]);
+    return (
+      publicCount: counts[0],
+      privateCount: isSelf ? counts[1] : null,
+    );
+  }
+
   /// Public profile lookup by user ID. Returns null when the row
   /// doesn't exist or RLS hides it. Returns only the columns that are
   /// column-level granted to `authenticated`/`anon` on `user_profiles`:
@@ -2524,51 +3915,72 @@ class ApiClient {
     return UserProfileRow.fromJson(row);
   }
 
-  /// Read the GDPR Art 6(1)(a) coach-consent timestamp on the signed-in
-  /// user's `user_profiles` row. Returns null when consent has not yet
-  /// been recorded — callers should gate any Coach fan-out behind this.
-  /// See audit/gdpr (2026-05-25).
-  Future<DateTime?> fetchCoachConsentAt() async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) return null;
-    final row = await _client
-        .from('user_profiles')
-        .select('coach_consent_at')
-        .eq('id', viewerId)
-        .maybeSingle();
-    final raw = row?['coach_consent_at'];
-    if (raw == null) return null;
-    return DateTime.tryParse(raw as String);
+  /// Read the signed-in user's versioned AI-disclosure consent record
+  /// (GDPR Art 6(1)(a)) as the `{ai_disclosure_version, coach_consent_at}`
+  /// pair the clients grade with `checkAiDisclosure`. Null when signed out
+  /// or the profile row has not been provisioned.
+  ///
+  /// Goes through `get_my_profile()` because neither column is in the
+  /// cross-user column grant (migration 20260707_001 / 20270424000002): a
+  /// direct `.select('coach_consent_at')` is rejected outright with 42501,
+  /// so the read it replaced could only ever report "no consent".
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async {
+    if (_client.auth.currentUser?.id == null) return null;
+    final row = profileRowFrom(
+        await _client.rpc('get_my_profile', params: const {}, get: true));
+    if (row == null) return null;
+    return {
+      'ai_disclosure_version': row['ai_disclosure_version'],
+      'coach_consent_at': row['coach_consent_at'],
+    };
   }
 
-  /// Record the GDPR Art 6(1)(a) coach-consent acceptance for the signed-
-  /// in user via the `record_coach_consent()` SECURITY DEFINER RPC, which
-  /// stamps the SERVER's now() first-stamp-wins (not a client-chosen,
-  /// backdatable value) and is the only sanctioned writer — direct writes
-  /// to `coach_consent_at` are blocked at the DB. Returns the effective
-  /// (original-if-already-set) timestamp.
-  Future<DateTime?> recordCoachConsent() async {
+  /// Record acceptance of AI-disclosure [version] via the
+  /// `record_ai_disclosure_consent()` SECURITY DEFINER RPC — the only
+  /// sanctioned writer (direct writes to either column are blocked by the
+  /// `lock_consent_columns` trigger). The server stamps its own now() and
+  /// is monotone: accepting at or below the version already on record
+  /// leaves the original stamp standing.
+  ///
+  /// Returns what the SERVER now holds, keyed like [fetchAiDisclosure] so
+  /// one parser grades both. Throws when the RPC comes back without a
+  /// complete record — a locally synthesised version or timestamp would
+  /// let a screen unlock a feature off a write that never landed
+  /// (decisions § 560).
+  Future<Map<String, dynamic>> recordAiDisclosureConsent(int version) async {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
     }
-    final res = await _client.rpc('record_coach_consent');
-    if (res is! String) return null;
-    return DateTime.tryParse(res);
+    final res = await _client.rpc(
+      'record_ai_disclosure_consent',
+      params: {'p_version': version},
+    );
+    final row = (res is List ? (res.isEmpty ? null : res.first) : res)
+        as Map<String, dynamic>?;
+    final storedVersion = row?['version'];
+    final acceptedAt = row?['accepted_at'];
+    if (storedVersion is! int || acceptedAt is! String || acceptedAt.isEmpty) {
+      throw StateError('consent not recorded');
+    }
+    return {
+      'ai_disclosure_version': storedVersion,
+      'coach_consent_at': acceptedAt,
+    };
   }
 
-  /// Withdraw coach consent (GDPR Art 7(3)) via the
-  /// `withdraw_coach_consent()` SECURITY DEFINER RPC — the sanctioned
-  /// inverse of [recordCoachConsent]. Clears the server-held stamp; the
-  /// coach request gate then re-blocks the Coach until the user
-  /// re-consents through [recordCoachConsent].
+  /// Withdraw the AI-disclosure consent record (GDPR Art 7(3)) via the
+  /// `withdraw_ai_disclosure_consent()` SECURITY DEFINER RPC — the
+  /// sanctioned inverse of [recordAiDisclosureConsent]. There is one
+  /// acceptance of one disclosure at one version, so withdrawal clears all
+  /// of it and every AI endpoint's 403 gate re-engages.
   ///
   /// Throws on a missing session: a silent return here would let the
   /// caller confirm a withdrawal that never reached the server.
-  Future<void> withdrawCoachConsent() async {
+  Future<void> withdrawAiDisclosureConsent() async {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
     }
-    await _client.rpc('withdraw_coach_consent');
+    await _client.rpc('withdraw_ai_disclosure_consent');
   }
 
   /// Self-read of the full `user_profiles` row, including
@@ -2576,13 +3988,17 @@ class ApiClient {
   /// the `get_my_profile()` SECURITY DEFINER RPC because those columns
   /// are revoked from direct SELECT (migration 20260707_001).
   Future<UserProfileRow?> fetchMyProfile() async {
-    final result = await _client.rpc('get_my_profile');
-    if (result == null) return null;
-    if (result is List) {
-      if (result.isEmpty) return null;
-      return UserProfileRow.fromJson(result.first as Map<String, dynamic>);
-    }
-    return UserProfileRow.fromJson(result as Map<String, dynamic>);
+    final row = profileRowFrom(
+        await _client.rpc('get_my_profile', params: const {}, get: true));
+    return row == null ? null : UserProfileRow.fromJson(row);
+  }
+
+  /// The caller's row out of a `get_my_profile()` response, or null when
+  /// they have none. The RPC is `returns setof user_profiles`, so the
+  /// response is a zero- or one-element list (migration 20270715000001).
+  static Map<String, dynamic>? profileRowFrom(Object? response) {
+    final rows = response as List;
+    return rows.isEmpty ? null : rows.first as Map<String, dynamic>;
   }
 
   /// Set (or clear, when blank) the signed-in user's display name on
@@ -2677,22 +4093,14 @@ class ApiClient {
     if (healthDataConsent) {
       await grantHealthDataConsent();
     }
-    final update = <String, dynamic>{
-      UserProfileRow.colPreferredUnit: preferredUnit,
-      UserProfileRow.colOnboardedAt:
-          DateTime.now().toUtc().toIso8601String(),
-    };
-    final trimmedName = displayName?.trim();
-    if (trimmedName != null && trimmedName.isNotEmpty) {
-      update[UserProfileRow.colDisplayName] = trimmedName;
-    }
-    if (dateOfBirth != null) {
-      update[UserProfileRow.colDateOfBirth] = dateOnly(dateOfBirth);
-    }
-    if (healthDataConsent) {
-      update[UserProfileRow.colGender] =
-          (gender != null && gender.isNotEmpty) ? gender : null;
-    }
+    final update = onboardingProfileUpdate(
+      displayName: displayName,
+      preferredUnit: preferredUnit,
+      dateOfBirth: dateOfBirth,
+      gender: gender,
+      healthDataConsent: healthDataConsent,
+      now: DateTime.now(),
+    );
     final updated = await _client
         .from(UserProfileRow.table)
         .update(update)
@@ -2704,6 +4112,38 @@ class ApiClient {
         ...update,
       });
     }
+  }
+
+  /// The `user_profiles` columns [completeOnboarding] writes. A
+  /// [displayName] the wizard cleared is written as null rather than left
+  /// out, so clearing the provider name the step was prefilled with
+  /// (decisions § 2365) is honoured; a null [displayName] leaves the column
+  /// alone.
+  @visibleForTesting
+  static Map<String, dynamic> onboardingProfileUpdate({
+    String? displayName,
+    required String preferredUnit,
+    DateTime? dateOfBirth,
+    String? gender,
+    required bool healthDataConsent,
+    required DateTime now,
+  }) {
+    final update = <String, dynamic>{
+      UserProfileRow.colPreferredUnit: preferredUnit,
+      UserProfileRow.colOnboardedAt: now.toUtc().toIso8601String(),
+    };
+    if (displayName != null) {
+      final trimmed = displayName.trim();
+      update[UserProfileRow.colDisplayName] = trimmed.isEmpty ? null : trimmed;
+    }
+    if (dateOfBirth != null) {
+      update[UserProfileRow.colDateOfBirth] = dateOnly(dateOfBirth);
+    }
+    if (healthDataConsent) {
+      update[UserProfileRow.colGender] =
+          (gender != null && gender.isNotEmpty) ? gender : null;
+    }
+    return update;
   }
 
   /// `YYYY-MM-DD` for a `date`-typed column. The wizard's DOB picker is a
@@ -2846,6 +4286,119 @@ class ApiClient {
     return deleted.isNotEmpty;
   }
 
+  // ───────── Reactions, comment likes, mentions (decisions § 1971) ─────────
+
+  /// Raw rows of the `run_reaction_summary` RPC (reaction, reaction_count,
+  /// viewer_reacted). INVOKER, so RLS decides what is counted. Shaped into
+  /// tallies by `reactionTallies` in the app's run_reactions.dart.
+  Future<List<Map<String, dynamic>>> fetchRunReactionSummary(String runId) async {
+    final rows = await _client.rpc(
+      'run_reaction_summary',
+      params: {'p_run_id': runId},
+      get: true,
+    );
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
+
+  /// `true` when a new reaction row landed, `false` on the 23505 no-op —
+  /// the [giveKudos] contract.
+  Future<bool> addRunReaction(String runId, String reaction) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    try {
+      await _client.from(RunReactionRow.table).insert({
+        RunReactionRow.colUserId: viewerId,
+        RunReactionRow.colRunId: runId,
+        RunReactionRow.colReaction: reaction,
+      });
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') return false;
+      rethrow;
+    }
+  }
+
+  /// `true` when a reaction row was deleted, `false` when there was none.
+  Future<bool> removeRunReaction(String runId, String reaction) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final deleted = await _client
+        .from(RunReactionRow.table)
+        .delete()
+        .eq(RunReactionRow.colUserId, viewerId)
+        .eq(RunReactionRow.colRunId, runId)
+        .eq(RunReactionRow.colReaction, reaction)
+        .select(RunReactionRow.colUserId);
+    return deleted.isNotEmpty;
+  }
+
+  /// Like counts for every liked comment on a run, keyed by comment id. A
+  /// comment absent from the map has no likes.
+  Future<Map<String, ({int count, bool viewerLiked})>> fetchRunCommentLikeSummary(
+    String runId,
+  ) async {
+    final rows = await _client.rpc(
+      'run_comment_like_summary',
+      params: {'p_run_id': runId},
+      get: true,
+    );
+    return {
+      for (final r in (rows as List).cast<Map<String, dynamic>>())
+        r['comment_id'] as String: (
+          count: ((r['like_count'] as num?) ?? 0).toInt().clamp(0, 1 << 30),
+          viewerLiked: r['viewer_liked'] == true,
+        ),
+    };
+  }
+
+  /// `true` on a new like, `false` when the viewer had already liked it.
+  Future<bool> likeRunComment(String commentId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    try {
+      await _client.from(RunCommentLikeRow.table).insert({
+        RunCommentLikeRow.colUserId: viewerId,
+        RunCommentLikeRow.colCommentId: commentId,
+      });
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') return false;
+      rethrow;
+    }
+  }
+
+  /// `true` when a like was removed, `false` when there was none.
+  Future<bool> unlikeRunComment(String commentId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final deleted = await _client
+        .from(RunCommentLikeRow.table)
+        .delete()
+        .eq(RunCommentLikeRow.colUserId, viewerId)
+        .eq(RunCommentLikeRow.colCommentId, commentId)
+        .select(RunCommentLikeRow.colUserId);
+    return deleted.isNotEmpty;
+  }
+
+  /// Resolve mentioned handles to profile ids so a comment can link the ones
+  /// that name a real runner. Handles are stored lowercase (decisions § 269).
+  Future<Map<String, String>> resolveMentionHandles(List<String> handles) async {
+    final wanted = handles.map((h) => h.toLowerCase()).toSet().take(200).toList();
+    if (wanted.isEmpty) return const {};
+    final rows = await readChunked(
+      wanted,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('${UserProfileRow.colId}, ${UserProfileRow.colHandle}')
+          .inFilter(UserProfileRow.colHandle, chunk),
+    );
+    return {
+      for (final r in rows)
+        if (r[UserProfileRow.colHandle] is String)
+          r[UserProfileRow.colHandle] as String: r[UserProfileRow.colId] as String,
+    };
+  }
+
   /// Per-run engagement summary (kudos count, comment count, whether
   /// the viewer has given kudos). Mirrors the web `fetchEngagement
   /// Summaries` shape — used by feed cards and run-detail pages.
@@ -2854,14 +4407,20 @@ class ApiClient {
     if (runIds.isEmpty) return const {};
     final viewerId = _client.auth.currentUser?.id;
 
-    final kudos = await _client
-        .from(RunKudosRow.table)
-        .select('${RunKudosRow.colRunId}, ${RunKudosRow.colUserId}')
-        .inFilter(RunKudosRow.colRunId, runIds);
-    final comments = await _client
-        .from(RunCommentRow.table)
-        .select(RunCommentRow.colRunId)
-        .inFilter(RunCommentRow.colRunId, runIds);
+    final kudos = await readChunked(
+      runIds,
+      (chunk) async => _client
+          .from(RunKudosRow.table)
+          .select('${RunKudosRow.colRunId}, ${RunKudosRow.colUserId}')
+          .inFilter(RunKudosRow.colRunId, chunk),
+    );
+    final comments = await readChunked(
+      runIds,
+      (chunk) async => _client
+          .from(RunCommentRow.table)
+          .select(RunCommentRow.colRunId)
+          .inFilter(RunCommentRow.colRunId, chunk),
+    );
 
     final kudosCount = <String, int>{};
     final viewerHas = <String, bool>{};
@@ -2994,7 +4553,9 @@ class ApiClient {
     if (viewerId == null) throw StateError('not signed in');
     await _client
         .from(NotificationRow.table)
-        .update({NotificationRow.colReadAt: DateTime.now().toIso8601String()})
+        .update({
+          NotificationRow.colReadAt: DateTime.now().toUtc().toIso8601String()
+        })
         .eq(NotificationRow.colId, id)
         .eq(NotificationRow.colUserId, viewerId)
         .isFilter(NotificationRow.colReadAt, null);
@@ -3006,23 +4567,28 @@ class ApiClient {
     if (viewerId == null) throw StateError('not signed in');
     await _client
         .from(NotificationRow.table)
-        .update({NotificationRow.colReadAt: DateTime.now().toIso8601String()})
+        .update({
+          NotificationRow.colReadAt: DateTime.now().toUtc().toIso8601String()
+        })
         .eq(NotificationRow.colUserId, viewerId)
         .isFilter(NotificationRow.colReadAt, null);
   }
 
   /// Dismiss one or more notifications in a single statement. Dismissing a
-  /// collapsed group is one user intent, so it must not fan out into N
-  /// round-trips (mirrors web `deleteNotifications`).
+  /// collapsed group is one user intent, so it is one transaction: the RPC
+  /// takes the whole id array in its POST body, which carries none of the
+  /// gateway request-line bound an `inFilter` would have been subject to, and
+  /// chunking to dodge that bound only trades the failure for a partial
+  /// dismiss the spent undo offer can no longer take back. Ownership is the
+  /// RLS delete policy's job — the RPC is SECURITY INVOKER — so no `user_id`
+  /// filter is repeated here.
+  /// Mirrors web `deleteNotifications`.
   Future<void> deleteNotifications(List<String> ids) async {
     if (ids.isEmpty) return;
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) throw StateError('not signed in');
-    await _client
-        .from(NotificationRow.table)
-        .delete()
-        .inFilter(NotificationRow.colId, ids)
-        .eq(NotificationRow.colUserId, viewerId);
+    if (_client.auth.currentUser?.id == null) {
+      throw StateError('not signed in');
+    }
+    await _client.rpc('delete_notifications', params: {'p_ids': ids});
   }
 
   // ──────────────────── Run photos (P1.B) ────────────────────
@@ -3063,7 +4629,9 @@ class ApiClient {
   }
 
   Future<RunPhotoRow> addRunPhoto({
-    required String runId,
+    // Null only for an event steward's photo of an occurrence, which then
+    // requires [eventId] + [eventInstanceStart] (migration 20270807000001).
+    required String? runId,
     required Uint8List bytes,
     required String contentType,
     required String extension,
@@ -3091,7 +4659,7 @@ class ApiClient {
           RunPhotoRow.colPositionIdx: positionIdx,
           RunPhotoRow.colEventId: eventId,
           RunPhotoRow.colEventInstanceStart:
-              eventInstanceStart?.toIso8601String(),
+              instanceStartKeyOrNull(eventInstanceStart),
         })
         .select()
         .single();
@@ -3149,44 +4717,135 @@ class ApiClient {
   /// selected so a private run's UUID can't leak to an event viewer who
   /// can't see that run — mirrors web `fetchEventPhotos`. Uploader names
   /// come from a second batched query (the run→profile join isn't
-  /// expressible when the run may be invisible to the viewer). Returns []
-  /// on error (L4 — the gallery is auxiliary to the event detail).
+  /// expressible when the run may be invisible to the viewer). Throws on a
+  /// load failure so the gallery can tell "nobody has posted yet" from "the
+  /// gallery did not load" — the widget contains it (L4). The
+  /// `event_gallery_photos` read returns a hidden photo only to its owner and
+  /// the event's stewards — RLS alone cannot, because a photo on a public run
+  /// is readable through the run path (decisions § 1906).
   Future<List<EventPhotoView>> fetchEventPhotos(
     String eventId,
     DateTime instanceStart, {
     int limit = 100,
   }) async {
+    final res = await _client.rpc(
+      'event_gallery_photos',
+      params: {
+        'p_event_id': eventId,
+        'p_instance': instanceStartKey(instanceStart),
+        'p_limit': limit,
+      },
+      get: true,
+    );
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) return const [];
+    final ownerIds = <String>{
+      for (final r in rows) r['owner_id'] as String,
+    }.toList();
+    final profiles = await _client
+        .from('user_profiles')
+        .select('id, display_name')
+        .inFilter('id', ownerIds);
+    final nameById = <String, String?>{
+      for (final p in profiles) p['id'] as String: p['display_name'] as String?,
+    };
+    return [
+      for (final r in rows)
+        EventPhotoView.fromJson(r, nameById[r['owner_id'] as String]),
+    ];
+  }
+
+  /// Whether the viewer is one of this event's photo stewards — a club
+  /// owner, admin or event organiser, or the event's named host — who may
+  /// post photos with no run and hide any photo in its galleries. Mirrors web
+  /// `canStewardEventPhotos`. Fails closed to false.
+  Future<bool> canStewardEventPhotos(String eventId) async {
+    if (_client.auth.currentUser == null) return false;
     try {
-      final rows = await _client
-          .from(RunPhotoRow.table)
-          .select(
-            'id, owner_id, storage_path, thumb_512_path, caption, '
-            'position_idx, created_at, event_id, event_instance_start',
-          )
-          .eq(RunPhotoRow.colEventId, eventId)
-          .eq(RunPhotoRow.colEventInstanceStart, instanceStart.toIso8601String())
-          .order(RunPhotoRow.colCreatedAt, ascending: true)
-          .limit(limit);
-      if (rows.isEmpty) return const [];
-      final ownerIds = <String>{
-        for (final r in rows) r['owner_id'] as String,
-      }.toList();
-      final profiles = await _client
-          .from('user_profiles')
-          .select('id, display_name')
-          .inFilter('id', ownerIds);
-      final nameById = <String, String?>{
-        for (final p in profiles)
-          p['id'] as String: p['display_name'] as String?,
-      };
-      return [
-        for (final r in rows)
-          EventPhotoView.fromJson(r, nameById[r['owner_id'] as String]),
-      ];
+      final res = await _client.rpc(
+        'can_steward_event_photos',
+        params: {'p_event_id': eventId},
+        get: true,
+      );
+      return res == true;
     } catch (e) {
-      debugPrint('fetchEventPhotos failed: $e');
-      return const [];
+      debugPrint('canStewardEventPhotos failed: $e');
+      return false;
     }
+  }
+
+  /// Hide a photo from an event gallery, or restore it. Steward-only,
+  /// enforced by the RPC. Hiding leaves an attendee's photo on their run.
+  Future<void> setEventPhotoHidden(String photoId, {required bool hidden}) async {
+    await _client.rpc(
+      'set_event_photo_hidden',
+      params: {'p_photo_id': photoId, 'p_hidden': hidden},
+    );
+  }
+
+  /// Delete the viewer's own photo from an event gallery: the row (RLS
+  /// limits it to the owner) and both stored objects.
+  Future<void> deleteEventPhoto(EventPhotoView photo) async {
+    await _client.from(RunPhotoRow.table).delete().eq(RunPhotoRow.colId, photo.id);
+    final paths = <String>[];
+    if (photo.storagePath.isNotEmpty) paths.add(photo.storagePath);
+    final thumb = photo.thumb512Path;
+    if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
+    if (paths.isNotEmpty) {
+      await _client.storage.from(StorageBuckets.runPhotos).remove(paths);
+    }
+  }
+
+  /// Opt one of the viewer's run photos into the public race-listing page
+  /// of the race its run is linked to, or withdraw it. Owner-only and
+  /// run-photo-only, enforced by the RPC; the column refuses direct writes.
+  /// The page also requires the run to be public, so a private run's opted-in
+  /// photo stays off it until the run is made public (decisions § 1961).
+  Future<void> setRunPhotoRaceGallery(
+    String photoId, {
+    required bool shared,
+  }) async {
+    await _client.rpc(
+      'set_run_photo_race_gallery',
+      params: {'p_photo_id': photoId, 'p_shared': shared},
+    );
+  }
+
+  /// What the owner's "Show on race page" toggle needs to know about a run:
+  /// whether it is public (the page shows only public runs' photos) and the
+  /// race listing it is linked to. Null when RLS returns no row.
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+    String runId,
+  ) async {
+    final row = await _client
+        .from(RunRow.table)
+        .select('${RunRow.colIsPublic}, ${RunRow.colRaceListingId}')
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      isPublic: row[RunRow.colIsPublic] == true,
+      raceListingId: row[RunRow.colRaceListingId] as String?,
+    );
+  }
+
+  /// Runners' opted-in photos for a public race listing, newest first. The
+  /// RPC returns no run, owner, route or track — only what the public page
+  /// shows — and caps [limit] server-side. Mirrors web
+  /// `fetchRaceListingPhotos`; throws on a load failure.
+  Future<List<RaceListingPhotoView>> fetchRaceListingPhotos(
+    String listingId, {
+    int limit = 24,
+  }) async {
+    final res = await _client.rpc(
+      'race_listing_photos',
+      params: {'p_listing_id': listingId, 'p_limit': limit},
+      get: true,
+    );
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        RaceListingPhotoView.fromJson(r),
+    ];
   }
 
   // ──────────────────── Route photos (backlog C1) ────────────────────
@@ -3488,6 +5147,27 @@ class ApiClient {
     await updateGear(id, clearRetiredAt: true);
   }
 
+  /// Mark this gear as the user's current default for its kind. Unsets
+  /// any sibling (same owner + same kind) first so the partial-unique
+  /// constraint `(owner_id, kind) where is_default and not retired`
+  /// never trips. Pass null to clear the default for this kind entirely.
+  /// Mirrors the web's `setDefaultGear`.
+  Future<void> setDefaultGear(String? gearId, String kind) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    await _client
+        .from(GearRow.table)
+        .update({GearRow.colIsDefault: false})
+        .eq(GearRow.colOwnerId, viewerId)
+        .eq(GearRow.colKind, kind)
+        .eq(GearRow.colIsDefault, true);
+    if (gearId != null) {
+      await _client
+          .from(GearRow.table)
+          .update({GearRow.colIsDefault: true}).eq(GearRow.colId, gearId);
+    }
+  }
+
   /// Hard-delete a gear row (cascades to `run_gear` rows pointing at
   /// it). Surface this only behind a confirm dialog — historical
   /// mileage on past runs drops with the cascade.
@@ -3689,7 +5369,8 @@ class ApiClient {
   /// (run_gear_chips reads only id / kind / name). For the owner's editable
   /// inventory use [fetchMyGear], which returns full rows via the owner policy.
   Future<List<GearRow>> fetchRunGear(String runId) async {
-    final data = await _client.rpc('public_run_gear', params: {'p_run_id': runId});
+    final data = await _client.rpc('public_run_gear',
+        params: {'p_run_id': runId}, get: true);
     final rows = (data as List).cast<Map<String, dynamic>>();
     final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     return rows
@@ -3723,7 +5404,7 @@ class ApiClient {
 
   /// Define a new segment on a route. The DB computes `length_m` as
   /// a generated column, so we don't pass it.
-  /// Create a route segment. Mirrors `apps/web/src/lib/data.ts:createSegment`:
+  /// Create a route segment. Mirrors `apps/web/src/lib/core/data.ts:createSegment`:
   /// `name` is trimmed at the API layer so any future non-UI caller
   /// (bulk import, automation) can't write whitespace into the DB.
   Future<SegmentRow> createSegment({
@@ -3748,11 +5429,10 @@ class ApiClient {
     return SegmentRow.fromJson(inserted);
   }
 
-  // ──────────────────── parkrun import ────────────────────
+  // ──────────────────── parkrun athlete number ────────────────────
 
   /// Persist the user's parkrun athlete number on their `user_profiles`
-  /// row (matches web). The Edge Function reads this field if no
-  /// override is passed; we still pass it explicitly on import.
+  /// row (matches web), which is what the parkrun barcode draws.
   Future<void> setParkrunAthleteNumber(String? athleteNumber) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) throw Exception('Not authenticated');
@@ -3760,26 +5440,6 @@ class ApiClient {
         .from(UserProfileRow.table)
         .update({UserProfileRow.colParkrunNumber: athleteNumber})
         .eq(UserProfileRow.colId, viewerId);
-  }
-
-  /// Trigger the `parkrun-import` Edge Function. Returns the count of
-  /// new results inserted.
-  Future<int> importParkrunResults(String athleteNumber) async {
-    final res = await _client.functions.invoke(
-      'parkrun-import',
-      body: {'athleteNumber': athleteNumber.trim()},
-    );
-    if (res.status >= 400) {
-      final err = res.data is Map<String, dynamic>
-          ? res.data['error'] as String?
-          : null;
-      throw Exception(err ?? 'parkrun-import failed (HTTP ${res.status})');
-    }
-    final data = res.data;
-    if (data is Map<String, dynamic> && data['imported'] is num) {
-      return (data['imported'] as num).toInt();
-    }
-    return 0;
   }
 
   // ──────────────────── Device list (user_device_settings) ─────────
@@ -4081,39 +5741,487 @@ class ApiClient {
     );
   }
 
-  // ──────────────────── Privacy zones (P1.C) ────────────────────
+  // ────── Global / famous-segment catalogue (decisions §233) ──────
 
-  /// Server-side privacy-zone clipping. The zones never reach the
-  /// client; the RPC reads them with security-definer privileges and
-  /// returns the clipped middle of the input track. The RPC is a
-  /// no-op (returns the input) when the owner has no zones configured.
+  /// Browse the curated catalogue. Filtering, searching and sorting happen
+  /// client-side over the whole fetched set (`catalogue_browse.dart`) because
+  /// the v1 catalogue is bounded by [kGlobalSegmentCatalogueLimit].
   ///
-  /// **Fails closed:** on RPC error or unexpected response shape this
-  /// returns `[]` rather than the unclipped input. The previous
-  /// behaviour (return `points` on error) was the leak this helper
-  /// exists to prevent — a transient DB blip that bypassed clipping
-  /// was a privacy regression. Callers should guard owner views
-  /// *before* calling so an outage doesn't blank the owner's own
-  /// map; this function only ever speaks for non-owner viewers.
-  Future<List<Map<String, dynamic>>> clipTrackForUser({
-    required String targetUserId,
-    required List<Map<String, dynamic>> points,
+  /// Throws on failure rather than degrading to `[]`, so the browse screen can
+  /// tell an outage from a genuinely empty catalogue — the same contract web's
+  /// `fetchGlobalSegmentsWithError` carries in its return type.
+  Future<List<GlobalSegmentRow>> fetchGlobalSegments({
+    int limit = kGlobalSegmentCatalogueLimit,
   }) async {
-    if (points.isEmpty) return points;
-    try {
-      final data = await _client.rpc('clip_track_for_user', params: {
-        'target_user_id': targetUserId,
-        'points': points,
-      });
-      if (data is List) {
-        return data.cast<Map<String, dynamic>>();
-      }
-      return const [];
-    } catch (e) {
-      debugPrint('clipTrackForUser failed: ${safeErrorLabel(e)}');
-      return const [];
-    }
+    final data = await _client
+        .from(GlobalSegmentRow.table)
+        .select()
+        .eq(GlobalSegmentRow.colIsActive, true)
+        .order(GlobalSegmentRow.colName, ascending: true)
+        .limit(limit);
+    return data
+        .map<GlobalSegmentRow>((r) => GlobalSegmentRow.fromJson(r))
+        .toList();
   }
+
+  /// A catalogue segment's own polyline. Public curated geometry, NOT any
+  /// athlete's GPS track, so it needs no privacy clip on the way to a renderer.
+  /// A malformed waypoint is dropped rather than crashing the whole read.
+  static List<Waypoint> globalSegmentGeometry(GlobalSegmentRow segment) => [
+        for (final w in segment.waypoints)
+          if (w['lat'] is num && w['lng'] is num) _waypointFromJson(w),
+      ];
+
+  /// One catalogue segment, or null when it is absent or deactivated.
+  Future<GlobalSegmentRow?> fetchGlobalSegment(String id) async {
+    final data = await _client
+        .from(GlobalSegmentRow.table)
+        .select()
+        .eq(GlobalSegmentRow.colId, id)
+        .eq(GlobalSegmentRow.colIsActive, true)
+        .maybeSingle();
+    return data == null ? null : GlobalSegmentRow.fromJson(data);
+  }
+
+  /// The caller's best public attempt against each mutual-follow friend's on
+  /// one route (`kind` `route`), route segment (`segment`) or catalogue segment
+  /// (`global_segment`), from `head_to_head` (migration 20271104000003,
+  /// decisions § 2267). With [friendId], that friend's row or none. The raw
+  /// rows are returned for the app's `parseHeadToHeadRows`; a failed read
+  /// throws, so "nobody to compare" and "could not load" stay distinct.
+  Future<List<Map<String, dynamic>>> fetchHeadToHead(
+    String kind,
+    String targetId, {
+    String? friendId,
+    String activityType = 'run',
+  }) async {
+    final rows = await _client.rpc(
+      'head_to_head',
+      params: {
+        'p_kind': kind,
+        'p_target_id': targetId,
+        'p_friend_id': ?friendId,
+        'p_activity_type': activityType,
+      },
+      get: true,
+    );
+    if (rows is! List) return const [];
+    return [
+      for (final r in rows)
+        if (r is Map) r.cast<String, dynamic>(),
+    ];
+  }
+
+  /// Whether any effort the viewer can see on [segmentId] was matched by the
+  /// circles (`global_segment_efforts.matched_by = 'zone'`). On a segment
+  /// timed by its lines that is an effort written before the line matcher,
+  /// waiting for its runner's next view to be re-matched (issue #1308).
+  /// Mirrors web `globalSegmentHasZoneEfforts`.
+  Future<bool> globalSegmentHasZoneEfforts(String segmentId) async {
+    final count = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .count(CountOption.exact)
+        .eq(GlobalSegmentEffortRow.colGlobalSegmentId, segmentId)
+        .eq(GlobalSegmentEffortRow.colMatchedBy, 'zone');
+    return count > 0;
+  }
+
+  /// Block-guarded catalogue-segment leaderboard. Mirrors
+  /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
+  /// (migration 20270411_001) — no per-route visibility branch, since the
+  /// catalogue is public; per-effort run privacy plus the block graph are
+  /// applied server-side. The RPC returns already-ordered rows; the client
+  /// assigns standard competition ranks.
+  Future<List<GlobalSegmentLeaderboardEntry>> fetchGlobalSegmentLeaderboard(
+    String segmentId, {
+    String? gender,
+    String? ageBand,
+    String? clubId,
+    int? season,
+    int limit = 50,
+  }) async {
+    final rows = await _client.rpc(
+      'global_segment_leaderboard',
+      params: {
+        'p_segment_id': segmentId,
+        'p_gender': ?gender,
+        'p_age_band': ?ageBand,
+        'p_limit': limit,
+        'p_club_id': ?clubId,
+        'p_season': ?season,
+      },
+      get: true,
+    );
+    if (rows is! List || rows.isEmpty) return const [];
+    final maps = [
+      for (final r in rows) (r as Map).cast<String, dynamic>(),
+    ];
+    final ranks = assignCompetitionRanks(
+      maps,
+      (r) => (r['time_seconds'] as num),
+    );
+    return [
+      for (var i = 0; i < maps.length; i++)
+        GlobalSegmentLeaderboardEntry(
+          effort: GlobalSegmentEffortRow(
+            id: maps[i]['effort_id'] as String,
+            globalSegmentId: segmentId,
+            runId: maps[i]['run_id'] as String,
+            userId: maps[i]['user_id'] as String,
+            timeSeconds: (maps[i]['time_seconds'] as num).toDouble(),
+            startedAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            createdAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            // The board RPC does not return how an effort was matched; no
+            // mobile surface reads it.
+            matchedBy: (maps[i]['matched_by'] as String?) ?? 'zone',
+          ),
+          athlete: PublicProfile(
+            id: maps[i]['user_id'] as String,
+            displayName: maps[i]['display_name'] as String?,
+            avatarUrl: maps[i]['avatar_url'] as String?,
+          ),
+          rank: ranks[i],
+        ),
+    ];
+  }
+
+  /// Every active park with its current season, region then name order
+  /// (migration 20271115002383, decisions § 2383). Throws on a failed read.
+  Future<List<ParkListing>> fetchParks() async {
+    final rows = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .order(ParkRow.colRegionCode, ascending: true)
+        .order(ParkRow.colName, ascending: true);
+    return [
+      for (final r in rows)
+        ParkListing(
+          park: ParkRow.fromJson(r),
+          season: (r['park_season'] as num).toInt(),
+        ),
+    ];
+  }
+
+  /// One park course by its park's slug and its own slug, with the park and
+  /// its current season, for opening a course from a run's park course chip
+  /// (the run only knows the slugs). Null when RLS hides either (a pulled park
+  /// or segment) or it is gone. Throws on a failed read.
+  Future<({ParkListing park, ParkCourseListing course})?> fetchParkCourseBySlugs(
+    String parkSlug,
+    String courseSlug,
+  ) async {
+    final park = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .eq(ParkRow.colSlug, parkSlug)
+        .maybeSingle();
+    if (park == null) return null;
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colParkId, park[ParkRow.colId] as String)
+        .eq(ParkCourseRow.colSlug, courseSlug)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    return (
+      park: ParkListing(
+        park: ParkRow.fromJson(park),
+        season: (park['park_season'] as num).toInt(),
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow.fromJson(course),
+        segment: GlobalSegmentRow.fromJson(
+          (course['global_segments'] as Map).cast<String, dynamic>(),
+        ),
+      ),
+    );
+  }
+
+  /// A park's courses with their catalogue segment, by slug. A course whose
+  /// segment was pulled is dropped (RLS hides the segment). Throws on a
+  /// failed read.
+  Future<List<ParkCourseListing>> fetchParkCourses(String parkId) async {
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colParkId, parkId)
+        .order(ParkCourseRow.colSlug, ascending: true);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
+  /// Every listed park course with its catalogue segment, across all parks,
+  /// for the "Run any time" section of Races & courses. One read where a
+  /// [fetchParkCourses] call per park would be a round trip each; the same
+  /// RLS hides an inactive park's courses and a pulled segment. Throws on a
+  /// failed read.
+  Future<List<ParkCourseListing>> fetchAllParkCourses() async {
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .order(ParkCourseRow.colSlug, ascending: true);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
+  /// This season's record on every park course the caller can see, keyed by
+  /// course id (`park_course_records`, migration 20271129002436). A course
+  /// with no visible effort this season has no entry. Signed-in only: the
+  /// board it wraps refuses an anonymous caller. Throws on a failed read.
+  Future<Map<String, ParkCourseRecord>> fetchParkCourseRecords() async {
+    final rows = await _client.rpc('park_course_records', params: const {}, get: true);
+    if (rows is! List) return const {};
+    return {
+      for (final r in rows)
+        if (r is Map &&
+            r['course_id'] is String &&
+            r['time_seconds'] is num)
+          r['course_id'] as String: ParkCourseRecord(
+            season: (r['season'] as num).toInt(),
+            timeSeconds: (r['time_seconds'] as num).toDouble(),
+            displayName: r['display_name'] as String?,
+          ),
+    };
+  }
+
+  /// Which of [routeIds] are a park course's official route, so their
+  /// Official badge can read "Official Threkir course". Mirrors web
+  /// `fetchParkCourseRouteIds`. Throws on a failed read.
+  Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async {
+    if (routeIds.isEmpty) return <String>{};
+    final rows = await readChunked(
+      routeIds,
+      (chunk) async => _client
+          .from(ParkCourseRow.table)
+          .select(ParkCourseRow.colRouteId)
+          .inFilter(ParkCourseRow.colRouteId, chunk),
+    );
+    return {
+      for (final r in rows)
+        if (r[ParkCourseRow.colRouteId] is String)
+          r[ParkCourseRow.colRouteId] as String,
+    };
+  }
+
+  /// The geometry provenance of the park course whose official route is
+  /// [routeId], with its park's name and site, for the credit an exported
+  /// file of that route must carry. Null for any other route; the park fields
+  /// are null when the park is hidden from the reader. Throws on a failed
+  /// read, so an export never goes out uncredited because the check could
+  /// not run.
+  Future<({String geometrySource, String? parkName, String? parkWebsiteUrl})?>
+      fetchRouteCourseProvenance(String routeId) async {
+    final row = await _client
+        .from(ParkCourseRow.table)
+        .select('${ParkCourseRow.colGeometrySource}, parks(name, website_url)')
+        .eq(ParkCourseRow.colRouteId, routeId)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return null;
+    final park = row['parks'] is Map
+        ? (row['parks'] as Map).cast<String, dynamic>()
+        : null;
+    return (
+      geometrySource: row[ParkCourseRow.colGeometrySource] as String,
+      parkName: park?['name'] as String?,
+      parkWebsiteUrl: park?['website_url'] as String?,
+    );
+  }
+
+  /// The source credit of the park course built on this official route or
+  /// catalogue segment (`park_courses.attribution`, decisions § 2438), for
+  /// the route and segment screens, which show the course outside its own
+  /// screen. Pass exactly one of [routeId] and [segmentId]. Null when it is
+  /// no park course's, or the course predates the column. Mirrors web
+  /// `fetchParkCourseCredit`. Throws on a failed read.
+  Future<String?> fetchParkCourseCredit({
+    String? routeId,
+    String? segmentId,
+  }) async {
+    if ((routeId == null) == (segmentId == null)) {
+      throw ArgumentError('pass exactly one of routeId and segmentId');
+    }
+    final row = await _client
+        .from(ParkCourseRow.table)
+        .select(ParkCourseRow.colAttribution)
+        .eq(
+          routeId != null
+              ? ParkCourseRow.colRouteId
+              : ParkCourseRow.colGlobalSegmentId,
+          (routeId ?? segmentId)!,
+        )
+        .limit(1)
+        .maybeSingle();
+    final credit = (row?[ParkCourseRow.colAttribution] as String?)?.trim();
+    return credit == null || credit.isEmpty ? null : credit;
+  }
+
+  /// The most-completions board on a catalogue segment
+  /// (`global_segment_completions`): one row per athlete, distinct local days
+  /// in the park's timezone. [season] null is all time. Tied counts share a
+  /// rank. Throws on a failed read.
+  Future<List<GlobalSegmentCompletionsEntry>> fetchGlobalSegmentCompletions(
+    String segmentId, {
+    int? season,
+    int limit = 50,
+  }) async {
+    final rows = await _client.rpc(
+      'global_segment_completions',
+      params: {
+        'p_segment_id': segmentId,
+        'p_season': ?season,
+        'p_limit': limit,
+      },
+      get: true,
+    );
+    if (rows is! List) return const [];
+    final out = <GlobalSegmentCompletionsEntry>[];
+    var rank = 0;
+    int? prev;
+    for (var i = 0; i < rows.length; i++) {
+      final r = (rows[i] as Map).cast<String, dynamic>();
+      final completions = (r['completions'] as num).toInt();
+      if (completions != prev) {
+        rank = i + 1;
+        prev = completions;
+      }
+      out.add(
+        GlobalSegmentCompletionsEntry(
+          athlete: PublicProfile(
+            id: r['user_id'] as String,
+            displayName: r['display_name'] as String?,
+            avatarUrl: r['avatar_url'] as String?,
+          ),
+          completions: completions,
+          lastCompletedAt: parseIsoStrictRequired(
+            r['last_completed_at'],
+            'last_completed_at',
+          ),
+          rank: rank,
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// The park courses the signed-in runner's own [runId] completed, from
+  /// `run_park_course_times`: course and park names, the time, the season (the
+  /// calendar year in the park's timezone) and the effort's place on that
+  /// season's fastest board when it is the runner's best and in the top 100.
+  /// Raw rows; the app parses them in its `park_courses` pair. Mirrors web
+  /// `fetchRunParkCourseTimes`. Throws on a failed read.
+  Future<List<Map<String, dynamic>>> fetchRunParkCourseTimes(String runId) async {
+    final data = await _client.rpc('run_park_course_times',
+        params: {'p_run_id': runId}, get: true);
+    return [
+      for (final r in (data as List? ?? const <dynamic>[]))
+        Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// The signed-in runner's park course efforts started in `[start, end)`,
+  /// each with its course and park, for the recap's park lines. Mirrors web
+  /// `fetchRecapParkCourses`. Empty when signed out; throws on a failed read.
+  Future<List<({String parkId, String parkName, String regionCode, String courseId})>>
+      fetchRecapParkCourses(DateTime start, DateTime end) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const [];
+    final effortRows = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .select(GlobalSegmentEffortRow.colGlobalSegmentId)
+        .eq(GlobalSegmentEffortRow.colUserId, uid)
+        .gte(GlobalSegmentEffortRow.colStartedAt, start.toUtc().toIso8601String())
+        .lt(GlobalSegmentEffortRow.colStartedAt, end.toUtc().toIso8601String());
+    final segmentIds = {
+      for (final r in effortRows) r[GlobalSegmentEffortRow.colGlobalSegmentId] as String,
+    }.toList();
+    final courseRows = await readChunked(
+      segmentIds,
+      (chunk) async => List<Map<String, dynamic>>.from(await _client
+          .from(ParkCourseRow.table)
+          .select('id, park_id, parks!inner(name, region_code)')
+          .inFilter(ParkCourseRow.colGlobalSegmentId, chunk)),
+    );
+    return [
+      for (final r in courseRows)
+        (
+          parkId: r['park_id'] as String,
+          parkName: (r['parks'] as Map)['name'] as String,
+          regionCode: (r['parks'] as Map)['region_code'] as String,
+          courseId: r['id'] as String,
+        ),
+    ];
+  }
+
+  /// Catalogue-segment efforts a run earned, joined to the segment and ranked
+  /// in one round-trip via `global_segment_effort_ranks`. The catalogue twin of
+  /// [fetchEffortsForRunWithSegments], and cheaper: the ranks arrive from the
+  /// RPC rather than one count query per effort.
+  ///
+  /// An effort whose segment row is missing (deactivated between the two reads)
+  /// is dropped rather than rendered nameless. An effort the RPC did not answer
+  /// for keeps its row with a NULL rank — the standing is unknown, and the
+  /// surface says so rather than seating it at #1 (decisions §746).
+  Future<List<GlobalSegmentEffortWithSegment>> fetchGlobalEffortsForRun(
+    String runId,
+  ) async {
+    final effortRows = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .select()
+        .eq(GlobalSegmentEffortRow.colRunId, runId);
+    if (effortRows.isEmpty) return const [];
+    final efforts = effortRows
+        .map<GlobalSegmentEffortRow>((r) => GlobalSegmentEffortRow.fromJson(r))
+        .toList();
+
+    final segmentIds = efforts.map((e) => e.globalSegmentId).toSet().toList();
+    final segRows = await readChunked(
+      segmentIds,
+      (chunk) async => _client
+          .from(GlobalSegmentRow.table)
+          .select()
+          .inFilter(GlobalSegmentRow.colId, chunk),
+    );
+    final segById = {
+      for (final s in segRows)
+        s['id'] as String: GlobalSegmentRow.fromJson(s),
+    };
+
+    final rankRows = await _client.rpc(
+      'global_segment_effort_ranks',
+      params: {'p_run_id': runId},
+      get: true,
+    );
+    final rankByEffort = readEffortRankRows(rankRows);
+
+    return [
+      for (final e in efforts)
+        if (segById[e.globalSegmentId] != null)
+          GlobalSegmentEffortWithSegment(
+            effort: e,
+            segment: segById[e.globalSegmentId]!,
+            rank: rankByEffort[e.id],
+          ),
+    ];
+  }
+
+  // ──────────────────── Privacy zones (P1.C) ────────────────────
 
   /// Server-side privacy-zone-clipped waypoints for a route owned by
   /// someone other than the caller. Routes carry waypoints inline as
@@ -4134,7 +6242,7 @@ class ApiClient {
     try {
       final data = await _client.rpc('clip_route_for_viewer', params: {
         'p_route_id': routeId,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data
           .whereType<Map>()
@@ -4175,6 +6283,25 @@ class ApiClient {
         .toList();
   }
 
+  /// The newest message across the runner's current (not archived) Coach
+  /// conversations, for the AI Coach row in the Messages inbox (decisions
+  /// § 2227). Owner-only by RLS. Callers read it only once the runner has
+  /// consented to the Coach; throws on a failed read, so the row can say
+  /// nothing rather than claim there is no conversation.
+  Future<CoachMessageRow?> fetchLatestCoachMessage() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return null;
+    final row = await _client
+        .from(CoachMessageRow.table)
+        .select()
+        .eq(CoachMessageRow.colUserId, viewerId)
+        .isFilter(CoachMessageRow.colArchivedAt, null)
+        .order(CoachMessageRow.colCreatedAt, ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : CoachMessageRow.fromJson(row);
+  }
+
   /// Set / clear the up/down reaction on an assistant bubble.
   Future<void> setCoachReaction({
     required String messageId,
@@ -4191,7 +6318,7 @@ class ApiClient {
   Future<void> archiveCoachThread({String? planId}) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) throw StateError('not signed in');
-    final ts = DateTime.now().toIso8601String();
+    final ts = DateTime.now().toUtc().toIso8601String();
     var q = _client
         .from(CoachMessageRow.table)
         .update({CoachMessageRow.colArchivedAt: ts})
@@ -4222,7 +6349,7 @@ class ApiClient {
     for (final row in data) {
       final raw = row[CoachMessageRow.colArchivedAt] as String?;
       if (raw == null || !seen.add(raw)) continue;
-      out.add(DateTime.parse(raw));
+      out.add(parseIsoStrictRequired(raw, CoachMessageRow.colArchivedAt));
     }
     return out;
   }
@@ -4275,6 +6402,7 @@ class ApiClient {
     final value = await _client.rpc(
       'get_coach_usage',
       params: {'p_user_id': viewerId},
+      get: true,
     );
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -4284,40 +6412,11 @@ class ApiClient {
   /// RPC `is_pro` — true when the viewer's active subscription tier
   /// is paid. Used to short-circuit the daily cap and gate Pro UI.
   Future<bool> isPro() async {
-    final value = await _client.rpc('is_pro');
+    final value = await _client.rpc('is_pro', params: const {}, get: true);
     return value == true;
   }
 
   // ──────────────────── Clubs + events (P1.D) ────────────────────
-
-  /// Create a new club. `joinPolicy` is one of 'open' | 'request' |
-  /// 'invite'. The `enroll_club_owner` trigger auto-inserts the
-  /// owner's club_members row, so we don't add it here.
-  Future<ClubRow> createClub({
-    required String name,
-    required String slug,
-    String? description,
-    String? locationLabel,
-    bool isPublic = true,
-    String joinPolicy = 'open',
-  }) async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) throw Exception('Not authenticated');
-    final inserted = await _client
-        .from(ClubRow.table)
-        .insert({
-          ClubRow.colOwnerId: viewerId,
-          ClubRow.colName: name,
-          ClubRow.colSlug: slug,
-          ClubRow.colDescription: description,
-          ClubRow.colLocationLabel: locationLabel,
-          ClubRow.colIsPublic: isPublic,
-          ClubRow.colJoinPolicy: joinPolicy,
-        })
-        .select(_clubSafeCols)
-        .single();
-    return ClubRow.fromJson(inserted);
-  }
 
   /// Edit owner-side club fields.
   Future<void> updateClub({
@@ -4338,13 +6437,6 @@ class ApiClient {
     await _client.from(ClubRow.table).update(patch).eq(ClubRow.colId, clubId);
   }
 
-  /// Redeem a join token from a public invite link.
-  Future<String> joinClubByToken(String token) async {
-    final result =
-        await _client.rpc('join_club_by_token', params: {'p_token': token});
-    return result as String;
-  }
-
   /// Request to join a club whose policy is `request`. Status starts
   /// `pending`; an admin approves via the methods below.
   Future<void> requestJoinClub(String clubId) async {
@@ -4356,19 +6448,6 @@ class ApiClient {
       ClubMemberRow.colRole: 'member',
       ClubMemberRow.colStatus: 'pending',
     });
-  }
-
-  /// Pending join requests for an admin to action.
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async {
-    final data = await _client
-        .from(ClubMemberRow.table)
-        .select()
-        .eq(ClubMemberRow.colClubId, clubId)
-        .eq(ClubMemberRow.colStatus, 'pending')
-        .order(ClubMemberRow.colJoinedAt, ascending: false);
-    return data
-        .map<ClubMemberRow>((r) => ClubMemberRow.fromJson(r))
-        .toList();
   }
 
   /// Approve a pending member.
@@ -4477,27 +6556,43 @@ class ApiClient {
         EventAttendeeRow.colEventId: eventId,
         EventAttendeeRow.colUserId: viewerId,
         EventAttendeeRow.colStatus: status,
-        EventAttendeeRow.colInstanceStart: instanceStart.toIso8601String(),
+        EventAttendeeRow.colInstanceStart: instanceStartKey(instanceStart),
       },
       onConflict:
           '${EventAttendeeRow.colEventId},${EventAttendeeRow.colUserId},${EventAttendeeRow.colInstanceStart}',
     );
   }
 
-  /// Per-instance attendee list.
+  /// Per-instance attendee list, earliest RSVP first, walked by keyset
+  /// cursor so an RSVP made or withdrawn mid-read is neither repeated nor
+  /// makes the walk skip another attendee.
   Future<List<EventAttendeeRow>> fetchEventAttendees({
     required String eventId,
     required DateTime instanceStart,
   }) async {
-    final data = await _client
-        .from(EventAttendeeRow.table)
-        .select()
-        .eq(EventAttendeeRow.colEventId, eventId)
-        .eq(EventAttendeeRow.colInstanceStart, instanceStart.toIso8601String());
-    return data
-        .map<EventAttendeeRow>((r) => EventAttendeeRow.fromJson(r))
-        .toList();
+    final rows = await _walk(
+      eventAttendeeOrder,
+      () => _client
+          .from(EventAttendeeRow.table)
+          .select()
+          .eq(EventAttendeeRow.colEventId, eventId)
+          .eq(EventAttendeeRow.colInstanceStart,
+              instanceStartKey(instanceStart)),
+    );
+    return rows.map(EventAttendeeRow.fromJson).toList();
   }
+
+  /// The order an occurrence's attendees are listed and walked in: earliest
+  /// RSVP first, `user_id` (unique within one occurrence — the primary key is
+  /// `(event_id, user_id, instance_start)`) breaking a `joined_at` tie.
+  /// `joined_at` is nullable and a null sorts last. Web's
+  /// `EVENT_ATTENDEE_ORDER` is the same order, and
+  /// `event_attendees_instance_roster (event_id, instance_start, joined_at,
+  /// user_id)` serves it.
+  static const List<KeysetKey> eventAttendeeOrder = [
+    KeysetKey(EventAttendeeRow.colJoinedAt, ascending: true, nullsFirst: false),
+    KeysetKey(EventAttendeeRow.colUserId, ascending: true, nullsFirst: false),
+  ];
 
   // ──────────────── Race-director checkpoints (race_director_ops.md) ──────
 
@@ -4522,20 +6617,24 @@ class ApiClient {
     String eventId,
     DateTime instanceStart,
   ) async {
-    final data = await _client
-        .from(CheckpointCrossingRow.table)
-        .select(
-          'id, event_id, checkpoint_id, instance_start, user_id, bib, '
-          'runner_name, in_time, out_time, recorded_at, updated_at',
-        )
-        .eq(CheckpointCrossingRow.colEventId, eventId)
-        .eq(CheckpointCrossingRow.colInstanceStart,
-            instanceStart.toIso8601String());
-    return (data as List)
-        .map<CheckpointCrossingRow>(
-            (r) => CheckpointCrossingRow.fromJson(r as Map<String, dynamic>))
-        .toList();
+    final rows = await _walk(
+      _checkpointCrossingOrder,
+      () => _client
+          .from(CheckpointCrossingRow.table)
+          .select(
+            'id, event_id, checkpoint_id, instance_start, user_id, bib, '
+            'runner_name, in_time, out_time, recorded_at, updated_at',
+          )
+          .eq(CheckpointCrossingRow.colEventId, eventId)
+          .eq(CheckpointCrossingRow.colInstanceStart,
+              instanceStartKey(instanceStart)),
+    );
+    return rows.map(CheckpointCrossingRow.fromJson).toList();
   }
+
+  static const List<KeysetKey> _checkpointCrossingOrder = [
+    KeysetKey(CheckpointCrossingRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// Stamp a runner IN / OUT at a checkpoint through the single-writer RPC. The
   /// server authorises the caller as an organiser and MERGES two volunteers'
@@ -4563,7 +6662,7 @@ class ApiClient {
     await _client.rpc('upsert_checkpoint_crossing', params: {
       'p_event_id': eventId,
       'p_checkpoint_id': checkpointId,
-      'p_instance_start': instanceStart.toIso8601String(),
+      'p_instance_start': instanceStartKey(instanceStart),
       'p_user_id': userId,
       'p_bib': bib,
       'p_runner_name': runnerName,
@@ -4594,20 +6693,6 @@ class ApiClient {
     return data
         .map<TrainingPlanRow>((r) => TrainingPlanRow.fromJson(r))
         .toList();
-  }
-
-  /// Publish a personal plan as a club template. Server-side RPC
-  /// clones the source plan + its weeks + workouts so the source
-  /// stays in the user's plan list (decisions §35).
-  Future<String> publishPlanAsTemplate({
-    required String planId,
-    required String clubId,
-  }) async {
-    final newId = await _client.rpc(
-      'publish_plan_as_template',
-      params: {'p_source_plan_id': planId, 'p_club_id': clubId},
-    );
-    return newId as String;
   }
 
   /// Adopt a club template — clones the template back into a personal
@@ -4664,26 +6749,40 @@ class ApiClient {
   // consumer (feed, profile, run-detail comments) sees the same
   // typed view.
 
-  /// Profile + follower / following counts + whether the current
-  /// viewer follows. Three reads in flight in parallel; null when
-  /// the user doesn't exist or RLS hides the row.
+  /// Profile + follower / following counts + the viewer's follow and
+  /// request state. The counts come from `profile_follow_summary` because on
+  /// a private profile the follow rows behind them are closed to a viewer who
+  /// is not an approved follower (decisions § 1967). Null when the user
+  /// doesn't exist or RLS hides the row. Mirrors web `fetchPublicProfile`.
   Future<ProfileSummary?> fetchProfileSummary(String userId) async {
-    final results = await Future.wait([
+    // Both reads are awaited together, and the client is resolved before
+    // either starts: a read left in flight with no listener — awaited later,
+    // or orphaned when the second read throws on the way in — surfaced its
+    // failure as an unhandled zone error beside the one the caller handles.
+    final client = _client;
+    final results = await Future.wait<Object?>([
       fetchPublicProfile(userId),
-      fetchFollowCounts(userId),
-      viewerFollows(userId),
+      client.rpc(
+        'profile_follow_summary',
+        params: {'p_user_id': userId},
+        get: true,
+      ),
     ]);
     final profile = results[0] as UserProfileRow?;
+    final rows = results[1] as List<dynamic>;
     if (profile == null) return null;
-    final counts = results[1] as ({int followers, int following});
-    final follows = results[2] as bool;
+    if (rows.isEmpty) return null;
+    final s = rows.first as Map<String, dynamic>;
     return ProfileSummary(
       id: profile.id,
       displayName: profile.displayName,
       avatarUrl: profile.avatarUrl,
-      followerCount: counts.followers,
-      followingCount: counts.following,
-      viewerFollows: follows,
+      followerCount: (s['follower_count'] as num?)?.toInt() ?? 0,
+      followingCount: (s['following_count'] as num?)?.toInt() ?? 0,
+      viewerFollows: s['viewer_follows'] == true,
+      profilePrivate: s['profile_private'] == true,
+      viewerRequested: s['viewer_requested'] == true,
+      contentVisible: s['content_visible'] == true,
     );
   }
 
@@ -4726,26 +6825,34 @@ class ApiClient {
     // redaction applies on the wire. The view filters on
     // is_public = true so the explicit eq filter would be
     // redundant.
-    var q = _client
-        .from('public_runs')
-        .select()
-        .inFilter(RunRow.colUserId, filtered)
-        .gte(RunRow.colStartedAt, cutoff);
-    if (activityType != null && activityType != 'all') {
-      q = q.eq(RunRow.colActivityType, activityType);
-    }
-    if (cursor != null) {
-      // Stable (started_at desc, id desc) cursor — strictly less than
-      // the cursor row.
-      final iso = cursor.startedAt.toIso8601String();
-      q = q.or(
-        'started_at.lt.$iso,and(started_at.eq.$iso,id.lt.${cursor.id})',
-      );
-    }
-    final runs = await q
-        .order(RunRow.colStartedAt, ascending: false)
-        .order(RunRow.colId, ascending: false)
-        .limit(limit);
+    final runs = topByRecency(
+      await readChunked(filtered, (chunk) async {
+        var q = _client
+            .from('public_runs')
+            .select()
+            .inFilter(RunRow.colUserId, chunk)
+            .gte(RunRow.colStartedAt, cutoff);
+        if (activityType != null && activityType != 'all') {
+          q = q.eq(RunRow.colActivityType, activityType);
+        }
+        if (cursor != null) {
+          // Stable (started_at desc, id desc) cursor — strictly less than
+          // the cursor row.
+          final iso = cursor.startedAt.toIso8601String();
+          q = q.or(
+            'started_at.lt.$iso,and(started_at.eq.$iso,id.lt.${cursor.id})',
+          );
+        }
+        return q
+            .order(RunRow.colStartedAt, ascending: false)
+            .order(RunRow.colId, ascending: false)
+            .limit(limit);
+      }),
+      limit: limit,
+      idOf: (r) => r[RunRow.colId] as String,
+      recencyOf: (r) =>
+          parseIsoStrictRequired(r[RunRow.colStartedAt], RunRow.colStartedAt),
+    );
     if (runs.isEmpty) return const [];
 
     final authorIds = runs
@@ -4854,21 +6961,28 @@ class ApiClient {
     // 20270313_001) — the base table is owner-only, so a non-owner query
     // against it returns nothing. The view filters on is_public = true so
     // the explicit eq filter would be redundant.
-    var q = _client
-        .from('public_gym_workouts')
-        .select('id, user_id, started_at, title, set_count, volume_kg')
-        .inFilter(GymWorkoutRow.colUserId, filtered)
-        .gte(GymWorkoutRow.colStartedAt, cutoff);
-    if (cursor != null) {
-      final iso = cursor.startedAt.toIso8601String();
-      q = q.or(
-        'started_at.lt.$iso,and(started_at.eq.$iso,id.lt.${cursor.id})',
-      );
-    }
-    final workouts = await q
-        .order(GymWorkoutRow.colStartedAt, ascending: false)
-        .order(GymWorkoutRow.colId, ascending: false)
-        .limit(limit);
+    final workouts = topByRecency(
+      await readChunked(filtered, (chunk) async {
+        var q = _client
+            .from('public_gym_workouts')
+            .select('id, user_id, started_at, title, set_count, volume_kg')
+            .inFilter(GymWorkoutRow.colUserId, chunk)
+            .gte(GymWorkoutRow.colStartedAt, cutoff);
+        if (cursor != null) {
+          final iso = cursor.startedAt.toIso8601String();
+          q = q.or(
+            'started_at.lt.$iso,and(started_at.eq.$iso,id.lt.${cursor.id})',
+          );
+        }
+        return q
+            .order(GymWorkoutRow.colStartedAt, ascending: false)
+            .order(GymWorkoutRow.colId, ascending: false)
+            .limit(limit);
+      }),
+      limit: limit,
+      idOf: (w) => w['id'] as String,
+      recencyOf: (w) => parseIsoStrictRequired(w['started_at'], 'started_at'),
+    );
     if (workouts.isEmpty) return const [];
 
     final authorIds = workouts
@@ -4888,7 +7002,7 @@ class ApiClient {
       final userId = w[GymWorkoutRow.colUserId] as String;
       return LiftFeedEntry(
         id: w['id'] as String,
-        startedAt: DateTime.parse(w['started_at'] as String),
+        startedAt: parseIsoStrictRequired(w['started_at'], 'started_at'),
         title: w['title'] as String?,
         setCount: (w['set_count'] as num?)?.toInt() ?? 0,
         volumeKg: (w['volume_kg'] as num?)?.toDouble() ?? 0,
@@ -4907,10 +7021,13 @@ class ApiClient {
     if (comments.isEmpty) return const [];
     final authorIds =
         comments.map((c) => c.authorId).toSet().toList();
-    final profileRows = await _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url')
-        .inFilter(UserProfileRow.colId, authorIds);
+    final profileRows = await readChunked(
+      authorIds,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
     final profilesById = {
       for (final p in profileRows)
         p['id'] as String: PublicProfile.fromJson(p),
@@ -5054,10 +7171,13 @@ class ApiClient {
     }.toList();
     final clubById = <String, ({String slug, String name})>{};
     if (clubIds.isNotEmpty) {
-      final clubRows = await _client
-          .from(ClubRow.table)
-          .select('${ClubRow.colId}, ${ClubRow.colSlug}, ${ClubRow.colName}')
-          .inFilter(ClubRow.colId, clubIds);
+      final clubRows = await readChunked(
+        clubIds,
+        (chunk) async => _client
+            .from(ClubRow.table)
+            .select('${ClubRow.colId}, ${ClubRow.colSlug}, ${ClubRow.colName}')
+            .inFilter(ClubRow.colId, chunk),
+      );
       for (final row in clubRows) {
         clubById[row[ClubRow.colId] as String] = (
           slug: (row[ClubRow.colSlug] as String?) ?? '',
@@ -5072,7 +7192,7 @@ class ApiClient {
       if (body == null || body.isEmpty) return null;
       // Cap at 120 visible characters (117 + the ellipsis) to match
       // web's notification-row excerpt
-      // (apps/web/src/lib/data.ts:fetchNotifications). Mobile
+      // (apps/web/src/lib/core/data.ts:fetchNotifications). Mobile
       // previously capped at 141 — close-enough but visibly longer
       // bubbles in the inbox compared to the same notification
       // viewed on web.
@@ -5093,8 +7213,11 @@ class ApiClient {
         runDistanceM:
             row.runId == null ? null : runDistanceById[row.runId!],
         commentExcerpt: excerpt(row.commentId),
-        eventTitle:
-            event != null && event.title.isNotEmpty ? event.title : null,
+        // A deleted event's cancel notice links no event and carries the
+        // title on the row itself (decisions § 2358).
+        eventTitle: event != null && event.title.isNotEmpty
+            ? event.title
+            : row.eventTitle,
         eventClubSlug: eventClubSlug,
         clubName: (linkedClub?.name.isNotEmpty ?? false) ? linkedClub!.name : null,
         clubSlug: (linkedClub?.slug.isNotEmpty ?? false) ? linkedClub!.slug : null,
@@ -5124,10 +7247,13 @@ class ApiClient {
       ..sort((a, b) => a.timeSeconds.compareTo(b.timeSeconds));
 
     final athleteIds = efforts.map((e) => e.userId).toList();
-    final profileRows = await _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url')
-        .inFilter(UserProfileRow.colId, athleteIds);
+    final profileRows = await readChunked(
+      athleteIds,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
     final athletesById = {
       for (final p in profileRows)
         p['id'] as String: PublicProfile.fromJson(p),
@@ -5162,10 +7288,11 @@ class ApiClient {
       'segment_leaderboard_tiered',
       params: {
         'p_segment_id': segmentId,
-        'p_gender': gender,
-        'p_age_band': ageBand,
+        'p_gender': ?gender,
+        'p_age_band': ?ageBand,
         'p_limit': limit,
       },
+      get: true,
     );
     if (rows is! List || rows.isEmpty) return const [];
     final maps = [
@@ -5184,8 +7311,8 @@ class ApiClient {
             runId: maps[i]['run_id'] as String,
             userId: maps[i]['user_id'] as String,
             timeSeconds: (maps[i]['time_seconds'] as num).toDouble(),
-            startedAt: DateTime.parse(maps[i]['started_at'] as String),
-            createdAt: DateTime.parse(maps[i]['started_at'] as String),
+            startedAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            createdAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
           ),
           athlete: PublicProfile(
             id: maps[i]['user_id'] as String,
@@ -5199,6 +7326,15 @@ class ApiClient {
 
   /// Per-run segment efforts joined to their parent segment + a rank
   /// against the segment's leaderboard. Backs the chips on run-detail.
+  ///
+  /// The ranks come from `segment_effort_ranks` (migration `20270523_001`,
+  /// decisions §594) rather than a count of strictly-faster effort ROWS: a
+  /// rival who has run the segment twice holds two rows, so a raw count
+  /// reports a rank the per-athlete leaderboard the chip links to does not
+  /// give — and it counts the caller's own faster efforts against them. The
+  /// RPC also subtracts blocked athletes, which `segment_efforts` RLS cannot.
+  /// Same contract as [fetchGlobalEffortsForRun] and the web
+  /// `fetchEffortsForRun`, including the NULL rank on a missing row.
   Future<List<SegmentEffortWithSegment>> fetchEffortsForRunWithSegments(
     String runId,
   ) async {
@@ -5206,33 +7342,34 @@ class ApiClient {
     if (efforts.isEmpty) return const [];
 
     final segIds = efforts.map((e) => e.segmentId).toSet().toList();
-    final segRows = await _client
-        .from(SegmentRow.table)
-        .select()
-        .inFilter(SegmentRow.colId, segIds);
+    final segRows = await readChunked(
+      segIds,
+      (chunk) async => _client
+          .from(SegmentRow.table)
+          .select()
+          .inFilter(SegmentRow.colId, chunk),
+    );
     final segById = {
       for (final s in segRows)
         s['id'] as String: SegmentRow.fromJson(s),
     };
 
-    final out = <SegmentEffortWithSegment>[];
-    for (final eff in efforts) {
-      final seg = segById[eff.segmentId];
-      if (seg == null) continue;
-      // Rank = (count of efforts on this segment with strictly faster
-      // time) + 1. The (segment_id, time_seconds) index covers it.
-      final faster = await _client
-          .from(SegmentEffortRow.table)
-          .count(CountOption.exact)
-          .eq(SegmentEffortRow.colSegmentId, eff.segmentId)
-          .lt(SegmentEffortRow.colTimeSeconds, eff.timeSeconds);
-      out.add(SegmentEffortWithSegment(
-        effort: eff,
-        segment: seg,
-        rank: faster + 1,
-      ));
-    }
-    return out;
+    final rankRows = await _client.rpc(
+      'segment_effort_ranks',
+      params: {'p_run_id': runId},
+      get: true,
+    );
+    final rankByEffort = readEffortRankRows(rankRows);
+
+    return [
+      for (final eff in efforts)
+        if (segById[eff.segmentId] != null)
+          SegmentEffortWithSegment(
+            effort: eff,
+            segment: segById[eff.segmentId]!,
+            rank: rankByEffort[eff.id],
+          ),
+    ];
   }
 
   // -- Row mapping (generated RunRow/RouteRow → domain Run/Route) --
@@ -5240,36 +7377,6 @@ class ApiClient {
   // These go through the generated row classes so that column renames surface
   // as compile errors on the consuming fields below, not as silent runtime
   // drift.
-
-  // activity_type and is_dnf (migration 20261207_001) plus the four
-  // embedded-best fastest_*_s keys (migration 20270325_001) are promoted
-  // columns; the `Run` domain object still carries them inside its metadata
-  // bag for a single read path, so saveRun lifts them into the columns and
-  // strips them from the persisted bag here — the column is the only stored
-  // copy.
-  static Map<String, dynamic>? _metadataWithoutPromotedColumns(
-    Map<String, dynamic>? metadata,
-  ) {
-    if (metadata == null) return null;
-    final out = Map<String, dynamic>.from(metadata)
-      ..remove('activity_type')
-      ..remove('is_dnf')
-      ..remove('fastest_5k_s')
-      ..remove('fastest_10k_s')
-      ..remove('fastest_half_marathon_s')
-      ..remove('fastest_marathon_s');
-    return out.isEmpty ? null : out;
-  }
-
-  // Bag → column lift for the promoted embedded-best keys. Non-negative
-  // integers only — the same domain the old SQL-side `~ '^[0-9]+$'`
-  // validation admitted; anything else is dropped, never written.
-  static int? _embeddedBestSeconds(Map<String, dynamic>? metadata, String key) {
-    final v = metadata?[key];
-    final secs = v is int ? v : (v is num ? v.toInt() : null);
-    if (secs == null || secs < 0) return null;
-    return secs;
-  }
 
   static Run _runFromRow(Map<String, dynamic> row) {
     final r = RunRow.fromJson(row);
@@ -5290,6 +7397,10 @@ class ApiClient {
     // the old absent-key bag semantics.
     metadata['activity_type'] = r.activityType;
     metadata['is_dnf'] = r.isDnf;
+    // The event a race run belongs to. Stashed back for the same reason the
+    // rest are: a `Run` carries no column, so without this a run read off the
+    // server and re-saved would write the link back as null.
+    if (r.eventId != null) metadata[MetadataKeys.eventId] = r.eventId;
     if (r.fastest5kS != null) metadata['fastest_5k_s'] = r.fastest5kS;
     if (r.fastest10kS != null) metadata['fastest_10k_s'] = r.fastest10kS;
     if (r.fastestHalfMarathonS != null) {
@@ -5297,6 +7408,24 @@ class ApiClient {
     }
     if (r.fastestMarathonS != null) {
       metadata['fastest_marathon_s'] = r.fastestMarathonS;
+    }
+    // Total ascent is the one column migration 20270302_001 promoted while
+    // KEEPING its bag key (kRunMirroredMetadataColumns), so writers populate
+    // both and the column is authoritative. Surfacing it was missed when the
+    // stashes above were added, and a `Run` carries no column of its own, so a
+    // row written with only the column reached every Dart reader of the bag —
+    // the recap total, the dashboard card, the run summary index — with no
+    // ascent at all (decisions § 1240).
+    if (r.elevationGainM != null) {
+      metadata[MetadataKeys.elevationM] = r.elevationGainM;
+    }
+    // The base a local edit is compare-and-swapped against (decisions
+    // § 2147). The raw string, not `r.updatedAt`: the push sends it back for
+    // an equality match, and a value re-formatted through `DateTime` is not
+    // guaranteed to be the one Postgres compares.
+    final updatedAt = row[RunRow.colUpdatedAt];
+    if (updatedAt is String && updatedAt.isNotEmpty) {
+      metadata[MetadataKeys.serverUpdatedAt] = updatedAt;
     }
 
     return Run(
@@ -5345,15 +7474,15 @@ class ApiClient {
       elevationGainMetres: (row['elevation_m'] as num?)?.toDouble() ?? 0,
       isPublic: row['is_public'] as bool? ?? false,
       surface: row['surface'] as String?,
-      createdAt: row['created_at'] == null
-          ? null
-          : DateTime.parse(row['created_at'] as String),
+      createdAt: parseIsoStrictValue(row['created_at']),
       tags: (row['tags'] as List?)?.cast<String>() ?? const [],
       featured: row['is_featured'] == true,
       runCount: (row['run_count'] as num?)?.toInt() ?? 0,
       isStarred: row['is_starred'] == true,
       clubId: row['club_id'] as String?,
       description: row['description'] as String?,
+      official: row['is_official'] == true,
+      officialDistanceMetres: (row['official_distance_m'] as num?)?.toDouble(),
     );
   }
 
@@ -5386,18 +7515,37 @@ class ApiClient {
   }
 
   /// Trigger a manual Strava backfill via the `strava-import` Edge
-  /// Function. Mirrors the web `syncStrava` helper. Returns the raw
-  /// response payload so the caller can surface
-  /// `{imported, skipped, failed}` in a toast.
-  Future<Map<String, dynamic>> syncStrava({int lookbackDays = 90}) async {
-    final res = await _client.functions.invoke(
-      'strava-import',
-      body: {'action': 'sync', 'lookbackDays': lookbackDays},
-    );
-    final data = res.data;
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) return Map<String, dynamic>.from(data);
-    return const {};
+  /// Function. Mirrors the web `syncStrava` helper.
+  ///
+  /// The response is GRADED, not handed back raw: the function reports
+  /// whether it reached the end of the lookback window, and a caller that
+  /// reads only the counts renders a truncated import as a finished one.
+  /// See `StravaSyncResult` for why that costs runs rather than a click.
+  ///
+  /// A refusal the screen words (`refresh_failed`: Strava revoked the grant,
+  /// so only connecting again helps) throws [StravaConnectFailure], as
+  /// [completeStravaOAuth] does; any other failure throws as it came.
+  Future<StravaSyncResult> syncStrava({int lookbackDays = 90}) async {
+    final res = await _invokeStravaImport(
+        {'action': 'sync', 'lookbackDays': lookbackDays});
+    return stravaSyncResultFromResponse(res.data);
+  }
+
+  /// `strava-import` with its coded refusals turned into
+  /// [StravaConnectFailure]. A code `stravaConnectError` has no words for, or
+  /// a body with no code, rethrows the transport's exception so
+  /// `friendlyError` can still say "offline". Mirrors web `stravaRefusal`.
+  Future<FunctionResponse> _invokeStravaImport(Map<String, Object?> body) async {
+    try {
+      return await _client.functions.invoke('strava-import', body: body);
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final errorCode = details is Map ? details['error'] : null;
+      final reason = stravaConnectError(errorCode is String ? errorCode : null);
+      if (reason == StravaConnectError.generic) rethrow;
+      throw StravaConnectFailure(reason,
+          code: errorCode as String, cause: e);
+    }
   }
 
   /// Complete the in-app Strava OAuth exchange. The caller (Settings)
@@ -5407,25 +7555,71 @@ class ApiClient {
   /// to the `strava-import` EF with `action: 'connect'`. The EF
   /// validates the redirect against `STRAVA_ALLOWED_REDIRECTS`, swaps
   /// the code for a refresh token, and writes the row to `integrations`.
-  /// Returns the raw response so callers can surface success/failure.
-  Future<Map<String, dynamic>> completeStravaOAuth({
+  /// The connect call triggers a 90-day backfill of its own, so it answers
+  /// in the same graded shape as [syncStrava] — a first import Strava
+  /// throttled is partial, and saying "connected, N imported" is what stops
+  /// the runner coming back for the rest.
+  ///
+  /// A refusal the function codes (`connect_errors.ts`) and the screen words
+  /// throws [StravaConnectFailure]; any other failure — a dropped connection,
+  /// an unworded refusal — throws as it came, for `friendlyError`.
+  Future<StravaSyncResult> completeStravaOAuth({
     required String code,
     required String scope,
     required String redirectUri,
   }) async {
+    final res = await _invokeStravaImport({
+      'action': 'connect',
+      'code': code,
+      'scope': scope,
+      'redirect_uri': redirectUri,
+    });
+    return stravaSyncResultFromResponse(res.data);
+  }
+
+  /// The signed-in runner's own Strava clubs (decisions § 1959), fetched per
+  /// call and never stored. Not being connected comes back as a status, so the
+  /// caller renders nothing rather than an error; a transport failure or a body
+  /// in none of the three shapes throws. Mirrors web `fetchMyStravaClubs`.
+  Future<StravaClubsResult> fetchMyStravaClubs() async {
     final res = await _client.functions.invoke(
-      'strava-import',
-      body: {
-        'action': 'connect',
-        'code': code,
-        'scope': scope,
-        'redirect_uri': redirectUri,
-      },
+      'strava-clubs',
+      body: {'action': 'list'},
     );
-    final data = res.data;
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) return Map<String, dynamic>.from(data);
-    return const {};
+    return parseStravaClubsResult(res.data);
+  }
+
+  /// Record that a Threkir club IS this Strava club. The function checks on
+  /// Strava that the caller administers the Strava club, and in SQL that they
+  /// administer the Threkir one; a refusal throws [StravaClubLinkFailure]
+  /// naming which. Mirrors web `linkStravaClub`.
+  Future<void> linkStravaClub(String clubId, int stravaClubId) async {
+    try {
+      await _client.functions.invoke(
+        'strava-clubs',
+        body: {
+          'action': 'link',
+          'club_id': clubId,
+          'strava_club_id': stravaClubId,
+        },
+      );
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final code = details is Map ? details['error'] : null;
+      throw StravaClubLinkFailure(
+          stravaClubLinkError(code is String ? code : null));
+    }
+  }
+
+  /// Clear a club's Strava link. Needs no Strava call, so it is a plain RPC
+  /// gated on the caller administering the Threkir club; a `false` answer is
+  /// that refusal. Mirrors web `unlinkStravaClub`.
+  Future<void> unlinkStravaClub(String clubId) async {
+    final data =
+        await _client.rpc('unlink_club_strava', params: {'p_club_id': clubId});
+    if (data != true) {
+      throw const StravaClubLinkFailure(StravaClubLinkError.notClubAdmin);
+    }
   }
 
   /// Lightweight count of a user's runs, capped by [limit]. The coach
@@ -5458,13 +7652,34 @@ class ApiClient {
   /// Live-spectator hydration. Fetches existing `live_run_pings` for a
   /// run in chronological order so a newly-mounted spectator screen can
   /// catch up on the trail before subscribing to realtime inserts.
-  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async {
-    final rows = await _client
+  /// The spectator's ping backlog, oldest-first for replay.
+  ///
+  /// Fetched NEWEST-first and reversed, never ascending: PostgREST caps a
+  /// result at 1000 rows, and at the broadcaster's 5 s interval that is 83
+  /// minutes. An ascending fetch therefore returns the OLDEST 83 minutes of a
+  /// long race and omits the runner's current position entirely — on a
+  /// 100-miler opened six hours in, the spectator sees the start of the trail
+  /// and nothing since, until the next realtime insert happens to arrive.
+  /// Web fixed exactly this (issue #334) and pins the shape in data.test.ts.
+  ///
+  /// With [since] (an `at` already seen), every ping after it, oldest first:
+  /// the spectator's catch-up after a (re)subscribe and its poll while
+  /// realtime is down (issue #1300 BUG-007).
+  Future<List<Map<String, dynamic>>> fetchLiveRunPings(
+    String runId, {
+    String? since,
+  }) async {
+    final query = _client
         .from('live_run_pings')
-        .select('lat, lng, ele, distance_m, elapsed_s, at')
-        .eq('run_id', runId)
-        .order('at', ascending: true);
-    return (rows as List).cast<Map<String, dynamic>>();
+        .select('lat, lng, ele, distance_m, elapsed_s, at, coarse, weak_gps, bpm')
+        .eq('run_id', runId);
+    if (since != null) {
+      final rows =
+          await query.gt('at', since).order('at', ascending: true).limit(1000);
+      return (rows as List).cast<Map<String, dynamic>>();
+    }
+    final rows = await query.order('at', ascending: false).limit(1000);
+    return (rows as List).cast<Map<String, dynamic>>().reversed.toList();
   }
 
   /// Pre-create a stub `runs` row so live spectator pings can land
@@ -5474,15 +7689,24 @@ class ApiClient {
   /// the recorder's save flow.
   ///
   /// Idempotent — repeated calls (e.g. user re-taps "Share live link")
-  /// are no-ops via ignoreDuplicates. The row is created with
+  /// are no-ops via ignoreDuplicates. By default the row is created with
   /// `is_public = true` so anyone with the share URL can watch; the
   /// final `saveRun` upsert will overwrite the placeholder fields, so
   /// callers that want the finished run to stay public must re-assert
   /// it via [makeRunPublic] after save.
+  ///
+  /// With [safetyAudience] the stub is created private and marked
+  /// `safety_audience`: only the runner's confirmed safety contacts can
+  /// follow it, through the per-contact link an overdue or off-route alert
+  /// carries (decisions § 1964). Ask [safetyAudienceEnabled] first — with
+  /// the server gate closed the mark is stored false and the stub is simply
+  /// private. Because the upsert ignores duplicates, widening an existing
+  /// safety stub to a public share is [makeRunPublic]'s job.
   Future<void> beginLiveBroadcast({
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -5497,7 +7721,8 @@ class ApiClient {
         RunRow.colDurationS: 0,
         RunRow.colDistanceM: 0,
         RunRow.colSource: 'app',
-        RunRow.colIsPublic: true,
+        RunRow.colIsPublic: !safetyAudience,
+        if (safetyAudience) RunRow.colSafetyAudience: true,
         RunRow.colActivityType: activityType,
         RunRow.colMetadata: {
           'in_progress': true,
@@ -5507,10 +7732,79 @@ class ApiClient {
     );
   }
 
+  /// Whether a live share may run on the safety-contacts-only audience (the
+  /// server's `safety_audience` gate, decisions § 1964). Fail closed: any read
+  /// failure is "off", and the caller falls back to the public live share it
+  /// had before — never to a private stub nobody can follow.
+  Future<bool> safetyAudienceEnabled() async {
+    try {
+      final result = await _client
+          .rpc('safety_audience_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('safety_audience_enabled failed: $e');
+      return false;
+    }
+  }
+
+  /// Whether the streamer overlay is live (the server's `live_overlay` gate,
+  /// decisions § 2265). Fail closed: a read failure is "off", which only hides
+  /// the overlay entry.
+  Future<bool> liveOverlayEnabled() async {
+    try {
+      final result =
+          await _client.rpc('live_overlay_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('live_overlay_enabled failed: $e');
+      return false;
+    }
+  }
+
+  /// The caller's streamer-overlay token and what it admits, or null when
+  /// none exists. A failed read throws, so the sheet can offer a retry
+  /// rather than claiming there is no overlay.
+  Future<LiveOverlay?> fetchLiveOverlay() async {
+    final rows =
+        await _client.rpc('get_live_overlay', params: const {}, get: true);
+    if (rows is! List || rows.isEmpty) return null;
+    return LiveOverlay.fromRow(Map<String, dynamic>.from(rows.first as Map));
+  }
+
+  /// Make the overlay token, or replace it: the old URL stops working at
+  /// once. Rate-limited server-side (10 an hour).
+  Future<String> createLiveOverlayToken() async {
+    final token = await _client.rpc('create_live_overlay_token');
+    if (token is! String || token.isEmpty) {
+      throw StateError('create_live_overlay_token returned no token');
+    }
+    return token;
+  }
+
+  Future<void> revokeLiveOverlayToken() async {
+    await _client.rpc('revoke_live_overlay_token');
+  }
+
+  Future<void> updateLiveOverlaySettings({
+    required int delaySeconds,
+    required bool showMap,
+    required bool showHeartRate,
+  }) async {
+    await _client.rpc('update_live_overlay_settings', params: {
+      'p_delay_s': delaySeconds,
+      'p_show_map': showMap,
+      'p_show_heart_rate': showHeartRate,
+    });
+  }
+
   /// Append one spectator ping for an in-progress run. Intended to be
   /// called from the recorder's per-snapshot hot path, throttled by
   /// the caller to ~5 s (more than that overwhelms the spectator map
   /// and Realtime fanout). Failures are L4 — caller swallows.
+  ///
+  /// [weakGps] marks a fix the recorder kept for distance but not for its
+  /// line (`live_run_pings.weak_gps`, decisions § 2357); spectators draw it
+  /// as an approximate position. Sent only when true.
   Future<void> insertLivePing({
     required String runId,
     required double lat,
@@ -5519,6 +7813,7 @@ class ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -5531,6 +7826,7 @@ class ApiClient {
       if (elapsedS != null) 'elapsed_s': elapsedS,
       if (bpm != null) 'bpm': bpm,
       if (ele != null) 'ele': ele,
+      if (weakGps) 'weak_gps': true,
     });
   }
 
@@ -5549,6 +7845,46 @@ class ApiClient {
     await _client.from(RunRow.table).update({
       RunRow.colConcludedAt: DateTime.now().toUtc().toIso8601String(),
     }).eq(RunRow.colId, runId).eq(RunRow.colUserId, userId);
+  }
+
+  /// Arm (or clear, with a null [expectedReturnAt]) the per-run "not back by
+  /// X" override on one of my own in-progress broadcast runs — the absolute
+  /// deadline that escalates to my confirmed safety contacts independently of
+  /// the universal silence window (migration `20270410_001`).
+  ///
+  /// The deadline lives on the SERVER, which is the entire point: once armed,
+  /// killing the app, losing signal or destroying the phone cannot disarm it.
+  /// It stops mattering when the run stops being in-progress, which the
+  /// finishing `saveRun` upsert does.
+  ///
+  /// Returns whether the run was updated — false when it isn't mine or is no
+  /// longer in progress. A false must never be rendered as an armed alarm.
+  Future<bool> setRunExpectedReturn(
+      String runId, DateTime? expectedReturnAt) async {
+    final result = await _client.rpc('set_run_expected_return', params: {
+      'p_run_id': runId,
+      'p_expected_return_at': expectedReturnAt?.toUtc().toIso8601String(),
+    });
+    return result == true;
+  }
+
+  /// The per-run expected-return override currently armed on my own run, or
+  /// null when none is. Read back from the server rather than trusted from
+  /// memory so a run recovered after the app was killed — or one armed from
+  /// the web live page — reports the truth. Throws on read failure: a
+  /// swallowed error here would render "no alarm set" over an alarm that is
+  /// in fact armed.
+  Future<DateTime?> fetchRunExpectedReturn(String runId) async {
+    final row = await _client
+        .from(RunRow.table)
+        .select(RunRow.colMetadata)
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    final metadata = row?[RunRow.colMetadata];
+    if (metadata is! Map) return null;
+    final raw = metadata[MetadataKeys.expectedReturnAt];
+    if (raw is! String) return null;
+    return parseIsoStrict(raw)?.toLocal();
   }
 
   // ─────────────────── Gym (Phase 4 multi-modal, decisions §63) ───────────────────
@@ -5597,43 +7933,87 @@ class ApiClient {
   /// composer can merge them into its autocomplete + bind a typed name to an
   /// exercise_id. Additive — a user who never picks a catalogue entry logs
   /// exactly as before (exercise_id stays null).
+  ///
+  /// One row per exercise: [dedupeShadowedExercises] resolves the shadowed pair
+  /// the two partial uniques on `name_key` deliberately allow, the owner's
+  /// custom winning over the seeded global it shadows. Applied HERE rather than
+  /// at each surface so no consumer carries the rule and none can disagree with
+  /// another about it — the composer used to bind a typed name to whichever of
+  /// the two rows its last-wins map happened to hold.
+  ///
+  /// **An unavailable catalogue is not an empty one, and this throws rather
+  /// than conflating them.** An empty catalogue is the state in which every
+  /// typed name looks free: the picker's exact-match test finds nothing, the
+  /// browse affordance hides itself, and the create path is offered for a name
+  /// the catalogue already holds — which then either succeeds against the
+  /// partial unique and mints a shadow, or 23505s against a row the client
+  /// cannot see. So a failed read must reach the caller as a failure; a `catch`
+  /// here that answered `const []` would erase the distinction for every
+  /// surface at once, and the caller's own state has to carry the third value.
   Future<List<ExerciseRow>> fetchExerciseCatalogue() async {
-    final rows = await _client
-        .from(ExerciseRow.table)
-        .select()
-        .order(ExerciseRow.colName, ascending: true);
-    return (rows as List)
-        .map((r) => ExerciseRow.fromJson(r as Map<String, dynamic>))
+    final rows = (await _walk(
+      _exerciseCatalogueOrder,
+      () => _client.from(ExerciseRow.table).select(),
+    ))
+        .map(ExerciseRow.fromJson)
         .toList();
+    return dedupeShadowedExercises(
+      rows,
+      nameKey: (r) => r.nameKey,
+      authorId: (r) => r.authorId,
+    );
   }
 
+  /// Alphabetical, `id` breaking a tie: a seeded global and a user's custom
+  /// entry can carry the same name. Web's `EXERCISE_ORDER` is the same order.
+  static const List<KeysetKey> _exerciseCatalogueOrder = [
+    KeysetKey(ExerciseRow.colName, ascending: true, nullsFirst: false),
+    KeysetKey(ExerciseRow.colId, ascending: true, nullsFirst: false),
+  ];
+
   /// Create an owner-scoped custom catalogue entry (migration 20270222_001).
-  /// [nameKey] is `normaliseExerciseName(name)`, stamped by the caller so this
-  /// package stays decoupled from the gym_prs helper — it's the frozen identity
-  /// a logged set binds by. RLS rejects any author_id other than the caller, so
-  /// the returned row is always owned by the signed-in user. Returns null when
-  /// signed out or on conflict/error (e.g. a duplicate name_key in the user's
-  /// own customs).
+  ///
+  /// `name_key` is NOT sent: the `exercises_stamp_name_key` trigger derives it
+  /// from `name` on every write (20270711000001), so the caller no longer
+  /// computes the key and this package needs no `gym_prs` of its own. It was
+  /// the last of that migration's client-computed rails (decisions 1323).
+  ///
+  /// RLS rejects any author_id other than the caller, so the returned row is
+  /// always owned by the signed-in user. Returns null when signed out or on
+  /// conflict/error (e.g. a duplicate name_key in the user's own customs).
+  ///
+  /// Blankness is decided on the KEY, by `namesAnExercise` — the same call web
+  /// makes. The display spelling is trimmed because a stored display string
+  /// should not carry leading or trailing space, but that trim is not the rule:
+  /// `name_key` is stamped from `name` by trigger and carries a
+  /// `length(...) between 1 and 120` CHECK, and the fold's whitespace class is
+  /// spelled out by code point precisely because the three runtimes that
+  /// persist this key disagree past ASCII (decisions § 790).
+  ///
+  /// It used to be `trimmed.isEmpty`, which answered identically — Dart's
+  /// `trim()` strips `kExerciseWhitespace` verbatim — but stated the rule by a
+  /// coincidence of the runtime rather than by the class, in a package that
+  /// could not reach the class at all. Moving the derivation into `core_models`
+  /// is what closed that (decisions § 1515).
   Future<ExerciseRow?> createCustomExercise({
     required String name,
-    required String nameKey,
     String category = 'other',
     String modality = 'weight_reps',
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return null;
     final trimmed = name.trim();
-    if (trimmed.isEmpty) return null;
+    if (!namesAnExercise(trimmed)) return null;
     try {
       final row = await _client
           .from(ExerciseRow.table)
           .insert(<String, dynamic>{
             ExerciseRow.colAuthorId: uid,
             ExerciseRow.colName: trimmed,
-            ExerciseRow.colNameKey: nameKey,
             ExerciseRow.colCategory: category,
             ExerciseRow.colModality: modality,
-            ExerciseRow.colLastModifiedAt: DateTime.now().toIso8601String(),
+            ExerciseRow.colLastModifiedAt:
+                DateTime.now().toUtc().toIso8601String(),
           })
           .select()
           .single();
@@ -5662,11 +8042,14 @@ class ApiClient {
     final workouts = (ws as List).cast<Map<String, dynamic>>();
     if (workouts.isEmpty) return [];
     final ids = [for (final w in workouts) w[GymWorkoutRow.colId] as String];
-    final ss = await _client
-        .from(GymSetRow.table)
-        .select()
-        .inFilter(GymSetRow.colWorkoutId, ids)
-        .order(GymSetRow.colSetIndex, ascending: true);
+    final ss = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(GymSetRow.table)
+          .select()
+          .inFilter(GymSetRow.colWorkoutId, chunk)
+          .order(GymSetRow.colSetIndex, ascending: true),
+    );
     final byWorkout = <String, List<Map<String, dynamic>>>{};
     for (final raw in (ss as List).cast<Map<String, dynamic>>()) {
       (byWorkout[raw[GymSetRow.colWorkoutId] as String] ??= []).add(raw);
@@ -5683,18 +8066,25 @@ class ApiClient {
   /// Session plans (session_planner.md P1) the caller can see: their own plans
   /// plus any plan owned by a club they belong to (RLS owns the authority).
   /// Read-only on mobile in P1 — the editor lives on web first.
-  Future<List<SessionPlanRow>> fetchSessionPlans() async {
+  ///
+  /// Each row carries `isOfficial` — the `is_official` computed field
+  /// (migration 20271021000030), which the generated row type cannot hold.
+  Future<List<({SessionPlanRow plan, bool isOfficial})>>
+      fetchSessionPlans() async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const [];
     try {
       final data = await _client
           .from(SessionPlanRow.table)
-          .select()
+          .select('*, is_official')
           .order(SessionPlanRow.colUpdatedAt, ascending: false);
-      return (data as List)
-          .map<SessionPlanRow>(
-              (row) => SessionPlanRow.fromJson(row as Map<String, dynamic>))
-          .toList();
+      return (data as List).map((row) {
+        final m = row as Map<String, dynamic>;
+        return (
+          plan: SessionPlanRow.fromJson(m),
+          isOfficial: m['is_official'] == true,
+        );
+      }).toList();
     } catch (e) {
       debugPrint('fetchSessionPlans failed: $e');
       return const [];
@@ -5702,16 +8092,18 @@ class ApiClient {
   }
 
   /// A single session plan with its blocks + items, for the mobile read view.
-  /// Null when the plan is absent or not visible to the caller.
+  /// Null when the plan is absent or not visible to the caller. `isOfficial`
+  /// is the `is_official` computed field (migration 20271021000030).
   Future<({
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async {
     try {
       final planRow = await _client
           .from(SessionPlanRow.table)
-          .select()
+          .select('*, is_official')
           .eq(SessionPlanRow.colId, id)
           .maybeSingle();
       if (planRow == null) return null;
@@ -5735,6 +8127,7 @@ class ApiClient {
             .map<SessionPlanItemRow>(
                 (r) => SessionPlanItemRow.fromJson(r as Map<String, dynamic>))
             .toList(),
+        isOfficial: planRow['is_official'] == true,
       );
     } catch (e) {
       debugPrint('fetchSessionPlan failed: $e');
@@ -6032,14 +8425,16 @@ class ApiClient {
             <({GymRoutineExerciseRow exercise, List<GymRoutineSetRow> sets})>[],
       );
     }
-    final setRows = await _client
-        .from(GymRoutineSetRow.table)
-        .select()
-        .inFilter(GymRoutineSetRow.colRoutineExerciseId,
-            [for (final e in exercises) e.id])
-        .order(GymRoutineSetRow.colSetIndex, ascending: true);
+    final setRows = await readChunked(
+      [for (final e in exercises) e.id],
+      (chunk) async => _client
+          .from(GymRoutineSetRow.table)
+          .select()
+          .inFilter(GymRoutineSetRow.colRoutineExerciseId, chunk)
+          .order(GymRoutineSetRow.colSetIndex, ascending: true),
+    );
     final byExercise = <String, List<GymRoutineSetRow>>{};
-    for (final raw in (setRows as List).cast<Map<String, dynamic>>()) {
+    for (final raw in setRows.cast<Map<String, dynamic>>()) {
       final s = GymRoutineSetRow.fromJson(raw);
       (byExercise[s.routineExerciseId] ??= []).add(s);
     }
@@ -6068,8 +8463,12 @@ class ApiClient {
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('Not authenticated');
+    // Blankness on the KEY, not on the display spelling: `exercise_key` is
+    // stamped from this name and carries a `length(...) between 1 and 120`
+    // CHECK, so a name that folds to the empty key is a 23514 the caller
+    // cannot act on (decisions § 1367).
     final kept = exercises
-        .where((e) => e.exerciseName.trim().isNotEmpty)
+        .where((e) => namesAnExercise(e.exerciseName))
         .toList(growable: false);
     final row = await _client
         .from(GymRoutineRow.table)
@@ -6103,7 +8502,10 @@ class ApiClient {
           .insert({
             GymRoutineExerciseRow.colRoutineId: routine.id,
             GymRoutineExerciseRow.colExerciseName: ex.exerciseName.trim(),
-            GymRoutineExerciseRow.colExerciseKey: ex.exerciseKey,
+            // exercise_key is NOT sent: gym_routine_exercises_stamp_exercise_key
+            // derives it from exercise_name on every write (20270711000001), so
+            // a client value is overwritten. [GymRoutineExerciseInput.exerciseKey]
+            // stays -- the caller matches its own plan to its own log with it.
             GymRoutineExerciseRow.colPosition: p,
             GymRoutineExerciseRow.colSupersetGroup: g,
             GymRoutineExerciseRow.colSupersetOrder:
@@ -6164,6 +8566,30 @@ class ApiClient {
     }
   }
 
+  /// Which of [routineIds] read as official: published by an owner/admin of
+  /// a verified club (the `is_official` computed field, migration
+  /// 20271021000030; decisions § 2228). Fail-soft to none, because the badge
+  /// is auxiliary to the list it decorates.
+  Future<Set<String>> fetchOfficialGymRoutineIds(List<String> routineIds) async {
+    if (routineIds.isEmpty) return const {};
+    try {
+      final rows = await readChunked(
+        routineIds,
+        (chunk) async => List<dynamic>.from(await _client
+            .from(GymRoutineRow.table)
+            .select('id, is_official')
+            .inFilter(GymRoutineRow.colId, chunk)),
+      );
+      return {
+        for (final r in rows.whereType<Map<String, dynamic>>())
+          if (r['is_official'] == true) r['id'] as String,
+      };
+    } catch (e) {
+      debugPrint('fetchOfficialGymRoutineIds failed: $e');
+      return const {};
+    }
+  }
+
   /// Publish a personal gym routine into a club-owned template. The
   /// publish_gym_routine_as_template RPC is author + club-admin gated and
   /// deep-copies the routine + exercises + sets server-side (the personal
@@ -6192,23 +8618,33 @@ class ApiClient {
 
   /// Browse the public gym-routine library — routines published as public
   /// templates that any signed-in user can adopt (migration 20270224_001).
-  /// Optional case-insensitive title search. Each entry carries the author's
-  /// public display name (handle) joined from user_profiles; no other author
-  /// data is exposed. Mirrors web `data.ts#fetchPublicGymRoutineLibrary`.
-  Future<List<({GymRoutineRow routine, String? authorHandle})>>
+  /// Optional case-insensitive title search, every character matched
+  /// literally (`literalSubstringPattern`, decisions § 1937). Each entry
+  /// carries the author's public display name (handle) joined from
+  /// user_profiles; no other author data is exposed, and `isOfficial` is the
+  /// view's derived flag (published by a verified organiser, migration
+  /// 20271211000002). Mirrors web `data.ts#fetchPublicGymRoutineLibrary`.
+  Future<List<({GymRoutineRow routine, String? authorHandle, bool isOfficial})>>
       fetchPublicGymRoutineLibrary({String query = ''}) async {
     // public_gym_routines redacts external_id + last_modified_at (migration
     // 20270319_001); created_at stands in for the model's required field.
     var sel = _client.from('public_gym_routines').select();
     final trimmed = query.trim();
     if (trimmed.isNotEmpty) {
-      sel = sel.ilike(GymRoutineRow.colTitle, '%$trimmed%');
+      sel = sel.imatchRegex(
+        GymRoutineRow.colTitle,
+        literalSubstringPattern(trimmed),
+      );
     }
     final rows = await sel
         .order(GymRoutineRow.colCreatedAt, ascending: false)
         .limit(100);
-    final routines = (rows as List)
-        .cast<Map<String, dynamic>>()
+    final raw = (rows as List).cast<Map<String, dynamic>>();
+    final officialIds = {
+      for (final r in raw)
+        if (r['is_official'] == true) r[GymRoutineRow.colId] as String,
+    };
+    final routines = raw
         .map((r) => GymRoutineRow.fromJson({
               ...r,
               GymRoutineRow.colLastModifiedAt: r[GymRoutineRow.colCreatedAt],
@@ -6228,7 +8664,11 @@ class ApiClient {
     }
     return [
       for (final r in routines)
-        (routine: r, authorHandle: byId[r.authorId]),
+        (
+          routine: r,
+          authorHandle: byId[r.authorId],
+          isOfficial: officialIds.contains(r.id),
+        ),
     ];
   }
 
@@ -6245,6 +8685,40 @@ class ApiClient {
       'set_gym_routine_public',
       params: {'p_routine_id': routineId, 'p_public': isPublic},
     );
+  }
+
+  /// One routine's own performance history: complete tallies over every
+  /// session it has ever been run as, plus a bounded page of the most recent
+  /// for the panel's list. Mirrors web `data.ts#fetchGymRoutineHistory`.
+  ///
+  /// A count is an aggregate, so no client-side window can serve it honestly —
+  /// the previous read pulled up to 500 rows just to reduce them, and an
+  /// unbounded PostgREST select truncates silently at `db.max-rows` with a 200.
+  /// The `gym_routine_history` RPC applies the in-flight-draft and save-as-is
+  /// rules to BOTH the tallies and the page in one snapshot. A failed read
+  /// throws — "you have never run this" is a different answer from "we could
+  /// not look".
+  Future<Map<String, dynamic>> fetchGymRoutineHistory(
+    String routineId, {
+    int recentLimit = 5,
+  }) async {
+    const empty = <String, dynamic>{
+      'session_count': 0,
+      'last_performed_at': null,
+      'graded_count': 0,
+      'completed_count': 0,
+      'recent_sessions': <dynamic>[],
+    };
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null || routineId.isEmpty) return empty;
+    final data = await _client.rpc(
+      'gym_routine_history',
+      params: {'p_routine_id': routineId, 'p_recent_limit': recentLimit},
+      get: true,
+    );
+    final rows = data is List ? data : const [];
+    if (rows.isEmpty) return empty;
+    return (rows.first as Map).cast<String, dynamic>();
   }
 
   // ─────────────────── Nutrition / food log (Phase 4) ───────────────────
@@ -6645,6 +9119,40 @@ class ApiClient {
         .toList();
   }
 
+  /// The personal records [runId] set, for the PR share card: the logged
+  /// improvements (each with the time it beat) and the brackets the run holds
+  /// in the cache. Both tables are owner-only, so another user's run answers
+  /// empty. Mirrors web `fetchRunPersonalRecords`.
+  Future<
+      ({
+        List<PersonalRecordImprovementRow> improvements,
+        List<PersonalRecordRow> held,
+      })> fetchRunPersonalRecords(String runId) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return (improvements: const <PersonalRecordImprovementRow>[], held: const <PersonalRecordRow>[]);
+    final results = await Future.wait([
+      _client
+          .from(PersonalRecordImprovementRow.table)
+          .select()
+          .eq(PersonalRecordImprovementRow.colUserId, uid)
+          .eq(PersonalRecordImprovementRow.colRunId, runId),
+      _client
+          .from(PersonalRecordRow.table)
+          .select()
+          .eq(PersonalRecordRow.colUserId, uid)
+          .eq(PersonalRecordRow.colRunId, runId),
+    ]);
+    return (
+      improvements: results[0]
+          .map<PersonalRecordImprovementRow>(
+              (r) => PersonalRecordImprovementRow.fromJson(r))
+          .toList(),
+      held: results[1]
+          .map<PersonalRecordRow>((r) => PersonalRecordRow.fromJson(r))
+          .toList(),
+    );
+  }
+
   /// All-time `(current, best)` run-day streaks from the
   /// `run_streaks_for_user` gaps-and-islands aggregate (migration
   /// `20270501_001`) — the same one-row server read web's dashboard card
@@ -6668,8 +9176,8 @@ class ApiClient {
     try {
       final data = await _client.rpc('run_streaks_for_user', params: {
         'p_tz': tz,
-        if (source != null) 'p_source': source,
-      });
+        'p_source': ?source,
+      }, get: true);
       final rows = (data as List?) ?? const <dynamic>[];
       final row = rows.isEmpty ? null : rows.first as Map?;
       if (row == null) return null;
@@ -6698,18 +9206,22 @@ class ApiClient {
     }
     final res = await _client.rpc('grant_health_data_consent');
     if (res is! String) return null;
-    return DateTime.tryParse(res);
+    return parseIsoStrict(res);
   }
 
   /// Withdraw health-data consent (GDPR Art 7(3)) via the
   /// `withdraw_health_data_consent()` SECURITY DEFINER RPC — the
   /// sanctioned inverse of [grantHealthDataConsent] (migration
-  /// 20270418_001). One transaction nulls the consent stamp + every
-  /// Art 9 profile column (height, gender, DOB) and erases the
-  /// `body_metrics` weight series. Server-side insert-or-update, so a
-  /// missing client-provisioned profile row can't turn the withdrawal
-  /// into a 0-row silent no-op; throws on a missing session for the
-  /// same reason.
+  /// 20270418_001). One transaction nulls the consent stamp + the Art 9
+  /// profile columns (height, gender) and erases the `body_metrics`
+  /// weight series. `date_of_birth` is deliberately NOT among them: it is
+  /// the child-safety age record the under-18 discoverability floor reads,
+  /// and Art 7(3) ends the health processing, not the floor (decisions
+  /// § 721 — before that the RPC nulled it and every caller re-asserted it
+  /// afterwards). The caller still clears the Art 9 prefs-bag DOB mirror.
+  /// Server-side insert-or-update, so a missing client-provisioned profile
+  /// row can't turn the withdrawal into a 0-row silent no-op; throws on a
+  /// missing session for the same reason.
   Future<void> withdrawHealthDataConsent() async {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
@@ -6739,6 +9251,35 @@ class ApiClient {
       await _client.from('user_profiles').insert({
         UserProfileRow.colId: uid,
         UserProfileRow.colHeightCm: heightCm,
+      });
+    }
+  }
+
+  /// Set (or clear, when null) the signed-in user's date of birth on
+  /// `user_profiles`. **Deliberately NOT gated on health-data consent**
+  /// (decisions § 718): this column is the age record behind the under-18
+  /// discoverability floor in `search_user_profiles` — a child-protection
+  /// purpose distinct from the Art 9(2)(a) consent needed to USE the date
+  /// for HR calibration and age-banded leaderboards. That consented use
+  /// reads the `user_settings.prefs` mirror, which the caller writes (and
+  /// clears on withdrawal) separately.
+  ///
+  /// Row-count-verified with an insert fallback for the same reason as
+  /// [setMyHeightCm] — rows are client-provisioned, so a plain update
+  /// against a missing row matches 0 rows and reports success (issue #233).
+  Future<void> setMyDateOfBirth(DateTime? dateOfBirth) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw StateError('not signed in');
+    final value = dateOfBirth == null ? null : dateOnly(dateOfBirth);
+    final updated = await _client
+        .from(UserProfileRow.table)
+        .update({UserProfileRow.colDateOfBirth: value})
+        .eq(UserProfileRow.colId, uid)
+        .select(UserProfileRow.colId);
+    if (updated.isEmpty) {
+      await _client.from(UserProfileRow.table).insert({
+        UserProfileRow.colId: uid,
+        UserProfileRow.colDateOfBirth: value,
       });
     }
   }
@@ -6790,7 +9331,8 @@ class ApiClient {
     if (uid == null) return const [];
     final rows = await _client
         .from(CoachAthleteRow.table)
-        .select('id, status, note, created_at, accepted_at, athlete_id')
+        .select(
+            'id, status, note, created_at, accepted_at, athlete_id, ai_assist_consent_version')
         .eq(CoachAthleteRow.colCoachId, uid)
         .eq(CoachAthleteRow.colStatus, 'active')
         .order(CoachAthleteRow.colAcceptedAt, ascending: false);
@@ -6804,7 +9346,8 @@ class ApiClient {
     if (uid == null) return const [];
     final rows = await _client
         .from(CoachAthleteRow.table)
-        .select('id, status, note, created_at, accepted_at, coach_id')
+        .select(
+            'id, status, note, created_at, accepted_at, coach_id, ai_assist_consent_version')
         .eq(CoachAthleteRow.colAthleteId, uid)
         .eq(CoachAthleteRow.colStatus, 'active')
         .order(CoachAthleteRow.colAcceptedAt, ascending: false);
@@ -6818,33 +9361,130 @@ class ApiClient {
   /// gets zero rows, an unauthenticated caller raises. Returns no track bytes.
   Future<List<CoachRosterRow>> fetchCoachRosterSummary() async {
     if (userId == null) return const [];
-    final data = await _client.rpc('coach_roster_summary');
+    final data =
+        await _client.rpc('coach_roster_summary', params: const {}, get: true);
     return (data as List).cast<Map<String, dynamic>>().map((r) {
       return CoachRosterRow(
         athleteId: r['athlete_id'] as String,
         displayName: r['display_name'] as String?,
         avatarUrl: r['avatar_url'] as String?,
-        lastRunAt: r['last_run_at'] == null
-            ? null
-            : DateTime.parse(r['last_run_at'] as String),
+        lastRunAt: parseIsoStrictValue(r['last_run_at']),
         runs7d: (r['runs_7d'] as num?)?.toInt() ?? 0,
         distance7dM: (r['distance_7d_m'] as num?)?.toDouble() ?? 0,
         loadAcute: (r['load_acute'] as num?)?.toDouble() ?? 0,
         loadChronic: (r['load_chronic'] as num?)?.toDouble() ?? 0,
         activePlanId: r['active_plan_id'] as String?,
         planCompletionPct: (r['plan_completion_pct'] as num?)?.toInt() ?? 0,
+        athleteToday: r['athlete_today'] as String?,
+        recentWorkouts: r['recent_workouts'],
+        easyHrDriftPct: (r['easy_hr_drift_pct'] as num?)?.toDouble(),
       );
     }).toList();
+  }
+
+  // ──────────────────── Plan change requests (decisions § 2382) ──────────
+  //
+  // Mirror of the web layer (apps/web/src/lib/core/data.ts): a change to a
+  // coach-assigned plan the athlete sent to the coach. Mobile reads and acts
+  // on requests; it does not create them (AI plan edits are web-only).
+
+  /// The requests on one plan, or between the signed-in user and [partnerId]
+  /// on either side of the coaching link, newest first.
+  Future<List<PlanChangeRequestRow>> fetchPlanChangeRequests({
+    String? planId,
+    String? partnerId,
+  }) async {
+    final uid = userId;
+    if (uid == null || (planId == null && partnerId == null)) return const [];
+    var query = _client.from(PlanChangeRequestRow.table).select();
+    if (planId != null) {
+      query = query.eq(PlanChangeRequestRow.colPlanId, planId);
+    } else {
+      final p = partnerId!;
+      if (!RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(p)) return const [];
+      query = query.or(
+        'and(athlete_id.eq.$uid,coach_id.eq.$p),and(coach_id.eq.$uid,athlete_id.eq.$p)',
+      );
+    }
+    final rows = await query
+        .order(PlanChangeRequestRow.colCreatedAt, ascending: false)
+        .limit(20);
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(PlanChangeRequestRow.fromJson)
+        .toList();
+  }
+
+  /// The plan rows a request's lines describe, read by id under the viewer's
+  /// RLS (the athlete's own rows, or an active coach's read of them).
+  Future<({List<Map<String, dynamic>> workouts, List<Map<String, dynamic>> weeks})>
+      fetchPlanChangeTargets(List<String> workoutIds, List<String> weekIds) async {
+    final results = await Future.wait([
+      readChunked(
+        workoutIds,
+        (chunk) async => ((await _client
+                    .from(PlanWorkoutRow.table)
+                    .select(
+                        'id, scheduled_date, kind, target_distance_m, target_duration_seconds, skipped_at')
+                    .inFilter(PlanWorkoutRow.colId, chunk)) as List)
+            .cast<Map<String, dynamic>>(),
+      ),
+      readChunked(
+        weekIds,
+        (chunk) async => ((await _client
+                    .from(PlanWeekRow.table)
+                    .select('id, week_index, target_volume_m')
+                    .inFilter(PlanWeekRow.colId, chunk)) as List)
+            .cast<Map<String, dynamic>>(),
+      ),
+    ]);
+    return (workouts: results[0], weeks: results[1]);
+  }
+
+  /// The coach approves (the chosen lines, or every line when both lists
+  /// are null) or declines, with an optional note.
+  Future<void> decidePlanChange({
+    required String requestId,
+    required bool approve,
+    required String todayIso,
+    List<String>? workoutIds,
+    List<String>? weekIds,
+    String? note,
+  }) async {
+    final trimmed = note?.trim();
+    await _client.rpc('decide_plan_change', params: {
+      'p_request_id': requestId,
+      'p_approve': approve,
+      'p_today': todayIso,
+      'p_workout_ids': workoutIds,
+      'p_week_ids': weekIds,
+      'p_note': trimmed == null || trimmed.isEmpty ? null : trimmed,
+    });
+  }
+
+  Future<void> withdrawPlanChange(String requestId) async {
+    await _client.rpc('withdraw_plan_change', params: {'p_request_id': requestId});
+  }
+
+  /// The athlete applies their own request without the coach; the coach is told.
+  Future<void> applyPlanChangeMyself(String requestId, String todayIso) async {
+    await _client.rpc('apply_plan_change_myself', params: {
+      'p_request_id': requestId,
+      'p_today': todayIso,
+    });
   }
 
   Future<List<CoachAthleteLink>> _linksWithProfiles(
       List<Map<String, dynamic>> rows, String otherIdCol) async {
     if (rows.isEmpty) return const [];
     final ids = rows.map((r) => r[otherIdCol] as String).toSet().toList();
-    final profiles = await _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url')
-        .inFilter(UserProfileRow.colId, ids);
+    final profiles = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
     final byId = <String, ({String? displayName, String? avatarUrl})>{};
     for (final p in (profiles as List).cast<Map<String, dynamic>>()) {
       byId[p['id'] as String] = (
@@ -6859,16 +9499,18 @@ class ApiClient {
         id: r['id'] as String,
         status: r['status'] as String,
         note: r['note'] as String?,
-        createdAt: DateTime.parse(r['created_at'] as String),
-        acceptedAt: r['accepted_at'] == null
-            ? null
-            : DateTime.parse(r['accepted_at'] as String),
+        createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+        acceptedAt: parseIsoStrictValue(r['accepted_at']),
         userId: otherId,
         displayName: prof?.displayName,
         avatarUrl: prof?.avatarUrl,
+        aiAssistConsentVersion: _consentVersion(r['ai_assist_consent_version']),
       );
     }).toList();
   }
+
+  static int? _consentVersion(Object? raw) =>
+      raw is int && raw >= 1 ? raw : null;
 
   /// Unredeemed invites the signed-in coach has minted, newest first.
   Future<List<PendingCoachInvite>> fetchPendingCoachInvites() async {
@@ -6886,7 +9528,7 @@ class ApiClient {
         id: r['id'] as String,
         inviteToken: r['invite_token'] as String,
         note: r['note'] as String?,
-        createdAt: DateTime.parse(r['created_at'] as String),
+        createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
       );
     }).toList();
   }
@@ -6896,6 +9538,29 @@ class ApiClient {
   Future<String> redeemCoachInvite(String token) async {
     final res = await _client.rpc('redeem_coach_invite', params: {'token': token});
     return res as String;
+  }
+
+  /// The athlete allows ([version]) or withdraws (null) the coach assistant
+  /// on one of their active coaching links, through the
+  /// `set_coach_ai_assist_consent` RPC (issue #1215 Phase 4, migration
+  /// 20271210001217). Returns the version the server stored. A link that is
+  /// not the caller's as athlete or not active (P0002) and a version the
+  /// server does not know (22023) throw [CoachAssistConsentRefused]; anything
+  /// else is rethrown as it is. Mirrors web `setCoachAiAssistConsent`.
+  Future<int?> setCoachAiAssistConsent(String linkId, int? version) async {
+    try {
+      final row = await _client.rpc('set_coach_ai_assist_consent', params: {
+        'p_link_id': linkId,
+        'p_version': version,
+      });
+      if (row is! Map) throw const CoachAssistConsentRefused();
+      return _consentVersion(row['ai_assist_consent_version']);
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0002' || e.code == '22023') {
+        throw const CoachAssistConsentRefused();
+      }
+      rethrow;
+    }
   }
 
   /// End an active link (either party may call). Goes through the
@@ -6925,14 +9590,14 @@ class ApiClient {
     final data = await _client
         .from(RunRow.table)
         .select(
-            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
         .eq(RunRow.colUserId, athleteId)
         .order(RunRow.colStartedAt, ascending: false)
         .limit(limit);
     return (data as List).cast<Map<String, dynamic>>().map((r) {
       return AthleteRunSummary(
         id: r['id'] as String,
-        startedAt: DateTime.parse(r['started_at'] as String),
+        startedAt: parseIsoStrictRequired(r['started_at'], 'started_at'),
         distanceM: ((r['distance_m'] as num?) ?? 0).toDouble(),
         durationS: ((r['duration_s'] as num?) ?? 0).toInt(),
         isPublic: (r['is_public'] as bool?) ?? false,
@@ -6940,27 +9605,55 @@ class ApiClient {
         routeId: r['route_id'] as String?,
         activityType: (r['activity_type'] as String?) ?? 'run',
         metadata: r['metadata'] as Map<String, dynamic>?,
+        trackUrl: r['track_url'] as String?,
       );
     }).toList();
+  }
+
+  /// Whether a linked coach is served the athlete's clipped run map (the
+  /// server's `coach_run_map` flag, decisions § 1968). Mirrors web
+  /// `coachRunMapEnabled`. Fail-closed: any failure reads as off.
+  Future<bool> coachRunMapEnabled() async {
+    try {
+      final result = await _client.rpc(
+        'coach_run_map_enabled',
+        params: const {},
+        get: true,
+      );
+      return result == true;
+    } catch (e) {
+      debugPrint('coachRunMapEnabled failed: $e');
+      return false;
+    }
   }
 
   /// The athlete's active training plan + its weeks/workouts for the coach
   /// review surface. Mirrors web `fetchAthletePlanOverview` — the coach
   /// plan-read policies (migration 20261116_001) grant SELECT on
   /// `training_plans` / `plan_weeks` / `plan_workouts` for active-linked
-  /// athletes. Null when the athlete has no active plan, or the caller isn't
-  /// their active coach (RLS yields no rows). `completionPct` excludes rest
-  /// days, matching the web roll-up.
-  Future<AthletePlanOverview?> fetchAthletePlanOverview(String athleteId) async {
+  /// athletes. An athlete may hold several active plans whose dates don't
+  /// overlap; [pick] chooses the one to show (the app's `plan_current.dart`
+  /// rule, which this package can't import). Null when the athlete has no
+  /// active plan, [pick] chooses none, or the caller isn't their active coach
+  /// (RLS yields no rows). `completionPct` excludes rest days, matching the
+  /// web roll-up.
+  Future<AthletePlanOverview?> fetchAthletePlanOverview(
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async {
     if (userId == null || athleteId.isEmpty) return null;
-    final planRow = await _client
+    final planRows = await _client
         .from(TrainingPlanRow.table)
         .select()
         .eq(TrainingPlanRow.colUserId, athleteId)
         .eq('status', 'active')
-        .maybeSingle();
-    if (planRow == null) return null;
-    final plan = TrainingPlanRow.fromJson(planRow);
+        .eq('is_template', false);
+    final active = (planRows as List)
+        .cast<Map<String, dynamic>>()
+        .map(TrainingPlanRow.fromJson)
+        .toList();
+    final plan = pick(active);
+    if (plan == null) return null;
     final weekRows = await _client
         .from(PlanWeekRow.table)
         .select()
@@ -6972,15 +9665,21 @@ class ApiClient {
         .toList();
     var workouts = <PlanWorkoutRow>[];
     if (weeks.isNotEmpty) {
-      final woRows = await _client
-          .from(PlanWorkoutRow.table)
-          .select()
-          .inFilter(PlanWorkoutRow.colWeekId, [for (final w in weeks) w.id])
-          .order(PlanWorkoutRow.colScheduledDate, ascending: true);
-      workouts = (woRows as List)
+      final woRows = await readChunked(
+        [for (final w in weeks) w.id],
+        (chunk) async => _client
+            .from(PlanWorkoutRow.table)
+            .select()
+            .inFilter(PlanWorkoutRow.colWeekId, chunk)
+            .order(PlanWorkoutRow.colScheduledDate, ascending: true),
+      );
+      // Each chunk comes back ordered; the merged list is re-sorted so a plan
+      // longer than one chunk still reads in date order.
+      workouts = woRows
           .cast<Map<String, dynamic>>()
           .map(PlanWorkoutRow.fromJson)
-          .toList();
+          .toList()
+        ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
     }
     final real = workouts.where((w) => w.kind != 'rest').toList();
     final done = real
@@ -6992,6 +9691,7 @@ class ApiClient {
       weeks: weeks,
       workouts: workouts,
       completionPct: pct,
+      activePlans: active,
     );
   }
 
@@ -7004,6 +9704,7 @@ class ApiClient {
         .from(TrainingPlanRow.table)
         .select()
         .eq(TrainingPlanRow.colUserId, uid)
+        .eq(TrainingPlanRow.colIsTemplate, false)
         .order(TrainingPlanRow.colCreatedAt, ascending: false)
         .limit(limit);
     return (rows as List)
@@ -7013,9 +9714,14 @@ class ApiClient {
   }
 
   /// Assign one of the coach's plans to a linked athlete via the
-  /// `assign_plan_to_athlete` RPC (migration 20270106_001). The thrown error
-  /// carries the RPC's raise text (e.g. the athlete already has an active
-  /// plan), which the caller surfaces. Returns the new plan id.
+  /// `assign_plan_to_athlete` RPC (migration 20270106_001). An overlap with
+  /// one of the athlete's active plans throws [PlanAssignOverlapException].
+  /// Every other failure reaches the caller untouched for it to classify: a
+  /// refusal (signed out, not an active coach of the athlete, a source plan
+  /// that is missing or not the caller's to use) as the RPC's
+  /// [PostgrestException], whose raise text is log detail, not copy; a
+  /// transport failure as whatever the HTTP client threw. Returns the new
+  /// plan id.
   Future<String> assignPlanToAthlete({
     required String sourcePlanId,
     required String athleteId,
@@ -7030,10 +9736,11 @@ class ApiClient {
       });
       return res as String;
     } on PostgrestException catch (e) {
-      // Surface the RPC's RAISE text verbatim (e.g. "athlete already has an
-      // active plan") rather than the noisy PostgrestException.toString(), so
-      // the caller can show it directly without re-parsing the SQLSTATE.
-      throw Exception(e.message);
+      // An overlap with one of the athlete's active plans is 23P01
+      // (migration 20270830000008); typed so the caller can say which dates
+      // to pick instead of showing the raw raise text.
+      if (e.code == '23P01') throw PlanAssignOverlapException(e.message);
+      rethrow;
     }
   }
 
@@ -7053,6 +9760,22 @@ class ApiClient {
     return data
         .map<AchievementRow>((row) => AchievementRow.fromJson(row))
         .toList();
+  }
+
+  /// Show or hide one of the owner's badges on their profile and its public
+  /// share page. RLS allows the owner to update `is_public` only. Mirrors web
+  /// `setBadgeVisibility`.
+  Future<void> setBadgeVisibility(String id, {required bool isPublic}) async {
+    final updated = await _client
+        .from(AchievementRow.table)
+        .update({AchievementRow.colIsPublic: isPublic})
+        .eq(AchievementRow.colId, id)
+        .select(AchievementRow.colId);
+    // RLS filters a row the caller may not update out of the UPDATE instead
+    // of refusing it, so an empty answer is the refusal.
+    if (updated.isEmpty) {
+      throw StateError('badge $id was not updated');
+    }
   }
 
   /// The signed-in user's own badges (incl. private). Empty when signed out.
@@ -7083,15 +9806,15 @@ class ApiClient {
 
     // The followee set is chunked: PostgREST serialises `.inFilter()` into the
     // URL, so a viewer following many hundreds of people overflows the
-    // gateway's request-line limit and the query silently returns empty — a
-    // silently empty badge feed. Each chunk applies the same cursor + ordering
+    // gateway's request-line budget and loses the read entirely (decisions
+    // § 653). Each chunk applies the same cursor + ordering
     // + limit; the global top-`limit` is a subset of the union, re-sorted by
     // earned_at desc then id desc.
-    Future<List<AchievementRow>> queryChunk(List<String> ids) async {
+    Future<List<AchievementRow>> queryChunk(List<String> chunk) async {
       var q = _client
           .from(AchievementRow.table)
           .select()
-          .inFilter(AchievementRow.colUserId, ids)
+          .inFilter(AchievementRow.colUserId, chunk)
           .eq(AchievementRow.colIsPublic, true);
       if (cursor != null) {
         final iso = cursor.earnedAt.toIso8601String();
@@ -7106,26 +9829,22 @@ class ApiClient {
       return rows.map<AchievementRow>((r) => AchievementRow.fromJson(r)).toList();
     }
 
-    final pages = await Future.wait(chunkList(authors).map(queryChunk));
-    final mergedById = <String, AchievementRow>{};
-    for (final page in pages) {
-      for (final b in page) {
-        mergedById[b.id] = b;
-      }
-    }
-    final badges = mergedById.values.toList()
-      ..sort((a, b) {
-        final byDate = b.earnedAt.compareTo(a.earnedAt);
-        return byDate != 0 ? byDate : b.id.compareTo(a.id);
-      });
-    if (badges.length > limit) badges.removeRange(limit, badges.length);
+    final badges = topByRecency(
+      await readChunked(authors, queryChunk),
+      limit: limit,
+      idOf: (b) => b.id,
+      recencyOf: (b) => b.earnedAt,
+    );
     if (badges.isEmpty) return const [];
 
     final ids = badges.map((b) => b.userId).toSet().toList();
-    final profiles = await _client
-        .from(UserProfileRow.table)
-        .select('id, display_name, avatar_url')
-        .inFilter('id', ids);
+    final profiles = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url')
+          .inFilter('id', chunk),
+    );
     final byId = <String, Map<String, dynamic>>{
       for (final p in profiles) p['id'] as String: p,
     };
@@ -7138,6 +9857,1062 @@ class ApiClient {
           authorAvatarUrl: byId[b.userId]?['avatar_url'] as String?,
         ),
     ];
+  }
+
+  /// Direct-message inbox: one row per conversation with its latest message
+  /// and the viewer's unread count, newest conversation first. Mirrors web
+  /// `fetchDmThreads`. The aggregation is the `dm_threads()` RPC, which runs
+  /// SECURITY INVOKER under the participants-only SELECT policy over the
+  /// viewer's whole message set, so no conversation drops out of a window.
+  /// Throws on a failed read so the inbox can tell "no conversations" from
+  /// "did not load". Partner names are a second read, and a failure there
+  /// leaves the names null rather than failing the inbox, as web does.
+  Future<List<DmThread>> fetchDmThreads() async {
+    if (_client.auth.currentUser == null) return const [];
+    final res = await _client.rpc('dm_threads', params: const {}, get: true);
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) return const [];
+    // A deleted partner's thread has no partner id (migration
+    // 20271021000003), so it has no profile to read.
+    final partnerIds = <String>{
+      for (final r in rows)
+        if (r['partner_id'] is String) r['partner_id'] as String,
+    }.toList();
+    final profileById = <String, Map<String, dynamic>>{};
+    if (partnerIds.isNotEmpty) {
+      try {
+        final profiles = await readChunked(
+          partnerIds,
+          (chunk) => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name, avatar_url')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+        for (final p in profiles) {
+          profileById[p['id'] as String] = p;
+        }
+      } catch (e) {
+        debugPrint('fetchDmThreads profile read failed: ${safeErrorLabel(e)}');
+      }
+    }
+    return [
+      for (final r in rows)
+        DmThread(
+          conversationId: r['conversation_id'] as String,
+          partnerId: r['partner_id'] as String?,
+          deletedPartnerKey: r['deleted_partner_key'] as String?,
+          partnerName:
+              profileById[r['partner_id']]?['display_name'] as String?,
+          partnerAvatarUrl:
+              profileById[r['partner_id']]?['avatar_url'] as String?,
+          lastBody: r['last_body'] as String?,
+          lastUnsent: r['last_unsent'] == true,
+          lastKind: switch (r['last_kind']) {
+            'coach_share' => 'coach_share',
+            'ai_assisted' => 'ai_assisted',
+            'group_renamed' => 'group_renamed',
+            _ => 'text',
+          },
+          lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
+          lastFromMe: r['last_from_me'] == true,
+          unread: (r['unread'] as num?)?.toInt() ?? 0,
+          muted: r['muted'] == true,
+          archived: r['archived'] == true,
+          markedUnread: r['marked_unread'] == true,
+          request: r['request'] == true,
+          lastImage: r['last_image'] == true,
+          kind: r['kind'] == 'group' ? 'group' : 'direct',
+          title: r['title'] as String?,
+          memberCount: (r['member_count'] as num?)?.toInt(),
+          membershipState: switch (r['membership_state']) {
+            'active' => 'active',
+            'left' => 'left',
+            _ => null,
+          },
+        ),
+    ];
+  }
+
+  /// Each conversation's unread count with the viewer's mute and archive
+  /// state — what the You tab's inbox badge is counted from
+  /// (`unreadDmBadgeCount` in the app, the twin of web's). The same
+  /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
+  /// read. Throws on a failed read; signed out answers empty without a call.
+  /// The conversation id lets the badge leave out a conversation whose
+  /// delete is still inside its undo window; `request` an unanswered message
+  /// request, which is counted under Requests only.
+  Future<
+          List<
+              ({
+                String conversationId,
+                int unread,
+                bool muted,
+                bool archived,
+                bool request
+              })>>
+      fetchDmBadgeStates() async {
+    if (_client.auth.currentUser == null) return const [];
+    final res = await _client.rpc('dm_threads', params: const {}, get: true);
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        (
+          conversationId: r['conversation_id'] as String,
+          unread: (r['unread'] as num?)?.toInt() ?? 0,
+          muted: r['muted'] == true,
+          archived: r['archived'] == true,
+          request: r['request'] == true,
+        ),
+    ];
+  }
+
+  /// Accepts a message request to the viewer (migration 20271115002384): the
+  /// conversation joins the inbox, and notifications and read receipts start
+  /// from now. Accepting twice is not an error; a conversation with no
+  /// pending request for the viewer raises P0002. Mirrors web
+  /// `acceptDmRequest`.
+  Future<void> acceptDmRequest(String conversationId) async {
+    await _client.rpc(
+      'accept_message_request',
+      params: {'p_conversation_id': conversationId},
+    );
+  }
+
+  /// Declines a message request to the viewer: its messages up to and
+  /// including [throughMessageId] (the newest one on screen) leave the
+  /// viewer's reads, and the requester cannot send again until the viewer
+  /// writes to them. [block] also blocks the requester in the same
+  /// transaction. The requester is not told. Mirrors web `declineDmRequest`.
+  Future<void> declineDmRequest(
+    String conversationId, {
+    required String throughMessageId,
+    bool block = false,
+  }) async {
+    await _client.rpc(
+      'decline_message_request',
+      params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+        'p_block': block,
+      },
+    );
+  }
+
+  /// The viewer's own mute, archive, unread-mark and message-request state
+  /// for one conversation, for a thread opened from outside the inbox (a
+  /// profile, a route). The row is owner-read only. Null when the viewer has
+  /// no row, or signed out. Throws on a failed read.
+  Future<
+          ({bool muted, DateTime? archivedAt, bool markedUnread, bool request})?>
+      fetchDmConversationState(
+    String conversationId,
+  ) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) return null;
+    final row = await _client
+        .from('conversation_participants')
+        .select('muted_at, archived_at, marked_unread_at, request_state')
+        .eq('conversation_id', conversationId)
+        .eq('user_id', me)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      muted: row['muted_at'] != null,
+      archivedAt: parseIsoStrictValue(row['archived_at']),
+      markedUnread: row['marked_unread_at'] != null,
+      request: row['request_state'] == 'pending',
+    );
+  }
+
+  /// Deletes a conversation for the viewer only (migration 20271105000010):
+  /// every message up to and including [throughMessageId], the newest one
+  /// the viewer had on screen, leaves their reads, and anything sent after
+  /// it stays (20271107000002). The other participant keeps theirs, and a
+  /// newer message brings it back. The caller holds it behind the undo
+  /// window, and a message that arrives during the window is one the viewer
+  /// never saw. A conversation the viewer is not in, or a message outside it,
+  /// raises P0002. Mirrors web `hideDmConversation`.
+  Future<void> hideDmConversation(String conversationId,
+      {required String throughMessageId}) async {
+    await _client.rpc(
+      'hide_conversation',
+      params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+      },
+    );
+  }
+
+  /// Mutes or unmutes a conversation for the viewer: a muted one raises no
+  /// message notification and leaves the badge. Mirrors web
+  /// `setDmConversationMuted`.
+  Future<void> setDmConversationMuted(
+    String conversationId, {
+    required bool muted,
+  }) async {
+    await _client.rpc(
+      'set_conversation_muted',
+      params: {'p_conversation_id': conversationId, 'p_muted': muted},
+    );
+  }
+
+  /// Archives or unarchives a conversation for the viewer; it stays archived
+  /// until a newer message arrives. Mirrors web `setDmConversationArchived`.
+  Future<void> setDmConversationArchived(
+    String conversationId, {
+    required bool archived,
+  }) async {
+    await _client.rpc(
+      'set_conversation_archived',
+      params: {'p_conversation_id': conversationId, 'p_archived': archived},
+    );
+  }
+
+  /// Marks a conversation unread for the viewer, or clears the mark
+  /// (migration 20271109000020). `dm_threads()` counts a marked conversation
+  /// as at least one unread; the partner's `read_at` is not touched. Mirrors
+  /// web `setDmConversationUnread`.
+  Future<void> setDmConversationUnread(
+    String conversationId, {
+    required bool unread,
+  }) async {
+    await _client.rpc(
+      'set_conversation_unread',
+      params: {'p_conversation_id': conversationId, 'p_unread': unread},
+    );
+  }
+
+  /// Every column a client may select on `direct_messages`: `read_at`, the
+  /// recipient's own read time, is withheld by a column grant (migration
+  /// 20271113000001), so a bare `select()` is refused. Mirrors web
+  /// `DM_COLUMNS`.
+  static const String dmColumns =
+      'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
+      'unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, '
+      'image_id';
+
+  /// One page of a conversation, oldest message first. A partner thread is
+  /// both directions between the viewer and the partner; a deleted-partner
+  /// thread is the viewer's own messages under that partner's key, since the
+  /// leaver's side was erased with their account (migration 20271021000003).
+  ///
+  /// Keyset-paged newest-first on `(created_at, id)`: [before] is the oldest
+  /// message already shown, and the page holds the [limit] messages before it.
+  /// Paging from the newest end is what makes the first screen the current
+  /// one; web's `fetchDmThread` pages the same way (`social/dm_thread.ts`),
+  /// same page size and tie-break. The pair is matched as both
+  /// columns IN the two ids, which with the table's `sender_id <>
+  /// recipient_id` CHECK is exactly the two directions of this conversation.
+  /// Throws on a failed read.
+  Future<DmThreadPage> fetchDmThread(
+    DmThreadTarget target, {
+    DirectMessageRow? before,
+    int limit = 50,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) {
+      return const DmThreadPage(messages: [], hasMore: false);
+    }
+    var query = _client.from(DirectMessageRow.table).select(dmColumns);
+    switch (target) {
+      case DmPartnerThread(:final partnerId):
+        final pair = [me, partnerId];
+        query = query
+            .inFilter(DirectMessageRow.colSenderId, pair)
+            .inFilter(DirectMessageRow.colRecipientId, pair);
+      case DmDeletedPartnerThread(:final deletedPartnerKey):
+        query = query
+            .eq(DirectMessageRow.colSenderId, me)
+            .eq(DirectMessageRow.colDeletedPartnerKey, deletedPartnerKey);
+    }
+    if (before != null) {
+      final at = before.createdAt.toUtc().toIso8601String();
+      query = query.or(
+        '${DirectMessageRow.colCreatedAt}.lt."$at",'
+        'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+        '${DirectMessageRow.colId}.lt.${before.id})',
+      );
+    }
+    final rows = await query
+        .order(DirectMessageRow.colCreatedAt, ascending: false)
+        .order(DirectMessageRow.colId, ascending: false)
+        .limit(limit + 1);
+    final page = [for (final r in rows) DirectMessageRow.fromJson(r)];
+    final hasMore = page.length > limit;
+    final kept = hasMore ? page.sublist(0, limit) : page;
+    return DmThreadPage(messages: kept.reversed.toList(), hasMore: hasMore);
+  }
+
+  /// Send [body] to [recipientId]. Mirrors web `sendDm`.
+  ///
+  /// The INSERT policy refuses a send with no follow edge either way and no
+  /// shared club or event, after a declined request, or with a block either
+  /// way; that 42501 is thrown as [DmSendNotPermitted]. A fourth message into
+  /// an unaccepted request (54000) is [DmRequestCapReached]. The
+  /// rail's send throttle (migration 20270608_001) raises the shared P0001
+  /// every create-rate-limit raises, and is rethrown as the
+  /// `PostgrestException` it is so the caller runs the shared
+  /// `rateLimitErrorMessage` parser over it.
+  ///
+  /// [routeId] is the typed route attachment (route_direct_share.md v2). The
+  /// same INSERT policy refuses an id the sender cannot see
+  /// (`private.is_route_visible_to`), as the same 42501.
+  ///
+  /// [imageId] is a photo from [uploadDmImage] (migration 20271213121604);
+  /// with one the body may be empty and is sent as null. The INSERT policy
+  /// admits a photo only into a conversation with a follow edge or one the
+  /// recipient accepted, and refuses anything else as the same 42501.
+  Future<DirectMessageRow> sendDm(
+    String recipientId,
+    String body, {
+    String? routeId,
+    String? imageId,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) throw StateError('not signed in');
+    final trimmed = body.trim();
+    final image = imageId?.trim();
+    final hasImage = image != null && image.isNotEmpty;
+    if (trimmed.isEmpty && !hasImage) {
+      throw ArgumentError.value(body, 'body', 'is empty');
+    }
+    final attached = routeId?.trim();
+    try {
+      final row = await _client
+          .from(DirectMessageRow.table)
+          .insert({
+            DirectMessageRow.colSenderId: me,
+            DirectMessageRow.colRecipientId: recipientId,
+            DirectMessageRow.colBody: trimmed.isEmpty ? null : trimmed,
+            DirectMessageRow.colRouteId:
+                attached == null || attached.isEmpty ? null : attached,
+            if (hasImage) DirectMessageRow.colImageId: image,
+          })
+          .select(dmColumns)
+          .single();
+      return DirectMessageRow.fromJson(row);
+    } on PostgrestException catch (e) {
+      if (e.code == '42501') throw const DmSendNotPermitted();
+      if (e.code == '54000') throw const DmRequestCapReached();
+      rethrow;
+    }
+  }
+
+  /// Unsend one of the viewer's own messages: the server nulls its body and
+  /// attachment and stamps `unsent_at`, so both sides see a placeholder
+  /// (migration 20271021000003). Not reversible. Returns the updated row; a
+  /// message the viewer did not send raises P0002 as a [PostgrestException].
+  /// Mirrors web `unsendDm`.
+  Future<DirectMessageRow> unsendDm(String messageId) async {
+    final row = await _client.rpc(
+      'unsend_direct_message',
+      params: {'p_message_id': messageId},
+    );
+    return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+  }
+
+  /// Replace the text of one of the viewer's own messages through
+  /// `edit_direct_message` (migration 20271114000210), which allows it for 15
+  /// minutes after sending. A refusal (unsent, past the window, a block, or
+  /// not the viewer's message) is thrown as [DmEditClosed]; the edit throttle's
+  /// P0001 is rethrown as the `PostgrestException` it is, for the shared
+  /// `rateLimitErrorMessage` parser. Returns the updated row. Mirrors web
+  /// `editDm`.
+  Future<DirectMessageRow> editDm(String messageId, String body) async {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    try {
+      final row = await _client.rpc(
+        'edit_direct_message',
+        params: {'p_message_id': messageId, 'p_body': trimmed},
+      );
+      return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      if (e.code == '55000' || e.code == 'P0002') throw const DmEditClosed();
+      rethrow;
+    }
+  }
+
+  /// Share the picked paragraphs of one of the viewer's own AI Coach answers
+  /// with one of their active coaches, as a `coach_share` direct message
+  /// (issue #1215 Phase 3, migration 20271210001215). The server copies the
+  /// text by paragraph index, so the card's AI label always sits on AI text.
+  /// Mirrors web `shareCoachMessage`.
+  ///
+  /// Not their coach, a block, or a declined request is the same 42501 a
+  /// refused send is, and throws [DmSendNotPermitted]; the gate being closed
+  /// (0A000) is [CoachShareUnavailable]; the request cap (54000) is
+  /// [DmRequestCapReached]. The send throttle's P0001, an answer that is gone
+  /// (P0002) and an excerpt the server refuses (22023 / 22001) are rethrown
+  /// as the `PostgrestException` they are.
+  Future<DirectMessageRow> shareCoachMessage(
+    String coachMessageId,
+    String coachId,
+    List<int> paragraphs,
+  ) async {
+    try {
+      final row = await _client.rpc('share_coach_message', params: {
+        'p_coach_message_id': coachMessageId,
+        'p_coach_id': coachId,
+        'p_paragraphs': paragraphs,
+      });
+      return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      if (e.code == '42501') throw const DmSendNotPermitted();
+      if (e.code == '0A000') throw const CoachShareUnavailable();
+      if (e.code == '54000') throw const DmRequestCapReached();
+      rethrow;
+    }
+  }
+
+  /// Whether sharing an AI Coach answer with a coach is live (the server's
+  /// `coach_share` gate). Mirrors web `fetchCoachShareEnabled`. Fail closed:
+  /// any read failure is "off", and the caller hides the action.
+  Future<bool> fetchCoachShareEnabled() async {
+    try {
+      final result = await _client
+          .rpc('coach_share_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('coach_share_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// The plan a Coach answer belongs to, for the link back from a card the
+  /// viewer shared. Owner-only by RLS, so it answers only for the sender;
+  /// null for an answer outside a plan or one that is gone. Mirrors web
+  /// `fetchCoachMessagePlanId`.
+  Future<String?> fetchCoachMessagePlanId(String coachMessageId) async {
+    final row = await _client
+        .from(CoachMessageRow.table)
+        .select(CoachMessageRow.colPlanId)
+        .eq(CoachMessageRow.colId, coachMessageId)
+        .maybeSingle();
+    return row?[CoachMessageRow.colPlanId] as String?;
+  }
+
+  /// Mark the messages [otherId] sent the viewer as read, up to and including
+  /// [through] on the thread's `(created_at, id)` order, through the
+  /// `mark_direct_messages_read` RPC (migration 20271113000001). The server
+  /// shares the read with the sender as `seen_at` only when both have read
+  /// receipts on. Mirrors web `markDmThreadRead`.
+  ///
+  /// [through] is the newest message the reader has on screen, so a reply
+  /// that lands between the read that drew the conversation and this write
+  /// stays unread until it is shown.
+  Future<void> markDmThreadRead(
+    String otherId, {
+    required DirectMessageRow through,
+  }) async {
+    if (_client.auth.currentUser?.id == null) {
+      throw StateError('not signed in');
+    }
+    await _client.rpc('mark_direct_messages_read', params: {
+      'p_partner_id': otherId,
+      'p_through_message_id': through.id,
+    });
+  }
+
+  /// The viewer's read-receipts setting (`user_settings.dm_read_receipts`, a
+  /// column because the server reads it). Off: their reads are not shared and
+  /// they see no one else's. No row yet reads as the default, on. Mirrors web
+  /// `fetchMyDmReadReceipts`.
+  Future<bool> fetchMyDmReadReceipts() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return true;
+    final row = await _client
+        .from(UserSettingRow.table)
+        .select(UserSettingRow.colDmReadReceipts)
+        .eq(UserSettingRow.colUserId, viewerId)
+        .maybeSingle();
+    return row?[UserSettingRow.colDmReadReceipts] != false;
+  }
+
+  /// Turning receipts off also withdraws every receipt already shown, both
+  /// ways (a trigger does it in the same statement). Mirrors web
+  /// `setDmReadReceipts`.
+  Future<void> setDmReadReceipts(bool on) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client.from(UserSettingRow.table).upsert(
+      {
+        UserSettingRow.colUserId: viewerId,
+        UserSettingRow.colDmReadReceipts: on,
+      },
+      onConflict: UserSettingRow.colUserId,
+    );
+  }
+
+  /// The viewer's message-requests setting (`user_settings.dm_requests`,
+  /// migration 20271213121601). Off: nobody without a follow edge can message
+  /// them first. No row reads as the default, on. Mirrors web
+  /// `fetchMyDmRequests`.
+  Future<bool> fetchMyDmRequests() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return true;
+    final row = await _client
+        .from(UserSettingRow.table)
+        .select(UserSettingRow.colDmRequests)
+        .eq(UserSettingRow.colUserId, viewerId)
+        .maybeSingle();
+    return row?[UserSettingRow.colDmRequests] != false;
+  }
+
+  /// Mirrors web `setDmRequests`.
+  Future<void> setDmRequests(bool on) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client.from(UserSettingRow.table).upsert(
+      {
+        UserSettingRow.colUserId: viewerId,
+        UserSettingRow.colDmRequests: on,
+      },
+      onConflict: UserSettingRow.colUserId,
+    );
+  }
+
+  /// The reactions on [messageIds] the viewer can see (migration
+  /// 20271213121602): the SELECT policy admits only reactions on live
+  /// messages the viewer can read. Throws on a failed read so the caller
+  /// keeps what it shows. Mirrors web `fetchDmReactions`.
+  Future<List<DmReactionRecord>> fetchDmReactions(
+    List<String> messageIds,
+  ) async {
+    if (messageIds.isEmpty || _client.auth.currentUser == null) {
+      return const [];
+    }
+    final rows = await readChunked(
+      messageIds.toSet().toList(),
+      (chunk) => _client
+          .from(DirectMessageReactionRow.table)
+          .select('message_id, user_id, reaction')
+          .inFilter(DirectMessageReactionRow.colMessageId, chunk),
+    );
+    return [
+      for (final r in rows)
+        (
+          messageId: r[DirectMessageReactionRow.colMessageId] as String,
+          userId: r[DirectMessageReactionRow.colUserId] as String,
+          reaction: r[DirectMessageReactionRow.colReaction] as String,
+        ),
+    ];
+  }
+
+  /// Sets the viewer's reaction on a message, or clears it with null. Every
+  /// refusal (55000 and P0002) is [DmReactionRefused], so a block is never
+  /// told apart; the reaction throttle's P0001 is rethrown as the
+  /// `PostgrestException` it is, for the shared `rateLimitErrorMessage`
+  /// parser. Mirrors web `setDmReaction`.
+  Future<void> setDmReaction(String messageId, String? reaction) async {
+    try {
+      await _client.rpc('set_direct_message_reaction', params: {
+        'p_message_id': messageId,
+        'p_reaction': reaction,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == '55000' || e.code == 'P0002') {
+        throw const DmReactionRefused();
+      }
+      rethrow;
+    }
+  }
+
+  /// Searches the viewer's own conversations (migration 20271213121603). The
+  /// RPC runs SECURITY INVOKER under the viewer's RLS and column grants, so
+  /// it returns nothing the viewer could not read row by row, and leaves out
+  /// unanswered requests and people the viewer blocked. The caller passes a
+  /// query already normalised to the 2-100 characters the server accepts.
+  /// Partner names are a second read; a failure there leaves them null.
+  /// Throws on a failed search. Mirrors web `searchDms`.
+  Future<List<DmSearchHit>> searchDms(String query) async {
+    final me = _client.auth.currentUser?.id;
+    final q = query.trim();
+    if (me == null || q.isEmpty) return const [];
+    final res = await _client.rpc(
+      'search_direct_messages',
+      params: {'p_query': q, 'p_limit': 50},
+      get: true,
+    );
+    final hits = <DmSearchHit>[
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        if (r['body'] is String) _searchHit(r, me),
+    ];
+    final partnerIds = <String>{
+      for (final h in hits)
+        if (h.partnerId != null) h.partnerId!,
+    }.toList();
+    final groupIds = <String>{
+      for (final h in hits)
+        if (h.isGroup) h.conversationId,
+    }.toList();
+    if (partnerIds.isEmpty && groupIds.isEmpty) return hits;
+    final names = <String, String?>{};
+    if (partnerIds.isNotEmpty) {
+      try {
+        final profiles = await readChunked(
+          partnerIds,
+          (chunk) => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+        for (final p in profiles) {
+          names[p['id'] as String] = p['display_name'] as String?;
+        }
+      } catch (e) {
+        debugPrint('searchDms profile read failed: ${safeErrorLabel(e)}');
+      }
+    }
+    // A group's title is readable to its active members only (migration
+    // 20271216000009), exactly who search can return another member's
+    // message to; a leaver's own hit keeps a null title.
+    final titles = <String, String?>{};
+    if (groupIds.isNotEmpty) {
+      try {
+        final groups = await readChunked(
+          groupIds,
+          (chunk) => _client
+              .from('conversations')
+              .select('id, title')
+              .inFilter('id', chunk),
+        );
+        for (final g in groups) {
+          titles[g['id'] as String] = g['title'] as String?;
+        }
+      } catch (e) {
+        debugPrint('searchDms group title read failed: ${safeErrorLabel(e)}');
+      }
+    }
+    return [
+      for (final h in hits)
+        DmSearchHit(
+          id: h.id,
+          conversationId: h.conversationId,
+          partnerId: h.partnerId,
+          deletedPartnerKey: h.deletedPartnerKey,
+          partnerName: names[h.partnerId],
+          body: h.body,
+          createdAt: h.createdAt,
+          fromMe: h.fromMe,
+          isGroup: h.isGroup,
+          groupTitle: h.isGroup ? titles[h.conversationId] : null,
+        ),
+    ];
+  }
+
+  /// One `search_direct_messages` row as a hit. A group message has neither
+  /// a recipient nor a deleted-partner key, so it names no partner.
+  static DmSearchHit _searchHit(Map<String, dynamic> r, String me) {
+    final recipient = r['recipient_id'] as String?;
+    final deletedKey = r['deleted_partner_key'] as String?;
+    final isGroup = recipient == null && deletedKey == null;
+    return DmSearchHit(
+      id: r['id'] as String,
+      conversationId: r['conversation_id'] as String,
+      partnerId: isGroup
+          ? null
+          : (r['sender_id'] == me ? recipient : r['sender_id'] as String?),
+      deletedPartnerKey: deletedKey,
+      body: r['body'] as String,
+      createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+      fromMe: r['sender_id'] == me,
+      isGroup: isGroup,
+    );
+  }
+
+  // --- Group conversations (issue #1365 slice 3, decisions § 2468) ---------
+  //
+  // A group's messages are direct_messages rows with no recipient, read
+  // through the same SELECT policy as a 1:1 thread (private.can_read_message,
+  // migration 20271216000006): the window, the leave and the block filter
+  // are the server's, so a read here only ever returns what the viewer may
+  // read. Every group RPC answers a group the viewer is not in, one that does
+  // not exist and one they left with the same P0002. Mirrors the group half
+  // of web `core/data.ts`.
+
+  /// Whether group conversations are on for this deploy (the server's
+  /// `group_messages` flag): null when the read failed, so a caller can tell
+  /// "off" from "not known yet". Callers render a null as off (fail-closed)
+  /// and read again on their next poll; only a definite false ends that.
+  /// Mirrors web `fetchGroupMessagesEnabled`.
+  Future<bool?> fetchGroupMessagesEnabled() async {
+    try {
+      final result = await _client
+          .rpc('group_messages_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('group_messages_enabled failed: ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Runs a group RPC, turning its refusals into [GroupActionRefused]. The
+  /// rate-limit P0001 is rethrown as the `PostgrestException` it is, for the
+  /// shared `rateLimitErrorMessage` parser.
+  Future<T> _groupRpc<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on PostgrestException catch (e) {
+      final reason = switch (e.code) {
+        '0A000' => GroupRefusal.unavailable,
+        'P0002' => GroupRefusal.notFound,
+        '42501' => GroupRefusal.refused,
+        '54000' => GroupRefusal.capReached,
+        '22023' => GroupRefusal.titleInvalid,
+        _ => null,
+      };
+      if (reason != null) throw GroupActionRefused(reason);
+      rethrow;
+    }
+  }
+
+  /// Creates a group with the viewer as its owner and invites [invitees],
+  /// who join only by accepting (D1). Returns the new conversation's id.
+  Future<String> createGroupConversation(
+    String title,
+    List<String> invitees,
+  ) =>
+      _groupRpc(() async {
+        final id = await _client.rpc('create_group_conversation', params: {
+          'p_title': title,
+          'p_invitees': invitees,
+        });
+        return id as String;
+      });
+
+  /// Invites more people (owner and admins). Returns how many new invites
+  /// were written; someone already a member or holding a live invite is
+  /// skipped.
+  Future<int> inviteToGroup(String conversationId, List<String> invitees) =>
+      _groupRpc(() async {
+        final n = await _client.rpc('invite_to_group', params: {
+          'p_conversation_id': conversationId,
+          'p_invitees': invitees,
+        });
+        return (n as num?)?.toInt() ?? 0;
+      });
+
+  /// The viewer's own live invitations, newest first. Inviter names are a
+  /// second read; a failure there leaves them null. Throws on a failed list.
+  Future<List<GroupInvite>> fetchGroupInvites() async {
+    if (_client.auth.currentUser == null) return const [];
+    final res =
+        await _client.rpc('group_invites', params: const {}, get: true);
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    final inviters = <String>{
+      for (final r in rows)
+        if (r['invited_by'] is String) r['invited_by'] as String,
+    }.toList();
+    final names = await _profileNames(inviters, 'fetchGroupInvites');
+    return [
+      for (final r in rows)
+        GroupInvite(
+          conversationId: r['conversation_id'] as String,
+          title: r['title'] as String? ?? '',
+          invitedBy: r['invited_by'] as String?,
+          inviterName: names[r['invited_by']]?.name,
+          invitedAt: parseIsoStrictRequired(r['invited_at'], 'invited_at'),
+          memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  Future<void> acceptGroupInvite(String conversationId) => _groupRpc(() =>
+      _client.rpc('accept_group_invite',
+          params: {'p_conversation_id': conversationId}));
+
+  /// Not undoable from the app: the group cannot invite the viewer back for
+  /// 14 days.
+  Future<void> declineGroupInvite(String conversationId) => _groupRpc(() =>
+      _client.rpc('decline_group_invite',
+          params: {'p_conversation_id': conversationId}));
+
+  /// Leaves a group at once: from now on the viewer reads only their own
+  /// messages in it (D12), and rejoining needs a new invitation.
+  Future<void> leaveGroup(String conversationId) => _groupRpc(() => _client
+      .rpc('leave_conversation', params: {'p_conversation_id': conversationId}));
+
+  /// Removes a member, or cancels an invitation (owner and admins, below
+  /// their own rank).
+  Future<void> removeGroupMember(String conversationId, String userId) =>
+      _groupRpc(() => _client.rpc('remove_group_member', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+          }));
+
+  /// [role] is `admin` or `member`; only the owner changes roles.
+  Future<void> setGroupMemberRole(
+    String conversationId,
+    String userId,
+    String role,
+  ) =>
+      _groupRpc(() => _client.rpc('set_group_member_role', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+            'p_role': role,
+          }));
+
+  /// Hands ownership to an active member; the viewer becomes an admin.
+  Future<void> transferGroupOwnership(String conversationId, String userId) =>
+      _groupRpc(() => _client.rpc('transfer_group_ownership', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+          }));
+
+  /// Renames a group (owner and admins); the server writes the rename line.
+  Future<void> renameGroup(String conversationId, String title) =>
+      _groupRpc(() => _client.rpc('rename_group', params: {
+            'p_conversation_id': conversationId,
+            'p_title': title,
+          }));
+
+  /// The group's active members, and its live invitations for the owner and
+  /// admins, with names and avatars. Throws [GroupActionRefused] with
+  /// [GroupRefusal.notFound] for a group the viewer is not active in.
+  Future<List<GroupMember>> fetchGroupMembers(String conversationId) async {
+    final rows = await _groupRpc(() async {
+      final res = await _client.rpc('group_members',
+          params: {'p_conversation_id': conversationId}, get: true);
+      return (res as List).cast<Map<String, dynamic>>();
+    });
+    final profiles = await fetchGroupProfiles(
+        [for (final r in rows) r['user_id'] as String]);
+    return [
+      for (final r in rows)
+        GroupMember(
+          userId: r['user_id'] as String,
+          role: switch (r['role']) {
+            'owner' => 'owner',
+            'admin' => 'admin',
+            'member' => 'member',
+            _ => null,
+          },
+          state: r['membership_state'] == 'invited' ? 'invited' : 'active',
+          name: profiles[r['user_id']]?.name,
+          avatarUrl: profiles[r['user_id']]?.avatarUrl,
+        ),
+    ];
+  }
+
+  /// Names and avatars for the people in a group thread: members, and the
+  /// senders of messages the viewer can read who have since left. A failed
+  /// read answers empty, and the thread shows the fallback name.
+  Future<Map<String, ({String? name, String? avatarUrl})>> fetchGroupProfiles(
+    List<String> userIds,
+  ) =>
+      _profileNames(userIds.toSet().toList(), 'fetchGroupProfiles');
+
+  Future<Map<String, ({String? name, String? avatarUrl})>> _profileNames(
+    List<String> ids,
+    String caller,
+  ) async {
+    final out = <String, ({String? name, String? avatarUrl})>{};
+    if (ids.isEmpty) return out;
+    try {
+      final profiles = await readChunked(
+        ids,
+        (chunk) => _client
+            .from(UserProfileRow.table)
+            .select('id, display_name, avatar_url')
+            .inFilter(UserProfileRow.colId, chunk),
+      );
+      for (final p in profiles) {
+        out[p['id'] as String] = (
+          name: p['display_name'] as String?,
+          avatarUrl: p['avatar_url'] as String?,
+        );
+      }
+    } catch (e) {
+      debugPrint('$caller profile read failed: ${safeErrorLabel(e)}');
+    }
+    return out;
+  }
+
+  /// One page of a group's messages the viewer may read, oldest first,
+  /// keyset-paged from the newest end exactly as [fetchDmThread] pages a 1:1
+  /// thread. The policy decides what is readable: an active member's window,
+  /// a leaver's own messages, minus what the viewer's own block filters out.
+  Future<DmThreadPage> fetchGroupThread(
+    String conversationId, {
+    DirectMessageRow? before,
+    int limit = 50,
+  }) async {
+    if (_client.auth.currentUser == null) {
+      return const DmThreadPage(messages: [], hasMore: false);
+    }
+    var query = _client
+        .from(DirectMessageRow.table)
+        .select(dmColumns)
+        .eq(DirectMessageRow.colConversationId, conversationId)
+        .eq(DirectMessageRow.colIsGroup, true);
+    if (before != null) {
+      final at = before.createdAt.toUtc().toIso8601String();
+      query = query.or(
+        '${DirectMessageRow.colCreatedAt}.lt."$at",'
+        'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+        '${DirectMessageRow.colId}.lt.${before.id})',
+      );
+    }
+    final rows = await query
+        .order(DirectMessageRow.colCreatedAt, ascending: false)
+        .order(DirectMessageRow.colId, ascending: false)
+        .limit(limit + 1);
+    final page = [for (final r in rows) DirectMessageRow.fromJson(r)];
+    final hasMore = page.length > limit;
+    final kept = hasMore ? page.sublist(0, limit) : page;
+    return DmThreadPage(messages: kept.reversed.toList(), hasMore: hasMore);
+  }
+
+  /// The places of messages in the group the viewer would read but for
+  /// their own block of the sender: an id and a time, never a body or a
+  /// sender (migration 20271217000006). [since] bounds them to the loaded
+  /// window. Throws on a failed read.
+  Future<List<GroupPlaceholder>> fetchGroupBlockedPlaceholders(
+    String conversationId,
+    DateTime? since,
+  ) async {
+    final res = await _client.rpc(
+      'group_blocked_placeholders',
+      params: {
+        'p_conversation_id': conversationId,
+        // A GET would send null as the string "null"; omit it instead
+        // (p_since defaults to null, migration 20271221000100).
+        if (since != null) 'p_since': since.toUtc().toIso8601String(),
+      },
+      get: true,
+    );
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        (
+          id: r['id'] as String,
+          createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+        ),
+    ];
+  }
+
+  /// Sends into a group. The INSERT policy admits it only from an active
+  /// member while the flag is on, and the send trigger re-checks membership
+  /// under the lock a removal takes, so a send racing a removal is refused
+  /// (C3). That 42501 is [GroupActionRefused] with [GroupRefusal.refused];
+  /// the send throttle's P0001 is rethrown for the rate-limit parser.
+  Future<DirectMessageRow> sendGroupMessage(
+    String conversationId,
+    String body, {
+    String? imageId,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) throw StateError('not signed in');
+    final trimmed = body.trim();
+    final image = imageId?.trim();
+    final hasImage = image != null && image.isNotEmpty;
+    if (trimmed.isEmpty && !hasImage) {
+      throw ArgumentError.value(body, 'body', 'is empty');
+    }
+    return _groupRpc(() async {
+      final row = await _client
+          .from(DirectMessageRow.table)
+          .insert({
+            DirectMessageRow.colSenderId: me,
+            DirectMessageRow.colConversationId: conversationId,
+            DirectMessageRow.colBody: trimmed.isEmpty ? null : trimmed,
+            if (hasImage) DirectMessageRow.colImageId: image,
+          })
+          .select(dmColumns)
+          .single();
+      return DirectMessageRow.fromJson(row);
+    });
+  }
+
+  /// The viewer's read position in a group, through the newest message on
+  /// screen. No read receipts in groups (D6): nobody else learns of it.
+  Future<void> markGroupRead(String conversationId, String throughMessageId) =>
+      _client.rpc('mark_conversation_read', params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+      });
+
+  /// Whether photos can be sent in messages (the server's `dm_images` gate).
+  /// Mirrors web `fetchDmImagesEnabled`. Fail closed: any read failure is
+  /// "off", and the caller hides the attach button.
+  Future<bool> fetchDmImagesEnabled() async {
+    try {
+      final result =
+          await _client.rpc('dm_images_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('dm_images_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  static const String _dmImagesBucket = 'dm-images';
+
+  /// How long a signed URL for a message photo lives, in seconds.
+  static const int dmImageSignedUrlSeconds = 600;
+
+  /// The dm-images bucket's file_size_limit (migration 20271213121604).
+  static const int dmImageMaxBytes = 5 * 1024 * 1024;
+
+  /// One message photo: its processing state and, only once the server has
+  /// re-encoded it, a signed URL valid for [dmImageSignedUrlSeconds]. The
+  /// bucket's SELECT policy admits only that re-encoded copy, and only to
+  /// someone who can read the message. Null when the viewer cannot see the
+  /// image row at all. Throws on a failed read. Mirrors web `fetchDmImage`.
+  Future<DmImageView?> fetchDmImage(String imageId) async {
+    final row = await _client
+        .from(DirectMessageImageRow.table)
+        .select('status, width, height, storage_path')
+        .eq(DirectMessageImageRow.colId, imageId)
+        .maybeSingle();
+    if (row == null) return null;
+    final raw = row[DirectMessageImageRow.colStatus];
+    final status = raw == 'ready' || raw == 'rejected' ? raw as String : 'pending';
+    if (status != 'ready') return DmImageView(status: status);
+    final url = await _client.storage.from(_dmImagesBucket).createSignedUrl(
+          row[DirectMessageImageRow.colStoragePath] as String,
+          dmImageSignedUrlSeconds,
+        );
+    return DmImageView(
+      status: status,
+      width: (row[DirectMessageImageRow.colWidth] as num?)?.toInt(),
+      height: (row[DirectMessageImageRow.colHeight] as num?)?.toInt(),
+      url: url,
+    );
+  }
+
+  /// Uploads a photo the caller has already re-encoded to a JPEG (which drops
+  /// its metadata) and returns the image id to send with [sendDm]. The server
+  /// re-encodes it again before anyone can read it. Anything that is not a
+  /// JPEG is refused before the wire, so an original with its camera
+  /// metadata cannot be uploaded by mistake. A closed gate (0A000) is
+  /// [DmImageUnavailable]; the upload throttle's P0001 is rethrown as the
+  /// `PostgrestException` it is. Mirrors web `uploadDmImage`.
+  Future<String> uploadDmImage(Uint8List jpeg) async {
+    if (jpeg.length < 3 ||
+        jpeg[0] != 0xFF ||
+        jpeg[1] != 0xD8 ||
+        jpeg[2] != 0xFF) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is not a JPEG');
+    }
+    if (jpeg.length > dmImageMaxBytes) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is over the 5 MiB limit');
+    }
+    final List<dynamic> rows;
+    try {
+      rows = await _client.rpc('create_dm_image_upload') as List<dynamic>;
+    } on PostgrestException catch (e) {
+      if (e.code == '0A000') throw const DmImageUnavailable();
+      rethrow;
+    }
+    if (rows.isEmpty) throw StateError('create_dm_image_upload returned nothing');
+    final row = rows.first as Map<String, dynamic>;
+    final id = row['id'] as String;
+    await _client.storage.from(_dmImagesBucket).uploadBinary(
+          row['upload_path'] as String,
+          jpeg,
+          fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false),
+        );
+    return id;
   }
 
   static String _isoDate(DateTime d) =>
@@ -7158,6 +10933,9 @@ class EventPhotoView {
   final DateTime createdAt;
   final String? uploaderName;
 
+  /// Set when an event steward hid the photo from the gallery.
+  final DateTime? hiddenAt;
+
   const EventPhotoView({
     required this.id,
     required this.ownerId,
@@ -7167,7 +10945,20 @@ class EventPhotoView {
     required this.positionIdx,
     required this.createdAt,
     this.uploaderName,
+    this.hiddenAt,
   });
+
+  EventPhotoView copyWithHidden(DateTime? hiddenAt) => EventPhotoView(
+        id: id,
+        ownerId: ownerId,
+        storagePath: storagePath,
+        thumb512Path: thumb512Path,
+        caption: caption,
+        positionIdx: positionIdx,
+        createdAt: createdAt,
+        uploaderName: uploaderName,
+        hiddenAt: hiddenAt,
+      );
 
   factory EventPhotoView.fromJson(
     Map<String, dynamic> json,
@@ -7180,8 +10971,37 @@ class EventPhotoView {
         thumb512Path: json['thumb_512_path'] as String?,
         caption: json['caption'] as String?,
         positionIdx: (json['position_idx'] as num).toInt(),
-        createdAt: DateTime.parse(json['created_at'] as String),
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
         uploaderName: uploaderName,
+        hiddenAt: parseIsoStrictValue(json['hidden_at']),
+      );
+}
+
+/// One runner's photo on a public race-listing page — the mobile mirror of
+/// web's `RaceListingPhoto`, before signing. Carries no run, owner, route or
+/// track: the page is public and indexed.
+class RaceListingPhotoView {
+  final String id;
+  final String thumb512Path;
+  final String? caption;
+  final DateTime createdAt;
+  final String? displayName;
+
+  const RaceListingPhotoView({
+    required this.id,
+    required this.thumb512Path,
+    this.caption,
+    required this.createdAt,
+    this.displayName,
+  });
+
+  factory RaceListingPhotoView.fromJson(Map<String, dynamic> json) =>
+      RaceListingPhotoView(
+        id: json['id'] as String,
+        thumb512Path: json['thumb_512_path'] as String,
+        caption: json['caption'] as String?,
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+        displayName: json['display_name'] as String?,
       );
 }
 
@@ -7199,6 +11019,11 @@ class CoachAthleteLink {
   final String? displayName;
   final String? avatarUrl;
 
+  /// The athlete's consent to the coach assistant on this link, at a version
+  /// of `coach_assist_consent_current_version()`'s ladder; null is no consent
+  /// (issue #1215 Phase 4).
+  final int? aiAssistConsentVersion;
+
   const CoachAthleteLink({
     required this.id,
     required this.status,
@@ -7208,7 +11033,31 @@ class CoachAthleteLink {
     required this.userId,
     required this.displayName,
     required this.avatarUrl,
+    this.aiAssistConsentVersion,
   });
+
+  CoachAthleteLink withAiAssistConsentVersion(int? version) =>
+      CoachAthleteLink(
+        id: id,
+        status: status,
+        note: note,
+        createdAt: createdAt,
+        acceptedAt: acceptedAt,
+        userId: userId,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        aiAssistConsentVersion: version,
+      );
+}
+
+/// `set_coach_ai_assist_consent` refused: the link is not the caller's as
+/// athlete or is no longer active (P0002), or the version is one the server
+/// does not know (22023). Clients say one sentence for both.
+class CoachAssistConsentRefused implements Exception {
+  const CoachAssistConsentRefused();
+
+  @override
+  String toString() => 'CoachAssistConsentRefused';
 }
 
 /// One row of the multi-athlete coach roster (coach_roster.md) — the bespoke
@@ -7227,6 +11076,17 @@ class CoachRosterRow {
   final String? activePlanId;
   final int planCompletionPct;
 
+  /// The athlete's local date, the `today` the miss count is derived against.
+  final String? athleteToday;
+
+  /// The current plan's non-rest workouts over the last 28 local days, raw;
+  /// the app reads them with `parseRosterRecentWorkouts` (coach_load.dart).
+  final Object? recentWorkouts;
+
+  /// Easy-run efficiency drift, per cent. Null without health-data consent
+  /// or too few runs to compare (decisions § 2092).
+  final double? easyHrDriftPct;
+
   const CoachRosterRow({
     required this.athleteId,
     required this.displayName,
@@ -7238,6 +11098,9 @@ class CoachRosterRow {
     required this.loadChronic,
     required this.activePlanId,
     required this.planCompletionPct,
+    this.athleteToday,
+    this.recentWorkouts,
+    this.easyHrDriftPct,
   });
 }
 
@@ -7269,6 +11132,14 @@ class AthleteRunSummary {
   final String activityType;
   final Map<String, dynamic>? metadata;
 
+  /// The run's Storage path, kept only as the preview cache key and as the
+  /// fact that a track exists: the coach's map is served clipped by
+  /// `clip-public-track` (decisions § 1968), and the Storage policy keeps
+  /// the bytes owner-only.
+  final String? trackUrl;
+
+  bool get hasTrack => trackUrl != null;
+
   const AthleteRunSummary({
     required this.id,
     required this.startedAt,
@@ -7279,6 +11150,7 @@ class AthleteRunSummary {
     required this.routeId,
     required this.activityType,
     required this.metadata,
+    this.trackUrl,
   });
 }
 
@@ -7292,12 +11164,28 @@ class AthletePlanOverview {
   final List<PlanWorkoutRow> workouts;
   final int completionPct;
 
+  /// Every active plan the athlete holds, [plan] included — what a coach's
+  /// assignment must not overlap (plan chaining, decisions § 2008).
+  final List<TrainingPlanRow> activePlans;
+
   const AthletePlanOverview({
     required this.plan,
     required this.weeks,
     required this.workouts,
     required this.completionPct,
+    this.activePlans = const [],
   });
+}
+
+/// `assign_plan_to_athlete` refused because the assigned window overlaps one
+/// of the athlete's active plans (SQLSTATE 23P01). [message] is the server's
+/// text, which names the plans in the way.
+class PlanAssignOverlapException implements Exception {
+  const PlanAssignOverlapException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'PlanAssignOverlapException: $message';
 }
 
 /// One set in a [ApiClient.createGymWorkout] / `updateGymWorkout` call,
@@ -7333,9 +11221,10 @@ typedef GymRoutineSetInput = ({
 });
 
 /// One planned exercise in a [ApiClient.createGymRoutine] call. [exerciseKey]
-/// is `normaliseExerciseName(exerciseName)` stamped at write time (the frozen
-/// identity that binds the plan to logged sets). `position` is assigned
-/// positionally on insert. [supersetGroup] / [supersetOrder] bracket the
+/// is `normaliseExerciseName(exerciseName)`, the frozen identity that binds the
+/// caller's plan to its own logged sets -- it is NOT sent to the server, which
+/// derives the stored column itself (migration 20270711000001).
+/// `position` is assigned positionally on insert. [supersetGroup] / [supersetOrder] bracket the
 /// exercise into a superset; [modality] / [progression] / [progressionParams]
 /// carry the P2 modality + P4 progression scheme.
 typedef GymRoutineExerciseInput = ({
@@ -7418,6 +11307,23 @@ typedef SessionPlanItemInput = ({
 /// screens load the full underlying row. Migration 20261204_001. Mirrors the
 /// web `ActivityRow` (core/data.ts); `kind` stays a raw string ('run' |
 /// 'lift' | 'meal') like the web union.
+/// Which entity an audience control acts on. The two grant tables and the
+/// two base tables share a shape, so one set of calls serves both.
+enum ShareableKind { run, route }
+
+/// One named person a run or route is shared with, for the owner's list.
+class ShareRecipient {
+  final String recipientId;
+  final String? displayName;
+  final String? avatarUrl;
+
+  const ShareRecipient({
+    required this.recipientId,
+    this.displayName,
+    this.avatarUrl,
+  });
+}
+
 class ActivityRow {
   /// The `kind` discriminator, one literal per UNION branch of the view.
   /// Named because a consumer comparing against a string the view never
@@ -7448,7 +11354,7 @@ class ActivityRow {
     if (id == null || id.isEmpty || startedAt == null || startedAt.isEmpty) {
       return null;
     }
-    final parsed = DateTime.tryParse(startedAt);
+    final parsed = parseIsoStrict(startedAt);
     if (parsed == null) return null;
     final rawSummary = row['summary'];
     return ActivityRow(
@@ -7459,4 +11365,39 @@ class ActivityRow {
           rawSummary is Map ? rawSummary.cast<String, dynamic>() : const {},
     );
   }
+}
+
+/// The body a `runs` upsert may send.
+///
+/// `RunRow.toJson()` emits all 24 columns unconditionally, nulls included, and
+/// an `ON CONFLICT DO UPDATE` writes those nulls over whatever the server
+/// holds. Several of those columns are not represented on the Dart `Run` model
+/// at all — `is_public`, `event_id`, `race_listing_id`, `concluded_at` — so the
+/// phone always sends null for them and a re-sync silently reverts server
+/// state. Concretely: a runner shares a run (`is_public = true`), later edits
+/// its title while offline, and the next `saveRunsBatch` sets `is_public` back
+/// to null — the run drops out of `public_runs`, its `/share/run/{id}` link
+/// 404s, and the phone shows nothing wrong because it never knew the column.
+///
+/// Stripping nulls means an upsert can only ever ADD or CHANGE a value, never
+/// clear one. That is the same trade-off `buildSaveRouteBody` already takes,
+/// and targeted clears go through `updateRunFieldsIfUnchanged`, which sends
+/// only the columns it means to write.
+///
+/// `followers_only` is NOT NULL, so the row always carries a value and the
+/// null strip cannot protect it: a re-sync would write `false` over a
+/// followers level the owner chose on another device. A `false` is therefore
+/// dropped too — it is the column default, never a choice an upsert makes.
+/// Narrowing a run goes through [ApiClient.setRunAudience].
+///
+/// `safety_audience` is never an upsert's to write, in either direction: only
+/// [ApiClient.beginLiveBroadcast] sets it, on the live stub, and the finishing
+/// save of that same run must not flip it mid-escalation (decisions § 1964).
+Map<String, dynamic> _runUpsertBody(Map<String, dynamic> json) {
+  final body = Map<String, dynamic>.from(json)..removeWhere((k, v) => v == null);
+  if (body[RunRow.colFollowersOnly] == false) {
+    body.remove(RunRow.colFollowersOnly);
+  }
+  body.remove(RunRow.colSafetyAudience);
+  return body;
 }

@@ -30,7 +30,7 @@ class _FakeApi extends ApiClient {
 
   @override
   Future<List<RunRow>> fetchPublicRunsByUser(String userId, {int limit = 50}) async => [
-        RunRow(
+        RunRow(safetyAudience: false, 
           id: 'r1',
           userId: 'u1',
           startedAt: DateTime(2026, 6, 1, 8),
@@ -39,18 +39,19 @@ class _FakeApi extends ApiClient {
           source: 'app',
           activityType: 'run',
           isDnf: false,
+          followersOnly: false,
         ),
       ];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [UserProfileRow(id: 'f1', displayName: 'Follower One', shadowHidden: false)];
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[UserProfileRow(profilePrivate: false, id: 'f1', displayName: 'Follower One', shadowHidden: false)], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [UserProfileRow(id: 'g1', displayName: 'Followed One', shadowHidden: false)];
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[UserProfileRow(profilePrivate: false, id: 'g1', displayName: 'Followed One', shadowHidden: false)], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async {
@@ -83,13 +84,13 @@ void main() {
     expect(find.byType(ErrorState), findsNothing);
 
     // The failure is scoped to the Achievements tab.
-    await tester.tap(find.text('Achievements'));
+    await tester.tap(_tab('Achievements'));
     await tester.pumpAndSettle();
     expect(find.byType(ErrorState), findsOneWidget);
     expect(find.text("Couldn't load this section."), findsOneWidget);
 
     // Followers / Following still render their loaded rows.
-    await tester.tap(find.text('Followers'));
+    await tester.tap(_tab('Followers'));
     await tester.pumpAndSettle();
     expect(find.text('Follower One'), findsOneWidget);
     expect(find.byType(ErrorState), findsNothing);
@@ -100,8 +101,13 @@ void main() {
     await tester.pumpWidget(_host(_FakeApi(badgesThrow: false)));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Achievements'));
+    await tester.tap(_tab('Achievements'));
     await tester.pumpAndSettle();
     expect(find.byType(ErrorState), findsNothing);
   });
 }
+
+/// A tab by its label. The header's counts carry the same words, so an
+/// unscoped finder would match twice.
+Finder _tab(String label) =>
+    find.descendant(of: find.byType(TabBar), matching: find.text(label));

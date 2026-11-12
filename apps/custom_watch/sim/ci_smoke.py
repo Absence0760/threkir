@@ -28,8 +28,11 @@ evidence under sim/verification-2026-07-19/, except the two marked below:
 neither needs anything this boot is not already doing, and a scenario costs a
 whole emulator. Both cover a rail that had no assertion at all:
 
-  - The MAX86177 model has existed since 2026-07-19 and was built to take the
+  - An AFE model has existed since 2026-07-19 and was built to take the
     optical-HR path off the bench gate, but no scenario ever read a BPM off it.
+    The model is a MAX30101 since decisions.md § 623 — a positional FIFO, so
+    this assertion now also covers the driver's slot tagging: a phase slip
+    feeds ambient counts to the detector as PPG and no plausible BPM survives.
     The whole chain — TWIM EasyDMA master, the model's tagged MEAS1/MEAS2 sample
     stream, the driver's AGC and pulse detector — could break and every scenario
     would still pass.
@@ -80,8 +83,13 @@ regression guard at all. This is that guard. See `scenario_dropout`.
 **What a panel dump does NOT prove.** A dump shows that *something* was drawn,
 not *what*: nothing here reads a glyph. The only evidence that a given page is
 on screen is the firmware's own `ui: page <Name>` line, and the only evidence a
-banner is up is `record: alert <Kind>` plus the ink a solid inverse-video band
-has to add. Every assertion message says which of the two it rests on. Comparing
+banner is up is its `ui: banner <Kind>` counterpart plus the ink a solid
+inverse-video band has to add. Both are emitted AFTER `display.flush` returns,
+which is what makes them evidence about the panel rather than about a task's
+intent — the RECORD task's `record: alert <Kind>` is emitted before the alert
+even reaches the composer and is never what a dump is taken against
+(decisions.md § 716). Every assertion message says which of the two it rests
+on. Comparing
 two dumps is likewise weaker than it looks — the run's clock advances every
 second, so any two frames taken seconds apart differ; what the comparison rules
 out is a DumpFrame that never landed and left us re-reading a stale file.
@@ -175,7 +183,7 @@ MIN_WHITE_PIXELS = 200
 MIN_SATS = 4
 STOP_ATTEMPTS = 3
 
-# The band a BPM off the MAX86177 model has to land in. Max86177.cs synthesizes
+# The band a BPM off the MAX30101 model has to land in. Max30101.cs synthesizes
 # one synthetic beat every `PulsePeriodSamples` at its 100 Hz frame rate and
 # defaults to 83, which is 6000/83 = ~72.3 BPM. The band is wide enough that the
 # detector's own smoothing and the AGC's opening settle do not have to be pinned,
@@ -243,11 +251,12 @@ SCENARIO_FIXTURES = {
     # Idle-only: it never starts a run, so the fixture is just something for the
     # receiver to chew on while the thumb works the menu.
     "idle": "bench_jog",
-    # The sim demo workout's steps are sized against THIS fixture: its ~1.5 m/s
-    # of CREDITED distance (consecutive fixes step ~2.97 m against the 3.0 m
-    # TRACK_THRESHOLD_M, so about half are absorbed) settles the 50-60 m steps
-    # in ~33-40 s each. A slower fixture, or one whose min-move filter thins
-    # harder, stretches the same five steps past this scenario's budget.
+    # The sim demo workout's steps are sized against THIS fixture. At 1 Hz the
+    # credit is the RMC speed over ground (~3.0 m/s, `watch_core::gps_distance`),
+    # so the 50-60 m steps settle in ~17-20 s each; before the estimator, half
+    # the ~2.97 m steps fell under the 3.0 m TRACK_THRESHOLD_M and the same
+    # steps took ~33-40 s. A slower fixture stretches the same five steps
+    # toward this scenario's budget.
     "workout": "bench_jog",
     # Flat ground and a constant GPS altitude, which is what makes the scripted
     # weather the ONLY thing moving the reduced pressure — see `scenario_storm`.
@@ -404,12 +413,12 @@ DROPOUT_VOID_MIN_S = 12.0
 # ~116 m of ground truth; this floor is a third of that, so it pins "the leg
 # accrued" without pinning the filter's exact arithmetic.
 DROPOUT_PRE_VOID_M = 40.0
-# Growth after the reacquire that a stale anchor cannot produce. Set to
-# `watch_core::record::TRACK_THRESHOLD_M`, because that is the smallest credit
-# the recorder can make at all — anything under it was absorbed into the next
-# hop and moved nothing. So a single accepted fix clears this by construction
-# (on this fixture the first one credits ~5.97 m), and the claim stays the
-# minimal one: distance moved AT ALL again, which is the bit #330 broke.
+# Growth after the reacquire that a stale anchor cannot produce. At 1 Hz the
+# credit is the estimator's (`watch_core::gps_distance`): the reacquire fix
+# re-anchors and banks nothing, and each fix after it credits its second of
+# RMC speed over ground (~3.0 m/s here), so two fixes clear this. The claim
+# stays the minimal one: distance moved AT ALL again, which is the bit #330
+# broke.
 DROPOUT_RESUME_M = 3.0
 # How long after the void's far edge the resume has to land, in the firmware's
 # own clock. A real re-anchor credits on the FIRST accepted fix past the void —
@@ -463,8 +472,21 @@ FIX_STALE_BUDGET_S = 10
 # while the recorder stamps its whole-second anchor when it CONSUMES that fix
 # off the channel, which can cross the next second boundary. Assertions about
 # the settled state start after budget + slack; the frozen-distance check above
-# them still covers the void from its first snapshot.
+# them start after their own settle window, for the reason below.
 FIX_STALE_FLIP_SLACK_S = 2
+
+# The recorder publishes a fix's credited distance AFTER the `gps: fix` line
+# that announced it, not with it: the fix is logged when it is decoded and the
+# snapshot when it has been folded into the running total. The two usually land
+# in the same millisecond, but a stale-state snapshot can slip between them, so
+# a distance anchor taken at the first snapshot past `void_start` — which IS the
+# last fix's stamp — can be sampled one publish short of that fix's own credit.
+# That displacement was measured by the last real fix and belongs to it, not to
+# the void, so the freeze is asserted from a settle window past it. Sized well
+# above the ~1 ms lag actually observed (CI run 32870450327) because being
+# generous here costs almost nothing: the fixture's void is 40 s, so all but the
+# first seconds of it stay under the frozen assertion either way.
+DROPOUT_FIX_CREDIT_SETTLE_S = 2.0
 
 # The run view opens on `Page::default()`, so the forward walk wrapping back to
 # it marks one full lap. Asserted from the ui task's boot-time anchor line
@@ -649,11 +671,14 @@ WORKOUT_PLAN = (
 # unaided; the last transition and the completion are then driven by BTN5,
 # which is the §354 claim.
 WORKOUT_AUTO_STEPS = 4
-# Per auto-advanced step. The widest gap the demo workout produces on bench_jog
-# is the ~40 s warmup, so this is several times the observed worst case — loose
-# enough to absorb a loaded runner's virtual-time drift, and irrelevant to a
-# broken firmware, which fails on the WRONG STEP the moment it reports one
-# rather than on this deadline.
+# Per auto-advanced step, and RE-ARMED on each transition rather than
+# multiplied by WORKOUT_AUTO_STEPS up front. The widest gap the demo workout
+# produces on bench_jog is the ~40 s warmup, so this is several times the
+# observed worst case — loose enough to absorb a loaded runner's virtual-time
+# drift, and irrelevant to a broken firmware, which fails on the WRONG STEP the
+# moment it reports one rather than on this deadline. The multiplied form was
+# 720 s against this scenario's 300 s CI budget, so the outer budget always won
+# and the branch below could never say what it was written to say.
 WORKOUT_STEP_TIMEOUT = 180
 # The gap, in the FIRMWARE's own virtual seconds, inside which a lap press has
 # to produce its edge for the press to be what caused it. Deliberately far
@@ -679,17 +704,36 @@ WORKOUT_EDGE_TIMEOUT = 90
 WORKOUT_LAP_TIMEOUT = 10
 
 ALERT_ANY = re.compile(r"record: alert (\S+)")
-ALERT_RAISED = re.compile(r"record: alert (?!cleared\b)(\S+)")
 FUEL_ALERT = re.compile(r"record: alert (Drink|Eat)\b")
 # The arms the sim added on top of fuel. Asserted as a disjunction, not one by
 # one: Distance and Time are DROPPED (not queued) when the single display slot
 # is busy, and the pace arm latches once per excursion, so which of them wins a
 # slot is not something the arming makes inevitable.
 OTHER_ALERT = re.compile(r"record: alert (Distance|Time|PaceFast|PaceSlow)\b")
+# The SCREEN task's post-flush statement about the panel: the alert kind of the
+# banner the last flush put up, or `none`. Change-gated like `ui: page`, and
+# emitted at the first render too, so the empty state is on the record and a
+# scenario that arms no alerts at all still has something to synchronise on.
+#
+# This is the signal every panel dump here is taken against. `record: alert
+# <Kind>` cannot be: it is the RECORD task's line and `record.rs` emits it
+# BEFORE publishing the alert to the composer, so it says an alert exists, not
+# that a band carrying it reached the panel. A dump sent when that line decodes
+# lands somewhere either side of the repaint, and which side depends on the
+# ratio between Renode's virtual clock and the host's — which is exactly the
+# thing a loaded CI runner changes. See decisions.md § 716.
+UI_BANNER = re.compile(r"ui: banner (\S+)")
+PANEL_NO_BANNER = "none"
+# How long a wait for a given panel state may run. Generous: the sim's alert
+# cadences put a banner up every ~15 s of firmware time, and the point of the
+# bound is to fail loudly naming the state that never arrived, never to be the
+# thing that decides when to dump.
+PANEL_BANNER_TIMEOUT = 240
+# How many times a dump may be discarded because the panel repainted while it
+# was landing. Bounded and small BECAUSE the wait above is synchronised: a
+# retry here is a genuine collision between the dump and a repaint, not a
+# sample that missed, so more than a couple means the panel never settles.
 ALERT_BANNER_ATTEMPTS = 4
-# The quiet baseline is sampled too, for the same repaint-lag reason the banner
-# side retries — see `scenario_alerts`.
-ALERT_QUIET_ATTEMPTS = 3
 # How many quiet windows a dump may be attempted in before the panel is called
 # unreadable. Bounded rather than open, and small: the engine guarantees the
 # next window (see `wait_for_no_alert`), so more than a couple of misses is a
@@ -739,8 +783,112 @@ RECORD_SNAPSHOT = re.compile(r"record: (\w+) dist=([\d.]+)m")
 # seconds. Virtual, not wall: every gap `dropout` reasons about is a gap the
 # FIRMWARE saw, and the two clocks drift apart under host load.
 LINE_STAMP = re.compile(r"^\s*([\d.]+)\s")
+# How long the published-fix stream may go quiet, in the FIRMWARE's own virtual
+# seconds, before a wait that needs the runner to be MOVING is waiting on
+# nothing. The fixtures feed a fix a second, so this is thirty missed ones: far
+# past any scheduling jitter, and far under the budget a stalled scenario would
+# otherwise burn. Measured against the newest line in the stream rather than
+# against wall clock for the same reason `dropout` measures its voids that way
+# — and the tasks that keep stamping lines while the GPS is silent (baro and
+# the recorder, both 1 Hz) are exactly what proves the firmware is still
+# running. `dropout` is the one scenario this must never be applied to: its
+# voids ARE the subject, and it reasons about them itself.
+GNSS_SILENCE_S = 30.0
+# How long the whole decoded stream may go quiet, in WALL seconds, before the
+# guest is called wedged rather than slow.
+#
+# Deliberately the opposite clock to `GNSS_SILENCE_S` above, and it has to be:
+# a firmware that stops executing stops stamping lines, so its virtual clock
+# freezes with it and no virtual-time measurement can ever notice. Only real
+# time can tell "stopped" from "quiet".
+#
+# The floor this is set against is measured, not assumed. Across all nine
+# scenarios the widest gap between consecutive decoded lines is **1.01 s** —
+# the baro task samples at 1 Hz and stamps a line every tick under
+# `DEFMT_LOG=debug`, and that holds through the longest and quietest runs in
+# the set (`idle`, 138 s; `dropout`, 120 s, whose GPS voids are its subject and
+# still never quiet the stream). `defmt-print` writes through Rust's
+# line-buffered stdout, so a line reaches this file as soon as it is decoded
+# rather than a block later.
+#
+# 90 s is therefore ~90x the widest legitimate gap, which leaves room for a
+# loaded runner emulating well under real time and still fires long before a
+# 300 s scenario budget burns out. A false positive needs the stream to be
+# genuinely silent for a minute and a half.
+GUEST_WEDGED_S = 90.0
+# The LIVE wedge issue. Deliberately a constant rather than prose inside the
+# message: the previous reference was hard-coded to #754, which has since been
+# closed and describes a DIFFERENT wedge (scenario `storm`, ~1-in-30, dying at
+# t=19.0s mid-run, against this one's boot-time death inside embassy_nrf::init).
+# A failure message citing a closed issue trains its reader to dismiss it, so
+# what the message carries now is the signature it actually measured; the issue
+# number is only the place to compare that signature against.
+WEDGE_ISSUE = 788
+# Wall seconds between the two machine samples the wedge probe takes. Long
+# enough that a running emulator retires a visible number of instructions,
+# short enough to add nothing meaningful to a run that has already failed.
+WEDGE_SAMPLE_GAP_S = 1.5
+# The monitor has no request/response framing, so a command's answer is
+# whatever the transcript grew by afterwards. Renode colours its prompt.
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+VIRTUAL_TIME_CMD = (
+    "python \"print('VT=%.6f' % "
+    'monitor.Machine.ElapsedVirtualTime.TimeElapsed.TotalSeconds)"'
+)
+# defmt-print stamps every decoded line with the firmware's own clock. The
+# wedge report quotes it because WHEN the guest died is most of the diagnosis:
+# t=0.000000 is a boot that never finished, anything else is a run that stopped.
+FIRMWARE_STAMP = re.compile(r"^(\d+\.\d+)\s")
+# Renode logs one of these per NMEA character the host feeder writes while the
+# guest has UARTE0 disabled, which on a boot-time wedge is every line in the
+# log's tail. Dropping them is what leaves the last thing the CPU actually did
+# visible — that line is what located this wedge inside embassy_nrf::init.
+RENODE_HOST_SIDE_NOISE = "receiver is disabled"
+# The same question asked at a wait's deadline instead of during it: was the
+# stream still alive when the claim ran out of time? A wait shorter than
+# `GUEST_WEDGED_S` can expire with the guest already dead, and reporting that
+# as an assertion failure is exactly the misattribution this pair exists to
+# stop. Five seconds is ~5x the measured 1.01 s worst gap — comfortably above
+# the cadence, comfortably below any real wedge, and only ever consulted on a
+# run that is failing regardless, so it cannot turn a pass into a failure.
+LINE_CADENCE_S = 5.0
 
 Panel = namedtuple("Panel", "path width height dark data")
+MachineSample = namedtuple("MachineSample", "pc instructions virtual_s")
+
+
+def monitor_value(command, transcript):
+    """The one line a monitor command printed, out of its echo and prompt."""
+    plain = ANSI_ESCAPE.sub("", transcript).replace("\r", "\n")
+    for line in plain.split("\n"):
+        line = line.strip()
+        if not line or line == command.strip() or line.startswith("(watch)"):
+            continue
+        return line
+    return None
+
+
+def renode_cpu_tail(run_dir, keep=6):
+    """The last renode.log lines that are not host-side UART noise."""
+    if run_dir is None:
+        return []
+    log = Path(run_dir) / "renode.log"
+    if not log.exists():
+        return []
+    lines = [
+        line
+        for line in log.read_text(errors="replace").splitlines()
+        if RENODE_HOST_SIDE_NOISE not in line
+    ]
+    return lines[-keep:]
+
+
+def last_firmware_stamp(lines):
+    for line in reversed(lines):
+        match = FIRMWARE_STAMP.match(line.strip())
+        if match:
+            return match.group(1)
+    return None
 
 
 class SmokeFailure(Exception):
@@ -764,11 +912,22 @@ def error(msg):
 class LogTail:
     """Incremental reader over the launcher's combined output."""
 
-    def __init__(self, path):
+    def __init__(self, path, clock=time.monotonic):
         self.path = Path(path)
         self.pos = 0
         self.partial = ""
         self.lines = []
+        # Injectable so the wedge detector can be tested without spending its
+        # threshold in real seconds.
+        self.clock = clock
+        # Wall time the stream last GREW. Seeded at construction so a guest
+        # that dies before the first wait is still measured from a real
+        # starting point rather than from whenever a wait happened to begin.
+        self.last_line_at = clock()
+        # Set by Sim once the monitor port is known. Silence alone cannot say
+        # whether the FIRMWARE stopped or the RENODE EXECUTOR did; this asks
+        # the emulator, which is the only thing that can tell them apart.
+        self.forensics = None
 
     def poll(self):
         if not self.path.exists():
@@ -781,7 +940,43 @@ class LogTail:
             return
         self.partial += chunk
         *complete, self.partial = self.partial.split("\n")
-        self.lines.extend(complete)
+        if complete:
+            self.lines.extend(complete)
+            self.last_line_at = self.clock()
+
+    def silent_s(self):
+        """Wall seconds since the stream last grew — the liveness measure."""
+        return self.clock() - self.last_line_at
+
+    def _wedged(self, what, silent_s):
+        last = self.lines[-1].strip() if self.lines else "<nothing decoded at all>"
+        stamp = last_firmware_stamp(self.lines)
+        when = (
+            f"firmware clock last read {stamp}s"
+            if stamp
+            else "no line ever carried a firmware timestamp"
+        )
+        probe = ""
+        if self.forensics is not None:
+            try:
+                probe = self.forensics()
+            # Bare: a probe that fails for ANY reason must still leave the wedge
+            # itself reported. A crash in the diagnosis would otherwise replace
+            # the diagnosis with a stack trace about the diagnosis.
+            except Exception as exc:  # noqa: BLE001
+                probe = f"the wedge probe itself failed: {exc!r}"
+        return SmokeFailure(
+            f"the firmware stopped emitting {silent_s:.0f}s ago while waiting for "
+            f"{what}. This is a WEDGED GUEST, not a failure of that assertion: "
+            f"every scenario's log stream ticks at >= 1 Hz (the baro task's 1 Hz "
+            f"sample), and the widest gap ever measured across the nine scenarios "
+            f"is 1.01s, so a stream this quiet is firmware that stopped running. "
+            f"WEDGE SIGNATURE — {when}; last decoded line: {last!r}"
+            + (f"; {probe}" if probe else "")
+            + f". Compare that signature against issue #{WEDGE_ISSUE} before "
+            "assuming it is the same wedge: more than one has been seen, they "
+            "die at different points, and only the signature tells them apart."
+        )
 
     def mark(self):
         """Index of the next line to arrive — the "from here on" cursor a
@@ -797,7 +992,7 @@ class LogTail:
         return None
 
     def wait(self, pattern, timeout, what, guard=None, start=0):
-        deadline = time.monotonic() + timeout
+        deadline = self.clock() + timeout
         while True:
             self.poll()
             for line in self.lines[start:]:
@@ -806,10 +1001,22 @@ class LogTail:
                     return m
             if guard is not None:
                 guard()
-            if time.monotonic() >= deadline:
+            # A dead guest is named as one rather than left to expire against
+            # whatever assertion happened to be waiting when it died. Checked
+            # before the deadline so an egregious silence stops burning budget,
+            # and repeated at the deadline below so a wait too short to reach
+            # this still reports the right cause.
+            silent_s = self.silent_s()
+            if silent_s >= GUEST_WEDGED_S:
+                raise self._wedged(what, silent_s)
+            if self.clock() >= deadline:
+                if silent_s >= LINE_CADENCE_S:
+                    raise self._wedged(what, silent_s)
                 raise SmokeFailure(
                     f"expected {what} within {timeout:.0f}s — no decoded log line "
-                    f"matched /{pattern.pattern}/ ({len(self.lines) - start} lines seen)"
+                    f"matched /{pattern.pattern}/ ({len(self.lines) - start} lines "
+                    f"seen, stream still live {silent_s:.1f}s after its last line, "
+                    f"so the firmware was running and the claim genuinely failed)"
                 )
             time.sleep(0.25)
 
@@ -831,6 +1038,8 @@ class Monitor:
         self.sock.settimeout(1.0)
         self.log = open(log_path, "w")
         self.stop = threading.Event()
+        self.lock = threading.Lock()
+        self.transcript = ""
         self.reader = threading.Thread(target=self._drain, daemon=True)
         self.reader.start()
 
@@ -844,12 +1053,29 @@ class Monitor:
                 return
             if not data:
                 return
-            self.log.write(data.decode("utf-8", errors="replace"))
+            text = data.decode("utf-8", errors="replace")
+            with self.lock:
+                self.transcript += text
+            self.log.write(text)
             self.log.flush()
 
     def send(self, command):
         announce(f"monitor: {command}")
         self.sock.sendall((command + "\n").encode())
+
+    def ask(self, command, wait=1.0):
+        """Send a command and return what the monitor printed for it.
+
+        The reader thread owns the socket and the monitor frames nothing, so
+        the answer is whatever the transcript grew by — there is no reply
+        boundary to key on instead. Quiet: a probe that ran hundreds of times
+        would drown the failure it is explaining."""
+        with self.lock:
+            mark = len(self.transcript)
+        self.sock.sendall((command + "\n").encode())
+        time.sleep(wait)
+        with self.lock:
+            return self.transcript[mark:]
 
     def close(self):
         self.stop.set()
@@ -976,6 +1202,86 @@ class Sim:
             self._monitor = Monitor(self.monitor_port, self.out_dir / "monitor.log")
         return self._monitor
 
+    def _sample(self, monitor):
+        pc = monitor_value("sysbus.cpu PC", monitor.ask("sysbus.cpu PC"))
+        retired = monitor_value(
+            "sysbus.cpu ExecutedInstructions",
+            monitor.ask("sysbus.cpu ExecutedInstructions"),
+        )
+        virtual = monitor_value(VIRTUAL_TIME_CMD, monitor.ask(VIRTUAL_TIME_CMD))
+        return MachineSample(
+            pc,
+            int(retired, 0) if retired else None,
+            float(virtual[3:]) if virtual and virtual.startswith("VT=") else None,
+        )
+
+    def wedge_report(self):
+        """Whether the GUEST stopped or the RENODE EXECUTOR did.
+
+        Both look identical from the log — silence — which is why a CI-only
+        wedge could not be root-caused from the artifacts. Two samples of the
+        retired-instruction count and the machine's virtual clock separate
+        them, and the PC (resolved through the loaded ELF's symbols, so no
+        local rebuild is needed to read it) says where the guest is."""
+        if self.monitor_port is None:
+            return "no monitor port yet — the wedge predates a booted machine"
+        monitor = self.monitor()
+        first = self._sample(monitor)
+        time.sleep(WEDGE_SAMPLE_GAP_S)
+        second = self._sample(monitor)
+
+        parts = [f"cpu pc={second.pc}"]
+        if second.pc is not None and second.pc == first.pc:
+            # The difference between a spin and a live scheduler: an executor
+            # doing work is somewhere else 1.5s later, a busy-wait is not.
+            parts.append("PINNED at that instruction across both samples")
+        if second.pc:
+            symbol = monitor_value(
+                f"sysbus FindSymbolAt {second.pc}",
+                monitor.ask(f"sysbus FindSymbolAt {second.pc}"),
+            )
+            if symbol:
+                parts.append(f"in {symbol}")
+        retired = None
+        if first.instructions is not None and second.instructions is not None:
+            retired = second.instructions - first.instructions
+            parts.append(f"{retired} instructions retired")
+        advanced = None
+        if first.virtual_s is not None and second.virtual_s is not None:
+            advanced = second.virtual_s - first.virtual_s
+            parts.append(f"virtual clock +{advanced:.3f}s")
+        parts.append(f"over {WEDGE_SAMPLE_GAP_S:.1f}s of wall time")
+
+        if retired is None or advanced is None:
+            verdict = "the monitor did not answer, so neither side is ruled out"
+        elif retired > 0 and advanced > 0:
+            verdict = (
+                "the RENODE EXECUTOR IS RUNNING and the guest is burning "
+                "instructions — a firmware busy-wait or a task that stopped "
+                "yielding, and the pc above names where"
+            )
+        elif retired == 0 and advanced == 0:
+            verdict = (
+                "the RENODE EXECUTOR STOPPED — no instruction retired and no "
+                "virtual time passed, so this is the emulator, not the firmware"
+            )
+        elif retired == 0:
+            verdict = (
+                "the executor is running but the CPU RETIRED NOTHING — halted "
+                "or asleep with no interrupt left to wake it"
+            )
+        else:
+            verdict = "instructions retired against a frozen virtual clock"
+        parts.append(verdict)
+
+        tail = renode_cpu_tail(self.run_dir)
+        if tail:
+            parts.append(
+                "last renode.log lines the host-side UART noise was hiding: "
+                + " | ".join(line.strip() for line in tail)
+            )
+        return "; ".join(parts)
+
     def dump(self, name, what):
         """Dump the panel to `name` in this session's artifact dir and decode it.
 
@@ -1032,6 +1338,7 @@ class Sim:
 
         self.run_dir = Path(os.readlink(latest_link))
         self.monitor_port = int((self.run_dir / "monitor.port").read_text().strip())
+        self.tail.forensics = self.wedge_report
         announce(f"run dir {self.run_dir}, monitor port {self.monitor_port}")
 
     def shutdown(self):
@@ -1097,6 +1404,32 @@ def stamped(tail, pattern):
         if stamp is not None:
             out.append((float(stamp.group(1)), m))
     return out
+
+
+def gnss_silence_s(tail):
+    """Virtual seconds between the newest decoded line and the newest fix.
+
+    None until a first fix has been published: before that there is nothing to
+    have gone quiet, and every caller has already waited for one.
+
+    This distinguishes the two things a stalled distance assertion can mean. A
+    runner that is not moving and a GPS feed that has stopped look identical
+    from inside the firmware — the recorder auto-pauses either way — so a
+    scenario that waits on distance without checking this reports the runner
+    broken when the fixture is what died (CI run 31361094964, `workout`).
+    """
+    tail.poll()
+    newest_line = None
+    for line in reversed(tail.lines):
+        stamp = LINE_STAMP.match(line)
+        if stamp is None:
+            continue
+        t = float(stamp.group(1))
+        if newest_line is None:
+            newest_line = t
+        if FIX_PUBLISHED.search(line):
+            return newest_line - t
+    return None
 
 
 def read_link_frames(sim, wanted, timeout):
@@ -1371,31 +1704,101 @@ def wait_for_no_alert(sim):
         time.sleep(0.25)
 
 
+def panel_banner(tail, end=None):
+    """What the screen task last said the panel carries — an alert kind, or
+    `PANEL_NO_BANNER`.
+
+    None means the firmware has never said, which is a build without the
+    post-flush line rather than a panel with nothing on it, and every caller
+    treats it as "not yet" rather than as "clear".
+    """
+    tail.poll()
+    lines = tail.lines if end is None else tail.lines[:end]
+    for line in reversed(lines):
+        m = UI_BANNER.search(line)
+        if m:
+            return m.group(1)
+    return None
+
+
+def wait_panel_banner(sim, want, timeout, what):
+    """Block until the panel's own banner state satisfies `want`, and return
+    the tail cursor it was read at, paired with the state.
+
+    Returning the cursor is the point of the helper. The state is read from the
+    lines decoded UP TO it, so anything the screen task says afterwards — a
+    banner expiring while a DumpFrame is in flight — lands beyond the cursor
+    and a caller can see that the panel moved under its dump. Read as the
+    NEWEST such line rather than the first one past a mark, so a caller
+    catching up on a decode backlog acts on where the panel is now instead of
+    on where it was when the line it matched was written.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        sim.alive()
+        mark = sim.tail.mark()
+        state = panel_banner(sim.tail, mark)
+        if state is not None and want(state):
+            return mark, state
+        if time.monotonic() >= deadline:
+            seen = state if state is not None else "nothing it has ever reported"
+            raise SmokeFailure(
+                f"expected {what} within {timeout:.0f}s — the screen task's newest "
+                f"post-flush line says the panel carries {seen} ('ui: banner "
+                "<Kind>' / 'ui: banner none', emitted after `display.flush` "
+                "returns, so its absence is a composer that never ran)"
+            )
+        time.sleep(0.25)
+
+
+def dump_panel(sim, name, what, want, what_state, attempts, timeout=PANEL_BANNER_TIMEOUT):
+    """Dump a panel frame the SCREEN task has vouched for, and prove the panel
+    did not repaint while the dump was landing.
+
+    The bounded attempt count is a failure bound, not the synchronisation: the
+    wait is on the firmware's own post-flush line, and a retry here means a
+    repaint genuinely collided with a dump, which the re-read DETECTS rather
+    than hopes against.
+    """
+    for attempt in range(1, attempts + 1):
+        mark, state = wait_panel_banner(sim, want, timeout, what_state)
+        shot = sim.dump(name, what)
+        sim.tail.poll()
+        moved = sim.tail.search(UI_BANNER, start=mark)
+        if moved is None:
+            return shot, state
+        announce(
+            f"the panel repainted to 'ui: banner {moved.group(1)}' while {name} was "
+            f"landing, so the frame is not the one the screen task vouched for — "
+            f"retrying (attempt {attempt}/{attempts})"
+        )
+    raise SmokeFailure(
+        f"the panel repainted under every one of {attempts} dumps of {what} — the "
+        "screen task flushed a frame and had flushed another before the DumpFrame "
+        "landed each time, so no dump on disk is a frame anything can be asserted "
+        "about"
+    )
+
+
 def dump_quiet(sim, name, what):
     """A panel frame with no alert banner on it.
 
-    The one acquisition every page assertion here shares. Waiting for the slot
-    to empty is not enough on its own: `record: alert` is the RECORD task's
-    line and the banner is painted by the screen task, so an alert raised while
-    the DumpFrame is in flight lands on the frame after the wait said the panel
-    was clear. Re-read the slot once the frame is on disk and take the next
-    window if it moved — the engine guarantees there is one.
+    The one acquisition every page assertion here shares. Two separate claims,
+    in order: the alert ENGINE's slot is empty (`wait_for_no_alert`, which is
+    also where the § 465 quiet-window guarantee is checked), and then the PANEL
+    is empty of a banner — which is the screen task's own statement, one repaint
+    behind the engine's, and the one a pixel assertion is actually about.
     """
-    for attempt in range(1, QUIET_DUMP_ATTEMPTS + 1):
-        wait_for_no_alert(sim)
-        shot = sim.dump(name, what)
-        if latest_alert(sim.tail) in (None, "cleared"):
-            return shot
-        announce(
-            f"an alert took the slot while {name} was landing — waiting for the "
-            f"next quiet window (attempt {attempt}/{QUIET_DUMP_ATTEMPTS})"
-        )
-    raise SmokeFailure(
-        f"no quiet window held long enough to dump {what} in "
-        f"{QUIET_DUMP_ATTEMPTS} attempts — every frame landed with an alert back "
-        "on the slot, so there is no dump of the PAGE to assert against, only of "
-        "a banner"
-    )
+    wait_for_no_alert(sim)
+    return dump_panel(
+        sim,
+        name,
+        what,
+        lambda state: state == PANEL_NO_BANNER,
+        "the screen task to flush a frame with no alert banner on it "
+        "('ui: banner none')",
+        QUIET_DUMP_ATTEMPTS,
+    )[0]
 
 
 def press_page(sim, macro, what):
@@ -1477,9 +1880,9 @@ def scenario_smoke(sim):
     # pulse detector. Asking for the streaming line first makes those two
     # failures say different things.
     sim.wait(
-        re.compile(r"hr: MAX86177 streaming"),
+        re.compile(r"hr: AFE streaming"),
         HR_TIMEOUT,
-        "the hr task to reach the MAX86177 model ('hr: MAX86177 streaming') — a "
+        "the hr task to reach the MAX30101 model ('hr: AFE streaming') — a "
         "parked task means the TWIM EasyDMA master never completed the presence "
         "probe, not that the pulse detector is wrong",
     )
@@ -1487,7 +1890,7 @@ def scenario_smoke(sim):
         sim.wait(
             re.compile(r"hr: bpm (\d+)"),
             HR_TIMEOUT,
-            "a trusted pulse off the MAX86177 model ('hr: bpm N') — the model "
+            "a trusted pulse off the MAX30101 model ('hr: bpm N') — the model "
             "synthesizes a beat every PulsePeriodSamples frames, so a driver that "
             "reads the tagged MEAS1/MEAS2 stream correctly has to find it",
         ).group(1)
@@ -1500,7 +1903,7 @@ def scenario_smoke(sim):
             "other than the model's beat (the ambient channel, the AGC's own "
             "steps, or a half/double-rate harmonic)"
         )
-    passed(f"the optical-HR driver read {bpm} BPM off the MAX86177 model")
+    passed(f"the optical-HR driver read {bpm} BPM off the MAX30101 model")
 
     sim.wait(
         re.compile(r"record: sim-autostart on first fix"),
@@ -1645,27 +2048,21 @@ def scenario_alerts(sim):
     # Taken through `dump_quiet` like every other page dump here, which is the
     # whole of what the baseline needs: the engine guarantees the slot goes
     # empty within ALERT_TTL_S + ALERT_QUIET_S of any raise, so a quiet window
-    # is a recurring resource rather than the run's opening stretch, and the
-    # helper re-reads the slot once the frame is on disk. This used to bet on
-    # the opening window specifically — the only stretch that was quiet by
-    # construction back when a queued alert took the slot in the same
+    # is a recurring resource rather than the run's opening stretch. This used
+    # to bet on the opening window specifically — the only stretch that was
+    # quiet by construction back when a queued alert took the slot in the same
     # `on_update` its predecessor expired in, and the bet lost whenever a
     # course-driven arm fired inside it (§ 465).
     #
-    # Sampled a few times and the LOWEST kept, which is a different race: the
-    # record task's line leads the screen task's repaint, so a frame the slot
-    # says is clear can still carry the banner one repaint behind. A stale
-    # quiet frame can only ever read too inky, never too clean, so the minimum
-    # is the one that cannot be the lagging one.
-    quiet = None
-    for attempt in range(1, ALERT_QUIET_ATTEMPTS + 1):
-        shot = dump_quiet(
-            sim, f"alert-quiet-{attempt}.ppm", "a panel frame with no alert on screen"
-        )
-        assert_rendered(shot, "the run face between alerts")
-        if quiet is None or shot.dark < quiet.dark:
-            quiet = shot
-    announce(f"quiet baseline: {quiet.dark} dark pixels (lowest of {ALERT_QUIET_ATTEMPTS})")
+    # ONE dump, not the lowest of several: `dump_quiet` now waits on the screen
+    # task's own post-flush line, so the frame is the panel's state rather than
+    # a sample of it, and taking the minimum of several samples was a way of
+    # guessing which sample was not lagging (§ 716).
+    quiet = dump_quiet(
+        sim, "alert-quiet.ppm", "a panel frame with no alert on screen"
+    )
+    assert_rendered(quiet, "the run face between alerts")
+    announce(f"quiet baseline: {quiet.dark} dark pixels")
 
     fuel = sim.wait(
         FUEL_ALERT,
@@ -1683,68 +2080,44 @@ def scenario_alerts(sim):
     )
     passed(f"one of the newer alert arms fired: {other.group(1)}")
 
-    # `ALERT_RAISED` is the RECORD task's line; the banner is painted later by
-    # the screen task. So a dump can land after the raise is logged, with the
-    # alert still up, and still catch the panel one repaint short of the banner
-    # — which is a bannerless frame that the `cleared` guard below cannot see.
-    # Retry that case rather than reading the first sample as a verdict: the
-    # claim is that a banner reaches the panel while an alert is active, not
-    # that it is already there the instant the record task logs the raise.
-    # Exhausting every attempt still fails, so a banner that never renders is
-    # caught exactly as before — the loop widens when the assertion samples,
-    # not what it demands.
-    banner = None
-    dumped = None
-    for attempt in range(1, ALERT_BANNER_ATTEMPTS + 1):
-        announce(f"waiting for an alert to dump under, attempt {attempt}/{ALERT_BANNER_ATTEMPTS}")
-        mark = sim.tail.mark()
-        sim.wait(
-            ALERT_RAISED,
-            240,
-            "an alert to raise so its banner can be dumped ('record: alert <Kind>')",
-            start=mark,
-        )
-        # One file per attempt so a failing run keeps every frame it judged.
-        shot = sim.dump(
-            f"alert-banner-{attempt}.ppm", "a panel frame while an alert is active"
-        )
-        if latest_alert(sim.tail) == "cleared":
-            announce("the alert cleared before the dump landed — waiting for the next")
-            continue
-        if dumped is None or shot.dark > dumped.dark:
-            dumped = shot
-        if shot.dark - quiet.dark < MIN_BANNER_INK_DELTA:
-            announce(
-                f"the alert was still up but the frame carries {shot.dark} dark pixels "
-                f"against {quiet.dark} quiet — the repaint had not landed yet, retrying"
-            )
-            continue
-        banner = shot
-        break
-    if banner is None and dumped is None:
-        raise SmokeFailure(
-            f"no alert stayed on screen long enough to dump in "
-            f"{ALERT_BANNER_ATTEMPTS} attempts — every raise had already logged "
-            "'record: alert cleared' by the time the DumpFrame landed, so the "
-            "banner's TTL is shorter than a panel dump takes"
-        )
-    if banner is None:
-        ink = dumped.dark - quiet.dark
-        raise SmokeFailure(
-            f"no frame dumped while an alert was active carried a banner in "
-            f"{ALERT_BANNER_ATTEMPTS} attempts — the inkiest was {dumped.dark} dark "
-            f"pixels against {quiet.dark} with no alert ({ink:+d}), short of the "
-            f"{MIN_BANNER_INK_DELTA} an inverse-video banner band has to add — the "
-            "alert reached state::ALERT but nothing that looks like a banner "
-            "reached the panel"
-        )
+    # The banner half, synchronised on the panel rather than on the engine. It
+    # used to wait for `record: alert <Kind>` — the RECORD task's line, emitted BEFORE
+    # the alert is even published to the composer — and dump on the strength of
+    # it, so whether the banner had reached the panel came down to how much
+    # virtual time passed during the host's decode-and-dump round trip. On this
+    # workstation the first attempt missed and the second landed, every run; on
+    # a loaded 2-core CI runner all four missed and the scenario went red on a
+    # PR that touches no firmware, reporting +340 ink where a band adds
+    # thousands. The wait is now on `ui: banner <Kind>`, which the screen task
+    # emits AFTER `display.flush` returns, and the dump is re-checked against
+    # that same line — so a repaint colliding with the DumpFrame is detected
+    # rather than sampled around. See decisions.md § 716.
+    banner, kind = dump_panel(
+        sim,
+        "alert-banner.ppm",
+        "a panel frame while an alert banner is on the panel",
+        lambda state: state != PANEL_NO_BANNER,
+        "the screen task to flush a frame carrying an alert banner "
+        "('ui: banner <Kind>')",
+        ALERT_BANNER_ATTEMPTS,
+    )
     assert_rendered(banner, "the run face with an alert banner")
 
     ink = banner.dark - quiet.dark
+    if ink < MIN_BANNER_INK_DELTA:
+        raise SmokeFailure(
+            f"the screen task flushed a frame carrying the {kind} banner, but that "
+            f"frame has {banner.dark} dark pixels against {quiet.dark} with no "
+            f"banner ({ink:+d}) — short of the {MIN_BANNER_INK_DELTA} an "
+            "inverse-video band across the two hero rows has to add. The panel's "
+            "own state was re-read after the dump landed and had not moved, so "
+            "this is a banner that composes without inking rather than a frame "
+            "caught between repaints"
+        )
     passed(
-        f"an alert banner reached the panel: {banner.dark} dark pixels with a banner "
-        f"up against {quiet.dark} without ({ink:+d} ink, consistent with an "
-        "inverse-video band; the dump cannot read the banner's text)"
+        f"an alert banner reached the panel: {banner.dark} dark pixels with the "
+        f"{kind} banner up against {quiet.dark} without ({ink:+d} ink, consistent "
+        "with an inverse-video band; the dump cannot read the banner's text)"
     )
 
 
@@ -2059,6 +2432,62 @@ def scenario_terrain(sim):
     )
 
 
+def void_freeze(distances, void_start, span):
+    """The frozen-distance verdict for one void, and the anchor it settles on.
+
+    `distances` is every `(firmware_t, odometer_m)` snapshot strictly inside the
+    void, in publish order.
+
+    Anchored past the last fix's own credit (DROPOUT_FIX_CREDIT_SETTLE_S) rather
+    than at the first snapshot inside the void. Anchoring at `distances[0]` raced
+    that credit: it passed locally, where the credited snapshot landed first, and
+    failed on a CI runner where a `paused` snapshot carrying the pre-fix distance
+    arrived 1 ms after the fix and became the anchor — so the credit that
+    followed read as movement inside the void. The recorder had settled on the
+    same distance in both runs (decisions § 731).
+
+    Lives outside `scenario_dropout` because it is the half of that scenario
+    that can be replayed: the mis-anchor was found by replaying a recorded CI
+    log, and an anchor sampled one fix low does not merely produce a false red —
+    it makes the re-anchor assertion below it pass for a firmware that never
+    re-anchored, which is a false GREEN the emulator can only be asked to
+    reproduce by chance.
+    """
+    settle_deadline = void_start + DROPOUT_FIX_CREDIT_SETTLE_S
+    settled_snaps = [(t, d) for t, d in distances if t > settle_deadline]
+    if not settled_snaps:
+        raise SmokeFailure(
+            f"the {span:.1f}s void produced no snapshot past the "
+            f"{DROPOUT_FIX_CREDIT_SETTLE_S:.0f}s fix-credit settle window "
+            f"(deadline t={settle_deadline:.1f}s), so the frozen distance this "
+            "scenario exists to prove was never observable"
+        )
+    frozen = settled_snaps[0][1]
+    moved = [(t, d) for t, d in settled_snaps if d != frozen]
+    if moved:
+        t, d = moved[0]
+        raise SmokeFailure(
+            f"distance moved from {frozen:.1f} m to {d:.1f} m at t={t:.1f}s, "
+            "inside a void with no fixes in it — the recorder is crediting "
+            "distance it cannot have measured"
+        )
+    # The settle window is for the last fix's credit ARRIVING, never for a lump
+    # of the void's own displacement credited early: nothing in it may read above
+    # the anchor the recorder settles on.
+    overshot = [
+        (t, d) for t, d in distances if t <= settle_deadline and d > frozen
+    ]
+    if overshot:
+        t, d = overshot[0]
+        raise SmokeFailure(
+            f"distance read {d:.1f} m at t={t:.1f}s, above the {frozen:.1f} m the "
+            f"recorder settles on after the {DROPOUT_FIX_CREDIT_SETTLE_S:.0f}s "
+            "fix-credit settle window — inside a void with no fixes, so the "
+            "recorder credited more than the last real fix could justify"
+        )
+    return frozen, settled_snaps
+
+
 def scenario_dropout(sim):
     """Cross a GPS signal void and prove the recorder comes back from it.
 
@@ -2191,15 +2620,9 @@ def scenario_dropout(sim):
             "void with no snapshots in it means the record task stopped ticking "
             "when the fixes stopped, which is a stall and not a pause"
         )
-    frozen = float(inside[0][1].group(2))
-    moved = [(t, float(m.group(2))) for t, m in inside if float(m.group(2)) != frozen]
-    if moved:
-        t, d = moved[0]
-        raise SmokeFailure(
-            f"distance moved from {frozen:.1f} m to {d:.1f} m at t={t:.1f}s, "
-            "inside a void with no fixes in it — the recorder is crediting "
-            "distance it cannot have measured"
-        )
+    frozen, settled_snaps = void_freeze(
+        [(t, float(m.group(2))) for t, m in inside], void_start, span
+    )
     # The pause is owed once the fix-stale budget has elapsed, not at the instant
     # the fixes stop: `fix_stale` compares strictly past `fix_stale_budget_s`, so
     # the opening seconds of a void honestly still read `recording` and the frozen
@@ -2233,9 +2656,10 @@ def scenario_dropout(sim):
             "tracking them"
         )
     passed(
-        f"distance held at {frozen:.1f} m across all {len(inside)} snapshots in the "
-        f"void, and every one of the {len(settled)} past the "
-        f"{FIX_STALE_BUDGET_S}s(+{FIX_STALE_FLIP_SLACK_S}s) fix-stale budget "
+        f"distance held at {frozen:.1f} m across all {len(settled_snaps)} snapshots "
+        f"past the {DROPOUT_FIX_CREDIT_SETTLE_S:.0f}s fix-credit settle window "
+        f"(of {len(inside)} in the void), and every one of the {len(settled)} past "
+        f"the {FIX_STALE_BUDGET_S}s(+{FIX_STALE_FLIP_SLACK_S}s) fix-stale budget "
         "read paused"
     )
 
@@ -3017,7 +3441,8 @@ def scenario_workout(sim):
     # compared at the end: a runner that reports the wrong step should say so on
     # the step it gets wrong, not after the timeout for a step that will never
     # come.
-    deadline = time.monotonic() + WORKOUT_STEP_TIMEOUT * WORKOUT_AUTO_STEPS
+    deadline = time.monotonic() + WORKOUT_STEP_TIMEOUT
+    settled = 0
     while True:
         sim.alive()
         got = workout_transitions(sim.tail)
@@ -3032,15 +3457,32 @@ def scenario_workout(sim):
                 )
         if len(got) >= WORKOUT_AUTO_STEPS:
             break
+        if len(got) > settled:
+            settled = len(got)
+            deadline = time.monotonic() + WORKOUT_STEP_TIMEOUT
+        # Asked BEFORE the deadline, because it answers a question the deadline
+        # cannot: every step here ends on distance or on time-while-moving, so
+        # a fixture that stopped feeding stalls the runner without the runner
+        # being wrong, and the message below would blame the firmware for it.
+        silence = gnss_silence_s(sim.tail)
+        if silence is not None and silence > GNSS_SILENCE_S:
+            raise SmokeFailure(
+                f"the published-fix stream went quiet {silence:.0f} virtual "
+                f"seconds ago, with the workout on transition {len(got)} of "
+                f"{WORKOUT_AUTO_STEPS}. The GPS fixture stopped feeding, not "
+                "the runner's steps — look for the launcher's own "
+                "'watch-sim: GPS write failed' line in sim-output.log"
+            )
         if time.monotonic() >= deadline:
             raise SmokeFailure(
                 f"the workout advanced {len(got)} of {WORKOUT_AUTO_STEPS} steps "
                 f"unaided ({' -> '.join(k for _, (k, _, _) in got) or 'none'}) "
-                "before the deadline. Each step ends on ONE axis — the reps and "
-                "the warmup on distance, the recovery on its 30 s — so a stall "
-                "at transition 3 is a runner that never settles a duration step "
-                "and a stall at transition 1 one that never settles a distance "
-                "step"
+                f"and then made no further progress for {WORKOUT_STEP_TIMEOUT}s "
+                "with the fix stream still live. Each step ends on ONE axis — "
+                "the reps and the warmup on distance, the recovery on its 30 s "
+                "— so a stall at transition 3 is a runner that never settles a "
+                "duration step and a stall at transition 1 one that never "
+                "settles a distance step"
             )
         time.sleep(0.5)
     passed(
@@ -3509,8 +3951,19 @@ def report_artifacts(out_dir):
         for line in log.read_text(errors="replace").splitlines()[-40:]:
             print(line, file=sys.stderr)
     for log in sorted(out_dir.glob("*/renode.log")):
-        print(f"--- last 20 lines of {log} ---", file=sys.stderr)
-        for line in log.read_text(errors="replace").splitlines()[-20:]:
+        # Filtered, because on a boot-time wedge every one of the last twenty
+        # lines is the host feeder writing NMEA at a UARTE the guest never
+        # enabled — which spends the whole budget saying nothing and buries
+        # the last thing the CPU actually did.
+        lines = log.read_text(errors="replace").splitlines()
+        kept = [line for line in lines if RENODE_HOST_SIDE_NOISE not in line]
+        elided = len(lines) - len(kept)
+        print(
+            f"--- last 20 lines of {log} "
+            f"({elided} host-side UART lines elided) ---",
+            file=sys.stderr,
+        )
+        for line in kept[-20:]:
             print(line, file=sys.stderr)
 
 

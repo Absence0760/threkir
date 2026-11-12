@@ -5,15 +5,22 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'challenge_list.dart';
 import 'challenge_progress.dart';
+import 'course_gates.dart' show CourseGate, GateWhich, courseGate;
 import 'event_category.dart';
+import 'event_host_cancel.dart';
+import 'event_occurrence.dart';
+import 'event_photo_window.dart';
 import 'event_gym_template.dart';
 import 'geocoding.dart';
+import 'leaderboard_standing.dart';
 import 'l10n/date_format.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
-import 'l10n/number_format.dart';
+import 'offline_sync_store.dart' show parseServerTimestamp;
 import 'recurrence.dart';
+import 'share_ref.dart';
 
 // Column-level grant lockdown: `clubs.invite_token` is revoked from
 // anon + authenticated (migration 20260801_001 + 20260818_001 redo).
@@ -25,7 +32,8 @@ import 'recurrence.dart';
 const String _clubSelectCols =
     'id, owner_id, name, slug, description, avatar_url, location_label, '
     'is_public, is_verified, join_policy, member_count, '
-    'website_url, instagram_url, strava_url, facebook_url, created_at, updated_at';
+    'website_url, instagram_url, strava_url, facebook_url, shadow_hidden, '
+    'created_at, updated_at';
 
 // Column-level grant lockdown: `events.meet_lat` / `meet_lng` are
 // revoked from anon + authenticated (migrations 20260723_001 +
@@ -41,7 +49,9 @@ const String _eventSelectCols =
     'meet_label, route_id, distance_m, pace_target_sec, capacity, '
     'author_id, created_at, updated_at, recurrence_freq, '
     'recurrence_byday, recurrence_until, recurrence_count, '
-    'category, discipline, gym_template, session_plan_id';
+    'category, discipline, gym_template, session_plan_id, gym_routine_id, '
+    'race_start_mode, race_scheduled_offset_s, race_window_open_offset_s, '
+    'race_window_length_s, race_auto_approve';
 
 /// Parse the `events.recurrence_byday` jsonb array (a list of weekday
 /// short-codes like `['MO','WE']`) into a list of `Weekday`s. Returns
@@ -56,6 +66,20 @@ List<Weekday>? parseBydayCodes(dynamic raw) {
   final codes = raw.cast<String>();
   final ws = codes.map(weekdayFromCode).whereType<Weekday>().toList();
   return ws.isEmpty ? null : ws;
+}
+
+/// The message `join_club_by_token` raises when a club requires the
+/// activity-risk acknowledgement and the call did not carry it.
+const String kActivityWaiverRequired = 'activity_waiver_required';
+
+/// [SocialService.joinClubByToken] refused because the club requires the
+/// activity-risk acknowledgement. The caller asks for it and calls again
+/// with `ackWaiver: true`.
+class ActivityWaiverRequired implements Exception {
+  const ActivityWaiverRequired();
+
+  @override
+  String toString() => 'ActivityWaiverRequired';
 }
 
 /// View-model for a club enriched with the current user's membership and the
@@ -83,6 +107,39 @@ class ClubView {
   bool get isMember => viewerRole != null;
 }
 
+/// One club membership row with the member's public profile joined on.
+/// Mirrors the row shape web's `fetchClubMembers` returns.
+class ClubMemberView {
+  final String userId;
+  final String role;
+  final String status;
+  final DateTime? joinedAt;
+  final String? displayName;
+  final String? avatarUrl;
+
+  const ClubMemberView({
+    required this.userId,
+    required this.role,
+    required this.status,
+    this.joinedAt,
+    this.displayName,
+    this.avatarUrl,
+  });
+
+  ClubMemberView withRole(String next) => ClubMemberView(
+        userId: userId,
+        role: next,
+        status: status,
+        joinedAt: joinedAt,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+      );
+}
+
+/// How many `going` RSVPs the upcoming-event card walks before giving up.
+/// Mirrors web's `RSVP_CANDIDATE_LIMIT` — the nearest one may be called off.
+const int _rsvpCandidateLimit = 10;
+
 class EventView {
   final EventRow row;
   final List<Weekday>? byday;
@@ -90,12 +147,21 @@ class EventView {
   final String? viewerRsvp; // 'going' | 'maybe' | 'declined' | null
   final DateTime nextInstanceStart;
 
+  /// False once every remaining occurrence of the series has been called off
+  /// (`event_exceptions`) — the non-nullable encoding of web's null
+  /// `next_instance_start`. [nextInstanceStart] then falls back to the series
+  /// start so the attendee count still has a key, exactly as web's count map
+  /// does; the upcoming lists drop the event instead of advertising a
+  /// cancelled occurrence.
+  final bool hasLiveOccurrence;
+
   const EventView({
     required this.row,
     required this.byday,
     required this.attendeeCount,
     required this.viewerRsvp,
     required this.nextInstanceStart,
+    this.hasLiveOccurrence = true,
   });
 
   RecurrenceFreq? get freq => recurrenceFromString(row.recurrenceFreq);
@@ -113,11 +179,13 @@ class EventView {
 class ClubPostView {
   final ClubPostRow row;
   final String? authorName;
+  final String? authorAvatarUrl;
   final int replyCount;
 
   const ClubPostView({
     required this.row,
     required this.authorName,
+    this.authorAvatarUrl,
     required this.replyCount,
   });
 }
@@ -126,21 +194,258 @@ class AttendeeView {
   final String userId;
   final String status;
   final String? displayName;
+  final String? avatarUrl;
   // 'attended' | 'no_show' | null. Orthogonal to RSVP status; host-written
   // via mark_attendance (instructor_business.md M6).
   final String? attendance;
+  /// The `event_courses` row this racer picked at RSVP; null on an event
+  /// with no courses or an RSVP made before courses existed.
+  final String? courseId;
+  /// The claim deadline of a waitlist seat offer on a paid occurrence
+  /// (20270726000002, decisions § 1840); null when nothing is offered.
+  final DateTime? offerExpiresAt;
   const AttendeeView({
     required this.userId,
     required this.status,
     this.displayName,
+    this.avatarUrl,
     this.attendance,
+    this.courseId,
+    this.offerExpiresAt,
   });
 }
+
+/// One `event_courses` row: a course a race event offers, backed by a saved
+/// route. Hand-written rather than the generated `EventCourseRow` so a
+/// malformed row is dropped instead of throwing, as every view beside it
+/// does. [finishLat] / [finishLng] are the server's copy of the route's last
+/// waypoint — racers read the finish here and never the route, which a
+/// non-owner is served privacy-clipped and a private route not at all.
+class EventCourseView {
+  final String id;
+  final String eventId;
+  final String? routeId;
+  final String name;
+  final double? distanceM;
+  final int sortOrder;
+  final double? finishLat;
+  final double? finishLng;
+
+  /// The route's first point, copied server-side and privacy-clipped like the
+  /// finish (migration `20270728000001`). Read only by the late-start check
+  /// (decisions § 1845); null when the row has none or it was clipped away.
+  final double? startLat;
+  final double? startLng;
+
+  /// The course's timing lines (migration `20271116002390`, decisions
+  /// § 2390): derived from the clipped route or placed by an organiser. Null
+  /// when the course has none at that end.
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
+
+  /// The route crosses its own finish line before its end, so a line finish
+  /// could fire early (server-computed).
+  final bool finishLineSelfCross;
+  const EventCourseView({
+    required this.id,
+    required this.eventId,
+    required this.routeId,
+    required this.name,
+    required this.distanceM,
+    required this.sortOrder,
+    this.finishLat,
+    this.finishLng,
+    this.startLat,
+    this.startLng,
+    this.startGate,
+    this.finishGate,
+    this.finishLineSelfCross = false,
+  });
+
+  static EventCourseView? fromJson(Map<String, dynamic> m) {
+    final id = m['id'];
+    final eventId = m['event_id'];
+    final name = m['name'];
+    if (id is! String || eventId is! String || name is! String) return null;
+    final distance = m['distance_m'];
+    final sort = m['sort_order'];
+    final lat = m['finish_lat'];
+    final lng = m['finish_lng'];
+    // Both-or-neither in the schema; a half pair is no point.
+    final hasFinish = lat is num && lng is num;
+    final sLat = m['start_lat'];
+    final sLng = m['start_lng'];
+    final hasStart = sLat is num && sLng is num;
+    return EventCourseView(
+      id: id,
+      eventId: eventId,
+      routeId: m['route_id'] as String?,
+      name: name,
+      distanceM: distance is num ? distance.toDouble() : null,
+      sortOrder: sort is num ? sort.toInt() : 0,
+      finishLat: hasFinish ? lat.toDouble() : null,
+      finishLng: hasFinish ? lng.toDouble() : null,
+      startLat: hasStart ? sLat.toDouble() : null,
+      startLng: hasStart ? sLng.toDouble() : null,
+      startGate: courseGate(m, GateWhich.start),
+      finishGate: courseGate(m, GateWhich.finish),
+      finishLineSelfCross: m['finish_line_self_cross'] == true,
+    );
+  }
+}
+
+/// The crossing columns of a race result (#1307): the start and finish
+/// instants on the server clock (the device's own instant plus its server
+/// offset), how each was detected, and that offset.
+///
+/// Every result write carries the four crossing columns, null included: an
+/// upsert keeps an omitted column, and the server derives the gun and chip
+/// time from `finish_at` when it is set, so a time filed without crossings
+/// must clear any left from an earlier write. The offset is a device fact a
+/// re-time needs, so a write without crossings leaves it alone.
+class RaceCrossings {
+  const RaceCrossings({
+    this.startAt,
+    this.finishAt,
+    this.startDetection,
+    this.finishDetection,
+    this.clockOffsetMs,
+  });
+
+  static const none = RaceCrossings();
+
+  final DateTime? startAt;
+  final DateTime? finishAt;
+  final String? startDetection;
+  final String? finishDetection;
+  final int? clockOffsetMs;
+
+  Map<String, dynamic> toRow() => <String, dynamic>{
+        'start_at': startAt?.toUtc().toIso8601String(),
+        'finish_at': finishAt?.toUtc().toIso8601String(),
+        'start_detection': startDetection,
+        'finish_detection': finishDetection,
+        // The offset belongs to the crossings it converted: written beside
+        // them (null included), never cleared by a write that has none.
+        if (startAt != null || finishAt != null || clockOffsetMs != null)
+          'clock_offset_ms': clockOffsetMs,
+      };
+}
+
+/// One `race_session_courses` row: a course as it was frozen when its race
+/// session was created (Arm, for Host GO; decisions § 2391). Devices and the
+/// race screen read this rather than the live course row, so a route or zone
+/// edit mid-race moves only the next race.
+class FrozenRaceCourse {
+  final String courseId;
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
+  final double? finishLat;
+  final double? finishLng;
+  final double? distanceM;
+  final bool finishLineSelfCross;
+
+  /// The lap count the race froze (`finish_lap_count`, decisions § 2472):
+  /// the line finish is this many finish passes from the start. Null when
+  /// the course is not a lap course, or has no route.
+  final int? finishLapCount;
+  const FrozenRaceCourse({
+    required this.courseId,
+    this.startGate,
+    this.finishGate,
+    this.finishLat,
+    this.finishLng,
+    this.distanceM,
+    this.finishLineSelfCross = false,
+    this.finishLapCount,
+  });
+
+  static FrozenRaceCourse? fromJson(Map<String, dynamic> m) {
+    final id = m['course_id'];
+    if (id is! String) return null;
+    final lat = m['finish_lat'];
+    final lng = m['finish_lng'];
+    final hasFinish = lat is num && lng is num;
+    final distance = m['distance_m'];
+    final laps = m['finish_lap_count'];
+    return FrozenRaceCourse(
+      courseId: id,
+      startGate: courseGate(m, GateWhich.start),
+      finishGate: courseGate(m, GateWhich.finish),
+      finishLat: hasFinish ? lat.toDouble() : null,
+      finishLng: hasFinish ? lng.toDouble() : null,
+      distanceM: distance is num ? distance.toDouble() : null,
+      finishLineSelfCross: m['finish_line_self_cross'] == true,
+      finishLapCount: laps is int && laps >= 2 ? laps : null,
+    );
+  }
+}
+
+/// The line columns every course read selects, live row and frozen copy.
+const String kCourseGateColumns =
+    'start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, '
+    'finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, '
+    'finish_line_self_cross';
 
 /// A challenge plus the caller-relative meta the list + detail surfaces need.
 /// `metric` / `scope` stay raw strings here (the narrow unions live in
 /// challenge_progress.dart's enum + the DB CHECK); the UI maps them.
-class ChallengeView {
+/// What a challenge invite link shows before anyone joins
+/// (`challenge_invite_preview`, decisions § 2261). [creatorId] and
+/// [creatorName] are both null when the creator's profile is not visible to
+/// the caller; the screen renders the anonymous runner label in their place.
+@immutable
+class ChallengeInvitePreview {
+  final String id;
+  final String title;
+  final String? description;
+  final String metric;
+  final String scope;
+  final num? goalValue;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final bool isPublic;
+  final int participantCount;
+  final String? creatorId;
+  final String? creatorName;
+  final bool joined;
+
+  const ChallengeInvitePreview({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.metric,
+    required this.scope,
+    required this.goalValue,
+    required this.startsAt,
+    required this.endsAt,
+    required this.isPublic,
+    required this.participantCount,
+    required this.creatorId,
+    required this.creatorName,
+    required this.joined,
+  });
+
+  factory ChallengeInvitePreview.fromRow(Map<String, dynamic> r) =>
+      ChallengeInvitePreview(
+        id: r['id'] as String,
+        title: (r['title'] as String?) ?? '',
+        description: r['description'] as String?,
+        metric: r['metric'] as String,
+        scope: r['scope'] as String,
+        goalValue: r['goal_value'] as num?,
+        startsAt: parseIsoStrictRequired(r['starts_at'], 'starts_at'),
+        endsAt: parseIsoStrictRequired(r['ends_at'], 'ends_at'),
+        isPublic: r['is_public'] == true,
+        participantCount: (r['participant_count'] as num?)?.toInt() ?? 0,
+        creatorId: r['creator_id'] as String?,
+        creatorName: r['creator_name'] as String?,
+        joined: r['joined'] == true,
+      );
+}
+
+class ChallengeView implements MyProgressRow {
+  @override
   final String id;
   final String? creatorId;
   final String? clubId;
@@ -154,10 +459,26 @@ class ChallengeView {
   final DateTime endsAt;
   final bool isPublic;
   final bool joined;
+  @override
   final num? myValue;
+  @override
   final int? myRank;
   final int participantCount;
+  @override
   final DateTime? completedAt;
+
+  /// On a `club_vs_club` board the viewer's entrant is the club they JOINED
+  /// UNDER, off their own `challenge_participants` row — not whichever of
+  /// their clubs happens to be on the board (decisions § 615).
+  final String? myTeamClubId;
+
+  /// Published by a verified organiser — the `is_official` computed field
+  /// (migration 20271021000030), present on the list and detail reads.
+  final bool isOfficial;
+
+  /// A `park_courses` challenge narrowed to one region's parks (ISO 3166-2,
+  /// `US-VA`); null counts every park.
+  final String? parkRegionCode;
 
   const ChallengeView({
     required this.id,
@@ -177,14 +498,47 @@ class ChallengeView {
     this.myRank,
     this.participantCount = 0,
     this.completedAt,
+    this.myTeamClubId,
+    this.isOfficial = false,
+    this.parkRegionCode,
   });
+
+  /// The caller-relative half of the row replaced with what `mergeMyProgress`
+  /// resolved, everything else untouched — the Dart stand-in for the web twin's
+  /// object spread.
+  ChallengeView withProgress(MergedProgress<ChallengeView> merged) =>
+      ChallengeView(
+        id: id,
+        creatorId: creatorId,
+        clubId: clubId,
+        title: title,
+        description: description,
+        metric: metric,
+        scope: scope,
+        goalValue: goalValue,
+        activityType: activityType,
+        startsAt: startsAt,
+        endsAt: endsAt,
+        isPublic: isPublic,
+        joined: joined,
+        myValue: merged.myValue,
+        myRank: merged.myRank,
+        participantCount: participantCount,
+        completedAt: merged.completedAt,
+        myTeamClubId: myTeamClubId,
+        isOfficial: isOfficial,
+        parkRegionCode: parkRegionCode,
+      );
 }
 
 /// One row from the `challenge_leaderboard` RPC (not a table, so hand-modelled).
-class ChallengeLeaderboardEntry {
+class ChallengeLeaderboardEntry implements StandingEntry {
+  @override
   final String? userId;
   final String? displayName;
+  @override
   final String? teamClubId;
+  @override
   final num value;
   final int rank;
   const ChallengeLeaderboardEntry({
@@ -218,6 +572,9 @@ class RecentRunRow {
 /// newly inserted finishers that the server-side rerank trigger hasn't
 /// caught up on — UIs render null as an em-dash.
 class EventResultView {
+  /// The `event_results` row id: how an organiser approves a bib-only row
+  /// or edits any row.
+  final String id;
   // Null for bib-only finishers imported from a chip-timing CSV (persona
   // #43) — those carry [bib] + [finisherName] instead of an account.
   final String? userId;
@@ -233,8 +590,16 @@ class EventResultView {
   final double? ageGradePct;
   final String? note;
   final DateTime createdAt;
+  /// Live-race timing (decisions § 1843). [durationS] is already the gun time
+  /// when the race had a GO; these carry both clocks and how the result was
+  /// recorded (`auto` / `manual` / `host`). Null on a hand-submitted result.
+  final String? courseId;
+  final int? gunTimeS;
+  final int? chipTimeS;
+  final String? finishMethod;
 
   const EventResultView({
+    required this.id,
     required this.userId,
     this.bib,
     this.finisherName,
@@ -248,7 +613,37 @@ class EventResultView {
     required this.ageGradePct,
     required this.note,
     required this.createdAt,
+    this.courseId,
+    this.gunTimeS,
+    this.chipTimeS,
+    this.finishMethod,
   });
+}
+
+/// The `race_sessions` update that ends a race. Only `finished` stamps
+/// `finished_at`: the temporal CHECK requires it null on `cancelled`
+/// (cancelling is pre-start), so a cancel that stamped it was refused.
+/// Mirrors web's `endRace`.
+Map<String, dynamic> raceEndPatch(String status, DateTime now) {
+  final at = now.toUtc().toIso8601String();
+  return {
+    RaceSessionRow.colStatus: status,
+    if (status == 'finished') RaceSessionRow.colFinishedAt: at,
+    RaceSessionRow.colUpdatedAt: at,
+  };
+}
+
+/// The columns an organiser's time edit writes, as web's `hostTimeEditPatch`
+/// writes them. `duration_s` is the ranked time; on a row that carries a gun
+/// time it IS the gun time, so the gun time moves with it and the chip time
+/// is left as measured. A row with no gun time keeps none: an edit is not a
+/// gun reading.
+Map<String, dynamic> hostTimeEditPatch(int durationS, int? priorGunTimeS) {
+  final d = durationS < 0 ? 0 : durationS;
+  return {
+    'duration_s': d,
+    if (priorGunTimeS != null) 'gun_time_s': d,
+  };
 }
 
 /// A charity fundraiser attached to a run or event (fundraising.md). Mobile is
@@ -410,6 +805,7 @@ class SocialService extends ChangeNotifier {
     final raw = await _c.rpc(
       'fundraiser_totals',
       params: {'p_fundraiser_id': fundraiserId},
+      get: true,
     );
     if (raw is! List || raw.isEmpty) return null;
     final row = Map<String, dynamic>.from(raw.first as Map);
@@ -428,18 +824,18 @@ class SocialService extends ChangeNotifier {
     final raw = await _c.rpc(
       'fundraiser_feed',
       params: {'p_fundraiser_id': fundraiserId, 'p_limit': limit},
+      get: true,
     );
     if (raw is! List) return const [];
     return raw.map((r) {
       final row = Map<String, dynamic>.from(r as Map);
-      final paid = row['paid_at'] as String?;
       return DonationFeedEntry(
         displayName: row['display_name'] as String?,
         message: row['message'] as String?,
         amountCents: (row['amount_cents'] as num?)?.toInt() ?? 0,
         currency: (row['currency'] as String?) ?? 'usd',
         isAnonymous: (row['is_anonymous'] as bool?) ?? false,
-        paidAt: paid != null ? DateTime.tryParse(paid) : null,
+        paidAt: parseIsoStrictValue(row['paid_at']),
       );
     }).toList();
   }
@@ -448,15 +844,21 @@ class SocialService extends ChangeNotifier {
   Future<List<ClubView>> browseClubs({String? query}) async {
     var q = _c.from('clubs').select(_clubSelectCols).eq('is_public', true);
     if (query != null && query.trim().isNotEmpty) {
+      // Quoted per filter: the raw term inside the `or=` tree let `,` start a
+      // new filter and `)` close the tree, and ilike read `*` `%` `_` as
+      // wildcards. Mirrors web `browseClubsWithError`.
       final term = query.trim();
-      q = q.or('name.ilike.%$term%,location_label.ilike.%$term%');
+      q = q.or(
+        '${literalSubstringTerm('name', term)},'
+        '${literalSubstringTerm('location_label', term)}',
+      );
     }
     final rows = await q.order('created_at', ascending: false).limit(60);
     return _enrichClubs(rows);
   }
 
-  /// Region-aware club search. Mirrors web's `searchClubs` in
-  /// `apps/web/src/lib/data.ts`. Tries to geocode the query first
+  /// Region-aware club search. Mirrors
+  /// `apps/web/src/lib/core/data.ts:searchClubs`. Tries to geocode the query first
   /// (so "Virginia" → centroid + ~470 km radius → ST_DWithin against
   /// `clubs.location_point`) and forwards the bbox params to the
   /// `search_clubs` RPC. Falls back to [browseClubs] when the
@@ -485,32 +887,76 @@ class SocialService extends ChangeNotifier {
         params['p_center_lat'] = place.lat;
         params['p_radius_m'] = place.radiusM;
       }
-      final raw = await _c.rpc('search_clubs', params: params);
+      final raw = await _c.rpc('search_clubs', params: params, get: true);
       final rows = ((raw ?? <dynamic>[]) as List)
           .whereType<Map<String, dynamic>>()
           .toList();
-      return _enrichClubs(rows);
+      // `await` is load-bearing, not style: returning the future bare
+      // leaves the enrichment queries outside this try, so a failure in
+      // them escapes to the caller instead of degrading below.
+      return await _enrichClubs(rows);
     } catch (e, s) {
       // Per the web fallback: if the RPC fails (e.g. it's not deployed
       // in a dev env, or the planner threw on a malformed bbox) we
-      // degrade to plain ILIKE rather than surfacing a red error toast.
+      // degrade to the plain name/label match rather than surfacing a red
+      // error toast.
       debugPrint('SocialService.searchClubs RPC failed, falling back: $e\n$s');
       return browseClubs(query: term);
     }
   }
 
-  /// Clubs the current user is a member of (any status).
+  /// The order the caller's memberships are listed and walked in: most
+  /// recently joined first, `club_id` (unique within one user's memberships —
+  /// the primary key is `(club_id, user_id)`) breaking a `joined_at` tie.
+  /// Web's `MY_CLUB_MEMBERSHIP_ORDER` is the same order.
+  static const List<KeysetKey> myClubMembershipOrder = [
+    KeysetKey('joined_at', ascending: false, nullsFirst: false),
+    KeysetKey('club_id', ascending: false, nullsFirst: false),
+  ];
+
+  /// One roster page. Web's `ROSTER_PAGE_SIZE`.
+  static const int rosterPageSize = 50;
+
+  /// The order a club's roster and its pending join requests are listed and
+  /// walked in: oldest first, so an admin works the request queue in arrival
+  /// order, `user_id` (unique within one club) breaking a tie. Web's
+  /// `CLUB_MEMBER_ORDER` is the same order, and `club_members_club_roster
+  /// (club_id, joined_at, user_id)` serves it.
+  static const List<KeysetKey> clubMemberOrder = [
+    KeysetKey('joined_at', ascending: true, nullsFirst: false),
+    KeysetKey('user_id', ascending: true, nullsFirst: false),
+  ];
+
+  /// Clubs the current user is a member of (any status). Walked by keyset
+  /// cursor in [myClubMembershipOrder]: an unranged select is capped at
+  /// `db.max-rows` (1000) with no flag, and nothing bounds how many clubs one
+  /// user joins (decisions § 1940).
   Future<List<ClubView>> fetchMyClubs() async {
     final uid = _uid;
     if (uid == null) return const [];
-    final rows = await _c
-        .from('club_members')
-        .select('club_id, role, status, clubs!inner($_clubSelectCols)')
-        .eq('user_id', uid)
-        .order('joined_at', ascending: false);
+    final rows = await walkKeyset(
+      myClubMembershipOrder,
+      (after, limit) async {
+        var q = _c
+            .from('club_members')
+            .select(
+                'club_id, role, status, joined_at, clubs!inner($_clubSelectCols)')
+            .eq('user_id', uid);
+        if (after != null) q = q.or(after);
+        PostgrestTransformBuilder<PostgrestList> sorted = q;
+        for (final k in myClubMembershipOrder) {
+          sorted = sorted.order(
+            k.column,
+            ascending: k.ascending,
+            nullsFirst: k.nullsFirst,
+          );
+        }
+        return await sorted.limit(limit);
+      },
+    );
     final clubs = <Map<String, dynamic>>[];
-    for (final row in rows as List) {
-      final club = (row as Map<String, dynamic>)['clubs'];
+    for (final row in rows) {
+      final club = row['clubs'];
       if (club is Map<String, dynamic>) clubs.add(club);
     }
     return _enrichClubs(clubs);
@@ -569,7 +1015,9 @@ class SocialService extends ChangeNotifier {
           .maybeSingle();
       final clubId = row?[EventRow.colClubId] as String?;
       if (clubId == null || clubId.isEmpty) return null;
-      return fetchClubSlugById(clubId);
+      // Awaited so the never-rethrow contract holds on its own rather
+      // than resting on [fetchClubSlugById] keeping its internal catch.
+      return await fetchClubSlugById(clubId);
     } catch (e) {
       debugPrint('fetchClubSlugForEvent failed: $e');
       return null;
@@ -582,30 +1030,27 @@ class SocialService extends ChangeNotifier {
     final clubs = rows.map(ClubRow.fromJson).toList();
     final ids = clubs.map((c) => c.id).toList();
 
-    final countsFut = _c
-        .from('club_members')
-        .select('club_id')
-        .inFilter('club_id', ids)
-        .eq('status', 'active');
+    // The member count is the trigger-maintained `clubs.member_count`
+    // (docs/backend/derived_state.md), not a re-count of `club_members`: that
+    // aggregate was one unranged select over every listed club's roster,
+    // capped at `db.max-rows` (1000) with no flag, so a big club, or a page of
+    // clubs whose rosters summed past the cap, showed a short count. The
+    // viewer's own membership rows are chunked because a walked
+    // [fetchMyClubs] can list more clubs than one `in` filter carries.
     final uid = _uid;
-    final rolesFut = uid == null
-        ? Future.value(<dynamic>[])
-        : _c
-            .from('club_members')
-            .select('club_id, role, status')
-            .inFilter('club_id', ids)
-            .eq('user_id', uid);
-
-    final results = await Future.wait([countsFut, rolesFut]);
-    final counts = <String, int>{};
-    for (final r in results[0]) {
-      final id = (r as Map)['club_id'] as String;
-      counts[id] = (counts[id] ?? 0) + 1;
-    }
+    final List<Map<String, dynamic>> membership = uid == null
+        ? const []
+        : await readChunked<Map<String, dynamic>>(
+            ids,
+            (chunk) async => _c
+                .from('club_members')
+                .select('club_id, role, status')
+                .eq('user_id', uid)
+                .inFilter('club_id', chunk),
+          );
     final roles = <String, String>{};
     final statuses = <String, String>{};
-    for (final r in results[1]) {
-      final m = r as Map;
+    for (final m in membership) {
       final cid = m['club_id'] as String;
       final status = m['status'] as String? ?? 'active';
       statuses[cid] = status;
@@ -616,7 +1061,7 @@ class SocialService extends ChangeNotifier {
       for (var i = 0; i < clubs.length; i++)
         ClubView(
           row: clubs[i],
-          memberCount: counts[clubs[i].id] ?? 0,
+          memberCount: clubs[i].memberCount,
           viewerRole: roles[clubs[i].id],
           viewerStatus: statuses[clubs[i].id],
           joinPolicy: (rows[i]['join_policy'] as String?) ?? 'open',
@@ -626,7 +1071,7 @@ class SocialService extends ChangeNotifier {
 
   /// Create a new club. The `enroll_club_owner` trigger auto-inserts
   /// the owner's `club_members` row, so we don't add it here.
-  /// Create a club. Mirrors `apps/web/src/lib/data.ts:createClub`:
+  /// Create a club. Mirrors `apps/web/src/lib/core/data.ts:createClub`:
   ///   - trims `name` and normalises `description` / `locationLabel`
   ///     (trim → empty becomes null), so whitespace-only inputs don't
   ///     survive to the DB regardless of how the caller pre-processed
@@ -733,7 +1178,7 @@ class SocialService extends ChangeNotifier {
   /// Trim a club link, returning null for empty / non-http(s) input so a
   /// `javascript:`/`data:` URL can't be stored (XSS). The DB CHECK is the
   /// authoritative backstop; this is the friendly client-side gate. Twin of
-  /// web's `normaliseClubLink` in `data.ts`.
+  /// `apps/web/src/lib/core/data.ts:normaliseClubLink`.
   static String? normaliseClubLink(String? raw) {
     final v = (raw ?? '').trim();
     if (v.isEmpty) return null;
@@ -772,6 +1217,26 @@ class SocialService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The club's invite token, for an owner or admin only: the column is
+  /// revoked from every client role, and `get_club_invite_token` answers null
+  /// to anyone else. Null too when no link has been made yet.
+  Future<String?> getClubInviteToken(String clubId) async {
+    final raw = await _c.rpc('get_club_invite_token',
+        params: {'target_club': clubId}, get: true);
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  /// Writes a fresh invite token and returns it; the previous link stops
+  /// working. The clubs UPDATE policy limits this to the club's admins.
+  /// Mirrors web's `regenerateInviteToken`.
+  Future<String> regenerateClubInviteToken(String clubId) async {
+    final token = genInviteToken();
+    await _c
+        .from(ClubRow.table)
+        .update({ClubRow.colInviteToken: token}).eq(ClubRow.colId, clubId);
+    return token;
+  }
+
   /// Pure helper: generate a 32-hex-char invite token. Mirrors web's
   /// `genToken()` (16 random bytes → hex). Pass [rng] in tests for
   /// deterministic output; production always uses `Random.secure()`.
@@ -793,18 +1258,146 @@ class SocialService extends ChangeNotifier {
         .join();
   }
 
-  /// Pending join requests on a club (admins only — RLS will filter).
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async {
+  /// A club's verification requests, newest first. RLS lets the club's owner
+  /// and active admins read them; anyone else gets none. Read-only here: the
+  /// request and review flow is on the web (decisions § 2398).
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+      String clubId) async {
     final rows = await _c
-        .from('club_members')
-        .select()
+        .from('club_verification_requests')
+        .select(_clubVerificationColumns)
         .eq('club_id', clubId)
-        .eq('status', 'pending')
-        .order('joined_at', ascending: false);
-    return (rows as List)
-        .map<ClubMemberRow>((r) =>
-            ClubMemberRow.fromJson(r as Map<String, dynamic>))
-        .toList();
+        .order('created_at', ascending: false)
+        .limit(20);
+    return rows.map(ClubVerificationRequestRow.fromJson).toList();
+  }
+
+  /// Pending join requests on a club (admins only — RLS will filter), oldest
+  /// first. Walked by keyset cursor in [clubMemberOrder]: nothing bounds
+  /// how many requests a request-to-join club accumulates, and an unranged
+  /// select capped at `db.max-rows` (1000) hid every request past the cap
+  /// from the admin with no error (decisions § 1940).
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async {
+    final rows = await walkKeyset(
+      clubMemberOrder,
+      (after, limit) async {
+        var q = _c
+            .from('club_members')
+            .select()
+            .eq('club_id', clubId)
+            .eq('status', 'pending');
+        if (after != null) q = q.or(after);
+        PostgrestTransformBuilder<PostgrestList> sorted = q;
+        for (final k in clubMemberOrder) {
+          sorted = sorted.order(
+            k.column,
+            ascending: k.ascending,
+            nullsFirst: k.nullsFirst,
+          );
+        }
+        return await sorted.limit(limit);
+      },
+    );
+    return _withProfiles(rows);
+  }
+
+  /// One page of a club roster's active members: a club with hundreds of
+  /// members is reached by load-more rather than fetched whole. Pass the
+  /// previous page's `next` as [after]. Mirrors web's `fetchClubMembers`.
+  ///
+  /// The columns are enumerated rather than `*`: on a public club anyone can
+  /// read this list, and `activity_waiver_ack_at` (when a member signed the
+  /// liability waiver) is the member's own business. Active only, because a
+  /// private club's members can also read its pending and rejected rows, and
+  /// a rejected requester is not a member.
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = rosterPageSize,
+    List<Object?>? after,
+  }) async {
+    final filter = after == null ? null : keysetAfter(clubMemberOrder, after);
+    if (after != null && filter == null) return const KeysetPage([], null);
+    var q = _c
+        .from('club_members')
+        .select('club_id, user_id, role, status, joined_at')
+        .eq('club_id', clubId)
+        .eq('status', 'active');
+    if (filter != null) q = q.or(filter);
+    PostgrestTransformBuilder<PostgrestList> sorted = q;
+    for (final k in clubMemberOrder) {
+      sorted = sorted.order(
+        k.column,
+        ascending: k.ascending,
+        nullsFirst: k.nullsFirst,
+      );
+    }
+    final rows = await sorted.limit(limit);
+    return KeysetPage(
+      await _withProfiles(rows),
+      nextCursor(clubMemberOrder, rows, limit),
+    );
+  }
+
+  /// Membership rows with each member's `display_name` + `avatar_url`. The
+  /// profile read is chunked: PostgREST puts `.inFilter` ids in the request
+  /// URL, and a long list overflows the gateway's request-line limit.
+  Future<List<ClubMemberView>> _withProfiles(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return const [];
+    final ids = rows.map((r) => r['user_id'] as String).toList();
+    final profilePages = await Future.wait([
+      for (final c in chunkList(ids))
+        _c
+            .from('user_profiles')
+            .select('id, display_name, avatar_url')
+            .inFilter('id', c),
+    ]);
+    final byId = <String, Map<String, dynamic>>{};
+    for (final page in profilePages) {
+      for (final p in page) {
+        byId[p['id'] as String] = p;
+      }
+    }
+    return [
+      for (final r in rows)
+        ClubMemberView(
+          userId: r['user_id'] as String,
+          role: r['role'] as String? ?? 'member',
+          status: r['status'] as String? ?? 'active',
+          joinedAt: parseServerTimestamp(r['joined_at']),
+          displayName: byId[r['user_id']]?['display_name'] as String?,
+          avatarUrl: byId[r['user_id']]?['avatar_url'] as String?,
+        ),
+    ];
+  }
+
+  /// Admin-only: change a member's role. RLS refuses the owner's row and
+  /// any caller who is not a club admin.
+  Future<void> setMemberRole({
+    required String clubId,
+    required String userId,
+    required String role,
+  }) async {
+    await _c
+        .from('club_members')
+        .update({'role': role})
+        .eq('club_id', clubId)
+        .eq('user_id', userId);
+    notifyListeners();
+  }
+
+  /// Admin-only: remove an active member from a club.
+  Future<void> removeMember({
+    required String clubId,
+    required String userId,
+  }) async {
+    await _c
+        .from('club_members')
+        .delete()
+        .eq('club_id', clubId)
+        .eq('user_id', userId);
+    notifyListeners();
   }
 
   /// Approve a pending join request.
@@ -883,7 +1476,13 @@ class SocialService extends ChangeNotifier {
     );
   }
 
-  Future<String> joinClub(String clubId, String policy) async {
+  /// [ackWaiver] records the activity-risk acknowledgement; a club that
+  /// requires it refuses the row without one (§ 1864).
+  Future<String> joinClub(
+    String clubId,
+    String policy, {
+    bool ackWaiver = false,
+  }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     final status = policy == 'request' ? 'pending' : 'active';
@@ -892,26 +1491,39 @@ class SocialService extends ChangeNotifier {
       'user_id': uid,
       'role': 'member',
       'status': status,
+      if (ackWaiver)
+        'activity_waiver_ack_at': DateTime.now().toUtc().toIso8601String(),
     });
     notifyListeners();
     return status;
   }
 
-  /// Redeem a club invite token. Returns the slug of the club the
-  /// user just joined so the caller can navigate to its detail
-  /// screen. Mirrors web `joinClubByToken` (apps/web/src/lib/data.ts).
-  /// Surfaces the RPC's own error messages on failure ("expired",
-  /// "already a member", "invalid token") so the caller can render
-  /// them as-is.
-  Future<String> joinClubByToken(String token) async {
+  /// Redeem a club invite token. Mirrors
+  /// `apps/web/src/lib/core/data.ts:joinClubByToken`. Returns the joined
+  /// club's slug so the caller can open it, or null when the join landed but
+  /// the slug read did not. Throws [ActivityWaiverRequired] when the club
+  /// requires the activity-risk acknowledgement and [ackWaiver] is false;
+  /// any other refusal surfaces as the RPC's own exception.
+  Future<String?> joinClubByToken(
+    String token, {
+    bool ackWaiver = false,
+  }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
-    final result = await _c.rpc(
-      'join_club_by_token',
-      params: {'p_token': token.trim()},
-    );
+    final Object? clubId;
+    try {
+      clubId = await _c.rpc(
+        'join_club_by_token',
+        params: {'token': token.trim(), 'activity_waiver_ack': ackWaiver},
+      );
+    } on PostgrestException catch (e) {
+      if (e.message == kActivityWaiverRequired) {
+        throw const ActivityWaiverRequired();
+      }
+      rethrow;
+    }
     notifyListeners();
-    return result as String;
+    return fetchClubSlugById(clubId as String);
   }
 
   Future<void> leaveClub(String clubId) async {
@@ -929,7 +1541,7 @@ class SocialService extends ChangeNotifier {
 
   /// Create a new event under a club. Recurrence fields are raw
   /// strings — `recurrence.dart` produces them. Admin-write-gated by RLS.
-  /// Create an event. Mirrors `apps/web/src/lib/data.ts:createEvent`:
+  /// Create an event. Mirrors `apps/web/src/lib/core/data.ts:createEvent`:
   ///   - trims `title` and normalises `description` / `meetLabel`
   ///     (trim → empty becomes null) regardless of how the caller
   ///     pre-processed them.
@@ -961,6 +1573,7 @@ class SocialService extends ChangeNotifier {
     DateTime? recurrenceUntil,
     int? recurrenceCount,
     bool isPublic = true,
+    String? timezone,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
@@ -986,6 +1599,7 @@ class SocialService extends ChangeNotifier {
       recurrenceUntil: recurrenceUntil,
       recurrenceCount: recurrenceCount,
       isPublic: isPublic,
+      timezone: timezone,
     );
     final inserted = await _c
         .from('events')
@@ -1022,6 +1636,7 @@ class SocialService extends ChangeNotifier {
     DateTime? recurrenceUntil,
     int? recurrenceCount,
     bool isPublic = true,
+    String? timezone,
   }) {
     String? trimToNull(String? s) {
       final t = s?.trim();
@@ -1047,6 +1662,9 @@ class SocialService extends ChangeNotifier {
       // session's zone (UTC), so a 7pm local event would be stored as 7pm
       // UTC. No-op when the caller already passed a UTC instant.
       'starts_at': startsAt.toUtc().toIso8601String(),
+      // The organiser's IANA zone, which the recurrence fields are wall-clock
+      // in — web's createEvent stamps the browser's the same way.
+      'timezone': trimToNull(timezone),
       'duration_min': durationMin,
       'meet_label': trimToNull(meetLabel),
       'meet_lat': meetLat,
@@ -1072,7 +1690,7 @@ class SocialService extends ChangeNotifier {
     final events = await _enrichEvents(rows as List);
     final now = DateTime.now();
     return events
-        .where((e) => !e.nextInstanceStart.isBefore(now))
+        .where((e) => e.hasLiveOccurrence && !e.nextInstanceStart.isBefore(now))
         .toList(growable: false)
       ..sort((a, b) => a.nextInstanceStart.compareTo(b.nextInstanceStart));
   }
@@ -1092,7 +1710,8 @@ class SocialService extends ChangeNotifier {
   /// them. Returns null for non-members and events with no point set.
   /// Persona-hunt social-group #10.
   Future<({double lat, double lng})?> fetchEventMeetPoint(String eventId) async {
-    final res = await _c.rpc('get_event_meet_point', params: {'p_event_id': eventId});
+    final res = await _c.rpc('get_event_meet_point',
+        params: {'p_event_id': eventId}, get: true);
     if (res is! List || res.isEmpty) return null;
     final row = res.first;
     if (row is! Map) return null;
@@ -1103,7 +1722,8 @@ class SocialService extends ChangeNotifier {
   }
 
   /// Events that the current user is going to (status='going') in the next N
-  /// hours. Used by the Run tab's "upcoming event" card. Returns the nearest.
+  /// hours. Used by the Run tab's "upcoming event" card. Returns the nearest
+  /// one that has not been called off. Mirrors web's `fetchNextRsvpedEvent`.
   Future<EventView?> fetchNextRsvpedEvent({Duration window = const Duration(hours: 48)}) async {
     final uid = _uid;
     if (uid == null) return null;
@@ -1114,24 +1734,40 @@ class SocialService extends ChangeNotifier {
         .select('event_id, instance_start, status, events($_eventSelectCols)')
         .eq('user_id', uid)
         .eq('status', 'going')
-        .gte('instance_start', now.toUtc().toIso8601String())
-        .lte('instance_start', end.toUtc().toIso8601String())
+        .gte('instance_start', instanceStartKey(now))
+        .lte('instance_start', instanceStartKey(end))
         .order('instance_start', ascending: true)
-        .limit(1);
-    final rows = rsvps as List;
+        .limit(_rsvpCandidateLimit);
+    final rows = (rsvps as List).cast<Map<String, dynamic>>();
     if (rows.isEmpty) return null;
-    final row = rows.first as Map<String, dynamic>;
-    final event = row['events'] as Map<String, dynamic>?;
-    if (event == null) return null;
-    final instanceIso = row['instance_start'] as String;
-    final er = EventRow.fromJson(event);
-    return EventView(
-      row: er,
-      byday: _parseByday(event['recurrence_byday']),
-      attendeeCount: 0, // not needed for the card
-      viewerRsvp: 'going',
-      nextInstanceStart: DateTime.parse(instanceIso),
+
+    // An RSVP row survives its occurrence being called off — the organiser can
+    // reinstate it — so the card has to subtract `event_exceptions` itself
+    // rather than trust that a `going` row means the run is on. Fail-closed on
+    // a run of cancellations: show nothing rather than a cancelled event.
+    final cancelledByEvent = await fetchCancelledInstancesForEvents(
+      [for (final r in rows) r['event_id'] as String],
+      now,
     );
+    for (final row in rows) {
+      final event = row['events'] as Map<String, dynamic>?;
+      if (event == null) continue;
+      // An unreadable occurrence cannot be checked against the cancellation
+      // list, so it is skipped rather than shown — the same fail-closed rule
+      // the comment above states (decisions § 1377).
+      final instance = parseIsoStrictValue(row['instance_start']);
+      if (instance == null) continue;
+      final cancelled = cancelledByEvent[row['event_id'] as String] ?? const [];
+      if (isOccurrenceCancelled(cancelled, instance)) continue;
+      return EventView(
+        row: EventRow.fromJson(event),
+        byday: _parseByday(event['recurrence_byday']),
+        attendeeCount: 0, // not needed for the card
+        viewerRsvp: 'going',
+        nextInstanceStart: instance,
+      );
+    }
+    return null;
   }
 
   Future<List<EventView>> _enrichEvents(List<dynamic> rawRows) async {
@@ -1143,23 +1779,30 @@ class SocialService extends ChangeNotifier {
       ids.add(r['id'] as String);
       byRawId[r['id'] as String] = r;
     }
+    // Called-off occurrences have to be known BEFORE the next instance is
+    // picked, so this read can't join the parallel batch below — the counts are
+    // keyed on the instant it resolves to. One query for the whole list, not
+    // one per event.
+    final now = DateTime.now();
+    final cancelledByEvent = await fetchCancelledInstancesForEvents(ids, now);
     final nexts = <String, DateTime>{};
+    final live = <String, bool>{};
     for (final r in rows) {
       final er = EventRow.fromJson(r);
-      final byday = _parseByday(r['recurrence_byday']);
-      final freq = recurrenceFromString(er.recurrenceFreq);
-      final next = freq == null
-          ? er.startsAt
-          : (nextInstanceAfter(EventRecurrence(
-                  startsAt: er.startsAt,
-                  freq: freq,
-                  byday: byday,
-                  until: er.recurrenceUntil,
-                  count: er.recurrenceCount,
-                  timezone: er.timezone,
-                )) ??
-              er.startsAt);
-      nexts[er.id] = next;
+      final next = nextLiveInstance(
+        EventRecurrence(
+          startsAt: er.startsAt,
+          freq: recurrenceFromString(er.recurrenceFreq),
+          byday: _parseByday(r['recurrence_byday']),
+          until: er.recurrenceUntil,
+          count: er.recurrenceCount,
+          timezone: er.timezone,
+        ),
+        cancelledByEvent[er.id] ?? const [],
+        now,
+      );
+      nexts[er.id] = next ?? er.startsAt;
+      live[er.id] = next != null;
     }
 
     // Fetch going counts for each (event_id, instance_start) pair.
@@ -1174,7 +1817,7 @@ class SocialService extends ChangeNotifier {
               .select('event_id')
               .eq('event_id', id)
               .eq('status', 'going')
-              .eq('instance_start', nexts[id]!.toUtc().toIso8601String())
+              .eq('instance_start', instanceStartKey(nexts[id]!))
               .count()
               .then((res) => counts[id] = res.count),
       ]),
@@ -1186,7 +1829,7 @@ class SocialService extends ChangeNotifier {
                 .select('status')
                 .eq('event_id', id)
                 .eq('user_id', uid)
-                .eq('instance_start', nexts[id]!.toUtc().toIso8601String())
+                .eq('instance_start', instanceStartKey(nexts[id]!))
                 .maybeSingle()
                 .then((res) {
               final s = (res as Map?)?['status'];
@@ -1203,26 +1846,49 @@ class SocialService extends ChangeNotifier {
           attendeeCount: counts[r['id']] ?? 0,
           viewerRsvp: myRsvps[r['id']],
           nextInstanceStart: nexts[r['id']]!,
+          hasLiveOccurrence: live[r['id']] ?? true,
         ),
     ];
   }
 
   List<Weekday>? _parseByday(dynamic raw) => parseBydayCodes(raw);
 
-  Future<void> rsvpEvent(String eventId, String status, DateTime instance) async {
+  /// [courseId] is the racer's course on a multi-course race; omitted, the
+  /// upsert leaves whatever course the row already carries.
+  Future<void> rsvpEvent(String eventId, String status, DateTime instance,
+      {String? courseId}) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     await _c.from('event_attendees').upsert(
-      {
-        'event_id': eventId,
-        'user_id': uid,
-        'status': status,
-        'instance_start': instance.toUtc().toIso8601String(),
-      },
+      rsvpRow(
+        eventId: eventId,
+        userId: uid,
+        status: status,
+        instance: instance,
+        courseId: courseId,
+      ),
       onConflict: 'event_id,user_id,instance_start',
     );
     notifyListeners();
   }
+
+  /// The `event_attendees` row an RSVP upserts. [courseId] is sent only when
+  /// chosen: an omitted key leaves a racer's earlier pick in place.
+  @visibleForTesting
+  static Map<String, dynamic> rsvpRow({
+    required String eventId,
+    required String userId,
+    required String status,
+    required DateTime instance,
+    String? courseId,
+  }) =>
+      {
+        'event_id': eventId,
+        'user_id': userId,
+        'status': status,
+        'instance_start': instanceStartKey(instance),
+        if (courseId != null) 'course_id': courseId,
+      };
 
   Future<void> clearRsvp(String eventId, DateTime instance) async {
     final uid = _uid;
@@ -1232,7 +1898,7 @@ class SocialService extends ChangeNotifier {
         .delete()
         .eq('event_id', eventId)
         .eq('user_id', uid)
-        .eq('instance_start', instance.toUtc().toIso8601String());
+        .eq('instance_start', instanceStartKey(instance));
     notifyListeners();
   }
 
@@ -1243,10 +1909,255 @@ class SocialService extends ChangeNotifier {
     await _c.rpc('mark_attendance', params: {
       'p_event_id': eventId,
       'p_user_id': userId,
-      'p_instance_start': instance.toUtc().toIso8601String(),
+      'p_instance_start': instanceStartKey(instance),
       'p_attendance': attendance,
     });
     notifyListeners();
+  }
+
+  /// Cancelled instance starts for MANY events at once, keyed by event id.
+  /// One batched query for the whole list — a per-event read would be an N+1
+  /// on the club Events tab. Only occurrences at or after [since] can move a
+  /// "next occurrence" answer, so the scan stays small. Fails closed to "none
+  /// cancelled" like [fetchCancelledInstances]: a read error must not hide a
+  /// live occurrence.
+  Future<Map<String, List<DateTime>>> fetchCancelledInstancesForEvents(
+    List<String> eventIds,
+    DateTime since,
+  ) async {
+    if (eventIds.isEmpty) return const {};
+    try {
+      final pages = await Future.wait([
+        for (final c in chunkList(eventIds))
+          _c
+              .from('event_exceptions')
+              .select('event_id, instance_start')
+              .inFilter('event_id', c)
+              .gte('instance_start', instanceStartKey(since)),
+      ]);
+      final out = <String, List<DateTime>>{};
+      for (final rows in pages) {
+        for (final r in (rows as List)) {
+          final id = (r as Map)['event_id'];
+          final at = parseIsoStrictValue(r['instance_start']);
+          if (id is! String || at == null) continue;
+          (out[id] ??= <DateTime>[]).add(at.toUtc());
+        }
+      }
+      return out;
+    } catch (e) {
+      debugPrint('fetchCancelledInstancesForEvents failed: $e');
+      return const {};
+    }
+  }
+
+  /// Whether the signed-in host can take payments, and the currency their
+  /// payout account settles in. Mirrors web's `fetchPayoutAccount`: the
+  /// own-row policy lets a host read their account, and only the capability
+  /// columns are projected (the Stripe account id is column-revoked). Null when
+  /// there is no account or the read fails, which the form reads as "cannot
+  /// charge" — the `event_pricing` trigger refuses a price otherwise anyway.
+  Future<({bool chargesEnabled, String? defaultCurrency})?>
+      fetchPayoutCapability() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      final row = await _c
+          .from('instructor_payout_accounts')
+          .select('charges_enabled, default_currency')
+          .eq('user_id', uid)
+          .maybeSingle();
+      if (row == null) return null;
+      return (
+        chargesEnabled: row['charges_enabled'] == true,
+        defaultCurrency: row['default_currency'] as String?,
+      );
+    } catch (e) {
+      debugPrint('fetchPayoutCapability failed: $e');
+      return null;
+    }
+  }
+
+  /// Session plans the host can attach to a class: their own plus those of a
+  /// club they belong to, as web's `fetchSessionPlans` scopes it (a stranger's
+  /// public plan is not "mine"). Empty on a failed read, which leaves the
+  /// picker showing only "no plan".
+  Future<List<({String id, String title})>> fetchSessionPlanOptions() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    try {
+      final memberships =
+          await _c.from('club_members').select('club_id').eq('user_id', uid);
+      final clubIds = [
+        for (final m in memberships as List)
+          if ((m as Map)['club_id'] is String) m['club_id'] as String,
+      ];
+      final query = _c.from('session_plans').select('id, title');
+      final rows = await (clubIds.isEmpty
+              ? query.eq('author_id', uid)
+              : query.or('author_id.eq.$uid,club_id.in.(${clubIds.join(',')})'))
+          .order('updated_at', ascending: false);
+      return [
+        for (final r in rows as List)
+          if ((r as Map)['id'] is String && r['title'] is String)
+            (id: r['id'] as String, title: r['title'] as String),
+      ];
+    } catch (e) {
+      debugPrint('fetchSessionPlanOptions failed: $e');
+      return const [];
+    }
+  }
+
+  /// The series price of a paid event, in the currency's minor units. Mirrors
+  /// web's `setEventPricing` for the series row (`instance_start` null):
+  /// in-person only, upserted on the one non-partial arbiter.
+  Future<void> setEventPricing({
+    required String eventId,
+    required int priceCents,
+    required String currency,
+    required String refundPolicy,
+    required int salesCloseOffsetMinutes,
+  }) async {
+    await _c.from('event_pricing').upsert(
+      {
+        'event_id': eventId,
+        'instance_start': null,
+        'price_cents': priceCents,
+        'currency': currency,
+        'modality': 'in_person',
+        'refund_policy': refundPolicy,
+        'sales_close_offset_minutes': salesCloseOffsetMinutes,
+      },
+      onConflict: 'event_id,instance_start',
+    );
+  }
+
+  /// Attach (or with null, detach) a session plan to a class. The database
+  /// trigger enforces organiser-only, as on web. A class carries a session
+  /// plan or a gym routine, never both (`events_one_class_content`), so
+  /// attaching a plan detaches any routine in the same write.
+  Future<void> setEventSessionPlan(String eventId, String? sessionPlanId) async {
+    await _c.from('events').update(sessionPlanId == null
+        ? {'session_plan_id': null}
+        : {'session_plan_id': sessionPlanId, 'gym_routine_id': null}).eq(
+        'id', eventId);
+  }
+
+  /// The gym routine templates a class in [clubId] can attach: the club's own
+  /// (`gym_routines.club_id`), which its members can read. Mirrors web's
+  /// `fetchClubGymRoutineTemplates` as the editor uses it. Empty on a failed
+  /// read, which leaves the picker showing only "none".
+  Future<List<({String id, String title})>> fetchClubGymRoutineOptions(
+    String clubId,
+  ) async {
+    try {
+      final rows = await _c
+          .from('gym_routines')
+          .select('id, title')
+          .eq('club_id', clubId)
+          .order('last_modified_at', ascending: false);
+      return [
+        for (final r in rows as List)
+          if ((r as Map)['id'] is String && r['title'] is String)
+            (id: r['id'] as String, title: r['title'] as String),
+      ];
+    } catch (e) {
+      debugPrint('fetchClubGymRoutineOptions failed: $e');
+      return const [];
+    }
+  }
+
+  /// Attach (or with null, detach) a gym routine to a class (decisions
+  /// § 1869). The `events_gym_routine_organiser` trigger admits only an
+  /// organiser and only a template of the event's own club or a public
+  /// template; attaching one detaches any session plan, as above.
+  Future<void> setEventGymRoutine(String eventId, String? gymRoutineId) async {
+    await _c.from('events').update(gymRoutineId == null
+        ? {'gym_routine_id': null}
+        : {'gym_routine_id': gymRoutineId, 'session_plan_id': null}).eq(
+        'id', eventId);
+  }
+
+  /// Call off one occurrence of a series, or a one-off event (whose only
+  /// occurrence is its start), as an organiser. Mirrors web's
+  /// `cancelEventInstance`: the direct `event_exceptions` insert is tried first,
+  /// and an occurrence that still holds money is refused there by
+  /// `guard_paid_occurrence_cancel`, so it goes through the `events-cancel`
+  /// function, which cancels and refunds every registrant in one request.
+  /// Returns that function's refund summary, or null when no money was
+  /// involved. Throws [EventCancelRefused] with the function's machine code on
+  /// a refusal.
+  Future<OccurrenceRefundSummary?> cancelEventOccurrence(
+    String eventId,
+    DateTime instance, {
+    String? reason,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw Exception('Not authenticated');
+    final trimmed = reason?.trim();
+    try {
+      await _c.from('event_exceptions').upsert(
+        {
+          'event_id': eventId,
+          'instance_start': instanceStartKey(instance),
+          'cancelled_by': uid,
+          'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+        },
+        onConflict: 'event_id,instance_start',
+        ignoreDuplicates: true,
+      );
+      return null;
+    } on PostgrestException catch (e) {
+      if (e.message != paidOccurrenceRefusal) rethrow;
+    }
+    final body = await _invokeEventsCancel({
+      'event_id': eventId,
+      'instance_start': instanceStartKey(instance),
+      'scope': 'occurrence',
+      'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+    final refunds = parseOccurrenceRefundSummary(body['refunds']);
+    if (refunds == null) throw const EventCancelRefused('cancel_failed');
+    return refunds;
+  }
+
+  /// End a recurring series now and call off every remaining occurrence anyone
+  /// signed up for, refunding all of them, through `events-cancel`'s `series`
+  /// scope (decisions § 1868). Mirrors web's `cancelEventSeries`.
+  Future<OccurrenceRefundSummary> cancelEventSeries(
+    String eventId, {
+    String? reason,
+  }) async {
+    final trimmed = reason?.trim();
+    final body = await _invokeEventsCancel({
+      'event_id': eventId,
+      'scope': 'series',
+      'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+    final refunds = parseOccurrenceRefundSummary(body['refunds']);
+    if (refunds == null) throw const EventCancelRefused('cancel_failed');
+    return refunds;
+  }
+
+  Future<Map<String, dynamic>> _invokeEventsCancel(
+      Map<String, dynamic> body) async {
+    try {
+      final res = await _c.functions.invoke('events-cancel', body: body);
+      final data = res.data;
+      return data is Map<String, dynamic> ? data : const {};
+    } on FunctionException catch (e) {
+      throw EventCancelRefused(eventCancelErrorCode(e.details));
+    }
+  }
+
+  /// Put a cancelled occurrence (or a cancelled one-off event) back. Moves no
+  /// money, so the guard that refuses a paid cancel does not apply.
+  Future<void> reinstateEventOccurrence(String eventId, DateTime instance) async {
+    await _c
+        .from('event_exceptions')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance));
   }
 
   /// Instance starts of this event's CANCELLED occurrences
@@ -1261,25 +2172,44 @@ class SocialService extends ChangeNotifier {
           .from('event_exceptions')
           .select('instance_start')
           .eq('event_id', eventId);
-      return {
-        for (final r in (rows as List))
-          if (DateTime.tryParse('${(r as Map)['instance_start']}') != null)
-            DateTime.parse('${r['instance_start']}').toUtc(),
-      };
+      final out = <DateTime>{};
+      for (final r in (rows as List)) {
+        final at = parseIsoStrictValue((r as Map)['instance_start']);
+        if (at != null) out.add(at.toUtc());
+      }
+      return out;
     } catch (e) {
       debugPrint('fetchCancelledInstances failed for $eventId: $e');
       return const <DateTime>{};
     }
   }
 
+  /// One occurrence's attendees, earliest RSVP first. Walked by keyset cursor
+  /// in [ApiClient.eventAttendeeOrder]: an unranged select is capped at
+  /// `db.max-rows` (1000) with no flag, so a big race's list silently lost
+  /// everyone past the cap, and its `joined_at`-only order left tied RSVPs in
+  /// no defined order (decisions § 1936).
   Future<List<AttendeeView>> fetchAttendees(String eventId, DateTime instance) async {
-    final rows = await _c
-        .from('event_attendees')
-        .select()
-        .eq('event_id', eventId)
-        .eq('instance_start', instance.toUtc().toIso8601String())
-        .order('joined_at', ascending: true);
-    final attendees = (rows as List).cast<Map<String, dynamic>>();
+    final attendees = await walkKeyset(
+      ApiClient.eventAttendeeOrder,
+      (after, limit) async {
+        var q = _c
+            .from('event_attendees')
+            .select()
+            .eq('event_id', eventId)
+            .eq('instance_start', instanceStartKey(instance));
+        if (after != null) q = q.or(after);
+        PostgrestTransformBuilder<PostgrestList> sorted = q;
+        for (final k in ApiClient.eventAttendeeOrder) {
+          sorted = sorted.order(
+            k.column,
+            ascending: k.ascending,
+            nullsFirst: k.nullsFirst,
+          );
+        }
+        return await sorted.limit(limit);
+      },
+    );
     if (attendees.isEmpty) return const [];
     final ids = attendees.map((r) => r['user_id'] as String).toList();
     // Chunk the profile-join: PostgREST serialises `.inFilter('id', ids)` into
@@ -1288,12 +2218,18 @@ class SocialService extends ChangeNotifier {
     // display name degrades to null. Query each chunk and merge into one map.
     final profilePages = await Future.wait([
       for (final c in chunkList(ids))
-        _c.from('user_profiles').select('id, display_name').inFilter('id', c),
+        _c
+            .from('user_profiles')
+            .select('id, display_name, avatar_url')
+            .inFilter('id', c),
     ]);
     final byId = <String, String?>{};
+    final avatarById = <String, String?>{};
     for (final profiles in profilePages) {
       for (final p in profiles as List) {
-        byId[(p as Map)['id'] as String] = p['display_name'] as String?;
+        final id = (p as Map)['id'] as String;
+        byId[id] = p['display_name'] as String?;
+        avatarById[id] = p['avatar_url'] as String?;
       }
     }
     return [
@@ -1302,9 +2238,74 @@ class SocialService extends ChangeNotifier {
           userId: a['user_id'] as String,
           status: a['status'] as String,
           displayName: byId[a['user_id']],
+          avatarUrl: avatarById[a['user_id']],
           attendance: a['attendance'] as String?,
+          offerExpiresAt: parseIsoStrictValue(a['offer_expires_at']),
+          courseId: a['course_id'] as String?,
         ),
     ];
+  }
+
+  /// The courses a race event offers, in the host's order. An empty list
+  /// means the event has no courses; a read error throws, because the two
+  /// mean different races — a course-less event is gated on the event's own
+  /// distance, and a course that failed to load must not be.
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async {
+    final rows = await _c
+        .from('event_courses')
+        .select(
+            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng, start_lat, start_lng, '
+            'start_gate_source, finish_gate_source, $kCourseGateColumns')
+        .eq('event_id', eventId)
+        .order('sort_order', ascending: true);
+    return [
+      for (final r in (rows as List).whereType<Map>())
+        ?EventCourseView.fromJson(r.cast<String, dynamic>()),
+    ];
+  }
+
+  /// The occurrence's frozen courses, keyed by course id. Empty when the
+  /// session has no frozen copy (one created before 20271116002390, or none
+  /// yet); a read error throws so the caller can keep the live row.
+  Future<Map<String, FrozenRaceCourse>> fetchRaceSessionCourses(
+      String eventId, DateTime instance) async {
+    final rows = await _c
+        .from('race_session_courses')
+        .select(
+            'course_id, finish_lat, finish_lng, distance_m, finish_lap_count, '
+            '$kCourseGateColumns')
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance));
+    return {
+      for (final r in (rows as List).whereType<Map>())
+        if (FrozenRaceCourse.fromJson(r.cast<String, dynamic>()) case final f?)
+          f.courseId: f,
+    };
+  }
+
+  /// The event's own `distance_m`: what a race with no courses is gated on.
+  /// Null when the event carries none; a read error throws.
+  Future<double?> fetchEventDistanceM(String eventId) async {
+    final row = await _c
+        .from('events')
+        .select('distance_m')
+        .eq('id', eventId)
+        .maybeSingle();
+    return (row?['distance_m'] as num?)?.toDouble();
+  }
+
+  /// The course the signed-in racer picked for one occurrence, or null.
+  Future<String?> fetchMyCourseId(String eventId, DateTime instance) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    final row = await _c
+        .from('event_attendees')
+        .select('course_id')
+        .eq('event_id', eventId)
+        .eq('user_id', uid)
+        .eq('instance_start', instanceStartKey(instance))
+        .maybeSingle();
+    return row?['course_id'] as String?;
   }
 
   // ─────────────────────── Event results ───────────────────────
@@ -1325,16 +2326,17 @@ class SocialService extends ChangeNotifier {
     // is needed by the leaderboard UI). Mobile previously read the
     // base table with `select()`, leaking those fields to non-owner
     // viewers — the same data-leak the audit-pass-3 fix closed on
-    // web's `fetchEventResults`. See apps/web/src/lib/data.ts.
+    // `apps/web/src/lib/core/data.ts:fetchEventResults`.
     final rows = await _c
         .from('event_results_redacted')
         .select(
-          'user_id, bib, finisher_name, run_id, duration_s, distance_m, '
+          'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, '
           'rank, finisher_status, age_grade_pct, note, created_at, '
-          'organiser_approved',
+          'organiser_approved, course_id, gun_time_s, chip_time_s, '
+          'finish_method',
         )
         .eq('event_id', eventId)
-        .eq('instance_start', instance.toUtc().toIso8601String())
+        .eq('instance_start', instanceStartKey(instance))
         .order('rank', ascending: true, nullsFirst: false)
         .order('created_at', ascending: true);
     final results = (rows as List).cast<Map<String, dynamic>>();
@@ -1358,6 +2360,7 @@ class SocialService extends ChangeNotifier {
     return [
       for (final r in results)
         EventResultView(
+          id: r['id'] as String,
           userId: r['user_id'] as String?,
           bib: r['bib'] as String?,
           finisherName: r['finisher_name'] as String?,
@@ -1374,7 +2377,11 @@ class SocialService extends ChangeNotifier {
           organiserApproved: r['organiser_approved'] as bool? ?? false,
           ageGradePct: (r['age_grade_pct'] as num?)?.toDouble(),
           note: r['note'] as String?,
-          createdAt: DateTime.parse(r['created_at'] as String),
+          createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+          courseId: r['course_id'] as String?,
+          gunTimeS: (r['gun_time_s'] as num?)?.toInt(),
+          chipTimeS: (r['chip_time_s'] as num?)?.toInt(),
+          finishMethod: r['finish_method'] as String?,
         ),
     ];
   }
@@ -1395,30 +2402,43 @@ class SocialService extends ChangeNotifier {
     String finisherStatus = 'finished',
     double? ageGradePct,
     String? note,
+    String? courseId,
+    int? gunTimeS,
+    int? chipTimeS,
+    String? finishMethod,
+    RaceCrossings crossings = RaceCrossings.none,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     final noteTrimmed = note?.trim();
     final normalisedNote =
         (noteTrimmed == null || noteTrimmed.isEmpty) ? null : noteTrimmed;
-    await _c.from('event_results').upsert(
-      {
+    // An upsert on `event_results` reads every column it writes back from
+    // EXCLUDED, which needs SELECT on columns being withdrawn from signed-in
+    // readers (decisions § 2474); `file_event_result` files the same row
+    // without it, and an omitted key still keeps its stored value.
+    await _c.rpc('file_event_result', params: {
+      'p_result': {
         'event_id': eventId,
-        'instance_start': instance.toUtc().toIso8601String(),
+        'instance_start': instanceStartKey(instance),
         'user_id': uid,
         if (runId != null) 'run_id': runId,
         'duration_s': durationS,
         'distance_m': distanceM,
         'finisher_status': finisherStatus,
         if (ageGradePct != null) 'age_grade_pct': ageGradePct,
+        if (courseId != null) 'course_id': courseId,
+        if (gunTimeS != null) 'gun_time_s': gunTimeS,
+        if (chipTimeS != null) 'chip_time_s': chipTimeS,
+        if (finishMethod != null) 'finish_method': finishMethod,
+        ...crossings.toRow(),
         // Trim + collapse empty-after-trim to null. Matches web's
         // submitEventResult and the trim-and-null contract used
         // across createClub / createEvent / saveRoute / etc.
         'note': normalisedNote,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
-      onConflict: 'event_id,instance_start,user_id',
-    );
+    });
     if (runId != null) {
       // Best-effort back-link. If the run isn't owned by this user
       // (shouldn't happen via this UI path, but RLS would block it
@@ -1436,6 +2456,26 @@ class SocialService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Withdraw this runner's automatic finish on [eventId] at [instance]: the
+  /// "Not finished? Resume" undo (#1307 m11). Only a row that is still theirs
+  /// to write goes — their own, and still `auto`, so a time the host has
+  /// since edited (`host`) stays.
+  Future<void> deleteOwnAutoEventResult({
+    required String eventId,
+    required DateTime instance,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw Exception('Not authenticated');
+    await _c
+        .from('event_results')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance))
+        .eq('user_id', uid)
+        .eq('finish_method', 'auto');
+    notifyListeners();
+  }
+
   /// Fetch the current race session for a specific event instance.
   /// Returns null when no session exists (the admin hasn't armed it
   /// yet). Read-only — mutation methods below write.
@@ -1448,7 +2488,7 @@ class SocialService extends ChangeNotifier {
           .from(RaceSessionRow.table)
           .select()
           .eq(RaceSessionRow.colEventId, eventId)
-          .eq(RaceSessionRow.colInstanceStart, instance.toUtc().toIso8601String())
+          .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
           .maybeSingle();
       if (row == null) return null;
       return RaceSessionRow.fromJson(row);
@@ -1465,7 +2505,7 @@ class SocialService extends ChangeNotifier {
   /// `is_auto_approve` column and the participant-submit pipeline reads
   /// it to decide whether to flip new results to `approved` on insert.
   ///
-  /// Mirrors `apps/web/src/lib/data.ts:armRace`. Keep the two in sync
+  /// Mirrors `apps/web/src/lib/core/data.ts:armRace`. Keep the two in sync
   /// — the rest of the stack expects both clients to write identical
   /// rows.
   Future<RaceSessionRow> armRace({
@@ -1480,7 +2520,7 @@ class SocialService extends ChangeNotifier {
         .upsert(
           {
             RaceSessionRow.colEventId: eventId,
-            RaceSessionRow.colInstanceStart: instance.toUtc().toIso8601String(),
+            RaceSessionRow.colInstanceStart: instanceStartKey(instance),
             RaceSessionRow.colStatus: 'armed',
             RaceSessionRow.colStartedAt: null,
             RaceSessionRow.colStartedBy: null,
@@ -1518,37 +2558,192 @@ class SocialService extends ChangeNotifier {
           RaceSessionRow.colUpdatedAt: now,
         })
         .eq(RaceSessionRow.colEventId, eventId)
-        .eq(RaceSessionRow.colInstanceStart, instance.toUtc().toIso8601String())
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
         .select()
         .single();
     notifyListeners();
     return RaceSessionRow.fromJson(row);
   }
 
-  /// Flip the session to a terminal state — `finished` (happy path) or
-  /// `cancelled` (stopped the race before it began or mid-run for
-  /// weather / safety). In both cases the banner on participants'
-  /// watches clears.
+  /// Flip the session to a terminal state — `finished` (End, from
+  /// running) or `cancelled` (from armed only: the server refuses running →
+  /// cancelled, so a race that has started can only be ended). In both
+  /// cases the banner on participants' watches clears.
   Future<RaceSessionRow> endRace({
     required String eventId,
     required DateTime instance,
     String status = 'finished',
   }) async {
     if (_uid == null) throw Exception('Not authenticated');
-    final now = DateTime.now().toUtc().toIso8601String();
     final row = await _c
         .from(RaceSessionRow.table)
-        .update({
-          RaceSessionRow.colStatus: status,
-          RaceSessionRow.colFinishedAt: now,
-          RaceSessionRow.colUpdatedAt: now,
-        })
+        .update(raceEndPatch(status, DateTime.now()))
         .eq(RaceSessionRow.colEventId, eventId)
-        .eq(RaceSessionRow.colInstanceStart, instance.toUtc().toIso8601String())
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
         .select()
         .single();
     notifyListeners();
     return RaceSessionRow.fromJson(row);
+  }
+
+  /// Create the session of a scheduled or self-timed occurrence that is due
+  /// within a day (`ensure_race_session`, #1306), so the event screen's first
+  /// read finds it. False for a Host GO event, a cancelled or not-yet-due
+  /// occurrence, or a failed call: the screen then shows the race as not yet
+  /// open, which the next read fixes.
+  Future<bool> ensureRaceSession(String eventId, DateTime instance) async {
+    try {
+      final ok = await _c.rpc('ensure_race_session', params: {
+        'p_event_id': eventId,
+        'p_instance_start': instanceStartKey(instance),
+      });
+      return ok == true;
+    } catch (e) {
+      debugPrint('[SocialService.ensureRaceSession] ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// The server clock minus this device's (`server_now`), halving the round
+  /// trip; null when the call fails, so a countdown falls back to the device
+  /// clock rather than to a wrong offset (m3).
+  Future<Duration?> fetchServerClockOffset() async {
+    try {
+      final sent = DateTime.now();
+      final raw = await _c.rpc('server_now', params: const {}, get: true);
+      final received = DateTime.now();
+      final server = parseIsoStrictValue(raw);
+      if (server == null) return null;
+      final mid = sent.add(received.difference(sent) ~/ 2);
+      return server.difference(mid);
+    } catch (e) {
+      debugPrint('[SocialService.fetchServerClockOffset] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Delay a scheduled GO, or a self-timed window's opening, to [start]
+  /// (organiser only). The server refuses once the start has passed and moves
+  /// the window's close by the same amount.
+  Future<RaceSessionRow> delayRaceStart({
+    required String eventId,
+    required DateTime instance,
+    required bool selfTimed,
+    required DateTime start,
+  }) async {
+    if (_uid == null) throw Exception('Not authenticated');
+    final row = await _c
+        .from(RaceSessionRow.table)
+        .update({
+          selfTimed
+                  ? RaceSessionRow.colWindowOpensAt
+                  : RaceSessionRow.colScheduledStartAt:
+              start.toUtc().toIso8601String(),
+          RaceSessionRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq(RaceSessionRow.colEventId, eventId)
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
+        .select()
+        .single();
+    notifyListeners();
+    return RaceSessionRow.fromJson(row);
+  }
+
+  /// Move a window's close (Extend). The server refuses a close in the past,
+  /// before the opening or more than 7 days after it.
+  Future<RaceSessionRow> setRaceWindowClose({
+    required String eventId,
+    required DateTime instance,
+    required DateTime closes,
+  }) async {
+    if (_uid == null) throw Exception('Not authenticated');
+    final row = await _c
+        .from(RaceSessionRow.table)
+        .update({
+          RaceSessionRow.colWindowClosesAt: closes.toUtc().toIso8601String(),
+          RaceSessionRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq(RaceSessionRow.colEventId, eventId)
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
+        .select()
+        .single();
+    notifyListeners();
+    return RaceSessionRow.fromJson(row);
+  }
+
+  /// How many racers End would mark DNF: attendees who pinged the race and
+  /// filed no result (`race_pending_dnf_count`). Null when the caller is not
+  /// a race director for the event's club or the count could not be read —
+  /// the End dialog then states no figure rather than a wrong one.
+  Future<int?> fetchRaceDnfPreview(String eventId, DateTime instance) async {
+    try {
+      final n = await _c.rpc(
+        'race_pending_dnf_count',
+        params: {
+          'p_event_id': eventId,
+          'p_instance_start': instanceStartKey(instance),
+        },
+        get: true,
+      );
+      return n is num ? n.toInt() : null;
+    } catch (e) {
+      debugPrint('[SocialService.fetchRaceDnfPreview] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Approve or unverify an account runner's result. Mirrors web's
+  /// `approveEventResult`; the RPC checks the caller is a race director.
+  Future<void> approveEventResult({
+    required String eventId,
+    required DateTime instance,
+    required String userId,
+    required bool approve,
+  }) async {
+    await _c.rpc('approve_event_result', params: {
+      'p_event_id': eventId,
+      'p_instance_start': instanceStartKey(instance),
+      'p_user_id': userId,
+      'p_approve': approve,
+    });
+    notifyListeners();
+  }
+
+  /// Approve or unverify a bib-only result, which has no account for
+  /// [approveEventResult] to key on. Mirrors web's `approveEventResultById`:
+  /// constrained to null-user rows, gated by the director update policy.
+  Future<void> approveEventResultById(String resultId, bool approve) async {
+    final directorId = _uid;
+    if (directorId == null) throw Exception('Not authenticated');
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _c
+        .from('event_results')
+        .update({
+          'organiser_approved': approve,
+          'organiser_approved_by': directorId,
+          'organiser_approved_at': now,
+          'updated_at': now,
+        })
+        .eq('id', resultId)
+        .isFilter('user_id', null);
+    notifyListeners();
+  }
+
+  /// An organiser's edit of one result's time and status. Mirrors web's
+  /// `editEventResultAsHost`; the `event_results_race_guard` trigger stamps
+  /// `finish_method = 'host'` because the editor is not the runner.
+  Future<void> editEventResultAsHost({
+    required String resultId,
+    required int durationS,
+    required int? priorGunTimeS,
+    required String finisherStatus,
+  }) async {
+    await _c.from('event_results').update({
+      ...hostTimeEditPatch(durationS, priorGunTimeS),
+      'finisher_status': finisherStatus,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', resultId);
+    notifyListeners();
   }
 
   /// Recent runs for the current user, newest first. Used by the Submit
@@ -1568,12 +2763,45 @@ class SocialService extends ChangeNotifier {
       for (final r in (rows as List).cast<Map<String, dynamic>>())
         RecentRunRow(
           id: r['id'] as String,
-          startedAt: DateTime.parse(r['started_at'] as String),
+          startedAt: parseIsoStrictRequired(r['started_at'], 'started_at'),
           durationS: (r['duration_s'] as num).toInt(),
           distanceM: (r['distance_m'] as num).toDouble(),
           activityType: (r['activity_type'] as String?) ?? 'run',
         ),
     ];
+  }
+
+  /// The viewer's runs the database will accept for an occurrence's photo
+  /// gallery: those that started inside the photo window
+  /// (`event_photo_window.dart`). Queried by the window rather than filtered
+  /// from the latest few runs, so an occurrence from months ago still offers
+  /// the run recorded at it. Mirrors web `fetchRunsForEventPhoto`.
+  Future<List<RecentRunRow>> fetchRunsForEventPhoto(
+    DateTime instanceStart, {
+    int limit = 20,
+  }) async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    final rows = await _c
+        .from('runs')
+        .select('id, started_at, duration_s, distance_m, activity_type')
+        .eq('user_id', uid)
+        .gte('started_at',
+            instanceStartKey(instanceStart.subtract(kEventPhotoWindowBefore)))
+        .lt('started_at',
+            instanceStartKey(instanceStart.add(kEventPhotoWindowAfter)))
+        .order('started_at', ascending: true)
+        .limit(limit);
+    return [
+      for (final r in (rows as List).cast<Map<String, dynamic>>())
+        RecentRunRow(
+          id: r['id'] as String,
+          startedAt: parseIsoStrictRequired(r['started_at'], 'started_at'),
+          durationS: (r['duration_s'] as num).toInt(),
+          distanceM: (r['distance_m'] as num).toDouble(),
+          activityType: (r['activity_type'] as String?) ?? 'run',
+        ),
+    ].where((r) => isRunInEventPhotoWindow(r.startedAt, instanceStart)).toList();
   }
 
   Future<void> removeEventResult(String eventId, DateTime instance) async {
@@ -1583,7 +2811,7 @@ class SocialService extends ChangeNotifier {
         .from('event_results')
         .delete()
         .eq('event_id', eventId)
-        .eq('instance_start', instance.toUtc().toIso8601String())
+        .eq('instance_start', instanceStartKey(instance))
         .eq('user_id', uid);
     notifyListeners();
   }
@@ -1602,7 +2830,7 @@ class SocialService extends ChangeNotifier {
   }
 
   /// Replies to [parentId], oldest-first. Capped at [limit] (default
-  /// 200) to match `apps/web/src/lib/data.ts:fetchPostReplies` — a
+  /// 200) to match `apps/web/src/lib/core/data.ts:fetchPostReplies` — a
   /// popular thread that accumulates thousands of replies otherwise
   /// pulls them all down on every open.
   Future<List<ClubPostView>> fetchPostReplies(
@@ -1628,7 +2856,7 @@ class SocialService extends ChangeNotifier {
     final futures = <Future<dynamic>>[
       _c
           .from('user_profiles')
-          .select('id, display_name')
+          .select('id, display_name, avatar_url')
           .inFilter('id', authorIds),
     ];
     if (topLevelIds.isNotEmpty) {
@@ -1639,8 +2867,11 @@ class SocialService extends ChangeNotifier {
     }
     final results = await Future.wait(futures);
     final byId = <String, String?>{};
+    final avatarById = <String, String?>{};
     for (final p in results[0] as List) {
-      byId[(p as Map)['id'] as String] = p['display_name'] as String?;
+      final id = (p as Map)['id'] as String;
+      byId[id] = p['display_name'] as String?;
+      avatarById[id] = p['avatar_url'] as String?;
     }
     final counts = <String, int>{};
     if (results.length > 1) {
@@ -1655,6 +2886,7 @@ class SocialService extends ChangeNotifier {
         ClubPostView(
           row: p,
           authorName: byId[p.authorId],
+          authorAvatarUrl: avatarById[p.authorId],
           replyCount: counts[p.id] ?? 0,
         ),
     ];
@@ -1676,7 +2908,7 @@ class SocialService extends ChangeNotifier {
       if (parentPostId != null) 'parent_post_id': parentPostId,
       if (eventId != null) 'event_id': eventId,
       if (eventInstanceStart != null)
-        'event_instance_start': eventInstanceStart.toUtc().toIso8601String(),
+        'event_instance_start': instanceStartKey(eventInstanceStart),
     });
     notifyListeners();
   }
@@ -1780,7 +3012,8 @@ class SocialService extends ChangeNotifier {
       num? myValue,
       int? myRank,
       int participantCount = 0,
-      DateTime? completedAt}) {
+      DateTime? completedAt,
+      String? myTeamClubId}) {
     return ChallengeView(
       id: r['id'] as String,
       creatorId: r['creator_id'] as String?,
@@ -1791,66 +3024,99 @@ class SocialService extends ChangeNotifier {
       scope: r['scope'] as String,
       goalValue: (r['goal_value'] as num?),
       activityType: r['activity_type'] as String?,
-      startsAt: DateTime.parse(r['starts_at'] as String),
-      endsAt: DateTime.parse(r['ends_at'] as String),
+      startsAt: parseIsoStrictRequired(r['starts_at'], 'starts_at'),
+      endsAt: parseIsoStrictRequired(r['ends_at'], 'ends_at'),
       isPublic: (r['is_public'] as bool?) ?? true,
       joined: joined,
       myValue: myValue,
       myRank: myRank,
       participantCount: participantCount,
       completedAt: completedAt,
+      myTeamClubId: myTeamClubId,
+      isOfficial: r['is_official'] == true,
+      parkRegionCode: r['park_region_code'] as String?,
     );
   }
 
   /// Challenges the caller can see (RLS scopes public + creator + participant +
-  /// club member), enriched with participant counts + the joined flag.
+  /// club member), enriched with participant counts + the joined flag, and — for
+  /// the ones the caller has joined — the per-caller value folded on from
+  /// `my_active_challenges`.
   Future<List<ChallengeView>> fetchChallenges() async {
     final rows = await _c
         .from('challenges')
-        .select()
+        .select('*, is_official')
         .order('ends_at', ascending: true) as List;
     if (rows.isEmpty) return const [];
     final ids = rows.map((r) => (r as Map)['id'] as String).toList();
     final parts = await _c
         .from('challenge_participants')
-        .select('challenge_id, user_id')
+        .select('challenge_id, user_id, completed_at')
         .inFilter('challenge_id', ids) as List;
     final counts = <String, int>{};
     final mine = <String>{};
+    final myCompletedAt = <String, DateTime>{};
     final uid = _uid;
     for (final p in parts) {
       final m = p as Map;
       final cid = m['challenge_id'] as String;
       counts[cid] = (counts[cid] ?? 0) + 1;
-      if (uid != null && m['user_id'] == uid) mine.add(cid);
+      if (uid != null && m['user_id'] == uid) {
+        mine.add(cid);
+        final completedAt = parseIsoStrictValue(m['completed_at']);
+        if (completedAt != null) myCompletedAt[cid] = completedAt;
+      }
     }
-    return rows
+    final enriched = rows
         .map((r) => _challengeFromRow(
               (r as Map).cast<String, dynamic>(),
               joined: mine.contains(r['id']),
               participantCount: counts[r['id']] ?? 0,
+              completedAt: myCompletedAt[r['id']],
             ))
         .toList();
+
+    // The caller's banked value lives only in the `challenge_leaderboard`
+    // aggregate, never on the `challenges` row. Auxiliary: a failure here leaves
+    // myValue null, which the list renders as "not shown here", not as zero.
+    try {
+      final active = await myActiveChallenges();
+      final merged = {
+        for (final mp in mergeMyProgress(
+            enriched.where((c) => c.joined).toList(), active))
+          mp.row.id: mp,
+      };
+      return enriched
+          .map((c) => merged.containsKey(c.id) ? c.withProgress(merged[c.id]!) : c)
+          .toList();
+    } catch (e) {
+      debugPrint('fetchChallenges progress enrichment failed: $e');
+      return enriched;
+    }
   }
 
   Future<ChallengeView?> fetchChallengeById(String id) async {
-    final row = await _c.from('challenges').select().eq('id', id).maybeSingle();
+    final row = await _c
+        .from('challenges')
+        .select('*, is_official')
+        .eq('id', id)
+        .maybeSingle();
     if (row == null) return null;
     final parts = await _c
         .from('challenge_participants')
-        .select('user_id, completed_at')
+        .select('user_id, completed_at, team_club_id')
         .eq('challenge_id', id) as List;
     final uid = _uid;
     Map? mineRow;
     for (final p in parts) {
       if (uid != null && (p as Map)['user_id'] == uid) mineRow = p;
     }
-    final completedRaw = mineRow?['completed_at'] as String?;
     return _challengeFromRow(
       row.cast<String, dynamic>(),
       joined: mineRow != null,
       participantCount: parts.length,
-      completedAt: completedRaw == null ? null : DateTime.parse(completedRaw),
+      completedAt: parseIsoStrictValue(mineRow?['completed_at']),
+      myTeamClubId: mineRow?['team_club_id'] as String?,
     );
   }
 
@@ -1905,6 +3171,120 @@ class SocialService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Challenge invite links (decisions § 2261). The token lives in a private
+  // table, never on the `challenges` row, so every read goes through a
+  // definer RPC, and each answers "nothing" while the
+  // `challenge_invite_links` gate is closed.
+
+  Future<bool> challengeInviteLinksEnabled() async {
+    final raw = await _c.rpc('challenge_invite_links_enabled',
+        params: const {}, get: true);
+    return raw == true;
+  }
+
+  Future<String?> getChallengeInviteToken(String id) async {
+    final raw = await _c
+        .rpc('get_challenge_invite_token', params: {'p_challenge_id': id});
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  Future<String?> rotateChallengeInviteToken(String id) async {
+    final raw = await _c
+        .rpc('rotate_challenge_invite_token', params: {'p_challenge_id': id});
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  /// Null for an unknown or rotated token, or while the gate is closed. A
+  /// failed read throws, so the invite screen offers a retry rather than
+  /// calling a good link dead.
+  Future<ChallengeInvitePreview?> previewChallengeInvite(String token) async {
+    final raw = await _c.rpc('challenge_invite_preview',
+        params: {'p_token': token}, get: true);
+    final rows = (raw as List?) ?? const [];
+    if (rows.isEmpty) return null;
+    return ChallengeInvitePreview.fromRow(
+        (rows.first as Map).cast<String, dynamic>());
+  }
+
+  // Share-link attribution (decisions § 2268). Every call is auxiliary: a
+  // failure degrades to "no ref" / "not attributed", never a failed share or
+  // join.
+
+  /// Whether the share_attribution gate is open. False on any error.
+  Future<bool> shareAttributionEnabled() async {
+    try {
+      final raw = await _c.rpc('share_attribution_enabled',
+          params: const {}, get: true);
+      return raw == true;
+    } catch (e) {
+      debugPrint('share_attribution_enabled failed: $e');
+      return false;
+    }
+  }
+
+  String? _shareRefUid;
+  Future<String?>? _shareRef;
+
+  /// The signed-in creator's own ref code, minted once and cached per
+  /// account; null while the gate is closed. A failed read is not cached, so
+  /// the next share tries again.
+  Future<String?> myShareRef() {
+    final uid = isReady ? _uid : null;
+    if (uid == null) return Future.value(null);
+    if (_shareRefUid != uid || _shareRef == null) {
+      _shareRefUid = uid;
+      _shareRef = () async {
+        try {
+          return parseShareRef(await _c.rpc('my_share_ref'));
+        } catch (e) {
+          debugPrint('my_share_ref failed: $e');
+          _shareRef = null;
+          return null;
+        }
+      }();
+    }
+    return _shareRef!;
+  }
+
+  /// Mark the caller's just-made join of [challengeId] as having come
+  /// through its creator's link. False when nothing was marked.
+  Future<bool> attributeChallengeJoin(String challengeId, String? ref) async {
+    final code = parseShareRef(ref);
+    if (code == null) return false;
+    try {
+      final raw = await _c.rpc('attribute_share_start', params: {
+        'p_kind': 'challenge',
+        'p_id': challengeId,
+        'p_ref': code,
+      });
+      return raw == true;
+    } catch (e) {
+      debugPrint('attribute_share_start failed: $e');
+      return false;
+    }
+  }
+
+  /// The caller's own links over the last 90 days. A failed read throws, so
+  /// the screen can tell "nothing shared yet" from "could not load".
+  Future<List<ShareStat>> fetchMyShareStats() async {
+    final raw = await _c.rpc('my_share_stats', params: const {}, get: true);
+    return [
+      for (final r in (raw as List?) ?? const [])
+        if (ShareStat.fromRow((r as Map).cast<String, dynamic>())
+            case final stat?)
+          stat,
+    ];
+  }
+
+  /// The joined challenge's id, or null when the token names nothing.
+  Future<String?> joinChallengeByToken(String token) async {
+    if (_uid == null) throw StateError('Not authenticated');
+    final raw =
+        await _c.rpc('join_challenge_by_token', params: {'p_token': token});
+    notifyListeners();
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
   Future<void> leaveChallenge(String id) async {
     final uid = _uid;
     if (uid == null) throw StateError('Not authenticated');
@@ -1923,7 +3303,7 @@ class SocialService extends ChangeNotifier {
     final raw = await _c.rpc('challenge_leaderboard', params: {
       'p_challenge_id': id,
       'p_by_team': byTeam,
-    });
+    }, get: true);
     return ((raw ?? <dynamic>[]) as List)
         .whereType<Map>()
         .map((r) => ChallengeLeaderboardEntry(
@@ -1939,16 +3319,16 @@ class SocialService extends ChangeNotifier {
   /// The self-hide driver: challenges the caller has joined that are live or
   /// recently ended. An empty list means render nothing.
   Future<List<ChallengeView>> myActiveChallenges() async {
-    final raw = await _c.rpc('my_active_challenges');
+    final raw =
+        await _c.rpc('my_active_challenges', params: const {}, get: true);
     return ((raw ?? <dynamic>[]) as List).whereType<Map>().map((r) {
-      final completedRaw = r['completed_at'] as String?;
       return _challengeFromRow(
         r.cast<String, dynamic>(),
         joined: true,
         myValue: r['my_value'] as num?,
         myRank: (r['my_rank'] as num?)?.toInt(),
         participantCount: (r['participant_count'] as num?)?.toInt() ?? 0,
-        completedAt: completedRaw == null ? null : DateTime.parse(completedRaw),
+        completedAt: parseIsoStrictValue(r['completed_at']),
       );
     }).toList();
   }
@@ -2025,12 +3405,8 @@ String fmtRelative(DateTime when, String localeTag, {DateTime? now}) {
 String fmtEventDate(DateTime when, String localeTag) =>
     '${formatDateShort(when, localeTag)}, ${formatTime(when, localeTag)}';
 
-String fmtKm(num metres) =>
-    formatFixed(metres / 1000, 2, activeLocaleTag);
-
-String fmtPace(int? secPerKm) {
-  if (secPerKm == null) return '';
-  final m = secPerKm ~/ 60;
-  final s = (secPerKm % 60).toString().padLeft(2, '0');
-  return '$m:$s /km';
-}
+const _clubVerificationColumns =
+    'id, club_id, submitted_by, organisation, domain, note, token, status, '
+    'proof_method, proof_verified_at, proof_detail, last_checked_at, '
+    'check_failures, decided_by, decided_at, decision_reason, closed_by, '
+    'closed_at, close_reason, created_at';

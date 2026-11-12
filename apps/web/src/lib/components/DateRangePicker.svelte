@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { formatISO } from '$lib/training/training';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatISO } from '#lib/training/training.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import Modal from './Modal.svelte';
 
 	interface Props {

@@ -39,8 +39,13 @@ class _FakeApiClient extends ApiClient {
   /// empty; tests that want the partial-failure path populate it.
   Set<String> saveBatchFailedIds = const <String>{};
 
+  /// Runs the push classifies as permanently refused. Distinct from
+  /// [saveBatchFailedIds]: those come back next cycle, these are parked.
+  Map<String, RunPushBlockReason> saveBatchBlockedIds =
+      const <String, RunPushBlockReason>{};
+
   @override
-  Future<Set<String>> saveRunsBatch(
+  Future<RunPushOutcome> saveRunsBatch(
     List<Run> runs, {
     int uploadConcurrency = 8,
     int rowChunkSize = 100,
@@ -51,7 +56,8 @@ class _FakeApiClient extends ApiClient {
       throw saveBatchError ?? Exception('boom');
     }
     savedBatchIds.add(runs.map((r) => r.id).toList());
-    return saveBatchFailedIds;
+    return RunPushOutcome(
+        retryable: saveBatchFailedIds, blocked: saveBatchBlockedIds);
   }
 
   @override
@@ -242,6 +248,48 @@ void main() {
       expect(api.saveBatchCallCount, 1);
       expect(store.unsyncedCount, 1,
           reason: 'failure must not flip the unsynced flag');
+    });
+
+    test(
+        'a blocked run is parked, so the next cycle does not re-send it',
+        () async {
+      // decisions § 1070. The refusal is permanent — the same waypoints gzip
+      // to the same bytes every time — so leaving it merely unsynced spends a
+      // runner's data plan proving that again on every trigger, forever.
+      await store.save(makeRun('r-ok'));
+      await store.save(makeRun('r-big'));
+      final api = _FakeApiClient()
+        ..saveBatchBlockedIds = {'r-big': RunPushBlockReason.trackTooLarge};
+      final svc = SyncService(apiClient: api, runStore: store);
+
+      await svc.debugTrySync('test');
+
+      expect(store.blockedReason('r-big'), RunPushBlockReason.trackTooLarge);
+      expect(store.unsyncedCount, 0,
+          reason: 'r-ok landed and r-big left the drainable set');
+
+      await svc.debugTrySync('second cycle');
+
+      expect(api.saveBatchCallCount, 1,
+          reason: 'a second push with nothing drainable must not happen at all');
+      expect(api.savedBatchIds.single.toSet(), {'r-ok', 'r-big'},
+          reason: 'the first push is unchanged — parking is a verdict on the '
+              'result, not a filter on the attempt');
+    });
+
+    test('a blocked run alongside a retryable one parks only the blocked one',
+        () async {
+      await store.save(makeRun('r-retry'));
+      await store.save(makeRun('r-big'));
+      final api = _FakeApiClient()
+        ..saveBatchFailedIds = {'r-retry'}
+        ..saveBatchBlockedIds = {'r-big': RunPushBlockReason.trackTooLarge};
+      final svc = SyncService(apiClient: api, runStore: store);
+
+      await svc.debugTrySync('test');
+
+      expect(store.unsyncedRuns.map((r) => r.id), ['r-retry']);
+      expect(store.blockedRuns.keys, ['r-big']);
     });
 
     test(
@@ -585,12 +633,17 @@ void main() {
       final svc = SyncService(apiClient: api, runStore: store);
 
       svc.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      // _trySync is fire-and-forget from the observer; let microtasks drain.
-      await Future<void>.delayed(Duration.zero);
-      // The sync future itself is async; let one more macrotask round trip.
-      await pumpEventQueue();
+      // Await the cycle itself, not a proxy for it. `pumpEventQueue()` used to
+      // stand in here, and it returns when the event loop goes quiet for a
+      // bounded number of turns — which the batch push satisfies long before
+      // `markManySynced` has finished writing. The cycle then outlived the
+      // test and raced this group's teardown into the store directory, which
+      // is CI run 33690185523's `errno 39`. See decisions § 991.
+      await svc.debugInFlightSync;
 
       expect(api.saveBatchCallCount, 1);
+      expect(svc.debugInFlightSync, isNull,
+          reason: 'the cycle must have finished, not merely started');
     });
 
     test('didChangeAppLifecycleState(paused) does NOT trigger a sync',
@@ -614,8 +667,7 @@ void main() {
       final api = _FakeApiClient();
       final svc = SyncService(apiClient: api, runStore: store);
 
-      svc.debugOnConnectivity([ConnectivityResult.wifi]);
-      await pumpEventQueue();
+      await svc.debugOnConnectivity([ConnectivityResult.wifi]);
 
       expect(api.saveBatchCallCount, 1);
     });
@@ -626,14 +678,15 @@ void main() {
       final api = _FakeApiClient();
       final svc = SyncService(apiClient: api, runStore: store);
 
-      svc.debugOnConnectivity([ConnectivityResult.mobile]);
-      await pumpEventQueue();
+      // Awaited, not pumped: the cycle does real disk I/O, and while it
+      // is still in flight the reentrancy guard drops the next trigger
+      // outright — so a pumped second event asserts one push, not two.
+      await svc.debugOnConnectivity([ConnectivityResult.mobile]);
       // The first sync drained both runs in one batch; mark them so a
       // second connectivity event has fresh work to do.
       await store.save(makeRun('r-after-mobile'));
 
-      svc.debugOnConnectivity([ConnectivityResult.ethernet]);
-      await pumpEventQueue();
+      await svc.debugOnConnectivity([ConnectivityResult.ethernet]);
 
       // Two distinct sync cycles → two batch pushes.
       expect(api.saveBatchCallCount, 2);
@@ -644,8 +697,7 @@ void main() {
       final api = _FakeApiClient();
       final svc = SyncService(apiClient: api, runStore: store);
 
-      svc.debugOnConnectivity([ConnectivityResult.none]);
-      await pumpEventQueue();
+      await svc.debugOnConnectivity([ConnectivityResult.none]);
 
       expect(api.saveBatchCallCount, 0);
     });
@@ -659,8 +711,8 @@ void main() {
       final api = _FakeApiClient();
       final svc = SyncService(apiClient: api, runStore: store);
 
-      svc.debugOnConnectivity([ConnectivityResult.bluetooth, ConnectivityResult.wifi]);
-      await pumpEventQueue();
+      await svc
+          .debugOnConnectivity([ConnectivityResult.bluetooth, ConnectivityResult.wifi]);
 
       expect(api.saveBatchCallCount, 1);
     });
@@ -672,8 +724,7 @@ void main() {
       final api = _FakeApiClient();
       final svc = SyncService(apiClient: api, runStore: store);
 
-      svc.debugOnConnectivity([ConnectivityResult.bluetooth]);
-      await pumpEventQueue();
+      await svc.debugOnConnectivity([ConnectivityResult.bluetooth]);
 
       expect(api.saveBatchCallCount, 0);
     });
@@ -687,8 +738,11 @@ void main() {
       final svc = SyncService(apiClient: api, runStore: store);
 
       svc.start();
-      // Wait for the startup _trySync future.
-      await pumpEventQueue();
+      // The startup cycle itself, not a bounded number of event-loop turns:
+      // the batch push settles the loop long before `markManySynced` has
+      // finished writing, so a pumped wait leaves the cycle running into this
+      // group's teardown (decisions § 991).
+      await svc.debugInFlightSync;
 
       expect(api.saveBatchCallCount, 1, reason: 'startup _trySync should fire');
 
@@ -696,8 +750,9 @@ void main() {
       // observer. Save a fresh run, simulate a resume.
       await store.save(makeRun('r-2'));
       svc.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await pumpEventQueue();
+      await svc.debugInFlightSync;
       expect(api.saveBatchCallCount, 2);
+      expect(svc.debugInFlightSync, isNull);
 
       svc.stop();
     });
@@ -707,9 +762,9 @@ void main() {
       final api = _FakeApiClient();
       final svc = SyncService(apiClient: api, runStore: store);
       svc.start();
-      // Allow startup _trySync to settle (no runs to push, so it's a
-      // no-op anyway).
-      await pumpEventQueue();
+      // Let the startup cycle finish (no runs to push, so it's a no-op
+      // anyway) rather than assuming a pumped loop outran it.
+      await svc.debugInFlightSync;
       svc.stop();
 
       // After stop, lifecycle events on the binding don't route to us

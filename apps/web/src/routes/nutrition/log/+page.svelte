@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import FoodLogEditor from '$lib/components/FoodLogEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 </script>
 
 <svelte:head><title>{m('nutrition.logHeading')} — Threkir</title></svelte:head>
@@ -15,7 +15,7 @@
 		<h1>{m('nutrition.logHeading')}</h1>
 	</header>
 
-	<FoodLogEditor oncreated={() => goto('/nutrition')} />
+	<LogFoodPanel oncreated={() => goto('/nutrition')} photoOpen />
 </div>
 
 <style>

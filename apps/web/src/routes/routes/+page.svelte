@@ -1,23 +1,31 @@
 <script lang="ts">
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { handleTablistKeydown } from '$lib/util/tablist';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { fetchRoutesWithError, setRouteStar } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import ImportRoute from '$lib/components/ImportRoute.svelte';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import RouteExplorer from '$lib/components/RouteExplorer.svelte';
-	import RouteTrackPreview from '$lib/components/RouteTrackPreview.svelte';
-	import type { Route } from '$lib/types';
+	import { handleTablistKeydown } from '#lib/util/tablist.ts';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
+	import { fetchRoutesWithError, setRouteStar } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { fold, compareFoldedNames } from '#lib/segments/catalogue_browse.ts';
+	import ImportRoute from '#lib/components/ImportRoute.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RouteExplorer from '#lib/components/RouteExplorer.svelte';
+	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import type { Snapshot } from './$types';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	let tab = $state<'mine' | 'explore' | 'heatmap'>('mine');
-	let routes = $state<Route[]>([]);
+	let routes = $state<RouteListItem[]>([]);
 	let loading = $state(true);
 	let fetchError = $state<string | null>(null);
 	let showImport = $state(false);
@@ -56,15 +64,20 @@
 	/// on mount discards its result instead of clobbering the captured
 	/// list on back-nav from a route-detail page.
 	let fetchGen = $state(0);
+	/// The list-freshness token `routes` was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 
 	async function load() {
 		loading = true;
 		fetchError = null;
 		const gen = ++fetchGen;
+		const token = listToken('routes');
 		const result = await fetchRoutesWithError();
 		if (gen !== fetchGen) return;
 		routes = result.routes;
-		fetchError = result.error;
+		fetchError = result.error ? errorCopy(result.error, m, 'routes: fetchError') : null;
+		if (!result.error) loadedToken = token;
 		loading = false;
 	}
 
@@ -81,20 +94,19 @@
 		tab = next;
 		const path = next === 'mine' ? '/routes' : `/routes?tab=${next}`;
 		goto(path, {
-			replaceState: true,
-			noScroll: true,
-			keepFocus: true,
+			replace: true,
+			reset: false,
 		});
 	}
 
 	onMount(() => {
-		const initial = $page.url.searchParams.get('tab');
+		const initial = page.url.searchParams.get('tab');
 		if (initial === 'explore') tab = 'explore';
 		else if (initial === 'heatmap') {
 			// Deep-link compat: `/routes?tab=heatmap` now bounces to
 			// the standalone `/routes/heatmap` page. Use replaceState
 			// so the back button skips the redirect hop.
-			void goto('/routes/heatmap', { replaceState: true });
+			void goto('/routes/heatmap', { replace: true });
 			return;
 		}
 		// Snapshot restore (SvelteKit back-nav) runs BEFORE onMount and
@@ -129,6 +141,10 @@
 	// mi-mode user would still see the metric thresholds even though
 	// the labels read in miles.
 	const METRES_PER_MILE = 1609.344;
+	function shown(r: RouteListItem): number {
+		return routeDisplayDistanceM(r.distance_m, r.official_distance_m);
+	}
+
 	function inDistanceBucket(meters: number, b: DistanceBucket): boolean {
 		const unitMetres = getUnit() === 'mi' ? METRES_PER_MILE : 1000;
 		const v = meters / unitMetres;
@@ -149,34 +165,43 @@
 	let distanceUnitLabel = $derived(getUnit() === 'mi' ? 'mi' : 'km');
 
 	let filteredRoutes = $derived.by(() => {
-		const q = search.trim().toLowerCase();
+		// Folded on BOTH sides of the comparison, never `toLowerCase`. The two
+		// runtimes' own lower-case answers differ at 466 code points, and the one
+		// reachable in Latin text is U+0130: `'İstanbul Loop'.toLowerCase()` is
+		// `i̇stanbul loop` in a browser — an `i` plus a combining dot — which does
+		// NOT contain `istanbul`, while Dart's simple mapping drops the dot and
+		// does. So the same route was findable by typing `istanbul` on the phone
+		// and not here (decisions § 1337). Folding also strips the accent, which
+		// is what lets `zurich` reach `Zürich Loop` from a keyboard without one.
+		const q = fold(search.trim());
 		const out = routes.filter((r) => {
 			if (starredOnly && !r.is_starred) return false;
 			if (surfaceFilter !== 'any' && r.surface !== surfaceFilter) return false;
-			if (!inDistanceBucket(r.distance_m, distanceFilter)) return false;
+			if (!inDistanceBucket(shown(r), distanceFilter)) return false;
 			if (q) {
-				const name = (r.name ?? '').toLowerCase();
-				if (!name.includes(q)) return false;
+				if (!fold(r.name ?? '').includes(q)) return false;
 			}
 			return true;
 		});
 		switch (sortKey) {
 			case 'newest':
 				out.sort((a, b) =>
-					(b.created_at ?? '').localeCompare(a.created_at ?? ''),
+					compareOrdinal(b.created_at ?? '', a.created_at ?? ''),
 				);
 				break;
 			case 'longest':
-				out.sort((a, b) => b.distance_m - a.distance_m);
+				out.sort((a, b) => shown(b) - shown(a));
 				break;
 			case 'shortest':
-				out.sort((a, b) => a.distance_m - b.distance_m);
+				out.sort((a, b) => shown(a) - shown(b));
 				break;
 			case 'most_run':
 				out.sort((a, b) => (b.run_count ?? 0) - (a.run_count ?? 0));
 				break;
 			case 'az':
-				out.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+				out.sort((a, b) =>
+					compareFoldedNames(a.name ?? '', a.id, b.name ?? '', b.id),
+				);
 				break;
 		}
 		return out;
@@ -210,19 +235,20 @@
 		routes = routes.map((r) => (r.id === routeId ? { ...r, is_starred: next } : r));
 		try {
 			await setRouteStar(routeId, next);
+			loadedToken = listToken('routes');
 		} catch (e) {
 			routes = routes.map((r) => (r.id === routeId ? { ...r, is_starred: !next } : r));
 			showToast(
 				next
-					? m('routesPage.starError', { error: String(e) })
-					: m('routesPage.unstarError', { error: String(e) }),
+					? m('routesPage.starError', { error: errorCopy(e, m, 'routesPage.starError') })
+					: m('routesPage.unstarError', { error: errorCopy(e, m, 'routesPage.unstarError') }),
 				'error',
 			);
 		}
 	}
 
 	export const snapshot: Snapshot<{
-		routes: Route[];
+		routes: RouteListItem[];
 		tab: 'mine' | 'explore' | 'heatmap';
 		search: string;
 		surfaceFilter: SurfaceFilter;
@@ -230,6 +256,7 @@
 		sortKey: SortKey;
 		starredOnly: boolean;
 		scrollY: number;
+		listToken: string;
 	}> = {
 		capture: () => ({
 			routes,
@@ -240,12 +267,9 @@
 			sortKey,
 			starredOnly,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
+			listToken: loadedToken,
 		}),
 		restore: (s) => {
-			// Invalidate any in-flight load() the mount-time path may have
-			// already kicked off so it doesn't overwrite the captured list.
-			fetchGen++;
-			routes = s.routes;
 			tab = s.tab;
 			search = s.search;
 			surfaceFilter = s.surfaceFilter;
@@ -253,6 +277,16 @@
 			sortKey = s.sortKey;
 			starredOnly = s.starredOnly;
 			filtersHydrated = true;
+			// A route was written since the list was loaded (saved, edited,
+			// starred or deleted on its detail page, or a run moved its
+			// run_count): keep the tab and filters, leave `routes` empty and
+			// `loading` set so onMount fetches.
+			if (isListStale('routes', s.listToken)) return;
+			// Invalidate any in-flight load() the mount-time path may have
+			// already kicked off so it doesn't overwrite the captured list.
+			fetchGen++;
+			routes = s.routes;
+			loadedToken = s.listToken;
 			loading = false;
 			// SvelteKit's auto scroll-restoration runs before the list has
 			// rendered, so the page is too short and scroll falls back to
@@ -317,18 +351,18 @@
 	{#if tab === 'mine'}
 		{#if loading}
 			<div class="filter-row filter-row-skel" aria-hidden="true">
-				<span class="skel skel-search"></span>
-				<span class="skel skel-pill"></span>
-				<span class="skel skel-pill"></span>
-				<span class="skel skel-pill"></span>
+				<span class="skel-search"><SkeletonBlock height="2.25rem" radius="var(--radius-md)" /></span>
+				<SkeletonBlock height="2rem" width="7rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="2rem" width="7rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="2rem" width="7rem" radius="var(--radius-md)" />
 			</div>
 			<div class="route-grid" aria-hidden="true">
 				{#each Array(6) as _, i (i)}
 					<div class="skel-card">
-						<span class="skel skel-thumb"></span>
+						<SkeletonBlock height="9rem" radius="0" />
 						<div class="skel-card-body">
-							<span class="skel skel-line skel-w-60"></span>
-							<span class="skel skel-line skel-w-40"></span>
+							<SkeletonBlock height="0.75rem" width="60%" />
+							<SkeletonBlock height="0.75rem" width="40%" />
 						</div>
 					</div>
 				{/each}
@@ -344,13 +378,8 @@
 				<button class="btn btn-outline" onclick={load}>{m('routesPage.retry')}</button>
 			</div>
 		{:else if routes.length === 0}
-			<div class="empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">route</span>
-				<h3>{m('routesPage.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('routesPage.emptyText')}
-				</p>
-				<div class="empty-actions">
+			<EmptyState icon="route" title={m('routesPage.emptyTitle')} text={m('routesPage.emptyText')} mascot data-testid="routes-empty">
+				{#snippet actions()}
 					<a href="/routes/new" class="btn btn-primary">
 						<span class="material-symbols" aria-hidden="true">add</span>
 						{m('routesPage.buildRoute')}
@@ -367,8 +396,8 @@
 						<span class="material-symbols" aria-hidden="true">explore</span>
 						{m('routesPage.browseCommunity')}
 					</button>
-				</div>
-			</div>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<!-- Single-rail toolbar: search grows to fill, selects + chips +
 			     meta share the same row so the toolbar never burns more than
@@ -399,9 +428,9 @@
 				<div class="select-group">
 					<select bind:value={surfaceFilter} class="toolbar-select" aria-label={m('routesPage.surfaceLabel')}>
 						<option value="any">{m('routesPage.surfaceAny')}</option>
-						<option value="road">{m('routesPage.surfaceRoad')}</option>
-						<option value="trail">{m('routesPage.surfaceTrail')}</option>
-						<option value="mixed">{m('routesPage.surfaceMixed')}</option>
+						<option value="road">{routeSurfaceLabel('road')}</option>
+						<option value="trail">{routeSurfaceLabel('trail')}</option>
+						<option value="mixed">{routeSurfaceLabel('mixed')}</option>
 					</select>
 					<select bind:value={distanceFilter} class="toolbar-select" aria-label={m('routesPage.distanceLabel')}>
 						<option value="any">{m('routesPage.distanceAny')}</option>
@@ -455,32 +484,27 @@
 			</div>
 
 			{#if filteredRoutes.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-					<h3>{m('routesPage.noMatchTitle')}</h3>
-					<p class="empty-text">
-						{m('routesPage.noMatchText')}
-					</p>
-					<div class="empty-actions">
+				<EmptyState
+					icon="filter_alt_off"
+					title={m('routesPage.noMatchTitle')}
+					text={m('routesPage.noMatchText')}
+				>
+					{#snippet actions()}
 						<button type="button" class="btn btn-primary" onclick={clearFilters}>
 							{m('routesPage.clearFilters')}
 						</button>
-					</div>
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="route-grid">
 					{#each filteredRoutes as route (route.id)}
 						<a href="/routes/{route.id}" class="route-card">
 							<div class="route-map-placeholder">
-								{#if route.waypoints && route.waypoints.length > 1}
-									<RouteTrackPreview
-										routeId={route.id}
-										waypoints={route.waypoints}
-										ownerUserId={route.user_id}
-									/>
-								{:else}
-									<span class="material-symbols" aria-hidden="true">route</span>
-								{/if}
+								<RouteTrackPreview
+									routeId={route.id}
+									waypoints={route.waypoints ?? []}
+									ownerUserId={route.user_id}
+								/>
 								{#if auth.user?.id === route.user_id}
 									<button
 										type="button"
@@ -502,13 +526,15 @@
 							<div class="route-info">
 								<h3>{route.name}</h3>
 								<div class="route-meta">
-									<span>{formatDistance(route.distance_m)}</span>
+									<span>{formatDistance(shown(route))}</span>
 									{#if route.elevation_m}
 										<span class="meta-sep">&middot;</span>
-										<span>{m('routesPage.elevation', { m: route.elevation_m })}</span>
+										<span>{m('routesPage.elevation', { elevation: formatElevation(route.elevation_m) })}</span>
 									{/if}
-									<span class="meta-sep">&middot;</span>
-									<span class="surface-tag">{route.surface}</span>
+									{#if route.surface}
+										<span class="meta-sep">&middot;</span>
+										<span class="surface-tag">{routeSurfaceLabel(route.surface)}</span>
+									{/if}
 								</div>
 							</div>
 						</a>
@@ -597,48 +623,6 @@
 	.error-banner .material-symbols {
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
-	}
-
-	/* Empty-state card — same shape as /runs, /plans, /dashboard. Card
-	   with icon, h3, explainer, primary CTA + secondary actions. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	.route-grid {
@@ -739,12 +723,18 @@
 		margin-bottom: var(--space-xs);
 	}
 
+	/* Wraps between figures, never inside one: a number keeps its unit. */
 	.route-meta {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-xs);
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
+	}
+
+	.route-meta > span {
+		white-space: nowrap;
 	}
 
 	.meta-sep {
@@ -922,32 +912,13 @@
 		color: var(--color-primary-hover);
 	}
 
-	/* Skeleton — same shimmer language as /runs + /dashboard. Mirrors
+	/* Skeleton (SkeletonBlock). Mirrors
 	   the real card layout so the page lands at its true height
 	   immediately and the data swap doesn't shift the grid. */
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-search {
+		display: block;
 		flex: 1 1 18rem;
 		min-width: 12rem;
-		height: 2.25rem;
-		border-radius: var(--radius-md);
-	}
-	.skel-pill {
-		width: 7rem;
-		height: 2rem;
-		border-radius: var(--radius-md);
 	}
 	.skel-card {
 		background: var(--color-surface);
@@ -956,32 +927,14 @@
 		overflow: hidden;
 		pointer-events: none;
 	}
-	.skel-thumb {
-		display: block;
-		width: 100%;
-		height: 9rem;
-		border-radius: 0;
-	}
 	.skel-card-body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
 		padding: var(--space-md) var(--space-lg);
 	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
 	.filter-row-skel {
 		gap: var(--space-sm);
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 
 	.sr-only {

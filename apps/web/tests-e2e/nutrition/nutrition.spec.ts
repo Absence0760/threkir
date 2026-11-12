@@ -1,8 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
-import { waterStorageKey } from '../fixtures/helpers';
+import type { BrowserContext, Page } from '@playwright/test';
+
+import { browserDateOf, noonOnBrowserDay, waterStorageKey } from '../fixtures/dates';
+import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
+import { hydrationTargetMl } from '../../src/lib/nutrition/hydration';
 
 /**
  * /nutrition — the Phase 4 nutrition module (docs/features/multi_modal.md
@@ -48,12 +54,15 @@ test.describe('/nutrition — manual log, render, water', () => {
 		await expect(row.locator('.item-kcal')).toHaveText('350');
 
 		// Backend row exists, owned by USER_A.
-		const { data: created } = await admin
-			.from('food_log')
-			.select('id, item_name, calories, meal_slot')
-			.eq('user_id', USER_A.id)
-			.eq('item_name', item);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'food_log by user_id+item_name',
+			admin
+				.from('food_log')
+				.select('id, item_name, calories, meal_slot')
+				.eq('user_id', USER_A.id)
+				.eq('item_name', item)
+		);
+		expect(created.length).toBe(1);
 		expect(created![0].meal_slot).toBe('breakfast');
 
 		// Water tracker increments by one 250 ml unit.
@@ -91,12 +100,15 @@ test.describe('/nutrition — manual log, render, water', () => {
 		await expect(row).toBeVisible();
 		await expect(row.locator('.item-kcal')).toHaveText('420');
 
-		const { data: created } = await admin
-			.from('food_log')
-			.select('id, meal_slot')
-			.eq('user_id', USER_A.id)
-			.eq('item_name', item);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'food_log by user_id+item_name',
+			admin
+				.from('food_log')
+				.select('id, meal_slot')
+				.eq('user_id', USER_A.id)
+				.eq('item_name', item)
+		);
+		expect(created.length).toBe(1);
 		expect(created![0].meal_slot).toBe('lunch');
 
 		await admin.from('food_log').delete().eq('id', created![0].id);
@@ -157,12 +169,15 @@ test.describe('/nutrition — manual log, render, water', () => {
 
 		// The logged row carries the extended nutrients with sodium/cholesterol
 		// stored in mg.
-		const { data: created } = await admin
-			.from('food_log')
-			.select('id, fiber_g, sugar_g, sodium_mg, saturated_fat_g, cholesterol_mg')
-			.eq('user_id', USER_A.id)
-			.eq('item_name', item);
-		expect(created?.length).toBe(1);
+		const created = await readRows(
+			'food_log by user_id+item_name',
+			admin
+				.from('food_log')
+				.select('id, fiber_g, sugar_g, sodium_mg, saturated_fat_g, cholesterol_mg')
+				.eq('user_id', USER_A.id)
+				.eq('item_name', item)
+		);
+		expect(created.length).toBe(1);
 		expect(Number(created![0].fiber_g)).toBe(4);
 		expect(Number(created![0].sugar_g)).toBe(10);
 		expect(Number(created![0].sodium_mg)).toBe(500);
@@ -245,46 +260,6 @@ test.describe('/nutrition — manual log, render, water', () => {
 		await expect(banner).toHaveCount(0, { timeout: 10_000 });
 	});
 
-	test('water tracker shows a daily goal + remaining, and flips to reached', async ({ page }) => {
-		await page.goto('/nutrition');
-
-		// The water card now shows "consumed / target L" and a remaining chip
-		// (the seed user has body metrics so the goal is bodyweight-derived;
-		// even without them a flat 2 L baseline target renders).
-		const amount = page.locator('.water-amount');
-		await expect(amount).toBeVisible({ timeout: 10_000 });
-		await expect(amount).toContainText(/\/\s*[\d.]+ L/);
-
-		const chip = page.getByTestId('water-budget');
-		await expect(chip).toBeVisible();
-		await expect(chip).toContainText(/ml left/);
-		const beforeText = await chip.innerText();
-		const beforeRemaining = parseInt(beforeText.replace(/\D/g, ''), 10);
-
-		// One 250 ml add reduces the remaining by exactly one unit.
-		await page.getByTestId('add-water').click();
-		await expect(chip).toContainText(`${beforeRemaining - 250} ml left`);
-
-		// Drive the chip across the goal: seed the per-day counter to one unit
-		// below the target (parsed from the "X / Y L" readout), reload, and the
-		// final add must flip the chip + pips to the reached state.
-		const targetL = parseFloat((await amount.innerText()).split('/')[1].replace(/[^\d.]/g, ''));
-		const targetMl = Math.round(targetL * 1000);
-		await page.evaluate(
-			({ key, ml }) => localStorage.setItem(key, String(ml)),
-			{ key: waterStorageKey(USER_A.id), ml: targetMl - 250 },
-		);
-		await page.reload();
-		await expect(chip).toContainText(/ml left/);
-		await page.getByTestId('add-water').click();
-		await expect(chip).toContainText('Goal reached');
-		await expect(page.locator('.water-pips')).toHaveClass(/water-pips-reached/);
-
-		// Reset the per-day localStorage counter so the shared seed user starts
-		// clean on the next run (the tracker is client-only, not a DB row).
-		await page.evaluate((key) => localStorage.removeItem(key), waterStorageKey(USER_A.id));
-	});
-
 	test('deleting a food entry defers the delete: Undo brings the row back', async ({
 		page
 	}) => {
@@ -322,8 +297,11 @@ test.describe('/nutrition — manual log, render, water', () => {
 			// The delete was DEFERRED, never performed: the backend row was
 			// untouched the whole time. Checked after the undo so the assertion
 			// can't race the window — once undone, nothing can delete it.
-			const { data: after } = await admin.from('food_log').select('id').eq('id', created!.id);
-			expect(after?.length ?? 0).toBe(1);
+			const after = await readRows(
+				'food_log by id',
+				admin.from('food_log').select('id').eq('id', created!.id)
+			);
+			expect(after.length).toBe(1);
 		} finally {
 			await admin.from('food_log').delete().eq('id', created!.id);
 		}
@@ -412,50 +390,6 @@ test.describe('/nutrition — manual log, render, water', () => {
 		}
 	});
 
-	test('eating past the calorie target shows an over-budget signal', async ({ page }) => {
-		const admin = getAdminClient();
-		// One enormous entry today guarantees the day is over any reasonable
-		// target regardless of other rows already logged in the shared seed DB.
-		const startedAt = new Date().toISOString();
-		const { data: created } = await admin
-			.from('food_log')
-			.insert({
-				user_id: USER_A.id,
-				started_at: startedAt,
-				item_name: `E2E Feast ${Date.now()}`,
-				calories: 9000,
-				meal_slot: 'dinner',
-			})
-			.select('id')
-			.single();
-
-		try {
-			await page.goto('/nutrition');
-			// Headline chip flips from "left" to "over" (the seed user has body
-			// metrics, so targets — and therefore the budget chip — render).
-			const chip = page.getByTestId('calorie-budget');
-			await expect(chip).toBeVisible({ timeout: 10_000 });
-			await expect(chip).toContainText(/kcal over/);
-			await expect(chip).toHaveClass(/budget-over/);
-
-			// The calorie (hero) ring recolours to the over-budget state, which
-			// was previously indistinguishable from an exactly-on-target day.
-			const heroRing = page.locator('.ring-hero');
-			await expect(heroRing).toHaveClass(/ring-over/);
-			await expect(heroRing.locator('.ring-pct-over')).toBeVisible();
-
-			// The 7-day trend now compares the logged-day average to the goal.
-			// Exact direction depends on the seed user's week of history, so
-			// assert the chip renders wired (the math is unit-tested precisely);
-			// it must show one of the three goal-comparison states.
-			const weekDelta = page.getByTestId('week-delta');
-			await expect(weekDelta).toBeVisible();
-			await expect(weekDelta).toContainText(/goal/);
-		} finally {
-			await admin.from('food_log').delete().eq('id', created!.id);
-		}
-	});
-
 	test("today's run raises the calorie goal (dynamic TDEE base + exercise)", async ({
 		page,
 	}) => {
@@ -465,27 +399,24 @@ test.describe('/nutrition — manual log, render, water', () => {
 		// user has body metrics, so targets are non-null and the breakdown line
 		// renders.
 		//
-		// The page buckets runs into "today" by the BROWSER's calendar day, and
-		// the Playwright browser is pinned to UTC (timezoneId in the config)
-		// while this Node process runs in the workstation's local zone. A
-		// past-offset timestamp ("2h ago") computed here could land on a
-		// *different* UTC calendar day than the browser's "today" — which is
+		// Seeded at the current instant rather than at a day offset: the page
+		// buckets runs into "today" by the browser's calendar day, and a
+		// past-offset timestamp ("2h ago") can cross that boundary — which is
 		// exactly how this flaked on shard 7 of run 27585503400 at 00:31 UTC:
-		// the run fell on the previous UTC day, was filtered out of todayRuns,
-		// exerciseKcal went to 0, and the breakdown never rendered. Seed at the
-		// current instant, which both Node and the UTC browser agree is today
-		// (and which the page never excludes), matching the other seeds here.
+		// the run fell on the previous day, was filtered out of todayRuns,
+		// exerciseKcal went to 0, and the breakdown never rendered. Now is the
+		// one instant every zone agrees is today, and the page never excludes
+		// it as future.
 		const nowMs = Date.now();
 		const startedAt = new Date(nowMs).toISOString();
-		const utcToday = new Date(nowMs).toISOString().slice(0, 10);
 		// Loud precondition: guard against a future edit reintroducing an offset
-		// that crosses the UTC midnight boundary — the seed must fall on the
-		// browser-UTC "today" the page filters on, or fail here with a clear
-		// message instead of a confusing 10s element-not-found timeout below.
+		// that crosses the day boundary — the seed must fall on the browser's
+		// "today" the page filters on, or fail here with a clear message instead
+		// of a confusing 10s element-not-found timeout below.
 		expect(
-			startedAt.slice(0, 10),
-			'seeded run must fall on the browser-UTC "today" the page buckets exercise calories into',
-		).toBe(utcToday);
+			browserDateOf(startedAt),
+			'seeded run must fall on the browser "today" the page buckets exercise calories into',
+		).toBe(browserDateOf(nowMs));
 		const { data: run } = await admin
 			.from('runs')
 			.insert({
@@ -552,5 +483,126 @@ test.describe('/nutrition — manual log, render, water', () => {
 		} finally {
 			await admin.from('food_log').delete().eq('id', created!.id);
 		}
+	});
+});
+
+/**
+ * The budget chips read every input the day's goal is built from: body
+ * metrics, the Art 9 consent stamp, activity/goal settings, the day's runs and
+ * gym sessions, a governing nutrition plan, the week's food log, and the
+ * per-day water counter. On the shared seed user any of those can be left
+ * behind by another spec, so these two cases mint their own user, seed exactly
+ * those inputs, and delete it afterwards (the auth.users delete cascades to
+ * every row seeded here).
+ */
+test.describe('/nutrition — budget chips on an isolated user', () => {
+	const WEIGHT_KG = 80;
+	// No run or gym session is seeded, so no exercise add-on: 80 kg × 35 ml.
+	const WATER_TARGET_ML = hydrationTargetMl(WEIGHT_KG, 0);
+
+	let user: SagaUser;
+	let ctx: BrowserContext;
+	let page: Page;
+
+	test.beforeAll(async () => {
+		const admin = getAdminClient();
+		[user] = await createSagaUsers(1, { displayNames: ['Nutrition Budget Saga'] });
+		const { error: profErr } = await admin
+			.from('user_profiles')
+			.update({
+				height_cm: 178,
+				date_of_birth: '1992-09-12',
+				gender: 'male',
+				// A calorie target reads the age record, an Art 9 use that
+				// `healthUseDob` withholds until consent is on record (§ 722).
+				health_data_consent_at: new Date().toISOString(),
+			})
+			.eq('id', user.id);
+		if (profErr) throw profErr;
+		const { error: bmErr } = await admin
+			.from('body_metrics')
+			.insert({ user_id: user.id, weight_kg: WEIGHT_KG, recorded_at: noonOnBrowserDay() });
+		if (bmErr) throw bmErr;
+		const { error: setErr } = await admin.from('user_settings').upsert({
+			user_id: user.id,
+			prefs: { nutrition_activity_level: 'moderate', nutrition_goal: 'maintain' },
+		});
+		if (setErr) throw setErr;
+	});
+
+	test.afterAll(async () => {
+		if (user) await deleteSagaUsers([user]);
+	});
+
+	test.beforeEach(async ({ browser }) => {
+		ctx = await browser.newContext({ storageState: user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		page = await ctx.newPage();
+	});
+
+	test.afterEach(async () => {
+		await ctx?.close();
+	});
+
+	test('water tracker shows a daily goal + remaining, and flips to reached', async () => {
+		await page.goto('/nutrition');
+
+		const amount = page.locator('.water-amount');
+		await expect(amount).toBeVisible({ timeout: 10_000 });
+		await expect(amount).toContainText(`/ ${WATER_TARGET_ML / 1000} L`);
+
+		const chip = page.getByTestId('water-budget');
+		// Issue #902: the chip states what is left in the readout's own unit,
+		// where it used to state millilitres beside a litre readout.
+		await expect(chip).toHaveText(`${WATER_TARGET_ML / 1000} L left`);
+
+		// One 250 ml add reduces the remaining by exactly one unit.
+		await page.getByTestId('add-water').click();
+		await expect(chip).toHaveText(`${(WATER_TARGET_ML - 250) / 1000} L left`);
+
+		// Drive the chip across the goal: seed the per-day counter to one unit
+		// below the target, reload, and the final add must flip the chip + pips
+		// to the reached state.
+		await page.evaluate(
+			({ key, ml }) => localStorage.setItem(key, String(ml)),
+			{ key: waterStorageKey(user.id), ml: WATER_TARGET_ML - 250 },
+		);
+		await page.reload();
+		await expect(chip).toHaveText('0.25 L left');
+		await page.getByTestId('add-water').click();
+		await expect(chip).toHaveText('Goal reached');
+		await expect(page.locator('.water-pips')).toHaveClass(/water-pips-reached/);
+	});
+
+	test('eating past the calorie target shows an over-budget signal', async () => {
+		const admin = getAdminClient();
+		// The only food this user has ever logged, so the day is over any
+		// target a body-metrics-derived goal can produce.
+		const { error } = await admin.from('food_log').insert({
+			user_id: user.id,
+			started_at: noonOnBrowserDay(),
+			item_name: 'E2E Feast',
+			calories: 9000,
+			meal_slot: 'dinner',
+		});
+		if (error) throw error;
+
+		await page.goto('/nutrition');
+		const chip = page.getByTestId('calorie-budget');
+		await expect(chip).toBeVisible({ timeout: 10_000 });
+		await expect(chip).toContainText(/kcal over/);
+		await expect(chip).toHaveClass(/budget-over/);
+
+		// The calorie (hero) ring recolours to the over-budget state, which
+		// was previously indistinguishable from an exactly-on-target day.
+		const heroRing = page.locator('.ring-hero');
+		await expect(heroRing).toHaveClass(/ring-over/);
+		await expect(heroRing.locator('.ring-pct-over')).toBeVisible();
+
+		// The 7-day trend compares the logged-day average to the goal. With
+		// one 9000 kcal day as the whole history, it is over.
+		const weekDelta = page.getByTestId('week-delta');
+		await expect(weekDelta).toBeVisible();
+		await expect(weekDelta).toHaveClass(/week-delta-over/);
 	});
 });

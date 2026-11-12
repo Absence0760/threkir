@@ -8,6 +8,8 @@ import {
 	localizedGuideMeta,
 	guidesByCategory,
 	nonEmptyCategories,
+	frontmatterDate,
+	estimateReadingMinutes,
 	type GuideIndexEntry,
 } from './guides_index';
 import { CATEGORIES } from './categories';
@@ -96,6 +98,50 @@ test('isEnglishFallback — true when a locale is requested but only English exi
 	assert.equal(isEnglishFallback(entries, 'beta', 'de'), true);
 });
 
+// Two catalogues of one language: the prose is authored for pt-BR only, and a
+// pt-PT reader must not be dropped to English over a regional difference.
+// Before pt-PT was a locale of its own it negotiated onto pt-BR and read the
+// Brazilian guide; making it a real locale must not take that away.
+const twoPortuguese: GuideIndexEntry[] = [
+	entry({ slug: 'gamma', locale: 'en' }),
+	entry({ slug: 'gamma', locale: 'pt-BR', title: 'Gamma BR' }),
+];
+
+test('getGuide — a same-language variant beats the English fallback', () => {
+	assert.equal(getGuide(twoPortuguese, 'gamma', 'pt-PT')?.locale, 'pt-BR');
+});
+
+test('getGuide — the exact locale still wins over a same-language variant', () => {
+	const both = [...twoPortuguese, entry({ slug: 'gamma', locale: 'pt-PT', title: 'Gamma PT' })];
+	assert.equal(getGuide(both, 'gamma', 'pt-PT')?.locale, 'pt-PT');
+});
+
+test('getGuide — an unrelated language still falls back to English', () => {
+	assert.equal(getGuide(twoPortuguese, 'gamma', 'ja')?.locale, 'en');
+});
+
+test('isEnglishFallback — false when a same-language variant is served', () => {
+	// The notice says "this guide is in English". Served the Brazilian file, a
+	// pt-PT reader is reading Portuguese, so the notice would be a lie.
+	assert.equal(isEnglishFallback(twoPortuguese, 'gamma', 'pt-PT'), false);
+});
+
+test('isEnglishFallback — still true for a language with no guide at all', () => {
+	assert.equal(isEnglishFallback(twoPortuguese, 'gamma', 'ja'), true);
+});
+
+test('localizedGuideMeta — a same-language variant titles the card too', () => {
+	// The card and the body must resolve the same way. getGuide serves the
+	// Brazilian body to a pt-PT reader, so an exact-tag-only meta lookup would
+	// put an English title above it — the exact defect this helper exists to
+	// prevent.
+	assert.equal(localizedGuideMeta(twoPortuguese, 'gamma', 'pt-PT')?.title, 'Gamma BR');
+});
+
+test('localizedGuideMeta — an unrelated language still reads the English title', () => {
+	assert.equal(localizedGuideMeta(twoPortuguese, 'gamma', 'ja')?.title, 'A guide');
+});
+
 // ---------------- localizedGuideMeta ----------------
 
 test('localizedGuideMeta — uses the localized title/description, English category', () => {
@@ -144,4 +190,92 @@ test('nonEmptyCategories — only categories with ≥1 guide, in catalogue order
 
 test('nonEmptyCategories — empty index yields no sections', () => {
 	assert.deepEqual(nonEmptyCategories([]), []);
+});
+
+// ─── frontmatter dates arrive as Dates, not the strings the type claimed ───
+//
+// mdsvex parses frontmatter with js-yaml's default schema, which resolves a
+// bare `YYYY-MM-DD` through the YAML 1.1 !!timestamp tag into a Date at UTC
+// midnight. Every reader believed the `string` annotation, so a guide's
+// "last updated" line rendered a day early at any negative UTC offset — the
+// same class decisions.md § 607 fixed in the shared formatters.
+
+test('frontmatterDate reads a YAML timestamp back as the day the author typed', () => {
+	assert.equal(frontmatterDate(new Date(Date.UTC(2026, 5, 15))), '2026-06-15');
+	// Zero-padding on both fields.
+	assert.equal(frontmatterDate(new Date(Date.UTC(2026, 0, 2))), '2026-01-02');
+});
+
+test('frontmatterDate reads UTC components, not local ones', () => {
+	// The whole point: local getters on a UTC-midnight Date hand back the
+	// previous day west of Greenwich, which is the bug being closed.
+	const prior = process.env.TZ;
+	process.env.TZ = 'America/New_York';
+	try {
+		assert.equal(frontmatterDate(new Date(Date.UTC(2026, 5, 15))), '2026-06-15');
+		assert.equal(frontmatterDate(new Date(Date.UTC(2026, 0, 1))), '2026-01-01');
+	} finally {
+		if (prior === undefined) delete process.env.TZ;
+		else process.env.TZ = prior;
+	}
+});
+
+test('frontmatterDate passes a string through and degrades on junk', () => {
+	assert.equal(frontmatterDate('2026-06-15'), '2026-06-15');
+	assert.equal(frontmatterDate(''), '');
+	assert.equal(frontmatterDate(null), '');
+	assert.equal(frontmatterDate(undefined), '');
+	assert.equal(frontmatterDate(new Date('nonsense')), '');
+});
+
+test('frontmatterDate unwraps the serialised UTC-midnight form mdsvex emits', () => {
+	// The shape that actually reaches the built app: js-yaml's Date, run
+	// through JSON.stringify by mdsvex's metadata export.
+	assert.equal(frontmatterDate('2026-06-15T00:00:00.000Z'), '2026-06-15');
+	assert.equal(frontmatterDate('2026-06-15T00:00:00Z'), '2026-06-15');
+});
+
+test('frontmatterDate leaves a real time of day alone', () => {
+	// An instant is not a calendar day, and flattening one would be the same
+	// class of error in the other direction.
+	for (const iso of [
+		'2026-06-15T09:30:00.000Z',
+		'2026-06-15T00:00:00.001Z',
+		'2026-06-15T00:00:00',
+		'2026-06-15T00:00:00+02:00',
+	]) {
+		assert.equal(frontmatterDate(iso), iso, iso);
+	}
+});
+
+test('estimateReadingMinutes counts prose, not markup', () => {
+	// Frontmatter, a fenced block, an image and a link target are all in the
+	// file but none of them is read word by word. The link TEXT is.
+	const markdown = [
+		'---',
+		'title: A guide',
+		'description: Something long enough to skew a short count',
+		'---',
+		'# Heading',
+		'',
+		'```js',
+		'const ignored = "this is not prose and must not be counted at all";',
+		'```',
+		'',
+		'![alt text that is not read aloud](/some/very/long/image/path.png)',
+		'',
+		'See [the pacing guide](/learn/how-to-pace-your-first-race) for more.',
+		'',
+		'- **one** two three',
+	].join('\n');
+	// Counted words: Heading, See, the, pacing, guide, for, more, one, two,
+	// three = 10 -> rounds to the 1-minute floor.
+	assert.equal(estimateReadingMinutes(markdown), 1);
+});
+
+test('estimateReadingMinutes scales with real length and never returns zero', () => {
+	assert.equal(estimateReadingMinutes(''), 1, 'an empty guide still reads as 1');
+	assert.equal(estimateReadingMinutes('word '.repeat(200).trim()), 1);
+	assert.equal(estimateReadingMinutes('word '.repeat(700).trim()), 4);
+	assert.equal(estimateReadingMinutes('word '.repeat(1500).trim()), 8);
 });

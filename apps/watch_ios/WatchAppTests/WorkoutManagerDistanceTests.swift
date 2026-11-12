@@ -2,31 +2,38 @@ import XCTest
 import CoreLocation
 @testable import WatchApp
 
-/// Distance accumulation on the watchOS run recorder — specifically the
-/// pause -> wander -> resume case (issue #371). `pause()` stops location
-/// updates and `resume()` restarts them; the per-fix distance delta must be
-/// measured against a reference (`lastLocationForDistance`) that is CLEARED on
-/// resume, NOT against the last stored track point. Otherwise a runner who
-/// drifts 20-90 m while paused (aid-station wander, GPS reacquisition jitter)
-/// has that movement misattributed as post-resume distance the instant the
-/// first new fix lands — because a 40 m gap falls squarely inside the
-/// `2..<100 m` filter band.
+/// How the watchOS recorder turns fixes into distance: every accepted fix goes
+/// through the spec-v1.1 `GpsDistanceEstimator` (docs/features/gps_distance.md),
+/// whose own arithmetic `GpsDistanceEstimatorTests` pins against the shared
+/// vectors. These tests pin the wiring — the clock it is fed, the CoreLocation
+/// sentinels it is spared, and the pause boundary (issue #371) that must credit
+/// neither the paused span nor the wander across it.
 ///
 /// Constructing `WorkoutManager` is side-effect-free until `start()`, and
-/// `didUpdateLocations` reads only `lastLocationForDistance` / `track` and
-/// appends — it never touches the live `CLLocationManager`, HealthKit, or
-/// timers — so it is safe to drive directly in the test host. Nil-ing
-/// `lastLocationForDistance` between batches reproduces exactly what
-/// `resume()` does at the pause boundary.
+/// `didUpdateLocations`, `pause()` and `resume()` touch no live
+/// `CLLocationManager`, HealthKit session or timer that needs a real run.
 final class WorkoutManagerDistanceTests: XCTestCase {
 
-    private func loc(_ lat: Double, _ lng: Double, accuracy: Double = 5) -> CLLocation {
+    private let base = Date()
+
+    private func loc(
+        _ lat: Double,
+        at seconds: TimeInterval,
+        speed: Double = 2.8,
+        speedAccuracy: Double = 0.3,
+        course: Double = 0,
+        accuracy: Double = 5
+    ) -> CLLocation {
         CLLocation(
-            coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+            coordinate: CLLocationCoordinate2D(latitude: lat, longitude: -0.1),
             altitude: 10,
             horizontalAccuracy: accuracy,
             verticalAccuracy: 5,
-            timestamp: Date()
+            course: course,
+            courseAccuracy: course >= 0 ? 5 : -1,
+            speed: speed,
+            speedAccuracy: speedAccuracy,
+            timestamp: base.addingTimeInterval(seconds)
         )
     }
 
@@ -34,100 +41,233 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         wm.locationManager(CLLocationManager(), didUpdateLocations: locations)
     }
 
-    // MARK: - distanceDelta pure function (the extracted, unit-testable core)
-
-    func testDistanceDeltaInBandIsAdded() {
-        // ~11 m apart (0.0001 deg latitude): inside the 2..<100 band.
-        let a = loc(51.5000, -0.1000)
-        let b = loc(51.5001, -0.1000)
-        let delta = WorkoutManager.distanceDelta(from: a, to: b)
-        XCTAssertGreaterThan(delta, 0)
-        XCTAssertEqual(delta, a.distance(from: b), accuracy: 0.0001)
-    }
-
-    func testDistanceDeltaBelowFloorIsRejected() {
-        // ~1.1 m apart: stationary GPS jitter, below the 2 m floor -> 0.
-        let a = loc(51.5000, -0.1000)
-        let b = loc(51.50001, -0.1000)
-        XCTAssertLessThan(a.distance(from: b), 2)
-        XCTAssertEqual(WorkoutManager.distanceDelta(from: a, to: b), 0)
-    }
-
-    func testDistanceDeltaAboveCeilingIsRejected() {
-        // ~445 m apart: a reacquisition teleport, above the 100 m ceiling -> 0.
-        let a = loc(51.5000, -0.1000)
-        let b = loc(51.5040, -0.1000)
-        XCTAssertGreaterThan(a.distance(from: b), 100)
-        XCTAssertEqual(WorkoutManager.distanceDelta(from: a, to: b), 0)
-    }
-
-    // MARK: - Normal movement still accumulates
-
-    func testConsecutiveFixesAccumulateDistance() {
-        let wm = WorkoutManager()
-        let a = loc(51.5000, -0.1000)
-        let b = loc(51.5001, -0.1000)
-        let c = loc(51.5002, -0.1000)
-        feed(wm, [a, b, c])
-        // First fix establishes the reference (adds nothing); the next two each
-        // add their ~11 m leg.
-        XCTAssertEqual(wm.distanceMetres, a.distance(from: b) + b.distance(from: c), accuracy: 0.01)
+    /// One fix per second heading north at the Doppler speed's pace.
+    private func run(from lat: Double, at start: TimeInterval, seconds: Int, speed: Double = 2.8) -> [CLLocation] {
+        let degPerSecond = speed / 111_195
+        return (0...seconds).map {
+            loc(lat + Double($0) * degPerSecond, at: start + Double($0), speed: speed)
+        }
     }
 
     func testFirstFixEverAddsNoPhantomDistance() {
-        // A run's very first fix has a nil reference, so it must add zero —
-        // the same nil-reference contract resume() relies on.
         let wm = WorkoutManager()
-        feed(wm, [loc(51.5000, -0.1000)])
+        feed(wm, [loc(51.5, at: 0)])
         XCTAssertEqual(wm.distanceMetres, 0)
     }
 
-    // MARK: - The pause -> wander -> resume regression (#371)
+    func testDopplerRunCreditsSpeedTimesElapsed() {
+        let wm = WorkoutManager()
+        feed(wm, run(from: 51.5, at: 0, seconds: 60))
+        XCTAssertEqual(wm.distanceMetres, 2.8 * 60, accuracy: 0.01)
+    }
+
+    func testBatchedDeliveryKeepsEachFixsOwnSpacing() {
+        // CoreLocation can hand over several fixes in one call. They share a
+        // delivery instant, so the estimator's clock has to come from each
+        // fix's timestamp or every fix but the first would be ignored.
+        let wm = WorkoutManager()
+        let fixes = run(from: 51.5, at: 0, seconds: 10)
+        feed(wm, Array(fixes.prefix(1)))
+        feed(wm, Array(fixes.dropFirst()))
+        XCTAssertEqual(wm.distanceMetres, 2.8 * 10, accuracy: 0.01)
+    }
+
+    func testStandingStillWithDopplerCreditsNothing() {
+        // The red-light case: position wanders a few metres, the chip's own
+        // speed says ~0, and the old hop-sum banked every wobble.
+        let wm = WorkoutManager()
+        let wobble = [0.0, 0.00002, -0.00001, 0.00003, 0.0, -0.00002, 0.00001]
+        feed(wm, wobble.enumerated().map { loc(51.5 + $0.element, at: Double($0.offset), speed: 0.1) })
+        XCTAssertEqual(wm.distanceMetres, 0)
+    }
+
+    func testUnknownSpeedFallsBackToThePositionOnlyPath() {
+        // `speed == -1` is CoreLocation's "unknown". Passed through it would
+        // fail the estimator's `>= 0` test anyway, but a negative course with
+        // a real speed must not be read as a bearing either.
+        let wm = WorkoutManager()
+        let degPerSecond = 2.8 / 111_195
+        feed(wm, (0...60).map {
+            loc(51.5 + Double($0) * degPerSecond, at: Double($0), speed: -1, speedAccuracy: -1, course: -1)
+        })
+        XCTAssertGreaterThan(wm.distanceMetres, 2.8 * 60 * 0.8)
+        XCTAssertLessThan(wm.distanceMetres, 2.8 * 60 * 1.2)
+    }
+
+    func testGapOverTenSecondsCreditsTheChordAcrossTheGap() {
+        let wm = WorkoutManager()
+        feed(wm, run(from: 51.5, at: 0, seconds: 20))
+        let before = wm.distanceMetres
+        // 60 s later and ~167 m north: the estimator re-anchors rather than
+        // integrating the jump, and credits the straight line across the gap
+        // less the 1-sigma uncertainty of both ends (spec v1.4), a lower bound
+        // on the path. 103.453 m is scripts/gps_distance/reference.py's figure.
+        feed(wm, [loc(51.5 + 0.0015, at: 80)])
+        XCTAssertEqual(wm.distanceMetres, before + 103.4528, accuracy: 0.001)
+        feed(wm, [loc(51.5 + 0.0015 + 2.8 / 111_195, at: 81)])
+        XCTAssertEqual(wm.distanceMetres, before + 103.4528 + 2.8, accuracy: 0.01)
+    }
+
+    func testACanopyStretchMovesDistanceAndIsStoredButNotOnTheMap() {
+        // Five clean seconds, then ten at 40 m: past the 30 m track gate,
+        // inside the estimator's 50 m cap, Doppler still good. 2.8 m/s over
+        // 15 s by scripts/gps_distance/reference.py. Every one of the 16 fixes
+        // the estimator took is stored, the ten canopy ones flagged offTrack
+        // (docs/features/gps_distance.md § Stored track), so the server's
+        // replay sees the watch's input; the mini-map and its position are
+        // exactly what the six clean fixes alone draw.
+        let wm = WorkoutManager()
+        let degPerSecond = 2.8 / 111_195
+        let fixes = (0...15).map {
+            loc(51.5 + Double($0) * degPerSecond, at: Double($0), accuracy: $0 <= 5 ? 5 : 40)
+        }
+        feed(wm, fixes)
+        XCTAssertEqual(wm.distanceMetres, 2.8 * 15, accuracy: 0.01)
+        XCTAssertEqual(wm.trackPointCount, 16)
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5 + 5 * degPerSecond, accuracy: 1e-12)
+        let cleanOnly = WorkoutManager()
+        feed(cleanOnly, Array(fixes.prefix(6)))
+        XCTAssertEqual(wm.mapTrail, cleanOnly.mapTrail, "the map line is the clean fixes alone")
+        XCTAssertTrue(wm.storedTrackComplete)
+    }
+
+    func testAFixExactlyAtTheTrackGateIsOffTheLine() {
+        // The gate is strict: 30 m is stored flagged, as before it was left out.
+        let wm = WorkoutManager()
+        feed(wm, [loc(51.5, at: 0), loc(51.5 + 2.8 / 111_195, at: 1, accuracy: 30)])
+        XCTAssertEqual(wm.trackPointCount, 2)
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5, accuracy: 1e-12)
+    }
+
+    func testFixPastTheAccuracyCapIsIgnored() {
+        // 51 m is past the estimator's 50 m cap: dropped before it is fed.
+        let wm = WorkoutManager()
+        feed(wm, run(from: 51.5, at: 0, seconds: 5))
+        let banked = wm.distanceMetres
+        feed(wm, [loc(51.6, at: 6, accuracy: 51)])
+        XCTAssertEqual(wm.distanceMetres, banked, accuracy: 0.0001)
+    }
+
+    func testFixAtTheAccuracyCapCreditsItsDopplerNotItsPosition() {
+        // A 50 m fix is weighted, not dropped (spec v1.4): its ~11 km jump is
+        // refused by the innovation gate, but its Doppler still credits the
+        // second, 2.8 m.
+        let wm = WorkoutManager()
+        feed(wm, run(from: 51.5, at: 0, seconds: 5))
+        let banked = wm.distanceMetres
+        feed(wm, [loc(51.6, at: 6, accuracy: 50)])
+        XCTAssertEqual(wm.distanceMetres, banked + 2.8, accuracy: 0.0001)
+    }
+
+    // MARK: - The pause boundary (#371)
 
     func testWanderWhilePausedAddsNoDistanceOnResume() {
         let wm = WorkoutManager()
-
-        // Recording: move ~11 m from A to B.
-        let a = loc(51.5000, -0.1000)
-        let b = loc(51.5001, -0.1000)
-        feed(wm, [a, b])
+        wm.state = .recording
+        feed(wm, run(from: 51.5, at: 0, seconds: 30))
         let bankedBeforePause = wm.distanceMetres
         XCTAssertGreaterThan(bankedBeforePause, 0)
 
-        // resume() clears the delta reference at the pause boundary.
-        wm.lastLocationForDistance = nil
-
-        // The runner wandered ~44 m from B while paused. Were the delta still
-        // measured against B (the bug), this 44 m sits inside the 2..<100 band
-        // and would be added the instant the first post-resume fix lands.
-        let c = loc(51.5005, -0.1000)
-        XCTAssertGreaterThan(WorkoutManager.distanceDelta(from: b, to: c), 40,
-                             "pre-fix behaviour would have added this phantom leg")
-        feed(wm, [c])
+        wm.pause()
         XCTAssertEqual(wm.distanceMetres, bankedBeforePause, accuracy: 0.0001,
-                       "first fix after resume must establish a fresh reference, not bank the pause wander")
+                       "pausing banks the segment, it does not change it")
+        wm.resume()
 
-        // And normal accumulation resumes on the next real leg.
-        let d = loc(51.5006, -0.1000)
-        feed(wm, [d])
-        XCTAssertEqual(wm.distanceMetres, bankedBeforePause + c.distance(from: d), accuracy: 0.01)
+        // Five seconds later and ~44 m away: short enough that one continuous
+        // filter would integrate it, which is why a pause starts a new segment.
+        let resumeLat = 51.5 + 30 * 2.8 / 111_195 + 0.0004
+        feed(wm, [loc(resumeLat, at: 35)])
+        XCTAssertEqual(wm.distanceMetres, bankedBeforePause, accuracy: 0.0001,
+                       "first fix after resume must anchor a fresh segment, not bank the pause wander")
+
+        feed(wm, run(from: resumeLat, at: 35, seconds: 10).dropFirst().map { $0 })
+        XCTAssertEqual(wm.distanceMetres, bankedBeforePause + 2.8 * 10, accuracy: 0.01)
     }
 
-    func testBadAccuracyFixIsIgnoredForDistanceAndReference() {
+    func testLearnedStrideSurvivesEveryPause() {
         let wm = WorkoutManager()
-        let a = loc(51.5000, -0.1000)
-        let b = loc(51.5001, -0.1000)
-        feed(wm, [a, b])
-        let banked = wm.distanceMetres
+        wm.state = .recording
+        let first = wm.distanceEstimator
+        let degPerM = 180.0 / (Double.pi * 6371008.8)
+        first.addFix(t: 0, lat: 45, lng: 7, accuracyM: 5, speedMps: 0, speedAccuracyMps: 0.5, bearingDeg: 0)
+        first.addSteps(t: 0.5, cumulativeSteps: 0)
+        for i in 1...20 {
+            first.addFix(t: Double(i), lat: 45 + 3.0 * Double(i) * degPerM, lng: 7, accuracyM: 5,
+                         speedMps: 3, speedAccuracyMps: 0.5, bearingDeg: 0)
+            first.addSteps(t: Double(i) + 0.5, cumulativeSteps: 3 * i)
+        }
+        XCTAssertEqual(first.strideM ?? -1, 1.0, accuracy: 1e-9)
 
-        // A fix with horizontalAccuracy >= 30 is rejected before it can move
-        // the distance or the reference.
-        feed(wm, [loc(51.5002, -0.1000, accuracy: 50)])
-        XCTAssertEqual(wm.distanceMetres, banked, accuracy: 0.0001)
+        wm.pause()
+        XCTAssertFalse(wm.distanceEstimator === first, "a pause starts a fresh segment")
+        XCTAssertEqual(wm.distanceEstimator.strideM ?? -1, 1.0, accuracy: 1e-9,
+                       "the fresh segment is seeded with the stride the last one learned")
 
-        // The reference is still B, so the next good fix measures against B.
-        let c = loc(51.5002, -0.1000)
-        feed(wm, [c])
-        XCTAssertEqual(wm.distanceMetres, banked + b.distance(from: c), accuracy: 0.01)
+        wm.resume()
+        wm.pause()
+        XCTAssertEqual(wm.distanceEstimator.strideM ?? -1, 1.0, accuracy: 1e-9,
+                       "a segment that learned nothing passes on the stride it carried")
+    }
+
+    /// Each stored fix carries the run's credited distance as `distM`, the
+    /// axis splits and moving time are measured on.
+    func testStoredDistanceIsTheCreditedFigureToTheCentimetre() {
+        XCTAssertEqual(WorkoutManager.storedDistance(0), 0)
+        XCTAssertEqual(WorkoutManager.storedDistance(812.4049), 812.4)
+        XCTAssertNil(WorkoutManager.storedDistance(.nan))
+        XCTAssertNil(WorkoutManager.storedDistance(.infinity))
+        XCTAssertNil(WorkoutManager.storedDistance(-1))
+    }
+
+    func testStopKeepsTheBankedFigure() {
+        let wm = WorkoutManager()
+        wm.state = .recording
+        feed(wm, run(from: 51.5, at: 0, seconds: 30))
+        let live = wm.distanceMetres
+        wm.stop()
+        XCTAssertEqual(wm.finishedRun?.distanceMetres ?? -1, live, accuracy: 0.0001)
+        XCTAssertEqual(wm.finishedRun?.distanceEstimator, WorkoutManager.distanceEstimatorTag)
+        XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, 0)
+        XCTAssertEqual(wm.finishedRun?.distanceStepOverChordMetres, 0)
+        XCTAssertEqual(wm.finishedRun?.distanceSegments, 1)
+    }
+
+    /// A pause with no fix after it opens no segment: the next mark rides the
+    /// next stored fix, and the server's replay counts a segment only where a
+    /// fix starts one.
+    func testTheSegmentCountIsTheStoredTracks() {
+        let wm = WorkoutManager()
+        wm.state = .recording
+        feed(wm, run(from: 51.5, at: 0, seconds: 10))
+        wm.pause()
+        wm.resume()
+        wm.pause()
+        wm.resume()
+        feed(wm, run(from: 51.6, at: 60, seconds: 10))
+        wm.pause()
+        wm.stop()
+        XCTAssertEqual(wm.finishedRun?.distanceSegments, 2)
+
+        let none = WorkoutManager()
+        none.state = .recording
+        none.stop()
+        XCTAssertNil(none.finishedRun?.distanceSegments, "a run with no stored fix claims no segment")
+    }
+
+    /// `fixtures/activity_speed_caps.json` is the phone's
+    /// `ActivityType.maxSpeedMps`, the one table every port's tests read.
+    func testEverySpeedCapMatchesTheSharedFixture() throws {
+        let url = URL(fileURLWithPath: "\(#filePath)")
+            .deletingLastPathComponent() // WatchAppTests
+            .deletingLastPathComponent() // watch_ios
+            .deletingLastPathComponent() // apps
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("fixtures/activity_speed_caps.json")
+        struct Fixture: Decodable { let capsMps: [String: Double] }
+        let caps = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url)).capsMps
+        for activity in RunActivityType.allCases {
+            let want = try XCTUnwrap(caps[activity.rawValue], "fixture has no cap for \(activity.rawValue)")
+            XCTAssertEqual(WorkoutManager.maxSpeedMps(for: activity), want, activity.rawValue)
+        }
     }
 }

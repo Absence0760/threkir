@@ -4,6 +4,7 @@ import {
 	FINISHED_SLACK_MS,
 	isFinishedStale,
 	statusAfterHydrate,
+	statusOnPing,
 } from './live_spectator_status';
 
 const NOW = 1_700_000_000_000;
@@ -82,7 +83,7 @@ test('statusAfterHydrate: in-progress stub (duration 0, no pings) waits honestly
 			hadBacklog: false,
 			nowMs: NOW,
 		}),
-		'waiting',
+		'waiting-gps',
 	);
 });
 
@@ -94,7 +95,7 @@ test('statusAfterHydrate: projected duration with a future end waits, not finish
 			hadBacklog: false,
 			nowMs: NOW,
 		}),
-		'waiting',
+		'waiting-gps',
 	);
 });
 
@@ -106,6 +107,18 @@ test('statusAfterHydrate: unparseable started_at waits rather than fabricating a
 			hadBacklog: false,
 			nowMs: NOW,
 		}),
-		'waiting',
+		'waiting-gps',
 	);
+});
+
+test('statusOnPing: a page waiting for the runner goes live on the first ping', () => {
+	assert.equal(statusOnPing('connecting'), 'live');
+	assert.equal(statusOnPing('waiting-gps'), 'live');
+	assert.equal(statusOnPing('live'), 'live');
+});
+
+test('statusOnPing: a late ping never reopens a concluded or closed page', () => {
+	assert.equal(statusOnPing('finished'), 'finished');
+	assert.equal(statusOnPing('link-closed'), 'link-closed');
+	assert.equal(statusOnPing('not-found'), 'not-found');
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { switchRunsToAllTime } from '../fixtures/helpers';
 import {
@@ -135,15 +135,24 @@ test.describe('anonymous walls', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon /share/run/<private-id> shows not-found, not the run', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Stub the EF — same reason as the other share/run tests.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
-			route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({ points: [] })
-			})
+		await mockRoute(
+			page,
+			'**/functions/v1/clip-public-track',
+			(route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ points: [] })
+				}),
+			{
+				neverFires:
+					'a private run resolves to not-found before RunShareView reaches the track ' +
+					'branch, so an invocation means the row leaked far enough to fetch its trace'
+			}
 		);
 
 		await page.goto(`/share/run/${ALEX_PRIVATE_RUN_ID}`);
@@ -237,6 +246,27 @@ test.describe('anonymous walls', () => {
 
 	test('anon /settings/account redirects to /login', async ({ page }) => {
 		await page.goto('/settings/account');
+		await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
+	});
+
+	// The other side of the wall. `global_segments` grants select to anon
+	// (migration 20270512_001) and /sitemap.xml points crawlers at the
+	// catalogue, so bouncing an anon visitor off it would advertise a URL
+	// that answers with a login form (decisions.md § 677).
+	test('anon /segments renders the catalogue instead of bouncing to /login', async ({
+		page
+	}) => {
+		await page.goto('/segments');
+		await expect(
+			page.getByRole('heading', { name: /Famous segments/ })
+		).toBeVisible({ timeout: 10_000 });
+		await expect(page).toHaveURL(/\/segments$/);
+	});
+
+	// The catalogue is curated content; a per-segment page is a leaderboard
+	// of named runners, and it keeps its gate.
+	test('anon /segments/<id> still redirects to /login', async ({ page }) => {
+		await page.goto('/segments/00000000-0000-0000-0000-000000000001');
 		await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 	});
 });

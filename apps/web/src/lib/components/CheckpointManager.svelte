@@ -1,17 +1,18 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { getUnit } from '$lib/format/units.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
 	import {
 		fetchEventCheckpoints,
 		createEventCheckpoint,
 		updateEventCheckpoint,
 		deleteEventCheckpoint,
 		type EventCheckpoint
-	} from '$lib/core/data';
-	import { swapCheckpointOrdinals } from '$lib/runs/checkpoint_reorder';
+	} from '#lib/core/data.ts';
+	import { swapCheckpointOrdinals } from '#lib/runs/checkpoint_reorder.ts';
 
 	interface Props {
 		eventId: string;
@@ -40,7 +41,7 @@
 		try {
 			checkpoints = await fetchEventCheckpoints(eventId);
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.loadFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.loadFailed', 'checkpoint.loadFailed'), 'error');
 		} finally {
 			loading = false;
 		}
@@ -131,7 +132,7 @@
 			showEditor = false;
 			await load();
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.saveFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.saveFailed', 'checkpoint.saveFailed'), 'error');
 		} finally {
 			busy = false;
 		}
@@ -145,7 +146,7 @@
 			await deleteEventCheckpoint(cp.id);
 			await load();
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.deleteFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.deleteFailed', 'checkpoint.deleteFailed'), 'error');
 		}
 	}
 
@@ -159,7 +160,7 @@
 				reload: load
 			});
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.saveFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.saveFailed', 'checkpoint.saveFailed'), 'error');
 		} finally {
 			busy = false;
 		}

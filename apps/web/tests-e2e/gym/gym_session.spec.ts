@@ -1,7 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * /gym/session/[routineId] — the gym guided-session runner (gym_programming.md
@@ -185,12 +187,15 @@ test.describe('/gym/session — guided runner', () => {
 
 			await page.waitForURL(/\/gym\/[0-9a-f-]+$/, { timeout: 15_000 });
 
-			const { data: created } = await admin
-				.from('gym_workouts')
-				.select('id, metadata')
-				.eq('user_id', USER_A.id)
-				.eq('title', r.title);
-			expect(created?.length).toBe(1);
+			const created = await readRows(
+				'gym_workouts by user_id+title',
+				admin
+					.from('gym_workouts')
+					.select('id, metadata')
+					.eq('user_id', USER_A.id)
+					.eq('title', r.title)
+			);
+			expect(created.length).toBe(1);
 			const workoutId = created![0].id as string;
 
 			try {
@@ -235,22 +240,28 @@ test.describe('/gym/session — guided runner', () => {
 			// All three planned sets were completed at or above target → completed.
 			await expect(page.getByTestId('gym-review-verdict')).toHaveText('Completed');
 
-			const { data: created } = await admin
-				.from('gym_workouts')
-				.select('id, metadata')
-				.eq('user_id', USER_A.id)
-				.eq('title', r.title);
-			expect(created?.length).toBe(1);
+			const created = await readRows(
+				'gym_workouts by user_id+title',
+				admin
+					.from('gym_workouts')
+					.select('id, metadata')
+					.eq('user_id', USER_A.id)
+					.eq('title', r.title)
+			);
+			expect(created.length).toBe(1);
 			const workoutId = created![0].id as string;
 
 			try {
-				const { data: sets } = await admin
-					.from('gym_sets')
-					.select('exercise_name, reps, weight_kg')
-					.eq('workout_id', workoutId);
+				const sets = await readRows(
+					'gym_sets by workout_id',
+					admin
+						.from('gym_sets')
+						.select('exercise_name, reps, weight_kg')
+						.eq('workout_id', workoutId)
+				);
 				// Three sets logged; weight stored canonical kg (60), not lbs.
-				expect(sets?.length).toBe(3);
-				const press = sets!.filter((s) => s.exercise_name === r.pressExercise);
+				expect(sets.length).toBe(3);
+				const press = sets.filter((s) => s.exercise_name === r.pressExercise);
 				expect(press.length).toBe(2);
 				expect(Number(press[0].weight_kg)).toBe(60);
 
@@ -283,12 +294,15 @@ test.describe('/gym/session — guided runner', () => {
 			// Returns to the routine detail, no workout persisted.
 			await page.waitForURL(new RegExp(`/gym/routines/${r.id}$`), { timeout: 10_000 });
 
-			const { data: created } = await admin
-				.from('gym_workouts')
-				.select('id')
-				.eq('user_id', USER_A.id)
-				.eq('title', r.title);
-			expect(created?.length ?? 0).toBe(0);
+			const created = await readRows(
+				'gym_workouts by user_id+title',
+				admin
+					.from('gym_workouts')
+					.select('id')
+					.eq('user_id', USER_A.id)
+					.eq('title', r.title)
+			);
+			expect(created.length).toBe(0);
 		} finally {
 			await admin.from('gym_routines').delete().eq('id', r.id);
 		}

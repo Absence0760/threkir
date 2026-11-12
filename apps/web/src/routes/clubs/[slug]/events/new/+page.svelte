@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { fetchClubBySlug } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { ClubWithMeta } from '$lib/types';
+	import { fetchClubBySlug } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
+	let slug = $derived(page.params.slug as string);
 	let club = $state<ClubWithMeta | null>(null);
 	let loading = $state(true);
 
@@ -55,30 +58,25 @@
 			<span class="material-symbols">arrow_back</span>
 			{m('eventNew.backToClub')}
 		</span>
-		<div class="header-skel">
-			<span class="skel skel-line skel-w-20"></span>
-			<span class="skel skel-line skel-w-40"></span>
-			<span class="skel skel-line skel-w-60"></span>
+		<div class="header-skel" aria-hidden="true">
+			<SkeletonBlock height="0.85rem" width="20%" />
+			<SkeletonBlock height="0.85rem" width="40%" />
+			<SkeletonBlock height="0.85rem" width="60%" />
 		</div>
-		<div class="form-skel">
-			<span class="skel skel-block"></span>
-			<span class="skel skel-block tall"></span>
-			<span class="skel skel-block"></span>
+		<div class="form-skel" aria-hidden="true">
+			<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="5.5rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
 		</div>
 	</div>
-	<p class="sr-only" role="status">{m('shell.loading')}</p>
+	<p class="visually-hidden" role="status">{m('shell.loading')}</p>
 {:else if !club}
 	<div class="page">
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('eventNew.clubNotFound')}</h3>
-			<p class="empty-text">
-				{m('eventNew.clubNotFoundBody')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState icon="search_off" title={m('eventNew.clubNotFound')} text={m('eventNew.clubNotFoundBody')}>
+			{#snippet actions()}
 				<a href="/clubs" class="btn btn-primary">{m('eventNew.backToClubs')}</a>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="page">
@@ -90,6 +88,7 @@
 		<header class="page-header">
 			<span class="kicker">{club.name}</span>
 			<h1>{m('eventNew.title')}</h1>
+			<HelpLink route="/clubs/[slug]/events/new" />
 			<p class="tagline">
 				{m('eventNew.tagline')}
 			</p>
@@ -149,41 +148,6 @@
 		margin: var(--space-2xs) 0 0 0;
 	}
 
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-
 	.back-skel {
 		display: inline-flex;
 		align-items: center;
@@ -203,43 +167,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-block { height: 2.4rem; border-radius: var(--radius-md); }
-	.skel-block.tall { height: 5.5rem; }
-	.skel-w-20 { width: 20%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

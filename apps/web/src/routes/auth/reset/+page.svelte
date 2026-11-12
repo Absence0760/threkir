@@ -1,20 +1,25 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { supabase } from '$lib/core/supabase';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { checkPasswordPair } from '$lib/core/auth_gates';
-	import { PASSWORD_MIN_LENGTH } from '$lib/core/auth_rules';
-	import { m } from '$lib/i18n/store.svelte';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
+	import { goto, replaceState } from '$app/navigation';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { checkPasswordPair } from '#lib/core/auth_gates.ts';
+	import { emailOtpLink } from '#lib/core/auth_confirmation.ts';
+	import { PASSWORD_MIN_LENGTH } from '#lib/core/auth_rules.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 
 	let password = $state('');
 	let confirmPassword = $state('');
 	let error = $state('');
 	let busy = $state(false);
-	// Recovery token arrives in the URL hash; supabase-js consumes it
-	// automatically (detectSessionInUrl=true) on this navigation, then
-	// fires onAuthStateChange with a PASSWORD_RECOVERY-tagged session.
+	// The recovery link carries `token_hash` + `type=recovery`, redeemed
+	// below; a link in either older shape (implicit `#access_token`, PKCE
+	// `?code=`) is consumed by supabase-js itself (detectSessionInUrl).
+	// Either way the page is usable once a session exists.
 	let ready = $state(false);
 	// True once updateUser succeeds. When the page unmounts WITHOUT
 	// the password having been changed, we sign the recovery session
@@ -22,6 +27,18 @@
 	let passwordChanged = $state(false);
 
 	onMount(async () => {
+		// Redeeming the hash mints the session in THIS browser, whichever
+		// one it is. The PKCE code the link used to carry could only be
+		// exchanged by the browser that requested the reset, which is
+		// rarely the one the mail gets opened in.
+		const otp = emailOtpLink(window.location.search);
+		if (otp) {
+			await supabase.auth.verifyOtp(otp);
+			// One-time credential — keep it out of referrers and reloads.
+			// Through SvelteKit's own replaceState: a bare history call
+			// desynchronises the router from the URL it thinks it is on.
+			replaceState(window.location.pathname, {});
+		}
 		await auth.ready();
 		ready = true;
 	});
@@ -66,150 +83,104 @@
 		busy = true;
 		try {
 			const { error: updateError } = await supabase.auth.updateUser({ password });
-			if (updateError) throw updateError;
+			if (updateError) throw dbError(updateError);
 			// Flip BEFORE refreshSession so unmount triggered by goto
 			// doesn't sign out the freshly-set session.
 			passwordChanged = true;
 			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('authReset.errorGeneric');
+			error = errorCopy(err, m, 'authReset.errorGeneric', 'authReset.errorGeneric');
 			busy = false;
 		}
 	}
 </script>
 
-<div class="reset-page">
-	<header class="reset-header">
-		<a href="/" class="logo">
-			<img src="/logo-mark.svg" alt="" class="logo-mark" />
-			<span>Threkir</span>
-		</a>
-	</header>
+<AuthShell>
+	<main class="auth-card reset-card" id="main-content">
+		<p class="kicker">{m('authReset.kicker')}</p>
+		<h1>{m('authReset.heading')}</h1>
 
-	<main class="reset-main" id="main-content">
-		<div class="reset-card">
-			<p class="kicker">{m('authReset.kicker')}</p>
-			<h1>{m('authReset.heading')}</h1>
+		{#if !ready}
+			<p class="muted">{m('authReset.verifying')}</p>
+		{:else if !auth.user}
+			<p class="muted">{m('authReset.invalidLink')}</p>
+			<div class="error-block">
+				<p>
+					{m('authReset.invalidLinkBody')}
+				</p>
+			</div>
+			<a class="btn btn-primary reset-cta" href="/login?reset=1">{m('authReset.requestNewLink')}</a>
+		{:else}
+			<p class="subtitle">{m('authReset.subtitlePrefix')} <strong>{auth.user.email}</strong>{m('authReset.subtitleSuffix')}</p>
 
-			{#if !ready}
-				<p class="muted">{m('authReset.verifying')}</p>
-			{:else if !auth.user}
-				<p class="muted">{m('authReset.invalidLink')}</p>
-				<div class="error-block">
-					<p>
-						{m('authReset.invalidLinkBody')}
-					</p>
-				</div>
-				<a class="btn btn-primary reset-cta" href="/login?reset=1">{m('authReset.requestNewLink')}</a>
-			{:else}
-				<p class="subtitle">{m('authReset.subtitlePrefix')} <strong>{auth.user.email}</strong>{m('authReset.subtitleSuffix')}</p>
-
-				{#if error}
-					<div class="error" role="alert">{error}</div>
-				{/if}
-
-				<form class="reset-form" onsubmit={handleSubmit}>
-					<PasswordInput
-						bind:value={password}
-						placeholder={m('authReset.newPasswordPlaceholder')}
-						required
-						minlength={PASSWORD_MIN_LENGTH}
-						autocomplete="new-password"
-					/>
-					<PasswordInput
-						bind:value={confirmPassword}
-						placeholder={m('authReset.confirmPasswordPlaceholder')}
-						required
-						minlength={PASSWORD_MIN_LENGTH}
-						autocomplete="new-password"
-					/>
-					<button type="submit" class="btn btn-primary reset-cta" disabled={busy}>
-						{busy ? m('authReset.updating') : m('authReset.updateButton')}
-					</button>
-				</form>
-				<p class="reset-hint">{m('authReset.hint')}</p>
+			{#if error}
+				<div class="error" role="alert">{error}</div>
 			{/if}
-		</div>
-	</main>
 
-	<footer class="reset-footer">
-		<a href="/login">{m('authReset.backToSignIn')}</a>
-	</footer>
-</div>
+			<form class="reset-form" onsubmit={handleSubmit}>
+				<label for="reset-password" class="visually-hidden">
+					{m('authReset.newPasswordPlaceholder')}
+				</label>
+				<PasswordInput
+					id="reset-password"
+					bind:value={password}
+					placeholder={m('authReset.newPasswordPlaceholder')}
+					required
+					minlength={PASSWORD_MIN_LENGTH}
+					autocomplete="new-password"
+				/>
+				<label for="reset-confirm-password" class="visually-hidden">
+					{m('authReset.confirmPasswordPlaceholder')}
+				</label>
+				<PasswordInput
+					id="reset-confirm-password"
+					bind:value={confirmPassword}
+					placeholder={m('authReset.confirmPasswordPlaceholder')}
+					required
+					minlength={PASSWORD_MIN_LENGTH}
+					autocomplete="new-password"
+				/>
+				<button type="submit" class="btn btn-primary reset-cta" disabled={busy}>
+					{busy ? m('authReset.updating') : m('authReset.updateButton')}
+				</button>
+			</form>
+			<p class="reset-hint">{m('authReset.hint', { min: PASSWORD_MIN_LENGTH })}</p>
+		{/if}
+
+		<p class="back-link">
+			<a href="/login"><span class="material-symbols" aria-hidden="true">arrow_back</span>{m('authReset.backToSignIn')}</a>
+		</p>
+	</main>
+</AuthShell>
 
 <style>
-	.reset-page {
-		min-height: 100vh;
-		display: flex;
-		flex-direction: column;
-		background: var(--color-bg);
-	}
-
-	.reset-header {
-		padding: var(--space-md) var(--space-xl);
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-surface);
-	}
-
-	.logo {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		font-weight: 700;
-		font-size: 1.15rem;
-		color: var(--color-text);
-		text-decoration: none;
-	}
-	.logo-mark {
-		width: 1.85rem;
-		height: 1.85rem;
-		border-radius: var(--radius-md);
-		display: block;
-		box-shadow: var(--shadow-sm);
-		object-fit: cover;
-	}
-	.logo span {
-		background: var(--gradient-primary);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-	}
-
-	.reset-main {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-xl) var(--space-md);
-	}
-
+	/* The card chrome and the brand panel belong to AuthShell. */
 	.reset-card {
-		width: 100%;
-		max-width: 28rem;
-		padding: var(--space-2xl) var(--space-xl);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-xl);
-		box-shadow: var(--shadow-lg);
 		text-align: center;
 	}
 
 	.kicker {
+		display: inline-block;
 		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		font-size: 0.72rem;
+		letter-spacing: 0.12em;
+		font-size: var(--font-size-section-label);
 		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-xs);
+		color: var(--color-primary);
+		background: var(--color-primary-light);
+		border-radius: var(--radius-pill);
+		padding: 0.3rem 0.75rem;
+		margin: 0 0 var(--space-md);
 	}
 
 	h1 {
 		margin: 0 0 var(--space-sm);
-		font-size: 1.6rem;
+		font-size: 1.85rem;
 		font-weight: 800;
-		letter-spacing: -0.01em;
+		line-height: 1.15;
+		letter-spacing: -0.025em;
 		color: var(--color-text);
+		text-wrap: balance;
 	}
 
 	.subtitle {
@@ -238,7 +209,9 @@
 
 	.reset-cta {
 		width: 100%;
-		padding: 0.85rem var(--space-lg);
+		min-height: 3rem;
+		padding: 0.8rem var(--space-lg);
+		border-radius: var(--radius-lg);
 		font-size: 0.95rem;
 		margin-top: var(--space-xs);
 	}
@@ -264,7 +237,7 @@
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
 		padding: var(--space-md);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		text-align: start;
 		margin-bottom: var(--space-md);
 	}
@@ -275,18 +248,23 @@
 		color: var(--color-text-secondary);
 	}
 
-	.reset-footer {
-		padding: var(--space-lg) var(--space-md);
-		border-top: 1px solid var(--color-border);
-		text-align: center;
-		font-size: 0.85rem;
-		background: var(--color-surface);
+	.back-link {
+		margin: var(--space-xl) 0 0;
+		font-size: 0.88rem;
 	}
-	.reset-footer a {
+	.back-link a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
 		color: var(--color-text-secondary);
 		text-decoration: none;
+		transition: color var(--transition-fast), gap var(--transition-fast);
 	}
-	.reset-footer a:hover {
+	.back-link a:hover {
 		color: var(--color-primary);
+		gap: var(--space-xs);
+	}
+	.back-link .material-symbols {
+		font-size: 1.1rem;
 	}
 </style>

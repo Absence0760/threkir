@@ -1,17 +1,26 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import Modal from './Modal.svelte';
-	import { updatePlanMeta } from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { TrainingPlan } from '$lib/types';
+	import { setPlanGoalTime, updatePlanMeta } from '#lib/core/data.ts';
+	import { goalTimeRepacePatches } from '#lib/training/plan_repace.ts';
+	import { vdotFromRace } from '#lib/training/training.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import type { PlanWorkout, TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
 		plan: TrainingPlan;
+		/// The plan's workouts, so a goal-time change re-derives their paces.
+		workouts: PlanWorkout[];
+		/// The runner's local day: workouts before it keep their paces.
+		todayIso: string;
 		onSaved: () => void;
 		onClose: () => void;
 	}
-	let { plan, onSaved, onClose }: Props = $props();
+	let { plan, workouts, todayIso, onSaved, onClose }: Props = $props();
 
 	// Snapshot the incoming plan into editable state. We don't bind
 	// directly to `plan.x` because the parent passes a $state proxy
@@ -58,17 +67,37 @@
 				.split('\n')
 				.map((s) => s.trim())
 				.filter((s) => s.length > 0);
+			// A new goal time re-derives the paces still ahead, written with the
+			// goal in one transaction; the rest of the form is a plain update.
+			let repaced = 0;
+			if (goalSeconds !== plan.goal_time_seconds) {
+				const changes = goalTimeRepacePatches({
+					goalDistanceM: plan.goal_distance_m,
+					oldGoalTimeSec: plan.goal_time_seconds,
+					newGoalTimeSec: goalSeconds,
+					recent5kSec: plan.current_5k_seconds,
+					todayIso,
+					workouts
+				});
+				const vdot =
+					goalSeconds && !plan.current_5k_seconds
+						? Math.round(vdotFromRace(plan.goal_distance_m, goalSeconds) * 100) / 100
+						: null;
+				await setPlanGoalTime(plan.id, goalSeconds, vdot, changes);
+				repaced = changes.length;
+			}
 			await updatePlanMeta(plan.id, {
 				name: name.trim(),
 				notes: notes.trim() || null,
-				goal_time_seconds: goalSeconds,
 				days_per_week: daysPerWeek,
 				rules: rules.length > 0 ? rules : null,
 			});
-			showToast(m('planMeta.planUpdated'));
+			showToast(
+				repaced > 0 ? m('planMeta.planUpdatedRepaced', { n: repaced }) : m('planMeta.planUpdated')
+			);
 			onSaved();
 		} catch (e: any) {
-			error = m('planMeta.saveFailed', { error: e instanceof Error ? e.message : String(e) });
+			error = m('planMeta.saveFailed', { error: errorCopy(e, m, 'planMeta.saveFailed') });
 		} finally {
 			saving = false;
 		}
@@ -83,33 +112,44 @@
 			save();
 		}}
 	>
-		<label class="field">
-			<span class="field-label">{m('planMeta.name')}</span>
-			<input type="text" bind:value={name} maxlength="80" required />
-		</label>
+		<div class="field">
+			<label>
+				<span class="field-label">{m('planMeta.name')}</span>
+				<input
+					type="text"
+					bind:value={name}
+					maxlength={lengthLimit('training_plans.name')}
+					required
+					aria-describedby="plan-meta-name-hint"
+				/>
+			</label>
+			<span class="field-hint" id="plan-meta-name-hint">{m('planMeta.nameHint')}</span>
+		</div>
 
-		<label class="field">
-			<span class="field-label">{m('planMeta.daysPerWeek')}</span>
-			<select bind:value={daysPerWeek}>
-				{#each [3, 4, 5, 6, 7] as n}
-					<option value={n}>{m('planMeta.daysCount', { n })}</option>
-				{/each}
-			</select>
-			<span class="field-hint">
+		<div class="field">
+			<label>
+				<span class="field-label">{m('planMeta.daysPerWeek')}</span>
+				<select bind:value={daysPerWeek} aria-describedby="plan-meta-days-hint">
+					{#each [3, 4, 5, 6, 7] as n}
+						<option value={n}>{m('planMeta.daysCount', { n })}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="field-hint" id="plan-meta-days-hint">
 				{m('planMeta.daysPerWeekHint')}
 			</span>
-		</label>
+		</div>
 
 		<fieldset class="field">
 			<legend class="field-label">{m('planMeta.goalTime')} <span class="optional">{m('planMeta.optional')}</span></legend>
 			<div class="time-row">
-				<input type="number" min="0" max="9" bind:value={goalTimeHours} placeholder={m('planMeta.hoursAbbr')} />
+				<input type="number" min="0" max={RACE_GOAL_MAX_HOURS} bind:value={goalTimeHours} placeholder={m('planMeta.hoursAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 				<span>:</span>
-				<input type="number" min="0" max="59" bind:value={goalTimeMin} placeholder={m('planMeta.minutesAbbr')} />
+				<input type="number" min="0" max="59" bind:value={goalTimeMin} placeholder={m('planMeta.minutesAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 				<span>:</span>
-				<input type="number" min="0" max="59" bind:value={goalTimeSec} placeholder={m('planMeta.secondsAbbr')} />
+				<input type="number" min="0" max="59" bind:value={goalTimeSec} placeholder={m('planMeta.secondsAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 			</div>
-			<span class="field-hint">
+			<span class="field-hint" id="plan-meta-goal-time-hint">
 				{m('planMeta.goalTimeHint')}
 			</span>
 		</fieldset>

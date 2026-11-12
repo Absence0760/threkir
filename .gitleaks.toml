@@ -1,4 +1,4 @@
-title = "project-running gitleaks config"
+title = "threkir gitleaks config"
 
 # Extend (don't replace) gitleaks' built-in ruleset.
 [extend]
@@ -13,9 +13,11 @@ useDefault = true
 #
 # Scoped two ways: the committed dev-only env files by path, and the
 # demo-issuer JWT body by regex — so a *non-demo* JWT pasted anywhere is still
-# caught. The env-isolation workflow additionally greps these same files for
-# live Stripe / Anthropic / Supabase patterns, so "no real secret here" is
-# enforced, not just trusted.
+# caught. The `env-isolation` job in ci.yml additionally greps these same files
+# for live Stripe / Anthropic / Supabase patterns, so "no real secret here" is
+# enforced, not just trusted — and since decisions § 862 that job is one the
+# required `CI gate` waits for, rather than a workflow of its own on a path
+# filter that this file's own path list did not match.
 [allowlist]
 description = "Local-dev demo keys + seed creds in committed dev env defaults"
 paths = [
@@ -48,12 +50,43 @@ regexes = [
   # webpush.go: the `vapidPrivateB64` *parameter name* in NewSender's signature
   # (a real VAPID private scalar is base64 and never equals this identifier).
   '''vapidPrivateB64''',
+  # safety_live_url_test.go: the fixed safety-contact view-token fixture the
+  # overdue / off-route link tests feed themselves (a real token is a fresh
+  # random UUID per contact, minted server-side, never committed).
+  '''0b6f2c1e-4a8d-4c3b-9e7f-1a2b3c4d5e6f''',
   # ci.yml (history): the placeholder seed-user UUID an older revision queried
   # by id before it switched to `where email = 'runner@test.com'`.
   '''a1b2c3d4-e5f6-7890-abcd-ef1234567890''',
   # env_isolation.test.mjs: the obviously-fake Stripe keys this security test
   # feeds itself to prove a *live* key in a dev env is rejected.
   '''(sk|pk)_(live|test)_abcdef0123456789''',
+  # handler_account_deletion_receipt_test.go: the DELETION_AUDIT_KEY fixture the
+  # keyed-digest tests feed themselves (decisions § 1600). The literal says what
+  # it is — it is a length-floor placeholder, not a key that opens anything.
+  # Matched on the value so a real audit key in that test file is still a
+  # finding.
+  '''an-operator-secret-at-least-32-bytes-long''',
+  # og_grisnir_placement.test.ts: `badge_key: 'distance_42k'`, the marathon
+  # badge's catalogue key. generic-api-key fires on the `_key` name beside a
+  # mixed letter-and-digit value; it is a public achievement slug. Matched on
+  # the value, so a real key in that file is still a finding.
+  '''distance_42k''',
+  # check_production_env.test.mjs (history only): the VAPID public point an
+  # interim commit on the native-push branch carried as a literal before the
+  # test was changed to mint one per run with node:crypto. A 65-byte
+  # uncompressed P-256 point is a public value by definition and nobody holds
+  # its private half — but it is high-entropy base64url beside the word VAPID,
+  # so generic-api-key fires, and gitleaks scans the commits in a PR rather
+  # than only its tip. Matched on the value, so a real key in that file is
+  # still a finding.
+  #
+  # **This entry is not removable**, and the reason is the entry itself: the
+  # line below is now the literal's only occurrence on main, added by the
+  # squash commit, so it allowlists its own appearance in history. Delete it
+  # and the weekly full-history sweep fails on the commit that added it. The
+  # only way out is rewriting history, which is not worth doing for a public
+  # P-256 point.
+  '''BJpD8Pjn3W-bc7BCbBCkdUj0SY3hdTr6pB8heXjzmHHm7YzhpivKxWb3hx0ZD7ym_ik5EtJo_G9mMPSzA-HcE4g''',
   # apps/custom_watch/core/src/badges.rs: the watch_core badge catalogue's i18n
   # key strings (label_key/desc_key = "badges.<family>.<label|desc>"). The
   # generic-api-key rule's entropy gate trips on the higher-entropy ones, but
@@ -61,4 +94,54 @@ regexes = [
   # catalogues carry, not secrets. Matched on the key shape so a real token in
   # badges.rs is still a finding.
   '''badges\.[A-Za-z0-9]+\.(label|desc)''',
+  # The SAME badge catalogue i18n keys in the Dart/TS spelling the entry above
+  # cannot match: web (badges.ts) and mobile (badges.dart) write them camelCase
+  # as `labelKey: 'badgesStreak7Label'`, not dotted. The rule fires on the
+  # `...Key: '<value>'` shape, so the key NAME is what it reads as a secret.
+  # That gap is why the weekly full-history sweep had 22 of its 26 findings
+  # here. Matched on the key shape, so a real token in badges.dart still fails.
+  '''badges[A-Z][A-Za-z0-9]*(Label|Desc)''',
+  # .claude/agents/i18n/i18n-translator.md (history only): the batch example
+  # an interim commit on the agent-teams branch wrote as `"key": "<ARB key>"`.
+  # An ARB key name is not a secret, but beside the word `key` the
+  # generic-api-key rule reads it as one, and gitleaks scans a PR's commits,
+  # not only its tip. The example now uses an `id` field. Matched on the value,
+  # so a real token in that file is still a finding.
+  '''runPauseA11yLabel''',
+  # ci.yml: the deliberately-fake fixture values the e2e stack's webhook and
+  # cron paths sign with. Each literal says what it is, and none opens
+  # anything outside a CI runner's own Supabase container.
+  '''ci-cron-secret-at-least-32-chars-ok''',
+  '''ci-stripe-events-secret''',
+  '''v1,Y2ktYXV0aC1lbWFpbC1ob29rLXNlY3JldC0zMmNoYXJz''',
+  # gym_exercise_set_history_batch_test.sql: prose, not a value. The rule read
+  # the phrase "(grouping key, duplicate/blank inputs, owner scope)" in a
+  # header comment as `key` followed by a secret, and took the two English
+  # words after it. Matched on that literal rather than the file, so a real
+  # key in the same suite is still a finding.
+  '''duplicate/blank''',
+  # apps/watch_ios/WatchApp/*.swift: the watch's UserDefaults key NAMES. Every
+  # on-wrist store spells its key the same way -- `private static let key =
+  # "<what_it_holds>_v<schema>"` -- and the rule reads the identifier `key`
+  # beside a quoted literal as an assignment of one. Five of them exist today
+  # and only `pending_race_results_v1` crossed the entropy gate, so a shape
+  # match is what keeps the SIXTH from reddening main the day it is written
+  # (this one did: it was written on a side branch, and § 1719 is why the PR
+  # did not say so). Anchored, and lowercase snake_case ending in `_v<N>` is a
+  # defaults-key shape rather than a token shape -- a real key in the same file
+  # is still a finding.
+  '''^[a-z][a-z0-9_]*_v[0-9]+$''',
+  # challenge_invite_link_test.dart / challenge_invite_screen_test.dart (both
+  # twins) and live_overlay.test.ts: fixed invite and overlay token fixtures
+  # shaped like the real 24-char url-safe tokens so the parsers accept them. A
+  # real token is minted server-side per challenge or per user and never
+  # committed.
+  '''Ab3_dEf-Gh1jKl2mNo3pQr4s''',
+  '''Ab3_-xYz0123456789abcdEF''',
+  '''tok-abc12345''',
+  # club-verification/handler.test.ts: the domain-proof token fixture, 32 hex
+  # characters in the shape the request flow mints server-side, so the TXT and
+  # .well-known checks accept it. A real token is per request and never
+  # committed.
+  '''abcdef0123456789abcdef0123456789''',
 ]

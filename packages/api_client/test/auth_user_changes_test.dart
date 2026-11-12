@@ -32,4 +32,31 @@ void main() {
     expect(events, isNotEmpty);
     expect(events.last, isNull);
   });
+
+  test('a refused auth deep link does not reach subscribers as an error',
+      () async {
+    // supabase_flutter adds an expired / reused email link's
+    // AuthException to onAuthStateChange as a stream error. Unhandled,
+    // it became a fatal crash (Sentry THREKIR-CLIENT-7).
+    final client = SupabaseClient('http://127.0.0.1:9', 'eyJ.local.test');
+    addTearDown(client.dispose);
+    final api = ApiClient.withClient(client);
+
+    final errors = <Object>[];
+    final events = <String?>[];
+    final sub = api.authUserChanges.listen(events.add, onError: errors.add);
+    addTearDown(sub.cancel);
+
+    // ignore: invalid_use_of_internal_member
+    client.auth.notifyException(const AuthException(
+      'Email link is invalid or has expired',
+      statusCode: 'access_denied',
+      code: 'otp_expired',
+    ));
+    await client.auth.signOut(scope: SignOutScope.local);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(errors, isEmpty);
+    expect(events.last, isNull);
+  });
 }

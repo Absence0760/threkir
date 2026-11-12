@@ -1,36 +1,46 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymWorkoutsWithError,
-		fetchGymSetHistoryWithError,
+		fetchGymWorkoutSummariesWithError,
+		fetchGymExerciseNames,
+		fetchGymHasWeightedSets,
 		fetchSessionPlans,
 		fetchExerciseCatalogue,
 		fetchGymRoutines,
 		updateGymWorkout,
 		deleteGymWorkout,
 		type GymWorkout,
-		type GymSetWithDate,
-	} from '$lib/core/data';
+		type GymWorkoutSummary,
+	} from '#lib/core/data.ts';
 	import {
 		draftLoggedCount,
 		draftRoutineId,
 		hasSessionDraft,
 		stripSessionDraft,
-	} from '$lib/gym/gym_session_draft';
-	import type { Exercise } from '$lib/types';
-	import { RunningPrTracker, type GymSetLike } from '$lib/gym/gym_prs';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	} from '#lib/gym/gym_session_draft.ts';
+	import type { Exercise } from '#lib/types.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	let workouts = $state<GymWorkout[]>([]);
-	let history = $state<GymSetWithDate[]>([]);
+	let summaries = $state<GymWorkoutSummary[]>([]);
+	let suggestions = $state<string[]>([]);
+	let hasWeightedRecords = $state(false);
 	let catalogue = $state<Exercise[]>([]);
+	// Starts true because "not yet loaded" and "failed to load" are the same
+	// state to every consumer: the catalogue is not known, so nothing may claim
+	// a name is free. Cleared only by a read that answered.
+	let catalogueUnavailable = $state(true);
 	// Session-plan count gates the Sessions link. Session plans are authored
 	// independently of gym workouts (a yoga user may have plans but no logged
 	// workouts), so this self-hides on its own data presence, not workouts.length.
@@ -49,26 +59,36 @@
 		loading = true;
 		loadError = null;
 		try {
-			const [w, h, plans, cat] = await Promise.all([
-				fetchGymWorkoutsWithError(100),
-				fetchGymSetHistoryWithError(),
+			const [w, s, names, weighted, plans, cat] = await Promise.all([
+				fetchGymWorkoutsWithError({ limit: 100 }),
+				fetchGymWorkoutSummariesWithError(100),
+				fetchGymExerciseNames(),
+				fetchGymHasWeightedSets(),
 				fetchSessionPlans(),
 				fetchExerciseCatalogue(),
 			]);
 			// Surface a real load failure as a retry banner rather than the empty
 			// "log your first workout" card — otherwise a transient fetch error reads
 			// as a brand-new lifter whose history vanished.
-			loadError = w.error ?? h.error;
+			const failure = w.error ?? s.error;
+			loadError = failure ? errorCopy(failure, t, 'gym: loadError') : null;
 			workouts = w.workouts;
-			history = h.sets;
+			summaries = s.summaries;
+			suggestions = names;
+			hasWeightedRecords = weighted;
 			sessionPlanCount = plans.length;
-			catalogue = cat;
+			// A failed catalogue read keeps whatever was last known rather than
+			// replacing it with `[]` — a stale entry still binds its id correctly,
+			// and deleting the list would be a second untruth on top of the first.
+			if (cat.error === null) catalogue = cat.catalogue;
+			catalogueUnavailable = cat.error !== null;
 			resumable = await findResumable(w.workouts).catch(() => null);
 		} catch (e) {
 			// fetchSessionPlans rethrows rather than returning an error field,
 			// so a rejection used to escape the Promise.all and leave `loading`
 			// true forever — the retry banner below was unreachable.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'gym: loadError');
+			catalogueUnavailable = true;
 		} finally {
 			loading = false;
 		}
@@ -130,68 +150,12 @@
 		await load();
 	});
 
-	// Sets grouped by workout id.
-	const setsByWorkout = $derived.by(() => {
-		const map = new Map<string, GymSetWithDate[]>();
-		for (const s of history) {
-			const arr = map.get(s.workout_id) ?? [];
-			arr.push(s);
-			map.set(s.workout_id, arr);
-		}
-		return map;
-	});
-
-	// Total working volume (Σ reps·weight) per workout, for the row stat.
-	function volumeOf(id: string): number {
-		let v = 0;
-		for (const s of setsByWorkout.get(id) ?? []) {
-			if (s.reps != null && s.weight_kg != null) v += s.reps * s.weight_kg;
-		}
-		return Math.round(v);
-	}
-	function exerciseCountOf(id: string): number {
-		const names = new Set<string>();
-		for (const s of setsByWorkout.get(id) ?? []) names.add(s.exercise_name.trim().toLowerCase());
-		return names.size;
-	}
-	function setCountOf(id: string): number {
-		return (setsByWorkout.get(id) ?? []).length;
-	}
-
-	// Which workouts set at least one PR. Walk oldest→newest with a running PR
-	// tracker so each workout is judged against everything before it in a single
-	// O(total sets) pass — the previous loop re-derived the full prior-set PR map
-	// (with a per-set regex) for every workout, O(workouts × prior sets).
-	const prWorkoutIds = $derived.by(() => {
-		const ids = new Set<string>();
-		const ordered = [...workouts].sort((a, b) => a.started_at.localeCompare(b.started_at));
-		const tracker = new RunningPrTracker();
-		for (const w of ordered) {
-			const mine = (setsByWorkout.get(w.id) ?? []).map(
-				(s): GymSetLike => ({ exercise_name: s.exercise_name, reps: s.reps, weight_kg: s.weight_kg }),
-			);
-			if (tracker.judge(mine).length > 0) ids.add(w.id);
-		}
-		return ids;
-	});
-
-	// Whether any logged set carries a positive weight — gates the Records
-	// link, since /gym/records only surfaces weighted exercises.
-	const hasWeightedRecords = $derived(
-		history.some((s) => s.weight_kg != null && s.weight_kg > 0),
+	// PR flag + exercise count per workout, keyed by id. The page no longer
+	// derives either from raw set rows: the badge is an all-time question and
+	// the unbounded read that fed it was truncated at PostgREST's 1000-row cap.
+	const summaryById = $derived.by(
+		() => new Map(summaries.map((s) => [s.workoutId, s] as const)),
 	);
-
-	// Distinct exercise names from history, most-used first — the composer
-	// autocomplete source.
-	const suggestions = $derived.by(() => {
-		const counts = new Map<string, number>();
-		for (const s of history) {
-			const name = s.exercise_name.trim();
-			if (name === '') continue;
-			counts.set(name, (counts.get(name) ?? 0) + 1);
-		}
-		return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n);
-	});
 
 	function onCreated() {
 		showCreate = false;
@@ -214,24 +178,6 @@
 			{/if}
 		</div>
 		<div class="head-actions">
-			{#if !loading && workouts.length > 0}
-				<a class="btn btn-secondary" href="/gym/routines" data-testid="gym-routines-link">
-					<span class="material-symbols" aria-hidden="true">list_alt</span>
-					{t('gym.routine.link')}
-				</a>
-			{/if}
-			{#if !loading && sessionPlanCount > 0}
-				<a class="btn btn-secondary" href="/sessions" data-testid="gym-sessions-link">
-					<span class="material-symbols" aria-hidden="true">self_improvement</span>
-					{t('gym.sessions.link')}
-				</a>
-			{/if}
-			{#if !loading && hasWeightedRecords}
-				<a class="btn btn-secondary" href="/gym/records" data-testid="gym-records-link">
-					<span class="material-symbols" aria-hidden="true">trophy</span>
-					{t('gym.records.link')}
-				</a>
-			{/if}
 			<button class="btn btn-primary" onclick={() => (showCreate = true)} data-testid="gym-log">
 				<span class="material-symbols" aria-hidden="true">add</span>
 				{t('gym.log')}
@@ -280,35 +226,89 @@
 		</div>
 	{/if}
 
+	{#if !loading && (workouts.length > 0 || sessionPlanCount > 0 || hasWeightedRecords)}
+		<nav class="destinations" aria-label={t('gym.destinationsAria')}>
+			{#if workouts.length > 0}
+				<a
+					class="destination"
+					href="/gym/routines"
+					data-testid="gym-routines-link"
+					aria-labelledby="gym-routines-title"
+					aria-describedby="gym-routines-desc"
+				>
+					<span class="material-symbols" aria-hidden="true">list_alt</span>
+					<span class="destination-text">
+						<span class="destination-title" id="gym-routines-title">{t('gym.routine.link')}</span>
+						<span class="destination-desc" id="gym-routines-desc">{t('gym.routine.linkDesc')}</span>
+					</span>
+				</a>
+			{/if}
+			{#if sessionPlanCount > 0}
+				<a
+					class="destination"
+					href="/sessions"
+					data-testid="gym-sessions-link"
+					aria-labelledby="gym-sessions-title"
+					aria-describedby="gym-sessions-desc"
+				>
+					<span class="material-symbols" aria-hidden="true">self_improvement</span>
+					<span class="destination-text">
+						<span class="destination-title" id="gym-sessions-title">{t('gym.sessions.link')}</span>
+						<span class="destination-desc" id="gym-sessions-desc">{t('gym.sessions.linkDesc')}</span>
+					</span>
+				</a>
+			{/if}
+			{#if hasWeightedRecords}
+				<a
+					class="destination"
+					href="/gym/records"
+					data-testid="gym-records-link"
+					aria-labelledby="gym-records-title"
+					aria-describedby="gym-records-desc"
+				>
+					<span class="material-symbols" aria-hidden="true">trophy</span>
+					<span class="destination-text">
+						<span class="destination-title" id="gym-records-title">{t('gym.records.link')}</span>
+						<span class="destination-desc" id="gym-records-desc">{t('gym.records.linkDesc')}</span>
+					</span>
+				</a>
+			{/if}
+		</nav>
+	{/if}
+
 	{#if loading}
 		<ul class="workout-list" aria-hidden="true">
 			{#each Array(5) as _, i (i)}
 				<li class="card-elevated skel-row">
-					<span class="skel skel-line skel-w-40"></span>
-					<span class="skel skel-pill"></span>
+					<SkeletonBlock height="0.95rem" width="min(40%, 16rem)" />
+					<SkeletonBlock height="1.6rem" width="9rem" radius="var(--radius-md)" />
 				</li>
 			{/each}
 		</ul>
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="gym-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('gym.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if workouts.length === 0}
-		<div class="card-elevated empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">fitness_center</span>
-			<p class="empty-title empty-text">{t('gym.empty.title')}</p>
-			<p class="empty-text empty-body">{t('gym.empty.body')}</p>
-			<button class="btn btn-primary" onclick={() => (showCreate = true)}>
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{t('gym.log')}
-			</button>
-		</div>
+		<EmptyState
+			icon="fitness_center"
+			title={t('gym.empty.title')}
+			text={t('gym.empty.body')}
+			data-testid="gym-empty"
+		>
+			{#snippet actions()}
+				<button class="btn btn-primary" onclick={() => (showCreate = true)}>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{t('gym.log')}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="workout-list">
 			{#each workouts as w (w.id)}
@@ -319,23 +319,23 @@
 							<span class="row-date">{formatDate(w.started_at)}</span>
 						</div>
 						<div class="row-stats">
-							{#if prWorkoutIds.has(w.id)}
+							{#if summaryById.get(w.id)?.isPr}
 								<span class="pr-badge" aria-label={t('gym.pr.title')}>
 									<span class="material-symbols" aria-hidden="true">trophy</span>
 									{t('gym.pr.badge')}
 								</span>
 							{/if}
 							<span class="stat">
-								<span class="stat-value">{exerciseCountOf(w.id)}</span>
+								<span class="stat-value">{summaryById.get(w.id)?.exerciseCount ?? 0}</span>
 								<span class="stat-label section-label">{t('gym.exercisesLabel')}</span>
 							</span>
 							<span class="stat">
-								<span class="stat-value">{setCountOf(w.id)}</span>
+								<span class="stat-value">{w.set_count}</span>
 								<span class="stat-label section-label">{t('gym.setsLabel')}</span>
 							</span>
-							{#if volumeOf(w.id) > 0}
+							{#if Math.round(w.volume_kg) > 0}
 								<span class="stat stat-volume">
-									<span class="stat-value">{formatWeight(volumeOf(w.id))}</span>
+									<span class="stat-value">{formatWeight(Math.round(w.volume_kg))}</span>
 									<span class="stat-label section-label">{t('gym.volumeLabel')}</span>
 								</span>
 							{/if}
@@ -360,7 +360,13 @@
 />
 
 <Modal open={showCreate} title={t('gym.editor.newTitle')} onclose={() => (showCreate = false)}>
-	<GymEditor {suggestions} {catalogue} oncreated={onCreated} oncancel={() => (showCreate = false)} />
+	<GymEditor
+		{suggestions}
+		{catalogue}
+		{catalogueUnavailable}
+		oncreated={onCreated}
+		oncancel={() => (showCreate = false)}
+	/>
 </Modal>
 
 <style>
@@ -404,6 +410,50 @@
 		font-size: 1.1rem;
 	}
 
+	.destinations {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+		gap: var(--space-sm);
+		margin-bottom: var(--space-xl);
+	}
+	.destination {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-sm);
+		padding: var(--space-md);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		color: var(--color-text);
+		text-decoration: none;
+		transition: border-color var(--transition-fast);
+	}
+	.destination:hover {
+		border-color: var(--color-primary);
+	}
+	/* The icon is a fixed box beside a description that wraps. As a flex
+	   item it shrank with the text, and a glyph narrower than its box is
+	   clipped to a sliver. */
+	.destination .material-symbols {
+		flex-shrink: 0;
+		font-size: 1.25rem;
+		color: var(--color-primary);
+	}
+	.destination-text {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+		min-width: 0;
+	}
+	.destination-title {
+		font-weight: 600;
+	}
+	.destination-desc {
+		font-size: 0.85rem;
+		line-height: 1.4;
+		color: var(--color-text-secondary);
+	}
+
 	.draft-card {
 		display: flex;
 		flex-wrap: wrap;
@@ -435,45 +485,6 @@
 	}
 	.draft-actions .btn {
 		text-decoration: none;
-	}
-
-	/* Empty-state card — same shape as /routes, /history, /dashboard. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-	}
-	.empty-title {
-		margin: 0;
-		padding: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-body {
-		max-width: 32rem;
-		margin: 0;
-		padding: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-card .btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		margin-top: var(--space-sm);
-	}
-	.empty-card .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	.workout-list {
@@ -562,63 +573,13 @@
 		flex-shrink: 0;
 	}
 
-	/* Skeleton — same shimmer language as /routes + /history. */
+	/* Skeleton row — the blocks are SkeletonBlock. */
 	.skel-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-lg);
 		padding: var(--space-md) var(--space-lg);
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.95rem;
-	}
-	.skel-w-40 {
-		width: 40%;
-		max-width: 16rem;
-	}
-	.skel-pill {
-		width: 9rem;
-		height: 1.6rem;
-		border-radius: var(--radius-md);
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	.error-banner {

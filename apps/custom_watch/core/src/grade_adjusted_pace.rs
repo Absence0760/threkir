@@ -32,10 +32,48 @@ pub const MINETTI_FLAT_COST: f64 = 3.6;
 /// that so a momentary altitude spike can't manufacture an absurd factor.
 pub const MAX_GRADE: f64 = 0.45;
 
-/// Minimum horizontal travel before a grade sample is trusted. GPS altitude is
-/// jittery point-to-point, so grade is measured over a segment, mirroring the
-/// watch field. 5 m matches `GradeAdjustedPaceView.mc`.
-pub const MIN_SEGMENT_M: f64 = 5.0;
+/// Minimum horizontal travel before a grade sample is trusted. Altitude is
+/// jittery point-to-point, so grade is measured over a segment rather than over
+/// a point pair.
+///
+/// The window has a floor, and the 5 m it shipped with was below it:
+/// [`ELEVATION_GAIN_MIN_DELTA_M`](crate::route_simplify::ELEVATION_GAIN_MIN_DELTA_M)
+/// / [`MAX_GRADE`] = 6.67 m. Under that, the smallest altitude change this
+/// codebase is willing to call climb rather than noise is, on its own, past the
+/// steepest grade Minetti's fit is defined at — 3 m over 5 m is a 60% grade,
+/// which clamps and yields a factor of 5.396. A rise the elevation-gain path
+/// discards outright therefore reported a pace 5.4x faster than raw, and a
+/// single 1 m step did it at 2.50. This device is the worst place for it: on a
+/// power-hike the same window spans a longer interval, so the correlated part
+/// of the altitude error has longer to grow across it.
+///
+/// Only the horizontal leg is gated, and a gate on the RISE cannot replace it:
+/// the rise a real grade produces over the window scales with the window
+/// exactly as the noise does, so a threshold large enough to suppress the noise
+/// suppresses every real grade below `threshold / window` with it. Measured, a
+/// 3 m rise gate at this window zeroes every real grade under 15% — on a clean,
+/// noise-free 3.3% climb it read 19.5% slow — while the GPS-altitude noise it
+/// aims at has a 3.8 m sigma and walks straight through it.
+///
+/// 20 m is where the noise floor stops being able to more than double the
+/// reported effort (3 m over 20 m is a 15% grade, factor 2.06), and it is the
+/// largest window whose cost on real oscillating terrain stays under 3%.
+/// Measured over an AR(1) altitude-error model on 30-minute runs (decisions.md
+/// § 992): a flat track under GPS-altitude error reported GAP 47.9% faster than
+/// truth at 5 m against 26.8% at 20 m, and under barometric error 2.1% -> 0.5%
+/// at running pace and 9.0% -> 2.1% at power-hike pace. The cost is 2.5% on the
+/// most oscillatory profile measured, against 5.2% at 30 m and 13.1% at 50 m.
+///
+/// Matches `GradeAdjustedPaceView.mc`, the web canonical and the Dart twin; the
+/// four are held equal by `scripts/check_watch_wire_vectors.mjs`.
+///
+/// The roadbook is a SECOND consumer, deliberately: [`crate::roadbook`] and its
+/// web and Dart siblings allocate a goal time by grade-adjusted effort over
+/// this same anchored window, so a change here moves the arrival times a race
+/// crew holds drop bags against as well as the pace a runner is shown. Two
+/// windows would grade one course two ways. The same guard's consumer block
+/// fails the day a roadbook rail stops importing this.
+pub const MIN_SEGMENT_M: f64 = 20.0;
 
 /// Below this speed the runner is walking / stopped and a live GAP is noise —
 /// `MIN_SPEED_MPS` in `GradeAdjustedPaceView.mc`. Streaming-only gate; the
@@ -322,6 +360,19 @@ impl GapEstimator {
 /// agree segment for segment. The canonical copy for `watch_core`: the privacy,
 /// roadbook, route-description, route-geometry, and turn-cue modules all call
 /// this rather than keep their own.
+///
+/// `a` is clamped into `[0, 1]` before the arc. Rounding can push it a hair
+/// above 1 for a near-antipodal pair, and `sqrt(1 - a)` is then NaN — which
+/// propagates silently through every consumer rather than throwing, and this
+/// is the one copy they all share. Measured on `(-87.5, 0, 87.5, 180)`:
+/// unclamped NaN, clamped 20015086.796.
+///
+/// Web makes the same repair by switching to `2 * asin(sqrt(a))`, which is the
+/// same quantity in exact arithmetic but not in floating point: adopting it
+/// here moves two pinned `course` projection figures by one ULP. The clamp
+/// alone is identity for every `a` below 1, so it closes the NaN and leaves
+/// every existing expected number where it is — the same reasoning
+/// [`crate::geo::unwrap_lon_deg`] records for not being spelled web's way.
 pub fn haversine_metres(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     const R: f64 = 6_371_000.0;
     let d_lat = (lat2 - lat1) * core::f64::consts::PI / 180.0;
@@ -333,6 +384,7 @@ pub fn haversine_metres(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
             * libm::cos(lat2 * core::f64::consts::PI / 180.0)
             * sin_lng
             * sin_lng;
+    let a = a.clamp(0.0, 1.0);
     R * 2.0 * libm::atan2(libm::sqrt(a), libm::sqrt(1.0 - a))
 }
 
@@ -354,6 +406,19 @@ pub fn haversine_metres(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
 /// `f64`: its other callers (roadbook, route geometry, privacy zones, turn
 /// cues) are phone-fed batch consumers with no per-fix cost to save, and
 /// changing their numbers to buy nothing is not a trade worth making.
+///
+/// `a` is clamped into `[0, 1]` for the reason the `f64` copy states, and this
+/// copy is the MORE exposed of the two: `f32` carries ~1e-7 of relative
+/// precision against `f64`'s ~1e-16, so the rounding that pushes `a` past 1 is
+/// correspondingly commoner. Measured over the 258 480 half-degree antipodal
+/// pairs, where `a` is exactly 1 in exact arithmetic and rounding alone
+/// decides: unclamped, 12 960 of them answered NaN while [`haversine_metres`]
+/// answered a number on every one, and the NaN band reaches 0.029 deg — about
+/// 3.2 km — off the exact antipode rather than sitting on a knife edge. A NaN
+/// here fails every `>` and `>=` in [`crate::trackback`], so the back-to-start
+/// distance renders as NaN and the heading anchor never advances. The clamp is
+/// bit-for-bit identity everywhere else: 2 000 000 random sub-kilometre legs
+/// and 2 000 000 random global pairs each compared equal to the last bit.
 pub fn haversine_metres_f32(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f32 {
     const R: f32 = 6_371_000.0;
     let d_lat = ((lat2 - lat1) as f32).to_radians();
@@ -365,6 +430,7 @@ pub fn haversine_metres_f32(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f32 {
             * libm::cosf((lat2 as f32).to_radians())
             * sin_lng
             * sin_lng;
+    let a = a.clamp(0.0, 1.0);
     R * 2.0 * libm::atan2f(libm::sqrtf(a), libm::sqrtf(1.0 - a))
 }
 
@@ -495,11 +561,16 @@ mod tests {
 
     #[test]
     fn estimator_needs_a_real_segment_before_trusting_a_grade() {
+        // Distances are stated as fractions of the window rather than as
+        // literals, so widening it cannot leave a stale sub-gate sample
+        // reading as an above-gate one. What the window may BE is pinned
+        // against the noise floor by
+        // `the_window_is_longer_than_the_noise_floor_the_gain_path_discards`.
         let mut e = GapEstimator::new();
         e.on_sample(0.0, 100.0); // seeds
-        e.on_sample(3.0, 103.0); // 3 m run < MIN_SEGMENT_M: jitter, no grade
+        e.on_sample(MIN_SEGMENT_M * 0.6, 103.0); // sub-gate: jitter, no grade
         assert_eq!(e.grade(), 0.0);
-        e.on_sample(10.0, 101.0); // 10 m run from the seed, +1 m rise
+        e.on_sample(MIN_SEGMENT_M * 2.0, MIN_SEGMENT_M * 0.2 + 100.0);
         assert!((e.grade() - 0.1).abs() < 1e-9);
     }
 
@@ -507,9 +578,166 @@ mod tests {
     fn estimator_clamps_the_grade_like_the_pure_factor() {
         let mut e = GapEstimator::new();
         e.on_sample(0.0, 100.0);
-        e.on_sample(10.0, 200.0); // a 1000% "grade" from an altitude spike
+        // A 1000% "grade" from an altitude spike, over a full window.
+        e.on_sample(MIN_SEGMENT_M, 100.0 + MIN_SEGMENT_M * 10.0);
         assert_eq!(e.grade(), MAX_GRADE);
         assert_eq!(e.gap_s_per_km(5.0), gap_pace_s_per_km(5.0, MAX_GRADE));
+    }
+
+    /// The finding this window's value exists to answer, stated as the
+    /// relationship rather than as the number: the largest altitude change the
+    /// elevation-gain path throws away as noise, taken over the shortest run a
+    /// grade is measured across, must not read as a wall.
+    ///
+    /// At the 5 m this shipped with, 3 m of noise was a 0.60 grade — past
+    /// `MAX_GRADE`, so it clamped, and the factor was 5.396. A rise nothing
+    /// else on the device is willing to call climb reported an effort-pace
+    /// 5.4x faster than raw. Nothing gates the rise and nothing can: a
+    /// threshold big enough to suppress that noise suppresses every real grade
+    /// below `threshold / window` with it.
+    #[test]
+    fn the_window_is_longer_than_the_noise_floor_the_gain_path_discards() {
+        let noise_floor_grade = crate::route_simplify::ELEVATION_GAIN_MIN_DELTA_M / MIN_SEGMENT_M;
+        assert!(
+            noise_floor_grade < MAX_GRADE,
+            "a window of {MIN_SEGMENT_M} m makes the {} m noise floor a {noise_floor_grade} grade,              past the steepest the Minetti fit is defined at",
+            crate::route_simplify::ELEVATION_GAIN_MIN_DELTA_M
+        );
+        assert!(
+            grade_factor(noise_floor_grade) < 2.1,
+            "the noise floor alone must not more than double the reported effort; it multiplies              it by {}",
+            grade_factor(noise_floor_grade)
+        );
+    }
+
+    /// The GAP reference track: a clean, noise-free 6% climb switchbacking
+    /// +/-8 m every 150 m, walked at 5 m every 3 s for 3 km — the 30-minute
+    /// power-hike-paced staircase decisions.md § 992 measured the window's cost
+    /// on, and the profile that binds its UPPER end. Points sit on a line of
+    /// constant latitude, where the haversine collapses exactly to R * dLambda,
+    /// so [`GAP_REFERENCE_HORIZ_STEP_M`] is a closed form rather than a second
+    /// copy of the module's own distance function.
+    ///
+    /// Frozen on three rails — this file, web's `grade_adjusted_pace.test.ts`
+    /// and the phone's `grade_adjusted_pace_test.dart` — and compared between
+    /// them by `scripts/check_watch_wire_vectors.mjs`, which reads all eight
+    /// constants out of each. A fixture that drifts on one rail makes its
+    /// golden meaningless rather than wrong, which is the failure nothing would
+    /// otherwise report (decisions.md § 641).
+    const GAP_REFERENCE_POINTS: usize = 601;
+    const GAP_REFERENCE_STEP_M: f64 = 5.0;
+    const GAP_REFERENCE_STEP_S: i64 = 3;
+    const GAP_REFERENCE_BASE_GRADE: f64 = 0.06;
+    const GAP_REFERENCE_AMPLITUDE_M: f64 = 8.0;
+    const GAP_REFERENCE_PERIOD_M: f64 = 150.0;
+    const GAP_REFERENCE_S_PER_KM: u32 = 311;
+    const GAP_REFERENCE_MAX_COST: f64 = 0.03;
+
+    const GAP_REFERENCE_HORIZ_STEP_M: f64 =
+        6_371_000.0 * ((GAP_REFERENCE_STEP_M / 111_320.0) * core::f64::consts::PI) / 180.0;
+
+    fn gap_reference_track(amplitude_m: f64) -> [GapPoint; GAP_REFERENCE_POINTS] {
+        let mut out = [GapPoint {
+            lat_deg: 0.0,
+            lon_deg: 0.0,
+            ele_m: None,
+            t_ms: None,
+        }; GAP_REFERENCE_POINTS];
+        for (i, p) in out.iter_mut().enumerate() {
+            let x = i as f64 * GAP_REFERENCE_STEP_M;
+            p.lon_deg = x / 111_320.0;
+            p.ele_m = Some(
+                100.0
+                    + GAP_REFERENCE_BASE_GRADE * x
+                    + amplitude_m
+                        * libm::sin(2.0 * core::f64::consts::PI * x / GAP_REFERENCE_PERIOD_M),
+            );
+            p.t_ms = Some(i as i64 * GAP_REFERENCE_STEP_S * 1000);
+        }
+        out
+    }
+
+    /// The same walk with no window at all: every point pair graded on its own
+    /// rise over its own run. This is what the runner actually spent, and what
+    /// a window can only approximate — a window wider than the terrain averages
+    /// the climbs and the drops together and hands back a flatter course than
+    /// the one underfoot.
+    fn gap_reference_truth_s_per_km(track: &[GapPoint]) -> f64 {
+        let mut adj_dist_m = 0.0;
+        for i in 1..track.len() {
+            let rise = track[i].ele_m.unwrap_or(0.0) - track[i - 1].ele_m.unwrap_or(0.0);
+            adj_dist_m +=
+                GAP_REFERENCE_HORIZ_STEP_M * grade_factor(rise / GAP_REFERENCE_HORIZ_STEP_M);
+        }
+        let time_s = (track.len() - 1) as f64 * GAP_REFERENCE_STEP_S as f64;
+        time_s / (adj_dist_m / 1000.0)
+    }
+
+    #[test]
+    fn the_reference_geometry_measures_the_horizontal_step_the_module_does() {
+        // Ties the closed form above to the module's own haversine: with no
+        // oscillation and no base grade every factor is exactly 1, so the
+        // reported GAP is the raw pace that step implies. Without this the
+        // truth below would be graded against a distance nothing had checked.
+        let mut flat = gap_reference_track(0.0);
+        for p in flat.iter_mut() {
+            p.ele_m = Some(100.0);
+        }
+        let time_s = (GAP_REFERENCE_POINTS - 1) as f64 * GAP_REFERENCE_STEP_S as f64;
+        let horiz_m = GAP_REFERENCE_HORIZ_STEP_M * (GAP_REFERENCE_POINTS - 1) as f64;
+        assert_eq!(
+            grade_adjusted_pace_s_per_km(&flat),
+            Some(libm::round(time_s / (horiz_m / 1000.0)) as u32)
+        );
+    }
+
+    /// The other end of the bracket. The noise-floor test above states the
+    /// FLOOR — it admits nothing under 19.40 m — and would pass at 200 m, a
+    /// window long enough to erase the terrain outright. This states the
+    /// CEILING, as decisions.md § 992 stated it: on the most oscillating
+    /// realistic profile measured, the window may not cost more than 3% against
+    /// the truth.
+    ///
+    /// Measured on this fixture, reported against truth 302.611 s/km:
+    ///   5 m -> 304 (-0.46%)   15 m -> 308 (-1.78%)   20 m -> 311 (-2.77%)
+    ///   25 m -> 316 (-4.42%)  30 m -> 322 (-6.41%)   200 m -> 426 (-40.78%)
+    /// so the pair of tests together admits only [19.40 m, 24.97 m]. The 5 m
+    /// point spacing is what makes the ceiling 24.97 rather than 25: the walk
+    /// closes a segment on the first pair that clears the window, so what is
+    /// really bounded is the EFFECTIVE segment, which is the honest bound.
+    #[test]
+    fn the_grade_window_is_short_enough_to_keep_the_reference_track() {
+        let track = gap_reference_track(GAP_REFERENCE_AMPLITUDE_M);
+        let truth = gap_reference_truth_s_per_km(&track);
+        let reported = grade_adjusted_pace_s_per_km(&track).expect("the reference track grades");
+        let cost = libm::fabs(reported as f64 - truth) / truth;
+        assert!(
+            cost < GAP_REFERENCE_MAX_COST,
+            "a {MIN_SEGMENT_M} m window reports {reported} s/km against a true {truth} s/km on              the reference switchback — {} % of the climb averaged away",
+            cost * 100.0
+        );
+        assert_eq!(
+            reported, GAP_REFERENCE_S_PER_KM,
+            "the reference track no longer grades to its frozen value: the window, the fixture              or the Minetti fit moved. Re-measure the cost against truth before updating this              number, and update the web and phone rails with it"
+        );
+    }
+
+    #[test]
+    fn a_track_shorter_than_one_window_yields_no_grade_adjusted_pace() {
+        // Proof that the walk reads the constant rather than a literal: three
+        // quarter-window steps carry elevation and a duration, and still never
+        // complete a segment, so there is no grade anyone can vouch for and the
+        // helper says so instead of grading the jitter.
+        let step = MIN_SEGMENT_M / 4.0;
+        let track: heapless::Vec<GapPoint, 4> = (0..4)
+            .map(|i| GapPoint {
+                lat_deg: 0.0,
+                lon_deg: (i as f64 * step) / 111_320.0,
+                ele_m: Some(100.0 + i as f64),
+                t_ms: Some(i as i64 * 1000),
+            })
+            .collect();
+        assert_eq!(grade_adjusted_pace_s_per_km(&track), None);
     }
 
     #[test]
@@ -749,10 +977,122 @@ mod tests {
 
     /// Antipodal-scale inputs are not a fix-path case, but the `f32` `1.0 - a`
     /// must not go negative and hand `sqrtf` a NaN.
+    ///
+    /// `(-40, 75)` to `(40, -105)` is the pair this test was written with, and
+    /// it answered finitely for years with no clamp in the function — the
+    /// property held for the sample rather than for the function. It stays as
+    /// the on-the-happy-side case; the sweep below is what actually pins it.
     #[test]
     fn the_f32_haversine_stays_finite_at_antipodal_scale() {
         let d = haversine_metres_f32(-40.0, 75.0, 40.0, -105.0);
         assert!(d.is_finite(), "antipodal distance {d}");
         assert!((d - 20_015_000.0).abs() < 5_000.0, "antipodal distance {d}");
+    }
+
+    /// The whole antipodal family, where `a` is exactly 1 in exact arithmetic
+    /// so `f32` rounding alone decides which side of the `sqrtf(1 - a)` branch
+    /// the pair lands on. Unclamped, 12 960 of these 258 480 pairs answer NaN;
+    /// [`haversine_metres`] answers a number on every one of them, which is
+    /// the divergence between two copies of one function that § 305 is about.
+    #[test]
+    fn the_f32_haversine_is_finite_across_the_whole_antipodal_family() {
+        let mut checked = 0usize;
+        let mut lat = -89.5_f64;
+        while lat <= 89.5 {
+            let mut lng = -180.0_f64;
+            while lng < 180.0 {
+                let alat = -lat;
+                let alng = if lng >= 0.0 { lng - 180.0 } else { lng + 180.0 };
+                let d = haversine_metres_f32(lat, lng, alat, alng);
+                assert!(
+                    d.is_finite(),
+                    "({lat}, {lng}) -> ({alat}, {alng}) gave {d}; f64 gives {}",
+                    haversine_metres(lat, lng, alat, alng)
+                );
+                assert!(
+                    (d - 20_015_087.0).abs() < 5_000.0,
+                    "({lat}, {lng}) -> ({alat}, {alng}) gave {d}"
+                );
+                checked += 1;
+                lng += 0.5;
+            }
+            lat += 0.5;
+        }
+        assert_eq!(checked, 258_480);
+    }
+
+    /// One named pair out of that family, so a regression names an input
+    /// rather than a loop index. Unclamped this is NaN in `f32` while the
+    /// `f64` sibling answers 20 015 086.662 m on the same two coordinates.
+    #[test]
+    fn the_two_haversine_copies_agree_where_rounding_decides() {
+        let (lat1, lng1, lat2, lng2) = (-86.0, -180.0, 86.0, 0.0);
+        let f32_m = haversine_metres_f32(lat1, lng1, lat2, lng2);
+        let f64_m = haversine_metres(lat1, lng1, lat2, lng2);
+        assert!(f64_m.is_finite(), "f64 copy gave {f64_m}");
+        assert!(
+            f32_m.is_finite(),
+            "f32 copy gave {f32_m} where the f64 copy gives {f64_m}"
+        );
+        assert!(
+            ((f32_m as f64) - f64_m).abs() < 5.0,
+            "f32 {f32_m} vs f64 {f64_m}"
+        );
+    }
+
+    /// The clamp costs nothing anywhere else. Over the leg lengths the fix
+    /// path actually produces, the clamped and unclamped forms are equal to
+    /// the last bit — so adding it moved no pinned `trackback` figure, and
+    /// this is the assertion that keeps that true.
+    #[test]
+    fn the_f32_clamp_is_identity_on_every_leg_a_fix_path_produces() {
+        fn unclamped(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f32 {
+            const R: f32 = 6_371_000.0;
+            let d_lat = ((lat2 - lat1) as f32).to_radians();
+            let d_lng = ((lng2 - lng1) as f32).to_radians();
+            let sin_lat = libm::sinf(d_lat / 2.0);
+            let sin_lng = libm::sinf(d_lng / 2.0);
+            let a = sin_lat * sin_lat
+                + libm::cosf((lat1 as f32).to_radians())
+                    * libm::cosf((lat2 as f32).to_radians())
+                    * sin_lng
+                    * sin_lng;
+            R * 2.0 * libm::atan2f(libm::sqrtf(a), libm::sqrtf(1.0 - a))
+        }
+
+        let mut checked = 0usize;
+        for lat in [0.0_f64, 40.0, 51.5, 67.0, 78.0, -33.9, 89.0] {
+            for hop_m in [0.5_f64, 1.0, 4.0, 25.0, 240.0, 1_000.0, 25_000.0] {
+                let d_lat = hop_m / 111_320.0;
+                let d_lon = d_lat / libm::cos(lat * core::f64::consts::PI / 180.0);
+                for (lat2, lon2) in [
+                    (lat + d_lat, -105.0),
+                    (lat, -105.0 + d_lon),
+                    (lat + d_lat, -105.0 + d_lon),
+                    (lat - d_lat, -105.0 - d_lon),
+                ] {
+                    assert_eq!(
+                        haversine_metres_f32(lat, -105.0, lat2, lon2).to_bits(),
+                        unclamped(lat, -105.0, lat2, lon2).to_bits(),
+                        "clamp changed the answer at lat {lat} hop {hop_m} m"
+                    );
+                    checked += 1;
+                }
+            }
+        }
+        assert_eq!(checked, 196);
+    }
+
+    #[test]
+    fn haversine_of_a_near_antipodal_pair_is_half_the_globe_not_nan() {
+        // Rounding pushes `a` a hair above 1 here, and sqrt(1 - a) is then NaN
+        // — which every consumer of this one shared copy would carry silently
+        // into a distance, a pace and a cut-off margin.
+        let d = haversine_metres(-87.5, 0.0, 87.5, 180.0);
+        assert!(d.is_finite(), "got {}", d);
+        assert!(libm::fabs(d - 20_015_086.796) < 1.0, "got {}", d);
+        // A hemisphere apart, exactly antipodal: half the great circle.
+        let half = haversine_metres(0.0, 0.0, 0.0, 180.0);
+        assert!(half.is_finite() && libm::fabs(half - 20_015_086.796) < 1.0);
     }
 }

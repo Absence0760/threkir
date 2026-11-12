@@ -1,22 +1,28 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMySafetyContacts,
 		addSafetyContact,
 		removeSafetyContact,
 		fetchPendingSafetyRequests,
+		fetchSafetyContactOf,
 		confirmSafetyRequest,
 		declineSafetyRequest,
+		setSafetySmsOptIn,
 		type SafetyContact,
 		type PendingSafetyRequest,
-	} from '$lib/core/data';
+		type SafetyContactOf,
+	} from '#lib/core/data.ts';
 	import { SvelteSet } from 'svelte/reactivity';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { effective, loadSettings, updateUniversal } from '$lib/settings/settings';
-	import { isOffRouteEscalationEnabled } from '$lib/safety/off_route_flag';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
+	import { isOffRouteEscalationEnabled } from '#lib/safety/off_route_flag.ts';
+	import { normaliseE164 } from '#lib/safety/e164.ts';
 
 	let contacts = $state<SafetyContact[]>([]);
 	let pending = $state<PendingSafetyRequest[]>([]);
@@ -29,6 +35,12 @@
 	// can't fire confirm/decline twice.
 	let respondingId = $state<string | null>(null);
 	let confirmingRemove = $state<SafetyContact | null>(null);
+	let contactOf = $state<SafetyContactOf[]>([]);
+	// In-flight guard for the contact-of controls, kept separate from
+	// `respondingId` so a pending-request response and a consent change
+	// can't disable each other's list.
+	let contactOfBusyId = $state<string | null>(null);
+	let confirmingWithdraw = $state<SafetyContactOf | null>(null);
 	// Per-request SMS opt-in choice, keyed by request id. Only meaningful
 	// when the request's owner stored a phone (has_phone).
 	let smsOptIn = new SvelteSet<string>();
@@ -36,17 +48,18 @@
 	// Mirror the server-side CHECK so the user gets an inline message before
 	// a round trip that would 23514.
 	const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-	// Mirror the E.164 CHECK on safety_contacts.contact_phone.
-	const phoneRe = /^\+[1-9][0-9]{6,14}$/;
 
 	async function reload() {
-		const [c, p] = await Promise.all([
+		const [c, p, co] = await Promise.all([
 			fetchMySafetyContacts(),
 			fetchPendingSafetyRequests(),
+			fetchSafetyContactOf(),
 		]);
 		contacts = c.contacts;
 		pending = p.requests;
-		loadError = c.error ?? p.error;
+		contactOf = co.relationships;
+		const failure = c.error ?? p.error ?? co.error;
+		loadError = failure ? errorCopy(failure, m, 'settings/safety: loadError') : null;
 	}
 
 	// Overdue escalation (docs/features/safety.md): a universal pref holding
@@ -77,7 +90,7 @@
 			await updateUniversal(auth.user.id, { safety_off_route_alerts: offRouteAlerts });
 			showToast(m('safety.offRouteSaved'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		}
 	}
 
@@ -89,7 +102,7 @@
 			});
 			showToast(m('safety.overdueSaved'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		}
 	}
 
@@ -99,20 +112,23 @@
 			showToast(m('safety.invalidEmail'), 'error');
 			return;
 		}
-		const phoneValue = phone.trim();
-		if (phoneValue && !phoneRe.test(phoneValue)) {
+		// A pasted `+44 7700 900123` is a valid number that is merely
+		// punctuated; normalise before grading so only a genuinely
+		// unreachable entry is refused.
+		const phoneValue = normaliseE164(phone);
+		if (phone.trim() && phoneValue === null) {
 			showToast(m('safety.invalidPhone'), 'error');
 			return;
 		}
 		adding = true;
 		try {
-			await addSafetyContact(value, phoneValue || null);
+			await addSafetyContact(value, phoneValue);
 			email = '';
 			phone = '';
 			await reload();
 			showToast(m('safety.addedToast'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			adding = false;
 		}
@@ -124,7 +140,7 @@
 			await reload();
 			showToast(m('safety.removedToast'), 'info');
 		} catch (e) {
-			showToast(m('safety.removeFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('safety.removeFailed', { error: errorCopy(e, m, 'safety.removeFailed') }), 'error');
 		} finally {
 			confirmingRemove = null;
 		}
@@ -139,7 +155,7 @@
 			await reload();
 			showToast(m('safety.confirmedToast'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			respondingId = null;
 		}
@@ -153,9 +169,66 @@
 			await reload();
 			showToast(m('safety.declinedToast'), 'info');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			respondingId = null;
+		}
+	}
+
+	async function handleSmsToggle(rel: SafetyContactOf, next: boolean, input: HTMLInputElement) {
+		if (contactOfBusyId) return;
+		contactOfBusyId = rel.id;
+		try {
+			const ok = await setSafetySmsOptIn(rel.id, next);
+			await reload();
+			// A consent control must never read as a state the server didn't
+			// record. Svelte skips re-writing `checked` when the derived value
+			// is unchanged, so a refused write would leave the user's click
+			// standing in the DOM — re-assert it from the reloaded row.
+			const after = contactOf.find((r) => r.id === rel.id);
+			input.checked = after ? after.sms_opt_in_at !== null : next;
+			if (!ok) {
+				showToast(m('safety.contactOfSmsNoChange'), 'error');
+				return;
+			}
+			showToast(
+				m(next ? 'safety.contactOfSmsOnToast' : 'safety.contactOfSmsOffToast'),
+				'success',
+			);
+		} catch (e) {
+			input.checked = !next;
+			showToast(
+				m('safety.contactOfSmsFailed', { error: errorCopy(e, m, 'safety.contactOfSmsFailed') }),
+				'error',
+			);
+		} finally {
+			contactOfBusyId = null;
+		}
+	}
+
+	/// Withdrawing from a relationship you are the CONTACT of is
+	/// `decline_safety_contact`, never `removeSafetyContact` — the latter is
+	/// scoped to `owner_id` and would silently match nothing here (§720).
+	async function handleWithdraw(rel: SafetyContactOf) {
+		if (contactOfBusyId) return;
+		contactOfBusyId = rel.id;
+		try {
+			const ok = await declineSafetyRequest(rel.id);
+			await reload();
+			showToast(
+				ok ? m('safety.contactOfWithdrawnToast') : m('safety.contactOfSmsNoChange'),
+				ok ? 'info' : 'error',
+			);
+		} catch (e) {
+			showToast(
+				m('safety.contactOfWithdrawFailed', {
+					error: errorCopy(e, m, 'safety.contactOfWithdrawFailed'),
+				}),
+				'error',
+			);
+		} finally {
+			contactOfBusyId = null;
+			confirmingWithdraw = null;
 		}
 	}
 </script>
@@ -214,10 +287,10 @@
 
 		{#if loading}
 			<div class="skel-list" aria-hidden="true">
-				<span class="skel skel-row"></span>
-				<span class="skel skel-row"></span>
+				<SkeletonBlock height="3.25rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="3.25rem" radius="var(--radius-md)" />
 			</div>
-			<p class="sr-only" role="status">{m('safety.loading')}</p>
+			<p class="visually-hidden" role="status">{m('safety.loading')}</p>
 		{:else if loadError}
 			<div class="error-banner" role="alert" data-testid="safety-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -346,6 +419,56 @@
 			</ul>
 		</section>
 	{/if}
+
+	{#if contactOf.length > 0}
+		<section class="card" data-testid="safety-contact-of">
+			<header class="section-head">
+				<h2>{m('safety.contactOfTitle')}</h2>
+				<p class="tagline">{m('safety.contactOfIntro')}</p>
+			</header>
+			<ul class="contact-list">
+				{#each contactOf as rel (rel.id)}
+					<li class="contact" data-testid="safety-contact-of-row">
+						<div class="who">
+							<span class="email">
+								{m('safety.contactOfFor', {
+									name: rel.owner_name || m('safety.unknownRunner'),
+								})}
+							</span>
+							{#if rel.has_phone}
+								<label class="sms-opt">
+									<input
+										type="checkbox"
+										checked={rel.sms_opt_in_at !== null}
+										disabled={contactOfBusyId !== null}
+										onchange={(e) =>
+											handleSmsToggle(
+												rel,
+												(e.currentTarget as HTMLInputElement).checked,
+												e.currentTarget as HTMLInputElement,
+											)}
+										data-testid="safety-contact-of-sms"
+									/>
+									<span>{m('safety.contactOfSmsLabel')}</span>
+								</label>
+							{:else}
+								<span class="no-phone">{m('safety.contactOfNoPhone')}</span>
+							{/if}
+						</div>
+						<button
+							class="btn-danger btn-sm"
+							onclick={() => (confirmingWithdraw = rel)}
+							disabled={contactOfBusyId !== null}
+							data-testid="safety-contact-of-withdraw"
+						>
+							<span class="material-symbols" aria-hidden="true">person_remove</span>
+							{m('safety.contactOfWithdraw')}
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
 </div>
 
 <ConfirmDialog
@@ -358,6 +481,19 @@
 		if (confirmingRemove) handleRemove(confirmingRemove);
 	}}
 	oncancel={() => (confirmingRemove = null)}
+/>
+
+<ConfirmDialog
+	open={confirmingWithdraw !== null}
+	data-testid="safety-withdraw-dialog"
+	title={m('safety.contactOfTitle')}
+	message={m('safety.contactOfWithdrawConfirm')}
+	confirmLabel={m('safety.contactOfWithdraw')}
+	danger
+	onconfirm={() => {
+		if (confirmingWithdraw) handleWithdraw(confirmingWithdraw);
+	}}
+	oncancel={() => (confirmingWithdraw = null)}
 />
 
 <style>
@@ -504,6 +640,11 @@
 		line-height: 1.5;
 		color: var(--color-text-secondary);
 	}
+	.no-phone {
+		font-size: 0.82rem;
+		line-height: 1.5;
+		color: var(--color-text-secondary);
+	}
 	.incoming-req { flex-wrap: wrap; }
 	.sms-opt {
 		display: inline-flex;
@@ -573,23 +714,6 @@
 	}
 
 	.skel-list { display: flex; flex-direction: column; gap: var(--space-sm); }
-	.skel {
-		display: block;
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 25%,
-			var(--color-fill-subtle) 50%,
-			var(--color-bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-		border-radius: var(--radius-md);
-	}
-	.skel-row { height: 3.25rem; }
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
 
 	.material-symbols {
 		font-family: 'Material Symbols Outlined', system-ui;
@@ -601,20 +725,7 @@
 	.spin { animation: spin 0.9s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 		.spin { animation: none; }
 	}
 </style>

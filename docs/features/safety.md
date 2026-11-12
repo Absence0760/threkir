@@ -11,6 +11,13 @@
 > fail-closed (both prefs default off) until users opt in, so shipping the
 > code exposed no one. The "Open decisions" section records what was chosen
 > and why so a future session can revisit deliberately.
+>
+> **2026-10-15 — safety-contacts audience (decisions §1964–§1966):** the live
+> share, the escalation and its recipients can now run on the runner's
+> confirmed safety contacts only, with no `is_public` flip, and the automatic
+> share defaults on once an alert is armed. Code shipped behind the
+> default-closed `safety_audience` server gate; see
+> [Safety-contacts-only audience](#safety-contacts-only-audience-2026-10-15-decisions-1964).
 
 ## Context / why
 
@@ -82,7 +89,10 @@ safety contacts a "may be overdue" alert with the live link — once.
    beats a missed alert (§131's stance), but repeated alerts on the same
    silent run train contacts to ignore them. The saved-run finish email is
    the all-clear; if the run never finishes, one alert stands.
-5. **Auto-live-share is a per-device pref, default OFF** (`auto_live_share`,
+5. **Auto-live-share is a per-device pref, default OFF** — *superseded in
+   part by §1964/§1965: with the `safety_audience` gate open the automatic
+   share is private to the safety contacts and defaults on when an alert is
+   armed; the text below still describes the gate-closed behaviour* (`auto_live_share`,
    D scope — a property of the phone that records, like
    `voice_feedback_interval_km`). It makes every run publicly viewable mid-run (the stub is
    `is_public=true` — that's what makes the spectator link work for a
@@ -166,6 +176,32 @@ clipping; the email only carries times + the link.
 - Mobile `settings_safety_screen.dart`: same section (universal pref via
   `SettingsSyncService.updateUniversal`), plus the `auto_live_share` device
   toggle ("Start a live share automatically when I start a run").
+- **The contact list is owner-scoped by the client, not by RLS** (ADR §720).
+  `safety_contacts` carries four permissive policies — the owner pair
+  (`owner_id = auth.uid()`) and a linked-contact pair
+  (`contact_user_id = auth.uid()`, `20261218_001`) — and permissive policies
+  OR, so an unfiltered read returns the union: your contacts plus every
+  relationship someone else added you to and you confirmed. Both
+  `fetchMySafetyContacts` (web `core/data.ts`, Dart `api_client.dart`) and
+  `removeSafetyContact` therefore carry an explicit `owner_id` filter and
+  refuse when signed out. Do not remove it, and do not "simplify" it away on
+  the grounds that RLS covers it: the delete leg is permissive too, so an
+  id-only delete reaches a row you merely appear on and destroys the other
+  person's emergency contact. Withdrawing from a relationship you are the
+  contact *of* is `declineSafetyRequest` / `decline_safety_contact`. Pinned by
+  source guards on both clients plus four assertions in
+  `apps/backend/supabase/tests/safety_contacts_test.sql`.
+- **The contact-of list is a second, deliberate read** (ADR §726):
+  `fetchSafetyContactOf` (web `core/data.ts`, Dart `api_client.dart`) filters
+  `contact_user_id` for the same reason the owner list filters `owner_id` —
+  both halves of the table are legitimately readable, so each query has to say
+  which one it wants. It backs the "you are a safety contact for" section on
+  web `/settings/safety` and mobile Settings → Safety contacts, the only place
+  the SMS consent granted at confirm time can be changed or withdrawn. The
+  owner's stored number travels as a **fact** (`has_phone`), never as digits —
+  the same posture `my_pending_safety_requests` takes, and there is no owner
+  UPDATE policy, so a contact could not correct a wrong number from there
+  anyway.
 - Settings → Account "Safety" card (web) + `trusted_contacts_screen.dart`
   (mobile): replaced by a pointer to the real Safety settings; the
   `trusted_contacts.ts`/`.dart` helpers + tests deleted (nothing else reads
@@ -184,6 +220,9 @@ clipping; the email only carries times + the link.
   explicitly keep it public (issue #664, decisions §434). The pref copy
   states both plainly.
 - The escalation email contains times and a link only, never coordinates.
+- **With the `safety_audience` gate open (§1964)** the automatic share is
+  never public: nobody but the runner can see the run until an escalation
+  fires, and then only each confirmed contact, through their own link.
 - Pre-prod deploy checklist (not a code gate): CISO/counsel review of the
   overdue email copy + this posture section. The feature is fail-closed
   (both prefs default off/null) so shipping the code does not expose anyone.
@@ -241,9 +280,41 @@ channel-agnostic scan rather than forking it.
   page now prompts-then-confirms (with the opt-in) rather than auto-confirming;
   an owner-only "Not back by X" control on `/live/[id]` (web can't record, so
   the owner's own live spectator view is the only in-progress-run surface).
-- **Deferred (additive per §24).** Mobile safety-contacts screens don't yet
-  carry the phone/SMS fields or the expected-return control; native-push leg
-  still waits on FCM/APNs.
+- **Mobile surfaces (2026-08-24, ADR §719).** Settings → Safety contacts
+  takes the optional number and offers the confirm-time opt-in on an inbound
+  request that carries `has_phone`. Two things differ from web deliberately:
+  the number is repaired through the shared `e164` parity pair before it is
+  graded (a pasted `+44 (0) 7700 900123` is a valid number that is merely
+  punctuated — and the parenthesised trunk zero is DELETED, because stripping
+  only its brackets yields `+4407700900123`, a different conforming number
+  whose alert reaches nobody), and the contact row renders three states
+  rather than two: SMS on, **a number on file with no contact opt-in**, or
+  nothing. Web shows only the first, so an owner who typed a number the
+  contact never consented to sees silence and reads it as working. The
+  per-run "not back by X" ladder hangs off the live-share sheet — recording
+  is mobile-only, and the RPC needs a server-side in-progress run row, which
+  only a live broadcast creates.
+- **What the phone cannot disarm — and what that costs.** The deadline is
+  written to the run row and read by the cron scan, so killing the app,
+  flattening the battery or destroying the handset all leave the alert
+  standing. That is the feature. Its cost is the other direction: a run that
+  FINISHES out of signal is queued locally, the server row stays
+  `in_progress`, and the scan escalates a runner who is already home. This is
+  the pre-existing false-positive posture of the whole overdue net (the
+  runner's confirmed contacts get one email that says signal loss is a
+  possible cause), sharpened by an absolute deadline; the mobile dialog says
+  so outright rather than leaving a runner to discover it. A successful save
+  upserts the whole metadata bag and takes both `in_progress` and
+  `expected_return_at` with it, so an online finish cannot false-fire.
+- **Consent is changeable after confirming (2026-08-25, ADR §726).** Both
+  platforms carry a "you are a safety contact for" section listing the
+  relationships the signed-in user is the *contact* of — an SMS toggle over
+  `set_safety_sms_opt_in` and a withdraw over `decline_safety_contact`. The
+  rows come from a read scoped on `contact_user_id`, which the linked-contact
+  SELECT policy already permitted, so there is no migration. Withdrawing is
+  **decline, never `removeSafetyContact`**: that one is owner-scoped since
+  §720 and would match nothing from this side while reporting success.
+- **Still deferred.** The native-push leg still waits on FCM/APNs.
 
 ## Open decisions (chosen; revisit deliberately)
 
@@ -271,7 +342,9 @@ channel-agnostic scan rather than forking it.
 
 The escalation net above only watches *live-broadcast* runs. The persona's
 stated habit is to share a live link for every solo evening run — but a
-runner who hasn't enabled `auto_live_share` (default off) and doesn't tap
+runner who hasn't enabled `auto_live_share` (default off while the `safety_audience`
+gate is closed; see § Safety-contacts-only audience for the default once it
+opens, §1965) and doesn't tap
 "Share live link" gets no net and, worse, no signal that they're
 unprotected. This closes that gap with a **one-time, throttled, dismissible
 contextual nudge** at run start — no start-flow friction, no new blocking
@@ -338,6 +411,114 @@ step.
   sustained departure to confirmed contacts via the existing notify path,
   gated on a fail-closed deploy flag.
 
+## Stopped-runner readout on the spectator page (2026-08-15, ADR §621)
+
+> **STATUS: shipped web.** The spectator half of the safety story, complementing
+> the staleness work in `live_freshness`.
+
+`live_freshness` answers *"can we see them at all"* and `/live/[id]` is
+scrupulous about it — a lost-signal runner reads DELAYED, never LIVE. The
+complementary question had no answer anywhere on the surface: a runner whose
+phone is still pinging every few seconds from the same spot rendered as a
+fresh green LIVE dot, and the one derived stat that would have exposed it (the
+Recent-pace tile) computes a zero distance delta, returned `null`, and
+*disappeared*. Silence about "not moving" and silence about "no data yet"
+looked identical — and the more alarming of the two was the one that vanished.
+For the canyon-collapse (`ws100-spectator`), night-section (`moab240-spectator`)
+and alpine (`utmb-sweep-medical-sar`) cases this is the distinction that
+matters most.
+
+- **Decision (pure, web-only).** `motionFor` in
+  `apps/web/src/lib/safety/live_motion.ts` grades a window of recent pings into
+  `moving` / `stopped` / `unknown`. Constants: `MOTION_MIN_WINDOW_MS` (180 s —
+  the minimum observation before any claim, past every ordinary pause a moving
+  runner takes), `MOTION_STOPPED_DISTANCE_M` (25 m — enough to absorb an
+  accumulating GPS random walk over minutes, not just one fix's error), and
+  `MOTION_MAX_GAP_MS` (30 s — the longest hole in the telemetry the window may
+  span. No gap length is perfectly safe: at a slow jog a runner clears the
+  25 m radius and returns in about twenty seconds, so this is a **proportion,
+  not a guarantee** — six missed pings at the ~5 s broadcast cadence absorbs
+  ordinary cellular flakiness while keeping any tolerated hole to at most a
+  sixth of the shortest claim the helper will make, a ratio a unit test pins).
+- **Fail-closed in three directions.** A **stale** fix yields `unknown`: the
+  last position being old is exactly the case where "they have not moved" is
+  unknowable, and reporting a stationary runner off pre-dropout pings would be
+  the same lie in a new place. A **gap** inside the buffer yields `unknown`
+  too, for that reason arriving through a different door — a claim about a
+  runner staying put is a claim about every moment in between, and an outage is
+  precisely where they could have left and come back, so only the contiguous
+  run of pings ending at the newest one is evidence and everything before a
+  longer gap is discarded rather than vouched for. (Without this, a spectator
+  whose runner dropped out in a canyon and re-acquired near the same spot an
+  hour later would have been told "not moving for at least 60 min" about an
+  hour nobody observed.) And too short a window yields `unknown` — a five-ping
+  buffer at a 5 s cadence spans twenty seconds, and every runner alive stands
+  still for twenty seconds at a road crossing. A rewound odometer (a re-armed
+  recorder) is read as absolute ground covered, so it cannot manufacture a
+  stopped verdict either.
+- **Neutral, not an alarm.** A runner stopped for six minutes is at an aid
+  station; one stopped for ninety is a question for their crew. The chip states
+  the fact and the duration in the body text colour and draws no conclusion.
+  When the stop fills the whole held buffer the duration is a **floor**
+  (`atLeast`) and the copy says "at least N min" rather than stating a figure
+  the data does not support.
+- **Recent pace under staleness.** The Recent tile kept its confident present-
+  tense label on a fix the cut-off card had already refused to project from.
+  It now relabels to "When last seen" when `isStale` — the number is a real
+  fact about the last sighting and is worth keeping, but not under a label that
+  reads as current.
+- **Surface.** `/live/[id]` on web, `live_spectator_screen.dart` on mobile. No
+  new data reaches an anonymous viewer: the readout is derived from the
+  `distance_m` + `at` fields both surfaces already render as the trace and the
+  stat strip, and the position itself still comes through the existing
+  privacy-zone clipping. Pinned by `apps/web/tests-e2e/live/motion.spec.ts` (4)
+  + 18 unit tests web, 18 mirror unit tests + 4 widget tests on mobile.
+- **Registered parity pair** (`safety/live_motion.ts` ↔ `live_motion.dart`).
+  The mobile buffer is stamped from each ping's own `at` clock, never the
+  device's, so a backlog replayed on hydrate cannot land as a burst of "now"
+  and collapse an hour of history into a few seconds. The Dart `atMs` is an
+  `int` epoch-ms rather than web's `number`, so the non-finite guard covers
+  only the odometer on that side — an idiomatic shape difference, not a
+  divergence.
+
+## Live link delivery: what is sent and what the viewer says (2026-11-06, decisions § 2357)
+
+> **STATUS: shipped web + mobile (Android + iOS twin).** Issue #1300 BUG-003 / BUG-007.
+
+Two field reports from one walk: the live link drew straight lines across the
+route the saved run did not have, and on a budget Android phone it never left
+"Connecting".
+
+- **Publisher (mobile `run_screen` → `LiveBroadcaster`).** A ping carries
+  `livePublishPoint(snapshot)`: the end of the recorder's line while a fix has
+  cleared the 20 m map gate within the 10 s GPS-lost window, never
+  `currentPosition` (which includes the fixes the movement filter rejected).
+  While no fix clears the gate but the distance estimator took one, the ping
+  is that fix, flagged `live_run_pings.weak_gps` (migration `20271112000030`).
+  The race ping uses the same point without the weak fallback. A share that
+  has delivered nothing 30 s after it started shows a one-off top banner
+  (`runLiveShareNoPingYet`, skipped while paused); a Go-hub answer outside 2xx
+  now counts as a failure. All of it stays L4: a failed ping or banner never
+  touches the recording.
+- **Viewer (web `/live/[id]`, mobile `live_spectator_screen.dart`).** Subscribe
+  first, then read the backlog. Every ping goes through the `live_trace` pair,
+  which keeps the trace in time order and drops duplicates; only the newest
+  ping drives the stat strip and marker, so a late one never rewinds them. A
+  weak ping is the live dot inside a translucent halo with an "Approximate —
+  weak GPS" line, never joined into the trace — distinct from the amber
+  privacy-zone `coarse` ring. A live run with no ping yet reads **Waiting for
+  GPS** (`waiting-gps` in `live_spectator_status.ts`), not Connecting. When the
+  realtime channel errors or times out, the page polls `live_run_pings` from the
+  newest `at` it has seen every 10 s (`LIVE_POLL_FALLBACK_MS`) until the channel
+  is back, then catches up once from the same cursor. The Go-hub path keeps its
+  own reconnect loop and gains the ordering and dedupe.
+- **Watches.** Wear OS and watchOS publish race pings only, never the live
+  link, and both already send the last ACCEPTED fix (`latestPoint` is set only
+  for a track point on Wear; `lastAcceptedFix` on watchOS), so neither shares
+  BUG-003. Wear's race ping has no freshness gate of its own (it re-sends the
+  last accepted point every 10 s through a GNSS loss); that is the race board's
+  staleness question, not this one, and is left as it is.
+
 ## Off-route → auto-notify trusted contact (feature D, 2026-07-13, ADR §241)
 
 > **STATUS: code shipped, prod-gated.** Built against the
@@ -385,8 +566,77 @@ stayed off — their planned route on a live-shared run.
 - **Surfaces.** Mobile: a `safety_off_route_alerts` toggle on Settings → Safety
   contacts (hidden until the flag flips) + a run-screen banner on escalation.
   Web: the same opt-in toggle on `/settings/safety` (web can't record, so no
-  trigger there). Copy localized across six web locales + all mobile ARBs.
+  trigger there). Copy localized across every web locale + all mobile ARBs.
 - **Pre-prod deploy checklist (not a code gate):** CISO/counsel review of the
   `off_route` email/SMS copy + this posture, then set
   `OFF_ROUTE_ESCALATION_ENABLED` on the web build + mobile dotenv. The feature
   is fail-closed (flag off, pref off) so shipping the code exposes no one.
+
+## Safety-contacts-only audience (2026-10-15, decisions §1964)
+
+> **STATUS: code shipped, prod-gated.** Issue #1168 item 3. Fail-closed behind
+> the `safety_audience` row in `private.feature_flags`, which no migration
+> writes (seed.sql opens it for local + CI only).
+
+The net above cost a public run: the only live stub a client could create was
+`is_public = true`, because the spectator link had to open for a partner with
+no account. A live share can now run on the runner's **confirmed safety
+contacts only**.
+
+- **Model.** `runs.safety_audience` marks a private live stub. Safety contacts
+  are email-identified and usually not app users, so admission is a
+  capability link rather than an identity: `private.run_safety_links` holds
+  one token per (run, confirmed contact), **minted only when an escalation
+  fires** — the overdue scan and `escalate_run_off_route` insert them in the
+  statement that stamps `safety_escalated_at`, and put each contact's own
+  token in their `safety_email` / `safety_sms` payload as `view_token`.
+  Before an escalation no token exists. Migration `20270821000001`.
+- **The link.** The Go worker appends the token as a fragment,
+  `/live/{run_id}#k=<token>` (`safetyLiveURL`; a non-UUID token is dropped),
+  so it never reaches a server log or a Referer. `/live/[id]` reads it from
+  `location.hash` (`lib/safety/safety_live_link.ts`) and calls
+  `safety_live_run` / `safety_live_pings` in a POST body; it polls every 5 s
+  with a cursor instead of subscribing, shows a "Safety contacts only — don't
+  forward this link" notice, and a closed-link state when the token stops
+  admitting.
+- **What a token admits, at read time** (`private.safety_link_admits`): the
+  gate is open; the token is for this run; the run still carries
+  `safety_audience`, is still an in-progress stub and is not concluded; the
+  contact is still a confirmed contact of the owner; the link is under 48 h
+  old. Stopping the share, saving the run, removing or declining the contact
+  (cascade) and closing the gate each end access on the next poll.
+  `cleanup_stale_live_run_pings` sweeps links on the same 48 h window.
+- **What does not change.** `live_run_pings` RLS still admits only what
+  `private.is_run_visible_to` admits, so anon, strangers, followers and even a
+  linked app-user contact read nothing from the table or realtime;
+  `public_runs` / `shared_runs` never contain the stub; the escalation never
+  flips `is_public`. Pinned by `apps/backend/supabase/tests/safety_live_audience_test.sql` (37).
+- **Mobile.** `ApiClient.beginLiveBroadcast(safetyAudience: true)` writes the
+  private stub; `safetyAudienceEnabled()` reads the gate (fail closed). The
+  run screen's automatic share uses the safety audience when the gate is
+  open (`safety_live_audience.dart`), and the effective `auto_live_share` is
+  the explicit device choice or, unset, ON only when the gate is open AND an
+  overdue window (≥10 min) or the off-route alert is armed (§1965). A manual
+  "Share live link" stays public and widens a safety stub via
+  `makeRunPublic`; the stop-path visibility dialog runs only when a public
+  window existed. Settings → Safety contacts shows the effective value and
+  the never-public copy while the gate is open.
+- **Gate closed.** A stub written with `safety_audience` is stored as plain
+  private; no link is minted (the email carries the bare `/live` link); every
+  token is refused; clients see `safety_audience_enabled() = false` and keep
+  the old public, explicit-opt-in behaviour.
+
+**Pre-deploy checklist (not a code gate, §150):**
+
+1. **CISO review** of the privacy boundary: per-contact capability links,
+   the admission predicate, the 48 h window, the fragment transport, the
+   default-on rule in §1965.
+2. **Counsel review** of the same change plus the contact-facing copy (the
+   `/live/[id]` notice and closed-link state in all seven locales, the
+   overdue / off-route email and SMS now carrying a personal link) and the
+   default-on posture for the runner.
+3. Only then: declare `"safety_audience": { "enabled": true, "signoff": "<link>" }`
+   under `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)
+   in a PR; the next backend release applies it. Turning it off again is the rollback;
+   the default reverts for everyone who never touched the switch.
+

@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
@@ -6,17 +7,22 @@ import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gear_store.dart';
+import '../local_food_store.dart';
+import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../dev_auto_login.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart';
+import '../social_service.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_screen.dart';
 import 'devices_screen.dart';
 import 'gear_screen.dart';
 import 'guided_runs_screen.dart';
+import 'help_screen.dart';
+import 'line_calibration_screen.dart';
 import 'settings_about_screen.dart';
 import 'settings_account_screen.dart';
 import 'settings_integrations_screen.dart';
@@ -25,12 +31,15 @@ import 'settings_pro_screen.dart';
 import 'settings_safety_screen.dart';
 import 'sign_in_screen.dart';
 import 'sim_watch_screen.dart';
+import 'your_shares_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final Preferences preferences;
   final LocalRunStore? runStore;
   final LocalRouteStore? routeStore;
+  final LocalGymStore? gymStore;
+  final LocalFoodStore? foodStore;
   final LocalGearStore? gearStore;
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
@@ -41,6 +50,19 @@ class SettingsScreen extends StatefulWidget {
   /// same isolation rail as the seed auto-login.
   final String? devBackendUrl;
 
+  /// Rows the host draws above the first section, inside the same scroll —
+  /// the You tab's identity header and its shortcuts.
+  final List<Widget> header;
+
+  /// Fires when a sub-screen pushed from here is popped, so the host can
+  /// re-read what that screen may have changed (the account screen edits the
+  /// display name and avatar the You header draws).
+  final VoidCallback? onSubScreenClosed;
+
+  /// Reads the share_attribution gate and backs Your shares; the global
+  /// client when null.
+  final SocialService? social;
+
   const SettingsScreen({
     super.key,
     this.apiClient,
@@ -49,9 +71,14 @@ class SettingsScreen extends StatefulWidget {
     required this.treadmill,
     this.runStore,
     this.routeStore,
+    this.gymStore,
+    this.foodStore,
     this.gearStore,
     this.settingsSync,
     this.devBackendUrl,
+    this.header = const [],
+    this.onSubScreenClosed,
+    this.social,
   });
 
   @override
@@ -59,8 +86,27 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  void _open(Widget Function(BuildContext) builder) {
-    Navigator.push(context, MaterialPageRoute(builder: builder));
+  late final SocialService _social = widget.social ?? SocialService();
+
+  // Your shares is offered only while the share_attribution gate is open
+  // (decisions § 2268).
+  bool _sharesEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSharesGate();
+  }
+
+  Future<void> _loadSharesGate() async {
+    if (widget.apiClient?.userId == null || !_social.isReady) return;
+    final on = await _social.shareAttributionEnabled();
+    if (mounted && on) setState(() => _sharesEnabled = true);
+  }
+
+  Future<void> _open(Widget Function(BuildContext) builder) async {
+    await Navigator.push(context, MaterialPageRoute(builder: builder));
+    widget.onSubScreenClosed?.call();
   }
 
   Future<void> _openAfterSignIn(Widget Function(BuildContext) builder) async {
@@ -107,49 +153,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final api = widget.apiClient;
     final signedIn = api?.userId != null;
     final l10n = AppLocalizations.of(context);
+    final backendUrl = widget.devBackendUrl ?? maybeDevBackendUrl();
+    final localBackend = isLocalSupabaseUrl(backendUrl);
     return Scaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
+            ...widget.header,
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-              child: SectionHeader(label: l10n.settingsSectionProfile),
-            ),
-            _tab(
-              icon: Icons.person_outline,
-              label: l10n.settingsAccountTitle,
-              subtitle: signedIn
-                  ? (api?.userEmail?.isNotEmpty ?? false
-                      ? api!.userEmail!
-                      : l10n.settingsAccountSignedIn)
-                  : l10n.settingsTabAccountSubtitle,
-              onTap: () => _open((_) => SettingsAccountScreen(
-                    apiClient: widget.apiClient,
-                    preferences: widget.preferences,
-                    settingsSync: widget.settingsSync,
-                    runStore: widget.runStore,
-                    routeStore: widget.routeStore,
-                  )),
-            ),
-            _tab(
-              icon: Icons.tune,
-              label: l10n.prefsTitle,
-              subtitle: l10n.settingsTabPreferencesSubtitle,
-              onTap: () => _open((_) => SettingsPreferencesScreen(
-                    apiClient: widget.apiClient,
-                    preferences: widget.preferences,
-                    settingsSync: widget.settingsSync,
-                  )),
-            ),
-            _tab(
-              icon: Icons.health_and_safety,
-              label: l10n.safetyTitle,
-              subtitle: l10n.safetyTileSubtitle,
-              onTap: () => _openAfterSignIn((_) => SettingsSafetyScreen(
-                    api: widget.apiClient,
-                    settingsSync: widget.settingsSync,
-                  )),
+              child: SectionHeader(label: l10n.settingsSectionTraining),
             ),
             _tab(
               icon: Icons.groups_outlined,
@@ -171,6 +185,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: l10n.guidedRunsTitle,
               subtitle: l10n.guidedRunsSubtitle,
               onTap: () => _open((_) => const GuidedRunsScreen()),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+              child: SectionHeader(label: l10n.settingsSectionSettings),
+            ),
+            _tab(
+              icon: Icons.person_outline,
+              label: l10n.settingsAccountTitle,
+              subtitle: l10n.settingsTabAccountSubtitle,
+              onTap: () => _open((_) => SettingsAccountScreen(
+                    apiClient: widget.apiClient,
+                    preferences: widget.preferences,
+                    settingsSync: widget.settingsSync,
+                    runStore: widget.runStore,
+                    routeStore: widget.routeStore,
+                  )),
+            ),
+            _tab(
+              icon: Icons.tune,
+              label: l10n.prefsTitle,
+              subtitle: l10n.settingsTabPreferencesSubtitle,
+              onTap: () => _open((_) => SettingsPreferencesScreen(
+                    apiClient: widget.apiClient,
+                    preferences: widget.preferences,
+                    settingsSync: widget.settingsSync,
+                    gymStore: widget.gymStore,
+                    foodStore: widget.foodStore,
+                    runStore: widget.runStore,
+                  )),
+            ),
+            _tab(
+              icon: Icons.health_and_safety,
+              label: l10n.safetyTitle,
+              subtitle: l10n.safetyTileSubtitle,
+              onTap: () => _openAfterSignIn((_) => SettingsSafetyScreen(
+                    api: widget.apiClient,
+                    settingsSync: widget.settingsSync,
+                  )),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
@@ -217,6 +269,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )),
               );
             }(),
+            if (_sharesEnabled)
+              _tab(
+                icon: Icons.share_outlined,
+                label: l10n.sharesTitle,
+                subtitle: l10n.sharesTileSubtitle,
+                onTap: () => _openAfterSignIn((_) => YourSharesScreen(social: _social)),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
               child: SectionHeader(label: l10n.settingsSectionAccountLegal),
@@ -225,7 +284,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.favorite_outline,
               label: l10n.proTitle,
               subtitle: l10n.settingsTabProSubtitle,
-              onTap: () => _open((_) => const SettingsProScreen()),
+              onTap: () => _open(
+                  (_) => SettingsProScreen(apiClient: widget.apiClient)),
             ),
             _tab(
               icon: Icons.info_outline,
@@ -233,12 +293,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: l10n.settingsTabAboutSubtitle,
               onTap: () => _open((_) => const SettingsAboutScreen()),
             ),
-            if (isLocalSupabaseUrl(
-                widget.devBackendUrl ?? maybeDevBackendUrl())) ...[
-              Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-              child: SectionHeader(label: l10n.settingsSectionDeveloper),
+            _tab(
+              icon: Icons.help_outline,
+              label: l10n.helpTitle,
+              subtitle: l10n.helpSettingsSubtitle,
+              onTap: () => _open((_) => const HelpScreen()),
             ),
+            if (kDebugMode)
+              LineCalibrationEntry(
+                onOpen: () => _open((_) => const LineCalibrationScreen()),
+              ),
+            if (localBackend) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                child: SectionHeader(label: l10n.settingsSectionDeveloper),
+              ),
               _tab(
                 icon: Icons.watch_outlined,
                 label: l10n.simWatchTitle,

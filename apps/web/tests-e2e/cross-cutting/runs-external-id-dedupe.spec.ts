@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readCount } from '../fixtures/db-read';
 
 /**
  * `runs.external_id` UNIQUE-constraint resilience under concurrent
@@ -14,7 +15,6 @@ import { USER_A } from '../fixtures/users';
  *      activity is in flight from `strava-webhook`.
  *   2. Two browser tabs both press "Sync" within the same second.
  *   3. A retry on a flaky network races itself.
- *   4. parkrun's bulk import fans out one user's events twice.
  *
  * The DB defence is `runs_external_id_key` — a UNIQUE constraint on
  * `external_id` (since 20260405_001_initial_schema.sql) plus the
@@ -26,7 +26,7 @@ import { USER_A } from '../fixtures/users';
  * 23505 as a no-op (the activity already exists, semantically a
  * success). The strava-import EF reads existing strava_ids into a
  * Set before fetching; strava-webhook's `ingestActivity` catches and
- * counts the dupe; the parkrun importer skips on conflict. A
+ * counts the dupe. A
  * regression that surfaced 23505 as a fatal error to the caller
  * would crash a sync mid-page.
  *
@@ -107,10 +107,13 @@ test.describe('runs.external_id — concurrent insert resilience', () => {
 			).toEqual([]);
 
 			// Service-role count: exactly one row landed.
-			const { count } = await admin
-				.from('runs')
-				.select('*', { count: 'exact', head: true })
-				.eq('external_id', externalId);
+			const count = await readCount(
+				'runs by external_id',
+				admin
+					.from('runs')
+					.select('*', { count: 'exact', head: true })
+					.eq('external_id', externalId)
+			);
 			expect(count, 'exactly one runs row must persist').toBe(1);
 		} finally {
 			// Cleanup the surviving row.
@@ -153,10 +156,13 @@ test.describe('runs.external_id — concurrent insert resilience', () => {
 			);
 
 			// Still exactly one row.
-			const { count } = await admin
-				.from('runs')
-				.select('*', { count: 'exact', head: true })
-				.eq('external_id', externalId);
+			const count = await readCount(
+				'runs by external_id',
+				admin
+					.from('runs')
+					.select('*', { count: 'exact', head: true })
+					.eq('external_id', externalId)
+			);
 			expect(count).toBe(1);
 		} finally {
 			await admin.from('runs').delete().eq('external_id', externalId);

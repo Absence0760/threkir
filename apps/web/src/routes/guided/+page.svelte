@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { guidedRunLibrary } from '$lib/training/guided_runs';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { guidedRunLibrary } from '#lib/training/guided_runs.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	// $derived so the library re-renders when the active locale changes.
 	let guidedLibrary = $derived(guidedRunLibrary(t));
@@ -12,13 +12,13 @@
 		return `${m} min`;
 	}
 
-	/// /coach surfaces a "Guided runs" rail with "See the full library →"
-	/// pointing here. When the user did come from /coach, the back link
-	/// pops the history entry so any /coach state is preserved; otherwise
+	/// The Coach conversation surfaces a "Guided runs" rail with "See the full library →"
+	/// pointing here. When the user did come from it, the back link
+	/// pops the history entry so the Coach's state is preserved; otherwise
 	/// it falls through to a normal soft-nav.
 	let cameFromCoach = $state(false);
 	afterNavigate(({ from }) => {
-		if (from?.url.pathname === '/coach' && !cameFromCoach) {
+		if (from?.url.pathname === '/messages/coach' && !cameFromCoach) {
 			cameFromCoach = true;
 		}
 	});
@@ -38,7 +38,7 @@
 
 <div class="page">
 	{#if auth.loggedIn}
-		<a href="/coach" class="back-link" onclick={handleBack}>
+		<a href="/messages/coach" class="back-link" onclick={handleBack}>
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('guidedList.backToCoach')}
 		</a>

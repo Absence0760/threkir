@@ -8,21 +8,29 @@
 /// days of activities in the same call. A subsequent "Sync now" click
 /// posts `{ action: 'sync' }` to the same function.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_STRAVA_CLIENT_ID as PUBLIC_STRAVA_CLIENT_ID_ENV } from '$app/env/public';
 import { supabase } from '../core/supabase';
+import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from '../core/edge_function_error';
+import { markListsStale } from '../core/list_freshness';
+import { dbError } from '../core/supabase_error';
+import {
+	STRAVA_LOOKBACK_DEFAULT_DAYS,
+	parseStravaSyncResult,
+	type StravaSyncResult,
+} from './strava_sync_result';
+import { stravaRefusal } from './strava_connect_error';
+import { AppError } from '../core/app_error';
+import {
+	parseStravaClubsResult,
+	stravaClubLinkError,
+	type StravaClubLinkError,
+	type StravaClubsResult,
+} from './strava_clubs';
 
-// Read via `$env/dynamic/public` rather than `static/public` so a build
-// without `PUBLIC_STRAVA_CLIENT_ID` set falls back gracefully to "not
-// configured" instead of crashing the page with a 500. The static
-// import would have failed the entire SvelteKit build.
-const PUBLIC_STRAVA_CLIENT_ID = env.PUBLIC_STRAVA_CLIENT_ID ?? '';
-
-export interface StravaSyncResult {
-	imported: number;
-	skipped: number;
-	failed: number;
-	athlete_id?: string;
-}
+// Declared optional in src/env.ts so a build without
+// `PUBLIC_STRAVA_CLIENT_ID` set falls back gracefully to "not configured".
+// A required declaration would fail the entire SvelteKit build.
+const PUBLIC_STRAVA_CLIENT_ID = PUBLIC_STRAVA_CLIENT_ID_ENV ?? '';
 
 /// Returns `true` when the Vite build has a public Strava client ID
 /// baked in. The UI uses this to decide whether to show a real Connect
@@ -97,15 +105,28 @@ export function consumeStravaOAuthState(): string | null {
 /// Function, and strips the params from `history` so a refresh doesn't
 /// re-run the exchange (Strava codes are single-use).
 export async function completeStravaOAuth(
-	searchParams: URLSearchParams,
+	searchParams: Pick<URLSearchParams, 'get'>,
 	origin: string,
 ): Promise<StravaSyncResult> {
 	const code = searchParams.get('code');
 	const scope = searchParams.get('scope') ?? '';
 	const state = searchParams.get('state') ?? '';
 	const error = searchParams.get('error');
-	if (error) throw new Error(`Strava denied access: ${error}`);
-	if (!code) throw new Error('Missing authorization code from Strava');
+	// The `error` parameter is whatever the callback URL carried, so it names
+	// the reason and is never shown.
+	if (error) {
+		throw new AppError(
+			error === 'access_denied'
+				? 'settingsIntegrations.stravaErrDenied'
+				: 'settingsIntegrations.stravaErrCodeRejected',
+			{ message: `strava_oauth_error: ${error}` },
+		);
+	}
+	if (!code) {
+		throw new AppError('settingsIntegrations.stravaErrCodeRejected', {
+			message: 'strava_oauth_missing_code',
+		});
+	}
 
 	// OAuth 2.0 §10.12 CSRF check. The state the caller minted before
 	// the redirect-out MUST match what Strava echoes back. A mismatch
@@ -115,11 +136,9 @@ export async function completeStravaOAuth(
 	// code. /audit/strava May 2026 Critical #1.
 	const expected = consumeStravaOAuthState();
 	if (!expected || expected !== state) {
-		throw new Error(
-			'Strava OAuth state mismatch — please retry from Settings. ' +
-				'(If this keeps happening, your browser may be blocking ' +
-				'session storage in this tab.)',
-		);
+		throw new AppError('settingsIntegrations.stravaErrStateMismatch', {
+			message: 'strava_oauth_state_mismatch',
+		});
 	}
 
 	const { data: sessionData } = await supabase.auth.getSession();
@@ -131,20 +150,67 @@ export async function completeStravaOAuth(
 	// URL — see `stravaAuthUrl`.
 	const redirect_uri = `${origin}/settings/integrations`;
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error: fnError } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'connect', code, scope, redirect_uri },
 	});
-	if (fnError) throw fnError;
-	return data as StravaSyncResult;
+	// The function answers a stable code (`strava-import/connect_errors.ts`);
+	// the card words the ones it knows and never shows the code itself.
+	if (fnError) throw await stravaRefusal(fnError);
+	// Graded, not cast: the function reports whether it walked the whole
+	// lookback window, and a cast would let a body that says nothing about
+	// that render as a finished import. See `strava_sync_result.ts`.
+	return parseStravaSyncResult(data);
 }
 
 /// Trigger a manual sync for an already-connected user. Safe to call
 /// repeatedly; the Edge Function dedupes against already-imported
 /// activity IDs.
-export async function syncStrava(lookbackDays = 90): Promise<StravaSyncResult> {
+export async function syncStrava(
+	lookbackDays = STRAVA_LOOKBACK_DEFAULT_DAYS,
+): Promise<StravaSyncResult> {
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'sync', lookbackDays },
 	});
-	if (error) throw error;
-	return data as StravaSyncResult;
+	if (error) throw await stravaRefusal(error);
+	return parseStravaSyncResult(data);
+}
+
+/// The signed-in runner's own Strava clubs (decisions § 1959). Only called
+/// where `isStravaConfigured()` holds; not being connected comes back as a
+/// status, so the caller renders nothing rather than an error.
+export async function fetchMyStravaClubs(): Promise<StravaClubsResult> {
+	const { data, error } = await supabase.functions.invoke('strava-clubs', {
+		body: { action: 'list' },
+	});
+	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'strava_clubs_failed'));
+	return parseStravaClubsResult(data);
+}
+
+export class StravaClubLinkFailure extends Error {
+	readonly reason: StravaClubLinkError;
+	constructor(reason: StravaClubLinkError) {
+		super(reason);
+		this.reason = reason;
+	}
+}
+
+/// Record that a Threkir club IS this Strava club. The function checks on
+/// Strava that the caller administers the Strava club, and in SQL that they
+/// administer the Threkir one; a refusal throws `StravaClubLinkFailure`
+/// naming which.
+export async function linkStravaClub(clubId: string, stravaClubId: number): Promise<void> {
+	const { error } = await supabase.functions.invoke('strava-clubs', {
+		body: { action: 'link', club_id: clubId, strava_club_id: stravaClubId },
+	});
+	if (error) throw new StravaClubLinkFailure(stravaClubLinkError(await edgeFunctionErrorCode(error)));
+}
+
+/// Clear a club's Strava link. Needs no Strava call, so it is a plain RPC
+/// gated on the caller administering the Threkir club.
+export async function unlinkStravaClub(clubId: string): Promise<void> {
+	const { data, error: rpcError } = await supabase.rpc('unlink_club_strava', { p_club_id: clubId });
+	if (rpcError) throw dbError(rpcError);
+	if (data !== true) throw new StravaClubLinkFailure('not_club_admin');
 }

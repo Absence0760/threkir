@@ -6,16 +6,21 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
 
+import '../auth_error.dart';
 import '../backup.dart';
 import '../cross_source_dedup.dart';
 import '../csv_run_importer.dart';
 import '../health_connect_importer.dart';
+import '../import_failures.dart';
+import '../import_refusal.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../preferences.dart';
+import '../restore_warning.dart';
 import '../settings_sync.dart';
 import '../strava_importer.dart';
+import '../widgets/import_failure_report.dart';
 
 /// Build the post-import status line. Appends a no-route note when the batch
 /// came in without any GPS geometry, so a map-less run detail reads as
@@ -55,6 +60,31 @@ class ImportScreen extends StatefulWidget {
   final Preferences? preferences;
   final SettingsSyncService? settingsSync;
 
+  /// Test seam — the Health Connect workout-read permission sheet.
+  /// Production callers leave null (the screen calls
+  /// `HealthConnectImporter.requestPermission`).
+  final Future<bool> Function()? requestHealthPermissionFn;
+
+  /// Test seam — the Health Connect workout read. Production callers leave
+  /// null (the screen calls `HealthConnectImporter.fetchWorkouts`).
+  final Future<HealthConnectImport> Function()? fetchHealthWorkoutsFn;
+
+  /// Test seam — the exercise-route permission sheet, which refuses outright
+  /// off Android. Production callers leave null.
+  final Future<bool> Function()? requestHealthRoutePermissionFn;
+
+  /// Test seam — the Health Connect route read, which also refuses outright
+  /// off Android. Production callers leave null.
+  final Future<HealthConnectRoutes> Function()? fetchHealthRoutesFn;
+
+  /// Test seam — the system file picker, which has no implementation off a
+  /// real device. Production callers leave null (the screen calls
+  /// `FilePicker.pickFiles`).
+  final Future<FilePickerResult?> Function({
+    FileType type,
+    List<String>? allowedExtensions,
+  })? pickFilesFn;
+
   const ImportScreen({
     super.key,
     this.apiClient,
@@ -62,6 +92,11 @@ class ImportScreen extends StatefulWidget {
     this.routeStore,
     this.preferences,
     this.settingsSync,
+    this.requestHealthPermissionFn,
+    this.fetchHealthWorkoutsFn,
+    this.requestHealthRoutePermissionFn,
+    this.fetchHealthRoutesFn,
+    this.pickFilesFn,
   });
 
   @override
@@ -73,38 +108,78 @@ class _ImportScreenState extends State<ImportScreen> {
   String _status = '';
   int _imported = 0;
   int _total = 0;
-  List<String> _errors = [];
+  // Warnings from the backup-ZIP restore, which reports whole-archive
+  // problems rather than per-activity ones.
+  List<RestoreWarning> _errors = [];
+  ImportFailureLog _failures = newImportFailureLog();
+  String _failureProvider = '';
+  // How many runs of the last import are on this device and not on the
+  // server. A push that threw defers the whole batch; a push that returned a
+  // non-empty `failed` set defers exactly those. Reporting either as a plain
+  // success hid it entirely, and reporting only "some" makes 3-of-400
+  // indistinguishable from 400-of-400.
+  int _cloudPushDeferredCount = 0;
   // Sessions the last Health Connect import found a route for but wasn't
   // allowed to read. Drives the route-permission offer — the runner is never
   // shown it speculatively, only once there are maps behind it.
   Set<String> _withheldRouteIds = const {};
 
-  String get _healthLabel => healthLabelFor(isIOS: Platform.isIOS);
+  String _healthLabel(AppLocalizations l10n) =>
+      healthLabelFor(l10n, isIOS: Platform.isIOS);
+
+  Future<bool> _requestHealthPermission() =>
+      widget.requestHealthPermissionFn?.call() ??
+          HealthConnectImporter.requestPermission();
+
+  Future<HealthConnectImport> _fetchHealthWorkouts() =>
+      widget.fetchHealthWorkoutsFn?.call() ??
+          HealthConnectImporter.fetchWorkouts();
+
+  Future<bool> _requestHealthRoutePermission() =>
+      widget.requestHealthRoutePermissionFn?.call() ??
+          requestHealthRoutePermission(isAndroid: Platform.isAndroid);
+
+  Future<HealthConnectRoutes> _fetchHealthRoutes() =>
+      widget.fetchHealthRoutesFn?.call() ??
+          HealthConnectImporter.fetchRoutes();
+
+  Future<FilePickerResult?> _pickFiles({
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+  }) =>
+      (widget.pickFilesFn ?? FilePicker.pickFiles)(
+        type: type,
+        allowedExtensions: allowedExtensions,
+      );
 
   Future<void> _importHealthConnect() async {
     final l10n = AppLocalizations.of(context);
     setState(() {
       _busy = true;
-      _status = l10n.importHealthRequestingPermission(_healthLabel);
+      _status = l10n.importHealthRequestingPermission(_healthLabel(l10n));
       _imported = 0;
       _total = 0;
       _errors = [];
+      _failures = newImportFailureLog();
+      _cloudPushDeferredCount = 0;
     });
 
     try {
-      final granted = await HealthConnectImporter.requestPermission();
+      final granted = await _requestHealthPermission();
       if (!granted) {
+        if (!mounted) return;
         setState(() {
           _busy = false;
-          _status = l10n.importHealthPermissionDenied(_healthLabel);
+          _status = l10n.importHealthPermissionDenied(_healthLabel(l10n));
         });
         return;
       }
 
       await _maybeSeedBodyWeight();
 
+      if (!mounted) return;
       setState(() => _status = l10n.importHealthReadingWorkouts);
-      final imported = await HealthConnectImporter.fetchWorkouts();
+      final imported = await _fetchHealthWorkouts();
       final runs = imported.runs;
       // Health Connect only releases a workout's route when the exercise-route
       // permission is granted, so an import can land with maps or without.
@@ -115,17 +190,24 @@ class _ImportScreenState extends State<ImportScreen> {
       // says the true thing instead.
       await _saveImportedRuns(
         runs,
-        label: _healthLabel,
+        label: _healthLabel(l10n),
+        provider: 'health',
+        failures: imported.failures,
         noGpsNote: runs.every((r) => r.track.isEmpty) &&
             imported.withheldSessionIds.isEmpty,
       );
       if (!mounted) return;
       setState(() => _withheldRouteIds = imported.withheldSessionIds);
     } catch (e) {
+      debugPrint('[ImportScreen] health import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importHealthFailed(_healthLabel, e);
+        // Health Connect hands back records, not a file the runner picked, so
+        // a FormatException here is ours: importErrorText would call it an
+        // unreadable file.
+        _status = l10n.importHealthFailed(
+            _healthLabel(l10n), friendlyError(l10n, e));
       });
     }
   }
@@ -143,10 +225,11 @@ class _ImportScreenState extends State<ImportScreen> {
       _busy = true;
       _status = l10n.importHealthRoutesRequesting;
       _errors = [];
+      _failures = newImportFailureLog();
+      _cloudPushDeferredCount = 0;
     });
 
-    final granted =
-        await requestHealthRoutePermission(isAndroid: Platform.isAndroid);
+    final granted = await _requestHealthRoutePermission();
     if (!mounted) return;
     if (!granted) {
       setState(() {
@@ -159,19 +242,22 @@ class _ImportScreenState extends State<ImportScreen> {
 
     setState(() => _status = l10n.importHealthRoutesAdding);
     try {
-      final filled = await _backfillHealthConnectTracks();
+      final backfill = await _backfillHealthConnectTracks();
       if (!mounted) return;
       setState(() {
         _busy = false;
         _withheldRouteIds = const {};
-        _status = l10n.importHealthRoutesAdded(filled);
+        _cloudPushDeferredCount = backfill.pushDeferredCount;
+        _status = l10n.importHealthRoutesAdded(backfill.filled);
       });
     } catch (e) {
+      debugPrint('[ImportScreen] health import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
         _withheldRouteIds = const {};
-        _status = l10n.importHealthFailed(_healthLabel, e);
+        _status = l10n.importHealthFailed(
+            _healthLabel(l10n), friendlyError(l10n, e));
       });
     }
   }
@@ -180,10 +266,13 @@ class _ImportScreenState extends State<ImportScreen> {
   /// them onto the runs already imported without one. A plain re-import can't
   /// do this: `isCrossSourceDuplicate` treats Health Connect as an aggregator
   /// and skips every workout already in the store, so the tracks would never
-  /// land. Returns how many runs gained a map.
-  Future<int> _backfillHealthConnectTracks() async {
-    final routes = await HealthConnectImporter.fetchRoutes();
-    if (routes.tracks.isEmpty) return 0;
+  /// land. Reports how many runs gained a map, and how many of those maps did
+  /// not reach the server — the same two-part answer `_saveImportedRuns`
+  /// gives.
+  Future<({int filled, int pushDeferredCount})>
+      _backfillHealthConnectTracks() async {
+    final routes = await _fetchHealthRoutes();
+    if (routes.tracks.isEmpty) return (filled: 0, pushDeferredCount: 0);
 
     // Hydrate only the runs a released route can actually fill — the summary
     // index carries source + external_id, so the whole history is filtered
@@ -198,22 +287,40 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final filled =
         HealthConnectImporter.runsWithBackfilledTracks(candidates, routes.tracks);
+    // Keep the RESIDENT instances save() returns: markManySynced matches by
+    // object identity, and our own `filled` copies can never match it.
+    final storedFilled = <Run>[];
     for (final run in filled) {
-      await widget.runStore.save(run);
+      storedFilled.add(await widget.runStore.save(run));
     }
 
     final api = widget.apiClient;
+    var pushDeferredCount = 0;
     if (filled.isNotEmpty && api != null && api.userId != null) {
+      var landed = const <Run>[];
       try {
-        final failed = await api.saveRunsBatch(filled);
-        await widget.runStore.markManySynced(
-          filled.where((r) => !failed.contains(r.id)).map((r) => r.id),
-        );
+        final outcome = await api.saveRunsBatch(filled);
+        if (outcome.blocked.isNotEmpty) {
+          await widget.runStore.markBlocked(outcome.blocked);
+        }
+        final failed = outcome.failedIds;
+        // A non-empty `failed` set is not an error and never throws: the
+        // batch landed minus those runs, whose maps are on disk and not on
+        // the server. Same claim as a thrown push, for fewer runs.
+        pushDeferredCount =
+            storedFilled.where((r) => failed.contains(r.id)).length;
+        landed =
+            storedFilled.where((r) => !failed.contains(r.id)).toList();
       } catch (e) {
+        // The maps are on disk; only the upload failed, and SyncService
+        // retries it. Same claim, same words as the import path — a map that
+        // exists only on this device is not a finished backfill.
         debugPrint('Route backfill cloud push failed: $e');
+        pushDeferredCount = filled.length;
       }
+      await _markLandedSynced(landed);
     }
-    return filled.length;
+    return (filled: filled.length, pushDeferredCount: pushDeferredCount);
   }
 
   /// Seed `body_weight_kg` from Health Connect when the user hasn't set
@@ -234,17 +341,41 @@ class _ImportScreenState extends State<ImportScreen> {
     }
   }
 
+  /// Record on this device that [landed] reached the server.
+  ///
+  /// Its own effect, its own catch. A failure here is NOT the deferral the
+  /// push sites report: those runs ARE on the server, and only this device's
+  /// sidecar note of that fact failed to persist. The next cold start reads
+  /// them back as unsynced and `SyncService` pushes them again, which upserts
+  /// onto the rows already there — no duplicate, no loss, nothing for the
+  /// runner to act on. Folding it into the push's catch reported the whole
+  /// batch as sitting on the device when the uploads had all succeeded.
+  Future<void> _markLandedSynced(Iterable<Run> landed) async {
+    try {
+      await widget.runStore.markManySynced(landed);
+    } catch (e) {
+      debugPrint('Import: recording the pushed runs as synced failed: $e');
+    }
+  }
+
   /// Common save loop used by both Strava and Health Connect imports.
   /// Saves each run locally, then batch-pushes to the cloud if signed in.
-  Future<void> _saveImportedRuns(List<Run> runs,
-      {required String label, bool noGpsNote = false}) async {
+  /// [failures] carries whatever the parse stage already recorded, so the
+  /// report is one list rather than a parse list plus a save list.
+  Future<void> _saveImportedRuns(
+    List<Run> runs, {
+    required String label,
+    required String provider,
+    ImportFailureLog? failures,
+    bool noGpsNote = false,
+  }) async {
     final l10n = AppLocalizations.of(context);
     setState(() {
       _total = runs.length;
       _status = l10n.importStatusSavingLocally;
     });
 
-    final localErrors = <StravaImportError>[];
+    final log = failures ?? newImportFailureLog();
     final savedRuns = <Run>[];
     // Persona-hunt Round 2 #3: cross-source dedup. The store's
     // existing runs include any prior Strava + Garmin ZIP imports;
@@ -272,10 +403,16 @@ class _ImportScreenState extends State<ImportScreen> {
         continue;
       }
       try {
-        await widget.runStore.save(run);
-        savedRuns.add(run);
+        // The resident instance, not our own copy — see markManySynced.
+        savedRuns.add(await widget.runStore.save(run));
       } catch (e) {
-        localErrors.add(StravaImportError(run.id, e.toString()));
+        debugPrint('Import: local save failed for ${run.id}: $e');
+        recordImportFailure(
+          log,
+          name: run.metadata?[MetadataKeys.title]?.toString() ?? '',
+          startedAt: run.startedAt.toUtc().toIso8601String(),
+          error: e,
+        );
       }
       if (mounted) {
         setState(() {
@@ -287,10 +424,12 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final api = widget.apiClient;
     final canSync = api != null && api.userId != null;
+    var pushDeferredCount = 0;
     if (canSync && savedRuns.isNotEmpty) {
       if (mounted) setState(() => _status = l10n.importStatusSyncingToCloud);
+      var landed = const <Run>[];
       try {
-        final failed = await api.saveRunsBatch(
+        final outcome = await api.saveRunsBatch(
           savedRuns,
           onProgress: (saved) {
             if (mounted) {
@@ -299,23 +438,39 @@ class _ImportScreenState extends State<ImportScreen> {
             }
           },
         );
+        // Import is where an over-size track actually arrives (decisions
+        // § 1009), so this is the call site most likely to see a parked run —
+        // park it here or the drain inherits a retry it can never finish.
+        if (outcome.blocked.isNotEmpty) {
+          await widget.runStore.markBlocked(outcome.blocked);
+        }
+        final failed = outcome.failedIds;
         // Mark only the runs that successfully uploaded — same
-        // partial-success contract as SyncService / background_sync.
-        await widget.runStore.markManySynced(
-          savedRuns.where((r) => !failed.contains(r.id)).map((r) => r.id),
-        );
+        // partial-success contract as SyncService / background_sync. The ones
+        // left out are on disk and not on the server, which is the deferral
+        // the catch below reports; a half-landed batch that never threw used
+        // to report a clean import.
+        pushDeferredCount =
+            savedRuns.where((r) => failed.contains(r.id)).length;
+        landed = savedRuns.where((r) => !failed.contains(r.id)).toList();
       } catch (e) {
+        // The runs are on disk; only the upload failed, and SyncService
+        // retries it. Say so instead of reporting a clean import.
         debugPrint('Batch cloud push failed: $e');
+        pushDeferredCount = savedRuns.length;
       }
+      await _markLandedSynced(landed);
     }
 
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _errors = localErrors.map((e) => '${e.filename}: ${e.message}').toList();
+      _failures = log;
+      _failureProvider = provider;
+      _cloudPushDeferredCount = pushDeferredCount;
       _status = buildImportStatus(
         savedCount: savedRuns.length,
-        errorCount: localErrors.length,
+        errorCount: log.total,
         label: label,
         noGpsNote: noGpsNote,
         l10n: l10n,
@@ -325,7 +480,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<void> _importCsv() async {
     final l10n = AppLocalizations.of(context);
-    final result = await FilePicker.pickFiles(
+    final result = await _pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
     );
@@ -333,35 +488,39 @@ class _ImportScreenState extends State<ImportScreen> {
     final path = result.files.first.path;
     if (path == null) return;
 
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _status = l10n.importStatusReadingCsv;
       _imported = 0;
       _total = 0;
       _errors = [];
+      _failures = newImportFailureLog();
+      _cloudPushDeferredCount = 0;
     });
 
     try {
       final content = await File(path).readAsString();
       final parsed = CsvRunImporter.parse(content);
-      final preErrors =
-          parsed.errors.map((e) => e.toString()).toList();
-      await _saveImportedRuns(parsed.runs, label: 'CSV');
-      if (mounted && preErrors.isNotEmpty) {
-        setState(() => _errors = [...preErrors, ..._errors]);
-      }
+      await _saveImportedRuns(
+        parsed.runs,
+        label: 'CSV',
+        provider: 'csv',
+        failures: parsed.failures,
+      );
     } catch (e) {
+      debugPrint('[ImportScreen] CSV import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importCsvFailed(e);
+        _status = l10n.importCsvFailed(importErrorText(l10n, e));
       });
     }
   }
 
   Future<void> _importBackupZip() async {
     final l10n = AppLocalizations.of(context);
-    final picked = await FilePicker.pickFiles(
+    final picked = await _pickFiles(
       type: FileType.custom,
       allowedExtensions: ['zip'],
     );
@@ -369,12 +528,15 @@ class _ImportScreenState extends State<ImportScreen> {
     final path = picked.files.first.path;
     if (path == null) return;
 
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _status = l10n.importStatusRestoringBackup;
       _imported = 0;
       _total = 0;
       _errors = [];
+      _failures = newImportFailureLog();
+      _cloudPushDeferredCount = 0;
     });
 
     try {
@@ -391,45 +553,50 @@ class _ImportScreenState extends State<ImportScreen> {
         _errors = res.warnings;
       });
     } catch (e) {
+      debugPrint('[ImportScreen] backup restore failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importBackupFailed(e);
+        _status = l10n.importBackupFailed(importErrorText(l10n, e));
       });
     }
   }
 
   Future<void> _importStrava() async {
     final l10n = AppLocalizations.of(context);
-    final result = await FilePicker.pickFiles(
+    final result = await _pickFiles(
       type: FileType.custom,
       allowedExtensions: ['zip'],
     );
     if (result == null || result.files.isEmpty) return;
+    final path = result.files.first.path;
+    if (path == null) return;
 
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _status = l10n.importStatusReadingExport;
       _imported = 0;
       _total = 0;
       _errors = [];
+      _failures = newImportFailureLog();
+      _cloudPushDeferredCount = 0;
     });
 
     try {
-      final file = File(result.files.first.path!);
-      final parsed = await StravaImporter.importFromZip(file);
-      final preErrors = parsed.errors
-          .map((e) => '${e.filename}: ${e.message}')
-          .toList();
-      await _saveImportedRuns(parsed.runs, label: 'Strava');
-      if (mounted && preErrors.isNotEmpty) {
-        setState(() => _errors = [...preErrors, ..._errors]);
-      }
+      final parsed = await StravaImporter.importFromZip(File(path));
+      await _saveImportedRuns(
+        parsed.runs,
+        label: 'Strava',
+        provider: 'strava',
+        failures: parsed.failures,
+      );
     } catch (e) {
+      debugPrint('[ImportScreen] Strava import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importStravaFailed(e);
+        _status = l10n.importStravaFailed(importErrorText(l10n, e));
       });
     }
   }
@@ -530,7 +697,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_healthLabel,
+                            Text(_healthLabel(l10n),
                                 style: theme.textTheme.titleMedium),
                             Text(
                               Platform.isIOS
@@ -561,7 +728,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     child: FilledButton.icon(
                       onPressed: _busy ? null : _importHealthConnect,
                       icon: const Icon(Icons.health_and_safety),
-                      label: Text(l10n.importHealthButton(_healthLabel)),
+                      label: Text(l10n.importHealthButton(_healthLabel(l10n))),
                     ),
                   ),
                   if (_withheldRouteIds.isNotEmpty) ...[
@@ -734,6 +901,17 @@ class _ImportScreenState extends State<ImportScreen> {
                       const SizedBox(height: 12),
                       ProgressBar(value: _imported / _total),
                     ],
+                    if (!_busy && _cloudPushDeferredCount > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.importStatusCloudPushDeferred(
+                            _cloudPushDeferredCount),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                     if (_errors.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       const Divider(),
@@ -743,9 +921,9 @@ class _ImportScreenState extends State<ImportScreen> {
                             fontWeight: FontWeight.w600,
                           )),
                       const SizedBox(height: 4),
-                      ..._errors.take(10).map((e) => Padding(
+                      ..._errors.take(10).map((w) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(e,
+                            child: Text(restoreWarningText(l10n, w),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.error,
                                 )),
@@ -759,6 +937,15 @@ class _ImportScreenState extends State<ImportScreen> {
               ),
             ),
           ],
+          if (!_busy && _failures.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ImportFailureReport(
+              log: _failures,
+              provider: _failureProvider,
+              onDismiss: () =>
+                  setState(() => _failures = newImportFailureLog()),
+            ),
+          ],
         ],
         ),
       ),
@@ -766,11 +953,10 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 }
 
-/// Human-readable label for the platform-specific health store the
-/// `health` package transparently dispatches into. Android backs by
-/// Health Connect; iOS backs by HealthKit (Apple Health). Pure
-/// function — caller passes `Platform.isIOS` so it's unit-testable
-/// without `debugDefaultTargetPlatformOverride` (which only affects
-/// the Flutter target platform, not `dart:io`'s `Platform.isIOS`).
-String healthLabelFor({required bool isIOS}) =>
-    isIOS ? 'Apple Health' : 'Health Connect';
+/// The platform health store's name as its vendor writes it in the reader's
+/// locale — Apple's health app on iOS, Health Connect on Android. Caller
+/// passes `Platform.isIOS` so it's unit-testable without
+/// `debugDefaultTargetPlatformOverride` (which only affects the Flutter
+/// target platform, not `dart:io`'s `Platform.isIOS`).
+String healthLabelFor(AppLocalizations l10n, {required bool isIOS}) =>
+    isIOS ? l10n.healthPlatformNameIos : l10n.healthPlatformNameAndroid;

@@ -4,9 +4,9 @@
 // the "Linked to route" toast and flipped route_id locally while the
 // write failed (route_id feeds plan progress + segment auto-compute),
 // replaceSessionPlanChildren could duplicate every block/item after a
-// resolved-with-error delete, and a resolved-error decrement_coach_usage
-// silently kept a failed generation's daily-cap slot consumed. Action
-// writes must destructure { error } and throw.
+// resolved-with-error delete, and a resolved-error coach refund silently
+// kept a failed generation's daily-cap slot consumed. Action writes must
+// destructure { error } and throw.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 
 const data = readFileSync(resolve('src/lib/core/data.ts'), 'utf-8');
 const handler = readFileSync(resolve('src/lib/coach/handler.ts'), 'utf-8');
+const slot = readFileSync(resolve('src/lib/coach/coach_message_slot.ts'), 'utf-8');
 
 function fnBody(source: string, decl: string): string {
 	const start = source.indexOf(decl);
@@ -28,13 +29,13 @@ function fnBody(source: string, decl: string): string {
 test('linkRunToRoute error-checks the runs.route_id update (#236)', () => {
 	const body = fnBody(data, 'export async function linkRunToRoute(');
 	assert.match(body, /const \{ error \}/, 'must destructure { error } from the update');
-	assert.match(body, /if \(error\) throw error;/, 'must throw on a resolved error');
+	assert.match(body, /if \(error\) throw dbError\(error\);/, 'must throw on a resolved error');
 });
 
 test('replaceSessionPlanChildren error-checks both child deletes (#236)', () => {
 	const body = fnBody(data, 'async function replaceSessionPlanChildren(');
-	assert.match(body, /itemsError\) throw itemsError/, 'items delete must throw on error');
-	assert.match(body, /blocksError\) throw blocksError/, 'blocks delete must throw on error');
+	assert.match(body, /itemsError\) throw dbError\(itemsError\)/, 'items delete must throw on error');
+	assert.match(body, /blocksError\) throw dbError\(blocksError\)/, 'blocks delete must throw on error');
 	assert.doesNotMatch(
 		body,
 		/^\s*await supabase\.from\('session_plan_(items|blocks)'\)\.delete\(\)/m,
@@ -46,10 +47,12 @@ test('coach refundCapSlot surfaces a resolved rpc error (#236)', () => {
 	const start = handler.indexOf('async function refundCapSlot(');
 	assert.notEqual(start, -1, 'refundCapSlot missing from coach/handler.ts');
 	const body = handler.slice(start, handler.indexOf('\n\t}', start));
+	assert.match(body, /refundCoachMessage\(/, 'the Coach refunds through the shared rail');
+	const rail = fnBody(slot, 'export async function refundCoachMessage(');
 	assert.match(
-		body,
-		/const \{ error \} = await supabase\.rpc\('decrement_coach_usage'/,
+		rail,
+		/const \{ error \} = await supabase\.rpc\('refund_coach_usage_slot'/,
 		'the refund rpc must destructure { error }',
 	);
-	assert.match(body, /if \(error\) throw error;/, 'a resolved error must reach the catch/log');
+	assert.match(rail, /if \(error\) throw dbError\(error\);/, 'a resolved error must reach the catch/log');
 });

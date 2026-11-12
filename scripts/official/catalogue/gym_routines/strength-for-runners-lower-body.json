@@ -1,0 +1,125 @@
+{
+	"slug": "strength-for-runners-lower-body",
+	"title": "Strength for runners: lower body",
+	"notes": "Two sessions a week on easy or rest days, not the day before a hard run. Pick a load that leaves two or three good reps in reserve (about RPE 7) and add load only when every set feels that way. Stop any exercise that hurts.",
+	"periodisation": "none",
+	"exercises": [
+		{
+			"name": "Bulgarian Split Squat",
+			"modality": "weight_reps",
+			"notes": "Reps are per leg.",
+			"sets": [
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"target_rpe": 7,
+					"rest_s": 90
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"target_rpe": 7,
+					"rest_s": 90
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"target_rpe": 7,
+					"rest_s": 90
+				}
+			]
+		},
+		{
+			"name": "Romanian Deadlift",
+			"modality": "weight_reps",
+			"notes": "Hinge at the hips with a flat back.",
+			"sets": [
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"target_rpe": 7,
+					"rest_s": 90
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"target_rpe": 7,
+					"rest_s": 90
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"target_rpe": 7,
+					"rest_s": 90
+				}
+			]
+		},
+		{
+			"name": "Hip Thrust",
+			"modality": "weight_reps",
+			"sets": [
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 12,
+					"target_rpe": 7,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 12,
+					"target_rpe": 7,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 12,
+					"target_rpe": 7,
+					"rest_s": 60
+				}
+			]
+		},
+		{
+			"name": "Calf Raise",
+			"modality": "weight_reps",
+			"notes": "Lower slowly.",
+			"sets": [
+				{
+					"target_reps_min": 12,
+					"target_reps_max": 15,
+					"target_rpe": 7,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 12,
+					"target_reps_max": 15,
+					"target_rpe": 7,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 12,
+					"target_reps_max": 15,
+					"target_rpe": 7,
+					"rest_s": 60
+				}
+			]
+		},
+		{
+			"name": "Plank",
+			"modality": "time",
+			"sets": [
+				{
+					"target_duration_s": 40,
+					"rest_s": 45
+				},
+				{
+					"target_duration_s": 40,
+					"rest_s": 45
+				},
+				{
+					"target_duration_s": 40,
+					"rest_s": 45
+				}
+			]
+		}
+	]
+}

@@ -133,6 +133,14 @@ pub fn resolve_training_paces_with_meta(input: PaceAnchor) -> ResolvedTrainingPa
     } else {
         (FALLBACK_GOAL_PACE_SEC_PER_KM, true)
     };
+    // A 0 m goal distance divides to Infinity (or NaN), which every band then
+    // rounds to. An anchor that yields no usable pace is no anchor.
+    let (goal_pace_sec_per_km, is_fallback) =
+        if goal_pace_sec_per_km.is_finite() && goal_pace_sec_per_km > 0.0 {
+            (goal_pace_sec_per_km, is_fallback)
+        } else {
+            (FALLBACK_GOAL_PACE_SEC_PER_KM, true)
+        };
     ResolvedTrainingPaces {
         paces: paces_from_goal_pace(goal_pace_sec_per_km, input.gender),
         is_fallback,
@@ -241,6 +249,56 @@ mod tests {
     fn fallback_produces_valid_pace_set() {
         let p = resolve_training_paces(anchor(10_000.0, None, None, TrainingGender::None));
         assert!(p.easy > 0.0 && p.interval > 0.0);
+    }
+
+    #[test]
+    fn degenerate_goal_distance_falls_back() {
+        let fallback =
+            resolve_training_paces_with_meta(anchor(10_000.0, None, None, TrainingGender::None));
+        let cases = [
+            (0.0, Some(1200.0), None),
+            (0.0, None, Some(1200.0)),
+            (-5000.0, Some(1200.0), None),
+            (f64::NAN, Some(1200.0), None),
+        ];
+        for (distance, goal, recent) in cases {
+            let got = resolve_training_paces_with_meta(anchor(
+                distance,
+                goal,
+                recent,
+                TrainingGender::None,
+            ));
+            assert!(got.is_fallback, "{distance} {goal:?} {recent:?}");
+            assert_eq!(got.paces, fallback.paces, "{distance} {goal:?} {recent:?}");
+        }
+    }
+
+    #[test]
+    fn real_anchor_is_not_the_fallback() {
+        let goal = resolve_training_paces_with_meta(anchor(
+            10_000.0,
+            Some(2400.0),
+            None,
+            TrainingGender::None,
+        ));
+        assert!(!goal.is_fallback);
+        assert_eq!(
+            goal.paces,
+            paces_from_goal_pace(240.0, TrainingGender::None)
+        );
+
+        let recent = resolve_training_paces_with_meta(anchor(
+            10_000.0,
+            None,
+            Some(1200.0),
+            TrainingGender::None,
+        ));
+        assert!(!recent.is_fallback);
+        let goal_pace = riegel_predict(5000.0, 1200.0, 10_000.0, RIEGEL_EXPONENT) / 10.0;
+        assert_eq!(
+            recent.paces,
+            paces_from_goal_pace(goal_pace, TrainingGender::None)
+        );
     }
 
     #[test]

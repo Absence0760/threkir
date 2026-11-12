@@ -1,15 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createClient } from '@supabase/supabase-js';
 
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
+import { readMaybeRow } from '../fixtures/db-read';
 import {
 	insertRun,
 	deleteRun,
 	setUserSetting,
 	clearUserSettingKey,
 } from '../fixtures/simulate';
+import { shareChoosingPublic } from '../fixtures/share';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Run-LEVEL visibility (public / private) propagation across surfaces.
@@ -26,10 +29,11 @@ import {
  *
  *   A. DEFAULT-VISIBILITY pref governs NEW runs. The universal
  *      `privacy_default` pref (`public` | `followers` | `private`) maps
- *      to `runs.is_public` via `privacyDefaultToIsPublic` (only
- *      `public` → public). The owner's Add-run editor (RunEditor) seeds
- *      its "Make this run public" checkbox from that pref — assert
- *      checked when `public`, unchecked when `private`.
+ *      to `runs.is_public` / `runs.followers_only` via
+ *      `privacyDefaultToAudience`. The owner's Add-run editor (RunEditor)
+ *      seeds its audience selector from that pref — the seed stack has
+ *      audience sharing switched on, so it is the three-level select
+ *      rather than the old public checkbox. Asserted for all three.
  *
  *   B. A PRIVATE run is invisible to the follower everywhere:
  *        - the follower's /social feed (fetchFollowingFeed → public_runs)
@@ -54,16 +58,6 @@ import {
  * the feed surface is testable). All planted state is cleaned in
  * try/finally.
  */
-
-// A saga user must pre-accept the cookie banner: it's a role="dialog"
-// that floats over the page (and over modals), and an un-dismissed
-// banner intercepts pointer events on the Add-run modal / feed cards.
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 // A distinctive title so feed + profile assertions scope to EXACTLY the
 // planted run (the feed card renders metadata.title in h3.entry-title;
@@ -106,44 +100,36 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 
 	test('default-visibility → private-hidden → flip-public-visible → flip-private-hidden', async ({
 		browser,
+		mockRoute
 	}) => {
 		const { url, anonKey } = loadSupabaseEnv();
 		const admin = getAdminClient();
 
 		// ── A. Default-visibility pref governs new runs (owner UI) ──
-		await test.step('privacy_default=public seeds the Add-run editor checkbox CHECKED', async () => {
-			await setUserSetting(owner.id, 'privacy_default', 'public');
-			const ctx = await browser.newContext({ storageState: owner.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
-			const page = await ctx.newPage();
-			try {
-				await page.goto('/runs');
-				// Open the Add-run modal — RunEditor seeds isPublic from the
-				// freshly-read privacy_default pref in onMount.
-				await page.getByRole('button', { name: '+ Add run' }).click();
-				const publicToggle = page.getByLabel('Make this run public');
-				await expect(publicToggle).toBeVisible({ timeout: 10_000 });
-				await expect(publicToggle).toBeChecked();
-			} finally {
-				await ctx.close();
-			}
-		});
-
-		await test.step('privacy_default=private seeds the Add-run editor checkbox UNCHECKED', async () => {
-			await setUserSetting(owner.id, 'privacy_default', 'private');
-			const ctx = await browser.newContext({ storageState: owner.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
-			const page = await ctx.newPage();
-			try {
-				await page.goto('/runs');
-				await page.getByRole('button', { name: '+ Add run' }).click();
-				const publicToggle = page.getByLabel('Make this run public');
-				await expect(publicToggle).toBeVisible({ timeout: 10_000 });
-				await expect(publicToggle).not.toBeChecked();
-			} finally {
-				await ctx.close();
-			}
-		});
+		for (const [pref, level] of [
+			['public', 'public'],
+			['followers', 'followers'],
+			['private', 'private'],
+		] as const) {
+			await test.step(`privacy_default=${pref} seeds the Add-run audience selector to ${level}`, async () => {
+				await setUserSetting(owner.id, 'privacy_default', pref);
+				const ctx = await browser.newContext({ storageState: owner.storageStatePath });
+				await acceptCookieConsent(ctx);
+				const page = await ctx.newPage();
+				try {
+					await page.goto('/runs');
+					// Open the Add-run modal — RunEditor seeds the audience from
+					// the freshly-read privacy_default pref in onMount.
+					await page.getByRole('button', { name: '+ Add run' }).click();
+					const selector = page.getByTestId('run-editor-audience');
+					await expect(selector).toBeVisible({ timeout: 10_000 });
+					await expect(selector).toHaveValue(level);
+				} finally {
+					await ctx.close();
+				}
+			});
+		}
+		await setUserSetting(owner.id, 'privacy_default', 'private');
 
 		// Plant the journey's run as PRIVATE (matching the runner's now-
 		// default-private pref). started_at within the 14-day feed window
@@ -162,17 +148,20 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 		await test.step('anon public_runs read returns nothing for the private run', async () => {
 			// The wire-level gate every non-owner surface sits on top of.
 			const anon = createClient(url, anonKey, { auth: { persistSession: false } });
-			const { data } = await anon
-				.from('public_runs')
-				.select('id')
-				.eq('id', runId!)
-				.maybeSingle();
+			const data = await readMaybeRow(
+				'public_runs by id',
+				anon
+					.from('public_runs')
+					.select('id')
+					.eq('id', runId!)
+					.maybeSingle()
+			);
 			expect(data).toBeNull();
 		});
 
 		await test.step('private run is absent from the follower /social feed', async () => {
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto('/social?tab=feed');
@@ -188,7 +177,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 
 		await test.step('private run is absent from the owner public /u/[id] profile (non-owner viewer)', async () => {
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto(`/u/${owner.id}`);
@@ -224,7 +213,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 			// run. The mirror-image step after the public flip asserts the
 			// same URL then renders the run.
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto(`/runs/${runId}`);
@@ -239,7 +228,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 		// ── C. Flip PUBLIC through the real owner UI (makeRunPublic) ──
 		await test.step('owner flips the run public via the /runs/[id] share button', async () => {
 			const ctx = await browser.newContext({ storageState: owner.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto(`/runs/${runId}`);
@@ -247,10 +236,8 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 				const chip = page.locator('.visibility-chip');
 				await expect(chip).toBeVisible({ timeout: 10_000 });
 				await expect(chip).toContainText('Private');
-				// Share button on a private run opens the make-public confirm.
-				await page
-					.getByRole('button', { name: 'Make public and copy share link' })
-					.click();
+				// Share on a private run asks who can see it; Public opens the make-public confirm.
+				await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 				const dialog = page.getByTestId('share-confirm-dialog');
 				await expect(dialog).toBeVisible({ timeout: 10_000 });
 				await dialog.getByRole('button', { name: 'Make public & copy link' }).click();
@@ -263,17 +250,20 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 
 		await test.step('public_runs now returns the run (wire-level confirmation of the flip)', async () => {
 			const anon = createClient(url, anonKey, { auth: { persistSession: false } });
-			const { data } = await anon
-				.from('public_runs')
-				.select('id, is_public')
-				.eq('id', runId!)
-				.maybeSingle();
+			const data = await readMaybeRow(
+				'public_runs by id',
+				anon
+					.from('public_runs')
+					.select('id, is_public')
+					.eq('id', runId!)
+					.maybeSingle()
+			);
 			expect(data?.id).toBe(runId);
 		});
 
 		await test.step('public run now appears on the follower /social feed', async () => {
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto('/social?tab=feed');
@@ -287,7 +277,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 
 		await test.step('public run now appears on the owner /u/[id] profile (non-owner viewer)', async () => {
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto(`/u/${owner.id}`);
@@ -317,10 +307,10 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 			// Before #666 this stayed not-found forever, which is what made
 			// every "a runner you follow finished a run" link dead.
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
-				await page.route('**/functions/v1/clip-public-track', (route) =>
+				await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 					route.fulfill({
 						status: 200,
 						contentType: 'application/json',
@@ -349,17 +339,20 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 			expect(error).toBeNull();
 			// Confirm the gate closed at the wire.
 			const anon = createClient(url, anonKey, { auth: { persistSession: false } });
-			const { data } = await anon
-				.from('public_runs')
-				.select('id')
-				.eq('id', runId!)
-				.maybeSingle();
+			const data = await readMaybeRow(
+				'public_runs by id',
+				anon
+					.from('public_runs')
+					.select('id')
+					.eq('id', runId!)
+					.maybeSingle()
+			);
 			expect(data).toBeNull();
 		});
 
 		await test.step('re-privatised run disappears from the follower feed again', async () => {
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto('/social?tab=feed');
@@ -373,7 +366,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 
 		await test.step('re-privatised run disappears from the owner /u/[id] profile again', async () => {
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto(`/u/${owner.id}`);
@@ -403,7 +396,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 			// branch has to close when the run leaves `public_runs`, or
 			// making a run private stops actually taking it back.
 			const ctx = await browser.newContext({ storageState: follower.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto(`/runs/${runId}`);

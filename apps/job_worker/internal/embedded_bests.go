@@ -1,0 +1,260 @@
+package internal
+
+import (
+	"math"
+	"sort"
+
+	"github.com/Absence0760/threkir/apps/job_worker/internal/gpsdistance"
+)
+
+// The rolling embedded bests (runs.fastest_{5k,10k,half_marathon,marathon}_s)
+// the distance recompute rewrites alongside distance_m. Port of
+// `enrichMetadataWithEmbeddedBests` + `fastestWindowOf` +
+// `estimatorCumulativeMetres` (apps/mobile_android/lib/embedded_bests.dart,
+// run_stats.dart) and `computeEmbeddedBests` in
+// apps/web/src/lib/integrations/garmin-fit.ts — same brackets, same window
+// search, same rounding, so a recomputed best matches what a save would write.
+
+type embeddedBestDistance struct {
+	Column string
+	Metres float64
+}
+
+var embeddedBestDistances = []embeddedBestDistance{
+	{"fastest_5k_s", 5000},
+	{"fastest_10k_s", 10000},
+	{"fastest_half_marathon_s", 21097.5},
+	{"fastest_marathon_s", 42195},
+}
+
+// windowToleranceRatio is Dart's windowToleranceRatio / web's
+// WINDOW_TOLERANCE_RATIO: slack for float drift in an accumulated sum.
+const windowToleranceRatio = 1e-9
+
+func pointMs(p RecordedTrackPoint) (int64, bool) {
+	if p.Timestamp == nil {
+		return 0, false
+	}
+	return p.Timestamp.UnixMilli(), true
+}
+
+// coordinatePoints drops waypoints with a null coordinate, which the
+// estimator cannot place and the window search cannot measure.
+func coordinatePoints(pts []RecordedTrackPoint) []RecordedTrackPoint {
+	out := make([]RecordedTrackPoint, 0, len(pts))
+	for _, p := range pts {
+		if p.Lat != nil && p.Lng != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// medianFixIntervalS is the median of the positive intervals (seconds)
+// between consecutive timestamped points; 1 when there are none. An even
+// count takes the mean of the two middle values.
+func medianFixIntervalS(pts []RecordedTrackPoint) float64 {
+	var intervals []float64
+	var prev int64
+	havePrev := false
+	for _, p := range pts {
+		ms, ok := pointMs(p)
+		if !ok {
+			continue
+		}
+		if havePrev && ms > prev {
+			intervals = append(intervals, float64(ms-prev)/1000)
+		}
+		prev, havePrev = ms, true
+	}
+	if len(intervals) == 0 {
+		return 1
+	}
+	sort.Float64s(intervals)
+	mid := len(intervals) / 2
+	if len(intervals)%2 == 1 {
+		return intervals[mid]
+	}
+	return (intervals[mid-1] + intervals[mid]) / 2
+}
+
+// trackReplay is one replay of a stored track through the smoother: both of
+// its passes and the smoothed position, per point of the replayed slice. An
+// untimestamped point carries the previous cumulative and has no position.
+type trackReplay struct {
+	Fixes int
+	// PositionOnly: no accepted fix carries a finite speedMps (recorded
+	// before spec v1), so the smoother ran with post-hoc stop detection.
+	PositionOnly bool
+	SmoothedM    float64
+	ForwardM     float64
+	SmoothedCumM []float64
+	ForwardCumM  []float64
+	Positions    []*gpsdistance.LatLng
+	// GapM is the chord lower bound both passes credit across GPS gaps
+	// (gpsdistance.SmoothResult.GapM), summed over the segments.
+	GapM float64
+	// Segments is how many segments the track was replayed as: one for a
+	// track that marks none (every phone save, every import, every watch
+	// run before spec v1.8).
+	Segments int
+}
+
+// replayRecordedTrack replays every timestamped point of pts (all
+// coordinate-bearing) through the smoother. t is seconds since the first
+// timestamped point; the expected interval is the track's median one, so a
+// sparse watch track is not re-anchored on every fix.
+//
+// A watch closes its estimator at a pause, a Wear OS source switch or a
+// continued run and starts the next segment on a fresh one, so it credits
+// nothing across the close; since spec v1.8 it marks the next segment's first
+// stored fix segmentStart. Each segment is replayed apart, ending at its own
+// last fix, and the passes add up across them: a replay of the track as one
+// stream would credit the chord across every pause the runner moved during,
+// and read a gap still open at a close as running on into the next segment.
+// A mark on a point without a timestamp starts the segment at the next point
+// that has one. The Dart and web `estimatorCumulativeMetres` replay only phone
+// tracks and imports, which carry no marks.
+func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) trackReplay {
+	opts := gpsdistance.Options{
+		MaxSpeedMps:       maxSpeedMps,
+		ExpectedIntervalS: medianFixIntervalS(pts),
+	}
+	out := trackReplay{
+		PositionOnly: true,
+		SmoothedCumM: make([]float64, len(pts)),
+		ForwardCumM:  make([]float64, len(pts)),
+		Positions:    make([]*gpsdistance.LatLng, len(pts)),
+	}
+	var t0 int64
+	var lastT float64
+	var events []gpsdistance.Event
+	// eventOf[i] is point i's event in the current segment, or -1.
+	eventOf := make([]int, len(pts))
+	segStart := 0
+	flush := func(segEnd int) {
+		if len(events) == 0 {
+			return
+		}
+		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFinish, T: lastT})
+		// Post-hoc stop detection is decided per segment: a segment with no
+		// Doppler fix (a fused stretch after a Wear OS handover) gets the stop
+		// hints even when another segment carried Doppler, where a one-stream
+		// replay of the same track would run none. The track's median interval
+		// is still the whole run's.
+		res := gpsdistance.SmoothDistance(events, opts)
+		sm, fw := out.SmoothedM, out.ForwardM
+		for i := segStart; i < segEnd; i++ {
+			if ev := eventOf[i]; ev >= 0 {
+				sm, fw = out.SmoothedM+res.CumulativeM[ev], out.ForwardM+res.ForwardCumulativeM[ev]
+				out.Positions[i] = res.Positions[ev]
+			}
+			out.SmoothedCumM[i], out.ForwardCumM[i] = sm, fw
+		}
+		out.SmoothedM += res.DistanceM
+		out.ForwardM += res.ForwardDistanceM
+		out.GapM += res.GapM
+		out.PositionOnly = out.PositionOnly && res.PositionOnly
+		out.Segments++
+		events = nil
+		segStart = segEnd
+	}
+	breakPending := false
+	for i, p := range pts {
+		eventOf[i] = -1
+		breakPending = breakPending || p.SegmentStart
+		ms, ok := pointMs(p)
+		if !ok {
+			continue
+		}
+		if breakPending && len(events) > 0 {
+			flush(i)
+		}
+		breakPending = false
+		if out.Fixes == 0 {
+			t0 = ms
+		}
+		lastT = float64(ms-t0) / 1000
+		eventOf[i] = len(events)
+		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFix, Fix: gpsdistance.Fix{
+			T:                lastT,
+			Lat:              *p.Lat,
+			Lng:              *p.Lng,
+			AccuracyM:        p.AccuracyM,
+			SpeedMps:         p.SpeedMps,
+			SpeedAccuracyMps: p.SpeedAccuracyMps,
+			BearingDeg:       p.BearingDeg,
+		}})
+		out.Fixes++
+	}
+	flush(len(pts))
+	return out
+}
+
+// fastestWindowSeconds is the fastest continuous windowMetres (whole
+// seconds) over cum, the distance up to each point of pts; ok is false
+// when the track is shorter than the window or has no timestamped window.
+func fastestWindowSeconds(pts []RecordedTrackPoint, cum []float64, windowMetres float64) (int, bool) {
+	n := len(pts)
+	if n < 2 || windowMetres <= 0 || len(cum) != n {
+		return 0, false
+	}
+	covers := windowMetres * (1 - windowToleranceRatio)
+	if cum[n-1] < covers {
+		return 0, false
+	}
+	var best int64
+	found := false
+	i := 0
+	for j := 1; j < n; j++ {
+		for i+1 < j && cum[j]-cum[i+1] >= covers {
+			i++
+		}
+		if cum[j]-cum[i] < covers {
+			continue
+		}
+		ti, okI := pointMs(pts[i])
+		tj, okJ := pointMs(pts[j])
+		if !okI || !okJ {
+			continue
+		}
+		segDist := cum[i+1] - cum[i]
+		startMs := ti
+		if segDist > 0 {
+			if ti1, ok := pointMs(pts[i+1]); ok {
+				fraction := math.Min(1, math.Max(0, (cum[j]-windowMetres-cum[i])/segDist))
+				startMs = ti + int64(math.Round(float64(ti1-ti)*fraction))
+			}
+		}
+		windowMs := tj - startMs
+		if windowMs <= 0 {
+			continue
+		}
+		if !found || windowMs < best {
+			best, found = windowMs, true
+		}
+	}
+	if !found {
+		return 0, false
+	}
+	return int(math.Round(float64(best) / 1000)), true
+}
+
+// embeddedBestsOver returns every fastest_* column keyed by name, nil
+// where the track (fewer than 3 points, or too short) has no best — the
+// recompute writes all four so a best the inflated hop-sum invented is
+// cleared rather than left behind.
+func embeddedBestsOver(pts []RecordedTrackPoint, cum []float64) map[string]*int {
+	out := make(map[string]*int, len(embeddedBestDistances))
+	for _, d := range embeddedBestDistances {
+		out[d.Column] = nil
+		if len(pts) < 3 {
+			continue
+		}
+		if secs, ok := fastestWindowSeconds(pts, cum, d.Metres); ok && secs > 0 {
+			s := secs
+			out[d.Column] = &s
+		}
+	}
+	return out
+}

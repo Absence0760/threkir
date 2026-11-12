@@ -15,6 +15,7 @@ import {
 	buildBackupManifest,
 	buildBackupSpecs,
 	isSafeStoragePath,
+	orderForTable,
 	orphanStorageEntries,
 	PROFILE_SELECT,
 	shapeExportRoute,
@@ -48,8 +49,28 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// ingredients), and the exercise-catalogue batch (migration
 	// 20270222_001) added exercises filtered to the subject's OWN custom
 	// entries (author_id = uid) — seeded global rows are shared reference
-	// data, not personal data.
-	assertEquals(specs.length, 61, `expected 61 specs, got ${specs.length}`);
+	// data, not personal data. Audience sharing (migration 20270802000002)
+	// added run_shares + route_shares, each on both legs (owner + recipient).
+	// New-device sign-in alerts (migration 20270804000002) added sign_in_devices.
+	// Nutrition programming P1 (migration 20270815000001) added nutrition_plans
+	// + nutrition_plan_assignments. Private profiles (migration
+	// 20270822000001) added follow_requests on both legs (sent + received).
+	// Reactions and comment likes (migration 20270826000001) added
+	// run_reactions + run_comment_likes, each on both legs (left by the subject
+	// + received on their runs / comments). Direct-message reports (migration
+	// 20271021000003) added reports_against_my_messages. Conversations
+	// (migration 20271105000010) added conversation_settings. Race courses
+	// (migration 20271114002381) added race_course_suggestions + race_listing_audit.
+	// Plan change requests (migration 20271115002382) added both legs of
+	// plan_change_requests. Club verification (migration 20271120000004)
+	// added club_verification_requests + club_verification_audit.
+	// global_segment_efforts was in the Go worker's list and missing here
+	// until park course times (issue #1313) made it load-bearing. Course alerts (migration 20271124002407) added
+	// course_alerts. Organiser disputes (migration 20271202000003) added
+	// both legs of organiser_dispute_actions. Direct-message reactions and
+	// photos (migrations 20271213121602 + 20271213121604) added
+	// direct_message_reactions + direct_message_images.
+	assertEquals(specs.length, 89, `expected 89 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -57,9 +78,15 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'training_plans.json',
 		'integrations.json',
 		'run_kudos.json',
+		'follow_requests_sent.json',
+		'follow_requests_received.json',
 		'run_comments.json',
 		'run_kudos_received.json',
 		'run_comments_received.json',
+		'run_reactions.json',
+		'run_reactions_received.json',
+		'run_comment_likes.json',
+		'run_comment_likes_received.json',
 		'run_photos.json',
 		'segment_efforts.json',
 		'gear.json',
@@ -67,7 +94,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'gear_rotations.json',
 		'fitness_snapshots.json',
 		'personal_records.json',
+		'personal_record_improvements.json',
 		'device_tokens.json',
+		'sign_in_devices.json',
 		'live_run_pings.json',
 		'following.json',
 		'followers.json',
@@ -83,13 +112,24 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'user_coach_usage.json',
 		'reports.json',
 		'reports_against_me.json',
+		'reports_against_my_messages.json',
 		'direct_messages_sent.json',
 		'direct_messages_received.json',
+		'direct_message_reactions.json',
+		'direct_message_images.json',
+		'conversation_settings.json',
 		'coaching_as_coach.json',
 		'coaching_as_athlete.json',
 		'event_results.json',
 		'checkpoint_crossings.json',
 		'event_result_claims.json',
+		'race_course_suggestions.json',
+		'race_listing_audit.json',
+		'club_verification_requests.json',
+		'club_verification_audit.json',
+		'organiser_dispute_actions.json',
+		'organiser_dispute_notices.json',
+		'course_alerts.json',
 		'user_blocks.json',
 		'club_posts.json',
 		'event_exceptions.json',
@@ -99,6 +139,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'food_log.json',
 		'meal_templates.json',
 		'recipes.json',
+		'nutrition_plans.json',
+		'nutrition_plan_assignments.json',
 		'body_metrics.json',
 		'instructor_payout_accounts.json',
 		'safety_contacts_owned.json',
@@ -113,6 +155,10 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'challenge_participants.json',
 		'challenge_badges.json',
 		'public_recaps.json',
+		'run_shares_owned.json',
+		'run_shares_received.json',
+		'route_shares_owned.json',
+		'route_shares_received.json',
 	]) {
 		assertEquals(entries.has(expected), true, `missing entry: ${expected}`);
 	}
@@ -133,6 +179,20 @@ Deno.test('session_plans exported author-scoped with blocks + items nested (GDPR
 	assertEquals(plans.filter, `author_id=eq.${TEST_UID}`);
 	assertEquals(plans.select.includes('session_plan_blocks'), true);
 	assertEquals(plans.select.includes('session_plan_items'), true);
+});
+
+Deno.test('nutrition plans exported author-scoped, assignments client-scoped (GDPR Art 20)', () => {
+	// Nutrition programming P1 (migration 20270815000001). Neither table has a
+	// user_id: plans key on author_id, assignments on client_id.
+	const specs = buildBackupSpecs(TEST_UID);
+	const plans = specs.find((s) => s.entry === 'nutrition_plans.json');
+	assertExists(plans);
+	assertEquals(plans.table, 'nutrition_plans');
+	assertEquals(plans.filter, `author_id=eq.${TEST_UID}`);
+	const assignments = specs.find((s) => s.entry === 'nutrition_plan_assignments.json');
+	assertExists(assignments);
+	assertEquals(assignments.table, 'nutrition_plan_assignments');
+	assertEquals(assignments.filter, `client_id=eq.${TEST_UID}`);
 });
 
 Deno.test('recipes exported user-scoped with ingredients nested (GDPR Art 20)', () => {
@@ -204,6 +264,7 @@ Deno.test('achievements / challenges / recaps exported owner-scoped (GDPR Art 20
 		'challenge_participants.json',
 		'challenge_badges.json',
 		'public_recaps.json',
+		'global_segment_efforts.json',
 	]) {
 		const spec = specs.find((s) => s.entry === entry);
 		assertExists(spec);
@@ -295,6 +356,32 @@ Deno.test('meal_templates exported owner-scoped with items nested (GDPR Art 20)'
 	assertEquals(templates.select.includes('meal_template_items'), true);
 });
 
+Deno.test('run reactions + comment likes exported left and received, via inner joins (GDPR Art 20)', () => {
+	const specs = buildBackupSpecs(TEST_UID);
+	const by = (entry: string) => {
+		const spec = specs.find((s) => s.entry === entry);
+		assertExists(spec);
+		return spec;
+	};
+	assertEquals(by('run_reactions.json').filter, `user_id=eq.${TEST_UID}`);
+	assertEquals(by('run_comment_likes.json').filter, `user_id=eq.${TEST_UID}`);
+	const reactionsIn = by('run_reactions_received.json');
+	assertEquals(reactionsIn.filter, `runs.user_id=eq.${TEST_UID}`);
+	assertEquals(reactionsIn.select, '*,runs!inner(user_id)');
+	const likesIn = by('run_comment_likes_received.json');
+	assertEquals(likesIn.filter, `run_comments.author_id=eq.${TEST_UID}`);
+	assertEquals(likesIn.select, '*,run_comments!inner(author_id)');
+});
+
+Deno.test('conversation_participants exports only the subject\'s own row (GDPR Art 20)', () => {
+	const specs = buildBackupSpecs('user-A');
+	const own = specs.find((s) => s.entry === 'conversation_settings.json');
+	if (!own) throw new Error('conversation_settings.json missing');
+	assertEquals(own.table, 'conversation_participants');
+	assertEquals(own.filter, 'user_id=eq.user-A');
+	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at');
+});
+
 Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
 	// audit/data-export-completeness (2026-05-30) Critical. Private 1:1
 	// message bodies are the densest comms PII in the app; an export
@@ -310,6 +397,81 @@ Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
 	assertEquals(received.table, 'direct_messages');
 	assertEquals(sent.filter, `sender_id=eq.${TEST_UID}`);
 	assertEquals(received.filter, `recipient_id=eq.${TEST_UID}`);
+});
+
+Deno.test('group messages export only as the subject\'s own sent messages (D5)', () => {
+	// 20271216000003 / decisions § 2461: a group message is a direct_messages
+	// row with no recipient. The sent side carries is_group so the archive says
+	// which audience a message went to; the received side filters on
+	// recipient_id, which no group message has, so other members' messages
+	// never ship. The membership columns ship on the subject's own row.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const received = specs.find((s) => s.entry === 'direct_messages_received.json');
+	const own = specs.find((s) => s.entry === 'conversation_settings.json');
+	assertExists(sent);
+	assertExists(received);
+	assertExists(own);
+	assertEquals(sent.select.split(',').includes('is_group'), true);
+	assertEquals(received.filter, `recipient_id=eq.${TEST_UID}`);
+	for (const col of ['membership_state', 'role', 'invited_by', 'invited_at', 'left_at', 'removed_by', 'last_read_at']) {
+		assertEquals(own.select.split(',').includes(col), true, col);
+	}
+});
+
+Deno.test('the sent-messages export leaves out the recipient\'s read_at', () => {
+	// read_at is the recipient's own read time, withheld from the sender by a
+	// column grant (20271113000001); an export must not hand it back. seen_at is
+	// what the recipient chose to share. The received side is the subject's own
+	// read_at and keeps every column.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const received = specs.find((s) => s.entry === 'direct_messages_received.json');
+	assertExists(sent);
+	assertExists(received);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('read_at'), false);
+	assertEquals(cols.includes('seen_at'), true);
+	assertEquals(cols.includes('body'), true);
+	assertEquals(received.select, '*');
+});
+
+Deno.test('an edited message exports its edit time and the text as first sent', () => {
+	// 20271114000210: original_body is the sender's own words, withheld from
+	// clients only so a report can snapshot it. The sender's export carries it,
+	// and a report against their messages carries its snapshot.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const reports = specs.find((s) => s.entry === 'reports_against_my_messages.json');
+	assertExists(sent);
+	assertExists(reports);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('edited_at'), true);
+	assertEquals(cols.includes('original_body'), true);
+	assertEquals(reports.select.split(',').includes('snapshot_original_body'), true);
+});
+
+Deno.test('a coaching link exports the athlete\'s coach-assistant consent', () => {
+	// 20271210001217: the athlete's consent to the coach assistant, per link.
+	for (const entry of ['coaching_as_coach.json', 'coaching_as_athlete.json']) {
+		const spec = buildBackupSpecs(TEST_UID).find((s) => s.entry === entry);
+		assertExists(spec);
+		const cols = spec.select.split(',');
+		assertEquals(cols.includes('ai_assist_consent_version'), true);
+		assertEquals(cols.includes('ai_assist_consent_at'), true);
+		assertEquals(cols.includes('invite_token'), false);
+	}
+});
+
+Deno.test('a shared AI Coach answer exports as one, with its link back', () => {
+	// 20271210001215: kind says the message is a coach_share card, and
+	// coach_message_id names the sender's own Coach answer it quoted.
+	const sent = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'direct_messages_sent.json');
+	assertExists(sent);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('kind'), true);
+	assertEquals(cols.includes('coach_message_id'), true);
+	assertEquals(cols.includes('image_id'), true);
 });
 
 Deno.test('coach_athletes exported both ways without the invite_token credential', () => {
@@ -335,6 +497,20 @@ Deno.test('coach_athletes exported both ways without the invite_token credential
 		assertEquals(spec.select.includes('status'), true);
 		assertEquals(spec.select.includes('accepted_at'), true);
 	}
+});
+
+Deno.test('plan_change_requests exported as athlete and as coach', () => {
+	// Issue #1215 Phase 2: a suggested plan change is the athlete's request
+	// and the coach's decision, so it ships to both.
+	const specs = buildBackupSpecs(TEST_UID);
+	const asAthlete = specs.find((s) => s.entry === 'plan_change_requests_as_athlete.json');
+	const asCoach = specs.find((s) => s.entry === 'plan_change_requests_as_coach.json');
+	assertExists(asAthlete);
+	assertExists(asCoach);
+	assertEquals(asAthlete.table, 'plan_change_requests');
+	assertEquals(asCoach.table, 'plan_change_requests');
+	assertEquals(asAthlete.filter, `athlete_id=eq.${TEST_UID}`);
+	assertEquals(asCoach.filter, `coach_id=eq.${TEST_UID}`);
 });
 
 Deno.test('event_results exported for the subject (GDPR Art 20)', () => {
@@ -425,6 +601,16 @@ Deno.test('integrations spec includes disconnect timestamps (GDPR Art 15)', () =
 	assertEquals(integ.select.includes('disconnected_reason'), true);
 });
 
+Deno.test('integrations spec no longer reads the retired UltraSignup name columns', () => {
+	// 20271216170001 deleted every UltraSignup identity, so both columns are NULL
+	// on every row and are dropped by a later migration. An export that still
+	// selected them would 400 the moment they go.
+	const integ = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'integrations.json');
+	assertExists(integ);
+	assertEquals(integ.select.includes('external_first_name'), false);
+	assertEquals(integ.select.includes('external_last_name'), false);
+});
+
 Deno.test('device_tokens spec carries a token-redactor', () => {
 	const dt = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'device_tokens.json');
 	assertExists(dt);
@@ -463,10 +649,24 @@ Deno.test('no reports-target (against-me) spec leaks reporter_id in its select',
 	// select column list. Guard that EVERY spec which targets the user as
 	// a report SUBJECT (target_kind=eq.user) omits reporter_id — so a
 	// future copy-paste that adds another against-me table can't leak it.
+	// Every reports spec but the reporter's own history names someone else as
+	// the reporter — reports_against_my_messages (20271021000003) is the second.
 	const offenders = buildBackupSpecs(TEST_UID)
-		.filter((s) => s.table === 'reports' && s.filter.includes('target_kind=eq.user'))
+		.filter((s) => s.table === 'reports' && !s.filter.startsWith('reporter_id='))
 		.filter((s) => s.select === '*' || s.select.includes('reporter_id'));
 	assertEquals(offenders.length, 0, `against-me reports spec leaks reporter_id: ${offenders.map((o) => o.entry).join(', ')}`);
+});
+
+Deno.test('no against-me reports spec discloses a legal hold', () => {
+	// reports.legal_hold (20271021000040) marks a report a moderator is keeping
+	// for a legal claim. The reporter's own history ships it (it is the storage
+	// period of their own data, Art 15(1)(d)); the reported person's projections
+	// must not, or the archive tips them off that a claim is in prospect
+	// (decisions § 2231).
+	const offenders = buildBackupSpecs(TEST_UID)
+		.filter((s) => s.table === 'reports' && !s.filter.startsWith('reporter_id='))
+		.filter((s) => s.select === '*' || s.select.includes('legal_hold'));
+	assertEquals(offenders.length, 0, `against-me reports spec discloses legal_hold: ${offenders.map((o) => o.entry).join(', ')}`);
 });
 
 Deno.test('filter values are URL-encoded (raw filter is interpolated into the REST URL)', () => {
@@ -520,6 +720,12 @@ Deno.test('PROFILE_SELECT carries the subscription columns and matches the Go pr
 	// holds about the subject (Art 15(1) / CCPA right-to-know) and were
 	// missing from BOTH export paths. Must stay in lockstep with the Go
 	// worker's FetchExportProfile select.
+	//
+	// `hr_zones`, `activity_default` and `privacy_default` were dropped
+	// from this list when the projections were corrected: they are not
+	// columns of `user_profiles` (they live in the `user_settings.prefs`
+	// bag both rails export separately), so asking for them 400'd the
+	// whole profile read on both rails.
 	for (
 		const col of [
 			'subscription_tier',
@@ -528,10 +734,7 @@ Deno.test('PROFILE_SELECT carries the subscription columns and matches the Go pr
 			'display_name',
 			'date_of_birth',
 			'parkrun_number',
-			'hr_zones',
 			'gender',
-			'activity_default',
-			'privacy_default',
 		]
 	) {
 		assertEquals(PROFILE_SELECT.includes(col), true, `PROFILE_SELECT must carry ${col}`);
@@ -592,9 +795,40 @@ Deno.test('buildBackupManifest matches the run-app-backup v1 shape', () => {
 		exported_by_user_id: TEST_UID,
 		exported_from: 'edge-function',
 		counts: { runs: 2, routes: 1, tracks: 2, hr_series: 0, photos: 1 },
+		complete: true,
+		incomplete: [],
 	});
 	assertEquals(BACKUP_FORMAT, 'run-app-backup');
 	assertEquals(BACKUP_VERSION, 1);
+});
+
+Deno.test('buildBackupManifest refuses to claim completeness for a short section', () => {
+	const manifest = buildBackupManifest({
+		userId: TEST_UID,
+		counts: { runs: 12000, food_log: 4000 },
+		incomplete: ['food_log', 'runs'],
+		exportedAt: '2026-08-18T00:00:00.000Z',
+	});
+	assertEquals(manifest.complete, false);
+	assertEquals(manifest.incomplete, ['food_log', 'runs']);
+	// The count is the database's total, so a consumer counting the rows
+	// in runs.json sees the shortfall instead of a matching lie.
+	assertEquals((manifest.counts as Record<string, number>).runs, 12000);
+});
+
+Deno.test('every spec is read under a total order so offset paging cannot skip a row', () => {
+	for (const spec of buildBackupSpecs(TEST_UID)) {
+		assertMatch(orderForTable(spec.table), /^[a-z_]+(,[a-z_]+)*$/);
+	}
+	// The tables whose primary key is not a bare `id`.
+	assertEquals(orderForTable('user_follows'), 'follower_id,followee_id');
+	assertEquals(orderForTable('run_kudos'), 'user_id,run_id');
+	assertEquals(orderForTable('run_reactions'), 'user_id,run_id,reaction');
+	assertEquals(orderForTable('run_comment_likes'), 'user_id,comment_id');
+	assertEquals(orderForTable('run_gear'), 'run_id,gear_id');
+	assertEquals(orderForTable('personal_records'), 'user_id,distance');
+	assertEquals(orderForTable('event_attendees'), 'event_id,user_id,instance_start');
+	assertEquals(orderForTable('food_log'), 'id');
 });
 
 Deno.test('avatarCandidatePaths enumerates the stable per-extension avatar set', () => {
@@ -631,6 +865,20 @@ Deno.test('orphanStorageEntries sweeps unarchived objects, dedupes, and skips ex
 	]);
 });
 
+Deno.test('orphanStorageEntries carries the smoothed-position sidecar into the archive', () => {
+	// The job_worker's {uid}/{run_id}.smoothed.json.gz has no column, so no
+	// row-driven loop archives it; the prefix walk is its only way in.
+	const entries = orphanStorageEntries({
+		bucket: 'runs',
+		userId: TEST_UID,
+		archived: new Set([`${TEST_UID}/run-1.json.gz`]),
+		keys: [`${TEST_UID}/run-1.json.gz`, `${TEST_UID}/run-1.smoothed.json.gz`],
+	});
+	assertEquals(entries, [
+		{ key: `${TEST_UID}/run-1.smoothed.json.gz`, entry: 'storage/runs/run-1.smoothed.json.gz' },
+	]);
+});
+
 Deno.test('orphanStorageEntries only skips exports/ in the runs bucket', () => {
 	// run-photos has no exports/ convention; an object under that name
 	// there is still the subject's data and must be swept.
@@ -644,6 +892,55 @@ Deno.test('orphanStorageEntries only skips exports/ in the runs bucket', () => {
 		{ key: `${TEST_UID}/photo-1_512.jpg`, entry: 'storage/run-photos/photo-1_512.jpg' },
 		{ key: `${TEST_UID}/exports/x.jpg`, entry: 'storage/run-photos/exports/x.jpg' },
 	]);
+});
+
+Deno.test('direct-message reactions and photos export only the subject\'s own (issue #1216)', () => {
+	// Only the reactions the subject made and the photos they sent: the
+	// partner's reactions and photos are the partner's data. The photo rows
+	// leave out the Storage paths, which name the sender's folder; the bytes
+	// ship from the dm-images prefix walk.
+	const specs = buildBackupSpecs(TEST_UID);
+	const reactions = specs.find((s) => s.entry === 'direct_message_reactions.json');
+	const images = specs.find((s) => s.entry === 'direct_message_images.json');
+	assertExists(reactions);
+	assertExists(images);
+	assertEquals(reactions.table, 'direct_message_reactions');
+	assertEquals(reactions.filter, `user_id=eq.${TEST_UID}`);
+	assertEquals(reactions.select, 'message_id,reaction,created_at');
+	assertEquals(orderForTable('direct_message_reactions'), 'message_id,user_id');
+	assertEquals(images.table, 'direct_message_images');
+	assertEquals(images.filter, `owner_id=eq.${TEST_UID}`);
+	assertEquals(images.select, 'id,message_id,status,width,height,created_at,processed_at');
+	assertEquals(orderForTable('direct_message_images'), 'id');
+});
+
+Deno.test('orphanStorageEntries ships the subject\'s dm-images photos but not a raw upload', () => {
+	// {uid}/{image}/upload is the client's bytes before the server re-encode;
+	// only the worker reads it. The re-encode {uid}/{image}.jpg ships. Another
+	// user's folder never does.
+	const entries = orphanStorageEntries({
+		bucket: 'dm-images',
+		userId: TEST_UID,
+		archived: new Set<string>(),
+		keys: [
+			`${TEST_UID}/img-1.jpg`,
+			`${TEST_UID}/img-2/upload`,
+			'someone-else/img-3.jpg',
+		],
+	});
+	assertEquals(entries, [
+		{ key: `${TEST_UID}/img-1.jpg`, entry: 'storage/dm-images/img-1.jpg' },
+	]);
+});
+
+Deno.test('orphanStorageEntries keeps subfolders outside dm-images', () => {
+	const entries = orphanStorageEntries({
+		bucket: 'runs',
+		userId: TEST_UID,
+		archived: new Set<string>(),
+		keys: [`${TEST_UID}/nested/run-1.json.gz`],
+	});
+	assertEquals(entries.length, 1);
 });
 
 Deno.test('kudos + comments received are exported via a parent-run inner join (GDPR Art 15/20)', () => {
@@ -661,4 +958,153 @@ Deno.test('kudos + comments received are exported via a parent-run inner join (G
 	assertEquals(comments!.table, 'run_comments');
 	assertEquals(comments!.filter, `runs.user_id=eq.${TEST_UID}`);
 	assertEquals(comments!.select, '*,runs!inner(user_id)');
+});
+
+// Every projection in this file is a string, so a column that does not
+// exist is not a type error — it is a PostgREST 400 at runtime, and the
+// export tolerates a failed section by design. That combination is how
+// `reports_against_me.json` asked for `resolved_at` (the column is
+// `reviewed_at`) and `profile.json` asked for `bio,location` (neither
+// exists) for as long as they did: the subject's export silently shipped
+// without their reports and with a null profile, and only a log line
+// said so. The generated row types are the schema's own account of what
+// exists, so the projections are checked against them here.
+function schemaColumns(): Map<string, Set<string>> {
+	const typesPath = new URL('../../../../web/src/lib/database.types.ts', import.meta.url);
+	const src = Deno.readTextFileSync(typesPath);
+	const byTable = new Map<string, Set<string>>();
+	// The generated file nests `Tables`/`Views` two levels in, so a
+	// six-space `name: {` followed by an eight-space `Row: {` is the
+	// shape being read; anything shallower is a schema or section key.
+	const lines = src.split('\n');
+	let table: string | null = null;
+	let inRow = false;
+	for (const line of lines) {
+		const entry = line.match(/^ {6}([A-Za-z_][A-Za-z0-9_]*): \{$/);
+		if (entry) {
+			table = entry[1];
+			inRow = false;
+			continue;
+		}
+		if (table && /^ {8}Row: \{$/.test(line)) {
+			inRow = true;
+			byTable.set(table, new Set());
+			continue;
+		}
+		if (inRow) {
+			if (/^ {8}\}$/.test(line)) {
+				inRow = false;
+				continue;
+			}
+			const col = line.match(/^ {10}([A-Za-z_][A-Za-z0-9_]*)\??:/);
+			if (col) byTable.get(table!)!.add(col[1]);
+		}
+	}
+	return byTable;
+}
+
+/// Top-level comma split that does not cut inside an embed's parens.
+function topLevelParts(select: string): string[] {
+	const out: string[] = [];
+	let depth = 0;
+	let cur = '';
+	for (const ch of select) {
+		if (ch === '(') depth++;
+		if (ch === ')') depth--;
+		if (ch === ',' && depth === 0) {
+			out.push(cur);
+			cur = '';
+			continue;
+		}
+		cur += ch;
+	}
+	if (cur) out.push(cur);
+	return out;
+}
+
+/// Only the plain columns are checked. `*`, an embed (`a(b)`), an alias
+/// (`x:y`) and a hint (`runs!inner`) all name something other than a
+/// column of this table.
+function plainColumns(select: string): string[] {
+	return topLevelParts(select)
+		.map((p) => p.trim())
+		.filter((p) => p.length > 0 && p !== '*' && !/[():!]/.test(p));
+}
+
+Deno.test('every backup projection names columns the schema actually has', () => {
+	const schema = schemaColumns();
+	const uid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+	const missing: string[] = [];
+	for (const spec of buildBackupSpecs(uid)) {
+		const cols = schema.get(spec.table);
+		if (!cols || cols.size === 0) {
+			missing.push(`${spec.entry}: table '${spec.table}' is not in the generated row types`);
+			continue;
+		}
+		for (const col of plainColumns(spec.select)) {
+			if (!cols.has(col)) missing.push(`${spec.entry}: ${spec.table}.${col}`);
+		}
+	}
+	assertEquals(missing, [], `backup specs project columns that do not exist:\n${missing.join('\n')}`);
+});
+
+Deno.test('every backup filter names columns the schema actually has', () => {
+	const schema = schemaColumns();
+	const uid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+	const missing: string[] = [];
+	for (const spec of buildBackupSpecs(uid)) {
+		const cols = schema.get(spec.table);
+		if (!cols) continue;
+		for (const clause of spec.filter.split('&')) {
+			const lhs = clause.split('=')[0];
+			// An embedded filter (`runs.user_id`) constrains the embed,
+			// not this table, and `or`/`and` are operators.
+			if (!lhs || lhs.includes('.') || lhs === 'or' || lhs === 'and') continue;
+			if (!cols.has(lhs)) missing.push(`${spec.entry}: ${spec.table}.${lhs}`);
+		}
+	}
+	assertEquals(missing, [], `backup filters name columns that do not exist:\n${missing.join('\n')}`);
+});
+
+Deno.test('PROFILE_SELECT names columns user_profiles actually has', () => {
+	const cols = schemaColumns().get('user_profiles');
+	assertExists(cols, 'user_profiles must be in the generated row types');
+	const missing = plainColumns(PROFILE_SELECT).filter((c) => !cols!.has(c));
+	assertEquals(missing, [], `PROFILE_SELECT asks for absent columns: ${missing.join(', ')}`);
+});
+
+Deno.test('no against-me reports spec discloses the reporter\'s notes', () => {
+	// reports.notes is the reporter's own free text (submit_report's p_notes).
+	// It can name or describe the reporter, and a direct-message report's
+	// reporter is always the recipient, so the reported person's projections
+	// must never ship it (Art 15(4)).
+	const offenders = buildBackupSpecs(TEST_UID)
+		.filter((s) => s.table === 'reports' && !s.filter.startsWith('reporter_id='))
+		.filter((s) => s.select === '*' || s.select.split(',').includes('notes'));
+	assertEquals(offenders.length, 0, `against-me reports spec discloses notes: ${offenders.map((o) => o.entry).join(', ')}`);
+});
+
+Deno.test('reports_against_my_messages holds back a pending report', () => {
+	// The sender can identify the reporter (only the recipient can report a
+	// direct message), so a report still under review stays out of the
+	// archive until it is resolved.
+	const rep = buildBackupSpecs(TEST_UID).find(
+		(s) => s.entry === 'reports_against_my_messages.json',
+	);
+	assertExists(rep);
+	assertEquals(rep.filter.includes('status=neq.pending'), true);
+});
+
+Deno.test('organiser dispute notices carry only reviewed actions, never the reviewer', () => {
+	// A filing alone is not the content owner's to read (my_organiser_disputes
+	// withholds it too), and the reviewer is not theirs to know (decisions § 2441).
+	const specs = buildBackupSpecs(TEST_UID);
+	const notices = specs.find((s) => s.entry === 'organiser_dispute_notices.json');
+	assertExists(notices);
+	assertEquals(notices.table, 'organiser_dispute_actions');
+	assertEquals(notices.filter, `target_owner_id=eq.${TEST_UID}&action=neq.filed`);
+	assertEquals(notices.select.split(',').includes('actor_id'), false);
+	const taken = specs.find((s) => s.entry === 'organiser_dispute_actions.json');
+	assertExists(taken);
+	assertEquals(taken.filter, `actor_id=eq.${TEST_UID}`);
 });

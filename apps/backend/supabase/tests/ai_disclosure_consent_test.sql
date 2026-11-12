@@ -1,0 +1,225 @@
+-- Issue #734 regression pin for the versioned AI-disclosure consent
+-- (migration 20270511_001). The load-bearing property is #5: an acceptance
+-- of the v1 (Coach-only) disclosure must NOT silently satisfy the widened
+-- v2 scope the route-AI endpoints require, or the whole point of versioning
+-- the record is lost and existing Coach users are retroactively opted in.
+--
+--   1. A direct authenticated UPDATE of ai_disclosure_version is blocked.
+--      (Checked FIRST: the consent RPCs raise a transaction-local
+--      app.consent_write flag that, once set, persists for the rest of the
+--      pgtap transaction and would mask the trigger.)
+--   2. ai_disclosure_current_version() is the version the clients target.
+--   3. An unauthenticated caller is refused.
+--   4. An unknown version is refused rather than stored.
+--   5. record_ai_disclosure_consent(1) leaves a v1 holder at v1.
+--   6/7. record_ai_disclosure_consent(2) upgrades and persists v2.
+--   8/9. Monotone: a later v1 acceptance cannot downgrade a v2 holder.
+--  10. A fresh user accepting v2 gets both halves of the record.
+--  11. The pairing CHECK rejects a half-written record even from the owner.
+--  12. A caller whose user_profiles row has not been provisioned yet still
+--      gets a record — rows are client-provisioned with no signup trigger,
+--      so an update-only write would no-op and report success (issue #233).
+--  13. A v2 holder reaches the v3 plan-assistant rung only by accepting v3
+--      (migration 20270816000001).
+--  14. A v3 holder reaches the v4 plan-edit rung only by accepting v4
+--      (migration 20270825000001).
+--  15/16. A v4 holder reaches the v5 plate-photo rung only by accepting v5
+--      (migration 20270826000003).
+--  17/18. A v5 holder reaches the v6 Coach cross-training rung only by
+--      accepting v6 (migration 20271021000001, issue #1217).
+--  19-21. v6 is no longer current: a v6 holder reaches the v7 coach-assistant
+--      rung only by accepting v7 (migration 20271210001219, issue #1215).
+
+begin;
+
+select plan(21);
+
+-- U1: no consent on record.
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+values ('00000000-0000-0000-0000-0000000ccf01', 'authenticated', 'authenticated',
+        'aidisc-a@test.local', '', now(), now());
+insert into user_profiles (id, display_name, preferred_unit)
+values ('00000000-0000-0000-0000-0000000ccf01', 'Disclosure A', 'km');
+
+-- U2: a legacy Coach acceptance, exactly as the migration's backfill
+-- leaves it — stamped at a fixed past time, version 1.
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+values ('00000000-0000-0000-0000-0000000ccf02', 'authenticated', 'authenticated',
+        'aidisc-b@test.local', '', now(), now());
+insert into user_profiles (id, display_name, preferred_unit, coach_consent_at, ai_disclosure_version)
+values ('00000000-0000-0000-0000-0000000ccf02', 'Disclosure B', 'km',
+        '2020-06-01T00:00:00Z', 1);
+
+-- ── 1. Self-granting the wider scope by PATCH is blocked ──────────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf02","role":"authenticated"}';
+select throws_ok(
+  $$ update user_profiles set ai_disclosure_version = 2
+       where id = '00000000-0000-0000-0000-0000000ccf02' $$,
+  '42501',
+  'ai_disclosure_version is set by record_ai_disclosure_consent(), not a direct write',
+  'a direct authenticated write to ai_disclosure_version is blocked'
+);
+
+-- ── 2. The version the web + SQL sides agree on ──────────────────
+select is(
+  (select ai_disclosure_current_version()),
+  7::smallint,
+  'ai_disclosure_current_version() is the v7 coach-assistant version'
+);
+
+-- ── 3. No resolvable identity → refused ──────────────────────────
+set local "request.jwt.claims" = '{"role":"authenticated"}';
+select throws_ok(
+  $$ select * from record_ai_disclosure_consent(2::smallint) $$,
+  '42501',
+  null,
+  'record_ai_disclosure_consent() refuses a caller with no resolvable user id'
+);
+
+-- ── 4. Fail closed on a version this deployment cannot describe ──
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf02","role":"authenticated"}';
+select throws_ok(
+  $$ select * from record_ai_disclosure_consent(99::smallint) $$,
+  '22023',
+  null,
+  'an unknown disclosure version is refused, not stored'
+);
+
+-- ── 5. A Coach acceptance does not reach the widened scope ───────
+select is(
+  (select version from record_ai_disclosure_consent(1::smallint)),
+  1::smallint,
+  'record_ai_disclosure_consent(1) leaves a v1 holder at v1 — the widened scope is NOT granted'
+);
+
+-- ── 6/7. The explicit upgrade ────────────────────────────────────
+select is(
+  (select version from record_ai_disclosure_consent(2::smallint)),
+  2::smallint,
+  'record_ai_disclosure_consent(2) upgrades a v1 holder to v2'
+);
+
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf02'),
+  2::smallint,
+  'the upgraded version is persisted on the row'
+);
+
+-- ── 8. Monotone — the Coach re-prompt cannot walk v2 back ────────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf02","role":"authenticated"}';
+select lives_ok(
+  $$ select record_coach_consent() $$,
+  'record_coach_consent() still succeeds for a v2 holder'
+);
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf02'),
+  2::smallint,
+  'a v1 acceptance does not downgrade a v2 holder'
+);
+
+-- ── 9. A fresh acceptance writes both halves ─────────────────────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf01","role":"authenticated"}';
+select isnt(
+  (select accepted_at from record_ai_disclosure_consent(2::smallint)),
+  null,
+  'a fresh v2 acceptance stamps the server-side acceptance time'
+);
+
+-- ── 10. Half a record is not a record ────────────────────────────
+reset role;
+select throws_ok(
+  $$ update user_profiles set coach_consent_at = null
+       where id = '00000000-0000-0000-0000-0000000ccf01' $$,
+  '23514',
+  null,
+  'clearing the timestamp without the version violates the pairing CHECK'
+);
+
+-- ── 12. No profile row yet — the record still lands ──────────────
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+values ('00000000-0000-0000-0000-0000000ccf03', 'authenticated', 'authenticated',
+        'aidisc-c@test.local', '', now(), now());
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf03","role":"authenticated"}';
+select is(
+  (select version from record_ai_disclosure_consent(2::smallint)),
+  2::smallint,
+  'a caller with no provisioned profile row still gets a consent record'
+);
+
+-- ── 13. v2 -> v3 is an explicit upgrade, not inherited ───────────
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf01","role":"authenticated"}';
+select is(
+  (select version from record_ai_disclosure_consent(3::smallint)),
+  3::smallint,
+  'record_ai_disclosure_consent(3) upgrades a v2 holder to the plan-assistant rung'
+);
+
+-- ── 14. v3 -> v4 is an explicit upgrade, not inherited ───────────
+select is(
+  (select version from record_ai_disclosure_consent(4::smallint)),
+  4::smallint,
+  'record_ai_disclosure_consent(4) upgrades a v3 holder to the plan-edit rung'
+);
+
+-- ── 15. v4 -> v5 is an explicit upgrade, not inherited ───────────
+select is(
+  (select version from record_ai_disclosure_consent(5::smallint)),
+  5::smallint,
+  'record_ai_disclosure_consent(5) upgrades a v4 holder to the plate-photo rung'
+);
+
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  5::smallint,
+  'the v5 acceptance is persisted on the row'
+);
+
+-- ── 17. v5 -> v6 is an explicit upgrade, not inherited ───────────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf01","role":"authenticated"}';
+select is(
+  (select version from record_ai_disclosure_consent(6::smallint)),
+  6::smallint,
+  'record_ai_disclosure_consent(6) upgrades a v5 holder to the Coach cross-training rung'
+);
+
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  6::smallint,
+  'the v6 acceptance is persisted on the row'
+);
+
+-- ── 19. v6 -> v7 is an explicit upgrade, not inherited ───────────
+select cmp_ok(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  '<',
+  ai_disclosure_current_version(),
+  'a v6 holder is below the current version, so the coach assistant stays closed to them'
+);
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf01","role":"authenticated"}';
+select is(
+  (select version from record_ai_disclosure_consent(7::smallint)),
+  7::smallint,
+  'record_ai_disclosure_consent(7) upgrades a v6 holder to the coach-assistant rung'
+);
+
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  7::smallint,
+  'the v7 acceptance is persisted on the row'
+);
+
+select * from finish();
+rollback;

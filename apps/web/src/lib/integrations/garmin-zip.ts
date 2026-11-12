@@ -21,6 +21,7 @@
 import JSZip from 'jszip';
 import { parseRouteFile } from './import';
 import { saveRun } from '../core/data';
+import type { JsonObject } from '../types';
 import { supabase } from '../core/supabase';
 import { TABLES, METADATA_KEYS } from '../core/schema';
 import { auth } from '../stores/auth.svelte';
@@ -36,15 +37,26 @@ import {
 	compositeKey,
 	collectRunIdentities,
 	isCrossProviderDuplicate,
-	type RawRunRow,
+	RUN_DEDUPE_ORDER,
 	type RunIdentity,
 } from './garmin_dedupe';
+import { walkKeyset } from '../core/keyset_page';
+import {
+	newImportFailureLog,
+	recordImportFailure,
+	type ImportFailureLog,
+} from './import_failures';
+import { ImportRefusedError } from './import_refusal';
 
 export interface GarminZipProgress {
 	total: number;
 	imported: number;
 	skipped: number;
 	failed: number;
+	// Per-entry detail behind `failed` — name, reason, log-safe message. A
+	// bare count can't tell a migrant whether re-running the import will
+	// land the missing runs or never will.
+	failures: ImportFailureLog;
 	currentName: string | null;
 	/// True when the import seeded the user's HR zones from a FIT file's
 	/// `hr_zone` messages (only happens when the user had none set).
@@ -87,7 +99,7 @@ export async function importGarminBundle(
 	onProgress?: ProgressHandler,
 ): Promise<GarminZipProgress> {
 	const uid = auth.user?.id;
-	if (!uid) throw new Error('Not signed in');
+	if (!uid) throw new ImportRefusedError('not_signed_in');
 
 	const lower = file.name.toLowerCase();
 
@@ -95,15 +107,25 @@ export async function importGarminBundle(
 	// is the canonical identity for FIT-sourced runs; the normalised
 	// `compositeKey` (started_at + distance) catches the GPX/TCX
 	// fallback path against DB rows, the FIT entries, and other entries
-	// in the same bundle.
-	const { data: existing } = await supabase
-		.from(TABLES.runs)
-		.select('metadata, started_at, distance_m')
-		.eq('user_id', uid)
-		.eq('source', 'garmin');
+	// in the same bundle. Walked like every every-row read: an unranged
+	// select is capped at 1000 rows, so a Garmin history past that
+	// compared against a slice and re-imported the rest (§ 1936).
+	const garminRuns = await walkKeyset(RUN_DEDUPE_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.runs)
+			.select('id, metadata, started_at, distance_m')
+			.eq('user_id', uid)
+			.eq('source', 'garmin');
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!garminRuns.complete) console.warn('importGarminBundle: the Garmin-run walk ended short', garminRuns.error);
 	const seenIds = new Set<string>();
 	const seenComposite = new Set<string>();
-	for (const r of existing ?? []) {
+	for (const r of garminRuns.rows) {
 		const md = r.metadata as Record<string, unknown> | null;
 		const gid = md?.garmin_id;
 		if (gid) seenIds.add(String(gid));
@@ -115,22 +137,20 @@ export async function importGarminBundle(
 	// arrived under another source (a Garmin watch auto-uploaded to Strava,
 	// an Apple HealthKit copy) is invisible to them and re-imports. Pull every
 	// existing run's start time + distance ACROSS ALL SOURCES so an import
-	// skips a run already present under any provider.
-	//
-	// PAGE the read: PostgREST caps an unbounded SELECT at 1000 rows, which
-	// for the high-volume pros this guard exists to protect (1000+ runs) would
-	// silently compare against an arbitrary 1000-row slice and re-create
-	// duplicates anyway. `collectRunIdentities` loops `.range()` in 1000-row
-	// chunks the same way `fetchRuns` in core/data.ts does.
-	const existingIdentities = await collectRunIdentities((from, to) =>
-		supabase
+	// skips a run already present under any provider. `collectRunIdentities`
+	// walks the whole history by keyset cursor — PostgREST caps an unbounded
+	// SELECT at 1000 rows, the very histories this guard exists to protect.
+	const existingIdentities = await collectRunIdentities((after, limit) => {
+		let q = supabase
 			.from(TABLES.runs)
-			.select('started_at, distance_m')
-			.eq('user_id', uid)
-			.order('started_at', { ascending: false })
-			.range(from, to)
-			.then(({ data, error }): RawRunRow[] | null => (error ? null : (data as RawRunRow[]))),
-	);
+			.select('id, started_at, distance_m')
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 	const hrZoneCollector: HrZoneCollector = { hrZones: null };
 
 	if (lower.endsWith('.fit')) {
@@ -139,6 +159,7 @@ export async function importGarminBundle(
 			imported: 0,
 			skipped: 0,
 			failed: 0,
+			failures: newImportFailureLog(),
 			currentName: file.name,
 		};
 		onProgress?.(progress);
@@ -152,9 +173,10 @@ export async function importGarminBundle(
 				hrZoneCollector,
 			);
 			if (handled === 'imported') progress.imported++;
-			else if (handled === 'skipped') progress.skipped++;
-		} catch (_e) {
+			else progress.skipped++;
+		} catch (err) {
 			progress.failed++;
+			recordImportFailure(progress.failures, { name: file.name }, err);
 		}
 		await seedHrZonesIfUnset(uid, hrZoneCollector, progress);
 		progress.currentName = null;
@@ -163,7 +185,7 @@ export async function importGarminBundle(
 	}
 
 	if (!lower.endsWith('.zip')) {
-		throw new Error('Upload a .fit file or a .zip bundle.');
+		throw new ImportRefusedError('garmin_unsupported_file');
 	}
 
 	const zip = await JSZip.loadAsync(file);
@@ -184,6 +206,7 @@ export async function importGarminBundle(
 		imported: 0,
 		skipped: 0,
 		failed: 0,
+		failures: newImportFailureLog(),
 		currentName: null,
 	};
 	onProgress?.(progress);
@@ -192,7 +215,7 @@ export async function importGarminBundle(
 		progress.currentName = e.path.split('/').pop() ?? e.path;
 		onProgress?.(progress);
 		try {
-			let handled: 'imported' | 'skipped' | 'failed' = 'failed';
+			let handled: 'imported' | 'skipped';
 			if (e.kind === 'fit') {
 				const buf = await zip.file(e.path)!.async('uint8array');
 				handled = await importFitFile(
@@ -207,16 +230,21 @@ export async function importGarminBundle(
 				const blob = await zip.file(e.path)!.async('blob');
 				const synthetic = new File([blob], e.path.split('/').pop()!);
 				handled = await importRouteFile(synthetic, seenComposite, existingIdentities);
-			} else if (e.kind === 'fit-zip') {
+			} else {
 				// Garmin sometimes wraps a single FIT inside a per-activity
 				// .zip; open it and pull out any .fit entries.
 				const blob = await zip.file(e.path)!.async('blob');
 				const inner = await JSZip.loadAsync(blob);
-				let innerHandled: 'imported' | 'skipped' | 'failed' = 'failed';
+				let innerHandled: 'imported' | 'skipped' | null = null;
+				// A member that throws doesn't end the wrapper: a later .fit
+				// inside the same archive may still be readable, which is the
+				// fall-through the pre-throw disposition gave us.
+				let innerError: unknown = new Error('Archive member contains no FIT file');
 				for (const name of Object.keys(inner.files)) {
 					if (!name.toLowerCase().endsWith('.fit')) continue;
 					const buf = await inner.file(name)!.async('uint8array');
-					innerHandled = await importFitFile(
+					try {
+						innerHandled = await importFitFile(
 							buf,
 							name,
 							seenIds,
@@ -224,15 +252,19 @@ export async function importGarminBundle(
 							existingIdentities,
 							hrZoneCollector,
 						);
-					if (innerHandled === 'imported' || innerHandled === 'skipped') break;
+						break;
+					} catch (err) {
+						innerError = err;
+					}
 				}
+				if (innerHandled === null) throw innerError;
 				handled = innerHandled;
 			}
 			if (handled === 'imported') progress.imported++;
-			else if (handled === 'skipped') progress.skipped++;
-			else progress.failed++;
-		} catch (_err) {
+			else progress.skipped++;
+		} catch (err) {
 			progress.failed++;
+			recordImportFailure(progress.failures, { name: progress.currentName ?? e.path }, err);
 		}
 		onProgress?.(progress);
 	}
@@ -251,16 +283,15 @@ async function importFitFile(
 	seenComposite: Set<string>,
 	existingIdentities: RunIdentity[],
 	collector?: HrZoneCollector,
-): Promise<'imported' | 'skipped' | 'failed'> {
-	let parsed: ParsedFitRun | null;
-	try {
-		// TS 6 typed Uint8Array.buffer as ArrayBufferLike (union with
-		// SharedArrayBuffer); parseFitBuffer wants a concrete ArrayBuffer.
-		// .slice() always returns a fresh ArrayBuffer either way.
-		parsed = await parseFitBuffer(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
-	} catch (_e) {
-		return 'failed';
-	}
+): Promise<'imported' | 'skipped'> {
+	// A parse error propagates so the caller's single catch can record WHY
+	// this member failed; a swallowed 'failed' disposition carried no reason.
+	// TS 6 typed Uint8Array.buffer as ArrayBufferLike (union with
+	// SharedArrayBuffer); parseFitBuffer wants a concrete ArrayBuffer.
+	// .slice() always returns a fresh ArrayBuffer either way.
+	const parsed: ParsedFitRun | null = await parseFitBuffer(
+		buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer,
+	);
 	if (!parsed) return 'skipped';
 
 	// Capture HR zones even from a duplicate/skipped run — the zones are
@@ -292,7 +323,7 @@ async function importFitFile(
 		return 'skipped';
 	}
 
-	const metadata: Record<string, unknown> = {
+	const metadata: JsonObject = {
 		[METADATA_KEYS.imported_from]: 'garmin',
 		[METADATA_KEYS.imported_at]: new Date().toISOString(),
 		[METADATA_KEYS.source_file]: displayName,
@@ -309,7 +340,11 @@ async function importFitFile(
 	// marathon}_s columns, 20270325_001) so a fast sub-distance inside a long
 	// imported run reaches personal_records. Empty {} → nothing written for
 	// indoor/trackless or too-short runs; no fake bests.
-	const embeddedBests = computeEmbeddedBests(parsed.track);
+	const embeddedBests = computeEmbeddedBests(
+		parsed.track,
+		parsed.activity_type,
+		parsed.distance_stream,
+	);
 
 	await saveRun({
 		embedded_bests: embeddedBests,
@@ -347,13 +382,8 @@ async function importRouteFile(
 	file: File,
 	seenComposite: Set<string>,
 	existingIdentities: RunIdentity[],
-): Promise<'imported' | 'skipped' | 'failed'> {
-	let routes;
-	try {
-		routes = await parseRouteFile(file);
-	} catch (_e) {
-		return 'failed';
-	}
+): Promise<'imported' | 'skipped'> {
+	const routes = await parseRouteFile(file);
 	if (!routes || routes.length === 0) return 'skipped';
 	const r = routes[0];
 	const waypoints = r.waypoints;
@@ -380,7 +410,7 @@ async function importRouteFile(
 		return 'skipped';
 	}
 
-	const metadata: Record<string, unknown> = {
+	const metadata: JsonObject = {
 		imported_from: 'garmin',
 		imported_at: new Date().toISOString(),
 		source_file: file.name,
@@ -389,7 +419,7 @@ async function importRouteFile(
 	// same as the FIT path — written to the promoted runs columns. {} when
 	// the original carried no per-point times.
 	await saveRun({
-		embedded_bests: computeEmbeddedBests(waypoints),
+		embedded_bests: computeEmbeddedBests(waypoints, 'run'),
 		started_at: new Date(startedAt).toISOString(),
 		distance_m: distanceM,
 		duration_s: durationS,

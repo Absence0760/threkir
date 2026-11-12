@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'apple_watch_prefs_bridge.dart';
+import 'device_timezone.dart';
 import 'goals.dart';
 import 'preferences.dart';
+import 'time_zone_pref.dart';
 import 'undo_queue.dart';
 
 /// Bridge between local [Preferences] (SharedPreferences) and the
@@ -22,7 +26,9 @@ class SettingsSyncService extends ChangeNotifier {
     required this.preferences,
     this.cache,
     @visibleForTesting Future<SettingsService> Function()? serviceLoader,
-  }) : _serviceLoader = serviceLoader;
+    @visibleForTesting Future<String?> Function()? timeZoneReader,
+  })  : _serviceLoader = serviceLoader,
+        _timeZoneReader = timeZoneReader ?? deviceIanaTimeZoneOrNull;
 
   final Preferences preferences;
 
@@ -32,11 +38,11 @@ class SettingsSyncService extends ChangeNotifier {
   final SettingsCache? cache;
 
   final Future<SettingsService> Function()? _serviceLoader;
+  final Future<String?> Function() _timeZoneReader;
 
   SettingsService? _settings;
 
   bool _synced = false;
-  String? _lastError;
 
   SettingsService? get service => _settings;
 
@@ -46,7 +52,6 @@ class SettingsSyncService extends ChangeNotifier {
   /// a cache (or on a brand-new device while offline) it falls back to
   /// the pre-cache semantics: only true after a successful server load.
   bool get synced => _synced;
-  String? get lastError => _lastError;
 
   /// Called when the user signs out. Drops the cached [SettingsService]
   /// instance (which holds the previously-signed-in user's universal +
@@ -70,7 +75,6 @@ class SettingsSyncService extends ChangeNotifier {
   Future<void> onSignedOut({String? priorUserId}) async {
     _settings = null;
     _synced = false;
-    _lastError = null;
     await preferences.resetAccountScopedPrefs();
     if (priorUserId != null && priorUserId.isNotEmpty) {
       try {
@@ -91,18 +95,34 @@ class SettingsSyncService extends ChangeNotifier {
       _settings = loaded;
       _applyUniversal(loaded.universal);
       _applyDevice(loaded.device);
+      _mirrorAppleWatchHrZones(loaded);
       _synced = true;
-      _lastError = loaded.isServerHydrated ? null : _offlineNotice;
+      await _syncTimeZone(loaded);
     } catch (e) {
+      debugPrint('[SettingsSyncService] settings load failed: $e');
       _settings = null;
       _synced = false;
-      _lastError = e.toString();
     }
     notifyListeners();
   }
 
-  static const _offlineNotice =
-      'Offline — edits stay on this device and sync when you reconnect.';
+  /// Keep the server's copy of the runner's zone current (the `time_zone`
+  /// universal pref): the coach roster picks their current plan by their
+  /// local date (issue #1182). Written only when it changed, and only over a
+  /// bag the server returned: an offline write would seed the cache with a
+  /// bag that holds none of the runner's privacy zones. Auxiliary: a failure
+  /// is logged and never fails the sign-in hydrate above it.
+  Future<void> _syncTimeZone(SettingsService loaded) async {
+    if (!loaded.isServerHydrated) return;
+    try {
+      final tz = timeZoneToWrite(
+          loaded.universal[SettingsKeys.timeZone], await _timeZoneReader());
+      if (tz == null) return;
+      await loaded.updateUniversal(<String, dynamic>{SettingsKeys.timeZone: tz});
+    } catch (e) {
+      debugPrint('[SettingsSyncService] time zone sync failed: $e');
+    }
+  }
 
   Future<SettingsService> _loadService() {
     final loader = _serviceLoader;
@@ -145,9 +165,22 @@ class SettingsSyncService extends ChangeNotifier {
     final loaded = await _loadService();
     _settings = loaded;
     _synced = true;
-    _lastError = loaded.isServerHydrated ? null : _offlineNotice;
     return loaded;
   }
+
+  /// [service], loading it first when [onSignedIn] never ran or failed: the
+  /// read for a decision that must not run on a bag nobody loaded, such as
+  /// which privacy zones a shared image withholds. Throws when there is no
+  /// session or the bags cannot be loaded at all.
+  Future<SettingsService> loadedService() => _ensureService();
+
+  /// [loadedService] re-read from the server, for a decision that must see
+  /// a change made on another device since sign-in — which zones a run is
+  /// about to be published under. Not overlaid onto [Preferences]: the
+  /// caller reads one key. Callers check [SettingsService.isServerHydrated],
+  /// because a failed fetch still returns the cached bags.
+  Future<SettingsService> reloadedService() async =>
+      (await _ensureService()).load();
 
   /// Push the user's current distance-unit choice to the universal bag.
   /// Call from the settings-screen toggle handler. Throws when there is no
@@ -203,6 +236,7 @@ class SettingsSyncService extends ChangeNotifier {
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     final s = await _ensureService();
     await s.updateUniversal(changes);
+    _mirrorAppleWatchHrZones(s);
     notifyListeners();
   }
 
@@ -210,7 +244,31 @@ class SettingsSyncService extends ChangeNotifier {
   Future<void> updateDevice(Map<String, dynamic> changes) async {
     final s = await _ensureService();
     await s.updateDevice(changes);
+    _mirrorAppleWatchHrZones(s);
     notifyListeners();
+  }
+
+  /// Re-derive the Apple Watch's zone ladder from the bag and hand it over.
+  ///
+  /// Here because this class is where every write to the three inputs lands —
+  /// the settings page edits `hr_zones` / `max_hr_bpm` / `date_of_birth`
+  /// through [updateUniversal] with no [Preferences] mirror, and a runner who
+  /// changes their max HR must not wait for the next launch to see it on the
+  /// wrist. L4: nothing here may fail the bag write it follows.
+  void _mirrorAppleWatchHrZones(SettingsService s) {
+    try {
+      final cutoffs = AppleWatchPrefsBridge.zoneCutoffsForWatch(
+        hrZones: s.effective<Object>(SettingsKeys.hrZones),
+        maxHrBpm: s.effective<Object>(SettingsKeys.maxHrBpm),
+        dateOfBirth: s.effective<Object>(SettingsKeys.dateOfBirth),
+        now: DateTime.now(),
+      );
+      unawaited(preferences.setAppleWatchHrZoneCutoffs(cutoffs).catchError(
+        (Object e) => debugPrint('Apple Watch zone mirror failed: $e'),
+      ));
+    } catch (e) {
+      debugPrint('Apple Watch zone mirror failed: $e');
+    }
   }
 
   /// Test-only: drives the universal-bag overlay logic against a
@@ -239,6 +297,10 @@ class SettingsSyncService extends ChangeNotifier {
     final vfv = prefs[SettingsKeys.voiceFeedbackVerbosity];
     if (vfv is String && vfv.isNotEmpty && vfv != preferences.voiceFeedbackVerbosity) {
       preferences.setVoiceFeedbackVerbosity(vfv);
+    }
+    final spm = prefs[SettingsKeys.voiceSplitPaceMode];
+    if (spm is String && spm != preferences.splitPaceMode) {
+      preferences.setSplitPaceMode(spm);
     }
     _applyVoiceFeedbackEnabled(prefs);
     _applyVoiceCueTypes(prefs);
@@ -284,6 +346,16 @@ class SettingsSyncService extends ChangeNotifier {
     final wu = prefs[SettingsKeys.weightUnit];
     if (wu is String) {
       preferences.setWeightUnit(WeightFormat.unitFromWire(wu));
+    }
+    // A non-bool is dropped rather than read as "hidden": a corrupt bag must
+    // not take away surfaces someone is using.
+    final gym = prefs[SettingsKeys.showGym];
+    if (gym is bool && gym != preferences.showGym) {
+      preferences.setShowGym(gym);
+    }
+    final nutrition = prefs[SettingsKeys.showNutrition];
+    if (nutrition is bool && nutrition != preferences.showNutrition) {
+      preferences.setShowNutrition(nutrition);
     }
     // Seed a weekly distance RunGoal from the universal bag value when
     // the local list doesn't already have one. We never *replace* an
@@ -339,6 +411,10 @@ class SettingsSyncService extends ChangeNotifier {
     if (dim is bool && dim != preferences.dimScreenWhileRecording) {
       preferences.setDimScreenWhileRecording(dim);
     }
+    final haptic = prefs[SettingsKeys.hapticFeedbackEnabled];
+    if (haptic is bool && haptic != preferences.hapticFeedback) {
+      preferences.setHapticFeedback(haptic);
+    }
   }
 
   /// `voice_feedback_enabled` is a UD key read from BOTH bags, same shape as
@@ -382,11 +458,31 @@ class SettingsSyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Push the Gym / Nutrition visibility choices to the universal bag so the
+  /// same app shape follows the runner to their other phone.
+  Future<void> pushModalityVisibility() async {
+    final s = await _ensureService();
+    await s.updateUniversal(<String, dynamic>{
+      SettingsKeys.showGym: preferences.showGym,
+      SettingsKeys.showNutrition: preferences.showNutrition,
+    });
+    notifyListeners();
+  }
+
   /// Push the user's keep-screen-on toggle to the device bag.
   Future<void> pushKeepScreenOn() async {
     final s = await _ensureService();
     await s.updateDevice(<String, dynamic>{
       SettingsKeys.keepScreenOn: preferences.keepScreenOn,
+    });
+    notifyListeners();
+  }
+
+  /// Push the user's run-vibration toggle to the device bag.
+  Future<void> pushHapticFeedback() async {
+    final s = await _ensureService();
+    await s.updateDevice(<String, dynamic>{
+      SettingsKeys.hapticFeedbackEnabled: preferences.hapticFeedback,
     });
     notifyListeners();
   }
@@ -415,3 +511,38 @@ class SettingsSyncService extends ChangeNotifier {
     return Platform.operatingSystemVersion;
   }
 }
+
+// The app's one SettingsSyncService, for screens deep in a navigation stack
+// that read a universal setting without threading the service through every
+// constructor (the same pattern as `registerActivePreferences`).
+SettingsSyncService? _activeSettingsSync;
+
+void registerActiveSettingsSync(SettingsSyncService? s) {
+  _activeSettingsSync = s;
+}
+
+/// The app's settings bag, or null before it has loaded.
+SettingsService? activeSettingsService() => _activeSettingsSync?.service;
+
+/// One effective universal / device setting, null until the settings bag
+/// has loaded or when unset.
+Object? activeSetting(String key) =>
+    _activeSettingsSync?.service?.effective<Object>(key);
+
+/// Merge [changes] into the universal bag through the app's settings sync,
+/// so every screen listening to it sees the edit. Throws [StateError] when
+/// no sync is registered (signed out, or before `main.dart` has run).
+Future<void> updateActiveUniversal(Map<String, dynamic> changes) {
+  final sync = _activeSettingsSync;
+  if (sync == null) {
+    throw StateError('updateActiveUniversal: no settings sync registered');
+  }
+  return sync.updateUniversal(changes);
+}
+
+/// The runner's `week_start_day` ('monday' | 'sunday'), Monday until the
+/// settings bag has loaded.
+String activeWeekStartDay() =>
+    _activeSettingsSync?.service
+        ?.effective<String>(SettingsKeys.weekStartDay) ??
+    'monday';

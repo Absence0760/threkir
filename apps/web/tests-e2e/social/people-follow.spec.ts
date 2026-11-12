@@ -1,14 +1,15 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
 
 /**
  * /social?tab=people — follow toggle FAILURE path + the follow→feed
  * link. people.spec.ts covers the happy-path optimistic flip + DB
  * persistence; this pins two gaps:
- *   1. when the follow write FAILS, the optimistic flip ROLLS BACK and
+ *   1. when the follow RPC FAILS, the optimistic flip ROLLS BACK and
  *      a failure toast surfaces (SocialPeople.toggleFollow catch).
  *   2. the follow graph actually drives the feed: a followed user's
  *      public run appears; after unfollow it disappears. This is the
@@ -41,22 +42,19 @@ test.describe('/social?tab=people — follow failure rolls back', () => {
 			);
 	});
 
-	test('a failed follow INSERT rolls the button back to Follow + shows a failure toast', async ({
+	test('a failed follow request rolls the button back to Follow + shows a failure toast', async ({
 		page
 	}) => {
-		// Fail every user_follows write (POST) — the follow insert. The
-		// optimistic flip paints "Following" immediately, then the catch
-		// must roll it back to "Follow" when the write 500s.
-		await page.route('**/rest/v1/user_follows*', async (route) => {
-			if (route.request().method() === 'POST') {
-				await route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ message: 'simulated follow failure' })
-				});
-			} else {
-				await route.continue();
-			}
+		// A follow is the request_follow RPC (it files a request instead when
+		// the profile is private), so that call is the one to fail. The
+		// optimistic flip paints "Following" immediately, then the catch must
+		// roll it back to "Follow" when the RPC 500s.
+		await page.route('**/rest/v1/rpc/request_follow*', async (route) => {
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated follow failure' })
+			});
 		});
 
 		await page.goto('/social?tab=people');
@@ -80,12 +78,15 @@ test.describe('/social?tab=people — follow failure rolls back', () => {
 
 		// No row was written server-side.
 		const admin = getAdminClient();
-		const { data: edge } = await admin
-			.from('user_follows')
-			.select('follower_id')
-			.eq('follower_id', USER_A.id)
-			.eq('followee_id', USER_B.id)
-			.maybeSingle();
+		const edge = await readMaybeRow(
+			'user_follows by follower_id+followee_id',
+			admin
+				.from('user_follows')
+				.select('follower_id')
+				.eq('follower_id', USER_A.id)
+				.eq('followee_id', USER_B.id)
+				.maybeSingle()
+		);
 		expect(edge).toBeNull();
 	});
 });
@@ -159,12 +160,15 @@ test.describe('/social — follow graph drives feed contents', () => {
 		// Wait for the edge to land before reading the feed.
 		const admin = getAdminClient();
 		await expect(async () => {
-			const { data } = await admin
-				.from('user_follows')
-				.select('follower_id')
-				.eq('follower_id', USER_A.id)
-				.eq('followee_id', USER_B.id)
-				.maybeSingle();
+			const data = await readMaybeRow(
+				'user_follows by follower_id+followee_id',
+				admin
+					.from('user_follows')
+					.select('follower_id')
+					.eq('follower_id', USER_A.id)
+					.eq('followee_id', USER_B.id)
+					.maybeSingle()
+			);
 			expect(data).toBeTruthy();
 		}).toPass({ timeout: 5_000 });
 
@@ -185,12 +189,15 @@ test.describe('/social — follow graph drives feed contents', () => {
 		await expect(unfollowBtn).toContainText('Follow', { timeout: 5_000 });
 		await expect(unfollowBtn).not.toContainText('Following');
 		await expect(async () => {
-			const { data } = await admin
-				.from('user_follows')
-				.select('follower_id')
-				.eq('follower_id', USER_A.id)
-				.eq('followee_id', USER_B.id)
-				.maybeSingle();
+			const data = await readMaybeRow(
+				'user_follows by follower_id+followee_id',
+				admin
+					.from('user_follows')
+					.select('follower_id')
+					.eq('follower_id', USER_A.id)
+					.eq('followee_id', USER_B.id)
+					.maybeSingle()
+			);
 			expect(data).toBeNull();
 		}).toPass({ timeout: 5_000 });
 

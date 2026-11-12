@@ -1,0 +1,14 @@
+// App Store upload rejects an .ipa whose embedded app extension does not
+// carry the same CFBundleShortVersionString / CFBundleVersion as its host, so
+// the Live Activity extension reads Flutter's version rather than a second
+// literal — the same reason WatchApp.xcconfig exists.
+//
+// Only Generated.xcconfig is included. The Pods xcconfigs that
+// Debug/Release.xcconfig pull in link the Flutter engine and every plugin
+// framework, none of which an extension that renders two SwiftUI views has
+// any use for; an extension carrying them would bloat the .ipa and load the
+// engine on the lock screen.
+#include "Generated.xcconfig"
+
+MARKETING_VERSION=$(FLUTTER_BUILD_NAME)
+CURRENT_PROJECT_VERSION=$(FLUTTER_BUILD_NUMBER)

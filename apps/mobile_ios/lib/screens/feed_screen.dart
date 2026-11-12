@@ -1,3 +1,4 @@
+import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -145,7 +146,8 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<List<UserProfileRow>> _loadFollowees() async {
     if (widget.api.userId == null) return const [];
     try {
-      return await widget.api.fetchFollowing(widget.api.userId!, limit: 200);
+      return (await widget.api.fetchFollowing(widget.api.userId!, limit: 200))
+          .rows;
     } catch (e) {
       debugPrint('feed followees load failed: $e');
       return _followees;
@@ -468,11 +470,12 @@ class _FeedScreenState extends State<FeedScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.groups_outlined,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            (!hasFollows ? grisnirWaitingOrNull() : null) ??
+                Icon(
+                  Icons.groups_outlined,
+                  size: 48,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
             const SizedBox(height: 16),
             Text(
               !hasFollows

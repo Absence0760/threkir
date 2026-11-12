@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { resolveBaseUrl } from '../fixtures/base-url';
 import { refreshStorageState, signOut } from '../fixtures/helpers';
 import { setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -50,7 +51,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		// The fitness card is gated on a successful settings load, so
 		// once the heading is visible the cache write has happened.
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 }),
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible();
 
 		// Poll because the cache write happens after the dashboard's
@@ -79,7 +80,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		// First visit: prime the cache.
 		await page.goto('/dashboard');
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 }),
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible();
 		await expect
 			.poll(
@@ -108,7 +109,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		// 10s). The assertion still proves the cache is load-bearing — it just
 		// tolerates heavy-shard latency instead of flaking on it.
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 }),
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible({ timeout: 20_000 });
 
 		// Cache still has the planted prefs — a regression that
@@ -131,7 +132,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		try {
 			await page.goto('/dashboard');
 			await expect(
-				page.getByRole('heading', { name: /mileage/i, level: 2 }),
+				page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 			).toBeVisible();
 			await expect
 				.poll(
@@ -140,10 +141,10 @@ test.describe('/dashboard — universal prefs cache', () => {
 				)
 				.not.toBeNull();
 
-			// Driving the actual UI flow proves the store's logout() hook
-			// (which calls dropUserCache before nulling user/loggedIn) is
-			// wired correctly. Calling auth.logout() via window would
-			// bypass the affordance the user actually reaches for.
+			// Driving the actual UI flow proves the auth listener drops the
+			// cache before it clears loggedIn, which is what sends the page
+			// to /login (decisions § 2420). Calling auth.logout() via window
+			// would bypass the affordance the user actually reaches for.
 			await signOut(page);
 
 			// Cache for the signed-out user is gone.
@@ -161,7 +162,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 			// week-strip.spec.ts saw the sign-in page, not the dashboard). Same
 			// hazard + same remedy as the password-rotation specs in
 			// auth/reset.spec.ts. Pinned by the e2e-session-hygiene guard.
-			await refreshStorageState(browser, baseURL ?? 'http://localhost:7777', USER_A);
+			await refreshStorageState(browser, baseURL ?? resolveBaseUrl(), USER_A);
 		}
 	});
 });

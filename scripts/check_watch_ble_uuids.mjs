@@ -26,6 +26,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { stripComments } from './comment_strip.mjs';
+
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Overridable so the whole script — exit code and all — can be pointed at
@@ -45,6 +47,9 @@ export const DART_FILE =
 // dev TCP link only (`sim_watch_link.dart`), so § 447's forwarder had no BLE
 // feed. `ReactiveBleWatchFrameSource` now subscribes to it on its own
 // connection, so it is a checked pair like the rest.
+/** @typedef {{ firmware: string, dart: string }} Pair */
+
+/** @type {readonly Pair[]} */
 export const PAIRS = [
 	{ firmware: 'service', dart: 'serviceUuid' },
 	{ firmware: 'frame', dart: 'frameCharUuid' },
@@ -67,23 +72,49 @@ export const PAIRS = [
 // because the watch is free to grow its table ahead of the phone, and the day
 // it does, listing the new row here silences the "no phone counterpart"
 // warning WITHOUT giving up the misaimed-constant check.
+/** @type {readonly string[]} */
 export const UNCLAIMED = [];
 
 // `#[nrf_softdevice::gatt_service(uuid = "…")] pub struct LinkService { … }`,
 // then one `#[characteristic(uuid = "…", …)] <name>: <ty>` per row. Parsed by
 // pairing each uuid attribute with the identifier that follows it, so a
 // reordered table or an inserted row is read correctly rather than positionally.
+//
+// Comments are blanked first (decisions § 773). The service match is not
+// global, so the FIRST `gatt_service(uuid = "…")` anywhere in the file won —
+// including one quoted in the `//!` module doc — and the characteristic scan
+// is last-writer-wins, so a historic table preserved in a trailing comment
+// overwrote every live row. Measured, that is not a cosmetic misread: a
+// firmware whose live table has shifted one position with the old table kept
+// in a comment below parses as the OLD table, matches a phone that never
+// moved, and reports zero errors and three [OK] lines — § 410's bug passing
+// the guard built to catch it.
+//
+// More than one `gatt_service` THROWS rather than picking one: which of two
+// tables the phone talks to is not something this parser can know, and
+// answering anyway is what the first-match-wins read was already doing.
+/**
+ * @param {string} src
+ * @returns {Map<string, string>} GATT field name -> lowercased UUID.
+ */
 export function parseFirmware(src) {
-	const service = src.match(
-		/gatt_service\s*\(\s*uuid\s*=\s*"([0-9a-fA-F-]+)"\s*\)/,
-	);
+	const code = stripComments(src, 'rust');
+	const services = [
+		...code.matchAll(/gatt_service\s*\(\s*uuid\s*=\s*"([0-9a-fA-F-]+)"\s*\)/g),
+	];
+	if (services.length > 1) {
+		throw new Error(
+			`check_watch_ble_uuids: ${services.length} gatt_service declarations in the ` +
+				'firmware file; parseFirmware cannot know which one the phone talks to.',
+		);
+	}
 	const out = new Map();
-	if (service) out.set('service', service[1].toLowerCase());
+	if (services.length === 1) out.set('service', services[0][1].toLowerCase());
 
 	const charRe =
 		/#\[\s*characteristic\s*\(([\s\S]*?)\)\s*\]([\s\S]*?)([a-z_][a-z0-9_]*)\s*:/g;
 	let m;
-	while ((m = charRe.exec(src)) !== null) {
+	while ((m = charRe.exec(code)) !== null) {
 		const uuid = m[1].match(/uuid\s*=\s*"([0-9a-fA-F-]+)"/);
 		if (!uuid) continue;
 		out.set(m[3], uuid[1].toLowerCase());
@@ -91,14 +122,85 @@ export function parseFirmware(src) {
 	return out;
 }
 
+// The service UUID has a THIRD copy in the same file, in a form `parseFirmware`
+// cannot see: `LINK_SERVICE_UUID: u128`, which is what the scan response
+// advertises. Its own comment says it "must stay byte-for-byte the same value
+// as the service string below" — an instruction, and the same shape decisions
+// § 793 records for the watch's golden vectors. A phone filtering its scan on
+// the advertised value would find nothing at all if the two parted company,
+// and every UUID this guard already compares would still line up.
+//
+// Grouping is ignored: the underscores in the literal happen to fall on the
+// dash positions today, and reading it as though they always would is a
+// coincidence to depend on, not a rule.
+/**
+ * @param {string} src
+ * @returns {string | null} the advertised UUID in canonical dashed form.
+ */
+export function parseAdvertisedServiceUuid(src) {
+	const m = stripComments(src, 'rust').match(
+		/\bconst\s+LINK_SERVICE_UUID\s*:\s*u128\s*=\s*0x([0-9a-fA-F_]+)\s*;/,
+	);
+	if (!m) return null;
+	const hex = m[1].replace(/_/g, '').toLowerCase().padStart(32, '0');
+	if (hex.length !== 32) return null;
+	return [
+		hex.slice(0, 8),
+		hex.slice(8, 12),
+		hex.slice(12, 16),
+		hex.slice(16, 20),
+		hex.slice(20),
+	].join('-');
+}
+
+/**
+ * The advertised u128 against the `gatt_service` attribute it must equal.
+ * @param {Map<string, string>} firmware
+ * @param {string | null} advertised
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function compareAdvertisedUuid(firmware, advertised) {
+	const declared = firmware.get('service');
+	if (!declared) return { errors: [], ok: [] };
+	if (advertised === null) {
+		return {
+			errors: [
+				'the scan-response service UUID (LINK_SERVICE_UUID: u128) was not found ' +
+					'in ble.rs.\n  It moved or changed shape, and this check is blind until ' +
+					'parseAdvertisedServiceUuid() is taught the new form.',
+			],
+			ok: [],
+		};
+	}
+	if (advertised !== declared) {
+		return {
+			errors: [
+				`the advertised service UUID and the GATT service disagree:\n` +
+					`  gatt_service attribute:  ${declared}\n` +
+					`  LINK_SERVICE_UUID u128:  ${advertised}\n` +
+					`  A phone filtering its scan on the advertised value never finds the ` +
+					`service it then connects to. Set the u128 to the attribute.`,
+			],
+			ok: [],
+		};
+	}
+	return { errors: [], ok: [`advertised service u128 = gatt_service (${advertised})`] };
+}
+
 // `static final Uuid <name> = Uuid.parse('…');` — the newline between the
-// declaration and the initialiser is why this can't be a one-line regex.
+// declaration and the initialiser is why this can't be a one-line regex, and
+// why the 40-character window crossed a trailing `//` and read a commented-out
+// constant as a live one. Comments are blanked first.
+/**
+ * @param {string} src
+ * @returns {Map<string, string>} Dart constant name -> lowercased UUID.
+ */
 export function parseDart(src) {
 	const out = new Map();
 	const re =
 		/static\s+final\s+Uuid\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[\s\S]{0,40}?Uuid\.parse\(\s*'([0-9a-fA-F-]+)'\s*\)/g;
 	let m;
-	while ((m = re.exec(src)) !== null) out.set(m[1], m[2].toLowerCase());
+	while ((m = re.exec(stripComments(src, 'dart'))) !== null) out.set(m[1], m[2].toLowerCase());
 	return out;
 }
 
@@ -108,6 +210,13 @@ export function parseDart(src) {
 // exercised by the production tables stops being exercised the moment those
 // tables stop containing an example of it, which is exactly what happened to
 // `unclaimed` when the phone claimed `frame`.
+/**
+ * @param {Map<string, string>} firmware
+ * @param {Map<string, string>} dart
+ * @param {readonly Pair[]} [pairs]
+ * @param {readonly string[]} [unclaimed]
+ * @returns {{ errors: string[], warnings: string[], ok: string[] }}
+ */
 export function compareTables(
 	firmware,
 	dart,
@@ -227,10 +336,18 @@ export function compareTables(
 }
 
 function main() {
+	const firmwareSrc = readFileSync(FIRMWARE_FILE, 'utf-8');
+	const firmware = parseFirmware(firmwareSrc);
 	const { errors, warnings, ok } = compareTables(
-		parseFirmware(readFileSync(FIRMWARE_FILE, 'utf-8')),
+		firmware,
 		parseDart(readFileSync(DART_FILE, 'utf-8')),
 	);
+	const advertised = compareAdvertisedUuid(
+		firmware,
+		parseAdvertisedServiceUuid(firmwareSrc),
+	);
+	errors.push(...advertised.errors);
+	ok.push(...advertised.ok);
 
 	for (const line of ok) console.log(`[OK] ${line}`);
 	for (const line of warnings) console.warn(`[WARN] ${line}`);

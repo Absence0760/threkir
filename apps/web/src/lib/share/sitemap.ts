@@ -10,9 +10,12 @@
 ///     foreseeable future.
 
 import { buildClubShareCanonical } from './share_club_meta';
+import { courseShareKey } from './share_course_lookup';
+import { buildCourseShareCanonical } from './share_course_meta';
 import { buildEventShareCanonical } from './share_event_meta';
 import { buildRaceShareCanonical } from './share_race_meta';
 import { buildRouteShareCanonical, buildRunShareCanonical } from './share_meta';
+import { escapeXml } from '../util/html_escape';
 
 export type SitemapEntry = {
 	loc: string;
@@ -20,20 +23,6 @@ export type SitemapEntry = {
 	changefreq?: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 	priority?: number; // 0.0..1.0
 };
-
-/// XML-escape the five characters with special meaning inside element
-/// content + attribute values. Sitemap URLs shouldn't contain `<` or
-/// `>`, but uuids and the trailing slash on the base URL are stable
-/// — guarding here is cheap insurance against a future schema that
-/// allows non-uuid public ids (slugs, handles).
-export function xmlEscape(s: string): string {
-	return s
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
-}
 
 /// Strip the trailing slash from a base URL so concatenation with
 /// `/share/...` yields a single-slash join. Idempotent.
@@ -50,8 +39,8 @@ export function buildSitemap(entries: SitemapEntry[]): string {
 	lines.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
 	for (const e of entries) {
 		lines.push('  <url>');
-		lines.push(`    <loc>${xmlEscape(e.loc)}</loc>`);
-		if (e.lastmod) lines.push(`    <lastmod>${xmlEscape(e.lastmod)}</lastmod>`);
+		lines.push(`    <loc>${escapeXml(e.loc)}</loc>`);
+		if (e.lastmod) lines.push(`    <lastmod>${escapeXml(e.lastmod)}</lastmod>`);
 		if (e.changefreq) lines.push(`    <changefreq>${e.changefreq}</changefreq>`);
 		if (e.priority != null) {
 			lines.push(`    <priority>${e.priority.toFixed(1)}</priority>`);
@@ -105,6 +94,13 @@ export function composeEntries(
 		{ loc: `${b}/feed`, changefreq: 'daily', priority: 0.5 },
 		// /routes?tab=explore is the public discovery entry point.
 		{ loc: `${b}/routes?tab=explore`, changefreq: 'daily', priority: 0.6 },
+		// The segment catalogue: world-readable curated content at a stable
+		// URL, so the INDEX is listed. The per-segment pages are not — each
+		// is a leaderboard of named runners, which is the people-directory
+		// objection that keeps profiles out, and they are CSR besides, so a
+		// crawler would only ever be handed the empty shell (decisions.md
+		// § 677).
+		{ loc: `${b}/segments`, changefreq: 'weekly', priority: 0.6 },
 	];
 	for (const r of routes) {
 		const count = runCountByRouteId?.get(r.id) ?? 0;
@@ -167,9 +163,32 @@ export function entityEntries(
 	return entries;
 }
 
+/// Park course pages (`/share/course/<region>/<park>/<course>`). A course
+/// page names the course and its park, never a runner, so it is not a
+/// people-directory and is enumerated like a club. Pure — the caller passes
+/// the anon-readable rows (inactive parks and pulled segments are already
+/// hidden by RLS).
+export function courseEntries(
+	base: string,
+	courses: Array<{
+		slug: string;
+		park_slug: string;
+		region_code: string;
+		updated_at?: string | null;
+	}>,
+): SitemapEntry[] {
+	const b = normaliseBase(base);
+	return courses.map((c) => ({
+		loc: buildCourseShareCanonical(b, courseShareKey(c.region_code, c.park_slug, c.slug)),
+		lastmod: c.updated_at ?? undefined,
+		changefreq: 'monthly',
+		priority: 0.7,
+	}));
+}
+
 /// Learn-hub sitemap entries: the hub, one per category, one per guide.
 /// Pure — the caller passes plain `{ slug, updated, category }` rows (the
-/// build-time guide index from `$lib/learn/guides`) + the category ids so
+/// build-time guide index from `#lib/learn/guides`) + the category ids so
 /// this module stays import.meta.glob-free and tsx-testable. The Learn
 /// entries are build-time constants, so the endpoint emits them even when
 /// the Supabase fetch for routes/runs fails.

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
@@ -11,7 +11,7 @@ import { USER_A, USER_B } from '../fixtures/users';
  * URL carrying the goal (shareable), and that the effort/even toggle re-paces.
  */
 
-async function seedRoute(isPublic = false): Promise<string> {
+async function seedRoute(isPublic = false, aidTargetElapsedS?: number): Promise<string> {
 	const admin = getAdminClient();
 	const id = crypto.randomUUID();
 	// A climbing course: flat first half, steep second half, so the effort
@@ -43,7 +43,10 @@ async function seedRoute(isPublic = false): Promise<string> {
 		});
 		if (e) throw new Error(`marker ${label} failed: ${e.message}`);
 	};
-	await mk('aid_station', 'Aid 1', 51.5 + 4 * 0.001, { services: ['water', 'food'] });
+	await mk('aid_station', 'Aid 1', 51.5 + 4 * 0.001, {
+		services: ['water', 'food'],
+		...(aidTargetElapsedS != null ? { target_elapsed_s: aidTargetElapsedS } : {})
+	});
 	await mk('cutoff', 'Gate', 51.5 + 9 * 0.001, { cutoff_elapsed_s: 1800 });
 	return id;
 }
@@ -86,6 +89,101 @@ test.describe('/routes/[id]/roadbook', () => {
 		await expect(rows.nth(2).locator('.cut-miss')).toHaveCount(0);
 	});
 
+	test('a checkpoint target time is graded against the projection', async ({ page }) => {
+		routeId = await seedRoute();
+
+		// No marker carries a target yet, so the column stays off the sheet.
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&model=even`);
+		await expect(page.locator('.rb-table tbody tr')).toHaveCount(4);
+		await expect(page.getByRole('columnheader', { name: 'Target' })).toHaveCount(0);
+
+		// Re-seed with the target in place rather than mutating the route this
+		// page already loaded: the sheet reads its markers once per navigation,
+		// so a same-URL revisit is not a reliable way to observe a later write.
+		await deleteRoute(routeId);
+		// Aid 1 sits ~22 % along, so a 2 h goal projects it at ~26 min — well
+		// inside a 50-minute target, and well outside it at a 6 h goal.
+		routeId = await seedRoute(false, 3000);
+
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&model=even`);
+		await expect(page.getByRole('columnheader', { name: 'Target' })).toBeVisible();
+		const targetCells = page.locator('[data-testid="roadbook-target"]');
+		await expect(targetCells.nth(1).locator('.tgt-ahead')).toBeVisible();
+		// The verdict is stated in words, not by colour alone.
+		await expect(targetCells.nth(1)).toContainText('ahead');
+		// Only the marker carrying a target gets a verdict.
+		await expect(targetCells.nth(0)).toBeEmpty();
+
+		await page.goto(`/routes/${routeId}/roadbook?goal=21600&model=even`);
+		await expect(targetCells.nth(1).locator('.tgt-behind')).toBeVisible();
+		await expect(targetCells.nth(1)).toContainText('behind');
+	});
+
+	test('the leg-pace column exposes the effort model re-pacing the climb', async ({ page }) => {
+		routeId = await seedRoute();
+
+		const paceCells = page.locator('[data-testid="roadbook-leg-pace"]');
+		// "m:ss /km" (or "/mi") → seconds. Unit-agnostic: every assertion below
+		// is a ratio or an equality between two cells in the same unit.
+		const paceSeconds = async (i: number): Promise<number> => {
+			const raw = ((await paceCells.nth(i).textContent()) ?? '').trim();
+			const [mm, ss] = raw.split(' ')[0].split(':').map(Number);
+			return mm * 60 + ss;
+		};
+
+		// Even pacing: the flat leg into Aid 1 and the 270 m climb to the finish
+		// are run at the same pace by construction.
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&model=even`);
+		await expect(page.getByRole('columnheader', { name: 'Leg pace' })).toBeVisible();
+		await expect(paceCells).toHaveCount(4);
+		await expect(paceCells.nth(0)).toHaveText('—'); // start has no preceding leg
+		expect(Math.abs((await paceSeconds(3)) - (await paceSeconds(1)))).toBeLessThanOrEqual(2);
+
+		// Effort pacing: the climb leg must be given materially more time per
+		// kilometre than the flat one. Grading each point-pair on its own read
+		// this 27 % climb as flat, so the two paces came out equal here too.
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&model=effort`);
+		await expect(paceCells).toHaveCount(4);
+		const flat = await paceSeconds(1);
+		const climb = await paceSeconds(3);
+		expect(climb).toBeGreaterThan(flat * 2);
+	});
+
+	test('a failed marker read offers a retry instead of claiming the course has none', async ({
+		page,
+		mockRoute
+	}) => {
+		routeId = await seedRoute();
+
+		let failing = true;
+		const methods: string[] = [];
+		await mockRoute(page, '**/rest/v1/rpc/route_markers_for_viewer*', (route, request) => {
+			methods.push(request.method());
+			if (!failing) return route.continue();
+			// Kong's 502 when the pooled PostgREST connection closes under a
+			// request it will not replay (decisions § 1703). This page rendered
+			// it as "Add course markers" over a course that has two.
+			return route.fulfill({
+				status: 502,
+				contentType: 'application/json; charset=utf-8',
+				body: JSON.stringify({ message: 'An invalid response was received from the upstream server' })
+			});
+		});
+
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&model=even`);
+		const loadError = page.locator('[data-testid="roadbook-load-error"]');
+		await expect(loadError).toBeVisible();
+		await expect(page.getByText('Add course markers to build a roadbook')).toHaveCount(0);
+
+		failing = false;
+		await loadError.getByRole('button', { name: 'Retry' }).click();
+		await expect(page.locator('.rb-table tbody tr')).toHaveCount(4);
+
+		// A GET is what the gateway and postgrest-js may replay; a POST gets
+		// neither, which is how a pooled-connection race became a 502 here.
+		expect([...new Set(methods)]).toEqual(['GET']);
+	});
+
 	test('fueling overlay shows per-leg carbs + a carry hint, and ?carbs= re-scales', async ({ page }) => {
 		routeId = await seedRoute();
 
@@ -114,6 +212,21 @@ test.describe('/routes/[id]/roadbook', () => {
 			const after = (await carbsCells.nth(1).textContent())?.trim();
 			expect(after).not.toBe(before);
 		}).toPass();
+	});
+
+	test('an out-of-range ?carbs= in a link is dropped, not used or clamped', async ({ page }) => {
+		// A Coach-written or pasted link is never trusted (decisions § 1975): a
+		// rate over the Settings ceiling falls back to the runner's own rate.
+		routeId = await seedRoute();
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&fuel=1`);
+		const carbsCells = page.locator('[data-testid="fuel-carbs"]');
+		await expect(carbsCells.nth(1)).toContainText('g');
+		const baseline = (await carbsCells.nth(1).textContent())?.trim();
+
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&fuel=1&carbs=900`);
+		await expect(carbsCells.nth(1)).toHaveText(baseline ?? '');
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&fuel=1&carbs=1e2`);
+		await expect(carbsCells.nth(1)).toHaveText(baseline ?? '');
 	});
 
 	test('copy-as-text includes the cut-off limit time, not just the margin', async ({

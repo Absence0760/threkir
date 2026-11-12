@@ -1,16 +1,16 @@
-// Thin SvelteKit wrapper around `$lib/routes/osrm_proxy/handler`. Dev-only —
+// Thin SvelteKit wrapper around `#lib/routes/osrm_proxy/handler`. Dev-only —
 // under `@sveltejs/adapter-static` (the canonical adapter, see decisions §53)
 // this `+server.ts` is not built. In production the same handler is reached
 // via `apps/web/lambda/osrm-proxy/src/index.ts`, fronted by CloudFront's
 // `/api/routes/osrm*` behaviour.
 //
-// The shared core lives at `$lib/routes/osrm_proxy/handler.ts`; this file just
+// The shared core lives at `#lib/routes/osrm_proxy/handler.ts`; this file just
 // adapts the SvelteKit `Request` to the core's transport-agnostic signature.
 
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { handleOsrmProxy } from '$lib/routes/osrm_proxy/handler';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { NODE_ENV, OSRM_URL } from '$app/env/private';
+import { handleOsrmProxy } from '#lib/routes/osrm_proxy/handler.ts';
 
 export const prerender = false;
 
@@ -29,14 +29,14 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
 	// the static prod build, and the NODE_ENV gate is defence-in-depth on top
 	// (same posture as /api/coach's bypass gates). The Lambda wrapper never
 	// falls back — an unset OSRM_URL is a 501 there.
-	const allowDemoFallback = env.NODE_ENV !== 'production';
+	const allowDemoFallback = NODE_ENV !== 'production';
 
 	const result = await handleOsrmProxy(
 		request.headers.get('x-supabase-authorization'),
 		params.path,
 		query,
 		{
-			osrmUrl: env.OSRM_URL,
+			osrmUrl: OSRM_URL,
 			allowDemoFallback,
 			publicSupabaseUrl: PUBLIC_SUPABASE_URL,
 			publicSupabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY,

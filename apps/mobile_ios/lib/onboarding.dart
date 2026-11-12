@@ -31,9 +31,64 @@ const List<String> primaryGoalValues = [
   'marathon',
 ];
 
-/// Total wizard steps. Drives the progress-dot indicator + the per-step
-/// navigation math. Mirrors web's `ONBOARDING_TOTAL_STEPS`.
-const int onboardingTotalSteps = 7;
+/// The wizard's steps, in order. Ids match web's `ONBOARDING_STEPS` so the
+/// two wizards can be read side by side; the hyphen in `run-privacy` is
+/// web's icon-font constraint, kept here only so the ids stay identical.
+const List<String> setupWizardSteps = [
+  'name',
+  'units',
+  'goal',
+  'about',
+  'run-privacy',
+  'notifications',
+  setupWizardTrackStep,
+  setupWizardImportStep,
+  'done',
+];
+
+/// Total wizard steps. Drives the per-step navigation math and is the
+/// figure web's `ONBOARDING_TOTAL_STEPS` mirrors — the FULL wizard, before
+/// [visibleSetupWizardSteps] drops anything. Written out rather than read
+/// off [setupWizardSteps] because a list's `length` is not a constant
+/// expression; `onboarding_test.dart` pins the two together.
+const int onboardingTotalSteps = 9;
+
+/// The steps this device actually walks, and the list the progress dots are
+/// generated from. Mobile's own, the counterpart of web's web-only
+/// `visibleOnboardingSteps` — both wizards drop a step, for different
+/// reasons.
+///
+/// `run-privacy` goes when the first-launch flow already asked. That flow
+/// (`OnboardingScreen`) writes `Preferences.privacyDefault` before an
+/// account exists, so a second ask is not a second opinion — whatever the
+/// wizard's step is left sitting on is written over the launch answer on
+/// Finish, silently.
+List<String> visibleSetupWizardSteps({required bool privacyAlreadyChosen}) => [
+      for (final s in setupWizardSteps)
+        if (s != 'run-privacy' || !privacyAlreadyChosen) s,
+    ];
+
+/// The step asking whether to show Gym and Nutrition, just before `done` —
+/// web's `track` step, at the same position (decisions § 1739).
+const String setupWizardTrackStep = 'track';
+
+/// The step offering to bring in the runner's history, between `track` and
+/// `done` — web's `import` step, at the same position.
+const String setupWizardImportStep = 'import';
+
+/// The history sources the import step offers on this device, in render
+/// order. Each opens the import screen that already exists for it; the step
+/// runs nothing itself. Mobile's counterpart of web's
+/// `ONBOARDING_IMPORT_SOURCES`, not a twin: the health platform is the
+/// device's own (Apple Health on iOS, Health Connect on Android) and has no
+/// web binding, while web's Garmin export upload has no mobile importer —
+/// Garmin reaches a phone through the health platform instead.
+///
+/// The health platform (`healthkit` on iOS, `health_connect` on Android —
+/// never both) and `strava` (the archive upload) live on the Import screen,
+/// which needs nothing from the deployment.
+List<String> setupWizardImportSources({required bool isIOS}) =>
+    [isIOS ? 'healthkit' : 'health_connect', 'strava'];
 
 /// A create-plan preset derived from a primary-goal answer — twin of web's
 /// `PlanPreset`.

@@ -1,6 +1,6 @@
 // Transport-agnostic handler for the AI route-request enhancement — the
 // REQUEST half of the AI route assistant (the DESCRIBE half lives in
-// `$lib/routes/route_describe/handler`). It turns a plain-English request
+// `#lib/routes/route_describe/handler`). It turns a plain-English request
 // ("a flat 10k loop avoiding main roads") into a STRICTLY-VALIDATED
 // constraints object the existing deterministic generator already
 // understands.
@@ -30,7 +30,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
 import { parseAuthHeader } from '../../coach/limits';
-import { checkRouteRateLimit } from '../rate_limit';
+import type { SupabaseClientFactory } from '../../coach/types';
+import {
+	AI_DISCLOSURE_VERSION_ROUTE_AI,
+	aiDisclosureDenialBody,
+	gateAiDisclosure,
+} from '../../core/ai_disclosure';
+import { promptLocationLabel } from './location_label';
+import { refundRouteRateLimitSlot, spendRouteRateLimitSlot } from '../rate_limit';
+import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
 /// Per-user ceiling on the billed Anthropic call. Same shape and size as
 /// the sibling `generate-route` / `route-describe` buckets: 60/hour is far
@@ -41,13 +49,12 @@ export const ROUTE_REQUEST_RATE_MAX = 60;
 export const ROUTE_REQUEST_RATE_WINDOW_S = 3600;
 import { validateConstraints, type RouteConstraints } from './constraints';
 
-/// Matches the model used by route-describe + the coach (decisions.md;
-/// claude-api skill: default to Opus 4.8 with adaptive thinking).
+/// Matches the model used by route-describe + the coach.
 const ROUTE_REQUEST_MODEL = 'claude-opus-4-8';
 
-/// Tool-use output is one small JSON object; adaptive thinking draws from
-/// the same ceiling, so leave headroom for a thinking block plus the
-/// tool_use block. 1024 mirrors route-describe.
+/// One small tool_use object. No thinking block: the API refuses extended
+/// thinking alongside a forced tool_choice (decisions § 1930), and the forced
+/// tool is what keeps the output a typed object rather than prose.
 const ROUTE_REQUEST_MAX_TOKENS = 1024;
 
 /// Hard wall-clock cap so a slow model call can't hang the request.
@@ -59,12 +66,30 @@ const ROUTE_REQUEST_TIMEOUT_MS = 12_000;
 /// request still yields constraints.
 export const MAX_REQUEST_TEXT_CHARS = 600;
 
+/// The structural surface the handler uses — narrow enough that a test can
+/// hand in a fake without the SDK's whole client.
+export interface RouteRequestModelClient {
+	messages: {
+		create(
+			body: Anthropic.MessageCreateParamsNonStreaming,
+			options?: { timeout?: number },
+		): PromiseLike<Anthropic.Message>;
+	};
+}
+
 export interface RouteRequestConfig {
 	anthropicApiKey: string | undefined;
 	publicSupabaseUrl: string;
 	publicSupabaseAnonKey: string;
 	/// Dev-only escape hatch — see the +server.ts / Lambda gates.
 	bypassPaywallEnabled: boolean;
+	/// Both wrappers leave this unset and the handler falls back to the real
+	/// `createClient`; unit tests inject a fake so the post-auth gates
+	/// (consent, tier) are exercisable without a live Supabase. Same hook
+	/// `CoachConfig` carries.
+	createClient?: SupabaseClientFactory;
+	/// Same hook for the model: unset in both wrappers, a fake in unit tests.
+	createAnthropic?: (apiKey: string) => RouteRequestModelClient;
 }
 
 export interface RouteRequestResult {
@@ -81,15 +106,14 @@ function json(status: number, payload: Record<string, unknown>): RouteRequestRes
 	};
 }
 
-interface ParsedInput {
+export interface ParsedInput {
 	requestText: string;
-	/// Caller's location context, passed verbatim into the prompt as a
-	/// human hint only ("near my current location"). It does NOT set the
-	/// generator's start point — that stays the user's explicit pick /
-	/// map centre on the client. We never send raw coordinates to the
-	/// model: a place label is enough for intent and avoids egressing a
-	/// precise location into the prompt (privacy: same posture as the
-	/// coach, sub-processor already disclosed).
+	/// Caller's location context, passed into the prompt as a human hint
+	/// only ("near my current location"). It does NOT set the generator's
+	/// start point — that stays the user's explicit pick / map centre on the
+	/// client. We never send coordinates to the model: a label that states a
+	/// position is dropped here (`promptLocationLabel`), so only a place label
+	/// reaches the prompt.
 	locationLabel: string | null;
 }
 
@@ -100,8 +124,8 @@ function parseInput(raw: unknown): ParsedInput | null {
 	const requestText = o.request.trim().slice(0, MAX_REQUEST_TEXT_CHARS);
 	if (requestText.length === 0) return null;
 	const locationLabel =
-		typeof o.location_label === 'string' && o.location_label.trim().length > 0
-			? o.location_label.trim().slice(0, MAX_REQUEST_TEXT_CHARS)
+		typeof o.location_label === 'string'
+			? promptLocationLabel(o.location_label.slice(0, MAX_REQUEST_TEXT_CHARS))
 			: null;
 	return { requestText, locationLabel };
 }
@@ -116,10 +140,17 @@ const SYSTEM_PROMPT =
 	'out_and_back, and a request that names a different finish to ' +
 	'point_to_point. Map "avoid main roads/highways/busy roads/traffic" to ' +
 	'avoid_highways=true. Map "trail/off-road/park paths" to surface trail, ' +
-	'"roads/pavement/sidewalk" to road, and a mix to mixed. Omit any field ' +
+	'"roads/pavement/sidewalk" to road, and a mix to mixed. Map a request ' +
+	'about the CHARACTER of the streets to preference: "quiet streets", ' +
+	'"residential", "away from traffic" to quiet; "through the park", ' +
+	'"somewhere green/pretty", "along the river" to scenic; and an explicit ' +
+	'ask for dead ends / no-through roads to cul_de_sac. Omit any field ' +
 	'the request does not specify — do not guess.';
 
-const EXTRACT_TOOL: Anthropic.Tool = {
+/// Exported so `handler.test.ts` can pin that every preference the model is
+/// told about is one `validateConstraints` will actually accept — a value
+/// advertised on only one side is a value the runner never gets.
+export const EXTRACT_TOOL: Anthropic.Tool = {
 	name: 'extract_route_constraints',
 	description:
 		'Record the route-generation constraints extracted from the user\'s ' +
@@ -147,9 +178,31 @@ const EXTRACT_TOOL: Anthropic.Tool = {
 				description:
 					'True when the runner wants to avoid main / busy roads and highways. Omit if unspecified.',
 			},
+			preference: {
+				type: 'string',
+				enum: ['quiet', 'scenic', 'cul_de_sac'],
+				description:
+					'How the route should be designed. quiet: residential back ' +
+					'streets, away from traffic and main roads. scenic: parks, ' +
+					'greenery, water — "through the park", "somewhere green", ' +
+					'"along the river". cul_de_sac: the runner explicitly wants ' +
+					'dead ends / no-through roads worked in ("I like poking down ' +
+					'dead ends"). Omit if unspecified — quiet is inferred from ' +
+					'avoid_highways and scenic from a trail surface.',
+			},
 		},
 	},
 };
+
+/// Every value the user turn interpolates is a field of its argument, which is
+/// how `ai_prompt_disclosures.test.ts` reads what this prompt sends.
+export function routeRequestUserMessage({ requestText, locationLabel }: ParsedInput): string {
+	return (
+		`Runner's request: ${requestText}\n\n` +
+		(locationLabel ? `Approximate location: ${locationLabel}.\n\n` : '') +
+		'Call extract_route_constraints with what the request specifies.'
+	);
+}
 
 /**
  * Extract validated route-generation constraints from an NL request.
@@ -171,7 +224,8 @@ export async function handleRouteRequest(
 	const accessToken = parseAuthHeader(authHeader);
 	if (!accessToken) return json(401, { error: 'not authenticated' });
 
-	const supabase = createClient(config.publicSupabaseUrl, config.publicSupabaseAnonKey, {
+	const makeClient = config.createClient ?? createClient;
+	const supabase = makeClient(config.publicSupabaseUrl, config.publicSupabaseAnonKey, {
 		global: { headers: { Authorization: `Bearer ${accessToken}` } },
 	});
 	const userRes = await supabase.auth.getUser(accessToken);
@@ -180,10 +234,29 @@ export async function handleRouteRequest(
 		// return a generic 401 so the GoTrue error can't be used as a
 		// token-shape oracle.
 		console.error('[route-request] auth failed', {
-			tokenPrefix: accessToken.slice(0, 20) + '...',
 			error: userRes.error?.message ?? 'no user returned',
 		});
 		return json(401, { error: 'not authenticated' });
+	}
+
+	// GDPR Art 6(1)(a) — issue #734. This endpoint ships the runner's typed
+	// request AND their coarse location label to Anthropic; neither was
+	// described by the Coach-scoped disclosure, so it requires the widened
+	// version of the consent record. The bypass flag is deliberately NOT
+	// honoured: it exists to skip the paywall in dev, not the lawful basis
+	// for sending a real person's data to a real sub-processor.
+	const disclosure = await gateAiDisclosure(
+		() => supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		'route-request',
+	);
+	if (!disclosure.ok) {
+		return disclosure.status === 403
+			? json(403, {
+					error: 'ai disclosure required',
+					...aiDisclosureDenialBody(AI_DISCLOSURE_VERSION_ROUTE_AI),
+				})
+			: json(500, { error: 'consent check failed' });
 	}
 
 	// Paywall gate — fail-closed. An RPC error or a non-true result leaves
@@ -194,9 +267,9 @@ export async function handleRouteRequest(
 	if (config.bypassPaywallEnabled) {
 		isPro = true;
 	} else {
-		const proRes = await supabase.rpc('is_pro');
+		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
 		if (proRes.error) {
-			console.error('[route-request] is_pro lookup failed', proRes.error);
+			console.error('[route-request] is_pro lookup failed', supabaseErrorFields(proRes.error));
 			return json(503, { error: 'route assistant unavailable' });
 		}
 		isPro = proRes.data === true;
@@ -207,24 +280,8 @@ export async function handleRouteRequest(
 		return json(403, { error: 'pro required', upgrade: true });
 	}
 
-	// Per-user ceiling on the billed fan-out. Pro is a monthly price, not a
-	// per-call one, so without this a single subscription (or one leaked Pro
-	// JWT) buys unbounded Opus calls on the operator's key — the per-IP WAF
-	// rule can't see a JWT spread over an IP pool. Only Pro callers reach
-	// here, so a free caller is never charged a slot. Fail-closed: a throttle
-	// error denies, and the manual form still works.
-	if (!config.bypassPaywallEnabled) {
-		const rl = await checkRouteRateLimit(
-			supabase,
-			userRes.data.user.id,
-			ROUTE_REQUEST_RATE_BUCKET,
-			ROUTE_REQUEST_RATE_MAX,
-			ROUTE_REQUEST_RATE_WINDOW_S,
-		);
-		if (rl !== 'ok') return json(429, { error: 'rate_limited' });
-	}
-
-	// Pro path. Missing key → 503 (operator config). The client keeps the
+	// Pro path. Missing key → 503 (operator config), checked before the
+	// throttle so a misconfiguration never spends a slot. The client keeps the
 	// manual form; there is no deterministic constraint extraction to fall
 	// back to.
 	if (!config.anthropicApiKey) {
@@ -232,26 +289,45 @@ export async function handleRouteRequest(
 		return json(503, { error: 'route assistant unavailable' });
 	}
 
-	try {
-		const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
-		const userContent =
-			`Runner's request: ${input.requestText}\n\n` +
-			(input.locationLabel
-				? `Approximate location: ${input.locationLabel}.\n\n`
-				: '') +
-			'Call extract_route_constraints with what the request specifies.';
+	// Per-user ceiling on the billed fan-out. Pro is a monthly price, not a
+	// per-call one, so without this a single subscription (or one leaked Pro
+	// JWT) buys unbounded Opus calls on the operator's key — the per-IP WAF
+	// rule can't see a JWT spread over an IP pool. Only Pro callers reach
+	// here, so a free caller is never charged a slot. Fail-closed: a throttle
+	// error denies, and the manual form still works. A call that produces
+	// nothing usable gives its slot back.
+	const userId = userRes.data.user.id;
+	let spendId: string | null = null;
+	if (!config.bypassPaywallEnabled) {
+		const rl = await spendRouteRateLimitSlot(
+			supabase,
+			userId,
+			ROUTE_REQUEST_RATE_BUCKET,
+			ROUTE_REQUEST_RATE_MAX,
+			ROUTE_REQUEST_RATE_WINDOW_S,
+		);
+		if (rl.verdict !== 'ok') return json(429, { error: 'rate_limited' });
+		spendId = rl.spendId;
+	}
 
+	async function refundSlot(reason: string): Promise<void> {
+		await refundRouteRateLimitSlot(supabase, userId, ROUTE_REQUEST_RATE_BUCKET, spendId, reason);
+	}
+
+	try {
+		const anthropic: RouteRequestModelClient = config.createAnthropic
+			? config.createAnthropic(config.anthropicApiKey)
+			: new Anthropic({ apiKey: config.anthropicApiKey });
 		const message = await anthropic.messages.create(
 			{
 				model: ROUTE_REQUEST_MODEL,
 				max_tokens: ROUTE_REQUEST_MAX_TOKENS,
-				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				// Force the tool so the output is a typed constraint object,
 				// never prose. tool_choice pins the single extraction tool.
 				tools: [EXTRACT_TOOL],
 				tool_choice: { type: 'tool', name: EXTRACT_TOOL.name },
-				messages: [{ role: 'user', content: userContent }],
+				messages: [{ role: 'user', content: routeRequestUserMessage(input) }],
 			},
 			{ timeout: ROUTE_REQUEST_TIMEOUT_MS },
 		);
@@ -260,6 +336,7 @@ export async function handleRouteRequest(
 		// usable tool call — surface it as unavailable, manual form unaffected.
 		if (message.stop_reason === 'refusal') {
 			console.warn('[route-request] model refused');
+			await refundSlot('refusal');
 			return json(422, { error: 'could not understand request' });
 		}
 
@@ -272,6 +349,7 @@ export async function handleRouteRequest(
 			// model still didn't produce one, treat the request as
 			// un-extractable rather than 500-ing.
 			console.warn('[route-request] no tool_use block in model response');
+			await refundSlot('no_tool_use');
 			return json(422, { error: 'could not understand request' });
 		}
 
@@ -283,7 +361,16 @@ export async function handleRouteRequest(
 		// Any provider failure (rate limit, timeout, 5xx, network) → 503.
 		// The NL box shows "unavailable, use the form"; the manual
 		// generator is untouched.
-		console.error('[route-request] provider call failed', e);
+		// Normalised to { message, stack } rather than handed over whole: the
+		// provider SDK's error object carries the response body, and for a
+		// 400 that body quotes the offending part of the request -- which on
+		// this endpoint is the runner's typed request and their location
+		// label. Same shape every catch in the Lambda tree uses.
+		console.error('[route-request] provider call failed', {
+			message: thrownMessage(e),
+			stack: e instanceof Error ? e.stack : undefined,
+		});
+		await refundSlot('provider_error');
 		return json(503, { error: 'route assistant unavailable' });
 	}
 }

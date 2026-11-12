@@ -131,8 +131,9 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
     // The two line tokens are DEFINED here, as `parchmentLine` / `duskLine`
     // reads that land in `dividerColor` and `dividerTheme`.
     '../../packages/ui_kit/lib/src/theme/app_theme.dart': 2,
-    // A local held for a chart axis + gridline, both `Paint`.
-    'lib/screens/dashboard_screen.dart': 1,
+    // The activity heatmap's zero-tile hairline, held in a local and drawn
+    // as a `Paint` stroke and a cell `Border` — never type.
+    'lib/widgets/activity_heatmap.dart': 1,
     // `_SetPip` builds a (colour, icon) pair and the colour reaches nothing but
     // `Icon(color:)` — the pip has no label of its own.
     'lib/widgets/gym_execution_band.dart': 1,
@@ -146,8 +147,11 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
   _Family.palette: {
     // Each of these holds the scale (or one entry of it) in a local and paints
     // bars, strokes, dots or a cell edge with it — no `TextStyle` in any.
-    'lib/screens/dashboard_screen.dart': 1,
+    'lib/widgets/activity_heatmap.dart': 1,
+    // The HR-zone bar.
     'lib/screens/run_detail_screen.dart': 1,
+    // The elevation chart's line + fill colour.
+    'lib/widgets/elevation_chart.dart': 1,
     'lib/widgets/intensity_card.dart': 1,
     'lib/widgets/mileage_trend_card.dart': 1,
     'lib/widgets/this_week_strip.dart': 1,
@@ -162,8 +166,8 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
 /// device theme does not control, which is the only reason a fixed hex can be
 /// measured at all.
 const _textLiteralAllowlist = <String, int>{
-  // Rasterised share-card PNGs on a fixed #0B0A1F panel: #9CA3AF reads
-  // 7.677:1 there, and the card does not follow the device theme by design.
+  // Rasterised share-card PNGs on a fixed #121117 panel: #A9A4B6 reads
+  // 7.76:1 there, and the card does not follow the device theme by design.
   'lib/widgets/run_share_card.dart': 4,
   'lib/widgets/route_share_card.dart': 3,
   // The period share card inside the screen that builds it — same fixed panel.
@@ -172,8 +176,8 @@ const _textLiteralAllowlist = <String, int>{
   // theme surface: #1E293B is 14.629:1 on white and 10.364:1 at the worst
   // backing (a black tile showing through the chip).
   'lib/widgets/live_run_map.dart': 2,
-  // The map cluster-count pin: #0F172A on the 95%-opaque coral disc, 8.578:1
-  // opaque and 7.747:1 with a black tile behind it.
+  // The map cluster-count pin: #0F172A on the 95%-opaque coral disc, 7.2:1
+  // opaque and above 6.5:1 with a black tile behind it.
   'lib/screens/routes_heatmap_screen.dart': 1,
 };
 
@@ -183,8 +187,6 @@ const _colorHelpers = <String, int>{
   // Course start/finish checkpoint hues + a `#rrggbb` string parser; both feed
   // map pins and a `BoxDecoration`, never a `TextStyle`.
   'lib/screens/roadbook_screen.dart': 2,
-  // Heat-density cell fill, drawn over map tiles.
-  'lib/screens/run_heatmap_screen.dart': 1,
   // Badge tier hue — reaches the tier ring and the trophy glyph.
   'lib/widgets/badge_grid.dart': 1,
   // Course-marker pin fill parsed out of the marker kind's `#rrggbb`.

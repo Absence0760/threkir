@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { smartBack } from '$lib/util/smart_back';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymRoutineDetail,
 		deleteGymRoutine,
@@ -11,12 +11,16 @@
 		publishGymRoutineAsTemplate,
 		setGymRoutinePublic,
 		type GymRoutineDetail,
-	} from '$lib/core/data';
-	import type { ClubWithMeta } from '$lib/types';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import GymRoutineHistory from '#lib/components/GymRoutineHistory.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let loading = $state(true);
@@ -28,27 +32,37 @@
 	let publicBusy = $state(false);
 
 	const back = smartBack();
-	const routineId = $derived($page.params.id ?? '');
+	const routineId = $derived(page.params.id ?? '');
 	const isOwner = $derived(!!detail && !!auth.user && detail.routine.author_id === auth.user.id);
 
 	async function load() {
+		// Retry re-enters the loading state: leaving `loading` false while
+		// the re-read is in flight drops straight past the failure branch
+		// into "Routine not found", which is the claim this page exists to
+		// avoid making.
+		loading = true;
 		loadError = null;
 		try {
 			detail = await fetchGymRoutineDetail(routineId);
 		} catch (e) {
 			// Not-found and could-not-load are different answers; the second
 			// must not tell an author their routine is gone.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'gym/routines/[id]: loadError');
 			detail = null;
-			loading = false;
 			return;
+		} finally {
+			loading = false;
 		}
-		loading = false;
 		// Only the author of a personal (non-club) routine with at least one
 		// admin club sees the publish-as-template control.
 		if (detail && auth.user?.id && detail.routine.author_id === auth.user.id && !detail.routine.club_id) {
-			const clubs = await fetchMyClubs();
-			adminClubs = clubs.filter((c) => c.viewer_role === 'owner' || c.viewer_role === 'admin');
+			try {
+				const clubs = await fetchMyClubs();
+				adminClubs = clubs.filter((c) => c.viewer_role === 'owner' || c.viewer_role === 'admin');
+			} catch (e) {
+				console.debug('club list for publish control failed', e);
+				adminClubs = [];
+			}
 		}
 	}
 
@@ -146,7 +160,7 @@
 
 	{#if loading}
 		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="load-error" role="alert" data-testid="routine-load-error">
 			<p>{t('gym.routine.loadError')}</p>
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
@@ -156,7 +170,7 @@
 	{:else}
 		<header class="detail-header">
 			<div>
-				<h1>{detail.routine.title}</h1>
+				<h1>{detail.routine.title}{#if detail.routine.is_official}<OfficialBadge size={18} />{/if}</h1>
 				<p class="head-sub">
 					{t('gym.routine.exerciseCount', { count: detail.routine.exercise_count })}
 				</p>
@@ -236,6 +250,10 @@
 			</section>
 		{/if}
 
+		{#if isOwner}
+			<GymRoutineHistory {routineId} />
+		{/if}
+
 		<ul class="exercise-list" data-testid="routine-exercises">
 			{#each detail.exercises as ex (ex.id)}
 				<li class="card-elevated exercise-card" class:supersetted={ex.superset_group != null}>
@@ -260,7 +278,7 @@
 								<tr>
 									<th class="section-label">{t('gym.routine.setType')}</th>
 									<th class="section-label">{t('gym.routine.targetReps')}</th>
-									<th class="section-label">{t('gym.rpe')}</th>
+									<th class="section-label"><MetricLabel metric="rpe" /></th>
 									<th class="section-label">{t('gym.routine.restLabel')}</th>
 								</tr>
 							</thead>

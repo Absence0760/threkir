@@ -77,23 +77,53 @@ func newFCMTransport(serviceAccountJSON []byte, projectID string, httpClient *ht
 	}, nil
 }
 
-// fcmMessage is the FCM HTTP v1 request body. We send a data-only message (no
-// `notification` block) plus an android.notification so the client can render
-// it in the foreground via firebase_messaging while the OS renders the
-// background one — and webpush-style data keys (url/tag) drive the tap deep
-// link. Keeping the payload data-first matches how the mobile bridge handles
-// both foreground and tap routing from one shape.
+// fcmMessage is the FCM HTTP v1 request body. ONE body serves both platforms:
+// FCM applies the android block to an Android token and the apns block to an
+// iOS one, so the {title, body, url, tag} contract renders the same either way
+// and nothing downstream has to know which kind of device it is addressing.
+// The notification block is what the OS draws while the app is backgrounded;
+// the data keys are what the tap handler reads (firebase_messaging surfaces
+// them as RemoteMessage.data on both platforms — the deep-link path).
+//
+// The two collapse keys are how Tag keeps an at-least-once retry from stacking
+// a second copy on the lock screen: Android coalesces on notification.tag,
+// APNs on the apns-collapse-id header. They are the same value and must stay
+// so — a retry that lands under a different key is a duplicate notification,
+// which is exactly what the Tag contract promises not to do.
 type fcmMessage struct {
 	Message struct {
 		Token        string            `json:"token"`
 		Notification fcmNotification   `json:"notification"`
 		Data         map[string]string `json:"data,omitempty"`
+		Android      *fcmAndroid       `json:"android,omitempty"`
+		APNS         *fcmAPNS          `json:"apns,omitempty"`
 	} `json:"message"`
 }
 
 type fcmNotification struct {
 	Title string `json:"title"`
 	Body  string `json:"body,omitempty"`
+}
+
+type fcmAndroid struct {
+	Notification fcmAndroidNotification `json:"notification"`
+}
+
+type fcmAndroidNotification struct {
+	Tag string `json:"tag,omitempty"`
+}
+
+type fcmAPNS struct {
+	Headers map[string]string `json:"headers,omitempty"`
+	Payload fcmAPNSPayload    `json:"payload"`
+}
+
+type fcmAPNSPayload struct {
+	APS fcmAPS `json:"aps"`
+}
+
+type fcmAPS struct {
+	Sound string `json:"sound,omitempty"`
 }
 
 func (t *fcmTransport) send(ctx context.Context, token string, msg Message) (int, error) {
@@ -106,6 +136,14 @@ func (t *fcmTransport) send(ctx context.Context, token string, msg Message) (int
 	body.Message.Token = token
 	body.Message.Notification = fcmNotification{Title: msg.Title, Body: msg.Body}
 	body.Message.Data = map[string]string{"url": msg.URL, "tag": msg.Tag}
+	// Android draws the channel's own sound; iOS plays none at all unless one
+	// is named, so the sound is set on the apns leg only.
+	body.Message.APNS = &fcmAPNS{Payload: fcmAPNSPayload{APS: fcmAPS{Sound: "default"}}}
+	if msg.Tag != "" {
+		body.Message.Android = &fcmAndroid{Notification: fcmAndroidNotification{Tag: msg.Tag}}
+		// apns-collapse-id is capped at 64 bytes; the tag (notif-<uuid>) fits.
+		body.Message.APNS.Headers = map[string]string{"apns-collapse-id": msg.Tag}
+	}
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return 0, fmt.Errorf("nativepush/fcm: marshal: %w", err)

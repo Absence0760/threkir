@@ -3,11 +3,11 @@ import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { resolveBaseUrl } from './base-url';
+import { assertServedTreeMatches } from './dev_server_guard';
 import { signIn } from './helpers';
 import { ALL_USERS, type SeededUser } from './users';
-// @ts-expect-error — sibling .mjs imports run fine under tsx but the
-// types are intentionally untyped (this file is plain JS so the same
-// helper can be imported from vite.config.ts too).
+// Plain JS so vite.config.ts can import the same guard.
 import { checkEnvIsolation, formatGuardError } from '../../scripts/env_isolation.mjs';
 
 /**
@@ -47,8 +47,10 @@ export default async function globalSetup(config: FullConfig) {
 		throw new Error(formatGuardError(result, { scope: 'playwright' }));
 	}
 
-	const baseURL =
-		config.projects[0]?.use?.baseURL ?? 'http://localhost:7777';
+	const baseURL = config.projects[0]?.use?.baseURL ?? resolveBaseUrl();
+
+	// A reused dev server can be serving a bundle that is not this tree's.
+	await assertServedTreeMatches(baseURL);
 
 	for (const user of ALL_USERS) {
 		await signInAndSaveState(baseURL, user);

@@ -5,20 +5,32 @@
 		addRunPhoto,
 		deleteRunPhoto,
 		updateRunPhotoCaption,
+		setRunPhotoRaceGallery,
 		type RunPhoto,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { safeImageSrc } from '$lib/util/safe_image_src';
+	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
 	interface Props {
 		runId: string;
 		runOwnerId: string;
+		/// The publicly readable race listing this run is linked to; null
+		/// hides the race-page toggle (decisions § 1961).
+		raceListingId?: string | null;
+		runIsPublic?: boolean;
 		wrapperClass?: string;
 	}
-	let { runId, runOwnerId, wrapperClass = 'card' }: Props = $props();
+	let {
+		runId,
+		runOwnerId,
+		raceListingId = null,
+		runIsPublic = false,
+		wrapperClass = 'card',
+	}: Props = $props();
 
 	let photos = $state<RunPhoto[]>([]);
 	let loading = $state(true);
@@ -33,6 +45,22 @@
 	let fileInput: HTMLInputElement | undefined = $state();
 
 	let canManage = $derived(auth.user?.id === runOwnerId);
+	let showRaceToggle = $derived(canManage && !!raceListingId);
+	let raceBusyId = $state<string | null>(null);
+
+	async function toggleRaceGallery(p: RunPhoto, input: HTMLInputElement) {
+		const shared = input.checked;
+		raceBusyId = p.id;
+		try {
+			await setRunPhotoRaceGallery(p.id, shared);
+			photos = photos.map((x) => (x.id === p.id ? { ...x, race_gallery: shared } : x));
+		} catch (e) {
+			input.checked = p.race_gallery;
+			showToast(m('runPhotos.raceGalleryFailed', { error: errorCopy(e, m, 'runPhotos.raceGalleryFailed') }), 'error');
+		} finally {
+			raceBusyId = null;
+		}
+	}
 
 	async function load() {
 		loading = true;
@@ -40,12 +68,12 @@
 		try {
 			const res = await fetchRunPhotosWithError(runId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RunPhotos: loadError');
 				return;
 			}
 			photos = res.photos;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'RunPhotos: loadError');
 		} finally {
 			loading = false;
 		}
@@ -77,7 +105,7 @@
 			pendingCaption = '';
 			if (fileInput) fileInput.value = '';
 		} catch (e: any) {
-			showToast(m('runPhotos.uploadFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runPhotos.uploadFailed', { error: errorCopy(e, m, 'runPhotos.uploadFailed') }), 'error');
 		} finally {
 			uploading = false;
 		}
@@ -98,7 +126,7 @@
 			photos = photos.filter((p) => p.id !== target.id);
 			if (lightbox?.id === target.id) lightbox = null;
 		} catch (e: any) {
-			showToast(m('runPhotos.deleteFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runPhotos.deleteFailed', { error: errorCopy(e, m, 'runPhotos.deleteFailed') }), 'error');
 		}
 	}
 
@@ -116,12 +144,12 @@
 			await updateRunPhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
 		} catch (e: any) {
-			showToast(m('runPhotos.captionUpdateFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runPhotos.captionUpdateFailed', { error: errorCopy(e, m, 'runPhotos.captionUpdateFailed') }), 'error');
 		}
 	}
 </script>
 
-{#if canManage || loading || photos.length > 0 || loadError}
+{#if canManage || loading || photos.length > 0 || loadError !== null}
 <section class={wrapperClass}>
 <div class="photos">
 	<header class="hd">
@@ -174,18 +202,23 @@
 
 	{#if loading}
 		<p class="muted">{m('runPhotos.loadingPhotos')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('runs.loadFailed')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('runs.retry')}</button>
 		</div>
 	{:else if photos.length === 0 && !canManage}
 		<p class="muted">{m('runPhotos.noPhotos')}</p>
 	{:else if photos.length > 0}
+		{#if showRaceToggle}
+			<p class="race-hint" data-testid="race-gallery-hint">
+				{runIsPublic ? m('runPhotos.raceGalleryHint') : m('runPhotos.raceGalleryPrivateHint')}
+			</p>
+		{/if}
 		<div class="grid">
 			{#each photos as p (p.id)}
 				<figure class="tile">
@@ -214,6 +247,18 @@
 						</form>
 					{:else if p.caption}
 						<figcaption>{p.caption}</figcaption>
+					{/if}
+					{#if showRaceToggle}
+						<!-- Withdrawing stays possible on a private run; only sharing waits on it. -->
+						<label class="race-toggle">
+							<input
+								type="checkbox"
+								checked={p.race_gallery}
+								disabled={raceBusyId === p.id || (!runIsPublic && !p.race_gallery)}
+								onchange={(e) => toggleRaceGallery(p, e.currentTarget)}
+							/>
+							{m('runPhotos.raceGalleryToggle')}
+						</label>
 					{/if}
 					{#if canManage}
 						<div class="tile-actions">
@@ -382,6 +427,27 @@
 		line-height: 1.35;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+
+	.race-hint {
+		margin: 0;
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
+		line-height: 1.4;
+	}
+
+	.race-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+
+	.race-toggle:has(input:disabled) {
+		cursor: not-allowed;
+		opacity: 0.6;
 	}
 
 	.caption-edit {

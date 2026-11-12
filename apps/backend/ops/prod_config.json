@@ -1,0 +1,8 @@
+{
+  "feature_flags": {},
+  "function_env": {},
+  "web_env": {},
+  "cron_urls": [],
+  "retired_functions": ["parkrun-import"],
+  "retired_function_env": ["PARKRUN_EVENTS_ENABLED", "PARKRUN_USER_AGENT", "ULTRASIGNUP_RESULTS_ENABLED"]
+}

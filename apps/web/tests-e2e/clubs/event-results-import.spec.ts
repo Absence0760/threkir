@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readRow } from '../fixtures/db-read';
 
 /**
  * /clubs/[slug]/events/[id] — organiser bulk results import (#43).
@@ -43,6 +44,25 @@ test.describe('/clubs/[slug]/events/[id] — bulk results import', () => {
 			}
 			eventId = null;
 		}
+	});
+
+	test('the CSV picker opens the file chooser from the keyboard', async ({ page }) => {
+		// The picker was a <label> wrapping a `hidden` input — the third copy of
+		// a shape that leaves no focusable element to reach, so a race director
+		// on a keyboard could not start an import at all.
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
+
+		await page.getByRole('button', { name: 'Import results CSV' }).click();
+
+		const picker = page.getByRole('button', { name: 'Choose CSV file' });
+		await expect(picker).toBeVisible({ timeout: 10_000 });
+		await picker.focus();
+		await expect(picker).toBeFocused();
+
+		const chooser = page.waitForEvent('filechooser', { timeout: 10_000 });
+		await page.keyboard.press('Enter');
+		expect(await chooser).toBeTruthy();
 	});
 
 	test('imports bib-only finishers from a CSV onto the leaderboard', async ({ page }) => {
@@ -141,12 +161,15 @@ test.describe('bulk results import — re-import preserves a claimed owner', () 
 		await expect(page.getByText('Bob Bibonly')).toBeVisible({ timeout: 10_000 });
 
 		// The claimed row (bib 101) must still belong to USER_B, not revert to NULL.
-		const { data } = await getAdminClient()
-			.from('event_results')
-			.select('user_id')
-			.eq('id', resultId)
-			.single();
-		expect(data?.user_id).toBe(USER_B.id);
+		const data = await readRow(
+			'event_results by id',
+			getAdminClient()
+				.from('event_results')
+				.select('user_id')
+				.eq('id', resultId)
+				.single()
+		);
+		expect(data.user_id).toBe(USER_B.id);
 	});
 });
 

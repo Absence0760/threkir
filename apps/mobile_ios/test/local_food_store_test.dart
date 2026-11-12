@@ -6,6 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/local_food_store.dart';
+import '../lib/offline_sync_store.dart' show kUnknownStoredClock;
 
 /// Fake [ApiClient] that records food-log CRUD calls and lets a test
 /// inject per-method failure modes. Tracks the order of operations so we
@@ -612,6 +613,36 @@ void main() {
       ]);
       expect(imported, 2);
       expect(indexSummaries().map((s) => s['id']).toSet(), {'r1', 'r2'});
+    });
+
+    test('restoreFromBackup keeps a record whose clock is the wrong type',
+        () async {
+      // decisions § 1290. The `as String?` cast this replaced threw on a
+      // non-string clock, and `_restoreFromBackup` catches per record — so an
+      // archive entry whose `last_modified_at` was a number was skipped whole,
+      // taking a food entry that exists nowhere else with it, while the same
+      // entry with NO clock field at all restored fine.
+      final record = StoredFood(
+        row: {
+          'id': 'mistyped-clock',
+          'item_name': 'Porridge',
+          'started_at': DateTime.utc(2026, 6, 1).toIso8601String(),
+        },
+        syncState: FoodSyncState.synced,
+      ).toJson();
+      record['last_modified_at'] = 1757116800000;
+
+      expect(await store.restoreFromBackup([record]), 1);
+      expect(store.rowsById.containsKey('mistyped-clock'), isTrue);
+      final stored = store.rowsById['mistyped-clock']!;
+      expect(stored.row['item_name'], 'Porridge');
+      expect(stored.syncState, FoodSyncState.pendingCreate);
+      // § 1342: an unreadable clock is the epoch, not `now`. The record is
+      // restored pendingCreate, so it is preserved across every
+      // `replaceFromServer` and pushed regardless of what its clock says —
+      // the epoch costs it nothing, where `now` would have let it win
+      // newer-wins against the server for good once it went `synced`.
+      expect(stored.lastModifiedAt, kUnknownStoredClock);
     });
 
     test('cold-load self-heals when index.json is deleted', () async {

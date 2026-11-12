@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
+import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 
 /**
  * i18n foundation — client-side locale negotiation.
@@ -37,6 +38,38 @@ test.describe('i18n locale negotiation', () => {
 		await context.close();
 	});
 
+	test('a European-Portuguese browser resolves to pt-PT, not to Brazilian', async ({
+		browser,
+	}) => {
+		// The two Portuguese catalogues are separate translations, and a
+		// Lisbon browser used to land on the Brazilian one while the phone
+		// answered the same reader in European Portuguese. The assertion is
+		// on the WORDS, not only on <html lang>: a lang attribute proves the
+		// tag negotiated, the skip link proves the catalogue actually loaded
+		// and that it is the European one ("Saltar", where Brazilian says
+		// "Pular").
+		const context = await browser.newContext({ locale: 'pt-PT' });
+		const page = await context.newPage();
+		await page.goto('/privacy');
+		await expect(page.locator('html')).toHaveAttribute('lang', 'pt-PT');
+		await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+		await expect(page.locator('a.skip-link').first()).toHaveText(
+			'Saltar para o conteúdo principal',
+		);
+		await context.close();
+	});
+
+	test('a Portuguese browser with no region gets the European catalogue', async ({ browser }) => {
+		// Brazil reports its region on every client we have seen, so the bare
+		// tag is worth more to Portugal — and to pt-AO / pt-MZ, which share
+		// its orthography and which we carry no catalogue for at all.
+		const context = await browser.newContext({ locale: 'pt' });
+		const page = await context.newPage();
+		await page.goto('/privacy');
+		await expect(page.locator('html')).toHaveAttribute('lang', 'pt-PT');
+		await context.close();
+	});
+
 	test('the login page renders in the browser language (cluster: login)', async ({ browser }) => {
 		const de = await browser.newContext({ locale: 'de-DE' });
 		const p1 = await de.newPage();
@@ -52,6 +85,22 @@ test.describe('i18n locale negotiation', () => {
 		await en.close();
 	});
 
+	test('a stored enum value renders as a translated name, not the database token', async ({
+		browser,
+	}) => {
+		// The seeded public route stores `surface = 'road'`. Every surface that
+		// names a narrow-union value resolves it through the one catalogue
+		// namespace (decisions § 572); before that, nine surfaces interpolated
+		// the token straight into the DOM and a German reader got "road".
+		const context = await browser.newContext({ locale: 'de-DE' });
+		const page = await context.newPage();
+		await page.goto(`/share/route/${RUNNER_PUBLIC_ROUTE_ID}`);
+		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+		await expect(page.locator('.route-meta .surface-tag')).toHaveText('Straße');
+		await expect(page.locator('.route-meta')).not.toContainText('road');
+		await context.close();
+	});
+
 	test('an unsupported language falls back to English', async ({ browser }) => {
 		const context = await browser.newContext({ locale: 'it-IT' });
 		const page = await context.newPage();
@@ -62,11 +111,11 @@ test.describe('i18n locale negotiation', () => {
 	});
 });
 
-test.describe('i18n language picker (settings → preferences)', () => {
+test.describe('i18n language picker (settings → units & display)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('picking a language translates the chrome and persists across reload', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		// Seeded user is an English (en-GB) browser → English chrome.
 		await expect(page.locator('.nav-label').first()).toHaveText('Dashboard');
 
@@ -96,7 +145,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await page.goto(runUrl);
 		await expect(page.getByText('6.50 km').first()).toBeVisible();
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('de');
 		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 
@@ -105,7 +154,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await expect(page.getByText('6,50 km').first()).toBeVisible();
 		await expect(page.getByText('6.50 km')).toHaveCount(0);
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('en');
 	});
 
@@ -117,7 +166,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await page.goto(runUrl);
 		await expect(page.getByText(/15 May 2026/).first()).toBeVisible();
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('de');
 		// setLocale is async (it loads the locale chunk before writing the
 		// choice to localStorage + flipping <html lang>). Wait for that to
@@ -129,7 +178,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await expect(page.getByText(/Mai 2026/).first()).toBeVisible();
 		await expect(page.getByText(/15 May 2026/)).toHaveCount(0);
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('en');
 	});
 
@@ -139,7 +188,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		// Monday-first (default), English abbreviations.
 		await expect(page.locator('.dow-row span').first()).toHaveText('Mon');
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('de');
 		// setLocale is async (it loads the locale chunk before writing the
 		// choice to localStorage + flipping <html lang>). Wait for that to
@@ -153,7 +202,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 			/Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember/,
 		);
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('en');
 	});
 });

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The today's-workout widget, dark: nightRaised surface, mist text,
+     coral accent (packages/ui_kit AppTheme). -->
+<resources>
+    <color name="widget_today_surface">#FF1C1A24</color>
+    <color name="widget_today_on_surface">#FFF3F1F7</color>
+    <color name="widget_today_muted">#FFC6C2CF</color>
+    <color name="widget_today_accent">#FFF08A5D</color>
+    <color name="widget_today_badge_bg">#FF24212E</color>
+</resources>

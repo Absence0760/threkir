@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { COMPARE_HEADLINE, COMPARE_SECTIONS } from '../../src/lib/settings/compare_features';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /compare — visitor conversion JOURNEY (long-workflow).
@@ -29,10 +30,9 @@ import { COMPARE_HEADLINE, COMPARE_SECTIONS } from '../../src/lib/settings/compa
  * the *reader's path*: land on the marketing page → read the headline
  * pricing → follow a concrete feature row's verdict across all three
  * providers → drill into one of the internal "explore the features"
- * links to the real destination → and follow the donate CTA through to
- * /settings/upgrade. That navigation arc — compare → /coach and
- * compare → /settings/upgrade — is the conversion funnel the page is
- * built to drive, and it is unpinned today.
+ * links to the real destination. The donate link goes straight to the
+ * Stripe Payment Link in PUBLIC_DONATE_URL and renders only when that is
+ * set; CI leaves it unset, so the journey pins its absence.
  *
  * Anon + no auth + no seeded data: the page is publicly readable and
  * mounts no map / third-party SDK (page-depth.spec.ts asserts it needs
@@ -40,13 +40,6 @@ import { COMPARE_HEADLINE, COMPARE_SECTIONS } from '../../src/lib/settings/compa
  * pre-accept the cookie banner per house e2e convention so a floating
  * dialog can never sit over a link we click.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 // A feature row that is unambiguously yes / no / partial across the
 // three providers is the most honest one to walk — its three cells must
@@ -68,10 +61,10 @@ test.describe('/compare — visitor conversion journey (anon, static marketing p
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
-	test('a visitor reads the headline, a feature verdict, then converts via the internal + donate links', async ({
+	test('a visitor reads the headline, a feature verdict, then converts via the internal links', async ({
 		page,
 	}) => {
 		expect(
@@ -140,33 +133,27 @@ test.describe('/compare — visitor conversion journey (anon, static marketing p
 
 		await test.step('the AI Coach feature link routes an anon visitor into the sign-in funnel', async () => {
 			// The footer "Explore the features" strip links to the real
-			// product surfaces (compare/+page.svelte:104 a[href="/coach"]). But
-			// /coach is NOT in the +layout.svelte anon-allowed set, so the
-			// global auth guard bounces an unauthenticated visitor to /login
-			// (with a return_to=/coach so they land on Coach after signing in).
+			// product surfaces (compare/+page.svelte a[href="/messages/coach"], the
+			// Coach's conversation in Messages). But /messages is NOT in the
+			// +layout.svelte anon-allowed set, so the global auth guard bounces an
+			// unauthenticated visitor to /login (with a return_to so they land on
+			// the Coach after signing in).
 			// The marketing link's job is to route into that funnel — the same
 			// auth-wall end the donate CTA hits below.
-			const coachLink = page.locator('.cmp-footer a[href="/coach"]');
+			const coachLink = page.locator('.cmp-footer a[href="/messages/coach"]');
 			await expect(coachLink).toBeVisible();
 			await coachLink.click();
 			await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 		});
 
-		await test.step('the donate CTA routes an anon visitor into the sign-in funnel', async () => {
+		await test.step('with no donation link configured, the footer offers none', async () => {
 			await page.goto('/compare');
-			// The donate link is the page's one conversion CTA
-			// (compare/+page.svelte:100 a[href="/settings/upgrade"], copy
-			// m('compare.footerDonateLink') = "donate page", en.ts:1804).
-			const donate = page.locator('.cmp-footer a[href="/settings/upgrade"]');
-			await expect(donate).toBeVisible();
-			await expect(donate).toHaveText(/donate page/i);
-			await donate.click();
-			// /settings/* is a protected subtree — the root +layout.svelte:180
-			// auth guard redirects an unauthenticated visitor to /login (the
-			// same behaviour auth-walls.spec.ts pins for /settings/account). So
-			// the anon end-of-funnel for this CTA is the sign-in wall, not the
-			// upgrade page body — converting means signing in first.
-			await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
+			// CI builds leave PUBLIC_DONATE_URL unset, so the support sentence
+			// and its link must not render: a donate link with nowhere real to
+			// go is what sent every click to GitHub's marketing page.
+			await expect(page.locator('.cmp-footer')).toBeVisible();
+			await expect(page.getByTestId('compare-donate')).toHaveCount(0);
+			await expect(page.locator('.cmp-footer a[href="/settings/upgrade"]')).toHaveCount(0);
 		});
 	});
 

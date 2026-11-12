@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/race_service.dart';
 import '../lib/widgets/report_sheet.dart';
 
 class _FakeApiClient extends ApiClient {
@@ -18,6 +19,23 @@ class _FakeApiClient extends ApiClient {
   String? capturedNotes;
   Object? errorToThrow;
   String returnId = 'rep-123';
+  String? capturedDisputeClubId;
+  String? capturedDisputeKind;
+
+  @override
+  Future<String> submitOrganiserDispute({
+    required String targetKind,
+    required String targetId,
+    required String clubId,
+    String? notes,
+  }) async {
+    capturedDisputeKind = targetKind;
+    capturedTargetId = targetId;
+    capturedDisputeClubId = clubId;
+    capturedNotes = notes;
+    if (errorToThrow != null) throw errorToThrow!;
+    return returnId;
+  }
 
   @override
   Future<String> submitReport({
@@ -40,6 +58,8 @@ Future<void> _openSheet(
   _FakeApiClient api, {
   String kind = 'user',
   String id = 'target-1',
+  Future<List<OrganiserClub>> Function()? organiserClubs,
+  String? targetClubId,
 }) async {
   // 1200 px tall surface fits the bottom-sheet plus a comfortable
   // host scaffold underneath. The default 600 px viewport puts the
@@ -61,6 +81,8 @@ Future<void> _openSheet(
                 api: api,
                 targetKind: kind,
                 targetId: id,
+                organiserClubs: organiserClubs,
+                targetClubId: targetClubId,
               ),
               child: const Text('Open'),
             ),
@@ -148,8 +170,6 @@ void main() {
       expect(api.capturedTargetId, 'route-42');
       expect(api.capturedReason, 'harassment');
       expect(api.capturedNotes, 'this user impersonates a coach');
-      // Drain the success banner's auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 5));
     });
 
     testWidgets('empty notes get passed as null (not "")', (tester) async {
@@ -186,6 +206,22 @@ void main() {
       expect(find.text('Report user'), findsOneWidget);
     });
 
+    testWidgets(
+        'any other Postgrest refusal shows the classified copy, not its text',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..errorToThrow = const PostgrestException(
+          message: 'new row violates row-level security policy for "reports"',
+          code: 'P0001',
+        );
+      await _openSheet(tester, api);
+      await tester.tap(find.widgetWithText(FilledButton, 'Submit report'));
+      await tester.pumpAndSettle();
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.authErrorGeneric), findsOneWidget);
+      expect(find.textContaining('row-level security'), findsNothing);
+    });
+
     testWidgets('Cancel closes the sheet without an API call',
         (tester) async {
       final api = _FakeApiClient();
@@ -211,6 +247,103 @@ void main() {
       await tester.pump();
       expect(api.capturedReason, 'spam');
       await tester.pump(const Duration(seconds: 5));
+    });
+  });
+
+  // Organiser name disputes (issue #1363, decisions § 2441): the sheet adds
+  // the dispute reason for a verified club's owner or admin, on a club or a
+  // route, and files it through submitOrganiserDispute.
+  group('ReportSheet organiser dispute', () {
+    const official = OrganiserClub(id: 'club-v', name: 'Comrades Marathon');
+    const second = OrganiserClub(id: 'club-w', name: 'Two Oceans');
+
+    testWidgets('a verified organiser is offered the dispute reason on a club',
+        (tester) async {
+      await _openSheet(tester, _FakeApiClient(),
+          kind: 'club',
+          id: 'fan-club',
+          organiserClubs: () async => [official],
+          targetClubId: 'fan-club');
+      expect(find.byType(RadioListTile<String>), findsNWidgets(6));
+      expect(find.text('Impersonates or copies my organisation'), findsOneWidget);
+    });
+
+    testWidgets('submits the dispute for the organiser club', (tester) async {
+      final api = _FakeApiClient();
+      await _openSheet(tester, api,
+          kind: 'route',
+          id: 'route-7',
+          organiserClubs: () async => [official]);
+      await tester.tap(find.text('Impersonates or copies my organisation'));
+      await tester.pump();
+      expect(find.text("You're reporting for Comrades Marathon."), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Notes (optional)'),
+        'copied our course',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Submit report'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.capturedDisputeKind, 'route');
+      expect(api.capturedTargetId, 'route-7');
+      expect(api.capturedDisputeClubId, 'club-v');
+      expect(api.capturedNotes, 'copied our course');
+      expect(api.capturedReason, isNull);
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('two verified clubs get a club picker', (tester) async {
+      await _openSheet(tester, _FakeApiClient(),
+          kind: 'club',
+          organiserClubs: () async => [official, second]);
+      await tester.tap(find.text('Impersonates or copies my organisation'));
+      await tester.pump();
+      expect(find.byKey(const Key('report-organiser-club')), findsOneWidget);
+    });
+
+    testWidgets('a club is never offered a dispute against itself',
+        (tester) async {
+      await _openSheet(tester, _FakeApiClient(),
+          kind: 'club',
+          id: 'club-v',
+          organiserClubs: () async => [official],
+          targetClubId: 'club-v');
+      expect(find.byType(RadioListTile<String>), findsNWidgets(5));
+      expect(find.text('Impersonates or copies my organisation'), findsNothing);
+    });
+
+    testWidgets('no dispute reason on a kind the database does not take',
+        (tester) async {
+      await _openSheet(tester, _FakeApiClient(),
+          kind: 'user', organiserClubs: () async => [official]);
+      expect(find.byType(RadioListTile<String>), findsNWidgets(5));
+    });
+
+    testWidgets('a failed club read only hides the dispute reason',
+        (tester) async {
+      await _openSheet(tester, _FakeApiClient(),
+          kind: 'club', organiserClubs: () async => throw StateError('offline'));
+      expect(find.byType(RadioListTile<String>), findsNWidgets(5));
+      expect(find.widgetWithText(FilledButton, 'Submit report'), findsOneWidget);
+    });
+
+    testWidgets('a refused dispute says only a verified organiser can file it',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..errorToThrow = const PostgrestException(
+            message: 'only an owner or admin of a verified club can report a naming dispute',
+            code: '42501');
+      await _openSheet(tester, api,
+          kind: 'club', organiserClubs: () async => [official]);
+      await tester.tap(find.text('Impersonates or copies my organisation'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Submit report'));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.text('Only an owner or admin of a verified club can report this.'),
+        findsOneWidget,
+      );
     });
   });
 }

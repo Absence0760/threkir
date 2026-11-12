@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import type { JsonObject } from '../types';
 import type { StepOutcome } from './gym_session_types';
 import {
 	GYM_SESSION_DRAFT_KEY,
@@ -84,6 +85,31 @@ test('a bag with no draft key is not a draft', () => {
 	assert.equal(hasSessionDraft('nonsense'), false);
 	assert.equal(draftRoutineId({ routine_id: 'r1' }), null);
 	assert.equal(restoreSessionDraft({ routine_id: 'r1' }, 3), null);
+});
+
+// The marker's shape is a three-rail contract: Dart's `routine_history.dart`
+// asks `is Map` and the `gym_routine_history` RPC asks
+// `jsonb_typeof(...) = 'object'`. `typeof x === 'object'` answers true for an
+// array, so without this the same row read as in-flight on web and as
+// performed on the other two.
+test('a non-object under the draft key is not a draft — the SQL + Dart answer', () => {
+	assert.equal(hasSessionDraft({ routine_id: 'r1', [GYM_SESSION_DRAFT_KEY]: [] }), false);
+	assert.equal(
+		hasSessionDraft({ routine_id: 'r1', [GYM_SESSION_DRAFT_KEY]: [{ step_index: 0 }] }),
+		false,
+	);
+	assert.equal(hasSessionDraft({ [GYM_SESSION_DRAFT_KEY]: null }), false);
+	assert.equal(hasSessionDraft({ [GYM_SESSION_DRAFT_KEY]: 'in flight' }), false);
+	assert.equal(hasSessionDraft({ [GYM_SESSION_DRAFT_KEY]: 3 }), false);
+	// …and every reader built on the same predicate agrees.
+	assert.equal(draftRoutineId({ routine_id: 'r1', [GYM_SESSION_DRAFT_KEY]: [] }), null);
+	assert.equal(restoreSessionDraft({ routine_id: 'r1', [GYM_SESSION_DRAFT_KEY]: [] }, 3), null);
+	assert.equal(draftLoggedCount({ routine_id: 'r1', [GYM_SESSION_DRAFT_KEY]: [] }), 0);
+});
+
+test('an array metadata bag is not a bag', () => {
+	assert.equal(hasSessionDraft([{ [GYM_SESSION_DRAFT_KEY]: { results: [] } }]), false);
+	assert.deepEqual(stripSessionDraft(['a']), {});
 });
 
 test('a draft with no usable routine link reports none', () => {
@@ -185,4 +211,18 @@ test('save-as-is drops only the draft marker', () => {
 	assert.equal(stripped.notes_kept, true);
 	assert.equal(GYM_SESSION_DRAFT_KEY in stripped, false);
 	assert.deepEqual(stripSessionDraft(null), {});
+});
+
+test('both metadata builders are assignable to the jsonb column they are written to', () => {
+	// The pin is the ANNOTATION, checked by `npm run check` rather than at
+	// runtime: both results go straight into `gym_workouts.metadata`, and a
+	// return type of `Record<string, unknown>` is refused by `Json` however
+	// JSON-shaped its contents are (decisions § 1363). Widening either return,
+	// or turning either draft shape back into an `interface`, fails the
+	// typecheck here instead of pushing an `as JsonObject` back out to the two
+	// call sites that carried one.
+	const built: JsonObject = draftMetadata('r1', [logged(5)], 1, 'now');
+	const stripped: JsonObject = stripSessionDraft(built);
+	assert.equal(GYM_SESSION_DRAFT_KEY in built, true);
+	assert.equal(GYM_SESSION_DRAFT_KEY in stripped, false);
 });

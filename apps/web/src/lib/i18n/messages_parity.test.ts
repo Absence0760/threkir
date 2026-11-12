@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { en } from './locales/en';
-import { SUPPORTED_LOCALES } from './locale';
+import { SUPPORTED_LOCALES, type Locale } from './locale';
 import { CATALOGUE_LOADERS } from './catalogues';
 
 // `satisfies Messages` already enforces key parity at compile time; this
@@ -32,5 +33,65 @@ for (const loc of SUPPORTED_LOCALES) {
 				`${loc}.${key} placeholder mismatch`,
 			);
 		}
+	});
+}
+
+// A catalogue is an object literal, so a key written twice is not an error --
+// the later wins and `Object.keys` reports it once, which means every
+// assertion above passes while the shipped string is the stale one. That is
+// not hypothetical: the landing hero shipped its OLD subhead this way, with a
+// green parity suite, because a new copy deck was appended above the original
+// key instead of replacing it. Source-level, because by the time the module
+// has been evaluated the evidence is gone.
+for (const loc of SUPPORTED_LOCALES) {
+	test(`${loc}: no key is declared twice in the source`, async () => {
+		const file = new URL(`./locales/${loc}.ts`, import.meta.url);
+		const source = await readFile(file, 'utf-8');
+		const seen = new Set<string>();
+		const duplicated: string[] = [];
+		for (const line of source.split('\n')) {
+			const key = /^\t"([^"]+)": /.exec(line)?.[1] ?? /^\t'([^']+)': /.exec(line)?.[1];
+			if (key === undefined) continue;
+			if (seen.has(key)) duplicated.push(key);
+			seen.add(key);
+		}
+		assert.deepEqual(
+			duplicated,
+			[],
+			`${loc} declares these keys more than once; the last one silently wins, so ` +
+				'the string you edited may not be the string that ships',
+		);
+	});
+}
+
+// Every translated locale quotes with its own typographic marks, which its
+// glossary (.claude/agents/i18n/languages/<loc>.md) sets, so a straight `"` in
+// one of its messages is a slip -- 68 of them shipped across pt-BR, pt-PT, de,
+// es and fr before this guard. A straight double quote is never ICU syntax (ICU
+// escapes with the apostrophe), so every one in a message value is a quotation
+// mark. Typed on the locale, so a new locale cannot ship without naming its
+// marks here. English is left out: its catalogue quotes with the straight pair
+// throughout. Checked on the loaded value, which sees through the literal's own
+// delimiters and `\"` escapes. The mobile twin is in
+// apps/mobile_android/test/architecture_guards_test.dart.
+const QUOTATION_MARKS: Record<Exclude<Locale, 'en'>, string> = {
+	de: '„…“',
+	fr: '« … »',
+	es: '«…»',
+	ja: '「…」',
+	'pt-PT': '“…”',
+	'pt-BR': '“…”',
+};
+
+for (const loc of SUPPORTED_LOCALES) {
+	if (loc === 'en') continue;
+	test(`${loc}: no message quotes with a straight double quote`, async () => {
+		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
+		const straight = Object.keys(dict).filter((key) => dict[key].includes('"'));
+		assert.deepEqual(
+			straight,
+			[],
+			`${loc} quotes with a straight " in these messages; its glossary uses ${QUOTATION_MARKS[loc]}`,
+		);
 	});
 }

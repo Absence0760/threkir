@@ -1408,6 +1408,8 @@ mod tests {
             time_of_day: Some(12 * 3600),
             date: None,
             uptime_s: 100,
+            h_acc_m: None,
+            s_acc_mps: None,
         }
     }
 

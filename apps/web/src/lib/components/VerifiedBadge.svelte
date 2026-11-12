@@ -14,7 +14,7 @@
 	mark.
 -->
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		size?: number;

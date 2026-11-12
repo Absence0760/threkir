@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow, readRow } from '../fixtures/db-read';
 
 /**
  * Session planner — depth coverage for the genuinely-uncovered corners of the
@@ -200,13 +201,16 @@ test.describe('/sessions — planner depth', () => {
 
 		// And both round-tripped to the row.
 		const admin = getAdminClient();
-		const { data: row } = await admin
-			.from('session_plans')
-			.select('equipment, is_public')
-			.eq('title', title)
-			.single();
-		expect(row?.equipment).toBe('Reformer');
-		expect(row?.is_public).toBe(true);
+		const row = await readRow(
+			'session_plans by title',
+			admin
+				.from('session_plans')
+				.select('equipment, is_public')
+				.eq('title', title)
+				.single()
+		);
+		expect(row.equipment).toBe('Reformer');
+		expect(row.is_public).toBe(true);
 	});
 
 	test('deleting a plan leaves /sessions and removes the row', async ({ page }) => {
@@ -246,11 +250,14 @@ test.describe('/sessions — planner depth', () => {
 		await expect(page.getByRole('link', { name: title })).toHaveCount(0);
 
 		// The row (and its cascaded items) are gone from the DB.
-		const { data: after } = await admin
-			.from('session_plans')
-			.select('id')
-			.eq('id', planId)
-			.maybeSingle();
+		const after = await readMaybeRow(
+			'session_plans by id',
+			admin
+				.from('session_plans')
+				.select('id')
+				.eq('id', planId)
+				.maybeSingle()
+		);
 		expect(after).toBeNull();
 	});
 
@@ -313,7 +320,7 @@ test.describe('/sessions — planner depth', () => {
 		expect(new Set(results.map((r) => r.item_id)).size).toBe(1);
 	});
 
-	test('copy-share-link flips a private plan public before copying', async ({ page, context }) => {
+	test('copy-share-link asks before it flips a private plan public', async ({ page, context }) => {
 		await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 		const admin = getAdminClient();
@@ -341,6 +348,14 @@ test.describe('/sessions — planner depth', () => {
 		await expect(page.locator('.visibility-chip')).toHaveText(/Private/i);
 
 		await page.getByTestId('session-copy-share-link').click();
+
+		// Copying a link on a PRIVATE plan publishes it, so it is gated by a
+		// consent dialog (decisions §555). Confirm it explicitly.
+		const shareDialog = page.getByTestId('session-share-confirm-dialog');
+		await expect(shareDialog).toBeVisible({ timeout: 5_000 });
+		await expect(shareDialog).toContainText('Make this session plan public?');
+		await shareDialog.locator('button', { hasText: /Make public & copy link/ }).click();
+
 		await expect(page.getByText('Share link copied.')).toBeVisible({ timeout: 10_000 });
 
 		// The chip flips to Public in place (the affordance auto-publishes a
@@ -352,11 +367,14 @@ test.describe('/sessions — planner depth', () => {
 		expect(clip).toContain(`/share/session/${planId}`);
 
 		// And the plan is now public in the DB so the share link resolves.
-		const { data: row } = await admin
-			.from('session_plans')
-			.select('is_public')
-			.eq('id', planId)
-			.single();
-		expect(row?.is_public).toBe(true);
+		const row = await readRow(
+			'session_plans by id',
+			admin
+				.from('session_plans')
+				.select('is_public')
+				.eq('id', planId)
+				.single()
+		);
+		expect(row.is_public).toBe(true);
 	});
 });

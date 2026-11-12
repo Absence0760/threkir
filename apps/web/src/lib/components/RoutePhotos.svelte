@@ -6,12 +6,13 @@
 		deleteRoutePhoto,
 		updateRoutePhotoCaption,
 		type RoutePhoto,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { safeImageSrc } from '$lib/util/safe_image_src';
+	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
 	interface Props {
 		routeId: string;
@@ -40,12 +41,12 @@
 		try {
 			const res = await fetchRoutePhotosWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RoutePhotos: loadError');
 				return;
 			}
 			photos = res.photos;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'RoutePhotos: loadError');
 		} finally {
 			loading = false;
 		}
@@ -77,7 +78,7 @@
 			pendingCaption = '';
 			if (fileInput) fileInput.value = '';
 		} catch (e: any) {
-			showToast(m('routePhotos.uploadFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('routePhotos.uploadFailed', { error: errorCopy(e, m, 'routePhotos.uploadFailed') }), 'error');
 		} finally {
 			uploading = false;
 		}
@@ -98,7 +99,7 @@
 			photos = photos.filter((p) => p.id !== target.id);
 			if (lightbox?.id === target.id) lightbox = null;
 		} catch (e: any) {
-			showToast(m('routePhotos.deleteFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('routePhotos.deleteFailed', { error: errorCopy(e, m, 'routePhotos.deleteFailed') }), 'error');
 		}
 	}
 
@@ -116,12 +117,12 @@
 			await updateRoutePhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
 		} catch (e: any) {
-			showToast(m('routePhotos.captionUpdateFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('routePhotos.captionUpdateFailed', { error: errorCopy(e, m, 'routePhotos.captionUpdateFailed') }), 'error');
 		}
 	}
 </script>
 
-{#if canManage || loading || photos.length > 0 || loadError}
+{#if canManage || loading || photos.length > 0 || loadError !== null}
 <section class={wrapperClass}>
 <div class="photos">
 	<header class="hd">
@@ -174,12 +175,12 @@
 
 	{#if loading}
 		<p class="muted">{m('routePhotos.loadingPhotos')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('routesPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('routesPage.retry')}</button>
 		</div>

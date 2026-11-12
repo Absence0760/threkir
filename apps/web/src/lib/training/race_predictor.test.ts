@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 
 import {
 	predictRaceLadder,
+	goalAheadOfRecentRuns,
+	GOAL_AHEAD_MARGIN,
 	RACE_LADDER_M,
 	ANCHOR_RECENCY_HALFLIFE_DAYS,
 	type EffortForPrediction,
@@ -120,4 +122,61 @@ test('future-dated effort (clock skew) is treated as weight 1, not amplified', (
 	const out = predictRaceLadder([{ distanceM: 5000, durationS: 1200, ageDays: -3 }]);
 	assert.ok(out);
 	assert.equal(out.anchor.ageDays, -3);
+});
+
+// "Non-finite efforts are filtered out" has to include Infinity: `> 0` admits
+// it, it projects to NaN and never wins the anchor, but it still counted toward
+// the pool size that grades every rung's confidence.
+test('an effort with an infinite distance or duration is filtered out, not counted', () => {
+	const real: EffortForPrediction = { distanceM: 10_000, durationS: 2700, ageDays: 3 };
+	const out = predictRaceLadder([
+		real,
+		{ distanceM: Infinity, durationS: 2700, ageDays: 1 },
+		{ distanceM: 5000, durationS: Infinity, ageDays: 1 },
+	]);
+	assert.ok(out);
+	assert.equal(out.qualifyingCount, 1);
+	assert.deepEqual(out.anchor, real);
+	assert.deepEqual(out, predictRaceLadder([real]));
+});
+
+test('a pool of only infinite efforts is empty: null, not a throw', () => {
+	assert.equal(
+		predictRaceLadder([
+			{ distanceM: Infinity, durationS: 1200, ageDays: 1 },
+			{ distanceM: 5000, durationS: Infinity, ageDays: 1 },
+		]),
+		null,
+	);
+});
+
+/// Three recent 10 km runs in 50:00, so a 10K goal projects to 3000 s off a
+/// well-sampled, recent, same-distance anchor (high confidence).
+const TEN_K_POOL = [5, 10, 15].map((ageDays) => ({ distanceM: 10_000, durationS: 3000, ageDays }));
+
+test('goalAheadOfRecentRuns flags a goal more than the margin faster than recent runs project', () => {
+	// 2600 s is 13% under the 3000 s projection; the margin is 10%.
+	assert.equal(GOAL_AHEAD_MARGIN, 0.1);
+	const r = goalAheadOfRecentRuns(10_000, 2600, TEN_K_POOL);
+	assert.ok(r);
+	assert.equal(r.predictedSec, 3000);
+});
+
+test('goalAheadOfRecentRuns stays quiet for a goal inside the margin', () => {
+	// 2750 s is 8.3% under the projection, and 2700 s exactly 10%: neither flags.
+	assert.equal(goalAheadOfRecentRuns(10_000, 2750, TEN_K_POOL), null);
+	assert.equal(goalAheadOfRecentRuns(10_000, 2700, TEN_K_POOL), null);
+	assert.equal(goalAheadOfRecentRuns(10_000, 3300, TEN_K_POOL), null);
+});
+
+test('goalAheadOfRecentRuns stays quiet when the projection is a low-confidence guess', () => {
+	// A marathon off 5 km runs is an 8.4x extrapolation, past the 4x cap.
+	const fiveK = [5, 10, 15].map((ageDays) => ({ distanceM: 5_000, durationS: 1500, ageDays }));
+	assert.equal(goalAheadOfRecentRuns(42_195, 3 * 3600, fiveK), null);
+});
+
+test('goalAheadOfRecentRuns is null with no goal time or no usable effort', () => {
+	assert.equal(goalAheadOfRecentRuns(10_000, null, TEN_K_POOL), null);
+	assert.equal(goalAheadOfRecentRuns(10_000, 0, TEN_K_POOL), null);
+	assert.equal(goalAheadOfRecentRuns(10_000, 2600, []), null);
 });

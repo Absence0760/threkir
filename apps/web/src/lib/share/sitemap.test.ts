@@ -5,30 +5,31 @@ import {
 	buildSitemap,
 	changefreqForRunCount,
 	composeEntries,
+	courseEntries,
 	entityEntries,
 	learnEntries,
 	normaliseBase,
 	priorityForRunCount,
-	xmlEscape,
 } from './sitemap';
+import { escapeHtml } from '../util/html_escape';
 import { buildClubShareCanonical } from './share_club_meta';
 import { buildEventShareCanonical } from './share_event_meta';
 import { buildRaceShareCanonical } from './share_race_meta';
 import { buildRouteShareCanonical, buildRunShareCanonical } from './share_meta';
 
-// ---------------- xmlEscape ----------------
+// ---------------- escapeHtml ----------------
 
-test('xmlEscape — escapes the five reserved characters', () => {
-	assert.equal(xmlEscape(`a<b>c&d"e'f`), 'a&lt;b&gt;c&amp;d&quot;e&apos;f');
+test('escapeHtml — escapes the five reserved characters', () => {
+	assert.equal(escapeHtml(`a<b>c&d"e'f`), 'a&lt;b&gt;c&amp;d&quot;e&#39;f');
 });
 
-test('xmlEscape — passes through plain text + uuids untouched', () => {
+test('escapeHtml — passes through plain text + uuids untouched', () => {
 	assert.equal(
-		xmlEscape('550e8400-e29b-41d4-a716-446655440000'),
+		escapeHtml('550e8400-e29b-41d4-a716-446655440000'),
 		'550e8400-e29b-41d4-a716-446655440000',
 	);
 	assert.equal(
-		xmlEscape('https://threkir.com/share/run/abc'),
+		escapeHtml('https://threkir.com/share/run/abc'),
 		'https://threkir.com/share/run/abc',
 	);
 });
@@ -92,13 +93,24 @@ test('buildSitemap — priority renders with one decimal place even when whole',
 
 // ---------------- composeEntries ----------------
 
-test('composeEntries — always emits the three top-level surfaces first', () => {
+test('composeEntries — always emits the four top-level surfaces first', () => {
 	const entries = composeEntries('https://threkir.com', [], []);
-	assert.equal(entries.length, 3);
+	assert.equal(entries.length, 4);
 	assert.equal(entries[0].loc, 'https://threkir.com/');
 	assert.equal(entries[1].loc, 'https://threkir.com/feed');
 	assert.equal(entries[2].loc, 'https://threkir.com/routes?tab=explore');
+	assert.equal(entries[3].loc, 'https://threkir.com/segments');
 	assert.equal(entries[0].priority, 1.0);
+});
+
+// The catalogue index is crawlable content; a per-segment page is a
+// leaderboard of named runners, which is the same people-directory
+// objection that keeps profiles out of the manifest.
+test('composeEntries — lists the segment catalogue index and no individual segment', () => {
+	const entries = composeEntries('https://threkir.com', [{ id: 'route-1' }], [{ id: 'run-1' }]);
+	const segmentLocs = entries.filter((e) => e.loc.includes('/segments'));
+	assert.equal(segmentLocs.length, 1);
+	assert.equal(segmentLocs[0].loc, 'https://threkir.com/segments');
 });
 
 test('composeEntries — strips trailing slash on the base before concatenating', () => {
@@ -116,7 +128,7 @@ test('composeEntries — routes and runs become /share/* entries with lastmod wh
 			{ id: 'run-2', updated_at: null, started_at: '2026-05-09T00:00:00Z' },
 		],
 	);
-	assert.equal(entries.length, 6); // 3 top-level + 1 route + 2 runs
+	assert.equal(entries.length, 7); // 4 top-level + 1 route + 2 runs
 	const route1 = entries.find((e) => e.loc === 'https://threkir.com/share/route/route-1');
 	assert.equal(route1?.lastmod, '2026-05-10T00:00:00Z');
 	const run1 = entries.find((e) => e.loc === 'https://threkir.com/share/run/run-1');
@@ -349,4 +361,34 @@ test('every share <loc> equals the entity builder canonical for the same base', 
 test('a trailing slash on the base is normalised the same way the builders do', () => {
 	const entries = entityEntries('https://threkir.com/', [], [{ slug: 'club-a' }], []);
 	assert.equal(entries[0].loc, buildClubShareCanonical('https://threkir.com', 'club-a'));
+});
+
+// The sitemap is XML a crawler parses whole; a control character in one <loc>
+// (a slug built from an imported name) would make it refuse every URL in it.
+test('buildSitemap — a character XML forbids becomes U+FFFD, never reaches the document', () => {
+	const xml = buildSitemap([{ loc: 'https://threkir.com/share/club/a\u0001b', lastmod: '2026-01-01\u000B' }]);
+	assert.ok(!/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(xml));
+	assert.ok(xml.includes('<loc>https://threkir.com/share/club/a�b</loc>'));
+});
+
+test('courseEntries — one /share/course entry per course, keyed by region, park and course slugs', () => {
+	const entries = courseEntries('https://threkir.com/', [
+		{ slug: 'lake-loop', park_slug: 'fixture-state-park', region_code: 'US-VA', updated_at: '2027-01-02T00:00:00Z' },
+		{ slug: 'ridge', park_slug: 'other', region_code: 'US-NC', updated_at: null },
+	]);
+	assert.deepEqual(entries, [
+		{
+			loc: 'https://threkir.com/share/course/us-va/fixture-state-park/lake-loop',
+			lastmod: '2027-01-02T00:00:00Z',
+			changefreq: 'monthly',
+			priority: 0.7,
+		},
+		{
+			loc: 'https://threkir.com/share/course/us-nc/other/ridge',
+			lastmod: undefined,
+			changefreq: 'monthly',
+			priority: 0.7,
+		},
+	]);
+	assert.deepEqual(courseEntries('https://threkir.com', []), []);
 });

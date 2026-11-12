@@ -12,6 +12,7 @@ Traces of the user journeys that cross multiple files, packages, or platforms. E
 - [Record a run (Android)](#record-a-run-android)
 - [Sync (Android offline → cloud)](#sync-android-offline--cloud)
 - [Spectator live tracking](#spectator-live-tracking)
+- [AI Coach and a coach-approved plan change](#ai-coach-and-a-coach-approved-plan-change)
 
 ---
 
@@ -57,7 +58,7 @@ Two supported paths, plus a third that's scaffolded but not wired:
 
 1. **Email/password** — `supabase_flutter`'s `signInWithPassword`. The seed user `runner@test.com` / `testtest` works for local testing.
 2. **Google Sign-In** — native `google_sign_in` package driving the Google picker, then we hand the ID token to Supabase via `signInWithIdToken`.
-3. **Apple Sign-In** — scaffolded, not wired up. Needs iOS-side entitlements; see the deferred list in `roadmap.md`.
+3. **Apple Sign-In** — built against the native `sign_in_with_apple` SDK, gated by `appleSignInAvailable()` in `apple_auth.dart`. There is no `_kAppleSignInEnabled` constant; the gate is asymmetric by platform. **iOS returns true unconditionally** (native flow, and `Runner.entitlements` declares `com.apple.developer.applesignin`), so it waits only on the portal App ID capability. **Android** needs the `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` dart-defines, which `release-android.yml` does not yet pass — a code change, not a secret. Web is its own flag, `PUBLIC_APPLE_AUTH_ENABLED`. Ledger: [`apple_provisioning.md`](../ops/apple_provisioning.md).
 
 ### Runtime sequence (Google)
 
@@ -77,6 +78,7 @@ User → SignInScreen                  apps/mobile_android/lib/screens/sign_in_s
 
 - The platform channel for `google_sign_in` requires a Google Cloud Console OAuth client matching the app's package signature. See [../apps/mobile_android/local_testing.md](../../apps/mobile_android/local_testing.md) for the setup steps.
 - The `ApiClient` is a **static singleton** after `ApiClient.initialize(url: ..., anonKey: ...)` runs in `main.dart`. Do not instantiate `ApiClient()` and pass it around — all screens read the same global session via `Supabase.instance.client`.
+- **Email sign-up asks for consent once.** `ApiClient.signUp` sends the 16+ and Terms stamps in the GoTrue `data`; with email confirmation on there is no session, and the `auth.users` confirmation trigger stamps `user_profiles` from that metadata (#1229), so the first sign-in after confirming does not push `ConfirmAgeScreen`. Apple / Google from the sign-in screen still meet it, since they carry no sign-up metadata.
 - When the user signs out, `ApiClient.signOut()` just calls `supabase.auth.signOut()`. It does **not** clear the local `LocalRunStore` — offline data survives sign-out by design.
 
 ---
@@ -116,8 +118,9 @@ If the phone isn't reachable (out of range / not yet paired / not signed in), th
       apps/mobile_android/lib/screens/home_screen.dart
 2.  _maybeRequestPermission() — FINE_LOCATION + POST_NOTIFICATIONS
       (ACTIVITY_RECOGNITION is handled at first launch in
-      onboarding_screen.dart, not here). Non-blocking: denial drops the
-      run into time-only mode rather than aborting.
+      onboarding_screen.dart, not here). Location off or denied then
+      stops at Open settings / Record time only / Cancel before the
+      countdown (_confirmStartWithoutGps); only Record time only starts.
 3.  Navigator pushes RunScreen
       apps/mobile_android/lib/screens/run_screen.dart
 4.  initState: 3-second countdown begins, _preload() runs in parallel
@@ -130,8 +133,8 @@ If the phone isn't reachable (out of range / not yet paired / not signed in), th
       - GPS fixes during countdown drive the blue dot but don't accumulate
 5.  Countdown hits 0 → _begin()
       - Awaits _prepareFuture — on error, _notifyGpsUnavailable shows a
-        snackbar with a Settings shortcut; the run continues as a
-        time-only indoor session
+        snackbar with a Settings shortcut (unless time only was already
+        chosen at START); the run continues as a time-only indoor session
       - RunRecorder.begin() flips recording on, starts the Stopwatch
       - Stable run id generated (uuid v4)
       - Incremental-save timer starts (every 10s → runs/in_progress.json)
@@ -168,8 +171,9 @@ If the phone isn't reachable (out of range / not yet paired / not signed in), th
 
 Every run the Android app handles lives in `LocalRunStore` first. The store is the source of truth on device; Supabase is the source of truth across devices. Reconciliation between the two is the sync service's job.
 
-- **Push-side** is driven by `SyncService._trySync()`: take `LocalRunStore.unsyncedRuns`, run it through `filterRunsForCurrentUser(unsynced, api.userId)` (drops runs whose `metadata.created_by_user_id` names a *different* user — the shared-device owner-tag guard, see [decisions.md § 67](../architecture/decisions.md#67-offline-saved-runs-carry-a-created_by_user_id-owner-tag--defends-shared-device-sign-out--sign-in)), call `ApiClient.saveRunsBatch(filtered)`, mark synced on success. It's best-effort — failures arm an exponential backoff (60 s → 2 min → … capped at 30 min) but don't surface to the UI.
-- **Pull-side** is driven manually from the History screen's "pull from cloud" button. `ApiClient.getRuns()` returns cloud runs, each gets passed to `LocalRunStore.saveFromRemote()`, which applies newer-wins conflict resolution against `metadata.last_modified_at`.
+- **Push-side** is driven by `SyncService._trySync()`: take `LocalRunStore.unsyncedRuns`, run it through `filterRunsForCurrentUser(unsynced, api.userId)` (drops runs whose `metadata.created_by_user_id` names a *different* user — the shared-device owner-tag guard, see [decisions.md § 67](../architecture/decisions.md#67-offline-saved-runs-carry-a-created_by_user_id-owner-tag--defends-shared-device-sign-out--sign-in)), call `ApiClient.saveRunsBatch(filtered)`, mark synced on success. It's best-effort — failures arm an exponential backoff (60 s → 2 min → … capped at 30 min) but don't surface to the UI. `saveRunsBatch` returns a two-state `RunPushOutcome`: `retryable` failures come back next cycle and arm the backoff, while a `blocked` run is **parked** — `LocalRunStore.markBlocked` records it in the `blocked_runs.json` sidecar, it leaves `unsyncedRuns` and the residency invariant, and no drain sends it again until the runner resolves it (the History app bar names it, run detail explains it and offers `dropTrack`). One reason exists today, `trackTooLarge`; see [decisions.md § 1070](../architecture/decisions.md) and [§ 1009](../architecture/decisions.md).
+- **Edit push** (`pushPendingRunEdits` / `pushPendingRunEdit` in `sync_service.dart`, called by both the foreground cycle and the WorkManager cycle, and straight away by run detail's edit dialog). An edit to a run the server already holds does not un-sync it: `LocalRunStore.update()` records a `PendingRunEdit` — the fields it changed (`changedRunFields`) and the server `updated_at` of the copy it was made on — in the `pending_edits.json` sidecar. The push is `ApiClient.updateRunFieldsIfUnchanged`: an UPDATE of only those columns filtered on `id`, `user_id` and `updated_at = <base>` (the server's own string, microseconds intact), returning the row. A row back clears the edit and is adopted; zero rows means the row moved, so it is re-read, the edit re-based onto it (its fields over the server's, every other server change kept) and swapped once more; still losing leaves it pending for the next cycle; a row the server no longer has drops the local copy and the edit. Never throws. An edit to a run never pushed stays a whole-row upsert ([decisions.md § 2147](../architecture/decisions.md)).
+- **Pull-side** runs from the Runs tab (`RunsScreen._fetchRemote`, on mount and on pull-to-refresh) in two steps. First a delta by the server's own modification clock: `ApiClient.getRunsModifiedSince(runsSyncCursor)` walks every owned run whose `runs.updated_at` — stamped by a trigger on every insert and update, whoever writes it — is later than the cursor minus a five-minute overlap, keyset-paged on `(updated_at, id)`, and the newest `updated_at` it read becomes the next cursor (a server instant, never the device clock). With no cursor (first sign-in, or the upgrade off the old device-clock `runs_last_fetched_at` watermark) it walks every owned row, which is what heals copies a phone held of runs edited on web before the trigger existed ([decisions.md § 2118](../architecture/decisions.md)). The rows fold in through `LocalRunStore.saveManyFromRemote()` (batched, out-of-window copies kept out of the resident window) under the pending-edit merge below, which no device clock takes part in ([decisions.md § 2147](../architecture/decisions.md)); queued remote deletes are skipped. Then a **membership reconcile** (`missing_run_pull.dart`): `fetchOwnedRunIds()` walks the owned id set, and `getRunsByIds()` fetches only the ids the device does not hold (minus queued remote deletes) — the net for a row already behind the cursor that the phone lacks ([decisions.md § 2116](../architecture/decisions.md)). Load more hides once a full walk or a reconcile has completed.
 
 ### Triggers for a push
 
@@ -187,34 +191,35 @@ Each _trySync:
   - if apiClient.userId == null: return       (not signed in, stay offline)
   - filter unsyncedRuns by metadata.created_by_user_id
   - if filtered.isEmpty + no pending deletes + no unsynced routes: return
-  - api.saveRunsBatch(filtered) → mark only the ids NOT in the
-    returned failed-track set as synced; arm backoff on any failure
+  - api.saveRunsBatch(filtered) → park outcome.blocked, then mark only
+    the ids in NEITHER set as synced; arm backoff on a RETRYABLE failure
+    only (a parked run has nothing to come back for)
 ```
 
 `{'manual', 'signin'}` is the bypass set: a user-initiated retry from the runs screen always fires, and a fresh auth session is a strong signal that any prior auth-rejection backoff is stale (the session that produced the 401 is gone). Without the signin bypass, a user who signs out, the queue piles up, then signs back in is stuck waiting out a 30-min window from the dead session — their freshly-recorded offline run sits unsynced.
 
-### Newer-wins conflict resolution (pull side)
+### Pending-edit merge (pull side)
 
 ```
-User taps "Pull" on RunsScreen
-  → ApiClient.getRuns() returns cloud runs (track is empty; lazy-loaded later)
-  → for each remote run:
-      LocalRunStore.saveFromRemote(remote):
-        existing = local[remote.id]
-        if existing and local.last_modified_at > remote.last_modified_at:
-          return                              # local wins, ignore remote
-        if remote.track.isEmpty and existing.track.isNotEmpty:
-          merged = remote with existing.track  # preserve local GPS
-        else:
-          merged = remote
-        save merged to disk, mark synced
+for each pulled row (track empty; lazy-loaded later):
+  LocalRunStore._mergeRemote(remote):
+    local copy exists but is not synced (never pushed, parked):
+      keep local                              # its own upsert carries it
+    local copy has a pending edit:
+      merged = remote with the edit's fields from local
+      re-base the edit onto remote.updated_at, keep it pending
+    otherwise:
+      merged = remote                         # the server row wins outright
+    if remote.track.isEmpty and local.track.isNotEmpty:
+      keep local track                        # preserve local GPS
+    save merged to disk, mark synced
 ```
 
-The track-preservation step is specifically because cloud rows have empty `track` arrays (tracks live in Storage; see [decisions.md § 2](../architecture/decisions.md)). If we just took `remote` as-is, pulling would drop the GPS data of every run we already had locally.
+No device clock decides anything here: `metadata.last_modified_at` was the old tie-breaker, and two devices whose clocks disagreed could make a newer edit lose ([decisions.md § 2147](../architecture/decisions.md)). The track-preservation step is because cloud rows have empty `track` arrays (tracks live in Storage; see [decisions.md § 2](../architecture/decisions.md)).
 
 ### Watch out
 
-- **`last_modified_at` is on `metadata`, not a real column.** See [metadata.md](../backend/metadata.md#internal--runtime-only). That means conflict resolution depends on both sides writing it consistently. If a non-Android client (web, watch) starts editing runs, it needs to stamp this key too — or the Android client will ignore its edits as "older than local".
+- **`metadata.last_modified_at` decides nothing across devices any more.** The phone still stamps it locally, where it orders the summary index between the app's two isolates, and strips it from every row it writes; web no longer writes it. Edits made elsewhere reach the phone through the server-stamped `runs.updated_at` delta, and a conflict is resolved by the server's arrival order of compare-and-swaps ([decisions.md § 2147](../architecture/decisions.md)).
 - **Pending remote-deletes are per-user tagged, for both runs and routes.** `LocalRunStore.markManyPendingRemoteDelete(ids, ownerUserId: api.userId)` / `LocalRouteStore.markManyPendingRemoteDelete(ids, ownerUserId: api.userId)` stamp each queued failure with the user_id who queued it. `SyncService._trySync` filters via `(run|route)Store.pendingRemoteDeletesForUser(api.userId)` so on a shared device, User A's queued deletes aren't attempted under User B's session (RLS would reject every one and the queue would get stuck failing forever). Untagged entries (legacy / queued-while-signed-out) adopt to whichever user is signed in next, mirroring the run owner-adoption rule. The persistence file upgrades from the legacy `{"ids": [...]}` shape to `{"deletes": {id: owner_or_null}}` on the next mutation. `LocalRouteStore` mirrors `LocalRunStore`'s queue shape exactly (issue #674 — the route store previously had no retry queue at all: `routes_screen._deleteSelected` dropped a failed `api.deleteRoute` silently, leaving the route intact locally with no retry path). Pinned by `architecture_guards_test.dart#_drainPendingDeletes uses the per-user filter` + `runs_screen passes the current user id when queuing pending deletes`.
 - **A run or route already queued for deletion is never (re-)pushed, even if it was never synced** (issue #675). The push step filters `unsyncedRuns`/`unsyncedRoutes` against the pending-delete queue before uploading — without this, a run or route deleted offline before its first push would have its full data uploaded (re-creating the row the user just asked to delete) moments before the delete drain removed it again; a partial-cycle failure right after the upload left the re-created row stranded until a later cycle's drain caught up. The run-side filter lives in `SyncService._trySync` + `background_sync.dart#runBackgroundSyncCycle` (both call sites, since the run push isn't a shared free function); the route-side filter lives inside the shared `drainUnsyncedRoutes` so the two sync paths can't drift.
 - **WorkManager-based periodic sync is live** (`background_sync.dart`, hourly with a network constraint). A run made offline with the app force-killed still syncs without a manual relaunch, though the hourly cadence means there may be up to 1 hour of delay. Foreground + connectivity-change triggers still cover the fast path. The WorkManager cycle drains **all four** local queues the foreground `SyncService` does — unsynced runs, pending run remote-deletes, unsynced routes, and pending route remote-deletes — reusing the shared `drainPendingDeletes` / `drainUnsyncedRoutes` / `drainPendingRouteDeletes` free functions so the two paths can't drift (issue #385; before that fix the background cycle pushed runs only, so an offline delete or offline-built route never made progress while the app was backgrounded). Each queue is wrapped in its own try/catch so a failure draining one doesn't abort the others. The run queue routes through `filterRunsForCurrentUser` so the background path applies the same shared-device owner-tag guard as the foreground `SyncService` — without that mirror, the periodic fire would push User A's runs under User B's account on a shared device. Pinned by `architecture_guards_test.dart#background_sync applies the owner-tag filter before push`.
@@ -273,6 +278,8 @@ When a live-broadcast run stops, the recorder stamps `runs.concluded_at` (`concl
 
 Both spectator surfaces — web `/live/[id]` and mobile `live_spectator_screen.dart` — read `concluded_at` from `public_runs`: on load it wins over the duration inference, and while live a ~15 s poll flips a mid-watch run to the conclusion view the moment the marker appears (transport-agnostic — same for Supabase Realtime and the Go hub). A concluded run renders a **conclusion card** ("Run complete" + a "view the full run" CTA → web `/share/run/[id]`, mobile `PublicRunScreen`); web also frames the whole trace on the map. While the run is still live, the page carries a **recent-pace** tile (distinct from the cumulative average) and, when the run follows a known route, a **course-progress** bar.
 
+**Safety-contacts link (decisions § 1964).** A run whose automatic share runs on the safety-contacts audience is private (`runs.safety_audience`, no `is_public` flip), so the plain `/live/{run_id}` link shows "not broadcasting" to everyone but the runner. When the overdue scan or the off-route escalation fires it mints one link per confirmed contact and emails each their own `/live/{run_id}#k=<token>`. Web `/live/[id]` reads the fragment, loads the run through `safety_live_run` and the pings through `safety_live_pings` (POST, token in the body), polls every 5 s instead of subscribing (realtime and the Go hub both authorise on `is_run_visible_to`, which refuses a private run), shows a "Safety contacts only" notice, and switches to a closed-link state once the token stops admitting (run saved or concluded, contact removed, gate closed, 48 h elapsed). Mobile `live_spectator_screen.dart` has no token path: contacts arrive from an email in a browser, and `/live/` is not an app link.
+
 **How a spectator reaches the tracker (issue #666).** On web the `/live/[id]` URL the runner shared is itself the entry — paste it in a browser and it works. On mobile it was not: the shared link opens the web page in a browser, and nothing in the app pushed `live_spectator_screen.dart`, so the screen was an orphan reachable only from its own tests. Both platforms now also surface the run *while it is live* on the public run surface — web `/share/run/[id]`, mobile `PublicRunScreen` — with a "Watch live" CTA. The detection is the shared `isLiveBroadcast` predicate (`apps/web/src/lib/runs/live_broadcast.ts` ↔ `apps/mobile_android/lib/live_broadcast.dart`): `concluded_at` first, then a zero `duration_s`, failing closed when the duration is absent. Before this, an in-progress broadcast — a stub row until the recorder saves — presented on both surfaces as a finished run of 0 km in 0:00.
 
 ### Predictive next cut-off ("will they make it?")
@@ -281,7 +288,7 @@ When the live run is linked to a **public route that carries cut-off markers** (
 
 ```
 each ping → project the runner onto the planned line
-  distanceAlongRoute(lastPos, waypoints)        (route_geometry pair)
+  progressAlongRoute(lastPos, waypoints, 0, distance_m)  (route_geometry pair)
   recentPaceSecPerKm = Δdist / Δtime over the last ~5 pings
   legs = buildRoadbook(waypoints, markers, …)   (cut-off limits only; goal-independent)
   → nextCutoffEta({ distAlongRouteM, elapsedS, recentPaceSecPerKm, legs, stale })
@@ -290,7 +297,39 @@ each ping → project the runner onto the planned line
        status ∈ on | tight | behind | unknown
 ```
 
-The card shows the next cut-off's name, distance to go, projected arrival, and a green/amber/red margin chip. **The staleness contract is the whole point:** when `live_freshness` flags the last fix as stale (or pace is unknown), the helper returns `status: 'unknown'` — the card still names the checkpoint + distance but shows "waiting for a fresh signal" and **suppresses the verdict**, never fabricating an ETA off an 18 h-old fix. Projection is flat recent pace (grade-adjusted remaining deferred, mirroring `checkpoint_projection`). All reads, works logged-out. See [predictive_live_tracking.md](predictive_live_tracking.md) + [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cutoff-legs-and-fails-to-unknown-when-the-fix-is-stale).
+The card shows the next cut-off's name, distance to go, projected arrival, and a green/amber/red margin chip. **The staleness contract is the whole point:** when `live_freshness` flags the last fix as stale (or pace is unknown), the helper returns `status: 'unknown'` — the card still names the checkpoint + distance but shows "waiting for a fresh signal" and **suppresses the verdict**, never fabricating an ETA off an 18 h-old fix. Projection is flat recent pace (grade-adjusted remaining deferred, mirroring `checkpoint_projection`). All reads, works logged-out. See [predictive_live_tracking.md](predictive_live_tracking.md) + [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cut-off-legs-and-fails-to-unknown-when-the-fix-is-stale).
+
+### Streamer overlay
+
+A creator streaming a run adds `/live/overlay` to OBS (or a streaming app) as a browser source (#1273 item 3, decisions § 2265). It is chromeless and transparent: the root layout drops its toasts, undo bar, offline and cookie banners on that one path, and the page loads no map tiles.
+
+```
+Creator, web Settings → Privacy & Sharing (or the phone's live-share sheet)
+  → create_live_overlay_token()            one token per user, rate-limited 10/h
+  → update_live_overlay_settings(delay, trace, heart rate)
+  → copies  https://<host>/live/overlay?stats=…&units=…&layout=…[&map=1]#<token>
+
+OBS browser source (no session)
+  → live_overlay_enabled()                 'unavailable' while the gate is closed;
+                                           a failed read is also 'unavailable' and is
+                                           asked again every 5 s, never the feed
+  → every 5 s: live_overlay_feed(token, since)   POST; the token is the capability
+       server: token → owner → newest in-progress, unconcluded stub
+               → pings with at <= now() - delay_s
+               → lat/lng only with show_map (never for a coarse row)
+               → bpm only with show_heart_rate AND health-data consent
+  → every 12th poll reads without a cursor: an empty answer means the run ended
+```
+
+- **The token is per user, not per run.** A browser source is set up once; a per-run token would mean a new URL in OBS after every start. It resolves to whichever live stub the owner has open, so a run does not need to be public to be streamed. Replacing it kills the old URL at once; turning it off deletes it.
+- **The delay is the server's.** Rows newer than `delay_s` never leave the database, so nobody with the link can see further ahead than the creator chose. A public run is still watchable in real time on `/live/[id]`; the overlay does not change who can see a public run.
+- **The URL decides only the look.** Stats, units and layout ride in the query string so one token can serve several sources. The fragment carries the token, which the browser never sends to a server, so it stays out of CDN and request logs (the safety-contact link does the same). The browser's error reporter does see `location.href` whole, so `redactUrl` in `lib/sentry/redact.ts` replaces every URL fragment with `#[redacted]` in `request.url`, breadcrumbs and span names before an event leaves.
+- **The cursor is `at`, and the server owns it.** A ping a client writes has its `at` stamped to its arrival (`live_run_pings_stamp_at_before_insert`), so a late upload lands after the cursor the overlay already holds instead of behind it, where it would never be shown. The service role keeps the `at` it writes.
+- **Pace is the last minute's,** from `overlayPaceSpan` in `lib/runs/live_overlay.ts`, falling back to the whole-run average until a minute of running with at least 20 m of movement exists.
+
+### Heart rate on live surfaces
+
+`live_run_pings.bpm` is Art 9 health data. It is stored only for an owner with `health_data_consent_at` on record while the `live_overlay` gate is open: the `live_run_pings_strip_bpm_before_insert` trigger nulls it otherwise, and the Go hub asks the service-role-only `live_heart_rate_shared(user_id)` before it fans a ping out (cached per owner for at most 5 s, apart from the room's minute-long run-meta cache). `/live/[id]` and the phone's spectator screen show a Heart rate tile whenever the newest ping carries one, and the overlay shows it only when the creator has also switched it on. Withdrawing consent stops it on the overlay at the next poll, in `live_run_pings` on the next insert, and on the hub within 5 s.
 
 ### Watch out
 
@@ -298,3 +337,80 @@ The card shows the next cut-off's name, distance to go, projected arrival, and a
 - **The next cut-off card fails to `unknown`, never to a guess.** A stale fix or unknown pace suppresses the verdict (see "Predictive next cut-off"). Don't "fix" a missing chip by defaulting it to on-pace — `unknown` is the correct, honest state.
 - **Live tracking battery drain** is the main risk of this feature. Every-3-second GPS → INSERT/send ≈ 5% extra battery per hour. Roadmap § "Open risks" says the feature must be opt-in per run, never on by default.
 - **The public `/live/{run_id}` page works without auth.** No user JWT, no session cookie. The hub treats `run_id` as a bearer token; the Realtime channel name is `live:{run_id}` (anyone with the run id can subscribe — shareability is the feature).
+
+---
+
+## AI Coach and a coach-approved plan change
+
+The AI Coach is one row of the Messages inbox ([decisions § 2227](../architecture/decisions.md)). A change to a plan a coach assigned can go to that coach for approval ([decisions § 2382](../architecture/decisions.md)). AI text and human messages never share a thread. What crosses between the two people is a structured change set.
+
+```
+Athlete (web)                     Supabase                              Coach (web or mobile)
+  /messages → pinned "AI Coach" row
+    → /messages/coach?plan=<id> (CoachChat; /coach redirects here)
+  asks for a change → Coach reply carries [Adjust my plan]
+    → CoachPlanEditCard (or Adjust with AI on /plans/<id>)
+       POST /api/coach/plan-edit → validated ops → graded diff
+  plan.assigned_by_coach_id + active coach_athletes link?
+    no  → Apply → apply_ai_plan_edits
+    yes → "Send to <coach> for approval"
+          → propose_plan_change ────► dry run of the apply (rolled back, PC001)
+                                      insert plan_change_requests (pending)
+                                      notification plan_change_request ──► bell / email / push
+                                                                            → /plans/<id> or /messages/<athlete>
+                                                                            PlanChangeRequestCard:
+                                                                              before = plan rows now
+                                                                              after  = stored change
+                                      decide_plan_change ◄───────────────── Approve (ticked lines) / Decline + note
+                                        approve → private.apply_plan_edit_changes(athlete, …)
+                                      notification plan_change_decision
+  ◄── bell / email / push → card shows Approved / Approved in part / Declined + note
+  pending, the athlete can instead:
+    Withdraw (confirm) → withdraw_plan_change
+    Apply it myself    → apply_plan_change_myself → coach gets plan_ai_edit
+```
+
+- **Fail-closed.** No active link, or no assigning coach, means no Send button. `propose_plan_change` refuses with `42501` all the same. A coach whose link has ended cannot decide.
+- **What an approval writes is what the card shows.** "Before" is read when the card renders, and the RPC re-checks every line against the rows as they stand when the coach acts. A plan that has moved on since the suggestion (a workout now in the past or done) refuses the whole approval rather than half-applying it.
+- **Nothing new goes to Anthropic.** The request holds plan ids and numbers. The only free text is the coach's own note to their athlete.
+
+### Sharing an AI answer with the coach (issue #1215 Phase 3)
+
+```
+Athlete (web or mobile)                Supabase                              Coach
+  /messages/coach → an AI answer → [Share with coach]
+    (shown only while coach_share_enabled() and an active coach link exist)
+    pick paragraphs (coachAnswerParagraphs) + coach
+      → share_coach_message(answer, coach, [indexes])
+           gate coach_share open?                 else 0A000
+           answer is the caller's assistant row?  else P0002
+           coach is active, no block, not declined? else 42501
+           copy the paragraphs server-side (private.coach_answer_paragraphs)
+           insert direct_messages kind=coach_share ──► notification message ──► bell / email / push
+                                                                            /messages/<athlete>
+                                                                            CoachShareCard: AI avatar,
+                                                                            "AI Coach answer", AI tag,
+                                                                            text drawn as typed blocks
+  card in the thread: "You shared this…", Open in AI Coach (sender only)
+```
+
+- **What is labelled AI is AI text.** The server copies the paragraphs by index out of the athlete's own assistant row; a client cannot insert a `coach_share` or edit one.
+- **Text, never HTML.** Both clients draw the card from `parseSharedMarkdown` blocks (bold, italic, code, list items, headings; a link keeps only its text), so AI output that crosses users cannot become stored XSS (decisions § 110).
+- **An active coaching link is a message edge.** The card is an ordinary message the coach is notified of and can answer, with no follow edge between the pair.
+
+### The coach assistant (issue #1215 Phase 4, built and off)
+
+```
+Athlete (/coaching)                    Supabase                      Coach (web /messages/<athlete>)
+  "Let <coach> use AI assistance" ──► set_coach_ai_assist_consent
+                                       coach_athletes.ai_assist_consent_version = 1
+                                                                       [Draft with AI] (PUBLIC_COACH_ASSIST_ENABLED,
+                                                                         active coach of the partner)
+                                                                       POST /api/coach/assist {athlete, mode, request}
+                                       COACH_ASSIST_ENABLED? coach v7 disclosure? link active + athlete consent?
+                                       Pro? rate slot? → context through COACH_ASSIST_REGISTRY → Anthropic
+                                                                       ◄── draft (not stored, coach only)
+                                                                       Use draft → edit → Send
+                                       insert direct_messages kind=ai_assisted (only from an active coach, with consent)
+  message marked "AI-assisted" ◄─────────────────────────────────────── marked on both sides
+```

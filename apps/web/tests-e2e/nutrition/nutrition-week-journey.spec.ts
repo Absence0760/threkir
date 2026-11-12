@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
-import { waterStorageKey } from '../fixtures/helpers';
+import { noonOnBrowserDay, waterStorageKey } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Nutrition multi-day WEEK journey — one long, multi-step walk that THREADS
@@ -28,12 +29,10 @@ import { USER_A } from '../fixtures/users';
  * gate lives only in Settings, for EDITING). So this spec NEVER sets or clears
  * body metrics or health consent: it relies on the seed and leaves it untouched.
  *
- * Date handling: the 7-day trend buckets on the LOCAL calendar day, and the
- * Playwright browser is pinned to UTC (playwright.config.ts § timezoneId). So
- * every inserted row is anchored to NOON UTC of its target day (Date.UTC(...,12))
- * — noon keeps each row safely inside its own UTC day regardless of the ±offset
- * between this Node process's zone and the browser's UTC, avoiding the
- * day-boundary flake that bit the dynamic-TDEE seed (see nutrition.spec.ts).
+ * Date handling: the 7-day trend buckets on the browser's calendar day, so
+ * every inserted row is anchored through fixtures/dates.ts, which builds the
+ * day in the zone playwright.config.ts pins the browser to rather than in this
+ * Node process's (decisions.md § 728).
  *
  * A unique stamp per run keeps the inserted rows + the UI-logged item isolated
  * from the seed's own week of food in the shared DB, and the finally block
@@ -70,19 +69,12 @@ test.describe('/nutrition — multi-day week journey', () => {
 
 	/// Noon UTC of (today − offsetDays), as an ISO string. Browser-UTC bucketing
 	/// puts this squarely on that calendar day.
-	function noonUtcDaysAgo(offsetDays: number): string {
-		const now = new Date();
-		return new Date(
-			Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offsetDays, 12, 0, 0),
-		).toISOString();
-	}
-
 	test.beforeAll(async () => {
 		// Plant calorie-only food on three distinct prior days so the 7-day
 		// trend has multi-day variation independent of the seed's own week.
 		const rows = WEEK_OFFSETS.map((off) => ({
 			user_id: USER_A.id,
-			started_at: noonUtcDaysAgo(off),
+			started_at: noonOnBrowserDay(-off),
 			item_name: WEEK_ITEM(off),
 			calories: WEEK_KCAL,
 			meal_slot: 'lunch',
@@ -149,7 +141,7 @@ test.describe('/nutrition — multi-day week journey', () => {
 			// And the water budget chip is wired to that goal.
 			const chip = page.getByTestId('water-budget');
 			await expect(chip).toBeVisible();
-			await expect(chip).toContainText(/ml left|Goal reached/);
+			await expect(chip).toContainText(/L left|Goal reached/);
 		});
 
 		// ── 3. Log today's food via the real FoodLogEditor write path ────────
@@ -177,12 +169,15 @@ test.describe('/nutrition — multi-day week journey', () => {
 			await expect.poll(consumedKcal).toBe(baseKcal + TODAY_KCAL);
 
 			// Backend row exists today, owned by USER_A, in the chosen slot.
-			const { data: created } = await admin
-				.from('food_log')
-				.select('id, meal_slot')
-				.eq('user_id', USER_A.id)
-				.eq('item_name', TODAY_ITEM);
-			expect(created?.length).toBe(1);
+			const created = await readRows(
+				'food_log by user_id+item_name',
+				admin
+					.from('food_log')
+					.select('id, meal_slot')
+					.eq('user_id', USER_A.id)
+					.eq('item_name', TODAY_ITEM)
+			);
+			expect(created.length).toBe(1);
 			expect(created![0].meal_slot).toBe('dinner');
 		});
 
@@ -191,11 +186,15 @@ test.describe('/nutrition — multi-day week journey', () => {
 			const trend = page.locator('.trend-card');
 			await expect(trend).toBeVisible({ timeout: 10_000 });
 
-			// Seven day columns; today is the last and carries this session's
-			// dinner item, so its value cell is non-empty.
+			// Seven day columns; the last is the day the diary is SHOWING, and
+			// `trend-viewed` marks it — the chart ends on the viewed day, which is
+			// today only because this spec never leaves the default `/nutrition`
+			// (decisions § 591). Pin that precondition rather than lean on it, or
+			// the class assertion silently stops proving the column is today's.
+			await expect(page.getByTestId('diary-day')).toHaveText('Today');
 			const cols = trend.locator('.trend-col');
 			await expect(cols).toHaveCount(7);
-			await expect(cols.last()).toHaveClass(/trend-today/);
+			await expect(cols.last()).toHaveClass(/trend-viewed/);
 			await expect(cols.last().locator('.trend-val')).not.toHaveText('');
 
 			// At least four of the seven columns carry data — the multi-day shape
@@ -207,14 +206,17 @@ test.describe('/nutrition — multi-day week journey', () => {
 
 			// Backend cross-check: the three planted week rows + today's UI row
 			// all exist for USER_A within the trailing-week window.
-			const since = noonUtcDaysAgo(6);
-			const { data: weekRows } = await admin
-				.from('food_log')
-				.select('item_name')
-				.eq('user_id', USER_A.id)
-				.like('item_name', `%${stamp}%`)
-				.gte('started_at', since);
-			expect((weekRows ?? []).length).toBe(WEEK_OFFSETS.length + 1);
+			const since = noonOnBrowserDay(-6);
+			const weekRows = await readRows(
+				'food_log by user_id',
+				admin
+					.from('food_log')
+					.select('item_name')
+					.eq('user_id', USER_A.id)
+					.like('item_name', `%${stamp}%`)
+					.gte('started_at', since)
+			);
+			expect(weekRows.length).toBe(WEEK_OFFSETS.length + 1);
 		});
 
 		// ── 4b. The trend metric toggle re-plots the chart on protein ────────

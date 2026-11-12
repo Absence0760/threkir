@@ -4,13 +4,17 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton, TextLane;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/preferences.dart';
 import '../lib/relink_candidates.dart';
 import '../lib/screens/workout_detail_screen.dart';
+import '../lib/training.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
+import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
   return PlanWorkoutRow(
@@ -33,6 +37,16 @@ class _FakeTraining extends TrainingService {
   final Completer<void>? gateCandidates;
   String? lastMarkRunId;
   bool markCalled = false;
+  bool? lastMarkManual;
+
+  /// Holds the re-link write open until completed, when set.
+  Completer<void>? markGate;
+
+  /// What each candidate read does, in order; the last repeats. An [Object]
+  /// is thrown, null serves [candidates].
+  List<Object?> candidateLoads = const [null];
+  int candidateCalls = 0;
+  Object? markError;
 
   _FakeTraining(this.workout, this.candidates, {this.gateCandidates});
 
@@ -44,6 +58,10 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutRow workout,
   ) async {
     await gateCandidates?.future;
+    final outcome =
+        candidateLoads[candidateCalls.clamp(0, candidateLoads.length - 1)];
+    candidateCalls++;
+    if (outcome != null) throw outcome;
     return candidates;
   }
 
@@ -52,6 +70,9 @@ class _FakeTraining extends TrainingService {
       {bool manual = false}) async {
     markCalled = true;
     lastMarkRunId = runId;
+    lastMarkManual = manual;
+    await markGate?.future;
+    if (markError != null) throw markError!;
   }
 }
 
@@ -82,10 +103,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -111,13 +129,15 @@ void main() {
       // Reason: while _loading is true the screen returns a bare
       // Scaffold carrying nothing but the loader.
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 
-    testWidgets('initial Scaffold has no AppBar yet', (tester) async {
+    testWidgets('the loading Scaffold keeps an AppBar, so back works',
+        (tester) async {
       await _pump(tester);
-      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(AppBar), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
     });
   });
 
@@ -185,6 +205,81 @@ void main() {
       expect(find.byType(ListTile), findsOneWidget);
     });
 
+    // Re-link had no busy state: a second tap opened the picker again over a
+    // link still in flight, and Unlink stayed live beside it.
+    testWidgets('a re-link in flight holds Re-link and Unlink', (tester) async {
+      final gate = Completer<void>();
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [
+          _cand('run-current', '2026-04-05T07:00:00Z'),
+          _cand('run-other', '2026-04-06T07:00:00Z'),
+        ],
+      )..markGate = gate;
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(1));
+      await tester.pumpAndSettle();
+      expect(training.lastMarkRunId, 'run-other');
+
+      ButtonStyleButton button(String key) =>
+          tester.widget<ButtonStyleButton>(find.byKey(Key(key)));
+      expect(button('workoutDetailRelink').onPressed, isNull);
+      expect(button('workoutDetailMarkNotDone').onPressed, isNull);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(button('workoutDetailRelink').onPressed, isNotNull);
+    });
+
+    // A failed candidate read was a dead end: the text said "try again" and
+    // the dialog offered only Cancel.
+    testWidgets('a failed candidate load offers a Retry that loads them',
+        (tester) async {
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [_cand('run-current', '2026-04-05T07:00:00Z')],
+      )..candidateLoads = [Exception('offline'), null];
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't load your runs. Try again."), findsOneWidget);
+      expect(find.byType(ListTile), findsNothing);
+
+      await tester.tap(find.byKey(const Key('workoutRelinkRetry')));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(training.candidateCalls, 2);
+      expect(find.byType(ListTile), findsOneWidget);
+      expect(find.text("Couldn't load your runs. Try again."), findsNothing);
+    });
+
+    // A failed link said the runs had not loaded, which they had.
+    testWidgets('a failed re-link says the link failed, not the load',
+        (tester) async {
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [
+          _cand('run-current', '2026-04-05T07:00:00Z'),
+          _cand('run-other', '2026-04-06T07:00:00Z'),
+        ],
+      )..markError = Exception('refused');
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(1));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text("Couldn't link that run. Try again."), findsOneWidget);
+      expect(find.text("Couldn't load your runs. Try again."), findsNothing);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
     testWidgets('picker shows the empty state when no candidates', (tester) async {
       final training = _FakeTraining(_completedWorkout(), const []);
       await _pumpWith(tester, training);
@@ -206,9 +301,390 @@ void main() {
       await _pumpWith(tester, training);
       await tester.pumpAndSettle();
 
-      // A manually-completed workout (no completed_run_id) shows no
-      // completed card with run actions — re-link is run-link-only.
+      // Re-link is run-link-only: a manually-completed workout has no run.
       expect(find.text('Re-link'), findsNothing);
+    });
+
+    testWidgets('a manually-completed workout reads Completed and can be '
+        'marked not done', (tester) async {
+      final training = _FakeTraining(
+        PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: 'easy',
+          targetDistanceM: 5000,
+          completedAt: DateTime(2026, 4, 5, 8),
+          manuallyCompleted: true,
+        ),
+        const [],
+      );
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      // It used to read as a plain to-do with a Start button, while the
+      // plan rows and calendar called it done.
+      expect(find.text('Completed'), findsOneWidget);
+      expect(find.text('Start workout'), findsNothing);
+
+      // One tap, no dialog: the open panel's "Mark as done" puts it back.
+      await tester.tap(find.text('Mark not done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(training.markCalled, isTrue);
+      expect(training.lastMarkRunId, isNull);
+      expect(training.lastMarkManual, isFalse);
+    });
+  });
+
+  group('WorkoutDetailScreen — race workout', () {
+    PlanWorkoutRow raceWorkout({String? name, String? priority}) =>
+        PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2027, 4, 4),
+          kind: 'race',
+          targetDistanceM: 56000,
+          targetDurationSeconds: 23400,
+          raceName: name,
+          racePriority: priority,
+          manuallyCompleted: false,
+        );
+
+    testWidgets('headlines the race name and shows its priority and goal time',
+        (tester) async {
+      await _pumpWith(
+          tester,
+          _FakeTraining(
+              raceWorkout(name: 'Two Oceans Ultra', priority: 'B'), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          'Two Oceans Ultra');
+      expect(find.text('RACE PRIORITY'), findsOneWidget);
+      expect(find.text('B — important race'), findsOneWidget);
+      expect(find.text('GOAL TIME'), findsOneWidget);
+      expect(find.text('6:30:00'), findsOneWidget);
+    });
+
+    testWidgets('an unnamed race with no priority falls back to the kind',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(raceWorkout(), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          'Race');
+      expect(find.text('RACE PRIORITY'), findsNothing);
+    });
+  });
+
+  group('WorkoutDetailScreen — advice read from the row', () {
+    String advice(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const Key('workoutDetailAdvice')))
+        .data!;
+
+    Future<void> pumpRow(WidgetTester tester, PlanWorkoutRow row) async {
+      tester.view.physicalSize = const Size(420, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pumpWith(tester, _FakeTraining(row, const []));
+      await pumpUntil(
+        tester,
+        () => tester.any(find.byKey(const Key('workoutDetailAdvice'))),
+        describe: 'the workout to load and draw its advice',
+      );
+    }
+
+    testWidgets('a long run set by time with no pace is time on feet',
+        (tester) async {
+      await pumpRow(
+          tester,
+          PlanWorkoutRow(
+            id: 'fake-workout-id',
+            weekId: 'week-1',
+            scheduledDate: DateTime(2027, 2, 7),
+            kind: 'long',
+            targetDistanceM: 24000,
+            targetDurationSeconds: 10800,
+            manuallyCompleted: false,
+          ));
+      expect(advice(tester), startsWith('Time on feet at easy effort'));
+    });
+
+    testWidgets('a race past the marathon is run by effort', (tester) async {
+      await pumpRow(
+          tester,
+          PlanWorkoutRow(
+            id: 'fake-workout-id',
+            weekId: 'week-1',
+            scheduledDate: DateTime(2027, 4, 4),
+            kind: 'race',
+            targetDistanceM: 56000,
+            manuallyCompleted: false,
+          ));
+      expect(advice(tester),
+          'Run by effort and fuel early — the clock looks after itself.');
+    });
+  });
+
+  group('WorkoutDetailScreen — walk-run structure', () {
+    // The C25K generator writes only duration_s / recovery_duration_s; the
+    // structure list cast `distance_m as num` and threw on null.
+    PlanWorkoutRow walkRunRow(int weekIndex, {bool last = false}) {
+      final plan = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 3,
+        beginnerWalkRun: true,
+      ));
+      final sessions = plan.weeks[weekIndex].workouts
+          .where((w) => w.kind == WorkoutKind.walkRun);
+      final g = last ? sessions.last : sessions.first;
+      return PlanWorkoutRow(
+        id: 'fake-workout-id',
+        weekId: 'week-1',
+        scheduledDate: g.scheduledDate,
+        kind: workoutKindDbValue(g.kind),
+        targetDistanceM: g.targetDistanceM,
+        targetDurationSeconds: g.targetDurationSeconds,
+        targetPaceSecPerKm: g.targetPaceSecPerKm,
+        structure: g.structure!.toJson(),
+        manuallyCompleted: false,
+      );
+    }
+
+    testWidgets('renders steps as durations instead of throwing',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(walkRunRow(0), const []));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // Week 1: walk 5 min, run 1:00 / walk 1:30 x 8, walk 5 min.
+      expect(find.text('5:00'), findsNWidgets(2));
+      expect(find.text('@ easy'), findsNWidgets(2));
+      expect(find.text('8× 1:00'), findsOneWidget);
+      expect(
+          tester
+              .widget<Text>(find.byKey(const Key('workoutStepRecovery')))
+              .textSpan!
+              .toPlainText(),
+          'Recovery  1:30 walk');
+      expect(find.textContaining(' with '), findsNothing);
+    });
+
+    testWidgets('the hero reads the session as a pattern and a length',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(walkRunRow(0), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
+          '5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down');
+      // 300 + 8 × 60 + 7 × 90 + 300 = 1710 s: a recovery sits between reps.
+      expect(tester.widget<Text>(find.byKey(const Key('walkRunTotal'))).data,
+          'about 29 min');
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailTotal'))).data,
+          'Total: 28:30');
+      expect(find.byKey(const Key('workoutDetailTimeline')), findsOneWidget);
+    });
+
+    testWidgets('the graduation run has no recovery clause', (tester) async {
+      await _pumpWith(tester, _FakeTraining(walkRunRow(8), const []));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('1× 30:00'), findsOneWidget);
+      expect(find.byKey(const Key('workoutStepRecovery')), findsNothing);
+      expect(
+          tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
+          contains('30 min run'));
+    });
+
+    testWidgets('the plan ends on a 5K, read as a distance, not minutes',
+        (tester) async {
+      await _pumpWith(
+          tester, _FakeTraining(walkRunRow(8, last: true), const []));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(tester.widget<Text>(find.byKey(const Key('walkRunTotal'))).data,
+          '5 km run');
+      expect(
+          tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
+          '5 min warm-up, 5 km run, 5 min cool-down');
+    });
+  });
+
+  group('WorkoutDetailScreen — header', () {
+    PlanWorkoutRow row({String kind = 'tempo', String? zone}) => PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: kind,
+          targetPaceSecPerKm: 300,
+          paceZone: zone,
+          manuallyCompleted: false,
+        );
+
+    testWidgets('the date is localized, not ISO, and the kind is not repeated '
+        'in the AppBar', (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailDate'))).data,
+          'Apr 5, 2026');
+      expect(find.text('2026-04-05'), findsNothing);
+      expect(find.text('Tempo'), findsOneWidget);
+    });
+
+    testWidgets('a Daniels zone code is explained, free text is kept',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(zone: 'T'), const []));
+      await tester.pumpAndSettle();
+      expect(find.text('Zone T · Tempo'), findsOneWidget);
+    });
+
+    testWidgets('a session with no segments shows the free-form placeholder',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(kind: 'easy'), const []));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('workoutDetailFreeForm')), findsOneWidget);
+      expect(find.text('Free-form run'), findsOneWidget);
+    });
+
+    testWidgets('a screen reader hears the kind as a heading and each figure '
+        'with its label, not the caps letter by letter', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pumpWith(
+          tester,
+          _FakeTraining(
+              PlanWorkoutRow(
+                id: 'fake-workout-id',
+                weekId: 'week-1',
+                scheduledDate: DateTime(2026, 4, 5),
+                kind: 'tempo',
+                targetPaceSecPerKm: 300,
+                targetDistanceM: 8000,
+                structure: const WorkoutStructure(
+                  warmup: {'distance_m': 2000, 'pace': 'easy'},
+                  steady: {'distance_m': 4000, 'pace_sec_per_km': 300},
+                  cooldown: {'distance_m': 2000, 'pace': 'easy'},
+                ).toJson(),
+                manuallyCompleted: false,
+              ),
+              const []));
+      await tester.pumpAndSettle();
+
+      expect(
+          tester
+              .getSemantics(find.byKey(const Key('workoutDetailHeading')))
+              .flagsCollection
+              .isHeader,
+          isTrue);
+
+      final pace = tester
+          .getSemantics(find.byKey(const Key('workoutDetailPaceFigure')))
+          .label;
+      expect(pace, startsWith('Target pace\n'));
+      expect(pace, contains('5:00'));
+      expect(pace, isNot(contains('TARGET PACE')));
+
+      expect(find.bySemanticsLabel(RegExp(r'^Distance\n8')), findsOneWidget);
+
+      final warmup = tester
+          .getSemantics(find.byKey(const Key('workoutStep-warmup')))
+          .label;
+      expect(warmup, 'Warmup\n2.0 km\n@ easy');
+      handle.dispose();
+    });
+
+    testWidgets('a rest day has no free-form placeholder', (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(kind: 'rest'), const []));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('workoutDetailFreeForm')), findsNothing);
+    });
+  });
+
+  group('WorkoutDetailScreen — status panels reflow', () {
+    Future<void> pumpGerman(WidgetTester tester, PlanWorkoutRow w) async {
+      tester.view.physicalSize = const Size(360, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2.0)),
+            child: child!,
+          ),
+          home: WorkoutDetailScreen(
+            training: _FakeTraining(w, const []),
+            planId: 'fake-plan-id',
+            workoutId: 'fake-workout-id',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the completed panel fits in German at 2.0x', (tester) async {
+      await pumpGerman(tester, _completedWorkout());
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('workoutDetailCompleted')), findsOneWidget);
+    });
+
+    testWidgets('the skipped panel fits in German at 2.0x', (tester) async {
+      await pumpGerman(
+          tester,
+          PlanWorkoutRow(
+            id: 'fake-workout-id',
+            weekId: 'week-1',
+            scheduledDate: DateTime(2026, 4, 5),
+            kind: 'easy',
+            skippedAt: DateTime(2026, 4, 5, 9),
+            manuallyCompleted: false,
+          ));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('workoutDetailSkipped')), findsOneWidget);
+    });
+  });
+
+  group('WorkoutDetailScreen — pace tolerance unit', () {
+    PlanWorkoutRow tempo() => PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: 'tempo',
+          targetPaceSecPerKm: 300,
+          targetPaceToleranceSec: 10,
+          manuallyCompleted: false,
+        );
+
+    Future<void> withUnit(bool miles) async {
+      SharedPreferences.setMockInitialValues({'use_miles': miles});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+    }
+
+    tearDown(() async => withUnit(false));
+
+    testWidgets('km mode labels the tolerance per km', (tester) async {
+      await tester.runAsync(() => withUnit(false));
+      await _pumpWith(tester, _FakeTraining(tempo(), const []));
+      await tester.pumpAndSettle();
+      expect(find.text('5:00/km'), findsOneWidget);
+      expect(find.text('±10s/km'), findsOneWidget);
+    });
+
+    testWidgets('miles mode converts the tolerance to per mile',
+        (tester) async {
+      // 10 s/km beside an 8:03/mi pace is 16 s/mi, not "±10s".
+      await tester.runAsync(() => withUnit(true));
+      await _pumpWith(tester, _FakeTraining(tempo(), const []));
+      await tester.pumpAndSettle();
+      expect(find.text('8:03/mi'), findsOneWidget);
+      expect(find.text('±16s/mi'), findsOneWidget);
     });
   });
 
@@ -321,4 +797,85 @@ void main() {
       expect(tester.getSize(termLane()).width, greaterThanOrEqualTo(180));
     });
   });
+
+  group('WorkoutDetailScreen — effort targets and provenance (decisions § 2092)',
+      () {
+    PlanWorkoutRow edited({String? updatedBy = 'coach-id'}) => PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2031, 3, 4),
+          kind: 'easy',
+          targetDistanceM: 8000,
+          targetRpeMin: 3,
+          targetRpeMax: 4,
+          targetHrMaxBpm: 125,
+          updatedBy: updatedBy,
+          updatedAt: DateTime.utc(2031, 3, 2, 9),
+          manuallyCompleted: false,
+        );
+
+    Future<void> pump(WidgetTester tester, _OwnerTraining training,
+        {required bool hr}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: WorkoutDetailScreen(
+            training: training,
+            planId: 'fake-plan-id',
+            workoutId: 'fake-workout-id',
+            hrPrescription: hr,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the owner sees the targets and that their coach set them',
+        (tester) async {
+      await pump(tester, _OwnerTraining(edited(), owner: 'me', viewer: 'me'),
+          hr: true);
+      expect(find.text('Effort 3–4/10'), findsOneWidget);
+      expect(find.text('Cap 125 bpm'), findsOneWidget);
+      expect(find.byKey(const Key('workoutDetailCoachEdited')), findsOneWidget);
+      expect(find.textContaining('Updated by your coach'), findsOneWidget);
+    });
+
+    testWidgets('with the gate off the bpm target stays hidden',
+        (tester) async {
+      await pump(tester, _OwnerTraining(edited(), owner: 'me', viewer: 'me'),
+          hr: false);
+      expect(find.text('Effort 3–4/10'), findsOneWidget);
+      expect(find.byKey(const Key('workoutDetailHrTarget')), findsNothing);
+    });
+
+    testWidgets(
+        'the owner\'s own edit, and the coach viewing, carry no provenance '
+        'line', (tester) async {
+      await pump(
+          tester, _OwnerTraining(edited(updatedBy: 'me'), owner: 'me', viewer: 'me'),
+          hr: true);
+      expect(find.byKey(const Key('workoutDetailCoachEdited')), findsNothing);
+      await pump(tester,
+          _OwnerTraining(edited(), owner: 'me', viewer: 'coach-id'),
+          hr: true);
+      expect(find.byKey(const Key('workoutDetailCoachEdited')), findsNothing);
+    });
+  });
+}
+
+class _OwnerTraining extends TrainingService {
+  _OwnerTraining(this.workout, {required this.owner, required this.viewer});
+  final PlanWorkoutRow workout;
+  final String owner;
+  final String viewer;
+
+  @override
+  Future<PlanWorkoutRow?> fetchWorkout(String id) async => workout;
+
+  @override
+  Future<String?> fetchPlanOwnerId(String planId) async => owner;
+
+  @override
+  String? get currentUserId => viewer;
 }

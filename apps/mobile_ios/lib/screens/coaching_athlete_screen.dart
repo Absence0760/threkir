@@ -15,10 +15,16 @@ import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../plan_assign.dart';
 import '../preferences.dart';
 import '../training.dart';
 import '../training_labels.dart';
+import '../hr_prescription_gate.dart';
+import '../training_service.dart' show TrainingService, currentOrUpcomingPlan;
+import '../widgets/run_track_preview.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/workout_edit_sheet.dart';
+import '../workout_target_label.dart';
 
 /// Coach run-review surface — mobile mirror of web
 /// `/coaching/athletes/[id]` (`.../athletes/[id]/+page.svelte`): a linked
@@ -30,7 +36,17 @@ class CoachingAthleteScreen extends StatefulWidget {
   final Preferences preferences;
   final String athleteId;
   final String? displayName;
+  final String? avatarUrl;
   final DateTime? acceptedAt;
+
+  /// Writes the coach's edit to one of the athlete's workouts. The
+  /// active-coach RLS policy on plan_workouts (20261116_001) is what admits
+  /// it; null builds the app's own service on first use.
+  final TrainingService? training;
+
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
 
   const CoachingAthleteScreen({
     super.key,
@@ -38,7 +54,10 @@ class CoachingAthleteScreen extends StatefulWidget {
     required this.preferences,
     required this.athleteId,
     this.displayName,
+    this.avatarUrl,
     this.acceptedAt,
+    this.training,
+    this.hrPrescription,
   });
 
   @override
@@ -46,8 +65,14 @@ class CoachingAthleteScreen extends StatefulWidget {
 }
 
 class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
+  late final TrainingService _training = widget.training ?? TrainingService();
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   bool _loading = true;
   List<AthleteRunSummary> _runs = const [];
+
+  /// The athlete's map, clipped against their privacy zones by
+  /// clip-public-track (decisions § 1968). Off until the server gate says so.
+  bool _showMaps = false;
   AthletePlanOverview? _overview;
   List<TrainingPlanRow> _myPlans = const [];
 
@@ -66,15 +91,20 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     try {
       final results = await Future.wait([
         widget.api.fetchAthleteRuns(widget.athleteId, limit: 20),
-        widget.api.fetchAthletePlanOverview(widget.athleteId),
+        widget.api.fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan),
         widget.api.fetchMyPlans(),
+        widget.api.coachRunMapEnabled(),
       ]);
       if (!mounted) return;
       setState(() {
         _runs = results[0] as List<AthleteRunSummary>;
         _overview = results[1] as AthletePlanOverview?;
         _myPlans = results[2] as List<TrainingPlanRow>;
+        _showMaps = results[3] as bool;
         _loading = false;
+        // Start the picker clear of the plans the athlete already holds, so
+        // the default is a date the server will accept.
+        _startDate = _firstFreeStart();
       });
     } catch (e) {
       if (!mounted) return;
@@ -85,6 +115,28 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               friendlyError(AppLocalizations.of(context), e)));
     }
   }
+
+  /// The athlete's current plan, or the queued one before any has started —
+  /// the same rule as the athlete's own dashboard.
+  static TrainingPlanRow? _pickPlan(List<TrainingPlanRow> active) =>
+      currentOrUpcomingPlan(active, toIsoDate(DateTime.now()));
+
+  static String _startIso(TrainingPlanRow p) => toIsoDate(p.startDate);
+  static String _endIso(TrainingPlanRow p) => toIsoDate(p.endDate);
+
+  /// The athlete's plans an assignment must not overlap: every active plan
+  /// they hold that still holds dates, not only the one shown. Web twin: the
+  /// `blockers` derived on `/coaching/athletes/[id]`.
+  List<TrainingPlanRow> get _blockers {
+    final o = _overview;
+    if (o == null) return const [];
+    // An overview built before activePlans existed still names its own plan.
+    final active = o.activePlans.isEmpty ? [o.plan] : o.activePlans;
+    return assignBlockers(active, _todayISO(), start: _startIso, end: _endIso);
+  }
+
+  DateTime _firstFreeStart() =>
+      parseIsoDate(firstStartAfter(_blockers, _todayISO(), end: _endIso));
 
   bool get _assignedByMe {
     final o = _overview;
@@ -104,31 +156,78 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         athleteId: widget.athleteId,
         startDate: _startDate,
       );
-      final overview = await widget.api.fetchAthletePlanOverview(widget.athleteId);
+      // The plan is assigned from here on. A failed re-read must not read as
+      // a failed assign: a retry would only meet its own plan as an overlap.
+      AthletePlanOverview? overview;
+      var refreshed = false;
+      try {
+        overview = await widget.api
+            .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
+        refreshed = true;
+      } catch (e) {
+        debugPrint('[CoachingAthleteScreen] plan re-read after assign failed: $e');
+      }
       if (!mounted) return;
       setState(() {
-        _overview = overview;
+        if (refreshed) _overview = overview;
         _selectedPlanId = null;
+        _startDate = _firstFreeStart();
       });
       showTopBanner(
         context,
         l10n.coachingAthleteAssignSuccess(
             widget.displayName ?? l10n.coachingAthleteRunnerFallback),
       );
-    } catch (e) {
-      // assignPlanToAthlete rethrows the RPC's RAISE text as an Exception
-      // (e.g. the athlete already has an active plan). Surface it rather than
-      // swallow — strip the leading "Exception: " the toString() adds.
+    } on PlanAssignOverlapException {
+      // The athlete holds a plan on those dates (23P01). Re-read their plans —
+      // the one in the way may have appeared since the screen loaded — and say
+      // which, so the coach knows what date to pick.
+      AthletePlanOverview? fresh;
+      try {
+        fresh = await widget.api
+            .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
+      } catch (e) {
+        debugPrint('[CoachingAthleteScreen] plan re-read failed: $e');
+      }
       if (!mounted) return;
-      showTopBanner(context, _cleanMessage(e));
+      if (fresh != null) setState(() => _overview = fresh);
+      final name = widget.displayName ?? l10n.coachingAthleteRunnerFallback;
+      final source = _myPlans.where((p) => p.id == planId).firstOrNull;
+      final hit = source == null
+          ? null
+          : assignCollision(_blockers, source, toIsoDate(_startDate),
+              start: _startIso,
+              end: _endIso,
+              sourceStart: _startIso,
+              sourceEnd: _endIso);
+      showTopBanner(
+        context,
+        hit == null
+            ? l10n.coachingAthleteAssignOverlap(name)
+            : l10n.coachingAthleteAssignOverlapNamed(
+                name,
+                hit.name,
+                formatDateMed(hit.startDate, activeLocaleTag),
+                formatDateMed(hit.endDate, activeLocaleTag),
+              ),
+      );
+    } catch (e) {
+      // Offline, signed out and rate limited each name their own fix. What
+      // is left is a refusal (no longer linked, a plan the coach can't use)
+      // or an unknown failure: the RPC's raise text names the function and
+      // the athlete's id, so it stays in the log and the coach gets the copy.
+      // Web twin: errorCopy(e, m, 'coachingAthlete.assignError').
+      debugPrint('[CoachingAthleteScreen] assign failed: $e');
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        classifyAuthError(e) == AuthErrorKind.generic
+            ? l10n.coachingAthleteAssignError
+            : friendlyError(l10n, e),
+      );
     } finally {
       if (mounted) setState(() => _assigning = false);
     }
-  }
-
-  static String _cleanMessage(Object e) {
-    final s = '$e';
-    return s.startsWith('Exception: ') ? s.substring('Exception: '.length) : s;
   }
 
   Future<void> _pickStartDate() async {
@@ -139,6 +238,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 2),
     );
+    if (!mounted) return;
     if (picked != null) setState(() => _startDate = picked);
   }
 
@@ -180,7 +280,10 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     return Row(
       children: [
         IdentityAvatar(
-            seed: widget.athleteId, name: widget.displayName, size: 48),
+            seed: widget.athleteId,
+            name: widget.displayName,
+            imageUrl: widget.avatarUrl,
+            size: 48),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -214,40 +317,79 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             if (_overview == null)
-              _noPlanBody(l10n)
+              Text(l10n.coachingAthleteNoActivePlan,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ))
             else
               _activePlanBody(_overview!, l10n),
+            _assignSection(l10n),
           ],
         ),
       ),
     );
   }
 
-  Widget _noPlanBody(AppLocalizations l10n) {
+  /// The assign control, offered whenever the coach has a plan to assign: the
+  /// athlete's own plans only constrain the dates, which the server checks.
+  Widget _assignSection(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final name = widget.displayName ?? l10n.coachingAthleteRunnerFallback;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     if (_myPlans.isEmpty) {
-      return Text(l10n.coachingAthleteAssignNoPlans,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ));
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Text(l10n.coachingAthleteAssignNoPlans, style: muted),
+      );
     }
+    final blockers = _blockers;
+    String date(DateTime d) => formatDateMed(d, activeLocaleTag);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.coachingAthleteNoActivePlan,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
         const Divider(height: 24),
         Text(l10n.coachingAthleteAssignTitle,
             style: theme.textTheme.titleSmall
                 ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        Text(l10n.coachingAthleteAssignHint(name),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
+        Text(l10n.coachingAthleteAssignHint(name), style: muted),
+        if (blockers.length == 1) ...[
+          const SizedBox(height: 4),
+          Text(
+            l10n.coachingAthleteAssignAfterOne(
+                name, blockers[0].name, date(blockers[0].endDate)),
+            key: const ValueKey('assign-blockers'),
+            style: muted,
+          ),
+        ] else if (blockers.length == 2) ...[
+          const SizedBox(height: 4),
+          Text(
+            l10n.coachingAthleteAssignAfterTwo(
+              name,
+              blockers[0].name,
+              date(blockers[0].endDate),
+              blockers[1].name,
+              date(blockers[1].startDate),
+              date(blockers[1].endDate),
+            ),
+            key: const ValueKey('assign-blockers'),
+            style: muted,
+          ),
+        ] else if (blockers.length > 2) ...[
+          const SizedBox(height: 4),
+          Text(
+            l10n.coachingAthleteAssignAfterMany(
+              name,
+              blockers.length,
+              blockers.map((p) => p.name).join(', '),
+              date(blockers.last.endDate),
+            ),
+            key: const ValueKey('assign-blockers'),
+            style: muted,
+          ),
+        ],
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: _selectedPlanId,
@@ -288,13 +430,17 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   Widget _activePlanBody(AthletePlanOverview o, AppLocalizations l10n) {
     final theme = Theme.of(context);
     final todayISO = _todayISO();
-    final real = o.workouts.where((w) => w.kind != 'rest').toList();
+    // Skipped workouts are off the books, as completionPct already treats
+    // them: never in the total, never a miss. Web twin: `compliance`.
+    final real = o.workouts
+        .where((w) => w.kind != 'rest' && !isWorkoutSkipped(w.skippedAt))
+        .toList();
     final done = real
-        .where((w) => w.manuallyCompleted == true || w.completedRunId != null)
+        .where(isWorkoutCompleted)
         .length;
     final missed = real
         .where((w) =>
-            !(w.manuallyCompleted == true || w.completedRunId != null) &&
+            !isWorkoutCompleted(w) &&
             _isoOf(w.scheduledDate).compareTo(todayISO) < 0)
         .length;
     final pct = o.completionPct;
@@ -344,13 +490,6 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         ),
         const SizedBox(height: 12),
         for (final w in _focusWorkouts(o)) _workoutRow(w, l10n),
-        if (!_assignedByMe) ...[
-          const SizedBox(height: 8),
-          Text(l10n.coachingAthleteCannotAssignHasPlan,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              )),
-        ],
       ],
     );
   }
@@ -374,6 +513,10 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     final (label, color) = switch (status) {
       'done' => (l10n.coachingAthleteStatusDone, theme.colorScheme.primary),
       'missed' => (l10n.coachingAthleteStatusMissed, theme.colorScheme.error),
+      'skipped' => (
+          l10n.coachingAthleteStatusSkipped,
+          theme.colorScheme.onSurfaceVariant
+        ),
       _ => (
           l10n.coachingAthleteStatusUpcoming,
           theme.colorScheme.onSurfaceVariant
@@ -388,41 +531,64 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
       target.add(
           '${UnitFormat.pace(w.targetPaceSecPerKm!.toDouble(), unit)} ${UnitFormat.paceLabel(unit)}');
     }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          TextLane(
-            width: 84,
-            child: Text(formatDateShort(w.scheduledDate, activeLocaleTag),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                )),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(workoutKindLabel(l10n, workoutKindFromDb(w.kind)),
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                if (target.isNotEmpty)
-                  Text(target.join(' · '),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
-              ],
+    final rpe = rpeTargetLabel(l10n, w.targetRpeMin, w.targetRpeMax);
+    if (rpe != null) target.add(rpe);
+    final hr = _hrPrescription
+        ? hrTargetLabel(l10n, w.targetHrMinBpm, w.targetHrMaxBpm)
+        : null;
+    if (hr != null) target.add(hr);
+    return InkWell(
+      key: Key('coachWorkoutRow-${w.id}'),
+      onTap: () => _editWorkout(w),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            TextLane(
+              width: 84,
+              child: Text(formatDateShort(w.scheduledDate, activeLocaleTag),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )),
             ),
-          ),
-          StatusPill(
-            label: label,
-            foreground: color,
-            fill: color.withValues(alpha: 0.16),
-            size: StatusPillSize.compact,
-          ),
-        ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(workoutKindLabel(l10n, workoutKindFromDb(w.kind)),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  if (target.isNotEmpty)
+                    Text(target.join(' · '),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )),
+                ],
+              ),
+            ),
+            StatusPill(
+              label: label,
+              foreground: color,
+              fill: color.withValues(alpha: 0.16),
+              size: StatusPillSize.compact,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  /// The coach edits one of the athlete's workouts in the same sheet the
+  /// athlete uses (web reaches it through the plan link). A save reloads the
+  /// overview so the row shows what the athlete will now see.
+  Future<void> _editWorkout(PlanWorkoutRow w) async {
+    final ok = await showWorkoutEditSheet(
+      context,
+      workout: w,
+      training: _training,
+      hrPrescription: _hrPrescription,
+    );
+    if (ok && mounted) await _load();
   }
 
   Widget _runsCard(AppLocalizations l10n) {
@@ -438,6 +604,13 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
+            if (_showMaps && _runs.any((r) => r.hasTrack)) ...[
+              Text(l10n.coachingAthleteMapsClippedNote,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )),
+              const SizedBox(height: 8),
+            ],
             if (_runs.isEmpty)
               Text(l10n.coachingAthleteNoRunsYet,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -459,9 +632,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     final pace = paceSecPerKm == null
         ? '—'
         : '${UnitFormat.pace(paceSecPerKm, unit)} ${UnitFormat.paceLabel(unit)}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+    final row = Row(
         children: [
           TextLane(
             width: 84,
@@ -492,13 +663,46 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               ),
             ),
         ],
-      ),
+      );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: _showMaps && r.hasTrack
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                row,
+                const SizedBox(height: 6),
+                Semantics(
+                  key: ValueKey('coach-run-map-${r.id}'),
+                  image: true,
+                  label: l10n.coachingAthleteRunMapLabel(
+                      formatDateShort(r.startedAt, activeLocaleTag)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    // The preview paints to whatever box it is given, and a
+                    // list row's height is unbounded; the feed post's map
+                    // height keeps the two run maps one size.
+                    child: SizedBox(
+                      height: 120,
+                      child: RunTrackPreview(
+                        runId: r.id,
+                        trackUrl: r.trackUrl,
+                        api: widget.api,
+                        ownerUserId: widget.athleteId,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : row,
     );
   }
 
   String _workoutStatus(PlanWorkoutRow w) {
     if (w.kind == 'rest') return 'rest';
-    if (w.manuallyCompleted == true || w.completedRunId != null) return 'done';
+    if (isWorkoutSkipped(w.skippedAt)) return 'skipped';
+    if (isWorkoutCompleted(w)) return 'done';
     return _isoOf(w.scheduledDate).compareTo(_todayISO()) < 0
         ? 'missed'
         : 'upcoming';

@@ -102,8 +102,18 @@ class RunnerProjection {
   });
 }
 
-CutoffVerdict _gradeCutoff(int cutoffS, double arrivalS) {
+/// Grade one arrival against one cutoff, or null when the margin is not a
+/// number.
+///
+/// The ladder is `marginS < 0 ? miss : marginS < tight ? tight : safe`, and a
+/// NaN margin fails BOTH comparisons and lands on the optimistic terminal
+/// branch -- so a crossing nothing could time was reported to a race director
+/// as `safe`, with a NaN margin beside it (decisions § 1225). On a cutoff
+/// board the only honest answer about an ungradeable crossing is no answer:
+/// [ProjectionLeg.cutoff] is already nullable.
+CutoffVerdict? _gradeCutoff(int cutoffS, double arrivalS) {
   final marginS = cutoffS - arrivalS;
+  if (!marginS.isFinite) return null;
   return CutoffVerdict(
     marginS: marginS,
     status: marginS < 0
@@ -120,18 +130,40 @@ RunnerProjection projectRunner(
   List<ProjectionCheckpoint> checkpoints,
   List<ProjectionCrossing> crossings,
 ) {
-  final ordered = checkpoints
-      .map((c) => ProjectionCheckpoint(
-            id: c.id,
-            positionM:
-                c.positionM.isFinite ? (c.positionM < 0 ? 0 : c.positionM) : 0,
-            cutoffElapsedS: c.cutoffElapsedS,
-          ))
-      .toList()
-    ..sort((a, b) => a.positionM.compareTo(b.positionM));
+  // Tie-break on the ORIGINAL index, which makes this sort stable and so
+  // reproduces web's Array.prototype.sort (stable since ES2019) exactly.
+  // Dart's List.sort is insertion sort at <= 32 elements but unstable
+  // dual-pivot quicksort above, so two co-located checkpoints came out in a
+  // different order on the two platforms once the field passed 33 — and
+  // `ordered.last` is what decides whether a runner reads as `racing` or
+  // `finished`. Sorting by id instead would be deterministic but would NOT
+  // match web, which preserves input order among equals.
+  final indexed = <({int index, ProjectionCheckpoint cp})>[
+    for (var i = 0; i < checkpoints.length; i++)
+      (
+        index: i,
+        cp: ProjectionCheckpoint(
+          id: checkpoints[i].id,
+          positionM: checkpoints[i].positionM.isFinite
+              ? (checkpoints[i].positionM < 0 ? 0 : checkpoints[i].positionM)
+              : 0,
+          cutoffElapsedS: checkpoints[i].cutoffElapsedS,
+        ),
+      ),
+  ]..sort((a, b) {
+      final byPosition = a.cp.positionM.compareTo(b.cp.positionM);
+      return byPosition != 0 ? byPosition : a.index.compareTo(b.index);
+    });
+  final ordered = [for (final e in indexed) e.cp];
 
   final byId = <String, double>{};
   for (final x in crossings) {
+    // A crossing whose elapsed time is not a number is not a crossing this
+    // module can say anything about -- the same sanitisation [positionM] gets
+    // one block up. Admitting it made the runner `reached` at that checkpoint
+    // and every comparison downstream answered false, which the cutoff ladder
+    // reads as `safe`.
+    if (!x.elapsedS.isFinite) continue;
     final prev = byId[x.checkpointId];
     if (prev == null || x.elapsedS < prev) byId[x.checkpointId] = x.elapsedS;
   }
@@ -149,8 +181,16 @@ RunnerProjection projectRunner(
     }
   }
 
-  final paceSPerM =
-      lastElapsedS != null && coveredM > 0 ? lastElapsedS / coveredM : null;
+  // `lastElapsedS > 0` matters as much as `coveredM > 0`. A stamp at or before
+  // the race start (a volunteer's tablet running fast, or the RD firing Go
+  // after a start-area checkpoint already scanned) clamps to elapsed 0, and a
+  // pace of exactly 0 is finite — so every remaining checkpoint projected an
+  // arrival of 0 and graded "safe" with the full cutoff as its margin. An
+  // unusable sample must leave future cutoffs ungraded, as a runner with no
+  // crossings at all already does.
+  final paceSPerM = lastElapsedS != null && lastElapsedS > 0 && coveredM > 0
+      ? lastElapsedS / coveredM
+      : null;
 
   var blownCutoff = false;
   final legs = ordered.map((c) {
@@ -166,7 +206,7 @@ RunnerProjection projectRunner(
       final arrival = reached ? actual : projected;
       if (arrival != null) {
         cutoff = _gradeCutoff(c.cutoffElapsedS!, arrival);
-        if (reached && cutoff.status == CutoffStatus.miss) blownCutoff = true;
+        if (reached && cutoff?.status == CutoffStatus.miss) blownCutoff = true;
       }
     }
 

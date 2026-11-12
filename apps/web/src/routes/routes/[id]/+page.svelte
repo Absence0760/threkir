@@ -1,38 +1,69 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
+	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { toGpx, toKml, downloadFile } from '$lib/routes/gpx';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '$lib/routes/route_gpx';
-	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar } from '$lib/core/data';
-	import type { RouteMarker } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import SegmentsPanel from '$lib/components/SegmentsPanel.svelte';
-	import RouteMarkerEditor from '$lib/components/RouteMarkerEditor.svelte';
-	import type { MapMarkerPin } from '$lib/components/RunMap.svelte';
-	import RoutePhotos from '$lib/components/RoutePhotos.svelte';
-	import RouteConditions from '$lib/components/RouteConditions.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
-	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
-	import { buildRouteShareCanonical } from '$lib/share/share_meta';
-	import { describeRoute, localisedTemplate } from '$lib/routes/route_description';
-	import { requestAiDescription } from '$lib/routes/route_describe_client';
-	import { coachEnabled } from '$lib/coach/coach_flag';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
+	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
+	import { toRouteGpxWithMarkers, type GpxAttribution, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchParkCourseCredit, fetchRouteCourseAttribution, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
+	import { goto } from '$app/navigation';
+	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
+	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
+	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
+	import type { RouteMarker } from '#lib/types.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import SegmentsPanel from '#lib/components/SegmentsPanel.svelte';
+	import RouteMarkerEditor from '#lib/components/RouteMarkerEditor.svelte';
+	import type { MapMarkerPin } from '#lib/components/RunMap.svelte';
+	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
+	import RouteConditions from '#lib/components/RouteConditions.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
+	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import DriveCourseButton from '#lib/components/DriveCourseButton.svelte';
+	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
+	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
+	import { distinctTags } from '#lib/routes/route_tags.ts';
+	import { routeElevation } from '#lib/routes/route_elevation.ts';
+	import { buildRouteShareCanonical } from '#lib/share/share_meta.ts';
+	import {
+		describeRoute,
+		localisedTemplate,
+		shownDescription,
+	} from '#lib/routes/route_description.ts';
+	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
+	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// The "Describe this route" button always works (offline template); the
 	// AI-enhancement upsell below it only makes sense when the Coach is live.
 	const coachOn = coachEnabled();
-	import { env } from '$env/dynamic/public';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import type { Route } from '$lib/types';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import {
+		officialDistanceInputValue,
+		parseOfficialDistanceInput,
+		routeDetailsPatch,
+	} from '#lib/routes/route_details.ts';
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
+	import { METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import type { Route } from '#lib/types.ts';
 
 	let { data } = $props();
 
@@ -42,10 +73,11 @@
 	// sitemap-listed, anon-readable copy. No own SEO meta otherwise:
 	// the app shell is behind the SPA and not meant to be indexed.
 	let canonicalUrl = $derived(
-		buildRouteShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, data.id)
+		buildRouteShareCanonical(siteOrigin(PUBLIC_SITE_URL), data.id)
 	);
 
 	let route = $state<Route | null>(null);
+	const routeTags = $derived(distinctTags(route?.tags));
 	// `fetchRouteById` returns owner-clipped waypoints for owners and
 	// server-clipped waypoints for non-owners (via the public_routes
 	// view + clip_route_for_viewer). The wire-leak is closed there;
@@ -65,6 +97,8 @@
 	let markerSnap = $state(true);
 	let markerPendingDrag = $state<{ id: string; lat: number; lng: number } | null>(null);
 	let loading = $state(true);
+	let loadFailed = $state(false);
+	let lineRetrying = $state(false);
 	let reviews = $state<any[]>([]);
 	let reviewsError = $state(false);
 	let showReviewForm = $state(false);
@@ -78,16 +112,40 @@
 			: null,
 	);
 
-	onMount(async () => {
-		// Wait for auth to resolve before fetching the row. Without
-		// this, `isOwner` (a $derived from auth.user) starts false and
-		// owner-only affordances (toggleStar, togglePublic, tag editor)
-		// silently no-op on early clicks. ready() falls through to the
-		// fetch on its timeout regardless, so anon visitors hitting a
-		// public route aren't stalled.
-		await auth.ready();
-		route = await fetchRouteById(data.id);
-		loading = false;
+	const parkCourseRoutes = new ParkCourseRouteLookup();
+	$effect(() => {
+		if (route?.is_official) void parkCourseRoutes.check([route.id]);
+	});
+
+	// A park course's official route carries its source credit in the course
+	// row, not in the description (decisions § 2438). Only an official route
+	// can be one; a failed read shows none, the credit being auxiliary here
+	// (an export still refuses to go out uncredited, § 2395).
+	let courseCredit = $state<string | null>(null);
+	$effect(() => {
+		const id = route?.is_official ? route.id : null;
+		courseCredit = null;
+		if (!id) return;
+		fetchParkCourseCredit({ routeId: id })
+			.then((credit) => {
+				if (route?.id === id) courseCredit = credit;
+			})
+			.catch((e) => console.warn('fetchParkCourseCredit failed', e));
+	});
+
+	async function loadRoute() {
+		loading = true;
+		loadFailed = false;
+		try {
+			route = await fetchRouteById(data.id);
+		} catch (e) {
+			console.error('fetchRouteById failed', e);
+			route = null;
+			loadFailed = true;
+			return;
+		} finally {
+			loading = false;
+		}
 		if (route) {
 			displayWaypoints = (route.waypoints ?? []) as typeof displayWaypoints;
 			try {
@@ -103,6 +161,35 @@
 				reviewsError = true;
 			}
 		}
+	}
+
+	// Only a non-owner read can lose its line: the clipped read failed, so the
+	// route's metadata rendered and the map slot offers this instead of an
+	// empty map. A failed retry leaves the line unavailable — never unclipped.
+	async function retryLine() {
+		if (!route || lineRetrying) return;
+		lineRetrying = true;
+		try {
+			const points = await fetchClippedRouteForViewer(route.id);
+			route = { ...route, waypoints: points, line_unavailable: false };
+			displayWaypoints = points;
+		} catch (e) {
+			console.warn('route line retry failed', e);
+		} finally {
+			lineRetrying = false;
+		}
+	}
+
+	onMount(async () => {
+		// Wait for auth to resolve before fetching the row. Without
+		// this, `isOwner` (a $derived from auth.user) starts false and
+		// owner-only affordances (toggleStar, togglePublic, tag editor)
+		// silently no-op on early clicks. ready() falls through to the
+		// fetch on its timeout regardless, so anon visitors hitting a
+		// public route aren't stalled.
+		await auth.ready();
+		await loadRoute();
+		void loadAudience();
 	});
 
 	async function submitReview() {
@@ -119,7 +206,7 @@
 			showReviewForm = false;
 			reviewComment = '';
 		} catch (e) {
-			showToast(m('routeDetail.reviewSubmitFailed', { error: `${e}` }), 'error');
+			showToast(m('routeDetail.reviewSubmitFailed', { error: errorCopy(e, m, 'routeDetail.reviewSubmitFailed') }), 'error');
 		} finally {
 			reviewSubmitting = false;
 		}
@@ -143,7 +230,7 @@
 				reviews = before;
 			},
 			onCommitError: (e) =>
-				showToast(m('routeDetail.reviewDeleteFailed', { error: `${e}` }), 'error'),
+				showToast(m('routeDetail.reviewDeleteFailed', { error: errorCopy(e, m, 'routeDetail.reviewDeleteFailed') }), 'error'),
 		});
 	}
 
@@ -156,7 +243,103 @@
 	let tagsSaving = $state(false);
 
 	let isOwner = $derived(route !== null && auth.user?.id === route.user_id);
+	/// Audience sharing (followers level + named people, decisions
+	/// § 1874) is server-gated; the owner's audience control and the
+	/// narrower share link render only when the server says it is on.
+	let audienceSharingOn = $state(false);
+	let shareCount = $state(0);
+	let showAudience = $state(false);
+	let audienceLevel = $derived(route ? audienceOf(route, shareCount) : 'private');
+	/// A viewer who is not the owner reading a route that is not public got
+	/// it through its followers level or a share made to them.
+	let sharedWithMe = $derived(route !== null && !isOwner && route.is_public !== true && !route.club_id);
+
+	async function loadAudience() {
+		audienceSharingOn = await audienceSharingEnabled();
+		if (!audienceSharingOn || !route || !isOwner) return;
+		try {
+			shareCount = (await fetchShares('route', route.id)).length;
+		} catch (e) {
+			console.warn('route shares unknown', e);
+		}
+	}
+
+	function applyAudienceColumns(columns: AudienceColumns) {
+		if (!route) return;
+		route = { ...route, ...columns };
+		if (!columns.is_public) {
+			shareLink = '';
+			shareCopied = false;
+		}
+	}
+
+	async function closeAudience() {
+		showAudience = false;
+		await loadAudience();
+	}
+
+	function requestPublicFromAudience() {
+		showAudience = false;
+		shareIntent = 'link';
+		showShareConfirm = true;
+	}
+
+	/// The in-app link for a route shared with a narrower audience: it opens
+	/// only for that audience, so it is safe to hand out without a public flip.
+	function inAppRouteLink(id: string): string {
+		return `${window.location.origin}/routes/${id}`;
+	}
 	let showReportDialog = $state(false);
+
+	// Deleting a route cascades its photos, markers and other runners' reviews,
+	// bookmarks and segments, none of which a re-insert could bring back, so it
+	// takes the confirm and no undo (conventions.md § Destructive actions). The
+	// confirm is opened only once route_delete_impact has said who else depends
+	// on the route; a failed count still lets the owner delete, and says the
+	// count is missing rather than implying nothing depends on it.
+	let showDeleteConfirm = $state(false);
+	let deleteChecking = $state(false);
+	let deleteMessage = $state('');
+	// Set from the confirm until the page leaves. ConfirmDialog locks its own
+	// buttons only while the dialog is open; once a successful delete closes
+	// it, the page's Delete button would otherwise reopen it for a route that
+	// is already gone while the navigation to /routes is still pending.
+	let deleting = $state(false);
+
+	async function openDeleteConfirm() {
+		if (!route || !isOwner || deleteChecking || deleting) return;
+		deleteChecking = true;
+		const parts = [m('routeDetail.deleteBody')];
+		try {
+			const impact = await fetchRouteDeleteImpact(route.id);
+			for (const line of routeDeleteImpactLines(impact, route.is_public === true)) {
+				parts.push(m(line.key, { count: line.count }));
+			}
+		} catch (e) {
+			console.warn('route_delete_impact failed', e);
+			parts.push(m('routeDetail.deleteImpactUnknown'));
+		} finally {
+			deleteChecking = false;
+		}
+		deleteMessage = parts.join(' ');
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		if (!route || deleting) return;
+		deleting = true;
+		try {
+			await deleteRoute(route.id);
+		} catch (e) {
+			deleting = false;
+			showDeleteConfirm = false;
+			showToast(m('routeDetail.deleteFailed', { error: errorCopy(e, m, 'routeDetail.deleteFailed') }), 'error');
+			return;
+		}
+		showDeleteConfirm = false;
+		showToast(m('routeDetail.deleted'), 'success');
+		await goto('/routes');
+	}
 	let reportReviewId = $state<string | null>(null);
 
 	// "Describe this route" affordance. The templated description is the
@@ -180,7 +363,7 @@
 		const wps = displayWaypoints;
 		return {
 			name: route?.name ?? 'This route',
-			distanceM: route?.distance_m ?? 0,
+			distanceM: shownDistanceM,
 			elevationM: route?.elevation_m ?? null,
 			surface: route?.surface ?? null,
 			start: wps.length > 0 ? { lat: wps[0].lat, lng: wps[0].lng } : undefined,
@@ -194,7 +377,9 @@
 	/// Generate a description. Always shows the templated baseline first
 	/// (instant, offline), then — for Pro users — asks the server to
 	/// enhance it. A free user's request returns the templated text with
-	/// `upgrade:true`, which surfaces the Pro upsell. Any hard failure
+	/// `upgrade:true`, which surfaces the Pro upsell; any server template
+	/// is English, so only an AI paragraph (written in the viewer's locale)
+	/// replaces the localised baseline. Any hard failure
 	/// (network / non-200) leaves the templated text in place and shows a
 	/// non-blocking error; the baseline is never lost.
 	async function describe() {
@@ -205,20 +390,26 @@
 		const input = describeInput();
 		const parts = describeRoute(input);
 		// L1 baseline: render the localised templated sentence immediately.
-		genDescription = localisedTemplate(parts, input.name, {
+		const localised = localisedTemplate(parts, input.name, {
 			t: (key, params) => m(key as MessageKey, params),
 			formatDistance,
 		});
+		genDescription = localised;
 		genSource = 'template';
 		try {
-			const ai = await requestAiDescription(input);
-			genDescription = ai.description;
+			const ai = await requestAiDescription(input, getUnit(), currentLocale(), route.id);
+			genDescription = shownDescription(localised, ai);
 			genSource = ai.source;
 			showUpgradeHint = ai.upgrade;
-		} catch (_) {
+		} catch (e) {
 			// Keep the templated baseline already shown; flag the failure
-			// without clobbering the description.
-			describeError = m('routeDetail.describeFailed');
+			// without clobbering the description. A consent gap is not a
+			// failure the runner can retry away, so it gets its own copy
+			// pointing at where they can act on it.
+			describeError =
+				e instanceof Error && e.message === AI_DISCLOSURE_ERROR
+					? m('routeDetail.describeConsentRequired')
+					: m('routeDetail.describeFailed');
 		} finally {
 			describing = false;
 		}
@@ -228,18 +419,19 @@
 		if (!route) return;
 		const next = tagDraft.trim().toLowerCase();
 		if (!next) return;
-		if ((route.tags ?? []).includes(next)) {
+		const current = distinctTags(route.tags);
+		if (current.includes(next)) {
 			tagDraft = '';
 			return;
 		}
-		const updated = [...(route.tags ?? []), next];
+		const updated = [...current, next];
 		tagsSaving = true;
 		try {
 			await updateRouteTags(route.id, updated);
 			route.tags = updated;
 			tagDraft = '';
 		} catch (e) {
-			showToast(m('routeDetail.tagSaveFailed', { error: `${e}` }), 'error');
+			showToast(m('routeDetail.tagSaveFailed', { error: errorCopy(e, m, 'routeDetail.tagSaveFailed') }), 'error');
 		} finally {
 			tagsSaving = false;
 		}
@@ -247,15 +439,98 @@
 
 	async function removeTag(tag: string) {
 		if (!route || tagsSaving) return;
-		const updated = (route.tags ?? []).filter((t) => t !== tag);
+		const updated = distinctTags(route.tags).filter((t) => t !== tag);
 		tagsSaving = true;
 		try {
 			await updateRouteTags(route.id, updated);
 			route.tags = updated;
 		} catch (e) {
-			showToast(m('routeDetail.tagRemoveFailed', { error: `${e}` }), 'error');
+			showToast(m('routeDetail.tagRemoveFailed', { error: errorCopy(e, m, 'routeDetail.tagRemoveFailed') }), 'error');
 		} finally {
 			tagsSaving = false;
+		}
+	}
+
+	let editingDetails = $state(false);
+	let nameDraft = $state('');
+	let descriptionDraft = $state('');
+	let officialDraft = $state('');
+	const unitM = $derived(getUnit() === 'mi' ? METRES_PER_MILE : 1000);
+	const shownDistanceM = $derived(
+		route ? routeDisplayDistanceM(route.distance_m, route.official_distance_m) : 0,
+	);
+	let detailsSaving = $state(false);
+	let detailsError = $state<string | null>(null);
+
+	function startEditDetails() {
+		if (!route || !isOwner) return;
+		nameDraft = route.name;
+		descriptionDraft = route.description ?? '';
+		officialDraft = officialDistanceInputValue(route.official_distance_m, unitM);
+		detailsError = null;
+		editingDetails = true;
+	}
+
+	async function saveDetails() {
+		if (!route || !isOwner || detailsSaving) return;
+		const official = parseOfficialDistanceInput(
+			officialDraft,
+			unitM,
+			route.distance_m,
+			route.official_distance_m,
+		);
+		if (official.kind === 'notANumber' || official.kind === 'outOfRange') {
+			detailsError = m('routeDetail.officialDistanceInvalid');
+			return;
+		}
+		if (official.kind === 'tooFar') {
+			detailsError = m('routeDetail.officialDistanceTooFar', { distance: formatDistance(route.distance_m) });
+			return;
+		}
+		const details = routeDetailsPatch(
+			{ name: route.name, description: route.description },
+			{ name: nameDraft, description: descriptionDraft },
+		);
+		const result =
+			official.kind === 'set' && (details.kind === 'patch' || details.kind === 'unchanged')
+				? {
+						kind: 'patch' as const,
+						patch: {
+							...(details.kind === 'patch' ? details.patch : {}),
+							official_distance_m: official.officialM,
+						},
+					}
+				: details;
+		if (result.kind === 'unchanged') {
+			editingDetails = false;
+			return;
+		}
+		if (result.kind === 'nameRequired') {
+			detailsError = m('routeDetail.nameRequired');
+			return;
+		}
+		if (result.kind === 'tooLong') {
+			detailsError = m('routeDetail.detailsTooLong');
+			return;
+		}
+		detailsSaving = true;
+		detailsError = null;
+		try {
+			await updateRouteDetails(route.id, result.patch);
+			if (result.patch.name !== undefined) route.name = result.patch.name;
+			if (result.patch.description !== undefined) route.description = result.patch.description;
+			if (result.patch.official_distance_m !== undefined) {
+				route.official_distance_m = result.patch.official_distance_m;
+			}
+			editingDetails = false;
+			showToast(m('routeDetail.detailsSaved'), 'success');
+		} catch (e) {
+			showToast(
+				m('routeDetail.detailsSaveFailed', { error: errorCopy(e, m, 'routeDetail.detailsSaveFailed') }),
+				'error',
+			);
+		} finally {
+			detailsSaving = false;
 		}
 	}
 
@@ -270,35 +545,57 @@
 			route.is_starred = !next;
 			showToast(
 				next
-					? m('routeDetail.starFailed', { error: `${e}` })
-					: m('routeDetail.unstarFailed', { error: `${e}` }),
+					? m('routeDetail.starFailed', { error: errorCopy(e, m, 'routeDetail.starFailed') })
+					: m('routeDetail.unstarFailed', { error: errorCopy(e, m, 'routeDetail.unstarFailed') }),
 				'error',
 			);
 		}
 	}
 
-	function handleExportGpx() {
+	// A park course's route carries third-party geometry, so its exports carry
+	// the credit. Undefined means the check failed on a route that may be a
+	// park course's (they are official routes): the export is refused rather
+	// than written uncredited. A route known not to be official exports
+	// without the check, so a failed read cannot block an ordinary export.
+	async function exportAttribution(r: Route): Promise<GpxAttribution | null | undefined> {
+		try {
+			return await fetchRouteCourseAttribution(r.id);
+		} catch (e) {
+			console.error('route export attribution failed', e);
+			if (r.is_official === false) return null;
+			showToast(m('routeDetail.exportCreditFailed'), 'error');
+			return undefined;
+		}
+	}
+
+	async function handleExportGpx() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route);
+		if (attribution === undefined) return;
 		// Use displayWaypoints (clipped for non-owners) so a non-owner
 		// download doesn't leak what the renderer hides.
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
-		const gpx = toGpx(route.name, coords, eles);
+		const gpx = toGpx(route.name, coords, eles, attribution);
 		const filename = route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');
 	}
 
-	function handleExportKml() {
+	async function handleExportKml() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route);
+		if (attribution === undefined) return;
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
-		const kml = toKml(route.name, coords, eles);
+		const kml = toKml(route.name, coords, eles, attribution);
 		const filename = route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '.kml';
 		downloadFile(kml, filename, 'application/vnd.google-earth.kml+xml');
 	}
 
-	function handleExportGpxWithMarkers() {
+	async function handleExportGpxWithMarkers() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route);
+		if (attribution === undefined) return;
 		// displayWaypoints is privacy-clipped for non-owners, so a download
 		// can't leak hidden geometry.
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
@@ -310,7 +607,7 @@
 			kind: mk.kind,
 			meta: mk.meta
 		}));
-		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers);
+		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers, attribution);
 		const filename =
 			route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '_with_markers.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');
@@ -322,9 +619,50 @@
 	// privacy-relevant, one-way-for-now step, so confirm it first. An
 	// already-public route shares straight away (nothing changes).
 	let showShareConfirm = $state(false);
+	// Both share affordances go through the one ensure-public step, so the
+	// confirm has to remember which of them asked for it.
+	let shareIntent = $state<'link' | 'dm'>('link');
+	let showSendDm = $state(false);
+	let showHeadToHead = $state(false);
 
 	async function handleShare() {
 		if (!route || sharing) return;
+		shareIntent = 'link';
+		if (!route.is_public && audienceSharingOn && audienceLevel !== 'private') {
+			// The owner chose a narrower audience: hand out the in-app link,
+			// which opens only for that audience. Never flip it public here.
+			shareLink = inAppRouteLink(route.id);
+			shareCopied = false;
+			return;
+		}
+		if (!route.is_public && isOwner && audienceSharingOn) {
+			// Share asks who should see the route; public is one answer of
+			// four, never a side effect of the button.
+			showAudience = true;
+			return;
+		}
+		if (!route.is_public) {
+			showShareConfirm = true;
+			return;
+		}
+		await runShare();
+	}
+
+	/// Whether a send to one person grants THAT person access instead of
+	/// flipping the route public (route_direct_share.md § Private send).
+	let sendGrantsAccess = $state(false);
+
+	async function handleSendToFollower() {
+		if (!route || sharing) return;
+		shareIntent = 'dm';
+		if (!route.is_public && isOwner && audienceSharingOn) {
+			sendGrantsAccess = true;
+			shareLink = inAppRouteLink(route.id);
+			shareCopied = false;
+			showSendDm = true;
+			return;
+		}
+		sendGrantsAccess = false;
 		if (!route.is_public) {
 			showShareConfirm = true;
 			return;
@@ -357,15 +695,16 @@
 		if (!route.is_public) {
 			try {
 				await setRoutePublic(route.id, true);
-				route = { ...route, is_public: true };
+				route = { ...route, is_public: true, followers_only: false };
 				showToast(m('routeDetail.madePublicForLink'), 'info');
 			} catch (e) {
-				showToast(m('routeDetail.makePublicFailed', { error: `${e}` }), 'error');
+				showToast(m('routeDetail.makePublicFailed', { error: errorCopy(e, m, 'routeDetail.makePublicFailed') }), 'error');
 				return;
 			}
 		}
 		shareLink = buildRouteShareCanonical(window.location.origin, route.id);
 		shareCopied = false;
+		if (shareIntent === 'dm') showSendDm = true;
 	}
 
 	/// Bidirectional public/private toggle. Owner-only. Optimistic
@@ -374,8 +713,9 @@
 	async function togglePublic() {
 		if (!route) return;
 		const next = !route.is_public;
-		// Optimistic flip so the icon changes immediately.
-		route = { ...route, is_public: next };
+		// Optimistic flip so the icon changes immediately. Public clears the
+		// followers level server-side (normalize_audience), so mirror that.
+		route = next ? { ...route, is_public: true, followers_only: false } : { ...route, is_public: false };
 		try {
 			await setRoutePublic(route.id, next);
 			showToast(next ? m('routeDetail.nowPublic') : m('routeDetail.nowPrivate'), 'success');
@@ -388,7 +728,7 @@
 		} catch (e) {
 			// Roll back on failure so the UI matches reality.
 			route = { ...route, is_public: !next };
-			showToast(m('routeDetail.visibilityUpdateFailed', { error: `${e}` }), 'error');
+			showToast(m('routeDetail.visibilityUpdateFailed', { error: errorCopy(e, m, 'routeDetail.visibilityUpdateFailed') }), 'error');
 		}
 	}
 
@@ -405,18 +745,12 @@
 		}
 	}
 
-	// Derive elevations from displayWaypoints (not route.waypoints
-	// directly) so the chart's idx-space lines up with what the map
-	// is actually drawing. Non-owners get a clipped polyline; their
-	// chart idx → map marker must hit the same point on the clipped
-	// trace, not the original.
-	let elevations = $derived(displayWaypoints.map((w) => w.ele ?? 0));
-	// Hide the elevation profile when waypoints have no real elevation
-	// data (community routes imported without per-waypoint ele still
-	// have a stored total gain in route.elevation_m). Without this guard
-	// the chart renders as a flat line at zero, which looks broken next
-	// to the non-zero "X m elevation gain" label.
-	let hasElevationData = $derived(elevations.length > 1 && Math.max(...elevations) > Math.min(...elevations));
+	// The profile derives from displayWaypoints (not route.waypoints) so
+	// the chart's idx-space lines up with what the map is drawing: a
+	// non-owner's chart idx → map marker must hit the clipped trace.
+	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, displayWaypoints));
+	const previewPoints = $derived(routePathPoints(displayWaypoints));
+	const previewClimbNames = $derived(climbNamesFromMarkers(routeMarkers, previewPoints));
 
 	/// Linked-cursor index — same shape as /runs/[id]. ElevationProfile
 	/// onhover sets it; RunMap reads it.
@@ -436,34 +770,6 @@
 			scrubFraction,
 		);
 		return interp ? [interp.lng, interp.lat] : null;
-	});
-
-	/// Per-waypoint elevation rollup. Walks once: total gain (sum of
-	/// positive deltas), total loss (sum of negative deltas), and the
-	/// min / max altitude. Used by the elevation summary tile above
-	/// the chart.
-	let elevationStats = $derived.by(() => {
-		const eles = elevations;
-		if (eles.length < 2 || !hasElevationData) {
-			return { gain: 0, loss: 0, min: 0, max: 0 };
-		}
-		let gain = 0;
-		let loss = 0;
-		let min = eles[0];
-		let max = eles[0];
-		for (let i = 1; i < eles.length; i++) {
-			const d = eles[i] - eles[i - 1];
-			if (d > 0) gain += d;
-			else loss += -d;
-			if (eles[i] < min) min = eles[i];
-			if (eles[i] > max) max = eles[i];
-		}
-		return {
-			gain: Math.round(gain),
-			loss: Math.round(loss),
-			min: Math.round(min),
-			max: Math.round(max),
-		};
 	});
 
 	// Send the back link wherever the user came from. Defaults to /routes
@@ -495,6 +801,19 @@
 
 {#if loading}
 	<div class="route-detail"><p class="loading">&nbsp;</p></div>
+{:else if loadFailed}
+	<div class="route-detail">
+		<a href="/routes" class="back-link page-back">
+			<span class="material-symbols">arrow_back</span> {m('routeDetail.backRoutes')}
+		</a>
+		<div class="not-found" role="alert" data-testid="route-load-error">
+			<h1>{m('routeDetail.loadFailedTitle')}</h1>
+			<p>{m('routeDetail.loadFailedBody')}</p>
+			<button type="button" class="btn btn-primary" onclick={() => void loadRoute()}>
+				{m('routeDetail.retry')}
+			</button>
+		</div>
+	</div>
 {:else if !route}
 	<div class="route-detail">
 		<a href="/routes" class="back-link page-back">
@@ -524,6 +843,10 @@
 				<div>
 					<div class="title-row">
 						<h1>{route.name}</h1>
+						{#if route.is_official && parkCourseRoutes.known(route.id)}<OfficialBadge
+								size={18}
+								parkCourse={parkCourseRoutes.isParkCourse(route.id)}
+							/>{/if}
 						{#if isOwner}
 							<button
 								type="button"
@@ -535,6 +858,18 @@
 							>
 								<span class="material-symbols">star</span>
 							</button>
+							<button
+								type="button"
+								class="edit-details-btn"
+								title={m('routeDetail.editDetails')}
+								aria-label={m('routeDetail.editDetailsAria')}
+								aria-expanded={editingDetails}
+								onclick={startEditDetails}
+								disabled={editingDetails}
+								data-testid="route-edit-details"
+							>
+								<span class="material-symbols">edit</span>
+							</button>
 						{/if}
 					</div>
 					<!-- Key-stats tile grid (matches /runs/[id] panel layout
@@ -545,12 +880,19 @@
 						 they read distinct from the numeric tiles. -->
 					<div class="key-stats">
 						<div class="key-stat">
-							<span class="key-stat-value">{formatDistance(route.distance_m)}</span>
-							<span class="key-stat-label">{m('routeDetail.statDistance')}</span>
+							<span class="key-stat-value" data-testid="route-key-distance">{formatDistance(shownDistanceM)}</span>
+							{#if route.official_distance_m != null}
+								<span class="key-stat-label">{m('routeDetail.statOfficialDistance')}</span>
+								<span class="key-stat-sub" data-testid="route-key-measured">
+									{m('routeDetail.measuredDistance', { distance: formatDistance(route.distance_m) })}
+								</span>
+							{:else}
+								<span class="key-stat-label">{m('routeDetail.statDistance')}</span>
+							{/if}
 						</div>
 						{#if route.elevation_m != null && route.elevation_m > 0}
 							<div class="key-stat">
-								<span class="key-stat-value">{route.elevation_m} m</span>
+								<span class="key-stat-value" data-testid="route-key-gain">{formatElevation(route.elevation_m)}</span>
 								<span class="key-stat-label">{m('routeDetail.statElevationGain')}</span>
 							</div>
 						{/if}
@@ -559,7 +901,7 @@
 								<span class="material-symbols">
 									{route.surface === 'trail' ? 'terrain' : route.surface === 'mixed' ? 'alt_route' : 'add_road'}
 								</span>
-								{route.surface}
+								{routeSurfaceLabel(route.surface)}
 							</span>
 							<span class="key-stat-label">{m('routeDetail.statSurface')}</span>
 						</div>
@@ -579,7 +921,69 @@
 							</div>
 						{/if}
 					</div>
-					{#if route.description}
+					{#if editingDetails}
+						<form
+							class="details-form"
+							data-testid="route-details-form"
+							onsubmit={(e) => {
+								e.preventDefault();
+								void saveDetails();
+							}}
+						>
+							<label for="route-name-input">{m('routeDetail.nameLabel')}</label>
+							<input
+								id="route-name-input"
+								type="text"
+								bind:value={nameDraft}
+								maxlength={lengthLimit('routes.name')}
+								disabled={detailsSaving}
+								required
+							/>
+							<label for="route-description-input">{m('routeDetail.descriptionLabel')}</label>
+							<textarea
+								id="route-description-input"
+								rows="4"
+								bind:value={descriptionDraft}
+								maxlength={lengthLimit('routes.description')}
+								disabled={detailsSaving}
+							></textarea>
+							<label for="route-official-distance-input">
+								{m('routeDetail.officialDistanceLabel', { unit: getUnit() })}
+							</label>
+							<input
+								id="route-official-distance-input"
+								type="text"
+								inputmode="decimal"
+								autocomplete="off"
+								bind:value={officialDraft}
+								disabled={detailsSaving}
+								aria-describedby="route-official-distance-hint"
+								data-testid="route-official-distance-input"
+							/>
+							<p class="details-hint" id="route-official-distance-hint">
+								{m('routeDetail.officialDistanceHint', { distance: formatDistance(route.distance_m) })}
+							</p>
+							{#if route.is_public}
+								<p class="details-hint">{m('routeDetail.editPublicHint')}</p>
+							{/if}
+							{#if detailsError}
+								<p class="desc-error" role="alert">{detailsError}</p>
+							{/if}
+							<div class="details-actions">
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									disabled={detailsSaving}
+									onclick={() => (editingDetails = false)}
+								>
+									{m('routeDetail.cancel')}
+								</button>
+								<button type="submit" class="btn btn-primary btn-sm" disabled={detailsSaving}>
+									{detailsSaving ? m('routeDetail.saving') : m('routeDetail.save')}
+								</button>
+							</div>
+						</form>
+					{:else if route.description}
 						<p class="route-description">{route.description}</p>
 					{:else if genDescription}
 						<p class="route-description">{genDescription}</p>
@@ -609,9 +1013,12 @@
 							{describing ? m('routeDetail.describing') : m('routeDetail.describe')}
 						</button>
 					{/if}
-					{#if (route.tags && route.tags.length > 0) || isOwner}
+					{#if courseCredit}
+						<p class="course-credit" data-testid="route-course-credit">{courseCredit}</p>
+					{/if}
+					{#if routeTags.length > 0 || isOwner}
 						<div class="tags-row">
-							{#each route.tags ?? [] as t (t)}
+							{#each routeTags as t (t)}
 								<span class="tag-chip">
 									{t}
 									{#if isOwner}
@@ -635,6 +1042,18 @@
 					{/if}
 				</div>
 				<div class="actions">
+					<!-- clip_route_for_viewer hands the owner the unclipped line, so only a non-owner gets the video export. -->
+					<CoursePreviewButton
+						points={previewPoints}
+						title={route.name}
+						climbNames={previewClimbNames}
+						officialDistanceM={route.official_distance_m}
+						videoSource={isOwner ? undefined : async () => ({ points: previewPoints })}
+					/>
+					<!-- A private course offers no drive mode, its owner included (course_drive.md gotcha 6). -->
+					{#if route.is_public === true && !route.line_unavailable}
+						<DriveCourseButton points={displayWaypoints} markers={routeMarkers} title={route.name} />
+					{/if}
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
 					<button class="btn btn-outline btn-sm" onclick={handleExportKml}>KML</button>
 					{#if routeMarkers.length > 0}
@@ -642,7 +1061,7 @@
 							{m('routeDetail.exportGpxMarkers')}
 						</button>
 					{/if}
-					{#if isOwner}
+					{#if isOwner && !audienceSharingOn}
 						<button
 							class="btn btn-outline btn-sm"
 							onclick={togglePublic}
@@ -656,12 +1075,69 @@
 							{route.is_public ? m('routeDetail.public') : m('routeDetail.private')}
 						</button>
 					{/if}
-					<button
-						class="btn btn-primary btn-sm"
-						data-testid="route-share-btn"
-						onclick={handleShare}
-						disabled={sharing}>{m('routeDetail.share')}</button
-					>
+					{#if isOwner && audienceSharingOn}
+						<button
+							class="btn btn-outline btn-sm"
+							onclick={() => (showAudience = true)}
+							title={m('audience.button')}
+							data-testid="route-audience-btn"
+						>
+							<span class="material-symbols" aria-hidden="true">
+								{audienceLevel === 'followers' ? 'group' : audienceLevel === 'specific' ? 'person_add' : audienceLevel === 'public' ? 'public' : 'lock'}
+							</span>
+							{audienceLevel === 'public'
+								? m('routeDetail.public')
+								: audienceLevel === 'followers'
+									? m('audience.chipFollowers')
+									: audienceLevel === 'specific'
+										? m('audience.chipShared')
+										: m('audience.levelPrivate')}
+						</button>
+					{/if}
+					{#if sharedWithMe}
+						<span class="shared-with-you" data-testid="route-shared-with-you" title={m('audience.sharedWithYouHint')}>
+							<span class="material-symbols" aria-hidden="true">group</span>
+							{m('audience.sharedWithYou')}
+						</span>
+					{/if}
+					{#if auth.loggedIn}
+						<button
+							class="btn btn-outline btn-sm"
+							onclick={() => (showHeadToHead = true)}
+							data-testid="route-head-to-head-open"
+						>
+							<span class="material-symbols" aria-hidden="true">group</span>
+							{m('headToHead.compare')}
+						</button>
+					{/if}
+					{#if route.is_public || isOwner}
+						<button
+							class="btn btn-primary btn-sm"
+							data-testid="route-share-btn"
+							onclick={handleShare}
+							disabled={sharing}>{m('routeDetail.share')}</button
+						>
+					{/if}
+					{#if auth.user && (route.is_public || isOwner)}
+						<button
+							class="btn btn-outline btn-sm"
+							data-testid="route-send-dm-btn"
+							onclick={handleSendToFollower}
+							disabled={sharing}>{m('routeDetail.sendToFollower')}</button
+						>
+					{/if}
+					{#if isOwner}
+						<button
+							class="btn btn-outline btn-sm"
+							data-testid="route-delete-btn"
+							onclick={openDeleteConfirm}
+							disabled={deleteChecking || deleting}
+							aria-busy={deleteChecking || deleting}
+						>
+							<span class="material-symbols" aria-hidden="true">delete</span>
+							{m('routeDetail.deleteRoute')}
+						</button>
+					{/if}
 					{#if !isOwner && auth.user}
 						<button
 							class="btn btn-outline btn-sm"
@@ -671,6 +1147,14 @@
 						>
 							<span class="material-symbols" aria-hidden="true">flag</span>
 						</button>
+					{/if}
+					{#if !isOwner && auth.user && route.is_public}
+						<OrganiserDisputeAction
+							targetKind="route"
+							targetId={route.id}
+							targetLabel={route.name ?? undefined}
+							targetClubId={route.club_id ?? null}
+						/>
 					{/if}
 				</div>
 			</header>
@@ -684,10 +1168,10 @@
 				</div>
 			{/if}
 
-			<!-- Elevation summary — always rendered when the route stores
-			     a non-zero gain. Per-waypoint min/max/loss are derived
-			     from the elevations array; routes without per-point
-			     elevation data fall back to the stored gain only. -->
+			<!-- Elevation summary — rendered when the route stores a
+			     non-zero gain, and the gain is always that stored figure
+			     (routeElevation). Loss / max / min and the chart need
+			     waypoints that carry altitude. -->
 			<!-- Preview scrubber — drag the thumb to see a pulsing
 				 dot move along the route polyline on the map. Lives
 				 in the info panel (not below the map) so it's always
@@ -696,7 +1180,7 @@
 				<section class="section preview-section">
 					<h2>{m('routeDetail.previewHeading')}</h2>
 					<RoutePreviewScrubber
-						totalDistanceM={route.distance_m}
+						totalDistanceM={shownDistanceM}
 						fraction={scrubFraction}
 						onchange={(f) => (scrubFraction = f)}
 						onscrubbing={(active) => (scrubbing = active)}
@@ -713,39 +1197,40 @@
 								<span class="material-symbols">trending_up</span>
 								{m('routeDetail.elevGain')}
 							</span>
-							<span class="elev-value">
-								{(hasElevationData ? elevationStats.gain : route.elevation_m)} m
-							</span>
+							<span class="elev-value" data-testid="route-elev-gain">{formatElevation(route.elevation_m)}</span>
 						</div>
-						{#if hasElevationData}
+						{#if elevation.loss != null}
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">trending_down</span>
 									{m('routeDetail.elevLoss')}
 								</span>
-								<span class="elev-value">{elevationStats.loss} m</span>
+								<span class="elev-value">{formatElevation(elevation.loss)}</span>
 							</div>
+						{/if}
+						{#if elevation.profile}
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">terrain</span>
 									{m('routeDetail.elevMax')}
 								</span>
-								<span class="elev-value">{elevationStats.max} m</span>
+								<span class="elev-value">{formatElevation(elevation.max)}</span>
 							</div>
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">vertical_align_bottom</span>
 									{m('routeDetail.elevMin')}
 								</span>
-								<span class="elev-value">{elevationStats.min} m</span>
+								<span class="elev-value">{formatElevation(elevation.min)}</span>
 							</div>
 						{/if}
 					</div>
-					{#if hasElevationData}
+					{#if elevation.profile}
 						<div class="elev-chart">
 							<ElevationProfile
-								{elevations}
-								totalDistance={route.distance_m}
+								elevations={elevation.profile}
+								totalGain={elevation.gain}
+								totalDistance={shownDistanceM}
 								onhover={(idx) => (chartHoverIdx = idx)}
 							/>
 						</div>
@@ -794,6 +1279,8 @@
 					</p>
 				{/if}
 			</section>
+
+			<CourseAlerts target={{ routeId: route.id }} clubId={route.club_id ?? null} signedIn={auth.loggedIn} />
 
 			<section class="section">
 				<SegmentsPanel
@@ -908,6 +1395,7 @@
 					<RunMap
 						track={displayWaypoints}
 						totalDistanceM={route.distance_m}
+						officialDistanceM={route.official_distance_m}
 						hoverIdx={chartHoverIdx}
 						{previewLngLat}
 						markers={markerPins}
@@ -919,6 +1407,19 @@
 						onMarkerClick={(id) => (markerSelectId = id)}
 						onMarkerDrag={(id, ll) => (markerPendingDrag = { id, lat: ll.lat, lng: ll.lng })}
 					/>
+				{:else if route.line_unavailable}
+					<div class="map-placeholder" data-testid="route-line-failed">
+						<span class="material-symbols" aria-hidden="true">cloud_off</span>
+						<p role="status" aria-live="polite">
+							{lineRetrying ? m('routeDetail.lineLoading') : m('routeDetail.lineLoadFailed')}
+						</p>
+						<button
+							type="button"
+							class="btn btn-outline"
+							onclick={retryLine}
+							disabled={lineRetrying}
+						>{m('routeDetail.retry')}</button>
+					</div>
 				{:else}
 					<div class="map-placeholder">
 						<span class="material-symbols">map</span>
@@ -955,6 +1456,42 @@
 		confirmLabel={m('routeDetail.shareConfirmCta')}
 		onconfirm={confirmShare}
 		oncancel={() => (showShareConfirm = false)}
+	/>
+	<ConfirmDialog
+		open={showDeleteConfirm}
+		data-testid="route-delete-confirm-dialog"
+		title={m('routeDetail.deleteTitle')}
+		message={deleteMessage}
+		confirmLabel={m('routeDetail.deleteRoute')}
+		danger
+		onconfirm={confirmDelete}
+		oncancel={() => (showDeleteConfirm = false)}
+	/>
+	<HeadToHeadDialog
+		open={showHeadToHead}
+		onclose={() => (showHeadToHead = false)}
+		kind="route"
+		targetId={route.id}
+	/>
+	<SendRouteDialog
+		open={showSendDm}
+		shareUrl={shareLink}
+		routeId={route.id}
+		grantAccess={sendGrantsAccess}
+		onclose={() => {
+			showSendDm = false;
+			if (sendGrantsAccess) void loadAudience();
+		}}
+	/>
+	<AudienceDialog
+		open={showAudience}
+		kind="route"
+		entityId={route.id}
+		isPublic={route.is_public === true}
+		followersOnly={route.followers_only === true}
+		onlevel={applyAudienceColumns}
+		onrequestpublic={requestPublicFromAudience}
+		onclose={closeAudience}
 	/>
 {/if}
 
@@ -1054,6 +1591,11 @@
 		line-height: 1.05;
 		letter-spacing: -0.01em;
 		color: var(--color-text);
+	}
+	.key-stat-sub {
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
 	}
 	.key-stat-label {
 		font-size: var(--font-size-section-label);
@@ -1176,7 +1718,8 @@
 		flex-wrap: wrap;
 	}
 
-	.star-btn {
+	.star-btn,
+	.edit-details-btn {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -1192,7 +1735,8 @@
 			color var(--transition-fast);
 	}
 
-	.star-btn:hover {
+	.star-btn:hover,
+	.edit-details-btn:hover:not(:disabled) {
 		background: var(--color-bg-tertiary);
 	}
 
@@ -1200,7 +1744,13 @@
 		color: var(--color-crown);
 	}
 
-	.star-btn .material-symbols {
+	.edit-details-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.star-btn .material-symbols,
+	.edit-details-btn .material-symbols {
 		font-family: 'Material Symbols Outlined';
 		font-size: 1.4rem;
 		font-variation-settings: 'FILL' 0;
@@ -1260,6 +1810,46 @@
 		white-space: pre-wrap;
 	}
 
+	.details-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-top: var(--space-sm);
+	}
+
+	.details-form label {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+	}
+
+	.details-form input,
+	.details-form textarea {
+		padding: var(--space-sm);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		font: inherit;
+		font-size: 0.9rem;
+		background: var(--color-surface);
+		color: var(--color-text);
+	}
+
+	.details-form textarea {
+		resize: vertical;
+	}
+
+	.details-hint {
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.details-actions {
+		display: flex;
+		gap: var(--space-xs);
+		justify-content: flex-end;
+	}
+
 	.describe-btn {
 		margin-top: var(--space-sm);
 		display: inline-flex;
@@ -1285,6 +1875,11 @@
 		font-size: 1.1rem;
 	}
 
+	.course-credit {
+		margin: var(--space-2xs, 0.25rem) 0 0;
+		color: var(--color-text-tertiary, var(--color-text-secondary));
+		font-size: 0.75rem;
+	}
 	.desc-attribution {
 		margin: var(--space-2xs, 0.25rem) 0 0;
 		display: flex;
@@ -1594,5 +2189,12 @@
 	}
 	.elev-chart {
 		margin-top: var(--space-sm);
+	}
+	.shared-with-you {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
 	}
 </style>

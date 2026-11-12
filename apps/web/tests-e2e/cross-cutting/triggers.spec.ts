@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearNotifications } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Database triggers, exercised through the UI and verified via
@@ -51,21 +52,25 @@ test.describe('database triggers via UI', () => {
 			// row with role='owner' status='active'. A regression that
 			// drops the trigger leaves the owner without admin access
 			// to their own club.
-			const { data: rows } = await admin
-				.from('club_members')
-				.select('user_id, role, status')
-				.eq('club_id', clubId);
-			expect(rows?.length).toBe(1);
-			expect(rows?.[0]?.user_id).toBe(USER_A.id);
-			expect(rows?.[0]?.role).toBe('owner');
-			expect(rows?.[0]?.status).toBe('active');
+			const rows = await readRows(
+				'club_members by club_id',
+				admin
+					.from('club_members')
+					.select('user_id, role, status')
+					.eq('club_id', clubId)
+			);
+			expect(rows.length).toBe(1);
+			expect(rows[0]?.user_id).toBe(USER_A.id);
+			expect(rows[0]?.role).toBe('owner');
+			expect(rows[0]?.status).toBe('active');
 		} finally {
 			await admin.from('clubs').delete().eq('id', clubId);
 		}
 	});
 
 	test('notify_run_kudos fires when alex kudos via UI — runner gets a kudos notification', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		// Same path as cross-user/notifications.spec.ts but the
 		// assertion is at the DB layer, not the bell badge. This pins
@@ -82,7 +87,7 @@ test.describe('database triggers via UI', () => {
 		});
 		const alex = await ctxAlex.newPage();
 		try {
-			await alex.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alex, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',
@@ -115,12 +120,15 @@ test.describe('database triggers via UI', () => {
 				return data?.length ?? 0;
 			}, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
 
-			const { data: rows } = await admin
-				.from('notifications')
-				.select('kind, run_id, actor_id, user_id, read_at')
-				.eq('user_id', USER_A.id)
-				.eq('kind', 'kudos');
-			const row = rows?.[0];
+			const rows = await readRows(
+				'notifications by user_id+kind',
+				admin
+					.from('notifications')
+					.select('kind, run_id, actor_id, user_id, read_at')
+					.eq('user_id', USER_A.id)
+					.eq('kind', 'kudos')
+			);
+			const row = rows[0];
 			expect(row?.actor_id).toBe(USER_B.id);
 			expect(row?.run_id).toBe(RUNNER_PUBLIC_RUN_ID);
 			expect(row?.read_at).toBeNull();
@@ -164,12 +172,15 @@ test.describe('database triggers via UI', () => {
 				return data?.length ?? 0;
 			}, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
 
-			const { data: rows } = await admin
-				.from('notifications')
-				.select('comment_id, actor_id, run_id')
-				.eq('user_id', USER_A.id)
-				.eq('kind', 'comment');
-			const row = rows?.[0];
+			const rows = await readRows(
+				'notifications by user_id+kind',
+				admin
+					.from('notifications')
+					.select('comment_id, actor_id, run_id')
+					.eq('user_id', USER_A.id)
+					.eq('kind', 'comment')
+			);
+			const row = rows[0];
 			expect(row?.comment_id).toBe(commentId);
 			expect(row?.actor_id).toBe(USER_B.id);
 			expect(row?.run_id).toBe(RUNNER_PUBLIC_RUN_ID);
@@ -210,12 +221,15 @@ test.describe('database triggers via UI', () => {
 				return data?.length ?? 0;
 			}, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
 
-			const { data: rows } = await admin
-				.from('notifications')
-				.select('kind, actor_id, user_id')
-				.eq('user_id', USER_B.id)
-				.eq('kind', 'follow');
-			expect(rows?.[0]?.actor_id).toBe(MORGAN);
+			const rows = await readRows(
+				'notifications by user_id+kind',
+				admin
+					.from('notifications')
+					.select('kind, actor_id, user_id')
+					.eq('user_id', USER_B.id)
+					.eq('kind', 'follow')
+			);
+			expect(rows[0]?.actor_id).toBe(MORGAN);
 		} finally {
 			await admin
 				.from('user_follows')
@@ -317,22 +331,28 @@ test.describe('database triggers via UI', () => {
 				)
 				.toBeGreaterThanOrEqual(1);
 
-			const { data: memberRows } = await admin
-				.from('notifications')
-				.select('club_id, actor_id')
-				.eq('user_id', USER_B.id)
-				.eq('kind', 'club_post')
-				.eq('club_id', clubId);
-			expect(memberRows?.[0]?.actor_id).toBe(USER_A.id);
+			const memberRows = await readRows(
+				'notifications by user_id+kind+club_id',
+				admin
+					.from('notifications')
+					.select('club_id, actor_id')
+					.eq('user_id', USER_B.id)
+					.eq('kind', 'club_post')
+					.eq('club_id', clubId)
+			);
+			expect(memberRows[0]?.actor_id).toBe(USER_A.id);
 
 			// The author is never notified of their own post.
-			const { data: authorRows } = await admin
-				.from('notifications')
-				.select('id')
-				.eq('user_id', USER_A.id)
-				.eq('kind', 'club_post')
-				.eq('club_id', clubId);
-			expect(authorRows?.length ?? 0).toBe(0);
+			const authorRows = await readRows(
+				'notifications by user_id+kind+club_id',
+				admin
+					.from('notifications')
+					.select('id')
+					.eq('user_id', USER_A.id)
+					.eq('kind', 'club_post')
+					.eq('club_id', clubId)
+			);
+			expect(authorRows.length).toBe(0);
 		} finally {
 			// Deleting the club cascades members, posts, and the
 			// club_id-linked notifications.
@@ -384,22 +404,28 @@ test.describe('database triggers via UI', () => {
 				)
 				.toBeGreaterThanOrEqual(1);
 
-			const { data: rows } = await admin
-				.from('notifications')
-				.select('run_id, actor_id')
-				.eq('user_id', USER_B.id)
-				.eq('kind', 'run_completed')
-				.eq('run_id', runId);
-			expect(rows?.[0]?.actor_id).toBe(USER_A.id);
+			const rows = await readRows(
+				'notifications by user_id+kind+run_id',
+				admin
+					.from('notifications')
+					.select('run_id, actor_id')
+					.eq('user_id', USER_B.id)
+					.eq('kind', 'run_completed')
+					.eq('run_id', runId)
+			);
+			expect(rows[0]?.actor_id).toBe(USER_A.id);
 
 			// The runner is never notified of their own run.
-			const { data: selfRows } = await admin
-				.from('notifications')
-				.select('id')
-				.eq('user_id', USER_A.id)
-				.eq('kind', 'run_completed')
-				.eq('run_id', runId);
-			expect(selfRows?.length ?? 0).toBe(0);
+			const selfRows = await readRows(
+				'notifications by user_id+kind+run_id',
+				admin
+					.from('notifications')
+					.select('id')
+					.eq('user_id', USER_A.id)
+					.eq('kind', 'run_completed')
+					.eq('run_id', runId)
+			);
+			expect(selfRows.length).toBe(0);
 		} finally {
 			// run_id is on delete cascade, so deleting the run clears
 			// the notification; drop the test follow too.

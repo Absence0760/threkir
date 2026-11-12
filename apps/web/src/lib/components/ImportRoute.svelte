@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { parseRouteFile, type ImportedRoute } from '$lib/integrations/import';
-	import { saveRoute } from '$lib/core/data';
-	import { formatDistance } from '$lib/core/mock-data';
+	import { parseRouteFile, type ImportedRoute } from '#lib/integrations/import.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { saveRoute } from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import Modal from './Modal.svelte';
 
 	let {
@@ -16,6 +17,7 @@
 	} = $props();
 
 	let dragging = $state(false);
+	let browseInput: HTMLInputElement | undefined = $state();
 	let parsing = $state(false);
 	let saving = $state(false);
 	let error = $state('');
@@ -58,7 +60,7 @@
 			names = routes.map((r) => r.name);
 			selected = routes.map(() => true);
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('importRoute.failedToParse');
+			error = errorCopy(err, m, 'importRoute.failedToParse', 'importRoute.failedToParse');
 		} finally {
 			parsing = false;
 		}
@@ -101,7 +103,7 @@
 				onclose();
 			}
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : m('importRoute.failedToSave'), 'error');
+			showToast(errorCopy(err, m, 'importRoute.failedToSave', 'importRoute.failedToSave'), 'error');
 		} finally {
 			saving = false;
 		}
@@ -145,10 +147,16 @@
 					<p>{m('importRoute.dragDropPrompt')}</p>
 					<p class="drop-hint">{m('importRoute.supportedFormats')}</p>
 					<p class="drop-hint">{m('importRoute.worksWith')}</p>
-					<label class="browse-btn">
+					<button type="button" class="browse-btn" onclick={() => browseInput?.click()}>
 						{m('importRoute.browseFiles')}
-						<input type="file" accept=".gpx,.kml,.kmz,.geojson,.json,.tcx" onchange={handleFileSelect} hidden />
-					</label>
+					</button>
+					<input
+						bind:this={browseInput}
+						type="file"
+						accept=".gpx,.kml,.kmz,.geojson,.json,.tcx"
+						onchange={handleFileSelect}
+						style="display: none"
+					/>
 				{/if}
 			</div>
 		{:else if parsed.length === 1}
@@ -192,10 +200,19 @@
 					{#each parsed as route, i (i)}
 						<li class="multi-item">
 							<label class="multi-toggle">
-								<input type="checkbox" bind:checked={selected[i]} />
+								<input
+									type="checkbox"
+									bind:checked={selected[i]}
+									aria-label={m('importRoute.includeRoute', { name: names[i] || route.name })}
+								/>
 							</label>
 							<div class="multi-fields">
-								<input type="text" bind:value={names[i]} disabled={!selected[i]} />
+								<input
+									type="text"
+									bind:value={names[i]}
+									disabled={!selected[i]}
+									aria-label={m('importRoute.routeName')}
+								/>
 								<div class="multi-meta">
 									<span>{formatDistance(route.distance_m)}</span>
 									<span class="meta-sep">·</span>
@@ -276,7 +293,9 @@
 		padding: var(--space-sm) var(--space-lg);
 		background: var(--color-primary);
 		color: white;
+		border: none;
 		border-radius: var(--radius-md);
+		font-family: inherit;
 		font-weight: 600;
 		font-size: 0.85rem;
 		cursor: pointer;

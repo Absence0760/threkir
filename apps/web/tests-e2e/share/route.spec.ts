@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 
@@ -28,7 +28,7 @@ test.describe('/share/route/[id] — anon', () => {
 		// The .route-meta strip carries distance + surface tag.
 		// (The hero subtitle also renders a .surface-tag; scope to .route-meta
 		// to keep the assertion pinned at the body-level summary strip.)
-		await expect(page.locator('.route-meta .surface-tag')).toContainText('road');
+		await expect(page.locator('.route-meta .surface-tag')).toHaveText('Road');
 		await expect(page.locator('.route-meta')).toContainText('10');
 	});
 
@@ -153,9 +153,7 @@ test.describe('/share/route/[id] — anon', () => {
 		// routes /og/route/* to the share-route Lambda (same
 		// renderRouteOgPng helper). Either way the URL + Content-Type +
 		// magic bytes are pinned.
-		const res = await request.get(
-			`http://localhost:7777/og/route/${RUNNER_PUBLIC_ROUTE_ID}.png`
-		);
+		const res = await request.get(`/og/route/${RUNNER_PUBLIC_ROUTE_ID}.png`);
 		expect(res.status()).toBe(200);
 		expect(res.headers()['content-type']).toContain('image/png');
 		const body = await res.body();

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A watch -->
+  <path d="M42 16 H62 V30 M42 16 V30 M42 70 V84 H62 V70" stroke="currentColor" stroke-width="3"/>
+  <rect x="32" y="28" width="40" height="44" rx="10" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <path d="M42 56 C48 44 54 58 62 44" stroke="#ff00a1" stroke-width="3"/>
+  <!-- A connected account -->
+  <path d="M34 128 A14 14 0 0 1 40 102 A18 18 0 0 1 72 104 A12 12 0 0 1 72 128 Z" fill="#ff00a2" stroke="currentColor" stroke-width="3"/>
+  <path d="M46 120 L54 110 L62 120" stroke="#ff00a1" stroke-width="3"/>
+  <!-- A file -->
+  <path d="M38 148 H60 L70 158 V188 H38 Z" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <path d="M60 148 V158 H70" stroke="currentColor" stroke-width="3"/>
+  <path d="M46 170 H62 M46 178 H58" stroke="#ff00a3" stroke-width="3"/>
+  <!-- All flowing into one history -->
+  <path d="M86 50 C130 50 130 100 172 100 M86 115 H172 M86 168 C130 168 130 130 172 130" stroke="#ff00a3" stroke-width="3" stroke-dasharray="2 9"/>
+  <path d="M164 92 L174 100 L164 108 M164 107 L174 115 L164 123 M164 122 L174 130 L164 138" stroke="#ff00a1" stroke-width="3"/>
+  <rect x="198" y="40" width="102" height="44" rx="10" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <rect x="190" y="92" width="114" height="46" rx="10" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <rect x="190" y="146" width="114" height="46" rx="10" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <path d="M206 70 C216 56 226 68 236 54 M200 124 C210 110 220 122 230 108 M200 178 C210 164 220 176 230 162" stroke="#ff00a1" stroke-width="3"/>
+  <path d="M250 58 H286 M250 68 H274 M244 110 H290 M244 120 H276 M244 164 H290 M244 174 H276" stroke="#ff00a3" stroke-width="3"/>
+</svg>

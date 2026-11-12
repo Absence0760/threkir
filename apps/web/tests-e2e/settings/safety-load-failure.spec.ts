@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 
@@ -38,6 +38,8 @@ test.describe('/settings/safety — a failed read is not an empty list', () => {
 		const banner = page.getByTestId('safety-load-error');
 		await expect(banner).toBeVisible({ timeout: 10_000 });
 		await expect(banner).toHaveAttribute('role', 'alert');
+		// The detail line is catalogue copy, not the server's text.
+		await expect(banner).not.toContainText('simulated');
 
 		// The empty state must NOT be the thing a failed read shows.
 		await expect(page.getByTestId('safety-empty')).toHaveCount(0);

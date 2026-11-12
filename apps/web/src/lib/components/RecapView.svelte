@@ -1,8 +1,14 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { YearInRunningRecap } from '$lib/runs/recap';
+	import { onDestroy, onMount } from 'svelte';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { RECAP_SITE, recapActiveMonths } from '#lib/share/recap_card_text.ts';
+	import { formatHoursMinutes } from '#lib/format/time.ts';
+	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
+	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	interface Props {
 		recap: YearInRunningRecap;
@@ -11,19 +17,121 @@
 		/** Closing-section CTA label (e.g. "Share my 2026"). */
 		shareLabel: string;
 		onshare: () => void;
+		/** Optional 9:16 story image share, shown beside the square one. */
+		onsharestory?: (() => void) | null;
 		/** Optional "publish a public link" action shown alongside the image share. */
 		onpublish?: (() => void) | null;
 		publishing?: boolean;
+		/// Offers the 9:16 slideshow video (decisions § 2269). `autoStart` is
+		/// the phone's Video option arriving with `?video=1`.
+		video?: { title: string; fileStem: string; autoStart?: boolean } | null;
+		/// The parks the owner ran courses in this period (`recapParkSummary`),
+		/// owner pages only: a published snapshot carries the counts, never a park.
+		parks?: { parkId: string; name: string; regionCode: string; courseCount: number }[];
 	}
 
-	let { recap, kicker, shareLabel, onshare, onpublish = null, publishing = false }: Props =
-		$props();
+	let {
+		recap,
+		kicker,
+		shareLabel,
+		onshare,
+		onsharestory = null,
+		onpublish = null,
+		publishing = false,
+		video = null,
+		parks = [],
+	}: Props = $props();
 
-	function fmtTime(seconds: number): string {
-		const h = Math.floor(seconds / 3600);
-		const m = Math.floor((seconds % 3600) / 60);
-		if (h > 0) return `${h}h ${m}m`;
-		return `${m}m`;
+	type VideoState =
+		| { step: 'idle' }
+		| { step: 'rendering'; progress: number }
+		| { step: 'ready'; blob: Blob; url: string };
+
+	/// undefined while the browser is being asked; null when it can encode
+	/// nothing, which hides the action behind a note rather than a dead button.
+	let encoderPlan = $state<VideoEncoderPlan | null | undefined>(undefined);
+	let videoState = $state<VideoState>({ step: 'idle' });
+	let videoAbort: AbortController | null = null;
+
+	onMount(async () => {
+		if (!video) return;
+		try {
+			const { pickVideoEncoder } = await import('#lib/video/encode_video.ts');
+			encoderPlan = await pickVideoEncoder();
+		} catch (e) {
+			console.warn('recap: no video encoder', e);
+			encoderPlan = null;
+		}
+		if (encoderPlan && video.autoStart) void makeVideo();
+	});
+
+	onDestroy(() => discardVideo());
+
+	function slideFormat(): RecapSlideFormat {
+		const locale = activeFormatLocale();
+		return {
+			t,
+			kicker,
+			distance: (meters) => fmtKm(meters),
+			pace: (s) => fmtPace(s),
+			weekOf: fmtWeekStart,
+			monthName: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'long' }),
+			monthLetter: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'narrow' }),
+			count: (n) => n.toLocaleString(locale),
+			url: RECAP_SITE,
+		};
+	}
+
+	async function makeVideo() {
+		const plan = encoderPlan;
+		if (!plan || !video || videoState.step === 'rendering') return;
+		discardVideo();
+		const abort = new AbortController();
+		videoAbort = abort;
+		videoState = { step: 'rendering', progress: 0 };
+		try {
+			const { renderRecapSlideshow } = await import('#lib/share/recap_slideshow_video.ts');
+			const blob = await renderRecapSlideshow({
+				recap,
+				format: slideFormat(),
+				plan,
+				signal: abort.signal,
+				onprogress: (f) => {
+					if (videoAbort === abort) videoState = { step: 'rendering', progress: f };
+				},
+			});
+			if (videoAbort !== abort) return;
+			videoState = { step: 'ready', blob, url: URL.createObjectURL(blob) };
+		} catch (e) {
+			if (videoAbort !== abort) return;
+			videoState = { step: 'idle' };
+			if ((e as { name?: string })?.name === 'AbortError') return;
+			console.error('recap: video export failed', e);
+			showToast(t('recap.videoFailed'), 'error');
+		} finally {
+			if (videoAbort === abort) videoAbort = null;
+		}
+	}
+
+	function discardVideo() {
+		videoAbort?.abort();
+		videoAbort = null;
+		if (videoState.step === 'ready') URL.revokeObjectURL(videoState.url);
+		videoState = { step: 'idle' };
+	}
+
+	async function saveVideo() {
+		if (videoState.step !== 'ready' || !video) return;
+		const { blob } = videoState;
+		try {
+			const { deliverVideo } = await import('#lib/video/encode_video.ts');
+			const how = await deliverVideo(blob, video.fileStem, video.title);
+			if (how === 'downloaded') showToast(t('recap.videoSaved'), 'success');
+		} catch (e) {
+			if ((e as { name?: string })?.name === 'AbortError') return;
+			console.error('recap: video share failed', e);
+			showToast(t('recap.videoFailed'), 'error');
+		}
 	}
 
 	function fmtWeekStart(iso: string): string {
@@ -33,10 +141,6 @@
 
 	function maxMonthlyDistance(monthly: YearInRunningRecap['monthly']): number {
 		return Math.max(1, ...monthly.map((m) => m.distanceM));
-	}
-
-	function activeMonths(monthly: YearInRunningRecap['monthly']): number {
-		return monthly.filter((m) => m.runCount > 0).length;
 	}
 
 	const MONTH_LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -51,7 +155,7 @@
 	<div class="hero-meta">
 		<span class="hero-meta-item">
 			<span class="material-symbols">timer</span>
-			{t('recap.onFoot', { time: fmtTime(recap.totalDurationS) })}
+			{t('recap.onFoot', { time: formatHoursMinutes(recap.totalDurationS) })}
 		</span>
 		<span class="hero-meta-divider" aria-hidden="true"></span>
 		<span class="hero-meta-item">
@@ -63,10 +167,10 @@
 			<span class="hero-meta-item">
 				<span class="material-symbols">calendar_month</span>
 				{t(
-					activeMonths(recap.monthly) === 1
+					recapActiveMonths(recap) === 1
 						? 'recap.activeInMonthsOne'
 						: 'recap.activeInMonthsMany',
-					{ n: activeMonths(recap.monthly) }
+					{ n: recapActiveMonths(recap) }
 				)}
 			</span>
 		{/if}
@@ -76,6 +180,12 @@
 			<span class="material-symbols">ios_share</span>
 			{t('recap.shareRecap')}
 		</button>
+		{#if onsharestory}
+			<button type="button" class="btn share-btn" data-testid="recap-share-story" onclick={onsharestory}>
+				<span class="material-symbols" aria-hidden="true">smartphone</span>
+				{t('recap.shareStory')}
+			</button>
+		{/if}
 		{#if onpublish}
 			<button
 				type="button"
@@ -87,7 +197,42 @@
 				{publishing ? t('recap.publishing') : t('recap.publishAndShare')}
 			</button>
 		{/if}
+		{#if video && encoderPlan && videoState.step === 'idle'}
+			<button type="button" class="btn share-btn" data-testid="recap-make-video" onclick={makeVideo}>
+				<span class="material-symbols" aria-hidden="true">movie</span>
+				{t('recap.makeVideo')}
+			</button>
+		{/if}
 	</div>
+	{#if video && encoderPlan === null}
+		<p class="publish-note" data-testid="recap-video-unsupported">{t('recap.videoUnsupported')}</p>
+	{:else if videoState.step === 'rendering'}
+		<div class="video-row">
+			<p role="status" data-testid="recap-video-progress">
+				{t('recap.videoRendering', { percent: Math.floor(videoState.progress * 100) })}
+			</p>
+			<button type="button" class="btn share-btn" onclick={discardVideo}>{t('common.cancel')}</button>
+		</div>
+	{:else if videoState.step === 'ready'}
+		<div class="video-row">
+			<!-- svelte-ignore a11y_media_has_caption -->
+			<video
+				class="video-preview"
+				src={videoState.url}
+				controls
+				muted
+				playsinline
+				aria-label={t('recap.videoPreviewLabel')}
+				data-testid="recap-video-preview"
+			></video>
+			<p role="status">{t('recap.videoReady')}</p>
+			<button type="button" class="btn share-btn" data-testid="recap-save-video" onclick={saveVideo}>
+				<span class="material-symbols" aria-hidden="true">ios_share</span>
+				{t('recap.videoSave')}
+			</button>
+			<button type="button" class="btn share-btn" onclick={discardVideo}>{t('recap.videoDiscard')}</button>
+		</div>
+	{/if}
 	{#if onpublish}
 		<p class="publish-note">{t('recap.makePublicExplain')}</p>
 	{/if}
@@ -140,7 +285,31 @@
 		<span class="card-value">{recap.photoCount}</span>
 		<span class="card-sub">{t('recap.momentsCaptured')}</span>
 	</div>
+	{#if recap.parkCourseCount > 0}
+		<div class="card" data-testid="recap-park-courses">
+			<span class="card-label">{t('recap.parkCourses')}</span>
+			<span class="card-value">{recap.parkCourseCount}</span>
+			<span class="card-sub">{t('recap.parkCoursesSub', { n: recap.parkCount })}</span>
+		</div>
+	{/if}
 </section>
+
+{#if parks.length > 0}
+	<section class="badges" data-testid="recap-parks">
+		<header class="badges-head">
+			<h2>{t('recap.parksHeading')}</h2>
+		</header>
+		<ul class="park-list">
+			{#each parks as p (p.parkId)}
+				<li>
+					<span class="material-symbols" aria-hidden="true">park</span>
+					<span class="park-name">{p.name}</span>
+					<span class="badge-detail">{t('recap.parkCourseCount', { n: p.courseCount })}</span>
+				</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
 
 {#if recap.badges.length > 0}
 	<section class="badges">
@@ -309,6 +478,25 @@
 	}
 	.publish-btn:hover:not(:disabled) {
 		background: rgba(255, 255, 255, 0.24);
+	}
+	.video-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-sm);
+		margin-top: var(--space-md);
+	}
+	.video-row p {
+		margin: 0;
+		flex-basis: 100%;
+		font-weight: 600;
+	}
+	.video-preview {
+		width: min(12rem, 60vw);
+		aspect-ratio: 9 / 16;
+		border-radius: var(--radius-lg);
+		background: var(--color-bg-secondary);
 	}
 	.publish-note {
 		margin: var(--space-sm) auto 0;
@@ -494,6 +682,32 @@
 		font-size: 0.8rem;
 		color: var(--color-text-tertiary);
 		line-height: 1.35;
+	}
+
+	.park-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: var(--space-sm);
+	}
+	.park-list li {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-sm) var(--space-md);
+	}
+	.park-list .material-symbols {
+		color: var(--color-accent-orange-text);
+	}
+	.park-name {
+		font-weight: 700;
+		flex: 1;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.closing {

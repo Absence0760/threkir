@@ -19,23 +19,13 @@
 /// for the full argument.
 
 import { formatDateStable, normaliseSiteUrl } from './share_meta';
+import { distinctExerciseCount as countDistinctExercises } from '../gym/gym_prs';
 import { escapeHtml } from '../util/html_escape';
+import { serialiseJsonLd } from '../util/json_ld';
+import { collapseAndClip } from '../util/clip_text';
 import type { SharedWorkout, SharedWorkoutSet } from './share_workout_lookup';
 
 const SITE_NAME = 'Threkir';
-
-function escapeJsonLd(json: string): string {
-	return json
-		.replace(/</g, '\\u003c')
-		.replace(/>/g, '\\u003e')
-		.replace(/&/g, '\\u0026');
-}
-
-function clean(raw: string | null | undefined, max: number): string {
-	const collapsed = (raw ?? '').replace(/\s+/g, ' ').trim();
-	if (!collapsed) return '';
-	return collapsed.length > max ? `${collapsed.slice(0, max - 1).trimEnd()}…` : collapsed;
-}
 
 /// Total kilograms lifted, rounded — canonical kg, never the viewer's unit.
 export function formatKgStable(kg: number | null | undefined): string {
@@ -43,12 +33,20 @@ export function formatKgStable(kg: number | null | undefined): string {
 	return `${Math.round(kg)} kg`;
 }
 
-/// Distinct exercises in a logged workout, matched case- and
-/// whitespace-insensitively so "Back Squat" and "back squat " count once.
-/// Shared with the share page so its summary tile and the og:description
+/// Distinct exercises in a logged workout, counted on the CANONICAL grouping
+/// key. Shared with the share page so its summary tile and the og:description
 /// can't disagree about the number.
+///
+/// The key has one derivation — `normaliseExerciseName` (§ 1175) — and this
+/// used to re-derive it as `trim().toLowerCase()` under a comment claiming
+/// case- and whitespace-insensitive matching. It was neither: measured, a
+/// workout logging "Bench  Press" beside "Bench Press", "Bench\u00a0Press"
+/// beside "bench press", or "\u0130ncline Press" beside "incline press"
+/// counted TWO where `gym_workout_summaries` and every keyed surface count
+/// one, and the number went out in an og:description to every unfurler that
+/// touched the link (§ 1274).
 export function distinctExerciseCount(sets: readonly SharedWorkoutSet[]): number {
-	return new Set(sets.map((s) => s.exercise_name.trim().toLowerCase())).size;
+	return countDistinctExercises(sets.map((s) => s.exercise_name));
 }
 
 export function buildWorkoutShareTitle(
@@ -56,9 +54,9 @@ export function buildWorkoutShareTitle(
 	displayName?: string | null,
 ): string {
 	if (!workout) return `Workout — ${SITE_NAME}`;
-	const custom = clean(workout.title, 80);
+	const custom = collapseAndClip(workout.title, 80);
 	if (custom) return `${custom} — ${SITE_NAME}`;
-	const by = clean(displayName, 60);
+	const by = collapseAndClip(displayName, 60);
 	return by ? `Workout by ${by} — ${SITE_NAME}` : `Workout — ${SITE_NAME}`;
 }
 
@@ -74,7 +72,7 @@ export function buildWorkoutShareDescription(
 	if (sets > 0) bits.push(`${sets} ${sets === 1 ? 'set' : 'sets'}`);
 	const volume = formatKgStable(workout.volume_kg);
 	if (volume) bits.push(`${volume} lifted`);
-	const by = clean(displayName, 60);
+	const by = collapseAndClip(displayName, 60);
 	if (by) bits.push(`by ${by}`);
 	const date = formatDateStable(workout.started_at);
 	if (date) bits.push(`on ${date}`);
@@ -114,7 +112,7 @@ function workoutShareName(
 /// and pointing it at the brand card would misdescribe the page.
 ///
 /// Title + display name are user-controlled, so the output goes through
-/// `escapeJsonLd` before it reaches the DOM.
+/// `serialiseJsonLd` before it reaches the DOM.
 export function buildWorkoutJsonLd(
 	workout: SharedWorkout | null | undefined,
 	opts: { id: string; base: string | null | undefined; displayName?: string | null },
@@ -136,7 +134,7 @@ export function buildWorkoutJsonLd(
 			],
 		},
 	};
-	return escapeJsonLd(JSON.stringify(graph));
+	return serialiseJsonLd(graph);
 }
 
 export interface ShareWorkoutMetaInput {

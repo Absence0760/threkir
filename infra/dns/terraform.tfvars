@@ -27,10 +27,25 @@ apex_domain = "threkir.com"
 # admin.migadu.com → Domains → threkir.com before applying.
 email_auth_records = {
   # ── Resend: outbound app mail (send.threkir.com) ──
-  dkim  = { name = "resend._domainkey", type = "TXT", records = ["p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDGHkD1n/X+qOK6ruohZLqEFw5KT1slmd7GFxA/jdIHH0jR1Pa1OrfrpQMXpQR+BoxxLdv6YdWVsHm0O0gQZltrnSSUpToOx7uh3asZS64TfsfzwTFSbQH0Dae1m5NDVHHBOUKiETMLwKFIRp/SgcTX5WwyWVEY8SCCfq/gkXKnywIDAQAB"] }
-  spf   = { name = "send", type = "TXT", records = ["v=spf1 include:amazonses.com ~all"] }
-  mx    = { name = "send", type = "MX", records = ["10 feedback-smtp.us-east-1.amazonses.com"] }
-  dmarc = { name = "_dmarc", type = "TXT", records = ["v=DMARC1; p=none;"] }
+  dkim = { name = "resend._domainkey", type = "TXT", records = ["p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDGHkD1n/X+qOK6ruohZLqEFw5KT1slmd7GFxA/jdIHH0jR1Pa1OrfrpQMXpQR+BoxxLdv6YdWVsHm0O0gQZltrnSSUpToOx7uh3asZS64TfsfzwTFSbQH0Dae1m5NDVHHBOUKiETMLwKFIRp/SgcTX5WwyWVEY8SCCfq/gkXKnywIDAQAB"] }
+  spf  = { name = "send", type = "TXT", records = ["v=spf1 include:amazonses.com ~all"] }
+  mx   = { name = "send", type = "MX", records = ["10 feedback-smtp.us-east-1.amazonses.com"] }
+  # `rua` is aggregate-report collection, not policy: receivers mail a daily
+  # XML summary of everything claiming to be from this domain — sending IP,
+  # volume, and whether SPF and DKIM PASSED AND ALIGNED. It changes no
+  # delivery decision, so it is safe to publish at any policy.
+  #
+  # It exists because `p=none` cannot be raised responsibly without it. Two
+  # independent senders use this domain (Resend for app mail, Migadu for
+  # mailboxes); tightening to `p=quarantine` while either is misaligned junks
+  # our own password resets, with a user complaint as the first symptom. The
+  # records resolving is not evidence that mail passes — only a receiver can
+  # say that, and without `rua` nothing was asking.
+  #
+  # dmarc@threkir.com must EXIST as a Migadu alias or the reports bounce. No
+  # `ruf=`: per-message forensic reports are barely supported and can carry
+  # recipient addresses.
+  dmarc = { name = "_dmarc", type = "TXT", records = ["v=DMARC1; p=none; rua=mailto:dmarc@threkir.com;"] }
 
   # ── BIMI: sender brand logo for noreply@threkir.com (issue #211) ──
   # `l=` points at the apex-served SVG (SVG Tiny PS profile);
@@ -57,6 +72,9 @@ email_auth_records = {
   # ── Migadu: inbound + @threkir.com mailboxes (apex) ──
   # SPF + ownership-verify share one apex TXT record set (Route 53 keys a
   # record set by name+type, so both TXT strings live under one entry).
+  # Every other apex TXT string goes here too, e.g. Pinterest's domain claim
+  # for pinterest.com/threkir (social#2). The key keeps its Migadu name:
+  # renaming it would destroy and recreate the record set, briefly dropping SPF.
   #
   # The apex SPF authorizes BOTH senders because the app's envelope-from is
   # apex (smtp.ts issues `MAIL FROM:<noreply@threkir.com>`): spf.migadu.com
@@ -64,7 +82,7 @@ email_auth_records = {
   # include here would SPF-fail app mail if Resend ever forwards the apex
   # return-path unrewritten. (Resend's own send-subdomain SPF is separate,
   # above.) Keep this in sync with whichever relay `SMTP_HOST` points at.
-  migadu_apex_txt   = { name = "", type = "TXT", records = ["v=spf1 include:spf.migadu.com include:amazonses.com -all", "hosted-email-verify=p8dxwnab"] }
+  migadu_apex_txt   = { name = "", type = "TXT", records = ["v=spf1 include:spf.migadu.com include:amazonses.com -all", "hosted-email-verify=p8dxwnab", "pinterest-site-verification=c00b9337a0389a79d741e9b76dd9ac6c"] }
   migadu_mx         = { name = "", type = "MX", records = ["10 aspmx1.migadu.com", "20 aspmx2.migadu.com"] }
   migadu_dkim1      = { name = "key1._domainkey", type = "CNAME", records = ["key1.threkir.com._domainkey.migadu.com."] }
   migadu_dkim2      = { name = "key2._domainkey", type = "CNAME", records = ["key2.threkir.com._domainkey.migadu.com."] }

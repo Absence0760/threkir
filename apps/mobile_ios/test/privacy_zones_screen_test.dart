@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/privacy_zones_screen.dart';
+import '../lib/widgets/map_attribution.dart';
 import '../lib/settings_sync.dart';
 
 Position _fakePosition({double lat = 37.53, double lng = -77.45}) => Position(
@@ -51,8 +52,38 @@ Future<void> _pump(
   await tester.pump(const Duration(seconds: 1));
 }
 
+// A map that reaches the screen bottom drew its credit under the system
+// navigation bar (route builder field report; same root cause here).
+void simulateNavBar(WidgetTester tester) {
+  tester.view.physicalSize = const Size(360, 780);
+  tester.view.devicePixelRatio = 1;
+  tester.view.padding = const FakeViewPadding(bottom: 48);
+  tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+  addTearDown(tester.view.reset);
+}
+
+void expectCreditsAboveNavBar(WidgetTester tester) {
+  final credits = find.descendant(
+      of: find.byType(MapAttribution), matching: find.byType(Text));
+  expect(credits, findsWidgets);
+  for (final credit in credits.evaluate()) {
+    final rect = tester.getRect(find.byWidget(credit.widget));
+    expect(rect.bottom, lessThanOrEqualTo(780 - 48),
+        reason: 'credit $rect is under the navigation bar');
+  }
+}
+
 void main() {
   group('PrivacyZonesScreen — initial render', () {
+    testWidgets('the map credit stays above the navigation bar',
+        (tester) async {
+      simulateNavBar(tester);
+      final s = await _makeSync();
+      await _pump(tester, sync: s.sync);
+      await tester.pump();
+      expectCreditsAboveNavBar(tester);
+    });
+
     testWidgets('renders the Privacy zones app-bar title', (tester) async {
       final s = await _makeSync();
       await _pump(tester, sync: s.sync);

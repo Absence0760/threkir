@@ -3,12 +3,24 @@
 /// idempotent order-state machine, and envelope parsing can be unit-
 /// tested without the Stripe SDK or the Supabase stack.
 ///
-/// Keep this file dependency-free — no `Deno.env`, no `createClient`, no
-/// `fetch`, no Stripe import. It reuses `hmacHex` + `timingSafeEqual`
-/// from _shared/webhook_security.ts (Web Crypto, zero supply-chain
-/// surface) so the verifier is testable against constructed fixtures.
+/// Keep this file free of RUNTIME dependencies — no `Deno.env`, no
+/// `createClient`, no `fetch`, no Stripe value import. The signature
+/// verifier is `verifyTimestampedHmac` from _shared/webhook_security.ts (Web
+/// Crypto, zero supply-chain surface), testable against constructed
+/// fixtures.
+///
+/// The Stripe import below is TYPE-ONLY and is erased before anything is
+/// bundled. That distinction is the whole of decisions § 785: a VALUE
+/// import of the SDK takes this function's eszip from 761,148 to 3,373,077
+/// bytes, and a type-only one takes it to 761,378 — the 230 bytes of source
+/// text added here. Measured with `edge-runtime bundle`, both ways, on this
+/// entrypoint. `wiring.test.ts` fails the moment it stops being type-only.
 
-import { hmacHex, timingSafeEqual } from '../_shared/webhook_security.ts';
+import type Stripe from '../_shared/stripe.ts';
+import {
+  shouldReleaseDedupe,
+  verifyTimestampedHmac,
+} from '../_shared/webhook_security.ts';
 import {
   type CapacityOutcome,
   capacityDecision,
@@ -19,66 +31,408 @@ import {
 export { capacityDecision };
 export type { CapacityOutcome };
 
-/// Verify a Stripe webhook signature.
-///
-/// Stripe signs with the `Stripe-Signature` header in the form
-/// `t=<unix-seconds>,v1=<hex hmac-sha256>` (there can be multiple v1
-/// schemes during a secret rotation, and a `v0` for older schemes which
-/// we ignore). The signed payload is the literal string
-/// `${t}.${rawBody}`, keyed by the endpoint's signing secret (whsec_…).
-///
-/// Verification runs on the RAW request bytes — NOT a JSON.parse'd and
-/// re-stringified body, which won't round-trip whitespace/key-order and
-/// would break every signature.
-///
-/// Two gates, both required:
-///   1. signature — recompute HMAC over `${t}.${rawBody}`, constant-time
-///      compare against each `v1` value (any match passes — covers the
-///      dual-signature rotation window).
-///   2. freshness — reject if `|now - t|` exceeds the tolerance (default
-///      5 min, Stripe's recommended default). This is the replay gate: a
-///      captured POST replayed later fails even though its HMAC is valid.
-export async function verifyStripeSignature(
-  rawBody: string,
-  sigHeader: string | null,
-  secret: string,
-  nowMs: number,
-  toleranceSec = 300,
-): Promise<boolean> {
-  if (!sigHeader || !secret) return false;
+// Re-exported from the shared webhook primitives: the insert-first dedupe
+// release rule is the same for every provider that writes the row before the
+// side effect, and this webhook is only one of them.
+export { shouldReleaseDedupe };
 
-  const parts = sigHeader.split(',');
-  let timestamp: number | null = null;
-  const v1Sigs: string[] = [];
-  for (const part of parts) {
-    const idx = part.indexOf('=');
-    if (idx === -1) continue;
-    const key = part.slice(0, idx).trim();
-    const value = part.slice(idx + 1).trim();
-    if (key === 't') {
-      const n = Number.parseInt(value, 10);
-      if (Number.isFinite(n)) timestamp = n;
-    } else if (key === 'v1') {
-      v1Sigs.push(value);
-    }
-  }
+/// A compile-time assertion that Stripe's own declared shape is assignable
+/// to the narrow shape this webhook reads it as. Instantiating it with a
+/// `From` that no longer fits reports a TS2344 naming both types — the same
+/// negative-assertion mechanism `_shared/stripe.ts` uses, for the same
+/// reason: nothing about a field that has been renamed, retyped or made
+/// nullable produces a runtime error here. It reads as `undefined`, which on
+/// this function means "not a full refund" or "no payment intent" — a
+/// silently different order status, not a crash.
+type AssertAssignable<From extends To, To> = From;
 
-  if (timestamp === null || v1Sigs.length === 0) return false;
+/// The literal members of a Stripe enum. Since stripe 23 every enum is
+/// declared `'a' | 'b' | OtherString` (`string & Record<never, never>`), so a
+/// value the SDK has never heard of still type-checks; this drops that open
+/// member and keeps the values Stripe actually names.
+type KnownMembers<T> = T extends string ? (string extends T ? never : T) : never;
 
-  // Freshness — reject a stale (replayed) or wildly future-dated event.
-  const ageSec = Math.abs(nowMs / 1000 - timestamp);
-  if (ageSec > toleranceSec) return false;
+/// The `payment_status` values this webhook knows how to act on. Asserted
+/// equal to the SDK's named set in both directions, so a value Stripe adds
+/// or renames fails `deno check` instead of reading as an unknown status.
+/// One the SDK only admits through its open member is handled at runtime:
+/// `readCheckoutSession` reads it as null, and null is not settled.
+type KnownPaymentStatus = 'no_payment_required' | 'paid' | 'unpaid';
+type StripesPaymentStatus = KnownMembers<Stripe.Checkout.Session['payment_status']>;
+type KnownPaymentStatusIsStripes = AssertAssignable<KnownPaymentStatus, StripesPaymentStatus>;
+type StripesPaymentStatusIsKnown = AssertAssignable<StripesPaymentStatus, KnownPaymentStatus>;
 
-  const expected = await hmacHex(secret, `${timestamp}.${rawBody}`);
-  for (const candidate of v1Sigs) {
-    if (timingSafeEqual(candidate, expected)) return true;
-  }
-  return false;
+/// Exactly the Checkout Session fields this webhook reads, spelled with
+/// Stripe's own names and types. This is not an approximation of the SDK
+/// (decisions § 765 refused one of those for the whole 450-file surface):
+/// it is three fields, and the assertion under it is what makes the compiler
+/// re-derive it from the SDK on every check.
+interface CheckoutSessionSource {
+  metadata: Record<string, string> | null;
+  payment_intent: string | { id: string } | null;
+  payment_status: string;
 }
+type CheckoutSessionSourceIsStripes = AssertAssignable<
+  Stripe.Checkout.Session,
+  CheckoutSessionSource
+>;
+
+interface ChargeSource {
+  payment_intent: string | { id: string } | null;
+  refunded: boolean;
+  amount: number;
+  amount_refunded: number;
+}
+type ChargeSourceIsStripes = AssertAssignable<Stripe.Charge, ChargeSource>;
+
+/// Exactly the Refund fields the refund-lifecycle handler reads. `status` is
+/// declared `string | null` by Stripe itself — not a union — so unlike
+/// `payment_status` there is no compile-time check available here and the
+/// accepted set has to be spelled out and enforced at runtime.
+interface RefundSource {
+  id: string;
+  payment_intent: string | { id: string } | null;
+  status: string | null;
+  amount: number;
+  failure_reason?: string;
+}
+type RefundSourceIsStripes = AssertAssignable<Stripe.Refund, RefundSource>;
+
+interface ConnectAccountSource {
+  id: string;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+}
+type ConnectAccountSourceIsStripes = AssertAssignable<Stripe.Account, ConnectAccountSource>;
+
+/// The Stripe event types this webhook acts on, checked against Stripe's own
+/// event union. A mistyped comparison string does not fail — it silently
+/// matches nothing, and on the sole writer of `event_orders.status` that
+/// means a charged card whose order never leaves `pending` and no corrective
+/// event coming. Both the dispatcher and the transition tables spell the
+/// types from here, so the two cannot drift apart either.
+export const STRIPE_EVENT = {
+  checkoutCompleted: 'checkout.session.completed',
+  checkoutAsyncPaid: 'checkout.session.async_payment_succeeded',
+  checkoutAsyncFailed: 'checkout.session.async_payment_failed',
+  checkoutExpired: 'checkout.session.expired',
+  chargeRefunded: 'charge.refunded',
+  refundFailed: 'refund.failed',
+  refundUpdated: 'refund.updated',
+  chargeRefundUpdated: 'charge.refund.updated',
+  accountUpdated: 'account.updated',
+} as const satisfies Record<string, Stripe.Event.Type>;
+
+/// The three event types that can carry the news that a refund did not
+/// deliver. All three put a `Stripe.Refund` in `data.object`, which is why one
+/// handler serves them, and none of them MEANS a failure on its own — that is
+/// `refundReversed`'s job, keyed on the refund's own status.
+///
+///   refund.failed          — what Stripe's own "Handle failed refunds" guide
+///                            says it notifies you with. Available on all
+///                            refunds (including those with a charge) from API
+///                            version 2024-10-28.acacia; the pinned SDK is
+///                            stripe@23.1.0, past the 17.3.0 that version
+///                            shipped with.
+///   refund.updated         — the non-deprecated general refund-lifecycle
+///                            event. Carries the `canceled` transition, which
+///                            Stripe documents as "a type of refund failure",
+///                            and also every benign update (an ARN reference,
+///                            metadata) — hence the status gate.
+///   charge.refund.updated  — DEPRECATED in Stripe's own refund-events table
+///                            ("Listen to refund.updated ... instead"), and
+///                            handled only because a webhook endpoint still
+///                            pinned to a pre-2024-10-28 API version receives
+///                            this one and not the other two. Which version an
+///                            endpoint is on is dashboard configuration, not
+///                            something this repo can read, so both eras are
+///                            handled rather than assumed. decisions § 789.
+export const REFUND_LIFECYCLE_EVENTS: readonly string[] = [
+  STRIPE_EVENT.refundFailed,
+  STRIPE_EVENT.refundUpdated,
+  STRIPE_EVENT.chargeRefundUpdated,
+];
+
+export function isRefundLifecycleEvent(eventType: string): boolean {
+  return REFUND_LIFECYCLE_EVENTS.includes(eventType);
+}
+
+/// The API version from which `refund.failed` / `refund.updated` reach a
+/// refund that has a charge. Below it Stripe sends the deprecated
+/// `charge.refund.updated` instead.
+export const REFUND_EVENTS_MIN_API_VERSION = '2024-10-28.acacia';
+
+/// Which refund-event era a delivery belongs to, read off the version Stripe
+/// stamps on the event itself.
+///
+/// A webhook endpoint's pinned API version and its enabled-events list are
+/// dashboard configuration this repo cannot read, and § 789 handled both eras
+/// rather than assume one. But the delivery TELLS us: every event payload
+/// carries `api_version`. Grading it is what turns "unknowable from here" into
+/// a line an operator can grep, which is the whole of the second half of the
+/// § 789 follow-up (decisions § 826).
+///
+/// Compared on the ISO date prefix only. Stripe versions are `YYYY-MM-DD`
+/// optionally followed by `.name`, the date orders lexicographically, and the
+/// suffix is a label rather than an ordinal — comparing whole strings would
+/// make `2024-10-28.acacia` sort after a hypothetical `2024-10-28.zebra` on a
+/// spelling, not a date. A version that is not a date is `unknown`, never
+/// silently modern: claiming the modern era for an unreadable value is the
+/// assumption this exists to remove.
+export function refundEventsApiEra(
+  apiVersion: string | null,
+): 'modern' | 'legacy' | 'unknown' {
+  if (apiVersion === null) return 'unknown';
+  const date = apiVersion.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'unknown';
+  return date >= REFUND_EVENTS_MIN_API_VERSION.slice(0, 10) ? 'modern' : 'legacy';
+}
+
+/// Metadata as it can actually be read. Stripe declares it
+/// `{ [name: string]: string }`, and TypeScript hands back `string` for a
+/// key that is not there unless the read is typed to admit it — which is a
+/// lie the four required seat keys are read through.
+export type StripeMetadata = Readonly<Record<string, string | undefined>>;
+
+export interface CheckoutSession {
+  paymentIntentId: string | null;
+  paymentStatus: KnownPaymentStatus | null;
+  metadata: StripeMetadata;
+}
+
+export interface Charge {
+  paymentIntentId: string | null;
+  refunded: boolean | null;
+  amountCents: number | null;
+  amountRefundedCents: number | null;
+}
+
+export interface Refund {
+  id: string | null;
+  paymentIntentId: string | null;
+  status: string | null;
+  amountCents: number | null;
+  failureReason: string | null;
+}
+
+export interface ConnectAccount {
+  id: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+}
+
+/// Stripe serialises a reference either as the bare id or, when the webhook
+/// endpoint is configured to expand it, as the whole object — which is what
+/// the SDK's `string | Stripe.PaymentIntent | null` says and a
+/// `typeof x === 'string'` read does not. Under the expanded form that read
+/// yields null, and null on a refund is answered `missing_payment_intent`
+/// with a 200: the refund is recorded at Stripe as delivered, the order keeps
+/// its seat, and no retry comes.
+function referenceId(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null) {
+    const id = (value as { id?: unknown }).id;
+    if (typeof id === 'string') return id;
+  }
+  return null;
+}
+
+function metadataOf(value: unknown): StripeMetadata {
+  if (typeof value !== 'object' || value === null) return {};
+  const out: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof entry === 'string') out[key] = entry;
+  }
+  return out;
+}
+
+const PAYMENT_STATUSES: readonly KnownPaymentStatus[] = [
+  'no_payment_required',
+  'paid',
+  'unpaid',
+];
+
+/// Narrow one `data.object` from the wire into the fields above. The event
+/// body is HMAC-verified, so it is FROM Stripe — but its shape is still
+/// whatever arrived, so every field is checked rather than asserted. A value
+/// that does not check reads as absent, never as a default that would move
+/// money: an unreadable `payment_status` is null, and null is not settled.
+export function readCheckoutSession(object: Record<string, unknown>): CheckoutSession {
+  const status = object.payment_status;
+  return {
+    paymentIntentId: referenceId(object.payment_intent),
+    paymentStatus: PAYMENT_STATUSES.find((known) => known === status) ?? null,
+    metadata: metadataOf(object.metadata),
+  };
+}
+
+export function readCharge(object: Record<string, unknown>): Charge {
+  return {
+    paymentIntentId: referenceId(object.payment_intent),
+    refunded: typeof object.refunded === 'boolean' ? object.refunded : null,
+    amountCents: typeof object.amount === 'number' ? object.amount : null,
+    amountRefundedCents: typeof object.amount_refunded === 'number'
+      ? object.amount_refunded
+      : null,
+  };
+}
+
+/// Narrow one refund-lifecycle `data.object` from the wire. Same rule as
+/// `readCheckoutSession`: every field is checked, and a value that does not
+/// check reads as absent. Absent here means "this body does not say the refund
+/// failed", which is the direction that changes nothing.
+export function readRefund(object: Record<string, unknown>): Refund {
+  return {
+    id: typeof object.id === 'string' ? object.id : null,
+    paymentIntentId: referenceId(object.payment_intent),
+    status: typeof object.status === 'string' ? object.status : null,
+    amountCents: Number.isInteger(object.amount) && (object.amount as number) >= 0
+      ? object.amount as number
+      : null,
+    failureReason: typeof object.failure_reason === 'string' ? object.failure_reason : null,
+  };
+}
+
+/// Stripe's whole `Refund.status` vocabulary, and the third rail of the
+/// `payment_refunds.status` CHECK (migration 20270630000001) beside the
+/// `PaymentRefundStatus` union in apps/web/src/lib/types.ts —
+/// check_constraint_unions.mjs reads all three.
+///
+/// It exists because the row this webhook writes has to hold a value the CHECK
+/// admits. `Stripe.Refund.status` is declared `string | null` by the SDK — a
+/// bare string, not a union (§ 789) — so a status this build has never heard
+/// of reaches the insert as a plain string, the CHECK rejects it, and the
+/// handler 500s into an endless Stripe retry on an event that would otherwise
+/// have been harmless. `knownRefundStatus` is the gate: an unrecognised status
+/// records NOTHING, which is exactly the behaviour that shipped before this
+/// table existed.
+export const REFUND_STATUSES = [
+  'pending',
+  'requires_action',
+  'succeeded',
+  'failed',
+  'canceled',
+] as const;
+
+export type RefundStatus = typeof REFUND_STATUSES[number];
+
+export function knownRefundStatus(status: string | null): RefundStatus | null {
+  return status !== null && (REFUND_STATUSES as readonly string[]).includes(status)
+    ? status as RefundStatus
+    : null;
+}
+
+/// The refund statuses that mean the money did NOT reach the payer and is back
+/// with us. `canceled` is in the set because Stripe puts it there: "As
+/// cancellations are a type of refund failure, the attributes `failure_reason`
+/// and `failure_balance_transaction` are included on the Refund."
+///
+/// `requires_action` is deliberately absent even though it is one of the ways
+/// a bank hands money back: Stripe re-emails the customer for corrected
+/// details and the refund is still in flight. So is `pending`. Calling either
+/// a failure would move a ledger that is about to settle on its own.
+export const REVERSED_REFUND_STATUSES: readonly RefundStatus[] = ['failed', 'canceled'];
+
+/// Whether a refund-lifecycle event says the refund returned no money.
+///
+/// Fails closed on anything else, INCLUDING a status this build has never
+/// heard of. `refund.updated` fires for benign changes far more often than for
+/// failures, so a handler that acted on the event type alone would walk a
+/// correctly-refunded order back the moment Stripe attached an acquirer
+/// reference number to it.
+export function refundReversed(refund: Refund): boolean {
+  return refund.status !== null &&
+    (REVERSED_REFUND_STATUSES as readonly string[]).includes(refund.status);
+}
+
+/// The `payment_refunds` row a refund-lifecycle event says exists — or null
+/// when this body does not carry a refund the ledger can hold.
+///
+/// Three things have to be present and none of them can be guessed. Without
+/// the Stripe Refund id there is no idempotency key, and a row keyed on
+/// anything else would be counted twice on the next redelivery — which is the
+/// whole reason this table exists rather than an arithmetic adjustment to
+/// `donations.refunded_cents` (§ 789, § 823). Without an integer `amount` there
+/// is no figure to correct a total by. Without a status the CHECK admits, the
+/// insert would 500 into an endless Stripe retry.
+///
+/// Failing closed here reproduces the pre-table behaviour exactly: nothing is
+/// recorded, the thermometer keeps understating by the reversed part, and the
+/// operator still has the log line. That is the direction that cannot make
+/// anything worse.
+export interface PaymentRefundRecord {
+  stripe_refund_id: string;
+  amount_cents: number;
+  status: RefundStatus;
+  failure_reason: string | null;
+}
+
+/// `payment_refunds_failure_reason_len_chk`. The reason is third-party text we
+/// store verbatim, and a value past the cap would 23514 into the same endless
+/// Stripe retry an unknown status would — so it is TRUNCATED rather than
+/// refused: a clipped reason is still the reason, where dropping the whole row
+/// would lose the money discrepancy over a cosmetic field.
+const FAILURE_REASON_MAX = 120;
+
+export function paymentRefundRecord(refund: Refund): PaymentRefundRecord | null {
+  const status = knownRefundStatus(refund.status);
+  if (refund.id === null || status === null || refund.amountCents === null) return null;
+  return {
+    stripe_refund_id: refund.id,
+    amount_cents: refund.amountCents,
+    status,
+    failure_reason: refund.failureReason === null
+      ? null
+      : refund.failureReason.slice(0, FAILURE_REASON_MAX),
+  };
+}
+
+export function readConnectAccount(object: Record<string, unknown>): ConnectAccount {
+  return {
+    id: typeof object.id === 'string' ? object.id : null,
+    chargesEnabled: object.charges_enabled === true,
+    payoutsEnabled: object.payouts_enabled === true,
+    detailsSubmitted: object.details_submitted === true,
+  };
+}
+
+/// Whether the money behind a Checkout Session has actually arrived.
+///
+/// `checkout.session.completed` does NOT mean paid. Stripe fires it the
+/// moment the Session completes, and for a delayed-notification payment
+/// method the money is still in flight: `payment_status` is `unpaid` and the
+/// outcome arrives days later as `checkout.session.async_payment_succeeded`
+/// or `checkout.session.async_payment_failed`. The Checkout Sessions this
+/// tier opens declare no `payment_method_types`, so the set is whatever the
+/// account has enabled in its dashboard — the delayed methods are one
+/// checkbox away and nothing in this repo would notice.
+///
+/// Fails closed on anything that is not an explicit settlement, including a
+/// `payment_status` this build has never heard of: seating an attendee is
+/// giving away a place, and giving one away for money that has not arrived
+/// is the failure that cannot be undone from here. The CHECK on the other
+/// side is `StripesPaymentStatusIsKnown` — a fourth value added to
+/// Stripe's named set fails the typecheck rather than reaching a runtime
+/// default.
+export function isPaymentSettled(status: CheckoutSession['paymentStatus']): boolean {
+  return status === 'paid' || status === 'no_payment_required';
+}
+
+/// Verify a Stripe webhook signature (`Stripe-Signature` header). Stripe's
+/// scheme is the shared `t=,v1=` one RevenueCat also uses — see
+/// `verifyTimestampedHmac` for the payload and the two gates.
+export const verifyStripeSignature = verifyTimestampedHmac;
 
 export interface StripeEventEnvelope {
   id: string;
   type: string;
+  /// The API version the ENDPOINT is pinned to, as Stripe stamps it on the
+  /// delivery. Optional in the parse rather than required: it is diagnostic,
+  /// and rejecting a delivery that omitted it would drop a real money event
+  /// over a field no handler reads.
+  apiVersion: string | null;
   data: { object: Record<string, unknown> };
 }
 
@@ -101,7 +455,13 @@ export function parseStripeEventEnvelope(rawBody: string): StripeEventEnvelope |
   if (typeof data !== 'object' || data === null) return null;
   const dataObj = (data as Record<string, unknown>).object;
   if (typeof dataObj !== 'object' || dataObj === null) return null;
-  return { id, type, data: { object: dataObj as Record<string, unknown> } };
+  const apiVersion = obj.api_version;
+  return {
+    id,
+    type,
+    apiVersion: typeof apiVersion === 'string' ? apiVersion : null,
+    data: { object: dataObj as Record<string, unknown> },
+  };
 }
 
 export type OrderStatus =
@@ -109,6 +469,7 @@ export type OrderStatus =
   | 'paid'
   | 'refunded'
   | 'partially_refunded'
+  | 'refund_failed'
   | 'failed'
   | 'canceled';
 
@@ -118,10 +479,22 @@ export type OrderStatus =
 /// `pending`) and gets `null` — so it cannot re-grant a slot or
 /// double-count revenue even if the webhook_events dedupe were bypassed.
 ///
-///   pending  + checkout.session.completed -> paid
-///   pending  + checkout.session.expired   -> canceled
-///   paid     + charge.refunded            -> refunded
-///   everything else                       -> null (no transition)
+///   pending            + checkout.session.completed              -> paid
+///   pending            + checkout.session.async_payment_succeeded -> paid
+///   pending            + checkout.session.expired                 -> canceled
+///   pending            + checkout.session.async_payment_failed    -> failed
+///   paid               + charge.refunded                          -> refunded
+///   refunded           + refund.failed                    -> refund_failed
+///   refund_failed      + charge.refunded (full)                   -> refunded
+///   everything else                                               -> null
+///
+/// The two async arms are the delayed-notification half of Checkout: the
+/// money behind a completed Session has not necessarily arrived, so a session
+/// whose `payment_status` is `unpaid` transitions on nothing and the outcome
+/// lands days later as one of those two events. Neither has an arm out of
+/// `paid`: with `isPaymentSettled` gating the confirm, no paid order can be
+/// waiting on an async outcome, and a paid->failed arm would owe a seat
+/// release this table cannot perform.
 ///
 /// Only `pending` (the unpaid states) and `paid` (the refund) transition;
 /// every terminal state (refunded / canceled / failed) is immovable. The
@@ -130,61 +503,221 @@ export type OrderStatus =
 /// the sole, idempotent status writer — flips the order on charge.refunded
 /// and releases the seat. A replayed charge.refunded finds the order
 /// already `refunded` and gets `null`, so it cannot double-release a seat.
+///
+/// `refund_failed` is the bank rejecting a refund we already acted on
+/// (decisions § 789). `charge.refunded` fires when a refund is CREATED, so on a
+/// delayed rail the seat is released days before the money's fate is known; if
+/// the refund then fails, `refunded` is a claim about money that is provably
+/// false. The arm is reachable ONLY from `refunded`, deliberately:
+/// `partially_refunded` is a seat-BEARING status on both
+/// `enforce_paid_order_for_priced_event` and the buyer-cancel RLS policy
+/// (20270522_001), so moving a partly-refunded order out of it would take the
+/// roster entry and the cancel affordance away from a buyer who is still
+/// attending and lost nothing. That case is logged for reconciliation instead.
+///
+/// `refund.failed` is the CANONICAL key for "a refund returned no money": the
+/// dispatcher normalises the other two refund-lifecycle events onto it once
+/// `refundReversed` has read the refund's own status, because neither
+/// `refund.updated` nor `charge.refund.updated` means a failure on its own.
 export function orderStatusTransition(
   currentStatus: string,
   eventType: string,
+  refund: RefundScope = 'full',
 ): OrderStatus | null {
   if (currentStatus === 'pending') {
-    if (eventType === 'checkout.session.completed') return 'paid';
-    if (eventType === 'checkout.session.expired') return 'canceled';
+    if (
+      eventType === STRIPE_EVENT.checkoutCompleted ||
+      eventType === STRIPE_EVENT.checkoutAsyncPaid
+    ) {
+      return 'paid';
+    }
+    if (eventType === STRIPE_EVENT.checkoutExpired) return 'canceled';
+    if (eventType === STRIPE_EVENT.checkoutAsyncFailed) return 'failed';
     return null;
   }
-  if (currentStatus === 'paid' && eventType === 'charge.refunded') return 'refunded';
+  if (currentStatus === 'paid' && eventType === STRIPE_EVENT.chargeRefunded) {
+    return refund === 'partial' ? 'partially_refunded' : 'refunded';
+  }
+  // A partially-refunded order still holds its seat, so it is NOT terminal: the
+  // rest of the money can come back later, and that completing refund has to be
+  // able to release the seat. Only a FULL refund moves it on — a second partial
+  // returns null so the seat is not released by an instalment.
+  if (currentStatus === 'partially_refunded' && eventType === STRIPE_EVENT.chargeRefunded) {
+    return refund === 'full' ? 'refunded' : null;
+  }
+  // The bank reversed the refund: the money is ours again, and the seat this
+  // order held is already gone. Reachable ONLY from `refunded` — see the note
+  // above the function for why a failed PARTIAL refund transitions on nothing.
+  if (currentStatus === 'refunded' && eventType === STRIPE_EVENT.refundFailed) {
+    return 'refund_failed';
+  }
+  // Someone paid the buyer back another way and it landed. `refund_failed` is
+  // terminal against everything except the refund actually succeeding, or the
+  // ledger would be stuck denying a refund that has now happened. A PARTIAL
+  // refund on this order returns null instead of resurrecting the seat-bearing
+  // `partially_refunded`: there is no attendee row left to bear.
+  if (currentStatus === 'refund_failed' && eventType === STRIPE_EVENT.chargeRefunded) {
+    return refund === 'full' ? 'refunded' : null;
+  }
   return null;
+}
+
+/// Whether a `charge.refunded` returned the WHOLE charge or only part of it.
+///
+/// Stripe emits `charge.refunded` for a partial refund too — the discriminator
+/// is the charge's own `refunded` boolean (true only when fully refunded),
+/// with `amount_refunded` vs `amount` as the arithmetic fallback. Treating
+/// every `charge.refunded` as full meant a $5 goodwill refund on a $50
+/// workshop flipped the order to `refunded` and DELETED the buyer's seat,
+/// which `promote_event_waitlist` then handed to someone else — for a
+/// registration that is still 90 % paid. `event_orders_status_check` has
+/// carried `partially_refunded` since the table was created and nothing ever
+/// wrote it.
+///
+/// Unknown / missing amounts fall back to `full`: that is the historical
+/// behaviour, and it is the safe direction for the BUYER (they keep the money
+/// and lose the seat) rather than for us.
+export type RefundScope = 'full' | 'partial';
+
+export function refundScopeOfCharge(charge: Charge): RefundScope {
+  if (charge.refunded === true) return 'full';
+  const amount = charge.amountCents;
+  const refunded = charge.amountRefundedCents;
+  if (charge.refunded === false) {
+    // Explicitly not fully refunded. Only call it partial when some money
+    // actually moved — a `refunded:false` with no refunded amount is not a
+    // refund at all, and must not become a status change.
+    return refunded !== null && refunded > 0 ? 'partial' : 'full';
+  }
+  if (amount === null || refunded === null || refunded <= 0) return 'full';
+  return refunded < amount ? 'partial' : 'full';
 }
 
 /// Is this Checkout Session a donation (vs a paid-event seat)? The
 /// donations-checkout EF stamps metadata.kind='donation'; events-checkout does
 /// not set `kind`. One webhook, one secret — the branch is keyed on this.
-export function isDonationSession(session: Record<string, unknown>): boolean {
-  const md = session.metadata;
-  if (typeof md !== 'object' || md === null) return false;
-  return (md as Record<string, unknown>).kind === 'donation';
+export function isDonationSession(session: CheckoutSession): boolean {
+  return session.metadata.kind === 'donation';
 }
 
 /// Extract the donation id from a Checkout Session's metadata (set by
 /// donations-checkout). Returns null if absent — the caller treats that as a
 /// malformed session it can't confirm.
-export function donationIdFromSession(session: Record<string, unknown>): string | null {
-  const md = session.metadata;
-  if (typeof md !== 'object' || md === null) return null;
-  const id = (md as Record<string, unknown>).donation_id;
-  return typeof id === 'string' ? id : null;
+export function donationIdFromSession(session: CheckoutSession): string | null {
+  return session.metadata.donation_id ?? null;
 }
 
-export type DonationStatus = 'pending' | 'paid' | 'refunded' | 'failed' | 'canceled';
+export type DonationStatus =
+  | 'pending'
+  | 'paid'
+  | 'partially_refunded'
+  | 'refunded'
+  | 'refund_failed'
+  | 'failed'
+  | 'canceled';
 
 /// The legal CAS transitions for a donation, keyed on the Stripe event type.
 /// The idempotency backbone (mirrors orderStatusTransition): a replayed
 /// `checkout.session.completed` finds the donation already `paid` and gets
-/// `null`, so it cannot double-count. A `paid` donation may move to `refunded`
-/// (charge.refunded); a still-`pending` donation expires to `canceled`.
+/// `null`, so it cannot double-count. A still-`pending` donation expires to
+/// `canceled`.
 ///
-///   pending + checkout.session.completed -> paid
-///   pending + checkout.session.expired   -> canceled
-///   paid    + charge.refunded            -> refunded
-///   everything else                      -> null
+///   pending             + checkout.session.completed              -> paid
+///   pending             + checkout.session.async_payment_succeeded -> paid
+///   pending             + checkout.session.expired                 -> canceled
+///   pending             + checkout.session.async_payment_failed    -> failed
+///   paid                + charge.refunded (partial)  -> partially_refunded
+///   paid                + charge.refunded (full)     -> refunded
+///   partially_refunded  + charge.refunded (partial)  -> partially_refunded
+///   partially_refunded  + charge.refunded (full)     -> refunded
+///   refunded            + refund.failed              -> refund_failed
+///   refund_failed       + charge.refunded (full)     -> refunded
+///   everything else                                  -> null
+///
+/// The last-but-one arm is a SELF-transition, and it is the one place this
+/// deliberately diverges from `orderStatusTransition`, which returns null for
+/// the same input. An order records only a seat, so a second instalment on an
+/// already-partially-refunded order has nothing to write and must not release
+/// the seat. A donation records an AMOUNT (`refunded_cents`, 20270620_001), so
+/// the second instalment does have something to write, and returning null here
+/// would leave the charity's thermometer overstating by the difference.
+///
+/// Before 20270620_001 a partial refund returned null outright, because
+/// `fundraiser_totals` summed `amount_cents` filtered on `status = 'paid'` and
+/// flipping a partly-returned donation to `refunded` removed its WHOLE amount
+/// from the thermometer — a 5 USD goodwill refund on a 500 USD donation erased
+/// 500 USD of it. That was the lesser of two lies, not an answer; the ledger
+/// can now state the real one. decisions § 769, § 776.
+///
+/// `refund_failed` mirrors the order ledger and is reachable only from
+/// `refunded` for a second reason of its own: `fundraiser_totals` sums
+/// `amount_cents - refunded_cents` over ('paid', 'partially_refunded'), so a
+/// `refund_failed` row drops out of the thermometer exactly as `refunded`
+/// does — correct, because the money is owed back to the donor rather than
+/// raised for the charity. Moving a `partially_refunded` donation there
+/// instead would remove the WHOLE donation from the total including the part
+/// that was never refunded, which is a larger error than the one it fixes; and
+/// the only alternative — subtracting the failed instalment from
+/// `refunded_cents` — is arithmetic on a running total, which is precisely
+/// what § 769 avoided so that an at-least-once redelivery cannot double-apply.
+/// decisions § 789.
 export function donationStatusTransition(
   currentStatus: string,
   eventType: string,
+  refund: RefundScope = 'full',
 ): DonationStatus | null {
   if (currentStatus === 'pending') {
-    if (eventType === 'checkout.session.completed') return 'paid';
-    if (eventType === 'checkout.session.expired') return 'canceled';
+    if (
+      eventType === STRIPE_EVENT.checkoutCompleted ||
+      eventType === STRIPE_EVENT.checkoutAsyncPaid
+    ) {
+      return 'paid';
+    }
+    if (eventType === STRIPE_EVENT.checkoutExpired) return 'canceled';
+    if (eventType === STRIPE_EVENT.checkoutAsyncFailed) return 'failed';
     return null;
   }
-  if (currentStatus === 'paid' && eventType === 'charge.refunded') return 'refunded';
+  if (currentStatus === 'refunded' && eventType === STRIPE_EVENT.refundFailed) {
+    return 'refund_failed';
+  }
+  if (eventType !== STRIPE_EVENT.chargeRefunded) return null;
+  if (currentStatus === 'paid' || currentStatus === 'partially_refunded') {
+    return refund === 'full' ? 'refunded' : 'partially_refunded';
+  }
+  if (currentStatus === 'refund_failed') {
+    return refund === 'full' ? 'refunded' : null;
+  }
   return null;
+}
+
+/// How many cents of a donation have come back in total, as a figure the
+/// ledger can store — or null when the charge does not say.
+///
+/// `charge.amount_refunded` is CUMULATIVE across every refund on the charge,
+/// not the size of the refund that raised this event. That is what makes the
+/// write idempotent and order-insensitive: two instalments delivered out of
+/// order carry 1000 and 3000, and the larger is always the true total.
+///
+/// A FULL refund is answered with the donation's own `amount_cents` rather
+/// than with the charge's figure. `refunded` means the whole donation came
+/// back, and the ledger's own column is the only amount the invariant
+/// `refunded_cents <= amount_cents` is stated against — reading Stripe's
+/// `amount` instead would let a charge whose total differs from ours (a
+/// currency or capture discrepancy) write a refund larger than the donation.
+///
+/// Everything else fails closed to null: a non-integer, negative or absent
+/// `amount_refunded` on a partial refund is not a number to put in a money
+/// column, and the caller records nothing rather than guessing.
+export function refundedCentsOfCharge(
+  charge: Charge,
+  amountCents: number,
+  refund: RefundScope,
+): number | null {
+  if (!Number.isInteger(amountCents) || amountCents < 0) return null;
+  if (refund === 'full') return amountCents;
+  const refunded = charge.amountRefundedCents;
+  if (refunded === null || !Number.isInteger(refunded) || refunded <= 0) return null;
+  return Math.min(refunded, amountCents);
 }
 
 export interface AttendeeRow {
@@ -197,23 +730,9 @@ export interface AttendeeRow {
 /// Extract the attendee row from a Checkout Session's metadata (set by
 /// events-checkout). Returns null if any required key is missing — the
 /// caller treats that as a malformed session it can't seat.
-export function attendeeRowFromSession(
-  session: Record<string, unknown>,
-): AttendeeRow | null {
-  const md = session.metadata;
-  if (typeof md !== 'object' || md === null) return null;
-  const m = md as Record<string, unknown>;
-  const event_id = m.event_id;
-  const user_id = m.buyer_user_id;
-  const instance_start = m.instance_start;
-  const order_id = m.order_id;
-  if (
-    typeof event_id !== 'string' ||
-    typeof user_id !== 'string' ||
-    typeof instance_start !== 'string' ||
-    typeof order_id !== 'string'
-  ) {
-    return null;
-  }
-  return { event_id, user_id, instance_start, order_id };
+export function attendeeRowFromSession(session: CheckoutSession): AttendeeRow | null {
+  const { event_id, buyer_user_id, instance_start, order_id } = session.metadata;
+  if (!event_id || !buyer_user_id || !instance_start || !order_id) return null;
+  return { event_id, user_id: buyer_user_id, instance_start, order_id };
 }
+

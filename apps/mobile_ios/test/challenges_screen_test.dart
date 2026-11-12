@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:ui_kit/ui_kit.dart' show ProgressBar;
+
+import '../lib/fab_clearance.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenges_screen.dart';
 import '../lib/social_service.dart';
@@ -26,7 +29,12 @@ ChallengeView _ch({
   bool joined = false,
   bool isPublic = true,
   int participantCount = 0,
+  num? myValue,
+  int? myRank,
+  DateTime? completedAt,
+  bool future = false,
 }) {
+  final now = DateTime.now();
   return ChallengeView(
     id: id,
     creatorId: 'creator',
@@ -37,11 +45,16 @@ ChallengeView _ch({
     scope: 'individual',
     goalValue: 100000,
     activityType: null,
-    startsAt: DateTime.now().subtract(const Duration(days: 1)),
-    endsAt: DateTime.now().add(const Duration(days: 30)),
+    startsAt: future
+        ? now.add(const Duration(days: 7))
+        : now.subtract(const Duration(days: 1)),
+    endsAt: now.add(const Duration(days: 30)),
     isPublic: isPublic,
     joined: joined,
+    myValue: myValue,
+    myRank: myRank,
     participantCount: participantCount,
+    completedAt: completedAt,
   );
 }
 
@@ -49,6 +62,14 @@ Widget _app(SocialService social) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(body: ChallengesScreen(social: social, embedded: true)),
+    );
+
+/// Standalone mount — the screen owns its own Scaffold, and with it the
+/// create FAB the embedded mount hands to SocialScreen to hoist.
+Widget _standalone(SocialService social) => MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ChallengesScreen(social: social),
     );
 
 void main() {
@@ -101,5 +122,117 @@ void main() {
     expect(find.text('My challenges'), findsOneWidget);
     expect(find.text('Browse'), findsOneWidget);
     expect(find.text('No challenges yet.'), findsOneWidget);
+  });
+
+  group('joined-row progress signal', () {
+    testWidgets('a value from the aggregate renders against the goal', (tester) async {
+      await tester.pumpWidget(_app(_FakeSocial([
+        _ch(id: 'a', title: 'June 100k', joined: true, myValue: 42000, myRank: 3),
+      ])));
+      await tester.pump();
+
+      expect(find.textContaining('42.00 km'), findsOneWidget);
+      expect(find.byType(ProgressBar), findsOneWidget);
+      expect(find.text('#3'), findsOneWidget);
+      expect(find.text('Progress unavailable — open for your result'), findsNothing);
+    });
+
+    testWidgets('an open challenge the aggregate did not cover says so instead of drawing a zero',
+        (tester) async {
+      // Live window, no value: outside the my_active_challenges page (or its
+      // read failed), so the number is unknown — not zero.
+      await tester.pumpWidget(_app(_FakeSocial([
+        _ch(id: 'a', title: 'June 100k', joined: true),
+      ])));
+      await tester.pump();
+
+      expect(find.text('Progress unavailable — open for your result'), findsOneWidget);
+      expect(find.byType(ProgressBar), findsNothing);
+      expect(find.textContaining('0.00 km'), findsNothing);
+    });
+
+    testWidgets('a challenge whose window has not opened shows a true zero', (tester) async {
+      await tester.pumpWidget(_app(_FakeSocial([
+        _ch(id: 'a', title: 'July 100k', joined: true, future: true),
+      ])));
+      await tester.pump();
+
+      expect(find.byType(ProgressBar), findsOneWidget);
+      expect(find.textContaining('0.00 km'), findsOneWidget);
+      expect(find.text('Progress unavailable — open for your result'), findsNothing);
+    });
+
+    testWidgets('the earned badge shows beside the rank', (tester) async {
+      await tester.pumpWidget(_app(_FakeSocial([
+        _ch(
+          id: 'a',
+          title: 'June 100k',
+          joined: true,
+          myValue: 120000,
+          myRank: 1,
+          completedAt: DateTime.now(),
+        ),
+      ])));
+      await tester.pump();
+
+      expect(find.text('#1'), findsOneWidget);
+      expect(find.text('Badge earned'), findsOneWidget);
+      expect(find.text('Complete'), findsOneWidget);
+    });
+
+    testWidgets('a browse row carries no progress signal at all', (tester) async {
+      await tester.pumpWidget(_app(_FakeSocial([
+        _ch(id: 'b', title: 'Public 50k', participantCount: 8),
+      ])));
+      await tester.pump();
+
+      expect(find.text('Public 50k'), findsOneWidget);
+      expect(find.byType(ProgressBar), findsNothing);
+      expect(find.text('Progress unavailable — open for your result'), findsNothing);
+    });
+  });
+
+  group('create surface', () {
+    testWidgets('the standalone mount carries the create FAB', (tester) async {
+      await tester.pumpWidget(_standalone(_FakeSocial(const [])));
+      await tester.pump();
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.text('Create challenge'), findsOneWidget);
+    });
+
+    testWidgets('the embedded mount carries none — SocialScreen hoists it',
+        (tester) async {
+      await tester.pumpWidget(_app(_FakeSocial(const [])));
+      await tester.pump();
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets('the FAB opens the create form', (tester) async {
+      await tester.pumpWidget(_standalone(_FakeSocial(const [])));
+      await tester.pump();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      // The form autofocuses a text field whose caret animates forever, so
+      // pumpAndSettle never returns here.
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(find.text('Metric'), findsOneWidget);
+      expect(find.text('Goal (optional)'), findsOneWidget);
+    });
+
+    testWidgets('the list reserves room for the FAB floating over it',
+        (tester) async {
+      await tester.pumpWidget(_standalone(_FakeSocial([
+        _ch(id: 'a', title: 'June 100k', joined: true),
+      ])));
+      await tester.pump();
+
+      final list = tester.widget<ListView>(find.byType(ListView));
+      final pad = (list.padding as EdgeInsets?)!;
+      expect(pad.bottom, greaterThanOrEqualTo(kFabScrollClearance));
+    });
   });
 }

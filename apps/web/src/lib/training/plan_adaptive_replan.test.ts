@@ -155,6 +155,15 @@ test('adaptiveReplanRemaining: an under-fitness trend proceeds for a fresh runne
 	assert.equal(r.changes.some((c) => c.workoutId === 'next'), true);
 });
 
+test('adaptiveReplanRemaining: with the gate off (no fitness) the same under-trend proposes the make-up', () => {
+	// The plan page passes null while PUBLIC_ADAPTIVE_FITNESS_GATE is off, so
+	// the fixture the fatigued case suppresses must read as adherence alone.
+	const r = adaptiveReplanRemaining({ weeks: underTrendWeeks(), today: '2026-07-01', fitness: null });
+	assert.equal(r.reason, 'trend_underfitness');
+	assert.equal(r.fitnessGated, false);
+	assert.equal(r.changes.some((c) => c.workoutId === 'next'), true);
+});
+
 test('adaptiveReplanRemaining: an over-training trend is not fitness-gated even when fatigued', () => {
 	const easy = wo('easy', '2026-07-07', 'easy', 8_000);
 	const weeks: ReplanWeek[] = [

@@ -1,15 +1,22 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { m } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
 		proCheckoutUrl,
 		managementUrl,
-		isRevenueCatConfigured,
-	} from '$lib/billing/revenuecat';
-	import { coachEnabled } from '$lib/coach/coach_flag';
-	import { routeGenEnabled } from '$lib/routes/route_gen_flag';
+		webCheckoutAvailable,
+	} from '#lib/billing/revenuecat.ts';
+	import {
+		annualSavingPercent,
+		proStorefront,
+		type ProPlan,
+	} from '#lib/billing/revenuecat_links.ts';
+	import { donateUrl } from '#lib/billing/donate.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
+	import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
 
 	// Pro is sellable only when at least one perk is actually live: the AI
 	// Coach (PUBLIC_COACH_ENABLED) or server route generation
@@ -21,16 +28,32 @@
 	// paywall.md.
 	const coachOn = coachEnabled();
 	const routeGenOn = routeGenEnabled();
+	// A Pro perk, but never what makes Pro sellable: it runs on the Coach's key.
+	const platePhotoOn = coachOn && platePhotoEnabled();
 	const proSellable = coachOn || routeGenOn;
+	// Selling Pro and selling it HERE are separate questions. With a perk live
+	// and no web checkout link, Pro is bought through the iPhone app's In-App
+	// Purchase and the card says so, instead of offering a buy button that
+	// cannot take payment. A Pro bought in the app unlocks web too: the tier
+	// is the account's, written by the RevenueCat webhook whichever store
+	// sold it. decisions § 1826.
+	const storefront = proStorefront(proSellable, webCheckoutAvailable());
 
-	// External donation link. One-off donations are intentionally routed
-	// through an external provider so the app doesn't have to own a payment
-	// integration just for chip-ins. Swap for Stripe / Ko-fi / GitHub
-	// Sponsors as appropriate.
-	const DONATE_URL = 'https://github.com/sponsors';
+	// A Stripe Payment Link, or null: with no usable link every donate
+	// affordance is hidden rather than pointing somewhere that takes no money.
+	const donateHref = donateUrl();
 
 	const PRO_PRICE_MONTHLY_USD = 9.99;
-	const priceLabel = $derived(formatPrice(PRO_PRICE_MONTHLY_USD));
+	const PRO_PRICE_ANNUAL_USD = 79.99;
+	const monthlyLabel = $derived(formatPrice(PRO_PRICE_MONTHLY_USD));
+	const annualLabel = $derived(formatPrice(PRO_PRICE_ANNUAL_USD));
+	const annualSaving = annualSavingPercent(PRO_PRICE_MONTHLY_USD, PRO_PRICE_ANNUAL_USD);
+
+	// Annual is preselected: it is the cheaper way to pay for the same Pro,
+	// and the chosen plan rides into the hosted checkout as its package_id,
+	// so the buyer pays for exactly the plan this page showed.
+	let plan = $state<ProPlan>('annual');
+	const priceLabel = $derived(plan === 'annual' ? annualLabel : monthlyLabel);
 
 	let purchasing = $state(false);
 
@@ -42,23 +65,16 @@
 			showToast(m('upgrade.signInToUpgrade'), 'error');
 			return;
 		}
-		const url = proCheckoutUrl(userId, window.location.href);
-		if (!url) {
-			// Dev / preview builds without a RevenueCat checkout link fall
-			// back to the original placeholder so the page stays usable
-			// end-to-end without a real billing account.
-			showToast(m('upgrade.checkoutNotConfigured'), 'info');
-			return;
-		}
+		const url = proCheckoutUrl(userId, plan, window.location.href);
+		// The button renders only on the `checkout` storefront, which is the
+		// same test proCheckoutUrl applies, so this is unreachable short of a
+		// drift between the two.
+		if (!url) return;
 		// Full-page redirect to the hosted checkout. On success RevenueCat
 		// redirects back to `redirect_url` (this page); the webhook flips
 		// the tier server-side and the reloaded page refetches the profile.
 		purchasing = true;
 		window.location.href = url;
-	}
-
-	function handleDonate() {
-		window.open(DONATE_URL, '_blank', 'noopener,noreferrer');
 	}
 
 	/// Opens the billing portal where the Pro subscription was started.
@@ -67,7 +83,7 @@
 	/// no-code customer portal authenticates the user by email, so we open
 	/// the hosted portal link directly (no per-user SDK call).
 	function handleManageSubscription() {
-		if (!isRevenueCatConfigured()) {
+		if (!webCheckoutAvailable()) {
 			showToast(m('upgrade.manageWhereStarted'), 'info');
 			return;
 		}
@@ -85,7 +101,7 @@
 		<p class="kicker">{m('shell.settings')}</p>
 		<h1>{m('upgrade.heroTitle')}</h1>
 		<p class="tagline">
-			{m('upgrade.heroTagline')}
+			{m('upgrade.heroTagline')}{#if donateHref}{' '}{m('upgrade.heroTaglineDonate')}{/if}
 		</p>
 	</header>
 
@@ -131,13 +147,13 @@
 				{#if isPro}<span class="pro-badge">{m('upgrade.active')}</span>{/if}
 				<p class="tier-price">
 					<span class="price-amount">{priceLabel}</span>
-					<span class="price-period">{m('upgrade.perMonth')}</span>
+					<span class="price-period">{plan === 'annual' ? m('upgrade.perYear') : m('upgrade.perMonth')}</span>
 				</p>
 				<!-- Honesty notes (audit-findings 2026-05-30 Medium [regional]):
 				     the amount is billed in USD (we don't FX-convert), and
 				     the payment processor can't serve every country. -->
 				<p class="tier-price-note">
-					{m('upgrade.priceNote')}
+					{storefront === 'app_only' ? m('upgrade.appPriceNote') : m('upgrade.priceNote')}
 				</p>
 			</header>
 			<p class="tier-blurb">{m('upgrade.proBlurb')}</p>
@@ -148,6 +164,15 @@
 						<div>
 							<strong>{m('upgrade.proFeatCoachTitle')}</strong>
 							<span class="feat-sub">{m('upgrade.proFeatCoachSub')}</span>
+						</div>
+					</li>
+				{/if}
+				{#if platePhotoOn}
+					<li data-testid="pro-feat-plate-photo">
+						<span class="check material-symbols" aria-hidden="true">check_circle</span>
+						<div>
+							<strong>{m('upgrade.proFeatPlatePhotoTitle')}</strong>
+							<span class="feat-sub">{m('upgrade.proFeatPlatePhotoSub')}</span>
 						</div>
 					</li>
 				{/if}
@@ -189,29 +214,73 @@
 				<button class="btn btn-outline" onclick={handleManageSubscription}>
 					{m('upgrade.manageSubscription')}
 				</button>
-			{:else if proSellable}
+			{:else if storefront === 'checkout'}
+				<fieldset class="plan-picker" disabled={purchasing}>
+					<legend>{m('upgrade.planLegend')}</legend>
+					<label class="plan-option" class:selected={plan === 'annual'}>
+						<input type="radio" name="pro-plan" value="annual" bind:group={plan} />
+						<span class="plan-name">{m('upgrade.planYearly')}</span>
+						<span class="plan-price">{annualLabel} {m('upgrade.perYear')}</span>
+						{#if annualSaving !== null}
+							<span class="plan-saving">{m('upgrade.annualSaving', { percent: annualSaving })}</span>
+						{/if}
+					</label>
+					<label class="plan-option" class:selected={plan === 'monthly'}>
+						<input type="radio" name="pro-plan" value="monthly" bind:group={plan} />
+						<span class="plan-name">{m('upgrade.planMonthly')}</span>
+						<span class="plan-price">{monthlyLabel} {m('upgrade.perMonth')}</span>
+					</label>
+				</fieldset>
 				<button class="btn btn-primary tier-cta" onclick={handleGetPro} disabled={purchasing}>
-					{purchasing ? m('upgrade.redirecting') : m('upgrade.getPro', { price: priceLabel })}
+					{purchasing
+						? m('upgrade.redirecting')
+						: plan === 'annual'
+							? m('upgrade.getProAnnual', { price: priceLabel })
+							: m('upgrade.getPro', { price: priceLabel })}
 				</button>
 				<p class="tier-fine">{m('upgrade.cancelAnytime')}</p>
+				<!-- App Store Guideline 3.1.2 wants the terms and the privacy policy
+				     reachable beside an auto-renewing purchase, not only from a footer. -->
+				<p class="tier-legal">
+					<a href="/terms">{m('upgrade.termsLink')}</a>
+					<span aria-hidden="true">·</span>
+					<a href="/privacy">{m('upgrade.privacyLink')}</a>
+				</p>
+			{:else if storefront === 'app_only'}
+				<div class="app-only-note">
+					<span class="material-symbols" aria-hidden="true">phone_iphone</span>
+					<div>
+						<p>{m('upgrade.proInIosApp')}</p>
+						<p class="app-only-sub">{m('upgrade.webCheckoutComingSoon')}</p>
+					</div>
+				</div>
 			{:else}
 				<p class="coming-soon-note">{m('upgrade.proComingSoon')}</p>
 			{/if}
 		</article>
 	</section>
 
-	<section class="donate-card">
+	{#if donateHref}
+	<section class="donate-card" data-testid="donate-card">
 		<div class="donate-text">
 			<h2>{m('upgrade.donateTitle')}</h2>
 			<p>
 				{m('upgrade.donateBody')}
 			</p>
 		</div>
-		<button class="btn" class:btn-primary={!proSellable} class:btn-outline={proSellable} onclick={handleDonate}>
+		<a
+			class="btn"
+			class:btn-primary={storefront !== 'checkout'}
+			class:btn-outline={storefront === 'checkout'}
+			href={donateHref}
+			target="_blank"
+			rel="noopener noreferrer"
+		>
 			<span class="material-symbols" aria-hidden="true">favorite</span>
 			{m('upgrade.donate')}
-		</button>
+		</a>
 	</section>
+	{/if}
 </div>
 
 <style>
@@ -373,6 +442,52 @@
 		padding: 0.85rem 1rem;
 		margin-top: var(--space-sm);
 	}
+	.plan-picker {
+		border: 0;
+		padding: 0;
+		margin: var(--space-sm) 0 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.plan-picker legend {
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin-bottom: var(--space-xs);
+	}
+	.plan-option {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-xs) var(--space-sm);
+		padding: 0.7rem 0.9rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+	.plan-option.selected {
+		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+	}
+	.plan-option:has(input:focus-visible) {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.plan-name {
+		font-weight: 600;
+	}
+	.plan-price {
+		margin-inline-start: auto;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary);
+	}
+	.plan-saving {
+		flex-basis: 100%;
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--color-success-text);
+	}
 	.tier-note {
 		margin: var(--space-sm) 0 0;
 		font-size: 0.85rem;
@@ -385,6 +500,19 @@
 		text-align: center;
 		line-height: 1.4;
 	}
+	.tier-legal {
+		display: flex;
+		justify-content: center;
+		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		line-height: 1.4;
+	}
+	.tier-legal a {
+		color: inherit;
+		text-decoration: underline;
+	}
 	.coming-soon-note {
 		margin: var(--space-sm) 0 0;
 		padding: 0.75rem 1rem;
@@ -395,6 +523,34 @@
 		color: var(--color-text-secondary);
 		text-align: center;
 		line-height: 1.45;
+	}
+	.app-only-note {
+		display: flex;
+		gap: var(--space-sm);
+		align-items: flex-start;
+		margin: var(--space-sm) 0 0;
+		padding: 0.75rem 1rem;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		font-size: 0.88rem;
+		line-height: 1.5;
+	}
+	.app-only-note p {
+		margin: 0;
+	}
+	.app-only-note p + p {
+		margin-top: var(--space-2xs);
+	}
+	.app-only-note .material-symbols {
+		font-family: 'Material Symbols Outlined';
+		font-size: 1.4rem;
+		color: var(--color-primary);
+		flex-shrink: 0;
+	}
+	.app-only-sub {
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
 	}
 	.pro-note {
 		margin: var(--space-sm) 0;

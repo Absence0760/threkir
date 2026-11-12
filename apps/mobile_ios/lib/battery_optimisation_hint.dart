@@ -12,8 +12,10 @@
 ///
 /// This is the iOS-excluded sibling of `background_location_nudge.dart`:
 /// the show-once decision plus the settings deep-link, surfaced as a
-/// non-blocking, dismissible hint before a long run (copy lives in the
-/// gen-l10n catalogue). The hint never blocks the run.
+/// dismissible hint before the first recorded run on the device, whatever
+/// its length: the OEM kill can land on any run with the screen off, and
+/// most runs start with no planned distance to judge by (copy lives in the
+/// gen-l10n catalogue).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -21,8 +23,7 @@ import 'package:flutter/services.dart';
 
 /// True when we should surface the one-time battery-optimisation hint. Only
 /// on Android (iOS does not have OEM app-killers), only when it hasn't been
-/// shown before. Gating on a longer planned/likely effort is the caller's
-/// job — the helper just enforces the Android-only + once contract.
+/// shown before. There is deliberately no run-length gate.
 bool shouldShowBatteryOptHint({
   required bool isAndroid,
   required bool alreadyShown,

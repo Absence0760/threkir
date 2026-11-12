@@ -1,26 +1,45 @@
 <script lang="ts">
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { onMount } from 'svelte';
-	import { formatPace, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration } from '$lib/format/time';
-	import { fetchRunsWithError, deleteRuns } from '$lib/core/data';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { periodStart } from '$lib/training/goals';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RunEditor from '$lib/components/RunEditor.svelte';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { goto } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import RunTrackPreview from '$lib/components/RunTrackPreview.svelte';
-	import DateRangePicker from '$lib/components/DateRangePicker.svelte';
-	import type { Run, RunSource } from '$lib/types';
-	import { formatElevation } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPE_ICONS } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { RUN_SOURCES, sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { fetchRunsWithError, deleteRuns } from '#lib/core/data.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { periodStart } from '#lib/training/goals.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RunEditor from '#lib/components/RunEditor.svelte';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import DateRangePicker from '#lib/components/DateRangePicker.svelte';
+	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
+	import { groupByLocalDay, type DayGroup } from '#lib/timeline/day_groups.ts';
+	import {
+		parseRunsRange,
+		parseRunsView,
+		resolveRunsView,
+		runsListGroupsByDay,
+		runsSearchWithoutRange,
+		runsViewSearch,
+		type RunsView,
+	} from '#lib/runs/runs_view.ts';
+	import type { Run, RunSource } from '#lib/types.ts';
+	import { formatElevation } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { Snapshot } from './$types';
+	import { runsFetchMode } from './fetch_mode';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	// The full run list — filters, pagination, bulk-delete, manual entry.
 	// Split out of /history (which is now the unified cross-modal timeline)
@@ -47,6 +66,10 @@
 	// streams in pages of PAGE_SIZE so a heavy account doesn't
 	// pull thousands of rows on first paint.
 	let dateRange = $state<DateRange>('today');
+	/// Map-card grid or day-grouped list (decisions § 2117). Remembered in the
+	/// filters blob like the rest of the view, and named in the URL so a link
+	/// can open either; the URL wins.
+	let view = $state<RunsView>('grid');
 
 	/// First day of the week for the "Week" filter, mirroring the
 	/// dashboard's `week_start_day` pref so the run list and the
@@ -55,8 +78,12 @@
 
 	const PAGE_SIZE = 50;
 	let loadingMore = $state(false);
-	let moreError = $state<string | null>(null);
+	let moreError = $state<Error | null>(null);
 	let hasMore = $state(false);
+	/// The keyset cursor for the next page (see fetchRunsWithError). Kept
+	/// rather than derived from the last card: a bulk delete removes cards, and
+	/// the cursor must still name the last row the server returned.
+	let runsNext = $state<KeysetCursor | null>(null);
 	/// Tracks the last fetch mode so we only refetch on `paginated` ↔
 	/// `full` transitions, not on every filter twiddle.
 	let lastFetchMode = $state<'paginated' | 'full' | ''>('');
@@ -87,20 +114,20 @@
 		dateRange === 'custom' && !customFrom && !customTo ? prevNonCustomRange : dateRange
 	);
 
-	/// Pagination only applies in browse mode — All time with NO source
-	/// + NO activity narrowing. The moment the user adds a filter, the
-	/// list switches to full-fetch and Load More disappears: otherwise
-	/// the first 50 rows from the DB might contain only a handful of
-	/// matches (e.g. 5 Strava runs in the first 50 by date) and the
-	/// user has to keep clicking Load More to walk the whole list.
-	/// Filters are still client-side; full-fetch is acceptable because
-	/// even a heavy account has <10k runs. Pushing filters to the
+	/// Pagination only applies in browse mode — All time, NO source + NO
+	/// activity narrowing, and the one sort key that matches the server's
+	/// own order. The moment the user narrows OR re-orders, the list
+	/// switches to full-fetch and Load More disappears: otherwise the
+	/// first 50 rows from the DB might contain only a handful of matches
+	/// (e.g. 5 Strava runs in the first 50 by date) and the user has to
+	/// keep clicking Load More to walk the whole list. Filtering and
+	/// sorting are both client-side; full-fetch is acceptable because
+	/// even a heavy account has <10k runs. Pushing them into the
 	/// fetchRuns query would let us paginate under narrowing — a
 	/// backlog item once accounts grow past that bound.
+	/// See ./fetch_mode.ts for why the sort key belongs in this gate.
 	let fetchMode = $derived<'paginated' | 'full'>(
-		effectiveDateRange === 'all' && sourceFilter === 'all' && activityFilter === 'all'
-			? 'paginated'
-			: 'full'
+		runsFetchMode({ effectiveDateRange, sourceFilter, activityFilter, sortKey })
 	);
 
 	/// Filters persist across navigation via localStorage so the user
@@ -128,9 +155,20 @@
 				if (typeof saved.customFrom === 'string') customFrom = saved.customFrom;
 				if (typeof saved.customTo === 'string') customTo = saved.customTo;
 				if (saved.sortKey) sortKey = saved.sortKey;
+				view = resolveRunsView(page.url.searchParams.get('view'), saved.view);
 			}
 		} catch (_) {
 			/* localStorage may be unavailable / blob may be corrupt — leave defaults */
+		}
+		const linkedRange = parseRunsRange(page.url.searchParams.get('range'));
+		if (linkedRange) {
+			dateRange = linkedRange;
+			customFrom = '';
+			customTo = '';
+			void goto(`${page.url.pathname}${runsSearchWithoutRange(page.url.search)}`, {
+				replace: true,
+				reset: false,
+			});
 		}
 		filtersHydrated = true;
 	});
@@ -140,12 +178,26 @@
 		try {
 			localStorage.setItem(
 				FILTERS_KEY,
-				JSON.stringify({ sourceFilter, activityFilter, dateRange, customFrom, customTo, sortKey }),
+				JSON.stringify({ sourceFilter, activityFilter, dateRange, customFrom, customTo, sortKey, view }),
 			);
 		} catch (_) {
 			/* silent */
 		}
 	});
+
+	// A `?view=` link followed while /runs is already open reuses this
+	// component, so the URL is read on every navigation, not only at mount.
+	// A link without one leaves the current view alone.
+	$effect(() => {
+		const fromUrl = parseRunsView(page.url.searchParams.get('view'));
+		if (fromUrl) view = fromUrl;
+	});
+
+	function setView(next: RunsView): void {
+		view = next;
+		// Shallow: the list, filters and scroll stay as they are.
+		replaceState(`${page.url.pathname}${runsViewSearch(page.url.search, next)}`, page.state);
+	}
 
 	/// Lower-bound / upper-bound cutoffs in local time for the selected
 	/// range. `null` on either side means "no cutoff on this side".
@@ -225,7 +277,16 @@
 		// Remove the ones that succeeded from the in-memory list
 		// without refetching — keeps the scroll position.
 		const failedSet = new Set(failed);
-		runs = runs.filter((r) => failedSet.has(r.id) || !selected.has(r.id));
+		// Reconcile against the ids the delete was ISSUED for, not the live
+		// selection. A bounded delete of 200 runs is many seconds of round
+		// trips and the cards stay tappable throughout (only the Delete button
+		// is disabled), so a tap during the run edited the set this filter
+		// reads: un-selecting a run already deleted server-side kept it in the
+		// list as a card that 404s, and selecting a new one dropped a run that
+		// still exists.
+		const requested = new Set(ids);
+		runs = runs.filter((r) => failedSet.has(r.id) || !requested.has(r.id));
+		loadedToken = listToken('runs');
 		deleting = false;
 		if (failed.length === 0) {
 			showToast(
@@ -263,10 +324,10 @@
 			r.distance_m < 10 ? Infinity : r.duration_s / (r.distance_m / 1000);
 		switch (sortKey) {
 			case 'newest':
-				out.sort((a, b) => b.started_at.localeCompare(a.started_at));
+				out.sort((a, b) => compareOrdinal(b.started_at, a.started_at));
 				break;
 			case 'oldest':
-				out.sort((a, b) => a.started_at.localeCompare(b.started_at));
+				out.sort((a, b) => compareOrdinal(a.started_at, b.started_at));
 				break;
 			case 'longest':
 				out.sort((a, b) => b.distance_m - a.distance_m);
@@ -290,29 +351,96 @@
 		fetchMode === 'full' ? filteredRuns.slice(0, renderLimit) : filteredRuns,
 	);
 
+	function runListItem(run: Run): TimelineItem {
+		const secondary = [formatDuration(run.duration_s), formatPace(run.duration_s, run.distance_m)];
+		if (run.metadata?.event) secondary.push(String(run.metadata.event));
+		secondary.push(sourceLabel(run.source));
+		return {
+			id: run.id,
+			kind: 'run',
+			glyph: ACTIVITY_TYPE_ICONS[run.activity_type] ?? ACTIVITY_TYPE_ICONS.run,
+			href: `/runs/${run.id}`,
+			primary: formatDistance(run.distance_m),
+			secondary: secondary.join(' · '),
+		};
+	}
+
+	/// Under a distance or pace sort there is no day to head a group with, so
+	/// the list view is one undivided list in that order.
+	let listHeadings = $derived(runsListGroupsByDay(sortKey));
+	let listGroups = $derived.by<DayGroup<TimelineItem>[]>(() => {
+		if (view !== 'list' || visibleRuns.length === 0) return [];
+		if (listHeadings) return groupByLocalDay(visibleRuns, (r) => r.started_at).map((g) => ({
+			...g,
+			rows: g.rows.map(runListItem),
+		}));
+		return [{ key: 'all', relative: null, startedAt: '', rows: visibleRuns.map(runListItem) }];
+	});
+
+	/// The filter/sort set the current render window belongs to. Keyed rather
+	/// than one-shot-flagged: a back-nav restore ASSIGNS the filters, which is
+	/// a change of those signals like any other, so a reset effect that fired
+	/// on any write threw the restored window away and re-collapsed 200 cards
+	/// to 50 — leaving the document a quarter of its captured height, so the
+	/// scroll the restore then re-applied clamped to near the top. Comparing
+	/// the set means a restore that lands on the same filters is not a change,
+	/// while a genuine change afterwards still resets, with no ordering
+	/// assumption about when `restore` runs relative to the effect.
+	///
+	/// Plain `let`, not `$state`: the effect below both reads and writes it,
+	/// and a reactive read there would make the effect depend on its own write.
+	let renderWindowKey = '';
+	function renderWindowSignature(): string {
+		return [
+			sourceFilter,
+			activityFilter,
+			dateRange,
+			sortKey,
+			customFrom,
+			customTo,
+		].join('\u0000');
+	}
+
 	$effect(() => {
 		// Reset the render window whenever the filter / sort set changes, so
 		// narrowing a list never carries a previously-expanded window into a
-		// smaller result. Reading the signals registers the dependencies;
-		// renderLimit is written but not read here, so there's no loop.
-		void sourceFilter;
-		void activityFilter;
-		void dateRange;
-		void sortKey;
-		void customFrom;
-		void customTo;
+		// smaller result. Reading the signals through the signature registers
+		// the dependencies; renderLimit is written but not read here, so
+		// there's no loop.
+		const key = renderWindowSignature();
+		if (key === renderWindowKey) return;
+		renderWindowKey = key;
 		renderLimit = PAGE_SIZE;
 	});
 
-	// $derived (not plain const) so the m() labels recompute when the locale
-	// changes — a top-level const would call m() once at init, capture the
-	// pre-load locale, and never update (the live-switch + async-chunk race).
+	/// One entry per value `runs_source_check` allows. A `Record<RunSource, _>`
+	/// so tsc refuses an incomplete map, and the ORDER comes from
+	/// `RUN_SOURCES` rather than from a second hand-written list — the
+	/// dropdown used to enumerate four of the eight, so a Wear OS runner saw a
+	/// "Watch" badge on every card and no Watch option to filter by, and the
+	/// same held for a Garmin ZIP import, a Health Connect sync and imported
+	/// race results. Deriving it means the next value added to the CHECK
+	/// cannot reach the union (which `check_constraint_unions.mjs` holds
+	/// against it) without failing this map's exhaustiveness.
+	///
+	/// Brand marks stay untranslated; the two generic sources carry keys.
+	///
+	/// $derived (not plain const) so the m() labels recompute when the locale
+	/// changes — a top-level const would call m() once at init, capture the
+	/// pre-load locale, and never update (the live-switch + async-chunk race).
+	const sourceFilterLabels = $derived<Record<RunSource, string>>({
+		app: m('runs.sourceRecorded'),
+		watch: m('runs.sourceWatch'),
+		healthkit: 'HealthKit',
+		healthconnect: 'Health Connect',
+		strava: 'Strava',
+		garmin: 'Garmin',
+		parkrun: 'parkrun',
+		race: m('runs.sourceRace'),
+	});
 	const sources = $derived<{ value: RunSource | 'all'; label: string }[]>([
 		{ value: 'all', label: m('runs.sourceAll') },
-		{ value: 'app', label: m('runs.sourceRecorded') },
-		{ value: 'strava', label: 'Strava' },
-		{ value: 'parkrun', label: 'parkrun' },
-		{ value: 'healthkit', label: 'HealthKit' },
+		...RUN_SOURCES.map((v) => ({ value: v, label: sourceFilterLabels[v] })),
 	]);
 
 	const activities = $derived<{ value: string; label: string; icon: string }[]>([
@@ -332,30 +460,33 @@
 	/// snapshot.restore bumps the generation, so the in-flight
 	/// loadInitial that was kicked off on mount aborts on return.
 	let fetchGen = $state(0);
+	/// The list-freshness token `runs` was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 
 	async function loadInitial() {
 		loading = true;
 		loadError = null;
 		const gen = ++fetchGen;
-		let res: { runs: Run[]; error: string | null };
-		let nextHasMore: boolean;
+		const token = listToken('runs');
+		let res: { runs: Run[]; error: Error | null; next: KeysetCursor | null };
 		if (fetchMode === 'paginated') {
-			res = await fetchRunsWithError({ limit: PAGE_SIZE, offset: 0 });
-			nextHasMore = res.runs.length === PAGE_SIZE;
+			res = await fetchRunsWithError({ limit: PAGE_SIZE });
 		} else {
 			res = await fetchRunsWithError();
-			nextHasMore = false;
 		}
 		if (gen !== fetchGen) return;
 		if (res.error) {
 			// Leave any previously-loaded runs in place; surface a retryable
 			// error card instead of the "no runs" empty state.
-			loadError = res.error;
+			loadError = errorCopy(res.error, m, 'runs: loadError');
 			loading = false;
 			return;
 		}
 		runs = res.runs;
-		hasMore = nextHasMore;
+		runsNext = res.next;
+		hasMore = res.next !== null;
+		loadedToken = token;
 		loading = false;
 	}
 
@@ -366,17 +497,18 @@
 	/// simply gone. On failure `hasMore` is left alone so the button
 	/// survives as the retry.
 	async function loadMore() {
-		if (loadingMore || !hasMore) return;
+		if (loadingMore || !hasMore || !runsNext) return;
 		loadingMore = true;
 		moreError = null;
-		const res = await fetchRunsWithError({ limit: PAGE_SIZE, offset: runs.length });
+		const res = await fetchRunsWithError({ limit: PAGE_SIZE, after: runsNext });
 		if (res.error) {
 			moreError = res.error;
 			loadingMore = false;
 			return;
 		}
-		runs = [...runs, ...res.runs];
-		hasMore = res.runs.length === PAGE_SIZE;
+		runs = appendPage(runs, res.runs, (r) => r.id);
+		runsNext = res.next;
+		hasMore = res.next !== null;
 		loadingMore = false;
 	}
 
@@ -438,6 +570,8 @@
 	export const snapshot: Snapshot<{
 		runs: Run[];
 		hasMore: boolean;
+		/** Absent from a snapshot captured before the list paged by cursor. */
+		next?: KeysetCursor | null;
 		lastFetchMode: 'paginated' | 'full' | '';
 		sourceFilter: RunSource | 'all';
 		activityFilter: string;
@@ -445,11 +579,16 @@
 		dateRange: DateRange;
 		customFrom: string;
 		customTo: string;
+		renderLimit: number;
+		/** Absent from a snapshot captured before the list view existed. */
+		view?: RunsView;
 		scrollY: number;
+		listToken: string;
 	}> = {
 		capture: () => ({
 			runs,
 			hasMore,
+			next: runsNext,
 			lastFetchMode,
 			sourceFilter,
 			activityFilter,
@@ -457,24 +596,46 @@
 			dateRange,
 			customFrom,
 			customTo,
+			renderLimit,
+			view,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
+			listToken: loadedToken,
 		}),
 		restore: (s) => {
-			// Invalidate any in-flight loadInitial that the mount-time
-			// fetch-effect already kicked off. Without this the async
-			// fetch returns after restore and overwrites the captured
-			// runs with a fresh first-page-of-50.
-			fetchGen++;
-			runs = s.runs;
-			hasMore = s.hasMore;
-			lastFetchMode = s.lastFetchMode;
 			sourceFilter = s.sourceFilter;
 			activityFilter = s.activityFilter;
 			sortKey = s.sortKey;
 			dateRange = s.dateRange;
 			customFrom = s.customFrom;
 			customTo = s.customTo;
+			view = resolveRunsView(page.url.searchParams.get('view'), s.view);
 			filtersHydrated = true;
+			// A run was written since the list was loaded (created from the
+			// Add-run modal, edited or deleted on its detail page), so the
+			// captured list is the pre-write one. Keep the filters — they are the
+			// user's choice and still valid — and leave runs, lastFetchMode
+			// and loading at their mount values, so the fetch effect runs
+			// loadInitial under the restored filters. fetchGen is not bumped:
+			// an in-flight load is one this mount started after the write.
+			if (isListStale('runs', s.listToken)) return;
+			// A snapshot from before the cursor existed has no way to load
+			// more without an offset; reload it like a stale one.
+			if (s.next === undefined) return;
+			// Invalidate any in-flight loadInitial that the mount-time
+			// fetch-effect already kicked off. Without this the async
+			// fetch returns after restore and overwrites the captured
+			// runs with a fresh first-page-of-50.
+			fetchGen++;
+			runs = s.runs;
+			runsNext = s.next;
+			hasMore = s.hasMore;
+			lastFetchMode = s.lastFetchMode;
+			loadedToken = s.listToken;
+			// After the filters, so the signature is taken over the restored
+			// set — and before the paint, so the captured window is what the
+			// scroll below is re-applied against.
+			renderLimit = s.renderLimit ?? PAGE_SIZE;
+			renderWindowKey = renderWindowSignature();
 			loading = false;
 			// SvelteKit's auto scroll-restoration runs before our list
 			// has had a chance to render, so the page is too short and
@@ -554,24 +715,24 @@
 		<div class="run-list run-list-skel" aria-hidden="true">
 			{#each Array(8) as _, i (i)}
 				<div class="skel-card">
-					<div class="skel skel-map"></div>
+					<div class="skel-map"><SkeletonBlock height="8rem" radius="0" /></div>
 					<div class="skel-card-body">
 						<div class="skel-card-top">
-							<span class="skel skel-line skel-w-40"></span>
-							<span class="skel skel-pill"></span>
+							<SkeletonBlock height="0.75rem" width="40%" />
+							<SkeletonBlock height="1rem" width="3.5rem" radius="9999px" />
 						</div>
 						<div class="skel-card-stats">
 							<div class="skel-card-stat">
-								<span class="skel skel-line skel-w-60"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="60%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</div>
 							<div class="skel-card-stat">
-								<span class="skel skel-line skel-w-50"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="50%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</div>
 							<div class="skel-card-stat">
-								<span class="skel skel-line skel-w-50"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="50%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</div>
 						</div>
 					</div>
@@ -646,6 +807,34 @@
 			</div>
 
 			<div class="toolbar-actions">
+				<div class="view-toggle seg-group" role="group" aria-label={m('runs.viewGroup')}>
+					<button
+						type="button"
+						class="seg-btn"
+						class:active={view === 'list'}
+						aria-pressed={view === 'list'}
+						title={m('runs.viewList')}
+						aria-label={m('runs.viewList')}
+						data-testid="runs-view-list"
+						onclick={() => setView('list')}
+					>
+						<span class="material-symbols" aria-hidden="true">list</span>
+						<span class="view-label">{m('runs.viewList')}</span>
+					</button>
+					<button
+						type="button"
+						class="seg-btn"
+						class:active={view === 'grid'}
+						aria-pressed={view === 'grid'}
+						title={m('runs.viewGrid')}
+						aria-label={m('runs.viewGrid')}
+						data-testid="runs-view-grid"
+						onclick={() => setView('grid')}
+					>
+						<span class="material-symbols" aria-hidden="true">apps</span>
+						<span class="view-label">{m('runs.viewGrid')}</span>
+					</button>
+				</div>
 				{#if selecting}
 					<button class="link-btn" onclick={selectAllVisible} type="button">{m('runs.selectAll')}</button>
 					<button class="link-btn" onclick={exitSelectMode} type="button">{m('runs.done')}</button>
@@ -693,13 +882,22 @@
 	</header>
 
 	{#if loading}
-		{@render listSkeleton()}
+		{#if view === 'list'}
+			<TimelineDayList groups={[]} placeholder />
+			<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
+		{:else}
+			{@render listSkeleton()}
+		{/if}
 	{:else if loadError}
-		<div class="card-elevated empty load-error" role="alert" data-testid="runs-load-error">
-			<span class="material-symbols empty-icon" aria-hidden="true">error</span>
-			<h2 class="empty-text">{m('runs.loadFailed')}</h2>
-			<p class="empty-hint load-error-detail">{loadError}</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="error"
+			tone="danger"
+			title={m('runs.loadFailed')}
+			text={loadError}
+			role="alert"
+			data-testid="runs-load-error"
+		>
+			{#snippet actions()}
 				<button
 					type="button"
 					class="btn btn-primary"
@@ -708,10 +906,21 @@
 				>
 					{m('runs.retry')}
 				</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{:else}
-		<div class="run-list">
+		{#if view === 'list'}
+			<div class="run-list-view" data-testid="runs-list-view">
+				<TimelineDayList
+					groups={listGroups}
+					headings={listHeadings}
+					{selecting}
+					{selected}
+					ontoggle={toggleSelect}
+				/>
+			</div>
+		{:else}
+		<div class="run-list" data-testid="runs-grid-view">
 			{#each visibleRuns as run}
 				{@const isSelected = selected.has(run.id)}
 				<svelte:element
@@ -755,7 +964,7 @@
 								 props keeps the safe shape if the page is ever widened
 								 to show another user's runs — without them, the clip
 								 gate silently falls open. See audit:privacy-zones
-								 2026-05-25 + the corresponding security_guards.test
+								 2026-05-25 + the corresponding privacy_guards.test
 								 case below. -->
 							<RunTrackPreview
 								trackUrl={run.track_url}
@@ -796,7 +1005,7 @@
 									<span class="run-stat-value"
 										>{formatElevation((run.metadata as Record<string, unknown>).elevation_m as number)}</span
 									>
-									<span class="run-stat-label section-label">{m('runs.statVert')}</span>
+									<span class="run-stat-label section-label">{m('runDetail.elevation')}</span>
 								</div>
 							{/if}
 						</div>
@@ -813,6 +1022,7 @@
 				</svelte:element>
 			{/each}
 		</div>
+		{/if}
 
 		{#if selecting && selected.size > 0}
 			<div class="bulk-bar" role="toolbar" aria-label={m('runs.selectionActions')}>
@@ -881,14 +1091,19 @@
 
 		{#if filteredRuns.length === 0}
 			{#if runs.length === 0}
-				<div class="card-elevated empty" data-testid="runs-empty-no-data">
-					<span class="material-symbols empty-icon" aria-hidden="true">directions_run</span>
-					<h2 class="empty-text">{m('runs.emptyNoData')}</h2>
-					<p class="empty-hint">
-						{m('runs.emptyNoDataHintPrefix')}
-						<a href="/settings/integrations">{m('runs.emptyNoDataHintLink')}</a>{m('runs.emptyNoDataHintSuffix')}
-					</p>
-					<div class="empty-actions">
+				<EmptyState
+					icon="directions_run"
+					title={m('runs.emptyNoData')}
+					mascot
+					data-testid="runs-empty-no-data"
+				>
+					{#snippet body()}
+						<p>
+							{m('runs.emptyNoDataHintPrefix')}
+							<a href="/settings/integrations">{m('runs.emptyNoDataHintLink')}</a>{m('runs.emptyNoDataHintSuffix')}
+						</p>
+					{/snippet}
+					{#snippet actions()}
 						<button
 							type="button"
 							class="btn btn-primary"
@@ -896,16 +1111,16 @@
 						>
 							{m('runs.addRun')}
 						</button>
-					</div>
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
-				<div class="card-elevated empty" data-testid="runs-empty-filtered">
-					<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-					<h2 class="empty-text">{m('runs.emptyFiltered')}</h2>
-					<p class="empty-hint">
-						{m('runs.emptyFilteredHint')}
-					</p>
-					<div class="empty-actions">
+				<EmptyState
+					icon="filter_alt_off"
+					title={m('runs.emptyFiltered')}
+					text={m('runs.emptyFilteredHint')}
+					data-testid="runs-empty-filtered"
+				>
+					{#snippet actions()}
 						<button
 							type="button"
 							class="btn btn-outline"
@@ -921,8 +1136,8 @@
 						<button type="button" class="btn btn-primary" onclick={() => (showRunModal = true)}>
 							{m('runs.addRun')}
 						</button>
-					</div>
-				</div>
+					{/snippet}
+				</EmptyState>
 			{/if}
 		{/if}
 	{/if}
@@ -1084,7 +1299,8 @@
 	   action cluster on one row. ~54rem is just above their combined width, so
 	   the labels vanish a touch before they'd collide with the actions. */
 	@container (max-width: 54rem) {
-		.activity-label {
+		.activity-label,
+		.view-label {
 			display: none;
 		}
 	}
@@ -1282,60 +1498,6 @@
 		white-space: nowrap;
 	}
 
-	.empty {
-		grid-column: 1 / -1;
-		text-align: center;
-		padding: var(--space-2xl) var(--space-md);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		/* Cap so the card doesn't stretch the full canvas; centred in the
-		   grid cell (run-list empties span 1 / -1). */
-		max-width: 32rem;
-		margin-inline: auto;
-	}
-	.empty-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 3.25rem;
-		height: 3.25rem;
-		border-radius: 50%;
-		background: var(--color-bg-tertiary);
-		font-size: 1.75rem;
-		color: var(--color-text-secondary);
-		margin-bottom: var(--space-2xs);
-	}
-	.empty .empty-text {
-		margin: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-		padding: 0;
-	}
-	.empty-hint {
-		font-size: 0.85rem;
-		color: var(--color-text-tertiary);
-		max-width: 28rem;
-	}
-	.empty-actions {
-		display: flex;
-		gap: var(--space-sm);
-		flex-wrap: wrap;
-		justify-content: center;
-		margin-top: var(--space-md);
-	}
-	.load-error .empty-icon {
-		background: rgba(239, 68, 68, 0.12);
-		color: var(--color-danger-text);
-	}
-	.load-error-detail {
-		font-size: 0.78rem;
-		color: var(--color-text-tertiary);
-		word-break: break-word;
-	}
 
 	.load-more-row {
 		display: flex;
@@ -1529,9 +1691,6 @@
 	/* Mirrors the real card's 8rem map thumbnail so accounts with GPS
 	   tracks don't get a height jump when data swaps in. */
 	.skel-map {
-		width: 100%;
-		height: 8rem;
-		border-radius: 0;
 		border-bottom: 1px solid var(--color-border);
 	}
 	.skel-card-body { padding: var(--space-md) var(--space-lg); }
@@ -1553,39 +1712,6 @@
 		gap: var(--space-xs);
 		flex: 1;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-pill {
-		width: 3.5rem;
-		height: 1rem;
-		border-radius: 9999px;
-	}
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-50 { width: 50%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
 	.sr-only {
 		position: absolute;
 		width: 1px;

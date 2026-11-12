@@ -14,7 +14,10 @@ import '../widgets/live_run_map.dart'
         basemapTileLayer,
         basemapVoidColour,
         currentBasemapIsDark,
-        currentTileUrl;
+        currentTileUrl,
+        mapHeatOpacity,
+        mapHeatRamp,
+        mapTrackLine;
 import '../widgets/map_attribution.dart';
 
 /// Personal run-track heatmap — the mobile mirror of web `/runs/heatmap`
@@ -113,8 +116,11 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
   }
 
   Future<List<cm.Waypoint>> _fetchTrack(String path) {
-    if (widget.fetchTrackFn != null) return widget.fetchTrackFn!(path);
-    return widget.api.fetchTrackByPath(path);
+    // The heatmap draws lines: off-track fixes are distance input only.
+    if (widget.fetchTrackFn != null) {
+      return widget.fetchTrackFn!(path).then(cm.trackLine);
+    }
+    return widget.api.fetchTrackByPath(path).then(cm.trackLine);
   }
 
   Future<List<List<cm.Waypoint>>> _downloadTracks(List<String> paths) async {
@@ -158,8 +164,9 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
       final localTracks = <List<cm.Waypoint>>[];
       final localIds = <String>{};
       for (final r in widget.runStore?.runs ?? const <cm.Run>[]) {
-        if (r.track.length < 2) continue;
-        localTracks.add(r.track);
+        final line = cm.trackLine(r.track);
+        if (line.length < 2) continue;
+        localTracks.add(line);
         localIds.add(r.id);
         if (localTracks.length >= _maxTracks) break;
       }
@@ -189,7 +196,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
       final tracks = [...localTracks, ...await _downloadTracks(paths)];
       final heatTracks = [
         for (final t in tracks)
-          [for (final w in t) HeatLatLng(w.lat, w.lng)],
+          [for (final w in t) HeatLatLng(w.lineLat, w.lineLng)],
       ];
       final cells = buildHeatCells(heatTracks);
       if (cells.isEmpty) {
@@ -198,7 +205,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
       }
       final lines = [
         for (final t in tracks)
-          if (t.length >= 2) [for (final w in t) LatLng(w.lat, w.lng)],
+          if (t.length >= 2) [for (final w in t) LatLng(w.lineLat, w.lineLng)],
       ];
       if (mounted) {
         setState(() {
@@ -244,26 +251,20 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
   double get _heatOpacity {
     if (_zoom <= _fadeMin) return 0.85;
     if (_zoom >= _fadeMax) return 0;
-    return 0.85 * (1 - (_zoom - _fadeMin) / (_fadeMax - _fadeMin));
+    return mapHeatOpacity * (1 - (_zoom - _fadeMin) / (_fadeMax - _fadeMin));
   }
 
   /// Track-line opacity: the mirror image of the heat fade.
   double get _lineOpacity {
     if (_zoom <= _fadeMin) return 0;
-    if (_zoom >= _fadeMax) return 0.55;
-    return 0.55 * ((_zoom - _fadeMin) / (_fadeMax - _fadeMin));
+    if (_zoom >= _fadeMax) return mapHeatOpacity;
+    return mapHeatOpacity * ((_zoom - _fadeMin) / (_fadeMax - _fadeMin));
   }
 
-  Color _cellColor(int weight) {
+  Color _cellColor(int weight, List<Color> ramp) {
     final t = (weight / kMaxCellWeight).clamp(0.0, 1.0);
-    final base = t < 0.25
-        ? const Color(0xFF3B82F6)
-        : t < 0.5
-            ? const Color(0xFF10B981)
-            : t < 0.75
-                ? const Color(0xFFF59E0B)
-                : const Color(0xFFEF4444);
-    return base.withValues(alpha: _heatOpacity * 0.5);
+    final base = ramp[(t * ramp.length).floor().clamp(0, ramp.length - 1)];
+    return base.withValues(alpha: _heatOpacity);
   }
 
   @override
@@ -271,6 +272,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final darkBasemap = currentBasemapIsDark(context);
+    final ramp = mapHeatRamp(darkBasemap: darkBasemap);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.runHeatmapTitle)),
       body: Stack(
@@ -301,7 +303,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
                       CircleMarker(
                         point: LatLng(c.lat, c.lng),
                         radius: 6,
-                        color: _cellColor(c.weight),
+                        color: _cellColor(c.weight, ramp),
                         borderStrokeWidth: 0,
                       ),
                   ],
@@ -314,12 +316,17 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
                       Polyline(
                         points: line,
                         strokeWidth: 2.5,
-                        color: const Color(0xFF6366F1)
+                        color: mapTrackLine(darkBasemap: darkBasemap)
                             .withValues(alpha: _lineOpacity),
                       ),
                   ],
                 ),
-              MapAttribution(darkBasemap: darkBasemap),
+              // The map runs under the system navigation bar, and a credit
+              // drawn there is covered by it.
+              SafeArea(
+                top: false,
+                child: MapAttribution(darkBasemap: darkBasemap),
+              ),
             ],
           ),
           if (_loading)
@@ -428,7 +435,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
                           color: theme.colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 6),
-                    const _LegendScale(),
+                    _LegendScale(ramp: ramp),
                     const SizedBox(height: 2),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -478,20 +485,20 @@ class _Pill extends StatelessWidget {
 }
 
 class _LegendScale extends StatelessWidget {
-  const _LegendScale();
+  final List<Color> ramp;
+
+  const _LegendScale({required this.ramp});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('runHeatmapLegendScale'),
       height: 8,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [
-            Color(0xB33B82F6),
-            Color(0xCC10B981),
-            Color(0xD9F59E0B),
-            Color(0xF2EF4444),
+            for (final c in ramp) c.withValues(alpha: mapHeatOpacity),
           ],
         ),
       ),

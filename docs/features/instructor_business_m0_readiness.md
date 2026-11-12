@@ -64,11 +64,16 @@ STRIPE_EVENTS_ALLOWED_REDIRECTS=http://localhost:7777
 cd apps/backend && supabase functions serve --env-file .env.local
 
 # forward Stripe events to the webhook (prints the whsec_ to paste above, then restart)
-stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-events-webhook
+stripe listen --forward-to http://127.0.0.1:24321/functions/v1/stripe-events-webhook
 
-# the three handled event types
+# the handled event types (the dashboard endpoint must subscribe to all of
+# these — a delayed-notification payment's real outcome arrives on the two
+# async ones, and nothing else ever reports it)
 stripe trigger checkout.session.completed
+stripe trigger checkout.session.async_payment_succeeded
+stripe trigger checkout.session.async_payment_failed
 stripe trigger checkout.session.expired
+stripe trigger charge.refunded
 stripe trigger account.updated
 ```
 
@@ -80,7 +85,7 @@ Not compliance-gated, but they must be answered before M9 prices a real class:
 
 | # | Question | Decider |
 |---|---|---|
-| Q1 | Platform fee rate (`platform_fee_bps`) — 0% to seed adoption vs a real take-rate | Product + Finance |
+| Q1 | Platform fee rate — **decided 2026-10-07: 500 bps on events, 0 on donations** (`platform_fees`, decisions § 1768) | Product + Finance |
 | Q4 | Connect account type — Express (P1 assumption, fastest) vs Standard | Product + CISO |
 | Q5 | Is hosting paid events itself a Pro-host perk? (ties into the paywall) | Product |
 

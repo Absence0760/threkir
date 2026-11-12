@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearUserSettingKey, setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readCount, readRow } from '../fixtures/db-read';
+import { browserDatetimeLocal } from '../fixtures/dates';
 
 /**
  * The chip's visible word, read out of the en catalogue.
@@ -14,7 +17,7 @@ import { USER_A } from '../fixtures/users';
  * hand-capitalisation the activity vocabulary replaced — `hike` renders as
  * "Trail run", so the derived "Hike" matched no chip and the click timed out.
  * Read by regex rather than imported: this file runs under Playwright, where the
- * `$lib` alias the catalogue module uses internally does not resolve.
+ * `#lib` alias the catalogue module uses internally does not resolve.
  */
 function activityLabel(value: string): string {
 	const catalogue = readFileSync(
@@ -83,18 +86,21 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('6');
-		await numberInputs.nth(1).fill('30');
-		await page.getByRole('checkbox', { name: /Make this run public/ }).check();
+		await page.getByTestId('run-editor-minutes').fill('30');
+		await page.getByTestId('run-editor-audience').selectOption('public');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('is_public')
-			.eq('id', newId)
-			.single();
-		expect(row?.is_public).toBe(true);
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('is_public')
+				.eq('id', newId)
+				.single()
+		);
+		expect(row.is_public).toBe(true);
 	});
 
 	test('privacy_default=public makes a new manual run public without touching the toggle', async ({
@@ -110,27 +116,30 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		// Toggle reflects the standing preference.
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).toBeChecked();
+		// The audience control reflects the standing preference.
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('public');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('7');
-		await numberInputs.nth(1).fill('40');
+		await page.getByTestId('run-editor-minutes').fill('40');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('is_public')
-			.eq('id', newId)
-			.single();
-		expect(row?.is_public).toBe(true);
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('is_public')
+				.eq('id', newId)
+				.single()
+		);
+		expect(row.is_public).toBe(true);
 	});
 
 	test('default (no privacy_default set) keeps a manual run private', async ({ page }) => {
+		// The unset default is `private` (decisions § 1881), so the seed's open
+		// audience_sharing flag does not widen it to followers.
 		const admin = getAdminClient();
 		await clearUserSettingKey(USER_A.id, 'privacy_default');
 
@@ -138,23 +147,25 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).not.toBeChecked();
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('private');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('8');
-		await numberInputs.nth(1).fill('45');
+		await page.getByTestId('run-editor-minutes').fill('45');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('is_public')
-			.eq('id', newId)
-			.single();
-		expect(row?.is_public).toBe(false);
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('is_public, followers_only')
+				.eq('id', newId)
+				.single()
+		);
+		expect(row.is_public).toBe(false);
+		expect(row.followers_only).toBe(false);
 	});
 
 	test('renders page chrome (kicker, h1, tagline, back link)', async ({ page }) => {
@@ -187,25 +198,28 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('3.14');
-		await numberInputs.nth(1).fill('25');
+		await page.getByTestId('run-editor-minutes').fill('25');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
 		const newId = await captureCreatedRunId(page);
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('user_id, distance_m, duration_s, source, activity_type, metadata')
-			.eq('id', newId)
-			.single();
-		expect(row?.user_id).toBe(USER_A.id);
-		expect(Math.round((row?.distance_m as number) ?? 0)).toBe(3140);
-		expect(row?.duration_s).toBe(25 * 60);
-		expect(row?.source).toBe('app');
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('user_id, distance_m, duration_s, source, activity_type, metadata')
+				.eq('id', newId)
+				.single()
+		);
+		expect(row.user_id).toBe(USER_A.id);
+		expect(Math.round((row.distance_m as number))).toBe(3140);
+		expect(row.duration_s).toBe(25 * 60);
+		expect(row.source).toBe('app');
 		// activity_type was promoted out of metadata into a real column
 		// (migration 20261207_001); manual_entry stays in the bag.
-		expect(row?.activity_type).toBe('walk');
-		const meta = row?.metadata as Record<string, unknown>;
+		expect(row.activity_type).toBe('walk');
+		const meta = row.metadata as Record<string, unknown>;
 		expect(meta?.manual_entry).toBe(true);
 	});
 
@@ -225,7 +239,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('0');
-		await numberInputs.nth(1).fill('25');
+		await page.getByTestId('run-editor-minutes').fill('25');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -255,8 +269,8 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('5');
-		await numberInputs.nth(1).fill('0');
-		await numberInputs.nth(2).fill('0');
+		await page.getByTestId('run-editor-minutes').fill('0');
+		await page.getByTestId('run-editor-seconds').fill('0');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -270,7 +284,7 @@ test.describe('/runs/new', () => {
 		expect(afterCount.count).toBe(beforeCount.count);
 	});
 
-	test('negative duration is rejected by the min=0 input or clamped to zero', async ({
+	test('a minus sign in the duration is refused, never clamped', async ({
 		page
 	}) => {
 		const admin = getAdminClient();
@@ -286,7 +300,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('5');
-		await numberInputs.nth(1).fill('-10');
+		await page.getByTestId('run-editor-minutes').fill('-10');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -300,6 +314,98 @@ test.describe('/runs/new', () => {
 		expect(afterCount.count).toBe(beforeCount.count);
 	});
 
+	// Issue #1300 § 5: "12333" in the Hours box saved a 2 km run lasting
+	// 12,333 hours. Each case below must leave no row and no navigation.
+	async function expectNoRunSaved(page: Page, before: number | null): Promise<void> {
+		await page.waitForTimeout(500);
+		await expect(page).toHaveURL(/\/runs\/new$/);
+		const after = await getAdminClient()
+			.from('runs')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', USER_A.id);
+		expect(after.count).toBe(before);
+	}
+
+	async function runCount(): Promise<number | null> {
+		const { count } = await getAdminClient()
+			.from('runs')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', USER_A.id);
+		return count;
+	}
+
+	test('the hours box holds three digits and a duration past 240 h is refused', async ({
+		page
+	}) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.locator('input[type="number"]').nth(0).fill('2');
+		await page.getByTestId('run-editor-hours').pressSequentially('12333');
+		await expect(page.getByTestId('run-editor-hours')).toHaveValue('123');
+
+		await page.getByTestId('run-editor-hours').fill('240');
+		await page.getByTestId('run-editor-minutes').fill('1');
+		await page.getByRole('button', { name: /Save/ }).click();
+		await expect(page.getByText("A run can't be longer than 240 hours.")).toBeVisible();
+		await expectNoRunSaved(page, before);
+	});
+
+	test('minutes past 59 are refused', async ({ page }) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.locator('input[type="number"]').nth(0).fill('5');
+		await page.getByTestId('run-editor-minutes').fill('75');
+		await page.getByRole('button', { name: /Save/ }).click();
+		await expect(page.getByText('Minutes must be between 0 and 59.')).toBeVisible();
+		await expectNoRunSaved(page, before);
+	});
+
+	test('a duration slower than 1 km/h asks first, and Fix it saves nothing', async ({
+		page
+	}) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.locator('input[type="number"]').nth(0).fill('2');
+		await page.getByTestId('run-editor-hours').fill('21');
+		await page.getByTestId('run-editor-minutes').fill('');
+		await page.getByRole('button', { name: /Save/ }).click();
+		const dialog = page.getByTestId('run-editor-slow-confirm');
+		await expect(dialog.getByText('Check the duration')).toBeVisible();
+		await dialog.getByRole('button', { name: 'Fix it' }).click();
+		await expect(dialog).toBeHidden();
+		await expectNoRunSaved(page, before);
+	});
+
+	test('a start time in the future is refused', async ({ page }) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page
+			.locator('input[type="datetime-local"]')
+			.first()
+			.fill(browserDatetimeLocal(Date.now() + 3 * 3600 * 1000));
+		await page.locator('input[type="number"]').nth(0).fill('5');
+		await page.getByTestId('run-editor-minutes').fill('30');
+		await page.getByRole('button', { name: /Save/ }).click();
+		await expect(page.getByText("The start time can't be in the future.")).toBeVisible();
+		await expectNoRunSaved(page, before);
+	});
+
 	test('distance accepts decimal km values (5.27 km → 5270 m)', async ({
 		page
 	}) => {
@@ -311,17 +417,20 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('5.27');
-		await numberInputs.nth(1).fill('30');
+		await page.getByTestId('run-editor-minutes').fill('30');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('distance_m')
-			.eq('id', newId)
-			.single();
-		expect(Math.round((row?.distance_m as number) ?? 0)).toBe(5270);
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('distance_m')
+				.eq('id', newId)
+				.single()
+		);
+		expect(Math.round((row.distance_m as number))).toBe(5270);
 	});
 
 	test('activity defaults to Run and persists to metadata.activity_type', async ({
@@ -339,17 +448,20 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('4');
-		await numberInputs.nth(1).fill('20');
+		await page.getByTestId('run-editor-minutes').fill('20');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('activity_type')
-			.eq('id', newId)
-			.single();
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('activity_type')
+				.eq('id', newId)
+				.single()
+		);
 		// activity_type is a real column since 20261207_001 (default 'run').
-		expect(row?.activity_type).toBe('run');
+		expect(row.activity_type).toBe('run');
 	});
 
 	for (const activity of ['walk', 'hike', 'cycle'] as const) {
@@ -370,17 +482,20 @@ test.describe('/runs/new', () => {
 
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill('4');
-			await numberInputs.nth(1).fill('20');
+			await page.getByTestId('run-editor-minutes').fill('20');
 			await page.getByRole('button', { name: /Save/ }).click();
 			const newId = await captureCreatedRunId(page);
 
-			const { data: row } = await admin
-				.from('runs')
-				.select('activity_type')
-				.eq('id', newId)
-				.single();
+			const row = await readRow(
+				'runs by id',
+				admin
+					.from('runs')
+					.select('activity_type')
+					.eq('id', newId)
+					.single()
+			);
 			// activity_type is a real column since 20261207_001.
-			expect(row?.activity_type).toBe(activity);
+			expect(row.activity_type).toBe(activity);
 		});
 	}
 
@@ -398,17 +513,20 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('2.5');
-		await numberInputs.nth(1).fill('15');
+		await page.getByTestId('run-editor-minutes').fill('15');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('source, metadata')
-			.eq('id', newId)
-			.single();
-		expect(row?.source).toBe('app');
-		expect((row?.metadata as Record<string, unknown>)?.manual_entry).toBe(
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('source, metadata')
+				.eq('id', newId)
+				.single()
+		);
+		expect(row.source).toBe('app');
+		expect((row.metadata as Record<string, unknown>)?.manual_entry).toBe(
 			true
 		);
 	});
@@ -456,10 +574,26 @@ test.describe('/runs/new', () => {
 
 	test('discard mid-form (back-link click) plants no row', async ({ page }) => {
 		const admin = getAdminClient();
-		const beforeCount = await admin
-			.from('runs')
-			.select('id', { count: 'exact', head: true })
-			.eq('user_id', USER_A.id);
+		const beforeCount = await readCount(
+			'runs before editing',
+			admin
+				.from('runs')
+				.select('id', { count: 'exact', head: true })
+				.eq('user_id', USER_A.id)
+		);
+
+		// The editor seeds the privacy toggle from this after two round trips.
+		// Holding that read until the form has been typed into puts the seed
+		// where a real runner on a slow link meets it: after their edits. A seed
+		// that re-took the whole baseline absorbed those edits as "clean", and
+		// the back link then discarded them with no prompt.
+		await setUserSetting(USER_A.id, 'privacy_default', 'public');
+		let releaseSettings!: () => void;
+		const settingsHeld = new Promise<void>((resolve) => (releaseSettings = resolve));
+		await page.route(/\/rest\/v1\/user_settings\b/, async (route) => {
+			await settingsHeld;
+			await route.continue();
+		});
 
 		await page.goto('/runs/new');
 		await expect(
@@ -468,8 +602,13 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('7.7');
-		await numberInputs.nth(1).fill('45');
+		await page.getByTestId('run-editor-minutes').fill('45');
 		await page.locator('textarea').fill('Should never persist');
+
+		const routesLoaded = page.waitForResponse(/\/rest\/v1\/routes\b/);
+		releaseSettings();
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('public');
+		await routesLoaded;
 
 		await page.getByRole('link', { name: /Back to runs/ }).click();
 		// The unsaved-changes guard intercepts the back link on a dirty form;
@@ -479,11 +618,14 @@ test.describe('/runs/new', () => {
 		await guard.getByRole('button', { name: 'Discard' }).click();
 		await page.waitForURL(/\/runs(\?.*)?$/, { timeout: 10_000 });
 
-		const afterCount = await admin
-			.from('runs')
-			.select('id', { count: 'exact', head: true })
-			.eq('user_id', USER_A.id);
-		expect(afterCount.count).toBe(beforeCount.count);
+		const afterCount = await readCount(
+			'runs after discarding the edits',
+			admin
+				.from('runs')
+				.select('id', { count: 'exact', head: true })
+				.eq('user_id', USER_A.id)
+		);
+		expect(afterCount).toBe(beforeCount);
 	});
 
 	test('round-trip → /runs/[id] shows the new run + correct distance', async ({
@@ -497,7 +639,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('10');
-		await numberInputs.nth(1).fill('50');
+		await page.getByTestId('run-editor-minutes').fill('50');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 
@@ -506,13 +648,16 @@ test.describe('/runs/new', () => {
 		// the client-side INSERT lands.
 		await page.waitForLoadState('networkidle');
 
-		const { data: row } = await admin
-			.from('runs')
-			.select('distance_m, duration_s, user_id')
-			.eq('id', newId)
-			.single();
-		expect(row?.user_id).toBe(USER_A.id);
-		expect(Math.round((row?.distance_m as number) ?? 0)).toBe(10_000);
-		expect(row?.duration_s).toBe(50 * 60);
+		const row = await readRow(
+			'runs by id',
+			admin
+				.from('runs')
+				.select('distance_m, duration_s, user_id')
+				.eq('id', newId)
+				.single()
+		);
+		expect(row.user_id).toBe(USER_A.id);
+		expect(Math.round((row.distance_m as number))).toBe(10_000);
+		expect(row.duration_s).toBe(50 * 60);
 	});
 });

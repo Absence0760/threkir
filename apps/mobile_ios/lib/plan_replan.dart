@@ -75,7 +75,10 @@ class ReplanWeek {
   });
 }
 
-enum ReplanReason { makeUpLong, easeOverRunning }
+/// [ReplanReason.anchorActualVolume] is proposed by `plan_volume_anchor.dart`,
+/// never by [replanRemaining]; it shares this shape so it previews and applies
+/// the same way.
+enum ReplanReason { makeUpLong, easeOverRunning, anchorActualVolume }
 
 class ReplanChange {
   final String workoutId;
@@ -147,8 +150,9 @@ List<ReplanChange> easeOffNextWeek(
 }
 
 /// Whether a step-back week (a >15% planned-volume drop) immediately follows
-/// the week at `idx`.
-bool _recoveryWeekImminent(List<ReplanWeek> weeks, int idx) {
+/// the week at `idx`. Public so the missed-workout prompt
+/// (`plan_missed_prompt.dart`) advises on the same week the make-up would.
+bool recoveryWeekImminent(List<ReplanWeek> weeks, int idx) {
   final cur = weeks[idx];
   final next = _firstOrNull(weeks, (w) => w.weekIndex == cur.weekIndex + 1);
   if (next == null || !(cur.plannedMetres > 0) || !(next.plannedMetres > 0)) {
@@ -166,12 +170,24 @@ ReplanResult replanRemaining({
   final sorted = [...weeks]..sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
   final changes = <ReplanChange>[];
 
-  // Future, non-taper long runs available to absorb a make-up.
-  final futureLongRuns = sorted
-      .expand((w) => _isTaper(w.phase) ? <ReplanWorkout>[] : w.workouts)
-      .where((wo) => !wo.isPast && wo.kind == 'long')
-      .toList()
-    ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+  // Earliest future, non-taper long run available to absorb a make-up. Only
+  // the minimum is ever read, so this scans rather than sorts: a strict `<`
+  // keeps the FIRST of two long runs sharing a date — the plan's own
+  // week-then-workout order — with no dependence on `List.sort`, which is
+  // unstable past its small-list insertion path. The web twin and the firmware
+  // port scan identically, so all three rails pick the same session out of a
+  // double-long-run day.
+  ReplanWorkout? nextLong;
+  for (final week in sorted) {
+    if (_isTaper(week.phase)) continue;
+    for (final wo in week.workouts) {
+      if (wo.isPast || wo.kind != 'long') continue;
+      if (nextLong == null ||
+          wo.scheduledDate.compareTo(nextLong.scheduledDate) < 0) {
+        nextLong = wo;
+      }
+    }
+  }
 
   // ── 1. Missed long runs in past weeks → make up in the future ──
   // With several outstanding missed long runs the make-up honours the
@@ -187,16 +203,15 @@ ReplanResult replanRemaining({
       final advice = missedWorkoutAdvice(MissedWorkoutInput(
         kind: 'long',
         isTaper: _isTaper(week.phase),
-        recoveryWeekImminent: _recoveryWeekImminent(sorted, i),
+        recoveryWeekImminent: recoveryWeekImminent(sorted, i),
       ));
       if (advice.recommendation != MakeUpRecommendation.makeUp) continue;
       final missed = wo.targetDistanceM ?? 0;
       if (missed > maxMissedLong) maxMissedLong = missed;
     }
   }
-  if (futureLongRuns.isNotEmpty && maxMissedLong > 0) {
-    final next = futureLongRuns.first;
-    final plannedNext = next.targetDistanceM ?? 0;
+  if (nextLong != null && maxMissedLong > 0) {
+    final plannedNext = nextLong.targetDistanceM ?? 0;
     if (plannedNext > 0) {
       final capped =
           maxMissedLong < (plannedNext * (1 + makeUpMaxIncrease)).round()
@@ -204,8 +219,8 @@ ReplanResult replanRemaining({
               : (plannedNext * (1 + makeUpMaxIncrease)).round().toDouble();
       if (capped > plannedNext) {
         changes.add(ReplanChange(
-          workoutId: next.id,
-          scheduledDate: next.scheduledDate,
+          workoutId: nextLong.id,
+          scheduledDate: nextLong.scheduledDate,
           reason: ReplanReason.makeUpLong,
           fromMetres: plannedNext,
           toMetres: capped,

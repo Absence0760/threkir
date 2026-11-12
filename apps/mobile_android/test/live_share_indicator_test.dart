@@ -19,6 +19,7 @@ Future<void> _pumpIndicator(WidgetTester tester,
 Future<void> _pumpSheetHost(
   WidgetTester tester, {
   required void Function(LiveShareAction?) onResolved,
+  bool showStreamerOverlay = false,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -29,7 +30,8 @@ Future<void> _pumpSheetHost(
           builder: (context) => Center(
             child: ElevatedButton(
               onPressed: () async =>
-                  onResolved(await showLiveShareSheet(context)),
+                  onResolved(await showLiveShareSheet(context,
+                  showStreamerOverlay: showStreamerOverlay)),
               child: const Text('open'),
             ),
           ),
@@ -50,13 +52,24 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('sheet renders the title and both actions', (tester) async {
+  testWidgets('sheet renders the title and all three actions', (tester) async {
     await _pumpSheetHost(tester, onResolved: (_) {});
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.text('Live sharing on'), findsOneWidget);
     expect(find.text('Share link again'), findsOneWidget);
+    expect(find.text('Not back by…'), findsOneWidget);
     expect(find.text('Stop sharing'), findsOneWidget);
+  });
+
+  testWidgets('picking "Not back by…" resolves expectedReturn', (tester) async {
+    LiveShareAction? resolved;
+    await _pumpSheetHost(tester, onResolved: (a) => resolved = a);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Not back by…'));
+    await tester.pumpAndSettle();
+    expect(resolved, LiveShareAction.expectedReturn);
   });
 
   testWidgets('picking "Share link again" resolves reshare', (tester) async {
@@ -110,5 +123,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(called, true);
     expect(resolved, isNull);
+  });
+
+  testWidgets('the streamer overlay row is absent while the gate is closed',
+      (tester) async {
+    await _pumpSheetHost(tester, onResolved: (_) {});
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Streamer overlay'), findsNothing);
+  });
+
+  testWidgets('with the gate open, "Streamer overlay" resolves streamerOverlay',
+      (tester) async {
+    LiveShareAction? resolved;
+    await _pumpSheetHost(tester,
+        onResolved: (a) => resolved = a, showStreamerOverlay: true);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Streamer overlay'));
+    await tester.pumpAndSettle();
+    expect(resolved, LiveShareAction.streamerOverlay);
   });
 }

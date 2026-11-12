@@ -48,7 +48,7 @@ test('no loose production modules at the src/lib root', () => {
 
 test('every TS parity-pair source path in shared-library-syncer.md exists on disk', () => {
 	const agent = readFileSync(
-		resolve(repoRoot, '.claude', 'agents', 'shared-library-syncer.md'),
+		resolve(repoRoot, '.claude', 'agents', 'engineering', 'shared-library-syncer.md'),
 		'utf-8',
 	);
 	const paths = [...agent.matchAll(/apps\/web\/(src\/lib\/[\w./-]+\.ts)/g)].map((m) => m[1]);
@@ -78,15 +78,65 @@ test('the unit-test glob covers every suite under src', () => {
 			`outside it are silently skipped (got: ${pkg.scripts?.['test:unit']}).`,
 	);
 
+	// CI reaches the glob through the script rather than restating it (decisions
+	// § 764), so what has to hold is the CHAIN: the lane invokes `test:unit`, and
+	// no step quietly substitutes a narrower glob of its own. Asserting the
+	// literal here instead is what went stale the moment the glob moved — the
+	// same shape as § 762's `createClient(` guard.
 	const ci = readFileSync(resolve(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf-8');
+	// Prose is stripped first, comments AND echoed text: the reproduce hint inside
+	// this very lane echoes the command being looked for, so matching the raw file
+	// would pass on prose alone even if the lane stopped running the suite at all.
+	// Same distinction `scripts/check_workflow_binaries.mjs` draws (decisions § 764).
+	const code = ci
+		.split('\n')
+		.filter((l) => {
+			const t = l.trimStart();
+			return !t.startsWith('#') && !t.startsWith('echo ') && !t.startsWith('printf ');
+		})
+		.join('\n');
 	assert.ok(
-		ci.includes(RECURSIVE),
-		`.github/workflows/ci.yml must run the recursive glob '${RECURSIVE}'.`,
+		code.includes('npm run test:unit') || code.includes(RECURSIVE),
+		`.github/workflows/ci.yml must reach the recursive glob '${RECURSIVE}', ` +
+			`either by running \`npm run test:unit\` or by spelling the glob itself.`,
 	);
+
+	// The hazard is a narrower glob SUBSTITUTED for the suite, not an extra run.
+	// The assertion above already fixes that the recursive lane exists, so a
+	// second invocation naming explicit files skips nothing -- `build-web` runs
+	// the three artifact-reading suites again after the build, because they
+	// self-skip in `test-web` where no build exists (decisions § 1210). What
+	// must still fail is a wildcard standing in for the suite, and a named file
+	// the recursive lane would not have run at all.
+	const inline = [...code.matchAll(/tsx --test ([^\n]*)/g)].map((m) => m[1]);
+	for (const args of inline) {
+		if (args.includes(RECURSIVE)) continue;
+		const named = args
+			.split(/\s+/)
+			.filter((a) => a.endsWith('.test.ts') || a.includes('*'));
+		assert.ok(
+			named.length > 0,
+			`.github/workflows/ci.yml invokes 'tsx --test' with neither '${RECURSIVE}' ` +
+				`nor any named suite (got: ${args}).`,
+		);
+		for (const a of named) {
+			assert.ok(
+				!a.includes('*'),
+				`.github/workflows/ci.yml invokes 'tsx --test' with the wildcard '${a}', ` +
+					`which is not '${RECURSIVE}'. A narrower glob silently skips suites; ` +
+					`an extra lane must name its files.`,
+			);
+			assert.ok(
+				a.startsWith('src/') && existsSync(resolve(webRoot, a)),
+				`.github/workflows/ci.yml runs 'tsx --test ${a}', which is not a file ` +
+					`under apps/web/src that the recursive lane also runs.`,
+			);
+		}
+	}
 });
 
-test('every $lib/<segment> reference in src resolves to a real lib folder or root module', () => {
-	// First path segment after `$lib/` must be an existing subfolder of src/lib
+test('every #lib/<segment> reference in src resolves to a real lib folder or root module', () => {
+	// First path segment after `#lib/` must be an existing subfolder of src/lib
 	// or one of the root modules. Catches stale references (imports AND comments)
 	// left behind when a module moves into a topical subfolder.
 	const entries = readdirSync(libRoot, { withFileTypes: true });
@@ -94,7 +144,8 @@ test('every $lib/<segment> reference in src resolves to a real lib folder or roo
 	for (const e of entries) {
 		if (e.isDirectory()) valid.add(e.name);
 		else if (e.isFile() && !e.name.endsWith('.test.ts') && !e.name.endsWith('.d.ts')) {
-			valid.add(e.name.endsWith('.ts') ? e.name.slice(0, -3) : e.name);
+			valid.add(e.name);
+			if (e.name.endsWith('.ts')) valid.add(e.name.slice(0, -3));
 		}
 	}
 
@@ -106,9 +157,9 @@ test('every $lib/<segment> reference in src resolves to a real lib folder or roo
 	const offenders: string[] = [];
 	for (const file of files) {
 		const text = readFileSync(file, 'utf-8');
-		for (const m of text.matchAll(/\$lib\/([\w.-]+)/g)) {
+		for (const m of text.matchAll(/#lib\/([\w.-]+)/g)) {
 			if (!valid.has(m[1])) {
-				offenders.push(`${file.replace(srcRoot, 'src')}: $lib/${m[1]}`);
+				offenders.push(`${file.replace(srcRoot, 'src')}: #lib/${m[1]}`);
 			}
 		}
 	}
@@ -116,7 +167,7 @@ test('every $lib/<segment> reference in src resolves to a real lib folder or roo
 	assert.deepEqual(
 		[...new Set(offenders)],
 		[],
-		`Stale $lib reference(s) — the first path segment doesn't match a src/lib ` +
+		`Stale #lib reference(s) — the first path segment doesn't match a src/lib ` +
 			`subfolder or root module (a module probably moved):\n  ${[...new Set(offenders)].join('\n  ')}`,
 	);
 });

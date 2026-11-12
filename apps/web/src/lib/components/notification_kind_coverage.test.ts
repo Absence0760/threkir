@@ -11,7 +11,7 @@ import { dirname, resolve } from 'node:path';
 // undefined — a blank, dead notification row that still counted toward the
 // unread badge. A new kind added to the type/CHECK must get rendered.
 //
-// linkFor lives once in $lib/social/notification_link and is executed directly
+// linkFor lives once in #lib/social/notification_link and is executed directly
 // by notification_link.test.ts, so its per-kind coverage is asserted there;
 // this file's linkFor guard just checks that shared helper still handles every
 // kind + keeps a default arm.

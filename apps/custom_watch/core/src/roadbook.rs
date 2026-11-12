@@ -22,6 +22,31 @@
 //! verdict locally, so this port does the same rather than borrow the
 //! semantically-distinct `cutoff_eta::CutoffEtaStatus` (on/tight/behind).
 //!
+//! **The wire now carries a per-checkpoint target time and its verdict
+//! ([`TargetStatus`], `RBK1` v2, decisions §1027) — but [`build_roadbook`]
+//! still does not compute one, and web's `RoadbookTarget` /
+//! `TARGET_BAND_FRACTION` are still deliberately not ported.** Two of the three
+//! reasons recorded when this was first declined still hold:
+//!
+//! 1. The INPUT does not exist here. A target lives in a course marker's
+//!    `target_clock` / `target_elapsed_s` meta, and
+//!    [`crate::route_markers`] carries `parse_cutoff` and no `parse_target`.
+//!    The meta stays phone-side, so the marker parse belongs there too.
+//! 2. **[`build_roadbook`] is not the wired path.** It has no non-test caller.
+//!    The Roadbook glance page renders the checkpoints the phone PUSHES, so a
+//!    field added to this function's output is a field nothing on the device
+//!    can read.
+//!
+//! The third — the wire not carrying it — is closed: a v2 checkpoint carries
+//! `target_elapsed_s` plus a status byte, exactly as it already carried the
+//! cutoff verdict, and the phone grades the band it alone can see. The band is
+//! proportional (1 % of the target, floored at 60 s) because two minutes down
+//! at hour twenty of a 200-miler is noise where the same two minutes at a
+//! 30-minute checkpoint is not; that constant lives on the two rails that
+//! compute it — web's `routes/roadbook.ts` and the Dart twin `roadbook.dart` —
+//! and NOT here, because a verdict this module never grades must not carry a
+//! threshold it never applies (decisions.md § 24).
+//!
 //! Pure logic, no peripherals, no allocator — like the rest of `core`.
 
 use heapless::Vec;
@@ -83,6 +108,26 @@ pub enum CutoffStatus {
     Miss,
 }
 
+/// A checkpoint's target-time verdict — how the phone's projected arrival sits
+/// against a target the runner authored on the marker, graded on the
+/// proportional band described in this module's header.
+///
+/// Computed PHONE-SIDE and pushed, like [`CutoffStatus`] on a
+/// [`crate::record::RoadbookCheckpoint`]: the target is a per-marker meta the
+/// watch never sees. Declared here beside its sibling so the two verdicts read
+/// as one vocabulary; **declaration order is the `RBK1` wire contract** — the
+/// byte is `index + 1`, and 0 means the checkpoint carries no target at all.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum TargetStatus {
+    /// Projected to arrive earlier than the target by more than the band.
+    Ahead,
+    /// Within the band either way — on plan.
+    On,
+    /// Projected to arrive later than the target by more than the band.
+    Behind,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RoadbookOptions {
     pub goal_seconds: f64,
@@ -141,6 +186,15 @@ struct Cumulative {
 }
 
 /// Per-waypoint cumulative distance / grade-adjusted distance / gain / loss.
+///
+/// The grade behind `gap` is measured over an **anchored window** that
+/// accumulates horizontal distance until it clears [`MIN_SEGMENT_M`], the same
+/// walk `grade_adjusted_pace` performs — not over each point-pair. Below the
+/// trusted length altitude noise dominates, so a short pair's grade can't be
+/// believed; the window carries the pair forward instead of discarding its
+/// climb. Zeroing each short pair's grade instead (as this did) collapsed
+/// effort allocation to even pace on any densely-sampled course while
+/// `has_elevation` and `total_gain_m` still reported the full climb.
 fn walk(waypoints: &[RoadbookWaypoint]) -> Cumulative {
     let mut dist: Vec<f64, MAX_ROADBOOK_WAYPOINTS> = Vec::new();
     let mut gap: Vec<f64, MAX_ROADBOOK_WAYPOINTS> = Vec::new();
@@ -170,22 +224,32 @@ fn walk(waypoints: &[RoadbookWaypoint]) -> Cumulative {
     for i in 1..n {
         let a = &waypoints[i - 1];
         let b = &waypoints[i];
-        let horiz = haversine_metres(a.lat, a.lng, b.lat, b.lng);
         let d_ele = match (a.ele, b.ele) {
             (Some(ae), Some(be)) => be - ae,
             _ => 0.0,
         };
-        // Below the trusted-segment length, GPS/SRTM altitude noise dominates —
-        // treat as flat (factor 1) rather than amplify a phantom grade.
-        let grade = if horiz >= MIN_SEGMENT_M {
-            d_ele / horiz
-        } else {
-            0.0
-        };
-        let _ = dist.push(dist[i - 1] + horiz);
-        let _ = gap.push(gap[i - 1] + horiz * grade_factor(grade));
+        let _ = dist.push(dist[i - 1] + haversine_metres(a.lat, a.lng, b.lat, b.lng));
         let _ = gain.push(gain[i - 1] + d_ele.max(0.0));
         let _ = loss.push(loss[i - 1] + (-d_ele).max(0.0));
+    }
+
+    let mut anchor = 0;
+    for i in 1..n {
+        let span = dist[i] - dist[anchor];
+        let is_last = i == n - 1;
+        if span < MIN_SEGMENT_M && !is_last {
+            continue;
+        }
+        // A trailing window that never cleared the trusted length is the last
+        // few metres of the track — grade it flat rather than amplify noise.
+        let factor = match (waypoints[anchor].ele, waypoints[i].ele) {
+            (Some(ae), Some(be)) if span >= MIN_SEGMENT_M => grade_factor((be - ae) / span),
+            _ => 1.0,
+        };
+        for k in anchor + 1..=i {
+            let _ = gap.push(gap[k - 1] + (dist[k] - dist[k - 1]) * factor);
+        }
+        anchor = i;
     }
 
     Cumulative {
@@ -324,7 +388,7 @@ pub fn build_roadbook<'a>(
         });
 
         let cutoff = if stop.is_cutoff {
-            cutoff_limit_s(stop, opts.start_clock_min, elapsed).map(|limit| {
+            cutoff_limit_s(stop, opts.start_clock_min).map(|limit| {
                 let margin = limit as f64 - elapsed;
                 RoadbookCutoff {
                     limit_elapsed_s: limit,
@@ -373,16 +437,18 @@ pub fn build_roadbook<'a>(
 /// Resolve a cutoff to a limit in elapsed seconds from the start. Prefers the
 /// elapsed field; otherwise derives from the clock minus the start clock.
 ///
-/// A clock field carries no day, so a bare cutoff clock is ambiguous once a
-/// race runs longer than 24h ('14:00' on an 08:00 start could be hour 6 or hour
-/// 30). Snap to the whole day nearest the leg's projected arrival, so a 30h
-/// checkpoint resolves to 30h, not the same-day 6h. Never before the start
-/// (k >= 0), so an at-or-before-start clock still wraps to >= 24h.
-fn cutoff_limit_s(
-    stop: &Stop,
-    start_clock_min: Option<f64>,
-    projected_elapsed_s: f64,
-) -> Option<u32> {
+/// A clock field carries no day, so it resolves to that wall clock's first
+/// occurrence after the race start and nothing else — a clock equal to the
+/// start reads as the 24h limit it is meant to express, never a 0-second
+/// window. A limit past 24h has to be written as the elapsed field, the only
+/// one that carries a day.
+///
+/// The day was previously snapped to whichever whole day sat nearest the leg's
+/// projected arrival, which made the limit a function of the goal time: a
+/// slower goal pushed the projection over a day boundary and turned a blown
+/// cutoff into safe-with-hours-to-spare. A cutoff is a property of the race, so
+/// it may not depend on how fast anyone is expected to run.
+fn cutoff_limit_s(stop: &Stop, start_clock_min: Option<f64>) -> Option<u32> {
     let parts = crate::route_markers::parse_cutoff(stop.cutoff_clock, stop.cutoff_elapsed_s)?;
     if let Some(e) = parts.elapsed_s {
         return Some(e);
@@ -392,8 +458,7 @@ fn cutoff_limit_s(
         if base_min <= 0.0 {
             base_min += MINUTES_PER_DAY;
         }
-        let k = libm::round((projected_elapsed_s / 60.0 - base_min) / MINUTES_PER_DAY).max(0.0);
-        return Some(libm::round((base_min + k * MINUTES_PER_DAY) * 60.0) as u32);
+        return Some(libm::round(base_min * 60.0) as u32);
     }
     None
 }
@@ -658,12 +723,14 @@ mod tests {
     }
 
     #[test]
-    fn cutoff_clock_past_24h_snaps_to_the_day_nearest_the_projection() {
+    fn cutoff_clock_resolves_from_the_start_alone_never_from_the_projection() {
+        // Start 08:00, cutoff clock 14:00 -> the limit is hour 6, whoever is
+        // running and however slowly. Snapping the day to the nearest
+        // projection made the limit move with the goal time: a 40h goal put
+        // the projected arrival at hour 30, which pulled the limit out to
+        // 14:00 the NEXT day and reported a 24h-blown cutoff as merely tight.
         let wp = course();
         let total = total_of(&wp);
-        // 40h goal, cutoff at 75% distance -> projected arrival ~30h. Start
-        // 08:00, cutoff clock 14:00: raw same-day offset is only +6h, but the
-        // runner is expected there at hour 30. Must resolve to 30h, not 6h.
         let markers = [RoadbookMarker {
             position_m: Some(total * 0.75),
             kind: "cutoff",
@@ -672,6 +739,22 @@ mod tests {
             cutoff_clock: Some("14:00"),
             cutoff_elapsed_s: None,
         }];
+        for goal_h in [4.0, 10.0, 40.0, 100.0] {
+            let rb = build_roadbook(
+                &wp,
+                &markers,
+                RoadbookOptions {
+                    goal_seconds: goal_h * 3600.0,
+                    start_clock_min: Some(480.0),
+                    model: PacingModel::Even,
+                },
+            );
+            let cutoff = rb.legs[1].cutoff.expect("cutoff present");
+            assert_eq!(cutoff.limit_elapsed_s, 21_600, "goal {goal_h}h");
+        }
+
+        // And the blown cutoff reads as blown: 40h goal -> arrival ~hour 30
+        // against an hour-6 limit.
         let rb = build_roadbook(
             &wp,
             &markers,
@@ -682,7 +765,8 @@ mod tests {
             },
         );
         let cutoff = rb.legs[1].cutoff.expect("cutoff present");
-        assert_eq!(cutoff.limit_elapsed_s, 108_000); // 30h, not 21600 (6h)
+        assert_eq!(cutoff.status, CutoffStatus::Miss);
+        assert!(cutoff.margin_s < -20.0 * 3600.0);
     }
 
     #[test]
@@ -741,5 +825,125 @@ mod tests {
         }];
         let rb = build_roadbook(&wp, &markers, even(3600.0));
         assert_eq!(rb.legs[1].services, &["water", "food"]);
+    }
+
+    /// A 400 m 25 % climb then 365 m flat, sampled every `spacing_m` metres.
+    /// The terrain is fixed; only the point density changes. Sized so the
+    /// densest case still fits `MAX_ROADBOOK_WAYPOINTS`.
+    fn climb_course(spacing_m: f64) -> Vec<RoadbookWaypoint, MAX_ROADBOOK_WAYPOINTS> {
+        const M_PER_DEG_LAT: f64 = 111_320.0;
+        const CLIMB_M: f64 = 400.0;
+        let mut pts: Vec<RoadbookWaypoint, MAX_ROADBOOK_WAYPOINTS> = Vec::new();
+        let mut d = 0.0;
+        while d <= 765.0 {
+            let _ = pts.push(RoadbookWaypoint {
+                lat: 45.0 + d / M_PER_DEG_LAT,
+                lng: 7.0,
+                ele: Some(if d < CLIMB_M { d } else { CLIMB_M } * 0.25),
+            });
+            d += spacing_m;
+        }
+        pts
+    }
+
+    fn mid_arrival_s(wp: &[RoadbookWaypoint], model: PacingModel) -> f64 {
+        let marker = [RoadbookMarker {
+            position_m: Some(400.0),
+            kind: "aid_station",
+            label: "Top",
+            services: &[],
+            cutoff_clock: None,
+            cutoff_elapsed_s: None,
+        }];
+        build_roadbook(
+            wp,
+            &marker,
+            RoadbookOptions {
+                goal_seconds: 5400.0,
+                start_clock_min: None,
+                model,
+            },
+        )
+        .legs[1]
+            .projected_elapsed_s
+    }
+
+    #[test]
+    fn effort_allocation_survives_a_densely_sampled_course() {
+        // Every point-pair is under MIN_SEGMENT_M here, so grading each pair on
+        // its own read the whole climb as flat and effort collapsed onto even.
+        let dense = climb_course(3.0);
+        // heapless `push` drops silently once full, and a truncated course
+        // would still satisfy the ratio below — so pin that it exactly fills.
+        assert_eq!(dense.len(), MAX_ROADBOOK_WAYPOINTS);
+        let effort = mid_arrival_s(&dense, PacingModel::Effort);
+        let even_s = mid_arrival_s(&dense, PacingModel::Even);
+        assert!(effort > even_s * 1.4, "effort {effort} vs even {even_s}");
+    }
+
+    #[test]
+    fn effort_allocation_is_a_property_of_the_terrain_not_the_sampling_density() {
+        let coarse = mid_arrival_s(&climb_course(20.0), PacingModel::Effort);
+        for spacing in [10.0, 3.0] {
+            let dense = mid_arrival_s(&climb_course(spacing), PacingModel::Effort);
+            assert!(
+                libm::fabs(dense - coarse) / coarse < 0.01,
+                "spacing {spacing}m gave {dense}s vs {coarse}s at 20m"
+            );
+        }
+    }
+
+    #[test]
+    fn a_trailing_sub_threshold_segment_is_graded_flat_not_amplified() {
+        // 1 km of flat at 20 m spacing, then one last point 3 m on with a 1 m
+        // rise: a 33 % grade no altimeter can support over 3 m. That trailing
+        // window never clears MIN_SEGMENT_M, so it must stay flat — grading it
+        // on its own span would bill it as ~3.9x effort and pull every arrival
+        // before it earlier.
+        const M_PER_DEG_LAT: f64 = 111_320.0;
+        let mut wp: Vec<RoadbookWaypoint, MAX_ROADBOOK_WAYPOINTS> = Vec::new();
+        let mut d = 0.0;
+        while d <= 1000.0 {
+            let _ = wp.push(RoadbookWaypoint {
+                lat: 45.0 + d / M_PER_DEG_LAT,
+                lng: 7.0,
+                ele: Some(0.0),
+            });
+            d += 20.0;
+        }
+        let _ = wp.push(RoadbookWaypoint {
+            lat: 45.0 + 1003.0 / M_PER_DEG_LAT,
+            lng: 7.0,
+            ele: Some(1.0),
+        });
+        let marker = [RoadbookMarker {
+            position_m: Some(500.0),
+            kind: "aid_station",
+            label: "Mid",
+            services: &[],
+            cutoff_clock: None,
+            cutoff_elapsed_s: None,
+        }];
+        let effort = build_roadbook(
+            &wp,
+            &marker,
+            RoadbookOptions {
+                goal_seconds: 5400.0,
+                start_clock_min: None,
+                model: PacingModel::Effort,
+            },
+        );
+        let even_rb = build_roadbook(&wp, &marker, even(5400.0));
+        assert!(
+            effort.has_elevation,
+            "the effort model must actually be in play"
+        );
+        assert!(
+            libm::fabs(effort.legs[1].projected_elapsed_s - even_rb.legs[1].projected_elapsed_s)
+                < 1e-6,
+            "effort {} vs even {}",
+            effort.legs[1].projected_elapsed_s,
+            even_rb.legs[1].projected_elapsed_s
+        );
     }
 }

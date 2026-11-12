@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 
 import { injectShareRunMeta } from './share_run_spa_shell';
 import { buildShareRunMeta } from './share_run_meta';
+import { buildShareBadgeMeta } from './share_badge_meta';
 
 function meta() {
 	return buildShareRunMeta({
@@ -43,7 +44,7 @@ const SHELL = `<!DOCTYPE html>
 test('injectShareRunMeta — replaces the SPA-shell <title>', () => {
 	const out = injectShareRunMeta(SHELL, meta());
 	// Original site-wide title gone; per-run title present.
-	const titleMatches = out.match(/<title>[^<]+<\/title>/g) ?? [];
+	const titleMatches = out.match(/<title(?=[\s/>])[^>]*>[^<]+<\/title(?=[\s/>])[^>]*>/g) ?? [];
 	assert.equal(titleMatches.length, 1);
 	assert.ok(titleMatches[0].includes('10.0 km run'));
 });
@@ -178,4 +179,80 @@ test('injectShareRunMeta — uses per-env site URL for og:url + og:image', () =>
 	assert.ok(out.includes(`<meta property="og:url" content="${previewMeta.canonical}">`));
 	assert.ok(out.includes(`<link rel="canonical" href="${previewMeta.canonical}">`));
 	assert.ok(out.includes(`<meta property="og:image" content="${previewMeta.ogImageUrl}">`));
+});
+
+/// The run shell's own SHELL above carries no JSON-LD; the deployed one does
+/// (the root layout's WebSite node), which is what the strip exists for.
+const SHELL_WITH_JSON_LD = SHELL.replace(
+	'<link rel="manifest"',
+	'<script type="application/ld+json">{"@type":"WebSite"}</script>\n<link rel="manifest"',
+);
+
+/// An end tag closes at `</script` + whitespace, `/` or `>`, whatever follows
+/// to the first `>`. Before § 1086 the strip demanded `</script>` exactly, so
+/// each of these left the stale block standing AND ran the lazy body on to the
+/// bundle's own `</script>` — taking `</head>`, the mount div and the bundle
+/// tag with it, after which the splice found no head and returned a shell with
+/// none of the run's meta on it.
+for (const close of ['</script >', '</script\t\n bar>', '</script/>']) {
+	test(`injectShareRunMeta — strips a JSON-LD block closed with ${JSON.stringify(close)}`, () => {
+		const shell = SHELL_WITH_JSON_LD.replace(
+			'<script type="application/ld+json">{"@type":"WebSite"}</script>',
+			`<script type="application/ld+json">{"@type":"WebSite"}${close}`,
+		);
+		const out = injectShareRunMeta(shell, meta());
+		assert.equal(out.includes('"WebSite"'), false, 'stale JSON-LD must be gone');
+		assert.ok(out.includes('start.abc.js'), 'the SPA bundle must survive the strip');
+		assert.ok(out.includes('<div id="svelte">'), 'the mount div must survive the strip');
+		assert.ok(out.includes('10.0 km run'), 'the run tags must still be spliced in');
+	});
+}
+
+test('injectShareRunMeta — splices before a `</head >` spelled with trailing junk', () => {
+	const out = injectShareRunMeta(SHELL_WITH_JSON_LD.replace('</head>', '</head\n>'), meta());
+	assert.ok(out.includes('10.0 km run'));
+	assert.ok(out.indexOf('10.0 km run') < out.indexOf('</head'));
+});
+
+test('injectShareRunMeta — strips a JSON-LD block carrying extra attributes', () => {
+	const shell = SHELL_WITH_JSON_LD.replace(
+		'<script type="application/ld+json">',
+		'<script nonce="abc123" type="application/ld+json" data-x="1">',
+	);
+	const out = injectShareRunMeta(shell, meta());
+	assert.equal(out.includes('"WebSite"'), false);
+	assert.ok(out.includes('start.abc.js'));
+});
+
+test('injectShareRunMeta — a head with no JSON-LD leaves the shell\'s node alone', () => {
+	// The badge share page reuses this injector with `jsonLd` unset. A strip
+	// list fixed at the module level took the shell's own WebSite node off every
+	// badge page and spliced nothing in its place -- the exact loss head_splice
+	// takes a signal list to avoid, applied at the wrong granularity.
+	const badge = buildShareBadgeMeta({
+		id: 'b-1',
+		badge: {
+			id: 'b-1',
+			user_id: 'u-1',
+			badge_key: 'distance_total',
+			tier: 'gold',
+			value_num: 1000,
+			earned_at: '2026-04-15T07:00:00Z',
+		},
+		displayName: 'Jane Runner',
+		siteUrl: 'https://threkir.com',
+	});
+	assert.equal(badge.jsonLd, undefined, 'the badge head is the one that emits none');
+	const out = injectShareRunMeta(SHELL_WITH_JSON_LD, badge);
+	assert.ok(out.includes('"WebSite"'), "the shell's own JSON-LD must survive");
+	assert.equal(
+		(out.match(/type="application\/ld\+json"/g) ?? []).length,
+		1,
+		'and must not be joined by a second block',
+	);
+	// The signals the badge head DOES emit are still replaced, not doubled.
+	const canonicals = [...out.matchAll(/<link\s[^>]*rel="canonical"[^>]*href="([^"]*)"/gi)].map(
+		(m) => m[1],
+	);
+	assert.deepEqual(canonicals, ['https://threkir.com/share/badge/b-1']);
 });

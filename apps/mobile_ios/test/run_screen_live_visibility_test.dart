@@ -9,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -23,6 +22,9 @@ import '../lib/race_controller.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import 'pump_until.dart';
+import 'pre_run_dialogs.dart';
+import 'supabase_test_init.dart';
 
 /// Pins the issue #664 fix: a run whose live share is active when the
 /// runner stops must NOT be silently left `is_public = true`. The stop
@@ -47,6 +49,7 @@ class _LiveApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     calls.add('begin');
   }
@@ -60,6 +63,7 @@ class _LiveApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {}
 
   @override
@@ -71,7 +75,7 @@ class _LiveApi extends ApiClient {
       const [];
 
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     calls.add('saveRun(isPublic: $isPublic)');
   }
 
@@ -128,8 +132,11 @@ class _CapturingRunStore extends LocalRunStore {
   final List<dynamic> captured = [];
 
   @override
-  Future<void> save(run) async {
+  Future<Run> save(run) async {
     captured.add(run);
+    // save() returns the RESIDENT instance so markManySynced can identify it;
+    // the spy has no store, so the argument IS the resident copy here.
+    return run;
   }
 
   @override
@@ -207,10 +214,7 @@ void main() {
       isOptional: true,
     );
     if (!supabaseReady) {
-      await Supabase.initialize(
-        url: 'http://127.0.0.1:54321',
-        anonKey: 'eyJ.local.test',
-      );
+      await initializeTestSupabase();
       supabaseReady = true;
     }
   });
@@ -269,6 +273,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     await prefs.setPrivacyDefault(privacyDefault);
 
     final api = _LiveApi();
@@ -324,23 +329,7 @@ void main() {
     tester.takeException();
   }
 
-  Future<void> holdFinish(WidgetTester tester) async {
-    final btnFinder = find.byWidgetPredicate(
-        (w) => w.runtimeType.toString() == 'HoldToStopButton');
-    expect(btnFinder.hitTestable(), findsOneWidget);
-    final hitButton = btnFinder.hitTestable().evaluate().single.widget;
-    await tester.runAsync(() async {
-      // ignore: avoid_dynamic_calls
-      (hitButton as dynamic).onHoldComplete();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-    });
-    await tester.pump();
-  }
-
   Future<void> drainAndUnmount(WidgetTester tester) async {
-    // Drain top-banner timers, then unmount so LiveRunMap schedules no
-    // further tile fetches before the timersPending teardown guard.
-    await tester.pump(const Duration(seconds: 7));
     tester.takeException();
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 4; i++) {
@@ -355,7 +344,12 @@ void main() {
         (tester) async {
       final s = await pumpLiveRunScreen(tester);
       await shareAndRecord(tester, s.api);
-      await holdFinish(tester);
+      final stopped = await holdFinish(tester,
+          until: () => find
+              .byKey(const ValueKey('live-share-keep-public-dialog'))
+              .evaluate()
+              .isNotEmpty,
+          describe: 'the post-live visibility dialog to be raised');
       tester.takeException();
 
       expect(s.api.calls, isNot(contains('makeRunPublic')),
@@ -367,13 +361,9 @@ void main() {
           reason: 'keeping the run public must be an explicit choice');
 
       // "Keep private" resolves to the runner's default — not public.
-      // _stop was entered under runAsync, so the dialog continuation
-      // resumes on the REAL event loop — let it turn before asserting.
       await tester.tap(find.text('Keep private'));
-      await tester.pump();
-      await tester
-          .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
-      await tester.pump();
+      await pumpUntil(tester, stopped,
+          describe: 'the stop path to finish once the choice is made');
 
       expect(s.api.calls, contains('makeRunPrivate'),
           reason: 'declining must actively clear the live stub\'s '
@@ -389,16 +379,19 @@ void main() {
         (tester) async {
       final s = await pumpLiveRunScreen(tester);
       await shareAndRecord(tester, s.api);
-      await holdFinish(tester);
+      final stopped = await holdFinish(tester,
+          until: () => find
+              .byKey(const ValueKey('live-share-keep-public-dialog'))
+              .evaluate()
+              .isNotEmpty,
+          describe: 'the post-live visibility dialog to be raised');
       tester.takeException();
 
       expect(find.byKey(const ValueKey('live-share-keep-public-dialog')),
           findsOneWidget);
       await tester.tap(find.text('Keep public'));
-      await tester.pump();
-      await tester
-          .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
-      await tester.pump();
+      await pumpUntil(tester, stopped,
+          describe: 'the stop path to finish once the choice is made');
 
       expect(s.api.calls, contains('makeRunPublic'),
           reason: 'the explicit choice — and only it — re-asserts public');

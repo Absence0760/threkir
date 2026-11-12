@@ -17,7 +17,8 @@ library;
 import 'dart:math' as math;
 
 import 'grade_adjusted_pace.dart' show gradeFactor, minSegmentM;
-import 'route_markers.dart' show parseCutoff;
+import 'run_stats.dart' show haversineMetres;
+import 'route_markers.dart' show parseAidServices, parseCutoff, parseTarget;
 
 class RoadbookWaypoint {
   final double lat;
@@ -55,6 +56,21 @@ class RoadbookCutoff {
   });
 }
 
+enum TargetStatus { ahead, on, behind }
+
+class RoadbookTarget {
+  final int targetElapsedS;
+
+  /// Signed like [RoadbookCutoff.marginS] — positive is time in hand.
+  final double marginS;
+  final TargetStatus status;
+  const RoadbookTarget({
+    required this.targetElapsedS,
+    required this.marginS,
+    required this.status,
+  });
+}
+
 class RoadbookLeg {
   /// 'start' / 'finish', or a marker `{kind, label}`.
   final String? kind; // null for start/finish
@@ -68,6 +84,7 @@ class RoadbookLeg {
   /// Wall-clock arrival, minutes past midnight (mod 1440). Null if no start.
   final double? projectedClockMin;
   final RoadbookCutoff? cutoff;
+  final RoadbookTarget? target;
   final List<String> services;
 
   const RoadbookLeg({
@@ -80,6 +97,7 @@ class RoadbookLeg {
     required this.projectedElapsedS,
     this.projectedClockMin,
     this.cutoff,
+    this.target,
     this.services = const [],
   });
 
@@ -104,19 +122,21 @@ class Roadbook {
 
 /// A cutoff within this many seconds of the projection is "tight", not "safe".
 const int cutoffTightS = 30 * 60;
-const int _minutesPerDay = 1440;
 
-double _haversineM(RoadbookWaypoint a, RoadbookWaypoint b) {
-  const r = 6371000.0;
-  const deg = math.pi / 180;
-  final dLat = (b.lat - a.lat) * deg;
-  final dLng = (b.lng - a.lng) * deg;
-  final h = math.pow(math.sin(dLat / 2), 2) +
-      math.cos(a.lat * deg) *
-          math.cos(b.lat * deg) *
-          math.pow(math.sin(dLng / 2), 2);
-  return r * 2 * math.asin(math.min(1, math.sqrt(h)));
-}
+/// How close to a checkpoint's target time still reads as "on schedule".
+///
+/// Unlike the cutoff band this is proportional, because a target is read at the
+/// scale of the race: two minutes down at a 30-minute checkpoint is a real
+/// problem, and two minutes down at hour twenty of a 200-miler is noise. A flat
+/// band would report every ultra checkpoint as off-plan and every 10K one as on
+/// it. The floor keeps an early checkpoint from being graded to the second.
+const double targetBandFraction = 0.01;
+const int targetBandFloorS = 60;
+
+double targetBandS(int targetElapsedS) =>
+    math.max(targetBandFloorS.toDouble(), targetElapsedS * targetBandFraction);
+
+const int _minutesPerDay = 1440;
 
 class _Cumulative {
   final List<double> dist;
@@ -127,6 +147,18 @@ class _Cumulative {
   _Cumulative(this.dist, this.gap, this.gain, this.loss, this.hasElevation);
 }
 
+/// Per-waypoint cumulative distance / grade-adjusted distance / gain / loss.
+///
+/// The grade behind [gap] is measured over an **anchored window** that
+/// accumulates horizontal distance until it clears [minSegmentM], the same walk
+/// `gradeAdjustedPaceSecPerKm` performs — not over each point-pair. Below the
+/// trusted length GPS/SRTM altitude noise dominates, so a short pair's grade
+/// can't be believed; the window carries the pair forward instead of discarding
+/// its climb. Zeroing each short pair's grade instead (as this did) collapsed
+/// effort allocation to even pace on any densely-sampled course — a GPX at 3 m
+/// spacing has no pair that clears 5 m — while [Roadbook.hasElevation] and
+/// [Roadbook.totalGainM] still reported the full climb, so nothing signalled
+/// the degradation.
 _Cumulative _walk(List<RoadbookWaypoint> waypoints) {
   final dist = <double>[0];
   final gap = <double>[0];
@@ -136,17 +168,34 @@ _Cumulative _walk(List<RoadbookWaypoint> waypoints) {
   for (final w in waypoints) {
     if (w.ele != null) eles.add(w.ele!);
   }
+
   for (var i = 1; i < waypoints.length; i++) {
     final a = waypoints[i - 1];
     final b = waypoints[i];
-    final horiz = _haversineM(a, b);
     final dEle = (a.ele != null && b.ele != null) ? b.ele! - a.ele! : 0.0;
-    final grade = horiz >= minSegmentM ? dEle / horiz : 0.0;
-    dist.add(dist[i - 1] + horiz);
-    gap.add(gap[i - 1] + horiz * gradeFactor(grade));
+    dist.add(dist[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng));
     gain.add(gain[i - 1] + math.max(0.0, dEle));
     loss.add(loss[i - 1] + math.max(0.0, -dEle));
   }
+
+  var anchor = 0;
+  for (var i = 1; i < waypoints.length; i++) {
+    final span = dist[i] - dist[anchor];
+    final isLast = i == waypoints.length - 1;
+    if (span < minSegmentM && !isLast) continue;
+    final a = waypoints[anchor];
+    final b = waypoints[i];
+    // A trailing window that never cleared the trusted length is the last
+    // few metres of the track — grade it flat rather than amplify noise.
+    final factor = (span >= minSegmentM && a.ele != null && b.ele != null)
+        ? gradeFactor((b.ele! - a.ele!) / span)
+        : 1.0;
+    for (var k = anchor + 1; k <= i; k++) {
+      gap.add(gap[k - 1] + (dist[k] - dist[k - 1]) * factor);
+    }
+    anchor = i;
+  }
+
   return _Cumulative(dist, gap, gain, loss, eles.length >= 2);
 }
 
@@ -169,9 +218,9 @@ class _Stop {
   final String? kind;
   final String label;
   final List<String> services;
-  final dynamic cutoffMeta;
+  final dynamic meta;
   final bool isCutoff;
-  _Stop(this.pos, this.kind, this.label, this.services, this.cutoffMeta,
+  _Stop(this.pos, this.kind, this.label, this.services, this.meta,
       this.isCutoff);
 }
 
@@ -195,9 +244,7 @@ Roadbook buildRoadbook(
             math.min(totalDistM, math.max(0.0, m.positionM!)),
             m.kind,
             m.label,
-            (m.meta is Map && (m.meta as Map)['services'] is List)
-                ? ((m.meta as Map)['services'] as List).cast<String>()
-                : const <String>[],
+            parseAidServices(m.meta is Map ? (m.meta as Map)['services'] : null),
             m.meta,
             m.kind == 'cutoff',
           ))
@@ -238,7 +285,9 @@ Roadbook buildRoadbook(
 
     RoadbookCutoff? cutoff;
     if (stop.isCutoff) {
-      final limit = _cutoffLimitS(stop.cutoffMeta, startClockMin, elapsed);
+      final parts = parseCutoff(stop.meta);
+      final limit =
+          _limitFromParts(parts?.clock, parts?.elapsedS, startClockMin);
       if (limit != null) {
         final margin = limit - elapsed;
         cutoff = RoadbookCutoff(
@@ -253,6 +302,24 @@ Roadbook buildRoadbook(
       }
     }
 
+    RoadbookTarget? target;
+    final targetParts = parseTarget(stop.meta);
+    final targetLimit = _limitFromParts(
+        targetParts?.clock, targetParts?.elapsedS, startClockMin);
+    if (targetLimit != null) {
+      final margin = targetLimit - elapsed;
+      final band = targetBandS(targetLimit);
+      target = RoadbookTarget(
+        targetElapsedS: targetLimit,
+        marginS: margin,
+        status: margin > band
+            ? TargetStatus.ahead
+            : margin < -band
+                ? TargetStatus.behind
+                : TargetStatus.on,
+      );
+    }
+
     legs.add(RoadbookLeg(
       kind: stop.kind,
       label: stop.label,
@@ -263,6 +330,7 @@ Roadbook buildRoadbook(
       projectedElapsedS: elapsed,
       projectedClockMin: clockMin,
       cutoff: cutoff,
+      target: target,
       services: stop.services,
     ));
 
@@ -281,23 +349,31 @@ Roadbook buildRoadbook(
   );
 }
 
-int? _cutoffLimitS(dynamic meta, double? startClockMin, double projectedElapsedS) {
-  final cutoff = parseCutoff(meta);
-  if (cutoff == null) return null;
-  if (cutoff.elapsedS != null) return cutoff.elapsedS;
-  if (cutoff.clock != null && startClockMin != null) {
-    final parts = cutoff.clock!.split(':');
-    // A clock field carries no day, so a bare cutoff clock is ambiguous once a
-    // race runs longer than 24h ('14:00' on an 08:00 start could be hour 6 or
-    // hour 30). Snap to the whole day nearest the leg's projected arrival, so a
-    // 30h checkpoint resolves to 30h, not the same-day 6h. Never before the
-    // start (k >= 0), so an at-or-before-start clock still wraps to >= 24h.
+/// Resolve a cutoff's or a target's parsed parts to elapsed seconds from the
+/// start. Prefers the elapsed form; otherwise derives from the clock form minus
+/// the start clock. Null when neither resolves.
+int? _limitFromParts(String? clock, int? elapsedS, double? startClockMin) {
+  if (elapsedS != null) return elapsedS;
+  if (clock != null && startClockMin != null) {
+    final parts = clock.split(':');
+    // A clock field carries no day, so it resolves to that wall clock's first
+    // occurrence after the race start and nothing else — a clock equal to the
+    // start reads as the 24h limit it is meant to express, never a 0-second
+    // window. A limit past 24h has to be written as the elapsed field, the
+    // only one that carries a day.
+    //
+    // The day was previously snapped to whichever whole day sat nearest the
+    // leg's projected arrival, which made the limit a function of the goal
+    // time: a slower goal pushed the projection over a day boundary and turned
+    // a blown cutoff into "safe, 12h to spare", and two spectators of the same
+    // live run saw different limits for the same checkpoint. A cutoff is a
+    // property of the race, so it may not depend on how fast anyone is
+    // expected to run. A target is a property of the plan, and takes the same
+    // rule so the two cannot disagree about what "06:00" means on one row.
     var baseMin =
         (int.parse(parts[0]) * 60 + int.parse(parts[1])) - startClockMin;
     if (baseMin <= 0) baseMin += _minutesPerDay;
-    final k = math.max(
-        0, ((projectedElapsedS / 60 - baseMin) / _minutesPerDay).round());
-    return ((baseMin + k * _minutesPerDay) * 60).round();
+    return (baseMin * 60).round();
   }
   return null;
 }

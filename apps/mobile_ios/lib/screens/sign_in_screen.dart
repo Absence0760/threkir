@@ -3,13 +3,14 @@ import 'dart:io' show Platform;
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../apple_auth.dart';
 import '../auth_error.dart';
+import '../google_auth.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../web_base_url.dart';
 import '../widgets/password_field.dart';
 import '../widgets/top_banner.dart';
 import 'sign_up_screen.dart';
@@ -136,14 +137,7 @@ class _SignInScreenState extends State<SignInScreen> {
       _errorKind = null;
     });
     try {
-      var webBase =
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null)
-                  ?.trim() ??
-              '';
-      if (webBase.isEmpty) webBase = 'https://threkir.com';
-      if (webBase.endsWith('/')) {
-        webBase = webBase.substring(0, webBase.length - 1);
-      }
+      final webBase = resolveWebBaseUrl();
       await widget.apiClient.sendPasswordResetEmail(
         email: email,
         redirectTo: '$webBase/auth/reset',
@@ -172,12 +166,13 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   /// Google Sign-In via the native flow. On Android, requires
-  /// `GOOGLE_WEB_CLIENT_ID` in `.env.local` and an Android OAuth 2.0
+  /// `GOOGLE_WEB_CLIENT_ID` (a `--dart-define`) and an Android OAuth 2.0
   /// client configured with the app's SHA-1 fingerprint. See
-  /// `apps/mobile_android/local_testing.md`.
+  /// `apps/mobile_android/local_testing.md`; `google_auth.dart` carries the
+  /// per-platform gate.
   Future<void> _signInWithGoogle() async {
-    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
-    if (webClientId == null || webClientId.isEmpty) {
+    final webClientId = googleWebClientId();
+    if (webClientId == null || !googleSignInAvailable()) {
       // Google OAuth provider isn't wired up on this build yet — show a
       // friendly coming-soon notice instead of a raw configuration error.
       // Mirrors web's PUBLIC_GOOGLE_AUTH_ENABLED fail-closed gate.
@@ -281,7 +276,16 @@ class _SignInScreenState extends State<SignInScreen> {
       // directly, matching the Google path. Keeps every auth flow on
       // the ApiClient abstraction so the SDK-version + bootstrap
       // guards in `_client` apply uniformly.
-      await widget.apiClient.signInWithAppleIdToken(idToken: idToken);
+      await widget.apiClient.signInWithAppleIdToken(
+        idToken: idToken,
+        // Kept so account deletion can revoke the Apple grant (5.1.1(v)).
+        appleCode: (
+          code: credential.authorizationCode,
+          nativeFlow: appleUsesNativeFlow(),
+        ),
+        givenName: credential.givenName,
+        familyName: credential.familyName,
+      );
       widget.onSignedIn?.call();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -295,6 +299,18 @@ class _SignInScreenState extends State<SignInScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _openSignUp() async {
+    final signedUp = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SignUpScreen(apiClient: widget.apiClient),
+      ),
+    );
+    if (!mounted || signedUp != true) return;
+    widget.onSignedIn?.call();
+    Navigator.pop(context, true);
   }
 
   @override
@@ -403,7 +419,17 @@ class _SignInScreenState extends State<SignInScreen> {
                   child: Text(l10n.signInForgotPassword),
                 ),
               ),
-              const SizedBox(height: 4),
+              // Above the OAuth block, not below it: this used to be the
+              // last widget on a screen that scrolls, which made "how do I
+              // make an account" invisible to the one person who needs it.
+              OutlinedButton(
+                onPressed: _loading ? null : _openSignUp,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text(l10n.signInCreateAccountPrompt),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   const Expanded(child: Divider()),
@@ -429,25 +455,29 @@ class _SignInScreenState extends State<SignInScreen> {
                   icon: const Icon(Icons.apple, size: 18),
                   label: Text(l10n.signInWithApple),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signInWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signInWithGoogle),
-                ),
+                ],
               ] else ...[
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signInWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signInWithGoogle),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: _loading ? null : _signInWithApple,
                   style: OutlinedButton.styleFrom(
@@ -461,22 +491,6 @@ class _SignInScreenState extends State<SignInScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(l10n.signInContinueOffline),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final signedUp = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          SignUpScreen(apiClient: widget.apiClient),
-                    ),
-                  );
-                  if (mounted && signedUp == true) {
-                    widget.onSignedIn?.call();
-                    Navigator.pop(context, true);
-                  }
-                },
-                child: Text(l10n.signInCreateAccountPrompt),
               ),
             ],
           ),

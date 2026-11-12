@@ -1,9 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { repurposeTodayWorkout, SYDNEY_HALF_PLAN_ID } from '../fixtures/plan-today';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
+import { readMaybeRow } from '../fixtures/db-read';
 
 /**
  * Re-link picker on workout-detail (Training Phase-3).
@@ -20,12 +22,7 @@ test.describe('Workout re-link picker', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('re-link a workout from one run to a different run', async ({ page }) => {
@@ -260,6 +257,138 @@ test.describe('Workout re-link picker', () => {
 			if (runFree) await deleteRun(runFree).catch(() => {});
 			// Only workout1 was repurposed; restore it. workout2 was untouched.
 			await undo1();
+		}
+	});
+
+	// A failed link used to read as the load failure ("Couldn't load your
+	// runs") and hide the list, so there was nothing to retry. It now says the
+	// link failed, keeps the runs on screen, and another pick retries.
+	test('a failed re-link keeps the runs on screen and a second pick retries', async ({ page }) => {
+		const admin = getAdminClient();
+		const today = new Date().toISOString().slice(0, 10);
+		const { workoutId, undo } = await repurposeTodayWorkout();
+		const workoutRow = await readMaybeRow(
+			'the repurposed workout',
+			admin.from('plan_workouts').select('target_distance_m').eq('id', workoutId).maybeSingle()
+		);
+		const target = (workoutRow as { target_distance_m: number }).target_distance_m;
+
+		let runA: string | null = null;
+		let runB: string | null = null;
+		try {
+			runA = await insertRun({
+				user_id: USER_A.id,
+				started_at: `${today}T07:00:00Z`,
+				duration_s: Math.round(target * 0.33),
+				distance_m: target,
+				source: 'app',
+				metadata: { activity_type: 'run' }
+			});
+			runB = await insertRun({
+				user_id: USER_A.id,
+				started_at: `${today}T17:00:00Z`,
+				duration_s: Math.round(target * 0.34),
+				distance_m: target * 1.02,
+				source: 'app',
+				metadata: { activity_type: 'run' }
+			});
+			const { error } = await admin
+				.from('plan_workouts')
+				.update({ completed_run_id: runA, completed_at: new Date().toISOString() })
+				.eq('id', workoutId);
+			if (error) throw error;
+
+			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}/workouts/${workoutId}`);
+			await expect(page.locator('.completed-card')).toBeVisible({ timeout: 10_000 });
+			await page.getByRole('button', { name: 'Re-link' }).click();
+			const modal = page.locator('[data-testid="relink-modal"]');
+			const runBButton = modal.locator(`button.relink-run[data-run-id="${runB}"]`);
+			await expect(runBButton).toBeVisible({ timeout: 10_000 });
+
+			await page.route('**/rest/v1/plan_workouts*', async (route) => {
+				if (route.request().method() === 'PATCH') {
+					await route.fulfill({
+						status: 500,
+						contentType: 'application/json',
+						body: JSON.stringify({ message: 'simulated relink failure', code: 'XX000' })
+					});
+				} else {
+					await route.continue();
+				}
+			});
+			await runBButton.click();
+
+			const alert = modal.getByRole('alert');
+			await expect(alert).toContainText("Couldn't link that run", { timeout: 10_000 });
+			await expect(alert).not.toContainText('simulated relink failure');
+			await expect(alert).not.toContainText("Couldn't load your runs");
+			await expect(runBButton).toBeVisible();
+
+			await page.unroute('**/rest/v1/plan_workouts*');
+			await runBButton.click();
+			await expect(modal).toBeHidden({ timeout: 10_000 });
+			await expect
+				.poll(
+					async () =>
+						(
+							await readMaybeRow(
+								'the re-linked workout',
+								admin.from('plan_workouts').select('completed_run_id').eq('id', workoutId).maybeSingle()
+							)
+						)?.completed_run_id,
+					{ timeout: 10_000 }
+				)
+				.toBe(runB);
+		} finally {
+			if (runA) await deleteRun(runA).catch(() => {});
+			if (runB) await deleteRun(runB).catch(() => {});
+			await undo();
+		}
+	});
+
+	test('a failed load of the runs offers a retry that loads them', async ({ page }) => {
+		const admin = getAdminClient();
+		const today = new Date().toISOString().slice(0, 10);
+		const { workoutId, undo } = await repurposeTodayWorkout();
+		let runA: string | null = null;
+		try {
+			runA = await insertRun({
+				user_id: USER_A.id,
+				started_at: `${today}T07:00:00Z`,
+				duration_s: 1800,
+				distance_m: 5000,
+				source: 'app',
+				metadata: { activity_type: 'run' }
+			});
+			await admin
+				.from('plan_workouts')
+				.update({ completed_run_id: runA, completed_at: new Date().toISOString() })
+				.eq('id', workoutId);
+
+			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}/workouts/${workoutId}`);
+			await expect(page.locator('.completed-card')).toBeVisible({ timeout: 10_000 });
+
+			let failNext = true;
+			await page.route('**/rest/v1/runs*', async (route) => {
+				if (failNext && route.request().method() === 'GET') {
+					failNext = false;
+					await route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' });
+				} else {
+					await route.continue();
+				}
+			});
+			await page.getByRole('button', { name: 'Re-link' }).click();
+			const modal = page.locator('[data-testid="relink-modal"]');
+			await expect(modal.getByRole('alert')).toContainText("Couldn't load your runs", { timeout: 10_000 });
+			await modal.getByRole('button', { name: 'Retry' }).click();
+			await expect(modal.locator(`button.relink-run[data-run-id="${runA}"]`)).toBeVisible({
+				timeout: 10_000
+			});
+			await expect(modal.getByRole('alert')).toHaveCount(0);
+		} finally {
+			await page.unroute('**/rest/v1/runs*');
+			if (runA) await deleteRun(runA).catch(() => {});
+			await undo();
 		}
 	});
 });

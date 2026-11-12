@@ -1,19 +1,34 @@
 <script lang="ts">
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { formatISO } from '$lib/training/training';
+	import { formatISO } from '#lib/training/training.ts';
 	import {
 		fetchPlan,
 		fetchPublicPlanLibrary,
 		clonePublicPlan,
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import type { TrainingPlan, PlanWeek, PlanWorkout } from '$lib/types';
+		fetchMyOverlappingActivePlans,
+		publicPlanShareEnabled,
+		type PlanOverlapChoice,
+	} from '#lib/core/data.ts';
+	import { buildPlanShareCanonical } from '#lib/share/share_plan_meta.ts';
+	import { shareRefFromSearch, withShareRef } from '#lib/share/share_ref.ts';
+	import { attributeShareStart, ownShareRef } from '#lib/share/share_attribution.ts';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import type { TrainingPlan, PlanWeek, PlanWorkout } from '#lib/types.ts';
 
-	const planId = $page.params.id ?? '';
+	const planId = page.params.id ?? '';
+	// The ref a creator's link carried here, through sign-up if need be; a
+	// copy started from it is attributed to that link (decisions § 2268).
+	const arrivedRef = shareRefFromSearch(page.url.search);
 
 	let plan = $state<TrainingPlan | null>(null);
 	let weeks = $state<PlanWeek[]>([]);
@@ -23,6 +38,8 @@
 	let loadError = $state<string | null>(null);
 	let notFound = $state(false);
 	let cloning = $state(false);
+	let shareEnabled = $state(false);
+	let shareRef = $state<string | null>(null);
 	let startDate = $state(defaultStartDate());
 
 	function defaultStartDate(): string {
@@ -32,17 +49,14 @@
 		return formatISO(d);
 	}
 
-	const eventLabels: Record<string, () => string> = {
-		distance_5k: () => '5K',
-		distance_10k: () => '10K',
-		distance_half: () => m('plansPage.eventHalf'),
-		distance_full: () => m('plansPage.eventFull'),
-		custom: () => m('plansPage.eventCustom'),
-	};
-
-	function goalLabel(p: TrainingPlan): string {
-		const named = eventLabels[p.goal_event];
-		return named ? named() : formatDistance(p.goal_distance_m);
+	/// What a week asks of the runner: its running days and their planned
+	/// distance. Rest rows are skipped — the generator writes one per day, so
+	/// a raw row count reads 7 for every week.
+	function weekSummary(weekId: string): string {
+		const runs = (workoutsByWeek.get(weekId) ?? []).filter((w) => w.kind !== 'rest');
+		const metres = runs.reduce((sum, w) => sum + (w.target_distance_m ?? 0), 0);
+		const count = m('planLibrary.previewWeekRuns', { n: runs.length });
+		return metres > 0 ? `${count} · ${formatDistance(metres)}` : count;
 	}
 
 	const workoutsByWeek = $derived.by(() => {
@@ -61,7 +75,7 @@
 		notFound = false;
 		const res = await fetchPlan(planId);
 		if (res.error) {
-			loadError = res.error;
+			loadError = errorCopy(res.error, m, 'plans/library/[id]: loadError');
 			loading = false;
 			return;
 		}
@@ -80,17 +94,52 @@
 		const lib = await fetchPublicPlanLibrary('');
 		authorHandle = lib.plans.find((p) => p.id === planId)?.author_handle ?? null;
 		loading = false;
+		shareEnabled = await publicPlanShareEnabled();
+		if (shareEnabled) shareRef = await ownShareRef(res.plan.user_id);
 	}
 
-	async function clone() {
+	async function copyShareLink() {
+		// The CURRENT origin, so a preview-host reader copies a preview link.
+		const url = withShareRef(buildPlanShareCanonical(location.origin, planId), shareRef);
+		try {
+			await navigator.clipboard.writeText(url);
+			showToast(m('session.shareLinkCopied'), 'success');
+		} catch (e) {
+			console.error('copy plan share link failed', e);
+			showToast(m('session.shareLinkError'), 'error');
+		}
+	}
+
+	// The clone asks the server to refuse an overlap and, when it does, names
+	// the plans in the way before the runner chooses (decisions § 2050).
+	let overlapping = $state<OverlapPlan[]>([]);
+	let overlapStart = $state('');
+
+	async function clone(overlap: PlanOverlapChoice = 'refuse') {
 		if (!plan || cloning) return;
+		const source = plan;
+		const start = overlap === 'refuse' ? startDate : overlapStart;
+		overlapping = [];
 		cloning = true;
 		try {
-			const newId = await clonePublicPlan(plan.id, startDate);
+			const outcome = await attemptPlanCreate(
+				() => clonePublicPlan(source.id, start, overlap),
+				() => fetchMyOverlappingActivePlans(start, clonedPlanEndIso(source, start))
+			);
+			if (outcome.kind === 'overlap') {
+				overlapStart = start;
+				overlapping = outcome.overlapping;
+				return;
+			}
+			if (outcome.kind === 'trimBlocked') {
+				showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
+				return;
+			}
+			if (arrivedRef) await attributeShareStart('plan', outcome.value, arrivedRef);
 			showToast(m('planLibrary.cloneSuccess'));
-			goto(`/plans/${newId}`);
+			goto(`/plans/${outcome.value}`);
 		} catch (e) {
-			showToast(m('planLibrary.cloneFailed', { error: String(e) }), 'error');
+			showToast(m('planLibrary.cloneFailed', { error: errorCopy(e, m, 'planLibrary.cloneFailed') }), 'error');
 		} finally {
 			cloning = false;
 		}
@@ -119,16 +168,15 @@
 		<p class="state">{m('planLibrary.notFound')}</p>
 	{:else}
 		<header class="preview-head">
-			<h1>{plan.name}</h1>
+			<h1>{plan.name}{#if plan.is_official}<OfficialBadge size={18} />{/if}</h1>
 			<p class="author">
 				{m('planLibrary.byAuthor', {
 					author: authorHandle ?? m('planLibrary.anonymousAuthor'),
 				})}
 			</p>
 			<div class="chips">
-				<span class="chip">{goalLabel(plan)}</span>
-				<span class="chip">{m('planLibrary.weeksLabel', { weeks: weeks.length })}</span>
-				<span class="chip">{m('planLibrary.daysPerWeek', { days: plan.days_per_week })}</span>
+				<span class="chip">{goalEventLabel(m, formatDistance, plan.goal_event, plan.goal_distance_m)}</span>
+				<span class="chip">{planLengthLabel(m, weeks.length, plan.days_per_week)}</span>
 			</div>
 		</header>
 
@@ -137,9 +185,27 @@
 				<span>{m('planLibrary.startDateLabel')}</span>
 				<input type="date" bind:value={startDate} />
 			</label>
-			<button class="btn btn-primary" type="button" disabled={cloning} onclick={clone}>
+			<button class="btn btn-primary" type="button" disabled={cloning} onclick={() => clone()}>
 				{cloning ? m('planLibrary.cloning') : m('planLibrary.clone')}
 			</button>
+			{#if shareEnabled}
+				<button
+					class="btn btn-outline"
+					type="button"
+					onclick={copyShareLink}
+					data-testid="plan-library-copy-share"
+				>
+					<span class="material-symbols" aria-hidden="true">link</span>
+					{m('session.copyShareLink')}
+				</button>
+			{/if}
+			<OrganiserDisputeAction
+				targetKind="training_plan"
+				targetId={plan.id}
+				targetLabel={plan.name}
+				targetClubId={plan.club_id ?? null}
+				ownerId={plan.user_id}
+			/>
 		</section>
 
 		<section class="weeks">
@@ -148,15 +214,20 @@
 				{#each weeks as w (w.id)}
 					<li>
 						<span class="week-label">{m('planLibrary.previewWeek', { n: w.week_index + 1 })}</span>
-						<span class="week-count">
-							{(workoutsByWeek.get(w.id) ?? []).length}
-						</span>
+						<span class="week-count">{weekSummary(w.id)}</span>
 					</li>
 				{/each}
 			</ol>
 		</section>
 	{/if}
 </div>
+
+<PlanOverlapDialog
+	{overlapping}
+	startDate={overlapStart}
+	onchoose={(choice) => clone(choice)}
+	oncancel={() => (overlapping = [])}
+/>
 
 <style>
 	.preview {

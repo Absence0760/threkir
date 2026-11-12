@@ -1,0 +1,12 @@
+[
+	{
+		"relation": ["delegate_permission/common.handle_all_urls"],
+		"target": {
+			"namespace": "android_app",
+			"package_name": "com.threkir.app",
+			"sha256_cert_fingerprints": [
+				"DA:ED:3F:9F:9F:46:AC:75:73:8B:E8:83:80:79:40:18:1E:70:6A:70:89:F9:5A:CA:98:4F:79:E5:4B:7F:C7:D6"
+			]
+		}
+	}
+]

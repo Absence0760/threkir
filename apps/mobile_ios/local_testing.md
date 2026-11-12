@@ -51,7 +51,7 @@ Put your secrets in `apps/mobile_ios/dart_defines.json` (gitignored):
 
 ```json
 {
-  "SUPABASE_URL": "http://localhost:54321",
+  "SUPABASE_URL": "http://localhost:24321",
   "SUPABASE_ANON_KEY": "<publishable key from `supabase status`>",
   "MAPTILER_KEY": "<your MapTiler key>"
 }
@@ -91,6 +91,21 @@ cd packages/core_models && flutter test
 cd packages/run_recorder && flutter test
 ```
 
+### On-device smoke (`integration_test/`)
+
+`simctl` cannot tap, so this is how a scripted pass gets past the launch screen ([decisions § 1820](../../docs/architecture/decisions.md)). The suites run inside the app on a booted simulator or a paired iPhone. They are byte-identical to `apps/mobile_android/integration_test/` and do not run in CI.
+
+```bash
+xcrun simctl boot <UDID>
+cd apps/mobile_ios
+flutter test integration_test -d <UDID>                                   # both suites, debug
+flutter test integration_test/home_navigation_test.dart -d <UDID>
+# Real iPhone only: AOT, assertions off, no .env.development
+flutter drive --profile -d <device-id> --driver=integration_test/driver.dart --target=integration_test/home_navigation_test.dart --dart-define-from-file=dart_defines.json
+```
+
+The simulator build is always **debug**, so `.env.development` loads and, with the local stack up, the app auto-signs-in to the seed account. The suites pass signed in or out, but a green simulator run says nothing about the release sign-in path. Both suites stop before any system dialog (location, HealthKit, "Open in"), because an in-process driver cannot tap them. Record each run in [ios_verification.md](../../docs/testing/ios_verification.md#results-log) with its rung.
+
 ## Lint
 
 ```bash
@@ -98,6 +113,67 @@ melos run analyze
 ```
 
 ---
+
+## Push notifications (needs the Firebase config)
+
+`GoogleService-Info.plist` is gitignored, so a fresh clone has none — and it
+still builds. The Runner target's *Copy Firebase config if present* build phase
+bundles the file only when it exists and otherwise logs `note: no
+GoogleService-Info.plist in Runner/; building without Firebase push`; the Dart
+side gates on `Firebase.apps.isNotEmpty` and disables push, the same shape as
+the Android side's conditional Gradle apply (`decisions.md § 1693`). The same
+absence also hides the Google sign-in button, because the *Register the Google
+Sign-In redirect scheme* phase reads its `REVERSED_CLIENT_ID` from this file.
+
+A file that is present but **malformed** is a build error, not a warning: that
+phase checks `GOOGLE_APP_ID`, `API_KEY` and `PROJECT_ID` the way the Firebase
+SDK does, because a bad value there aborts the app at launch before any Dart
+runs. Download a fresh file rather than hand-editing one.
+
+To receive a real push, fetch it out of the private estate repo (from this
+directory):
+
+```
+AWS_PROFILE=threkir sops --decrypt --extract '["google_service_info_plist_base64"]' ../../../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > ios/Runner/GoogleService-Info.plist
+```
+
+A simulator cannot receive a push at all — that needs a real device, the Push
+Notifications capability on the provisioning profile, and the APNs `.p8`
+uploaded to the Firebase project (the worker never holds it: iOS is delivered
+by FCM). An Xcode-installed build is signed `development` and a TestFlight one
+`production`, and the two APNs hosts reject each other's tokens — but FCM reads
+each token's own environment, so one key serves both and there is no
+worker-side setting to match. What must still match the build is the
+`aps-environment` entitlement, which the pbxproj pins per configuration
+(`decisions.md § 742`). See
+[`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+
+## Today widget (home screen + lock screen)
+
+The `TodayWorkoutWidget` ships in the Live Activity's extension
+(`ios/RunActivity/TodayWorkoutWidget.swift`). It reads the snapshot Dart writes
+over `run_app/home_widget` into the `group.com.threkir.app.widget` App Group,
+so it needs a build whose signature carries that group on BOTH the app and the
+extension — automatic signing picks it up once the group exists in the
+developer portal and is assigned to `com.threkir.app` and
+`com.threkir.app.RunActivity` ([`apple_provisioning.md`](../../docs/ops/apple_provisioning.md) step 2).
+
+1. Run the app signed in, with an active plan, and open Home so the plan
+   overview loads (that is what writes the snapshot).
+2. Long-press the home screen → **Edit** → **Add Widget** → **Threkir**: the
+   small and medium sizes should show today's workout, rest day or "nothing
+   scheduled" in the app's language. Tap it: the app opens on that workout
+   (or the plan, or the plans list).
+3. Lock screen → **Customize** → add the rectangular, inline and circular
+   families.
+4. Sign out: the widget drops to the bare Threkir mark.
+5. Midnight rollover: set the simulator's clock forward a day (or wait) — the
+   widget moves to the next day's entry without the app running, and shows
+   the "open the app" line once the week the snapshot covers has passed.
+
+The decode and day-selection rules are covered by
+`ios/RunnerTests/TodayWidgetSnapshotTests.swift`; the views are not tested
+anywhere.
 
 ## Simulating GPS
 

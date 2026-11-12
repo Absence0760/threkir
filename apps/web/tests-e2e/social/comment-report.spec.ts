@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { deleteRun, insertComment, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';

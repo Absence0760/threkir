@@ -20,6 +20,7 @@ import {
 	COACH_PLAN_WORKOUTS_CAP,
 } from './context';
 import type { CoachProfileRow } from './context';
+import { AI_DISCLOSURE_CURRENT_VERSION } from '../core/ai_disclosure';
 
 const SRC = readFileSync(
 	resolve(import.meta.dirname ?? '.', 'context.ts'),
@@ -30,9 +31,8 @@ test('subscription_tier is NOT projected into the Anthropic context', () => {
 	// audit/coach May 2026 Medium #9 — Art 5(1)(c) data minimisation.
 	// The handler knows tier and adjusts limits server-side; sending
 	// billing-tier metadata to a sub-processor has no functional
-	// purpose. The profile projection must include display_name +
-	// preferred_unit only (plus internal consent flags read off the
-	// row but not emitted).
+	// purpose. The profile projection must include preferred_unit only
+	// (plus internal consent flags read off the row but not emitted).
 	const profileObj = SRC.match(/const profile = profileRowTyped[\s\S]*?\{([\s\S]*?)\}[\s\S]*?:\s*null;/);
 	assert.ok(
 		profileObj,
@@ -42,6 +42,13 @@ test('subscription_tier is NOT projected into the Anthropic context', () => {
 		profileObj![1].includes('subscription_tier'),
 		false,
 		'subscription_tier MUST NOT appear in the Anthropic-bound profile projection',
+	);
+	// Decisions § 2229: nothing in the Coach's prompt uses the display
+	// name, so it is not sent either.
+	assert.equal(
+		profileObj![1].includes('display_name'),
+		false,
+		'display_name MUST NOT appear in the Anthropic-bound profile projection',
 	);
 });
 
@@ -59,7 +66,7 @@ test('buildContext reuses the handler-fetched profile row (no duplicate get_my_p
 	);
 	assert.match(
 		SRC,
-		/export async function buildContext\([\s\S]*?profileRow:\s*CoachProfileRow\s*\|\s*null,?\s*\):/,
+		/export async function buildContext\([^)]*?\bprofileRow:\s*CoachProfileRow\s*\|\s*null\s*[,)]/,
 		'buildContext must accept the profile row as a parameter',
 	);
 });
@@ -114,7 +121,7 @@ test('nutrition_7d is gated on health-data consent', () => {
 	// the consent check through the food_log query up to the next closing
 	// brace (the if-block's), regardless of indent.
 	const guard = SRC.match(
-		/if \(healthConsentGranted\) \{[\s\S]*?from\(TABLES\.food_log\)[\s\S]*?\}/,
+		/if \(healthConsentGranted && [^)]*\)\) \{[\s\S]*?from\(TABLES\.food_log\)[\s\S]*?\}/,
 	);
 	assert.ok(
 		guard,
@@ -147,7 +154,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 	// PostgREST): a plan with far more than the caps' worth of weeks +
 	// workouts must not send them all. Fails before the fix (unbounded →
 	// full history returned) and passes after (arrays clamped to the caps).
-	const planRow = { id: 'p1', start_date: '2026-06-01', status: 'active' };
+	const planRow = { id: 'p1', start_date: '2026-06-01', end_date: '2099-12-31', status: 'active', is_template: false };
 	const weeks = Array.from({ length: COACH_PLAN_WEEKS_CAP + 12 }, (_, i) => ({
 		id: `w${i}`,
 		plan_id: 'p1',
@@ -159,14 +166,16 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 	);
 	const ctx = await buildContext(
 		fakeSupabase({
-			training_plans: planRow,
+			training_plans: [planRow],
 			plan_weeks: weeks,
 			plan_workouts: workouts,
 		}) as never,
 		'user-1',
 		null,
 		10,
-		{ display_name: 'R', preferred_unit: 'km', health_data_consent_at: null },
+		{ preferred_unit: 'km', health_data_consent_at: null },
+		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as { plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan_weeks.length, COACH_PLAN_WEEKS_CAP);
@@ -232,6 +241,10 @@ function fakeSupabase(tableData: Record<string, unknown>) {
 						: result,
 				);
 			q.maybeSingle = () => Promise.resolve(result);
+			q.then = (
+				onFulfilled: (v: unknown) => unknown,
+				onRejected?: (e: unknown) => unknown,
+			) => Promise.resolve(result).then(onFulfilled, onRejected);
 			return q;
 		},
 	};
@@ -243,11 +256,10 @@ function runWithConsent(consentAt: string | null) {
 		started_at: '2026-06-08T08:00:00.000Z',
 		distance_m: 10000,
 		duration_s: 3000,
-		metadata: { activity_type: 'run', avg_bpm: 152 },
+		metadata: { is_indoor: false, avg_bpm: 152 },
 		route_id: null,
 	};
 	const profileRow: CoachProfileRow = {
-		display_name: 'Runner',
 		preferred_unit: 'km',
 		health_data_consent_at: consentAt,
 	};
@@ -257,6 +269,8 @@ function runWithConsent(consentAt: string | null) {
 		null,
 		10,
 		profileRow,
+		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 }
 
@@ -267,14 +281,14 @@ test('buildContext strips per-run avg_bpm when health consent is null', async ()
 	const ctx = await runWithConsent(null);
 	const runs = (ctx.data as { recent_runs: { metadata: unknown }[] }).recent_runs;
 	assert.equal(runs.length, 1);
-	assert.deepEqual(runs[0].metadata, { activity_type: 'run' });
+	assert.deepEqual(runs[0].metadata, { is_indoor: false });
 });
 
 test('buildContext keeps per-run avg_bpm when health consent is granted', async () => {
 	const ctx = await runWithConsent('2026-06-01T00:00:00.000Z');
 	const runs = (ctx.data as { recent_runs: { metadata: unknown }[] }).recent_runs;
 	assert.equal(runs.length, 1);
-	assert.deepEqual(runs[0].metadata, { activity_type: 'run', avg_bpm: 152 });
+	assert.deepEqual(runs[0].metadata, { is_indoor: false, avg_bpm: 152 });
 });
 
 // --- cross-tenant scoping (issue #373) --------------------------------
@@ -342,8 +356,8 @@ function coachTenantFixture() {
 			{ id: 'run-b', user_id: COACH, started_at: soon, distance_m: 5000, duration_s: 1500, metadata: { activity_type: 'run' }, route_id: null },
 		],
 		training_plans: [
-			{ id: 'plan-a', user_id: ATHLETE, status: 'active', is_template: false },
-			{ id: 'plan-b', user_id: COACH, status: 'active', is_template: false },
+			{ id: 'plan-a', user_id: ATHLETE, status: 'active', is_template: false, start_date: '2026-01-04', end_date: '2099-12-31' },
+			{ id: 'plan-b', user_id: COACH, status: 'active', is_template: false, start_date: '2026-01-04', end_date: '2099-12-31' },
 		],
 		plan_weeks: [
 			{ id: 'week-a', plan_id: 'plan-a', week_index: 0 },
@@ -369,7 +383,6 @@ function coachTenantFixture() {
 }
 
 const COACH_PROFILE: CoachProfileRow = {
-	display_name: 'Coach',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };
@@ -381,16 +394,17 @@ test('buildContext no-plan_id branch returns the CALLER active plan, not an athl
 		null,
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
-		plan: { id: string; user_id: string } | null;
+		plan: { id: string } | null;
 		plan_weeks: { id: string }[];
-		plan_workouts: { id: string }[];
+		plan_workouts: { week_id: string }[];
 	};
 	assert.equal(data.plan?.id, 'plan-b', 'must resolve the coach own active plan');
-	assert.equal(data.plan?.user_id, COACH);
 	assert.deepEqual(data.plan_weeks.map((w) => w.id), ['week-b']);
-	assert.deepEqual(data.plan_workouts.map((w) => w.id), ['wk-b']);
+	assert.deepEqual(data.plan_workouts.map((w) => w.week_id), ['week-b']);
 });
 
 test('buildContext leaks none of an athlete recent runs into a coach context', async () => {
@@ -400,6 +414,8 @@ test('buildContext leaks none of an athlete recent runs into a coach context', a
 		null,
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const runs = (ctx.data as { recent_runs: { id: string; metadata: unknown }[] }).recent_runs;
 	assert.deepEqual(runs.map((r) => r.id), ['run-b'], 'only the coach own run');
@@ -412,6 +428,8 @@ test('buildContext scopes lifts + nutrition to the caller', async () => {
 		null,
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
 		recent_lifts: { title: string | null; volume_kg: number }[];
@@ -433,6 +451,8 @@ test('buildContext with an athlete planId still returns nothing cross-tenant', a
 		'plan-a',
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as { plan: unknown; plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan, null, 'a foreign plan id must not resolve');
@@ -484,6 +504,35 @@ test('summarizeRecentLifts ignores bodyweight sets in volume + caps count', () =
 	assert.equal(out[0].sets, 2);
 });
 
+test('summarizeRecentLifts counts exercises on the canonical grouping key', () => {
+	// One lift, five spellings. Told to the model as five exercises, the
+	// session reads as a circuit rather than as the five sets of bench it
+	// was — and the tally used to answer differently from every keyed
+	// surface in the app (§ 1274).
+	const workouts = [{ id: 'w1', title: 'Push day', started_at: '2026-06-03T08:00:00.000Z' }];
+	const spellings = ['Bench Press', 'bench press ', 'Bench  Press', 'Bench\u00a0Press', '\u0130ncline Press'];
+	const sets = spellings.map((exercise_name) => ({
+		workout_id: 'w1',
+		exercise_name,
+		reps: 5,
+		weight_kg: 60,
+	}));
+	const out = summarizeRecentLifts(workouts, sets);
+	assert.equal(out[0].exercises, 2, 'four spellings of bench plus one incline');
+	assert.equal(out[0].sets, 5);
+});
+
+test('summarizeRecentLifts: a blank exercise name is not an exercise', () => {
+	const workouts = [{ id: 'w1', title: null, started_at: '2026-06-03T08:00:00.000Z' }];
+	const sets = [
+		{ workout_id: 'w1', exercise_name: '   ', reps: 5, weight_kg: 60 },
+		{ workout_id: 'w1', exercise_name: '\u00a0', reps: 5, weight_kg: 60 },
+	];
+	const out = summarizeRecentLifts(workouts, sets);
+	assert.equal(out[0].exercises, 0);
+	assert.equal(out[0].sets, 2);
+});
+
 // --- summarizeNutrition -----------------------------------------------
 
 test('summarizeNutrition averages over days logged within the 7-day window', () => {
@@ -526,4 +575,47 @@ test('summarizeNutrition yields null macro averages when no row carries that mac
 	assert.equal(out.avg_protein_g, null);
 	assert.equal(out.avg_carbs_g, null);
 	assert.equal(out.avg_fat_g, null);
+});
+
+test('buildContext picks the current plan by the runner today it is handed, not the server clock', async () => {
+	// Two chained plans hand over at midnight between 2026-06-14 and -15. The
+	// handler resolves the runner's local date (decisions § 2052); the plan
+	// the coach talks about must follow it.
+	const fixture = {
+		training_plans: [
+			{ id: 'plan-1', user_id: COACH, status: 'active', is_template: false, start_date: '2026-05-01', end_date: '2026-06-14' },
+			{ id: 'plan-2', user_id: COACH, status: 'active', is_template: false, start_date: '2026-06-15', end_date: '2026-09-01' },
+		],
+	};
+	const before = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-14', AI_DISCLOSURE_CURRENT_VERSION);
+	const after = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION);
+	assert.equal((before.data as { plan: { id: string } }).plan.id, 'plan-1');
+	assert.equal((after.data as { plan: { id: string } }).plan.id, 'plan-2');
+});
+
+function failingPlansSupabase() {
+	const base = filteringSupabase({});
+	return {
+		from(table: string) {
+			if (table !== 'training_plans') return base.from(table);
+			const failed = { data: null, error: { message: 'boom', code: '57014' } };
+			const q: Record<string, unknown> = {};
+			for (const m of ['select', 'eq', 'order']) q[m] = () => q;
+			q.maybeSingle = () => Promise.resolve(failed);
+			q.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+				Promise.resolve(failed).then(onFulfilled, onRejected);
+			return q;
+		},
+	};
+}
+
+test('buildContext throws when the plan read fails instead of reporting no plan', async () => {
+	await assert.rejects(
+		buildContext(failingPlansSupabase() as never, COACH, null, 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION),
+		(e: unknown) => (e as { code?: string }).code === '57014',
+	);
+	await assert.rejects(
+		buildContext(failingPlansSupabase() as never, COACH, 'plan-x', 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION),
+		(e: unknown) => (e as { code?: string }).code === '57014',
+	);
 });

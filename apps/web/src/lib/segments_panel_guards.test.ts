@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { SUPPORTED_LOCALES } from './i18n/locale';
 
 function read(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
@@ -89,15 +90,17 @@ test('SegmentsPanel.svelte toggle does not double-fire the leaderboard fetch', (
 	);
 });
 
-test('Settings → preferences writes gender + date_of_birth to user_profiles', () => {
+test('Settings → body metrics writes gender + date_of_birth to user_profiles', () => {
 	// Reason: tiered leaderboards depend on user_profiles.gender +
 	// date_of_birth. If the settings page stops persisting them the
 	// filter dropdowns silently return empty for every user.
-	// GDPR Art 9 gates both writes behind healthDataConsent — without
-	// consent the page null-writes, with consent it writes the user
-	// input. Both branches are valid writebacks, so the guard accepts
-	// either shape.
-	const source = read('src/routes/settings/preferences/+page.svelte');
+	// The two columns carry DIFFERENT rules (decisions § 718). Gender is
+	// Art 9 special-category data and its write keeps the healthDataConsent
+	// term. date_of_birth is the age record behind the under-18
+	// discoverability floor — a child-protection purpose — so its column
+	// write carries no consent term at all; the consent gate moved to the
+	// user_settings.prefs mirror, which is what the Art 9 read paths use.
+	const source = read('src/routes/settings/body/+page.svelte');
 	assert.match(source, /user_profiles/, 'page must talk to user_profiles');
 	assert.match(
 		source,
@@ -106,13 +109,47 @@ test('Settings → preferences writes gender + date_of_birth to user_profiles', 
 	);
 	assert.match(
 		source,
-		/date_of_birth:\s*\(?healthDataConsent\s*&&\s*dateOfBirth\)?\s*\?\s*dateOfBirth\s*:\s*null/,
-		'date_of_birth writeback missing (consent-gated form)',
+		/date_of_birth:\s*dateOfBirth\s*\|\|\s*null/,
+		'ungated age-record writeback missing',
+	);
+	assert.doesNotMatch(
+		source,
+		/date_of_birth:\s*\(?healthDataConsent\s*&&\s*dateOfBirth\)?\s*\?\s*dateOfBirth\s*:\s*null,\n\t*gender/,
+		'the column write must not be consent-gated (§ 718)',
+	);
+	assert.match(
+		source,
+		/updateUniversal\(auth\.user\.id,\s*\{\s*\n?\s*date_of_birth:\s*healthDataConsent\s*&&\s*dateOfBirth\s*\?\s*dateOfBirth\s*:\s*null,/,
+		'consent-gated prefs-bag mirror write missing',
 	);
 });
 
-test('Settings → preferences hydrates gender + dob from user_profiles on load', () => {
-	const source = read('src/routes/settings/preferences/+page.svelte');
+test('Settings → body metrics leaves DOB out of the consent-required refusal', () => {
+	// A minor who declines the Art 9 checkbox must still be able to record
+	// a DOB — refusing the save left them with a NULL age record and fully
+	// discoverable in people-search, the exact fail-open the floor closes.
+	const source = read('src/routes/settings/body/+page.svelte');
+	const gate = source.match(/const hasDemographic = [^;]+;/);
+	assert.ok(gate, 'hasDemographic gate not found');
+	assert.doesNotMatch(gate![0], /dateOfBirth/, 'DOB must not gate the demographics save');
+	assert.match(gate![0], /gender/, 'gender must still gate the demographics save');
+});
+
+test('Settings → body metrics does not consent-disable the DOB input', () => {
+	const source = read('src/routes/settings/body/+page.svelte');
+	const dobInput = source
+		.split('\n')
+		.find((l) => l.includes('bind:value={dateOfBirth}'));
+	assert.ok(dobInput, 'DOB input not found');
+	assert.doesNotMatch(
+		dobInput!,
+		/disabled=\{!healthDataConsent\}/,
+		'DOB input is consent-disabled — the age record must stay reachable',
+	);
+});
+
+test('Settings → body metrics hydrates gender + dob from user_profiles on load', () => {
+	const source = read('src/routes/settings/body/+page.svelte');
 	// gender / date_of_birth / health_data_consent_at are deny-by-default
 	// columns for direct authenticated SELECTs (column lockdown,
 	// 20260707_001) — a direct .select() 403s, so the self-read goes through
@@ -120,10 +157,10 @@ test('Settings → preferences hydrates gender + dob from user_profiles on load'
 	assert.match(
 		source,
 		/get_my_profile/,
-		'preferences must self-read the profile via get_my_profile() (direct column select 403s)',
+		'the body metrics page must self-read the profile via get_my_profile() (direct column select 403s)',
 	);
-	assert.match(source, /prof\.gender/, 'preferences must read gender to populate the form');
-	assert.match(source, /prof\.date_of_birth/, 'preferences must read DOB to populate the form');
+	assert.match(source, /prof\.gender/, 'the body metrics page must read gender to populate the form');
+	assert.match(source, /prof\.date_of_birth/, 'the body metrics page must read DOB to populate the form');
 });
 
 test('SegmentsPanel.svelte renders a KOM/QOM crown on the rank-1 row', () => {
@@ -218,7 +255,132 @@ test('the segment-detail error copy is localized in all six catalogues', () => {
 		'segmentDetail.loadFailedBody',
 		'segmentDetail.retry',
 	];
-	for (const locale of ['en', 'de', 'es', 'fr', 'ja', 'pt-BR']) {
+	for (const locale of SUPPORTED_LOCALES) {
+		const source = read(`src/lib/i18n/locales/${locale}.ts`);
+		for (const key of keys) {
+			assert.match(
+				source,
+				new RegExp(`"${key.replace('.', '\\.')}":`),
+				`${key} missing from ${locale}.ts`,
+			);
+		}
+	}
+});
+
+test('/segments shapes the catalogue through the pure browse helpers', () => {
+	// Reason: filter + sort semantics (accent folding, nulls-last on the
+	// numeric orders, the canonical surface order) are unit-tested in
+	// catalogue_browse.test.ts. An inline `.filter()` in the page would put
+	// them back out of reach of every test — bug class: logic that only a
+	// browser can exercise.
+	const source = read('src/routes/segments/+page.svelte');
+	assert.match(source, /from '#lib\/segments\/catalogue_browse\.ts'/, 'page must import the helpers');
+	assert.match(source, /filterCatalogue\(/, 'page must filter through filterCatalogue');
+	assert.match(source, /sortCatalogue\(/, 'page must sort through sortCatalogue');
+});
+
+test('/segments cannot strand the browse page on a failed catalogue fetch', () => {
+	// Reason: the same defect /segments/[id] shipped with. `loading` starts
+	// true and `segments` starts empty, so an unguarded rejection renders the
+	// empty-catalogue copy — telling a runner the catalogue is empty when the
+	// network is simply down. fetchGlobalSegmentsWithError exists precisely to
+	// make that distinguishable; the page owes it a branch and a retry.
+	const source = read('src/routes/segments/+page.svelte');
+	const loader = source.match(/async function load[\s\S]*?\n\t\}/);
+	assert.ok(loader, 'load body missing');
+	assert.match(loader![0], /loadError = /, 'a failed fetch must set loadError');
+	assert.match(
+		loader![0],
+		/finally \{\s*loading = false;/,
+		'loading must clear on the failure path too, not only on success',
+	);
+	assert.match(source, /\{:else if loadError !== null\}/, 'the page needs a failure branch, tested against null so an error with no readable message still shows');
+	assert.match(source, /onclick=\{load\}/, 'the failure branch must offer a retry');
+});
+
+test('/segments distinguishes an empty catalogue from an empty filter result', () => {
+	// Reason: collapsing the two states tells a runner who narrowed to
+	// "trail in Sydney" that no famous segments exist at all, and offers no
+	// hint that widening the filter is the fix. Same distinction
+	// SegmentsPanel already draws between noEffortsYet and noEffortsFiltered.
+	const source = read('src/routes/segments/+page.svelte');
+	assert.match(source, /segments\.browseEmpty/, 'empty-catalogue copy missing');
+	assert.match(source, /segments\.browseNoMatches/, 'filtered-empty copy missing');
+});
+
+test('every catalogue read is bounded by the shared limit, never a literal', () => {
+	// Reason: `fetchGlobalSegmentsWithError` defaulted to 200 while the scoring
+	// sweep passed GLOBAL_SEGMENT_SCORING_LIMIT (500) explicitly. Two callers of
+	// one function therefore disagreed about what "the whole catalogue" means,
+	// and /segments — which takes the default — dropped the alphabetical tail of
+	// any catalogue past 200 rows with no error and no indication anything was
+	// missing. Pinning the DEFAULT (not just the call sites) is what closes it:
+	// a future caller that omits the argument gets the real bound.
+	const source = read('src/lib/core/data.ts');
+	for (const fn of ['fetchGlobalSegments', 'fetchGlobalSegmentsWithError']) {
+		const at = source.indexOf(`export async function ${fn}(`);
+		assert.ok(at >= 0, `${fn} missing — rename?`);
+		const signature = source.slice(at, source.indexOf('{', at));
+		assert.match(
+			signature,
+			/limit = GLOBAL_SEGMENT_SCORING_LIMIT/,
+			`${fn} must default to the shared catalogue bound`,
+		);
+		assert.doesNotMatch(signature, /limit = \d+/, `${fn} must not default to a literal`);
+	}
+});
+
+test('both segment surfaces report elevation in the reader’s preferred unit', () => {
+	// Reason: the detail page hard-coded `{segment.elevation_m} m`, so a
+	// runner on miles was shown a climb in metres beside a distance in miles —
+	// one card, two unit systems. formatElevation() is the shared converter
+	// every other vert surface (dashboard, challenges) already routes through.
+	for (const file of ['src/routes/segments/[id]/+page.svelte', 'src/routes/segments/+page.svelte']) {
+		const source = read(file);
+		assert.match(source, /formatElevation\(/, `${file} must format elevation through the converter`);
+		assert.doesNotMatch(
+			source,
+			/\{segment\.elevation_m\}\s*m/,
+			`${file} must not print raw metres`,
+		);
+	}
+});
+
+test('/segments/[id] leads back to the catalogue, not the dashboard', () => {
+	// Reason: the back-link pointed at /dashboard, so a "Back" arrow landed
+	// somewhere the reader had never been, and the catalogue browse page was
+	// unreachable from the one page that shows a catalogue segment. It now
+	// names its destination ("Famous segments") instead of a generic "Back".
+	const source = read('src/routes/segments/[id]/+page.svelte');
+	assert.match(source, /<a href="\/segments" class="back-link">/, 'back-link must target /segments');
+	assert.doesNotMatch(source, /href="\/dashboard"/, 'the dashboard back-link must not return');
+	assert.match(source, /segments\.browseTitle/, 'the link must name where it goes');
+});
+
+test('run detail routes into the catalogue from its Famous segments block', () => {
+	// Reason: earning a catalogue effort is the moment a runner learns the
+	// catalogue exists. Without a link out of that block the only way to reach
+	// the browse page is to already know its URL.
+	const source = read('src/lib/components/RunSegmentEfforts.svelte');
+	assert.match(source, /href="\/segments"/, 'catalogue block must link to the browse page');
+	assert.match(source, /segments\.browseAll/, 'browse link copy must come from the catalogue');
+});
+
+test('the catalogue-browse copy is localized in all six catalogues', () => {
+	const keys = [
+		'segments.browseTitle',
+		'segments.browseIntro',
+		'segments.browseSearchPlaceholder',
+		'segments.browseAllRegions',
+		'segments.browseAllSurfaces',
+		'segments.browseSortClimb',
+		'segments.browseCount',
+		'segments.browseFailed',
+		'segments.browseEmpty',
+		'segments.browseNoMatches',
+		'segments.browseAll',
+	];
+	for (const locale of SUPPORTED_LOCALES) {
 		const source = read(`src/lib/i18n/locales/${locale}.ts`);
 		for (const key of keys) {
 			assert.match(
@@ -233,7 +395,7 @@ test('the segment-detail error copy is localized in all six catalogues', () => {
 test('data.ts re-exports the moved constants from segments.ts', () => {
 	// Reason: SEGMENT_AGE_BANDS / SegmentAgeBand / SegmentGenderFilter
 	// moved out of data.ts into the pure segments module so unit tests
-	// can import them without dragging in $env. Existing callers still
+	// can import them without dragging in $app/env. Existing callers still
 	// reach for the data.ts path — keep the re-export so they compile.
 	const source = read('src/lib/core/data.ts');
 	assert.match(

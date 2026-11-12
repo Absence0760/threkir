@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The two week ribbons at a phone-width viewport, against the 11 px
@@ -68,17 +69,14 @@ test.describe('week ribbons — 11px micro-label floor at phone width', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context, page }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await page.setViewportSize(PHONE);
 	});
 
 	test('ThisWeekStrip day labels and distances clear the floor', async ({ page }) => {
+		// The strip lives in the weekly summary the week lead opens (§ 2283).
 		await page.goto('/dashboard');
+		await page.getByTestId('dash-week-lead-open').click({ timeout: 10_000 });
 		await expect(page.locator('.week-strip')).toBeVisible({ timeout: 10_000 });
 
 		// Seven cells always render — a rest day draws a `·` rather than

@@ -1,13 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /routes/heatmap — interactive surface beyond the bare "mounts"
@@ -34,7 +28,7 @@ test.describe('/routes/heatmap — interaction', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('map container + NavigationControl mount; discover sidebar + timestamp surface', async ({

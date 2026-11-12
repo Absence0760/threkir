@@ -12,24 +12,122 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Pull the real message keys out of a parsed ARB map — drop `@@locale`
 /// and the `@key` metadata entries.
-Set<String> _messageKeys(Map<String, dynamic> arb) => arb.keys
-    .where((k) => !k.startsWith('@'))
-    .toSet();
+Set<String> _messageKeys(Map<String, dynamic> arb) =>
+    arb.keys.where((k) => !k.startsWith('@')).toSet();
 
 /// Extract `{placeholder}` argument names from a message value so we can
 /// check translations didn't drop or rename an interpolation arg.
 ///
-/// ICU-plural aware: a real argument is `{name}` (simple interpolation) or
-/// `{name, plural, ...}` (the head of a plural/select block). The literal
-/// text inside `one{...}` / `other{...}` branches is NOT an argument, so we
-/// only accept a `{` followed by an identifier that is immediately followed
-/// by `}` or `,`. This keeps the contract on the args that actually flow in
-/// (e.g. `count`) without flagging translated branch wording ("vor", "há")
-/// as a spurious placeholder.
-Set<String> _placeholders(String value) => RegExp(r'\{(\w+)\s*[},]')
-    .allMatches(value)
-    .map((m) => m.group(1)!)
-    .toSet();
+/// Parses the ICU MessageFormat shape rather than pattern-matching it: an
+/// argument is `{name}` or `{name, type ...}` where a `{` opens one, and the
+/// `{...}` after a plural/select selector (`one{...}`, `=0{...}`) is a
+/// nested MESSAGE, whose text is not an argument. A regex for "`{` then a
+/// word then `,` or `}`" cannot tell the two apart, so branch wording that
+/// happens to start with a word and a comma — `one{Filters, 1 on}` — read
+/// as a placeholder named `Filters` and failed every faithful translation.
+Set<String> _placeholders(String value) => _IcuArgs(value).parse();
+
+/// Whether [value] uses ICU's `#` shorthand inside a plural branch. Flutter's
+/// gen-l10n does not implement `#`: it emits the branch text verbatim, so
+/// `{n, plural, other {# weeks}}` renders a literal "# weeks". Branches must
+/// name the argument instead (`other {{n} weeks}`). Web's catalogue runtime
+/// does support `#`, which is how the shorthand keeps arriving in ports.
+bool _hashInPlural(String value) => (_IcuArgs(value)..parse()).hashInPlural;
+
+class _IcuArgs {
+  _IcuArgs(this.s);
+
+  final String s;
+  final Set<String> names = {};
+  var i = 0;
+  var _pluralDepth = 0;
+  var hashInPlural = false;
+
+  static final _word = RegExp(r'\w+');
+  static const _branching = {'plural', 'select', 'selectordinal'};
+
+  Set<String> parse() {
+    _message(nested: false);
+    return names;
+  }
+
+  void _message({required bool nested}) {
+    while (i < s.length) {
+      final c = s[i];
+      if (c == '}' && nested) return;
+      i++;
+      if (c == '#' && _pluralDepth > 0) hashInPlural = true;
+      if (c == '{') _argument();
+    }
+  }
+
+  String? _token(RegExp re) {
+    _ws();
+    final m = re.matchAsPrefix(s, i);
+    if (m == null) return null;
+    i = m.end;
+    return m.group(0);
+  }
+
+  void _ws() {
+    while (i < s.length && s[i].trim().isEmpty) {
+      i++;
+    }
+  }
+
+  void _skipToClose() {
+    var depth = 1;
+    while (i < s.length && depth > 0) {
+      if (s[i] == '{') depth++;
+      if (s[i] == '}') depth--;
+      i++;
+    }
+  }
+
+  void _argument() {
+    final name = _token(_word);
+    if (name == null) return _skipToClose();
+    names.add(name);
+    _ws();
+    if (i < s.length && s[i] == '}') {
+      i++;
+      return;
+    }
+    if (i >= s.length || s[i] != ',') return _skipToClose();
+    i++;
+    final type = _token(_word);
+    if (!_branching.contains(type)) return _skipToClose();
+    final counts = type != 'select';
+    if (counts) _pluralDepth++;
+    try {
+      _branches();
+    } finally {
+      if (counts) _pluralDepth--;
+    }
+  }
+
+  void _branches() {
+    _ws();
+    if (i < s.length && s[i] == ',') i++;
+    while (true) {
+      _ws();
+      if (i >= s.length) return;
+      if (s[i] == '}') {
+        i++;
+        return;
+      }
+      final selector = _token(RegExp(r'[^\s{}]+'));
+      if (selector != null && selector.startsWith('offset:')) continue;
+      _ws();
+      if (selector == null || i >= s.length || s[i] != '{') {
+        return _skipToClose();
+      }
+      i++;
+      _message(nested: true);
+      if (i < s.length) i++;
+    }
+  }
+}
 
 Map<String, dynamic> _readArb(String tag) {
   final raw = File('lib/l10n/app_$tag.arb').readAsStringSync();
@@ -64,14 +162,81 @@ void main() {
     expect(enKeys, isNotEmpty);
   });
 
+  test('placeholder extraction follows ICU structure, not branch wording', () {
+    expect(_placeholders('Hi {name}'), {'name'});
+    expect(
+      _placeholders(
+        '{count, plural, one{Filters, 1 on} other{Filters, {count} on}}',
+      ),
+      {'count'},
+    );
+    expect(_placeholders('{n, plural, =0{none} other{{n} by {who}}} {when}'), {
+      'n',
+      'who',
+      'when',
+    });
+    expect(_placeholders('{kind, select, a{A, {x}} other{B}}'), {'kind', 'x'});
+    expect(_placeholders('{d, date, yMMMd}'), {'d'});
+  });
+
+  test('the plural-# scan finds # only inside a plural branch', () {
+    expect(_hashInPlural('{n, plural, one {# week} other {# weeks}}'), isTrue);
+    expect(_hashInPlural('{n, selectordinal, other {#th}}'), isTrue);
+    expect(
+      _hashInPlural('{n, plural, other {{k, select, a {# x} other {y}}}}'),
+      isTrue,
+    );
+    expect(
+      _hashInPlural('{n, plural, one {{n} week} other {{n} weeks}}'),
+      isFalse,
+    );
+    expect(_hashInPlural('Lap #3 {n}'), isFalse);
+    expect(_hashInPlural('{k, select, a {#1} other {x}}'), isFalse);
+  });
+
+  test('no catalogue declares the same key twice', () {
+    // `jsonDecode` silently keeps the LAST of a duplicated key, so every other
+    // assertion in this file is blind to one — while gen-l10n takes the
+    // getter's POSITION from the first occurrence and its value + description
+    // from the last, so the two halves of a duplicate can disagree and only
+    // one of them ships. `privacyZonesTitle` was declared twice in all seven
+    // catalogues, under two different descriptions (decisions § 754).
+    for (final tag in localeTags) {
+      final counts = <String, int>{};
+      for (final line in File('lib/l10n/app_$tag.arb').readAsLinesSync()) {
+        final m = RegExp(r'^  "(@{0,2}[A-Za-z0-9_]+)"\s*:').firstMatch(line);
+        if (m != null) {
+          counts[m.group(1)!] = (counts[m.group(1)!] ?? 0) + 1;
+        }
+      }
+      // The scan keys on the catalogue's two-space top-level indent. Pin that
+      // it really did see every entry, so a reformat makes this test fail
+      // rather than pass vacuously.
+      expect(
+        counts.keys.toSet(),
+        _readArb(tag).keys.toSet(),
+        reason:
+            'the duplicate scan did not see app_$tag.arb the way '
+            'jsonDecode does',
+      );
+      final dupes =
+          counts.entries.where((e) => e.value > 1).map((e) => e.key).toList()
+            ..sort();
+      expect(dupes, isEmpty, reason: 'app_$tag.arb declares these keys twice');
+    }
+  });
+
   for (final tag in localeTags) {
     group('locale $tag', () {
       final arb = _readArb(tag);
       final keys = _messageKeys(arb);
 
       test('declares its @@locale', () {
-        expect(arb['@@locale'], isNotNull,
-            reason: 'app_$tag.arb is missing the @@locale marker');
+        expect(
+          arb['@@locale'],
+          isNotNull,
+          reason: 'app_$tag.arb is missing the @@locale marker',
+        );
       });
 
       test('key set matches the English template exactly', () {
@@ -85,8 +250,11 @@ void main() {
         for (final key in keys) {
           final value = arb[key];
           expect(value, isA<String>(), reason: '$key is not a string');
-          expect((value as String).trim(), isNotEmpty,
-              reason: '$key is empty in app_$tag.arb');
+          expect(
+            (value as String).trim(),
+            isNotEmpty,
+            reason: '$key is empty in app_$tag.arb',
+          );
         }
       });
 
@@ -95,9 +263,26 @@ void main() {
           if (!keys.contains(key)) continue;
           final expected = _placeholders(en[key] as String);
           final actual = _placeholders(arb[key] as String);
-          expect(actual, equals(expected),
-              reason: '$key placeholders differ in app_$tag.arb');
+          expect(
+            actual,
+            equals(expected),
+            reason: '$key placeholders differ in app_$tag.arb',
+          );
         }
+      });
+
+      test('no plural branch uses the # shorthand gen-l10n cannot render', () {
+        final offenders = [
+          for (final key in keys)
+            if (_hashInPlural(arb[key] as String)) key,
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'app_$tag.arb uses # inside a plural; gen-l10n prints it '
+              'literally. Name the argument instead: other {{n} weeks}',
+        );
       });
 
       // `profileNotifYourRun` is the {dist} fallback for a notification whose
@@ -118,8 +303,11 @@ void main() {
               .replaceAll('{name}', 'Ana')
               .replaceAll('{dist}', fallback);
           final repeat = _adjacentRepeat(rendered);
-          expect(repeat, isNull,
-              reason: '$key repeats "$repeat" in app_$tag.arb: $rendered');
+          expect(
+            repeat,
+            isNull,
+            reason: '$key repeats "$repeat" in app_$tag.arb: $rendered',
+          );
         }
       });
     });

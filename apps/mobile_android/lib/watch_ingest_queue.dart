@@ -7,16 +7,21 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-/// Persists watch-run payloads that arrive before the user has signed in.
+import 'run_upload_signal.dart';
+
+/// The durable home of every watch-run payload until the server has it.
 ///
-/// When WatchIngest receives a run and the user is not authenticated, the
-/// payload is written to disk under `<documents>/watch_ingest_queue/<uuid>.json`
-/// rather than being discarded. On the next sign-in event, `drain` replays
-/// every queued file and deletes each one on success.
+/// `WatchIngest` writes each run here under
+/// `<documents>/watch_ingest_queue/<uuid>.json` BEFORE anything else — signed
+/// in or not, online or not — and [drain] uploads and deletes. Drain runs on
+/// sign-in, on every newly received run, and on each `SyncService` trigger
+/// (startup, foreground, connectivity), so an entry left by a failed upload is
+/// retried on the next of those rather than on the next sign-in only.
 ///
-/// The previous behaviour silently dropped watch runs received before sign-in
-/// because the in-process `pending` buffer in WatchIngestBridge.swift was lost
-/// on app restart. See docs/architecture/decisions.md for the full rationale.
+/// Watch-run durability lives here, deliberately, and not in
+/// `WatchIngestBridge.swift`: the bridge's buffer is in memory, and it only
+/// ever saw a bare refusal where this side knows the auth state and why an
+/// upload failed (decisions § 1801).
 ///
 /// **Shared-device owner-tag (added 2026-05).** Each queued file carries
 /// the user_id who was most recently signed in on the phone — the
@@ -29,6 +34,10 @@ import 'package:uuid/uuid.dart';
 /// [setLastKnownOwner] — see the WearAuthBridge mirror for the same
 /// owner-tracking pattern on the watch-session side.
 class WatchIngestQueue {
+  /// Fires after a watch run reaches the server, through [drain] or the
+  /// direct save `WatchIngest` falls back to.
+  final RunUploadSignal landed = RunUploadSignal();
+
   static const _uuid = Uuid();
   static const _lastOwnerFilename = 'last_owner.txt';
 
@@ -56,7 +65,7 @@ class WatchIngestQueue {
       _queueDir.createSync(recursive: true);
     }
     _sweepRejected();
-    cm.sweepAtomicWriteOrphans(_queueDir,
+    cm.sweepStoreScratchFiles(_queueDir,
         onError: (m) => debugPrint('WatchIngestQueue: $m'));
     // Hydrate the in-memory cache from the sidecar so enqueues that
     // run before the first setLastKnownOwner call still carry the
@@ -81,20 +90,37 @@ class WatchIngestQueue {
   ///
   /// Persisted to a sidecar so a process kill between the last
   /// sign-out and the next sign-in doesn't lose the stamp.
+  /// Both call sites in `main.dart` fire this UNAWAITED — the bootstrap
+  /// restore and the `signedIn` listener — so a sign-out followed by a sign-in
+  /// puts a delete and an atomic write over one file in flight together. The
+  /// delete then ran while the write's `.tmp` had not been renamed yet, found
+  /// nothing to remove, and the rename put a stamp back that the store had
+  /// been told to clear: the in-memory cache said signed-out while the next
+  /// cold start hydrated a stale owner, and that owner is what decides which
+  /// account a queued watch run adopts to. Serialised on the queue directory
+  /// (§ 828); the in-memory half is already last-caller-wins because it is set
+  /// before the first await.
+  ///
+  /// [enqueue] and [drain] stay off the chain deliberately. An enqueue's path
+  /// is a fresh uuid nothing else names, and a drain awaits `api.saveRun` per
+  /// file — putting a watch payload's write behind a stalled upload is the one
+  /// thing this must not do.
   Future<void> setLastKnownOwner(String? userId) async {
     _lastKnownOwnerCache = userId;
-    try {
-      if (userId == null || userId.isEmpty) {
-        if (_lastOwnerFile.existsSync()) await _lastOwnerFile.delete();
-      } else {
-        // Atomic like the envelope write: a bare writeAsString truncates
-        // first, and init() reads an empty file as "no owner" — which drops
-        // the stamp and lets the next account adopt the previous user's run.
-        await cm.writeStringAtomic(_lastOwnerFile, userId);
+    await cm.serialiseStoreWrite(_queueDir.path, () async {
+      try {
+        if (userId == null || userId.isEmpty) {
+          if (_lastOwnerFile.existsSync()) await _lastOwnerFile.delete();
+        } else {
+          // Atomic like the envelope write: a bare writeAsString truncates
+          // first, and init() reads an empty file as "no owner" — which drops
+          // the stamp and lets the next account adopt the previous user's run.
+          await cm.writeStringAtomic(_lastOwnerFile, userId);
+        }
+      } catch (e) {
+        debugPrint('WatchIngestQueue.setLastKnownOwner write failed: $e');
       }
-    } catch (e) {
-      debugPrint('WatchIngestQueue.setLastKnownOwner write failed: $e');
-    }
+    });
   }
 
   /// The user_id stamped on payloads enqueued right now (exposed for
@@ -103,29 +129,52 @@ class WatchIngestQueue {
   String? get debugLastKnownOwner => _lastKnownOwnerCache;
 
   /// Write a raw watch-run payload to the queue directory, wrapped
-  /// with the current last-known-owner stamp so [drain] can skip it
-  /// when a different user signs in later (shared-device guard).
-  Future<void> enqueue(Map<String, dynamic> payload) async {
+  /// with an owner stamp so [drain] can skip it when a different user
+  /// signs in later (shared-device guard). The stamp is [owner] — the
+  /// signed-in user, when there is one — else the last-known owner.
+  ///
+  /// Returns whether the payload is now on disk. The Apple Watch bridge
+  /// lets go of its copy on `true`, so `true` must never be said of a
+  /// write that did not land.
+  Future<bool> enqueue(Map<String, dynamic> payload, {String? owner}) async {
     final filename = '${_uuid.v4()}.json';
     final file = File('${_queueDir.path}/$filename');
+    final stamp = owner ?? _lastKnownOwnerCache;
     final envelope = <String, dynamic>{
-      if (_lastKnownOwnerCache != null)
-        'intended_owner_user_id': _lastKnownOwnerCache,
+      'intended_owner_user_id': ?stamp,
       'payload': payload,
     };
     try {
       // Atomic, like every sibling store: a bare writeAsString truncates the
       // target first, so a process death mid-write leaves a truncated file
       // that drain can never parse.
-      await cm.writeStringAtomic(file, jsonEncode(envelope));
+      await cm.writeStringAtomic(
+          file, jsonEncode(envelope, toEncodable: _nonFiniteAsNull));
+      return true;
     } catch (e) {
       debugPrint('WatchIngestQueue.enqueue failed: $e');
+      return false;
     }
   }
 
+  /// `jsonEncode` refuses a non-finite double (decisions § 986), which made a
+  /// NaN anywhere in a payload a write that could never land. Encoded as null
+  /// it lands, and the decoder then refuses the entry on the parse side, where
+  /// [drain] quarantines it rather than the run being lost.
+  static Object? _nonFiniteAsNull(Object? value) {
+    if (value is double && !value.isFinite) return null;
+    throw JsonUnsupportedObjectError(value);
+  }
+
   /// Replay queued runs via [api.saveRun]. Each file is deleted on
-  /// success. Files that fail are left on disk and will be retried on
-  /// the next sign-in.
+  /// success. A transient failure leaves the file on disk for the next
+  /// trigger; a failure the same bytes will always hit — an unparseable
+  /// entry, or a track the bucket refused as too large (decisions § 1009)
+  /// — quarantines it instead, so no trigger retries it forever.
+  ///
+  /// One drain at a time. Every received run starts one, so they overlap
+  /// with the sign-in and sync triggers; a call that lands mid-pass joins
+  /// it and asks for one more pass, which picks up whatever it came for.
   ///
   /// Files whose `intended_owner_user_id` stamp names a DIFFERENT user
   /// from the one currently signed in are skipped (and left on disk
@@ -133,7 +182,32 @@ class WatchIngestQueue {
   /// Untagged files (legacy / pre-stamp / queued before init wrote
   /// the sidecar) drain unconditionally, matching the pre-stamp
   /// "adopt to whoever signs in next" behaviour.
-  Future<void> drain(ApiClient api) async {
+  Future<void> drain(ApiClient api) {
+    final inFlight = _draining;
+    if (inFlight != null) {
+      _drainAgain = true;
+      return inFlight;
+    }
+    final passes = _drainPasses(api);
+    _draining = passes;
+    return passes;
+  }
+
+  Future<void>? _draining;
+  bool _drainAgain = false;
+
+  Future<void> _drainPasses(ApiClient api) async {
+    try {
+      do {
+        _drainAgain = false;
+        await _drainOnce(api);
+      } while (_drainAgain);
+    } finally {
+      _draining = null;
+    }
+  }
+
+  Future<void> _drainOnce(ApiClient api) async {
     final currentUserId = api.userId;
     if (currentUserId == null) return;
 
@@ -149,6 +223,7 @@ class WatchIngestQueue {
       // every sign-in is a forever-loop that also reports a phantom queued run
       // — while an upload failure is TRANSIENT and must keep retrying.
       final cm.Run run;
+      final bool? isPublic;
       try {
         final raw = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
         // Envelope-or-bare format detection. New format has a `payload`
@@ -173,16 +248,21 @@ class WatchIngestQueue {
           continue;
         }
         run = runFromWatchPayload(payload);
+        isPublic = isPublicFromWatchPayload(payload);
       } catch (e) {
         _reject(file, e);
         continue;
       }
       try {
-        await api.saveRun(run);
+        await api.saveRun(run, isPublic: isPublic);
+      } on TrackTooLargeException catch (e) {
+        _reject(file, e);
+        continue;
       } catch (e) {
         debugPrint('WatchIngestQueue.drain upload failed for ${file.path}: $e');
-        continue; // transient — left on disk for the next sign-in
+        continue; // transient — left on disk for the next trigger
       }
+      landed.fire();
       try {
         await file.delete();
       } catch (e) {
@@ -191,7 +271,7 @@ class WatchIngestQueue {
     }
   }
 
-  /// Move an unreadable entry out of the queue glob so it stops being retried.
+  /// Move an entry no retry can land out of the queue glob.
   void _reject(File file, Object error) {
     debugPrint('WatchIngestQueue.drain rejecting ${file.path}: $error');
     try {
@@ -260,27 +340,48 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
     // for the life of the install, inflating pendingCount with a phantom run.
     throw const FormatException('watch payload has no id');
   }
-  final startedAt = DateTime.parse(raw['started_at'] as String);
+  final startedAt = cm.parseIsoStrictRequired(raw['started_at'], 'started_at');
   final durationS = (raw['duration_s'] as num).toInt();
   final distanceM = (raw['distance_m'] as num).toDouble();
   final source = raw['source'] as String? ?? 'watch';
   final trackRaw = raw['track'];
+  // Two senders, two shapes. The custom watch's BLE sync reshapes the blob
+  // into a List of point maps (`sim_watch_sync.payloadFromBlob`); the Apple
+  // Watch bridge forwards the raw JSON TEXT of the file the watch wrote
+  // (`apps/mobile_ios/ios/Runner/WatchIngestBridge.swift` sets
+  // `payload["track"] = str`). Both reach this one decoder, and understanding
+  // only the List shape is why an Apple Watch run that arrived while the
+  // runner was signed out used to be replayed with no track at all — the
+  // signed-IN copy of this decode knew about the string and this one did not.
+  // A malformed string throws rather than degrading to an empty track: drain
+  // quarantines the entry, the same treatment a blank id gets above, because
+  // silently landing a trackless run is the defect, not the fallback.
+  final points = trackRaw is String ? jsonDecode(trackRaw) : trackRaw;
   final track = <cm.Waypoint>[];
-  if (trackRaw is List) {
-    for (final p in trackRaw) {
+  if (points is List) {
+    for (final p in points) {
       if (p is Map) {
         track.add(cm.Waypoint(
           lat: (p['lat'] as num).toDouble(),
           lng: (p['lng'] as num).toDouble(),
           elevationMetres: (p['ele'] as num?)?.toDouble(),
-          timestamp: (p['ts'] as String?) != null
-              ? DateTime.tryParse(p['ts'] as String)
-              : null,
+          timestamp: cm.parseIsoStrictValue(p['ts']),
           // Per-point heart rate: both Apple Watch (HKLiveWorkoutBuilder)
           // and Wear OS (Health Services) ship a `bpm` field per
           // sample. `Waypoint.bpm` is `int?` so floor any decimal that
           // sneaks through and skip non-numeric values.
           bpm: (p['bpm'] as num?)?.toInt(),
+          accuracyMetres: _finiteOrNull(p['accuracyMetres']),
+          speedMps: _finiteOrNull(p['speedMps']),
+          speedAccuracyMps: _finiteOrNull(p['speedAccuracyMps']),
+          bearingDeg: _finiteOrNull(p['bearingDeg']),
+          cumulativeDistanceMetres: _finiteOrNull(p['distM']),
+          // A fix the wrist's estimator took past its 30 m track gate,
+          // stored for the server's replay and skipped by every line reader.
+          offTrack: p['offTrack'] == true,
+          // The first fix of a segment after a pause or a source switch
+          // (spec v1.8): the server replays each segment apart from it.
+          segmentStart: p['segmentStart'] == true,
         ));
       }
     }
@@ -289,6 +390,70 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   final metadata = <String, dynamic>{};
   final avgBpm = raw['avg_bpm'];
   if (avgBpm is num) metadata[cm.MetadataKeys.avgBpm] = avgBpm.toDouble();
+  // The share of the run the average above was taken over. Forwarded
+  // verbatim like `avg_bpm` — every reader grades the range itself
+  // (`hrCoveragePercent`, `_hrCoveragePercent`, the export's
+  // `hrCoverageCell`), and the export deliberately keeps the raw value in
+  // its `metadata` column, so a figure this build cannot interpret is
+  // better stored and refused at render than dropped into the ambiguous
+  // "no key" population `docs/backend/metadata.md` enumerates. Only
+  // finiteness is required, and that is not fastidiousness: `metadata`
+  // is JSON-encoded on the way to Postgres, so a non-finite double throws
+  // and takes the whole run upload with it.
+  final hrCoverage = raw['hr_coverage'];
+  if (hrCoverage is num && hrCoverage.toDouble().isFinite) {
+    metadata[cm.MetadataKeys.hrCoverage] = hrCoverage.toDouble();
+  }
+  // Steps taken during the run. Only a positive count is recorded: a sender
+  // that measured nothing omits the key, and a zero forwarded onto the row
+  // would claim the runner stood still rather than that no pedometer ran.
+  final steps = raw['steps'];
+  if (steps is num && steps.toInt() > 0) {
+    metadata[cm.MetadataKeys.steps] = steps.toInt();
+  }
+  // The race this run was run in. Promoted to `runs.event_id` by
+  // `runRowFromRun`, so it is a link on the row rather than a bag key by the
+  // time it reaches Postgres — the run detail can then get back to the event
+  // without joining through `event_results`, which only carries a finisher.
+  // The wrist's forward filter, stamped so the server can tell a Wear OS /
+  // watchOS run (whose track holds every fix that filter took, and which the
+  // runs_enqueue_watch_distance_recompute trigger queues for the smoother)
+  // from a custom-watch breadcrumb track, which carries no stamp.
+  final estimator = raw['distance_estimator'];
+  if (estimator is String && estimator.isNotEmpty) {
+    metadata[cm.MetadataKeys.distanceEstimator] = estimator;
+    // How many estimator segments the wrist stored. The server reads
+    // `distance_step_over_chord_m` only when its replay of the uploaded
+    // track finds as many, so a track that lost its `segmentStart` marks
+    // keeps the run-total rule; dropping this key costs the same fallback.
+    final segments = raw['distance_segments'];
+    if (segments is num &&
+        segments.isFinite &&
+        segments >= 1 &&
+        segments == segments.truncate()) {
+      metadata[cm.MetadataKeys.distanceSegments] = segments.toInt();
+    }
+  }
+  // The wrist stored every fix its estimator took, off-track ones flagged,
+  // so the server replay of this track sees the watch's own input.
+  if (raw['track_complete'] == true) {
+    metadata[cm.MetadataKeys.trackComplete] = true;
+  }
+  final stepFilled = raw['distance_step_filled_m'];
+  if (stepFilled is num && stepFilled.toDouble().isFinite && stepFilled > 0) {
+    metadata[cm.MetadataKeys.distanceStepFilledM] = stepFilled.toDouble();
+    // What of those metres the gaps' chords would not have credited, which
+    // the server's stepless replay needs to credit the gaps as the wrist did.
+    // Meaningless without the step-filled figure, so forwarded only beside it.
+    final overChord = raw['distance_step_over_chord_m'];
+    if (overChord is num && overChord.toDouble().isFinite && overChord >= 0) {
+      metadata[cm.MetadataKeys.distanceStepOverChordM] = overChord.toDouble();
+    }
+  }
+  final eventId = raw['event_id'];
+  if (eventId is String && eventId.isNotEmpty) {
+    metadata[cm.MetadataKeys.eventId] = eventId;
+  }
   final activity = raw['activity_type'];
   if (activity is String) metadata[cm.MetadataKeys.activityType] = activity;
   final lastModified = raw['last_modified_at'];
@@ -327,6 +492,14 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   if (workout is Map) {
     metadata[cm.MetadataKeys.watchWorkout] = Map<String, dynamic>.from(workout);
   }
+  // The planned-vs-actual review of an Apple Watch run started from today's
+  // workout, the shape the phone's own runner writes. The three keys travel
+  // as a group or not at all: `plan_workout_id` links the run to the plan
+  // workout in the database matcher (decisions § 2079), and a link with no
+  // review, or a review naming no workout, would render half a workout
+  // section. A malformed group is dropped, never the run.
+  final review = _workoutReviewFromWatch(raw);
+  if (review != null) metadata.addAll(review);
 
   return cm.Run(
     id: id,
@@ -339,6 +512,16 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   );
 }
 
+/// The visibility a watch run is saved with: `true` only when the wrist
+/// stamped `is_public: true` — the runner's `privacy_default` of `public`,
+/// snapshotted when the run stopped. Everything else is null, which leaves the
+/// column to its default (private), and never `false`: `saveRun` upserts and
+/// strips nulls, so a `false` on a re-delivered run would un-publish one the
+/// runner has since shared, where a null cannot change it. The same idiom
+/// `run_screen` saves the phone's own runs with.
+bool? isPublicFromWatchPayload(Map<String, dynamic> raw) =>
+    raw['is_public'] == true ? true : null;
+
 /// Parse a run-source enum by name with [cm.RunSource.watch] as the
 /// default. Used for the watch-payload `source` field.
 cm.RunSource parseRunSource(String raw) {
@@ -347,3 +530,25 @@ cm.RunSource parseRunSource(String raw) {
   }
   return cm.RunSource.watch;
 }
+
+Map<String, dynamic>? _workoutReviewFromWatch(Map<String, dynamic> raw) {
+  final id = raw['plan_workout_id'];
+  final adherence = raw['workout_adherence'];
+  final steps = raw['workout_step_results'];
+  if (id is! String || id.isEmpty) return null;
+  if (adherence is! String ||
+      !const {'completed', 'partial', 'abandoned'}.contains(adherence)) {
+    return null;
+  }
+  if (steps is! List || steps.any((e) => e is! Map)) return null;
+  return <String, dynamic>{
+    cm.MetadataKeys.planWorkoutId: id,
+    cm.MetadataKeys.workoutAdherence: adherence,
+    cm.MetadataKeys.workoutStepResults: [
+      for (final e in steps) Map<String, dynamic>.from(e as Map),
+    ],
+  };
+}
+
+double? _finiteOrNull(Object? v) =>
+    v is num && v.toDouble().isFinite ? v.toDouble() : null;

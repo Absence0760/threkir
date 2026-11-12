@@ -21,6 +21,7 @@ class _FakeApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     begins++;
     if (beginError != null) throw beginError!;
@@ -35,6 +36,7 @@ class _FakeApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     if (pingError != null) throw pingError!;
     pings.add({

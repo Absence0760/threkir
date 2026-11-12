@@ -49,3 +49,127 @@ test('renderCoachMarkdown preserves emoji, accents, em-dash and curly quotes ver
 	// drops out).
 	assert.match(out, /😅[\s\S]*café/u, 'emoji precedes café with content intact');
 });
+
+const hrefsOf = (html: string) => [...html.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+
+test('renderCoachMarkdown removes script, style and embedding elements outright', () => {
+	const out = renderCoachMarkdown(
+		'hi <script>alert(1)</script><style>body{display:none}</style>' +
+			'<iframe src="https://evil.example"></iframe><object data="x"></object>' +
+			'<embed src="x"><form action="https://evil.example"><input name="pw"></form>',
+	).toLowerCase();
+	for (const tag of ['<script', '<style', '<iframe', '<object', '<embed', '<form', '<input']) {
+		assert.ok(!out.includes(tag), `${tag} survived: ${out}`);
+	}
+	assert.ok(!out.includes('alert(1)'), 'script text is not left behind as copy');
+	assert.ok(out.includes('hi'));
+});
+
+test('renderCoachMarkdown renders no image, so a reply cannot load a remote pixel', () => {
+	// `img` is not on the allow-list: a markdown image in an LLM reply would
+	// otherwise fetch an attacker URL with the reader's IP the moment the
+	// bubble paints.
+	const out = renderCoachMarkdown('![pace chart](https://tracker.example/p.gif?u=1)');
+	assert.ok(!/<img/i.test(out), out);
+	assert.ok(!out.includes('tracker.example'), out);
+});
+
+test('renderCoachMarkdown drops an svg or math payload with its handlers', () => {
+	const out = renderCoachMarkdown(
+		'<svg onload="alert(1)"><circle r="5"/></svg><math><mi xlink:href="javascript:alert(1)">x</mi></math>',
+	);
+	assert.ok(!/<svg|<math|onload|javascript:/i.test(out), out);
+});
+
+test('renderCoachMarkdown keeps only http(s), mailto and root-relative app hrefs', () => {
+	const out = renderCoachMarkdown(
+		[
+			'[a](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)',
+			'[b](vbscript:msgbox(1))',
+			'[c](tel:+15551234567)',
+			'[d](//evil.example/x)',
+			'[e](mailto:coach@threkir.com)',
+			'[f](HTTPS://threkir.com/plan)',
+			'[g](/runs/abc)',
+		].join(' '),
+	);
+	assert.deepEqual(hrefsOf(out), ['mailto:coach@threkir.com', 'HTTPS://threkir.com/plan', '/runs/abc']);
+});
+
+test('renderCoachMarkdown refuses every protocol-relative spelling of an app path', () => {
+	const out = renderCoachMarkdown(
+		'<a href="//evil.example">a</a> <a href="/\\evil.example">b</a> ' +
+			'<a href="/\t/evil.example">c</a> <a href="/ /evil.example">d</a>',
+	);
+	assert.deepEqual(hrefsOf(out), [], out);
+});
+
+// The coach's plan handoff (system_prompt.ts planHandoffAddendum) writes this
+// link; the query string must survive intact and the anchor must navigate in
+// place, which SvelteKit's router only does for an anchor with no `target`.
+test('renderCoachMarkdown keeps a plan-builder deep link in-app with its query string', () => {
+	const href = '/plans/new?describe=Half%20marathon%20on%202026-12-06%2C%204%20days%20a%20week';
+	const out = renderCoachMarkdown(`Ready when you are: [Build this plan](${href})`);
+	assert.deepEqual(hrefsOf(out), [href], out);
+	assert.ok(!/target=/.test(out), `an app link must not open a new tab: ${out}`);
+	assert.ok(out.includes('rel="noopener noreferrer"'), out);
+	assert.ok(out.includes('>Build this plan</a>'), out);
+});
+
+// The coach's fuelling handoff (system_prompt.ts fuelHandoffAddendum) writes
+// this link; it must stay in-app with every query parameter intact.
+test('renderCoachMarkdown keeps a fuelling-plan link in-app with its query string', () => {
+	const out = renderCoachMarkdown('[Plan your fuelling](/nutrition/fuel?duration=9000&carbs=70&heat=1)');
+	// The serialised attribute escapes `&`; the browser reads it back as `&`.
+	assert.deepEqual(hrefsOf(out), ['/nutrition/fuel?duration=9000&amp;carbs=70&amp;heat=1'], out);
+	assert.ok(!/target=/.test(out), `an app link must not open a new tab: ${out}`);
+	assert.ok(out.includes('>Plan your fuelling</a>'), out);
+});
+
+// The plan-edit handoff (planEditHandoffAddendum) links onto the runner's own
+// plan page with the change request in `adjust`.
+test('renderCoachMarkdown keeps a plan-edit deep link in-app with its query string', () => {
+	const href = '/plans/11111111-2222-4333-8444-555555555555?adjust=Move%20my%20long%20run%20to%20Sunday';
+	const out = renderCoachMarkdown(`Here you go: [Adjust my plan](${href})`);
+	assert.deepEqual(hrefsOf(out), [href], out);
+	assert.ok(!/target=/.test(out), `an app link must not open a new tab: ${out}`);
+});
+
+test('renderCoachMarkdown keeps the forced new tab on an external link next to an app link', () => {
+	const out = renderCoachMarkdown('[run](/runs/abc) [site](https://threkir.com)');
+	assert.match(out, /href="\/runs\/abc" rel="noopener noreferrer">run/, out);
+	assert.match(out, /href="https:\/\/threkir\.com" target="_blank"/, out);
+});
+
+test('renderCoachMarkdown is not fooled by an entity-encoded or whitespace-split javascript: scheme', () => {
+	const out = renderCoachMarkdown(
+		'<a href="&#106;avascript:alert(1)">x</a> <a href="java\tscript:alert(1)">y</a> <a href=" javascript:alert(1)">z</a>',
+	);
+	assert.deepEqual(hrefsOf(out), [], out);
+	assert.ok(!/javascript/i.test(out), out);
+});
+
+test('renderCoachMarkdown strips style and id, so a reply cannot restyle or clobber the page', () => {
+	const out = renderCoachMarkdown(
+		'<span style="position:fixed;inset:0;z-index:9999" id="currentUser">overlay</span>' +
+			'<p name="config" data-x="1">p</p>',
+	);
+	assert.ok(out.includes('overlay'));
+	assert.ok(!/style\s*=|id\s*=|name\s*=|data-x/i.test(out), out);
+});
+
+test('renderCoachMarkdown forces a new tab and no opener even when the reply sets its own target', () => {
+	const out = renderCoachMarkdown('<a href="https://threkir.com" target="_self" rel="opener">go</a>');
+	assert.ok(out.includes('target="_blank"'), out);
+	assert.ok(out.includes('rel="noopener noreferrer"'), out);
+	assert.ok(!out.includes('_self') && !/rel="opener"/.test(out), out);
+});
+
+test('renderCoachMarkdown keeps the formatting a training reply actually uses', () => {
+	const out = renderCoachMarkdown(
+		'## Week 3\n\n| Day | Run |\n| --- | --- |\n| Tue | **6 x 800 m** |\n\n- easy\n- *long*\n\n> rest',
+	);
+	for (const tag of ['<h2>', '<table>', '<th>', '<td>', '<strong>', '<ul>', '<li>', '<em>', '<blockquote>']) {
+		assert.ok(out.includes(tag), `${tag} missing from ${out}`);
+	}
+});

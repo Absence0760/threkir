@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Multi-distance race-time predictor card on /dashboard (backlog #11).
@@ -15,13 +16,6 @@ import { insertRun } from '../fixtures/simulate';
  * cap). It also pins the self-hide contract: a runner with no qualifying run
  * never sees the card.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('dashboard race-time predictor', () => {
 	let runner: SagaUser;
@@ -70,7 +64,7 @@ test.describe('dashboard race-time predictor', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -98,7 +92,7 @@ test.describe('dashboard race-time predictor', () => {
 
 	test('hides the card for a runner with no qualifying effort', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: empty.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

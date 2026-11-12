@@ -15,6 +15,10 @@
 //!   batch its segment-effort rows (port of web
 //!   `segments/auto_segment_effort.ts`; reuses [`segments`])
 //! - [`fix`] — the GPS fix domain model + the RMC/GGA accumulator
+//! - [`gps_distance`] — the spec-v1 GPS distance estimator: Kalman-filtered
+//!   position, Doppler speed-over-ground credit, a stationary floor and a gap
+//!   re-anchor (port of `scripts/gps_distance/reference.py`, held to the shared
+//!   `fixtures/gps_distance_vectors.json`)
 //! - [`course`] — breadcrumb course polyline, nearest-point projection,
 //!   off-course alert latch, and the panel-fit pixel mapping (fifth parity
 //!   port: web `route_snap.ts` / `route_geometry.ts` + the mobile
@@ -225,8 +229,10 @@
 //!   the age-band vocabulary + crown-label enum (port of web
 //!   `segments/segments.ts`)
 //! - [`track_projection`] — project a lat/lng track into panel x/y for a
-//!   preview thumbnail (port of web `routes/track_projection.ts`; the Dart twin
-//!   `projectTrack` lives inside `track_preview.dart`)
+//!   preview thumbnail, plus the `is_track_renderable` 5 m span gate that
+//!   refuses to draw a stationary jitter cluster (port of web
+//!   `routes/track_projection.ts`; the Dart twin `projectTrack` /
+//!   `isTrackRenderable` lives inside `track_preview.dart`)
 //! - [`run_heatmap`] — grid-quantise many tracks into clamped weighted cells +
 //!   the fit box (port of web `routes/run_heatmap.ts`; the MapLibre GeoJSON
 //!   emitters are web-only)
@@ -305,6 +311,7 @@ pub mod gnss_mode;
 pub mod gnss_power;
 pub mod gnss_signal;
 pub mod goals;
+pub mod gps_distance;
 pub mod grade_adjusted_pace;
 pub mod guided_runs;
 pub mod hr_drain;
@@ -329,6 +336,7 @@ pub mod plan_adaptive_replan;
 pub mod plan_adherence;
 pub mod plan_progress;
 pub mod plan_replan;
+pub mod ppg;
 pub mod pr_recency;
 pub mod privacy;
 pub mod profiles;
@@ -349,6 +357,7 @@ pub mod route_geometry;
 pub mod route_gpx;
 pub mod route_markers;
 pub mod route_simplify;
+pub mod run_duration;
 pub mod run_heatmap;
 pub mod run_stats;
 pub mod run_store;

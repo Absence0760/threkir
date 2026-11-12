@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /dashboard Goals section — full CRUD round-trip from an empty state.
@@ -42,16 +43,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 	let restoreCurrentWeek: (() => Promise<void>) | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
-		await context.addInitScript((args: { key: string }) => {
-			localStorage.removeItem(args.key);
-			localStorage.removeItem('run_app.goals_v1');
-		}, { key: GOAL_KEY });
+		await acceptCookieConsent(context, { [GOAL_KEY]: null, 'run_app.goals_v1': null });
 
 		// The seed sets `weekly_mileage_goal_m=50000` on runner@test.com,
 		// which the dashboard surfaces as a synthetic Weekly distance
@@ -81,14 +73,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 			await restoreCurrentWeek();
 			restoreCurrentWeek = null;
 		}
-		await context.addInitScript((args: { key: string }) => {
-			try {
-				localStorage.removeItem(args.key);
-				localStorage.removeItem('run_app.goals_v1');
-			} catch (_) {
-				/* noop */
-			}
-		}, { key: GOAL_KEY });
+		await setStorageOnLoad(context, { local: { [GOAL_KEY]: null, 'run_app.goals_v1': null } });
 
 		const admin = getAdminClient();
 		const { data } = await admin
@@ -111,7 +96,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 	test('create → render → edit period + target → delete', async ({ page }) => {
 		await test.step('empty state visible on first load', async () => {
 			await page.goto('/dashboard');
-			const emptyCard = page.locator('.goals-empty-card');
+			const emptyCard = page.getByTestId('goals-empty');
 			await expect(emptyCard).toBeVisible({ timeout: 10_000 });
 			await expect(emptyCard.getByRole('heading', { name: /No goals set/ }))
 				.toBeVisible();
@@ -119,7 +104,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 		});
 
 		await test.step('open editor via empty-state Add-goal button', async () => {
-			await page.locator('.goals-empty-card').getByRole('button', { name: /Add goal/ }).click();
+			await page.getByTestId('goals-empty').getByRole('button', { name: /Add goal/ }).click();
 			await expect(page.locator('.modal-header h2', { hasText: 'Edit goal' }))
 				.toBeVisible({ timeout: 5_000 });
 		});
@@ -188,7 +173,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 			await expect(page.locator('.modal')).toHaveCount(0);
 
 			await expect(page.locator('.goal-card')).toHaveCount(0);
-			await expect(page.locator('.goals-empty-card')).toBeVisible();
+			await expect(page.getByTestId('goals-empty')).toBeVisible();
 		});
 	});
 
@@ -196,8 +181,8 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 		page,
 	}) => {
 		await page.goto('/dashboard');
-		await expect(page.locator('.goals-empty-card')).toBeVisible({ timeout: 10_000 });
-		await page.locator('.goals-empty-card').getByRole('button', { name: /Add goal/ }).click();
+		await expect(page.getByTestId('goals-empty')).toBeVisible({ timeout: 10_000 });
+		await page.getByTestId('goals-empty').getByRole('button', { name: /Add goal/ }).click();
 
 		const modal = page.locator('.modal');
 		await expect(modal.locator('.modal-header h2', { hasText: 'Edit goal' }))

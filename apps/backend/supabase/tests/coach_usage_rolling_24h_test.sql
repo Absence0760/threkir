@@ -1,6 +1,7 @@
 -- Pins migration 20261002_001 — coach-usage rolling 24h sum.
 --
--- The cap RPCs (increment / get / decrement) now return the SUM of
+-- The cap RPCs (increment / get, and the spend + ticketed refund that
+-- replaced decrement in 20270829000011) now return or act on the SUM of
 -- message_count across daily buckets whose `usage_date` falls in the
 -- last 24h instead of just today's bucket. Closes the UTC-midnight
 -- gaming window flagged by audit/coach Medium #5.
@@ -14,6 +15,7 @@ declare
   v_today_count integer;
   v_after_inc integer;
   v_after_dec integer;
+  v_spend uuid;
 begin
   perform set_config('request.jwt.claim.role', 'service_role', true);
   insert into auth.users (id, email, encrypted_password,
@@ -52,10 +54,19 @@ begin
     raise exception 'increment_coach_usage rolling: expected 2 (yesterday + today), got %', v_after_inc;
   end if;
 
-  -- decrement_coach_usage drops today by 1; rolling sum = 1.
-  v_after_dec := decrement_coach_usage(v_user);
-  if v_after_dec <> 1 then
-    raise exception 'decrement_coach_usage rolling: expected 1, got %', v_after_dec;
+  -- A spend + its ticketed refund nets out against the same rolling sum:
+  -- the spend returns 3 (yesterday + two today), the refund brings it to 2.
+  select s.used, s.spend_id into v_after_inc, v_spend
+    from spend_coach_usage_slot(v_user) s;
+  if v_after_inc <> 3 then
+    raise exception 'spend_coach_usage_slot rolling: expected 3, got %', v_after_inc;
+  end if;
+  if not refund_coach_usage_slot(v_user, v_spend) then
+    raise exception 'refund_coach_usage_slot rolling: the spend''s own ticket must refund';
+  end if;
+  v_after_dec := get_coach_usage(v_user);
+  if v_after_dec <> 2 then
+    raise exception 'refund_coach_usage_slot rolling: expected 2, got %', v_after_dec;
   end if;
 
   -- Cleanup.
@@ -73,7 +84,7 @@ select pass(
   'increment_coach_usage rolling: returns the 24h sum, not just today'
 );
 select pass(
-  'decrement_coach_usage rolling: returns the 24h sum after the decrement'
+  'spend_coach_usage_slot + refund_coach_usage_slot act on the same 24h sum'
 );
 
 select * from finish();

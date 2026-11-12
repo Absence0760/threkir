@@ -10,8 +10,71 @@ import '../lib/widgets/event_form_sheet.dart';
 /// stub EventRow so the success path + field self-hiding can be asserted
 /// end-to-end. [throwOnCreate] drives the failure-surface path.
 class _CapturingSocialService extends SocialService {
-  _CapturingSocialService({this.throwOnCreate});
+  _CapturingSocialService({
+    this.throwOnCreate,
+    this.chargesEnabled = false,
+    this.plans = const [],
+    this.routines = const [],
+    this.throwOnPricing,
+  });
   final Object? throwOnCreate;
+  final bool chargesEnabled;
+  final List<({String id, String title})> plans;
+  final List<({String id, String title})> routines;
+  final Object? throwOnPricing;
+
+  int? capturedCapacity;
+  DateTime? capturedUntil;
+  int? capturedCount;
+  Map<String, Object?>? capturedPricing;
+  String? capturedSessionPlanId;
+  String? capturedGymRoutineId;
+  String? routinesRequestedFor;
+
+  @override
+  Future<({bool chargesEnabled, String? defaultCurrency})?>
+      fetchPayoutCapability() async =>
+          (chargesEnabled: chargesEnabled, defaultCurrency: 'eur');
+
+  @override
+  Future<List<({String id, String title})>> fetchSessionPlanOptions() async =>
+      plans;
+
+  @override
+  Future<void> setEventPricing({
+    required String eventId,
+    required int priceCents,
+    required String currency,
+    required String refundPolicy,
+    required int salesCloseOffsetMinutes,
+  }) async {
+    capturedPricing = {
+      'eventId': eventId,
+      'priceCents': priceCents,
+      'currency': currency,
+      'refundPolicy': refundPolicy,
+      'salesClose': salesCloseOffsetMinutes,
+    };
+    if (throwOnPricing != null) throw throwOnPricing!;
+  }
+
+  @override
+  Future<void> setEventSessionPlan(String eventId, String? sessionPlanId) async {
+    capturedSessionPlanId = sessionPlanId;
+  }
+
+  @override
+  Future<List<({String id, String title})>> fetchClubGymRoutineOptions(
+    String clubId,
+  ) async {
+    routinesRequestedFor = clubId;
+    return routines;
+  }
+
+  @override
+  Future<void> setEventGymRoutine(String eventId, String? gymRoutineId) async {
+    capturedGymRoutineId = gymRoutineId;
+  }
 
   bool createCalled = false;
   String? capturedTitle;
@@ -21,6 +84,8 @@ class _CapturingSocialService extends SocialService {
   EventGymTemplate? capturedGymTemplate;
   String? capturedRecurrenceFreq;
   bool? capturedIsPublic;
+  String? capturedTimezone;
+  DateTime? capturedStartsAt;
 
   @override
   Future<EventRow> createEvent({
@@ -44,8 +109,11 @@ class _CapturingSocialService extends SocialService {
     DateTime? recurrenceUntil,
     int? recurrenceCount,
     bool isPublic = true,
+    String? timezone,
   }) async {
     createCalled = true;
+    capturedTimezone = timezone;
+    capturedStartsAt = startsAt;
     capturedTitle = title;
     capturedCategory = category;
     capturedDiscipline = discipline;
@@ -53,8 +121,12 @@ class _CapturingSocialService extends SocialService {
     capturedGymTemplate = gymTemplate;
     capturedRecurrenceFreq = recurrenceFreq;
     capturedIsPublic = isPublic;
+    capturedCapacity = capacity;
+    capturedUntil = recurrenceUntil;
+    capturedCount = recurrenceCount;
     if (throwOnCreate != null) throw throwOnCreate!;
     return EventRow(
+      raceStartMode: 'host_go',
       id: 'event-new',
       clubId: clubId,
       title: title,
@@ -70,7 +142,12 @@ class _CapturingSocialService extends SocialService {
 class _Launcher extends StatefulWidget {
   final SocialService social;
   final bool clubIsPublic;
-  const _Launcher({required this.social, this.clubIsPublic = true});
+  final Future<String?> Function() deviceTimeZone;
+  const _Launcher({
+    required this.social,
+    this.clubIsPublic = true,
+    this.deviceTimeZone = _noZone,
+  });
 
   @override
   State<_Launcher> createState() => _LauncherState();
@@ -93,6 +170,7 @@ class _LauncherState extends State<_Launcher> {
                   social: widget.social,
                   clubId: 'club-1',
                   clubIsPublic: widget.clubIsPublic,
+                  deviceTimeZone: widget.deviceTimeZone,
                 );
                 setState(() => _result = r ?? '<cancelled>');
               },
@@ -106,10 +184,13 @@ class _LauncherState extends State<_Launcher> {
   }
 }
 
+Future<String?> _noZone() async => null;
+
 Future<void> _openSheet(
   WidgetTester tester, {
   bool clubIsPublic = true,
   SocialService? social,
+  Future<String?> Function() deviceTimeZone = _noZone,
 }) async {
   // Larger viewport so the scrollable form actually paints all rows.
   await tester.binding.setSurfaceSize(const Size(600, 1200));
@@ -118,12 +199,47 @@ Future<void> _openSheet(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: _Launcher(
-          social: social ?? SocialService(), clubIsPublic: clubIsPublic)));
+          social: social ?? SocialService(),
+          clubIsPublic: clubIsPublic,
+          deviceTimeZone: deviceTimeZone)));
   await tester.tap(find.text('Open'));
   await tester.pumpAndSettle();
 }
 
 void main() {
+  group('defaultEventStart', () {
+    test('is tomorrow, an hour later, to the minute', () {
+      expect(defaultEventStart(DateTime(2026, 6, 10, 9, 15, 42, 500)),
+          DateTime(2026, 6, 11, 10, 15));
+    });
+
+    test('rolls over the month and the year', () {
+      expect(defaultEventStart(DateTime(2026, 4, 30, 8, 0)),
+          DateTime(2026, 5, 1, 9, 0));
+      expect(defaultEventStart(DateTime(2026, 12, 31, 12, 5)),
+          DateTime(2027, 1, 1, 13, 5));
+    });
+
+    test('a late-evening start carries past midnight into the next day', () {
+      // 23:30 + 1 day + 1 hour = the day after tomorrow at 00:30.
+      expect(defaultEventStart(DateTime(2026, 1, 31, 23, 30)),
+          DateTime(2026, 2, 2, 0, 30));
+    });
+
+    test('handles a leap day', () {
+      expect(defaultEventStart(DateTime(2028, 2, 28, 7, 45)),
+          DateTime(2028, 2, 29, 8, 45));
+      expect(defaultEventStart(DateTime(2028, 2, 29, 7, 45)),
+          DateTime(2028, 3, 1, 8, 45));
+    });
+
+    test('drops seconds so the web editor does not move the start', () {
+      final start = defaultEventStart(DateTime(2026, 6, 10, 9, 15, 59, 999));
+      expect(start.second, 0);
+      expect(start.millisecond, 0);
+    });
+  });
+
   group('showEventFormSheet', () {
     testWidgets('opens as a full-screen dialog with the New event heading',
         (tester) async {
@@ -235,6 +351,19 @@ void main() {
       expect(find.text('result=ok'), findsOneWidget);
     });
 
+    testWidgets(
+        'the default start is whole minutes, so a later web save keeps the '
+        'instant RSVPs are keyed to', (tester) async {
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Saturday 5k');
+      await tapCreate(tester);
+      final starts = fake.capturedStartsAt!;
+      expect(
+          [starts.second, starts.millisecond, starts.microsecond], [0, 0, 0]);
+    });
+
     testWidgets('a run event submits distance in metres + run category',
         (tester) async {
       final fake = _CapturingSocialService();
@@ -295,6 +424,35 @@ void main() {
       expect(fake.capturedDistanceM, isNull);
     });
 
+    testWidgets('the event is stamped with the device zone it was picked in',
+        (tester) async {
+      // The picked date + time are the organiser's wall clock, and a series
+      // stays on it only if the row says which zone that is. Without it a
+      // mobile-created series expanded in every viewer's own zone.
+      final fake = _CapturingSocialService();
+      await _openSheet(
+        tester,
+        social: fake,
+        deviceTimeZone: () async => 'America/New_York',
+      );
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Wednesday night run');
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Weekly'));
+      await tester.pumpAndSettle();
+      await tapCreate(tester);
+      expect(fake.capturedTimezone, 'America/New_York');
+    });
+
+    testWidgets('a device that cannot name its zone sends none', (tester) async {
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Wednesday night run');
+      await tapCreate(tester);
+      expect(fake.createCalled, isTrue);
+      expect(fake.capturedTimezone, isNull);
+    });
+
     testWidgets('picking Weekly threads a weekly recurrence freq',
         (tester) async {
       final fake = _CapturingSocialService();
@@ -335,6 +493,199 @@ void main() {
       expect(find.textContaining('boom-create'), findsNothing);
       // The sheet stays open (result not yet set on the launcher).
       expect(find.textContaining('result='), findsNothing);
+    });
+  });
+  group('showEventFormSheet — capacity, series end, price, session plan', () {
+    Future<void> tapCreate(WidgetTester tester) async {
+      final btn = find.widgetWithText(FilledButton, 'Create event');
+      await tester.ensureVisible(btn);
+      await tester.tap(btn);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> enter(WidgetTester tester, Key key, String text) async {
+      final field = find.byKey(key);
+      await tester.ensureVisible(field);
+      await tester.enterText(field, text);
+      await tester.pump();
+    }
+
+    testWidgets('a capacity is submitted; a capacity below 1 is refused inline',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Spin');
+      await enter(tester, const Key('event-form-capacity'), '0');
+      await tapCreate(tester);
+      expect(fake.createCalled, isFalse);
+      expect(find.text('Enter a whole number of 1 or more, or leave it empty.'),
+          findsOneWidget);
+
+      await enter(tester, const Key('event-form-capacity'), '12');
+      await tapCreate(tester);
+      expect(fake.capturedCapacity, 12);
+      expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    testWidgets('a series takes an occurrence count; a one-off sends none',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Tempo');
+      expect(find.byKey(const Key('event-form-count')), findsNothing);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Weekly'));
+      await tester.pumpAndSettle();
+      await enter(tester, const Key('event-form-count'), '521');
+      await tapCreate(tester);
+      expect(fake.createCalled, isFalse);
+      await enter(tester, const Key('event-form-count'), '8');
+      await tapCreate(tester);
+      expect(fake.capturedRecurrenceFreq, 'weekly');
+      expect(fake.capturedCount, 8);
+      expect(fake.capturedUntil, isNull);
+    });
+
+    testWidgets('a host who cannot take payments sees the charge toggle disabled',
+        (tester) async {
+      await _openSheet(tester, social: _CapturingSocialService());
+      final toggle = find.byKey(const Key('event-form-charge'));
+      await tester.ensureVisible(toggle);
+      expect(tester.widget<SwitchListTile>(toggle).onChanged, isNull);
+      expect(find.text('Set up payouts on the web to charge for events.'),
+          findsOneWidget);
+      expect(find.byKey(const Key('event-form-price')), findsNothing);
+    });
+
+    testWidgets(
+        'a charges-enabled host prices the event: validated, then written in '
+        'minor units after the create', (tester) async {
+      final fake = _CapturingSocialService(chargesEnabled: true);
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Reformer');
+      final toggle = find.byKey(const Key('event-form-charge'));
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      // The account's settlement currency is the default.
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const Key('event-form-currency')))
+              .controller!
+              .text,
+          'eur');
+
+      await enter(tester, const Key('event-form-price'), '0.40');
+      await tapCreate(tester);
+      expect(fake.createCalled, isFalse);
+      expect(find.text('Enter a price of at least 0.50.'), findsOneWidget);
+
+      await enter(tester, const Key('event-form-price'), '22,50');
+      await tapCreate(tester);
+      expect(fake.createCalled, isTrue);
+      expect(fake.capturedPricing, {
+        'eventId': 'event-new',
+        'priceCents': 2250,
+        'currency': 'eur',
+        'refundPolicy': 'full_until_24h',
+        'salesClose': 0,
+      });
+      expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    testWidgets('a price that fails to save is reported, not retried',
+        (tester) async {
+      final fake = _CapturingSocialService(
+          chargesEnabled: true, throwOnPricing: Exception('rls'));
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Reformer');
+      final toggle = find.byKey(const Key('event-form-charge'));
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      await enter(tester, const Key('event-form-price'), '22');
+      await tapCreate(tester);
+      expect(fake.createCalled, isTrue);
+      expect(
+          find.text('result=Event created, but saving the price failed. '
+              'Set the price from the event on the web.'),
+          findsOneWidget);
+    });
+
+    testWidgets('a class attaches the picked session plan after the create',
+        (tester) async {
+      final fake = _CapturingSocialService(
+          plans: const [(id: 'plan-1', title: 'Hip openers')]);
+      await _openSheet(tester, social: fake);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Flow');
+      final picker = find.byKey(const Key('event-form-session-plan'));
+      await tester.ensureVisible(picker);
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hip openers').last);
+      await tester.pumpAndSettle();
+      await tapCreate(tester);
+      expect(fake.capturedSessionPlanId, 'plan-1');
+      expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    Future<void> pick(WidgetTester tester, Key key, String label) async {
+      final picker = find.byKey(key);
+      await tester.ensureVisible(picker);
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a class attaches the picked club routine after the create',
+        (tester) async {
+      final fake = _CapturingSocialService(
+          routines: const [(id: 'routine-1', title: 'Lower Body')]);
+      await _openSheet(tester, social: fake);
+      expect(fake.routinesRequestedFor, 'club-1');
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Strength');
+      await pick(tester, const Key('event-form-gym-routine'), 'Lower Body');
+      await tapCreate(tester);
+      expect(fake.capturedGymRoutineId, 'routine-1');
+      expect(fake.capturedSessionPlanId, isNull);
+      expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    testWidgets('picking a routine clears a picked session plan',
+        (tester) async {
+      final fake = _CapturingSocialService(
+        plans: const [(id: 'plan-1', title: 'Hip openers')],
+        routines: const [(id: 'routine-1', title: 'Lower Body')],
+      );
+      await _openSheet(tester, social: fake);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Strength');
+      await pick(tester, const Key('event-form-session-plan'), 'Hip openers');
+      await pick(tester, const Key('event-form-gym-routine'), 'Lower Body');
+      await tapCreate(tester);
+      expect(fake.capturedGymRoutineId, 'routine-1');
+      expect(fake.capturedSessionPlanId, isNull);
+    });
+
+    testWidgets('a club with no routine templates says so under the picker',
+        (tester) async {
+      await _openSheet(tester, social: _CapturingSocialService());
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+            'This club has no routine templates yet. Publish a routine to the club first.'),
+        findsOneWidget,
+      );
     });
   });
 }

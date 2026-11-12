@@ -41,10 +41,17 @@ Output: `dist/generate-route.zip` (esbuild bundle, no native/SDK deps). CI's
 | Var | Required | Notes |
 |-----|----------|-------|
 | `GRAPHHOPPER_URL` | yes (prod) | Self-hosted GraphHopper base URL (`apps/job_worker/graphhopper/`). Unset → the handler returns 501 and the client falls back to its in-browser OSRM heuristic. |
+| `SECRETS_CIPHERTEXT` + `SECRETS_CONTEXT` | yes (prod) | The two `X-Engine-Key` credentials (`GRAPHHOPPER_API_KEY`, `GRAPH_CYCLE_API_KEY`) as one KMS blob, decrypted once per cold start by `src/lib/core/lambda_secrets.ts`. They are **not** environment variables: `lambda:UpdateFunctionCode` returns a function's environment to anything that can deploy (decisions § 1671). Absent or undecryptable → 503, not a degrade. |
 
 ## Fallback contract
 
-The web client treats any non-200 (501 unconfigured / 502 engine down / 503
-unhandled) as a signal to fall back to the legacy in-browser OSRM loop
-generator, so generate-by-distance keeps working through an engine outage or in
-local dev without GraphHopper running.
+The web client treats any non-200 (501 unconfigured / 422 no loop at this start
+/ 502 engine down / 503 unhandled) as a signal to fall back to the legacy
+in-browser OSRM loop generator, so generate-by-distance keeps working through an
+engine outage or in local dev without GraphHopper running.
+
+The 422/502 split is load-bearing for observability, not just for the client:
+this Lambda logs the alarm-driving `[generate-route] engine_unreachable` line on
+**every** 502, so only a transport failure may carry that status. An engine that
+answered — graph-cycle reporting loop-poor, every seed raising `no_route`, or a
+candidate set the selector declines — is 422, and pages nobody.

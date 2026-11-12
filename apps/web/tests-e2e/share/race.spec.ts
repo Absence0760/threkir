@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * `/share/race/[id]` — the public, anon, SSR race-listing share page.

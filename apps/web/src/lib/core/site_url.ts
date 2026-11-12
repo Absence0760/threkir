@@ -21,7 +21,7 @@ export const DEFAULT_SITE_URL = 'https://threkir.com';
 
 /**
  * The origin to build absolute URLs against, given whatever env the caller can
- * see (`$env/dynamic/public` in a route, `process.env` in a Lambda).
+ * see (`$app/env/public` in a route, `process.env` in a Lambda).
  *
  * Takes the value rather than reading the env itself, because the two runtimes
  * expose it differently and a module that reached for one would not load in the

@@ -10,6 +10,8 @@ import 'package:gpx_parser/gpx_parser.dart';
 import 'package:uuid/uuid.dart';
 
 import 'embedded_bests.dart';
+import 'import_failures.dart';
+import 'import_refusal.dart';
 import 'imported_run_id.dart';
 
 /// Parse a Strava-formatted activity date string into a [DateTime].
@@ -65,9 +67,18 @@ DateTime? parseStravaDate(String raw) {
 /// column is absent. [lowerHeader] must be lower-cased (as the importer keeps
 /// it). Mirrors web `stravaDistanceMetres` in strava-zip-header.ts.
 double stravaCsvDistanceMetres(List<String> lowerHeader, List<dynamic> row) {
-  double parse(int i) => (i >= 0 && i < row.length)
-      ? (double.tryParse(row[i].toString().replaceAll(',', '')) ?? 0)
-      : 0;
+  // `?? 0` catches an UNPARSEABLE cell, which is not the same question as an
+  // unusable one: `double.tryParse` returns a value for the literals `NaN`,
+  // `Infinity` and `-Infinity`, so those three fell through to the imported
+  // run's `distance_m` — a `numeric(10, 2)` column with no CHECK, whose
+  // aggregates then read NaN. The web twin this function's doc names has
+  // guarded on `Number.isFinite` since it was written; this half only tested
+  // for null, which is the drift.
+  double parse(int i) {
+    if (i < 0 || i >= row.length) return 0;
+    final v = double.tryParse(row[i].toString().replaceAll(',', ''));
+    return v != null && v.isFinite ? v : 0;
+  }
   int findAny(List<String> names) {
     for (final n in names) {
       final i = lowerHeader.indexWhere((h) => h.trim() == n);
@@ -111,8 +122,10 @@ class StravaImporter {
   static const _uuid = Uuid();
 
   /// Read and parse a Strava export zip from disk.
-  /// Returns the runs that could be successfully extracted, plus a list of
-  /// any per-file errors so the UI can show "imported X of Y" messaging.
+  /// Returns the runs that could be successfully extracted, plus a
+  /// classified [ImportFailureLog] naming each activity that did not make
+  /// it and why — a bare count can't tell a migrant whether re-running the
+  /// import will land the missing runs or never will.
   ///
   /// Heavy lifting (ZipDecoder + per-file XML/FIT parsing) runs in a
   /// background isolate via [compute] so the UI thread stays free during
@@ -126,11 +139,14 @@ class StravaImporter {
     final size = await zipFile.length();
     if (size > maxZipBytes) {
       final mb = (size / (1024 * 1024)).round();
-      throw FormatException(
+      throw ImportRefused(
+        ImportRefusalKind.tooLarge,
         'Strava ZIP too large ($mb MB). The 500 MB cap defends '
         'against OOM on the parser. Split into yearly exports from '
         'Strava → Settings → My Account → Download or Delete Your '
         'Account.',
+        sizeMb: mb,
+        limitMb: maxZipBytes ~/ (1024 * 1024),
       );
     }
     final bytes = await zipFile.readAsBytes();
@@ -148,13 +164,15 @@ class StravaImporter {
         .where((f) => f.name.endsWith('activities.csv'))
         .firstOrNull;
     if (csvFile == null) {
-      throw const FormatException(
+      throw const ImportRefused(ImportRefusalKind.notStravaExport,
           'Not a Strava export — no activities.csv found');
     }
 
     final csvText = utf8.decode(csvFile.content);
     final rows = const CsvDecoder().convert(csvText);
-    if (rows.isEmpty) return StravaImportResult([], []);
+    if (rows.isEmpty) {
+      return StravaImportResult(const [], newImportFailureLog());
+    }
 
     final header = rows.first.map((c) => c.toString().toLowerCase()).toList();
     final idIdx = header.indexOf('activity id');
@@ -165,24 +183,36 @@ class StravaImporter {
     final filenameIdx = header.indexOf('filename');
 
     if (filenameIdx < 0 || dateIdx < 0) {
-      throw const FormatException('Strava CSV missing expected columns');
+      throw const ImportRefused(ImportRefusalKind.stravaColumnsMissing,
+          'Strava CSV missing expected columns');
     }
 
     final byPath = {for (final f in archive.files) f.name: f};
 
     final runs = <Run>[];
-    final errors = <StravaImportError>[];
+    final failures = newImportFailureLog();
 
     for (var i = 1; i < rows.length; i++) {
       final row = rows[i];
-      if (row.length <= filenameIdx) continue;
-      final filename = row[filenameIdx].toString();
-      if (filename.isEmpty) continue;
+      // Strava leaves `Filename` empty for a manually-entered or indoor
+      // activity — there is no track file to point at, and the row's own
+      // date / distance / elapsed time is the whole activity. Skipping those
+      // rows dropped every one of a migrating runner's manual activities with
+      // no count and no report; web's importer keeps them, trackless.
+      final filename =
+          filenameIdx < row.length ? row[filenameIdx].toString() : '';
+
+      // Read outside the try so a row that throws is still reported under
+      // the name and date the runner will recognise, not under the opaque
+      // archive path. Bounds-checked: a short row must record a failure,
+      // never throw past the per-row catch and abort the whole import.
+      final dateStr = dateIdx < row.length ? row[dateIdx].toString() : '';
+      final name = (nameIdx >= 0 && nameIdx < row.length)
+          ? row[nameIdx].toString()
+          : 'Strava activity';
 
       try {
         final activityId = idIdx >= 0 ? row[idIdx].toString() : _uuid.v4();
-        final dateStr = row[dateIdx].toString();
-        final name = nameIdx >= 0 ? row[nameIdx].toString() : 'Strava activity';
         final typeStr = typeIdx >= 0 ? row[typeIdx].toString() : 'Run';
         final csvElapsed = elapsedIdx >= 0
             ? int.tryParse(row[elapsedIdx].toString()) ?? 0
@@ -200,11 +230,16 @@ class StravaImporter {
         );
         runs.add(run);
       } catch (e) {
-        errors.add(StravaImportError(filename, e.toString()));
+        recordImportFailure(
+          failures,
+          name: name,
+          startedAt: parseStravaDate(dateStr)?.toIso8601String(),
+          error: e,
+        );
       }
     }
 
-    return StravaImportResult(runs, errors);
+    return StravaImportResult(runs, failures);
   }
 
   static Run _parseTrackFile({
@@ -217,32 +252,49 @@ class StravaImporter {
     required double fallbackDistanceMetres,
     required int fallbackDurationSeconds,
   }) {
-    final file = archive[path];
-    if (file == null) {
-      throw FormatException('Track file not found in zip: $path');
-    }
+    // An empty path is not a broken export: the row simply has no track file.
+    // A path that names one and is missing it, or names a format we can't
+    // read, still throws so the caller reports it — the export promised
+    // something it did not deliver.
+    Route? parsedRoute;
+    List<double?>? deviceDistances;
+    if (path.isNotEmpty) {
+      final file = archive[path];
+      if (file == null) {
+        // The wording is load-bearing, not decoration: classifyImportFailure
+        // buckets on the message, and neither the bare "not found" nor the
+        // bare "unknown format" matched any pattern — so the two refusals
+        // reached the report as `unknown`, which tells a migrating runner
+        // nothing about whether re-running the import can land the run. It
+        // cannot; the member is not in the file. Web throws the identical
+        // strings (decisions.md § 676).
+        throw FormatException(
+            'Malformed export: track file not found in zip: $path');
+      }
 
-    // Decompress if .gz
-    List<int> content = file.content as List<int>;
-    if (path.endsWith('.gz')) {
-      content = GZipDecoder().decodeBytes(content);
-    }
+      // Decompress if .gz
+      List<int> content = file.content as List<int>;
+      if (path.endsWith('.gz')) {
+        content = GZipDecoder().decodeBytes(content);
+      }
 
-    final lower = path.toLowerCase();
-    Route parsedRoute;
-    if (lower.contains('.gpx')) {
-      parsedRoute = RouteParser.fromGpx(utf8.decode(content));
-    } else if (lower.contains('.tcx')) {
-      parsedRoute = RouteParser.fromTcx(utf8.decode(content));
-    } else if (lower.contains('.fit')) {
-      parsedRoute = FitParser.parse(Uint8List.fromList(content));
-    } else {
-      throw FormatException('Unknown track format: $path');
+      final lower = path.toLowerCase();
+      if (lower.contains('.gpx')) {
+        parsedRoute = RouteParser.fromGpx(utf8.decode(content));
+      } else if (lower.contains('.tcx')) {
+        parsedRoute = RouteParser.fromTcx(utf8.decode(content));
+      } else if (lower.contains('.fit')) {
+        final fit = FitParser.parseWithDistances(Uint8List.fromList(content));
+        parsedRoute = fit.route;
+        deviceDistances = fit.distancesMetres;
+      } else {
+        throw FormatException('Unsupported file format: $path');
+      }
     }
 
     // Use the parsed track. Fall back to CSV-supplied numbers if the file
     // somehow has no waypoints.
-    final track = parsedRoute.waypoints
+    final track = (parsedRoute?.waypoints ?? const [])
         .map((w) => Waypoint(
               lat: w.lat,
               lng: w.lng,
@@ -251,8 +303,8 @@ class StravaImporter {
             ))
         .toList();
 
-    final distance = parsedRoute.distanceMetres > 0
-        ? parsedRoute.distanceMetres
+    final distance = (parsedRoute?.distanceMetres ?? 0) > 0
+        ? parsedRoute!.distanceMetres
         : fallbackDistanceMetres;
 
     // Strava CSV date format: "Apr 9, 2026, 7:30:00 AM"
@@ -285,6 +337,7 @@ class StravaImporter {
     // timestamps, so no fake bests are written.
     final metadata = enrichMetadataWithEmbeddedBests(
       track: track,
+      deviceDistancesMetres: deviceDistances,
       metadata: {
         MetadataKeys.title: name.isEmpty ? 'Strava import' : name,
         // Match the web importer's derivation in apps/web/src/lib/
@@ -293,7 +346,7 @@ class StravaImporter {
         MetadataKeys.activityType: _activityTypeFromStrava(stravaType),
         MetadataKeys.importedFrom: 'strava',
         MetadataKeys.stravaActivityType: stravaType,
-        MetadataKeys.importedAt: DateTime.now().toIso8601String(),
+        MetadataKeys.importedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
 
@@ -325,12 +378,6 @@ class StravaImporter {
 
 class StravaImportResult {
   final List<Run> runs;
-  final List<StravaImportError> errors;
-  const StravaImportResult(this.runs, this.errors);
-}
-
-class StravaImportError {
-  final String filename;
-  final String message;
-  const StravaImportError(this.filename, this.message);
+  final ImportFailureLog failures;
+  const StravaImportResult(this.runs, this.failures);
 }

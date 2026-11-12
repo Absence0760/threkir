@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { TrackPoint } from '$lib/types';
-	import { projectTrack, type Projected } from '$lib/routes/track_projection';
+	import type { TrackPoint } from '#lib/types.ts';
+	import { projectTrack, type Projected } from '#lib/routes/track_projection.ts';
 
 	// Compact SVG polyline thumbnail, normalised into the viewBox with
 	// a small margin. Used in list cards (runs + routes) where loading a

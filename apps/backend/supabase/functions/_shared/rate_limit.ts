@@ -6,7 +6,7 @@
 /// On denial the helper returns a 429 `Response` with a `Retry-After`
 /// header so the caller can `return` it directly:
 ///
-///   const denied = await checkRateLimit(supabase, user.id, 'parkrun-import', 4, 3600);
+///   const denied = await checkRateLimit(supabase, user.id, 'race-results-import', 8, 3600);
 ///   if (denied) return denied;
 ///
 /// On allow it returns null. EFs that don't have a user.id (cron-only
@@ -21,7 +21,35 @@
 /// `export-data` heavy zips, OAuth code exchange. Fail-closed returns
 /// 503 with a `Retry-After: 60` so the client can back off and retry.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+// The client is typed structurally, by the one method these helpers call,
+// rather than as `DbClient`. This module is on `clip-public-track`'s graph,
+// whose worker every stack-using CI job's setup probes and which must boot
+// without registry.npmjs.org (decisions § 699). `DbClient` comes from
+// `npm:@supabase/supabase-js`, and even a type-only `npm:` import makes the
+// runtime fetch the package before the worker boots (decisions § 2341). So the
+// probe function builds its clients from esm.sh's `?target=deno` build and
+// every other function from npm, and both have to fit here. The RPC names,
+// arguments and result rows still come from the generated schema, so a
+// renamed parameter is a compile error in either.
+// `offline_worker_boot_guard.test.ts` walks the probe path and pins it.
+import type { Database } from './database_types.ts';
+
+type RpcSpec<N extends keyof Database['public']['Functions']> = Database['public']['Functions'][N];
+type RpcResult<N extends keyof Database['public']['Functions']> = PromiseLike<{
+  data: RpcSpec<N>['Returns'] | null;
+  error: unknown;
+}>;
+
+/// The slice of a Supabase client the rate-limit helpers use. Any client
+/// built with `createClient<Database>` satisfies it, whichever build of
+/// supabase-js it came from.
+export interface RateLimitClient {
+  rpc(fn: 'check_rate_limit', args: RpcSpec<'check_rate_limit'>['Args']): RpcResult<'check_rate_limit'>;
+  rpc(
+    fn: 'check_rate_limit_tiered',
+    args: RpcSpec<'check_rate_limit_tiered'>['Args'],
+  ): RpcResult<'check_rate_limit_tiered'>;
+}
 
 export interface RateLimitOpts {
   /// When the rate-limit RPC itself errors, return 503 instead of
@@ -68,7 +96,7 @@ function rpcErrorResponse(bucket: string, error: unknown, failClosed: boolean): 
 }
 
 export async function checkRateLimit(
-  supabase: SupabaseClient,
+  supabase: RateLimitClient,
   userId: string,
   bucket: string,
   max: number,
@@ -106,25 +134,72 @@ export async function checkRateLimit(
   );
 }
 
+/// The header the deployment's own edge sets, and the ONLY one trusted
+/// to name the client. Hosted Supabase runs behind Cloudflare, which
+/// overwrites `cf-connecting-ip` on every request, so a client cannot
+/// forge it. Self-hosted / non-Cloudflare deployments override this
+/// with the header their own reverse proxy overwrites (`x-real-ip` for
+/// a typical nginx front end).
+const DEFAULT_TRUSTED_IP_HEADER = 'cf-connecting-ip';
+
+/// Bucket for callers whose IP the trusted header did not establish.
+/// It is a single shared bucket ON PURPOSE: keying an unidentified
+/// caller off anything they control (an `x-forwarded-for` element, the
+/// header value itself) hands them a fresh window per value, which is
+/// not a rate limit at all. Sharing one bucket is the fail-closed
+/// choice — the worst case is that legitimate header-less callers
+/// contend with each other.
+const UNKNOWN_IP_BUCKET = 'unknown';
+
+export function trustedIpHeaderName(): string {
+  const configured = Deno.env.get('TRUSTED_CLIENT_IP_HEADER')?.trim().toLowerCase();
+  return configured ? configured : DEFAULT_TRUSTED_IP_HEADER;
+}
+
+/// Accept a value only if it is a single, plausible IP literal. A comma
+/// means a forwarded chain rather than one address, which the trusted
+/// header never carries — treating the leftmost element as the client
+/// is the classic spoof, so the whole value is discarded instead.
+function trustedClientIp(raw: string | null): string | null {
+  if (raw === null) return null;
+  const value = raw.trim().toLowerCase();
+  if (value.length === 0 || value.length > 45 || value.includes(',')) return null;
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  // A colon is what makes the value an address rather than an arbitrary
+  // token: without it the hex class admitted any bare word, and every
+  // distinct word minted its own window. The dot is in the class for the
+  // IPv4-mapped form (`::ffff:1.2.3.4`), which is also the LONGEST text
+  // form an address has — the 45-character bound above is named for it, and
+  // a hex-only class could not accept a single 45-character address.
+  const ipv6 = /^[0-9a-f.:]+$/;
+  if (!ipv4.test(value) && !(value.includes(':') && ipv6.test(value))) return null;
+  return value;
+}
+
+/// The client IP the trusted header establishes, or null when it does not.
+/// For a limiter that would rather skip its per-address bucket than drop
+/// every header-less caller into `UNKNOWN_IP_BUCKET` together.
+export function trustedRequestIp(req: Request): string | null {
+  return trustedClientIp(req.headers.get(trustedIpHeaderName()));
+}
+
 /// Derive a synthetic UUID from the request's client IP. Used for
 /// IP-keyed rate-limiting on EFs that accept anon callers (e.g.
 /// `clip-public-track`) — the `rate_limits` table is `user_id uuid`,
-/// so the key has to fit a UUID. The Cloudflare header is preferred
-/// (Supabase's edge runs behind Cloudflare); `x-real-ip` and
-/// `x-forwarded-for` are fallbacks for local-dev and self-hosted
-/// setups. A missing IP collapses to `0.0.0.0` which buckets every
-/// header-less caller together — strict but rare in practice.
+/// so the key has to fit a UUID.
+///
+/// Only `trustedIpHeaderName()` is read. The earlier `x-real-ip` /
+/// leftmost-`x-forwarded-for` fallbacks were attacker-controlled: on
+/// any deployment not fronted by Cloudflare, a caller set them per
+/// request and minted a fresh window each time. Anything the trusted
+/// header doesn't establish collapses into `UNKNOWN_IP_BUCKET`.
 ///
 /// Caller must use the service-role client when calling
 /// `check_rate_limit` with this key — the user-context guard added
 /// in migration `20260616_001` rejects keys that don't match
 /// `auth.uid()`, and a synthetic anon key never matches.
 export async function ipBucketKey(req: Request): Promise<string> {
-  const ip =
-    req.headers.get('cf-connecting-ip') ??
-    req.headers.get('x-real-ip') ??
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    '0.0.0.0';
+  const ip = trustedClientIp(req.headers.get(trustedIpHeaderName())) ?? UNKNOWN_IP_BUCKET;
   const data = new TextEncoder().encode(`anon-rate-limit-v1:${ip}`);
   const hash = await crypto.subtle.digest('SHA-256', data);
   const hex = Array.from(new Uint8Array(hash))
@@ -149,7 +224,7 @@ export async function ipBucketKey(req: Request): Promise<string> {
 /// (including missing-profile rows) gets the free ceiling — the
 /// conservative default if the RevenueCat sync drifts.
 export async function checkRateLimitTiered(
-  supabase: SupabaseClient,
+  supabase: RateLimitClient,
   userId: string,
   bucket: string,
   freeMax: number,

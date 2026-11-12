@@ -98,6 +98,48 @@ pub const fn sleep_window(mode: GnssMode, published_at_s: u32) -> Option<SleepWi
     })
 }
 
+/// Whether the receiver configuration (`ublox_nmea::ubx::cfg_valset_runner`:
+/// pedestrian dynamic model + NAV-PVT per epoch) is owed. The gps task holds
+/// one of these: it is owed at boot and again after every wake from a
+/// [`SleepWindow`], because the breakout's backup cell is not guaranteed to
+/// keep the BBR copy; it is paid on the first non-empty buffer the receiver
+/// streams, the proof it is awake to take the frame.
+///
+/// Only a failed *write* re-arms the debt (retried on the next buffer). An ACK
+/// or NAK is logged and does not: a NAK'd frame leaves the receiver on its
+/// factory defaults, and resending the same frame per buffer would only flood
+/// the UART with a request it already refused.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct ReceiverConfig {
+    due: bool,
+}
+
+impl ReceiverConfig {
+    /// The boot state: configuration owed.
+    pub const fn at_boot() -> Self {
+        Self { due: true }
+    }
+
+    /// Whether a buffer of `streamed_bytes` should trigger the send.
+    pub const fn send_now(&self, streamed_bytes: usize) -> bool {
+        self.due && streamed_bytes > 0
+    }
+
+    /// Record the outcome of a send [`Self::send_now`] asked for.
+    pub fn sent(&mut self, written: bool) {
+        if written {
+            self.due = false;
+        }
+    }
+
+    /// The receiver was just woken from a power-down window; its RAM config
+    /// is gone and BBR may be too.
+    pub fn woke(&mut self) {
+        self.due = true;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,5 +275,63 @@ mod tests {
             let w = sleep_window(mode, u32::MAX - 1).unwrap();
             assert_eq!(w.wake_at_s, u32::MAX);
         }
+    }
+
+    #[test]
+    fn config_is_owed_at_boot_and_paid_by_the_first_streamed_buffer() {
+        let mut c = ReceiverConfig::at_boot();
+        assert!(c.send_now(64));
+        c.sent(true);
+        assert!(!c.send_now(64));
+    }
+
+    #[test]
+    fn config_waits_for_the_receiver_to_stream() {
+        // An empty read is no proof the receiver is awake to take the frame.
+        let c = ReceiverConfig::at_boot();
+        assert!(!c.send_now(0));
+        assert!(c.send_now(1));
+    }
+
+    #[test]
+    fn steady_running_never_resends_the_config() {
+        let mut c = ReceiverConfig::at_boot();
+        c.sent(true);
+        for n in [1, 32, 1024, 4096] {
+            assert!(!c.send_now(n));
+        }
+    }
+
+    #[test]
+    fn every_wake_owes_the_config_again() {
+        // Both wake paths in the gps task (the scheduled one and a run-state
+        // change mid-window) call `woke`; each must re-arm the send.
+        let mut c = ReceiverConfig::at_boot();
+        c.sent(true);
+        for _ in 0..3 {
+            c.woke();
+            assert!(c.send_now(16));
+            c.sent(true);
+            assert!(!c.send_now(16));
+        }
+    }
+
+    #[test]
+    fn a_failed_write_retries_on_the_next_buffer() {
+        let mut c = ReceiverConfig::at_boot();
+        c.sent(false);
+        assert!(c.send_now(16));
+        c.sent(false);
+        assert!(c.send_now(16));
+        c.sent(true);
+        assert!(!c.send_now(16));
+    }
+
+    #[test]
+    fn a_wake_before_the_config_landed_keeps_it_owed() {
+        let mut c = ReceiverConfig::at_boot();
+        c.sent(false);
+        c.woke();
+        assert!(c.send_now(8));
     }
 }

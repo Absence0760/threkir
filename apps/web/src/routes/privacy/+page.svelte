@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
+	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-11-10';
 </script>
 
 <svelte:head>
@@ -31,7 +31,9 @@
 		<strong>Controller:</strong> {OPERATOR.serviceName}, operated by {OPERATOR.controllerDescription}.
 		<br />
 		<strong>Postal address:</strong>
-		{#if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending publication — write to
+		{#if OPERATOR.postalAddress === NOT_PROVIDED}we do not publish a postal address; write to
+			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a>, which reaches the controller
+			directly{:else if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending publication — write to
 			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a> in the meantime</em>{/if}
 		<br />
 		<strong>Privacy contact:</strong> <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>.
@@ -39,7 +41,9 @@
 		contact above reaches the controller directly.
 		<br />
 		<strong>EU representative (Art 27 GDPR):</strong>
-		{#if OPERATOR.euRepresentative}{OPERATOR.euRepresentative.name}, {OPERATOR.euRepresentative
+		{#if OPERATOR.euRepresentative === NOT_PROVIDED}we have not appointed one; EU residents and
+			supervisory authorities can contact the controller directly at
+			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a>{:else if OPERATOR.euRepresentative}{OPERATOR.euRepresentative.name}, {OPERATOR.euRepresentative
 				.address} (<a href="mailto:{OPERATOR.euRepresentative.email}"
 				>{OPERATOR.euRepresentative.email}</a
 			>){:else}<em>appointment in progress; until published here, EU residents and supervisory
@@ -47,7 +51,9 @@
 			directly</em>{/if}
 		<br />
 		<strong>UK representative (Art 27 UK GDPR):</strong>
-		{#if OPERATOR.ukRepresentative}{OPERATOR.ukRepresentative.name}, {OPERATOR.ukRepresentative
+		{#if OPERATOR.ukRepresentative === NOT_PROVIDED}we have not appointed one; UK residents and the
+			ICO can contact the controller directly at
+			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a>{:else if OPERATOR.ukRepresentative}{OPERATOR.ukRepresentative.name}, {OPERATOR.ukRepresentative
 				.address} (<a href="mailto:{OPERATOR.ukRepresentative.email}"
 				>{OPERATOR.ukRepresentative.email}</a
 			>){:else}<em>appointment in progress; until published here, UK residents and the ICO may
@@ -59,6 +65,12 @@
 		<li>
 			<strong>Account</strong>: email address, optional display name, optional profile photo,
 			optional gender and date of birth (used for tiered leaderboards and age-graded results).
+		</li>
+		<li>
+			<strong>Settings</strong>: your app preferences, including your preferred language (the
+			language of the emails, push notifications and training-plan calendar feed we send you, and
+			of an AI route description when your device does not tell us its language) and your device's
+			time zone (so a coach you link with sees the same "today" for your training plan as you do).
 		</li>
 		<li>
 			<strong>Activity</strong>: GPS tracks, distance, duration, pace, elevation, heart rate
@@ -89,7 +101,14 @@
 		</li>
 		<li>
 			<strong>Social</strong>: kudos, comments, photos, clubs you join, people you follow, event
-			RSVPs, direct messages you exchange with other users, and any blocks or reports you file.
+			RSVPs, direct messages you exchange with other users (including photos you send in them and reactions you put on them), the group conversations you belong to (the group's name, who invited you and when, when you joined or left, your role, and how far you have read), and any blocks or reports you file.
+		</li>
+		<li>
+			<strong>Park course reports</strong>: when you report a problem with a park course, the
+			reason and the note you write, and an email address if you give one so we can reply. You
+			can report without an account. Only Threkir's moderators see a report. To limit abuse we
+			count reports per network address using a hash of the address, never the address itself,
+			and delete that count within a day.
 		</li>
 		<li>
 			<strong>Safety contacts</strong>: email addresses of people you nominate for safety
@@ -98,6 +117,18 @@
 		<li>
 			<strong>AI Coach</strong>: every chat message you send. We pass each prompt to our AI
 			provider together with a summary of your recent training to generate a useful response.
+		</li>
+		<li data-testid="ai-assistants-data">
+			<strong>AI assistants</strong> (only when you use them): the text you type into the route
+			assistant, the plan assistant (including the season planner), or plan edits, plus the facts
+			each one needs, all listed in section 5. Nothing you type there is kept by us beyond the
+			settings, race list, or plan changes you choose to save.
+		</li>
+		<li>
+			<strong>Meal photos</strong> (Pro, only if you use the plate-photo logger): the photo of a
+			meal you choose, sent to our AI provider once to estimate the food on the plate. We strip
+			location and camera metadata before it leaves our servers and never store the photo; only
+			the food entries you review and save are kept.
 		</li>
 		<li>
 			<strong>Subscription</strong>: subscription tier and renewal state (we do not see or store
@@ -114,10 +145,35 @@
 			analytics), error logs, and — if you enable notifications — a push token.
 		</li>
 		<li>
-			<strong>Third-party imports</strong>: when you connect Strava, parkrun, Garmin, Health
-			Connect, or HealthKit, we receive the activity data they publish to us.
+			<strong>Third-party imports</strong>: when you connect Strava, Garmin, Health Connect, or
+			HealthKit, we receive the activity data they publish to us.
+		</li>
+		<li data-testid="signup-source">
+			<strong>How you found us</strong>: when you create an account on the website, where your
+			browser first arrived from in that visit — the campaign tags in the link you followed
+			(<code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>), or else the
+			address of the site that sent you (for example <code>l.instagram.com</code>), or "direct"
+			when there was none. It is held in your browser for that tab only and sent to us only if you
+			sign up. We use it only to count which of our social accounts and links bring new members.
 		</li>
 	</ul>
+	<p data-testid="health-platform-data">
+		Data we read from <strong>Apple HealthKit</strong> or <strong>Android Health Connect</strong>
+		is used only to provide the features you connected it for, such as importing your workouts and
+		estimating calories from your body weight. We never use it for advertising, marketing, or
+		data mining, we never sell it, and we never disclose it to advertisers or data brokers.
+	</p>
+	<p data-testid="logged-out-visitors">
+		<strong>Visitors without an account</strong>: if you open a shared run, route, or other share
+		page without signing in, we collect no account data about you. Our hosting providers (AWS and
+		Supabase) receive your IP address and browser details (such as the user agent) with each page
+		request, as any website does. On a shared run or route, the map (and, on a shared route, the 3D
+		course preview) stays a placeholder until you tap "Load map" or "Load preview"; only then does your browser send
+		your IP address, browser details, and the map area on screen to MapTiler (see section 5). The
+		tap covers that one view: the next time you open a share page, it asks again. Error monitoring
+		in your browser stays off unless you accept the cookie banner, which on share pages covers
+		nothing else.
+	</p>
 
 	<h2>3. Why we process it (lawful basis)</h2>
 	<table>
@@ -128,9 +184,13 @@
 			<tr><td>Provide the core service (record runs, sync across devices, social features)</td><td>Contract — Art 6(1)(b) GDPR</td></tr>
 			<tr><td>Heart rate, health imports, body metrics, nutrition and food logs, checkpoint medical weigh-ins</td><td>Explicit consent for special-category data — Art 9(2)(a) GDPR</td></tr>
 			<tr><td>AI Coach</td><td>Consent — Art 6(1)(a) GDPR</td></tr>
+			<tr><td>AI route assistant, AI plan assistant (including the season planner), and AI plan edits</td><td>Consent — Art 6(1)(a) GDPR, given by accepting the AI disclosure that names each feature</td></tr>
+			<tr><td>Serving a share page to a visitor without an account, and keeping it secure (request logs)</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
+			<tr><td>Loading map tiles and the 3D course preview on a share page for a visitor without an account</td><td>Consent — Art 6(1)(a) GDPR, given by the "Load map" or "Load preview" tap for that view</td></tr>
 			<tr><td>Paid event registration, fundraising donations, Pro subscription billing</td><td>Contract — Art 6(1)(b) GDPR</td></tr>
+			<tr><td>Counting which of our social accounts and links bring new members (where you first arrived from when you signed up)</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
 			<tr><td>Marketing email (only if opted in)</td><td>Consent</td></tr>
-			<tr><td>Error monitoring, abuse prevention, moderation of reported content</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
+			<tr><td>Error monitoring, abuse prevention, moderation of reported content, and keeping evidence of reported abuse for user safety and to establish or defend legal claims</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
 			<tr><td>Comply with a subpoena, court order, or store demand</td><td>Legal obligation — Art 6(1)(c) GDPR</td></tr>
 		</tbody>
 	</table>
@@ -142,9 +202,11 @@
 	<h2>4. Automated decision-making</h2>
 	<p>
 		We do not make decisions about you that produce legal or similarly significant effects based
-		solely on automated processing (Art 22 GDPR). The AI Coach and the training-plan generator
-		produce suggestions only — nothing they output changes your access to the service, your
-		pricing, or your account standing, and you are free to ignore them.
+		solely on automated processing (Art 22 GDPR). The AI Coach, the AI assistants, and the
+		training-plan generator produce suggestions only — nothing they output changes your access to
+		the service, your pricing, or your account standing, and you are free to ignore them. The plan
+		assistant only fills in fields you review, and plan edits change nothing until you approve
+		them.
 	</p>
 
 	<h2 id="sub-processors">5. Who we share with (sub-processors)</h2>
@@ -176,7 +238,9 @@
 		</li>
 		<li>
 			<strong>Anthropic</strong> (or, on fallback, OpenAI) — AI Coach. Receives your chat prompt
-			plus a summary of your recent training (which can include heart-rate and goal data). We use
+			plus a summary of your recent training (which can include heart-rate and goal data) and, once
+			you have accepted the current AI disclosure, a summary of your recent gym sessions and, only
+			with health-data consent, a 7-day summary of your food log. We use
 			the provider's commercial API: your prompts and the responses are <strong>not used to train
 			the provider's models</strong>, and under Anthropic's default API retention policy inputs and
 			outputs are deleted from Anthropic's systems within 30 days of processing (material flagged
@@ -184,9 +248,53 @@
 			stored by us, not the provider — see section 7.
 		</li>
 		<li>
+			<strong>Anthropic</strong> — plate-photo logger (Pro). Receives one meal photo per request,
+			with its location and camera metadata already removed, and returns estimated food entries.
+			The same no-training and 30-day retention terms apply; Threkir keeps no copy of the photo.
+		</li>
+		<li data-testid="ai-assistants-sub-processor">
+			<strong>Anthropic</strong> — AI assistants, only when you use one and have accepted the AI
+			disclosure that names it. No account identifier, email, or name is sent with any of them. The
+			same no-training and 30-day retention terms apply. Each sends only:
+			<ul>
+				<li>
+					<strong>Route assistant, request</strong>: the route you describe in your own words and,
+					if you picked a start point, its place label (never its coordinates). It returns route
+					settings; the route itself is drawn by our own routing engines.
+				</li>
+				<li>
+					<strong>Route assistant, description</strong> (Pro): the route's distance, total climb and
+					climb per kilometre or mile, surface, and shape (loop, out-and-back, or point-to-point,
+					worked out on our servers from the start and end points, which are not sent), plus your
+					distance unit and language. The route's name is included only when the route is yours or
+					is public.
+				</li>
+				<li>
+					<strong>Plan assistant</strong>: the plan you describe in your own words (for example your
+					goal race, target and recent times, and training days) and today's date. It returns the
+					plan-builder fields, which you review before a plan is built.
+				</li>
+				<li>
+					<strong>Season planner</strong> (part of the plan assistant): the season you describe in
+					your own words (races, dates, target times) and today's date. It returns a race list you
+					confirm.
+				</li>
+				<li>
+					<strong>Plan edits</strong>: the change you ask for, today's date, and the weeks of your
+					active plan that are not yet over. For each week: its number, phase, dates, and planned
+					distance. For each workout: its date, type, target distance or duration, and whether it is
+					done, skipped, or past. Not the plan's name, notes, paces, or goal time. It returns
+					proposed changes you approve before anything is saved.
+				</li>
+			</ul>
+		</li>
+		<li>
 			<strong>MapTiler</strong> (EU, with global edge caching) — map tiles. Receives the map
-			viewport and your IP address on each tile request; loads only after you accept the cookie
-			banner.
+			viewport, your IP address, and your browser details on each tile request. Signed in, maps load
+			once you accept the cookie banner or tap "Load map". On a share page (a shared run or route),
+			the map and the 3D course preview ask on every view: nothing loads until you tap "Load map" or
+			"Load preview", whatever you chose on the cookie banner, which covers only error monitoring
+			there.
 		</li>
 		<li>
 			<strong>Open-Meteo</strong> (EU) — elevation lookup when you build or view a route. Receives
@@ -199,8 +307,9 @@
 			identifier, no body data. Skipping search and entering macros manually avoids it entirely.
 		</li>
 		<li>
-			<strong>Sentry</strong> — error monitoring. Receives a pseudonymous user id, URL paths, and
-			redacted error traces.
+			<strong>Sentry</strong> — error monitoring. Receives URL paths, device and app version,
+			and redacted error traces. We do not attach your account id; the mobile SDKs may tag a
+			report with a random per-install identifier that is not linked to your account.
 		</li>
 		<li>
 			<strong>RevenueCat + Stripe + Apple IAP + Google Play Billing</strong> — subscription
@@ -230,12 +339,12 @@
 			and body.
 		</li>
 		<li>
-			<strong>RunSignUp / ChronoTrack / UltraSignup</strong> — race-result import, only when you
-			import or link a race. We may send an optional race-platform user id and receive finisher
-			results (names, bib numbers, times).
+			<strong>RunSignUp / ChronoTrack</strong> — race-result import, only when you import or link
+			a race. We may send an optional race-platform user id and receive finisher results (names,
+			bib numbers, times).
 		</li>
 		<li>
-			<strong>Strava / parkrun / Garmin Connect / Health Connect / HealthKit</strong> — only when
+			<strong>Strava / Garmin Connect / Health Connect / HealthKit</strong> — only when
 			you connect them. Receive OAuth tokens; return the activity data they publish to us.
 		</li>
 	</ul>
@@ -244,14 +353,17 @@
 		Edge Functions. Because it runs on the server it cannot consult your in-app telemetry
 		choice, so it operates on a <strong>legitimate-interest</strong> basis (Art 6(1)(f)) with
 		data minimisation: it sends no default personal identifiers and strips request bodies and
-		headers before transmission. Client-side error monitoring remains gated on your telemetry
-		consent.
+		headers before transmission. On the website, client-side error monitoring stays off until
+		you accept the consent banner. In the iPhone and Android apps it is on by default, on the same
+		legitimate-interest basis, and you can turn it off at any time under <strong>Settings →
+		Account → Send error reports</strong>. The Wear OS watch app sends crash reports with the
+		same minimisation and has no separate switch.
 	</p>
 	<p>
 		We give at least 30 days' notice before a new sub-processor goes live. The canonical
 		disclosure is our maintained
 		<a
-			href="https://github.com/Absence0760/project-running/blob/main/docs/compliance/sub-processor-changelog.md"
+			href="https://github.com/Absence0760/threkir/blob/main/docs/compliance/sub-processor-changelog.md"
 			target="_blank"
 			rel="noopener noreferrer">sub-processor changelog</a
 		>; registered users are additionally notified by email (and, where available, in-app). You may
@@ -282,12 +394,16 @@
 	<h2>7. How long we keep it</h2>
 	<ul>
 		<li><strong>Account, runs, routes, gym workouts, food logs, body metrics</strong>: until you delete the item or the account.</li>
+		<li><strong>How you found us</strong> (where you first arrived from when you signed up): until you delete the account.</li>
 		<li><strong>Live spectator pings</strong>: 48 hours (both our database and, when enabled, the Upstash cache).</li>
 		<li><strong>Race spectator pings</strong> (organised-event live results): 48 hours.</li>
 		<li><strong>Checkpoint medical weigh-in fields</strong> (weight, medical hold/note): scrubbed 90 days after they were recorded; the in/out split times are race results and are kept.</li>
-		<li><strong>Direct messages</strong>: 2 years from sending, or immediately when either party deletes their account.</li>
+		<li><strong>Direct messages</strong>: 2 years from sending. Deleting your account deletes the messages you sent at once; the messages the other person sent you stay in their copy of the conversation, with your account shown as deleted, until the 2-year limit. Unsending a message removes its text, any photo in it and any reactions on it for both of you. A photo you send is re-encoded on our servers so the copy anyone sees carries no location or camera details; the photo file itself is erased by a background job shortly after its message is unsent or deleted, normally within minutes and at most within a few days, and a photo picked but never sent is deleted after a day. If the other person deletes their account, the messages they sent you are deleted with it; report a message first if you want a copy kept for moderators. "Delete conversation" hides the conversation from you and erases nothing at that moment: anyone still in the conversation keeps their copy, the messages stay in your data export, and a report's copy is untouched. Once no participant can still see a message (both of you have deleted the conversation, or the other account is gone and you have deleted it), our daily clean-up erases it.</li>
+		<li><strong>Group conversations</strong>: a message you send in a group is seen by the people who are members when you send it and by anyone who joins later only from the moment they joined, never what was said before. Nobody is added to a group without accepting an invite, and an invite sees only the group's name, who invited them and how many members it has; an invite not answered in 14 days lapses. If you leave a group or are removed from it, you stop seeing other members' messages at once, your own messages stay in the group, and you can still unsend them. Deleting your account deletes every message you sent in every group. Group messages follow the same 2-year limit as direct messages, and our daily clean-up erases a group message once nobody who can see it is left, and a group once it has no members. Your data export carries the group messages you sent and your memberships, but not other members' messages: those are their data, unlike a one-to-one conversation, where the messages sent to you are also yours. Group conversations are not yet switched on.</li>
+		<li><strong>Reports you file, and reports about your content</strong>: kept while a moderator reviews them, then deleted 6 months after the report is closed with no action, or 12 months after action was taken. A report we need for a legal claim, or that a court or authority has asked us to preserve, is kept until that need ends. A reported direct message is copied into the report when it is filed, together with any photo it carried, so the copy survives the message being unsent, the sender deleting their account, and the 2-year limit on messages. If you delete your account, reports you filed are kept for the same period with your name removed, so the evidence is not lost.</li>
+		<li><strong>The email address on a park course report</strong>: deleted 30 days after the report is resolved, or at once if you filed it signed in and then delete your account. The report itself follows the rule above. If you filed one without an account and want it removed sooner, email us from that address.</li>
 		<li><strong>Coach chat history</strong>: 18 months from the message timestamp.</li>
-		<li><strong>AI-provider copies of coach prompts</strong>: deleted by the provider within 30 days of processing (Anthropic API default retention); never used for model training.</li>
+		<li><strong>AI-provider copies of coach prompts and AI-assistant requests</strong>: deleted by the provider within 30 days of processing (Anthropic API default retention); never used for model training.</li>
 		<li><strong>Coach usage counters</strong> (per-day message counts): 7 days.</li>
 		<li><strong>Notifications</strong>: 90 days from creation.</li>
 		<li><strong>Push tokens (FCM / APNs)</strong>: 60 days of inactivity.</li>
@@ -372,7 +488,8 @@
 	<p>
 		Privacy: <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>
 		<br />Security: <a href="mailto:security@threkir.com">security@threkir.com</a>
-		<br />Postal: {#if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
+		<br />Postal: {#if OPERATOR.postalAddress === NOT_PROVIDED}not published — use the privacy
+			email above{:else if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
 			publication — use the privacy email above in the meantime</em>{/if}
 	</p>
 </div>

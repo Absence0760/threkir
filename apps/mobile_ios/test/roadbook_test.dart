@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
+
 import '../lib/roadbook.dart';
 
 List<RoadbookWaypoint> course() {
@@ -131,20 +134,36 @@ void main() {
     expect(rb.legs[1].cutoff!.status, CutoffStatus.safe);
   });
 
-  test(
-      'cutoff_clock past 24h snaps to the day nearest the projection, not same-day',
+  test('cutoff_clock resolves from the start alone, never from the projection',
       () {
     final wp = course();
     final total =
         buildRoadbook(wp, const [], goalSeconds: 1, model: PacingModel.even)
             .totalDistM;
-    // 40h goal, a cutoff at 75% distance -> projected arrival ~30h. Start 08:00,
-    // cutoff clock 14:00: the raw same-day offset is only +6h, but the runner is
-    // expected there at hour 30 (14:00 the next day). Must resolve to 30h.
-    final rb = buildRoadbook(
+    // Start 08:00, cutoff clock 14:00 -> the limit is hour 6, whoever is
+    // running and however slowly. Snapping the day to the nearest projection
+    // made the limit move with the goal time: a 40h goal put the projected
+    // arrival at hour 30, which pulled the limit out to 14:00 the NEXT day and
+    // reported a 24h-blown cutoff as merely tight.
+    final limits = [4 * 3600, 10 * 3600, 40 * 3600, 100 * 3600]
+        .map((goalSeconds) => buildRoadbook(wp,
+                [marker(total * 0.75, 'cutoff', 'Gate', {'cutoff_clock': '14:00'})],
+                goalSeconds: goalSeconds.toDouble(),
+                startClockMin: 480,
+                model: PacingModel.even)
+            .legs[1]
+            .cutoff!
+            .limitElapsedS)
+        .toList();
+    expect(limits, [21600, 21600, 21600, 21600]);
+
+    // And the blown cutoff reads as blown: 40h goal -> arrival ~hour 30
+    // against an hour-6 limit.
+    final slow = buildRoadbook(
         wp, [marker(total * 0.75, 'cutoff', 'Gate', {'cutoff_clock': '14:00'})],
         goalSeconds: 40 * 3600, startClockMin: 480, model: PacingModel.even);
-    expect(rb.legs[1].cutoff!.limitElapsedS, 108000); // 30h, not 21600 (6h)
+    expect(slow.legs[1].cutoff!.status, CutoffStatus.miss);
+    expect(slow.legs[1].cutoff!.marginS < -20 * 3600, isTrue);
   });
 
   test('projected clock advances from the start and wraps past midnight', () {
@@ -176,4 +195,219 @@ void main() {
     );
     expect(rb.legs[1].services, ['water', 'food']);
   });
+
+  test('aid services reach the leg as a set of strings', () {
+    // A non-string entry used to throw from the lazy cast<String>() when the
+    // leg was rendered, and a duplicate read as "Water · Water".
+    final wp = course();
+    final rb = buildRoadbook(
+      wp,
+      [
+        marker(500, 'aid_station', 'Aid', {
+          'services': ['water', 'water', 7, 'food', 'water']
+        })
+      ],
+      goalSeconds: 3600,
+      model: PacingModel.even,
+    );
+    expect(rb.legs[1].services, ['water', 'food']);
+  });
+
+  test('effort allocation survives a densely-sampled course', () {
+    // Every point-pair is under minSegmentM here, so grading each pair on its
+    // own read the whole climb as flat and effort collapsed onto even pace.
+    final dense = climbCourse(3);
+    final effort = midArrivalS(dense, PacingModel.effort);
+    final even = midArrivalS(dense, PacingModel.even);
+    expect(effort > even * 1.4, isTrue, reason: 'effort $effort vs even $even');
+  });
+
+  test('effort allocation is a property of the terrain, not the sampling density',
+      () {
+    final coarse = midArrivalS(climbCourse(20), PacingModel.effort);
+    for (final spacing in [10.0, 3.0, 1.0]) {
+      final dense = midArrivalS(climbCourse(spacing), PacingModel.effort);
+      expect((dense - coarse).abs() / coarse < 0.01, isTrue,
+          reason: 'spacing ${spacing}m gave ${dense}s vs ${coarse}s at 20m');
+    }
+  });
+
+  test('a trailing sub-threshold segment is graded flat, not amplified', () {
+    // 1 km of flat at 20 m spacing, then one last point 3 m on with a 1 m rise:
+    // a 33 % grade no altimeter can support over 3 m. That trailing window never
+    // clears minSegmentM, so it must stay flat — grading it on its own span
+    // would bill it as ~3.9x effort and pull every arrival before it earlier.
+    final wp = <RoadbookWaypoint>[];
+    for (var d = 0.0; d <= 1000; d += 20) {
+      wp.add(RoadbookWaypoint(lat: 45 + d / 111320, lng: 7, ele: 0));
+    }
+    wp.add(RoadbookWaypoint(lat: 45 + 1003 / 111320, lng: 7, ele: 1));
+    final mid = [marker(500, 'aid_station', 'Mid')];
+    final effort =
+        buildRoadbook(wp, mid, goalSeconds: 5400, model: PacingModel.effort);
+    final even =
+        buildRoadbook(wp, mid, goalSeconds: 5400, model: PacingModel.even);
+    expect(effort.hasElevation, isTrue,
+        reason: 'the effort model must actually be in play');
+    expect(
+      (effort.legs[1].projectedElapsedS - even.legs[1].projectedElapsedS).abs() <
+          1e-6,
+      isTrue,
+      reason: 'effort ${effort.legs[1].projectedElapsedS} vs even '
+          '${even.legs[1].projectedElapsedS}',
+    );
+  });
+
+  test('a checkpoint target grades the projection ahead / on / behind', () {
+    final wp = course();
+    final total = buildRoadbook(wp, const [],
+            goalSeconds: 3600, model: PacingModel.even)
+        .totalDistM;
+    // Mid at an even 3600 s goal projects to ~1800 s. The band there is the
+    // 60 s floor, so 1900 is comfortably ahead and 1700 comfortably behind.
+    RoadbookTarget? at(int targetElapsedS) => buildRoadbook(
+          wp,
+          [
+            marker(total / 2, 'aid_station', 'Aid',
+                {'target_elapsed_s': targetElapsedS})
+          ],
+          goalSeconds: 3600,
+          model: PacingModel.even,
+        ).legs[1].target;
+    expect(at(1900)!.status, TargetStatus.ahead);
+    expect(at(1900)!.marginS > 0, isTrue);
+    expect(at(1800)!.status, TargetStatus.on);
+    expect(at(1700)!.status, TargetStatus.behind);
+    expect(at(1700)!.marginS < 0, isTrue);
+    expect(at(1700)!.targetElapsedS, 1700);
+  });
+
+  test('a marker with no target time gets no target verdict', () {
+    final wp = course();
+    final total = buildRoadbook(wp, const [],
+            goalSeconds: 3600, model: PacingModel.even)
+        .totalDistM;
+    final rb = buildRoadbook(wp, [marker(total / 2, 'aid_station', 'Aid')],
+        goalSeconds: 3600, model: PacingModel.even);
+    expect(rb.legs[1].target, isNull);
+    // The synthetic start / finish rows carry no meta and so never do either.
+    expect(rb.legs[0].target, isNull);
+    expect(rb.legs[2].target, isNull);
+  });
+
+  test('a target may sit on any kind, including a cutoff, alongside its limit',
+      () {
+    final wp = course();
+    final total = buildRoadbook(wp, const [],
+            goalSeconds: 3600, model: PacingModel.even)
+        .totalDistM;
+    final rb = buildRoadbook(
+      wp,
+      [
+        marker(total / 2, 'cutoff', 'Gate',
+            {'cutoff_elapsed_s': 2400, 'target_elapsed_s': 1500})
+      ],
+      goalSeconds: 3600,
+      model: PacingModel.even,
+    );
+    expect(rb.legs[1].cutoff!.limitElapsedS, 2400);
+    expect(rb.legs[1].target!.targetElapsedS, 1500);
+    // Both margins are signed the same way — positive is time in hand.
+    expect(rb.legs[1].cutoff!.marginS > 0, isTrue);
+    expect(rb.legs[1].target!.marginS < 0, isTrue);
+  });
+
+  test('target_clock resolves against the start clock, like a cutoff clock',
+      () {
+    final wp = course();
+    final total = buildRoadbook(wp, const [],
+            goalSeconds: 3600, model: PacingModel.even)
+        .totalDistM;
+    // Start 06:00 (360 min); target 06:45 -> 2700 s elapsed.
+    final rb = buildRoadbook(
+      wp,
+      [marker(total / 2, 'aid_station', 'Aid', {'target_clock': '06:45'})],
+      goalSeconds: 3600,
+      startClockMin: 360,
+      model: PacingModel.even,
+    );
+    expect(rb.legs[1].target!.targetElapsedS, 2700);
+    // A clock equal to the start is the 24h reading, never a 0 s target.
+    final sameClock = buildRoadbook(
+      wp,
+      [marker(total / 2, 'aid_station', 'Aid', {'target_clock': '06:00'})],
+      goalSeconds: 3600,
+      startClockMin: 360,
+      model: PacingModel.even,
+    );
+    expect(sameClock.legs[1].target!.targetElapsedS, 86400);
+    // Without a start clock a clock-only target can't resolve — and must not
+    // silently read as 0, which would grade every checkpoint as behind.
+    final noStart = buildRoadbook(
+      wp,
+      [marker(total / 2, 'aid_station', 'Aid', {'target_clock': '06:45'})],
+      goalSeconds: 3600,
+      model: PacingModel.even,
+    );
+    expect(noStart.legs[1].target, isNull);
+  });
+
+  test('the on-schedule band scales with the target, floored for early stops',
+      () {
+    // The floor governs anything under 100 min; past that it is 1 %.
+    expect(targetBandS(0), targetBandFloorS.toDouble());
+    expect(targetBandS(1800), targetBandFloorS.toDouble());
+    expect(targetBandS(6000), targetBandFloorS.toDouble());
+    expect(targetBandS(14400), 144.0);
+    expect(targetBandS(72000), 720.0);
+  });
+
+  test('a fixed band would misgrade one scale or the other', () {
+    final wp = course();
+    final total = buildRoadbook(wp, const [],
+            goalSeconds: 3600, model: PacingModel.even)
+        .totalDistM;
+    // Same 5-minute slip judged at two race scales. At an hour goal it is a
+    // real problem; at a 24 h goal it is inside the noise of the projection.
+    const slip = 300;
+    final short = buildRoadbook(
+      wp,
+      [
+        marker(total / 2, 'aid_station', 'Aid',
+            {'target_elapsed_s': 1800 - slip})
+      ],
+      goalSeconds: 3600,
+      model: PacingModel.even,
+    );
+    final long = buildRoadbook(
+      wp,
+      [
+        marker(total / 2, 'aid_station', 'Aid',
+            {'target_elapsed_s': 43200 - slip})
+      ],
+      goalSeconds: 86400,
+      model: PacingModel.even,
+    );
+    expect(short.legs[1].target!.status, TargetStatus.behind);
+    expect(long.legs[1].target!.status, TargetStatus.on);
+  });
+}
+
+// A 4 km 25 % climb then 4 km flat, sampled every [spacingM] metres. The
+// terrain is fixed; only the file's point density changes.
+List<RoadbookWaypoint> climbCourse(double spacingM) {
+  final pts = <RoadbookWaypoint>[];
+  const mPerDegLat = 111320.0;
+  const climbM = 4000.0;
+  for (var d = 0.0; d <= climbM * 2; d += spacingM) {
+    pts.add(RoadbookWaypoint(
+        lat: 45 + d / mPerDegLat, lng: 7, ele: math.min(d, climbM) * 0.25));
+  }
+  return pts;
+}
+
+double midArrivalS(List<RoadbookWaypoint> wp, PacingModel model) {
+  final rb = buildRoadbook(wp, [marker(4000, 'aid_station', 'Top')],
+      goalSeconds: 5400, model: model);
+  return rb.legs[1].projectedElapsedS;
 }

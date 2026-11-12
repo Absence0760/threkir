@@ -12,6 +12,11 @@
 //! tolerance_s_per_km(1) | target_distance_m(4, u32 LE) |
 //! target_duration_s(2, u16 LE) | target_pace_s_per_km(2, u16 LE)`.
 //!
+//! Flag bit 0 ([`WORKOUT_FLAG_UNPACED`]) marks a walk-run session: every
+//! step decodes with `paced: false`. It is whole-frame because the phone's
+//! expander makes a whole session unpaced or none of it, so a list mixing
+//! the two is unencodable rather than silently flattened.
+//!
 //! Binary, chunked, CRC-sealed — the [`crate::course_store`] discipline
 //! exactly, checksum mandatory from v1: a flipped byte in a target distance
 //! decodes as a perfectly plausible different workout (the runner would
@@ -37,9 +42,12 @@ pub const WORKOUT_MAGIC: [u8; 4] = *b"WKT1";
 
 pub const WORKOUT_FORMAT_VERSION: u8 = 1;
 
-/// No presence bits yet; any set bit is a corrupt or future frame and rejects
-/// (a new field rides a version bump — the `settings::KNOWN_FLAGS` rule).
-const KNOWN_WORKOUT_FLAGS: u8 = 0;
+/// Every step of this frame is unpaced (a walk-run session).
+pub const WORKOUT_FLAG_UNPACED: u8 = 1 << 0;
+
+/// Any other set bit is a corrupt or future frame and rejects (a new field
+/// rides a version bump — the `settings::KNOWN_FLAGS` rule).
+const KNOWN_WORKOUT_FLAGS: u8 = WORKOUT_FLAG_UNPACED;
 
 /// Header: magic(4) + version(1) + step_count(1) + flags(1).
 pub const WORKOUT_HEADER_LEN: usize = 7;
@@ -79,14 +87,21 @@ fn step_plausible(s: &WorkoutStep) -> bool {
     (PACE_BAND_MIN_S_PER_KM..=PACE_BAND_MAX_S_PER_KM).contains(&u32::from(s.target_pace_s_per_km))
 }
 
-/// The canonical frame header for a step count.
-fn header_bytes(step_count: usize) -> [u8; WORKOUT_HEADER_LEN] {
+/// The canonical frame header for a step list, or `None` when the list mixes
+/// paced and unpaced steps (module docs).
+fn header_bytes(steps: &[WorkoutStep]) -> Option<[u8; WORKOUT_HEADER_LEN]> {
+    let unpaced = steps.iter().filter(|s| !s.paced).count();
+    let flags = match unpaced {
+        0 => 0,
+        n if n == steps.len() => WORKOUT_FLAG_UNPACED,
+        _ => return None,
+    };
     let mut b = [0u8; WORKOUT_HEADER_LEN];
     b[0..4].copy_from_slice(&WORKOUT_MAGIC);
     b[4] = WORKOUT_FORMAT_VERSION;
-    b[5] = step_count as u8;
-    b[6] = 0;
-    b
+    b[5] = steps.len() as u8;
+    b[6] = flags;
+    Some(b)
 }
 
 /// One step's canonical wire cell, or `None` when it fails [`step_plausible`]
@@ -121,7 +136,7 @@ pub fn encode(steps: &[WorkoutStep], out: &mut [u8]) -> Option<usize> {
     if out.len() < len {
         return None;
     }
-    out[0..WORKOUT_HEADER_LEN].copy_from_slice(&header_bytes(steps.len()));
+    out[0..WORKOUT_HEADER_LEN].copy_from_slice(&header_bytes(steps)?);
     let mut off = WORKOUT_HEADER_LEN;
     for s in steps {
         out[off..off + WORKOUT_STEP_LEN].copy_from_slice(&step_bytes(s)?);
@@ -143,7 +158,7 @@ pub fn frame_crc(steps: &[WorkoutStep]) -> Option<u32> {
         return None;
     }
     let mut crc = Crc32::new();
-    crc.update(&header_bytes(steps.len()));
+    crc.update(&header_bytes(steps)?);
     for s in steps {
         crc.update(&step_bytes(s)?);
     }
@@ -199,6 +214,7 @@ pub fn decode(frame: &[u8]) -> Option<Vec<WorkoutStep, MAX_WORKOUT_STEPS>> {
             ]),
             target_duration_s: u16::from_le_bytes([frame[off + 8], frame[off + 9]]),
             target_pace_s_per_km: u16::from_le_bytes([frame[off + 10], frame[off + 11]]),
+            paced: frame[6] & WORKOUT_FLAG_UNPACED == 0,
         };
         if !step_plausible(&step) {
             return None;
@@ -314,6 +330,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 360,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
             WorkoutStep {
                 kind: WorkoutStepKind::Rep,
@@ -323,6 +340,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 240,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
             WorkoutStep {
                 kind: WorkoutStepKind::Walk,
@@ -332,6 +350,7 @@ mod tests {
                 target_duration_s: 90,
                 target_pace_s_per_km: 420,
                 tolerance_s_per_km: 15,
+                paced: true,
             },
             WorkoutStep {
                 kind: WorkoutStepKind::Rep,
@@ -341,6 +360,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 240,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
             WorkoutStep {
                 kind: WorkoutStepKind::Steady,
@@ -350,6 +370,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 300,
                 tolerance_s_per_km: 12,
+                paced: true,
             },
             WorkoutStep {
                 kind: WorkoutStepKind::Cooldown,
@@ -359,6 +380,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 360,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
         ]
     }
@@ -414,6 +436,56 @@ mod tests {
             ]),
             crc32(&frame[..body])
         );
+    }
+
+    fn walk_run_steps() -> [WorkoutStep; 3] {
+        let walk = |kind, rep_index, rep_total, target_duration_s| WorkoutStep {
+            kind,
+            rep_index,
+            rep_total,
+            target_distance_m: 0,
+            target_duration_s,
+            target_pace_s_per_km: 360,
+            tolerance_s_per_km: 10,
+            paced: false,
+        };
+        [
+            walk(WorkoutStepKind::Warmup, 0, 0, 300),
+            walk(WorkoutStepKind::Rep, 1, 1, 1500),
+            walk(WorkoutStepKind::Cooldown, 0, 0, 300),
+        ]
+    }
+
+    /// Golden vector for an unpaced (walk-run) frame: flag bit 0 set, every
+    /// step otherwise encoded exactly as a paced one. The Dart encoder pins
+    /// the same hex.
+    #[test]
+    fn walk_run_frame_sets_the_unpaced_flag_and_round_trips() {
+        let steps = walk_run_steps();
+        let frame = encode_vec(&steps);
+        assert_eq!(frame[6], WORKOUT_FLAG_UNPACED);
+        assert_eq!(
+            hex_of(&frame).as_str(),
+            "574b54310103010000000a000000002c0168010101010a00000000dc056801\
+             0500000a000000002c0168013f285589",
+            "wire format changed — update BOTH this vector and the Dart mirror \
+             in apps/mobile_android/lib/watch_workout.dart"
+        );
+        let decoded = decode(&frame).expect("decodes");
+        assert_eq!(decoded.as_slice(), &steps[..]);
+        assert_eq!(
+            frame_crc(&steps),
+            Some(crc32(&frame[..frame.len() - WORKOUT_CRC_LEN]))
+        );
+    }
+
+    #[test]
+    fn a_list_mixing_paced_and_unpaced_steps_is_unencodable() {
+        let mut mixed = demo_steps();
+        mixed[0].paced = false;
+        let mut buf = [0u8; MAX_WORKOUT_FRAME_LEN];
+        assert!(encode(&mixed, &mut buf).is_none());
+        assert_eq!(frame_crc(&mixed), None);
     }
 
     #[test]
@@ -475,7 +547,7 @@ mod tests {
 
         let body = &frame[..frame.len() - WORKOUT_CRC_LEN];
         let mut odd_flag = body.to_vec();
-        odd_flag[6] = 1 << 0;
+        odd_flag[6] = 1 << 1;
         assert!(decode(&sealed(&odd_flag)).is_none());
         let mut zero_count = body.to_vec();
         zero_count[5] = 0;

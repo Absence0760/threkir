@@ -50,3 +50,60 @@ test('custom fallback is honoured', () => {
 	assert.equal(safeReturnTo(null, '/login'), '/login');
 	assert.equal(safeReturnTo('//evil.com', '/login'), '/login');
 });
+
+test('open-redirect: dot segments that collapse to a protocol-relative path are rejected', () => {
+	// The URL parser removes `.` / `..` segments, so each of these resolves
+	// on the throwaway origin with a pathname of `//evil.com` — which a
+	// browser then reads as a protocol-relative URL to evil.com.
+	for (const raw of [
+		'/.//evil.com',
+		'/..//evil.com',
+		'/a/..//evil.com',
+		'/%2e//evil.com',
+		'/%2e%2e//evil.com',
+		'/./\\evil.com',
+	]) {
+		const out = safeReturnTo(raw);
+		assert.equal(out, DEFAULT_RETURN_TO, `${JSON.stringify(raw)} -> ${out}`);
+	}
+});
+
+test('open-redirect: a tab or newline after the first slash cannot smuggle in a host', () => {
+	// The parser strips ASCII tab / LF / CR before resolving, so `/\t/x`
+	// becomes `//x`. raw[1] is the control char, so only the origin check
+	// stands between this and an off-origin redirect.
+	assert.equal(safeReturnTo('/\t/evil.com'), DEFAULT_RETURN_TO);
+	assert.equal(safeReturnTo('/\n/evil.com'), DEFAULT_RETURN_TO);
+	assert.equal(safeReturnTo('/\r\n/evil.com/x'), DEFAULT_RETURN_TO);
+});
+
+test('a percent-encoded double slash stays a same-origin path', () => {
+	// `%2F` is not a path separator to the parser, so this is one literal
+	// segment on our origin — safe, and kept rather than discarded.
+	assert.equal(safeReturnTo('/%2F%2Fevil.com'), '/%2F%2Fevil.com');
+});
+
+test('dot segments that stay on a normal path are resolved, not refused', () => {
+	assert.equal(safeReturnTo('/runs/../dashboard'), '/dashboard');
+	assert.equal(safeReturnTo('/./settings'), '/settings');
+});
+
+test('embedded credentials or an @ in the path never become a host', () => {
+	const out = safeReturnTo('/@evil.com');
+	assert.equal(out, '/@evil.com');
+	assert.ok(out.startsWith('/') && !out.startsWith('//'));
+});
+
+test('every accepted result is root-relative and single-slashed', () => {
+	const inputs = [
+		'/dashboard', '/a//b', '/.//x', '/..//x', '/\t/x', '//x', '/\\x',
+		'/%2e%2e//x', '/runs?next=//evil.com', '/#//evil.com',
+	];
+	for (const raw of inputs) {
+		const out = safeReturnTo(raw);
+		assert.ok(out.startsWith('/'), `${JSON.stringify(raw)} -> ${out}`);
+		assert.ok(!out.startsWith('//') && !out.startsWith('/\\'), `${JSON.stringify(raw)} -> ${out}`);
+	}
+	assert.equal(safeReturnTo('/a//b'), '/a//b', 'an inner double slash is not a host');
+	assert.equal(safeReturnTo('/runs?next=//evil.com'), '/runs?next=//evil.com');
+});

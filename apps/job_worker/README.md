@@ -3,13 +3,29 @@
 Background-job drainer for the `jobs` Postgres queue (migration
 [`20260609_001_run_match_pipeline.sql`](../backend/supabase/migrations/20260609_001_run_match_pipeline.sql)).
 First registered handler is `kind='map_match'`; additional kinds plug
-into `internal/worker.go`'s dispatch switch.
+into `internal/worker.go`'s dispatch switch. `kind='distance_recompute'`
+(enqueued by the owner-only `request_distance_recompute(p_run_id)` RPC,
+payload `{run_id, user_id}`) replays an app- or watch-recorded run's
+stored track through the spec-v1.4 GPS distance smoother
+(`internal/gpsdistance/`, [`docs/features/gps_distance.md`](../../docs/features/gps_distance.md))
+and rewrites `runs.distance_m`, keeping the original in
+`metadata.distance_recorded_m` and stamping `distance_estimator = "kalman_v4"`.
+A track with no Doppler that the map_match road classifier (`roadDistanceFor`)
+does not accept as a road run keeps the smoother's forward pass instead, and
+`metadata.distance_estimator_pass` records which pass was kept.
+`map_match` reads a waypoint's `smoothedLat` / `smoothedLng` in place of its
+raw position when both are present.
+Both write the smoothed-position sidecar `{user_id}/{run_id}.smoothed.json.gz`
+(`internal/smoothed_sidecar.go`): a recompute that kept the smoothed pass, and
+`map_match` for a `watch` run, whose recorders store no smoothed pair. Each
+records the sidecar's track hash in `metadata.smoothed_sidecar_sha256`, which
+readers check before they request the sidecar.
 
 ## Required env
 
 | Variable | Purpose |
 |---|---|
-| `SUPABASE_URL` | Base URL, e.g. `http://127.0.0.1:54321` for local dev or your project URL in prod. |
+| `SUPABASE_URL` | Base URL, e.g. `http://127.0.0.1:24321` for local dev or your project URL in prod. |
 | `SUPABASE_SECRET_KEY` | Server API key — an `sb_secret_…` key in prod, or the local stack's legacy service-role JWT; `internal/supakey` derives the right header shape from the format. The worker uses it for every call so it bypasses RLS on `jobs` + `run_matched_tracks`. **Never put this on a client.** |
 | `WORKER_ID` | Optional. Stamped on the `jobs.locked_by` column for stuck-job debugging. Defaults to the hostname. |
 | `OSRM_URL` | Optional. When set (e.g. `http://127.0.0.1:5000`), the worker uses the OSRM `/match` endpoint instead of the passthrough shim. Local OSRM stack lives at [`./osrm/`](osrm/). |

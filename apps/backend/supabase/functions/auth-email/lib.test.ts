@@ -12,9 +12,11 @@ import {
   authEmailCatalogue,
   authEmailShared,
   buildMime,
+  buildActionUrl,
   buildVerifyUrl,
   encodeHeaderWord,
   extractAddr,
+  formatInstantUtc,
   isValidRecipient,
   normalizeEmailLocale,
   planSends,
@@ -192,18 +194,59 @@ Deno.test('verifySendEmailHook — prefix-less v1,<base64> secret form accepted'
   );
 });
 
+// The three Portuguese assertions here used to pin the OPPOSITE rule — `pt`
+// and `pt-PT` both asserted to resolve to `pt-BR` — so the only test covering
+// this function was what kept a Lisbon reader's auth mail Brazilian after the
+// browser and the wrist had moved (decisions § 761).
 Deno.test('normalizeEmailLocale — mirrors the worker table', () => {
   assertEquals(normalizeEmailLocale(''), 'en');
   assertEquals(normalizeEmailLocale(null), 'en');
   assertEquals(normalizeEmailLocale(undefined), 'en');
   assertEquals(normalizeEmailLocale('de-DE'), 'de');
   assertEquals(normalizeEmailLocale('de_AT'), 'de');
-  assertEquals(normalizeEmailLocale('pt'), 'pt-BR');
-  assertEquals(normalizeEmailLocale('pt-PT'), 'pt-BR');
+  assertEquals(normalizeEmailLocale('pt-BR'), 'pt-BR');
   assertEquals(normalizeEmailLocale('PT-br'), 'pt-BR');
+  assertEquals(normalizeEmailLocale('pt-PT'), 'pt-PT');
+  assertEquals(normalizeEmailLocale('pt_PT'), 'pt-PT');
+  // Brazilian is reached by its own tag, which every client reports. The bare
+  // tag and the other European-orthography regions have nowhere else to land.
+  assertEquals(normalizeEmailLocale('pt'), 'pt-PT');
+  assertEquals(normalizeEmailLocale('pt-AO'), 'pt-PT');
+  assertEquals(normalizeEmailLocale('pt-MZ'), 'pt-PT');
+  assertEquals(normalizeEmailLocale('pt-CV'), 'pt-PT');
   assertEquals(normalizeEmailLocale('ja'), 'ja');
   assertEquals(normalizeEmailLocale('fr-CA'), 'fr');
   assertEquals(normalizeEmailLocale('xx'), 'en');
+});
+
+// AUTH_EMAIL_LOCALES is derived from the catalogue now, so the assertion the
+// parity test opens with can no longer catch a locale that ships without a
+// route to it. A catalogue nothing normalizes to is dead weight nobody can
+// read — the shape decisions § 740 named on the client side.
+Deno.test('every shipped catalogue is reachable, and nothing routes nowhere', () => {
+  assert(AUTH_EMAIL_LOCALES.length > 0, 'no catalogues derived');
+  for (const locale of AUTH_EMAIL_LOCALES) {
+    assertEquals(
+      normalizeEmailLocale(locale),
+      locale,
+      `catalogue ${locale} is unreachable by its own tag`,
+    );
+  }
+  // Nothing the normalizer can return may lack a catalogue. Probing through
+  // the public function keeps the two private tables out of the test surface
+  // while still covering both of them.
+  const probes = [
+    '', 'en', 'de', 'fr', 'es', 'ja', 'pt', 'pt-BR', 'pt-PT',
+    'de-DE', 'fr-CA', 'es-419', 'ja-JP', 'pt-AO', 'pt-MZ', 'pt-CV',
+    'xx', 'zh-CN', 'en-GB',
+  ];
+  for (const probe of probes) {
+    const resolved = normalizeEmailLocale(probe);
+    assert(
+      AUTH_EMAIL_LOCALES.includes(resolved),
+      `${probe || '<empty>'} resolved to ${resolved}, which has no catalogue`,
+    );
+  }
 });
 
 Deno.test('resolveAuthEmailLocale — settings > metadata > en', () => {
@@ -215,9 +258,14 @@ Deno.test('resolveAuthEmailLocale — settings > metadata > en', () => {
 });
 
 Deno.test('catalogue — every locale carries every key, non-empty', () => {
+  // The shared strings are the second map a locale has to be added to, and
+  // the one nothing else looks at: `authEmailShared[locale].footer` below
+  // would throw on a missing entry, but an entry present here and absent from
+  // the catalogue was invisible until this compared the two key sets.
   assertEquals(
-    Object.keys(authEmailCatalogue).sort(),
-    [...AUTH_EMAIL_LOCALES].sort(),
+    Object.keys(authEmailShared).sort(),
+    [...AUTH_EMAIL_LOCALES],
+    'authEmailShared and authEmailCatalogue disagree on the locale set',
   );
   const linkKeys = ['signup', 'invite', 'magiclink', 'recovery', 'email_change', 'email_change_current'];
   for (const locale of AUTH_EMAIL_LOCALES) {
@@ -338,10 +386,11 @@ Deno.test('planSends — reauthentication is code-only, no verify link', () => {
 Deno.test('planSends — unknown action type falls to the informational default, never fails', () => {
   const sends = planSends(
     { email: 'a@example.com' },
-    { email_action_type: 'mfa_factor_enrolled_notification' },
+    { email_action_type: 'some_future_notification', provider: 'google' },
   );
   assertEquals(sends.length, 1);
   assertEquals(sends[0].catalogueKey, 'default');
+  assertEquals(sends[0].detail, undefined);
   assertEquals(sends[0].verifyType, null);
 });
 
@@ -359,14 +408,14 @@ Deno.test('planSends — no recipient means no sends', () => {
 
 Deno.test('buildVerifyUrl — mirrors GoTrue: plain redirect_to stays literal', () => {
   const url = buildVerifyUrl(
-    'http://127.0.0.1:54321',
+    'http://127.0.0.1:24321',
     'abc123',
     'recovery',
     'http://localhost:7777/auth/reset',
   );
   assertEquals(
     url,
-    'http://127.0.0.1:54321/auth/v1/verify?token=abc123&type=recovery&redirect_to=http://localhost:7777/auth/reset',
+    'http://127.0.0.1:24321/auth/v1/verify?token=abc123&type=recovery&redirect_to=http://localhost:7777/auth/reset',
   );
   assertStringIncludes(url, '/auth/reset');
 });
@@ -376,7 +425,61 @@ Deno.test('buildVerifyUrl — redirect_to with &/=/# gets encoded', () => {
   assertStringIncludes(url, 'redirect_to=' + encodeURIComponent('http://a/b?c=1&d=2'));
 });
 
-Deno.test('renderAuthEmail — recovery: CTA verify link is the first URL in the HTML', () => {
+// buildActionUrl is the shape that actually ships. A GoTrue verify hop
+// hands the session back as a PKCE code only the originating browser can
+// exchange, which is never the one the mail is opened in — see the
+// function's own note and docs/features/web_app_auth.md.
+Deno.test('buildActionUrl — an http landing gets the token_hash directly', () => {
+  assertEquals(
+    buildActionUrl(
+      'http://127.0.0.1:24321',
+      'abc123',
+      'recovery',
+      'http://localhost:7777/auth/reset',
+    ),
+    'http://localhost:7777/auth/reset?token_hash=abc123&type=recovery',
+  );
+});
+
+Deno.test('buildActionUrl — an existing query keeps its params', () => {
+  assertEquals(
+    buildActionUrl('http://x', 'h', 'signup', 'https://threkir.com/auth/callback?next=/routes'),
+    'https://threkir.com/auth/callback?next=/routes&token_hash=h&type=signup',
+  );
+});
+
+Deno.test('buildActionUrl — a fragment stays at the end, not swallowing the params', () => {
+  assertEquals(
+    buildActionUrl('http://x', 'h', 'magiclink', 'https://threkir.com/dashboard#top'),
+    'https://threkir.com/dashboard?token_hash=h&type=magiclink#top',
+  );
+});
+
+Deno.test('buildActionUrl — a custom-scheme (mobile) target keeps the verify hop', () => {
+  // supabase_flutter completes the deep link from the `?code=` the hop
+  // produces, and the app holds its own verifier, so nothing is stranded.
+  assertEquals(
+    buildActionUrl('http://127.0.0.1:24321', 'h', 'signup', 'com.threkir.app://login-callback'),
+    'http://127.0.0.1:24321/auth/v1/verify?token=h&type=signup' +
+      '&redirect_to=com.threkir.app://login-callback',
+  );
+});
+
+Deno.test('buildActionUrl — no redirect target falls back to the verify hop', () => {
+  assertEquals(
+    buildActionUrl('http://127.0.0.1:24321', 'h', 'signup', undefined),
+    'http://127.0.0.1:24321/auth/v1/verify?token=h&type=signup',
+  );
+});
+
+Deno.test('buildActionUrl — token hash is percent-encoded into the query', () => {
+  assertStringIncludes(
+    buildActionUrl('http://x', 'a b&c', 'signup', 'http://localhost:7777/auth/callback'),
+    'token_hash=' + encodeURIComponent('a b&c'),
+  );
+});
+
+Deno.test('renderAuthEmail — recovery: CTA verify link is the anchor the fixture reads', () => {
   const [send] = planSends(
     { email: 'a@example.com' },
     {
@@ -387,18 +490,33 @@ Deno.test('renderAuthEmail — recovery: CTA verify link is the first URL in the
     },
   );
   const r = renderAuthEmail('en', send, {
-    supabaseUrl: 'http://127.0.0.1:54321',
+    supabaseUrl: 'http://127.0.0.1:24321',
     redirectTo: 'http://localhost:7777/auth/reset',
+    appBaseUrl: 'https://threkir.com',
   });
   assertEquals(r.subject, 'Reset your password');
   // The e2e mail fixture (apps/web/tests-e2e/fixtures/mailpit.ts
-  // extractLink) grabs the FIRST http(s) URL in the message and decodes
-  // the attribute-escaped &amp; — mirror both steps; it must be the
-  // verify link.
-  const firstUrl = r.html.match(/https?:\/\/[^\s"'<>]+/)![0].replace(/&amp;/g, '&');
-  assertStringIncludes(firstUrl, '/auth/v1/verify?token=thehash&type=recovery');
-  assertStringIncludes(firstUrl, '/auth/reset');
-  assertStringIncludes(r.text, '/auth/v1/verify?token=thehash&type=recovery');
+  // extractLink) reads the first ANCHOR href and decodes the
+  // attribute-escaped &amp; — mirror both steps; it must be the action
+  // link. It deliberately does NOT read the first URL: with a site URL
+  // configured the header mark's <img src> comes first, which is the
+  // whole reason the fixture keys on the anchor.
+  const firstUrl = r.html.match(
+    /<a\b[^>]*\bhref=["'](https?:\/\/[^"']+)["']/i,
+  )![1].replace(/&amp;/g, '&');
+  assertEquals(firstUrl, 'http://localhost:7777/auth/reset?token_hash=thehash&type=recovery');
+  assertStringIncludes(r.text, '/auth/reset?token_hash=thehash&type=recovery');
+  // The mark precedes it, and carries no alt so the wordmark beside it
+  // isn't announced twice.
+  assertStringIncludes(r.html, 'src="https://threkir.com/email-logo.png"');
+  assertStringIncludes(r.html, 'alt=""');
+  if (r.html.indexOf('email-logo.png') > r.html.indexOf('<a ')) {
+    throw new Error('the mark must precede the CTA, or this test proves nothing');
+  }
+  // The plain-text part must not grow a URL nobody can click.
+  if (r.text.includes('email-logo.png')) {
+    throw new Error('the logo leaked into the plain-text part');
+  }
   // The OTP code rides along as the link alternative.
   assertStringIncludes(r.html, '123456');
   assertStringIncludes(r.text, '123456');
@@ -438,20 +556,20 @@ Deno.test('renderAuthEmail — signup: confirm link + welcome copy render in eve
       },
     );
     const r = renderAuthEmail(locale, send, {
-      supabaseUrl: 'http://127.0.0.1:54321',
+      supabaseUrl: 'http://127.0.0.1:24321',
       redirectTo: 'http://localhost:7777/auth/callback',
     });
     const strings = authEmailCatalogue[locale].signup;
-    // The confirm link is byte-compatible with GoTrue's own and is the
-    // FIRST URL in the HTML (the e2e mail fixture grabs the first URL).
+    // The confirm link points at the web landing, carrying the token
+    // hash the page redeems, and is the FIRST URL in the HTML (the e2e
+    // mail fixture grabs the first URL).
     const firstUrl = r.html.match(/https?:\/\/[^\s"'<>]+/)![0].replace(/&amp;/g, '&');
     assertStringIncludes(
       firstUrl,
-      'http://127.0.0.1:54321/auth/v1/verify?token=signhash&type=signup',
-      `signup verify link drift in ${locale}`,
+      'http://localhost:7777/auth/callback?token_hash=signhash&type=signup',
+      `signup confirm link drift in ${locale}`,
     );
-    assertStringIncludes(firstUrl, '/auth/callback');
-    assertStringIncludes(r.text, '/auth/v1/verify?token=signhash&type=signup');
+    assertStringIncludes(r.text, '/auth/callback?token_hash=signhash&type=signup');
     // Localized subject / heading / CTA all render (none carry
     // HTML-special characters, so escapeHtml is identity here).
     assertEquals(r.subject, strings.subject, `signup subject drift in ${locale}`);
@@ -501,4 +619,228 @@ Deno.test('buildMime — multipart/alternative with CRLF and 8bit parts', () => 
 Deno.test('extractAddr — bare address out of a display-name From', () => {
   assertEquals(extractAddr('Threkir <noreply@threkir.com>'), 'noreply@threkir.com');
   assertEquals(extractAddr('noreply@threkir.com'), 'noreply@threkir.com');
+});
+
+// A deployment with no Site URL configured must still send a coherent email
+// rather than one with a broken image at the top — the same shape every
+// client that blocks remote images renders.
+Deno.test('renderAuthEmail — no APP_BASE_URL falls back to the wordmark alone', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'recovery', token: '123456', token_hash: 'thehash' },
+  );
+  const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:24321' });
+
+  if (r.html.includes('<img')) {
+    throw new Error('no APP_BASE_URL must not emit an image');
+  }
+  assertStringIncludes(r.html, 'Threkir');
+});
+
+// The hook payload's `site_url` is the API external URL
+// (<ref>.supabase.co/auth/v1), not the dashboard Site URL. Building the mark
+// from it shipped a broken image to every inbox, so pin that the renderer
+// takes the web origin and nothing else.
+Deno.test('renderAuthEmail — the mark resolves against APP_BASE_URL, never the API host', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'signup', token: '1', token_hash: 'h' },
+  );
+  const r = renderAuthEmail('en', send, {
+    supabaseUrl: 'https://mcbgrgvegqcmdmtraikl.supabase.co',
+    appBaseUrl: 'https://threkir.com',
+  });
+
+  assertStringIncludes(r.html, 'src="https://threkir.com/email-logo.png"');
+  if (r.html.includes('supabase.co/auth/v1/email-logo.png')) {
+    throw new Error('the mark resolved against the API host');
+  }
+  if (r.html.includes('supabase.co/email-logo.png')) {
+    throw new Error('the mark resolved against the Supabase project URL');
+  }
+});
+
+// The password-changed notice (GoTrue's password_changed_notification,
+// enabled by config.toml [auth.email.notification.password_changed]) states
+// when the change happened and sends the reader to the reset form — the one
+// step that helps whether or not they can still sign in.
+Deno.test('renderAuthEmail — password changed: the time, a reset CTA, and the security contact', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'password_changed_notification' },
+  );
+  const r = renderAuthEmail('en', send, {
+    supabaseUrl: 'http://127.0.0.1:24321',
+    appBaseUrl: 'https://threkir.test/',
+    sentAtMs: NOW,
+  });
+  assertStringIncludes(r.text, `(${formatInstantUtc(NOW)})`);
+  assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
+  assertStringIncludes(r.html, 'href="https://threkir.test/login?reset=1"');
+  assertStringIncludes(r.text, 'security@threkir.com');
+  assert(!r.text.includes('{when}') && !r.html.includes('{when}'), 'placeholder leaked');
+});
+
+Deno.test('renderAuthEmail — password changed without a time or a web origin still reads whole', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'password_changed_notification' },
+  );
+  const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:24321' });
+  assert(!r.text.includes('{when}'), 'an absent time must not leave the placeholder');
+  assertStringIncludes(r.text, authEmailCatalogue.en.password_changed_notification.preheader);
+  assert(!r.html.includes('<a href'), 'no APP_BASE_URL means no reset button to point anywhere');
+});
+
+Deno.test('catalogue — every locale states the password change time exactly once', () => {
+  for (const locale of AUTH_EMAIL_LOCALES) {
+    const s = authEmailCatalogue[locale].password_changed_notification;
+    const count = s.body.join(' ').split('{when}').length - 1;
+    assertEquals(count, 1, `${locale}.password_changed_notification carries ${count} {when} placeholders`);
+    assert(s.cta.length > 0, `${locale}.password_changed_notification has no reset CTA label`);
+    assertStringIncludes(s.body.join(' '), 'security@threkir.com', `${locale} names no security contact`);
+    const r = renderAuthEmail(locale, { to: 'a@example.com', catalogueKey: 'password_changed_notification', verifyType: null, token: '', tokenHash: '' }, {
+      supabaseUrl: 'http://x',
+      appBaseUrl: 'https://threkir.test',
+      sentAtMs: NOW,
+    });
+    assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
+    assertStringIncludes(r.html, 'https://threkir.test/login?reset=1');
+  }
+});
+
+// The six other GoTrue account-change notices (supabase/auth
+// internal/mailer/mailer.go), each enabled by its own
+// config.toml [auth.email.notification.<name>] block.
+const OTHER_NOTICES = [
+  'email_changed_notification',
+  'phone_changed_notification',
+  'identity_linked_notification',
+  'identity_unlinked_notification',
+  'mfa_factor_enrolled_notification',
+  'mfa_factor_unenrolled_notification',
+] as const;
+
+Deno.test('planSends — every account-change notice plans to its own catalogue key', () => {
+  for (const action of OTHER_NOTICES) {
+    assert((AUTH_EMAIL_KEYS as readonly string[]).includes(action), `${action} missing from AUTH_EMAIL_KEYS`);
+    const sends = planSends(
+      { email: 'a@example.com' },
+      { email_action_type: action, old_email: 'old@example.com' },
+    );
+    assertEquals(sends.length, 1, action);
+    assertEquals(sends[0].catalogueKey, action);
+    assertEquals(sends[0].verifyType, null);
+    assertEquals(sends[0].token, '');
+  }
+});
+
+Deno.test('planSends — email changed goes to the PREVIOUS address, not the new one', () => {
+  const sends = planSends(
+    { email: 'new@example.com' },
+    { email_action_type: 'email_changed_notification', old_email: 'old@example.com' },
+  );
+  assertEquals(sends.map((s) => s.to), ['old@example.com']);
+  // Without old_email there is no safe recipient: user.email is already the
+  // new address, which in a takeover is the attacker's.
+  assertEquals(
+    planSends({ email: 'new@example.com' }, { email_action_type: 'email_changed_notification' }),
+    [],
+  );
+  assertEquals(planSends({}, { email_action_type: 'email_changed_notification' }), []);
+});
+
+Deno.test('planSends — identity notices carry the provider, MFA notices the factor type', () => {
+  const linked = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'identity_linked_notification', provider: 'google', factor_type: 'totp' },
+  );
+  assertEquals(linked[0].detail, 'google');
+  const mfa = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'mfa_factor_unenrolled_notification', provider: 'google', factor_type: 'totp' },
+  );
+  assertEquals(mfa[0].detail, 'totp');
+  const phone = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'phone_changed_notification', old_phone: '15551234567' },
+  );
+  assertEquals(phone[0].detail, undefined);
+});
+
+Deno.test('catalogue — every account-change notice states the time once, names the contact, and leaks no address', () => {
+  for (const locale of AUTH_EMAIL_LOCALES) {
+    const shared = authEmailShared[locale];
+    for (const key of ['email', 'phone']) assert(shared.identityLabels[key]?.length > 0, `${locale} identity label ${key}`);
+    for (const key of ['totp', 'phone', 'webauthn']) assert(shared.factorLabels[key]?.length > 0, `${locale} factor label ${key}`);
+    for (const key of OTHER_NOTICES) {
+      const s = authEmailCatalogue[locale][key];
+      const joined = s.body.join(' ');
+      assertEquals(joined.split('{when}').length - 1, 1, `${locale}.${key} {when} count`);
+      assertStringIncludes(joined, 'security@threkir.com', `${locale}.${key} names no security contact`);
+      const methodLines = s.body.filter((p) => p.includes('{method}')).length;
+      const wantsMethod = key.startsWith('identity_') || key.startsWith('mfa_');
+      assertEquals(methodLines, wantsMethod ? 1 : 0, `${locale}.${key} {method} lines`);
+      if (key === 'email_changed_notification') {
+        assertEquals(s.cta, '', `${locale}.${key}: a reset would mail the new address, so no button`);
+      } else {
+        assert(s.cta.length > 0, `${locale}.${key} has no reset CTA label`);
+      }
+      const r = renderAuthEmail(
+        locale,
+        { to: 'old@example.com', catalogueKey: key, verifyType: null, token: '', tokenHash: '', detail: 'totp' },
+        { supabaseUrl: 'http://x', appBaseUrl: 'https://threkir.test', sentAtMs: NOW },
+      );
+      assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
+      assert(!/\{(when|method)\}/.test(r.text + r.html), `${locale}.${key} leaked a placeholder`);
+      assert(!r.text.includes('old@example.com'), `${locale}.${key} printed the recipient address`);
+      assertEquals(
+        r.html.includes('https://threkir.test/login?reset=1'),
+        key !== 'email_changed_notification',
+        `${locale}.${key} reset button`,
+      );
+    }
+  }
+});
+
+Deno.test('renderAuthEmail — the provider and factor render by name', () => {
+  const linked = renderAuthEmail(
+    'en',
+    { to: 'a@example.com', catalogueKey: 'identity_linked_notification', verifyType: null, token: '', tokenHash: '', detail: 'google' },
+    { supabaseUrl: 'http://x', sentAtMs: NOW },
+  );
+  assertStringIncludes(linked.text, 'Sign-in method: Google');
+  const email = renderAuthEmail(
+    'de',
+    { to: 'a@example.com', catalogueKey: 'identity_unlinked_notification', verifyType: null, token: '', tokenHash: '', detail: 'email' },
+    { supabaseUrl: 'http://x', sentAtMs: NOW },
+  );
+  assertStringIncludes(email.text, 'Anmeldemethode: E-Mail und Passwort');
+  const factor = renderAuthEmail(
+    'ja',
+    { to: 'a@example.com', catalogueKey: 'mfa_factor_enrolled_notification', verifyType: null, token: '', tokenHash: '', detail: 'webauthn' },
+    { supabaseUrl: 'http://x', sentAtMs: NOW },
+  );
+  assertStringIncludes(factor.text, '方法: セキュリティキーまたはパスキー');
+});
+
+Deno.test('renderAuthEmail — an unknown or missing provider / factor drops the method line, nothing else', () => {
+  for (const detail of [undefined, 'some_new_idp', 'constructor', '<script>']) {
+    const r = renderAuthEmail(
+      'en',
+      { to: 'a@example.com', catalogueKey: 'identity_linked_notification', verifyType: null, token: '', tokenHash: '', detail },
+      { supabaseUrl: 'http://x', sentAtMs: NOW },
+    );
+    assert(!r.text.includes('Sign-in method:'), `method line kept for ${detail}`);
+    assert(!r.text.includes('{method}'), 'placeholder leaked');
+    assertStringIncludes(r.text, 'A new sign-in method was linked to your Threkir account (2025-06-15 15:06 UTC).');
+    assertStringIncludes(r.text, 'security@threkir.com');
+  }
+  const mfa = renderAuthEmail(
+    'fr',
+    { to: 'a@example.com', catalogueKey: 'mfa_factor_unenrolled_notification', verifyType: null, token: '', tokenHash: '', detail: 'google' },
+    { supabaseUrl: 'http://x' },
+  );
+  assert(!mfa.text.includes('Méthode :'), 'a provider id is not a factor type');
+  assertStringIncludes(mfa.text, authEmailCatalogue.fr.mfa_factor_unenrolled_notification.preheader);
 });

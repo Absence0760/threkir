@@ -110,6 +110,88 @@ class ScreenWiringTest {
         )
     }
 
+    @Test fun `a denied permission dialog reports what it cost`() {
+        // The callback was two lines: set showCountdown when
+        // ACCESS_FINE_LOCATION came back granted, and nothing at all
+        // otherwise. So a runner who tapped GO and declined — or who had
+        // declined once before, after which the system stops prompting —
+        // landed back on an unchanged pre-run screen with no countdown, no
+        // message and no way to ask why. The gate was right and stays; what
+        // was missing was the report.
+        val src = readRunWatchApp()
+        assertTrue(
+            "the launcher result must be graded through permissionOutcome, " +
+                "not read as a single boolean",
+            src.contains("permissionOutcome(granted)"),
+        )
+        assertTrue(
+            "a graded result must be able to raise the notice — otherwise " +
+                "the else branch is still empty",
+            Regex("""shouldInterruptForCosts\([^)]*\)\s*\)?\s*\{[^}]*permissionNotice\s*=""")
+                .containsMatchIn(src),
+        )
+        assertTrue(
+            "PermissionNotice must exist as the surface that renders it",
+            Regex("""@Composable[^@]*private\s+fun\s+PermissionNotice\s*\(""")
+                .containsMatchIn(src),
+        )
+        // Each cost carries its own sentence, and the card offers a route
+        // back rather than only bad news.
+        val strings = readDefaultStrings()
+        for (key in listOf(
+            "perm_cost_location",
+            "perm_cost_precise_location",
+            "perm_title_precise",
+            "perm_cost_heart_rate",
+            "perm_cost_steps",
+            "perm_cost_notification",
+            "perm_watch_steps",
+            "perm_try_again",
+        )) {
+            assertTrue(
+                "values/strings.xml must declare $key",
+                strings.contains("name=\"$key\""),
+            )
+            assertTrue(
+                "RunWatchApp must reference R.string.$key",
+                src.contains("R.string.$key"),
+            )
+        }
+    }
+
+    @Test fun `the route picker distinguishes unreachable from none saved`() {
+        // `refreshRoutes` had one empty failure branch and one silent early
+        // return: a fetch that threw set only `routesLoading = false`, and a
+        // watch with no session yet returned before fetching at all. Both
+        // left the picker rendering `route_picker_empty` — "Build a route on
+        // the phone or web first" — at a runner who may have fifty saved
+        // routes and a watch that simply could not reach them.
+        val vm = readSrc("RunViewModel.kt")
+        val body = Regex("""fun refreshRoutes\(\)[\s\S]*?\n    \}\n""")
+            .find(vm)?.value
+            ?: error("could not locate refreshRoutes in RunViewModel.kt")
+        assertTrue(
+            "refreshRoutes must flag BOTH failure paths — no session yet, " +
+                "and a fetch that threw — not just one",
+            Regex("""routesUnavailable = true""").findAll(body).count() == 2,
+        )
+        assertTrue(
+            "a successful load must clear the flag, or the picker keeps " +
+                "apologising after it has recovered",
+            body.contains("routesUnavailable = false"),
+        )
+        val src = readRunWatchApp()
+        assertTrue(
+            "the picker's empty state must choose between the two messages",
+            Regex("""R\.string\.route_picker_unavailable[\s\S]{0,120}R\.string\.route_picker_empty""")
+                .containsMatchIn(src),
+        )
+        assertTrue(
+            "values/strings.xml must declare route_picker_unavailable",
+            readDefaultStrings().contains("name=\"route_picker_unavailable\""),
+        )
+    }
+
     @Test fun `PreRunScreen surfaces battery-saver remediation chip`() {
         // Without the "Fix battery saver" chip, runners not on the
         // ignore-battery-optimizations whitelist get throttled
@@ -288,6 +370,77 @@ class ScreenWiringTest {
         )
     }
 
+    @Test fun `an unreadable queue still offers the drain the count would have`() {
+        // The counted chip is gated on `queuedCount > 0`, and the count comes
+        // off a stream that a failed read used to terminate — so on the one
+        // condition that guarantees the count is wrong, the pre-run screen
+        // showed nothing at all and the runner had no way to retry
+        // (decisions § 1104). A second branch renders the same slot when the
+        // read failed, stating no figure it cannot support.
+        val src = readRunWatchApp()
+        assertTrue(
+            "PreRunScreen no longer takes `queueUnreadable` — a frozen count " +
+                "is indistinguishable from an empty queue without it.",
+            Regex("""private fun PreRunScreen\(\s*queuedCount: Int,\s*queueUnreadable: Boolean,""")
+                .containsMatchIn(src),
+        )
+        assertTrue(
+            "the arc must resolve its slot through `syncChipState`, which is where " +
+                "the claim that the unreadable chip outranks the counted one now " +
+                "lives — and where `SyncChipStateTest` can evaluate it rather than " +
+                "read it off the order of two source lines.",
+            Regex("""val syncSlot = syncChipState\(""").containsMatchIn(src),
+        )
+        assertTrue(
+            "the unreadable chip must call onSync — a chip that states the " +
+                "problem and does not offer the retry is the silence it replaced.",
+            Regex(
+                """SyncChipState\.Unreadable -> \{.{0,2000}?onClick = onSync""",
+                RegexOption.DOT_MATCHES_ALL,
+            ).containsMatchIn(src),
+        )
+    }
+
+    @Test fun `the unreadable-queue chip is not gated on the network`() {
+        // Reading the queue is a local file open. The network is not a party
+        // to whether it succeeds, so gating the only affordance that can
+        // recover it on `online` withholds the recovery path for a purely
+        // local fault. The COUNTED chip stays gated — that one uploads.
+        val src = readRunWatchApp()
+        // Ends at the NEXT arm of the `when`, whichever it is, rather than at
+        // the counted one by name: a third arm landed between them (§ 1347) and
+        // the extraction silently widened to span it, so an assertion about
+        // "the unreadable chip" could be satisfied by the rejected chip's body.
+        // The next arm is found at whatever depth the `when` sits; a literal
+        // indent here broke the moment the screen nested it.
+        val branch = Regex(
+            """SyncChipState\.Unreadable -> \{(.*?)\n[ \t]*SyncChipState\.\w+(?:, SyncChipState\.\w+)* ->""",
+            RegexOption.DOT_MATCHES_ALL,
+        ).find(src)
+        assertTrue("no unreadable-queue branch parsed — the checks below read nothing", branch != null)
+        val body = branch!!.groupValues[1]
+        assertTrue(
+            "the unreadable chip must be enabled offline: $body",
+            body.contains("enabled = !syncing,"),
+        )
+        assertTrue(
+            "the unreadable chip must carry a contentDescription — its 100 dp " +
+                "label cannot hold the sentence and colour alone is not a signal: $body",
+            body.contains("R.string.cd_sync_unreadable_retry"),
+        )
+        assertTrue(
+            "…and it must APPLY it. Reading the resource reference alone passes for a " +
+                "branch that resolves the string and hands it to nothing, which is a " +
+                "chip TalkBack announces as its 100 dp label: $body",
+            Regex("""\.semantics \{ contentDescription = unreadableCd""").containsMatchIn(body),
+        )
+        assertTrue(
+            "the unreadable chip must not reuse the counted label — `Sync N` " +
+                "on a count nobody could read is the claim this removes: $body",
+            !body.contains("R.string.sync_count"),
+        )
+    }
+
     @Test
     fun `running-screen Buttons carry contentDescription for TalkBack`() {
         // Reason: audit/accessibility High (May 2026). The Pause /
@@ -334,6 +487,56 @@ class ScreenWiringTest {
             "expected >= 6 Modifier.semantics blocks with contentDescription " +
                 "on RunWatchApp buttons; found $semanticsBlocks",
             semanticsBlocks >= 6,
+        )
+    }
+
+    @Test fun `the signed-out notice says signed out, not offline`() {
+        // The pre-run header renders two DIFFERENT facts a few lines apart:
+        // `!online && authed` -> the watch cannot reach the network, and
+        // `!authed` -> nobody has signed in on this wrist. Both branches
+        // rendered `R.string.offline`.
+        //
+        // Nothing fails when they share a string. The runner is simply told
+        // the wrong thing about a watch that is usually perfectly online, and
+        // sent to check Bluetooth instead of tapping the Sign in chip
+        // immediately below it — the affordance that actually fixes what they
+        // are looking at. Grep-level rather than Compose-level for the reason
+        // the class comment gives; the branch body is read on its own so a
+        // match from the sibling `!online` branch cannot satisfy it.
+        val src = readRunWatchApp()
+        val at = src.indexOf("if (!authed) {")
+        assertTrue("the `if (!authed) {` pre-run branch is gone", at >= 0)
+        var depth = 0
+        var end = at
+        for (i in src.indexOf('{', at) until src.length) {
+            if (src[i] == '{') depth += 1
+            if (src[i] == '}') {
+                depth -= 1
+                if (depth == 0) { end = i; break }
+            }
+        }
+        val branch = src.substring(at, end)
+        assertTrue(
+            "the signed-out branch must render R.string.not_signed_in",
+            branch.contains("R.string.not_signed_in"),
+        )
+        assertTrue(
+            "the signed-out branch must NOT render R.string.offline — a " +
+                "runner who has not signed in is usually online, and the " +
+                "offline notice belongs to the `!online && authed` branch",
+            !branch.contains("R.string.offline"),
+        )
+        assertTrue(
+            "the network branch must still render R.string.offline — the condition " +
+                "behind it moved into `syncChipState`, the arm did not",
+            Regex(
+                """SyncChipState\.Offline -> \{.{0,300}?R\.string\.offline""",
+                RegexOption.DOT_MATCHES_ALL,
+            ).containsMatchIn(src),
+        )
+        assertTrue(
+            "values/strings.xml must carry the English copy for not_signed_in",
+            readDefaultStrings().contains("<string name=\"not_signed_in\">Not signed in</string>"),
         )
     }
 }

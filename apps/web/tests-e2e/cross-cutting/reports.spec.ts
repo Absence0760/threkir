@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
 
 /**
  * User-submitted reports — anti-spam phase 3 (migration 20260908_001).
@@ -96,13 +97,16 @@ test.describe('reports — Report dialog wires up to submit_report', () => {
 			await expect(dialog).toBeHidden({ timeout: 5_000 });
 
 			// DB row landed with the right shape.
-			const { data: row } = await admin
-				.from('reports')
-				.select('id, reporter_id, target_kind, target_id, reason, notes, status')
-				.eq('target_kind', 'club')
-				.eq('target_id', clubId)
-				.eq('reporter_id', USER_A.id)
-				.maybeSingle();
+			const row = await readMaybeRow(
+				'reports by target_kind+target_id+reporter_id',
+				admin
+					.from('reports')
+					.select('id, reporter_id, target_kind, target_id, reason, notes, status')
+					.eq('target_kind', 'club')
+					.eq('target_id', clubId)
+					.eq('reporter_id', USER_A.id)
+					.maybeSingle()
+			);
 			expect(row).not.toBeNull();
 			expect(row!.reason).toBe('harassment');
 			expect(row!.notes).toBe(noteText);
@@ -156,9 +160,11 @@ test.describe('reports — Report dialog wires up to submit_report', () => {
 			await dialog.getByRole('button', { name: 'Submit report' }).click();
 
 			// The dialog stays open with the inline error — toast does
-			// NOT fire because submitReport threw before showToast.
+			// NOT fire because submitReport threw before showToast. The
+			// sentence is the catalogue's (an AppError), not the data
+			// layer's English, and not the generic submit failure.
 			await expect(
-				dialog.getByText(/already have a pending report/i),
+				dialog.getByText(/already reported this/i),
 			).toBeVisible({ timeout: 5_000 });
 		} finally {
 			await admin.from('clubs').delete().eq('id', clubId);

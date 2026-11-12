@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Absence0760/project-running/apps/job_worker/internal/webpush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/webpush"
 )
 
 // handleWebPush drains a `web_push` job: load the referenced notification,
@@ -64,7 +64,7 @@ func (w *Worker) handleWebPush(ctx context.Context, job *Job) error {
 	if err != nil {
 		return fmt.Errorf("fetch prefs: %w", err)
 	}
-	if !shouldPush(n.Kind, pushMode(prefs)) {
+	if !shouldPush(n.Kind, prefs) {
 		// Recipient opted this category out of the push channel. Terminal.
 		return w.Backend.MarkNotificationWebPushed(ctx, n.ID)
 	}
@@ -105,8 +105,12 @@ func (w *Worker) handleWebPush(ctx context.Context, job *Job) error {
 			if err := w.Backend.ClearPushSubscription(ctx, n.UserID, s.DeviceID); err != nil {
 				w.Log.Warn("web_push: prune failed", "device_id", s.DeviceID, "err", err)
 			}
-		case status == http.StatusTooManyRequests || status >= 500:
-			// Push service throttling or down — retry the whole job.
+		case isRetryableUpstreamStatus(status):
+			// Push service throttling or down — retry the whole job. Shares the
+			// worker's classifier so the two cannot disagree: hand-rolling
+			// `429 || >=500` here meant an APNs 408 or a proxy 425 fell to the
+			// `default:` arm below and was DROPPED as permanent, never reaching
+			// the classifier that would have retried it.
 			w.Log.Warn("web_push: transient push-service status", "device_id", s.DeviceID, "status", status)
 			transient = &HTTPError{StatusCode: status}
 		case status >= 200 && status < 300:

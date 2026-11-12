@@ -1,33 +1,58 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
-	import { onMount } from 'svelte';
-	import { fmtPace, getUnit, formatPaceNoSuffix } from '$lib/format/units.svelte';
+	import { page } from '$app/state';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import type { MetricId } from '#lib/metrics/metric_registry.ts';
+	import { onMount, tick } from 'svelte';
+	import { fmtPace, getUnit, formatPaceNoSuffix, formatElevation, formatStrideLength } from '#lib/format/units.svelte.ts';
 
 	const METRES_PER_MILE = 1609.344;
-	import { env } from '$env/dynamic/public';
-	import RunMap, { type SelectedSegment } from '$lib/components/RunMap.svelte';
-	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
-	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
-	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '$lib/routes/static_map';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import RunSocial from '$lib/components/RunSocial.svelte';
-	import RunShareView from '$lib/components/RunShareView.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import RunPhotos from '$lib/components/RunPhotos.svelte';
-	import FundraiserSection from '$lib/components/FundraiserSection.svelte';
-	import RunGearChips from '$lib/components/RunGearChips.svelte';
-	import RunRaceResult from '$lib/components/RunRaceResult.svelte';
-	import RunSegmentEfforts from '$lib/components/RunSegmentEfforts.svelte';
-	import RouteHistory from '$lib/components/RouteHistory.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import { formatPace, formatSpeed, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration } from '$lib/format/time';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import type { SelectedSegment } from '#lib/runs/track_segment.ts';
+	import { formatDecimal } from '#lib/format/number.ts';
+	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { hasPreviewableCourse, trackPreview } from '#lib/routes/course_preview_points.ts';
+	import type { PathPoint } from '#lib/routes/flyover_path.ts';
+	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
+	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '#lib/routes/static_map.ts';
+	import { mapTrackLine } from '#lib/routes/basemap_contrast.ts';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	const PUBLIC_TILE_STYLE_URL = PUBLIC_TILE_STYLE_URL_ENV ?? '';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import { cumulativeMetres, smoothElevation } from '#lib/runs/elevation_profile.ts';
+	import RunSocial from '#lib/components/RunSocial.svelte';
+	import RunShareView from '#lib/components/RunShareView.svelte';
+	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
+	import type { PrCardEntry } from '#lib/share/pr_card.ts';
+	import GrisnirMilestone from '#lib/components/GrisnirMilestone.svelte';
+	import { pickMilestone, type MilestoneKind } from '#lib/mascot/mascot.ts';
+	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import RunPhotos from '#lib/components/RunPhotos.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import RunGearChips from '#lib/components/RunGearChips.svelte';
+	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
+	import RunParkCourseChips from '#lib/components/RunParkCourseChips.svelte';
+	import RunRaceRetime from '#lib/components/RunRaceRetime.svelte';
+	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
+	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
+	import RouteHistory from '#lib/components/RouteHistory.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import { formatPace, formatSpeed, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { paceDeltaLabel as unitPaceDelta } from '#lib/format/pace_delta.ts';
 	import {
 		fetchRunById,
+		fetchRunPersonalRecords,
+		fetchRunAllTimeStats,
+		fetchRunEarnedBadge,
 		fetchPublicRunAttribution,
 		type PublicRunAttribution,
 		deleteRun,
@@ -39,37 +64,87 @@
 		fetchRoutesIntersectingTrack,
 		linkRunToRoute,
 		enqueueRunRematch,
+		requestDistanceRecompute,
 		fetchHrSeries,
+		audienceSharingEnabled,
+		fetchShares,
+		fetchRuns,
+		fetchRunDistanceBadge,
+		fetchRunParkCourseTimes,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
-	} from '$lib/core/data';
-	import { applyRunMetadataPatch } from '$lib/core/data_normalise';
-	import { ageFromDob } from '$lib/nutrition/nutrition_targets';
-	import type { PlanWorkout } from '$lib/types';
-	import { toRunGpx, downloadFile } from '$lib/routes/gpx';
-	import { movingTimeSeconds, elevationGainMetres, computeRealSplits } from '$lib/runs/run_stats';
-	import { gradeAdjustedPaceSecPerKm } from '$lib/runs/grade_adjusted_pace';
-	import { defaultZoneCutoffs } from '$lib/training/hr_zones';
+	} from '#lib/core/data.ts';
+	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
+	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
+	import { changedEditFields, runEditColumns } from '#lib/core/run_edit_cas.ts';
+	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
+	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
+	import { computeRunStreaks } from '#lib/runs/streaks.ts';
+	import { pickShareCourse } from '#lib/parks/park_courses.ts';
+	import type { AchievementTier } from '#lib/types.ts';
+	import { lineLat, lineLng, trackLine } from '#lib/runs/track_line.ts';
+	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
+	import { runAltitude } from '#lib/runs/run_altitude.ts';
+	import {
+		cadenceSpm,
+		elevationSeries,
+		elevationSourceTrack,
+		stepCount,
+		storedElevationGainM,
+	} from '#lib/runs/key_stats.ts';
+	import { gradeAdjustedPaceSecPerKm } from '#lib/runs/grade_adjusted_pace.ts';
+	import {
+		analysePacing,
+		gradeAdjustedSplitPaces,
+		type PacingVerdict,
+	} from '#lib/runs/pace_analysis.ts';
+	import {
+		gradePhases,
+		parsePacingStrategy,
+		type PhaseResult,
+		type PhaseReviewVerdict,
+		type RacePhaseIntent,
+		type RacePhasePreset,
+	} from '#lib/runs/race_phases.ts';
+	import { defaultZoneCutoffs } from '#lib/training/hr_zones.ts';
+	import { findGuidedRun } from '#lib/training/guided_runs.ts';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { isInAnyZone, PRIVACY_ZONES_KEY, type PrivacyZone } from '$lib/routes/privacy';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import {
+		trackEntersAnyZone,
+		PRIVACY_ZONES_KEY,
+		type PrivacyZone,
+	} from '#lib/routes/privacy.ts';
+	import { knownEffective, type LoadedSettings } from '#lib/settings/settings_overlay.ts';
+	import { SHARE_CARD_MAP, shareCardTrack } from '#lib/share/share_card_track.ts';
+	import { isCompleteCardCapture } from '#lib/share/share_card_capture.ts';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
 		type CalorieGender,
-	} from '$lib/runs/calories';
-	import { ageGradeForRun, formatAgeGradePercent } from '$lib/runs/age_grade';
-	import { supabase } from '$lib/core/supabase';
-	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
-	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeIcon } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import { buildRunShareCanonical } from '$lib/share/share_meta';
-	import type { Run } from '$lib/types';
+	} from '#lib/runs/calories.ts';
+	import { ageGradeForRun, formatAgeGradePercent } from '#lib/runs/age_grade.ts';
+	import { hrCoveragePercent } from '#lib/runs/hr_coverage.ts';
+	import {
+		canRecomputeDistance,
+		classifyRecomputeError,
+		mapMatchedDistanceM,
+		recordedDistanceM,
+	} from '#lib/runs/distance_recompute.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { METADATA_KEYS } from '#lib/core/schema.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { activityTypeIcon, activityUsesSpeed } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import { buildRunShareCanonical } from '#lib/share/share_meta.ts';
+	import type { Run } from '#lib/types.ts';
 
 	let { data: pageData } = $props();
 
@@ -80,7 +155,7 @@
 	// copy, exactly as /routes/[id], /u/[id], and /clubs/* already do. Derived
 	// from the param so it is present before any client fetch resolves.
 	let canonicalUrl = $derived(
-		buildRunShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, pageData.id)
+		buildRunShareCanonical(siteOrigin(PUBLIC_SITE_URL), pageData.id)
 	);
 
 	/// The OWNER's run row, with its unclipped track. Every owner-only
@@ -95,7 +170,7 @@
 	/// privacy-zone-clipped track are fetched by RunShareView.
 	let otherRunOwner = $state<PublicRunAttribution | null>(null);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 
 	/// Track where the user came from so the in-page back button can
 	/// genuinely go BACK (history.back) — which pops the history entry
@@ -132,6 +207,17 @@
 	/// re-clicking the same area is reset by the next selection. Drives
 	/// the floating "Segment details" card overlaying the map.
 	let selectedSegment = $state<SelectedSegment | null>(null);
+
+	function segmentRangeLabel(seg: SelectedSegment): string {
+		const unit = getUnit();
+		const perUnit = unit === 'mi' ? METRES_PER_MILE : 1000;
+		const locale = currentLocale();
+		return m('runDetail.segmentRange', {
+			start: formatDecimal(seg.start_m / perUnit, 2, locale),
+			end: formatDecimal(seg.end_m / perUnit, 2, locale),
+			unit,
+		});
+	}
 	let editing = $state(false);
 	let editTitle = $state('');
 	let editNotes = $state('');
@@ -147,17 +233,65 @@
 	let showDeleteConfirm = $state(false);
 	let showShareConfirm = $state(false);
 	let showMakePrivateConfirm = $state(false);
+	let showRecomputeConfirm = $state(false);
+	/// Set once the recompute job is queued so the action does not offer itself
+	/// again before the worker has rewritten the run; a reload re-reads the row.
+	let recomputeRequested = $state(false);
 	let showReportRun = $state(false);
 	let showNameRoute = $state(false);
 	let routeNameInput = $state('');
 	let savingRoute = $state(false);
 	let shareConfirmIntersectsZone = $state(false);
 	let shareConfirmHasZones = $state(false);
+	// Whether confirming make-public also copies the share link: true from
+	// Share, false from the visibility chip.
+	let shareConfirmCopiesLink = $state(true);
 	let shareBusy = $state(false);
+	/// Audience sharing (followers level + named people, decisions
+	/// § 1874) is a server-gated feature; the control and the narrower
+	/// share link render only when the server says it is on.
+	let audienceSharingOn = $state(false);
+	let shareCount = $state(0);
+	let showAudience = $state(false);
+	let audienceLevel = $derived(run ? audienceOf(run, shareCount) : 'private');
+	let visibilityIcon = $derived(
+		audienceLevel === 'public'
+			? 'public'
+			: audienceLevel === 'followers'
+				? 'group'
+				: audienceLevel === 'specific'
+					? 'person_add'
+					: 'lock'
+	);
+	let visibilityLabel = $derived(
+		audienceLevel === 'public'
+			? m('runDetail.public')
+			: audienceLevel === 'followers'
+				? m('audience.chipFollowers')
+				: audienceLevel === 'specific'
+					? m('audience.chipShared')
+					: m('runDetail.private')
+	);
+	let visibilityChipAria = $derived(
+		audienceSharingOn
+			? m('runDetail.visibilityChipAudienceAria', { level: visibilityLabel })
+			: run?.is_public
+				? m('runDetail.visibilityChipPublicAria')
+				: m('runDetail.visibilityChipPrivateAria')
+	);
 	let bodyWeightKg = $state<number | null>(null);
 	// Hide-calories opt-out (universal `show_calories` pref, default on) —
 	// hunt-newrunner: a weight-conscious runner can suppress the estimate.
 	let showCalories = $state(true);
+	// Universal `show_mascot` (default on): off drops Grisnir from the map
+	// share card whatever the editor's mark switch says.
+	let showMascot = $state(true);
+	/// Whether the settings read has landed, so the milestone Grisnir never
+	/// flashes for a runner who hid him (the share card's default-on
+	/// `showMascot` is only read at capture time).
+	let mascotKnown = $state(false);
+	/// The one milestone this run earned, for Grisnir's hop under the header.
+	let milestone = $state<MilestoneKind | null>(null);
 	// HR-zone fallback inputs, read from the universal settings bag on
 	// mount. Used only when explicit `hr_zones` is unset (Older #8).
 	let maxHrBpm = $state<number | null>(null);
@@ -187,6 +321,9 @@
 	/// length match); if no candidate clears the bar this stays
 	/// null and no UI renders.
 	let suggestedRoute = $state<RouteMatchCandidate | null>(null);
+	/// Reported by RunRaceResult: the linked listing, null when the run has
+	/// none or the listing is not publicly readable (so no race page exists).
+	let publicRaceListingId = $state<string | null>(null);
 
 	onMount(async () => {
 		// Wait for the auth store to hydrate AND the user profile to
@@ -205,7 +342,24 @@
 			// comments — rather than the not-found state a public run used
 			// to get here (issue #666; every "a runner you follow finished
 			// a run" link landed on "Run not found").
-			otherRunOwner = await fetchPublicRunAttribution(pageData.id);
+			//
+			// Only when the owner read actually ANSWERED, though.
+			// `fetchRunById` reports "no such run / not yours" and "could not
+			// find out" separately for this reason: `public_runs` carries no
+			// owner exclusion, so on a transient failure over the viewer's OWN
+			// public run the attribution read succeeds, and the page rendered
+			// the read-only stranger view — attributed to the viewer
+			// themselves, every edit / delete / visibility / export control
+			// gone — while the template's retry card sat behind it in a later
+			// branch and never showed.
+			if (!runError) {
+				const attr = await fetchPublicRunAttribution(pageData.id);
+				otherRunOwner = attr.attribution;
+				// A failed attribution read establishes nothing either, so it
+				// takes the same path the owner read's failure does rather
+				// than falling through to "Run not found".
+				loadError = attr.error;
+			}
 			loading = false;
 			// None of the background work below is reachable for a
 			// non-owner: the matched track, route suggestion, linked
@@ -213,6 +367,8 @@
 			return;
 		}
 		loading = false;
+		void loadAudience();
+		void loadRunRecords();
 		// Best-effort matched-track fetch in the background. The map
 		// will swap to the matched line once it lands; until then it
 		// shows the raw track.
@@ -222,7 +378,7 @@
 		// Background route-suggestion. Only kicks in for runs that
 		// aren't already linked to a route AND have a usable track —
 		// silent on empty / failure paths.
-		if (run && !run.route_id && run.track && run.track.length >= 2) {
+		if (run && !run.route_id && run.track && trackLine(run.track).length >= 2) {
 			void suggestRoute(run.track, run.distance_m);
 		}
 		// If the recorder linked this run to a structured workout, pull
@@ -244,7 +400,7 @@
 		try {
 			const uid = auth.user?.id;
 			if (uid) {
-				const { loadSettings, effective } = await import('$lib/settings/settings');
+				const { loadSettings, effective } = await import('#lib/settings/settings.ts');
 				const settings = await loadSettings(uid);
 				const zones = effective<Record<string, number>>(settings, 'hr_zones');
 				if (zones) {
@@ -269,9 +425,12 @@
 					const age = ageFromDob(dob, Date.now());
 					if (age !== null) viewerAgeYears = age;
 				}
+				ownerZones = zonesFrom(settings);
 				const bw = effective<number>(settings, 'body_weight_kg');
 				if (typeof bw === 'number' && bw > 0) bodyWeightKg = bw;
 				showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
+				showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
+				mascotKnown = true;
 			}
 			// Read viewer gender for the calorie cross-formula
 			// calibration (persona-hunt Round 3 finding Woman #5).
@@ -282,7 +441,7 @@
 				// Self-read via get_my_profile(): `gender` is deny-by-default
 				// for direct authenticated SELECTs (column lockdown,
 				// 20260707_001). uid is the viewer's own id here.
-				const { data: prof } = await supabase.rpc('get_my_profile');
+				const { data: prof } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 				const g = (prof as { gender?: string | null } | null)?.gender;
 				if (g === 'male' || g === 'female' || g === 'prefer_not_to_say') {
 					viewerGender = g;
@@ -362,6 +521,20 @@
 	let disciplineLabel = $derived(
 		subSport ? subSport.charAt(0).toUpperCase() + subSport.slice(1) : null,
 	);
+	/// Which scripted coach workout this run was recorded under. Owner-only:
+	/// `20270627000001` strips the key from `public_runs`, and the whole
+	/// surrounding branch is the owner's anyway. Resolved against the library
+	/// inside a `$derived` so a locale switch re-localizes the title — a
+	/// top-level const would freeze it to the boot locale (guided_runs.ts).
+	let guidedRunId = $derived.by<string | null>(() => {
+		const v = (run?.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.guided_run_id];
+		return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+	});
+	/// Null for an id the shipped library no longer carries — the library is
+	/// versioned in code, so a run recorded under a workout a later build
+	/// dropped or renamed is a real state. The chip still says the run was
+	/// guided; it just can't name or link the script.
+	let guidedRun = $derived(guidedRunId === null ? null : findGuidedRun(m, guidedRunId));
 	/// The custom watch reset mid-run and this run was recovered from its last
 	/// flash checkpoint, so every total on this page is a total-so-far
 	/// (decisions §316(c) / §323). Shown as a header chip because the numbers
@@ -418,6 +591,10 @@
 		target_duration_s?: number;
 		target_pace_sec_per_km: number;
 		actual_pace_sec_per_km: number | null;
+		// Per-step pace tolerance the workout was authored with. The editor
+		// offers 0-60 s/km and the recorder stamps whatever was armed, so a
+		// literal here grades the run against a number the author overrode.
+		tolerance_sec_per_km?: number;
 		duration_s: number;
 		status: 'completed' | 'skipped';
 	}
@@ -461,11 +638,28 @@
 					? m('runDetail.stepRepNumbered', { index: s.rep_index, total: s.rep_total })
 					: m('runDetail.stepRep');
 			case 'recovery':
+				// `rep_total` is already the recovery count, not the rep count:
+				// the recorder emits one recovery BETWEEN reps and stamps
+				// `repTotal: count - 1` on it. Subtracting again rendered the
+				// last recovery of a 6x400 as "Recovery 5/4".
 				return s.rep_index && s.rep_total
-					? m('runDetail.stepRecoveryNumbered', { index: s.rep_index, total: s.rep_total - 1 })
+					? m('runDetail.stepRecoveryNumbered', { index: s.rep_index, total: s.rep_total })
 					: m('runDetail.stepRecovery');
+			case 'walk':
+				// The rest step of a walk-run, which is what the beginner
+				// generator the onboarding wizard seeds produces. It carries the
+				// same reduced total a recovery does.
+				return s.rep_index && s.rep_total
+					? m('runDetail.stepWalkNumbered', { index: s.rep_index, total: s.rep_total })
+					: m('runDetail.stepWalk');
 			default:
-				return s.kind;
+				// `kind` comes off a schemaless jsonb bag written by a phone
+				// that ships independently of this build, so a kind from a newer
+				// recorder can arrive here. A generic translated word beats a
+				// bare lowercase English slug in a Japanese UI; the guard in
+				// `workout_review_guard.test.ts` keeps every kind the recorder
+				// can currently emit out of this branch.
+				return m('runDetail.stepOther');
 		}
 	}
 
@@ -474,20 +668,19 @@
 		if (s.actual_pace_sec_per_km == null) return '—';
 		const dPerKm = s.actual_pace_sec_per_km - s.target_pace_sec_per_km;
 		if (Math.abs(dPerKm) < 1) return m('runDetail.onPace');
-		// The pace column shows /mi for miles users; the delta must match
-		// or "+12s" reads as sec/km against a sec/mi pace. Convert the
-		// displayed seconds to the preferred unit (the on/amber/off colour
-		// band in paceDeltaClass stays canonical sec/km — a fixed adherence
-		// tolerance, not a display number).
-		const d = getUnit() === 'mi' ? dPerKm * (METRES_PER_MILE / 1000) : dPerKm;
-		const sign = d > 0 ? '+' : '−';
-		return `${sign}${Math.abs(Math.round(d))}s`;
+		// The on/amber/off band in paceDeltaClass stays canonical sec/km: it
+		// is the workout's own tolerance, not a display number.
+		return unitPaceDelta(dPerKm, getUnit());
 	}
 
 	function paceDeltaClass(s: WorkoutStepResult): string {
 		if (s.actual_pace_sec_per_km == null) return 'neutral';
 		const d = Math.abs(s.actual_pace_sec_per_km - s.target_pace_sec_per_km);
-		const tol = 10; // matches the recorder's default tolerance
+		// The workout's OWN tolerance, which the recorder stamps on every step
+		// result. A coach who set 25 s/km on the plan workout had the phone
+		// grade the step green and this page grade the same step amber.
+		const stamped = s.tolerance_sec_per_km;
+		const tol = typeof stamped === 'number' && Number.isFinite(stamped) ? stamped : 10;
 		if (d <= tol) return 'on';
 		if (d <= tol * 2) return 'amber';
 		return 'off';
@@ -504,35 +697,36 @@
 		if (!run || savingEdit) return;
 		savingEdit = true;
 		try {
-			// title/notes go through updateRunMetadata's normalised patch.
-			// is_dnf is a real `runs.is_dnf` column (20261207_001), so when it
-			// changed apply the title/notes patch plus the column in a single
-			// round-trip. Setting it true excludes the run from personal-records
-			// scoring; the PR trigger drops it on the next refresh.
-			if (editIsDnf !== isDnf) {
-				const nextMeta = applyRunMetadataPatch(
-					run.metadata as Record<string, unknown> | null | undefined,
-					{ title: editTitle, notes: editNotes },
-					new Date().toISOString(),
-				);
-				const { error } = await supabase
-					.from(TABLES.runs)
-					.update({ metadata: nextMeta, is_dnf: editIsDnf })
-					.eq('id', run.id);
-				if (error) throw error;
-				run = { ...run, metadata: nextMeta, is_dnf: editIsDnf } as Run;
+			// title/notes go through updateRunMetadata's normalised patch;
+			// is_dnf rides the same write only when the checkbox changed it.
+			const dnfChanged = editIsDnf !== isDnf;
+			const outcome = await updateRunMetadata(
+				run,
+				{ title: editTitle, notes: editNotes },
+				dnfChanged ? editIsDnf : undefined,
+			);
+			if (outcome.kind === 'saved') {
+				run = { ...run, ...runEditColumns(outcome.row) };
+				editing = false;
+			} else if (outcome.kind === 'conflict') {
+				// Changed elsewhere since this page loaded, in a field this edit
+				// also writes: show the server's copy and keep the dialog open
+				// with what the runner typed, so saving again is a choice made
+				// with the other change in view (decisions § 2147). A field the
+				// runner left alone takes the server's value, or saving again
+				// would write the stale one back over it.
+				const touched = changedEditFields(run, { title: editTitle, notes: editNotes });
+				run = { ...run, ...runEditColumns(outcome.row) };
+				if (touched.title === undefined) editTitle = runTitle;
+				if (touched.notes === undefined) editNotes = runNotes;
+				if (!dnfChanged) editIsDnf = isDnf;
+				showToast(m('runDetail.editConflict'), 'error');
 			} else {
-				await updateRunMetadata(run.id, { title: editTitle, notes: editNotes });
-				const metadata = {
-					...(run.metadata as Record<string, unknown> ?? {}),
-					[METADATA_KEYS.title]: editTitle,
-					[METADATA_KEYS.notes]: editNotes,
-				};
-				run = { ...run, metadata } as Run;
+				showToast(m('runDetail.editGone'), 'error');
+				editing = false;
 			}
-			editing = false;
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: errorCopy(e, m, 'runDetail.saveFailed') }), 'error');
 		} finally {
 			savingEdit = false;
 		}
@@ -550,8 +744,78 @@
 			await deleteRun(run.id);
 			goto('/runs');
 		} catch (e) {
-			showToast(m('runDetail.deleteFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.deleteFailed', { error: errorCopy(e, m, 'runDetail.deleteFailed') }), 'error');
 		}
+	}
+
+	/// The owner's privacy zones as last loaded, or null while they are not
+	/// known: before the settings load lands, when it fails, or offline on a
+	/// cold cache. Null is never read as "no zones" — the share image and the
+	/// make-public confirm both wait for a known list.
+	let ownerZones = $state<PrivacyZone[] | null>(null);
+
+	function zonesFrom(settings: LoadedSettings): PrivacyZone[] | null {
+		const zones = knownEffective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY);
+		return zones === null ? null : (zones ?? []);
+	}
+
+	/// [ownerZones], loading them when they are not known yet.
+	async function loadOwnerZones(): Promise<PrivacyZone[] | null> {
+		if (ownerZones !== null) return ownerZones;
+		const uid = auth.user?.id;
+		if (!uid) return null;
+		try {
+			const { loadSettings } = await import('#lib/settings/settings.ts');
+			ownerZones = zonesFrom(await loadSettings(uid));
+		} catch (e) {
+			console.warn('privacy zones unknown', e);
+		}
+		return ownerZones;
+	}
+
+	/// Whether audience sharing is live, and how many named people this run is
+	/// shared with. Both decorate the owner view; a failure leaves the page on
+	/// the public / private controls it had before the feature existed.
+	async function loadAudience() {
+		audienceSharingOn = await audienceSharingEnabled();
+		if (!audienceSharingOn || !run) return;
+		try {
+			shareCount = (await fetchShares('run', run.id)).length;
+		} catch (e) {
+			console.warn('run shares unknown', e);
+		}
+	}
+
+	function applyAudienceColumns(columns: AudienceColumns) {
+		if (!run) return;
+		run = { ...run, ...columns } as Run;
+	}
+
+	async function closeAudience() {
+		showAudience = false;
+		await loadAudience();
+	}
+
+	function requestPublicFromAudience() {
+		showAudience = false;
+		void requestMakePublic(true);
+	}
+
+	/// The visibility chip is the control for who can see the run, not a
+	/// label: with audience sharing on it opens the audience sheet, otherwise
+	/// it flips public / private through the same confirms Share and the lock
+	/// button use. Going public from here copies nothing; that is Share's job.
+	function handleVisibilityChip() {
+		if (!run || shareBusy) return;
+		if (audienceSharingOn) {
+			showAudience = true;
+			return;
+		}
+		if (run.is_public) {
+			showMakePrivateConfirm = true;
+			return;
+		}
+		void requestMakePublic(false);
 	}
 
 	async function handleShare() {
@@ -562,6 +826,29 @@
 			await proceedShare();
 			return;
 		}
+		// A run whose owner chose a narrower audience is shared as the in-app
+		// link, which opens only for that audience. Making it public is the
+		// audience control's job, never a side effect of Share.
+		if (audienceSharingOn && audienceLevel !== 'private') {
+			try {
+				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
+				showToast(m('audience.linkCopied'), 'success');
+			} catch (e) {
+				showToast(m('runDetail.shareFailed', { error: errorCopy(e, m, 'runDetail.shareFailed') }), 'error');
+			}
+			return;
+		}
+		if (audienceSharingOn) {
+			// Share asks who should see the run; public is one answer of four,
+			// never a side effect of the button.
+			showAudience = true;
+			return;
+		}
+		await requestMakePublic(true);
+	}
+
+	async function requestMakePublic(copyLink: boolean) {
+		if (!run || !auth.user || shareBusy) return;
 		// Visibility-change consent: making a previously-private run
 		// public is a non-trivial state change. A first-time / casual
 		// user has typically never set up a privacy zone, so without
@@ -570,23 +857,19 @@
 		// on the user's actual situation: privacy-zone clip warning if
 		// the track intersects a zone, otherwise a no-zones notice with
 		// a link to set one up before sharing.
-		let intersectsZone = false;
-		let hasZones = false;
-		try {
-			const { loadSettings, effective } = await import('$lib/settings/settings');
-			const settings = await loadSettings(auth.user.id);
-			const zones =
-				effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
-			hasZones = zones.length > 0;
-			if (run.track && run.track.length > 0 && hasZones) {
-				intersectsZone = run.track.some((p) => isInAnyZone(p, zones));
-			}
-		} catch (_) {
-			// Settings load failure shouldn't block sharing — fall
-			// through to the no-zones branch.
+		// Unknown zones refuse the share rather than fall through to the
+		// no-zones body, which would tell the owner they have no zone set up.
+		// The public page clips on the server's copy of the zones either way;
+		// what an unknown list would get wrong here is the warning.
+		const zones = await loadOwnerZones();
+		if (zones === null) {
+			showToast(m('runDetail.shareZonesUnknown'), 'error');
+			return;
 		}
-		shareConfirmIntersectsZone = intersectsZone;
-		shareConfirmHasZones = hasZones;
+		shareConfirmIntersectsZone =
+			zones.length > 0 && !!run.track && trackEntersAnyZone(trackLine(run.track), zones);
+		shareConfirmHasZones = zones.length > 0;
+		shareConfirmCopiesLink = copyLink;
 		showShareConfirm = true;
 	}
 
@@ -599,12 +882,16 @@
 			// Reflect the flip in-page immediately — the visibility chip and
 			// the share button both read `run.is_public` and would otherwise
 			// keep showing "Private" / "Make public" until a reload.
-			run = { ...run, is_public: true } as Run;
+			run = { ...run, is_public: true, followers_only: false } as Run;
+			if (!shareConfirmCopiesLink) {
+				showToast(m('runDetail.madePublic'), 'success');
+				return;
+			}
 			const url = buildRunShareCanonical(window.location.origin, run.id);
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.shareFailed', { error: errorCopy(e, m, 'runDetail.shareFailed') }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -619,7 +906,7 @@
 			run = { ...run, is_public: false } as Run;
 			showToast(m('runDetail.madePrivate'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.makePrivateFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.makePrivateFailed', { error: errorCopy(e, m, 'runDetail.makePrivateFailed') }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -644,75 +931,182 @@
 		if (!name) return;
 		savingRoute = true;
 		try {
+			const alt = runAltitude(run.track, run.source);
 			const { id } = await saveRunAsRoute(
 				run.id,
 				name,
-				run.track.map((p) => ({ lat: p.lat, lng: p.lng, ele: p.ele ?? null })),
+				alt.track.map((p) => ({ lat: p.lat, lng: p.lng, ele: p.ele ?? null })),
+				alt.minDeltaM,
 			);
 			showNameRoute = false;
 			showToast(m('runDetail.savedAsRoute'), 'success');
 			goto(`/routes/${id}`);
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: errorCopy(e, m, 'runDetail.saveFailed') }), 'error');
 		} finally {
 			savingRoute = false;
 		}
 	}
 
 	let generatingImage = $state(false);
+	let showShareImage = $state(false);
+	let shareStyle = $state<'card' | 'pr'>('card');
 	let shareCardEl: HTMLElement | undefined = $state();
+	let showHeadToHead = $state(false);
+	/// The personal records this run set, for the PR card (owner-only reads).
+	let runRecords = $state<PrCardEntry[]>([]);
+	let recordDate = $derived(
+		run
+			? new Date(run.started_at).toLocaleDateString(currentLocale(), {
+					day: 'numeric',
+					month: 'short',
+					year: 'numeric',
+				})
+			: '',
+	);
 
-	/// Render the off-screen `.share-card` DOM node to a 1080×1080 PNG
-	/// via `html-to-image`, then either invoke the Web Share API (with
-	/// the PNG as a File) or fall back to a plain download + toast
-	/// when Web Share isn't available or doesn't accept files.
-	async function handleShareImage() {
+	/// L4: a failed read leaves the PR card unoffered and nothing else.
+	/// `?share=pr` is the personal_record notification's link: it opens the
+	/// editor on the PR card once the records are known.
+	async function loadRunRecords() {
+		if (!run) return;
+		try {
+			runRecords = await fetchRunPersonalRecords(run.id);
+		} catch (e) {
+			console.warn('run personal records fetch failed', e);
+			return;
+		}
+		if (runRecords.length > 0 && page.url.searchParams.get('share') === 'pr') {
+			void handleShareImage('pr');
+		}
+		void loadMilestone();
+	}
+
+	/// L4: the milestone is decoration; a failed read shows none.
+	async function loadMilestone() {
+		if (!run) return;
+		const runId = run.id;
+		const distanceM = run.distance_m ?? 0;
+		try {
+			const [stats, badgeEarned] = await Promise.all([fetchRunAllTimeStats(), fetchRunEarnedBadge(runId)]);
+			if (run?.id !== runId) return;
+			milestone = pickMilestone({
+				totalRuns: stats.totalRuns,
+				runDistanceM: distanceM,
+				longestRunM: stats.longestRunM,
+				records: runRecords,
+				badgeEarned,
+			});
+		} catch (e) {
+			console.warn('run milestone read failed', e);
+		}
+	}
+
+	/// The streak day this run was, counted as of the run's own local day from
+	/// every run up to it, so last month's run does not print today's streak.
+	let shareStreakDays = $state(0);
+	let shareBadge = $state<{ badgeKey: string; tier: AchievementTier } | null>(null);
+	let parkCourseRefresh = $state(0);
+	let shareCourse = $state<{ name: string; park: string; timeS: number; season: number; rank: number | null } | null>(null);
+	/// The race the run is linked to, from the result stamped on it: the
+	/// official chip time when there is one.
+	let shareRace = $derived.by(() => {
+		const meta = (run?.metadata as Record<string, unknown> | null) ?? null;
+		const rawName = meta?.race_name;
+		const rawTime = meta?.chip_time;
+		const name = typeof rawName === 'string' ? rawName.trim() : '';
+		if (!name) return null;
+		const time = typeof rawTime === 'string' && rawTime.trim() ? rawTime.trim() : null;
+		return { name, time };
+	});
+
+	/// L4: each occasion sticker's read is its own, and a failure leaves that
+	/// sticker unoffered and nothing else. Read when the editor first opens,
+	/// not on every page view; a sticker whose data lands later appears then.
+	let shareOccasionsRequested = false;
+	async function loadShareOccasions() {
+		if (!run || shareOccasionsRequested) return;
+		shareOccasionsRequested = true;
+		const runId = run.id;
+		const startedAt = new Date(run.started_at);
+		const dayAfter = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+		try {
+			const starts = await fetchRuns({ columns: ['started_at'] as const, startedAtBefore: dayAfter });
+			shareStreakDays = computeRunStreaks(
+				starts.map((r) => new Date(r.started_at)),
+				startedAt,
+			).current;
+		} catch (e) {
+			console.warn('share streak read failed', e);
+		}
+		try {
+			const award = await fetchRunDistanceBadge(runId);
+			shareBadge = award ? { badgeKey: award.badge_key, tier: award.tier } : null;
+		} catch (e) {
+			console.warn('share badge read failed', e);
+		}
+		try {
+			const pick = pickShareCourse(await fetchRunParkCourseTimes(runId));
+			shareCourse = pick
+				? { name: pick.course_name, park: pick.park_name, timeS: pick.time_seconds, season: pick.season, rank: pick.season_rank }
+				: null;
+		} catch (e) {
+			console.warn('share park course read failed', e);
+		}
+	}
+
+	/// Open the share-image editor. Every style draws the owner's track
+	/// clipped to their zones (`shareCardTrack`), so the editor cannot open
+	/// before the zones are known: an image would carry the unclipped line.
+	async function handleShareImage(style: 'card' | 'pr' = 'card') {
 		if (!run || generatingImage) return;
 		generatingImage = true;
 		try {
-			// Dynamic import keeps the 30 KB lib out of the initial
-			// bundle for users who never click Share-as-image.
-			const { toPng } = await import('html-to-image');
-			if (!shareCardEl) throw new Error('share card not ready');
-			const dataUrl = await toPng(shareCardEl, {
-				pixelRatio: 2,
-				cacheBust: true,
-			});
-			const title =
-				((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
-				`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`;
-			const fileName =
-				title.replace(/[^a-z0-9\-_. ]/gi, '_').replace(/\s+/g, '_') + '.png';
-
-			// Try Web Share API first — on mobile this pops the OS
-			// share sheet with the image pre-attached, which is the
-			// whole point of this feature. Fall through to a download
-			// on desktop browsers that don't implement share-with-files.
-			const blob = await (await fetch(dataUrl)).blob();
-			const file = new File([blob], fileName, { type: 'image/png' });
-			if (
-				typeof navigator.share === 'function' &&
-				navigator.canShare &&
-				navigator.canShare({ files: [file] })
-			) {
-				await navigator.share({ title, files: [file] });
-			} else {
-				const a = document.createElement('a');
-				a.href = dataUrl;
-				a.download = fileName;
-				a.click();
-				showToast(m('runDetail.imageSaved'), 'success');
+			if ((await loadOwnerZones()) === null) {
+				showToast(m('runDetail.shareZonesUnknown'), 'error');
+				return;
 			}
-		} catch (e) {
-			const msg = (e as Error).message;
-			// User cancelling a Web Share sheet raises; that's fine.
-			if (!msg.includes('abort') && !msg.includes('cancel')) {
-				showToast(m('runDetail.imageGenerateFailed', { error: msg }), 'error');
-			}
+			shareStyle = style;
+			showShareImage = true;
+			void loadShareOccasions();
 		} finally {
 			generatingImage = false;
 		}
 	}
+
+	/// The map card as a 1080 px PNG, rasterised from the off-screen
+	/// `.share-card` DOM node by `html-to-image` at its own CSS size, the
+	/// width every share image is exported at (decisions § 2250).
+	/// Whether the captured card carries the Threkir eyebrow; the editor's
+	/// mark switch sets it before each capture.
+	let shareCardMark = $state(true);
+
+	async function captureShareCard(mark: boolean): Promise<Blob> {
+		shareCardMark = mark;
+		await tick();
+		// Dynamic import keeps the 30 KB lib out of the initial
+		// bundle for users who never open the share editor.
+		const { toCanvas } = await import('html-to-image');
+		if (!shareCardEl) throw new Error('share card not ready');
+		const canvas = await toCanvas(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		// A card drawn outside its own frame rasterises transparent without
+		// throwing; refuse it so the editor shows an error, not a blank PNG.
+		const pixels = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+		if (!pixels || !isCompleteCardCapture(pixels)) throw new Error('share card rendered blank');
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+		if (!blob) throw new Error('share card produced no image');
+		return blob;
+	}
+
+	let shareImageTitle = $derived(
+		run
+			? ((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
+					`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`
+			: '',
+	);
+	let shareImageFileBase = $derived(
+		shareImageTitle.replace(/[^a-z0-9\-_. ]/gi, '_').replace(/\s+/g, '_'),
+	);
 
 	/// Owner-only: force a fresh map-match against the current track.
 	/// Resets run_matched_tracks to pending and queues a `map_match`
@@ -728,10 +1122,39 @@
 			matchInfo = await fetchRunMatchedTrack(run.id);
 			showToast(m('runDetail.reSnapping'), 'success');
 		} catch (e) {
-			const msg = (e as Error).message ?? String(e);
+			const msg = errorCopy(e, m, 'runs/[id]: msg');
 			showToast(m('runDetail.rematchFailed', { error: msg }), 'error');
 		} finally {
 			rematchBusy = false;
+		}
+	}
+
+	let showRecomputeDistance = $derived(
+		!recomputeRequested && canRecomputeDistance(run, auth.user?.id),
+	);
+	let originalDistanceM = $derived(recordedDistanceM(run?.metadata));
+	let roadMatchedDistanceM = $derived(mapMatchedDistanceM(run?.metadata));
+
+	async function confirmRecomputeDistance() {
+		if (!run) return;
+		try {
+			await requestDistanceRecompute(run.id);
+			recomputeRequested = true;
+			showToast(m('runDetail.recalculatingDistance'), 'success');
+		} catch (e) {
+			const kind = classifyRecomputeError(e);
+			showToast(
+				kind === 'not_authorized'
+					? m('runDetail.recalculateDistanceNotOwner')
+					: kind === 'no_track'
+						? m('runDetail.recalculateDistanceNoTrack')
+						: m('runDetail.recalculateDistanceFailed', {
+								error: errorCopy(e, m, 'runDetail.recalculateDistanceFailed'),
+							}),
+				'error',
+			);
+		} finally {
+			showRecomputeConfirm = false;
 		}
 	}
 
@@ -740,10 +1163,12 @@
 		const title =
 			((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
 			`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`;
+		// The line: off-track fixes are distance input the recorder stored for
+		// the server replay, and the server exports leave them out too.
 		const gpx = toRunGpx(
 			title,
 			run.started_at,
-			run.track.map((p) => ({
+			trackLine(run.track).map((p) => ({
 				lat: p.lat,
 				lng: p.lng,
 				ele: p.ele ?? null,
@@ -776,40 +1201,70 @@
 	/** Derived from the GPS track rather than stored, matching mobile. */
 	let movingSeconds = $derived(run?.track ? movingTimeSeconds(run.track) : 0);
 
-	/** Prefer a real track-based elevation gain over the randomly-generated
-	 *  mock value. Falls back to 0 for runs without elevation data. */
-	let realElevationGain = $derived(run?.track ? elevationGainMetres(run.track) : 0);
+	/** The seconds every whole-run pace and speed on this page divides by.
+	 *  Moving time when the track yielded one, elapsed otherwise. One value
+	 *  rather than one expression per surface: the share card carried its own
+	 *  `run.duration_s` and so advertised a slower pace than the page it was
+	 *  generated from -- 6:00 /km on the PNG against 5:00 /km on screen for a
+	 *  10 km with ten minutes of traffic lights (decisions § 1223). */
+	let paceSeconds = $derived(movingSeconds > 0 ? movingSeconds : (run?.duration_s ?? 0));
+
+	/** The altitude series the climb, the profile and grade-adjusted pace read:
+	 *  the anchored barometer when the phone had one, else GPS altitude, with
+	 *  the noise band that series earns (lib/runs/run_altitude.ts). */
+	let altitude = $derived(run?.track ? runAltitude(run.track, run.source) : null);
+
+	/** The track the climb is measured over, or null when no point on it
+	 *  carried an altitude. A manual entry and a summary import have no track
+	 *  at all, and a track with no `ele` sums to 0 exactly as a flat run does,
+	 *  so the samples are the discriminator and not the answer (§ 1164). */
+	let elevationTrack = $derived(elevationSourceTrack(altitude?.track));
+
+	/** The route summary's rule, not a second one: an ungated sum integrates
+	 *  autocorrelated altitude error and reported 143 m of climb on a flat
+	 *  half-hour (decisions § 981). Null when nothing measured the altitude —
+	 *  a real 0 m over a track that did measure it still renders. */
+	let realElevationGain = $derived(elevationTrack ? Math.round(computeElevationGain(elevationTrack, altitude?.minDeltaM)) : null);
+
+	/** What the page may say the climb was. The measured track wins — it is the
+	 *  same samples the elevation profile below is drawn from, so a different
+	 *  number beside that chart would contradict it. Falling back to the row's
+	 *  own ascent is what closes the gap: a summary import (a Strava activity
+	 *  under the 200 m stream threshold, or one whose stream carried no
+	 *  altitude) has an `elevation_gain_m` the /runs card, the Year-in-Running
+	 *  total and the vert challenge board all count, and this page alone
+	 *  rendered no climb at all. */
+	let elevationGainM = $derived.by(() => {
+		if (realElevationGain != null) return realElevationGain;
+		const stored = run ? storedElevationGainM(run) : null;
+		return stored == null ? null : Math.round(stored);
+	});
 
 	/** Grade-adjusted pace (sec/km) — effort-equivalent flat pace over hilly
 	 *  terrain (Minetti 2002). Null on flat runs / tracks without elevation. */
-	let gradeAdjustedPace = $derived(run?.track ? gradeAdjustedPaceSecPerKm(run.track) : null);
+	let gradeAdjustedPace = $derived(altitude ? gradeAdjustedPaceSecPerKm(altitude.track) : null);
 
 	/** Only surface GAP when it differs from raw average pace by a margin
 	 *  worth showing — a near-flat run's GAP is the raw pace and the extra
 	 *  cell is just noise. 2 s/km threshold. */
 	let showGradeAdjustedPace = $derived.by(() => {
 		if (gradeAdjustedPace == null || !run || run.distance_m <= 0) return false;
-		const secs = movingSeconds > 0 ? movingSeconds : run.duration_s;
-		const rawPaceSecPerKm = secs / (run.distance_m / 1000);
+		const rawPaceSecPerKm = paceSeconds / (run.distance_m / 1000);
 		return Math.abs(gradeAdjustedPace - rawPaceSecPerKm) >= 2;
 	});
 
-	/** Total steps are stored on mobile save in `metadata.steps`. */
-	let totalSteps = $derived.by(() => {
-		const v = run?.metadata?.[METADATA_KEYS.steps];
-		return typeof v === 'number' ? v : null;
-	});
+	/** Total steps are stored on mobile save in `metadata.steps`. Null rather
+	 *  than 0 when the bag holds no count of steps taken — the tile states a
+	 *  measurement, and a stored `0` is the absence of one (§ 1164). */
+	let totalSteps = $derived(stepCount(run?.metadata?.[METADATA_KEYS.steps]));
 
 	/** Average cadence in steps-per-minute. Prefers a directly-reported
 	 *  value (`metadata.cadence_spm`, written by the Garmin FIT importer
 	 *  which has no pedometer step count — persona #17), then falls back
 	 *  to steps / moving_time_minutes for pedometer-recorded runs. */
-	let avgCadence = $derived.by(() => {
-		const stored = run?.metadata?.[METADATA_KEYS.cadence_spm];
-		if (typeof stored === 'number' && stored > 0) return Math.round(stored);
-		if (totalSteps == null || movingSeconds < 30) return null;
-		return Math.round((totalSteps / (movingSeconds / 60)) || 0);
-	});
+	let avgCadence = $derived(
+		cadenceSpm(run?.metadata?.[METADATA_KEYS.cadence_spm], totalSteps, movingSeconds),
+	);
 
 	/** Average heart rate. Watch apps (watch_ios, watch_wear) record this
 	 *  into `metadata.avg_bpm` during a run. See `docs/backend/metadata.md`. */
@@ -817,6 +1272,13 @@
 		const v = run?.metadata?.[METADATA_KEYS.avg_bpm];
 		return typeof v === 'number' && v > 0 ? Math.round(v) : null;
 	});
+
+	/** Share of the run the heart-rate sensor actually covered, as whole
+	 *  percent. Written by the Wear recorder, which also suppresses `avg_bpm`
+	 *  below 0.5 — so coverage present with no average is a SUPPRESSED
+	 *  average, which rendered exactly like a run with no strap until this
+	 *  read it. See `docs/backend/metadata.md` + decisions § 1088. */
+	let hrCoveragePct = $derived(hrCoveragePercent(run?.metadata?.[METADATA_KEYS.hr_coverage]));
 
 	/** Age grade shown on the key-stat tile. Prefers the parkrun importer's
 	 *  scraped `metadata.age_grade` string; otherwise computes it for any
@@ -838,27 +1300,61 @@
 		return computed ? formatAgeGradePercent(computed.percent) : null;
 	});
 
-	/// Visible key-stats count + parity. The grid's `auto-fit` columns
-	/// look broken when the cell count is odd (one empty trailing slot
-	/// at 2-col layouts is the most common shape). Counts the
-	/// conditionals below + flips a flag the template uses to render
-	/// an Activity-type filler when the total would otherwise be odd.
+	/// The key-stats grid, as the cells it actually renders. A stat is in this
+	/// list when its datum exists, so a measurement nobody took is absent
+	/// rather than present as a zero, and the template renders the list
+	/// instead of a fixed sequence of `{#if}`s.
 	///
-	/// Always-rendered stats: Distance, Time, Pace, Speed, Elevation,
-	/// Calories (Calories uses the body-weight fallback so it never
-	/// hides) = 6.
-	/// Conditional: Moving, Grade-adjusted pace, Steps, Cadence, AvgBpm,
-	/// AgeGrade.
-	let keyStatsCount = $derived(
-		6 +
-			(run && movingSeconds > 0 && movingSeconds !== run.duration_s ? 1 : 0) +
-			(showGradeAdjustedPace ? 1 : 0) +
-			(totalSteps != null ? 1 : 0) +
-			(avgCadence != null ? 1 : 0) +
-			(avgBpm != null ? 1 : 0) +
-			(ageGrade != null ? 1 : 0),
-	);
-	let showActivityFiller = $derived(keyStatsCount % 2 === 1 && activity !== null);
+	/// Deriving the list is what keeps the parity filler honest. The grid's
+	/// `auto-fit` columns look broken on an odd cell count (one empty trailing
+	/// slot at the 2-col layout), so an odd list gets an Activity-type cell
+	/// appended — and what decides that is this list's own length. The
+	/// hand-maintained count it replaces had already drifted from the
+	/// template: it counted Calories among six stats that "never hide" while
+	/// the template gated them, so the filler flipped the wrong way whenever
+	/// the estimate was unusable or the pref was off (decisions § 1164).
+	type KeyStat = { value: string } & ({ label: string } | { metric: MetricId });
+	let keyStats = $derived.by<KeyStat[]>(() => {
+		if (!run) return [];
+		const cells: KeyStat[] = [
+			{ label: m('runDetail.distance'), value: formatDistance(run.distance_m) },
+			{ label: m('runDetail.time'), value: formatDuration(run.duration_s) },
+		];
+		if (movingSeconds > 0 && movingSeconds !== run.duration_s) {
+			cells.push({ label: m('runDetail.moving'), value: formatDuration(movingSeconds) });
+		}
+		cells.push(
+			activityUsesSpeed(run.activity_type)
+				? { label: m('runDetail.avgSpeed'), value: formatSpeed(paceSeconds, run.distance_m) }
+				: { label: m('runDetail.avgPace'), value: formatPace(paceSeconds, run.distance_m) },
+		);
+		if (showGradeAdjustedPace && gradeAdjustedPace != null) {
+			cells.push({
+				label: m('runDetail.gradeAdjustedPace'),
+				value: formatPace(gradeAdjustedPace, 1000),
+			});
+		}
+		if (elevationGainM != null) {
+			cells.push({ label: m('runDetail.elevation'), value: formatElevation(elevationGainM) });
+		}
+		if (showCalories && estimatedCalories > 0) {
+			cells.push({ label: calorieLabel, value: String(estimatedCalories) });
+		}
+		if (totalSteps != null) {
+			cells.push({ label: m('runDetail.steps'), value: totalSteps.toLocaleString() });
+		}
+		if (avgCadence != null) {
+			cells.push({ label: m('runDetail.cadenceSpm'), value: String(avgCadence) });
+		}
+		if (avgBpm != null) {
+			cells.push({ label: m('runDetail.avgHrBpm'), value: String(avgBpm) });
+		}
+		if (ageGrade != null) {
+			cells.push({ metric: 'ageGrade', value: ageGrade });
+		}
+		return cells;
+	});
+	let showActivityFiller = $derived(keyStats.length % 2 === 1 && activity !== null);
 
 	/// Real HR zone breakdown. Requires per-point `bpm` on the track —
 	/// which watch and phone recorders will start writing alongside GPS
@@ -1026,7 +1522,8 @@
 
 	/// Map track. Prefer the matched line when the worker has produced
 	/// one (status='matched' AND non-empty payload); fall back to the
-	/// raw recorded track. If neither exists (Strava sync without GPS,
+	/// raw recorded track's on-track fixes (`trackLine`: an off-track
+	/// fix is distance input, never line). If neither exists (Strava sync without GPS,
 	/// manual parkrun entry, HealthKit summary without polyline), the
 	/// map panel renders an empty state — we deliberately do NOT
 	/// synthesise a placeholder track. Stats below the map continue to
@@ -1035,15 +1532,51 @@
 	let baseTrack = $derived(
 		matchInfo?.track && matchInfo.track.length >= 2
 			? matchInfo.track
-			: run?.track ?? [],
+			: trackLine(run?.track ?? []),
 	);
 	let hasMapTrack = $derived(baseTrack.length >= 2);
-	let elevations = $derived(baseTrack.map((p) => p.ele ?? 0));
-	// Gate the elevation chart on real samples. Without any `ele` the
-	// array is all-zero and the chart renders as a deceptive flat line
-	// (a Health Connect / summary import reads as a genuinely flat route).
-	// Mirrors mobile's `_hasElevation`.
-	let hasElevation = $derived(baseTrack.some((p) => p.ele != null));
+	const ownReplay = $derived(trackPreview(run?.track, run?.source));
+	const canReplay = $derived(hasPreviewableCourse(ownReplay.points));
+	/// The owner's video records the share card's line (`shareCardTrack`): the
+	/// track trimmed to their privacy zones, and nothing until those are known.
+	async function ownVideoSource(): Promise<{ points: PathPoint[]; noiseBandM?: number } | null> {
+		const zones = await loadOwnerZones();
+		if (zones === null || !run?.track) return null;
+		return trackPreview(shareCardTrack(run.track, zones), run.source);
+	}
+	/// `?video=1` is the phone's Video share style handing the export to the
+	/// browser (decisions § 2259); it opens the 3D preview, where the export is.
+	const videoRequested = $derived(page.url.searchParams.get('video') === '1');
+	/// A non-owner's replay flies the track RunShareView drew, which came
+	/// through clip-public-track: never a second, unclipped read.
+	let sharedReplay = $state<{ points: PathPoint[]; noiseBandM: number | undefined; title: string } | null>(null);
+	// Gate the elevation chart on real samples, and carry the line across
+	// the ones that are missing rather than plotting them at sea level.
+	// Without any `ele` the array used to be all-zero and the chart rendered
+	// as a deceptive flat line (a Health Connect / summary import reads as a
+	// genuinely flat route); with an intermittent `ele` it fell to 0 m at
+	// every dropout. Null when too few points carry an altitude to draw a
+	// profile at all.
+	//
+	// The altitude is the stored track's (`altitude`), so the profile reads
+	// the series the climb and the splits read. A matched line keeps one point
+	// per on-track stored fix, so it indexes against `altitude.track` one for
+	// one, but it carries GPS `ele` only: the matcher drops `baroEle`, and
+	// reading the matched line drew GPS altitude under a barometric climb. A
+	// matched line of another length (one stored before the matcher became
+	// length-preserving, decisions § 1170) falls back to its own `ele`.
+	let profileAltitudeTrack = $derived(
+		altitude && altitude.track.length === baseTrack.length
+			? altitude.track
+			: runAltitude(baseTrack, run?.source).track,
+	);
+	let elevationSamples = $derived(elevationSeries(profileAltitudeTrack));
+	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
+	/// by metres between fixes, which the raw series drew as a sawtooth.
+	let elevations = $derived(
+		elevationSamples ? smoothElevation(elevationSamples, cumulativeMetres(baseTrack)) : [],
+	);
+	let hasElevation = $derived(elevationSamples !== null);
 
 	/// Linked-cursor index — fed by ElevationProfile's onhover, consumed
 	/// by RunMap's hoverIdx. Null when the pointer is off the chart.
@@ -1064,7 +1597,7 @@
 	let scrubPreviewLngLat = $derived.by<[number, number] | null>(() => {
 		if (!scrubbing || !hasMapTrack) return null;
 		const pt = interpolateAlongRoute(
-			baseTrack.map((p) => ({ lat: p.lat, lng: p.lng })),
+			baseTrack.map((p) => ({ lat: lineLat(p), lng: lineLng(p) })),
 			scrubFraction,
 		);
 		return pt ? [pt.lng, pt.lat] : null;
@@ -1075,8 +1608,118 @@
 	// when the preference flips. pace_s stays sec/km; the cell converts.
 	let splitsAreMiles = $derived(getUnit() === 'mi');
 	let splits = $derived(
-		run?.track ? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000) : []
+		run?.track
+			? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000, run.distance_m)
+			: []
 	);
+
+	/// First-half vs second-half pacing, and the same comparison on
+	/// grade-adjusted effort. Independent of the split tick length — the
+	/// halves are cut at the run's own midpoint, not at a split boundary.
+	let pacing = $derived(analysePacing(altitude?.track));
+	let splitGapPaces = $derived(gradeAdjustedSplitPaces(altitude?.track, splits));
+
+	/// Both grade-adjusted reads are gated on the same 2 s/km margin the
+	/// key-stat GAP cell uses: on flat ground GAP is the raw pace, and a
+	/// column (or a sentence) restating it is noise, not information.
+	let showSplitGap = $derived(
+		splitGapPaces.some((g, i) => g != null && Math.abs(g - splits[i].pace_s) >= 2),
+	);
+	let showPacingGap = $derived(
+		pacing?.gradeAdjusted != null &&
+			Math.abs(pacing.gradeAdjusted.deltaSecPerKm - pacing.raw.deltaSecPerKm) >= 2,
+	);
+
+	function pacingVerdictLabel(v: PacingVerdict): string {
+		if (v === 'negative') return m('runDetail.pacingNegative');
+		if (v === 'positive') return m('runDetail.pacingPositive');
+		return m('runDetail.pacingEven');
+	}
+
+	let pacingSummary = $derived.by(() => {
+		if (!pacing) return '';
+		if (pacing.raw.verdict === 'even') return m('runDetail.pacingHeld');
+		// The split table's pace column is shown per preferred unit, so the
+		// delta beside it must be too — "14s" against a /mi pace reads as
+		// sec/mi, not the sec/km the analysis is canonically in.
+		const perUnit =
+			getUnit() === 'mi'
+				? pacing.raw.deltaSecPerKm * (METRES_PER_MILE / 1000)
+				: pacing.raw.deltaSecPerKm;
+		const delta = `${Math.abs(Math.round(perUnit))}s`;
+		return pacing.raw.verdict === 'negative'
+			? m('runDetail.pacingFaster', { delta })
+			: m('runDetail.pacingSlower', { delta });
+	});
+
+	let pacingGapSummary = $derived.by(() => {
+		const v = pacing?.gradeAdjusted?.verdict;
+		if (v === 'negative') return m('runDetail.pacingGapNegative');
+		if (v === 'positive') return m('runDetail.pacingGapPositive');
+		return m('runDetail.pacingGapEven');
+	});
+
+	/// Race-strategy review: the phases the phone planned from
+	/// `metadata.pacing_strategy`, graded against this run's track. Null — and
+	/// so no section — when the run carries no strategy, or one whose preset
+	/// this build does not know.
+	let phaseReview = $derived.by(() => {
+		const strategy = parsePacingStrategy(run?.metadata?.[METADATA_KEYS.pacing_strategy]);
+		return strategy ? gradePhases(run?.track ? trackLine(run.track) : null, strategy) : null;
+	});
+
+	function strategyPresetLabel(p: RacePhasePreset): string {
+		if (p === 'ten_ten_ten') return m('runDetail.strategyTenTenTen');
+		if (p === 'negative_split') return m('runDetail.strategyNegativeSplit');
+		return m('runDetail.strategyEven');
+	}
+
+	function phaseIntentLabel(i: RacePhaseIntent): string {
+		if (i === 'hold_back') return m('runDetail.phaseHoldBack');
+		if (i === 'settle') return m('runDetail.phaseSettle');
+		if (i === 'race') return m('runDetail.phaseRace');
+		return m('runDetail.phaseEven');
+	}
+
+	function strategyVerdictLabel(v: PhaseReviewVerdict): string {
+		switch (v) {
+			case 'on_plan':
+				return m('runDetail.strategyVerdictOnPlan');
+			case 'went_out_too_fast':
+				return m('runDetail.strategyVerdictWentOutTooFast');
+			case 'faded':
+				return m('runDetail.strategyVerdictFaded');
+			case 'negative_split':
+				return m('runDetail.strategyVerdictNegativeSplit');
+			case 'faster_than_plan':
+				return m('runDetail.strategyVerdictFasterThanPlan');
+			case 'slower_than_plan':
+				return m('runDetail.strategyVerdictSlowerThanPlan');
+			default:
+				return '';
+		}
+	}
+
+	function strategyVerdictTone(v: PhaseReviewVerdict): string {
+		if (v === 'on_plan' || v === 'negative_split') return 'good';
+		if (v === 'faster_than_plan') return 'neutral';
+		return 'warn';
+	}
+
+	/// Same per-unit conversion as the workout table's delta: the pace cells
+	/// beside it read per preferred unit, so the seconds must too.
+	function phaseGapLabel(p: PhaseResult): string {
+		if (p.gapSecPerKm == null) return '—';
+		if (p.grade === 'on_target' && p.gapSecPerKm === 0) return m('runDetail.onPace');
+		const d = getUnit() === 'mi' ? p.gapSecPerKm * (METRES_PER_MILE / 1000) : p.gapSecPerKm;
+		const r = Math.round(d);
+		if (r === 0) return m('runDetail.onPace');
+		return `${r > 0 ? '+' : '−'}${Math.abs(r)}s`;
+	}
+
+	function phaseRangeLabel(p: PhaseResult): string {
+		return `${formatDistance(p.startM)}–${formatDistance(p.endM)}`;
+	}
 
 	/// Manually-marked laps. The recorder writes `metadata.laps` as an
 	/// array of `{ index, start_offset_s, distance_m, duration_s }` where
@@ -1106,35 +1749,54 @@
 			}));
 	});
 
-	/// Static-map URL for the share card. Same pipeline as the
+	/// The share card is an exported image with its own fixed look, not a map
+	/// surface, so it keeps its pinned light `streets-v2` basemap rather than
+	/// following the viewer's `map_style` — and takes the palette's track rung
+	/// for that light ground. The peach `#F2A07B` it used to bake in measures
+	/// 1.81:1 against light land, under 1.4.11's 3:1 (decisions § 1749).
+	const SHARE_CARD_STROKE = mapTrackLine(false);
+
+	/// Static-map URL for the share card. Same endpoints as the
 	/// runs/routes list thumbnails — `buildLocalStaticMapUrl` for
 	/// the local Protomaps dev stack, `buildStaticMapUrl` for
-	/// production MapTiler. 1080×600 to fit the share card cleanly
-	/// at 1080-square; null when there's no track to render (the
+	/// production MapTiler, at the map box's own size (SHARE_CARD_MAP), so
+	/// nothing is cropped; null when there's no track to render (the
 	/// card falls back to the stats-only layout). The card's <img>
 	/// sits in the DOM (off-screen, not display:none) so the browser
 	/// fetches it on every page view — the MapTiler branch must
 	/// therefore wait for consent like the list thumbnails do; the
 	/// self-hosted local override is exempt. audit/cookie-consent.
-	let shareMapUrl = $derived.by(() => {
-		if (!hasMapTrack || baseTrack.length < 2) return null;
-		const pts = baseTrack.map((p) => ({ lat: p.lat, lng: p.lng }));
-		return (
-			buildLocalStaticMapUrl(pts, {
-				w: 1080,
-				h: 600,
-				styleUrl: PUBLIC_TILE_STYLE_URL,
-			}) ??
-			(consent.accepted
-				? buildStaticMapUrl(pts, {
-						w: 1080,
-						h: 600,
-						style: 'streets-v2',
-						key: PUBLIC_MAPTILER_KEY,
-					})
-				: null)
-		);
+	///
+	/// The line is the map track clipped to the owner's zones, and absent
+	/// until they are known (`shareCardTrack`).
+	let shareCardLine = $derived(shareCardTrack(baseTrack, ownerZones));
+	/// The basemap the card draws and the credit its tile licence requires in
+	/// the exported pixels (decisions § 2250 / § 2251): OpenStreetMap's data
+	/// under both, MapTiler's rendering only under its own.
+	let shareMap = $derived.by((): { url: string; credit: string } | null => {
+		if (shareCardLine.length < 2) return null;
+		// Passed whole, so the image draws the smoothed line the run map draws
+		// (`previewPolyline`); the clip above already trimmed raw OR smoothed.
+		const pts = shareCardLine;
+		const local = buildLocalStaticMapUrl(pts, {
+			w: SHARE_CARD_MAP.w,
+			h: SHARE_CARD_MAP.h,
+			styleUrl: PUBLIC_TILE_STYLE_URL,
+			stroke: SHARE_CARD_STROKE,
+		});
+		if (local) return { url: local, credit: '© OpenStreetMap contributors' };
+		const tiler = consent.accepted
+			? buildStaticMapUrl(pts, {
+					w: SHARE_CARD_MAP.w,
+					h: SHARE_CARD_MAP.h,
+					style: 'streets-v2',
+					key: PUBLIC_MAPTILER_KEY,
+					stroke: SHARE_CARD_STROKE,
+				})
+			: null;
+		return tiler ? { url: tiler, credit: '© MapTiler © OpenStreetMap contributors' } : null;
 	});
+	let shareMapUrl = $derived(shareMap?.url ?? null);
 </script>
 
 <svelte:head>
@@ -1143,21 +1805,23 @@
 
 {#if loading}
 	<div class="run-detail">
-		<div class="loading-grid" aria-busy="true" aria-label={m('runDetail.loadingRun')}>
-			<div class="loading-map skeleton-shimmer"></div>
+		<div class="loading-grid" aria-hidden="true" data-testid="run-detail-skeleton">
+			<div class="loading-map"><SkeletonBlock height="100%" radius="var(--radius-md)" /></div>
 			<div class="loading-stats">
-				<div class="skeleton-shimmer skeleton-title"></div>
-				<div class="skeleton-shimmer skeleton-line"></div>
+				<SkeletonBlock height="1.8rem" width="60%" radius="var(--radius-md)" />
+				<SkeletonBlock height="0.9rem" width="40%" radius="var(--radius-md)" />
 				<div class="loading-key-stats">
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
+					{#each Array(4) as _, i (i)}
+						<SkeletonBlock height="3.5rem" radius="var(--radius-md)" />
+					{/each}
 				</div>
-				<div class="skeleton-shimmer skeleton-block"></div>
-				<div class="skeleton-shimmer skeleton-block"></div>
+				<div class="loading-blocks">
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+				</div>
 			</div>
 		</div>
+		<p class="visually-hidden" role="status">{m('runDetail.loadingRun')}</p>
 	</div>
 {:else if otherRunOwner}
 	<!--
@@ -1195,7 +1859,21 @@
 					<p class="other-run-note">{m('runDetail.otherRunViewerNote')}</p>
 				</div>
 			</div>
-			<RunShareView runId={pageData.id} />
+			{#if sharedReplay && hasPreviewableCourse(sharedReplay.points)}
+				<div class="other-run-replay">
+					<CoursePreviewButton
+						points={sharedReplay.points}
+						noiseBandM={sharedReplay.noiseBandM}
+						title={sharedReplay.title}
+						replay
+						videoSource={async () => sharedReplay}
+					/>
+				</div>
+			{/if}
+			<RunShareView
+				runId={pageData.id}
+				ontrack={(track, title, source) => (sharedReplay = { ...trackPreview(track, source), title })}
+			/>
 		</div>
 	</div>
 {:else if loadError}
@@ -1289,7 +1967,10 @@
 		{#if selectedSegment}
 			<aside class="segment-card">
 				<header class="segment-card-head">
-					<span class="segment-eyebrow">{m('runDetail.segmentEyebrow')}</span>
+					<div class="segment-title">
+						<span class="segment-eyebrow">{m('runDetail.segmentEyebrow')}</span>
+						<span class="segment-range">{segmentRangeLabel(selectedSegment)}</span>
+					</div>
 					<button
 						class="segment-close"
 						aria-label={m('runDetail.closeSegmentDetails')}
@@ -1327,11 +2008,11 @@
 						<div class="segment-stat">
 							<span class="segment-stat-label">{m('runDetail.elev')}</span>
 							<span class="segment-stat-value">
-								{#if selectedSegment.ele_gain_m > 0}+{selectedSegment.ele_gain_m}m{/if}
+								{#if selectedSegment.ele_gain_m > 0}+{formatElevation(selectedSegment.ele_gain_m)}{/if}
 								{#if selectedSegment.ele_gain_m > 0 && selectedSegment.ele_loss_m > 0}
 									·
 								{/if}
-								{#if selectedSegment.ele_loss_m > 0}−{selectedSegment.ele_loss_m}m{/if}
+								{#if selectedSegment.ele_loss_m > 0}−{formatElevation(selectedSegment.ele_loss_m)}{/if}
 							</span>
 						</div>
 					{/if}
@@ -1376,10 +2057,49 @@
 							<span class="meta-source-dot"></span>
 							{sourceLabel(run.source)}
 						</span>
-						<span class="meta-item visibility-chip" class:is-public={run.is_public}>
-							<span class="material-symbols">{run.is_public ? 'public' : 'lock'}</span>
-							{run.is_public ? m('runDetail.public') : m('runDetail.private')}
-						</span>
+						<button
+							type="button"
+							class="meta-item visibility-chip"
+							class:is-public={run.is_public}
+							aria-label={visibilityChipAria}
+							aria-haspopup="dialog"
+							onclick={handleVisibilityChip}
+							disabled={shareBusy}
+							data-testid="run-visibility-chip"
+						>
+							<span class="material-symbols" aria-hidden="true">{visibilityIcon}</span>
+							{visibilityLabel}
+							<span class="material-symbols chip-caret" aria-hidden="true">expand_more</span>
+						</button>
+						{#if runRecords.length > 0}
+							<button
+								type="button"
+								class="meta-item pr-chip"
+								onclick={() => handleShareImage('pr')}
+								disabled={generatingImage}
+								data-testid="run-share-pr"
+							>
+								<span class="material-symbols" aria-hidden="true">military_tech</span>
+								{m('runDetail.sharePr')}
+							</button>
+						{/if}
+						{#if guidedRunId}
+							{#if guidedRun}
+								<a
+									class="meta-item guided-chip"
+									data-testid="guided-run-chip"
+									href="/guided/{guidedRun.id}"
+								>
+									<span class="material-symbols" aria-hidden="true">script</span>
+									{m('runDetail.guidedRunNamed', { title: guidedRun.title })}
+								</a>
+							{:else}
+								<span class="meta-item guided-chip" data-testid="guided-run-chip">
+									<span class="material-symbols" aria-hidden="true">script</span>
+									{m('runDetail.guidedRun')}
+								</span>
+							{/if}
+						{/if}
 						{#if isDnf}
 							<span class="meta-item dnf-chip" data-testid="dnf-chip">
 								<span class="material-symbols">flag</span>
@@ -1410,13 +2130,37 @@
 						</button>
 						<button
 							class="icon-btn"
-							aria-label={run.is_public ? m('runDetail.copyShareLink') : m('runDetail.makePublicCopyLink')}
-							title={run.is_public ? m('runDetail.copyShareLink') : m('runDetail.shareLink')}
+							aria-label={run.is_public
+								? m('runDetail.copyShareLink')
+								: audienceSharingOn && audienceLevel !== 'private'
+									? m('audience.copyLink')
+									: audienceSharingOn
+										? m('runDetail.shareLink')
+										: m('runDetail.makePublicCopyLink')}
+							title={run.is_public
+								? m('runDetail.copyShareLink')
+								: audienceSharingOn && audienceLevel !== 'private'
+									? m('audience.copyLink')
+									: audienceSharingOn
+										? m('runDetail.shareLink')
+										: m('runDetail.makePublicCopyLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
+							data-testid="run-share-btn"
 						>
 							<span class="material-symbols">share</span>
 						</button>
+						{#if audienceSharingOn}
+							<button
+								class="icon-btn"
+								aria-label={m('audience.button')}
+								title={m('audience.button')}
+								onclick={() => (showAudience = true)}
+								data-testid="run-audience-btn"
+							>
+								<span class="material-symbols">group</span>
+							</button>
+						{/if}
 						{#if run.is_public}
 							<button
 								class="icon-btn"
@@ -1448,9 +2192,9 @@
 						</button>
 						<button
 							class="icon-btn"
-							aria-label={m('runDetail.shareAsImage')}
-							title={m('runDetail.shareAsImage')}
-							onclick={handleShareImage}
+							aria-label={m('runDetail.shareImageAria')}
+							title={m('runDetail.shareImage')}
+							onclick={() => handleShareImage()}
 							disabled={generatingImage}
 						>
 							<span class="material-symbols">image</span>
@@ -1480,6 +2224,9 @@
 			</div>
 			{#if runNotes}
 				<p class="run-notes">{runNotes}</p>
+			{/if}
+			{#if milestone && mascotKnown && showMascot && !isDnf && !recoveredUnfinished && auth.user?.id === run.user_id}
+				<GrisnirMilestone kind={milestone} />
 			{/if}
 		</header>
 
@@ -1544,76 +2291,14 @@
 
 		<!-- Key stats -->
 		<div class="key-stats">
-			<div class="key-stat">
-				<span class="key-stat-value">{formatDistance(run.distance_m)}</span>
-				<span class="key-stat-label">{m('runDetail.distance')}</span>
-			</div>
-			<div class="key-stat">
-				<span class="key-stat-value">{formatDuration(run.duration_s)}</span>
-				<span class="key-stat-label">{m('runDetail.time')}</span>
-			</div>
-			{#if movingSeconds > 0 && movingSeconds !== run.duration_s}
+			{#each keyStats as stat}
 				<div class="key-stat">
-					<span class="key-stat-value">{formatDuration(movingSeconds)}</span>
-					<span class="key-stat-label">{m('runDetail.moving')}</span>
+					<span class="key-stat-value">{stat.value}</span>
+					<span class="key-stat-label"
+						>{#if 'metric' in stat}<MetricLabel metric={stat.metric} />{:else}{stat.label}{/if}</span
+					>
 				</div>
-			{/if}
-			<div class="key-stat">
-				<span class="key-stat-value"
-					>{formatPace(
-						movingSeconds > 0 ? movingSeconds : run.duration_s,
-						run.distance_m
-					)}</span
-				>
-				<span class="key-stat-label">{m('runDetail.avgPace')}</span>
-			</div>
-			{#if showGradeAdjustedPace && gradeAdjustedPace != null}
-				<div class="key-stat">
-					<span class="key-stat-value">{formatPace(gradeAdjustedPace, 1000)}</span>
-					<span class="key-stat-label">{m('runDetail.gradeAdjustedPace')}</span>
-				</div>
-			{/if}
-			<div class="key-stat">
-				<span class="key-stat-value">{formatSpeed(
-					movingSeconds > 0 ? movingSeconds : run.duration_s,
-					run.distance_m,
-				)}</span>
-				<span class="key-stat-label">{m('runDetail.avgSpeed')}</span>
-			</div>
-			<div class="key-stat">
-				<span class="key-stat-value">{realElevationGain} m</span>
-				<span class="key-stat-label">{m('runDetail.elevation')}</span>
-			</div>
-			{#if showCalories && estimatedCalories > 0}
-				<div class="key-stat">
-					<span class="key-stat-value">{estimatedCalories}</span>
-					<span class="key-stat-label">{calorieLabel}</span>
-				</div>
-			{/if}
-			{#if totalSteps != null}
-				<div class="key-stat">
-					<span class="key-stat-value">{totalSteps.toLocaleString()}</span>
-					<span class="key-stat-label">{m('runDetail.steps')}</span>
-				</div>
-			{/if}
-			{#if avgCadence != null}
-				<div class="key-stat">
-					<span class="key-stat-value">{avgCadence}</span>
-					<span class="key-stat-label">{m('runDetail.cadenceSpm')}</span>
-				</div>
-			{/if}
-			{#if avgBpm != null}
-				<div class="key-stat">
-					<span class="key-stat-value">{avgBpm}</span>
-					<span class="key-stat-label">{m('runDetail.avgHrBpm')}</span>
-				</div>
-			{/if}
-			{#if ageGrade != null}
-				<div class="key-stat">
-					<span class="key-stat-value">{ageGrade}</span>
-					<span class="key-stat-label">{m('runDetail.ageGrade')}</span>
-				</div>
-			{/if}
+			{/each}
 			<!-- Parity filler. The auto-fit key-stats grid looks broken
 				 with an odd cell count (one empty slot trailing at the
 				 most common 2-col layout). When the conditional stats
@@ -1631,6 +2316,36 @@
 				</div>
 			{/if}
 		</div>
+		{#if originalDistanceM != null || roadMatchedDistanceM != null || showRecomputeDistance}
+			<div class="distance-recompute" data-testid="distance-recompute">
+				{#if originalDistanceM != null}
+					<p class="distance-recorded-note" data-testid="distance-recorded-note">
+						{m('runDetail.originallyRecorded', { distance: formatDistance(originalDistanceM) })}
+					</p>
+				{/if}
+				{#if roadMatchedDistanceM != null}
+					<p
+						class="distance-recorded-note"
+						title={m('runDetail.roadMatchedTitle')}
+						data-testid="distance-road-matched-note"
+					>
+						{m('runDetail.roadMatched', { distance: formatDistance(roadMatchedDistanceM) })}
+					</p>
+				{/if}
+				{#if showRecomputeDistance}
+					<button
+						type="button"
+						class="btn-outline distance-recompute-btn"
+						title={m('runDetail.recalculateDistanceTitle')}
+						onclick={() => (showRecomputeConfirm = true)}
+						data-testid="recalculate-distance"
+					>
+						<span class="material-symbols" aria-hidden="true">straighten</span>
+						{m('runDetail.recalculateDistance')}
+					</button>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Scrubber section. Lives in the info panel (not below the
 			 map) so it's always visible above the page fold + the
@@ -1647,6 +2362,19 @@
 					onchange={(f) => (scrubFraction = f)}
 					onscrubbing={(active) => (scrubbing = active)}
 				/>
+				{#if canReplay}
+					<div class="replay-3d">
+						<CoursePreviewButton
+							points={ownReplay.points}
+							noiseBandM={ownReplay.noiseBandM}
+							title={runTitle || formatDate(run.started_at)}
+							replay
+							videoSource={ownVideoSource}
+							videoSummary={`${formatDistance(run.distance_m)} · ${formatDuration(run.duration_s)}`}
+							autoOpen={videoRequested}
+						/>
+					</div>
+				{/if}
 			</section>
 		{/if}
 
@@ -1658,6 +2386,7 @@
 				<h2>{m('runDetail.elevationProfile')}</h2>
 				<ElevationProfile
 				{elevations}
+				totalGain={elevationGainM}
 				totalDistance={run.distance_m}
 				onhover={(idx) => (chartHoverIdx = idx)}
 			/>
@@ -1668,14 +2397,37 @@
 			<RunGearChips runId={run.id} runOwnerId={run.user_id} />
 		</section>
 
+		<RunPlanWorkoutPrompt runId={run.id} runOwnerId={run.user_id} />
+
 		<RunRaceResult
 			runId={run.id}
 			runOwnerId={run.user_id}
 			startedAt={run.started_at}
 			distanceM={run.distance_m}
+			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 
-		<RunPhotos runId={run.id} runOwnerId={run.user_id} wrapperClass="section" />
+		<RunParkCourseChips runId={run.id} runOwnerId={run.user_id} refresh={parkCourseRefresh} />
+
+		<RunRaceRetime
+			runId={run.id}
+			runOwnerId={run.user_id}
+			eventId={run.event_id}
+			startedAt={run.started_at}
+			distanceM={run.distance_m}
+			track={run.track}
+			undoneFinishAt={typeof run.metadata?.race_undone_finish_at === 'string'
+				? run.metadata.race_undone_finish_at
+				: null}
+		/>
+
+		<RunPhotos
+			runId={run.id}
+			runOwnerId={run.user_id}
+			raceListingId={publicRaceListingId}
+			runIsPublic={run.is_public === true}
+			wrapperClass="section"
+		/>
 
 		<FundraiserSection runId={run.id} isOwner={auth.user?.id === run.user_id} />
 
@@ -1690,12 +2442,13 @@
 				runId={run.id}
 				runOwnerId={run.user_id}
 				routeId={run.route_id}
-				track={run.track ?? []}
+				track={trackLine(run.track ?? [])}
+				onscored={() => parkCourseRefresh++}
 			/>
 		</section>
 		{#if run.route_id}
 			<section class="section">
-				<h2>{m('runDetail.routeHistory')}</h2>
+				<h2><MetricLabel metric="routeHistory" /></h2>
 				<RouteHistory
 					currentRunId={run.id}
 					routeId={run.route_id}
@@ -1703,6 +2456,17 @@
 					durationS={run.duration_s}
 					activityType={run.activity_type}
 				/>
+				{#if auth.user?.id === run.user_id}
+					<button
+						type="button"
+						class="btn btn-outline btn-sm h2h-open"
+						onclick={() => (showHeadToHead = true)}
+						data-testid="run-head-to-head-open"
+					>
+						<span class="material-symbols" aria-hidden="true">group</span>
+						{m('headToHead.compare')}
+					</button>
+				{/if}
 			</section>
 		{/if}
 
@@ -1734,7 +2498,7 @@
 				</header>
 				{#if linkedWorkout}
 					<p class="workout-name">
-						{linkedWorkout.notes ?? linkedWorkout.kind}
+						{workoutKindLabel(linkedWorkout.kind)}
 						<span class="workout-target">
 							· {m('runDetail.plannedDistance', { distance: formatDistance(linkedWorkout.target_distance_m ?? 0) })}
 						</span>
@@ -1776,6 +2540,94 @@
 						{/each}
 					</tbody>
 				</table>
+			</section>
+		{/if}
+
+		<!-- Pacing strategy review — only when the phone stamped the race
+		     strategy this run was executed under (metadata.pacing_strategy).
+		     Owner-only like the pacing summary: this whole branch is. -->
+		{#if phaseReview}
+			{@const review = phaseReview}
+			<section class="section strategy-review" data-testid="strategy-review">
+				<header class="workout-header">
+					<h2>{m('runDetail.strategyTitle')}</h2>
+					{#if review.verdict !== 'ungraded'}
+						<span class="strategy-verdict strategy-verdict-{strategyVerdictTone(review.verdict)}"
+							>{strategyVerdictLabel(review.verdict)}</span
+						>
+					{/if}
+				</header>
+				<p class="workout-name">
+					{strategyPresetLabel(review.strategy.preset)}
+					<span class="workout-target">
+						· {formatDistance(review.strategy.distanceM)}
+						{#if review.strategy.goalTimeS != null}
+							· {m('runDetail.strategyGoal', { time: formatDuration(review.strategy.goalTimeS) })}
+						{/if}
+					</span>
+				</p>
+				<table class="workout-table strategy-table">
+					<thead>
+						<tr>
+							<th>{m('runDetail.strategyColPhase')}</th>
+							<th class="num">{m('runDetail.strategyColTarget')}</th>
+							<th class="num">{m('runDetail.colActual')}</th>
+							<th class="num">Δ</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each review.phases as p}
+							<tr class:skipped={p.coverage === 'not_reached'}>
+								<td>
+									<span class="strategy-phase">{phaseIntentLabel(p.intent)}</span>
+									<span class="strategy-range">{phaseRangeLabel(p)}</span>
+									{#if p.coverage === 'partial'}
+										<span class="strategy-range">· {m('runDetail.strategyPartial')}</span>
+									{/if}
+								</td>
+								<td class="num">
+									{p.targetPaceSecPerKm != null ? formatPace(p.targetPaceSecPerKm, 1000) : '—'}
+								</td>
+								<td class="num">
+									{#if p.actualPaceSecPerKm != null}
+										{formatPace(p.actualPaceSecPerKm, 1000)}
+									{:else if p.coverage === 'not_reached' && review.ungradedReason !== 'no_track'}
+										{m('runDetail.strategyNotReached')}
+									{:else}
+										—
+									{/if}
+								</td>
+								<td
+									class="num pace-delta pace-delta-{p.grade == null
+										? 'neutral'
+										: p.grade === 'on_target'
+											? 'on'
+											: 'amber'}"
+								>
+									{phaseGapLabel(p)}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+				{#if review.ungradedReason === 'no_track'}
+					<p class="strategy-note">{m('runDetail.strategyNoTrack')}</p>
+				{:else if review.ungradedReason === 'no_goal'}
+					<p class="strategy-note">{m('runDetail.strategyNoGoal')}</p>
+				{:else}
+					{#if !review.completed}
+						<p class="strategy-note">
+							{m('runDetail.strategyStoppedShort', {
+								distance: formatDistance(review.trackDistanceM),
+								planned: formatDistance(review.strategy.distanceM),
+							})}
+						</p>
+					{/if}
+					{#if review.basis === 'average'}
+						<p class="strategy-note">{m('runDetail.strategyAverageBasis')}</p>
+					{/if}
+					<p class="splits-hint">{m('runDetail.strategyBand')}</p>
+				{/if}
 			</section>
 		{/if}
 
@@ -1832,7 +2684,7 @@
 					{/if}
 					{#if runningDynamics.stride_length_m != null}
 						<div class="key-stat">
-							<span class="key-stat-value">{runningDynamics.stride_length_m.toFixed(2)} m</span>
+							<span class="key-stat-value">{formatStrideLength(runningDynamics.stride_length_m)}</span>
 							<span class="key-stat-label">{m('runDetail.strideLength')}</span>
 						</div>
 					{/if}
@@ -1851,16 +2703,43 @@
 			{@const hasElevation = splits.some((s) => s.elevation_m != null)}
 			<section class="section">
 				<h2>{m('runDetail.splits')}</h2>
+				{#if pacing}
+					<div class="pacing">
+						<h3 class="pacing-heading">{m('runDetail.pacing')}</h3>
+						<div class="pacing-halves">
+							<div class="pacing-half">
+								<span class="pacing-half-label">{m('runDetail.pacingFirstHalf')}</span>
+								<span class="pacing-half-value"
+									>{formatPaceNoSuffix(pacing.raw.first.paceSecPerKm, 1000)}</span
+								>
+							</div>
+							<div class="pacing-half">
+								<span class="pacing-half-label">{m('runDetail.pacingSecondHalf')}</span>
+								<span class="pacing-half-value"
+									>{formatPaceNoSuffix(pacing.raw.second.paceSecPerKm, 1000)}</span
+								>
+							</div>
+							<span class="pacing-verdict pacing-verdict-{pacing.raw.verdict}"
+								>{pacingVerdictLabel(pacing.raw.verdict)}</span
+							>
+						</div>
+						<p class="pacing-summary">{pacingSummary}</p>
+						{#if showPacingGap}
+							<p class="pacing-gap">{pacingGapSummary}</p>
+						{/if}
+					</div>
+				{/if}
 				<table class="splits-table">
 					<thead>
 						<tr>
 							<th>{splitsAreMiles ? m('runDetail.mi') : m('runDetail.km')}</th>
 							<th>{m('runDetail.pace')}</th>
+							{#if showSplitGap}<th>{m('runDetail.gapColumn')}</th>{/if}
 							{#if hasElevation}<th>{m('runDetail.elev')}</th>{/if}
 						</tr>
 					</thead>
 					<tbody>
-						{#each splits as split}
+						{#each splits as split, i}
 							<tr>
 								<td>{split.km}</td>
 								<td class="split-pace">
@@ -1870,15 +2749,29 @@
 										—
 									{/if}
 								</td>
+								{#if showSplitGap}
+									<td class="split-gap">
+										{#if splitGapPaces[i] != null}
+											{formatPaceNoSuffix(splitGapPaces[i], 1000)}
+										{:else}
+											—
+										{/if}
+									</td>
+								{/if}
 								{#if hasElevation}
 									<td class="split-elev" class:positive={(split.elevation_m ?? 0) > 0} class:negative={(split.elevation_m ?? 0) < 0}>
-										{(split.elevation_m ?? 0) > 0 ? '+' : ''}{split.elevation_m ?? '—'} m
+										{split.elevation_m == null
+											? '—'
+											: `${split.elevation_m > 0 ? '+' : ''}${formatElevation(split.elevation_m)}`}
 									</td>
 								{/if}
 							</tr>
 						{/each}
 					</tbody>
 				</table>
+				{#if showSplitGap}
+					<p class="splits-hint">{m('runDetail.gapColumnHint')}</p>
+				{/if}
 			</section>
 		{/if}
 
@@ -1923,7 +2816,7 @@
 				{#if zoneCutoffs == null && maxHrBpm == null}
 					<p class="hr-disclaimer">
 						{m('runDetail.hrDisclaimerPrefix')}
-						<a href="/settings/preferences">{m('runDetail.hrDisclaimerLink')}</a>
+						<a href="/settings/training#heart-rate-zones">{m('runDetail.hrDisclaimerLink')}</a>
 						{m('runDetail.hrDisclaimerSuffix')}
 					</p>
 				{/if}
@@ -1931,10 +2824,21 @@
 				<p class="hr-empty">
 					{#if avgBpm != null}
 						{m('runDetail.hrAvgOnly', { bpm: avgBpm })}
+					{:else if hrCoveragePct === 0}
+						{m('runDetail.hrCoverageNone')}
+					{:else if hrCoveragePct != null}
+						{m('runDetail.hrCoverageOnly', { pct: hrCoveragePct })}
 					{:else}
 						{m('runDetail.hrNoData')}
 					{/if}
 				</p>
+			{/if}
+			<!-- An average over part of the run is not the run's average, so
+			     say which part. Outside the zone branch above because a run
+			     that carries BOTH per-point samples and a coverage figure owes
+			     the same qualifier. -->
+			{#if avgBpm != null && hrCoveragePct != null && hrCoveragePct < 100}
+				<p class="hr-coverage">{m('runDetail.hrCoveragePartial', { pct: hrCoveragePct })}</p>
 			{/if}
 		</section>
 	</aside>
@@ -2012,11 +2916,24 @@
 		: shareConfirmHasZones
 			? m('runDetail.shareDialogMessageNoIntersect')
 			: m('runDetail.shareDialogMessageNoZones')}
-	confirmLabel={m('runDetail.makePublicConfirm')}
+	confirmLabel={shareConfirmCopiesLink ? m('runDetail.makePublicConfirm') : m('runDetail.makePublic')}
 	onconfirm={proceedShare}
 	oncancel={() => (showShareConfirm = false)}
 	data-testid="share-confirm-dialog"
 />
+
+{#if run}
+	<AudienceDialog
+		open={showAudience}
+		kind="run"
+		entityId={run.id}
+		isPublic={run.is_public === true}
+		followersOnly={run.followers_only === true}
+		onlevel={applyAudienceColumns}
+		onrequestpublic={requestPublicFromAudience}
+		onclose={closeAudience}
+	/>
+{/if}
 
 <ConfirmDialog
 	open={showMakePrivateConfirm}
@@ -2029,55 +2946,130 @@
 	danger
 />
 
+<ConfirmDialog
+	open={showRecomputeConfirm}
+	title={m('runDetail.recalculateDistanceDialogTitle')}
+	message={m('runDetail.recalculateDistanceDialogMessage')}
+	confirmLabel={m('runDetail.recalculateDistanceConfirm')}
+	onconfirm={confirmRecomputeDistance}
+	oncancel={() => (showRecomputeConfirm = false)}
+	data-testid="recalculate-distance-dialog"
+/>
+
+{#if run}
+	<RunShareImageDialog
+		open={showShareImage}
+		onclose={() => (showShareImage = false)}
+		run={run}
+		linkHint={run.is_public ? null : m('runShare.linkHint')}
+		title={shareImageTitle}
+		line={shareCardLine}
+		captureCard={captureShareCard}
+		fileBase={shareImageFileBase}
+		headToHead={run.route_id ? { kind: 'route', targetId: run.route_id } : null}
+		records={runRecords}
+		{recordDate}
+		initialStyle={shareStyle}
+		{splits}
+		splitTickMetres={splitsAreMiles ? METRES_PER_MILE : 1000}
+		streakDays={shareStreakDays}
+		race={shareRace}
+		badge={shareBadge}
+		course={shareCourse}
+	/>
+	{#if run.route_id}
+		<HeadToHeadDialog
+			open={showHeadToHead}
+			onclose={() => (showHeadToHead = false)}
+			kind="route"
+			targetId={run.route_id}
+		/>
+	{/if}
+{/if}
+
 <!-- Off-screen share card. 1080 square, rendered to PNG by
-     `html-to-image` when the user taps Share-as-image. Lives outside
-     the main layout so it doesn't affect scrolling; positioned
-     `fixed` at top:-9999px so it still has real layout dimensions
-     (pure `display:none` would zero them out and break the canvas
-     capture). Background tint + gradient matches the dashboard
-     primary, independent of the active theme. -->
+     `html-to-image` when the user taps Share-as-image. The HOST is what
+     sits `fixed` at -9999px, so the card keeps real layout dimensions
+     (pure `display:none` would zero them out) while the captured node
+     itself carries no offset: html-to-image copies the node's computed
+     style onto its clone, and a card offset by its own top/left was drawn
+     -9999px outside the PNG, which came out fully transparent. Background
+     tint + gradient matches the dashboard primary, independent of the
+     active theme. -->
+<div class="share-card-host" aria-hidden="true">
 <div
 	bind:this={shareCardEl}
 	class="share-card"
-	aria-hidden="true"
+	data-testid="share-card"
 >
 	<div class="share-card-inner">
-		<div class="share-card-eyebrow">Threkir</div>
+		{#if shareCardMark}
+			<div class="share-card-eyebrow">
+				<img src="/logo-mark.svg" alt="" class="share-card-mark" />
+				Threkir
+			</div>
+		{/if}
 		{#if shareMapUrl}
 			<!-- Real map background so the share card shows WHERE the
 				 run happened, not just the stats numbers. crossorigin=
 				 anonymous so html-to-image's `toPng(...)` can read the
 				 pixel buffer back from the canvas (tileserver-gl +
 				 MapTiler both serve CORS headers, but the explicit
-				 attribute is what unlocks the canvas readback). -->
-			<img
-				src={shareMapUrl}
-				class="share-card-map"
-				alt=""
-				crossorigin="anonymous"
-				data-testid="share-card-map"
-			/>
+				 attribute is what unlocks the canvas readback). A map
+				 that fails to load leaves the stats-only card, not a
+				 broken image in the capture. -->
+			<div class="share-card-map-frame">
+				<StaticMapImage
+					src={shareMapUrl}
+					alt=""
+					class="share-card-map"
+					crossorigin="anonymous"
+					testid="share-card-map"
+				/>
+				<div class="share-card-credit" data-testid="share-card-credit">{shareMap?.credit}</div>
+			</div>
 		{/if}
 		<div class="share-card-stats">
-			<div class="share-stat">
+			<div class="share-stat hero">
 				<div class="share-stat-label">{m('runDetail.distance')}</div>
 				<div class="share-stat-value">{formatDistance(run.distance_m)}</div>
 			</div>
+			<!-- Time and pace are the SAME clock. The card is read without the
+				 page beside it, so a reader who divides the two must land on the
+				 pace printed under them; pairing elapsed time with the page's
+				 moving pace would not survive that division. -->
 			<div class="share-stat">
-				<div class="share-stat-label">{m('runDetail.time')}</div>
-				<div class="share-stat-value">{formatDuration(run.duration_s)}</div>
+				<div class="share-stat-label">
+					{movingSeconds > 0 ? m('runDetail.moving') : m('runDetail.time')}
+				</div>
+				<div class="share-stat-value">{formatDuration(paceSeconds)}</div>
 			</div>
 			<div class="share-stat">
 				<div class="share-stat-label">{m('runDetail.pace')}</div>
 				<div class="share-stat-value">
-					{formatPace(run.duration_s, run.distance_m)}
+					{formatPace(paceSeconds, run.distance_m)}
 				</div>
 			</div>
 		</div>
-		<div class="share-card-date">
-			{formatDate(run.started_at)}
+		<div class="share-card-foot">
+			<div class="share-card-date">
+				{formatDate(run.started_at)}
+			</div>
+			<!-- Grisnir signs the bottom-right corner, beside the date and under
+				 the stats, so he never sits on the map or a number. He travels
+				 with the mark: the editor's mark switch drops both, and the
+				 runner's show_mascot setting drops him on every card. -->
+			{#if shareCardMark && showMascot}
+				<img
+					src="/brand/grisnir/grisnir-badge-256.png"
+					alt=""
+					class="share-card-grisnir"
+					data-testid="share-card-grisnir"
+				/>
+			{/if}
 		</div>
 	</div>
+</div>
 </div>
 {/if}
 
@@ -2105,25 +3097,11 @@
 		gap: var(--space-md);
 		margin-top: var(--space-sm);
 	}
-	.skeleton-shimmer {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skeleton-shimmer 1.4s ease-in-out infinite;
-		border-radius: var(--radius-md);
-	}
-	.skeleton-title { height: 1.8rem; width: 60%; }
-	.skeleton-line { height: 0.9rem; width: 40%; }
-	.skeleton-stat { height: 3.5rem; }
-	.skeleton-block { height: 8rem; margin-top: var(--space-sm); }
-	.back-link-skeleton { height: 2.5rem; }
-	@keyframes skeleton-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
+	.loading-blocks {
+		display: flex;
+		flex-direction: column;
+		gap: calc(var(--space-md) + var(--space-sm));
+		margin-top: var(--space-sm);
 	}
 	@media (max-width: 900px) {
 		.loading-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: 40vh 1fr; }
@@ -2150,6 +3128,9 @@
 		width: 100%;
 		margin-inline: auto;
 		overflow-y: auto;
+	}
+	.replay-3d {
+		margin-top: var(--space-md);
 	}
 	.other-run-header {
 		display: flex;
@@ -2231,7 +3212,7 @@
 
 	@media (max-width: 640px) {
 		.key-stat-value {
-			font-size: 1.3rem;
+			--key-stat-value-size: 1.3rem;
 		}
 		h1 {
 			font-size: 1.3rem;
@@ -2255,7 +3236,7 @@
 			padding: var(--space-lg);
 		}
 		.key-stat-value {
-			font-size: 1.25rem;
+			--key-stat-value-size: 1.25rem;
 		}
 		.detail-header {
 			margin-bottom: var(--space-lg);
@@ -2417,10 +3398,10 @@
 		   the hairline INVERTS: --color-border is 6.084:1 in light but 2.366:1
 		   once it carries the 3:1 line value. Measured against the worst-case
 		   composite (the scrim over a white map tile): 8.022:1 and 4.111:1. */
-		color: #F7F3EC;
+		color: #F3F1F7;
 		font-size: 0.75rem;
 		line-height: 1;
-		border: 1px solid #B5ADC3;
+		border: 1px solid #A9A4B6;
 		backdrop-filter: blur(6px);
 		z-index: 5;
 		pointer-events: none;
@@ -2477,6 +3458,19 @@
 		justify-content: space-between;
 		gap: 0.5rem;
 		margin-bottom: 0.4rem;
+	}
+
+	.segment-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		min-width: 0;
+	}
+
+	.segment-range {
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--color-text);
 	}
 
 	.segment-eyebrow {
@@ -2612,12 +3606,24 @@
 	}
 
 	.visibility-chip {
+		min-height: 1.75rem;
 		padding: 0.2rem 0.55rem;
 		border-radius: 9999px;
 		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border);
+		font: inherit;
 		font-weight: 600;
 		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.visibility-chip:hover:not(:disabled) {
+		border-color: var(--color-primary);
+	}
+
+	.visibility-chip:disabled {
+		cursor: progress;
+		opacity: 0.6;
 	}
 
 	.visibility-chip.is-public {
@@ -2628,6 +3634,10 @@
 
 	.visibility-chip.is-public .material-symbols {
 		color: var(--color-success-text);
+	}
+
+	.visibility-chip .chip-caret {
+		margin-inline-start: -0.15rem;
 	}
 
 	.dnf-chip {
@@ -2668,6 +3678,47 @@
 		font-size: 0.72rem;
 	}
 
+	.guided-chip {
+		padding: 0.2rem 0.55rem;
+		border-radius: 9999px;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-secondary);
+		font-weight: 600;
+		font-size: 0.72rem;
+		text-decoration: none;
+	}
+
+	.pr-chip {
+		padding: 0.2rem 0.55rem;
+		border-radius: 9999px;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		font: inherit;
+		font-weight: 600;
+		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.pr-chip:disabled {
+		cursor: progress;
+		opacity: 0.6;
+	}
+
+	.pr-chip .material-symbols {
+		color: var(--color-primary);
+	}
+
+	a.guided-chip:hover {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
+	}
+
+	a.guided-chip:hover .material-symbols {
+		color: var(--color-primary);
+	}
+
 	.back-link {
 		display: inline-flex;
 		align-items: center;
@@ -2705,15 +3756,40 @@
 	 *     stats line up vertically + don't jitter when the underlying
 	 *     value ticks (`12:34` vs `12:36` was visually shifting).
 	 */
+	/* The separators are each cell's own right and bottom edge, not a
+	   border-coloured background showing through a 1px gap: that background
+	   also filled the empty slots of a short last row, which read as a grey
+	   placeholder tile. The outer ones fall under the border and are clipped,
+	   and an empty slot is plain panel. */
 	.key-stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
-		gap: 1px;
 		margin-bottom: var(--space-xl);
-		background: var(--color-border);
+		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
+	}
+
+	.distance-recompute {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm) var(--space-md);
+		margin: calc(-1 * var(--space-md)) 0 var(--space-xl);
+	}
+
+	.distance-recorded-note {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
+	.distance-recompute-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
 	}
 
 	.key-stat {
@@ -2722,7 +3798,10 @@
 		gap: 0.25rem;
 		min-width: 0;
 		padding: var(--space-md) var(--space-lg);
-		background: var(--color-bg-secondary);
+		box-shadow:
+			1px 0 0 var(--color-border),
+			0 1px 0 var(--color-border);
+		container-type: inline-size;
 	}
 
 	/* The Activity-type filler tile pairs an icon with the label
@@ -2739,16 +3818,22 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* A value wraps between number and unit. A duration has no such break:
+	   "10:00:00" is one token about five ems wide, and in a two-column panel
+	   it was wider than its tile, so the size is capped at a fifth of the
+	   tile's width. The narrower sizes the queries above choose are the
+	   ceiling, not the size; they set the property rather than declaring a
+	   default here, which as the later rule would win over them. A longer
+	   unbreakable word (a localised activity name) breaks rather than running
+	   out of the tile. */
 	.key-stat-value {
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: 1.5rem;
+		font-size: clamp(1rem, 19cqi, var(--key-stat-value-size, 1.5rem));
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);
 		line-height: 1.1;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		overflow-wrap: anywhere;
 	}
 
 	.key-stat-label {
@@ -2761,6 +3846,12 @@
 		letter-spacing: 0.05em;
 	}
 
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: var(--space-md);
+	}
 	.section {
 		margin-bottom: var(--space-xl);
 		padding-top: var(--space-xl);
@@ -2813,6 +3904,90 @@
 		color: var(--color-danger-text);
 	}
 
+	.split-gap {
+		font-family: 'SF Mono', 'Menlo', monospace;
+		color: var(--color-text-secondary);
+	}
+
+	.splits-hint {
+		margin: var(--space-sm) 0 0;
+		font-size: 0.8rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.pacing {
+		margin-bottom: var(--space-lg);
+		padding: var(--space-md);
+		background: var(--color-bg-secondary);
+		border-radius: var(--radius-md);
+	}
+
+	.pacing-heading {
+		margin: 0 0 var(--space-sm);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+	}
+
+	.pacing-halves {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-md);
+	}
+
+	.pacing-half {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+	}
+
+	.pacing-half-label {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+	}
+
+	.pacing-half-value {
+		font-family: 'SF Mono', 'Menlo', monospace;
+		font-size: 1.1rem;
+		font-weight: 600;
+	}
+
+	.pacing-verdict {
+		margin-inline-start: auto;
+		padding: var(--space-2xs) var(--space-sm);
+		border-radius: var(--radius-sm);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+	}
+
+	.pacing-verdict-negative {
+		background: var(--color-success-light);
+		color: var(--color-success-text);
+	}
+
+	.pacing-verdict-positive {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
+
+	.pacing-summary,
+	.pacing-gap {
+		margin: var(--space-sm) 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
+	.pacing-gap {
+		color: var(--color-text-tertiary);
+	}
+
 	.workout-review .workout-header {
 		display: flex;
 		align-items: center;
@@ -2842,6 +4017,49 @@
 	.workout-adherence-abandoned {
 		background: var(--color-danger-light);
 		color: var(--color-danger-text);
+	}
+
+	.strategy-verdict {
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.15rem 0.5rem;
+		border-radius: 9999px;
+	}
+
+	.strategy-verdict-good {
+		background: var(--color-success-light);
+		color: var(--color-success-text);
+	}
+
+	.strategy-verdict-warn {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
+
+	.strategy-verdict-neutral {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+	}
+
+	.strategy-phase {
+		font-weight: 600;
+	}
+
+	.strategy-range,
+	.strategy-note {
+		color: var(--color-text-tertiary);
+	}
+
+	.strategy-range {
+		margin-inline-start: var(--space-xs);
+		font-size: 0.75rem;
+	}
+
+	.strategy-note {
+		font-size: 0.82rem;
+		margin: var(--space-sm) 0 0;
 	}
 
 	.workout-name {
@@ -3018,11 +4236,10 @@
 		background: transparent;
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
-		/* 44px touch target (Material / WCAG 2.5.5 AAA) — the glyph stays
-		   1.1rem; only the hit area grows. The danger Delete sits behind
-		   an action-divider so the larger targets don't crowd it. */
-		width: 2.75rem;
-		height: 2.75rem;
+		/* The glyph stays 1.1rem; only the hit area grows. The danger Delete
+		   sits behind an action-divider so the larger targets don't crowd it. */
+		width: var(--tap-target-min);
+		height: var(--tap-target-min);
 		padding: 0;
 		cursor: pointer;
 		color: var(--color-text-secondary);
@@ -3046,6 +4263,10 @@
 	.icon-btn:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+
+	.icon-btn.danger {
+		color: var(--color-danger-text);
 	}
 
 	.icon-btn.danger:hover:not(:disabled) {
@@ -3151,6 +4372,12 @@
 		margin: 0;
 	}
 
+	.hr-coverage {
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
+		margin: 0.5rem 0 0;
+	}
+
 	.hr-disclaimer {
 		font-size: 0.78rem;
 		color: var(--color-text-tertiary);
@@ -3162,10 +4389,13 @@
 		color: var(--color-primary);
 	}
 
-	.share-card {
+	.share-card-host {
 		position: fixed;
 		top: -9999px;
 		left: -9999px;
+		pointer-events: none;
+	}
+	.share-card {
 		width: 1080px;
 		height: 1080px;
 		/* Rasterised to a PNG that leaves the device, so the ramp is a fixed
@@ -3173,7 +4403,7 @@
 		   it replaces read 2.081 and 2.153:1 against the white copy, and the
 		   card centres its content on the middle one; these read 6.179 /
 		   6.544 / 8.258:1. */
-		background: linear-gradient(135deg, #9B4A24 0%, #6E4F94 55%, #5B4478 100%);
+		background: linear-gradient(135deg, #C24E24 0%, #A8426A 55%, #5B4B8A 100%);
 		color: #FFFFFF;
 		display: flex;
 		align-items: center;
@@ -3189,13 +4419,27 @@
 		justify-content: space-between;
 	}
 	.share-card-eyebrow {
+		display: flex;
+		align-items: center;
+		gap: 20px;
 		font-size: 48px;
 		font-weight: 800;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		opacity: 0.9;
 	}
-	.share-card-map {
+	.share-card-mark {
+		width: 64px;
+		height: 64px;
+		border-radius: 12px;
+		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+	}
+	.share-card-credit {
+		margin-top: 8px;
+		font-size: 22px;
+		opacity: 0.85;
+		text-align: end;
+	}
+	.share-card-inner :global(.share-card-map) {
 		display: block;
 		width: 100%;
 		height: 360px;
@@ -3204,10 +4448,16 @@
 		border: 4px solid rgba(255, 255, 255, 0.15);
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 	}
+	/* Distance across the card, time and pace side by side under it: three
+	   stacked 120 px rows did not fit under the map, and the capture cut the
+	   pace and the date off the bottom of the PNG. */
 	.share-card-stats {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		gap: 64px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 20px 48px;
+	}
+	.share-stat.hero {
+		grid-column: 1 / -1;
 	}
 	.share-stat {
 		display: flex;
@@ -3220,14 +4470,32 @@
 		opacity: 0.7;
 	}
 	.share-stat-value {
-		font-size: 120px;
+		font-size: 80px;
 		font-weight: 900;
 		line-height: 1;
 		margin-top: 8px;
+		white-space: nowrap;
+	}
+	.share-stat.hero .share-stat-value {
+		font-size: 120px;
 	}
 	.share-card-date {
 		font-size: 42px;
 		font-weight: 600;
 		opacity: 0.75;
+	}
+	/* The foot row is as tall as Grisnir, so the map, the stats and the foot
+	   still fit the card's 888 px of content height: 64 + 394 + 312 + 112. */
+	.share-card-foot {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 24px;
+	}
+	.share-card-grisnir {
+		display: block;
+		height: 112px;
+		width: auto;
+		flex: none;
 	}
 </style>

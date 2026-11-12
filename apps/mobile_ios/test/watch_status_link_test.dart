@@ -50,6 +50,7 @@ class _FakeApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {}
 
   @override
@@ -61,6 +62,7 @@ class _FakeApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     pings.add({'lat': lat, 'lng': lng});
   }

@@ -2,34 +2,62 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
-import 'package:core_models/core_models.dart' show ClubRow;
+import 'package:core_models/core_models.dart' show ClubRow, UserProfileRow;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
+import '../lib/main.dart' show pendingStartRunWithRoute;
 import '../lib/preferences.dart';
 import '../lib/screens/route_detail_screen.dart';
 import '../lib/social_service.dart' show ClubView;
+import 'pump_until.dart';
 
 cm.Route _route({
   String name = 'River Loop',
   bool isPublic = false,
   String? description,
   List<String> tags = const [],
+  List<cm.Waypoint> waypoints = const [],
+  String userId = 'test-user',
+  double? officialDistanceMetres,
+  bool official = false,
 }) =>
     cm.Route(
       id: 'r1',
-      userId: 'test-user',
+      userId: userId,
       name: name,
-      waypoints: const [],
+      waypoints: waypoints,
       distanceMetres: 8500,
+      officialDistanceMetres: officialDistanceMetres,
+      official: official,
       elevationGainMetres: 45,
       isPublic: isPublic,
       description: description,
       tags: tags,
     );
+
+/// A viewer of a park course's official route: the course row holds the
+/// credit (decisions § 2438). Counts the credit reads.
+class _CourseCreditApi extends ApiClient {
+  int creditReads = 0;
+  @override
+  String? get userId => 'viewer';
+  @override
+  Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async =>
+      {'r1'};
+  @override
+  Future<String?> fetchParkCourseCredit({
+    String? routeId,
+    String? segmentId,
+  }) async {
+    creditReads++;
+    return routeId == 'r1' ? '© OpenStreetMap contributors (ODbL)' : null;
+  }
+}
 
 /// Owner ApiClient whose tag write fails — drives the remove-failure banner.
 class _ThrowingTagsApi extends ApiClient {
@@ -38,6 +66,23 @@ class _ThrowingTagsApi extends ApiClient {
   @override
   Future<void> updateRouteTags(String routeId, List<String> tags) async {
     throw StateError('network down');
+  }
+}
+
+/// A viewer who does not own the route, so the screen asks the server for
+/// the privacy-clipped line. Each call takes the next queued outcome.
+class _ClipApi extends ApiClient {
+  final List<Object> outcomes;
+  int clipCalls = 0;
+  _ClipApi(this.outcomes);
+  @override
+  String? get userId => 'viewer';
+  @override
+  Future<List<cm.Waypoint>> clipRouteForViewer(String routeId) async {
+    final next = outcomes[clipCalls++];
+    if (next is Completer<List<cm.Waypoint>>) return next.future;
+    if (next is List<cm.Waypoint>) return next;
+    throw next;
   }
 }
 
@@ -82,6 +127,26 @@ class _GatedPublicApi extends ApiClient {
   }
 }
 
+/// [_GatedPublicApi] with audience sharing switched on and a private route
+/// shared with nobody, so Share link opens the "Who can see this" sheet.
+class _AudienceOnApi extends _GatedPublicApi {
+  @override
+  Future<bool> audienceSharingEnabled() async => true;
+
+  @override
+  Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
+          ShareableKind kind, String id) async =>
+      (isPublic: false, followersOnly: false);
+
+  @override
+  Future<List<ShareRecipient>> fetchShares(
+          ShareableKind kind, String id) async =>
+      const [];
+
+  @override
+  Future<List<UserProfileRow>> fetchShareCandidates() async => const [];
+}
+
 ClubView _club({
   required String id,
   required String name,
@@ -111,8 +176,10 @@ Future<void> _pump(
   WidgetTester tester,
   cm.Route route, {
   bool isOwner = false,
+  bool useMiles = false,
+  ApiClient? apiClient,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
   await prefs.init();
 
@@ -124,6 +191,7 @@ Future<void> _pump(
         route: route,
         routeStore: LocalRouteStore(),
         preferences: prefs,
+        apiClient: apiClient,
         isOwner: isOwner,
       ),
     ),
@@ -154,12 +222,145 @@ void main() {
     test('falls back to the prod host when WEB_BASE_URL is unset', () {
       expect(routeShareUrl('r1'), 'https://threkir.com/share/route/r1');
     });
+    test('a blank base falls back to the prod host, not a relative link', () {
+      expect(routeShareUrl('r1', webBase: '  '),
+          'https://threkir.com/share/route/r1');
+    });
   });
 
   group('RouteDetailScreen', () {
-    testWidgets('renders the route name as the app-bar title', (tester) async {
-      await _pump(tester, _route(name: 'River Loop'));
-      expect(find.text('River Loop'), findsOneWidget);
+    testWidgets('a long name is shown in full under the map, and the bar '
+        'repeats it only once that heading scrolls away', (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      const name = 'Philadelphia Marathon full course, Art Museum to '
+          'Manayunk and back';
+      await _pump(tester, _route(name: name), isOwner: true);
+
+      final inBody = find.descendant(
+          of: find.byType(ListView), matching: find.text(name));
+      final inBar =
+          find.descendant(of: find.byType(AppBar), matching: find.text(name));
+      expect(inBody, findsOneWidget);
+      final heading = tester.renderObject<RenderParagraph>(inBody);
+      expect(heading.didExceedMaxLines, isFalse,
+          reason: 'the body heading wraps rather than truncating');
+      double barOpacity() => tester
+          .widget<AnimatedOpacity>(find.ancestor(
+              of: inBar, matching: find.byType(AnimatedOpacity)))
+          .opacity;
+      expect(barOpacity(), 0,
+          reason: 'no second, truncated copy while the heading is on screen');
+
+      // Scrolled directly: a drag over the map would pan the map instead.
+      tester
+          .state<ScrollableState>(find.descendant(
+              of: find.byType(ListView), matching: find.byType(Scrollable)).first)
+          .position
+          .jumpTo(700);
+      // One frame lays the list out at the new offset and measures the
+      // heading; the next rebuilds the bar.
+      await tester.pump();
+      await tester.pump();
+      expect(barOpacity(), 1,
+          reason: 'the bar names the route once its heading is gone');
+    });
+
+    testWidgets('an official distance headlines the stats over the measured one',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(tester, _route(officialDistanceMetres: 8000));
+      expect(find.text('Official distance'), findsOneWidget);
+      expect(find.text('Measured'), findsOneWidget);
+    });
+
+    testWidgets('without an official distance neither label appears',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(tester, _route());
+      expect(find.text('Official distance'), findsNothing);
+      expect(find.text('Measured'), findsNothing);
+    });
+
+    testWidgets('a route with no line does not headline "0 Waypoints"',
+        (tester) async {
+      await _pump(tester, _route());
+      expect(find.text('Waypoints'), findsNothing);
+    });
+
+    testWidgets('a route with a line counts its waypoints', (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(
+          tester,
+          _route(userId: '', waypoints: const [
+            cm.Waypoint(lat: 51.5, lng: -0.12),
+            cm.Waypoint(lat: 51.51, lng: -0.13),
+            cm.Waypoint(lat: 51.52, lng: -0.14),
+          ]));
+      expect(find.text('Waypoints'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+    });
+
+    testWidgets('Start run wears the theme\'s start colour, not success green',
+        (tester) async {
+      await _pump(
+          tester,
+          _route(userId: '', waypoints: const [
+            cm.Waypoint(lat: 51.5, lng: -0.12),
+            cm.Waypoint(lat: 51.51, lng: -0.13),
+          ]));
+      final fab = tester.widget<FloatingActionButton>(
+          find.widgetWithText(FloatingActionButton, 'Start run'));
+      expect(fab.backgroundColor, isNull,
+          reason: 'the FAB theme (Home\'s Start) supplies the colour');
+      expect(fab.foregroundColor, isNull);
+    });
+
+    group('Drive this course', () {
+      tearDown(() => dotenv.loadFromString(isOptional: true));
+
+      const line = [
+        cm.Waypoint(lat: 37.5, lng: -77.45),
+        cm.Waypoint(lat: 37.51, lng: -77.45),
+        cm.Waypoint(lat: 37.52, lng: -77.45),
+      ];
+
+      Future<bool> offered(WidgetTester tester) async {
+        final more = find.byTooltip('More');
+        if (more.evaluate().isNotEmpty) {
+          await tester.tap(more);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+        }
+        return find.text('Drive this course').evaluate().isNotEmpty ||
+            find.byTooltip('Drive this course').evaluate().isNotEmpty;
+      }
+
+      testWidgets('a public route offers it with the flag on', (tester) async {
+        dotenv.loadFromString(envString: 'COURSE_DRIVE_ENABLED=true');
+        await _pump(tester, _route(isPublic: true, waypoints: line, userId: ''),
+            isOwner: true);
+        expect(await offered(tester), isTrue);
+      });
+
+      testWidgets('a private route does not, even to its owner', (tester) async {
+        dotenv.loadFromString(envString: 'COURSE_DRIVE_ENABLED=true');
+        await _pump(tester, _route(waypoints: line, userId: ''), isOwner: true);
+        expect(await offered(tester), isFalse);
+      });
+
+      testWidgets('nothing is offered with the flag off', (tester) async {
+        await _pump(tester, _route(isPublic: true, waypoints: line, userId: ''),
+            isOwner: true);
+        expect(await offered(tester), isFalse);
+      });
     });
 
     testWidgets('delete button is hidden when isOwner is false', (tester) async {
@@ -237,10 +438,6 @@ void main() {
       expect(tester.widget<PopupMenuItem<int>>(row('Make private')).enabled,
           isTrue);
       await closeOverflow();
-
-      // Drain the "made public" banner timer.
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pump();
     });
 
     testWidgets(
@@ -303,6 +500,52 @@ void main() {
     });
 
     testWidgets(
+        'with audience sharing on, Share link asks who can see the route '
+        'before anything is made public (decisions § 1879)',
+        (tester) async {
+      final api = _AudienceOnApi();
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RouteDetailScreen(
+          route: _route(isPublic: false),
+          routeStore: _FakePinStore(),
+          preferences: prefs,
+          apiClient: api,
+          isOwner: true,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(l10n.routeDetailShareLink));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byKey(const ValueKey('audience-sheet')), findsOneWidget);
+      expect(find.text(l10n.routeDetailShareConfirmTitle), findsNothing);
+      expect(api.publicCalls, 0);
+
+      final public = find.byKey(const ValueKey('audience-level-public'));
+      await tester.ensureVisible(public);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(public);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text(l10n.routeDetailShareConfirmTitle), findsOneWidget,
+          reason: 'Public goes through the same make-public confirm');
+      expect(api.publicCalls, 0);
+    });
+
+    testWidgets(
         'offline-pin toggle guards a double-tap race — a second tap while the '
         'pin is in flight is ignored, then the control re-enables',
         (tester) async {
@@ -359,11 +602,6 @@ void main() {
           matching: find.byType(IconButton)));
       expect(pinBtnAfter.onPressed, isNotNull,
           reason: 'control re-enables once the pin completes');
-
-      // The completed pin fires a "Saved offline" top banner, which leaves a
-      // pending auto-dismiss timer — drain it so the framework doesn't trip.
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pump();
     });
 
     testWidgets('delete button is visible when isOwner is true and apiClient has userId',
@@ -382,6 +620,71 @@ void main() {
       await _pump(tester, _route());
       expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Elevation'), findsOneWidget);
+    });
+
+    testWidgets('the Elevation stat reads in the unit Distance does',
+        (tester) async {
+      // 45 m is 147.6 ft. The stat used to print the raw metres beside a
+      // distance in miles.
+      await _pump(tester, _route(), useMiles: true);
+      expect(find.text('mi'), findsWidgets);
+      expect(find.text('148'), findsOneWidget);
+      expect(find.text('ft'), findsOneWidget);
+      expect(find.text('m'), findsNothing);
+    });
+
+    testWidgets('the Elevation stat stays in metres for a km runner',
+        (tester) async {
+      await _pump(tester, _route());
+      expect(find.text('45'), findsOneWidget);
+      expect(find.text('m'), findsOneWidget);
+      expect(find.text('ft'), findsNothing);
+    });
+
+    group('map slot without a line to draw', () {
+      const line = [
+        cm.Waypoint(lat: 51.5, lng: -0.1),
+        cm.Waypoint(lat: 51.51, lng: -0.11),
+      ];
+
+      testWidgets('a failed clip says so and retries, never "Waiting for GPS"',
+          (tester) async {
+        final api = _ClipApi([StateError('network down'), line]);
+        await _pump(tester, _route(waypoints: line, userId: 'owner'),
+            apiClient: api);
+        final failed = find.text(
+            "Couldn't load the route line. Check your connection and try again.");
+        await pumpUntil(tester, () => failed.evaluate().isNotEmpty,
+            describe: 'the load-failed placeholder');
+        expect(find.text('Waiting for GPS...'), findsNothing);
+
+        await tester.tap(find.widgetWithText(TextButton, 'Try again'));
+        await pumpUntil(tester, () => failed.evaluate().isEmpty,
+            describe: 'the retried clip to replace the placeholder');
+        expect(api.clipCalls, 2);
+        expect(find.text('Waiting for GPS...'), findsNothing);
+        expect(find.text('Try again'), findsNothing);
+        // The map that mounted queues zero-length tile-fetch timers.
+        await tester.pump(Duration.zero);
+      });
+
+      testWidgets('while the clip is in flight it shows a spinner',
+          (tester) async {
+        final pending = Completer<List<cm.Waypoint>>();
+        final api = _ClipApi([pending]);
+        await _pump(tester, _route(waypoints: line, userId: 'owner'),
+            apiClient: api);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        expect(find.text('Waiting for GPS...'), findsNothing);
+        pending.complete(const []);
+        await pumpUntil(
+            tester,
+            () => find.text('This route has no line to show.')
+                .evaluate()
+                .isNotEmpty,
+            describe: 'the clipped-to-empty placeholder');
+        expect(find.text('Try again'), findsNothing);
+      });
     });
 
     testWidgets('renders the Reviews header', (tester) async {
@@ -406,6 +709,37 @@ void main() {
       await tester.pump();
       expect(
           find.text('Out-and-back along the canal, flat.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a park course route shows its credit once, beside a description '
+        'that no longer carries it', (tester) async {
+      final api = _CourseCreditApi();
+      await _pump(
+        tester,
+        _route(description: 'Run it clockwise.', official: true),
+        apiClient: api,
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('route-course-credit')).evaluate().isNotEmpty,
+        describe: 'the course credit',
+      );
+      expect(find.text('Run it clockwise.'), findsOneWidget);
+      expect(find.text('© OpenStreetMap contributors (ODbL)'), findsOneWidget);
+      expect(api.creditReads, 1);
+    });
+
+    testWidgets('an ordinary route never asks for a course credit',
+        (tester) async {
+      final api = _CourseCreditApi();
+      await _pump(tester, _route(description: 'Run it clockwise.'),
+          apiClient: api);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pump();
+      expect(api.creditReads, 0);
+      expect(find.byKey(const Key('route-course-credit')), findsNothing);
     });
 
     testWidgets('omits the description row when null', (tester) async {
@@ -455,7 +789,11 @@ void main() {
               'preview doesn\'t load, it says Waiting for GPS".',
         );
         // The route header still renders normally.
-        expect(find.text('Just-built loop'), findsOneWidget);
+        expect(
+            find.descendant(
+                of: find.byType(ListView),
+                matching: find.text('Just-built loop')),
+            findsOneWidget);
       },
     );
   });
@@ -684,8 +1022,6 @@ void main() {
       // The chip stays (the remove didn't persist).
       expect(find.text('hillsprint'), findsOneWidget);
 
-      // Drain the showTopBanner auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 4));
     });
   });
 
@@ -694,7 +1030,8 @@ void main() {
         'owner body renders at 320 logical width and the switch titles are '
         'bounded so long localized labels ellipsize instead of striping',
         (tester) async {
-      tester.view.physicalSize = const Size(320, 1200);
+      // Tall enough that the switches still build below the wrapped name.
+      tester.view.physicalSize = const Size(320, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -716,6 +1053,41 @@ void main() {
             matching: find.byType(Expanded)),
         findsWidgets,
       );
+    });
+  });
+
+  group('RouteDetailScreen — start-run handoff', () {
+    tearDown(() => pendingStartRunWithRoute.value = null);
+
+    testWidgets('the Start run FAB publishes the route on the global notifier',
+        (tester) async {
+      // The only path from a route surface into the recorder. The callback
+      // chain that used to carry the route up through RoutesScreen /
+      // ExploreRoutesScreen / FitnessHubScreen was dead — this screen never
+      // pops a Route — so this notifier is what "Start with this route" is.
+      await _pump(
+        tester,
+        // Empty userId = a locally-built route, which the clip step hands
+        // through unchanged for a signed-out viewer; anything else renders no
+        // polyline in a test with no ApiClient, and so no FAB.
+        _route(userId: '', waypoints: const [
+          cm.Waypoint(lat: 51.5, lng: -0.12),
+          cm.Waypoint(lat: 51.51, lng: -0.13),
+        ]),
+      );
+
+      expect(pendingStartRunWithRoute.value, isNull);
+      await tester.tap(find.text('Start run'));
+      await tester.pump();
+
+      expect(pendingStartRunWithRoute.value?.id, 'r1');
+    });
+
+    testWidgets('a route with fewer than two waypoints offers no Start run',
+        (tester) async {
+      await _pump(tester, _route(userId: ''));
+      expect(find.text('Start run'), findsNothing);
+      expect(pendingStartRunWithRoute.value, isNull);
     });
   });
 }

@@ -2,7 +2,6 @@ name: Compliance drift
 
 on:
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -15,16 +14,23 @@ jobs:
     name: Compliance drift advisory
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           # The drift script diffs against origin/<base>; full history not
           # needed but the base ref must exist locally.
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.20.0'
       - name: Run compliance-drift detector
-        run: node scripts/check_compliance_drift.mjs
+        run: |
+          if ! node --test scripts/check_compliance_drift.test.mjs; then
+            echo "::error::The compliance-drift detector's own unit tests failed, so whatever it says about this PR's diff cannot be trusted. This is not a compliance finding."
+            echo "Reproduce with: node --test scripts/check_compliance_drift.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+          node scripts/check_compliance_drift.mjs
         env:
           # 'warn' = print findings + summary, never fail the job.
           # 'fail' = exit 1 when findings exist. Flip when the team is

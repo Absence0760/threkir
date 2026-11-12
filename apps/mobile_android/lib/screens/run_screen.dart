@@ -5,31 +5,45 @@ import 'dart:ui';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
-import 'package:core_models/core_models.dart' show PlanWorkoutRow, TrainingPlanRow;
+import 'package:core_models/core_models.dart'
+    show ActivityType, DistanceUnit, PlanWorkoutRow;
+import 'package:flutter/foundation.dart'
+    show ValueListenable, defaultTargetPlatform, kDebugMode, visibleForTesting;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart' hide ActivityType;
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:run_recorder/run_recorder.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, AppSemanticColors, StatTile, motionDuration;
+    show AppMotion, AppRadius, AppSemanticColors, StatTile, motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../mascot.dart';
+import '../widgets/grisnir_moments.dart';
+import '../fitness_surface_requests.dart';
 import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
+import '../barometer_bridge.dart';
 import '../ble_heart_rate.dart';
+import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
+import '../dev_auto_login.dart' show isLocalSupabaseUrl;
+import '../gnss_location_bridge.dart';
 import '../embedded_bests.dart';
 import '../goal_time.dart';
+import '../guided_runs.dart';
 import '../health_connect_exporter.dart';
 import '../activity_type_labels.dart';
+import '../hold_to_stop_hint.dart';
+import '../hr_prescription_gate.dart';
+import '../workout_target_label.dart';
+import '../in_progress_recovery.dart' show inProgressStats;
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
@@ -37,42 +51,69 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../live_broadcaster.dart';
 import '../live_hub_client.dart';
-import '../main.dart' show pendingStartWorkout;
+import '../live_publish_point.dart';
+import '../main.dart' show pendingArmGuidedRun, pendingStartWorkout;
 import '../live_cutoff_eta.dart';
+import '../off_route_flag.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../off_route_alert.dart';
+import '../orphaned_recording.dart';
+import '../line_calibration.dart' show LineCalibrationCapture;
 import '../race_controller.dart';
+import '../race_finish.dart';
+import '../widgets/race_banner.dart';
+import '../reactive_ble_watch_transport.dart';
 import '../race_phases.dart';
 import '../roadbook.dart';
 import '../route_geometry.dart';
 import '../route_markers.dart' show parseTarget;
 import '../route_match.dart';
-import '../route_simplify.dart';
+import '../run_altitude.dart';
+import '../run_stop_dock.dart';
+import '../safety_live_audience.dart';
+import '../streamer_overlay.dart';
 import '../safety_nudge.dart';
 import '../settings_sync.dart';
+import '../sim_watch_link.dart' show maybeDevBackendUrl;
+import '../sim_watch_sync.dart' show WatchBleTransport, WatchSyncClient;
 import '../turn_cue_announcer.dart';
 import '../turn_cues.dart';
+import '../typed_decimal.dart';
+import '../watch_settings.dart';
+import '../web_base_url.dart';
+import '../widgets/finish_plan_card.dart';
+import '../widgets/idle_setup_chip.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
+import '../live_activity_bridge.dart';
+import '../lock_screen_step.dart';
 import '../run_notification_bridge.dart';
+import '../run_haptics_bridge.dart';
+import '../step_haptics.dart';
 import '../run_stats.dart';
+import '../share_sheet.dart';
 import '../social_service.dart';
-import '../training.dart';
+import '../plan_workout_steps.dart';
 import '../training_service.dart';
+import '../fab_clearance.dart';
 import '../widgets/collapsible_panel.dart';
 import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
+import '../widgets/expected_return_dialog.dart';
 import '../widgets/live_share_indicator.dart';
+import '../widgets/streamer_overlay_sheet.dart';
+import '../widgets/loaded_workout_card.dart';
+import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/track_preview.dart' show projectTrack;
 import '../widgets/upcoming_event_card.dart';
 import '../widgets/workout_execution_band.dart';
-import 'event_detail_screen.dart';
+import 'help_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plans_screen.dart';
 import 'run_detail_screen.dart';
@@ -99,6 +140,42 @@ bool shouldDimRecordingMap({
 /// false on tear-down, so a missed update leaves the nav swipeable
 /// (fail-open — the lock is a safety nicety, never a core guarantee).
 final ValueNotifier<bool> runRecordingActive = ValueNotifier<bool>(false);
+
+/// Whether the Run page is showing a finished run's summary rather than its
+/// start surface, so the shell does not count a runner looking at their last
+/// run as already on the start screen ([RunSummaryDismissRequests]).
+final ValueNotifier<bool> runSummaryShowing = ValueNotifier<bool>(false);
+
+/// How far the live pace may sit from the target before the pace cue speaks.
+/// Held against both watches by `scripts/check_shared_constants.mjs`
+/// (decisions § 1716): a ~200 m look-back moves by ~15 s/km on GNSS noise
+/// alone, so a tighter gate speaks on jitter rather than on the runner.
+const int kPaceAlertDriftSecPerKm = 30;
+
+/// The quiet interval after a pace cue before another may speak.
+const int kPaceAlertRateLimitSeconds = 30;
+
+/// Diameter of the idle Start circle for an idle view [height] tall.
+///
+/// 140 is the designed size; on a short viewport (landscape, split screen)
+/// the circle gives way so the pinned Start never takes the whole view from
+/// the cards above it, and it never drops below a size that still reads as
+/// the primary control.
+double idleStartButtonSize(double height) {
+  if (!height.isFinite) return 140;
+  return (height * 0.28).clamp(96.0, 140.0);
+}
+
+/// Height of the fade above the idle Start, where the cards scrolling behind
+/// it dissolve into the page instead of ending on a hard edge.
+const double kIdleStartFadeHeight = 32;
+
+/// Height of the area the idle Start floats in over the scrolling cards, for
+/// a Start circle [buttonSize] across above a docked bar [dockInset] tall.
+/// The scroll is padded by at least this much so its last card can scroll
+/// wholly clear of Start.
+double idleStartAreaHeight(double buttonSize, double dockInset) =>
+    kIdleStartFadeHeight + buttonSize + 16 + dockInset;
 
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
@@ -127,6 +204,18 @@ class RunScreen extends StatefulWidget {
   /// `workout_adherence` to `runs.metadata`.
   final PlanWorkoutRow? initialWorkout;
 
+  /// Backend URL the custom-watch guided-run arm is gated on. The watch is
+  /// research-tier with no hardware in anyone's hands ([decisions.md § 71]),
+  /// so the push only runs against a loopback backend — the same rail the
+  /// route-detail course push and the Sim Watch link use. Production reads
+  /// dotenv; tests pass a URL to drive either side of the gate.
+  final String? devBackendUrl;
+
+  /// Injectable BLE transport for that push. Defaults to the production
+  /// `flutter_reactive_ble` client; tests pass a fake so the arm is exercised
+  /// with no radio attached.
+  final WatchBleTransport Function()? watchTransportFactory;
+
   /// An in-progress partial recovered at cold start whose process was killed
   /// mid-run. When set, RunScreen prompts the user to Resume (re-hydrate the
   /// recorder and continue the SAME run), Finish (finalize into a completed
@@ -134,9 +223,20 @@ class RunScreen extends StatefulWidget {
   /// multi-day effort being split into two disjoint runs by a process kill.
   final cm.Run? initialResumablePartial;
 
+  /// Whether the shell is showing this page. The page is kept alive behind
+  /// the others, so coming back to it re-reads the plan card: a run matched
+  /// on another device or the web would otherwise stay "to do" here.
+  final ValueListenable<bool>? shown;
+
+  /// The live broadcaster's throttle clock. Tests advance it instead of
+  /// sleeping out the real 5 s ping window.
+  @visibleForTesting
+  final DateTime Function()? liveClock;
+
   const RunScreen({
     super.key,
     this.apiClient,
+    this.liveClock,
     required this.runStore,
     required this.routeStore,
     required this.preferences,
@@ -149,7 +249,10 @@ class RunScreen extends StatefulWidget {
     required this.treadmill,
     this.initialRoute,
     this.initialWorkout,
+    this.devBackendUrl,
+    this.watchTransportFactory,
     this.initialResumablePartial,
+    this.shown,
   });
 
   @override
@@ -162,7 +265,11 @@ enum _ScreenState { idle, countdown, recording, paused, finished }
 /// partial: continue the same run, finalize it as-is, or drop it.
 enum _ResumeChoice { resume, finish, discard }
 
-class _RunScreenState extends State<RunScreen> {
+enum _GpsStartBlock { servicesOff, permissionDenied }
+
+enum _NoGpsStartChoice { openSettings, timeOnly }
+
+class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   _ScreenState _state = _ScreenState.idle;
 
   /// Single write path for [_state] so the cross-widget [runRecordingActive]
@@ -172,6 +279,7 @@ class _RunScreenState extends State<RunScreen> {
   void _setScreenState(_ScreenState next) {
     _state = next;
     runRecordingActive.value = next == _ScreenState.recording;
+    runSummaryShowing.value = next == _ScreenState.finished;
   }
 
   RunRecorder? _recorder;
@@ -197,6 +305,10 @@ class _RunScreenState extends State<RunScreen> {
   StreamSubscription<TreadmillSample>? _treadmillSub;
   StreamSubscription<BleTreadmillStatus>? _treadmillStatusSub;
   bool _treadmillMode = false;
+
+  // A belt fed distance at some point this run, so the GPS line no longer
+  // spans it and averages fall back to the clock.
+  bool _treadmillUsed = false;
   bool _treadmillPaired = false;
   BleTreadmillStatus _treadmillStatus = BleTreadmillStatus.disconnected;
   double? _treadmillSpeedKmh;
@@ -243,6 +355,9 @@ class _RunScreenState extends State<RunScreen> {
   // Course markers on the followed route that carry a target time
   // (meta.target_elapsed_s), sorted by position — the marker-cue set.
   List<_TargetMarker> _targetMarkers = const [];
+  // The route [_cutoffLegs] and [_targetMarkers] were built from, so a failed
+  // reload keeps them for that route and drops them for any other.
+  String? _cutoffLegsRouteId;
   // Distance-along-route at the previous fix; a marker between this and the
   // current along-value has just been crossed.
   double? _lastAlongM;
@@ -310,6 +425,7 @@ class _RunScreenState extends State<RunScreen> {
         setState(() {
           _cutoffLegs = const [];
           _targetMarkers = const [];
+          _cutoffLegsRouteId = null;
         });
       }
       return;
@@ -359,10 +475,20 @@ class _RunScreenState extends State<RunScreen> {
         setState(() {
           _cutoffLegs = next;
           _targetMarkers = targets;
+          _cutoffLegsRouteId = routeId;
         });
       }
     } catch (e) {
       debugPrint('cutoff-leg load failed: $e');
+      if (_cutoffLegsRouteId != routeId &&
+          (_cutoffLegs.isNotEmpty || _targetMarkers.isNotEmpty) &&
+          mounted) {
+        setState(() {
+          _cutoffLegs = const [];
+          _targetMarkers = const [];
+          _cutoffLegsRouteId = null;
+        });
+      }
     }
   }
 
@@ -372,13 +498,9 @@ class _RunScreenState extends State<RunScreen> {
   /// [LiveCutoffStatus.unknown]) rather than fabricating an ETA off an old fix.
   LiveCutoffEta? _cutoffEta(_LiveStats stats, bool stale) {
     if (_cutoffLegs.isEmpty) return null;
-    final pos = stats.routePosition;
-    final route = _selectedRoute;
-    if (pos == null || route == null) return null;
+    final distAlong = stats.routeAlong;
+    if (distAlong == null) return null;
     try {
-      final distAlong =
-          distanceAlongRoute((lat: pos.lat, lng: pos.lng), route.waypoints);
-      if (distAlong == null) return null;
       final eta = nextCutoffEta(
         distAlongRouteM: distAlong,
         elapsedS: stats.elapsed.inSeconds.toDouble(),
@@ -417,13 +539,22 @@ class _RunScreenState extends State<RunScreen> {
   Duration _elapsed = Duration.zero;
   double _distanceMetres = 0;
   double? _pace;
+  // The run's line, as the recorder's snapshot carries it: what the map, the
+  // elevation gain and every live reader draw from.
   List<cm.Waypoint> _track = [];
+  // Every fix the recorder stored, off-track ones included: what the crash
+  // checkpoint persists, so a resumed or recovered run keeps the input the
+  // server replays (gps_distance.md § Stored track). Nothing draws from it.
+  List<cm.Waypoint> _storedTrack = [];
   cm.Waypoint? _currentPosition;
-  // Last fix the recorder's distance chain accepted. Everything that maps a
-  // position onto the followed route (turn cues, marker-target cues, the
-  // cut-off ETA) reads this rather than the raw `_currentPosition`, which
-  // deliberately carries rejected fixes so the blue dot keeps up.
-  cm.Waypoint? _routePosition;
+  // Where the recorder matched the runner on the followed route, metres from
+  // its start. Everything that places the runner on the route (turn cues,
+  // marker-target cues, the cut-off ETA) reads this rather than re-projecting
+  // a position onto the whole line: the recorder remembers the previous match,
+  // so a loop's start is not its finish and an out-and-back's return leg is
+  // not its outbound one, and it only moves on a fix the distance chain
+  // accepted.
+  double? _routeAlong;
   int _lastTickNotified = 0;
   final ValueNotifier<_LiveStats> _statsNotifier =
       ValueNotifier(_LiveStats.empty);
@@ -442,14 +573,34 @@ class _RunScreenState extends State<RunScreen> {
   // snapshot.currentPosition; reset on discard.
   bool _everHadGpsFix = false;
 
+  bool _timeOnlyChosen = false;
+
   // Running elevation gain, updated incrementally as new waypoints arrive
   // in _onSnapshot. The naive O(n) rescan of the full track on every
   // build was the hottest per-frame work in the run screen — a 60-minute
   // run rescans 3600+ points every tween tick (~60 Hz). This is the same
-  // noise gate + dropout carry computeElevationGain applies to the
-  // finished track, so the live figure and the run-detail figure agree.
-  final ElevationGainAccumulator _elevationGain = ElevationGainAccumulator();
+  // noise gate + dropout carry computeRunElevationGain applies to the
+  // finished track, over the same barometer-or-GPS series, so the live
+  // figure and the run-detail figure agree.
+  final RunElevationGainAccumulator _elevationGain =
+      RunElevationGainAccumulator();
   int _elevationProcessedCount = 0;
+
+  // The race-finish detector interpolates between consecutive fixes, so it
+  // must see each fix once at its own instant, not the last one again on
+  // every recorder tick (#1304 section 4).
+  DateTime? _raceFixOfferedAt;
+
+  // Same rule the finished summary applies ([movingTimeOf]), so the live
+  // Avg pace cannot disagree with it.
+  final MovingTimeAccumulator _moving = MovingTimeAccumulator();
+
+  // Wall-clock time recording last started or resumed; null while paused or
+  // idle. The first fix accepted after it sets [_stillSince], the fix-clock
+  // anchor of the "Stopped" chip, so the chip cannot open on a resume.
+  DateTime? _activeSince;
+  DateTime? _stillSince;
+  DateTime? _latestFixAt;
 
   // Reentrancy guard on start — prevents rapid taps from spawning
   // multiple recorders.
@@ -490,6 +641,16 @@ class _RunScreenState extends State<RunScreen> {
   // stop path uses it to resolve the saved run's visibility — the live
   // window's public opt-in must not silently outlive the run (issue #664).
   bool _liveBroadcastBegun = false;
+  // The begun stub is (or was made) public. A broadcast on the safety-contacts
+  // audience (decisions § 1964) never was, so the stop path has no public flip
+  // to resolve for it.
+  bool _liveBroadcastPublic = false;
+  // The server's safety_audience gate, probed once per screen. Fail closed:
+  // false until the probe answers, so nothing defaults on before then.
+  bool _safetyAudienceEnabled = false;
+  // The server's `live_overlay` gate (decisions § 2265), read once; closed
+  // until it answers, so the overlay row never shows on a guess.
+  bool _liveOverlayEnabled = false;
   // The `runs.concluded_at` stamp is owed for this run id and hasn't landed.
   // Tracked separately from the broadcaster's attached state: an explicit
   // stop-share detaches the pump whether or not its conclude call succeeded,
@@ -518,6 +679,18 @@ class _RunScreenState extends State<RunScreen> {
   // `_weakGps` is the debounced UI flag flipped by _checkGpsHealth's setState.
   bool _weakGpsLatest = false;
   bool _weakGps = false;
+
+  // Mirrors [RunRecorder.preciseLocationOff] for the approximate-location
+  // strip. It cannot ride on `_weakGps`: an approximate grant may deliver no
+  // fix at all, so there is nothing for the accuracy gate to reject.
+  bool _preciseLocationOff = false;
+
+  // Foreground-only ("While using the app") location disclosure state.
+  // `_leftForegroundAt` is the wall-clock moment the app left the screen
+  // during an active recording; `_backgroundLimitDisclosed` keeps the
+  // telling to once per run so an app switch every kilometre doesn't nag.
+  DateTime? _leftForegroundAt;
+  bool _backgroundLimitDisclosed = false;
 
   // Permission watchdog — polls Geolocator.checkPermission() so we can
   // warn the runner if location permission is revoked mid-run in Android
@@ -549,10 +722,29 @@ class _RunScreenState extends State<RunScreen> {
   // runner consumes _onSnapshot output and emits transition / drift
   // events into _workoutEventsSub. Band UI listens via _workoutBand.
   WorkoutRunner? _workoutRunner;
+  final RunHapticsBridge _runHaptics = const RunHapticsBridge();
   StreamSubscription<WorkoutExecEvent>? _workoutEventsSub;
   String? _activeWorkoutId;
+
+  /// The planned workout the runner is executing, for its effort /
+  /// heart-rate target line on the band (decisions § 2092).
+  PlanWorkoutRow? _activeWorkoutRow;
   final ValueNotifier<WorkoutBandState> _workoutBand =
       ValueNotifier(WorkoutBandState.empty);
+
+  // ── Guided run ──
+  // Armed from the idle state and consumed by the L4 cue block in
+  // _onSnapshot. Null when this recording has no coach script.
+  GuidedRun? _guidedRun;
+
+  // The highest whole second of RECORDING time already dispatched. Only ever
+  // advances, so a repeated or rewound tick can't re-fire a mark the runner
+  // has already heard — `cuesDue` is idempotent over a range, but only if the
+  // range's floor never walks backwards.
+  int _guidedCueSec = -1;
+
+  bool get _guidedCuesEnabled =>
+      widget.preferences.voiceCueEnabled(VoiceCue.guidedRun);
 
   // Pace alerts
   DateTime? _lastPaceAlertAt;
@@ -590,6 +782,9 @@ class _RunScreenState extends State<RunScreen> {
   // Distance remaining on selected route
   double? _routeRemaining;
 
+  // Phone barometer, levelled against GPS altitude inside the recorder.
+  StreamSubscription<double>? _baroSub;
+
   // Step tracking
   StreamSubscription<StepCount>? _stepSub;
   int _startSteps = 0;
@@ -626,15 +821,23 @@ class _RunScreenState extends State<RunScreen> {
   // Active-plan overview; drives the today's-workout card on idle.
   ActivePlanOverview? _planOverview;
 
-  // Measured height of the stats overlay — used to offset the map camera so
-  // the blue dot sits in the visible area above the overlay, not behind it.
-  final GlobalKey _statsOverlayKey = GlobalKey();
+  // Measured height of the stats overlay. Insets the map (camera offset,
+  // attribution, re-centre button) and the utility stack above it, so the
+  // blue dot and the basemap credit sit above the panel, not behind it. The
+  // initial value only lasts until the panel's first layout reports in.
   double _statsOverlayHeight = 300;
 
   // Replaces geolocator's "Run in progress" foreground-service notification
   // with live time / distance / pace so the lock screen is useful mid-run.
   final RunNotificationBridge _lockScreen = RunNotificationBridge();
   DateTime? _lastNotificationAt;
+
+  // The same live run on iOS's lock screen and Dynamic Island, which has no
+  // ongoing-notification equivalent. Fed the identical localized strings the
+  // notification carries, so neither platform's lock screen can drift from
+  // the other's; no-op on Android, and its own 10s cadence gate means the
+  // per-second offers below cost nothing on either.
+  final LiveActivityBridge _liveActivity = LiveActivityBridge();
 
   // Ephemeral top-anchored notices ("split done", "lap marked",
   // "no GPS") render via the shared `showTopBanner` Overlay helper
@@ -657,11 +860,18 @@ class _RunScreenState extends State<RunScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.preferences.addListener(_onPrefsChange);
     widget.runStore.addListener(_onPrefsChange);
     widget.social.addListener(_onSocialChange);
     widget.training.addListener(_onTrainingChange);
+    widget.shown?.addListener(_onShownChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
+    pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
+    runStopRequests.addListener(_onDockedStopRequest);
+    runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
+    widget.raceController?.addListener(_onRaceChange);
+    widget.raceController?.onStartLineCrossed = _onRaceStartCrossed;
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -671,22 +881,89 @@ class _RunScreenState extends State<RunScreen> {
     _maybePreloadWorkoutRunner();
     _refreshUpcomingEvent();
     _refreshPlanOverview();
+    unawaited(_probeSafetyAudience());
+    unawaited(_probeLiveOverlay());
     // Drain after first frame: if a deeper screen set
     // `pendingStartWorkout` *before* this State existed (lazy tab
     // construction), we'd have missed the listener fire. Run once
     // post-frame to consume whatever was queued.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _onPendingStartWorkout();
+      _onPendingArmGuidedRun();
     });
     // A process-killed run was recovered as resumable at cold start. Prompt
     // once, after first frame (so `_l10n` + a Navigator context exist), to
-    // Resume / Finish / Discard it — resume the primary path.
+    // Resume / Finish / Discard it — resume the primary path. A recording
+    // handed on by a torn-down predecessor is newer than any cold-start
+    // partial, and is the same session if both exist.
+    orphanedRecording.addListener(_onOrphanedRecording);
     final resumable = widget.initialResumablePartial;
-    if (resumable != null) {
+    if (orphanedRecording.value != null) {
+      _onOrphanedRecording();
+    } else if (resumable != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _promptResume(resumable);
       });
+    }
+  }
+
+  /// Offer Resume / Finish / Discard on a recording a torn-down run screen
+  /// handed on ([orphanedRecording]). Listened to as well as read at
+  /// `initState`, because a replacement screen is built before the one it
+  /// replaces is disposed. Taken only while idle, so it never interrupts a
+  /// run this screen is already recording.
+  void _onOrphanedRecording() {
+    if (orphanedRecording.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final orphan = orphanedRecording.value;
+      if (!mounted ||
+          orphan == null ||
+          _state != _ScreenState.idle ||
+          _startRequested) {
+        return;
+      }
+      orphanedRecording.value = null;
+      _promptResume(orphan);
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && widget.shown?.value != false) {
+      _onTrainingChange();
+    }
+    // L4 auxiliary: this only ever decides whether to show a disclosure.
+    // Nothing in here may touch recording state, so it carries its own
+    // catch rather than riding any recording path's.
+    try {
+      if (state == AppLifecycleState.paused ||
+          state == AppLifecycleState.hidden) {
+        if (_state == _ScreenState.recording && !_manualPaused) {
+          _leftForegroundAt = DateTime.now();
+        }
+        return;
+      }
+      if (state != AppLifecycleState.resumed) return;
+      final leftAt = _leftForegroundAt;
+      _leftForegroundAt = null;
+      if (leftAt == null) return;
+      if (!shouldDiscloseBackgroundLocationLimit(
+        limitedGrant: _recorder?.backgroundLocationLimited == true,
+        recording: _state == _ScreenState.recording,
+        manualPaused: _manualPaused,
+        alreadyDisclosed: _backgroundLimitDisclosed,
+        leftForegroundAt: leftAt,
+        returnedAt: DateTime.now(),
+        lastFixAt: _lastSnapshotAt,
+      )) {
+        return;
+      }
+      _backgroundLimitDisclosed = true;
+      _notifyBackgroundLocationLimited();
+    } catch (e) {
+      debugPrint('background-location disclosure failed: $e');
     }
   }
 
@@ -720,6 +997,201 @@ class _RunScreenState extends State<RunScreen> {
     _startStructuredWorkout(wo);
   }
 
+  /// A guided-run surface elsewhere in the app armed a script for this
+  /// recorder. Resolve the parked id against the library for THIS screen's
+  /// locale and arm it down the same path the idle picker uses, so the watch
+  /// push, the cue cursor and the metadata stamp cannot diverge between the
+  /// two entry points.
+  /// A completed hold on the shell's docked Stop, which stands in for the
+  /// panel's own on the phone layout ([RunStopDock]).
+  void _onDockedStopRequest() {
+    if (_state != _ScreenState.recording) return;
+    unawaited(_requestStop());
+  }
+
+  bool _raceEndedShown = false;
+  bool _raceLateShown = false;
+
+  /// The race moved under the recording: GO for a recording started while
+  /// it was armed (joined here), the host ended it, or the start was judged
+  /// late. Each is said once; none touches L0/L1.
+  void _onRaceChange() {
+    final rc = widget.raceController;
+    if (rc == null || !mounted || _state != _ScreenState.recording) return;
+    if (!_stopRequested) _attachToRunningRace();
+    // A finish the detector found replaying fixes at GO, or when the course
+    // arrived, rather than on a live fix.
+    final replayed = rc.takePendingFinish();
+    if (replayed != null) unawaited(_onRaceAutoFinish(replayed));
+    if (rc.raceEnded && !_raceEndedShown) {
+      _raceEndedShown = true;
+      _showTopBanner(_l10n.runRaceEnded, duration: const Duration(seconds: 8));
+      _announceA11yState(_l10n.runRaceEnded);
+    }
+    if (rc.lateStart && !_raceLateShown) {
+      _raceLateShown = true;
+      _showTopBanner(_l10n.runRaceLateStart,
+          duration: const Duration(seconds: 6));
+    }
+  }
+
+  /// The course of the race this recording is bound to, for the map's start
+  /// and finish lines; null when not racing.
+  RaceCourse? get _raceCourse {
+    final rc = widget.raceController;
+    return rc != null && rc.isHosting ? rc.course : null;
+  }
+
+  bool _raceStopSheetOpen = false;
+
+  /// Every Stop entry point lands here. During a live race with no outcome
+  /// yet, Stop is a pause: the recorder pauses and the runner picks Resume
+  /// race or Finish race (decisions § 1843). Anything else stops outright.
+  /// A Finish race is timed at this Stop, not at the later tap that chose
+  /// it, and is still filed if the host ends the race while the choice is
+  /// open (decisions § 1857).
+  Future<void> _requestStop() async {
+    final rc = widget.raceController;
+    if (rc == null || !rc.stopNeedsRaceChoice) return _stop();
+    if (_raceStopSheetOpen || _stopRequested || _recorder == null) return;
+    final stoppedAt = DateTime.now();
+    if (!_manualPaused) _toggleManualPause();
+    _raceStopSheetOpen = true;
+    final RaceStopChoice? choice;
+    try {
+      choice = await showRaceStopSheet(context,
+          coverageMet: rc.coverageMet(_distanceMetres));
+    } finally {
+      _raceStopSheetOpen = false;
+    }
+    if (!mounted || _stopRequested) return;
+    switch (choice) {
+      case RaceStopChoice.resume:
+        if (_manualPaused) _toggleManualPause();
+      case RaceStopChoice.finish:
+        rc.decideStop(coveredM: _distanceMetres, now: stoppedAt);
+        await _stop();
+      case null:
+        break;
+    }
+  }
+
+  /// The runner reached the finish. A finish-line crossing files the result
+  /// at once and holds the recording paused for [kRaceUndoWindow] behind
+  /// "Not finished? Resume" (#1307 m11), then stops; any other automatic
+  /// finish stops the recorder, which files it through
+  /// [RaceController.submitResult].
+  Future<void> _onRaceAutoFinish(RaceFinish finish) async {
+    if (!mounted || _stopRequested || _raceUndoOpen) return;
+    final rc = widget.raceController;
+    final gun = rc?.gunTimeTo(finish.at);
+    final message = gun == null
+        ? _l10n.runRaceFinishRecorded
+        : _l10n.runRaceFinishedAuto(_formatDuration(Duration(seconds: gun)));
+    // L4: each cue on its own; neither may cost the runner the finish.
+    try {
+      _runHaptic(RunHapticPattern.workoutComplete);
+    } catch (e) {
+      debugPrint('race finish haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues) {
+        _ttsCue('raceFinishCue',
+            () => widget.audioCues.announceGuidedCue(message));
+      }
+    } catch (e) {
+      debugPrint('race finish cue failed: $e');
+    }
+    _showTopBanner(message, duration: const Duration(seconds: 6));
+    _announceA11yState(message);
+    if (rc == null || finish.detection != RaceFinishDetection.gate) {
+      await _stop();
+      return;
+    }
+    if (!_manualPaused) _toggleManualPause();
+    unawaited(rc.fileOutcomeNow(
+      durationS: _elapsed.inSeconds,
+      distanceM: _distanceMetres,
+    ));
+    setState(() => _raceUndoOpen = true);
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = Timer(kRaceUndoWindow, () {
+      if (!mounted || !_raceUndoOpen) return;
+      setState(() => _raceUndoOpen = false);
+      unawaited(_stop());
+    });
+  }
+
+  bool _raceUndoOpen = false;
+  Timer? _raceUndoTimer;
+
+  /// "Not finished? Resume": void the line finish and record on. The rest of
+  /// this race finishes by hand (Stop, then Finish race).
+  Future<void> _onRaceUndo() async {
+    final rc = widget.raceController;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    if (!_raceUndoOpen || rc == null) return;
+    setState(() => _raceUndoOpen = false);
+    if (_manualPaused) _toggleManualPause();
+    _showTopBanner(_l10n.runRaceFinishUndone,
+        duration: const Duration(seconds: 6));
+    _announceA11yState(_l10n.runRaceFinishUndone);
+    await rc.voidAutoFinish();
+  }
+
+  /// The start line committed this runner's start (#1307 cues). Each cue is
+  /// its own L4 effect.
+  void _onRaceStartCrossed() {
+    if (!mounted || _state != _ScreenState.recording) return;
+    try {
+      _runHaptic(RunHapticPattern.stepWork);
+    } catch (e) {
+      debugPrint('race start haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues) {
+        _ttsCue('raceStartCue',
+            () => widget.audioCues.announceGuidedCue(_l10n.runRaceStartCrossed));
+      }
+    } catch (e) {
+      debugPrint('race start cue failed: $e');
+    }
+    try {
+      _announceA11yState(_l10n.runRaceStartCrossed);
+    } catch (e) {
+      debugPrint('race start announce failed: $e');
+    }
+  }
+
+  /// A Log-run action over the finished summary: the same exit as its Done.
+  void _onSummaryDismissRequest() {
+    if (!mounted || _state != _ScreenState.finished) return;
+    _discard();
+  }
+
+  void _onPendingArmGuidedRun() {
+    final id = pendingArmGuidedRun.value;
+    if (id == null) return;
+    if (!mounted) return;
+    // Spent on arrival even when it can't be honoured. Holding it would make
+    // a second tap on the SAME run a no-op notifier write (the value never
+    // changes, so no listener fires), and arming mid-recording rewinds the
+    // cue cursor, replaying every mark the runner has already passed in one
+    // burst on the next tick.
+    pendingArmGuidedRun.value = null;
+    if (_state != _ScreenState.idle) {
+      debugPrint('pendingArmGuidedRun dropped: state=$_state');
+      return;
+    }
+    final guided = findGuidedRun(_l10n, id);
+    if (guided == null) {
+      debugPrint('pendingArmGuidedRun dropped: unknown id=$id');
+      return;
+    }
+    _armGuidedRun(guided);
+  }
+
   /// Build a [WorkoutRunner] from the incoming planned workout — its
   /// `structure` jsonb plus the plan's `paces` bag — so the run starts
   /// already aware of its first step.
@@ -735,61 +1207,21 @@ class _RunScreenState extends State<RunScreen> {
       final plan = await widget.training
           .fetchPlanForWorkout(wo)
           .timeout(kBackendLoadTimeout);
-      paces = _pacesFromPlan(plan);
+      paces = planPaceBag(plan);
     } catch (e) {
       debugPrint('Failed to load plan paces for workout ${wo.id}: $e');
     }
     if (!mounted) return;
-    final structure = wo.structure is Map<String, dynamic>
-        ? wo.structure as Map<String, dynamic>
-        : null;
-    final steps = expandWorkoutSteps(
-      structure: structure,
-      paces: paces,
-      toleranceSecPerKm: wo.targetPaceToleranceSec ?? 10,
-      fallbackDistanceMetres: wo.targetDistanceM,
-      fallbackPaceSecPerKm: wo.targetPaceSecPerKm,
-    );
+    final steps = expandPlanWorkoutSteps(wo, paces: paces);
     if (steps.isEmpty) return;
     final runner = WorkoutRunner(steps: steps);
     _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
-    _workoutRunner = runner;
-    _activeWorkoutId = wo.id;
+    setState(() {
+      _workoutRunner = runner;
+      _activeWorkoutId = wo.id;
+      _activeWorkoutRow = wo;
+    });
     _publishWorkoutBand();
-  }
-
-  /// Build the symbolic pace bag that resolves `'easy'`, `'jog'`,
-  /// `'tempo'`, etc. for [expandWorkoutSteps]. Plans on this codebase
-  /// don't store an explicit `paces` jsonb today — we re-derive from
-  /// the goal pace using the same `resolveTrainingPaces` helper the
-  /// generator uses, which keeps the running-time bands identical to
-  /// what the editor showed.
-  Map<String, int> _pacesFromPlan(TrainingPlanRow? plan) {
-    if (plan == null) return const {};
-    try {
-      final tp = resolveTrainingPaces(
-        goalDistanceM: plan.goalDistanceM,
-        goalTimeSec: plan.goalTimeSeconds,
-        recent5kSec: plan.current5kSeconds,
-      );
-      return <String, int>{
-        'easy': tp.easy,
-        'jog': tp.easy + 60,
-        'marathon': tp.marathon,
-        'tempo': tp.tempo,
-        'interval': tp.interval,
-        'repetition': tp.repetition,
-      };
-    } catch (e, st) {
-      // L4 (auxiliary): pace-bag derivation is a hint for the workout
-      // runner; if it throws (NaN goal pace, divide-by-zero on a
-      // 0-distance plan), the runner falls back to step-local
-      // targets. Log so the failure surfaces in `flutter logs`
-      // without masking a deeper bug, but never let this block the
-      // recording layer below.
-      debugPrint('run_screen: _pacesFromPlan failed: $e\n$st');
-      return const {};
-    }
   }
 
   void _onWorkoutEvent(WorkoutExecEvent e) {
@@ -800,6 +1232,10 @@ class _RunScreenState extends State<RunScreen> {
     // out as unhandled errors. _ttsCue() does the unawaited+catchError
     // dance so the cue is fire-and-forget but the rejection is logged
     // instead of escaping.
+    //
+    // The buzz sits outside every voice gate: it is the cue that still
+    // reaches a runner with the audio off or the voice set to minimal.
+    _runHaptic(stepHapticFor(e));
     if (e is StepTransitionEvent) {
       _publishWorkoutBand();
       if (widget.preferences.audioCues && _workoutCuesEnabled) {
@@ -809,17 +1245,21 @@ class _RunScreenState extends State<RunScreen> {
                 .announceWorkoutStepTransition(e.step, widget.preferences.unit));
       }
     } else if (e is StepProgressEvent) {
-      // Chatty in-rep progress ("halfway", "fifty metres to go") — dropped
+      // Chatty in-rep progress ("halfway", "ten seconds to go") — dropped
       // in minimal voice-feedback mode (round-5 older).
       if (widget.preferences.audioCues && _workoutCuesEnabled && _voiceVerbose) {
-        _ttsCue('announceWorkoutStepProgress',
-            () => widget.audioCues.announceWorkoutStepProgress(e.step, e.kind));
+        _ttsCue(
+            'announceWorkoutStepProgress',
+            () => widget.audioCues.announceWorkoutStepProgress(
+                e.kind, widget.preferences.unit));
       }
     } else if (e is PaceDriftEvent) {
       // Pace-drift nudge — also dropped in minimal mode.
       if (widget.preferences.audioCues && _workoutCuesEnabled && _voiceVerbose) {
-        _ttsCue('announceWorkoutPaceDrift',
-            () => widget.audioCues.announceWorkoutPaceDrift(e));
+        _ttsCue(
+            'announceWorkoutPaceDrift',
+            () => widget.audioCues
+                .announceWorkoutPaceDrift(e, widget.preferences.unit));
       }
     } else if (e is WorkoutCompleteEvent) {
       _publishWorkoutBand();
@@ -832,9 +1272,24 @@ class _RunScreenState extends State<RunScreen> {
     }
   }
 
+  /// Fire-and-forget vibration cue, gated on the per-device setting.
+  /// [RunHapticsBridge.play] swallows its own failures.
+  void _runHaptic(RunHapticPattern? pattern) {
+    if (pattern == null || !widget.preferences.hapticFeedback) return;
+    unawaited(_runHaptics.play(pattern));
+  }
+
   /// Fire-and-forget TTS announcement. Wraps both synchronous and
   /// asynchronous failures so a TTS-engine fault never escapes as an
   /// unhandled error.
+  /// A scheduled GO's countdown, spoken at 10, 5, 3, 2, 1 seconds while the
+  /// run screen is open (#1306 m4). Voice cues off means silence.
+  void _speakRaceCountdown(int secondsLeft) {
+    if (!widget.preferences.audioCues) return;
+    _ttsCue('raceCountdown',
+        () => widget.audioCues.announceGuidedCue('$secondsLeft'));
+  }
+
   void _ttsCue(String label, Future<void> Function() invoke) {
     try {
       unawaited(invoke().catchError((Object e) {
@@ -847,9 +1302,10 @@ class _RunScreenState extends State<RunScreen> {
 
   /// Ghost-pacer position for the current workout step. Returns null
   /// (and the LiveRunMap hides the marker) whenever the ghost is
-  /// undefined or off the planned route — see [ghostPacerPosition]
-  /// for the cases. The marker is only useful when a planned route
-  /// is loaded: without one there's no "where you should be" path.
+  /// undefined, unpaced (a walk-run step) or off the planned route — see
+  /// [workoutGhostPosition] and [ghostPacerPosition] for the cases. The
+  /// marker is only useful when a planned route is loaded: without one
+  /// there's no "where you should be" path.
   cm.Waypoint? _computeGhostPosition() {
     final runner = _workoutRunner;
     if (runner == null) return null;
@@ -859,10 +1315,10 @@ class _RunScreenState extends State<RunScreen> {
     if (route == null) return null;
     final path = route.waypoints;
     if (path.length < 2) return null;
-    return ghostPacerPosition(
+    return workoutGhostPosition(
       path: path,
+      step: step,
       elapsed: runner.stepElapsed,
-      targetPaceSecPerKm: step.targetPaceSecPerKm,
     );
   }
 
@@ -880,7 +1336,7 @@ class _RunScreenState extends State<RunScreen> {
       progress: runner.progressFraction,
       remainingMetres: runner.stepRemainingMetres,
       remainingDuration: runner.stepRemainingDuration,
-      actualPaceSecPerKm: runner.stepAveragePaceSecPerKm,
+      actualPaceSecPerKm: runner.stepLivePaceSecPerKm,
       adherence: runner.paceAdherence,
       complete: runner.isComplete && step == null,
       abandoned: false,
@@ -903,9 +1359,7 @@ class _RunScreenState extends State<RunScreen> {
 
   Future<void> _refreshPlanOverview() async {
     try {
-      final p = await widget.training
-          .fetchActiveOverview()
-          .timeout(kBackendLoadTimeout);
+      final p = await widget.training.fetchActiveOverview();
       if (mounted) setState(() => _planOverview = p);
     } catch (e) {
       // Non-critical — same logging rationale as `_refreshUpcomingEvent`.
@@ -935,9 +1389,17 @@ class _RunScreenState extends State<RunScreen> {
     });
   }
 
+  void _onShownChange() {
+    if (widget.shown?.value == true) _onTrainingChange();
+  }
+
   @override
   void didUpdateWidget(covariant RunScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(widget.shown, oldWidget.shown)) {
+      oldWidget.shown?.removeListener(_onShownChange);
+      widget.shown?.addListener(_onShownChange);
+    }
     if (widget.initialRoute != null &&
         widget.initialRoute != oldWidget.initialRoute &&
         _state == _ScreenState.idle) {
@@ -962,13 +1424,9 @@ class _RunScreenState extends State<RunScreen> {
     setState(() {});
   }
 
-  /// Ask for location + notification permissions but don't block the run on
-  /// the result — denying location drops the run into a time-only indoor
-  /// mode rather than stopping it outright. Denying notifications disables
-  /// the live lock-screen stats via [RunNotificationBridge] but otherwise
-  /// lets the run proceed. The downstream [RunRecorder.prepare] call
-  /// surfaces the denied location case as a snackbar via
-  /// [_notifyGpsUnavailable].
+  /// Ask for location + notification permissions; [_confirmStartWithoutGps]
+  /// judges the location result. Denying notifications only disables the
+  /// live lock-screen stats via [RunNotificationBridge].
   Future<void> _maybeRequestPermission() async {
     await Permission.location.request();
     // POST_NOTIFICATIONS on Android 13+ — without this,
@@ -999,6 +1457,109 @@ class _RunScreenState extends State<RunScreen> {
     }
   }
 
+  /// A failed check does not block: the recorder's own error path still
+  /// reports it.
+  Future<_GpsStartBlock?> _gpsStartBlock() async {
+    if (_treadmillMode) return null;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return _GpsStartBlock.servicesOff;
+      }
+      final p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied ||
+          p == LocationPermission.deniedForever) {
+        return _GpsStartBlock.permissionDenied;
+      }
+    } catch (e) {
+      debugPrint('GPS start check failed: $e');
+    }
+    return null;
+  }
+
+  /// Only an explicit "Record time only" starts a run that can get no fix.
+  Future<bool> _confirmStartWithoutGps() async {
+    _timeOnlyChosen = false;
+    final block = await _gpsStartBlock();
+    if (block == null) return true;
+    if (!mounted) return false;
+    final choice = await showDialog<_NoGpsStartChoice>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.runNoGpsStartTitle),
+          content: Text(block == _GpsStartBlock.servicesOff
+              ? l10n.runNoGpsStartServicesOffBody
+              : l10n.runNoGpsStartPermissionBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _NoGpsStartChoice.timeOnly),
+              child: Text(l10n.runNoGpsStartTimeOnly),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, _NoGpsStartChoice.openSettings),
+              child: Text(l10n.runOpenSettings),
+            ),
+          ],
+        );
+      },
+    );
+    switch (choice) {
+      case _NoGpsStartChoice.timeOnly:
+        _timeOnlyChosen = true;
+        return true;
+      case _NoGpsStartChoice.openSettings:
+        try {
+          if (block == _GpsStartBlock.servicesOff) {
+            await Geolocator.openLocationSettings();
+          } else {
+            await Geolocator.openAppSettings();
+          }
+        } catch (e) {
+          debugPrint('Opening location settings failed: $e');
+        }
+        return false;
+      case null:
+        return false;
+    }
+  }
+
+  /// The dialog is the discard's one guard (conventions.md § Destructive
+  /// actions). Dismissing it keeps the run, as does an unmounted screen,
+  /// where nobody can be asked.
+  Future<bool> _keepRunWithoutDistance() async {
+    if (!mounted) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.runNoDistanceTitle),
+          content: Text(l10n.runNoDistanceBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(
+                foregroundColor: AppSemanticColors.of(ctx).danger,
+              ),
+              child: Text(l10n.runDiscard),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.runNoDistanceSaveTimeOnly),
+            ),
+          ],
+        );
+      },
+    );
+    return discard != true;
+  }
+
   /// Android 11+ only grants "while in use" from the initial dialog;
   /// background recording needs "Allow all the time", which the OS
   /// routes through app settings. If foreground location is granted but
@@ -1006,9 +1567,13 @@ class _RunScreenState extends State<RunScreen> {
   /// run starts (persona #57). Non-blocking — the run proceeds either
   /// way; recording still works while the app is on screen. Shows once:
   /// a dismissal persists (issue #266) and only re-arms if always-on is
-  /// later granted then revoked.
-  Future<void> _maybeNudgeBackgroundLocation() async {
-    if (!Platform.isAndroid) return;
+  /// later granted then revoked. Returns false when the runner left for the
+  /// location guide or for Settings, so the start is abandoned rather than
+  /// the countdown and recording running out behind them; they tap START
+  /// again on their return.
+  Future<bool> _maybeNudgeBackgroundLocation() async {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    if (!isAndroid) return true;
     final foreground = await Permission.location.isGranted;
     final always = await Permission.locationAlways.isGranted;
     if (shouldRearmBackgroundLocationNudge(
@@ -1022,12 +1587,12 @@ class _RunScreenState extends State<RunScreen> {
       }
     }
     if (!shouldNudgeBackgroundLocation(
-      isAndroid: Platform.isAndroid,
+      isAndroid: isAndroid,
       foregroundGranted: foreground,
       alwaysGranted: always,
       alreadyDismissed: widget.preferences.backgroundLocationNudgeDismissed,
     )) {
-      return;
+      return true;
     }
     // Mark dismissed up front so a crash / early-dismiss can't re-trigger
     // it on the next run — either dialog action is an informed choice, and
@@ -1037,42 +1602,64 @@ class _RunScreenState extends State<RunScreen> {
     } catch (e) {
       debugPrint('setBackgroundLocationNudgeDismissed failed: $e');
     }
-    if (!mounted) return;
-    final openSettings = await showDialog<bool>(
+    if (!mounted) return false;
+    final choice = await showDialog<_BackgroundLocationChoice>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(_l10n.runBackgroundLocationNudgeTitle),
         content: Text(_l10n.runBackgroundLocationNudgeBody),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.readGuide),
+            child: Text(_l10n.infoTipReadGuide),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.startAnyway),
             child: Text(_l10n.runStartAnyway),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.openSettings),
             child: Text(_l10n.runOpenSettings),
           ),
         ],
       ),
     );
-    if (openSettings == true) {
-      await openAppSettings();
+    switch (choice) {
+      case _BackgroundLocationChoice.readGuide:
+        if (mounted) await openGuide(context, 'location-permission');
+        return false;
+      case _BackgroundLocationChoice.openSettings:
+        try {
+          await openAppSettings();
+        } catch (e) {
+          debugPrint('openAppSettings (background location) failed: $e');
+        }
+        return false;
+      case _BackgroundLocationChoice.startAnyway:
+      case null:
+        return true;
     }
   }
 
   /// One-time OEM battery-optimisation disclosure. Aggressive OEM app-killers
   /// (Samsung Stamina, Xiaomi, OnePlus) freeze the recording foreground
   /// service mid-run unless the app is exempted from battery optimisation,
-  /// silently truncating a long effort. Surface a single dismissible hint
+  /// silently truncating the run. Shown once, on the first START, with no
+  /// run-length gate. Surface a single dismissible hint
   /// deep-linking to the battery-optimisation settings (App Info as the
-  /// fallback). Android-only, non-blocking — the run proceeds either way.
-  /// Wrapped so a settings-deep-link failure can't abort the run start.
-  Future<void> _maybeShowBatteryOptHint() async {
+  /// fallback). Android-only and never a gate on the run itself. Returns
+  /// false when the runner went to Settings, so the start is abandoned
+  /// rather than recording behind the settings screen.
+  Future<bool> _maybeShowBatteryOptHint() async {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
     if (!shouldShowBatteryOptHint(
-      isAndroid: Platform.isAndroid,
+      isAndroid: isAndroid,
       alreadyShown: widget.preferences.batteryOptHintShown,
     )) {
-      return;
+      return true;
     }
     // Mark shown up front so a crash / early-dismiss can't re-trigger it on
     // the next run — the hint is informational, once is enough.
@@ -1081,7 +1668,7 @@ class _RunScreenState extends State<RunScreen> {
     } catch (e) {
       debugPrint('setBatteryOptHintShown failed: $e');
     }
-    if (!mounted) return;
+    if (!mounted) return false;
     final openSettings = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1099,12 +1686,12 @@ class _RunScreenState extends State<RunScreen> {
         ],
       ),
     );
-    if (openSettings == true) {
-      await openBatteryOptimisationExemption(
-        isAndroid: Platform.isAndroid,
-        openAppSettingsFallback: openAppSettings,
-      );
-    }
+    if (openSettings != true) return true;
+    await openBatteryOptimisationExemption(
+      isAndroid: isAndroid,
+      openAppSettingsFallback: openAppSettings,
+    );
+    return false;
   }
 
   Future<void> _selectRoute() async {
@@ -1118,8 +1705,17 @@ class _RunScreenState extends State<RunScreen> {
     // search field at the top + sorts starred routes first per
     // user feedback. See `route_picker_screen.dart`.
     final picked = await pickRoute(context, routes: routes, unit: unit);
-    if (!mounted) return;
-    setState(() => _selectedRoute = picked);
+    if (picked == null || !mounted) return;
+    _setFollowedRoute(switch (picked) {
+      RoutePicked(:final route) => route,
+      NoRoutePicked() => null,
+    });
+  }
+
+  /// Follow [route] for the next run, or none with null: the selection, the
+  /// turn announcer and the cutoff legs move together.
+  void _setFollowedRoute(cm.Route? route) {
+    setState(() => _selectedRoute = route);
     _rebuildTurnAnnouncer();
     _loadCutoffLegs();
   }
@@ -1132,13 +1728,18 @@ class _RunScreenState extends State<RunScreen> {
       _startRequested = false;
       return;
     }
-    await _maybeNudgeBackgroundLocation();
-    if (!mounted) {
+    final proceedWithoutGps = await _confirmStartWithoutGps();
+    if (!mounted || !proceedWithoutGps) {
       _startRequested = false;
       return;
     }
-    await _maybeShowBatteryOptHint();
-    if (!mounted) {
+    final proceed = await _maybeNudgeBackgroundLocation();
+    if (!mounted || !proceed) {
+      _startRequested = false;
+      return;
+    }
+    final proceedAfterBatteryHint = await _maybeShowBatteryOptHint();
+    if (!mounted || !proceedAfterBatteryHint) {
       _startRequested = false;
       return;
     }
@@ -1180,14 +1781,13 @@ class _RunScreenState extends State<RunScreen> {
       if (!mounted || _recorder == null || !_manualPaused) return;
       _toggleManualPause();
     };
-    _lockScreen.onStop = () {
-      if (!mounted || _recorder == null) return;
-      _stop();
-    };
   }
 
   void _preload() {
-    _recorder = RunRecorder();
+    _recorder = RunRecorder(
+      gnssPositions: gnssPositionsForPlatform(),
+      gnssStatus: gnssStatusForPlatform(),
+    );
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
 
     _wireLockScreenControls();
@@ -1195,6 +1795,7 @@ class _RunScreenState extends State<RunScreen> {
     // Pedometer sensor stream. We subscribe now, but don't count steps
     // toward the run until _begin sets a baseline.
     _subscribeToPedometer();
+    _subscribeToBarometer();
 
     // Keep the screen awake from the start of the countdown onward,
     // unless the user has turned the wakelock off in Settings.
@@ -1221,11 +1822,55 @@ class _RunScreenState extends State<RunScreen> {
       distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
       minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
       maxSpeedMps: _activityType.maxSpeedMps,
-      accuracy: adv ? LocationAccuracy.best : LocationAccuracy.high,
+      initialStrideM: _persistedStrideM(),
     )
         .catchError((Object e) {
       _prepareError = e;
     });
+  }
+
+  /// Feed the phone barometer to the recorder from the countdown on, so the
+  /// anchor has levelled against GPS altitude by the time the run starts. A
+  /// phone without one errors once and the climb falls back to GPS altitude
+  /// (`run_altitude.dart`); nothing retries, because a missing sensor does not
+  /// come back mid-run.
+  void _subscribeToBarometer() {
+    _baroSub?.cancel();
+    _baroSub = barometricAltitudes().listen(
+      (m) => _recorder?.setBarometricAltitude(m),
+      onError: (Object e) {
+        debugPrint('Barometer unavailable: $e');
+        _baroSub?.cancel();
+        _baroSub = null;
+      },
+    );
+  }
+
+  /// The stride this runner's earlier runs of this activity taught the
+  /// estimator on this phone, or null.
+  double? _persistedStrideM() {
+    final userId = widget.apiClient?.userId;
+    if (userId == null) return null;
+    try {
+      return widget.preferences.learnedStrideM(userId, _activityType.name);
+    } catch (e) {
+      debugPrint('stride seed unavailable: $e');
+      return null;
+    }
+  }
+
+  /// Keeps the stride this run ended with for the next run of the activity.
+  /// An auxiliary write: a failure costs only the next run's seed.
+  Future<void> _persistStride(RunRecorder recorder) async {
+    final userId = widget.apiClient?.userId;
+    final stride = recorder.strideMetres;
+    if (userId == null || stride == null) return;
+    try {
+      await widget.preferences
+          .setLearnedStrideM(userId, _activityType.name, stride);
+    } catch (e) {
+      debugPrint('stride not persisted: $e');
+    }
   }
 
   /// Subscribe to the pedometer stream. On error, wait a bit and retry —
@@ -1236,6 +1881,19 @@ class _RunScreenState extends State<RunScreen> {
     _stepSub = Pedometer.stepCountStream.listen((event) {
       _pedometerRetries = 0; // reset back-off on successful event
       if (_state != _ScreenState.recording) return;
+      // A manual pause keeps [_state] at `recording`, so this listener has to
+      // honour [_manualPaused] itself — every other distance source freezes on
+      // pause (the recorder drops positions, the treadmill path rebases), but
+      // the pedometer is a CUMULATIVE device counter that keeps ticking. Left
+      // running it would credit a walk to the water fountain as distance on an
+      // indoor run, against a clock that is stopped. Dropping the baseline
+      // makes the first post-resume event re-anchor on the frozen count, so
+      // the paused steps can never re-enter one tick later.
+      if (_manualPaused) {
+        _stepsCarriedIn = _steps;
+        _stepBaselineSet = false;
+        return;
+      }
       if (!_stepBaselineSet) {
         _startSteps = event.steps - _stepsCarriedIn;
         _stepBaselineSet = true;
@@ -1252,6 +1910,7 @@ class _RunScreenState extends State<RunScreen> {
           _cadence = ((last.steps - first.steps) / dt * 60).round();
         }
       }
+      _recorder?.setStepCount(newSteps);
       if (mounted) setState(() => _steps = newSteps);
     }, onError: (e) {
       debugPrint('Pedometer stream error: $e');
@@ -1290,16 +1949,17 @@ class _RunScreenState extends State<RunScreen> {
 
     // Record the intent before the (best-effort) begin so a transient failure
     // here is recovered when the run starts, even if auto-live-share is off.
-    _liveShareRequested = true;
+    // A rebuild, because the idle setup row shows the armed share.
+    setState(() => _liveShareRequested = true);
     final started = await _startLiveBroadcast();
 
     try {
-      await Share.share(url, subject: _l10n.runShareSubject);
+      await shareTextFrom(context, text: url, subject: _l10n.runShareSubject);
     } catch (e) {
       // The user-facing banner is the primary signal, but also log
-      // so a Share.share regression is observable in dev/release
-      // logs without us reproducing the user's exact moment.
-      debugPrint('Share.share live link failed: $e');
+      // so a share regression is observable in dev/release logs without
+      // us reproducing the user's exact moment.
+      debugPrint('share live link failed: $e');
       if (mounted) _showTopBanner(_l10n.runCouldNotShareLink(friendlyError(_l10n, e)));
       return;
     }
@@ -1316,13 +1976,81 @@ class _RunScreenState extends State<RunScreen> {
   /// two mid-run actions the runner previously had no way to reach: re-open
   /// the OS share sheet to (re)send the link, or stop the live share.
   Future<void> _onLiveShareIndicatorTap() async {
-    final action = await showLiveShareSheet(context);
+    final action = await showLiveShareSheet(context,
+        showStreamerOverlay: _liveOverlayEnabled);
     if (action == null || !mounted) return;
     switch (action) {
       case LiveShareAction.reshare:
         await _shareLiveLink();
+      case LiveShareAction.streamerOverlay:
+        await _openStreamerOverlay();
+      case LiveShareAction.expectedReturn:
+        await _setExpectedReturn();
       case LiveShareAction.stop:
         await _stopLiveShare();
+    }
+  }
+
+  Future<void> _openStreamerOverlay() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    await showStreamerOverlaySheet(
+      context,
+      controller: ApiStreamerOverlayController(api),
+      webBase: _liveLinkBase(),
+      unit: _unit,
+    );
+  }
+
+  /// The per-run "not back by X" deadline (docs/features/safety.md,
+  /// decisions §240). Arming it is the one safety control that keeps working
+  /// after this phone stops: the deadline is written to the run row and the
+  /// server-side overdue scan reads it, so an app the OS killed, a dead
+  /// battery or a destroyed handset all leave the alert standing — which is
+  /// exactly the "never came home" case the net exists for.
+  ///
+  /// Because the alarm lives server-side, so does the truth about it. The
+  /// current value is READ before the picker opens rather than remembered:
+  /// a run recovered after a crash has no memory of what it armed, and a
+  /// picker that defaulted to "nothing set" would quietly invite the runner
+  /// to believe that. A failed read refuses outright — an alarm that cannot
+  /// be read cannot be written either, and offering the choice would end in
+  /// a control that claims a deadline the server never took.
+  Future<void> _setExpectedReturn() async {
+    final api = widget.apiClient;
+    final id = _runId;
+    if (api == null || api.userId == null || id == null) return;
+
+    DateTime? armed;
+    try {
+      armed = await api.fetchRunExpectedReturn(id).timeout(kBackendLoadTimeout);
+    } catch (e) {
+      debugPrint('fetchRunExpectedReturn failed: $e');
+      if (mounted) _showTopBanner(_l10n.runExpectedReturnUnavailable);
+      return;
+    }
+    if (!mounted) return;
+
+    final choice = await showExpectedReturnDialog(context, armed: armed);
+    if (choice == null || !mounted) return;
+
+    try {
+      final ok = await api
+          .setRunExpectedReturn(id, choice.at)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      if (!ok) {
+        // The RPC refused (not my run, or no longer in progress). Reporting
+        // success here would leave a runner trusting an alert nobody armed.
+        _showTopBanner(_l10n.runExpectedReturnFailed);
+        return;
+      }
+      _showTopBanner(choice.isClear
+          ? _l10n.runExpectedReturnClearedToast
+          : _l10n.runExpectedReturnSetToast);
+    } catch (e) {
+      debugPrint('setRunExpectedReturn failed: $e');
+      if (mounted) _showTopBanner(_l10n.runExpectedReturnFailed);
     }
   }
 
@@ -1332,7 +2060,11 @@ class _RunScreenState extends State<RunScreen> {
   /// run keeps recording. Clears [_liveShareRequested] so a later GO / auto
   /// path doesn't silently re-broadcast against the runner's choice.
   Future<void> _stopLiveShare() async {
-    _liveShareRequested = false;
+    if (mounted) {
+      setState(() => _liveShareRequested = false);
+    } else {
+      _liveShareRequested = false;
+    }
     final lb = _liveBroadcaster;
     final api = widget.apiClient;
     final id = _runId;
@@ -1359,9 +2091,12 @@ class _RunScreenState extends State<RunScreen> {
   /// runner's default unless they explicitly keep it public (issue
   /// #664). Skipped on anonymous sessions — only signed-in users
   /// can broadcast. Returns whether the broadcaster is attached.
-  Future<bool> _startLiveBroadcast() async {
+  Future<bool> _startLiveBroadcast({
+    LiveShareAudience audience = LiveShareAudience.public,
+  }) async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return false;
+    final wantPublic = audience == LiveShareAudience.public;
     _runId ??= _uuid.v4();
     // LiveHubClient stays nil-effect when `LIVE_HUB_URL` is unset
     // — the broadcaster falls back to the legacy
@@ -1371,6 +2106,7 @@ class _RunScreenState extends State<RunScreen> {
     final hubUrl = dotenv.env['LIVE_HUB_URL'] ?? '';
     _liveBroadcaster ??= LiveBroadcaster(
       api,
+      now: widget.liveClock ?? DateTime.now,
       hubClient: hubUrl.isNotEmpty
           ? LiveHubClient(baseUrl: hubUrl)
           : null,
@@ -1388,9 +2124,17 @@ class _RunScreenState extends State<RunScreen> {
             runId: _runId!,
             startedAt: _runStartedAtWall ?? DateTime.now(),
             activityType: _activityType.name,
+            safetyAudience: !wantPublic,
           )
           .timeout(kBackendLoadTimeout);
+      // The begin ignores duplicates, so a manual share over a stub the
+      // automatic share created for the safety audience must widen it here,
+      // or the link the runner just handed out would open nothing.
+      if (wantPublic && _liveBroadcastBegun && !_liveBroadcastPublic) {
+        await api.makeRunPublic(_runId!).timeout(kBackendLoadTimeout);
+      }
       _liveBroadcaster!.attach(_runId!);
+      if (wantPublic || !_liveBroadcastBegun) _liveBroadcastPublic = wantPublic;
       _liveBroadcastBegun = true;
       _liveConcludeOwed = true;
       _liveShareActive.value = true;
@@ -1401,30 +2145,64 @@ class _RunScreenState extends State<RunScreen> {
     }
   }
 
-  /// The auto_live_share device pref (docs/features/safety.md). False
-  /// when settings aren't available (signed out, sync not wired) —
-  /// fail-closed: no silent broadcast without the explicit opt-in.
+  /// The effective auto_live_share (docs/features/safety.md, decisions
+  /// § 1964): the device pref when the runner set it, else ON only for the
+  /// safety-contacts audience with an armed escalation
+  /// ([effectiveAutoLiveShare]). False when settings aren't available
+  /// (signed out, sync not wired) — fail-closed: no silent broadcast.
   bool get _autoLiveShareEnabled {
     final service = widget.settingsSync?.service;
     if (service == null) return false;
     try {
-      return service.effective<bool>(
-            SettingsKeys.autoLiveShare,
-            fallback: false,
-          ) ==
-          true;
+      return effectiveAutoLiveShare(
+        explicitPref: service.effective<bool>(SettingsKeys.autoLiveShare),
+        safetyAudienceEnabled: _safetyAudienceEnabled,
+        safetyNetArmed: safetyNetArmed(
+          overdueMinutes:
+              service.effective<num>(SettingsKeys.safetyOverdueMinutes),
+          offRouteAlerts:
+              service.effective<bool>(SettingsKeys.safetyOffRouteAlerts),
+        ),
+      );
     } catch (e) {
       debugPrint('auto_live_share read failed: $e');
       return false;
     }
   }
 
+  /// Ask the server once whether the safety-contacts audience is live. L4:
+  /// a failure leaves the gate read as closed, which only means the automatic
+  /// share keeps the explicit-opt-in public behaviour it had before.
+  Future<void> _probeSafetyAudience() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final enabled =
+          await api.safetyAudienceEnabled().timeout(kBackendLoadTimeout);
+      if (mounted) _safetyAudienceEnabled = enabled;
+    } catch (e) {
+      debugPrint('safety_audience probe failed: $e');
+    }
+  }
+
+  /// L4 like the safety-audience probe: [ApiClient.liveOverlayEnabled]
+  /// already fails closed, so a failure only leaves the overlay row hidden.
+  Future<void> _probeLiveOverlay() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final enabled =
+          await api.liveOverlayEnabled().timeout(kBackendLoadTimeout);
+      if (mounted) _liveOverlayEnabled = enabled;
+    } catch (e) {
+      debugPrint('live_overlay probe failed: $e');
+    }
+  }
+
   /// The OFF_ROUTE_ESCALATION_ENABLED deploy flag (docs/features/safety.md).
   /// Fail-closed: unset/false → the whole off-route auto-notify path is inert
   /// (the CISO/counsel deploy gate).
-  bool get _offRouteEscalationEnabled =>
-      dotenv.isInitialized &&
-      offRouteEscalationEnabled(dotenv.env['OFF_ROUTE_ESCALATION_ENABLED']);
+  bool get _offRouteEscalationEnabled => offRouteEscalationGate;
 
   /// The runner's `safety_off_route_alerts` opt-in (default false). False when
   /// settings aren't available — fail-closed.
@@ -1542,28 +2320,29 @@ class _RunScreenState extends State<RunScreen> {
     }
   }
 
-  /// Base URL of the spectator web app. Reads `WEB_BASE_URL` from
-  /// `.env.local` when set; otherwise falls back to the production host
-  /// so a freshly-installed app still produces a working link.
-  String _liveLinkBase() {
-    final fromEnv = dotenv.env['WEB_BASE_URL'] ?? '';
-    if (fromEnv.isNotEmpty) {
-      return fromEnv.replaceAll(RegExp(r'/+$'), '');
-    }
-    return 'https://threkir.com';
-  }
+  /// Base URL of the spectator web app.
+  String _liveLinkBase() => resolveWebBaseUrl();
 
   Future<void> _begin() async {
     // In the common case prepare has already completed during the 3-second
     // countdown, so this await is a no-op. On a slow device it waits for
     // the GPS stream to come up before starting the clock. If prepare
     // failed (location services off, permission denied), the recorder is
-    // still marked prepared and we proceed into an indoor/time-only run —
-    // the stopwatch ticks, distance stays 0, and the live map shows its
-    // "Waiting for GPS..." placeholder until a fix arrives (if ever).
+    // still marked prepared and we proceed into a time-only run — the
+    // stopwatch ticks, distance stays 0, and the live map shows its
+    // "Waiting for GPS..." placeholder until a fix arrives (if ever). The
+    // runner chose that at START (_confirmStartWithoutGps), so it is only
+    // reported here when it was not foreseen there.
     await _prepareFuture;
     final prepareError = _prepareError;
-    if (prepareError != null) _notifyGpsUnavailable(prepareError);
+    if (prepareError != null) {
+      if (!_timeOnlyChosen) _notifyGpsUnavailable(prepareError);
+    } else if (_recorder?.preciseLocationOff == true) {
+      _notifyPreciseLocationOff();
+    }
+    _preciseLocationOff = _recorder?.preciseLocationOff == true;
+    _leftForegroundAt = null;
+    _backgroundLimitDisclosed = false;
 
     if (!mounted || _recorder == null) return;
 
@@ -1630,6 +2409,23 @@ class _RunScreenState extends State<RunScreen> {
     // with a clean shade (#303). Bridge swallows its own failures (L4).
     _lockScreen.clearSplit();
 
+    // L4 — the iOS lock screen / Dynamic Island live run, which has no
+    // ongoing-notification equivalent to override. A refusal (Live Activities
+    // turned off, iOS older than 16.2) leaves the lock screen empty and the
+    // recording entirely untouched; the bridge no-ops on Android.
+    //
+    // The bridge swallows its own platform failures, but _lockScreenFrame()
+    // runs HERE, synchronously, on the run-start path: it reads the unit
+    // preference and formats a pace that is still zero this early. An
+    // exception out of a formatter would take the GPS stream, the crash-save
+    // timer and the live-share attach below it with it, so the frame build
+    // gets the same own-catch every other auxiliary effect on this path has.
+    try {
+      _liveActivity.start(_lockScreenFrame());
+    } catch (e) {
+      debugPrint('live activity start failed: $e');
+    }
+
     // Auto-live-share (docs/features/safety.md): the device pref starts
     // the broadcast on every run start, so the overdue escalation has a
     // telemetry stream to watch and a partner has a link to follow. L4 —
@@ -1644,9 +2440,15 @@ class _RunScreenState extends State<RunScreen> {
       liveShareRequested: _liveShareRequested,
       broadcasterActive: _liveBroadcaster?.isActive ?? false,
     )) {
-      unawaited(_startLiveBroadcast().then((attached) {
+      final audience = _liveShareRequested
+          ? LiveShareAudience.public
+          : autoLiveShareAudience(
+              safetyAudienceEnabled: _safetyAudienceEnabled);
+      unawaited(_startLiveBroadcast(audience: audience).then((attached) {
         if (attached && mounted) {
-          _showTopBanner(_l10n.runAutoLiveShareStarted);
+          _showTopBanner(audience == LiveShareAudience.safetyContacts
+              ? _l10n.runSafetyLiveShareStarted
+              : _l10n.runAutoLiveShareStarted);
         }
       }).catchError((Object e) {
         debugPrint('auto live share failed: $e');
@@ -1731,16 +2533,11 @@ class _RunScreenState extends State<RunScreen> {
           }
           setState(() => _currentBpm = null);
         case BleHrStatus.connectFailed:
-          // Strap was off / out of range at launch — auto-reconnect doesn't
-          // retry this case, so offer a manual one-tap reconnect instead of
-          // leaving the runner with a silently-dead HR readout.
+          // Strap was off / out of range at launch, OR the adapter refused
+          // the connect outright. Auto-reconnect doesn't retry either, so
+          // disclose which it was and offer the remedy that matches.
           setState(() => _currentBpm = null);
-          _showTopBanner(
-            _l10n.runHrStrapNotFound,
-            duration: const Duration(seconds: 6),
-            actionLabel: _l10n.runReconnect,
-            onAction: _reconnectHeartRate,
-          );
+          _discloseHrConnectFailure();
         case BleHrStatus.connecting:
           break;
       }
@@ -1774,6 +2571,13 @@ class _RunScreenState extends State<RunScreen> {
             _showTopBanner(_l10n.runTreadmillReconnected,
                 duration: const Duration(seconds: 2));
           }
+          // The subtitle switches on the status, so coming BACK also has to
+          // rebuild. Indoors the belt is the distance source and the position
+          // stream is silent, so nothing else repaints this card until the
+          // first FTMS notification lands — leaving an engaged toggle saying
+          // the belt is lost while it is connected, under a "reconnected"
+          // banner that has already expired.
+          setState(() {});
         case BleTreadmillStatus.disconnected:
           if (prev == BleTreadmillStatus.reconnecting) {
             _showTopBanner(_l10n.runTreadmillLostFallback);
@@ -1788,7 +2592,11 @@ class _RunScreenState extends State<RunScreen> {
             onAction: _reconnectTreadmill,
           );
         case BleTreadmillStatus.connecting:
-          break;
+          // No banner — a link being established is not news. It still has
+          // to clear the reading and rebuild: connecting means the belt is
+          // NOT feeding, and leaving the last speed on screen presents a
+          // figure the belt is no longer sending as current.
+          setState(() => _treadmillSpeedKmh = null);
       }
     });
 
@@ -1798,8 +2606,10 @@ class _RunScreenState extends State<RunScreen> {
         Timer.periodic(_incrementalSaveInterval, (_) => _saveInProgress());
 
     // GPS-lost banner watchdog — flag stale signal in the UI.
-    _gpsLostCheckTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => _checkGpsHealth());
+    _gpsLostCheckTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _checkGpsHealth();
+      _checkLivePublishHealth();
+    });
 
     // Location permission watchdog — catch cases where the runner toggles
     // permission off in Android settings while the run is in flight.
@@ -1809,14 +2619,21 @@ class _RunScreenState extends State<RunScreen> {
     );
 
     // If a live race is running, attach this recorder so pings flow and
-    // the finished run auto-submits to the leaderboard.
-    final race = widget.raceController?.active;
-    if (race != null && race.isRunning) {
-      widget.raceController!.attachRecorder(
-        eventId: race.eventId,
-        instance: race.instanceStart,
-      );
+    // the finished run auto-submits to the leaderboard. A race still armed
+    // is joined at GO, by [_onRaceChange].
+    _raceEndedShown = false;
+    _raceLateShown = false;
+    final startedAt = _runStartedAtWall;
+    if (startedAt != null) {
+      widget.raceController?.beginRecording(startedAt: startedAt);
     }
+    _attachToRunningRace();
+  }
+
+  void _attachToRunningRace() {
+    final started = _runStartedAtWall;
+    if (started == null) return;
+    widget.raceController?.attachIfRaceRunning(recordingStartedAt: started);
   }
 
   /// Prompt the user to Resume / Finish / Discard a process-killed partial
@@ -1826,12 +2643,14 @@ class _RunScreenState extends State<RunScreen> {
   /// (no barrier-dismiss) so the partial isn't silently left in limbo.
   Future<void> _promptResume(cm.Run partial) async {
     if (!mounted || _state != _ScreenState.idle) return;
+    final stats = inProgressStats(partial, _unit);
     final choice = await showDialog<_ResumeChoice>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(_l10n.runResumeDialogTitle),
-        content: Text(_l10n.runResumeDialogBody),
+        content:
+            Text(_l10n.runResumeDialogBody(stats.distance, stats.duration)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, _ResumeChoice.discard),
@@ -1931,8 +2750,20 @@ class _RunScreenState extends State<RunScreen> {
     // post-resume snapshot lands) still writes the full accumulated
     // track / stats, and the finish summary is continuous from the moment of
     // resume.
-    _track = List<cm.Waypoint>.from(partial.track);
-    _distanceMetres = partial.distanceMetres;
+    // An indoor partial's `distanceMetres` is the PEDOMETER estimate, not a GPS
+    // total (_saveInProgress writes _displayDistanceMetres for it). Seeding the
+    // GPS accumulator with it would make liveDistanceMetres' `gpsDistanceMetres
+    // > 0` short-circuit fire forever, freezing distance at the resume value and
+    // never consulting steps again — and the frozen non-zero accumulator also
+    // fails the `_distanceMetres == 0` indoorEstimate guard, so every later
+    // checkpoint drops `indoor_estimated` and a second process-kill discards the
+    // whole run as an unqualifying trackless partial. Restoring the step count
+    // (below) is what carries an indoor run's distance across a resume.
+    final indoorEstimateResumed =
+        partial.metadata?[cm.MetadataKeys.indoorEstimated] == true;
+    _storedTrack = List<cm.Waypoint>.from(partial.track);
+    _track = List<cm.Waypoint>.from(cm.trackLine(partial.track));
+    _distanceMetres = indoorEstimateResumed ? 0 : partial.distanceMetres;
     _elapsed = partial.duration;
     _lapCount = restoredLaps.length;
     _steps = restoredSteps;
@@ -1946,10 +2777,14 @@ class _RunScreenState extends State<RunScreen> {
     _lastTickNotified = UnitFormat.activityTicks(
         _displayDistanceMetres, resumeTickInterval);
 
-    _recorder = RunRecorder();
+    _recorder = RunRecorder(
+      gnssPositions: gnssPositionsForPlatform(),
+      gnssStatus: gnssStatusForPlatform(),
+    );
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
+    _subscribeToBarometer();
     if (widget.preferences.keepScreenOn) {
       WakelockPlus.enable();
     }
@@ -1958,7 +2793,7 @@ class _RunScreenState extends State<RunScreen> {
     try {
       await _recorder!.resumeSession(
         track: partial.track,
-        distanceMetres: partial.distanceMetres,
+        distanceMetres: indoorEstimateResumed ? 0 : partial.distanceMetres,
         elapsed: partial.duration,
         startedAt: partial.startedAt,
         laps: restoredLaps,
@@ -1966,11 +2801,15 @@ class _RunScreenState extends State<RunScreen> {
         distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
-        accuracy: adv ? LocationAccuracy.best : LocationAccuracy.high,
+        initialStrideM: _persistedStrideM(),
+        trackComplete:
+            partial.metadata?[cm.MetadataKeys.trackComplete] == true,
       );
     } catch (e) {
       _notifyGpsUnavailable(e);
     }
+    _leftForegroundAt = null;
+    _backgroundLimitDisclosed = false;
 
     if (!mounted || _recorder == null) {
       _startRequested = false;
@@ -2033,6 +2872,36 @@ class _RunScreenState extends State<RunScreen> {
     );
   }
 
+  /// Say why live HR isn't coming, and offer the remedy that can actually
+  /// fix it — the choice itself is pure, in [bleConnectFailureDisclosure].
+  /// L4 auxiliary: banner only, the run is untouched either way.
+  void _discloseHrConnectFailure() {
+    final disclosure = bleConnectFailureDisclosure(
+      _l10n,
+      widget.heartRate.lastUnavailable,
+    );
+    _showTopBanner(
+      disclosure.message,
+      duration: const Duration(seconds: 6),
+      actionLabel: disclosure.actionLabel,
+      onAction: disclosure.actionLabel == null
+          ? null
+          : disclosure.opensAppSettings
+              ? _openBleAppSettings
+              : _reconnectHeartRate,
+    );
+  }
+
+  /// Deep-link to the app's OS settings page so a denied Bluetooth grant can
+  /// be restored. Never throws — this runs mid-recording.
+  Future<void> _openBleAppSettings() async {
+    try {
+      await openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (BLE grant) failed: $e');
+    }
+  }
+
   /// Manual heart-rate reconnect, driven by the "Reconnect" affordance on
   /// the strap-not-found banner. Best-effort L4 aux effect — wrapped so a
   /// BLE failure can never disturb the live recording. The status stream the
@@ -2082,8 +2951,16 @@ class _RunScreenState extends State<RunScreen> {
             debugPrint('treadmill sample stream error: $e');
           },
         );
+        if (!mounted) {
+          // The listen above outlives dispose() — the subscription it stored
+          // was never in _treadmillSub when dispose() cancelled.
+          await _treadmillSub?.cancel();
+          _treadmillSub = null;
+          return;
+        }
         setState(() {
           _treadmillMode = true;
+          _treadmillUsed = true;
           _treadmillSpeedKmh = null;
         });
         // A belt that was off / out of range at launch reports connectFailed
@@ -2148,21 +3025,21 @@ class _RunScreenState extends State<RunScreen> {
       // a total GPS blackout would otherwise look permanently healthy.
       // Also latch _everHadGpsFix so we know whether to fall back to the
       // pedometer for distance.
+      // GPS-lost is about distance, so it reads the later of the blue dot's
+      // fix and the estimator's: under canopy the estimator keeps 20-50 m
+      // fixes that never move the dot.
       final fixedAt = snapshot.positionFixedAt;
       if (fixedAt != null) {
         _lastSnapshotAt = fixedAt;
         if (!_everHadGpsFix) _everHadGpsFix = true;
       }
+      final distanceAt = snapshot.distanceFixedAt;
+      final lastAt = _lastSnapshotAt;
+      if (distanceAt != null && (lastAt == null || distanceAt.isAfter(lastAt))) {
+        _lastSnapshotAt = distanceAt;
+      }
       final positionFresh = fixedAt != null &&
           DateTime.now().difference(fixedAt) <= _gpsLostThreshold;
-      // Route progress must only ever advance on a fix the recorder's
-      // distance chain ACCEPTED. A rejected teleport still drives the blue
-      // dot, but feeding it to distanceAlongRoute latches every course
-      // marker it skipped over — permanently, since the announced set is
-      // never un-latched.
-      if (snapshot.currentPosition != null && snapshot.positionTrusted) {
-        _routePosition = snapshot.currentPosition;
-      }
 
       // Extend the elevation-gain accumulator with any new waypoints. The
       // recorder only appends to the track (no reordering / truncation
@@ -2179,6 +3056,20 @@ class _RunScreenState extends State<RunScreen> {
         _elevationGain.add(track[i]);
       }
       _elevationProcessedCount = track.length;
+      // The stored track, not the line: off-line canopy fixes still carry
+      // the distance they credited.
+      _moving.extend(snapshot.storedTrack);
+      if (!_manualPaused) {
+        final activeSince = _activeSince ??= DateTime.now();
+        final fixAt = snapshot.currentPosition?.timestamp;
+        _latestFixAt = fixAt;
+        if (_stillSince == null &&
+            fixAt != null &&
+            fixedAt != null &&
+            !fixedAt.isBefore(activeSince)) {
+          _stillSince = fixAt;
+        }
+      }
 
       // Update the mirror fields so internal consumers (_saveInProgress,
       // _refreshLockScreenNotification, the _formattedX getters) see the
@@ -2189,9 +3080,11 @@ class _RunScreenState extends State<RunScreen> {
       _distanceMetres = snapshot.distanceMetres;
       _pace = snapshot.currentPaceSecondsPerKm;
       _track = track;
+      _storedTrack = snapshot.storedTrack;
       _currentPosition = snapshot.currentPosition;
       _offRouteDistance = snapshot.offRouteDistanceMetres;
       _routeRemaining = snapshot.routeRemainingMetres;
+      _routeAlong = snapshot.routeAlongMetres;
       // Mirror only — the visible banner flips through _checkGpsHealth's
       // setState (2 s cadence) so the GPS-rate snapshot stream never drives
       // a full-screen rebuild.
@@ -2202,7 +3095,7 @@ class _RunScreenState extends State<RunScreen> {
         pace: _pace,
         track: _track,
         currentPosition: _currentPosition,
-        routePosition: _routePosition,
+        routeAlong: _routeAlong,
         offRouteDistance: _offRouteDistance,
         routeRemaining: _routeRemaining,
       );
@@ -2241,12 +3134,41 @@ class _RunScreenState extends State<RunScreen> {
         debugPrint('workout runner snapshot failed: $e');
       }
 
-      // L4 — Live race spectator ping. Requires a real, FRESH GPS fix;
-      // cadence throttled inside RaceController. Network / Supabase realtime
-      // can throw; swallow and keep going.
+      // L4 — Guided-run coach cues. The clock is the recorder's own monotonic
+      // elapsed, which STOPS on a manual pause, so a runner who stops to
+      // retie a lace still hears "five minutes in" at five minutes of
+      // RUNNING and skips nothing. The cursor advances even when the cues are
+      // muted: a mark is a moment, not a queue, so un-muting at 12 minutes
+      // must not then dump the 5- and 10-minute cues at once.
       try {
-        final pos = snapshot.currentPosition;
-        if (pos != null && positionFresh) {
+        final guided = _guidedRun;
+        final nowSec = snapshot.elapsed.inSeconds;
+        if (guided != null && nowSec > _guidedCueSec) {
+          final due = cuesDue(guided, _guidedCueSec, nowSec);
+          _guidedCueSec = nowSec;
+          if (widget.preferences.audioCues && _guidedCuesEnabled) {
+            for (final cue in due) {
+              _ttsCue('announceGuidedCue',
+                  () => widget.audioCues.announceGuidedCue(cue.text));
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('guided-run cue dispatch failed: $e');
+      }
+
+      // L4 — Live race spectator ping. Requires a real, FRESH GPS fix that
+      // the recorder accepted onto its line (race_pings has no weak flag, so
+      // a weak fix is not offered); cadence throttled inside RaceController.
+      // Network / Supabase realtime can throw; swallow and keep going.
+      try {
+        final pos = livePublishPoint(
+          snapshot,
+          now: DateTime.now(),
+          freshWithin: _gpsLostThreshold,
+          allowWeak: false,
+        )?.point;
+        if (pos != null) {
           widget.raceController?.pushPing(
             lat: pos.lat,
             lng: pos.lng,
@@ -2259,22 +3181,76 @@ class _RunScreenState extends State<RunScreen> {
         debugPrint('raceController.pushPing failed: $e');
       }
 
+      // L4 — Live-race finish detection. A paused runner is not racing, so
+      // a paused pass through the zone is not a finish. Each fix is offered
+      // once, timed at the device-clock instant it was received (the clock
+      // the server offset is measured against). A fix the movement filter
+      // rejected (a teleport) is not offered: it could land inside the
+      // finish zone.
+      try {
+        final rc = widget.raceController;
+        final pos = snapshot.currentPosition;
+        if (rc != null &&
+            rc.followsRecording &&
+            pos != null &&
+            fixedAt != null &&
+            fixedAt != _raceFixOfferedAt &&
+            positionFresh &&
+            snapshot.positionTrusted &&
+            !_manualPaused &&
+            !_stopRequested) {
+          _raceFixOfferedAt = fixedAt;
+          final finish = rc.offerFix(
+            lat: pos.lat,
+            lng: pos.lng,
+            coveredM: snapshot.distanceMetres,
+            at: fixedAt,
+          );
+          if (finish != null) unawaited(_onRaceAutoFinish(finish));
+        }
+      } catch (e) {
+        debugPrint('raceController.offerFix failed: $e');
+      }
+
+      // Debug builds only: the line-calibration capture (#1304 § 6) takes the
+      // fixes by the same rule as the race detector above, race or not.
+      try {
+        if (kDebugMode) {
+          LineCalibrationCapture.instance.offer(snapshot,
+              fresh: positionFresh, paused: _manualPaused || _stopRequested);
+        }
+      } catch (e) {
+        debugPrint('line calibration capture failed: $e');
+      }
+
       // L4 — Live spectator broadcast (separate from race-mode pings).
       // Active only when the user has tapped "Share live link"; throttled
       // inside the broadcaster. Same swallow-on-fail rule as race pings.
       // Gated on freshness so the spectator's live_freshness reads an
       // honest "updated N min ago" during a signal blackout instead of a
-      // fresh, stationary runner re-pinged off a frozen coordinate.
+      // fresh, stationary runner re-pinged off a frozen coordinate. The
+      // point is the end of the recorder's line, never a rejected fix, and
+      // a weak-GPS fix is published flagged while nothing clears the gate
+      // (livePublishPoint).
       try {
-        final pos = snapshot.currentPosition;
-        if (pos != null && positionFresh) {
-          _liveBroadcaster?.pushPing(
+        final lb = _liveBroadcaster;
+        final publish = lb == null || !lb.isActive
+            ? null
+            : livePublishPoint(
+                snapshot,
+                now: DateTime.now(),
+                freshWithin: _gpsLostThreshold,
+              );
+        if (lb != null && publish != null) {
+          final pos = publish.point;
+          lb.pushPing(
             lat: pos.lat,
             lng: pos.lng,
             distanceM: snapshot.distanceMetres,
             elapsedS: snapshot.elapsed.inSeconds,
             bpm: _currentBpm,
             ele: pos.elevationMetres,
+            weakGps: publish.weakGps,
           );
         }
       } catch (e) {
@@ -2326,38 +3302,30 @@ class _RunScreenState extends State<RunScreen> {
         debugPrint('off-route escalation check failed: $e');
       }
 
-      // L4 — Turn-by-turn voice cue. Pure geometry (distanceAlongRoute +
-      // the turn-cue announcer) decides which cue to fire; the spoken cue
+      // L4 — Turn-by-turn voice cue. The recorder's route match + the
+      // turn-cue announcer decide which cue to fire; the spoken cue
       // goes through the best-effort _ttsCue wrapper so a TTS failure never
       // disturbs the recording (decisions §169).
       try {
         final announcer = _turnAnnouncer;
-        final pos = _routePosition;
-        final route = _selectedRoute;
+        final along = _routeAlong;
         if (announcer != null &&
-            pos != null &&
-            route != null &&
+            along != null &&
             widget.preferences.audioCues &&
             widget.preferences.turnByTurnCues) {
-          final along = distanceAlongRoute(
-            (lat: pos.lat, lng: pos.lng),
-            route.waypoints,
-          );
-          if (along != null) {
-            final a = announcer.announcementFor(along);
-            if (a != null) {
-              // The runner's real distance to the turn, not the band that
-              // triggered the cue — the band is a coarse trigger.
-              final distanceStr =
-                  a.isNow ? null : UnitFormat.distance(a.aheadM, unit);
-              _ttsCue(
-                'announceTurn',
-                () => widget.audioCues.announceTurn(
-                  a.cue.direction,
-                  distance: distanceStr,
-                ),
-              );
-            }
+          final a = announcer.announcementFor(along);
+          if (a != null) {
+            // The runner's real distance to the turn, not the band that
+            // triggered the cue — the band is a coarse trigger.
+            final distanceStr =
+                a.isNow ? null : UnitFormat.distance(a.aheadM, unit);
+            _ttsCue(
+              'announceTurn',
+              () => widget.audioCues.announceTurn(
+                a.cue.direction,
+                distance: distanceStr,
+              ),
+            );
           }
         }
       } catch (e) {
@@ -2367,7 +3335,11 @@ class _RunScreenState extends State<RunScreen> {
       // L4 — Pace alert (skip for cycling — pace target doesn't apply).
       // With an active race-strategy phase the phase's derived target pace
       // takes over from the static preference, and the cue speaks
-      // the correction amount instead of a bare "speed up".
+      // the correction amount instead of a bare "speed up". While a
+      // structured workout is live its runner owns the pace cues — each
+      // step's own target and tolerance, or none on a walk-run — so this
+      // alert stands down until the workout completes or is abandoned
+      // (decisions § 2075).
       try {
         final phaseTarget = _phasePlan.isNotEmpty && _phaseIndex >= 0
             ? phaseTargetPaceSecPerKm(
@@ -2380,12 +3352,14 @@ class _RunScreenState extends State<RunScreen> {
             _pace != null &&
             widget.preferences.audioCues &&
             widget.preferences.voiceCueEnabled(VoiceCue.paceAlerts) &&
-            !_paceCuesMuted) {
+            !_paceCuesMuted &&
+            !(_workoutRunner?.ownsPaceCues ?? false)) {
           final diff = _pace! - target;
           final lastAlert = _lastPaceAlertAt;
           final canAlert = lastAlert == null ||
-              DateTime.now().difference(lastAlert).inSeconds > 30;
-          if (canAlert && diff.abs() > 30) {
+              DateTime.now().difference(lastAlert).inSeconds >
+                  kPaceAlertRateLimitSeconds;
+          if (canAlert && diff.abs() > kPaceAlertDriftSecPerKm) {
             _lastPaceAlertAt = DateTime.now();
             // Round the spoken correction to 5 s so the cue stays terse;
             // sub-5 s residue isn't actionable mid-run.
@@ -2400,24 +3374,10 @@ class _RunScreenState extends State<RunScreen> {
                     ));
             // Haptic companion to the TTS so the runner notices even
             // with headphones paused or ambient noise masking the cue.
-            // Two-pulse for "speed up", single strong pulse for "slow
-            // down" — the direction is distinguishable by feel alone.
-            HapticFeedback.heavyImpact();
-            if (diff > 0) {
-              // The delayed pulse runs on a different stack frame from
-              // the surrounding try/catch — without its own guard, a
-              // throw here propagates as unhandled and can break the
-              // _onSnapshot pipeline (L0/L1 freeze). Each auxiliary
-              // effect owns its own try/catch + debugPrint; see
-              // docs/architecture/conventions.md § Layered resilience.
-              Future<void>.delayed(const Duration(milliseconds: 180), () {
-                try {
-                  HapticFeedback.heavyImpact();
-                } catch (e) {
-                  debugPrint('pace-alert second-pulse haptic failed: $e');
-                }
-              });
-            }
+            // Two sharp pulses for "speed up", one for "slow down" — the
+            // direction is distinguishable by feel alone. Over the native
+            // channel, not HapticFeedback, so it lands with the screen off.
+            _runHaptic(paceAlertHaptic(tooSlow: diff > 0));
           }
         }
       } catch (e) {
@@ -2523,36 +3483,28 @@ class _RunScreenState extends State<RunScreen> {
       // the cue on mid-run (locally or via a settings-sync pull) can't
       // burst-announce every marker passed while it was off.
       try {
-        final route = _selectedRoute;
-        final pos = _routePosition;
-        if (_targetMarkers.isNotEmpty && route != null && pos != null) {
-          final along = distanceAlongRoute(
-            (lat: pos.lat, lng: pos.lng),
-            route.waypoints,
-          );
-          if (along != null) {
-            final last = _lastAlongM;
-            _lastAlongM = along;
-            if (last != null &&
-                along > last &&
-                widget.preferences.audioCues &&
-                widget.preferences.voiceCueEnabled(VoiceCue.markerTargets)) {
-              for (var i = 0; i < _targetMarkers.length; i++) {
-                final m = _targetMarkers[i];
-                if (m.positionM > last &&
-                    m.positionM <= along &&
-                    _announcedTargetMarkers.add(i)) {
-                  final deltaS = m.targetS - _elapsed.inSeconds;
-                  final label = m.label.isNotEmpty
-                      ? m.label
-                      : _markerKindLabel(m.kind);
-                  _ttsCue(
-                      'announceMarkerTarget',
-                      () => widget.audioCues.announceMarkerTarget(
-                            label: label,
-                            deltaS: deltaS,
-                          ));
-                }
+        final along = _routeAlong;
+        if (_targetMarkers.isNotEmpty && along != null) {
+          final last = _lastAlongM;
+          _lastAlongM = along;
+          if (last != null &&
+              along > last &&
+              widget.preferences.audioCues &&
+              widget.preferences.voiceCueEnabled(VoiceCue.markerTargets)) {
+            for (var i = 0; i < _targetMarkers.length; i++) {
+              final m = _targetMarkers[i];
+              if (m.positionM > last &&
+                  m.positionM <= along &&
+                  _announcedTargetMarkers.add(i)) {
+                final deltaS = m.targetS - _elapsed.inSeconds;
+                final label =
+                    m.label.isNotEmpty ? m.label : _markerKindLabel(m.kind);
+                _ttsCue(
+                    'announceMarkerTarget',
+                    () => widget.audioCues.announceMarkerTarget(
+                          label: label,
+                          deltaS: deltaS,
+                        ));
               }
             }
           }
@@ -2591,8 +3543,8 @@ class _RunScreenState extends State<RunScreen> {
           );
           if (widget.preferences.audioCues &&
               widget.preferences.voiceCueEnabled(VoiceCue.splits)) {
-            final avgPace =
-                averagePaceSecPerKm(tickDistance, _elapsed.inSeconds);
+            final avgPace = averagePaceSecPerKm(tickDistance,
+                _averagingTime(_moving.movingTime).inSeconds);
             _ttsCue('announceSplit', () => widget.audioCues.announceSplit(
                   distanceTicks: currentTick,
                   paceSecondsPerKm: _pace,
@@ -2636,6 +3588,46 @@ class _RunScreenState extends State<RunScreen> {
     );
   }
 
+  /// The current stats as both lock screens render them: Android's ongoing
+  /// notification and iOS's Live Activity. One builder because the two must
+  /// never disagree — the labels used to be English literals on the notification
+  /// while the title beside them was localized, so the one surface a runner
+  /// reads mid-run through a pocket read half in their language. Reuses the run
+  /// screen's own stat labels rather than minting more keys in seven catalogues.
+  LiveActivityFrame _lockScreenFrame() {
+    final unit = widget.preferences.unit;
+    // Mirror the on-screen distance (GPS or pedometer-estimated with a
+    // tilde prefix) so the lock-screen matches what the user sees.
+    final rawDistance = UnitFormat.distance(_displayDistanceMetres, unit);
+    return LiveActivityFrame(
+      title: _manualPaused
+          ? _l10n.runNotificationPausedTitle(activityTypeLabel(_l10n, _activityType))
+          : activityTypeLabel(_l10n, _activityType),
+      paused: _manualPaused,
+      elapsed: _elapsed,
+      elapsedText: _formatDuration(_elapsed),
+      timeLabel: _l10n.runStatTime,
+      distanceLabel: _l10n.runStatDistance,
+      distanceText: _distanceIsEstimated ? '~$rawDistance' : rawDistance,
+      paceLabel: _activityType.usesSpeed ? _l10n.runStatSpeed : _l10n.runStatPace,
+      paceText: _activityType.usesSpeed
+          ? '${UnitFormat.speed(_pace, unit)} ${UnitFormat.speedLabel(unit)}'
+          : '${UnitFormat.pace(_pace, unit)} ${UnitFormat.paceLabel(unit)}',
+      step: _lockScreenWorkoutStep(unit),
+    );
+  }
+
+  /// Its own catch so a workout-runner fault costs the step line, not the
+  /// time / distance / pace beside it.
+  LockScreenStep? _lockScreenWorkoutStep(DistanceUnit unit) {
+    try {
+      return lockScreenStep(_workoutRunner, l10n: _l10n, unit: unit);
+    } catch (e) {
+      debugPrint('lock-screen workout step failed: $e');
+      return null;
+    }
+  }
+
   /// Push the current stats to the native lock-screen notification,
   /// throttled to ~1 Hz so a burst of GPS fixes doesn't spam the
   /// NotificationManager. The native side reposts on geolocator's
@@ -2648,40 +3640,43 @@ class _RunScreenState extends State<RunScreen> {
     if (last != null && now.difference(last).inMilliseconds < 900) return;
     _lastNotificationAt = now;
 
-    final unit = widget.preferences.unit;
-    final timeStr = _formatDuration(_elapsed);
-    // Mirror the on-screen distance (GPS or pedometer-estimated with a
-    // tilde prefix) so the lock-screen matches what the user sees.
-    final rawDistance = UnitFormat.distance(_displayDistanceMetres, unit);
-    final distanceStr =
-        _distanceIsEstimated ? '~$rawDistance' : rawDistance;
-    final paceStr = _activityType.usesSpeed
-        ? '${UnitFormat.speed(_pace, unit)} ${UnitFormat.speedLabel(unit)}'
-        : '${UnitFormat.pace(_pace, unit)} ${UnitFormat.paceLabel(unit)}';
-
+    final frame = _lockScreenFrame();
+    final content = runNotificationContent(frame);
     _lockScreen.update(
-      title: _manualPaused
-          ? _l10n.runNotificationPausedTitle(activityTypeLabel(_l10n, _activityType))
-          : activityTypeLabel(_l10n, _activityType),
-      text: '$timeStr  •  $distanceStr  •  $paceStr',
-      // The expanded lock-screen body. Its labels used to be English literals
-      // while the title and collapsed text beside them were localized, so the
-      // one surface a runner reads mid-run through a pocket read half in their
-      // language. Reuses the run screen's own stat labels rather than minting
-      // four more keys in seven catalogues.
-      bigText:
-          '${_l10n.runStatTime}: $timeStr\n${_l10n.runStatDistance}: $distanceStr\n${_activityType.usesSpeed ? _l10n.runStatSpeed : _l10n.runStatPace}: $paceStr',
+      title: content.title,
+      text: content.text,
+      bigText: content.bigText,
       paused: _manualPaused,
+      elapsed: frame.elapsed,
+      elapsedText: frame.elapsedText,
     );
+    // iOS's half of the same surface. Offered at this 1 Hz rate and dropped
+    // by the bridge's own cadence gate down to ~0.1 Hz, because ActivityKit
+    // throttles frequent updates and each one costs battery over a run that
+    // can last a day. The bridge swallows its own failures (L4).
+    _liveActivity.update(frame);
   }
 
   /// Serialise the in-progress run to disk. Runs every 10s via
   /// [_incrementalSaveTimer] so a crash mid-run is recoverable.
   Future<void> _saveInProgress() async {
+    final run = _inProgressCheckpoint();
+    if (run == null) return;
+    try {
+      await widget.runStore.saveInProgress(run);
+    } catch (e) {
+      debugPrint('Incremental save failed: $e');
+    }
+  }
+
+  /// The run so far, in the shape the in-progress file holds, or null when
+  /// nothing is recording. Built synchronously so `dispose` can take it before
+  /// the recorder and workout runner it reads are released.
+  cm.Run? _inProgressCheckpoint() {
     final id = _runId;
     final startedAt = _runStartedAtWall;
-    if (id == null || startedAt == null) return;
-    if (_state != _ScreenState.recording) return;
+    if (id == null || startedAt == null) return null;
+    if (_state != _ScreenState.recording) return null;
 
     // Mirror the indoor-estimate path in _stop() so a crash-recovered
     // treadmill run keeps its pedometer-based distance instead of being
@@ -2692,9 +3687,28 @@ class _RunScreenState extends State<RunScreen> {
     final metadata = <String, dynamic>{
       cm.MetadataKeys.activityType: _activityType.name,
       cm.MetadataKeys.inProgressSavedAt: DateTime.now().toIso8601String(),
+      if (indoorEstimate) cm.MetadataKeys.indoor: true,
       if (indoorEstimate) cm.MetadataKeys.indoorEstimated: true,
       if (indoorEstimate) cm.MetadataKeys.distanceSource: 'pedometer',
+      // No estimator tag: this distance is the live forward filter's, not
+      // the smoother's RunRecorder.stop() saves, so a crash-finalized run
+      // stays on offer for the server recompute, which smooths the track.
+      if (!indoorEstimate &&
+          !(_recorder?.treadmillMode ?? false) &&
+          (_recorder?.stepFilledDistanceMetres.round() ?? 0) > 0)
+        cm.MetadataKeys.distanceStepFilledM:
+            _recorder!.stepFilledDistanceMetres.round(),
       if (_steps > 0) cm.MetadataKeys.steps: _steps,
+      if (_everHadGpsFix && _recorder?.locationProvider != null)
+        cm.MetadataKeys.locationProvider: _recorder!.locationProvider,
+      if (_recorder?.gnssSignalMetadata != null)
+        cm.MetadataKeys.gnssSignal: _recorder!.gnssSignalMetadata,
+      // Carried so a resume of this checkpoint can claim it again on save.
+      if (!indoorEstimate &&
+          !(_recorder?.treadmillMode ?? false) &&
+          _storedTrack.isNotEmpty &&
+          (_recorder?.storedTrackComplete ?? false))
+        cm.MetadataKeys.trackComplete: true,
       // The active race strategy, so a crash-recovered run resumes its
       // phases (and the final save keeps the metadata the runner actually
       // executed against).
@@ -2705,6 +3719,11 @@ class _RunScreenState extends State<RunScreen> {
           if (_strategyGoalTimeS != null) 'goal_time_s': _strategyGoalTimeS,
         },
     };
+    // The guided run this session is being recorded under, mirrored here so a
+    // process-kill mid-script keeps the attribution on the recovered run.
+    if (_guidedRun != null) {
+      metadata[cm.MetadataKeys.guidedRunId] = _guidedRun!.id;
+    }
     // Persist lap / aid-station marks so a process-kill mid-run can restore
     // them on resume (numbering + cumulative totals continue unbroken). The
     // recorder owns the canonical lap state; mirror it in the same shape
@@ -2724,22 +3743,17 @@ class _RunScreenState extends State<RunScreen> {
       runner?.reviewMetadata(planWorkoutId: activeWorkoutId) ??
           const <String, dynamic>{},
     );
-    final run = cm.Run(
+    return cm.Run(
       id: id,
       startedAt: startedAt,
       duration: _elapsed,
       distanceMetres:
           indoorEstimate ? _displayDistanceMetres : _distanceMetres,
-      track: List.unmodifiable(_track),
+      track: List.unmodifiable(_storedTrack),
       routeId: _selectedRoute?.id,
       source: cm.RunSource.app,
       metadata: metadata,
     );
-    try {
-      await widget.runStore.saveInProgress(run);
-    } catch (e) {
-      debugPrint('Incremental save failed: $e');
-    }
   }
 
   /// Update [_gpsLost] based on GPS-backed snapshot freshness. Drives the
@@ -2758,11 +3772,36 @@ class _RunScreenState extends State<RunScreen> {
     // Weak-GPS only matters while the signal is still live; a full GPS-lost
     // state supersedes it (and carries its own, louder banner).
     final weak = _weakGpsLatest && !lost;
-    if ((lost != _gpsLost || weak != _weakGps) && mounted) {
+    final preciseOff = _recorder?.preciseLocationOff == true;
+    if ((lost != _gpsLost ||
+            weak != _weakGps ||
+            preciseOff != _preciseLocationOff) &&
+        mounted) {
       setState(() {
         _gpsLost = lost;
         _weakGps = weak;
+        _preciseLocationOff = preciseOff;
       });
+    }
+  }
+
+  /// L4 — tells the runner, once per share, when their live link has not
+  /// delivered a single position (issue #1300 BUG-007). Every publish
+  /// failure is swallowed so the recording is never touched, which also
+  /// meant nobody ever learned a spectator was watching "Connecting".
+  /// Non-blocking: a top banner, and the run carries on either way.
+  void _checkLivePublishHealth() {
+    try {
+      // Paused, the recorder takes no fixes, so there is nothing to send.
+      if (_manualPaused) return;
+      final lb = _liveBroadcaster;
+      if (lb == null || !lb.takeNoPingWarning()) return;
+      _showTopBanner(
+        _l10n.runLiveShareNoPingYet,
+        duration: const Duration(seconds: 6),
+      );
+    } catch (e) {
+      debugPrint('live publish health check failed: $e');
     }
   }
 
@@ -2810,10 +3849,6 @@ class _RunScreenState extends State<RunScreen> {
           : _l10n.runGpsPermissionPending;
       actionLabel = _l10n.runSettings;
       onAction = () => Geolocator.openAppSettings();
-    } else if (error is LocationPermissionWhileInUseError) {
-      message = _l10n.runGpsAllowAllTheTime;
-      actionLabel = _l10n.runSettings;
-      onAction = () => Geolocator.openAppSettings();
     } else {
       message = _l10n.runGpsSensorFailed;
     }
@@ -2825,6 +3860,50 @@ class _RunScreenState extends State<RunScreen> {
       duration: const Duration(seconds: 6),
       actionLabel: actionLabel,
       onAction: onAction,
+    );
+  }
+
+  /// The grant is approximate (iOS Precise Location off, Android
+  /// approximate only), so the map and GPS distance will be missing or far
+  /// off while the clock still records. The in-app remedy has already been
+  /// offered by the time this shows — the recorder asked iOS for temporary
+  /// full accuracy, and [_maybeRequestPermission]'s FINE + COARSE request is
+  /// Android 12+'s upgrade-to-precise prompt — so Settings is what is left.
+  void _notifyPreciseLocationOff() {
+    if (!mounted) return;
+    _showTopBanner(
+      _l10n.runPreciseLocationOff,
+      duration: const Duration(seconds: 8),
+      actionLabel: _l10n.runSettings,
+      onAction: () => Geolocator.openAppSettings(),
+    );
+  }
+
+  /// Android has no temporary precise grant and iOS's one-shot prompt was
+  /// already declined in [RunRecorder.prepare], so the app's location
+  /// settings page is the only remaining way to turn precision back on.
+  Future<void> _openPreciseLocationSettings() async {
+    try {
+      await Geolocator.openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (precise location) failed: $e');
+    }
+  }
+
+  /// Explain what the runner just lost: under a foreground-only location
+  /// grant ("While using the app") Android stopped feeding fixes while the
+  /// app was off screen, so the clock kept running and the ground they
+  /// covered while away was not counted. The run itself never stopped and
+  /// nothing already recorded was lost, which is what the copy says — and
+  /// it is only ever shown once the gap is evidenced by a stale fix
+  /// (see [shouldDiscloseBackgroundLocationLimit]), never at run start.
+  void _notifyBackgroundLocationLimited() {
+    if (!mounted) return;
+    _showTopBanner(
+      _l10n.runBackgroundLocationPaused,
+      duration: const Duration(seconds: 6),
+      actionLabel: _l10n.runSettings,
+      onAction: () => Geolocator.openAppSettings(),
     );
   }
 
@@ -2876,13 +3955,27 @@ class _RunScreenState extends State<RunScreen> {
 
   void _toggleManualPause() {
     if (_recorder == null) return;
+    // Resuming a run held open after a line finish IS "Not finished?
+    // Resume", from whichever control: a plain resume would leave the
+    // finish filed and the window's timer about to stop the run.
+    if (_manualPaused && _raceUndoOpen) {
+      unawaited(_onRaceUndo());
+      return;
+    }
     if (_manualPaused) {
       _recorder!.resume();
-      setState(() => _manualPaused = false);
+      setState(() {
+        _manualPaused = false;
+        _activeSince = DateTime.now();
+        _stillSince = null;
+      });
       _announceA11yState(_l10n.runA11yResumed);
     } else {
       _recorder!.pause();
-      setState(() => _manualPaused = true);
+      setState(() {
+        _manualPaused = true;
+        _activeSince = null;
+      });
       _announceA11yState(_l10n.runA11yPaused);
     }
   }
@@ -2902,9 +3995,14 @@ class _RunScreenState extends State<RunScreen> {
     final recorder = _recorder;
     if (_stopRequested || recorder == null) return;
     _stopRequested = true;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    if (_raceUndoOpen && mounted) setState(() => _raceUndoOpen = false);
     final raw = await recorder.stop();
+    unawaited(_persistStride(recorder));
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _incrementalSaveTimer?.cancel();
     _gpsLostCheckTimer?.cancel();
     _permissionWatchdogTimer?.cancel();
@@ -2913,6 +4011,7 @@ class _RunScreenState extends State<RunScreen> {
     // ongoing notification on stream cancel, but clear explicitly so a
     // slow service teardown doesn't leave a stale row on the lock screen.
     _lockScreen.clear();
+    _liveActivity.stop();
     WakelockPlus.disable();
 
     // Tag the run with the chosen activity type + step count so the web
@@ -2932,6 +4031,12 @@ class _RunScreenState extends State<RunScreen> {
       };
     }
 
+    // The guided run this session was recorded under, so the detail views can
+    // name the script that was playing. Registered in docs/backend/metadata.md.
+    if (_guidedRun != null) {
+      metadata[cm.MetadataKeys.guidedRunId] = _guidedRun!.id;
+    }
+
     // Indoor fallback: if no GPS fix ever arrived but the pedometer ran,
     // save the estimated distance so the run history shows something
     // useful. Flagged in metadata so downstream views can mark it as
@@ -2940,8 +4045,18 @@ class _RunScreenState extends State<RunScreen> {
         raw.distanceMetres == 0 &&
         _displayDistanceMetres > 0;
     if (indoorEstimate) {
+      // `indoor` is the flag every consumer tests (qualifyingRuns excludes it
+      // from the VDOT ceiling); `indoor_estimated` is audit-only. A pedometer
+      // estimate is further from measured than the treadmill belt that already
+      // sets `indoor`, so without this a stride constant that over-reads raises
+      // the runner's VDOT — and with it every training pace and race
+      // prediction — permanently, since the ceiling is a max over runs.
+      metadata[cm.MetadataKeys.indoor] = true;
       metadata[cm.MetadataKeys.indoorEstimated] = true;
       metadata[cm.MetadataKeys.distanceSource] = 'pedometer';
+      // The saved distance is the pedometer's, not the GPS estimator's.
+      metadata.remove(cm.MetadataKeys.distanceEstimator);
+      metadata.remove(cm.MetadataKeys.distanceStepFilledM);
     }
 
     // Average heart rate across the run (BLE chest-strap samples).
@@ -2956,6 +4071,34 @@ class _RunScreenState extends State<RunScreen> {
     _treadmillSub = null;
     await _treadmillStatusSub?.cancel();
     _treadmillStatusSub = null;
+
+    // A belt run was chosen as indoor, and a hosted race keeps its run: its
+    // result is already decided at this Stop.
+    final noDistance = !_everHadGpsFix &&
+        raw.distanceMetres == 0 &&
+        _displayDistanceMetres == 0;
+    var timeOnly = _timeOnlyChosen && !_everHadGpsFix;
+    if (noDistance &&
+        !_timeOnlyChosen &&
+        !_treadmillMode &&
+        widget.raceController?.isHosting != true) {
+      if (!await _keepRunWithoutDistance()) {
+        if (_liveBroadcaster?.isActive ?? false) await _stopLiveShare();
+        _discard();
+        return;
+      }
+      timeOnly = true;
+    }
+    // No GPS ever measured this run, so it stays out of the VDOT ceiling the
+    // same way the pedometer and belt sources do.
+    if (timeOnly) metadata[cm.MetadataKeys.indoor] = true;
+
+    // The line finish the runner undid, so a re-time from this track does
+    // not find it again (decisions § 2450).
+    final undoneAt = widget.raceController?.undoneFinishAt;
+    if (undoneAt != null) {
+      metadata[cm.MetadataKeys.raceUndoneFinishAt] = undoneAt.toIso8601String();
+    }
 
     // Structured-workout review trail. Three keys are registered in
     // [docs/backend/metadata.md]: plan_workout_id, workout_step_results,
@@ -2976,45 +4119,25 @@ class _RunScreenState extends State<RunScreen> {
     // stop-time uuid so the saved run matches any incremental in-progress
     // file that may have been written while recording.
     final runId = _runId ?? raw.id;
-    var resolvedRouteId = _selectedRoute?.id ?? raw.routeId;
+    final resolvedRouteId = _selectedRoute?.id ?? raw.routeId;
     final api = widget.apiClient;
     final distanceMetres =
         indoorEstimate ? _displayDistanceMetres : raw.distanceMetres;
-
-    // L4 — Auto-link unmatched runs to a saved route. Only when no
-    // route was pre-selected, the track has enough points to bother
-    // the RPC with, and we're signed in. Network failure here is
-    // best-effort; never let it block the save.
-    if (resolvedRouteId == null &&
-        api != null &&
-        api.userId != null &&
-        raw.track.length >= 2) {
-      try {
-        final candidates = await api
-            .fetchRoutesIntersectingTrack(raw.track, maxResults: 5)
-            .timeout(kBackendLoadTimeout);
-        final match = bestStrongRouteMatch(
-          candidates,
-          runDistanceMetres: distanceMetres,
-        );
-        if (match != null) resolvedRouteId = match.id;
-      } catch (e) {
-        debugPrint('Auto-link routes_intersecting_track failed: $e');
-      }
-    }
 
     // Persona-hunt Round 2 #4: compute embedded best efforts (per
     // canonical distance) over the GPS track and merge into metadata;
     // the api_client save path lifts them onto the promoted fastest_*_s
     // columns (20270325_001) so the SQL `personal_records` trigger can
     // pick up a sub-20 5k inside an 18 km long run. Helper is null-safe
-    // + idempotent + a no-op for tracks under 3 points.
+    // + idempotent + a no-op for tracks under 3 points. The whole stored
+    // track, off-track fixes included: the bests replay it through the
+    // distance estimator, and those fixes are the estimator's input.
     final enrichedMetadata = enrichMetadataWithEmbeddedBests(
       track: raw.track,
       metadata: metadata,
     );
 
-    final run = cm.Run(
+    var run = cm.Run(
       id: runId,
       startedAt: _runStartedAtWall ?? raw.startedAt,
       duration: raw.duration,
@@ -3061,13 +4184,19 @@ class _RunScreenState extends State<RunScreen> {
     }
 
     if (!mounted) return;
+    final guidedWasArmed = _guidedRun != null;
     setState(() {
       _finishedRun = run;
       _setScreenState(_ScreenState.finished);
+      // A guided run is armed for ONE recording — the metadata above has the
+      // attribution, and leaving it armed would silently script the next run.
+      _guidedRun = null;
+      _guidedCueSec = -1;
       if (!localSaved) {
         _syncError = _l10n.runSaveFailedRelaunch;
       }
     });
+    if (guidedWasArmed) _pushGuidedRunToWatch('');
     _announceA11yState(_l10n.runA11yFinished);
 
     if (widget.preferences.audioCues &&
@@ -3088,13 +4217,56 @@ class _RunScreenState extends State<RunScreen> {
     // on disk would diverge web from mobile until the next reconciliation.
     if (!localSaved) return;
 
+    // L4 — Auto-link unmatched runs to a saved route. Runs AFTER the finish
+    // screen is up: the RPC ships the whole track over the network with a
+    // 15 s timeout, and awaiting it before the flip left the recording UI on
+    // screen for seconds after the hold completed. It still runs before the
+    // cloud push so the first upload carries the route id.
+    if (resolvedRouteId == null &&
+        api != null &&
+        api.userId != null &&
+        run.track.length >= 2) {
+      try {
+        final candidates = await api
+            .fetchRoutesIntersectingTrack(cm.trackLine(run.track),
+                maxResults: 5)
+            .timeout(kBackendLoadTimeout);
+        final match = bestStrongRouteMatch(
+          candidates,
+          runDistanceMetres: distanceMetres,
+        );
+        if (match != null) {
+          final linked = cm.Run(
+            id: run.id,
+            startedAt: run.startedAt,
+            duration: run.duration,
+            distanceMetres: run.distanceMetres,
+            track: run.track,
+            routeId: match.id,
+            source: run.source,
+            externalId: run.externalId,
+            metadata: run.metadata,
+            createdAt: run.createdAt,
+          );
+          await widget.runStore.save(linked);
+          run = linked;
+          if (mounted && _finishedRun?.id == linked.id) {
+            setState(() => _finishedRun = linked);
+          }
+        }
+      } catch (e) {
+        debugPrint('Auto-link routes_intersecting_track failed: $e');
+      }
+    }
+
     if (api != null && api.userId != null) {
       try {
         // Honour the user's privacy_default setting. `public` →
         // is_public=true at insert time so the user doesn't have to
-        // tap "share" on every run. `followers` / `private` /
-        // unknown → leave is_public null (the legacy default; reads
-        // as "not public" everywhere). A live broadcast does NOT
+        // tap "share" on every run. `followers` → followers_only, the
+        // followers level (stored private until audience sharing is on,
+        // decisions § 1875). `private` / unknown → leave is_public
+        // null (reads as "not public" everywhere). A live broadcast does NOT
         // override this: the live window's public opt-in ends with
         // the run, and keeping the saved run public is an explicit
         // post-stop choice (_resolvePostLiveVisibility, issue #664).
@@ -3108,6 +4280,7 @@ class _RunScreenState extends State<RunScreen> {
             .saveRun(
               run,
               isPublic: widget.preferences.newRunsArePublic ? true : null,
+              followersOnly: widget.preferences.newRunsAreFollowersOnly,
             )
             .timeout(kBackendLoadTimeout);
         await widget.runStore.markSynced(run.id);
@@ -3199,8 +4372,10 @@ class _RunScreenState extends State<RunScreen> {
       broadcasterActiveAtStop: broadcasterActiveAtStop,
       defaultPublic: widget.preferences.newRunsArePublic,
       signedIn: api != null && api.userId != null,
+      broadcastWasPublic: _liveBroadcastPublic,
     );
     _liveBroadcastBegun = false;
+    _liveBroadcastPublic = false;
     if (action == PostLiveVisibilityAction.none) return;
 
     var keepPublic = false;
@@ -3268,8 +4443,18 @@ class _RunScreenState extends State<RunScreen> {
   }
 
   void _discard() {
+    // A finished run has spent its workout; keeping the runner would write
+    // its plan_workout_id and step results into the next run's metadata. A
+    // false start (countdown cancel, mid-run discard) keeps the choice the
+    // runner made and only rewinds it, as the guided run below does.
+    if (_state == _ScreenState.finished) {
+      _unloadWorkout();
+    } else {
+      _rewindLoadedWorkout();
+    }
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _treadmillSub?.cancel();
     _treadmillSub = null;
     _treadmillStatusSub?.cancel();
@@ -3290,19 +4475,31 @@ class _RunScreenState extends State<RunScreen> {
     _stopRequested = false;
     _runId = null;
     _runStartedAtWall = null;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    _raceUndoOpen = false;
+    // A discarded recording files no race result and times nothing more.
+    widget.raceController?.detachRecorder();
     // Clear the share intent + indicator so the next run starts private —
     // a sticky flag would silently re-broadcast a fresh run the runner
     // never chose to share.
     _liveShareRequested = false;
     _liveBroadcastBegun = false;
+    _liveBroadcastPublic = false;
     _liveConcludeOwed = false;
     _liveShareActive.value = false;
     _pedometerRetries = 0;
     _gpsLost = false;
     _weakGps = false;
     _weakGpsLatest = false;
+    _preciseLocationOff = false;
+    _leftForegroundAt = null;
+    _backgroundLimitDisclosed = false;
     // Strategy choice survives into the next run; the built plan and the
-    // per-recording cue trackers do not.
+    // per-recording cue trackers do not. The armed guided run follows the same
+    // rule — a discarded false start should not cost the runner the choice
+    // they made, only the cues it already spoke.
+    _guidedCueSec = -1;
     _phasePlan = const [];
     _phaseIndex = -1;
     _lastAlongM = null;
@@ -3311,12 +4508,20 @@ class _RunScreenState extends State<RunScreen> {
     _lastCutoffCueStatus = null;
     _permissionLost = false;
     _everHadGpsFix = false;
+    _timeOnlyChosen = false;
     _elevationGain.reset();
     _elevationProcessedCount = 0;
+    _raceFixOfferedAt = null;
+    _moving.reset();
+    _treadmillUsed = false;
+    _activeSince = null;
+    _stillSince = null;
+    _latestFixAt = null;
     _statsNotifier.value = _LiveStats.empty;
     // Fire-and-forget — if we discarded mid-run, drop the in-progress file.
     widget.runStore.clearInProgress();
     _lockScreen.clear();
+    _liveActivity.stop();
     _lastNotificationAt = null;
     WakelockPlus.disable();
     setState(() {
@@ -3325,8 +4530,9 @@ class _RunScreenState extends State<RunScreen> {
       _distanceMetres = 0;
       _pace = null;
       _track = [];
+      _storedTrack = [];
       _currentPosition = null;
-      _routePosition = null;
+      _routeAlong = null;
       _lastTickNotified = 0;
       _steps = 0;
       _startSteps = 0;
@@ -3350,19 +4556,49 @@ class _RunScreenState extends State<RunScreen> {
 
   @override
   void dispose() {
+    orphanedRecording.removeListener(_onOrphanedRecording);
+    // The recorder dies with this State, so a dispose mid-run ends the GPS
+    // session; it must not also end the run. Checkpoint it while the
+    // recorder and workout runner it reads still exist: the next run screen
+    // offers to resume it in this process, and the in-progress file carries
+    // it to the next cold start (decisions § 2352).
+    // Guarded on its own so a failure here can never skip the releases below.
+    try {
+      final checkpoint = _inProgressCheckpoint();
+      if (checkpoint != null) {
+        orphanedRecording.value = checkpoint;
+        widget.runStore.saveInProgress(checkpoint).catchError((Object e) {
+          debugPrint('Tear-down checkpoint save failed: $e');
+        });
+      }
+    } catch (e) {
+      debugPrint('Tear-down checkpoint failed: $e');
+    }
     // A disposed recording surface is no longer recording, so release the
     // nav-shell swipe lock (issue #490) — leaving it latched would trap the
     // shell in non-swipeable state.
     runRecordingActive.value = false;
+    runSummaryShowing.value = false;
+    WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
+    pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
+    runStopRequests.removeListener(_onDockedStopRequest);
+    runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
+    widget.raceController?.removeListener(_onRaceChange);
+    if (widget.raceController?.onStartLineCrossed == _onRaceStartCrossed) {
+      widget.raceController?.onStartLineCrossed = null;
+    }
+    _raceUndoTimer?.cancel();
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
     widget.training.removeListener(_onTrainingChange);
+    widget.shown?.removeListener(_onShownChange);
     _socialDebounce?.cancel();
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _countdownTimer?.cancel();
     _incrementalSaveTimer?.cancel();
     _gpsLostCheckTimer?.cancel();
@@ -3393,6 +4629,81 @@ class _RunScreenState extends State<RunScreen> {
         RacePhasePreset.negativeSplit => l10n.runStrategyNegativeSplit,
         RacePhasePreset.even => l10n.runStrategyEven,
       };
+
+  /// Pick (or clear) the guided run this recording will be scripted by.
+  /// Mirrors the race-strategy sheet next door: the choice is armed on the
+  /// idle screen and consumed by the L4 cue block once recording starts.
+  Future<void> _pickGuidedRun() async {
+    final l10n = _l10n;
+    final library = guidedRunLibrary(l10n);
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(l10n.runGuidedRun,
+                  style: Theme.of(ctx).textTheme.titleMedium),
+            ),
+            RadioListTile<String>(
+              value: '',
+              groupValue: _guidedRun?.id ?? '',
+              title: Text(l10n.runGuidedRunNone),
+              onChanged: (v) => Navigator.pop(ctx, v),
+            ),
+            for (final g in library)
+              RadioListTile<String>(
+                value: g.id,
+                groupValue: _guidedRun?.id ?? '',
+                title: Text(g.title),
+                subtitle: Text(l10n.runGuidedRunOption(
+                    (g.durationSec / 60).round(), g.subtitle)),
+                onChanged: (v) => Navigator.pop(ctx, v),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    _armGuidedRun(chosen.isEmpty ? null : findGuidedRun(l10n, chosen));
+  }
+
+  void _armGuidedRun(GuidedRun? guided) {
+    setState(() {
+      _guidedRun = guided;
+      _guidedCueSec = -1;
+    });
+    _pushGuidedRunToWatch(guided?.id ?? '');
+  }
+
+  /// Arm (or, with an empty [id], clear) the same guided run on the custom
+  /// watch, so a runner wearing it gets the script on the wrist rather than
+  /// only in the phone's headphones.
+  ///
+  /// L4 and fire-and-forget: the radio may be absent, asleep, or refuse the
+  /// frame, and none of that may touch the recording. Gated on a loopback
+  /// backend like every other custom-watch push — the device is research-tier
+  /// with no unit in anyone's hands (decisions § 71).
+  void _pushGuidedRunToWatch(String id) {
+    if (!isLocalSupabaseUrl(widget.devBackendUrl ?? maybeDevBackendUrl())) {
+      return;
+    }
+    try {
+      final client = WatchSyncClient(
+        transport:
+            (widget.watchTransportFactory ?? ReactiveBleWatchTransport.new)(),
+        onRun: (_) async {},
+      );
+      unawaited(client.pushSettings(WatchSettings(guidedRunId: id)).catchError(
+        (Object e) => debugPrint('guided-run watch arm failed: $e'),
+      ));
+    } catch (e) {
+      debugPrint('guided-run watch arm failed (sync): $e');
+    }
+  }
 
   /// Pre-run race-strategy sheet: pick a phase preset, confirm the
   /// race distance (prefilled from the selected route), optionally set a
@@ -3487,8 +4798,7 @@ class _RunScreenState extends State<RunScreen> {
       ),
     );
     if (result == true && mounted) {
-      final distRaw = distCtrl.text.trim().replaceAll(',', '.');
-      final distVal = double.tryParse(distRaw);
+      final distVal = parseTypedDecimal(distCtrl.text);
       final manualM = distVal != null && distVal > 0
           ? distVal * (isMi ? 1609.344 : 1000.0)
           : null;
@@ -3514,53 +4824,25 @@ class _RunScreenState extends State<RunScreen> {
     goalCtrl.dispose();
   }
 
-  /// Bottom-sheet picker shown when the user taps today's-workout card.
-  /// "Start workout" loads the structured runner inline; "View details"
-  /// pushes the existing detail screen.
-  Future<void> _showWorkoutEntryChoice(
+  /// Today's-workout card tap: open the workout detail. The card's own
+  /// Start button loads the runner, so a tap no longer asks Start or Details,
+  /// and a workout already done or skipped never offers Start (#1186). The
+  /// detail screen pops with the row when its own Start is tapped.
+  Future<void> _openTodayWorkoutDetail(
       PlanWorkoutRow wo, String planId) async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: Text(_l10n.runStartWorkout),
-              subtitle: Text(_l10n.runStartWorkoutSubtitle),
-              onTap: () => Navigator.pop(ctx, 'start'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(_l10n.runViewWorkoutDetails),
-              onTap: () => Navigator.pop(ctx, 'detail'),
-            ),
-          ],
+    final result = await Navigator.of(context).push<PlanWorkoutRow?>(
+      MaterialPageRoute<PlanWorkoutRow?>(
+        builder: (_) => WorkoutDetailScreen(
+          training: widget.training,
+          planId: planId,
+          workoutId: wo.id,
+          initial: wo,
         ),
       ),
     );
-    if (!mounted) return;
-    switch (choice) {
-      case 'start':
-        await _startStructuredWorkout(wo);
-      case 'detail':
-        // The detail screen pops with the PlanWorkoutRow when the user
-        // taps "Start workout" — pick that up and load the runner so
-        // the user lands back on the run tab, ready to tap GO.
-        final result = await Navigator.of(context).push<PlanWorkoutRow?>(
-          MaterialPageRoute<PlanWorkoutRow?>(
-            builder: (_) => WorkoutDetailScreen(
-              training: widget.training,
-              planId: planId,
-              workoutId: wo.id,
-            ),
-          ),
-        );
-        _refreshPlanOverview();
-        if (result != null && mounted) {
-          await _startStructuredWorkout(result);
-        }
+    _refreshPlanOverview();
+    if (result != null && mounted) {
+      await _startStructuredWorkout(result);
     }
   }
 
@@ -3569,6 +4851,17 @@ class _RunScreenState extends State<RunScreen> {
   /// idle screen ready to tap GO. Reused by today's-workout card; safe
   /// to call when no workout is currently set, idempotent if the same
   /// workout is selected twice.
+  String? _workoutEffortTarget() {
+    final wo = _activeWorkoutRow;
+    if (wo == null) return null;
+    final parts = [
+      rpeTargetLabel(_l10n, wo.targetRpeMin, wo.targetRpeMax),
+      if (hrPrescriptionGate)
+        hrTargetLabel(_l10n, wo.targetHrMinBpm, wo.targetHrMaxBpm),
+    ].whereType<String>().toList();
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   Future<void> _startStructuredWorkout(PlanWorkoutRow wo) async {
     if (_state != _ScreenState.idle) return;
     Map<String, int> paces = const {};
@@ -3576,21 +4869,12 @@ class _RunScreenState extends State<RunScreen> {
       final plan = await widget.training
           .fetchPlanForWorkout(wo)
           .timeout(kBackendLoadTimeout);
-      paces = _pacesFromPlan(plan);
+      paces = planPaceBag(plan);
     } catch (e) {
       debugPrint('fetchPlanForWorkout failed for ${wo.id}: $e');
     }
     if (!mounted) return;
-    final structure = wo.structure is Map<String, dynamic>
-        ? wo.structure as Map<String, dynamic>
-        : null;
-    final steps = expandWorkoutSteps(
-      structure: structure,
-      paces: paces,
-      toleranceSecPerKm: wo.targetPaceToleranceSec ?? 10,
-      fallbackDistanceMetres: wo.targetDistanceM,
-      fallbackPaceSecPerKm: wo.targetPaceSecPerKm,
-    );
+    final steps = expandPlanWorkoutSteps(wo, paces: paces);
     if (steps.isEmpty) {
       if (mounted) {
         showTopBanner(context, _l10n.runWorkoutNoStructure);
@@ -3604,11 +4888,37 @@ class _RunScreenState extends State<RunScreen> {
     setState(() {
       _workoutRunner = runner;
       _activeWorkoutId = wo.id;
+      _activeWorkoutRow = wo;
     });
     _publishWorkoutBand();
     if (mounted) {
       showTopBanner(context, _l10n.runWorkoutLoaded(steps.length));
     }
+  }
+
+  /// Drop the loaded workout: runner, its event subscription, the band and
+  /// the ids the save path links the run to. Callers own the rebuild.
+  void _unloadWorkout() {
+    _workoutEventsSub?.cancel();
+    _workoutEventsSub = null;
+    _workoutRunner?.dispose();
+    _workoutRunner = null;
+    _activeWorkoutId = null;
+    _activeWorkoutRow = null;
+    _publishWorkoutBand();
+  }
+
+  /// Keep the loaded workout but start it again from its first step, so a
+  /// false start does not carry the steps it already advanced through.
+  void _rewindLoadedWorkout() {
+    final old = _workoutRunner;
+    if (old == null) return;
+    _workoutEventsSub?.cancel();
+    old.dispose();
+    final runner = WorkoutRunner(steps: old.steps);
+    _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
+    _workoutRunner = runner;
+    _publishWorkoutBand();
   }
 
   void _onSkipWorkoutStep() {
@@ -3696,11 +5006,6 @@ class _RunScreenState extends State<RunScreen> {
   bool get _distanceIsEstimated =>
       !_everHadGpsFix && _displayDistanceMetres > 0;
 
-  String get _formattedDistance {
-    final base = UnitFormat.distance(_displayDistanceMetres, _unit);
-    return _distanceIsEstimated ? '~$base' : base;
-  }
-
   String get _formattedDistanceValue {
     final base = UnitFormat.distanceValue(_displayDistanceMetres, _unit);
     return _distanceIsEstimated ? '~$base' : base;
@@ -3708,28 +5013,37 @@ class _RunScreenState extends State<RunScreen> {
 
   String get _formattedPaceValue => UnitFormat.pace(_pace, _unit);
 
-  String get _formattedAvgPaceValue {
-    final d = _displayDistanceMetres;
-    if (d < 10 || _elapsed.inSeconds < 1) return '--:--';
-    final secPerKm = _elapsed.inSeconds / (d / 1000);
-    return UnitFormat.pace(secPerKm, _unit);
-  }
+  Duration _averagingTime(Duration movingTime) => averagingTime(
+      gpsMeasured: _everHadGpsFix && !_treadmillUsed,
+      movingTime: movingTime,
+      elapsed: _elapsed);
 
-  /// Average pace computed against a supplied moving time rather than the
-  /// full elapsed time. Used on the finished-run screen so the headline
-  /// pace excludes stops.
-  String _formattedAvgPaceValueFromMoving(Duration movingTime) {
-    final d = _displayDistanceMetres;
-    if (d < 10 || movingTime.inSeconds < 1) return '--:--';
-    final secPerKm = movingTime.inSeconds / (d / 1000);
-    return UnitFormat.pace(secPerKm, _unit);
-  }
+  /// Gated by [paceIsReady], the rule the live Pace tile and the workout
+  /// band share, so Avg pace cannot show a standing start's 20:49 /mi while
+  /// Pace still reads blank (issue #1300). Live and finished pass their
+  /// moving time through the one formula.
+  String _formattedAvgPaceValue(Duration movingTime) => UnitFormat.pace(
+      readyAveragePaceSecPerKm(
+          _displayDistanceMetres, _averagingTime(movingTime).inSeconds),
+      _unit);
 
-  String get _formattedAvgSpeedValue {
-    final d = _displayDistanceMetres;
-    if (d < 10 || _elapsed.inSeconds < 1) return '--';
-    final secPerKm = _elapsed.inSeconds / (d / 1000);
-    return UnitFormat.speed(secPerKm, _unit);
+  String _formattedAvgSpeedValue(Duration movingTime) => UnitFormat.speed(
+      readyAveragePaceSecPerKm(
+          _displayDistanceMetres, _averagingTime(movingTime).inSeconds),
+      _unit);
+
+  /// Display only: the clock keeps running (decisions § 4).
+  bool get _standingStill {
+    if (_state != _ScreenState.recording || _manualPaused) return false;
+    final last = _lastSnapshotAt;
+    if (last == null || DateTime.now().difference(last) > _gpsLostThreshold) {
+      return false;
+    }
+    return isStandingStill(
+      latestFixAt: _latestFixAt,
+      lastMovingAt: _moving.lastMovingAt,
+      since: _stillSince,
+    );
   }
 
   String get _formattedCalories {
@@ -3742,7 +5056,8 @@ class _RunScreenState extends State<RunScreen> {
     return '$cals';
   }
 
-  String get _formattedElevation => '${_elevationGain.gainMetres.round()}';
+  String get _formattedElevation =>
+      UnitFormat.elevationValue(_elevationGain.gainMetres, _unit);
 
   // ──────────────── Build ────────────────
 
@@ -3762,22 +5077,27 @@ class _RunScreenState extends State<RunScreen> {
 
   Widget _buildIdle(BuildContext context) {
     final theme = Theme.of(context);
-    final semantic = AppSemanticColors.of(context);
     final l10n = AppLocalizations.of(context);
     final lastRun = _mostRecentRun();
+    // Start is the L0/L1 entry point, so it floats over the scroll rather
+    // than ending it: every card above (race, route, event, plan workout,
+    // last run) is auxiliary, and when they stacked up Start was pushed
+    // under the bottom bar and had to be scrolled to. The cards run on
+    // behind it under a fade, so the page reads as continuing rather than
+    // cut off, and the scroll is padded so the last card clears Start.
+    final dockInset = DockedFabInset.of(context);
     return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: constraints.maxHeight - 32,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Column(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final startSize = idleStartButtonSize(constraints.maxHeight);
+        final startArea = idleStartAreaHeight(startSize, dockInset);
+        final page = theme.scaffoldBackgroundColor;
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: SingleChildScrollView(
+                key: const ValueKey('run-idle-scroll'),
+                padding: EdgeInsets.fromLTRB(24, 16, 24, 8 + startArea),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 4),
@@ -3809,30 +5129,64 @@ class _RunScreenState extends State<RunScreen> {
                     Center(
                       child: Wrap(
                         spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
                         children: [
-                          OutlinedButton.icon(
+                          IdleSetupChip(
+                            icon: Icons.route,
+                            label: _selectedRoute == null
+                                ? l10n.runChooseRoute
+                                : l10n.runChangeRoute,
+                            isSet: _selectedRoute != null,
                             onPressed: _selectRoute,
-                            icon: const Icon(Icons.route),
-                            label: Text(
-                              _selectedRoute == null
-                                  ? l10n.runChooseRoute
-                                  : l10n.runChangeRoute,
-                            ),
                           ),
-                          TextButton.icon(
-                            onPressed: _shareLiveLink,
-                            icon: const Icon(Icons.podcasts),
-                            label: Text(l10n.runShareLiveLink),
+                          // Armed is the runner's intent, not only a live
+                          // broadcaster: a failed pre-GO begin is retried on
+                          // GO, so the link is still theirs to stop.
+                          ValueListenableBuilder<bool>(
+                            valueListenable: _liveShareActive,
+                            builder: (context, active, _) {
+                              final armed = active || _liveShareRequested;
+                              return IdleSetupChip(
+                                icon: Icons.podcasts,
+                                label: armed
+                                    ? l10n.runLiveShareArmed
+                                    : l10n.runShareLiveLink,
+                                isSet: armed,
+                                onPressed: armed
+                                    ? _onLiveShareIndicatorTap
+                                    : _shareLiveLink,
+                              );
+                            },
+                          ),
+                          IdleSetupChip(
+                            icon: Icons.headset_mic_outlined,
+                            label: _guidedRun?.title ?? l10n.runGuidedRun,
+                            isSet: _guidedRun != null,
+                            onPressed: _pickGuidedRun,
+                            onClear: _guidedRun == null
+                                ? null
+                                : () => _armGuidedRun(null),
+                            clearTooltip: l10n.runClearGuidedRunTooltip,
                           ),
                           if (_activityType == ActivityType.run)
-                            TextButton.icon(
-                              onPressed: _editRaceStrategy,
-                              icon: const Icon(Icons.flag_outlined),
-                              label: Text(_strategyPreset == null
+                            IdleSetupChip(
+                              icon: Icons.flag_outlined,
+                              label: _strategyPreset == null
                                   ? l10n.runRaceStrategy
-                                  : _strategyLabel(l10n, _strategyPreset!)),
+                                  : _strategyLabel(l10n, _strategyPreset!),
+                              isSet: _strategyPreset != null,
+                              onPressed: _editRaceStrategy,
+                              // The same as None in the sheet: the typed
+                              // distance and goal stay for the next preset.
+                              onClear: _strategyPreset == null
+                                  ? null
+                                  : () =>
+                                      setState(() => _strategyPreset = null),
+                              clearTooltip: l10n.runClearRaceStrategyTooltip,
                             ),
-                          TextButton.icon(
+                          IdleSetupChip(
+                            isSet: _planOverview != null,
                             onPressed: () async {
                               final overview = _planOverview;
                               if (overview != null) {
@@ -3845,21 +5199,29 @@ class _RunScreenState extends State<RunScreen> {
                                   ),
                                 );
                               } else {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlansScreen(
-                                      training: widget.training,
-                                      apiClient: widget.apiClient,
-                                    ),
+                                await openFitnessSurface(
+                                  context,
+                                  FitnessTab.plans,
+                                  fallback: () => PlansScreen(
+                                    training: widget.training,
+                                    apiClient: widget.apiClient,
                                   ),
                                 );
                               }
                               _refreshPlanOverview();
                             },
-                            icon: const Icon(Icons.calendar_month),
-                            label: Text(_planOverview == null
+                            icon: Icons.calendar_month,
+                            // A plan whose dates have run out is not the plan
+                            // this run trains for; the chip asks to file it
+                            // and still opens it, where Finish plan sits.
+                            label: _planOverview == null
                                 ? l10n.runTrainingPlans
-                                : _planOverview!.plan.name),
+                                : FinishPlanCard.shows(
+                                        status: _planOverview!.plan.status,
+                                        endDate: _planOverview!.plan.endDate,
+                                        now: DateTime.now())
+                                    ? l10n.planFinishAction
+                                    : _planOverview!.plan.name,
                           ),
                         ],
                       ),
@@ -3870,9 +5232,11 @@ class _RunScreenState extends State<RunScreen> {
                     // event tomorrow, a plan workout today, and a recent
                     // run — showing them together fills the space that
                     // was sitting empty between the chips and the START
-                    // button. If a route is selected for this specific
-                    // run, suppress the social/plan cards and show only
-                    // the route preview since that's the active context.
+                    // button. A followed route is this run's context, so
+                    // the event card and the last-run summary yield to it;
+                    // today's workout does not, because a runner on their
+                    // race route on a plan day still needs the card that
+                    // loads the session.
                     if (widget.raceController != null)
                       ListenableBuilder(
                         listenable: widget.raceController!,
@@ -3881,60 +5245,62 @@ class _RunScreenState extends State<RunScreen> {
                           if (race == null) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _RaceBanner(race: race),
+                            child: RaceBanner(
+                              race: race,
+                              controller: widget.raceController!,
+                              onCountdownCue: _speakRaceCountdown,
+                            ),
                           );
                         },
                       ),
                     if (_selectedRoute != null)
-                      _RoutePreviewCard(route: _selectedRoute!)
-                    else ...[
-                      if (_upcomingEvent != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: UpcomingEventCard(
-                            event: _upcomingEvent!,
-                            onTap: () async {
-                              final evt = _upcomingEvent!;
-                              List<ClubView> clubs = const [];
-                              try {
-                                clubs = await widget.social
-                                    .fetchMyClubs()
-                                    .timeout(kBackendLoadTimeout);
-                              } catch (e) {
-                                debugPrint('fetchMyClubs failed: $e');
-                              }
-                              final match = clubs
-                                  .where((c) => c.row.id == evt.row.clubId)
-                                  .toList();
-                              if (!mounted) return;
-                              final slug = match.isEmpty
-                                  ? null
-                                  : match.first.row.slug;
-                              if (slug == null) return;
-                              await Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => EventDetailScreen(
-                                    social: widget.social,
-                                    clubSlug: slug,
-                                    eventId: evt.row.id,
-                                  ),
-                                ),
-                              );
-                              _refreshUpcomingEvent();
-                            },
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _RoutePreviewCard(
+                          route: _selectedRoute!,
+                          onTap: _selectRoute,
+                          onClear: () => _setFollowedRoute(null),
                         ),
-                      if (_planOverview?.todayWorkout != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: TodaysWorkoutCard(
-                            overview: _planOverview!,
-                            onTap: () => _showWorkoutEntryChoice(
-                              _planOverview!.todayWorkout!,
-                              _planOverview!.plan.id,
-                            ),
-                          ),
+                      ),
+                    if (_workoutRunner != null && _activeWorkoutRow != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: LoadedWorkoutCard(
+                          workout: _activeWorkoutRow!,
+                          onUnload: () => setState(_unloadWorkout),
                         ),
+                      ),
+                    if (_selectedRoute == null && _upcomingEvent != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: UpcomingEventCard(
+                          event: _upcomingEvent!,
+                          onTap: () async {
+                            await openUpcomingEvent(
+                                context, widget.social, _upcomingEvent!);
+                            _refreshUpcomingEvent();
+                          },
+                        ),
+                      ),
+                    // The loaded card already stands for today's workout once
+                    // it is the one loaded.
+                    if (_planOverview?.todayWorkout != null &&
+                        !(_workoutRunner != null &&
+                            _activeWorkoutId ==
+                                _planOverview!.todayWorkout!.id))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: TodaysWorkoutCard(
+                          workout: _planOverview!.todayWorkout!,
+                          onTap: () => _openTodayWorkoutDetail(
+                            _planOverview!.todayWorkout!,
+                            _planOverview!.plan.id,
+                          ),
+                          onStart: () => _startStructuredWorkout(
+                              _planOverview!.todayWorkout!),
+                        ),
+                      ),
+                    if (_selectedRoute == null) ...[
                       if (lastRun != null)
                         _LastRunCard(
                           run: lastRun,
@@ -3946,73 +5312,117 @@ class _RunScreenState extends State<RunScreen> {
                     ],
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  // audit/accessibility (2026-05-25) High — WCAG 1.3.1 +
-                  // 4.1.2. The pre-fix tree was a bare GestureDetector
-                  // → Container → Text('START'); TalkBack saw a
-                  // generic tappable region with no role. Semantics
-                  // wraps the whole circle so the button is announced
-                  // as a discrete control with a meaningful label.
-                  child: Semantics(
-                    button: true,
-                    label: l10n.runStartA11yLabel,
-                    child: GestureDetector(
-                      onTap: _beginCountdown,
-                      child: Container(
-                        width: 140,
-                        height: 140,
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: startArea,
+              child: Stack(
+                children: [
+                  // Only the circle takes taps; a tap on the fade or
+                  // beside Start reaches the card underneath it.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      key: const ValueKey('run-idle-start-scrim'),
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: semantic.success.withOpacity(0.3),
-                            width: 3,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: semantic.success,
-                            boxShadow: [
-                              BoxShadow(
-                                color: semantic.success.withValues(alpha: 0.25),
-                                blurRadius: 24,
-                                spreadRadius: 4,
-                              ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              page.withValues(alpha: 0),
+                              page.withValues(alpha: 0.7),
+                              page,
                             ],
-                          ),
-                          // The circle is a fixed 140 px, so its label is
-                          // bounded by the graphic. "START" already fills
-                          // 117.5 of the 124 px interior in English at 1.0x —
-                          // French "DÉMARRER" and German "STARTEN" were being
-                          // broken mid-word, and 2x cropped every locale.
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  l10n.runStart,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: semantic.onSuccess,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
+                            stops: const [0, 0.5, 1],
                           ),
                         ),
                       ),
                     ),
                   ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 16 + dockInset,
+                    child: Center(
+                      child: _buildIdleStartButton(theme, l10n, startSize),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildIdleStartButton(
+      ThemeData theme, AppLocalizations l10n, double size) {
+    // audit/accessibility (2026-05-25) High — WCAG 1.3.1 +
+    // 4.1.2. The pre-fix tree was a bare GestureDetector
+    // → Container → Text('START'); TalkBack saw a
+    // generic tappable region with no role. Semantics
+    // wraps the whole circle so the button is announced
+    // as a discrete control with a meaningful label.
+    return Semantics(
+      key: const ValueKey('run-idle-start'),
+      button: true,
+      label: l10n.runStartA11yLabel,
+      // The brand accent, not the success green: starting a
+      // run is the app's primary action, and the dock's
+      // Start-run button beside it is already the accent.
+      // Green stays the in-run "resume" signal (§ 1769).
+      child: GestureDetector(
+        onTap: _beginCountdown,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: theme.colorScheme.primary.withOpacity(0.3),
+              width: 3,
+            ),
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primary,
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 24,
+                  spreadRadius: 4,
                 ),
               ],
+            ),
+            // The circle is at most 140 px, so its label is
+            // bounded by the graphic. "START" already fills
+            // 117.5 of the 124 px interior in English at 1.0x —
+            // French "DÉMARRER" and German "STARTEN" were being
+            // broken mid-word, and 2x cropped every locale.
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    l10n.runStart,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onPrimary,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -4056,6 +5466,11 @@ class _RunScreenState extends State<RunScreen> {
     // RouteMiniMap mounted under the digit.
     final isCountdown = _state == _ScreenState.countdown;
     final l10n = AppLocalizations.of(context);
+    // The shell's docked centre button is the Stop while a run records on
+    // the phone layout; the panel offering a second one beside it would be
+    // two controls for one act. Anywhere else the panel keeps its own.
+    final dockedStop =
+        RunStopDock.of(context) && _state == _ScreenState.recording;
     return Stack(
       children: [
         // Always-mounted map. During countdown stats.currentPosition may
@@ -4069,9 +5484,13 @@ class _RunScreenState extends State<RunScreen> {
             track: stats.track,
             currentPosition: stats.currentPosition ?? _currentPosition,
             plannedRoute: _selectedRoute?.waypoints,
+            offlinePackRouteId: _selectedRoute?.id,
             bottomPadding: isCountdown ? 0 : _statsOverlayHeight,
             activity: isCountdown ? null : _activityType,
             ghostPosition: _computeGhostPosition(),
+            approximateLocation: !isCountdown && _preciseLocationOff,
+            courseStartGate: _raceCourse?.startGate,
+            courseFinishGate: _raceCourse?.finishGate,
           ),
         ),
 
@@ -4183,6 +5602,7 @@ class _RunScreenState extends State<RunScreen> {
                   onSkip: _onSkipWorkoutStep,
                   onRewind: _onRewindWorkoutStep,
                   onAbandon: _onAbandonWorkout,
+                  effortTarget: _workoutEffortTarget(),
                 ),
           // Persistent live-share indicator on the left while a
           // broadcast is active (issue #613) — standing confirmation
@@ -4256,6 +5676,8 @@ class _RunScreenState extends State<RunScreen> {
                 permissionLost: _permissionLost,
                 gpsLost: _gpsLost,
                 weakGps: _weakGps,
+                approximateLocation: _preciseLocationOff,
+                onTurnOnPreciseLocation: _openPreciseLocationSettings,
                 safetyNudgeVisible: _safetyNudgeVisible,
                 onSafetyNudgeShare: _onSafetyNudgeShare,
                 onSafetyNudgeDismiss: _dismissSafetyNudge,
@@ -4268,7 +5690,10 @@ class _RunScreenState extends State<RunScreen> {
         // treadmill live-mode toggle compose in one Column so their real
         // heights stack — fixed per-widget offsets overlapped the moment a
         // card grew (a11y text scaling, long labels).
-        if (_phasePlan.isNotEmpty || _cutoffLegs.isNotEmpty || _treadmillPaired)
+        if (_phasePlan.isNotEmpty ||
+            _cutoffLegs.isNotEmpty ||
+            _treadmillPaired ||
+            widget.raceController != null)
           Positioned(
             left: 12,
             right: 12,
@@ -4277,6 +5702,58 @@ class _RunScreenState extends State<RunScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // A line finish, held open: "Not finished? Resume" (#1307).
+                if (_raceUndoOpen)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Card(
+                      key: const ValueKey('race-undo'),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.runRaceFinishRecorded,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              key: const ValueKey('race-undo-resume'),
+                              onPressed: () => unawaited(_onRaceUndo()),
+                              child: Text(l10n.runRaceUndoResume),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                // How far the start line is, until the start commits.
+                if (widget.raceController != null)
+                  ValueListenableBuilder<double?>(
+                    valueListenable: widget.raceController!.distanceToStartM,
+                    builder: (context, toStart, _) {
+                      if (toStart == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Center(
+                          child: Card(
+                            key: const ValueKey('race-to-start'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: Text(
+                                l10n.runRaceToStartLine(
+                                    UnitFormat.distance(toStart, _unit)),
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 // Current phase + intent (+ the phase's target pace when a
                 // goal time was set).
                 if (_phasePlan.isNotEmpty)
@@ -4348,69 +5825,64 @@ class _RunScreenState extends State<RunScreen> {
           left: 0,
           right: 0,
           bottom: 0,
-          // SizeChangedLayoutNotifier fires precisely when the overlay's
-          // size changes (panel expand/collapse). Scheduling the previous
-          // post-frame measurement from inside build() fired the callback
-          // on every frame of the run — cheap per call, but wasteful given
-          // the panel height stabilises immediately and only changes on
-          // user interaction.
-          child: NotificationListener<SizeChangedLayoutNotification>(
-            onNotification: _onOverlaySizeChanged,
-            child: SizeChangedLayoutNotifier(
-              child: CollapsiblePanel(
-                key: _statsOverlayKey,
-                // The collapsed bar only shows elapsed time; listen to the
-                // notifier so the clock ticks without rebuilding the
-                // enclosing Stack.
-                collapsedChild: ValueListenableBuilder<_LiveStats>(
-                  valueListenable: _statsNotifier,
-                  builder: (context, _, __) => _CollapsedStatsBar(
-                    time: _formattedTime,
-                    onHoldComplete: _stop,
-                  ),
+          child: _LaidOutSizeReporter(
+            onSize: _onStatsOverlaySized,
+            child: CollapsiblePanel(
+              // The collapsed bar only shows elapsed time; listen to the
+              // notifier so the clock ticks without rebuilding the
+              // enclosing Stack.
+              collapsedChild: ValueListenableBuilder<_LiveStats>(
+                valueListenable: _statsNotifier,
+                builder: (context, _, _) => _CollapsedStatsBar(
+                  time: _formattedTime,
+                  onHoldComplete: dockedStop ? null : _requestStop,
                 ),
-                // Expanded panel reads every stat — wrap once so the whole
-                // body rebuilds on each snapshot, but the map, chips, and
-                // banners above do not.
-                expandedChild: ValueListenableBuilder<_LiveStats>(
-                  valueListenable: _statsNotifier,
-                  builder: (context, _, __) => _StatsOverlay(
-                    time: _formattedTime,
-                    distanceValue: _formattedDistanceValue,
-                    distanceUnit: UnitFormat.distanceLabel(_unit),
-                    primaryValue: _activityType.usesSpeed
-                        ? UnitFormat.speed(_pace, _unit)
-                        : _formattedPaceValue,
-                    primaryUnit: _activityType.usesSpeed
-                        ? UnitFormat.speedLabel(_unit)
-                        : UnitFormat.paceLabel(_unit),
-                    primaryLabel: _activityType.usesSpeed
-                        ? l10n.runStatSpeed
-                        : l10n.runStatPace,
-                    secondaryValue: _activityType.usesSpeed
-                        ? _formattedAvgSpeedValue
-                        : _formattedAvgPaceValue,
-                    secondaryLabel: _activityType.usesSpeed
-                        ? l10n.runStatAvgSpeed
-                        : l10n.runStatAvgPace,
-                    calories: _formattedCalories,
-                    elevation: _formattedElevation,
-                    steps: '$_steps',
-                    cadence: '$_cadence',
-                    bpm: _currentBpm,
-                    lapCount: _lapCount,
-                    paused: _manualPaused,
-                    onHoldComplete: _stop,
-                    onDiscard: _confirmDiscardMidRun,
-                    onPauseToggle: _toggleManualPause,
-                    onLap: _markLap,
-                    paceCuesActive: !_activityType.usesSpeed &&
-                        widget.preferences.audioCues &&
-                        widget.preferences.targetPaceSecPerKm > 0,
-                    paceCuesMuted: _paceCuesMuted,
-                    onTogglePaceMute: () =>
-                        setState(() => _paceCuesMuted = !_paceCuesMuted),
-                  ),
+              ),
+              // Expanded panel reads every stat — wrap once so the whole
+              // body rebuilds on each snapshot, but the map, chips, and
+              // banners above do not.
+              expandedChild: ValueListenableBuilder<_LiveStats>(
+                valueListenable: _statsNotifier,
+                builder: (context, _, _) => LiveStatsOverlay(
+                  time: _formattedTime,
+                  distanceValue: _formattedDistanceValue,
+                  distanceUnit: UnitFormat.distanceLabel(_unit),
+                  primaryValue: _activityType.usesSpeed
+                      ? UnitFormat.speed(_pace, _unit)
+                      : _formattedPaceValue,
+                  primaryUnit: _activityType.usesSpeed
+                      ? UnitFormat.speedLabel(_unit)
+                      : UnitFormat.paceLabel(_unit),
+                  primaryLabel: _activityType.usesSpeed
+                      ? l10n.runStatSpeed
+                      : l10n.runStatPace,
+                  secondaryValue: _activityType.usesSpeed
+                      ? _formattedAvgSpeedValue(_moving.movingTime)
+                      : _formattedAvgPaceValue(_moving.movingTime),
+                  secondaryLabel: _activityType.usesSpeed
+                      ? l10n.runStatAvgSpeed
+                      : l10n.runStatAvgPace,
+                  calories: _formattedCalories,
+                  elevation: _formattedElevation,
+                  elevationUnit: UnitFormat.elevationLabel(_unit),
+                  steps: '$_steps',
+                  cadence: '$_cadence',
+                  bpm: _currentBpm,
+                  lapCount: _lapCount,
+                  paused: _manualPaused,
+                  stopped: _standingStill,
+                  workoutActive: _workoutRunner != null &&
+                      _workoutBand.value.step != null,
+                  onHoldComplete: dockedStop ? null : _requestStop,
+                  onDiscard: _confirmDiscardMidRun,
+                  onPauseToggle: _toggleManualPause,
+                  onLap: _markLap,
+                  paceCuesActive: !_activityType.usesSpeed &&
+                      widget.preferences.audioCues &&
+                      widget.preferences.targetPaceSecPerKm > 0,
+                  paceCuesMuted: _paceCuesMuted,
+                  onTogglePaceMute: () =>
+                      setState(() => _paceCuesMuted = !_paceCuesMuted),
                 ),
               ),
             ),
@@ -4421,46 +5893,47 @@ class _RunScreenState extends State<RunScreen> {
     );
   }
 
-  /// Remeasure the stats overlay after the collapsible panel has changed
-  /// size. Cheaper than the previous per-frame post-frame callback because
-  /// SizeChangedLayoutNotification only dispatches on real layout changes.
-  ///
-  /// SizeChangedLayoutNotification dispatches synchronously from inside
-  /// `_RenderSizeChangedWithCallback.performLayout`, so we're still in the
-  /// layout phase when this fires. Calling `setState` directly throws a
-  /// "Build scheduled during frame" assertion (and was reproducing during
-  /// hold-to-stop on the collapsed bar — the per-tick progress-ring
-  /// rebuild triggered a panel relayout). Defer the state change to a
-  /// post-frame callback so the rebuild lands cleanly in the next frame.
-  bool _onOverlaySizeChanged(SizeChangedLayoutNotification _) {
-    final box =
-        _statsOverlayKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return false;
-    final h = box.size.height;
-    if ((h - _statsOverlayHeight).abs() > 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _statsOverlayHeight = h);
-      });
-    }
-    return false;
+  /// Adopts the stats panel's laid-out height. Fires from inside layout, so
+  /// a direct `setState` would assert "Build scheduled during frame"; the
+  /// change lands in a post-frame callback instead.
+  void _onStatsOverlaySized(Size size) {
+    final h = size.height;
+    if ((h - _statsOverlayHeight).abs() <= 1) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _statsOverlayHeight = h);
+    });
   }
 
   /// The treadmill live-mode toggle card shown over the recording view.
-  /// When on, the subtitle shows the live belt speed (unit-aware); while the
-  /// belt is reconnecting it shows an inline hint rather than freezing the
-  /// last speed read-out.
+  ///
+  /// The subtitle is switched on the belt's own status rather than only on
+  /// whether a speed is known, so a non-feeding belt stays disclosed after the
+  /// drop banner has expired — an engaged toggle with a blank subtitle reads
+  /// identically to "connected, first sample pending", which is the one thing
+  /// it must never claim while the headline distance is really coming from
+  /// GPS. Making [BleTreadmillStatus.connected] the only arm that can format a
+  /// speed also means no belt-derived figure can survive a drop even if the
+  /// status listener's null-out were missed.
   Widget _buildTreadmillToggle(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
     String? subtitle;
     if (_treadmillMode) {
-      if (_treadmillStatus == BleTreadmillStatus.reconnecting) {
-        subtitle = l10n.runTreadmillLostReconnecting;
-      } else if (_treadmillSpeedKmh != null) {
-        final kmh = _treadmillSpeedKmh!;
-        final value = _unit == DistanceUnit.mi ? kmh / 1.609344 : kmh;
-        final speed =
-            '${formatFixed(value, 1, activeLocaleTag)} ${UnitFormat.speedLabel(_unit)}';
-        subtitle = l10n.runTreadmillModeSpeed(speed);
+      switch (_treadmillStatus) {
+        case BleTreadmillStatus.reconnecting:
+          subtitle = l10n.runTreadmillLostReconnecting;
+        case BleTreadmillStatus.connecting:
+          subtitle = l10n.runTreadmillConnecting;
+        case BleTreadmillStatus.disconnected:
+        case BleTreadmillStatus.connectFailed:
+          subtitle = l10n.runTreadmillNoBeltData;
+        case BleTreadmillStatus.connected:
+          final kmh = _treadmillSpeedKmh;
+          if (kmh != null) {
+            final value = _unit == DistanceUnit.mi ? kmh / 1.609344 : kmh;
+            final speed =
+                '${formatFixed(value, 1, activeLocaleTag)} ${UnitFormat.speedLabel(_unit)}';
+            subtitle = l10n.runTreadmillModeSpeed(speed);
+          }
       }
     }
     return Card(
@@ -4479,10 +5952,19 @@ class _RunScreenState extends State<RunScreen> {
 
   Widget _buildFinished(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final track = _finishedRun?.track ?? <cm.Waypoint>[];
-    // Derived metric: "moving time" — elapsed with stops excluded, computed
-    // from the GPS track. Replaces the old live auto-pause.
-    final movingTime = movingTimeOf(track);
+    // The line, exactly what the live map drew; off-track fixes are stored
+    // for the server's distance replay only.
+    final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
+    // Over every stored fix, as the live tile, run detail and web fold it.
+    final movingTime = movingTimeOf(_finishedRun?.track ?? <cm.Waypoint>[]);
+    final finished = _finishedRun;
+    // Grisnir only on a clean finish: never beside a failed sync or a DNF.
+    final milestone = finished != null &&
+            _syncError == null &&
+            finished.metadata?[cm.MetadataKeys.isDnf] != true &&
+            mascotShown()
+        ? localMilestone(finished, widget.runStore.runs)
+        : null;
 
     return Column(
       children: [
@@ -4493,21 +5975,23 @@ class _RunScreenState extends State<RunScreen> {
         Expanded(
           flex: 4,
           child: FinishedSummary(
-            distanceValue: _formattedDistance,
+            distanceValue: _formattedDistanceValue,
+            distanceUnit: UnitFormat.distanceLabel(_unit),
             timeValue: _formattedTime,
             movingValue: _formatDuration(movingTime),
             primaryLabel: _activityType.usesSpeed
                 ? l10n.runStatAvgSpeed
                 : l10n.runStatPace,
             primaryValue: _activityType.usesSpeed
-                ? _formattedAvgSpeedValue
-                : _formattedAvgPaceValueFromMoving(movingTime),
+                ? _formattedAvgSpeedValue(movingTime)
+                : _formattedAvgPaceValue(movingTime),
             primaryUnit: _activityType.usesSpeed
                 ? UnitFormat.speedLabel(_unit)
                 : UnitFormat.paceLabel(_unit),
             synced: _synced,
             syncError: _syncError,
             onDone: _discard,
+            milestone: milestone,
           ),
         ),
       ],
@@ -4524,6 +6008,7 @@ class FinishedSummary extends StatelessWidget {
   const FinishedSummary({
     super.key,
     required this.distanceValue,
+    required this.distanceUnit,
     required this.timeValue,
     required this.movingValue,
     required this.primaryLabel,
@@ -4532,9 +6017,15 @@ class FinishedSummary extends StatelessWidget {
     required this.synced,
     required this.syncError,
     required this.onDone,
+    this.milestone,
   });
 
+  /// Grisnir's milestone for this run, or null; the caller passes null on a
+  /// failed sync, a DNF and when the runner hides him.
+  final MilestoneKind? milestone;
+
   final String distanceValue;
+  final String distanceUnit;
   final String timeValue;
   final String movingValue;
   final String primaryLabel;
@@ -4553,30 +6044,33 @@ class FinishedSummary extends StatelessWidget {
       top: false,
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(
+              24, 24, 24, 24 + DockedFabInset.of(context)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: clampDouble(
-                  constraints.maxHeight - 48, 0, double.maxFinite),
+                  constraints.maxHeight - 48 - DockedFabInset.of(context),
+                  0,
+                  double.maxFinite),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(l10n.runComplete, style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 24),
+                // A sync that fails after the summary opened takes him away.
+                if (milestone != null && syncError == null) ...[
+                  const SizedBox(height: 12),
+                  GrisnirMilestone(kind: milestone!),
+                ],
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: StatTile.medium(
-                          label: l10n.runStatDistance, value: distanceValue),
-                    ),
-                    Expanded(
-                      child: StatTile.medium(
-                          label: l10n.runStatTime, value: timeValue),
-                    ),
-                    Expanded(
-                      child: StatTile.medium(
-                          label: l10n.runStatMoving, value: movingValue),
+                        label: l10n.runStatDistance,
+                        value: distanceValue,
+                        unit: distanceUnit,
+                      ),
                     ),
                     Expanded(
                       child: StatTile.medium(
@@ -4587,7 +6081,20 @@ class FinishedSummary extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatTile.medium(
+                          label: l10n.runStatTime, value: timeValue),
+                    ),
+                    Expanded(
+                      child: StatTile.medium(
+                          label: l10n.runStatMoving, value: movingValue),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 if (synced) ...[
                   Icon(Icons.cloud_done, color: semantic.success, size: 24),
                   const SizedBox(height: 4),
@@ -4606,7 +6113,7 @@ class FinishedSummary extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(l10n.runSyncing),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 FilledButton(onPressed: onDone, child: Text(l10n.runDone)),
               ],
             ),
@@ -4617,8 +6124,105 @@ class FinishedSummary extends StatelessWidget {
   }
 }
 
-/// Frosted glass stats bar overlaid on the map during recording.
-class _StatsOverlay extends StatelessWidget {
+class _StoppedChip extends StatelessWidget {
+  final String label;
+
+  const _StoppedChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A metric the live stats panel can show.
+enum LiveStatField {
+  distance,
+  pace,
+  avgPace,
+  heartRate,
+  elevation,
+  cadence,
+  calories,
+  steps,
+}
+
+/// Most tiles the glance page holds: three [StatTile.large] cells still share
+/// a 360 dp phone's 320 dp row without scaling (`kStatLargeCellMinWidth`).
+const int kLiveStatsGlanceMax = 3;
+
+/// Most tiles any later page holds in its one row.
+const int kLiveStatsPerPage = 4;
+
+/// The live panel's tiles as pages, glance page first.
+///
+/// Every page is ONE row, so the panel is the same height on every page and
+/// with every sensor combination: what does not fit the glance row moves to a
+/// later page instead of growing another row under it (#1300 §1, decisions
+/// § 2374). The glance row is Distance, the live Pace (or Speed) and one third
+/// slot: Heart rate when a strap is reporting, otherwise Avg pace. While a
+/// workout step is showing, Avg pace leaves the glance row: the workout card
+/// already carries the step's progress and its pace against the target, and a
+/// whole-run average across warm-up and reps is the figure an interval
+/// session makes misleading. Nothing is dropped, only moved.
+List<List<LiveStatField>> liveStatPages({
+  required bool workoutActive,
+  required bool hasHeartRate,
+}) {
+  final glance = <LiveStatField>[
+    LiveStatField.distance,
+    LiveStatField.pace,
+    if (hasHeartRate)
+      LiveStatField.heartRate
+    else if (!workoutActive)
+      LiveStatField.avgPace,
+  ];
+  assert(glance.length <= kLiveStatsGlanceMax);
+  final rest = <LiveStatField>[
+    if (!glance.contains(LiveStatField.avgPace)) LiveStatField.avgPace,
+    LiveStatField.elevation,
+    LiveStatField.cadence,
+    LiveStatField.calories,
+    LiveStatField.steps,
+  ];
+  // Spread the rest evenly over as few pages as hold it, so five tiles read
+  // three and two rather than four and an orphan.
+  final pageCount = (rest.length / kLiveStatsPerPage).ceil();
+  final perPage = (rest.length / pageCount).ceil();
+  return [
+    glance,
+    for (var i = 0; i < rest.length; i += perPage)
+      rest.sublist(i, math.min(i + perPage, rest.length)),
+  ];
+}
+
+/// The frosted stats panel over the map while recording: the clock, one row
+/// of stat tiles paged by tap or swipe ([liveStatPages]), and the controls.
+///
+/// Public so its density can be widget-tested on a small phone at large text
+/// scales without pumping the whole run screen.
+class LiveStatsOverlay extends StatefulWidget {
   final String time;
   final String distanceValue;
   final String distanceUnit;
@@ -4629,12 +6233,23 @@ class _StatsOverlay extends StatelessWidget {
   final String secondaryLabel;
   final String calories;
   final String elevation;
+  final String elevationUnit;
   final String steps;
   final String cadence;
   final int? bpm;
   final int lapCount;
   final bool paused;
-  final VoidCallback onHoldComplete;
+
+  /// Moving slower than [kMovingMinSpeedMps] for [kStoppedAfter] while
+  /// recording. Shows a chip beside the clock; changes nothing else.
+  final bool stopped;
+
+  /// A structured-workout step is on the workout card; see [liveStatPages].
+  final bool workoutActive;
+
+  /// Null when the shell's docked centre button is the Stop ([RunStopDock]),
+  /// which leaves the row Discard · Pause · Lap.
+  final VoidCallback? onHoldComplete;
   final VoidCallback onDiscard;
   final VoidCallback onPauseToggle;
   final VoidCallback onLap;
@@ -4646,7 +6261,8 @@ class _StatsOverlay extends StatelessWidget {
   final bool paceCuesMuted;
   final VoidCallback? onTogglePaceMute;
 
-  const _StatsOverlay({
+  const LiveStatsOverlay({
+    super.key,
     required this.time,
     required this.distanceValue,
     required this.distanceUnit,
@@ -4657,11 +6273,14 @@ class _StatsOverlay extends StatelessWidget {
     required this.secondaryLabel,
     required this.calories,
     required this.elevation,
+    required this.elevationUnit,
     required this.steps,
     required this.cadence,
     required this.bpm,
     required this.lapCount,
     required this.paused,
+    this.stopped = false,
+    this.workoutActive = false,
     required this.onHoldComplete,
     required this.onDiscard,
     required this.onPauseToggle,
@@ -4671,216 +6290,343 @@ class _StatsOverlay extends StatelessWidget {
     this.onTogglePaceMute,
   });
 
+  /// Ceiling on the clock's text scale. The clock is 45 sp display type,
+  /// already the largest thing on the panel at 1.0x; at the OS's 2.0x it alone
+  /// would take over 100 dp of a 640 dp phone. Android 14's non-linear font
+  /// scaling grows type this size by about 1.3x at a 200% setting, so this
+  /// matches what the platform does to large text; tile labels and the rest
+  /// of the panel keep the full OS scale.
+  static const double clockMaxTextScale = 1.3;
+
+  @override
+  State<LiveStatsOverlay> createState() => _LiveStatsOverlayState();
+}
+
+class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
+  int _page = 0;
+
+  static const double _gap = 12;
+  static const double _tightGap = 8;
+  static const double _swipeVelocity = 200;
+
+  void _turn(int by, int pageCount) =>
+      setState(() => _page = (_page + by) % pageCount);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final semantic = AppSemanticColors.of(context);
     final l10n = AppLocalizations.of(context);
+    final pages = liveStatPages(
+      workoutActive: widget.workoutActive,
+      hasHeartRate: widget.bpm != null,
+    );
+    // A strap that drops out takes a page with it; never index past the end.
+    final page = _page.clamp(0, pages.length - 1);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            time,
-            style: theme.textTheme.displayMedium?.copyWith(
-              fontFeatures: [const FontFeature.tabularFigures()],
-              fontWeight: FontWeight.w700,
+          _clock(context, theme, l10n),
+          const SizedBox(height: _gap),
+          Semantics(
+            container: true,
+            button: true,
+            label: l10n.runStatsPageA11yLabel(page + 1, pages.length),
+            hint: l10n.runStatsNextPageA11yHint,
+            onTap: () => _turn(1, pages.length),
+            child: GestureDetector(
+              key: const Key('liveStatsPager'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _turn(1, pages.length),
+              onHorizontalDragEnd: (d) {
+                final v = d.primaryVelocity ?? 0;
+                if (v < -_swipeVelocity) _turn(1, pages.length);
+                if (v > _swipeVelocity) _turn(-1, pages.length);
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Every page stays laid out, so the panel is as tall as its
+                  // tallest page on all of them and the follow-cam offset
+                  // does not jump when the runner pages.
+                  IndexedStack(
+                    index: page,
+                    children: [
+                      for (var i = 0; i < pages.length; i++)
+                        _row(theme, l10n, pages[i], hero: i == 0),
+                    ],
+                  ),
+                  const SizedBox(height: _tightGap),
+                  ExcludeSemantics(child: _dots(theme, page, pages.length)),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-                children: [
-                  Expanded(
-                      child: StatTile.medium(
-                          label: l10n.runStatDistance, value: distanceValue, unit: distanceUnit)),
-                  _divider(theme),
-                  Expanded(
-                      child: StatTile.medium(
-                          label: primaryLabel, value: primaryValue, unit: primaryUnit)),
-                  _divider(theme),
-                  Expanded(
-                      child: StatTile.medium(
-                          label: secondaryLabel, value: secondaryValue, unit: primaryUnit)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: StatTile.medium(label: l10n.runStatCalories, value: calories, unit: l10n.runUnitKcal)),
-                  _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatElevation, value: elevation, unit: l10n.runUnitMetres)),
-                  _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatSteps, value: steps)),
-                  _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatCadence, value: cadence, unit: l10n.runUnitSpm)),
-                ],
-              ),
-              // Heart rate row — only renders when a BLE chest strap is
-              // paired AND has produced at least one sample. Null-on-null
-              // keeps the overlay the same height as before for runners
-              // without a strap.
-              if (bpm != null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatTile.medium(
-                        label: l10n.runStatHeartRate,
-                        value: '$bpm',
-                        unit: l10n.runUnitBpm,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (paceCuesActive) ...[
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: onTogglePaceMute,
-                  icon: Icon(
-                    paceCuesMuted ? Icons.volume_off_rounded : Icons.volume_up,
-                    size: 18,
-                  ),
-                  label: Text(
-                    paceCuesMuted ? l10n.runPaceCuesMuted : l10n.runMutePaceCues,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Discard button.
-                  // audit/accessibility (May 2026) Critical: the bare
-                  // GestureDetector + Container + Icon shape gave
-                  // TalkBack no name or role — a screen-reader user
-                  // couldn't end the run from this control.
-                  // Semantics(button: true, label:) is the Flutter idiom.
-                  Semantics(
-                    button: true,
-                    enabled: true,
-                    label: l10n.runDiscardA11yLabel,
-                    hint: l10n.runDiscardA11yHint,
-                    child: GestureDetector(
-                      onTap: onDiscard,
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          size: 24,
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Pause / Resume.
-                  // audit/accessibility (May 2026) Critical — see
-                  // above. Toggle label reflects current state.
-                  Semantics(
-                    button: true,
-                    enabled: true,
-                    toggled: paused,
-                    label: paused ? l10n.runResumeA11yLabel : l10n.runPauseA11yLabel,
-                    hint: paused
-                        ? l10n.runResumeA11yHint
-                        : l10n.runPauseA11yHint,
-                    child: GestureDetector(
-                      onTap: onPauseToggle,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: paused ? semantic.success : semantic.warning,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            paused ? Icons.play_arrow : Icons.pause,
-                            size: 24,
-                            color: paused
-                                ? semantic.onSuccess
-                                : semantic.onWarning,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Stop button — hold-to-stop, 800ms. Prevents accidental
-                  // one-tap stops mid-run.
-                  HoldToStopButton(
-                    onHoldComplete: onHoldComplete,
-                  ),
-                  const SizedBox(width: 16),
-                  // Lap button.
-                  // audit/accessibility (May 2026) Critical — same fix
-                  // pattern. Lap count is announced so a screen-reader
-                  // user knows how many laps the gesture produced.
-                  Semantics(
-                    button: true,
-                    enabled: true,
-                    label: lapCount > 0
-                        ? l10n.runMarkLapWithCountA11yLabel(lapCount)
-                        : l10n.runMarkLapA11yLabel,
-                    hint: l10n.runMarkLapA11yHint,
-                    child: GestureDetector(
-                      onTap: onLap,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.primaryContainer,
-                        ),
-                        child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            Icons.flag_outlined,
-                            size: 24,
-                            color: theme.colorScheme.primary,
-                          ),
-                          if (lapCount > 0)
-                            Positioned(
-                              right: 6,
-                              top: 6,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: semantic.danger,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 14,
-                                  minHeight: 14,
-                                ),
-                                child: Text(
-                                  '$lapCount',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: semantic.onDanger,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ),
-                ],
-              ),
+          const SizedBox(height: _gap),
+          _controls(context, theme, l10n),
         ],
       ),
+    );
+  }
+
+  Widget _clock(BuildContext context, ThemeData theme, AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          // Equal flex either side keeps the clock centred whether or not
+          // the mute toggle or the chip is showing; the clock's width cap
+          // leaves both room. The toggle sits in the clock row rather than a
+          // row of its own (#1300 §1).
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: widget.paceCuesActive
+                  ? IconButton(
+                      key: const Key('liveStatsPaceMute'),
+                      isSelected: widget.paceCuesMuted,
+                      tooltip: widget.paceCuesMuted
+                          ? l10n.runPaceCuesMuted
+                          : l10n.runMutePaceCues,
+                      onPressed: widget.onTogglePaceMute,
+                      icon: const Icon(Icons.volume_up),
+                      selectedIcon: const Icon(Icons.volume_off_rounded),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                widget.time,
+                key: const Key('liveStatsClock'),
+                maxLines: 1,
+                textScaler: MediaQuery.textScalerOf(context)
+                    .clamp(maxScaleFactor: LiveStatsOverlay.clockMaxTextScale),
+                style: theme.textTheme.displayMedium?.copyWith(
+                  fontFeatures: [const FontFeature.tabularFigures()],
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: widget.stopped
+                  ? Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: _StoppedChip(label: l10n.runStoppedChip),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(ThemeData theme, AppLocalizations l10n,
+      List<LiveStatField> fields, {required bool hero}) {
+    return Row(
+      children: [
+        for (var i = 0; i < fields.length; i++) ...[
+          if (i > 0) _divider(theme),
+          Expanded(child: _tile(l10n, fields[i], hero: hero)),
+        ],
+      ],
+    );
+  }
+
+  Widget _tile(AppLocalizations l10n, LiveStatField field,
+      {required bool hero}) {
+    final (label, value, unit) = switch (field) {
+      LiveStatField.distance =>
+        (l10n.runStatDistance, widget.distanceValue, widget.distanceUnit),
+      LiveStatField.pace =>
+        (widget.primaryLabel, widget.primaryValue, widget.primaryUnit),
+      LiveStatField.avgPace =>
+        (widget.secondaryLabel, widget.secondaryValue, widget.primaryUnit),
+      LiveStatField.heartRate =>
+        (l10n.runStatHeartRate, '${widget.bpm ?? '-'}', l10n.runUnitBpm),
+      LiveStatField.elevation =>
+        (l10n.runStatElevation, widget.elevation, widget.elevationUnit),
+      LiveStatField.cadence =>
+        (l10n.runStatCadence, widget.cadence, l10n.runUnitSpm),
+      LiveStatField.calories =>
+        (l10n.runStatCalories, widget.calories, l10n.runUnitKcal),
+      LiveStatField.steps => (l10n.runStatSteps, widget.steps, null),
+    };
+    return hero
+        ? StatTile.large(label: label, value: value, unit: unit)
+        : StatTile.medium(label: label, value: value, unit: unit);
+  }
+
+  Widget _dots(ThemeData theme, int page, int count) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < count; i++)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            // The current page is a pill as well as a darker shade, so it
+            // does not lean on colour alone.
+            width: i == page ? 16 : 6,
+            height: 6,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              color: i == page
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _controls(
+      BuildContext context, ThemeData theme, AppLocalizations l10n) {
+    final semantic = AppSemanticColors.of(context);
+    final paused = widget.paused;
+    final lapCount = widget.lapCount;
+    // Fixed-size controls between gaps that give way first: every button
+    // keeps its tap size and the row cannot overflow on a narrow phone.
+    const gap = Flexible(child: SizedBox(width: 16));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Discard button.
+        // audit/accessibility (May 2026) Critical: the bare
+        // GestureDetector + Container + Icon shape gave
+        // TalkBack no name or role — a screen-reader user
+        // couldn't end the run from this control.
+        // Semantics(button: true, label:) is the Flutter idiom.
+        Semantics(
+          button: true,
+          enabled: true,
+          label: l10n.runDiscardA11yLabel,
+          hint: l10n.runDiscardA11yHint,
+          child: GestureDetector(
+            onTap: widget.onDiscard,
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.surfaceContainerHighest,
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Icon(
+                Icons.delete_outline,
+                size: 24,
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ),
+        ),
+        gap,
+        // Pause / Resume.
+        // audit/accessibility (May 2026) Critical — see
+        // above. Toggle label reflects current state.
+        Semantics(
+          button: true,
+          enabled: true,
+          toggled: paused,
+          label: paused ? l10n.runResumeA11yLabel : l10n.runPauseA11yLabel,
+          hint: paused
+              ? l10n.runResumeA11yHint
+              : l10n.runPauseA11yHint,
+          child: GestureDetector(
+            onTap: widget.onPauseToggle,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: paused ? semantic.success : semantic.warning,
+              ),
+              child: Center(
+                child: Icon(
+                  paused ? Icons.play_arrow : Icons.pause,
+                  size: 24,
+                  color: paused
+                      ? semantic.onSuccess
+                      : semantic.onWarning,
+                ),
+              ),
+            ),
+          ),
+        ),
+        gap,
+        // Stop button — hold-to-stop, 800ms. Prevents accidental
+        // one-tap stops mid-run.
+        if (widget.onHoldComplete case final stop?) ...[
+          HoldToStopButton(onHoldComplete: stop),
+          gap,
+        ],
+        // Lap button.
+        // audit/accessibility (May 2026) Critical — same fix
+        // pattern. Lap count is announced so a screen-reader
+        // user knows how many laps the gesture produced.
+        Semantics(
+          button: true,
+          enabled: true,
+          label: lapCount > 0
+              ? l10n.runMarkLapWithCountA11yLabel(lapCount)
+              : l10n.runMarkLapA11yLabel,
+          hint: l10n.runMarkLapA11yHint,
+          child: GestureDetector(
+            onTap: widget.onLap,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primaryContainer,
+              ),
+              child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.flag_outlined,
+                  size: 24,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                if (lapCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: semantic.danger,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '$lapCount',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: semantic.onDanger,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        ),
+      ],
     );
   }
 
@@ -4985,6 +6731,8 @@ class RunTopBanners extends StatelessWidget {
     required this.permissionLost,
     required this.gpsLost,
     required this.weakGps,
+    this.approximateLocation = false,
+    this.onTurnOnPreciseLocation,
     required this.safetyNudgeVisible,
     required this.onSafetyNudgeShare,
     required this.onSafetyNudgeDismiss,
@@ -4996,6 +6744,13 @@ class RunTopBanners extends StatelessWidget {
   final bool permissionLost;
   final bool gpsLost;
   final bool weakGps;
+
+  /// The run records under an approximate grant. Shown from the first
+  /// second rather than on a rejected fix, because the grant may deliver no
+  /// fix at all; it outranks [weakGps] since the grant, not the sky, is why
+  /// distance is not moving.
+  final bool approximateLocation;
+  final VoidCallback? onTurnOnPreciseLocation;
   final bool safetyNudgeVisible;
   final VoidCallback onSafetyNudgeShare;
   final VoidCallback onSafetyNudgeDismiss;
@@ -5072,6 +6827,45 @@ class RunTopBanners extends StatelessWidget {
               ),
             ),
           )
+        else if (approximateLocation)
+          Center(
+            child: Card(
+              color: semantic.warning,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 8, 2),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.gps_not_fixed,
+                            color: semantic.onWarning, size: 18),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            l10n.runWeakGpsApproximate,
+                            style: TextStyle(
+                                color: semantic.onWarning,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (onTurnOnPreciseLocation != null)
+                      TextButton(
+                        onPressed: onTurnOnPreciseLocation,
+                        style: TextButton.styleFrom(
+                          foregroundColor: semantic.onWarning,
+                        ),
+                        child: Text(l10n.runTurnOnPreciseLocation),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          )
         else if (weakGps)
           Center(
             child: Card(
@@ -5117,9 +6911,10 @@ class _LiveStats {
   final List<cm.Waypoint> track;
   final cm.Waypoint? currentPosition;
 
-  /// Last fix the recorder ACCEPTED — the only position route-relative math
-  /// may use. [currentPosition] can be a rejected teleport.
-  final cm.Waypoint? routePosition;
+  /// Where the recorder matched the runner on the followed route, metres from
+  /// its start. [currentPosition] can be a rejected teleport; this only moves
+  /// on a fix the distance chain accepted.
+  final double? routeAlong;
   final double? offRouteDistance;
   final double? routeRemaining;
 
@@ -5129,7 +6924,7 @@ class _LiveStats {
     required this.pace,
     required this.track,
     required this.currentPosition,
-    required this.routePosition,
+    required this.routeAlong,
     required this.offRouteDistance,
     required this.routeRemaining,
   });
@@ -5140,18 +6935,55 @@ class _LiveStats {
     pace: null,
     track: [],
     currentPosition: null,
-    routePosition: null,
+    routeAlong: null,
     offRouteDistance: null,
     routeRemaining: null,
   );
 }
 
+/// Reports its child's size after every layout that changes it, the FIRST
+/// layout included. `SizeChangedLayoutNotifier` skips the first, and the
+/// stats panel usually never changes size after it, so a run was left with
+/// a guessed inset that hid the map credit behind the panel.
+class _LaidOutSizeReporter extends SingleChildRenderObjectWidget {
+  const _LaidOutSizeReporter({required this.onSize, required super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderLaidOutSizeReporter(onSize);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderLaidOutSizeReporter renderObject) {
+    renderObject.onSize = onSize;
+  }
+}
+
+class _RenderLaidOutSizeReporter extends RenderProxyBox {
+  _RenderLaidOutSizeReporter(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size != _reported) {
+      _reported = size;
+      onSize(size);
+    }
+  }
+}
+
 /// Minimal stats bar shown when the overlay is collapsed. Keeps time visible
 /// plus a hold-to-stop button so the runner can still abort without
-/// expanding first.
+/// expanding first — unless the shell's docked centre button is the Stop
+/// ([RunStopDock]), which already sits under the bar.
 class _CollapsedStatsBar extends StatelessWidget {
   final String time;
-  final VoidCallback onHoldComplete;
+  final VoidCallback? onHoldComplete;
 
   const _CollapsedStatsBar({
     required this.time,
@@ -5174,12 +7006,13 @@ class _CollapsedStatsBar extends StatelessWidget {
               ),
             ),
           ),
-          HoldToStopButton(
-            size: 48,
-            iconSize: 24,
-            showHint: false,
-            onHoldComplete: onHoldComplete,
-          ),
+          if (onHoldComplete case final stop?)
+            HoldToStopButton(
+              size: 48,
+              iconSize: 24,
+              showHint: false,
+              onHoldComplete: stop,
+            ),
         ],
       ),
     );
@@ -5190,15 +7023,33 @@ class _CollapsedStatsBar extends StatelessWidget {
 /// is actually stopped. The circular progress ring grows during the hold so
 /// the user gets clear visual feedback, and (when [showHint]) a "hold to stop"
 /// caption tells the user the control needs a press-and-hold, not a tap.
-/// Cancels cleanly on release.
-@visibleForTesting
+/// Cancels cleanly on release. The shell's docked centre button reuses it as
+/// the phone layout's Stop ([RunStopDock]), so both share one gate.
+///
+/// Until this device has seen one completed hold, the button also plays a
+/// one-time demonstration: a ghost ring fills once and, where
+/// no caption sits beside the button, a "Hold to stop" bubble fades in above
+/// it. It plays when the button appears and again after any release that
+/// fell short of a full hold. Under reduce motion the bubble is shown still
+/// and nothing moves.
 class HoldToStopButton extends StatefulWidget {
   static const holdDuration = Duration(milliseconds: 800);
+  static const hintDuration = Duration(milliseconds: 2600);
+
+  /// The demonstration ring, kept apart from the real hold's progress ring.
+  static const hintRingKey = ValueKey('hold-to-stop-hint-ring');
+
+  /// The floating caption shown by the surfaces built with `showHint: false`.
+  static const hintBubbleKey = ValueKey('hold-to-stop-hint-bubble');
 
   final VoidCallback onHoldComplete;
   final double size;
   final double iconSize;
   final bool showHint;
+
+  /// Replaces the spoken hint. The docked Stop has no visible "Hold to stop"
+  /// caption beside it, so it says so to a screen reader instead.
+  final String? semanticsHint;
 
   const HoldToStopButton({
     super.key,
@@ -5206,6 +7057,7 @@ class HoldToStopButton extends StatefulWidget {
     this.size = 68,
     this.iconSize = 36,
     this.showHint = true,
+    this.semanticsHint,
   });
 
   @override
@@ -5221,14 +7073,62 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
   Duration _holdStart = Duration.zero;
   double _progress = 0;
 
+  late final AnimationController _hint;
+
+  // Null until the device flag has been read. The hint never plays on an
+  // unknown answer, so a slow or failed read costs the hint, never the stop.
+  bool? _learned;
+
+  /// The device flag once the read started on mount has landed; null before.
+  /// A test that asserts the hint stays quiet waits on this, so its absence
+  /// assertion runs after the answer it depends on rather than after a guess.
+  @visibleForTesting
+  bool? get learned => _learned;
+
+  @override
+  void initState() {
+    super.initState();
+    _hint = AnimationController(
+        vsync: this, duration: HoldToStopButton.hintDuration);
+    unawaited(_loadLearned());
+  }
+
+  Future<void> _loadLearned() async {
+    final learned = await holdToStopLearned();
+    if (!mounted || _learned != null) return;
+    setState(() => _learned = learned);
+    if (!learned && _ticker == null) _playHint();
+  }
+
+  void _playHint() {
+    if (_learned != false || _reduceMotion) return;
+    _hint.forward(from: 0);
+  }
+
+  void _stopHint() {
+    _hint.stop();
+    _hint.value = 0;
+  }
+
+  void _retireHint() {
+    _stopHint();
+    if (mounted) setState(() => _learned = true);
+    unawaited(markHoldToStopLearned());
+  }
+
+  bool get _reduceMotion =>
+      mounted && (MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+
   @override
   void dispose() {
     _ticker?.dispose();
+    _hint.dispose();
     super.dispose();
   }
 
   void _onPointerDown() {
     _ticker?.dispose();
+    _stopHint();
     _holdStart = Duration.zero;
     _ticker = createTicker((elapsed) {
       if (_holdStart == Duration.zero) _holdStart = elapsed;
@@ -5241,21 +7141,105 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
         _ticker = null;
         if (mounted) setState(() => _progress = 0);
         widget.onHoldComplete();
+        if (_learned != true) _retireHint();
       }
     })
       ..start();
   }
 
   void _onPointerUpOrCancel() {
+    final released = _ticker != null;
     _ticker?.dispose();
     _ticker = null;
     if (_progress != 0 && mounted) setState(() => _progress = 0);
+    // A release before the hold completed is the clearest sign the gesture
+    // hasn't been learned yet, so the demonstration plays again.
+    if (released) _playHint();
+  }
+
+  Widget _hintRing() {
+    return AnimatedBuilder(
+      animation: _hint,
+      builder: (context, _) {
+        final t = _hint.value;
+        if (t <= 0 || t >= 1) return const SizedBox.shrink();
+        final fill = AppMotion.curveStandard
+            .transform(const Interval(0.1, 0.55).transform(t));
+        final fade = 1 - const Interval(0.75, 0.95).transform(t);
+        return IgnorePointer(
+          child: Opacity(
+            opacity: fade,
+            child: SizedBox(
+              key: HoldToStopButton.hintRingKey,
+              width: widget.size,
+              height: widget.size,
+              child: CircularProgressIndicator(
+                value: fill,
+                strokeWidth: 4,
+                color: Colors.white.withValues(alpha: 0.85),
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _hintBubble(BuildContext context, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: HoldToStopButton.hintBubbleKey,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.inverseSurface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: scheme.onInverseSurface,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+
+  /// The caption for the surfaces with none beside the button, floated above
+  /// it so the docked Stop keeps its exact footprint in the nav bar.
+  Widget _floatingBubble(BuildContext context, String text) {
+    Widget place(Widget child) => Positioned(
+          left: -100,
+          right: -100,
+          bottom: widget.size + 8,
+          child: IgnorePointer(
+            child: ExcludeSemantics(child: Center(child: child)),
+          ),
+        );
+    if (_reduceMotion) return place(_hintBubble(context, text));
+    return AnimatedBuilder(
+      animation: _hint,
+      builder: (context, _) {
+        final t = _hint.value;
+        if (t <= 0 || t >= 1) return const SizedBox.shrink();
+        final opacity = math.min(
+          const Interval(0.0, 0.15).transform(t),
+          1 - const Interval(0.8, 1.0).transform(t),
+        );
+        return place(Opacity(
+          opacity: opacity,
+          child: _hintBubble(context, text),
+        ));
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final semantic = AppSemanticColors.of(context);
     final l10n = AppLocalizations.of(context);
+    final hinting = _learned == false && _progress == 0;
     // The hold gesture is a sighted-user accidental-stop guard built on
     // raw Listener pointer events — a screen-reader user navigates by
     // element + double-tap-to-activate and can't perform a sustained
@@ -5268,7 +7252,7 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
       button: true,
       enabled: true,
       label: l10n.runStopA11yLabel,
-      hint: l10n.runStopA11yHint,
+      hint: widget.semanticsHint ?? l10n.runStopA11yHint,
       onTap: widget.onHoldComplete,
       child: ExcludeSemantics(
         // `behavior: HitTestBehavior.opaque` so the Listener claims any
@@ -5291,6 +7275,7 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
         height: widget.size,
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
             Container(
               width: widget.size,
@@ -5322,6 +7307,9 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
                   backgroundColor: Colors.transparent,
                 ),
               ),
+            if (hinting) _hintRing(),
+            if (hinting && !widget.showHint)
+              _floatingBubble(context, l10n.runHoldToStopHint),
           ],
         ),
           ),
@@ -5336,13 +7324,22 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
       children: [
         button,
         const SizedBox(height: 6),
-        ExcludeSemantics(
-          child: Text(
-            l10n.runHoldToStopHint,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+        // Bounded so a long or text-scaled caption wraps under the button
+        // instead of widening its slot and pushing the control row off the
+        // screen (#1300 §1).
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: widget.size + 24),
+          child: ExcludeSemantics(
+            child: Text(
+              l10n.runHoldToStopHint,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
           ),
         ),
       ],
@@ -5369,6 +7366,42 @@ String _formatAgo(BuildContext context, DateTime when) {
   }
   final months = (diff.inDays / 30).floor();
   return l10n.runAgoMonths(months);
+}
+
+/// How long the app must have been off screen before an absent GPS fix is
+/// evidence that Android cut location delivery, rather than simply the gap
+/// between two fixes. One fix interval plus margin.
+const kBackgroundLocationDisclosureMinAway = Duration(seconds: 15);
+
+/// Whether returning to a recording run should disclose that a
+/// foreground-only location grant cost it the stretch spent off screen.
+///
+/// Requires evidence, not a guess: the grant is foreground-only, the run was
+/// recording and not manually paused across the whole absence, the absence
+/// was long enough for a fix to be due ([kBackgroundLocationDisclosureMinAway]),
+/// and no fix arrived while away. A run that has never had a fix at all
+/// (indoor / treadmill) is not evidence of anything and is left alone, as is
+/// a run that kept receiving fixes in the background — telling that runner
+/// their tracking paused would be false.
+@visibleForTesting
+bool shouldDiscloseBackgroundLocationLimit({
+  required bool limitedGrant,
+  required bool recording,
+  required bool manualPaused,
+  required bool alreadyDisclosed,
+  required DateTime leftForegroundAt,
+  required DateTime returnedAt,
+  required DateTime? lastFixAt,
+}) {
+  if (!limitedGrant || !recording || manualPaused || alreadyDisclosed) {
+    return false;
+  }
+  if (returnedAt.difference(leftForegroundAt) <
+      kBackgroundLocationDisclosureMinAway) {
+    return false;
+  }
+  if (lastFixAt == null) return false;
+  return !lastFixAt.isAfter(leftForegroundAt);
 }
 
 /// Whether the run-start wiring should (re)attach the live broadcast: either
@@ -5407,21 +7440,21 @@ PostLiveVisibilityAction postLiveVisibilityActionOnStop({
   required bool broadcasterActiveAtStop,
   required bool defaultPublic,
   required bool signedIn,
+  bool broadcastWasPublic = true,
 }) {
   if (!broadcastBegun || !signedIn) return PostLiveVisibilityAction.none;
+  // A safety-contacts broadcast (decisions § 1964) never flipped the run
+  // public, so there is no public window to close and nothing to ask.
+  if (!broadcastWasPublic) return PostLiveVisibilityAction.none;
   if (defaultPublic) return PostLiveVisibilityAction.none;
   return broadcasterActiveAtStop
       ? PostLiveVisibilityAction.prompt
       : PostLiveVisibilityAction.revertToDefault;
 }
 
-String _formatKm(double metres) =>
-    formatFixed(metres / 1000, 2, activeLocaleTag);
-
 String _formatPace(Duration duration, double metres) {
   if (metres < 10) return '--:--';
-  final secondsPerKm = duration.inSeconds / (metres / 1000);
-  return UnitFormat.pace(secondsPerKm, DistanceUnit.km);
+  return formatPaceForPref(duration.inSeconds / (metres / 1000));
 }
 
 class _LastRunCard extends StatelessWidget {
@@ -5450,13 +7483,13 @@ class _LastRunCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                if (run.track.length >= 2)
+                if (cm.trackLine(run.track).length >= 2)
                   SizedBox(
                     width: 72,
                     height: 56,
                     child: CustomPaint(
                       painter: _TrackSparkPainter(
-                        track: run.track,
+                        track: cm.trackLine(run.track),
                         color: theme.colorScheme.primary,
                       ),
                     ),
@@ -5497,16 +7530,21 @@ class _LastRunCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Row(
+                      // A Wrap, not a Row: the column is ~190 dp on a
+                      // 360 dp phone, so the two pills side by side overflow
+                      // at the default text size and the pace pill must drop
+                      // to its own line under a large OS text scale.
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           _metricPill(
                             theme,
-                            '${_formatKm(run.distanceMetres)} km',
+                            formatDistanceForPref(run.distanceMetres),
                           ),
-                          const SizedBox(width: 6),
                           _metricPill(
                             theme,
-                            '${_formatPace(run.duration, run.distanceMetres)} /km',
+                            _formatPace(run.duration, run.distanceMetres),
                           ),
                         ],
                       ),
@@ -5539,129 +7577,59 @@ class _LastRunCard extends StatelessWidget {
   }
 }
 
-/// Idle-state banner that surfaces a live race. Armed → tells the user
-/// to get ready; running → shows elapsed since the server's start and a
-/// prompt to tap Start.
-class _RaceBanner extends StatefulWidget {
-  final ActiveRace race;
-  const _RaceBanner({required this.race});
-
-  @override
-  State<_RaceBanner> createState() => _RaceBannerState();
-}
-
-class _RaceBannerState extends State<_RaceBanner> {
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.race.isRunning) {
-      _tick = Timer.periodic(
-        const Duration(milliseconds: 500),
-        (_) { if (mounted) setState(() {}); },
-      );
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RaceBanner old) {
-    super.didUpdateWidget(old);
-    if (!old.race.isRunning && widget.race.isRunning) {
-      _tick = Timer.periodic(
-        const Duration(milliseconds: 500),
-        (_) { if (mounted) setState(() {}); },
-      );
-    } else if (old.race.isRunning && !widget.race.isRunning) {
-      _tick?.cancel();
-      _tick = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
+/// The followed route on the idle screen. A tap reopens the picker and the
+/// corner x stops following it; clearing needs no confirm because picking the
+/// route again restores it (conventions.md § Destructive actions).
+class _RoutePreviewCard extends StatelessWidget {
+  final cm.Route route;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+  const _RoutePreviewCard({
+    required this.route,
+    required this.onTap,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final race = widget.race;
-    final isRunning = race.isRunning && race.startedAt != null;
-    final elapsed = isRunning
-        ? DateTime.now().difference(race.startedAt!).inSeconds
-        : 0;
-    final label = race.eventTitle ?? l10n.runRaceFallbackTitle;
-    final primary = theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: primary.withValues(alpha: 0.08),
-        border: Border.all(color: primary, width: 1.5),
-        borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.dividerColor),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            race.isArmed ? Icons.sports_score : Icons.directions_run,
-            color: primary,
-          ),
-          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  race.isArmed ? l10n.runRaceArmed : l10n.runRaceLive,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
+            child: Semantics(
+              button: true,
+              onTapHint: l10n.runChangeRoute,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+                  child: _content(theme, l10n),
                 ),
-                Text(
-                  race.isArmed
-                      ? l10n.runRaceWaitingForGo(label)
-                      : l10n.runRaceElapsedTapStart(label, _fmt(elapsed)),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              ),
             ),
+          ),
+          IconButton(
+            key: const Key('runClearRoute'),
+            icon: const Icon(Icons.close),
+            tooltip: l10n.runClearRouteTooltip,
+            onPressed: onClear,
           ),
         ],
       ),
     );
   }
 
-  static String _fmt(int s) {
-    final h = s ~/ 3600;
-    final m = (s % 3600) ~/ 60;
-    final sec = s % 60;
-    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
-    return '$m:${sec.toString().padLeft(2, '0')}';
-  }
-}
-
-class _RoutePreviewCard extends StatelessWidget {
-  final cm.Route route;
-  const _RoutePreviewCard({required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Row(
+  Widget _content(ThemeData theme, AppLocalizations l10n) {
+    return Row(
         children: [
           SizedBox(
             width: 72,
@@ -5707,7 +7675,7 @@ class _RoutePreviewCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${_formatKm(route.distanceMetres)} km',
+                      formatDistanceForPref(route.distanceMetres),
                       style: theme.textTheme.bodySmall,
                     ),
                     if (route.elevationGainMetres > 0) ...[
@@ -5719,7 +7687,7 @@ class _RoutePreviewCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${route.elevationGainMetres.round()} m',
+                        formatElevationForPref(route.elevationGainMetres),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
@@ -5729,7 +7697,6 @@ class _RoutePreviewCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
     );
   }
 }
@@ -5814,3 +7781,5 @@ class _TrackSparkPainter extends CustomPainter {
   bool shouldRepaint(covariant _TrackSparkPainter old) =>
       old.track != track || old.color != color;
 }
+
+enum _BackgroundLocationChoice { readGuide, startAnyway, openSettings }

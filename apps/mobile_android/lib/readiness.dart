@@ -2,8 +2,8 @@
 /// last night's sleep, and resting-HR drift vs a baseline into a
 /// single 0–100 number the dashboard can show.
 ///
-/// Mirrors `apps/web/src/lib/readiness.ts`. Keep in lockstep — the
-/// shared-library-syncer agent watches the pair.
+/// TS↔Dart parity pair with `apps/web/src/lib/training/readiness.ts`. Keep in
+/// lockstep — the shared-library-syncer agent watches the pair.
 
 class ReadinessInputs {
   /// Training Stress Balance (Form). Positive = fresh, negative = fatigued.
@@ -22,12 +22,18 @@ class ReadinessInputs {
 
 enum ReadinessBand { low, moderate, high }
 
+/// Which input a contribution came from. The UI names it in the reader's
+/// locale. The form input is deliberately not labelled like the TSB stat it is
+/// derived from: this is the POINTS form added to the score, not the TSB value,
+/// and one name over two different numbers read as a contradiction (#902).
+enum ReadinessContributorKind { form, sleep, restingHr }
+
 class ReadinessContribution {
-  final String name;
+  final ReadinessContributorKind kind;
   final int delta;
   final String note;
   const ReadinessContribution({
-    required this.name,
+    required this.kind,
     required this.delta,
     required this.note,
   });
@@ -57,7 +63,9 @@ ReadinessBand _bandFor(int score) {
 }
 
 ReadinessContribution? _scoreTsb(double? tsb) {
-  if (tsb == null) return null;
+  // A non-finite TSB is no signal: every comparison below is false for NaN,
+  // so it used to land on the final "over-tapered" branch.
+  if (tsb == null || !tsb.isFinite) return null;
   int delta;
   String note;
   if (tsb < -20) {
@@ -82,11 +90,12 @@ ReadinessContribution? _scoreTsb(double? tsb) {
     delta = -3;
     note = 'Over-tapered — edge may be blunted';
   }
-  return ReadinessContribution(name: 'Form (TSB)', delta: delta, note: note);
+  return ReadinessContribution(
+      kind: ReadinessContributorKind.form, delta: delta, note: note);
 }
 
 ReadinessContribution? _scoreSleep(double? hours) {
-  if (hours == null) return null;
+  if (hours == null || !hours.isFinite) return null;
   int delta;
   String note;
   if (hours < 5) {
@@ -105,7 +114,8 @@ ReadinessContribution? _scoreSleep(double? hours) {
     delta = 0;
     note = 'Extended sleep — recovery should be solid';
   }
-  return ReadinessContribution(name: 'Sleep', delta: delta, note: note);
+  return ReadinessContribution(
+      kind: ReadinessContributorKind.sleep, delta: delta, note: note);
 }
 
 ReadinessContribution? _scoreRestingHr(int? resting, int? baseline) {
@@ -129,7 +139,8 @@ ReadinessContribution? _scoreRestingHr(int? resting, int? baseline) {
     delta = 3;
     note = 'Resting HR below baseline — well recovered';
   }
-  return ReadinessContribution(name: 'Resting HR', delta: delta, note: note);
+  return ReadinessContribution(
+      kind: ReadinessContributorKind.restingHr, delta: delta, note: note);
 }
 
 String _dominantAdvice(
@@ -139,9 +150,19 @@ String _dominantAdvice(
         ? 'Looks like a good day to push the pace.'
         : 'Connect sleep + HR data for a real readiness picture.';
   }
-  final sorted = [...contributors]
-    ..sort((a, b) => b.delta.abs().compareTo(a.delta.abs()));
-  final dom = sorted.first;
+  // Ties in |delta| are common — a TSB of -12 and six hours of sleep both
+  // score -12, and the two carry DIFFERENT advice. Dart's List.sort is
+  // unstable where JS's is stable, so without the index fallback the
+  // dominant contributor here would be whichever the sort happened to land
+  // on rather than the first one added, and the two platforms would show
+  // different sentences for the same inputs.
+  final indexed = <(int, ReadinessContribution)>[
+    for (var i = 0; i < contributors.length; i++) (i, contributors[i]),
+  ]..sort((a, b) {
+      final c = b.$2.delta.abs().compareTo(a.$2.delta.abs());
+      return c != 0 ? c : a.$1.compareTo(b.$1);
+    });
+  final dom = indexed.first.$2;
   final tail = switch (band) {
     ReadinessBand.low => 'Consider an easy day or a rest day.',
     ReadinessBand.moderate => 'A steady or moderate effort fits today.',

@@ -3,9 +3,11 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton, StatusPill, StatusPillSize;
 
+import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../typed_decimal.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
@@ -140,8 +142,9 @@ class _DevicesScreenState extends State<DevicesScreen> {
       await widget.api.updateDeviceLabel(deviceId: d.deviceId, label: next);
       _load();
     } catch (e) {
+      debugPrint('[DevicesScreen] rename failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.devicesRenameFailed(e));
+      showTopBanner(context, l10n.devicesRenameFailed(friendlyError(l10n, e)));
     }
   }
 
@@ -162,8 +165,9 @@ class _DevicesScreenState extends State<DevicesScreen> {
       await widget.api.removeDevice(d.deviceId);
       _load();
     } catch (e) {
+      debugPrint('[DevicesScreen] remove failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.devicesRemoveFailed(e));
+      showTopBanner(context, l10n.devicesRemoveFailed(friendlyError(l10n, e)));
     }
   }
 
@@ -192,8 +196,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
       }
       _load();
     } catch (e) {
+      debugPrint('[DevicesScreen] override save failed: $e');
       if (!mounted) return;
-      showTopBanner(context, AppLocalizations.of(context).devicesSaveFailed(e));
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(context, l10n.devicesSaveFailed(friendlyError(l10n, e)));
     }
   }
 
@@ -445,6 +451,7 @@ class _OverridesSheetState extends State<_OverridesSheet> {
       builder: (_) => _AddOverrideSheet(eligible: eligible),
     );
     if (entry == null) return;
+    if (!mounted) return;
     setState(() => _current[entry.key] = entry.value);
   }
 
@@ -563,7 +570,7 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
         }
         value = parsed;
       case 'double':
-        final parsed = double.tryParse(_numCtrl.text.trim());
+        final parsed = parseTypedDecimal(_numCtrl.text);
         if (parsed == null) {
           setState(() => _numError = l10n.devicesEnterNumber);
           return;

@@ -12,7 +12,9 @@
 /// try/catch on every consumer. Only aggregate, non-track numbers are read.
 
 import { createClient } from '@supabase/supabase-js';
+import { isEntityId } from '../core/entity_id';
 import { recapPeriodLabel } from './recap_period_label';
+import { thrownMessage } from '../core/supabase_error';
 
 export { recapPeriodLabel };
 
@@ -52,12 +54,17 @@ export async function lookupSharedRecap(
 	if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
 		return { recap: null };
 	}
+	// A non-uuid segment makes Postgres raise 22P02 on the RPC's uuid
+	// argument, which lands in the tagged upstream_unreachable branch the
+	// CloudWatch alarm keys off. A malformed id is a not-found, not an outage
+	// (same guard as share_run_lookup).
+	if (!isEntityId(id)) return { recap: null };
 	try {
 		const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
 			auth: { persistSession: false },
 		});
 		const { data, error } = await supabase
-			.rpc('public_recap_by_id', { p_id: id })
+			.rpc('public_recap_by_id', { p_id: id }, { get: true })
 			.maybeSingle();
 		// Non-null error (vs a clean data:null not-found) = Supabase unreachable
 		// / 5xx; the recap card degrades to the branded fallback with no Lambda
@@ -78,7 +85,7 @@ export async function lookupSharedRecap(
 		let displayName: string | null = null;
 		if (row.user_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: row.user_id })
+				.rpc('public_profile_by_id', { p_id: row.user_id }, { get: true })
 				.maybeSingle();
 			displayName =
 				(profile as { display_name?: string | null } | null)?.display_name ?? null;
@@ -95,7 +102,7 @@ export async function lookupSharedRecap(
 	} catch (err) {
 		console.error(
 			'[share-recap] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { recap: null };
 	}

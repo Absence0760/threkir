@@ -1,16 +1,17 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../finisher_certificate.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
+import '../share_sheet.dart';
+import 'capture_png.dart';
 import 'top_banner.dart';
 
 /// Opens a modal sheet showing the finisher certificate for an eligible
@@ -79,12 +80,7 @@ class _CertificateSheetState extends State<_CertificateSheet> {
     setState(() => _capturing = true);
     try {
       await WidgetsBinding.instance.endOfFrame;
-      final boundary =
-          _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      final bytes = byteData.buffer.asUint8List();
+      final bytes = await capturePngBytes(_cardKey);
 
       final safe = widget.eventTitle
           .replaceAll(RegExp('[^A-Za-z0-9]+'), '-')
@@ -93,8 +89,9 @@ class _CertificateSheetState extends State<_CertificateSheet> {
       final file = File('${tmp.path}/threkir-certificate-$safe.png');
       await file.writeAsBytes(bytes);
 
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'image/png')],
+      await shareFilesFrom(
+        context,
+        files: [XFile(file.path, mimeType: 'image/png')],
         text: l10n.clubEventCertificateShareText(widget.eventTitle),
       );
     } catch (e) {

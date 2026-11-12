@@ -14,7 +14,7 @@ void main() {
       // Construct against a local-loopback URL so any wire-level call
       // would fail noisily rather than hit a real backend. The seam
       // test only exercises getters that don't make network calls.
-      fake = SupabaseClient('http://127.0.0.1:54321', 'eyJ.local.test');
+      fake = SupabaseClient('http://127.0.0.1:24321', 'eyJ.local.test');
     });
 
     tearDown(() {
@@ -37,8 +37,8 @@ void main() {
     test('two ApiClient.withClient instances stay independent', () {
       // Sanity check that the override isn't a static field accidentally
       // shared between instances.
-      final a = SupabaseClient('http://127.0.0.1:54321', 'eyJ.a.token');
-      final b = SupabaseClient('http://127.0.0.1:54321', 'eyJ.b.token');
+      final a = SupabaseClient('http://127.0.0.1:24321', 'eyJ.a.token');
+      final b = SupabaseClient('http://127.0.0.1:24321', 'eyJ.b.token');
       try {
         final apiA = ApiClient.withClient(a);
         final apiB = ApiClient.withClient(b);

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+
+import 'run_stats.dart' show haversineMetres;
 
 /// MapTiler geocoding helper — mirrors the web's `handleSearch` in
 /// `apps/web/src/lib/components/RouteBuilder.svelte`. Returns up to
@@ -30,6 +31,26 @@ class PlaceResult {
     required this.lng,
   });
 }
+
+/// Whether a geocoder's answer is a latitude at all.
+///
+/// The same contract the GPX importer applies to a coordinate out of a file
+/// (`RouteParser._isUsableLat`), for the same two reasons. A non-finite
+/// coordinate is not a place: `jsonEncode` refuses it outright, so it reaches
+/// `set_discoverable_area` as an unreadable failure, and `LatLng` carries no
+/// assertion of its own, so it reaches a map camera as a view that silently
+/// stops rendering. And the range is not a heuristic — a latitude is ±90 by
+/// definition, so a value outside it is a malformed answer, not a place.
+///
+/// BOTH providers need it. Nominatim serialises coordinates as STRINGS and
+/// `double.tryParse('NaN')` returns NaN rather than null, so a null check does
+/// not see it. MapTiler sends JSON numbers, which cannot spell NaN — but
+/// `jsonDecode('1e400')` is `Infinity`, measured, so `as num` does not save
+/// that branch either.
+bool isUsableLatitude(double? v) => v != null && v.isFinite && v.abs() <= 90;
+
+/// Longitude half of [isUsableLatitude]. Separate bound, same contract.
+bool isUsableLongitude(double? v) => v != null && v.isFinite && v.abs() <= 180;
 
 /// Why a search reports an outcome rather than a bare list: a provider
 /// that is down, rate-limited, or timing out used to collapse into an
@@ -135,7 +156,11 @@ Future<PlaceSearchOutcome> _searchViaMapTiler(
       for (final f in features)
         if (f is Map &&
             f['center'] is List &&
-            (f['center'] as List).length >= 2)
+            (f['center'] as List).length >= 2 &&
+            (f['center'] as List)[0] is num &&
+            (f['center'] as List)[1] is num &&
+            isUsableLongitude(((f['center'] as List)[0] as num).toDouble()) &&
+            isUsableLatitude(((f['center'] as List)[1] as num).toDouble()))
           PlaceResult(
             name: (f['place_name'] ?? f['text'] ?? '').toString(),
             lng: ((f['center'] as List)[0] as num).toDouble(),
@@ -177,7 +202,12 @@ Future<PlaceSearchOutcome> _searchViaNominatim(
       final lngRaw = f['lon'];
       final lat = latRaw is String ? double.tryParse(latRaw) : null;
       final lng = lngRaw is String ? double.tryParse(lngRaw) : null;
-      if (lat == null || lng == null) continue;
+      if (lat == null ||
+          lng == null ||
+          !isUsableLatitude(lat) ||
+          !isUsableLongitude(lng)) {
+        continue;
+      }
       out.add(PlaceResult(
         name: (f['display_name'] ??
                 '${lat.toStringAsFixed(3)}, ${lng.toStringAsFixed(3)}')
@@ -198,7 +228,7 @@ Future<PlaceSearchOutcome> _searchViaNominatim(
 
 /// A geocoded place — the centroid the query resolved to, plus a
 /// radius in metres derived from the bounding box. Mirrors web's
-/// `GeocodedPlace` in `apps/web/src/lib/geocoding.ts`. Used by the
+/// `GeocodedPlace` in `apps/web/src/lib/routes/geocoding.ts`. Used by the
 /// region-aware club search so "Virginia" expands to a centroid +
 /// ~470 km radius rather than just an ILIKE on the location label.
 class GeocodedPlace {
@@ -214,18 +244,6 @@ class GeocodedPlace {
     required this.radiusM,
     required this.placeType,
   });
-}
-
-double haversineM(double lng1, double lat1, double lng2, double lat2) {
-  const r = 6371000.0;
-  double toRad(double d) => d * 3.141592653589793 / 180;
-  final dLat = toRad(lat2 - lat1);
-  final dLng = toRad(lng2 - lng1);
-  final sinLat = sin(dLat / 2);
-  final sinLng = sin(dLng / 2);
-  final h = sinLat * sinLat +
-      cos(toRad(lat1)) * cos(toRad(lat2)) * sinLng * sinLng;
-  return r * 2 * atan2(sqrt(h), sqrt(1 - h));
 }
 
 /// Max distance from the bbox centroid to one of its four corners.
@@ -244,10 +262,36 @@ double bboxRadius(List<double> bbox, double centerLng, double centerLat) {
   ];
   var maxD = 0.0;
   for (final c in corners) {
-    final d = haversineM(centerLng, centerLat, c[0], c[1]);
+    final d = haversineMetres(centerLat, centerLng, c[1], c[0]);
     if (d > maxD) maxD = d;
   }
   return maxD;
+}
+
+/// A bbox is usable whole or not at all. One unusable corner makes
+/// [bboxRadius] a NaN, which compares false against every bound a caller
+/// might check it with; and reading a corner through `as num` threw a
+/// `TypeError` out into [geocodePlace]'s catch-all, which discarded a
+/// perfectly usable centroid rather than falling back to the documented
+/// default radius.
+List<double>? _usableBbox(Object? raw) {
+  if (raw is! List || raw.length != 4) return null;
+  final w = raw[0];
+  final s = raw[1];
+  final e = raw[2];
+  final n = raw[3];
+  if (w is! num || s is! num || e is! num || n is! num) return null;
+  final west = w.toDouble();
+  final south = s.toDouble();
+  final east = e.toDouble();
+  final north = n.toDouble();
+  if (!isUsableLongitude(west) ||
+      !isUsableLatitude(south) ||
+      !isUsableLongitude(east) ||
+      !isUsableLatitude(north)) {
+    return null;
+  }
+  return [west, south, east, north];
 }
 
 /// Geocode a free-text place query via MapTiler. Returns null when
@@ -273,24 +317,18 @@ Future<GeocodedPlace?> geocodePlace(
     if (top is! Map) return null;
     final centerRaw = top['center'];
     if (centerRaw is! List || centerRaw.length < 2) return null;
-    final lng = (centerRaw[0] as num).toDouble();
-    final lat = (centerRaw[1] as num).toDouble();
-    final bboxRaw = top['bbox'];
-    final radiusM = (bboxRaw is List && bboxRaw.length == 4)
-        ? bboxRadius(
-            [
-              (bboxRaw[0] as num).toDouble(),
-              (bboxRaw[1] as num).toDouble(),
-              (bboxRaw[2] as num).toDouble(),
-              (bboxRaw[3] as num).toDouble(),
-            ],
-            lng,
-            lat,
-          )
-        // MapTiler occasionally returns features without a bbox (rare
-        // — usually address-level POIs). Default to a small radius so
-        // the centroid is still useful but doesn't sweep a continent.
-        : 5000.0;
+    final lngRaw = centerRaw[0];
+    final latRaw = centerRaw[1];
+    if (lngRaw is! num || latRaw is! num) return null;
+    final lng = lngRaw.toDouble();
+    final lat = latRaw.toDouble();
+    if (!isUsableLongitude(lng) || !isUsableLatitude(lat)) return null;
+    final bbox = _usableBbox(top['bbox']);
+    // MapTiler occasionally returns features without a bbox (rare —
+    // usually address-level POIs), and an unusable one is treated the
+    // same way: default to a small radius so the centroid is still
+    // useful but doesn't sweep a continent.
+    final radiusM = bbox == null ? 5000.0 : bboxRadius(bbox, lng, lat);
     final placeTypeRaw = top['place_type'];
     final placeType = (placeTypeRaw is List && placeTypeRaw.isNotEmpty)
         ? placeTypeRaw.first.toString()

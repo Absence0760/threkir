@@ -14,18 +14,31 @@
 
 import JSZip from 'jszip';
 import { parseRouteFile, type ImportedRoute } from './import';
-import { parseFitBuffer } from './garmin-fit';
+import { parseFitBuffer, computeEmbeddedBests } from './garmin-fit';
 import { saveRun, addRunPhoto } from '../core/data';
+import type { JsonObject } from '../types';
 import { TABLES, METADATA_KEYS } from '../core/schema';
 import { parseStravaMediaPaths, STRAVA_PHOTO_MIME } from './strava_media';
-import { collectStravaDedupeSet, type StravaDedupeRow } from './strava-zip-dedupe';
+import { collectStravaDedupeSet } from './strava-zip-dedupe';
+import { RUN_DEDUPE_ORDER } from './garmin_dedupe';
 import { gunzipBlob } from '../util/gunzip';
-import { classifyStravaMember } from './strava-zip-classify';
+import { resolveStravaTrackMember } from './strava_track_member';
 import { classifyStravaRow } from './strava-zip-disposition';
-import { indexHeader, stravaDistanceMetres, type HeaderIndex } from './strava-zip-header';
+import {
+	indexHeader,
+	missingRequiredStravaColumns,
+	stravaDistanceMetres,
+	type HeaderIndex,
+} from './strava-zip-header';
 import { parseStravaCsvDateToIso } from './strava-zip-date';
 import { supabase } from '../core/supabase';
 import { auth } from '../stores/auth.svelte';
+import {
+	newImportFailureLog,
+	recordImportFailure,
+	type ImportFailureLog,
+} from './import_failures';
+import { ImportRefusedError } from './import_refusal';
 
 export interface StravaZipProgress {
 	total: number;
@@ -41,6 +54,10 @@ export interface StravaZipProgress {
 	// every imported row.
 	droppedPhotos: number;
 	failed: number;
+	// Per-activity detail behind `failed` — name, start, reason, log-safe
+	// message. A bare count can't tell a migrant whether re-running the
+	// import will land the missing runs or never will.
+	failures: ImportFailureLog;
 	currentName: string | null;
 }
 
@@ -54,7 +71,7 @@ export async function importStravaZip(
 	onProgress?: ProgressHandler,
 ): Promise<StravaZipProgress> {
 	const uid = auth.user?.id;
-	if (!uid) throw new Error('Not signed in');
+	if (!uid) throw new ImportRefusedError('not_signed_in');
 
 	// audit/strava May 2026 Medium #1 — bound the archive size so a
 	// decade-of-multi-sport-activity 5 GB export doesn't OOM the tab.
@@ -62,50 +79,51 @@ export async function importStravaZip(
 	// (10+ years of dense GPS data) while catching the obvious DoS.
 	// User-facing copy points the heaviest cohort at the per-year
 	// export tool in Strava's settings.
-	const MAX_STRAVA_ZIP_BYTES = 500 * 1024 * 1024;
-	if (file.size > MAX_STRAVA_ZIP_BYTES) {
-		throw new Error(
-			`Strava ZIP too large (${Math.round(file.size / (1024 * 1024))} MB). ` +
-				'The 500 MB cap defends against browser-OOM on the parser. ' +
-				'Split into yearly exports from Strava → Settings → My Account → Download or Delete Your Account.',
-		);
+	const MAX_STRAVA_ZIP_MB = 500;
+	if (file.size > MAX_STRAVA_ZIP_MB * 1024 * 1024) {
+		throw new ImportRefusedError('strava_zip_too_large', {
+			megabytes: Math.round(file.size / (1024 * 1024)),
+			limitMegabytes: MAX_STRAVA_ZIP_MB,
+		});
 	}
 
 	const zip = await JSZip.loadAsync(file);
 	const csvFile = zip.file('activities.csv');
 	if (!csvFile) {
-		throw new Error('Not a Strava export zip (missing activities.csv).');
+		throw new ImportRefusedError('strava_zip_not_an_export');
 	}
 
 	const csvText = await csvFile.async('text');
 	const rows = parseCsv(csvText);
 	if (rows.length === 0) {
-		throw new Error('activities.csv contained no rows.');
+		throw new ImportRefusedError('strava_zip_no_rows');
 	}
 
 	// Column names shift across Strava export eras; look them up case-
-	// insensitively and by alias. If we can't find the essentials, bail.
+	// insensitively and by alias. If we can't find the essentials, bail —
+	// `missingRequiredStravaColumns` holds which ones and why.
 	const header = rows[0];
 	const idx = indexHeader(header);
-	if (idx.id < 0 || idx.filename < 0) {
-		throw new Error('activities.csv is missing required columns (Activity ID / Filename).');
+	const missing = missingRequiredStravaColumns(idx);
+	if (missing.length > 0) {
+		throw new ImportRefusedError('strava_zip_missing_columns', { columns: missing });
 	}
 
-	// Page the dedupe read: an unbounded PostgREST SELECT caps at 1000 rows, so
+	// Walk the dedupe read: an unbounded PostgREST SELECT caps at 1000 rows, so
 	// a high-volume migrant (1000+ existing runs) re-importing a refreshed ZIP
 	// would otherwise compare against an arbitrary slice and silently re-import
-	// everything past the cap as duplicates. Mirrors garmin-zip's paging guard.
-	const seen = await collectStravaDedupeSet((from, to) =>
-		supabase
+	// everything past the cap as duplicates. Mirrors garmin-zip's walk.
+	const seen = await collectStravaDedupeSet((after, limit) => {
+		let q = supabase
 			.from(TABLES.runs)
-			.select('metadata, external_id')
-			.eq('user_id', uid)
-			.order('started_at', { ascending: false })
-			.range(from, to)
-			.then(({ data, error }): StravaDedupeRow[] | null =>
-				error ? null : (data as StravaDedupeRow[]),
-			),
-	);
+			.select('id, started_at, metadata, external_id')
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 
 	const dataRows = rows.slice(1);
 	const progress: StravaZipProgress = {
@@ -115,6 +133,7 @@ export async function importStravaZip(
 		droppedUnsupported: 0,
 		droppedPhotos: 0,
 		failed: 0,
+		failures: newImportFailureLog(),
 		currentName: null,
 	};
 	onProgress?.(progress);
@@ -146,8 +165,13 @@ export async function importStravaZip(
 			seen.add(stravaId);
 			progress.imported++;
 			progress.droppedPhotos += droppedPhotos;
-		} catch (_err) {
+		} catch (err) {
 			progress.failed++;
+			recordImportFailure(
+				progress.failures,
+				{ name, startedAt: parseStravaCsvDateToIso(row[idx.date]) },
+				err,
+			);
 		}
 		onProgress?.(progress);
 	}
@@ -164,7 +188,17 @@ async function importOne(
 	stravaId: string,
 	filename: string,
 ): Promise<{ droppedPhotos: number }> {
-	const startedAt = row[idx.date];
+	// A run whose start we cannot read is not importable as "today". The header
+	// check proved the COLUMN exists, so this is one row's unreadable cell, and
+	// the caller's per-row catch reports it in the ImportFailureReport under the
+	// activity's own name. The `?? new Date().toISOString()` this replaced filed
+	// a 2019 run under this morning and corrupted every window that reads
+	// `started_at` — streaks, PR brackets, the calendar, training load — with
+	// nothing anywhere reporting a failure.
+	const startedAt = parseStravaCsvDateToIso(row[idx.date]);
+	if (startedAt === null) {
+		throw new Error(`Could not parse the Activity Date "${row[idx.date] ?? ''}".`);
+	}
 	const distanceM = stravaDistanceMetres(row, idx);
 	const durationS = parseCsvNumber(row[idx.movingTime]);
 	const elevationM = idx.elevation >= 0 ? parseCsvNumber(row[idx.elevation]) : 0;
@@ -180,49 +214,52 @@ async function importOne(
 	// its track instead of importing trackless. (persona round-5 F4)
 	// audit/strava May 2026 Medium #2.
 	let track: ImportedRoute['waypoints'] | null = null;
-	if (filename) {
-		const entry = zip.file(filename);
-		const { parser, gzipped } = classifyStravaMember(filename);
-		if (entry && parser) {
-			let blob = await entry.async('blob');
-			let innerName = filename.split('/').pop()!;
-			let canParse = true;
-			if (gzipped) {
-				const inflated = await gunzipBlob(blob);
-				if (inflated) {
-					blob = inflated;
-					innerName = innerName.replace(/\.gz$/i, '');
-				} else {
-					// Decompression failed (e.g. no DecompressionStream on
-					// old Safari) — import the CSV row trackless rather than
-					// dropping it. An early return here would skip saveRun
-					// while the caller still counts the row as imported
-					// (the phantom-import bug).
-					canParse = false;
-				}
+	let deviceDistance: number[] | null = null;
+	// Throws when the row names a member the archive does not hold, or one
+	// in a format neither parser reads — the caller's per-row catch turns
+	// that into an `ImportFailureReport` entry instead of a summary-only
+	// run that reads as complete.
+	const member = resolveStravaTrackMember(filename, (name) => zip.file(name) != null);
+	if (member.kind === 'member') {
+		let blob = await zip.file(filename)!.async('blob');
+		let innerName = filename.split('/').pop()!;
+		let canParse = true;
+		if (member.gzipped) {
+			const inflated = await gunzipBlob(blob);
+			if (inflated) {
+				blob = inflated;
+				innerName = innerName.replace(/\.gz$/i, '');
+			} else {
+				// The one case that stays lenient: `gunzipBlob` cannot tell a
+				// corrupt member from a browser with no `DecompressionStream`
+				// (old Safari), and failing every gzipped row of a five-year
+				// export over the reader's own engine would be a worse
+				// outcome than a trackless import. An early return here
+				// would skip saveRun while the caller still counts the row
+				// as imported (the phantom-import bug).
+				canParse = false;
 			}
-			if (canParse) {
-				if (parser === 'fit') {
-					try {
-						const parsed = await parseFitBuffer(await blob.arrayBuffer());
-						if (parsed && parsed.track.length > 0) track = parsed.track;
-					} catch (_) {
-						// Fallthrough — keep row without track.
-					}
-				} else {
-					const synthetic = new File([blob], innerName);
-					try {
-						const routes = await parseRouteFile(synthetic);
-						if (routes.length > 0) track = routes[0].waypoints;
-					} catch (_) {
-						// Fallthrough — keep row without track.
-					}
+		}
+		if (canParse) {
+			// A parse failure is NOT swallowed: the member exists and is
+			// unreadable, which is the same broken promise as a missing one.
+			// A file that parses to zero waypoints is a different fact — the
+			// row keeps the CSV's own numbers and imports trackless.
+			if (member.parser === 'fit') {
+				const parsed = await parseFitBuffer(await blob.arrayBuffer());
+				if (parsed && parsed.track.length > 0) {
+					track = parsed.track;
+					deviceDistance = parsed.distance_stream;
 				}
+			} else {
+				const synthetic = new File([blob], innerName);
+				const routes = await parseRouteFile(synthetic);
+				if (routes.length > 0) track = routes[0].waypoints;
 			}
 		}
 	}
 
-	const metadata: Record<string, unknown> = {
+	const metadata: JsonObject = {
 		[METADATA_KEYS.strava_id]: stravaId,
 		[METADATA_KEYS.imported_from]: 'strava',
 		[METADATA_KEYS.imported_at]: new Date().toISOString(),
@@ -232,7 +269,7 @@ async function importOne(
 		metadata[METADATA_KEYS.strava_activity_type] = row[idx.stravaType];
 
 	const { id: runId } = await saveRun({
-		started_at: parseStravaCsvDateToIso(startedAt) ?? new Date().toISOString(),
+		started_at: startedAt,
 		distance_m: Math.max(0, Math.round(distanceM)),
 		duration_s: Math.max(0, Math.round(durationS)),
 		elevation_m: elevationM > 0 ? Math.round(elevationM) : null,
@@ -240,6 +277,11 @@ async function importOne(
 		activity_type: activityType,
 		metadata,
 		track: track ?? undefined,
+		// The promoted fastest-window columns `refresh_personal_records_for_user`
+		// reads. Without them an imported long run can never yield the 5K/10K PR
+		// hiding inside its track, so five years of migrated Strava history lands
+		// with zero embedded bests — the Garmin importer already does this.
+		...(track ? { embedded_bests: computeEmbeddedBests(track, activityType, deviceDistance) } : {}),
 		title: row[idx.name] || null,
 		// Cross-source dedupe — matches the mobile ZIP + Strava-
 		// OAuth writers. /audit/strava M3.

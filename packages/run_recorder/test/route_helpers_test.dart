@@ -330,56 +330,282 @@ void main() {
     });
   });
 
-  group('_routeProgress (single-pass)', () {
-    test('returns null when no route is loaded', () {
-      final r = RunRecorder()..debugPrepareWithoutStream();
+  group('non-finite route geometry', () {
+    // The running minimum is seeded at +Infinity and a NaN never compares
+    // less than it, so a route whose every segment projects to NaN left the
+    // seed untouched and reported the runner as infinitely far off course.
+    // That figure reached the live stats readout and the sustained-off-route
+    // detector, which escalates to a trusted contact once per run.
+    Route nanRoute() => route([
+          [double.nan, double.nan],
+          [double.nan, double.nan],
+        ]);
+
+    test('off-route distance is null, never +Infinity', () {
+      final r = RunRecorder()..debugPrepareWithoutStream(route: nanRoute());
+      expect(r.debugOffRouteDistance(at(0, 0)), isNull);
+    });
+
+    test('remaining is null, never NaN', () {
+      final r = RunRecorder()..debugPrepareWithoutStream(route: nanRoute());
+      expect(r.debugRouteRemaining(at(0, 0)), isNull);
+    });
+
+    test('the single-pass progress agrees with both', () {
+      final r = RunRecorder()..debugPrepareWithoutStream(route: nanRoute());
       expect(r.debugRouteProgress(at(0, 0)), isNull);
     });
 
-    test('equals the separate off-route + remaining calcs across probes', () {
-      // A multi-segment out-and-back so the closest segment isn't trivially
-      // the first; the combined pass must match the two functions exactly.
+    test('a non-finite runner position is refused on a good route', () {
       final r = RunRecorder()
         ..debugPrepareWithoutStream(
             route: route([
           [0, 0],
           [0, 0.001],
-          [0.001, 0.001],
-          [0.001, 0],
-          [0.0005, 0],
         ]));
-      final probes = [
-        at(0, 0),
-        at(0.0001, 0.0005),
-        at(0.001, 0.0005),
-        at(0.0007, 0.0001),
-      ];
-      for (final p in probes) {
-        final prog = r.debugRouteProgress(p)!;
-        expect(prog.offRoute, closeTo(r.debugOffRouteDistance(p)!, 1e-6));
-        expect(prog.remaining, closeTo(r.debugRouteRemaining(p)!, 1e-6));
+      expect(r.debugOffRouteDistance(at(double.nan, 0)), isNull);
+      expect(r.debugRouteProgress(at(0, double.nan)), isNull);
+    });
+  });
+
+  group('_routeProgress', () {
+    test('returns null when no route is loaded', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      expect(r.debugRouteProgress(at(0, 0)), isNull);
+    });
+  });
+
+  group('resumeSession restores the monotonic route floor', () {
+    const metrePerDegLng = 111320.0;
+
+    // 500 m east and back, sampled every 50 m: the return leg lies on top of
+    // the outbound one, so the closest segment to a runner on the way home is
+    // ambiguous and only the floor tells the two apart.
+    Route outAndBack() => route([
+          for (var m = 0; m <= 500; m += 50) [0.0, m / metrePerDegLng],
+          for (var m = 450; m >= 0; m -= 50) [0.0, m / metrePerDegLng],
+        ]);
+
+    Position fix(double metresEast, int seconds) => Position(
+          longitude: metresEast / metrePerDegLng,
+          latitude: 0,
+          timestamp: DateTime(2026, 4, 10, 10, 0, seconds),
+          accuracy: 5,
+          altitude: 100,
+          altitudeAccuracy: 2,
+          heading: 90,
+          headingAccuracy: 5,
+          speed: 2.5,
+          speedAccuracy: 1,
+        );
+
+    /// Out to the turnaround, then back west as far as [returnToMetresEast].
+    List<Position> outAndBackFixes({double returnToMetresEast = 300}) => [
+          for (var m = 0; m <= 500; m += 50) fix(m.toDouble(), m ~/ 50 * 10),
+          for (var m = 450; m >= returnToMetresEast; m -= 50)
+            fix(m.toDouble(), (1000 - m) ~/ 50 * 10),
+        ];
+
+    test('a resumed run reports the same distance-remaining as a fresh one',
+        () {
+      final fixes = outAndBackFixes();
+      final fresh = RunRecorder()
+        ..debugPrepareWithoutStream(route: outAndBack());
+      addTearDown(fresh.dispose);
+      fresh.begin();
+      for (final f in fixes) {
+        fresh.debugInjectPosition(f);
       }
+      final last = fresh.debugCurrentWaypoint!;
+      final freshRemaining = fresh.debugRouteRemaining(last)!;
+      expect(freshRemaining, closeTo(300, 5),
+          reason: 'on the way home, 300 m out means 300 m to run');
+
+      // The process is killed here and the partial resumed: same track, same
+      // route. prepare() resets the floor to 1, so without a rebuild the
+      // closest segment is the OUTBOUND one under the runner's feet and
+      // remaining nearly doubles — permanently, the floor never being lowered.
+      final resumed = RunRecorder();
+      addTearDown(resumed.dispose);
+      resumed.debugResumeWithoutStream(
+        track: fresh.debugTrack,
+        distanceMetres: fresh.debugDistanceMetres,
+        elapsed: const Duration(minutes: 4),
+        startedAt: DateTime(2026, 4, 10, 10, 0, 0),
+        route: outAndBack(),
+      );
+      resumed.debugInjectPosition(fix(300, 200));
+      expect(
+        resumed.debugRouteRemaining(resumed.debugCurrentWaypoint!),
+        closeTo(freshRemaining, 5),
+        reason: 'resuming must not hand the route matcher back the ground '
+            'already covered',
+      );
     });
 
-    test('O(1) suffix-sum remaining matches the inline sum as the matched '
-        'segment advances down a long route', () {
-      // A long straight north-bound route (40 segments). The optimized
-      // _routeProgress resolves the remaining-route distance from a
-      // precomputed suffix array; it must equal the inline per-fix sum
-      // (_routeRemaining) at every advancing probe, exercising many distinct
-      // suffix indices — the guard against the suffix array drifting from the
-      // segment lengths.
-      final pts = <List<double>>[];
-      for (int i = 0; i <= 40; i++) {
-        pts.add([i * 0.001, 0]);
+    test('the restored floor still cannot walk backwards', () {
+      final fresh = RunRecorder()
+        ..debugPrepareWithoutStream(route: outAndBack());
+      addTearDown(fresh.dispose);
+      fresh.begin();
+      for (final f in outAndBackFixes()) {
+        fresh.debugInjectPosition(f);
       }
-      final r = RunRecorder()..debugPrepareWithoutStream(route: route(pts));
-      for (int i = 0; i <= 40; i += 3) {
-        final p = at(i * 0.001, 0);
-        final prog = r.debugRouteProgress(p)!;
-        expect(prog.remaining, closeTo(r.debugRouteRemaining(p)!, 1e-6),
-            reason: 'mismatch at waypoint $i');
+      final resumed = RunRecorder();
+      addTearDown(resumed.dispose);
+      resumed.debugResumeWithoutStream(
+        track: fresh.debugTrack,
+        distanceMetres: fresh.debugDistanceMetres,
+        elapsed: const Duration(minutes: 4),
+        startedAt: DateTime(2026, 4, 10, 10, 0, 0),
+        route: outAndBack(),
+      );
+      var previous = double.infinity;
+      for (var m = 300; m >= 0; m -= 50) {
+        resumed.debugInjectPosition(fix(m.toDouble(), 200 + (300 - m) ~/ 50 * 10));
+        final remaining =
+            resumed.debugRouteRemaining(resumed.debugCurrentWaypoint!)!;
+        expect(remaining, lessThanOrEqualTo(previous + 1e-6),
+            reason: 'distance remaining climbed back up at ${m}m');
+        previous = remaining;
       }
+      expect(previous, closeTo(0, 5));
+    });
+
+    test('a resumed run with no route loaded is unaffected', () {
+      final r = RunRecorder();
+      addTearDown(r.dispose);
+      r.debugResumeWithoutStream(
+        track: [Waypoint(lat: 0, lng: 0)],
+        distanceMetres: 100,
+        elapsed: const Duration(minutes: 1),
+        startedAt: DateTime(2026, 4, 10, 10, 0, 0),
+      );
+      expect(r.recording, isTrue);
+      expect(r.debugRouteRemaining(at(0, 0)), isNull);
+    });
+  });
+
+  group('following a route that passes the same place twice', () {
+    // At lat 0 one degree of either axis is ~111320 m in the recorder's own
+    // projection, so metres map straight onto degrees and fixtures stay
+    // readable.
+    const mPerDeg = 111320.0;
+    List<double> en(double eastM, double northM) =>
+        [northM / mPerDeg, eastM / mPerDeg];
+
+    Position fix(double eastM, double northM, int seconds) => Position(
+          longitude: eastM / mPerDeg,
+          latitude: northM / mPerDeg,
+          timestamp:
+              DateTime(2026, 4, 10, 10, 0).add(Duration(seconds: seconds)),
+          accuracy: 5,
+          altitude: 100,
+          altitudeAccuracy: 2,
+          heading: 90,
+          headingAccuracy: 5,
+          speed: 2.5,
+          speedAccuracy: 1,
+        );
+
+    Future<List<RunSnapshot>> snapshotsFor(
+        Route r, List<Position> fixes) async {
+      final rec = RunRecorder()..debugPrepareWithoutStream(route: r);
+      final seen = <RunSnapshot>[];
+      final sub = rec.snapshots.listen(seen.add);
+      addTearDown(() async {
+        await sub.cancel();
+        rec.dispose();
+      });
+      rec.begin();
+      for (final f in fixes) {
+        rec.debugInjectPosition(f);
+      }
+      await Future<void>.delayed(Duration.zero);
+      return seen;
+    }
+
+    // 500 m square, start == finish, run anticlockwise: east, north, west,
+    // south. The closing leg runs down x = 0 into the start.
+    Route squareLoop() =>
+        route([en(0, 0), en(500, 0), en(500, 500), en(0, 500), en(0, 0)]);
+
+    test('a loop runner at the start has the whole loop to go and stays on it',
+        () async {
+      // Walk the opening leg 3 m north of the line. The first fix, 1 m east of
+      // the start, is nearer the CLOSING leg (1 m) than the opening one (3 m).
+      // A global nearest-segment search latched the closing leg there — "0.00
+      // km to go" — and, the floor never coming back down, measured every
+      // later fix against that leg alone, so "off route" grew with every step
+      // the runner took along the line.
+      final snaps = await snapshotsFor(squareLoop(), [
+        for (var i = 0; i <= 20; i++) fix(1.0 + i * 10, 3, i * 4),
+      ]);
+      expect(snaps.first.routeRemainingMetres, closeTo(2000, 5));
+      expect(snaps.first.offRouteDistanceMetres, closeTo(1, 0.5));
+      expect(snaps.last.routeRemainingMetres, closeTo(2000 - 201, 5));
+      expect(snaps.last.routeAlongMetres, closeTo(201, 5));
+      expect(snaps.last.offRouteDistanceMetres, closeTo(3, 0.5));
+    });
+
+    test('a lap of the loop winds remaining down to zero at the finish',
+        () async {
+      final fixes = <Position>[fix(0, 0, 0)];
+      var t = 0;
+      const legs = [
+        [0.0, 0.0, 500.0, 0.0],
+        [500.0, 0.0, 500.0, 500.0],
+        [500.0, 500.0, 0.0, 500.0],
+        [0.0, 500.0, 0.0, 0.0],
+      ];
+      for (final l in legs) {
+        for (var s = 1; s <= 50; s++) {
+          fixes.add(fix(l[0] + (l[2] - l[0]) * s / 50,
+              l[1] + (l[3] - l[1]) * s / 50, t += 4));
+        }
+      }
+      final snaps = await snapshotsFor(squareLoop(), fixes);
+      for (final s in snaps) {
+        expect(s.offRouteDistanceMetres, lessThan(1));
+      }
+      expect(snaps[snaps.length ~/ 2].routeRemainingMetres, closeTo(1000, 15));
+      expect(snaps.last.routeRemainingMetres, closeTo(0, 2));
+    });
+
+    test('an out-and-back runner past the turnaround is on the return leg',
+        () async {
+      final snaps = await snapshotsFor(
+        route([en(0, 0), en(1000, 0), en(0, 0)]),
+        [
+          for (var m = 0; m <= 1000; m += 10)
+            fix(m.toDouble(), 0, m ~/ 10 * 4),
+          for (var m = 990; m >= 900; m -= 10)
+            fix(m.toDouble(), 0, (2000 - m) ~/ 10 * 4),
+        ],
+      );
+      expect(snaps.last.routeRemainingMetres, closeTo(900, 5));
+      expect(snaps.last.routeAlongMetres, closeTo(1100, 5));
+      expect(snaps.last.offRouteDistanceMetres, closeTo(0, 1));
+    });
+
+    test('a runner who leaves the loop is still flagged off route', () async {
+      final snaps = await snapshotsFor(squareLoop(), [
+        for (var i = 0; i <= 10; i++) fix(i * 10.0, 0, i * 4),
+        for (var i = 1; i <= 12; i++) fix(100, i * 10.0, 40 + i * 4),
+      ]);
+      // 120 m north of the opening leg is 100 m east of the closing one.
+      expect(snaps.last.offRouteDistanceMetres, closeTo(100, 1));
+      expect(snaps.last.routeAlongMetres, lessThan(250));
+    });
+
+    test('a first fix beside the middle of the route is matched there', () {
+      // No earlier match to hold on to, so the window at the start must not
+      // win over the nearest point on the line.
+      final r = RunRecorder()
+        ..debugPrepareWithoutStream(route: route([en(0, 0), en(2000, 0)]));
+      final p = r.debugRouteProgress(at(100 / mPerDeg, 900 / mPerDeg))!;
+      expect(p.along, closeTo(900, 2));
+      expect(p.offRoute, closeTo(100, 1));
     });
   });
 }

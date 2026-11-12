@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../lib/disclosure.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -14,9 +15,9 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
 
-Run _run(String id) => Run(
+Run _run(String id, {int daysAgo = 1}) => Run(
       id: id,
-      startedAt: DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      startedAt: DateTime.now().toUtc().subtract(Duration(days: daysAgo)),
       duration: const Duration(minutes: 25),
       distanceMetres: 5000,
       source: RunSource.app,
@@ -38,7 +39,11 @@ void main() {
       try {
         final runStore = LocalRunStore();
         await runStore.init(overrideDirectory: runDir);
-        await runStore.save(_run('r1'));
+        // Enough history for the `standard` disclosure floor: below it, with
+        // no goal stored, the note folds away with the chart it sits under.
+        for (var i = 0; i < disclosureStandardRuns; i++) {
+          await runStore.save(_run('r$i', daysAgo: i + 1));
+        }
 
         final gymStore = LocalGymStore();
         await gymStore.init(overrideDirectory: gymDir);

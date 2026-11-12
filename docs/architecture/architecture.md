@@ -107,7 +107,7 @@ run-app/                          # Monorepo root
 ┌──────────────────────────────────▼──────────────────────────────┐
 │  External integrations                                          │
 │  MapLibre GL JS │ Strava API │ Garmin Connect │ HealthKit      │
-│  Health Connect  │ parkrun    │ RunSignUp      │ Elevation API  │
+│  Health Connect  │ ChronoTrack│ RunSignUp      │ Elevation API  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -154,12 +154,12 @@ WatchApp/
 
 ### Wear OS app (Kotlin + Compose-for-Wear)
 
-Native Kotlin Android app targeting Wear OS 3+ (minSdk 30). Uses Jetpack Compose-for-Wear (`androidx.wear.compose:*`) for UI, `FusedLocationProviderClient` for GPS, `androidx.health:health-services-client` for HR, DataStore for local queue persistence, and OkHttp for Supabase REST calls. **Not Flutter** — see [decisions.md § 15](decisions.md).
+Native Kotlin Android app targeting Wear OS 3+ (minSdk 30). Uses Jetpack Compose-for-Wear (`androidx.wear.compose:*`) for UI, `LocationManager.GPS_PROVIDER` for GPS (with `FusedLocationProviderClient` as fallback, decisions § 1984), `androidx.health:health-services-client` for HR, DataStore for local queue persistence, and OkHttp for Supabase REST calls. **Not Flutter** — see [decisions.md § 15](decisions.md).
 
 Talks to Supabase **directly** (standalone — no paired-phone dependency). Schema drift is caught by the Kotlin row classes generated from Supabase migrations via `scripts/gen_dart_models.dart`'s Kotlin emitter, same source-of-truth that drives the Dart `db_rows.dart`. Renaming a column regenerates both and breaks `watch_wear`'s `SupabaseClient.saveRun` at compile time.
 
 **Key responsibilities:**
-- Standalone GPS workout recording (`GpsRecorder` wrapping `FusedLocationProviderClient`)
+- Standalone GPS workout recording (`GpsRecorder` opening the `GPS_PROVIDER` receiver and the fused fallback, arbitrated by `recording/LocationSourceArbiter.kt`)
 - Live HR via Health Services `MeasureClient`, averaged into `run.metadata.avg_bpm` on stop
 - DataStore-backed retry queue (`LocalRunStore`) — runs stay local until `SupabaseClient.saveRun` succeeds
 - Compose-for-Wear UI with `TimeText`, `Vignette`, `PositionIndicator`, `ScalingLazyColumn`
@@ -169,12 +169,12 @@ Talks to Supabase **directly** (standalone — no paired-phone dependency). Sche
 
 A standalone SvelteKit app at `apps/web/`, deployed to AWS (S3 + CloudFront + Lambda + Route 53 — see [decisions.md § 53](decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). It is intentionally not a full-featured clone of the mobile app — its purpose is the things that are genuinely better on a large screen.
 
-**Stack:** SvelteKit 2 · Svelte 5 · TypeScript · Supabase JS client · MapLibre GL JS
+**Stack:** SvelteKit 3 · Svelte 5 · TypeScript · Supabase JS client · MapLibre GL JS
 
 **Key responsibilities:**
 - Full-screen route builder (the best route planning experience in the product)
 - Deep run analytics dashboard — charts, splits, personal records
-- Account and integrations management (Strava, Garmin, parkrun)
+- Account and integrations management (Strava, Garmin, RunSignUp / ChronoTrack, the parkrun barcode)
 - Public shareable pages for routes and runs (SEO-indexed)
 
 **Auth:** Supabase Auth with `@supabase/ssr` — server-side session management via cookies. No separate auth system — same user accounts as mobile.
@@ -210,9 +210,9 @@ src/routes/
     ├── +layout.svelte           # Tabbed settings layout
     ├── account/+page.svelte     # Profile, sign-in methods (link Google/Apple), data export
     ├── preferences/+page.svelte # Units, map style, activity defaults, coach tone, HR zones
-    ├── integrations/+page.svelte # Connect Strava, Garmin, parkrun
+    ├── integrations/+page.svelte # Connect Strava, Garmin; parkrun barcode
     ├── devices/+page.svelte     # Per-device settings
-    └── upgrade/+page.svelte     # Pro tier ($9.99 / mo) + one-off donate
+    └── upgrade/+page.svelte     # Pro tier ($9.99 / mo or $79.99 / yr) + one-off donate
 ```
 
 **Route builder (web-specific):**
@@ -264,7 +264,7 @@ class Waypoint {
 }
 ```
 
-**Generated row classes** (`src/generated/db_rows.dart`) — one class per table in the `_tables` allowlist (~51 tables today, tracking most of the schema: `RunRow`, `RouteRow`, `IntegrationRow`, `UserProfileRow`, and ~47 more). Snake-case field names that mirror the Supabase schema exactly, plus column-name constants (e.g. `RunRow.colStartedAt = 'started_at'`). Produced by `scripts/gen_dart_models.dart`, which parses `apps/backend/supabase/migrations/*.sql` and must be rerun after every migration. `ApiClient` marshals between domain classes and row classes, so a column rename forces a recompile at the mapping site instead of silently serialising to a dead field. See [schema_codegen.md](schema_codegen.md) for the full flow.
+**Generated row classes** (`src/generated/db_rows.dart`) — one class per table in the `_tables` allowlist (73 tables today, tracking most of the schema: `RunRow`, `RouteRow`, `IntegrationRow`, `UserProfileRow`, and 69 more). Snake-case field names that mirror the Supabase schema exactly, plus column-name constants (e.g. `RunRow.colStartedAt = 'started_at'`). Produced by `scripts/gen_dart_models.dart`, which parses `apps/backend/supabase/migrations/*.sql` and must be rerun after every migration. `ApiClient` marshals between domain classes and row classes, so a column rename forces a recompile at the mapping site instead of silently serialising to a dead field. See [schema_codegen.md](schema_codegen.md) for the full flow.
 
 ### `gpx_parser`
 
@@ -330,7 +330,7 @@ class ApiClient {
   Future<List<Run>> getRuns({int limit = 50, DateTime? before});
   Future<List<Waypoint>> fetchTrack(Run run);
   Future<void> saveRoute(Route route);
-  Future<List<Route>> getRoutes();
+  Future<KeysetPage<Route>> getRoutes({int limit = 200, List<Object?>? after, bool starredOnly = false});
 }
 ```
 
@@ -348,7 +348,7 @@ Shared Flutter widgets used by both phone apps. Ensures visual consistency acros
 - `SectionHeader` — the one uppercased eyebrow that names a list group
 - `ImportSheet` — bottom sheet for GPX/KML file selection
 
-Plus `AppTheme` (the Dusk light / dark themes and the `AppSemanticColors` status
+Plus `AppTheme` (the "Dusk, refined" light / dark themes, decisions § 1772, and the `AppSemanticColors` status
 roles) and `ChartPalette` (the categorical / ordinal / sequential scales every
 chart draws its marks in).
 
@@ -422,17 +422,17 @@ Thin TypeScript functions deployed to Supabase Edge Functions (Deno runtime).
 |---|---|---|---|
 | `strava-webhook` | POST (Strava push) | Receive activity created/updated event, fetch full activity, save run | **Deprecated** — superseded by `POST /v1/strava/webhook` on the Go worker (`apps/job_worker/internal/stravahook/`); EF kept as rollback |
 | `strava-import` | POST (user action) | OAuth token exchange, backfill last 90 days of activities | Active |
-| `parkrun-import` | POST (user action) | Fetch athlete results page by athlete number, parse HTML, save runs | Active |
 | `refresh-tokens` | Scheduled (pg_cron, every 4h) | Refresh expiring Strava access tokens before they expire | **Deprecated** — superseded by `token_refresh` job kind on the Go worker; EF kept as rollback |
-| `export-data` | POST (user action) | Export all user runs as GPX zip or CSV (GDPR Art 20) | **Deprecated** — superseded by `POST /v1/export` on the Go worker (`apps/job_worker/internal/dataexport/`); EF kept as rollback |
+| `export-data` | POST (user action) | Export all user runs as GPX zip or CSV (GDPR Art 20) | **Deprecated** — superseded by the Go worker's queued rail, `POST /v1/export/jobs` + `GET /v1/export/jobs/latest` (`apps/job_worker/internal/dataexport/`, decisions §717 + §724); EF kept as rollback and is the only synchronous export rail left |
 | `revenuecat-webhook` | POST (RevenueCat push) | Update `subscription_tier` on purchase/renewal/cancellation | Active |
 | `delete-account` | POST (user action) | Delete Storage files + auth user (cascades row data) | Active |
+| `plan-calendar` | GET (calendar app, token in the path) | Serve the owner's active plan as a subscribable `.ics`; the 96-hex token is the credential, hashed at rest, per-IP + per-feed rate limits, one indistinguishable 404 (migration `20270910000001`, training.md § Calendar feed) | Active |
 | `clip-public-track` | GET (anon-callable) | Serve clipped track JSON for non-owner viewers (replaces the dropped bare-table Storage SELECT policy, migration `20260619_001`) | Active |
 | `events-connect-onboard` | POST (host action) | Create / reuse a Stripe Express connected account for a paid-event host, persist its id in `instructor_payout_accounts` (club_events.md P1) | Active (gated on Stripe keys + sign-off) |
 | `events-checkout` | POST (buyer action) | Open a Stripe-hosted Checkout Session as a destination charge against the host's connected account, insert a `pending` `event_orders` row holding a soft capacity reservation (club_events.md P1) | Active (gated on Stripe keys + sign-off) |
 | `stripe-events-webhook` | POST (Stripe push) | Idempotent writer of order status — CAS `pending`→`paid` on `checkout.session.completed`, etc. (club_events.md P1) | Active (gated on Stripe keys + sign-off) |
 
-User-facing functions (`parkrun-import`, `strava-import`, `export-data`, `delete-account`) gate on a per-user fixed-window rate limit via `check_rate_limit` and the shared `_shared/rate_limit.ts` helper — denials return 429 with `Retry-After`. Skipped on `refresh-tokens` (cron, no user.id), `revenuecat-webhook` (HMAC-validated server-to-server), and `strava-webhook` (URL-secret guarded server-to-server). See [decisions.md § 42](decisions.md#42-edge-function-rate-limits-live-in-a-postgres-counter-not-deno-kv-or-in-memory) and [api_database.md § rate_limits](../backend/api_database.md).
+User-facing functions (`strava-import`, `race-results-import`, `export-data`, `delete-account`) gate on a per-user fixed-window rate limit via `check_rate_limit` and the shared `_shared/rate_limit.ts` helper — denials return 429 with `Retry-After`. Skipped on `refresh-tokens` (cron, no user.id), `revenuecat-webhook` (HMAC-validated server-to-server), and `strava-webhook` (URL-secret guarded server-to-server). See [decisions.md § 42](decisions.md#42-edge-function-rate-limits-live-in-a-postgres-counter-not-deno-kv-or-in-memory) and [api_database.md § rate_limits](../backend/api_database.md).
 
 ---
 
@@ -482,16 +482,9 @@ Same `health` package — single Dart API abstracts both platforms.
 final workouts = await health.getHealthDataFromTypes(...);
 ```
 
-### parkrun (scrape by athlete number)
+### No scraping
 
-```
-User enters athlete number (e.g. A123456)
-  → Edge Function fetches parkrun.org.uk/results/athleteresultshistory/?athleteNumber=A123456
-  → Parse HTML results table (BeautifulSoup / Cheerio)
-  → Extract: event, date, time, position, age grade
-  → Save as Run objects with source='parkrun'
-  → Deduplicate by external_id = parkrun event + date
-```
+No integration scrapes a third party's website ([decisions § 2467](decisions.md)). The parkrun results import, the parkrun events feed and the UltraSignup results import were removed on 2026-11-10 for that reason; runs already imported keep `source = 'parkrun'`. Race results come from RunSignUp's and ChronoTrack's APIs or manual paste ([integrations.md](../features/integrations.md#removed-scraped-integrations)).
 
 ### Garmin Connect (official developer program)
 
@@ -552,9 +545,9 @@ High-level sequence on the phone. The full detail — filter chain, auto-pause g
 | iOS + Android UI | Flutter 3.x + Dart | Single codebase, ~80% shared |
 | Apple Watch | Swift 5 + SwiftUI + WatchKit | Separate Xcode project in monorepo |
 | Wear OS | Native Kotlin + Jetpack Compose-for-Wear | Separate Gradle project in monorepo, schema-codegen'd Kotlin row classes — see [decisions.md § 15](decisions.md) |
-| Web app | SvelteKit 2 + Svelte 5 + TypeScript | File-based routing, deployed to AWS S3 + CloudFront with `/api/coach` on Lambda — see [decisions.md § 53](decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages) |
+| Web app | SvelteKit 3 + Svelte 5 + TypeScript | File-based routing, deployed to AWS S3 + CloudFront with `/api/coach` on Lambda — see [decisions.md § 53](decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages) |
 | Web maps | MapLibre GL JS | Route builder, run GPS trace, live spectator |
-| Web icons | unplugin-icons + Iconify | Material Symbols icon set |
+| Web icons | Self-hosted Material Symbols webfont, rendered as ligatures | Subset to the 324 icons the tree names by `scripts/gen_web_icon_font.mjs` — see [decisions.md § 780](decisions.md). |
 | Web auth | Supabase Auth + `@supabase/ssr` | Cookie-based sessions |
 
 | Monorepo tooling | Melos (Flutter) + npm workspaces (web + backend) | Separate toolchains, same repo. `pnpm` lockfile is committed for local convenience; CI runs `npm`. |
@@ -573,7 +566,7 @@ High-level sequence on the phone. The full detail — filter chain, auto-pause g
 
 Tests and analysis run via Melos scripts — see [testing.md](../testing/testing.md) for how to run the suite locally, what's covered today, and the patterns used to make platform-channel-heavy code unit-testable.
 
-`.github/workflows/ci.yml` runs seventeen jobs on every PR + push to `main` (no PR-only vs. push-only split): `test-packages`, `test-worker`, `test-graph-cycle`, `parity-types`, `build-web`, `parity-matrix`, `build-watch-wear`, `build-firmware`, `build-mobile-android`, `twin-parity`, `schema-codegen-drift`, `api-client-integration`, `edge-functions`, `pgtap-rls`, `e2e-web` (Playwright sharded 14-way), `e2e-web-livehub`, and `e2e-web-sso`. The per-job breakdown lives in [monorepo.md § CI/CD](monorepo.md#cicd); `ci.yml` itself is the source of truth. Branch protection requires a single status check — the **`CI gate`** aggregator job, which `needs:` every CI job above, so adding a job auto-gates merges once it's listed; `ci.yml` always runs, so it is the only emitter of that context; on a docs-only diff its `changes` filter job skips the heavy jobs and the aggregator still reports green.
+`.github/workflows/ci.yml` runs **every job it defines** on every PR + push to `main` (no PR-only vs. push-only split). The total is deliberately not asserted in prose here — the two that were (“seventeen” here, “nineteen” in [testing.md](../testing/testing.md)) were both stale, and disagreed with each other as well as with the file. Recompute it with `awk '/^jobs:/{j=1;next} j&&/^[^ ]/{j=0} j&&/^  [A-Za-z0-9_-]+:$/{n++} END{print n}' .github/workflows/ci.yml` (35 on 2026-09-07, 34 of them in the gate's `needs:`). The principal ones, and the only list here — `ci.yml` is the source of truth and this enumeration has gone stale twice: `test-packages`, `test-mobile-android`, `test-worker`, `test-graph-cycle`, `parity-types`, `build-web`, `parity-matrix`, `build-watch-wear`, `build-firmware`, `build-mobile-android`, `twin-parity`, `schema-codegen-drift`, `api-client-integration`, `edge-functions`, `pgtap-rls`, `e2e-web` (Playwright sharded 14-way), `e2e-web-livehub`, and `e2e-web-sso`. The per-job breakdown lives in [monorepo.md § CI/CD](monorepo.md#cicd); `ci.yml` itself is the source of truth. Branch protection requires a single status check — the **`CI gate`** aggregator job, which `needs:` every other job in the file. That is not a convention a new job has to remember: `scripts/check_ci_diagnostics.mjs` (in `workflow-lint`) fails the PR when a job is in no `needs:` entry of the gate, because a job the gate never waited on counts as no result rather than as a red; `ci.yml` always runs, so it is the only emitter of that context; on a docs-only diff its `changes` filter job skips the heavy jobs and the aggregator still reports green.
 
 iOS builds and Edge Function deploys run from `.github/workflows/release-ios.yml` and `release-backend.yml` on tag push — not on PR. See [releasing.md](../ops/releasing.md).
 
@@ -585,7 +578,7 @@ Web app deploys to AWS via `.github/workflows/release-web.yml`, which uses GitHu
 
 - **Row-level security** enforced on all Supabase tables — no user can access another user's data even if they have a valid JWT
 - **Strava tokens** stored server-side in the `integrations` table, never sent to the client
-- **parkrun athlete numbers** are public — no passwords stored
+- **parkrun athlete numbers** are stored only for the on-device barcode (owner-only column); nothing is fetched from parkrun
 - **GPS data** stored as JSONB blobs in Postgres, encrypted at rest by Supabase
 - **Apple Sign-In** on iOS 13+ — no email/password surface to attack
 - **Web app sessions** managed via `@supabase/ssr` — auth cookies are httpOnly and not accessible to JavaScript

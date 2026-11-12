@@ -1,24 +1,40 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatISO } from '$lib/training/training';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { isEntityId } from '#lib/core/entity_id.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { alignPlanStartIso, defaultPlanStartIso } from '#lib/training/plan_start.ts';
+	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import { isPlausibleRecent5k } from '#lib/training/recent_5k_suggestion.ts';
 	import { goto, afterNavigate } from '$app/navigation';
-	import { page } from '$app/stores';
-	import PlanEditor from '$lib/components/PlanEditor.svelte';
-	import SessionPlanEditor from '$lib/components/SessionPlanEditor.svelte';
-	import RoutineEditor from '$lib/components/RoutineEditor.svelte';
+	import { page } from '$app/state';
+	import PlanEditor from '#lib/components/PlanEditor.svelte';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
+	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
+	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
 	import {
-		fetchMyClubs,
+		fetchMyClubsWithError,
 		fetchClubTemplatesForClubs,
 		clonePlanTemplate,
 		createTrainingPlan,
+		fetchMyOverlappingActivePlans,
+		type PlanOverlapChoice,
 		fetchGymExerciseNames,
 		publishGymRoutineAsTemplate,
-	} from '$lib/core/data';
-	import { STARTER_PLANS, starterById, instantiateStarter } from '$lib/training/starter_plans';
-	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '$lib/settings/onboarding';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { TrainingPlan } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { STARTER_PLANS, starterById, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { starterName, starterSummaryText } from '#lib/training/starter_labels.ts';
+	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import type { TrainingPlan } from '#lib/types.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	interface TemplateOption {
 		template: TrainingPlan;
@@ -27,8 +43,16 @@
 
 	type PlanKind = 'training' | 'session' | 'gym';
 
+	// `?describe=<text>` (the coach's plan handoff) hands the AI plan box a
+	// description to fill from. It is a training-plan request by definition,
+	// so it picks that kind and skips the chooser. Capped to the box's own
+	// maxlength; PlanEditor ignores it while the assistant is off.
+	const describeParam =
+		page.url.searchParams.get('describe')?.trim().slice(0, 600).trim() || undefined;
+
 	function initialKind(): PlanKind {
-		const t = $page.url.searchParams.get('type');
+		if (describeParam) return 'training';
+		const t = page.url.searchParams.get('type');
 		return t === 'session' || t === 'gym' ? t : 'training';
 	}
 
@@ -36,31 +60,107 @@
 	// new artifact at that club. Honoured one-step only by the session branch —
 	// session_plans support a club-owned create; training + gym templates are
 	// build-then-publish, so the club param is informational there.
-	const clubId = $page.url.searchParams.get('club');
+	const clubId = page.url.searchParams.get('club');
 
 	// An explicit `?type=` means the caller already chose the kind (a club's
 	// contextual "New …" link) — skip the chooser so we don't ask twice. The
 	// bare /plans/new entry (no type) shows the chooser to disambiguate.
-	const explicitType = $page.url.searchParams.get('type');
-	const showChooser = !(
-		explicitType === 'training' || explicitType === 'session' || explicitType === 'gym'
-	);
+	const explicitType = page.url.searchParams.get('type');
+	const showChooser =
+		!describeParam &&
+		!(explicitType === 'training' || explicitType === 'session' || explicitType === 'gym');
 
 	// `?goal=<primary_goal>` (the onboarding "create my training plan" CTA)
 	// preselects the goal distance + walk-run toggle so a brand-new runner
 	// lands on the right plan shape without hunting for the beginner checkbox.
-	const goalParam = $page.url.searchParams.get('goal');
+	const goalParam = page.url.searchParams.get('goal');
 	const goalPreset =
 		goalParam && (PRIMARY_GOAL_VALUES as readonly string[]).includes(goalParam)
 			? planPresetForGoal(goalParam as PrimaryGoal)
 			: null;
 
+	// `?raceDate=&raceName=&raceDistance=` (the race calendar's "train for
+	// this race" CTA) sizes the plan so its final race week contains race
+	// day. The URL carries the race's facts rather than the derived dates so
+	// the arithmetic has one home — a hand-edited or bookmarked link is
+	// re-derived against today, not replayed stale.
+	const raceDateParam = page.url.searchParams.get('raceDate');
+	const raceNameParam = page.url.searchParams.get('raceName');
+	// Absent and empty both coerce to 0 through `Number`, so the parse has to
+	// test the string, not the number — an "is this present" check written as
+	// `Number.isFinite` silently reads a missing param as a zero-metre race.
+	const raceDistanceParam = page.url.searchParams.get('raceDistance')?.trim();
+	const raceDistanceM = (() => {
+		if (!raceDistanceParam) return null;
+		const n = Number(raceDistanceParam);
+		return Number.isFinite(n) ? n : null;
+	})();
+	// `?notBefore=` (a race page's "Add to my season") floors the start after
+	// the runner's current plan and its recovery days, so the new plan queues
+	// behind it instead of overlapping it.
+	const notBeforeParam = page.url.searchParams.get('notBefore')?.trim() || null;
+	// `?raceListing=` names the calendar listing the race facts came from, so
+	// the created plan links back to that race (decisions § 2156).
+	const raceListingParam = page.url.searchParams.get('raceListing')?.trim() || null;
+	const racePreset = raceDateParam
+		? racePlanPreset({
+				raceDateIso: raceDateParam,
+				distanceM: raceDistanceM,
+				todayIso: todayISO(),
+				notBeforeIso: notBeforeParam,
+			})
+		: null;
+	// A refusal still renders the wizard on its own defaults — we just say
+	// why the dates aren't the race's, rather than silently ignoring the link.
+	// The name field is capped; a programmatic bind bypasses that, so clamp
+	// what the URL hands us to the same budget.
+	const initialName =
+		racePreset?.ok && raceNameParam?.trim()
+			? raceNameParam.trim().slice(0, lengthLimit('training_plans.name'))
+			: undefined;
+
+	const raceRefusalKey: MessageKey | null =
+		!racePreset || racePreset.ok
+			? null
+			: racePreset.reason === 'past'
+				? 'plansNew.racePast'
+				: racePreset.reason === 'too_soon'
+					? 'plansNew.raceTooSoon'
+					: 'plansNew.raceUnreadable';
+
+	// `?recent5k=<seconds>` (Home's "build a plan from your recent 5K") fills
+	// the wizard's recent-5K field. It stays unconfirmed: PlanEditor only lets
+	// it set paces once the runner ticks that it reflects their fitness today.
+	const recent5kParam = page.url.searchParams.get('recent5k')?.trim();
+	const initialRecent5kSec = (() => {
+		if (!recent5kParam || !/^[0-9]+$/.test(recent5kParam)) return undefined;
+		const n = Number(recent5kParam);
+		return isPlausibleRecent5k(n) ? n : undefined;
+	})();
+
+	// `?start=<yyyy-mm-dd>` (the plan recap's "Build your next plan") opens the
+	// wizard on the first Sunday after the race's recovery. Snapped to a Sunday
+	// like a picked date, and ignored when it is earlier than the wizard's own
+	// default, so a stale link never offers a start the wizard would refuse.
+	const startParam = page.url.searchParams.get('start')?.trim();
+	const initialStartFromLink = (() => {
+		if (!startParam || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(startParam)) return undefined;
+		if (Number.isNaN(Date.parse(`${startParam}T00:00:00`))) return undefined;
+		const aligned = alignPlanStartIso(startParam, false);
+		return aligned > defaultPlanStartIso(todayISO(), false) ? aligned : undefined;
+	})();
+
 	let kind = $state<PlanKind>(initialKind());
 
 	let templates = $state<TemplateOption[]>([]);
 	let loadingTemplates = $state(true);
+	/// The club templates could not be read. Said out loud with a retry: a
+	/// club's Adopt link (`?from=`) otherwise landed on a page with no picker
+	/// and no reason why.
+	let templatesError = $state(false);
 	let selectedTemplateId = $state('');
 	let startDate = $state(defaultStartDate());
+	let startSnapped = $state(false);
 	let cloning = $state(false);
 	let selectedStarterId = $state('');
 	let creatingStarter = $state(false);
@@ -143,18 +243,20 @@
 		else goto(backHref);
 	}
 
+	/// Plan day 0 is the Sunday long run, so a plan starts on a Sunday
+	/// (decisions § 735): the default is the Sunday at least a week out. A
+	/// walk-run starter is the exemption and defaults to tomorrow, chosen in
+	/// `onStarterChange` while the runner has not touched the date.
 	function defaultStartDate(): string {
-		const d = new Date();
-		// Snap to the next Monday — that's the canonical week-start the
-		// schedule generator assumes.
-		const offset = (8 - d.getDay()) % 7;
-		d.setDate(d.getDate() + (offset === 0 ? 7 : offset));
-		return formatISO(d);
+		return defaultPlanStartIso(todayISO(), false);
 	}
 
-	onMount(async () => {
+	async function loadTemplates(): Promise<void> {
+		loadingTemplates = true;
+		templatesError = false;
 		try {
-			const clubs = await fetchMyClubs();
+			const { clubs, error } = await fetchMyClubsWithError();
+			if (error) throw dbError(error);
 			const byClub = await fetchClubTemplatesForClubs(clubs.map((c) => c.id));
 			templates = clubs.flatMap((c) =>
 				(byClub.get(c.id) ?? []).map((template) => ({ template, clubName: c.name }))
@@ -163,15 +265,20 @@
 			// (/plans/new?from=<templateId>). Only honour it when it's one of
 			// the user's loaded club templates — a stale or foreign id leaves
 			// the picker on its placeholder rather than a phantom selection.
-			const from = $page.url.searchParams.get('from');
+			const from = page.url.searchParams.get('from');
 			if (from && templates.some((t) => t.template.id === from)) {
 				selectedTemplateId = from;
 			}
 		} catch (e) {
-			console.warn('fetch templates failed', e);
+			console.error('fetch templates failed', e);
+			templatesError = true;
 		} finally {
 			loadingTemplates = false;
 		}
+	}
+
+	onMount(async () => {
+		await loadTemplates();
 		try {
 			gymSuggestions = await fetchGymExerciseNames();
 		} catch (e) {
@@ -179,60 +286,134 @@
 		}
 	});
 
-	async function cloneSelected() {
-		if (!selectedTemplateId || !startDate) return;
-		cloning = true;
-		try {
-			const newPlanId = await clonePlanTemplate(selectedTemplateId, startDate);
-			showToast(m('plansNew.toastCreated'));
-			goto(`/plans/${newPlanId}`);
-		} catch (e) {
-			showToast(m('plansNew.toastCloneFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
-		} finally {
-			cloning = false;
-		}
+	// The template and starter paths ask the server to refuse an overlap and,
+	// when it does, show the same dialog the wizard does; the runner's choice
+	// is retried through `retryWithOverlap` (decisions § 2050).
+	let overlapping = $state<OverlapPlan[]>([]);
+	let overlapStart = $state('');
+	let retryWithOverlap: ((overlap: PlanOverlapChoice) => Promise<void>) | null = null;
+
+	function askOverlap(start: string, hits: OverlapPlan[], retry: (overlap: PlanOverlapChoice) => Promise<void>) {
+		overlapStart = start;
+		retryWithOverlap = retry;
+		overlapping = hits;
 	}
 
-	/// Localized display name per starter id (literal m() keys so the i18n
-	/// parity tooling can see them).
-	function starterName(id: string): string {
-		switch (id) {
-			case 'c25k':
-				return m('plansNew.starterC25k');
-			case 'half_12wk':
-				return m('plansNew.starterHalf12');
-			case 'marathon_16wk':
-				return m('plansNew.starterMarathon16');
-			default:
-				return id;
+	function cancelOverlap() {
+		overlapping = [];
+		retryWithOverlap = null;
+	}
+
+	async function chooseOverlap(choice: 'replace' | 'trim') {
+		const retry = retryWithOverlap;
+		overlapping = [];
+		retryWithOverlap = null;
+		await retry?.(choice);
+	}
+
+	async function cloneSelected() {
+		if (!selectedTemplateId || !startDate || cloning) return;
+		const option = templates.find((t) => t.template.id === selectedTemplateId);
+		if (!option) return;
+		const start = startDate;
+		const end = clonedPlanEndIso(option.template, start);
+		const run = async (overlap: PlanOverlapChoice): Promise<void> => {
+			cloning = true;
+			try {
+				const outcome = await attemptPlanCreate(
+					() => clonePlanTemplate(option.template.id, start, overlap),
+					() => fetchMyOverlappingActivePlans(start, end)
+				);
+				if (outcome.kind === 'overlap') {
+					askOverlap(start, outcome.overlapping, run);
+					return;
+				}
+				if (outcome.kind === 'trimBlocked') {
+					showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
+					return;
+				}
+				showToast(m('plansNew.toastCreated'));
+				goto(`/plans/${outcome.value}`);
+			} catch (e) {
+				showToast(m('plansNew.toastCloneFailed', { error: errorCopy(e, m, 'plansNew.toastCloneFailed') }), 'error');
+			} finally {
+				cloning = false;
+			}
+		};
+		await run('refuse');
+	}
+
+	let selectedStarterSummary = $derived(selectedStarterId ? starterSummaryText(selectedStarterId) : null);
+
+	function starterWalkRun(): boolean {
+		return starterById(selectedStarterId)?.beginnerWalkRun ?? false;
+	}
+
+	function onStarterChange() {
+		const walkRun = starterWalkRun();
+		if (startDate === defaultPlanStartIso(todayISO(), !walkRun)) {
+			startDate = defaultPlanStartIso(todayISO(), walkRun);
 		}
+		alignStarterStart();
+	}
+
+	/// A date input cannot be limited to Sundays, so a picked weekday snaps
+	/// forward to the upcoming Sunday, unless the starter is walk-run.
+	function alignStarterStart() {
+		if (!startDate || !selectedStarterId) return;
+		const aligned = alignPlanStartIso(startDate, starterWalkRun());
+		startSnapped = aligned !== startDate;
+		startDate = aligned;
 	}
 
 	async function createFromStarter() {
 		if (!selectedStarterId || !startDate || creatingStarter) return;
-		const starter = starterById(selectedStarterId);
-		const generated = instantiateStarter(selectedStarterId, startDate);
-		if (!starter || !generated) return;
+		alignStarterStart();
+		const starterId = selectedStarterId;
+		const start = startDate;
+		const starter = starterById(starterId);
+		if (!starter) return;
 		creatingStarter = true;
-		try {
-			const plan = await createTrainingPlan({
-				name: starterName(selectedStarterId),
-				goalEvent: starter.goalEvent,
-				goalDistanceM: generated.goalDistanceM,
-				startDate,
-				daysPerWeek: starter.daysPerWeek,
-				generated
-			});
-			showToast(m('plansNew.toastCreated'));
-			goto(`/plans/${plan.id}`);
-		} catch (e) {
-			showToast(
-				m('plansNew.toastCreateFailed', { error: e instanceof Error ? e.message : String(e) }),
-				'error'
-			);
-		} finally {
-			creatingStarter = false;
-		}
+		const c = auth.user ? await loadPlanCalibration(auth.user.id) : null;
+		creatingStarter = false;
+		const generated = instantiateStarter(starterId, start, c?.age, c?.extraRecovery);
+		if (!generated) return;
+		const run = async (overlap: PlanOverlapChoice): Promise<void> => {
+			creatingStarter = true;
+			try {
+				const outcome = await attemptPlanCreate(
+					() =>
+						createTrainingPlan({
+							name: starterName(starterId),
+							goalEvent: starter.goalEvent,
+							goalDistanceM: generated.goalDistanceM,
+							startDate: start,
+							daysPerWeek: starter.daysPerWeek,
+							generated,
+							overlap
+						}),
+					() => fetchMyOverlappingActivePlans(start, generated.endDate)
+				);
+				if (outcome.kind === 'overlap') {
+					askOverlap(start, outcome.overlapping, run);
+					return;
+				}
+				if (outcome.kind === 'trimBlocked') {
+					showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
+					return;
+				}
+				showToast(m('plansNew.toastCreated'));
+				goto(`/plans/${outcome.value.id}`);
+			} catch (e) {
+				showToast(
+					m('plansNew.toastCreateFailed', { error: errorCopy(e, m, 'plansNew.toastCreateFailed') }),
+					'error'
+				);
+			} finally {
+				creatingStarter = false;
+			}
+		};
+		await run('refuse');
 	}
 </script>
 
@@ -242,14 +423,19 @@
 
 <div class="page">
 	<a href={backHref} class="back-link" onclick={handleBack}>
-		<span class="material-symbols">arrow_back</span>
+		<span class="material-symbols" aria-hidden="true">arrow_back</span>
 		{backLabel}
 	</a>
 
 	<p class="kicker">{m('plansNew.kicker')}</p>
 
 	{#if showChooser}
-		<div class="kind-chooser" role="group" aria-label={m('plansNew.chooserLabel')}>
+		<div
+			class="kind-chooser"
+			role="group"
+			aria-label={m('plansNew.chooserLabel')}
+			aria-describedby="plan-kind-tagline"
+		>
 			<button
 				type="button"
 				class="kind-tab"
@@ -285,7 +471,7 @@
 
 	<header class="page-header">
 		<h1>{m(headingKey)}</h1>
-		<p class="tagline">
+		<p class="tagline" id="plan-kind-tagline">
 			{m(taglineKey)}
 		</p>
 	</header>
@@ -296,11 +482,15 @@
 	{/if}
 	<section class="starter-picker">
 		<h2>{m('plansNew.starterHeading')}</h2>
-		<p class="picker-hint">{m('plansNew.starterHint')}</p>
+		<p class="picker-hint" id="starter-hint">{m('plansNew.starterHint')}</p>
 		<div class="picker-row">
 			<label class="picker-field">
 				<span>{m('plansNew.starterLabel')}</span>
-				<select bind:value={selectedStarterId}>
+				<select
+					bind:value={selectedStarterId}
+					onchange={onStarterChange}
+					aria-describedby="starter-hint starter-summary"
+				>
 					<option value="">{m('plansNew.selectPlaceholder')}</option>
 					{#each STARTER_PLANS as s (s.id)}
 						<option value={s.id}>{starterName(s.id)}</option>
@@ -309,7 +499,15 @@
 			</label>
 			<label class="picker-field">
 				<span>{m('plansNew.startDateLabel')}</span>
-				<input type="date" bind:value={startDate} />
+				<input
+					type="date"
+					bind:value={startDate}
+					onchange={alignStarterStart}
+					aria-describedby="starter-start-date-hint"
+				/>
+				{#if startSnapped}
+					<span class="field-note" role="status">{m('planEditor.movedToNextSunday')}</span>
+				{/if}
 			</label>
 			<button
 				class="btn btn-primary"
@@ -325,18 +523,36 @@
 				{/if}
 			</button>
 		</div>
+		<p class="picker-hint field-hint" id="starter-summary" data-testid="starter-summary" hidden={!selectedStarterSummary}>
+			{selectedStarterSummary ?? ''}
+		</p>
+		<p class="picker-hint field-hint" id="starter-start-date-hint">{m('plansNew.startDateHint')}</p>
 	</section>
 
-	{#if !loadingTemplates && templates.length > 0}
+	<section class="season-entry" data-testid="season-entry">
+		<h2>{m('seasonPlanner.entryTitle')}</h2>
+		<p class="picker-hint">{m('seasonPlanner.entryHint')}</p>
+		<a class="btn btn-secondary" href="/plans/season">{m('seasonPlanner.entryLink')}</a>
+	</section>
+
+	{#if templatesError}
+		<section class="template-picker" data-testid="template-load-error">
+			<h2>{m('plansNew.templateHeading')}</h2>
+			<p class="picker-hint" role="alert">{m('plansNew.templatesLoadFailed')}</p>
+			<button class="btn btn-secondary btn-sm" type="button" onclick={loadTemplates}>
+				{m('plansNew.templatesRetry')}
+			</button>
+		</section>
+	{:else if !loadingTemplates && templates.length > 0}
 		<section class="template-picker">
 			<h2>{m('plansNew.templateHeading')}</h2>
-			<p class="picker-hint">
+			<p class="picker-hint" id="template-hint">
 				{m('plansNew.templateHint')}
 			</p>
 			<div class="picker-row">
 				<label class="picker-field">
 					<span>{m('plansNew.templateLabel')}</span>
-					<select bind:value={selectedTemplateId}>
+					<select bind:value={selectedTemplateId} aria-describedby="template-hint">
 						<option value="">{m('plansNew.selectPlaceholder')}</option>
 						{#each templates as t (t.template.id)}
 							<option value={t.template.id}>
@@ -347,7 +563,7 @@
 				</label>
 				<label class="picker-field">
 					<span>{m('plansNew.startDateLabel')}</span>
-					<input type="date" bind:value={startDate} />
+					<input type="date" bind:value={startDate} aria-describedby="template-start-date-hint" />
 				</label>
 				<button
 					class="btn btn-primary"
@@ -363,16 +579,43 @@
 					{/if}
 				</button>
 			</div>
+			<p class="picker-hint field-hint" id="template-start-date-hint">{m('plansNew.startDateHint')}</p>
 		</section>
 	{/if}
 
 	<div class="or-rule"><span>{m('plansNew.orFromScratch')}</span></div>
 
+	{#if racePreset?.ok}
+		<p class="picker-hint race-preset-note" data-testid="race-preset-note">
+			{m('plansNew.raceAnchored', { weeks: String(racePreset.preset.weeks) })}
+		</p>
+		{#if notBeforeParam}
+			<p class="picker-hint race-preset-note" data-testid="race-preset-chained">
+				{m('plansNew.raceChained', { date: formatDate(racePreset.preset.startDate) })}
+			</p>
+		{/if}
+	{:else if raceRefusalKey}
+		<p class="picker-hint race-preset-note" data-testid="race-preset-refusal">
+			{m(raceRefusalKey)}
+		</p>
+	{/if}
+
 	<PlanEditor
 		oncreated={(plan) => goto(`/plans/${plan.id}`)}
 		oncancel={handleCancel}
-		initialGoalEvent={goalPreset?.goalEvent}
+		initialGoalEvent={racePreset?.ok
+			? (racePreset.preset.goalEvent ?? undefined)
+			: goalPreset?.goalEvent}
+		initialGoalDistanceM={racePreset?.ok && racePreset.preset.goalEvent == null ? raceDistanceM : null}
 		initialBeginnerWalkRun={goalPreset?.beginnerWalkRun}
+		{initialName}
+		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : initialStartFromLink}
+		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
+		initialRace={racePreset?.ok && raceDateParam ? { date: raceDateParam, name: initialName ?? null } : null}
+		notBeforeIso={notBeforeParam}
+		raceListingId={racePreset?.ok && isEntityId(raceListingParam) ? raceListingParam : null}
+		initialDescription={describeParam}
+		{initialRecent5kSec}
 	/>
 	{:else if kind === 'session'}
 		<div class="form-branch">
@@ -390,6 +633,13 @@
 		</div>
 	{/if}
 </div>
+
+<PlanOverlapDialog
+	{overlapping}
+	startDate={overlapStart}
+	onchoose={chooseOverlap}
+	oncancel={cancelOverlap}
+/>
 
 <style>
 	.page {
@@ -486,7 +736,8 @@
 	}
 
 	.template-picker,
-	.starter-picker {
+	.starter-picker,
+	.season-entry {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
@@ -494,15 +745,27 @@
 		margin-bottom: var(--space-lg);
 	}
 	.template-picker h2,
-	.starter-picker h2 {
+	.starter-picker h2,
+	.season-entry h2 {
 		font-size: 1.1rem;
 		font-weight: 700;
 		margin: 0 0 0.2rem 0;
+	}
+	.field-note {
+		display: block;
+		margin-top: var(--space-2xs);
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+		font-weight: 400;
 	}
 	.picker-hint {
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		margin: 0 0 var(--space-md) 0;
+	}
+	.field-hint {
+		margin: var(--space-sm) 0 0 0;
+		font-size: 0.85rem;
 	}
 	.picker-row {
 		display: flex;

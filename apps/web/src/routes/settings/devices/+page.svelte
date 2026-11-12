@@ -1,29 +1,34 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { getDeviceId } from '$lib/settings/settings';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { getDeviceId } from '#lib/settings/settings.ts';
 	import {
 		isPushSupported,
 		pushPermission,
 		subscribeToPush,
 		unsubscribeFromPush,
 		getCurrentSubscription,
-	} from '$lib/util/push';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	} from '#lib/util/push.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
+	import type { Json } from '#lib/database.types.ts';
 
 	interface DeviceRow {
 		device_id: string;
 		platform: string;
 		label: string | null;
 		last_seen_at: string;
-		prefs: Record<string, unknown>;
+		prefs: PrefsBag;
 		updated_at: string;
 	}
 
@@ -70,7 +75,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushEnabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushEnableFailedToast', { message: (e as Error).message }), 'error');
+			showToast(m('settingsDevices.pushEnableFailedToast', { message: errorCopy(e, m, 'settingsDevices.pushEnableFailedToast') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -84,7 +89,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushDisabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushDisableFailedToast', { message: (e as Error).message }), 'error');
+			showToast(m('settingsDevices.pushDisableFailedToast', { message: errorCopy(e, m, 'settingsDevices.pushDisableFailedToast') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -101,12 +106,12 @@
 		if (!data) return;
 		devices = devices.map((d) =>
 			d.device_id === currentDeviceId
-				? { ...d, prefs: (data.prefs as Record<string, unknown>) ?? {} }
+				? { ...d, prefs: (data.prefs as PrefsBag | null) ?? {} }
 				: d,
 		);
 	}
 
-	function hasPushSubscription(prefs: Record<string, unknown>): boolean {
+	function hasPushSubscription(prefs: PrefsBag): boolean {
 		return prefs && typeof prefs === 'object' && 'push_subscription' in prefs;
 	}
 
@@ -123,7 +128,7 @@
 			.eq('user_id', auth.user.id)
 			.eq('device_id', deviceId);
 		if (error) {
-			showToast(m('settingsDevices.renameFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.renameFailedToast', { message: errorCopy(error, m, 'settingsDevices.renameFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
@@ -140,7 +145,7 @@
 			.eq('user_id', auth.user.id)
 			.eq('device_id', deviceId);
 		if (error) {
-			showToast(m('settingsDevices.removeDeviceFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.removeDeviceFailedToast', { message: errorCopy(error, m, 'settingsDevices.removeDeviceFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.filter((d) => d.device_id !== deviceId);
@@ -204,7 +209,7 @@
 		});
 	}
 
-	function overrideCount(prefs: Record<string, unknown>): number {
+	function overrideCount(prefs: PrefsBag): number {
 		return Object.keys(prefs).length;
 	}
 
@@ -221,6 +226,24 @@
 		return String(v);
 	}
 
+	async function mergeOverrides(
+		device: DeviceRow,
+		changes: PrefsBag,
+	): Promise<{ data: DeviceRow['prefs']; error: { message: string } | null }> {
+		const res = await supabase.rpc('merge_my_device_settings', {
+			p_device_id: device.device_id,
+			p_changes: changes,
+			p_platform: device.platform,
+			p_label: device.label,
+		});
+		if (res.error) return { data: device.prefs, error: res.error };
+		const bag = res.data;
+		return {
+			data: bag != null && typeof bag === 'object' && !Array.isArray(bag) ? (bag as DeviceRow['prefs']) : device.prefs,
+			error: null,
+		};
+	}
+
 	/// Drop a single override key from a device. The rest of the row
 	/// stays. A failure surfaces as an error toast — silently returning
 	/// left the value on screen with no explanation of why the Clear did
@@ -229,18 +252,16 @@
 		if (!auth.user) return;
 		const device = devices.find((d) => d.device_id === deviceId);
 		if (!device) return;
-		const { [key]: _dropped, ...rest } = device.prefs;
-		const { error } = await supabase
-			.from('user_device_settings')
-			.update({ prefs: rest, updated_at: new Date().toISOString() })
-			.eq('user_id', auth.user.id)
-			.eq('device_id', deviceId);
+		// A delta through the atomic merge (issue #1212): writing back this
+		// page's snapshot of the bag would undo anything that device changed
+		// since the page loaded.
+		const { data, error } = await mergeOverrides(device, { [key]: null });
 		if (error) {
-			showToast(m('settingsDevices.clearOverrideFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.clearOverrideFailedToast', { message: errorCopy(error, m, 'settingsDevices.clearOverrideFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
-			d.device_id === deviceId ? { ...d, prefs: rest } : d,
+			d.device_id === deviceId ? { ...d, prefs: data } : d,
 		);
 	}
 
@@ -360,29 +381,29 @@
 		const device = devices.find((d) => d.device_id === addingForDevice);
 		if (!device) return;
 		const ed = currentEditor();
-		let value: unknown;
+		// A `Json`, not an `unknown`: the value goes straight into the jsonb
+		// overrides bag. Typing it as one also puts the chain's exhaustiveness
+		// on the compiler — the trailing `else if` used to leave `value`
+		// unassigned for any editor shape without a branch, writing `undefined`
+		// into the bag instead of refusing.
+		let value: Json;
 		if (ed.shape.kind === 'bool') value = addValueBool;
 		else if (ed.shape.kind === 'number') {
 			const n = parseFloat(addValueNumber);
 			if (!Number.isFinite(n)) return;
 			value = n;
-		} else if (ed.shape.kind === 'enum') value = addValueEnum;
+		} else value = addValueEnum;
 
 		if (addBusy) return;
 		addBusy = true;
-		const next = { ...device.prefs, [addKey]: value };
-		const { error } = await supabase
-			.from('user_device_settings')
-			.update({ prefs: next, updated_at: new Date().toISOString() })
-			.eq('user_id', auth.user.id)
-			.eq('device_id', addingForDevice);
+		const { data, error } = await mergeOverrides(device, { [addKey]: value });
 		addBusy = false;
 		if (error) {
-			showToast(m('settingsDevices.addOverrideFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.addOverrideFailedToast', { message: errorCopy(error, m, 'settingsDevices.addOverrideFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
-			d.device_id === addingForDevice ? { ...d, prefs: next } : d,
+			d.device_id === addingForDevice ? { ...d, prefs: data } : d,
 		);
 		addingForDevice = null;
 	}
@@ -401,23 +422,17 @@
 		<div class="skeleton-stack" aria-hidden="true">
 			{#each Array(3) as _, i (i)}
 				<div class="skel-row">
-					<span class="skel skel-icon"></span>
+					<SkeletonBlock height="1.5rem" width="1.5rem" radius="50%" />
 					<div class="skel-info">
-						<span class="skel skel-line skel-w-40"></span>
-						<span class="skel skel-line skel-w-60"></span>
+						<SkeletonBlock height="0.85rem" width="40%" />
+						<SkeletonBlock height="0.85rem" width="60%" />
 					</div>
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('settingsDevices.loadingDevices')}</p>
+		<p class="visually-hidden" role="status">{m('settingsDevices.loadingDevices')}</p>
 	{:else if devices.length === 0}
-		<section class="card empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">devices_other</span>
-			<h3>{m('settingsDevices.emptyTitle')}</h3>
-			<p class="empty-text">
-				{m('settingsDevices.emptyText')}
-			</p>
-		</section>
+		<EmptyState icon="devices_other" title={m('settingsDevices.emptyTitle')} text={m('settingsDevices.emptyText')} />
 	{:else}
 		<div class="device-list">
 			{#each devices as d (d.device_id)}
@@ -640,34 +655,6 @@
 	}
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
 
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-
 	.skeleton-stack { display: flex; flex-direction: column; gap: 0.5rem; }
 	.skel-row {
 		display: flex;
@@ -679,42 +666,7 @@
 		border-radius: var(--radius-lg);
 		pointer-events: none;
 	}
-	.skel-icon { width: 1.5rem; height: 1.5rem; border-radius: 50%; flex-shrink: 0; }
 	.skel-info { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.device-list { display: flex; flex-direction: column; gap: 0.5rem; }
 	.device {
 		display: flex;
@@ -888,7 +840,7 @@
 	}
 
 	/* Add-override reuses canonical .modal-* classes from app.css. */
-	.add-dialog-body {
+	:global(.add-dialog-body) {
 		display: grid;
 		gap: 0.9rem;
 	}

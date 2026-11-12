@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import {
 	ALEX_PRIVATE_RUN_ID,
@@ -6,6 +6,7 @@ import {
 	RUNNER_PUBLIC_ROUTE_ID
 } from '../fixtures/seeded-data';
 import { USER_A, USER_B } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Surface-level detail tests — small focused checks on individual
@@ -28,7 +29,7 @@ test.describe('detail surface — runs', () => {
 		await page.goto(`/runs/${RUNNER_PUBLIC_RUN_ID}`);
 		// Share-as-image icon button.
 		await expect(
-			page.locator('button[title="Share as image"]')
+			page.locator('button[title="Share image"]')
 		).toBeVisible({ timeout: 10_000 });
 	});
 
@@ -61,6 +62,11 @@ test.describe('detail surface — routes', () => {
 
 test.describe('detail surface — plans', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	// The sections below today's card start shut (decisions § 2375).
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('/plans/<seeded> renders the progress ring', async ({ page }) => {
 		await page.goto('/plans/a1a1eada-aaaa-0000-0000-000000000001');
@@ -192,19 +198,22 @@ test.describe('navigation — sidebar links wire up', () => {
 		page
 	}) => {
 		// Sidebar shape: Dashboard · History · Runs · Gym · Nutrition ·
-		// Coach · Social. Routes relocated off the sidebar to a sub-tab
+		// Social · Messages. Routes relocated off the sidebar to a sub-tab
 		// under the run surface (/runs ↔ /routes). Plans moved off the
 		// sidebar to be reached from the dashboard today-card. Feed +
-		// People + Clubs collapsed under /social. Guided runs surfaces
-		// from /coach. Settings is in the profile popover.
+		// People + Clubs collapsed under /social. The AI Coach is a pinned
+		// conversation in Messages (/messages/coach, decisions § 2227), and
+		// Guided runs surfaces from it. Settings is in the profile popover.
 		await page.goto('/dashboard');
 		const sidebar = page.locator('.sidebar');
 		await sidebar.getByRole('link', { name: /History/ }).click();
 		await expect(page).toHaveURL(/\/history(\?.*)?$/, { timeout: 10_000 });
-		await sidebar.getByRole('link', { name: /Coach/ }).click();
-		await expect(page).toHaveURL(/\/coach(\?.*)?$/, { timeout: 10_000 });
 		await sidebar.getByRole('link', { name: /Social/ }).click();
 		await expect(page).toHaveURL(/\/social(\?.*)?$/, { timeout: 10_000 });
+		await sidebar.getByRole('link', { name: /^Messages/ }).click();
+		await expect(page).toHaveURL(/\/messages(\/.*)?(\?.*)?$/, { timeout: 10_000 });
+		// The Coach no longer has a sidebar item of its own.
+		await expect(sidebar.getByRole('link', { name: /Coach/ })).toHaveCount(0);
 		// Routes no longer has a standalone sidebar item — it lives under
 		// the run surface now.
 		await expect(sidebar.getByRole('link', { name: /^Routes$/ })).toHaveCount(0);
@@ -257,5 +266,37 @@ test.describe('navigation — Routes nested under the run surface', () => {
 		await expect(
 			page.locator('select[aria-label="Source"]')
 		).toBeVisible({ timeout: 10_000 });
+	});
+});
+
+test.describe('navigation — the segment catalogue under the run surface', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	// /segments shipped reachable only from a run-detail effort chip and
+	// its own detail page's back-link — a surface with no door in any
+	// global nav slot (decisions.md § 677).
+	test('Segments is reachable from /runs via the run-surface sub-tab', async ({
+		page
+	}) => {
+		await page.goto('/runs');
+		await page
+			.getByRole('navigation', { name: /Run surface sections/ })
+			.getByRole('link', { name: /^Segments$/ })
+			.click();
+		await expect(page).toHaveURL(/\/segments$/, { timeout: 10_000 });
+		await expect(
+			page.getByRole('heading', { name: /Famous segments/ })
+		).toBeVisible({ timeout: 10_000 });
+	});
+
+	test('the catalogue carries the strip back to the other run surfaces', async ({
+		page
+	}) => {
+		await page.goto('/segments');
+		await page
+			.getByRole('navigation', { name: /Run surface sections/ })
+			.getByRole('link', { name: /^Routes$/ })
+			.click();
+		await expect(page).toHaveURL(/\/routes(\?.*)?$/, { timeout: 10_000 });
 	});
 });

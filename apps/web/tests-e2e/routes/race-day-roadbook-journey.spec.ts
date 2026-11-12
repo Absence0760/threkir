@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import {
@@ -10,6 +10,8 @@ import {
 	insertRun
 } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRow, readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Race-day roadbook — the full life of ONE race course threaded across
@@ -90,12 +92,7 @@ test.describe('Race-day roadbook — markers → crew sheet → live next cut-of
 	test.beforeEach(async ({ context }) => {
 		// Keep the GDPR banner from floating over the map / share surfaces
 		// and eating a click (same pattern as the other route specs).
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('a course with cut-offs produces a crew roadbook and a live next-cut-off ETA', async ({
@@ -112,12 +109,7 @@ test.describe('Race-day roadbook — markers → crew sheet → live next cut-of
 		const spectatorCtx = await browser.newContext({
 			storageState: { cookies: [], origins: [] }
 		});
-		await spectatorCtx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(spectatorCtx);
 		const spectator = await spectatorCtx.newPage();
 
 		try {
@@ -155,21 +147,27 @@ test.describe('Race-day roadbook — markers → crew sheet → live next cut-of
 
 				// Backend cross-check: route owned by USER_A + public, and both
 				// markers landed with the gate carrying its cutoff limit.
-				const { data: routeRow } = await admin
-					.from('routes')
-					.select('user_id, is_public')
-					.eq('id', courseId)
-					.single();
-				expect(routeRow?.user_id).toBe(USER_A.id);
-				expect(routeRow?.is_public).toBe(true);
+				const routeRow = await readRow(
+					'routes by id',
+					admin
+						.from('routes')
+						.select('user_id, is_public')
+						.eq('id', courseId)
+						.single()
+				);
+				expect(routeRow.user_id).toBe(USER_A.id);
+				expect(routeRow.is_public).toBe(true);
 
-				const { data: markers } = await admin
-					.from('route_markers')
-					.select('kind, label, meta')
-					.eq('route_id', courseId)
-					.order('kind');
+				const markers = await readRows(
+					'route_markers by route_id',
+					admin
+						.from('route_markers')
+						.select('kind, label, meta')
+						.eq('route_id', courseId)
+						.order('kind')
+				);
 				expect(markers).toHaveLength(2);
-				const gate = markers?.find((row) => row.kind === 'cutoff');
+				const gate = markers.find((row) => row.kind === 'cutoff');
 				expect((gate?.meta as { cutoff_elapsed_s?: number } | null)?.cutoff_elapsed_s).toBe(1800);
 			});
 

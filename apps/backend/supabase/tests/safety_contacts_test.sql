@@ -8,7 +8,7 @@
 
 begin;
 
-select plan(16);
+select plan(25);
 
 -- Actors. owner runs; contact_a is an app user who'll confirm in-app;
 -- stranger owns an unrelated list.
@@ -169,6 +169,121 @@ select is(
   (select confirm_safety_contact_by_token(confirm_token) from safety_contacts
    where owner_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c03'),
   true, 'an external contact confirms via the unguessable email-link token');
+
+-- ─────────── the contact-of union: permissive policies OR ───────────
+--
+-- safety_contacts carries FOUR permissive policies, not two: "owner
+-- read"/"owner delete" (owner_id) AND "linked contact read"/"linked contact
+-- delete" (contact_user_id). Permissive policies OR, so an UNFILTERED client
+-- read returns the union — the caller's own contacts plus every relationship
+-- naming THEM as someone else's contact. Both clients rendered that union as
+-- "your safety contacts", under the caller's own email address, with a Remove
+-- button; and the delete leg is permissive too, so that button was not a
+-- no-op. Issue #789 K, decisions §720. These assertions pin the policy shape
+-- the clients' owner_id filters exist to cope with — if a future migration
+-- narrows the contact-side policies, this section is what says so.
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02"}';
+
+select is(
+  (select count(*)::int from safety_contacts),
+  1, 'an UNFILTERED read by a confirmed contact returns the OWNER''s row — the two permissive SELECT policies OR');
+
+select is(
+  (select count(*)::int from safety_contacts where owner_id = auth.uid()),
+  0, 'the same read scoped to owner_id returns nothing — a contact owns no list of their own');
+
+-- The Remove button's query: a bare delete-by-id, no owner scope.
+delete from safety_contacts
+ where id = (select id from safety_contacts where owner_id <> auth.uid());
+reset role;
+
+select is(
+  (select count(*)::int from safety_contacts
+   where owner_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c01'),
+  0, 'an id-only delete by the linked contact DELETES the owner''s row — the unscoped Remove was destructive, not refused');
+
+-- Restore the relationship and re-run the delete the way the clients now
+-- issue it: id AND owner_id.
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c01"}';
+insert into safety_contacts (owner_id, contact_email)
+  values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c01', 'contacta@safe.local');
+reset role;
+update safety_contacts
+   set confirmed_at = now(), contact_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02'
+ where owner_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c01';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02"}';
+delete from safety_contacts
+ where id = (select id from safety_contacts where owner_id <> auth.uid())
+   and owner_id = auth.uid();
+reset role;
+
+select is(
+  (select count(*)::int from safety_contacts
+   where owner_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c01'),
+  1, 'the same delete carrying the clients'' owner_id scope leaves the owner''s row alone');
+
+-- ─────────── the contact-of direction: read, re-consent, withdraw ───────────
+--
+-- The rows §720's `owner_id` filter took OUT of the list read are exactly the
+-- ones the "you are a safety contact for" section puts back, deliberately, and
+-- the linked-contact SELECT policy already permits that query — decisions §726.
+-- The SMS consent's round trip matters here because `confirm_safety_contact`
+-- could previously grant it exactly once: only the withdraw direction was
+-- covered (safety_sms_escalation_test.sql), never the re-arm.
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02"}';
+
+select is(
+  (select count(*)::int from safety_contacts where contact_user_id = auth.uid()),
+  1, 'the contact-of read scoped to contact_user_id returns the relationship the caller confirmed');
+
+-- The owner stored no number. The RPC still reports a row updated, because it
+-- did update one — a client that read "SMS is on" off that boolean would be
+-- claiming a consent the CASE just cleared, which is why the surface offers
+-- the toggle only where a number exists.
+select is(
+  set_safety_sms_opt_in(
+    (select id from safety_contacts where contact_user_id = auth.uid()), true),
+  true, 'opting in against a number-less relationship still reports a row updated');
+reset role;
+
+select is(
+  (select sms_opt_in_at from safety_contacts
+   where contact_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02'),
+  null, 'and stamps nothing — the owner never stored a number to text');
+
+update safety_contacts set contact_phone = '+447700900199'
+ where contact_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02"}';
+select set_safety_sms_opt_in(
+  (select id from safety_contacts where contact_user_id = auth.uid()), true);
+reset role;
+
+select isnt(
+  (select sms_opt_in_at from safety_contacts
+   where contact_user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02'),
+  null, 'with a number on file the contact can arm SMS long after confirming');
+
+-- Withdrawal is decline, not delete: `removeSafetyContact` is owner-scoped on
+-- both clients, so it matches nothing from this side of the relationship.
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c02"}';
+select decline_safety_contact(
+  (select id from safety_contacts where contact_user_id = auth.uid()));
+reset role;
+
+select is(
+  (select count(*)::int from safety_contacts
+   where owner_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa5c01'),
+  0, 'a CONFIRMED contact withdraws through decline_safety_contact');
 
 select * from finish();
 

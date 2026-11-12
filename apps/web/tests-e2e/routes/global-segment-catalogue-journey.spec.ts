@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun, deleteRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * Global / famous-segment catalogue journey (decisions §232) — the
@@ -17,7 +18,8 @@ import { USER_A } from '../fixtures/users';
  *      role) — a straight 800 m line in rural Victoria, far from every
  *      seeded geometry so no other catalogue row matches the track.
  *   2. USER_A seeds a ROUTE-LESS run whose timed track traces that line at
- *      a constant 2.0 m/s → a deterministic 400 s (6:40) effort. No effort
+ *      a constant 2.0 m/s, from just before its start line through its end
+ *      line → a deterministic 400 s (6:40) effort. No effort
  *      exists yet; the track is the only input.
  *   3. USER_A opens /runs/[id]. The Segments section renders even though
  *      route_id is null; RunSegmentEfforts walks the track via
@@ -48,9 +50,11 @@ function buildTrack(opts: {
 }): { lat: number; lng: number; ts: string }[] {
 	const { baseLat, lng, lengthM, stepM, speedMps, startedAtMs } = opts;
 	const pts: { lat: number; lng: number; ts: string }[] = [];
-	for (let d = 0; d <= lengthM + 1e-6; d += stepM) {
+	// Two steps before the segment start: the segment is timed by its start
+	// line (decisions § 2402), which a track starting on it never crosses.
+	for (let d = -2 * stepM; d <= lengthM + 1e-6; d += stepM) {
 		const lat = baseLat + d / M_PER_DEG_LAT;
-		const ts = new Date(startedAtMs + (d / speedMps) * 1000).toISOString();
+		const ts = new Date(startedAtMs + ((d + 2 * stepM) / speedMps) * 1000).toISOString();
 		pts.push({ lat, lng, ts });
 	}
 	return pts;
@@ -116,11 +120,14 @@ test.describe('global segment catalogue journey', () => {
 					})
 				});
 
-				const { data: pre } = await admin
-					.from('global_segment_efforts')
-					.select('id')
-					.eq('global_segment_id', segmentId);
-				expect(pre?.length ?? 0).toBe(0);
+				const pre = await readRows(
+					'global_segment_efforts by global_segment_id',
+					admin
+						.from('global_segment_efforts')
+						.select('id')
+						.eq('global_segment_id', segmentId)
+				);
+				expect(pre.length).toBe(0);
 			});
 
 			await test.step('opening /runs/[id] backfills the catalogue effort and renders the chip', async () => {
@@ -141,13 +148,16 @@ test.describe('global segment catalogue journey', () => {
 				await expect(row.locator('.time')).toHaveText('6:40');
 
 				// Backend: exactly one catalogue effort, USER_A's, ~400 s.
-				const { data: eff } = await admin
-					.from('global_segment_efforts')
-					.select('user_id, time_seconds')
-					.eq('global_segment_id', segmentId);
-				expect(eff?.length ?? 0).toBe(1);
-				expect(eff?.[0]?.user_id).toBe(USER_A.id);
-				expect(Math.round(Number(eff?.[0]?.time_seconds))).toBe(400);
+				const eff = await readRows(
+					'global_segment_efforts by global_segment_id',
+					admin
+						.from('global_segment_efforts')
+						.select('user_id, time_seconds')
+						.eq('global_segment_id', segmentId)
+				);
+				expect(eff.length).toBe(1);
+				expect(eff[0]?.user_id).toBe(USER_A.id);
+				expect(Math.round(Number(eff[0]?.time_seconds))).toBe(400);
 			});
 
 			await test.step('the chip navigates to the segment detail leaderboard', async () => {
@@ -176,12 +186,11 @@ test.describe('global segment catalogue journey', () => {
 			if (runId) await deleteRun(runId).catch(() => {});
 			// Catalogue delete cascades global_segment_efforts (ON DELETE CASCADE).
 			if (segmentId) {
-				await admin
-					.from('global_segments')
-					.delete()
-					.eq('id', segmentId)
-					.then(() => {})
-					.catch(() => {});
+				try {
+					await admin.from('global_segments').delete().eq('id', segmentId);
+				} catch {
+					// Best-effort teardown: a failed cleanup must not mask the result.
+				}
 			}
 		}
 	});

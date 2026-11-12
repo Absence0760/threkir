@@ -4,7 +4,6 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -12,9 +11,11 @@ import '../apple_auth.dart';
 import '../auth_error.dart';
 import '../auth_gates.dart';
 import '../auth_validation.dart';
+import '../google_auth.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../legal_links.dart';
 import '../widgets/password_field.dart';
+import '../widgets/top_banner.dart';
 
 /// Email/password account-creation screen with Google + Apple OAuth.
 ///
@@ -38,6 +39,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _error;
   String? _emailError;
   String? _passwordError;
+  // The two consent gates get their own inline errors. A single _error
+  // above the form told a runner who missed a checkbox to look up, past
+  // the thing they had missed, at a line that on a phone was off screen.
+  String? _ageError;
+  String? _termsError;
+  bool _resending = false;
 
   /// Set when signUp succeeded WITHOUT a session — a confirmation email
   /// is pending (genuine new account) or the address already had an
@@ -100,14 +107,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           passwordOk ? null : l10n.authErrorPasswordTooShort(kPasswordMinLength);
     });
     if (!emailOk || !passwordOk) return;
-    if (!_confirmAdult) {
-      setState(() => _error = l10n.signUpErrorConfirmAge);
-      return;
-    }
-    if (!_acceptTerms) {
-      setState(() => _error = l10n.signUpErrorAcceptTerms);
-      return;
-    }
+    if (!_checkGates()) return;
     // Before signUp, not after: a mistyped password that reaches GoTrue is
     // hashed and stored, the confirmation mail goes out, and the account is
     // then unreachable by its owner with no error anywhere to show for it.
@@ -170,28 +170,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  /// Re-send the confirmation link from the check-your-email state, so a
+  /// mail that never arrived doesn't require going back and deliberately
+  /// failing a sign-in to reveal the same button there.
+  ///
+  /// The outcome is never shown. This state is ALSO what an already
+  /// registered address gets (the #454 enumeration collapse), and GoTrue
+  /// answers a signup resend for a confirmed account with an error — so
+  /// surfacing success vs failure here would rebuild the oracle the
+  /// collapse exists to close. One neutral line either way.
+  Future<void> _resendConfirmation() async {
+    final email = _confirmationSentTo;
+    if (email == null || _resending) return;
+    setState(() => _resending = true);
+    final l10n = AppLocalizations.of(context);
+    try {
+      await widget.apiClient.resendSignUpConfirmation(email: email);
+    } catch (e) {
+      debugPrint('SignUpScreen._resendConfirmation failed: $e');
+    }
+    if (!mounted) return;
+    setState(() => _resending = false);
+    showTopBanner(context, l10n.signInConfirmationResent,
+        duration: const Duration(seconds: 5));
+  }
+
   /// Shared pre-flight for OAuth sign-up paths — the age + ToS
   /// gates apply to Google / Apple sign-up the same way they apply
   /// to email/password. Web's /login flow uses the same gates on
   /// the sign-up tab regardless of provider. Returns true when
-  /// the gates clear; sets [_error] and returns false otherwise.
+  /// the gates clear; sets the per-gate errors and returns false
+  /// otherwise.
   bool _checkGates() {
-    if (!_confirmAdult) {
-      setState(() =>
-          _error = AppLocalizations.of(context).signUpErrorConfirmAge);
-      return false;
-    }
-    if (!_acceptTerms) {
-      setState(() =>
-          _error = AppLocalizations.of(context).signUpErrorAcceptTerms);
-      return false;
-    }
-    return true;
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _ageError = _confirmAdult ? null : l10n.signUpErrorConfirmAge;
+      _termsError = _acceptTerms ? null : l10n.signUpErrorAcceptTerms;
+    });
+    return _confirmAdult && _acceptTerms;
   }
 
   Future<void> _signInWithGoogle() async {
-    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
-    if (webClientId == null || webClientId.isEmpty) {
+    final webClientId = googleWebClientId();
+    if (webClientId == null || !googleSignInAvailable()) {
       // Google OAuth provider isn't wired up on this build yet — show a
       // friendly coming-soon notice instead of a raw configuration error
       // (and before the gate nag, since the button isn't functional yet).
@@ -215,16 +236,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         throw Exception('Google sign-in did not return an ID token');
       }
 
-      await widget.apiClient.signInWithGoogleIdToken(idToken: idToken);
-      // OAuth-path consent stamp (audit/gdpr Critical). The pre-tap
-      // gate (_checkGates) confirmed the user's age + terms intent;
-      // record that server-side now the JWT is live. Idempotent —
-      // returning Google users are a no-op via first-stamp-wins.
-      try {
-        await widget.apiClient.confirmAgeAndTerms();
-      } catch (_) {
-        // Tolerated — next refresh retries; non-blocking for sign-in.
-      }
+      // The pre-tap gate (_checkGates) collected the age + terms
+      // affirmation, so the client stamps it as part of sign-in
+      // (audit/gdpr Critical). First-stamp-wins keeps a returning
+      // Google user's original timestamps.
+      await widget.apiClient.signInWithGoogleIdToken(
+        idToken: idToken,
+        affirmedAgeAndTerms: true,
+      );
       if (mounted) Navigator.pop(context, true);
     } on GoogleSignInException catch (e) {
       if (e.code != GoogleSignInExceptionCode.canceled) {
@@ -283,13 +302,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // Route through ApiClient instead of `Supabase.instance.client`
       // directly — matches the Google path and keeps every auth flow
       // on the ApiClient abstraction.
-      await widget.apiClient.signInWithAppleIdToken(idToken: idToken);
-      // OAuth-path consent stamp — mirrors the Google branch above.
-      try {
-        await widget.apiClient.confirmAgeAndTerms();
-      } catch (_) {
-        // Tolerated — next refresh retries.
-      }
+      await widget.apiClient.signInWithAppleIdToken(
+        idToken: idToken,
+        // Kept so account deletion can revoke the Apple grant (5.1.1(v)).
+        appleCode: (
+          code: credential.authorizationCode,
+          nativeFlow: appleUsesNativeFlow(),
+        ),
+        givenName: credential.givenName,
+        familyName: credential.familyName,
+        affirmedAgeAndTerms: true,
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       debugPrint('SignUpScreen._signInWithApple failed: $e');
@@ -333,6 +356,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _resending ? null : _resendConfirmation,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(l10n.signInResendConfirmation),
+                ),
+                const SizedBox(height: 8),
                 // Pop WITHOUT a result — no session exists yet, so the
                 // caller must not treat this as a signed-in return.
                 OutlinedButton(
@@ -416,13 +447,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ],
                 ),
               ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-              ],
               const SizedBox(height: 12),
               // GDPR Art 8 gate — users under 16 require parental
               // consent for data processing in the EU. Self-affirm
@@ -431,19 +455,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 value: _confirmAdult,
                 onChanged: _loading
                     ? null
-                    : (v) => setState(() => _confirmAdult = v ?? false),
+                    : (v) => setState(() {
+                          _confirmAdult = v ?? false;
+                          if (_confirmAdult) _ageError = null;
+                        }),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.signUpConfirmAge),
+                subtitle: _ageError == null
+                    ? null
+                    : Text(_ageError!,
+                        style: TextStyle(color: theme.colorScheme.error)),
               ),
               // Terms + Privacy acceptance — mirrors web `acceptTerms`.
               CheckboxListTile(
                 value: _acceptTerms,
                 onChanged: _loading
                     ? null
-                    : (v) => setState(() => _acceptTerms = v ?? false),
+                    : (v) => setState(() {
+                          _acceptTerms = v ?? false;
+                          if (_acceptTerms) _termsError = null;
+                        }),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
+                subtitle: _termsError == null
+                    ? null
+                    : Text(_termsError!,
+                        style: TextStyle(color: theme.colorScheme.error)),
                 title: Text.rich(
                   TextSpan(
                     children: [
@@ -469,6 +507,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ],
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: _loading ? null : _signUp,
@@ -509,25 +554,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   icon: const Icon(Icons.apple, size: 18),
                   label: Text(l10n.signUpContinueWithApple),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signUpContinueWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signUpContinueWithGoogle),
-                ),
+                ],
               ] else ...[
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signUpContinueWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signUpContinueWithGoogle),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: _loading ? null : _signInWithApple,
                   style: OutlinedButton.styleFrom(

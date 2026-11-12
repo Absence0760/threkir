@@ -1,0 +1,164 @@
+/**
+ * Keyset paging for one direct-message conversation, on `(created_at, id)`.
+ *
+ * The thread is read from its newest end: the first page is the latest
+ * `DM_THREAD_PAGE_SIZE` messages, and "load earlier" asks for the page before
+ * the oldest message on screen. Mobile's `fetchDmThread` (api_client) pages
+ * the same way with the same size and tie-break.
+ */
+
+import { keysetAfter, keysetCursor, type KeysetKey } from '../core/keyset_page';
+
+export const DM_THREAD_PAGE_SIZE = 50;
+
+export interface DmOrderKey {
+	id: string;
+	created_at: string;
+}
+
+export interface DmPage<T> {
+	/** Oldest first, the order the conversation renders in. */
+	messages: T[];
+	/** Messages older than the first one here exist. */
+	hasMore: boolean;
+}
+
+/**
+ * `[milliseconds, microseconds within the millisecond]`. `Date.parse` stops at
+ * milliseconds and Postgres stamps microseconds, so two messages in the same
+ * millisecond would otherwise tie on time and fall through to the id.
+ */
+function instant(iso: string): [number, number] {
+	const ms = Date.parse(iso);
+	const frac = /T\d{2}:\d{2}:\d{2}\.(\d+)/.exec(iso)?.[1] ?? '';
+	return [Number.isNaN(ms) ? 0 : ms, Number((frac + '000000').slice(3, 6))];
+}
+
+/** The thread's order: `created_at`, then `id`. */
+export function compareDmOrder(a: DmOrderKey, b: DmOrderKey): number {
+	const [ma, ua] = instant(a.created_at);
+	const [mb, ub] = instant(b.created_at);
+	if (ma !== mb) return ma - mb;
+	if (ua !== ub) return ua - ub;
+	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+/**
+ * The thread's keyset, newest first. Both columns are NOT NULL, so null
+ * placement never applies; `nullsFirst: true` is the postgrest-js default for a
+ * descending key and keeps `keysetAfter` from adding an `is.null` arm.
+ */
+export const DM_THREAD_ORDER: readonly KeysetKey[] = [
+	{ column: 'created_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true }
+];
+
+/**
+ * The PostgREST `or` body for the page strictly before `before` (older, since
+ * the read runs newest first). The timestamp goes back exactly as the server
+ * wrote it, so no microseconds are lost on the way round.
+ */
+export function dmPageBeforeFilter(before: DmOrderKey): string {
+	const filter = keysetAfter(DM_THREAD_ORDER, keysetCursor(DM_THREAD_ORDER, before));
+	if (filter === null) throw new Error('dm thread: no message can precede the cursor');
+	return filter;
+}
+
+/**
+ * Turns the newest-first rows of a `limit + 1` read into a page. The extra
+ * row is only the "older messages exist" probe and is dropped.
+ */
+export function dmPageFromRows<T>(newestFirst: readonly T[], limit: number): DmPage<T> {
+	const hasMore = newestFirst.length > limit;
+	const kept = hasMore ? newestFirst.slice(0, limit) : newestFirst.slice();
+	return { messages: kept.reverse(), hasMore };
+}
+
+/** Union by id, in thread order. A later copy of an id replaces an earlier. */
+export function mergeDmMessages<T extends DmOrderKey>(a: readonly T[], b: readonly T[]): T[] {
+	const byId = new Map<string, T>();
+	for (const m of a) byId.set(m.id, m);
+	for (const m of b) byId.set(m.id, m);
+	return [...byId.values()].sort(compareDmOrder);
+}
+
+/**
+ * Which conversation a thread is: the partner, or — once the partner deleted
+ * their account — the random per-partner key the server stamped on the
+ * remaining user's messages (migration 20271021000003). The deleted case has
+ * no partner id to put in the URL, so it travels as `deleted-<key>`.
+ */
+export type DmThreadTarget =
+	| { kind: 'partner'; partnerId: string }
+	| { kind: 'deleted'; deletedPartnerKey: string };
+
+const DELETED_ROUTE_PREFIX = 'deleted-';
+
+/**
+ * The path under `/messages/` for a group conversation (decisions § 2463): its
+ * own route, `/messages/group/[id]`, since a group has no partner to name.
+ */
+export const GROUP_ROUTE_PREFIX = 'group/';
+
+/**
+ * The path under `/messages/` for a thread: the `[id]` segment of a direct
+ * conversation, or `group/<conversation>` for a group.
+ */
+export function dmThreadRouteId(t: {
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
+	conversationId?: string;
+	kind?: 'direct' | 'group';
+	isGroup?: boolean;
+}): string {
+	if ((t.kind === 'group' || t.isGroup === true) && t.conversationId) {
+		return `${GROUP_ROUTE_PREFIX}${t.conversationId}`;
+	}
+	if (t.partnerId) return t.partnerId;
+	if (t.deletedPartnerKey) return `${DELETED_ROUTE_PREFIX}${t.deletedPartnerKey}`;
+	throw new Error('dm thread: neither a partner nor a deleted-partner key');
+}
+
+/** The inverse of [dmThreadRouteId]. */
+export function parseDmThreadRouteId(id: string): DmThreadTarget {
+	return id.startsWith(DELETED_ROUTE_PREFIX)
+		? { kind: 'deleted', deletedPartnerKey: id.slice(DELETED_ROUTE_PREFIX.length) }
+		: { kind: 'partner', partnerId: id };
+}
+
+/**
+ * How often an open conversation and the inbox re-read while on screen. No
+ * client subscribes to this rail over Realtime (decisions § 1916), so a poll is
+ * how a reply arrives. Mobile's `kMessageThreadPollInterval` and
+ * `kMessagesInboxPollInterval` carry the same two numbers.
+ */
+export const DM_THREAD_POLL_MS = 10_000;
+export const DM_INBOX_POLL_MS = 30_000;
+
+/**
+ * Folds a poll's newest page into the conversation on screen, the way
+ * mobile's thread poll does.
+ *
+ * The page is merged by id when it reaches back to the newest message shown.
+ * When it does not, more than a page arrived since the last read, and merging
+ * would leave the messages between the two out of the list for good, since
+ * "load earlier" pages back from the oldest message shown. The page then
+ * replaces the list (every message shown is older than the page's oldest, so
+ * nothing on screen is newer than it), `gap` is set so an older-page read
+ * already in flight is dropped rather than merged across it, and "load
+ * earlier" is offered again.
+ */
+export function mergeDmPollPage<T extends DmOrderKey>(
+	current: readonly T[],
+	page: DmPage<T>,
+	hasMore: boolean
+): { messages: T[]; hasMore: boolean; gap: boolean } {
+	const fresh = page.messages;
+	if (current.length === 0) {
+		return { messages: mergeDmMessages([], fresh), hasMore: hasMore || page.hasMore, gap: false };
+	}
+	const gap =
+		page.hasMore && fresh.length > 0 && compareDmOrder(fresh[0], current[current.length - 1]) > 0;
+	if (!gap) return { messages: mergeDmMessages(current, fresh), hasMore, gap: false };
+	return { messages: mergeDmMessages([], fresh), hasMore: true, gap: true };
+}

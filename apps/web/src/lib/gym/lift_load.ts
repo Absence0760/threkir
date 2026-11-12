@@ -5,7 +5,7 @@
 // run-only curve stays recoverable (the model tags lift stress separately;
 // see training_load.ts § "Separable provenance").
 
-import type { LiftForLoad } from '$lib/training/training_load';
+import type { LiftForLoad } from '#lib/training/training_load.ts';
 
 /// One flat set row joined to its workout start time — the shape
 /// `fetchGymSetHistory` returns. Re-declared here (rather than importing

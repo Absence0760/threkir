@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 
@@ -42,10 +40,7 @@ class StoredGear implements SyncEntry {
   factory StoredGear.fromJson(Map<String, dynamic> json) => StoredGear(
         row: Map<String, dynamic>.from(json['row'] as Map),
         syncState: syncStateFromWire(json['sync_state'] as String?),
-        lastModifiedAt: DateTime.tryParse(
-                json['last_modified_at'] as String? ?? '')
-                ?.toUtc() ??
-            DateTime.now().toUtc(),
+        lastModifiedAt: storedClockOrEpoch(json['last_modified_at']),
       );
 }
 
@@ -190,10 +185,7 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
     final existing = rowsById[id];
     if (existing == null) return;
     if (existing.syncState == SyncState.pendingCreate) {
-      rowsById.remove(id);
-      final file = File('${dir!.path}/$id.json');
-      if (file.existsSync()) file.deleteSync();
-      notifyListeners();
+      await dropRow(id);
       return;
     }
     final tombstone = StoredGear(
@@ -208,6 +200,7 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
   /// state are overwritten so an offline edit isn't clobbered by the
   /// server's older copy.
   Future<void> replaceFromServer(List<Map<String, dynamic>> serverRows) async {
+    requireInitialised('replaceFromServer');
     final preserved = <String, StoredGear>{};
     final syncedLocal = <String, StoredGear>{};
     for (final entry in rowsById.entries) {
@@ -241,8 +234,9 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
       // join and moves without any gear-row update, so discarding an
       // equal-stamped fetch would freeze a shoe's mileage.
       final local = syncedLocal[id];
-      final serverTs = _parseTs(row['updated_at']);
-      final localTs = local == null ? null : _parseTs(local.row['updated_at']);
+      final serverTs = parseServerTimestamp(row['updated_at']);
+      final localTs =
+          local == null ? null : parseServerTimestamp(local.row['updated_at']);
       if (local != null &&
           serverTs != null &&
           localTs != null &&
@@ -257,11 +251,6 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
     notifyListeners();
   }
 
-  static DateTime? _parseTs(dynamic v) {
-    if (v is String && v.isNotEmpty) return DateTime.tryParse(v)?.toUtc();
-    return null;
-  }
-
   @override
   Future<void> pushCreate(ApiClient api, StoredGear stored) => api.createGear(
         id: stored.id,
@@ -269,7 +258,7 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
         name: stored.row['name'] as String,
         brand: stored.row['brand'] as String?,
         model: stored.row['model'] as String?,
-        purchasedAt: _parseDate(stored.row['purchased_at']),
+        purchasedAt: parseCalendarDate(stored.row['purchased_at']),
         targetDistanceM: (stored.row['target_distance_m'] as num?)?.toInt(),
         notes: stored.row['notes'] as String?,
       );
@@ -280,8 +269,8 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
         name: stored.row['name'] as String?,
         brand: stored.row['brand'] as String?,
         model: stored.row['model'] as String?,
-        purchasedAt: _parseDate(stored.row['purchased_at']),
-        retiredAt: _parseDate(stored.row['retired_at']),
+        purchasedAt: parseCalendarDate(stored.row['purchased_at']),
+        retiredAt: parseCalendarDate(stored.row['retired_at']),
         clearRetiredAt: stored.row['retired_at'] == null,
         targetDistanceM: (stored.row['target_distance_m'] as num?)?.toInt(),
         notes: stored.row['notes'] as String?,
@@ -291,8 +280,4 @@ class LocalGearStore extends OfflineSyncStore<StoredGear> {
   Future<void> pushDelete(ApiClient api, StoredGear stored) =>
       api.deleteGear(stored.id);
 
-  static DateTime? _parseDate(dynamic v) {
-    if (v is String && v.isNotEmpty) return DateTime.tryParse(v);
-    return null;
-  }
 }

@@ -1,13 +1,14 @@
 /// Per-recap `<head>` meta-tag builder for the public recap share page.
 /// Pure string helpers — shared between the SvelteKit +page.svelte
-/// (dev-server SSR via $lib reads) and the production share-recap Lambda
+/// (dev-server SSR via #lib reads) and the production share-recap Lambda
 /// (which injects these into the SPA-shell HTML). Kept in apps/web/src/lib
-/// so the Lambda build pulls it without dragging in $env / SvelteKit-only
+/// so the Lambda build pulls it without dragging in $app/env / SvelteKit-only
 /// modules. Mirrors share_run_meta.ts.
 
 import type { SharedRecap } from './share_recap_lookup';
 import { recapPeriodLabel } from './recap_period_label';
 import { normaliseSiteUrl } from './share_meta';
+import { collapseAndClip } from '../util/clip_text';
 import { escapeHtml } from '../util/html_escape';
 
 /// Absolute URL of a frozen recap's public share page. Note the path shape:
@@ -54,7 +55,7 @@ export function buildShareRecapMeta(input: ShareRecapMetaInput): ShareRecapMeta 
 	let description = 'A year-in-running recap on Threkir.';
 	if (recap) {
 		const period = recapPeriodLabel(recap.periodKind, recap.periodKey);
-		const name = recap.displayName?.trim();
+		const name = collapseAndClip(recap.displayName, 60);
 		title = name
 			? `${name}'s ${period} in running — Threkir`
 			: `${period} in running — Threkir`;
@@ -76,6 +77,13 @@ export function renderShareRecapHeadTags(meta: ShareRecapMeta): string {
 	return [
 		`<title>${escapeHtml(meta.title)}</title>`,
 		`<meta name="description" content="${e(meta.description)}">`,
+		// The recap share page is the fold target for every in-app recap
+		// surface and the only public home of a published recap, so it owes
+		// the same self-referential canonical its eight siblings emit —
+		// without one, `?utm_source=` copies of a shared link index as
+		// separate pages. It was the one share head builder that had none
+		// (decisions § 1090); the URL was already computed for `og:url`.
+		`<link rel="canonical" href="${e(meta.ogUrl)}">`,
 		`<meta property="og:title" content="${e(meta.title)}">`,
 		`<meta property="og:description" content="${e(meta.description)}">`,
 		`<meta property="og:type" content="article">`,

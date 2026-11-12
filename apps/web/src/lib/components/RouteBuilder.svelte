@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { osrmProxyFetch } from '$lib/routes/routing';
-	import { SegmentCache, segmentCacheKey } from '$lib/routes/segment_cache';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_TILE_STYLE_URL } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { osrmProxyFetch } from '#lib/routes/routing.ts';
+	import { SegmentCache, segmentCacheKey } from '#lib/routes/segment_cache.ts';
 	import {
 		DEFAULT_SCALE_FACTOR,
 		NEAR_POINT_M,
@@ -15,18 +16,35 @@
 		isValidTargetDistance,
 		isWithinAcceptBand,
 		selectLoopAnchors,
-	} from '$lib/routes/route_loop';
-	import { nearestInsertIndex } from '$lib/routes/insert_index';
-	import type { RoutePreference } from '$lib/routes/generate/graphhopper';
-	import { supabase } from '$lib/core/supabase';
-	import { payloadSha256Hex } from '$lib/util/payload_hash';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { searchPlaces } from '$lib/routes/geocoding';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { fetchElevations, sampleCoordinates, calculateElevationGain } from '$lib/routes/elevation';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/route_loop.ts';
+	import { nearestInsertIndex } from '#lib/routes/insert_index.ts';
+	import {
+		ROUTE_ART_MIN_SCORE,
+		ROUTE_ART_SNAP_RADIUS_M,
+		ROUTE_ART_WIDE_SNAP_RADIUS_M,
+		artAnchorIndices,
+		drawingFidelity,
+		planRouteBatches,
+		polylineLengthM,
+		prepareStroke,
+		routeArtBatchPath,
+		sliceAtAnchors,
+		stitchPolylines,
+		type ArtFidelity,
+		type LngLat,
+	} from '#lib/routes/route_art.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
+	import type { RoutePreference } from '#lib/routes/generate/graphhopper.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { payloadSha256Hex } from '#lib/util/payload_hash.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { haversineMetres } from '#lib/runs/run_stats.ts';
+	import { searchPlaces } from '#lib/routes/geocoding.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { fetchElevations, sampleCoordinates, calculateElevationGain } from '#lib/routes/elevation.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
 		closestPointDistanceM,
 		formatWaypointRanges,
@@ -37,7 +55,7 @@
 		qualityWarning,
 		validateRouteQuality,
 		type RoutedSegment,
-	} from '$lib/routes/routing_quality';
+	} from '#lib/routes/routing_quality.ts';
 	import {
 		mapDraftLine,
 		mapFinishColour,
@@ -45,13 +63,13 @@
 		mapOverlapLine,
 		mapOverlayOutline,
 		mapStartColour,
-	} from '$lib/routes/basemap_contrast';
+	} from '#lib/routes/basemap_contrast.ts';
 	import {
 		basemapIsDarkForSlug,
 		styleUrlForSlug,
 		type MaptilerSlug,
-	} from '$lib/routes/map-style-url';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/routes/map-style-url.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	// Bound the recentre pan to a fixed, snappy duration. maplibre's default
 	// flyTo scales the duration by travel distance, so recentring from the
@@ -63,6 +81,8 @@
 
 	let {
 		mode = 'road',
+		drawing = false,
+		onartmatch = (_fidelity: ArtFidelity | null) => {},
 		onupdate = (_data: {
 			waypoints: number;
 			distance: number;
@@ -77,9 +97,20 @@
 		onbusy = (_busy: boolean) => {},
 		ongeneratemismatch = (_achievedM: number, _targetM: number, _largestLoopM?: number) => {},
 		onprorequired = () => {},
+		onpreferenceapplied = (_applied: RoutePreference | null) => {},
 		onrequestclear = (): boolean => false
 	}: {
 		mode?: 'road' | 'trail';
+		/// Draw mode: a drag on the map draws a shape that is matched to
+		/// roads and paths instead of panning (decisions § 2263).
+		drawing?: boolean;
+		/**
+		 * Called with the fidelity of the last drawing matched (whether or
+		 * not it was close enough to keep), and with null once the route
+		 * stops being that drawing — a pin was moved, added or removed, or
+		 * the route was cleared.
+		 */
+		onartmatch?: (fidelity: ArtFidelity | null) => void;
 		onupdate?: (data: {
 			waypoints: number;
 			distance: number;
@@ -133,6 +164,15 @@
 		 */
 		onprorequired?: () => void;
 		/**
+		 * Called once after every generateLoop that produced a route, with the
+		 * preference the server reported having applied — or null when it
+		 * applied none. Null is also what a caller gets when the request never
+		 * reached the server (point-to-point, an unconfigured endpoint, an
+		 * engine outage): the in-browser heuristic honours no preference at
+		 * all, so a fallback route is an unpreferenced route.
+		 */
+		onpreferenceapplied?: (applied: RoutePreference | null) => void;
+		/**
 		 * Called when the Escape keyboard shortcut requests a clear. Return
 		 * `true` to signal the parent has taken ownership (e.g. opened a
 		 * confirm dialog), in which case the builder does NOT clear itself —
@@ -154,6 +194,11 @@
 	let routeCoordinates: [number, number][] = [];
 	let routeElevations: number[] = [];
 	let markers: maplibregl.Marker[] = [];
+	/// The preference the last server-served loop actually applied. Reset at the
+	/// top of every generateLoop and only ever raised by a 200 body that names
+	/// the very preference we asked for, so an absent field, an unknown value,
+	/// and a heuristic fallback all grade the same: not applied.
+	let servedPreference: RoutePreference | null = null;
 	/// 0-based indices of waypoints flagged by the post-routing quality
 	/// pass — failed snaps, deviation outliers, or detour-segment
 	/// endpoints. These markers render in red so the user can see at a
@@ -253,7 +298,7 @@
 	// MapTiler slug. This surface owns WHICH slug it asks for and nothing else:
 	// assembling the URL itself is what left it as the only map in the app that
 	// showed a blank canvas — and no basemap credit — on a missing key.
-	const TILE_STYLE_OVERRIDE = (env.PUBLIC_TILE_STYLE_URL ?? '').trim();
+	const TILE_STYLE_OVERRIDE = (PUBLIC_TILE_STYLE_URL ?? '').trim();
 	const MAP_STYLES: Record<string, string> = {
 		streets: styleUrlForSlug(BUILDER_SLUGS.streets, PUBLIC_MAPTILER_KEY, TILE_STYLE_OVERRIDE),
 		satellite: styleUrlForSlug(BUILDER_SLUGS.satellite, PUBLIC_MAPTILER_KEY, TILE_STYLE_OVERRIDE),
@@ -265,6 +310,15 @@
 	);
 
 	const SNAP_DISTANCE_PX = 25;
+	/// Pointer moves closer than this to the last stroke point are dropped,
+	/// which keeps a slow drag from piling up thousands of points.
+	const STROKE_MIN_STEP_PX = 3;
+	const ART_FETCH_TIMEOUT_MS = 10000;
+	let stroke: LngLat[] = [];
+	let strokePointerId: number | null = null;
+	/// True while the route on the map is (or was meant to be) the last
+	/// drawing, so the first edit after it can retract the score.
+	let artActive = false;
 	const METRES_PER_MILE = 1609.344;
 
 	// --- Search ---
@@ -408,6 +462,7 @@
 			// checkpoint inside recalculateRoute and causes it to return
 			// false instead of writing routeCoordinates.
 			routeVersion++;
+			clearArt();
 			const pos = marker.getLngLat();
 			waypoints[currentIndex] = { lat: pos.lat, lng: pos.lng };
 			routeCoordinates = [];
@@ -653,10 +708,15 @@
 		/// Suppress the deviation / detour / partial-success warnings.
 		/// generateLoop's scaffolding waypoints are invisible, so
 		/// telling the user to "drag the red markers" makes no sense.
-		/// Hard failures (okSegments === 0 → throw → catch → onerror)
-		/// still bubble — the caller can replace that with a
-		/// generation-specific message.
 		suppressSoftWarnings?: boolean;
+		/// Treat "no segment snapped" as a hard failure (throw → catch →
+		/// onerror → the parent clears `routed`) instead of keeping the
+		/// straight-line fallback. Only generateLoop wants this: a loop
+		/// whose every segment is a straight line between invisible
+		/// scaffolding seeds is not a route the user asked for, so it
+		/// must fail and let the caller emit its own message. A user
+		/// drawing waypoints by hand keeps what they drew.
+		requireSnappedSegments?: boolean;
 	} = {}): Promise<boolean> {
 		if (waypoints.length < 2) {
 			routeCoordinates = [];
@@ -812,7 +872,16 @@
 				}
 			}
 
-			if (okSegments === 0) {
+			// A total snap failure is an engine outage, not a dead end: a
+			// deploy with no OSRM_URL answers 501 on every segment, and
+			// every entry in `perSegment` already carries its straight-line
+			// fallback. Throwing here cleared `routeCoordinates`, which the
+			// parent reads as `routed: false` and uses to disable Save /
+			// GPX / KML — so an unreachable engine made the builder
+			// unusable rather than degrading it. generateLoop is the one
+			// caller that genuinely needs the hard failure: a polyline that
+			// never touched a road is not a generated loop.
+			if (okSegments === 0 && opts.requireSnappedSegments) {
 				throw new Error(
 					t('routeBuilder.routingServiceUnavailable')
 				);
@@ -852,7 +921,11 @@
 				// couldn't snap, fall back to straight lines through them,
 				// and tell the user which markers to nudge if they want a
 				// snapped route.
-				if (!opts.suppressSoftWarnings) {
+				if (!opts.suppressSoftWarnings && okSegments === 0) {
+					// Nothing snapped at all — naming individual waypoints
+					// would blame the user's clicks for an outage.
+					onerror(t('routeBuilder.routingUnavailableStraightLines'), 'warning');
+				} else if (!opts.suppressSoftWarnings) {
 					const failedWaypoints = identifyFailedWaypoints(perSegment);
 					const failedSegments = perSegment.length - okSegments;
 					const wpList = formatWaypointRanges(failedWaypoints);
@@ -933,9 +1006,7 @@
 				// Suppress here and let the caller emit its own.
 				if (!opts.suppressSoftWarnings) {
 					onerror(
-						err instanceof Error
-							? err.message
-							: t('routeBuilder.routingFailed'),
+						errorCopy(err, t, 'routeBuilder.routingFailed', 'routeBuilder.routingFailed'),
 						'error',
 					);
 				}
@@ -1050,18 +1121,245 @@
 		});
 	}
 
+	/// The `[lng, lat]` door onto the shared `haversineMetres`, beside
+	/// `routingHaversineM`'s `{lng, lat}` one. Two shapes, one formula — the
+	/// private copy that used to sit here measured the same rendered polyline
+	/// by a different arc than the imported helper measured its waypoints.
 	function haversine(a: [number, number], b: [number, number]): number {
-		const R = 6371000;
-		const toRad = (d: number) => (d * Math.PI) / 180;
-		const dLat = toRad(b[1] - a[1]);
-		const dLng = toRad(b[0] - a[0]);
-		const sinLat = Math.sin(dLat / 2);
-		const sinLng = Math.sin(dLng / 2);
-		const h = sinLat * sinLat + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * sinLng * sinLng;
-		return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+		return haversineMetres(a[1], a[0], b[1], b[0]);
+	}
+
+	// --- Route art (Draw mode, decisions § 2263) ---
+
+	function setStrokeLine(coords: LngLat[]) {
+		getGeoJSONSource('draw-stroke')?.setData({
+			type: 'Feature',
+			properties: {},
+			geometry: { type: 'LineString', coordinates: coords },
+		});
+	}
+
+	function clearArt() {
+		stroke = [];
+		strokePointerId = null;
+		setStrokeLine([]);
+		if (!artActive) return;
+		artActive = false;
+		onartmatch(null);
+	}
+
+	function applyDrawMode() {
+		if (!map) return;
+		if (drawing) map.dragPan.disable();
+		else map.dragPan.enable();
+		// Without this a touch drag scrolls the page instead of drawing.
+		map.getCanvasContainer().style.touchAction = drawing ? 'none' : '';
+	}
+
+	function strokePoint(e: PointerEvent): LngLat {
+		const rect = map.getCanvas().getBoundingClientRect();
+		const p = map.unproject([e.clientX - rect.left, e.clientY - rect.top]);
+		return [p.lng, p.lat];
+	}
+
+	function onStrokeDown(e: PointerEvent) {
+		if (!drawing || isRouting || e.button !== 0) return;
+		// A second finger is a pinch, not part of the shape.
+		if (strokePointerId !== null) {
+			strokePointerId = null;
+			stroke = [];
+			setStrokeLine([]);
+			return;
+		}
+		e.preventDefault();
+		map.getCanvasContainer().setPointerCapture?.(e.pointerId);
+		strokePointerId = e.pointerId;
+		stroke = [strokePoint(e)];
+		setStrokeLine(stroke);
+	}
+
+	function onStrokeMove(e: PointerEvent) {
+		if (e.pointerId !== strokePointerId) return;
+		const next = strokePoint(e);
+		const last = map.project(stroke[stroke.length - 1]);
+		const here = map.project(next);
+		if (Math.hypot(here.x - last.x, here.y - last.y) < STROKE_MIN_STEP_PX) return;
+		stroke.push(next);
+		setStrokeLine(stroke);
+	}
+
+	function onStrokeUp(e: PointerEvent) {
+		if (e.pointerId !== strokePointerId) return;
+		strokePointerId = null;
+		const drawn = stroke;
+		void matchDrawing(drawn);
+	}
+
+	function onStrokeCancel(e: PointerEvent) {
+		if (e.pointerId !== strokePointerId) return;
+		strokePointerId = null;
+		stroke = [];
+		setStrokeLine([]);
+	}
+
+	type ArtBatchOutcome =
+		| { ok: true; line: LngLat[] }
+		| { ok: false; reason: 'no_roads' | 'unavailable' | 'rate_limited' | 'cancelled' };
+
+	/// Route one batch of drawn points. A "no way within reach" answer is
+	/// retried once with a wider reach; an outage is retried once at the same
+	/// reach and never widened, since a wider reach can't fix an engine that
+	/// is down.
+	async function fetchArtBatch(points: LngLat[], version: number): Promise<ArtBatchOutcome> {
+		let reason: 'no_roads' | 'unavailable' = 'unavailable';
+		for (const radius of [ROUTE_ART_SNAP_RADIUS_M, ROUTE_ART_WIDE_SNAP_RADIUS_M]) {
+			for (let attempt = 0; attempt < 2; attempt++) {
+				if (version !== routeVersion) return { ok: false, reason: 'cancelled' };
+				let res: Response;
+				try {
+					res = await osrmProxyFetch(routeArtBatchPath(points, 'foot', radius), {
+						signal: AbortSignal.timeout(ART_FETCH_TIMEOUT_MS),
+					});
+				} catch {
+					reason = 'unavailable';
+					if (attempt === 0) {
+						await new Promise((r) => setTimeout(r, 500));
+						continue;
+					}
+					break;
+				}
+				if (version !== routeVersion) return { ok: false, reason: 'cancelled' };
+				if (res.status === 429) return { ok: false, reason: 'rate_limited' };
+				if (res.status === 422) {
+					reason = 'no_roads';
+					break;
+				}
+				if (!res.ok) {
+					reason = 'unavailable';
+					if (attempt === 0) {
+						await new Promise((r) => setTimeout(r, 500));
+						continue;
+					}
+					break;
+				}
+				let data: { code?: string; routes?: { geometry?: { coordinates?: LngLat[] } }[] };
+				try {
+					data = await res.json();
+				} catch {
+					reason = 'unavailable';
+					break;
+				}
+				const line = data.routes?.[0]?.geometry?.coordinates;
+				if (data.code === 'Ok' && line && line.length >= 2) return { ok: true, line };
+				reason = data.code === 'NoSegment' || data.code === 'NoRoute' ? 'no_roads' : 'unavailable';
+				break;
+			}
+			if (reason === 'unavailable') break;
+		}
+		return { ok: false, reason };
+	}
+
+	const ART_BATCH_ERROR_KEYS = {
+		no_roads: 'routeBuilder.drawNoRoads',
+		unavailable: 'routeBuilder.drawUnavailable',
+		rate_limited: 'routeBuilder.drawRateLimited',
+	} as const;
+
+	const ART_STROKE_ERROR_KEYS = {
+		too_short: 'routeBuilder.drawTooShort',
+		too_long: 'routeBuilder.drawTooLong',
+		too_complex: 'routeBuilder.drawTooComplex',
+	} as const;
+
+	/// Match a finished stroke to roads and paths, and adopt it as the route
+	/// only when it stays close to the drawing. The drawing stays on the map
+	/// either way, so the runner can compare it with what the roads allow.
+	async function matchDrawing(raw: LngLat[]) {
+		clearWaypoints();
+		stroke = raw;
+		setStrokeLine(raw);
+		artActive = true;
+
+		const prepared = prepareStroke(raw);
+		if (!prepared.ok) {
+			onerror(t(ART_STROKE_ERROR_KEYS[prepared.reason]), 'error');
+			return;
+		}
+
+		isRouting = true;
+		routeVersion++;
+		const version = routeVersion;
+		onerror(null);
+		try {
+			const parts: LngLat[][] = [];
+			for (const batch of planRouteBatches(prepared.points.length)) {
+				const outcome = await fetchArtBatch(prepared.points.slice(batch.start, batch.end + 1), version);
+				if (!outcome.ok) {
+					if (outcome.reason !== 'cancelled') onerror(t(ART_BATCH_ERROR_KEYS[outcome.reason]), 'error');
+					return;
+				}
+				parts.push(outcome.line);
+			}
+			const matched = stitchPolylines(parts);
+			const fidelity = drawingFidelity(prepared.points, matched);
+			onartmatch(fidelity);
+			if (!fidelity || fidelity.score < ROUTE_ART_MIN_SCORE) {
+				onerror(t('routeBuilder.drawPoorMatch', { score: fidelity?.score ?? 0 }), 'error');
+				return;
+			}
+
+			const anchors = artAnchorIndices(matched);
+			waypoints = anchors.map((i) => ({ lat: matched[i][1], lng: matched[i][0] }));
+			// Seed the cache with the matched pieces between pins, so dragging
+			// one pin re-routes only its two neighbouring pieces and the rest
+			// of the drawing survives.
+			sliceAtAnchors(matched, anchors).forEach((slice, j) => {
+				segmentCache.set(segmentCacheKey(waypoints[j], waypoints[j + 1]), {
+					polyline: slice,
+					distanceM: polylineLengthM(slice),
+				});
+			});
+			markers = waypoints.map((w, i) => createWaypointMarker(w, i));
+			updateMarkerStyles();
+			routeCoordinates = matched;
+
+			const { sampled } = sampleCoordinates(routeCoordinates, 100);
+			const elevations = await fetchElevations(sampled);
+			if (version !== routeVersion) return;
+			routeElevations =
+				sampled.length < routeCoordinates.length
+					? interpolateElevations(elevations, sampled.length, routeCoordinates.length)
+					: elevations;
+
+			updateRouteLine();
+			clearPreviewLine();
+			getGeoJSONSource('waypoint-lines')?.setData({
+				type: 'Feature',
+				properties: {},
+				geometry: { type: 'LineString', coordinates: [] },
+			});
+			updateDistanceMarkers();
+			emitUpdate();
+			const bounds = new maplibregl.LngLatBounds();
+			for (const c of routeCoordinates) bounds.extend(c);
+			map.fitBounds(bounds, { padding: 60, duration: motion.reduced ? 0 : 600, maxZoom: map.getZoom() });
+		} catch (err) {
+			if (version === routeVersion) {
+				console.error('Drawing match failed:', err);
+				onerror(errorCopy(err, t, 'routeBuilder.drawUnavailable', 'routeBuilder.drawUnavailable'), 'error');
+			}
+		} finally {
+			if (version === routeVersion) isRouting = false;
+		}
 	}
 
 	// --- Public API ---
+
+	/// Match a drawn shape without a pointer — the programmatic twin of a
+	/// stroke on the canvas, for callers that hold the shape as points.
+	export function drawShape(points: { lat: number; lng: number }[]): Promise<void> {
+		return matchDrawing(points.map((p) => [p.lng, p.lat]));
+	}
 
 	// Any waypoint mutation after a Calculate Route makes the snapped
 	// polyline stale — the user added a back-track / inserted a
@@ -1078,6 +1376,7 @@
 		// is the only safe signal that "the world changed under you,
 		// drop your result."
 		routeVersion++;
+		clearArt();
 		if (routeCoordinates.length === 0 && routeElevations.length === 0) return;
 		routeCoordinates = [];
 		routeElevations = [];
@@ -1170,6 +1469,7 @@
 		if (waypoints.length === 0) return;
 		// Invalidate any in-flight recalculateRoute — see invalidateCalculatedRoute.
 		routeVersion++;
+		clearArt();
 		clearImplicatedMarkers();
 		const popped = waypoints.pop();
 		const marker = markers.pop();
@@ -1203,6 +1503,7 @@
 		// Drop any pending auto-route so a late timer doesn't re-snap a
 		// route the user just cleared.
 		clearTimeout(autoRouteTimer);
+		clearArt();
 		waypoints = [];
 		routeCoordinates = [];
 		routeElevations = [];
@@ -1239,6 +1540,7 @@
 		if (waypoints.length < 2) return;
 		// Invalidate any in-flight recalculateRoute — see invalidateCalculatedRoute.
 		routeVersion++;
+		clearArt();
 
 		const isLoop =
 			waypoints.length >= 3 &&
@@ -1442,7 +1744,12 @@
 			return false;
 		}
 		if (!res.ok) return false;
-		let data: { coordinates?: unknown; distanceM?: unknown; largestLoopM?: unknown };
+		let data: {
+			coordinates?: unknown;
+			distanceM?: unknown;
+			largestLoopM?: unknown;
+			preferenceApplied?: unknown;
+		};
 		try {
 			data = await res.json();
 		} catch {
@@ -1452,6 +1759,11 @@
 		const coords = data?.coordinates;
 		if (!Array.isArray(coords) || coords.length < 2) return false;
 		const polyline = coords as [number, number][];
+		// Comparing against the ask rather than re-listing the union keeps the
+		// vocabulary in one place and fails closed: only the server naming the
+		// preference we sent counts as honoured.
+		const appliedPreference =
+			preference !== undefined && data.preferenceApplied === preference ? preference : null;
 		// Largest genuinely clean loop the graph search found near this start (only
 		// present when the served loop is an out-and-back fallback). Powers the
 		// "best loop near you is ~X km" choice below.
@@ -1510,6 +1822,7 @@
 		} else {
 			onerror(null);
 		}
+		servedPreference = appliedPreference;
 		return true;
 	}
 
@@ -1529,6 +1842,7 @@
 		// Refuse before-map-ready. The fallback below reads map.getCenter()
 		// directly and would crash on undefined.
 		if (!map) return false;
+		clearArt();
 		// Reject garbage targets — NaN / Infinity / non-positive — so a
 		// caller bug can't push the iteration into an infinite or
 		// degenerate scaleFactor chase. The slider in /routes/new
@@ -1588,6 +1902,7 @@
 		// the pre-generate snapshot when the iteration bailed (cancel,
 		// mutation race, every attempt failed to route).
 		let success = false;
+		servedPreference = null;
 		try {
 
 		// Loop case (no distinct end pin): try the server-side GraphHopper
@@ -1669,7 +1984,11 @@
 			routeCoordinates = [];
 			routeElevations = [];
 
-			await recalculateRoute({ skipBusyToggle: true, suppressSoftWarnings: true });
+			await recalculateRoute({
+				skipBusyToggle: true,
+				suppressSoftWarnings: true,
+				requireSnappedSegments: true,
+			});
 
 			if (routeVersion !== beforeIter + 1) return false;
 
@@ -1755,15 +2074,17 @@
 		// Hard failure: every iteration's recalculateRoute either
 		// snapped no segments (radius too small for the road network)
 		// or got interrupted by a mutation. The generic "Routing
-		// service unavailable" was suppressed (suppressSoftWarnings)
-		// so we can surface a generation-specific message instead.
+		// service unavailable" thrown under requireSnappedSegments was
+		// suppressed, so we surface a generation-specific message instead.
 		onerror(
 			t('routeBuilder.couldntGenerateLoop', { target: formatDistance(targetDistanceM) }),
 			'error',
 		);
 		return false;
 		} finally {
-			if (!success) {
+			if (success) {
+				onpreferenceapplied(servedPreference);
+			} else {
 				// Restore the pre-generate state — clears scaffolding
 				// markers, repopulates whatever waypoints the user had
 				// before (often none), and refreshes the preview line.
@@ -1844,13 +2165,16 @@
 	 * route-builder recentre e2e tests. jumpTo sets the camera immediately and
 	 * works regardless of load state, so the recentre is never lost.
 	 */
-	function recentreMap(center: [number, number], zoom: number) {
-		if (!map) return;
+	function recentreMap(center: [number, number], zoom: number): boolean {
+		// No map yet means the consent gate hasn't been taken — see the
+		// `flyTo` note. Report it rather than swallowing the recentre.
+		if (!map) return false;
 		if (map.loaded()) {
 			map.flyTo({ center, zoom, duration: RECENTRE_FLY_MS });
 		} else {
 			map.jumpTo({ center, zoom });
 		}
+		return true;
 	}
 
 	/**
@@ -1859,9 +2183,14 @@
 	 * Generate start/end gives visual confirmation — pre-fix those only
 	 * updated a sidebar label and painted a marker that could be
 	 * off-screen, so on the default world view the click looked dead.
+	 *
+	 * Returns false when there is no map to move — the tile-provider
+	 * consent gate is still up, so the whole map surface is a placeholder
+	 * card. The caller owns telling the user that; swallowing it here is
+	 * what made "use my location" look dead on an unconsented page.
 	 */
-	export function flyTo(lngLat: { lng: number; lat: number }, zoom = 15) {
-		recentreMap([lngLat.lng, lngLat.lat], zoom);
+	export function flyTo(lngLat: { lng: number; lat: number }, zoom = 15): boolean {
+		return recentreMap([lngLat.lng, lngLat.lat], zoom);
 	}
 
 	/**
@@ -2037,6 +2366,7 @@
 		map.addSource('route-overlap', { type: 'geojson', data: empty });
 		map.addSource('preview-line', { type: 'geojson', data: empty });
 		map.addSource('waypoint-lines', { type: 'geojson', data: empty });
+		map.addSource('draw-stroke', { type: 'geojson', data: empty });
 
 		map.addLayer({
 			id: 'route-casing', type: 'line', source: 'route',
@@ -2076,6 +2406,12 @@
 			id: 'preview-line', type: 'line', source: 'preview-line',
 			paint: { 'line-color': mapHintLine(darkBasemap), 'line-width': 2, 'line-dasharray': [4, 4] }
 		});
+		map.addLayer({
+			id: 'draw-stroke', type: 'line', source: 'draw-stroke',
+			paint: { 'line-color': mapHintLine(darkBasemap), 'line-width': 3, 'line-dasharray': [2, 2], 'line-opacity': 0.9 },
+			layout: { 'line-join': 'round', 'line-cap': 'round' }
+		});
+		setStrokeLine(stroke);
 	}
 
 	function setupMap() {
@@ -2083,7 +2419,7 @@
 		// Auto-resize on any container dimension change. Catches the
 		// initial-mount mismeasurement (flex children don't always
 		// have their final rect at mount) AND any later SplitPane
-		// drag. See `$lib/routes/map_resize` for the why.
+		// drag. See `#lib/routes/map_resize` for the why.
 		stopResizeWatch = watchMapResize(mapContainer, map);
 
 		// Single load handler for all map setup
@@ -2108,9 +2444,18 @@
 			addMapSourcesAndLayers();
 		});
 
+		const canvasContainer = map.getCanvasContainer();
+		canvasContainer.addEventListener('pointerdown', onStrokeDown);
+		canvasContainer.addEventListener('pointermove', onStrokeMove);
+		canvasContainer.addEventListener('pointerup', onStrokeUp);
+		canvasContainer.addEventListener('pointercancel', onStrokeCancel);
+		applyDrawMode();
+
 		// Click handler — let parent intercept first, then insert mid-route or append
 		map.on('click', (e: maplibregl.MapMouseEvent) => {
 			if (isRouting) return;
+			// In Draw mode the click that ends a stroke is not a pin.
+			if (drawing) return;
 
 			// Let parent handle the click (e.g. for picking start/end point)
 			if (onmapclick(e.lngLat)) return;
@@ -2183,10 +2528,16 @@
 		if (keyHandler) document.removeEventListener('keydown', keyHandler);
 	});
 
+	$effect(() => {
+		void drawing;
+		applyDrawMode();
+	});
+
 	// When mode changes, clear any calculated route so user re-calculates
 	$effect(() => {
 		const _mode = mode;
 		if (routeCoordinates.length > 0) {
+			clearArt();
 			routeCoordinates = [];
 			routeElevations = [];
 			updateStraightLine();
@@ -2261,6 +2612,13 @@
 		<div class="routing-indicator">
 			<div class="routing-spinner"></div>
 			{t('routeBuilder.calculatingRoute')}
+		</div>
+	{/if}
+
+	{#if drawing && !isRouting}
+		<div class="draw-hint" role="status" data-testid="draw-hint">
+			<span class="material-symbols" aria-hidden="true">edit</span>
+			{t('routeBuilder.drawHint')}
 		</div>
 	{/if}
 
@@ -2497,6 +2855,27 @@
 	}
 
 	/* Routing indicator */
+	.draw-hint {
+		position: absolute;
+		bottom: 40px;
+		inset-inline: 0;
+		margin-inline: auto;
+		width: fit-content;
+		max-width: calc(100% - 32px);
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 16px;
+		background: var(--color-surface);
+		border-radius: 20px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: var(--color-text);
+		pointer-events: none;
+	}
+
 	.routing-indicator {
 		position: absolute;
 		top: 12px;

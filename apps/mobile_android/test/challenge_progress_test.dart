@@ -47,6 +47,12 @@ void main() {
     expect(metricFromActivity({'duration_s': 1800}, ChallengeMetric.duration, null), 1800);
   });
 
+  test('metricFromActivity duration at or past the ten-day bound is 0, as the SQL aggregate skips it', () {
+    expect(metricFromActivity({'duration_s': 44400094}, ChallengeMetric.duration, null), 0);
+    expect(metricFromActivity({'duration_s': 864000}, ChallengeMetric.duration, null), 0);
+    expect(metricFromActivity({'duration_s': 863999}, ChallengeMetric.duration, null), 863999);
+  });
+
   test('metricFromActivity vert reads elevation_gain_m (number or string, missing → 0)', () {
     expect(metricFromActivity({'elevation_gain_m': 640}, ChallengeMetric.vert, null), 640);
     expect(metricFromActivity({'elevation_gain_m': '640'}, ChallengeMetric.vert, null), 640);
@@ -56,6 +62,10 @@ void main() {
   test('metricFromActivity count + streak each contribute 1', () {
     expect(metricFromActivity({}, ChallengeMetric.activityCount, null), 1);
     expect(metricFromActivity({}, ChallengeMetric.streakDays, null), 1);
+  });
+
+  test('park_courses is server-only: an activity contributes 0', () {
+    expect(metricFromActivity({'distance_m': 5000}, ChallengeMetric.parkCourses, null), 0);
   });
 
   test('metricFromActivity activity_type filter excludes non-matching', () {
@@ -107,6 +117,36 @@ void main() {
     expect(ranked.map((r) => [r.entry.teamClubId, r.rank]).toList(), [
       ['blue', 1],
       ['red', 1],
+    ]);
+  });
+
+  test('rankParticipants sorts the keyless team last, like the SQL nulls last',
+      () {
+    // challenge_leaderboard's team branch ends `order by rank, pt.team_club_id
+    // nulls last`, so the unaffiliated bucket (a deleted club, or a member who
+    // joined without picking one) trails the named clubs it ties with.
+    // Collapsing the null key to '' would put it first.
+    final ranked = rankParticipants([
+      const RankableEntry(value: 50),
+      const RankableEntry(teamClubId: 'red', value: 50),
+      const RankableEntry(teamClubId: 'blue', value: 50),
+    ]);
+    expect(ranked.map((r) => [r.entry.teamClubId, r.rank]).toList(), [
+      ['blue', 1],
+      ['red', 1],
+      [null, 1],
+    ]);
+  });
+
+  test('a keyless entry still outranks a lower value — nulls last is a tie-break only',
+      () {
+    final ranked = rankParticipants([
+      const RankableEntry(teamClubId: 'red', value: 10),
+      const RankableEntry(value: 90),
+    ]);
+    expect(ranked.map((r) => [r.entry.teamClubId, r.rank]).toList(), [
+      [null, 1],
+      ['red', 2],
     ]);
   });
 

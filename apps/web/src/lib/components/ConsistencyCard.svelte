@@ -1,10 +1,13 @@
 <script lang="ts">
-	import { computeConsistency, type WeekStart } from '$lib/training/consistency';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run } from '$lib/types';
+	import {
+		computeConsistency,
+		type ConsistencyActivity,
+		type WeekStart,
+	} from '#lib/training/consistency.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
-		activities: Run[];
+		activities: readonly ConsistencyActivity[];
 		weekStart: WeekStart;
 		/// Overridable for deterministic tests; defaults to the real clock.
 		now?: Date;

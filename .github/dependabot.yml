@@ -16,6 +16,11 @@
 # - GitHub Actions are SHA-pinned per the /audit/all GHA pinning pass;
 #   Dependabot keeps those SHAs current so the pinning doesn't go
 #   stale.
+# - Every entry waits out a 7-day `cooldown` before proposing a new
+#   version, the same "at least seven days old" rule the hand-made pins
+#   follow (decisions.md § 2412): a release pulled or found malicious in
+#   its first week never reaches a PR. Cooldown applies to version
+#   updates only; Dependabot security updates still open immediately.
 # - Mobile twin caveat: apps/mobile_android/pubspec.yaml is the
 #   tracked Flutter target. apps/mobile_ios/pubspec.yaml is a manual
 #   mirror per the lib/+test/ byte-identical-twin invariant
@@ -36,6 +41,15 @@ updates:
   # The repo uses npm workspaces with a single root lockfile, so one
   # entry covers every package.json under it. Updates surface as
   # `chore(deps)` and the actual workspace is in the file paths.
+  #
+  # Run `pnpm sync:deno-lock` on the branch before merging — deno.lock's
+  # `workspace` section transcribes these package.json specs, Dependabot
+  # doesn't know about it, and the parity-types job fails on the drift
+  # (decisions.md § 706). Same shape as the mobile-twin caveat in the
+  # header above: auto-merge only queues on the required checks, so the
+  # PR waits for the human step rather than landing without it. Having
+  # CI push the sync onto this branch was refused, not deferred —
+  # decisions.md § 711.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -44,6 +58,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -95,6 +111,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 4
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(mobile/deps)"
       include: "scope"
@@ -152,6 +170,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(job_worker/deps)"
       include: "scope"
@@ -177,6 +197,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(job_worker/docker)"
       include: "scope"
@@ -195,6 +217,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(watch_wear/deps)"
       include: "scope"
@@ -214,17 +238,24 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Hold the Kotlin Gradle plugins at 2.3.x. CodeQL's Kotlin extractor
-      # can't analyse 2.4.0 yet ("kotlin-version-too-new"), so a 2.4.x bump
-      # turns the codeql-kotlin Security job red (this bit us when the
-      # minor-and-patch group shipped #68 → Kotlin 2.4.0). 2.3.x patches
-      # still flow. Drop these two entries once CodeQL supports 2.4.0; keep
-      # in lockstep with the pin + comment in
-      # apps/watch_wear/android/settings.gradle.kts and the CLAUDE.md note.
+      # Hold the Kotlin Gradle plugins below CodeQL's extractor ceiling: a
+      # bump past it does not degrade the scan, it fails the codeql-kotlin
+      # Security job from inside a compile task and loses the whole
+      # java-kotlin analysis (this bit us when the minor-and-patch group
+      # shipped #68 → Kotlin 2.4.0, under an older bundle). Bundle 2.27.0,
+      # which the pinned github/codeql-action SHA ships, refuses >= 2.4.20
+      # (measured against the CLI in decisions § 1672; its supported-versions
+      # table reads "Kotlin 1.8.0 to 2.4.1x"), so the app sits on 2.4.10.
+      # These two lines set the compiler, not just the plugins — the compose
+      # plugin requires kotlin-gradle-plugin at its own version, lifting AGP
+      # 9's built-in Kotlin — so they must move together. Raise this only
+      # when the bundle the pinned action SHA ships raises the ceiling; keep
+      # the pin + comment in apps/watch_wear/android/settings.gradle.kts and
+      # the apps/watch_wear/CLAUDE.md note in lockstep.
       - dependency-name: "org.jetbrains.kotlin.plugin.compose"
-        versions: [">=2.4.0"]
+        versions: [">=2.4.20"]
       - dependency-name: "org.jetbrains.kotlin.plugin.serialization"
-        versions: [">=2.4.0"]
+        versions: [">=2.4.20"]
 
   # ---------------------------------------------------------------------------
   # gradle — apps/mobile_android/android (Flutter Android shell)
@@ -241,6 +272,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(mobile_android/deps)"
       include: "scope"
@@ -297,6 +330,26 @@ updates:
       # take the newest version whose metadata the new toolchain satisfies.
       - dependency-name: "androidx.health.connect:connect-client"
         versions: ["> 1.2.0-alpha02"]
+      # The Kotlin Gradle plugin is held below CodeQL 2.27.0's extractor
+      # ceiling, which is what lets `security.yml`'s `codeql-kotlin` job
+      # scan this host at all. 2.4.20 is refused outright — "Kotlin version
+      # 2.4.20 is too recent. CodeQL currently supports versions below
+      # 2.4.20" — from inside a plugin subproject's compile task, so the
+      # bump does not degrade the scan, it fails the job and takes the
+      # whole java-kotlin analysis with it. `apps/watch_wear/android` is
+      # held the same way for the same reason. Raise this only when the
+      # bundle the pinned `github/codeql-action` SHA ships raises the
+      # ceiling; keep settings.gradle.kts in lockstep.
+      - dependency-name: "org.jetbrains.kotlin.android"
+        versions: [">= 2.4.20"]
+      # Same wall as the AGP and connect-client pins above: androidx.core
+      # 1.19 declares `requires AGP >= 9.1.0` and `compileSdk >= 37` in its
+      # AAR metadata, so the APK smoke build fails at checkDebugAarMetadata
+      # (PR #1235). Re-evaluate with the AGP pin.
+      - dependency-name: "androidx.core:core"
+        versions: [">= 1.19"]
+      - dependency-name: "androidx.core:core-ktx"
+        versions: [">= 1.19"]
 
   # ---------------------------------------------------------------------------
   # terraform — infra stacks
@@ -312,6 +365,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -329,6 +384,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -346,6 +403,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -363,6 +422,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -380,6 +441,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -397,6 +460,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -420,6 +485,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(ci)"
       include: "scope"

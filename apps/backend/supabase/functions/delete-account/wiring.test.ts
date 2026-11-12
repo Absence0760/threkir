@@ -138,21 +138,53 @@ Deno.test('handler calls deleteUserReports before admin.deleteUser', () => {
 	);
 });
 
+Deno.test('deleteUserReports keeps a report under legal hold', () => {
+	// A moderator's hold exists so the reported person cannot erase the
+	// report by deleting their account (decisions § 2231). The purge honours
+	// it in SQL; this sweep is the other delete path that must.
+	const start = SRC.indexOf('async function deleteUserReports(');
+	const end = SRC.indexOf('\n}\n', start);
+	assert(start !== -1 && end !== -1, 'deleteUserReports is no longer where this test looks');
+	assert(
+		SRC.slice(start, end).includes(".eq('legal_hold', false)"),
+		'deleteUserReports must filter legal_hold = false',
+	);
+});
+
 Deno.test('handler walks every user-content bucket in the mandatory drain', () => {
 	// The avatars bucket is best-effort outside the main try/catch
-	// because the bucket doesn't exist yet; the other four drains are
+	// because the bucket doesn't exist yet; the other five drains are
 	// mandatory. route-photos + club-photos rows cascade with the auth
 	// user, so dropping either bucket from this loop retains the photo
 	// bytes forever — the GDPR Art 17 gap audit/storage 2026-07 found.
+	// `exports` joined the loop with migration `20270602_001`, which moved
+	// the Art 20 artifacts off the `runs` bucket and its 25 MB object cap
+	// (decisions §703); omitting it would retain a full copy of the
+	// subject's history after erasure — the worst possible Art 17 gap.
 	assert(
-		/for\s+\(const\s+bucket\s+of\s+\['runs',\s*'run-photos',\s*'route-photos',\s*'club-photos'\]\)/
+		/for\s+\(const\s+bucket\s+of\s+\['runs',\s*'exports',\s*'run-photos',\s*'route-photos',\s*'club-photos'\]\)/
 			.test(SRC),
-		'handler must iterate runs + run-photos + route-photos + club-photos ' +
-			'in the mandatory bucket-drain loop',
+		'handler must iterate runs + exports + run-photos + route-photos + ' +
+			'club-photos in the mandatory bucket-drain loop',
 	);
 	assert(
 		/deletePrefix\(adminClient,\s*'avatars'/.test(SRC),
 		'handler must also attempt the avatars bucket (best-effort, audit/account-deletion-completeness)',
+	);
+});
+
+Deno.test('dm-images is erased row-driven, never prefix-drained', () => {
+	// A direct-message photo a report holds is moderation evidence that
+	// outlives the sender's account (issue #1216). The rows go by cascade and
+	// the worker's dm_image_orphan_sweep erases exactly the objects no row
+	// names; a prefix drain here would erase the held evidence too.
+	assert(
+		!/deletePrefix\([^)]*'dm-images'/.test(SRC) && !/\[[^\]]*'dm-images'[^\]]*\]/.test(SRC),
+		'dm-images must not be prefix-drained: it would delete report-held evidence',
+	);
+	assert(
+		/`dm-images` is deliberately NOT prefix-drained/.test(SRC),
+		'the handler must say why dm-images is absent from the drain',
 	);
 });
 
@@ -194,13 +226,13 @@ Deno.test('handler builds a third_party_outcomes record from the best-effort cal
 	// fifth argument. garmin_deauth is wired even though Garmin OAuth is
 	// deferred (it no-ops to 'skipped' today) so the deletion path can't
 	// silently forget Garmin once OAuth lands — audit-findings 2026-05-30.
-	const built = /const\s+thirdPartyOutcomes\s*:\s*ThirdPartyOutcomes\s*=\s*\{[^}]*strava_deauth[^}]*garmin_deauth[^}]*revenuecat_delete[^}]*fcm_remove[^}]*stripe_connect_delete[^}]*\}/m
+	const built = /const\s+thirdPartyOutcomes\s*:\s*ThirdPartyOutcomes\s*=\s*\{[^}]*strava_deauth[^}]*garmin_deauth[^}]*revenuecat_delete[^}]*fcm_remove[^}]*stripe_connect_delete[^}]*apple_revoke:\s*'not_reached'[^}]*\}/m
 		.test(SRC);
 	assert(
 		built,
 		'handler must build a ThirdPartyOutcomes record from deauthorizeStrava + ' +
 			'deauthorizeGarmin + deleteRevenueCatSubscriber + invalidatePushTokens + ' +
-			'deleteStripeConnectAccount results',
+			'deleteStripeConnectAccount + revokeAppleSignIn results',
 	);
 	// And recordAudit must receive it on every call site. Count the
 	// argument uses (`thirdPartyOutcomes` immediately followed by `,` or
@@ -278,6 +310,20 @@ Deno.test('count-returning drains request an exact row count', () => {
 Deno.test('handler uses the shared lib.ts helpers (no duplicated URL constants)', () => {
 	// If the URL constants are inlined here, a future audit pass
 	// will silently miss a URL-string change in lib.ts.
+	//
+	// Each `!` below is also satisfied by a handler that no longer calls the
+	// third party at all, which is the more likely regression of the two — so
+	// the positive is asserted first: the shared helper is actually used.
+	for (
+		const helper of [
+			'STRAVA_DEAUTHORIZE_URL',
+			'revenueCatSubscriberUrl(',
+			'stripeAccountUrl(',
+			'FCM_BATCH_REMOVE_URL',
+		]
+	) {
+		assert(SRC.includes(helper), `the handler no longer uses ${helper} from ./lib.ts`);
+	}
 	assert(
 		!/['"]https:\/\/www\.strava\.com\/oauth\/deauthorize['"]/.test(SRC),
 		'handler must use STRAVA_DEAUTHORIZE_URL from ./lib.ts, not an inline string',
@@ -294,4 +340,19 @@ Deno.test('handler uses the shared lib.ts helpers (no duplicated URL constants)'
 		!/['"]https:\/\/api\.stripe\.com/.test(SRC),
 		'handler must use stripeAccountUrl() from ./lib.ts',
 	);
+});
+
+Deno.test('the Apple revoke runs after every mandatory cleanup and immediately before admin.deleteUser', () => {
+	// An abort anywhere earlier must leave the token for the retry; reading it
+	// any earlier would revoke a grant on an account that then survives.
+	const revoke = SRC.indexOf('thirdPartyOutcomes.apple_revoke = await revokeAppleSignIn(');
+	const del = SRC.indexOf('adminClient.auth.admin.deleteUser(user.id)');
+	assert(revoke !== -1, 'handler must call revokeAppleSignIn');
+	for (const cleanup of ['cleanupVaultSecrets(', 'deleteUserReports(', 'drainUserJobs(', 'drainUserRateLimits(', 'anonymiseAuthoredSegments(', "deletePrefix(adminClient, 'avatars'"]) {
+		const at = SRC.indexOf(cleanup);
+		assert(at !== -1 && at < revoke, `${cleanup} must run before the Apple revoke`);
+	}
+	assert(revoke < del, 'the Apple revoke must run before admin.deleteUser');
+	assert(!SRC.slice(revoke, del).includes('return '), 'nothing between the revoke and admin.deleteUser may abort the deletion');
+	assert(!SRC.includes('take_apple_refresh_token'), 'the token must be read, not consumed');
 });

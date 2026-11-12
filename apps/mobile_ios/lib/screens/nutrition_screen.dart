@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:api_client/api_client.dart';
@@ -8,8 +9,13 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../column_limits.dart';
+import '../diary_day.dart';
 import '../exercise_calories.dart';
+import '../exercise_day.dart';
+import '../extended_nutrients.dart';
 import '../food_search.dart' show FoodMacros;
+import '../health_consent.dart';
 import '../hydration.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -22,6 +28,7 @@ import '../meal_template.dart';
 import '../nutrition_budget.dart';
 import '../nutrition_targets.dart';
 import '../preferences.dart';
+import '../typed_decimal.dart';
 import '../undo_queue.dart';
 import '../recipe.dart';
 import '../nutrition_totals.dart';
@@ -31,7 +38,10 @@ import '../widgets/nutrition_log_sheet.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import '../pro_sellable.dart';
 import 'nutrition_meal_detail_screen.dart';
+import 'plate_photo_screen.dart';
+import 'nutrition_targets_screen.dart';
 import 'settings_body_metrics_screen.dart';
 
 /// Daily calorie + macro targets for the signed-in user, or null when a
@@ -48,8 +58,11 @@ Future<NutritionTargets?> loadNutritionTargets(
   try {
     final profile = await api.fetchMyProfile();
     final weightKg = await api.fetchLatestBodyWeightKg();
+    // The settings-bag mirror already follows consent in both directions;
+    // the profile column is the ungated age record, so its fallback takes the
+    // Art 9 term (§ 718 / § 722).
     final dobIso = settings?.effective<String>(SettingsKeys.dateOfBirth) ??
-        profile?.dateOfBirth?.toIso8601String();
+        healthUseDob(profile);
     return computeNutritionTargets(BodyMetricsInput(
       weightKg: weightKg,
       heightCm: profile?.heightCm,
@@ -67,43 +80,6 @@ Future<NutritionTargets?> loadNutritionTargets(
   }
 }
 
-/// Split the `activities` view rows falling inside `[start, end)` local time
-/// into the inputs the exercise-calorie and hydration add-ons consume.
-///
-/// Match on [ActivityRow.kindRun] / [ActivityRow.kindLift], never on a bare
-/// string: the view's gym branch emits `lift`, so a filter written against
-/// `'gym'` silently matched nothing and every strength session contributed
-/// zero calories and zero hydration minutes.
-///
-/// Pulled out of the screen so the day-window and kind selection are
-/// testable without booting Nutrition and signing a user in — the reason the
-/// original bug had no coverage.
-({List<RunForCalories> runs, List<GymSessionForCalories> gym, double seconds})
-    exerciseInputsForDay(
-  List<ActivityRow> activities,
-  DateTime start,
-  DateTime end,
-) {
-  var seconds = 0.0;
-  final runs = <RunForCalories>[];
-  final gym = <GymSessionForCalories>[];
-  for (final a in activities) {
-    if (a.kind != ActivityRow.kindRun && a.kind != ActivityRow.kindLift) {
-      continue;
-    }
-    final at = a.startedAt.toLocal();
-    if (at.isBefore(start) || !at.isBefore(end)) continue;
-    final durationS = (a.summary['duration_s'] as num?)?.toDouble();
-    seconds += durationS ?? 0;
-    if (a.kind == ActivityRow.kindRun) {
-      runs.add(RunForCalories((a.summary['distance_m'] as num?)?.toDouble()));
-    } else {
-      gym.add(GymSessionForCalories(durationS));
-    }
-  }
-  return (runs: runs, gym: gym, seconds: seconds);
-}
-
 /// Phase 4 multi-modal Nutrition (decisions §63, multi_modal.md § Nutrition).
 /// Mirrors web `/nutrition`: Mifflin-St Jeor macro rings vs targets (hidden
 /// when body metrics are absent — anti-clutter), a meal-slot daily view, a
@@ -118,11 +94,16 @@ class NutritionScreen extends StatefulWidget {
   /// target. Null in tests / signed-out — the rings then hide (anti-clutter).
   final SettingsSyncService? settingsSync;
 
+  /// Whether to offer the plate-photo logger. Defaults to the deploy's
+  /// capability manifest; tests inject an answer.
+  final Future<bool> Function()? loadPlatePhotoAvailable;
+
   const NutritionScreen({
     super.key,
     required this.api,
     required this.store,
     this.settingsSync,
+    this.loadPlatePhotoAvailable,
   });
 
   @override
@@ -131,8 +112,20 @@ class NutritionScreen extends StatefulWidget {
 
 const _waterUnitMl = 250;
 
-class _NutritionScreenState extends State<NutritionScreen> {
-  bool _refreshing = false;
+/// Deadline for the whole arrival refresh. Generous — it is a ceiling on a
+/// stall, not a latency budget.
+const _kRefreshTimeout = Duration(seconds: 25);
+
+class _NutritionScreenState extends State<NutritionScreen>
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  /// This screen is a tab body of `fitness_hub_screen`'s `TabBarView`,
+  /// which disposes the tabs either side of the visible one. Without this
+  /// the whole arrival refresh — seven round trips — reran on every return
+  /// to the tab, and the day the user had stepped to was lost with it.
+  /// Matches `RunsScreen` / `GymScreen`, the hub's sibling tabs.
+  @override
+  bool get wantKeepAlive => true;
+
   bool _isOnline = true;
   NutritionTargets? _targets;
   int _waterMl = 0;
@@ -153,24 +146,68 @@ class _NutritionScreenState extends State<NutritionScreen> {
   String? _loggingRecipeId;
   bool _savingRecipe = false;
 
-  /// Today's run + gym active minutes — feeds the hydration goal's
+  // Whether the deploy has the plate-photo logger live (decisions § 1972).
+  // Unknown reads as off, so the action only appears once the capability
+  // manifest says so.
+  bool _platePhotoAvailable = false;
+
+  /// The viewed day's run + gym active minutes — feeds the hydration goal's
   /// sweat-replacement add (runs/gym without a duration contribute nothing).
   int _exerciseMinutes = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _armMidnightRoll();
     widget.store.addListener(_onStoreChange);
     _templateStore.addListener(_onStoreChange);
     _recipeStore.addListener(_onStoreChange);
     _loadWater();
-    _templateStore.loadAll();
-    _recipeStore.loadAll();
+    _initOwnedStores();
     _refresh();
+    _loadPlatePhotoAvailability();
+  }
+
+  Future<void> _loadPlatePhotoAvailability() async {
+    try {
+      final available =
+          await (widget.loadPlatePhotoAvailable ?? fetchPlatePhotoAvailable)();
+      if (mounted) setState(() => _platePhotoAvailable = available);
+    } catch (e) {
+      debugPrint('nutrition_screen: capability fetch failed: $e');
+    }
+  }
+
+  Future<void> _logFromPhoto() async {
+    final saved = await showPlatePhotoScreen(
+        context: context, store: widget.store, diaryDate: _viewDate);
+    if (saved == true) await _maybeSync();
+  }
+
+  /// `init()`, never a bare `loadAll()`: `loadAll` alone leaves `dir` null, and
+  /// every subsequent write then refuses (see `OfflineSyncStore`), so a saved
+  /// meal or recipe would live in memory for the session and never reach disk
+  /// or the server. Failures are per-store so a broken meal-template directory
+  /// can't cost the user their recipes.
+  Future<void> _initOwnedStores() async {
+    try {
+      await _templateStore.init();
+    } catch (e) {
+      debugPrint('nutrition_screen: meal template store init failed: $e');
+    }
+    try {
+      await _recipeStore.init();
+    } catch (e) {
+      debugPrint('nutrition_screen: recipe store init failed: $e');
+    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _midnightRoll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     widget.store.removeListener(_onStoreChange);
     _templateStore.removeListener(_onStoreChange);
     _recipeStore.removeListener(_onStoreChange);
@@ -182,11 +219,10 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 
   String _waterKey() {
-    final d = DateTime.now();
     // User-scoped (issue #231): a shared device's next account must not
     // inherit — or increment — the prior account's water count.
     final uid = widget.api?.userId ?? 'anon';
-    return 'water_ml_${uid}_${d.year}-${d.month}-${d.day}';
+    return 'water_ml_${uid}_${waterDayKey(_viewDate)}';
   }
 
   Future<void> _loadWater() async {
@@ -200,14 +236,76 @@ class _NutritionScreenState extends State<NutritionScreen> {
     await prefs.setInt(_waterKey(), ml);
   }
 
-  DateTime get _todayStart {
-    final n = DateTime.now();
-    return DateTime(n.year, n.month, n.day);
+  /// The day the user explicitly stepped to, or null while the diary is
+  /// following today. Held as an ABSENCE rather than as a stored "today":
+  /// this is a keep-alive tab that is never torn down, so a stored value kept
+  /// the day of first mount for the life of the process and filed the next
+  /// morning's breakfast into yesterday (issue #921). Web has the property for
+  /// free by re-deriving from `?date=` on every render.
+  String? _pinnedDate;
+
+  /// The `YYYY-MM-DD` calendar day the diary is showing. A local-calendar
+  /// identity, never an instant: it is only ever assigned from the `diary_day`
+  /// helpers, which step through `DateTime(y, m, d + n)` so a 23- or 25-hour
+  /// DST day cannot repeat or skip one.
+  String get _viewDate => resolveDiaryDate(_pinnedDate, DateTime.now());
+
+  /// The day the resident cache (`_targets`, `_exerciseMinutes`, the store
+  /// window) was last filled for. Resuming after it has rolled re-fetches.
+  String _loadedDay = isoDateOf(DateTime.now());
+
+  /// Fires at the next local midnight, when the day the diary calls "Today"
+  /// stops being today. A device asleep across midnight may not run it on
+  /// time, so [didChangeAppLifecycleState] re-checks on resume and both paths
+  /// re-arm through here.
+  Timer? _midnightRoll;
+
+  void _armMidnightRoll() {
+    _midnightRoll?.cancel();
+    _midnightRoll = Timer(
+      Duration(milliseconds: msUntilNextLocalMidnight(DateTime.now())),
+      _rollDay,
+    );
   }
 
-  DateTime get _tomorrow {
+  /// The timer fires AT the boundary, so the day has rolled by construction —
+  /// no comparison to make. A pinned past day keeps its data and only its
+  /// label moves ("Yesterday" becomes a date), so it re-renders without
+  /// re-fetching.
+  void _rollDay() {
+    if (!mounted) return;
+    _armMidnightRoll();
+    setState(() {});
+    if (_pinnedDate != null) return;
+    _loadWater();
+    _refresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // A sleeping device is not obliged to have run the timer on time, so
+    // resume re-arms it and catches up on whatever it missed.
+    _armMidnightRoll();
+    if (_viewDate == _loadedDay) return;
+    _loadWater();
+    _refresh();
+  }
+
+  DiaryWindow get _dayWindow {
+    final w = diaryWindow(_viewDate);
+    if (w != null) return w;
     final n = DateTime.now();
-    return DateTime(n.year, n.month, n.day + 1);
+    return DiaryWindow(
+        DateTime(n.year, n.month, n.day), DateTime(n.year, n.month, n.day + 1));
+  }
+
+  void _goToDay(String iso) {
+    if (iso == _viewDate) return;
+    setState(() =>
+        _pinnedDate = isDiaryToday(iso, DateTime.now()) ? null : iso);
+    _loadWater();
+    _refresh();
   }
 
   Future<void> _refresh() async {
@@ -216,35 +314,57 @@ class _NutritionScreenState extends State<NutritionScreen> {
       if (mounted) setState(() => _isOnline = false);
       return;
     }
-    setState(() => _refreshing = true);
+    final day = _viewDate;
     try {
-      // Pull the last 7 days so both today's list and the trend derive from
-      // the one cache.
-      final weekStart = _todayStart.subtract(const Duration(days: 6));
-      final fresh = await api.fetchFoodLog(from: weekStart, to: _tomorrow);
-      await widget.store.replaceFromServer(
-        [for (final r in fresh) r.toJson()],
-        windowStart: weekStart,
-        windowEnd: _tomorrow,
-      );
-      if (widget.store.hasPending) await widget.store.syncWithServer(api);
-      await _hydrateTemplates(api);
-      await _hydrateRecipes(api);
-      _weightKg = await api.fetchLatestBodyWeightKg();
-      final exercise = await _todayExercise(api, _weightKg);
-      _exerciseMinutes = exercise.minutes;
-      _targets = await loadNutritionTargets(
-        api,
-        widget.settingsSync?.service,
-        exerciseKcal: exercise.kcal.toDouble(),
-      );
+      // Seven sequential round trips against a deadline. Without one a stalled
+      // socket left the spinner up for the OS connect timeout (minutes on a
+      // flaky cell link) and the screen claiming to be online the whole time.
+      await Future<void>.sync(() async {
+        // Pull the 7 days ending on the viewed day so both its list and the
+        // trend derive from the one cache. A row outside that window is
+        // preserved rather than pruned, so stepping back does not evict today.
+        final trend = diaryWindow(day, 7) ?? _dayWindow;
+        final fresh = await api.fetchFoodLog(from: trend.start, to: trend.end);
+        await widget.store.replaceFromServer(
+          [for (final r in fresh) r.toJson()],
+          windowStart: trend.start,
+          windowEnd: trend.end,
+        );
+        if (widget.store.hasPending) await widget.store.syncWithServer(api);
+        await _hydrateTemplates(api);
+        await _hydrateRecipes(api);
+        _weightKg = await api.fetchLatestBodyWeightKg();
+        final exercise = await _dayExercise(api, _weightKg);
+        _exerciseMinutes = exercise.minutes;
+        _targets = await loadNutritionTargets(
+          api,
+          widget.settingsSync?.service,
+          exerciseKcal: exercise.kcal.toDouble(),
+        );
+      }).timeout(_kRefreshTimeout);
+      _loadedDay = day;
       _isOnline = true;
     } catch (e) {
       _isOnline = false;
       debugPrint('nutrition_screen: refresh failed, using cache: $e');
     } finally {
-      if (mounted) setState(() => _refreshing = false);
+      if (mounted) setState(() {});
     }
+  }
+
+  /// The always-available route to the number the rings are measured against.
+  /// Deliberately ungated: a runner with no targets yet is precisely the one
+  /// who needs the derivation and the two levers (decisions § 695).
+  Future<void> _openTargets() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => NutritionTargetsScreen(
+          api: widget.api,
+          settingsSync: widget.settingsSync,
+        ),
+      ),
+    );
+    await _refresh();
   }
 
   Future<void> _openBodyMetrics() async {
@@ -262,17 +382,18 @@ class _NutritionScreenState extends State<NutritionScreen> {
     await _refresh();
   }
 
-  /// Today's run + gym exercise reduced to (a) whole active minutes for the
-  /// hydration goal's sweat-replacement add and (b) estimated burned kcal for
-  /// the dynamic-TDEE "base + exercise" calorie goal (decisions §134). Both
-  /// best-effort; a failure leaves them at 0 so the goal stays base-only.
-  Future<({int minutes, int kcal})> _todayExercise(
+  /// The viewed day's run + gym exercise reduced to (a) whole active minutes
+  /// for the hydration goal's sweat-replacement add and (b) estimated burned
+  /// kcal for the dynamic-TDEE "base + exercise" calorie goal (decisions §134).
+  /// Both best-effort; a failure leaves them at 0 so the goal stays base-only.
+  Future<({int minutes, int kcal})> _dayExercise(
     ApiClient api,
     double? weightKg,
   ) async {
     try {
       final activities = await api.fetchActivities(limit: 50);
-      final day = exerciseInputsForDay(activities, _todayStart, _tomorrow);
+      final w = _dayWindow;
+      final day = exerciseInputsForDay(activities, w.start, w.end);
       final kcal = exerciseCaloriesForDay(
         runs: day.runs,
         gymSessions: day.gym,
@@ -328,17 +449,18 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 
   Future<void> _logFood() async {
-    final saved = await showNutritionLogSheet(context: context, store: widget.store);
+    final saved = await showNutritionLogSheet(
+        context: context, store: widget.store, diaryDate: _viewDate);
     if (saved == true) await _maybeSync();
   }
 
-  /// Promote today's logged entries into a named meal template via the pure
-  /// `templateFromEntries` parity helper (default slot derived when the day's
+  /// Promote the viewed day's logged entries into a named meal template via the
+  /// pure `templateFromEntries` parity helper (default slot derived when the day's
   /// entries agree). The name is collected in an AlertDialog.
   Future<void> _saveAsMeal() async {
     if (_savingMeal) return;
     final l10n = AppLocalizations.of(context);
-    final today = _todayEntries;
+    final today = _dayEntries;
     if (today.isEmpty) return;
     final controller = TextEditingController();
     final name = await showDialog<String>(
@@ -369,6 +491,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     if (name == null) return;
     if (_savingMeal) return;
+    if (!mounted) return;
     setState(() => _savingMeal = true);
     final draft = templateFromEntries(
       name,
@@ -423,8 +546,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
     if (mounted && _templateStore.hasPending) setState(() {});
   }
 
-  /// Log every item of [t] as a food_log entry at now, via the pure
-  /// `entriesFromTemplate` parity helper (slot resolves item → template-default)
+  /// Log every item of [t] as a food_log entry inside the VIEWED day, via the
+  /// pure `entriesFromTemplate` parity helper (slot resolves item → template-default)
   /// + an offline-first batch write to the food store.
   Future<void> _logTemplate(StoredMealTemplate t) async {
     if (_loggingTemplateId) return;
@@ -453,7 +576,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       ));
       for (final it in inputs) {
         await widget.store.createLocal(
-          startedAt: DateTime.now(),
+          startedAt: entryTimestampFor(_viewDate, DateTime.now()),
           itemName: it.itemName,
           mealSlot: it.mealSlot,
           calories: it.calories,
@@ -560,62 +683,90 @@ class _NutritionScreenState extends State<NutritionScreen> {
     if (mounted && _recipeStore.hasPending) setState(() {});
   }
 
-  /// Promote today's logged entries into a named recipe. The name + servings
+  /// Promote the viewed day's logged entries into a named recipe. The name + servings
   /// are collected in an AlertDialog; the ingredients come from `recipeFromEntries`.
   Future<void> _saveAsRecipe() async {
     if (_savingRecipe) return;
     final l10n = AppLocalizations.of(context);
-    final today = _todayEntries;
+    final today = _dayEntries;
     if (today.isEmpty) return;
     final nameController = TextEditingController();
-    final servingsController = TextEditingController(text: '1');
+    // `recipes.servings` has a floor of 1 in the column and no ceiling there,
+    // but `numeric(5,1)` has one — so an unbounded field turned a mistyped 9
+    // into a raw 22003 and a typed 0 into a 23514 (decisions § 792). The
+    // dialog refuses rather than clamping: silently rewriting a typed number
+    // is the same swallow one layer down.
+    const servingsKey = 'recipes.servings';
+    final servingsController =
+        TextEditingController(text: '${columnMin(servingsKey).toInt()}');
+    String boundText(num v) =>
+        formatFixed(v.toDouble(), v == v.roundToDouble() ? 0 : 1, activeLocaleTag);
     final result = await showDialog<({String name, double servings})>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.nutritionSaveAsRecipeTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: l10n.nutritionRecipeName,
-                hintText: l10n.nutritionRecipeNamePlaceholder,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final typed = parseTypedDecimal(servingsController.text);
+          final outOfRange =
+              typed != null && !withinColumnLimit(servingsKey, typed);
+          return AlertDialog(
+            title: Text(l10n.nutritionSaveAsRecipeTitle),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: l10n.nutritionRecipeName,
+                    hintText: l10n.nutritionRecipeNamePlaceholder,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: servingsController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.nutritionRecipeServings,
+                    errorText: outOfRange
+                        ? l10n.limitsServingsOutOfRange(
+                            boundText(columnMin(servingsKey)),
+                            boundText(columnMax(servingsKey)))
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(l10n.nutritionRecipeServingsHint,
+                    style: Theme.of(ctx).textTheme.bodySmall),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.nutritionCancel),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: servingsController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(labelText: l10n.nutritionRecipeServings),
-            ),
-            const SizedBox(height: 8),
-            Text(l10n.nutritionRecipeServingsHint,
-                style: Theme.of(ctx).textTheme.bodySmall),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.nutritionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(
-              ctx,
-              (
-                name: nameController.text,
-                servings: double.tryParse(servingsController.text) ?? 1,
+              TextButton(
+                onPressed: outOfRange
+                    ? null
+                    : () => Navigator.pop(
+                          ctx,
+                          (
+                            name: nameController.text,
+                            servings: typed ?? columnMin(servingsKey).toDouble(),
+                          ),
+                        ),
+                child: Text(l10n.nutritionSaveRecipe),
               ),
-            ),
-            child: Text(l10n.nutritionSaveRecipe),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
     FocusManager.instance.primaryFocus?.unfocus();
     if (result == null) return;
     if (_savingRecipe) return;
+    if (!mounted) return;
     setState(() => _savingRecipe = true);
     final draft = recipeFromEntries(
       result.name,
@@ -663,7 +814,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
     }
   }
 
-  /// The common meal slot across today's entries when they all agree, else
+  /// The common meal slot across the viewed day's entries when they all agree, else
   /// null — used as the recipe's default slot (mirrors web, which derives it
   /// the same way via templateFromEntries).
   static String? _commonSlot(List<FoodEntry> entries) {
@@ -711,7 +862,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       ));
       if (input != null) {
         await widget.store.createLocal(
-          startedAt: DateTime.now(),
+          startedAt: entryTimestampFor(_viewDate, DateTime.now()),
           itemName: input.itemName,
           mealSlot: input.mealSlot,
           calories: input.calories,
@@ -813,8 +964,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
   /// itself is untouched until the window closes.
   Set<String> _deferredDeleteIds = {};
 
-  List<FoodEntry> get _todayEntries => [
-        for (final r in widget.store.entriesForRange(_todayStart, _tomorrow))
+  List<FoodEntry> get _dayEntries => [
+        for (final r
+            in widget.store.entriesForRange(_dayWindow.start, _dayWindow.end))
           if (!_deferredDeleteIds.contains(r['id'])) FoodEntry.fromRow(r),
       ];
 
@@ -825,30 +977,42 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final today = _todayEntries;
+    final today = _dayEntries;
     final groups = groupByMealSlot(today);
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.nutritionTitle),
         actions: [
+          // None of the three is gated on `_refreshing`: every one of them
+          // writes through the offline-first store, which needs no server and
+          // no arrival refresh, and the add control is the only way into the
+          // composer. Disabling them for the refresh made the surface's whole
+          // point unavailable for its slowest seven seconds (issue #921).
           if (today.isNotEmpty)
             IconButton(
               tooltip: l10n.nutritionSaveAsMeal,
               icon: const Icon(Icons.bookmark_add_outlined),
-              onPressed: (_refreshing || _savingMeal) ? null : _saveAsMeal,
+              onPressed: _savingMeal ? null : _saveAsMeal,
             ),
           if (today.isNotEmpty)
             IconButton(
               tooltip: l10n.nutritionSaveAsRecipe,
               icon: const Icon(Icons.menu_book_outlined),
-              onPressed: (_refreshing || _savingRecipe) ? null : _saveAsRecipe,
+              onPressed: _savingRecipe ? null : _saveAsRecipe,
+            ),
+          if (_platePhotoAvailable)
+            IconButton(
+              tooltip: l10n.nutritionLogFromPhoto,
+              icon: const Icon(Icons.photo_camera),
+              onPressed: _logFromPhoto,
             ),
           IconButton(
             tooltip: l10n.nutritionLogFood,
             icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _logFood,
+            onPressed: _logFood,
           ),
         ],
       ),
@@ -885,10 +1049,21 @@ class _NutritionScreenState extends State<NutritionScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    _dayBar(theme, l10n),
+                    const SizedBox(height: 12),
                     _ringsCard(theme, l10n, sumMacros(today)),
                     const SizedBox(height: 12),
                     _waterCard(theme, l10n),
                     const SizedBox(height: 12),
+                    ...(() {
+                      final nutrients = _nutrientBudgets(today);
+                      return nutrients.isEmpty
+                          ? const <Widget>[]
+                          : <Widget>[
+                              _nutrientsCard(theme, l10n, nutrients),
+                              const SizedBox(height: 12),
+                            ];
+                    })(),
                     if (_templateStore.templates.isNotEmpty) ...[
                       _templatesCard(theme, l10n),
                       const SizedBox(height: 12),
@@ -900,7 +1075,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
                     if (groups.isEmpty)
                       EmptyState(
                         icon: Icons.restaurant,
-                        title: l10n.nutritionEmptyTitle,
+                        title: _viewingToday
+                            ? l10n.nutritionEmptyTitle
+                            : l10n.nutritionDayEmptyPast,
                         body: l10n.nutritionEmptyBody,
                         ctaLabel: l10n.nutritionLogFood,
                         onCta: _logFood,
@@ -917,6 +1094,82 @@ class _NutritionScreenState extends State<NutritionScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  bool get _viewingToday => isDiaryToday(_viewDate, DateTime.now());
+
+  String _dayLabel(AppLocalizations l10n, String tag) {
+    final now = DateTime.now();
+    if (isDiaryToday(_viewDate, now)) return l10n.nutritionDayToday;
+    if (_viewDate == stepDiaryDate(isoDateOf(now), -1, now)) {
+      return l10n.nutritionDayYesterday;
+    }
+    return formatDateMed(_dayWindow.start, tag);
+  }
+
+  /// The day stepper above the rings, mirroring web `/nutrition`'s day bar:
+  /// back a day, the day's label, forward a day (disabled on today), a Today
+  /// reset, and — off today — the hint that a log lands on the viewed day.
+  Widget _dayBar(ThemeData theme, AppLocalizations l10n) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    final now = DateTime.now();
+    return Semantics(
+      container: true,
+      label: l10n.nutritionDayNavLabel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                tooltip: l10n.nutritionDayPrevious,
+                onPressed: () =>
+                    _goToDay(stepDiaryDate(_viewDate, -1, DateTime.now())),
+              ),
+              Expanded(
+                child: Text(
+                  _dayLabel(l10n, tag),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                tooltip: l10n.nutritionDayNext,
+                onPressed: canStepForward(_viewDate, now)
+                    ? () =>
+                        _goToDay(stepDiaryDate(_viewDate, 1, DateTime.now()))
+                    : null,
+              ),
+              if (!_viewingToday)
+                TextButton(
+                  onPressed: () => _goToDay(isoDateOf(DateTime.now())),
+                  child: Text(l10n.nutritionDayToday),
+                ),
+            ],
+          ),
+          if (!_viewingToday)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: Row(
+                children: [
+                  Icon(Icons.history,
+                      size: 14, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      l10n.nutritionDayBackfillHint,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1065,10 +1318,15 @@ class _NutritionScreenState extends State<NutritionScreen> {
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
-                      l10n.nutritionGoalBreakdown(
-                        _targets!.baseCalories,
-                        _targets!.exerciseKcal,
-                      ),
+                      _viewingToday
+                          ? l10n.nutritionGoalBreakdown(
+                              _targets!.baseCalories,
+                              _targets!.exerciseKcal,
+                            )
+                          : l10n.nutritionDayGoalBreakdown(
+                              _targets!.baseCalories,
+                              _targets!.exerciseKcal,
+                            ),
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
@@ -1093,6 +1351,14 @@ class _NutritionScreenState extends State<NutritionScreen> {
                 ),
               ],
             ],
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton.icon(
+                onPressed: _openTargets,
+                icon: const Icon(Icons.tune, size: 18),
+                label: Text(l10n.nutritionTargetsLink),
+              ),
+            ),
           ],
         ),
       ),
@@ -1181,6 +1447,133 @@ class _NutritionScreenState extends State<NutritionScreen> {
     );
   }
 
+  List<NutrientBudget> _nutrientBudgets(List<FoodEntry> today) =>
+      extendedNutrientBudgets(
+        [
+          for (final e in today)
+            ExtendedNutrientRow(
+              fiberG: e.fiberG,
+              sugarG: e.sugarG,
+              sodiumMg: e.sodiumMg,
+              saturatedFatG: e.saturatedFatG,
+              cholesterolMg: e.cholesterolMg,
+            ),
+        ],
+        extendedNutrientTargets(_targets, _exerciseMinutes),
+      );
+
+  Widget _nutrientsCard(
+      ThemeData theme, AppLocalizations l10n, List<NutrientBudget> budgets) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.nutritionNutrients, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            for (final n in budgets)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _nutrientRow(theme, l10n, tag, n),
+              ),
+            const SizedBox(height: 4),
+            Text(l10n.nutritionNutrientsHint,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _nutrientRow(ThemeData theme, AppLocalizations l10n, String tag,
+      NutrientBudget n) {
+    final label = _nutrientLabel(l10n, n.labelKey);
+    final amount = StringBuffer();
+    if (n.partial) amount.write('${l10n.nutritionNutrientAtLeast} ');
+    amount.write(_nutrientAmount(n.consumed, n.unit, tag));
+    if (n.target != null) {
+      amount.write(' / ${_nutrientAmount(n.target!.toDouble(), n.unit, tag)}');
+    }
+    amount.write(' ${n.unit}');
+    // The coverage sentence rides as a semantics label rather than only as a
+    // tooltip: it is the one thing qualifying the number beside it, and a
+    // long-press tooltip is unreachable to a screen reader.
+    final coverage = n.partial
+        ? l10n.nutritionNutrientPartial(n.reportedEntries, n.totalEntries, label)
+        : null;
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+        Semantics(
+          label: coverage,
+          child: Text(amount.toString(), style: theme.textTheme.bodyMedium),
+        ),
+        const SizedBox(width: 8),
+        _nutrientChip(theme, l10n, tag, n),
+      ],
+    );
+  }
+
+  Widget _nutrientChip(ThemeData theme, AppLocalizations l10n, String tag,
+      NutrientBudget n) {
+    String text;
+    Color bg;
+    Color fg;
+    if (n.exceeded) {
+      text = l10n.nutritionNutrientOver(
+          _nutrientAmount(n.consumed - n.target!, n.unit, tag), n.unit);
+      bg = theme.colorScheme.errorContainer;
+      fg = theme.colorScheme.onErrorContainer;
+    } else if (n.reached) {
+      text = l10n.nutritionNutrientReached;
+      bg = theme.colorScheme.secondaryContainer;
+      fg = theme.colorScheme.onSecondaryContainer;
+    } else if (n.remaining != null) {
+      text = l10n.nutritionNutrientLeft(
+          _nutrientAmount(n.remaining!, n.unit, tag), n.unit);
+      bg = theme.colorScheme.surfaceContainerHighest;
+      fg = theme.colorScheme.onSurfaceVariant;
+    } else if (n.target == null) {
+      text = l10n.nutritionNutrientUntargeted;
+      bg = theme.colorScheme.surfaceContainerHighest;
+      fg = theme.colorScheme.onSurfaceVariant;
+    } else {
+      // Targeted but partially covered: the helper withheld `remaining`
+      // because the unreported entries could have consumed all of it, and
+      // "No daily target" would be a different — and false — claim.
+      return const SizedBox.shrink();
+    }
+    return StatusPill(
+        label: text, foreground: fg, fill: bg, size: StatusPillSize.compact);
+  }
+
+  /// Grams carry one decimal, milligrams none — mirroring the helper's own
+  /// rounding — with a trailing `.0` trimmed so a whole number reads as one.
+  String _nutrientAmount(double value, String unit, String tag) {
+    if (unit != 'g') return formatFixed(value, 0, tag);
+    return formatFixed(value, 1, tag).replaceAll(RegExp(r'[.,]0$'), '');
+  }
+
+  String _nutrientLabel(AppLocalizations l10n, String labelKey) {
+    switch (labelKey) {
+      case 'nutritionSodium':
+        return l10n.nutritionSodium;
+      case 'nutritionFiber':
+        return l10n.nutritionFiber;
+      case 'nutritionSaturatedFat':
+        return l10n.nutritionSaturatedFat;
+      case 'nutritionSugar':
+        return l10n.nutritionSugar;
+      case 'nutritionCholesterol':
+        return l10n.nutritionCholesterol;
+    }
+    return labelKey;
+  }
+
   Widget _waterCard(ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     final units = (_waterMl / _waterUnitMl).round();
@@ -1215,7 +1608,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(width: 8),
-                _waterChip(theme, l10n, budget),
+                _waterChip(theme, l10n, budget, tag),
               ],
             ),
             const SizedBox(height: 8),
@@ -1264,10 +1657,12 @@ class _NutritionScreenState extends State<NutritionScreen> {
     );
   }
 
-  Widget _waterChip(ThemeData theme, AppLocalizations l10n, HydrationBudget b) {
+  Widget _waterChip(
+      ThemeData theme, AppLocalizations l10n, HydrationBudget b, String tag) {
     final reached = b.reached;
-    final text =
-        reached ? l10n.nutritionWaterGoalReached : l10n.nutritionWaterRemaining(b.remainingMl);
+    final text = reached
+        ? l10n.nutritionWaterGoalReached
+        : l10n.nutritionWaterRemaining(_litres(b.remainingMl, tag));
     final bg = reached
         ? theme.colorScheme.secondaryContainer
         : theme.colorScheme.surfaceContainerHighest;
@@ -1361,26 +1756,24 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   Widget _trendCard(ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
-    final now = DateTime.now();
     final calByDay = <String, double>{};
     final proByDay = <String, double>{};
     for (final r in widget.store.rows) {
       final v = r['started_at'];
       final at = v is String ? DateTime.tryParse(v) : null;
       if (at == null) continue;
-      final local = at.toLocal();
-      final key = '${local.year}-${local.month}-${local.day}';
+      final key = isoDateOf(at);
       calByDay[key] = (calByDay[key] ?? 0) + ((r['calories'] as num?)?.toDouble() ?? 0);
       proByDay[key] = (proByDay[key] ?? 0) + ((r['protein_g'] as num?)?.toDouble() ?? 0);
     }
     final days = <({String label, double calories, double protein})>[];
-    for (var i = 6; i >= 0; i--) {
-      final d = DateTime(now.year, now.month, now.day - i);
-      final key = '${d.year}-${d.month}-${d.day}';
+    for (final iso in trailingDates(_viewDate, 7)) {
+      final base = diaryWindow(iso);
+      if (base == null) continue;
       days.add((
-        label: formatDowNarrow(d, tag),
-        calories: calByDay[key] ?? 0,
-        protein: proByDay[key] ?? 0,
+        label: formatDowNarrow(base.start, tag),
+        calories: calByDay[iso] ?? 0,
+        protein: proByDay[iso] ?? 0,
       ));
     }
     final goal = _targets?.calories;
@@ -1414,7 +1807,11 @@ class _NutritionScreenState extends State<NutritionScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(l10n.nutritionWeeklyTrend,
+                  child: Text(
+                      _viewingToday
+                          ? l10n.nutritionWeeklyTrend
+                          : l10n.nutritionDayTrendEnding(
+                              formatDateMed(_dayWindow.start, tag)),
                       style: theme.textTheme.titleSmall),
                 ),
                 if (summary.deltaPerDay != null)
@@ -1522,7 +1919,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       MaterialPageRoute<void>(
         builder: (_) => NutritionMealDetailScreen(
           store: widget.store,
-          day: _todayStart,
+          day: _dayWindow.start,
           slot: slot,
         ),
       ),

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import RecapView from '$lib/components/RecapView.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import type { YearInRunningRecap } from '$lib/runs/recap';
-	import { buildRecapOgImageUrl } from '$lib/share/share_recap_meta';
+	import RecapView from '#lib/components/RecapView.svelte';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { buildRecapOgImageUrl } from '#lib/share/share_recap_meta.ts';
 
 	let { data } = $props();
 
@@ -40,6 +40,8 @@
 			mostUsedActivity: s.mostUsedActivity ?? null,
 			photoCount: s.photoCount ?? 0,
 			personalRecordCount: s.personalRecordCount ?? 0,
+			parkCourseCount: s.parkCourseCount ?? 0,
+			parkCount: s.parkCount ?? 0,
 			badges: s.badges ?? []
 		};
 	});

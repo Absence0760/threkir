@@ -1,11 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { browserDayAt } from '../fixtures/dates';
 import { deleteRun, insertRun, withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
  * /dashboard — the "This Week" calendar-week activity ribbon
- * (ThisWeekStrip.svelte over lib/training/current_week.ts).
+ * (ThisWeekStrip.svelte over lib/training/current_week.ts). It left Home when
+ * the week lead became Home's one this-week view and lives in the weekly
+ * summary the lead's Week summary opens (decisions § 2283).
  *
  * The strip anchors on the REAL calendar week (now = new Date()), so the
  * test inserts a run dated to *today* — guaranteed inside the current week
@@ -23,23 +26,25 @@ test.describe('/dashboard This Week strip', () => {
 		// strip total + today's cell reflect ONLY our inserted run.
 		const restoreWeek = await withCleanCurrentWeek(USER_A.id);
 
-		// 06:00 local today, 7.50 km — well inside the current calendar week.
-		const today = new Date();
-		today.setHours(6, 0, 0, 0);
+		// 06:00 on the BROWSER's today, 7.50 km — the strip buckets onto the
+		// day the page resolves, not the day the runner's zone names.
 		const runId = await insertRun({
 			user_id: USER_A.id,
-			started_at: today.toISOString(),
+			started_at: browserDayAt(0, 6),
 			duration_s: 35 * 60,
 			distance_m: 7500,
 		});
 
 		try {
 			await page.goto('/dashboard');
+			await expect(page.getByRole('region', { name: 'This Week' })).toHaveCount(0, {
+				timeout: 15_000,
+			});
+			await page.getByTestId('dash-week-lead-open').click();
 
-			// The strip's section is labelled "This Week" (also the stat-card
-			// label) — scope to the region whose accessible name is the strip
-			// title and whose role is region (the <section aria-label>).
-			const strip = page.getByRole('region', { name: 'This Week' });
+			// Scope to the region whose accessible name is the strip title and
+			// whose role is region (the <section aria-label>).
+			const strip = page.getByRole('dialog').getByRole('region', { name: 'This Week' });
 			await expect(strip).toBeVisible();
 
 			// The 7.5 km appears twice — once in the header total, once in

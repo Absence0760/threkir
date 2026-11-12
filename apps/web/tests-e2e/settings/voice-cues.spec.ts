@@ -1,9 +1,11 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { VOICE_CUE_IDS } from '../../src/lib/settings/voice_cues';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /settings/preferences — the per-cue voice-cue toggles (issue #607).
+ * /settings/recording — the per-cue voice-cue toggles (issue #607).
  *
  * The cue map is SPARSE: an id absent from `voice_cue_types` is ON. So the
  * two things worth pinning end-to-end are (a) a fresh account renders every
@@ -23,17 +25,21 @@ async function setMaster(page: Page, on: boolean) {
 	}
 }
 
-test.describe('/settings/preferences voice cues', () => {
+test.describe('/settings/recording voice cues', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('per-cue toggles default on, and turning one off round-trips', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/recording');
 		await setMaster(page, true);
 
 		const cueList = page.getByTestId('voice-cue-types');
 		await expect(cueList).toBeVisible();
-		// One row per cue id in the shared wire contract.
-		await expect(cueList.locator('input[type="checkbox"]')).toHaveCount(8);
+		// One row per cue id in the shared wire contract — read from the
+		// contract itself, so adding a cue can't leave a runner with a toggle
+		// the page never renders.
+		await expect(cueList.locator('input[type="checkbox"]')).toHaveCount(
+			VOICE_CUE_IDS.length,
+		);
 
 		const offRoute = page.getByTestId('voice-cue-off_route');
 		const splits = page.getByTestId('voice-cue-splits');
@@ -50,7 +56,7 @@ test.describe('/settings/preferences voice cues', () => {
 			await expect(page.getByTestId('voice-cue-splits')).toBeChecked();
 			await expect(page.getByTestId('voice-cue-cutoff_catch_up')).toBeChecked();
 		} finally {
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/recording');
 			await setMaster(page, true);
 			await page.getByTestId('voice-cue-off_route').check();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
@@ -58,8 +64,38 @@ test.describe('/settings/preferences voice cues', () => {
 		}
 	});
 
+	test('the split pace mode round-trips and follows the Splits cue', async ({ page }) => {
+		await page.goto('/settings/recording');
+		await setMaster(page, true);
+
+		const mode = page.getByTestId('split-pace-mode');
+		await expect(mode).toHaveValue('split');
+		await expect(mode).toBeEnabled();
+
+		try {
+			await mode.selectOption('average');
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await page.reload();
+			await expect(page.getByTestId('split-pace-mode')).toHaveValue('average', { timeout: 10_000 });
+
+			// The mode only changes what the split cue says, so it has nothing
+			// to act on once that cue is off.
+			await page.getByTestId('voice-cue-splits').uncheck();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await expect(page.getByTestId('split-pace-mode')).toBeDisabled();
+		} finally {
+			await page.goto('/settings/recording');
+			await setMaster(page, true);
+			await page.getByTestId('voice-cue-splits').check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await page.getByTestId('split-pace-mode').selectOption('split');
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await setMaster(page, false);
+		}
+	});
+
 	test('the cue list is hidden until spoken cues are switched on', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/recording');
 		await setMaster(page, false);
 		await expect(page.getByTestId('voice-cue-types')).toBeHidden();
 

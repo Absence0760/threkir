@@ -1,10 +1,13 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
-import { deleteRun, insertRun } from '../fixtures/simulate';
+import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
+import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /runs/[id] — owner-only run detail page.
@@ -199,17 +202,46 @@ test.describe('/runs/[id]', () => {
 		const adminCheck = await import('../fixtures/local-supabase').then((m) =>
 			m.getAdminClient()
 		);
-		const { data: stillThere } = await adminCheck
-			.from('runs')
-			.select('id')
-			.eq('id', planted)
-			.maybeSingle();
+		const stillThere = await readMaybeRow(
+			'runs by id',
+			adminCheck
+				.from('runs')
+				.select('id')
+				.eq('id', planted)
+				.maybeSingle()
+		);
 		expect(stillThere).toBeNull();
+	});
+
+	test('the delete icon reads as destructive at rest, not only on hover', async ({ page }) => {
+		// Issue #902: `.icon-btn.danger` changed colour only on `:hover`, so
+		// on a touch screen delete was the same grey glyph as edit, share and
+		// the other toolbar icons beside it. The pointer is parked away from
+		// the toolbar so the reading is the resting state.
+		await page.goto(`/runs/${RUNNER_PUBLIC_RUN_ID}`);
+		const toolbar = page.getByRole('toolbar', { name: 'Run actions' });
+		const del = toolbar.locator('button.icon-btn.danger');
+		await expect(del).toBeVisible();
+		await page.mouse.move(0, 0);
+
+		const color = (btn: typeof del) => btn.evaluate((el) => getComputedStyle(el).color);
+		const dangerText = await page.evaluate(() => {
+			const probe = document.createElement('span');
+			probe.style.color = 'var(--color-danger-text)';
+			document.body.append(probe);
+			const resolved = getComputedStyle(probe).color;
+			probe.remove();
+			return resolved;
+		});
+		const edit = toolbar.locator('button.icon-btn').first();
+		expect(await color(del)).toBe(dangerText);
+		expect(await color(edit)).not.toBe(dangerText);
 	});
 
 	test('Share link button on a private run flips is_public=true and opens /share/run for anon', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// Private runs return 404 from /share/run for anon. Clicking the
 		// "Share link" icon-btn now opens a consent dialog (decisions §33
@@ -233,7 +265,7 @@ test.describe('/runs/[id]', () => {
 			await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 			await page.goto(`/runs/${planted}`);
-			await page.locator('button[title="Share link"]').click();
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 
 			// Consent dialog gates the public-flip. Confirm it explicitly.
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
@@ -254,12 +286,15 @@ test.describe('/runs/[id]', () => {
 
 			// Backend assertion: runs.is_public flipped.
 			const admin = getAdminClient();
-			const { data: row } = await admin
-				.from('runs')
-				.select('is_public')
-				.eq('id', planted)
-				.single();
-			expect(row?.is_public).toBe(true);
+			const row = await readRow(
+				'runs by id',
+				admin
+					.from('runs')
+					.select('is_public')
+					.eq('id', planted)
+					.single()
+			);
+			expect(row.is_public).toBe(true);
 
 			// Anon /share/run/[id] now resolves (vs the 404 it would
 			// have hit while is_public=false). Use a fresh anon context
@@ -269,7 +304,7 @@ test.describe('/runs/[id]', () => {
 			});
 			const anonPage = await anonContext.newPage();
 			try {
-				await anonPage.route('**/functions/v1/clip-public-track', (route) =>
+				await mockRoute(anonPage, '**/functions/v1/clip-public-track', (route) =>
 					route.fulfill({
 						status: 200,
 						contentType: 'application/json',
@@ -285,6 +320,64 @@ test.describe('/runs/[id]', () => {
 			} finally {
 				await anonContext.close();
 			}
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('Share and Share image refuse when the privacy zones cannot be loaded', async ({
+		page,
+		mockRoute
+	}) => {
+		// Fail closed: a settings bag that came from neither the server nor the
+		// device cache holds no zones at all. Read as "no zones" it sent the
+		// share image out with the unclipped line, and told the make-public
+		// confirm the owner had no zone set up.
+		// Two zone loads that each retry for ~7 s before refusing.
+		test.setTimeout(60_000);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 400,
+			duration_s: 120,
+			is_public: false,
+			track: [
+				{ lat: -37.8, lng: 144.96, ts: '2026-05-10T08:00:00Z' },
+				{ lat: -37.799, lng: 144.96, ts: '2026-05-10T08:01:00Z' },
+				{ lat: -37.798, lng: 144.96, ts: '2026-05-10T08:02:00Z' }
+			]
+		});
+		try {
+			await setStorageOnLoad(page, { removeLocalPrefixes: ['settings_cache_'] });
+			for (const table of ['user_settings', 'user_device_settings']) {
+				await mockRoute(page, `**/rest/v1/${table}*`, (route) =>
+					route.request().method() === 'GET' ? route.abort() : route.continue()
+				);
+			}
+
+			await page.goto(`/runs/${planted}`);
+			await expect(page.locator('button[title="Download GPX"]')).toBeEnabled({
+				timeout: 15_000
+			});
+			await expect(page.getByTestId('share-card-map')).toHaveCount(0);
+
+			// postgrest-js retries a GET that fails on the network three times,
+			// 1 s, 2 s and 4 s apart, so each zone load takes ~7 s to give up.
+			const zonesUnknown = page.locator('.toast', {
+				hasText: /Couldn't load your privacy zones/
+			});
+			await page.locator('button[title="Share image"]').click();
+			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
+			await expect(zonesUnknown).toHaveCount(0, { timeout: 10_000 });
+
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
+			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
+			await expect(page.locator('[data-testid="share-confirm-dialog"]')).toHaveCount(0);
+
+			const row = await readRow(
+				'runs by id',
+				getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+			);
+			expect(row.is_public).toBe(false);
 		} finally {
 			await deleteRun(planted);
 		}
@@ -309,7 +402,7 @@ test.describe('/runs/[id]', () => {
 		try {
 			await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.goto(`/runs/${planted}`);
-			await page.locator('button[title="Share link"]').click();
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
@@ -317,12 +410,15 @@ test.describe('/runs/[id]', () => {
 
 			// is_public must STILL be false after cancel.
 			const admin = getAdminClient();
-			const { data: row } = await admin
-				.from('runs')
-				.select('is_public')
-				.eq('id', planted)
-				.single();
-			expect(row?.is_public).toBe(false);
+			const row = await readRow(
+				'runs by id',
+				admin
+					.from('runs')
+					.select('is_public')
+					.eq('id', planted)
+					.single()
+			);
+			expect(row.is_public).toBe(false);
 
 			// No success toast either — the share never happened.
 			await expect(
@@ -374,12 +470,15 @@ test.describe('/runs/[id]', () => {
 
 			// Backend: runs.is_public flipped off.
 			const admin = getAdminClient();
-			const { data: row } = await admin
-				.from('runs')
-				.select('is_public')
-				.eq('id', planted)
-				.single();
-			expect(row?.is_public).toBe(false);
+			const row = await readRow(
+				'runs by id',
+				admin
+					.from('runs')
+					.select('is_public')
+					.eq('id', planted)
+					.single()
+			);
+			expect(row.is_public).toBe(false);
 
 			// Anon /share/run/[id] no longer resolves — the whole point
 			// of the revoke. Fresh anon context so we don't carry auth.
@@ -398,6 +497,203 @@ test.describe('/runs/[id]', () => {
 			} finally {
 				await anonContext.close();
 			}
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('visibility chip is the control: make public through the consent dialog, then make private', async ({
+		page,
+		mockRoute
+	}) => {
+		// The owner could not find how to make a run public: the chip read
+		// "Private" like a control and did nothing, and the only path was the
+		// Share icon. With audience sharing off (as in prod today) the chip now
+		// flips visibility itself, through the same privacy-zone consent the
+		// Share path uses, and copies no link because that is Share's job.
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		const isPublic = async () =>
+			(
+				await readRow(
+					'runs by id',
+					getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+				)
+			).is_public;
+
+		try {
+			await page.goto(`/runs/${planted}`);
+			const chip = page.getByRole('button', { name: 'Private. Make this run public' });
+			await expect(chip).toBeVisible({ timeout: 10_000 });
+			await chip.click();
+
+			const consent = page.getByTestId('share-confirm-dialog');
+			await expect(consent).toBeVisible({ timeout: 10_000 });
+			await expect(consent).toContainText('Make this run public?');
+			await consent.getByRole('button', { name: 'Make public', exact: true }).click();
+
+			await expect(page.locator('.toast', { hasText: 'Run is now public' })).toBeVisible({
+				timeout: 10_000
+			});
+			await expect(page.locator('.toast', { hasText: /Share link copied/ })).toHaveCount(0);
+			const publicChip = page.getByRole('button', { name: 'Public. Make this run private' });
+			await expect(publicChip).toBeVisible({ timeout: 5_000 });
+			await expect(publicChip).toHaveClass(/is-public/);
+			await expect.poll(isPublic).toBe(true);
+
+			await publicChip.click();
+			const revoke = page.getByTestId('make-private-confirm-dialog');
+			await expect(revoke).toBeVisible({ timeout: 5_000 });
+			await revoke.getByRole('button', { name: 'Make private', exact: true }).click();
+
+			await expect(page.getByRole('button', { name: 'Private. Make this run public' })).toBeVisible({
+				timeout: 10_000
+			});
+			await expect.poll(isPublic).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('visibility chip Cancel on the consent dialog keeps the run private', async ({
+		page,
+		mockRoute
+	}) => {
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			await page.getByRole('button', { name: 'Private. Make this run public' }).click();
+			const consent = page.getByTestId('share-confirm-dialog');
+			await expect(consent).toBeVisible({ timeout: 10_000 });
+			// The actions sat flush under the message: ConfirmDialog's spacing
+			// rule targeted a class on Modal's element and never applied.
+			const messageBox = await consent.locator('p').first().boundingBox();
+			const cancel = consent.getByRole('button', { name: 'Cancel', exact: true });
+			const cancelBox = await cancel.boundingBox();
+			expect(cancelBox!.y - (messageBox!.y + messageBox!.height)).toBeGreaterThanOrEqual(12);
+			await cancel.click();
+			await expect(consent).toHaveCount(0);
+
+			const row = await readRow(
+				'runs by id',
+				getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+			);
+			expect(row.is_public).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('the image and link icons say which is which, and the image dialog points at the chip', async ({
+		page,
+		mockRoute
+	}) => {
+		// Two header icons both read as "share": the image one opened a dialog
+		// titled "Share run" that can neither share a link nor make the run
+		// public. The image icon and its dialog now say image, the link icon on
+		// a private run says it makes the run public, and the dialog says how.
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			await expect(page.getByTestId('run-share-btn')).toHaveAttribute(
+				'title',
+				'Make public and copy share link',
+				{ timeout: 10_000 }
+			);
+			const image = page.getByRole('button', { name: 'Make a share image' });
+			await expect(image).toHaveAttribute('title', 'Share image');
+			await image.click();
+			const dialog = page.getByTestId('run-share-image-dialog');
+			await expect(dialog).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByRole('dialog', { name: 'Share image' })).toBeVisible();
+			await expect(dialog.getByTestId('share-image-link-hint')).toContainText(
+				'An image shares no link'
+			);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('the elevation stat follows the unit preference and an odd last row has no filler tile', async ({
+		page
+	}) => {
+		// The stat grid printed "218 m" beside a distance in miles and an
+		// elevation profile reading "715 ft" for the same climb. And with a
+		// short last row the empty slot showed the border-coloured grid
+		// background as a grey tile.
+		const admin = getAdminClient();
+		const setUnit = async (unit: 'km' | 'mi') => {
+			await setUserSetting(USER_A.id, 'preferred_unit', unit);
+			await admin.from('user_profiles').update({ preferred_unit: unit }).eq('id', USER_A.id);
+		};
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 16_190,
+			duration_s: 5_400,
+			is_public: false
+		});
+		try {
+			await admin.from('runs').update({ elevation_gain_m: 218 }).eq('id', planted);
+			await setUnit('mi');
+			await page.goto(`/runs/${planted}`);
+			const elevation = page.locator('.key-stat', { hasText: 'Elevation' }).locator('.key-stat-value');
+			await expect(elevation).toHaveText('715 ft', { timeout: 10_000 });
+
+			const grid = page.locator('.key-stats').first();
+			const colours = await grid.evaluate((el) => {
+				const style = getComputedStyle(el);
+				const cell = el.querySelector('.key-stat');
+				return {
+					grid: style.backgroundColor,
+					border: style.borderTopColor,
+					cell: cell ? getComputedStyle(cell).backgroundColor : null
+				};
+			});
+			expect(colours.grid).not.toBe(colours.border);
+			expect(colours.cell).toBe('rgba(0, 0, 0, 0)');
+		} finally {
+			await setUnit('km');
+			await deleteRun(planted);
+		}
+	});
+
+	test('with audience sharing on, the visibility chip opens the audience sheet', async ({ page }) => {
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			const chip = page.getByRole('button', { name: 'Private. Change who can see this run' });
+			await expect(chip).toBeVisible({ timeout: 10_000 });
+			await chip.click();
+			await expect(page.getByTestId('audience-dialog')).toBeVisible({ timeout: 5_000 });
+			await expect(page.getByTestId('share-confirm-dialog')).toHaveCount(0);
 		} finally {
 			await deleteRun(planted);
 		}
@@ -423,12 +719,15 @@ test.describe('/runs/[id]', () => {
 			await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
 
 			const admin = getAdminClient();
-			const { data: row } = await admin
-				.from('runs')
-				.select('is_public')
-				.eq('id', planted)
-				.single();
-			expect(row?.is_public).toBe(true);
+			const row = await readRow(
+				'runs by id',
+				admin
+					.from('runs')
+					.select('is_public')
+					.eq('id', planted)
+					.single()
+			);
+			expect(row.is_public).toBe(true);
 
 			await expect(
 				page.locator('.toast', { hasText: /Run is now private/ })
@@ -643,14 +942,18 @@ test.describe('/runs/[id]', () => {
 			).toBeVisible({ timeout: 10_000 });
 
 			// Backend mirrors it: a run_gear row was created by the trigger.
-			const { data } = await admin
-				.from('run_gear')
-				.select('gear_id, gear:gear_id(name)')
-				.eq('run_id', runId);
-			expect(data?.length ?? 0).toBe(1);
-			expect((data?.[0] as { gear: { name: string } } | undefined)?.gear?.name).toBe(
-				'Pegasus 40'
+			const data = await readRows(
+				'run_gear by run_id',
+				admin
+					.from('run_gear')
+					.select('gear_id, gear:gear_id(name)')
+					.eq('run_id', runId)
 			);
+			expect(data.length).toBe(1);
+			// PostgREST returns a to-one embed as an OBJECT; the untyped admin
+			// client can't resolve the FK cardinality and types it as an array.
+			const link = data[0] as unknown as { gear: { name: string } };
+			expect(link.gear?.name).toBe('Pegasus 40');
 		} finally {
 			await admin.from('run_gear').delete().eq('run_id', runId);
 			await deleteRun(runId);
@@ -769,7 +1072,8 @@ test.describe('/runs/[id]', () => {
 
 	test('share button is in-flight-guarded so a double-tap makes the run public only once', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// proceedShare had no busy guard: a fast second tap (or a second
 		// tap once the run is already public) fired makeRunPublic again.
@@ -783,7 +1087,7 @@ test.describe('/runs/[id]', () => {
 		});
 
 		let patchCount = 0;
-		await page.route('**/rest/v1/runs?id=eq.*', async (route) => {
+		await mockRoute(page, '**/rest/v1/runs?id=eq.*', async (route) => {
 			if (route.request().method() === 'PATCH') {
 				patchCount += 1;
 				await new Promise((r) => setTimeout(r, 1200));
@@ -795,9 +1099,9 @@ test.describe('/runs/[id]', () => {
 			await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.goto(`/runs/${planted}`);
 
-			const shareBtn = page.locator('button[title="Share link"]');
+			const shareBtn = page.getByTestId('run-share-btn');
 			await expect(shareBtn).toBeVisible({ timeout: 10_000 });
-			await shareBtn.click();
+			await shareChoosingPublic(page, shareBtn);
 
 			// Confirm the consent dialog — this kicks the held PATCH.
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
@@ -824,7 +1128,8 @@ test.describe('/runs/[id]', () => {
 	});
 
 	test('inline edit Save is in-flight-guarded so a slow save cannot be double-fired', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// saveEdit had no busy guard and its button no disabled state. The
 		// edit form is inline rather than modal, so nothing dismissed on the
@@ -839,7 +1144,7 @@ test.describe('/runs/[id]', () => {
 		});
 
 		let patchCount = 0;
-		await page.route('**/rest/v1/runs?id=eq.*', async (route) => {
+		await mockRoute(page, '**/rest/v1/runs?id=eq.*', async (route) => {
 			if (route.request().method() === 'PATCH') {
 				patchCount += 1;
 				await new Promise((r) => setTimeout(r, 1200));

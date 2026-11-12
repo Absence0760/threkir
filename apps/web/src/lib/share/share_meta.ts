@@ -12,6 +12,9 @@
 /// triggered the scrape), so we default to km here and ignore the
 /// viewer-side preference entirely.
 
+import { collapseAndClip } from '../util/clip_text';
+import { serialiseJsonLd } from '../util/json_ld';
+
 const SITE_NAME = 'Threkir';
 
 export type ShareRunMeta = {
@@ -23,19 +26,18 @@ export type ShareRunMeta = {
 	title?: string | null;
 };
 
-/// Normalise a user-set run title for use in a share <title> / og:title:
-/// collapse whitespace and truncate so a pathological caption can't blow
-/// out the meta tag. Returns '' when there's nothing usable.
+/// The share <title> / og:title budget for a run caption, which arrives from
+/// the untyped `runs.metadata.title` bag and so may not be a string at all.
 export function cleanShareTitle(raw: unknown): string {
-	if (typeof raw !== 'string') return '';
-	const collapsed = raw.replace(/\s+/g, ' ').trim();
-	if (!collapsed) return '';
-	return collapsed.length > 80 ? `${collapsed.slice(0, 79).trimEnd()}…` : collapsed;
+	return collapseAndClip(raw, 80);
 }
 
 export type ShareRouteMeta = {
 	name?: string | null;
 	distance_m?: number | null;
+	/// The race's certified distance (routes.official_distance_m); shown in
+	/// place of the traced `distance_m` when set.
+	official_distance_m?: number | null;
 	surface?: string | null;
 	elevation_m?: number | null;
 };
@@ -51,6 +53,20 @@ export function formatKmStable(metres: number | null | undefined): string {
 	// "42.20 km" precise without growing all titles to 4 digits.
 	const digits = km >= 21 ? 2 : 1;
 	return `${km.toFixed(digits)} km`;
+}
+
+/// "42.195 km" / "10.0 km" — an official distance as the race states it: up
+/// to three decimals, trailing zeros dropped, never fewer than one, so a
+/// certified marathon does not read as the 42.20 km a traced one rounds to.
+export function formatOfficialKmStable(metres: number | null | undefined): string {
+	if (metres == null || !Number.isFinite(metres) || metres <= 0) return '';
+	const km = Number((metres / 1000).toFixed(3));
+	return `${Number.isInteger(km) ? km.toFixed(1) : String(km)} km`;
+}
+
+/// The route distance a share surface states: the official one when set.
+export function routeShareKm(route: ShareRouteMeta): string {
+	return formatOfficialKmStable(route.official_distance_m) || formatKmStable(route.distance_m);
 }
 
 const STABLE_MONTHS = [
@@ -83,11 +99,12 @@ export function buildRunShareTitle(
 	if (custom) return `${custom} — ${SITE_NAME}`;
 	const km = formatKmStable(run.distance_m);
 	const date = formatDateStable(run.started_at);
-	const by = displayName ? ` by ${displayName}` : '';
+	const named = collapseAndClip(displayName, 60);
+	const by = named ? ` by ${named}` : '';
 	if (km && date) return `${km} run${by} on ${date} — ${SITE_NAME}`;
 	if (km) return `${km} run${by} — ${SITE_NAME}`;
 	if (date) return `Run${by} on ${date} — ${SITE_NAME}`;
-	return displayName ? `Run by ${displayName} — ${SITE_NAME}` : `Run — ${SITE_NAME}`;
+	return named ? `Run by ${named} — ${SITE_NAME}` : `Run — ${SITE_NAME}`;
 }
 
 export function buildRunShareDescription(
@@ -97,7 +114,8 @@ export function buildRunShareDescription(
 	if (!run) return 'View a public run on Threkir — map, splits, elevation, kudos.';
 	const km = formatKmStable(run.distance_m);
 	const date = formatDateStable(run.started_at);
-	const by = displayName ? ` by ${displayName}` : '';
+	const named = collapseAndClip(displayName, 60);
+	const by = named ? ` by ${named}` : '';
 	const bits: string[] = [];
 	if (km) bits.push(`${km}${by}`);
 	else if (by.trim()) bits.push(`Run${by}`);
@@ -158,7 +176,7 @@ function runShareName(
 /// location must never leak into structured data.
 ///
 /// The run caption + display name are user-controlled, so the output is
-/// run through `escapeJsonLd` before it reaches the DOM.
+/// serialised through `serialiseJsonLd` before it reaches the DOM.
 export function buildRunJsonLd(
 	run: ShareRunMeta | null | undefined,
 	opts: { id: string; base: string | null | undefined; displayName?: string | null },
@@ -184,19 +202,20 @@ export function buildRunJsonLd(
 			],
 		},
 	};
-	return escapeJsonLd(JSON.stringify(graph));
+	return serialiseJsonLd(graph);
 }
 
 export function buildRouteShareTitle(route: ShareRouteMeta | null | undefined): string {
-	if (!route?.name) return `Route — ${SITE_NAME}`;
-	return `${route.name} — ${SITE_NAME}`;
+	const name = cleanShareTitle(route?.name);
+	if (!name) return `Route — ${SITE_NAME}`;
+	return `${name} — ${SITE_NAME}`;
 }
 
 export function buildRouteShareDescription(
 	route: ShareRouteMeta | null | undefined,
 ): string {
 	if (!route) return 'A public route on Threkir.';
-	const km = formatKmStable(route.distance_m);
+	const km = routeShareKm(route);
 	const surface = route.surface ?? '';
 	const elev = route.elevation_m
 		? ` with ${Math.round(route.elevation_m)} m elevation`
@@ -237,18 +256,6 @@ export function buildRouteOgImageUrl(
 	return `${normaliseSiteUrl(base)}/og/route/${id}.png`;
 }
 
-/// Escape the three characters that let a string break out of a
-/// `<script type="application/ld+json">` block when the JSON is
-/// injected verbatim into HTML. `<` is the only strictly necessary
-/// one (`</script>`), but escaping all three is the conventional
-/// belt-and-braces form and keeps the payload valid JSON either way.
-function escapeJsonLd(json: string): string {
-	return json
-		.replace(/</g, '\\u003c')
-		.replace(/>/g, '\\u003e')
-		.replace(/&/g, '\\u0026');
-}
-
 /// schema.org JSON-LD for a public route share page, serialized ready
 /// to drop inside a `<script type="application/ld+json">`. A `WebPage`
 /// node names + describes the route and points at the og:image, with a
@@ -260,14 +267,14 @@ function escapeJsonLd(json: string): string {
 /// never leak into structured data.
 ///
 /// The route name is user-controlled, so the output is run through
-/// `escapeJsonLd` before it reaches the DOM.
+/// `serialiseJsonLd` before it reaches the DOM.
 export function buildRouteJsonLd(
 	route: ShareRouteMeta | null | undefined,
 	opts: { id: string; base: string | null | undefined },
 ): string {
 	const base = normaliseSiteUrl(opts.base);
 	const canonical = buildRouteShareCanonical(base, opts.id);
-	const name = (route?.name ?? '').trim() || 'Route';
+	const name = collapseAndClip(route?.name, 120) || 'Route';
 	const graph = {
 		'@context': 'https://schema.org',
 		'@type': 'WebPage',
@@ -292,5 +299,5 @@ export function buildRouteJsonLd(
 			],
 		},
 	};
-	return escapeJsonLd(JSON.stringify(graph));
+	return serialiseJsonLd(graph);
 }

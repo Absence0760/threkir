@@ -1,20 +1,36 @@
 import '../activity_type_labels.dart';
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart'
+    show ActivityType, DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../adaptive_width.dart';
+import '../dashboard_layout.dart';
+import '../disclosure.dart';
 import '../goals.dart';
+import '../hr_prescription_gate.dart';
+import '../hr_zones.dart'
+    show kMaxHrBpmMax, kMaxHrBpmMin, kRestingHrBpmMax, kRestingHrBpmMin;
 import '../l10n/gen/app_localizations.dart';
+import '../messages_inbox.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
+import '../local_food_store.dart';
+import '../local_gym_store.dart';
+import '../local_run_store.dart';
 import '../locale_defaults.dart';
 import '../main.dart' show themeModeNotifier, localeNotifier;
+import '../nearby_flag.dart';
 import '../preferences.dart';
 import '../push_messaging_bridge.dart';
 import '../settings_sync.dart';
+import '../typed_decimal.dart';
 import '../undo_queue.dart';
+import '../weekly_goal.dart';
 import '../widgets/top_banner.dart';
+import 'follow_requests_screen.dart';
+import 'nearby_area_screen.dart';
 import 'privacy_zones_screen.dart';
 import 'settings_body_metrics_screen.dart';
 
@@ -69,12 +85,26 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
+  final LocalGymStore? gymStore;
+  final LocalFoodStore? foodStore;
+
+  /// Sizes the history the "How much detail" hint derives its Automatic level
+  /// from. Null counts no runs, so the hint names the goal's level alone.
+  final LocalRunStore? runStore;
+
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
 
   const SettingsPreferencesScreen({
     super.key,
     this.apiClient,
     required this.preferences,
     required this.settingsSync,
+    this.gymStore,
+    this.foodStore,
+    this.runStore,
+    this.hrPrescription,
   });
 
   @override
@@ -86,12 +116,75 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   bool _darkMode = themeModeNotifier.value == ThemeMode.dark;
   bool _localeBackfillDone = false;
 
+  /// Read once per mount, not per build: the whole runners-nearby surface —
+  /// the opt-in switch, the area row, and the `my_discoverable_area` read
+  /// behind it — must be absent while the sign-off gate is off (decisions §270).
+  final bool _nearbyGate = nearbyRunnersGate;
+
+  /// "My heart rate is affected by medication" is Art 9: shown only under
+  /// the deploy gate, and only switchable on with health-data consent, which
+  /// the server re-checks (decisions § 2092).
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
+  String? _nearbyAreaLabel;
+
+  /// user_profiles.profile_private, not a prefs key: RLS and the public views
+  /// read it (decisions § 1967), so it is read and written on the profile row.
+  bool _profilePrivate = false;
+  bool _profilePrivateSaving = false;
+
+  /// user_settings.dm_read_receipts, a column because the server reads it when
+  /// a message is marked read (migration 20271113000001). Null until read: the
+  /// switch stays disabled rather than claim a state it has not seen.
+  bool? _readReceipts;
+  bool _readReceiptsSaving = false;
+
+  /// user_settings.dm_requests, a column because the INSERT policy reads it
+  /// (migration 20271213121601). Null until read, like [_readReceipts].
+  bool? _messageRequests;
+  bool _messageRequestsSaving = false;
+
+  /// Date of birth lives in two stores under two rules (decisions § 718).
+  /// [_profileDob] is the `user_profiles` age record behind the under-18
+  /// discoverability floor — written whenever the runner picks a date — and
+  /// is what the tile displays, because a withdrawal clears the Art 9
+  /// mirror while the record stays on file. [_healthConsentAt] decides
+  /// whether the mirror is written at all; null means no consent on record,
+  /// which is also what an unreadable profile leaves behind, so the Art 9
+  /// half fails closed.
+  String? _profileDob;
+  DateTime? _healthConsentAt;
+
   @override
   void initState() {
     super.initState();
     widget.preferences.addListener(_onChange);
     widget.settingsSync?.addListener(_onChange);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeBackfillLocale());
+    if (_nearbyGate) _loadNearbyAreaLabel();
+    _loadProfilePrivate();
+    _loadReadReceipts();
+    _loadMessageRequests();
+    _loadHealthProfile();
+  }
+
+  /// Best-effort (L4), for the same reason as [_loadNearbyAreaLabel]: a
+  /// signed-out or offline read must leave the row showing the bag mirror
+  /// rather than throw out of initState.
+  Future<void> _loadHealthProfile() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final profile = await api.fetchMyProfile();
+      if (!mounted) return;
+      setState(() {
+        _profileDob = profile?.dateOfBirth == null
+            ? null
+            : ApiClient.dateOnly(profile!.dateOfBirth!);
+        _healthConsentAt = profile?.healthDataConsentAt;
+      });
+    } catch (e) {
+      debugPrint('preferences health profile read failed: $e');
+    }
   }
 
   @override
@@ -264,7 +357,9 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       ],
       current: widget.preferences.splitPaceMode,
     );
-    if (picked != null) await widget.preferences.setSplitPaceMode(picked);
+    if (picked == null) return;
+    await widget.preferences.setSplitPaceMode(picked);
+    await _putUniversal(SettingsKeys.voiceSplitPaceMode, picked);
   }
 
   static String _splitPaceModeLabel(AppLocalizations l10n, String raw) {
@@ -391,15 +486,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
   String _weeklyGoalSummary() {
     final l10n = AppLocalizations.of(context);
-    final metres = _bagValue<num>(
-      SettingsKeys.weeklyMileageGoalMetres,
-    )?.toDouble();
-    if (metres == null) return l10n.prefsNotSet;
-    final useMiles = widget.preferences.useMiles;
-    final display = useMiles ? metres / 1609.344 : metres / 1000;
+    final unit = widget.preferences.unit;
+    final display = weeklyGoalToInput(
+      _bagValue<num>(SettingsKeys.weeklyMileageGoalMetres),
+      unit,
+    );
+    if (display == null) return l10n.prefsNotSet;
     return l10n.prefsWeeklyGoalSummary(
-      formatFixed(display, display < 10 ? 1 : 0, activeLocaleTag),
-      useMiles ? 'mi' : 'km',
+      formatFixed(display, display == display.roundToDouble() ? 0 : 1,
+          activeLocaleTag),
+      unit.name,
     );
   }
 
@@ -474,41 +570,59 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     final controller = TextEditingController(
       text: current == null ? '' : '$current',
     );
+    // Popping null on a refusal made an out-of-range entry indistinguishable
+    // from Cancel: the dialog closed, the caller returned, and a runner who
+    // typed 300 was never told the range. Every numeric preference on this
+    // screen shares the helper, so the refusal is stated here once and the
+    // dialog stays open on it (decisions § 1410).
+    String? rangeError;
     final result = await showDialog<int?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Semantics(
-          label: title,
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(suffixText: suffix),
-            autofocus: true,
-          ),
-        ),
-        actions: [
-          if (allowClear)
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, -1),
-              child: Text(l10n.prefsClear),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Semantics(
+            label: title,
+            child: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                suffixText: suffix,
+                errorText: rangeError,
+              ),
+              autofocus: true,
+              onChanged: (_) {
+                if (rangeError != null) {
+                  setDialogState(() => rangeError = null);
+                }
+              },
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, null),
-            child: Text(l10n.prefsCancel),
           ),
-          FilledButton(
-            onPressed: () {
-              final v = int.tryParse(controller.text.trim());
-              if (v == null || v < minValue || v > maxValue) {
-                Navigator.pop(ctx, null);
-              } else {
+          actions: [
+            if (allowClear)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, -1),
+                child: Text(l10n.prefsClear),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: Text(l10n.prefsCancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final v = int.tryParse(controller.text.trim());
+                if (v == null || v < minValue || v > maxValue) {
+                  setDialogState(() {
+                    rangeError = l10n.prefsValueOutOfRange(minValue, maxValue);
+                  });
+                  return;
+                }
                 Navigator.pop(ctx, v);
-              }
-            },
-            child: Text(l10n.prefsSave),
-          ),
-        ],
+              },
+              child: Text(l10n.prefsSave),
+            ),
+          ],
+        ),
       ),
     );
     if (mounted) FocusScope.of(context).unfocus();
@@ -552,7 +666,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final v = double.tryParse(controller.text.trim());
+              final v = parseTypedDecimal(controller.text);
               if (v == null || v < minValue || v > maxValue) {
                 Navigator.pop(ctx, null);
               } else {
@@ -607,16 +721,13 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
   Future<void> _editLanguage() async {
     final t = AppLocalizations.of(context);
-    // '' is the "follow device locale" sentinel; the rest are canonical tags.
-    const tags = ['', 'en', 'de', 'fr', 'es', 'ja', 'pt-BR'];
+    // '' is the "follow device locale" sentinel; the rest are derived from
+    // supportedLocales rather than listed, because a hand-written list is how
+    // European Portuguese came to ship in the binary while being unpickable.
+    final tags = ['', ...supportedLocales.map(localeToTag)];
     final labels = [
       t.prefsLanguageSystem,
-      localeLabels['en']!,
-      localeLabels['de']!,
-      localeLabels['fr']!,
-      localeLabels['es']!,
-      localeLabels['ja']!,
-      localeLabels['pt-BR']!,
+      ...supportedLocales.map((l) => localeLabels[localeToTag(l)]!),
     ];
     final current = widget.preferences.locale == null
         ? ''
@@ -722,10 +833,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       title: l10n.prefsDefaultRunVisibility,
       options: opts,
       labels: labels,
-      current: _bagValue<String>(SettingsKeys.privacyDefault) ?? 'followers',
+      current: _bagValue<String>(SettingsKeys.privacyDefault) ?? 'private',
     );
     if (picked != null) {
       await _putUniversal(SettingsKeys.privacyDefault, picked);
+      await widget.preferences.setPrivacyDefault(picked);
     }
   }
 
@@ -802,6 +914,50 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     if (!on) await _clearUnsubscribeBlock();
   }
 
+  Future<void> _toggleEmailNewDeviceAlerts() async {
+    // Opt-OUT security alert stored as 'on'|'off' (default 'on'); only the
+    // literal 'off' mutes it, matching the worker's read.
+    final on = _bagValue<String>(SettingsKeys.emailNewDeviceAlerts) != 'off';
+    await _putUniversal(SettingsKeys.emailNewDeviceAlerts, on ? 'off' : 'on');
+  }
+
+  /// Where the AI Coach sits in the Messages inbox (decisions § 2227).
+  Future<void> _editCoachInMessages() async {
+    final l10n = AppLocalizations.of(context);
+    final picked = await _pickRadio<CoachInboxPlacement>(
+      title: l10n.prefsCoachInMessages,
+      options: CoachInboxPlacement.values,
+      labels: [
+        for (final p in CoachInboxPlacement.values) _coachPlacementLabel(l10n, p),
+      ],
+      current: parseCoachInboxPlacement(
+          _bagValue<Object>(SettingsKeys.messagesCoachRow)),
+    );
+    if (picked != null) {
+      await _putUniversal(SettingsKeys.messagesCoachRow, picked.name);
+    }
+  }
+
+  static String _coachPlacementLabel(
+          AppLocalizations l10n, CoachInboxPlacement p) =>
+      switch (p) {
+        CoachInboxPlacement.pinned => l10n.prefsCoachInMessagesPinned,
+        CoachInboxPlacement.listed => l10n.prefsCoachInMessagesListed,
+        CoachInboxPlacement.hidden => l10n.prefsCoachInMessagesHidden,
+      };
+
+  Future<void> _toggleNotifyWorkoutReminder() async {
+    // Opt-OUT, stored as 'on'|'off' (default 'on'); only the literal 'off'
+    // mutes it, matching the scheduler's and the worker's read.
+    final on = _bagValue<String>(SettingsKeys.notifyWorkoutReminder) != 'off';
+    await _putUniversal(SettingsKeys.notifyWorkoutReminder, on ? 'off' : 'on');
+  }
+
+  Future<void> _toggleNotifyRaceStartingSoon() async {
+    final on = _bagValue<String>(SettingsKeys.notifyRaceStartingSoon) != 'off';
+    await _putUniversal(SettingsKeys.notifyRaceStartingSoon, on ? 'off' : 'on');
+  }
+
   Future<void> _editEmailLifecycleDrip() async {
     // Opt-IN consent stored as 'on'|'off' (default 'off'); a separate key from
     // both email_notifications and email_weekly_digest — one engagement stream
@@ -861,6 +1017,96 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     }
   }
 
+  /// `auto` is the absence of the key, not a fourth level: picking it writes
+  /// null, which deletes the key and hands the level back to the derivation.
+  /// Web twin: `/settings/display`'s `disclosureChoice`.
+  String get _disclosureChoice {
+    final stored = _bagValue<Object>(disclosureLevelKey);
+    return isDisclosureLevel(stored) ? stored as String : 'auto';
+  }
+
+  /// What Automatic resolves to today, named in the hint.
+  String get _derivedDisclosure {
+    final goal = _bagValue<Object>(SettingsKeys.primaryGoal);
+    return disclosureLevel(
+      goal is String ? goal : null,
+      widget.runStore?.summaries.length ?? 0,
+    );
+  }
+
+  String _disclosureLabel(AppLocalizations l10n, String choice) =>
+      switch (choice) {
+        'simple' => l10n.prefsDisclosureSimple,
+        'standard' => l10n.prefsDisclosureStandard,
+        'full' => l10n.prefsDisclosureFull,
+        _ => l10n.prefsDisclosureAuto,
+      };
+
+  Future<void> _editDisclosureLevel() async {
+    final l10n = AppLocalizations.of(context);
+    final current = _disclosureChoice;
+    const options = ['auto', ...disclosureLevels];
+    final picked = await _pickRadio<String>(
+      title: l10n.prefsDisclosureLevel,
+      options: options,
+      labels: [for (final o in options) _disclosureLabel(l10n, o)],
+      current: current,
+    );
+    if (picked == null || picked == current) return;
+    await _putUniversal(disclosureLevelKey, picked == 'auto' ? null : picked);
+  }
+
+  String _homeCardLabel(AppLocalizations l10n, String id) => switch (id) {
+        'volume' => l10n.dashboardTrendGroupVolume,
+        'fitness' => l10n.dashboardTrendGroupFitness,
+        'performance' => l10n.dashboardTrendGroupPerformance,
+        'effort' => l10n.dashboardTrendGroupEffort,
+        _ => l10n.dashboardTrendGroupRecent,
+      };
+
+  /// Where a trend group hidden from Home comes back, and where one can be
+  /// hidden too (`dashboard_hidden_cards`, decisions § 2386). Web twin: the
+  /// Home section of `/settings/display`.
+  Future<void> _editHomeCards() async {
+    final l10n = AppLocalizations.of(context);
+    var hidden =
+        parseHiddenCards(_bagValue<Object>(SettingsKeys.dashboardHiddenCards));
+    await showDialog<void>(
+      context: context,
+      builder: (dialog) => StatefulBuilder(
+        builder: (dialog, setDialogState) => AlertDialog(
+          title: Text(l10n.prefsHomeCards),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.prefsHomeCardsHint),
+                for (final id in hideableDashboardCards)
+                  CheckboxListTile(
+                    key: Key('prefsHomeCard-$id'),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(_homeCardLabel(l10n, id)),
+                    value: !hidden.contains(id),
+                    onChanged: (shown) {
+                      hidden = withCardHidden(hidden, id, shown != true);
+                      setDialogState(() {});
+                      _putUniversal(SettingsKeys.dashboardHiddenCards, hidden);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialog).pop(),
+              child: Text(MaterialLocalizations.of(dialog).closeButtonLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// The bag is the source of truth once it has loaded; before that, the
   /// locally-mirrored value keeps the row honest offline.
   int get _undoWindowS {
@@ -906,6 +1152,177 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(SettingsKeys.discoverableInSearch, !current);
   }
 
+  Future<void> _editDiscoverableNearby() async {
+    final current = _bagValue<bool>(SettingsKeys.discoverableNearby) ?? false;
+    await _putUniversal(SettingsKeys.discoverableNearby, !current);
+  }
+
+  /// Best-effort (L4): the label is a nicety on a row that still navigates, so
+  /// a failed read discloses in the log and shows "no area set" rather than
+  /// throwing out of initState.
+  Future<void> _loadNearbyAreaLabel() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final label = await api.fetchMyDiscoverableArea();
+      if (!mounted) return;
+      setState(() => _nearbyAreaLabel = label);
+    } catch (e) {
+      debugPrint('discoverable area label read failed: $e');
+    }
+  }
+
+  /// Best-effort (L4) on read: a failed read leaves the switch off, which is
+  /// the account's state until its owner turned it on.
+  Future<void> _loadProfilePrivate() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final value = await api.fetchMyProfilePrivate();
+      if (!mounted) return;
+      setState(() => _profilePrivate = value);
+    } catch (e) {
+      debugPrint('profile privacy read failed: $e');
+    }
+  }
+
+  /// A refused write must not read as saved — the switch is a promise about
+  /// who sees the runner's activity — so it rolls back on failure.
+  Future<void> _editProfilePrivate(bool next) async {
+    final api = widget.apiClient;
+    if (api == null || _profilePrivateSaving) return;
+    setState(() {
+      _profilePrivate = next;
+      _profilePrivateSaving = true;
+    });
+    try {
+      await api.setProfilePrivate(next);
+    } catch (e) {
+      debugPrint('profile privacy write failed: $e');
+      if (!mounted) return;
+      setState(() => _profilePrivate = !next);
+      showTopBanner(context, AppLocalizations.of(context).prefsPrivateProfileFailed);
+    } finally {
+      if (mounted) setState(() => _profilePrivateSaving = false);
+    }
+  }
+
+  Future<void> _loadReadReceipts() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final value = await api.fetchMyDmReadReceipts();
+      if (!mounted) return;
+      setState(() => _readReceipts = value);
+    } catch (e) {
+      debugPrint('read receipts read failed: $e');
+    }
+  }
+
+  /// Rolls back on a refused write, so the switch never claims a privacy
+  /// choice the server did not take.
+  Future<void> _editReadReceipts(bool next) async {
+    final api = widget.apiClient;
+    if (api == null || _readReceiptsSaving) return;
+    setState(() {
+      _readReceipts = next;
+      _readReceiptsSaving = true;
+    });
+    try {
+      await api.setDmReadReceipts(next);
+    } catch (e) {
+      debugPrint('read receipts write failed: $e');
+      if (!mounted) return;
+      setState(() => _readReceipts = !next);
+      showTopBanner(context, AppLocalizations.of(context).prefsReadReceiptsFailed);
+    } finally {
+      if (mounted) setState(() => _readReceiptsSaving = false);
+    }
+  }
+
+  Future<void> _loadMessageRequests() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final value = await api.fetchMyDmRequests();
+      if (!mounted) return;
+      setState(() => _messageRequests = value);
+    } catch (e) {
+      debugPrint('message requests read failed: $e');
+    }
+  }
+
+  /// Rolls back on a refused write, as [_editReadReceipts] does.
+  Future<void> _editMessageRequests(bool next) async {
+    final api = widget.apiClient;
+    if (api == null || _messageRequestsSaving) return;
+    setState(() {
+      _messageRequests = next;
+      _messageRequestsSaving = true;
+    });
+    try {
+      await api.setDmRequests(next);
+    } catch (e) {
+      debugPrint('message requests write failed: $e');
+      if (!mounted) return;
+      setState(() => _messageRequests = !next);
+      showTopBanner(
+          context, AppLocalizations.of(context).prefsMessageRequestsFailed);
+    } finally {
+      if (mounted) setState(() => _messageRequestsSaving = false);
+    }
+  }
+
+  Future<void> _openFollowRequests() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => FollowRequestsScreen(api: api)),
+    );
+  }
+
+  Future<void> _openNearbyArea() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => NearbyAreaScreen(api: api)),
+    );
+    await _loadNearbyAreaLabel();
+  }
+
+  Future<void> _toggleHrMedicationAffected() async {
+    final current = _bagValue<bool>(SettingsKeys.hrMedicationAffected) ?? false;
+    await _putUniversal(SettingsKeys.hrMedicationAffected, !current);
+  }
+
+  List<Widget> _hrMedicationTiles(AppLocalizations l10n) {
+    final on = _bagValue<bool>(SettingsKeys.hrMedicationAffected) ?? false;
+    final consented = _healthConsentAt != null;
+    return [
+      SwitchListTile(
+        key: const Key('prefsHrMedicationAffected'),
+        title: Text(l10n.prefsHrMedicationAffected),
+        subtitle: Text(consented
+            ? l10n.prefsHrMedicationAffectedHint
+            : l10n.prefsHrMedicationNeedsConsent),
+        value: on,
+        onChanged: _bagReady && (consented || on)
+            ? (_) => _toggleHrMedicationAffected()
+            : null,
+      ),
+      if (on && _bagValue<num>(SettingsKeys.maxHrBpm) == null)
+        ListTile(
+          key: const Key('prefsHrMedicationMaxPrompt'),
+          leading: const Icon(Icons.info_outline),
+          title: Text(l10n.prefsHrMedicationSetMaxHr),
+          enabled: _bagReady,
+          onTap: _editMaxHr,
+        ),
+    ];
+  }
+
   Future<void> _editExcludeGymFromReadiness() async {
     final current =
         _bagValue<bool>(SettingsKeys.excludeGymFromReadiness) ?? false;
@@ -913,7 +1330,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   }
 
   Future<void> _editDateOfBirth() async {
-    final raw = _bagValue<String>(SettingsKeys.dateOfBirth);
+    final raw = _dateOfBirthDisplay;
     final current = raw != null ? DateTime.tryParse(raw) : null;
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -925,18 +1342,45 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       helpText: AppLocalizations.of(context).prefsDateOfBirth,
     );
     if (picked == null) return;
-    final iso =
-        '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-    await _putUniversal(SettingsKeys.dateOfBirth, iso);
+    final iso = ApiClient.dateOnly(picked);
+    // The age record first and unconditionally: the under-18
+    // discoverability floor keys off this column, so a runner who has not
+    // granted Art 9 consent must still be able to record a birth date
+    // (decisions § 718). Best-effort like every other row on this screen —
+    // a failed write must not throw out of an onTap handler.
+    final api = widget.apiClient;
+    if (api != null) {
+      try {
+        await api.setMyDateOfBirth(picked);
+        if (mounted) setState(() => _profileDob = iso);
+      } catch (e) {
+        debugPrint('date of birth age-record write failed: $e');
+      }
+    }
+    // The bag mirror is the Art 9 health-use copy the coach + HR-max reads
+    // consume. Fail closed: no consent on record — including a profile read
+    // that never landed — writes nothing, and clears anything a previous
+    // consent left behind.
+    await _putUniversal(
+      SettingsKeys.dateOfBirth,
+      _healthConsentAt == null ? null : iso,
+    );
   }
+
+  /// What the row shows: the age record when it is known, the Art 9 mirror
+  /// otherwise. Reading the mirror alone would blank the row for a runner
+  /// who withdrew consent while their birth date is still on file.
+  String? get _dateOfBirthDisplay =>
+      _profileDob ?? _bagValue<String>(SettingsKeys.dateOfBirth);
 
   Future<void> _editRestingHr() async {
     final picked = await _pickInt(
       title: AppLocalizations.of(context).prefsRestingHr,
       current: _bagValue<num>(SettingsKeys.restingHrBpm)?.round(),
       suffix: 'bpm',
-      minValue: 20,
-      maxValue: 200,
+      // The named bound, not a third spelling of it (decisions § 1245, § 1409).
+      minValue: kRestingHrBpmMin,
+      maxValue: kRestingHrBpmMax,
     );
     if (picked == null) return;
     await _putUniversal(
@@ -950,8 +1394,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       title: AppLocalizations.of(context).prefsMaxHr,
       current: _bagValue<num>(SettingsKeys.maxHrBpm)?.round(),
       suffix: 'bpm',
-      minValue: 80,
-      maxValue: 240,
+      // The bound the zone readers apply, not a second copy of it: three
+      // separate spellings of this range are what let the Wear OS rail use a
+      // value the other two ignored (decisions § 1245, § 1407).
+      minValue: kMaxHrBpmMin,
+      maxValue: kMaxHrBpmMax,
     );
     if (picked == null) return;
     await _putUniversal(SettingsKeys.maxHrBpm, picked == -1 ? null : picked);
@@ -1078,19 +1525,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   }
 
   Future<void> _editWeeklyGoal() async {
-    final current = _bagValue<num>(
-      SettingsKeys.weeklyMileageGoalMetres,
-    )?.toDouble();
-    final useMiles = widget.preferences.useMiles;
-    final currentDisplay = current == null
-        ? null
-        : (useMiles ? current / 1609.344 : current / 1000);
+    final stored = _bagValue<num>(SettingsKeys.weeklyMileageGoalMetres);
+    final unit = widget.preferences.unit;
     final picked = await _pickDouble(
       title: AppLocalizations.of(context).prefsWeeklyGoal,
-      current: currentDisplay,
-      suffix: useMiles ? 'mi' : 'km',
-      minValue: 0.1,
-      maxValue: 500,
+      current: weeklyGoalToInput(stored, unit),
+      suffix: unit.name,
+      minValue: kWeeklyGoalMin,
+      maxValue: kWeeklyGoalMax,
     );
     if (picked == null) return;
     if (picked == -1.0) {
@@ -1103,8 +1545,8 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         await widget.preferences.removeGoal(existing.id);
       }
     } else {
-      final metres = useMiles ? picked * 1609.344 : picked * 1000;
-      await _putUniversal(SettingsKeys.weeklyMileageGoalMetres, metres.round());
+      final metres = weeklyGoalFromInput(picked, unit, stored)!;
+      await _putUniversal(SettingsKeys.weeklyMileageGoalMetres, metres);
       final existing = widget.preferences.goals.firstWhere(
         (g) => g.period == GoalPeriod.week && g.distanceMetres != null,
         orElse: () => const RunGoal(id: '', period: GoalPeriod.week),
@@ -1113,7 +1555,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         RunGoal(
           id: existing.id.isEmpty ? newGoalId() : existing.id,
           period: GoalPeriod.week,
-          distanceMetres: metres,
+          distanceMetres: metres.toDouble(),
           title: existing.title,
           timeSeconds: existing.timeSeconds,
           avgPaceSecPerKm: existing.avgPaceSecPerKm,
@@ -1211,10 +1653,27 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final prefs = widget.preferences;
+    // Null when this mount has no stores to resolve visibility against (the
+    // run-detail HR shortcut); those rows then keep their plain behaviour.
+    final gymShown = switch (widget.gymStore) {
+      final gym? => prefs.gymShown(hasData: gym.workouts.isNotEmpty),
+      null => null,
+    };
+    final nutritionShown = switch (widget.foodStore) {
+      final food? => prefs.nutritionShown(hasData: food.rows.isNotEmpty),
+      null => null,
+    };
+    // With both hidden a tap on the centre button already starts a run, so
+    // the switch reading Off described a behaviour the runner could see was
+    // on. It shows the truth and says why it can't be changed here.
+    final runPrimaryForced = gymShown == false && nutritionShown == false;
+    // Nothing to exclude for a runner who neither shows Gym nor has a lift.
+    final hideGymReadiness =
+        gymShown == false && (widget.gymStore?.workouts.isEmpty ?? false);
     final offlineNotice =
         widget.settingsSync?.synced == true &&
             widget.settingsSync?.service?.isServerHydrated == false
-        ? widget.settingsSync?.lastError
+        ? AppLocalizations.of(context).prefsOfflineNotice
         : null;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.prefsTitle)),
@@ -1295,6 +1754,36 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       onTap: _editWeightUnit,
                     ),
                     ListTile(
+                      key: const Key('prefsDisclosureLevel'),
+                      title: Text(l10n.prefsDisclosureLevel),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_disclosureLabel(l10n, _disclosureChoice)),
+                          Text(
+                            l10n.prefsDisclosureHint(
+                              _disclosureLabel(l10n, _derivedDisclosure),
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: _bagReady,
+                      onTap: _editDisclosureLevel,
+                    ),
+                    ListTile(
+                      key: const Key('prefsHomeCards'),
+                      title: Text(l10n.prefsHomeCards),
+                      subtitle: Text(l10n.prefsHomeCardsHint),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: _bagReady,
+                      onTap: _editHomeCards,
+                    ),
+                    ListTile(
                       title: Text(l10n.prefsMapStyle),
                       subtitle: Text(_mapStyleLabel(l10n, _mapStylePref)),
                       trailing: const Icon(Icons.chevron_right),
@@ -1326,6 +1815,15 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           ? (v) => _putUniversal(SettingsKeys.showCalories, v)
                           : null,
                     ),
+                    SwitchListTile(
+                      key: const Key('prefsShowMascot'),
+                      title: Text(l10n.prefsShowMascot),
+                      subtitle: Text(l10n.prefsShowMascotHint),
+                      value: _bagValue<bool>(SettingsKeys.showMascot) != false,
+                      onChanged: _bagReady
+                          ? (v) => _putUniversal(SettingsKeys.showMascot, v)
+                          : null,
+                    ),
                   ],
                 ),
                 (
@@ -1350,6 +1848,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       onChanged: (v) async {
                         await prefs.setAudioCues(v);
                         await _roamPush(widget.settingsSync?.pushAudioCues);
+                      },
+                    ),
+                    SwitchListTile(
+                      title: Text(l10n.phoneSurfaceVibrationCues),
+                      subtitle: Text(l10n.phoneSurfaceVibrationCuesSubtitle),
+                      value: prefs.hapticFeedback,
+                      onChanged: (v) async {
+                        await prefs.setHapticFeedback(v);
+                        await _roamPush(
+                            widget.settingsSync?.pushHapticFeedback);
                       },
                     ),
                     if (prefs.audioCues)
@@ -1383,7 +1891,20 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                                 prefs.splitIntervalMetres,
                                 prefs.unit,
                               )
-                            : l10n.prefsSplitIntervalDefaultSubtitle,
+                            : l10n.prefsSplitIntervalDefaultSubtitle(
+                                _splitIntervalLabel(
+                                  ActivityType.run
+                                      .splitIntervalMetresFor(prefs.unit)
+                                      .round(),
+                                  prefs.unit,
+                                ),
+                                _splitIntervalLabel(
+                                  ActivityType.cycle
+                                      .splitIntervalMetresFor(prefs.unit)
+                                      .round(),
+                                  prefs.unit,
+                                ),
+                              ),
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editSplitInterval,
@@ -1455,13 +1976,91 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                     // keep the centre Log button as a one-tap run start (long-press
                     // still opens the full capture sheet).
                     SwitchListTile(
+                      key: const Key('prefsKeepRunPrimary'),
                       title: Text(l10n.prefsKeepRunPrimary),
-                      subtitle: Text(l10n.prefsKeepRunPrimarySubtitle),
-                      value: prefs.keepRunPrimary,
-                      onChanged: prefs.setKeepRunPrimary,
+                      subtitle: Text(runPrimaryForced
+                          ? l10n.prefsKeepRunPrimaryForcedSubtitle
+                          : l10n.prefsKeepRunPrimarySubtitle),
+                      value: runPrimaryForced || prefs.keepRunPrimary,
+                      onChanged:
+                          runPrimaryForced ? null : prefs.setKeepRunPrimary,
                     ),
                   ],
                 ),
+                (
+                  l10n.prefsSectionMessages,
+                  [
+                    ListTile(
+                      key: const Key('prefsCoachInMessages'),
+                      title: Text(l10n.prefsCoachInMessages),
+                      subtitle: Text(
+                        _coachPlacementLabel(
+                          l10n,
+                          parseCoachInboxPlacement(
+                            _bagValue<Object>(SettingsKeys.messagesCoachRow),
+                          ),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: _bagReady,
+                      onTap: _editCoachInMessages,
+                    ),
+                    if (widget.apiClient != null)
+                      SwitchListTile(
+                        key: const Key('prefsReadReceipts'),
+                        title: Text(l10n.prefsReadReceipts),
+                        subtitle: Text(l10n.prefsReadReceiptsHint),
+                        value: _readReceipts ?? false,
+                        onChanged: _readReceipts == null || _readReceiptsSaving
+                            ? null
+                            : _editReadReceipts,
+                      ),
+                    if (widget.apiClient != null)
+                      SwitchListTile(
+                        key: const Key('prefsMessageRequests'),
+                        title: Text(l10n.prefsMessageRequests),
+                        subtitle: Text(l10n.prefsMessageRequestsHint),
+                        value: _messageRequests ?? false,
+                        onChanged:
+                            _messageRequests == null || _messageRequestsSaving
+                                ? null
+                                : _editMessageRequests,
+                      ),
+                  ],
+                ),
+                // Showing the resolved state takes the stores (unset means
+                // "shown once there is data"), so a mount without them — the
+                // run-detail HR shortcut — leaves the section out rather than
+                // render a switch that may be wrong.
+                if (widget.gymStore case final gym?)
+                  if (widget.foodStore case final food?)
+                    (
+                      l10n.prefsSectionModalities,
+                      [
+                        SwitchListTile(
+                          title: Text(l10n.prefsShowGym),
+                          subtitle: Text(l10n.prefsShowGymSubtitle),
+                          value: prefs.gymShown(
+                              hasData: gym.workouts.isNotEmpty),
+                          onChanged: (v) async {
+                            await prefs.setShowGym(v);
+                            await _roamPush(
+                                widget.settingsSync?.pushModalityVisibility);
+                          },
+                        ),
+                        SwitchListTile(
+                          title: Text(l10n.prefsShowNutrition),
+                          subtitle: Text(l10n.prefsShowNutritionSubtitle),
+                          value: prefs.nutritionShown(
+                              hasData: food.rows.isNotEmpty),
+                          onChanged: (v) async {
+                            await prefs.setShowNutrition(v);
+                            await _roamPush(
+                                widget.settingsSync?.pushModalityVisibility);
+                          },
+                        ),
+                      ],
+                    ),
                 if (prefs.audioCues)
                   (
                     l10n.prefsVoiceCueTypesLabel,
@@ -1513,6 +2112,12 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                         l10n.prefsCuePhaseTransitionsSubtitle,
                         VoiceCue.phaseTransitions,
                         l10n.prefsCuePhaseTransitionsInfo,
+                      ),
+                      _cueSwitch(
+                        l10n.prefsCueGuidedRun,
+                        l10n.prefsCueGuidedRunSubtitle,
+                        VoiceCue.guidedRun,
+                        l10n.prefsCueGuidedRunInfo,
                       ),
                       ListTile(
                         title: Text(l10n.prefsSplitPaceMode),
@@ -1569,10 +2174,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                     ),
                     ListTile(
                       title: Text(l10n.prefsDateOfBirth),
-                      subtitle: Text(
-                        _bagValue<String>(SettingsKeys.dateOfBirth) ??
-                            l10n.prefsNotSet,
-                      ),
+                      subtitle: Text(_dateOfBirthDisplay ?? l10n.prefsNotSet),
                       trailing: const Icon(Icons.chevron_right),
                       enabled: _bagReady,
                       onTap: _editDateOfBirth,
@@ -1605,6 +2207,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       enabled: _bagReady,
                       onTap: _editMaxHr,
                     ),
+                    if (_hrPrescription) ..._hrMedicationTiles(l10n),
                     ListTile(
                       title: Text(l10n.prefsHrZones),
                       subtitle: Text(_hrZonesSummary()),
@@ -1632,16 +2235,29 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       enabled: _bagReady,
                       onTap: _editWeekStartDay,
                     ),
+                    if (!hideGymReadiness)
+                      SwitchListTile(
+                        key: const Key('prefsExcludeGymFromReadiness'),
+                        title: Text(l10n.prefsExcludeGymFromReadiness),
+                        subtitle: Text(l10n.prefsExcludeGymFromReadinessHint),
+                        value:
+                            _bagValue<bool>(
+                              SettingsKeys.excludeGymFromReadiness,
+                            ) ??
+                            false,
+                        onChanged: _bagReady
+                            ? (_) => _editExcludeGymFromReadiness()
+                            : null,
+                      ),
                     SwitchListTile(
-                      title: Text(l10n.prefsExcludeGymFromReadiness),
-                      subtitle: Text(l10n.prefsExcludeGymFromReadinessHint),
+                      key: const Key('prefsExtraRecovery'),
+                      title: Text(l10n.prefsExtraRecovery),
+                      subtitle: Text(l10n.prefsExtraRecoveryHint),
                       value:
-                          _bagValue<bool>(
-                            SettingsKeys.excludeGymFromReadiness,
-                          ) ??
-                          false,
+                          _bagValue<Object>(SettingsKeys.extraRecovery) == true,
                       onChanged: _bagReady
-                          ? (_) => _editExcludeGymFromReadiness()
+                          ? (on) =>
+                              _putUniversal(SettingsKeys.extraRecovery, on)
                           : null,
                     ),
                   ],
@@ -1703,6 +2319,23 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           ? (_) => _editStravaAutoShare()
                           : null,
                     ),
+                    if (widget.apiClient != null) ...[
+                      SwitchListTile(
+                        key: const ValueKey('prefs-private-profile'),
+                        title: Text(l10n.prefsPrivateProfile),
+                        subtitle: Text(l10n.prefsPrivateProfileSubtitle),
+                        value: _profilePrivate,
+                        onChanged:
+                            _profilePrivateSaving ? null : _editProfilePrivate,
+                      ),
+                      if (_profilePrivate)
+                        ListTile(
+                          key: const ValueKey('prefs-follow-requests'),
+                          title: Text(l10n.followRequestsTitle),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: _openFollowRequests,
+                        ),
+                    ],
                     SwitchListTile(
                       title: Text(l10n.prefsDiscoverable),
                       subtitle: Text(l10n.prefsDiscoverableSubtitle),
@@ -1713,6 +2346,33 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           ? (_) => _editDiscoverableInSearch()
                           : null,
                     ),
+                    // Opt-in coarse-location discovery (issue #466). Both
+                    // rows are absent — not merely disabled — while the
+                    // default-off deploy gate holds, and the area row needs an
+                    // ApiClient to reach its definer RPCs at all.
+                    if (_nearbyGate) ...[
+                      SwitchListTile(
+                        title: Text(l10n.prefsDiscoverableNearby),
+                        subtitle: Text(l10n.prefsDiscoverableNearbySubtitle),
+                        value:
+                            _bagValue<bool>(SettingsKeys.discoverableNearby) ??
+                            false,
+                        onChanged: _bagReady
+                            ? (_) => _editDiscoverableNearby()
+                            : null,
+                      ),
+                      if (widget.apiClient != null)
+                        ListTile(
+                          title: Text(l10n.nearbyAreaTitle),
+                          subtitle: Text(
+                            _nearbyAreaLabel == null
+                                ? l10n.nearbyAreaNone
+                                : l10n.nearbyAreaCurrent(_nearbyAreaLabel!),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: _openNearbyArea,
+                        ),
+                    ],
                     // Mirrors web's `/settings/preferences` privacy-zones
                     // section (#666 I11). It used to sit under Account, which
                     // is sign-in / backup / deletion — a zone is a sharing
@@ -1779,6 +2439,43 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       trailing: const Icon(Icons.chevron_right),
                       enabled: _bagReady,
                       onTap: _editPushNotifications,
+                    ),
+                    SwitchListTile(
+                      title: Text(l10n.prefsNotifyWorkoutReminder),
+                      subtitle: Text(l10n.prefsNotifyWorkoutReminderHint),
+                      value:
+                          _bagValue<String>(
+                            SettingsKeys.notifyWorkoutReminder,
+                          ) !=
+                          'off',
+                      onChanged: _bagReady
+                          ? (_) => _toggleNotifyWorkoutReminder()
+                          : null,
+                    ),
+                    SwitchListTile(
+                      key: const ValueKey('prefs-notify-race-starting-soon'),
+                      title: Text(l10n.prefsNotifyRaceStartingSoon),
+                      subtitle: Text(l10n.prefsNotifyRaceStartingSoonHint),
+                      value:
+                          _bagValue<String>(
+                            SettingsKeys.notifyRaceStartingSoon,
+                          ) !=
+                          'off',
+                      onChanged: _bagReady
+                          ? (_) => _toggleNotifyRaceStartingSoon()
+                          : null,
+                    ),
+                    SwitchListTile(
+                      title: Text(l10n.prefsEmailNewDeviceAlerts),
+                      subtitle: Text(l10n.prefsEmailNewDeviceAlertsHint),
+                      value:
+                          _bagValue<String>(
+                            SettingsKeys.emailNewDeviceAlerts,
+                          ) !=
+                          'off',
+                      onChanged: _bagReady
+                          ? (_) => _toggleEmailNewDeviceAlerts()
+                          : null,
                     ),
                     SwitchListTile(
                       title: Text(l10n.prefsEmailWeeklyDigest),

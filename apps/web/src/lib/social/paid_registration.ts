@@ -7,7 +7,7 @@
 /// register (P3); like nutrition_budget.ts / hydration.ts this file is
 /// web-only for now (no parity-pair obligation yet).
 
-import type { RefundPolicy } from '$lib/types';
+import type { RefundPolicy } from '#lib/types.ts';
 
 /// The platform's application fee for a destination charge, in cents.
 ///
@@ -47,9 +47,17 @@ export type RegistrationState =
 ///   1. `already_registered` — if the viewer already holds a paid slot,
 ///      that wins over everything (we show "You're registered", never
 ///      "sold out", to someone who already has a seat).
-///   2. `sold_out` — capacity reached (a null/0 capacity means unlimited).
-///   3. `sales_closed` — past the sales-close instant.
+///   2. `sold_out` — capacity reached. Only a null capacity is unlimited: 0
+///      is zero seats, as `capacityDecision` in events-checkout and the
+///      `enforce_event_capacity` trigger read it, so the page never offers a
+///      Register press the checkout is certain to refuse.
+///   3. `sales_closed` — past the sales-close instant, or an occurrence whose
+///      start cannot be read (checkout's `isSalesWindowOpen` refuses that
+///      sale, so the page must not offer it).
 ///   4. `open`.
+///
+/// `_shared/client_money_parity.test.ts` runs this against the server's
+/// decision over the same grid.
 ///
 /// `goingCount` should already include pending soft-reservations that
 /// count toward capacity (the server holds them); the client passes the
@@ -63,9 +71,9 @@ export function registrationOpen(
 	viewerHasPaidOrder: boolean,
 ): RegistrationState {
 	if (viewerHasPaidOrder) return 'already_registered';
-	if (capacity != null && capacity > 0 && goingCount >= capacity) return 'sold_out';
+	if (capacity != null && goingCount >= capacity) return 'sold_out';
 	const closeIso = salesCloseAt(instanceStartIso, offsetMinutes);
-	if (closeIso != null && now.getTime() >= Date.parse(closeIso)) return 'sales_closed';
+	if (closeIso == null || now.getTime() >= Date.parse(closeIso)) return 'sales_closed';
 	return 'open';
 }
 
@@ -107,4 +115,103 @@ export function resolveRefundEligibility(
 	}
 	const eligible = nowMs < cutoffMs;
 	return { eligible, fullRefund: eligible };
+}
+
+/// The per-order refund summary the events-cancel function returns for an
+/// occurrence cancel (`summarizeOccurrenceRefunds` in its lib.ts).
+export interface OccurrenceRefundSummary {
+	outcome: 'complete' | 'incomplete';
+	initiated: number;
+	already_refunded: number;
+	released: number;
+	failed: number;
+	failed_order_ids: string[];
+}
+
+/// Read that summary off the wire, or null when it is not one. A body that
+/// cannot be read is never taken for success: a host told "done" while a
+/// registrant's money is still held has no reason to look again.
+export function parseOccurrenceRefundSummary(raw: unknown): OccurrenceRefundSummary | null {
+	if (typeof raw !== 'object' || raw === null) return null;
+	const r = raw as Record<string, unknown>;
+	if (r.outcome !== 'complete' && r.outcome !== 'incomplete') return null;
+	const counts = ['initiated', 'already_refunded', 'released', 'failed'] as const;
+	for (const k of counts) {
+		const v = r[k];
+		if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) return null;
+	}
+	const ids = r.failed_order_ids;
+	if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) return null;
+	if (ids.length !== r.failed) return null;
+	if ((r.outcome === 'complete') !== (r.failed === 0)) return null;
+	return {
+		outcome: r.outcome,
+		initiated: r.initiated as number,
+		already_refunded: r.already_refunded as number,
+		released: r.released as number,
+		failed: r.failed as number,
+		failed_order_ids: ids as string[]
+	};
+}
+
+/// What is still owed on a cancelled occurrence, from its orders, for the
+/// organiser's view of a host cancel (M8). Each order lands in at most one
+/// bucket:
+///   owed      a charged order (`paid` / `partially_refunded`) with no refund
+///             created yet, or a `pending` reservation not yet released. This
+///             is what "Refund now" re-runs the cancel for.
+///   inFlight  a charged order whose refund was created
+///             (`refund_initiated_at` set) and is waiting on charge.refunded.
+///   returned  `refund_failed`: the bank sent the refund back and a person has
+///             to return it another way, so re-running the cancel cannot help.
+/// Everything else (refunded, canceled, failed) is settled and counted nowhere.
+export interface OccurrenceRefundState {
+	owed: number;
+	inFlight: number;
+	returned: number;
+}
+
+export function occurrenceRefundState(
+	orders: ReadonlyArray<{ status: string; refund_initiated_at: string | null }>
+): OccurrenceRefundState {
+	const state: OccurrenceRefundState = { owed: 0, inFlight: 0, returned: 0 };
+	for (const o of orders) {
+		if (o.status === 'pending') {
+			state.owed += 1;
+		} else if (o.status === 'paid' || o.status === 'partially_refunded') {
+			if (o.refund_initiated_at) state.inFlight += 1;
+			else state.owed += 1;
+		} else if (o.status === 'refund_failed') {
+			state.returned += 1;
+		}
+	}
+	return state;
+}
+
+/// Group an event's orders onto its cancelled occurrences: one entry per
+/// cancelled occurrence that still has something unsettled, in date order.
+/// Orders of occurrences that were NOT cancelled are ignored — a live class's
+/// paid orders are seats, not debts. Matched on the instant rather than the
+/// text, because PostgREST renders `+00:00` where the exception list may
+/// carry `Z`.
+export function cancelledOccurrenceRefunds(
+	orders: ReadonlyArray<{ instance_start: string; status: string; refund_initiated_at: string | null }>,
+	cancelledInstanceStarts: readonly string[]
+): Array<{ instanceStart: string; state: OccurrenceRefundState }> {
+	const byInstant = new Map<number, Array<{ status: string; refund_initiated_at: string | null }>>();
+	for (const o of orders) {
+		const at = Date.parse(o.instance_start);
+		if (Number.isNaN(at)) continue;
+		const list = byInstant.get(at) ?? [];
+		list.push(o);
+		byInstant.set(at, list);
+	}
+	return [...cancelledInstanceStarts]
+		.filter((iso) => !Number.isNaN(Date.parse(iso)))
+		.sort((a, b) => Date.parse(a) - Date.parse(b))
+		.map((instanceStart) => ({
+			instanceStart,
+			state: occurrenceRefundState(byInstant.get(Date.parse(instanceStart)) ?? [])
+		}))
+		.filter(({ state }) => state.owed + state.inFlight + state.returned > 0);
 }

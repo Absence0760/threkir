@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:gpx_parser/gpx_parser.dart';
@@ -6,6 +7,41 @@ import 'package:test/test.dart';
 const _equatorOneThousandthDeg = 111.1949;
 
 void main() {
+  // Issue #1297: a course file sampled from a DEM wobbles a metre or two
+  // between points, and the importer summed every rise (Honolulu's GPX read
+  // 267 m of climb against 139 m through a 3 m band). A 40 m climb then a
+  // flat, with a 2 m wobble on every other point, sums to 120 m raw. Mirrors
+  // apps/web/src/lib/integrations/import_elevation.test.ts.
+  group('imported climb goes through the noise band', () {
+    Map<String, dynamic> wobblyCourse() => {
+          'type': 'Feature',
+          'properties': {'name': 'Ele test'},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              for (var i = 0; i <= 100; i++)
+                [i * 0.001, 0, (i <= 40 ? 10 + i : 50) + (i.isOdd ? 2 : 0)],
+            ],
+          },
+        };
+
+    test('a wobbly 40 m climb reads 42 m, not the 120 m raw sum', () {
+      final r = RouteParser.fromGeoJson(wobblyCourse());
+      expect(r.elevationGainMetres, 42);
+    });
+
+    test('a rise inside the noise band is not climb', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx><trk><trkseg>
+  <trkpt lat="0.0" lon="0.0"><ele>100</ele></trkpt>
+  <trkpt lat="0.0" lon="0.001"><ele>102</ele></trkpt>
+  <trkpt lat="0.0" lon="0.002"><ele>100</ele></trkpt>
+  <trkpt lat="0.0" lon="0.003"><ele>102.5</ele></trkpt>
+</trkseg></trk></gpx>''';
+      expect(RouteParser.fromGpx(gpx).elevationGainMetres, 0);
+    });
+  });
+
   group('RouteParser.fromGpx', () {
     test('parses trkpt nodes with elevation, summing distance', () {
       const gpx = '''<?xml version="1.0"?>
@@ -645,4 +681,480 @@ void main() {
       expect(r.waypoints[1].lng, closeTo(-0.13, 1e-4));
     });
   });
+
+  // `double.tryParse` accepts the literals `NaN`, `Infinity` and
+  // `-Infinity`, so a null-check alone let a non-finite coordinate through
+  // into a Waypoint on every text format. Nothing downstream re-checked: the
+  // route's own haversine distance went NaN, and once such a route was
+  // selected for a run the recorder's off-route projection collapsed to a
+  // non-finite reading. The web importer has guarded every coordinate site
+  // with `Number.isFinite` since it was written.
+  group('non-finite coordinates are refused', () {
+    test('GPX: a NaN or Infinity trkpt is dropped, the rest survive', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1"><trk><name>Bad</name><trkseg>
+  <trkpt lat="0.0" lon="0.0"/>
+  <trkpt lat="NaN" lon="0.001"/>
+  <trkpt lat="0.0" lon="Infinity"/>
+  <trkpt lat="-Infinity" lon="-Infinity"/>
+  <trkpt lat="0.0" lon="0.001"/>
+</trkseg></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.waypoints, hasLength(2));
+      for (final w in r.waypoints) {
+        expect(w.lat.isFinite, isTrue);
+        expect(w.lng.isFinite, isTrue);
+      }
+      expect(r.distanceMetres.isFinite, isTrue,
+          reason: 'one bad point used to poison the whole route distance');
+      expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+    });
+
+    test('GPX: a non-finite <ele> drops the elevation, not the point', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1"><trk><trkseg>
+  <trkpt lat="0.0" lon="0.0"><ele>10.0</ele></trkpt>
+  <trkpt lat="0.0" lon="0.001"><ele>NaN</ele></trkpt>
+</trkseg></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.waypoints[1].elevationMetres, isNull);
+      expect(r.elevationGainMetres.isFinite, isTrue);
+    });
+
+    test('GPX: a loose <wpt> with a non-finite coordinate is dropped', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1">
+  <wpt lat="0.0" lon="0.0"/>
+  <wpt lat="Infinity" lon="0.001"/>
+  <wpt lat="0.0" lon="0.001"/>
+</gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres.isFinite, isTrue);
+    });
+
+    test('KML: a non-finite coordinate triple is dropped', () {
+      const kml = '''<?xml version="1.0"?>
+<kml><Document><Placemark><name>Bad</name><LineString><coordinates>
+0.0,0.0,10 0.001,NaN,10 Infinity,0.0,10 0.001,0.0,10
+</coordinates></LineString></Placemark></Document></kml>''';
+
+      final r = RouteParser.fromKml(kml);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres.isFinite, isTrue);
+    });
+
+    test('TCX: a non-finite trackpoint is dropped', () {
+      const tcx = '''<?xml version="1.0"?>
+<TrainingCenterDatabase><Activities><Activity><Lap><Track>
+  <Trackpoint><Position><LatitudeDegrees>0.0</LatitudeDegrees><LongitudeDegrees>0.0</LongitudeDegrees></Position></Trackpoint>
+  <Trackpoint><Position><LatitudeDegrees>NaN</LatitudeDegrees><LongitudeDegrees>0.001</LongitudeDegrees></Position></Trackpoint>
+  <Trackpoint><Position><LatitudeDegrees>0.0</LatitudeDegrees><LongitudeDegrees>0.001</LongitudeDegrees></Position><AltitudeMeters>Infinity</AltitudeMeters></Trackpoint>
+</Track></Lap></Activity></Activities></TrainingCenterDatabase>''';
+
+      final r = RouteParser.fromTcx(tcx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.waypoints[1].elevationMetres, isNull);
+      expect(r.distanceMetres.isFinite, isTrue);
+    });
+
+    test('GeoJSON: a non-finite coordinate pair is dropped', () {
+      final json = <String, dynamic>{
+        'properties': <String, dynamic>{'name': 'Bad'},
+        'geometry': <String, dynamic>{
+          'type': 'LineString',
+          'coordinates': <dynamic>[
+            <dynamic>[0.0, 0.0],
+            <dynamic>[0.001, double.nan],
+            <dynamic>[double.infinity, 0.0],
+            <dynamic>[0.001, 0.0, double.nan],
+          ],
+        },
+      };
+
+      final r = RouteParser.fromGeoJson(json);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.waypoints[1].elevationMetres, isNull);
+      expect(r.distanceMetres.isFinite, isTrue);
+    });
+  });
+  // Only a bare `Feature` was ever read, so the three other shapes RFC 7946
+  // defines — and the one geojson.io / QGIS / Overpass turbo actually emit —
+  // came back as a route with zero waypoints and zero distance, reported as a
+  // successful import. The container reads were also blind casts, so a
+  // document whose `geometry` was a list threw a TypeError (an Error, not an
+  // Exception) out of a parser whose coordinate reads a level down had already
+  // been hardened against exactly that.
+  group('RouteParser GeoJSON document shapes', () {
+    List<dynamic> line(double lngOffset) => <dynamic>[
+          <dynamic>[lngOffset, 0.0],
+          <dynamic>[lngOffset + 0.001, 0.0],
+        ];
+
+    test('a FeatureCollection is read, not silently empty', () {
+      final json = <String, dynamic>{
+        'type': 'FeatureCollection',
+        'features': <dynamic>[
+          <String, dynamic>{
+            'type': 'Feature',
+            'properties': <String, dynamic>{'name': 'Loop'},
+            'geometry': <String, dynamic>{
+              'type': 'LineString',
+              'coordinates': line(0.0),
+            },
+          },
+        ],
+      };
+
+      final r = RouteParser.fromGeoJson(json);
+
+      expect(r.name, 'Loop');
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+    });
+
+    test('a FeatureCollection yields one route per feature', () {
+      final json = <String, dynamic>{
+        'type': 'FeatureCollection',
+        'features': <dynamic>[
+          <String, dynamic>{
+            'properties': <String, dynamic>{'name': 'First'},
+            'geometry': <String, dynamic>{'coordinates': line(0.0)},
+          },
+          <String, dynamic>{
+            'properties': <String, dynamic>{'name': 'Second'},
+            'geometry': <String, dynamic>{'coordinates': line(10.0)},
+          },
+        ],
+      };
+
+      final routes = RouteParser.routesFromGeoJson(json);
+
+      expect(routes, hasLength(2));
+      expect(routes.map((r) => r.name), ['First', 'Second']);
+      // Never one polyline through both — that invents a leg between two
+      // unrelated lines, the way a document-wide trkpt sweep once did.
+      for (final r in routes) {
+        expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+      }
+    });
+
+    test('a bare LineString geometry is read', () {
+      final json = <String, dynamic>{
+        'type': 'LineString',
+        'coordinates': line(0.0),
+      };
+
+      final r = RouteParser.fromGeoJson(json);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+    });
+
+    test('a MultiLineString becomes one route per member line', () {
+      final json = <String, dynamic>{
+        'type': 'Feature',
+        'properties': <String, dynamic>{'name': 'Split'},
+        'geometry': <String, dynamic>{
+          'type': 'MultiLineString',
+          'coordinates': <dynamic>[line(0.0), line(10.0)],
+        },
+      };
+
+      final routes = RouteParser.routesFromGeoJson(json);
+
+      expect(routes, hasLength(2));
+      for (final r in routes) {
+        expect(r.waypoints, hasLength(2));
+        expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+      }
+      expect(RouteParser.fromGeoJson(json).waypoints, hasLength(2));
+    });
+
+    test('a malformed container is an empty import, never a TypeError', () {
+      final malformed = <Map<String, dynamic>>[
+        <String, dynamic>{'geometry': <dynamic>[]},
+        <String, dynamic>{
+          'geometry': <String, dynamic>{
+            'coordinates': <String, dynamic>{'a': 1},
+          },
+        },
+        <String, dynamic>{'properties': 'not-a-map'},
+        <String, dynamic>{
+          'properties': <String, dynamic>{'name': 7},
+        },
+        <String, dynamic>{'type': 'FeatureCollection', 'features': 'nope'},
+        <String, dynamic>{
+          'type': 'FeatureCollection',
+          'features': <dynamic>['nope'],
+        },
+      ];
+
+      for (final json in malformed) {
+        final r = RouteParser.fromGeoJson(json);
+        expect(r.waypoints, isEmpty, reason: '$json');
+        expect(r.distanceMetres, 0.0, reason: '$json');
+      }
+    });
+  });
+
+  // A finite coordinate is not automatically a coordinate. `lat="1e308"`
+  // clears every null / NaN check and then overflows the haversine's
+  // `lat2 - lat1` to infinity, so `sin(infinity)` puts the route's own
+  // `distanceMetres` back at the NaN the finiteness guard exists to prevent
+  // — and a non-finite double is one `jsonEncode` refuses, so the route
+  // parses "successfully" and then cannot be written to disk. GPX's
+  // `latitudeType`, RFC 7946 and the KML spec all bound latitude at ±90 and
+  // longitude at ±180.
+  group('out-of-range coordinates are refused', () {
+    test('GPX: a trkpt outside the WGS84 bounds is dropped', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1"><trk><trkseg>
+  <trkpt lat="0.0" lon="0.0"/>
+  <trkpt lat="500" lon="0.001"/>
+  <trkpt lat="0.0" lon="900"/>
+  <trkpt lat="0.0" lon="0.001"/>
+</trkseg></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+    });
+
+    test('GPX: a finite-but-absurd coordinate leaves a saveable route', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1"><trk><trkseg>
+  <trkpt lat="0.0" lon="0.0"/>
+  <trkpt lat="1e308" lon="1e308"/>
+  <trkpt lat="0.0" lon="0.001"/>
+</trkseg></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.distanceMetres.isFinite, isTrue);
+      expect(r.waypoints, hasLength(2));
+      // The local route store writes `route.toJson()` through `jsonEncode`,
+      // which throws on a non-finite double — a NaN distance made the import
+      // unsaveable rather than merely wrong.
+      expect(() => jsonEncode(r.toJson()), returnsNormally);
+    });
+
+    test('GPX: the exact WGS84 bounds are still accepted', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1"><trk><trkseg>
+  <trkpt lat="-90" lon="-180"/>
+  <trkpt lat="90" lon="180"/>
+</trkseg></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.waypoints.first.lat, -90.0);
+      expect(r.waypoints.last.lng, 180.0);
+    });
+
+    test('GPX: an absurd elevation pair cannot make the gain non-finite', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx version="1.1"><trk><trkseg>
+  <trkpt lat="0.0" lon="0.0"><ele>-1e308</ele></trkpt>
+  <trkpt lat="0.0" lon="0.001"><ele>1e308</ele></trkpt>
+</trkseg></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.elevationGainMetres.isFinite, isTrue);
+      expect(() => jsonEncode(r.toJson()), returnsNormally);
+    });
+
+    test('KML: an out-of-range coordinate triple is dropped', () {
+      const kml = '''<?xml version="1.0"?>
+<kml><Document><Placemark><LineString><coordinates>
+0.0,0.0 0.001,500 900,0.0 0.001,0.0
+</coordinates></LineString></Placemark></Document></kml>''';
+
+      final r = RouteParser.fromKml(kml);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres.isFinite, isTrue);
+    });
+
+    test('TCX: an out-of-range trackpoint is dropped', () {
+      const tcx = '''<?xml version="1.0"?>
+<TrainingCenterDatabase><Activities><Activity><Lap><Track>
+  <Trackpoint><Position>
+    <LatitudeDegrees>0.0</LatitudeDegrees><LongitudeDegrees>0.0</LongitudeDegrees>
+  </Position></Trackpoint>
+  <Trackpoint><Position>
+    <LatitudeDegrees>91</LatitudeDegrees><LongitudeDegrees>0.001</LongitudeDegrees>
+  </Position></Trackpoint>
+  <Trackpoint><Position>
+    <LatitudeDegrees>0.0</LatitudeDegrees><LongitudeDegrees>0.001</LongitudeDegrees>
+  </Position></Trackpoint>
+</Track></Lap></Activity></Activities></TrainingCenterDatabase>''';
+
+      final r = RouteParser.fromTcx(tcx);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+    });
+
+    test('GeoJSON: an out-of-range coordinate pair is dropped', () {
+      final json = <String, dynamic>{
+        'geometry': <String, dynamic>{
+          'type': 'LineString',
+          'coordinates': <dynamic>[
+            <dynamic>[0.0, 0.0],
+            <dynamic>[0.001, 90.001],
+            <dynamic>[180.001, 0.0],
+            <dynamic>[0.001, 0.0],
+          ],
+        },
+      };
+
+      final r = RouteParser.fromGeoJson(json);
+
+      expect(r.waypoints, hasLength(2));
+      expect(r.distanceMetres, closeTo(_equatorOneThousandthDeg, 0.01));
+    });
+
+    test('FIT: a record decoding past ±90 latitude is dropped', () {
+      // Semicircles span the whole signed 32-bit range, so a mislabelled or
+      // byte-shifted field decodes as a finite latitude anywhere in
+      // [-180, 180) — 0x7EFFFFFF is 178.59 degrees, not a place.
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 2, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        0x00, 0xFF, 0xFF, 0xFF, 0x7E, 0x00, 0x00, 0x00, 0x00,
+      ];
+
+      final r = FitParser.parse(_fitFile(body));
+
+      expect(r.waypoints, isEmpty);
+    });
+
+    test('FIT: a legitimate high-latitude record survives', () {
+      const semicirclesPerDegree = (1 << 31) / 180.0;
+      final lat = (69.0 * semicirclesPerDegree).round();
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 2, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        0x00,
+        lat & 0xFF, (lat >> 8) & 0xFF, (lat >> 16) & 0xFF, (lat >> 24) & 0xFF,
+        0x00, 0x00, 0x00, 0x00,
+      ];
+
+      final r = FitParser.parse(_fitFile(body));
+
+      expect(r.waypoints, hasLength(1));
+      expect(r.waypoints.single.lat, closeTo(69.0, 1e-4));
+    });
+
+    test('FIT: parseWithDistances carries record.distance per waypoint', () {
+      List<int> u32(int v) =>
+          [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+      const semicirclesPerDegree = (1 << 31) / 180.0;
+      final lat = (51.5 * semicirclesPerDegree).round();
+      final lng = (10.0 * semicirclesPerDegree).round();
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 3, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        5, 4, 0x86, //
+        0x00, ...u32(lat), ...u32(lng), ...u32(1200), //
+        0x00, ...u32(lat), ...u32(lng + 1000), ...u32(0xFFFFFFFF), //
+        0x00, ...u32(lat), ...u32(lng + 2000), ...u32(31050),
+      ];
+
+      final parsed = FitParser.parseWithDistances(_fitFile(body));
+
+      expect(parsed.route.waypoints, hasLength(3));
+      expect(parsed.distancesMetres, [12.0, null, 310.5]);
+      expect(FitParser.parse(_fitFile(body)).waypoints, hasLength(3));
+    });
+
+    test('FIT: parseWithDistances is null when no record carried distance', () {
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 2, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10,
+      ];
+
+      final parsed = FitParser.parseWithDistances(_fitFile(body));
+
+      expect(parsed.route.waypoints, hasLength(1));
+      expect(parsed.distancesMetres, isNull);
+    });
+  });
+
+  // package:xml resolves only the five predefined entities and numeric
+  // character references; a DTD-declared one is left as literal text. Both
+  // cases are pinned because that is the default of an `entityMapping`
+  // argument the parser does not pass — a later call that did pass one would
+  // open a route file, which arrives from an OS "Open with" share and is
+  // therefore attacker-supplied, to entity expansion and local file
+  // disclosure.
+  group('XML entity hostility', () {
+    test('a billion-laughs DTD does not expand', () {
+      const gpx = '''<?xml version="1.0"?>
+<!DOCTYPE gpx [
+  <!ENTITY a "aaaaaaaaaa">
+  <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+  <!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">
+  <!ENTITY d "&c;&c;&c;&c;&c;&c;&c;&c;&c;&c;">
+]>
+<gpx><trk><name>&d;</name><trkpt lat="1" lon="2"/></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.name.length, lessThan(16));
+      expect(r.waypoints, hasLength(1));
+    });
+
+    test('an external entity is not resolved', () {
+      const gpx = '''<?xml version="1.0"?>
+<!DOCTYPE gpx [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>
+<gpx><trk><name>&xxe;</name><trkpt lat="1" lon="2"/></trk></gpx>''';
+
+      final r = RouteParser.fromGpx(gpx);
+
+      expect(r.name, isNot(contains('root:')));
+      expect(r.waypoints, hasLength(1));
+    });
+  });
+
+}
+
+/// Wrap a FIT data-record body in the 14-byte file header the parser
+/// validates (`.FIT` signature, little-endian declared data size).
+Uint8List _fitFile(List<int> body) {
+  final bytes = Uint8List(14 + body.length);
+  bytes[0] = 14;
+  bytes[1] = 0x10;
+  bytes[4] = body.length & 0xFF;
+  bytes[5] = (body.length >> 8) & 0xFF;
+  bytes[6] = (body.length >> 16) & 0xFF;
+  bytes[7] = (body.length >> 24) & 0xFF;
+  bytes[8] = 0x2E;
+  bytes[9] = 0x46;
+  bytes[10] = 0x49;
+  bytes[11] = 0x54;
+  for (var i = 0; i < body.length; i++) {
+    bytes[14 + i] = body[i];
+  }
+  return bytes;
 }

@@ -19,6 +19,16 @@ import org.junit.Test
 /// branches reach `drainQueueLoop`'s switch arms.
 class DrainQueueLoopTest {
 
+    /// Every failure the loop reported this test, in the order it reported
+    /// them. Fresh per test method — JUnit builds a new instance for each.
+    ///
+    /// The sink is a REQUIRED argument of `drainQueueLoop`, so no call below
+    /// can be written without one. That is the point of it: the previous
+    /// shape returned the failures on the result and nothing held the
+    /// production caller to reading them, so the wrist's only diagnostic
+    /// could be refactored away with this whole file still green.
+    private val reported = mutableListOf<DrainFailure>()
+
     private fun run(id: String) = QueuedRun(
         id = id,
         startedAtIso = "2026-01-01T00:00:00Z",
@@ -36,11 +46,12 @@ class DrainQueueLoopTest {
             push = PushQueuedRun { /* unreachable */ },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { /* unreachable */ },
+            report = DrainFailureReport { reported += it },
             classify = { error("unreachable") },
         )
         assertEquals(emptyList<String>(), result.drainedIds)
         assertFalse(result.anyTransientFailure)
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
     @Test fun `every-success path drains every id in order`() = runBlocking {
@@ -50,17 +61,18 @@ class DrainQueueLoopTest {
             push = PushQueuedRun { /* succeed */ },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = { error("unreachable") },
         )
         assertEquals(listOf("a", "b", "c"), result.drainedIds)
         assertEquals(listOf("a", "b", "c"), removed)
         assertFalse(result.anyTransientFailure)
         // Successful pass clears the sync-error banner.
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
     @Test fun `success clears a previous-run error message`() = runBlocking {
-        // [success, success, success] should leave lastError null.
+        // [success, success, success] should leave the fault null.
         var pushCalls = 0
         val result = drainQueueLoop(
             snapshot = listOf(run("a"), run("b"), run("c")),
@@ -70,10 +82,11 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { true },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = { error("no errors thrown") },
         )
         assertEquals(3, pushCalls)
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
     // ─────────────────── SkipAndContinue (4xx) ───────────────────
@@ -95,6 +108,7 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         assertEquals(listOf("conflict", "clean"), pushedIds)
@@ -116,6 +130,7 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // 400 is permanent → SKIP, not remove. Only the clean run drains.
@@ -125,22 +140,27 @@ class DrainQueueLoopTest {
         // Permanent failures don't arm backoff — retrying would just re-skip.
         assertFalse(result.anyTransientFailure)
         // Skip-followed-by-success clears the banner.
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
-    @Test fun `skip persists lastError when no later success clears it`() = runBlocking {
-        // [skip-only] → lastError sticks for the UI banner.
+    @Test fun `skip persists the fault when no later success clears it`() = runBlocking {
+        // [skip-only] → the fault sticks for the UI banner.
         val result = drainQueueLoop(
             snapshot = listOf(run("malformed")),
             push = PushQueuedRun { throw HttpException(400, "bad request") },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         assertEquals(emptyList<String>(), result.drainedIds)
         assertFalse(result.anyTransientFailure)
-        // Single permanent-skip run leaves lastError for the UI.
-        assertEquals("bad request", result.lastError)
+        // Single permanent-skip run leaves the fault for the UI. The wrist is
+        // told a catalogued sentence; the raw text a bug report needs rides
+        // `failures` and reaches `Log.e`, never the display (decisions § 1490).
+        assertEquals(SyncFault.Refused, result.lastFault)
+        assertEquals(listOf("malformed"), reported.map { it.runId })
+        assertEquals("bad request", reported.single().error.message)
     }
 
     // ─────────────────── StopAndRetryLater (5xx) ───────────────────
@@ -157,6 +177,7 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Loop must stop on 5xx — run 'c' never attempted.
@@ -165,7 +186,8 @@ class DrainQueueLoopTest {
         assertEquals(listOf("a"), result.drainedIds)
         // 5xx arms backoff so the next drain trigger waits.
         assertTrue(result.anyTransientFailure)
-        assertEquals("upstream timeout", result.lastError)
+        assertEquals(SyncFault.ServerBusy, result.lastFault)
+        assertEquals("upstream timeout", reported.single().error.message)
     }
 
     @Test fun `network timeout (non-http) also breaks the loop`() = runBlocking {
@@ -180,6 +202,7 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         assertEquals(listOf("a", "net-drop"), pushedIds)
@@ -205,6 +228,7 @@ class DrainQueueLoopTest {
                 true
             },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Initial push + one retry after refresh.
@@ -215,7 +239,7 @@ class DrainQueueLoopTest {
         assertEquals(listOf("a"), result.drainedIds)
         // 401 followed by successful refresh+retry is NOT a transient failure.
         assertFalse(result.anyTransientFailure)
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
     @Test fun `401 followed by REFRESH FAILURE stops + arms backoff`() = runBlocking {
@@ -229,6 +253,7 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { false },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Push fires once; refresh fails → no retry; 'b' never attempted.
@@ -237,7 +262,11 @@ class DrainQueueLoopTest {
         assertEquals(emptyList<String>(), result.drainedIds)
         // Refresh failure arms backoff so the next drain trigger waits.
         assertTrue(result.anyTransientFailure)
-        assertEquals("JWT expired", result.lastError)
+        // A 401 the refresh could not repair is the one fault whose remedy is
+        // an action on the wrist, so it is its own member rather than a
+        // generic failure.
+        assertEquals(SyncFault.SignInRequired, result.lastFault)
+        assertEquals("JWT expired", reported.single().error.message)
     }
 
     @Test fun `401 with refresh-throws stops + arms backoff`() = runBlocking {
@@ -246,14 +275,93 @@ class DrainQueueLoopTest {
         val result = drainQueueLoop(
             snapshot = listOf(run("a")),
             push = PushQueuedRun { throw HttpException(401, "JWT expired") },
-            refresh = RefreshAuthForDrain { throw RuntimeException("refresh socket reset") },
+            refresh = RefreshAuthForDrain { throw RuntimeException("Connection reset") },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         assertEquals(emptyList<String>(), result.drainedIds)
         assertTrue(result.anyTransientFailure)
-        // Refresh exception message bubbles into lastError.
-        assertEquals("refresh socket reset", result.lastError)
+        // The REFRESH's fault, not the 401's: the socket died before the
+        // refresh grant was answered, so nothing has said this session is
+        // spent.
+        assertEquals(SyncFault.Offline, result.lastFault)
+        // Both throwables reach the log — the 401 that provoked the refresh and
+        // the refresh's own failure. Only one of them can be the banner.
+        assertEquals(
+            listOf("JWT expired", "Connection reset"),
+            reported.map { it.error.message },
+        )
+    }
+
+    @Test fun `a refresh that never reached the server does not ask for a sign-in`() = runBlocking {
+        // The 401 proves the server answered moments earlier; it is not
+        // evidence about the refresh that followed. Since § 1544 the fault is
+        // an affordance — the PreRun arc spends its one slot offering a
+        // sign-in for `SignInRequired` — so a dropped socket read as a spent
+        // token costs the runner a password they did not need to retype.
+        val transports = listOf(
+            RuntimeException("Connection reset") to SyncFault.Offline,
+            RuntimeException("timeout") to SyncFault.Offline,
+            HttpException(503, "gateway") to SyncFault.ServerBusy,
+            HttpException(429, "too many requests") to SyncFault.ServerBusy,
+            // `sessionStore.save` throwing on an EncryptedSharedPreferences
+            // fault: the one failure on this path that never touched a network.
+            IllegalStateException("could not decrypt keyset") to SyncFault.Unknown,
+        )
+        for ((thrown, expected) in transports) {
+            reported.clear()
+            val result = drainQueueLoop(
+                snapshot = listOf(run("a"), run("b")),
+                push = PushQueuedRun { throw HttpException(401, "JWT expired") },
+                refresh = RefreshAuthForDrain { throw thrown },
+                onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+                report = DrainFailureReport { reported += it },
+                classify = ::classifyDrainError,
+            )
+            assertEquals("lastFault for $thrown", expected, result.lastFault)
+            assertEquals("blockedBy for $thrown", expected, result.blockedBy)
+            // The log gets the refresh's own classification too, not the 401's.
+            assertEquals(expected, reported.last().fault)
+            assertTrue(result.anyTransientFailure)
+        }
+    }
+
+    @Test fun `a refresh grant the server refuses is still a sign-in`() = runBlocking {
+        // The other half of the same asymmetry: on the refresh endpoint a 4xx
+        // IS a session the server will not renew, where `syncFaultFor` would
+        // read the same 400 as `Refused` — a claim about a run this endpoint
+        // never saw.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun { throw HttpException(401, "JWT expired") },
+            refresh = RefreshAuthForDrain { throw HttpException(400, "invalid_grant") },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(SyncFault.SignInRequired, result.lastFault)
+        assertEquals(SyncFault.SignInRequired, result.blockedBy)
+        assertEquals(emptyList<String>(), result.rejectedIds)
+    }
+
+    @Test fun `a refresh that fails without saying why keeps the 401's verdict`() = runBlocking {
+        // A bare `false` carries no throwable to classify. The production
+        // lambda throws, but the seam allows this shape and the honest answer
+        // for it is the one thing that IS known: a 401 whose refresh did not
+        // succeed.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun { throw HttpException(401, "JWT expired") },
+            refresh = RefreshAuthForDrain { false },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(SyncFault.SignInRequired, result.lastFault)
+        assertEquals(SyncFault.SignInRequired, result.blockedBy)
+        // Nothing to report beyond the 401 itself.
+        assertEquals(listOf("JWT expired"), reported.map { it.error.message })
     }
 
     @Test fun `401, refresh succeeds, retry also 401, stops with backoff`() = runBlocking {
@@ -272,6 +380,7 @@ class DrainQueueLoopTest {
                 true
             },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Initial push + retry; both 401.
@@ -279,6 +388,120 @@ class DrainQueueLoopTest {
         // Only ONE refresh attempt — no thrash.
         assertEquals(1, refreshCalls)
         assertEquals(emptyList<String>(), result.drainedIds)
+        assertTrue(result.anyTransientFailure)
+    }
+
+    @Test fun `a retry the server permanently refuses is rejected, not retried forever`() = runBlocking {
+        // The defect this pins: the post-refresh retry had its own catch that
+        // set the fault, armed backoff and broke, reaching no classification
+        // at all. A 400 there left the entry queued and the arc on
+        // `RetryQueued` — a retry affordance for a run no retry will ever
+        // move, which is the state § 1347's discard chip exists to escape.
+        var attempts = 0
+        val removed = mutableListOf<String>()
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a"), run("b")),
+            push = PushQueuedRun { r ->
+                if (r.id == "a") {
+                    attempts++
+                    if (attempts == 1) throw HttpException(401, "JWT expired")
+                    throw HttpException(422, "validation failed")
+                }
+            },
+            refresh = RefreshAuthForDrain { true },
+            onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(2, attempts)
+        // The refused run reaches the chip.
+        assertEquals(listOf("a"), result.rejectedIds)
+        // And the pass carries on: a run the server refuses says nothing about
+        // the next entry in the queue.
+        assertEquals(listOf("a", "b"), result.attemptedIds)
+        assertEquals(listOf("b"), result.drainedIds)
+        assertEquals(listOf("b"), removed)
+        // Nothing stopped the pass, so backoff is not armed — a permanent
+        // refusal is not a network that needs waiting out.
+        assertNull(result.blockedBy)
+        assertFalse(result.anyTransientFailure)
+        // The trailing success clears the banner; the rejection outlives it,
+        // which is the whole reason the two ride separate fields.
+        assertNull(result.lastFault)
+    }
+
+    @Test fun `a retry refused with nothing after it still states the refusal`() = runBlocking {
+        var attempts = 0
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun {
+                attempts++
+                if (attempts == 1) throw HttpException(401, "JWT expired")
+                throw HttpException(409, "duplicate key")
+            },
+            refresh = RefreshAuthForDrain { true },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(listOf("a"), result.rejectedIds)
+        assertEquals(SyncFault.Refused, result.lastFault)
+        assertNull(result.blockedBy)
+        assertFalse(result.anyTransientFailure)
+        assertEquals(
+            listOf("JWT expired", "duplicate key"),
+            reported.map { it.error.message },
+        )
+    }
+
+    @Test fun `a retry that fails transiently still stops the pass`() = runBlocking {
+        // The other half of the same classification: only a permanent verdict
+        // lets the loop carry on. A 5xx on the retry is a server to wait out,
+        // so the pass ends here and the later entries stay unjudged.
+        var attempts = 0
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a"), run("b")),
+            push = PushQueuedRun {
+                attempts++
+                if (attempts == 1) throw HttpException(401, "JWT expired")
+                throw HttpException(503, "upstream down")
+            },
+            refresh = RefreshAuthForDrain { true },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(emptyList<String>(), result.rejectedIds)
+        assertEquals(listOf("a"), result.attemptedIds)
+        assertEquals(SyncFault.ServerBusy, result.blockedBy)
+        assertTrue(result.anyTransientFailure)
+    }
+
+    @Test fun `a retry that 401s again does not spend a second refresh`() = runBlocking {
+        // The one-shot contract, restated where the classification could break
+        // it: a `RetryAfterRefresh` verdict on the retry must stop the pass
+        // rather than loop back into another refresh.
+        var refreshCalls = 0
+        var attempts = 0
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a"), run("b")),
+            push = PushQueuedRun {
+                attempts++
+                throw HttpException(401, "JWT expired")
+            },
+            refresh = RefreshAuthForDrain {
+                refreshCalls++
+                true
+            },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(2, attempts)
+        assertEquals(1, refreshCalls)
+        assertEquals(emptyList<String>(), result.rejectedIds)
+        assertEquals(listOf("a"), result.attemptedIds)
+        assertEquals(SyncFault.SignInRequired, result.blockedBy)
         assertTrue(result.anyTransientFailure)
     }
 
@@ -305,13 +528,14 @@ class DrainQueueLoopTest {
                 true
             },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         assertEquals(listOf("a", "b", "c"), removed)
         // Exactly one refresh fired (only one 401).
         assertEquals(1, refreshCount)
         assertFalse(result.anyTransientFailure)
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
     @Test fun `mixed ok, skip-permanent, ok drains 2, leaves skipped`() = runBlocking {
@@ -323,6 +547,7 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Skipped run stays in the queue; clean ones drain.
@@ -330,7 +555,7 @@ class DrainQueueLoopTest {
         assertEquals(listOf("a", "c"), result.drainedIds)
         assertFalse(result.anyTransientFailure)
         // Trailing success clears the banner even if a middle run was skipped.
-        assertNull(result.lastError)
+        assertNull(result.lastFault)
     }
 
     @Test fun `mixed ok, transient, ok drains only the first and stops`() = runBlocking {
@@ -345,13 +570,15 @@ class DrainQueueLoopTest {
             },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // 'c' is never attempted — loop broke on 'down'.
         assertEquals(listOf("a", "down"), pushedIds)
         assertEquals(listOf("a"), removed)
         assertTrue(result.anyTransientFailure)
-        assertEquals("bad gateway", result.lastError)
+        assertEquals(SyncFault.ServerBusy, result.lastFault)
+        assertEquals("bad gateway", reported.single().error.message)
     }
 
     @Test fun `pure-skip queue does NOT arm backoff`() = runBlocking {
@@ -364,12 +591,16 @@ class DrainQueueLoopTest {
             push = PushQueuedRun { throw HttpException(400, "validation failed") },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         assertEquals(emptyList<String>(), result.drainedIds)
         // Permanent skips don't count as transient — backoff stays off.
         assertFalse(result.anyTransientFailure)
-        assertEquals("validation failed", result.lastError)
+        assertEquals(SyncFault.Refused, result.lastFault)
+        // Three refusals, three log lines. The banner can only say one thing;
+        // the diagnostic must not lose the other two.
+        assertEquals(listOf("a", "b", "c"), reported.map { it.runId })
     }
 
     // ─────────────────── Side-effect ordering ───────────────────
@@ -381,6 +612,7 @@ class DrainQueueLoopTest {
             push = PushQueuedRun { order += "push" },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { order += "remove" },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Removing from the queue BEFORE the push would lose the run
@@ -395,10 +627,284 @@ class DrainQueueLoopTest {
             push = PushQueuedRun { throw HttpException(503, "down") },
             refresh = RefreshAuthForDrain { error("unreachable") },
             onSuccessfulDrain = OnSuccessfulDrain { id -> removed += id },
+            report = DrainFailureReport { reported += it },
             classify = ::classifyDrainError,
         )
         // Removing a run that failed to upload would lose data —
         // bug must not regress.
         assertTrue(removed.isEmpty())
+    }
+
+    // ───────────── Permanent rejection, carried out to the UI ─────────────
+
+    @Test fun `a permanent skip is reported as a rejection a later success cannot erase`() = runBlocking {
+        // The defect: `lastFault = null` runs on every success, so the trailing
+        // clean run wiped the skipped run's message, `anyTransientFailure` stayed
+        // false, and the caller reported a successful sync while the queue count
+        // never fell. `lastFault` KEEPS that behaviour — the two assertions above
+        // state it deliberately — and the rejection rides its own field.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("malformed"), run("clean")),
+            push = PushQueuedRun { r ->
+                if (r.id == "malformed") throw HttpException(422, "validation failed")
+            },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(listOf("malformed"), result.rejectedIds)
+        assertEquals(listOf("clean"), result.drainedIds)
+        // The stated decision, unchanged.
+        assertNull(result.lastFault)
+        // …and the refusal is still in the log even though the banner cleared.
+        assertEquals(listOf("malformed"), reported.map { it.runId })
+        assertFalse(result.anyTransientFailure)
+    }
+
+    @Test fun `every classification that keeps the run queued is reported`() = runBlocking {
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a"), run("b"), run("c"), run("d")),
+            push = PushQueuedRun { r ->
+                when (r.id) {
+                    "a" -> throw HttpException(400, "bad request")
+                    "b" -> throw HttpException(404, "no such table")
+                    "c" -> throw HttpException(409, "duplicate key")
+                    else -> throw HttpException(422, "validation failed")
+                }
+            },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(listOf("a", "b", "c", "d"), result.rejectedIds)
+        assertEquals(emptyList<String>(), result.drainedIds)
+    }
+
+    @Test fun `the pass names what stopped it, and a pass that got through names nothing`() = runBlocking {
+        // `blockedBy` is what the PreRun arc reads to decide between a retry
+        // and a sign-in (decisions § 1544), and it is NOT `lastFault`: a
+        // permanent rejection sets that one and the loop carries on past it,
+        // so a pass that rejects a run and then drains the rest is a pass that
+        // got through.
+        val stopped = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun { throw HttpException(503, "upstream timeout") },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(SyncFault.ServerBusy, stopped.blockedBy)
+        assertTrue(stopped.anyTransientFailure)
+
+        val carriedOn = drainQueueLoop(
+            snapshot = listOf(run("bad"), run("fine")),
+            push = PushQueuedRun { r ->
+                if (r.id == "bad") throw HttpException(400, "bad request")
+            },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertNull(carriedOn.blockedBy)
+        assertFalse(carriedOn.anyTransientFailure)
+        assertEquals(listOf("bad"), carriedOn.rejectedIds)
+    }
+
+    @Test fun `a 401 the refresh cannot repair blocks the pass on the sign-in fault`() = runBlocking {
+        // The whole reason `blockedBy` carries a fault: this pass and a 5xx
+        // set the same boolean, and the arc must offer a sign-in for one and a
+        // retry for the other.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun { throw HttpException(401, "JWT expired") },
+            refresh = RefreshAuthForDrain { false },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(SyncFault.SignInRequired, result.blockedBy)
+    }
+
+    @Test fun `a report sink that throws does not take the drain with it`() = runBlocking {
+        // The report is an L4 diagnostic hanging off the one path that carries
+        // a runner's unsynced runs. A sink that throws must cost the log line
+        // and nothing else — the alternative is a logger ending the pass that
+        // was about to upload the run it was logging about.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a"), run("b")),
+            push = PushQueuedRun { r ->
+                if (r.id == "a") throw HttpException(400, "bad request")
+            },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { reported += DrainFailure(it, SyncFault.Unknown, RuntimeException("drained")) },
+            report = DrainFailureReport { error("the log is on fire") },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(listOf("a"), result.rejectedIds)
+        assertEquals(listOf("b"), result.drainedIds)
+        assertEquals(listOf("b"), reported.map { it.runId })
+    }
+
+    @Test fun `the refresh's own failure is reported, not only the 401 that provoked it`() = runBlocking {
+        // The live lambda used to catch its own error and return a bare
+        // `false`, so the one failure on this path — a session the server will
+        // not renew — reached no log at all. Both throwables are reported and
+        // only one of them is the banner.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun { throw HttpException(401, "JWT expired") },
+            refresh = RefreshAuthForDrain { throw HttpException(400, "invalid_grant") },
+            onSuccessfulDrain = OnSuccessfulDrain { error("nothing drains") },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(
+            listOf("JWT expired", "invalid_grant"),
+            reported.map { it.error.message },
+        )
+        assertEquals(SyncFault.SignInRequired, result.lastFault)
+    }
+
+    @Test fun `an all-success pass rejects nothing`() = runBlocking {
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a"), run("b")),
+            push = PushQueuedRun { },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
+            classify = { error("unreachable") },
+        )
+        assertEquals(emptyList<String>(), result.rejectedIds)
+        assertEquals(listOf("a", "b"), result.attemptedIds)
+    }
+
+    @Test fun `a transient break leaves every later run unattempted`() = runBlocking {
+        // The reason `attemptedIds` exists: the caller carries rejections across
+        // passes, and a run this pass never reached has no verdict to carry.
+        val result = drainQueueLoop(
+            snapshot = listOf(run("skipped"), run("down"), run("never-reached")),
+            push = PushQueuedRun { r ->
+                when (r.id) {
+                    "skipped" -> throw HttpException(400, "bad request")
+                    "down" -> throw HttpException(503, "upstream timeout")
+                    else -> error("`never-reached` must not be attempted")
+                }
+            },
+            refresh = RefreshAuthForDrain { error("unreachable") },
+            onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        assertEquals(listOf("skipped", "down"), result.attemptedIds)
+        assertEquals(listOf("skipped"), result.rejectedIds)
+        assertTrue(result.anyTransientFailure)
+    }
+
+    @Test fun `a 401 whose refresh-retry succeeds is attempted once and rejected never`() = runBlocking {
+        var pushAttempts = 0
+        val result = drainQueueLoop(
+            snapshot = listOf(run("a")),
+            push = PushQueuedRun {
+                pushAttempts++
+                if (pushAttempts == 1) throw HttpException(401, "JWT expired")
+            },
+            refresh = RefreshAuthForDrain { true },
+            onSuccessfulDrain = OnSuccessfulDrain { },
+            report = DrainFailureReport { reported += it },
+            classify = ::classifyDrainError,
+        )
+        // Two pushes, one entry: `attemptedIds` is about runs, not requests.
+        assertEquals(listOf("a"), result.attemptedIds)
+        assertEquals(emptyList<String>(), result.rejectedIds)
+    }
+
+    // ───────────────────── rejectedAfterPass ─────────────────────
+
+    private fun result(
+        drained: List<String> = emptyList(),
+        rejected: List<String> = emptyList(),
+        attempted: List<String> = emptyList(),
+    ) = DrainQueueLoopResult(
+        drainedIds = drained,
+        rejectedIds = rejected,
+        attemptedIds = attempted,
+        blockedBy = null,
+        lastFault = null,
+    )
+
+    @Test fun `a fresh rejection enters the carried set`() {
+        assertEquals(
+            setOf("a"),
+            rejectedAfterPass(
+                previouslyRejected = emptySet(),
+                queuedIdsBeforePass = listOf("a", "b"),
+                result = result(drained = listOf("b"), rejected = listOf("a"), attempted = listOf("a", "b")),
+            ),
+        )
+    }
+
+    @Test fun `a run this pass reached and did NOT reject loses its rejection`() {
+        // The server was fixed, or the failure is transient this time. Either
+        // way the standing claim is no longer this pass's verdict.
+        assertEquals(
+            emptySet<String>(),
+            rejectedAfterPass(
+                previouslyRejected = setOf("a"),
+                queuedIdsBeforePass = listOf("a", "b"),
+                result = result(attempted = listOf("a")),
+            ),
+        )
+    }
+
+    @Test fun `a run this pass never reached keeps the verdict of the pass that did`() {
+        // A server that goes down before the loop reaches the stuck entry must
+        // not take the only notice of it off the screen.
+        assertEquals(
+            setOf("b"),
+            rejectedAfterPass(
+                previouslyRejected = setOf("b"),
+                queuedIdsBeforePass = listOf("a", "b"),
+                result = result(attempted = listOf("a")),
+            ),
+        )
+    }
+
+    @Test fun `a rejection that drained this pass is dropped`() {
+        assertEquals(
+            emptySet<String>(),
+            rejectedAfterPass(
+                previouslyRejected = setOf("a"),
+                queuedIdsBeforePass = listOf("a"),
+                result = result(drained = listOf("a"), attempted = listOf("a")),
+            ),
+        )
+    }
+
+    @Test fun `a rejection for an id no longer in the queue is dropped`() {
+        // Discarded from the chip, or cleared by a sign-out. Carrying it would
+        // keep the chip claiming a run that does not exist.
+        assertEquals(
+            emptySet<String>(),
+            rejectedAfterPass(
+                previouslyRejected = setOf("gone"),
+                queuedIdsBeforePass = listOf("a"),
+                result = result(drained = listOf("a"), attempted = listOf("a")),
+            ),
+        )
+    }
+
+    @Test fun `an empty pass over an empty queue carries nothing`() {
+        assertEquals(
+            emptySet<String>(),
+            rejectedAfterPass(
+                previouslyRejected = setOf("a"),
+                queuedIdsBeforePass = emptyList(),
+                result = result(),
+            ),
+        )
     }
 }

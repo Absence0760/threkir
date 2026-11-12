@@ -6,6 +6,7 @@ import {
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
   ACTIVATING_EVENTS,
+  cancellationEndsAccessNow,
   DEACTIVATING_EVENTS,
   mapEventToBillingIssue,
   mapEventToTier,
@@ -27,6 +28,13 @@ Deno.test('mapEventToTier — UNCANCELLATION → pro', () => {
 
 Deno.test('mapEventToTier — PRODUCT_CHANGE → pro', () => {
   assertEquals(mapEventToTier('PRODUCT_CHANGE', 'pro_yearly', null), 'pro');
+});
+
+Deno.test('mapEventToTier — the annual Pro product grants pro on every activating event', () => {
+  for (const type of ACTIVATING_EVENTS) {
+    assertEquals(mapEventToTier(type, 'pro_annual', null), 'pro', type);
+    assertEquals(mapEventToTier(type, 'pro_annual', 'free'), 'pro', type);
+  }
 });
 
 Deno.test('mapEventToTier — NON_RENEWING_PURCHASE with non-lifetime sku → pro', () => {
@@ -67,8 +75,80 @@ Deno.test('mapEventToTier — EXPIRATION on a non-lifetime user → free', () =>
   assertEquals(mapEventToTier('EXPIRATION', null, 'free'), 'free');
 });
 
-Deno.test('mapEventToTier — CANCELLATION on a non-lifetime user → free', () => {
+Deno.test('mapEventToTier — CANCELLATION with no expiration_at_ms → free (fails closed)', () => {
   assertEquals(mapEventToTier('CANCELLATION', null, 'pro'), 'free');
+});
+
+const NOW = 1_800_000_000_000;
+const DAY = 86_400_000;
+
+Deno.test('mapEventToTier — CANCELLATION with the paid period still running keeps Pro', () => {
+  // Auto-renew turned off on day 3 of a monthly: RevenueCat sends
+  // CANCELLATION now and EXPIRATION at the period end. The user paid
+  // through that end, so the CANCELLATION must not move the tier.
+  for (const cancelReason of ['UNSUBSCRIBE', 'PRICE_INCREASE', 'UNKNOWN', undefined]) {
+    assertStrictEquals(
+      mapEventToTier('CANCELLATION', 'pro_monthly', 'pro', {
+        expirationAtMs: NOW + 27 * DAY,
+        cancelReason,
+        nowMs: NOW,
+      }),
+      null,
+      `cancel_reason ${cancelReason} with time left must keep pro`,
+    );
+  }
+});
+
+Deno.test('mapEventToTier — the EXPIRATION at the period end still downgrades', () => {
+  assertEquals(mapEventToTier('EXPIRATION', 'pro_monthly', 'pro'), 'free');
+});
+
+Deno.test('mapEventToTier — CANCELLATION whose expiration has passed → free', () => {
+  // A late delivery, or a billing-error cancel at the end of the grace period.
+  assertEquals(
+    mapEventToTier('CANCELLATION', 'pro_monthly', 'pro', {
+      expirationAtMs: NOW - DAY,
+      cancelReason: 'BILLING_ERROR',
+      nowMs: NOW,
+    }),
+    'free',
+  );
+  assertEquals(
+    mapEventToTier('CANCELLATION', 'pro_monthly', 'pro', {
+      expirationAtMs: NOW,
+      cancelReason: 'UNSUBSCRIBE',
+      nowMs: NOW,
+    }),
+    'free',
+  );
+});
+
+Deno.test('mapEventToTier — a refund CANCELLATION (CUSTOMER_SUPPORT) → free even with time left', () => {
+  assertEquals(
+    mapEventToTier('CANCELLATION', 'pro_annual', 'pro', {
+      expirationAtMs: NOW + 300 * DAY,
+      cancelReason: 'CUSTOMER_SUPPORT',
+      nowMs: NOW,
+    }),
+    'free',
+  );
+});
+
+Deno.test('mapEventToTier — a kept CANCELLATION never touches a lifetime holder either', () => {
+  assertStrictEquals(
+    mapEventToTier('CANCELLATION', null, 'lifetime', { cancelReason: 'CUSTOMER_SUPPORT', nowMs: NOW }),
+    null,
+  );
+});
+
+Deno.test('cancellationEndsAccessNow — refund, passed, missing and non-numeric expiry end access', () => {
+  assertStrictEquals(cancellationEndsAccessNow(NOW + DAY, 'CUSTOMER_SUPPORT', NOW), true);
+  assertStrictEquals(cancellationEndsAccessNow(NOW - 1, 'UNSUBSCRIBE', NOW), true);
+  assertStrictEquals(cancellationEndsAccessNow(undefined, 'UNSUBSCRIBE', NOW), true);
+  assertStrictEquals(cancellationEndsAccessNow(null, 'UNSUBSCRIBE', NOW), true);
+  assertStrictEquals(cancellationEndsAccessNow(String(NOW + DAY), 'UNSUBSCRIBE', NOW), true);
+  assertStrictEquals(cancellationEndsAccessNow(Number.NaN, 'UNSUBSCRIBE', NOW), true);
+  assertStrictEquals(cancellationEndsAccessNow(NOW + 1, 'UNSUBSCRIBE', NOW), false);
 });
 
 Deno.test('mapEventToTier — EXPIRATION/CANCELLATION on a lifetime holder → null (no change)', () => {
@@ -153,6 +233,9 @@ Deno.test('mapEventToBillingIssue — events that don\'t move the dimension → 
   assertStrictEquals(mapEventToBillingIssue('TRANSFER'), undefined);
   assertStrictEquals(mapEventToBillingIssue('SUBSCRIBER_ALIAS'), undefined);
   assertStrictEquals(mapEventToBillingIssue(''), undefined);
+  // `undefined` for everything is the same answer a mapper that decides
+  // nothing gives, and it would silently stop the flag ever being set.
+  assertStrictEquals(typeof mapEventToBillingIssue('BILLING_ISSUE'), 'string');
 });
 
 Deno.test('billing-issue + tier branches are independent for BILLING_ISSUE', () => {

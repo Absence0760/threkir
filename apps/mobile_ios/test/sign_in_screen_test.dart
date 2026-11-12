@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -128,6 +129,49 @@ void main() {
       expect(find.textContaining('coming soon'), findsOneWidget);
     });
 
+    // decisions § 1700: iOS carries no Google OAuth client, so the button
+    // could only fail on tap — an App Review rejection. Apple stays.
+    testWidgets('iOS offers Sign in with Apple and no Google button',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.binding.setSurfaceSize(const Size(400, 900));
+        await _pump(tester, _FakeApiClient());
+        expect(find.widgetWithText(OutlinedButton, 'Sign in with Google'),
+            findsNothing);
+        expect(find.widgetWithText(OutlinedButton, 'Sign in with Apple'),
+            findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets(
+        'Google button shows the coming-soon notice on iOS when no '
+        'GoogleService-Info.plist is bundled', (tester) async {
+      // google_sign_in_ios takes the iOS OAuth client id from a bundled
+      // GoogleService-Info.plist and this app passes none to initialize(), so
+      // a web client id alone leaves GIDSignIn unconfigured and authenticate()
+      // raises. The button has to fail closed with the same notice Android
+      // gives, not a raw PlatformException.
+      dotenv.loadFromString(
+          envString: 'GOOGLE_WEB_CLIENT_ID=web.apps.googleusercontent.com',
+          isOptional: true);
+      await tester.binding.setSurfaceSize(const Size(400, 900));
+      await _pump(tester, _FakeApiClient());
+      final googleBtn =
+          find.widgetWithText(OutlinedButton, 'Sign in with Google');
+      await tester.ensureVisible(googleBtn);
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.tap(googleBtn);
+        await tester.pump();
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+      expect(find.textContaining('coming soon'), findsOneWidget);
+    });
+
     testWidgets('"Create one" link navigates to SignUpScreen', (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 900));
       await _pump(tester, _FakeApiClient());
@@ -186,8 +230,6 @@ void main() {
         find.textContaining('If that email is registered'),
         findsOneWidget,
       );
-      // Drain the top-banner auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 6));
     });
 
     testWidgets('other sign-in failures do not show the resend button',
@@ -249,9 +291,6 @@ void main() {
       // redirectTo GoTrue falls back to the project Site URL (localhost
       // by default) and the link dies in prod.
       expect(client.capturedResetRedirectTo, 'https://threkir.com/auth/reset');
-      // Tear down the banner timer before the test ends so the
-      // fake-async loop doesn't flag a pending timer.
-      await tester.pump(const Duration(seconds: 6));
     });
 
     testWidgets('Forgot password shows the privacy-preserving confirmation',
@@ -273,8 +312,6 @@ void main() {
         find.textContaining('If that email is registered'),
         findsOneWidget,
       );
-      // Drain the banner's auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 6));
     });
 
     testWidgets('Forgot password rejects a non-email shape', (tester) async {
@@ -391,6 +428,34 @@ void main() {
         tester.testTextInput.log.map((c) => c.method),
         isNot(contains('TextInput.finishAutofillContext')),
       );
+    });
+
+    testWidgets('the create-account route sits above the OAuth block, not '
+        'below the fold', (tester) async {
+      // A first-timer arriving here has no account; the affordance that
+      // makes one used to be the last widget on a scrolling screen.
+      // A typical phone viewport, not the 800x600 test default.
+      tester.view.physicalSize = const Size(400, 880);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await _pump(tester, _FakeApiClient());
+      final create = find.widgetWithText(
+          OutlinedButton, l10n.signInCreateAccountPrompt);
+      expect(create, findsOneWidget);
+      expect(tester.getTopLeft(create).dy,
+          lessThan(tester.getTopLeft(find.text(l10n.authOrDivider)).dy));
+      // And it lands on the first screenful, which is the whole point.
+      expect(tester.getBottomLeft(create).dy, lessThanOrEqualTo(880.0));
+    });
+
+    testWidgets('it opens sign-up', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await _pump(tester, _FakeApiClient());
+      await tester.tap(
+          find.widgetWithText(OutlinedButton, l10n.signInCreateAccountPrompt));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.signUpHeadline), findsOneWidget);
     });
   });
 }

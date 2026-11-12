@@ -9,6 +9,36 @@ import java.util.Properties
 import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+// FCM registration needs the google-services plugin: it reads
+// `google-services.json` and generates the `google_app_id` /
+// `gcm_defaultSenderId` / `project_id` string resources that firebase_core
+// loads for the default app. Without it the file is inert and
+// `Firebase.initializeApp()` throws, which `FirebasePushMessaging` catches —
+// so the whole push path no-ops in silence rather than failing at build time.
+//
+// The file is gitignored (see the repo-root .gitignore) and the release
+// workflow decodes it from GOOGLE_SERVICES_JSON_BASE64, so it is absent on a
+// fresh clone. Applying the plugin conditionally keeps `flutter run` working
+// there; the trade-off is that a release build missing the secret still
+// succeeds, and registers no token. `release-android.yml` warns in that case.
+//
+// The Firebase console's "Add Firebase SDK" step does not apply to this module
+// and following it breaks two things. Its `plugins { id(...) }` form cannot be
+// made conditional, so a fresh clone would fail to configure; and its Firebase
+// BoM + `implementation(...)` block would pull the Android artifacts a second
+// time, beside the ones firebase_core / firebase_messaging already contribute
+// through Flutter's plugin mechanism. The console cannot tell this is a Flutter
+// app. The version pin lives in settings.gradle.kts.
+val googleServicesJson = file("google-services.json")
+if (googleServicesJson.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle(
+        "google-services.json absent — skipping the google-services plugin. " +
+            "This build will not receive push notifications.",
+    )
+}
+
 val keystoreProperties = Properties()
 val keystoreFile = rootProject.file("key.properties")
 if (keystoreFile.exists()) {
@@ -76,12 +106,23 @@ flutter {
     source = "../.."
 }
 
+// purchases-hybrid-common pulls in RevenueCat's Amazon Appstore module, whose
+// consumer ProGuard rules carry `-dontoptimize`. Consumer rules apply to the
+// whole app, so that one line switched R8 optimisation off everywhere and Play
+// Console reported "DEX code optimisation 0%". We sell only through Google Play,
+// and nothing configures `AmazonConfiguration`, so drop the module and the
+// Amazon SDK it brings.
+configurations.configureEach {
+    exclude(group = "com.revenuecat.purchases", module = "purchases-store-amazon")
+}
+
 dependencies {
     // Wearable Data Layer — pushes the Supabase session to the paired watch_wear app.
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
-    // NotificationCompat / NotificationManagerCompat used by
-    // RunNotificationBridge live under androidx.core:core, which geolocator
-    // already pulls in transitively at 1.16.0 — no explicit dep needed.
+    // NotificationCompat for RunNotificationBridge. Geolocator pulls
+    // androidx.core in at 1.16.0; the Android 16 Live Update builder calls
+    // (setRequestPromotedOngoing, setShortCriticalText) arrived in 1.17.0.
+    implementation("androidx.core:core:1.17.0")
 
     // Health Connect client, for HealthRoutePermissionBridge's
     // READ_EXERCISE_ROUTES request. The `health` plugin depends on the same
@@ -98,4 +139,7 @@ dependencies {
     // construction logic is extracted into pure helpers that we
     // test here. Mirrors the watch_wear test surface convention.
     testImplementation("junit:junit:4.13.2")
+    // org.json is part of the Android runtime, but android.jar's copy is a
+    // stub on a host JVM; TodayWidgetSnapshotTest needs the real parser.
+    testImplementation("org.json:json:20260814")
 }

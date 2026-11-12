@@ -1,22 +1,35 @@
 <script lang="ts">
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { onMount } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { getUnit } from '$lib/format/units.svelte';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
 	import {
 		searchPublicRoutes,
 		nearbyPublicRoutes,
 		fetchPopularRouteTags,
 		bookmarkRoute,
 		unbookmarkRoute,
-	} from '$lib/core/data';
-	import type { Route } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import type { PublicRouteSummary } from '#lib/routes/route_list_columns.ts';
+	import { distinctTags } from '#lib/routes/route_tags.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import RouteTrackPreview from './RouteTrackPreview.svelte';
 
-	let routes = $state<Route[]>([]);
+	let routes = $state<PublicRouteSummary[]>([]);
+	const parkCourseRoutes = new ParkCourseRouteLookup();
+	$effect(() => {
+		void parkCourseRoutes.check(routes.filter((r) => r.is_official).map((r) => r.id));
+	});
 	let loading = $state(true);
 	let hasMore = $state(true);
 	let searchError = $state(false);
@@ -62,12 +75,12 @@
 
 	const surfaceOptions = $derived<Record<string, string>>({
 		any: t('routeExplorer.surfaceAny'),
-		road: t('routeExplorer.surfaceRoad'),
-		trail: t('routeExplorer.surfaceTrail'),
-		mixed: t('routeExplorer.surfaceMixed'),
+		road: routeSurfaceLabel('road'),
+		trail: routeSurfaceLabel('trail'),
+		mixed: routeSurfaceLabel('mixed'),
 	});
 
-	function searchOptions(offset: number) {
+	function searchOptions() {
 		const opts = distanceOptions[distanceFilter];
 		return {
 			query: query.trim() || undefined,
@@ -78,33 +91,44 @@
 			featuredOnly,
 			sort,
 			limit: PAGE_SIZE,
-			offset,
 		};
 	}
+
+	/// The search the shown list came from, and the cursor for its next page.
+	/// Load more continues THAT search: the cursor is a position in one sort's
+	/// order and means nothing under another, and a query typed since but not
+	/// submitted must not splice a different result set onto this one.
+	let activeSearch: ReturnType<typeof searchOptions> | null = null;
+	let routesNext = $state<KeysetCursor | null>(null);
 
 	async function search() {
 		loading = true;
 		try {
-			routes = await searchPublicRoutes(searchOptions(0));
-			hasMore = routes.length >= PAGE_SIZE;
+			const opts = searchOptions();
+			const page = await searchPublicRoutes(opts);
+			routes = page.rows;
+			routesNext = page.next;
+			activeSearch = opts;
+			hasMore = page.next !== null;
 			searchError = false;
 		} catch (e) {
 			searchError = true;
-			showToast(t('routeExplorer.searchError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: errorCopy(e, t, 'routeExplorer.searchError') }), 'error');
 		} finally {
 			loading = false;
 		}
 	}
 
 	async function loadMore() {
-		if (loading || !hasMore) return;
+		if (loading || !hasMore || !routesNext || !activeSearch) return;
 		loading = true;
 		try {
-			const more = await searchPublicRoutes(searchOptions(routes.length));
-			routes = [...routes, ...more];
-			hasMore = more.length >= PAGE_SIZE;
+			const more = await searchPublicRoutes({ ...activeSearch, after: routesNext });
+			routes = appendPage(routes, more.rows, (r) => r.id);
+			routesNext = more.next;
+			hasMore = more.next !== null;
 		} catch (e) {
-			showToast(t('routeExplorer.searchError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: errorCopy(e, t, 'routeExplorer.searchError') }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -132,7 +156,7 @@
 	/// guards.
 	let bookmarkBusy = $state(new Set<string>());
 
-	async function toggleBookmark(route: Route) {
+	async function toggleBookmark(route: PublicRouteSummary) {
 		if (!auth.loggedIn) return;
 		if (bookmarkBusy.has(route.id)) return;
 		bookmarkBusy = new Set([...bookmarkBusy, route.id]);
@@ -150,7 +174,7 @@
 				showToast(t('routeExplorer.toastSaved', { name: route.name ?? '' }), 'success');
 			}
 		} catch (e) {
-			showToast(t('routeExplorer.toastBookmarkError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('routeExplorer.toastBookmarkError', { error: errorCopy(e, t, 'routeExplorer.toastBookmarkError') }), 'error');
 		} finally {
 			const next = new Set(bookmarkBusy);
 			next.delete(route.id);
@@ -171,6 +195,8 @@
 		locationError = null;
 		routes = [];
 		hasMore = false;
+		routesNext = null;
+		activeSearch = null;
 		try {
 			const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
 				navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -187,7 +213,7 @@
 		} catch (e) {
 			locationError = e instanceof GeolocationPositionError
 				? t('routeExplorer.locationDenied')
-				: t('routeExplorer.locationError', { error: e instanceof Error ? e.message : String(e) });
+				: t('routeExplorer.locationError', { error: errorCopy(e, t, 'routeExplorer.locationError') });
 		}
 		loading = false;
 	}
@@ -287,29 +313,24 @@
 	{/if}
 
 	{#if searchError && routes.length === 0}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">error_outline</span>
-			<h3>{t('routeExplorer.searchErrorTitle')}</h3>
-			<div class="empty-actions">
+		<EmptyState icon="error_outline" tone="danger" title={t('routeExplorer.searchErrorTitle')} role="alert">
+			{#snippet actions()}
 				<button class="btn btn-primary" onclick={search}>{t('routeExplorer.searchErrorRetry')}</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{/if}
 
 	{#if routes.length === 0 && !loading && !searchError}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">explore</span>
-			<h3>{query ? t('routeExplorer.emptyNoMatch') : t('routeExplorer.emptyNone')}</h3>
-			<p class="empty-text">
-				{#if query}
-					{t('routeExplorer.emptyQueryHint')}
-				{:else if mode === 'nearby'}
-					{t('routeExplorer.emptyNearbyHint')}
-				{:else}
-					{t('routeExplorer.emptyDefaultHint')}
-				{/if}
-			</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="explore"
+			title={query ? t('routeExplorer.emptyNoMatch') : t('routeExplorer.emptyNone')}
+			text={query
+				? t('routeExplorer.emptyQueryHint')
+				: mode === 'nearby'
+					? t('routeExplorer.emptyNearbyHint')
+					: t('routeExplorer.emptyDefaultHint')}
+		>
+			{#snippet actions()}
 				<a href="/routes/new" class="btn btn-primary">
 					<span class="material-symbols" aria-hidden="true">add</span>
 					{t('routeExplorer.buildRoute')}
@@ -330,11 +351,12 @@
 						{t('routeExplorer.clearFilters')}
 					</button>
 				{/if}
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="route-grid">
 			{#each routes as route}
+				{@const cardTags = distinctTags(route.tags).slice(0, 4)}
 				<div class="route-card">
 					<a href="/routes/{route.id}?from=explore" class="route-link">
 						<div class="route-map-placeholder">
@@ -359,10 +381,13 @@
 						</div>
 						<div class="route-info">
 							<h3>{route.name}</h3>
+							{#if route.is_official && parkCourseRoutes.known(route.id)}<OfficialBadge
+									parkCourse={parkCourseRoutes.isParkCourse(route.id)}
+								/>{/if}
 							<div class="route-meta">
 								<span class="meta-item">
 									<span class="material-symbols meta-icon">straighten</span>
-									{formatDistance(route.distance_m)}
+									{formatDistance(routeDisplayDistanceM(route.distance_m, route.official_distance_m))}
 								</span>
 								{#if route.elevation_m}
 									<span class="meta-item">
@@ -370,10 +395,12 @@
 										{route.elevation_m}m
 									</span>
 								{/if}
-								<span class="meta-item">
-									<span class="material-symbols meta-icon">{route.surface === 'trail' ? 'terrain' : 'add_road'}</span>
-									<span class="surface-tag">{route.surface}</span>
-								</span>
+								{#if route.surface}
+									<span class="meta-item">
+										<span class="material-symbols meta-icon">{route.surface === 'trail' ? 'terrain' : 'add_road'}</span>
+										<span class="surface-tag">{routeSurfaceLabel(route.surface)}</span>
+									</span>
+								{/if}
 								{#if route.run_count > 0}
 									<span class="meta-item">
 										<span class="material-symbols meta-icon">directions_run</span>
@@ -381,9 +408,9 @@
 									</span>
 								{/if}
 							</div>
-							{#if route.tags && route.tags.length > 0}
+							{#if cardTags.length > 0}
 								<div class="card-tags">
-									{#each route.tags.slice(0, 4) as t (t)}
+									{#each cardTags as t (t)}
 										<span class="card-tag">{t}</span>
 									{/each}
 								</div>
@@ -397,8 +424,14 @@
 							onclick={() => toggleBookmark(route)}
 							disabled={bookmarkBusy.has(route.id)}
 							title={savedIds.has(route.id) ? t('routeExplorer.removeFromLibrary') : t('routeExplorer.saveToLibrary')}
+							aria-label={savedIds.has(route.id) ? t('routeExplorer.removeFromLibrary') : t('routeExplorer.saveToLibrary')}
 						>
-							<span class="material-symbols">{savedIds.has(route.id) ? 'bookmark' : 'bookmark_add'}</span>
+							<!-- The ligature is the span's TEXT, so without aria-hidden it wins
+							     the accessible name over `title` and every card announces
+							     "bookmark_add". -->
+							<span class="material-symbols" aria-hidden="true"
+								>{savedIds.has(route.id) ? 'bookmark' : 'bookmark_add'}</span
+							>
 						</button>
 					{/if}
 				</div>
@@ -418,10 +451,10 @@
 		<div class="route-grid" aria-hidden="true">
 			{#each Array(6) as _, i (i)}
 				<div class="skel-card">
-					<span class="skel skel-thumb"></span>
+					<SkeletonBlock height="8rem" radius="0" />
 					<div class="skel-card-body">
-						<span class="skel skel-line skel-w-60"></span>
-						<span class="skel skel-line skel-w-40"></span>
+						<SkeletonBlock height="0.75rem" width="60%" />
+						<SkeletonBlock height="0.75rem" width="40%" />
 					</div>
 				</div>
 			{/each}
@@ -557,63 +590,8 @@
 		outline-offset: 2px;
 	}
 
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols {
-		font-size: 1.1rem;
-	}
-
-	/* Skeleton loader — same shimmer language as /routes + /runs.
-	   Card layout mirrors the real route-card so the grid stays at its
-	   true height through the data swap. */
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
+	/* Skeleton (SkeletonBlock). Card layout mirrors the real route-card so
+	   the grid stays at its true height through the data swap. */
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
@@ -621,29 +599,11 @@
 		overflow: hidden;
 		pointer-events: none;
 	}
-	.skel-thumb {
-		display: block;
-		width: 100%;
-		height: 8rem;
-		border-radius: 0;
-	}
 	.skel-card-body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
 		padding: var(--space-md) var(--space-lg);
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 	.sr-only {
 		position: absolute;

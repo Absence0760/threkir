@@ -1,29 +1,40 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GoalThermometer from '$lib/components/GoalThermometer.svelte';
-	import DonationFeed from '$lib/components/DonationFeed.svelte';
-	import FundraiserEditor from '$lib/components/FundraiserEditor.svelte';
+	import { refusalCode } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GoalThermometer from '#lib/components/GoalThermometer.svelte';
+	import DonationFeed from '#lib/components/DonationFeed.svelte';
+	import FundraiserEditor from '#lib/components/FundraiserEditor.svelte';
 	import {
 		fetchFundraiserById,
 		fetchFundraiserTotals,
 		fetchFundraiserFeed,
 		startDonationCheckout,
 		closeFundraiser
-	} from '$lib/core/data';
-	import { fundraisingEnabled } from '$lib/social/fundraising_flag';
-	import type { Fundraiser, FundraiserFeedEntry, FundraiserTotals } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { fundraisingEnabled } from '#lib/social/fundraising_flag.ts';
+	import { toMinorUnits } from '#lib/format/minor_units.ts';
+	import type { Fundraiser, FundraiserFeedEntry, FundraiserTotals } from '#lib/types.ts';
 
 	let { data }: { data: { id: string; donated: string | null } } = $props();
 
 	let loading = $state(true);
+	let loadFailed = $state(false);
 	let fundraiser = $state<Fundraiser | null>(null);
 	let totals = $state<FundraiserTotals | null>(null);
 	let feed = $state<FundraiserFeedEntry[]>([]);
+	// The campaign row and its two panels are three separate reads. A panel
+	// that could not be read reports itself and offers a retry; it must not
+	// blank the page (the story and the donate button are still good), and it
+	// must not render its own empty state, which would tell a donor this
+	// campaign has raised nothing.
+	let totalsFailed = $state(false);
+	let feedFailed = $state(false);
 
 	let donateOpen = $state(false);
 	let editOpen = $state(false);
@@ -40,17 +51,35 @@
 	const closed = $derived(fundraiser?.status === 'closed');
 	const justDonated = $derived(data.donated === '1');
 
+	async function refreshTotals() {
+		totalsFailed = false;
+		try {
+			totals = await fetchFundraiserTotals(data.id);
+		} catch (e) {
+			console.error('fundraiser totals load failed', e);
+			totals = null;
+			totalsFailed = true;
+		}
+	}
+
+	async function refreshFeed() {
+		feedFailed = false;
+		try {
+			feed = await fetchFundraiserFeed(data.id, 50);
+		} catch (e) {
+			console.error('fundraiser feed load failed', e);
+			feed = [];
+			feedFailed = true;
+		}
+	}
+
 	async function refreshTotalsFeed() {
-		const [t, f] = await Promise.all([
-			fetchFundraiserTotals(data.id),
-			fetchFundraiserFeed(data.id, 50)
-		]);
-		totals = t;
-		feed = f;
+		await Promise.all([refreshTotals(), refreshFeed()]);
 	}
 
 	async function load() {
 		loading = true;
+		loadFailed = false;
 		// Fail-closed: with fundraising off (PUBLIC_FUNDRAISING_ENABLED unset,
 		// the pre-Stripe default) the public page shows its not-found state
 		// rather than a donate flow that would dead-end. See fundraising_flag.ts.
@@ -59,9 +88,18 @@
 			loading = false;
 			return;
 		}
-		fundraiser = await fetchFundraiserById(data.id);
-		if (fundraiser) await refreshTotalsFeed();
-		loading = false;
+		// A donor arriving on a link is the wrong person to tell "this
+		// campaign doesn't exist" when the read simply failed.
+		try {
+			fundraiser = await fetchFundraiserById(data.id);
+			if (fundraiser) await refreshTotalsFeed();
+		} catch (e) {
+			console.error('fundraiser load failed', e);
+			fundraiser = null;
+			loadFailed = true;
+		} finally {
+			loading = false;
+		}
 	}
 
 	onMount(async () => {
@@ -78,21 +116,46 @@
 		}
 	});
 
+	// The donation attempt's idempotency key, kept across retries so a second
+	// call resolves to the pending donation the first one opened rather than
+	// opening a session the donor could also pay. Re-minted when the AMOUNT
+	// changes, because that is a different donation and the server refuses a key
+	// presented against a different request. decisions § 776.
+	let attempt: { cents: number; key: string } | null = null;
+
 	async function submitDonation() {
 		if (donating || !fundraiser) return;
-		const cents = amountMajor != null ? Math.round(amountMajor * 100) : 0;
+		const cents = amountMajor != null ? toMinorUnits(amountMajor, fundraiser.currency) : 0;
 		if (cents <= 0) return;
+		if (attempt?.cents !== cents) attempt = { cents, key: crypto.randomUUID() };
 		donating = true;
 		try {
 			const { url } = await startDonationCheckout(fundraiser.id, cents, {
+				idempotencyKey: attempt.key,
 				displayName: anonymous ? null : donorName.trim() || null,
 				message: donorMessage.trim() || null,
 				isAnonymous: anonymous
 			});
 			window.location.href = url;
 		} catch (e) {
-			showToast(m('fundraiser.donateFailed'), 'error');
-			console.error('donation checkout failed', e);
+			// The refusals only the server can know, arriving after the press.
+			// A donor told only "couldn't start the donation" cannot tell a
+			// fundraiser that has ENDED from a blip, and retries something
+			// that can never open. Same shape as the event-register map.
+			const code = refusalCode(e);
+			const key =
+				code === 'fundraiser_closed'
+					? 'fundraiser.donateClosed'
+					: code === 'fundraiser_not_found'
+						? 'fundraiser.donateNotAvailable'
+						: code === 'owner_cannot_take_payment' || code === 'stripe_not_configured'
+							? 'fundraiser.donateHostUnavailable'
+							: code.startsWith('amount_')
+								? 'fundraiser.donateAmountRejected'
+								: code.startsWith('idempotency_')
+									? 'fundraiser.donateInProgress'
+									: null;
+			showToast(key ? m(key) : errorCopy(e, m, 'fundraiser.donateFailed', 'fundraiser.donateFailed'), 'error');
 			donating = false;
 		}
 	}
@@ -137,6 +200,13 @@
 <main class="fundraiser-page">
 	{#if loading}
 		<p class="state">{m('fundraiser.loading')}</p>
+	{:else if loadFailed}
+		<p class="state load-error" role="alert" data-testid="fundraiser-load-error">
+			{m('fundraiser.loadFailed')}
+			<button type="button" class="btn btn-secondary" onclick={() => void load()}>
+				{m('fundraiser.retry')}
+			</button>
+		</p>
 	{:else if !fundraiser}
 		<p class="state">{m('fundraiser.notFound')}</p>
 	{:else}
@@ -182,12 +252,21 @@
 		</header>
 
 		<section class="card thermometer-card">
-			<GoalThermometer
-				raisedCents={totals?.raised_cents ?? 0}
-				goalCents={totals?.goal_cents ?? fundraiser.goal_cents}
-				donorCount={totals?.donor_count ?? 0}
-				currency={fundraiser.currency}
-			/>
+			{#if totalsFailed}
+				<p class="panel-error" role="alert" data-testid="fundraiser-totals-error">
+					{m('fundraiser.totalsFailed')}
+					<button type="button" class="btn btn-secondary" onclick={() => void refreshTotals()}>
+						{m('fundraiser.retry')}
+					</button>
+				</p>
+			{:else}
+				<GoalThermometer
+					raisedCents={totals?.raised_cents ?? 0}
+					goalCents={totals?.goal_cents ?? fundraiser.goal_cents}
+					donorCount={totals?.donor_count ?? 0}
+					currency={fundraiser.currency}
+				/>
+			{/if}
 			{#if closed}
 				<p class="closed">{m('fundraiser.closed')}</p>
 			{:else}
@@ -210,7 +289,16 @@
 
 		<section class="card feed-card">
 			<h2>{m('fundraiser.feedTitle')}</h2>
-			<DonationFeed entries={feed} />
+			{#if feedFailed}
+				<p class="panel-error" role="alert" data-testid="fundraiser-feed-error">
+					{m('fundraiser.feedFailed')}
+					<button type="button" class="btn btn-secondary" onclick={() => void refreshFeed()}>
+						{m('fundraiser.retry')}
+					</button>
+				</p>
+			{:else}
+				<DonationFeed entries={feed} />
+			{/if}
 		</section>
 
 		<Modal open={donateOpen} onclose={() => (donateOpen = false)} title={m('fundraiser.donate')} narrow>
@@ -293,6 +381,17 @@
 		gap: var(--space-lg);
 	}
 	.state {
+		color: var(--color-text-secondary);
+	}
+	.load-error,
+	.panel-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+	}
+	.panel-error {
+		margin: 0;
 		color: var(--color-text-secondary);
 	}
 	.hero-head {

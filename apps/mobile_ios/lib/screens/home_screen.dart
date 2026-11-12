@@ -1,12 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show CustomSemanticsAction;
+import 'package:flutter/services.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 
+import '../activity_type_labels.dart';
 import '../adaptive_width.dart';
 import '../audio_cues.dart';
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
+import '../challenge_invite_link.dart';
+import '../club_invite_link.dart' show pendingClubInviteToken;
+import '../entity_link.dart';
+import '../hr_prescription_gate.dart';
+import '../in_progress_recovery.dart'
+    show InProgressEvaluation, inProgressBannerText;
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -14,33 +25,70 @@ import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../main.dart'
-    show pendingStartWorkout, pendingStartRunWithRoute, pendingPushTarget;
+    show
+        pendingArmGuidedRun,
+        pendingStartWorkout,
+        pendingStartRunWithRoute,
+        pendingPushTarget;
 import '../preferences.dart';
 import '../push_target.dart';
+import 'plan_library_screen.dart';
+import 'plan_target_screen.dart';
 import '../race_controller.dart';
+import '../race_service.dart';
+import '../run_stop_dock.dart';
+import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../shell_page_controller.dart';
+import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
+import '../today_widget.dart' show TodayWidgetBridge;
+import '../watch_workout_push.dart' show WatchWorkoutBridge;
+import '../fab_clearance.dart';
+import '../fitness_surface_requests.dart';
+import '../help_destination.dart';
+import '../help_guides.dart';
 import '../widgets/billing_issue_banner.dart';
+import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/log_speed_dial.dart';
+import '../widgets/runner_menu.dart';
 import '../widgets/top_banner.dart';
+import 'add_run_screen.dart';
 import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
+import 'challenge_detail_screen.dart';
+import 'challenge_invite_screen.dart';
+import 'club_invite_screen.dart';
 import 'clubs_screen.dart';
+import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
+import 'import_screen.dart';
+import 'group_thread_screen.dart';
+import 'message_thread_screen.dart';
+import 'messages_screen.dart';
 import '../onboarding.dart';
-import 'gym_screen.dart';
-import 'nutrition_screen.dart';
+import '../orphaned_recording.dart';
 import 'plan_new_screen.dart';
-import 'plans_screen.dart';
 import 'profile_screen.dart';
+import 'public_route_screen.dart';
 import 'public_run_screen.dart';
+import 'race_detail_screen.dart';
 import 'route_detail_screen.dart';
+import 'route_picker_screen.dart';
+import 'run_detail_screen.dart';
 import 'run_screen.dart';
+import 'settings_about_screen.dart';
+import 'settings_account_screen.dart';
+import 'settings_body_metrics_screen.dart';
+import 'settings_integrations_screen.dart';
+import 'settings_preferences_screen.dart';
+import 'settings_pro_screen.dart';
+import 'settings_safety_screen.dart';
 import 'setup_wizard_screen.dart';
 import 'social_screen.dart';
 import 'you_screen.dart';
@@ -81,14 +129,17 @@ class HomeScreen extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final SettingsSyncService? settingsSync;
+
+  /// The run drain, so Home's pending-sync banner can retry runs. Null in
+  /// tests and leaves runs counted there but not retried.
+  final SyncService? syncService;
   final cm.Run? recoveredRun;
 
-  /// Banner copy emitted by the in-progress recovery helper at app
-  /// start. Surfaced once on the first build of the Home tab. Covers
-  /// both "Recovered a 2.3 km partial..." and the new
-  /// "Discarded a 38 m partial recording..." case (Casual #3). Null
-  /// when the recovery pass had nothing to say.
-  final String? recoveryBannerMessage;
+  /// The in-progress recovery pass's verdict at app start. A recovered or
+  /// discarded partial is reported once, as a banner on the first build of
+  /// the Home tab, worded by [inProgressBannerText] in the runner's unit
+  /// (Casual #3). Null when the recovery pass had nothing to say.
+  final InProgressEvaluation? recoveryEvaluation;
 
   /// A recent in-progress partial left over from a process-kill. When set,
   /// HomeScreen jumps to the Run page on first frame and RunScreen prompts the
@@ -112,8 +163,9 @@ class HomeScreen extends StatefulWidget {
     required this.heartRate,
     required this.treadmill,
     this.settingsSync,
+    this.syncService,
     this.recoveredRun,
-    this.recoveryBannerMessage,
+    this.recoveryEvaluation,
     this.resumablePartial,
   });
 
@@ -132,20 +184,33 @@ class _HomeScreenState extends State<HomeScreen>
   // Settings folds into You.
   static const _pageHome = 0;
   static const _pageFitness = 1;
-  // Run / Gym / Nutrition have no bottom-nav destination — they're the
-  // dwell-in capture surfaces reached via the centre Log action, each a
-  // keep-alive page so an in-progress session (a live recording, a
-  // half-built workout, the day's food log) survives swiping to Home and
-  // back. Run can't be anything else (a foreground-service GPS session
-  // can't collapse into a modal); Gym + Nutrition match it so all three
-  // Log actions behave the same way. These are DISTINCT from the Fitness
-  // hub's review surfaces (which mount separate Gym/Nutrition instances).
+  // Run has no bottom-nav destination — it is the dwell-in capture surface the
+  // centre Log action reaches, a keep-alive page so a live recording survives
+  // swiping to Home and back. It can't be anything else: a foreground-service
+  // GPS session can't collapse into a modal, and it is a screen of its own
+  // (`RunScreen`, the recorder) rather than a second copy of the run list.
+  //
+  // Gym and Nutrition have no page here, because they have no screen of their
+  // own: `Log lift` and `Log food` open the Fitness hub's Gym and Nutrition
+  // tabs, which are the same dwell-in workspaces with the composer one tap
+  // away. They used to be mounted BOTH here and in the hub, which meant two
+  // keep-alive copies of one surface with independent state — and a runner who
+  // stepped the diary back to yesterday in the hub and then tapped Log → Food
+  // landed on an identical-looking screen showing today (decisions § 1654).
   static const _pageRun = 2;
-  static const _pageGym = 3;
-  static const _pageFood = 4;
-  static const _pageSocial = 5;
-  static const _pageYou = 6;
+  static const _pageSocial = 3;
+  static const _pageYou = 4;
   static const _initialIndex = _pageHome;
+
+  /// Which Fitness sub-tab the hub is showing. Owned here rather than inside
+  /// the hub because the centre Log action selects one, and the hub is a lazy
+  /// page that may not be built yet when it does. Starts on the hub's first
+  /// tab, which is Runs rather than History when neither Gym nor Nutrition is
+  /// shown, because History is not in the hub then.
+  late final _fitnessTab = ValueNotifier<FitnessTab>(fitnessHubTabs(
+    gymShown: _gymShown,
+    nutritionShown: _nutritionShown,
+  ).first);
 
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the
@@ -153,8 +218,45 @@ class _HomeScreenState extends State<HomeScreen>
   /// `initState` and never re-created.
   final _currentIndex = ValueNotifier<int>(_initialIndex);
 
+  /// Whether the Run page is the one showing; the kept-alive page refreshes
+  /// its plan card when this turns true.
+  final _runPageShown = ValueNotifier<bool>(_initialIndex == _pageRun);
+
+  void _syncRunPageShown() =>
+      _runPageShown.value = _currentIndex.value == _pageRun;
+
+  /// A kept-alive page holds on to its focused field after the runner moves
+  /// to another page (Android's back hides the keyboard without unfocusing),
+  /// and Flutter hands focus back to it whenever a route above the shell
+  /// pops, which raised the keyboard over a page with no field on it
+  /// (decisions § 2286). Leaving the page is when that focus stops meaning
+  /// anything, so it is dropped then, along with the scope's memory of it.
+  void _dropFocusLeftBehind() {
+    final focused = FocusManager.instance.primaryFocus;
+    final shell = FocusScope.of(context, createDependency: false);
+    if (focused == null || focused == shell) return;
+    if (focused.ancestors.contains(shell)) focused.unfocus();
+  }
+
+  /// Everything the centre button's look reads: whether a run is recording,
+  /// and whether a tap starts one, which turns on the preferences and on
+  /// whether a lift or a meal exists. The button and its caption rebuild on
+  /// any of them.
+  late final Listenable _centreInputs = Listenable.merge([
+    runRecordingActive,
+    widget.preferences,
+    widget.gymStore,
+    widget.foodStore,
+  ]);
+
+  /// The nav bar and rail read the page, and the hub's label reads the same
+  /// visibility the centre button does. The docked centre button reads the
+  /// page too: it is the Stop while a run records on the Run page.
+  late final Listenable _navInputs =
+      Listenable.merge([_currentIndex, _centreInputs]);
+
   late final PageController _pageController =
-      PageController(initialPage: _initialIndex);
+      ShellPageController(currentPage: () => _currentIndex.value);
 
   cm.Route? _preselectedRoute;
 
@@ -166,32 +268,53 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _currentIndex.addListener(_syncRunPageShown);
+    _currentIndex.addListener(_dropFocusLeftBehind);
     _rebuildPages();
     pendingStartWorkout.addListener(_onPendingStartWorkout);
+    pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     pendingStartRunWithRoute.addListener(_onPendingStartRunWithRoute);
+    widget.training.addListener(_onTrainingChange);
     incomingRouteImport.addListener(_onIncomingRouteImport);
     pendingPushTarget.addListener(_onPendingPushTarget);
+    pendingSettingsDestination.addListener(_onPendingSettingsDestination);
+    pendingHelpDestination.addListener(_onPendingHelpDestination);
+    fitnessSurfaceRequests.addListener(_onFitnessSurfaceRequest);
+    pendingClubInviteToken.addListener(_onPendingClubInvite);
+    pendingChallengeLink.addListener(_onPendingChallengeLink);
+    pendingEntityLink.addListener(_onPendingEntityLink);
     // A GPX/KML opened while the app was closed sets the notifier during
     // main() before this screen mounts, so drain any already-present value
     // once the first frame is up (the listener only fires on later shares).
     // A notification tap that cold-started the app lands the same way — the
     // push bridge reads the launch message with no Navigator yet in the tree.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshPlanOverview();
       _onIncomingRouteImport();
       _onPendingPushTarget();
+      _onPendingSettingsDestination();
+      _onPendingHelpDestination();
+      _onPendingClubInvite();
+      _onPendingChallengeLink();
+      _onPendingEntityLink();
     });
     // Surface the recovery banner from main.dart's in-progress
-    // evaluation. Casual #3: this also fires on DISCARD ("Discarded a
-    // 38 m partial recording...") — pre-fix that path was silent and
-    // a casual user couldn't tell whether the app saw + dropped their
-    // tap-Start-then-quit attempt or just lost the run entirely.
-    final bannerMessage = widget.recoveryBannerMessage;
-    if (bannerMessage != null) {
+    // evaluation. Casual #3: this also fires on DISCARD — pre-fix that
+    // path was silent and a casual user couldn't tell whether the app saw
+    // + dropped their tap-Start-then-quit attempt or just lost the run.
+    final recoveryEvaluation = widget.recoveryEvaluation;
+    if (recoveryEvaluation != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        final message = inProgressBannerText(
+          AppLocalizations.of(context),
+          recoveryEvaluation,
+          widget.preferences.unit,
+        );
+        if (message == null) return;
         showTopBanner(
           context,
-          bannerMessage,
+          message,
           duration: const Duration(seconds: 6),
         );
       });
@@ -207,25 +330,27 @@ class _HomeScreenState extends State<HomeScreen>
         _goToPage(_pageRun);
       });
     }
-    // Post-signup setup-wizard gate (mobile twin of web's
-    // `/onboarding` redirect). A signed-in user whose
-    // `user_profiles.onboarded_at` is still null is a fresh signup that
-    // hasn't seen the wizard yet — push it once, over the dashboard, so
-    // the same fields web collects get set. Skipped offline / signed out
-    // (the fetch returns null and we never push). Fires after the first
-    // frame so the dashboard is mounted underneath.
+    orphanedRecording.addListener(_onOrphanedRecording);
+    _onOrphanedRecording();
+    // Post-sign-in gates (mobile twin of web's root-layout consent and
+    // `/onboarding` redirects): the GDPR Art 8 consent screen when the
+    // profile records no age + terms confirmation, then the setup wizard
+    // when `user_profiles.onboarded_at` is still null. Skipped offline /
+    // signed out (the profile read fails and nothing is pushed). Fires
+    // after the first frame so the dashboard is mounted underneath.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _maybeShowSetupWizard();
+      _runSignInGates();
     });
   }
 
   bool _setupWizardShown = false;
+  bool _consentGateOpen = false;
 
   @override
   ApiClient? get authApi => widget.apiClient;
 
-  /// The post-frame wizard gate in initState only covers a session that
+  /// The post-frame gates in initState only cover a session that
   /// was already signed in at launch. The normal signup flow — launch
   /// signed out, create the account from Settings — and a fresh account
   /// signing in over a previous session both arrive here instead, so the
@@ -234,27 +359,50 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void onAuthUserChanged(String? userId) {
     _setupWizardShown = false;
-    if (userId != null) _maybeShowSetupWizard();
+    if (userId != null) _runSignInGates();
   }
 
-  Future<void> _maybeShowSetupWizard() async {
+  Future<void> _runSignInGates() async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
-    if (_setupWizardShown) return;
-    if (await deferredOnboardingStampHandled(api, widget.preferences)) {
-      return;
-    }
+    if (_setupWizardShown || _consentGateOpen) return;
+    // A sign-up that collected the affirmation in-app is still stamping
+    // it; reading before that lands would re-ask.
+    await api.consentStampSettled;
+    if (!mounted) return;
     cm.UserProfileRow? profile;
     try {
       profile = await api.fetchMyProfile();
     } catch (e) {
-      debugPrint('setup-wizard gate: fetchMyProfile failed: $e');
+      debugPrint('sign-in gates: fetchMyProfile failed: $e');
       return;
     }
     if (!mounted) return;
-    // Only a fresh signup with a materialised row but no onboarded_at
-    // stamp gets the wizard. A null profile (offline / RLS) is left alone
-    // — better to skip than to block a signed-in user behind a wizard we
+    if (!consentRecordedOn(profile)) {
+      _consentGateOpen = true;
+      final confirmed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          fullscreenDialog: true,
+          builder: (_) => ConfirmAgeScreen(apiClient: api),
+        ),
+      );
+      _consentGateOpen = false;
+      if (!mounted || confirmed != true) return;
+      try {
+        profile = await api.fetchMyProfile();
+      } catch (e) {
+        debugPrint('sign-in gates: fetchMyProfile after consent failed: $e');
+        return;
+      }
+      if (!mounted) return;
+    }
+    if (await deferredOnboardingStampHandled(api, widget.preferences)) {
+      return;
+    }
+    if (!mounted) return;
+    // Only an account with a materialised row but no onboarded_at stamp
+    // gets the wizard. A row that still isn't there is left alone —
+    // better to skip than to block a signed-in user behind a wizard we
     // can't persist.
     if (profile == null || profile.onboardedAt != null) return;
     _setupWizardShown = true;
@@ -277,6 +425,15 @@ class _HomeScreenState extends State<HomeScreen>
           // once the user explicitly picked a unit.
           initialPreferredUnit: widget.settingsSync?.service
               ?.effective<String>(SettingsKeys.preferredUnit),
+          // The import step opens the same screens Settings does, so every
+          // permission sheet and consent they ask for still runs there.
+          importScreenBuilder: (_) => ImportScreen(
+            apiClient: api,
+            runStore: widget.runStore,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            settingsSync: widget.settingsSync,
+          ),
         ),
       ),
     );
@@ -299,6 +456,18 @@ class _HomeScreenState extends State<HomeScreen>
   /// workout-load on its end via the same notifier.
   void _onPendingStartWorkout() {
     if (pendingStartWorkout.value == null) return;
+    if (!mounted) return;
+    if (_currentIndex.value != _pageRun) {
+      _currentIndex.value = _pageRun;
+      _pageController.jumpToPage(_pageRun);
+    }
+  }
+
+  /// The guided-run detail screen armed a script for the recorder. Same
+  /// shape as [_onPendingStartWorkout]: bring the Run tab forward and leave
+  /// the draining to RunScreen, which owns the arming.
+  void _onPendingArmGuidedRun() {
+    if (pendingArmGuidedRun.value == null) return;
     if (!mounted) return;
     if (_currentIndex.value != _pageRun) {
       _currentIndex.value = _pageRun;
@@ -348,14 +517,29 @@ class _HomeScreenState extends State<HomeScreen>
         ));
       case PushTargetKind.profile:
         await _pushScreen(ProfileScreen(api: api, userId: target.id!));
-      case PushTargetKind.run:
-        await _pushScreen(PublicRunScreen(api: api, runId: target.id!));
-      case PushTargetKind.plans:
-        await _pushScreen(PlansScreen(
-          training: widget.training,
-          apiClient: api,
-          runStore: widget.runStore,
+      case PushTargetKind.badges:
+        final me = api.userId;
+        if (me == null) return;
+        await _pushScreen(ProfileScreen(
+          api: api,
+          userId: me,
+          initialTab: ProfileTab.badges,
         ));
+      case PushTargetKind.run:
+        await _openRun(target.id!);
+      case PushTargetKind.runPrCard:
+        await _openRun(target.id!, sharePr: true);
+      case PushTargetKind.plans:
+        _openFitnessTab(FitnessTab.plans);
+      case PushTargetKind.plan:
+      case PushTargetKind.planWorkout:
+        await _pushScreen(planTargetScreen(target,
+            training: widget.training, runStore: widget.runStore));
+      case PushTargetKind.planLibrary:
+        await _pushScreen(PlanLibraryLinkScreen(
+            training: widget.training,
+            planId: target.id!,
+            shareRef: target.shareRef));
       case PushTargetKind.challenges:
         await _pushScreen(ChallengesScreen(social: widget.social));
       case PushTargetKind.clubs:
@@ -380,6 +564,146 @@ class _HomeScreenState extends State<HomeScreen>
           clubSlug: slug,
           eventId: target.id!,
         ));
+      case PushTargetKind.messages:
+        final partnerId = target.id;
+        await _pushScreen(partnerId == null
+            ? MessagesScreen(api: api, training: widget.training)
+            : MessageThreadScreen(api: api, partnerId: partnerId));
+      case PushTargetKind.groupThread:
+        await _pushScreen(
+            GroupThreadScreen(api: api, conversationId: target.id!));
+      case PushTargetKind.messageRequests:
+        await _pushScreen(MessagesScreen(
+          api: api,
+          training: widget.training,
+          initialShowRequests: true,
+        ));
+      case PushTargetKind.settingsAccount:
+        await _pushScreen(
+          _settingsDestinationScreen(SettingsDestination.account),
+        );
+      case PushTargetKind.courseAlert:
+        final service = RaceService(api: api);
+        ({String? listingId, String? routeId})? alert;
+        try {
+          alert = await service.fetchCourseAlertTarget(target.id!);
+        } catch (e) {
+          debugPrint('HomeScreen: course alert resolve failed: $e');
+        }
+        if (!mounted) return;
+        final listingId = alert?.listingId;
+        final routeId = alert?.routeId;
+        if (listingId != null) {
+          await _pushScreen(
+              RaceDetailScreen(service: service, listingId: listingId));
+        } else if (routeId != null) {
+          await _openEntityLink(EntityLink(EntityLinkKind.route, routeId));
+        } else {
+          // The alert is gone or its club no longer vouches for it: the
+          // inbox it came from is the honest landing, as for any target the
+          // app cannot place.
+          await _openPushTarget(api, PushTarget.inbox);
+        }
+    }
+  }
+
+  /// A surface somewhere in the tree asked to open a Settings sub-screen.
+  /// Drain the parked destination and push it.
+  ///
+  /// The shell is the host because it already holds every dependency the
+  /// settings screens take, so a leaf surface needs none of them — see
+  /// [SettingsDestination] and decisions § 710. The push lands on top of the
+  /// current tab rather than switching to You first: a runner sent to
+  /// Preferences from the nearby list wants one Back to return to the list
+  /// they were reading, not to be relocated into Settings.
+  void _onPendingSettingsDestination() {
+    final destination = pendingSettingsDestination.value;
+    if (destination == null || !mounted) return;
+    pendingSettingsDestination.value = null;
+    _pushScreen(_settingsDestinationScreen(destination));
+  }
+
+  Widget _settingsDestinationScreen(SettingsDestination destination) =>
+      switch (destination) {
+        SettingsDestination.preferences => SettingsPreferencesScreen(
+            apiClient: widget.apiClient,
+            preferences: widget.preferences,
+            settingsSync: widget.settingsSync,
+            gymStore: widget.gymStore,
+            foodStore: widget.foodStore,
+            runStore: widget.runStore,
+          ),
+        SettingsDestination.account => SettingsAccountScreen(
+            apiClient: widget.apiClient,
+            preferences: widget.preferences,
+            settingsSync: widget.settingsSync,
+            runStore: widget.runStore,
+            routeStore: widget.routeStore,
+          ),
+        SettingsDestination.safety => SettingsSafetyScreen(
+            api: widget.apiClient,
+            settingsSync: widget.settingsSync,
+          ),
+        SettingsDestination.integrations => SettingsIntegrationsScreen(
+            apiClient: widget.apiClient,
+            heartRate: widget.heartRate,
+            treadmill: widget.treadmill,
+            preferences: widget.preferences,
+            settingsSync: widget.settingsSync,
+          ),
+        SettingsDestination.bodyMetrics => SettingsBodyMetricsScreen(
+            api: widget.apiClient,
+            settingsSync: widget.settingsSync,
+            preferences: widget.preferences,
+          ),
+        SettingsDestination.about => const SettingsAboutScreen(),
+        SettingsDestination.pro =>
+            SettingsProScreen(apiClient: widget.apiClient),
+      };
+
+  /// A help guide's route link asked for a surface. Drain the parked intent
+  /// and open it with the dependencies the shell holds (decisions § 710's
+  /// seam). L4: a guide link failing to navigate must not take the shell
+  /// with it.
+  Future<void> _onPendingHelpDestination() async {
+    final destination = pendingHelpDestination.value;
+    if (destination == null || !mounted) return;
+    pendingHelpDestination.value = null;
+    try {
+      await _openHelpDestination(destination);
+    } catch (e) {
+      debugPrint('help destination navigation failed: $e');
+    }
+  }
+
+  Future<void> _openHelpDestination(HelpDestination destination) async {
+    final api = widget.apiClient;
+    switch (destination) {
+      case HelpDestination.clubs:
+        if (api != null) {
+          await _openPushTarget(api, const PushTarget(PushTargetKind.clubs));
+        }
+      case HelpDestination.notifications:
+        if (api != null) await _openPushTarget(api, PushTarget.inbox);
+      case HelpDestination.runs:
+        _openFitnessTab(FitnessTab.runs);
+      case HelpDestination.races:
+        _openFitnessTab(FitnessTab.races);
+      case HelpDestination.integrations:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.integrations));
+      case HelpDestination.preferences:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.preferences));
+      case HelpDestination.safety:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.safety));
+      case HelpDestination.account:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.account));
+      case HelpDestination.pro:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.pro));
     }
   }
 
@@ -390,10 +714,123 @@ class _HomeScreenState extends State<HomeScreen>
         routeStore: widget.routeStore,
       ));
 
+  /// The run list and the run surface's sections are Fitness hub tabs, not
+  /// pushable screens: return to the shell and select the tab, as the Log
+  /// action does for Gym and Nutrition (decisions § 2437).
+  void _openFitnessTab(FitnessTab tab) {
+    if (!mounted) return;
+    final shell = ModalRoute.of(context);
+    Navigator.of(context).popUntil((route) => route == shell);
+    _fitnessTab.value = tab;
+    _goToPage(_pageFitness);
+  }
+
+  void _onFitnessSurfaceRequest() {
+    final tab = fitnessSurfaceRequests.take();
+    if (tab != null) _openFitnessTab(tab);
+  }
+
   Future<void> _pushScreen(Widget screen) {
     if (!mounted) return Future<void>.value();
     return Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  /// An invite link the OS opened the app with: hand the token to the invite
+  /// screen, which redeems it on mount (and asks for the activity-risk
+  /// acknowledgement when the club requires it).
+  Future<void> _onPendingClubInvite() async {
+    final token = pendingClubInviteToken.value;
+    if (token == null || !mounted) return;
+    pendingClubInviteToken.value = null;
+    await _pushScreen(ClubInviteScreen(
+      social: widget.social,
+      training: widget.training,
+      initialToken: token,
+    ));
+  }
+
+  /// A challenge link the OS opened the app with (decisions § 2261): an
+  /// invite opens the join screen, which handles a signed-out viewer itself;
+  /// a public share page opens the challenge.
+  Future<void> _onPendingChallengeLink() async {
+    final link = pendingChallengeLink.value;
+    if (link == null || !mounted) return;
+    pendingChallengeLink.value = null;
+    await _pushScreen(switch (link) {
+      ChallengeInviteLink(:final token) =>
+        ChallengeInviteScreen(social: widget.social, token: token),
+      ChallengeShareLink(:final challengeId, :final shareRef) =>
+        ChallengeDetailScreen(
+            social: widget.social, challengeId: challengeId, shareRef: shareRef),
+    });
+  }
+
+  /// A run or route link the OS opened the app with, or a run an in-app
+  /// surface handed over with `openRunLink`. The runner's own run or
+  /// route opens its owner screen from the device; anything else opens the
+  /// non-owner view, which reads public first and then what the owner shared
+  /// with this viewer (decisions § 1874), with the clipped track only. An L4
+  /// effect: a failure is logged, never thrown into the shell.
+  Future<void> _onPendingEntityLink() async {
+    final link = pendingEntityLink.value;
+    if (link == null || !mounted) return;
+    pendingEntityLink.value = null;
+    try {
+      await _openEntityLink(link);
+    } catch (e) {
+      debugPrint('entity link navigation failed: $e');
+    }
+  }
+
+  /// The one decision every run link, push and inbox row shares, as web's
+  /// `/runs/[id]` makes it: the owner's detail screen when the run is on this
+  /// device, else the non-owner view. A run of the runner's own that is not on
+  /// the device (an older one the history list has not paged in) takes the
+  /// non-owner view too, which reads the owner's unclipped track for them.
+  ///
+  /// [sharePr] opens the owner's share sheet on the run's PR card; a run that
+  /// is not the viewer's has no PR card to open, so it is ignored there.
+  Future<void> _openRun(String runId, {bool sharePr = false}) async {
+    final api = widget.apiClient;
+    final own = await widget.runStore.runById(runId);
+    if (!mounted) return;
+    if (own != null) {
+      return _pushScreen(RunDetailScreen(
+        run: own,
+        runStore: widget.runStore,
+        routeStore: widget.routeStore,
+        preferences: widget.preferences,
+        apiClient: api,
+        settingsSync: widget.settingsSync,
+        openPrCard: sharePr,
+      ));
+    }
+    if (api == null) return;
+    await _pushScreen(PublicRunScreen(api: api, runId: runId));
+  }
+
+  Future<void> _openEntityLink(EntityLink link) async {
+    final api = widget.apiClient;
+    switch (link.kind) {
+      case EntityLinkKind.run:
+        await _openRun(link.id, sharePr: link.sharePr);
+      case EntityLinkKind.route:
+        final own = widget.routeStore.routes
+            .where((r) => r.id == link.id)
+            .firstOrNull;
+        if (own != null) {
+          return _pushScreen(RouteDetailScreen(
+            route: own,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            apiClient: api,
+            isOwner: true,
+          ));
+        }
+        if (api == null) return;
+        await _pushScreen(PublicRouteScreen(api: api, routeId: link.id));
+    }
   }
 
   /// A GPX/KML handed to the app by another app (WhatsApp "Open with" /
@@ -444,6 +881,12 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
+          onLogLift: () => _performLogAction(LogAction.lift),
+          onStartWorkout: _startTodaysWorkout,
+          social: widget.social,
+          onSyncRuns: widget.syncService == null
+              ? null
+              : () => widget.syncService!.triggerSync('manual'),
         ),
       ),
       _LazyKeepAliveTab(
@@ -458,7 +901,7 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           settingsSync: widget.settingsSync,
           training: widget.training,
-          onStartRun: _startRunWithRoute,
+          selectedTab: _fitnessTab,
         ),
       ),
       _LazyKeepAliveTab(
@@ -485,22 +928,7 @@ class _HomeScreenState extends State<HomeScreen>
           treadmill: widget.treadmill,
           initialRoute: _preselectedRoute,
           initialResumablePartial: widget.resumablePartial,
-        ),
-      ),
-      _LazyKeepAliveTab(
-        builder: () => GymScreen(
-          key: const PageStorageKey('gym'),
-          api: widget.apiClient,
-          store: widget.gymStore,
-          social: widget.social,
-        ),
-      ),
-      _LazyKeepAliveTab(
-        builder: () => NutritionScreen(
-          key: const PageStorageKey('nutrition'),
-          api: widget.apiClient,
-          store: widget.foodStore,
-          settingsSync: widget.settingsSync,
+          shown: _runPageShown,
         ),
       ),
       _LazyKeepAliveTab(
@@ -519,10 +947,13 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           runStore: widget.runStore,
           routeStore: widget.routeStore,
+          gymStore: widget.gymStore,
+          foodStore: widget.foodStore,
           gearStore: widget.gearStore,
           heartRate: widget.heartRate,
           treadmill: widget.treadmill,
           settingsSync: widget.settingsSync,
+          training: widget.training,
         ),
       ),
     ];
@@ -531,18 +962,45 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
+    pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     pendingStartRunWithRoute.removeListener(_onPendingStartRunWithRoute);
+    widget.training.removeListener(_onTrainingChange);
+    _trainingDebounce?.cancel();
     incomingRouteImport.removeListener(_onIncomingRouteImport);
     pendingPushTarget.removeListener(_onPendingPushTarget);
+    pendingSettingsDestination
+        .removeListener(_onPendingSettingsDestination);
+    pendingHelpDestination.removeListener(_onPendingHelpDestination);
+    fitnessSurfaceRequests.removeListener(_onFitnessSurfaceRequest);
+    pendingClubInviteToken.removeListener(_onPendingClubInvite);
+    pendingChallengeLink.removeListener(_onPendingChallengeLink);
+    pendingEntityLink.removeListener(_onPendingEntityLink);
+    orphanedRecording.removeListener(_onOrphanedRecording);
     _pageController.dispose();
+    _currentIndex.removeListener(_syncRunPageShown);
+    _currentIndex.removeListener(_dropFocusLeftBehind);
     _currentIndex.dispose();
+    _runPageShown.dispose();
+    _fitnessTab.dispose();
     super.dispose();
+  }
+
+  /// A recording handed on by a run screen torn down mid-run is offered back
+  /// on the Run page, so the shell goes there for the same reason it opens
+  /// there on a cold-start partial. Deferred because the hand-off is made
+  /// from that screen's `dispose`, while the tree is locked.
+  void _onOrphanedRecording() {
+    if (orphanedRecording.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || orphanedRecording.value == null) return;
+      _goToPage(_pageRun);
+    });
   }
 
   void _startRunWithRoute(cm.Route route) {
     // The Run page takes a preselected route via constructor; changing it
-    // means rebuilding that page. Cheap — only called from the Routes tab's
-    // "start with this route" flow, not during a swipe.
+    // means rebuilding that page. Cheap — only reached by draining the
+    // pendingStartRunWithRoute handoff, not during a swipe.
     _preselectedRoute = route;
     setState(_rebuildPages);
     _currentIndex.value = _pageRun;
@@ -570,31 +1028,217 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.value = index;
   }
 
+  /// Guards against a second confirm stacking on the first — on Android the
+  /// back gesture keeps firing while the dialog is up.
+  bool _confirmingExit = false;
+
+  /// System back. The shell is `MaterialApp.home`, so an unguarded back pops
+  /// the only route and closes the app from whichever destination the user
+  /// happened to be on. Back walks toward Home instead, and only Home leaves.
+  ///
+  /// A live recording never leaves silently: the Run page locks the swipe
+  /// mid-run (issue #490), which makes back the one gesture still available
+  /// there, and it would have taken the session with it.
+  Future<void> _onSystemBack(int index, bool recording) async {
+    if (index != _pageHome) {
+      _goToPage(_pageHome);
+      return;
+    }
+    if (!recording || _confirmingExit) return;
+    _confirmingExit = true;
+    final l10n = AppLocalizations.of(context);
+    final leave = await confirmDestructive(
+      context,
+      title: l10n.backExitRecordingTitle,
+      body: l10n.backExitRecordingBody,
+      confirmLabel: l10n.backExitRecordingLeave,
+      cancelLabel: l10n.backExitRecordingStay,
+    );
+    _confirmingExit = false;
+    if (leave && mounted) await SystemNavigator.pop();
+  }
+
+  /// Wraps the shell so the system back gesture navigates rather than exits.
+  /// Both notifiers feed only the `PopScope`'s `canPop`; the shell itself
+  /// rides through as the builders' `child`, so a page change still rebuilds
+  /// nothing but the nav bar.
+  Widget _backGuard(Widget shell) => ValueListenableBuilder<bool>(
+        valueListenable: runRecordingActive,
+        builder: (context, recording, child) => ValueListenableBuilder<int>(
+          valueListenable: _currentIndex,
+          builder: (context, index, inner) => PopScope(
+            canPop: index == _pageHome && !recording,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              _onSystemBack(index, recording);
+            },
+            child: inner!,
+          ),
+          child: child,
+        ),
+        child: shell,
+      );
+
   // --- Centre Log button (multi_modal.md § Bottom nav) ---
 
-  /// Tap on the centre Log button. When the user has opted to keep Run as
-  /// the one-tap primary action, this starts a run directly; otherwise it
-  /// opens the Log capture sheet.
+  bool get _gymShown => widget.preferences
+      .gymShown(hasData: widget.gymStore.workouts.isNotEmpty);
+
+  bool get _nutritionShown => widget.preferences
+      .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty);
+
+  /// Whether a tap on the centre Log button starts a run outright. Read at
+  /// gesture time from the live stores rather than cached at build time, so
+  /// the day's first logged lift flips it without a rebuild.
+  bool get _runIsPrimary => runIsPrimaryLogAction(
+        keepRunPrimary: widget.preferences.keepRunPrimary,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      );
+
+  /// Tap on the centre Log button: the primary capture action for this user.
+  /// While a run records it is the way back to it instead.
   void _onLogTap({Offset? anchor}) {
-    if (widget.preferences.keepRunPrimary) {
+    if (runRecordingActive.value || _runIsPrimary) {
       _performLogAction(LogAction.run);
     } else {
       _openLogMenu(anchor: anchor);
     }
   }
 
-  /// Long-press on the centre Log button. In runner-primary mode this opens
-  /// the full menu (so gym / nutrition stay reachable); otherwise it
-  /// repeats the last logged modality — preserving the one-gesture "start a
-  /// run" muscle memory for a pure runner.
-  void _onLogLongPress({Offset? anchor}) {
-    if (widget.preferences.keepRunPrimary) {
-      _openLogMenu(anchor: anchor);
+  /// Long-press on the centre Log button opens the runner's menu: what the
+  /// tap does not already do (decisions § R10MENU-1). One gesture, one
+  /// meaning — it used to open the same fan as the tap, and with Gym and
+  /// Nutrition hidden that fan had one item, so the long-press was the tap.
+  ///
+  /// Except mid-run: the button is then "return to your run" for both
+  /// gestures, so a press held half a beat too long at a traffic light does
+  /// not open a picker over the run.
+  void _onLogLongPress() {
+    if (runRecordingActive.value) {
+      _performLogAction(LogAction.run);
     } else {
-      _performLogAction(
-          logActionFromWire(widget.preferences.lastLogType) ?? LogAction.run);
+      _openRunnerMenu();
     }
   }
+
+  /// The active plan, cached so the menu opens at once rather than after a
+  /// plan read; [todaysOpenWorkout] re-derives today from it at menu time.
+  /// Null until the first read lands. Offline, the read answers from the copy
+  /// the last good one saved (`active_plan_cache.dart`).
+  ActivePlanOverview? _planOverview;
+  Timer? _trainingDebounce;
+
+  Future<void> _refreshPlanOverview() async {
+    final api = widget.apiClient;
+    if (api != null) unawaited(refreshHrPrescriptionGate(api.hrPrescriptionEnabled));
+    try {
+      final p = await widget.training.fetchActiveOverview();
+      if (mounted) _planOverview = p;
+      // The same read keeps both watches and the home-screen widget holding
+      // today's workout; a failed read pushes nothing, so each keeps what it
+      // had.
+      unawaited(WatchWorkoutBridge().publish(p));
+      unawaited(TodayWidgetBridge().publish(p));
+    } catch (e) {
+      debugPrint('home: plan overview for the runner menu failed: $e');
+    }
+  }
+
+  void _onTrainingChange() {
+    _trainingDebounce?.cancel();
+    _trainingDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) _refreshPlanOverview();
+    });
+  }
+
+  Future<void> _openRunnerMenu() async {
+    final workout = todaysOpenWorkout(
+      _planOverview?.workouts ?? const [],
+      DateTime.now(),
+    );
+    final routes = widget.routeStore.routes;
+    final inline = recentRoutes(routes, widget.runStore.runs);
+    final picked = await showRunnerMenu(
+      context: context,
+      actions: runnerMenuActions(
+        tapFans: !_runIsPrimary,
+        hasTodaysWorkout: workout != null,
+        hasRoutes: routes.isNotEmpty,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      ),
+      unit: widget.preferences.unit,
+      todaysWorkout: workout,
+      routes: inline,
+      hasMoreRoutes: routes.length > inline.length,
+    );
+    if (picked == null || !mounted) return;
+    switch (picked) {
+      case RunnerMenuRouteChoice(:final route):
+        _followRoute(route);
+      case RunnerMenuActionChoice(:final action):
+        switch (action) {
+          case RunnerMenuAction.todaysWorkout:
+            _startTodaysWorkout(workout!);
+          case RunnerMenuAction.followRoute:
+            await _pickRouteToFollow();
+          case RunnerMenuAction.pastRun:
+            _openAddPastRun();
+          case RunnerMenuAction.lift:
+            await _performLogAction(LogAction.lift);
+          case RunnerMenuAction.food:
+            await _performLogAction(LogAction.food);
+        }
+    }
+  }
+
+  /// The recorder loads a workout only from its start screen, so a finished
+  /// run's summary is closed first, as a Start run tap closes it.
+  void _startTodaysWorkout(cm.PlanWorkoutRow workout) {
+    if (runSummaryShowing.value) runSummaryDismissRequests.request();
+    // Cleared first: the recorder leaves a handoff it could not honour in
+    // place, and writing the same row again would notify nobody.
+    pendingStartWorkout.value = null;
+    pendingStartWorkout.value = workout;
+  }
+
+  Future<void> _pickRouteToFollow() async {
+    final picked = await pickRoute(
+      context,
+      routes: widget.routeStore.routes,
+      unit: widget.preferences.unit,
+    );
+    if (picked is! RoutePicked || !mounted) return;
+    _followRoute(picked.route);
+  }
+
+  /// The recorder takes a route only from its start screen, so a finished
+  /// run's summary is closed first.
+  void _followRoute(cm.Route route) {
+    if (runSummaryShowing.value) runSummaryDismissRequests.request();
+    _startRunWithRoute(route);
+  }
+
+  void _openAddPastRun() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => AddRunScreen(
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          preferences: widget.preferences,
+          apiClient: widget.apiClient,
+          social: widget.social,
+        ),
+      ),
+    );
+  }
+
+  Set<LogAction> get _hiddenLogActions => hiddenLogActions(
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      );
 
   // The centre Log button fans the three capture actions up above itself
   // (speed-dial) rather than opening a bottom sheet; the History Log FAB keeps
@@ -603,28 +1247,181 @@ class _HomeScreenState extends State<HomeScreen>
     final picked = await showLogSpeedDial(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
+      hidden: _hiddenLogActions,
       anchor: anchor,
     );
     if (picked != null) _performLogAction(picked);
   }
 
-  void _performLogAction(LogAction action) {
+  Future<void> _performLogAction(LogAction action) async {
+    final l10n = AppLocalizations.of(context);
     widget.preferences.setLastLogType(action.wire);
-    // Each Log action lands on that modality's dwell-in capture page (decisions
-    // §63) — the same in-shell keep-alive page model the live recorder uses, so
-    // all three behave identically: you arrive on a workspace you can operate in
-    // for as long as the session lasts (record the run, build the workout over
-    // several sets, log the day's meals) rather than a one-shot modal that
-    // closes after a single entry. Each page surfaces its composer one tap away.
-    switch (action) {
-      case LogAction.run:
-        _goToPage(_pageRun);
-      case LogAction.lift:
-        _goToPage(_pageGym);
-      case LogAction.food:
-        _goToPage(_pageFood);
+    // Asking to log a lift or a meal is asking for that modality, and a
+    // hidden one has no hub tab to land on — the first-run "Lifting instead?"
+    // link reaches here for exactly the account whose Gym starts hidden.
+    // Awaited so the hub's strip already has the tab when it is selected.
+    //
+    // It changes what the centre button's tap does from then on, so it is
+    // announced, with an Undo: one stray tap on the first-run gym link used
+    // to re-modalise the app silently, recoverable only from Settings.
+    ({String message, Future<void> Function() undo})? switchedOn;
+    if (action == LogAction.lift && !_gymShown) {
+      final prior = widget.preferences.showGym;
+      await widget.preferences.setShowGym(true);
+      _roamModalityVisibility();
+      switchedOn = (
+        message: l10n.logModalityShownGym,
+        undo: () => widget.preferences.setShowGym(prior),
+      );
+    } else if (action == LogAction.food && !_nutritionShown) {
+      final prior = widget.preferences.showNutrition;
+      await widget.preferences.setShowNutrition(true);
+      _roamModalityVisibility();
+      switchedOn = (
+        message: l10n.logModalityShownNutrition,
+        undo: () => widget.preferences.setShowNutrition(prior),
+      );
+    }
+    if (!mounted) return;
+    // Each Log action lands on that modality's dwell-in workspace (decisions
+    // §63) — the keep-alive Run page for a recording, the Fitness hub's own Gym
+    // and Nutrition tabs for the other two. All three behave identically: you
+    // arrive on a surface you can operate in for as long as the session lasts
+    // (record the run, build the workout over several sets, log the day's
+    // meals) rather than a one-shot modal that closes after a single entry, and
+    // each surfaces its composer one tap away.
+    //
+    // Gym and Nutrition are the hub's tabs rather than pages of their own so
+    // that this button and the Fitness tab strip reach the SAME screen, still
+    // showing the day, filters and half-typed entry it was left on (§ 1654).
+    final tab = switch (action) {
+      LogAction.run => null,
+      LogAction.lift => FitnessTab.gym,
+      LogAction.food => FitnessTab.nutrition,
+    };
+    final page = tab == null ? _pageRun : _pageFitness;
+    // The Run page showing a finished run's summary is not the start screen,
+    // wherever the tap came from: asking for a run closes the summary first.
+    final leavingSummary =
+        action == LogAction.run && runSummaryShowing.value;
+    if (leavingSummary) runSummaryDismissRequests.request();
+    if (!leavingSummary &&
+        page == _currentIndex.value &&
+        (tab == null || tab == _fitnessTab.value)) {
+      // Picking the page you are already on is a no-op navigation, and the
+      // fan closing onto an unchanged screen reads as a dropped tap. Say
+      // where the tap went instead.
+      showTopBanner(context, l10n.logAlreadyOnPage(_logPageName(l10n, action)));
+      return;
+    }
+    if (tab != null) _fitnessTab.value = tab;
+    _goToPage(page);
+    if (switchedOn != null) _announceSwitchedOn(switchedOn);
+  }
+
+  /// The Undo restores the choice that was there before, which may be no
+  /// choice at all: writing false would pin the modality hidden for a runner
+  /// who later logs one, which is what the tri-state exists to avoid
+  /// (decisions § 1739).
+  void _announceSwitchedOn(
+      ({String message, Future<void> Function() undo}) switchedOn) {
+    showTopBanner(
+      context,
+      switchedOn.message,
+      duration: const Duration(seconds: 6),
+      actionLabel: AppLocalizations.of(context).undoAction,
+      onAction: () async {
+        try {
+          await switchedOn.undo();
+        } catch (e) {
+          debugPrint('home: modality visibility undo failed: $e');
+          return;
+        }
+        await _roamModalityVisibility();
+      },
+    );
+  }
+
+  Future<void> _roamModalityVisibility() async {
+    try {
+      await widget.settingsSync?.pushModalityVisibility();
+    } catch (e) {
+      debugPrint('home: modality visibility push failed: $e');
     }
   }
+
+  /// Whether the docked centre button is the recorder's Stop: a run records
+  /// (a manual pause included) and the Run page is showing. Phone shell only
+  /// — the rail docks nothing, so the recorder panel keeps its own Stop there
+  /// ([RunStopDock]). Away from the Run page the button stays the way back to
+  /// it, so a tap from Home can never end a run.
+  bool get _centreIsStop =>
+      runRecordingActive.value && _currentIndex.value == _pageRun;
+
+  /// The centre button's icon, caption and spoken label. When a tap starts a
+  /// run it says so: a "+" captioned "Log" reads as "add an entry", and a
+  /// first-timer only found out it opened the GPS recorder by pressing it.
+  ///
+  /// Mid-run the shell looked exactly as it does idle, and the way back to the
+  /// recorder was a "+" that reads as "start another". So while a run records
+  /// the button turns the error colour and says so, and a tap returns to it —
+  /// except on the docked button over the Run page, where it is the Stop.
+  ({IconData icon, String label, String semantics, bool recording})
+      _centreLook(AppLocalizations l10n, {bool docked = false}) {
+    if (docked && _centreIsStop) {
+      return (
+        icon: Icons.stop_rounded,
+        label: l10n.navStop,
+        semantics: l10n.runStopA11yLabel,
+        recording: true,
+      );
+    }
+    if (runRecordingActive.value) {
+      return (
+        icon: Icons.fiber_manual_record,
+        label: l10n.navRecording,
+        semantics: l10n.logReturnToRunA11yLabel,
+        recording: true,
+      );
+    }
+    // The tap records the default activity (RunScreen seeds it from the same
+    // preference), so the caption names that, not always a run.
+    final activity =
+        cm.ActivityType.fromName(widget.preferences.defaultActivityType);
+    return _runIsPrimary
+        ? (
+            // Play, not a runner: with Gym and Nutrition hidden the hub
+            // beside it wears the runner glyph.
+            icon: Icons.play_arrow,
+            label: startActivityCaption(l10n, activity),
+            semantics: startActivityAction(l10n, activity),
+            recording: false,
+          )
+        : (
+            icon: Icons.add,
+            label: l10n.navLog,
+            semantics: l10n.logA11yLabel,
+            recording: false,
+          );
+  }
+
+  /// The Fitness hub's nav icon and label. "Fitness" under a dumbbell was
+  /// chosen because the hub holds gym and nutrition too (decisions § 139);
+  /// with both hidden it holds runs, routes, segments, plans and races, and
+  /// a runner looking for their runs scanned past a gym icon. "Training"
+  /// rather than "Runs" because the hub's own first tab is already "Runs",
+  /// and it names the plans and races beside them.
+  ({IconData icon, String label}) _hubLook(AppLocalizations l10n) =>
+      _gymShown || _nutritionShown
+          ? (icon: Icons.fitness_center, label: l10n.navFitness)
+          : (icon: Icons.directions_run, label: l10n.navTraining);
+
+  String _logPageName(AppLocalizations l10n, LogAction action) =>
+      switch (action) {
+        LogAction.run => l10n.navRun,
+        LogAction.lift => l10n.gymTitle,
+        LogAction.food => l10n.nutritionTitle,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -641,6 +1438,14 @@ class _HomeScreenState extends State<HomeScreen>
     // CANCELLATION. Mirrors web's root-layout banner; renders
     // nothing when the flag is null or the user is on the free
     // tier — zero footprint in the common case.
+    final expanded = widthClassOf(context) == WidthClass.expanded;
+    // The phone Scaffold resizes for the keyboard so each page's own fields
+    // stay above it, and a docked FAB rides up with the content bottom:
+    // over a page it would cover that page's controls (the recorder's
+    // START). Nothing in the bottom bar is reachable under the keyboard
+    // either, so the docked button goes while it is up and the panel keeps
+    // its own Stop.
+    final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 0;
     final body = Column(
       children: [
         BillingIssueBanner(apiClient: widget.apiClient),
@@ -650,28 +1455,40 @@ class _HomeScreenState extends State<HomeScreen>
           // mid-run (issue #490). Deliberate bottom-nav taps still navigate —
           // `_goToPage` drives the controller directly, which non-scrollable
           // physics doesn't block. Fail-open: the notifier defaults to false.
-          child: ValueListenableBuilder<bool>(
-            valueListenable: runRecordingActive,
-            builder: (context, recording, _) => PageView(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              physics: recording
-                  ? const NeverScrollableScrollPhysics()
-                  : const PageScrollPhysics(),
-              children: _pages,
+          child: RunStopDock(
+            docked: !expanded && !keyboardUp,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: runRecordingActive,
+              builder: (context, recording, _) => PageView(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                physics: recording
+                    ? const NeverScrollableScrollPhysics()
+                    : const PageScrollPhysics(),
+                children: _pages,
+              ),
             ),
           ),
         ),
       ],
     );
-    if (widthClassOf(context) == WidthClass.expanded) {
-      return Scaffold(
-        body: Row(
-          children: [
-            ValueListenableBuilder<int>(
-              valueListenable: _currentIndex,
-              builder: (context, index, _) {
+    // One tree for both shells, so the PageView and every kept-alive page in
+    // it (the live recorder among them) keep their State when the width class
+    // changes. Rotating a large phone crosses the expanded breakpoint, and two
+    // differently shaped branches unmounted the recorder mid-run, losing the
+    // run (decisions § 2352). The rail is a sibling that comes and goes beside
+    // a keyed body slot, and the phone's bar and docked button are Scaffold
+    // slots, so neither moves the body.
+    return _backGuard(Scaffold(
+      body: Row(
+        children: [
+          if (expanded) ...[
+            ListenableBuilder(
+              listenable: _navInputs,
+              builder: (context, _) {
+                final index = _currentIndex.value;
                 final l10n = AppLocalizations.of(context);
+                final hub = _hubLook(l10n);
                 return NavigationRail(
                   selectedIndex: _railIndexFor(index),
                   onDestinationSelected: (i) => _goToPage(_railPages[i]),
@@ -686,8 +1503,8 @@ class _HomeScreenState extends State<HomeScreen>
                       label: Text(l10n.navHome),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.fitness_center),
-                      label: Text(l10n.navFitness),
+                      icon: Icon(hub.icon),
+                      label: Text(hub.label),
                     ),
                     NavigationRailDestination(
                       icon: const Icon(Icons.public),
@@ -702,37 +1519,46 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
             const VerticalDivider(width: 1),
-            // This branch has no `bottomNavigationBar`, so `Scaffold` leaves
-            // the whole system bottom inset on the body's `MediaQuery` — where
-            // the phone branch below spends it on the `BottomAppBar` and
-            // `Scaffold` therefore zeroes it. The pages were written against
-            // that zero (`SafeArea(bottom: false)` on dashboard and You), so
-            // without this the last card on a tablet sits under the
-            // gesture / nav bar. `SafeArea` both pads and removes, so a page
-            // sees the same zero either way (decisions § 538); left / right
-            // stay for the pages, matching the phone branch.
-            Expanded(
-              child: SafeArea(
-                top: false,
-                left: false,
-                right: false,
+          ],
+          // The rail shell has no `bottomNavigationBar`, so `Scaffold` leaves
+          // the whole system bottom inset on the body's `MediaQuery` — where
+          // the phone shell spends it on the `BottomAppBar` and `Scaffold`
+          // therefore zeroes it. The pages were written against that zero
+          // (`SafeArea(bottom: false)` on dashboard and You), so without this
+          // the last card on a tablet sits under the gesture / nav bar.
+          // `SafeArea` both pads and removes, so a page sees the same zero
+          // either way (decisions § 538); left / right stay for the pages.
+          Expanded(
+            key: const ValueKey('shell-body'),
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: expanded,
+              child: DockedFabInset(
+                height: expanded || keyboardUp ? 0 : kDockedFabOverhang,
                 child: body,
               ),
             ),
-          ],
-        ),
-      );
-    }
-    return Scaffold(
-      body: body,
-      floatingActionButton: _logFab(),
+          ),
+        ],
+      ),
+      floatingActionButton: expanded || keyboardUp ? null : _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: ValueListenableBuilder<int>(
-        valueListenable: _currentIndex,
-        builder: (context, index, _) {
+      bottomNavigationBar: expanded ? null : _bottomBar(),
+    ));
+  }
+
+  Widget _bottomBar() => ListenableBuilder(
+        listenable: _navInputs,
+        builder: (context, _) {
+          final index = _currentIndex.value;
           final l10n = AppLocalizations.of(context);
+          final hub = _hubLook(l10n);
+          final metrics =
+              bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
           return BottomAppBar(
-            height: 64,
+            height: metrics.height,
             padding: EdgeInsets.zero,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -744,15 +1570,24 @@ class _HomeScreenState extends State<HomeScreen>
                   onTap: () => _goToPage(_pageHome),
                 ),
                 _BottomNavItem(
-                  icon: Icons.fitness_center,
-                  label: l10n.navFitness,
+                  icon: hub.icon,
+                  label: hub.label,
                   selected: index == _pageFitness,
                   onTap: () => _goToPage(_pageFitness),
                 ),
-                // The docked centre Log FAB fills this 56 dp slot; the caption
+                // The docked centre Log FAB sits over this slot; the caption
                 // gives the centre action a visible text label like every other
                 // nav destination, so it isn't the one unlabelled "+" (#256).
-                SizedBox(width: 56, child: _CentreLogLabel(label: l10n.navLog)),
+                // Wider than the 56 dp button: at 56 "Recording" cut to
+                // "Recordi…" at the default text size.
+                SizedBox(
+                  width: _centreSlotWidth,
+                  child: Builder(builder: (context) {
+                    final look = _centreLook(l10n, docked: true);
+                    return _CentreLogLabel(
+                        label: look.label, alert: look.recording);
+                  }),
+                ),
                 _BottomNavItem(
                   icon: Icons.public,
                   label: l10n.navSocial,
@@ -769,11 +1604,11 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           );
         },
-      ),
-    );
-  }
+      );
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
+
+  static const double _centreSlotWidth = 72;
 
   int? _railIndexFor(int pageIndex) {
     final i = _railPages.indexOf(pageIndex);
@@ -788,10 +1623,25 @@ class _HomeScreenState extends State<HomeScreen>
   // and the 56 dp FAB clears the >=48 dp target. When [anchored], the
   // speed-dial fans from the button's own position instead of the
   // bottom-centre dock.
+  //
+  // Docked over the Run page mid-recording it is the recorder's Stop instead
+  // (the panel leaves its own out, `RunStopDock`): the same 800 ms
+  // `HoldToStopButton`, so one gate guards every way a run ends. It has no
+  // long-press wrapper, which would fire at 500 ms into the hold.
   Widget _logFab({bool anchored = false}) {
-    return Builder(
-      builder: (fabContext) {
+    return ListenableBuilder(
+      listenable: _navInputs,
+      builder: (fabContext, _) {
         final l10n = AppLocalizations.of(fabContext);
+        if (!anchored && _centreIsStop) {
+          return HoldToStopButton(
+            size: 56,
+            iconSize: 28,
+            showHint: false,
+            semanticsHint: l10n.runHoldToStopRunA11yHint,
+            onHoldComplete: runStopRequests.request,
+          );
+        }
         Offset? anchorOf() {
           if (!anchored) return null;
           final box = fabContext.findRenderObject() as RenderBox?;
@@ -799,15 +1649,42 @@ class _HomeScreenState extends State<HomeScreen>
           return box.localToGlobal(box.size.center(Offset.zero));
         }
 
+        final look = _centreLook(l10n);
+        final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
-          onLongPress: () => _onLogLongPress(anchor: anchorOf()),
+          onLongPress: _onLogLongPress,
           child: Semantics(
             button: true,
-            label: l10n.logA11yLabel,
-            child: FloatingActionButton(
-              onPressed: () => _onLogTap(anchor: anchorOf()),
-              tooltip: l10n.navLog,
-              child: const Icon(Icons.add),
+            label: look.semantics,
+            // The long-press is otherwise found only by holding the button.
+            // TalkBack announces the hint ("double-tap and hold to show more
+            // options"); VoiceOver has no long-press, so the menu is also a
+            // custom action in its actions rotor. Mid-run both gestures
+            // return to the run, so there is no menu to announce.
+            onLongPress: look.recording ? null : _onLogLongPress,
+            onLongPressHint: look.recording ? null : l10n.logMoreLongPressHint,
+            customSemanticsActions: look.recording
+                ? null
+                : {
+                    CustomSemanticsAction(label: l10n.logMoreTitle):
+                        _onLogLongPress,
+                  },
+            // The tooltip is OURS and manually triggered, never the
+            // FloatingActionButton's own: a `tooltip:` builds a Tooltip
+            // INSIDE the button, whose long-press recognizer enters the
+            // gesture arena ahead of this GestureDetector's and wins every
+            // time — which left the long-press affordance dead on the phone
+            // FAB. The visible caption under the button carries the label
+            // anyway (#256), so nothing is lost by not showing it on hold.
+            child: Tooltip(
+              message: look.label,
+              triggerMode: TooltipTriggerMode.manual,
+              child: FloatingActionButton(
+                backgroundColor: look.recording ? scheme.error : null,
+                foregroundColor: look.recording ? scheme.onError : null,
+                onPressed: () => _onLogTap(anchor: anchorOf()),
+                child: Icon(look.icon),
+              ),
             ),
           ),
         );
@@ -819,6 +1696,27 @@ class _HomeScreenState extends State<HomeScreen>
 /// One destination in the [BottomAppBar] — icon over label, tinted when
 /// selected. A real button for accessibility (role + selected state), with
 /// a >=48 dp tap target.
+/// How tall the bottom nav is, and whether its labels still fit, for a given
+/// text scale.
+///
+/// The bar was a hard 64 dp holding a 24 dp icon, a 2 dp gap and a label, which
+/// overflows by 12 px at `accessibility-extra-extra-extra-large` and clips the
+/// labels to "Ho / Fit / L / So / You" on the way there. Both are failures of
+/// the same assumption: that a fixed box can hold text whose size the runner
+/// chooses.
+///
+/// So the bar grows with the scale, and past the point where a label can no
+/// longer be read in the width a fifth of the screen affords, it drops the
+/// label rather than showing two of its letters. The icon and the `Semantics`
+/// label both stay, so the destination is still announced in full to a screen
+/// reader and still recognisable to everyone else — which an ellipsised "Ho"
+/// is not.
+({double height, bool showLabels}) bottomNavMetrics(double textScale) {
+  final scale = textScale.isFinite && textScale > 0 ? textScale : 1.0;
+  if (scale > 1.6) return (height: 56.0, showLabels: false);
+  return (height: (64.0 * scale).clamp(64.0, 96.0), showLabels: true);
+}
+
 class _BottomNavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -836,6 +1734,7 @@ class _BottomNavItem extends StatelessWidget {
     final theme = Theme.of(context);
     final color =
         selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
     return Expanded(
       child: Semantics(
         button: true,
@@ -844,18 +1743,23 @@ class _BottomNavItem extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 64,
+            height: metrics.height,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, color: color, size: 24),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(color: color),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                if (metrics.showLabels) ...[
+                  const SizedBox(height: 2),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style:
+                          theme.textTheme.labelSmall?.copyWith(color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -872,13 +1776,20 @@ class _BottomNavItem extends StatelessWidget {
 /// doesn't double-announce over the FAB's own semantics label.
 class _CentreLogLabel extends StatelessWidget {
   final String label;
-  const _CentreLogLabel({required this.label});
+
+  /// Tints the caption the error colour, matching the button above it while
+  /// a run records.
+  final bool alert;
+  const _CentreLogLabel({required this.label, this.alert = false});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The same metrics as the sibling items: past the scale where they drop
+    // their labels the bar is 56dp, and a caption kept at 64 overflowed it.
+    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
     return SizedBox(
-      height: 64,
+      height: metrics.height,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -886,16 +1797,26 @@ class _CentreLogLabel extends StatelessWidget {
           // render, so this label lines up with theirs while the floating
           // FAB visually fills the space above it.
           const SizedBox(height: 24),
-          const SizedBox(height: 2),
-          ExcludeSemantics(
-            child: Text(
-              label,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          if (metrics.showLabels) ...[
+            const SizedBox(height: 2),
+            // Shrinks to fit rather than ellipsising: at a large text size a
+            // smaller whole word reads, a clipped one does not.
+            ExcludeSemantics(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: alert
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

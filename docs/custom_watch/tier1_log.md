@@ -62,7 +62,7 @@ Renode's nRF52840 GPIO model doesn't implement the SENSE/DETECT path the low-pow
 
 ## 2026-07-09 — Grade-adjusted pace (fourth parity port)
 
-`watch_core::grade_adjusted_pace` ports the Minetti GAP helper as the **fourth parity surface** (web `grade_adjusted_pace.ts` canonical → Dart twin → Connect IQ `GradeAdjustedPaceView.mc` → Rust firmware): the identical `grade_factor` polynomial + ±45% clamp, the whole-track batch helper with the same `None` edge cases (too few points / no timestamps / no elevation), and its test suite mirrored case-for-case against the TS/Dart oracles (flat = 200 s/km, uphill faster, descent slower, mixed-elevation still computes). On top sits a streaming `GapEstimator` in the Garmin field's on-watch shape — grade rolled forward only per ≥5 m covered (altitude jitter can't manufacture a grade), a 0.4 m/s walk gate, and the field's runaway-pace guard. The `Recorder` feeds it each accepted fix with the **baro-preferred altitude** (`set_baro_altitude` from `state::ELEVATION`, GPS `alt_m` fallback — the same preference the flash store's point stamping uses), publishes `Snapshot.gap_s_per_km`, and the Pace glance page renders a `GAP` row under HR so raw and effort-equivalent pace read together on a hill; with no altitude signal the grade stays 0 and GAP reads as raw pace, matching the field's no-altimeter behaviour. Flash run-store wire format untouched. GAP module 17 host tests, recorder 13 → 17, face 25 → 26 (watch_core 101 total); sim-verified on a synthetic 10% climb fed as a custom NMEA fixture — the emulated panel's Pace glance shows `GAP 1:41 /KM` against a raw `NOW 2:46 /KM`, the exact Minetti factor at that grade. Bench verification pends parts.
+`watch_core::grade_adjusted_pace` ports the Minetti GAP helper as the **fourth parity surface** (web `grade_adjusted_pace.ts` canonical → Dart twin → Connect IQ `GradeAdjustedPaceView.mc` → Rust firmware): the identical `grade_factor` polynomial + ±45% clamp, the whole-track batch helper with the same `None` edge cases (too few points / no timestamps / no elevation), and its test suite mirrored case-for-case against the TS/Dart oracles (flat = 200 s/km, uphill faster, descent slower, mixed-elevation still computes). On top sits a streaming `GapEstimator` in the Garmin field's on-watch shape — grade rolled forward only per ≥5 m covered (altitude jitter can't manufacture a grade — raised to ≥20 m on 2026-09-02, [§ 992](../architecture/decisions.md), after 5 m turned out to be below the noise floor divided by the clamp on all four rails), a 0.4 m/s walk gate, and the field's runaway-pace guard. The `Recorder` feeds it each accepted fix with the **baro-preferred altitude** (`set_baro_altitude` from `state::ELEVATION`, GPS `alt_m` fallback — the same preference the flash store's point stamping uses), publishes `Snapshot.gap_s_per_km`, and the Pace glance page renders a `GAP` row under HR so raw and effort-equivalent pace read together on a hill; with no altitude signal the grade stays 0 and GAP reads as raw pace, matching the field's no-altimeter behaviour. Flash run-store wire format untouched. GAP module 17 host tests, recorder 13 → 17, face 25 → 26 (watch_core 101 total); sim-verified on a synthetic 10% climb fed as a custom NMEA fixture — the emulated panel's Pace glance shows `GAP 1:41 /KM` against a raw `NOW 2:46 /KM`, the exact Minetti factor at that grade. Bench verification pends parts.
 
 ## 2026-07-09 — HR zones + in-zone time
 
@@ -520,7 +520,7 @@ ticks and asserts the lap counter never moves.
 
 **Two rails carry the choice.** The phone reaches it over **`SET1` v7** — both presence bytes were
 saturated and v6's `KNOWN_FLAGS2 == u8::MAX` const-assert existed precisely to force this bump, so
-`flags3` arrives exactly as `flags2` did at v2; `decode` accepts v1–v7 side by side and the frozen
+`flags3` arrives exactly as `flags2` did at v2; `decode` accepts v3–v7 side by side (this entry originally wrote v1–v7; v1 and v2 had already been withdrawn at §403, when the CRC became mandatory) and the frozen
 v6 golden vector is pinned as still decoding, its absent trigger leaving whatever the watch holds
 standing rather than resetting a race's splits to a default. Flash keeps it in `CFG1`'s flags byte
 behind a set-marker plus three discriminant bits — the §351/§353 drill a third time, no
@@ -900,7 +900,7 @@ the composed screens, the ICE card, the BLE bond, the pushed course and workout,
 the trackback breadcrumb, and the recorder's pushed biometrics / pacer goal /
 gear / roadbook / fuel plan / page mask / auto-lap rung / backyard arm. The two
 arguable ones are argued in § 378 and tabulated in
-[`privacy.md`](privacy.md#the-erase-378): the **ICE card** goes because it is
+[`privacy.md`](privacy.md#the-erase--378): the **ICE card** goes because it is
 the only third-party personal data on the device (a next-of-kin who never
 consented to the next holder) and is re-pushable in one action, and the **bond**
 goes because it is a live credential whose IRK defeats the previous owner's
@@ -942,6 +942,351 @@ directory drop also produces and is exactly the distinction this erase exists to
 make. The bond half can never be sim-verified at all (§ 210). Nothing here is
 bench-verified, because no hardware exists.
 
+## 2026-08-17 — the parts list audited against the firmware, before a penny was spent
+
+Triggered by a plain question — are we ready to order? — and the answer was no, for
+reasons none of which were visible from either document alone. The list and the
+firmware had been drifting past each other for months because nothing ever compared
+them: every row was individually plausible, and five were wrong about the part the
+code actually drives.
+
+**The barometer was the clean case.** `parts.md` ordered a **BMP390** while
+`drivers/bmp581` gates on `CHIP_ID == 0x50` at register `0x01`; a BMP390 answers
+`0x60` at `0x00` with an unrelated map. § 90 had codified the swap for the
+*production* target only, tier-1 firmware implemented BMP581 anyway, and the shopping
+list stayed where § 90 left it. The failure would have been silent — a failed probe
+parks the baro task, taking elevation, vert, the storm page and the GAP grade with it,
+and presenting as four unrelated dead features.
+
+**The GNSS link would not have carried a byte.** `main.rs` had configured UARTE0 at
+9600 since bring-up. That is the u-blox **M8** default; the MAX-M10S is M10 and ships
+at **38400**, which SparkFun's guide for this exact breakout states outright. No
+decision had ever set 9600 — it was an inherited assumption, and § 419/§ 421 had since
+built derivations on top of it. Fixed by meeting the part rather than configuring it
+([§ 622](../architecture/decisions.md)): the breakout's backup cell holds a u-center
+setting about a fortnight, so a configured baud is a value with an expiry date, and the
+prototype that sat out a holiday would have come back mute with nobody suspecting a
+setting they touched once. Two derived figures moved with it, and **the second is the
+one worth having caught**: `BufferedUarte`'s guaranteed headroom is `half_len`, so the
+512-byte ring § 421 is holding open covered three 85 ms erases at 9600 and covers
+**none** at 38400. It needs to be 2048. A later implementer would have built the fix to
+a spec that stopped being right.
+
+**Three more that each cost a bench day rather than a subsystem.** The BMP581 breakout
+ships on **0x47** against the driver's **0x46** (one jumper). The display's silkscreen
+calls EXTMODE `EIN` and EXTCOMIN `EMD`, and `DISP` needs no MCU pin — which is why the
+board crate has none, a coincidence that reads as a bug until you know. And the DK
+supplies from a Li-Po but does not **charge** one, so the "percent falls monotonically
+across a discharge" bench item had no charger on the list and was a one-shot. Sundries
+too: the SKU was `GPS-21086` for a board that is `GPS-18037`, `prototyping.md` named the
+obsolete 96×96 `LS013B4DN04` against a framebuffer that hard-codes 168×144, and the
+chassis and strap that § 82's on-a-real-wrist DoD requires sat filed under
+nice-to-have.
+
+**The finding that actually matters is the optical HR, and it is a doc-process failure
+rather than a doc error.** [`vendor_research.md`](vendor_research.md) established on
+2026-07-09 that **no public MAX86177 datasheet exists** — ADI gates it behind an NDA —
+and closed by asking for a note on `roadmap.md` step 5 and the `bom.md` HR row, marking
+those edits as the parent session's job. The parent session never did them. So the
+finding sat in one file while three others kept describing the part as ready to wire,
+and the driver written afterwards inherited exactly the predicted gap: `drivers/max86177`
+carries a register map **modelled on the MAX86171 family idiom, not read off this
+part's datasheet**, and says nothing about it. Procurement has moved underneath the
+research since: `MAX86177EVSYS#` is discontinued at Digi-Key with no lead time and is a
+two-board evaluation *system* rather than a breakout, and the MAX86171 fallback the
+research recommended has an EV kit that is **obsolete and no longer manufactured**.
+
+The framing that resolves it is that the MAX86177 is a *production* pick that got
+imported into tier 1. § 82 asks for a run recording HR and explicitly accepts "raw
+photodiode reads + naive peak-detect"; it does not ask for the launch AFE. So a ~$20
+MAX30101-class part with a fully public register map is the tier-1-appropriate choice,
+not a compromise — and everything above the raw sample (`peak_detect`, the AGC, the
+contact classes, the duty-cycle schedule, the `hr` task seam) is part-agnostic and
+survives whichever way it goes. The register map is the only half that does not. The
+three costed options live in [`parts.md`](parts.md); the decision is owed before that
+line can be ordered, and the other ~$700 should not wait for it.
+
+**Rung: build-verified, and deliberately not more.** `bin/watch-test.sh` 2739 passed /
+0 failed, `cargo fmt --all --check` clean, `clippy -D warnings` clean for
+`thumbv7em-none-eabihf`. Nothing here is sim-verifiable — Renode delivers the NMEA
+fixture over a PTY and its UARTE model does not rate-limit against the baud register,
+so the sim is exactly as green at 38400 as it was at 9600 and proves nothing about
+either. The baud is now a step-3 bench item alongside the four step-0 gates this entry
+added.
+
+**The process lesson, which is the part worth keeping.** A cross-check nobody owns does
+not happen. `parts.md` was audited against `bom.md` (§ 90) and `vendor_research.md` was
+audited against the vendors, but no document's job was to check the shopping list
+against the code that drives the parts — so the two drifted for months while each stayed
+internally consistent. The same shape produced the NDA gap: a research doc that ends by
+assigning follow-through to "the parent session" has assigned it to nobody. Both are now
+`parts.md`'s stated job, in its own opening lines.
+
+## 2026-08-17 (same day) — the HR part decided: a $20 commodity sensor over the $130 one nobody can document
+
+The open line from the audit above, closed ([§ 623](../architecture/decisions.md)). Tier
+1 orders a **MAX30101** breakout; § 90's production MAX86177 row is untouched, and
+`drivers/max86177` stays in the tree as the head start on it rather than being deleted.
+
+**The wavelength nearly went wrong, which is worth recording because it was one word.**
+The option was drafted as "a MAX30101 / MAX30102 breakout" as though the two were
+interchangeable. They are not: the MAX30102 carries red and IR only — a fingertip-SpO2
+part — and the **green** LED the MAX30101 adds is the wavelength every wrist-worn optical
+sensor uses, because green is absorbed strongly by haemoglobin and penetrates shallowly
+enough to read a capillary bed through a moving wrist. A device whose entire premise is
+the wrist would have been ordered with no wrist wavelength, and the failure would have
+looked like a bad peak detector.
+
+**The upside that comes with leaving the NDA part behind** is that the board vendor
+stops mattering. The MAX30101 register map is public and identical whoever assembles the
+module, so the fact that SparkFun's `SEN-16474` is on backorder and Pimoroni's `PIM438`
+reads 0 at Digi-Key (still *Active*, stocked direct) is an inconvenience rather than a
+blocker — a generic module answers the same registers. Compare where the MAX86177 left
+us: one discontinued kit as the only route to a part whose documentation was also gated.
+
+**And a correction to the audit entry above, made the same day it was written.** It
+claimed everything above the raw sample "is part-agnostic and survives the choice". True
+of the logic, false of the packaging — `peak_detect` (374 lines) and the LED AGC are
+modules of the **`max86177` crate**, and `hr.rs` imports them from there while calling a
+concrete `Max86177` rather than a trait. So the port is not "write a second driver": it
+is **lift the shared half out first** (to `watch_core` or a `ppg` crate), then a thin
+`max30101` register driver under it, then point `hr.rs` at the abstraction. Done in the
+other order it forks the peak detector, and two detectors is two things to tune against
+one wrist. Three concrete deltas go with it: an **18-bit** saturation ceiling rather than
+19, ambient sampling through **multi-LED slots** rather than the MEAS1/MEAS2 tag pair,
+and a register-retention-across-shutdown question that § 623 **re-opens rather than
+inherits** — it was logged against different silicon.
+
+Nothing is built yet. The step-5 bench items now describe a part the bench will have and
+a driver that does not exist; that gap is stated in [`roadmap.md`](roadmap.md) and in
+step 0 of [`quality_standards.md`](quality_standards.md) rather than left for someone to
+discover with a sensor in their hand.
+
+## 2026-08-17 (third) — the driver lift, and the two bugs that only appeared once something else had to use the same code
+
+§ 623's owed firmware work, done in the order the decision insisted on: **lift first, then
+write the second driver.** The reverse order is what forks a peak detector, and a forked
+detector is two things to tune against one wrist.
+
+**The lift.** `peak_detect` (374 lines) and the LED AGC moved out of the `max86177` crate
+into `watch_core::ppg`, joined by a `PpgAfe` trait. `hr.rs` now names a part exactly once —
+at construction — and asks it for its ADC scale, auto-gain window, LED seed and slot tags.
+All 30 detector tests passed untouched, which is the point: nothing about the logic
+changed, only where it lives and who may use it.
+
+**What the lift exposed, and it was not in the plan.** The detector's four DC thresholds
+are quoted in *photodiode counts*, and a count means nothing without the converter's full
+scale behind it. They were 19-bit numbers with nothing saying so. An 18-bit part reports
+half the counts for the identical optical scene, so porting them across unchanged would
+have made every contact and rail threshold **twice as strict** on the new AFE — a wrist
+reading as off-wrist, and no test anywhere would have failed. `PpgScale` now carries the
+width and derives the bounds; `BITS_19` stays literal so the existing suite pins exactly
+what it always pinned, and `scaled_to` is the only thing that ever moves a number. Three
+tests pin the relationship, including the invariant that actually matters — the auto-gain
+loop must shed LED drive *before* the detector declares a rail, checked at both widths
+rather than argued from proportionality.
+
+**The driver.** `drivers/max30101`: public register map, green LED on slot 1 (the wrist
+wavelength — a MAX30102 has none and answers on the same address), LED-off ambient on
+slot 2, 18-bit counts. The parenthesis above originally ended "and is refused on its
+`PART_ID` before a single register is written", which was wrong: the whole MAX3010x
+family reports `0x15`. Corrected on 2026-08-17 — see the entry below and
+[§ 625](../architecture/decisions.md).
+
+Its design problem is that **this FIFO is positional**. The MAX86177 tags each word; the
+MAX30101 writes one sample per enabled slot in slot order and labels nothing, so the tag
+is assigned from read position — and a single sample read out of step transposes PPG and
+ambient *for the rest of the window*. Nothing downstream can detect that: `hr_drain`
+demuxes on the tag it is handed, and a transposed stream yields a plausible wrong heart
+rate. Two guards, both tested: reads are whole frames (a FIFO holding half a frame yields
+nothing rather than its first sample), and phase is re-derived on every flush rather than
+carried across a duty-cycle window.
+
+**Then the Renode model found the second bug, which is the part worth recording.** The
+model was going to be a straight adaptation until the FIFO ring was modelled *honestly* —
+real write/read pointers and a real overflow counter instead of a queue. That made the
+overflow case reachable, and the driver had no answer for it: an overflow drops samples,
+an **odd** number of dropped samples slips slot phase exactly as a partial read would, and
+`OVF_COUNTER` saturates so the parity is unrecoverable. The whole-frame guard does not
+help — every frame after the drop is whole *and* transposed. `refill_frame` now flushes
+and re-derives alignment, trading a fraction of a second of pulse for not reporting a
+confident wrong number, and the test pins that it clears the counter too (leaving it set
+would re-trigger forever). The mock needed the same honesty to make that test mean
+anything: it had been ignoring the pointer writes it was supposed to be flushed by.
+
+The general lesson is the one this whole day keeps repeating: **a model that agrees with
+the driver's belief cannot detect a wrong belief** — `quality_standards.md` already says
+that about the sensor models, and here it was the model getting *less* agreeable that
+found the defect.
+
+**Rung: host-tested + sim-verified.** Workspace host sweep 2739 -> 2755 passed / 0 failed
+(3 scale invariants, 12 driver, 1 overflow);
+`cargo fmt --all --check` clean, `clippy -D warnings` clean for `thumbv7em-none-eabihf` on
+the workspace default and the sim feature set. **All nine Renode scenarios green** (smoke,
+alerts, pages, terrain, dropout, screens, idle, workout, storm), with `smoke` reading
+**70 BPM** off the new model (band 55-95 against a synthesised ~72.3) — and because the
+model's FIFO is untagged, that assertion now covers the driver's positional tagging as
+well: a phase slip feeds ambient counts in as PPG and no plausible BPM survives it.
+Nothing here is
+bench-verified; no hardware exists. The part checks, the register values, and the
+overflow behaviour are all datasheet-derived and await silicon.
+
+## 2026-08-17 (fourth) — the part check that never checked anything
+
+A verification pass over [`parts.md`](parts.md) before ordering, against both the firmware
+and the vendors, turned up a claim this repo had asserted in five places and never tested:
+that `drivers/max30101` refuses a MAX30102 on its `PART_ID`. **It does not.** The MAX30101,
+MAX30102 and MAX30105 all report `0x15` — the register names the family, not the die. The
+same pass found the mirror-image error in the same paragraph: the list said a MAX30105
+would be *refused* until its id was added, when in fact it passes and should.
+
+The gap mattered because § 623 chose this part partly for being a commodity, the market for
+these modules is dominated by the wrong one, and the two boards are visually near-identical
+— so the procurement advice was leaning on a backstop that was not there.
+
+**What the wrong part would actually have done, since the old comment overstated it.** Not a
+confident wrong pulse: slot 1 selects LED3, a MAX30102 has none, so both slots read ambient,
+the corrected DC collapses and `PeakDetector::contact` refuses it. The cost would have been a
+bench day chasing strap pressure and light barriers — step 5 warns that is the hard part — for
+a fault that was never mechanical. Full reasoning, including the one narrow path to a genuinely
+wrong number, in [§ 625](../architecture/decisions.md).
+
+**The fix, in the order § 625 argues for.** `init` now checks the green channel by capability:
+write `LED3_PA`, read it back, refuse before the mode write so nothing streams. That is a
+better test than the id even ignoring the family problem — it catches a broken LED3 line or a
+cold joint too, which on a hand-wired breadboard is not a hypothetical. Because reserved-register
+behaviour is unspecified, `watch_core::ppg::EmitterCheck` backstops it optically: full drive, a
+lit diode, no reflected DC, sustained ten auto-gain ticks, and the task says so once. It reports
+rather than gates — the contact floor was already withholding the reading, so what was missing
+was the reason.
+
+17 host tests on the driver (5 new, including one that pins the shared part id so the premise
+cannot be forgotten again) and 8 new on `EmitterCheck`, covering both directions and the two
+scenes that must never accuse the hardware. Firmware builds, CI clippy clean.
+
+Still not bench-verified, and one item is now owed that was not before: step 5 opens with a
+**negative control** — force the LED drive to zero and watch the new line fire — because a
+guard nobody has seen fire is a guard nobody knows works.
+
+## 2026-08-19 — The GPS link gets DMA depth, and the simulator gets the UARTE event provider it was missing
+
+`gps.rs` had re-armed one 32-byte EasyDMA read since GNSS bring-up, which fills in 8.3 ms at
+the factory 38400 baud and then leaves the receiver disarmed until a task runs again — while an
+NVMC page erase halts the CPU for ~85 ms and cannot be divided ([§ 419](../architecture/decisions.md)).
+Up to 326 bytes of NMEA per checkpoint, which is an L4 flash write degrading L1 distance. The
+receiver now runs on `BufferedUarte`, whose ENDRX -> STARTRX PPI chain keeps the next transfer
+armed in hardware across the stall. The ring is **2048 bytes**, derived rather than picked: the
+guaranteed headroom is `half_len`, so 1024 B = 267 ms at this baud against an 85 ms erase, where
+the 512 bytes the earlier notes specified buys 66.7 ms and covers none — a sizing that was right
+at 9600 and wrong by 4x after [§ 622](../architecture/decisions.md). The peripherals it needs
+(TIMER2, PPI channels 2/3, PPI group 0) are claimed in the board crate beside UARTE1's TIMER1 +
+PPI 0/1, all of it outside the S140's TIMER0 / PPI 17-31 / group 4-5 reservations, and the board
+crate's header now carries the whole budget.
+
+**The interesting half is that [§ 421](../architecture/decisions.md)'s timer model turned out to
+be necessary and not sufficient, and only running it showed that.** With SHORTS in place the swap
+delivered not one byte and the guest died at ~16 s. Renode's PPI resolves an event endpoint by
+casting the owning peripheral to `INRFEventProvider`, and v1.16.1's `NRF52840_UART` does not
+implement it, so every PPI channel sourced from a UARTE event was refused at configuration time
+with an error in `renode.log` that nothing had ever read. Both of `BufferedUarte`'s UARTE chains
+are exactly that. The same error is present in a run of unmodified `main` for UARTE1 — so
+§ 420's hardware idle-line chain has never fired under the simulator either, and the software gap
+timeout was carrying the settings pipe alone. `sim/NRF52840_UARTE_Events.cs` closes it with
+upstream's own event-provider delta, plus one fix: v1.16.1 never disarms the receiver at
+RXD.MAXCNT, so once the guest clears ENDRX the RX pointer walks past the driver's buffer without
+limit. That is what killed the first attempt, and it presented as `RefCell already borrowed`
+inside `embassy_sync::watch` — **issue #713's signature**, reproduced deterministically for the
+first time. Not a diagnosis of #713, but the first mechanism candidate that comes with a
+reproduction.
+
+Evidence: workspace host tests unchanged and green; all three feature sets build clippy-clean for
+`thumbv7em-none-eabihf`; **all nine Renode scenarios pass**, including `smoke`, `dropout` and
+`workout` — the three that drive this code path hardest. Bench-verified: nothing. Renode models no
+NVMC at all, so the stall the ring is sized against has never been produced; the step-7 item in
+[`quality_standards.md`](quality_standards.md) keeps its pass criterion and changes only its
+expectation, from up to 326 bytes lost to zero. See [§ 698](../architecture/decisions.md).
+
+## 2026-09-02 — the parity ports are re-measured against their sources, and five had drifted
+
+No new capability, no new page. Roughly half of `watch_core` is a one-way faithful
+port of a shipped web helper, and nothing in the repo detects a port whose source
+has moved since it was taken. This entry is the first time that was measured
+rather than reasoned about: for every `core/src/<m>.rs` with a same-named
+`apps/web/src/lib/**/<m>.ts`, compare the last commit date on each side. Forty-nine
+modules pair up; on sixteen the web source moved after the port was last touched.
+
+Five of the sixteen carried a real divergence and were fixed
+([decisions § 900](../architecture/decisions.md) through
+[§ 903](../architecture/decisions.md)):
+
+- `route_geometry` ranked candidate segments by a perpendicular measured inside
+  each segment's own planar frame, so 1 cm of sideways jitter moved the answer
+  3474.8 m onto the wrong limb of a 3.47 km out-and-back; and a non-finite fix
+  came back as `Some(0.0)`, which is the start of the course, not an unknown
+  position.
+- The four § 468 antimeridian sites that exist here — `route_geometry`'s two,
+  `route_simplify`'s RDP perpendicular and equirectangular leg (one 0.06° leg
+  measured 40,023 km), and `track_projection`'s and `run_heatmap`'s bounding
+  boxes (359.99° spans). § 463 left the ports carrying the bug because web
+  carried it too; § 468 fixed web and the reason expired with nothing recording
+  the dependency.
+- `run_stats::elevation_gain_metres` paired adjacent points, so one missing
+  sample in the middle of a climb lost the whole climb. The live `VertAccumulator`
+  was checked and is a different mechanism — it holds its reference across a
+  dropped sample — so this is a port defect, not a vert defect on the device.
+- The shared haversine returned NaN for a near-antipodal pair; clamped rather
+  than re-expressed as `asin`, so no pinned `course` figure moves.
+- `locale_defaults`' Sunday-first region table was the hand-written 16-region
+  list, wrong for 19 regions against CLDR, under a doc comment claiming it agreed
+  with `Intl`.
+
+Evidence: `watch_core` host suite 2351 → 2367, whole workspace green; the whole
+workspace builds for `thumbv7em-none-eabihf` and `clippy -D warnings` passes;
+`cargo fmt --check` clean; `check_watch_doc_counts.mjs` and
+`check_watch_wire_vectors.mjs` both green. Nine of the sixteen new cases were
+confirmed to fail against the arithmetic they replace before the fix landed.
+**Sim-verified: nothing** — no Renode fixture carries a course or a track near
+180°, and none of these modules has a glance page to dump. **Bench-verified:
+nothing.** None of the five modules has a consumer on the wrist today; this is
+port fidelity, and reporting any of it as a device defect would be false. The
+remaining eleven of the sixteen are filed with their measurement in
+[`followups.md`](../product/followups.md). § 82 unchanged.
+
+## 2026-10-15 — the receiver gets a dynamic model and the estimator gets a real accuracy
+
+Nothing configured the MAX-M10S's dynamic platform model, so it ran the factory
+`PORT` (portable) envelope, and `record.rs`'s `credit_estimated` passed the
+spec estimator `accuracy = None`, so every fix got the 3 m floor and was
+over-trusted under canopy (issue #1173).
+
+- `ublox_nmea::ubx::cfg_valset_runner` encodes one UBX-CFG-VALSET (RAM + BBR
+  layers): `CFG-NAVSPG-DYNMODEL` (`0x20110021`) = **PED (3)** and
+  `CFG-MSGOUT-UBX_NAV_PVT_UART1` (`0x20910007`) = 1. **Not WRIST (9):** the
+  M10 SPG 5.10 interface description (UBX-21035062) lists WRIST as "not
+  available in all products" and nothing for the MAX-M10S says it is one of
+  them; VALSET is atomic, so an unsupported value would also lose the NAV-PVT
+  enable. The gps task sends it on the first buffer after boot and after every
+  power-down wake, and logs the ACK/NAK.
+- `ublox_nmea::Parser` runs a UBX frame assembler beside the NMEA one and
+  decodes UBX-NAV-PVT (`hAcc`, `sAcc`, `gSpeed`, `numSV`, `fixType`,
+  `gnssFixOK`) and ACK/NAK. Each assembler sees every byte, so a `$` inside a
+  UBX payload or a `0xB5 0x62` inside noise costs the other nothing.
+- `watch_core::fix::Fix` carries `h_acc_m` / `s_acc_mps` from a PVT no more
+  than `PVT_MAX_AGE_S` (1 s) from the RMC on uptime and UTC; a no-fix PVT or a
+  void RMC clears it. `credit_estimated` hands both to `add_fix`. No change to
+  `gps_distance.rs`.
+
+Evidence: `cargo check` for `thumbv7em-none-eabihf` (default, `ble`,
+`log-personal-data`) and for the host with `--tests`; `cargo fmt --check`
+clean; `check_watch_doc_counts.mjs` green. The VALSET bytes are pinned against
+a hand-computed frame; NAV-PVT decode, parser interleaving, the freshness rule
+and the recorder-to-estimator hand-off have unit and property tests that run
+in CI. **Host-tested / build-verified only. Sim-verified: nothing** — the
+Renode feed is NMEA-only and ignores UBX, so on the sim every fix reads
+`None` and the estimator keeps its floor. **Bench-verified: nothing**; the
+checklist line is in [`quality_standards.md`](quality_standards.md) Step 3.
+
 ## Next entry expected
 
-Parts order + first flash (blink on the real DK) — see [`parts.md`](parts.md). That entry starts the photo record.
+Parts order + first flash (blink on the real DK) — see [`parts.md`](parts.md), now fully
+specified, with every line's driver written. That entry starts the photo record.

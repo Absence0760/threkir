@@ -1,0 +1,220 @@
+#!/usr/bin/env node
+// Unit tests for the Edge Function vacuity guard's two halves: the neuterer
+// that builds the mutant, and the JUnit reader that scores it.
+//
+// The neuterer is the half worth pinning hardest. If it silently stops finding
+// an exported name, the stub loses the binding, the importing test file dies
+// at load, and every one of its test cases is scored a KILL it never earned -
+// which is exactly the inversion this whole guard exists to detect, turned on
+// the guard itself. The end-to-end run has its own check for that (a baseline
+// case absent from the mutant report), and these are the cheap half.
+
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+
+import { neuterModule, topLevelExports } from './edge_function_neuter.mjs';
+import {
+  EXPECTED_SURVIVORS,
+  MATERIALISED,
+  runLogged,
+  NEUTERED_ARTIFACTS,
+  parseJunit,
+  REPO_ROOT,
+  sourceModules,
+} from './check_edge_function_test_vacuity.mjs';
+
+/// Every declaration form the functions tree actually uses, plus the three
+/// constructs whose braces would shift the depth if they were read as code.
+const FIXTURE = `
+/// A doc comment with a brace { and the word export in it.
+import type { Database } from './database.ts';
+
+const RE = /^\\{[a-z]{2}\\}$/;
+const TPL = \`a \${'b'} { c\`;
+const S = 'a } b';
+
+export function plain(a: number): string { return String(a); }
+export async function later(): Promise<void> { const inner = { export: 1 }; }
+export class Boom extends Error {}
+export const LIMIT = 10;
+export let mutable = 1;
+export type Alias = string;
+export interface Shape { a: number }
+export type { Database };
+export { plain as renamed };
+export default Boom;
+
+function notExported() {
+  const nested = { a: 1 };
+  return nested;
+}
+`;
+
+test('topLevelExports reads every declaration form the tree uses', () => {
+  const found = topLevelExports(FIXTURE);
+  assert.deepEqual(
+    found.map((e) => `${e.kind}:${e.name}`).sort(),
+    [
+      'async function:later',
+      'class:Boom',
+      'default:default',
+      'function:plain',
+      'type:Alias',
+      'type:Database',
+      'type:Shape',
+      'value:LIMIT',
+      'value:mutable',
+      'value:renamed',
+    ],
+  );
+});
+
+test('a brace inside a regex, a template or a string does not shift the depth', () => {
+  // Each of these precedes every export in the fixture, so an unbalanced read
+  // of any one of them would swallow the whole list.
+  for (const construct of ['const RE = /^\\{[a-z]{2}\\}$/;', 'const TPL', "const S = 'a } b';"]) {
+    assert.ok(FIXTURE.includes(construct), `fixture no longer carries ${construct}`);
+  }
+  assert.equal(topLevelExports(FIXTURE).length, 10);
+});
+
+test('a regex after a keyword is a regex, so a quote inside it opens no string', () => {
+  // `return /^\p{L}['’ .-]*$/u` read as a division by `return`: its `'` opened a
+  // string that ran to the next quote in the file, and every export after it
+  // vanished from the stub (race-results-import/lib.ts lost 14).
+  const src = [
+    "export function namePart(s: string) { return /^[A-Za-z' .-]*$/u.test(s) ? s : null; }",
+    "export function kind(x: unknown) { if (typeof /'/ === 'object') return 1; return 2; }",
+    'export function ratio(a: number, b: number) { return a / b / 2; }',
+    "export const after = 'still read';",
+  ].join('\n');
+  assert.deepEqual(topLevelExports(src).map((e) => e.name), ['namePart', 'kind', 'ratio', 'after']);
+});
+
+test('a regex inside a template interpolation is a regex, so a quote inside it opens no string', () => {
+  // `${String(v).replace(/"/g, '\\"')}` read the regex's `"` as a string that
+  // ran past the closing backtick, and every export after it vanished from the
+  // stub (_shared/keyset_page.ts lost six).
+  const src = [
+    'function literal(v: string) {',
+    "  return `\"${String(v).replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"')}\"`;",
+    '}',
+    'export function half(a: number) { return `${a / 2}`; }',
+    "export const after = 'still read';",
+  ].join('\n');
+  assert.deepEqual(topLevelExports(src).map((e) => e.name), ['half', 'after']);
+});
+
+test('every line-anchored declaration in a real module is read by the scanner', () => {
+  // An independent count, so a lexer slip that hides exports from BOTH the
+  // original and its stub cannot pass the shape check below by agreeing with
+  // itself.
+  const DECL = /^export (?:async )?(?:function\*?|const|let|class|interface|type|enum) ([A-Za-z_$][A-Za-z0-9_$]*)/gm;
+  for (const rel of sourceModules()) {
+    const src = readFileSync(join(REPO_ROOT, rel), 'utf8');
+    const found = new Set(topLevelExports(src).map((e) => e.name));
+    const missed = [...src.matchAll(DECL)].map((m) => m[1]).filter((name) => !found.has(name));
+    assert.deepEqual(missed, [], `${rel}: the scanner does not see these exports`);
+  }
+});
+
+test('an export nested inside a function body is not a top-level export', () => {
+  const found = topLevelExports(FIXTURE).map((e) => e.name);
+  assert.ok(!found.includes('1'), 'the object key `export: 1` was read as a declaration');
+  assert.ok(!found.includes('notExported'));
+});
+
+test('the same name exported as a type and as a value is stubbed as the value', () => {
+  const found = topLevelExports('export interface Thing { a: number }\nexport const Thing = 1;\n');
+  assert.deepEqual(found, [{ kind: 'value', name: 'Thing' }]);
+});
+
+test('neuterModule preserves each export shape', () => {
+  const stub = neuterModule(FIXTURE, 'fixture.ts');
+  assert.match(stub, /export function plain\(\) \{ return undefined; \}/);
+  assert.match(stub, /export async function later\(\) \{ return undefined; \}/);
+  assert.match(stub, /export class Boom extends Error \{\}/);
+  assert.match(stub, /export const LIMIT = undefined;/);
+  assert.match(stub, /export default undefined;/);
+  // Shape preservation is not cosmetic: an async function stubbed as a sync
+  // one breaks `await`-shaped tests for a reason they did not earn, and a
+  // vacuous test hidden behind such a kill is one this guard never reports.
+  assert.ok(!/export function later/.test(stub));
+});
+
+test('the neutered twin of every real module exports exactly the names the original did', () => {
+  // The operator's validity condition. A stub short of one name makes its
+  // importers die at load, and a dead import scores every test in the file as
+  // a kill nobody proved.
+  for (const rel of sourceModules()) {
+    const src = readFileSync(join(REPO_ROOT, rel), 'utf8');
+    const before = topLevelExports(src).map((e) => e.name).sort();
+    const after = topLevelExports(neuterModule(src, rel)).map((e) => e.name).sort();
+    assert.deepEqual(after, before, `${rel}: the stub lost or invented an export`);
+  }
+});
+
+test('parseJunit separates a pass, a failure and a skip', () => {
+  const xml = `<?xml version="1.0"?>
+<testsuites>
+  <testsuite name="./a.test.ts">
+    <testcase name="green &amp; fine" classname="./a.test.ts" line="3" col="6">
+    </testcase>
+    <testcase name="red" classname="./a.test.ts" line="9" col="6">
+      <failure message="boom">stack</failure>
+    </testcase>
+    <testcase name="ignored" classname="./a.test.ts" line="14" col="6">
+      <skipped/>
+    </testcase>
+  </testsuite>
+</testsuites>`;
+  const out = parseJunit(xml);
+  assert.equal(out.size, 2, 'a skipped case is neither a pass nor a failure and must not be scored');
+  assert.equal(out.get('./a.test.ts::green & fine')?.passed, true);
+  assert.equal(out.get('./a.test.ts::green & fine')?.line, '3');
+  assert.equal(out.get('./a.test.ts::red')?.passed, false);
+});
+
+test('every path the mirror materialises exists', () => {
+  for (const rel of MATERIALISED) statSync(join(REPO_ROOT, rel));
+});
+
+test('every neutered artifact is named with a reason and still exists', () => {
+  for (const a of NEUTERED_ARTIFACTS) {
+    assert.ok(a.reason.trim(), `${a.path} carries no reason`);
+    statSync(join(REPO_ROOT, a.path));
+  }
+});
+
+test('every expected survivor names a reason and a file that exists', () => {
+  for (const e of EXPECTED_SURVIVORS) {
+    assert.ok(e.reason.trim(), `${e.file} :: ${e.name} carries no reason`);
+    statSync(join(REPO_ROOT, 'apps', 'backend', e.file.replace(/^\.\//, '')));
+  }
+});
+
+test('a child that prints past the 1 MiB pipe buffer still runs to completion', () => {
+  // The neutered suite's failure output outgrew spawnSync's default maxBuffer on
+  // PR #1101, which kills the child before deno writes its JUnit report. 3 MiB
+  // here, then a file only a child that was not killed can write.
+  const dir = mkdtempSync(join(tmpdir(), 'edge-vacuity-test-'));
+  try {
+    const done = join(dir, 'done');
+    const res = runLogged(
+      process.execPath,
+      ['-e', `process.stdout.write('x'.repeat(3 * 1024 * 1024)); require('fs').writeFileSync(${JSON.stringify(done)}, 'ok')`],
+      dir,
+      join(dir, 'run'),
+    );
+    assert.equal(res.error, undefined);
+    assert.equal(res.signal, null);
+    assert.equal(res.status, 0);
+    assert.equal(readFileSync(done, 'utf8'), 'ok');
+    assert.equal(statSync(res.stdoutPath).size, 3 * 1024 * 1024);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

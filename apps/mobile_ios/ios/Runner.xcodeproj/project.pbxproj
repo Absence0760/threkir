@@ -7,27 +7,149 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		88CCCCC3E2B9ED33D6E5C752 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8E2E94040ADD797F5FA23CBA /* PrivacyInfo.xcprivacy */; };
+		858A09269AE4C6BF87AAC6E4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 23E8D7DCFA1005E23A159373 /* PrivacyInfo.xcprivacy */; };
+		0D2B2E8F311B80C12B0C1FE2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */; };
+		19D6E28D68AE2A45711C3488 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5BFB1CC5D045958170661200 /* PrivacyInfo.xcprivacy */; };
+		99507C063B774CFFC82DF822 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7ED81E4BBB2FAE4BA1A34A25 /* PrivacyInfo.xcprivacy */; };
+		A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
+		A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000014 /* LiveActivityBridge.swift */; };
+		A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
+		A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000013 /* RunActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000011 /* RunActivityWidget.swift */; };
+		A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */; };
+		B7D0A1E00000000000000001 /* TodayWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */; };
+		B7D0A1E00000000000000002 /* TodayWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */; };
+		B7D0A1E00000000000000003 /* TodayWorkoutWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000012 /* TodayWorkoutWidget.swift */; };
+		B7D0A1E00000000000000004 /* HomeWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000013 /* HomeWidgetBridge.swift */; };
+		B7D0A1E00000000000000005 /* TodayWidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000014 /* TodayWidgetSnapshotTests.swift */; };
+		7884EB0101012EC3CC00C636 /* ActiveRunComplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */; };
+		7884EB0101022EC3CC00C636 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
+		7884EB0101072EC3CC00C636 /* RunFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000A2EC3CC00C636F4 /* RunFormat.swift */; };
+		7884EB0101082EC3CC00C636 /* ActiveRunTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */; };
+		7884EB0101092EC3CC00C636 /* ActiveRunTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */; };
+		7884EB0101032EC3CC00C636 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
+		7884EB0101042EC3CC00C636 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7884EB0103012EC3CC00C636 /* WidgetKit.framework */; };
+		7884EB0101052EC3CC00C636 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7884EB0103022EC3CC00C636 /* SwiftUI.framework */; };
+		7884EB0101062EC3CC00C636 /* WatchAppComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		054B8C1C1E3BDB65A10FA040 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 665513E9B09D3B4079C81663 /* Pods_Runner.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
-		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+		A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */; };
+		A1C0DE0000000000000C0004 /* WatchIngestBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		7884E9692EC3CC0A00C636F2 /* WatchIngestBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E9682EC3CC0A00C636F2 /* WatchIngestBridge.swift */; };
+		7884E9702EC3CC0A00C636F3 /* CalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E9712EC3CC0A00C636F3 /* CalendarBridge.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		7E09AC1728B0AA1AC2007F34 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0DED39074C17F5E4A6C3C15 /* Pods_RunnerTests.framework */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
+		9C64A1B20000000000000001 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9C64A1B20000000000000002 /* InfoPlist.xcstrings */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		7884EA00102EC3CC00C636F4 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
+		7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00022EC3CC00C636F4 /* AppTheme.swift */; };
+		7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */; };
+		C4D5E6F7A8B90001000C00F1 /* GpsDistanceEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D5E6F7A8B90002000C00F1 /* GpsDistanceEstimator.swift */; };
+		4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10001 /* LiveRace.swift */; };
+		4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */; };
+		7D1A0C5E3B2F000300D10001 /* PushedWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000400D10001 /* PushedWorkout.swift */; };
+		7D1A0C5E3B2F000300D10002 /* WatchWorkoutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000400D10002 /* WatchWorkoutRunner.swift */; };
+		7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */; };
+		7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00052EC3CC00C636F4 /* ContentView.swift */; };
+		7884EA00392EC3CC00C636F4 /* GpsHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00362EC3CC00C636F4 /* GpsHealth.swift */; };
+		7884EA00152EC3CC00C636F4 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00062EC3CC00C636F4 /* HealthKitManager.swift */; };
+		7884EA003F2EC3CC00C636F4 /* HoldToStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */; };
+		7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00072EC3CC00C636F4 /* MiniMap.swift */; };
+		7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00372EC3CC00C636F4 /* Pedometer.swift */; };
+		7884EA95002EC3CC00C636F4 /* RunResume.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA95012EC3CC00C636F4 /* RunResume.swift */; };
+		7884EA95022EC3CC00C636F4 /* BatteryCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA95032EC3CC00C636F4 /* BatteryCheck.swift */; };
+		7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */; };
+		7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */; };
+		7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */; };
+		7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */; };
+		7884EA00182EC3CC00C636F4 /* RunApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00092EC3CC00C636F4 /* RunApp.swift */; };
+		7884EA00192EC3CC00C636F4 /* RunFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000A2EC3CC00C636F4 /* RunFormat.swift */; };
+		7884EA003B2EC3CC00C636F4 /* RunLaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00382EC3CC00C636F4 /* RunLaps.swift */; };
+		7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */; };
+		7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */; };
+		7884EA00412EC3CC00C636F4 /* StartCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */; };
+		5164A17E0003000000000101 /* WatchAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0004000000000101 /* WatchAuth.swift */; };
+		5164A17E0003000000000102 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0004000000000102 /* SignInView.swift */; };
+		7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */; };
+		7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */; };
+		7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */; };
+		7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA001F2EC3CC00C636F4 /* Assets.xcassets */; };
+		7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
+		7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */; };
+		7884EA00262EC3CC00C636F4 /* WatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7884EA00252EC3CC00C636F4 /* WatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000010 /* ShareViewController.swift */; };
+		5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		D0C0BE000000000000000001 /* DocumentOpenHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */; };
+		D0C0BE000000000000000002 /* DocumentOpenHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */; };
+		5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */; };
+		5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000014 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		7884EB0106042EC3CC00C636 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7884EB0101062EC3CC00C636 /* WatchAppComplication.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EA002B2EC3CC00C636F4 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				7884EA00262EC3CC00C636F4 /* WatchApp.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5AE0C0DE0000000000000034 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */,
+				A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXContainerItemProxy section */
+		A5CD1E000000000000000035 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A5CD1E000000000000000030;
+			remoteInfo = RunActivityExtension;
+		};
 		331C8085294A63A400263BE5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		5AE0C0DE0000000000000040 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5AE0C0DE0000000000000030;
+			remoteInfo = ShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -44,14 +166,56 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+/* Begin PBXContainerItemProxy section */
+		7884EB0108022EC3CC00C636 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7884EB0107012EC3CC00C636;
+			remoteInfo = WatchAppComplication;
+		};
+		7884EA002D2EC3CC00C636F4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7884EA002C2EC3CC00C636F4;
+			remoteInfo = WatchApp;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		8E2E94040ADD797F5FA23CBA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		23E8D7DCFA1005E23A159373 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		5BFB1CC5D045958170661200 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		7ED81E4BBB2FAE4BA1A34A25 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A5CD1E000000000000000010 /* RunActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityAttributes.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000014 /* LiveActivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridge.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000011 /* RunActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityWidget.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000015 /* RunActivity.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = RunActivity.xcconfig; path = Flutter/RunActivity.xcconfig; sourceTree = "<group>"; };
+		A5CD1E000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridgeTests.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetSnapshot.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000012 /* TodayWorkoutWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWorkoutWidget.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000013 /* HomeWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetBridge.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000014 /* TodayWidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetSnapshotTests.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000015 /* RunActivity.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunActivity.entitlements; sourceTree = "<group>"; };
+		A5CD1E000000000000000013 /* RunActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunComplication.swift; sourceTree = "<group>"; };
+		7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunTimeline.swift; sourceTree = "<group>"; };
+		7884EB0102022EC3CC00C636 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7884EB0102032EC3CC00C636 /* WatchAppComplication.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchAppComplication.entitlements; sourceTree = "<group>"; };
+		7884EB0103012EC3CC00C636 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		7884EB0103022EC3CC00C636 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WatchAppComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		004299668207F1A19BC9D2C0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		01181151CA7C4988DB014122 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		0D67D7F0B0B7F43602FB9788 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		23FB069385FCD80BF6B5F93E /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
-		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
+		A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarBridgeRruleTests.swift; sourceTree = "<group>"; };
+		A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchIngestBridgeTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		512BC6C462CDD5F53E274B55 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -61,6 +225,7 @@
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7884E9682EC3CC0A00C636F2 /* WatchIngestBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchIngestBridge.swift; sourceTree = "<group>"; };
+		7884E9712EC3CC0A00C636F3 /* CalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarBridge.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
@@ -70,10 +235,76 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9C64A1B20000000000000002 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		7884EA012EC3CC0A00C636F4 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		E0DED39074C17F5E4A6C3C15 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunBridge.swift; sourceTree = "<group>"; };
+		7884EA00022EC3CC00C636F4 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedRoute.swift; sourceTree = "<group>"; };
+		C4D5E6F7A8B90002000C00F1 /* GpsDistanceEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsDistanceEstimator.swift; sourceTree = "<group>"; };
+		4A6E1C0B5D2F000400C10001 /* LiveRace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRace.swift; sourceTree = "<group>"; };
+		4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceBannerView.swift; sourceTree = "<group>"; };
+		7D1A0C5E3B2F000400D10001 /* PushedWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushedWorkout.swift; sourceTree = "<group>"; };
+		7D1A0C5E3B2F000400D10002 /* WatchWorkoutRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutRunner.swift; sourceTree = "<group>"; };
+		7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStore.swift; sourceTree = "<group>"; };
+		7884EA00052EC3CC00C636F4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		7884EA00362EC3CC00C636F4 /* GpsHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealth.swift; sourceTree = "<group>"; };
+		7884EA00062EC3CC00C636F4 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStop.swift; sourceTree = "<group>"; };
+		7884EA00072EC3CC00C636F4 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
+		7884EA00372EC3CC00C636F4 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
+		7884EA95012EC3CC00C636F4 /* RunResume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunResume.swift; sourceTree = "<group>"; };
+		7884EA95032EC3CC00C636F4 /* BatteryCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryCheck.swift; sourceTree = "<group>"; };
+		7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSettings.swift; sourceTree = "<group>"; };
+		7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
+		7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncer.swift; sourceTree = "<group>"; };
+		7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityType.swift; sourceTree = "<group>"; };
+		7884EA00092EC3CC00C636F4 /* RunApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunApp.swift; sourceTree = "<group>"; };
+		7884EA000A2EC3CC00C636F4 /* RunFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunFormat.swift; sourceTree = "<group>"; };
+		7884EA00382EC3CC00C636F4 /* RunLaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLaps.swift; sourceTree = "<group>"; };
+		7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunMiniMapView.swift; sourceTree = "<group>"; };
+		7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorage.swift; sourceTree = "<group>"; };
+		7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdown.swift; sourceTree = "<group>"; };
+		5164A17E0004000000000101 /* WatchAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAuth.swift; sourceTree = "<group>"; };
+		5164A17E0004000000000102 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
+		7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
+		7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
+		7884EA001F2EC3CC00C636F4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		7884EA00232EC3CC00C636F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchApp.entitlements; sourceTree = "<group>"; };
+		7884EA00252EC3CC00C636F4 /* WatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = WatchApp.xcconfig; path = Flutter/WatchApp.xcconfig; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000010 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRouteHandoff.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000013 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000014 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentOpenHandoff.swift; sourceTree = "<group>"; };
+		D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentOpenHandoffTests.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionHandoffTests.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtension.xcconfig; path = Flutter/ShareExtension.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A5CD1E000000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EB0106022EC3CC00C636 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7884EB0101042EC3CC00C636 /* WidgetKit.framework in Frameworks */,
+				7884EB0101052EC3CC00C636 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1DB25A7F209C78D39DF8B181 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -91,9 +322,50 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7884EA002A2EC3CC00C636F4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5AE0C0DE0000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A5CD1E000000000000000020 /* RunActivity */ = {
+			isa = PBXGroup;
+			children = (
+				DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */,
+				A5CD1E000000000000000010 /* RunActivityAttributes.swift */,
+				A5CD1E000000000000000011 /* RunActivityWidget.swift */,
+				B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */,
+				B7D0A1E00000000000000012 /* TodayWorkoutWidget.swift */,
+				A5CD1E000000000000000012 /* Info.plist */,
+				B7D0A1E00000000000000015 /* RunActivity.entitlements */,
+			);
+			path = RunActivity;
+			sourceTree = "<group>";
+		};
+		7884EB0105012EC3CC00C636 /* Complications */ = {
+			isa = PBXGroup;
+			children = (
+				8E2E94040ADD797F5FA23CBA /* PrivacyInfo.xcprivacy */,
+				7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */,
+				7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */,
+				7884EB0102022EC3CC00C636 /* Info.plist */,
+				7884EB0102032EC3CC00C636 /* WatchAppComplication.entitlements */,
+			);
+			name = Complications;
+			path = "../../watch_ios/Complications";
+			sourceTree = "<group>";
+		};
 		2AC58A8B0223326464C20D9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -106,7 +378,12 @@
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
-				331C807B294A618700263BE5 /* RunnerTests.swift */,
+				A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */,
+				A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */,
+				5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */,
+				A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */,
+				D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */,
+				B7D0A1E00000000000000014 /* TodayWidgetSnapshotTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -133,6 +410,9 @@
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
+				7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */,
+				5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */,
+				A5CD1E000000000000000015 /* RunActivity.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -144,8 +424,12 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				5AE0C0DE0000000000000020 /* ShareExtension */,
+				7884EA00272EC3CC00C636F4 /* WatchApp */,
+				7884EB0105012EC3CC00C636 /* Complications */,
 				817F36B4C422B0F918E58AFA /* Pods */,
 				2AC58A8B0223326464C20D9A /* Frameworks */,
+				A5CD1E000000000000000020 /* RunActivity */,
 			);
 			sourceTree = "<group>";
 		};
@@ -154,6 +438,10 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				5AE0C0DE0000000000000014 /* ShareExtension.appex */,
+				7884EA00252EC3CC00C636F4 /* WatchApp.app */,
+				A5CD1E000000000000000013 /* RunActivityExtension.appex */,
+				7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -161,23 +449,122 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				7ED81E4BBB2FAE4BA1A34A25 /* PrivacyInfo.xcprivacy */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
+				7884EA012EC3CC0A00C636F4 /* GoogleService-Info.plist */,
+				9C64A1B20000000000000002 /* InfoPlist.xcstrings */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				7884E9682EC3CC0A00C636F2 /* WatchIngestBridge.swift */,
+				7884E9712EC3CC0A00C636F3 /* CalendarBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				A5CD1E000000000000000014 /* LiveActivityBridge.swift */,
+				D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */,
+				B7D0A1E00000000000000013 /* HomeWidgetBridge.swift */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		7884EA00272EC3CC00C636F4 /* WatchApp */ = {
+			isa = PBXGroup;
+			children = (
+				23E8D7DCFA1005E23A159373 /* PrivacyInfo.xcprivacy */,
+				7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */,
+				7884EA00022EC3CC00C636F4 /* AppTheme.swift */,
+				7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */,
+				C4D5E6F7A8B90002000C00F1 /* GpsDistanceEstimator.swift */,
+				4A6E1C0B5D2F000400C10001 /* LiveRace.swift */,
+				4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */,
+				7D1A0C5E3B2F000400D10001 /* PushedWorkout.swift */,
+				7D1A0C5E3B2F000400D10002 /* WatchWorkoutRunner.swift */,
+				7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */,
+				7884EA00052EC3CC00C636F4 /* ContentView.swift */,
+				7884EA00362EC3CC00C636F4 /* GpsHealth.swift */,
+				7884EA00062EC3CC00C636F4 /* HealthKitManager.swift */,
+				7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */,
+				7884EA00072EC3CC00C636F4 /* MiniMap.swift */,
+				7884EA00372EC3CC00C636F4 /* Pedometer.swift */,
+				7884EA95012EC3CC00C636F4 /* RunResume.swift */,
+				7884EA95032EC3CC00C636F4 /* BatteryCheck.swift */,
+				7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */,
+				7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */,
+				7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */,
+				7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */,
+				7884EA00092EC3CC00C636F4 /* RunApp.swift */,
+				7884EA000A2EC3CC00C636F4 /* RunFormat.swift */,
+				7884EA00382EC3CC00C636F4 /* RunLaps.swift */,
+				7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */,
+				7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */,
+				7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */,
+				5164A17E0004000000000102 /* SignInView.swift */,
+				5164A17E0004000000000101 /* WatchAuth.swift */,
+				7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */,
+				7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */,
+				7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */,
+				7884EA001F2EC3CC00C636F4 /* Assets.xcassets */,
+				7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */,
+				7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */,
+				7884EA00232EC3CC00C636F4 /* Info.plist */,
+				7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */,
+			);
+			name = WatchApp;
+			path = "../../watch_ios/WatchApp";
+			sourceTree = "<group>";
+		};
+		5AE0C0DE0000000000000020 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				5BFB1CC5D045958170661200 /* PrivacyInfo.xcprivacy */,
+				5AE0C0DE0000000000000010 /* ShareViewController.swift */,
+				5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */,
+				5AE0C0DE0000000000000012 /* Info.plist */,
+				5AE0C0DE0000000000000013 /* ShareExtension.entitlements */,
+			);
+			path = ShareExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A5CD1E000000000000000030 /* RunActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A5CD1E000000000000000043 /* Build configuration list for PBXNativeTarget "RunActivityExtension" */;
+			buildPhases = (
+				A5CD1E000000000000000031 /* Sources */,
+				A5CD1E000000000000000032 /* Frameworks */,
+				A5CD1E000000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RunActivityExtension;
+			productName = RunActivityExtension;
+			productReference = A5CD1E000000000000000013 /* RunActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		7884EB0107012EC3CC00C636 /* WatchAppComplication */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7884EB0109012EC3CC00C636 /* Build configuration list for PBXNativeTarget "WatchAppComplication" */;
+			buildPhases = (
+				7884EB0106012EC3CC00C636 /* Sources */,
+				7884EB0106022EC3CC00C636 /* Frameworks */,
+				7884EB0106032EC3CC00C636 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WatchAppComplication;
+			productName = WatchAppComplication;
+			productReference = 7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		331C8080294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */;
@@ -206,13 +593,20 @@
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
+				7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				7884EA002B2EC3CC00C636F4 /* Embed Watch Content */,
+				5AE0C0DE0000000000000034 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				35962F30FA7EE92CA151D686 /* [CP] Embed Pods Frameworks */,
+				7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7884EA002E2EC3CC00C636F4 /* PBXTargetDependency */,
+				5AE0C0DE0000000000000041 /* PBXTargetDependency */,
+				A5CD1E000000000000000036 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -221,6 +615,42 @@
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7884EA002C2EC3CC00C636F4 /* WatchApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7884EA00322EC3CC00C636F4 /* Build configuration list for PBXNativeTarget "WatchApp" */;
+			buildPhases = (
+				7884EA00282EC3CC00C636F4 /* Sources */,
+				7884EA002A2EC3CC00C636F4 /* Frameworks */,
+				7884EA00292EC3CC00C636F4 /* Resources */,
+				7884EB0106042EC3CC00C636 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7884EB0108012EC3CC00C636 /* PBXTargetDependency */,
+			);
+			name = WatchApp;
+			productName = WatchApp;
+			productReference = 7884EA00252EC3CC00C636F4 /* WatchApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5AE0C0DE0000000000000030 /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5AE0C0DE0000000000000053 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				5AE0C0DE0000000000000031 /* Sources */,
+				5AE0C0DE0000000000000032 /* Frameworks */,
+				5AE0C0DE0000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			productName = ShareExtension;
+			productReference = 5AE0C0DE0000000000000014 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -240,6 +670,12 @@
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
 					};
+					7884EA002C2EC3CC00C636F4 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					5AE0C0DE0000000000000030 = {
+						CreatedOnToolsVersion = 26.4;
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -249,6 +685,12 @@
 			knownRegions = (
 				en,
 				Base,
+				de,
+				fr,
+				es,
+				ja,
+				"pt-BR",
+				"pt-PT",
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
@@ -260,11 +702,32 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				5AE0C0DE0000000000000030 /* ShareExtension */,
+				7884EA002C2EC3CC00C636F4 /* WatchApp */,
+				A5CD1E000000000000000030 /* RunActivityExtension */,
+				7884EB0107012EC3CC00C636 /* WatchAppComplication */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A5CD1E000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D2B2E8F311B80C12B0C1FE2 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EB0106032EC3CC00C636 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				88CCCCC3E2B9ED33D6E5C752 /* PrivacyInfo.xcprivacy in Resources */,
+				7884EB0101032EC3CC00C636 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807F294A63A400263BE5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -276,16 +739,70 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				99507C063B774CFFC82DF822 /* PrivacyInfo.xcprivacy in Resources */,
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				9C64A1B20000000000000001 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EA00292EC3CC00C636F4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				858A09269AE4C6BF87AAC6E4 /* PrivacyInfo.xcprivacy in Resources */,
+				7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */,
+				7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */,
+				7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5AE0C0DE0000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				19D6E28D68AE2A45711C3488 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Register the Google Sign-In redirect scheme";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# GoogleSignIn hands the browser back through a custom URL scheme that IS the iOS\n# OAuth client id reversed, and routes it via handleURL:. That scheme cannot live in\n# the committed Info.plist for the same reason GoogleService-Info.plist itself cannot\n# -- it is the credential, and this repo is public. So it is appended to the BUILT\n# Info.plist from the operator's file; -append leaves the Supabase auth entry at index\n# 0 alone. No file, or a Firebase app with Google Sign-In switched off (which ships no\n# REVERSED_CLIENT_ID), registers nothing, and google_auth.dart hides the button off\n# that same absence, so the button and the redirect it needs arrive together.\n#\n# It is a phase of its own, last, because ProcessInfoPlistFile regenerates\n# Runner.app/Info.plist from the source file and would overwrite an earlier edit --\n# measured, having first written this into the Firebase phase above. Xcode runs shell\n# phases in list order, so \"last\" is positional and this must stay at the end;\n# alwaysOutOfDate keeps it running on an incremental build, where the plist is\n# regenerated but the target is otherwise up to date. decisions.md.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nINFO=\"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\nREVERSED=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$SRC\" 2>/dev/null) || REVERSED=\"\"\nif [ -z \"$REVERSED\" ]; then\n  echo \"note: no REVERSED_CLIENT_ID; building without the Google Sign-In redirect scheme\"\nelif [ ! -f \"$INFO\" ]; then\n  echo \"error: $INFO does not exist; the Google Sign-In redirect scheme cannot be registered\"\n  exit 1\nelif plutil -extract CFBundleURLTypes json -o - \"$INFO\" 2>/dev/null | grep -q \"$REVERSED\"; then\n  echo \"note: Google Sign-In redirect scheme already registered\"\nelse\n  JSON=$(printf '{\"CFBundleTypeRole\":\"Editor\",\"CFBundleURLName\":\"com.threkir.app.google\",\"CFBundleURLSchemes\":[\"%s\"]}' \"$REVERSED\")\n  plutil -insert CFBundleURLTypes -json \"$JSON\" -append \"$INFO\"\n  echo \"note: registered the Google Sign-In redirect scheme from GoogleService-Info.plist\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+		7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Firebase config if present";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# The Firebase config is operator-supplied and untracked: this repo is public, so it\n# cannot be committed. Bundle it when an operator has dropped one in, and build\n# without it otherwise -- the Dart side already gates on Firebase.apps.isNotEmpty and\n# disables push when it is absent. Declaring it as a hard Resources build input made a\n# credential-free checkout unbuildable. decisions.md.\n#\n# ABSENT and MALFORMED are different failures and get different answers here, because\n# only one of them can be left to the app. firebase_core configures FIRApp from\n# +[FLTFirebaseCorePlugin sharedInstance], which GeneratedPluginRegistrant reaches\n# during plugin registration -- before any Dart runs -- so initFirebaseForPush's\n# try/catch is downstream of the failure and never sees it. A bad field there is an\n# uncaught NSException and the process takes SIGABRT at launch. Measured on a\n# simulator build: +[FIRInstallations validateAPIKey:] raised through\n# +[FIRApp configureWithOptions:] under +[FLTFirebaseCorePlugin sharedInstance].\n# There is no runtime rescue for that, so the check belongs here, where a wrong\n# credential is still a build error rather than a binary that aborts on every launch.\n#\n# The fields checked are exactly the ones that RAISE, mirrored from the SDK:\n# GOOGLE_APP_ID per +[FIRApp validateAppID:] (which deliberately permits an unknown\n# future version), API_KEY and PROJECT_ID per +[FIRInstallations\n# validateAppOptions:appName:]. BUNDLE_ID only logs I-COR000008, so it only warns.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nif [ ! -f \"$SRC\" ]; then\n  # Drop any copy a previous build left behind. Without this an operator who\n  # REMOVES the file keeps a configured Firebase on every incremental build --\n  # measured -- so \"unconfigured\" would not actually be reachable without a clean.\n  rm -f \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n  echo \"note: no GoogleService-Info.plist in Runner/; building without Firebase push\"\n  exit 0\nfi\n\nkey() { /usr/libexec/PlistBuddy -c \"Print :$1\" \"$SRC\" 2>/dev/null || true; }\nbad() {\n  echo \"error: GoogleService-Info.plist: $1\"\n  echo \"error: download a fresh file for $PRODUCT_BUNDLE_IDENTIFIER from the Firebase console rather than hand-editing one; a wrong value here aborts the app at launch, where nothing can catch it.\"\n  exit 1\n}\n\nAPP_ID=$(key GOOGLE_APP_ID)\nAPI_KEY=$(key API_KEY)\nPROJECT_ID=$(key PROJECT_ID)\n\ncase \"$APP_ID\" in\n  '') bad \"GOOGLE_APP_ID is missing\" ;;\n  1:*) printf '%s' \"$APP_ID\" | grep -qE '^1:[0-9]+:ios:[0-9a-fA-F]+$' || bad \"GOOGLE_APP_ID \\\"$APP_ID\\\" is not <1>:<project number>:ios:<hex bundle hash>\" ;;\n  *) printf '%s' \"$APP_ID\" | grep -qE '^[0-9]+:' || bad \"GOOGLE_APP_ID \\\"$APP_ID\\\" does not begin with a version number\" ;;\nesac\n\n[ \"${#API_KEY}\" -eq 39 ] || bad \"API_KEY must be exactly 39 characters, got ${#API_KEY}\"\ncase \"$API_KEY\" in A*) ;; *) bad \"API_KEY must start with 'A'\" ;; esac\nprintf '%s' \"$API_KEY\" | grep -qE '^[A-Za-z0-9_-]+$' || bad \"API_KEY must be base64url characters only\"\n[ -n \"$PROJECT_ID\" ] || bad \"PROJECT_ID is missing\"\n\nBUNDLE_ID=$(key BUNDLE_ID)\nif [ -n \"$BUNDLE_ID\" ] && [ \"$BUNDLE_ID\" != \"$PRODUCT_BUNDLE_IDENTIFIER\" ]; then\n  echo \"warning: GoogleService-Info.plist BUNDLE_ID is $BUNDLE_ID, not $PRODUCT_BUNDLE_IDENTIFIER; Firebase logs I-COR000008 and push will not deliver\"\nfi\n\ncp \"$SRC\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n";
+			showEnvVarsInLog = 0;
+		};
 		1608DAAAF6190A8882C69548 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -381,11 +898,38 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A5CD1E000000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */,
+				A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */,
+				B7D0A1E00000000000000001 /* TodayWidgetSnapshot.swift in Sources */,
+				B7D0A1E00000000000000003 /* TodayWorkoutWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EB0106012EC3CC00C636 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7884EB0101012EC3CC00C636 /* ActiveRunComplication.swift in Sources */,
+				7884EB0101082EC3CC00C636 /* ActiveRunTimeline.swift in Sources */,
+				7884EB0101022EC3CC00C636 /* ActiveRunBridge.swift in Sources */,
+				7884EB0101072EC3CC00C636 /* RunFormat.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */,
+				A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */,
+				A1C0DE0000000000000C0004 /* WatchIngestBridgeTests.swift in Sources */,
+				5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */,
+				A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */,
+				D0C0BE000000000000000002 /* DocumentOpenHandoffTests.swift in Sources */,
+				B7D0A1E00000000000000005 /* TodayWidgetSnapshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,16 +941,82 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				7884E9692EC3CC0A00C636F2 /* WatchIngestBridge.swift in Sources */,
+				7884E9702EC3CC0A00C636F3 /* CalendarBridge.swift in Sources */,
+				A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */,
+				A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */,
+				5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */,
+				D0C0BE000000000000000001 /* DocumentOpenHandoff.swift in Sources */,
+				B7D0A1E00000000000000002 /* TodayWidgetSnapshot.swift in Sources */,
+				B7D0A1E00000000000000004 /* HomeWidgetBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EA00282EC3CC00C636F4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7884EA00102EC3CC00C636F4 /* ActiveRunBridge.swift in Sources */,
+				7884EB0101092EC3CC00C636 /* ActiveRunTimeline.swift in Sources */,
+				7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */,
+				7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */,
+				C4D5E6F7A8B90001000C00F1 /* GpsDistanceEstimator.swift in Sources */,
+				4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */,
+				4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */,
+				7D1A0C5E3B2F000300D10001 /* PushedWorkout.swift in Sources */,
+				7D1A0C5E3B2F000300D10002 /* WatchWorkoutRunner.swift in Sources */,
+				7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */,
+				7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */,
+				7884EA00392EC3CC00C636F4 /* GpsHealth.swift in Sources */,
+				7884EA00152EC3CC00C636F4 /* HealthKitManager.swift in Sources */,
+				7884EA003F2EC3CC00C636F4 /* HoldToStop.swift in Sources */,
+				7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */,
+				7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */,
+				7884EA95002EC3CC00C636F4 /* RunResume.swift in Sources */,
+				7884EA95022EC3CC00C636F4 /* BatteryCheck.swift in Sources */,
+				7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */,
+				7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */,
+				7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */,
+				7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */,
+				7884EA00182EC3CC00C636F4 /* RunApp.swift in Sources */,
+				7884EA00192EC3CC00C636F4 /* RunFormat.swift in Sources */,
+				7884EA003B2EC3CC00C636F4 /* RunLaps.swift in Sources */,
+				7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */,
+				7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */,
+				7884EA00412EC3CC00C636F4 /* StartCountdown.swift in Sources */,
+				5164A17E0003000000000102 /* SignInView.swift in Sources */,
+				5164A17E0003000000000101 /* WatchAuth.swift in Sources */,
+				7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */,
+				7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */,
+				7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5AE0C0DE0000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */,
+				5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A5CD1E000000000000000036 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A5CD1E000000000000000030 /* RunActivityExtension */;
+			targetProxy = A5CD1E000000000000000035 /* PBXContainerItemProxy */;
+		};
 		331C8086294A63A400263BE5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		5AE0C0DE0000000000000041 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5AE0C0DE0000000000000030 /* ShareExtension */;
+			targetProxy = 5AE0C0DE0000000000000040 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -429,7 +1039,140 @@
 		};
 /* End PBXVariantGroup section */
 
+/* Begin PBXTargetDependency section */
+		7884EB0108012EC3CC00C636 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7884EB0107012EC3CC00C636 /* WatchAppComplication */;
+			targetProxy = 7884EB0108022EC3CC00C636 /* PBXContainerItemProxy */;
+		};
+		7884EA002E2EC3CC00C636F4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7884EA002C2EC3CC00C636F4 /* WatchApp */;
+			targetProxy = 7884EA002D2EC3CC00C636F4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		A5CD1E000000000000000040 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RunActivity/RunActivity.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A5CD1E000000000000000041 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RunActivity/RunActivity.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A5CD1E000000000000000042 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RunActivity/RunActivity.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Profile;
+		};
+		7884EB0109022EC3CC00C636 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/Complications/WatchAppComplication.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/Complications/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		7884EB0109032EC3CC00C636 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/Complications/WatchAppComplication.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/Complications/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -477,7 +1220,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Profile;
@@ -486,6 +1229,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -607,7 +1351,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -660,7 +1404,7 @@
 				SUPPORTED_PLATFORMS = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -669,6 +1413,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -692,6 +1437,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -710,9 +1456,186 @@
 			};
 			name = Release;
 		};
+		7884EA002F2EC3CC00C636F4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/WatchApp/WatchApp.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/WatchApp/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		7884EA00302EC3CC00C636F4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/WatchApp/WatchApp.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/WatchApp/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		7884EA00312EC3CC00C636F4 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/WatchApp/WatchApp.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/WatchApp/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Profile;
+		};
+		5AE0C0DE0000000000000050 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5AE0C0DE0000000000000051 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		5AE0C0DE0000000000000052 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A5CD1E000000000000000043 /* Build configuration list for PBXNativeTarget "RunActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A5CD1E000000000000000040 /* Debug */,
+				A5CD1E000000000000000041 /* Release */,
+				A5CD1E000000000000000042 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7884EB0109012EC3CC00C636 /* Build configuration list for PBXNativeTarget "WatchAppComplication" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7884EB0109022EC3CC00C636 /* Debug */,
+				7884EB0109032EC3CC00C636 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -739,6 +1662,26 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7884EA00322EC3CC00C636F4 /* Build configuration list for PBXNativeTarget "WatchApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7884EA002F2EC3CC00C636F4 /* Debug */,
+				7884EA00302EC3CC00C636F4 /* Release */,
+				7884EA00312EC3CC00C636F4 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5AE0C0DE0000000000000053 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5AE0C0DE0000000000000050 /* Debug */,
+				5AE0C0DE0000000000000051 /* Release */,
+				5AE0C0DE0000000000000052 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { formatRelativeTime } from '$lib/format/time';
-	import type { FundraiserFeedEntry } from '$lib/types';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import type { FundraiserFeedEntry } from '#lib/types.ts';
 
 	let { entries }: { entries: FundraiserFeedEntry[] } = $props();
 
@@ -21,7 +22,7 @@
 				<li>
 					<div class="row">
 						<span class="name">{donorName(e)}</span>
-						<span class="amount">{formatPrice(e.amount_cents / 100, { currency: e.currency.toUpperCase() })}</span>
+						<span class="amount">{formatPrice(fromMinorUnits(e.amount_cents, e.currency), { currency: e.currency.toUpperCase() })}</span>
 					</div>
 					{#if e.message}
 						<p class="message">{e.message}</p>

@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'web_base_url.dart';
 
 /// Whether the running deploy actually has a Pro perk to deliver.
 ///
@@ -25,11 +26,60 @@ class ProPerks {
   /// Server-side route generation is live (web's `PUBLIC_ROUTE_GEN_ENABLED`).
   final bool routeGen;
 
-  const ProPerks({required this.coach, required this.routeGen});
+  /// The web deploy can take a Pro payment (`webCheckoutAvailable()` on web).
+  /// Not a perk: it decides only whether the web page is somewhere to send a
+  /// buyer this build cannot sell to itself (decisions § 1826).
+  final bool webCheckout;
+
+  /// The AI plan assistant is live (web's `coachEnabled() && aiPlanEnabled()`).
+  /// Not a perk either: it rides on the Coach, so it must never make Pro
+  /// sellable on its own.
+  final bool aiPlan;
+
+  /// The plate-photo logger is live (web's `coachEnabled() &&
+  /// platePhotoEnabled()`, decisions § 1972). A Pro perk the server checks
+  /// per call, but it rides on the Coach key, so it never makes Pro sellable
+  /// on its own either.
+  final bool platePhoto;
+
+  /// The coach assistant is live (web's `coachAssistEnabled()`, issue #1215
+  /// Phase 4). Mobile has no drafting panel; it decides only whether an
+  /// athlete is offered the per-coach AI-assistance consent switch. Rides on
+  /// the Coach key, so it never makes Pro sellable on its own.
+  final bool coachAssist;
+
+  const ProPerks({
+    required this.coach,
+    required this.routeGen,
+    this.webCheckout = false,
+    this.aiPlan = false,
+    this.platePhoto = false,
+    this.coachAssist = false,
+  });
 
   static const ProPerks none = ProPerks(coach: false, routeGen: false);
 
   bool get sellable => coach || routeGen;
+
+  bool get aiPlanAvailable => coach && aiPlan;
+
+  bool get platePhotoAvailable => coach && platePhoto;
+
+  bool get coachAssistAvailable => coach && coachAssist;
+}
+
+/// Whether this build can offer Pro for sale right now: a perk must be live,
+/// and there must be somewhere to pay — the store SDK, or a web checkout this
+/// platform may link to that the web deploy actually has. Without the last
+/// condition an Android build with no RevenueCat key sent buyers to a web
+/// page that could only point them at the iPhone app (decisions § 1826).
+bool proPurchasable(
+  ProPerks? perks, {
+  required bool storeConfigured,
+  required bool webLinksAllowed,
+}) {
+  if (perks == null || !perks.sellable) return false;
+  return storeConfigured || (webLinksAllowed && perks.webCheckout);
 }
 
 /// Give up rather than hang the Pro screen on a dead network. The screen
@@ -47,22 +97,19 @@ ProPerks parseProPerks(String raw) {
     return ProPerks(
       coach: json['coach'] == true,
       routeGen: json['route_gen'] == true,
+      webCheckout: json['web_checkout'] == true,
+      aiPlan: json['ai_plan'] == true,
+      platePhoto: json['plate_photo'] == true,
+      coachAssist: json['coach_assist'] == true,
     );
   } catch (_) {
     return ProPerks.none;
   }
 }
 
-/// Base URL of the web deploy this build belongs to, matching the
-/// resolution in `route_describe_client.dart` and `coach_screen.dart`.
-String _webBase() =>
-    ((dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-            'https://threkir.com')
-        .replaceAll(RegExp(r'/$'), '');
-
 /// Fetch the deploy's live-perk manifest. Never throws.
 Future<ProPerks> fetchProPerks() async {
-  final uri = Uri.parse('${_webBase()}/app-capabilities.json');
+  final uri = Uri.parse('${resolveWebBaseUrl()}/app-capabilities.json');
   final client = HttpClient()..connectionTimeout = kProPerksTimeout;
   try {
     final req = await client.getUrl(uri).timeout(kProPerksTimeout);
@@ -78,3 +125,18 @@ Future<ProPerks> fetchProPerks() async {
     client.close(force: true);
   }
 }
+
+/// Whether the plan wizard's "Describe the plan you want" box and the Coach's
+/// plan-building prompts should show. Never throws; unknown reads as off.
+Future<bool> fetchAiPlanAvailable() async =>
+    (await fetchProPerks()).aiPlanAvailable;
+
+/// Whether the nutrition screen should offer the plate-photo logger. Never
+/// throws; unknown reads as off.
+Future<bool> fetchPlatePhotoAvailable() async =>
+    (await fetchProPerks()).platePhotoAvailable;
+
+/// Whether the coaching screen should offer an athlete the per-coach
+/// AI-assistance consent switch. Never throws; unknown reads as off.
+Future<bool> fetchCoachAssistAvailable() async =>
+    (await fetchProPerks()).coachAssistAvailable;

@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// English shipped to all seven locales with no key to translate.
 ///
 /// The trap this guard exists for is the *default*, not the literal. Every
-/// caller of `ActivityLoader` passed a label, so `label ?? 'Loading'` was
+/// caller of the (since deleted) `ActivityLoader` passed a label, so `label ?? 'Loading'` was
 /// invisible: nothing was broken, and the first caller to omit the argument
 /// would have shipped English silently. A required parameter is the fix; this
 /// guard is what keeps the next optional one from being added.

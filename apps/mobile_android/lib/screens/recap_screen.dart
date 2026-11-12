@@ -1,15 +1,17 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_run_store.dart';
+import '../park_courses.dart';
 import '../preferences.dart';
 import '../recap.dart';
+import '../share_sheet.dart';
+import '../web_base_url.dart';
+import '../widgets/recap_share_card.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 
@@ -24,7 +26,9 @@ enum RecapPeriod { year, month }
 ///
 /// Reads runs from the local store (no extra Supabase round-trip) and builds
 /// the hero numbers via `buildYearInRunningRecap` / `buildMonthInRunningRecap`.
-/// Includes a share CTA that hands a one-line summary to the OS share sheet,
+/// Includes a share CTA that opens a sheet sharing the recap as a square or
+/// story image (the web card's layout, `recap_card_layout.dart`) or as a
+/// short text summary,
 /// plus a "Publish & share link" action (when `api` is wired) that freezes a
 /// public snapshot via the web `public_recaps` table and shares the web
 /// /recap/share/[id] link — the device OS-share-sheet is the mobile-additive
@@ -59,6 +63,11 @@ class _RecapScreenState extends State<RecapScreen> {
   late int _month;
   bool _publishing = false;
 
+  /// The period's park lines, keyed by the period they were read for so a
+  /// late answer for the previous period is never shown under the new one.
+  RecapParkSummary? _parks;
+  String? _parksKey;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +77,39 @@ class _RecapScreenState extends State<RecapScreen> {
     _period = widget.month == null ? RecapPeriod.year : RecapPeriod.month;
     widget.runStore.addListener(_onChanged);
     widget.preferences.addListener(_onChanged);
+    _loadParks();
+  }
+
+  /// L4: the park lines are auxiliary. A failed or signed-out read leaves the
+  /// recap without them and changes nothing else.
+  Future<void> _loadParks() async {
+    final api = widget.api;
+    if (api == null || api.userId == null) return;
+    final key = _periodKey;
+    final start = _period == RecapPeriod.year
+        ? DateTime(_year)
+        : DateTime(_year, _month);
+    final end = _period == RecapPeriod.year
+        ? DateTime(_year + 1)
+        : DateTime(_year, _month + 1);
+    try {
+      final rows = await api.fetchRecapParkCourses(start, end);
+      if (!mounted || key != _periodKey) return;
+      setState(() {
+        _parksKey = key;
+        _parks = recapParkSummary([
+          for (final r in rows)
+            RecapParkRow(
+              parkId: r.parkId,
+              parkName: r.parkName,
+              regionCode: r.regionCode,
+              courseId: r.courseId,
+            ),
+        ]);
+      });
+    } catch (e) {
+      debugPrint('recap park courses read failed: $e');
+    }
   }
 
   @override
@@ -86,9 +128,14 @@ class _RecapScreenState extends State<RecapScreen> {
     // activity_type) — no track, so the lightweight summaries are exact and
     // stay correct once `runs` becomes a resident window.
     final runs = widget.runStore.summaryRuns;
+    final parks = _parksKey == _periodKey ? _parks : null;
+    final extras = RecapExtras(
+      parkCourseCount: parks?.courseCount ?? 0,
+      parkCount: parks?.parkCount ?? 0,
+    );
     return _period == RecapPeriod.year
-        ? buildYearInRunningRecap(runs, _year)
-        : buildMonthInRunningRecap(runs, _year, _month);
+        ? buildYearInRunningRecap(runs, _year, extras)
+        : buildMonthInRunningRecap(runs, _year, _month, extras);
   }
 
   bool get _outOfRange => _year < 2000 || _year > DateTime.now().year + 1;
@@ -123,16 +170,16 @@ class _RecapScreenState extends State<RecapScreen> {
       _year = shifted.year;
       _month = shifted.month;
     });
+    _loadParks();
   }
 
   void _selectPeriod(RecapPeriod period) {
-    if (period != _period) setState(() => _period = period);
+    if (period == _period) return;
+    setState(() => _period = period);
+    _loadParks();
   }
 
-  String get _webBase {
-    final raw = (dotenv.maybeGet('WEB_BASE_URL') ?? 'https://threkir.com').trim();
-    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
-  }
+  String get _webBase => resolveWebBaseUrl();
 
   Future<void> _publishAndShare(YearInRunningRecap recap, String label) async {
     final api = widget.api;
@@ -154,11 +201,10 @@ class _RecapScreenState extends State<RecapScreen> {
         showTopBanner(context, l10n.recapPublishFailed);
         return;
       }
-      await SharePlus.instance.share(
-        ShareParams(
-          text: '$_webBase/recap/share/$id',
-          subject: _shareSubject(l10n, label),
-        ),
+      await shareTextFrom(
+        context,
+        text: '$_webBase/recap/share/$id',
+        subject: _shareSubject(l10n, label),
       );
     } catch (e) {
       debugPrint('publishAndShare failed: $e');
@@ -187,8 +233,23 @@ class _RecapScreenState extends State<RecapScreen> {
       if (recap.bestStreakDays > 0)
         l10n.recapShareBestStreak(recap.bestStreakDays),
     ];
-    await SharePlus.instance.share(
-      ShareParams(text: lines.join('\n'), subject: _shareSubject(l10n, label)),
+    await shareTextFrom(
+      context,
+      text: lines.join('\n'),
+      subject: _shareSubject(l10n, label),
+    );
+  }
+
+  Future<void> _openShareSheet(YearInRunningRecap recap, String label) {
+    final l10n = AppLocalizations.of(context);
+    return showRecapShareSheet(
+      context,
+      text: recapCardText(l10n, recap, widget.preferences.unit, label),
+      fileStem: 'threkir-$_periodKey',
+      subject: _shareSubject(l10n, label),
+      shareText: () => _share(recap, label),
+      videoUrl: recapVideoExportUrl(_year,
+          month: _period == RecapPeriod.month ? _month : null),
     );
   }
 
@@ -225,7 +286,7 @@ class _RecapScreenState extends State<RecapScreen> {
             icon: const Icon(Icons.share_outlined),
             tooltip: l10n.recapShareTooltip,
             onPressed:
-                recap.runCount == 0 ? null : () => _share(recap, label),
+                recap.runCount == 0 ? null : () => _openShareSheet(recap, label),
           ),
         ],
       ),
@@ -374,6 +435,28 @@ class _RecapScreenState extends State<RecapScreen> {
                   ),
                 ],
               ),
+              if (recap.parkCourseCount > 0) ...[
+                const SizedBox(height: 12),
+                _StatCard(
+                  key: const Key('recap-park-courses'),
+                  label: l10n.recapParkCoursesLabel,
+                  value: '${recap.parkCourseCount}',
+                  sub: l10n.recapParkCoursesSub(recap.parkCount),
+                ),
+              ],
+              if (_parksKey == _periodKey && (_parks?.parks.isNotEmpty ?? false)) ...[
+                const SizedBox(height: 16),
+                Text(l10n.recapParksHeading, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                for (final p in _parks!.parks)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.park_outlined),
+                    title: Text(p.name),
+                    subtitle: Text(regionName(p.regionCode)),
+                    trailing: Text(l10n.recapParkCourseCount(p.courseCount)),
+                  ),
+              ],
             ],
           ],
         ),
@@ -385,7 +468,8 @@ class _RecapScreenState extends State<RecapScreen> {
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
-  const _StatCard({required this.label, required this.value});
+  final String? sub;
+  const _StatCard({super.key, required this.label, required this.value, this.sub});
 
   @override
   Widget build(BuildContext context) {
@@ -404,6 +488,10 @@ class _StatCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(value, style: theme.textTheme.titleLarge),
+            if (sub != null) ...[
+              const SizedBox(height: 2),
+              Text(sub!, style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
       ),

@@ -2,16 +2,127 @@
  * Data access layer — all Supabase queries in one place.
  */
 import { supabase } from './supabase';
+import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from './edge_function_error';
+import { DbError, dbError, isDuplicateKeyError, supabaseErrorFields, thrownMessage } from './supabase_error';
+import { AppError } from './app_error';
+import { singleEmbed, fitnessSnapshotDue, publicRouteListFill } from './data_normalise';
 import { TABLES, BUCKETS, METADATA_KEYS } from './schema';
+import type { Database, Json } from '../database.types';
+import { asProjectedRun, asRun, type ProjectedRun, type RunRow } from './run_narrow';
+import { SELECT_SEPARATOR, type Join } from './database';
+import type { Insertable, Updatable } from './database';
+import type {
+	GlobalSegmentMatchedBy,
+	JsonObject,
+	OfficialFlag,
+	SegmentGateSource,
+	TrackPoint,
+} from '../types';
 import { isEntityId } from './entity_id';
+import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
+import { markListsStale } from './list_freshness';
+import {
+	keysetAfter,
+	literalSubstringPattern,
+	literalSubstringTerm,
+	nextCursor,
+	publicRouteOrder,
+	type KeysetCursor,
+	type KeysetKey,
+	type KeysetPage,
+	type PublicRouteSort,
+	walkKeyset,
+} from './keyset_page';
+import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
-import { privacyDefaultToIsPublic } from '../social/run_visibility';
+import type { Modality } from '../settings/modality_visibility';
+import {
+	audienceColumns,
+	levelRevokesGrants,
+	privacyDefaultToAudience,
+	type AudienceColumns,
+	type AudienceLevel,
+} from '../social/run_visibility';
 import { bandsToRanges, type DistanceBandKey } from '../routes/distance_bands';
 import { assemblePublicRoute } from '../routes/public_route_assembly';
+import type { RouteDetailsPatch } from '../routes/route_details';
 import { stripExifFromFile } from '../util/exif_strip';
 import { entriesFromTemplate } from '../nutrition/meal_template';
 import { logInputFromRecipe } from '../nutrition/recipe';
+import {
+	assignmentsToEnd,
+	stopFollowingAction,
+	type PlanAssignment,
+	type PlanTargets,
+} from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
+import { MAX_RUN_DURATION_S, isPlausibleRunDuration } from '../runs/run_duration';
+import { globalSegmentEffortRefusal, writeEffortsIsolatingRefusals } from '../segments/effort_bounds';
+import { prCardEntries, type PrCardEntry } from '../share/pr_card';
+import { mergeMyProgress } from '../social/challenge_list';
+import { selectEffectivePricing } from '../social/event_instance';
+import type { RepacePatch } from '../training/plan_repace';
+import type { ResumeShift } from '../training/plan_resume';
+import type { RaceDateChange } from '../training/plan_race_date';
+import type { BreakChange } from '../training/plan_break';
+import type { RepeatWeekChange } from '../training/plan_repeat_week';
+import type { AiPlanEditPayload } from '../training/plan_edit/season';
+import type { PlanChangeWeekRow, PlanChangeWorkoutRow } from '../training/plan_change';
+import { shiftIsoDate } from '../training/plan_bulk_ops';
+import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
+import {
+	EVENT_PHOTO_WINDOW_AFTER_MS,
+	EVENT_PHOTO_WINDOW_BEFORE_MS,
+	isRunInEventPhotoWindow,
+} from '../social/event_photo_window';
+import {
+	applyCourseSave,
+	planCourseSave,
+	sortCourses,
+	type CourseDraft,
+	type EventCourse,
+} from '../social/event_courses';
+import type { CourseGateColumns, GateWhich, SessionStartMode } from '../races/course_gates';
+import { parseStartMode } from '../races/race_start_modes';
+import { raceOccurrenceForRun, type RetimeCandidate, type RetimeCourse, type RetimeCurrent } from '../races/race_retime';
+import type { Gate } from '../geo/gate_crossing';
+import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
+import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
+import { parseDmKind, type DmKind } from '../social/coach_share';
+import type { DmReaction, DmReactionRow } from '../social/dm_reactions';
+import { normalizeDmSearchQuery } from '../social/dm_search';
+import {
+	DM_IMAGE_CONTENT_TYPE,
+	DM_IMAGE_MAX_BYTES,
+	DM_IMAGE_SIGNED_URL_SECONDS,
+	parseDmImageStatus,
+	type DmImageStatus,
+} from '../social/dm_image';
+import { courseReportErrorKey, type CourseReportReason } from '../parks/course_report';
+import {
+	cancelledOccurrenceRefunds,
+	parseOccurrenceRefundSummary,
+	type OccurrenceRefundState,
+	type OccurrenceRefundSummary
+} from '../social/paid_registration';
+import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
+import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
+import {
+	CLUB_VERIFICATION_REQUEST_COLUMNS,
+	type ClubVerificationAuditAction,
+	type ClubVerificationProofMethod,
+	type ClubVerificationRequest,
+	type ClubVerificationStatus,
+	type ProofCheckResult,
+	verificationErrorKey,
+} from '../social/club_verification';
+import {
+	ROUTE_LIST_COLS,
+	PUBLIC_ROUTE_LIST_COLS,
+	type RouteListItem,
+	type PublicRouteListRow,
+	type PublicRouteSummary
+} from '../routes/route_list_columns';
 import type {
 	Run,
 	Route,
@@ -58,6 +169,8 @@ import type {
 	FundraiserStatus,
 	FundraiserFeedEntry,
 	FundraiserTotals,
+	CourseAlertKind,
+	RaceCourseSource,
 	RaceListing,
 	RaceProvider,
 	RouteCondition,
@@ -65,27 +178,74 @@ import type {
 	RouteConditionSeverity
 } from '../types';
 export type { NotificationKind };
-import { parseRunSource, parseRouteSurface, type RunSource } from '../types';
+import {
+	parseActivityType,
+	parseIntegrationProvider,
+	parseJoinPolicy,
+	parseNutritionAssignmentStatus,
+	parseNutritionGoalPhase,
+	parseNutritionProgression,
+	parseCourseAlertKind,
+	parseRaceCourseSource,
+	parseRouteSurface,
+	parseRunMetadata,
+	parseRunSource,
+	type NutritionGoalPhase,
+	type NutritionPlan,
+	type NutritionPlanAssignment,
+	type RunSource,
+} from '../types';
+import type { RaceImportLeg } from '../integrations/race_import_providers';
+import { stravaRefusal } from '../integrations/strava_connect_error';
 import {
 	filterRelinkCandidates,
 	DEFAULT_RELINK_WINDOW_DAYS,
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
-import type { GeneratedPlan, GoalEvent } from '../training/training';
+import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
+import type { RacePriority } from '../training/plan_races';
+import { parseRosterRecentWorkouts, type RosterRecentWorkout } from '../training/coach_load';
 import { auth } from '../stores/auth.svelte';
+import { lineLngLat, trackLine } from '../runs/track_line';
+import {
+	mergeSmoothedSidecar,
+	needsSmoothedSidecar,
+	sha256Hex,
+	sidecarNamedFor,
+	smoothedSidecarPath,
+} from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
+import { readRankRows } from '../segments/effort_rank';
+import { trackExtent, type TrackExtent } from '../segments/track_extent';
+import {
+	courseAttribution,
+	parseCourseCheckpoints,
+	type CourseCheckpoint,
+	type RecapParkRow,
+	type RunParkCourseTime,
+} from '../parks/park_courses';
+import type { GpxAttribution } from '../routes/route_gpx';
 import type { RecapPeriodKind } from '../types';
-import { normaliseExerciseName } from '../gym/gym_prs';
-import { GYM_SESSION_DRAFT_KEY } from '../gym/gym_session_draft';
+import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
+import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
+import { namesAnExercise } from '../gym/gym_prs';
+import type { RoutineHistoryAggregate, RoutineSessionRow } from '../gym/routine_history';
 import type { YearInRunningRecap } from '../runs/recap';
+import type { PlatformFeeMonthRow } from '../billing/platform_fee_summary';
+import { mergeRecapRuns, recapYearWindow } from '../runs/recap_window';
 import type {
 	CoachAthleteStatus,
+	FinisherStatus,
+	FinishMethod,
+	RaceSessionStatus,
 	SessionPlan,
 	SessionPlanBlock,
 	SessionPlanItem,
 	SessionPlanWithItems,
 	SessionItemKind,
-	ReportTargetKind
+	ReportTargetKind,
+	GeneralReportTargetKind,
+	OrganiserDisputeTargetKind
 } from '../types';
 // Re-export the session-plan domain shapes so consumers can import them from the
 // data-layer facade alongside fetchSessionPlan* (which returns SessionPlanWithItems)
@@ -94,44 +254,97 @@ export type { SessionPlan, SessionPlanBlock, SessionPlanItem, SessionPlanWithIte
 // ReportTargetKind lives in types.ts alongside the other CHECK-paired narrow
 // unions (so the CHECK<->union guard can read it from one file); re-exported
 // here so the report surfaces keep importing it from the data-layer facade.
-export type { ReportTargetKind } from '../types';
-import { nextInstanceAfter } from '../social/recurrence';
+export type { ReportTargetKind, GeneralReportTargetKind, OrganiserDisputeTargetKind } from '../types';
+import { isOccurrenceCancelled, nextLiveInstance } from '../social/event_occurrence';
 import {
 	parseGymTemplate,
 	type EventGymTemplate
 } from '../social/event_gym_template';
-import { rateLimitErrorMessage } from '../util/rate_limit_errors';
+import { m } from '../i18n/store.svelte';
+import type { MessageKey } from '../i18n/messages';
+import type { RouteDeleteImpact } from '../routes/route_delete_impact';
+import { rateLimitAppError } from '../i18n/rate_limit_message';
+import {
+	DM_THREAD_ORDER,
+	DM_THREAD_PAGE_SIZE,
+	dmPageBeforeFilter,
+	dmPageFromRows,
+	type DmOrderKey,
+	type DmPage,
+	type DmThreadTarget,
+} from '../social/dm_thread';
+import type { DmBadgeState } from '../social/dm_badge';
+import { parseGroupRole, type GroupRole } from '../social/group_messages';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
-	applyRunMetadataPatch,
 	normalisePlanWorkoutNotes,
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
 	GLOBAL_SEGMENT_SCORING_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_PAD_M,
 } from './data_normalise';
 import { dashboardRunsWindowStart } from './dashboard_runs';
-import { bucketWeeklyMileage } from './weekly_mileage';
 import {
 	chunk,
 	mergeFeedPages,
 	mergeProfilePages,
 	mergeRecencyPages,
+	readChunked,
+	queryChunked,
 	FEED_FOLLOWEE_CHUNK
 } from '../social/feed_merge';
 import { deleteRunsBounded } from './bulk_delete';
 import {
 	assignCompetitionRanks,
+	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type SegmentAgeBand,
 	type SegmentGenderFilter,
 } from '../segments/segments';
 
 // --- Runs ---
 
-export interface FetchRunsOptions {
-	/** Cap the number of rows returned. Pair with `offset` for paging. */
+/// A `runs` projection, as the tuple both the wire string and the row type are
+/// derived from. `satisfies RunColumns` on a literal refuses a name that is not
+/// a column, so a migration that drops one fails to compile at the declaration
+/// rather than asking PostgREST for nothing.
+///
+/// The intersection is what makes that true, and `keyof Run` alone did not:
+/// the overlay adds `track` — a lazy Storage download that has never been a
+/// column — and `has_track`, a field only the `public_runs` view carries. Both
+/// passed `satisfies` and both reach PostgREST as a 42703 that fails the WHOLE
+/// read, not just the column. Narrowing to the generated row's own keys is the
+/// check the typed client makes available; `data.test.ts` pins both refusals.
+///
+/// The wire string is `.join()`ed from the tuple, so it is `string` and
+/// supabase-js's select parser can read nothing from it — unlike every other
+/// narrowed read here, whose columns are a module constant `Join<T, D>` can
+/// re-state as the literal it spells. These are a caller's parameter, known
+/// only at the call site, so the check lives at the tuple's own declaration
+/// instead and the row type is `Pick`ed from that same tuple: one declaration,
+/// two derivations, which is the whole point of § 1330.
+///
+/// Making the implementation generic over the tuple and casting the join to
+/// `Join<C, D>` does not recover the parse, and it is worse than the string:
+/// measured, `ParseQuery` neither resolves nor collapses to
+/// `GenericStringError` but stays a deferred conditional, so the body cannot
+/// read a single field off the row it is meant to narrow (§ 1518). The row
+/// shape is therefore stated once, at the read, as what a projection of this
+/// table can return. The UNNARROWED read shares nothing with that: it hands
+/// `.select()` a literal `'*'` of its own and infers the whole row for itself
+/// (§ 1560), so only this branch carries a stated shape.
+export type RunColumns = readonly (keyof Run & keyof RunRow)[];
+
+export interface FetchRunsOptions<C extends RunColumns = RunColumns> {
+	/** Cap the number of rows returned. Pair with `after` for paging. */
 	limit?: number;
-	/** Skip this many rows before the page (for paged loads). */
-	offset?: number;
+	/**
+	 * Only the runs strictly after this cursor in `RUN_ORDER` — the previous
+	 * page's `next` from `fetchRunsWithError`. A cursor rather than an offset:
+	 * a run deleted or synced in between two reads moves every later position,
+	 * and an offset then skips or repeats a run.
+	 */
+	after?: KeysetCursor | null;
 	/**
 	 * Re-throw a hard fetch error instead of degrading to `[]`. Default off:
 	 * most callers want a resilient empty list. The personal heatmap opts in
@@ -141,70 +354,134 @@ export interface FetchRunsOptions {
 	 */
 	throwOnError?: boolean;
 	/**
-	 * PostgREST select list. Defaults to `*`. A caller that reads only a
-	 * handful of columns should narrow — `*` ships the `metadata` jsonb bag
-	 * on every row, which is what made the unbounded history scan expensive
-	 * in the first place (#332).
+	 * The columns to project, as a tuple. Absent means `*`. A caller that
+	 * reads only a handful should narrow — `*` ships the `metadata` jsonb bag
+	 * on every row, which is what made the unbounded history scan expensive in
+	 * the first place (#332).
+	 *
+	 * A tuple rather than the PostgREST string it becomes, because the string
+	 * narrowed the WIRE while the return type stayed `Run[]`: nineteen of the
+	 * twenty-four columns were `undefined` behind a type promising them
+	 * (§ 1330). The tuple is the one declaration both halves derive from — the
+	 * select list is joined from it and the row type is `Pick`ed from it.
 	 */
-	columns?: string;
+	columns?: C;
+	/** Inclusive lower bound on `started_at`, as an ISO instant. */
+	startedAtFrom?: string;
+	/** Exclusive upper bound on `started_at`, as an ISO instant. */
+	startedAtBefore?: string;
 }
 
-export async function fetchRuns(opts?: FetchRunsOptions): Promise<Run[]> {
+/// Newest run first; `id` breaks a `started_at` tie so the order is total.
+/// Served by `runs_user_started_at (user_id, started_at desc)` up to the
+/// tie-break. Both columns are NOT NULL, so the null placement is the
+/// Postgres default and only spelt out because a keyset key must say it.
+const RUN_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
+
+export async function fetchRuns(opts?: Omit<FetchRunsOptions, 'columns'>): Promise<Run[]>;
+export async function fetchRuns<C extends RunColumns>(
+	opts: FetchRunsOptions<C> & { columns: C },
+): Promise<Pick<Run, C[number]>[]>;
+export async function fetchRuns(
+	opts?: FetchRunsOptions,
+): Promise<Run[] | ProjectedRun[]> {
 	// Explicit user_id filter as defence in depth — RLS already scopes
 	// runs to the caller, but every other personal-data list in this
 	// file follows the same explicit-scope pattern. See audit
 	// `/tmp/data-isolation-audit/client-realtime.md` M2.
 	const userId = auth.user?.id;
 	if (!userId) return [];
-	const build = () =>
-		supabase
+	const build = <S extends string>(select: S, after: string | null) => {
+		let q = supabase
 			.from(TABLES.runs)
-			.select(opts?.columns ?? '*')
-			.eq('user_id', userId)
-			.order('started_at', { ascending: false });
+			// Generic over the select list rather than a ternary over it. A
+			// ternary is a union of `string` and `'*'`, which is `string`, so the
+			// literal arm was erased for the parser too and neither branch could
+			// be read off. A type parameter is instantiated at each CALL site
+			// instead, so `build('*')` carries its own literal; § 1518 measured
+			// that a deferred `ParseQuery` cannot be read in the body, and
+			// nothing here reads a field off the row.
+			.select(select)
+			.eq('user_id', userId);
+		if (opts?.startedAtFrom != null) q = q.gte('started_at', opts.startedAtFrom);
+		if (opts?.startedAtBefore != null) q = q.lt('started_at', opts.startedAtBefore);
+		if (after) q = q.or(after);
+		// Sorted by the same spec the cursor is read from, so the two cannot
+		// drift: a cursor taken in one order and applied in another skips rows.
+		for (const k of RUN_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q;
+	};
 
-	let rows: any[];
-	if (opts?.limit != null) {
-		const from = opts.offset ?? 0;
-		const { data, error } = await build().range(from, from + opts.limit - 1);
-		if (error || !data) {
-			if (opts?.throwOnError && error) throw error;
-			return [];
-		}
-		rows = data;
-	} else {
-		// No explicit limit means "every run". PostgREST caps an unbounded
-		// SELECT at 1000 rows, which silently dropped the oldest activities
-		// of a high-volume history (a 1,500-run Strava migrant lost ~500)
-		// across recap / heatmap / dashboard / account / runs. Page through
-		// instead so nothing is truncated; the safety ceiling logs rather
-		// than dropping silently. Theme C (strava-migration / pro).
-		const PAGE = 1000;
-		const SAFETY_MAX = 50_000;
-		rows = [];
-		for (let from = 0; from < SAFETY_MAX; from += PAGE) {
-			const { data, error } = await build().range(from, from + PAGE - 1);
+	// One load-more page, or the whole history; the `throwOnError` contract is
+	// shared by both branches and generic in the row type the caller's own page
+	// function hands back. Sharing it is what the per-projection sibling § 1518
+	// refused would have cost four copies of.
+	const collect = async <R extends object>(
+		page: (after: string | null, limit: number) => PromiseLike<{ data: R[] | null; error: unknown }>,
+	): Promise<R[]> => {
+		if (opts?.limit != null) {
+			const after = opts.after ? keysetAfter(RUN_ORDER, opts.after) : null;
+			if (opts.after && after === null) return [];
+			const { data, error } = await page(after, opts.limit);
 			if (error || !data) {
-				if (opts?.throwOnError && error) throw error;
-				break;
+				if (opts?.throwOnError && error) throw dbError(error);
+				return [];
 			}
-			rows.push(...data);
-			if (data.length < PAGE) break;
+			return data;
 		}
-		if (rows.length >= SAFETY_MAX) {
-			console.warn(`fetchRuns reached the ${SAFETY_MAX}-row ceiling; older runs may be omitted`);
+		// No explicit limit means "every run" — recap, heatmap, account export.
+		// PostgREST caps an unbounded SELECT at 1000 rows, so the history is
+		// walked, and walked by cursor: an OFFSET walk over a history that a
+		// sync or a delete changes mid-read skips or repeats a run (§ 1936).
+		const walk = await walkKeyset(RUN_ORDER, page, { start: opts?.after ?? null });
+		// A history that ended short is not a shorter history: the export and
+		// the totals would present the missing runs as never having existed.
+		if (!walk.complete) {
+			if (opts?.throwOnError) {
+				throw dbError(walk.error ?? new Error('fetchRuns: the history walk ended short'));
+			}
+			console.warn('fetchRuns: the history walk ended short', walk.error);
 		}
+		return walk.rows;
+	};
+
+	// Defensive narrow on read: the DB CHECK constraints stop bad `source` /
+	// `activity_type` values at write time, but historical rows imported
+	// before the constraint, or rows from a future client whose new value
+	// hasn't propagated to this build, need a fallback — and `metadata` is
+	// jsonb, which admits a string, a number and an array as well as an
+	// object. A projection narrows only what it selected; the unnarrowed read
+	// selects every column, and says so with a literal the parser reads for
+	// itself rather than with an assertion this function makes about itself.
+	if (opts?.columns) {
+		const columns: readonly string[] = opts.columns;
+		// The cursor is read off the row, so a projection that leaves out an
+		// order column selects it for the walk and drops it again: the row
+		// must carry only the columns its type names (§ 1520).
+		const cursorOnly = RUN_ORDER.map((k) => k.column).filter((c) => !columns.includes(c));
+		// The joined list is `string`, so the parser answers `GenericStringError`
+		// and the rows would be walked as errors. `Partial<RunRow>` is the honest
+		// claim for a projection: which of the columns arrived is the caller's
+		// tuple to say, and the overload above says it.
+		const read = await collect((after, limit) =>
+			build([...columns, ...cursorOnly].join(SELECT_SEPARATOR), after)
+				.limit(limit)
+				.overrideTypes<Partial<RunRow>[]>(),
+		);
+		const rows = read.map((r) => {
+			const out: Record<string, unknown> = { ...r };
+			for (const c of cursorOnly) delete out[c];
+			return out as Partial<RunRow>;
+		});
+		return rows.map(asProjectedRun);
 	}
-	// Defensive narrow on read: the DB CHECK constraint stops bad
-	// `source` values at write time, but historical rows imported before
-	// the constraint or rows from a future client whose new value
-	// hasn't propagated to this build need a fallback. parseRunSource
-	// coerces unknowns to 'app'.
-	return rows.map((r: any) => ({
-		...r,
-		source: parseRunSource(r.source),
-		track: null,
-	}));
+	const rows = await collect((after, limit) => build('*', after).limit(limit));
+	return rows.map((r) => asRun(r, null));
 }
 
 /// Runs for the signed-in user that surface a hard fetch failure instead of
@@ -216,25 +493,33 @@ export async function fetchRuns(opts?: FetchRunsOptions): Promise<Run[]> {
 /// genuinely-empty result is `{ runs: [], error: null }`. Mirrors the
 /// `fetchFoodLogWithError` convention. A signed-out caller is empty, not an
 /// error (nothing to load yet).
+///
+/// With a `limit` it is one load-more page, and `next` is the cursor to pass
+/// back as `after` for the page that follows — null once a short page says
+/// the history is exhausted, and always null for an unlimited read.
 export async function fetchRunsWithError(
-	opts?: FetchRunsOptions,
-): Promise<{ runs: Run[]; error: string | null }> {
+	opts?: Omit<FetchRunsOptions, 'columns'>,
+): Promise<{ runs: Run[]; error: Error | null; next: KeysetCursor | null }> {
 	try {
 		const runs = await fetchRuns({ ...opts, throwOnError: true });
-		return { runs, error: null };
+		const next = opts?.limit != null ? nextCursor(RUN_ORDER, runs, opts.limit) : null;
+		return { runs, error: null, next };
 	} catch (e) {
-		return { runs: [], error: (e as Error)?.message ?? 'Failed to load runs' };
+		return { runs: [], error: dbError(e), next: null };
 	}
 }
 
-/// Column-narrowed, date-windowed run fetch for the dashboard. Mirrors
-/// `fetchWeeklyMileage`'s windowing pattern (window contract +
-/// rationale in `./dashboard_runs`); the select carries exactly the
-/// columns the dashboard's consumers read (streaks, training-load,
+/// Column-narrowed, date-windowed run fetch for the dashboard (window
+/// contract + rationale in `./dashboard_runs`); the select carries exactly
+/// the columns the dashboard's consumers read (streaks, training-load,
 /// race-predictor, consistency, intensity, trend, goals, snapshot,
-/// this-week, recent list) — `metadata` stays because those consumers
-/// read `avg_bpm` / `elevation_m` / `indoor` from it. `track` is nulled
-/// like `fetchRuns` (it is a lazy Storage download, never a column).
+/// this-week, weekly mileage chart, recent list, the no-plan recent-5K
+/// suggestion) — `metadata` stays because those consumers
+/// read `avg_bpm` / `elevation_m` / `indoor` from it. `track` is NOT set — it
+/// is a lazy Storage download rather than a column, so it is not one of the
+/// eleven and `DashboardRun` does not declare it. `fetchRuns` answers the same
+/// way for a narrowed read and sets it only for `select('*')`, whose row type
+/// is the whole of `Run`.
 /// The `started_at desc` order means the PostgREST 1000-row cap, if a
 /// very high-volume runner ever hits it inside the window, drops only
 /// the oldest rows in the window — never the recent ones any consumer
@@ -242,9 +527,26 @@ export async function fetchRunsWithError(
 /// Reports the read error: almost every card on /dashboard derives from this
 /// one set, so degrading to `[]` rendered a complete, convincing brand-new
 /// account — zero runs, no PRs, an empty week — to a runner mid-outage.
+export const DASHBOARD_RUN_COLUMNS = [
+	'id',
+	'user_id',
+	'started_at',
+	'distance_m',
+	'duration_s',
+	'source',
+	'activity_type',
+	'is_dnf',
+	'elevation_gain_m',
+	'metadata',
+	'fastest_5k_s',
+] as const satisfies RunColumns;
+
+/// What the dashboard read carries, and what `fetchRunsForDashboard` declares.
+export type DashboardRun = Pick<Run, (typeof DASHBOARD_RUN_COLUMNS)[number]>;
+
 export async function fetchRunsForDashboard(): Promise<{
-	runs: Run[];
-	error: string | null;
+	runs: DashboardRun[];
+	error: Error | null;
 }> {
 	const userId = auth.user?.id;
 	if (!userId) return { runs: [], error: null };
@@ -252,19 +554,30 @@ export async function fetchRunsForDashboard(): Promise<{
 	const { data, error } = await supabase
 		.from(TABLES.runs)
 		.select(
-			'id, user_id, started_at, distance_m, duration_s, source, activity_type, is_dnf, elevation_gain_m, metadata',
+			DASHBOARD_RUN_COLUMNS.join(SELECT_SEPARATOR) as Join<
+				typeof DASHBOARD_RUN_COLUMNS,
+				typeof SELECT_SEPARATOR
+			>,
 		)
 		.eq('user_id', userId)
 		.gte('started_at', windowStart.toISOString())
 		.order('started_at', { ascending: false });
-	if (error) return { runs: [], error: error.message };
+	if (error) return { runs: [], error: dbError(error) };
 	if (!data) return { runs: [], error: null };
 	return {
-		runs: data.map((r: any) => ({
+		// All three narrowed on read, the same defence `fetchRunById` applies one
+		// row at a time. `activity_type` and `source` are CHECK-constrained
+		// `text` and `metadata` is jsonb, so the generated row types them
+		// `string` / `string` / `Json` while the client unions promise less; the
+		// widening cast this replaced meant the dashboard was the one read that
+		// applied none of them. `track` is NOT set — it is not one of the eleven
+		// columns, so `DashboardRun` does not carry it.
+		runs: data.map((r) => ({
 			...r,
 			source: parseRunSource(r.source),
-			track: null,
-		})) as Run[],
+			activity_type: parseActivityType(r.activity_type),
+			metadata: parseRunMetadata(r.metadata),
+		})),
 		error: null,
 	};
 }
@@ -330,7 +643,7 @@ export async function fetchRunStreaks(
 	const { data, error } = await supabase.rpc('run_streaks_for_user', {
 		p_tz: tz,
 		...(source ? { p_source: source } : {}),
-	});
+	}, { get: true });
 	const row = data?.[0];
 	if (error || !row) return null;
 	return { current: row.current_streak ?? 0, best: row.best_streak ?? 0 };
@@ -338,17 +651,81 @@ export async function fetchRunStreaks(
 
 /// Exactly the columns `PeriodSummary` reads. The period drilldown has to
 /// ship every row — it lists them — so the saving is per-row width, not row
-/// count: no `metadata` jsonb bag, no elevation, no DNF flag.
-export const PERIOD_SUMMARY_RUN_COLUMNS = 'id, started_at, distance_m, duration_s, source';
+/// count: no `metadata` jsonb bag, no DNF flag. The climb tile reads the
+/// `elevation_gain_m` column, not the bag's `elevation_m` mirror, and the
+/// average pace reads `activity_type` to leave rides out of it.
+export const PERIOD_SUMMARY_RUN_COLUMNS = [
+	'id',
+	'started_at',
+	'distance_m',
+	'duration_s',
+	'source',
+	'elevation_gain_m',
+	'activity_type',
+] as const satisfies RunColumns;
 
-/// Complete run history for a `PeriodSummary`, column-narrowed to the five
+/// A run as the period drilldown reads it — the seven values it renders, and
+/// nothing it can read `undefined` off.
+export type PeriodSummaryRun = Pick<Run, (typeof PERIOD_SUMMARY_RUN_COLUMNS)[number]>;
+
+/// Complete run history for a `PeriodSummary`, column-narrowed to the seven
 /// values it renders. Both drilldown entry points use it: the standalone
 /// /dashboard/period route, and the dashboard modal's lazy load when the
 /// requested period reaches past `DASHBOARD_RUNS_WINDOW_DAYS`. Throws on a
 /// fetch error so the caller can show a retry rather than a total that is
 /// silently short.
-export async function fetchRunsForPeriodSummary(): Promise<Run[]> {
+export async function fetchRunsForPeriodSummary(): Promise<PeriodSummaryRun[]> {
 	return fetchRuns({ columns: PERIOD_SUMMARY_RUN_COLUMNS, throwOnError: true });
+}
+
+/// Exactly the columns the recap engine reads off an in-period run: the
+/// distance / duration totals, elevation (with the legacy `metadata.
+/// elevation_m` fallback `elevationOf` still honours), the activity type
+/// behind the run-family longest / fastest rules, and the route id for the
+/// unique-route tally. `source` rides along because `fetchRuns` narrows it on
+/// every row it returns.
+export const RECAP_RUN_COLUMNS = [
+	'id',
+	'started_at',
+	'distance_m',
+	'duration_s',
+	'elevation_gain_m',
+	'activity_type',
+	'route_id',
+	'source',
+	'metadata',
+] as const satisfies RunColumns;
+
+/// A run as the recap engine reads it.
+export type RecapRun = Pick<Run, (typeof RECAP_RUN_COLUMNS)[number]>;
+
+/// Runs shaped for a recap card, without the lifetime `select('*')` scan both
+/// pages used to do — ~3,000 full rows, `metadata` bag and all, to render a
+/// card built from the ~250 inside the year (a monthly card, ~20).
+///
+/// Two reads instead of one: the recap year at `RECAP_RUN_COLUMNS`, plus every
+/// run's `started_at` and nothing else. The recap engine reaches a run outside
+/// the period only through `computeRunStreaks`, which reads that one column,
+/// so the second read reproduces `bestStreakDays` / `currentStreakDays`
+/// exactly — including a streak that crosses 31 Dec (`recap.test.ts` pins the
+/// engine's dependency, `recap_window.test.ts` pins the equivalence). Both
+/// recap routes take the whole year: the monthly card carries the year's
+/// twelve-month strip.
+export async function fetchRunsForRecap(year: number): Promise<RecapRun[]> {
+	const win = recapYearWindow(year);
+	const [windowed, allStartedAt] = await Promise.all([
+		fetchRuns({
+			columns: RECAP_RUN_COLUMNS,
+			startedAtFrom: win.fromIso,
+			startedAtBefore: win.beforeIso,
+		}),
+		fetchRuns({ columns: ['started_at'] as const }),
+	]);
+	return mergeRecapRuns(
+		windowed,
+		allStartedAt.map((r) => r.started_at),
+		win,
+	);
 }
 
 /// Supplementary counts for the Year-in-Running recap that can't be
@@ -388,6 +765,64 @@ export async function fetchRecapExtras(
 	};
 }
 
+/// The signed-in runner's park course efforts started in `[startIso, endIso)`,
+/// each joined to its course and park, for the recap's park card and list
+/// (`recapParkSummary`). A course whose park was pulled is left out (RLS
+/// hides it). Throws on a failed read so the page can leave the card off
+/// rather than claim zero.
+export async function fetchRecapParkCourses(startIso: string, endIso: string): Promise<RecapParkRow[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const { data: efforts, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('global_segment_id')
+		.eq('user_id', userId)
+		.gte('started_at', startIso)
+		.lt('started_at', endIso);
+	if (error) throw dbError(error);
+	const segmentIds = Array.from(new Set((efforts ?? []).map((e) => e.global_segment_id)));
+	if (segmentIds.length === 0) return [];
+	const { data: courses, error: courseError } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('id, global_segment_id, park_id, parks!inner(name, region_code)')
+			.in('global_segment_id', part),
+	);
+	if (courseError) throw dbError(courseError);
+	const bySegment = new Map<string, RecapParkRow>();
+	for (const c of courses ?? []) {
+		bySegment.set(c.global_segment_id, {
+			parkId: c.park_id,
+			parkName: c.parks.name,
+			regionCode: c.parks.region_code,
+			courseId: c.id,
+		});
+	}
+	return (efforts ?? []).flatMap((e) => {
+		const row = bySegment.get(e.global_segment_id);
+		return row ? [row] : [];
+	});
+}
+
+/// The park course times one of the caller's own runs set, with the season
+/// rank each holds (`run_park_course_times`), for run detail's course chips
+/// and the share image's course sticker. Throws on a failed read.
+export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCourseTime[]> {
+	const { data, error } = await supabase.rpc('run_park_course_times', { p_run_id: runId }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		effort_id: r.effort_id,
+		course_name: r.course_name,
+		course_slug: r.course_slug,
+		park_name: r.park_name,
+		park_slug: r.park_slug,
+		region_code: r.region_code,
+		time_seconds: r.time_seconds,
+		season: r.season,
+		season_rank: r.season_rank ?? null,
+	}));
+}
+
 /// Publish (or re-publish) a recap as a public, OG-unfurlable snapshot and
 /// return its share id (the uuid in the /recap/share/[id] link). Owner-only:
 /// RLS rejects writes for any other user. The snapshot is FROZEN aggregate
@@ -409,7 +844,7 @@ export async function publishRecap(
 				user_id: userId,
 				period_kind: periodKind,
 				period_key: periodKey,
-				snapshot: snapshot as unknown as Record<string, unknown>,
+				snapshot: snapshot as unknown as Json,
 			},
 			{ onConflict: 'user_id,period_kind,period_key' },
 		)
@@ -430,7 +865,7 @@ export async function fetchPublicRecap(
 	id: string,
 ): Promise<{ periodKind: RecapPeriodKind; periodKey: string; snapshot: YearInRunningRecap } | null> {
 	const { data, error } = await supabase
-		.rpc('public_recap_by_id', { p_id: id })
+		.rpc('public_recap_by_id', { p_id: id }, { get: true })
 		.maybeSingle();
 	const row = data as {
 		period_kind?: string | null;
@@ -451,7 +886,7 @@ export async function fetchPublicRecap(
 /// indistinguishable from a deleted run and rendered "Run not found".
 export async function fetchRunById(
 	id: string
-): Promise<{ run: Run | null; error: string | null }> {
+): Promise<{ run: Run | null; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { run: null, error: null };
 	const { data, error } = await supabase
@@ -463,19 +898,48 @@ export async function fetchRunById(
 
 	// PGRST116 is "no rows matched" — a genuine not-found (or not-owner),
 	// not a failure to find out.
-	if (error && error.code !== 'PGRST116') return { run: null, error: error.message };
+	if (error && error.code !== 'PGRST116') return { run: null, error: dbError(error) };
 	if (!data) return { run: null, error: null };
 
 	// Lazy-load the GPS track from Storage when the run has one.
 	let track = null;
 	if (data.track_url) {
 		try {
-			track = await fetchTrack(data.track_url);
+			track = await fetchOwnerTrack(data.track_url, data.user_id, data.id, data.metadata);
 		} catch (e) {
 			console.warn('Failed to fetch track', e);
 		}
 	}
-	return { run: { ...data, source: parseRunSource(data.source), track }, error: null };
+	return { run: asRun(data, track), error: null };
+}
+
+/// The owner's run-detail track: the stored waypoints plus, for a track that
+/// carries no smoothed pair of its own (a watch run, an old run the server
+/// recomputed), the job_worker's smoothed-position sidecar merged on when the
+/// run's metadata names these exact bytes and the sidecar's own fingerprint
+/// agrees (`runs/smoothed_sidecar.ts`). A run whose metadata names no sidecar
+/// for this track makes no sidecar request. The sidecar is an auxiliary layer
+/// over the track: any failure to fetch or read it leaves the raw line, and is
+/// not an error.
+async function fetchOwnerTrack(path: string, userId: string, runId: string, metadata: unknown) {
+	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(path);
+	if (error || !data) throw error ? dbError(error) : new Error('No data');
+	const decompressed = await decompressGzip(await data.arrayBuffer());
+	const points = JSON.parse(new TextDecoder().decode(decompressed));
+	if (!Array.isArray(points) || !needsSmoothedSidecar(points)) return points;
+	try {
+		const sha256 = await sha256Hex(decompressed);
+		if (!sidecarNamedFor(metadata, sha256)) return points;
+		const { data: sc, error: scErr } = await supabase.storage
+			.from(BUCKETS.runs)
+			.download(smoothedSidecarPath(userId, runId));
+		if (scErr || !sc) return points;
+		const sidecar = JSON.parse(new TextDecoder().decode(await decompressGzip(await sc.arrayBuffer())));
+		return mergeSmoothedSidecar(points, sidecar, { points: points.length, sha256 });
+	} catch (e) {
+		console.warn('smoothed sidecar unreadable; drawing the raw line', { run_id: runId, error: e });
+		return points;
+	}
 }
 
 /// Fetch every run by the signed-in user against `routeId`, ordered
@@ -495,7 +959,7 @@ export async function fetchRunsOnRoute(
 		.eq('route_id', routeId)
 		.order('duration_s', { ascending: true });
 	if (error || !data) return [];
-	return data as never;
+	return data;
 }
 
 /**
@@ -504,7 +968,7 @@ export async function fetchRunsOnRoute(
  */
 async function fetchTrack(path: string) {
 	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(path);
-	if (error || !data) throw error ?? new Error('No data');
+	if (error || !data) throw error ? dbError(error) : new Error('No data');
 	const buf = await data.arrayBuffer();
 	const decompressed = await decompressGzip(buf);
 	const json = new TextDecoder().decode(decompressed);
@@ -519,8 +983,14 @@ async function fetchTrack(path: string) {
 /// must use [fetchClippedTrackForRun] instead, which routes through the
 /// `clip-public-track` Edge Function so the privacy-zone clip happens
 /// server-side and the unclipped blob never crosses the wire.
+///
+/// Every caller draws the track (the runs-list thumbnail, the personal
+/// heatmap, the owner's share page), so it returns the line: the stored
+/// off-track fixes, kept only for the server's distance replay, are dropped
+/// here (`trackLine`), as `clip-public-track` drops them for a non-owner.
 export async function fetchTrackByPath(path: string) {
-	return fetchTrack(path);
+	const points = await fetchTrack(path);
+	return Array.isArray(points) ? trackLine(points) : points;
 }
 
 /// Owner-only fetch of the indoor/treadmill HR sidecar
@@ -552,7 +1022,7 @@ export async function fetchClippedTrackForRun(runId: string) {
 	const { data, error } = await supabase.functions.invoke('clip-public-track', {
 		body: { run_id: runId },
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	const points = (data as { points?: unknown })?.points;
 	if (!Array.isArray(points)) {
 		throw new Error('clip-public-track returned malformed payload');
@@ -571,21 +1041,31 @@ export async function fetchClippedTrackForRun(runId: string) {
 /// Use on every non-owner route render site — the bare `route.waypoints`
 /// from a `routes` row is the unclipped polyline and must not reach
 /// the renderer when the viewer != owner. Decisions §33.
+///
+/// An RPC failure THROWS rather than resolving to `[]`: an empty array is a
+/// real answer (the clip left nothing), and a failure that looked like one
+/// told the viewer the route had no line instead of offering a retry. It
+/// still fails closed — nothing here, and nothing a caller may do with the
+/// error, falls back to the unclipped `route.waypoints`.
 export async function fetchClippedRouteForViewer(
 	routeId: string,
 ): Promise<Array<{ lat: number; lng: number }>> {
-	const { data, error } = await supabase.rpc('clip_route_for_viewer', {
-		p_route_id: routeId,
-	});
-	if (error) {
-		// Fail closed — returning the unclipped waypoints on RPC error
-		// would defeat the helper's purpose. Render an empty polyline
-		// rather than leak. Matches the clipTrackForUser shape.
-		console.warn('clip_route_for_viewer failed; failing closed (empty route)', error);
-		return [];
-	}
+	const { data, error } = await supabase.rpc(
+		'clip_route_for_viewer',
+		{ p_route_id: routeId },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
 	if (!Array.isArray(data)) return [];
 	return data as Array<{ lat: number; lng: number }>;
+}
+
+/// The `.catch` for a [fetchClippedRouteForViewer] read that must still
+/// return the route's metadata when its line cannot be read: null, so the
+/// caller marks the line unavailable rather than empty.
+function lineUnavailable(e: unknown): null {
+	console.warn('clip_route_for_viewer failed; failing closed (no line)', e);
+	return null;
 }
 
 export type RouteMatchCandidate = {
@@ -608,15 +1088,17 @@ export type RouteMatchCandidate = {
 /// with that distance match is auto-link-worthy; multiple candidates
 /// or a length mismatch should defer to user confirmation.
 export async function fetchRoutesIntersectingTrack(
-	track: import('$lib/types').TrackPoint[],
+	track: import('#lib/types.ts').TrackPoint[],
 	toleranceM = 100,
 	maxResults = 10,
 ): Promise<RouteMatchCandidate[]> {
 	const userId = auth.user?.id;
-	if (!userId || track.length < 2) return [];
+	// Matched on the line: an off-track fix is distance input, not path.
+	const line = trackLine(track);
+	if (!userId || line.length < 2) return [];
 	const geojson = {
 		type: 'LineString' as const,
-		coordinates: track.map((p) => [p.lng, p.lat]),
+		coordinates: line.map(lineLngLat),
 	};
 	const { data, error } = await supabase.rpc('routes_intersecting_track', {
 		caller_user_id: userId,
@@ -644,8 +1126,9 @@ export async function fetchRoutesIntersectingTrack(
 /// /runs/[id] and by any future "save as route" flow that wants
 /// to back-link the run to its source.
 export async function linkRunToRoute(runId: string, routeId: string): Promise<void> {
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase.from(TABLES.runs).update({ route_id: routeId }).eq('id', runId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export type MatchStatus = 'pending' | 'matched' | 'failed' | 'skipped';
@@ -655,7 +1138,7 @@ export type RunMatchInfo = {
 	algorithm: string | null;
 	algorithmVersion: string | null;
 	matchedAt: string | null;
-	track: import('$lib/types').TrackPoint[] | null;
+	track: import('#lib/types.ts').TrackPoint[] | null;
 };
 
 /// Fetch the run_matched_tracks row for a run + lazily download the
@@ -675,10 +1158,10 @@ export async function fetchRunMatchedTrack(
 		.maybeSingle();
 	if (error || !data) return null;
 
-	let track: import('$lib/types').TrackPoint[] | null = null;
+	let track: import('#lib/types.ts').TrackPoint[] | null = null;
 	if (data.status === 'matched' && data.matched_track_url) {
 		try {
-			track = (await fetchTrack(data.matched_track_url)) as import('$lib/types').TrackPoint[];
+			track = (await fetchTrack(data.matched_track_url)) as import('#lib/types.ts').TrackPoint[];
 		} catch (e) {
 			console.warn('Failed to fetch matched track', e);
 		}
@@ -701,7 +1184,17 @@ export async function fetchRunMatchedTrack(
 /// no-op.
 export async function enqueueRunRematch(runId: string): Promise<void> {
 	const { error } = await supabase.rpc('enqueue_run_rematch', { p_run_id: runId });
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+/// Queue a server-side recompute of a run's distance from its stored track
+/// with the GPS distance estimator (docs/features/gps_distance.md § Server
+/// recompute). The RPC raises 42501 unless the caller owns the run and 22000
+/// when the run has no track; both are thrown for the caller to surface. A
+/// second request while one is in flight is a no-op server-side.
+export async function requestDistanceRecompute(runId: string): Promise<void> {
+	const { error } = await supabase.rpc('request_distance_recompute', { p_run_id: runId });
+	if (error) throw dbError(error);
 }
 
 /** Decompress a gzipped ArrayBuffer using the browser's DecompressionStream. */
@@ -725,7 +1218,9 @@ async function decompressGzip(buf: ArrayBuffer): Promise<Uint8Array> {
 	return out;
 }
 
-export async function fetchPublicRun(id: string): Promise<Run | null> {
+export async function fetchPublicRun(
+	id: string,
+): Promise<{ run: Run | null; error: Error | null }> {
 	// Public reads go through the public_runs view (decisions §33,
 	// migration 20260626_001) which strips external_id, redacts the
 	// metadata bag's audit / sync / training-plan-linkage keys, and
@@ -739,14 +1234,54 @@ export async function fetchPublicRun(id: string): Promise<Run | null> {
 	// decisions §33. RunShareView already branches on owner — owner takes
 	// the direct Storage path via fetchTrack(); non-owner takes
 	// fetchClippedTrackForRun(). This function only returns the row.
-	const { data } = await supabase
+	const { data, error } = await supabase
 		.from('public_runs')
 		.select('*')
 		.eq('id', id)
 		.single();
 
-	if (!data) return null;
-	return { ...data, track: null } as Run;
+	// PGRST116 is "no rows matched" — the run is private, deleted, or was
+	// never there. Anything else is a failure to find out, and collapsing the
+	// two rendered "Run not found" to every recipient of a shared link
+	// whenever the read merely failed. `fetchRunById` was fixed for exactly
+	// this and says so; the public half is the one strangers hit, and a
+	// stranger has no way to tell a broken read from a deleted run.
+	if (error && error.code !== 'PGRST116') return { run: null, error: dbError(error) };
+	if (!data) return { run: null, error: null };
+	return { run: { ...data, track: null } as Run, error: null };
+}
+
+/// The non-owner read of a run that is NOT public but whose audience admits
+/// the caller — the owner's followers for a followers-only run, or a named
+/// recipient of a `run_shares` grant (migration 20270802000003). `shared_runs`
+/// carries exactly `public_runs`' redacted projection, never a public run and
+/// never the caller's own, so everything said about `fetchPublicRun` holds
+/// here: no track (the clipped one comes from `fetchClippedTrackForRun`), and
+/// a failed read is reported apart from "not shared with you".
+export async function fetchSharedRun(
+	id: string,
+): Promise<{ run: Run | null; error: Error | null }> {
+	const { data, error } = await supabase
+		.from('shared_runs')
+		.select('*')
+		.eq('id', id)
+		.maybeSingle();
+	if (error) return { run: null, error: dbError(error) };
+	if (!data) return { run: null, error: null };
+	return { run: { ...data, track: null } as Run, error: null };
+}
+
+/// Every non-owner read of a run in one call: public first, then shared with
+/// this caller. Anonymous callers stop at public — they belong to no audience,
+/// and `shared_runs` is not granted to anon.
+export async function fetchViewableRun(
+	id: string,
+): Promise<{ run: Run | null; error: Error | null; shared: boolean }> {
+	const pub = await fetchPublicRun(id);
+	if (pub.error || pub.run) return { ...pub, shared: false };
+	if (!(await currentViewerId())) return { run: null, error: null, shared: false };
+	const shared = await fetchSharedRun(id);
+	return { ...shared, shared: shared.run !== null };
 }
 
 export interface PublicRunAttribution {
@@ -776,14 +1311,33 @@ export interface PublicRunAttribution {
 /// surface is `/coaching/athletes/[id]`.
 export async function fetchPublicRunAttribution(
 	runId: string,
-): Promise<PublicRunAttribution | null> {
-	const { data: run } = await supabase
+): Promise<{ attribution: PublicRunAttribution | null; error: Error | null }> {
+	// Reported separately for the same reason `fetchRunById` reports it: the
+	// caller decides whether the viewer is a non-owner or whether nothing has
+	// been established yet, and an errored read is evidence of neither.
+	const { data: run, error } = await supabase
 		.from('public_runs')
 		.select('user_id')
 		.eq('id', runId)
 		.maybeSingle();
-	const ownerId = (run as { user_id?: string | null } | null)?.user_id;
-	if (!ownerId) return null;
+	if (error) return { attribution: null, error: dbError(error) };
+	let ownerId = (run as { user_id?: string | null } | null)?.user_id;
+	if (!ownerId) {
+		// Not public: the run may still be shared with this viewer — a
+		// followers-only run they follow the owner for, or a named-person grant
+		// (20270802000003). Same projection, same single column.
+		const { data: shared, error: sharedError } = await supabase
+			.from('shared_runs')
+			.select('user_id')
+			.eq('id', runId)
+			.maybeSingle();
+		if (sharedError) return { attribution: null, error: dbError(sharedError) };
+		ownerId = (shared as { user_id?: string | null } | null)?.user_id;
+	}
+	if (!ownerId) return { attribution: null, error: null };
+	// The display name is decoration on an entitlement already established by
+	// the row above, so its own failure degrades to an unnamed owner rather
+	// than withdrawing the entitlement.
 	const { data: profile } = await supabase
 		.from('user_profiles')
 		.select('display_name, avatar_url')
@@ -791,9 +1345,12 @@ export async function fetchPublicRunAttribution(
 		.maybeSingle();
 	const p = profile as { display_name?: string | null; avatar_url?: string | null } | null;
 	return {
-		ownerId,
-		displayName: p?.display_name ?? null,
-		avatarUrl: p?.avatar_url ?? null,
+		attribution: {
+			ownerId,
+			displayName: p?.display_name ?? null,
+			avatarUrl: p?.avatar_url ?? null,
+		},
+		error: null,
 	};
 }
 
@@ -808,14 +1365,19 @@ export async function deleteRun(id: string): Promise<void> {
 	// orphan bytes still occupy the bucket.) Audit/storage Medium fix.
 	const { data: run } = await supabase
 		.from(TABLES.runs)
-		.select('track_url, hr_series_url')
+		.select('user_id, track_url, hr_series_url')
 		.eq('id', id)
 		.single();
-	// Both Storage sidecars (GPS track + indoor HR series) are removed
+	// The GPS track, the indoor HR series, and the job_worker's map-matched
+	// track and smoothed-position sidecar (whose rows cascade away without
+	// their bytes; removing a path that is not there is a no-op) are removed
 	// alongside the row so the bucket doesn't accumulate orphans.
-	const orphanPaths = [run?.track_url, run?.hr_series_url].filter(
-		(p): p is string => !!p,
-	);
+	const orphanPaths = [
+		run?.track_url,
+		run?.hr_series_url,
+		run?.user_id ? smoothedSidecarPath(run.user_id, id) : null,
+		run?.user_id ? `${run.user_id}/${id}.matched.json.gz` : null,
+	].filter((p): p is string => !!p);
 	if (orphanPaths.length > 0) {
 		try {
 			await supabase.storage.from(BUCKETS.runs).remove(orphanPaths);
@@ -855,8 +1417,9 @@ export async function deleteRun(id: string): Promise<void> {
 			}
 		}
 	}
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase.from(TABLES.runs).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Delete a batch of runs plus their Storage track files. One RLS-scoped
@@ -878,11 +1441,12 @@ export async function deleteRuns(ids: string[]): Promise<{ failed: string[] }> {
 /// flow assumed. RLS guards ownership; the caller should still gate
 /// the UI so non-owners never see the control.
 export async function setRoutePublic(id: string, isPublic: boolean): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ is_public: isPublic })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Flip a run's visibility. Bidirectional (public ↔ private) like its
@@ -892,18 +1456,161 @@ export async function setRoutePublic(id: string, isPublic: boolean): Promise<voi
 /// page. RLS guards ownership; the caller should still gate the UI
 /// so non-owners never see the control.
 export async function setRunPublic(id: string, isPublic: boolean): Promise<void> {
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase
 		.from(TABLES.runs)
 		.update({ is_public: isPublic })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
-/// Upsert a fitness snapshot for the signed-in user. The dashboard
-/// call path computes the snapshot on every open (cheap — pure math
-/// over the run list the dashboard already fetched) and persists so
-/// the trend chart has a history to draw. Returns the id of the
-/// inserted row.
+/// Which entity an audience control is acting on. The two grant tables and
+/// the two base tables have the same shape, so one set of helpers serves both.
+export type ShareableKind = 'run' | 'route';
+
+/// One named person a run or route is shared with, for the owner's list.
+export interface ShareRecipient {
+	recipientId: string;
+	displayName: string | null;
+	avatarUrl: string | null;
+	createdAt: string;
+}
+
+/// Whether the followers level and named-person shares are live (the server's
+/// `private.feature_flags` row, decisions § 1874). The audience control
+/// renders only when this is true. Fail-closed: any read failure is "off", and
+/// is not cached, so a later mount can find out.
+let audienceSharingProbe: Promise<boolean> | null = null;
+export function audienceSharingEnabled(): Promise<boolean> {
+	if (audienceSharingProbe) return audienceSharingProbe;
+	const probe = (async () => {
+		try {
+			const { data, error } = await supabase.rpc('audience_sharing_enabled', undefined, { get: true });
+			if (error) {
+				audienceSharingProbe = null;
+				return false;
+			}
+			return data === true;
+		} catch {
+			audienceSharingProbe = null;
+			return false;
+		}
+	})();
+	audienceSharingProbe = probe;
+	return probe;
+}
+
+/// The owner's live grants on one run or route, oldest first, with each
+/// recipient's display name. RLS returns only the owner's own grants (and a
+/// recipient's own), so a non-owner calling this gets at most their own row.
+export async function fetchShares(kind: ShareableKind, id: string): Promise<ShareRecipient[]> {
+	const { data: rows, error } =
+		kind === 'run'
+			? await supabase
+					.from('run_shares')
+					.select('recipient_id, created_at')
+					.eq('run_id', id)
+					.order('created_at', { ascending: true })
+					.order('recipient_id', { ascending: true })
+			: await supabase
+					.from('route_shares')
+					.select('recipient_id, created_at')
+					.eq('route_id', id)
+					.order('created_at', { ascending: true })
+					.order('recipient_id', { ascending: true });
+	if (error) throw dbError(error);
+	const ids = (rows ?? []).map((r) => r.recipient_id);
+	if (ids.length === 0) return [];
+	const { data: profiles, error: profilesError } = await queryChunked(ids, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+	);
+	if (profilesError) throw dbError(profilesError);
+	const byId = new Map((profiles ?? []).map((p) => [p.id, p] as const));
+	return (rows ?? []).map((r) => ({
+		recipientId: r.recipient_id,
+		displayName: byId.get(r.recipient_id)?.display_name ?? null,
+		avatarUrl: byId.get(r.recipient_id)?.avatar_url ?? null,
+		createdAt: r.created_at,
+	}));
+}
+
+/// Share one run or route with one person. The INSERT policy admits only the
+/// owner, only while audience sharing is on, and only for a recipient with a
+/// follow edge either way and no block (20270802000002) — the same set the
+/// picker offers. A repeat share of the same person is a no-op, not an error.
+export async function addShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
+	const ownerId = await currentViewerId();
+	if (!ownerId) throw new Error('Not authenticated');
+	const { error } =
+		kind === 'run'
+			? await supabase.from('run_shares').insert({ run_id: id, owner_id: ownerId, recipient_id: recipientId })
+			: await supabase
+					.from('route_shares')
+					.insert({ route_id: id, owner_id: ownerId, recipient_id: recipientId });
+	if (error && !isDuplicateKeyError(error)) throw dbError(error);
+}
+
+/// Revoke one person's access. It ends on their next read: nothing is copied
+/// to them, so there is nothing to recall. A delete RLS refused comes back as
+/// zero rows rather than an error, so the row count is checked and a refusal
+/// is reported instead of being shown as a revoke.
+export async function revokeShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
+	const { data, error } =
+		kind === 'run'
+			? await supabase
+					.from('run_shares')
+					.delete()
+					.eq('run_id', id)
+					.eq('recipient_id', recipientId)
+					.select('recipient_id')
+			: await supabase
+					.from('route_shares')
+					.delete()
+					.eq('route_id', id)
+					.eq('recipient_id', recipientId)
+					.select('recipient_id');
+	if (error) throw dbError(error);
+	if (!data || data.length === 0) throw new AppError('audience.revokeRefused', { message: m('audience.revokeRefused') });
+}
+
+/// Move a run or route to a level. Only me revokes every grant first, so the
+/// row never claims "only me" while a named reader is still admitted; the
+/// other levels leave grants in place (moot while wider, back in force if the
+/// owner narrows again). Specific people writes the same columns as Only me —
+/// its audience is the grants the caller adds with [addShare].
+export async function setAudience(kind: ShareableKind, id: string, level: AudienceLevel): Promise<void> {
+	if (kind === 'run') markListsStale('runs', 'history', 'routes');
+	else markListsStale('routes');
+	if (levelRevokesGrants(level)) {
+		const { error } =
+			kind === 'run'
+				? await supabase.from('run_shares').delete().eq('run_id', id)
+				: await supabase.from('route_shares').delete().eq('route_id', id);
+		if (error) throw dbError(error);
+	}
+	const columns = audienceColumns(level);
+	const { data, error } =
+		kind === 'run'
+			? await supabase.from(TABLES.runs).update(columns).eq('id', id).select('id')
+			: await supabase.from('routes').update(columns).eq('id', id).select('id');
+	if (error) throw dbError(error);
+	if (!data || data.length === 0) throw new AppError('audience.updateRefused', { message: m('audience.updateRefused') });
+}
+
+/// Persist at most one fitness snapshot per user per UTC day. The dashboard
+/// call path computes the snapshot on every open (cheap — pure math over the
+/// run list the dashboard already fetched) and persists so the trend chart has
+/// a history to draw; without the per-day gate a runner who opens /dashboard
+/// three times a day fills the chart's 60-point window with same-day
+/// duplicates inside about two and a half weeks.
+///
+/// Read-then-insert rather than an upsert, deliberately. `fitness_snapshots`
+/// carries self SELECT / INSERT / DELETE policies and no UPDATE one, so
+/// PostgREST's `ON CONFLICT DO UPDATE` would be refused by RLS; and the
+/// conflict target is a derived day, which `on_conflict=` cannot name. This
+/// shape is correct on a database with no uniqueness constraint at all, and
+/// once `fitness_snapshots_user_day_uniq` exists a second tab racing the read
+/// gets a 23505 — the state we wanted, not a failure.
 export async function insertFitnessSnapshot(input: {
 	vdot: number | null;
 	vo2Max: number | null;
@@ -925,7 +1632,21 @@ export async function insertFitnessSnapshot(input: {
 	) {
 		return;
 	}
-	await supabase.from(TABLES.fitness_snapshots).insert({
+	const { data: latest, error: latestErr } = await supabase
+		.from(TABLES.fitness_snapshots)
+		.select('computed_at')
+		.eq('user_id', userId)
+		.order('computed_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (latestErr) {
+		console.warn('insertFitnessSnapshot: latest-snapshot read failed', supabaseErrorFields(latestErr));
+		return;
+	}
+	if (!fitnessSnapshotDue((latest as { computed_at: string } | null)?.computed_at, new Date())) {
+		return;
+	}
+	const { error } = await supabase.from(TABLES.fitness_snapshots).insert({
 		user_id: userId,
 		vdot: input.vdot,
 		vo2_max: input.vo2Max,
@@ -935,6 +1656,11 @@ export async function insertFitnessSnapshot(input: {
 		qualifying_run_count: input.qualifyingRunCount,
 		source: 'client',
 	});
+	// A PostgREST error resolves rather than throws, so the caller's catch
+	// cannot see this one — the write used to fail entirely silently.
+	if (error && !isDuplicateKeyError(error)) {
+		console.warn('insertFitnessSnapshot failed', supabaseErrorFields(error));
+	}
 }
 
 export interface FitnessSnapshotRow {
@@ -963,21 +1689,30 @@ export async function fetchFitnessSnapshots(limit = 60): Promise<FitnessSnapshot
 /// 10 m epsilon the Android path uses), sums elevation gain, and
 /// inserts a `routes` row for the current user. Throws if the run has
 /// no track (manual-entry runs); the caller should gate the button.
+/// `track` carries the run's chosen altitude series and
+/// `elevationMinDeltaM` its noise band (`runAltitude`), so the route's
+/// climb is the figure the run page showed.
 ///
 /// Returns the new route id so the caller can navigate to it.
 export async function saveRunAsRoute(
 	runId: string,
 	name: string,
 	track: Array<{ lat: number; lng: number; ele?: number | null }>,
+	elevationMinDeltaM?: number,
 ): Promise<{ id: string }> {
 	const { summarizeRouteFromTrack } = await import('../routes/route_simplify');
-	if (track.length < 2) throw new Error('Not enough GPS points to save a route');
-	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(track, 10);
+	if (track.length < 2) throw new AppError('runDetail.saveAsRouteTooFewPoints', { message: 'Not enough GPS points to save a route' });
+	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(
+		track,
+		10,
+		elevationMinDeltaM,
+	);
 
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase
 		.from('routes')
 		.insert({
@@ -993,7 +1728,7 @@ export async function saveRunAsRoute(
 		})
 		.select('id')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 
 	// Back-link the run to its new route for convenience on the
 	// run-detail page. Best-effort — the route insert is the important
@@ -1013,21 +1748,34 @@ export async function saveRunAsRoute(
 /// `'app'` so the run picks up the "Recorded" label in the UI; the
 /// `metadata.manual_entry = true` flag lets the detail page show
 /// "Manual entry" instead of the map.
-/// Map the user's `privacy_default` preference to the `runs.is_public`
-/// boolean for a newly-created run. Only `public` yields a public run;
-/// `followers` and `private` stay private (runs have no followers-only
-/// visibility tier — see docs/backend/settings.md). Mirrors mobile
-/// `Preferences.newRunsArePublic`. Web previously ignored this entirely
-/// (runs always landed at the `is_public default false`), so a runner who
-/// chose `public` still got private runs from web saves + imports
-/// (comeback persona #27). Fail-closed: any settings-read failure → private.
-async function defaultRunIsPublic(userId: string): Promise<boolean> {
+/// Map the user's `privacy_default` preference to the visibility columns of a
+/// newly-created run: `public` → public, `followers` → `followers_only`, else
+/// owner-only (`social/run_visibility.ts`, decisions § 1875). Web once
+/// ignored the preference entirely, so a runner who chose `public` still got
+/// private runs from web saves + imports (comeback persona #27); until the
+/// followers level existed, `followers` collapsed to owner-only. Fail-closed:
+/// any settings-read failure → owner-only.
+async function defaultRunAudience(userId: string): Promise<AudienceColumns> {
 	try {
 		const settings = await loadSettings(userId);
-		return privacyDefaultToIsPublic(effective<string>(settings, 'privacy_default', 'followers'));
+		return privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'private'));
 	} catch {
-		return false;
+		return audienceColumns('private');
 	}
+}
+
+/// The columns a writer stores: an explicit per-run choice wins, otherwise the
+/// runner's default. A caller that passes only `isPublic` (the importers'
+/// historical shape) chose between public and owner-only.
+async function runAudienceFor(
+	userId: string,
+	input: { isPublic?: boolean; followersOnly?: boolean },
+): Promise<AudienceColumns> {
+	if (input.isPublic === undefined && input.followersOnly === undefined) {
+		return defaultRunAudience(userId);
+	}
+	const isPublic = input.isPublic === true;
+	return { is_public: isPublic, followers_only: !isPublic && input.followersOnly === true };
 }
 
 export async function createManualRun(input: {
@@ -1037,20 +1785,36 @@ export async function createManualRun(input: {
 	activityType?: 'run' | 'walk' | 'hike' | 'cycle' | 'stroller';
 	notes?: string | null;
 	routeId?: string | null;
-	/// Per-run visibility override. When omitted, falls back to the user's
-	/// `privacy_default` preference (`public` → public, else private).
+	/// Per-run visibility override. When both are omitted, falls back to the
+	/// user's `privacy_default` preference (`public` → public, `followers` →
+	/// followers-only, else owner-only).
 	isPublic?: boolean;
+	followersOnly?: boolean;
 }): Promise<{ id: string }> {
+	// The form grades these first and says why; this is the floor for any other
+	// caller, because nothing else bounded a manual run (issue #1300 § 5).
+	if (!(input.durationS > 0)) {
+		throw new AppError('runEditor.distanceDurationRequired');
+	}
+	if (!isPlausibleRunDuration(input.durationS)) {
+		throw new AppError('runEditor.durationTooLong', {
+			params: { hours: MAX_RUN_DURATION_S / 3600 },
+		});
+	}
+	if (!(Date.parse(input.startedAt) <= Date.now())) {
+		throw new AppError('runEditor.startInFuture');
+	}
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
-	const isPublic = input.isPublic ?? (await defaultRunIsPublic(userId));
+	const audience = await runAudienceFor(userId, input);
 
-	const metadata: Record<string, unknown> = {
+	const metadata: JsonObject = {
 		[METADATA_KEYS.manual_entry]: true,
 	};
 	if (input.notes && input.notes.trim()) metadata[METADATA_KEYS.notes] = input.notes.trim();
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase
 		.from(TABLES.runs)
 		.insert({
@@ -1062,19 +1826,13 @@ export async function createManualRun(input: {
 			activity_type: input.activityType ?? 'run',
 			metadata,
 			route_id: input.routeId ?? null,
-			is_public: isPublic,
+			is_public: audience.is_public,
+			followers_only: audience.followers_only,
 		})
 		.select('id')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	const runId = data.id as string;
-
-	try {
-		const runDate = input.startedAt.slice(0, 10);
-		await autoMatchRunToPlanWorkout(runId, runDate, input.distanceM);
-	} catch (e) {
-		console.warn('autoMatchRunToPlanWorkout failed', e);
-	}
 
 	await recomputeChallengesForRun(input.startedAt);
 
@@ -1084,7 +1842,7 @@ export async function createManualRun(input: {
 /// Insert a run from an importer (Strava zip, GPX bulk, etc). Uploads
 /// an optional `track` to the Storage bucket and stores the path in
 /// `track_url`. For callers without a GPS track, pass `track: undefined`
-/// and the row is saved without one, same as a scalar row from parkrun.
+/// and the row is saved without one.
 export async function saveRun(input: {
 	started_at: string;
 	distance_m: number;
@@ -1099,7 +1857,7 @@ export async function saveRun(input: {
 	embedded_bests?: Partial<
 		Record<'fastest_5k_s' | 'fastest_10k_s' | 'fastest_half_marathon_s' | 'fastest_marathon_s', number>
 	>;
-	metadata: Record<string, unknown> | null;
+	metadata: JsonObject | null;
 	track?: Array<{ lat: number; lng: number; ele?: number; ts?: string; bpm?: number }>;
 	/// Per-point HR for a trackless (indoor / treadmill) run. Uploaded as the
 	/// `{user_id}/{run_id}.hr.json.gz` sidecar only when `track` carries no bpm,
@@ -1111,23 +1869,29 @@ export async function saveRun(input: {
 	/// Saved into runs.external_id so a subsequent import of the same
 	/// activity by any path can detect + skip. /audit/strava M3.
 	external_id?: string | null;
-	/// Per-run visibility override. When omitted, falls back to the user's
-	/// `privacy_default` preference. Importers omit it so a bulk import
-	/// honours the runner's default visibility.
+	/// Per-run visibility override. When both are omitted, falls back to the
+	/// user's `privacy_default` preference. Importers omit them so a bulk
+	/// import honours the runner's default visibility.
 	isPublic?: boolean;
+	followersOnly?: boolean;
 }): Promise<{ id: string; trackUploaded: boolean; trackError?: string }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
-	const isPublic = input.isPublic ?? (await defaultRunIsPublic(userId));
+	const audience = await runAudienceFor(userId, input);
 
-	// elevation_m and title are not columns on `runs` (elevation_m lives on
-	// `routes`; title has no DB column). Merge both into metadata so they
-	// survive the round-trip. See docs/backend/metadata.md for the registered keys.
-	const mergedMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+	// `title` has no DB column, so it survives the round-trip in metadata only.
+	// `elevation_m` is different: migration 20270302_001 promoted total ascent to
+	// the first-class `runs.elevation_gain_m` column and its contract is that
+	// "writers populate both" — the jsonb key for the readers that still use it
+	// (recap fallback, export, the Go worker) and the column for the ones that
+	// sum it in SQL. The vert challenge aggregate sums the COLUMN, so writing
+	// only the metadata key leaves every vert leaderboard stuck at 0 m.
+	// See docs/backend/metadata.md for the registered keys.
+	const mergedMetadata: JsonObject = { ...(input.metadata ?? {}) };
 	if (input.title) mergedMetadata[METADATA_KEYS.title] = input.title;
 	if (input.elevation_m != null) mergedMetadata[METADATA_KEYS.elevation_m] = input.elevation_m;
-	const row: Record<string, unknown> = {
+	const row: Insertable<'runs'> = {
 		user_id: userId,
 		started_at: input.started_at,
 		distance_m: input.distance_m,
@@ -1135,17 +1899,20 @@ export async function saveRun(input: {
 		source: input.source,
 		activity_type: input.activity_type ?? 'run',
 		metadata: mergedMetadata,
-		is_public: isPublic,
+		is_public: audience.is_public,
+		followers_only: audience.followers_only,
 	};
+	if (input.elevation_m != null) row.elevation_gain_m = input.elevation_m;
 	if (input.embedded_bests) Object.assign(row, input.embedded_bests);
 	if (input.external_id) row.external_id = input.external_id;
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase
 		.from(TABLES.runs)
 		.insert(row)
 		.select('id')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	const runId = data.id as string;
 
 	// Track upload runs as a separate transaction (no DB-level FK between
@@ -1163,7 +1930,7 @@ export async function saveRun(input: {
 			const encoded = new TextEncoder().encode(JSON.stringify(input.track));
 			const gzipped = await gzipBytes(encoded);
 			const { error: upErr } = await supabase.storage
-				.from(TABLES.runs)
+				.from(BUCKETS.runs)
 				.upload(path, new Blob([gzipped as BlobPart], { type: 'application/gzip' }), {
 					contentType: 'application/gzip',
 					upsert: true,
@@ -1182,7 +1949,7 @@ export async function saveRun(input: {
 				}
 			}
 		} catch (e) {
-			trackError = e instanceof Error ? e.message : String(e);
+			trackError = thrownMessage(e);
 		}
 	}
 
@@ -1206,7 +1973,7 @@ export async function saveRun(input: {
 			const encoded = new TextEncoder().encode(JSON.stringify(input.hrSeries));
 			const gzipped = await gzipBytes(encoded);
 			const { error: upErr } = await supabase.storage
-				.from(TABLES.runs)
+				.from(BUCKETS.runs)
 				.upload(path, new Blob([gzipped as BlobPart], { type: 'application/gzip' }), {
 					contentType: 'application/gzip',
 					upsert: true,
@@ -1228,13 +1995,6 @@ export async function saveRun(input: {
 		} catch (e) {
 			console.warn('hr-series sidecar upload failed', e);
 		}
-	}
-
-	try {
-		const runDate = input.started_at.slice(0, 10);
-		await autoMatchRunToPlanWorkout(runId, runDate, input.distance_m);
-	} catch (e) {
-		console.warn('autoMatchRunToPlanWorkout failed', e);
 	}
 
 	await recomputeChallengesForRun(input.started_at);
@@ -1265,31 +2025,48 @@ async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
 	return out;
 }
 
+/// Save the run-detail edit made on [loaded], the row as the page last read
+/// it, as a compare-and-swap on its server `updated_at` (decisions § 2147):
+/// an edit never writes over a change made elsewhere since the page loaded
+/// to a field it also changes, and reports that as a `conflict` with the
+/// server's copy instead. `isDnf` rides the same write when the dialog
+/// changed it: `runs.is_dnf` is a real column (20261207_001), and setting it
+/// true drops the run from personal-records scoring.
+///
+/// Title / notes are trimmed and an empty-after-trim key is removed from the
+/// bag rather than left as `""`; mobile's run-detail edit applies the same
+/// normalisation (`data_normalise.ts` holds the contract).
 export async function updateRunMetadata(
-	id: string,
-	fields: { title?: string; notes?: string },
-): Promise<void> {
-	const { data: run } = await supabase
-		.from(TABLES.runs)
-		.select('metadata')
-		.eq('id', id)
-		.single();
-	if (!run) throw new Error('Run not found');
-	// Trim + drop empty-after-trim keys so clearing a field via the
-	// edit dialog actually removes the key from the metadata bag
-	// instead of leaving `notes: ""` behind. Mobile's run-detail
-	// edit dialog applies the same normalisation. Logic lives in
-	// data_normalise.ts so the contract can be unit-tested.
-	const next = applyRunMetadataPatch(
-		run.metadata as Record<string, unknown> | null | undefined,
+	loaded: Run,
+	fields: RunEditFields,
+	isDnf?: boolean,
+): Promise<RunEditOutcome<Run>> {
+	return saveRunEdit<Run>(
+		{
+			swap: async (patch, base) => {
+				markListsStale('runs', 'history', 'routes');
+				const filtered = supabase.from(TABLES.runs).update(patch).eq('id', loaded.id);
+				const { data, error } = await (base === null
+					? filtered.is('updated_at', null)
+					: filtered.eq('updated_at', base)
+				).select('*');
+				if (error) throw dbError(error);
+				return (data ?? []).map((row) => asRun(row, loaded.track));
+			},
+			reload: async () => {
+				const { data, error } = await supabase
+					.from(TABLES.runs)
+					.select('*')
+					.eq('id', loaded.id)
+					.maybeSingle();
+				if (error) throw dbError(error);
+				return data ? asRun(data, loaded.track) : null;
+			},
+		},
+		loaded,
 		fields,
-		new Date().toISOString(),
+		isDnf,
 	);
-	const { error } = await supabase
-		.from(TABLES.runs)
-		.update({ metadata: next })
-		.eq('id', id);
-	if (error) throw error;
 }
 
 // --- Route reviews ---
@@ -1301,7 +2078,7 @@ export async function getRouteReviews(routeId: string, limit = 100) {
 		.eq('route_id', routeId)
 		.order('created_at', { ascending: false })
 		.limit(limit);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data ?? [];
 }
 
@@ -1316,7 +2093,7 @@ export async function upsertRouteReview(review: {
 		{ ...review, user_id: userId },
 		{ onConflict: 'route_id,user_id' },
 	);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Delete the signed-in user's own review of a route. Scoped by
@@ -1331,28 +2108,46 @@ export async function deleteRouteReview(routeId: string): Promise<void> {
 		.delete()
 		.eq('route_id', routeId)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Routes ---
 
+/// The public-route catalogue near a point. `nearby_routes` is declared
+/// `setof public_routes`, so what comes back is the view's fifteen columns and
+/// not a `routes` row — `PublicRouteSummary` says so rather than casting past
+/// it to a `Route` the RPC cannot produce (§ 1328).
 export async function nearbyPublicRoutes(options: {
 	lat: number;
 	lng: number;
 	radiusM?: number;
 	limit?: number;
-}): Promise<Route[]> {
+}): Promise<PublicRouteSummary[]> {
 	const { lat, lng, radiusM = 50000, limit = 50 } = options;
 	const { data, error } = await supabase.rpc('nearby_routes', {
 		lat,
 		lng,
 		radius_m: radiusM,
 		max_results: limit,
-	});
+	}, { get: true });
 	if (error || !data) return [];
-	return data as Route[];
+	return data as PublicRouteSummary[];
 }
 
+/// The public-route catalogue search, one keyset page at a time: pass the
+/// previous page's `next` as `after` (with the SAME filters and sort) to load
+/// more.
+///
+/// Reads the `public_routes` view directly rather than through the
+/// `search_public_routes` RPC (dropped in 20270817000001). The RPC paged by
+/// `p_offset`, and an offset is a position: a route published or unpublished
+/// between two reads moves every later position, so "load more" repeated or skipped a route — and none of its
+/// three orders was total, so two routes sharing a `created_at` could swap
+/// between reads. The view is the RPC's own source (same visibility: public,
+/// not shadow-hidden, club id redacted) and is granted to anon + authenticated,
+/// so the filters move here verbatim and the order gains `id` from
+/// `publicRouteOrder`, whose prefix keeps the RPC's per-sort partial indexes
+/// (migration 20270326_001) serving it. Mirrors `ApiClient.searchPublicRoutes`.
 export async function searchPublicRoutes(options?: {
 	query?: string;
 	minDistanceM?: number;
@@ -1360,10 +2155,10 @@ export async function searchPublicRoutes(options?: {
 	surface?: string;
 	tags?: string[];
 	featuredOnly?: boolean;
-	sort?: 'newest' | 'popular' | 'featured';
+	sort?: PublicRouteSort;
 	limit?: number;
-	offset?: number;
-}): Promise<Route[]> {
+	after?: KeysetCursor | null;
+}): Promise<KeysetPage<PublicRouteSummary>> {
 	const {
 		query,
 		minDistanceM,
@@ -1373,32 +2168,38 @@ export async function searchPublicRoutes(options?: {
 		featuredOnly,
 		sort = 'newest',
 		limit = 50,
-		offset = 0,
 	} = options ?? {};
 
-	const { data, error } = await supabase.rpc('search_public_routes', {
-		p_query: query && query.trim() ? query.trim() : null,
-		p_min_distance_m: minDistanceM ?? null,
-		p_max_distance_m: maxDistanceM ?? null,
-		// Treat empty-string surface the same as null (no filter) —
-		// matches mobile's `ApiClient.searchPublicRoutes`, which gates
-		// on `surface.isNotEmpty`. Previously web passed `''` straight
-		// through to the RPC, where `surface = ''` matches no rows
-		// and the user saw an empty result list rather than the full
-		// catalogue.
-		p_surface: surface && surface.length > 0 ? surface : null,
-		p_tags: tags && tags.length > 0 ? tags : null,
-		p_featured_only: featuredOnly ?? false,
-		p_sort: sort,
-		p_limit: limit,
-		p_offset: offset,
-	});
+	const order = publicRouteOrder(sort);
+	const after = options?.after ? keysetAfter(order, options.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+
+	let q = supabase.from('public_routes').select('*');
+	const trimmed = query?.trim();
+	// Every character of the query matches literally: `ilike` would read `*`
+	// (PostgREST's alias for `%`), `%`, `_` and `\` as wildcards.
+	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
+	if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
+	if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);
+	// Treat empty-string surface the same as no filter — matches mobile's
+	// `ApiClient.searchPublicRoutes`, which gates on `surface.isNotEmpty`.
+	// `surface = ''` matches no rows, so passing it through showed an empty
+	// result list rather than the full catalogue.
+	if (surface && surface.length > 0) q = q.eq('surface', surface);
+	if (tags && tags.length > 0) q = q.overlaps('tags', tags);
+	if (featuredOnly) q = q.eq('is_featured', true);
+	if (after) q = q.or(after);
+	for (const k of order) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await q.limit(limit);
 	// Throw on error rather than collapsing to []: the sole caller
 	// (RouteExplorer) needs to tell a genuine load failure apart from a
 	// legitimately empty result so it can show a retry affordance instead
 	// of a misleading "no matches" empty state.
-	if (error) throw error;
-	return (data ?? []) as Route[];
+	if (error) throw dbError(error);
+	const rows = data ?? [];
+	return { rows: rows as PublicRouteSummary[], next: nextCursor(order, rows, limit) };
 }
 
 /// The set of tags currently used across any public route, ordered by
@@ -1416,17 +2217,31 @@ export async function searchPublicRoutes(options?: {
 export async function fetchPopularRouteTags(limit = 20): Promise<string[]> {
 	const { data } = await supabase.rpc('popular_route_tags', {
 		tag_limit: limit,
-	});
+	}, { get: true });
 	if (!Array.isArray(data)) return [];
 	return (data as Array<{ tag: string }>).map((r) => r.tag);
 }
 
 export async function updateRouteTags(routeId: string, tags: string[]): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ tags, updated_at: new Date().toISOString() })
 		.eq('id', routeId);
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+/// Write the owner's route-detail edit. [patch] comes from
+/// `routeDetailsPatch`, which leaves out every field the owner did not
+/// change, so this writes only what was typed.
+export async function updateRouteDetails(routeId: string, patch: RouteDetailsPatch): Promise<void> {
+	markListsStale('routes');
+	const update: Updatable<'routes'> = { ...patch, updated_at: new Date().toISOString() };
+	const { data, error } = await supabase.from('routes').update(update).eq('id', routeId).select('id');
+	if (error) throw dbError(error);
+	if (!data || data.length === 0) {
+		throw new AppError('routeDetail.detailsSaveRefused', { message: m('routeDetail.detailsSaveRefused') });
+	}
 }
 
 /// Toggle the star/favorite flag on a route. Starred routes are what
@@ -1434,42 +2249,38 @@ export async function updateRouteTags(routeId: string, tags: string[]): Promise<
 /// runner's training rotation on a 1.4-inch picker that can't show
 /// 30+ entries comfortably.
 export async function setRouteStar(routeId: string, starred: boolean): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ is_starred: starred, updated_at: new Date().toISOString() })
 		.eq('id', routeId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
-// "My routes" + the route pickers (RunEditor / EventEditor / club transfer)
-// read only these columns. `routes.geom` — a geography(LineString) duplicating
-// `waypoints` purely for server-side spatial queries — and `start_point` ship
-// as opaque binary on `select('*')`, doubling the geometry payload with no
-// client reader. Enumerate the consumed set instead. `as const` so supabase-js
-// infers the row shape (see CLUB_SELECT_COLS).
-const ROUTE_LIST_COLS =
-	'id, user_id, club_id, name, distance_m, elevation_m, surface, waypoints, is_starred, run_count, created_at' as const;
-
-// The public_routes view (saved routes owned by another user) omits
-// waypoints / is_starred / geom by construction — take the subset it exposes.
-const PUBLIC_ROUTE_LIST_COLS =
-	'id, user_id, club_id, name, distance_m, elevation_m, surface, run_count, created_at' as const;
-
-export async function fetchRoutes(): Promise<Route[]> {
+export async function fetchRoutes(): Promise<RouteListItem[]> {
 	const result = await fetchRoutesWithError();
 	return result.routes;
 }
 
-/// Same as `fetchRoutes` but returns the error message alongside the
+/// Same as `fetchRoutes` but returns the failure alongside the
 /// rows. Callers that want to surface a failure to the user (rather
 /// than silently rendering an empty state — which is indistinguishable
 /// from "user has no routes") use this variant.
+///
+/// `error` is the failure itself, put through `dbError`, never its text: the
+/// screen shows it with `errorCopy`, which classifies it by code and keeps
+/// the database's English out of a localized page. Every `*WithError`
+/// reader has this shape, and `error_copy_guard.test.ts` fails on one that
+/// declares `error: string`.
 ///
 /// "My routes" is the union of routes the user uploaded (`user_id = me`)
 /// and routes they've bookmarked (`saved_routes.user_id = me`). Each is
 /// fetched in parallel and merged with a Set on `id` so a user who saves
 /// their own route doesn't see it twice.
-export async function fetchRoutesWithError(): Promise<{ routes: Route[]; error: string | null }> {
+export async function fetchRoutesWithError(): Promise<{
+	routes: RouteListItem[];
+	error: Error | null;
+}> {
 	// Read the session via `getSession()` — synchronous-ish from local
 	// storage, doesn't round-trip to /auth/v1/user, and works the
 	// instant the supabase-js client has initialised. Falls back to
@@ -1479,7 +2290,7 @@ export async function fetchRoutesWithError(): Promise<{ routes: Route[]; error: 
 	const userId = sessionData.session?.user?.id;
 
 	if (!userId) {
-		return { routes: [], error: 'Not signed in — sign in to see your saved routes.' };
+		return { routes: [], error: new Error('Not signed in') };
 	}
 
 	const [ownedRes, savedIdsRes] = await Promise.all([
@@ -1497,13 +2308,10 @@ export async function fetchRoutesWithError(): Promise<{ routes: Route[]; error: 
 
 	if (ownedRes.error) {
 		console.error('fetchRoutes (owned) failed', ownedRes.error);
-		return {
-			routes: [],
-			error: `${ownedRes.error.message}${ownedRes.error.code ? ` (${ownedRes.error.code})` : ''}`,
-		};
+		return { routes: [], error: dbError(ownedRes.error) };
 	}
 
-	const owned = (ownedRes.data ?? []) as unknown as Route[];
+	const owned = (ownedRes.data ?? []) as unknown as RouteListItem[];
 
 	// Saved routes can't be embedded as `route:routes(*)` off saved_routes:
 	// the base `routes` SELECT RLS only exposes the caller's own + club
@@ -1514,36 +2322,88 @@ export async function fetchRoutesWithError(): Promise<{ routes: Route[]; error: 
 	// the same privacy-preserving path Explore uses — waypoints stay behind
 	// clip_route_for_viewer) AND the base table (for own / club-visible
 	// saved routes), then union, preferring the fuller base-table row.
+	//
+	// A failed saved-route read is not an empty bookmark list. `?? []` on any
+	// of the three below reported the runner's own routes with `error: null`
+	// and their bookmarks silently gone — inside the one function in this file
+	// whose whole shape exists to keep that from happening. The page renders
+	// the banner INSTEAD of the list, so a partial answer would still be
+	// hidden; report the failure and let the retry button do its job.
+	if (savedIdsRes.error) {
+		console.error('fetchRoutes (saved ids) failed', savedIdsRes.error);
+		return { routes: [], error: dbError(savedIdsRes.error) };
+	}
 	const savedIds = ((savedIdsRes.data ?? []) as { route_id: string }[]).map(
 		(r) => r.route_id,
 	);
-	let saved: Route[] = [];
+	let saved: RouteListItem[] = [];
 	if (savedIds.length > 0) {
 		const [savedBaseRes, savedPublicRes] = await Promise.all([
-			supabase.from('routes').select(ROUTE_LIST_COLS).in('id', savedIds),
-			supabase.from('public_routes').select(PUBLIC_ROUTE_LIST_COLS).in('id', savedIds),
+			queryChunked(savedIds, (part) =>
+				supabase.from('routes').select(ROUTE_LIST_COLS).in('id', part)
+			),
+			queryChunked(savedIds, (part) =>
+				supabase.from('public_routes').select(PUBLIC_ROUTE_LIST_COLS).in('id', part)
+			),
 		]);
-		const byId = new Map<string, Route>();
+		// Either half missing is a whole class of bookmark gone: the base table
+		// carries the runner's own + club-visible saved routes, the view
+		// carries every route they saved from someone else's — the dominant
+		// case, per the comment above.
+		const savedErr = savedBaseRes.error ?? savedPublicRes.error;
+		if (savedErr) {
+			console.error('fetchRoutes (saved bodies) failed', savedErr);
+			return { routes: [], error: dbError(savedErr) };
+		}
+		const byId = new Map<string, RouteListItem>();
 		for (const r of [
-			...((savedBaseRes.data ?? []) as unknown as Route[]),
-			...((savedPublicRes.data ?? []) as unknown as Route[]),
+			...((savedBaseRes.data ?? []) as unknown as RouteListItem[]),
+			...((savedPublicRes.data ?? []) as unknown as PublicRouteListRow[]).map((r) => ({
+				...r,
+				...publicRouteListFill()
+			})),
 		]) {
 			if (!byId.has(r.id)) byId.set(r.id, r);
 		}
 		// Preserve the saved_at-desc order the id list already carries.
 		saved = savedIds
 			.map((id) => byId.get(id))
-			.filter((r): r is Route => r != null);
+			.filter((r): r is RouteListItem => r != null);
 	}
 
 	const seen = new Set<string>();
-	const merged: Route[] = [];
+	const merged: RouteListItem[] = [];
 	for (const r of [...owned, ...saved]) {
 		if (seen.has(r.id)) continue;
 		seen.add(r.id);
 		merged.push(r);
 	}
 	return { routes: merged, error: null };
+}
+
+/// One `routes` row as the `Route` every consumer reads it as.
+///
+/// Three things separate the two, and each read used to do a different subset
+/// of them. `shadow_hidden` is server-/trigger-owned moderation state
+/// (migration 20270218_001) that the read boundary is otherwise unanimous
+/// about stripping (§ 1327). `surface` is a CHECK-constrained union the
+/// generated row types as a bare `string`. And `waypoints` is jsonb, typed
+/// `Json`, which is not the non-nullable `TrackPoint[]` the client type
+/// promises. `fetchClubRoutes` and `saveRoute` did none of the three and
+/// returned the raw row as a `Route` regardless, so a club route arrived
+/// carrying the moderation column and an unparsed surface.
+///
+/// A `waypoints` that is not an array becomes `[]` rather than being asserted
+/// through: a line the consumer can iterate is the promise, and § 1229 is
+/// exactly the failure of handing back `undefined` under a type that says
+/// otherwise.
+function asRoute(row: Database['public']['Tables']['routes']['Row']): Route {
+	const { shadow_hidden: _moderation, waypoints, surface, ...rest } = row;
+	return {
+		...rest,
+		waypoints: Array.isArray(waypoints) ? (waypoints as unknown as TrackPoint[]) : [],
+		surface: parseRouteSurface(surface),
+	};
 }
 
 /// Routes owned by a club (`routes.club_id = clubId`). Read-gated by
@@ -1559,7 +2419,7 @@ export async function fetchClubRoutes(clubId: string): Promise<Route[]> {
 		console.error('fetchClubRoutes failed', error);
 		return [];
 	}
-	return data ?? [];
+	return (data ?? []).map(asRoute);
 }
 
 /// Bookmark a public route. Inserts a `saved_routes` reference rather
@@ -1572,7 +2432,7 @@ export async function bookmarkRoute(routeId: string): Promise<void> {
 		.from('saved_routes')
 		.insert({ user_id: userId, route_id: routeId });
 	// Treat duplicate (already saved) as a no-op.
-	if (error && error.code !== '23505') throw error;
+	if (error && !isDuplicateKeyError(error)) throw dbError(error);
 }
 
 export async function unbookmarkRoute(routeId: string): Promise<void> {
@@ -1584,18 +2444,44 @@ export async function unbookmarkRoute(routeId: string): Promise<void> {
 		.delete()
 		.eq('user_id', userId)
 		.eq('route_id', routeId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Transfer a personal route into club ownership (admins only) — or
 /// back out (`clubId = null`). Server-side RLS enforces that only
 /// admins of the target club may set `club_id`.
 export async function setRouteClubId(routeId: string, clubId: string | null): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ club_id: clubId, updated_at: new Date().toISOString() })
 		.eq('id', routeId);
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+/// The viewer the READ is authorised as, rather than the one the reactive
+/// store has got round to.
+///
+/// A page awaits `auth.ready()` before its mount-time fetch, but that gate
+/// resolves on its own timeout when the initial session check is WEDGED
+/// (`stores/auth_ready.ts`), so the fetch can still run with `auth.user`
+/// null. supabase-js has the persisted token by then regardless, so PostgREST
+/// answers as the owner while the caller believes it is anon — which is how
+/// `fetchRouteById` handed an owner their own route privacy-clipped, with
+/// nothing re-fetching when the store caught up. `getSession()` awaits the
+/// client's own initialisation and reads the same persisted session the
+/// request carried, so it cannot disagree with what PostgREST saw.
+///
+/// The store is the fallback for a THROWN session read only, and it can only
+/// ever name the viewer themselves — never another account — so a stale
+/// answer can widen nothing it would not already have widened.
+async function currentViewerId(): Promise<string | null> {
+	try {
+		const { data } = await supabase.auth.getSession();
+		return data.session?.user?.id ?? null;
+	} catch {
+		return auth.user?.id ?? null;
+	}
 }
 
 /// Read a route by id. The OWNER gets the full `routes` row directly.
@@ -1607,47 +2493,58 @@ export async function setRouteClubId(routeId: string, clubId: string | null): Pr
 /// owner check here — not RLS — is what stops a non-owner club member
 /// from reading the unclipped waypoints. Closes the audit/public-rows
 /// + audit/privacy-zones High finding.
+///
+/// Returns null ONLY when the row genuinely is not there (or is not
+/// visible to the caller — RLS filters rows, it does not error). A
+/// transport or permission failure throws, so a caller can tell "this
+/// route was deleted" apart from "we could not reach the server" and
+/// offer a retry instead of a headstone.
 export async function fetchRouteById(id: string): Promise<Route | null> {
-	const viewerId = auth.user?.id ?? null;
+	const viewerId = await currentViewerId();
 	const ownerRead = await supabase
 		.from('routes')
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
+	if (ownerRead.error) throw dbError(ownerRead.error);
 	if (ownerRead.data) {
-		// `shadow_hidden` is a server-/trigger-owned moderation column
-		// (migration 20270218_001) the client has no business reading; the
-		// `public_routes` view already projects it away, so strip it from the
-		// base-table owner read too. `surface` is narrowed through the same
-		// defensive parse `fetchRunById` uses for `source`, so a value outside
-		// the RouteSurface union can't leak past the read boundary.
-		const { shadow_hidden, ...rest } = ownerRead.data as typeof ownerRead.data & {
-			shadow_hidden?: boolean;
-		};
-		void shadow_hidden;
-		if (rest.user_id !== viewerId) {
+		const owned = asRoute(ownerRead.data);
+		if (owned.user_id !== viewerId) {
 			// RLS surfaced this base row to a non-owner (active club member).
 			// Never hand back the unclipped polyline / `geom` / `start_point`;
 			// route the waypoints through the same server-side privacy clip the
 			// non-owner branch below uses and drop the raw geometry columns.
-			const clipped = await fetchClippedRouteForViewer(id);
+			const clipped = await fetchClippedRouteForViewer(id).catch(lineUnavailable);
 			return {
-				...rest,
+				...owned,
 				geom: null,
 				start_point: null,
-				waypoints: clipped,
-				surface: parseRouteSurface(rest.surface),
-			} as Route;
+				waypoints: clipped ?? [],
+				line_unavailable: clipped === null,
+			};
 		}
-		return { ...rest, surface: parseRouteSurface(rest.surface) } as Route;
+		return owned;
 	}
 
 	// The metadata read and the server-clip RPC both key only on `id`, so
 	// fire them concurrently instead of serialising two round trips.
+	//
+	// A route that is not public may still be shared with this viewer — a
+	// followers-only route whose owner they follow, or a named-person grant
+	// (20270802000003). `shared_routes` has `public_routes`' projection, and
+	// `clip_route_for_viewer` admits the same audience, so the assembled
+	// shape is identical and the polyline is clipped exactly as for a public
+	// route.
 	const assembled = await assemblePublicRoute(
-		async () =>
-			(await supabase.from('public_routes').select('*').eq('id', id).maybeSingle()).data,
-		() => fetchClippedRouteForViewer(id),
+		async () => {
+			const read = await supabase.from('public_routes').select('*').eq('id', id).maybeSingle();
+			if (read.error) throw dbError(read.error);
+			if (read.data || !viewerId) return read.data;
+			const shared = await supabase.from('shared_routes').select('*').eq('id', id).maybeSingle();
+			if (shared.error) throw dbError(shared.error);
+			return shared.data;
+		},
+		() => fetchClippedRouteForViewer(id).catch(lineUnavailable),
 	);
 	if (!assembled) return null;
 
@@ -1656,7 +2553,8 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 	// these keys still get a defined shape (empty arrays / nulls).
 	return {
 		...assembled.meta,
-		waypoints: assembled.clipped,
+		waypoints: assembled.clipped ?? [],
+		line_unavailable: assembled.clipped === null,
 		is_starred: false,
 	} as Route;
 }
@@ -1670,12 +2568,13 @@ export async function fetchPublicRoute(id: string): Promise<Route | null> {
 	const assembled = await assemblePublicRoute(
 		async () =>
 			(await supabase.from('public_routes').select('*').eq('id', id).maybeSingle()).data,
-		() => fetchClippedRouteForViewer(id),
+		() => fetchClippedRouteForViewer(id).catch(lineUnavailable),
 	);
 	if (!assembled) return null;
 	return {
 		...assembled.meta,
-		waypoints: assembled.clipped,
+		waypoints: assembled.clipped ?? [],
+		line_unavailable: assembled.clipped === null,
 		is_starred: false,
 	} as Route;
 }
@@ -1693,6 +2592,7 @@ export async function saveRoute(route: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
+	markListsStale('routes');
 	const { data, error } = await supabase
 		.from('routes')
 		.insert({
@@ -1714,64 +2614,118 @@ export async function saveRoute(route: {
 		// 20260907_001 — 30 routes / hour per user, generous enough for
 		// bulk Strava / Garmin imports) as a friendlier "wait N minutes"
 		// message instead of the raw postgres exception.
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
-	return data;
+	return asRoute(data);
 }
 
+/// Delete a route its caller owns (or administers through a club). Every
+/// reference to it is handled by its foreign key (decisions § 2293): the
+/// route's own photos, markers, conditions, reviews, shares, bookmarks and
+/// segments cascade, and runs, events, event courses, race listings and DMs
+/// keep living with the link nulled.
+///
+/// The photo bytes go after the row. A route photo's Storage object is
+/// readable to its uploader through their own folder, so the sweep still
+/// reaches it once the cascade has taken the route_photos row, and a route
+/// delete that fails never leaves a standing route with its photos gone. The
+/// path read only feeds that sweep, so its failure costs the sweep and never
+/// the delete. Bytes a skipped or failed sweep leaves behind are erased by the
+/// server's route-photo orphan sweep (behind its feature flag, decisions
+/// § 2305), and by account deletion's folder sweep in any case.
+///
+/// RLS filters a refused DELETE rather than raising, so an empty result is
+/// read back: a route the caller can still see was refused (thrown as the
+/// 42501 RLS would have raised), one they cannot is already gone (another
+/// tab, another device) and the delete is done.
 export async function deleteRoute(id: string): Promise<void> {
-	const { data: photos } = await supabase
-		.from(TABLES.route_photos)
-		.select('storage_path, thumb_512_path')
-		.eq('route_id', id);
-	if (photos && photos.length > 0) {
-		// Sweep route-photo blobs before the row delete. The FK cascade
-		// removes the route_photos rows (so the Storage SELECT join hides
-		// the bytes), but the blobs would otherwise orphan in the bucket —
-		// the same gap deleteRun closes for run photos. Best-effort.
-		const paths = photos
-			.flatMap((p: { storage_path: string | null; thumb_512_path: string | null }) => [
-				p.storage_path,
-				p.thumb_512_path,
-			])
-			.filter((p: string | null): p is string => !!p);
-		if (paths.length > 0) {
-			try {
-				await supabase.storage.from(BUCKETS.route_photos).remove(paths);
-			} catch (e) {
-				console.warn('deleteRoute: photo storage removal failed (orphaned files)', { route_id: id, count: paths.length, error: e });
-			}
+	let paths: string[] = [];
+	try {
+		const { data: photos, error: photosError } = await supabase
+			.from(TABLES.route_photos)
+			.select('storage_path, thumb_512_path')
+			.eq('route_id', id);
+		if (photosError) {
+			console.warn('deleteRoute: photo path read failed, skipping the photo sweep', {
+				route_id: id,
+				...supabaseErrorFields(photosError),
+			});
+		} else {
+			paths = (photos ?? [])
+				.flatMap((p) => [p.storage_path, p.thumb_512_path])
+				.filter((p): p is string => !!p);
+		}
+	} catch (e) {
+		console.warn('deleteRoute: photo path read failed, skipping the photo sweep', { route_id: id, error: e });
+	}
+
+	markListsStale('routes');
+	const { data: deleted, error } = await supabase
+		.from('routes')
+		.delete()
+		.eq('id', id)
+		.select('id');
+	if (error) throw dbError(error);
+	if (!deleted || deleted.length === 0) {
+		const { data: still, error: readError } = await supabase
+			.from('routes')
+			.select('id')
+			.eq('id', id)
+			.maybeSingle();
+		if (readError) throw dbError(readError);
+		if (still) throw new DbError('route delete refused', '42501');
+	}
+
+	if (paths.length > 0) {
+		let removeError: unknown = null;
+		try {
+			removeError = (await supabase.storage.from(BUCKETS.route_photos).remove(paths)).error;
+		} catch (e) {
+			removeError = e;
+		}
+		if (removeError) {
+			console.warn('deleteRoute: photo storage removal failed (orphaned files)', { route_id: id, count: paths.length, error: removeError });
 		}
 	}
-	const { error } = await supabase.from('routes').delete().eq('id', id);
-	if (error) throw error;
+}
+
+/// What deleting a route takes with it or detaches, for the confirm the owner
+/// reads first. Counts other runners' bookmarks and the race listings using it
+/// as a course, which the owner's own session cannot read. Throws when the
+/// caller may not delete the route (42501) or the read fails.
+export async function fetchRouteDeleteImpact(id: string): Promise<RouteDeleteImpact> {
+	const { data, error } = await supabase.rpc('route_delete_impact', { p_route_id: id }, { get: true });
+	if (error) throw dbError(error);
+	const row = data?.[0];
+	if (!row) throw new Error('route_delete_impact returned no row');
+	return row;
 }
 
 // --- Dashboard stats ---
 
-export async function fetchWeeklyMileage(
-	locale?: string,
-	weekStartDay: 'monday' | 'sunday' = 'monday',
-) {
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) return [];
-	// Only the last ~12 weeks are charted, so window the query by date
-	// rather than `.limit(2000)` ascending — that cap returned a >2000-run
-	// user's OLDEST 2000 runs, so the chart showed ancient weeks. A 14-week
-	// window (12 + a 2-week buffer for partial edges) is bounded and recent.
-	const windowStart = new Date();
-	windowStart.setDate(windowStart.getDate() - 14 * 7);
-	const { data: runs } = await supabase
-		.from(TABLES.runs)
-		.select('started_at, distance_m')
-		.eq('user_id', user.id)
-		.gte('started_at', windowStart.toISOString())
-		.order('started_at', { ascending: true });
-
-	if (!runs || runs.length === 0) return [];
-	return bucketWeeklyMileage(runs, 12, locale, weekStartDay);
+/// The personal records `runId` set, for the PR share card: what the
+/// improvement log says it beat, plus any bracket it holds from before the log
+/// existed. Both tables are owner-only, so another user's run answers empty.
+export async function fetchRunPersonalRecords(runId: string): Promise<PrCardEntry[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const [improved, held] = await Promise.all([
+		supabase
+			.from(TABLES.personal_record_improvements)
+			.select('distance, best_time_s, previous_time_s')
+			.eq('user_id', userId)
+			.eq('run_id', runId),
+		supabase
+			.from(TABLES.personal_records)
+			.select('distance, best_time_s')
+			.eq('user_id', userId)
+			.eq('run_id', runId),
+	]);
+	if (improved.error) throw dbError(improved.error);
+	if (held.error) throw dbError(held.error);
+	return prCardEntries(improved.data ?? [], held.data ?? []);
 }
 
 export async function fetchPersonalRecords() {
@@ -1791,7 +2745,11 @@ export async function fetchPersonalRecords() {
 
 	if (!data || data.length === 0) return [];
 
-	const labels: Record<string, string> = {
+	// Named for the column, not for what they hold: both are registered
+	// against `personal_records.distance` in check_constraint_unions.mjs, and
+	// that registry keys on the declaration name inside this ten-thousand-line
+	// file. `labels` and `order` are not unique by construction.
+	const PR_BRACKET_LABELS: Record<string, string> = {
 		'1_mile': 'Mile',
 		'5k': '5k',
 		'8k': '8k',
@@ -1800,7 +2758,7 @@ export async function fetchPersonalRecords() {
 		half_marathon: 'Half Marathon',
 		marathon: 'Marathon',
 	};
-	const order: Record<string, number> = {
+	const PR_BRACKET_ORDER: Record<string, number> = {
 		'1_mile': 0,
 		'5k': 1,
 		'8k': 2,
@@ -1812,10 +2770,10 @@ export async function fetchPersonalRecords() {
 
 	return data
 		.slice()
-		.sort((a, b) => (order[a.distance] ?? 99) - (order[b.distance] ?? 99))
+		.sort((a, b) => (PR_BRACKET_ORDER[a.distance] ?? 99) - (PR_BRACKET_ORDER[b.distance] ?? 99))
 		.map((r) => ({
 			key: r.distance as string,
-			distance: labels[r.distance] ?? r.distance,
+			distance: PR_BRACKET_LABELS[r.distance] ?? r.distance,
 			time_s: r.best_time_s,
 			date: r.achieved_at.slice(0, 10),
 		}));
@@ -1839,18 +2797,15 @@ export async function fetchIntegrations(): Promise<Integration[]> {
 		.eq('user_id', userId)
 		.is('disconnected_at', null);
 
-	return data ?? [];
-}
-
-export async function connectIntegration(provider: string): Promise<void> {
-	const userId = auth.user?.id;
-	if (!userId) throw new Error('Not authenticated');
-
-	const { error } = await supabase.from(TABLES.integrations).upsert(
-		{ user_id: userId, provider },
-		{ onConflict: 'user_id,provider' }
-	);
-	if (error) throw error;
+	// `provider` is a CHECK-constrained union (`integrations_provider_check`)
+	// that the generated row types as a bare `string`; a row whose provider the
+	// build has not heard of is dropped rather than handed on as an
+	// `IntegrationProvider` it is not — every consumer switches on it, and the
+	// card for a provider with no branch renders as nothing either way.
+	return (data ?? []).flatMap((row) => {
+		const provider = parseIntegrationProvider(row.provider);
+		return provider ? [{ ...row, provider }] : [];
+	});
 }
 
 export async function disconnectIntegration(provider: string): Promise<void> {
@@ -1866,7 +2821,10 @@ export async function disconnectIntegration(provider: string): Promise<void> {
 		const { error: fnError } = await supabase.functions.invoke('strava-import', {
 			body: { action: 'disconnect' },
 		});
-		if (fnError) throw fnError;
+		// The caller renders this into "Couldn't disconnect: {error}", a slot
+		// written for a reason: a refusal the card words becomes its sentence,
+		// and no code reaches it (decisions § 904, § 2316).
+		if (fnError) throw await stravaRefusal(fnError);
 		return;
 	}
 
@@ -1875,7 +2833,7 @@ export async function disconnectIntegration(provider: string): Promise<void> {
 		.delete()
 		.eq('user_id', userId)
 		.eq('provider', provider);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Clubs ---
@@ -1902,29 +2860,24 @@ const CLUB_SELECT_COLS =
 // enumerates these safe columns; the two coords are write-only
 // today (no UI consumer).
 const EVENT_SELECT_COLS =
-	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, is_public' as const;
-
-function slugify(name: string): string {
-	return name
-		.toLowerCase()
-		.trim()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '')
-		.slice(0, 48);
-}
+	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public, race_start_mode, race_scheduled_offset_s, race_window_open_offset_s, race_window_length_s, race_auto_approve' as const;
 
 /** Browse public clubs. Most recently created first. */
 export async function browseClubsWithError(
 	search?: string
-): Promise<{ clubs: ClubWithMeta[]; error: string | null }> {
+): Promise<{ clubs: ClubWithMeta[]; error: Error | null }> {
 	let query = supabase.from('clubs').select(CLUB_SELECT_COLS).eq('is_public', true);
 	if (search && search.trim()) {
+		// Quoted per filter: the raw term inside the `or=` tree let `,` start a
+		// new filter and `)` close the tree, and ilike read `*` `%` `_` as wildcards.
 		const term = search.trim();
-		query = query.or(`name.ilike.%${term}%,location_label.ilike.%${term}%`);
+		query = query.or(
+			`${literalSubstringTerm('name', term)},${literalSubstringTerm('location_label', term)}`
+		);
 	}
 	const { data, error } = await query.order('created_at', { ascending: false }).limit(60);
-	if (error) return { clubs: [], error: error.message };
-	return { clubs: data ? await enrichClubs(data) : [], error: null };
+	if (error) return { clubs: [], error: dbError(error) };
+	return data ? enrichClubs(data.map(asClub)) : { clubs: [], error: null };
 }
 
 export async function browseClubs(search?: string): Promise<ClubWithMeta[]> {
@@ -1933,13 +2886,13 @@ export async function browseClubs(search?: string): Promise<ClubWithMeta[]> {
 
 /// Region-aware club search. Tries to geocode the query first
 /// (so "Virginia" → centroid + ~470km radius → ST_DWithin against
-/// `clubs.location_point`); falls back to the same ILIKE-on-name /
-/// label path `browseClubs` uses when geocoding doesn't resolve
+/// `clubs.location_point`); falls back to the same literal name /
+/// label match `browseClubs` uses when geocoding doesn't resolve
 /// (short query, MapTiler offline, no key, etc.). See
 /// [migration 20260905_001] for the RPC.
 export async function searchClubsWithError(
 	query: string
-): Promise<{ clubs: ClubWithMeta[]; error: string | null }> {
+): Promise<{ clubs: ClubWithMeta[]; error: Error | null }> {
 	const term = query.trim();
 	if (!term) return browseClubsWithError();
 
@@ -1957,9 +2910,9 @@ export async function searchClubsWithError(
 		p_center_lat: place?.center.lat ?? undefined,
 		p_radius_m: place?.radiusM ?? undefined,
 		p_limit: 60,
-	});
+	}, { get: true });
 	if (error) {
-		console.warn('search_clubs RPC failed, falling back to ILIKE-only', error);
+		console.warn('search_clubs RPC failed, falling back to the name/label match', error);
 		return browseClubsWithError(term);
 	}
 	// The RPC returns `setof clubs` — strip the columns the client
@@ -1974,7 +2927,7 @@ export async function searchClubsWithError(
 		location_label: (r.location_label ?? null) as string | null,
 		is_public: r.is_public as boolean,
 		is_verified: (r.is_verified as boolean | undefined) ?? false,
-		join_policy: (r.join_policy ?? 'open') as JoinPolicy,
+		join_policy: parseJoinPolicy(r.join_policy as string | null),
 		member_count: (r.member_count ?? 0) as number,
 		requires_activity_waiver: (r.requires_activity_waiver as boolean | undefined) ?? false,
 		website_url: (r.website_url ?? null) as string | null,
@@ -1985,7 +2938,7 @@ export async function searchClubsWithError(
 		created_at: r.created_at as string,
 		updated_at: r.updated_at as string,
 	}));
-	return { clubs: await enrichClubs(rows), error: null };
+	return enrichClubs(rows);
 }
 
 export async function searchClubs(query: string): Promise<ClubWithMeta[]> {
@@ -2056,9 +3009,9 @@ export async function searchPublicEvents(
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
 		p_limit: f.limit ?? 60,
-	});
+	}, { get: true });
 	if (error) {
-		throw error;
+		throw dbError(error);
 	}
 	return (data ?? []) as PublicEventResult[];
 }
@@ -2075,6 +3028,7 @@ export interface RaceListingFilters {
 	center?: { lng: number; lat: number };
 	radiusM?: number;
 	limit?: number;
+	newestFirst?: boolean;
 }
 
 /// A discoverable race calendar entry (the search_race_listings projection:
@@ -2091,6 +3045,9 @@ export interface RaceListingResult {
 	results_url: string | null;
 	is_verified: boolean;
 	distance_m_away: number | null;
+	/// The claiming club is verified, public and unhidden right now
+	/// (public_race_listings, decisions § 2406). Never stored per row.
+	organiser_is_official: boolean;
 }
 
 /// Race discovery (security invoker, public clubs/listings). Mirrors
@@ -2106,10 +3063,423 @@ export async function searchRaceListings(
 		p_center_lng: f.center?.lng ?? undefined,
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
-		p_limit: f.limit ?? 60
-	});
-	if (error) throw error;
+		p_limit: f.limit ?? 60,
+		p_newest_first: f.newestFirst || undefined
+	}, { get: true });
+	if (error) throw dbError(error);
 	return (data ?? []) as RaceListingResult[];
+}
+
+/// One calendar listing, for the race detail page. Read through the redacted
+/// `public_race_listings` view — the same projection a logged-out visitor gets
+/// — so the page never depends on who submitted the race. A malformed id or a
+/// missing row is `null`; a failed read throws, so the page can tell "this race
+/// is gone" apart from "we could not load it".
+export interface RaceListingDetail {
+	id: string;
+	provider: string;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	entry_url: string | null;
+	results_url: string | null;
+	is_verified: boolean;
+	/// The verified club that claimed the race (decisions § 2381). Null while
+	/// unclaimed, and while the club is private or moderated away.
+	organiser: RaceOrganiser | null;
+	/// The organiser club is verified right now (decisions § 2406); a club
+	/// whose badge was revoked still names itself but vouches for nothing.
+	organiserIsOfficial: boolean;
+	/// The linked course's summary. The view fills it only while the route is
+	/// public, so null covers "no course" and "a course nobody may see" alike
+	/// (decisions § 2157).
+	course: RaceListingCourse | null;
+}
+
+export interface RaceOrganiser {
+	id: string;
+	name: string;
+	slug: string | null;
+}
+
+export interface RaceListingCourse {
+	distanceM: number | null;
+	ascentM: number | null;
+	surface: string | null;
+	/// Null unless the route is public (decisions § 2253); its line is read
+	/// with `fetchPublicRoute`, never from this row.
+	routeId: string | null;
+	/// Where the course came from and when its club last checked it; null on
+	/// a course linked by an operator before claims existed (decisions § 2381).
+	source: RaceCourseSource | null;
+	checkedAt: string | null;
+	/// Set when the route's line changed after the last check.
+	updatedAt: string | null;
+}
+
+const RACE_LISTING_DETAIL_COLUMNS =
+	'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug, organiser_is_official';
+
+type RaceListingDetailRow = Pick<
+	Database['public']['Views']['public_race_listings']['Row'],
+	| 'id'
+	| 'provider'
+	| 'name'
+	| 'race_date'
+	| 'distance_m'
+	| 'location_label'
+	| 'entry_url'
+	| 'results_url'
+	| 'is_verified'
+	| 'course_distance_m'
+	| 'course_elevation_m'
+	| 'course_surface'
+	| 'course_route_id'
+	| 'course_source'
+	| 'course_checked_at'
+	| 'course_updated_at'
+	| 'organiser_club_id'
+	| 'organiser_club_name'
+	| 'organiser_club_slug'
+	| 'organiser_is_official'
+>;
+
+function raceListingDetailFromRow(data: RaceListingDetailRow): RaceListingDetail | null {
+	if (!data.id || !data.name || !data.race_date || !data.provider) return null;
+	const hasCourse =
+		data.course_distance_m != null ||
+		data.course_elevation_m != null ||
+		data.course_surface != null ||
+		data.course_route_id != null;
+	return {
+		id: data.id,
+		provider: data.provider,
+		name: data.name,
+		race_date: data.race_date,
+		distance_m: data.distance_m,
+		location_label: data.location_label,
+		entry_url: data.entry_url,
+		results_url: data.results_url,
+		is_verified: data.is_verified ?? false,
+		organiser:
+			data.organiser_club_id && data.organiser_club_name
+				? { id: data.organiser_club_id, name: data.organiser_club_name, slug: data.organiser_club_slug }
+				: null,
+		organiserIsOfficial: data.organiser_is_official === true,
+		course: hasCourse
+			? {
+					distanceM: data.course_distance_m,
+					ascentM: data.course_elevation_m,
+					surface: data.course_surface,
+					routeId: data.course_route_id,
+					source: parseRaceCourseSource(data.course_source),
+					checkedAt: data.course_checked_at,
+					updatedAt: data.course_updated_at
+				}
+			: null
+	};
+}
+
+export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
+	if (!isEntityId(id)) return null;
+	const { data, error } = await supabase
+		.from('public_race_listings')
+		.select(RACE_LISTING_DETAIL_COLUMNS)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? raceListingDetailFromRow(data) : null;
+}
+
+/// Several listings in one read, for the course-suggestion review queue.
+/// Order follows `ids`; an id the view no longer returns is dropped.
+export async function fetchRaceListings(ids: readonly string[]): Promise<RaceListingDetail[]> {
+	const wanted = [...new Set(ids.filter(isEntityId))];
+	if (wanted.length === 0) return [];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase
+			.from('public_race_listings')
+			.select(RACE_LISTING_DETAIL_COLUMNS)
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const byId = new Map<string, RaceListingDetail>();
+	for (const row of rows) {
+		const detail = raceListingDetailFromRow(row);
+		if (detail) byId.set(detail.id, detail);
+	}
+	return wanted.flatMap((id) => byId.get(id) ?? []);
+}
+
+/// A verified club claims an unclaimed race (decisions § 2381). The RPC is
+/// the gate: only an active owner/admin of a public, verified club passes.
+export async function claimRaceListing(listingId: string, clubId: string): Promise<void> {
+	const { error } = await supabase.rpc('claim_race_listing', {
+		p_listing_id: listingId,
+		p_club_id: clubId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Links a course (a public route the organiser club owns), or unlinks it
+/// with `routeId: null`. Linking the same route again re-checks it.
+export async function linkRaceCourse(
+	listingId: string,
+	routeId: string | null,
+	source: RaceCourseSource | null
+): Promise<void> {
+	const { error } = await supabase.rpc('link_race_course', {
+		p_listing_id: listingId,
+		p_route_id: routeId,
+		p_source: source
+	});
+	if (error) throw dbError(error);
+}
+
+/// A runner suggests one of their public routes as the race's course. It
+/// links nothing; the organiser club reviews it.
+export async function suggestRaceCourse(
+	listingId: string,
+	routeId: string,
+	note: string | null
+): Promise<void> {
+	const { error } = await supabase.rpc('suggest_race_course', {
+		p_listing_id: listingId,
+		p_route_id: routeId,
+		p_note: note?.trim() || null
+	});
+	if (error) throw dbError(error);
+}
+
+/// The caller's own open suggestion for a race, or null.
+export async function fetchMyRaceCourseSuggestion(
+	listingId: string
+): Promise<{ id: string; routeId: string } | null> {
+	if (!isEntityId(listingId)) return null;
+	const { data, error } = await supabase
+		.from('race_course_suggestions')
+		.select('id, route_id')
+		.eq('listing_id', listingId)
+		.eq('status', 'pending')
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? { id: data.id, routeId: data.route_id } : null;
+}
+
+export interface RaceCourseSuggestion {
+	id: string;
+	routeId: string;
+	routeName: string;
+	/// The club that owns the suggested route, when it is a club route.
+	routeClubId: string | null;
+	note: string | null;
+	createdAt: string;
+}
+
+/// The pending suggestions a reviewer may act on. Empty for anyone who is not
+/// one; the queue never says who suggested a route.
+export async function fetchRaceCourseSuggestionsForReview(
+	listingId: string
+): Promise<RaceCourseSuggestion[]> {
+	const { data, error } = await supabase.rpc(
+		'race_course_suggestions_for_review',
+		{ p_listing_id: listingId },
+		{ get: true }
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		id: r.id,
+		routeId: r.route_id,
+		routeName: r.route_name,
+		routeClubId: r.route_club_id,
+		note: r.note,
+		createdAt: r.created_at
+	}));
+}
+
+/// An organiser's course alert on a race it claimed or a route its club
+/// owns (decisions § 2407). Readable only while the club is still verified,
+/// and a route alert only by someone who can see the route; who typed it is
+/// never readable.
+export interface CourseAlert {
+	id: string;
+	clubId: string;
+	listingId: string | null;
+	routeId: string | null;
+	kind: CourseAlertKind;
+	message: string;
+	createdAt: string;
+}
+
+export type CourseAlertTarget = { listingId: string; routeId?: undefined } | { routeId: string; listingId?: undefined };
+
+const COURSE_ALERT_COLUMNS = 'id, club_id, listing_id, route_id, kind, message, created_at';
+
+function courseAlertFromRow(r: {
+	id: string;
+	club_id: string;
+	listing_id: string | null;
+	route_id: string | null;
+	kind: string;
+	message: string;
+	created_at: string;
+}): CourseAlert {
+	return {
+		id: r.id,
+		clubId: r.club_id,
+		listingId: r.listing_id,
+		routeId: r.route_id,
+		kind: parseCourseAlertKind(r.kind),
+		message: r.message,
+		createdAt: r.created_at
+	};
+}
+
+/// A race's or a route's alerts, newest first.
+export async function fetchCourseAlerts(target: CourseAlertTarget, limit = 20): Promise<CourseAlert[]> {
+	const id = target.listingId ?? target.routeId;
+	if (!isEntityId(id)) return [];
+	const query = supabase.from(TABLES.course_alerts).select(COURSE_ALERT_COLUMNS);
+	const { data, error } = await (target.listingId
+		? query.eq('listing_id', target.listingId)
+		: query.eq('route_id', id))
+		.order('created_at', { ascending: false })
+		.limit(limit);
+	if (error) throw dbError(error);
+	return (data ?? []).map(courseAlertFromRow);
+}
+
+/// Where an alert points, for the stable-id resolver a notification links to.
+/// Null when the alert is gone or its club no longer vouches for it.
+export async function fetchCourseAlertTarget(
+	alertId: string
+): Promise<{ listingId: string | null; routeId: string | null } | null> {
+	if (!isEntityId(alertId)) return null;
+	const { data, error } = await supabase
+		.from(TABLES.course_alerts)
+		.select('listing_id, route_id')
+		.eq('id', alertId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? { listingId: data.listing_id, routeId: data.route_id } : null;
+}
+
+/// Posts an alert as the organiser club; the RPC is the gate and tells the
+/// runners training for the race or who saved its course.
+export async function postCourseAlert(
+	target: CourseAlertTarget,
+	kind: CourseAlertKind,
+	message: string
+): Promise<string> {
+	const { data, error } = await supabase.rpc('post_course_alert', {
+		p_listing_id: target.listingId ?? null,
+		p_route_id: target.routeId ?? null,
+		p_kind: kind,
+		p_message: message.trim()
+	});
+	if (error) throw dbError(error);
+	return data;
+}
+
+export async function deleteCourseAlert(alertId: string): Promise<void> {
+	const { error } = await supabase.rpc('delete_course_alert', { p_alert_id: alertId });
+	if (error) throw dbError(error);
+}
+
+/// A race with pending course suggestions the signed-in runner may review
+/// (decisions § 2396): a race their verified club claimed, or an unclaimed
+/// race while they administer any verified club.
+export interface RaceCourseReviewQueueItem {
+	listingId: string;
+	name: string;
+	raceDate: string;
+	/// Null while the race is unclaimed; claiming it is the first step.
+	organiserClubId: string | null;
+	pendingCount: number;
+}
+
+export async function fetchRaceCourseReviewQueue(): Promise<RaceCourseReviewQueueItem[]> {
+	const { data, error } = await supabase.rpc('race_course_review_queue', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		listingId: r.listing_id,
+		name: r.name,
+		raceDate: r.race_date,
+		organiserClubId: r.organiser_club_id,
+		pendingCount: r.pending_count
+	}));
+}
+
+/// Approve (linking `routeId`, the club's own public copy, or the suggested
+/// route itself when the club already owns it) or reject a suggestion.
+export async function reviewRaceCourseSuggestion(
+	suggestionId: string,
+	approve: boolean,
+	routeId: string | null = null,
+	source: RaceCourseSource = 'official'
+): Promise<void> {
+	const { error } = await supabase.rpc('review_race_course_suggestion', {
+		p_suggestion_id: suggestionId,
+		p_approve: approve,
+		p_route_id: routeId,
+		p_source: source
+	});
+	if (error) throw dbError(error);
+}
+
+/// The caller's own public routes, for the "Suggest a course" picker.
+export async function fetchMyPublicRoutes(): Promise<{ id: string; name: string }[]> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('routes')
+		.select('id, name')
+		.eq('user_id', userId)
+		.eq('is_public', true)
+		.eq('shadow_hidden', false)
+		.order('created_at', { ascending: false })
+		.limit(200);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The signed-in runner's own runs linked to a listing (an imported or
+/// matched result), newest first, with the official chip time when the import
+/// stamped one.
+export interface RaceListingRun {
+	id: string;
+	started_at: string;
+	distance_m: number;
+	duration_s: number;
+	chip_time: string | null;
+}
+
+export async function fetchMyRunsAtRace(listingId: string): Promise<RaceListingRun[]> {
+	const userId = auth.user?.id;
+	if (!userId || !isEntityId(listingId)) return [];
+	const { data, error } = await supabase
+		.from(TABLES.runs)
+		.select('id, started_at, distance_m, duration_s, metadata')
+		.eq('race_listing_id', listingId)
+		.eq('user_id', userId)
+		.order('started_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => {
+		const meta = r.metadata && typeof r.metadata === 'object' && !Array.isArray(r.metadata)
+			? (r.metadata as Record<string, unknown>)
+			: {};
+		return {
+			id: r.id,
+			started_at: r.started_at,
+			distance_m: r.distance_m,
+			duration_s: r.duration_s,
+			chip_time: typeof meta.chip_time === 'string' ? meta.chip_time : null
+		};
+	});
 }
 
 export interface RaceListingInput {
@@ -2141,7 +3511,7 @@ export async function submitRaceListing(input: RaceListingInput): Promise<RaceLi
 		})
 		.select('*')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as RaceListing;
 }
 
@@ -2150,7 +3520,7 @@ export async function updateRaceListing(
 	id: string,
 	patch: Partial<RaceListingInput>
 ): Promise<void> {
-	const fields: Record<string, unknown> = {};
+	const fields: Updatable<'race_listings'> = {};
 	if (patch.name != null) fields.name = patch.name.trim();
 	if (patch.race_date != null) fields.race_date = patch.race_date;
 	if (patch.distance_m !== undefined) fields.distance_m = patch.distance_m;
@@ -2159,15 +3529,14 @@ export async function updateRaceListing(
 	if (patch.entry_url !== undefined) fields.entry_url = patch.entry_url?.trim() || null;
 	if (patch.results_url !== undefined) fields.results_url = patch.results_url?.trim() || null;
 	const { error } = await supabase.from('race_listings').update(fields).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export interface ImportRaceResultInput {
-	provider: 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste';
+	provider: 'runsignup' | 'chronotrack' | 'paste';
 	listingId: string;
-	runSignUpUserId?: string;
-	ultraSignUpAthleteId?: string;
-	/// ChronoTrack: filter the event's results to one bib.
+	/// RunSignUp / ChronoTrack: the bib the runner wore — the only scope
+	/// either leg accepts (decisions § 1903 for RunSignUp).
 	bib?: string;
 	/// When set, enrich THIS existing run in place (the auto-match seam) instead
 	/// of inserting a new race run.
@@ -2187,73 +3556,96 @@ export interface ImportRaceResultOutcome {
 	imported: number;
 	skipped: number;
 	enriched: number;
+	/// Whether the function read the finisher field to its end. Optional on the
+	/// wire only because a deployment can predate it; grade it through
+	/// `parseImportCompleteness`, which reads an absent one as partial.
+	complete?: boolean;
 }
 
 /// Invoke race-results-import. Throws `RUNSIGNUP_UNAVAILABLE` /
-/// `ULTRASIGNUP_UNAVAILABLE` / `CHRONOTRACK_UNAVAILABLE` when the chosen
+/// `CHRONOTRACK_UNAVAILABLE` when the chosen
 /// provider key is unconfigured server-side (503), so the UI can show the
 /// explainer rather than a generic failure.
 export async function importRaceResult(
 	input: ImportRaceResultInput
 ): Promise<ImportRaceResultOutcome> {
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase.functions.invoke('race-results-import', {
 		body: {
 			provider: input.provider,
 			listingId: input.listingId,
-			runSignUpUserId: input.runSignUpUserId,
-			ultraSignUpAthleteId: input.ultraSignUpAthleteId,
 			bib: input.bib,
 			matchRunId: input.matchRunId,
 			result: input.result
 		}
 	});
 	if (error) {
-		if (await isProviderNotConfigured(error)) {
-			throw new Error(
-				input.provider === 'ultrasignup'
-					? 'ULTRASIGNUP_UNAVAILABLE'
-					: input.provider === 'chronotrack'
-						? 'CHRONOTRACK_UNAVAILABLE'
-						: 'RUNSIGNUP_UNAVAILABLE'
-			);
+		// `paste` carries no credential, so it can never be the provider a 503
+		// provider_not_configured is about — reporting one as RunSignUp's outage
+		// also swallowed a plain network failure on the paste path.
+		if (input.provider !== 'paste' && (await isProviderGateRefusal(error))) {
+			throw new Error(RACE_IMPORT_UNAVAILABLE[input.provider]);
 		}
-		throw error;
+		// The function's own code, not supabase-js's fixed non-2xx sentence, so a
+		// caller can branch on what the function refused (decisions § 904).
+		throw new Error(await edgeFunctionErrorMessage(error, 'race_import_failed'));
 	}
 	return data as ImportRaceResultOutcome;
 }
 
-/// Probe whether the RunSignUp leg is configured server-side. Returns false
-/// (unavailable) on a 503 provider_not_configured, true otherwise. Used to
-/// disable the RunSignUp card with an explainer.
+/// The error `importRaceResult` throws when a leg's credentials are unset
+/// server-side, keyed by leg so a provider added later cannot inherit
+/// RunSignUp's message the way a fall-through ternary gave it to ChronoTrack.
+export const RACE_IMPORT_UNAVAILABLE: Record<RaceImportLeg, string> = {
+	runsignup: 'RUNSIGNUP_UNAVAILABLE',
+	chronotrack: 'CHRONOTRACK_UNAVAILABLE'
+};
+
+/// Probe whether the RunSignUp RESULTS leg is configured server-side. Reports
+/// available only on a clean answer — see `probeSaysConfigured` for why any
+/// failure at all reads as unavailable. Drives the RunSignUp card + explainer.
+///
+/// Probes `race-results-import`, not `race-listings-sync`: the card gates an
+/// IMPORT, so it has to ask the leg that would run. The two legs read different
+/// credentials — the sync walks an upcoming-races feed, the import fetches a
+/// finisher list — and nothing makes one leg's verdict binding on the other
+/// (decisions § 1041).
 export async function isRunSignUpConfigured(): Promise<boolean> {
-	const { error } = await supabase.functions.invoke('race-listings-sync', { body: {} });
-	if (!error) return true;
-	return !(await isProviderNotConfigured(error));
-}
-
-/// Probe whether the UltraSignup leg is configured server-side. Same fail-closed
-/// shape as isRunSignUpConfigured, gating the independent UltraSignup key.
-export async function isUltraSignUpConfigured(): Promise<boolean> {
-	const { error } = await supabase.functions.invoke('race-listings-sync', {
-		body: { provider: 'ultrasignup' }
+	const { error } = await supabase.functions.invoke('race-results-import', {
+		body: { provider: 'runsignup', probe: true }
 	});
-	if (!error) return true;
-	return !(await isProviderNotConfigured(error));
+	return probeSaysConfigured(error);
 }
 
-/// Probe whether the ChronoTrack leg is configured server-side. Returns false
-/// on a 503 provider_not_configured, true otherwise — drives the disabled
-/// ChronoTrack card + explainer. Uses the race-results-import probe mode (no
-/// listing needed), mirroring the RunSignUp probe shape.
+/// Probe whether the ChronoTrack leg is configured server-side. Same
+/// fail-closed shape as its sibling — drives the disabled ChronoTrack
+/// card + explainer. Uses the race-results-import probe mode (no listing
+/// needed).
 export async function isChronoTrackConfigured(): Promise<boolean> {
 	const { error } = await supabase.functions.invoke('race-results-import', {
 		body: { provider: 'chronotrack', probe: true }
 	});
-	if (!error) return true;
-	return !(await isProviderNotConfigured(error));
+	return probeSaysConfigured(error);
 }
 
-async function isProviderNotConfigured(error: unknown): Promise<boolean> {
+const RACE_IMPORT_PROBES: Record<RaceImportLeg, () => Promise<boolean>> = {
+	runsignup: isRunSignUpConfigured,
+	chronotrack: isChronoTrackConfigured
+};
+
+/// Probe one import leg's credentials. The two probes above stay exported for
+/// the Settings cards, which name their provider; a caller holding a leg it
+/// resolved from a listing dispatches here instead of re-deciding which probe.
+export function isRaceImportProviderConfigured(leg: RaceImportLeg): Promise<boolean> {
+	return RACE_IMPORT_PROBES[leg]();
+}
+
+/// Whether an IMPORT's failure is the credential gate refusing, and not the
+/// import itself failing. Distinct from `probeSaysConfigured`, which grades a
+/// probe: an import can fail for reasons that say nothing about the credential
+/// (a listing that does not exist, a bib with no match), and those must reach
+/// the caller as themselves rather than as "this provider is unavailable".
+async function isProviderGateRefusal(error: unknown): Promise<boolean> {
 	const ctx = (error as { context?: Response })?.context;
 	if (ctx && typeof ctx.status === 'number' && ctx.status > 0) {
 		if (ctx.status === 503) {
@@ -2287,7 +3679,7 @@ async function isProviderNotConfigured(error: unknown): Promise<boolean> {
 /// The matched-race view for a run: the run's owner-only race metadata + its
 /// linked listing (when any). Owner-scoped — reads the base runs row.
 export interface RaceResultForRun {
-	race_listing: RaceListing | null;
+	race_listing: RaceListingDetail | null;
 	race_name: string | null;
 	bib: string | null;
 	chip_time: string | null;
@@ -2295,6 +3687,8 @@ export interface RaceResultForRun {
 	overall_place: number | null;
 	age_group_place: number | null;
 	age_group: string | null;
+	division_award_place: number | null;
+	division_award: string | null;
 }
 
 export async function fetchRaceResultForRun(runId: string): Promise<RaceResultForRun | null> {
@@ -2305,14 +3699,15 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 		.maybeSingle();
 	if (error || !data) return null;
 	const meta = (data.metadata as Record<string, unknown> | null) ?? {};
-	let listing: RaceListing | null = null;
+	let listing: RaceListingDetail | null = null;
 	if (data.race_listing_id) {
-		const { data: l } = await supabase
-			.from('public_race_listings')
-			.select('*')
-			.eq('id', data.race_listing_id as string)
-			.maybeSingle();
-		listing = (l as RaceListing) ?? null;
+		// The listing only adds the results link; a failed read of it must not
+		// hide the official result already stamped on the run.
+		try {
+			listing = await fetchRaceListing(data.race_listing_id);
+		} catch (e) {
+			console.warn('fetchRaceResultForRun: listing read failed', e);
+		}
 	}
 	return {
 		race_listing: listing,
@@ -2322,7 +3717,9 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 		gun_time: (meta.gun_time as string) ?? null,
 		overall_place: (meta.overall_place as number) ?? null,
 		age_group_place: (meta.age_group_place as number) ?? null,
-		age_group: (meta.age_group as string) ?? null
+		age_group: (meta.age_group as string) ?? null,
+		division_award_place: (meta.division_award_place as number) ?? null,
+		division_award: (meta.division_award as string) ?? null
 	};
 }
 
@@ -2352,7 +3749,7 @@ export async function findRaceMatchCandidates(runId: string): Promise<RaceListin
 /** Clubs the current user belongs to (owner or member). */
 export async function fetchMyClubsWithError(): Promise<{
 	clubs: ClubWithMeta[];
-	error: string | null;
+	error: Error | null;
 }> {
 	// Fall back to the session when the JS auth store hasn't hydrated yet —
 	// on a fresh page load (bookmark, refresh, hard nav to /plans/new) the
@@ -2364,15 +3761,40 @@ export async function fetchMyClubsWithError(): Promise<{
 		userId = session?.user?.id;
 	}
 	if (!userId) return { clubs: [], error: null };
-	const { data, error } = await supabase
-		.from(TABLES.club_members)
-		.select(`club_id, role, clubs!inner(${CLUB_SELECT_COLS})`)
-		.eq('user_id', userId)
-		.order('joined_at', { ascending: false });
-	if (error) return { clubs: [], error: error.message };
-	const clubs = (data ?? []).map((row: any) => row.clubs).filter(Boolean);
-	return { clubs: await enrichClubs(clubs), error: null };
+	const uid = userId;
+	// Walked by cursor: an unranged select is capped at `db.max-rows` (1000)
+	// with no flag, and nothing bounds how many clubs one user joins (§ 1940).
+	const walk = await walkKeyset(MY_CLUB_MEMBERSHIP_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.club_members)
+			.select(`club_id, role, joined_at, clubs!inner(${CLUB_SELECT_COLS})` as const)
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of MY_CLUB_MEMBERSHIP_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!walk.complete) {
+		console.error('fetchMyClubs failed', walk.error);
+		return { clubs: [], error: dbError(walk.error) };
+	}
+	// `(row: any)` stood here and hid that this read alone skipped `asClub`:
+	// the embedded row's `join_policy` arrived as the bare `string` the
+	// generated type gives it and was handed on under a type promising the
+	// union. Typing the client is what made the gap visible.
+	const clubs = walk.rows.map((row) => row.clubs).filter(Boolean).map(asClub);
+	return enrichClubs(clubs);
 }
+
+/// Most recently joined first; `club_id` (unique within one user's
+/// memberships — the key is `(club_id, user_id)`) breaks a `joined_at` tie so
+/// the order is total. Mobile's `SocialService.myClubMembershipOrder` is the
+/// same order.
+const MY_CLUB_MEMBERSHIP_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: false, nullsFirst: false },
+	{ column: 'club_id', ascending: false, nullsFirst: false },
+];
 
 export async function fetchMyClubs(): Promise<ClubWithMeta[]> {
 	return (await fetchMyClubsWithError()).clubs;
@@ -2384,23 +3806,44 @@ export async function fetchMyClubs(): Promise<ClubWithMeta[]> {
 /// did not exist whenever the request merely failed.
 export async function fetchClubBySlug(
 	slug: string
-): Promise<{ club: ClubWithMeta | null; error: string | null }> {
+): Promise<{ club: ClubWithMeta | null; error: Error | null }> {
 	const { data, error } = await supabase
 		.from('clubs')
 		.select(CLUB_SELECT_COLS)
 		.eq('slug', slug)
 		.maybeSingle();
-	if (error) return { club: null, error: error.message };
+	if (error) return { club: null, error: dbError(error) };
 	if (!data) return { club: null, error: null };
-	const [enriched] = await enrichClubs([data]);
+	const { clubs: enrichedClubs, error: rolesError } = await enrichClubs([asClub(data)]);
+	if (rolesError) return { club: null, error: rolesError };
+	const [enriched] = enrichedClubs;
 	if (!enriched) return { club: null, error: null };
 	if (enriched.viewer_role === 'owner' || enriched.viewer_role === 'admin') {
 		const { data: token } = await supabase.rpc('get_club_invite_token', {
 			target_club: enriched.id
-		});
+		}, { get: true });
 		return { club: { ...enriched, invite_token: (token as string | null) ?? null }, error: null };
 	}
 	return { club: enriched, error: null };
+}
+
+/// Resolves club ids to display names in one read. RLS already scopes this to
+/// public clubs plus the ones the caller belongs to, so an id the caller may not
+/// read is simply absent from the map — the caller decides what to render for a
+/// miss. Used by the club-vs-club leaderboard, whose teams are mostly clubs the
+/// viewer is NOT in and so are missing from `fetchMyClubs`.
+export async function fetchClubNames(ids: string[]): Promise<Record<string, string>> {
+	const wanted = [...new Set(ids.filter(isEntityId))];
+	if (wanted.length === 0) return {};
+	const { data, error } = await queryChunked(wanted, (part) =>
+		supabase.from('clubs').select('id, name').in('id', part)
+	);
+	if (error) throw dbError(error);
+	const out: Record<string, string> = {};
+	for (const c of (data ?? []) as { id: string; name: string | null }[]) {
+		if (c.name) out[c.id] = c.name;
+	}
+	return out;
 }
 
 /// Resolves a club id to its slug. The notification worker's row projection
@@ -2413,33 +3856,85 @@ export async function fetchClubSlugById(id: string): Promise<string | null> {
 }
 
 /** Attach viewer_role + viewer_status to clubs. member_count is the
- * trigger-maintained cache on the row (derived_state.md), not recomputed. */
-async function enrichClubs(clubs: Club[]): Promise<ClubWithMeta[]> {
-	if (clubs.length === 0) return [];
+ * trigger-maintained cache on the row (derived_state.md), not recomputed.
+ *
+ * Returns the read failure rather than absorbing it. `viewer_role: null` is
+ * the assertion "you are not a member of this club", and it drives whether the
+ * owner gets their admin controls, whether a member is offered "Join", and
+ * whether `fetchClubBySlug` asks for an invite token at all — so deriving it
+ * from a membership read nobody checked meant a transport blip logged every
+ * member out of their own club while `error: null` said the answer was good.
+ * `fetchClubBySlug`'s own doc comment describes that exact failure one call
+ * up, for the club row; this is the same collapse for the membership row.
+ *
+ * The result shape matches the `{ clubs, error }` every caller already
+ * returns, so three of the four hand it straight back. */
+/// One `clubs` row, as `CLUB_SELECT_COLS` reads it, as the client's `Club`.
+/// `join_policy` is a CHECK-constrained union the generated row types as a
+/// bare `string`, and every club read handed the raw row on as a `Club`
+/// without checking it — `parseJoinPolicy` falls back to `'request'`, the one
+/// value that neither opens a club nor makes it unjoinable.
+function asClub(row: Omit<Club, 'join_policy'> & { join_policy: string }): Club {
+	return { ...row, join_policy: parseJoinPolicy(row.join_policy) };
+}
+
+async function enrichClubs(
+	clubs: Club[]
+): Promise<{ clubs: ClubWithMeta[]; error: Error | null }> {
+	if (clubs.length === 0) return { clubs: [], error: null };
 	const ids = clubs.map((c) => c.id);
 	const userId = auth.user?.id;
 
-	const rolesRes = userId
-		? await supabase
-				.from(TABLES.club_members)
-				.select('club_id, role, status')
-				.in('club_id', ids)
-				.eq('user_id', userId)
-		: { data: [] as { club_id: string; role: string; status: string }[] };
+	// Chunked: a walked `fetchMyClubs` can list more clubs than one `in`
+	// filter carries before the request line overflows (decisions § 653).
+	type MembershipRow = { club_id: string; role: string; status: string };
+	let rolesRes: { data: MembershipRow[] | null; error: { message: string; code?: string | null } | null } = {
+		data: [],
+		error: null,
+	};
+	if (userId) {
+		const pages = await Promise.all(
+			chunk(ids, FEED_FOLLOWEE_CHUNK).map((part) =>
+				supabase
+					.from(TABLES.club_members)
+					.select('club_id, role, status')
+					.in('club_id', part)
+					.eq('user_id', userId)
+			)
+		);
+		const failed = pages.find((p) => p.error);
+		rolesRes = failed?.error
+			? { data: null, error: failed.error }
+			: { data: pages.flatMap((p) => p.data ?? []), error: null };
+	}
 
 	const roles = new Map<string, ClubRole>();
 	const statuses = new Map<string, MembershipStatus>();
+	const withMembership = (): ClubWithMeta[] =>
+		clubs.map((c) => ({
+			...c,
+			member_count: c.member_count ?? 0,
+			viewer_role: roles.get(c.id) ?? null,
+			viewer_status: statuses.get(c.id) ?? null
+		}));
+
+	// A failed membership read is not non-membership — but it is not a failure
+	// to read the CLUBS either, and discarding rows the caller already has
+	// turns a blip into "you are in no clubs". Hand the rows back with every
+	// role and status null and the error alongside, and let each surface say
+	// membership is unknown rather than render the list as an error. The
+	// single-club reader (fetchClubBySlug) deliberately still fails: an
+	// unknown role there silently downgrades an owner to the member view.
+	if (rolesRes.error) {
+		console.error('enrichClubs (viewer membership) failed', rolesRes.error);
+		return { clubs: withMembership(), error: dbError(rolesRes.error) };
+	}
+
 	for (const row of (rolesRes.data ?? []) as { club_id: string; role: string; status: string }[]) {
 		if (row.status === 'active') roles.set(row.club_id, row.role as ClubRole);
 		statuses.set(row.club_id, row.status as MembershipStatus);
 	}
-	return clubs.map((c) => ({
-		...c,
-		join_policy: (c.join_policy ?? 'open') as JoinPolicy,
-		member_count: c.member_count ?? 0,
-		viewer_role: roles.get(c.id) ?? null,
-		viewer_status: statuses.get(c.id) ?? null
-	}));
+	return { clubs: withMembership(), error: null };
 }
 
 export async function createClub(input: {
@@ -2468,7 +3963,7 @@ export async function createClub(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
-	const baseSlug = slugify(input.name) || 'club';
+	const baseSlug = clubSlug(input.name) || CLUB_SLUG_FALLBACK;
 	const inviteToken = input.join_policy === 'invite' ? genToken() : null;
 	// Retry with a short random suffix up to 3 times if the slug is taken —
 	// simpler than a SQL trigger and acceptable for the expected volume.
@@ -2499,7 +3994,7 @@ export async function createClub(input: {
 			return {
 				...data,
 				invite_token: inviteToken,
-				join_policy: (data.join_policy ?? 'open') as JoinPolicy
+				join_policy: parseJoinPolicy(data.join_policy)
 			};
 		}
 		// 23505 is the slug-uniqueness conflict — retry with a suffix.
@@ -2507,10 +4002,10 @@ export async function createClub(input: {
 		// migration 20260907_001) bubbles. The rate-limit branch is
 		// converted to a friendlier 'wait N minutes' message rather than
 		// the raw `rate limit exceeded for create_club, retry in Ns`.
-		if (error && error.code !== '23505') {
-			const friendly = rateLimitErrorMessage(error);
-			if (friendly) throw new Error(friendly);
-			throw error;
+		if (error && !isDuplicateKeyError(error)) {
+			const limited = rateLimitAppError(m, error);
+			if (limited) throw limited;
+			throw dbError(error);
 		}
 	}
 	throw new Error(`Could not allocate a slug for "${input.name}" after 4 attempts`);
@@ -2525,7 +4020,7 @@ function genToken(): string {
 export async function regenerateInviteToken(clubId: string): Promise<string> {
 	const token = genToken();
 	const { error } = await supabase.from('clubs').update({ invite_token: token }).eq('id', clubId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return token;
 }
 
@@ -2554,7 +4049,7 @@ export async function updateClub(
 		if (k in clean) clean[k] = normaliseClubLink(clean[k]);
 	}
 	const { error } = await supabase.from('clubs').update(clean).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Trim a club link, returning null for empty / non-http(s) input so a
@@ -2566,9 +4061,64 @@ export function normaliseClubLink(raw: string | null | undefined): string | null
 	return /^https?:\/\//i.test(v) ? v : null;
 }
 
+/// A club delete cascades into its events, so a club holding an event that has
+/// taken payments is refused by the same guard as `deleteEvent`.
 export async function deleteClub(id: string): Promise<void> {
 	const { error } = await supabase.from('clubs').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw dbError(error);
+	}
+}
+
+// Club logos share the public `avatars` bucket (and its 2 MB / JPEG-PNG-WebP
+// limits) under `clubs/{club_id}/logo.{ext}`; the Storage policies admit only
+// that exact filename, written by the club's owners and admins (migration
+// 20270918000007).
+const clubLogoPathsFor = (clubId: string): string[] =>
+	Object.values(AVATAR_MIME_TO_EXT).map((e) => `clubs/${clubId}/logo.${e}`);
+
+/// Upload a club logo and point `clubs.avatar_url` at it. Same shape as
+/// `uploadAvatar`: EXIF stripped client-side (the bucket is public with no
+/// strip worker), remove-then-insert at a stable path, `?v=` cache-bust.
+export async function uploadClubLogo(clubId: string, file: File): Promise<string> {
+	if (file.size > AVATAR_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 2 }, message: 'Image too large (2 MB max)' });
+	const clean = await stripExifFromFile(file);
+	if (!clean) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
+	const ext = AVATAR_MIME_TO_EXT[clean.type];
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
+	const storagePath = `clubs/${clubId}/logo.${ext}`;
+
+	await supabase.storage.from(BUCKETS.avatars).remove(clubLogoPathsFor(clubId));
+
+	const { error: upErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.upload(storagePath, clean, { contentType: clean.type, upsert: false });
+	if (upErr) throw dbError(upErr);
+
+	const { data: pub } = supabase.storage.from(BUCKETS.avatars).getPublicUrl(storagePath);
+	const url = `${pub.publicUrl}?v=${Date.now()}`;
+
+	const { error: clubErr } = await supabase
+		.from('clubs')
+		.update({ avatar_url: url })
+		.eq('id', clubId);
+	if (clubErr) {
+		await supabase.storage.from(BUCKETS.avatars).remove([storagePath]);
+		throw dbError(clubErr);
+	}
+	return url;
+}
+
+/// Remove a club's logo: drops every stored logo object and clears
+/// `clubs.avatar_url` so renderers fall back to the initial.
+export async function removeClubLogo(clubId: string): Promise<void> {
+	const { error: rmErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.remove(clubLogoPathsFor(clubId));
+	if (rmErr) throw dbError(rmErr);
+	const { error } = await supabase.from('clubs').update({ avatar_url: null }).eq('id', clubId);
+	if (error) throw dbError(error);
 }
 
 export async function joinClub(
@@ -2588,21 +4138,33 @@ export async function joinClub(
 		// (persona #45); null when the club doesn't require a waiver.
 		activity_waiver_ack_at: ackWaiver ? new Date().toISOString() : null,
 	});
-	if (error && error.code !== '23505') throw error;
+	if (error && !isDuplicateKeyError(error)) throw dbError(error);
 	return status;
 }
 
+/** Raised by `join_club_by_token` when the club requires the activity-risk
+ * acknowledgement and the call did not carry it (§ 1864). */
+export const ACTIVITY_WAIVER_REQUIRED = 'activity_waiver_required';
+
+export function isActivityWaiverRequired(e: unknown): boolean {
+	return e instanceof Error && e.message === ACTIVITY_WAIVER_REQUIRED;
+}
+
 /** Redeem a shareable invite token. Returns the joined club id. */
-export async function joinClubByToken(token: string): Promise<string> {
-	const { data, error } = await supabase.rpc('join_club_by_token', { token });
-	if (error) throw error;
-	return data as string;
+export async function joinClubByToken(token: string, ackWaiver = false): Promise<string> {
+	const { data, error } = await supabase.rpc('join_club_by_token', {
+		token,
+		activity_waiver_ack: ackWaiver,
+	});
+	if (error?.message === ACTIVITY_WAIVER_REQUIRED) throw new Error(ACTIVITY_WAIVER_REQUIRED);
+	if (error) throw dbError(error);
+	return data;
 }
 
 /// Fetch `display_name` + `avatar_url` for a set of user ids, chunked.
 /// PostgREST serialises `.in('id', ids)` into the request URL, so a
 /// club / event with more than ~100 members overflows the gateway's
-/// request-line limit and this profile-join leg silently returns null —
+/// request-line budget and the profile-join leg is lost (decisions § 653) —
 /// degrading every name + avatar to a placeholder. Chunk the id set and
 /// merge each chunk's rows into one map. See social/feed_merge.ts.
 async function fetchProfilesByIds(
@@ -2610,8 +4172,8 @@ async function fetchProfilesByIds(
 ): Promise<Map<string, { id: string; display_name: string | null; avatar_url: string | null }>> {
 	if (userIds.length === 0) return new Map();
 	const pages = await Promise.all(
-		chunk(userIds, FEED_FOLLOWEE_CHUNK).map((ids) =>
-			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', ids)
+		chunk(userIds, FEED_FOLLOWEE_CHUNK).map((part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
 		)
 	);
 	return mergeProfilePages(
@@ -2621,17 +4183,38 @@ async function fetchProfilesByIds(
 	);
 }
 
+/// One user's display name, or null when the profile is unreadable or unnamed.
+export async function fetchDisplayName(userId: string): Promise<string | null> {
+	const byId = await fetchProfilesByIds([userId]);
+	return byId.get(userId)?.display_name ?? null;
+}
+
 export async function fetchPendingRequests(clubId: string): Promise<(ClubMember & {
 	display_name: string | null;
 	avatar_url: string | null;
 })[]> {
-	const { data: rows } = await supabase
-		.from(TABLES.club_members)
-		.select('club_id, user_id, role, status, joined_at')
-		.eq('club_id', clubId)
-		.eq('status', 'pending')
-		.order('joined_at', { ascending: true });
-	if (!rows || rows.length === 0) return [];
+	// Walked by cursor: nothing bounds how many requests a request-to-join club
+	// accumulates, and an unranged select capped at `db.max-rows` (1000) hid
+	// every request past the cap from the admin with no error (§ 1940).
+	const walk = await walkKeyset(CLUB_MEMBER_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.club_members)
+			.select('club_id, user_id, role, status, joined_at')
+			.eq('club_id', clubId)
+			.eq('status', 'pending');
+		if (after) q = q.or(after);
+		for (const k of CLUB_MEMBER_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	// Throws rather than returning the rows it reached: a queue that failed to
+	// load must not read as "no one is waiting" to the admin approving it.
+	if (!walk.complete) {
+		throw dbError(walk.error ?? new Error('fetchPendingRequests: the walk ended short'));
+	}
+	const rows = walk.rows;
+	if (rows.length === 0) return [];
 	const userIds = (rows as ClubMember[]).map((r) => r.user_id);
 	const byId = await fetchProfilesByIds(userIds);
 	return (rows as ClubMember[]).map((r) => ({
@@ -2647,18 +4230,20 @@ export async function approveMember(clubId: string, userId: string): Promise<voi
 		.update({ status: 'active' })
 		.eq('club_id', clubId)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function bulkApproveMembers(clubId: string, userIds: string[]): Promise<void> {
 	if (userIds.length === 0) return;
-	const { error } = await supabase
-		.from(TABLES.club_members)
-		.update({ status: 'active' })
-		.eq('club_id', clubId)
-		.eq('status', 'pending')
-		.in('user_id', userIds);
-	if (error) throw error;
+	const { error } = await queryChunked(userIds, (part) =>
+		supabase
+			.from(TABLES.club_members)
+			.update({ status: 'active' })
+			.eq('club_id', clubId)
+			.eq('status', 'pending')
+			.in('user_id', part)
+	);
+	if (error) throw dbError(error);
 }
 
 export async function setMemberRole(
@@ -2671,7 +4256,7 @@ export async function setMemberRole(
 		.update({ role })
 		.eq('club_id', clubId)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function rejectMember(clubId: string, userId: string): Promise<void> {
@@ -2680,7 +4265,7 @@ export async function rejectMember(clubId: string, userId: string): Promise<void
 		.delete()
 		.eq('club_id', clubId)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Admin-only: remove an active member from a club. Mechanically a
@@ -2697,7 +4282,7 @@ export async function removeMember(clubId: string, userId: string): Promise<void
 		.delete()
 		.eq('club_id', clubId)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function leaveClub(clubId: string): Promise<void> {
@@ -2708,7 +4293,7 @@ export async function leaveClub(clubId: string): Promise<void> {
 		.delete()
 		.eq('club_id', clubId)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// One page of a club roster / event attendee list. A club with hundreds
@@ -2716,16 +4301,31 @@ export async function leaveClub(clubId: string): Promise<void> {
 /// every view — see `fetchFollowers` / `FOLLOW_PAGE_SIZE` for the same shape.
 export const ROSTER_PAGE_SIZE = 50;
 
+/// Oldest member first; `user_id` (unique within one club) breaks a
+/// `joined_at` tie so the order is total. `joined_at` is nullable, and a null
+/// sorts last as it always has. Served by `club_members_club_roster
+/// (club_id, joined_at, user_id)`, whose ascending-nulls-last keys are this
+/// order exactly.
+const CLUB_MEMBER_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: true, nullsFirst: false },
+	{ column: 'user_id', ascending: true, nullsFirst: false },
+];
+
+/// A club's roster, one keyset page at a time: pass the previous page's
+/// `next` as `after` to load more. A cursor rather than an offset because a
+/// member who leaves between two reads moves every later member up one, and
+/// offset 50 then starts a row late, so one member is never shown.
 export async function fetchClubMembers(
 	clubId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<(ClubMember & {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<ClubMember & {
 	display_name: string | null;
 	avatar_url: string | null;
-})[]> {
+}>> {
 	const limit = opts?.limit ?? ROSTER_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: members } = await supabase
+	const after = opts?.after ? keysetAfter(CLUB_MEMBER_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from(TABLES.club_members)
 		// Enumerate columns rather than `*`: on a public club anyone can
 		// read this list, and `activity_waiver_ack_at` (when a member
@@ -2733,27 +4333,39 @@ export async function fetchClubMembers(
 		// public roster data.
 		.select('club_id, user_id, role, status, joined_at')
 		.eq('club_id', clubId)
-		.order('joined_at', { ascending: true })
-		// Secondary key so offset pages are stable when two members share a
-		// joined_at timestamp — without it a row on a page boundary can be
-		// duplicated or skipped on load-more.
-		.order('user_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (!members) return [];
+		// A private club's members can also read its pending and rejected
+		// rows, and a rejected requester is not a member.
+		.eq('status', 'active');
+	if (after) q = q.or(after);
+	for (const k of CLUB_MEMBER_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: members } = await q.limit(limit);
+	if (!members) return { rows: [], next: null };
 	const userIds = (members as ClubMember[]).map((m) => m.user_id);
 	const byId = await fetchProfilesByIds(userIds);
-	return (members as ClubMember[]).map((m) => ({
-		...m,
-		display_name: byId.get(m.user_id)?.display_name ?? null,
-		avatar_url: byId.get(m.user_id)?.avatar_url ?? null
-	}));
+	return {
+		rows: (members as ClubMember[]).map((m) => ({
+			...m,
+			display_name: byId.get(m.user_id)?.display_name ?? null,
+			avatar_url: byId.get(m.user_id)?.avatar_url ?? null
+		})),
+		next: nextCursor(CLUB_MEMBER_ORDER, members, limit),
+	};
 }
 
 // --- Events ---
 
+/// Read a small run of RSVP rows rather than one, because the soonest may have
+/// been called off and the card wants the soonest that is still on. A viewer
+/// with more than this many cancelled RSVPs inside one window sees no card
+/// rather than a live one further down — the fail-closed side of the trade.
+const RSVP_CANDIDATE_LIMIT = 10;
+
 /// The next event the signed-in user has RSVP'd `going` to within the
 /// given window. Returns null when nothing matches — the dashboard
-/// card hides itself.
+/// card hides itself. Fail-closed on a run of cancellations: with every
+/// candidate called off it shows nothing rather than a cancelled event.
 ///
 /// Mirrors `SocialService.fetchNextRsvpedEvent` on Android so both
 /// surfaces show the same card at the same moment in time.
@@ -2780,43 +4392,91 @@ export async function fetchNextRsvpedEvent(
 		.gte('instance_start', now.toISOString())
 		.lte('instance_start', horizon.toISOString())
 		.order('instance_start', { ascending: true })
-		.limit(1);
-	const row = (data as Array<Record<string, unknown>> | null)?.[0];
-	if (!row) return null;
-	const ev = row.events as
-		| { title: string; meet_label: string | null; clubs: { slug: string } }
-		| null;
-	if (!ev) return null;
-	return {
-		event_id: row.event_id as string,
-		instance_start: row.instance_start as string,
-		club_slug: ev.clubs.slug,
-		title: ev.title,
-		meet_label: ev.meet_label ?? null,
-	};
+		.limit(RSVP_CANDIDATE_LIMIT);
+	const rows = (data as Array<Record<string, unknown>> | null) ?? [];
+	if (rows.length === 0) return null;
+
+	// An RSVP row survives its occurrence being called off — the organiser can
+	// reinstate it — so the card has to subtract `event_exceptions` itself
+	// rather than trust that a `going` row means the run is on.
+	const { data: exceptionRows } = await supabase
+		.from('event_exceptions')
+		.select('event_id, instance_start')
+		.in('event_id', rows.map((r) => r.event_id as string))
+		.gte('instance_start', now.toISOString());
+	const cancelled = new Map<string, string[]>();
+	for (const x of (exceptionRows ?? []) as { event_id: string; instance_start: string }[]) {
+		const list = cancelled.get(x.event_id);
+		if (list) list.push(x.instance_start);
+		else cancelled.set(x.event_id, [x.instance_start]);
+	}
+
+	for (const row of rows) {
+		const eventId = row.event_id as string;
+		const instanceStart = row.instance_start as string;
+		if (isOccurrenceCancelled(cancelled.get(eventId) ?? [], instanceStart)) continue;
+		const ev = row.events as
+			| {
+					title: string;
+					meet_label: string | null;
+					clubs: { slug: string } | { slug: string }[] | null;
+			  }
+			| null;
+		if (!ev) continue;
+		// The card's whole job is to deep-link the club. A missing slug would
+		// route it at /clubs/undefined, so skip the candidate and try the next.
+		const slug = singleEmbed(ev.clubs)?.slug;
+		if (!slug) continue;
+		return {
+			event_id: eventId,
+			instance_start: instanceStart,
+			club_slug: slug,
+			title: ev.title,
+			meet_label: ev.meet_label ?? null,
+		};
+	}
+	return null;
 }
 
 export async function fetchUpcomingEvents(clubId: string): Promise<EventWithMeta[]> {
-	// For recurring series, `starts_at` can be in the past even though the
-	// next instance is in the future. Pull anything that's either (a) one-off
-	// in the future OR (b) recurring with an until-date that's still ahead.
-	// The client-side enrichment computes `next_instance_start` per event.
-	// Cap at 200 — busy clubs accumulate event history but the upcoming-set
-	// of interest is far smaller; the client filter discards the rest.
+	// For recurring series, `starts_at` can be in the past even though the next
+	// instance is in the future, so the candidate set is (a) one-off in the
+	// future OR (b) recurring and not past its until-date. That predicate has
+	// to run SERVER-side: ordering `starts_at` ascending under a cap returns
+	// the club's OLDEST rows, so a club with more than `limit` finished
+	// one-offs — a weekly series is 200 rows in four years — pushed every
+	// future event past the cap and its Events tab went permanently empty.
+	// (The same shape `fetchRunsForDashboard` documents: an ascending cap over
+	// a growing history windows the wrong end of it.)
+	//
+	// A count-limited series carries no until-date, so it lands in the
+	// candidate set and `nextLiveInstance` retires it once exhausted — the
+	// filter below is deliberately a superset of what is actually live. The
+	// two recurring clauses are spelled separately rather than as one nested
+	// `or(...)` because a single `and(...)` inside an `or=` is the only nesting
+	// depth this file already exercises, and a filter PostgREST cannot parse
+	// 400s into the discarded `error` and empties the tab exactly as the bug
+	// being fixed did.
+	const nowIso = new Date().toISOString();
 	const { data } = await supabase
 		.from('events')
 		.select(EVENT_SELECT_COLS)
 		.eq('club_id', clubId)
+		.or(
+			`starts_at.gte.${nowIso},` +
+				`and(recurrence_freq.not.is.null,recurrence_until.is.null),` +
+				`and(recurrence_freq.not.is.null,recurrence_until.gte.${nowIso})`
+		)
 		.order('starts_at', { ascending: true })
 		.limit(200);
 	const events = (data as Event[]) ?? [];
 	const now = new Date();
 	const enriched = await enrichEvents(events);
 	return enriched
-		.filter((e) => new Date(e.next_instance_start) >= now)
+		.filter((e) => e.next_instance_start != null && new Date(e.next_instance_start) >= now)
 		.sort(
 			(a, b) =>
-				new Date(a.next_instance_start).getTime() - new Date(b.next_instance_start).getTime()
+				new Date(a.next_instance_start!).getTime() - new Date(b.next_instance_start!).getTime()
 		);
 }
 
@@ -2846,7 +4506,7 @@ export async function fetchEventClubSlug(eventId: string): Promise<string | null
 		.maybeSingle();
 	if (!data) return null;
 	const clubs = (data as { clubs: { slug: string } | { slug: string }[] | null }).clubs;
-	const club = Array.isArray(clubs) ? clubs[0] ?? null : clubs;
+	const club = singleEmbed(clubs);
 	return club?.slug ?? null;
 }
 
@@ -2860,17 +4520,41 @@ export async function fetchEventById(id: string): Promise<EventWithMeta | null> 
 async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 	if (events.length === 0) return [];
 
-	// Compute each event's next instance client-side so counts + RSVPs can be
-	// scoped to that instance. One-off events use their starts_at verbatim.
-	const nextMap = new Map<string, string>();
-	for (const e of events) {
-		const evt = normaliseEvent(e);
-		const next = evt.recurrence_freq ? nextInstanceAfter(evt) ?? new Date(evt.starts_at) : new Date(evt.starts_at);
-		nextMap.set(e.id, next.toISOString());
+	const ids = events.map((e) => e.id);
+	const now = new Date();
+
+	// Called-off occurrences (`event_exceptions`) have to be known BEFORE the
+	// next instance is picked, so this read cannot join the parallel batch
+	// below — the counts RPC is keyed on the instant this resolves to. Only
+	// future exceptions can move the answer, so the scan stays small.
+	const { data: exceptionRows } = await queryChunked(ids, (part) =>
+		supabase
+			.from('event_exceptions')
+			.select('event_id, instance_start')
+			.in('event_id', part)
+			.gte('instance_start', now.toISOString())
+	);
+	const cancelledByEvent = new Map<string, string[]>();
+	for (const row of (exceptionRows ?? []) as { event_id: string; instance_start: string }[]) {
+		const list = cancelledByEvent.get(row.event_id);
+		if (list) list.push(row.instance_start);
+		else cancelledByEvent.set(row.event_id, [row.instance_start]);
 	}
 
-	const ids = events.map((e) => e.id);
-	const nextStarts = ids.map((id) => nextMap.get(id)!);
+	// Each event's next occurrence that is still ON — null once the series has
+	// none left (exhausted, or every remaining one called off). Counts and the
+	// viewer's RSVP scope to that occurrence, falling back to `starts_at` so a
+	// past event still reports who attended it.
+	const liveMap = new Map<string, string>();
+	const countMap = new Map<string, string>();
+	for (const e of events) {
+		const evt = normaliseEvent(e);
+		const next = nextLiveInstance(evt, cancelledByEvent.get(e.id) ?? [], now);
+		if (next) liveMap.set(e.id, next.toISOString());
+		countMap.set(e.id, (next ?? new Date(evt.starts_at)).toISOString());
+	}
+
+	const nextStarts = ids.map((id) => countMap.get(id)!);
 	const userId = auth.user?.id;
 
 	// The going-count is scoped to each event's NEXT instance and computed
@@ -2882,23 +4566,23 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 	// produce N integers. The viewer's RSVPs are a single bounded per-user
 	// fetch, so those still come back as rows and are matched to the next
 	// instance client-side.
-	const countsPromise = supabase.rpc(
-		// Not yet in database.types.ts (orchestrator regenerates on landing the
-		// 20270122_001 migration); the RPC name is cast until then.
-		'event_next_instance_going_counts' as never,
-		{ p_event_ids: ids, p_next_starts: nextStarts } as never
-	);
+	const countsPromise = supabase.rpc('event_next_instance_going_counts', {
+		p_event_ids: ids,
+		p_next_starts: nextStarts,
+	});
 	const rsvpPromise = userId
-		? supabase
-				.from(TABLES.event_attendees)
-				.select('event_id, status, instance_start')
-				.in('event_id', ids)
-				.eq('user_id', userId)
+		? queryChunked(ids, (part) =>
+				supabase
+					.from(TABLES.event_attendees)
+					.select('event_id, status, instance_start')
+					.in('event_id', part)
+					.eq('user_id', userId)
+			)
 		: Promise.resolve({ data: [] as { event_id: string; status: string; instance_start: string }[] });
 
 	const [countRes, rsvpRes] = await Promise.all([countsPromise, rsvpPromise]);
 
-	// Compare instants, not raw strings: nextMap holds toISOString() ('…Z')
+	// Compare instants, not raw strings: countMap holds toISOString() ('…Z')
 	// while Postgres returns timestamptz as '…+00:00', so a string `===`
 	// never matches and every RSVP would be dropped (regression from the
 	// client-side debatch in 7e386e57 — the prior per-event `.eq()` compared
@@ -2906,12 +4590,12 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 	const sameInstant = (a: string, b: string | undefined): boolean =>
 		b != null && new Date(a).getTime() === new Date(b).getTime();
 	const counts = new Map<string, number>();
-	for (const row of (countRes.data ?? []) as { event_id: string; going_count: number }[]) {
+	for (const row of countRes.data ?? []) {
 		counts.set(row.event_id, Number(row.going_count));
 	}
 	const rsvps = new Map<string, RsvpStatus | null>();
 	for (const row of (rsvpRes.data ?? []) as { event_id: string; status: string; instance_start: string }[]) {
-		if (sameInstant(row.instance_start, nextMap.get(row.event_id))) {
+		if (sameInstant(row.instance_start, countMap.get(row.event_id))) {
 			rsvps.set(row.event_id, (row.status ?? null) as RsvpStatus | null);
 		}
 	}
@@ -2920,7 +4604,7 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 		...normaliseEvent(e),
 		attendee_count: counts.get(e.id) ?? 0,
 		viewer_rsvp: rsvps.get(e.id) ?? null,
-		next_instance_start: nextMap.get(e.id)!
+		next_instance_start: liveMap.get(e.id) ?? null
 	}));
 }
 
@@ -2933,7 +4617,8 @@ function normaliseEvent(e: Event): Event {
 		// Legacy rows predate the category column; treat them as athletic runs.
 		category: (e.category ?? 'run') as EventCategory,
 		// Raw jsonb on the row -> the typed seam shape (null for empty/malformed).
-		gym_template: parseGymTemplate(e.gym_template as unknown)
+		gym_template: parseGymTemplate(e.gym_template as unknown),
+		race_start_mode: parseStartMode(e.race_start_mode)
 	};
 }
 
@@ -2975,6 +4660,13 @@ export async function createEvent(input: {
 	// Defaults to public. Only meaningful in a public club (a private club's
 	// events are already members-only via the club gate).
 	is_public?: boolean;
+	// How the event's races start and when, as offsets from each occurrence
+	// (#1306). Omitted: Host GO.
+	race_start_mode?: SessionStartMode;
+	race_scheduled_offset_s?: number | null;
+	race_window_open_offset_s?: number | null;
+	race_window_length_s?: number | null;
+	race_auto_approve?: boolean | null;
 }): Promise<Event> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
@@ -3004,11 +4696,16 @@ export async function createEvent(input: {
 			recurrence_byday: input.recurrence_byday ?? null,
 			recurrence_until: input.recurrence_until ?? null,
 			recurrence_count: input.recurrence_count ?? null,
+			race_start_mode: input.race_start_mode ?? 'host_go',
+			race_scheduled_offset_s: input.race_scheduled_offset_s ?? null,
+			race_window_open_offset_s: input.race_window_open_offset_s ?? null,
+			race_window_length_s: input.race_window_length_s ?? null,
+			race_auto_approve: input.race_auto_approve ?? null,
 			author_id: userId
 		})
 		.select(EVENT_SELECT_COLS)
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return normaliseEvent(data as Event);
 }
 
@@ -3028,12 +4725,25 @@ export async function updateEvent(
 		pace_target_sec: number | null;
 		capacity: number | null;
 		is_public: boolean;
+		race_start_mode: SessionStartMode;
+		race_scheduled_offset_s: number | null;
+		race_window_open_offset_s: number | null;
+		race_window_length_s: number | null;
+		race_auto_approve: boolean | null;
 	}>
 ): Promise<void> {
 	// RLS `is_event_organiser` gates the UPDATE; owner/admin/event_organiser
 	// only. `events` stays bare here per the F11 registry tail (see schema.ts).
-	const { error } = await supabase.from('events').update(patch).eq('id', id);
-	if (error) throw error;
+	//
+	// `gym_template` is left out of the update entirely when the caller did not
+	// patch it — putting the key back with an `undefined` would turn "leave it
+	// alone" into a write.
+	const { gym_template, ...fields } = patch;
+	const { error } = await supabase
+		.from('events')
+		.update(gym_template === undefined ? fields : { ...fields, gym_template })
+		.eq('id', id);
+	if (error) throw dbError(error);
 }
 
 /// Whether an event carries any race session or finisher result across ANY of
@@ -3061,9 +4771,19 @@ export async function eventHasAthleticData(eventId: string): Promise<boolean> {
 	}
 }
 
+/// The message `guard_paid_event_delete` (20270731000001) raises when a client
+/// deletes an event, or a club holding one, that has taken payments. The event
+/// is cancelled instead, and its payment records stay (decisions § 1867).
+export const PAID_EVENT_DELETE_REFUSAL = 'paid_event_has_orders';
+
+/// Throws `Error(PAID_EVENT_DELETE_REFUSAL)` when the event has taken payments,
+/// so the page can say why rather than show the database's raw message.
 export async function deleteEvent(id: string): Promise<void> {
 	const { error } = await supabase.from('events').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw dbError(error);
+	}
 }
 
 export interface EventException {
@@ -3092,9 +4812,11 @@ export async function fetchEventExceptions(eventId: string): Promise<EventExcept
 export async function fetchEventMeetPoint(
 	eventId: string
 ): Promise<{ lat: number; lng: number } | null> {
-	const { data, error } = await supabase.rpc('get_event_meet_point', {
-		p_event_id: eventId
-	});
+	const { data, error } = await supabase.rpc(
+		'get_event_meet_point',
+		{ p_event_id: eventId },
+		{ get: true }
+	);
 	if (error || !data || data.length === 0) return null;
 	const row = data[0];
 	if (typeof row.meet_lat !== 'number' || typeof row.meet_lng !== 'number') return null;
@@ -3137,6 +4859,23 @@ export async function fetchPayoutAccount(): Promise<PayoutAccountStatus | null> 
 	};
 }
 
+/// The signed-in host's earnings, one row per (class instance, currency):
+/// what they were PAID for, keyed on `event_orders.host_user_id`, which is
+/// not the organiser scope the table's own SELECT policy grants
+/// (instructor_business.md M7, migration 20270723000001). Throws on a failed
+/// read so the page can offer a retry instead of a false "no earnings yet".
+export async function fetchHostEarnings(): Promise<HostEarningsInstance[]> {
+	if (!auth.user?.id) return [];
+	const { data, error } = await supabase.rpc('host_earnings_summary', undefined, { get: true });
+	if (error) throw dbError(error);
+	const rows: HostEarningsInstance[] = [];
+	for (const raw of data ?? []) {
+		const row = parseHostEarningsRow(raw);
+		if (row) rows.push(row);
+	}
+	return rows;
+}
+
 /// Start (or resume) Stripe Connect onboarding for the signed-in host.
 /// Invokes the events-connect-onboard Edge Function, which creates/reuses
 /// an Express account and returns a hosted Account Link URL. The caller
@@ -3145,7 +4884,14 @@ export async function startConnectOnboarding(): Promise<{ url: string }> {
 	const { data, error } = await supabase.functions.invoke('events-connect-onboard', {
 		body: {}
 	});
-	if (error) throw error;
+	if (error) {
+		// As in startEventCheckout: supabase-js's FunctionsHttpError message
+		// is the fixed "Edge Function returned a non-2xx status code", so the
+		// caller's not-configured branch could never match on it and every
+		// keyless build reported a red failure carrying that internal string.
+		const code = await edgeFunctionErrorCode(error);
+		throw code ? new Error(code) : dbError(error);
+	}
 	const url = (data as { url?: string } | null)?.url;
 	if (!url) throw new Error('No onboarding URL returned');
 	return { url };
@@ -3163,12 +4909,7 @@ export async function fetchEventPricing(
 		.select('*')
 		.eq('event_id', eventId);
 	if (error || !data || data.length === 0) return null;
-	const rows = data as EventPricing[];
-	if (instanceStart) {
-		const override = rows.find((r) => r.instance_start === instanceStart);
-		if (override) return override;
-	}
-	return rows.find((r) => r.instance_start == null) ?? null;
+	return selectEffectivePricing(data as EventPricing[], instanceStart);
 }
 
 /// Persist series-level (or per-instance) pricing for an event. Kept
@@ -3184,7 +4925,6 @@ export async function setEventPricing(
 		currency: string;
 		refund_policy: EventPricing['refund_policy'];
 		sales_close_offset_minutes: number;
-		platform_fee_bps?: number;
 		instance_start?: string | null;
 	}
 ): Promise<void> {
@@ -3196,12 +4936,14 @@ export async function setEventPricing(
 			currency: input.currency,
 			modality: 'in_person',
 			refund_policy: input.refund_policy,
-			sales_close_offset_minutes: input.sales_close_offset_minutes,
-			platform_fee_bps: input.platform_fee_bps ?? 0
+			sales_close_offset_minutes: input.sales_close_offset_minutes
 		},
-		{ onConflict: input.instance_start ? 'event_id,instance_start' : 'event_id' }
+		// One arbiter for both branches: event_pricing_event_instance_uniq is
+		// non-partial (NULLS NOT DISTINCT), so a NULL instance_start conflicts
+		// with the existing series row instead of inserting a second one.
+		{ onConflict: 'event_id,instance_start' }
 	);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Begin a Stripe Checkout for a paid registration. The events-checkout
@@ -3215,8 +4957,22 @@ export async function startEventCheckout(
 	const { data, error } = await supabase.functions.invoke('events-checkout', {
 		body: { event_id: eventId, instance_start: instanceStart }
 	});
-	if (error) throw error;
-	const url = (data as { url?: string } | null)?.url;
+	if (error) {
+		// supabase-js reports every non-2xx as a FunctionsHttpError whose
+		// message is the fixed internal string "Edge Function returned a
+		// non-2xx status code"; the function's own `{ error: '<code>' }`
+		// envelope rides on `context`. Rethrowing as-is put that internal
+		// sentence in front of the buyer for sold-out, sales-closed and a
+		// host who cannot take money alike. Same unwrap as cancelEventOrder.
+		const code = await edgeFunctionErrorCode(error);
+		throw code ? new Error(code) : dbError(error);
+	}
+	// `checkout_url`, matching what the Edge Function actually returns and the
+	// `startDonationCheckout` sibling below. Reading `url` here meant this
+	// never resolved: the function had already created a live Stripe session
+	// and a capacity-holding pending order by then, so every Register press
+	// burned a reservation and then threw before the buyer reached Stripe.
+	const url = (data as { checkout_url?: string } | null)?.checkout_url;
 	if (!url) throw new Error('No checkout URL returned');
 	return { url };
 }
@@ -3242,6 +4998,30 @@ export async function fetchMyOrder(
 	return data[0] as EventOrder;
 }
 
+/// The viewer's own attendee row for one occurrence, as far as the paid
+/// waitlist needs it: whether they are queued, and whether a seat is being
+/// held for them (`offer_expires_at`, migration 20270726000002). Read through
+/// RLS, which shows every user their own RSVP. A failed read throws rather
+/// than answering "not on the waitlist", which would offer the viewer a
+/// second place in a queue they are already in.
+export async function fetchMyWaitlistPlace(
+	eventId: string,
+	instanceStart: string
+): Promise<{ status: RsvpStatus; offer_expires_at: string | null } | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('status, offer_expires_at')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return { status: data.status as RsvpStatus, offer_expires_at: data.offer_expires_at };
+}
+
 /// Buyer self-cancel of their OWN paid/pending registration for an event
 /// instance (club_events.md slice P2). Calls the events-cancel Edge
 /// Function, which initiates the Stripe refund (paid order, refund-eligible
@@ -3263,36 +5043,30 @@ export async function cancelEventOrder(
 		// Re-throw an Error whose message is the EF's machine `error` code so
 		// the caller can map it to a localized string.
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (error instanceof Error ? error.message : 'cancel_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	const action = (data as { action?: string } | null)?.action;
 	if (!action) throw new Error('cancel_failed');
 	return { action };
 }
 
-/// Pull the machine `error` code out of a supabase-js FunctionsHttpError —
-/// its `context` is the raw Response, whose JSON body carries our
-/// `{ error: '<code>' }` envelope. Null when the body can't be read.
-async function edgeFunctionErrorCode(error: unknown): Promise<string | null> {
-	const ctx = (error as { context?: Response })?.context;
-	if (!ctx || typeof ctx.clone !== 'function') return null;
-	try {
-		const body = await ctx.clone().json();
-		const code = (body as { error?: string })?.error;
-		return typeof code === 'string' ? code : null;
-	} catch {
-		return null;
-	}
-}
-
 /// Cancel a single occurrence of a recurring event (the rest of the series
-/// is untouched). Organiser-only via RLS; the fan-out trigger notifies every
+/// is untouched), or a one-off event, whose only occurrence is its
+/// `starts_at`. Organiser-only via RLS; the fan-out trigger notifies every
 /// going / maybe / waitlisted attendee of this instance.
+///
+/// An occurrence that still holds money (a pending, paid or partially
+/// refunded order) cannot be cancelled by this insert:
+/// `guard_paid_occurrence_cancel` refuses it, and the cancel is handed to the
+/// events-cancel function, which calls it off and refunds every registrant in
+/// one request (M8). The database decides, not the page, so a class whose
+/// price was removed after people paid is still refunded. `refunds` is that
+/// function's per-order summary, or null when no money was involved.
 export async function cancelEventInstance(
 	eventId: string,
 	instanceStart: string,
 	reason: string | null
-): Promise<void> {
+): Promise<{ refunds: OccurrenceRefundSummary | null }> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	// Idempotent: two organisers cancelling the same occurrence (or a
@@ -3307,7 +5081,90 @@ export async function cancelEventInstance(
 		},
 		{ onConflict: 'event_id,instance_start', ignoreDuplicates: true }
 	);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_OCCURRENCE_REFUSAL) {
+			return { refunds: await cancelPaidEventInstance(eventId, instanceStart, reason) };
+		}
+		throw dbError(error);
+	}
+	return { refunds: null };
+}
+
+/// The message `guard_paid_occurrence_cancel` (20270723000003) raises.
+const PAID_OCCURRENCE_REFUSAL = 'paid_occurrence_requires_refund';
+
+/// Call off a paid occurrence and refund everyone registered for it, through
+/// the events-cancel function's `occurrence` scope. Also what "Refund now"
+/// calls on an already-cancelled occurrence: the function's exception insert
+/// is idempotent and each refund is keyed by its order, so re-running it
+/// resumes the refunds that failed and replays the ones that did not.
+/// Throws an Error whose message is the function's machine code
+/// (`stripe_not_configured`, `not_event_organiser`, …) on a non-2xx.
+export async function cancelPaidEventInstance(
+	eventId: string,
+	instanceStart: string,
+	reason: string | null
+): Promise<OccurrenceRefundSummary> {
+	const { data, error } = await supabase.functions.invoke('events-cancel', {
+		body: {
+			event_id: eventId,
+			instance_start: instanceStart,
+			scope: 'occurrence',
+			reason: reason?.trim() || null
+		}
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		throw code ? new Error(code) : dbError(error);
+	}
+	const refunds = parseOccurrenceRefundSummary((data as { refunds?: unknown } | null)?.refunds);
+	if (!refunds) throw new Error('cancel_failed');
+	return refunds;
+}
+
+/// End a recurring series now and call off every remaining occurrence anyone
+/// signed up for, refunding all of their registrations, through the
+/// events-cancel function's `series` scope (decisions § 1868). The function
+/// moves `recurrence_until` to the moment of the cancel, so later occurrences
+/// stop existing rather than each being cancelled. Re-running it resumes any
+/// refund that failed, exactly as an occurrence cancel does. Throws an Error
+/// whose message is the function's machine code on a non-2xx.
+export async function cancelEventSeries(
+	eventId: string,
+	reason: string | null
+): Promise<{ cancelledOccurrences: number; refunds: OccurrenceRefundSummary }> {
+	const { data, error } = await supabase.functions.invoke('events-cancel', {
+		body: { event_id: eventId, scope: 'series', reason: reason?.trim() || null }
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		throw code ? new Error(code) : dbError(error);
+	}
+	const body = data as { refunds?: unknown; cancelled_occurrences?: unknown } | null;
+	const refunds = parseOccurrenceRefundSummary(body?.refunds);
+	if (!refunds) throw new Error('cancel_failed');
+	const n = body?.cancelled_occurrences;
+	return { cancelledOccurrences: typeof n === 'number' && n >= 0 ? n : 0, refunds };
+}
+
+/// What is still owed on each cancelled occurrence of an event, for its
+/// organisers: one entry per occurrence with anything unsettled, in date
+/// order, past occurrences included (a class called off last week can still
+/// owe someone their money). Reads only the orders that are not settled; the
+/// organiser RLS policy on event_orders is what lets a non-host organiser see
+/// them.
+export async function fetchCancelledOccurrenceRefunds(
+	eventId: string,
+	cancelledInstanceStarts: readonly string[]
+): Promise<Array<{ instanceStart: string; state: OccurrenceRefundState }>> {
+	if (cancelledInstanceStarts.length === 0) return [];
+	const { data, error } = await supabase
+		.from('event_orders')
+		.select('instance_start, status, refund_initiated_at')
+		.eq('event_id', eventId)
+		.in('status', ['pending', 'paid', 'partially_refunded', 'refund_failed']);
+	if (error) throw dbError(error);
+	return cancelledOccurrenceRefunds(data ?? [], cancelledInstanceStarts);
 }
 
 export async function reinstateEventInstance(
@@ -3319,7 +5176,7 @@ export async function reinstateEventInstance(
 		.delete()
 		.eq('event_id', eventId)
 		.eq('instance_start', instanceStart);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Upsert the caller's RSVP and return the *effective* status. When the
@@ -3328,22 +5185,32 @@ export async function reinstateEventInstance(
 /// 'waitlisted', so the persisted status can differ from what was requested —
 /// we read it back via the upsert's returning row so the UI can show the
 /// waitlist state without a second fetch.
+///
+/// `courseId` is the racer's chosen course on a multi-course event
+/// (`event_courses`). Leaving it undefined omits the column from the upsert,
+/// so a status change keeps the course already on the row; the server refuses
+/// a going / waitlisted RSVP with no course when the event has more than one.
 export async function rsvpEvent(
 	eventId: string,
 	status: RsvpStatus,
-	instanceStart: string
+	instanceStart: string,
+	courseId?: string | null
 ): Promise<RsvpStatus> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
+	const row: Insertable<'event_attendees'> = {
+		event_id: eventId,
+		user_id: userId,
+		status,
+		instance_start: instanceStart,
+	};
+	if (courseId !== undefined) row.course_id = courseId;
 	const { data, error } = await supabase
 		.from(TABLES.event_attendees)
-		.upsert(
-			{ event_id: eventId, user_id: userId, status, instance_start: instanceStart },
-			{ onConflict: 'event_id,user_id,instance_start' }
-		)
+		.upsert(row, { onConflict: 'event_id,user_id,instance_start' })
 		.select('status')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data?.status as RsvpStatus | undefined) ?? status;
 }
 
@@ -3356,7 +5223,7 @@ export async function clearRsvp(eventId: string, instanceStart: string): Promise
 		.eq('event_id', eventId)
 		.eq('user_id', userId)
 		.eq('instance_start', instanceStart);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // Host-only: mark whether an attendee actually showed up. Orthogonal to the
@@ -3375,37 +5242,56 @@ export async function markAttendance(
 		p_instance_start: instanceStart,
 		p_attendance: attendance
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
+/// Earliest RSVP first; `user_id` (unique within one occurrence — the primary
+/// key is `(event_id, user_id, instance_start)`) breaks a `joined_at` tie so
+/// the order is total. `joined_at` is nullable and a null sorts last, as it
+/// always has. Served by `event_attendees_instance_roster (event_id,
+/// instance_start, joined_at, user_id)`; mobile's `ApiClient.eventAttendeeOrder`
+/// is the same order.
+const EVENT_ATTENDEE_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: true, nullsFirst: false },
+	{ column: 'user_id', ascending: true, nullsFirst: false },
+];
+
+/// One occurrence's attendee list, one keyset page at a time: pass the
+/// previous page's `next` as `after` to load more. A cursor rather than an
+/// offset because an RSVP withdrawn between two reads moves every later
+/// attendee up one, and offset 50 then starts a row late.
 export async function fetchEventAttendees(
 	eventId: string,
 	instanceStart: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<(EventAttendee & {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<EventAttendee & {
 	display_name: string | null;
 	avatar_url: string | null;
-})[]> {
+}>> {
 	const limit = opts?.limit ?? ROSTER_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: attendees } = await supabase
+	const after = opts?.after ? keysetAfter(EVENT_ATTENDEE_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from(TABLES.event_attendees)
 		.select('*')
 		.eq('event_id', eventId)
-		.eq('instance_start', instanceStart)
-		.order('joined_at', { ascending: true })
-		// Secondary key so offset pages are stable when two RSVPs share a
-		// joined_at timestamp (see fetchClubMembers).
-		.order('user_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (!attendees) return [];
+		.eq('instance_start', instanceStart);
+	if (after) q = q.or(after);
+	for (const k of EVENT_ATTENDEE_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: attendees } = await q.limit(limit);
+	if (!attendees) return { rows: [], next: null };
 	const userIds = (attendees as EventAttendee[]).map((a) => a.user_id);
 	const byId = await fetchProfilesByIds(userIds);
-	return (attendees as EventAttendee[]).map((a) => ({
-		...a,
-		display_name: byId.get(a.user_id)?.display_name ?? null,
-		avatar_url: byId.get(a.user_id)?.avatar_url ?? null
-	}));
+	return {
+		rows: (attendees as EventAttendee[]).map((a) => ({
+			...a,
+			display_name: byId.get(a.user_id)?.display_name ?? null,
+			avatar_url: byId.get(a.user_id)?.avatar_url ?? null
+		})),
+		next: nextCursor(EVENT_ATTENDEE_ORDER, attendees, limit),
+	};
 }
 
 /// Exact per-status RSVP tallies + the viewer's own status for an event
@@ -3427,26 +5313,60 @@ export async function fetchEventRsvpSummary(
 	instanceStart: string
 ): Promise<EventRsvpSummary> {
 	const viewerId = auth.user?.id ?? null;
-	const { data } = await supabase
-		.from(TABLES.event_attendees)
-		.select('user_id, status')
-		.eq('event_id', eventId)
-		.eq('instance_start', instanceStart);
-	const summary: EventRsvpSummary = {
-		going: 0,
-		maybe: 0,
-		declined: 0,
-		waitlisted: 0,
-		viewerStatus: null
-	};
-	for (const row of data ?? []) {
-		const status = row.status as RsvpStatus;
-		if (status === 'going') summary.going += 1;
-		else if (status === 'maybe') summary.maybe += 1;
-		else if (status === 'declined') summary.declined += 1;
-		else if (status === 'waitlisted') summary.waitlisted += 1;
-		if (viewerId && row.user_id === viewerId) summary.viewerStatus = status;
+
+	// Counted in the database, one HEAD request per status, rather than by
+	// pulling every attendee row and tallying here. PostgREST caps a returned
+	// result at 1000 rows and says nothing when it does, so the old read
+	// silently became a count of the first thousand: past that the capacity
+	// and waitlist math believed a full event had room, and the viewer's own
+	// row could fall outside the page entirely — `viewerStatus` then read null
+	// and the page re-showed "Register for £X" to someone who had already
+	// paid, burning a Stripe session and a capacity-holding pending order.
+	// `count: 'exact'` is a `count(*)` over the filtered set and is not
+	// subject to that cap; `head: true` transfers no rows at all.
+	//
+	// The viewer's own status is a separate one-row read for the same reason:
+	// it must not depend on their row appearing in any page.
+	const statuses = ['going', 'maybe', 'declined', 'waitlisted'] as const;
+	const [counts, viewerRow] = await Promise.all([
+		Promise.all(
+			statuses.map((status) =>
+				supabase
+					.from(TABLES.event_attendees)
+					.select('user_id', { count: 'exact', head: true })
+					.eq('event_id', eventId)
+					.eq('instance_start', instanceStart)
+					.eq('status', status)
+			)
+		),
+		viewerId
+			? supabase
+					.from(TABLES.event_attendees)
+					.select('status')
+					.eq('event_id', eventId)
+					.eq('instance_start', instanceStart)
+					.eq('user_id', viewerId)
+					.maybeSingle()
+			: Promise.resolve({ data: null, error: null })
+	]);
+
+	// A failed read must not come back as a zeroed summary: `viewerStatus`
+	// null is what tells the page the viewer has no slot, so a swallowed
+	// error re-shows "Register for £X" to someone who has already paid. A
+	// missing count is the same claim about capacity, so it throws too.
+	for (const res of counts) {
+		if (res.error) throw dbError(res.error);
 	}
+	if (viewerRow.error) throw dbError(viewerRow.error);
+
+	const summary: EventRsvpSummary = {
+		going: counts[0].count ?? 0,
+		maybe: counts[1].count ?? 0,
+		declined: counts[2].count ?? 0,
+		waitlisted: counts[3].count ?? 0,
+		viewerStatus: ((viewerRow.data as { status?: string } | null)?.status ??
+			null) as RsvpStatus | null
+	};
 	return summary;
 }
 
@@ -3463,11 +5383,18 @@ export interface EventResultRow {
 	duration_s: number;
 	distance_m: number;
 	rank: number | null;
-	finisher_status: 'finished' | 'dnf' | 'dns';
+	finisher_status: FinisherStatus;
 	age_grade_pct: number | null;
 	note: string | null;
 	created_at: string;
 	organiser_approved: boolean;
+	// Race provenance (migration 20270727000001). `course_id` picks the
+	// leaderboard; `duration_s` stays the ranked time, which on a gun-started
+	// race is `gun_time_s`.
+	course_id: string | null;
+	gun_time_s: number | null;
+	chip_time_s: number | null;
+	finish_method: FinishMethod | null;
 	// organiser_approved_by / organiser_approved_at are admin-side
 	// columns; intentionally omitted from `fetchEventResults`'s public
 	// read path. Add them back via a service-role-only fetcher if/when
@@ -3496,7 +5423,7 @@ export async function fetchEventResults(
 	const { data: results } = await supabase
 		.from('event_results_redacted')
 		.select(
-			'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, rank, finisher_status, age_grade_pct, note, created_at, organiser_approved'
+			'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, rank, finisher_status, age_grade_pct, note, created_at, organiser_approved, course_id, gun_time_s, chip_time_s, finish_method'
 		)
 		.eq('event_id', eventId)
 		.eq('instance_start', instanceStart)
@@ -3508,10 +5435,9 @@ export async function fetchEventResults(
 	const userIds = rows.map((r) => r.user_id).filter((id): id is string => id !== null);
 	const byId = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 	if (userIds.length > 0) {
-		const { data: profiles } = await supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', userIds);
+		const { data: profiles } = await queryChunked(userIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		);
 		for (const p of profiles ?? [])
 			byId.set(p.id, { display_name: p.display_name, avatar_url: p.avatar_url });
 	}
@@ -3530,33 +5456,45 @@ export async function submitEventResult(params: {
 	durationS: number;
 	distanceM: number;
 	runId?: string | null;
-	finisherStatus?: 'finished' | 'dnf' | 'dns';
+	finisherStatus?: FinisherStatus;
 	ageGradePct?: number | null;
 	note?: string | null;
+	// Set on a raced occurrence: a time the racer submitted themselves is
+	// `manual`, and its run's own duration is the chip time.
+	finishMethod?: FinishMethod | null;
+	chipTimeS?: number | null;
+	courseId?: string | null;
 }): Promise<void> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const noteTrimmed = params.note?.trim();
-	const { error } = await supabase.from(TABLES.event_results).upsert(
-		{
-			event_id: params.eventId,
-			instance_start: params.instanceStart,
-			user_id: userId,
-			run_id: params.runId ?? null,
-			duration_s: params.durationS,
-			distance_m: params.distanceM,
-			finisher_status: params.finisherStatus ?? 'finished',
-			age_grade_pct: params.ageGradePct ?? null,
-			// Trim + collapse empty-after-trim to null so a whitespace
-			// note from the result-submit dialog doesn't survive to the
-			// DB. Mobile's `SocialService.submitEventResult` applies the
-			// same normalisation.
-			note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
-			updated_at: new Date().toISOString(),
-		},
-		{ onConflict: 'event_id,instance_start,user_id' }
-	);
-	if (error) throw error;
+	const result: JsonObject = {
+		event_id: params.eventId,
+		instance_start: params.instanceStart,
+		user_id: userId,
+		run_id: params.runId ?? null,
+		duration_s: params.durationS,
+		distance_m: params.distanceM,
+		finisher_status: params.finisherStatus ?? 'finished',
+		age_grade_pct: params.ageGradePct ?? null,
+		// Mobile's `SocialService.submitEventResult` normalises the same way.
+		note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
+		...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
+		...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
+		...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
+		// A time typed here asserts no line crossings. `file_event_result`
+		// keeps an omitted column, and the server derives the gun and chip
+		// time from a `finish_at` left by an earlier device result (#1307),
+		// so clear them; `clock_offset_ms` is a device fact and stays.
+		start_at: null,
+		finish_at: null,
+		start_detection: null,
+		finish_detection: null,
+		updated_at: new Date().toISOString(),
+	};
+	const { error } = await supabase.rpc('file_event_result', { p_result: result });
+	if (error) throw dbError(error);
+	markListsStale('runs', 'history', 'routes');
 	// Best-effort back-link so the run-detail page can show "ran at {event}".
 	if (params.runId) {
 		await supabase
@@ -3565,6 +5503,175 @@ export async function submitEventResult(params: {
 			.eq('id', params.runId)
 			.eq('user_id', userId);
 	}
+}
+
+/// The runner's own result row as a re-time reads it: the timing columns
+/// `event_results_redacted` shows its runner, `clock_offset_ms` included.
+export interface RetimeResultRow extends RetimeCurrent {
+	event_id: string;
+	instance_start: string;
+	course_id: string | null;
+	run_id: string | null;
+	organiser_approved: boolean | null;
+}
+
+/// Everything "Re-time from my track" reads besides the track: the race the
+/// run belongs to, its session, the course from its frozen snapshot (never the
+/// live course) and the runner's current row, which is null when the race has
+/// none yet.
+export interface RunRetimeContext {
+	eventId: string;
+	instanceStart: string;
+	eventTitle: string | null;
+	current: RetimeResultRow | null;
+	session: RaceSessionRow | null;
+	course: RetimeCourse | null;
+}
+
+const RETIME_RESULT_COLS =
+	'event_id, instance_start, course_id, run_id, organiser_approved, finisher_status, finish_method, start_detection, finish_detection, needs_review, duration_s, gun_time_s, chip_time_s, clock_offset_ms';
+
+/// A run's race for re-timing (#1307 M11): the result row linked to the run,
+/// else the occurrence of the run's event (`runs.event_id`) whose race the run
+/// falls in, so a DNF the close-time fill wrote without a run, or a result the
+/// watch never filed, can still be re-timed. Null when the run has no race.
+/// Owner only; a read failure throws, so the panel can say so.
+export async function fetchRunRetimeContext(run: {
+	id: string;
+	event_id: string | null;
+	started_at: string;
+}): Promise<RunRetimeContext | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const linked = await supabase
+		.from('event_results_redacted')
+		.select(RETIME_RESULT_COLS)
+		.eq('user_id', userId)
+		.eq('run_id', run.id)
+		.limit(1)
+		.maybeSingle();
+	if (linked.error) throw dbError(linked.error);
+	let current = (linked.data as RetimeResultRow | null) ?? null;
+	let eventId = current?.event_id ?? null;
+	let instanceStart = current?.instance_start ?? null;
+
+	if (current === null && run.event_id) {
+		const { data: sessions, error } = await supabase
+			.from('race_sessions_redacted')
+			.select('instance_start, window_opens_at, window_closes_at')
+			.eq('event_id', run.event_id);
+		if (error) throw dbError(error);
+		instanceStart = raceOccurrenceForRun(sessions ?? [], run.started_at);
+		if (instanceStart === null) return null;
+		eventId = run.event_id;
+		const own = await supabase
+			.from('event_results_redacted')
+			.select(RETIME_RESULT_COLS)
+			.eq('user_id', userId)
+			.eq('event_id', eventId)
+			.eq('instance_start', instanceStart)
+			.maybeSingle();
+		if (own.error) throw dbError(own.error);
+		current = (own.data as RetimeResultRow | null) ?? null;
+	}
+	if (eventId === null || instanceStart === null) return null;
+
+	const [session, courses, event, attendee] = await Promise.all([
+		readRaceSession(eventId, instanceStart),
+		supabase
+			.from(TABLES.race_session_courses)
+			.select(
+				'course_id, distance_m, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross, finish_lap_count'
+			)
+			.eq('event_id', eventId)
+			.eq('instance_start', instanceStart),
+		supabase.from('events').select('title').eq('id', eventId).maybeSingle(),
+		supabase
+			.from(TABLES.event_attendees)
+			.select('course_id')
+			.eq('event_id', eventId)
+			.eq('instance_start', instanceStart)
+			.eq('user_id', userId)
+			.maybeSingle(),
+	]);
+	if (courses.error) throw dbError(courses.error);
+	if (event.error) throw dbError(event.error);
+	if (attendee.error) throw dbError(attendee.error);
+	const frozen = courses.data ?? [];
+	// The course the result names, else the one the runner chose at RSVP, else
+	// the only one; the same order the race guard fills `course_id` in.
+	const courseId = current?.course_id ?? attendee.data?.course_id ?? null;
+	const course =
+		(courseId !== null ? frozen.find((c) => c.course_id === courseId) : undefined) ??
+		(frozen.length === 1 ? frozen[0] : null);
+	return {
+		eventId,
+		instanceStart,
+		eventTitle: event.data?.title ?? null,
+		current,
+		session,
+		course: course ?? null,
+	};
+}
+
+/// File a re-timed result (#1307 M11). The race guard re-derives the gun and
+/// chip time, may keep a faster protected row unchanged and may reset
+/// approval, so the row read back afterwards is the answer, not the payload.
+/// A write past the 24 h window (§ 1849) is refused as
+/// `race_result_window_closed`.
+export async function retimeEventResult(params: {
+	eventId: string;
+	instanceStart: string;
+	runId: string;
+	distanceM: number;
+	courseId: string | null;
+	candidate: RetimeCandidate;
+}): Promise<RetimeResultRow | null> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not authenticated');
+	const c = params.candidate;
+	const result: JsonObject = {
+		event_id: params.eventId,
+		instance_start: params.instanceStart,
+		user_id: userId,
+		run_id: params.runId,
+		distance_m: params.distanceM,
+		finisher_status: 'finished',
+		finish_method: 'auto',
+		duration_s: c.durationS,
+		gun_time_s: c.gunTimeS,
+		chip_time_s: c.chipTimeS,
+		start_at: c.startAt,
+		finish_at: c.finishAt,
+		start_detection: c.startDetection,
+		finish_detection: c.finishDetection,
+		...(c.clockOffsetMs !== null ? { clock_offset_ms: c.clockOffsetMs } : {}),
+		...(params.courseId !== null ? { course_id: params.courseId } : {}),
+		updated_at: new Date().toISOString(),
+	};
+	const { error } = await supabase.rpc('file_event_result', { p_result: result });
+	if (error) {
+		if (typeof error.message === 'string' && error.message.startsWith('race_result_window_closed')) {
+			throw new Error('race_result_window_closed');
+		}
+		throw dbError(error);
+	}
+	markListsStale('runs', 'history', 'routes');
+	const link = await supabase
+		.from(TABLES.runs)
+		.update({ event_id: params.eventId })
+		.eq('id', params.runId)
+		.eq('user_id', userId);
+	if (link.error) console.error('retime run link failed', { code: link.error.code });
+	const { data, error: readError } = await supabase
+		.from('event_results_redacted')
+		.select(RETIME_RESULT_COLS)
+		.eq('user_id', userId)
+		.eq('event_id', params.eventId)
+		.eq('instance_start', params.instanceStart)
+		.maybeSingle();
+	if (readError) throw dbError(readError);
+	return (data as RetimeResultRow | null) ?? null;
 }
 
 export async function removeEventResult(
@@ -3579,7 +5686,7 @@ export async function removeEventResult(
 		.eq('event_id', eventId)
 		.eq('user_id', userId)
 		.eq('instance_start', instanceStart);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // Organiser bulk-import of chip-timing results (persona #43). Rows are
@@ -3612,7 +5719,7 @@ export async function bulkImportEventResults(params: {
 	const { error } = await supabase
 		.from(TABLES.event_results)
 		.upsert(payload, { onConflict: 'event_id,instance_start,bib' });
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export interface EventResultClaim {
@@ -3636,7 +5743,7 @@ export interface EventResultClaimWithUser extends EventResultClaim {
 // approves via approveEventResultClaim. Returns the created/re-opened claim.
 export async function requestEventResultClaim(resultId: string): Promise<void> {
 	const { error } = await supabase.rpc('claim_event_result', { p_result_id: resultId });
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // The current user's claims for a given (event, instance), keyed by
@@ -3675,33 +5782,39 @@ export async function fetchPendingEventResultClaims(
 		.eq('event_results.event_id', eventId)
 		.eq('event_results.instance_start', instanceStart)
 		.order('created_at', { ascending: true });
-	const rows = (data ?? []) as Array<{
-		id: string;
-		result_id: string;
-		claimant_id: string;
-		status: EventResultClaim['status'];
-		created_at: string;
-		// PostgREST returns the embedded relationship as an array.
-		event_results: Array<{ bib: string | null; finisher_name: string | null }>;
-	}>;
+	const rows = data ?? [];
 	if (rows.length === 0) return [];
 	const claimantIds = [...new Set(rows.map((r) => r.claimant_id))];
-	const { data: profiles } = await supabase
-		.from('user_profiles')
-		.select('id, display_name')
-		.in('id', claimantIds);
+	const { data: profiles } = await queryChunked(claimantIds, (part) =>
+		supabase.from('user_profiles').select('id, display_name').in('id', part)
+	);
 	const byId = new Map<string, string | null>();
 	for (const p of profiles ?? []) byId.set(p.id, p.display_name);
 	return rows.map((r) => ({
 		id: r.id,
 		result_id: r.result_id,
 		claimant_id: r.claimant_id,
-		status: r.status,
+		status: parseClaimStatus(r.status),
 		created_at: r.created_at,
 		claimant_name: byId.get(r.claimant_id) ?? null,
-		bib: r.event_results[0]?.bib ?? null,
-		finisher_name: r.event_results[0]?.finisher_name ?? null
+		bib: r.event_results.bib,
+		finisher_name: r.event_results.finisher_name
 	}));
+}
+
+/// Defensive narrow on read for `event_result_claims.status`, which carries a
+/// CHECK the generated row types as a bare `string`. An unrecognised status
+/// reads as `'pending'`: the two other values are terminal decisions an
+/// organiser made, and inventing one from a value this build cannot interpret
+/// would either approve a claim nobody approved or bury it as rejected.
+function parseClaimStatus(raw: string): EventResultClaim['status'] {
+	switch (raw) {
+		case 'approved':
+		case 'rejected':
+			return raw;
+		default:
+			return 'pending';
+	}
 }
 
 // Organiser approves or rejects a claim. Approving attaches the claimant's
@@ -3711,7 +5824,7 @@ export async function decideEventResultClaim(claimId: string, approve: boolean):
 		p_claim_id: claimId,
 		p_approve: approve
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export interface RecentRunOption {
@@ -3746,13 +5859,98 @@ export async function fetchRecentRunsForPicker(limit = 20): Promise<RecentRunOpt
 export interface RaceSessionRow {
 	event_id: string;
 	instance_start: string;
-	status: 'armed' | 'running' | 'finished' | 'cancelled';
+	status: RaceSessionStatus;
 	started_at: string | null;
 	started_by: string | null;
 	finished_at: string | null;
 	is_auto_approve: boolean;
 	created_at: string;
 	updated_at: string;
+	/// When the race froze its courses' lines (`race_session_courses`); null
+	/// for a race armed before the frozen copy existed.
+	courses_frozen_at?: string | null;
+	/// How the race starts (#1306) and its instants, copied from the event's
+	/// offsets when the session was created and moved by Delay / Extend.
+	start_mode?: SessionStartMode;
+	scheduled_start_at?: string | null;
+	window_opens_at?: string | null;
+	window_closes_at?: string | null;
+	/// The status on the server clock (`race_sessions_redacted`); a scheduled
+	/// race whose GO passed reads running before the per-minute job moves it.
+	effective_status?: RaceSessionStatus;
+}
+
+/// Create the session of a scheduled or self-timed occurrence that is due
+/// within a day (`ensure_race_session`), so the event page's first read finds
+/// it. False for a Host GO event, a cancelled occurrence, one not yet due or
+/// an event the caller cannot see. A failure is logged and reads as false:
+/// the page then shows the race as not yet open, which the next poll fixes.
+export async function ensureRaceSession(eventId: string, instanceStart: string): Promise<boolean> {
+	const { data, error } = await supabase.rpc('ensure_race_session', {
+		p_event_id: eventId,
+		p_instance_start: instanceStart,
+	});
+	if (error) {
+		console.warn('ensureRaceSession failed', error);
+		return false;
+	}
+	return data === true;
+}
+
+/// The server clock minus this device's, in ms (`server_now`), halving the
+/// round trip. Null when the call fails: callers then count down on the
+/// device clock and say nothing more precise than it.
+export async function fetchServerClockOffsetMs(): Promise<number | null> {
+	const sent = Date.now();
+	const { data, error } = await supabase.rpc('server_now', undefined, { get: true });
+	const received = Date.now();
+	if (error || typeof data !== 'string') {
+		if (error) console.warn('fetchServerClockOffsetMs failed', error);
+		return null;
+	}
+	const server = Date.parse(data);
+	if (!Number.isFinite(server)) return null;
+	return Math.round(server - (sent + received) / 2);
+}
+
+/// Delay a scheduled GO, or a self-timed window's opening, to `startIso`
+/// (organiser only). The server refuses once the start has passed and moves
+/// the window's close by the same amount.
+export async function delayRaceStart(
+	eventId: string,
+	instanceStart: string,
+	mode: SessionStartMode,
+	startIso: string
+): Promise<RaceSessionRow> {
+	const patch: Updatable<'race_sessions'> =
+		mode === 'scheduled' ? { scheduled_start_at: startIso } : { window_opens_at: startIso };
+	const { data, error } = await supabase
+		.from('race_sessions')
+		.update({ ...patch, updated_at: new Date().toISOString() })
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.select()
+		.single();
+	if (error) throw dbError(error);
+	return data as RaceSessionRow;
+}
+
+/// Move a window's close (Extend, or close sooner). The server refuses a
+/// close in the past, before the opening or more than 7 days after it.
+export async function setRaceWindowClose(
+	eventId: string,
+	instanceStart: string,
+	closesIso: string
+): Promise<RaceSessionRow> {
+	const { data, error } = await supabase
+		.from('race_sessions')
+		.update({ window_closes_at: closesIso, updated_at: new Date().toISOString() })
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.select()
+		.single();
+	if (error) throw dbError(error);
+	return data as RaceSessionRow;
 }
 
 export async function fetchRaceSession(
@@ -3765,12 +5963,27 @@ export async function fetchRaceSession(
 	// migration 20260813_001). Admin row-level mutations
 	// (armRace / startRace / endRace) below keep writing the base
 	// table so the columns reach Postgres unmasked.
-	const { data } = await supabase
+	try {
+		return await readRaceSession(eventId, instanceStart);
+	} catch (e) {
+		console.error('race session read failed', { code: (e as { code?: string }).code });
+		return null;
+	}
+}
+
+/// [fetchRaceSession] for a caller that must tell a failed read from no
+/// session: the read error throws.
+export async function readRaceSession(
+	eventId: string,
+	instanceStart: string
+): Promise<RaceSessionRow | null> {
+	const { data, error } = await supabase
 		.from('race_sessions_redacted')
 		.select('*')
 		.eq('event_id', eventId)
 		.eq('instance_start', instanceStart)
 		.maybeSingle();
+	if (error) throw dbError(error);
 	return (data as RaceSessionRow | null) ?? null;
 }
 
@@ -3798,7 +6011,7 @@ export async function armRace(
 		)
 		.select()
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as RaceSessionRow;
 }
 
@@ -3820,7 +6033,7 @@ export async function startRace(
 		.eq('instance_start', instanceStart)
 		.select()
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as RaceSessionRow;
 }
 
@@ -3839,7 +6052,7 @@ export async function endRace(
 	// `event-race-control.spec.ts:170` Cancel-from-armed test timed
 	// out on every CI run for this reason. Only stamp finished_at
 	// when transitioning to `finished`.
-	const patch: Record<string, unknown> = {
+	const patch: Updatable<'race_sessions'> = {
 		status,
 		updated_at: new Date().toISOString(),
 	};
@@ -3853,7 +6066,7 @@ export async function endRace(
 		.eq('instance_start', instanceStart)
 		.select()
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as RaceSessionRow;
 }
 
@@ -3869,7 +6082,7 @@ export async function approveEventResult(
 		p_user_id: userId,
 		p_approve: approve,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // Approve / unverify a single result by its row id. The `approve_event_result`
@@ -3900,7 +6113,205 @@ export async function approveEventResultById(
 		// stray caller can't reach a matched runner's result through here
 		// (the director RLS policy already bounds it to their own events).
 		.is('user_id', null);
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+/// Organiser edit of one result's time and / or status. Gated by the
+/// `event_results_update_self_or_director` policy (race director) or, for a
+/// bib-only row, `event_results_update_organiser_bib`; the
+/// `event_results_race_guard` trigger stamps `finish_method = 'host'` because
+/// the editor is not the result's runner.
+export async function editEventResultAsHost(
+	resultId: string,
+	patch: { duration_s: number; gun_time_s?: number; finisher_status: FinisherStatus }
+): Promise<void> {
+	const update: Updatable<'event_results'> = {
+		duration_s: patch.duration_s,
+		finisher_status: patch.finisher_status,
+		updated_at: new Date().toISOString(),
+	};
+	if (patch.gun_time_s !== undefined) update.gun_time_s = patch.gun_time_s;
+	const { error } = await supabase.from(TABLES.event_results).update(update).eq('id', resultId);
+	if (error) throw dbError(error);
+}
+
+/// How many racers End would mark DNF (pinged the race, filed no result).
+/// Null when the caller is not a race director for the event's club, or the
+/// count could not be read — the End dialog then omits the figure rather than
+/// stating a wrong one.
+export async function fetchRaceDnfPreview(
+	eventId: string,
+	instanceStart: string
+): Promise<number | null> {
+	const { data, error } = await supabase.rpc(
+		'race_pending_dnf_count',
+		{ p_event_id: eventId, p_instance_start: instanceStart },
+		{ get: true }
+	);
+	if (error) {
+		console.warn('fetchRaceDnfPreview failed', error);
+		return null;
+	}
+	return typeof data === 'number' ? data : null;
+}
+
+// --- Event courses (multi-course races) ---
+
+/// An event's courses in display order. Empty for an event with no route and
+/// no courses — a plain club run.
+export async function fetchEventCourses(eventId: string): Promise<EventCourse[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select('id, event_id, route_id, name, distance_m, sort_order')
+		.eq('event_id', eventId)
+		.order('sort_order', { ascending: true })
+		.order('name', { ascending: true });
+	if (error) throw dbError(error);
+	return sortCourses(data ?? []);
+}
+
+/// One course's timing lines and finish point (#1305), from the live course
+/// row or a race's frozen copy. `course_id` is the course either way.
+export interface CourseLinesRow extends CourseGateColumns {
+	course_id: string;
+	finish_lat: number | null;
+	finish_lng: number | null;
+	finish_line_self_cross: boolean;
+}
+
+/// Every course's lines as they stand now. The source columns say whether an
+/// organiser placed a line, which the editor and the preflight need.
+export async function fetchEventCourseLines(eventId: string): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select(
+			'id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, start_gate_source, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_gate_source, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId);
+	if (error) throw dbError(error);
+	return (data ?? []).map(({ id, ...rest }) => ({ course_id: id, ...rest }));
+}
+
+/// The lines a race froze when it was armed (`race_session_courses`), which
+/// is what its runners cross. Empty for a race armed before the copy existed;
+/// `race_sessions_redacted.courses_frozen_at` says whether there is one.
+export async function fetchRaceSessionCourseLines(
+	eventId: string,
+	instanceStart: string
+): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.race_session_courses)
+		.select(
+			'course_id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The lines a viewer of one occurrence should see: the race's frozen copy
+/// once it has one, otherwise the courses as they stand.
+export async function fetchCourseLinesForOccurrence(
+	eventId: string,
+	instanceStart: string | null,
+	frozen: boolean
+): Promise<CourseLinesRow[]> {
+	if (frozen && instanceStart) return fetchRaceSessionCourseLines(eventId, instanceStart);
+	return fetchEventCourseLines(eventId);
+}
+
+/// Place one of a course's lines (organiser only, `set_event_course_gate`).
+/// The server normalises the bearing into [0, 360) and refuses a half-width
+/// outside 5-100 m.
+export async function setEventCourseGate(courseId: string, which: GateWhich, gate: Gate): Promise<void> {
+	const { error } = await supabase.rpc('set_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+		p_lat: gate.lat,
+		p_lng: gate.lng,
+		p_bearing_deg: gate.bearingDeg,
+		p_half_width_m: gate.halfWidthM,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Put a line back to the route's (or to none on a routeless course).
+export async function resetEventCourseGate(courseId: string, which: GateWhich): Promise<void> {
+	const { error } = await supabase.rpc('reset_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Persist the event editor's course list (a dropped course's RSVPs and
+/// results fall back to no course). The write order and the refused-write
+/// check live in `applyCourseSave`; each statement returns its ids so a write
+/// RLS filtered to nothing is reported, not taken for success. Organiser-only
+/// through the `event_courses_organiser_*` policies.
+export async function saveEventCourses(
+	eventId: string,
+	existing: EventCourse[],
+	drafts: CourseDraft[]
+): Promise<void> {
+	const table = () => supabase.from(TABLES.event_courses);
+	await applyCourseSave(planCourseSave(existing, drafts), {
+		delete: async (ids) => {
+			const { data, error } = await queryChunked(ids, (part) =>
+				table().delete().in('id', part).select('id')
+			);
+			return { error, rows: data?.length ?? 0 };
+		},
+		update: async (id, patch) => {
+			const { data, error } = await table().update(patch).eq('id', id).select('id');
+			return { error, rows: data?.length ?? 0 };
+		},
+		insert: async (rows) => {
+			const { data, error } = await table()
+				.insert(rows.map((w) => ({ ...w, event_id: eventId })))
+				.select('id');
+			return { error, rows: data?.length ?? 0 };
+		}
+	});
+}
+
+/// Each attendee's chosen course for one occurrence, keyed by user id; an
+/// attendee with no pick is absent. Read under the same club-visibility gate
+/// as `race_pings`, so whoever can see a runner on course can see their
+/// course. Throws on a failed read so the spectator page can keep the split
+/// it already has rather than collapse every runner into "no course".
+export async function fetchAttendeeCourses(
+	eventId: string,
+	instanceStart: string
+): Promise<Map<string, string>> {
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('user_id, course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.not('course_id', 'is', null);
+	if (error) throw dbError(error);
+	const out = new Map<string, string>();
+	for (const r of data ?? []) if (r.course_id) out.set(r.user_id, r.course_id);
+	return out;
+}
+
+/// The signed-in viewer's chosen course for one occurrence, or null.
+export async function fetchMyEventCourse(
+	eventId: string,
+	instanceStart: string
+): Promise<string | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data } = await supabase
+		.from(TABLES.event_attendees)
+		.select('course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.eq('user_id', userId)
+		.maybeSingle();
+	return data?.course_id ?? null;
 }
 
 export interface RacePingRow {
@@ -3915,6 +6326,9 @@ export interface RacePingRow {
 	elapsed_s: number | null;
 	bpm: number | null;
 	coarse: boolean;
+	/// Seconds since this runner crossed the start line (#1306 M13). Null
+	/// from an Apple Watch relay, an older app, or before the crossing.
+	since_start_line_s?: number | null;
 }
 
 /// Recent pings for a race instance, newest first. The spectator page
@@ -3954,7 +6368,7 @@ export async function fetchLatestRacePings(
 	const { data } = await supabase.rpc('latest_race_pings', {
 		p_event_id: eventId,
 		p_instance_start: instanceStart
-	});
+	}, { get: true });
 	const rows = (data as RacePingRow[]) ?? [];
 	return rows.sort(compareLeaderboard);
 }
@@ -3980,7 +6394,7 @@ export async function postRacePing(params: {
 		elapsed_s: params.elapsedS ?? null,
 		bpm: params.bpm ?? null,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Club posts (owner updates) ---
@@ -4018,16 +6432,17 @@ async function enrichPosts(posts: ClubPost[]): Promise<ClubPostWithAuthor[]> {
 	const topLevelIds = posts.filter((p) => !p.parent_post_id).map((p) => p.id);
 
 	const [profilesRes, repliesRes] = await Promise.all([
-		supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', authorIds),
+		queryChunked(authorIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		),
 		topLevelIds.length > 0
-			? supabase
-					.from(TABLES.club_posts)
-					.select('parent_post_id')
-					.in('parent_post_id', topLevelIds)
-					.limit(5000)
+			? queryChunked(topLevelIds, (part) =>
+					supabase
+						.from(TABLES.club_posts)
+						.select('parent_post_id')
+						.in('parent_post_id', part)
+						.limit(5000)
+				)
 			: Promise.resolve({ data: [] as { parent_post_id: string }[] })
 	]);
 
@@ -4068,13 +6483,13 @@ export async function createClubPost(input: {
 		})
 		.select()
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as ClubPost;
 }
 
 export async function deleteClubPost(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.club_posts).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Training plans ---
@@ -4085,16 +6500,20 @@ export async function deleteClubPost(id: string): Promise<void> {
 /// `fetchRoutesWithError` convention.
 export async function fetchMyPlansWithError(
 	limit = 100
-): Promise<{ plans: TrainingPlan[]; error: string | null }> {
-	// Templates live in the same table; filter them out of the
-	// user-facing plan list (decisions §35).
+): Promise<{ plans: TrainingPlan[]; error: Error | null }> {
+	// RLS also lets a coach read their linked athletes' plans, so the owner
+	// filter is what keeps those out of the coach's own list; templates live
+	// in the same table and are filtered out too (decisions §35).
+	const userId = await currentViewerId();
+	if (!userId) return { plans: [], error: new Error('Not signed in') };
 	const { data, error } = await supabase
 		.from('training_plans')
 		.select('*')
+		.eq('user_id', userId)
 		.eq('is_template', false)
 		.order('created_at', { ascending: false })
 		.limit(limit);
-	return { plans: (data ?? []) as TrainingPlan[], error: error?.message ?? null };
+	return { plans: (data ?? []) as TrainingPlan[], error: error ? dbError(error) : null };
 }
 
 export async function fetchMyPlans(limit = 100): Promise<TrainingPlan[]> {
@@ -4122,24 +6541,26 @@ export async function fetchClubTemplates(clubId: string, limit = 100): Promise<T
 /// /plans/new picker used to call fetchClubTemplates once per club (N+1).
 /// Per-club ordering matches fetchClubTemplates (created_at desc); the
 /// limit scales with the club count so no club is starved by another's
-/// template volume.
+/// template volume. Throws on a failed read: an empty map would read as
+/// "your clubs have no templates" and leave a club's Adopt link on nothing.
 export async function fetchClubTemplatesForClubs(
 	clubIds: string[],
 	limitPerClub = 100
 ): Promise<Map<string, TrainingPlan[]>> {
 	const grouped = new Map<string, TrainingPlan[]>();
 	if (clubIds.length === 0) return grouped;
-	const { data, error } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('is_template', true)
-		.in('club_id', clubIds)
-		.order('created_at', { ascending: false })
-		.limit(limitPerClub * clubIds.length);
-	if (error) {
-		console.error('fetchClubTemplatesForClubs failed', error);
-		return grouped;
-	}
+	// Each club lands in exactly one chunk, so its own created_at order
+	// survives the merge — the grouping below is per club.
+	const { data, error } = await queryChunked(clubIds, (part) =>
+		supabase
+			.from('training_plans')
+			.select('*')
+			.eq('is_template', true)
+			.in('club_id', part)
+			.order('created_at', { ascending: false })
+			.limit(limitPerClub * part.length)
+	);
+	if (error) throw dbError(error);
 	for (const row of (data ?? []) as TrainingPlan[]) {
 		if (!row.club_id) continue;
 		const list = grouped.get(row.club_id);
@@ -4151,19 +6572,23 @@ export async function fetchClubTemplatesForClubs(
 
 /// Clone a template into a user-owned active plan, anchored at
 /// new_start_date. Returns the new plan's id; caller should navigate
-/// to /plans/{id}. The RPC enforces authorisation server-side.
+/// to /plans/{id}. The RPC enforces authorisation server-side and resolves
+/// overlapping active plans per `overlap` in the same transaction.
 export async function clonePlanTemplate(
 	templateId: string,
-	newStartDate: string
+	newStartDate: string,
+	overlap: PlanOverlapChoice = 'refuse'
 ): Promise<string> {
+	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_plan_template', {
 		template_id: templateId,
 		new_start_date: newStartDate,
+		p_overlap: overlap,
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
 	return data as string;
 }
@@ -4176,7 +6601,7 @@ export async function setPlanIsTemplate(
 	isTemplate: boolean,
 	clubId: string | null = null
 ): Promise<void> {
-	const patch: Record<string, unknown> = {
+	const patch: Updatable<'training_plans'> = {
 		is_template: isTemplate,
 		updated_at: new Date().toISOString(),
 	};
@@ -4194,8 +6619,9 @@ export async function setPlanIsTemplate(
 		// policy and the update 403'd — the Unpublish button never worked.
 		patch.club_id = null;
 	}
+	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', planId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export type PublicPlanLibraryEntry = TrainingPlan & {
@@ -4203,24 +6629,25 @@ export type PublicPlanLibraryEntry = TrainingPlan & {
 };
 
 /// Browse the public plan library — published plans any user can clone
-/// (migration 20270126_001). Optional case-insensitive name search.
+/// (migration 20270126_001). Optional case-insensitive name search, every
+/// character matched literally (`literalSubstringPattern`, decisions § 1937).
 /// Each entry carries the author's public display name (handle) joined
 /// from user_profiles; no other author data is exposed. Mirrors mobile
 /// `TrainingService.fetchPublicPlanLibrary`.
 export async function fetchPublicPlanLibrary(
 	query = '',
 	limit = 100
-): Promise<{ plans: PublicPlanLibraryEntry[]; error: string | null }> {
+): Promise<{ plans: PublicPlanLibraryEntry[]; error: Error | null }> {
 	let q = supabase
 		.from('training_plans')
-		.select('*')
+		.select('*, is_official')
 		.eq('is_public_template', true)
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
-	if (trimmed) q = q.ilike('name', `%${trimmed}%`);
+	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
-	if (error) return { plans: [], error: error.message };
+	if (error) return { plans: [], error: dbError(error) };
 	const rows = (data ?? []) as TrainingPlan[];
 	const authorIds = [...new Set(rows.map((r) => r.user_id))];
 	const byId = new Map<string, string | null>();
@@ -4243,139 +6670,84 @@ export async function fetchPublicPlanLibrary(
 /// publisher's private fitness data.
 export async function clonePublicPlan(
 	templateId: string,
-	newStartDate: string
+	newStartDate: string,
+	overlap: PlanOverlapChoice = 'refuse'
 ): Promise<string> {
+	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_public_plan', {
 		template_id: templateId,
 		new_start_date: newStartDate,
+		p_overlap: overlap,
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
 	return data as string;
 }
 
-/// Publish one of the viewer's plans to the public library: copy the
-/// plan row + every plan_week + plan_workout into a new
-/// `is_public_template = true` sibling, leaving the original plan
-/// untouched on the user's list (mirrors `publishPlanAsTemplate`, in the
-/// public direction). Publisher fitness data (vdot/current_5k_seconds)
-/// is stripped so it can't leak to cloners. Returns the new template id.
+/// Whether a public-library plan may be shared as a logged-out page
+/// (`/share/plan/<id>`). The `public_plan_share` gate is closed in prod until
+/// the CISO / Security Analyst sign-off (decisions § 2262); a failed read is
+/// treated as closed, so the share link is hidden rather than broken.
+export async function publicPlanShareEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('public_plan_share_enabled', undefined, { get: true });
+	if (error) {
+		console.error('public_plan_share_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
+}
+
+export interface PlanStartedFrom {
+	/// Display name and handle of the author, or null when their profile is
+	/// hidden from the viewer.
+	author: { name: string | null; handle: string | null } | null;
+	/// The public plan it started from, while it is still published.
+	templateId: string | null;
+}
+
+/// "Started from @creator's plan" for the viewer's own copy of a public
+/// plan. Null for any plan that was not started from someone else's public
+/// plan, and for a plan the viewer does not own.
+export async function fetchPlanStartedFrom(planId: string): Promise<PlanStartedFrom | null> {
+	const { data, error } = await supabase.rpc('plan_started_from', { p_plan_id: planId }, { get: true });
+	if (error) throw dbError(error);
+	if (data == null || typeof data !== 'object' || Array.isArray(data)) return null;
+	const author = data.author;
+	const authorObj =
+		author != null && typeof author === 'object' && !Array.isArray(author) ? author : null;
+	const text = (v: unknown) => (typeof v === 'string' ? v : null);
+	return {
+		author: authorObj ? { name: text(authorObj.name), handle: text(authorObj.handle) } : null,
+		templateId: text(data.template_id),
+	};
+}
+
+/// Publish one of the viewer's plans to the public library. The copy is made
+/// server-side by `publish_plan_to_library`, in one transaction that also
+/// links it from the source's `library_copy_id`: it keeps the plan's design
+/// and drops the publisher's dates, paces, goal time and notes (decisions
+/// § 2340). Publishing an already-published plan returns its existing copy.
+/// Returns the copy's id.
 export async function publishPlanToLibrary(sourcePlanId: string): Promise<string> {
-	const userId = auth.user?.id;
-	if (!userId) throw new Error('Not signed in');
-
-	const source = await fetchPlan(sourcePlanId);
-	if (!source.plan) throw new Error('Source plan not found');
-	if (source.plan.user_id !== userId) {
-		throw new Error('Only the plan owner can publish');
-	}
-	const src = source.plan;
-
-	const { data: tmpl, error: planErr } = await supabase
-		.from('training_plans')
-		.insert({
-			user_id: userId,
-			name: src.name,
-			goal_event: src.goal_event,
-			goal_distance_m: src.goal_distance_m,
-			goal_time_seconds: src.goal_time_seconds,
-			start_date: src.start_date,
-			end_date: src.end_date,
-			days_per_week: src.days_per_week,
-			vdot: null,
-			current_5k_seconds: null,
-			status: 'completed',
-			notes: src.notes,
-			is_template: true,
-			is_public_template: true,
-			club_id: null,
-			parent_template_id: null,
-		})
-		.select('id')
-		.single();
-	if (planErr || !tmpl) throw planErr ?? new Error('Template insert failed');
-	const newPlanId = tmpl.id as string;
-
-	if (source.weeks.length === 0) return newPlanId;
-
-	const weekRows = source.weeks.map((w) => ({
-		plan_id: newPlanId,
-		week_index: w.week_index,
-		phase: w.phase,
-		target_volume_m: w.target_volume_m,
-		notes: w.notes,
-	}));
-	const { data: weekRes, error: weekErr } = await supabase
-		.from('plan_weeks')
-		.insert(weekRows)
-		.select('id, week_index');
-	if (weekErr || !weekRes) throw weekErr ?? new Error('Weeks insert failed');
-
-	const byIdx = new Map<number, string>();
-	for (const w of weekRes as { id: string; week_index: number }[]) {
-		byIdx.set(w.week_index, w.id);
-	}
-	const oldToNew = new Map<string, string>();
-	for (const old of source.weeks) {
-		const newId = byIdx.get(old.week_index);
-		if (newId) oldToNew.set(old.id, newId);
-	}
-
-	const workoutRows = source.workouts
-		.map((w) => {
-			const newWeekId = oldToNew.get(w.week_id);
-			if (!newWeekId) return null;
-			return {
-				week_id: newWeekId,
-				scheduled_date: w.scheduled_date,
-				kind: w.kind,
-				target_distance_m: w.target_distance_m,
-				target_duration_seconds: w.target_duration_seconds,
-				target_pace_sec_per_km: w.target_pace_sec_per_km,
-				target_pace_tolerance_sec: w.target_pace_tolerance_sec,
-				structure: w.structure,
-				notes: w.notes,
-			};
-		})
-		.filter((r): r is NonNullable<typeof r> => r != null);
-	if (workoutRows.length > 0) {
-		const { error: woErr } = await supabase.from('plan_workouts').insert(workoutRows);
-		if (woErr) throw woErr;
-	}
-
-	return newPlanId;
+	markListsStale('plans');
+	const { data, error } = await supabase.rpc('publish_plan_to_library', { p_plan_id: sourcePlanId });
+	if (error) throw dbError(error);
+	return data;
 }
 
 /// Unpublish a public-library template the viewer owns — deletes the
 /// published copy (weeks + workouts cascade). Owner-only via RLS.
 export async function unpublishFromLibrary(templateId: string): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase
 		.from('training_plans')
 		.delete()
 		.eq('id', templateId)
 		.eq('is_public_template', true);
-	if (error) throw error;
-}
-
-/// The viewer's own published public-library plans (so the plan-detail
-/// page can show whether a plan is already published and offer Unpublish).
-export async function fetchMyPublishedPlans(): Promise<TrainingPlan[]> {
-	const userId = auth.user?.id;
-	if (!userId) return [];
-	const { data, error } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('is_public_template', true)
-		.eq('user_id', userId)
-		.order('created_at', { ascending: false });
-	if (error) {
-		console.error('fetchMyPublishedPlans failed', error);
-		return [];
-	}
-	return (data ?? []) as TrainingPlan[];
+	if (error) throw dbError(error);
 }
 
 /**
@@ -4400,52 +6772,40 @@ export async function publishPlanAsTemplate(
 	}
 	const src = source.plan;
 
-	// vdot + current_5k_seconds are the publisher's private fitness
-	// measurements — derived proxies for age, fitness, and recent 5 km
-	// performance. They aren't template-design values; copying them
-	// into a row that every club member can SELECT leaks personal
-	// fitness data. Strip on publish; the cloning RPC also strips on
-	// the read side as defence-in-depth (migration 20260721_001).
+	markListsStale('plans');
+	// vdot, current_5k_seconds and notes are the publisher's private
+	// fields — fitness proxies and their own free text (training
+	// constraints, injury history). They aren't template-design values;
+	// copying them into a row every club member can SELECT leaks
+	// personal data. Stripped here and enforced by the trigger in
+	// migration 20270508_001, which is what actually holds — this
+	// insert is reachable by REST without it.
 	const { data: tmpl, error: planErr } = await supabase
 		.from('training_plans')
 		.insert({
+			...planHeadCopyFields(src),
 			user_id: userId,
-			name: src.name,
-			goal_event: src.goal_event,
-			goal_distance_m: src.goal_distance_m,
-			goal_time_seconds: src.goal_time_seconds,
-			start_date: src.start_date,
-			end_date: src.end_date,
-			days_per_week: src.days_per_week,
 			vdot: null,
 			current_5k_seconds: null,
+			notes: null,
 			status: 'completed',
-			source: src.source ?? 'manual',
-			notes: src.notes,
-			rules: src.rules,
 			is_template: true,
 			club_id: clubId,
 			parent_template_id: null,
 		})
 		.select('id')
 		.single();
-	if (planErr || !tmpl) throw planErr ?? new Error('Template insert failed');
+	if (planErr || !tmpl) throw planErr ? dbError(planErr) : new Error('Template insert failed');
 	const newPlanId = tmpl.id as string;
 
 	if (source.weeks.length === 0) return newPlanId;
 
-	const weekRows = source.weeks.map((w) => ({
-		plan_id: newPlanId,
-		week_index: w.week_index,
-		phase: w.phase,
-		target_volume_m: w.target_volume_m,
-		notes: w.notes,
-	}));
+	const weekRows = planWeekCopyRows(source.weeks, newPlanId);
 	const { data: weekRes, error: weekErr } = await supabase
 		.from('plan_weeks')
 		.insert(weekRows)
 		.select('id, week_index');
-	if (weekErr || !weekRes) throw weekErr ?? new Error('Weeks insert failed');
+	if (weekErr || !weekRes) throw weekErr ? dbError(weekErr) : new Error('Weeks insert failed');
 
 	const byIdx = new Map<number, string>();
 	for (const w of weekRes as { id: string; week_index: number }[]) {
@@ -4457,28 +6817,10 @@ export async function publishPlanAsTemplate(
 		if (newId) oldToNew.set(old.id, newId);
 	}
 
-	const workoutRows = source.workouts
-		.map((w) => {
-			const newWeekId = oldToNew.get(w.week_id);
-			if (!newWeekId) return null;
-			return {
-				week_id: newWeekId,
-				scheduled_date: w.scheduled_date,
-				kind: w.kind,
-				target_distance_m: w.target_distance_m,
-				target_duration_seconds: w.target_duration_seconds,
-				target_pace_sec_per_km: w.target_pace_sec_per_km,
-				target_pace_end_sec_per_km: w.target_pace_end_sec_per_km,
-				target_pace_tolerance_sec: w.target_pace_tolerance_sec,
-				pace_zone: w.pace_zone,
-				structure: w.structure,
-				notes: w.notes,
-			};
-		})
-		.filter((r): r is NonNullable<typeof r> => r != null);
+	const workoutRows = planWorkoutCopyRows(source.workouts, oldToNew);
 	if (workoutRows.length > 0) {
 		const { error: woErr } = await supabase.from('plan_workouts').insert(workoutRows);
-		if (woErr) throw woErr;
+		if (woErr) throw dbError(woErr);
 	}
 
 	return newPlanId;
@@ -4488,42 +6830,66 @@ export async function fetchPlan(id: string): Promise<{
 	plan: TrainingPlan | null;
 	weeks: PlanWeek[];
 	workouts: PlanWorkout[];
-	error: string | null;
+	error: Error | null;
 }> {
-	const [planRes, weeksRes] = await Promise.all([
-		supabase.from('training_plans').select('*').eq('id', id).maybeSingle(),
-		supabase
-			.from('plan_weeks')
-			.select('*')
-			.eq('plan_id', id)
-			.order('week_index', { ascending: true })
-	]);
+	// One round trip: the embed needs no `in (...)` list of week ids, so no
+	// chunking either. Ordered here because an embed's order is per parent.
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('*, is_official, plan_weeks(*, plan_workouts(*))')
+		.eq('id', id)
+		.maybeSingle();
 	// Surface a query error so the detail page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
-	// reads as a missing plan when the rows just come back null).
-	const error = planRes.error?.message ?? weeksRes.error?.message ?? null;
-	const plan = (planRes.data ?? null) as TrainingPlan | null;
-	const weeks = (weeksRes.data ?? []) as PlanWeek[];
-	if (!plan || weeks.length === 0) {
-		return { plan, weeks, workouts: [], error };
+	// reads as a missing plan when the row just comes back null).
+	if (!data) return { plan: null, weeks: [], workouts: [], error: error ? dbError(error) : null };
+	const { plan_weeks: weekRows, ...plan } = data;
+	const weeks: PlanWeek[] = [];
+	const workouts: PlanWorkout[] = [];
+	for (const { plan_workouts: woRows, ...week } of weekRows ?? []) {
+		weeks.push(week as PlanWeek);
+		workouts.push(...((woRows ?? []) as PlanWorkout[]));
 	}
-	const weekIds = weeks.map((w) => w.id);
-	const { data: woData } = await supabase
-		.from('plan_workouts')
-		.select('*')
-		.in('week_id', weekIds)
-		.order('scheduled_date', { ascending: true });
-	return {
-		plan,
-		weeks,
-		workouts: (woData ?? []) as PlanWorkout[],
-		error
-	};
+	weeks.sort((a, b) => a.week_index - b.week_index);
+	workouts.sort((a, b) =>
+		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0
+	);
+	return { plan: plan as TrainingPlan, weeks, workouts, error: null };
+}
+
+/// The block before a plan, whose B/C race windows can reach into its first
+/// days: the caller's latest non-template active or completed plan ending
+/// before `startIso`, ties to the lowest id. `apply_ai_plan_edits` picks the
+/// same plan, so an AI plan edit holds those windows on both sides
+/// (decisions § 2230). Null when there is none.
+export async function fetchPrecedingPlan(startIso: string): Promise<{
+	plan: TrainingPlan;
+	weeks: PlanWeek[];
+	workouts: PlanWorkout[];
+} | null> {
+	const userId = await currentViewerId();
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id')
+		.eq('user_id', userId)
+		.eq('is_template', false)
+		.in('status', ['active', 'completed'])
+		.lt('end_date', startIso)
+		.order('end_date', { ascending: false })
+		.order('id', { ascending: true })
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const read = await fetchPlan(data.id);
+	if (read.error) throw dbError(read.error);
+	return read.plan ? { plan: read.plan, weeks: read.weeks, workouts: read.workouts } : null;
 }
 
 export async function fetchWorkout(
 	id: string
-): Promise<{ workout: PlanWorkout | null; error: string | null }> {
+): Promise<{ workout: PlanWorkout | null; error: Error | null }> {
 	// Thread the query error so the detail page can show a "couldn't load —
 	// retry" state instead of the not-found page (a transient error otherwise
 	// reads as a deleted workout when the row just comes back null), mirroring
@@ -4533,46 +6899,169 @@ export async function fetchWorkout(
 		.select('*')
 		.eq('id', id)
 		.maybeSingle();
-	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
+	return { workout: (data as PlanWorkout | null) ?? null, error: error ? dbError(error) : null };
 }
 
-export async function fetchActivePlanOverview(): Promise<ActivePlanOverview | null> {
+/// Distances of the runs linked to plan workouts, by run id, for the
+/// "Done · +3 km" status. Ids the caller cannot read (a coach looking at an
+/// athlete's plan, a deleted run) are simply absent.
+export async function fetchRunDistances(ids: readonly string[]): Promise<Map<string, number>> {
+	const wanted = [...new Set(ids)];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase.from(TABLES.runs).select('id, distance_m').in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const out = new Map<string, number>();
+	for (const r of rows) if (r.distance_m != null) out.set(r.id, r.distance_m);
+	return out;
+}
+
+/// The runs and records the end-of-plan recap (`assemblePlanRecap`) reads,
+/// each dated on the runner's local day. Runs reach two days past either end
+/// of the plan, the run-to-workout matcher's cross-day reach (decisions
+/// § 2079), so a linked run on the window's edge is still found by id.
+export async function fetchPlanRecapSources(
+	startIso: string,
+	endIso: string,
+): Promise<{ runs: PlanRecapRun[]; records: PlanRecapRecord[] }> {
 	const userId = auth.user?.id;
-	if (!userId) return null;
-	const { data: plan } = await supabase
+	if (!userId) return { runs: [], records: [] };
+	// Imported here, not at the top: a static import pulls the whole plan
+	// generator into this module's chunk, which nearly every route loads.
+	const { formatISO, parseISO } = await import('../training/training');
+	const [runs, recordsRes] = await Promise.all([
+		fetchRuns({
+			columns: ['id', 'started_at', 'distance_m', 'duration_s', 'activity_type', 'is_dnf'] as const,
+			startedAtFrom: parseISO(shiftIsoDate(startIso, -2)).toISOString(),
+			startedAtBefore: parseISO(shiftIsoDate(endIso, 3)).toISOString(),
+			throwOnError: true,
+		}),
+		supabase
+			.from(TABLES.personal_records)
+			.select('distance, best_time_s, achieved_at, run_id')
+			.eq('user_id', userId),
+	]);
+	if (recordsRes.error) throw dbError(recordsRes.error);
+	return {
+		runs: runs.map((r) => ({
+			id: r.id,
+			date: formatISO(new Date(r.started_at)),
+			distanceM: r.distance_m,
+			durationS: r.duration_s,
+			activityType: r.activity_type,
+			isDnf: r.is_dnf,
+		})),
+		records: (recordsRes.data ?? []).map((r) => ({
+			distance: r.distance,
+			timeS: r.best_time_s,
+			date: formatISO(new Date(r.achieved_at)),
+			runId: r.run_id,
+		})),
+	};
+}
+
+/// Who owns a plan, for the "updated by your coach" line on a workout
+/// (`isEditedByCoach`). Null when the row can't be read; the line then stays
+/// hidden rather than guessing.
+export async function fetchPlanOwnerId(planId: string): Promise<string | null> {
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('user_id')
+		.eq('id', planId)
+		.maybeSingle();
+	if (error) return null;
+	return data?.user_id ?? null;
+}
+
+/// A plan overview read. `error` is set when a read failed, so a caller can
+/// say "couldn't load your plan" instead of showing the no-plan state over a
+/// plan that exists.
+export type PlanOverviewRead = {
+	overview: ActivePlanOverview | null;
+	error: Error | null;
+	/// The runner's most recently paused plan, read only when there is no
+	/// active one to show, so Home can offer to resume it instead of acting
+	/// as though they have no plan.
+	paused?: Pick<TrainingPlan, 'id' | 'name'> | null;
+};
+
+export async function fetchActivePlanOverview(): Promise<PlanOverviewRead> {
+	const userId = auth.user?.id;
+	if (!userId) return { overview: null, error: null };
+	const read = await planOverviewFor(userId);
+	if (read.overview || read.error) return read;
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name')
+		.eq('user_id', userId)
+		.eq('status', 'paused')
+		.eq('is_template', false)
+		.order('paused_at', { ascending: false, nullsFirst: false })
+		.limit(1)
+		.maybeSingle();
+	// A failed read of the paused plan is not a failed plan load: the
+	// dashboard falls back to the no-plan card, as it did before.
+	if (error) console.error('Reading the paused plan failed', { message: error.message });
+	return { ...read, paused: data ?? null };
+}
+
+/// The overview of `userId`'s current plan (plan_current.ts), or of the next
+/// one to start when nothing is current, so a runner whose only plan is queued
+/// sees it counting down rather than an empty card. `upcoming` is the plan
+/// after the one shown.
+async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
+	const { data: rows, error: rowsErr } = await supabase
 		.from('training_plans')
 		.select('*')
 		.eq('user_id', userId)
 		.eq('status', 'active')
-		.maybeSingle();
-	if (!plan) return null;
-	const { weeks, workouts } = await fetchPlan(plan.id);
+		.eq('is_template', false);
+	if (rowsErr) return { overview: null, error: dbError(rowsErr) };
+	const active = (rows ?? []) as TrainingPlan[];
+	if (active.length === 0) return { overview: null, error: null };
 	// Local-tz today — `toISOString().slice(0,10)` returns the UTC date,
 	// which rolls a calendar day early/late depending on the viewer's TZ.
-	const { todayISO, isWorkoutSkipped } = await import('../training/training');
+	const { todayISO } = await import('../training/training');
+	const { pickCurrentPlan } = await import('../training/plan_current');
+	const { planWorkoutProgress } = await import('../training/plan_progress');
 	const today = todayISO();
+	const picked = pickCurrentPlan(active, today);
+	const plan = picked.current ?? picked.upcoming;
+	if (!plan) return { overview: null, error: null };
+	const next = active
+		.filter((p) => p.start_date > plan.end_date)
+		.reduce<TrainingPlan | null>((a, p) => (!a || p.start_date < a.start_date ? p : a), null);
+	const { weeks, workouts, error: planErr } = await fetchPlan(plan.id);
+	if (planErr) return { overview: null, error: planErr };
 	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
-	const completed = workouts.filter(
-		(w) => w.manually_completed === true || w.completed_run_id != null
-	).length;
-	// Skipped workouts are off the books — neither done nor an outstanding
-	// to-do — so they leave the progress denominator entirely.
-	const total = workouts.filter((w) => w.kind !== 'rest' && !isWorkoutSkipped(w)).length;
-	const completionPct = total === 0 ? 0 : Math.round((completed / total) * 100);
+	const completionPct = planWorkoutProgress(workouts).pct;
 	return {
-		plan: plan as TrainingPlan,
-		weeks: weeks ?? [],
-		workouts: workouts ?? [],
-		todayWorkout,
-		completionPct
+		overview: {
+			plan,
+			weeks: weeks ?? [],
+			workouts: workouts ?? [],
+			todayWorkout,
+			completionPct,
+			upcoming: next
+				? { id: next.id, name: next.name, start_date: next.start_date, end_date: next.end_date }
+				: null,
+			activePlans: active.map((p) => ({ id: p.id, name: p.name, start_date: p.start_date, end_date: p.end_date }))
+		},
+		error: null
 	};
 }
 
+/// What creating or cloning a plan does to the active plans its window
+/// overlaps: 'refuse' (fail with a PlanOverlapError, the default, so nothing
+/// the runner did not name is changed), 'replace' (abandon them) or 'trim'
+/// (end each the day before the new plan starts). Decisions § 2050.
+export type PlanOverlapChoice = 'refuse' | 'replace' | 'trim';
+
 /**
- * Persist a freshly generated plan — plan row, one row per week, and N
- * workouts per week. Runs four sequential inserts (plan → weeks → workouts
- * grouped by week); could be collapsed into a single RPC later but the
- * linear path is easier to reason about while the feature is new.
+ * Persist a freshly generated plan — plan row, weeks and workouts — through
+ * `create_training_plan`, which resolves overlapping active plans per
+ * `overlap` and writes everything in one transaction (decisions § 2050).
  */
 export async function createTrainingPlan(input: {
 	name: string;
@@ -4584,6 +7073,10 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
+	/// The race listing the plan is built for. The RPC writes null for an id
+	/// that names no listing rather than refusing the plan.
+	raceListingId?: string | null;
+	overlap?: PlanOverlapChoice;
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
 	// The store's `user` object is populated by a background profile fetch
@@ -4592,28 +7085,34 @@ export async function createTrainingPlan(input: {
 	// hasn't loaded.
 	const { data: { session } } = await supabase.auth.getSession();
 	const userId = session?.user?.id;
-	if (!userId) throw new Error('Please sign in to create a plan.');
+	if (!userId) throw new AppError('errorCopy.signedOut', { message: 'Please sign in to create a plan.' });
 
-	// Pre-flight validation — every client-set invariant the DB enforces
-	// echoed here so the user gets a readable error instead of a raw
-	// PostgrestError 23xxx code.
-	if (!input.name.trim()) throw new Error('Name is required.');
-	if (!(input.goalDistanceM > 0)) throw new Error('Goal distance must be positive.');
-	if (input.daysPerWeek < 3 || input.daysPerWeek > 7) {
-		throw new Error('Days per week must be between 3 and 7.');
+	// Pre-flight validation — the RPC enforces the same rules, but a
+	// readable message here beats a raw 22023 / 23xxx code.
+	if (!input.name.trim()) throw new AppError('planMeta.nameRequired', { message: 'Name is required.' });
+	if (!(input.goalDistanceM > 0)) throw new AppError('plansNew.goalDistancePositive', { message: 'Goal distance must be positive.' });
+	// Imported here, not at the top: a static import pulls the whole plan
+	// generator into this module's chunk, which nearly every route loads.
+	const { minDaysPerWeek } = await import('../training/training');
+	const minDays = minDaysPerWeek(input.generated.weeks);
+	if (input.daysPerWeek < minDays || input.daysPerWeek > 7) {
+		throw new AppError('plansNew.daysPerWeekRange', {
+			params: { min: minDays },
+			message: `Days per week must be between ${minDays} and 7.`,
+		});
 	}
 	if (input.goalTimeSec != null && input.goalTimeSec <= 0) {
-		throw new Error('Goal time must be positive.');
+		throw new AppError('plansNew.goalTimePositive', { message: 'Goal time must be positive.' });
 	}
 	if (input.recent5kSec != null && input.recent5kSec <= 0) {
-		throw new Error('Recent 5K time must be positive.');
+		throw new AppError('plansNew.recent5kPositive', { message: 'Recent 5K time must be positive.' });
 	}
 	if (!input.generated.weeks.length) {
-		throw new Error('Generated plan has no weeks.');
+		throw new AppError('plansNew.noWeeks', { message: 'Generated plan has no weeks.' });
 	}
 	// Defence in depth for the null-kind bug we fixed in training.ts —
 	// if some future change lets a kindless workout escape the generator,
-	// catch it here instead of losing the context in a server-side 23502.
+	// catch it here instead of losing the context in a server-side error.
 	for (const w of input.generated.weeks) {
 		for (const wo of w.workouts) {
 			if (!wo.kind) {
@@ -4624,18 +7123,9 @@ export async function createTrainingPlan(input: {
 		}
 	}
 
-	// Auto-complete any existing active plan so the partial unique index
-	// (one-active-per-user) doesn't reject the insert.
-	await supabase
-		.from('training_plans')
-		.update({ status: 'completed' })
-		.eq('user_id', userId)
-		.eq('status', 'active');
-
-	const { data: plan, error: planErr } = await supabase
-		.from('training_plans')
-		.insert({
-			user_id: userId,
+	markListsStale('plans');
+	const { data: planId, error } = await supabase.rpc('create_training_plan', {
+		p_plan: {
 			name: input.name.trim(),
 			goal_event: input.goalEvent,
 			goal_distance_m: input.goalDistanceM,
@@ -4645,50 +7135,38 @@ export async function createTrainingPlan(input: {
 			days_per_week: input.daysPerWeek,
 			vdot: input.generated.vdot ?? null,
 			current_5k_seconds: input.recent5kSec ?? null,
-			status: 'active' as PlanStatus,
-			source: 'generated' as const,
-			notes: input.notes?.trim() || null
-		})
-		.select()
+			notes: input.notes?.trim() || null,
+			race_listing_id: input.raceListingId ?? null
+		},
+		p_weeks: input.generated.weeks.map((w) => ({
+			week_index: w.week_index,
+			phase: w.phase,
+			target_volume_m: w.target_volume_m,
+			notes: w.notes ?? null,
+			workouts: w.workouts.map((wo) => ({
+				scheduled_date: wo.scheduled_date,
+				kind: wo.kind,
+				target_distance_m: wo.target_distance_m ?? null,
+				target_duration_seconds: wo.target_duration_seconds ?? null,
+				target_pace_sec_per_km: wo.target_pace_sec_per_km ?? null,
+				target_pace_tolerance_sec: wo.target_pace_tolerance_sec ?? null,
+				structure: (wo.structure ?? null) as unknown as Json,
+				notes: wo.notes ?? null,
+				race_name: wo.kind === 'race' ? wo.race_name?.trim() || null : null,
+				race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null,
+				race_taper_applied_at: wo.race_taper_applied_at ?? null
+			}))
+		})),
+		p_overlap: input.overlap ?? 'refuse'
+	});
+	if (error) throw dbError(error);
+
+	const { data: plan, error: readErr } = await supabase
+		.from('training_plans')
+		.select('*')
+		.eq('id', planId)
 		.single();
-	if (planErr || !plan) throw planErr ?? new Error('Plan insert failed');
-
-	const weekRows = input.generated.weeks.map((w) => ({
-		plan_id: plan.id,
-		week_index: w.week_index,
-		phase: w.phase,
-		target_volume_m: w.target_volume_m,
-		notes: w.notes
-	}));
-	const { data: weekRes, error: weekErr } = await supabase
-		.from('plan_weeks')
-		.insert(weekRows)
-		.select();
-	if (weekErr || !weekRes) throw weekErr ?? new Error('Weeks insert failed');
-
-	const byIndex = new Map<number, string>();
-	for (const w of weekRes as { id: string; week_index: number }[]) {
-		byIndex.set(w.week_index, w.id);
-	}
-
-	const workoutRows = input.generated.weeks.flatMap((w) =>
-		w.workouts.map((wo) => ({
-			week_id: byIndex.get(w.week_index)!,
-			scheduled_date: wo.scheduled_date,
-			kind: wo.kind,
-			target_distance_m: wo.target_distance_m,
-			target_duration_seconds: wo.target_duration_seconds,
-			target_pace_sec_per_km: wo.target_pace_sec_per_km,
-			target_pace_tolerance_sec: wo.target_pace_tolerance_sec,
-			structure: wo.structure,
-			notes: wo.notes
-		}))
-	);
-	if (workoutRows.length > 0) {
-		const { error: woErr } = await supabase.from('plan_workouts').insert(workoutRows);
-		if (woErr) throw woErr;
-	}
-
+	if (readErr || !plan) throw readErr ? dbError(readErr) : new Error('Plan read failed');
 	return plan as TrainingPlan;
 }
 
@@ -4696,16 +7174,18 @@ export async function updatePlanStatus(
 	id: string,
 	status: PlanStatus
 ): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase
 		.from('training_plans')
 		.update({ status })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function deletePlan(id: string): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Pause an active plan — a first-class, reversible primitive distinct from
@@ -4715,8 +7195,21 @@ export async function pausePlan(id: string): Promise<void> {
 	await updatePlanStatus(id, 'paused');
 }
 
-/// Thrown by resumePlan when the user already has another active plan — the
-/// `training_plans_one_active` unique index would reject the resume, so we
+/// File an active plan whose dates have run out under Completed (the "Finish
+/// plan" prompt, `isPlanFinished`). Scoped to `status = 'active'` so a plan
+/// paused or abandoned in another tab is never relabelled as finished.
+export async function finishPlan(id: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase
+		.from('training_plans')
+		.update({ status: 'completed' })
+		.eq('id', id)
+		.eq('status', 'active');
+	if (error) throw dbError(error);
+}
+
+/// Thrown by resumePlan when another active plan overlaps the paused plan's
+/// window — `training_plans_active_no_overlap` would reject the resume, so we
 /// refuse up front with a clear signal the UI can translate rather than
 /// silently completing the other plan.
 export class ActivePlanExistsError extends Error {
@@ -4726,20 +7219,164 @@ export class ActivePlanExistsError extends Error {
 	}
 }
 
-/// Resume a paused plan back to 'active'. Refuses (throws
-/// ActivePlanExistsError) when another active plan already exists for the
-/// user, since the one-active partial unique index would reject it — the
-/// runner must pause/finish the other plan first. Non-destructive by design.
-export async function resumePlan(id: string, userId: string): Promise<void> {
-	const { data: active, error: qErr } = await supabase
+/// The signed-in user's active plans a new plan over [startIso, endIso] would
+/// collide with — what the plan creator names before offering replace / trim.
+/// Session-read for the same reason createTrainingPlan is.
+export async function fetchMyOverlappingActivePlans(
+	startIso: string,
+	endIso: string
+): Promise<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	return fetchOverlappingActivePlans(userId, startIso, endIso);
+}
+
+/// The user's active plans whose inclusive window shares a day with
+/// [startIso, endIso]. No template filter is needed: a template can never be
+/// active (training_plans_template_status).
+async function fetchOverlappingActivePlans(
+	userId: string,
+	startIso: string,
+	endIso: string
+): Promise<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]> {
+	const { data, error } = await supabase
 		.from('training_plans')
-		.select('id')
+		.select('id, name, start_date, end_date')
 		.eq('user_id', userId)
 		.eq('status', 'active')
-		.limit(1);
-	if (qErr) throw qErr;
-	if (active && active.length > 0) throw new ActivePlanExistsError();
-	await updatePlanStatus(id, 'active');
+		.lte('start_date', endIso)
+		.gte('end_date', startIso)
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Resume a paused plan back to 'active'. Refuses (throws
+/// ActivePlanExistsError) when another active plan overlaps its window; a
+/// plan queued before or after it does not block. Non-destructive by design.
+/// Resume a paused plan through `resume_training_plan`, pushing the weeks
+/// `shift` names back when the runner's pause spanned whole weeks
+/// (`resumeShift`), so they come back as upcoming rather than missed. The
+/// overlap pre-check covers the end date the shift will give the plan.
+export async function resumePlan(
+	id: string,
+	userId: string,
+	shift: ResumeShift | null = null
+): Promise<void> {
+	const { data: plan, error: planErr } = await supabase
+		.from('training_plans')
+		.select('start_date, end_date')
+		.eq('id', id)
+		.maybeSingle();
+	if (planErr) throw dbError(planErr);
+	if (!plan) throw new Error('Plan not found.');
+	const endDate = shift ? shiftIsoDate(plan.end_date, 7 * shift.weeks) : plan.end_date;
+	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, endDate)).filter(
+		(p) => p.id !== id
+	);
+	if (others.length > 0) throw new ActivePlanExistsError();
+	markListsStale('plans');
+	const { error } = await supabase.rpc('resume_training_plan', {
+		p_plan_id: id,
+		p_from_week_index: shift?.fromWeekIndex ?? null,
+		p_shift_weeks: shift?.weeks ?? 0
+	});
+	if (error) throw dbError(error);
+}
+
+/// The signed-in user's active plans, for checking a date shift against the
+/// plans around it (plan_shift.ts) before it runs.
+export async function fetchMyActivePlanWindows(): Promise<
+	Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]
+> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name, start_date, end_date')
+		.eq('user_id', userId)
+		.eq('status', 'active')
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Move a plan's workouts and dates by `days` in one transaction
+/// (shift_training_plan). With `shiftFollowing`, the active plans queued after
+/// it move by the same days. A shift that would overlap another active plan
+/// fails whole with a PlanOverlapError and nothing moves.
+export async function shiftTrainingPlan(
+	planId: string,
+	days: number,
+	shiftFollowing: boolean
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('shift_training_plan', {
+		p_plan_id: planId,
+		p_days: days,
+		p_shift_following: shiftFollowing
+	});
+	if (error) throw dbError(error);
+}
+
+/// Re-anchor a plan on a new race date (`raceDateChange` picks the weeks;
+/// `change_plan_race_date` applies them in one transaction).
+export async function changePlanRaceDate(
+	planId: string,
+	change: RaceDateChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('change_plan_race_date', {
+		p_plan_id: planId,
+		p_race_date: change.raceDateIso,
+		p_today: todayIso,
+		p_drop_week_ids: change.dropWeekIds,
+		p_insert_at: change.insertAt,
+		p_insert_count: change.insertCount,
+		p_repeat_week_id: change.repeatWeekId,
+		p_race_workout_id: change.raceWorkoutId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Runs the latest weeks again after a break and records the offer as
+/// answered (`planBreakChange`, decisions § 2128), in one transaction.
+export async function reschedulePlanAfterBreak(
+	planId: string,
+	change: BreakChange,
+	breakFromIso: string,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('reschedule_plan_after_break', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_break_from: breakFromIso,
+		p_repeat_week_ids: change.repeatWeekIds,
+		p_drop_week_ids: change.dropWeekIds
+	});
+	if (error) throw dbError(error);
+}
+
+/// "Too hard? Repeat this week": runs the week again next week and pushes the
+/// rest back one, keeping race day by dropping `change.dropWeekId`
+/// (`repeatWeekChange`), in one transaction.
+export async function repeatPlanWeek(
+	planId: string,
+	change: RepeatWeekChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('repeat_plan_week', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_week_id: change.weekId,
+		p_drop_week_id: change.dropWeekId
+	});
+	if (error) throw dbError(error);
 }
 
 export async function markWorkoutCompleted(
@@ -4761,7 +7398,7 @@ export async function markWorkoutCompleted(
 			...(isCompleting ? { skipped_at: null } : {})
 		})
 		.eq('id', workoutId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /**
@@ -4788,61 +7425,38 @@ export async function markWorkoutSkipped(
 				: { skipped_at: null }
 		)
 		.eq('id', workoutId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
-/**
- * Best-effort auto-match: link `runId` to a plan workout scheduled for the
- * same calendar date whose target distance is within ±25% of the actual.
- * Returns the matched workout id, or null. Wrong matches are manually
- * clearable via `markWorkoutCompleted(id, null)`.
- */
-export async function autoMatchRunToPlanWorkout(
-	runId: string,
-	runIsoDate: string,
-	runDistanceM: number
-): Promise<string | null> {
-	const userId = auth.user?.id;
-	if (!userId) return null;
-	// Pre-fetch the user's plan + week ids and constrain the workout
-	// query with `in('week_id', ...)`. RLS on `plan_workouts` already
-	// chains through `plan_weeks → training_plans.user_id`, but an
-	// explicit scope is defence in depth — without it, a future RLS
-	// edit that breaks the chain would silently allow this function
-	// to match a run to another user's workout. See audit
-	// `/tmp/data-isolation-audit/client-realtime.md` H2.
-	const { data: plans } = await supabase
-		.from('training_plans')
-		.select('id, plan_weeks(id)')
-		.eq('user_id', userId);
-	const weekIds = (plans ?? []).flatMap((p) =>
-		((p as { plan_weeks: { id: string }[] }).plan_weeks ?? []).map((w) => w.id),
-	);
-	if (weekIds.length === 0) return null;
+export type PlanWorkoutLinkCandidate =
+	Database['public']['Functions']['plan_workout_link_candidates']['Returns'][number];
 
-	const { data: candidates } = await supabase
-		.from('plan_workouts')
-		.select('id, target_distance_m, completed_run_id, week_id')
-		.in('week_id', weekIds)
-		.eq('scheduled_date', runIsoDate)
-		.is('completed_run_id', null);
-	if (!candidates || candidates.length === 0) return null;
-	const withDistance = candidates
-		.filter((c) => c.target_distance_m != null)
-		.map((c) => ({
-			id: c.id as string,
-			target: c.target_distance_m as number,
-			delta: Math.abs((c.target_distance_m as number) - runDistanceM)
-		}))
-		.filter(
-			(c) =>
-				c.delta / c.target <= 0.25 // within 25% of target distance
-		)
-		.sort((a, b) => a.delta - b.delta);
-	if (withDistance.length === 0) return null;
-	const match = withDistance[0];
-	await markWorkoutCompleted(match.id, runId);
-	return match.id;
+/**
+ * Planned workouts within two days of a run that it could have been, for the
+ * run-detail "did you do Thursday's workout early?" prompt. The database
+ * links a run on its own local day only (decisions § 2079); this list is
+ * never linked without the runner saying yes. Empty unless the caller owns
+ * the run and it is not linked yet. Nearest day first.
+ */
+export async function fetchPlanWorkoutLinkCandidates(
+	runId: string
+): Promise<PlanWorkoutLinkCandidate[]> {
+	const { data, error } = await supabase.rpc(
+		'plan_workout_link_candidates',
+		{ p_run_id: runId },
+		{ get: true }
+	);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/** "Not this one" on that prompt: the pair is never offered again. */
+export async function dismissPlanWorkoutLink(workoutId: string, runId: string): Promise<void> {
+	const { error } = await supabase.rpc('dismiss_plan_workout_link', {
+		p_workout_id: workoutId,
+		p_run_id: runId
+	});
+	if (error) throw dbError(error);
 }
 
 export type { RelinkCandidateRun } from '../training/relink_candidates';
@@ -4865,22 +7479,30 @@ export async function fetchRelinkCandidateRuns(
 
 	// The set of run ids already linked anywhere in this owner's plans.
 	// Scope through the owner's plan_weeks (RLS chains the same way, but
-	// the explicit scope is defence in depth — see autoMatchRunToPlan-
-	// Workout). A run linked to ANOTHER workout must not be offered.
-	const { data: plans } = await supabase
+	// the explicit scope is defence in depth: a future RLS edit that broke
+	// the chain must not widen it). A run linked to ANOTHER workout must not
+	// be offered.
+	// Every read below throws on failure: an empty list here reads as "no
+	// eligible runs", which would hide a failed load behind a true-sounding
+	// answer and leave the picker's Retry unreachable.
+	const { data: plans, error: plansErr } = await supabase
 		.from('training_plans')
 		.select('id, plan_weeks(id)')
 		.eq('user_id', userId);
+	if (plansErr) throw dbError(plansErr);
 	const weekIds = (plans ?? []).flatMap((p) =>
 		((p as { plan_weeks: { id: string }[] }).plan_weeks ?? []).map((w) => w.id)
 	);
 	const linkedRunIds: string[] = [];
 	if (weekIds.length > 0) {
-		const { data: linkedRows } = await supabase
-			.from('plan_workouts')
-			.select('completed_run_id')
-			.in('week_id', weekIds)
-			.not('completed_run_id', 'is', null);
+		const { data: linkedRows, error: linkedErr } = await queryChunked(weekIds, (part) =>
+			supabase
+				.from('plan_workouts')
+				.select('completed_run_id')
+				.in('week_id', part)
+				.not('completed_run_id', 'is', null)
+		);
+		if (linkedErr) throw dbError(linkedErr);
 		for (const row of linkedRows ?? []) {
 			const id = (row as { completed_run_id: string | null }).completed_run_id;
 			if (id) linkedRunIds.push(id);
@@ -4911,7 +7533,8 @@ export async function fetchRelinkCandidateRuns(
 				`and(started_at.gte.${loIso},started_at.lte.${hiIso}),id.eq.${currentRunId}`
 			)
 		: runQuery.gte('started_at', loIso).lte('started_at', hiIso);
-	const { data: runRows } = await runQuery.order('started_at', { ascending: false });
+	const { data: runRows, error: runsErr } = await runQuery.order('started_at', { ascending: false });
+	if (runsErr) throw dbError(runsErr);
 
 	const runs: RelinkCandidateRun[] = (runRows ?? []).map((r) => ({
 		id: (r as { id: string }).id,
@@ -4945,7 +7568,13 @@ export async function updatePlanWorkout(
 		pace_zone: string | null;
 		notes: string | null;
 		scheduled_date: string;
-		structure: Record<string, unknown> | null;
+		structure: JsonObject | null;
+		race_name: string | null;
+		race_priority: RacePriority | null;
+		target_rpe_min: number | null;
+		target_rpe_max: number | null;
+		target_hr_min_bpm: number | null;
+		target_hr_max_bpm: number | null;
 	}>
 ): Promise<void> {
 	// Normalise the `notes` patch the same way `createTrainingPlan`
@@ -4957,19 +7586,275 @@ export async function updatePlanWorkout(
 	if ('notes' in normalisedPatch) {
 		normalisedPatch.notes = normalisePlanWorkoutNotes(normalisedPatch.notes);
 	}
-	const { error } = await supabase
-		.from('plan_workouts')
-		.update(normalisedPatch)
-		.eq('id', id);
-	if (error) throw error;
+	// `kind` stays a `string` on the parameter because two of the three callers
+	// are TS<->Dart parity modules (`plan_replan`, `cycle_plan`) whose patch
+	// types spell it that way; the column's CHECK is what constrains it.
+	// Restated field-by-field rather than casting the whole patch, so the other
+	// fields stay checked against the table they are sent to.
+	if ('race_name' in normalisedPatch) {
+		normalisedPatch.race_name = normalisedPatch.race_name?.trim() || null;
+	}
+	const { kind, ...fields } = normalisedPatch;
+	const update: Updatable<'plan_workouts'> = fields;
+	if (kind !== undefined) update.kind = kind as Updatable<'plan_workouts'>['kind'];
+	// The race columns are only legal on a race (plan_workouts_race_fields_only_on_race),
+	// so moving a workout to any other kind clears them in the same write.
+	if (kind !== undefined && kind !== 'race') {
+		update.race_name = null;
+		update.race_priority = null;
+	}
+	const { error } = await supabase.from('plan_workouts').update(update).eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Move one planned workout to another day of its week (`move_plan_workout`,
+/// decisions § 2073). When the day already holds a row, the two trade days;
+/// the swapped workout's id is returned, or null when the day was free.
+export async function movePlanWorkout(workoutId: string, date: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('move_plan_workout', {
+		p_workout_id: workoutId,
+		p_date: date
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+/// Set the dates of several workouts of one plan in one transaction
+/// (`reschedule_plan_workouts`, decisions § 2073), so moves and swaps that
+/// pass through each other's days land together or not at all.
+export async function reschedulePlanWorkouts(
+	planId: string,
+	moves: { id: string; date: string }[]
+): Promise<void> {
+	if (moves.length === 0) return;
+	const { error } = await supabase.rpc('reschedule_plan_workouts', {
+		p_plan_id: planId,
+		p_moves: moves
+	});
+	if (error) throw dbError(error);
+}
+
+/// Write a reviewed AI plan edit in one transaction (`apply_ai_plan_edits`,
+/// decisions § 2230): every workout and week change of `payload`, in this plan
+/// and, with `includeFollowing`, the active plans chained after it, or none.
+/// The RPC re-checks each change against the rows as they are now.
+export async function applyAiPlanEdits(
+	planId: string,
+	todayIso: string,
+	includeFollowing: boolean,
+	payload: AiPlanEditPayload
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('apply_ai_plan_edits', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_include_following: includeFollowing,
+		p_workouts: payload.workouts,
+		p_weeks: payload.weeks
+	});
+	if (error) throw dbError(error);
+}
+
+export type PlanChangeRequest = Database['public']['Tables']['plan_change_requests']['Row'];
+
+/// The coach a change to this plan goes to for approval (decisions § 2382):
+/// the coach who assigned it, while the signed-in athlete's link with them is
+/// active. Null when there is none, or when the read fails — the athlete can
+/// still apply the change themselves.
+export async function fetchPlanReviewCoach(
+	planId: string,
+): Promise<{ coachId: string; name: string | null } | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data: plan, error } = await supabase
+		.from('training_plans')
+		.select('assigned_by_coach_id')
+		.eq('id', planId)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error || !plan?.assigned_by_coach_id) return null;
+	const coachId = plan.assigned_by_coach_id;
+	const { data: link, error: linkError } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', coachId)
+		.eq('athlete_id', userId)
+		.eq('status', 'active')
+		.limit(1)
+		.maybeSingle();
+	if (linkError || !link) return null;
+	const byId = await fetchProfilesByIds([coachId]);
+	return { coachId, name: byId.get(coachId)?.display_name ?? null };
+}
+
+/// Send a reviewed plan edit to the plan's coach instead of applying it.
+/// The RPC runs the same checks as an apply and refuses what they refuse.
+export async function proposePlanChange(
+	planId: string,
+	todayIso: string,
+	includeFollowing: boolean,
+	payload: AiPlanEditPayload,
+): Promise<string> {
+	const { data, error } = await supabase.rpc('propose_plan_change', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_include_following: includeFollowing,
+		p_workouts: payload.workouts,
+		p_weeks: payload.weeks,
+	});
+	if (error) throw dbError(error);
+	return data as string;
+}
+
+/// The plan change requests on one plan, or between the signed-in user and
+/// one other person (either side of the coaching link), newest first.
+export async function fetchPlanChangeRequests(
+	scope: { planId: string } | { partnerId: string },
+): Promise<PlanChangeRequest[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	let query = supabase.from(TABLES.plan_change_requests).select('*');
+	if ('planId' in scope) {
+		query = query.eq('plan_id', scope.planId);
+	} else {
+		if (!isEntityId(scope.partnerId)) return [];
+		query = query.or(
+			`and(athlete_id.eq.${userId},coach_id.eq.${scope.partnerId}),and(coach_id.eq.${userId},athlete_id.eq.${scope.partnerId})`,
+		);
+	}
+	const { data, error } = await query.order('created_at', { ascending: false }).limit(20);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The plan rows a request's lines describe, read by id under the viewer's
+/// RLS (the athlete's own rows, or an active coach's read of them).
+export async function fetchPlanChangeTargets(
+	workoutIds: string[],
+	weekIds: string[],
+): Promise<{ workouts: PlanChangeWorkoutRow[]; weeks: PlanChangeWeekRow[] }> {
+	const [workouts, weeks] = await Promise.all([
+		readChunked(workoutIds, async (part) => {
+			const { data, error } = await supabase
+				.from('plan_workouts')
+				.select('id, scheduled_date, kind, target_distance_m, target_duration_seconds, skipped_at')
+				.in('id', part);
+			if (error) throw dbError(error);
+			return (data ?? []) as PlanChangeWorkoutRow[];
+		}),
+		readChunked(weekIds, async (part) => {
+			const { data, error } = await supabase
+				.from('plan_weeks')
+				.select('id, week_index, target_volume_m')
+				.in('id', part);
+			if (error) throw dbError(error);
+			return (data ?? []) as PlanChangeWeekRow[];
+		}),
+	]);
+	return { workouts, weeks };
+}
+
+/// The coach approves (the chosen lines, or all with null) or declines.
+export async function decidePlanChange(
+	requestId: string,
+	approve: boolean,
+	todayIso: string,
+	workoutIds: string[] | null,
+	weekIds: string[] | null,
+	note: string | null,
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('decide_plan_change', {
+		p_request_id: requestId,
+		p_approve: approve,
+		p_today: todayIso,
+		p_workout_ids: workoutIds,
+		p_week_ids: weekIds,
+		p_note: note,
+	});
+	if (error) throw dbError(error);
+}
+
+export async function withdrawPlanChange(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_plan_change', { p_request_id: requestId });
+	if (error) throw dbError(error);
+}
+
+/// The athlete applies their own request without the coach; the coach is told.
+export async function applyPlanChangeMyself(requestId: string, todayIso: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('apply_plan_change_myself', {
+		p_request_id: requestId,
+		p_today: todayIso,
+	});
+	if (error) throw dbError(error);
+}
+
+/// One workout's patch for `applyWorkoutAdjustments`. A key present is
+/// written (null clears the column); a key absent leaves it alone.
+export type WorkoutAdjustment = { id: string } & Partial<{
+	kind: string;
+	target_distance_m: number | null;
+	target_duration_seconds: number | null;
+	target_pace_sec_per_km: number | null;
+	target_pace_tolerance_sec: number | null;
+	pace_zone: string | null;
+	structure: JsonObject | null;
+	notes: string | null;
+	race_name: string | null;
+	race_priority: RacePriority | null;
+	race_taper_applied_at: string | null;
+}>;
+
+/// Write a batch of workout patches to one plan and restate the volume of
+/// every week they touch, all in one transaction (`apply_workout_adjustments`,
+/// decisions § 2062): either every workout changes or none does. The patches
+/// are normalised as `updatePlanWorkout` normalises one.
+export async function applyWorkoutAdjustments(
+	planId: string,
+	changes: WorkoutAdjustment[]
+): Promise<void> {
+	const normalised = changes.map((c) => {
+		const out: WorkoutAdjustment = { ...c };
+		if ('notes' in out) out.notes = normalisePlanWorkoutNotes(out.notes);
+		if ('race_name' in out) out.race_name = out.race_name?.trim() || null;
+		if (out.kind !== undefined && out.kind !== 'race') {
+			out.race_name = null;
+			out.race_priority = null;
+		}
+		return out;
+	});
+	const { error } = await supabase.rpc('apply_workout_adjustments', {
+		p_plan_id: planId,
+		p_changes: normalised
+	});
+	if (error) throw dbError(error);
+}
+
+/// Record the runner's answer to the missed-workout prompt on each named
+/// workout (`answer_missed_workouts`, decisions § 2122), so it is never asked
+/// again on any device. "Make it up" passes the previewed make-up as
+/// `changes`; it is written in the same transaction as the answer, so the two
+/// land together or not at all.
+export async function answerMissedWorkouts(
+	planId: string,
+	workoutIds: string[],
+	changes: WorkoutAdjustment[] = []
+): Promise<void> {
+	const { error } = await supabase.rpc('answer_missed_workouts', {
+		p_plan_id: planId,
+		p_workout_ids: workoutIds,
+		p_changes: changes
+	});
+	if (error) throw dbError(error);
 }
 
 export async function updatePlanWeek(
 	id: string,
-	patch: Partial<{ phase: string; target_volume_m: number | null; notes: string | null }>
+	patch: Partial<{ phase: PlanPhase; target_volume_m: number | null; notes: string | null }>
 ): Promise<void> {
 	const { error } = await supabase.from('plan_weeks').update(patch).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function updatePlanMeta(
@@ -4979,13 +7864,51 @@ export async function updatePlanMeta(
 		notes: string | null;
 		goal_time_seconds: number | null;
 		days_per_week: number;
-		rules: unknown[] | null;
+		rules: Json[] | null;
 		start_date: string;
 		end_date: string;
 	}>
 ): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+/// Restart one of the runner's plans as a fresh active copy starting on
+/// `startIso` (`restart_training_plan`). The overlapped active plans and the
+/// source, while live, are retired as abandoned in the same transaction; the
+/// source keeps its history. Returns the new plan's id.
+export async function restartTrainingPlan(planId: string, startIso: string): Promise<string> {
+	markListsStale('plans');
+	const { data, error } = await supabase.rpc('restart_training_plan', {
+		p_plan_id: planId,
+		p_start_date: startIso
+	});
+	if (error) {
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
+	}
+	return data;
+}
+
+/// Set a plan's goal time with the re-derived workout paces
+/// (`goalTimeRepacePatches`) and VDOT in one transaction
+/// (`set_plan_goal_time`), so the goal and the paces never disagree.
+export async function setPlanGoalTime(
+	planId: string,
+	goalTimeSec: number | null,
+	vdot: number | null,
+	changes: RepacePatch[]
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('set_plan_goal_time', {
+		p_plan_id: planId,
+		p_goal_time_seconds: goalTimeSec,
+		p_vdot: vdot,
+		p_changes: changes as unknown as Json
+	});
+	if (error) throw dbError(error);
 }
 
 /// Duplicate the plan week at `weekIndex`, inserting the copy right after
@@ -4999,7 +7922,7 @@ export async function duplicatePlanWeek(planId: string, weekIndex: number): Prom
 		p_plan_id: planId,
 		p_week_index: weekIndex
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as string;
 }
 
@@ -5015,71 +7938,152 @@ export interface ProfileSummary extends PublicProfile {
 	follower_count: number;
 	following_count: number;
 	viewer_follows: boolean;
+	/// The owner made the profile private (decisions § 1967): follows become
+	/// requests and the runs / follower lists open only to approved followers.
+	profile_private: boolean;
+	/// The viewer has a pending request to follow this profile.
+	viewer_requested: boolean;
+	/// Whether the viewer may read the profile's activity and lists — the
+	/// owner, anyone for a public profile, an approved follower for a private one.
+	content_visible: boolean;
 }
 
-/// Public-by-default user profile lookup. Returns null when the user
-/// doesn't exist or RLS hides the row (shouldn't happen now that
-/// user_profiles has a public-read policy, but a defensive null is
-/// cheap insurance).
+/// User profile lookup. The counts and the viewer's own follow / request
+/// state come from `profile_follow_summary`, because on a private profile the
+/// follow rows behind the counts are closed to a viewer who is not an
+/// approved follower. Returns null when the user doesn't exist, is hidden, or
+/// a block stands between the two.
 export async function fetchPublicProfile(
 	userId: string
-): Promise<{ profile: ProfileSummary | null; error: string | null }> {
-	const { data: sessionData } = await supabase.auth.getSession();
-	const viewerId = sessionData.session?.user?.id;
-
-	const [profileRes, followerRes, followingRes, viewerRes] = await Promise.all([
+): Promise<{ profile: ProfileSummary | null; error: Error | null }> {
+	const [profileRes, summaryRes] = await Promise.all([
 		supabase
 			.from('user_profiles')
 			.select('id, display_name, avatar_url')
 			.eq('id', userId)
 			.maybeSingle(),
-		supabase
-			.from('user_follows')
-			.select('*', { count: 'exact', head: true })
-			.eq('followee_id', userId),
-		supabase
-			.from('user_follows')
-			.select('*', { count: 'exact', head: true })
-			.eq('follower_id', userId),
-		viewerId && viewerId !== userId
-			? supabase
-					.from('user_follows')
-					.select('follower_id')
-					.eq('follower_id', viewerId)
-					.eq('followee_id', userId)
-					.maybeSingle()
-			: Promise.resolve({ data: null }),
+		supabase.rpc('profile_follow_summary', { p_user_id: userId }, { get: true }).maybeSingle(),
 	]);
 
 	// Surface a query error so the profile page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
 	// reads as a missing user when the row just comes back null).
-	const error = (profileRes as { error?: { message?: string } | null }).error?.message ?? null;
-	if (!profileRes.data) return { profile: null, error };
+	const failed = profileRes.error ?? summaryRes.error;
+	const error = failed ? dbError(failed) : null;
+	if (!profileRes.data || !summaryRes.data) return { profile: null, error };
+	const summary = summaryRes.data;
 
 	return {
 		profile: {
 			id: profileRes.data.id,
 			display_name: profileRes.data.display_name,
 			avatar_url: profileRes.data.avatar_url,
-			follower_count: followerRes.count ?? 0,
-			following_count: followingRes.count ?? 0,
-			viewer_follows: viewerRes.data != null,
+			follower_count: Number(summary.follower_count) || 0,
+			following_count: Number(summary.following_count) || 0,
+			viewer_follows: summary.viewer_follows === true,
+			profile_private: summary.profile_private === true,
+			viewer_requested: summary.viewer_requested === true,
+			content_visible: summary.content_visible === true,
 		},
 		error: null
 	};
 }
 
-export async function followUser(targetUserId: string): Promise<void> {
+/// What a follow tap did: followed a public profile at once, or filed a
+/// request with a private one.
+export type FollowOutcome = 'following' | 'requested';
+
+/// Follow `targetUserId`, or ask to when their profile is private. One RPC so
+/// the client never has to read the target's privacy and race its change; the
+/// server writes through the same RLS a direct insert would hit.
+export async function followUser(targetUserId: string): Promise<FollowOutcome> {
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	if (userId === targetUserId) throw new Error("Can't follow yourself");
+	if (userId === targetUserId) throw new AppError('profile.cannotFollowSelf', { message: "Can't follow yourself" });
+	const { data, error } = await supabase.rpc('request_follow', { p_target: targetUserId });
+	if (error) throw dbError(error);
+	return data === 'requested' ? 'requested' : 'following';
+}
+
+/// Withdraw the viewer's pending request to follow `targetUserId`.
+export async function cancelFollowRequest(targetUserId: string): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
 	const { error } = await supabase
-		.from('user_follows')
-		.insert({ follower_id: userId, followee_id: targetUserId });
-	// Treat duplicate (already following) as a no-op.
-	if (error && error.code !== '23505') throw error;
+		.from(TABLES.follow_requests)
+		.delete()
+		.eq('requester_id', userId)
+		.eq('target_id', targetUserId);
+	if (error) throw dbError(error);
+}
+
+export interface IncomingFollowRequest extends PublicProfile {
+	requested_at: string;
+}
+
+/// Requests to follow the signed-in user, newest first.
+export async function fetchIncomingFollowRequests(): Promise<IncomingFollowRequest[]> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from(TABLES.follow_requests)
+		.select('requester_id, requested_at')
+		.eq('target_id', userId)
+		.order('requested_at', { ascending: false })
+		.order('requester_id', { ascending: false })
+		.limit(200);
+	if (error) throw dbError(error);
+	const rows = data ?? [];
+	const profiles = await profilesInEdgeOrder(rows.map((r) => r.requester_id));
+	const at = new Map(rows.map((r) => [r.requester_id, r.requested_at]));
+	return profiles.map((p) => ({ ...p, requested_at: at.get(p.id) ?? '' }));
+}
+
+export async function approveFollowRequest(requesterId: string): Promise<void> {
+	const { error } = await supabase.rpc('approve_follow_request', { p_requester: requesterId });
+	if (error) throw dbError(error);
+}
+
+export async function declineFollowRequest(requesterId: string): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.follow_requests)
+		.delete()
+		.eq('requester_id', requesterId)
+		.eq('target_id', userId);
+	if (error) throw dbError(error);
+}
+
+/// The signed-in user's own private-profile switch.
+export async function fetchMyProfilePrivate(): Promise<boolean> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return false;
+	const { data, error } = await supabase
+		.from('user_profiles')
+		.select('profile_private')
+		.eq('id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.profile_private === true;
+}
+
+/// Turning it off approves every pending request (a trigger does it in the
+/// same statement), so nobody is left asking a profile that no longer asks.
+export async function setProfilePrivate(next: boolean): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from('user_profiles')
+		.update({ profile_private: next })
+		.eq('id', userId);
+	if (error) throw dbError(error);
 }
 
 export async function unfollowUser(targetUserId: string): Promise<void> {
@@ -5091,7 +8095,7 @@ export async function unfollowUser(targetUserId: string): Promise<void> {
 		.delete()
 		.eq('follower_id', userId)
 		.eq('followee_id', targetUserId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Block `targetUserId` — see migration 20261012_001_user_blocks.sql.
@@ -5103,12 +8107,12 @@ export async function blockUser(targetUserId: string, reason?: string): Promise<
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	if (userId === targetUserId) throw new Error("Can't block yourself");
+	if (userId === targetUserId) throw new AppError('profile.cannotBlockSelf', { message: "Can't block yourself" });
 	const { error } = await supabase.rpc('block_user', {
 		p_target: targetUserId,
 		p_reason: reason ?? null,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function unblockUser(targetUserId: string): Promise<void> {
@@ -5116,7 +8120,7 @@ export async function unblockUser(targetUserId: string): Promise<void> {
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
 	const { error } = await supabase.rpc('unblock_user', { p_target: targetUserId });
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Returns true when the viewer has blocked `targetUserId`. Reads
@@ -5184,7 +8188,7 @@ export async function searchPeople(q: string, limit = 20): Promise<PeopleSuggest
 	const { data: profiles, error } = await supabase.rpc('search_user_profiles', {
 		p_query: term,
 		p_limit: candidateLimit,
-	});
+	}, { get: true });
 	if (error || !profiles) return [];
 	const ids = (profiles as Array<{ id: string }>)
 		.map((p) => p.id)
@@ -5229,12 +8233,14 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.eq('status', 'active');
 	const myClubIds = (myMemberRows ?? []).map((r) => r.club_id as string);
 	if (myClubIds.length > 0) {
-		const { data: coMemberRows } = await supabase
-			.from(TABLES.club_members)
-			.select('user_id, club_id')
-			.in('club_id', myClubIds)
-			.eq('status', 'active')
-			.neq('user_id', viewerId);
+		const { data: coMemberRows } = await queryChunked(myClubIds, (part) =>
+			supabase
+				.from(TABLES.club_members)
+				.select('user_id, club_id')
+				.in('club_id', part)
+				.eq('status', 'active')
+				.neq('user_id', viewerId)
+		);
 		for (const row of coMemberRows ?? []) {
 			const uid = row.user_id as string;
 			sharedClubs.set(uid, (sharedClubs.get(uid) ?? 0) + 1);
@@ -5253,12 +8259,14 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.eq('status', 'going');
 	const myEventIds = (myRsvpRows ?? []).map((r) => r.event_id as string);
 	if (myEventIds.length > 0) {
-		const { data: coAttendeeRows } = await supabase
-			.from(TABLES.event_attendees)
-			.select('user_id, event_id')
-			.in('event_id', myEventIds)
-			.eq('status', 'going')
-			.neq('user_id', viewerId);
+		const { data: coAttendeeRows } = await queryChunked(myEventIds, (part) =>
+			supabase
+				.from(TABLES.event_attendees)
+				.select('user_id, event_id')
+				.in('event_id', part)
+				.eq('status', 'going')
+				.neq('user_id', viewerId)
+		);
 		for (const row of coAttendeeRows ?? []) {
 			const uid = row.user_id as string;
 			sharedEvents.set(uid, (sharedEvents.get(uid) ?? 0) + 1);
@@ -5268,11 +8276,13 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 	const candidateIds = new Set<string>([...sharedClubs.keys(), ...sharedEvents.keys()]);
 	if (candidateIds.size === 0) return [];
 
-	const { data: followedRows } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', viewerId)
-		.in('followee_id', [...candidateIds]);
+	const { data: followedRows } = await queryChunked([...candidateIds], (part) =>
+		supabase
+			.from('user_follows')
+			.select('followee_id')
+			.eq('follower_id', viewerId)
+			.in('followee_id', part)
+	);
 	for (const r of followedRows ?? []) {
 		candidateIds.delete(r.followee_id as string);
 	}
@@ -5282,7 +8292,10 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 	const hydrated = await hydratePeopleSuggestions(ids, viewerId);
 	// Rank by combined local signal (shared clubs + shared events) desc, then
 	// shared-club count desc, then display_name. `shared_clubs` stays the
-	// displayed count so the existing People-tab subtitle is unchanged.
+	// displayed count so the existing People-tab subtitle is unchanged. The
+	// name term is `search_ranking.ts`'s, id tiebreak included, so this list
+	// and the People search agree about two runners sharing a display name.
+	const { comparePersonName } = await import('../social/search_ranking');
 	return hydrated
 		.map((p) => ({
 			...p,
@@ -5292,7 +8305,7 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.sort((a, b) => {
 			if (b._score !== a._score) return b._score - a._score;
 			if (b.shared_clubs !== a.shared_clubs) return b.shared_clubs - a.shared_clubs;
-			return (a.display_name ?? '').localeCompare(b.display_name ?? '');
+			return comparePersonName(a, b);
 		})
 		.slice(0, limit)
 		.map(({ _score, ...p }) => p);
@@ -5321,7 +8334,7 @@ export async function fetchNearbyRunners(radiusM = 25000): Promise<NearbyRunner[
 
 	const { data, error } = await supabase.rpc('discoverable_runners_near', {
 		p_radius_m: radiusM,
-	});
+	}, { get: true });
 	if (error || !data) return [];
 	const rows = data as Array<{
 		id: string;
@@ -5332,11 +8345,13 @@ export async function fetchNearbyRunners(radiusM = 25000): Promise<NearbyRunner[
 	if (rows.length === 0) return [];
 
 	const ids = rows.map((r) => r.id);
-	const { data: followedRows } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', viewerId)
-		.in('followee_id', ids);
+	const { data: followedRows } = await queryChunked(ids, (part) =>
+		supabase
+			.from('user_follows')
+			.select('followee_id')
+			.eq('follower_id', viewerId)
+			.in('followee_id', part)
+	);
 	const following = new Set((followedRows ?? []).map((r) => r.followee_id as string));
 
 	return rows.map((r) => ({
@@ -5361,7 +8376,7 @@ export async function setDiscoverableArea(
 		p_lat: lat,
 		p_label: label,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data as string | null) ?? null;
 }
 
@@ -5369,13 +8384,13 @@ export async function setDiscoverableArea(
 /// regardless of the `discoverable_nearby` pref.
 export async function clearDiscoverableArea(): Promise<void> {
 	const { error } = await supabase.rpc('clear_discoverable_area');
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// The caller's own stored area label (never the coordinate), for the settings
 /// UI. Null when no area is set.
 export async function fetchMyDiscoverableArea(): Promise<string | null> {
-	const { data, error } = await supabase.rpc('my_discoverable_area');
+	const { data, error } = await supabase.rpc('my_discoverable_area', undefined, { get: true });
 	if (error) return null;
 	return (data as string | null) ?? null;
 }
@@ -5392,11 +8407,13 @@ export async function fetchMyDiscoverableArea(): Promise<string | null> {
 /// blocks error would be a worse regression than the rare leak.
 async function filterOutBlocked(viewerId: string, candidateIds: string[]): Promise<string[]> {
 	if (candidateIds.length === 0) return candidateIds;
-	const { data, error } = await supabase
-		.from(TABLES.user_blocks)
-		.select('blocked_id')
-		.eq('blocker_id', viewerId)
-		.in('blocked_id', candidateIds);
+	const { data, error } = await queryChunked(candidateIds, (part) =>
+		supabase
+			.from(TABLES.user_blocks)
+			.select('blocked_id')
+			.eq('blocker_id', viewerId)
+			.in('blocked_id', part)
+	);
 	if (error) return candidateIds;
 	const blocked = new Set((data ?? []).map((r) => r.blocked_id as string));
 	return candidateIds.filter((id) => !blocked.has(id));
@@ -5417,10 +8434,12 @@ async function hydratePeopleSuggestions(
 	const visibleIds = viewerId ? await filterOutBlocked(viewerId, ids) : ids;
 	if (visibleIds.length === 0) return [];
 	const [profilesRes, countsRes, followsRes] = await Promise.all([
-		supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url, handle')
-			.in('id', visibleIds),
+		queryChunked(visibleIds, (part) =>
+			supabase
+				.from('user_profiles')
+				.select('id, display_name, avatar_url, handle')
+				.in('id', part)
+		),
 		// Public-run counts via a SECURITY DEFINER GROUP BY RPC — one small row
 		// per candidate, not one row per public run (which also can't be read
 		// off the base runs table by a non-owner since 20260701_001 dropped the
@@ -5428,11 +8447,13 @@ async function hydratePeopleSuggestions(
 		// everyone but the viewer). See public_run_counts (migration 20270118_001).
 		supabase.rpc('public_run_counts', { p_user_ids: visibleIds }),
 		viewerId
-			? supabase
-					.from('user_follows')
-					.select('followee_id')
-					.eq('follower_id', viewerId)
-					.in('followee_id', visibleIds)
+			? queryChunked(visibleIds, (part) =>
+					supabase
+						.from('user_follows')
+						.select('followee_id')
+						.eq('follower_id', viewerId)
+						.in('followee_id', part)
+				)
 			: Promise.resolve({ data: [] as { followee_id: string }[] } as { data: { followee_id: string }[] }),
 	]);
 	const counts = new Map<string, number>();
@@ -5456,69 +8477,94 @@ async function hydratePeopleSuggestions(
 	}));
 }
 
-/// People who follow `userId`, paginated client-side after fetch.
 /// Default page size for the follower / following lists. The /u/[id]
 /// tabs request one page at a time and load more on demand, so a user
 /// with hundreds of followers is fully reachable rather than truncated.
 export const FOLLOW_PAGE_SIZE = 50;
 
-export async function fetchFollowers(
-	userId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<PublicProfile[]> {
-	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: edges, error } = await supabase
-		.from('user_follows')
-		.select('follower_id, followed_at')
-		.eq('followee_id', userId)
-		.order('followed_at', { ascending: false })
-		// Secondary key so offset pages are stable when two follows share a
-		// followed_at timestamp — without it a row on a page boundary can be
-		// duplicated or skipped on load-more.
-		.order('follower_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (error) throw error;
-	const ids = (edges ?? []).map((e) => e.follower_id as string);
-	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
-	if (profilesError) throw profilesError;
+/// Newest follow first. The other party's id breaks a `followed_at` tie, which
+/// makes the order total — a keyset over a non-unique order skips a tied row.
+/// Served by `user_follows_followee` / `user_follows_follower`
+/// (`(<anchor>, followed_at desc)`) up to the tie-break.
+const FOLLOWERS_ORDER: readonly KeysetKey[] = [
+	{ column: 'followed_at', ascending: false, nullsFirst: true },
+	{ column: 'follower_id', ascending: false, nullsFirst: true },
+];
+const FOLLOWING_ORDER: readonly KeysetKey[] = [
+	{ column: 'followed_at', ascending: false, nullsFirst: true },
+	{ column: 'followee_id', ascending: false, nullsFirst: true },
+];
+
+/// Resolve follow-edge ids to profiles, in edge order. An id with no readable
+/// profile row is dropped here, AFTER the cursor was taken from the edge, so
+/// it neither ends the list early nor shifts the next page.
+async function profilesInEdgeOrder(ids: string[]): Promise<PublicProfile[]> {
+	const profiles = await readChunked(ids, async (part) => {
+		const { data, error } = await supabase
+			.from('user_profiles')
+			.select('id, display_name, avatar_url')
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
 	const byId = new Map<string, PublicProfile>();
-	for (const p of profiles ?? []) byId.set(p.id, p);
-	// Preserve the followed_at ordering.
+	for (const p of profiles) byId.set(p.id, p);
 	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
 }
 
-/// People `userId` follows, ordered by most-recently followed.
+/// People who follow `userId`, newest follow first, one keyset page at a time:
+/// pass the previous page's `next` as `after` to load more. A cursor rather
+/// than an offset because an offset is a position — a follower who unfollows
+/// between two reads moves every later row up one, and offset 50 then starts a
+/// row late, so one follower is never shown.
+export async function fetchFollowers(
+	userId: string,
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<PublicProfile>> {
+	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
+	const after = opts?.after ? keysetAfter(FOLLOWERS_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
+		.from('user_follows')
+		.select('follower_id, followed_at')
+		.eq('followee_id', userId);
+	if (after) q = q.or(after);
+	for (const k of FOLLOWERS_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: edges, error } = await q.limit(limit);
+	if (error) throw dbError(error);
+	const rows = edges ?? [];
+	return {
+		rows: await profilesInEdgeOrder(rows.map((e) => e.follower_id)),
+		next: nextCursor(FOLLOWERS_ORDER, rows, limit),
+	};
+}
+
+/// People `userId` follows, newest follow first, one keyset page at a time
+/// (see `fetchFollowers`).
 export async function fetchFollowing(
 	userId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<PublicProfile[]> {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<PublicProfile>> {
 	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: edges, error } = await supabase
+	const after = opts?.after ? keysetAfter(FOLLOWING_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from('user_follows')
 		.select('followee_id, followed_at')
-		.eq('follower_id', userId)
-		.order('followed_at', { ascending: false })
-		// Secondary key so offset pages are stable when two follows share a
-		// followed_at timestamp (see fetchFollowers).
-		.order('followee_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (error) throw error;
-	const ids = (edges ?? []).map((e) => e.followee_id as string);
-	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
-	if (profilesError) throw profilesError;
-	const byId = new Map<string, PublicProfile>();
-	for (const p of profiles ?? []) byId.set(p.id, p);
-	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
+		.eq('follower_id', userId);
+	if (after) q = q.or(after);
+	for (const k of FOLLOWING_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: edges, error } = await q.limit(limit);
+	if (error) throw dbError(error);
+	const rows = edges ?? [];
+	return {
+		rows: await profilesInEdgeOrder(rows.map((e) => e.followee_id)),
+		next: nextCursor(FOLLOWING_ORDER, rows, limit),
+	};
 }
 
 export interface FeedEntry extends Run {
@@ -5579,15 +8625,15 @@ export async function fetchFollowingFeed(
 	//
 	// The followee set is chunked: PostgREST serialises `.in()` into the
 	// URL, so a viewer following many hundreds of people overflows the
-	// gateway's request-line limit and the query silently returns null.
+	// gateway's request-line budget and the read is lost (decisions § 653).
 	// Each chunk applies the same cursor + ordering + limit; the global
 	// top-`limit` is a subset of the union of per-chunk results, which
 	// mergeFeedPages collapses back down.
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from('public_runs')
 			.select('*')
-			.in('user_id', ids)
+			.in('user_id', part)
 			.gte('started_at', cutoff)
 			.order('started_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -5608,7 +8654,7 @@ export async function fetchFollowingFeed(
 		// toast — a silent blank feed. Throw so SocialFeed / the profile feed
 		// render the error state instead.
 		const { data, error } = await q;
-		if (error) throw error;
+		if (error) throw dbError(error);
 		return (data ?? []) as Run[];
 	};
 
@@ -5715,12 +8761,12 @@ async function fetchFollowingLifts(
 	if (filteredAuthors.length === 0) return [];
 
 	const cutoff = new Date(Date.now() - FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from('public_gym_workouts')
 			.select('id, user_id, started_at, title, set_count, volume_kg')
 			.eq('is_public', true)
-			.in('user_id', ids)
+			.in('user_id', part)
 			.gte('started_at', cutoff)
 			.order('started_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -5733,7 +8779,7 @@ async function fetchFollowingLifts(
 		// Surface the error rather than coercing a failed read to an empty
 		// page — see the matching note in fetchFollowingFeed's queryChunk.
 		const { data, error } = await q;
-		if (error) throw error;
+		if (error) throw dbError(error);
 		return (data ?? []) as {
 			id: string;
 			user_id: string;
@@ -5768,36 +8814,6 @@ async function fetchFollowingLifts(
 	}));
 }
 
-/// Server-side privacy-zone clipping (decisions §33). Pass the run /
-/// route owner's `user_id` and a points array; receive the clipped
-/// middle. Zones never come down the wire — the RPC reads them
-/// internally with security-definer privileges. The RPC is a no-op
-/// (returns the input) when the owner has no zones configured.
-///
-/// **Fails closed:** on RPC error or unexpected response shape this
-/// returns `[]` rather than the unclipped input. The previous
-/// behaviour (return `points` on error) is the leak this helper exists
-/// to prevent — a transient DB blip that bypassed clipping was a
-/// privacy regression. Callers should guard owner views *before*
-/// calling so an outage doesn't blank the owner's own map; this
-/// function only ever speaks for non-owner viewers.
-export async function clipTrackForUser(
-	targetUserId: string,
-	points: { lat: number; lng: number; ele?: number; t?: number }[]
-): Promise<{ lat: number; lng: number; ele?: number; t?: number }[]> {
-	if (points.length === 0) return points;
-	const { data, error } = await supabase.rpc('clip_track_for_user', {
-		target_user_id: targetUserId,
-		points,
-	});
-	if (error) {
-		console.warn('clip_track_for_user failed; failing closed (empty track)', error);
-		return [];
-	}
-	if (!Array.isArray(data)) return [];
-	return data as typeof points;
-}
-
 /// Recent public runs from a single user — used by the profile page.
 /// Reads through the public_runs view (decisions §33, migration
 /// 20260626_001) so the redaction applies on the wire even when the
@@ -5809,8 +8825,34 @@ export async function fetchPublicRunsByUser(userId: string, limit = 20): Promise
 		.eq('user_id', userId)
 		.order('started_at', { ascending: false })
 		.limit(limit);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []) as Run[];
+}
+
+export interface ProfileRunCounts {
+	/** Runs anyone can see on the profile. */
+	publicCount: number;
+	/** The owner's runs that are NOT on the profile; null for any other viewer. */
+	privateCount: number | null;
+}
+
+/// Head counts for the profile header. The header used to show the length of
+/// the loaded run page, which capped at its limit and gave the owner no hint
+/// that their private runs exist but aren't listed.
+export async function fetchProfileRunCounts(userId: string, isSelf: boolean): Promise<ProfileRunCounts> {
+	const [pub, priv] = await Promise.all([
+		supabase.from('public_runs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+		isSelf
+			? supabase
+					.from(TABLES.runs)
+					.select('id', { count: 'exact', head: true })
+					.eq('user_id', userId)
+					.or('is_public.is.null,is_public.eq.false')
+			: Promise.resolve({ count: null, error: null }),
+	]);
+	if (pub.error) throw dbError(pub.error);
+	if (priv.error) throw dbError(priv.error);
+	return { publicCount: pub.count ?? 0, privateCount: isSelf ? (priv.count ?? 0) : null };
 }
 
 // ─────────────────────── Kudos + comments on runs (decisions §32) ───────────────────────
@@ -5846,15 +8888,18 @@ export async function fetchEngagementSummaries(
 	// Counts come from a server-side GROUP BY (run_engagement_counts) so the
 	// wire payload is one small row per run, not every kudos + comment row on
 	// the page (a popular share used to ship hundreds of rows to compute one
-	// integer). viewer_has_kudos stays a narrow per-run .in() lookup.
+	// integer). viewer_has_kudos stays a narrow per-run `in` lookup, chunked
+	// because the caller's run list has no ceiling of its own.
 	const [counts, viewerKudos] = await Promise.all([
 		supabase.rpc('run_engagement_counts', { p_run_ids: runIds }),
 		viewerId
-			? supabase
-					.from(TABLES.run_kudos)
-					.select('run_id')
-					.eq('user_id', viewerId)
-					.in('run_id', runIds)
+			? queryChunked(runIds, (part) =>
+					supabase
+						.from(TABLES.run_kudos)
+						.select('run_id')
+						.eq('user_id', viewerId)
+						.in('run_id', part)
+				)
 			: Promise.resolve({ data: [] as { run_id: string }[] }),
 	]);
 
@@ -5890,7 +8935,7 @@ export async function fetchKudosForRun(runId: string): Promise<RunKudosSummary> 
 /// convention.
 export async function fetchKudosForRunWithError(
 	runId: string,
-): Promise<{ kudos: RunKudosSummary; error: string | null }> {
+): Promise<{ kudos: RunKudosSummary; error: Error | null }> {
 	const { data: sessionData } = await supabase.auth.getSession();
 	const viewerId = sessionData.session?.user?.id;
 
@@ -5916,7 +8961,7 @@ export async function fetchKudosForRunWithError(
 		console.error('fetchKudosForRun failed', err);
 		return {
 			kudos: { count: 0, viewer_has_kudos: false },
-			error: `${err.message}${err.code ? ` (${err.code})` : ''}`,
+			error: dbError(err),
 		};
 	}
 
@@ -5943,8 +8988,8 @@ export async function giveKudos(runId: string): Promise<boolean> {
 		.from(TABLES.run_kudos)
 		.insert({ user_id: userId, run_id: runId });
 	if (error) {
-		if (error.code === '23505') return false;
-		throw error;
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
 	}
 	return true;
 }
@@ -5963,7 +9008,7 @@ export async function rescindKudos(runId: string): Promise<boolean> {
 		.eq('run_id', runId)
 		.eq('user_id', userId)
 		.select('user_id');
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []).length > 0;
 }
 
@@ -5980,7 +9025,7 @@ export async function fetchRunComments(runId: string, limit = 200): Promise<RunC
 export async function fetchRunCommentsWithError(
 	runId: string,
 	limit = 200,
-): Promise<{ comments: RunCommentWithAuthor[]; error: string | null }> {
+): Promise<{ comments: RunCommentWithAuthor[]; error: Error | null }> {
 	const { data: rows, error } = await supabase
 		.from(TABLES.run_comments)
 		.select('*')
@@ -5989,15 +9034,14 @@ export async function fetchRunCommentsWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchRunComments failed', error);
-		return { comments: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { comments: [], error: dbError(error) };
 	}
 	if (!rows || rows.length === 0) return { comments: [], error: null };
 
 	const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
-	const { data: profiles } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', authorIds);
+	const { data: profiles } = await queryChunked(authorIds, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+	);
 	const byId = new Map<string, PublicProfile>();
 	for (const p of profiles ?? []) byId.set(p.id, p);
 
@@ -6024,19 +9068,144 @@ export async function postRunComment(input: {
 		body: input.body,
 		parent_comment_id: input.parent_comment_id ?? null,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function deleteRunComment(commentId: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.run_comments).delete().eq('id', commentId);
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+// ─────────── Reactions, comment likes, mentions (decisions § 1971) ───────────
+
+export interface ReactionSummaryRow {
+	reaction: string;
+	reaction_count: number;
+	viewer_reacted: boolean;
+}
+
+/// Per-reaction counts on a run plus the viewer's own. The RPC is INVOKER, so
+/// RLS decides what is counted and a run the viewer cannot read returns no
+/// rows. A failed read is reported, not folded into "no reactions".
+export async function fetchRunReactionSummary(
+	runId: string,
+): Promise<{ rows: ReactionSummaryRow[]; error: Error | null }> {
+	const { data, error } = await supabase.rpc('run_reaction_summary', { p_run_id: runId }, { get: true });
+	if (error) return { rows: [], error: dbError(error) };
+	return { rows: (data ?? []) as ReactionSummaryRow[], error: null };
+}
+
+/// `true` when a new row was inserted, `false` when the viewer already had
+/// this reaction (a 23505 no-op) — the same contract as `giveKudos`.
+export async function addRunReaction(runId: string, reaction: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.run_reactions)
+		.insert({ user_id: userId, run_id: runId, reaction });
+	if (error) {
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
+	}
+	return true;
+}
+
+/// `true` when a row was deleted, `false` when there was nothing to remove.
+export async function removeRunReaction(runId: string, reaction: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.run_reactions)
+		.delete()
+		.eq('run_id', runId)
+		.eq('user_id', userId)
+		.eq('reaction', reaction)
+		.select('user_id');
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
+}
+
+export interface CommentLikeSummary {
+	count: number;
+	viewer_liked: boolean;
+}
+
+/// Like counts for every liked comment on a run, keyed by comment id. A
+/// comment absent from the map has no likes.
+export async function fetchRunCommentLikeSummary(
+	runId: string,
+): Promise<{ likes: Map<string, CommentLikeSummary>; error: Error | null }> {
+	const { data, error } = await supabase.rpc('run_comment_like_summary', { p_run_id: runId }, { get: true });
+	const likes = new Map<string, CommentLikeSummary>();
+	if (error) return { likes, error: dbError(error) };
+	for (const row of data ?? []) {
+		likes.set(row.comment_id, {
+			count: Math.max(0, Number(row.like_count) || 0),
+			viewer_liked: row.viewer_liked === true,
+		});
+	}
+	return { likes, error: null };
+}
+
+/// `true` on a new like, `false` when the viewer had already liked it.
+export async function likeRunComment(commentId: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.run_comment_likes)
+		.insert({ user_id: userId, comment_id: commentId });
+	if (error) {
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
+	}
+	return true;
+}
+
+/// `true` when a like was removed, `false` when there was none.
+export async function unlikeRunComment(commentId: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.run_comment_likes)
+		.delete()
+		.eq('comment_id', commentId)
+		.eq('user_id', userId)
+		.select('user_id');
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
+}
+
+/// Resolve mentioned handles to profile ids, so a comment can link the ones
+/// that name a real runner and leave the rest as plain text. Handles are
+/// stored lowercase (decisions § 269), so the lookup is an exact match.
+export async function resolveMentionHandles(handles: string[]): Promise<Map<string, string>> {
+	const out = new Map<string, string>();
+	const wanted = Array.from(new Set(handles.map((h) => h.toLowerCase()))).slice(0, 200);
+	let rows: { id: string; handle: string | null }[];
+	try {
+		rows = await readChunked(wanted, async (part) => {
+			const { data, error } = await supabase
+				.from('user_profiles')
+				.select('id, handle')
+				.in('handle', part);
+			if (error) throw dbError(error);
+			return data ?? [];
+		});
+	} catch (error) {
+		console.error('resolveMentionHandles failed', error);
+		return out;
+	}
+	for (const row of rows) if (row.handle) out.set(row.handle, row.id);
+	return out;
 }
 
 // --- Run photos (decisions §36) ---
 
 export interface RunPhoto {
 	id: string;
-	run_id: string;
+	/// Null for an event steward's photo of an occurrence, which belongs to
+	/// no run (migration 20270807000001). Every photo read by run has one.
+	run_id: string | null;
 	owner_id: string;
 	storage_path: string;
 	/// Server-generated 512w thumbnail path, populated by the
@@ -6052,6 +9221,10 @@ export interface RunPhoto {
 	/// Set when the photo is tagged to an event gallery (#49).
 	event_id: string | null;
 	event_instance_start: string | null;
+	/// The owner opted this photo into the public race-listing page
+	/// (`set_run_photo_race_gallery`, decisions § 1961). Shown there only
+	/// while the run is public and linked to that listing.
+	race_gallery: boolean;
 	url: string;
 	thumbUrl: string | null;
 }
@@ -6063,8 +9236,15 @@ export interface RunPhoto {
 /// anyone who can see the event (even when the underlying run is
 /// private), so surfacing the run's UUID would bridge a public event to
 /// a private run's id. The gallery never needs it.
-export interface EventPhoto extends Omit<RunPhoto, 'run_id'> {
+///
+/// `hidden_at` is set when an event steward hid the photo from the gallery
+/// (`set_event_photo_hidden`, migration 20270807000001). The gallery read,
+/// `event_gallery_photos` (20270807000003), returns a hidden photo only to its
+/// owner and the event's stewards — RLS alone cannot, because a photo on a
+/// public run is readable through the run path.
+export interface EventPhoto extends Omit<RunPhoto, 'run_id' | 'race_gallery'> {
 	uploader_name: string | null;
+	hidden_at: string | null;
 }
 
 // Every key must be a format `stripImageExif` can clean — an accepted-but-
@@ -6113,7 +9293,7 @@ export async function fetchRunPhotos(runId: string, limit = 50): Promise<RunPhot
 export async function fetchRunPhotosWithError(
 	runId: string,
 	limit = 50,
-): Promise<{ photos: RunPhoto[]; error: string | null }> {
+): Promise<{ photos: RunPhoto[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.run_photos)
 		.select('*')
@@ -6123,7 +9303,7 @@ export async function fetchRunPhotosWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchRunPhotos failed', error);
-		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { photos: [], error: dbError(error) };
 	}
 	const rows = data ?? [];
 	// Sign both the original and any present thumbnail in one batch
@@ -6153,26 +9333,37 @@ export async function fetchRunPhotosWithError(
 /// are fetched in a second batched query (the `run_photos` → `runs` →
 /// `user_profiles` join isn't expressible through PostgREST resource
 /// embedding because the run may be invisible to the viewer).
+///
+/// Surfaces the load error rather than collapsing it to `[]`, so the gallery
+/// can tell "nobody has posted yet" from "the gallery did not load".
 export async function fetchEventPhotos(
 	eventId: string,
 	instanceStart: string,
 	limit = 100,
-): Promise<EventPhoto[]> {
-	const { data, error } = await supabase
-		.from(TABLES.run_photos)
-		// Enumerate columns — `run_id` is NOT selected so a private run's
-		// UUID can't leak to an event viewer who can't see that run.
-		.select('id, owner_id, storage_path, thumb_512_path, caption, position_idx, created_at, event_id, event_instance_start')
-		.eq('event_id', eventId)
-		.eq('event_instance_start', instanceStart)
-		.order('created_at', { ascending: true })
-		.limit(limit);
+): Promise<{ photos: EventPhoto[]; error: Error | null }> {
+	// `event_gallery_photos` returns no `run_id`, so a private run's UUID can't
+	// leak to an event viewer who can't see that run.
+	const { data, error } = await supabase.rpc(
+		'event_gallery_photos',
+		{
+			p_event_id: eventId,
+			p_instance: instanceStart,
+			p_limit: limit,
+		},
+		{ get: true },
+	);
 	if (error) {
 		console.error('fetchEventPhotos failed', error);
-		return [];
+		return { photos: [], error: dbError(error) };
 	}
-	const rows = data ?? [];
-	if (rows.length === 0) return [];
+	// The generator types a RETURNS TABLE column as non-null; these three are nullable.
+	const rows = (data ?? []).map((r) => ({
+		...r,
+		caption: r.caption as string | null,
+		thumb_512_path: r.thumb_512_path as string | null,
+		hidden_at: r.hidden_at as string | null,
+	}));
+	if (rows.length === 0) return { photos: [], error: null };
 	const paths: string[] = [];
 	for (const r of rows) {
 		paths.push(r.storage_path);
@@ -6186,16 +9377,138 @@ export async function fetchEventPhotos(
 	const nameById = new Map<string, string | null>(
 		(profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) ?? null]),
 	);
-	return rows.map((r) => ({
-		...r,
-		url: signed[r.storage_path] ?? '',
-		thumbUrl: r.thumb_512_path ? (signed[r.thumb_512_path] ?? null) : null,
-		uploader_name: nameById.get(r.owner_id) ?? null,
-	}));
+	return {
+		photos: rows.map((r) => ({
+			...r,
+			url: signed[r.storage_path] ?? '',
+			thumbUrl: r.thumb_512_path ? (signed[r.thumb_512_path] ?? null) : null,
+			uploader_name: nameById.get(r.owner_id) ?? null,
+		})),
+		error: null,
+	};
+}
+
+/// Whether the viewer is one of this event's photo stewards — a club owner,
+/// admin or event organiser, or the event's named host — who may post photos
+/// with no run and hide any photo in its galleries. The host column is not
+/// client-readable, so the server answers. Fails closed to false.
+export async function canStewardEventPhotos(eventId: string): Promise<boolean> {
+	if (!auth.user) return false;
+	const { data, error } = await supabase.rpc(
+		'can_steward_event_photos',
+		{ p_event_id: eventId },
+		{ get: true },
+	);
+	if (error) {
+		console.error('canStewardEventPhotos failed', error);
+		return false;
+	}
+	return data === true;
+}
+
+/// Hide a photo from an event gallery, or restore it. Steward-only, enforced
+/// by the RPC. Hiding leaves an attendee's photo on their own run.
+export async function setEventPhotoHidden(photoId: string, hidden: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_event_photo_hidden', {
+		p_photo_id: photoId,
+		p_hidden: hidden,
+	});
+	if (error) throw dbError(error);
+}
+
+/// A runner's photo on a public race-listing page. Deliberately carries no
+/// run id, owner id or original-file URL: the page is logged-out and indexed,
+/// so it shows the processed thumbnail and the uploader's public name only.
+export interface RaceListingPhoto {
+	id: string;
+	thumbUrl: string;
+	caption: string | null;
+	createdAt: string;
+	displayName: string | null;
+}
+
+/// Opted-in photos for a race listing (`race_listing_photos`, decisions
+/// § 1961). The RPC applies every visibility rule — opt-in, public run linked
+/// to this listing, processed thumbnail, not hidden — so the client filters
+/// nothing. A failure resolves to `[]` and is logged: the race page is
+/// logged-out, and an empty gallery is hidden rather than shown as an error.
+export async function fetchRaceListingPhotos(
+	listingId: string,
+	limit = 24,
+): Promise<RaceListingPhoto[]> {
+	const { data, error } = await supabase.rpc(
+		'race_listing_photos',
+		{ p_listing_id: listingId, p_limit: limit },
+		{ get: true },
+	);
+	if (error) {
+		console.error('fetchRaceListingPhotos failed', error);
+		return [];
+	}
+	const rows = data ?? [];
+	if (rows.length === 0) return [];
+	const signed = await signRunPhotoPaths(rows.map((r) => r.thumb_512_path));
+	const out: RaceListingPhoto[] = [];
+	for (const r of rows) {
+		const thumbUrl = signed[r.thumb_512_path];
+		if (!thumbUrl) continue;
+		out.push({
+			id: r.id,
+			thumbUrl,
+			caption: (r.caption as string | null) ?? null,
+			createdAt: r.created_at,
+			displayName: (r.display_name as string | null) ?? null,
+		});
+	}
+	return out;
+}
+
+/// Show one of the caller's run photos on its race-listing page, or withdraw
+/// it. Owner-only, enforced by the RPC.
+export async function setRunPhotoRaceGallery(photoId: string, shared: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_run_photo_race_gallery', {
+		p_photo_id: photoId,
+		p_shared: shared,
+	});
+	if (error) throw dbError(error);
+}
+
+/// The viewer's runs the database will accept for an occurrence's gallery:
+/// those that started inside the photo window (`event_photo_window.ts`).
+/// Queried by the window rather than filtered from the latest few runs, so an
+/// occurrence from months ago still offers the run recorded at it.
+export async function fetchRunsForEventPhoto(
+	instanceStart: string,
+	limit = 20,
+): Promise<RecentRunOption[]> {
+	const userId = auth.user?.id;
+	const occ = Date.parse(instanceStart);
+	if (!userId || !Number.isFinite(occ)) return [];
+	const { data, error } = await supabase
+		.from(TABLES.runs)
+		.select('id, started_at, duration_s, distance_m, activity_type')
+		.eq('user_id', userId)
+		.gte('started_at', new Date(occ - EVENT_PHOTO_WINDOW_BEFORE_MS).toISOString())
+		.lt('started_at', new Date(occ + EVENT_PHOTO_WINDOW_AFTER_MS).toISOString())
+		.order('started_at', { ascending: true })
+		.limit(limit);
+	if (error) throw dbError(error);
+	return (data ?? [])
+		.filter((r) => isRunInEventPhotoWindow(r.started_at, instanceStart))
+		.map((r) => ({
+			id: r.id,
+			started_at: r.started_at,
+			duration_s: r.duration_s,
+			distance_m: r.distance_m,
+			activity_type: r.activity_type ?? 'run',
+		}));
 }
 
 export async function addRunPhoto(input: {
-	run_id: string;
+	/// Null only for an event steward's photo of an occurrence (no run), which
+	/// then requires `event_id` + `event_instance_start` (migration
+	/// 20270807000001).
+	run_id: string | null;
 	file: File;
 	caption?: string | null;
 	/// When set, the photo joins the event's gallery (#49). The DB
@@ -6206,7 +9519,7 @@ export async function addRunPhoto(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 
-	if (input.file.size > PHOTO_MAX_BYTES) throw new Error('Image too large (10 MB max)');
+	if (input.file.size > PHOTO_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 10 }, message: 'Image too large (10 MB max)' });
 
 	// Strip EXIF/XMP (incl. GPS) client-side before upload so a geotagged
 	// original never sits readable in the bucket ahead of the server worker's
@@ -6214,9 +9527,9 @@ export async function addRunPhoto(input: {
 	// The strip sniffs the bytes and refuses a format it cannot clean, so the
 	// accepted set is decided here, not by the browser-supplied File.type.
 	const file = await stripExifFromFile(input.file);
-	if (!file) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!file) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = PHOTO_MIME_TO_EXT[file.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 
 	const photoId = crypto.randomUUID();
 	const storagePath = `${userId}/${photoId}.${ext}`;
@@ -6227,16 +9540,19 @@ export async function addRunPhoto(input: {
 			contentType: file.type,
 			upsert: false,
 		});
-	if (upErr) throw upErr;
+	if (upErr) throw dbError(upErr);
 
-	const { data: posData } = await supabase
-		.from(TABLES.run_photos)
-		.select('position_idx')
-		.eq('run_id', input.run_id)
-		.order('position_idx', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-	const nextIdx = (posData?.position_idx ?? -1) + 1;
+	let nextIdx = 0;
+	if (input.run_id) {
+		const { data: posData } = await supabase
+			.from(TABLES.run_photos)
+			.select('position_idx')
+			.eq('run_id', input.run_id)
+			.order('position_idx', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		nextIdx = (posData?.position_idx ?? -1) + 1;
+	}
 
 	const { data, error } = await supabase
 		.from(TABLES.run_photos)
@@ -6255,7 +9571,7 @@ export async function addRunPhoto(input: {
 	if (error || !data) {
 		// Best-effort cleanup of the uploaded blob if metadata insert fails.
 		await supabase.storage.from(BUCKETS.run_photos).remove([storagePath]);
-		throw error ?? new Error('Insert failed');
+		throw error ? dbError(error) : new Error('Insert failed');
 	}
 	const { data: signed } = await supabase.storage
 		.from(BUCKETS.run_photos)
@@ -6263,6 +9579,12 @@ export async function addRunPhoto(input: {
 	return {
 		...data,
 		url: signed?.signedUrl ?? '',
+		// Always null on the insert path: `thumb_512_path` is written later by
+		// the photo_process job, so there is no thumbnail to sign yet. The key
+		// was simply missing, which made a just-uploaded photo the one case
+		// where a `RunPhoto` carried `undefined` under a type promising
+		// `string | null`.
+		thumbUrl: null,
 	};
 }
 
@@ -6272,10 +9594,10 @@ export async function deleteRunPhoto(photoId: string): Promise<void> {
 		.select('storage_path, thumb_512_path')
 		.eq('id', photoId)
 		.maybeSingle();
-	if (fetchErr) throw fetchErr;
+	if (fetchErr) throw dbError(fetchErr);
 
 	const { error } = await supabase.from(TABLES.run_photos).delete().eq('id', photoId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 
 	// Sweep both the original upload AND the worker-generated 512-wide
 	// thumbnail. Best-effort — RLS allows the photo owner to remove their
@@ -6322,12 +9644,12 @@ const avatarPathsFor = (userId: string): string[] =>
 export async function uploadAvatar(file: File): Promise<string> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	if (file.size > AVATAR_MAX_BYTES) throw new Error('Image too large (2 MB max)');
+	if (file.size > AVATAR_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 2 }, message: 'Image too large (2 MB max)' });
 
 	const clean = await stripExifFromFile(file);
-	if (!clean) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!clean) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = AVATAR_MIME_TO_EXT[clean.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const storagePath = `${userId}/avatar.${ext}`;
 
 	// Clear any existing avatar (this ext and the others) so the upload is a
@@ -6337,7 +9659,7 @@ export async function uploadAvatar(file: File): Promise<string> {
 	const { error: upErr } = await supabase.storage
 		.from(BUCKETS.avatars)
 		.upload(storagePath, clean, { contentType: clean.type, upsert: false });
-	if (upErr) throw upErr;
+	if (upErr) throw dbError(upErr);
 
 	const { data: pub } = supabase.storage.from(BUCKETS.avatars).getPublicUrl(storagePath);
 	const url = `${pub.publicUrl}?v=${Date.now()}`;
@@ -6350,7 +9672,7 @@ export async function uploadAvatar(file: File): Promise<string> {
 		// Roll back the blob so a failed profile write doesn't leave an
 		// orphaned avatar the UI never references.
 		await supabase.storage.from(BUCKETS.avatars).remove([storagePath]);
-		throw profErr;
+		throw dbError(profErr);
 	}
 	return url;
 }
@@ -6365,7 +9687,7 @@ export async function removeAvatar(): Promise<void> {
 		.from('user_profiles')
 		.update({ avatar_url: null })
 		.eq('id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function updateRunPhotoCaption(
@@ -6377,7 +9699,7 @@ export async function updateRunPhotoCaption(
 		.from(TABLES.run_photos)
 		.update({ caption: trimmed })
 		.eq('id', photoId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Route photos (backlog C1) ---
@@ -6429,7 +9751,7 @@ export async function fetchRoutePhotos(routeId: string, limit = 50): Promise<Rou
 export async function fetchRoutePhotosWithError(
 	routeId: string,
 	limit = 50,
-): Promise<{ photos: RoutePhoto[]; error: string | null }> {
+): Promise<{ photos: RoutePhoto[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.route_photos)
 		.select('*')
@@ -6439,7 +9761,7 @@ export async function fetchRoutePhotosWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchRoutePhotos failed', error);
-		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { photos: [], error: dbError(error) };
 	}
 	const rows = data ?? [];
 	const paths: string[] = [];
@@ -6466,12 +9788,12 @@ export async function addRoutePhoto(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 
-	if (input.file.size > PHOTO_MAX_BYTES) throw new Error('Image too large (10 MB max)');
+	if (input.file.size > PHOTO_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 10 }, message: 'Image too large (10 MB max)' });
 
 	const file = await stripExifFromFile(input.file);
-	if (!file) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!file) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = PHOTO_MIME_TO_EXT[file.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 
 	const photoId = crypto.randomUUID();
 	const storagePath = `${userId}/${photoId}.${ext}`;
@@ -6482,7 +9804,7 @@ export async function addRoutePhoto(input: {
 			contentType: file.type,
 			upsert: false,
 		});
-	if (upErr) throw upErr;
+	if (upErr) throw dbError(upErr);
 
 	const { data: posData } = await supabase
 		.from(TABLES.route_photos)
@@ -6507,7 +9829,7 @@ export async function addRoutePhoto(input: {
 		.single();
 	if (error || !data) {
 		await supabase.storage.from(BUCKETS.route_photos).remove([storagePath]);
-		throw error ?? new Error('Insert failed');
+		throw error ? dbError(error) : new Error('Insert failed');
 	}
 	const { data: signed } = await supabase.storage
 		.from(BUCKETS.route_photos)
@@ -6525,10 +9847,10 @@ export async function deleteRoutePhoto(photoId: string): Promise<void> {
 		.select('storage_path, thumb_512_path')
 		.eq('id', photoId)
 		.maybeSingle();
-	if (fetchErr) throw fetchErr;
+	if (fetchErr) throw dbError(fetchErr);
 
 	const { error } = await supabase.from(TABLES.route_photos).delete().eq('id', photoId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 
 	const paths = [row?.storage_path, row?.thumb_512_path].filter(
 		(p: string | null | undefined): p is string => !!p,
@@ -6547,7 +9869,7 @@ export async function updateRoutePhotoCaption(
 		.from(TABLES.route_photos)
 		.update({ caption: trimmed })
 		.eq('id', photoId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Club photos (gallery; migration 20270301_001) ---
@@ -6594,7 +9916,7 @@ export async function fetchClubPhotos(clubId: string, limit = 50): Promise<ClubP
 export async function fetchClubPhotosWithError(
 	clubId: string,
 	limit = 50,
-): Promise<{ photos: ClubPhoto[]; error: string | null }> {
+): Promise<{ photos: ClubPhoto[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.club_photos)
 		.select('*')
@@ -6604,7 +9926,7 @@ export async function fetchClubPhotosWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchClubPhotos failed', error);
-		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { photos: [], error: dbError(error) };
 	}
 	const rows = data ?? [];
 	const paths: string[] = [];
@@ -6631,12 +9953,12 @@ export async function addClubPhoto(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 
-	if (input.file.size > PHOTO_MAX_BYTES) throw new Error('Image too large (10 MB max)');
+	if (input.file.size > PHOTO_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 10 }, message: 'Image too large (10 MB max)' });
 
 	const file = await stripExifFromFile(input.file);
-	if (!file) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!file) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = PHOTO_MIME_TO_EXT[file.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 
 	const photoId = crypto.randomUUID();
 	const storagePath = `${userId}/${photoId}.${ext}`;
@@ -6647,7 +9969,7 @@ export async function addClubPhoto(input: {
 			contentType: file.type,
 			upsert: false,
 		});
-	if (upErr) throw upErr;
+	if (upErr) throw dbError(upErr);
 
 	const { data: posData } = await supabase
 		.from(TABLES.club_photos)
@@ -6672,7 +9994,7 @@ export async function addClubPhoto(input: {
 		.single();
 	if (error || !data) {
 		await supabase.storage.from(BUCKETS.club_photos).remove([storagePath]);
-		throw error ?? new Error('Insert failed');
+		throw error ? dbError(error) : new Error('Insert failed');
 	}
 	const { data: signed } = await supabase.storage
 		.from(BUCKETS.club_photos)
@@ -6690,10 +10012,10 @@ export async function deleteClubPhoto(photoId: string): Promise<void> {
 		.select('storage_path, thumb_512_path')
 		.eq('id', photoId)
 		.maybeSingle();
-	if (fetchErr) throw fetchErr;
+	if (fetchErr) throw dbError(fetchErr);
 
 	const { error } = await supabase.from(TABLES.club_photos).delete().eq('id', photoId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 
 	const paths = [row?.storage_path, row?.thumb_512_path].filter(
 		(p: string | null | undefined): p is string => !!p,
@@ -6712,7 +10034,7 @@ export async function updateClubPhotoCaption(
 		.from(TABLES.club_photos)
 		.update({ caption: trimmed })
 		.eq('id', photoId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Route course markers (migration 20270129_001) ---
@@ -6728,15 +10050,19 @@ function asRouteMarker(row: Record<string, unknown>): RouteMarker {
 /// through `route_markers_for_viewer`, which gates visibility (owner /
 /// public / club member) AND redacts any marker inside the owner's privacy
 /// zones for a non-owner — the marker analogue of `clip_route_for_viewer`.
-/// Fails closed (empty list) on error so a redaction failure never leaks.
+/// A failed read throws rather than answering "no markers": nothing leaks
+/// either way, but an empty list tells an owner to re-add markers they have.
+///
+/// Issued as a GET, not supabase-js's default POST. The function is
+/// `stable`, and Kong replays an idempotent request whose pooled PostgREST
+/// connection closed under it, where a POST comes back 502 (decisions § 1703).
 export async function fetchRouteMarkers(routeId: string): Promise<RouteMarker[]> {
-	const { data, error } = await supabase.rpc('route_markers_for_viewer', {
-		p_route_id: routeId
-	});
-	if (error) {
-		console.warn('route_markers_for_viewer failed; failing closed (no markers)', error);
-		return [];
-	}
+	const { data, error } = await supabase.rpc(
+		'route_markers_for_viewer',
+		{ p_route_id: routeId },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
 	return ((data ?? []) as Record<string, unknown>[]).map(asRouteMarker);
 }
 
@@ -6746,7 +10072,7 @@ export async function addRouteMarker(input: {
 	label: string;
 	lat: number;
 	lng: number;
-	meta?: Record<string, unknown>;
+	meta?: JsonObject;
 }): Promise<RouteMarker> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
@@ -6764,15 +10090,15 @@ export async function addRouteMarker(input: {
 		})
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('Insert failed');
+	if (error || !data) throw error ? dbError(error) : new Error('Insert failed');
 	return asRouteMarker(data);
 }
 
 export async function updateRouteMarker(
 	id: string,
-	patch: { kind?: RouteMarkerKind; label?: string; lat?: number; lng?: number; meta?: Record<string, unknown> }
+	patch: { kind?: RouteMarkerKind; label?: string; lat?: number; lng?: number; meta?: JsonObject }
 ): Promise<void> {
-	const update: Record<string, unknown> = {};
+	const update: Updatable<'route_markers'> = {};
 	if (patch.kind !== undefined) update.kind = patch.kind;
 	if (patch.label !== undefined) update.label = patch.label.trim();
 	if (patch.lat !== undefined) update.lat = patch.lat;
@@ -6781,12 +10107,12 @@ export async function updateRouteMarker(
 	if (Object.keys(update).length === 0) return;
 
 	const { error } = await supabase.from(TABLES.route_markers).update(update).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function deleteRouteMarker(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.route_markers).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Route condition reports (migration 20270215_001) ---
@@ -6814,13 +10140,13 @@ export async function fetchRouteConditions(routeId: string): Promise<RouteCondit
 /// `fetchRoutesWithError` convention.
 export async function fetchRouteConditionsWithError(
 	routeId: string,
-): Promise<{ conditions: RouteCondition[]; error: string | null }> {
+): Promise<{ conditions: RouteCondition[]; error: Error | null }> {
 	const { data, error } = await supabase.rpc('route_conditions_for_viewer', {
 		p_route_id: routeId
-	});
+	}, { get: true });
 	if (error) {
 		console.warn('route_conditions_for_viewer failed', error);
-		return { conditions: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { conditions: [], error: dbError(error) };
 	}
 	return {
 		conditions: ((data ?? []) as Record<string, unknown>[]).map(asRouteCondition),
@@ -6853,13 +10179,13 @@ export async function addRouteCondition(input: {
 		})
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('Insert failed');
+	if (error || !data) throw error ? dbError(error) : new Error('Insert failed');
 	return asRouteCondition(data);
 }
 
 export async function deleteRouteCondition(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.route_conditions).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Heatmap / popular-route discovery (decisions backlog item #4) ---
@@ -6889,7 +10215,7 @@ export async function fetchHeatmapPoints(bbox: {
 		p_max_lng: bbox.maxLng,
 		p_max_lat: bbox.maxLat,
 		p_max_points: bbox.maxPoints ?? 5000,
-	});
+	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchHeatmapPoints failed', error);
 		return [];
@@ -6915,6 +10241,9 @@ export interface ClubPin {
 	member_count: number;
 	lng: number;
 	lat: number;
+	/// Verified clubs rank first (migration 20271021000031); the pin
+	/// carries the badge.
+	is_verified: boolean;
 }
 
 export async function fetchClubsInBbox(bbox: {
@@ -6930,7 +10259,7 @@ export async function fetchClubsInBbox(bbox: {
 		p_max_lng: bbox.maxLng,
 		p_max_lat: bbox.maxLat,
 		p_limit: bbox.limit ?? 100,
-	});
+	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchClubsInBbox failed', error);
 		return [];
@@ -6940,15 +10269,20 @@ export async function fetchClubsInBbox(bbox: {
 
 /// Discoverable public routes inside the viewport bbox. The lens is
 /// chosen by `filter`:
-///   • 'popular'     (default) — featured OR run_count > 0.
+///   • 'popular'     (default) — official OR featured OR run_count > 0.
+///   • 'official'    — published by a verified organiser only, uncapped.
 ///   • 'featured'    — admin-curated only.
 ///   • 'friends'     — public routes created by users you follow.
-///   • 'hidden_gems' — un-run public routes past a >=1km sanity floor.
+///   • 'hidden_gems' — un-run, non-official public routes past a >=1km
+///     sanity floor.
+/// Official routes rank first; outside the `official` lens at most a
+/// quarter of `limit` rank ahead of community routes and the rest backfill
+/// after them, so they never crowd the community out of a viewport.
 /// Returns the start_point for each route so the map can drop a pin
 /// there. Mirrors the `p_filter` branch in
-/// 20261113_001_discoverable_routes_filter.sql — keep the union in
+/// 20271021000031_official_discovery_ranking.sql — keep the union in
 /// lockstep with the RPC's CASE arms.
-export type DiscoverFilter = 'popular' | 'featured' | 'friends' | 'hidden_gems';
+export type DiscoverFilter = 'popular' | 'official' | 'featured' | 'friends' | 'hidden_gems';
 
 export interface DiscoverableRoutePin {
 	id: string;
@@ -6961,6 +10295,8 @@ export interface DiscoverableRoutePin {
 	run_count: number;
 	lng: number;
 	lat: number;
+	/// Published by a verified organiser (migration 20271021000030).
+	is_official: boolean;
 }
 
 export async function fetchDiscoverableRoutesInBbox(bbox: {
@@ -6993,6 +10329,47 @@ export async function fetchDiscoverableRoutesInBbox(bbox: {
 		return [];
 	}
 	return data as DiscoverableRoutePin[];
+}
+
+/// Verified races in the next ~6 months inside the viewport bbox, for the
+/// discovery map's race pins (`upcoming_races_in_bbox`, migration
+/// 20271125002408). Only `is_verified` listings pin; the point is the start of
+/// a publicly shown course, else the listing's location. Races whose organiser
+/// club is verified rank first; `officialOnly` narrows to them for the
+/// Official lens.
+export interface UpcomingRacePin {
+	id: string;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	is_official: boolean;
+	has_course: boolean;
+	lng: number;
+	lat: number;
+}
+
+export async function fetchUpcomingRacesInBbox(bbox: {
+	minLng: number;
+	minLat: number;
+	maxLng: number;
+	maxLat: number;
+	limit?: number;
+	officialOnly?: boolean;
+}): Promise<UpcomingRacePin[]> {
+	const { data, error } = await supabase.rpc('upcoming_races_in_bbox', {
+		p_min_lng: bbox.minLng,
+		p_min_lat: bbox.minLat,
+		p_max_lng: bbox.maxLng,
+		p_max_lat: bbox.maxLat,
+		p_limit: bbox.limit ?? 100,
+		p_official_only: bbox.officialOnly ?? false,
+	}, { get: true });
+	if (error || !data) {
+		console.warn('fetchUpcomingRacesInBbox failed', error);
+		return [];
+	}
+	return data as UpcomingRacePin[];
 }
 
 // --- Gear tracking (decisions backlog item #7) ---
@@ -7070,7 +10447,7 @@ export async function createGear(input: {
 		})
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('createGear failed');
+	if (error || !data) throw error ? dbError(error) : new Error('createGear failed');
 	return data as Gear;
 }
 
@@ -7082,7 +10459,7 @@ export async function updateGear(
 	>>,
 ): Promise<void> {
 	const { error } = await supabase.from(TABLES.gear).update(patch).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Mark this gear as the user's current default for its kind. Unsets
@@ -7101,13 +10478,13 @@ export async function setDefaultGear(
 		.eq('owner_id', userId)
 		.eq('kind', kind)
 		.eq('is_default', true);
-	if (clearErr) throw clearErr;
+	if (clearErr) throw dbError(clearErr);
 	if (gearId !== null) {
 		const { error: setErr } = await supabase
 			.from(TABLES.gear)
 			.update({ is_default: true })
 			.eq('id', gearId);
-		if (setErr) throw setErr;
+		if (setErr) throw dbError(setErr);
 	}
 }
 
@@ -7131,7 +10508,7 @@ export async function unretireGear(id: string): Promise<void> {
 
 export async function deleteGear(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.gear).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Replace the full gear set assigned to a run. Empty array clears
@@ -7143,11 +10520,35 @@ export async function setRunGear(runId: string, gearIds: string[]): Promise<void
 	// natural-key churn to make a smarter diff worthwhile. Wrap in
 	// best-effort error surfacing for the toast layer.
 	const del = await supabase.from(TABLES.run_gear).delete().eq('run_id', runId);
-	if (del.error) throw del.error;
+	if (del.error) throw dbError(del.error);
 	if (gearIds.length === 0) return;
 	const rows = gearIds.map((gear_id) => ({ run_id: runId, gear_id }));
 	const ins = await supabase.from(TABLES.run_gear).insert(rows);
-	if (ins.error) throw ins.error;
+	if (ins.error) throw dbError(ins.error);
+}
+
+/// Attach ONE piece of gear to many past runs, additively — the write half of
+/// the post-create backfill prompt on /settings/gear.
+///
+/// Deliberately not [setRunGear]: that replaces a run's whole gear set, so
+/// backfilling a newly-registered pair through it would silently untag every
+/// other item the run already carried. This only ever adds. `ignoreDuplicates`
+/// makes a repeat backfill a no-op instead of a 23505, matching the mobile
+/// `ApiClient.addGearToRuns` shape. It is also the only upsert resolution that
+/// works here: `run_gear` carries SELECT / INSERT / DELETE policies and no
+/// UPDATE one, so PostgREST's default merge-duplicates (`ON CONFLICT DO
+/// UPDATE`) has no policy to pass on a collision.
+///
+/// RLS gates every row: the `run_gear` insert policy requires the caller to
+/// own BOTH the run and the gear, so a forged run id writes nothing.
+export async function addGearToRuns(gearId: string, runIds: string[]): Promise<number> {
+	if (runIds.length === 0) return 0;
+	const rows = runIds.map((run_id) => ({ run_id, gear_id: gearId }));
+	const { error } = await supabase
+		.from(TABLES.run_gear)
+		.upsert(rows, { onConflict: 'run_id,gear_id', ignoreDuplicates: true });
+	if (error) throw dbError(error);
+	return rows.length;
 }
 
 /// Fetch the gear assigned to a single run. Used on the run-detail page AND
@@ -7162,7 +10563,7 @@ export async function setRunGear(runId: string, gearIds: string[]): Promise<void
 /// retired_at / target_distance_m) is never selected, so exposing gear on a
 /// public run stays leak-free.
 export async function fetchRunGear(runId: string): Promise<Gear[]> {
-	const { data, error } = await supabase.rpc('public_run_gear', { p_run_id: runId });
+	const { data, error } = await supabase.rpc('public_run_gear', { p_run_id: runId }, { get: true });
 	if (error || !data) {
 		console.error('fetchRunGear failed', error);
 		return [];
@@ -7221,7 +10622,7 @@ export async function addGearWearLog(input: {
 		})
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('addGearWearLog failed');
+	if (error || !data) throw error ? dbError(error) : new Error('addGearWearLog failed');
 	return data as GearWearLog;
 }
 
@@ -7230,7 +10631,7 @@ export async function deleteGearWearLog(id: string): Promise<void> {
 		.from(TABLES.gear_wear_logs)
 		.delete()
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Gear rotations (roadmap §7 — named multi-pair grouping) ---
@@ -7291,7 +10692,7 @@ export async function createGearRotation(name: string): Promise<GearRotation> {
 		.insert({ owner_id: userId, name })
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('createGearRotation failed');
+	if (error || !data) throw error ? dbError(error) : new Error('createGearRotation failed');
 	return data as GearRotation;
 }
 
@@ -7300,7 +10701,7 @@ export async function renameGearRotation(id: string, name: string): Promise<void
 		.from(TABLES.gear_rotations)
 		.update({ name })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Delete a rotation. Membership rows cascade away via the FK; the gear
@@ -7310,7 +10711,7 @@ export async function deleteGearRotation(id: string): Promise<void> {
 		.from(TABLES.gear_rotations)
 		.delete()
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Replace the full gear set assigned to a rotation. Delete-then-insert,
@@ -7324,11 +10725,11 @@ export async function setGearRotationMembers(
 		.from(TABLES.gear_rotation_members)
 		.delete()
 		.eq('rotation_id', rotationId);
-	if (del.error) throw del.error;
+	if (del.error) throw dbError(del.error);
 	if (gearIds.length === 0) return;
 	const rows = gearIds.map((gear_id) => ({ rotation_id: rotationId, gear_id }));
 	const ins = await supabase.from(TABLES.gear_rotation_members).insert(rows);
-	if (ins.error) throw ins.error;
+	if (ins.error) throw dbError(ins.error);
 }
 
 // --- Safety contacts (decisions §131) ---
@@ -7350,19 +10751,28 @@ export interface PendingSafetyRequest {
 	created_at: string;
 }
 
-/// The owner's own safety-contact list (RLS scopes to owner_id = me).
+/// The owner's own safety-contact list, scoped by an explicit `owner_id`
+/// filter. RLS is NOT the scope here and never was: `safety_contacts` carries
+/// a second permissive SELECT policy for `contact_user_id = auth.uid()`
+/// (20261218_001), and permissive policies OR — so an unfiltered read returns
+/// the union of the rows you own and the rows naming YOU as someone else's
+/// contact, rendered as your own list under your own email address.
 /// Reports the error rather than degrading to `[]`: on a safety surface a
 /// failed read rendered as "you have no emergency contacts", which is the
-/// one wrong answer a runner might act on.
+/// one wrong answer a runner might act on — so a signed-out caller is an
+/// error, not an empty list.
 export async function fetchMySafetyContacts(): Promise<{
 	contacts: SafetyContact[];
-	error: string | null;
+	error: Error | null;
 }> {
+	const userId = auth.user?.id;
+	if (!userId) return { contacts: [], error: new AppError('errorCopy.signedOut', { message: 'Not signed in' }) };
 	const { data, error } = await supabase
 		.from(TABLES.safety_contacts)
 		.select('id, contact_email, contact_phone, contact_user_id, confirmed_at, sms_opt_in_at, created_at')
+		.eq('owner_id', userId)
 		.order('created_at', { ascending: false });
-	return { contacts: (data ?? []) as SafetyContact[], error: error?.message ?? null };
+	return { contacts: (data ?? []) as SafetyContact[], error: error ? dbError(error) : null };
 }
 
 /// Add a safety contact by email. The address is stored as-is; a confirm
@@ -7379,14 +10789,93 @@ export async function addSafetyContact(email: string, phone?: string | null): Pr
 		.insert({ owner_id: userId, contact_email: email, contact_phone: trimmedPhone || null })
 		.select('id, contact_email, contact_phone, contact_user_id, confirmed_at, sms_opt_in_at, created_at')
 		.single();
-	if (error || !data) throw error ?? new Error('addSafetyContact failed');
+	if (error || !data) throw error ? dbError(error) : new Error('addSafetyContact failed');
 	return data as SafetyContact;
 }
 
-/// Remove a safety contact the owner added (RLS gates to owner_id = me).
+/// Remove a safety contact the owner added, scoped by an explicit `owner_id`
+/// filter for the same reason the read is: the table's second permissive
+/// DELETE policy (`contact_user_id = auth.uid()`) means an unscoped
+/// delete-by-id succeeds against a row naming the caller as SOMEONE ELSE's
+/// contact — silently stripping that person's emergency contact under a
+/// button labelled as the caller's own housekeeping. Withdrawing from a
+/// relationship you are the contact of is `declineSafetyRequest`, which says
+/// so.
 export async function removeSafetyContact(id: string): Promise<void> {
-	const { error } = await supabase.from(TABLES.safety_contacts).delete().eq('id', id);
-	if (error) throw error;
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.safety_contacts)
+		.delete()
+		.eq('id', id)
+		.eq('owner_id', userId);
+	if (error) throw dbError(error);
+}
+
+/// A relationship in which SOMEONE ELSE named the signed-in user as their
+/// safety contact and the user confirmed. The mirror image of
+/// `SafetyContact`, and the only place `set_safety_sms_opt_in` can be called
+/// from once the confirm step is behind you.
+export interface SafetyContactOf {
+	id: string;
+	owner_id: string;
+	owner_name: string | null;
+	has_phone: boolean;
+	sms_opt_in_at: string | null;
+	created_at: string;
+}
+
+/// The contact-of direction of `safety_contacts`, scoped by an explicit
+/// `contact_user_id` filter for the same reason the owner list scopes on
+/// `owner_id` (§720): the table's permissive policies OR, so a query has to
+/// state which half it wants rather than inherit whatever RLS happens to
+/// allow. The linked-contact SELECT policy (`20261218_001`) already permits
+/// exactly this read, so no migration is involved. Every row here is a
+/// confirmed relationship by construction — `contact_user_id` is set only by
+/// `confirm_safety_contact`, which stamps `confirmed_at` in the same UPDATE.
+///
+/// The owner's stored number is reported as a FACT, never as digits. It only
+/// gates whether the SMS consent toggle means anything, and there is no owner
+/// UPDATE policy, so a contact could not correct a wrong number from here
+/// even if it were shown — the same posture `my_pending_safety_requests`
+/// takes with `has_phone`.
+///
+/// Reports the error rather than degrading to `[]`, matching the owner list:
+/// a signed-out caller is an error, not "you are nobody's contact".
+export async function fetchSafetyContactOf(): Promise<{
+	relationships: SafetyContactOf[];
+	error: Error | null;
+}> {
+	const userId = auth.user?.id;
+	if (!userId) return { relationships: [], error: new AppError('errorCopy.signedOut', { message: 'Not signed in' }) };
+	const { data, error } = await supabase
+		.from(TABLES.safety_contacts)
+		.select('id, owner_id, contact_phone, sms_opt_in_at, created_at')
+		.eq('contact_user_id', userId)
+		.order('created_at', { ascending: false });
+	if (error) return { relationships: [], error: dbError(error) };
+	const rows = (data ?? []) as {
+		id: string;
+		owner_id: string;
+		contact_phone: string | null;
+		sms_opt_in_at: string | null;
+		created_at: string;
+	}[];
+	// A shadow-hidden or unreadable owner degrades to the anonymous fallback
+	// rather than dropping the row: the consent controls are the point, the
+	// name is decoration.
+	const byId = await fetchProfilesByIds([...new Set(rows.map((r) => r.owner_id))]);
+	return {
+		relationships: rows.map((r) => ({
+			id: r.id,
+			owner_id: r.owner_id,
+			owner_name: byId.get(r.owner_id)?.display_name ?? null,
+			has_phone: r.contact_phone !== null,
+			sms_opt_in_at: r.sms_opt_in_at,
+			created_at: r.created_at,
+		})),
+		error: null,
+	};
 }
 
 /// Pending requests where the signed-in user is the named contact (matched
@@ -7394,12 +10883,12 @@ export async function removeSafetyContact(id: string): Promise<void> {
 /// directly readable until they link by confirming).
 export async function fetchPendingSafetyRequests(): Promise<{
 	requests: PendingSafetyRequest[];
-	error: string | null;
+	error: Error | null;
 }> {
-	const { data, error } = await supabase.rpc('my_pending_safety_requests');
+	const { data, error } = await supabase.rpc('my_pending_safety_requests', undefined, { get: true });
 	return {
 		requests: (data ?? []) as PendingSafetyRequest[],
-		error: error?.message ?? null,
+		error: error ? dbError(error) : null,
 	};
 }
 
@@ -7412,7 +10901,7 @@ export async function confirmSafetyRequest(id: string, smsOptIn = false): Promis
 		p_id: id,
 		p_sms_opt_in: smsOptIn,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data === true;
 }
 
@@ -7420,7 +10909,7 @@ export async function confirmSafetyRequest(id: string, smsOptIn = false): Promis
 /// confirmed contact of. Opting in requires a phone on file (server-enforced).
 export async function setSafetySmsOptIn(id: string, optIn: boolean): Promise<boolean> {
 	const { data, error } = await supabase.rpc('set_safety_sms_opt_in', { p_id: id, p_opt_in: optIn });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data === true;
 }
 
@@ -7436,14 +10925,71 @@ export async function setRunExpectedReturn(
 		p_run_id: runId,
 		p_expected_return_at: expectedReturnAt,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data === true;
+}
+
+/// The run a safety contact's escalation link admits (decisions § 1964), or
+/// null when it admits nothing: a wrong token, an ended or concluded run, an
+/// expired link and a closed gate all read the same. POST, never `get: true`,
+/// so the token travels in the body and stays out of request-URL logs.
+export async function fetchSafetyLiveRun(
+	runId: string,
+	token: string,
+): Promise<{
+	started_at: string;
+	duration_s: number;
+	distance_m: number;
+	route_id: string | null;
+	owner_name: string;
+} | null> {
+	const { data, error } = await supabase.rpc('safety_live_run', {
+		p_run_id: runId,
+		p_token: token,
+	});
+	if (error) throw dbError(error);
+	const row = singleEmbed(data);
+	if (!row) return null;
+	return {
+		started_at: row.started_at,
+		duration_s: Number(row.duration_s ?? 0),
+		distance_m: Number(row.distance_m ?? 0),
+		route_id: row.route_id ?? null,
+		owner_name: row.owner_name ?? '',
+	};
+}
+
+/// Privacy-clipped pings for a safety contact's link. Without `since` the
+/// newest 1000, newest first (the backlog); with it, what arrived after it,
+/// oldest first (the poll). Empty when the link admits nothing.
+export async function fetchSafetyLivePings(
+	runId: string,
+	token: string,
+	since: string | null = null,
+): Promise<
+	Array<{
+		lat: number;
+		lng: number;
+		distance_m: number | null;
+		elapsed_s: number | null;
+		at: string;
+		coarse: boolean;
+		weak_gps: boolean;
+	}>
+> {
+	const { data, error } = await supabase.rpc('safety_live_pings', {
+		p_run_id: runId,
+		p_token: token,
+		...(since ? { p_since: since } : {}),
+	});
+	if (error) throw dbError(error);
+	return Array.isArray(data) ? data : [];
 }
 
 /// Decline a pending request / withdraw from a confirmed one.
 export async function declineSafetyRequest(id: string): Promise<boolean> {
 	const { data, error } = await supabase.rpc('decline_safety_contact', { p_id: id });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data === true;
 }
 
@@ -7454,7 +11000,7 @@ export async function confirmSafetyContactByToken(token: string, smsOptIn = fals
 		p_token: token,
 		p_sms_opt_in: smsOptIn,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data === true;
 }
 
@@ -7490,7 +11036,9 @@ export interface SegmentLeaderboardEntry {
 export interface SegmentEffortWithSegment {
 	effort: SegmentEffort;
 	segment: Segment;
-	rank: number;
+	/** Null when the rank RPC did not answer for this effort — see
+	 *  `segments/rank_pill.ts`. Absent is not `#1`. */
+	rank: number | null;
 }
 
 export async function fetchSegmentsForRoute(routeId: string, limit = 100): Promise<Segment[]> {
@@ -7504,7 +11052,7 @@ export async function fetchSegmentsForRoute(routeId: string, limit = 100): Promi
 export async function fetchSegmentsForRouteWithError(
 	routeId: string,
 	limit = 100,
-): Promise<{ segments: Segment[]; error: string | null }> {
+): Promise<{ segments: Segment[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.segments)
 		.select('*')
@@ -7513,7 +11061,7 @@ export async function fetchSegmentsForRouteWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchSegmentsForRoute failed', error);
-		return { segments: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { segments: [], error: dbError(error) };
 	}
 	return { segments: (data ?? []) as Segment[], error: null };
 }
@@ -7537,13 +11085,13 @@ export async function createSegment(input: {
 		})
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('Insert failed');
+	if (error || !data) throw error ? dbError(error) : new Error('Insert failed');
 	return data as Segment;
 }
 
 export async function deleteSegment(segmentId: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.segments).delete().eq('id', segmentId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // SEGMENT_AGE_BANDS, SegmentAgeBand, and SegmentGenderFilter live in
@@ -7567,17 +11115,17 @@ export async function fetchSegmentLeaderboardTieredWithError(
 		clubId?: string | null;
 	} = {},
 	limit = 50,
-): Promise<{ entries: SegmentLeaderboardEntry[]; error: string | null }> {
+): Promise<{ entries: SegmentLeaderboardEntry[]; error: Error | null }> {
 	const { data, error } = await supabase.rpc('segment_leaderboard_tiered', {
 		p_segment_id: segmentId,
-		p_gender: filter.gender ?? null,
-		p_age_band: filter.ageBand ?? null,
+		p_gender: filter.gender ?? undefined,
+		p_age_band: filter.ageBand ?? undefined,
 		p_limit: limit,
-		p_club_id: filter.clubId ?? null,
-	});
+		p_club_id: filter.clubId ?? undefined,
+	}, { get: true });
 	if (error) {
 		console.warn('fetchSegmentLeaderboardTiered failed', error);
-		return { entries: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { entries: [], error: dbError(error) };
 	}
 	const rows = (data ?? []) as Array<{
 		effort_id: string;
@@ -7636,40 +11184,39 @@ export async function fetchEffortsForRun(runId: string): Promise<SegmentEffortWi
 /// `fetchRoutesWithError` convention.
 export async function fetchEffortsForRunWithError(
 	runId: string,
-): Promise<{ efforts: SegmentEffortWithSegment[]; error: string | null }> {
+): Promise<{ efforts: SegmentEffortWithSegment[]; error: Error | null }> {
 	const { data: efforts, error } = await supabase
 		.from(TABLES.segment_efforts)
 		.select('*')
 		.eq('run_id', runId);
 	if (error) {
 		console.error('fetchEffortsForRun failed', error);
-		return { efforts: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { efforts: [], error: dbError(error) };
 	}
 	if (!efforts || efforts.length === 0) return { efforts: [], error: null };
 
 	const segmentIds = Array.from(new Set(efforts.map((e) => e.segment_id)));
-	const { data: segments } = await supabase
-		.from(TABLES.segments)
-		.select('*')
-		.in('id', segmentIds);
+	const { data: segments } = await queryChunked(segmentIds, (part) =>
+		supabase.from(TABLES.segments).select('*').in('id', part)
+	);
 	const bySeg = new Map<string, Segment>();
 	for (const s of segments ?? []) bySeg.set(s.id, s as Segment);
 
 	// Rank every effort in ONE round-trip via segment_effort_ranks (migration
 	// 20261223_001) instead of a serial count-per-effort loop — a run over a
 	// 30-segment route used to fire 30 sequential queries before the panel
-	// rendered. The RPC is SECURITY INVOKER so RLS gates the comparison set
-	// identically to the old client count; rank = 1 + strictly-faster visible
-	// efforts. On RPC failure ranks fall back to null so the panel still shows
-	// the efforts (degraded, not blank).
+	// rendered. rank = 1 + the distinct OTHER athletes holding a strictly-faster
+	// visible, non-blocked effort — the per-athlete population the board this
+	// chip links to ranks over (20270523_001, decisions §594), not a count of
+	// effort rows. `supabase.rpc` RESOLVES with an error rather than throwing,
+	// so a failure here leaves the map empty and every effort unranked; the
+	// panel still shows the efforts (degraded, not blank) and each says so.
+	// It must not say `#1` — see decisions §746.
 	const { data: rankRows, error: rankErr } = await supabase.rpc('segment_effort_ranks', {
 		p_run_id: runId,
-	});
+	}, { get: true });
 	if (rankErr) console.error('segment_effort_ranks failed', rankErr);
-	const rankByEffort = new Map<string, number>();
-	for (const r of (rankRows ?? []) as { effort_id: string; rank: number }[]) {
-		rankByEffort.set(r.effort_id, r.rank);
-	}
+	const rankByEffort = readRankRows(rankRows);
 
 	const out: SegmentEffortWithSegment[] = [];
 	for (const e of efforts as SegmentEffort[]) {
@@ -7678,7 +11225,7 @@ export async function fetchEffortsForRunWithError(
 		out.push({
 			effort: e,
 			segment,
-			rank: rankByEffort.get(e.id) ?? 1,
+			rank: rankByEffort.get(e.id) ?? null,
 		});
 	}
 	return { efforts: out, error: null };
@@ -7708,7 +11255,7 @@ export async function computeSegmentEffortsForRun(input: {
 	if (segments.length === 0) return 0;
 
 	const { buildSegmentEffortRows } = await import('../segments/auto_segment_effort');
-	const rows = buildSegmentEffortRows(segments, input.track as import('$lib/types').TrackPoint[], {
+	const rows = buildSegmentEffortRows(segments, input.track as import('#lib/types.ts').TrackPoint[], {
 		run_id: input.run_id,
 		user_id: userId,
 	});
@@ -7744,6 +11291,43 @@ export interface GlobalSegment {
 	country_code: string | null;
 	is_active: boolean;
 	created_at: string;
+	/** The start and end lines (decisions § 2402); null where a segment has none. */
+	start_gate_lat: number | null;
+	start_gate_lng: number | null;
+	start_gate_bearing_deg: number | null;
+	start_gate_half_width_m: number | null;
+	start_gate_source: SegmentGateSource | null;
+	end_gate_lat: number | null;
+	end_gate_lng: number | null;
+	end_gate_bearing_deg: number | null;
+	end_gate_half_width_m: number | null;
+	end_gate_source: SegmentGateSource | null;
+}
+
+function segmentGateSource(v: string | null): SegmentGateSource | null {
+	return v === 'derived' || v === 'curator' ? v : null;
+}
+
+/// One `global_segments` row as the client's `GlobalSegment`. `waypoints` is a
+/// jsonb column the generated row types `Json`, where this type promises a
+/// line; a value that is not an array becomes `[]` rather than being asserted
+/// through, the same rule `asRoute` follows for the same column shape.
+function asGlobalSegment(
+	row: Database['public']['Tables']['global_segments']['Row'],
+): GlobalSegment {
+	return {
+		...row,
+		waypoints: Array.isArray(row.waypoints)
+			? (row.waypoints as unknown as GlobalSegment['waypoints'])
+			: [],
+		start_gate_source: segmentGateSource(row.start_gate_source),
+		end_gate_source: segmentGateSource(row.end_gate_source),
+	};
+}
+
+/// Whether a catalogue segment is timed by its lines: both ends have one.
+export function globalSegmentHasLines(segment: GlobalSegment): boolean {
+	return segment.start_gate_source !== null && segment.end_gate_source !== null;
 }
 
 export interface GlobalSegmentEffort {
@@ -7754,6 +11338,8 @@ export interface GlobalSegmentEffort {
 	time_seconds: number;
 	started_at: string;
 	created_at: string;
+	/** Absent on a leaderboard row: the board RPC does not return it. */
+	matched_by?: GlobalSegmentMatchedBy;
 }
 
 export interface GlobalSegmentLeaderboardEntry {
@@ -7765,10 +11351,14 @@ export interface GlobalSegmentLeaderboardEntry {
 export interface GlobalSegmentEffortWithSegment {
 	effort: GlobalSegmentEffort;
 	segment: GlobalSegment;
-	rank: number;
+	/** Null when the rank RPC did not answer for this effort — see
+	 *  `segments/rank_pill.ts`. Absent is not `#1`. */
+	rank: number | null;
 }
 
-export async function fetchGlobalSegments(limit = 200): Promise<GlobalSegment[]> {
+export async function fetchGlobalSegments(
+	limit = GLOBAL_SEGMENT_SCORING_LIMIT,
+): Promise<GlobalSegment[]> {
 	return (await fetchGlobalSegmentsWithError(limit)).segments;
 }
 
@@ -7776,9 +11366,16 @@ export async function fetchGlobalSegments(limit = 200): Promise<GlobalSegment[]>
 /// catalogue is small); this fetch just pulls the active rows. Surfaces the
 /// error instead of swallowing to `[]` so the browse page can show a
 /// distinct error state rather than a false "empty catalogue".
+///
+/// The default IS the catalogue bound, not a convenience number. It read 200
+/// while the scoring sweep passed GLOBAL_SEGMENT_SCORING_LIMIT (500), so the
+/// two callers of one function disagreed about what "the whole catalogue"
+/// means and `/segments` dropped the alphabetical tail of any catalogue past
+/// 200 rows — silently, which is the same false-incomplete-result the error
+/// return above exists to prevent, one layer up.
 export async function fetchGlobalSegmentsWithError(
-	limit = 200,
-): Promise<{ segments: GlobalSegment[]; error: string | null }> {
+	limit = GLOBAL_SEGMENT_SCORING_LIMIT,
+): Promise<{ segments: GlobalSegment[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.global_segments)
 		.select('*')
@@ -7787,9 +11384,9 @@ export async function fetchGlobalSegmentsWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchGlobalSegments failed', error);
-		return { segments: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { segments: [], error: dbError(error) };
 	}
-	return { segments: (data ?? []) as GlobalSegment[], error: null };
+	return { segments: (data ?? []).map(asGlobalSegment), error: null };
 }
 
 export async function fetchGlobalSegment(id: string): Promise<GlobalSegment | null> {
@@ -7803,29 +11400,55 @@ export async function fetchGlobalSegment(id: string): Promise<GlobalSegment | nu
 		console.error('fetchGlobalSegment failed', error);
 		return null;
 	}
-	return (data as GlobalSegment) ?? null;
+	return data ? asGlobalSegment(data) : null;
 }
 
 /// Block-guarded global-segment leaderboard. Mirrors
 /// `fetchSegmentLeaderboardTiered` but calls the catalogue RPC (no route
 /// visibility branch — the catalogue is public; per-effort run privacy +
 /// the block graph are applied server-side).
+/// The caller's best public attempt against each mutual-follow friend's on one
+/// route or segment (`head_to_head`, decisions § 2267). With `friendId`, that
+/// friend's row or none. Throws on a failed read, so "no friend to compare"
+/// and "could not load" stay distinguishable to the reader.
+export async function fetchHeadToHead(
+	kind: HeadToHeadKind,
+	targetId: string,
+	opts: { friendId?: string | null; activityType?: string | null } = {},
+): Promise<HeadToHeadRow[]> {
+	const { data, error } = await supabase.rpc(
+		'head_to_head',
+		{
+			p_kind: kind,
+			p_target_id: targetId,
+			p_friend_id: opts.friendId ?? undefined,
+			p_activity_type: opts.activityType ?? undefined,
+		},
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return parseHeadToHeadRows(data);
+}
+
 export async function fetchGlobalSegmentLeaderboard(
 	segmentId: string,
 	filter: {
 		gender?: SegmentGenderFilter | null;
 		ageBand?: SegmentAgeBand | null;
 		clubId?: string | null;
+		/** A calendar year in the course's park timezone; omitted is all time. */
+		season?: number | null;
 	} = {},
 	limit = 50,
 ): Promise<GlobalSegmentLeaderboardEntry[]> {
 	const { data, error } = await supabase.rpc('global_segment_leaderboard', {
 		p_segment_id: segmentId,
-		p_gender: filter.gender ?? null,
-		p_age_band: filter.ageBand ?? null,
+		p_gender: filter.gender ?? undefined,
+		p_age_band: filter.ageBand ?? undefined,
 		p_limit: limit,
-		p_club_id: filter.clubId ?? null,
-	});
+		p_club_id: filter.clubId ?? undefined,
+		p_season: filter.season ?? undefined,
+	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchGlobalSegmentLeaderboard failed', error);
 		return [];
@@ -7856,104 +11479,208 @@ export async function fetchGlobalSegmentLeaderboard(
 	}));
 }
 
-/// Backfill catalogue-segment efforts a run earned. Called from the
-/// run-detail page on mount (owner only). Scores the run's track against
-/// every active catalogue geometry via the pure `computeGlobalSegmentEffort`
-/// (end-to-end match, curated v1) and batch-upserts matches. Idempotent via
-/// unique(global_segment_id, run_id) + ignoreDuplicates. Returns new count.
+/// Whether any effort the viewer can see on a catalogue segment was matched by
+/// the circles. On a segment timed by its lines that means an effort written
+/// before the line matcher, still waiting for its runner's next view to be
+/// re-matched (issue #1308), so the board says so. A failed read answers
+/// false: the note is advisory, and the board itself is unaffected.
+export async function globalSegmentHasZoneEfforts(segmentId: string): Promise<boolean> {
+	const { count, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id', { count: 'exact', head: true })
+		.eq('global_segment_id', segmentId)
+		.eq('matched_by', 'zone');
+	if (error) {
+		console.warn('globalSegmentHasZoneEfforts failed', error);
+		return false;
+	}
+	return (count ?? 0) > 0;
+}
+
+/// The active catalogue segments that could be timed on a track with this
+/// extent (`global_segments_in_bbox`, decisions § 2392): those whose own
+/// extent overlaps it padded by `GLOBAL_SEGMENT_CANDIDATE_PAD_M`. The same
+/// lookup, pad and cap the `segment-match` Edge Function scores with.
+export async function fetchGlobalSegmentsInBbox(
+	extent: TrackExtent,
+): Promise<{ segments: GlobalSegment[]; error: Error | null }> {
+	const { data, error } = await supabase.rpc('global_segments_in_bbox', {
+		p_min_lat: extent.minLat,
+		p_min_lng: extent.minLng,
+		p_max_lat: extent.maxLat,
+		p_max_lng: extent.maxLng,
+		p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M,
+		p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	}, { get: true });
+	if (error) {
+		console.warn('fetchGlobalSegmentsInBbox failed', error);
+		return { segments: [], error: dbError(error) };
+	}
+	return { segments: (data ?? []).map(asGlobalSegment), error: null };
+}
+
+/// Score a run's catalogue-segment efforts from the run-detail page on mount
+/// (owner only). The FALLBACK path: the `segment-match` job scores every run
+/// server-side when its track lands (decisions § 2392), and this stays until
+/// that job has run in production, then goes (issue #1313). It scores the
+/// run's track against the catalogue segments near it (the bbox lookup, not
+/// the whole catalogue) via the pure `computeGlobalSegmentEfforts`, then makes
+/// the run's stored effort on every segment it scored say what the matcher
+/// said, as the server's `record_segment_match` does: a new match is
+/// inserted, an effort the run no longer earns is deleted, and one whose time
+/// or rule changed is deleted then re-inserted (there is no client UPDATE
+/// path). A segment it did not score is never touched. An effort the
+/// server's client bounds would refuse (`segments/effort_bounds.ts`) counts
+/// as no match, and a refusal the screen missed costs only its own row.
+/// Returns the number of efforts inserted.
 ///
-/// The write-side upsert is idempotent, but the FETCH + client-side haversine
-/// match are not — without a short-circuit they'd re-run on every owner view
-/// forever (issue #333). A `runs.metadata.global_segments_scored_count` stamp
-/// records the catalogue size a run was last scored against; a cheap `count`
-/// query gates the expensive polyline fetch so a scored run only recomputes
-/// when the (deliberately growing) catalogue gains segments. Both the gate
-/// and the fetch are bounded by the shared GLOBAL_SEGMENT_SCORING_LIMIT —
-/// see its doc comment for why a drift between the two is a pessimisation.
+/// Two `runs.metadata` stamps gate the pass so a scored run does not
+/// re-match on every view: `global_segments_scored_count`, the size of the
+/// active catalogue it was last scored against (issue #333), and
+/// `global_segments_matcher_version`, the matcher that scored it. The pass
+/// runs when the catalogue has grown or the run was scored by an older
+/// matcher, which is how efforts the circles-only matcher wrote are
+/// re-matched by the line matcher on their next owner view (issue #1308).
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
-	track: { lat: number; lng: number; ts?: string }[];
+	track: TrackPoint[];
 }): Promise<number> {
 	if (!input.track || input.track.length < 2) return 0;
 	const userId = auth.user?.id;
 	if (!userId || userId !== input.user_id) return 0;
 
 	const [{ data: runRow }, { count: activeCount }] = await Promise.all([
-		supabase.from(TABLES.runs).select('metadata').eq('id', input.run_id).maybeSingle(),
+		supabase
+			.from(TABLES.runs)
+			.select('metadata, started_at, activity_type')
+			.eq('id', input.run_id)
+			.maybeSingle(),
 		supabase
 			.from(TABLES.global_segments)
 			.select('id', { count: 'exact', head: true })
 			.eq('is_active', true),
 	]);
-	const runMetadata = (runRow?.metadata ?? null) as Record<string, unknown> | null;
-	if (!shouldRescoreGlobalSegments(runMetadata, activeCount)) return 0;
+	if (!runRow) return 0;
+	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
+	if (!shouldRescoreGlobalSegments(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION)) return 0;
+	// An unknown count cannot be stamped; the pass still runs, and the next
+	// view tries again.
+	const scoredCount = typeof activeCount === 'number' ? activeCount : null;
 
-	const { segments } = await fetchGlobalSegmentsWithError(GLOBAL_SEGMENT_SCORING_LIMIT);
-	if (segments.length === 0) return 0;
+	const extent = trackExtent(input.track);
+	if (!extent) return 0;
+	const { segments, error: candidatesError } = await fetchGlobalSegmentsInBbox(extent);
+	if (candidatesError) return 0;
 
-	const { computeGlobalSegmentEfforts } = await import('../segments/segments');
-	const rows: {
-		global_segment_id: string;
-		run_id: string;
-		user_id: string;
-		time_seconds: number;
-		started_at: string;
-	}[] = [];
-	// One sweep over the catalogue rather than a call per segment: the track's
-	// extent is then measured once and the (overwhelming) majority of segments,
-	// which are nowhere near this run, are rejected without walking it.
+	// A park course's checkpoints are part of its match rule. Without them the
+	// matcher would time a run that cut the course, so a failed read scores
+	// nothing (and stamps nothing, so the next view retries), and a course
+	// whose list cannot be read is left out of the sweep.
+	const checkpointsBySegment =
+		segments.length > 0
+			? await fetchParkCourseCheckpoints(segments.map((seg) => seg.id))
+			: new Map<string, CourseCheckpoint[] | null>();
+	if (checkpointsBySegment === null) return 0;
+	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
+
+	const { computeGlobalSegmentEfforts, globalSegmentGeometry } = await import('../segments/segments');
+	// One sweep over the candidates rather than a call per segment: the
+	// track's extent is then measured once.
 	const efforts = computeGlobalSegmentEfforts(
-		input.track as import('$lib/types').TrackPoint[],
-		segments.map((seg) => ({
-			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
-			distance_m: Number(seg.distance_m),
-		})),
+		input.track,
+		scorable.map((seg) => globalSegmentGeometry(seg, checkpointsBySegment.get(seg.id))),
 	);
-	for (let i = 0; i < segments.length; i++) {
-		const eff = efforts[i];
+
+	const { data: storedRows, error: storedErr } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id, global_segment_id, time_seconds, started_at, matched_by')
+		.eq('run_id', input.run_id);
+	if (storedErr) {
+		console.warn('global segment efforts read failed', input.run_id, storedErr);
+		return 0;
+	}
+	const stored = new Map((storedRows ?? []).map((row) => [row.global_segment_id, row]));
+
+	const staleIds: string[] = [];
+	const rows: Insertable<'global_segment_efforts'>[] = [];
+	for (let i = 0; i < scorable.length; i++) {
+		// An effort the server's client bounds would refuse is treated as no
+		// match, before anything is deleted: written in the batch it would
+		// fail the whole statement.
+		const measured = efforts[i];
+		const eff =
+			measured && globalSegmentEffortRefusal(measured, runRow, scorable[i].distance_m) === null
+				? measured
+				: null;
+		const have = stored.get(scorable[i].id);
+		if (
+			have &&
+			eff &&
+			have.matched_by === eff.matched_by &&
+			Math.abs(Number(have.time_seconds) - eff.time_seconds) < 0.001 &&
+			Date.parse(have.started_at) === Date.parse(eff.started_at)
+		) {
+			continue;
+		}
+		if (have) staleIds.push(have.id);
 		if (!eff) continue;
 		rows.push({
-			global_segment_id: segments[i].id,
+			global_segment_id: scorable[i].id,
 			run_id: input.run_id,
 			user_id: userId,
 			time_seconds: eff.time_seconds,
 			started_at: eff.started_at,
+			matched_by: eff.matched_by,
 		});
 	}
-	let newCount = 0;
-	if (rows.length > 0) {
-		const { data: inserted, error } = await supabase
-			.from(TABLES.global_segment_efforts)
-			.upsert(rows, { onConflict: 'global_segment_id,run_id', ignoreDuplicates: true })
-			.select('id');
+
+	if (staleIds.length > 0) {
+		const { error } = await queryChunked(staleIds, (part) =>
+			supabase.from(TABLES.global_segment_efforts).delete().in('id', part).select('id'),
+		);
 		if (error) {
-			// Don't stamp on a failed write — the run stays un-scored so
-			// the next view retries rather than dropping real matches.
-			console.warn('global segment effort batch upsert failed', input.run_id, error);
+			// Don't stamp: the next view retries the whole reconciliation.
+			console.warn('global segment effort re-match delete failed', input.run_id, error);
 			return 0;
 		}
-		newCount = inserted?.length ?? 0;
 	}
+	const written = await writeEffortsIsolatingRefusals(rows, async (batch) => {
+		const { data, error } = await supabase
+			.from(TABLES.global_segment_efforts)
+			.upsert(batch, { onConflict: 'global_segment_id,run_id', ignoreDuplicates: true })
+			.select('id');
+		return { count: data?.length ?? 0, error };
+	});
+	if (written.refused > 0) {
+		console.warn('global segment efforts refused by the client bounds', input.run_id, written.refused);
+	}
+	if (written.error) {
+		// Don't stamp on a failed write — the run stays un-scored so
+		// the next view retries rather than dropping real matches.
+		console.warn('global segment effort write failed', input.run_id, written.error);
+		return written.written;
+	}
+	const newCount = written.written;
+	if (scoredCount === null) return newCount;
 
 	// Stamp even when nothing matched (rows.length === 0): a no-match run
-	// must not re-fetch + re-match the whole catalogue every view either.
+	// must not re-fetch + re-match every view either.
 	//
 	// Re-read the bag here rather than merging into the copy read at the top
-	// of the function: the catalogue fetch + haversine pass above takes
-	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
+	// of the function: the candidate fetch + haversine pass above takes
+	// time, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
-	// Keeping the read adjacent to the write is the same discipline
-	// `updateRunMetadata` follows.
 	const { data: freshRow } = await supabase
 		.from(TABLES.runs)
 		.select('metadata')
 		.eq('id', input.run_id)
 		.maybeSingle();
 	const next = stampGlobalSegmentsScored(
-		(freshRow?.metadata ?? null) as Record<string, unknown> | null,
-		segments.length,
+		(freshRow?.metadata ?? null) as JsonObject | null,
+		scoredCount,
+		GLOBAL_SEGMENT_MATCHER_VERSION,
 	);
 	const { error: stampErr } = await supabase
 		.from(TABLES.runs)
@@ -7961,6 +11688,256 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		.eq('id', input.run_id);
 	if (stampErr) console.warn('global segment scored stamp failed', input.run_id, stampErr);
 	return newCount;
+}
+
+export type Park = Database['public']['Tables']['parks']['Row'] & {
+	/** The calendar year it is now where the park is (`park_season`). */
+	park_season: number;
+};
+
+export type ParkCourseRow = Database['public']['Tables']['park_courses']['Row'];
+
+export interface ParkCourse extends Omit<ParkCourseRow, 'checkpoints'> {
+	/** Null when the stored list cannot be read; such a course is never scored. */
+	checkpoints: CourseCheckpoint[] | null;
+	segment: GlobalSegment;
+}
+
+const PARK_COLUMNS = '*, park_season';
+
+function asParkCourse(
+	row: ParkCourseRow & {
+		global_segments: Database['public']['Tables']['global_segments']['Row'] | null;
+	},
+): ParkCourse | null {
+	if (!row.global_segments) return null;
+	const { global_segments: segment, ...course } = row;
+	return {
+		...course,
+		checkpoints: parseCourseCheckpoints(course.checkpoints),
+		segment: asGlobalSegment(segment),
+	};
+}
+
+/// Every active park, for the `/parks` index. Throws on a failed read so the
+/// page can tell "no parks yet" from "could not load".
+export async function fetchParks(): Promise<Park[]> {
+	const { data, error } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.order('region_code', { ascending: true })
+		.order('name', { ascending: true });
+	if (error) throw dbError(error);
+	return (data ?? []) as unknown as Park[];
+}
+
+/// One park by its region code and slug; null when there is none (or it was
+/// pulled, which RLS hides). Throws on a failed read.
+export async function fetchPark(regionCode: string, slug: string): Promise<Park | null> {
+	const { data, error } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.eq('region_code', regionCode)
+		.eq('slug', slug)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return (data as unknown as Park | null) ?? null;
+}
+
+/// A park's courses with their catalogue segment, by slug. A course whose
+/// segment was pulled is dropped (RLS hides the segment). Throws on a failed read.
+export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*, global_segments(*)')
+		.eq('park_id', parkId)
+		.order('slug', { ascending: true });
+	if (error) throw dbError(error);
+	return (data ?? []).flatMap((row) => {
+		const course = asParkCourse(row);
+		return course ? [course] : [];
+	});
+}
+
+export interface ParkCourseWithPark extends ParkCourse {
+	park: Database['public']['Tables']['parks']['Row'];
+}
+
+/// Every listed park course with its segment and park, in one read, for the
+/// "Run any time" section of `/races`. A course whose park was pulled or
+/// whose segment was pulled is dropped (RLS hides them). Unordered: the page
+/// orders by `orderAnyTimeCourses`. Throws on a failed read.
+export async function fetchAllParkCourses(): Promise<ParkCourseWithPark[]> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*, global_segments(*), parks!inner(*)');
+	if (error) throw dbError(error);
+	return (data ?? []).flatMap((row) => {
+		const { parks: park, ...rest } = row;
+		const course = asParkCourse(rest);
+		return course && park ? [{ ...course, park }] : [];
+	});
+}
+
+export interface ParkCourseRecord {
+	season: number;
+	userId: string;
+	/** Null when the record holder's profile is hidden from the caller. */
+	displayName: string | null;
+	timeSeconds: number;
+}
+
+/// This season's record on every park course, keyed by course id
+/// (`park_course_records`, one call). A course with no visible effort this
+/// season is absent. Throws on a failed read.
+export async function fetchParkCourseRecords(): Promise<Map<string, ParkCourseRecord>> {
+	const { data, error } = await supabase.rpc('park_course_records', undefined, { get: true });
+	if (error) throw dbError(error);
+	const out = new Map<string, ParkCourseRecord>();
+	for (const row of data ?? []) {
+		out.set(row.course_id, {
+			season: row.season,
+			userId: row.user_id,
+			displayName: row.display_name ?? null,
+			timeSeconds: row.time_seconds,
+		});
+	}
+	return out;
+}
+
+/// The park course built on a catalogue segment, with its park, if any. The
+/// segment page uses it to link back to the course. Throws on a failed read.
+export async function fetchParkCourseForSegment(
+	segmentId: string,
+): Promise<{ course: ParkCourseRow; park: Park } | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*')
+		.eq('global_segment_id', segmentId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const { data: park, error: parkError } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.eq('id', data.park_id)
+		.maybeSingle();
+	if (parkError) throw dbError(parkError);
+	return park ? { course: data, park: park as unknown as Park } : null;
+}
+
+/// Which of these routes are a park course's official route, so their Official
+/// badge can read "Official Threkir course". Throws on a failed read.
+export async function fetchParkCourseRouteIds(routeIds: readonly string[]): Promise<Set<string>> {
+	if (routeIds.length === 0) return new Set();
+	const { data, error } = await queryChunked(routeIds, (part) =>
+		supabase.from(TABLES.park_courses).select('route_id').in('route_id', part),
+	);
+	if (error) throw dbError(error);
+	return new Set((data ?? []).flatMap((r) => (r.route_id ? [r.route_id] : [])));
+}
+
+/// The credit an exported file of this route must carry when the route is a
+/// park course's official route (OpenStreetMap's licence asks for it on the
+/// exported work, not only on the page). Null for any other route. Throws on
+/// a failed read, so an export never goes out uncredited because the check
+/// could not run.
+export async function fetchRouteCourseAttribution(routeId: string): Promise<GpxAttribution | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('geometry_source, parks(name, website_url)')
+		.eq('route_id', routeId)
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return courseAttribution(
+		data.geometry_source,
+		data.parks ? { name: data.parks.name, websiteUrl: data.parks.website_url } : null,
+	);
+}
+
+/// The geometry credit of the park course built on this official route or
+/// catalogue segment (`park_courses.attribution`, decisions § 2438), for the
+/// route and segment pages, which show the course outside its own page. Null
+/// when it is no park course's, or the course predates the column. Throws on
+/// a failed read.
+export async function fetchParkCourseCredit(
+	of: { routeId: string } | { segmentId: string },
+): Promise<string | null> {
+	const query = supabase.from(TABLES.park_courses).select('attribution');
+	const { data, error } = await ('routeId' in of
+		? query.eq('route_id', of.routeId)
+		: query.eq('global_segment_id', of.segmentId)
+	)
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.attribution?.trim() || null;
+}
+
+/// Checkpoints per catalogue segment that is a park course, for the scorer.
+/// A segment absent from the map has no checkpoints; one mapped to null has a
+/// list that cannot be read and must not be scored. Null overall when the
+/// read failed, which the scorer treats as "score nothing this time".
+async function fetchParkCourseCheckpoints(segmentIds: readonly string[]): Promise<Map<
+	string,
+	CourseCheckpoint[] | null
+> | null> {
+	// Up to GLOBAL_SEGMENT_CANDIDATE_LIMIT ids, past the in-filter bound, so
+	// chunked: an over-long list can come back empty rather than failing.
+	const { data, error } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('global_segment_id, checkpoints')
+			.in('global_segment_id', part),
+	);
+	if (error) {
+		console.warn('park course checkpoints read failed', error);
+		return null;
+	}
+	const out = new Map<string, CourseCheckpoint[] | null>();
+	for (const row of data ?? []) {
+		out.set(row.global_segment_id, parseCourseCheckpoints(row.checkpoints));
+	}
+	return out;
+}
+
+export interface CompletionsEntry {
+	athlete: PublicProfile;
+	completions: number;
+	lastCompletedAt: string;
+	rank: number;
+}
+
+/// The most-completions board on a catalogue segment: one row per athlete,
+/// counting distinct local days (park timezone) with a visible effort. Tied
+/// counts share a rank. Throws on a failed read.
+export async function fetchGlobalSegmentCompletions(
+	segmentId: string,
+	season: number | null,
+	limit = 50,
+): Promise<CompletionsEntry[]> {
+	const { data, error } = await supabase.rpc(
+		'global_segment_completions',
+		{ p_segment_id: segmentId, p_season: season ?? undefined, p_limit: limit },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	let rank = 0;
+	let prev: number | null = null;
+	return (data ?? []).map((row, i) => {
+		if (row.completions !== prev) {
+			rank = i + 1;
+			prev = row.completions;
+		}
+		return {
+			athlete: { id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url },
+			completions: row.completions,
+			lastCompletedAt: row.last_completed_at,
+			rank,
+		};
+	});
 }
 
 /// Catalogue-segment efforts a run earned, joined to the segment + ranked
@@ -7976,27 +11953,27 @@ export async function fetchGlobalEffortsForRun(
 	if (error || !efforts || efforts.length === 0) return [];
 
 	const segmentIds = Array.from(new Set(efforts.map((e) => e.global_segment_id)));
-	const { data: segments } = await supabase
-		.from(TABLES.global_segments)
-		.select('*')
-		.in('id', segmentIds);
+	const { data: segments } = await queryChunked(segmentIds, (part) =>
+		supabase.from(TABLES.global_segments).select('*').in('id', part)
+	);
 	const bySeg = new Map<string, GlobalSegment>();
-	for (const s of segments ?? []) bySeg.set(s.id, s as GlobalSegment);
+	for (const s of segments ?? []) bySeg.set(s.id, asGlobalSegment(s));
 
+	// This one is reachable for a logged-out reader of a public run today:
+	// `global_segment_effort_ranks` is granted to `authenticated` only while
+	// both catalogue tables are readable by `anon` (20270512_001), so the rows
+	// arrive and the ranks 42501. Unranked is the honest answer either way.
 	const { data: rankRows, error: rankErr } = await supabase.rpc('global_segment_effort_ranks', {
 		p_run_id: runId,
-	});
+	}, { get: true });
 	if (rankErr) console.error('global_segment_effort_ranks failed', rankErr);
-	const rankByEffort = new Map<string, number>();
-	for (const r of (rankRows ?? []) as { effort_id: string; rank: number }[]) {
-		rankByEffort.set(r.effort_id, r.rank);
-	}
+	const rankByEffort = readRankRows(rankRows);
 
 	const out: GlobalSegmentEffortWithSegment[] = [];
 	for (const e of efforts as GlobalSegmentEffort[]) {
 		const segment = bySeg.get(e.global_segment_id);
 		if (!segment) continue;
-		out.push({ effort: e, segment, rank: rankByEffort.get(e.id) ?? 1 });
+		out.push({ effort: e, segment, rank: rankByEffort.get(e.id) ?? null });
 	}
 	return out;
 }
@@ -8016,6 +11993,11 @@ export interface NotificationRow {
 	achievement_id: string | null;
 	challenge_id: string | null;
 	read_at: string | null;
+	refunded: boolean;
+	/** A deleted event's title, on the unlinked cancel notice its delete leaves (§ 2358). */
+	event_title: string | null;
+	/** The group a message or group_invite is about (20271217000001); null otherwise. */
+	conversation_id?: string | null;
 	created_at: string;
 }
 
@@ -8047,7 +12029,7 @@ export async function fetchNotifications(limit = 50): Promise<NotificationView[]
 /// Mirrors the `fetchRoutesWithError` convention.
 export async function fetchNotificationsWithError(
 	limit = 50,
-): Promise<{ notifications: NotificationView[]; error: string | null }> {
+): Promise<{ notifications: NotificationView[]; error: Error | null }> {
 	const { data: rows, error } = await supabase
 		.from(TABLES.notifications)
 		.select('*')
@@ -8055,7 +12037,7 @@ export async function fetchNotificationsWithError(
 		.limit(limit);
 	if (error) {
 		console.error('fetchNotifications failed', error);
-		return { notifications: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { notifications: [], error: dbError(error) };
 	}
 	if (!rows || rows.length === 0) return { notifications: [], error: null };
 
@@ -8110,7 +12092,7 @@ export async function fetchNotificationsWithError(
 	}
 	const eventBy = new Map<string, { title: string; club_slug: string | null }>();
 	for (const e of (events.data ?? []) as { id: string; title: string; clubs: { slug: string } | { slug: string }[] | null }[]) {
-		const club = Array.isArray(e.clubs) ? e.clubs[0] ?? null : e.clubs;
+		const club = singleEmbed(e.clubs);
 		eventBy.set(e.id, { title: e.title, club_slug: club?.slug ?? null });
 	}
 	const clubBy = new Map<string, { name: string; slug: string }>();
@@ -8131,7 +12113,7 @@ export async function fetchNotificationsWithError(
 				run_distance_m: run?.distance_m ?? null,
 				run_started_at: run?.started_at ?? null,
 				comment_excerpt: body ? (body.length > 120 ? body.slice(0, 117) + '…' : body) : null,
-				event_title: ev?.title ?? null,
+				event_title: ev?.title ?? r.event_title ?? null,
 				event_club_slug: ev?.club_slug ?? null,
 				club_name: club?.name ?? null,
 				club_slug: club?.slug ?? null,
@@ -8159,7 +12141,7 @@ export async function markNotificationRead(id: string): Promise<void> {
 		.update({ read_at: new Date().toISOString() })
 		.eq('id', id)
 		.is('read_at', null);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
@@ -8170,13 +12152,19 @@ export async function markAllNotificationsRead(): Promise<void> {
 		.update({ read_at: new Date().toISOString() })
 		.eq('user_id', userId)
 		.is('read_at', null);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
+// Dismissing a group is ONE intent, so it is one statement in one
+// transaction. An `in` filter rides the request URL, which leaves a large
+// dismiss at the mercy of the gateway's request-line budget (decisions
+// § 653), and chunking to dodge that only trades the failure for a partial
+// dismiss the spent undo offer can no longer take back. The RPC takes the
+// array in the POST body and refuses past its own cap rather than truncating.
 export async function deleteNotifications(ids: string[]): Promise<void> {
 	if (ids.length === 0) return;
-	const { error } = await supabase.from(TABLES.notifications).delete().in('id', ids);
-	if (error) throw error;
+	const { error } = await supabase.rpc('delete_notifications', { p_ids: ids });
+	if (error) throw dbError(error);
 }
 
 // ─────────────────────── User reports ───────────────────────
@@ -8192,12 +12180,37 @@ export type ReportReason =
 	| 'harassment'
 	| 'inappropriate'
 	| 'impersonation'
-	| 'other';
+	| 'other'
+	| 'organiser_dispute'
+	| 'course_hazard'
+	| 'course_closure'
+	| 'course_off_trail'
+	| 'land_manager_request'
+	| 'rights_holder_request';
+
+// The reasons the general report dialogs offer: the organiser dispute has its
+// own dialog (decisions § 2441), and the five course reasons are a park
+// course's only, filed through submitParkCourseReport (decisions § 2449, § 2469).
+export type GeneralReportReason = Exclude<
+	ReportReason,
+	| 'organiser_dispute'
+	| 'course_hazard'
+	| 'course_closure'
+	| 'course_off_trail'
+	| 'land_manager_request'
+	| 'rights_holder_request'
+>;
+
+// The two RESOLVED statuses of `reports.status`. `pending` is the column's
+// third value and the default every report is inserted with, so the moderation
+// queue never writes it — the vocabulary here is deliberately the resolution
+// half (check_constraint_unions.mjs carries the exemption).
+export type ReportResolution = 'reviewed' | 'dismissed';
 
 export async function submitReport(input: {
-	targetKind: ReportTargetKind;
+	targetKind: GeneralReportTargetKind;
 	targetId: string;
-	reason: ReportReason;
+	reason: GeneralReportReason;
 	notes?: string;
 }): Promise<string> {
 	const { data, error } = await supabase.rpc('submit_report', {
@@ -8211,8 +12224,10 @@ export async function submitReport(input: {
 		// friendly messages. The PostgREST envelope surfaces the
 		// SQLSTATE / hint exactly as raised in the migration; we
 		// don't lean on the raw text because that string can change.
-		if (error.code === '23505') {
-			throw new Error('You already have a pending report against this content.');
+		if (isDuplicateKeyError(error)) {
+			throw new AppError('reportDialog.errorAlreadyPending', {
+				message: 'You already have a pending report against this content.',
+			});
 		}
 		// The `create_report` bucket goes through the same
 		// enforce_create_rate_limit trigger as create_club + create_route,
@@ -8220,11 +12235,112 @@ export async function submitReport(input: {
 		// consistent "filing reports too quickly — please wait N minutes"
 		// rather than this function carrying its own copy of the
 		// translation rule.
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
 	return data as string;
+}
+
+// ─────────────── Park course problem reports (#1346, decisions § 2449) ───────────────
+//
+// Filed through the park-course-report Edge Function, signed in or signed out:
+// park staff need no account. The function verifies a JWT when one is sent,
+// rate-limits, and calls submit_park_course_report, which only the service role
+// may execute. `website` is the form's honeypot, sent as typed: a person leaves
+// it empty, and the function files nothing when it is not.
+
+export async function submitParkCourseReport(input: {
+	courseId: string;
+	reason: CourseReportReason;
+	notes: string;
+	contactEmail?: string | null;
+	website?: string;
+}): Promise<void> {
+	const { error } = await supabase.functions.invoke('park-course-report', {
+		body: {
+			course_id: input.courseId,
+			reason: input.reason,
+			notes: input.notes.trim(),
+			contact_email: input.contactEmail?.trim() || null,
+			website: input.website ?? '',
+		},
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		const key = courseReportErrorKey(code);
+		throw new AppError(key ?? 'parks.report.errorFailed', { message: code ?? 'park_course_report_failed' });
+	}
+}
+
+// ─────────────── Organiser name disputes (#1363, decisions § 2441) ───────────────
+//
+// A verified club's owner or admin reports content as impersonating their
+// organisation or copying their content. submit_organiser_dispute is the
+// gate (private.is_official_publisher); the client only decides whether to
+// offer it (organiserClubsOf).
+
+export async function submitOrganiserDispute(input: {
+	targetKind: OrganiserDisputeTargetKind;
+	targetId: string;
+	clubId: string;
+	notes?: string;
+}): Promise<string> {
+	const { data, error } = await supabase.rpc('submit_organiser_dispute', {
+		p_target_kind: input.targetKind,
+		p_target_id: input.targetId,
+		p_club_id: input.clubId,
+		p_notes: input.notes?.trim() || null,
+	});
+	if (error) {
+		if (isDuplicateKeyError(error)) {
+			throw new AppError('reportDialog.errorAlreadyPending', {
+				message: 'You already have a pending report against this content.',
+			});
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		if (error.code === '42501') {
+			throw new AppError('organiserDispute.errorNotOrganiser', { message: error.message });
+		}
+		throw dbError(error);
+	}
+	return data as string;
+}
+
+export type OrganiserDisputeAction = 'filed' | 'takedown' | 'rename_notice' | 'dismiss' | 'unhide';
+
+/** One dispute as one side sees it: the latest action, never the reviewer. */
+export interface MyOrganiserDispute {
+	side: 'owner' | 'organiser';
+	target_kind: OrganiserDisputeTargetKind;
+	target_id: string;
+	target_label: string | null;
+	organiser_club_id: string | null;
+	organiser_club_name: string;
+	organiser_club_slug: string | null;
+	action: OrganiserDisputeAction;
+	deadline_at: string | null;
+	note: string | null;
+	acted_at: string;
+}
+
+export async function fetchMyOrganiserDisputes(): Promise<MyOrganiserDispute[]> {
+	const { data, error } = await supabase.rpc('my_organiser_disputes', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		side: r.side === 'organiser' ? 'organiser' : 'owner',
+		target_kind: r.target_kind as OrganiserDisputeTargetKind,
+		target_id: r.target_id,
+		target_label: r.target_label ?? null,
+		organiser_club_id: r.organiser_club_id ?? null,
+		organiser_club_name: r.organiser_club_name,
+		organiser_club_slug: r.organiser_club_slug ?? null,
+		action: r.action as OrganiserDisputeAction,
+		deadline_at: r.deadline_at ?? null,
+		note: r.note ?? null,
+		acted_at: r.acted_at,
+	}));
 }
 
 // ─────────────────────── Direct messages (#55) ───────────────────────
@@ -8232,20 +12348,149 @@ export async function submitReport(input: {
 export interface DirectMessage {
 	id: string;
 	sender_id: string;
-	recipient_id: string;
-	body: string;
+	/// Null once the recipient deleted their account (migration
+	/// 20271021000003): the remaining sender keeps the message, and
+	/// `deleted_partner_key` names the conversation instead.
+	recipient_id: string | null;
+	/// Null once the sender unsent it (`unsent_at` set).
+	body: string | null;
 	created_at: string;
-	read_at: string | null;
+	/// When the recipient read it, as shared with the sender: set only while
+	/// both have read receipts on (migration 20271113000001). The recipient's
+	/// own `read_at` is not granted to clients, so a sender can never read it.
+	seen_at: string | null;
+	/// Typed route attachment (migration 20270619_001). Null on an ordinary
+	/// message. What the reader is allowed to SEE of the route it names is
+	/// decided at read time by [fetchRouteById], never by holding this id.
+	route_id: string | null;
+	unsent_at: string | null;
+	deleted_partner_key: string | null;
+	/// The conversation the message belongs to, assigned by the server on
+	/// send (migration 20271105000010).
+	conversation_id: string;
+	/// When the sender last edited it (migration 20271114000210); null when
+	/// never edited. Both sides show an "edited" mark while it is set.
+	edited_at: string | null;
+	/// `coach_share` for an AI Coach answer the sender shared with their coach
+	/// (migration 20271210001215), drawn as an AI-labelled quote; else `text`.
+	kind: DmKind;
+	/// The sender's own Coach answer a `coach_share` quoted; only the sender
+	/// can read that row. Null on every other message, and once unsent.
+	coach_message_id: string | null;
+	/// The photo the message carries (migration 20271213121604), read through
+	/// [fetchDmImage]; null on a text message and once unsent. A photo with no
+	/// caption has a null `body` on a live message.
+	image_id: string | null;
+	/// A group conversation's message (migration 20271216000003), set by the
+	/// server from the conversation's kind; false on every 1:1 message.
+	is_group: boolean;
 }
 
+/// A direct_messages row with its `kind` narrowed at the read boundary.
+function asDirectMessage(row: Omit<DirectMessage, 'kind'> & { kind: string }): DirectMessage {
+	return { ...row, kind: parseDmKind(row.kind) };
+}
+
+/// Every column a client may select on direct_messages: `read_at` is withheld
+/// by a column grant (migration 20271113000001), so `*` is refused.
+const DM_COLUMNS =
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, image_id, is_group';
+
 export interface DmThread {
-	partnerId: string;
+	/// The conversation the mute, archive and delete-for-me actions act on.
+	conversationId: string;
+	/// Null when the partner deleted their account; the thread is then keyed
+	/// on `deletedPartnerKey` and holds only the viewer's own messages.
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
 	partnerName: string | null;
 	partnerAvatar: string | null;
-	lastBody: string;
+	/// Null when the latest message was unsent (`lastUnsent`).
+	lastBody: string | null;
+	lastUnsent: boolean;
 	lastAt: string;
 	lastFromMe: boolean;
 	unread: number;
+	/// The viewer muted it: no notification, and left out of the nav badge.
+	muted: boolean;
+	/// The viewer archived it and nothing newer has arrived since.
+	archived: boolean;
+	/// The viewer marked it unread (migration 20271109000020). `unread`
+	/// already counts it as at least one; opening the conversation clears it.
+	markedUnread: boolean;
+	/// A message request to the viewer they have not accepted yet (migration
+	/// 20271115002384): listed under Requests, left out of the nav badge, and
+	/// the requester learns nothing until it is accepted.
+	request: boolean;
+	/// What the newest message is: a shared AI Coach answer previews with the
+	/// AI tag (migration 20271210001215).
+	lastKind: DmKind;
+	/// The newest message carries a photo (migration 20271213121604), so a
+	/// preview with no caption can say so.
+	lastImage: boolean;
+	/// `group` for a group conversation (migration 20271216000007): no partner,
+	/// a `title`, and the viewer's own `membershipState`.
+	kind: 'direct' | 'group';
+	/// A group's name; null for a direct conversation.
+	title: string | null;
+	/// A group's active members, shown only while the viewer is one of them.
+	memberCount: number | null;
+	/// The viewer's membership of a group: `left` rows hold only their own
+	/// messages ("You left …"). Null for a direct conversation.
+	membershipState: 'active' | 'left' | null;
+}
+
+/// The newest message of the runner's current (not archived) Coach
+/// conversations, for the AI Coach row in the Messages inbox (decisions
+/// § 2227). Owner-only by RLS. The caller reads it only once the runner has
+/// consented to the Coach; throws on a failed read so the row can say nothing
+/// rather than claim there is no conversation.
+export interface LatestCoachMessage {
+	planId: string | null;
+	role: 'user' | 'assistant';
+	content: string;
+	createdAt: string;
+}
+
+export async function fetchLatestCoachMessage(): Promise<LatestCoachMessage | null> {
+	const me = auth.user?.id;
+	if (!me) return null;
+	const { data, error } = await supabase
+		.from('coach_messages')
+		.select('plan_id, role, content, created_at')
+		.eq('user_id', me)
+		.is('archived_at', null)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		planId: data.plan_id,
+		role: data.role === 'user' ? 'user' : 'assistant',
+		content: data.content,
+		createdAt: data.created_at,
+	};
+}
+
+/// Each conversation's unread count and mute / archive state: what the badge
+/// on the sidebar's Messages entry is counted from (`unreadDmBadgeCountExcept`
+/// in dm_badge.ts). The same `dm_threads()` aggregation as [fetchDmThreads]
+/// without its partner-profile read, as mobile's `ApiClient.fetchDmBadgeStates`
+/// does. The conversation id lets the badge leave out a conversation whose
+/// delete is still inside its undo window. Throws on a failed read, so the
+/// store keeps the last count rather than reading a blip as "nothing unread".
+export async function fetchDmBadgeStates(): Promise<DmBadgeState[]> {
+	if (!auth.user?.id) return [];
+	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
+	if (error) throw new Error(`dm_threads failed: ${error.message}`);
+	return (data ?? []).map((r) => ({
+		conversationId: r.conversation_id,
+		unread: Number(r.unread) || 0,
+		muted: r.muted === true,
+		archived: r.archived === true,
+		request: r.request === true,
+	}));
 }
 
 /// Conversation list: the latest message per partner + an unread count.
@@ -8254,38 +12499,69 @@ export interface DmThread {
 /// conversation instead of pulling the newest 500 full message bodies and
 /// folding them in JS (which over-fetched AND silently dropped older partners
 /// once a heavy inbox's newest 500 messages spanned fewer conversations than
-/// it had). Partner name/avatar stays a single .in() profile lookup.
+/// it had). Partner name/avatar is a chunked `in` profile lookup, since the
+/// partner set has no ceiling of its own.
 export async function fetchDmThreads(): Promise<DmThread[]> {
 	const me = auth.user?.id;
 	if (!me) return [];
-	const { data, error } = await supabase.rpc('dm_threads');
+	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
 	// Throw rather than returning [] — the caller can't tell a transient
 	// RPC failure from a genuinely empty inbox, and rendering "no
 	// conversations" on a blip strands the user until a manual reload.
 	if (error) throw new Error(`dm_threads failed: ${error.message}`);
 	if (!data) return [];
+	// The generator types every RETURNS TABLE column as non-null; partner_id,
+	// deleted_partner_key and last_body are each null in one case (a deleted
+	// partner, a live partner, an unsent message).
 	const threads: DmThread[] = (data as {
-		partner_id: string;
-		last_body: string;
+		conversation_id: string;
+		partner_id: string | null;
+		deleted_partner_key: string | null;
+		last_body: string | null;
+		last_unsent: boolean;
 		last_at: string;
 		last_from_me: boolean;
 		unread: number;
+		muted: boolean;
+		archived: boolean;
+		marked_unread: boolean;
+		request: boolean;
+		last_kind: string;
+		last_image: boolean;
+		kind: string | null;
+		title: string | null;
+		member_count: number | null;
+		membership_state: string | null;
 	}[]).map((r) => ({
+		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
+		deletedPartnerKey: r.deleted_partner_key,
 		partnerName: null,
 		partnerAvatar: null,
 		lastBody: r.last_body,
+		lastUnsent: r.last_unsent === true,
 		lastAt: r.last_at,
 		lastFromMe: r.last_from_me,
 		unread: Number(r.unread) || 0,
+		muted: r.muted === true,
+		archived: r.archived === true,
+		markedUnread: r.marked_unread === true,
+		request: r.request === true,
+		lastKind: parseDmKind(r.last_kind),
+		lastImage: r.last_image === true,
+		kind: r.kind === 'group' ? 'group' : 'direct',
+		title: r.title ?? null,
+		memberCount: r.member_count ?? null,
+		membershipState: r.membership_state === 'active' || r.membership_state === 'left' ? r.membership_state : null,
 	}));
-	const byPartner = new Map(threads.map((t) => [t.partnerId, t]));
+	const byPartner = new Map(
+		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
+	);
 	const partnerIds = [...byPartner.keys()];
 	if (partnerIds.length > 0) {
-		const { data: profiles } = await supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', partnerIds);
+		const { data: profiles } = await queryChunked(partnerIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		);
 		for (const p of profiles ?? []) {
 			const t = byPartner.get(p.id as string);
 			if (t) {
@@ -8295,62 +12571,822 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		}
 	}
 	// The RPC already orders newest-conversation-first; the profile merge
-	// preserves it (Map iteration is insertion order).
-	return [...byPartner.values()];
+	// mutates the rows in place, so that order is kept.
+	return threads;
 }
 
-/// Full message history with one partner, oldest-first for rendering.
-export async function fetchDmThread(otherId: string, limit = 200): Promise<DirectMessage[]> {
+/// One page of a conversation, oldest message first. A partner thread is both
+/// directions between the viewer and the partner; a deleted-partner thread is
+/// the viewer's own messages under that partner's key, since the leaver's
+/// side was erased with their account.
+///
+/// Keyset-paged from the newest end on `(created_at, id)`: `before` is the
+/// oldest message already shown, and the page holds the `limit` messages before
+/// it, so the first read is the current end of the conversation however long
+/// it is. Mirrors mobile's `fetchDmThread`. The pair is matched as both columns
+/// IN the two ids, which with the table's `sender_id <> recipient_id` CHECK is
+/// exactly the two directions of this conversation, and leaves the `or` tree
+/// to the keyset. Throws on a failed read.
+export async function fetchDmThread(
+	target: DmThreadTarget,
+	opts: { before?: DmOrderKey; limit?: number } = {},
+): Promise<DmPage<DirectMessage>> {
 	const me = auth.user?.id;
-	if (!me) return [];
-	const { data, error } = await supabase
-		.from(TABLES.direct_messages)
-		.select('*')
-		.or(
-			`and(sender_id.eq.${me},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${me})`,
-		)
-		.order('created_at', { ascending: true })
-		.limit(limit);
-	// Throw rather than returning [] — the caller can't tell a transient
-	// failure (network blip, RLS denial, dead session) from a genuinely
-	// empty conversation, and rendering the empty-thread copy on a blip
-	// leaves the user on the previous pane with no sign anything broke.
+	if (!me) return { messages: [], hasMore: false };
+	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
+	let query = supabase.from(TABLES.direct_messages).select(DM_COLUMNS);
+	if (target.kind === 'deleted') {
+		query = query.eq('sender_id', me).eq('deleted_partner_key', target.deletedPartnerKey);
+	} else {
+		const pair = [me, target.partnerId];
+		query = query.in('sender_id', pair).in('recipient_id', pair);
+	}
+	if (opts.before) query = query.or(dmPageBeforeFilter(opts.before));
+	for (const k of DM_THREAD_ORDER) {
+		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await query.limit(limit + 1);
+	// Throw rather than returning an empty page: the caller can't tell a
+	// transient failure (network blip, RLS denial, dead session) from a
+	// genuinely empty conversation.
 	if (error) throw new Error(`fetchDmThread failed: ${error.message}`);
-	if (!data) return [];
-	return data as DirectMessage[];
+	return dmPageFromRows((data ?? []).map(asDirectMessage), limit);
 }
 
-/// Send a message. RLS enforces the no-block + follow-graph gate; a
-/// 42501 surfaces as a friendly "can't message this person" error.
-export async function sendDm(recipientId: string, body: string): Promise<DirectMessage> {
+/// Send a message. RLS enforces the no-block + audience gate (a follow edge,
+/// or a shared club or event for a message request, migration
+/// 20271115002384); a 42501 surfaces as a friendly "can't message this
+/// person" error, a fourth message into an unaccepted request (54000) as
+/// `messages.requestCapReached`, and
+/// the rail's two send buckets (migration 20270608_001) raise the same
+/// P0001 every other create-rate-limit does, so they go through the
+/// shared parser rather than reaching a composer as a raw exception.
+///
+/// `aiAssisted` marks a coach's message drafted with the coach assistant
+/// (migration 20271210001217); the INSERT policy admits it only from an
+/// active coach to their athlete.
+///
+/// `routeId` attaches a route to the message (route_direct_share.md v2).
+/// The same INSERT policy also refuses an attachment the SENDER cannot see
+/// (migration 20270619_001), which surfaces through the same 42501 branch.
+export async function sendDm(
+	recipientId: string,
+	body: string,
+	routeId?: string,
+	opts: { aiAssisted?: boolean; imageId?: string } = {},
+): Promise<DirectMessage> {
 	const me = auth.user?.id;
 	if (!me) throw new Error('Not signed in');
 	const trimmed = body.trim();
-	if (!trimmed) throw new Error('Message is empty');
+	if (!trimmed && !opts.imageId) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
 	const { data, error } = await supabase
 		.from(TABLES.direct_messages)
-		.insert({ sender_id: me, recipient_id: recipientId, body: trimmed })
-		.select('*')
+		.insert({
+			sender_id: me,
+			recipient_id: recipientId,
+			body: trimmed || null,
+			route_id: routeId?.trim() || null,
+			...(opts.aiAssisted ? { kind: 'ai_assisted' as const } : {}),
+			...(opts.imageId ? { image_id: opts.imageId } : {}),
+		})
+		.select(DM_COLUMNS)
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
-			throw new Error("You can only message people you follow (or who follow you), and who haven't blocked you.");
+			throw new AppError(opts.imageId ? 'messages.photoSendNotAllowed' : 'messages.sendNotAllowed', {
+				message: m(opts.imageId ? 'messages.photoSendNotAllowed' : 'messages.sendNotAllowed'),
+			});
 		}
-		throw error ?? new Error('Send failed');
+		if (error?.code === '54000') {
+			throw new AppError('messages.requestCapReached', { message: m('messages.requestCapReached') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Send failed');
 	}
-	return data as DirectMessage;
+	return asDirectMessage(data);
 }
 
-/// Mark every message from `otherId` to the viewer as read.
-export async function markDmThreadRead(otherId: string): Promise<void> {
+/// Unsend one of the viewer's own messages: the server nulls its body and
+/// attachment and stamps `unsent_at`, so both sides see a placeholder
+/// (migration 20271021000003). Not reversible. Returns the updated row; a
+/// message the viewer did not send answers P0002, which reaches the caller as
+/// an error rather than a silent no-op.
+export async function unsendDm(messageId: string): Promise<DirectMessage> {
+	const { data, error } = await supabase.rpc('unsend_direct_message', {
+		p_message_id: messageId,
+	});
+	if (error || !data) throw error ? dbError(error) : new Error('Unsend failed');
+	return asDirectMessage(data);
+}
+
+/// Replace the text of one of the viewer's own messages (migration
+/// 20271114000210). The server allows it for 15 minutes after sending, on a
+/// live message, between a pair neither of whom has blocked the other, and
+/// answers every one of those refusals with one 55000 so a block is not
+/// revealed; that, and a message the viewer did not send (P0002), reach the
+/// caller as `messages.editClosed`. Returns the updated row.
+export async function editDm(messageId: string, body: string): Promise<DirectMessage> {
+	const trimmed = body.trim();
+	if (!trimmed) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
+	const { data, error } = await supabase.rpc('edit_direct_message', {
+		p_message_id: messageId,
+		p_body: trimmed,
+	});
+	if (error || !data) {
+		if (error?.code === '55000' || error?.code === 'P0002') {
+			throw new AppError('messages.editClosed', { message: m('messages.editClosed') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Edit failed');
+	}
+	return asDirectMessage(data);
+}
+
+/// Share paragraphs (0-based, as `coachAnswerParagraphs` splits the answer)
+/// of one of the viewer's own AI Coach answers with their active coach
+/// (migration 20271210001215). The server copies the text, so the card holds
+/// exactly what the answer said. A recipient who is not the viewer's coach, a
+/// block either way, or a coach who declined their messages all answer 42501
+/// and surface as `messages.sendNotAllowed`; the closed gate (0A000) as
+/// `coachShare.unavailable`.
+export async function shareCoachMessage(
+	coachMessageId: string,
+	coachId: string,
+	paragraphs: number[],
+): Promise<DirectMessage> {
+	const { data, error } = await supabase.rpc('share_coach_message', {
+		p_coach_message_id: coachMessageId,
+		p_coach_id: coachId,
+		p_paragraphs: paragraphs,
+	});
+	if (error || !data) {
+		if (error?.code === '42501') {
+			throw new AppError('messages.sendNotAllowed', { message: m('messages.sendNotAllowed') });
+		}
+		if (error?.code === '0A000') {
+			throw new AppError('coachShare.unavailable', { message: m('coachShare.unavailable') });
+		}
+		if (error?.code === '54000') {
+			throw new AppError('messages.requestCapReached', { message: m('messages.requestCapReached') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Share failed');
+	}
+	return asDirectMessage(data);
+}
+
+/// The plan a Coach answer belongs to, for the link back from a card the
+/// viewer shared. Owner-only by RLS, so it answers only for the sender.
+export async function fetchCoachMessagePlanId(coachMessageId: string): Promise<string | null> {
+	const { data, error } = await supabase
+		.from('coach_messages')
+		.select('plan_id')
+		.eq('id', coachMessageId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.plan_id ?? null;
+}
+
+/// Whether sharing an AI Coach answer with a coach is live (the server's
+/// `coach_share` flag). Fail-closed: a failed read hides the action.
+export async function fetchCoachShareEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('coach_share_enabled', undefined, { get: true });
+	if (error) {
+		console.error('coach_share_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
+}
+
+/// The reactions on the given messages that the viewer can see (migration
+/// 20271213121602): the SELECT policy admits only reactions on live messages
+/// the viewer can read. Throws on a failed read so the caller keeps what it
+/// shows.
+export async function fetchDmReactions(messageIds: readonly string[]): Promise<DmReactionRow[]> {
+	if (messageIds.length === 0 || !auth.user?.id) return [];
+	const { data, error } = await queryChunked([...messageIds], (part) =>
+		supabase.from('direct_message_reactions').select('message_id, user_id, reaction').in('message_id', part),
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		message_id: r.message_id as string,
+		user_id: r.user_id as string,
+		reaction: r.reaction as string,
+	}));
+}
+
+/// Sets the viewer's reaction on a message, or clears it with null. Every
+/// refusal (an unsent or hidden message, a block either way, an unaccepted
+/// request, someone else's conversation) reaches the caller as one
+/// `messages.reactionRefused`, so a block is never told apart.
+export async function setDmReaction(messageId: string, reaction: DmReaction | null): Promise<void> {
+	const { error } = await supabase.rpc('set_direct_message_reaction', {
+		p_message_id: messageId,
+		p_reaction: reaction,
+	});
+	if (!error) return;
+	if (error.code === '55000' || error.code === 'P0002') {
+		throw new AppError('messages.reactionRefused', { message: m('messages.reactionRefused') });
+	}
+	const limited = rateLimitAppError(m, error);
+	if (limited) throw limited;
+	throw dbError(error);
+}
+
+export interface DmSearchHit {
+	id: string;
+	conversationId: string;
+	/// A hit in a group conversation (no recipient and no deleted-partner key):
+	/// it opens the group, named by `groupTitle`.
+	isGroup: boolean;
+	groupTitle: string | null;
+	/// Null when the partner deleted their account; `deletedPartnerKey` names
+	/// the conversation then.
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
+	partnerName: string | null;
+	body: string;
+	createdAt: string;
+	fromMe: boolean;
+}
+
+/// Searches the viewer's own conversations (migration 20271213121603). The
+/// RPC runs under the viewer's RLS, so it can return nothing the viewer could
+/// not read row by row. A query outside 2-100 characters returns nothing
+/// without a request. Throws on a failed read.
+export async function searchDms(query: string): Promise<DmSearchHit[]> {
 	const me = auth.user?.id;
-	if (!me) return;
-	await supabase
+	const q = normalizeDmSearchQuery(query);
+	if (!me || q === null) return [];
+	const { data, error } = await supabase.rpc('search_direct_messages', { p_query: q, p_limit: 50 });
+	if (error) throw dbError(error);
+	const hits: DmSearchHit[] = (data ?? []).flatMap((r) => {
+		if (r.body === null) return [];
+		// The generator types every RETURNS TABLE column as non-null; a group
+		// message has neither a recipient nor a deleted-partner key.
+		const recipient = r.recipient_id as string | null;
+		const deletedKey = r.deleted_partner_key as string | null;
+		const isGroup = recipient === null && deletedKey === null;
+		return [
+			{
+				id: r.id,
+				conversationId: r.conversation_id,
+				isGroup,
+				groupTitle: null,
+				partnerId: isGroup ? null : ((r.sender_id === me ? recipient : r.sender_id) ?? null),
+				deletedPartnerKey: deletedKey ?? null,
+				partnerName: null,
+				body: r.body,
+				createdAt: r.created_at,
+				fromMe: r.sender_id === me,
+			},
+		];
+	});
+	const partnerIds = [...new Set(hits.flatMap((h) => (h.partnerId ? [h.partnerId] : [])))];
+	if (partnerIds.length > 0) {
+		const { data: profiles } = await queryChunked(partnerIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name').in('id', part),
+		);
+		const names = new Map((profiles ?? []).map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
+		for (const h of hits) if (h.partnerId) h.partnerName = names.get(h.partnerId) ?? null;
+	}
+	// A group's title is readable to its active members only (the conversations
+	// policy, migration 20271216000009), which is exactly who search can return
+	// another member's message to; a leaver's own hit keeps a null title.
+	const groupIds = [...new Set(hits.flatMap((h) => (h.isGroup ? [h.conversationId] : [])))];
+	if (groupIds.length > 0) {
+		const { data: groups } = await queryChunked(groupIds, (part) =>
+			supabase.from('conversations').select('id, title').in('id', part),
+		);
+		const titles = new Map((groups ?? []).map((g) => [g.id as string, (g.title as string | null) ?? null]));
+		for (const h of hits) if (h.isGroup) h.groupTitle = titles.get(h.conversationId) ?? null;
+	}
+	return hits;
+}
+
+/// Whether photos can be sent in messages (the server's `dm_images` flag).
+/// Fail-closed: a failed read hides the attach button.
+export async function fetchDmImagesEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('dm_images_enabled', undefined, { get: true });
+	if (error) {
+		console.error('dm_images_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
+}
+
+export interface DmImageView {
+	status: DmImageStatus;
+	width: number | null;
+	height: number | null;
+	/// A short-lived signed URL, only once the server has re-encoded the photo.
+	url: string | null;
+}
+
+/// One message photo: its processing state and, once ready, a signed URL
+/// valid for `DM_IMAGE_SIGNED_URL_SECONDS`. The bucket's SELECT policy admits
+/// only the re-encoded copy, and only to someone who can read the message.
+/// Null when the viewer cannot see the image row at all.
+export async function fetchDmImage(imageId: string): Promise<DmImageView | null> {
+	const { data, error } = await supabase
+		.from('direct_message_images')
+		.select('status, width, height, storage_path')
+		.eq('id', imageId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const status = parseDmImageStatus(data.status);
+	if (status !== 'ready') return { status, width: null, height: null, url: null };
+	const { data: signed, error: signError } = await supabase.storage
+		.from('dm-images')
+		.createSignedUrl(data.storage_path, DM_IMAGE_SIGNED_URL_SECONDS);
+	if (signError || !signed) throw signError ? dbError(signError) : new Error('createSignedUrl failed');
+	return { status, width: data.width, height: data.height, url: signed.signedUrl };
+}
+
+/// Uploads a photo the caller has already re-encoded to JPEG (which drops its
+/// metadata) and returns the image id to send with [sendDm]. The server
+/// re-encodes it again before anyone can read it. A closed gate answers
+/// `messages.photoUnavailable`.
+export async function uploadDmImage(jpeg: Blob): Promise<string> {
+	if (jpeg.type !== DM_IMAGE_CONTENT_TYPE || jpeg.size > DM_IMAGE_MAX_BYTES) {
+		throw new AppError('messages.photoTooLarge', { message: m('messages.photoTooLarge') });
+	}
+	const { data, error } = await supabase.rpc('create_dm_image_upload');
+	if (error || !data || data.length === 0) {
+		if (error?.code === '0A000') {
+			throw new AppError('messages.photoUnavailable', { message: m('messages.photoUnavailable') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('create_dm_image_upload returned nothing');
+	}
+	const { id, upload_path } = data[0];
+	const { error: uploadError } = await supabase.storage
+		.from('dm-images')
+		.upload(upload_path, jpeg, { contentType: DM_IMAGE_CONTENT_TYPE, upsert: false });
+	if (uploadError) throw new AppError('messages.photoUploadFailed', { message: m('messages.photoUploadFailed') });
+	return id;
+}
+
+/// The viewer's message-requests setting (`user_settings.dm_requests`).
+/// Off: nobody without a follow edge can message them first. No row reads as
+/// the default, on.
+export async function fetchMyDmRequests(): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return true;
+	const { data, error } = await supabase
+		.from('user_settings')
+		.select('dm_requests')
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.dm_requests !== false;
+}
+
+export async function setDmRequests(on: boolean): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from('user_settings')
+		.upsert({ user_id: userId, dm_requests: on }, { onConflict: 'user_id' });
+	if (error) throw dbError(error);
+}
+
+/// Deletes a conversation for the viewer only (migration 20271105000010):
+/// every message up to and including `throughMessageId`, the newest one the
+/// viewer had on screen, leaves their reads, and anything sent after it stays
+/// (20271107000002). The other participant keeps theirs, and a newer message
+/// brings the conversation back. The caller holds it behind an undo window
+/// (conventions.md § Destructive actions), and a message that arrives during
+/// the window is one the viewer never saw.
+export async function hideDmConversation(conversationId: string, throughMessageId: string): Promise<void> {
+	const { error } = await supabase.rpc('hide_conversation', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Accepts a message request to the viewer (migration 20271115002384): the
+/// conversation joins the inbox, and notifications and read receipts start
+/// from now. Accepting twice is not an error.
+export async function acceptDmRequest(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('accept_message_request', { p_conversation_id: conversationId });
+	if (error) throw dbError(error);
+}
+
+/// Declines a message request to the viewer: its messages up to and including
+/// `throughMessageId` (the newest one on screen) leave their reads, and the
+/// requester cannot send again until the viewer writes to them. `block` also
+/// blocks the requester in the same transaction. The requester is not told.
+export async function declineDmRequest(
+	conversationId: string,
+	throughMessageId: string,
+	block = false,
+): Promise<void> {
+	const { error } = await supabase.rpc('decline_message_request', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+		p_block: block,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Mutes or unmutes a conversation for the viewer: a muted one raises no
+/// message notification and is left out of the unread badge.
+export async function setDmConversationMuted(conversationId: string, muted: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_conversation_muted', {
+		p_conversation_id: conversationId,
+		p_muted: muted,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Archives or unarchives a conversation for the viewer. An archived one stays
+/// in the Archived list until a newer message arrives.
+export async function setDmConversationArchived(
+	conversationId: string,
+	archived: boolean,
+): Promise<void> {
+	const { error } = await supabase.rpc('set_conversation_archived', {
+		p_conversation_id: conversationId,
+		p_archived: archived,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Marks a conversation unread for the viewer, or clears the mark (migration
+/// 20271109000020). `dm_threads()` counts a marked conversation as at least
+/// one unread. The partner's `read_at` is not touched, so they learn nothing.
+export async function setDmConversationUnread(conversationId: string, unread: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_conversation_unread', {
+		p_conversation_id: conversationId,
+		p_unread: unread,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Marks the partner's unread messages read up to and including `throughId`,
+/// the newest one on screen (created_at, then id, the thread's own order). A
+/// reply that lands after the thread was read stays unread until it is shown.
+/// The server shares the read with the sender as `seen_at` only when both have
+/// read receipts on (migration 20271113000001).
+export async function markDmThreadRead(otherId: string, throughId: string): Promise<void> {
+	if (!auth.user?.id) return;
+	const { error } = await supabase.rpc('mark_direct_messages_read', {
+		p_partner_id: otherId,
+		p_through_message_id: throughId,
+	});
+	if (error) throw dbError(error);
+}
+
+/// The viewer's read-receipts setting (`user_settings.dm_read_receipts`, a
+/// column because the server reads it). Off: their reads are not shared and
+/// they see no one else's. No row yet reads as the default, on.
+export async function fetchMyDmReadReceipts(): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return true;
+	const { data, error } = await supabase
+		.from('user_settings')
+		.select('dm_read_receipts')
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.dm_read_receipts !== false;
+}
+
+/// Turning receipts off also withdraws every receipt already shown, both ways
+/// (a trigger does it in the same statement).
+export async function setDmReadReceipts(on: boolean): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from('user_settings')
+		.upsert({ user_id: userId, dm_read_receipts: on }, { onConflict: 'user_id' });
+	if (error) throw dbError(error);
+}
+
+// --- Group conversations (issue #1365 slice 2, decisions § 2463) ------------
+//
+// A group's messages are direct_messages rows with no recipient, read through
+// the same SELECT policy as a 1:1 thread (private.can_read_message, migration
+// 20271216000006): the window, the leave and the block filter are the
+// server's, so a read here can only ever return what the viewer may read.
+// Every group RPC answers a group the viewer is not in, one that does not
+// exist and one they left with the same P0002.
+
+/// Whether group conversations are on for this deploy (the server's
+/// `group_messages` flag): `null` when the read failed, so a caller can tell
+/// "off" from "not known yet". Callers render a `null` as off (fail-closed)
+/// and read again on their next poll; only a definite `false` ends that.
+export async function fetchGroupMessagesEnabled(): Promise<boolean | null> {
+	const { data, error } = await supabase.rpc('group_messages_enabled', undefined, { get: true });
+	if (error) {
+		console.error('group_messages_enabled failed', error.message);
+		return null;
+	}
+	return data === true;
+}
+
+/// The refusals every group RPC shares, as copy. A refused invitee, one that
+/// does not exist and a block either way are one 42501 on the server and one
+/// sentence here, so the picker cannot be used to learn which it was.
+function groupAppError(
+	error: { code?: string; message: string } | null,
+	refused: MessageKey = 'groups.actionRefused',
+): AppError | Error {
+	switch (error?.code) {
+		case '0A000':
+			return new AppError('groups.unavailable', { message: m('groups.unavailable') });
+		case 'P0002':
+			return new AppError('groups.notFound', { message: m('groups.notFound') });
+		case '42501':
+			return new AppError(refused, { message: m(refused) });
+		case '54000':
+			return new AppError('groups.capReached', { message: m('groups.capReached') });
+		case '22023':
+			return new AppError('groups.titleInvalid', { message: m('groups.titleInvalid') });
+	}
+	const limited = rateLimitAppError(m, error);
+	if (limited) return limited;
+	return error ? dbError(error) : new Error('group action failed');
+}
+
+/// Creates a group with the viewer as its owner and invites `invitees`, who
+/// join only by accepting (D1). Returns the new conversation's id.
+export async function createGroupConversation(title: string, invitees: readonly string[]): Promise<string> {
+	const { data, error } = await supabase.rpc('create_group_conversation', {
+		p_title: title,
+		p_invitees: [...invitees],
+	});
+	if (error || !data) throw groupAppError(error, 'groups.inviteRefused');
+	return data;
+}
+
+/// Invites more people (owner and admins). Returns how many new invites were
+/// written; someone already a member or holding a live invite is skipped.
+export async function inviteToGroup(conversationId: string, invitees: readonly string[]): Promise<number> {
+	const { data, error } = await supabase.rpc('invite_to_group', {
+		p_conversation_id: conversationId,
+		p_invitees: [...invitees],
+	});
+	if (error) throw groupAppError(error, 'groups.inviteRefused');
+	return data ?? 0;
+}
+
+export interface GroupInvite {
+	conversationId: string;
+	title: string;
+	invitedBy: string | null;
+	inviterName: string | null;
+	invitedAt: string;
+	/// The group's active members. An invitee never sees who they are (memo C5).
+	memberCount: number;
+}
+
+/// The viewer's own live invites, newest first: title, inviter and size only.
+export async function fetchGroupInvites(): Promise<GroupInvite[]> {
+	if (!auth.user?.id) return [];
+	const { data, error } = await supabase.rpc('group_invites', undefined, { get: true });
+	if (error) throw dbError(error);
+	const invites: GroupInvite[] = (data ?? []).map((r) => ({
+		conversationId: r.conversation_id,
+		title: r.title,
+		invitedBy: (r.invited_by as string | null) ?? null,
+		inviterName: null,
+		invitedAt: r.invited_at,
+		memberCount: Number(r.member_count) || 0,
+	}));
+	const inviters = [...new Set(invites.flatMap((i) => (i.invitedBy ? [i.invitedBy] : [])))];
+	if (inviters.length > 0) {
+		const { data: profiles } = await queryChunked(inviters, (part) =>
+			supabase.from('user_profiles').select('id, display_name').in('id', part),
+		);
+		const names = new Map((profiles ?? []).map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
+		for (const i of invites) if (i.invitedBy) i.inviterName = names.get(i.invitedBy) ?? null;
+	}
+	return invites;
+}
+
+export async function acceptGroupInvite(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('accept_group_invite', { p_conversation_id: conversationId });
+	if (error) throw groupAppError(error);
+}
+
+export async function declineGroupInvite(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('decline_group_invite', { p_conversation_id: conversationId });
+	if (error) throw groupAppError(error);
+}
+
+/// Leaves a group at once: from now on the viewer reads only their own
+/// messages in it (D12), and rejoining needs a new invite.
+export async function leaveGroup(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('leave_conversation', { p_conversation_id: conversationId });
+	if (error) throw groupAppError(error);
+}
+
+/// Removes a member, or cancels an invite (owner and admins, below their rank).
+export async function removeGroupMember(conversationId: string, userId: string): Promise<void> {
+	const { error } = await supabase.rpc('remove_group_member', {
+		p_conversation_id: conversationId,
+		p_user_id: userId,
+	});
+	if (error) throw groupAppError(error);
+}
+
+export async function setGroupMemberRole(
+	conversationId: string,
+	userId: string,
+	role: 'admin' | 'member',
+): Promise<void> {
+	const { error } = await supabase.rpc('set_group_member_role', {
+		p_conversation_id: conversationId,
+		p_user_id: userId,
+		p_role: role,
+	});
+	if (error) throw groupAppError(error);
+}
+
+/// Hands ownership to an active member; the viewer becomes an admin.
+export async function transferGroupOwnership(conversationId: string, userId: string): Promise<void> {
+	const { error } = await supabase.rpc('transfer_group_ownership', {
+		p_conversation_id: conversationId,
+		p_user_id: userId,
+	});
+	if (error) throw groupAppError(error);
+}
+
+/// Renames a group (owner and admins); the server writes the system line.
+export async function renameGroup(conversationId: string, title: string): Promise<void> {
+	const { error } = await supabase.rpc('rename_group', { p_conversation_id: conversationId, p_title: title });
+	if (error) throw groupAppError(error);
+}
+
+export interface GroupMember {
+	userId: string;
+	role: GroupRole | null;
+	state: 'active' | 'invited';
+	name: string | null;
+	avatarUrl: string | null;
+}
+
+/// The group's active members, and its live invites for the owner and admins.
+/// Throws `groups.notFound` (P0002) for a group the viewer is not active in.
+export async function fetchGroupMembers(conversationId: string): Promise<GroupMember[]> {
+	const { data, error } = await supabase.rpc('group_members', { p_conversation_id: conversationId }, { get: true });
+	if (error) throw groupAppError(error);
+	const members: GroupMember[] = (data ?? []).map((r) => ({
+		userId: r.user_id,
+		role: parseGroupRole(r.role),
+		state: r.membership_state === 'invited' ? 'invited' : 'active',
+		name: null,
+		avatarUrl: null,
+	}));
+	await attachGroupProfiles(members);
+	return members;
+}
+
+/// Names and avatars for the people in a group thread: members, and the
+/// senders of messages the viewer can read who have since left.
+export async function fetchGroupProfiles(
+	userIds: readonly string[],
+): Promise<Map<string, { name: string | null; avatarUrl: string | null }>> {
+	const ids = [...new Set(userIds)];
+	const out = new Map<string, { name: string | null; avatarUrl: string | null }>();
+	if (ids.length === 0) return out;
+	const { data } = await queryChunked(ids, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part),
+	);
+	for (const p of data ?? []) {
+		out.set(p.id as string, {
+			name: (p.display_name as string | null) ?? null,
+			avatarUrl: (p.avatar_url as string | null) ?? null,
+		});
+	}
+	return out;
+}
+
+async function attachGroupProfiles(members: GroupMember[]): Promise<void> {
+	const profiles = await fetchGroupProfiles(members.map((m) => m.userId));
+	for (const mem of members) {
+		const p = profiles.get(mem.userId);
+		if (p) {
+			mem.name = p.name;
+			mem.avatarUrl = p.avatarUrl;
+		}
+	}
+}
+
+/// One page of a group's messages the viewer may read, oldest first, keyset-
+/// paged from the newest end exactly as [fetchDmThread] pages a 1:1 thread.
+/// The policy decides what is readable: an active member's window, a leaver's
+/// own messages, minus what the viewer's own block filters out.
+export async function fetchGroupThread(
+	conversationId: string,
+	opts: { before?: DmOrderKey; limit?: number } = {},
+): Promise<DmPage<DirectMessage>> {
+	if (!auth.user?.id) return { messages: [], hasMore: false };
+	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
+	let query = supabase
 		.from(TABLES.direct_messages)
-		.update({ read_at: new Date().toISOString() })
-		.eq('sender_id', otherId)
-		.eq('recipient_id', me)
-		.is('read_at', null);
+		.select(DM_COLUMNS)
+		.eq('conversation_id', conversationId)
+		.eq('is_group', true);
+	if (opts.before) query = query.or(dmPageBeforeFilter(opts.before));
+	for (const k of DM_THREAD_ORDER) {
+		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await query.limit(limit + 1);
+	if (error) throw dbError(error);
+	return dmPageFromRows((data ?? []).map(asDirectMessage), limit);
+}
+
+/// The places of messages in the group the viewer would read but for their
+/// own block of the sender: an id and a time, never a body or a sender
+/// (migration 20271217000006). `since` bounds them to the loaded window.
+export async function fetchGroupBlockedPlaceholders(
+	conversationId: string,
+	since: string | null,
+): Promise<DmOrderKey[]> {
+	const { data, error } = await supabase.rpc(
+		'group_blocked_placeholders',
+		// A GET sends null as the string "null"; omit it instead (p_since
+		// defaults to null, migration 20271221000100).
+		{ p_conversation_id: conversationId, p_since: since ?? undefined },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({ id: r.id, created_at: r.created_at }));
+}
+
+/// Sends into a group. The INSERT policy admits it only from an active member
+/// while the flag is on, and the send trigger re-checks membership under the
+/// lock a removal takes, so a send racing a removal is refused (C3).
+export async function sendGroupMessage(
+	conversationId: string,
+	body: string,
+	opts: { imageId?: string } = {},
+): Promise<DirectMessage> {
+	const me = auth.user?.id;
+	if (!me) throw new Error('Not signed in');
+	const trimmed = body.trim();
+	if (!trimmed && !opts.imageId) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
+	const { data, error } = await supabase
+		.from(TABLES.direct_messages)
+		.insert({
+			sender_id: me,
+			conversation_id: conversationId,
+			body: trimmed || null,
+			...(opts.imageId ? { image_id: opts.imageId } : {}),
+		})
+		.select(DM_COLUMNS)
+		.single();
+	if (error || !data) {
+		if (error?.code === '42501') {
+			throw new AppError(opts.imageId ? 'messages.photoSendNotAllowed' : 'groups.sendNotAllowed', {
+				message: m(opts.imageId ? 'messages.photoSendNotAllowed' : 'groups.sendNotAllowed'),
+			});
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Send failed');
+	}
+	return asDirectMessage(data);
+}
+
+/// The viewer's read position in a group, through the newest message on
+/// screen. No read receipts in groups (D6): nobody else learns of it.
+export async function markGroupRead(conversationId: string, throughMessageId: string): Promise<void> {
+	const { error } = await supabase.rpc('mark_conversation_read', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+	});
+	if (error) throw dbError(error);
+}
+
+export interface ReportConversation {
+	kind: 'direct' | 'group';
+	title: string | null;
+	memberCount: number;
+}
+
+/// For the admin reports queue: the audience a reported message went to
+/// (group_messages.md § 6). Admin-only on the server; null when the message
+/// is gone (unsent rows stay, purged ones do not).
+export async function fetchAdminReportConversation(messageId: string): Promise<ReportConversation | null> {
+	const { data, error } = await supabase.rpc('admin_report_conversation', { p_message_id: messageId }, { get: true });
+	if (error) throw dbError(error);
+	const row = data?.[0];
+	if (!row) return null;
+	return {
+		kind: row.kind === 'group' ? 'group' : 'direct',
+		title: (row.title as string | null) ?? null,
+		memberCount: Number(row.member_count) || 0,
+	};
 }
 
 // --- Coach-athlete roster (persona #46) -------------------------------------
@@ -8370,6 +13406,9 @@ export interface CoachAthleteLink {
 	user_id: string;
 	display_name: string | null;
 	avatar_url: string | null;
+	/// The athlete's consent to the coach assistant on this link (migration
+	/// 20271210001217); null when not given.
+	ai_assist_consent_version: number | null;
 }
 
 export interface PendingCoachInvite {
@@ -8393,7 +13432,7 @@ export async function createCoachInvite(note?: string): Promise<string> {
 		invite_token: token,
 		note: note?.trim() || null
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return token;
 }
 
@@ -8405,17 +13444,17 @@ export async function createCoachInvite(note?: string): Promise<string> {
 /// failure). Mirrors the `fetchRoutesWithError` convention.
 export async function fetchMyAthletesWithError(): Promise<{
 	athletes: CoachAthleteLink[];
-	error: string | null;
+	error: Error | null;
 }> {
 	const userId = auth.user?.id;
 	if (!userId) return { athletes: [], error: null };
 	const { data: rows, error } = await supabase
 		.from(TABLES.coach_athletes)
-		.select('id, status, note, created_at, accepted_at, athlete_id')
+		.select('id, status, note, created_at, accepted_at, athlete_id, ai_assist_consent_version')
 		.eq('coach_id', userId)
 		.eq('status', 'active')
 		.order('accepted_at', { ascending: false });
-	if (error) return { athletes: [], error: error.message };
+	if (error) return { athletes: [], error: dbError(error) };
 	if (!rows || rows.length === 0) return { athletes: [], error: null };
 	const ids = (rows as { athlete_id: string }[]).map((r) => r.athlete_id);
 	const byId = await fetchProfilesByIds(ids);
@@ -8428,7 +13467,8 @@ export async function fetchMyAthletesWithError(): Promise<{
 			accepted_at: (r.accepted_at as string | null) ?? null,
 			user_id: r.athlete_id as string,
 			display_name: byId.get(r.athlete_id as string)?.display_name ?? null,
-			avatar_url: byId.get(r.athlete_id as string)?.avatar_url ?? null
+			avatar_url: byId.get(r.athlete_id as string)?.avatar_url ?? null,
+			ai_assist_consent_version: (r.ai_assist_consent_version as number | null) ?? null
 		})),
 		error: null
 	};
@@ -8436,6 +13476,23 @@ export async function fetchMyAthletesWithError(): Promise<{
 
 export async function fetchMyAthletes(): Promise<CoachAthleteLink[]> {
 	return (await fetchMyAthletesWithError()).athletes;
+}
+
+/// True when the signed-in viewer actively coaches [athleteId]: the test the
+/// coach RLS policies on plan_workouts run (`private.is_active_coach_of`), so
+/// a surface can offer an edit only where the write will be allowed.
+export async function isActiveCoachOf(athleteId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId || userId === athleteId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', userId)
+		.eq('athlete_id', athleteId)
+		.eq('status', 'active')
+		.limit(1);
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
 }
 
 /// One row of the multi-athlete coach roster (coach_roster.md). The shape is
@@ -8455,6 +13512,13 @@ export interface CoachRosterRow {
 	load_chronic: number;
 	active_plan_id: string | null;
 	plan_completion_pct: number;
+	/// The athlete's local date, the `today` the miss count is derived against.
+	athlete_today: string | null;
+	/// The current plan's non-rest workouts over the last 28 local days.
+	recent_workouts: RosterRecentWorkout[];
+	/// Easy-run efficiency drift, per cent. Null without health-data consent
+	/// or too few runs to compare (decisions § 2092).
+	easy_hr_drift_pct: number | null;
 }
 
 /// The whole roster in one consent-gated round-trip. Surfaces the RPC error so
@@ -8464,11 +13528,11 @@ export interface CoachRosterRow {
 /// caller raises, which surfaces as an error here, fail-closed).
 export async function fetchCoachRosterSummaryWithError(): Promise<{
 	rows: CoachRosterRow[];
-	error: string | null;
+	error: Error | null;
 }> {
 	if (!auth.user?.id) return { rows: [], error: null };
-	const { data, error } = await supabase.rpc('coach_roster_summary');
-	if (error) return { rows: [], error: error.message };
+	const { data, error } = await supabase.rpc('coach_roster_summary', undefined, { get: true });
+	if (error) return { rows: [], error: dbError(error) };
 	const rows: CoachRosterRow[] = ((data as Array<Record<string, unknown>>) ?? []).map((r) => ({
 		athlete_id: r.athlete_id as string,
 		display_name: (r.display_name as string | null) ?? null,
@@ -8479,7 +13543,13 @@ export async function fetchCoachRosterSummaryWithError(): Promise<{
 		load_acute: Number(r.load_acute) || 0,
 		load_chronic: Number(r.load_chronic) || 0,
 		active_plan_id: (r.active_plan_id as string | null) ?? null,
-		plan_completion_pct: Number(r.plan_completion_pct) || 0
+		plan_completion_pct: Number(r.plan_completion_pct) || 0,
+		athlete_today: typeof r.athlete_today === 'string' ? r.athlete_today : null,
+		recent_workouts: parseRosterRecentWorkouts(r.recent_workouts),
+		easy_hr_drift_pct:
+			typeof r.easy_hr_drift_pct === 'number' && Number.isFinite(r.easy_hr_drift_pct)
+				? r.easy_hr_drift_pct
+				: null
 	}));
 	return { rows, error: null };
 }
@@ -8507,6 +13577,10 @@ export interface AthleteRunSummary {
 	route_id: string | null;
 	activity_type: string;
 	metadata: Record<string, unknown> | null;
+	/// Whether the run carries a GPS track. Only the fact: the path is not
+	/// kept, and the coach's map is served clipped by `clip-public-track`
+	/// (decisions § 1968), never read from Storage.
+	has_track: boolean;
 }
 
 export async function fetchAthleteRuns(
@@ -8516,7 +13590,7 @@ export async function fetchAthleteRuns(
 	if (!auth.user?.id || !athleteId) return [];
 	const { data, error } = await supabase
 		.from(TABLES.runs)
-		.select('id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+		.select('id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
 		.eq('user_id', athleteId)
 		.order('started_at', { ascending: false })
 		.limit(limit);
@@ -8531,7 +13605,31 @@ export async function fetchAthleteRuns(
 		route_id: (r.route_id as string | null) ?? null,
 		activity_type: (r.activity_type as string | null) ?? 'run',
 		metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+		has_track: r.track_url != null,
 	}));
+}
+
+/// Whether a linked coach is served the athlete's clipped run map (the
+/// server's `coach_run_map` flag, decisions § 1968). Fail-closed: a read
+/// failure is "off" and is not cached, so a later mount can find out.
+let coachRunMapProbe: Promise<boolean> | null = null;
+export function coachRunMapEnabled(): Promise<boolean> {
+	if (coachRunMapProbe) return coachRunMapProbe;
+	const probe = (async () => {
+		try {
+			const { data, error } = await supabase.rpc('coach_run_map_enabled', undefined, { get: true });
+			if (error) {
+				coachRunMapProbe = null;
+				return false;
+			}
+			return data === true;
+		} catch {
+			coachRunMapProbe = null;
+			return false;
+		}
+	})();
+	coachRunMapProbe = probe;
+	return probe;
 }
 
 /// The athlete's active training plan + per-workout compliance for the
@@ -8541,40 +13639,16 @@ export async function fetchAthleteRuns(
 /// `plan_workouts` for active-linked athletes. Null when the athlete
 /// has no active plan, or the caller isn't their active coach (RLS
 /// yields no rows).
-export async function fetchAthletePlanOverview(
-	athleteId: string
-): Promise<ActivePlanOverview | null> {
-	if (!auth.user?.id || !athleteId) return null;
-	const { data: plan } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('user_id', athleteId)
-		.eq('status', 'active')
-		.maybeSingle();
-	if (!plan) return null;
-	const { weeks, workouts } = await fetchPlan(plan.id);
-	const { todayISO, isWorkoutSkipped } = await import('../training/training');
-	const today = todayISO();
-	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
-	const completed = workouts.filter(
-		(w) => w.manually_completed === true || w.completed_run_id != null
-	).length;
-	// Skipped workouts are off the books — neither done nor an outstanding
-	// to-do — so they leave the progress denominator entirely.
-	const total = workouts.filter((w) => w.kind !== 'rest' && !isWorkoutSkipped(w)).length;
-	const completionPct = total === 0 ? 0 : Math.round((completed / total) * 100);
-	return {
-		plan: plan as TrainingPlan,
-		weeks: weeks ?? [],
-		workouts: workouts ?? [],
-		todayWorkout,
-		completionPct,
-	};
+export async function fetchAthletePlanOverview(athleteId: string): Promise<PlanOverviewRead> {
+	if (!auth.user?.id || !athleteId) return { overview: null, error: null };
+	return planOverviewFor(athleteId);
 }
 
 /// Assigns a coach's plan to a linked athlete via the assign_plan_to_athlete
-/// RPC (migration 20270106_001). The thrown error carries the RPC's raise text
-/// (e.g. the athlete already has an active plan), which the caller surfaces.
+/// RPC (migration 20270106_001). An overlap with one of the athlete's active
+/// plans throws a PlanOverlapError (23P01, migration 20270830000008), which the
+/// coaching page turns into "pick a start date after it ends"; any other
+/// refusal carries the RPC's raise text.
 export async function assignPlanToAthlete(
 	sourcePlanId: string,
 	athleteId: string,
@@ -8585,7 +13659,7 @@ export async function assignPlanToAthlete(
 		p_athlete_id: athleteId,
 		p_start_date: startDate
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as string;
 }
 
@@ -8609,7 +13683,7 @@ export async function fetchMyCoaches(): Promise<CoachAthleteLink[]> {
 	if (!userId) return [];
 	const { data: rows } = await supabase
 		.from(TABLES.coach_athletes)
-		.select('id, status, note, created_at, accepted_at, coach_id')
+		.select('id, status, note, created_at, accepted_at, coach_id, ai_assist_consent_version')
 		.eq('athlete_id', userId)
 		.eq('status', 'active')
 		.order('accepted_at', { ascending: false });
@@ -8624,14 +13698,27 @@ export async function fetchMyCoaches(): Promise<CoachAthleteLink[]> {
 		accepted_at: (r.accepted_at as string | null) ?? null,
 		user_id: r.coach_id as string,
 		display_name: byId.get(r.coach_id as string)?.display_name ?? null,
-		avatar_url: byId.get(r.coach_id as string)?.avatar_url ?? null
+		avatar_url: byId.get(r.coach_id as string)?.avatar_url ?? null,
+		ai_assist_consent_version: (r.ai_assist_consent_version as number | null) ?? null
 	}));
+}
+
+/// The athlete allows (`version`) or withdraws (null) the coach assistant on
+/// one of their active coaching links (migration 20271210001217). Returns the
+/// stored version.
+export async function setCoachAiAssistConsent(linkId: string, version: number | null): Promise<number | null> {
+	const { data, error } = await supabase.rpc('set_coach_ai_assist_consent', {
+		p_link_id: linkId,
+		p_version: version,
+	});
+	if (error || !data) throw error ? dbError(error) : new Error('Consent not saved');
+	return data.ai_assist_consent_version ?? null;
 }
 
 /// Redeem an invite token. Returns the coach's user id.
 export async function redeemCoachInvite(token: string): Promise<string> {
 	const { data, error } = await supabase.rpc('redeem_coach_invite', { token });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as string;
 }
 
@@ -8641,14 +13728,14 @@ export async function redeemCoachInvite(token: string): Promise<string> {
 /// row and its acceptance history survive for audit.
 export async function endCoachLink(id: string): Promise<void> {
 	const { error } = await supabase.rpc('end_coach_link', { p_id: id });
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Revoke (hard-delete) an unredeemed invite. RLS only permits this on the
 /// coach's own pending, athlete-less rows.
 export async function revokeCoachInvite(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.coach_athletes).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Gym (Phase 4 multi-modal, decisions §63; spec docs/features/multi_modal.md) ---
@@ -8673,7 +13760,12 @@ export interface GymWorkout {
 	/// Schemaless bag (migration 20270101_001) holding the guided-runner
 	/// execution trio and, while a session is in flight, the
 	/// `gym_session_draft` snapshot. Registered in docs/backend/metadata.md.
-	metadata: Record<string, unknown> | null;
+	metadata: JsonObject | null;
+	/// Trigger-maintained totals over the workout's sets (migration
+	/// 20261214_001, contract in docs/backend/derived_state.md) — the list row
+	/// reads them off the row rather than summing raw sets client-side.
+	set_count: number;
+	volume_kg: number;
 }
 
 export interface GymSet {
@@ -8727,31 +13819,139 @@ export interface GymSetWithDate {
 	weight_kg: number | null;
 	rpe: number | null;
 	duration_s: number | null;
+	/// gym_sets.set_type — the role the set played. Carried on every history
+	/// read because the progression prescriber excludes a warmup by reading
+	/// exactly this column; a reader that drops it hands the prescriber a
+	/// ramp-up that looks like a working set (migration 20270525_001).
+	/// Nullable at this boundary only — the column is NOT NULL DEFAULT
+	/// 'working', and `gym_progression` resolves an absent value to 'working'.
+	set_type: string | null;
 }
 
-/// Recent gym workouts for the signed-in user, newest first. Surfaces the
-/// error so the /gym list can show a "couldn't load — retry" state instead of
-/// the empty "log your first workout" card (a real failure otherwise reads as a
-/// brand-new lifter whose history vanished). Mirrors the
+/// PostgREST renders a `numeric` column as a JSON number or a string depending
+/// on its magnitude, so every numeric the gym reads is coerced on the way in.
+function numericOrZero(v: unknown): number {
+	const n = typeof v === 'string' ? Number(v) : v;
+	return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+}
+
+export interface FetchGymWorkoutsOptions {
+	/** Cap the number of rows returned. */
+	limit?: number;
+	/** Inclusive lower bound on `started_at`, as an ISO instant. */
+	startedAtFrom?: string;
+	/** Exclusive upper bound on `started_at`, as an ISO instant. */
+	startedAtBefore?: string;
+}
+
+/// Newest gym workouts when unbounded; the window's workouts when
+/// `startedAtFrom` / `startedAtBefore` are given — the same two bounds
+/// `fetchRuns` takes, compared by PostgREST as real timestamptz values.
+/// A caller that wants one calendar day must window rather than pull the
+/// newest N and filter: a day older than the caller's N most recent sessions
+/// would otherwise read as a day with no lifts in it.
+///
+/// Surfaces the error so the /gym list can show a "couldn't load — retry" state
+/// instead of the empty "log your first workout" card (a real failure otherwise
+/// reads as a brand-new lifter whose history vanished). Mirrors the
 /// `fetchExerciseRecordsWithError` convention.
 export async function fetchGymWorkoutsWithError(
-	limit = 50,
-): Promise<{ workouts: GymWorkout[]; error: string | null }> {
+	opts?: FetchGymWorkoutsOptions,
+): Promise<{ workouts: GymWorkout[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { workouts: [], error: null };
-	const { data, error } = await supabase
-		.from(TABLES.gym_workouts)
-		.select('*')
-		.eq('user_id', userId)
+	let q = supabase.from(TABLES.gym_workouts).select('*').eq('user_id', userId);
+	if (opts?.startedAtFrom != null) q = q.gte('started_at', opts.startedAtFrom);
+	if (opts?.startedAtBefore != null) q = q.lt('started_at', opts.startedAtBefore);
+	const { data, error } = await q
 		.order('started_at', { ascending: false })
-		.limit(limit);
-	if (error) return { workouts: [], error: error.message };
-	return { workouts: (data ?? []) as GymWorkout[], error: null };
+		.limit(opts?.limit ?? 50);
+	if (error) return { workouts: [], error: dbError(error) };
+	const workouts = ((data ?? []) as GymWorkout[]).map((w) => ({
+		...w,
+		set_count: numericOrZero(w.set_count),
+		volume_kg: numericOrZero(w.volume_kg),
+	}));
+	return { workouts, error: null };
 }
 
-/// Recent gym workouts for the signed-in user, newest first.
-export async function fetchGymWorkouts(limit = 50): Promise<GymWorkout[]> {
-	return (await fetchGymWorkoutsWithError(limit)).workouts;
+/// Gym workouts for the signed-in user, newest first. See
+/// `fetchGymWorkoutsWithError` for the window.
+export async function fetchGymWorkouts(opts?: FetchGymWorkoutsOptions): Promise<GymWorkout[]> {
+	return (await fetchGymWorkoutsWithError(opts)).workouts;
+}
+
+/// Whether the user has ever logged a gym session (`gym`) or a food entry
+/// (`nutrition`): the data half of `modalityShown`. Reads at most one row, so
+/// it costs the same for a lifter with years of sessions as for none. Throws
+/// on a failed read, because the caller must not mistake an outage for "no
+/// data" and hide a modality the runner uses.
+export async function fetchModalityHasData(userId: string, modality: Modality): Promise<boolean> {
+	const { data, error } =
+		modality === 'gym'
+			? await supabase.from(TABLES.gym_workouts).select('id').eq('user_id', userId).limit(1)
+			: await supabase.from(TABLES.food_log).select('id').eq('user_id', userId).limit(1);
+	if (error) throw new Error(error.message);
+	return (data?.length ?? 0) > 0;
+}
+
+/// The two per-workout values the /gym list needs that no column carries:
+/// whether the workout set a personal record, and how many distinct exercises
+/// it contained.
+export interface GymWorkoutSummary {
+	workoutId: string;
+	exerciseCount: number;
+	isPr: boolean;
+}
+
+/// Per-workout PR flags + exercise counts for the /gym list, aggregated by the
+/// `gym_workout_summaries` RPC (migration 20270510_001).
+///
+/// /gym used to answer both questions in the browser from every gym_sets row
+/// the account held — an unbounded read PostgREST truncates at 1000 rows, so
+/// past ~40 sessions the badges and counts were quietly computed from a
+/// partial, unordered history. A PR badge is an all-time question, so no
+/// client-side window could fix it; the aggregation had to move to SQL, the
+/// way gym_exercise_records + gym_exercise_names already did for /gym/records
+/// and the composer autocomplete. `gym_prs.ts` remains the definition of a PR
+/// — the RPC mirrors it, and the two are pinned against one fixture by
+/// gym_workout_summaries.test.ts + gym_workout_summaries_test.sql.
+///
+/// Surfaces the error like `fetchGymWorkoutsWithError`: an empty result on a
+/// failed read would silently strip every badge and show 0 exercises a row.
+export async function fetchGymWorkoutSummariesWithError(
+	limit = 100,
+): Promise<{ summaries: GymWorkoutSummary[]; error: Error | null }> {
+	if (!auth.user?.id) return { summaries: [], error: null };
+	const { data, error } = await supabase.rpc('gym_workout_summaries', { p_limit: limit }, { get: true });
+	if (error) return { summaries: [], error: dbError(error) };
+	const rows = (data ?? []) as Array<{
+		workout_id: string;
+		exercise_count: number | string | null;
+		is_pr: boolean | null;
+	}>;
+	return {
+		summaries: rows.map((r) => ({
+			workoutId: r.workout_id,
+			exerciseCount: numericOrZero(r.exercise_count),
+			isPr: r.is_pr === true,
+		})),
+		error: null,
+	};
+}
+
+/// Has the user ever logged a set carrying a positive weight? Gates the
+/// /gym/records link, which only surfaces weighted exercises. All-time, so a
+/// lifter whose last weighted session predates the list page still gets the
+/// link. Degrades to false (link hidden) on a failed read.
+export async function fetchGymHasWeightedSets(): Promise<boolean> {
+	if (!auth.user?.id) return false;
+	const { data, error } = await supabase.rpc('gym_has_weighted_sets', undefined, { get: true });
+	if (error) {
+		console.error('fetchGymHasWeightedSets failed', error);
+		return false;
+	}
+	return data === true;
 }
 
 /// A single workout plus its sets in set_index order. Returns null when the
@@ -8774,14 +13974,19 @@ export async function fetchGymWorkoutWithSets(
 	// returning the populated header over an empty body presented a partial
 	// read failure as the user's session being empty. Fail the whole read so
 	// the caller can offer a retry.
-	if (sErr) throw sErr;
+	if (sErr) throw dbError(sErr);
 	return { workout: workout as GymWorkout, sets: (sets ?? []) as GymSet[] };
 }
 
 /// The newest in-flight guided-session draft for a routine — the row a refresh
-/// mid-session resumes from (decisions.md § 483). Owner-scoped by RLS; the
-/// `metadata ? key` existence filter is what distinguishes a draft from a
-/// finished workout, whose bag carries the execution trio instead.
+/// mid-session resumes from (decisions.md § 483). Owner-scoped by RLS.
+///
+/// The server-side key-existence filter is a cheap prefilter, not the
+/// predicate: PostgREST cannot ask `jsonb_typeof`, so it also matches a bag
+/// whose key carries JSON null or an array. `hasSessionDraft` is what decides,
+/// so this agrees with the resume card and the routine-history exclusion
+/// instead of adopting — and overwriting the sets of — a row they both count
+/// as a session performed.
 export async function fetchGymSessionDraft(routineId: string): Promise<GymWorkout | null> {
 	const userId = auth.user?.id;
 	if (!userId || !routineId) return null;
@@ -8797,7 +14002,8 @@ export async function fetchGymSessionDraft(routineId: string): Promise<GymWorkou
 		console.error('fetchGymSessionDraft failed', error);
 		return null;
 	}
-	return (data?.[0] as GymWorkout | undefined) ?? null;
+	const row = (data?.[0] as GymWorkout | undefined) ?? null;
+	return row && hasSessionDraft(row.metadata) ? row : null;
 }
 
 /// Sets the user has logged, joined to their workout start time. Owner-scoped.
@@ -8806,25 +14012,30 @@ export async function fetchGymSessionDraft(routineId: string): Promise<GymWorkou
 /// pass it on surfaces that only reason about recent training (e.g. the
 /// dashboard's 90-day training-load curve + its 5 most-recent-lift cards) so a
 /// multi-year lifter's whole gym_sets history (~15k rows) isn't shipped to the
-/// browser on every load. Surfaces that need all-time data (the per-workout PR
-/// badges on /gym + /gym/[id]) pass nothing and read the full set; all-time
-/// per-exercise bests go through fetchExerciseRecords (server-aggregated)
-/// instead. perf-hunt follow-up 2026-06-10.
+/// browser on every load. perf-hunt follow-up 2026-06-10.
+///
+/// Nothing reads this unwindowed any more. An all-time question is a server
+/// question: PostgREST caps an unbounded SELECT at 1000 rows, so the /gym PR
+/// badges that used to pass no window were computed from a truncated,
+/// unordered history past ~40 sessions. Those go through
+/// `fetchGymWorkoutSummariesWithError`; per-exercise bests through
+/// `fetchExerciseRecords`; per-workout prior sets on /gym/[id] through
+/// `fetchExerciseSetHistoryBatch`. All three aggregate or scope in SQL.
 export async function fetchGymSetHistoryWithError(opts?: {
 	sinceDays?: number;
-}): Promise<{ sets: GymSetWithDate[]; error: string | null }> {
+}): Promise<{ sets: GymSetWithDate[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { sets: [], error: null };
 	let query = supabase
 		.from(TABLES.gym_sets)
-		.select('workout_id, exercise_name, reps, weight_kg, rpe, duration_s, gym_workouts!inner(started_at, user_id)')
+		.select('workout_id, exercise_name, reps, weight_kg, rpe, duration_s, set_type, gym_workouts!inner(started_at, user_id)')
 		.eq('gym_workouts.user_id', userId);
 	if (opts?.sinceDays != null) {
 		const since = new Date(Date.now() - opts.sinceDays * 86_400_000).toISOString();
 		query = query.gte('gym_workouts.started_at', since);
 	}
 	const { data, error } = await query;
-	if (error) return { sets: [], error: error.message };
+	if (error) return { sets: [], error: dbError(error) };
 	const sets = ((data ?? []) as unknown[]).map((row) => {
 		const r = row as {
 			workout_id: string;
@@ -8833,9 +14044,10 @@ export async function fetchGymSetHistoryWithError(opts?: {
 			weight_kg: number | null;
 			rpe: number | null;
 			duration_s: number | null;
+			set_type: string | null;
 			gym_workouts: { started_at: string } | { started_at: string }[];
 		};
-		const w = Array.isArray(r.gym_workouts) ? r.gym_workouts[0] : r.gym_workouts;
+		const w = singleEmbed(r.gym_workouts);
 		return {
 			workout_id: r.workout_id,
 			started_at: w?.started_at ?? '',
@@ -8844,6 +14056,7 @@ export async function fetchGymSetHistoryWithError(opts?: {
 			weight_kg: r.weight_kg,
 			rpe: r.rpe,
 			duration_s: r.duration_s,
+			set_type: r.set_type,
 		};
 	});
 	return { sets, error: null };
@@ -8882,11 +14095,11 @@ export interface ExerciseRecord {
 /// brand-new lifter). Mirrors the `fetchMyPlansWithError` convention.
 export async function fetchExerciseRecordsWithError(): Promise<{
 	records: ExerciseRecord[];
-	error: string | null;
+	error: Error | null;
 }> {
 	if (!auth.user?.id) return { records: [], error: null };
-	const { data, error } = await supabase.rpc('gym_exercise_records');
-	if (error) return { records: [], error: error.message };
+	const { data, error } = await supabase.rpc('gym_exercise_records', undefined, { get: true });
+	if (error) return { records: [], error: dbError(error) };
 	type Row = {
 		exercise_name: string;
 		heaviest_weight_kg: number | string;
@@ -8927,10 +14140,14 @@ export async function fetchExerciseRecords(): Promise<ExerciseRecord[]> {
 /// state instead of an empty "no progression data" card.
 export async function fetchExerciseSetHistoryWithError(
 	name: string
-): Promise<{ sets: GymSetWithDate[]; error: string | null }> {
-	if (!auth.user?.id || !name.trim()) return { sets: [], error: null };
-	const { data, error } = await supabase.rpc('gym_exercise_set_history', { p_name: name });
-	if (error) return { sets: [], error: error.message };
+): Promise<{ sets: GymSetWithDate[]; error: Error | null }> {
+	// The RPC matches `s.exercise_key = normalise_exercise_name(p_name)`, so the
+	// only blankness that means anything here is the fold's — a name of one
+	// U+0085 survives JS `trim()` and folds to the empty key no row can hold
+	// (§ 1367).
+	if (!auth.user?.id || !namesAnExercise(name)) return { sets: [], error: null };
+	const { data, error } = await supabase.rpc('gym_exercise_set_history', { p_name: name }, { get: true });
+	if (error) return { sets: [], error: dbError(error) };
 	return {
 		sets: ((data ?? []) as Array<{
 			workout_id: string;
@@ -8940,6 +14157,7 @@ export async function fetchExerciseSetHistoryWithError(
 			weight_kg: number | string | null;
 			rpe: number | string | null;
 			duration_s: number | null;
+			set_type: string | null;
 		}>).map((r) => ({
 			workout_id: r.workout_id,
 			started_at: r.started_at,
@@ -8948,6 +14166,7 @@ export async function fetchExerciseSetHistoryWithError(
 			weight_kg: r.weight_kg == null ? null : Number(r.weight_kg),
 			rpe: r.rpe == null ? null : Number(r.rpe),
 			duration_s: r.duration_s,
+			set_type: r.set_type,
 		})),
 		error: null
 	};
@@ -8963,7 +14182,12 @@ export async function fetchExerciseSetHistory(name: string): Promise<GymSetWithD
 /// match is on the normalised name (same expression as normaliseExerciseName),
 /// so consumers can group the flat result by that key.
 export async function fetchExerciseSetHistoryBatch(names: string[]): Promise<GymSetWithDate[]> {
-	const wanted = names.map((n) => n.trim()).filter((n) => n.length > 0);
+	// The RPC folds each element and drops the ones that fold to empty, so this
+	// filter only decides which names are worth a round trip — and it has to
+	// agree with the server about which those are. A JS `trim()` does not: it
+	// leaves U+0085 standing (§ 1367). The names go over unfolded, because the
+	// server's fold is the one that matches.
+	const wanted = names.filter((n) => namesAnExercise(n));
 	if (!auth.user?.id || wanted.length === 0) return [];
 	const { data, error } = await supabase.rpc('gym_exercise_set_history_batch', {
 		p_names: wanted
@@ -8980,6 +14204,7 @@ export async function fetchExerciseSetHistoryBatch(names: string[]): Promise<Gym
 		weight_kg: number | string | null;
 		rpe: number | string | null;
 		duration_s: number | null;
+		set_type: string | null;
 	}>).map((r) => ({
 		workout_id: r.workout_id,
 		started_at: r.started_at,
@@ -8987,7 +14212,8 @@ export async function fetchExerciseSetHistoryBatch(names: string[]): Promise<Gym
 		reps: r.reps,
 		weight_kg: r.weight_kg == null ? null : Number(r.weight_kg),
 		rpe: r.rpe == null ? null : Number(r.rpe),
-		duration_s: r.duration_s
+		duration_s: r.duration_s,
+		set_type: r.set_type
 	}));
 }
 
@@ -8997,7 +14223,7 @@ export async function fetchExerciseSetHistoryBatch(names: string[]): Promise<Gym
 /// perf-hunt follow-up 2026-06-10.
 export async function fetchGymExerciseNames(): Promise<string[]> {
 	if (!auth.user?.id) return [];
-	const { data, error } = await supabase.rpc('gym_exercise_names');
+	const { data, error } = await supabase.rpc('gym_exercise_names', undefined, { get: true });
 	if (error) {
 		console.error('fetchGymExerciseNames failed', error);
 		return [];
@@ -9005,28 +14231,68 @@ export async function fetchGymExerciseNames(): Promise<string[]> {
 	return ((data ?? []) as Array<{ exercise_name: string }>).map((r) => r.exercise_name);
 }
 
+/// Alphabetical; `id` breaks a tie because a seeded global and a user's own
+/// custom entry can carry the same name — the two partial uniques on
+/// `name_key` (migration 20270222_001) scope uniqueness to `author_id is null`
+/// and to one author, so a custom can shadow a global. Both columns are NOT
+/// NULL. `api_client.dart` walks the catalogue in the same order.
+const EXERCISE_ORDER: readonly KeysetKey[] = [
+	{ column: 'name', ascending: true, nullsFirst: false },
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
+
 /// The exercise catalogue visible to the signed-in user: every seeded global
 /// (author_id null) plus their own custom entries. RLS scopes the read; an
 /// ordered name list lets the gym editor merge these into its autocomplete
 /// datalist and bind a typed name to an exercise_id (migration 20270222_001).
 /// Additive — a user who never picks a catalogue entry logs exactly as before.
-export async function fetchExerciseCatalogue(): Promise<Exercise[]> {
-	if (!auth.user?.id) return [];
-	const { data, error } = await supabase
-		.from(TABLES.exercises)
-		.select('*')
-		.order('name', { ascending: true });
-	if (error) {
-		console.error('fetchExerciseCatalogue failed', error);
-		return [];
+///
+/// Surfaces the error instead of degrading to `[]`, because an empty catalogue
+/// is a state the surfaces ACT on: `GymEditor` binds every typed name to no
+/// `exercises.id`, the browse affordance hides itself, and the picker's
+/// create-custom test is only as good as the list it scans. The same
+/// "unavailable is not empty" contract `fetchRunsWithError`,
+/// `browseClubsWithError` and `fetchGlobalSegmentsWithError` each carry; here
+/// it is the only shape rather than a sibling, because there is one caller and
+/// a second, swallowing name would be a shim that reads safe.
+export async function fetchExerciseCatalogue(): Promise<{
+	catalogue: Exercise[];
+	error: Error | null;
+}> {
+	// Signed out is not a vouched-for empty catalogue either — the read never
+	// happened, so nothing downstream may claim a typed name is free. The `/gym`
+	// page returns before `load()` when there is no user and so never reaches
+	// this branch, which is exactly why the branch has to be right on its own:
+	// the next caller inherits whatever it says, and `null` here says the
+	// catalogue is known to hold nothing.
+	if (!auth.user?.id) return { catalogue: [], error: new AppError('errorCopy.signedOut', { message: 'signed_out' }) };
+	// Walked by cursor: PostgREST caps an unranged select at `db.max-rows`, and
+	// an OFFSET walk over a catalogue someone adds a custom entry to mid-read
+	// skips or repeats a row (§ 1936).
+	const walk = await walkKeyset(EXERCISE_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.exercises).select('*');
+		if (after) q = q.or(after);
+		for (const k of EXERCISE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!walk.complete) {
+		console.error('fetchExerciseCatalogue failed', walk.error);
+		return { catalogue: [], error: dbError(walk.error) };
 	}
-	return (data ?? []) as Exercise[];
+	const rows = walk.rows as Exercise[];
+	return { catalogue: dedupeShadowedExercises(rows), error: null };
 }
 
-/// Create an owner-scoped custom exercise. name_key is the normalised name so
-/// it binds to logged sets the same way gym_prs / gym_routine_exercises key.
+/// Create an owner-scoped custom exercise. `name_key` is NOT sent: the
+/// `exercises_stamp_name_key` trigger derives it from `name` on every insert
+/// and update (migration 20270711000001), so a client value is overwritten
+/// rather than used, and computing one here would be a fourth rail that can
+/// drift from the fold the two partial unique indexes are actually built on.
 /// RLS rejects an insert with any author_id other than the caller. Returns the
-/// created row, or null on conflict/error (e.g. a duplicate name_key).
+/// created row, or null on conflict/error (e.g. a duplicate name_key -- the
+/// conflict is decided on the SERVER's fold).
 export async function createCustomExercise(input: {
 	name: string;
 	category?: ExerciseCategory;
@@ -9035,14 +14301,18 @@ export async function createCustomExercise(input: {
 	const userId = auth.user?.id;
 	if (!userId) return null;
 	const name = input.name.trim();
-	if (name.length === 0) return null;
+	// The display spelling is not the rail the row is keyed on: `name_key` is
+	// stamped from it by trigger and carries a `length between 1 and 120`
+	// CHECK, and the fold's whitespace class is not the set JS `trim()` strips.
+	// A name of one U+0085 survives the trim and mints an empty key the column
+	// refuses, so blankness is decided on the key (§ 1367).
+	if (!namesAnExercise(name)) return null;
 	const nowIso = new Date().toISOString();
 	const { data, error } = await supabase
 		.from(TABLES.exercises)
 		.insert({
 			author_id: userId,
 			name,
-			name_key: normaliseExerciseName(name),
 			category: input.category ?? 'other',
 			modality: input.modality ?? 'weight_reps',
 			last_modified_at: nowIso,
@@ -9061,8 +14331,14 @@ async function replaceGymSets(workoutId: string, sets: GymSetInput[]): Promise<v
 		.from(TABLES.gym_sets)
 		.delete()
 		.eq('workout_id', workoutId);
-	if (delErr) throw delErr;
+	if (delErr) throw dbError(delErr);
+	// Dropped on the key, not the spelling: `gym_sets.exercise_key` is stamped
+	// from `exercise_name` by trigger under a `length >= 1` CHECK, and a name
+	// of one U+0085 trims non-empty while folding to nothing. Dropping first
+	// also keeps `set_index` contiguous — a blank in the middle used to leave a
+	// hole in the numbering the surviving sets are read back by.
 	const rows = sets
+		.filter((s) => namesAnExercise(s.exercise_name))
 		.map((s, i) => ({
 			workout_id: workoutId,
 			set_index: i,
@@ -9075,11 +14351,10 @@ async function replaceGymSets(workoutId: string, sets: GymSetInput[]): Promise<v
 			set_type: s.set_type ?? 'working',
 			duration_s: s.duration_s ?? null,
 			exercise_id: s.exercise_id ?? null,
-		}))
-		.filter((r) => r.exercise_name.length > 0);
+		}));
 	if (rows.length === 0) return;
 	const { error: insErr } = await supabase.from(TABLES.gym_sets).insert(rows);
-	if (insErr) throw insErr;
+	if (insErr) throw dbError(insErr);
 }
 
 export async function createGymWorkout(input: {
@@ -9089,11 +14364,12 @@ export async function createGymWorkout(input: {
 	notes?: string | null;
 	is_public?: boolean;
 	sets?: GymSetInput[];
-	metadata?: Record<string, unknown> | null;
+	metadata?: JsonObject | null;
 }): Promise<GymWorkout> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 	const nowIso = new Date().toISOString();
+	markListsStale('history');
 	const { data, error } = await supabase
 		.from(TABLES.gym_workouts)
 		.insert({
@@ -9111,7 +14387,7 @@ export async function createGymWorkout(input: {
 		})
 		.select('*')
 		.single();
-	if (error || !data) throw error ?? new Error('createGymWorkout failed');
+	if (error || !data) throw error ? dbError(error) : new Error('createGymWorkout failed');
 	const workout = data as GymWorkout;
 	if (input.sets && input.sets.length > 0) {
 		await replaceGymSets(workout.id, input.sets);
@@ -9126,11 +14402,12 @@ export async function updateGymWorkout(
 	>,
 	sets?: GymSetInput[],
 ): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase
 		.from(TABLES.gym_workouts)
 		.update({ ...patch, last_modified_at: new Date().toISOString() })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	if (sets !== undefined) await replaceGymSets(id, sets);
 }
 
@@ -9139,17 +14416,19 @@ export async function updateGymWorkout(
 /// UI so non-owners never see the control. Stamps `last_modified_at` so the
 /// offline newer-wins reconciliation on mobile picks the change up.
 export async function setGymWorkoutPublic(id: string, isPublic: boolean): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase
 		.from(TABLES.gym_workouts)
 		.update({ is_public: isPublic, last_modified_at: new Date().toISOString() })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Deletes the workout; gym_sets cascade via the FK (migration 20261204_001).
 export async function deleteGymWorkout(id: string): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.gym_workouts).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Gym routines (gym_programming.md slice P1) ---
@@ -9182,7 +14461,7 @@ export interface GymRoutineExercise {
 	superset_order: number | null;
 	modality: GymExerciseModality;
 	progression: GymProgressionScheme;
-	progression_params: Record<string, unknown>;
+	progression_params: JsonObject;
 	sets: GymRoutineSet[];
 }
 
@@ -9199,12 +14478,14 @@ export interface GymRoutineSet {
 }
 
 export interface GymRoutineDetail {
-	routine: GymRoutineSummary;
+	/// `is_official` comes with the base-table read only; the public view
+	/// fallback cannot carry it (a public template is never club-owned).
+	routine: GymRoutineSummary & OfficialFlag;
 	exercises: GymRoutineExercise[];
 }
 
 /// The shape routineFromWorkout / the RoutineEditor produce. Mirrors the
-/// RoutineDraft from $lib/gym/gym_routine.ts.
+/// RoutineDraft from #lib/gym/gym_routine.ts.
 export interface GymRoutineInput {
 	title: string;
 	notes?: string | null;
@@ -9216,7 +14497,7 @@ export interface GymRoutineInput {
 		superset_order?: number | null;
 		modality?: GymExerciseModality;
 		progression?: GymProgressionScheme;
-		progression_params?: Record<string, unknown>;
+		progression_params?: JsonObject;
 		sets: Array<{
 			set_index: number;
 			set_type?: GymSetType;
@@ -9238,7 +14519,7 @@ export interface GymRoutineInput {
 /// `fetchRoutesWithError` / `fetchMyPlansWithError` convention.
 export async function fetchGymRoutinesWithError(
 	limit = 100
-): Promise<{ routines: GymRoutineSummary[]; error: string | null }> {
+): Promise<{ routines: GymRoutineSummary[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { routines: [], error: null };
 	const { data, error } = await supabase
@@ -9247,7 +14528,7 @@ export async function fetchGymRoutinesWithError(
 		.eq('author_id', userId)
 		.order('last_modified_at', { ascending: false })
 		.limit(limit);
-	return { routines: (data ?? []) as GymRoutineSummary[], error: error?.message ?? null };
+	return { routines: (data ?? []) as GymRoutineSummary[], error: error ? dbError(error) : null };
 }
 
 export async function fetchGymRoutines(limit = 100): Promise<GymRoutineSummary[]> {
@@ -9261,14 +14542,14 @@ export async function fetchGymRoutines(limit = 100): Promise<GymRoutineSummary[]
 /// public_gym_routines view (migration 20270319_001), which carries no
 /// last_modified_at — created_at stands in for the required summary field.
 export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetail | null> {
-	let routine: GymRoutineSummary | null = null;
+	let routine: (GymRoutineSummary & OfficialFlag) | null = null;
 	const { data: base, error: rErr } = await supabase
 		.from(TABLES.gym_routines)
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (!rErr && base) {
-		routine = base as GymRoutineSummary;
+		routine = base;
 	} else {
 		const { data: pub } = await supabase
 			.from('public_gym_routines')
@@ -9291,7 +14572,7 @@ export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetai
 	// Same contract as fetchGymWorkoutWithSets: a routine whose exercises
 	// failed to load is not an empty routine, and rendering it as one invites
 	// the viewer to start or adopt a routine that has no content.
-	if (eErr) throw eErr;
+	if (eErr) throw dbError(eErr);
 	const exercises = (exRows ?? []) as Array<{
 		id: string;
 		exercise_name: string;
@@ -9301,21 +14582,27 @@ export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetai
 		superset_order: number | null;
 		modality: GymExerciseModality;
 		progression: GymProgressionScheme;
-		progression_params: Record<string, unknown> | null;
+		progression_params: JsonObject | null;
 	}>;
 	if (exercises.length === 0) {
 		return { routine: routine as GymRoutineSummary, exercises: [] };
 	}
-	const { data: setRows, error: sErr } = await supabase
-		.from(TABLES.gym_routine_sets)
-		.select(
-			'routine_exercise_id, set_index, set_type, target_reps_min, target_reps_max, target_weight_kg, target_rpe, rest_s, target_duration_s, target_distance_m',
-		)
-		.in('routine_exercise_id', exercises.map((e) => e.id))
-		.order('set_index', { ascending: true });
+	// Every exercise's sets come back from one chunk, so the per-exercise
+	// set_index order the grouping below relies on survives the merge.
+	const { data: setRows, error: sErr } = await queryChunked(
+		exercises.map((e) => e.id),
+		(part) =>
+			supabase
+				.from(TABLES.gym_routine_sets)
+				.select(
+					'routine_exercise_id, set_index, set_type, target_reps_min, target_reps_max, target_weight_kg, target_rpe, rest_s, target_duration_s, target_distance_m',
+				)
+				.in('routine_exercise_id', part)
+				.order('set_index', { ascending: true }),
+	);
 	// The planned sets ARE the prescription — dropping them silently turns a
 	// 5x5 into a bare exercise list.
-	if (sErr) throw sErr;
+	if (sErr) throw dbError(sErr);
 	const setsByExercise = new Map<string, GymRoutineSet[]>();
 	for (const row of (setRows ?? []) as Array<{ routine_exercise_id: string } & GymRoutineSet>) {
 		const list = setsByExercise.get(row.routine_exercise_id) ?? [];
@@ -9349,13 +14636,64 @@ export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetai
 	};
 }
 
+/// One routine's own performance history: complete tallies over every session
+/// it has ever been run as, plus a bounded page of the most recent for the
+/// panel's list — all from the `gym_routine_history` RPC in one round trip.
+///
+/// A count is an aggregate, so no client-side window can serve it honestly:
+/// the previous read pulled up to 500 rows just to reduce them, and past that
+/// silently under-reported (an unbounded PostgREST select truncates at
+/// `db.max-rows` and still answers 200). The RPC applies the draft / ungraded
+/// exclusions to BOTH the tallies and the page in one snapshot, so the listed
+/// rows can never contradict the count above them; classifying each listed row
+/// is still `gym/routine_history.ts`'s job.
+export async function fetchGymRoutineHistory(
+	routineId: string,
+	recentLimit = 5,
+): Promise<RoutineHistoryAggregate> {
+	const empty: RoutineHistoryAggregate = {
+		sessionCount: 0,
+		lastPerformedAt: null,
+		gradedCount: 0,
+		completedCount: 0,
+		recentRows: [],
+	};
+	const userId = auth.user?.id;
+	if (!userId || !routineId) return empty;
+	const { data, error } = await supabase.rpc('gym_routine_history', {
+		p_routine_id: routineId,
+		p_recent_limit: recentLimit,
+	}, { get: true });
+	// A failed read is not "you have never run this" — the caller shows a retry
+	// rather than an empty history.
+	if (error) throw dbError(error);
+	const row = data?.[0];
+	if (!row) return empty;
+	return {
+		sessionCount: row.session_count ?? 0,
+		lastPerformedAt: row.last_performed_at ?? null,
+		gradedCount: row.graded_count ?? 0,
+		completedCount: row.completed_count ?? 0,
+		// `recent_sessions` is a jsonb array the RPC builds row by row
+		// (migration 20270528_001); the generated return type can say no more
+		// than `Json`, so the element shape is the RPC's contract with
+		// `routine_history.ts` rather than anything the compiler can check.
+		recentRows: Array.isArray(row.recent_sessions)
+			? (row.recent_sessions as unknown as RoutineSessionRow[])
+			: [],
+	};
+}
+
 /// Insert a routine + its exercises + their planned sets. Blank-named
 /// exercises are dropped. exercise_count is stamped client-side from the
 /// surviving exercise list (non-authoritative cache).
 export async function createGymRoutine(input: GymRoutineInput): Promise<GymRoutineSummary> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	const exercises = input.exercises.filter((e) => e.exercise_name.trim().length > 0);
+	// The same key-not-spelling test `replaceGymSets` applies:
+	// `gym_routine_exercises.exercise_key` is trigger-stamped under a
+	// `length between 1 and 120` CHECK the display spelling does not decide.
+	const exercises = input.exercises.filter((e) => namesAnExercise(e.exercise_name));
 	const nowIso = new Date().toISOString();
 	const { data, error } = await supabase
 		.from(TABLES.gym_routines)
@@ -9368,7 +14706,7 @@ export async function createGymRoutine(input: GymRoutineInput): Promise<GymRouti
 		})
 		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
 		.single();
-	if (error || !data) throw error ?? new Error('createGymRoutine failed');
+	if (error || !data) throw error ? dbError(error) : new Error('createGymRoutine failed');
 	const routine = data as GymRoutineSummary;
 	if (exercises.length === 0) return routine;
 
@@ -9386,7 +14724,9 @@ export async function createGymRoutine(input: GymRoutineInput): Promise<GymRouti
 		return {
 			routine_id: routine.id,
 			exercise_name: ex.exercise_name.trim(),
-			exercise_key: ex.exercise_key,
+			// exercise_key is NOT sent: gym_routine_exercises_stamp_exercise_key
+			// derives it from exercise_name on every write (20270711000001). The
+			// caller still carries one for its own plan-to-log matching.
 			position: ex.position,
 			superset_group: supersetGroup,
 			superset_order: supersetGroup == null ? null : ex.superset_order ?? 0,
@@ -9399,7 +14739,7 @@ export async function createGymRoutine(input: GymRoutineInput): Promise<GymRouti
 		.from(TABLES.gym_routine_exercises)
 		.insert(exerciseRows)
 		.select('id, position');
-	if (exErr || !exRows) throw exErr ?? new Error('createGymRoutine exercises failed');
+	if (exErr || !exRows) throw exErr ? dbError(exErr) : new Error('createGymRoutine exercises failed');
 	const idByPosition = new Map<number, string>();
 	for (const r of exRows as { id: string; position: number }[]) {
 		idByPosition.set(r.position, r.id);
@@ -9422,7 +14762,7 @@ export async function createGymRoutine(input: GymRoutineInput): Promise<GymRouti
 	});
 	if (allSetRows.length > 0) {
 		const { error: sErr } = await supabase.from(TABLES.gym_routine_sets).insert(allSetRows);
-		if (sErr) throw sErr;
+		if (sErr) throw dbError(sErr);
 	}
 	return routine;
 }
@@ -9432,7 +14772,7 @@ export async function createGymRoutine(input: GymRoutineInput): Promise<GymRouti
 /// not an FK).
 export async function deleteGymRoutine(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.gym_routines).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Nutrition: food_log + body_metrics (Phase 4 multi-modal) ---
@@ -9493,7 +14833,7 @@ export interface FoodEntryInput {
 export async function fetchFoodLogWithError(
 	fromIso: string,
 	toIso: string,
-): Promise<{ entries: FoodEntry[]; error: string | null }> {
+): Promise<{ entries: FoodEntry[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { entries: [], error: null };
 	const { data, error } = await supabase
@@ -9503,7 +14843,7 @@ export async function fetchFoodLogWithError(
 		.gte('started_at', fromIso)
 		.lt('started_at', toIso)
 		.order('started_at', { ascending: true });
-	if (error) return { entries: [], error: error.message };
+	if (error) return { entries: [], error: dbError(error) };
 	return { entries: (data ?? []) as FoodEntry[], error: null };
 }
 
@@ -9535,12 +14875,13 @@ export async function createFoodEntry(input: FoodEntryInput): Promise<FoodEntry>
 		external_id: input.external_id ?? null,
 		last_modified_at: now,
 	};
+	markListsStale('history');
 	const { data, error } = await supabase
 		.from(TABLES.food_log)
 		.insert(row)
 		.select('*')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as FoodEntry;
 }
 
@@ -9548,16 +14889,18 @@ export async function updateFoodEntry(
 	id: string,
 	patch: Partial<FoodEntryInput>,
 ): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase
 		.from(TABLES.food_log)
 		.update({ ...patch, last_modified_at: new Date().toISOString() })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function deleteFoodEntry(id: string): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.food_log).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Meal templates: saved meals logged with one tap (multi_modal.md) ---
@@ -9597,7 +14940,7 @@ export interface MealTemplateDetail {
 }
 
 /// The shape templateFromEntries / the save-as-meal flow hand to the create
-/// call. Mirrors MealTemplateDraft from $lib/nutrition/meal_template.ts.
+/// call. Mirrors MealTemplateDraft from #lib/nutrition/meal_template.ts.
 export interface MealTemplateInput {
 	name: string;
 	meal_slot?: MealSlot | null;
@@ -9619,7 +14962,7 @@ export interface MealTemplateInput {
 /// mirroring `fetchGymRoutinesWithError`.
 export async function fetchMealTemplatesWithError(
 	limit = 100,
-): Promise<{ templates: MealTemplateSummary[]; error: string | null }> {
+): Promise<{ templates: MealTemplateSummary[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { templates: [], error: null };
 	const { data, error } = await supabase
@@ -9628,7 +14971,7 @@ export async function fetchMealTemplatesWithError(
 		.eq('user_id', userId)
 		.order('last_modified_at', { ascending: false })
 		.limit(limit);
-	return { templates: (data ?? []) as MealTemplateSummary[], error: error?.message ?? null };
+	return { templates: (data ?? []) as MealTemplateSummary[], error: error ? dbError(error) : null };
 }
 
 export async function fetchMealTemplates(limit = 100): Promise<MealTemplateSummary[]> {
@@ -9676,7 +15019,7 @@ export async function createMealTemplate(input: MealTemplateInput): Promise<Meal
 		})
 		.select('id, user_id, name, meal_slot, item_count, last_modified_at, created_at')
 		.single();
-	if (error || !data) throw error ?? new Error('createMealTemplate failed');
+	if (error || !data) throw error ? dbError(error) : new Error('createMealTemplate failed');
 	const template = data as MealTemplateSummary;
 	if (items.length === 0) return template;
 	const itemRows = items.map((it, i) => ({
@@ -9691,7 +15034,7 @@ export async function createMealTemplate(input: MealTemplateInput): Promise<Meal
 		external_id: it.external_id ?? null,
 	}));
 	const { error: iErr } = await supabase.from(TABLES.meal_template_items).insert(itemRows);
-	if (iErr) throw iErr;
+	if (iErr) throw dbError(iErr);
 	return template;
 }
 
@@ -9700,7 +15043,7 @@ export async function createMealTemplate(input: MealTemplateInput): Promise<Meal
 /// never linked to the entries it spawned.
 export async function deleteMealTemplate(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.meal_templates).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Log every item of a template as a food_log entry at `startedAt` (default
@@ -9746,8 +15089,9 @@ export async function logMealTemplate(
 		external_id: it.externalId,
 		last_modified_at: nowIso,
 	}));
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.food_log).insert(rows);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return rows.length;
 }
 
@@ -9791,7 +15135,7 @@ export interface RecipeDetail {
 }
 
 /// The shape recipeFromEntries / the save-as-recipe flow hand to the create
-/// call. Mirrors RecipeDraft from $lib/nutrition/recipe.ts.
+/// call. Mirrors RecipeDraft from #lib/nutrition/recipe.ts.
 export interface RecipeInput {
 	name: string;
 	servings?: number;
@@ -9813,7 +15157,7 @@ export interface RecipeInput {
 /// rather than an empty list, mirroring `fetchMealTemplatesWithError`.
 export async function fetchRecipesWithError(
 	limit = 100,
-): Promise<{ recipes: RecipeSummary[]; error: string | null }> {
+): Promise<{ recipes: RecipeSummary[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { recipes: [], error: null };
 	const { data, error } = await supabase
@@ -9822,7 +15166,7 @@ export async function fetchRecipesWithError(
 		.eq('user_id', userId)
 		.order('last_modified_at', { ascending: false })
 		.limit(limit);
-	return { recipes: (data ?? []) as RecipeSummary[], error: error?.message ?? null };
+	return { recipes: (data ?? []) as RecipeSummary[], error: error ? dbError(error) : null };
 }
 
 export async function fetchRecipes(limit = 100): Promise<RecipeSummary[]> {
@@ -9870,7 +15214,7 @@ export async function createRecipe(input: RecipeInput): Promise<RecipeSummary> {
 		})
 		.select('id, user_id, name, servings, meal_slot, ingredient_count, last_modified_at, created_at')
 		.single();
-	if (error || !data) throw error ?? new Error('createRecipe failed');
+	if (error || !data) throw error ? dbError(error) : new Error('createRecipe failed');
 	const recipe = data as RecipeSummary;
 	if (ingredients.length === 0) return recipe;
 	const ingredientRows = ingredients.map((it, i) => ({
@@ -9885,7 +15229,7 @@ export async function createRecipe(input: RecipeInput): Promise<RecipeSummary> {
 		external_id: it.external_id ?? null,
 	}));
 	const { error: iErr } = await supabase.from(TABLES.recipe_ingredients).insert(ingredientRows);
-	if (iErr) throw iErr;
+	if (iErr) throw dbError(iErr);
 	return recipe;
 }
 
@@ -9894,7 +15238,7 @@ export async function createRecipe(input: RecipeInput): Promise<RecipeSummary> {
 /// never linked to the meals it spawned.
 export async function deleteRecipe(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.recipes).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /// Log ONE serving of a recipe as a SINGLE food_log entry at `startedAt`
@@ -9929,6 +15273,7 @@ export async function logRecipe(
 	if (!input) return 0;
 	const startedAt = opts.startedAt ?? new Date().toISOString();
 	const nowIso = new Date().toISOString();
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.food_log).insert({
 		user_id: userId,
 		item_name: input.itemName,
@@ -9941,7 +15286,7 @@ export async function logRecipe(
 		external_id: input.externalId,
 		last_modified_at: nowIso,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return 1;
 }
 
@@ -9973,7 +15318,221 @@ export async function recordWeightKg(weightKg: number): Promise<void> {
 	const { error } = await supabase
 		.from(TABLES.body_metrics)
 		.insert({ user_id: userId, weight_kg: weightKg });
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+// --- Nutrition plans: prescribed targets + self-assignment (nutrition_programming.md P1) ---
+//
+// nutrition_plans is author-scoped; nutrition_plan_assignments says which plan
+// governs which run of diary days (migration 20270815000001). Adherence is
+// never stored: the day view computes it from food_log and the governing plan.
+// last_modified_at is client-stamped (newer-wins, no trigger), like gym_routines.
+
+const NUTRITION_PLAN_COLS =
+	'id, author_id, title, notes, goal_phase, target_calories, target_protein_g, target_carbs_g, target_fat_g, training_calories, training_carbs_g, progression, progression_params, external_id, last_modified_at, created_at';
+const NUTRITION_ASSIGNMENT_COLS =
+	'id, plan_id, client_id, assigned_by, start_date, end_date, status, last_modified_at, created_at';
+
+type NutritionPlanRow = Database['public']['Tables']['nutrition_plans']['Row'];
+type NutritionAssignmentRow = Database['public']['Tables']['nutrition_plan_assignments']['Row'];
+
+function asNutritionPlan(row: NutritionPlanRow): NutritionPlan {
+	const params = row.progression_params;
+	return {
+		...row,
+		goal_phase: parseNutritionGoalPhase(row.goal_phase),
+		progression: parseNutritionProgression(row.progression),
+		progression_params:
+			params !== null && typeof params === 'object' && !Array.isArray(params) ? params : {},
+	};
+}
+
+function asNutritionAssignment(row: NutritionAssignmentRow): NutritionPlanAssignment {
+	return { ...row, status: parseNutritionAssignmentStatus(row.status) };
+}
+
+/// The pure meal_plan shape of an assignment row.
+export function planAssignmentOf(a: NutritionPlanAssignment): PlanAssignment {
+	return {
+		id: a.id,
+		planId: a.plan_id,
+		startDate: a.start_date,
+		endDate: a.end_date,
+		status: a.status,
+		createdAt: a.created_at,
+	};
+}
+
+/// The pure meal_plan prescription columns of a plan row.
+export function planTargetsOf(p: NutritionPlan): PlanTargets {
+	return {
+		targetCalories: p.target_calories,
+		targetProteinG: p.target_protein_g,
+		targetCarbsG: p.target_carbs_g,
+		targetFatG: p.target_fat_g,
+		trainingCalories: p.training_calories,
+		trainingCarbsG: p.training_carbs_g,
+	};
+}
+
+/// What the editor hands the create / update calls.
+export interface NutritionPlanInput {
+	title: string;
+	notes: string | null;
+	goal_phase: NutritionGoalPhase;
+	target_calories: number;
+	target_protein_g: number | null;
+	target_carbs_g: number | null;
+	target_fat_g: number | null;
+	training_calories: number | null;
+	training_carbs_g: number | null;
+}
+
+/// The signed-in user's authored plans, most-recently-modified first. The
+/// error is reported beside the list so "couldn't load" is never drawn as
+/// "no plans yet".
+export async function fetchNutritionPlansWithError(
+	limit = 100,
+): Promise<{ plans: NutritionPlan[]; error: Error | null }> {
+	const userId = auth.user?.id;
+	if (!userId) return { plans: [], error: null };
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.select(NUTRITION_PLAN_COLS)
+		.eq('author_id', userId)
+		.order('last_modified_at', { ascending: false })
+		.limit(limit);
+	if (error) return { plans: [], error: dbError(error) };
+	return { plans: (data ?? []).map(asNutritionPlan), error: null };
+}
+
+/// One plan by id. `plan: null, error: null` is a genuine miss (deleted, or
+/// RLS hides it); a failed read carries its error instead.
+export async function fetchNutritionPlan(
+	id: string,
+): Promise<{ plan: NutritionPlan | null; error: Error | null }> {
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.select(NUTRITION_PLAN_COLS)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) return { plan: null, error: dbError(error) };
+	return { plan: data ? asNutritionPlan(data) : null, error: null };
+}
+
+/// Plans by id, for resolving the plans the caller's assignments point at.
+export async function fetchNutritionPlansByIds(ids: string[]): Promise<NutritionPlan[]> {
+	if (ids.length === 0) return [];
+	const { data, error } = await queryChunked(ids, (part) =>
+		supabase.from(TABLES.nutrition_plans).select(NUTRITION_PLAN_COLS).in('id', part)
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map(asNutritionPlan);
+}
+
+export async function createNutritionPlan(input: NutritionPlanInput): Promise<NutritionPlan> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.insert({
+			...input,
+			title: input.title.trim(),
+			author_id: userId,
+			last_modified_at: new Date().toISOString(),
+		})
+		.select(NUTRITION_PLAN_COLS)
+		.single();
+	if (error || !data) throw error ? dbError(error) : new Error('createNutritionPlan failed');
+	return asNutritionPlan(data);
+}
+
+export async function updateNutritionPlan(id: string, input: NutritionPlanInput): Promise<NutritionPlan> {
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.update({ ...input, title: input.title.trim(), last_modified_at: new Date().toISOString() })
+		.eq('id', id)
+		.select(NUTRITION_PLAN_COLS)
+		.single();
+	if (error || !data) throw error ? dbError(error) : new Error('updateNutritionPlan failed');
+	return asNutritionPlan(data);
+}
+
+/// Delete a plan; its assignments cascade, and the days it governed revert to
+/// the computed target. food_log is untouched — the link is date-based.
+export async function deleteNutritionPlan(id: string): Promise<void> {
+	const { error } = await supabase.from(TABLES.nutrition_plans).delete().eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Every assignment naming the signed-in user as the client, ended ones
+/// included: an ended assignment still governs the days inside its range.
+export async function fetchMyNutritionAssignmentsWithError(): Promise<{
+	assignments: NutritionPlanAssignment[];
+	error: Error | null;
+}> {
+	const userId = auth.user?.id;
+	if (!userId) return { assignments: [], error: null };
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plan_assignments)
+		.select(NUTRITION_ASSIGNMENT_COLS)
+		.eq('client_id', userId)
+		.order('start_date', { ascending: false })
+		.limit(200);
+	if (error) return { assignments: [], error: dbError(error) };
+	return { assignments: (data ?? []).map(asNutritionAssignment), error: null };
+}
+
+async function endNutritionAssignment(a: NutritionPlanAssignment, today: string): Promise<void> {
+	const action = stopFollowingAction(planAssignmentOf(a), today);
+	const nowIso = new Date().toISOString();
+	const { error } =
+		action.kind === 'delete'
+			? await supabase.from(TABLES.nutrition_plan_assignments).delete().eq('id', a.id)
+			: await supabase
+					.from(TABLES.nutrition_plan_assignments)
+					.update({ status: 'ended', end_date: action.endDate, last_modified_at: nowIso })
+					.eq('id', a.id);
+	if (error) throw dbError(error);
+}
+
+/// Start following `planId` from `today`. The new assignment is written
+/// before the old ones are ended, so a failure part-way leaves an overlap the
+/// newest-start rule already resolves to the new plan — never a day with no
+/// plan the user asked for.
+export async function followNutritionPlan(
+	planId: string,
+	today: string,
+	current: NutritionPlanAssignment[],
+): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plan_assignments)
+		.insert({
+			plan_id: planId,
+			client_id: userId,
+			assigned_by: userId,
+			start_date: today,
+			status: 'active',
+			last_modified_at: new Date().toISOString(),
+		})
+		.select('id')
+		.single();
+	if (error || !data) throw error ? dbError(error) : new Error('followNutritionPlan failed');
+	const toEnd = assignmentsToEnd(current.map(planAssignmentOf), today);
+	for (const a of current) {
+		if (a.id === data.id || !toEnd.some((t) => t.id === a.id)) continue;
+		await endNutritionAssignment(a, today);
+	}
+}
+
+/// Stop following: today reverts to the computed target.
+export async function stopFollowingNutritionPlan(
+	assignment: NutritionPlanAssignment,
+	today: string,
+): Promise<void> {
+	await endNutritionAssignment(assignment, today);
 }
 
 // --- Unified activities timeline (Phase 4 multi-modal History) ---
@@ -10007,7 +15566,7 @@ export async function fetchActivities(limit = 100): Promise<ActivityRow[]> {
 /// signed-out caller is empty, not an error.
 export async function fetchActivitiesWithError(
 	limit = 100,
-): Promise<{ activities: ActivityRow[]; error: string | null }> {
+): Promise<{ activities: ActivityRow[]; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { activities: [], error: null };
 	const { data, error } = await supabase
@@ -10016,7 +15575,7 @@ export async function fetchActivitiesWithError(
 		.eq('user_id', userId)
 		.order('started_at', { ascending: false })
 		.limit(limit);
-	if (error) return { activities: [], error: error.message };
+	if (error) return { activities: [], error: dbError(error) };
 	const activities = ((data ?? []) as unknown[])
 		.map((row) => {
 			const r = row as {
@@ -10086,12 +15645,12 @@ export async function fetchSessionPlans(): Promise<SessionPlan[]> {
 		.eq('user_id', userId);
 	const clubIds = (memberships ?? []).map((m: { club_id: string }) => m.club_id);
 
-	let query = supabase.from('session_plans').select('*');
+	let query = supabase.from('session_plans').select('*, is_official');
 	query = clubIds.length
 		? query.or(`author_id.eq.${userId},club_id.in.(${clubIds.join(',')})`)
 		: query.eq('author_id', userId);
 	const { data, error } = await query.order('updated_at', { ascending: false });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []) as SessionPlan[];
 }
 
@@ -10099,10 +15658,10 @@ export async function fetchSessionPlans(): Promise<SessionPlan[]> {
 export async function fetchSessionPlan(id: string): Promise<SessionPlanWithItems | null> {
 	const { data: plan, error } = await supabase
 		.from('session_plans')
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	if (!plan) return null;
 
 	const [{ data: blocks }, { data: items }] = await Promise.all([
@@ -10124,12 +15683,12 @@ async function replaceSessionPlanChildren(planId: string, input: SessionPlanInpu
 		.from('session_plan_items')
 		.delete()
 		.eq('plan_id', planId);
-	if (itemsError) throw itemsError;
+	if (itemsError) throw dbError(itemsError);
 	const { error: blocksError } = await supabase
 		.from('session_plan_blocks')
 		.delete()
 		.eq('plan_id', planId);
-	if (blocksError) throw blocksError;
+	if (blocksError) throw dbError(blocksError);
 
 	const blockIds: string[] = [];
 	if (input.blocks.length > 0) {
@@ -10143,7 +15702,7 @@ async function replaceSessionPlanChildren(planId: string, input: SessionPlanInpu
 				}))
 			)
 			.select('id');
-		if (error) throw error;
+		if (error) throw dbError(error);
 		// insert preserves input order, but sort defensively by nothing — map by index.
 		for (const row of (data ?? []) as { id: string }[]) blockIds.push(row.id);
 	}
@@ -10166,7 +15725,7 @@ async function replaceSessionPlanChildren(planId: string, input: SessionPlanInpu
 				cue: it.cue?.trim() || null
 			}))
 		);
-		if (error) throw error;
+		if (error) throw dbError(error);
 	}
 }
 
@@ -10186,7 +15745,7 @@ export async function createSessionPlan(input: SessionPlanInput): Promise<string
 		})
 		.select('id')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	const planId = (data as { id: string }).id;
 	await replaceSessionPlanChildren(planId, input);
 	return planId;
@@ -10205,13 +15764,13 @@ export async function updateSessionPlan(id: string, input: SessionPlanInput): Pr
 			updated_at: new Date().toISOString()
 		})
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	await replaceSessionPlanChildren(id, input);
 }
 
 export async function deleteSessionPlan(id: string): Promise<void> {
 	const { error } = await supabase.from('session_plans').delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /** Flip a session plan's public visibility (owner-only via RLS). A public plan
@@ -10221,7 +15780,7 @@ export async function setSessionPlanPublic(id: string, isPublic: boolean): Promi
 		.from('session_plans')
 		.update({ is_public: isPublic, updated_at: new Date().toISOString() })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /** Distinct movement names the user has used across their own session plans,
@@ -10253,16 +15812,189 @@ export async function fetchSessionMovementNames(): Promise<string[]> {
 }
 
 /** Attach (or detach with null) a session plan to a class event. Organiser-only
- *  at the DB layer (the events_session_plan_organiser trigger). */
+ *  at the DB layer (the events_session_plan_organiser trigger). A class carries
+ *  a session plan or a gym routine, never both (events_one_class_content), so
+ *  attaching a plan detaches any routine in the same write. */
 export async function setEventSessionPlan(
 	eventId: string,
 	sessionPlanId: string | null
 ): Promise<void> {
 	const { error } = await supabase
 		.from('events')
-		.update({ session_plan_id: sessionPlanId })
+		.update(
+			sessionPlanId == null
+				? { session_plan_id: null }
+				: { session_plan_id: sessionPlanId, gym_routine_id: null }
+		)
 		.eq('id', eventId);
-	if (error) throw error;
+	if (error) throw dbError(error);
+}
+
+/** Attach (or detach with null) a gym routine to a class event (decisions
+ *  § 1869). The events_gym_routine_organiser trigger admits only an organiser
+ *  and only a template of the event's own club or a public template; attaching
+ *  one detaches any session plan in the same write, as above. */
+export async function setEventGymRoutine(
+	eventId: string,
+	gymRoutineId: string | null
+): Promise<void> {
+	const { error } = await supabase
+		.from('events')
+		.update(
+			gymRoutineId == null
+				? { gym_routine_id: null }
+				: { gym_routine_id: gymRoutineId, session_plan_id: null }
+		)
+		.eq('id', eventId);
+	if (error) throw dbError(error);
+}
+
+// ─── Club verification (issue #1190 § 2, decisions § 2398) ───────────
+// The owner's half reads the club's requests under RLS (owner + active
+// admins) and acts through definer RPCs that re-check the owner. The site
+// admin's half is the queue and the review RPCs, each hard-denying a
+// non-admin at the database (42501).
+
+/** A verification RPC's own refusal (it raises a stable code) as the
+ *  sentence for it; any other failure unchanged. */
+function clubVerificationError(error: unknown): Error {
+	const key = verificationErrorKey(error);
+	return key ? new AppError(key) : dbError(error);
+}
+
+/** Every verification request of one club the caller may read, newest first. */
+export async function fetchClubVerificationRequests(clubId: string): Promise<ClubVerificationRequest[]> {
+	const { data, error } = await supabase
+		.from(TABLES.club_verification_requests)
+		.select(CLUB_VERIFICATION_REQUEST_COLUMNS)
+		.eq('club_id', clubId)
+		.order('created_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []) as ClubVerificationRequest[];
+}
+
+/** Opens a request for the club's website domain. Owner only. */
+export async function submitClubVerification(clubId: string, organisation: string, note: string | null): Promise<string> {
+	const { data, error } = await supabase.rpc('submit_club_verification', {
+		p_club_id: clubId,
+		p_organisation: organisation,
+		p_note: note,
+	});
+	if (error) throw clubVerificationError(error);
+	return data as string;
+}
+
+export async function withdrawClubVerification(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_club_verification', { p_request_id: requestId });
+	if (error) throw clubVerificationError(error);
+}
+
+/** Mails a one-time confirm link to `<localPart>@<the request's domain>`. */
+export async function sendClubVerificationEmail(requestId: string, localPart: string): Promise<void> {
+	const { error } = await supabase.rpc('send_club_verification_email', {
+		p_request_id: requestId,
+		p_local_part: localPart,
+	});
+	if (error) throw clubVerificationError(error);
+}
+
+/** Runs the DNS TXT and .well-known checks for a pending request. */
+export async function checkClubVerificationProof(requestId: string): Promise<ProofCheckResult> {
+	const { data, error } = await supabase.functions.invoke('club-verification', {
+		body: { request_id: requestId },
+	});
+	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'club_verification_check_failed'));
+	return data as ProofCheckResult;
+}
+
+export interface ClubVerificationConfirmation {
+	outcome: 'confirmed' | 'invalid';
+	club_name: string | null;
+	club_slug: string | null;
+}
+
+/** The mailed link's landing page; the token is the credential. */
+export async function confirmClubVerificationEmail(token: string): Promise<ClubVerificationConfirmation> {
+	const { data, error } = await supabase.rpc('confirm_club_verification_email', { p_token: token });
+	if (error) throw clubVerificationError(error);
+	const row = (data ?? [])[0];
+	return {
+		outcome: row?.outcome === 'confirmed' ? 'confirmed' : 'invalid',
+		club_name: row?.club_name ?? null,
+		club_slug: row?.club_slug ?? null,
+	};
+}
+
+export type ClubVerificationQueueView = 'pending' | 'verified' | 'closed';
+
+export interface ClubVerificationQueueRow {
+	request_id: string | null;
+	club_id: string;
+	club_name: string;
+	club_slug: string;
+	club_website_url: string | null;
+	club_is_verified: boolean;
+	club_is_public: boolean;
+	member_count: number;
+	owner_name: string | null;
+	organisation: string | null;
+	domain: string | null;
+	note: string | null;
+	status: ClubVerificationStatus | null;
+	proof_method: ClubVerificationProofMethod | null;
+	proof_verified_at: string | null;
+	proof_detail: string | null;
+	last_checked_at: string | null;
+	check_failures: number;
+	decision_reason: string | null;
+	close_reason: string | null;
+	created_at: string | null;
+	decided_at: string | null;
+	closed_at: string | null;
+}
+
+export async function fetchClubVerificationQueue(view: ClubVerificationQueueView): Promise<ClubVerificationQueueRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_queue', { p_view: view }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({
+		...r,
+		member_count: Number(r.member_count ?? 0),
+		check_failures: Number(r.check_failures ?? 0),
+		status: r.status as ClubVerificationStatus | null,
+		proof_method: r.proof_method as ClubVerificationProofMethod | null,
+	}));
+}
+
+export interface ClubVerificationAuditRow {
+	id: number;
+	request_id: string | null;
+	club_name: string;
+	actor_name: string | null;
+	action: ClubVerificationAuditAction;
+	detail: string | null;
+	created_at: string;
+}
+
+export async function fetchClubVerificationAudit(clubId: string): Promise<ClubVerificationAuditRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_audit_log', { p_club_id: clubId }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({ ...r, id: Number(r.id), action: r.action as ClubVerificationAuditAction }));
+}
+
+export async function approveClubVerification(requestId: string, note: string | null): Promise<void> {
+	const { error } = await supabase.rpc('approve_club_verification', { p_request_id: requestId, p_note: note });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function rejectClubVerification(requestId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('reject_club_verification', { p_request_id: requestId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function revokeClubVerification(clubId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('revoke_club_verification', { p_club_id: clubId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
 }
 
 // ─── Admin moderation (web-only back-office; /admin/reports) ─────────
@@ -10277,11 +16009,51 @@ export interface PendingReportTarget {
 	reasons: Record<string, number>;
 	latest_at: string;
 	shadow_hidden: boolean;
+	/** The id of the page that shows the reported item (the item itself, or
+	 *  the run / club / route carrying a comment / post / review); null for a
+	 *  direct message or a target whose row is gone. */
+	page_id: string | null;
+	/** A verified organiser's naming dispute is pending; these sort first. */
+	organiser_dispute: boolean;
+	/** The reporting clubs, first filing first. */
+	organiser_clubs: OrganiserDisputeClub[];
+	/** The rename deadline in force, when the latest action was a notice. */
+	rename_deadline_at: string | null;
+	/** When the oldest pending land-manager request on a park course arrived;
+	 *  null on every other target. These sort after disputes, oldest first. */
+	land_manager_since: string | null;
+	/** When the oldest pending rights-holder request on a park course arrived;
+	 *  null on every other target. Sorted with the land-manager requests. */
+	rights_holder_since: string | null;
+}
+
+export interface OrganiserDisputeClub {
+	id: string;
+	name: string;
+	slug: string | null;
+	is_verified: boolean;
+}
+
+/** One target with at least one resolved report — the list a legal hold is
+ *  placed from once a target has left the pending queue. */
+export interface ResolvedReportTarget {
+	target_kind: ReportTargetKind;
+	target_id: string;
+	report_count: number;
+	held_count: number;
+	last_reviewed_at: string | null;
+	/** The earliest date one of these reports becomes eligible for the
+	 *  retention purge; null when every one is held (decisions § 2231). */
+	next_purge_after: string | null;
+	shadow_hidden: boolean;
+	page_id: string | null;
 }
 
 export interface TargetReport {
 	id: string;
-	reporter_id: string;
+	/** Null once the reporter has deleted their account: the report is kept
+	 *  as evidence (migration 20271021000040). */
+	reporter_id: string | null;
 	reason: string;
 	notes: string | null;
 	status: string;
@@ -10289,20 +16061,39 @@ export interface TargetReport {
 	reviewed_at: string | null;
 	reviewed_by: string | null;
 	resolution: string | null;
+	/// The reported direct message as it read at report time (migration
+	/// 20271021000003); null for every other target kind.
+	snapshot_body: string | null;
+	snapshot_author_id: string | null;
+	snapshot_sent_at: string | null;
+	/// The message as first sent when it had been edited before the report
+	/// (migration 20271114000210); null when it never was.
+	snapshot_original_body: string | null;
+	legal_hold: boolean;
+	/** When the retention purge may delete this report; null while it is
+	 *  pending or held. */
+	purge_after: string | null;
+	/** The verified club a naming dispute speaks for; null otherwise. */
+	organiser_club: OrganiserDisputeClub | null;
+	/** The address a park course reporter gave for a reply; null when none,
+	 *  and once it is cleared (decisions § 2449). */
+	contact_email: string | null;
+	/** Filed without an account, so a null reporter is not a deleted one. */
+	signed_out: boolean;
 }
 
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
  *  below are the real boundary. */
 export async function amIAdmin(): Promise<boolean> {
-	const { data, error } = await supabase.rpc('am_i_admin');
+	const { data, error } = await supabase.rpc('am_i_admin', undefined, { get: true });
 	if (error) return false;
 	return data === true;
 }
 
 /** The moderation queue: one row per reported target with pending reports. */
 export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
-	const { data, error } = await supabase.rpc('fetch_pending_reports');
-	if (error) throw error;
+	const { data, error } = await supabase.rpc('fetch_pending_reports', undefined, { get: true });
+	if (error) throw dbError(error);
 	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
 		target_kind: r.target_kind as ReportTargetKind,
 		target_id: r.target_id as string,
@@ -10311,6 +16102,19 @@ export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
 		reasons: (r.reasons ?? {}) as Record<string, number>,
 		latest_at: r.latest_at as string,
 		shadow_hidden: r.shadow_hidden === true,
+		page_id: (r.page_id ?? null) as string | null,
+		organiser_dispute: r.organiser_dispute === true,
+		organiser_clubs: Array.isArray(r.organiser_clubs)
+			? (r.organiser_clubs as Record<string, unknown>[]).map((c) => ({
+					id: c.id as string,
+					name: c.name as string,
+					slug: (c.slug ?? null) as string | null,
+					is_verified: c.is_verified === true,
+				}))
+			: [],
+		rename_deadline_at: (r.rename_deadline_at ?? null) as string | null,
+		land_manager_since: (r.land_manager_since ?? null) as string | null,
+		rights_holder_since: (r.rights_holder_since ?? null) as string | null,
 	}));
 }
 
@@ -10319,14 +16123,15 @@ export async function fetchReportsForTarget(
 	targetKind: ReportTargetKind,
 	targetId: string
 ): Promise<TargetReport[]> {
-	const { data, error } = await supabase.rpc('fetch_reports_for_target', {
-		p_target_kind: targetKind,
-		p_target_id: targetId,
-	});
-	if (error) throw error;
+	const { data, error } = await supabase.rpc(
+		'fetch_reports_for_target',
+		{ p_target_kind: targetKind, p_target_id: targetId },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
 	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
 		id: r.id as string,
-		reporter_id: r.reporter_id as string,
+		reporter_id: (r.reporter_id ?? null) as string | null,
 		reason: r.reason as string,
 		notes: (r.notes ?? null) as string | null,
 		status: r.status as string,
@@ -10334,7 +16139,50 @@ export async function fetchReportsForTarget(
 		reviewed_at: (r.reviewed_at ?? null) as string | null,
 		reviewed_by: (r.reviewed_by ?? null) as string | null,
 		resolution: (r.resolution ?? null) as string | null,
+		snapshot_body: (r.snapshot_body ?? null) as string | null,
+		snapshot_author_id: (r.snapshot_author_id ?? null) as string | null,
+		snapshot_sent_at: (r.snapshot_sent_at ?? null) as string | null,
+		snapshot_original_body: (r.snapshot_original_body ?? null) as string | null,
+		legal_hold: r.legal_hold === true,
+		purge_after: (r.purge_after ?? null) as string | null,
+		organiser_club: r.organiser_club_id
+			? {
+					id: r.organiser_club_id as string,
+					name: (r.organiser_club_name ?? '') as string,
+					slug: (r.organiser_club_slug ?? null) as string | null,
+					is_verified: r.organiser_club_verified === true,
+				}
+			: null,
+		contact_email: (r.contact_email ?? null) as string | null,
+		signed_out: r.signed_out === true,
 	}));
+}
+
+/** Targets with resolved reports, most recently resolved first. */
+export async function fetchResolvedReports(): Promise<ResolvedReportTarget[]> {
+	const { data, error } = await supabase.rpc('fetch_resolved_reports', undefined, { get: true });
+	if (error) throw dbError(error);
+	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+		target_kind: r.target_kind as ReportTargetKind,
+		target_id: r.target_id as string,
+		report_count: Number(r.report_count ?? 0),
+		held_count: Number(r.held_count ?? 0),
+		last_reviewed_at: (r.last_reviewed_at ?? null) as string | null,
+		next_purge_after: (r.next_purge_after ?? null) as string | null,
+		shadow_hidden: r.shadow_hidden === true,
+		page_id: (r.page_id ?? null) as string | null,
+	}));
+}
+
+/** Place or lift a legal hold on one report. Admin-gated at the DB; returns
+ *  the hold as stored. */
+export async function setReportLegalHold(reportId: string, hold: boolean): Promise<boolean> {
+	const { data, error } = await supabase.rpc('set_report_legal_hold', {
+		p_report_id: reportId,
+		p_hold: hold,
+	});
+	if (error) throw dbError(error);
+	return data === true;
 }
 
 /** Mark all pending reports on a target reviewed/dismissed with a note.
@@ -10342,7 +16190,7 @@ export async function fetchReportsForTarget(
 export async function resolveTargetReports(
 	targetKind: ReportTargetKind,
 	targetId: string,
-	status: 'reviewed' | 'dismissed',
+	status: ReportResolution,
 	resolution: string | null
 ): Promise<number> {
 	const { data, error } = await supabase.rpc('resolve_target_reports', {
@@ -10351,7 +16199,7 @@ export async function resolveTargetReports(
 		p_status: status,
 		p_resolution: resolution,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return Number(data ?? 0);
 }
 
@@ -10365,8 +16213,306 @@ export async function adminUnhideTarget(
 		p_target_kind: targetKind,
 		p_target_id: targetId,
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data === true;
+}
+
+/** A reviewer's action on a target's pending naming disputes. Returns the
+ *  number of dispute reports resolved (0 for a rename notice, which leaves
+ *  them pending until the deadline). Admin-gated at the DB. */
+export async function resolveOrganiserDispute(input: {
+	targetKind: OrganiserDisputeTargetKind;
+	targetId: string;
+	action: 'takedown' | 'rename_notice' | 'dismiss';
+	note: string | null;
+	deadlineDays?: number | null;
+}): Promise<number> {
+	const { data, error } = await supabase.rpc('resolve_organiser_dispute', {
+		p_target_kind: input.targetKind,
+		p_target_id: input.targetId,
+		p_action: input.action,
+		p_note: input.note?.trim() || null,
+		p_deadline_days: input.action === 'rename_notice' ? (input.deadlineDays ?? null) : null,
+	});
+	if (error) throw dbError(error);
+	return Number(data ?? 0);
+}
+
+/** A park course for the admin queue's course panel: its slugs for the link,
+ *  its status and the note the course page shows. Null when RLS hides it (its
+ *  park was pulled) or it is gone. Throws on a failed read. */
+export interface AdminParkCourse {
+	id: string;
+	slug: string;
+	status: string;
+	status_note: string | null;
+	name: string;
+	park: { slug: string; name: string; region_code: string } | null;
+}
+
+export async function fetchAdminParkCourse(courseId: string): Promise<AdminParkCourse | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('id, slug, status, status_note, global_segments(name), parks(slug, name, region_code)')
+		.eq('id', courseId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		id: data.id,
+		slug: data.slug,
+		status: data.status,
+		status_note: data.status_note,
+		name: data.global_segments?.name ?? data.slug,
+		park: data.parks ?? null,
+	};
+}
+
+/** Close or reopen a park course from the admin queue (admin-gated at the
+ *  DB, logged in park_course_status_actions). Closing needs a note, which the
+ *  course page shows, and resolves the course's pending reports; returns how
+ *  many it resolved. */
+export async function adminSetParkCourseStatus(
+	courseId: string,
+	status: 'closed' | 'open',
+	note: string | null,
+): Promise<number> {
+	const { data, error } = await supabase.rpc('admin_set_park_course_status', {
+		p_course_id: courseId,
+		p_status: status,
+		p_note: note?.trim() || null,
+	});
+	if (error) throw dbError(error);
+	return Number(data ?? 0);
+}
+
+/** `park_course_status_actions.action`, a rail in check_constraint_unions.mjs. */
+export type ParkCourseStatusAction = 'close' | 'reopen';
+
+export interface ParkCourseStatusHistoryEntry {
+	id: number;
+	action: ParkCourseStatusAction;
+	actor_id: string | null;
+	status_before: string;
+	note: string | null;
+	reports_resolved: number;
+	created_at: string;
+}
+
+export async function fetchParkCourseStatusHistory(courseId: string): Promise<ParkCourseStatusHistoryEntry[]> {
+	const { data, error } = await supabase.rpc('park_course_status_history', { p_course_id: courseId }, { get: true });
+	if (error) throw dbError(error);
+	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+		id: Number(r.id),
+		action: r.action === 'reopen' ? 'reopen' : 'close',
+		actor_id: (r.actor_id ?? null) as string | null,
+		status_before: String(r.status_before ?? ''),
+		note: (r.note ?? null) as string | null,
+		reports_resolved: Number(r.reports_resolved ?? 0),
+		created_at: r.created_at as string,
+	}));
+}
+
+/** `park_course_nps_alerts.match`, a rail in check_constraint_unions.mjs. */
+export type ParkNpsAlertMatch = 'named' | 'park_wide';
+/** `park_course_nps_alerts.review_status`, a rail in check_constraint_unions.mjs. */
+export type ParkNpsAlertStatus = 'pending' | 'reviewed' | 'dismissed';
+
+/** An NPS alert the closures sweep flagged against a park course, for review
+ *  at /admin/park-alerts (decisions § 2454). */
+export interface ParkNpsAlert {
+	id: number;
+	park_course_id: string;
+	course_name: string;
+	course_slug: string;
+	course_status: string;
+	park_name: string;
+	park_slug: string;
+	region_code: string;
+	alert_id: string;
+	category: string;
+	title: string;
+	description: string;
+	url: string | null;
+	match: ParkNpsAlertMatch;
+	review_status: ParkNpsAlertStatus;
+	reviewed_at: string | null;
+	first_seen_at: string;
+	last_seen_at: string;
+	gone_at: string | null;
+}
+
+/** The NPS alert flags in one review state, oldest first, gone ones last.
+ *  Admin-gated at the DB (42501 for anyone else). Throws on a failed read. */
+export async function fetchParkNpsAlerts(status: ParkNpsAlertStatus = 'pending'): Promise<ParkNpsAlert[]> {
+	const { data, error } = await supabase.rpc('admin_park_nps_alerts', { p_status: status }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		...r,
+		url: r.url ?? null,
+		reviewed_at: r.reviewed_at ?? null,
+		gone_at: r.gone_at ?? null,
+		match: r.match === 'park_wide' ? 'park_wide' : 'named',
+		review_status: r.review_status === 'reviewed' || r.review_status === 'dismissed' ? r.review_status : 'pending',
+	}));
+}
+
+/** Act on one flag: `close` closes its course with the note the course page
+ *  shows (logged like a close from the reports queue) and marks every pending
+ *  flag on the course reviewed; `reviewed` and `dismissed` only file the flag.
+ *  Admin-gated at the DB. */
+export async function reviewParkNpsAlert(
+	id: number,
+	action: 'close' | 'reviewed' | 'dismissed',
+	note: string | null = null,
+): Promise<void> {
+	const { error } = await supabase.rpc('admin_review_park_nps_alert', {
+		p_id: id,
+		p_action: action,
+		p_note: note?.trim() || null,
+	});
+	if (error) throw dbError(error);
+}
+
+export interface OrganiserDisputeHistoryEntry {
+	id: number;
+	action: OrganiserDisputeAction;
+	organiser_club_name: string;
+	actor_id: string | null;
+	deadline_at: string | null;
+	note: string | null;
+	created_at: string;
+}
+
+/** The dispute log on one target, reviewer included. Admin-gated at the DB. */
+export async function fetchOrganiserDisputeHistory(
+	targetKind: OrganiserDisputeTargetKind,
+	targetId: string,
+): Promise<OrganiserDisputeHistoryEntry[]> {
+	const { data, error } = await supabase.rpc(
+		'organiser_dispute_history',
+		{ p_target_kind: targetKind, p_target_id: targetId },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		id: Number(r.id),
+		action: r.action as OrganiserDisputeAction,
+		organiser_club_name: r.organiser_club_name,
+		actor_id: r.actor_id ?? null,
+		deadline_at: r.deadline_at ?? null,
+		note: r.note ?? null,
+		created_at: r.created_at,
+	}));
+}
+
+// ─── Platform-fee earnings (operator back-office; /admin/earnings) ──────
+// Same boundary as moderation: both RPCs raise 42501 for anyone not in
+// app_admins, a host included (decisions § 1817).
+
+export interface PlatformFeeHostRow {
+	host_user_id: string;
+	host_display_name: string | null;
+	club_id: string | null;
+	club_name: string | null;
+	club_slug: string | null;
+	currency: string;
+	charge_count: number;
+	gross_fee_cents: number;
+	reversed_fee_cents: number;
+	net_fee_cents: number;
+}
+
+/** Platform fees per UTC month of sale, per currency and source, net of
+ *  refunds. Throws for a non-admin. */
+export async function fetchPlatformFeeMonths(): Promise<PlatformFeeMonthRow[]> {
+	const { data, error } = await supabase.rpc('admin_platform_fee_months', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		month: r.month,
+		currency: r.currency,
+		source: r.source === 'donation' ? 'donation' : 'event',
+		charge_count: Number(r.charge_count ?? 0),
+		gross_fee_cents: Number(r.gross_fee_cents ?? 0),
+		reversed_fee_cents: Number(r.reversed_fee_cents ?? 0),
+		net_fee_cents: Number(r.net_fee_cents ?? 0),
+		refunded_count: Number(r.refunded_count ?? 0),
+		partially_refunded_count: Number(r.partially_refunded_count ?? 0),
+		refund_failed_count: Number(r.refund_failed_count ?? 0),
+	}));
+}
+
+/** One UTC month's platform fees split by host + club + currency (`month` is
+ *  any day in it, `YYYY-MM-DD`). Throws for a non-admin. */
+export async function fetchPlatformFeesByHost(month: string): Promise<PlatformFeeHostRow[]> {
+	const { data, error } = await supabase.rpc(
+		'admin_platform_fees_by_host',
+		{ p_month: month },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		host_user_id: r.host_user_id,
+		host_display_name: r.host_display_name ?? null,
+		club_id: r.club_id ?? null,
+		club_name: r.club_name ?? null,
+		club_slug: r.club_slug ?? null,
+		currency: r.currency,
+		charge_count: Number(r.charge_count ?? 0),
+		gross_fee_cents: Number(r.gross_fee_cents ?? 0),
+		reversed_fee_cents: Number(r.reversed_fee_cents ?? 0),
+		net_fee_cents: Number(r.net_fee_cents ?? 0),
+	}));
+}
+
+// ─── Home metrics (operator back-office; /admin/home-metrics) ───────────
+// Weekly aggregates over the last 16 ISO weeks in UTC, no user ids. Both RPCs
+// raise 42501 for anyone not in app_admins (issue #1362, decisions § 2387).
+
+export interface CoachEngagementWeek {
+	week_start: string;
+	active_runners: number;
+	coached_runners: number;
+	/** Null when no one was active that week. */
+	coached_pct: number | null;
+}
+
+export interface PlanCompletionWeek {
+	week_start: string;
+	scheduled_days: number;
+	completed_days: number;
+	/** Null when no plan day was scheduled that week. */
+	completed_pct: number | null;
+}
+
+function nullablePct(v: number | string | null | undefined): number | null {
+	return v === null || v === undefined ? null : Number(v);
+}
+
+/** Of the runners active each week, how many messaged the Coach. Throws for a
+ *  non-admin. */
+export async function fetchCoachEngagementWeeks(): Promise<CoachEngagementWeek[]> {
+	const { data, error } = await supabase.rpc('admin_home_coach_engagement_weeks', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		week_start: r.week_start,
+		active_runners: Number(r.active_runners ?? 0),
+		coached_runners: Number(r.coached_runners ?? 0),
+		coached_pct: nullablePct(r.coached_pct),
+	}));
+}
+
+/** Of the non-rest plan days scheduled each week up to yesterday, how many
+ *  were done. Throws for a non-admin. */
+export async function fetchPlanCompletionWeeks(): Promise<PlanCompletionWeek[]> {
+	const { data, error } = await supabase.rpc('admin_home_plan_completion_weeks', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		week_start: r.week_start,
+		scheduled_days: Number(r.scheduled_days ?? 0),
+		completed_days: Number(r.completed_days ?? 0),
+		completed_pct: nullablePct(r.completed_pct),
+	}));
 }
 
 /** Club-owned session plans (the club's "session templates"). Visible to club
@@ -10438,26 +16584,28 @@ export async function cloneSessionTemplate(templateId: string): Promise<string> 
 		template_id: templateId
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
 	return data as string;
 }
 
 /** Club-owned gym routines published as templates (gym_routines.club_id set).
  *  RLS exposes these to club members via private.is_club_member. */
-export async function fetchClubGymRoutineTemplates(clubId: string): Promise<GymRoutineSummary[]> {
+export async function fetchClubGymRoutineTemplates(
+	clubId: string,
+): Promise<(GymRoutineSummary & OfficialFlag)[]> {
 	const { data, error } = await supabase
 		.from(TABLES.gym_routines)
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('club_id', clubId)
 		.order('last_modified_at', { ascending: false });
 	if (error) {
 		console.error('fetchClubGymRoutineTemplates failed', error);
 		return [];
 	}
-	return (data ?? []) as GymRoutineSummary[];
+	return data ?? [];
 }
 
 /** Publish a personal gym routine into a club-owned template. The
@@ -10470,9 +16618,9 @@ export async function publishGymRoutineAsTemplate(routineId: string, clubId: str
 		p_club_id: clubId
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
 	return data as string;
 }
@@ -10485,41 +16633,49 @@ export async function cloneGymRoutineTemplate(templateId: string): Promise<strin
 		p_template_id: templateId
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(error);
-		if (friendly) throw new Error(friendly);
-		throw error;
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
 	}
 	return data as string;
 }
 
 export type PublicGymRoutineEntry = GymRoutineSummary & {
 	author_handle: string | null;
+	/// Published by a verified organiser (`public_gym_routines.is_official`,
+	/// migration 20271211000002).
+	is_official: boolean;
 };
 
 /// Browse the public gym-routine library — routines published as public
 /// templates that any signed-in user can adopt (migration 20270224_001).
-/// Optional case-insensitive title search. Each entry carries the author's
+/// Optional case-insensitive title search, every character matched literally
+/// (`literalSubstringPattern`, decisions § 1937). Each entry carries the author's
 /// public display name (handle) joined from user_profiles; no other author
 /// data is exposed. Mirrors fetchPublicPlanLibrary + the mobile
 /// `ApiClient.fetchPublicGymRoutineLibrary`.
 export async function fetchPublicGymRoutineLibrary(
 	query = '',
 	limit = 100
-): Promise<{ routines: PublicGymRoutineEntry[]; error: string | null }> {
+): Promise<{ routines: PublicGymRoutineEntry[]; error: Error | null }> {
 	// public_gym_routines redacts external_id + last_modified_at (migration
 	// 20270319_001); created_at stands in for the required summary field.
 	let q = supabase
 		.from('public_gym_routines')
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, created_at, is_official')
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
-	if (trimmed) q = q.ilike('title', `%${trimmed}%`);
+	if (trimmed) q = q.regexIMatch('title', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
-	if (error) return { routines: [], error: error.message };
-	const rows = ((data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'>>).map(
-		(r) => ({ ...r, last_modified_at: r.created_at }) as GymRoutineSummary
-	);
+	if (error) return { routines: [], error: dbError(error) };
+	const rows = (
+		(data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'> & { is_official: boolean | null }>
+	).map(({ is_official, ...r }) => ({
+		...(r as Omit<GymRoutineSummary, 'last_modified_at'>),
+		last_modified_at: r.created_at,
+		is_official: is_official === true,
+	}));
 	const authorIds = [...new Set(rows.map((r) => r.author_id))];
 	const byId = new Map<string, string | null>();
 	if (authorIds.length > 0) {
@@ -10545,7 +16701,7 @@ export async function setGymRoutinePublic(routineId: string, isPublic: boolean):
 		p_routine_id: routineId,
 		p_public: isPublic
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // ──────────────────── Race-director checkpoints (P1–P4) ────────────────────
@@ -10607,7 +16763,7 @@ export async function fetchEventCheckpoints(eventId: string): Promise<EventCheck
 		)
 		.eq('event_id', eventId)
 		.order('ordinal', { ascending: true });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []) as EventCheckpoint[];
 }
 
@@ -10624,7 +16780,7 @@ export async function createEventCheckpoint(params: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const name = params.name.trim();
-	if (!name) throw new Error('Checkpoint name is required');
+	if (!name) throw new AppError('checkpoint.nameRequired', { message: 'Checkpoint name is required' });
 	const { data, error } = await supabase
 		.from(TABLES.event_checkpoints)
 		.insert({
@@ -10642,7 +16798,7 @@ export async function createEventCheckpoint(params: {
 			'id, event_id, name, ordinal, route_marker_id, position_m, cutoff_elapsed_s, cutoff_clock, requires_weigh_in, created_by, created_at, updated_at'
 		)
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as EventCheckpoint;
 }
 
@@ -10658,7 +16814,7 @@ export async function updateEventCheckpoint(
 		requiresWeighIn: boolean;
 	}>
 ): Promise<void> {
-	const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+	const row: Updatable<'event_checkpoints'> = { updated_at: new Date().toISOString() };
 	if (patch.name !== undefined) row.name = patch.name.trim();
 	if (patch.ordinal !== undefined) row.ordinal = patch.ordinal;
 	if (patch.routeMarkerId !== undefined) row.route_marker_id = patch.routeMarkerId;
@@ -10667,12 +16823,12 @@ export async function updateEventCheckpoint(
 	if (patch.cutoffClock !== undefined) row.cutoff_clock = patch.cutoffClock;
 	if (patch.requiresWeighIn !== undefined) row.requires_weigh_in = patch.requiresWeighIn;
 	const { error } = await supabase.from(TABLES.event_checkpoints).update(row).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function deleteEventCheckpoint(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.event_checkpoints).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /** Single writer for crossings — calls the upsert_checkpoint_crossing RPC,
@@ -10710,7 +16866,7 @@ export async function upsertCheckpointCrossing(params: {
 		p_medical_hold: params.medicalHold ?? null,
 		p_medical_note: params.medicalNote ?? null
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return data as OrganiserCrossing;
 }
 
@@ -10720,11 +16876,12 @@ export async function fetchOrganiserCrossings(
 	eventId: string,
 	instanceStart: string
 ): Promise<OrganiserCrossing[]> {
-	const { data, error } = await supabase.rpc('fetch_checkpoint_crossings_for_organiser', {
-		p_event_id: eventId,
-		p_instance_start: instanceStart
-	});
-	if (error) throw error;
+	const { data, error } = await supabase.rpc(
+		'fetch_checkpoint_crossings_for_organiser',
+		{ p_event_id: eventId, p_instance_start: instanceStart },
+		{ get: true }
+	);
+	if (error) throw dbError(error);
 	return (data ?? []) as OrganiserCrossing[];
 }
 
@@ -10743,7 +16900,7 @@ export async function fetchPublicCrossings(
 		.eq('instance_start', instanceStart)
 		.order('checkpoint_id', { ascending: true })
 		.order('in_time', { ascending: true });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []) as PublicCrossing[];
 }
 
@@ -10777,7 +16934,7 @@ export async function markCheckpointDnf(params: {
 				{ ...base, bib: params.bib, finisher_name: params.runnerName ?? params.bib },
 				{ onConflict: 'event_id,instance_start,bib' }
 			);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 // --- Achievements / badges ---
@@ -10792,7 +16949,7 @@ export async function fetchUserBadges(userId: string): Promise<Achievement[]> {
 		.select('*')
 		.eq('user_id', userId)
 		.order('earned_at', { ascending: false });
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []) as Achievement[];
 }
 
@@ -10804,13 +16961,46 @@ export async function fetchMyBadges(): Promise<Achievement[]> {
 	return fetchUserBadges(uid);
 }
 
+/// The single-run distance badge this run earned, for the run's badge sticker,
+/// or null. Only `distance_single` records the run behind an award in
+/// `source_id`; every other family writes null there and rebuilds its awards,
+/// so their `earned_at` cannot attribute one to a run either.
+export async function fetchRunDistanceBadge(runId: string): Promise<Achievement | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.achievements)
+		.select('*')
+		.eq('user_id', userId)
+		.eq('badge_key', 'distance_single')
+		.eq('source_id', runId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return (data as Achievement | null) ?? null;
+}
+
+/// Whether any of the runner's badges names this run as its source: the run
+/// that unlocked it, for the run page's milestone moment.
+export async function fetchRunEarnedBadge(runId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.achievements)
+		.select('id')
+		.eq('user_id', userId)
+		.eq('source_id', runId)
+		.limit(1);
+	if (error) throw dbError(error);
+	return (data?.length ?? 0) > 0;
+}
+
 /** Flip a badge's public visibility. Owner-only (enforced by RLS). */
 export async function setBadgeVisibility(id: string, isPublic: boolean): Promise<void> {
 	const { error } = await supabase
 		.from(TABLES.achievements)
 		.update({ is_public: isPublic })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 /** Public read for the share page — returns null for a private / missing id. */
@@ -10854,15 +17044,16 @@ export async function fetchFollowingBadgeAwards(opts?: {
 
 	// The followee set is chunked: PostgREST serialises `.in()` into the
 	// URL, so a viewer following many hundreds of people overflows the
-	// gateway's request-line limit and the query silently returns null —
-	// a silently empty badge feed. Each chunk applies the same cursor +
-	// ordering + limit; the global top-`limit` is a subset of the union,
-	// which mergeRecencyPages collapses back down (earned_at desc, id desc).
-	const queryChunk = async (ids: string[]) => {
+	// gateway's request-line budget and the read is lost (decisions § 653) —
+	// the whole badge feed, not a short page. Each chunk applies the same
+	// cursor + ordering + limit; the global top-`limit` is a subset of the
+	// union, which mergeRecencyPages collapses back down (earned_at desc,
+	// id desc).
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from(TABLES.achievements)
 			.select('*')
-			.in('user_id', ids)
+			.in('user_id', part)
 			.eq('is_public', true)
 			.order('earned_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -10873,7 +17064,7 @@ export async function fetchFollowingBadgeAwards(opts?: {
 			);
 		}
 		const { data, error } = await q;
-		if (error) throw error;
+		if (error) throw dbError(error);
 		return (data ?? []) as Achievement[];
 	};
 
@@ -10917,36 +17108,71 @@ export async function fetchChallenges(
 	// member). The `mine` filter narrows to challenges the caller has joined.
 	let query = supabase
 		.from(TABLES.challenges)
-		.select('*')
+		.select('*, is_official')
 		.order('ends_at', { ascending: true });
 	const { data, error } = await query;
-	if (error) throw error;
+	if (error) throw dbError(error);
 	const rows = (data ?? []).map(challengeFromRow);
 
-	// Enrich with participant counts + the caller's joined flag in two scoped
-	// reads (no per-row N+1): one count-grouped read over participants for the
-	// listed ids, one self-membership read.
+	// The count comes off the row. `challenges.participant_count` is the
+	// trigger-maintained, self-healing cache of exactly this number
+	// (`20270308_001`, derived_state.md) and `select('*')` already carried it;
+	// it was being ignored in favour of tallying a participant read that
+	// spanned every listed challenge at once, with no bound. PostgREST
+	// truncates a result at its configured row ceiling and reports nothing
+	// when it does, so a couple of popular public challenges were enough to
+	// exhaust the page: every board then under-reported, and — worse — a
+	// genuine participant's own row could fall outside it, emptying their "My
+	// challenges" tab and offering them "Join" on a challenge they were in.
+	// This is the same read `enrichClubs` already makes of `clubs.member_count`
+	// for the same reason.
+	//
+	// What is left needs no aggregate: the caller's OWN membership, scoped to
+	// the caller, so the read is bounded by the number of challenges listed
+	// rather than by how many people are in them.
 	const ids = rows.map((r) => r.id);
 	if (ids.length === 0) return [];
-	const { data: parts } = await supabase
-		.from(TABLES.challenge_participants)
-		.select('challenge_id, user_id')
-		.in('challenge_id', ids);
-	const counts = new Map<string, number>();
 	const mineSet = new Set<string>();
-	for (const p of parts ?? []) {
-		counts.set(p.challenge_id, (counts.get(p.challenge_id) ?? 0) + 1);
-		if (userId && p.user_id === userId) mineSet.add(p.challenge_id);
+	const myCompletedAt = new Map<string, string | null>();
+	if (userId) {
+		const { data: parts, error: partsError } = await queryChunked(ids, (part) =>
+			supabase
+				.from(TABLES.challenge_participants)
+				.select('challenge_id, completed_at')
+				.eq('user_id', userId)
+				.in('challenge_id', part)
+		);
+		// `joined` drives the Join affordance; a dropped error offered "Join"
+		// on every challenge the caller is already in.
+		if (partsError) throw dbError(partsError);
+		for (const p of parts ?? []) {
+			mineSet.add(p.challenge_id);
+			myCompletedAt.set(p.challenge_id, p.completed_at ?? null);
+		}
 	}
 	const enriched: ChallengeWithMeta[] = rows.map((r) => ({
 		...r,
-		participant_count: counts.get(r.id) ?? 0,
+		participant_count: (r as { participant_count?: number }).participant_count ?? 0,
 		my_value: null,
 		my_rank: null,
 		joined: mineSet.has(r.id),
-		completed_at: null
+		completed_at: myCompletedAt.get(r.id) ?? null
 	}));
-	return opts.mine ? enriched.filter((c) => c.joined) : enriched;
+	if (!opts.mine) return enriched;
+
+	// The caller's banked value lives only in the `challenge_leaderboard`
+	// aggregate, never on the `challenges` row — so without this fold every
+	// joined row rendered a confident zero next to its goal while the dashboard
+	// panel, reading the same aggregate, showed the real number. Auxiliary:
+	// a failure here leaves my_value null, which the list renders as "not shown
+	// here", not as zero.
+	const joined = enriched.filter((c) => c.joined);
+	try {
+		return mergeMyProgress(joined, await myActiveChallenges());
+	} catch (e) {
+		console.debug('fetchChallenges progress enrichment failed', e);
+		return joined;
+	}
 }
 
 /**
@@ -10959,11 +17185,11 @@ export async function browsePublicChallenges(
 	opts: { search?: string | null; limit?: number; offset?: number } = {}
 ): Promise<ChallengeWithMeta[]> {
 	const { data, error } = await supabase.rpc('browse_public_challenges', {
-		p_search: opts.search?.trim() || null,
+		p_search: opts.search?.trim() || undefined,
 		p_limit: opts.limit ?? 24,
 		p_offset: opts.offset ?? 0
-	});
-	if (error) throw error;
+	}, { get: true });
+	if (error) throw dbError(error);
 	type BrowseRow = {
 		metric: string;
 		scope: string;
@@ -10985,24 +17211,39 @@ export async function fetchChallengeById(id: string): Promise<ChallengeWithMeta 
 	const userId = auth.user?.id;
 	const { data, error } = await supabase
 		.from(TABLES.challenges)
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	if (!data) return null;
 	const challenge = challengeFromRow(data);
-	const { data: parts } = await supabase
-		.from(TABLES.challenge_participants)
-		.select('user_id, completed_at')
-		.eq('challenge_id', id);
-	const joinedRow = userId ? (parts ?? []).find((p) => p.user_id === userId) : undefined;
+	// A dropped error here reported `participant_count: 0` and `joined: false`
+	// on a challenge the caller may well have joined — so the page offered
+	// "Join" to someone already in, against a board it claimed was empty. A
+	// partial read failure fails the whole read.
+	//
+	// Scoped to the caller's own row, and the count taken off the cache on the
+	// challenge row: reading every participant to find one of them and to
+	// length the array made both answers depend on a page PostgREST silently
+	// truncates, so a popular challenge reported a smaller board than it has
+	// and could drop the viewer's own membership out of its own detail page.
+	const { data: joinedRow, error: partsError } = userId
+		? await supabase
+				.from(TABLES.challenge_participants)
+				.select('completed_at, team_club_id')
+				.eq('challenge_id', id)
+				.eq('user_id', userId)
+				.maybeSingle()
+		: { data: null, error: null };
+	if (partsError) throw dbError(partsError);
 	return {
 		...challenge,
-		participant_count: (parts ?? []).length,
+		participant_count: (data as { participant_count?: number }).participant_count ?? 0,
 		my_value: null,
 		my_rank: null,
 		joined: !!joinedRow,
-		completed_at: joinedRow?.completed_at ?? null
+		completed_at: joinedRow?.completed_at ?? null,
+		my_team_club_id: joinedRow?.team_club_id ?? null
 	};
 }
 
@@ -11037,7 +17278,15 @@ export async function createChallenge(input: {
 		})
 		.select()
 		.single();
-	if (error) throw error;
+	if (error) {
+		// Surface the create_challenge rate-limit P0001 (migration
+		// 20270610_001 routed the trigger through the shared helper, so it
+		// finally carries the bucket + retry figure) as the friendly
+		// "wait N minutes" line instead of the editor's generic toast.
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
+	}
 	return challengeFromRow(data);
 }
 
@@ -11063,9 +17312,13 @@ function fundraiserFromRow(row: Record<string, unknown>): Fundraiser {
 	return { ...(row as Fundraiser), status: row.status as FundraiserStatus };
 }
 
+/// Null means the fundraiser is not there; a failed read throws, so the
+/// public page can offer a donor a retry instead of telling them the
+/// campaign they were linked to does not exist.
 export async function fetchFundraiserById(id: string): Promise<Fundraiser | null> {
 	const { data, error } = await supabase.from('fundraisers').select('*').eq('id', id).maybeSingle();
-	if (error || !data) return null;
+	if (error) throw dbError(error);
+	if (!data) return null;
 	return fundraiserFromRow(data);
 }
 
@@ -11075,7 +17328,15 @@ export async function fetchFundraiserForRun(runId: string): Promise<Fundraiser |
 		.select('*')
 		.eq('run_id', runId)
 		.maybeSingle();
-	if (error || !data) return null;
+	// Throws on a failed read, exactly as `fetchFundraiserById` does and for
+	// the reason its comment gives: `.maybeSingle()` already distinguishes a
+	// genuine miss (`{data: null, error: null}`) from a failure, and returning
+	// null for both told a donor the campaign they were linked to does not
+	// exist. The section's own loader catches this and keeps the owner's
+	// "Create fundraiser" CTA alive — a branch that could never run while the
+	// error was swallowed here.
+	if (error) throw dbError(error);
+	if (!data) return null;
 	return fundraiserFromRow(data);
 }
 
@@ -11085,7 +17346,15 @@ export async function fetchFundraiserForEvent(eventId: string): Promise<Fundrais
 		.select('*')
 		.eq('event_id', eventId)
 		.maybeSingle();
-	if (error || !data) return null;
+	// Throws on a failed read, exactly as `fetchFundraiserById` does and for
+	// the reason its comment gives: `.maybeSingle()` already distinguishes a
+	// genuine miss (`{data: null, error: null}`) from a failure, and returning
+	// null for both told a donor the campaign they were linked to does not
+	// exist. The section's own loader catches this and keeps the owner's
+	// "Create fundraiser" CTA alive — a branch that could never run while the
+	// error was swallowed here.
+	if (error) throw dbError(error);
+	if (!data) return null;
 	return fundraiserFromRow(data);
 }
 
@@ -11107,7 +17376,7 @@ export async function createFundraiser(input: CreateFundraiserInput): Promise<Fu
 		})
 		.select('*')
 		.single();
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return fundraiserFromRow(data);
 }
 
@@ -11124,12 +17393,12 @@ export async function updateChallenge(
 	}>
 ): Promise<void> {
 	const { error } = await supabase.from(TABLES.challenges).update(patch).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function deleteChallenge(id: string): Promise<void> {
 	const { error } = await supabase.from(TABLES.challenges).delete().eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function joinChallenge(id: string, teamClubId?: string | null): Promise<void> {
@@ -11138,7 +17407,90 @@ export async function joinChallenge(id: string, teamClubId?: string | null): Pro
 	const { error } = await supabase
 		.from(TABLES.challenge_participants)
 		.insert({ challenge_id: id, user_id: userId, team_club_id: teamClubId ?? null });
-	if (error) throw error;
+	// The (challenge_id, user_id) primary key makes a double-tap — or a tap on
+	// a list whose `joined` flag was computed before another tab wrote the row
+	// — a duplicate, which is this call's own success condition restated.
+	if (error && !isDuplicateKeyError(error)) throw dbError(error);
+}
+
+// ─── Challenge invite links (decisions § 2261) ───
+// The token lives in private.challenge_invite_tokens, never on the
+// `challenges` row, so every read here goes through a definer RPC. Each one
+// answers "nothing" while the `challenge_invite_links` gate is closed.
+
+export async function challengeInviteLinksEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('challenge_invite_links_enabled', undefined, {
+		get: true
+	});
+	if (error) throw dbError(error);
+	return data === true;
+}
+
+export async function getChallengeInviteToken(id: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('get_challenge_invite_token', {
+		p_challenge_id: id
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+export async function rotateChallengeInviteToken(id: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('rotate_challenge_invite_token', {
+		p_challenge_id: id
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+export interface ChallengeInvitePreview {
+	id: string;
+	title: string;
+	description: string | null;
+	metric: ChallengeMetric;
+	scope: ChallengeScope;
+	goal_value: number | null;
+	activity_type: ActivityType | null;
+	starts_at: string;
+	ends_at: string;
+	is_public: boolean;
+	participant_count: number;
+	creator_id: string | null;
+	creator_name: string | null;
+	joined: boolean;
+}
+
+/// Null for an unknown or rotated token, or while the gate is closed. A failed
+/// read throws, so the join page can offer a retry instead of calling a good
+/// link dead.
+export async function previewChallengeInvite(
+	token: string
+): Promise<ChallengeInvitePreview | null> {
+	const { data, error } = await supabase
+		.rpc('challenge_invite_preview', { p_token: token }, { get: true })
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		...data,
+		metric: data.metric as ChallengeMetric,
+		scope: data.scope as ChallengeScope,
+		activity_type: data.activity_type as ActivityType | null,
+		goal_value: data.goal_value ?? null,
+		participant_count: data.participant_count ?? 0,
+		joined: data.joined === true
+	};
+}
+
+/// The joined challenge's id, or null when the token names nothing. A
+/// rate-limit refusal surfaces as its friendly "wait N minutes" line.
+export async function joinChallengeByToken(token: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('join_challenge_by_token', { p_token: token });
+	if (error) {
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw dbError(error);
+	}
+	return data ?? null;
 }
 
 export async function leaveChallenge(id: string): Promise<void> {
@@ -11149,7 +17501,7 @@ export async function leaveChallenge(id: string): Promise<void> {
 		.delete()
 		.eq('challenge_id', id)
 		.eq('user_id', userId);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function fetchChallengeLeaderboard(
@@ -11159,8 +17511,8 @@ export async function fetchChallengeLeaderboard(
 	const { data, error } = await supabase.rpc('challenge_leaderboard', {
 		p_challenge_id: id,
 		p_by_team: byTeam
-	});
-	if (error) throw error;
+	}, { get: true });
+	if (error) throw dbError(error);
 	return (data ?? []).map((r: Record<string, unknown>) => ({
 		user_id: (r.user_id as string | null) ?? null,
 		display_name: (r.display_name as string | null) ?? null,
@@ -11171,8 +17523,8 @@ export async function fetchChallengeLeaderboard(
 }
 
 export async function myActiveChallenges(): Promise<ChallengeWithMeta[]> {
-	const { data, error } = await supabase.rpc('my_active_challenges');
-	if (error) throw error;
+	const { data, error } = await supabase.rpc('my_active_challenges', undefined, { get: true });
+	if (error) throw dbError(error);
 	return (data ?? []).map((r: Record<string, unknown>) => ({
 		...challengeFromRow(r as Parameters<typeof challengeFromRow>[0]),
 		participant_count: Number(r.participant_count ?? 0),
@@ -11236,14 +17588,14 @@ export async function updateFundraiser(
 	id: string,
 	patch: Partial<Pick<CreateFundraiserInput, 'charityName' | 'charityUrl' | 'title' | 'story' | 'goalCents'>>
 ): Promise<void> {
-	const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+	const row: Updatable<'fundraisers'> = { updated_at: new Date().toISOString() };
 	if (patch.charityName !== undefined) row.charity_name = patch.charityName.trim();
 	if (patch.charityUrl !== undefined) row.charity_url = patch.charityUrl?.trim() || null;
 	if (patch.title !== undefined) row.title = patch.title.trim();
 	if (patch.story !== undefined) row.story = patch.story?.trim() || null;
 	if (patch.goalCents !== undefined) row.goal_cents = patch.goalCents;
 	const { error } = await supabase.from('fundraisers').update(row).eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
 export async function closeFundraiser(id: string): Promise<void> {
@@ -11251,12 +17603,18 @@ export async function closeFundraiser(id: string): Promise<void> {
 		.from('fundraisers')
 		.update({ status: 'closed', updated_at: new Date().toISOString() })
 		.eq('id', id);
-	if (error) throw error;
+	if (error) throw dbError(error);
 }
 
+/// Throws on a failed read. A campaign whose totals could not be fetched must
+/// not render "0 raised · 0 supporters" — that tells a donor the fundraiser
+/// they were sent to has raised nothing, which is a claim about someone else's
+/// campaign we have no basis for. `null` stays the genuine miss: the RPC
+/// answered with no rows because nothing has been donated yet.
 export async function fetchFundraiserTotals(id: string): Promise<FundraiserTotals | null> {
-	const { data, error } = await supabase.rpc('fundraiser_totals', { p_fundraiser_id: id });
-	if (error || !data || (data as unknown[]).length === 0) return null;
+	const { data, error } = await supabase.rpc('fundraiser_totals', { p_fundraiser_id: id }, { get: true });
+	if (error) throw dbError(error);
+	if (!data || (data as unknown[]).length === 0) return null;
 	const row = (data as FundraiserTotals[])[0];
 	return {
 		raised_cents: Number(row.raised_cents) || 0,
@@ -11266,6 +17624,8 @@ export async function fetchFundraiserTotals(id: string): Promise<FundraiserTotal
 	};
 }
 
+/// Throws on a failed read — an empty list renders "Be the first to donate",
+/// which is the same false claim in the supporters panel.
 export async function fetchFundraiserFeed(
 	id: string,
 	limit = 50
@@ -11273,9 +17633,9 @@ export async function fetchFundraiserFeed(
 	const { data, error } = await supabase.rpc('fundraiser_feed', {
 		p_fundraiser_id: id,
 		p_limit: limit
-	});
-	if (error || !data) return [];
-	return data as FundraiserFeedEntry[];
+	}, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []) as FundraiserFeedEntry[];
 }
 
 /// Begin a Stripe Checkout for a donation. The donations-checkout Edge Function
@@ -11283,21 +17643,43 @@ export async function fetchFundraiserFeed(
 /// inserts a pending donation row, and returns a hosted destination-charge
 /// Checkout URL. The caller redirects the browser there. The donor may be
 /// anonymous — no auth required.
+///
+/// `idempotencyKey` is required and the caller owns its lifetime: mint one per
+/// donation ATTEMPT and re-send the same value on a retry, so the function
+/// resolves back to the pending donation it already opened instead of opening a
+/// second Checkout Session the donor could also pay. It cannot be minted here —
+/// this function is the retry — and the server cannot derive one, because a
+/// donor may be anonymous and repeat giving is legitimate (decisions § 776).
 export async function startDonationCheckout(
 	fundraiserId: string,
 	amountCents: number,
-	opts: { displayName?: string | null; message?: string | null; isAnonymous?: boolean } = {}
+	opts: {
+		idempotencyKey: string;
+		displayName?: string | null;
+		message?: string | null;
+		isAnonymous?: boolean;
+	}
 ): Promise<{ url: string }> {
 	const { data, error } = await supabase.functions.invoke('donations-checkout', {
 		body: {
 			fundraiser_id: fundraiserId,
 			amount_cents: amountCents,
+			idempotency_key: opts.idempotencyKey,
 			display_name: opts.displayName ?? null,
 			message: opts.message ?? null,
 			is_anonymous: opts.isAnonymous ?? false
 		}
 	});
-	if (error) throw error;
+	if (error) {
+		// Same unwrap as startEventCheckout. Rethrowing the raw error lost
+		// the refusal, not just its wording: the function distinguishes a
+		// fundraiser that has ENDED from one whose owner cannot take money
+		// from a transient outage, and a donor shown one generic line
+		// cannot tell "this is over" from "try again in a minute" — so they
+		// retry a checkout that can never open.
+		const code = await edgeFunctionErrorCode(error);
+		throw code ? new Error(code) : dbError(error);
+	}
 	const url = (data as { checkout_url?: string } | null)?.checkout_url;
 	if (!url) throw new Error('No checkout URL returned');
 	return { url };

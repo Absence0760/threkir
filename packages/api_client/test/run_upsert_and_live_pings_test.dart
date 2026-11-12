@@ -1,0 +1,140 @@
+import 'dart:io';
+
+import 'package:test/test.dart';
+
+/// Two source-level guards on `api_client.dart`, in the same file-as-text
+/// idiom as `save_run_conflict_target_test.dart` — both cover shapes that
+/// only misbehave against a real PostgREST, so a unit test can't observe
+/// them any other way.
+void main() {
+  final src = File('lib/src/api_client.dart').readAsStringSync();
+
+  group('runs upsert never writes a null over server state', () {
+    // `RunRow.toJson()` emits all 24 columns including nulls, and an
+    // ON CONFLICT DO UPDATE writes those nulls over whatever the server holds.
+    // Four of them — is_public, event_id, race_listing_id, concluded_at — are
+    // not on the Dart `Run` model at all, so the phone always sends null.
+    // A runner shares a run, edits its title offline, and the next batch sync
+    // sets is_public back to null: the run leaves `public_runs`, its
+    // /share/run/{id} link 404s, and nothing on the phone looks wrong.
+    test('a null-stripping body builder exists and strips nulls', () {
+      expect(
+        src.contains('Map<String, dynamic> _runUpsertBody('),
+        isTrue,
+        reason: '_runUpsertBody must exist as the one place run bodies are built',
+      );
+      final start = src.indexOf('Map<String, dynamic> _runUpsertBody(');
+      final body = src.substring(start);
+      expect(
+        body.contains('removeWhere((k, v) => v == null)'),
+        isTrue,
+        reason: '_runUpsertBody must drop null-valued columns',
+      );
+    });
+
+    test('both run upsert paths route through it', () {
+      // saveRun's single-row path.
+      expect(
+        src.contains('final json = _runUpsertBody(row.toJson());'),
+        isTrue,
+        reason: 'saveRun must build its body through _runUpsertBody',
+      );
+      // saveRunsBatch's per-row map.
+      expect(
+        src.contains('return _runUpsertBody(runRowFromRun('),
+        isTrue,
+        reason: 'saveRunsBatch must build each row through _runUpsertBody',
+      );
+      // And neither may hand a raw toJson() straight to upsert again.
+      expect(
+        src.contains('upsert(row.toJson())'),
+        isFalse,
+        reason: 'a raw toJson() upsert reintroduces the null-overwrite',
+      );
+    });
+  });
+
+  group('runs upsert never clears a followers level', () {
+    // `followers_only` is NOT NULL, so `RunRow.toJson()` always carries a bool
+    // and the null strip cannot protect it: a batch re-sync would write false
+    // over a followers level chosen on another device (decisions § 1875).
+    test('_runUpsertBody drops a false followers_only', () {
+      final start = src.indexOf('Map<String, dynamic> _runUpsertBody(');
+      final body = src.substring(start);
+      expect(
+        body.contains('if (body[RunRow.colFollowersOnly] == false)'),
+        isTrue,
+        reason: 'a false followers_only must never reach an upsert',
+      );
+      expect(body.contains('body.remove(RunRow.colFollowersOnly)'), isTrue);
+    });
+  });
+
+  group('runs upsert never writes the live audience', () {
+    // Only beginLiveBroadcast writes `safety_audience`; a save carrying the
+    // NOT NULL default would write false over the live stub's safety audience
+    // (decisions § 1964).
+    test('_runUpsertBody always drops safety_audience', () {
+      final start = src.indexOf('Map<String, dynamic> _runUpsertBody(');
+      final body = src.substring(start, src.indexOf('\n}\n', start));
+      expect(body.contains('body.remove(RunRow.colSafetyAudience);'), isTrue,
+          reason: 'a save must never write the live audience');
+    });
+  });
+
+  group('the live-ping backlog is newest-first under the row cap', () {
+    // PostgREST caps a result at 1000 rows. At the broadcaster's 5 s interval
+    // that is 83 minutes, so an ascending fetch returns the OLDEST 83 minutes
+    // of a long race and omits the runner's current position entirely. Web hit
+    // this as issue #334 and pins the same shape in data.test.ts.
+    late String query;
+    late String backlog;
+    late String cursor;
+
+    setUp(() {
+      final start = src.indexOf('Future<List<Map<String, dynamic>>> fetchLiveRunPings(');
+      expect(start, greaterThanOrEqualTo(0),
+          reason: 'could not locate fetchLiveRunPings — renamed?');
+      query = src.substring(start, src.indexOf('\n  }\n', start));
+      expect(query.contains("from('live_run_pings')"), isTrue,
+          reason: 'fetchLiveRunPings must still read live_run_pings');
+      // With a cursor the fetch is a catch-up after rows already drawn, so it
+      // reads forward from the cursor; without one it is the opening backlog.
+      final split = query.indexOf('if (since != null)');
+      expect(split, greaterThanOrEqualTo(0));
+      final cursorEnd = query.indexOf('\n    }\n', split);
+      cursor = query.substring(split, cursorEnd);
+      backlog = query.substring(cursorEnd);
+    });
+
+    test('orders descending, never ascending', () {
+      expect(backlog.contains('ascending: false'), isTrue,
+          reason: 'the backlog must be newest-first (issue #334)');
+      expect(backlog.contains('ascending: true'), isFalse,
+          reason: 'an ascending backlog fetch is the #334 regression');
+    });
+
+    test('the cursor catch-up reads only rows after the cursor, capped', () {
+      expect(cursor, contains(".gt('at', since)"));
+      expect(cursor, contains('.limit(1000)'));
+    });
+
+    test('caps at 1000 rows', () {
+      expect(backlog.contains('.limit(1000)'), isTrue,
+          reason: 'mirror web: an unbounded fetch ships tens of thousands of rows');
+    });
+
+    test('selects coarse, which the spectator screen reads off each row', () {
+      // Without it the opening backlog never sets the "last seen near here"
+      // badge for a ping the privacy-zone trigger coarsened.
+      final select = RegExp(r"\.select\('([^']*)'\)").firstMatch(query);
+      expect(select, isNotNull);
+      expect(select!.group(1)!.split(',').map((c) => c.trim()), contains('coarse'));
+    });
+
+    test('replays oldest-first so the newest ping wins the trace', () {
+      expect(backlog.contains('.reversed'), isTrue,
+          reason: 'newest-first rows must be reversed before replay');
+    });
+  });
+}

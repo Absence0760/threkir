@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -28,7 +28,7 @@ test.describe('/plans/[id] pause + resume', () => {
 		const week0 = crypto.randomUUID();
 		let displacedActiveIds: string[] = [];
 		try {
-			// Clear any pre-existing active plan so the one-active index is free.
+			// Clear any pre-existing active plan so the active-plan overlap constraint is clear.
 			// Remember which plans we displaced so the `finally` can restore
 			// them — this user's seed is shared with sibling specs (e.g.
 			// list.spec.ts), which expect the seeded plan to stay active.
@@ -72,18 +72,20 @@ test.describe('/plans/[id] pause + resume', () => {
 			const dialog = page.locator('[data-testid="bulk-confirm-dialog"]');
 
 			// Pause.
-			await page.getByRole('button', { name: /Pause plan/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page.getByTestId('adjust-plan-dialog').getByRole('button', { name: /Pause plan/ }).click();
 			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: 'Apply' }).click();
 			await expect.poll(status).toBe('paused');
 
 			// Resume.
-			await page.getByRole('button', { name: /Resume plan/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page.getByTestId('adjust-plan-dialog').getByRole('button', { name: /Resume plan/ }).click();
 			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: 'Apply' }).click();
 			await expect.poll(status).toBe('active');
 		} finally {
-			// Delete our own plan first (frees the one-active slot), then
+			// Delete our own plan first (clears the overlap), then
 			// restore the plans we displaced so the shared seed is left active
 			// for sibling specs.
 			await admin.from('training_plans').delete().eq('id', planId);
@@ -156,6 +158,7 @@ test.describe('/plans/[id] cycle adjust (flag-gated)', () => {
 			).toBeVisible({ timeout: 10_000 });
 
 			const dialog = page.locator('[data-testid="bulk-confirm-dialog"]');
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
 			await page.locator('[data-testid="cycle-adjust-btn"]').click();
 			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: 'Apply' }).click();

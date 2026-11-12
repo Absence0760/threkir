@@ -11,7 +11,7 @@
 --     unaffected.
 
 begin;
-select plan(12);
+select plan(20);
 
 -- ── Fixtures: host (also club owner), buyer, stranger ──
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -74,8 +74,8 @@ update instructor_payout_accounts set charges_enabled = true
   where user_id = 'aaaa1111-0000-0000-0000-000000000001';
 
 select lives_ok(
-  $$ insert into event_pricing (event_id, price_cents, platform_fee_bps)
-     values ('cccc1111-0000-0000-0000-000000000001', 2200, 500) $$,
+  $$ insert into event_pricing (event_id, price_cents)
+     values ('cccc1111-0000-0000-0000-000000000001', 2200) $$,
   'event_pricing insert succeeds once host is charges-enabled'
 );
 
@@ -115,6 +115,20 @@ select lives_ok(
   'going on a priced event with a matching paid order succeeds'
 );
 
+-- ...and the seat it takes is a SEAT. `enforce_event_capacity` is a BEFORE
+-- trigger that may rewrite a `going` row to `waitlisted`, so the `lives_ok`
+-- above cannot tell a paid attendee who is IN from one silently moved to the
+-- waitlist: both store, and both leave the money path reading as healthy. The
+-- stored status is therefore read back rather than assumed (decisions 1372).
+select is(
+  (select status from event_attendees
+    where event_id = 'cccc1111-0000-0000-0000-000000000001'
+      and user_id = 'aaaa1111-0000-0000-0000-000000000002'
+      and instance_start = '2026-07-01 18:00+00'),
+  'going',
+  'the paid seat is going, not silently waitlisted'
+);
+
 -- A free event needs no order.
 select lives_ok(
   $$ insert into event_attendees (event_id, user_id, instance_start, status)
@@ -122,6 +136,61 @@ select lives_ok(
              'aaaa1111-0000-0000-0000-000000000002', '2026-07-02 09:00+00', 'going') $$,
   'going on a free event needs no order'
 );
+
+-- ── one order seats ONE instance ───────────────────────────────────────────
+-- The order above was bought for the 07-01 occurrence. Before this was
+-- enforced, the trigger matched on (id, buyer, event, status='paid') only, so
+-- the same $22 order satisfied the gate for EVERY occurrence of the weekly
+-- series — a term's worth of classes for one drop-in fee, and a refund
+-- released only the order's own instance, leaving the stolen seats behind.
+select throws_ok(
+  $$ insert into event_attendees (event_id, user_id, instance_start, status, order_id)
+     values ('cccc1111-0000-0000-0000-000000000001',
+             'aaaa1111-0000-0000-0000-000000000002', '2026-07-08 18:00+00', 'going',
+             'dddd1111-0000-0000-0000-000000000001') $$,
+  '23514',
+  null,
+  'a paid order cannot seat an instance it was not bought for'
+);
+
+-- ── a partially refunded order still backs its seat ───────────────────────
+-- `partially_refunded` became a WRITTEN state when the webhook learned to tell
+-- a partial refund from a full one. Every "valid seat" predicate still said
+-- status = 'paid', so the instructor could no longer mark that attendee
+-- present — the gate is `before insert or update` with no WHEN clause, so it
+-- re-validates on mark_attendance's attendance-only write — and waitlist
+-- promotion of a DIFFERENT attendee raised inside an AFTER-DELETE trigger,
+-- rolling back the seat release that provoked it.
+update event_orders set status = 'partially_refunded'
+ where id = 'dddd1111-0000-0000-0000-000000000001';
+
+select lives_ok(
+  $$ update event_attendees set attendance = 'attended'
+      where event_id = 'cccc1111-0000-0000-0000-000000000001'
+        and user_id = 'aaaa1111-0000-0000-0000-000000000002'
+        and instance_start = '2026-07-01 18:00+00' $$,
+  'a partially refunded order still lets the host mark attendance'
+);
+
+select lives_ok(
+  $$ update event_attendees set status = 'going'
+      where event_id = 'cccc1111-0000-0000-0000-000000000001'
+        and user_id = 'aaaa1111-0000-0000-0000-000000000002'
+        and instance_start = '2026-07-01 18:00+00' $$,
+  'a partially refunded order still backs a re-asserted going seat'
+);
+
+select is(
+  (select status from event_attendees
+    where event_id = 'cccc1111-0000-0000-0000-000000000001'
+      and user_id = 'aaaa1111-0000-0000-0000-000000000002'
+      and instance_start = '2026-07-01 18:00+00'),
+  'going',
+  'the re-asserted seat is still going after the partial refund'
+);
+
+update event_orders set status = 'paid'
+ where id = 'dddd1111-0000-0000-0000-000000000001';
 
 -- ── RLS: order read scoping ────────────────────────────────────────────────
 -- Buyer reads their own order, not the stranger's.
@@ -141,6 +210,44 @@ select is(
   (select count(*)::int from event_orders),
   2,
   'event organiser sees every order for their events'
+);
+
+-- ── the INSERT grant is column-scoped, like the UPDATE grant ───────────────
+-- 20270102_001 locked `attendance` and `order_id` out of client writes but
+-- rewrote only the UPDATE grant; a table-level INSERT grant implies every
+-- column, so both stayed writable on the way IN. That let an attendee cite
+-- someone's order, and forge their own attendance on the organiser's roster —
+-- the invariant event_attendance_test pins against a direct UPDATE, reached
+-- through INSERT instead (and re-forgeable via DELETE + re-INSERT, both
+-- own-row verbs).
+set local "request.jwt.claims" = '{"sub":"aaaa1111-0000-0000-0000-000000000002","role":"authenticated"}';
+
+select throws_ok(
+  $$ insert into event_attendees (event_id, user_id, instance_start, status, order_id)
+     values ('cccc1111-0000-0000-0000-000000000002',
+             'aaaa1111-0000-0000-0000-000000000002', '2026-07-09 09:00+00', 'going',
+             'dddd1111-0000-0000-0000-000000000001') $$,
+  '42501',
+  null,
+  'a client cannot write order_id on INSERT (service-role only)'
+);
+
+select throws_ok(
+  $$ insert into event_attendees (event_id, user_id, instance_start, status, attendance)
+     values ('cccc1111-0000-0000-0000-000000000002',
+             'aaaa1111-0000-0000-0000-000000000002', '2026-07-09 09:00+00', 'going',
+             'attended') $$,
+  '42501',
+  null,
+  'a client cannot forge attendance on INSERT'
+);
+
+-- ...and the free-RSVP path a client legitimately owns still works.
+select lives_ok(
+  $$ insert into event_attendees (event_id, user_id, instance_start, status)
+     values ('cccc1111-0000-0000-0000-000000000002',
+             'aaaa1111-0000-0000-0000-000000000002', '2026-07-09 09:00+00', 'going') $$,
+  'a client can still RSVP to a free event instance'
 );
 
 -- ── RLS: a user-JWT cannot write order status ──────────────────────────────

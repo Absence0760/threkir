@@ -15,10 +15,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/run_photos.dart';
+import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 class _CapturingApi extends ApiClient {
   Uint8List? uploaded;
@@ -34,7 +35,7 @@ class _CapturingApi extends ApiClient {
 
   @override
   Future<RunPhotoRow> addRunPhoto({
-    required String runId,
+    required String? runId,
     required Uint8List bytes,
     required String contentType,
     required String extension,
@@ -45,15 +46,20 @@ class _CapturingApi extends ApiClient {
   }) async {
     uploaded = bytes;
     uploadedContentType = contentType;
-    return RunPhotoRow(
-      id: 'p1',
-      runId: runId,
-      ownerId: 'owner-1',
-      storagePath: 'owner-1/$runId/p1.$extension',
-      createdAt: DateTime.utc(2026, 3, 1),
-      positionIdx: positionIdx,
-    );
+    return RunPhotoRow.fromJson({
+      'id': 'p1',
+      'run_id': runId,
+      'owner_id': 'owner-1',
+      'storage_path': 'owner-1/$runId/p1.$extension',
+      'created_at': '2026-03-01T00:00:00Z',
+      'position_idx': positionIdx,
+    });
   }
+
+  @override
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+          String runId) async =>
+      null;
 }
 
 int _crc32(List<int> bytes) {
@@ -119,22 +125,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  // supabase_flutter opens an app_links deep-link stream on init. The upload
-  // is driven under runAsync, so without a stub the real event loop turns and
-  // the MissingPluginException lands as an unhandled error in this test.
-  for (final name in const [
-    'com.llfbandit.app_links/events',
-    'com.llfbandit.app_links/messages',
-  ]) {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            MethodChannel(name, const StandardMethodCodec()),
-            (call) async => null);
-  }
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -175,8 +166,9 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.widgetWithText(FilledButton, 'Upload'));
       await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
     });
+    await pumpUntil(tester, () => api.uploaded != null,
+        describe: 'the stripped image to reach the upload api');
     await tester.pumpAndSettle();
 
     expect(api.uploadedContentType, 'image/png');

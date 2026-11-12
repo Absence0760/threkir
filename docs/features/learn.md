@@ -2,6 +2,8 @@
 
 > **Status:** Shipped web (2026-06-19). Implementation-handoff spec: [learn_pages.md](learn_pages.md). ADR: [decisions.md § 161](../architecture/decisions.md#161-learn-guides-are-repo-committed-markdownmdsvex-prerendered-to-static-html-not-a-db-backed-cms).
 
+Not to be confused with the signed-in **in-app help** at `/help` ([help.md](help.md), [decisions.md § 1846](../architecture/decisions.md)), which documents the app's own screens and is a separate surface.
+
 A public, no-auth **Learn** surface of evergreen new-runner guides that lives alongside the landing page. Each guide teaches a topic and funnels the reader into the matching in-app feature plus a sign-up CTA. Read-only, anonymous, **statically prerendered** — zero DB, zero runtime cost, served by CloudFront from S3 ([decisions.md § 53](../architecture/decisions.md)).
 
 ## Content-source decision
@@ -12,15 +14,21 @@ Each guide is a markdown / MDsvex file committed in the repo, loaded by a build-
 
 | URL | Route | Prerender |
 |---|---|---|
-| `/learn` | `routes/learn/+page.{svelte,ts}` — the hub (category sections of guide cards) | `prerender = true` |
+| `/learn` | `routes/learn/+page.{svelte,ts}` — the hub (category chips, a promoted guide, then one grid of all guides) | `prerender = true` |
 | `/learn/<slug>` | `routes/learn/[slug]/+page.{svelte,ts}` — a single article (mdsvex body) | `true` + `entries()` over guide slugs |
 | `/learn/category/<id>` | `routes/learn/category/[category]/+page.{svelte,ts}` — guides in one category | `true` + `entries()` over `CATEGORIES` |
 
 `/learn` is **shell-less + anon** in `routes/+layout.svelte` (a marketing surface, never wrapped in the app sidebar — the `path.startsWith('/learn')` prefix in `isShellless`, which `isAnonAllowed` is a superset of).
 
+All three learn routes open on a **full-bleed brand band** — the landing hero's ramp, stopped early, so an index page gets a strip rather than a hero — and the header sits transparent over it exactly as it does over the landing hero. Before that, clicking Learn went from a magenta hero under a transparent bar to a WHITE header bar over a cream body, and Learn read as a different site. The band is `LearnPage`'s `banner` prop plus a `.learn-band` wrapper in the page; everything inside it sits on a fixed dark canvas, so its inks are literals rather than theme tokens (they would be dark-on-dark in light mode) and both stops are measured in `gradient_foreground_guard.test.ts`.
+
+On a guide, the band is the `<article>`'s own `<header>`, so the `h1` stays inside the article its JSON-LD describes. `.learn-article` therefore carries no column or padding of its own — the band and the body each carry a `learn-column`, which is what keeps their left edges shared for `layout.spec.ts`. Padding on the `<article>` is what broke the first attempt: it inset the band from the viewport edge, and the overlay header's white ink landed on the page background instead of on the ramp.
+
+The hub and category column widens to **76rem above 90rem of viewport** — 64rem fits three 17rem cards and leaves ~200 px of margin either side on a 1440 px screen, where 76rem fits four. The `prose` measure is deliberately untouched: a reading column does not want the width.
+
 All three learn routes wear one page shell, **`LearnPage.svelte`**, which owns the wrapper, the chrome, and — critically — the single definition of the column every band sits in. Add `class="learn-column"` to a band; never re-declare `max-width` on a learn page. Each route used to hand-roll its own wrapper + widths and they drifted: the hub's header ended up in a 56rem column above a 64rem card grid, so the heading and the cards it labels did not share a left edge, and the hub centred its header where both siblings left-align. `tests-e2e/learn/layout.spec.ts` asserts the geometry (breadcrumb / `h1` / first body element share a left edge, at two widths) rather than the CSS, so any rule that breaks the alignment surfaces there. A guide passes `width="prose"` for the 44rem reading measure; hub and category take the default `wide`.
 
-All three also render the **same public-site chrome as the landing page** via the shared `PublicHeader` / `PublicFooter` components (issue #212): wordmark logo + Apps / Features / Learn nav + a Sign In pill (which flips to "Open app" → `/dashboard` for a signed-in visitor after hydration), and the landing footer's tagline + nav/legal links. The landing page consumes the same components with `PublicHeader`'s `overlay` prop (transparent, white-on-dark, absolutely positioned over the hero); learn uses the default solid variant (themed surface + border, theme-swapped wordmark). Nav anchors are root-anchored (`/#apps`, `/#features`) so they resolve from `/learn`. Both components are prerender-safe — the static HTML bakes the signed-out state and the auth store swaps it client-side.
+All three also render the **same public-site chrome as the landing page** via the shared `PublicHeader` / `PublicFooter` components (issue #212): wordmark logo + Apps / Features / Learn nav + a Sign In pill (which flips to "Open app" → `/dashboard` for a signed-in visitor after hydration), and the landing footer's tagline + nav/legal links. `PublicHeader` has one variant: white-on-dark, fixed to the top of the viewport, transparent over the band or hero it opens on, and painting its own plum glass once the page scrolls (every ink on that glass measured over white by `learn_band_guard.test.ts`; `scroll-padding-top` keeps anchor jumps and focus below it). The landing page used to pass `motionToggle` for a pause control; it carries none now that every landing animation settles within five seconds ([decisions § 1907](../architecture/decisions.md)). Nav anchors are root-anchored (`/#apps`, `/#features`) so they resolve from `/learn`. Both components are prerender-safe — the static HTML bakes the signed-out state and the auth store swaps it client-side.
 
 ## Where the code lives
 
@@ -28,19 +36,19 @@ All three also render the **same public-site chrome as the landing page** via th
 apps/web/src/lib/learn/
   guides/*.md          # one .md per guide; filename stem = slug; YAML frontmatter
   guides.ts            # import.meta.glob load; binds the guides_index helpers to the built index (thin, glob-coupled)
-  guides_index.ts      # pure, env-free index ops over the entry set — listGuides/getGuide/guidesByCategory + the English-fallback resolver (getGuide / localizedGuideMeta / isEnglishFallback); tsx-testable
-  guides/<slug>.<locale>.md  # optional per-locale prose variants (de/fr/es/ja/pt-BR); resolver falls back to English when absent
+  guides_index.ts      # pure, env-free index ops over the entry set — listGuides/getGuide/guidesByCategory + the language-then-English fallback resolver (getGuide / localizedGuideMeta / isEnglishFallback); tsx-testable
+  guides/<slug>.<locale>.md  # per-locale prose variants (de/fr/es/ja/pt-BR/pt-PT; every shipped locale, guarded); resolver falls back within the reader's LANGUAGE first (pt-PT → pt-BR), then English
   guides.test.ts       # frontmatter / slug-uniqueness / category / CTA guard (reads .md off disk; tsx-runnable)
   guides_index.test.ts # unit tests for the pure index ops (ordering, locale fallback, empty-category filtering)
   categories.ts        # CATEGORIES catalogue + CTA_TARGETS map (pure; labelKeys typed MessageKey)
-  learn_meta.ts        # pure SEO builders (title / desc / canonical / Article+BreadcrumbList JSON-LD)
+  learn_meta.ts        # pure SEO builders (title / desc / canonical; Article+BreadcrumbList JSON-LD for a guide, CollectionPage+BreadcrumbList+ItemList for the hub and a category index — decisions § 1168)
   learn_meta.test.ts
 apps/web/src/lib/components/
   GuideCard.svelte     # hub/category preview card (.card-elevated)
   LearnCta.svelte      # end-of-article CTA card (feature link + sign-up)
   LearnPage.svelte     # the page shell all three routes wear: wrapper + PublicHeader/Footer + the ONE column definition (`width="wide"` 64rem | `"prose"` 44rem)
   LearnBreadcrumb.svelte # ancestors-only breadcrumb trail (the h1 is the current step)
-  PublicHeader.svelte  # shared public-site nav (landing overlay variant + solid learn variant)
+  PublicHeader.svelte  # shared public-site nav (fixed; transparent at the top, plum glass once scrolled)
   PublicFooter.svelte  # shared public-site footer (tagline + nav/legal links)
 apps/web/static/og-default.png   # 1200x630 branded OG fallback card
 ```
@@ -52,18 +60,23 @@ Sitemap entries (hub 0.8 / category 0.6 / guide 0.7 + frontmatter lastmod) are b
 1. Create `apps/web/src/lib/learn/guides/<slug>.md`.
 2. Frontmatter: `title`, `description`, `category` (one of `CATEGORIES`), `slug` (= filename stem), `order`, `updated` (ISO date), optional `heroImage`, optional `cta.feature` (one of `CTA_TARGETS`).
 3. Write the body in markdown (`##`/`###`, lists, links). The end-of-article CTA is auto-appended from `cta.feature`.
-4. New category? Add it to `categories.ts` + its `labelKey` to `en.ts` and all five other locales.
-5. `npx tsx --test apps/web/src/lib/learn/guides.test.ts` validates frontmatter / slug / category / CTA (and, for localized files, sibling agreement — see below).
-6. `npm run build --workspace=apps/web` then confirm `build/learn/<slug>.html` exists and `build/sitemap.xml` lists it.
+4. New category? Add it to `categories.ts` + its `labelKey` to `en.ts` and all six other locales.
+5. Translate it into every non-English shipped locale (see below) in the same change — `guides.test.ts` fails until `<slug>.<locale>.md` exists for each.
+6. `npx tsx --test apps/web/src/lib/learn/guides.test.ts` validates frontmatter / slug / category / CTA, sibling agreement for localized files, and that coverage.
+7. `npm run build --workspace=apps/web` then confirm `build/learn/<slug>.html` exists and `build/sitemap.xml` lists it.
 
 No DB migration; no deploy step beyond the normal web build/release.
 
 ### How to translate a guide
 
-1. Copy `apps/web/src/lib/learn/guides/<slug>.md` to `apps/web/src/lib/learn/guides/<slug>.<locale>.md` (`<locale>` ∈ `de/fr/es/ja/pt-BR`). The dash-bearing `pt-BR` is fine — the resolver splits on the FIRST dot, so `road-running-101.pt-BR.md` parses to slug `road-running-101`, locale `pt-BR`.
+1. Copy `apps/web/src/lib/learn/guides/<slug>.md` to `apps/web/src/lib/learn/guides/<slug>.<locale>.md` (`<locale>` ∈ any supported non-`en` locale — `de/fr/es/ja/pt-BR/pt-PT` today; `guides.test.ts` checks the suffix against `SUPPORTED_LOCALES`, so it widens on its own when a locale ships). The dash-bearing `pt-BR` is fine — the resolver splits on the FIRST dot, so `road-running-101.pt-BR.md` parses to slug `road-running-101`, locale `pt-BR`.
 2. Translate the `title`, `description`, and body. Keep `slug`, `category`, `order`, and `cta.feature` **identical to the English source** — `guides.test.ts` fails the build if they drift (the hub card route + section are driven off the English index, so a localized file under a different category/order would mis-file the card).
-3. `import.meta.glob` picks the new file up automatically; no registration. `getGuide(slug, locale)` serves it, `localizedGuideMeta(slug, locale)` localizes its hub/category card, and `isEnglishFallback` stops showing the notice for that locale.
+3. `import.meta.glob` picks the new file up automatically; no registration. `getGuide(slug, locale)` serves it, `localizedGuideMeta(slug, locale)` localizes its hub/category card, and `isEnglishFallback` stops showing the notice for that locale **and for every other locale in the same language**.
 4. Re-run the guides test + a dev-mode build (`npx vite build --mode development --workspace=apps/web`) — the localized prose compiles into a client chunk; the English body still prerenders into the static `build/learn/<slug>.html` (canonical), with the localized component lazy-resolved client-side after hydration.
+
+## Park courses guide
+
+`park-courses-how-timing-works` (category `trail`, issue #1313) is the public explainer for [park courses](park_courses.md): what a standing time trial is, how a run is timed (start, checkpoints in order, finish, the whole course), seasons in the park's own time zone, and the Fastest and Most completions boards. It is written to stay true across the matching phases, so it says which runs can count, not which device or job scores them; the in-app help guide `park-courses` carries the current "open the run on the web" caution. Its `cta.feature` is `parks` ("Find a park course", `/parks`), and the body's closing section also links to `/parks`. `tests-e2e/learn/park-courses-guide.spec.ts` pins its head (title, canonical, `og:*`, `Article` JSON-LD) and the `/parks` link.
 
 ## Cross-linking (CTA targets)
 
@@ -75,12 +88,13 @@ Driven by frontmatter `cta.feature`, mapped to a route + i18n label in `categori
 | `route-builder` | `/routes/new` | shipped |
 | `gear` | `/settings` | shipped (no dedicated `/gear` route) |
 | `nutrition` | `/nutrition` | shipped |
-| `ai-coach` | `/coach` | shipped |
+| `ai-coach` | `/messages/coach` | shipped |
 | `clubs` | `/social?tab=clubs` | shipped |
 | `racing` | `/races` | shipped |
 | `explore` | `/routes?tab=explore` | shipped |
+| `parks` | `/parks` | shipped |
 
-All targets are auth-gated app routes; an anon reader who clicks is sent through the layout auth guard to `/login?return_to=...`, the intended acquisition funnel. Every guide also shows a "Create a free account" → `/login?signup=1` button.
+All targets but `/parks` (which a signed-out reader can browse) are auth-gated app routes; an anon reader who clicks one is sent through the layout auth guard to `/login?return_to=...`, the intended acquisition funnel. Every guide also shows a "Create a free account" → `/login?signup=1` button.
 
 Every route in that table is resolved against the SvelteKit route tree on disk by `categories.test.ts`, so a CTA pointing at a page that does not exist fails CI. A prose promise to repoint a CTA "when X ships" cannot fail, which is how `racing` outlived its own caveat.
 
@@ -88,21 +102,32 @@ Every route in that table is resolved against the SvelteKit route tree on disk b
 
 Two layers:
 
-1. **Chrome / UI strings** (`learn.*` namespace) — shipped in all six locales (`en, de, fr, es, ja, pt-BR`), enforced by `messages_parity.test.ts`.
+1. **Chrome / UI strings** (`learn.*` namespace) — shipped in all seven locales (`en, de, fr, es, ja, pt-BR, pt-PT`), enforced by `messages_parity.test.ts`.
 2. **Guide prose** — **per-locale lookup with English fallback, shipped** (2026-06-20). `guides.ts` indexes every `<slug>.<locale>.md` variant from the same `import.meta.glob`. The resolution surface:
-   - `getGuide(slug, locale)` → the localized article body when a `<slug>.<locale>.md` exists, else the English entry. Drives the article `<GuideBody/>` + H1.
-   - `localizedGuideMeta(slug, locale)` → the localized `title` + `description`, **falling back field-by-field** to the English frontmatter. Drives the hub + category cards (`GuideCard.svelte`) AND the article H1, so a non-English visitor reads a consistent localized listing → body and never an English title above a localized body.
-   - `isEnglishFallback(slug, locale)` → drives the one-line "this guide is in English" notice, shown only when the active locale has no file for that slug.
+   - `getGuide(slug, locale)` → the exact-locale article body when a `<slug>.<locale>.md` exists, else **any guide in the same LANGUAGE** (a `pt-PT` reader is served the `pt-BR` file; two same-language variants sort by tag so the pick is deterministic rather than glob-order), else the English entry. Drives the article `<GuideBody/>` + H1.
+   - `localizedGuideMeta(slug, locale)` → the localized `title` + `description`, **falling back field-by-field** to the English frontmatter. Drives the hub + category cards (`GuideCard.svelte`), so a non-English visitor reads a localized listing rather than an English title above a body that localizes a click away. It resolves in the **same order as `getGuide`** — exact tag, then same language, then English — because the card and the body disagreeing is the defect this helper exists to prevent: a `pt-PT` reader served the Brazilian body would otherwise have read an English title above it. The article H1 comes from `getGuide`'s entry.
+   - `isEnglishFallback(slug, locale)` → drives the one-line "this guide is in English" notice. It asks whether the reader's **language** is served, not whether their exact tag is, so the notice correctly does not fire for a `pt-PT` reader handed the Brazilian guide — telling them it is in English would be false.
    - The English body still **prerenders** into the static `build/learn/<slug>.html` (the canonical, SEO-indexed copy — `<head>` meta is English by design); the localized component is lazy-resolved client-side after `initLocale` swaps the active locale.
    - `guides.test.ts` guards the localized files: the suffix must be a supported non-default locale, an English source must exist to fall back to, `(slug, locale)` is unique, and the localized frontmatter agrees with its English sibling on `slug`/`category`/`order`/`cta.feature` (only `title`/`description` differ).
 
-   **Localized today:** all eight guides — `road-running-101`, `couch-to-5k`, `choosing-running-shoes`, `weekly-running-routine`, `how-to-pace-your-first-race`, `trail-running-basics`, `what-to-eat-before-a-long-run`, `your-first-race` — in all six locales (`en` source + `de/fr/es/ja/pt-BR`). The prose-localization content is **complete** (2026-06-20); the resolver's field-by-field English fallback stays wired for any future guide added before its translations land. See [decisions.md § 179](../architecture/decisions.md).
+   **Localized today:** all nine guides — `road-running-101`, `couch-to-5k`, `choosing-running-shoes`, `weekly-running-routine`, `how-to-pace-your-first-race`, `trail-running-basics`, `what-to-eat-before-a-long-run`, `your-first-race`, `park-courses-how-timing-works` — in all seven locales (`en` source + `de/fr/es/ja/pt-BR/pt-PT`), 63 files on disk. The `pt-PT` set landed 2026-10-08, translated from the English source rather than adapted from `pt-BR`, in the catalogue's register (third-person verbs and `o seu`/`a sua`, `você` never written, no `tu`) and its running vocabulary (`prova`, `sapatilhas`, `corrida longa`, `treinador de IA`, `dorsal`); before that the same-language step served Lisbon the Brazilian prose. Like the catalogue it is model-authored and **not natively reviewed** — covered by the native-review item in `followups.md`. Two guards keep the set honest: `guides.test.ts` fails when any English guide lacks a variant for any shipped locale (the fallback chain otherwise hides a missing translation completely), and `locale_reach.test.ts` scans both Portuguese guide sets with the catalogue's own variant-word lists and tu markers. The resolver's field-by-field English fallback stays wired, but the coverage guard means a new guide now ships with its translations rather than before them. See [decisions.md § 179](../architecture/decisions.md).
 
 ## Mobile / watch
+
+## Hub layout
+
+The hub renders **category chips → one promoted guide → one grid of everything else**, not a section per category. It used to be the latter, and five of the seven categories hold a single guide: each produced a heading, one card, and an `auto-fill` grid whose remaining tracks stayed empty, so most of the page was dead space and eight guides took a full screen of scrolling to reach. The chips carry the per-category browse the headings used to (`/learn/category/<id>`, which already existed and was otherwise unlinked), and the first guide in category-then-order sequence is promoted as the obvious starting point. The grid is `auto-fit`, not `auto-fill` — with a short final row `auto-fill` keeps the empty tracks and the last card sits in a 17rem slot beside a void.
+
+The ItemList JSON-LD is still built from the same category-then-order sequence, so the structured data describes the order a reader actually sees.
+
+A **category page wears the same furniture as the hub** — kicker, chip row with its own chip marked `aria-current="page"`, grid, closing CTA. It used to be a breadcrumb, a bare `h1` and a grid, which read as a different site and made the breadcrumb the only way out; the chips are what let a reader move sideways between categories. `LearnCategoryNav.svelte` and `LearnSignupCta.svelte` are shared by both (distinct from `LearnCta.svelte`, which is the per-article CTA pointing at the app feature a guide teaches).
+
+**Reading time** is `estimateReadingMinutes` in `guides_index.ts` (pure, unit-tested) over a second `import.meta.glob` of the same files as `?raw` — the compiled module exposes frontmatter and a Svelte component, and neither can be word-counted. Both globs resolve at build time. It is keyed on the **English** source: a localized file is a translation of the same guide, so its word count differs by language rather than by how much there is to read. Every English guide currently lands on 2 minutes because they are all 431-523 words; the figure differentiates as the library grows.
 
 **Web-only. The twin invariant does not apply** (acquisition/SEO content, like the landing page / `/privacy` / `/compare`). A future single in-app "Learn / Guides" link opening the web hub is a one-link follow-up, not a screen and not a twin obligation.
 
 ## Tests
 
-- Unit (`npx tsx --test`): `guides.test.ts`, `learn_meta.test.ts`, `sitemap.test.ts` (extended).
-- Playwright (`apps/web/tests-e2e/learn/`): `hub`, `article`, `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes).
+- Unit (`npx tsx --test`): `guides.test.ts` (including every-guide-in-every-locale coverage), `learn_meta.test.ts`, `sitemap.test.ts` (extended); `i18n/locale_reach.test.ts` scans the `pt-BR`/`pt-PT` guides for the other variant's words and for `tu`.
+- Playwright (`apps/web/tests-e2e/learn/`): `park-courses-guide` (the park courses guide's head and its `/parks` link), `hub` (one grid + a promoted guide, chips resolve, every card states a reading time), `article` (plus the Keep-reading block and the header's reading time), `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes, the header pinned with its glass once scrolled on `/` and `/learn`, and an in-page jump stopping below it).
+- Artifact guards (`apps/web/src/lib/seo/`): `learn_structured_data.test.ts` reads the BUILT pages and pins one JSON-LD block per learn route whose `@type` matches the route kind, a breadcrumb of the right depth whose last rung links nowhere, and a non-empty self-consistent `ItemList` on the two index kinds; `document_title.test.ts` pins that every prerendered page carries exactly one `<title>`, its own. Both self-skip when `apps/web/build` is absent, so they bind only after a production build (decisions § 1167 + § 1168).

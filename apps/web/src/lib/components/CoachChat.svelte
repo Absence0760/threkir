@@ -1,29 +1,57 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { onMount, onDestroy, tick } from 'svelte';
-	import { renderCoachMarkdown } from '$lib/coach/markdown';
-	import { supabase } from '$lib/core/supabase';
-	import { payloadSha256Hex } from '$lib/util/payload_hash';
-	import { TABLES } from '$lib/core/schema';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import ChipDropdown from '$lib/components/ChipDropdown.svelte';
-	import { TIER_LIMITS } from '$lib/coach/types';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { TrainingPlan } from '$lib/types';
+	import { renderCoachMarkdown } from '#lib/coach/markdown.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { payloadSha256Hex } from '#lib/util/payload_hash.ts';
+	import { TABLES } from '#lib/core/schema.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import AiTag from '#lib/components/AiTag.svelte';
+	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
+	import { TIER_LIMITS } from '#lib/coach/types.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { planEditHandoff } from '#lib/coach/plan_edit_link.ts';
+	import CoachPlanEditCard from '#lib/components/CoachPlanEditCard.svelte';
+	import CoachShareDialog from '#lib/components/CoachShareDialog.svelte';
+	import { fetchCoachShareEnabled, fetchMyCoaches, type CoachAthleteLink } from '#lib/core/data.ts';
+	import { currentSeason, pickCurrentPlan } from '#lib/training/plan_current.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { chunk, FEED_FOLLOWEE_CHUNK } from '#lib/social/feed_merge.ts';
+	import type { CoachMessageRole, CoachPlanScope } from '#lib/coach/types.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
+	import type { TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
+		/// The plan the thread is kept under. With `planScope` 'season' it is
+		/// the season's first plan.
 		planId: string | null;
+		/// What the Coach reads: this plan, the season from it, or no plan.
+		planScope?: CoachPlanScope;
 		/// Optional list of the user's plans for the in-strip plan
 		/// switcher. When omitted the chip falls back to read-only.
 		plans?: TrainingPlan[];
-		/// Called with the next plan id (or '' for "no plan") when the
+		/// Called with the next plan id ('' for "no plan", 'season' for
+		/// "My season") when the
 		/// strip's plan-select changes. The host owns the URL + reload
 		/// dance — see /coach/+page.svelte. Omitted on embedded surfaces
 		/// (e.g. /plans/[id] inline coach) where the plan is fixed.
 		onPlanChange?: (next: string) => void;
 	}
-	let { planId, plans = [], onPlanChange }: Props = $props();
+	let { planId, planScope = 'plan', plans = [], onPlanChange }: Props = $props();
+	// The plans "My season" would send, offered only when something is
+	// queued behind the current plan; one plan alone is the plan option.
+	let seasonPlans = $derived(
+		currentSeason(
+			plans.filter((p) => p.status === 'active'),
+			todayISO(),
+		),
+	);
 	let hasPlan = $derived(planId != null);
 
 	const RUN_LIMIT_OPTIONS = [10, 20, 50, 100];
@@ -35,12 +63,18 @@
 		// server returns the row id, we stitch it in so bubble actions
 		// (regenerate / edit / react) can anchor on it.
 		id: string | null;
-		role: 'user' | 'assistant';
+		role: CoachMessageRole;
 		content: string;
 		reaction?: 'up' | 'down' | null;
 	}
 
 	let messages = $state<Msg[]>([]);
+	/// Plan-edit proposals render as a card under the reply that links one
+	/// (decisions § 2230), behind the same fail-closed gate as the plan page.
+	const planEditCards = coachEnabled() && aiPlanEditEnabled();
+	/// Replies that arrived in this session: their card proposes at once. An
+	/// older reply's card waits for a tap, so reopening a thread spends nothing.
+	let freshReplies = $state<string[]>([]);
 	/// Set to the coach's completed reply when a stream finishes, so a
 	/// visually-hidden aria-live region announces it once (WCAG 4.1.3).
 	let liveAnnouncement = $state('');
@@ -176,7 +210,7 @@
 			return;
 		}
 		const groups = new Map<string, { count: number; firstUser: string | null }>();
-		for (const row of (data ?? []) as { archived_at: string; role: 'user' | 'assistant'; content: string }[]) {
+		for (const row of (data ?? []) as { archived_at: string; role: CoachMessageRole; content: string }[]) {
 			const g = groups.get(row.archived_at) ?? { count: 0, firstUser: null };
 			g.count += 1;
 			if (g.firstUser == null && row.role === 'user') g.firstUser = row.content;
@@ -188,7 +222,7 @@
 				title: titleFromMessage(g.firstUser),
 				message_count: g.count,
 			}))
-			.sort((a, b) => b.archived_at.localeCompare(a.archived_at));
+			.sort((a, b) => compareOrdinal(b.archived_at, a.archived_at));
 	}
 
 	function titleFromMessage(content: string | null): string {
@@ -221,7 +255,7 @@
 		}
 		messages = (data ?? []) as Msg[];
 		viewingArchiveAt = archivedAt;
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 	}
 
 	async function backToActive() {
@@ -232,7 +266,7 @@
 		if (cachedUserId && !(await loadThread(cachedUserId))) {
 			error = t('coachChat.errorLoad');
 		}
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 	}
 
 	function askDeleteArchive(archivedAt: string, ev: Event) {
@@ -280,7 +314,15 @@
 	let tier = $state<'free' | 'pro' | null>(null);
 	let dailyLimit = $state<number>(TIER_LIMITS.free.dailyLimit);
 	let usedToday = $state(0);
-	let limitReached = $derived(usedToday >= dailyLimit);
+	/// True once something authoritative has answered which tier this is —
+	/// the `is_pro` RPC, or the server on a send. Until then `dailyLimit` is
+	/// only the conservative seed above, so it must not be quoted as fact or
+	/// used to take the composer away: the free cap is lower than a Pro
+	/// runner's real usage, and a failed lookup would otherwise read as
+	/// "you're out of messages, upgrade" to someone who already has.
+	/// /api/coach re-checks the tier server-side, so nothing is granted here.
+	let tierKnown = $state(false);
+	let limitReached = $derived(tierKnown && usedToday >= dailyLimit);
 	let remaining = $derived(Math.max(0, dailyLimit - usedToday));
 
 	interface ContextSummary {
@@ -289,33 +331,54 @@
 		runCount: number;
 		hrZonesLoaded: boolean;
 		weeklyGoalMetres: number | null;
+		/// The plan read failed: the strip says so instead of "No plan".
+		planReadFailed: boolean;
 	}
 	let contextSummary = $state<ContextSummary | null>(null);
 
 	let cachedUserId = $state<string | null>(null);
 
+	// Share with coach (issue #1215 Phase 3): offered on an answer only while
+	// the server gate is open and the runner has an active coach. Both reads
+	// fail closed to "not offered"; neither blocks the chat.
+	let shareCoaches = $state<CoachAthleteLink[]>([]);
+	let shareTarget = $state<{ id: string; content: string } | null>(null);
+	async function loadShareCoaches() {
+		try {
+			const [enabled, coaches] = await Promise.all([fetchCoachShareEnabled(), fetchMyCoaches()]);
+			shareCoaches = enabled ? coaches : [];
+		} catch (e) {
+			console.error('[coach] share-with-coach lookup failed', thrownMessage(e));
+		}
+	}
+
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		cachedUserId = session.user.id;
+		void loadShareCoaches();
 		await loadThread(session.user.id);
 		await loadArchives();
-		const [{ data: usage }, { data: isPro }] = await Promise.all([
-			supabase.rpc('get_coach_usage', { p_user_id: session.user.id }),
-			supabase.rpc('is_pro'),
+		const [usageRes, proRes] = await Promise.all([
+			supabase.rpc('get_coach_usage', { p_user_id: session.user.id }, { get: true }),
+			supabase.rpc('is_pro', undefined, { get: true }),
 		]);
-		if (typeof usage === 'number') usedToday = usage;
-		if (isPro === true) {
-			tier = 'pro';
-			dailyLimit = TIER_LIMITS.pro.dailyLimit;
+		if (typeof usageRes.data === 'number') usedToday = usageRes.data;
+		if (proRes.error) {
+			// A failed lookup is not evidence of a free account. Treating it
+			// as one downgraded the badge to Free and, because the seeded
+			// free cap sits below a Pro runner's real usage, swapped their
+			// composer for an upgrade prompt over a transient blip.
+			console.warn('[coach] tier lookup failed', proRes.error);
 		} else {
-			tier = 'free';
-			dailyLimit = TIER_LIMITS.free.dailyLimit;
+			tier = proRes.data === true ? 'pro' : 'free';
+			dailyLimit = TIER_LIMITS[tier].dailyLimit;
+			tierKnown = true;
 		}
 
 		await loadContextSummary(session.user.id);
 		subscribeToThread();
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 	});
 
 	$effect(() => {
@@ -326,16 +389,44 @@
 	async function loadContextSummary(userId: string) {
 		let planName: string | null = null;
 		let planWeeks: number | null = null;
+		let planReadFailed = false;
 		try {
-			const planQuery = planId
-				? supabase.from('training_plans').select('id, name').eq('id', planId).maybeSingle()
-				: supabase
-						.from('training_plans')
-						.select('id, name')
-						.eq('user_id', userId)
-						.eq('status', 'active')
-						.maybeSingle();
-			const { data: plan } = await planQuery;
+			let plan: { id: string; name: string } | null = null;
+			if (planScope === 'season') {
+				const ids = seasonPlans.map((p) => p.id);
+				planName = t('coachChat.mySeason');
+				const pages = await Promise.all(
+					chunk(ids, FEED_FOLLOWEE_CHUNK).map((part) =>
+						supabase
+							.from('plan_weeks')
+							.select('id', { count: 'exact', head: true })
+							.in('plan_id', part)
+					)
+				);
+				const failed = pages.find((p) => p.error != null);
+				if (failed?.error) throw dbError(failed.error);
+				planWeeks = pages.reduce((n, p) => n + (p.count ?? 0), 0);
+			} else if (planScope === 'none') {
+				plan = null;
+			} else if (planId) {
+				const { data, error: err } = await supabase
+					.from('training_plans')
+					.select('id, name')
+					.eq('id', planId)
+					.maybeSingle();
+				if (err) throw dbError(err);
+				plan = data;
+			} else {
+				const { data, error: err } = await supabase
+					.from('training_plans')
+					.select('id, name, start_date, end_date')
+					.eq('user_id', userId)
+					.eq('status', 'active')
+					.eq('is_template', false);
+				if (err) throw dbError(err);
+				const picked = pickCurrentPlan(data ?? [], todayISO());
+				plan = picked.current ?? picked.upcoming;
+			}
 			if (plan) {
 				planName = plan.name;
 				const { count } = await supabase
@@ -344,7 +435,10 @@
 					.eq('plan_id', plan.id);
 				planWeeks = count ?? null;
 			}
-		} catch (_) { /* noop */ }
+		} catch (e) {
+			console.error('[coach] plan context read failed', { message: thrownMessage(e) });
+			planReadFailed = true;
+		}
 
 		let runCount = 0;
 		try {
@@ -372,33 +466,52 @@
 			if (typeof goal === 'number' && goal > 0) weeklyGoalMetres = goal;
 		} catch (_) { /* noop */ }
 
-		contextSummary = { planName, planWeeks, runCount, hrZonesLoaded, weeklyGoalMetres };
+		contextSummary = { planName, planWeeks, runCount, hrZonesLoaded, weeklyGoalMetres, planReadFailed };
 	}
 
+	// With the AI plan assistant live, a plan request gets a chip of its own:
+	// the coach answers it with a link into the assistant (system_prompt.ts
+	// planHandoffAddendum). It takes the slot of the most generic question in
+	// each set, so the primer stays at four.
+	const planChips = aiPlanEnabled();
 	let suggestions = $derived(
 		contextSummary?.runCount === 0
-			? [
-					t('coachChat.suggestNewFirstRun'),
-					t('coachChat.suggestNewFirstFeel'),
-					t('coachChat.suggestNewHowOften'),
-					t('coachChat.suggestNewWalkRun')
-				]
+			? planChips
+				? [
+						t('coachChat.suggestBuildPlanFirst5k'),
+						t('coachChat.suggestNewFirstRun'),
+						t('coachChat.suggestNewFirstFeel'),
+						t('coachChat.suggestNewWalkRun')
+					]
+				: [
+						t('coachChat.suggestNewFirstRun'),
+						t('coachChat.suggestNewFirstFeel'),
+						t('coachChat.suggestNewHowOften'),
+						t('coachChat.suggestNewWalkRun')
+					]
 			: hasPlan
 				? [
 						t('coachChat.suggestPlanRestDay'),
 						t('coachChat.suggestPlanGoalTime'),
-						t('coachChat.suggestPlanLongRun'),
+						planChips ? t('coachChat.suggestBuildPlanNextRace') : t('coachChat.suggestPlanLongRun'),
 						t('coachChat.suggestPlanTodayWorkout')
 					]
-				: [
-						t('coachChat.suggestNoPlanLastRun'),
-						t('coachChat.suggestNoPlanEasyPace'),
-						t('coachChat.suggestNoPlanWeekOff'),
-						t('coachChat.suggestNoPlanTempo')
-					]
+				: planChips
+					? [
+							t('coachChat.suggestBuildPlanHalf'),
+							t('coachChat.suggestNoPlanLastRun'),
+							t('coachChat.suggestNoPlanEasyPace'),
+							t('coachChat.suggestNoPlanWeekOff')
+						]
+					: [
+							t('coachChat.suggestNoPlanLastRun'),
+							t('coachChat.suggestNoPlanEasyPace'),
+							t('coachChat.suggestNoPlanWeekOff'),
+							t('coachChat.suggestNoPlanTempo')
+						]
 	);
 
-	// Markdown rendering hoisted to $lib/coach/markdown so the DOMPurify
+	// Markdown rendering hoisted to #lib/coach/markdown so the DOMPurify
 	// hook registers exactly once at module load.
 	const renderMarkdown = renderCoachMarkdown;
 
@@ -458,7 +571,7 @@
 		// Placeholder assistant bubble that streamed tokens flow into.
 		messages = [...messages, { id: null, role: 'assistant', content: '' }];
 		const assistantIdx = messages.length - 1;
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 
 		try {
 			// Snapshot the session token, then post. On 401 we refresh
@@ -474,7 +587,9 @@
 				const body = JSON.stringify({
 					messages: payloadMessages,
 					plan_id: planId,
+					plan_scope: planScope,
 					recent_runs_limit: runsLimit,
+					today: todayISO(),
 					mode: opts.mode,
 					anchor_message_id: opts.anchorId ?? null,
 				});
@@ -537,7 +652,10 @@
 					error = t('coachChat.errorStaleThread');
 				} else if (res.status === 429) {
 					usedToday = j.used ?? dailyLimit;
-					if (typeof j.tier === 'string') tier = j.tier;
+					if (typeof j.tier === 'string') {
+						tier = j.tier;
+						tierKnown = true;
+					}
 					if (typeof j.limit === 'number') dailyLimit = j.limit;
 					error = j.message ?? t('coachChat.errorDailyLimit', { count: dailyLimit });
 				} else {
@@ -608,7 +726,10 @@
 					messages[userIdx] = { ...m, id: userMessageId };
 				}
 			}
-			if (typeof parsed.tier === 'string') tier = parsed.tier as 'free' | 'pro';
+			if (typeof parsed.tier === 'string') {
+				tier = parsed.tier as 'free' | 'pro';
+				tierKnown = true;
+			}
 			const limits = parsed.limits as { daily_limit: number } | undefined;
 			if (limits && typeof limits.daily_limit === 'number') dailyLimit = limits.daily_limit;
 		} else if (event === 'token') {
@@ -623,6 +744,7 @@
 			if (id) {
 				const cur = messages[assistantIdx];
 				if (cur) messages[assistantIdx] = { ...cur, id };
+				freshReplies = [...freshReplies, id];
 			}
 			// Announce the completed reply to assistive tech exactly once
 			// (WCAG 4.1.3), via the visually-hidden polite region — not
@@ -639,7 +761,7 @@
 			}
 		} else if (event === 'error') {
 			error = (parsed.message as string) ?? t('coachChat.errorStreamFailed');
-			// The server refunds the cap slot (decrement_coach_usage) when a
+			// The server refunds the cap slot (refund_coach_usage_slot) when a
 			// stream fails before any token is produced, but that corrected
 			// count only reaches us on this `error` event — never via `done`.
 			// Roll back the optimistic usedToday++ when no tokens streamed, so
@@ -681,9 +803,49 @@
 
 	// ─────────────────────── Composer helpers ───────────────────────
 
-	async function scrollToBottom() {
+	// Stick-to-bottom: new content follows the reader down only while they
+	// are already at the bottom. Scrolling up releases it, so a streaming
+	// reply can be read from its start; reaching the bottom again, the jump
+	// button, or the runner's own turn (`force`) re-engages it. Only an
+	// upward move releases, so our own scroll-down — and a smooth one still
+	// in flight — can never switch it off.
+	const STICK_THRESHOLD_PX = 48;
+	let stickToBottom = true;
+	let lastScrollTop = 0;
+	let hasUnseen = $state(false);
+
+	function onScroll() {
+		if (!scrollEl) return;
+		const top = scrollEl.scrollTop;
+		const atBottom = scrollEl.scrollHeight - top - scrollEl.clientHeight <= STICK_THRESHOLD_PX;
+		if (atBottom) {
+			stickToBottom = true;
+			hasUnseen = false;
+		} else if (top < lastScrollTop) {
+			stickToBottom = false;
+		}
+		lastScrollTop = top;
+	}
+
+	async function scrollToBottom(opts: { force?: boolean; smooth?: boolean } = {}) {
+		if (opts.force) {
+			stickToBottom = true;
+			hasUnseen = false;
+		}
 		await tick();
-		if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+		if (!scrollEl) return;
+		if (!stickToBottom) {
+			hasUnseen = true;
+			return;
+		}
+		scrollEl.scrollTo({
+			top: scrollEl.scrollHeight,
+			behavior: opts.smooth && !motion.reduced ? 'smooth' : 'auto',
+		});
+	}
+
+	function jumpToLatest() {
+		scrollToBottom({ force: true, smooth: true });
 	}
 
 	const COMPOSER_MAX_PX = 160;
@@ -753,7 +915,7 @@
 				(payload: { new: Record<string, unknown> }) => {
 					const row = payload.new as {
 						id: string;
-						role: 'user' | 'assistant';
+						role: CoachMessageRole;
 						content: string;
 						reaction: 'up' | 'down' | null;
 						plan_id: string | null;
@@ -861,10 +1023,15 @@
 						· {hasPlan ? t('coachChat.subWithPlan') : t('coachChat.subNoPlan')}
 					</span>
 				</h3>
-				{#if contextSummary}
+				<!-- The plan picker does not wait for the context summary: until
+				     that read lands the runner could not change scope at all. -->
+				{#if contextSummary || (onPlanChange && plans.length > 0)}
 					{@const c = contextSummary}
 					{@const planOptions = [
 						{ value: '', label: t('coachChat.noPlan'), sub: t('coachChat.recentRunsOnly') },
+						...(seasonPlans.length > 1
+							? [{ value: 'season', label: t('coachChat.mySeason'), sub: t('coachChat.mySeasonSub') }]
+							: []),
 						...plans.map((p) => ({
 							value: p.id,
 							label: p.name,
@@ -880,18 +1047,32 @@
 						value: String(n),
 						label: t('coachChat.lastN', { n }),
 					}))}
+					<!-- My season is only offered once a plan is queued behind the
+					     current one, so with one plan the picker says how to get it. -->
+					{#snippet seasonHint()}
+						<p class="season-hint" data-testid="coach-season-hint">
+							{t('coachChat.seasonHint')}
+							<a href="/races">{t('coachChat.seasonHintAction')}</a>
+						</p>
+					{/snippet}
 					<div class="context-strip" title={t('coachChat.contextStripTitle')}>
 						{#if onPlanChange && plans.length > 0}
 							<ChipDropdown
-								value={planId ?? ''}
+								value={planScope === 'season' ? 'season' : planScope === 'none' ? '' : (planId ?? '')}
 								options={planOptions}
 								onChange={onPlanChange}
 								icon="calendar_month"
 								ariaLabel={t('coachChat.planContext')}
 								title={t('coachChat.planContextTitle')}
-								suffix={c.planWeeks ? `· ${c.planWeeks}w` : undefined}
+								suffix={c?.planWeeks ? `· ${c.planWeeks}w` : undefined}
+								footer={seasonPlans.length === 1 ? seasonHint : undefined}
 							/>
-						{:else if c.planName}
+						{:else if c?.planReadFailed}
+							<span class="chip chip-muted" role="status" data-testid="coach-plan-read-failed">
+								<span class="material-symbols" aria-hidden="true">error</span>
+								{t('coachChat.planReadFailed')}
+							</span>
+						{:else if c?.planName}
 							<span class="chip" title={t('coachChat.planLoaded')}>
 								<span class="material-symbols">calendar_month</span>
 								{c.planName}{#if c.planWeeks}<span class="chip-meta"> · {c.planWeeks}w</span>{/if}
@@ -902,47 +1083,51 @@
 								{t('coachChat.noPlan')}
 							</span>
 						{/if}
-						{#if c.runCount === 0}
-							<span class="chip chip-muted" title={t('coachChat.noRunsTitle')}>
-								<span class="material-symbols">directions_run</span>
-								{t('coachChat.noRuns')}
-							</span>
-						{:else}
-							<ChipDropdown
-								value={String(runsLimit)}
-								options={runOptions}
-								onChange={(v) => (runsLimit = parseInt(v, 10))}
-								icon="directions_run"
-								ariaLabel={t('coachChat.recentRunsAria')}
-								title={t('coachChat.recentRunsTitle')}
-							/>
-						{/if}
-						{#if c.hrZonesLoaded}
-							<a
-								class="chip chip-link"
-								href="/settings/preferences#heart-rate-zones"
-								title={t('coachChat.hrZonesLoadedTitle')}
-							>
-								<span class="material-symbols">monitor_heart</span>
-							</a>
-						{:else}
-							<a
-								class="chip chip-muted chip-link"
-								href="/settings/preferences#heart-rate-zones"
-								title={t('coachChat.noHrZonesTitle')}
-							>
-								<span class="material-symbols">monitor_heart</span>
-							</a>
-						{/if}
-						{#if c.weeklyGoalMetres}
-							<a
-								class="chip chip-link"
-								href="/settings/preferences#weekly-mileage-goal"
-								title={t('coachChat.weeklyGoalTitle')}
-							>
-								<span class="material-symbols">flag</span>
-								{fmtKm(c.weeklyGoalMetres)}
-							</a>
+						{#if c}
+							{#if c.runCount === 0}
+								<span class="chip chip-muted" title={t('coachChat.noRunsTitle')}>
+									<span class="material-symbols">directions_run</span>
+									{t('coachChat.noRuns')}
+								</span>
+							{:else}
+								<ChipDropdown
+									value={String(runsLimit)}
+									options={runOptions}
+									onChange={(v) => (runsLimit = parseInt(v, 10))}
+									icon="directions_run"
+									ariaLabel={t('coachChat.recentRunsAria')}
+									title={t('coachChat.recentRunsTitle')}
+								/>
+							{/if}
+							{#if c.hrZonesLoaded}
+								<a
+									class="chip chip-link"
+									href="/settings/training#heart-rate-zones"
+									title={t('coachChat.hrZonesLoadedTitle')}
+									aria-label={t('coachChat.hrZonesLoadedTitle')}
+								>
+									<span class="material-symbols" aria-hidden="true">monitor_heart</span>
+								</a>
+							{:else}
+								<a
+									class="chip chip-muted chip-link"
+									href="/settings/training#heart-rate-zones"
+									title={t('coachChat.noHrZonesTitle')}
+									aria-label={t('coachChat.noHrZonesTitle')}
+								>
+									<span class="material-symbols" aria-hidden="true">monitor_heart</span>
+								</a>
+							{/if}
+							{#if c.weeklyGoalMetres}
+								<a
+									class="chip chip-link"
+									href="/settings/training#weekly-distance-goal"
+									title={t('coachChat.weeklyGoalTitle')}
+								>
+									<span class="material-symbols">flag</span>
+									{fmtKm(c.weeklyGoalMetres)}
+								</a>
+							{/if}
 						{/if}
 					</div>
 				{/if}
@@ -970,111 +1155,147 @@
 		     announcements are handled by the visually-hidden region above
 		     (NOT here, where per-token streaming would interrupt on every
 		     token and echo the user's own message). WCAG 4.1.3. -->
-		<div class="scroll" bind:this={scrollEl} role="log" aria-live="off">
-			{#if threadLoaded && messages.length === 0}
-				<div class="primer">
-					<p>
-						{#if hasPlan}
-							{t('coachChat.primerWithPlan')}
-						{:else}
-							{t('coachChat.primerNoPlan')}
-						{/if}
-					</p>
-					<div class="suggestions">
-						{#each suggestions as s}
-							<button class="suggest" onclick={() => use(s)}>{s}</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
-			{#each messages as m, i (i)}
-				<div class="bubble" class:user={m.role === 'user'}>
-					{#if m.role === 'user' && editingId === m.id && m.id != null}
-						<div class="edit-form">
-							<textarea bind:value={editingDraft} rows="3" aria-label={t('coachChat.editMessageLabel')}></textarea>
-							<div class="edit-actions">
-								<button type="button" class="btn-primary" onclick={commitEdit} disabled={!editingDraft.trim()}>
-									{t('coachChat.saveAndResend')}
-								</button>
-								<button type="button" class="header-btn" onclick={cancelEdit}>{t('coachChat.cancel')}</button>
-							</div>
-						</div>
-					{:else if m.role === 'assistant'}
-						{#if !m.content && awaitingAssistant && i === messages.length - 1}
-							<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
-								<span></span><span></span><span></span>
-							</div>
-						{:else}
-							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							<div class="md">{@html renderMarkdown(m.content)}</div>
-						{/if}
-					{:else}
-						<span>{m.content}</span>
-					{/if}
-					{#if !viewingArchiveAt && m.id && !(awaitingAssistant && i === messages.length - 1)}
-						<div class="bubble-actions">
-							<button
-								type="button"
-								class="bubble-action"
-								title={t('coachChat.copyToClipboard')}
-								aria-label={t('coachChat.copy')}
-								onclick={() => copyMessage(m.content)}
-							>
-								<span class="material-symbols">content_copy</span>
-							</button>
-							{#if m.role === 'assistant'}
-								<button
-									type="button"
-									class="bubble-action"
-									title={t('coachChat.regenerateTitle')}
-									aria-label={t('coachChat.regenerate')}
-									onclick={() => regenerate(m.id!)}
-								>
-									<span class="material-symbols">refresh</span>
-								</button>
-								<button
-									type="button"
-									class="bubble-action"
-									class:active={m.reaction === 'up'}
-									title={t('coachChat.helpful')}
-									aria-label={t('coachChat.thumbsUp')}
-									aria-pressed={m.reaction === 'up'}
-									onclick={() => reactTo(m.id!, 'up')}
-								>
-									<span class="material-symbols">thumb_up</span>
-								</button>
-								<button
-									type="button"
-									class="bubble-action"
-									class:active={m.reaction === 'down'}
-									title={t('coachChat.notUseful')}
-									aria-label={t('coachChat.thumbsDown')}
-									aria-pressed={m.reaction === 'down'}
-									onclick={() => reactTo(m.id!, 'down')}
-								>
-									<span class="material-symbols">thumb_down</span>
-								</button>
+		<div class="scroll-wrap">
+			<div class="scroll" bind:this={scrollEl} role="log" aria-live="off" onscroll={onScroll}>
+				{#if threadLoaded && messages.length === 0}
+					<div class="primer">
+						<p>
+							{#if hasPlan}
+								{t('coachChat.primerWithPlan')}
 							{:else}
+								{t('coachChat.primerNoPlan')}
+							{/if}
+						</p>
+						<div class="suggestions">
+							{#each suggestions as s}
+								<button class="suggest" onclick={() => use(s)}>{s}</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
+				{#each messages as m, i (i)}
+					<div class="bubble" class:user={m.role === 'user'} data-role={m.role}>
+						{#if m.role === 'assistant'}
+							{@render aiByline()}
+						{/if}
+						{#if m.role === 'user' && editingId === m.id && m.id != null}
+							<div class="edit-form">
+								<textarea bind:value={editingDraft} rows="3" aria-label={t('coachChat.editMessageLabel')}></textarea>
+								<div class="edit-actions">
+									<button type="button" class="btn-primary" onclick={commitEdit} disabled={!editingDraft.trim()}>
+										{t('coachChat.saveAndResend')}
+									</button>
+									<button type="button" class="header-btn" onclick={cancelEdit}>{t('coachChat.cancel')}</button>
+								</div>
+							</div>
+						{:else if m.role === 'assistant'}
+							{#if !m.content && awaitingAssistant && i === messages.length - 1}
+								<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
+									<span></span><span></span><span></span>
+								</div>
+							{:else}
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+								<div class="md">{@html renderMarkdown(m.content)}</div>
+								{#if planEditCards && m.id && !viewingArchiveAt}
+									{@const handoff = planEditHandoff(m.content)}
+									{#if handoff}
+										{#key m.id}
+											<CoachPlanEditCard
+												planId={handoff.planId}
+												request={handoff.request}
+												auto={freshReplies.includes(m.id)}
+											/>
+										{/key}
+									{/if}
+								{/if}
+							{/if}
+						{:else}
+							<span>{m.content}</span>
+						{/if}
+						{#if !viewingArchiveAt && m.id && !(awaitingAssistant && i === messages.length - 1)}
+							<div class="bubble-actions">
 								<button
 									type="button"
 									class="bubble-action"
-									title={t('coachChat.editAndResend')}
-									aria-label={t('coachChat.edit')}
-									onclick={() => startEdit(m.id!, m.content)}
+									title={t('coachChat.copyToClipboard')}
+									aria-label={t('coachChat.copy')}
+									onclick={() => copyMessage(m.content)}
 								>
-									<span class="material-symbols">edit</span>
+									<span class="material-symbols">content_copy</span>
 								</button>
-							{/if}
-						</div>
-					{/if}
-				</div>
-			{/each}
-			{#if awaitingAssistant && messages[messages.length - 1]?.role === 'user'}
-				<div class="bubble">
-					<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
-						<span></span><span></span><span></span>
+								{#if m.role === 'assistant'}
+									<button
+										type="button"
+										class="bubble-action"
+										title={t('coachChat.regenerateTitle')}
+										aria-label={t('coachChat.regenerate')}
+										onclick={() => regenerate(m.id!)}
+									>
+										<span class="material-symbols">refresh</span>
+									</button>
+									<button
+										type="button"
+										class="bubble-action"
+										class:active={m.reaction === 'up'}
+										title={t('coachChat.helpful')}
+										aria-label={t('coachChat.thumbsUp')}
+										aria-pressed={m.reaction === 'up'}
+										onclick={() => reactTo(m.id!, 'up')}
+									>
+										<span class="material-symbols">thumb_up</span>
+									</button>
+									<button
+										type="button"
+										class="bubble-action"
+										class:active={m.reaction === 'down'}
+										title={t('coachChat.notUseful')}
+										aria-label={t('coachChat.thumbsDown')}
+										aria-pressed={m.reaction === 'down'}
+										onclick={() => reactTo(m.id!, 'down')}
+									>
+										<span class="material-symbols">thumb_down</span>
+									</button>
+									{#if shareCoaches.length > 0}
+										<button
+											type="button"
+											class="bubble-action"
+											title={t('coachShare.action')}
+											aria-label={t('coachShare.action')}
+											data-testid="coach-share-action"
+											onclick={() => (shareTarget = { id: m.id!, content: m.content })}
+										>
+											<span class="material-symbols">forward</span>
+										</button>
+									{/if}
+								{:else}
+									<button
+										type="button"
+										class="bubble-action"
+										title={t('coachChat.editAndResend')}
+										aria-label={t('coachChat.edit')}
+										onclick={() => startEdit(m.id!, m.content)}
+									>
+										<span class="material-symbols">edit</span>
+									</button>
+								{/if}
+							</div>
+						{/if}
 					</div>
-				</div>
+				{/each}
+				{#if awaitingAssistant && messages[messages.length - 1]?.role === 'user'}
+					<div class="bubble" data-role="assistant">
+						{@render aiByline()}
+						<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
+							<span></span><span></span><span></span>
+						</div>
+					</div>
+				{/if}
+			</div>
+			{#if hasUnseen}
+				<button type="button" class="jump-latest" onclick={jumpToLatest}>
+					<span class="material-symbols" aria-hidden="true">arrow_downward</span>
+					{t('coachChat.jumpToLatest')}
+				</button>
 			{/if}
 		</div>
 
@@ -1118,7 +1339,7 @@
 				{:else if tier === 'free'}
 					<span class="tier-badge tier-free">{t('coachChat.tierFree')}</span>
 				{/if}
-				{t('coachChat.messagesRemaining', { remaining, total: dailyLimit })}{#if tier === 'pro'} · {t('coachChat.priorityContext')}{/if}
+				{#if tierKnown}{t('coachChat.messagesRemaining', { remaining, total: dailyLimit })}{#if tier === 'pro'} · {t('coachChat.priorityContext')}{/if}{:else}{t('coachChat.tierUnknown')}{/if}
 			</span>
 			{#if lastCache && (lastCache.read > 0 || lastCache.create > 0)}
 				<span class="cache-note">
@@ -1132,6 +1353,26 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Every Coach message is labelled, not only the first (EU AI Act
+	     Art. 50, decisions § 2227): an avatar, the Coach's name and the AI tag. -->
+	{#snippet aiByline()}
+		<div class="ai-byline" data-testid="coach-ai-byline">
+			<span class="ai-avatar" aria-hidden="true"><span class="material-symbols">sports</span></span>
+			<span class="ai-name">{t('nav.coach')}</span>
+			<AiTag />
+		</div>
+	{/snippet}
+
+	{#if shareTarget}
+		<CoachShareDialog
+			open={shareTarget !== null}
+			messageId={shareTarget.id}
+			content={shareTarget.content}
+			coaches={shareCoaches}
+			onclose={() => (shareTarget = null)}
+		/>
+	{/if}
 
 	<ConfirmDialog
 		open={showArchiveConfirm}
@@ -1154,6 +1395,31 @@
 </div>
 
 <style>
+	.ai-byline {
+		display: flex;
+		white-space: normal;
+		align-items: center;
+		gap: 0.35rem;
+		margin-bottom: 0.3rem;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-secondary);
+	}
+	.ai-avatar {
+		width: 1.35rem;
+		height: 1.35rem;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: color-mix(in srgb, var(--section-coach) 14%, var(--color-surface));
+		color: var(--section-coach-ink);
+	}
+	.ai-avatar .material-symbols {
+		font-size: 0.85rem;
+	}
+	.ai-name {
+		font-weight: 600;
+	}
 	.shell {
 		display: flex;
 		gap: 0;
@@ -1345,7 +1611,7 @@
 	.chip .material-symbols { font-size: 0.85rem; line-height: 1; }
 	.chip-meta { color: inherit; opacity: 0.75; font-weight: 400; }
 	/* Settings shortcuts (HR zones, weekly goal) render as anchors so
-	   tapping the chip jumps to /settings/preferences with the right
+	   tapping the chip jumps to /settings/training with the right
 	   anchor. Match .chip styling exactly — no link-default underline,
 	   same colours, focus-visible outline for keyboard users. */
 	.chip-link {
@@ -1354,11 +1620,29 @@
 	}
 	.chip-link:hover { filter: brightness(1.05); }
 	.chip-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+	.season-hint { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--color-text-secondary); }
+	.season-hint a { color: var(--color-primary); font-weight: 500; }
 
+	.scroll-wrap {
+		position: relative; flex: 1; min-height: 0;
+		display: flex; flex-direction: column;
+	}
 	.scroll {
 		flex: 1; overflow-y: auto; padding: var(--space-md);
 		display: flex; flex-direction: column; gap: 0.6rem;
 	}
+	.jump-latest {
+		position: absolute; bottom: var(--space-sm); left: 50%; transform: translateX(-50%);
+		display: inline-flex; align-items: center; gap: 0.3rem;
+		min-height: 2.75rem; padding: 0 0.9rem;
+		background: var(--color-surface); color: var(--color-primary);
+		border: 1px solid var(--color-border); border-radius: 999px;
+		box-shadow: var(--shadow-md);
+		font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+	}
+	.jump-latest:hover { background: var(--color-bg-secondary); }
+	.jump-latest:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+	.jump-latest .material-symbols { font-size: 1.05rem; line-height: 1; }
 	.bubble {
 		/* Cap at a comfortable reading measure rather than a percentage —
 		   on a wide viewport, 85% becomes a wall-of-text line. ~64ch
@@ -1486,11 +1770,13 @@
 	.limit-bar {
 		display: flex; align-items: center; gap: 0.5rem;
 		padding: var(--space-sm) var(--space-md);
-		background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2);
+		/* A spent allowance is a warning, not an error: nothing failed. */
+		background: var(--color-warning-light);
+		border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
 		border-radius: var(--radius-md); margin: 0 var(--space-sm) var(--space-sm);
 		font-size: 0.82rem; color: var(--color-text-secondary);
 	}
-	.limit-bar .material-symbols { font-size: 1.1rem; color: var(--color-danger-text); }
+	.limit-bar .material-symbols { font-size: 1.1rem; color: var(--color-warning-text); }
 	.archive-banner {
 		display: flex; align-items: center; gap: 0.5rem;
 		padding: 0.5rem 0.8rem; margin: 0 var(--space-sm);

@@ -140,7 +140,7 @@ void main() {
       }
     });
 
-    testWidgets('the secondary row lines up with the primary row above it',
+    testWidgets('the primary row sits on the secondary row\'s column grid',
         (tester) async {
       tester.view.physicalSize = const Size(360, 3000);
       tester.view.devicePixelRatio = 1.0;
@@ -148,16 +148,18 @@ void main() {
 
       await _pump(tester, _everyStatRun());
 
-      // Both rows carry four cells, so they share a column grid: each
-      // secondary cell's left edge sits under a primary cell's left edge.
-      final primaryLefts = ['Distance', 'Time', 'Moving', 'Pace']
+      // Four hero cells take two columns on a 360 dp phone (#1300) while the
+      // four secondary cells take four, so the grids nest rather than match:
+      // each primary column starts on a secondary column's left edge.
+      final secondaryLefts = _secondaryLabels
+          .take(4)
           .map((l) => tester.getRect(_cell(l)).left)
           .toList();
-      expect(primaryLefts, hasLength(4));
-      for (final label in _secondaryLabels.take(4)) {
+      expect(secondaryLefts.toSet(), hasLength(4));
+      for (final label in ['Distance', 'Time', 'Moving', 'Pace']) {
         final left = tester.getRect(_cell(label)).left;
-        expect(primaryLefts, contains(closeTo(left, 0.5)),
-            reason: '$label does not align with a primary stat column');
+        expect(secondaryLefts, contains(closeTo(left, 0.5)),
+            reason: '$label does not sit on a secondary stat column');
       }
     });
 

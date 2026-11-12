@@ -68,3 +68,53 @@ Freshness freshnessFor(
   }
   return Freshness(ageMs: ageMs, stale: stale, bucket: FreshnessBucket.days, value: h ~/ 24);
 }
+
+/// The race clock as it reads *now*, from the elapsed time the last ping
+/// reported plus how long ago that ping was.
+///
+/// A cut-off is a deadline measured from the runner's start, and it keeps
+/// running while they are out of signal. Driving cut-off maths straight off
+/// the last ping's `elapsed_s` freezes the clock the moment the pings stop —
+/// so a runner who went dark 40 min before their cut-off would still show the
+/// budget they had at the last fix, and a limit that has since expired would
+/// never register. Advance the clock by the ping age instead: no new distance
+/// is invented (the position stays at the last fix), only time that has
+/// genuinely passed.
+///
+/// An age we cannot establish advances nothing — the caller has no ping to
+/// anchor on, so the readout is labelled rather than guessed at.
+///
+/// This is the FALLBACK for a caller that cannot resolve the run's start
+/// instant. Where it can, [raceClockS] below states the same clock exactly
+/// instead of reconstructing a lower bound on it.
+int liveElapsedS(int anchorElapsedS, int? ageMs) {
+  final base = anchorElapsedS < 0 ? 0 : anchorElapsedS;
+  if (ageMs == null || ageMs <= 0) return base;
+  return base + ageMs ~/ 1000;
+}
+
+/// The race clock: wall-clock seconds from the runner's start to [atMs].
+///
+/// This is a different quantity from the ping's `elapsed_s`, and the spectator
+/// screen used to present them as one. `elapsed_s` is the runner's own
+/// recording timer — it stops whenever they tap pause, and it is frozen at the
+/// instant of the last fix, so during a dead zone it states a time that stopped
+/// hours ago. The race clock is what a cut-off is measured against, and it
+/// needs no estimate: the run's `started_at` is on the row the spectator
+/// already reads.
+///
+/// Prefer this over [liveElapsedS] wherever the start instant is known —
+/// [liveElapsedS] can only ever be a lower bound on it (it credits nothing for
+/// time the runner had the recording paused before the last fix).
+///
+/// [atMs] is the instant to measure to: `now` for a live run, and the
+/// conclusion instant for one that has ended — a finished run's race clock must
+/// not keep ticking. Null when the start instant is unknown: no race clock is
+/// claimed rather than one being reconstructed from the frozen timer. Clamped
+/// to >= 0 so a start stamped in the viewer's future (clock skew) reads 0,
+/// never a negative clock — the same clamp [freshnessFor] makes on an age.
+int? raceClockS(int? startedAtMs, int? atMs) {
+  if (startedAtMs == null || atMs == null) return null;
+  final delta = atMs - startedAtMs;
+  return delta <= 0 ? 0 : delta ~/ 1000;
+}

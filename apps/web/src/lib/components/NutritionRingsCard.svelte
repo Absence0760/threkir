@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { ringFraction } from '$lib/nutrition/nutrition_totals';
-	import { computeDayBudget, type MacroKind } from '$lib/nutrition/nutrition_budget';
-	import type { FoodMacros } from '$lib/nutrition/food_search';
-	import type { NutritionTargets } from '$lib/nutrition/nutrition_targets';
-	import { m } from '$lib/i18n/store.svelte';
+	import { ringFraction } from '#lib/nutrition/nutrition_totals.ts';
+	import { computeDayBudget, type MacroKind } from '#lib/nutrition/nutrition_budget.ts';
+	import type { FoodMacros } from '#lib/nutrition/food_search.ts';
+	import type { NutritionTargets } from '#lib/nutrition/nutrition_targets.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		consumed: FoodMacros;

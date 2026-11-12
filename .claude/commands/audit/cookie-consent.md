@@ -16,7 +16,7 @@ This project has **no consent banner today**. The audit's job is to enumerate ev
 
 ## What to check
 
-1. **Page-load chain.** Walk `apps/web/src/app.html`, `apps/web/src/routes/+layout.svelte`, `apps/web/src/routes/+layout.server.ts`, every `+page.server.ts` and `+layout.ts`. Anything that fires on `mount` or in SSR top-level that hits a non-essential third-party.
+1. **Page-load chain.** Walk `apps/web/src/app.html`, `apps/web/src/routes/+layout.svelte`, `apps/web/src/hooks.server.ts` (there is no root `+layout.server.ts` — the server-side request chain is the hooks file), every `+page.server.ts` and `+layout.ts`. Anything that fires on `mount` or in SSR top-level that hits a non-essential third-party.
 2. **Sentry.** Web + mobile Sentry SDKs may fire before consent. Confirm `enabled: false` on load, `Sentry.init` is deferred until consent, and that **session replay** is OFF by default everywhere — replay is the highest-risk feature because it captures the DOM.
 3. **RevenueCat web SDK.** `@revenuecat/purchases-js` — verify it doesn't fire any analytics on import.
 4. **MapTiler tile fetches.** Every render of `<RunMap>`, `<TrackPreview>`, `<RouteBuilder>` fetches map tiles. MapTiler logs the requesting IP per tile fetch. Map fetches need consent under strict ePrivacy reading, **but** they're plausibly justifiable as "strictly necessary" for an essential feature (showing a run on a map). Document the position; it's defensible if disclosed in the cookie notice.

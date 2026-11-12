@@ -1,13 +1,22 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
+import '../lib/backend_timeout.dart';
+import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/plan_ramp.dart';
+import '../lib/race_plan_preset.dart';
+import '../lib/race_predictor.dart' show EffortForPrediction;
 import '../lib/screens/plan_new_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
+import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
+import 'pump_until.dart';
 
 Future<void> _pump(WidgetTester tester) {
   return tester.pumpWidget(
@@ -17,6 +26,39 @@ Future<void> _pump(WidgetTester tester) {
       home: PlanNewScreen(training: TrainingService()),
     ),
   );
+}
+
+/// [metres] in each of the [weeks] most recent seven-day windows, so the
+/// ramp check reads a chronic base of `metres * weeks / 4` a week.
+PlanRunHistory _history(double metres, {int weeks = 4, List<int>? daysAgo}) {
+  final now = DateTime.now();
+  return PlanRunHistory(
+    runs: [
+      for (final d in daysAgo ?? [for (var w = 0; w < weeks; w++) 1 + 7 * w])
+        RunForVolume(
+          startedAt: now.subtract(Duration(days: d)).toUtc().toIso8601String(),
+          distanceM: metres,
+          activityType: 'run',
+        ),
+    ],
+    efforts: const [],
+  );
+}
+
+/// Serves a fixed run history to the ramp note. The demographic
+/// fetches return quietly so no network is touched in the widget test.
+class _RampTraining extends TrainingService {
+  final PlanRunHistory? history;
+  _RampTraining(this.history);
+
+  @override
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
+  @override
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => history;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      const [];
 }
 
 class _FakeSocial extends SocialService {
@@ -34,24 +76,28 @@ class _FakeTraining extends TrainingService {
       templatesByClub[clubId] ?? const [];
 }
 
-/// Drives the replace-active-plan confirm gate: `fetchActiveOverview`
-/// returns a configurable existing active plan (or null), and `createPlan`
-/// records whether it was reached. The viewer-demographic fetches return
-/// quietly so no network is touched in the widget test.
+/// Drives the plan-overlap confirm gate: `fetchActivePlans` returns the
+/// runner's configurable active plans, and `createPlan` records whether it
+/// was reached and with which overlap action. The viewer-demographic fetches
+/// return quietly so no network is touched in the widget test.
 class _GateTraining extends TrainingService {
-  final ActivePlanOverview? activeOverview;
+  final List<TrainingPlanRow> activePlans;
+  final bool lookupFails;
   bool createCalled = false;
-  _GateTraining({this.activeOverview});
+  PlanOverlapAction? overlapAction;
+  _GateTraining({this.activePlans = const [], this.lookupFails = false});
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
   @override
-  Future<ActivePlanOverview?> fetchActiveOverview() async => activeOverview;
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    if (lookupFails) throw Exception('test: offline');
+    return activePlans;
+  }
 
   @override
   Future<TrainingPlanRow> createPlan({
@@ -64,8 +110,11 @@ class _GateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     createCalled = true;
+    overlapAction = onOverlap;
     // Throw after recording the call so the screen's try/catch keeps us on
     // the wizard (a real success navigates to PlanDetailScreen, which is
     // Supabase-backed and unbuildable in a widget test). The test only
@@ -74,30 +123,175 @@ class _GateTraining extends TrainingService {
   }
 }
 
-TrainingPlanRow _planRow(String id, String name) => TrainingPlanRow(
-      id: id,
-      userId: 'me-uuid',
-      name: name,
-      goalEvent: 'distance_half',
-      goalDistanceM: 21097.5,
-      startDate: DateTime(2026, 1, 4),
-      endDate: DateTime(2026, 3, 1),
-      daysPerWeek: 4,
-      status: 'active',
-      source: 'generated',
-      isTemplate: false,
-      isPublicTemplate: false,
-      createdAt: DateTime(2026, 1, 1),
-    );
+/// A create that never completes, so the screen's own timeout is the only
+/// thing that can end it.
+class _HangingCreateTraining extends TrainingService {
+  int createCalls = 0;
 
-ActivePlanOverview _overview(String name) => ActivePlanOverview(
-      plan: _planRow('existing-plan', name),
-      weeks: const [],
-      workouts: const [],
-      todayWorkout: null,
-      completionPct: 0,
-      currentWeekIndex: 0,
-    );
+  @override
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    String? raceListingId,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) {
+    createCalls++;
+    return Completer<TrainingPlanRow>().future;
+  }
+}
+
+/// Holds the overlap lookup open on [lookupGate] and counts every lookup,
+/// create and clone, so a second tap inside the lookup is visible. Creates
+/// and clones throw after counting to keep the screen on the wizard, as
+/// [_GateTraining] does.
+class _LookupGateTraining extends TrainingService {
+  final Completer<void> lookupGate = Completer<void>();
+  final Map<String, List<TrainingPlanRow>> templatesByClub;
+  int lookupCalls = 0;
+  int createCalls = 0;
+  int cloneCalls = 0;
+  _LookupGateTraining({this.templatesByClub = const {}});
+
+  @override
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      templatesByClub[clubId] ?? const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    lookupCalls++;
+    await lookupGate.future;
+    return const [];
+  }
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    String? raceListingId,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    createCalls++;
+    throw Exception('test: skip navigation');
+  }
+
+  @override
+  Future<String> clonePlanTemplate({
+    required String templateId,
+    DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    cloneCalls++;
+    throw Exception('test: skip navigation');
+  }
+}
+
+/// The goal dropdown's selected entry: a goal_event db value, or an ultra
+/// entry id.
+String? _goalValue(WidgetTester tester) {
+  for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+    final key = chip.key;
+    if (chip.selected &&
+        key is ValueKey<String> &&
+        key.value.startsWith('plan-new-goal-')) {
+      return key.value.substring('plan-new-goal-'.length);
+    }
+  }
+  return null;
+}
+
+/// How the start date reads on the wizard.
+String _shownDate(String iso) => formatDateMed(DateTime.parse(iso), 'en');
+
+/// Records the plan the wizard asks to create, then throws to keep the
+/// screen on the wizard (a real success navigates to the Supabase-backed
+/// PlanDetailScreen).
+class _RecordingTraining extends TrainingService {
+  GoalEvent? goalEvent;
+  double? goalDistanceM;
+  GeneratedPlan? generated;
+  bool createCalled = false;
+  String? raceListingId;
+
+  @override
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
+  @override
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    String? raceListingId,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    this.goalEvent = goalEvent;
+    this.goalDistanceM = goalDistanceM;
+    this.generated = generated;
+    this.raceListingId = raceListingId;
+    createCalled = true;
+    throw Exception('test: skip navigation');
+  }
+}
+
+/// An active plan spanning [fromDays]..[toDays] days from today. The wizard
+/// defaults its new plan to start next Sunday (1-7 days out) and run for
+/// weeks, which is what each window below is placed against.
+TrainingPlanRow _activeWindow(String name, int fromDays, int toDays) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return TrainingPlanRow(
+    id: 'existing-$name',
+    userId: 'me-uuid',
+    name: name,
+    goalEvent: 'distance_half',
+    goalDistanceM: 21097.5,
+    startDate: DateTime(today.year, today.month, today.day + fromDays),
+    endDate: DateTime(today.year, today.month, today.day + toDays),
+    daysPerWeek: 4,
+    status: 'active',
+    source: 'generated',
+    isTemplate: false,
+    isPublicTemplate: false,
+  );
+}
 
 ClubView _club(String id, String name) => ClubView(
       row: ClubRow(shadowHidden: false, 
@@ -179,47 +373,113 @@ void main() {
       expect(warnFinder, findsNothing);
     });
 
-    testWidgets('entering a 5K time surfaces the confirm box + warning',
-        (tester) async {
-      // Reason: a returning runner typing an old PR must be told the time
-      // isn't trusted until confirmed, and that unconfirmed leaves paces on
-      // the conservative goal-based estimate — otherwise the engine would
-      // prescribe dangerously fast paces.
-      await _pump(tester);
-      await tester.pump();
-      // The form is a lazy ListView and the recent-5K field sits below the
-      // starter-plan picker, so it isn't built initially. Pass the bare
-      // finder (no `.last` — the 'min' hint is unique) so scrollUntilVisible
-      // can scroll-and-build it; `.last` over a not-yet-built finder throws
-      // "Bad state: No element" and breaks the scroll loop.
-      final minField = find.widgetWithText(TextField, 'min');
+    Future<void> enterTime(WidgetTester tester, {String? seconds}) async {
+      // The recent-5K boxes are the second Minutes / Seconds pair; the goal
+      // time's come first.
+      final minutes = find.widgetWithText(TextField, 'Minutes').at(1);
       await tester.scrollUntilVisible(
-        minField,
+        find.widgetWithText(TextField, 'Minutes').last,
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.enterText(minField, '22');
+      await tester.enterText(minutes, '22');
       await tester.pump();
+      if (seconds != null) {
+        await tester.enterText(
+            find.widgetWithText(TextField, 'Seconds').at(1), seconds);
+        await tester.pump();
+      }
+    }
+
+    testWidgets('minutes alone are not yet a time, so nothing warns',
+        (tester) async {
+      await _pump(tester);
+      await tester.pump();
+      await enterTime(tester);
+      expect(confirmFinder, findsNothing);
+      expect(warnFinder, findsNothing);
+    });
+
+    testWidgets('a complete 5K time surfaces the confirm switch + warning',
+        (tester) async {
+      // Reason: a returning runner typing an old PR must be told the time
+      // isn't trusted until confirmed, otherwise the engine would prescribe
+      // dangerously fast paces.
+      await _pump(tester);
+      await tester.pump();
+      await enterTime(tester, seconds: '30');
       expect(confirmFinder, findsOneWidget);
+      expect(warnFinder, findsOneWidget);
+      expect(find.byKey(const Key('plan-new-recent5k-confirm')), findsOneWidget);
+    });
+
+    Future<void> pumpSuggested(WidgetTester tester, int seconds) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(
+            training: TrainingService(),
+            initialRecent5kSec: seconds,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.widgetWithText(TextField, 'Minutes').last,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump();
+    }
+
+    String fieldText(WidgetTester tester, String label) => tester
+        .widget<TextField>(find.widgetWithText(TextField, label).at(1))
+        .controller!
+        .text;
+
+    testWidgets(
+        "Home's recent-5K suggestion fills the time but leaves it unconfirmed",
+        (tester) async {
+      await pumpSuggested(tester, 1450);
+      expect(fieldText(tester, 'Minutes'), '24');
+      expect(fieldText(tester, 'Seconds'), '10');
+      final toggle = find.byKey(const Key('plan-new-recent5k-confirm'));
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      expect(find.byKey(const Key('plan-new-recent5k-suggested')),
+          findsOneWidget);
       expect(warnFinder, findsOneWidget);
     });
 
-    testWidgets('ticking the confirm box clears the warning', (tester) async {
+    testWidgets(
+        'confirming or editing the suggested time takes the note away',
+        (tester) async {
+      await pumpSuggested(tester, 1450);
+      final note = find.byKey(const Key('plan-new-recent5k-suggested'));
+      final toggle = find.byKey(const Key('plan-new-recent5k-confirm'));
+      await tester.ensureVisible(toggle);
+      await tester.pump();
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(note, findsNothing);
+      expect(warnFinder, findsNothing);
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(note, findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Seconds').at(1), '30');
+      await tester.pump();
+      expect(note, findsNothing);
+    });
+
+    testWidgets('switching the confirm on clears the warning', (tester) async {
       await _pump(tester);
       await tester.pump();
-      final minField = find.widgetWithText(TextField, 'min');
-      await tester.scrollUntilVisible(
-        minField,
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.enterText(minField, '22');
+      await enterTime(tester, seconds: '30');
+      final toggle = find.byKey(const Key('plan-new-recent5k-confirm'));
+      await tester.ensureVisible(toggle);
       await tester.pump();
-      // Tap the tile title (the raw Checkbox sits below the fold); the
-      // CheckboxListTile toggles from a tap anywhere on the tile.
-      await tester.ensureVisible(confirmFinder);
-      await tester.pump();
-      await tester.tap(confirmFinder);
+      await tester.tap(toggle);
       await tester.pump();
       expect(warnFinder, findsNothing);
     });
@@ -251,20 +511,9 @@ void main() {
     testWidgets('hidden when the viewer has no club templates',
         (tester) async {
       await pumpWithTemplates(tester, clubs: const [], templates: const {});
-      expect(find.text('Start from a club template'), findsNothing);
-    });
-
-    testWidgets('shows the template card when a club has a template',
-        (tester) async {
-      await pumpWithTemplates(
-        tester,
-        clubs: [_club('club-1', 'Trail Club')],
-        templates: {
-          'club-1': [_template('tpl-1', 'Spring Half')],
-        },
-      );
-      expect(find.text('Start from a club template'), findsOneWidget);
-      expect(find.text('Browse templates'), findsOneWidget);
+      await tester.tap(find.text('Browse ready-made plans'));
+      await tester.pumpAndSettle();
+      expect(find.text('From your clubs'), findsNothing);
     });
 
     testWidgets('opening the picker lists each template with its club',
@@ -276,15 +525,15 @@ void main() {
           'club-1': [_template('tpl-1', 'Spring Half')],
         },
       );
-      await tester.tap(find.text('Browse templates'));
+      await tester.tap(find.text('Browse ready-made plans'));
       await tester.pumpAndSettle();
-      expect(find.text('Choose a template'), findsOneWidget);
+      expect(find.text('From your clubs'), findsOneWidget);
       expect(find.text('Spring Half'), findsOneWidget);
       expect(find.text('Trail Club'), findsOneWidget);
     });
   });
 
-  group('PlanNewScreen — replace-active-plan confirm gate', () {
+  group('PlanNewScreen — plan-overlap confirm gate', () {
     Future<void> pumpGate(WidgetTester tester, _GateTraining training) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -314,46 +563,313 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets(
-        'creating with an existing active plan shows the replace confirm',
+    const title = 'These dates overlap an active plan';
+
+    testWidgets('an active plan the new dates overlap shows the overlap confirm',
         (tester) async {
-      // Reason: createPlan silently auto-completes the current active plan —
-      // weeks of a build vanish with no warning unless we gate it.
-      final training = _GateTraining(activeOverview: _overview('Spring base'));
+      // Reason: creating replaces or trims the overlapping plan — weeks of a
+      // build change with no warning unless we gate it.
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
       await pumpGate(tester, training);
       await tapCreate(tester);
-      expect(find.text('Replace your active plan?'), findsOneWidget);
-      expect(find.textContaining('Spring base'), findsOneWidget);
+      expect(find.text(title), findsOneWidget);
+      expect(find.textContaining('Spring base'), findsWidgets);
       expect(training.createCalled, isFalse);
     });
 
     testWidgets('Keep current dismisses the dialog without creating',
         (tester) async {
-      final training = _GateTraining(activeOverview: _overview('Spring base'));
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
       await pumpGate(tester, training);
       await tapCreate(tester);
       await tester.tap(find.widgetWithText(TextButton, 'Keep current'));
       await tester.pumpAndSettle();
-      expect(find.text('Replace your active plan?'), findsNothing);
+      expect(find.text(title), findsNothing);
       expect(training.createCalled, isFalse);
     });
 
-    testWidgets('Replace plan proceeds to createPlan', (tester) async {
-      final training = _GateTraining(activeOverview: _overview('Spring base'));
+    testWidgets('Replace plan creates with the replace action', (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
       await pumpGate(tester, training);
       await tapCreate(tester);
-      await tester.tap(find.widgetWithText(FilledButton, 'Replace plan'));
+      await tester.tap(find.byKey(const Key('planOverlapReplace')));
       await tester.pumpAndSettle();
       expect(training.createCalled, isTrue);
+      expect(training.overlapAction, PlanOverlapAction.replace);
+    });
+
+    testWidgets('a plan that started earlier can be ended the day before',
+        (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.textContaining('End Spring base on'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('planOverlapTrim')));
+      await tester.pumpAndSettle();
+      expect(training.createCalled, isTrue);
+      expect(training.overlapAction, PlanOverlapAction.trim);
+    });
+
+    testWidgets('ending early names every plan it ends, not just the last',
+        (tester) async {
+      // The server trims every overlapped plan to the day before the new
+      // start, so the choice has to name each of them.
+      final training = _GateTraining(activePlans: [
+        _activeWindow('Spring base', -30, 200),
+        _activeWindow('Hill block', -10, 100),
+      ]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.textContaining('Spring base'), findsWidgets);
+      expect(find.textContaining('Hill block'), findsWidgets);
+      expect(find.textContaining('End them on'), findsOneWidget);
+      expect(find.textContaining('End them early'), findsOneWidget);
+      expect(find.textContaining('End Hill block on'), findsNothing);
+      await tester.tap(find.byKey(const Key('planOverlapTrim')));
+      await tester.pumpAndSettle();
+      expect(training.overlapAction, PlanOverlapAction.trim);
+    });
+
+    testWidgets('a plan starting after the new one offers no early end',
+        (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Autumn block', 30, 90)]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsOneWidget);
+      expect(find.byKey(const Key('planOverlapTrim')), findsNothing);
+      expect(find.byKey(const Key('planOverlapReplace')), findsOneWidget);
+    });
+
+    testWidgets('an active plan that ended before the new one starts does not prompt',
+        (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -100, -10)]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsNothing);
+      expect(training.createCalled, isTrue);
+      // Nothing overlapped when the gate looked, so a plan created since is
+      // refused by the server rather than replaced unasked (decisions § 2050).
+      expect(training.overlapAction, PlanOverlapAction.refuse);
+    });
+
+    testWidgets('a failed active-plan lookup shows an error and creates nothing',
+        (tester) async {
+      // Reason: the gate used to fall through to replace when it could not
+      // read the active plans, so an offline blip completed plans unasked.
+      final training = _GateTraining(lookupFails: true);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsNothing);
+      expect(
+          find.text(
+              "Couldn't check your active plans for these dates. Check your connection and try again."),
+          findsOneWidget);
+      expect(training.createCalled, isFalse);
+      // Let the banner's dismiss timer run out so no timer is left pending.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('no active plan creates without a confirm dialog',
         (tester) async {
-      final training = _GateTraining(activeOverview: null);
+      final training = _GateTraining();
       await pumpGate(tester, training);
       await tapCreate(tester);
-      expect(find.text('Replace your active plan?'), findsNothing);
+      expect(find.text(title), findsNothing);
       expect(training.createCalled, isTrue);
+    });
+  });
+
+  group('PlanNewScreen — a create that never answers', () {
+    testWidgets('times out, shows an error and frees the Create button',
+        (tester) async {
+      final training = _HangingCreateTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.pump();
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pump();
+      await pumpUntil(tester, () => training.createCalls == 1,
+          describe: 'the create to start');
+      await tester.pump();
+      expect(find.widgetWithText(FilledButton, 'Creating…'), findsOneWidget);
+
+      await tester.pump(kBackendLoadTimeout);
+      await tester.pump();
+      expect(find.text('Something went wrong. Please try again.'),
+          findsOneWidget);
+      expect(tester.widget<FilledButton>(create).onPressed, isNotNull);
+      expect(training.createCalls, 1);
+    });
+  });
+
+  group('PlanNewScreen — an out-of-range number', () {
+    // "7" then "75" in minutes used to keep 7 in state while the field
+    // showed 75, and the plan was created with 7.
+    testWidgets('shows an error, blocks Create, and never creates',
+        (tester) async {
+      final training = _GateTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      final minutes = find.byKey(const Key('planNewGoalMinutes'));
+      await tester.scrollUntilVisible(minutes, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(minutes, '7');
+      await tester.pump();
+      expect(find.text('Enter a value between 0 and 59.'), findsNothing);
+
+      await tester.enterText(minutes, '75');
+      await tester.pump();
+      expect(find.text('75'), findsOneWidget,
+          reason: 'the raw text stays so the runner can see what to fix');
+      expect(find.text('Enter a value between 0 and 59.'), findsOneWidget);
+
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(tester.widget<FilledButton>(create).onPressed, isNull);
+      await tester.tap(create, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(training.createCalled, isFalse);
+    });
+
+    testWidgets('only digits can be typed', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: _GateTraining()),
+        ),
+      );
+      await tester.pump();
+      final minutes = find.byKey(const Key('planNewGoalMinutes'));
+      await tester.scrollUntilVisible(minutes, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(minutes, '4-2.');
+      await tester.pump();
+      expect(find.text('42'), findsOneWidget);
+    });
+  });
+
+  group('PlanNewScreen — a second tap during the overlap lookup', () {
+    Future<_LookupGateTraining> pumpLookup(WidgetTester tester,
+        {List<ClubView> clubs = const [],
+        Map<String, List<TrainingPlanRow>> templates = const {}}) async {
+      final training = _LookupGateTraining(templatesByClub: templates);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training, social: _FakeSocial(clubs)),
+        ),
+      );
+      await tester.pump();
+      return training;
+    }
+
+    /// Answers the held lookup and lets the create or clone it unblocks
+    /// fail back onto the wizard, then runs out the failure banner's timer.
+    Future<void> finish(WidgetTester tester, _LookupGateTraining t) async {
+      t.lookupGate.complete();
+      await pumpUntil(tester, () => t.createCalls + t.cloneCalls > 0,
+          describe: 'the held lookup to unblock a create or clone');
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Create plan creates once', (tester) async {
+      final t = await pumpLookup(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.pump();
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pump();
+      await tester.tap(create, warnIfMissed: false);
+      await tester.pump();
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.createCalls, 1);
+    });
+
+    testWidgets('a starter plan creates once', (tester) async {
+      final t = await pumpLookup(tester);
+      final browse = find.byKey(const Key('plan-new-ready-made-open'));
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Marathon — 16 weeks'));
+      await tester.pumpAndSettle();
+      expect(t.lookupCalls, 1);
+
+      await tester.tap(browse, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Built-in plans'), findsNothing,
+          reason: 'the picker must not reopen while the first pick is '
+              'still being checked');
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.createCalls, 1);
+    });
+
+    testWidgets('a club template clones once', (tester) async {
+      final t = await pumpLookup(
+        tester,
+        clubs: [_club('club-1', 'Trail Club')],
+        templates: {
+          'club-1': [_template('tpl-1', 'Spring Half')],
+        },
+      );
+      final browse = find.byKey(const Key('plan-new-ready-made-open'));
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
+      await tester.pump();
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      await pumpUntil(tester, () => tester.any(find.text('Spring Half')),
+          describe: 'the club templates to load');
+      await tester.tap(find.text('Spring Half'));
+      await tester.pumpAndSettle();
+      expect(t.lookupCalls, 1);
+
+      await tester.tap(browse, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('From your clubs'), findsNothing,
+          reason: 'the picker must not reopen while the first pick is '
+              'still being checked');
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.cloneCalls, 1);
     });
   });
 
@@ -383,10 +899,15 @@ void main() {
         tester.widget<CheckboxListTile>(find.widgetWithText(
             CheckboxListTile, 'New to running? Use a walk-run plan'));
 
-    testWidgets('initialBeginnerWalkRun ticks the walk-run toggle on mount',
+    testWidgets('initialBeginnerWalkRun answers the first question: never run',
         (tester) async {
       await pumpPreset(tester, goal: GoalEvent.distance5k, beginner: true);
-      expect(beginnerTile(tester).value, isTrue);
+      final radio = tester.widget<RadioGroup<Object?>>(
+          find.byWidgetPredicate((w) => w is RadioGroup));
+      expect(radio.groupValue.toString(), endsWith('newRunner'));
+      // Never run means no race fields, the walk-run toggle among them.
+      expect(find.text('New to running? Use a walk-run plan'), findsNothing);
+      expect(find.byKey(const Key('plan-new-goal-distance_5k')), findsNothing);
     });
 
     testWidgets('defaults leave the walk-run toggle unticked', (tester) async {
@@ -428,7 +949,7 @@ void main() {
       );
       await tester.ensureVisible(toggle);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(CheckboxListTile).first);
+      await tester.tap(toggle);
       await tester.pump();
       await tester.scrollUntilVisible(
         find.text('Week outline'),
@@ -438,10 +959,89 @@ void main() {
       // The duration-based week outline is still rendered...
       expect(find.text('Week outline'), findsOneWidget);
       // ...but the pace zones + VDOT line are gone.
+      final preview = find.byKey(const Key('plan-new-preview'));
       for (final label in paceLabels) {
-        expect(find.text(label), findsNothing, reason: 'pace pill "$label"');
+        expect(find.descendant(of: preview, matching: find.text(label)),
+            findsNothing,
+            reason: 'pace pill "$label"');
       }
       expect(find.textContaining('Daniels VDOT'), findsNothing);
+    });
+  });
+
+  group('PlanNewScreen — opening-week ramp note', () {
+    Future<void> pumpTall(WidgetTester tester, PlanRunHistory? volume) {
+      tester.view.physicalSize = const Size(1200, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      return tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: _RampTraining(volume)),
+        ),
+      );
+    }
+
+    testWidgets('a plan far above the runner\'s recent volume is called out',
+        (tester) async {
+      await pumpTall(
+        tester,
+        _history(2000),
+      );
+      await tester.pump();
+      expect(find.text('Plan vs. your recent training'), findsOneWidget);
+      expect(find.textContaining('Week 1 asks for'), findsOneWidget);
+    });
+
+    testWidgets('a plan the runner has already outgrown reads under',
+        (tester) async {
+      await pumpTall(
+        tester,
+        _history(1000000),
+      );
+      await tester.pump();
+      expect(find.textContaining('This plan peaks at'), findsOneWidget);
+    });
+
+    testWidgets('too little history cannot be checked, and says so',
+        (tester) async {
+      // Two active weeks is arithmetic on noise, so there is no ramp verdict.
+      // The runner it leaves unchecked is the one a big first week hurts, so
+      // the wizard says it could not check and offers the gentle start.
+      await pumpTall(tester, _history(4000, weeks: 2));
+      await tester.pump();
+      expect(find.textContaining('Week 1 asks for'), findsNothing);
+      expect(find.byKey(const Key('plan-new-thin-history')), findsOneWidget);
+      await tester.tap(find.text('Start with walk-run intervals'));
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-thin-history')), findsNothing);
+      expect(
+          tester
+              .widget<CheckboxListTile>(find.byType(CheckboxListTile).first)
+              .value,
+          isTrue);
+    });
+
+    testWidgets('a failed volume read leaves the wizard untouched',
+        (tester) async {
+      await pumpTall(tester, null);
+      await tester.pump();
+      expect(find.text('Plan vs. your recent training'), findsNothing);
+      expect(find.text('Week outline'), findsOneWidget);
+    });
+
+    testWidgets('a walk-run plan is not told it is gentle', (tester) async {
+      await pumpTall(
+        tester,
+        _history(1000000),
+      );
+      await tester.pump();
+      expect(find.textContaining('This plan peaks at'), findsOneWidget);
+      await tester.tap(find.byType(CheckboxListTile).first);
+      await tester.pump();
+      expect(find.text('Plan vs. your recent training'), findsNothing);
     });
   });
 
@@ -500,11 +1100,17 @@ void main() {
       expect(field.controller?.text, 'Walk-run to 5K');
     });
 
-    testWidgets('a no-preset plan shows the inline name-required hint (#263)',
+    testWidgets('a cleared plan name is marked required (#263)',
         (tester) async {
       await pumpTall(tester);
       await tester.pump();
-      expect(find.text('Add a plan name to enable Create.'), findsOneWidget);
+      final name = find.widgetWithText(TextField, 'Plan name');
+      expect(find.text('Add a plan name.'), findsNothing);
+      await tester.enterText(name, 'x');
+      await tester.pump();
+      await tester.enterText(name, '');
+      await tester.pump();
+      expect(find.text('Add a plan name.'), findsOneWidget);
     });
   });
 
@@ -579,6 +1185,463 @@ void main() {
       final para = tester.renderObject<RenderParagraph>(phase);
       expect(para.size.height, lessThan(para.preferredLineHeight * 2),
           reason: 'the phase lane must stay one line tall');
+    });
+  });
+
+  group('PlanNewScreen — the race the wizard was opened from', () {
+    Future<void> pumpRace(WidgetTester tester,
+        {required String raceDateIso,
+        String? name,
+        num? distanceM,
+        String? notBeforeIso,
+        String? raceListingId,
+        TrainingService? training}) {
+      // The form sits in a lazy ListView; a tall surface builds every field
+      // the preset writes to so their state can be read.
+      tester.view.physicalSize = const Size(1200, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      return tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(
+            training: training ?? _RampTraining(null),
+            social: _FakeSocial(const []),
+            raceDateIso: raceDateIso,
+            raceName: name,
+            raceDistanceM: distanceM,
+            raceListingId: raceListingId,
+            notBeforeIso: notBeforeIso,
+          ),
+        ),
+      );
+    }
+
+    List<String> fieldTexts(WidgetTester tester) => tester
+        .widgetList<EditableText>(find.byType(EditableText))
+        .map((e) => e.controller.text)
+        .toList();
+
+    String isoDaysOut(int days) =>
+        toIsoDate(DateTime.now().add(Duration(days: days)));
+
+    testWidgets('a half marathon far out sizes the wizard around race week',
+        (tester) async {
+      final raceIso = isoDaysOut(220);
+      final expected = racePlanPreset(
+        raceDateIso: raceIso,
+        distanceM: 21097.5,
+        todayIso: toIsoDate(DateTime.now()),
+      ).preset!;
+      await pumpRace(tester,
+          raceDateIso: raceIso, name: 'Autumn Half', distanceM: 21097.5);
+      await tester.pump();
+
+      expect(find.byKey(const Key('plan-new-race-note')), findsOneWidget);
+      expect(find.textContaining('${expected.weeks}-week plan'), findsOneWidget);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
+      expect(_goalValue(tester), 'distance_half');
+      expect(fieldTexts(tester), contains('Autumn Half'));
+      expect(fieldTexts(tester), contains('${expected.weeks}'));
+    });
+
+    testWidgets('a chained floor starts the plan after it and says so',
+        (tester) async {
+      final raceIso = isoDaysOut(220);
+      final floorIso = isoDaysOut(120);
+      final expected = racePlanPreset(
+        raceDateIso: raceIso,
+        distanceM: 21097.5,
+        todayIso: toIsoDate(DateTime.now()),
+        notBeforeIso: floorIso,
+      ).preset!;
+      await pumpRace(tester,
+          raceDateIso: raceIso,
+          name: 'Autumn Half',
+          distanceM: 21097.5,
+          notBeforeIso: floorIso);
+      await tester.pump();
+
+      expect(expected.startDate.compareTo(floorIso) >= 0, isTrue);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
+      expect(
+          find.textContaining(
+              'Starts ${expected.startDate}, after your current plan'),
+          findsOneWidget);
+    });
+
+    Future<void> createFromRace(WidgetTester tester) async {
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the plan created from a race carries its listing',
+        (tester) async {
+      final training = _RecordingTraining();
+      await pumpRace(tester,
+          raceDateIso: isoDaysOut(220),
+          name: 'Autumn Half',
+          distanceM: 21097.5,
+          raceListingId: '11111111-1111-4111-8111-111111111111',
+          training: training);
+      await tester.pump();
+      await createFromRace(tester);
+
+      expect(training.createCalled, isTrue);
+      expect(training.raceListingId, '11111111-1111-4111-8111-111111111111');
+    });
+
+    testWidgets(
+        'a plan created for a Sunday race ends on race day with the race as its one named A race (#1294)',
+        (tester) async {
+      final out = DateTime.now().add(const Duration(days: 220));
+      final sunday = out.add(Duration(days: (7 - out.weekday % 7) % 7));
+      final raceIso = toIsoDate(sunday);
+      final training = _RecordingTraining();
+      await pumpRace(tester,
+          raceDateIso: raceIso,
+          name: 'Autumn Half',
+          distanceM: 21097.5,
+          training: training);
+      await tester.pump();
+      await createFromRace(tester);
+
+      final generated = training.generated!;
+      expect(toIsoDate(generated.endDate), raceIso);
+      final races = [
+        for (final w in generated.weeks)
+          for (final wo in w.workouts)
+            if (wo.kind == WorkoutKind.race) wo
+      ];
+      expect([
+        for (final r in races)
+          [toIsoDate(r.scheduledDate), r.raceName, r.racePriority]
+      ], [
+        [raceIso, 'Autumn Half', 'A'],
+      ]);
+    });
+
+    testWidgets('a race the wizard could not plan for links nothing',
+        (tester) async {
+      final training = _RecordingTraining();
+      await pumpRace(tester,
+          raceDateIso: isoDaysOut(-3),
+          name: 'Last Month 10K',
+          distanceM: 10000,
+          raceListingId: '11111111-1111-4111-8111-111111111111',
+          training: training);
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Spring 10K');
+      await tester.pump();
+      await createFromRace(tester);
+
+      expect(training.createCalled, isTrue);
+      expect(training.raceListingId, isNull);
+    });
+
+    testWidgets('a race already run falls back to the defaults and says why',
+        (tester) async {
+      await pumpRace(tester,
+          raceDateIso: isoDaysOut(-3), name: 'Last Month 10K', distanceM: 10000);
+      await tester.pump();
+
+      expect(
+        find.text(
+            'That race has already been run, so the dates below are the usual defaults.'),
+        findsOneWidget,
+      );
+      // The name would still claim the race after the dates fell back, so it
+      // is withheld too — leaving the Create button on its own empty-name gate.
+      expect(fieldTexts(tester), isNot(contains('Last Month 10K')));
+    });
+
+    testWidgets('a race too close to plan for is refused, not squeezed',
+        (tester) async {
+      await pumpRace(tester, raceDateIso: isoDaysOut(9), distanceM: 5000);
+      await tester.pump();
+      expect(
+        find.text(
+            'That race is too close to build a full plan for, so the dates below are the usual defaults.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a distance matching no rung presets the dates but not the goal',
+        (tester) async {
+      // A 30 km race: snapping it to the nearest rung would preselect a
+      // different race, and it is no ultra.
+      final raceIso = isoDaysOut(220);
+      final expected = racePlanPreset(
+        raceDateIso: raceIso,
+        distanceM: 30000,
+        todayIso: toIsoDate(DateTime.now()),
+      ).preset!;
+      await pumpRace(tester, raceDateIso: raceIso, distanceM: 30000);
+      await tester.pump();
+      expect(_goalValue(tester), 'distance_half'); // the wizard default
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
+    });
+
+    testWidgets('an ultra race preselects its ultra distance', (tester) async {
+      final raceIso = isoDaysOut(220);
+      final expected = racePlanPreset(
+        raceDateIso: raceIso,
+        distanceM: 50000,
+        todayIso: toIsoDate(DateTime.now()),
+      ).preset!;
+      await pumpRace(tester, raceDateIso: raceIso, distanceM: 50000);
+      await tester.pump();
+      expect(_goalValue(tester), 'ultra_50k');
+      expect(find.byKey(const Key('plan-new-ultra-distance')), findsOneWidget);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
+      expect(fieldTexts(tester), contains('${expected.weeks}'));
+    });
+
+    testWidgets('no race leaves the wizard silent', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(
+            training: _RampTraining(null),
+            social: _FakeSocial(const []),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-race-note')), findsNothing);
+    });
+  });
+
+  group('PlanNewScreen — ultra distances (#1181)', () {
+    Future<_RecordingTraining> pumpUltra(WidgetTester tester) async {
+      final training = _RecordingTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      return training;
+    }
+
+    Future<void> pickGoal(WidgetTester tester, String label) async {
+      final chip = find.widgetWithText(ChoiceChip, label);
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> create(WidgetTester tester, _RecordingTraining t) async {
+      final button = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(button, 300,
+          scrollable: find.byType(Scrollable).first);
+      // scrollUntilVisible stops once any of the button is on screen, which
+      // can leave its centre, where tap() lands, past the viewport's edge.
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await pumpUntil(tester, () => t.generated != null,
+          describe: 'the wizard to ask for the ultra plan');
+      // Runs out the failure banner's timer the throwing fake leaves behind.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the goal list offers the ultra distances', (tester) async {
+      await pumpUltra(tester);
+      for (final label in [
+        '50 km',
+        '56 km',
+        '90 km',
+        '100 mi',
+        'Other ultra distance',
+      ]) {
+        expect(find.text(label), findsWidgets, reason: label);
+      }
+    });
+
+    testWidgets('picking 56 km creates a 16-week time-on-feet ultra plan',
+        (tester) async {
+      final t = await pumpUltra(tester);
+      await pickGoal(tester, '56 km');
+      expect(find.byKey(const Key('plan-new-ultra-distance')), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Two Oceans');
+      await tester.pump();
+      await create(tester, t);
+
+      expect(t.goalEvent, GoalEvent.custom);
+      expect(t.goalDistanceM, 56000);
+      final plan = t.generated!;
+      expect(plan.weeks.length, 16);
+      final longs = plan.weeks
+          .expand((w) => w.workouts)
+          .where((w) => w.kind == WorkoutKind.long)
+          .toList();
+      expect(longs, isNotEmpty);
+      for (final w in longs) {
+        expect(w.targetDurationSeconds, isNotNull);
+        expect(w.targetDurationSeconds! <= 12600, isTrue);
+        expect(w.targetPaceSecPerKm, isNull);
+      }
+      expect(plan.weeks.last.workouts.first.kind, WorkoutKind.race);
+      expect(plan.weeks.last.workouts.first.targetDistanceM, 56000);
+    });
+
+    testWidgets('a typed Comrades distance is planned as typed', (tester) async {
+      final t = await pumpUltra(tester);
+      await pickGoal(tester, '90 km');
+      await tester.enterText(
+          find.byKey(const Key('plan-new-ultra-distance')), '87.7');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Comrades');
+      await tester.pump();
+      await create(tester, t);
+
+      expect(t.goalDistanceM, closeTo(87700, 0.001));
+      expect(t.generated!.weeks.length, 20);
+      expect(
+          t.generated!.weeks.expand((w) => w.workouts).any((w) =>
+              w.kind == WorkoutKind.long &&
+              w.scheduledDate.weekday == DateTime.saturday),
+          isTrue,
+          reason: 'back-to-back weekends');
+    });
+
+    testWidgets('an ultra distance not past the marathon blocks the create',
+        (tester) async {
+      await pumpUltra(tester);
+      await pickGoal(tester, 'Other ultra distance');
+      await tester.enterText(
+          find.byKey(const Key('plan-new-ultra-distance')), '30');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Too short');
+      await tester.pump();
+      expect(
+          find.text('An ultra is longer than a marathon. Pick Marathon, or '
+              'enter a longer distance.'),
+          findsOneWidget);
+      final button = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(button, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    });
+  });
+
+  group('PlanNewScreen — where the runner is starting from (#1186)', () {
+    Future<void> pumpTall(WidgetTester tester, {PlanRunHistory? history}) {
+      tester.view.physicalSize = const Size(1200, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      return tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: _RampTraining(history)),
+        ),
+      );
+    }
+
+    DateTime today() {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day);
+    }
+
+    testWidgets('never run: walk-run, no race fields, 2 or 3 days, starts tomorrow',
+        (tester) async {
+      await pumpTall(tester);
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-distance_half')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('plan-new-starting-newRunner')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('plan-new-goal-distance_half')), findsNothing);
+      expect(find.text('Goal time · optional'), findsNothing);
+      expect(find.textContaining('Riegel equivalence'), findsNothing);
+      expect(find.byKey(const Key('plan-new-days-2')), findsOneWidget);
+      expect(find.byKey(const Key('plan-new-days-3')), findsOneWidget);
+      expect(find.byKey(const Key('plan-new-days-4')), findsNothing);
+      final tomorrow = today().add(const Duration(days: 1));
+      expect(find.text(formatDateMed(tomorrow, 'en')), findsOneWidget);
+      expect(find.textContaining('can start on any day, today included'),
+          findsOneWidget);
+    });
+
+    testWidgets('building up: a distance but no goal time', (tester) async {
+      await pumpTall(tester);
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('plan-new-starting-building')));
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-distance_half')), findsOneWidget);
+      expect(find.text('Goal time · optional'), findsNothing);
+      expect(find.byKey(const Key('plan-new-days-7')), findsOneWidget);
+    });
+
+    testWidgets('a runner back from a break gets a capped opening week',
+        (tester) async {
+      // Four 40 km weeks that ended 60 days ago, and nothing since.
+      await pumpTall(tester,
+          history: _history(40000, daysAgo: [60, 67, 74, 81]));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('plan-new-goal-distance_full')));
+      await tester.pump();
+
+      final note = find.byKey(const Key('plan-new-return-note'));
+      expect(note, findsOneWidget);
+      expect(find.textContaining('about 9 weeks off'), findsOneWidget);
+      double weekOneKm() => double.parse(RegExp(r'[\d.]+')
+          .firstMatch(tester
+              .widget<Text>(find.byKey(const Key('plan-new-week-km-0')))
+              .data!)!
+          .group(0)!);
+      expect(weekOneKm(), lessThanOrEqualTo(20));
+
+      await tester.tap(find.byKey(const Key('plan-new-ease-back')));
+      await tester.pump();
+      expect(weekOneKm(), greaterThan(20));
+
+      await tester.tap(find.text('Return with walk-run intervals instead'));
+      await tester.pump();
+      expect(
+          tester
+              .widget<CheckboxListTile>(find.byType(CheckboxListTile).first)
+              .value,
+          isTrue);
+      expect(note, findsNothing);
+    });
+
+    testWidgets('a goal well ahead of recent runs is called out',
+        (tester) async {
+      // Six recent 5 km runs in 30:00: about 62 minutes for a 10K.
+      final efforts = [
+        for (final d in [2, 5, 9, 12, 16, 19])
+          EffortForPrediction(distanceM: 5000, durationS: 1800, ageDays: d.toDouble()),
+      ];
+      await pumpTall(tester,
+          history: PlanRunHistory(
+              runs: _history(5000, daysAgo: [2, 5, 9, 12, 16, 19]).runs,
+              efforts: efforts));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('plan-new-goal-distance_10k')));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Minutes').first, '40');
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-ahead')), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Minutes').first, '59');
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-ahead')), findsNothing);
     });
   });
 }

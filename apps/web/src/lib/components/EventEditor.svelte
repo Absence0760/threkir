@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { formatISO } from '$lib/training/training';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { formatISO } from '#lib/training/training.ts';
 	import {
 		fetchRoutes,
 		fetchClubRoutes,
@@ -11,18 +12,52 @@
 		setEventPricing,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchClubGymRoutineTemplates,
+		setEventGymRoutine,
+		type GymRoutineSummary,
+		fetchEventCourses,
+		fetchEventCourseLines,
+		saveEventCourses,
+		type CourseLinesRow,
 		type SessionPlan
-	} from '$lib/core/data';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { WEEKDAY_CHOICES } from '$lib/social/recurrence';
-	import { EVENT_CATEGORIES, isAthleticCategory } from '$lib/social/event_category';
-	import { gymTemplateFromInputs } from '$lib/social/event_gym_template';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import {
+		COURSE_NAME_MAX,
+		validateCourseDrafts,
+		type CourseDraft,
+		type CourseDraftError,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import CourseGateEditor from '#lib/components/CourseGateEditor.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import RaceStartModeFields from '#lib/components/RaceStartModeFields.svelte';
+	import {
+		courseGate,
+		preflightBlocks,
+		racePreflight,
+		type PreflightIssue,
+		type SessionStartMode
+	} from '#lib/races/course_gates.ts';
+	import { validateStartSettings } from '#lib/races/race_start_modes.ts';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { toMinorUnits } from '#lib/format/minor_units.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { WEEKDAY_CHOICES } from '#lib/social/recurrence.ts';
+	import { EVENT_CATEGORIES, isAthleticCategory } from '#lib/social/event_category.ts';
+	import { gymTemplateFromInputs } from '#lib/social/event_gym_template.ts';
+	import {
+		editorZone,
+		startFieldsFor,
+		startIsoFor,
+		startIsoIfMoved
+	} from '#lib/social/event_start_fields.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 
 	// Conversion factor for the unit label / pace target. The form
 	// keeps its working value in the user's preferred unit (km or mi)
@@ -59,7 +94,7 @@
 	// public, matching the clubs.is_public default).
 	let showVisibilityToggle = $derived(clubIsPublic !== false);
 
-	let myRoutes = $state<Route[]>([]);
+	let myRoutes = $state<RouteListItem[]>([]);
 	let clubRoutes = $state<Route[]>([]);
 
 	let category = $state<EventCategory>(untrack(() => existing?.category ?? 'run'));
@@ -72,10 +107,20 @@
 	// Optional follow-along session plan to attach to a class event (M5).
 	let sessionPlans = $state<SessionPlan[]>([]);
 	let sessionPlanId = $state<string>('');
+	// Or one of this club's gym routine templates for a strength / HIIT class
+	// (decisions § 1869). A class carries one or the other, never both.
+	let gymRoutines = $state<GymRoutineSummary[]>([]);
+	let gymRoutineId = $state<string>('');
 	let title = $state(untrack(() => existing?.title ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
-	let date = $state(untrack(() => initDate(existing?.starts_at)));
-	let time = $state(untrack(() => initTime(existing?.starts_at)));
+	// An edit reads and writes the start on the event's own clock; a new event
+	// (and a legacy row with no stored zone) uses the organiser's.
+	const startZone = untrack(() => (existing ? editorZone(existing.timezone) : null));
+	const initialStart = untrack(() =>
+		existing?.starts_at ? startFieldsFor(existing.starts_at, startZone) : null
+	);
+	let date = $state(initialStart?.date ?? defaultDate());
+	let time = $state(initialStart?.time ?? '07:00');
 	let durationMin = $state<number | null>(untrack(() => existing?.duration_min ?? null));
 	let meetLabel = $state(untrack(() => existing?.meet_label ?? ''));
 	let routeId = $state<string>(untrack(() => existing?.route_id ?? ''));
@@ -93,6 +138,35 @@
 	let paceUnitLabel = $derived(getUnit() === 'mi' ? 'per mi' : 'per km');
 	let metresPerUnit = $derived(getUnit() === 'mi' ? METRES_PER_MILE : 1000);
 	let capacity = $state<number | null>(untrack(() => existing?.capacity ?? null));
+	// How the race starts (#1306). The times are offsets from each occurrence.
+	let raceStartMode = $state<SessionStartMode>(
+		untrack(() => (existing?.race_start_mode as SessionStartMode | undefined) ?? 'host_go')
+	);
+	let raceScheduledOffsetS = $state<number | null>(untrack(() => existing?.race_scheduled_offset_s ?? null));
+	let raceWindowOpenOffsetS = $state<number | null>(untrack(() => existing?.race_window_open_offset_s ?? null));
+	let raceWindowLengthS = $state<number | null>(untrack(() => existing?.race_window_length_s ?? null));
+	let raceAutoApprove = $state<boolean | null>(untrack(() => existing?.race_auto_approve ?? null));
+	// Race courses (decisions § 1842). The route + distance fields above
+	// describe the MAIN course; `extraCourses` are the alternatives a racer can
+	// pick instead. `storedCourses` is what the database held when the editor
+	// opened, so a save writes only the difference.
+	interface ExtraCourse {
+		key: number;
+		id?: string;
+		name: string;
+		routeId: string;
+		distanceInUnit: number | null;
+		storedDistanceM: number | null;
+	}
+	let storedCourses = $state<EventCourse[]>([]);
+	// Each stored course's timing lines (#1305), keyed by course id. They save
+	// on their own through the gate RPCs, outside the event form.
+	let courseLines = $state<Map<string, CourseLinesRow>>(new Map());
+	let courseLinesFailed = $state(false);
+	let coursesLoadFailed = $state(false);
+	let mainCourseName = $state('');
+	let extraCourses = $state<ExtraCourse[]>([]);
+	let nextCourseKey = 0;
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	// Set on mount for an athletic event being edited: true when it carries
@@ -128,6 +202,7 @@
 		discipline,
 		gymTemplateDurationMin,
 		sessionPlanId,
+		gymRoutineId,
 		title,
 		description,
 		date,
@@ -139,6 +214,18 @@
 		paceMin,
 		paceSec,
 		capacity,
+		raceStartMode,
+		raceScheduledOffsetS,
+		raceWindowOpenOffsetS,
+		raceWindowLengthS,
+		raceAutoApprove,
+		mainCourseName,
+		extraCourses: extraCourses.map((c) => ({
+			id: c.id,
+			name: c.name,
+			routeId: c.routeId,
+			distanceInUnit: c.distanceInUnit
+		})),
 		charge,
 		priceMajor,
 		currency,
@@ -174,12 +261,25 @@
 			distanceInUnit = null;
 			paceMin = null;
 			paceSec = null;
+			mainCourseName = '';
+			extraCourses = [];
 		}
 		if (next !== 'class') {
 			discipline = '';
 			gymTemplateDurationMin = null;
 			sessionPlanId = '';
+			gymRoutineId = '';
 		}
+	}
+
+	function pickSessionPlan(next: string) {
+		sessionPlanId = next;
+		if (next) gymRoutineId = '';
+	}
+
+	function pickGymRoutine(next: string) {
+		gymRoutineId = next;
+		if (next) sessionPlanId = '';
 	}
 
 	function defaultDate(): string {
@@ -188,20 +288,6 @@
 		return formatISO(d);
 	}
 
-	// Split a stored ISO instant back into the local date + time the two form
-	// inputs bind to (mirrors the `${date}T${time}` reassembly at save time).
-	function initDate(iso: string | undefined): string {
-		if (!iso) return defaultDate();
-		const d = new Date(iso);
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-	}
-	function initTime(iso: string | undefined): string {
-		if (!iso) return '07:00';
-		const d = new Date(iso);
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-	}
 	// Stored pace is seconds per kilometre; the form edits minutes:seconds per
 	// the user's unit, so convert back through the snapshotted unit factor.
 	function initPaceSecPerUnit(paceSecPerKm: number | null | undefined): number | null {
@@ -231,22 +317,165 @@
 			const acct = await fetchPayoutAccount();
 			chargesEnabled = acct?.charges_enabled ?? false;
 			if (acct?.default_currency) {
-				// The account's currency lands after the form is built, so it would
-				// otherwise read as a user edit. Only re-take the baseline when
-				// nothing has been typed yet, so a fast typist keeps the guard.
-				const clean = !dirty.isDirty();
-				currency = acct.default_currency;
-				if (clean) dirty.rebaseline();
+				const seeded = acct.default_currency;
+				dirty.seed(() => {
+					currency = seeded;
+				});
 			}
 			try {
 				sessionPlans = await fetchSessionPlans();
 			} catch (e) {
 				console.error('fetchSessionPlans failed', e);
 			}
+			gymRoutines = await fetchClubGymRoutineTemplates(clubId);
 		} else if (isAthleticCategory(existing.category)) {
+			try {
+				const loaded = await fetchEventCourses(existing.id);
+				dirty.seed(() => {
+					storedCourses = loaded;
+					mainCourseName = loaded[0]?.name ?? '';
+					extraCourses = loaded.slice(1).map((c) => ({
+						key: nextCourseKey++,
+						id: c.id,
+						name: c.name,
+						routeId: c.route_id ?? '',
+						distanceInUnit: c.distance_m != null ? +(c.distance_m / metresPerUnit).toFixed(2) : null,
+						storedDistanceM: c.distance_m
+					}));
+				});
+			} catch (e) {
+				// Without the stored list a save could not tell an existing
+				// course from a new one, so the course section stays read-only
+				// for this edit rather than duplicating every course.
+				console.error('fetchEventCourses failed', e);
+				coursesLoadFailed = true;
+			}
+			await loadCourseLines(existing.id);
 			athleticDataAtRisk = await eventHasAthleticData(existing.id);
 		}
 	});
+
+	async function loadCourseLines(eventId: string) {
+		try {
+			const rows = await fetchEventCourseLines(eventId);
+			courseLines = new Map(rows.map((r) => [r.course_id, r]));
+			courseLinesFailed = false;
+		} catch (e) {
+			console.warn('fetchEventCourseLines failed', e);
+			courseLinesFailed = true;
+		}
+	}
+
+	function routeById(id: string): { name: string; distance_m: number } | undefined {
+		if (!id) return undefined;
+		return myRoutes.find((x) => x.id === id) ?? clubRoutes.find((x) => x.id === id);
+	}
+
+	function addCourse() {
+		extraCourses = [
+			...extraCourses,
+			{ key: nextCourseKey++, name: '', routeId: '', distanceInUnit: null, storedDistanceM: null }
+		];
+	}
+
+	function removeCourse(i: number) {
+		extraCourses = extraCourses.filter((_, j) => j !== i);
+	}
+
+	function moveCourse(i: number, dir: -1 | 1) {
+		const j = i + dir;
+		if (j < 0 || j >= extraCourses.length) return;
+		const next = [...extraCourses];
+		[next[i], next[j]] = [next[j], next[i]];
+		extraCourses = next;
+	}
+
+	function pickCourseRoute(i: number, id: string) {
+		const r = routeById(id);
+		extraCourses = extraCourses.map((c, j) =>
+			j === i
+				? {
+						...c,
+						routeId: id,
+						name: c.name.trim() ? c.name : (r?.name ?? '').slice(0, COURSE_NAME_MAX),
+						distanceInUnit: r ? +(r.distance_m / metresPerUnit).toFixed(2) : c.distanceInUnit
+					}
+				: c
+		);
+	}
+
+	// The unit field round-trips through 2 decimals, so a stored distance the
+	// organiser did not touch is written back as stored, not re-derived — a
+	// miles user would otherwise nudge every course by a few metres per save.
+	function courseMetres(inUnit: number | null, stored: number | null): number | null {
+		if (inUnit == null || !(inUnit > 0)) return null;
+		if (stored != null && +(stored / metresPerUnit).toFixed(2) === inUnit) return stored;
+		return inUnit * metresPerUnit;
+	}
+
+	function courseDrafts(): CourseDraft[] {
+		if (!isAthleticCategory(category)) return [];
+		if (!routeId && extraCourses.length === 0) return [];
+		const main = routeById(routeId);
+		const drafts: CourseDraft[] = [
+			{
+				id: storedCourses[0]?.id,
+				name:
+					mainCourseName.trim() ||
+					(main?.name ?? '').trim().slice(0, COURSE_NAME_MAX) ||
+					m('eventEditor.courseDefaultName'),
+				routeId: routeId || null,
+				distanceM: courseMetres(distanceInUnit, storedCourses[0]?.distance_m ?? null)
+			}
+		];
+		for (const c of extraCourses) {
+			drafts.push({
+				id: c.id,
+				name: c.name,
+				routeId: c.routeId || null,
+				distanceM: courseMetres(c.distanceInUnit, c.storedDistanceM)
+			});
+		}
+		return drafts;
+	}
+
+	const COURSE_ERRORS: Record<CourseDraftError, () => string> = {
+		name_required: () => m('eventEditor.courseNameRequired'),
+		name_too_long: () => m('eventEditor.courseNameTooLong', { max: COURSE_NAME_MAX }),
+		name_duplicate: () => m('eventEditor.courseNameDuplicate'),
+		distance_invalid: () => m('eventEditor.courseDistanceInvalid')
+	};
+
+	// Persist the course list once the event row exists. Returns the failure
+	// message, or null. The stored list is re-read on failure too: a save that
+	// stopped part-way may already have deleted or updated rows, and a retry
+	// planned against the old list would try to delete a course that is gone.
+	// The main course stays first so the retry still edits it in place.
+	async function persistCourses(eventId: string): Promise<string | null> {
+		if (coursesLoadFailed) return null;
+		const mainId = storedCourses[0]?.id;
+		let failure: string | null = null;
+		try {
+			await saveEventCourses(eventId, storedCourses, courseDrafts());
+		} catch (ce: unknown) {
+			console.error('saveEventCourses failed', ce);
+			failure = m('eventEditor.coursesSaveFailed', {
+				error: errorCopy(ce, m, 'eventEditor.coursesSaveFailed')
+			});
+		}
+		try {
+			const fresh = await fetchEventCourses(eventId);
+			const main = fresh.find((c) => c.id === mainId);
+			storedCourses = main ? [main, ...fresh.filter((c) => c !== main)] : fresh;
+			await loadCourseLines(eventId);
+		} catch (fe: unknown) {
+			// Without the stored list the next save could not tell an existing
+			// course from a new one, so the section locks as it does on load.
+			console.error('fetchEventCourses failed', fe);
+			coursesLoadFailed = true;
+		}
+		return failure;
+	}
 
 	$effect(() => {
 		if (routeId) {
@@ -259,6 +488,11 @@
 	function submit(e: Event) {
 		e.preventDefault();
 		if (!title.trim() || busy) return;
+		const badCourse = coursesLoadFailed ? null : validateCourseDrafts(courseDrafts());
+		if (badCourse) {
+			error = COURSE_ERRORS[badCourse.error]();
+			return;
+		}
 		// Switching an athletic event that already has race sessions / results
 		// to a class or social type hides its leaderboard + race controls (they
 		// gate on isAthleticCategory) and orphans those rows. Warn first;
@@ -268,7 +502,86 @@
 			showCategoryWarn = true;
 			return;
 		}
+		if (isAthleticCategory(category)) {
+			if (validateStartSettings(raceSettings()).length > 0) {
+				error = m('raceStart.fixSettings');
+				return;
+			}
+			const issues = selfTimedPreflight();
+			if (preflightBlocks(issues)) {
+				error = m('raceStart.selfTimedBlocked', { issues: issues.map(preflightLine).join(' ') });
+				return;
+			}
+		}
 		void persist();
+	}
+
+	function raceSettings() {
+		return {
+			mode: raceStartMode,
+			scheduledOffsetS: raceStartMode === 'scheduled' ? raceScheduledOffsetS : null,
+			windowOpenOffsetS: raceStartMode === 'self_timed' ? raceWindowOpenOffsetS : null,
+			windowLengthS: raceStartMode === 'host_go' ? null : raceWindowLengthS
+		};
+	}
+
+	// The race columns a save writes. A non-athletic event is Host GO with no
+	// times, so a category switch cannot leave a timer firing on a class.
+	function raceColumns(athletic: boolean) {
+		const r = raceSettings();
+		return athletic
+			? {
+					race_start_mode: r.mode,
+					race_scheduled_offset_s: r.scheduledOffsetS,
+					race_window_open_offset_s: r.windowOpenOffsetS,
+					race_window_length_s: r.windowLengthS,
+					race_auto_approve: r.mode === 'host_go' ? null : raceAutoApprove
+				}
+			: {
+					race_start_mode: 'host_go' as const,
+					race_scheduled_offset_s: null,
+					race_window_open_offset_s: null,
+					race_window_length_s: null,
+					race_auto_approve: null
+				};
+	}
+
+	/// The Arm preflight's Self-timed rows over the saved courses' lines
+	/// (decisions § 2391): a Self-timed race needs a start and a finish line on
+	/// every course, and a self-crossing course cannot finish on its line. Only
+	/// saved courses have lines, so a new event is checked after its first save.
+	function selfTimedPreflight(): PreflightIssue[] {
+		if (raceStartMode !== 'self_timed' || storedCourses.length === 0 || courseLinesFailed) return [];
+		return racePreflight(
+			storedCourses.map((c) => {
+				const row = courseLines.get(c.id);
+				return {
+					id: c.id,
+					startGate: row ? courseGate(row, 'start') : null,
+					finishGate: row ? courseGate(row, 'finish') : null,
+					hasFinishPoint: row?.finish_lat != null && row?.finish_lng != null,
+					selfCross: row?.finish_line_self_cross ?? false,
+					route: null
+				};
+			}),
+			'self_timed'
+		);
+	}
+
+	function preflightLine(i: PreflightIssue): string {
+		const name = storedCourses.find((c) => c.id === i.courseId)?.name ?? '';
+		switch (i.code) {
+			case 'no_finish':
+				return m('courseLines.preflightNoFinish', { name });
+			case 'no_start':
+				return m('courseLines.preflightNoStart', { name });
+			case 'self_cross':
+				return m('courseLines.preflightSelfCross', { name });
+			case 'gate_far_from_route':
+				return i.which === 'start'
+					? m('courseLines.preflightStartFar', { name })
+					: m('courseLines.preflightFinishFar', { name });
+		}
 	}
 
 	async function persist() {
@@ -276,7 +589,7 @@
 		busy = true;
 		error = null;
 		try {
-			const startsAt = new Date(`${date}T${time}`).toISOString();
+			const startsAt = startIsoFor({ date, time }, startZone);
 			// Pace input is per the user's unit; the DB stores
 			// `pace_target_sec` as seconds per kilometre (the schema
 			// is unit-agnostic — pace_target_sec is always per-km).
@@ -289,6 +602,7 @@
 					: null;
 			const athletic = isAthleticCategory(category);
 			if (existing) {
+				const movedStart = startIsoIfMoved(existing.starts_at, { date, time }, startZone);
 				await updateEvent(existing.id, {
 					title: title.trim(),
 					category,
@@ -298,7 +612,7 @@
 							? gymTemplateFromInputs(discipline.trim(), gymTemplateDurationMin)
 							: null,
 					description: description.trim() || null,
-					starts_at: startsAt,
+					...(movedStart !== null ? { starts_at: movedStart } : {}),
 					duration_min: durationMin ?? null,
 					meet_label: meetLabel.trim() || null,
 					route_id: athletic ? routeId || null : null,
@@ -306,8 +620,14 @@
 						athletic && distanceInUnit != null ? distanceInUnit * metresPerUnit : null,
 					pace_target_sec: athletic ? paceSecPerKm : null,
 					capacity: capacity ?? null,
-					is_public: showVisibilityToggle ? isPublic : true
+					is_public: showVisibilityToggle ? isPublic : true,
+					...raceColumns(athletic)
 				});
+				const courseFailure = await persistCourses(existing.id);
+				if (courseFailure) {
+					error = courseFailure;
+					return;
+				}
 				dirty.rebaseline();
 				onsaved?.();
 				return;
@@ -334,13 +654,18 @@
 				recurrence_freq: recurrenceFreq,
 				recurrence_byday:
 					recurrenceFreq && recurrenceFreq !== 'monthly' && byday.length > 0 ? byday : null,
-				recurrence_until: recurrenceFreq && until ? new Date(until).toISOString() : null,
+				// The end date is inclusive: the series runs to the END of that
+				// local day. `new Date('YYYY-MM-DD')` is UTC midnight, which put the
+				// last day's own occurrence past the end and dropped it.
+				recurrence_until:
+					recurrenceFreq && until ? new Date(`${until}T23:59:59`).toISOString() : null,
 				recurrence_count:
 					recurrenceFreq && count && count > 0 ? Math.floor(count) : null,
 				// In a private club every event is members-only regardless, so the
 				// toggle is hidden and we leave this public (the column is moot —
 				// the club gate already restricts read + discovery skips the club).
-				is_public: showVisibilityToggle ? isPublic : true
+				is_public: showVisibilityToggle ? isPublic : true,
+				...raceColumns(athletic)
 			});
 			// Pricing is a separate, charges_enabled-gated write (its own RLS
 			// surface + trigger). Only attempt it when the host turned charging
@@ -348,7 +673,7 @@
 			if (charge && chargesEnabled && priceMajor != null && priceMajor > 0) {
 				try {
 					await setEventPricing(event.id, {
-						price_cents: Math.round(priceMajor * 100),
+						price_cents: toMinorUnits(priceMajor, currency),
 						currency,
 						refund_policy: refundPolicy,
 						sales_close_offset_minutes: Math.max(0, Math.floor(salesCloseOffset ?? 0))
@@ -357,7 +682,7 @@
 					// The event exists; surface the pricing failure without
 					// losing it. The host can re-price from the editor.
 					error = m('eventEditor.pricingFailed', {
-						error: pe instanceof Error ? pe.message : String(pe)
+						error: errorCopy(pe, m, 'eventEditor.pricingFailed')
 					});
 					busy = false;
 					return;
@@ -373,13 +698,33 @@
 					console.error('setEventSessionPlan failed', se);
 					showToast(m('session.event.planFailed'), 'error');
 				}
+			} else if (category === 'class' && gymRoutineId) {
+				try {
+					await setEventGymRoutine(event.id, gymRoutineId);
+				} catch (ge) {
+					console.error('setEventGymRoutine failed', ge);
+					showToast(m('eventEditor.gymRoutineFailed'), 'error');
+				}
+			}
+			// The event exists either way, so a course failure is reported and
+			// the host still lands on the new event, where Edit can retry it —
+			// returning here would invite a second submit and a duplicate event.
+			const courseFailure = await persistCourses(event.id);
+			if (courseFailure) showToast(courseFailure, 'error');
+			// A new Self-timed race gets its derived lines with its courses; say
+			// now if a course still lacks one, rather than at window open.
+			const selfTimedIssues = selfTimedPreflight();
+			if (preflightBlocks(selfTimedIssues)) {
+				showToast(
+					m('raceStart.selfTimedBlocked', { issues: selfTimedIssues.map(preflightLine).join(' ') }),
+					'error'
+				);
 			}
 			dirty.rebaseline();
 			oncreated?.(event);
 		} catch (e: unknown) {
-			error = e instanceof Error
-				? e.message
-				: m(existing ? 'eventEditor.updateFailed' : 'eventEditor.createFailed');
+			const key = existing ? 'eventEditor.updateFailed' : 'eventEditor.createFailed';
+			error = errorCopy(e, m, key, key);
 		} finally {
 			busy = false;
 		}
@@ -388,12 +733,35 @@
 
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
+{#snippet routeOptions()}
+	<option value="">{m('eventEditor.noRoute')}</option>
+	{#if clubRoutes.length > 0}
+		<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
+			{#each clubRoutes as r}
+				<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+			{/each}
+		</optgroup>
+	{/if}
+	{#if myRoutes.length > 0}
+		<optgroup label={m('eventEditor.myRoutes')}>
+			{#each myRoutes as r}
+				<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+			{/each}
+		</optgroup>
+	{/if}
+{/snippet}
+
 <form onsubmit={submit} class="editor-form event-editor">
 	<p class="sub">{existing ? m('eventEditor.editSub', { clubName }) : m('eventEditor.sub', { clubName })}</p>
 
 	<div class="cat-field">
 		<span class="cat-legend">{m('eventEditor.category')}</span>
-		<div class="cat-row" role="radiogroup" aria-label={m('eventEditor.category')}>
+		<div
+			class="cat-row"
+			role="radiogroup"
+			aria-label={m('eventEditor.category')}
+			aria-describedby="event-category-hint"
+		>
 			{#each EVENT_CATEGORIES as cat}
 				<button
 					type="button"
@@ -407,103 +775,293 @@
 				</button>
 			{/each}
 		</div>
-		<span class="hint">{m('eventEditor.categoryHint')}</span>
+		<span class="hint" id="event-category-hint">{m('eventEditor.categoryHint')}</span>
 	</div>
 
 	{#if category === 'class'}
-		<label>
-			<span>{m('eventEditor.discipline')}</span>
-			<input
-				type="text"
-				bind:value={discipline}
-				maxlength="60"
-				placeholder={m('eventEditor.disciplinePlaceholder')}
-			/>
-		</label>
-		<label>
-			<span>{m('eventEditor.gymTemplateDuration')} <span class="optional">{m('eventEditor.optional')}</span></span>
-			<input
-				type="number"
-				min="5"
-				max="600"
-				bind:value={gymTemplateDurationMin}
-				placeholder={m('eventEditor.gymTemplateDurationPlaceholder')}
-				data-testid="gym-template-duration"
-			/>
-			<span class="hint">{m('eventEditor.gymTemplateHint')}</span>
-		</label>
-		{#if !existing}
+		<div class="field">
 			<label>
-				<span>{m('session.event.planPicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
-				<select bind:value={sessionPlanId} data-testid="session-plan-picker">
-					<option value="">{m('session.event.planNone')}</option>
-					{#each sessionPlans as sp (sp.id)}
-						<option value={sp.id}>{sp.title}</option>
-					{/each}
-				</select>
+				<span>{m('eventEditor.discipline')}</span>
+				<input
+					type="text"
+					bind:value={discipline}
+					maxlength="60"
+					placeholder={m('eventEditor.disciplinePlaceholder')}
+					aria-describedby="event-discipline-hint"
+				/>
+			</label>
+			<span class="hint" id="event-discipline-hint">{m('eventEditor.disciplineHint')}</span>
+		</div>
+		<div class="field">
+			<label>
+				<span>{m('eventEditor.gymTemplateDuration')} <span class="optional">{m('eventEditor.optional')}</span></span>
+				<input
+					type="number"
+					min="5"
+					max="600"
+					bind:value={gymTemplateDurationMin}
+					placeholder={m('eventEditor.gymTemplateDurationPlaceholder')}
+					data-testid="gym-template-duration"
+					aria-describedby="event-gym-template-hint"
+				/>
+			</label>
+			<span class="hint" id="event-gym-template-hint">{m('eventEditor.gymTemplateHint')}</span>
+		</div>
+		{#if !existing}
+			<div class="field">
+				<label>
+					<span>{m('session.event.planPicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
+					<select
+						value={sessionPlanId}
+						onchange={(e) => pickSessionPlan(e.currentTarget.value)}
+						data-testid="session-plan-picker"
+						aria-describedby="event-session-plan-hint"
+					>
+						<option value="">{m('session.event.planNone')}</option>
+						{#each sessionPlans as sp (sp.id)}
+							<option value={sp.id}>{sp.title}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="hint" id="event-session-plan-hint">{m('session.event.planPickerHint')}</span>
 				{#if sessionPlans.length === 0}
 					<span class="hint">{m('session.event.planEmptyHint')}</span>
 				{/if}
-			</label>
+			</div>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.gymRoutinePicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
+					<select
+						value={gymRoutineId}
+						onchange={(e) => pickGymRoutine(e.currentTarget.value)}
+						data-testid="gym-routine-picker"
+						aria-describedby="event-gym-routine-hint"
+					>
+						<option value="">{m('eventEditor.gymRoutineNone')}</option>
+						{#each gymRoutines as r (r.id)}
+							<option value={r.id}>{r.title}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="hint" id="event-gym-routine-hint">{m('eventEditor.gymRoutineHint')}</span>
+				{#if gymRoutines.length === 0}
+					<span class="hint">{m('eventEditor.gymRoutineEmptyHint')}</span>
+				{/if}
+			</div>
 		{/if}
 	{/if}
 
-	<label>
-		<span>{m('eventEditor.title')}</span>
-		<input type="text" bind:value={title} required maxlength="120" placeholder={m('eventEditor.titlePlaceholder')} />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('eventEditor.title')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				required
+				maxlength="120"
+				placeholder={m('eventEditor.titlePlaceholder')}
+				aria-describedby="event-title-hint"
+			/>
+		</label>
+		<span class="hint" id="event-title-hint">{m('eventEditor.titleHint')}</span>
+	</div>
 
 	<label>
 		<span>{m('eventEditor.details')} <span class="optional">{m('eventEditor.optional')}</span></span>
 		<textarea
 			bind:value={description}
 			rows="3"
-			maxlength="1000"
+			maxlength={lengthLimit('events.description')}
 			placeholder={m('eventEditor.detailsPlaceholder')}
 		></textarea>
 	</label>
 
-	<div class="row">
-		<label>
-			<span>{m('eventEditor.date')}</span>
-			<input type="date" bind:value={date} required />
-		</label>
-		<label>
-			<span>{m('eventEditor.startTime')}</span>
-			<input type="time" bind:value={time} required />
-		</label>
-		<label>
-			<span>{m('eventEditor.duration')} <span class="optional">{m('eventEditor.minLabel')}</span></span>
-			<input type="number" min="5" max="600" bind:value={durationMin} placeholder={m('eventEditor.durationPlaceholder')} />
-		</label>
+	<div class="field">
+		<div class="row">
+			<label>
+				<span>{m('eventEditor.date')}</span>
+				<input type="date" bind:value={date} required aria-describedby="event-when-hint" />
+			</label>
+			<label>
+				<span>{m('eventEditor.startTime')}</span>
+				<input type="time" bind:value={time} required aria-describedby="event-when-hint" />
+			</label>
+			<label>
+				<span>{m('eventEditor.duration')} <span class="optional">{m('eventEditor.minLabel')}</span></span>
+				<input
+					type="number"
+					min="5"
+					max="600"
+					bind:value={durationMin}
+					placeholder={m('eventEditor.durationPlaceholder')}
+					aria-describedby="event-when-hint"
+				/>
+			</label>
+		</div>
+		<span class="hint" id="event-when-hint" data-testid="event-when-hint"
+			>{startZone
+				? m('eventEditor.whenHintEventZone', { zone: startZone })
+				: m('eventEditor.whenHint')}</span
+		>
 	</div>
 
-	<label>
-		<span>{m('eventEditor.meetingPoint')} <span class="optional">{m('eventEditor.optional')}</span></span>
-		<input type="text" bind:value={meetLabel} placeholder={m('eventEditor.meetingPointPlaceholder')} maxlength="120" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('eventEditor.meetingPoint')} <span class="optional">{m('eventEditor.optional')}</span></span>
+			<input
+				type="text"
+				bind:value={meetLabel}
+				placeholder={m('eventEditor.meetingPointPlaceholder')}
+				maxlength="120"
+				aria-describedby="event-meeting-point-hint"
+			/>
+		</label>
+		<span class="hint" id="event-meeting-point-hint">{m('eventEditor.meetingPointHint')}</span>
+	</div>
 
 	{#if isAthleticCategory(category)}
-		<label>
-			<span>{m('eventEditor.route')} <span class="optional">{m('eventEditor.optional')}</span></span>
-			<select bind:value={routeId} data-testid="event-route-select">
-				<option value="">{m('eventEditor.noRoute')}</option>
-				{#if clubRoutes.length > 0}
-					<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
-						{#each clubRoutes as r}
-							<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-						{/each}
-					</optgroup>
+		<div class="field">
+			<label>
+				<span>{m('eventEditor.route')} <span class="optional">{m('eventEditor.optional')}</span></span>
+				<select
+					bind:value={routeId}
+					data-testid="event-route-select"
+					aria-describedby="event-route-hint"
+				>
+					{@render routeOptions()}
+				</select>
+			</label>
+			<span class="hint" id="event-route-hint">{m('eventEditor.routeHint')}</span>
+		</div>
+
+		<fieldset class="courses" data-testid="event-courses" disabled={coursesLoadFailed}>
+			<legend>{m('eventEditor.coursesLegend')} <span class="optional">{m('eventEditor.optional')}</span></legend>
+			<span class="hint" id="event-courses-hint">
+				{coursesLoadFailed ? m('eventEditor.coursesLoadFailed') : m('eventEditor.coursesHint')}
+			</span>
+			{#if extraCourses.length > 0}
+				<label class="course-main">
+					<span>{m('eventEditor.mainCourseName')}</span>
+					<input
+						type="text"
+						bind:value={mainCourseName}
+						maxlength={COURSE_NAME_MAX}
+						placeholder={routeById(routeId)?.name ?? m('eventEditor.courseDefaultName')}
+						data-testid="event-main-course-name"
+						aria-describedby="event-courses-hint"
+					/>
+				</label>
+				<ol class="course-list">
+					{#each extraCourses as c, i (c.key)}
+						<li class="course-row" data-testid="event-course-row">
+							<label>
+								<span>{m('eventEditor.courseName')}</span>
+								<input
+									type="text"
+									bind:value={c.name}
+									maxlength={COURSE_NAME_MAX}
+									data-testid="event-course-name"
+									aria-describedby="event-courses-hint"
+								/>
+							</label>
+							<label>
+								<span>{m('eventEditor.courseRoute')}</span>
+								<select
+									value={c.routeId}
+									onchange={(e) => pickCourseRoute(i, e.currentTarget.value)}
+									data-testid="event-course-route"
+									aria-describedby="event-courses-hint"
+								>
+									{@render routeOptions()}
+								</select>
+							</label>
+							<label>
+								<span>{m('eventEditor.courseDistance', { unit: distanceUnitLabel })}</span>
+								<input
+									type="number"
+									step="0.1"
+									min="0"
+									bind:value={c.distanceInUnit}
+									data-testid="event-course-distance"
+									aria-describedby="event-courses-hint"
+								/>
+							</label>
+							<div class="course-actions">
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.moveCourseUp', { name: c.name || m('eventEditor.courseDefaultName') })}
+									disabled={i === 0}
+									onclick={() => moveCourse(i, -1)}
+								>
+									<span class="material-symbols" aria-hidden="true">arrow_upward</span>
+								</button>
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.moveCourseDown', { name: c.name || m('eventEditor.courseDefaultName') })}
+									disabled={i === extraCourses.length - 1}
+									onclick={() => moveCourse(i, 1)}
+								>
+									<span class="material-symbols" aria-hidden="true">arrow_downward</span>
+								</button>
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.removeCourse', { name: c.name || m('eventEditor.courseDefaultName') })}
+									onclick={() => removeCourse(i)}
+									data-testid="event-remove-course"
+								>
+									<span class="material-symbols" aria-hidden="true">delete</span>
+								</button>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			{/if}
+			<button
+				type="button"
+				class="btn btn-secondary btn-sm add-course"
+				onclick={addCourse}
+				data-testid="event-add-course"
+			>
+				<span class="material-symbols" aria-hidden="true">add</span>
+				{m('eventEditor.addCourse')}
+			</button>
+		</fieldset>
+
+		{#if existing && !coursesLoadFailed && storedCourses.length > 0}
+			<section class="timing-lines" data-testid="event-timing-lines" aria-labelledby="timing-lines-title">
+				<h3 id="timing-lines-title">{m('courseLines.title')}</h3>
+				<p class="hint">{m('courseLines.hint')}</p>
+				<HelpLink guide="start-and-finish-lines" />
+				{#if courseLinesFailed}
+					<p class="hint" role="alert">{m('courseLines.loadFailed')}</p>
+				{:else}
+					{#each storedCourses as c (c.id + ':' + (c.route_id ?? ''))}
+						<CourseGateEditor
+							courseId={c.id}
+							courseName={c.name}
+							routeId={c.route_id}
+							lines={courseLines.get(c.id) ?? null}
+							mode={raceStartMode}
+							onchanged={() => loadCourseLines(existing.id)}
+						/>
+					{/each}
 				{/if}
-				{#if myRoutes.length > 0}
-					<optgroup label={m('eventEditor.myRoutes')}>
-						{#each myRoutes as r}
-							<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-						{/each}
-					</optgroup>
-				{/if}
-			</select>
-		</label>
+			</section>
+		{/if}
+	{/if}
+
+	{#if isAthleticCategory(category)}
+		<RaceStartModeFields
+			startTime={time}
+			bind:mode={raceStartMode}
+			bind:scheduledOffsetS={raceScheduledOffsetS}
+			bind:windowOpenOffsetS={raceWindowOpenOffsetS}
+			bind:windowLengthS={raceWindowLengthS}
+			bind:autoApprove={raceAutoApprove}
+		/>
 	{/if}
 
 	{#if !existing}
@@ -522,11 +1080,13 @@
 						name="freq"
 						checked={recurrence === opt.value}
 						onchange={() => (recurrence = opt.value as 'none' | RecurrenceFreq)}
+						aria-describedby="event-repeats-hint"
 					/>
 					<span>{opt.label}</span>
 				</label>
 			{/each}
 		</div>
+		<span class="hint" id="event-repeats-hint">{m('eventEditor.repeatsHint')}</span>
 
 		{#if recurrence === 'weekly' || recurrence === 'biweekly'}
 			<div class="byday-row">
@@ -547,7 +1107,7 @@
 		{#if recurrence !== 'none'}
 			<label class="until">
 				<span>{m('eventEditor.endsOn')} <span class="optional">{m('eventEditor.optional')}</span></span>
-				<input type="date" bind:value={until} />
+				<input type="date" bind:value={until} aria-describedby="event-repeat-end-hint" />
 			</label>
 			<label class="until">
 				<span>{m('eventEditor.endAfter')} <span class="optional">{m('eventEditor.optional')}</span></span>
@@ -557,37 +1117,69 @@
 					max="520"
 					bind:value={count}
 					placeholder={m('eventEditor.endAfterPlaceholder')}
+					aria-describedby="event-repeat-end-hint"
 				/>
 			</label>
+			<span class="hint" id="event-repeat-end-hint">{m('eventEditor.repeatEndHint')}</span>
 		{/if}
 	</fieldset>
 	{/if}
 
 	<div class="row">
 		{#if isAthleticCategory(category)}
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.distance')} <span class="optional">{distanceUnitLabel}</span></span>
+					<input
+						type="number"
+						step="0.1"
+						min="0"
+						bind:value={distanceInUnit}
+						placeholder={m('eventEditor.distancePlaceholder')}
+						aria-describedby="event-distance-hint"
+					/>
+				</label>
+				<span class="hint" id="event-distance-hint">{m('eventEditor.distanceHint')}</span>
+			</div>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.targetPace')} <span class="optional">{paceUnitLabel}</span></span>
+					<div class="pace">
+						<input
+							type="number"
+							min="0"
+							max="59"
+							bind:value={paceMin}
+							placeholder={m('eventEditor.paceMin')}
+							aria-describedby="event-pace-hint"
+						/>
+						<span class="pace-sep">:</span>
+						<input
+							type="number"
+							min="0"
+							max="59"
+							bind:value={paceSec}
+							placeholder={m('eventEditor.paceSec')}
+							aria-describedby="event-pace-hint"
+						/>
+					</div>
+				</label>
+				<span class="hint" id="event-pace-hint">{m('eventEditor.targetPaceHint')}</span>
+			</div>
+		{/if}
+		<div class="field">
 			<label>
-				<span>{m('eventEditor.distance')} <span class="optional">{distanceUnitLabel}</span></span>
+				<span>{m('eventEditor.capacity')} <span class="optional">{m('eventEditor.optional')}</span></span>
 				<input
 					type="number"
-					step="0.1"
-					min="0"
-					bind:value={distanceInUnit}
-					placeholder={m('eventEditor.distancePlaceholder')}
+					min="1"
+					bind:value={capacity}
+					placeholder={m('eventEditor.capacityPlaceholder')}
+					aria-describedby="event-capacity-hint"
 				/>
 			</label>
-			<label>
-				<span>{m('eventEditor.targetPace')} <span class="optional">{paceUnitLabel}</span></span>
-				<div class="pace">
-					<input type="number" min="0" max="59" bind:value={paceMin} placeholder={m('eventEditor.paceMin')} />
-					<span class="pace-sep">:</span>
-					<input type="number" min="0" max="59" bind:value={paceSec} placeholder={m('eventEditor.paceSec')} />
-				</div>
-			</label>
-		{/if}
-		<label>
-			<span>{m('eventEditor.capacity')} <span class="optional">{m('eventEditor.optional')}</span></span>
-			<input type="number" min="1" bind:value={capacity} placeholder={m('eventEditor.capacityPlaceholder')} />
-		</label>
+			<span class="hint" id="event-capacity-hint">{m('eventEditor.capacityHint')}</span>
+		</div>
 	</div>
 
 	{#if showVisibilityToggle}
@@ -598,10 +1190,13 @@
 					checked={!isPublic}
 					onchange={(e) => (isPublic = !(e.currentTarget as HTMLInputElement).checked)}
 					data-testid="members-only-toggle"
+					aria-describedby="event-members-only-hint"
 				/>
 				<span>{m('eventEditor.membersOnlyToggle')}</span>
 			</label>
-			<p class="visibility-explainer">{m('eventEditor.membersOnlyHint')}</p>
+			<p class="visibility-explainer" id="event-members-only-hint">
+				{m('eventEditor.membersOnlyHint')}
+			</p>
 		</fieldset>
 	{/if}
 
@@ -613,9 +1208,11 @@
 				bind:checked={charge}
 				disabled={!chargesEnabled}
 				data-testid="charge-toggle"
+				aria-describedby="event-charge-hint"
 			/>
 			<span>{m('eventEditor.chargeToggle')}</span>
 		</label>
+		<p class="charge-explainer" id="event-charge-hint">{m('eventEditor.chargeHint')}</p>
 		{#if !chargesEnabled}
 			<p class="charge-explainer" data-testid="charge-needs-payout">
 				{m('eventEditor.chargeNeedsPayout')}
@@ -623,34 +1220,53 @@
 			</p>
 		{:else if charge}
 			<p class="charge-explainer">{m('eventEditor.inPersonOnlyNote')}</p>
-			<div class="row">
-				<label>
-					<span>{m('eventEditor.price')}</span>
-					<input
-						type="number"
-						step="0.01"
-						min="0.5"
-						bind:value={priceMajor}
-						placeholder={m('eventEditor.pricePlaceholder')}
-					/>
-				</label>
-				<label>
-					<span>{m('eventEditor.currency')}</span>
-					<input type="text" bind:value={currency} maxlength="3" />
-				</label>
-				<label>
-					<span>{m('eventEditor.salesClose')}</span>
-					<input type="number" min="0" max="10080" bind:value={salesCloseOffset} />
-				</label>
+			<div class="field">
+				<div class="row">
+					<label>
+						<span>{m('eventEditor.price')}</span>
+						<input
+							type="number"
+							step="0.01"
+							min="0.5"
+							bind:value={priceMajor}
+							placeholder={m('eventEditor.pricePlaceholder')}
+							aria-describedby="event-price-hint"
+						/>
+					</label>
+					<label>
+						<span>{m('eventEditor.currency')}</span>
+						<input
+							type="text"
+							bind:value={currency}
+							maxlength="3"
+							aria-describedby="event-price-hint"
+						/>
+					</label>
+					<label>
+						<span>{m('eventEditor.salesClose')}</span>
+						<input
+							type="number"
+							min="0"
+							max="10080"
+							bind:value={salesCloseOffset}
+							aria-describedby="event-sales-close-hint"
+						/>
+					</label>
+				</div>
+				<span class="hint" id="event-price-hint">{m('eventEditor.priceHint')}</span>
+				<span class="hint" id="event-sales-close-hint">{m('eventEditor.salesCloseHint')}</span>
 			</div>
-			<label>
-				<span>{m('eventEditor.refundPolicy')}</span>
-				<select bind:value={refundPolicy}>
-					<option value="full_until_start">{m('eventEditor.refundFullUntilStart')}</option>
-					<option value="full_until_24h">{m('eventEditor.refundFullUntil24h')}</option>
-					<option value="no_refund">{m('eventEditor.refundNone')}</option>
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.refundPolicy')}</span>
+					<select bind:value={refundPolicy} aria-describedby="event-refund-hint">
+						<option value="full_until_start">{m('eventEditor.refundFullUntilStart')}</option>
+						<option value="full_until_24h">{m('eventEditor.refundFullUntil24h')}</option>
+						<option value="no_refund">{m('eventEditor.refundNone')}</option>
+					</select>
+				</label>
+				<span class="hint" id="event-refund-hint">{m('eventEditor.refundPolicyHint')}</span>
+			</div>
 		{/if}
 	</fieldset>
 	{/if}
@@ -810,5 +1426,68 @@
 		font-weight: 400;
 		color: var(--color-text-secondary);
 		line-height: 1.45;
+	}
+	.courses .hint {
+		display: block;
+		margin-bottom: 0.6rem;
+	}
+	.course-main {
+		margin-bottom: 0.6rem;
+	}
+	.course-list {
+		list-style: none;
+		margin: 0 0 0.6rem;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.course-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.7fr) auto;
+		gap: var(--space-sm);
+		align-items: end;
+		padding: 0.6rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+	}
+	.course-actions {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.course-icon {
+		background: transparent;
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
+		border-radius: var(--radius-md);
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.course-icon:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.timing-lines {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+	.timing-lines h3 {
+		margin: 0;
+		font-size: 1rem;
+	}
+	.add-course {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	@media (max-width: 40rem) {
+		.course-row {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 </style>

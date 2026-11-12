@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * /privacy, /terms, /cookie-notice, /health-data-notice, /delete-account —
@@ -42,6 +42,26 @@ test.describe('Legal pages', () => {
 		});
 	}
 
+	test('operator facts the owner declined render as decisions, not as pending', async ({
+		page
+	}) => {
+		// operator.ts records no postal address and no Art 27 representatives
+		// as NOT_PROVIDED (issue #1061, M6): the pages must say so plainly and
+		// must not raise the "still being finalised" banner for them.
+		await page.goto('/privacy');
+		await expect(page.getByTestId('operator-facts-pending')).toHaveCount(0);
+		const privacy = await page.locator('.legal-page').innerText();
+		expect(privacy).toMatch(/EU representative \(Art 27 GDPR\):\s+we have not appointed one/);
+		expect(privacy).toMatch(/UK representative \(Art 27 UK GDPR\):\s+we have not appointed one/);
+		expect(privacy).toContain('we do not publish a postal address');
+		expect(privacy).not.toMatch(/pending publication|appointment in progress/);
+
+		await page.goto('/terms');
+		await expect(page.getByTestId('operator-facts-pending')).toHaveCount(0);
+		const terms = await page.locator('.legal-page').innerText();
+		expect(terms).toContain('governed by the laws of the Commonwealth of Virginia, United States');
+	});
+
 	test('/privacy lists every GDPR-named clause that App Store / Play reviewers look for', async ({
 		page
 	}) => {
@@ -60,6 +80,18 @@ test.describe('Legal pages', () => {
 		).toHaveAttribute('href', /^mailto:/);
 	});
 
+	test('/privacy states HealthKit and Health Connect data is never used for advertising', async ({
+		page
+	}) => {
+		// App Review Guideline 5.1.3 requires the policy to say health-platform
+		// data is not used for advertising, marketing, or data mining.
+		await page.goto('/privacy');
+		const para = await page.getByTestId('health-platform-data').innerText();
+		expect(para).toContain('HealthKit');
+		expect(para).toContain('Health Connect');
+		expect(para).toMatch(/never use it for advertising, marketing, or\s+data mining/);
+	});
+
 	test('/privacy states the 48-hour live-ping retention, not the stale 24h figure', async ({
 		page
 	}) => {
@@ -67,6 +99,23 @@ test.describe('Legal pages', () => {
 		const body = await page.locator('.legal-page').innerText();
 		expect(body).toContain('Live spectator pings');
 		expect(body).toMatch(/Live spectator pings[^\n]*48 hours/);
+	});
+
+	test('/privacy describes error monitoring the way each client actually runs it', async ({
+		page
+	}) => {
+		// The mobile apps start Sentry unless `sentry_opt_out` is set
+		// (main.dart), the web gates it on the consent banner
+		// (hooks.client.ts), and no client calls setUser. The policy
+		// once said all client monitoring was consent-gated and carried a
+		// pseudonymous user id, which matched none of them.
+		await page.goto('/privacy');
+		const body = await page.locator('.legal-page').innerText();
+		expect(body).toContain('Settings → Account → Send error reports');
+		expect(body).toMatch(/iPhone and Android apps it is on by default/);
+		expect(body).toMatch(/website, client-side error monitoring stays off until\s+you accept/);
+		expect(body).not.toContain('pseudonymous user id');
+		expect(body).not.toContain('remains gated on your telemetry');
 	});
 
 	test('/terms states the subscription pillars + marketplace + DMCA clauses', async ({
@@ -82,8 +131,54 @@ test.describe('Legal pages', () => {
 		await expect(page.getByText(/14-day right of withdrawal/)).toBeVisible();
 		await expect(page.getByText(/Cancellation is at least as easy as signup/)).toBeVisible();
 		const body = await page.locator('.legal-page').innerText();
+		// The phrase alone passed whichever party §6 named, and until 2026-09-08
+		// it named the host — the last surviving statement of what decisions § 769
+		// disproved, contradicting `payouts.merchantNote` in the same product
+		// (§ 1548). Assert the DIRECTION, in both the buyer's bullet and the
+		// host's. `merchant_of_record_guard.test.ts` ties the same claim to the
+		// two Stripe parameters that make it true.
 		expect(body).toContain('merchant of record');
+		expect(body).toMatch(/Threkir is the merchant of record/);
+		expect(body).not.toMatch(/You are the merchant of\s+record/i);
 		expect(body).toContain('dmca@threkir.com');
+	});
+
+	test('/privacy discloses the AI assistants, logged-out share visitors, and what deleting a conversation does', async ({
+		page
+	}) => {
+		// The #1280 sign-off reviews found the route assistant, plan
+		// assistant and plan edits missing, the share pages described as
+		// banner-gated when they ask per view, and "Delete conversation"
+		// left undescribed although it erases nothing at that moment.
+		await page.goto('/privacy');
+		const body = await page.locator('.legal-page').innerText();
+		const assistants = await page.getByTestId('ai-assistants-sub-processor').innerText();
+		for (const feature of [
+			'Route assistant, request',
+			'Route assistant, description',
+			'Plan assistant',
+			'Season planner',
+			'Plan edits'
+		]) {
+			expect(assistants).toContain(feature);
+		}
+		expect(assistants).toContain('included only when the route is yours or is public');
+		expect(body).toMatch(/AI route assistant, AI plan assistant[^\n]*Consent — Art 6\(1\)\(a\)/);
+		expect(body).not.toMatch(/preferred language \(for\s+emails\)/);
+		expect(await page.getByTestId('logged-out-visitors').innerText()).toMatch(
+			/tap covers that one view/
+		);
+		expect(body).not.toContain('loads only after you accept the cookie banner');
+		expect(body).toMatch(/"Delete conversation" hides the conversation from you and erases nothing/);
+	});
+
+	test('/cookie-notice says share-page maps ask on every view, not after the banner', async ({
+		page
+	}) => {
+		await page.goto('/cookie-notice');
+		const share = await page.getByTestId('share-page-map-tap').innerText();
+		expect(share).toMatch(/ask on every view, whatever you chose on\s+the banner/);
+		expect(share).toContain('error monitoring (Sentry) only');
 	});
 
 	test('/cookie-notice categorises trackers into necessary vs consent-gated buckets', async ({
@@ -126,6 +221,25 @@ test.describe('Legal pages', () => {
 		// Retention carve-outs must not silently drift from /privacy §7.
 		expect(body).toMatch(/backups[^\n]*28 days/i);
 		expect(body).toContain('permanent and cannot be undone');
+	});
+
+	test('/delete-account reads in the browser language, not only in English', async ({
+		browser
+	}) => {
+		// The page is where a reader who cannot sign in learns how to leave,
+		// so a German reader must get the instructions in German.
+		const context = await browser.newContext({ locale: 'de-DE' });
+		const page = await context.newPage();
+		await page.goto('/delete-account');
+		await expect(page.getByRole('heading', { level: 1, name: 'Konto löschen' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Einstellungen → Konto' })).toHaveAttribute(
+			'href',
+			'/settings/account'
+		);
+		await expect(page.locator('.legal-page')).toContainText(
+			'endgültig und kann nicht rückgängig gemacht werden'
+		);
+		await context.close();
 	});
 
 	test('/privacy links the /delete-account page from the erasure clause', async ({ page }) => {

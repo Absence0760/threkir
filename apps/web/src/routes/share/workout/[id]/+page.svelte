@@ -1,19 +1,32 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { formatDateStable } from '$lib/share/share_meta';
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { formatDateStable } from '#lib/share/share_meta.ts';
 	import {
 		buildWorkoutJsonLd,
 		buildWorkoutShareCanonical,
 		buildWorkoutShareDescription,
 		buildWorkoutShareTitle,
 		distinctExerciseCount
-	} from '$lib/share/share_workout_meta';
-	import type { SharedWorkoutSet } from '$lib/share/share_workout_lookup';
+	} from '#lib/share/share_workout_meta.ts';
+	import { shareRefFromSearch, shareSignupHref } from '#lib/share/share_ref.ts';
+	import { recordShareView } from '#lib/share/share_attribution.ts';
+	import type { SharedWorkoutSet } from '#lib/share/share_workout_lookup.ts';
+	import { groupExerciseBlocks } from '#lib/gym/exercise_blocks.ts';
 
 	let { data } = $props();
+
+	let signupHref = $derived(
+		shareSignupHref(`/share/workout/${data.id}`, shareRefFromSearch(page.url.search))
+	);
+
+	onMount(() => {
+		if (data.workout) void recordShareView('workout', data.id);
+	});
 
 	let hasWorkout = $derived(!!data.workout);
 	let athlete = $derived(data.displayName ?? '');
@@ -34,15 +47,7 @@
 	// Group the public sets into exercise blocks in set_index order — same
 	// shape as the owner's /gym/[id] detail, minus the owner-only PR / edit
 	// affordances. No notes / RPE are fetched, so nothing private leaks.
-	let blocks = $derived.by(() => {
-		const out: { name: string; sets: SharedWorkoutSet[] }[] = [];
-		for (const s of data.workout?.sets ?? []) {
-			const last = out[out.length - 1];
-			if (last && last.name === s.exercise_name) last.sets.push(s);
-			else out.push({ name: s.exercise_name, sets: [s] });
-		}
-		return out;
-	});
+	let blocks = $derived(groupExerciseBlocks(data.workout?.sets ?? []));
 
 	let exerciseCount = $derived(distinctExerciseCount(data.workout?.sets ?? []));
 
@@ -106,7 +111,7 @@
 				{/if}
 			</div>
 
-			{#each blocks as block (block.name)}
+			{#each blocks as block (block.start)}
 				<section class="exercise-block">
 					<h2>{block.name || '—'}</h2>
 					<ol class="sets">
@@ -139,7 +144,7 @@
 			<p class="kicker">{m('shareWorkout.ctaKicker')}</p>
 			<h2 id="signup-cta-heading">{m('shareWorkout.ctaHeading')}</h2>
 			<p class="signup-sub">{m('shareWorkout.ctaSub')}</p>
-			<a class="btn btn-primary" href="/login?signup=1">{m('shareWorkout.ctaButton')}</a>
+			<a class="btn btn-primary" href={signupHref}>{m('shareWorkout.ctaButton')}</a>
 		</section>
 	{/if}
 </SharePageShell>

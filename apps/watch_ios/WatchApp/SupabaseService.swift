@@ -22,7 +22,7 @@ actor SupabaseService {
     // `apikey` with 401, so a build with no key fails loudly instead of
     // silently pointing at a baked-in default. In production the paired iPhone
     // overrides both via `applyCredentials(...)` from the WCSession handover.
-    private var baseURL = "http://127.0.0.1:54321"
+    private var baseURL = "http://127.0.0.1:24321"
     private var anonKey = ""
 
     init() {
@@ -84,7 +84,11 @@ actor SupabaseService {
     /// the same artefact the phone path hands to `WCSession.transferFile` —
     /// mapped rather than read resident so this path doesn't reintroduce a
     /// whole-track allocation.
-    func syncRun(_ run: WorkoutManager.FinishedRun, trackJSONURL: URL) async throws {
+    func syncRun(
+        _ run: WorkoutManager.FinishedRun,
+        trackJSONURL: URL,
+        raceEventId: String? = nil
+    ) async throws {
         guard let token = accessToken, let userId = userId else {
             throw SupabaseError.notAuthenticated
         }
@@ -99,15 +103,22 @@ actor SupabaseService {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         // `runs_metadata_activity_type_check` (migration 20260507_001) requires
-        // every row to carry `metadata.activity_type`. The phone-proxy path
-        // sets it from `WCSession.transferFile` metadata; this DEBUG-only
-        // direct path has no phone in the loop, so default to "run" — the
-        // Apple Watch app only records runs today.
+        // every row to carry `metadata.activity_type`. Both write paths take
+        // it from the same place — the pre-run picker's choice, carried on the
+        // finished run — so a walk recorded on a watch alone is not filed as a
+        // run just because no phone was in the loop.
         //
         // `last_modified_at` mirrors the WCSession payload in `ContentView`:
         // mobile's delta-fetch filters on `metadata->>'last_modified_at'`, so
         // a direct-uploaded run without it would never resurface on another
         // device after the first full pull.
+        //
+        // The two heart-rate fields carry the same claim they carry on the
+        // WCSession envelope, and for the same reason: this is the path a
+        // watch-sim-alone developer watches a row land on, and a row that
+        // silently lacks them is the shape that makes someone debug the wrong
+        // tier. Nil stays nil — `hr_coverage` absent is UNMEASURED and a
+        // fabricated zero is worse than a missing key (decisions § 1207).
         let runPayload = RunPayload(
             id: run.id,
             user_id: userId,
@@ -116,10 +127,32 @@ actor SupabaseService {
             distance_m: run.distanceMetres,
             track_url: objectPath,
             source: "watch",
-            metadata: [
-                "activity_type": "run",
-                "last_modified_at": formatter.string(from: Date()),
-            ]
+            // A column, not a bag key, on both paths: the phone lifts
+            // `event_id` out of the WCSession envelope and promotes it onto
+            // the row, so a direct upload that dropped it would land a race
+            // run this developer cannot get back to its event from.
+            event_id: raceEventId,
+            // A column, like `event_id`. Nil is omitted by the synthesized
+            // encoder, so the row keeps its private default.
+            is_public: run.isPublic,
+            metadata: RunMetadata(
+                activity_type: run.activityType.rawValue,
+                last_modified_at: formatter.string(from: Date()),
+                avg_bpm: run.averageBPM,
+                hr_coverage: run.hrCoverage,
+                steps: run.steps.flatMap { $0 > 0 ? $0 : nil },
+                laps: run.laps.isEmpty ? nil : run.laps.map(LapPayload.init),
+                distance_estimator: run.distanceEstimator,
+                distance_step_filled_m: run.distanceStepFilledMetres > 0 ? run.distanceStepFilledMetres : nil,
+                distance_step_over_chord_m: run.distanceStepFilledMetres > 0
+                    ? run.distanceStepOverChordMetres.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+                    : nil,
+                distance_segments: run.distanceEstimator == nil ? nil : run.distanceSegments.flatMap { $0 >= 1 ? $0 : nil },
+                track_complete: run.trackComplete ? true : nil,
+                plan_workout_id: run.workoutReview?.planWorkoutId,
+                workout_adherence: run.workoutReview?.adherence,
+                workout_step_results: run.workoutReview?.steps
+            )
         )
 
         let url = URL(string: "\(baseURL)/rest/v1/runs")!
@@ -178,7 +211,60 @@ actor SupabaseService {
         let distance_m: Double
         let track_url: String
         let source: String
-        let metadata: [String: String]
+        let event_id: String?
+        let is_public: Bool?
+        let metadata: RunMetadata
+    }
+
+    /// The row's `metadata` bag.
+    ///
+    /// Typed rather than `[String: String]`, which is why the two heart-rate
+    /// keys were once UNSENDABLE rather than merely unsent — a numeric value
+    /// had nowhere to go in a dictionary of strings, and the omission read as
+    /// a design choice. Swift's synthesized encoder uses `encodeIfPresent`
+    /// for an Optional, so a nil is omitted rather than written as `null`,
+    /// which is exactly the rule `hr_coverage` needs.
+    private struct RunMetadata: Encodable {
+        let activity_type: String
+        let last_modified_at: String
+        let avg_bpm: Double?
+        let hr_coverage: Double?
+        let steps: Int?
+        let laps: [LapPayload]?
+        let distance_estimator: String?
+        let distance_step_filled_m: Double?
+        /// What of `distance_step_filled_m` the gaps' chords would not have
+        /// credited; sent only beside it (docs/features/gps_distance.md
+        /// § Server recompute).
+        let distance_step_over_chord_m: Double?
+        /// The estimator segments the uploaded track holds, which the server
+        /// matches against its replay before it reads the key above.
+        let distance_segments: Int?
+        /// Present (true) only when the uploaded track holds every fix the
+        /// estimator took (docs/features/gps_distance.md § Stored track).
+        let track_complete: Bool?
+        /// The run's link to today's workout and its review, together or
+        /// not at all, as the WCSession envelope carries them.
+        let plan_workout_id: String?
+        let workout_adherence: String?
+        let workout_step_results: [WorkoutStepResultRecord]?
+    }
+
+    /// The registered `metadata.laps` element. Declared here rather than
+    /// encoding `RunLap` directly because the field names on the wire are the
+    /// registry's, not Swift's.
+    private struct LapPayload: Encodable {
+        let index: Int
+        let start_offset_s: Int
+        let distance_m: Double
+        let duration_s: Int
+
+        init(_ lap: RunLap) {
+            index = lap.index
+            start_offset_s = lap.startOffsetSeconds
+            distance_m = lap.distanceMetres
+            duration_s = lap.durationSeconds
+        }
     }
 
     enum SupabaseError: LocalizedError {
@@ -244,10 +330,18 @@ private func crc32(_ data: Data) -> UInt32 {
 /// Convenience for the DEBUG fallback: sign in with the seed user and sync
 /// the finished run directly to the local Supabase instance, bypassing the
 /// phone. Used when the watch simulator is running alone.
-func syncRunDirectDebug(_ run: WorkoutManager.FinishedRun, trackJSONURL: URL) async throws {
+func syncRunDirectDebug(
+    _ run: WorkoutManager.FinishedRun,
+    trackJSONURL: URL,
+    raceEventId: String? = nil
+) async throws {
     if await !SupabaseService.shared.isAuthenticated {
         _ = try await SupabaseService.shared.signIn(email: "runner@test.com", password: "testtest")
     }
-    try await SupabaseService.shared.syncRun(run, trackJSONURL: trackJSONURL)
+    try await SupabaseService.shared.syncRun(
+        run,
+        trackJSONURL: trackJSONURL,
+        raceEventId: raceEventId
+    )
 }
 #endif

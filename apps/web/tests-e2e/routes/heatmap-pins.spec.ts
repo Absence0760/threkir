@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
+import { jumpAndSettle, settleOnFeature } from '../fixtures/heatmap';
 
 /**
  * Heatmap discoverable-pin layers (clubs + popular/featured routes)
@@ -90,13 +92,16 @@ test.describe('Heatmap pin RPCs (backend contract)', () => {
 		async () => {
 			const admin = getAdminClient();
 			// Box over the Pacific — no clubs there.
-			const { data } = await admin.rpc('clubs_in_bbox', {
-				p_min_lng: -160,
-				p_min_lat: 10,
-				p_max_lng: -140,
-				p_max_lat: 30,
-				p_limit: 100,
-			});
+			const data = await readRows(
+				'the clubs_in_bbox() rpc',
+				admin.rpc('clubs_in_bbox', {
+					p_min_lng: -160,
+					p_min_lat: 10,
+					p_max_lng: -140,
+					p_max_lat: 30,
+					p_limit: 100,
+				})
+			);
 			expect((data as unknown[]).length).toBe(0);
 		});
 
@@ -141,10 +146,13 @@ test.describe('Heatmap pin RPCs (backend contract)', () => {
 
 	test('discoverable_routes_in_bbox limit caps the result set', async () => {
 		const admin = getAdminClient();
-		const { data } = await admin.rpc('discoverable_routes_in_bbox', {
-			...VA_BBOX,
-			p_limit: 2,
-		});
+		const data = await readRows(
+			'the discoverable_routes_in_bbox() rpc',
+			admin.rpc('discoverable_routes_in_bbox', {
+				...VA_BBOX,
+				p_limit: 2,
+			})
+		);
 		expect((data as unknown[]).length).toBeLessThanOrEqual(2);
 	});
 });
@@ -155,25 +163,11 @@ test.describe('Heatmap pin layers (web)', () => {
 	test('club + route layers mount with non-zero feature counts', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		// Wait for initial load + the moveend debounce.
-		await page.waitForTimeout(1500);
 
 		// Pan to Virginia so the bbox refresh definitely lands on
 		// the seeded pins. Zoom 6 (not 7) so all six VA routes — which
 		// span ~4° of longitude — stay inside the sidebar-narrowed map.
-		await page.evaluate(async () => {
-			type MapHandle = {
-				flyTo: (o: { center: [number, number]; zoom: number }) => void;
-				once: (event: string, cb: () => void) => void;
-			};
-			const m = (window as unknown as { __heatmapMap?: MapHandle }).__heatmapMap;
-			if (!m) return;
-			await new Promise<void>((resolve) => {
-				m.once('moveend', () => resolve());
-				m.flyTo({ center: [-78, 37.9], zoom: 6 });
-			});
-		});
-		await page.waitForTimeout(800);
+		await jumpAndSettle(page, [-78, 37.9], 6);
 
 		// The route count lives in the results-header; the club count in
 		// the Filters panel's Clubs layer toggle.
@@ -198,7 +192,6 @@ test.describe('Heatmap pin layers (web)', () => {
 	test('layer toggle hides + restores its layer', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1200);
 		await page.getByTestId('filters-button').click();
 
 		// Toggling the Clubs layer checkbox should flip the layer's
@@ -218,76 +211,13 @@ test.describe('Heatmap pin layers (web)', () => {
 test.describe('Heatmap pin popup (click flow)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	// Helper: pan to a target lng/lat, wait for the pin source to
-	// refresh, then return the pixel coords (in viewport space) of
-	// the projected target inside the canvas. The caller drives a
-	// real mouse click — MapLibre's layer-specific click handlers
-	// only fire when queryRenderedFeatures hits, which only happens
-	// for genuine pointer events at the right coordinate.
-	async function flyAndProjectPin(page: import('@playwright/test').Page, target: [number, number]) {
-		return page.evaluate(async ({ lng, lat }) => {
-			type MapHandle = {
-				flyTo: (o: { center: [number, number]; zoom: number }) => void;
-				project: (lngLat: [number, number]) => { x: number; y: number };
-				once: (event: string, cb: () => void) => void;
-				getContainer: () => HTMLElement;
-				queryRenderedFeatures: (
-					point: [number, number],
-					opts?: { layers?: string[] },
-				) => Array<unknown>;
-				getStyle: () => { layers?: Array<{ id: string }> };
-			};
-			const m = (window as unknown as { __heatmapMap?: MapHandle })
-				.__heatmapMap;
-			if (!m) return null;
-			await new Promise<void>((resolve) => {
-				m.once('moveend', () => resolve());
-				m.flyTo({ center: [lng, lat], zoom: 14 });
-			});
-			// Wait for the pin layers to actually paint at the target.
-			// The 700 ms fixed wait was enough on local hardware but
-			// CI runners (slower WebGL) sometimes need longer for the
-			// pin source's data + the layer's symbol rendering to
-			// settle after flyTo. Poll `queryRenderedFeatures` at the
-			// projected pixel until SOMETHING is hit (or we give up
-			// after 4 s) — that's the load-bearing precondition for
-			// the `mouse.click` to dispatch the layer's click handler
-			// and open the popup. Caught by
-			// `tests-e2e/routes/heatmap-pins.spec.ts:275 + :293`
-			// failing on CI run 26340415025 shard 6 (popup never
-			// appeared because the click landed before pins rendered).
-			const pinLayerIds = (m.getStyle().layers ?? [])
-				.map((l) => l.id)
-				.filter(
-					(id) =>
-						id === 'heatmap-clubs-layer' ||
-						id === 'heatmap-route-pins-layer',
-				);
-			const deadline = Date.now() + 4000;
-			while (Date.now() < deadline) {
-				const pt = m.project([lng, lat]);
-				const hits = m.queryRenderedFeatures([pt.x, pt.y], {
-					layers: pinLayerIds,
-				});
-				if (hits.length > 0) break;
-				await new Promise<void>((resolve) => setTimeout(resolve, 150));
-			}
-			const pt = m.project([lng, lat]);
-			const rect = m.getContainer().getBoundingClientRect();
-			return { x: rect.left + pt.x, y: rect.top + pt.y };
-		}, { lng: target[0], lat: target[1] });
-	}
-
 	test('clicking a route pin keeps it on the map (no navigation); the row View link navigates',
 		async ({ page }) => {
 			await page.goto('/routes/heatmap');
 			await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-			await page.waitForTimeout(1200);
 
 			const target: [number, number] = [-77.452, 37.5311]; // Belle Isle
-			const screen = await flyAndProjectPin(page, target);
-			expect(screen, '__heatmapMap dev hook must be present').toBeTruthy();
-			if (!screen) return;
+			const screen = await settleOnFeature(page, target, 14, 'heatmap-route-pins-layer', { single: true });
 
 			// Real click — MapLibre's queryRenderedFeatures only resolves
 			// for actual pointer events, not synthetic fire('click').
@@ -313,12 +243,9 @@ test.describe('Heatmap pin popup (click flow)', () => {
 		async ({ page }) => {
 			await page.goto('/routes/heatmap');
 			await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-			await page.waitForTimeout(1200);
 
 			const target: [number, number] = [-77.436, 37.5407]; // Richmond Run Club
-			const screen = await flyAndProjectPin(page, target);
-			expect(screen).toBeTruthy();
-			if (!screen) return;
+			const screen = await settleOnFeature(page, target, 14, 'heatmap-clubs-layer', { single: true });
 			await page.mouse.click(screen.x, screen.y);
 
 			const popup = page.locator('.heatmap-pin-popup');
@@ -349,14 +276,11 @@ test.describe('Heatmap pin popup (click flow)', () => {
 		// translate is the load-bearing contract.
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1200);
 
 		// Route dots now keep-on-click (no popup), so drive this against the
 		// club pin — the one surface that still opens a `.heatmap-pin-popup`.
 		const target: [number, number] = [-77.436, 37.5407]; // Richmond Run Club
-		const screen = await flyAndProjectPin(page, target);
-		expect(screen).toBeTruthy();
-		if (!screen) return;
+		const screen = await settleOnFeature(page, target, 14, 'heatmap-clubs-layer', { single: true });
 		await page.mouse.click(screen.x, screen.y);
 
 		const popup = page.locator('.heatmap-pin-popup');

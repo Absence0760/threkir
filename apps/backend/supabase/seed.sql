@@ -153,7 +153,6 @@ INSERT INTO user_settings (user_id, prefs) VALUES (
     'hr_zones', jsonb_build_object('z1', 134, 'z2', 154, 'z3', 173, 'z4', 183, 'z5', 192),
     'weekly_mileage_goal_m', 50000,
     'coach_personality', 'supportive',
-    'auto_pause_enabled', true,
     'preferred_unit', 'km',
     'week_start_day', 'monday',
     -- Activity / goal drive the /nutrition macro targets (TDEE multiplier
@@ -542,7 +541,6 @@ UPDATE runs SET activity_type = metadata->>'activity_type'
 
 -- 5. Integrations
 INSERT INTO integrations (user_id, provider, last_sync_at) VALUES
-('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'parkrun', '2026-04-01T10:00:00Z'),
 ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'strava', '2026-03-30T08:00:00Z');
 
 -- ─────────────────────── 6. Clubs + events ───────────────────────
@@ -590,9 +588,12 @@ VALUES
 -- discoverable-pin layer (clubs_in_bbox + discoverable_routes_in_bbox,
 -- migration 20260911_001) lights up. friends-of-jared keeps a NULL
 -- location_point — private clubs aren't on the discoverable map.
-UPDATE clubs SET location_point = ST_GeogFromText('SRID=4326;POINT(-77.4360 37.5407)')
+-- PostGIS calls are schema-qualified, like the pgcrypto ones above: the seed
+-- runs on the connection that applied the migrations, so an unqualified call
+-- resolves against whatever session search_path the last migration left set.
+UPDATE clubs SET location_point = extensions.ST_GeogFromText('SRID=4326;POINT(-77.4360 37.5407)')
   WHERE id = 'c1111111-0000-0000-0000-000000000001'::uuid;
-UPDATE clubs SET location_point = ST_GeogFromText('SRID=4326;POINT(-78.4767 38.0293)')
+UPDATE clubs SET location_point = extensions.ST_GeogFromText('SRID=4326;POINT(-78.4767 38.0293)')
   WHERE id = 'c2222222-0000-0000-0000-000000000002'::uuid;
 
 -- Six more public clubs across Virginia so the heatmap shows a
@@ -608,7 +609,7 @@ VALUES
    'nova-trail-crew',
    'Weekend trail runs along the Mount Vernon Trail + W&OD. We meet at the Memorial Bridge.',
    'Arlington, VA',
-   ST_GeogFromText('SRID=4326;POINT(-77.0560 38.8870)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-77.0560 38.8870)'),
    true, 'open', null),
   ('c5555555-0000-0000-0000-000000000005',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -616,7 +617,7 @@ VALUES
    'norfolk-botanical-runners',
    'Quiet morning loops through Norfolk Botanical Garden. Beginners + walk-run welcome.',
    'Norfolk, VA',
-   ST_GeogFromText('SRID=4326;POINT(-76.2030 36.8983)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-76.2030 36.8983)'),
    true, 'open', null),
   ('c6666666-0000-0000-0000-000000000006',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -624,7 +625,7 @@ VALUES
    'va-beach-boardwalk-striders',
    'Sunrise runs on the Boardwalk year-round. 5K + 10K paces; weekend long runs in the summer.',
    'Virginia Beach, VA',
-   ST_GeogFromText('SRID=4326;POINT(-75.9772 36.8385)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-75.9772 36.8385)'),
    true, 'open', null),
   ('c7777777-0000-0000-0000-000000000007',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -632,7 +633,7 @@ VALUES
    'mill-mountain-hill-climbers',
    'Tuesday hill repeats on the Mill Mountain Star greenway. If you like climbing, this is the group.',
    'Roanoke, VA',
-   ST_GeogFromText('SRID=4326;POINT(-79.9416 37.2710)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-79.9416 37.2710)'),
    true, 'request', null),
   ('c8888888-0000-0000-0000-000000000008',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -640,7 +641,7 @@ VALUES
    'richmond-marathon-trainers',
    'Fall marathon training group out of Belle Isle. 16-week plan, Saturday long runs, Wednesday workouts.',
    'Richmond, VA',
-   ST_GeogFromText('SRID=4326;POINT(-77.4500 37.5300)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-77.4500 37.5300)'),
    true, 'open', null),
   ('c9999999-0000-0000-0000-000000000009',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -648,7 +649,7 @@ VALUES
    'blue-ridge-trail-society',
    'Trail running, Skyline Drive day trips, Massanutten + Shenandoah event recon. Vans depart from UVA.',
    'Charlottesville, VA',
-   ST_GeogFromText('SRID=4326;POINT(-78.5067 38.0356)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-78.5067 38.0356)'),
    true, 'request', null)
 ON CONFLICT (id) DO NOTHING;
 
@@ -920,15 +921,15 @@ INSERT INTO plan_weeks (id, plan_id, week_index, phase, target_volume_m, notes) 
   ('a0aa0001-0000-0000-0000-000000000001', 'a1a1eada-aaaa-0000-0000-000000000001',  0, 'base',  40000, null),
   ('a0aa0002-0000-0000-0000-000000000002', 'a1a1eada-aaaa-0000-0000-000000000001',  1, 'base',  45000, null),
   ('a0aa0003-0000-0000-0000-000000000003', 'a1a1eada-aaaa-0000-0000-000000000001',  2, 'base',  50000, null),
-  ('a0aa0004-0000-0000-0000-000000000004', 'a1a1eada-aaaa-0000-0000-000000000001',  3, 'base',  42000, 'Step-back week — recover before the next build.'),
+  ('a0aa0004-0000-0000-0000-000000000004', 'a1a1eada-aaaa-0000-0000-000000000001',  3, 'base',  42000, null),
   ('a0aa0005-0000-0000-0000-000000000005', 'a1a1eada-aaaa-0000-0000-000000000001',  4, 'build', 55000, null),
   ('a0aa0006-0000-0000-0000-000000000006', 'a1a1eada-aaaa-0000-0000-000000000001',  5, 'build', 60000, null),
   ('a0aa0007-0000-0000-0000-000000000007', 'a1a1eada-aaaa-0000-0000-000000000001',  6, 'build', 62000, null),
-  ('a0aa0008-0000-0000-0000-000000000008', 'a1a1eada-aaaa-0000-0000-000000000001',  7, 'build', 52000, 'Step-back week — recover before the next build.'),
+  ('a0aa0008-0000-0000-0000-000000000008', 'a1a1eada-aaaa-0000-0000-000000000001',  7, 'build', 52000, null),
   ('a0aa0009-0000-0000-0000-000000000009', 'a1a1eada-aaaa-0000-0000-000000000001',  8, 'build', 65000, null),
   ('a0aa000a-0000-0000-0000-00000000000a', 'a1a1eada-aaaa-0000-0000-000000000001',  9, 'peak',  60000, null),
-  ('a0aa000b-0000-0000-0000-00000000000b', 'a1a1eada-aaaa-0000-0000-000000000001', 10, 'taper', 40000, 'Taper — volume down, sharpness stays.'),
-  ('a0aa000c-0000-0000-0000-00000000000c', 'a1a1eada-aaaa-0000-0000-000000000001', 11, 'race',  25000, 'Race week — trust the work.');
+  ('a0aa000b-0000-0000-0000-00000000000b', 'a1a1eada-aaaa-0000-0000-000000000001', 10, 'taper', 40000, null),
+  ('a0aa000c-0000-0000-0000-00000000000c', 'a1a1eada-aaaa-0000-0000-000000000001', 11, 'race',  25000, null);
 
 -- Week 0 (Mar 29 - Apr 4) — completed; workouts linked to real runs where the
 -- date matches. Shows how auto-match renders on the plan-detail grid.
@@ -1453,11 +1454,14 @@ UPDATE user_profiles
 -- test runs. Real users have to click the disclosure (migration
 -- 20260921_001 + the /coach + /settings/preferences UI); the seed
 -- short-circuits that for e2e + manual dev convenience. The dedicated
--- consent-gate tests (web src/lib/security_guards.test.ts, mobile
+-- consent-gate tests (web src/lib/consent_guards.test.ts, mobile
 -- coach_screen_test.dart) are source-grep guards over the handler
--- code, so pre-seeded consent doesn't bypass them.
+-- code, so pre-seeded consent doesn't bypass them. Seeded at the CURRENT
+-- disclosure version so the AI route surfaces are reachable too — a real
+-- user who only ever accepted v1 is refused there (migration 20270511_001).
 UPDATE user_profiles
    SET coach_consent_at = now(),
+       ai_disclosure_version = ai_disclosure_current_version(),
        health_data_consent_at = now()
  WHERE id IN (
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -2250,7 +2254,20 @@ BEGIN
               'chip_time', '1:47:23',
               'perceived_effort', 7,
               -- 20260724_001 strip-list addition:
-              'run_number', 17
+              'run_number', 17,
+              -- 20270214_001 strip-list additions:
+              'gun_time', '1:47:10',
+              'age_group_place', 12,
+              'age_group', 'M35-39',
+              -- 20270401_001 / 20270410_001 strip-list additions:
+              'safety_escalated_at', '2026-05-01T02:00:00Z',
+              'expected_return_at', '2026-05-01T01:00:00Z',
+              -- 20270627000001 / 20270628000001 strip-list additions:
+              'guided_run_id', 'easy-30',
+              'indoor_source', 'treadmill',
+              -- 20270909000001 strip-list additions:
+              'division_award', 'M Masters',
+              'division_award_place', 2
             ))
     RETURNING id INTO v_run_id;
 
@@ -2297,7 +2314,16 @@ BEGIN
      OR v_public_metadata ? 'overall_place'
      OR v_public_metadata ? 'chip_time'
      OR v_public_metadata ? 'perceived_effort'
-     OR v_public_metadata ? 'run_number' THEN
+     OR v_public_metadata ? 'run_number'
+     OR v_public_metadata ? 'gun_time'
+     OR v_public_metadata ? 'age_group_place'
+     OR v_public_metadata ? 'age_group'
+     OR v_public_metadata ? 'safety_escalated_at'
+     OR v_public_metadata ? 'expected_return_at'
+     OR v_public_metadata ? 'guided_run_id'
+     OR v_public_metadata ? 'indoor_source'
+     OR v_public_metadata ? 'division_award'
+     OR v_public_metadata ? 'division_award_place' THEN
     RAISE EXCEPTION 'public_runs: metadata strip list incomplete — leaked at least one denylisted key';
   END IF;
 
@@ -2814,6 +2840,17 @@ INSERT INTO runs (user_id, started_at, duration_s, distance_m, source, is_public
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', now() - interval '3 hours', 1980, 8000.0, 'app', false,
     '{"activity_type":"run","title":"Morning easy 8K","avg_bpm":148,"steps":9800}'::jsonb);
 
+-- The database matcher (20270901000001) links this run to today's planned
+-- easy 8 km. Unlink it, as the Unlink control would, so today's workout stays
+-- open and the start-from-today path stays exercisable out of the box.
+UPDATE plan_workouts
+SET completed_run_id = null, completed_at = null
+WHERE completed_run_id IN (
+  SELECT id FROM runs
+  WHERE user_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    AND metadata->>'title' = 'Morning easy 8K'
+);
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- Club templates for Richmond Run Club — so the Templates tab is populated.
 --
@@ -3008,3 +3045,179 @@ INSERT INTO global_segments (name, description, waypoints, distance_m, elevation
   ('Tiergarten — Straße des 17. Juni', 'Brandenburg Gate west along the marathon finishing straight through the Tiergarten.',
    '[{"lat":52.5163,"lng":13.3777,"ele":38},{"lat":52.5145,"lng":13.369,"ele":37},{"lat":52.514,"lng":13.36,"ele":37},{"lat":52.5138,"lng":13.351,"ele":36},{"lat":52.5137,"lng":13.345,"ele":36}]',
    2249, 0, 'road', 'Berlin, DE', 'DE');
+
+-- ─────────────────── Park courses (20271115002383) ───────────────────
+-- A FICTIONAL park and course so /parks, the course page and its boards
+-- render on a fresh stack. Not real geometry and never loaded anywhere but a
+-- local or CI database: real courses come from the reviewed scripts/parks/
+-- manifest through the operator loader (docs/features/park_courses.md). The
+-- efforts are planted directly (the matcher is the client's job), one of
+-- runner's a year back so the this-year and all-time boards differ.
+INSERT INTO global_segments (id, name, description, waypoints, distance_m, elevation_m, surface, region, country_code) VALUES
+  ('5eed0000-0000-4000-8000-00000000c001', 'Fixture Lake Loop',
+   'Local-dev fixture course. Not a real trail.',
+   '[{"lat":37.5400,"lng":-77.4400},{"lat":37.5445,"lng":-77.4400},{"lat":37.5445,"lng":-77.4343},{"lat":37.5400,"lng":-77.4343},{"lat":37.5400,"lng":-77.4401}]',
+   2000, 12, 'trail', 'Fixture State Park, Virginia', 'US')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO parks (id, slug, name, description, agency, region_code, country_code, timezone,
+                   centroid_lat, centroid_lng, bbox_min_lat, bbox_min_lng, bbox_max_lat, bbox_max_lng)
+VALUES ('5eed0000-0000-4000-8000-0000000000a1', 'fixture-state-park', 'Fixture State Park',
+        'A fictional park for local development and tests.', 'state', 'US-VA', 'US',
+        'America/New_York', 37.54225, -77.43715, 37.5400, -77.4401, 37.5445, -77.4343)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO park_courses (id, park_id, global_segment_id, slug, course_shape, status,
+                          geometry_source, source_ref, difficulty, checkpoints)
+VALUES ('5eed0000-0000-4000-8000-0000000000b1', '5eed0000-0000-4000-8000-0000000000a1',
+        '5eed0000-0000-4000-8000-00000000c001', 'lake-loop', 'loop', 'open',
+        'traced', 'local fixture', 'easy',
+        '[{"lat":37.5445,"lng":-77.4343}]')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at) VALUES
+  ('5eed0000-0000-4000-8000-00000000c001', 'a1000001-0000-0000-0000-000000000007',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 640, now() - interval '1 day'),
+  ('5eed0000-0000-4000-8000-00000000c001', 'a1000001-0000-0000-0000-000000000008',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 600, now() - interval '400 days'),
+  ('5eed0000-0000-4000-8000-00000000c001',
+   (SELECT id FROM runs WHERE user_id = 'b2c3d4e5-f6a7-8901-bcde-f23456789012' AND is_public
+     ORDER BY started_at DESC LIMIT 1),
+   'b2c3d4e5-f6a7-8901-bcde-f23456789012', 620, now() - interval '2 days')
+ON CONFLICT (global_segment_id, run_id) DO NOTHING;
+
+-- ─────────────────── Audience sharing gate (20270802000001) ───────────────────
+--
+-- The followers level and named-person run / route shares are fail-closed
+-- behind a row in private.feature_flags that no migration writes, so prod
+-- stays off until the CISO / Security Analyst sign-off in
+-- docs/features/sharing.md. Local stacks and CI open it here so the web
+-- audience control, the Playwright specs and manual testing exercise it.
+insert into private.feature_flags (name, enabled) values ('audience_sharing', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Safety-contacts live audience gate (20270821000001) ───────────────────
+--
+-- A live share on the runner's safety contacts only, with no public flip, is
+-- fail-closed behind its own flag row, because who can see a named person's
+-- live location is a CISO + counsel sign-off (docs/features/safety.md,
+-- decisions § 1964). Local stacks and CI open it so the /live/[id] link path
+-- and its Playwright spec run.
+insert into private.feature_flags (name, enabled) values ('safety_audience', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Sign-up consent from metadata (20271023000001) ───────────────────
+--
+-- An email sign-up's age + terms stamps are written from its sign-up
+-- metadata when the account is confirmed (#1229). That changes how Art 8
+-- evidence is captured, so prod waits on the sign-off in
+-- docs/ops/deployment.md. Local stacks and CI open it.
+insert into private.feature_flags (name, enabled) values ('signup_consent_from_metadata', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Coach run map gate (20270822000011) ───────────────────
+--
+-- A linked coach's clipped view of an athlete's run map is fail-closed behind
+-- a private.feature_flags row no migration writes, so prod stays off until
+-- the CISO / Security Analyst sign-off in docs/features/coach_roster.md.
+-- Local stacks and CI open it so the coach view and its specs exercise it.
+insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Heart-rate prescription gate (20270915000004) ───────────────────
+--
+-- bpm targets, the hr_medication_affected pref and the roster HR drift are
+-- fail-closed behind a private.feature_flags row no migration writes, so prod
+-- stays off until the CISO + counsel sign-off in docs/features/coach_roster.md.
+-- Local stacks and CI open it, and both clients read this same row
+-- (hr_prescription_enabled(), 20270917000004), so the HR surfaces and their
+-- specs exercise it.
+insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Public plan share gate (20271103000002) ───────────────────
+--
+-- The anonymous /share/plan/<id> view of a public-library plan is fail-closed
+-- behind a private.feature_flags row no migration writes, so prod stays off
+-- until the CISO / Security Analyst sign-off in docs/features/training.md.
+-- Local stacks and CI open it so the share page and its specs exercise it.
+insert into private.feature_flags (name, enabled) values ('public_plan_share', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Challenge invite links gate (20271103000001) ───────────────────
+--
+-- Joining a non-public challenge by link is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst sign-off in docs/features/challenges.md
+-- (decisions § 2261). Local stacks and CI open it so the invite + join-by-link
+-- surfaces and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Streamer overlay gate (20271104000001) ───────────────────
+--
+-- The streamer overlay (a revocable, server-delayed token read of a live run)
+-- and bpm on live pings are fail-closed behind a private.feature_flags row no
+-- migration writes, so prod stays off until the CISO / Security Analyst
+-- sign-off in docs/ops/deployment.md (decisions § 2265). Local stacks and CI
+-- open it so the overlay, the spectator heart rate and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('live_overlay', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Share attribution gate (20271104000004) ───────────────────
+--
+-- Share-link visit counters, sign-up attribution and the Your shares view are
+-- fail-closed behind a private.feature_flags row no migration writes, so prod
+-- stays off until the CISO / Security Analyst sign-off in
+-- docs/ops/deployment.md (decisions § 2268). Local stacks and CI open it so
+-- the share pages, Your shares and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('share_attribution', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Sign-up source gate (20271110000001) ───────────────────
+--
+-- First-touch sign-up source recording is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst sign-off in docs/ops/deployment.md (decisions
+-- § 2350). Local stacks and CI open it so the sign-up path exercises it.
+insert into private.feature_flags (name, enabled) values ('signup_source', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Display name from provider gate (20271111000002) ───────────────────
+--
+-- Filling a null display_name from the Google / Apple name is fail-closed
+-- behind a private.feature_flags row no migration writes, so prod stays off
+-- until the CISO + counsel sign-off in docs/ops/deployment.md (decisions
+-- § 2365). Local stacks and CI open it so OAuth sign-ups exercise it. The
+-- seed's own profiles were inserted above, before the gate opened, so their
+-- names are exactly what the seed wrote.
+insert into private.feature_flags (name, enabled) values ('display_name_from_provider', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Share with coach gate (20271210001215) ───────────────────
+--
+-- An athlete sharing an AI Coach answer with their coach is fail-closed behind
+-- a private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst confirms the AI labelling (docs/ops/deployment.md,
+-- issue #1215 Phase 3). Local stacks and CI open it so both clients and their
+-- specs exercise it.
+insert into private.feature_flags (name, enabled) values ('coach_share', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Photos in direct messages gate (20271213121604) ───────────────────
+--
+-- Sending a photo in a direct message is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- pre-deploy review in docs/ops/deployment.md (issue #1216). Local stacks and
+-- CI open it so both clients and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('dm_images', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Group conversations gate (20271216000006) ───────────────────
+--
+-- Group conversations are fail-closed behind a private.feature_flags row no
+-- migration writes, so prod stays off until the pre-deploy items in
+-- docs/ops/deployment.md (issue #1365). Local stacks and CI open it so the
+-- slice 2 and 3 surfaces and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('group_messages', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
  * preview → apply UI: a plan with a missed long run in a past build week
  * should propose bumping the next future long run, and applying it writes
  * the new distance. Throwaway plan (status `completed` to dodge the
- * one-active unique index; re-planning gates on dates, not status).
+ * active-plan overlap constraint; re-planning gates on dates, not status).
  */
 
 test.describe('/plans/[id] re-plan', () => {
@@ -48,7 +48,11 @@ test.describe('/plans/[id] re-plan', () => {
 			await expect(page.getByRole('heading', { level: 1, name: 'e2e replan' }))
 				.toBeVisible({ timeout: 10_000 });
 
-			await page.getByRole('button', { name: /Re-plan remaining weeks/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: /Re-plan remaining weeks/ })
+				.click();
 
 			// Preview shows a make-up change.
 			const preview = page.locator('.replan-preview');

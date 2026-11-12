@@ -31,8 +31,6 @@ export function raceDistanceBand(distanceM: number | null | undefined): RaceDist
 export interface RunMatchInput {
 	/// Run start as an ISO timestamp or a Date — only the calendar day is used.
 	runDate: string;
-	/// Recorded GPS start point; null when the run has no track (indoor / manual).
-	runStartLatLng: { lat: number; lng: number } | null;
 	runDistanceM: number | null;
 }
 
@@ -50,6 +48,12 @@ export interface ListingMatchInput {
 /// distance band; each contributes when its input is available, and the score
 /// is normalised over the signals that COULD be evaluated so a run with no
 /// track (proximity unknown) can still match on day + distance.
+///
+/// Proximity is `listing.distance_m_away`, which `search_race_listings`
+/// computes server-side, and it is the ONLY door to that signal — the run side
+/// used to carry a `runStartLatLng` and this module an object-shaped
+/// `haversineMetres` to measure from it, and neither was ever read: nothing
+/// assigned the field, nothing but the two suites called the function.
 export function raceMatchScore(run: RunMatchInput, listing: ListingMatchInput): number {
 	if (!sameCalendarDay(run.runDate, listing.race_date)) return 0;
 
@@ -83,23 +87,6 @@ export function raceMatchScore(run: RunMatchInput, listing: ListingMatchInput): 
 /// Whether a listing is a confident-enough candidate to offer.
 export function isRaceMatchCandidate(run: RunMatchInput, listing: ListingMatchInput): boolean {
 	return raceMatchScore(run, listing) >= RACE_MATCH_THRESHOLD;
-}
-
-/// Great-circle distance in metres between two lat/lng points (haversine).
-/// Exposed so a caller can compute distance_m_away when the RPC didn't.
-export function haversineMetres(
-	a: { lat: number; lng: number },
-	b: { lat: number; lng: number }
-): number {
-	const R = 6371000;
-	const toRad = (d: number) => (d * Math.PI) / 180;
-	const dLat = toRad(b.lat - a.lat);
-	const dLng = toRad(b.lng - a.lng);
-	const lat1 = toRad(a.lat);
-	const lat2 = toRad(b.lat);
-	const h =
-		Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-	return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 function sameCalendarDay(a: string, b: string): boolean {

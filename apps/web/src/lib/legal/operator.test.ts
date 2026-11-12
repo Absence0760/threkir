@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { OPERATOR, operatorFactsComplete, type OperatorFacts } from './operator';
+import { NOT_PROVIDED, OPERATOR, operatorFactsComplete, type OperatorFacts } from './operator';
 
 const rep = { name: 'Rep Ltd', address: '1 Example St, Dublin', email: 'rep@example.com' };
 
@@ -26,6 +26,12 @@ test('any single null fact fails closed', () => {
 		'ukRepresentative',
 	] as const) {
 		assert.equal(operatorFactsComplete({ ...complete, [key]: null }), false, key);
+	}
+});
+
+test('a fact the operator declined to provide is decided, not pending', () => {
+	for (const key of ['postalAddress', 'euRepresentative', 'ukRepresentative'] as const) {
+		assert.equal(operatorFactsComplete({ ...complete, [key]: NOT_PROVIDED }), true, key);
 	}
 });
 

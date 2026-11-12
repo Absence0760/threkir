@@ -3,8 +3,11 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var workoutManager = WorkoutManager()
     @StateObject private var connectivity = WatchConnectivityManager.shared
+    @StateObject private var auth = WatchAuth.shared
     @State private var syncError: String?
     @State private var thisRunSynced = false
+    @State private var countingDown = false
+    @State private var confirmingNoGps = false
 
     var body: some View {
         NavigationStack {
@@ -13,12 +16,29 @@ struct ContentView: View {
                 case .idle:
                     PreRunView(
                         workoutManager: workoutManager,
+                        auth: auth,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
-                        onClearRoute: connectivity.clearArmedRoute
+                        savedRoutes: connectivity.savedRoutes,
+                        onPickRoute: connectivity.armRoute,
+                        liveRace: connectivity.liveRace,
+                        todaysWorkout: workoutManager.offeredWorkout(connectivity.todaysWorkout),
+                        onClearRoute: connectivity.clearArmedRoute,
+                        onStart: {
+                            if workoutManager.locationBlockedForStart {
+                                confirmingNoGps = true
+                            } else {
+                                countingDown = true
+                            }
+                        }
                     )
                 case .recovering:
-                    RecoveryView(workoutManager: workoutManager, onRecover: recoverRun, onDiscard: discardRecovery)
+                    RecoveryView(
+                        workoutManager: workoutManager,
+                        onContinue: continueRun,
+                        onRecover: recoverRun,
+                        onDiscard: discardRecovery
+                    )
                 case .recording:
                     RunningView(
                         workoutManager: workoutManager,
@@ -29,6 +49,7 @@ struct ContentView: View {
                 case .finished:
                     PostRunView(
                         workoutManager: workoutManager,
+                        healthKit: workoutManager.healthKit,
                         transferState: connectivity.transferState,
                         thisRunSynced: thisRunSynced,
                         syncError: syncError,
@@ -38,8 +59,39 @@ struct ContentView: View {
                     )
                 }
             }
+            .overlay {
+                if countingDown {
+                    CountdownOverlay(
+                        onComplete: {
+                            countingDown = false
+                            workoutManager.start()
+                        },
+                        onCancel: { countingDown = false }
+                    )
+                }
+            }
+            .confirmationDialog(
+                "Start without GPS?",
+                isPresented: $confirmingNoGps,
+                titleVisibility: .visible
+            ) {
+                Button("Record time only") { countingDown = true }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Location is off for this app, so this run would record time only. Turn it on in Settings to record route, distance and pace.")
+            }
+        }
+        .onChange(of: connectivity.defaultActivityType) { _, preferred in
+            if let preferred { workoutManager.applyDefaultActivityType(preferred) }
         }
         .task {
+            workoutManager.liveRaceRelay = connectivity.liveRaceRelay()
+            // Before anything is awaited: a run whose workout session outlived
+            // the app goes straight back to recording, and the recovery prompt
+            // below is then not raised over it.
+            SurvivingWorkout.handoff.register { survivor in
+                workoutManager.adoptSurvivingWorkout(survivor)
+            }
             await workoutManager.healthKit.requestAuthorization()
             workoutManager.checkForPendingRecovery()
         }
@@ -48,6 +100,15 @@ struct ContentView: View {
     private func syncRun() {
         guard let run = workoutManager.finishedRun else { return }
         syncError = nil
+        // A recorded trace that is no longer on disk (an older build kept it
+        // in Caches, which the system reclaims) would otherwise ship as an
+        // empty array, indistinguishable from an indoor run. The run still
+        // syncs — losing it entirely would be worse than losing its map —
+        // but the runner is told rather than quietly handed a hollow track.
+        let payloadMissing = RunPayloadStorage.payloadIsMissing(
+            recordedPointCount: run.trackPointCount,
+            fileExists: FileManager.default.fileExists(atPath: run.trackFileURL.path)
+        )
         do {
             let fileURL = try workoutManager.writeTrackJSON()
             let formatter = ISO8601DateFormatter()
@@ -61,9 +122,11 @@ struct ContentView: View {
                 // Apr 2026 cross-client audit caught Apple-Watch runs
                 // arriving on the phone with no `activity_type` set,
                 // even though `WatchIngestBridge.swift` filters for it.
-                // Hardcode "run" to match Wear OS until the watch app
-                // grows an activity picker.
-                "activity_type": "run",
+                // Always present, now carrying the pre-run picker's choice
+                // rather than a hardcoded "run" — the raw token, because the
+                // `runs_activity_type_check` vocabulary is what the column
+                // admits.
+                "activity_type": run.activityType.rawValue,
                 // Mobile's delta-fetch (`runs_screen._fetchRemote`) filters
                 // rows on `metadata->>'last_modified_at' > since`. Without
                 // this stamp an Apple-Watch run is invisible to every
@@ -72,11 +135,69 @@ struct ContentView: View {
                 // Wear's `WatchRunMetadata.buildRunMetadata`. UTC + `Z`
                 // suffix (ISO8601DateFormatter's default zone) so the
                 // lexicographic `>` compare against the cursor is sound.
-                // (steps + laps stay omitted — this watch records neither,
-                // and Wear likewise omits them when absent.)
                 "last_modified_at": formatter.string(from: Date())
             ]
+            // The race this run was run in, when there was one. A column on
+            // `runs` since `20260424_001`, added for exactly this hand-off, so
+            // the phone lifts it out of the envelope and `runRowFromRun`
+            // promotes it back off the bag. Only written when the wrist
+            // actually reported a finisher time for THIS run — an unrelated
+            // run must not inherit the link.
+            if let eventId = connectivity.raceEventId(forRunId: run.id) {
+                metadata["event_id"] = eventId
+            }
             if let bpm = run.averageBPM { metadata["avg_bpm"] = bpm }
+            // Omitted rather than sent as 0 for the same reason `hr_coverage`
+            // is: nothing measured this run's steps (no pedometer hardware, a
+            // declined Motion & Fitness grant) is a different statement from
+            // the runner having taken none. Wear's `buildRunMetadata` drops a
+            // zero for the same reason.
+            if let count = run.steps, count > 0 { metadata["steps"] = count }
+            // Only when the runner marked laps — an unmarked run carries no
+            // key, matching Wear and what every reader of `metadata.laps`
+            // already expects.
+            if !run.laps.isEmpty {
+                metadata["laps"] = RunLaps.envelopeValue(run.laps)
+            }
+            // Written only when the run actually measured it. Nil is
+            // UNMEASURED — an HKWorkoutSession that never started, or a
+            // checkpoint from a build predating the field — and an assumed
+            // figure is a fabricated one, so the key is omitted rather than
+            // sent as 0, which would claim the sensor delivered nothing
+            // (decisions § 1207).
+            if let coverage = run.hrCoverage { metadata["hr_coverage"] = coverage }
+            // The runner's privacy default, snapshotted at stop. Omitted when
+            // the phone never said, so the row keeps its private default.
+            if let isPublic = run.isPublic { metadata["is_public"] = isPublic }
+            // Which algorithm measured `distance_m`, so a server recompute
+            // can tell a v1 figure from a hop-sum one. A recovered run from a
+            // pre-estimator checkpoint carries none (docs/features/gps_distance.md).
+            if let estimator = run.distanceEstimator { metadata["distance_estimator"] = estimator }
+            // How many estimator segments the track holds: the server reads
+            // `distance_step_over_chord_m` only when its replay finds as many,
+            // so a track that lost its `segmentStart` marks keeps the
+            // run-total rule.
+            if run.distanceEstimator != nil, let segments = run.distanceSegments, segments >= 1 {
+                metadata["distance_segments"] = segments
+            }
+            if run.distanceStepFilledMetres > 0 {
+                metadata["distance_step_filled_m"] = run.distanceStepFilledMetres
+                if let over = run.distanceStepOverChordMetres, over.isFinite, over >= 0 {
+                    metadata["distance_step_over_chord_m"] = over
+                }
+            }
+            // The track holds every fix the estimator took, off-track ones
+            // flagged, so the server's replay sees the watch's own input.
+            if run.trackComplete { metadata["track_complete"] = true }
+            // The run's link to today's workout and its planned-vs-actual
+            // review. The database matcher links the run by `plan_workout_id`
+            // (decisions § 2079); the phone forwards the group whole or not
+            // at all (`runFromWatchPayload`).
+            if let review = run.workoutReview {
+                metadata["plan_workout_id"] = review.planWorkoutId
+                metadata["workout_adherence"] = review.adherence
+                metadata["workout_step_results"] = review.steps.map(\.envelopeValue)
+            }
             // Only mark the run synced when WCSession actually queued it.
             // A false means nothing was handed off (session not yet
             // activated) — leave `thisRunSynced` false so `PostRunView`
@@ -84,6 +205,9 @@ struct ContentView: View {
             // Run again rather than silently dropping the run.
             if connectivity.transferRun(fileURL: fileURL, metadata: metadata) {
                 thisRunSynced = true
+                if payloadMissing {
+                    syncError = String(localized: "GPS track unavailable — synced without it")
+                }
             }
         } catch {
             syncError = error.localizedDescription
@@ -105,7 +229,11 @@ struct ContentView: View {
         }
         Task {
             do {
-                try await syncRunDirectDebug(run, trackJSONURL: fileURL)
+                try await syncRunDirectDebug(
+                    run,
+                    trackJSONURL: fileURL,
+                    raceEventId: connectivity.raceEventId(forRunId: run.id)
+                )
                 await MainActor.run {
                     thisRunSynced = true
                     connectivity.transferState = .completed
@@ -117,6 +245,15 @@ struct ContentView: View {
             }
         }
         #endif
+    }
+
+    /// Keep recording the checkpointed run. Falls back to saving it when the
+    /// checkpoint can no longer be continued, so the tap is never lost.
+    private func continueRun() {
+        guard workoutManager.continueRecoveredRun() else {
+            recoverRun()
+            return
+        }
     }
 
     private func recoverRun() {
@@ -193,10 +330,20 @@ private func pacePresets() -> [(label: String, secondsPerKm: Double)] {
 
 struct PreRunView: View {
     @ObservedObject var workoutManager: WorkoutManager
+    @ObservedObject var auth: WatchAuth
     let queuedCount: Int
     let armedRoute: ArmedRoute?
+    let savedRoutes: [ArmedRoute]
+    let onPickRoute: (ArmedRoute) -> Void
+    let liveRace: LiveRace?
+    /// Today's workout the phone pushed, already checked against today.
+    let todaysWorkout: PushedWorkout?
     let onClearRoute: () -> Void
+    let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
+    @State private var showingAccount = false
+    @State private var pickingRoute = false
+    @State private var lowBatteryPercent: Int?
 
     var body: some View {
         ScrollView {
@@ -210,11 +357,54 @@ struct PreRunView: View {
                         .foregroundColor(.secondary)
                 }
 
-                if let route = armedRoute {
+                // Advice, never a gate — Wear OS's rule. The percent is
+                // formatted by the locale (`40 %` in French), so the catalog
+                // carries no literal percent sign.
+                if let lowBatteryPercent {
+                    Text("Battery \((Double(lowBatteryPercent) / 100).formatted(.percent)) · consider charging")
+                        .font(.caption2)
+                        .foregroundColor(AppTheme.coral)
+                        .multilineTextAlignment(.center)
+                }
+
+                RaceBannerView(race: liveRace)
+
+                if let workout = todaysWorkout {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Route")
+                        Text("Today's workout")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                        Text(workout.summary)
+                            .font(.caption)
+                            .foregroundColor(workoutManager.followWorkout ? AppTheme.lilac : .secondary)
+                        Button(
+                            workoutManager.followWorkout
+                                ? String(localized: "Run free instead")
+                                : String(localized: "Follow workout")
+                        ) {
+                            workoutManager.followWorkout.toggle()
+                        }
+                        .font(.caption2)
+                        .buttonStyle(.plain)
+                        .accessibilityHint(
+                            workoutManager.followWorkout
+                                ? String(localized: "Starts the next run without the workout's steps")
+                                : String(localized: "Starts the next run on today's workout, step by step")
+                        )
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                // The picker entry stands whether or not a route is armed, and
+                // whether or not the phone has pushed a list yet: an
+                // affordance that appears only once routes exist is one a
+                // runner never learns is there, and the reason an empty list
+                // is empty belongs on the picker, where it can be read.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Route")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    if let route = armedRoute {
                         Text(route.name)
                             .font(.caption)
                             .foregroundColor(AppTheme.lilac)
@@ -227,8 +417,37 @@ struct PreRunView: View {
                             .buttonStyle(.plain)
                             .accessibilityHint("Removes the route your iPhone sent, so the next run is unguided")
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(armedRoute == nil ? "Choose route" : "Change route") {
+                        pickingRoute = true
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundColor(AppTheme.lilac)
+                    .accessibilityHint("Opens the routes you starred, to follow one on this run")
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Activity")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+
+                    Button(workoutManager.activityType.label) {
+                        workoutManager.pickActivityType(workoutManager.activityType.next)
+                    }
+                    .font(.caption)
+                    .foregroundColor(AppTheme.lilac)
+                    .buttonStyle(.plain)
+                    // The label is one word and says nothing about being a
+                    // cycle control, exactly as on Wear OS's chip.
+                    .accessibilityLabel(
+                        String(
+                            localized:
+                                "Activity type, currently \(workoutManager.activityType.label), tap to change"
+                        )
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Target pace")
@@ -262,7 +481,7 @@ struct PreRunView: View {
                 }
 
                 Button("Start") {
-                    workoutManager.start()
+                    onStart()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppTheme.coralDeep)
@@ -271,6 +490,138 @@ struct PreRunView: View {
                 // the VoiceOver name from "Start"; the hint adds the
                 // usage cue that name alone doesn't carry.
                 .accessibilityHint("Begins a new run, starting GPS and heart-rate recording")
+
+                // Below Start on purpose: the wrist is a recording surface
+                // and the account is the least urgent thing on it. The
+                // ordinary path to a session is still the paired iPhone —
+                // this is the way in for a watch that is away from one.
+                Button {
+                    showingAccount = true
+                } label: {
+                    if let email = auth.session?.email {
+                        Text(verbatim: email)
+                    } else {
+                        Text("Sign in")
+                    }
+                }
+                .font(.caption2)
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .accessibilityHint("Opens this watch's account screen, where you can sign in or sign out")
+            }
+        }
+        .sheet(isPresented: $showingAccount) {
+            SignInView(auth: auth, onDone: { showingAccount = false })
+        }
+        .sheet(isPresented: $pickingRoute) {
+            RoutePickerView(
+                routes: savedRoutes,
+                selectedId: armedRoute?.id,
+                onPick: onPickRoute,
+                onClear: onClearRoute
+            )
+        }
+        .onAppear { lowBatteryPercent = BatteryCheck.currentWarningPercent() }
+    }
+}
+
+/// The starred routes the phone pushed, as a list the runner arms one from on
+/// the wrist. Mirrors Wear OS's `RoutePickerScreen`: tap a route to follow it,
+/// "None" to run unguided.
+///
+/// Neither choice destroys anything — the list is the phone's and both are one
+/// tap from being undone here — so by `conventions.md` § Destructive actions
+/// neither earns a confirmation.
+struct RoutePickerView: View {
+    let routes: [ArmedRoute]
+    let selectedId: String?
+    let onPick: (ArmedRoute) -> Void
+    let onClear: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Text("Route")
+                .font(.headline)
+
+            Button("No route") {
+                onClear()
+                dismiss()
+            }
+            .font(.caption)
+            .foregroundColor(selectedId == nil ? AppTheme.coral : .primary)
+            .accessibilityHint("Runs without a route, so no guidance is given")
+
+            ForEach(routes, id: \.id) { route in
+                Button {
+                    onPick(route)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(route.name)
+                            .font(.caption)
+                            .lineLimit(1)
+                        Text(RunFormat.distance(
+                            metres: route.distanceMetres, fractionDigits: 2))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .foregroundColor(route.id == selectedId ? AppTheme.coral : .primary)
+                .accessibilityHint("Follows this route on your next run")
+            }
+
+            if routes.isEmpty {
+                // One cause, so one sentence: nothing has been starred (or
+                // the phone has not pushed since). Unlike Wear OS, this list
+                // never comes from a Supabase query the watch could fail, so
+                // there is no second, unactionable "couldn't load" case to
+                // tell apart.
+                Text("No starred routes yet. Star a route on your iPhone or the web.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Start Countdown
+
+/// Full-screen 3-2-1 count between the Start tap and `WorkoutManager.start()`,
+/// mirroring Wear OS's `CountdownOverlay`.
+///
+/// A tap ANYWHERE cancels. The window exists so a mis-tapped Start costs three
+/// seconds instead of a junk run, which it only does if backing out needs no
+/// second target found on a moving wrist.
+struct CountdownOverlay: View {
+    let onComplete: () -> Void
+    let onCancel: () -> Void
+
+    @State private var countdown = StartCountdown()
+
+    var body: some View {
+        ZStack {
+            AppTheme.night.opacity(0.92)
+                .ignoresSafeArea()
+            Text(countdown.count.formatted())
+                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(AppTheme.mist)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { onCancel() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Cancel countdown")
+        .accessibilityAddTraits(.isButton)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: NSEC_PER_SEC)
+                if Task.isCancelled { return }
+                if countdown.tick() {
+                    onComplete()
+                    return
+                }
             }
         }
     }
@@ -278,14 +629,66 @@ struct PreRunView: View {
 
 // MARK: - Running View
 
+/// Two pages: the stats and controls a runner glances at, and the live-position
+/// mini-map behind a swipe. The controls keep the page they have always had —
+/// the map is additive, and a Stop button that moved would be a regression on
+/// the core surface for the sake of an auxiliary one.
 struct RunningView: View {
     @ObservedObject var workoutManager: WorkoutManager
     @ObservedObject var healthKit: HealthKitManager
 
     var body: some View {
+        TabView {
+            RunStatsView(workoutManager: workoutManager, healthKit: healthKit)
+            RunMiniMapView(
+                route: workoutManager.mapRoute,
+                trail: workoutManager.mapTrail.points,
+                current: workoutManager.mapPosition
+            )
+        }
+        .tabViewStyle(.page)
+    }
+}
+
+struct RunStatsView: View {
+    @ObservedObject var workoutManager: WorkoutManager
+    @ObservedObject var healthKit: HealthKitManager
+
+    // The readouts scroll and the two controls that end or suspend the run
+    // are pinned beneath them. One fixed column of every row is taller than a
+    // 40 mm screen, and a page that cannot scroll centres its overflow — which
+    // pushed the elapsed time up under the system clock and Pause / Stop off
+    // the bottom edge. A scroll view starts its content below the clock's
+    // safe-area inset on every watch size and Dynamic Type setting.
+    var body: some View {
+        VStack(spacing: 4) {
+            ScrollView {
+                readouts
+            }
+            controls
+        }
+    }
+
+    private var readouts: some View {
         VStack(spacing: 8) {
+            GpsBannerView(state: workoutManager.gpsBanner)
+
+            if workoutManager.preciseLocationOff {
+                PreciseLocationNotice()
+            }
+
             Text(workoutManager.formattedElapsed)
                 .font(.system(.title, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
+            if let view = workoutManager.workoutView {
+                Text(view.stepLine)
+                    .font(.caption)
+                    .foregroundColor(AppTheme.lilac)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
 
             HStack {
                 VStack {
@@ -309,33 +712,216 @@ struct RunningView: View {
                     Text(healthKit.currentBPM.map { "\($0)" } ?? "—")
                         .font(.headline)
                         .foregroundColor(AppTheme.coral)
+                    if let bpm = healthKit.currentBPM,
+                       let zone = HeartRateZones.zone(bpm: bpm, cutoffs: HeartRateZones.stored()) {
+                        Text("Z\(zone)")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.coral)
+                            .accessibilityLabel(String(localized: "Heart rate zone \(zone)"))
+                    }
                 }
+            }
+
+            if healthKit.heartRateUnavailable {
+                Text("Heart rate unavailable")
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.error)
             }
 
             if let navigator = workoutManager.routeNavigator {
                 RouteGuidanceView(navigator: navigator)
             }
 
-            Text("\(workoutManager.trackPointCount) GPS pts")
+            HStack(spacing: 8) {
+                Text("\(workoutManager.trackPointCount) GPS pts")
+                if !workoutManager.lapMarks.isEmpty {
+                    Text("Lap \(workoutManager.lapMarks.count)")
+                        .foregroundColor(AppTheme.lilac)
+                }
+            }
+            .font(.caption2)
+            .foregroundColor(.secondary)
+
+            // Its own row rather than a third control beside Pause and Stop:
+            // three borderedProminent buttons do not fit a 40 mm wrist, and
+            // the two that end or suspend the run are the ones that must not
+            // move (decisions § 702's reasoning about the stats page).
+            Button("Lap") {
+                workoutManager.markLap()
+            }
+            .buttonStyle(.bordered)
+            .font(.caption)
+            .accessibilityHint(
+                workoutManager.workoutView?.step != nil
+                    ? String(localized: "Marks a split and skips to the workout's next step")
+                    : String(localized: "Marks a split at the current time and distance")
+            )
+        }
+    }
+
+    private var controls: some View {
+        RunControlRow {
+            Button {
+                workoutManager.pause()
+            } label: {
+                Text("Pause")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(AppTheme.nightRaised)
+            .accessibilityHint("Pauses the recording without ending it")
+        } stop: {
+            HoldToStopButton { workoutManager.stop() }
+        }
+    }
+}
+
+/// Pause-or-Resume beside Stop, the same size and in the same place on the
+/// running and paused screens. The row takes the system button's height from
+/// the primary control and Stop fills it, so the control that ends the run is
+/// never a smaller target than the one beside it.
+struct RunControlRow<Primary: View, Stop: View>: View {
+    @ViewBuilder let primary: Primary
+    @ViewBuilder let stop: Stop
+
+    var body: some View {
+        HStack(spacing: 8) {
+            primary
+                .frame(maxWidth: .infinity)
+            stop
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // Half a 40 mm screen hyphenates "Resume" at the largest text sizes.
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - GPS Banner
+
+/// The one line that separates a treadmill from a canopy.
+///
+/// "No GPS — time only" is a description of an indoor run, not a failure: the
+/// clock is running, the distance is honestly zero, and the run will sync with
+/// an empty track. "GPS lost" is a failure, and a runner who has been banking
+/// kilometres needs to know the difference — telling a treadmill runner their
+/// signal dropped is as wrong as telling someone under a canopy nothing at all.
+/// Mirrors Wear OS's `RunningScreen` banner, whose wording these strings share.
+struct GpsBannerView: View {
+    let state: GpsBannerState
+
+    var body: some View {
+        switch state {
+        case .noFixYet:
+            Text("No GPS — time only")
                 .font(.caption2)
                 .foregroundColor(.secondary)
+        case .lost:
+            Text("GPS lost")
+                .font(.caption2)
+                .foregroundColor(AppTheme.error)
+        case .healthy:
+            EmptyView()
+        }
+    }
+}
 
-            HStack(spacing: 12) {
-                Button("Pause") {
-                    workoutManager.pause()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.duskDeep)
-                .accessibilityHint("Pauses the recording without ending it")
+// MARK: - Precise Location notice
 
-                Button("Stop") {
-                    workoutManager.stop()
+/// With Precise Location off every fix is kilometres wide, so the distance and
+/// the map are wrong while the clock, heart rate and steps are right. The run
+/// carries on, and the runner is told which setting to change, because the
+/// recorder asks for full accuracy only once a run.
+struct PreciseLocationNotice: View {
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("Precise Location is off")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(AppTheme.error)
+            Text("Distance and map will be wrong. Turn on Precise Location in Settings > Privacy & Security > Location Services > Threkir, on this watch or in the Watch app on iPhone.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Hold to Stop
+
+/// Stop, gated on an 800 ms press with a ring that fills as it is held —
+/// Wear OS's `HoldToStopButton`. Releasing early cancels and the ring falls
+/// back to empty, so an accidental brush costs nothing and a deliberate press
+/// costs less than a second.
+///
+/// See `HoldToStop` for why this control is held rather than confirmed.
+struct HoldToStopButton: View {
+    let onStop: () -> Void
+
+    @State private var progress: Double = 0
+    @State private var holdTask: Task<Void, Never>?
+
+    private let shape = Capsule(style: .continuous)
+
+    var body: some View {
+        Text("Stop")
+            .font(.body)
+            .foregroundColor(AppTheme.mist)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(shape.fill(AppTheme.error))
+            .overlay(
+                shape
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AppTheme.mist,
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    )
+            )
+            .contentShape(shape)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in beginHold() }
+                    .onEnded { _ in cancelHold() }
+            )
+            .onDisappear { cancelHold() }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Stop")
+            .accessibilityHint("Hold to end the run and open the summary")
+            .accessibilityAddTraits(.isButton)
+            // VoiceOver activates by double-tap, which is already the
+            // deliberate press the hold exists to require — and a hold is not
+            // something the rotor can perform at all. Holding the assistive
+            // path to the same gesture would make Stop unreachable rather
+            // than safer.
+            .accessibilityAction { onStop() }
+    }
+
+    private func beginHold() {
+        guard holdTask == nil else { return }
+        holdTask = Task { @MainActor in
+            let started = Date()
+            while !Task.isCancelled {
+                let elapsed = Date().timeIntervalSince(started)
+                progress = HoldToStop.progress(elapsed: elapsed)
+                if HoldToStop.isComplete(elapsed: elapsed) {
+                    holdTask = nil
+                    progress = 0
+                    onStop()
+                    return
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.error)
-                .accessibilityHint("Ends the run and opens the summary")
+                try? await Task.sleep(nanoseconds: NSEC_PER_SEC / 60)
             }
         }
+    }
+
+    private func cancelHold() {
+        holdTask?.cancel()
+        holdTask = nil
+        progress = 0
     }
 }
 
@@ -404,18 +990,19 @@ struct PausedView: View {
                     .font(.body)
             }
 
-            Button("Resume") {
-                workoutManager.resume()
+            RunControlRow {
+                Button {
+                    workoutManager.resume()
+                } label: {
+                    Text("Resume")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.coralDeep)
+                .accessibilityHint("Resumes the paused recording")
+            } stop: {
+                HoldToStopButton { workoutManager.stop() }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(AppTheme.coralDeep)
-            .accessibilityHint("Resumes the paused recording")
-
-            Button("Stop", role: .destructive) {
-                workoutManager.stop()
-            }
-            .font(.caption)
-            .accessibilityHint("Ends the run and opens the summary")
         }
     }
 }
@@ -424,8 +1011,10 @@ struct PausedView: View {
 
 struct RecoveryView: View {
     let workoutManager: WorkoutManager
+    let onContinue: () -> Void
     let onRecover: () -> Void
     let onDiscard: () -> Void
+    @State private var confirmingDiscard = false
 
     var body: some View {
         ScrollView {
@@ -443,19 +1032,45 @@ struct RecoveryView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Button("Recover") {
+                // Continue is offered only while the run is recent enough to
+                // still be the same outing — see `RunResumePlan`. Past that,
+                // saving it is the only way to keep it.
+                if workoutManager.canContinueRecoveredRun {
+                    Button("Continue run") {
+                        onContinue()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.coralDeep)
+                    .accessibilityHint("Keeps recording this run from where it stopped")
+                }
+
+                Button("Save run") {
                     onRecover()
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(AppTheme.coralDeep)
+                .tint(workoutManager.canContinueRecoveredRun ? Color.gray : AppTheme.coralDeep)
                 .accessibilityHint("Restores the unsaved run from the last checkpoint")
 
                 Button("Discard", role: .destructive) {
-                    onDiscard()
+                    confirmingDiscard = true
                 }
                 .font(.caption)
                 .accessibilityHint("Deletes the unsaved run permanently")
             }
+        }
+        // The checkpoint is the run's only durable record: nothing else on
+        // this device or any other holds it, and the next `start()` purges
+        // the track file a discarded recovery strands. One tap must not end
+        // it (decisions § 1208).
+        .confirmationDialog(
+            "Discard this run?",
+            isPresented: $confirmingDiscard,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) { onDiscard() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Not saved anywhere else")
         }
     }
 
@@ -481,12 +1096,14 @@ struct RecoveryView: View {
 
 struct PostRunView: View {
     @ObservedObject var workoutManager: WorkoutManager
+    @ObservedObject var healthKit: HealthKitManager
     let transferState: WatchConnectivityManager.TransferState
     let thisRunSynced: Bool
     let syncError: String?
     let onSync: () -> Void
     let onSyncDirect: () -> Void
     let onDiscard: () -> Void
+    @State private var confirmingDiscard = false
 
     var body: some View {
         ScrollView {
@@ -513,8 +1130,25 @@ struct PostRunView: View {
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                    if let count = workoutManager.finishedRun?.steps, count > 0 {
+                        Label("\(count) steps", systemImage: "shoeprints.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.vertical, 4)
+
+                if let laps = workoutManager.finishedRun?.laps, !laps.isEmpty {
+                    SplitsView(laps: laps)
+                }
+
+                if healthKit.heartRateUnavailable {
+                    Text("Heart rate unavailable — run saved without it")
+                        .font(.caption2)
+                        .foregroundColor(AppTheme.error)
+                        .multilineTextAlignment(.center)
+                }
 
                 if thisRunSynced {
                     Label(syncedStatusText, systemImage: syncedStatusIcon)
@@ -526,7 +1160,7 @@ struct PostRunView: View {
                         onDiscard()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.duskDeep)
+                    .tint(AppTheme.nightRaised)
                     .accessibilityHint("Clears this synced run from the watch and returns to the start screen")
                 } else {
                     if let error = syncError {
@@ -558,12 +1192,27 @@ struct PostRunView: View {
                     #endif
 
                     Button("Discard", role: .destructive) {
-                        onDiscard()
+                        confirmingDiscard = true
                     }
                     .font(.caption)
                     .accessibilityHint("Throws away the unsynced run permanently")
                 }
             }
+        }
+        // Only reachable on the UNSYNCED branch, where the run has not been
+        // handed to WCSession and `reset()` deletes its track file — so the
+        // tap is the end of the run, not a tidy-up. "Start next run" in the
+        // synced branch calls the same closure and is deliberately NOT
+        // guarded: there the run is already on its way (decisions § 1208).
+        .confirmationDialog(
+            "Discard this run?",
+            isPresented: $confirmingDiscard,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) { onDiscard() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Not saved anywhere else")
         }
     }
 
@@ -578,5 +1227,81 @@ struct PostRunView: View {
     private var syncedStatusIcon: String {
         if case .completed = transferState { return "checkmark.circle.fill" }
         return "clock.arrow.circlepath"
+    }
+}
+
+// MARK: - Splits
+
+/// The runner's lap splits, in the same per-lap shape the run syncs with.
+///
+/// Rendered here and not on Wear OS, whose post-run screen is an edge-anchored
+/// overlay on a full-bleed route preview a table would obscure. This screen is
+/// a plain `ScrollView` with room below the summary, so the splits the runner
+/// just took are readable on the wrist that took them rather than only after a
+/// sync.
+struct SplitsView: View {
+    let laps: [RunLap]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Splits")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            ForEach(laps, id: \.index) { lap in
+                HStack {
+                    Text("Lap \(lap.index)")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(RunFormat.distance(metres: lap.distanceMetres, fractionDigits: 2))
+                    Text(formatElapsed(lap.durationSeconds))
+                        .monospacedDigit()
+                }
+                .font(.caption2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension WorkoutStepKind {
+    /// The phone's planned-vs-actual vocabulary (`workoutReviewLabel*`), so
+    /// the wrist and the review name a step the same way.
+    var label: String {
+        switch self {
+        case .warmup: return String(localized: "Warm-up")
+        case .rep: return String(localized: "Rep")
+        case .recovery: return String(localized: "Recovery")
+        case .walk: return String(localized: "Walk")
+        case .steady: return String(localized: "Steady")
+        case .cooldown: return String(localized: "Cool-down")
+        }
+    }
+}
+
+extension PushedWorkout {
+    /// The pre-run line: step count and what the session covers, distance
+    /// and time both when it mixes the two axes.
+    var summary: String {
+        var parts = [String(localized: "\(steps.count) workout steps")]
+        if let d = totalDistanceMetres {
+            parts.append(RunFormat.distance(metres: Double(d), fractionDigits: 1))
+        }
+        if let t = totalDurationSeconds { parts.append(formatElapsed(t)) }
+        return parts.joined(separator: " · ")
+    }
+}
+
+extension WatchWorkoutView {
+    /// The running screen's step line: what the step is, and what is left of
+    /// it on its own axis.
+    var stepLine: String {
+        guard let step else { return String(localized: "Workout done") }
+        var name = step.kind.label
+        if let i = step.repIndex, let n = step.repTotal { name += " \(i)/\(n)" }
+        if let s = remainingSeconds { return "\(name) · \(formatElapsed(s))" }
+        if let m = remainingMetres {
+            return "\(name) · \(RunFormat.distance(metres: m, fractionDigits: 2))"
+        }
+        return name
     }
 }

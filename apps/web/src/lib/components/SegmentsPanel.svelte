@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatDuration } from '$lib/format/time';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchSegmentsForRouteWithError,
 		fetchSegmentLeaderboardTieredWithError,
@@ -12,13 +12,15 @@
 		type SegmentLeaderboardEntry,
 		type SegmentGenderFilter,
 		type SegmentAgeBand,
-	} from '$lib/core/data';
-	import { crownLabel } from '$lib/segments/segments';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { distanceInPreferred } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { crownLabel } from '#lib/segments/segments.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import HeadToHeadDialog from './HeadToHeadDialog.svelte';
 
 	interface Props {
 		routeId: string;
@@ -79,6 +81,7 @@
 	});
 
 	let confirmDelete = $state<Segment | null>(null);
+	let headToHeadSegmentId = $state<string | null>(null);
 
 	async function load() {
 		loading = true;
@@ -86,12 +89,12 @@
 		try {
 			const res = await fetchSegmentsForRouteWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, t, 'SegmentsPanel: loadError');
 				return;
 			}
 			segments = res.segments;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'SegmentsPanel: loadError');
 		} finally {
 			loading = false;
 		}
@@ -128,14 +131,17 @@
 				clubId: clubOnly ? clubId : null,
 			});
 			leaderboards = new Map(leaderboards).set(segmentId, res.error ? [] : res.entries);
-			leaderboardErrors = new Map(leaderboardErrors).set(segmentId, res.error);
+			leaderboardErrors = new Map(leaderboardErrors).set(
+				segmentId,
+				res.error ? errorCopy(res.error, t, 'SegmentsPanel: leaderboard') : null,
+			);
 		} catch (e) {
 			// A thrown rejection would otherwise leave the board stuck on the
 			// loading spinner forever — surface it as the retryable error state.
 			leaderboards = new Map(leaderboards).set(segmentId, []);
 			leaderboardErrors = new Map(leaderboardErrors).set(
 				segmentId,
-				e instanceof Error ? e.message : String(e),
+				errorCopy(e, t, 'SegmentsPanel failed'),
 			);
 		}
 	}
@@ -181,8 +187,8 @@
 			segments = [...segments, seg].sort((a, b) => a.start_distance_m - b.start_distance_m);
 			showCreate = false;
 			draftName = '';
-		} catch (e: any) {
-			showToast(e?.message ?? t('segments.createFailed'), 'error');
+		} catch (e) {
+			showToast(t('segments.createFailed', { error: errorCopy(e, t, 'segments.createFailed') }), 'error');
 		} finally {
 			creating = false;
 		}
@@ -199,8 +205,8 @@
 				Array.from(leaderboards.entries()).filter(([id]) => id !== target.id),
 			);
 			if (openSegmentId === target.id) openSegmentId = null;
-		} catch (e: any) {
-			showToast(e?.message ?? t('segments.deleteFailed'), 'error');
+		} catch (e) {
+			showToast(t('segments.deleteFailed', { error: errorCopy(e, t, 'segments.deleteFailed') }), 'error');
 		}
 	}
 
@@ -276,12 +282,12 @@
 
 	{#if loading}
 		<p class="muted">{t('segments.loadingSegments')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('routesPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{t('routesPage.retry')}</button>
 		</div>
@@ -411,6 +417,17 @@
 									{/each}
 								</ol>
 							{/if}
+							{#if auth.loggedIn}
+								<button
+									class="btn btn-outline btn-sm h2h-open"
+									type="button"
+									onclick={() => (headToHeadSegmentId = seg.id)}
+									data-testid="segment-head-to-head-open"
+								>
+									<span class="material-symbols" aria-hidden="true">group</span>
+									{t('headToHead.compare')}
+								</button>
+							{/if}
 							{#if auth.user?.id === seg.author_id || isOwner}
 								<button
 									class="link-btn danger"
@@ -428,6 +445,15 @@
 	{/if}
 </div>
 
+{#if headToHeadSegmentId}
+	<HeadToHeadDialog
+		open
+		onclose={() => (headToHeadSegmentId = null)}
+		kind="segment"
+		targetId={headToHeadSegmentId}
+	/>
+{/if}
+
 <ConfirmDialog
 	open={confirmDelete != null}
 	title={t('segments.deleteConfirmTitle')}
@@ -439,6 +465,13 @@
 />
 
 <style>
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		align-self: flex-start;
+		margin-top: var(--space-sm);
+	}
 	.segments-panel {
 		display: flex;
 		flex-direction: column;

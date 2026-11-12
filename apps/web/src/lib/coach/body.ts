@@ -15,6 +15,26 @@
 
 export const COACH_BODY_LIMIT_BYTES = 256 * 1024;
 
+// The coach sub-paths carry their own, smaller caps — a route-describe body
+// is a few numbers and a name, a route-request or plan-request one short
+// sentence. Both were
+// spelled twice, a named constant in the dev wrapper and a bare literal in the
+// Lambda, which is the one-copy-per-wrapper shape this module exists to end
+// (decisions § 968).
+export const ROUTE_DESCRIBE_BODY_LIMIT_BYTES = 32 * 1024;
+export const ROUTE_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+export const PLAN_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+// The plate-photo body carries one base64 image: 3 MB decoded is 4 MB of
+// base64, plus a short note. Under the Function URL's 6 MB request ceiling.
+export const PLATE_PHOTO_BODY_LIMIT_BYTES = 4 * 1024 * 1024 + 16 * 1024;
+// A plan id and one short change request; the plan itself is read server-side.
+export const PLAN_EDIT_BODY_LIMIT_BYTES = 16 * 1024;
+// A season description of a few races, capped at 1500 characters by the handler.
+export const SEASON_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+/// /api/coach/assist carries an athlete id, a mode and at most a 500-character
+/// request; the context is read server-side.
+export const COACH_ASSIST_BODY_LIMIT_BYTES = 8 * 1024;
+
 export type BodyDecodeResult =
 	| { ok: true; body: string }
 	| { ok: false; status: 413; error: 'request too large' }

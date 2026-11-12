@@ -60,6 +60,7 @@ Derive `<OWNER>`/`<REPO>` from `gh repo view --json owner,name`. Then apply the 
 
 - **Skip** an issue if any linked PR's `state` is **`OPEN`** (a fix is in flight — e.g. a previous run of this command, or another session) **or `MERGED`** (already fixed; the issue just wasn't auto-closed). Re-fixing either duplicates work.
 - **Do NOT skip** on a PR whose only linked state is **`CLOSED`** (an abandoned fix attempt) — that issue is fair game again. Say in the report that you're re-attempting it and why.
+- **Skip** an issue labelled **`in-flight`**, unless the user named it explicitly (then warn and confirm). The label marks an issue whose work sits in an open PR that does not say `Fixes #N`, because only some of its items are done (a multi-item issue, or a round PR collecting partial work); `closedByPullRequestsReferences` cannot see that. The issue's latest comment names the PR and the items. If the user wants the remaining items, scope the lane to exactly those and say so.
 - **Do NOT skip** on a bare cross-reference / mention alone (a PR saying "related to #N" without a closing keyword). That's why the query uses `closedByPullRequestsReferences`, not `timelineItems(CROSS_REFERENCED_EVENT)`.
 - If the user passed **explicit issue numbers**, still run this check and warn (don't silently proceed) when one already has an open/merged fixing PR — the user may not realise it's already handled; let them confirm before you duplicate it.
 
@@ -80,7 +81,7 @@ Spawn all fixer agents in one message so they run concurrently. Each is a `gener
 > 1. **Reproduce / locate.** Read the issue body. Find the root cause in the code — cite `file:line`. If you cannot reproduce or the fix needs a product decision, stop and report that instead of guessing.
 > 2. **Fix at the root, web-first.** Web is the canonical surface ([decisions §24](../../docs/architecture/decisions.md)). No band-aids, no widened timeouts/retries/skips to hide a bug ([CLAUDE.md § Always recommend the long-term solution](../../CLAUDE.md)).
 > 3. **Honor the invariants:** twin parity (mirror `apps/mobile_android/lib|test` edits into `apps/mobile_ios`, and keep any TS↔Dart parity helper in lockstep — run `shared-library-syncer`); paywall gates; fail-closed defaults; layered resilience on the recording stack; no emojis; zero-comment default.
-> 4. **i18n:** any new user-facing string → all six web locales + all mobile ARBs.
+> 4. **i18n:** any new user-facing string → every web locale (read `apps/web/src/lib/i18n/locales/`, do not assume a count) + all mobile ARBs.
 > 5. **Tests in the SAME commit as the fix** — a pinning unit test (or Playwright e2e for a web UI path, pgtap/Deno for backend) that fails before and passes after. A fix with no test is not done.
 > 6. **Docs:** update whatever the change touches per [CLAUDE.md § Docs hygiene](../../CLAUDE.md) (roadmap/parity/features/per-app CLAUDE.md), and regenerate both type files if you touched schema.
 > 7. **Commit path-scoped, per piece** (`git commit -m "…" -- <paths>`); conventional-commit messages; **no AI attribution** of any kind.
@@ -88,6 +89,8 @@ Spawn all fixer agents in one message so they run concurrently. Each is a `gener
 > 9. **Report back:** branch name, the commits, files touched, test result, and a proposed PR title (conventional-commit format `type(scope): subject`, lowercase, ≤70 chars, no trailing period — the PR title lint gate will reject otherwise) + body ending with `Fixes #N`.
 
 Keep each agent's scope to its one issue so it reads deeply and doesn't wander.
+
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
 
 ### 4. Verify each agent's work before it becomes a PR
 
@@ -97,7 +100,7 @@ Don't trust a "done" — for each returned fix, sanity-check: the cited root cau
 
 Push is a distinct action — the command opening PRs is authorized by the user invoking it, but never `--force` and never touch `main` directly.
 
-**Re-check `closedByPullRequestsReferences` for the issue immediately before opening its PR.** The fan-out takes minutes; another session may have opened a fixing PR in that window. If one appeared, don't open a duplicate — report the collision and drop the fix (or, if yours is clearly better, link both and let the user decide).
+**Re-check `closedByPullRequestsReferences` and the `in-flight` label for the issue immediately before opening its PR.** The fan-out takes minutes; another session may have opened a fixing PR in that window. If one appeared, don't open a duplicate — report the collision and drop the fix (or, if yours is clearly better, link both and let the user decide).
 
 - **Default — one PR per issue** (recommended; matches branch protection + the PR-title lint's one-`type(scope)` rule, and keeps unrelated changes independently reviewable/revertable):
   ```
@@ -112,9 +115,19 @@ Each PR must pass the single required **CI gate** check; report if any open red.
 
 One compact table: issue # → PR URL → test result → CI status. Note any issue that was dropped (not actionable) and why. Clean up finished worktrees (`git worktree remove`) unless a fix is still being iterated.
 
+## Marking work in flight
+
+Whenever a lane's work lands on an open PR that does **not** carry `Fixes #N` for its issue (the issue keeps items open, or the PR is a draft collecting a round), add the `in-flight` label to the issue in the same step as the issue comment that names the PR and the items:
+
+```
+gh issue edit <N> --add-label in-flight
+```
+
+Remove it when that PR merges or is closed (`gh issue edit <N> --remove-label in-flight`), in the same step as ticking the issue's boxes or noting what is still open. An issue that a PR fully fixes needs only `Fixes #N`, not the label.
+
 ## Guardrails
 
-- **Never re-fix an issue that already has an open or merged fixing PR** (step 1's `closedByPullRequestsReferences` filter, re-checked at step 5). This is the anti-duplication invariant — it must survive re-runs and concurrent sessions.
+- **Never re-fix an issue that already has an open or merged fixing PR, or that is labelled `in-flight`** (step 1's `closedByPullRequestsReferences` and label filters, re-checked at step 5). This is the anti-duplication invariant — it must survive re-runs and concurrent sessions.
 - **Fixes only what the issues describe.** No scope creep, no drive-by refactors bundled in.
 - **Never merge the PRs** — opening them is the deliverable; merge is the user's call.
 - **A dropped issue is a fine outcome.** Reporting "3 of 5 were actionable; the other 2 need a product decision" is better than shipping two guesses.

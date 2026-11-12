@@ -1,17 +1,25 @@
-module github.com/Absence0760/project-running/apps/job_worker
+module github.com/Absence0760/threkir/apps/job_worker
 
-go 1.25.11
+// Patch-level floor, not a bare `go 1.27`: the stdlib CVEs Trivy raised
+// against 1.27.1 (CVE-2026-78667, -78669, -97031 and ten more) are fixed in
+// 1.27.2, CVE-2026-111943 (crypto/x509) in 1.27.3, and CVE-2026-97054
+// (net/http MaxBytesReader header race, a server panic) in 1.27.4. CI
+// resolves its toolchain from this line. Each module's Dockerfile builder
+// must name this exact version — check_toolchain_pins.mjs fails the PR
+// otherwise, so the shipped binary and the tested one agree.
+go 1.27.4
 
 require (
-	github.com/alicebob/miniredis/v2 v2.38.0
+	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/coder/websocket v1.8.15
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/redis/go-redis/v9 v9.21.0
-	golang.org/x/image v0.44.0
+	github.com/redis/go-redis/v9 v9.23.0
+	golang.org/x/image v0.47.0
 )
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/atomic v1.12.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 )

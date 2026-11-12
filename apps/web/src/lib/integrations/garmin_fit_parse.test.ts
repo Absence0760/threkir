@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { parseFitBuffer, garminExternalId } from './garmin-fit';
+import { fitTimestampIso, parseFitBuffer, garminExternalId } from './garmin-fit';
 
 const SEMI = 2 ** 31 / 180;
 
@@ -284,9 +284,6 @@ test('parseFitBuffer — treadmill run yields hr_series + empty track (indoor HR
 		[140, 150, 160],
 		'every HR-bearing trackless record lands in hr_series',
 	);
-	// `ts` mirrors the track path: fit-file-parser returns a Date (not an ISO
-	// string) since `timestamps` isn't enabled, so the string-guard leaves it
-	// unset — the HR-zone breakdown falls back to sample-count weighting.
 });
 
 test('parseFitBuffer — trail run preserves sub_sport + activity_type=run (F1)', async () => {
@@ -351,4 +348,103 @@ test('parseFitBuffer — core scalars round-trip', async () => {
 	assert.equal(parsed!.avg_bpm, 152);
 	assert.equal(parsed!.total_ascent_m, 250);
 	assert.equal(parsed!.indoor, false);
+});
+
+/// A session whose `sport` and `sub_sport` carry enum members the decoder's
+/// profile has no name for, so it hands them back as the raw numbers. A
+/// watch newer than the bundled profile produces exactly this file.
+function buildSyntheticUnknownSportFit(): ArrayBuffer {
+	const chunks: Buffer[] = [];
+	function defMsg(localNum: number, globalNum: number, fields: [number, number, number][]) {
+		const def = Buffer.alloc(6 + fields.length * 3);
+		def[0] = 0x40 | localNum;
+		def.writeUInt16LE(globalNum, 3);
+		def[5] = fields.length;
+		fields.forEach(([num, size, base], i) => {
+			def[6 + i * 3] = num;
+			def[6 + i * 3 + 1] = size;
+			def[6 + i * 3 + 2] = base;
+		});
+		chunks.push(def);
+	}
+	const t0 = 1000000000;
+
+	defMsg(0, 0, [[0, 1, 0x00], [4, 4, 0x86], [3, 4, 0x8c]]);
+	{
+		const d = Buffer.alloc(1 + 1 + 4 + 4);
+		d[0] = 0; d[1] = 4; d.writeUInt32LE(t0, 2); d.writeUInt32LE(24680, 6);
+		chunks.push(d);
+	}
+
+	defMsg(1, 18, [
+		[2, 4, 0x86], [5, 1, 0x00], [6, 1, 0x00], [7, 4, 0x86], [9, 4, 0x86],
+	]);
+	{
+		const d = Buffer.alloc(1 + 4 + 1 + 1 + 4 + 4);
+		let o = 0;
+		d[o] = 1; o += 1;
+		d.writeUInt32LE(t0, o); o += 4;
+		d[o] = 250; o += 1; // sport: no name in the profile
+		d[o] = 249; o += 1; // sub_sport: no name in the profile
+		d.writeUInt32LE(1800 * 1000, o); o += 4;
+		d.writeUInt32LE(5000 * 100, o); o += 4;
+		chunks.push(d);
+	}
+
+	const body = Buffer.concat(chunks);
+	const header = Buffer.alloc(14);
+	header[0] = 14;
+	header[1] = 0x10;
+	header.writeUInt16LE(2140, 2);
+	header.writeUInt32LE(body.length, 4);
+	header.write('.FIT', 8, 'ascii');
+	header.writeUInt16LE(crc16(header.subarray(0, 12)), 12);
+	const full = Buffer.concat([header, body]);
+	const crc = Buffer.alloc(2);
+	crc.writeUInt16LE(crc16(full), 0);
+	const out = Buffer.concat([full, crc]);
+	return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
+}
+
+test('parseFitBuffer — an unnamed sport enum degrades, it does not throw', async () => {
+	// The decoder leaves an enum member it cannot name as a number. Reading
+	// it as a string threw out of parseFitBuffer, which loses every activity
+	// in the archive rather than one field of one of them.
+	const parsed = await parseFitBuffer(buildSyntheticUnknownSportFit());
+	assert.ok(parsed, 'the session still parses');
+	assert.equal(parsed!.activity_type, null, 'an unnameable sport claims no activity type');
+	assert.equal(parsed!.sub_sport, null, 'and no discipline');
+	assert.equal(parsed!.indoor, false, 'and is not guessed to be indoor');
+	assert.equal(parsed!.distance_m, 5000);
+	assert.equal(parsed!.duration_s, 1800);
+});
+
+// fit-file-parser decodes every FIT `date_time` into a JS Date. The record
+// reader only accepted a string, so no FIT import ever carried a per-point
+// time: no splits, no GAP, and no embedded bests. FIT time is seconds since
+// 1989-12-31T00:00:00Z, so the fixture's t0 = 1e9 is 2021-09-08T01:46:40Z.
+const FIT_T0_ISO = '2021-09-08T01:46:40.000Z';
+
+test('parseFitBuffer — every GPS record carries its FIT timestamp as an ISO string', async () => {
+	const parsed = await parseFitBuffer(buildSyntheticTrailFit());
+	assert.deepEqual(
+		parsed!.track.map((p) => p.ts),
+		[FIT_T0_ISO, '2021-09-08T01:47:40.000Z'],
+	);
+});
+
+test('parseFitBuffer — trackless HR samples carry their timestamps too', async () => {
+	const parsed = await parseFitBuffer(buildSyntheticIndoorFit());
+	assert.deepEqual(
+		parsed!.hr_series.map((s) => s.ts),
+		[FIT_T0_ISO, '2021-09-08T01:46:41.000Z', '2021-09-08T01:46:42.000Z'],
+	);
+});
+
+test('fitTimestampIso — a Date or an ISO string becomes ISO; anything unusable is null', () => {
+	assert.equal(fitTimestampIso(new Date(Date.UTC(2026, 0, 2, 3, 4, 5))), '2026-01-02T03:04:05.000Z');
+	assert.equal(fitTimestampIso('2026-01-02T03:04:05Z'), '2026-01-02T03:04:05Z');
+	for (const bad of [new Date(Number.NaN), 'not a date', 1_000_000_000, null, undefined, {}]) {
+		assert.equal(fitTimestampIso(bad), null, String(bad));
+	}
 });

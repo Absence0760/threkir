@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 
@@ -26,10 +26,11 @@ test.describe('/routes/new — AI route request', () => {
 	}
 
 	test('a successful extraction fills the generator form + shows what was applied', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		let called = false;
-		await page.route('**/api/coach/route-request', async (route) => {
+		await mockRoute(page, '**/api/coach/route-request', async (route) => {
 			called = true;
 			await route.fulfill({
 				status: 200,
@@ -62,8 +63,50 @@ test.describe('/routes/new — AI route request', () => {
 		// The "applied" panel surfaces the non-form constraints.
 		await expect(page.locator('.ai-request-applied')).toBeVisible();
 		await expect(page.locator('.ai-request-applied')).toContainText(/Out and back/i);
-		await expect(page.locator('.ai-request-applied')).toContainText(/Avoid main roads/i);
+		// This body carries `avoidHighways` and no `preference`, which is the
+		// shape a coach Lambda deployed before the preference field returns —
+		// the client casts the response without re-validating it, so the page's
+		// fallback is what has to name the preference here.
+		await expect(page.locator('.ai-request-applied')).toContainText(/Quiet roads/i);
+		await expect(page.getByTestId('route-pref-quiet')).toBeChecked();
 		expect(called).toBe(true);
+	});
+
+	test('an extracted preference drives the control, and outranks avoidHighways', async ({
+		page,
+		mockRoute
+	}) => {
+		// The current server derives `preference` itself, so this is the live
+		// path; a body carrying both must follow the narrower field, or a
+		// request for a scenic route silently becomes a request for a quiet one.
+		await mockRoute(page, '**/api/coach/route-request', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					constraints: {
+						distanceM: 8000,
+						shape: 'loop',
+						surface: 'trail',
+						avoidHighways: true,
+						preference: 'scenic',
+						assumptions: []
+					}
+				})
+			});
+		});
+
+		await openDistancePanel(page);
+		await page
+			.getByPlaceholder(/a flat 10k loop avoiding main roads/i)
+			.fill('an 8k loop through the park');
+		await page.getByRole('button', { name: /^Fill$/i }).click();
+
+		await expect(page.locator('.ai-request-applied')).toContainText(/Scenic/i, {
+			timeout: 10_000
+		});
+		await expect(page.getByTestId('route-pref-scenic')).toBeChecked();
+		await expect(page.getByTestId('route-pref-quiet')).not.toBeChecked();
 	});
 
 	test('a 403 shows the Pro upsell and leaves the manual controls usable', async ({ page }) => {
@@ -109,5 +152,34 @@ test.describe('/routes/new — AI route request', () => {
 		// No "applied" panel on failure; the manual controls are untouched.
 		await expect(page.locator('.ai-request-applied')).toHaveCount(0);
 		await expect(page.locator('.target-slider')).toBeVisible();
+	});
+
+	test('a map-picked start is never sent as the location hint', async ({ page, mockRoute }) => {
+		// The builder labels a picked point with its own coordinates; the
+		// consent copy promises the assistant never gets them.
+		let sentLabel: unknown = 'not sent';
+		await mockRoute(page, '**/api/coach/route-request', async (route) => {
+			sentLabel = (route.request().postDataJSON() as { location_label?: unknown }).location_label;
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ constraints: { distanceM: 5000, assumptions: [] } })
+			});
+		});
+
+		await openDistancePanel(page);
+		await page.waitForFunction(() => '__routeBuilderPage' in window);
+		await page.evaluate(() => {
+			(
+				window as unknown as {
+					__routeBuilderPage: { setStartPoint: (p: { lat: number; lng: number }) => void };
+				}
+			).__routeBuilderPage.setStartPoint({ lat: 51.5074, lng: -0.1278 });
+		});
+
+		await page.getByPlaceholder(/a flat 10k loop avoiding main roads/i).fill('a 5k loop');
+		await page.getByRole('button', { name: /^Fill$/i }).click();
+		await expect(page.locator('.ai-request-applied')).toBeVisible({ timeout: 10_000 });
+		expect(sentLabel).toBeNull();
 	});
 });

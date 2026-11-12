@@ -1,23 +1,38 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createManualRun, fetchRoutes } from '$lib/core/data';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { privacyDefaultToIsPublic } from '$lib/social/run_visibility';
-	import { supabase } from '$lib/core/supabase';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import type { ActivityType, Route } from '$lib/types';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { audienceSharingEnabled, createManualRun, fetchRoutes } from '#lib/core/data.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { audienceOf, privacyDefaultToAudience } from '#lib/social/run_visibility.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import type { ActivityType, Route } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
+	import { newRouteHref } from '#lib/routes/route_return.ts';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
+	import {
+		HOURS_MAX_DIGITS,
+		MAX_RUN_DURATION_S,
+		MINUTES_SECONDS_MAX_DIGITS,
+		isImplausiblySlow,
+		validateManualDuration,
+		type ManualDurationError,
+	} from '#lib/runs/run_duration.ts';
 
 	interface Props {
 		oncreated?: (run: { id: string }) => void;
 		oncancel?: () => void;
+		// A route the user just built from the empty picker's "Build one"
+		// link, handed back by the builder as `?route=<id>`.
+		initialRouteId?: string | null;
 	}
-	let { oncreated, oncancel }: Props = $props();
+	let { oncreated, oncancel, initialRouteId = null }: Props = $props();
 
 	const METRES_PER_MILE = 1609.344;
 
@@ -29,91 +44,162 @@
 
 	let unit = $state<'km' | 'mi'>('km');
 	let startedAt = $state(nowLocalIso());
-	let durationMin = $state(30);
-	let durationSec = $state(0);
+	// Text, not number, inputs: `type="number"` honoured neither `max` nor a
+	// width, so "12333" in a box that meant minutes reached the save as-is
+	// (issue #1300 § 5). The parity pair grades the three strings.
+	let durationH = $state('');
+	let durationMin = $state('30');
+	let durationSec = $state('');
 	let distance = $state(5);
 	let activityType = $state<ActivityType>('run');
 	let notes = $state('');
 	let routeId = $state('');
-	let routes = $state<Route[]>([]);
+	let routes = $state<RouteListItem[]>([]);
+	let routesLoaded = $state(false);
 	let submitting = $state(false);
-	// Seeded from the user's privacy_default on mount so the toggle reflects
+	// Seeded from the user's privacy_default on mount so the control reflects
 	// their standing preference; a per-run change overrides it for this run.
 	// `touched` guards against the async settings load (below) clobbering a
-	// choice the user made before it resolved.
-	let isPublic = $state(false);
+	// choice the user made before it resolved. While audience sharing is off
+	// the control is the old public checkbox, and a `followers` default still
+	// writes followers_only — the server stores that as owner-only until the
+	// feature is switched on (decisions § 1875).
+	type RunAudience = 'private' | 'followers' | 'public';
+	let audience = $state<RunAudience>('private');
 	let touched = $state(false);
+	let audienceSharingOn = $state(false);
 
 	const dirty = trackDirty(() => ({
 		unit,
 		startedAt,
+		durationH,
 		durationMin,
 		durationSec,
 		distance,
 		activityType,
 		notes,
 		routeId,
-		isPublic,
+		audience,
 	}));
 
 	let distanceLabel = $derived(m('runEditor.distanceLabel', { unit }));
 
+	// The unit + privacy-default seeds land after the form is built — the
+	// privacy one after two network round trips, by which time the user may
+	// already be typing — so each goes through `dirty.seed`, which keeps them
+	// from reading as edits without absorbing the edits that got there first.
 	onMount(async () => {
-		unit = getUnit();
+		dirty.seed(() => {
+			unit = getUnit();
+		});
 		try {
 			// getUser() (awaited) is reliable on first paint; the reactive
 			// auth store may not be hydrated yet when onMount fires.
 			const { data: authData } = await supabase.auth.getUser();
 			const userId = authData.user?.id;
 			if (userId) {
-				const settings = await loadSettings(userId);
-				const seeded = privacyDefaultToIsPublic(
-					effective<string>(settings, 'privacy_default', 'followers')
-				);
-				if (!touched) isPublic = seeded;
+				const [settings, sharingOn] = await Promise.all([
+					loadSettings(userId),
+					audienceSharingEnabled(),
+				]);
+				audienceSharingOn = sharingOn;
+				const seeded = audienceOf(
+					privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'private')),
+					0,
+				) as RunAudience;
+				dirty.seed(() => {
+					if (!touched) audience = seeded;
+				});
 			}
 		} catch (_) {
-			isPublic = false;
+			dirty.seed(() => {
+				if (!touched) audience = 'private';
+			});
 		}
 		try {
 			routes = await fetchRoutes();
 		} catch (_) {
 			routes = [];
 		}
-		// The unit + privacy-default seeds land after the form is built, so they
-		// would otherwise read as user edits and prompt on every exit. `touched`
-		// is the same flag that stops the seed clobbering a real choice.
-		if (!touched) dirty.rebaseline();
+		routesLoaded = true;
+		const built = initialRouteId ? routes.find((r) => r.id === initialRouteId) : undefined;
+		if (built) {
+			dirty.seed(() => {
+				routeId = built.id;
+				if (built.distance_m > 0) {
+					const perUnitMetres = unit === 'mi' ? METRES_PER_MILE : 1000;
+					distance = Math.round((built.distance_m / perUnitMetres) * 100) / 100;
+				}
+			});
+		}
 	});
 
-	async function handleSubmit(e: Event) {
+	function durationErrorCopy(error: ManualDurationError): string {
+		switch (error) {
+			case 'invalid':
+				return m('runEditor.durationInvalid');
+			case 'minutesOutOfRange':
+				return m('runEditor.durationMinutesRange');
+			case 'secondsOutOfRange':
+				return m('runEditor.durationSecondsRange');
+			case 'tooLong':
+				return m('runEditor.durationTooLong', { hours: MAX_RUN_DURATION_S / 3600 });
+			case 'zero':
+				return m('runEditor.distanceDurationRequired');
+		}
+	}
+
+	let slowConfirmOpen = $state(false);
+	let pending = $state<{ startedAt: string; durationS: number; distanceM: number } | null>(null);
+
+	function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (submitting) return;
-		const totalSec =
-			Math.max(0, Math.floor(durationMin)) * 60 + Math.max(0, Math.floor(durationSec));
+		const duration = validateManualDuration(durationH, durationMin, durationSec);
+		if (!duration.ok) {
+			showToast(durationErrorCopy(duration.error), 'error');
+			return;
+		}
 		const perUnitMetres = unit === 'mi' ? METRES_PER_MILE : 1000;
 		const distanceM = Math.max(0, distance * perUnitMetres);
-		if (totalSec <= 0 || distanceM <= 0) {
+		if (distanceM <= 0) {
 			showToast(m('runEditor.distanceDurationRequired'), 'error');
 			return;
 		}
+		const start = new Date(startedAt);
+		if (start.getTime() > Date.now()) {
+			showToast(m('runEditor.startInFuture'), 'error');
+			return;
+		}
+		pending = { startedAt: start.toISOString(), durationS: duration.seconds, distanceM };
+		if (isImplausiblySlow(duration.seconds, distanceM)) {
+			slowConfirmOpen = true;
+			return;
+		}
+		void save();
+	}
+
+	async function save() {
+		const run = pending;
+		slowConfirmOpen = false;
+		if (run === null || submitting) return;
 		submitting = true;
 		try {
-			const iso = new Date(startedAt).toISOString();
 			const { id } = await createManualRun({
-				startedAt: iso,
-				durationS: totalSec,
-				distanceM,
+				startedAt: run.startedAt,
+				durationS: run.durationS,
+				distanceM: run.distanceM,
 				activityType,
 				notes: notes.trim() || null,
 				routeId: routeId || null,
-				isPublic
+				isPublic: audience === 'public',
+				followersOnly: audience === 'followers'
 			});
 			showToast(m('runEditor.runAdded'), 'success');
 			dirty.rebaseline();
 			oncreated?.({ id });
 		} catch (err) {
-			showToast(m('runEditor.addRunFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+			showToast(m('runEditor.addRunFailed', { error: errorCopy(err, m, 'runEditor.addRunFailed') }), 'error');
 		} finally {
 			submitting = false;
 		}
@@ -123,14 +209,28 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <form class="editor-form run-editor" onsubmit={handleSubmit}>
-	<label class="field">
-		<span class="field-label">{m('runEditor.startedAt')}</span>
-		<input type="datetime-local" bind:value={startedAt} required class="input" />
-	</label>
+	<div class="field">
+		<label>
+			<span class="field-label">{m('runEditor.startedAt')}</span>
+			<input
+				type="datetime-local"
+				bind:value={startedAt}
+				required
+				class="input"
+				aria-describedby="run-started-at-hint"
+			/>
+		</label>
+		<span class="field-hint" id="run-started-at-hint">{m('runEditor.startedAtHint')}</span>
+	</div>
 
 	<fieldset class="field activity-field">
 		<legend class="field-label">{m('runEditor.activity')}</legend>
-		<div class="chip-row" role="radiogroup" aria-label={m('runEditor.activity')}>
+		<div
+			class="chip-row"
+			role="radiogroup"
+			aria-label={m('runEditor.activity')}
+			aria-describedby="run-activity-hint"
+		>
 			{#each ACTIVITY_TYPES as a}
 				<button
 					type="button"
@@ -144,60 +244,133 @@
 				</button>
 			{/each}
 		</div>
+		<span class="field-hint" id="run-activity-hint">{m('runEditor.activityHint')}</span>
 	</fieldset>
 
-	<div class="row">
-		<label class="field">
-			<span class="field-label">{distanceLabel}</span>
-			<input type="number" min="0" step="0.01" bind:value={distance} required class="input" />
-		</label>
-		<label class="field">
-			<span class="field-label">{m('runEditor.durationMin')}</span>
-			<input type="number" min="0" step="1" bind:value={durationMin} required class="input" />
-		</label>
-		<label class="field">
-			<span class="field-label">{m('runEditor.durationSec')}</span>
-			<input type="number" min="0" max="59" step="1" bind:value={durationSec} class="input" />
-		</label>
+	<div class="field">
+		<div class="row">
+			<label class="field">
+				<span class="field-label">{distanceLabel}</span>
+				<input
+					type="number"
+					min="0"
+					step="0.01"
+					bind:value={distance}
+					required
+					class="input"
+					aria-describedby="run-effort-hint"
+				/>
+			</label>
+			<label class="field">
+				<span class="field-label">{m('runEditor.durationHours')}</span>
+				<input
+					type="text"
+					inputmode="numeric"
+					maxlength={HOURS_MAX_DIGITS}
+					bind:value={durationH}
+					class="input"
+					aria-describedby="run-effort-hint"
+					data-testid="run-editor-hours"
+				/>
+			</label>
+			<label class="field">
+				<span class="field-label">{m('runEditor.durationMin')}</span>
+				<input
+					type="text"
+					inputmode="numeric"
+					maxlength={MINUTES_SECONDS_MAX_DIGITS}
+					bind:value={durationMin}
+					class="input"
+					aria-describedby="run-effort-hint"
+					data-testid="run-editor-minutes"
+				/>
+			</label>
+			<label class="field">
+				<span class="field-label">{m('runEditor.durationSec')}</span>
+				<input
+					type="text"
+					inputmode="numeric"
+					maxlength={MINUTES_SECONDS_MAX_DIGITS}
+					bind:value={durationSec}
+					class="input"
+					aria-describedby="run-effort-hint"
+					data-testid="run-editor-seconds"
+				/>
+			</label>
+		</div>
+		<span class="field-hint" id="run-effort-hint">{m('runEditor.effortHint')}</span>
 	</div>
 
-	<label class="field">
-		<span class="field-label">{m('runEditor.routeOptional')}</span>
-		<select bind:value={routeId} class="input">
-			<option value="">{m('runEditor.noRoute')}</option>
-			{#each routes as r (r.id)}
-				<option value={r.id}>{r.name}</option>
-			{/each}
-		</select>
-		<span class="field-hint">
-			{m('runEditor.routeHint')}
+	<div class="field">
+		<label>
+			<span class="field-label">{m('runEditor.routeOptional')}</span>
+			<select bind:value={routeId} class="input" aria-describedby="run-route-hint">
+				<option value="">{m('runEditor.noRoute')}</option>
+				{#each routes as r (r.id)}
+					<option value={r.id}>{r.name}</option>
+				{/each}
+			</select>
+		</label>
+		<span class="field-hint" id="run-route-hint">
+			{#if routesLoaded && routes.length === 0}
+				{m('runEditor.noSavedRoutes')}
+				<a href={newRouteHref('/runs/new')} data-testid="run-editor-build-route"
+					>{m('runEditor.buildRoute')}</a
+				>
+			{:else}
+				{m('runEditor.routeHint')}
+			{/if}
 		</span>
-	</label>
+	</div>
 
-	<label class="field">
-		<span class="field-label">{m('runEditor.notesOptional')}</span>
-		<textarea
-			bind:value={notes}
-			rows="3"
-			class="input"
-			placeholder={m('runEditor.notesPlaceholder')}
-		></textarea>
-	</label>
+	<div class="field">
+		<label>
+			<span class="field-label">{m('runEditor.notesOptional')}</span>
+			<textarea
+				bind:value={notes}
+				rows="3"
+				class="input"
+				placeholder={m('runEditor.notesPlaceholder')}
+				aria-describedby="run-notes-hint"
+			></textarea>
+		</label>
+		<span class="field-hint" id="run-notes-hint">{m('runEditor.notesHint')}</span>
+	</div>
 
-	<label class="field toggle-field">
-		<input
-			type="checkbox"
-			bind:checked={isPublic}
-			onchange={() => (touched = true)}
-			class="toggle-input"
-		/>
-		<span>
-			<span class="field-label toggle-label">{m('runEditor.makePublic')}</span>
-			<span class="field-hint">
-				{m('runEditor.makePublicHint')}
+	{#if audienceSharingOn}
+		<label class="field">
+			<span class="field-label">{m('audience.title')}</span>
+			<select
+				bind:value={audience}
+				onchange={() => (touched = true)}
+				aria-describedby="run-audience-hint"
+				data-testid="run-editor-audience"
+			>
+				<option value="private">{m('audience.levelPrivate')}</option>
+				<option value="followers">{m('audience.levelFollowers')}</option>
+				<option value="public">{m('audience.levelPublic')}</option>
+			</select>
+			<span class="field-hint" id="run-audience-hint">{m('runEditor.audienceHint')}</span>
+		</label>
+	{:else}
+		<label class="field toggle-field">
+			<input
+				type="checkbox"
+				checked={audience === 'public'}
+				onchange={(e) => {
+					touched = true;
+					audience = e.currentTarget.checked ? 'public' : 'private';
+				}}
+				class="toggle-input"
+			/>
+			<span>
+				<span class="field-label toggle-label">{m('runEditor.makePublic')}</span>
+				<span class="field-hint">
+					{m('runEditor.makePublicHint')}
+				</span>
 			</span>
-		</span>
-	</label>
+		</label>
+	{/if}
 
 	<div class="actions">
 		{#if oncancel}
@@ -216,6 +389,20 @@
 	</div>
 </form>
 
+<ConfirmDialog
+	open={slowConfirmOpen}
+	title={m('runEditor.slowConfirmTitle')}
+	message={m('runEditor.slowConfirmBody')}
+	confirmLabel={m('runEditor.slowConfirmSave')}
+	cancelLabel={m('runEditor.slowConfirmFix')}
+	onconfirm={save}
+	oncancel={() => {
+		slowConfirmOpen = false;
+		pending = null;
+	}}
+	data-testid="run-editor-slow-confirm"
+/>
+
 <style>
 	.run-editor {
 		gap: 1.1rem;
@@ -233,7 +420,7 @@
 	.toggle-input { margin-top: 0.2rem; }
 	.activity-field { border: 0; padding: 0; margin: 0; }
 	.activity-field .field-label { padding: 0; }
-	.row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.75rem; }
+	.row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0.75rem; }
 	@media (max-width: 30rem) {
 		.row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}

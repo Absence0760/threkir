@@ -42,6 +42,12 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Firebase config dropped in by an operator (followups.md "Push notifications").
+# This repo is PUBLIC; these files carry project + client identifiers and are
+# not reviewed before a `git add`, so they stay untracked by default.
+google-services.json
+GoogleService-Info.plist
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

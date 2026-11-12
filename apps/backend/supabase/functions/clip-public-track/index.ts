@@ -1,11 +1,38 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+// This is the one function that still loads supabase-js from esm.sh, and
+// `?target=deno` is load-bearing, not cosmetic. Every stack-using CI job's
+// setup probes THIS function's 405 to prove the edge runtime really serves, so
+// its worker has to boot without reaching registry.npmjs.org. esm.sh's default
+// (denonext) build imports `node:buffer` / `node:process`, whose types the
+// runtime resolves from npm before a worker can boot (decisions § 699); the
+// `npm:@supabase/supabase-js` specifier every other function uses is fetched
+// from npm outright, measured to fail the same way with npm unreachable, type-
+// only imports included (decisions § 2341). So nothing on this module's graph
+// may import from `npm:` either, which is why the row types come from
+// `database_types.ts` rather than `database.ts`.
+// `_shared/offline_worker_boot_guard.test.ts` walks the graph and pins both.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0?target=deno';
+import type { Database } from '../_shared/database_types.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import { isValidUuid } from '../_shared/webhook_security.ts';
+import { withCors } from '../_shared/cors.ts';
+import { isValidUuid } from '../_shared/input_validation.ts';
+import { findViewableRun } from './viewable_run.ts';
+import { withholdFromNonOwner } from './non_owner_points.ts';
+import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import {
+  mergeSmoothedSidecar,
+  needsSmoothedSidecar,
+  sidecarNamedFor,
+  sha256Hex,
+  smoothedSidecarPath,
+} from '../_shared/smoothed_sidecar.ts';
 
-// Serves a privacy-zone-clipped track for a public run. Replaces
+// Serves a privacy-zone-clipped track for a run the caller may see but does
+// not own: a public run, (audience sharing, 20270802000003) a run whose
+// followers level or named-person grant admits the caller, or (coach run map,
+// 20270822000011) a run of an athlete the caller actively coaches. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
 // migration 20260619_001 dropped the public-runs Storage policy).
 //
@@ -17,11 +44,14 @@ import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 //      private rows get null and we 404.
 //   3. Download the gzipped track via the service-role client (the
 //      anon Storage policy was just removed).
-//   4. If the caller is not the owner, route the points through
-//      clip_track_for_user. Owners receive the unclipped track.
-//   5. Return the points as JSON.
+//   4. Merge the job_worker's smoothed-position sidecar onto the points
+//      when it names this exact track (watch runs, recomputed runs).
+//   5. If the caller is not the owner, route the points through
+//      clip_track_for_user and withhold the per-point keys that measure the
+//      run from its start (`distM`). Owners receive the unclipped track.
+//   6. Return the points as JSON.
 
-Deno.serve(withSentry('clip-public-track', async (req: Request) => {
+Deno.serve(withCors(withSentry('clip-public-track', async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -37,7 +67,7 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
     return Response.json({ error: 'missing authorization' }, { status: 401 });
   }
 
-  const userClient = createClient(
+  const userClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     publishableKey(),
     { global: { headers: { Authorization: authHeader } } },
@@ -70,7 +100,7 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // download + a clip walk over up to 50k points). The admin client
   // is required for the anon path because the user-context guard
   // from migration 20260616_001 rejects synthetic IP-derived keys.
-  const adminClient = createClient(
+  const adminClient = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     secretKey(),
   );
@@ -92,50 +122,68 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
     if (denied) return denied;
   }
 
-  // Look the row up via the column-redacted `public_runs` view rather
-  // than the base `runs` table. The base-table SELECT policy
-  // `public runs are readable by anyone` was dropped in 20260701_001,
-  // so a non-owner querying `runs.id = ?` now returns zero rows and
-  // every clip request would 404. The view's underlying definer-owned
-  // query bypasses runs RLS, returns only `is_public = true` rows,
-  // and exposes the two columns we need (user_id, is_public). The
-  // `track_url` column was removed from the view in migration
-  // 20260924_001 per audit/storage (2026-05-25); we derive the path
-  // from `user_id + runId` below using the same shape the
-  // 20260621_001 CHECK constraint enforces on writes. Owner reads
-  // still return the row because the view is is-public-filtered
-  // and the EF only ever runs on public runs (the share page
-  // renders nothing for a private run).
-  const { data: run, error: runErr } = await userClient
-    .from('public_runs')
-    .select('user_id, is_public')
-    .eq('id', runId)
-    .maybeSingle();
-  if (runErr || !run) {
+  // Look the row up through the column-redacted non-owner views rather than
+  // the base `runs` table, whose public SELECT policy was dropped in
+  // 20260701_001. `public_runs` first; then, for an identified caller only,
+  // `shared_runs` — the non-public runs whose audience admits THIS caller
+  // (20270802000003). Both run as their owner, filter on their own WHERE, and
+  // expose the columns read here (user_id, is_public, and the redacted
+  // metadata the smoothed-sidecar hash reads). `track_url` is in neither
+  // (20260924_001), so the Storage path is derived below from user_id + runId,
+  // the shape the 20260621_001 CHECK enforces on writes. Neither view returns
+  // the caller's own private run; the owner reads that straight from Storage.
+  const lookup = await findViewableRun(
+    async (view) => {
+      const { data, error } = await userClient
+        .from(view)
+        .select('user_id, is_public, metadata')
+        .eq('id', runId)
+        .maybeSingle();
+      return { data, error };
+    },
+    callerId,
+  );
+  if (lookup.kind === 'failed') {
+    return Response.json({ error: 'run lookup failed' }, { status: 502 });
+  }
+  const run = lookup.kind === 'found' ? lookup.run : null;
+  const audience = lookup.kind === 'found' ? lookup.audience : null;
+  // `user_id` is NOT NULL on `runs`, but both reads are views and Postgres
+  // cannot carry the constraint through one, so the generated row type says
+  // `string | null` and every use below has to answer for it. Both would fail
+  // late and wrong: the Storage path would read `null/<id>.json.gz` and 502,
+  // and `clip_track_for_user` takes a NOT NULL owner so the clip would 500
+  // AFTER the track was already decompressed in memory. Fail closed to the
+  // same 404 the missing-row branch gives — a row we cannot attribute to an
+  // owner is a row we will not serve a track for.
+  if (!run || run.user_id === null) {
     return Response.json({ error: 'not found' }, { status: 404 });
   }
+  const ownerId = run.user_id;
 
   // Derive the Storage path directly from the row owner + runId.
   // Matches the {user_id}/{run_id}.json.gz shape enforced by
   // CHECK on runs.track_url (migration 20260621_001).
-  const trackPath = `${run.user_id}/${runId}.json.gz`;
+  const trackPath = `${ownerId}/${runId}.json.gz`;
 
-  // Explicit visibility gate. RLS already filters this row lookup —
-  // a non-owner asking for a private run lands in the !run branch
-  // above. But the implicit RLS gate is fragile: if a future policy
-  // change loosens runs SELECT (e.g. club-visibility) the EF would
-  // silently start serving non-public rows to clients that
-  // shouldn't get them. Make the contract loud instead — a
-  // non-owner caller must be hitting an explicitly-public run.
-  // audit/auth (2026-05-25) flagged the fragile null!==<uuid>
-  // shape: it works today because callerId is `string | null`
-  // and a null compared with any UUID falls to the non-owner
-  // branch, but a future refactor that normalises callerId to
-  // `''` or a sentinel would silently treat an anon caller as
-  // the owner of a private run. The explicit null check makes
-  // the contract loud.
-  const isOwnerBypass = callerId !== null && callerId === run.user_id;
-  if (!run.is_public && !isOwnerBypass) {
+  // Explicit visibility gate. The views already filter this lookup — a
+  // non-owner asking for a private run they are not in the audience of lands
+  // in the !run branch above. But that implicit gate is fragile: if a future
+  // change loosened one of the views, the EF would silently start serving
+  // rows to clients that shouldn't get them. Make the contract loud instead —
+  // a non-owner caller must be hitting a run that is explicitly public, or one
+  // `shared_runs` returned for this caller. `callerId` is `string | null`; the
+  // explicit null test keeps a future refactor that normalises it to `''` or a
+  // sentinel from ever reading an anon caller as the owner of a private run
+  // (audit/auth 2026-05-25).
+  const isOwnerBypass = callerId !== null && callerId === ownerId;
+  const isAudienceMember = audience === 'shared' && callerId !== null && callerId !== ownerId;
+  // A coach is admitted only by a row `coached_runs` returned for this caller:
+  // an active link, read as the caller, with the gate open (decisions § 1968).
+  // The coach's `runs` RLS policy would also return the row, which is why the
+  // base table is never read here — it carries no gate and no clip contract.
+  const isActiveCoach = audience === 'coach' && callerId !== null && callerId !== ownerId;
+  if (!run.is_public && !isAudienceMember && !isActiveCoach && !isOwnerBypass) {
     return Response.json({ error: 'not found' }, { status: 404 });
   }
 
@@ -155,11 +203,22 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   if (gz.byteLength > 5 * 1024 * 1024) {
     return Response.json({ error: 'track too large' }, { status: 502 });
   }
-  const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
-    .DecompressionStream('gzip');
-  const stream = new Response(gz).body!.pipeThrough(ds);
-  const txt = await new Response(stream).text();
-  const points = JSON.parse(txt);
+  // Both steps throw on a blob that is not gzip, or that inflates to
+  // something that is not JSON — and both used to throw PAST the handler, so
+  // `withSentry` answered 500 and the `!Array.isArray` refusal below was dead
+  // for exactly the input it was written for. A stored object we cannot read
+  // is an upstream fault, not a caller fault: 502, like the download failure
+  // above it. Past the inflated-size cap is the same refusal as past the
+  // compressed one above.
+  let points: unknown;
+  let trackBytes: Uint8Array<ArrayBuffer>;
+  try {
+    trackBytes = await gunzip(gz);
+    points = JSON.parse(new TextDecoder().decode(trackBytes));
+  } catch (e) {
+    const error = e instanceof InflateLimitError ? 'track too large' : 'malformed track';
+    return Response.json({ error }, { status: 502 });
+  }
   if (!Array.isArray(points)) {
     return Response.json({ error: 'malformed track' }, { status: 502 });
   }
@@ -171,8 +230,36 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
     return Response.json({ error: 'track too long' }, { status: 502 });
   }
 
-  if (callerId === run.user_id) {
-    return Response.json({ points });
+  // The smoother's positions for a track whose waypoints carry none of
+  // their own (a watch run, an old run the server recomputed) live in a
+  // sidecar the job_worker writes beside the track. It is merged HERE,
+  // before the owner return and before the clip, so the non-owner clip sees
+  // every smoothed position the viewer will draw and its either-pair-in-zone
+  // rule (20270719000005) trims a fix whose smoothed position sits in a zone.
+  // Fetched only when the row's metadata names a sidecar for these exact
+  // bytes (smoothed_sidecar_sha256), so a run without one costs no Storage
+  // request, and merged only when the sidecar's own fingerprint agrees; any
+  // failure to read it leaves the raw line, which is what the track always was.
+  const withSmoothedSidecar = async <T,>(pts: T[]): Promise<T[]> => {
+    try {
+      const sha256 = await sha256Hex(trackBytes);
+      if (!sidecarNamedFor(run.metadata, sha256)) return pts;
+      const { data: scBlob, error: scErr } = await adminClient.storage
+        .from('runs')
+        .download(smoothedSidecarPath(ownerId, runId));
+      if (scErr || !scBlob) return pts;
+      const scGz = new Uint8Array(await scBlob.arrayBuffer());
+      if (scGz.byteLength > 5 * 1024 * 1024) return pts;
+      const sidecar = JSON.parse(new TextDecoder().decode(await gunzip(scGz)));
+      return mergeSmoothedSidecar(pts, sidecar, { points: pts.length, sha256 });
+    } catch {
+      return pts;
+    }
+  };
+  const served = needsSmoothedSidecar(points) ? await withSmoothedSidecar(points) : points;
+
+  if (callerId === ownerId) {
+    return Response.json({ points: served });
   }
 
   // Go through the service-role admin client for the clip RPC.
@@ -186,10 +273,18 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // never used for this read, only the row lookup above.
   const { data: clipped, error: clipErr } = await adminClient.rpc(
     'clip_track_for_user',
-    { target_user_id: run.user_id, points },
+    { target_user_id: ownerId, points: served },
   );
   if (clipErr) {
     return Response.json({ error: 'clip failed' }, { status: 500 });
   }
-  return Response.json({ points: clipped ?? [] });
-}));
+  const clippedPoints = Array.isArray(clipped) ? clipped : [];
+  return Response.json({ points: withholdFromNonOwner(clippedPoints) });
+})));
+
+/// Inflate a stored track or sidecar, bounded on the OUTPUT: the 5 MB cap on
+/// the compressed blob does not stop a ~1000:1 gzip from filling the isolate's
+/// heap before the point-count cap is reached (gunzip_capped.ts).
+function gunzip(gz: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  return gunzipCapped(gz);
+}

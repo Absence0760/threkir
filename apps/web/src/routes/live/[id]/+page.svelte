@@ -1,36 +1,62 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '$lib/routes/map-style.svelte';
-	import { mapLiveLine } from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { formatPace, formatDistance } from '$lib/core/mock-data';
-	import { formatDuration } from '$lib/format/time';
-	import { fetchRouteById, fetchRouteMarkers, setRunExpectedReturn } from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { buildRoadbook, type RoadbookLeg } from '$lib/routes/roadbook';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+	import { mapLiveLine } from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { formatPace, formatDistance } from '#lib/core/mock-data.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
-		distanceAlongRoute,
+		fetchRouteById,
+		fetchRouteMarkers,
+		fetchSafetyLivePings,
+		fetchSafetyLiveRun,
+		setRunExpectedReturn,
+	} from '#lib/core/data.ts';
+	import { parseSafetyLinkToken, SAFETY_LINK_POLL_MS } from '#lib/safety/safety_live_link.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { buildRoadbook, type RoadbookLeg } from '#lib/routes/roadbook.ts';
+	import {
 		polylineLengthMetres,
+		progressAlongRoute,
 		type RouteWaypoint,
-	} from '$lib/routes/route_geometry';
-	import { nextCutoffEta } from '$lib/runs/live_cutoff_eta';
-	import { supabase } from '$lib/core/supabase';
-	import { TABLES } from '$lib/core/schema';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/route_geometry.ts';
+	import { nextCutoffEta } from '#lib/runs/live_cutoff_eta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { TABLES } from '#lib/core/schema.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
 		isLiveHubConfigured,
 		fetchLiveSnapshot,
 		openLiveWebSocket,
 		type LivePing,
-	} from '$lib/runs/live_hub';
-	import { runnerHandle, shouldRevealDisplayName } from '$lib/social/runner_handle';
-	import { freshnessFor, type Freshness } from '$lib/runs/live_freshness';
-	import { isFinishedStale, statusAfterHydrate } from '$lib/runs/live_spectator_status';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/runs/live_hub.ts';
+	import { runnerHandle, shouldRevealDisplayName } from '#lib/social/runner_handle.ts';
+	import {
+		freshnessFor,
+		liveElapsedS,
+		raceClockS,
+		type Freshness,
+	} from '#lib/runs/live_freshness.ts';
+	import { motionFor } from '#lib/safety/live_motion.ts';
+	import {
+		isFinishedStale,
+		LIVE_POLL_FALLBACK_MS,
+		statusAfterHydrate,
+		statusOnPing,
+		type SpectatorStatus,
+	} from '#lib/runs/live_spectator_status.ts';
+	import {
+		insertPing,
+		pingTimeMs,
+		traceLineCoords,
+		type TracePing,
+	} from '#lib/runs/live_trace.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// audit/cookie-consent (2026-05-25): MapTiler tile fetches log
 	// requester IPs per tile, so initialising MapLibre before consent
@@ -49,6 +75,11 @@
 	let elapsed = $state(0);
 	let distance = $state(0);
 	let currentPace = $state('--:--');
+	// Art 9: a ping carries bpm only when the runner has health-data consent
+	// on record and the live_overlay gate is open. The server strips it
+	// otherwise (the live_run_pings insert trigger and the Go hub, decisions
+	// § 2265), so the page shows what it is given.
+	let currentBpm = $state<number | null>(null);
 	let runnerName = $state<string | null>(null);
 	// Owner-only "not back by X" escalation override. Only the run owner
 	// viewing their own in-progress broadcast can set it; the RPC re-checks
@@ -65,8 +96,21 @@
 				})
 			: '',
 	);
-	type Status = 'connecting' | 'live' | 'finished' | 'error' | 'not-found';
-	let status = $state<Status>('connecting');
+	let status = $state<SpectatorStatus>('connecting');
+	// A safety contact's link (decisions § 1964): the run is private, so the
+	// public reads and the realtime channel show this viewer nothing. The
+	// token from the fragment is the capability, checked server-side by the
+	// two safety_live_* RPCs, and the feed is polled rather than subscribed.
+	let safetyToken: string | null = null;
+	let safetyMode = $state(false);
+	let safetyPoll: ReturnType<typeof setInterval> | null = null;
+	// The newest `at` seen on any ping, from any source: where the safety
+	// poll and the realtime poll fallback resume from.
+	let pingCursorIso: string | null = null;
+	let fallbackPoll: ReturnType<typeof setInterval> | null = null;
+	let transportsTornDown = false;
+	let backlogDone: Promise<unknown> = Promise.resolve();
+	let safetyOwnerName = $state('');
 	// Freshness: the ms timestamp of the last ping we rendered, plus a
 	// once-a-second clock so "updated N ago" / the stale badge recompute
 	// even while no new ping arrives. Without this a runner who lost
@@ -89,6 +133,16 @@
 	// as approximate and a "last seen near here" badge is shown — a SAR
 	// watcher must not read the dot as a precise current position.
 	let lastPingCoarse = $state(false);
+	// True once the latest ping is a weak-GPS fix (migration 20271112000030):
+	// the recorder kept it for distance but not for its line, so it is drawn
+	// as an approximate position and never joined into the trace.
+	let lastPingWeak = $state(false);
+	// The run's own start + conclusion instants, off the `public_runs` row an
+	// anonymous spectator can already read. They anchor the race clock, which
+	// is a different quantity from the ping's `elapsed_s` and used to be
+	// rendered under the same label.
+	let startedAtMs = $state<number | null>(null);
+	let concludedAtMs = $state<number | null>(null);
 
 	// Next cut-off card state. Only wired when the run links a PUBLIC route
 	// (public_runs nulls route_id otherwise) that carries >=1 cutoff marker.
@@ -97,22 +151,36 @@
 	let routeWaypoints = $state<RouteWaypoint[]>([]);
 	let cutoffLegs = $state<RoadbookLeg[]>([]);
 	let latestPosition = $state<{ lat: number; lng: number } | null>(null);
-	let recentPings = $state<Array<{ distance_m: number; elapsed_s: number }>>([]);
+	let recentPings = $state<
+		Array<{ distance_m: number; elapsed_s: number; at_ms: number | null }>
+	>([]);
 	const hasCutoffRoute = $derived(cutoffLegs.some((l) => l.cutoff != null));
 
+	// Two windows over one buffer, deliberately different lengths: pace is
+	// the last handful of pings (a live number the cut-off ETA projects
+	// from), motion needs an hour to state how long a runner has been
+	// standing in the same place.
+	const PACE_WINDOW_PINGS = 5;
+	const MOTION_BUFFER_MS = 60 * 60 * 1000;
+	const MOTION_BUFFER_MAX = 1000;
+
 	const recentPaceSecPerKm = $derived.by((): number | null => {
-		if (recentPings.length < 2) return null;
-		const oldest = recentPings[0];
-		const newest = recentPings[recentPings.length - 1];
+		const window = recentPings.slice(-PACE_WINDOW_PINGS);
+		if (window.length < 2) return null;
+		const oldest = window[0];
+		const newest = window[window.length - 1];
 		const dDist = newest.distance_m - oldest.distance_m;
 		const dElapsed = newest.elapsed_s - oldest.elapsed_s;
 		if (dDist <= 0) return null;
 		return dElapsed / (dDist / 1000);
 	});
 
+	// The runner's own recorded distance stands in for the matcher's
+	// "travelled since the start": without it a loop runner at the start reads
+	// as finished and an out-and-back runner on the way home reads as outbound.
 	const distAlongRouteM = $derived.by((): number | null => {
 		if (!latestPosition || routeWaypoints.length < 2) return null;
-		return distanceAlongRoute(latestPosition, routeWaypoints);
+		return progressAlongRoute(latestPosition, routeWaypoints, 0, distance)?.alongM ?? null;
 	});
 
 	// Course progress (0..100) — how far along a linked route the runner is.
@@ -125,11 +193,46 @@
 		return Math.max(0, Math.min(100, (distAlongRouteM / total) * 100));
 	});
 
+	// The strip renders two different quantities that used to share one label.
+	// `elapsed` is the runner's own recording timer as of the last fix: it
+	// stops when they tap pause and it freezes the moment the pings do. The
+	// race clock is wall time since the start — what a cut-off is measured
+	// against — and needs no estimate, because `public_runs` serves
+	// `started_at` to every spectator. A concluded run measures to its
+	// conclusion instant, never to now, or its clock would tick forever.
+	const raceClockAtMs = $derived(status === 'finished' ? concludedAtMs : nowMs);
+	const raceClock = $derived(raceClockS(startedAtMs, raceClockAtMs));
+	// A concluded run is frozen on its SAVED duration, so its timer is a final
+	// figure rather than a reading whose currency is in doubt — the last-fix
+	// qualifier would misdescribe it, and the ping backlog under a finished run
+	// is always stale by the time it renders.
+	const timerIsStale = $derived(status !== 'finished' && isStale);
+	// Cut-off maths runs on the race clock where it is known. `liveElapsedS`
+	// is the fallback for a run whose start instant we could not parse: it
+	// reconstructs a lower bound on the same clock from the ping age.
+	const raceElapsedS = $derived(raceClock ?? liveElapsedS(elapsed, freshness?.ageMs ?? null));
+
+	// A runner still pinging from the same spot renders as a fresh LIVE dot
+	// and, because the pace delta is zero, drops the pace readout entirely —
+	// so "not moving" and "no data" looked the same. State it instead.
+	const motion = $derived(
+		status === 'live'
+			? motionFor({
+					samples: recentPings
+						.filter((p) => p.at_ms != null)
+						.map((p) => ({ distanceM: p.distance_m, atMs: p.at_ms as number })),
+					stale: isStale,
+				})
+			: null,
+	);
+
+	// A concluded run has no "next" cut-off — the projection would be a live
+	// claim about a runner who has already stopped.
 	const eta = $derived(
-		hasCutoffRoute
+		hasCutoffRoute && status === 'live'
 			? nextCutoffEta({
-					distAlongRouteM: distAlongRouteM ?? 0,
-					elapsedS: elapsed,
+					distAlongRouteM,
+					elapsedS: raceElapsedS,
 					recentPaceSecPerKm,
 					legs: cutoffLegs,
 					stale: isStale,
@@ -150,11 +253,13 @@
 	let currentAccessToken: string | null = null;
 	let authSub: { unsubscribe: () => void } | null = null;
 
-	// Runner position + completed trace. Held as mutable module-scope
-	// state rather than `$state` because MapLibre mutates the GeoJSON
-	// source directly and the chrome doesn't need to re-render on every
-	// tick (only the stat strip below does).
-	const traceCoords: [number, number][] = [];
+	// Every ping received, in time order (`insertPing`), and the line drawn
+	// from its precise fixes. Held as mutable module-scope state rather than
+	// `$state` because MapLibre mutates the GeoJSON source directly and the
+	// chrome doesn't need to re-render on every tick (only the stat strip
+	// below does).
+	const tracePings: TracePing[] = [];
+	let traceCoords: [number, number][] = [];
 
 	// Used to compute the initial map centre when the first ping arrives
 	// so the view snaps to the runner regardless of geography.
@@ -187,6 +292,8 @@
 				return m('live.updatedHours', { n: f.value });
 			case 'days':
 				return m('live.updatedDays', { n: f.value });
+			case 'unknown':
+				return m('live.updatedUnknown');
 		}
 	}
 
@@ -204,6 +311,42 @@
 		// The coarse last-seen fix renders with a distinct hollow ring so
 		// it reads as approximate next to the solid live dot.
 		runnerMarker.getElement().classList.toggle('coarse', lastPingCoarse);
+		runnerMarker.getElement().classList.toggle('weak', lastPingWeak && !lastPingCoarse);
+	}
+
+	function advanceCursor(at: string | null | undefined) {
+		if (at == null) return;
+		const t = Date.parse(at);
+		if (!Number.isFinite(t)) return;
+		if (pingCursorIso == null || t > Date.parse(pingCursorIso)) pingCursorIso = at;
+	}
+
+	// The recent-ping buffer behind the pace and motion readouts, rebuilt from
+	// the ordered trace so a ping that arrives late lands in its place rather
+	// than at the end. Held for an hour so a long stop can be stated as a
+	// figure rather than a floor, and hard-capped so a dense backlog can't
+	// grow it without bound — a cadence fast enough to hit the cap just
+	// shortens the held span, which `motionFor` then reports as an "at least"
+	// floor rather than a wrong figure.
+	function rebuildRecentPings() {
+		const next: Array<{ distance_m: number; elapsed_s: number; at_ms: number | null }> = [];
+		for (let i = tracePings.length - 1; i >= 0 && next.length < MOTION_BUFFER_MAX; i--) {
+			const p = tracePings[i];
+			if (p.distanceM != null && p.elapsedS != null) {
+				next.push({ distance_m: p.distanceM, elapsed_s: p.elapsedS, at_ms: p.atMs });
+			}
+		}
+		next.reverse();
+		const newestMs = tracePings[tracePings.length - 1]?.atMs ?? null;
+		const oldestKeptMs = newestMs != null ? newestMs - MOTION_BUFFER_MS : null;
+		const aged =
+			oldestKeptMs == null
+				? next
+				: next.filter((p) => p.at_ms == null || p.at_ms >= oldestKeptMs);
+		// A silence longer than the buffer would age out everything but the
+		// newest ping and take the pace readout with it, so never trim below
+		// the pace window.
+		recentPings = aged.length >= PACE_WINDOW_PINGS ? aged : next.slice(-PACE_WINDOW_PINGS);
 	}
 
 	function pushPing(ping: {
@@ -214,50 +357,124 @@
 		sent_at_ms?: number | null;
 		at?: string | null;
 		coarse?: boolean | null;
+		weak_gps?: boolean | null;
+		bpm?: number | null;
 	}) {
-		// Stamp freshness from the ping's own clock — `sent_at_ms` on the
-		// Go-hub path, the `at` column on the Supabase path. Finite-guard
-		// so a malformed `at` doesn't reset the age to NaN.
-		const ts = ping.sent_at_ms ?? (ping.at != null ? Date.parse(ping.at) : NaN);
-		if (Number.isFinite(ts)) lastPingAtMs = ts as number;
-		lastPingCoarse = ping.coarse === true;
-		traceCoords.push([ping.lng, ping.lat]);
-		// Stat-strip values update regardless of map readiness — a slow or
-		// failing map style fetch (e.g. MapTiler down, missing key) must
-		// not stall the LIVE badge or the distance / elapsed / pace
-		// readout. Map-touching calls below are individually guarded.
-		if (ping.distance_m != null) distance = ping.distance_m;
-		if (ping.elapsed_s != null) elapsed = ping.elapsed_s;
-		if (distance > 0 && elapsed > 0) currentPace = formatPace(elapsed, distance);
+		// Stamp from the ping's own clock — `sent_at_ms` on the Go-hub path,
+		// the `at` column on the Supabase path.
+		const result = insertPing(tracePings, {
+			lat: ping.lat,
+			lng: ping.lng,
+			distanceM: ping.distance_m ?? null,
+			elapsedS: ping.elapsed_s ?? null,
+			bpm: typeof ping.bpm === 'number' && ping.bpm > 0 ? ping.bpm : null,
+			atMs: pingTimeMs(ping.at, ping.sent_at_ms),
+			coarse: ping.coarse === true,
+			weakGps: ping.weak_gps === true,
+		});
+		if (result === 'duplicate') return;
+		advanceCursor(ping.at);
+		traceCoords = traceLineCoords(tracePings);
+		rebuildRecentPings();
 
-		// Feed the next-cut-off card: latest fix + a 5-ping recent buffer
-		// (only pings that carry both odometer fields, so the pace delta is
-		// real). Reassigned (not mutated) so the $derived ETA recomputes.
-		latestPosition = { lat: ping.lat, lng: ping.lng };
-		if (ping.distance_m != null && ping.elapsed_s != null) {
-			recentPings = [
-				...recentPings,
-				{ distance_m: ping.distance_m, elapsed_s: ping.elapsed_s },
-			].slice(-5);
+		// Stat-strip values follow the newest ping only, so a late arrival
+		// redraws the line without rewinding the readout. They update
+		// regardless of map readiness — a slow or failing map style fetch
+		// (e.g. MapTiler down, missing key) must not stall the LIVE badge or
+		// the distance / elapsed / pace readout. Map-touching calls below are
+		// individually guarded.
+		const newest = tracePings[tracePings.length - 1];
+		if (result === 'newest') {
+			if (newest.atMs != null) lastPingAtMs = newest.atMs;
+			lastPingCoarse = newest.coarse;
+			lastPingWeak = newest.weakGps;
+			if (newest.distanceM != null) distance = newest.distanceM;
+			if (newest.elapsedS != null) elapsed = newest.elapsedS;
+			if (distance > 0 && elapsed > 0) currentPace = formatPace(elapsed, distance);
+			currentBpm = newest.bpm;
+			latestPosition = { lat: newest.lat, lng: newest.lng };
 		}
 
 		if (!map) return;
-		ensureMarker(ping.lat, ping.lng);
-		if (!centred) {
-			map.jumpTo({ center: [ping.lng, ping.lat], zoom: 15 });
-			centred = true;
-		} else if (!userPanned) {
-			map.panTo([ping.lng, ping.lat], { animate: true });
-		}
 		const source = map.getSource('live-trace') as maplibregl.GeoJSONSource | undefined;
 		source?.setData({
 			type: 'Feature',
 			properties: {},
 			geometry: { type: 'LineString', coordinates: traceCoords },
 		});
+		if (result !== 'newest') return;
+		ensureMarker(newest.lat, newest.lng);
+		if (!centred) {
+			map.jumpTo({ center: [newest.lng, newest.lat], zoom: 15 });
+			centred = true;
+		} else if (!userPanned) {
+			map.panTo([newest.lng, newest.lat], { animate: true });
+		}
+	}
+
+	type PingRow = {
+		lat: number;
+		lng: number;
+		distance_m: number | null;
+		elapsed_s: number | null;
+		at: string | null;
+		coarse: boolean | null;
+		weak_gps: boolean | null;
+		bpm: number | null;
+	};
+
+	// The table read behind the backlog, the poll fallback and the catch-up
+	// after a (re)subscribe. Without a cursor: bounded, newest-first —
+	// mirrors `fetchRecentRacePings` and the Go-hub's ring replay. A long
+	// broadcast (48h retention @ ~5s cadence ≈ 34.5k rows) must not download
+	// every row on an anon share-link load, and an ascending fetch would
+	// surface the OLDEST 1000 under a PostgREST row cap, freezing the
+	// spectator near the run start. With one: everything after it, oldest
+	// first. Order no longer matters to the trace — `insertPing` sorts.
+	async function fetchTablePings(since: string | null): Promise<PingRow[]> {
+		const base = supabase
+			.from('live_run_pings')
+			.select('lat, lng, distance_m, elapsed_s, at, coarse, weak_gps, bpm')
+			.eq('run_id', data.id);
+		const { data: rows, error } = await (since == null
+			? base.order('at', { ascending: false }).limit(1000)
+			: base.gt('at', since).order('at', { ascending: true }).limit(1000));
+		if (error) throw dbError(error);
+		return (rows ?? []) as PingRow[];
+	}
+
+	async function pollTablePings() {
+		if (transportsTornDown) return;
+		try {
+			const rows = await fetchTablePings(pingCursorIso);
+			for (const row of rows) pushPing(row);
+			if (tracePings.length > 0) status = statusOnPing(status);
+		} catch (err) {
+			console.warn('live ping poll failed', err);
+		}
+	}
+
+	// Realtime is the fast path, but a channel that errors or times out
+	// delivered nothing and said nothing: the spectator sat on the last
+	// position for as long as the socket stayed down. Poll the table from the
+	// cursor until the channel is back.
+	function startFallbackPoll() {
+		if (fallbackPoll || transportsTornDown) return;
+		fallbackPoll = setInterval(() => void pollTablePings(), LIVE_POLL_FALLBACK_MS);
+		void pollTablePings();
+	}
+
+	function stopFallbackPoll() {
+		if (fallbackPoll) clearInterval(fallbackPoll);
+		fallbackPoll = null;
 	}
 
 	async function hydrateBacklog() {
+		if (safetyToken) {
+			const rows = await fetchSafetyLivePings(data.id, safetyToken).catch(() => []);
+			for (const row of rows) pushPing(row);
+			return rows.length > 0;
+		}
 		if (isLiveHubConfigured()) {
 			// On the Go-hub path the full ping history is replayed over
 			// the WS on connect (server.go `handleSubscribe` sends up to
@@ -275,25 +492,29 @@
 			const snap = await fetchLiveSnapshot(data.id, sess?.access_token ?? null);
 			return snap != null;
 		}
-		// Bounded, newest-first — mirrors `fetchRecentRacePings` and the
-		// Go-hub's ring replay. A long broadcast (48h retention @ ~5s cadence
-		// ≈ 34.5k rows) must not download every row on an anon share-link
-		// load, and an ascending fetch would surface the OLDEST 1000 under a
-		// PostgREST row cap, freezing the spectator near the run start.
-		// Fetch descending + capped, then replay reversed so the newest ping
-		// is the last one pushed and wins the trace/pan.
-		const { data: rows, error } = await supabase
-			.from('live_run_pings')
-			.select('lat, lng, distance_m, elapsed_s, at, coarse')
-			.eq('run_id', data.id)
-			.order('at', { ascending: false })
-			.limit(1000);
-		if (error || !rows || rows.length === 0) return false;
+		// Replayed oldest-first so the stat strip steps forward once per row
+		// rather than landing on the newest and then sorting the rest behind it.
+		const rows = await fetchTablePings(null).catch(() => []);
 		for (let i = rows.length - 1; i >= 0; i--) pushPing(rows[i]);
-		return true;
+		return rows.length > 0;
+	}
+
+	async function pollSafetyPings() {
+		if (!safetyToken) return;
+		try {
+			const rows = await fetchSafetyLivePings(data.id, safetyToken, pingCursorIso);
+			for (const row of rows) pushPing(row);
+			if (tracePings.length > 0) status = statusOnPing(status);
+		} catch (err) {
+			console.warn('safety link poll failed', err);
+		}
 	}
 
 	function subscribeLive() {
+		if (safetyToken) {
+			safetyPoll = setInterval(() => void pollSafetyPings(), SAFETY_LINK_POLL_MS);
+			return;
+		}
 		// Privacy-zone trust contract: pings are rendered verbatim. The
 		// broadcaster's privacy zones are NOT fetched here (doing so
 		// would defeat the purpose — anyone watching a public live run
@@ -324,8 +545,10 @@
 						elapsed_s: p.elapsed_s ?? null,
 						sent_at_ms: p.sent_at_ms ?? null,
 						coarse: p.coarse ?? null,
+						weak_gps: p.weak_gps ?? null,
+						bpm: p.bpm ?? null,
 					});
-					if (status !== 'live') status = 'live';
+					status = statusOnPing(status);
 				},
 				onStatus: (s) => {
 					if (s === 'closed' && status === 'live') {
@@ -346,19 +569,22 @@
 					filter: `run_id=eq.${data.id}`,
 				},
 				(payload) => {
-					const row = payload.new as {
-						lat: number;
-						lng: number;
-						distance_m: number | null;
-						elapsed_s: number | null;
-						at: string | null;
-						coarse: boolean | null;
-					};
-					pushPing(row);
-					if (status !== 'live') status = 'live';
+					pushPing(payload.new as PingRow);
+					status = statusOnPing(status);
 				},
 			)
-			.subscribe();
+			.subscribe((state) => {
+				if (transportsTornDown) return;
+				if (state === 'SUBSCRIBED') {
+					// Anything written between the backlog read and the channel
+					// going live (or while it was down) reached no one: catch up
+					// from the cursor once the backlog has set it.
+					stopFallbackPoll();
+					void backlogDone.then(() => pollTablePings());
+				} else {
+					startFallbackPoll();
+				}
+			});
 	}
 
 	type VisibleRun = {
@@ -374,7 +600,34 @@
 	};
 	let visibleRun: VisibleRun | null = null;
 
+	async function ensureSafetyRunIsVisible(token: string): Promise<boolean> {
+		let row: Awaited<ReturnType<typeof fetchSafetyLiveRun>> = null;
+		try {
+			row = await fetchSafetyLiveRun(data.id, token);
+		} catch {
+			row = null;
+		}
+		if (!row) {
+			status = 'link-closed';
+			return false;
+		}
+		visibleRun = {
+			user_id: '',
+			started_at: row.started_at,
+			duration_s: row.duration_s,
+			distance_m: row.distance_m,
+			route_id: row.route_id,
+			concluded_at: null,
+		};
+		startedAtMs = Date.parse(row.started_at);
+		concludedAtMs = null;
+		safetyOwnerName = row.owner_name;
+		runnerName = row.owner_name || m('live.runnerAnonymous');
+		return true;
+	}
+
 	async function ensureRunIsVisible(): Promise<boolean> {
+		if (safetyToken) return ensureSafetyRunIsVisible(safetyToken);
 		// Visibility check: the spectator surface is a public-broadcast
 		// page, so the visible-runs set is exactly what `public_runs`
 		// exposes (decisions §33, migration 20260626_001).
@@ -395,6 +648,8 @@
 			route_id: (row.route_id as string | null) ?? null,
 			concluded_at: (row.concluded_at as string | null) ?? null,
 		};
+		startedAtMs = Date.parse(visibleRun.started_at);
+		concludedAtMs = visibleRun.concluded_at ? Date.parse(visibleRun.concluded_at) : null;
 		if (row.user_id) {
 			// `public_profile_by_id` SECURITY DEFINER RPC — replaces
 			// the old anon SELECT on the public_profiles view, which
@@ -403,7 +658,7 @@
 			// the uuid for (which we do, from the public_runs row
 			// above). See migration 20260530_002.
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: row.user_id })
+				.rpc('public_profile_by_id', { p_id: row.user_id }, { get: true })
 				.maybeSingle();
 			const dn =
 				(profile as { display_name?: string | null } | null)?.display_name ??
@@ -444,7 +699,13 @@
 				viewerFollowsRunner,
 				runnerFollowsViewer,
 			});
-			runnerName = reveal && dn ? dn : runnerHandle(row.user_id as string);
+			runnerName =
+				reveal && dn
+					? dn
+					: runnerHandle(row.user_id as string, {
+							handle: (slug) => m('live.runnerHandle', { slug }),
+							anonymous: m('live.runnerAnonymous')
+						});
 
 			isOwner = viewerId != null && viewerId === row.user_id;
 			if (isOwner) {
@@ -562,7 +823,7 @@
 	}
 
 	// Finished/waiting boundaries live in the pure, unit-tested
-	// $lib/runs/live_spectator_status helpers (issue #603).
+	// #lib/runs/live_spectator_status helpers (issue #603).
 	function freezeOnSavedTotals(run: VisibleRun) {
 		distance = run.distance_m;
 		elapsed = run.duration_s;
@@ -570,6 +831,12 @@
 	}
 
 	function teardownTransports() {
+		transportsTornDown = true;
+		stopFallbackPoll();
+		if (safetyPoll) {
+			clearInterval(safetyPoll);
+			safetyPoll = null;
+		}
 		if (realtimeChannel) {
 			supabase.removeChannel(realtimeChannel);
 			realtimeChannel = null;
@@ -585,19 +852,29 @@
 	// concluded_at is the honest one: when it appears we freeze on the
 	// saved totals and switch to the conclusion view for every transport.
 	async function checkConcluded() {
-		if (status !== 'live' || !visibleRun) return;
+		const watching = () => status === 'live' || status === 'waiting-gps';
+		if (!watching() || !visibleRun) return;
+		if (safetyToken) {
+			const still = await fetchSafetyLiveRun(data.id, safetyToken).catch(() => undefined);
+			if (still === null && watching()) {
+				teardownTransports();
+				status = 'link-closed';
+			}
+			return;
+		}
 		const { data: row } = await supabase
 			.from('public_runs')
 			.select('concluded_at, distance_m, duration_s')
 			.eq('id', data.id)
 			.maybeSingle();
-		if (!row?.concluded_at || status !== 'live' || !visibleRun) return;
+		if (!row?.concluded_at || !watching() || !visibleRun) return;
 		visibleRun = {
 			...visibleRun,
 			distance_m: Number(row.distance_m ?? visibleRun.distance_m),
 			duration_s: Number(row.duration_s ?? visibleRun.duration_s),
 			concluded_at: row.concluded_at as string,
 		};
+		concludedAtMs = Date.parse(visibleRun.concluded_at as string);
 		freezeOnSavedTotals(visibleRun);
 		teardownTransports();
 		status = 'finished';
@@ -608,13 +885,15 @@
 		// is the per-page acceptance path when the banner hasn't been
 		// answered yet.
 		if (hasAcceptedConsent()) mapConsented = true;
+		safetyToken = parseSafetyLinkToken(window.location.hash);
+		safetyMode = safetyToken != null;
 		// Drives the freshness readout / stale-badge transition while no
 		// new ping arrives, and every ~15s re-checks the concluded_at marker
 		// so a runner who stops mid-watch flips to the conclusion view
 		// instead of just going stale.
 		freshnessTicker = setInterval(() => {
 			nowMs = Date.now();
-			if (status === 'live' && ++concludedCheckTick % 15 === 0) {
+			if ((status === 'live' || status === 'waiting-gps') && ++concludedCheckTick % 15 === 0) {
 				void checkConcluded();
 			}
 		}, 1000);
@@ -644,7 +923,11 @@
 				status = 'finished';
 				return;
 			}
-			const hadBacklog = await hydrateBacklog();
+			// Subscribe BEFORE reading the backlog: a ping written between the
+			// two reached neither when the backlog came first.
+			subscribeLive();
+			backlogDone = hydrateBacklog();
+			const hadBacklog = (await backlogDone) === true || tracePings.length > 0;
 			const next = statusAfterHydrate({
 				startedAtIso: run.started_at,
 				durationS: run.duration_s,
@@ -660,14 +943,13 @@
 				// demo loop (issue #603). The recorder no longer wipes pings
 				// on stop, so the common just-finished case is now caught by
 				// the concluded_at branch above with the trace intact.
+				teardownTransports();
 				freezeOnSavedTotals(run);
 				status = 'finished';
 				return;
 			}
-			subscribeLive();
-			if (next === 'live') status = 'live';
-			// `waiting` keeps `connecting` — the honest state for a
-			// broadcast whose first ping hasn't arrived.
+			if (next === 'live') status = statusOnPing(status);
+			else if (status === 'connecting') status = 'waiting-gps';
 		})();
 	});
 
@@ -772,10 +1054,10 @@
 				paint: { 'line-color': mapLiveLine(liveDarkBasemap()), 'line-width': 3 },
 				layout: { 'line-join': 'round', 'line-cap': 'round' },
 			});
-			if (traceCoords.length > 0) {
-				const last = traceCoords[traceCoords.length - 1];
-				ensureMarker(last[1], last[0]);
-				map.jumpTo({ center: [last[0], last[1]], zoom: 15 });
+			const newest = tracePings[tracePings.length - 1];
+			if (newest) {
+				ensureMarker(newest.lat, newest.lng);
+				map.jumpTo({ center: [newest.lng, newest.lat], zoom: 15 });
 				centred = true;
 			}
 			// Let the fit-to-trace effect run now that the map exists — it
@@ -786,8 +1068,7 @@
 
 	onDestroy(() => {
 		if (freshnessTicker) clearInterval(freshnessTicker);
-		if (realtimeChannel) supabase.removeChannel(realtimeChannel);
-		liveHubHandle?.close();
+		teardownTransports();
 		authSub?.unsubscribe();
 		stopResizeWatch?.();
 		map?.remove();
@@ -814,11 +1095,14 @@
 			class:active={status === 'live' && !isStale}
 			class:stale={status === 'live' && isStale}
 			class:finished={status === 'finished'}
-			class:not-found={status === 'not-found'}
+			class:not-found={status === 'not-found' || status === 'link-closed'}
 		>
 			{#if status === 'connecting'}
 				<span class="badge-spinner" aria-hidden="true"></span>
 				{m('live.badgeConnecting')}
+			{:else if status === 'waiting-gps'}
+				<span class="badge-spinner" aria-hidden="true"></span>
+				{m('live.badgeWaitingGps')}
 			{:else if status === 'live'}
 				{#if isStale}
 					{m('live.badgeStale')}
@@ -827,7 +1111,7 @@
 				{/if}
 			{:else if status === 'finished'}
 				{m('live.badgeFinished')}
-			{:else if status === 'not-found'}
+			{:else if status === 'not-found' || status === 'link-closed'}
 				{m('live.badgeNotBroadcasting')}
 			{:else}
 				{m('live.badgeConnectionLost')}
@@ -845,7 +1129,16 @@
 	     its landmark — every /share/* sibling already does. Without it this
 	     page shipped no main region at all (WCAG 1.3.1). -->
 	<main id="main-content">
-	{#if status === 'not-found'}
+	{#if status === 'link-closed'}
+		<div class="live-empty" data-testid="safety-link-closed">
+			<div class="live-empty-icon" aria-hidden="true">
+				<span class="material-symbols">health_and_safety</span>
+			</div>
+			<h1>{m('live.safetyClosedTitle')}</h1>
+			<p>{m('live.safetyClosedBody')}</p>
+			<a href="/" class="btn btn-primary">{m('live.backToThrekir')}</a>
+		</div>
+	{:else if status === 'not-found'}
 		<div class="live-empty">
 			<div class="live-empty-icon" aria-hidden="true">
 				<span class="material-symbols">satellite_alt</span>
@@ -857,6 +1150,17 @@
 			<a href="/" class="btn btn-primary">{m('live.backToThrekir')}</a>
 		</div>
 	{:else}
+		{#if safetyMode}
+			<p class="safety-notice" data-testid="safety-notice">
+				<span class="material-symbols" aria-hidden="true">health_and_safety</span>
+				<span>
+					<strong>{m('live.safetyBadge')}</strong>
+					{safetyOwnerName
+						? m('live.safetyNotice', { name: safetyOwnerName })
+						: m('live.safetyNoticeAnonymous')}
+				</span>
+			</p>
+		{/if}
 		<section class="live-strip" aria-label={m('live.liveStatusAria')}>
 			<div class="live-runner">
 				<span class="avatar" aria-hidden="true">{initials(runnerName ?? 'R')}</span>
@@ -865,9 +1169,15 @@
 					<span class="live-runner-sub">
 						{#if status === 'connecting'}
 							{m('live.subWaitingFirstPing')}
+						{:else if status === 'waiting-gps'}
+							<span data-testid="waiting-gps">{m('live.subWaitingGps')}</span>
 						{:else if status === 'live'}
 							{#if lastPingCoarse}
 								{m('live.approximateSub')}
+							{:else if lastPingWeak}
+								<span data-testid="weak-gps">{freshness
+										? m('live.weakGpsSubUpdated', { updated: freshnessText(freshness) })
+										: m('live.weakGpsSub')}</span>
 							{:else if freshness}
 								{freshnessText(freshness)}
 							{:else}
@@ -882,25 +1192,51 @@
 				</div>
 			</div>
 			<div class="live-stats" role="group" aria-label={m('live.liveStatsAria')}>
-				<div class="live-stat">
+				<div class="live-stat" data-testid="live-distance">
 					<span class="live-stat-value">{formatDistance(distance)}</span>
 					<span class="live-stat-label">{m('live.statDistance')}</span>
 				</div>
-				<div class="live-stat">
+				{#if raceClock != null}
+					<div class="live-stat" data-testid="race-clock">
+						<span class="live-stat-value">{formatDuration(raceClock)}</span>
+						<span class="live-stat-label">{m('live.statRaceTime')}</span>
+					</div>
+				{/if}
+				<div class="live-stat" class:frozen={timerIsStale} data-testid="runner-timer">
 					<span class="live-stat-value">{formatDuration(elapsed)}</span>
-					<span class="live-stat-label">{m('live.statElapsed')}</span>
+					<span class="live-stat-label"
+						>{timerIsStale ? m('live.statTimerStale') : m('live.statTimer')}</span
+					>
 				</div>
-				<div class="live-stat">
+				<div class="live-stat" data-testid="avg-pace">
 					<span class="live-stat-value">{currentPace}</span>
 					<span class="live-stat-label">{m('live.statPace')}</span>
 				</div>
+				{#if currentBpm != null}
+					<div class="live-stat" data-testid="live-heart-rate">
+						<span class="live-stat-value">{m('live.bpmValue', { bpm: currentBpm })}</span>
+						<span class="live-stat-label">{m('live.statHeartRate')}</span>
+					</div>
+				{/if}
 				{#if status === 'live' && recentPaceSecPerKm != null}
 					<div class="live-stat" data-testid="recent-pace">
 						<span class="live-stat-value">{formatPace(recentPaceSecPerKm, 1000)}</span>
-						<span class="live-stat-label">{m('live.statRecentPace')}</span>
+						<span class="live-stat-label"
+							>{isStale ? m('live.statRecentPaceStale') : m('live.statRecentPace')}</span
+						>
 					</div>
 				{/if}
 			</div>
+			{#if motion?.state === 'stopped' && motion.stoppedForMs != null}
+				<p class="motion-chip" data-testid="motion-stopped">
+					<span class="material-symbols" aria-hidden="true">pause_circle</span>
+					{motion.atLeast
+						? m('live.motionStoppedAtLeast', {
+								n: Math.floor(motion.stoppedForMs / 60000),
+							})
+						: m('live.motionStopped', { n: Math.floor(motion.stoppedForMs / 60000) })}
+				</p>
+			{/if}
 			{#if status === 'live' && courseProgressPct != null}
 				<div
 					class="course-progress"
@@ -937,6 +1273,7 @@
 					class:tight={eta.status === 'tight'}
 					class:behind={eta.status === 'behind'}
 					class:stale={eta.status === 'unknown' && isStale}
+					class:expired={eta.limitPassed}
 					aria-label={m('live.cutoffTitle')}
 				>
 					<div class="cutoff-head">
@@ -956,6 +1293,21 @@
 								>
 							{/if}
 						</div>
+						{#if eta.limitPassed}
+							<span class="cutoff-expired" data-testid="cutoff-expired">
+								{m('live.cutoffExpired')}
+							</span>
+						{:else if eta.requiredPaceSecPerKm != null && eta.status !== 'on'}
+							<span class="cutoff-required" data-testid="cutoff-required">
+								{isStale
+									? m('live.cutoffRequiredPaceStale', {
+											p: formatPace(eta.requiredPaceSecPerKm, 1000),
+										})
+									: m('live.cutoffRequiredPace', {
+											p: formatPace(eta.requiredPaceSecPerKm, 1000),
+										})}
+							</span>
+						{/if}
 						{#if eta.status === 'unknown'}
 							<span class="cutoff-waiting"
 								>{isStale
@@ -1022,11 +1374,15 @@
 		<div class="live-map-wrap">
 			{#if mapConsented}
 				<div class="live-map" bind:this={mapContainer}></div>
-				{#if status === 'connecting'}
+				{#if status === 'connecting' || status === 'waiting-gps'}
 					<div class="map-veil" aria-hidden="true">
 						<div class="map-veil-card">
 							<span class="badge-spinner" aria-hidden="true"></span>
-							<p>{m('live.waitingToStartBroadcasting')}</p>
+							<p>
+								{status === 'waiting-gps'
+									? m('live.subWaitingGps')
+									: m('live.waitingToStartBroadcasting')}
+							</p>
 						</div>
 					</div>
 				{/if}
@@ -1310,6 +1666,13 @@
 		font-weight: 600;
 		margin-top: var(--space-2xs);
 	}
+	/* The runner's timer stopped at the last fix. Recede it so the ticking
+	 * race clock beside it is unmistakably the live one — the two figures
+	 * diverge by the whole length of a dead zone, and a spectator must be
+	 * able to see at a glance which of them is still moving. */
+	.live-stat.frozen .live-stat-value {
+		color: var(--color-text-secondary);
+	}
 
 	@media (max-width: 48rem) {
 		.live-strip {
@@ -1348,6 +1711,24 @@
 		.live-runner-name {
 			font-size: 0.9rem;
 		}
+	}
+
+	/* Neutral, not alarming: a stopped runner is at an aid station far more
+	   often than they are in trouble, and the surface states the fact
+	   without grading it. */
+	.motion-chip {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		margin: 0;
+		padding: 0 var(--space-2xl) var(--space-md);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+	.motion-chip .material-symbols {
+		font-size: 1.125rem;
 	}
 
 	.course-progress {
@@ -1449,6 +1830,13 @@
 		font-style: normal;
 		font-weight: 600;
 	}
+	/* An expired limit outranks every other edge state, including the amber
+	 * stale one: the deadline is gone whether or not the fix is current, and
+	 * that is the fact the crew at the checkpoint is deciding on. Declared
+	 * after `.stale` so it wins at equal specificity. */
+	.cutoff-card.expired {
+		border-inline-start-color: var(--color-danger);
+	}
 	.cutoff-head {
 		display: flex;
 		align-items: baseline;
@@ -1521,6 +1909,23 @@
 		font-size: 0.8rem;
 		color: var(--color-text-tertiary);
 		font-style: italic;
+	}
+	.cutoff-expired {
+		display: inline-flex;
+		align-items: center;
+		padding: var(--space-2xs) var(--space-md);
+		border-radius: 9999px;
+		font-size: 0.78rem;
+		font-weight: 700;
+		background: var(--color-danger-light);
+		color: var(--color-danger-text);
+		border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+	}
+	.cutoff-required {
+		font-size: 0.8rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary);
 	}
 
 	.return-card {
@@ -1612,8 +2017,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 44px;
-		height: 44px;
+		width: var(--tap-target-min);
+		height: var(--tap-target-min);
 		border: 1px solid var(--color-border);
 		border-radius: 50%;
 		background: var(--color-surface);
@@ -1670,6 +2075,14 @@
 			0 2px 6px rgba(0, 0, 0, 0.3);
 	}
 
+	/* Weak-GPS fix: the live dot inside a wide translucent halo, so the
+	 * position reads as "somewhere around here" without borrowing the amber
+	 * of the privacy-zone last-seen. */
+	:global(.runner-dot.weak) {
+		box-shadow: 0 0 0 14px color-mix(in srgb, var(--color-primary) 18%, transparent),
+			0 2px 6px rgba(0, 0, 0, 0.3);
+	}
+
 	.approx-badge {
 		display: inline-flex;
 		align-items: center;
@@ -1687,5 +2100,19 @@
 	}
 	.approx-badge .material-symbols {
 		font-size: 1rem;
+	}
+	.safety-notice {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-sm);
+		margin: 0;
+		padding: var(--space-sm) var(--space-xl);
+		background: var(--color-surface);
+		border-bottom: 1px solid var(--color-border);
+		font-size: 0.85rem;
+	}
+	.safety-notice .material-symbols {
+		font-size: 1.1rem;
+		flex: none;
 	}
 </style>

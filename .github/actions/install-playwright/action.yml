@@ -1,0 +1,41 @@
+name: Install Playwright Chromium
+description: >
+  Download the Chromium build the pinned @playwright/test needs, then prove
+  that browser can actually launch — reaching for apt only if it cannot.
+
+  Why a composite action rather than three inline copies: this install is
+  duplicated across every Playwright job (e2e-web's 14 shards,
+  e2e-web-livehub, e2e-web-sso) as byte-identical blocks. One source of
+  truth keeps the verification — and the incident comment below — from
+  diverging, which is the same reason start-supabase exists.
+
+  The `actions/cache` step that restores ~/.cache/ms-playwright stays
+  INLINE at each call site and is deliberately not folded in here.
+  Dependabot's github-actions ecosystem scans .github/workflows plus a
+  ROOT action.yml only, so a SHA-pinned action moved under .github/actions
+  stops receiving updates — decisions.md § 595 declined the same trade for
+  flutter-action, and start-supabase carries no `uses:` for this reason.
+  Only `run:` steps belong here.
+
+  Why the apt half is conditional, what the mirror outages cost, and why the
+  final verdict is a browser launch rather than apt's exit code: all in
+  verify_chromium.sh's own header, beside the code it describes.
+
+runs:
+  using: composite
+  steps:
+    - name: Download Chromium
+      shell: bash
+      working-directory: apps/web
+      run: pnpm exec playwright install chromium
+
+    # The verification + apt fallback live in verify_chromium.sh rather than
+    # inline here so they can be unit-tested (verify_chromium.test.mjs drives
+    # them with stub node/pnpm/sudo on PATH); the incident history that shaped
+    # them is in that file's header. A composite action's shell is in no job's
+    # test suite, and the apt branch only runs after a launch has already
+    # failed — so inline, the whole repair path was unrun.
+    - name: Verify Chromium's system libraries
+      shell: bash
+      working-directory: apps/web
+      run: bash "$GITHUB_ACTION_PATH/verify_chromium.sh"

@@ -8,8 +8,10 @@
 // and is also wrapped (for dev only) by the SvelteKit `+server.ts`.
 // This file:
 //   1. Parses the API Gateway-shaped event from Function URL.
-//   2. Reads runtime config from process.env (Terraform sets it from the
-//      sops-encrypted file).
+//   2. Reads non-secret runtime config from process.env, and the credentials
+//      from the KMS ciphertext bag `loadSecrets()` decrypts once per container
+//      (Terraform encrypts it from the sops file at apply time — decisions
+//      § 1671; the plaintext never reaches this function's environment).
 //   3. Calls the shared core.
 //   4. Adapts the result to Lambda response streaming via
 //      `awslambda.streamifyResponse` + `awslambda.HttpResponseStream`.
@@ -20,6 +22,15 @@ import { handleCoach } from '../../../src/lib/coach/handler';
 import type { CoachConfig } from '../../../src/lib/coach/types';
 import { handleRouteDescribe } from '../../../src/lib/routes/route_describe/handler';
 import { handleRouteRequest } from '../../../src/lib/routes/route_request/handler';
+import { handlePlanRequest } from '../../../src/lib/training/plan_request/handler';
+import { handlePlatePhoto } from '../../../src/lib/nutrition/plate_photo/handler';
+import { handlePlanEdit } from '../../../src/lib/training/plan_edit/handler';
+import { handleCoachAssist } from '../../../src/lib/coach/assist/handler';
+import { handleSeasonRequest } from '../../../src/lib/training/season_request/handler';
+import { isTruthyFlagValue } from '../../../src/lib/core/env_flag';
+import { methodRefusal, type MethodRefusal } from '../../../src/lib/core/method_gate';
+
+const ALLOWED_METHODS = ['POST'] as const;
 
 // Provided by the Node.js managed Lambda runtime; declared inline
 // because @types/aws-lambda doesn't ship a definition for it (the API
@@ -48,7 +59,43 @@ interface ResponseStream {
 import {
 	decodeLambdaBody,
 	COACH_BODY_LIMIT_BYTES,
+	ROUTE_DESCRIBE_BODY_LIMIT_BYTES,
+	ROUTE_REQUEST_BODY_LIMIT_BYTES,
+	PLAN_REQUEST_BODY_LIMIT_BYTES,
+	PLATE_PHOTO_BODY_LIMIT_BYTES,
+	PLAN_EDIT_BODY_LIMIT_BYTES,
+	SEASON_REQUEST_BODY_LIMIT_BYTES,
+	COACH_ASSIST_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
+import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
+
+// The production path table, anchored — `^…$`, never `rawPath.includes(…)`.
+// A substring test matches anywhere in the path, so `/api/coach/route-describe-v2`
+// and `/api/coach/x/route-describeZZ` both dispatched at the FIRST `includes`
+// while dev answered them 404 (measured, decisions § 967). Not exploitable with
+// the two sub-paths shipped today — both are Pro-gated and carry a SMALLER body
+// cap than the coach path, so a mismatch lands a caller on a stricter handler —
+// but it becomes a live defect the moment a third sub-path's name contains an
+// existing one: the first `includes` shadows it in production only, while dev
+// routes both. `coach_lambda_handler.test.ts` derives the expected set from the
+// dev route directory, so a sub-path added there fails the PR until it is
+// routed here.
+const COACH_PATH_RE = /^\/api\/coach\/?$/;
+
+const SUB_PATHS = [
+	{ segment: 'route-describe', handle: dispatchRouteDescribe },
+	{ segment: 'route-request', handle: dispatchRouteRequest },
+	{ segment: 'plan-request', handle: dispatchPlanRequest },
+	{ segment: 'plate-photo', handle: dispatchPlatePhoto },
+	{ segment: 'plan-edit', handle: dispatchPlanEdit },
+	{ segment: 'season-request', handle: dispatchSeasonRequest },
+	{ segment: 'assist', handle: dispatchCoachAssist },
+].map(({ segment, handle }) => ({
+	segment,
+	pattern: new RegExp(`^/api/coach/${segment}/?$`),
+	handle,
+}));
 
 export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 	async (event, responseStream) => {
@@ -60,24 +107,41 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 	// whole handler so the operator-facing error stays in the logs
 	// while the client gets a generic 503.
 	try {
-		// CloudFront routes the whole `/api/coach/*` prefix to this
-		// Function URL. The route-describe sub-path is a separate,
-		// non-streaming handler (a Pro perk that enhances a route
-		// description, with a templated fallback) — dispatch it before
-		// the coach provider check so an unconfigured COACH_PROVIDER
-		// doesn't 503 a route-describe request.
-		const rawPath = event.rawPath ?? '';
-		if (rawPath.includes('/route-describe')) {
-			await dispatchRouteDescribe(event, responseStream);
+		// POST only, like the osrm-proxy Lambda's GET-only gate. All three
+		// dev wrappers under `src/routes/api/coach/` export `POST` alone, so
+		// SvelteKit answers 405 to anything else while this — the surface
+		// that actually runs in production — ran the full turn: a GET
+		// reaching `handleCoach` bills an Anthropic call and spends a
+		// daily-quota increment on a method the endpoint does not support,
+		// and every intermediary in the path treats a GET as safe to replay.
+		// A missing `requestContext` throws into the outer envelope rather
+		// than defaulting to POST, which is the same fail-closed shape
+		// osrm-proxy has (decisions § 896).
+		const refused = methodRefusal(event.requestContext.http.method, ALLOWED_METHODS);
+		if (refused) {
+			writeRefusal(responseStream, refused);
 			return;
 		}
-		// The route-request sub-path is the REQUEST half of the AI route
-		// assistant — a Pro-gated, non-streaming NL → constraints
-		// extractor. Same reasoning as route-describe: dispatch before the
-		// coach provider check so an unconfigured COACH_PROVIDER doesn't
-		// 503 a route-request call.
-		if (rawPath.includes('/route-request')) {
-			await dispatchRouteRequest(event, responseStream);
+
+		// CloudFront routes the whole `/api/coach*` prefix to this Function
+		// URL, so this table is the production half of the dev route table
+		// under `src/routes/api/coach/` and must name the same paths. The two
+		// sub-paths are separate, non-streaming handlers (Pro perks with their
+		// own, smaller body caps) — dispatched before the coach provider check
+		// so an unconfigured COACH_PROVIDER doesn't 503 them.
+		const rawPath = event.rawPath ?? '';
+		const dispatch = SUB_PATHS.find((s) => s.pattern.test(rawPath));
+		if (dispatch) {
+			await dispatch.handle(event, responseStream);
+			return;
+		}
+		// Anything else under the prefix is a path neither table declares.
+		// SvelteKit answers it 404 in dev; prod used to fall through to the
+		// coach turn, which spends an auth round-trip and the daily quota on a
+		// path that does not exist and hands it the coach's own 256 KB cap
+		// rather than the smaller one its name suggests (decisions § 967).
+		if (!COACH_PATH_RE.test(rawPath)) {
+			writeJson(responseStream, 404, { error: 'not found' });
 			return;
 		}
 
@@ -87,11 +151,29 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			writeJson(responseStream, 503, { error: 'Coach is not configured.' });
 			return;
 		}
+		// The core defaults an absent `openaiBaseUrl` to
+		// `http://localhost:11434/v1`, which is right for dev (Ollama on the
+		// developer's own machine) and meaningless inside a Lambda sandbox.
+		// Refuse up front, symmetrically with the core's missing-Anthropic-key
+		// branch: without this the turn passes auth, the paywall check and the
+		// daily-quota INCREMENT before failing on a connection to a port
+		// nothing is listening on, so a misconfigured provider spends the
+		// runner's daily allowance on a call that cannot succeed
+		// (decisions § 898).
+		if (provider === 'openai' && !process.env.OPENAI_BASE_URL?.trim()) {
+			console.error(
+				'[coach lambda] COACH_PROVIDER=openai with no OPENAI_BASE_URL — ' +
+					'set it to the OpenAI-compatible endpoint, or unset COACH_PROVIDER ' +
+					'to use Anthropic.',
+			);
+			writeJson(responseStream, 503, { error: 'Coach is not configured.' });
+			return;
+		}
 
 		// Parse the request body. Function URL events deliver `body` as
 		// a string, base64-encoded for binary content types. The size
 		// cap is enforced against the decoded byte count, not the JS
-		// string length — see $lib/coach/body.ts for the regression
+		// string length — see #lib/coach/body.ts for the regression
 		// this guards against (multi-byte UTF-8 chars).
 		const decoded = decodeLambdaBody(
 			event.body,
@@ -120,15 +202,23 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			event.headers?.['X-Supabase-Authorization'] ??
 			null;
 
+		// The three credentials live in the KMS ciphertext bag, not in this
+		// function's environment: every API returning a FunctionConfiguration
+		// hands the environment to any principal that can deploy, which is how
+		// a release role could read ANTHROPIC_API_KEY (decisions § 1671). A
+		// decrypt failure throws into the outer envelope — the caller gets the
+		// generic 503 and no turn is served with a key this function guessed at.
+		const secrets = await loadSecrets();
+
 		// BYPASS_PAYWALL is a dev-only escape hatch, never honoured in
 		// the production Lambda. Hard-coding `false` here is the
 		// belt-and-braces defence even if BYPASS_PAYWALL leaked into
 		// the Lambda env.
 		const config: CoachConfig = {
 			provider,
-			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+			anthropicApiKey: secrets.ANTHROPIC_API_KEY,
 			openaiBaseUrl: process.env.OPENAI_BASE_URL,
-			openaiApiKey: process.env.OPENAI_API_KEY,
+			openaiApiKey: secrets.OPENAI_API_KEY,
 			openaiModel: process.env.OPENAI_MODEL,
 			publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 			publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
@@ -137,8 +227,11 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			// confines the user-JWT client to role='user' rows, so the
 			// assistant turn needs an RLS-bypassing writer. Provisioned via
 			// the env's sops secrets file (see infra/modules/web-stack).
-			supabaseSecretKey: process.env.SUPABASE_SECRET_KEY,
+			supabaseSecretKey: secrets.SUPABASE_SECRET_KEY,
 			bypassPaywallEnabled: false,
+			aiPlanEnabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
+			fuelHandoffEnabled: isTruthyFlagValue(process.env.COACH_FUEL_ENABLED),
+			aiPlanEditEnabled: isTruthyFlagValue(process.env.AI_PLAN_EDIT_ENABLED),
 		};
 
 		const result = await handleCoach(authHeader, rawBody, config);
@@ -162,7 +255,16 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 				stream.write(Buffer.from(chunk));
 			}
 		} catch (e) {
-			console.error('[coach lambda] stream pump failed', e);
+			// Normalised, never the raw caught value. This one is thrown by the
+			// PROVIDER STREAM, whose payload is the runner's own coaching
+			// conversation; a provider SDK's error object can carry the
+			// response body or the request that produced it, and spreading it
+			// into CloudWatch would put that conversation in the log
+			// (decisions § 897).
+			console.error('[coach lambda] stream pump failed', {
+				message: e instanceof Error ? e.message : String(e),
+				stack: e instanceof Error ? e.stack : undefined,
+			});
 		} finally {
 			stream.end();
 		}
@@ -179,8 +281,16 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 		try {
 			writeJson(responseStream, 503, { error: 'Coach is temporarily unavailable.' });
 		} catch (writeErr) {
-			console.error('[coach lambda] failed to write 503 envelope', writeErr);
+			console.error('[coach lambda] failed to write 503 envelope', {
+				message: writeErr instanceof Error ? writeErr.message : String(writeErr),
+				stack: writeErr instanceof Error ? writeErr.stack : undefined,
+			});
 		}
+		// After the envelope, not before: this is the streaming handler, so
+		// the caller is holding an open response and the flush would sit
+		// between them and their 503. The other seven return their body, so
+		// nothing can be sent ahead of the report there.
+		await reportException('coach', e);
 	}
 	},
 );
@@ -196,7 +306,7 @@ async function dispatchRouteDescribe(
 	const decoded = decodeLambdaBody(
 		event.body,
 		event.isBase64Encoded === true,
-		32 * 1024,
+		ROUTE_DESCRIBE_BODY_LIMIT_BYTES,
 	);
 	if (!decoded.ok) {
 		writeJson(responseStream, decoded.status, { error: decoded.error });
@@ -214,12 +324,12 @@ async function dispatchRouteDescribe(
 		event.headers?.['X-Supabase-Authorization'] ??
 		null;
 	const result = await handleRouteDescribe(authHeader, rawBody, {
-		anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
 		bypassPaywallEnabled: false,
 	});
-	writeJson(responseStream, result.status, JSON.parse(result.body));
+	writeResult(responseStream, result);
 }
 
 // Route-request sub-handler — the REQUEST half of the AI route assistant.
@@ -234,7 +344,7 @@ async function dispatchRouteRequest(
 	const decoded = decodeLambdaBody(
 		event.body,
 		event.isBase64Encoded === true,
-		16 * 1024,
+		ROUTE_REQUEST_BODY_LIMIT_BYTES,
 	);
 	if (!decoded.ok) {
 		writeJson(responseStream, decoded.status, { error: decoded.error });
@@ -252,20 +362,245 @@ async function dispatchRouteRequest(
 		event.headers?.['X-Supabase-Authorization'] ??
 		null;
 	const result = await handleRouteRequest(authHeader, rawBody, {
-		anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
 		bypassPaywallEnabled: false,
 	});
-	writeJson(responseStream, result.status, JSON.parse(result.body));
+	writeResult(responseStream, result);
 }
 
-function writeJson(responseStream: ResponseStream, status: number, body: unknown): void {
+// Plan-request sub-handler — the AI plan assistant. Non-streaming, one small
+// inputs object via forced tool-use. `bypassPaywallEnabled: false` is
+// hard-coded: the production Lambda must never skip the daily cap.
+async function dispatchPlanRequest(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		PLAN_REQUEST_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handlePlanRequest(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// Season-request sub-handler — the multi-race sibling of the plan assistant,
+// behind the same AI_PLAN_ENABLED flag. Non-streaming, one race list via
+// forced tool-use. `bypassPaywallEnabled: false` is hard-coded: the
+// production Lambda must never skip the daily cap.
+async function dispatchSeasonRequest(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		SEASON_REQUEST_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handleSeasonRequest(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// Plate-photo sub-handler — the meal-photo logger. Non-streaming, one forced
+// tool call over one image. `bypassPaywallEnabled: false` is hard-coded: the
+// production Lambda never skips the Pro gate or the throttle.
+async function dispatchPlatePhoto(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		PLATE_PHOTO_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handlePlatePhoto(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.PLATE_PHOTO_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// AI plan edits: a plain-English change to the caller's own plan becomes
+// validated edit operations via forced tool-use. `bypassPaywallEnabled: false`
+// is hard-coded: the production Lambda must never skip the daily cap.
+async function dispatchPlanEdit(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		PLAN_EDIT_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handlePlanEdit(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.AI_PLAN_EDIT_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// The coach assistant (issue #1215 Phase 4): a draft for a coach, from an
+// athlete's data, only with the athlete's per-link consent. COACH_ASSIST_ENABLED
+// is the server half of the deploy gate, unset (off) until the CISO + counsel
+// sign-off. `bypassPaywallEnabled: false` is hard-coded.
+async function dispatchCoachAssist(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		COACH_ASSIST_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handleCoachAssist(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.COACH_ASSIST_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// The stream half of `core/method_gate`: the same status, headers and body the
+// six object-returning handlers send, written through `HttpResponseStream`
+// instead of returned. This is the second response shape the gate exists to
+// serve, and it is why the gate returns the parts rather than a result object.
+function writeRefusal(responseStream: ResponseStream, refusal: MethodRefusal): void {
+	const stream = awslambda.HttpResponseStream.from(responseStream, {
+		statusCode: refusal.statusCode,
+		headers: refusal.headers,
+	});
+	stream.write(refusal.body);
+	stream.end();
+}
+
+function writeJson(
+	responseStream: ResponseStream,
+	status: number,
+	body: unknown,
+	extraHeaders: Record<string, string> = {},
+): void {
 	const stream = awslambda.HttpResponseStream.from(responseStream, {
 		statusCode: status,
-		headers: { 'content-type': 'application/json' },
+		headers: { 'content-type': 'application/json', ...extraHeaders },
 	});
 	stream.write(JSON.stringify(body));
+	stream.end();
+}
+
+// The core's own status, headers and body, forwarded verbatim. The two
+// sub-dispatchers used to write `JSON.parse(result.body)` back out under a
+// hardcoded `content-type`, which discards whatever the core chose to send —
+// a `retry-after` on a rate-limited turn, a `cache-control`, anything a
+// future refusal wants to carry — and adds a parse that can throw on a body
+// the core meant to be sent as-is, turning a handled refusal into a 503.
+// The streaming coach path already forwards `result.headers`; this makes the
+// non-streaming pair agree with it (decisions § 896).
+function writeResult(
+	responseStream: ResponseStream,
+	result: { status: number; headers: Record<string, string>; body: string },
+): void {
+	const stream = awslambda.HttpResponseStream.from(responseStream, {
+		statusCode: result.status,
+		headers: result.headers,
+	});
+	stream.write(result.body);
 	stream.end();
 }
 

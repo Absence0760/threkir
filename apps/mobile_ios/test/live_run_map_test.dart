@@ -18,6 +18,7 @@ Future<void> _pump(
   required List<Waypoint> track,
   Waypoint? currentPosition,
   bool followRunner = true,
+  bool approximateLocation = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -31,6 +32,7 @@ Future<void> _pump(
             track: track,
             currentPosition: currentPosition,
             followRunner: followRunner,
+            approximateLocation: approximateLocation,
           ),
         ),
       ),
@@ -122,6 +124,19 @@ void main() {
       await _pump(tester, track: const []);
       expect(find.text('Waiting for GPS...'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets(
+        'an approximate grant explains the empty map instead of waiting',
+        (tester) async {
+      await _pump(tester, track: const [], approximateLocation: true);
+      expect(find.text('Waiting for GPS...'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing,
+          reason: 'no precise fix is coming, so no spinner promises one');
+      expect(
+          find.text("Precise location is off — the map can't show where you "
+              'are'),
+          findsOneWidget);
     });
 
     testWidgets('renders the map widget when a current position is provided',
@@ -519,6 +534,105 @@ void main() {
       final dot = dotOf(tester);
       expect(dot.latitude, closeTo(smoothed.first.latitude, 1e-12));
       expect(dot.longitude, closeTo(smoothed.first.longitude, 1e-12));
+    });
+  });
+
+  group('planned route line', () {
+    final route = [_w(51.5, -0.1), _w(51.505, -0.105), _w(51.51, -0.11)];
+
+    Future<void> pumpRoute(
+      WidgetTester tester, {
+      required bool followRunner,
+      List<Waypoint> track = const [],
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 600,
+              child: LiveRunMap(
+                track: track,
+                currentPosition: track.isEmpty ? null : track.last,
+                plannedRoute: route,
+                followRunner: followRunner,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    // No MAPTILER_KEY in the test env, so the basemap is the light OSM
+    // fallback.
+    const dark = false;
+
+    List<Polyline> plannedLines(WidgetTester tester) => tester
+        .widget<PolylineLayer>(find.byKey(const ValueKey('planned-route')))
+        .polylines;
+
+    void expectSolidLine(List<Polyline> lines, Color fill) {
+      expect(lines, hasLength(2));
+      final casing = lines.first, line = lines.last;
+      expect(line.color, fill);
+      expect(line.color.a, 1.0, reason: 'a translucent line lets the '
+          "raster's roads and labels show through it");
+      expect(line.strokeWidth, mapLineWidth);
+      expect(casing.color, mapLineCasing);
+      expect(casing.strokeWidth, greaterThan(line.strokeWidth));
+      for (final l in lines) {
+        expect(l.strokeCap, StrokeCap.round);
+        expect(l.strokeJoin, StrokeJoin.round);
+      }
+    }
+
+    testWidgets('on a detail surface it is the coral track line over a casing',
+        (tester) async {
+      await pumpRoute(tester, followRunner: false);
+      expectSolidLine(plannedLines(tester), mapTrackLine(darkBasemap: dark));
+    });
+
+    testWidgets('under a live recording it is the guide colour, below the track',
+        (tester) async {
+      await pumpRoute(
+        tester,
+        followRunner: true,
+        track: [_w(51.5, -0.1), _w(51.501, -0.101), _w(51.502, -0.102)],
+      );
+      expectSolidLine(
+          plannedLines(tester), mapCourseGuideLine(darkBasemap: dark));
+      final layers = tester.widget<FlutterMap>(find.byType(FlutterMap)).children;
+      final tileAt = layers.indexWhere((w) => w is TileLayer);
+      final plannedAt =
+          layers.indexWhere((w) => w.key == const ValueKey('planned-route'));
+      final trackAt = layers.lastIndexWhere((w) => w is PolylineLayer);
+      expect(tileAt, lessThan(plannedAt));
+      expect(plannedAt, lessThan(trackAt));
+    });
+
+    test('the guide colour clears 3:1 against both basemaps', () {
+      double lum(Color c) {
+        double ch(double v) => v <= 0.03928
+            ? v / 12.92
+            : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+        return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
+      }
+
+      double contrast(Color a, Color b) {
+        final x = lum(a), y = lum(b);
+        return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05);
+      }
+
+      expect(contrast(mapCourseGuideLine(darkBasemap: true),
+          const Color(0xFF1A1B20)), greaterThanOrEqualTo(3));
+      expect(contrast(mapCourseGuideLine(darkBasemap: false),
+          const Color(0xFFF2EFE9)), greaterThanOrEqualTo(3));
+      expect(contrast(mapCourseGuideLine(darkBasemap: false),
+          const Color(0xFFAAD3DF)), greaterThanOrEqualTo(3));
     });
   });
 }

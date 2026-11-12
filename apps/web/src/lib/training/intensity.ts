@@ -49,10 +49,12 @@
 
 import { METADATA_KEYS } from '../core/schema';
 import type { Run } from '../types';
+import { isPlausibleRunDuration } from '../runs/run_duration';
 import {
 	currentVdot,
 	qualifyingRuns,
 	thresholdPaceSecPerKmFromVdot,
+	type RunForFitness,
 } from './fitness';
 
 export type IntensityVerdict = 'onGuideline' | 'tooHard' | 'allEasy';
@@ -158,7 +160,7 @@ function slicesFrom(
 ///
 /// With no usable breakdown the result is the whole run as one segment, which is
 /// the original behaviour and still the honest answer for a steady run.
-export function effortSegments(run: Run): EffortSegment[] {
+export function effortSegments(run: Pick<Run, 'metadata' | 'duration_s' | 'distance_m'>): EffortSegment[] {
 	const bag = run.metadata;
 	const slices =
 		bag == null
@@ -182,7 +184,7 @@ export function effortSegments(run: Run): EffortSegment[] {
 /// the 90-day VDOT window) or the sample is too small — the card self-hides.
 /// `now` defaults to the real clock; pass an explicit date in tests.
 export function computeIntensity(
-	runs: Run[],
+	runs: readonly RunForFitness[],
 	windowDays = 56,
 	now: Date = new Date(),
 ): IntensityStats | null {
@@ -199,6 +201,9 @@ export function computeIntensity(
 	for (const r of qualifyingRuns(runs)) {
 		const t = new Date(r.started_at).getTime();
 		if (!Number.isFinite(t) || t < cutoffMs || t > nowMs) continue;
+		// A run past the ten-day bound reads as tens of millions of easy
+		// seconds and would hold the split at "on guideline" on its own.
+		if (!isPlausibleRunDuration(r.duration_s)) continue;
 		let easy = 0;
 		let hard = 0;
 		for (const seg of effortSegments(r)) {

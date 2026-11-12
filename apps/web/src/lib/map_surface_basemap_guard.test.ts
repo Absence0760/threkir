@@ -34,6 +34,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 
+import { stripComments } from './core/strip_comments';
 import { maptilerStyleUrl, type MaptilerSlug } from './routes/map-style-url';
 
 const libRoot = import.meta.dirname;
@@ -56,11 +57,28 @@ const MAP_SURFACES: Record<string, ['shared' | 'unkeyed', string]> = {
 	// 0.4 % margin, i.e. a value sitting ON the floor rather than above it, so
 	// it splits into `mapZoneBoundary`'s keyed pair like every other rung.
 	'lib/components/PrivacyZonePicker.svelte': ['shared', 'the privacy-zone circle'],
+	'lib/components/CoursePreview3D.svelte': ['shared', 'the 3D course preview'],
+	'lib/components/course_preview/flyover_video_export.ts': ['shared', 'the offscreen map the flyover video records'],
+	'lib/components/CourseLinesMap.svelte': ['shared', 'a course\'s start and finish lines, and the editor that moves them'],
+	'lib/components/parks/ParkCoursesMap.svelte': ['shared', 'a park\'s official courses and their start pins'],
 };
 
 /// Infrastructure, not a surface: the MapLibre re-export and the resize
-/// observer instantiate no map and paint nothing.
-const NOT_SURFACES = new Set(['lib/routes/maplibre.ts', 'lib/routes/map_resize.ts']);
+/// observer instantiate no map and paint nothing, and the course-layer helper
+/// makes no map either: it paints onto the one its caller made, with the
+/// ground that caller resolved and passes in (both callers are surfaces above).
+/// The dev basemap fallback (`vite dev` only) paints nothing either: it swaps
+/// the local `basic` style, light ground, for the light OSM raster, so the
+/// ground the surface resolved still holds. An override naming the local
+/// `dark` style keeps its dark-ground palette over the light fallback, a
+/// dev-only mismatch accepted over a second fallback style.
+const NOT_SURFACES = new Set([
+	'lib/routes/maplibre.ts',
+	'lib/routes/dev_basemap_fallback.ts',
+	'lib/routes/map_resize.ts',
+	'lib/components/course_preview/course_layers.ts',
+	'lib/races/course_gate_layers.ts',
+]);
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -85,7 +103,7 @@ function read(key: string): string {
 
 test('every file that instantiates MapLibre is a registered map surface', () => {
 	const unregistered = sourceFiles(srcRoot)
-		.filter((f) => /routes\/maplibre'|from 'maplibre-gl'/.test(readFileSync(f, 'utf-8')))
+		.filter((f) => /routes\/maplibre(?:\.ts)?'|from 'maplibre-gl'/.test(readFileSync(f, 'utf-8')))
 		.map(rel)
 		.filter((key) => !NOT_SURFACES.has(key) && !(key in MAP_SURFACES));
 	assert.deepEqual(
@@ -126,7 +144,10 @@ test('every registered surface resolves the ground the way its entry claims', ()
 const ALLOWED_OS_PREFERENCE_SINK =
 	/mapStyleUrl|basemapIsDark|'streets-v2|'satellite'|'hybrid'|'outdoor-v2/;
 
-/// Blank out a component's `<style>` block, keeping line numbering. The CSS is
+/// Blank out a component's `<style>` block, keeping line numbering. It goes
+/// FIRST and `core/strip_comments` second: the stylesheet's own `/* ... */`
+/// comments are CSS, and handing them to a JS scanner is the one thing the
+/// scanner is not for. The CSS is
 /// out of scope for the reason in the header — a map component's stylesheet
 /// also dresses list rows, which are theme surfaces — while the markup stays
 /// in, because a `class:` or `style:` binding fed by the OS preference would
@@ -161,7 +182,7 @@ function osPreferenceSymbols(key: string, lines: string[]): string[] {
 test('the OS colour preference reaches the basemap and nothing else', () => {
 	const offenders: string[] = [];
 	for (const key of Object.keys(MAP_SURFACES)) {
-		const lines = withoutStyleBlock(read(key)).split('\n');
+		const lines = stripComments(withoutStyleBlock(read(key))).split('\n');
 		const symbols = osPreferenceSymbols(key, lines);
 		assert.ok(
 			symbols.length > 0,
@@ -172,7 +193,6 @@ test('the OS colour preference reaches the basemap and nothing else', () => {
 			const use = new RegExp(`\\b${symbol}\\b`);
 			lines.forEach((line, i) => {
 				if (!use.test(line)) return;
-				if (/^\s*(\/\/|\/?\*)/.test(line)) return;
 				if (declaration.test(line)) return;
 				if (ALLOWED_OS_PREFERENCE_SINK.test(line)) return;
 				offenders.push(`${key}:${i + 1} ${line.trim()}`);
@@ -245,7 +265,7 @@ test('a map surface resolves its style URL through the shared precedence', () =>
 	}
 	assert.equal(
 		Object.keys(MAP_SURFACES).length,
-		7,
+		11,
 		'the population this scan ran over — a shrinking register would let it pass over nothing',
 	);
 	assert.deepEqual(
@@ -274,7 +294,7 @@ test('the style-resolver scan flags a raw endpoint call and spares the resolver'
 	for (const line of [
 		"\tstreets: styleUrlForSlug(BUILDER_SLUGS.streets, KEY, OVERRIDE),",
 		'\tstyle: mapStyleUrlFromEnv(PUBLIC_MAPTILER_KEY, prefersDark),',
-		"\timport { maptilerStyleUrl } from '$lib/routes/map-style-url';",
+		"\timport { maptilerStyleUrl } from '#lib/routes/map-style-url.ts';",
 	]) {
 		assert.ok(!RAW_ENDPOINT.test(line), `must spare: ${line}`);
 	}
@@ -310,4 +330,126 @@ test('no MapLibre paint value is a CSS expression MapLibre cannot parse', () => 
 			'color-mix(), taking the whole map down with it (§ 528). Resolve the colour in ' +
 			'JS and pass a literal.',
 	);
+});
+
+// ── Static-map thumbnails sit on the user's basemap too ─────────────────────
+//
+// A thumbnail is a map surface drawn by a server instead of MapLibre, and it
+// drifted the same way: both list previews asked MapTiler for a hard-coded
+// `streets-v2`, ignoring `map_style` and the theme, while mobile's twin
+// hard-coded `streets-v2-dark` and showed a dark map to a light-theme runner
+// (decisions § 1749). The register below is every surface that requests a
+// static map image, checked in both directions like MAP_SURFACES above.
+
+/// Surfaces whose static image must resolve the live maps' basemap.
+const THUMBNAIL_SURFACES: Record<string, string> = {
+	'lib/components/RouteTrackPreview.svelte': 'routes list / explore / club card thumbnail',
+	'lib/components/RunTrackPreview.svelte': 'runs list / feed / profile thumbnail',
+	'routes/clubs/[slug]/events/[id]/+page.svelte': 'the event meet-point preview',
+};
+
+/// Static-image consumers that are deliberately NOT on the viewer's basemap,
+/// each with the reason. A share card is an exported image with its own
+/// pinned look — the mobile share cards are pinned the same way (settings.md
+/// `map_style`).
+const STATIC_IMAGE_EXEMPT: Record<string, string> = {
+	'routes/runs/[id]/+page.svelte': 'the run share card, a fixed-look export',
+};
+
+/// The helpers and builder module themselves, which are where the resolution
+/// lives rather than surfaces that might skip it.
+const STATIC_IMAGE_INFRA = new Set([
+	'lib/routes/static_map.ts',
+	'lib/routes/map-style.svelte.ts',
+	'lib/routes/map-style-url.ts',
+]);
+
+const STATIC_IMAGE_CONSUMER =
+	/routes\/static_map(?:\.ts)?'|\btrackThumbnailUrlFromEnv\(|\bstaticMapSlugFromPreference\(|api\.maptiler\.com\/maps\/|\/static\/auto\//;
+
+/// A quoted MapTiler slug. In a thumbnail that is a basemap chosen by the
+/// widget rather than by the runner, which is the defect.
+const MAPTILER_SLUG_LITERAL = /['"`](streets-v2(-dark)?|satellite|hybrid|outdoor-v2)['"`]/;
+
+/// Calling a single-endpoint builder directly skips the precedence and the
+/// ground-keyed stroke [buildTrackThumbnailUrl] applies.
+const RAW_STATIC_BUILDER = /\b(buildStaticMapUrl|buildLocalStaticMapUrl)\(/;
+
+const THUMBNAIL_RESOLVER = /\b(trackThumbnailUrlFromEnv|staticMapSlugFromPreference)\(/;
+
+test('every static-map consumer is a registered thumbnail or a reasoned exemption', () => {
+	const unregistered = sourceFiles(srcRoot)
+		.filter((f) => STATIC_IMAGE_CONSUMER.test(stripComments(readFileSync(f, 'utf-8'))))
+		.map(rel)
+		.filter(
+			(key) =>
+				!STATIC_IMAGE_INFRA.has(key) &&
+				!(key in THUMBNAIL_SURFACES) &&
+				!(key in STATIC_IMAGE_EXEMPT),
+		);
+	assert.deepEqual(
+		unregistered,
+		[],
+		`these files request a static map image but are not registered: ${unregistered.join(', ')}. ` +
+			'Add the entry to THUMBNAIL_SURFACES and build the URL with trackThumbnailUrlFromEnv ' +
+			'(or staticMapSlugFromPreference for a single-point image), or to STATIC_IMAGE_EXEMPT ' +
+			'with the reason it is pinned.',
+	);
+	for (const key of [...Object.keys(THUMBNAIL_SURFACES), ...Object.keys(STATIC_IMAGE_EXEMPT)]) {
+		assert.ok(
+			STATIC_IMAGE_CONSUMER.test(stripComments(read(key))),
+			`${key} is registered but requests no static map image — drop the stale entry`,
+		);
+	}
+});
+
+test('a thumbnail resolves its basemap through the shared helper, never a slug literal', () => {
+	const literal: string[] = [];
+	const raw: string[] = [];
+	const missing: string[] = [];
+	for (const key of Object.keys(THUMBNAIL_SURFACES)) {
+		const lines = stripComments(withoutStyleBlock(read(key))).split('\n');
+		lines.forEach((line, i) => {
+			if (MAPTILER_SLUG_LITERAL.test(line)) literal.push(`${key}:${i + 1} ${line.trim()}`);
+			if (RAW_STATIC_BUILDER.test(line)) raw.push(`${key}:${i + 1} ${line.trim()}`);
+		});
+		if (!THUMBNAIL_RESOLVER.test(lines.join('\n'))) missing.push(key);
+	}
+	assert.equal(Object.keys(THUMBNAIL_SURFACES).length, 3, 'the population this scan ran over');
+	assert.deepEqual(
+		literal,
+		[],
+		`a thumbnail names its own MapTiler style:\n${literal.join('\n')}\n` +
+			"That ignores the runner's map_style and the theme — the light-street-map-for-" +
+			'everyone defect of § 1749. Use trackThumbnailUrlFromEnv.',
+	);
+	assert.deepEqual(
+		raw,
+		[],
+		`a thumbnail calls a single-endpoint builder directly:\n${raw.join('\n')}\n` +
+			'That skips the override/MapTiler precedence and the ground-keyed stroke.',
+	);
+	assert.deepEqual(missing, [], `these thumbnails resolve no basemap: ${missing.join(', ')}`);
+});
+
+test('the thumbnail scan flags a slug literal and a raw builder, and spares the helper', () => {
+	for (const line of [
+		"\t\t\tstyle: 'streets-v2',",
+		"\t\t\tstyle: 'streets-v2-dark',",
+		'\t\tconst slug = prefersDark ? "streets-v2-dark" : "streets-v2";',
+		"\t\t\tstyle: 'satellite',",
+	]) {
+		assert.ok(MAPTILER_SLUG_LITERAL.test(line), `must flag: ${line}`);
+	}
+	for (const line of [
+		'\t\t\tstyle: staticMapSlugFromPreference(prefersDark),',
+		"\timport { trackThumbnailUrlFromEnv } from '#lib/routes/map-style.svelte.ts';",
+		"\t\t\tlabel: 'Satellite view',",
+	]) {
+		assert.ok(!MAPTILER_SLUG_LITERAL.test(line), `must spare: ${line}`);
+	}
+	assert.ok(RAW_STATIC_BUILDER.test('\t\tbuildLocalStaticMapUrl(points, {'));
+	assert.ok(RAW_STATIC_BUILDER.test('\t\t? buildStaticMapUrl(points, {'));
+	assert.ok(!RAW_STATIC_BUILDER.test('\t\t{@const mapUrl = trackThumbnailUrlFromEnv(points, {'));
+	assert.ok(THUMBNAIL_RESOLVER.test('\t\t{@const mapUrl = trackThumbnailUrlFromEnv(points, {'));
 });

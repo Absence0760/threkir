@@ -1,10 +1,11 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Backup & restore JOURNEY — the full account-data round-trip walked
@@ -190,11 +191,14 @@ test.describe('backup & restore journey', () => {
 			await test.step('delete the planted run; confirm it is gone from the DB + /runs', async () => {
 				await deleteRun(PLANTED_RUN_ID);
 
-				const { data: gone } = await admin
-					.from('runs')
-					.select('id')
-					.eq('id', PLANTED_RUN_ID);
-				expect(gone ?? []).toHaveLength(0);
+				const gone = await readRows(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('id')
+						.eq('id', PLANTED_RUN_ID)
+				);
+				expect(gone).toHaveLength(0);
 
 				// And gone from the list surface.
 				await page.goto('/runs');
@@ -242,18 +246,21 @@ test.describe('backup & restore journey', () => {
 				// Backend: the row is back under USER_A with the planted
 				// distance + metadata, and its track_url was re-set (the
 				// gzipped track re-uploaded to the runs bucket).
-				const { data: row } = await admin
-					.from('runs')
-					.select('user_id, distance_m, track_url, metadata')
-					.eq('id', PLANTED_RUN_ID)
-					.single();
-				expect(row?.user_id).toBe(USER_A.id);
-				expect(row?.distance_m).toBe(PLANTED_DISTANCE_M);
-				expect((row?.metadata as { title?: string } | null)?.title).toBe(
+				const row = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('user_id, distance_m, track_url, metadata')
+						.eq('id', PLANTED_RUN_ID)
+						.single()
+				);
+				expect(row.user_id).toBe(USER_A.id);
+				expect(row.distance_m).toBe(PLANTED_DISTANCE_M);
+				expect((row.metadata as { title?: string } | null)?.title).toBe(
 					title
 				);
 				expect(
-					row?.track_url,
+					row.track_url,
 					'restore must re-upload the track + set track_url'
 				).toBe(`${USER_A.id}/${PLANTED_RUN_ID}.json.gz`);
 

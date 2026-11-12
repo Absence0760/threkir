@@ -92,16 +92,16 @@ Two ways to point a physical device at the local stack:
 - **`adb reverse` (recommended).** Forwards the device's own loopback to your host, so `127.0.0.1` works on the phone exactly as on the host:
 
   ```bash
-  adb reverse tcp:54321 tcp:54321   # Supabase REST/Auth/Storage/Functions
-  adb reverse tcp:54322 tcp:54322   # Postgres, only if you hit the DB directly
+  adb reverse tcp:24321 tcp:24321   # Supabase REST/Auth/Storage/Functions
+  adb reverse tcp:24322 tcp:24322   # Postgres, only if you hit the DB directly
   adb reverse tcp:7777  tcp:7777    # web dev server — AI Coach (WEB_BASE_URL → /api/coach)
   adb reverse tcp:8080  tcp:8080    # local Protomaps tile server (TILE_URL_TEMPLATE)
   ```
 
-  Then point every URL in `.env.local` at `127.0.0.1` (not `10.0.2.2`):
+  Then make sure every URL in `.env.development` points at `127.0.0.1` (not `10.0.2.2`) — the committed defaults already do:
 
   ```
-  SUPABASE_URL=http://127.0.0.1:54321
+  SUPABASE_URL=http://127.0.0.1:24321
   WEB_BASE_URL=http://127.0.0.1:7777
   TILE_URL_TEMPLATE=http://127.0.0.1:8080/styles/basic/{z}/{x}/{y}.png
   ```
@@ -120,16 +120,20 @@ Skip this section if you're only using email/password.
 
 ### 1. Create Google Cloud OAuth credentials
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → your project (create one if needed) → **Credentials** → **Create credentials** → **OAuth client ID**.
-2. Create a **Web application** client. Name it "Run app — Supabase". No redirect URI is required for the native-ID-token flow, but Supabase needs this client's ID for token validation. Copy the **Client ID** — this is your `GOOGLE_WEB_CLIENT_ID`.
+The prod walkthrough — the moved console, all three clients, and the order they
+go in — is [`docs/ops/google_provisioning.md`](../../docs/ops/google_provisioning.md),
+which carries the status ledger. What follows is the local-dev subset.
+
+1. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → your project → **Clients** → **Create client**. (This lives under *Google Auth Platform* now, not *APIs & Services → Credentials*, and it is unavailable until the project's consent screen exists.)
+2. Create a **Web application** client. Name it "Threkir — Supabase". No redirect URI is required for the native-ID-token flow, but Supabase needs this client's ID for token validation. Copy the **Client ID** — this is your `GOOGLE_WEB_CLIENT_ID`.
 3. Create a second OAuth client, this time **Android**. You need:
-   - **Package name**: `com.example.mobile_android` (see `apps/mobile_android/android/app/build.gradle.kts`)
+   - **Package name**: `com.threkir.app` (the `applicationId` in `apps/mobile_android/android/app/build.gradle.kts` — *not* the `com.example.` default, which matches no build that has ever shipped)
    - **SHA-1 certificate fingerprint**: for debug builds, run:
      ```bash
      keytool -keystore ~/.android/debug.keystore -list -v \
        -alias androiddebugkey -storepass android -keypass android
      ```
-     and copy the SHA1 line. For release builds, use your release keystore.
+     and copy the SHA1 line. For release builds, use your release keystore — and once Play App Signing is on, the SHA-1 Play shows under *App signing* too, because Play re-signs the artifact.
    No Client ID is stored for this one — it's matched by package + SHA alone.
 
 ### 2. Configure Supabase
@@ -138,11 +142,17 @@ Skip this section if you're only using email/password.
 2. Paste the **Web** Client ID from step 1.2 into the **Authorized Client IDs** field.
 3. Save.
 
-### 3. Add the client ID to `.env.local`
+### 3. Pass the client ID to the build
+
+Mobile reads no `.env.local`: `flutter_dotenv` loads only the bundled
+`.env.development` asset, and per-machine values go through `--dart-define`,
+which `main.dart` merges on top (decisions § 137):
 
 ```
-GOOGLE_WEB_CLIENT_ID=<your-web-client-id>.apps.googleusercontent.com
+flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=<your-web-client-id>.apps.googleusercontent.com
 ```
+
+Release builds take the same define; they never read `.env.development`.
 
 ### 4. Test
 
@@ -150,7 +160,7 @@ Run the app, open the Sign In screen, tap **Sign in with Google**. The system Go
 
 If the sign-in fails with "Google sign-in did not return an ID token" or similar, the most common causes are:
 
-- The Web Client ID in `.env.local` doesn't match what's configured in Supabase → triple-check both values.
+- The Web Client ID passed as `GOOGLE_WEB_CLIENT_ID` doesn't match what's configured in Supabase → triple-check both values.
 - The Android OAuth client's package name or SHA-1 doesn't match the APK that's installed → rerun `keytool` and compare to what's in Google Cloud Console.
 - You're testing on an emulator without Google Play services → use a Google Play system image, not the stock AOSP one.
 
@@ -162,11 +172,10 @@ Skip this section if you're only using email/password.
 
 1. Apple Developer portal → **Certificates, Identifiers & Profiles → Identifiers** → create a **Services ID** (e.g. `com.threkir.signin`). Enable "Sign in with Apple" on it and register your Supabase auth callback as a **Return URL**: `https://<project-ref>.supabase.co/auth/v1/callback`.
 2. Supabase dashboard → **Authentication → Providers → Apple** → **Enable**, and add the Services ID to the authorized client IDs.
-3. Add both values to `.env.local`:
+3. Pass both values to the build as `--dart-define`s (mobile reads no `.env.local`, see the Google section above):
 
 ```
-APPLE_SERVICE_CLIENT_ID=com.threkir.signin
-APPLE_REDIRECT_URI=https://<project-ref>.supabase.co/auth/v1/callback
+flutter run --dart-define=APPLE_SERVICE_CLIENT_ID=com.threkir.signin --dart-define=APPLE_REDIRECT_URI=https://<project-ref>.supabase.co/auth/v1/callback
 ```
 
 The Apple Developer Services ID is an operator-provisioned credential — a deploy gate, not a code gate (see `docs/architecture/decisions.md`). Until it exists the Android button shows the coming-soon notice.
@@ -194,8 +203,10 @@ pnpm dev:run:android:seed
 ```
 
 This passes `DEV_USER_EMAIL` / `DEV_USER_PASSWORD` via `--dart-define`; the app
-signs in after the first frame. Alternatively, set those two keys in
-`apps/mobile_android/.env.local` and any plain `flutter run` will auto-login.
+signs in after the first frame. A plain debug `flutter run` auto-logs in too,
+because the committed `.env.development` already carries the same two keys; the
+`--dart-define` form is what a release build (which never reads that file) or a
+different account needs.
 
 The auto-login only fires when `SUPABASE_URL` is a loopback address (the
 gate lives in `lib/dev_auto_login.dart`), so seed credentials can never sign
@@ -259,7 +270,7 @@ The app will appear in your app drawer. When prompted on the phone, allow **Inst
 
 ### Offline mode
 
-Without `.env.local` credentials (or if the backend is unreachable), the app runs in **offline mode**: runs are recorded and stored locally on the phone. To sync runs across devices, fill in `DEV_USER_EMAIL` and `DEV_USER_PASSWORD` in `.env.local` before building the APK.
+A release APK never reads `.env.development`, so one built without a Supabase `--dart-define` (or one whose backend is unreachable) runs in **offline mode**: runs are recorded and stored locally on the phone. To sync runs across devices, build it with `flutter build apk --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…` and sign in.
 
 ---
 
@@ -278,6 +289,19 @@ flutter test test/run_stats_test.dart
 flutter test --plain-name "speed clamp"
 ```
 
+### On-device smoke (`integration_test/`)
+
+The app driven in-process on a running emulator or a USB device ([decisions § 1820](../../docs/architecture/decisions.md)). It is not part of `flutter test`, which reads `test/` only, and it does not run in CI yet.
+
+```bash
+flutter emulators --launch <emulator-name>
+cd apps/mobile_android
+flutter test integration_test -d emulator-5554                            # both suites
+flutter test integration_test/launch_onboarding_test.dart -d emulator-5554
+```
+
+Each suite launches through the real `main()` and sets the `onboarded` pref itself, so the emulator's leftover state does not matter. Neither suite needs the local Supabase stack. Both stop before any OS permission dialog, which an in-process driver cannot tap. A green run is a debug build: it proves launch and navigation, not release behaviour. The byte-identical copy in `apps/mobile_ios/integration_test/` is the same suite on iOS; edit here and mirror, as with `lib/` and `test/`.
+
 See [testing.md](../../docs/testing/testing.md) for the complete testing reference — what's covered, how to add a new test, the `@visibleForTesting` / override-directory / synthetic-`Position` patterns, and what's still uncovered.
 
 ## Lint
@@ -295,7 +319,7 @@ The Android app supports the following. For a side-by-side view against Strava, 
 ### First launch
 
 - **Onboarding flow** — 3-page welcome tour with location permission request (local `Preferences.onboarded` flag, runs before sign-in)
-- **Post-signup setup wizard** — a 7-step account-setup wizard (display name → units → goal → demographics + GDPR Art 9 consent → privacy default → notifications → done), the mobile twin of web's `/onboarding`. Gated on `user_profiles.onboarded_at`: `home_screen.dart` fetches the profile after the first frame and pushes `setup_wizard_screen.dart` exactly once when the column is null, then `Finish` (or the header `Skip setup`) stamps it via `ApiClient.completeOnboarding` / `markOnboarded` so it never re-fires. **To test:** sign in as a *fresh* account (the seed runner already has `onboarded_at` backfilled, so it won't show — null the column in Studio at `localhost:54323` → `user_profiles` to re-trigger). The Art 9 consent checkbox only appears once a gender or DOB is chosen; gender + the consent stamp are written only under consent, but DOB is always written (it backs the under-18 people-search exclusion). The notifications step sets the `push_notifications` bag pref (`important`/`all`/`off`) — there's no native OS prompt here, unlike web's push step.
+- **Post-signup setup wizard** — a 7-step account-setup wizard (display name → units → goal → demographics + GDPR Art 9 consent → privacy default → notifications → done), the mobile twin of web's `/onboarding`. Gated on `user_profiles.onboarded_at`: `home_screen.dart` fetches the profile after the first frame and pushes `setup_wizard_screen.dart` exactly once when the column is null, then `Finish` (or the header `Skip setup`) stamps it via `ApiClient.completeOnboarding` / `markOnboarded` so it never re-fires. **To test:** sign in as a *fresh* account (the seed runner already has `onboarded_at` backfilled, so it won't show — null the column in Studio at `localhost:24323` → `user_profiles` to re-trigger). The Art 9 consent checkbox only appears once a gender or DOB is chosen; gender + the consent stamp are written only under consent, but DOB is always written (it backs the under-18 people-search exclusion). The notifications step sets the `push_notifications` bag pref (`important`/`all`/`off`) — there's no native OS prompt here, unlike web's push step.
 - **Offline ready** — no sign-in required to record and store runs locally
 
 ### Dashboard
@@ -337,15 +361,16 @@ Activity type is locked once you tap Start — it can't change mid-run.
 - **Manual pause/resume** — pause button on the expanded stats panel. Uses the recorder's Stopwatch so resumed elapsed time is exact.
 - **Lap markers** — flag button records a lap split mid-run
 - **Pace alerts** — set a target pace in Settings; TTS warns when you're 30s+ off
+- **Vibration cues** — a planned workout buzzes on every step change (three long pulses into a rep or steady block, two into a warm-up / recovery / walk / cool-down) and on completion (one long, two short); pace alerts add two sharp pulses for speed up, one for slow down. To verify the screen-off path, start a workout, lock the phone and pocket it: the buzz must still land. Skip a step from the workout band for a quick check. Off in Settings → Preferences → **Vibration cues** (device-scoped `haptic_feedback_enabled`). The emulator has no motor, so this needs a physical phone. Native side: `RunHapticsBridge.kt` + `RunHapticPatterns.kt` (issue #1186)
 - **Wake lock** — screen stays on during the entire run
-- **Background recording** — GPS tracking continues when the screen is off or the app is backgrounded, via a foreground service notification ("Run in progress"). Requires location permission granted as **"Allow all the time"** and battery optimisation disabled for the app.
+- **Background recording** — GPS tracking continues when the screen is off or the app is backgrounded, via a foreground service notification ("Run in progress"). Works under **"While using the app"** too: the service is typed `location` and starts while the app is visible, which is what keeps Android counting the app as in-use. **"Allow all the time"** removes the OS's discretion to stop delivering anyway, and battery optimisation must be disabled for the app either way. When a background stretch really does miss every fix, the run keeps timing and keeps what it already had, and the off-screen distance is simply not counted — disclosed on return, once per run (#784 / #785, `decisions.md § 630`).
 - **Km/mi splits** — snackbar notification at each distance tick (every 1 km / 1 mi for run/walk/hike, every 5 km for cycle)
 - **Route following** — pick a saved route before starting; the planned route shows underneath your live track
 - **Off-route alerts** — banner + TTS announcement when you drift more than 40m from the selected route
 - **Distance remaining** — when following a route, a "X to go" badge in the top right shows distance to the end of the route, measured along the remaining segments
 - **GPS-lost banner** — if no GPS fix arrives for 10 seconds, a red banner appears at the top: *"GPS signal lost — move to open sky"*. Dismisses when fixes resume.
 - **Permission-revoked banner** — if location permission is toggled off in Android settings during a run, a red banner warns you immediately.
-- **Crash-safe persistence** — the current run state is serialised to disk every 10 seconds. If the app is killed mid-run, the next launch promotes the partial data to a completed run tagged `recovered_from_crash` and shows a snackbar. Tiny runs (< 3 waypoints or < 50 m) are dropped silently.
+- **Crash-safe persistence** — the current run state is serialised to disk every 10 seconds. If the app is killed mid-run, the next launch opens the Run tab on a Resume / Finish now / Discard prompt showing the partial's distance and elapsed time, whenever it has any distance or a minute of time and was saved within 48 h. An empty partial (no distance, under a minute) is dropped with a banner; an older one is saved as a run tagged `recovered_from_crash` when it has ≥ 3 waypoints and ≥ 50 m, and dropped with a banner otherwise (decisions § 2355).
 - **Monotonic clock** — elapsed time uses `Stopwatch`, so wall-clock jumps (NTP sync, DST, timezone change, manual time change) can't corrupt the duration.
 - **Speed clamp** — a single corrupt GPS fix implying a speed faster than the activity's maximum (see table) is discarded so it can't inflate total distance.
 
@@ -413,7 +438,34 @@ Both importers save locally first and push to the cloud asynchronously, so they 
 
 ### Offline mode
 
-If `.env.local` is missing, empty, or the backend is unreachable, the app starts in **offline mode**. All features work locally — you can record runs, view history, and import routes without ever signing in. Runs stay on the device until you sign in and the auto-sync picks them up.
+If `SUPABASE_URL` / `SUPABASE_ANON_KEY` resolve to nothing (a release build with no `--dart-define` for them) or the backend is unreachable, the app starts in **offline mode**. All features work locally — you can record runs, view history, and import routes without ever signing in. Runs stay on the device until you sign in and the auto-sync picks them up.
+
+### Push notifications (needs the Firebase config)
+
+`google-services.json` is gitignored, so a fresh clone has none and the whole
+push path no-ops: Gradle skips the `google-services` plugin — it says so in the
+build log — and `FirebasePushMessaging` catches the `Firebase.initializeApp`
+throw. Nothing else is affected, so this is a perfectly good dev setup.
+
+To receive a real push on a device, fetch the config out of the private estate
+repo first (from this directory):
+
+```
+AWS_PROFILE=threkir sops --decrypt --extract '["google_services_json_base64"]' ../../../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > android/app/google-services.json
+```
+
+Then **reinstall** rather than hot-restart — the plugin runs at Gradle
+configure time — and sign in: a `device_tokens` row should appear for your
+user. Receiving is only half; the send side is the Go worker's FCM credentials.
+See [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+
+### Today's-workout home-screen widget
+
+`TodayWorkoutWidgetProvider` (Android) draws today's planned session from a seven-day snapshot the app writes on every plan-overview read (`lib/today_widget.dart`, channel `run_app/home_widget`, contract `fixtures/today_widget_snapshot.json`). Every string arrives translated and unit-formatted from Dart. **To test:** sign in as `runner@test.com`, start a plan, long-press the home screen → Widgets → Threkir → **Today's workout**. It shows today's session (or rest / nothing scheduled / no plan); tapping opens that workout, the plan, or the plan list through `com.threkir.app://plans/...`. Mark the workout done or skipped in the app and the widget gains the badge on the next plan read. Set the device date forward a day: the widget rolls over without opening the app (midnight alarm plus the `TIME_SET` broadcast); eight days forward it says "Open Threkir to update". Sign out and it falls back to "Open Threkir to see today's workout". Resize it to one row for the compact layout. `adb shell am start -a android.intent.action.VIEW -d com.threkir.app://plans` exercises the deep link without the widget.
+
+### Season planning
+
+Train → New plan → **Plan a season**. Add races with **Add a race** (name, race day, distance, priority, optional goal time `h:mm:ss`), set days per week, then **Confirm races and preview plans**: one plan per A race, each recovery gap, and any B/C race that falls in no plan. **Create** writes the plans in order and opens the first; the overlap prompt appears only when the first plan overlaps an active one. The **Describe your season** card shows only when the deploy's AI plan capability is on; any failure leaves a blank race to fill in. A season creates several active plans, so use a throwaway account or delete them afterwards.
 
 ### Not yet implemented
 
@@ -458,7 +510,7 @@ What's actually wired up in [apps/mobile_android/](.):
 | Auto-sync triggers | `connectivity_plus` + `WidgetsBindingObserver` | Push runs on wifi/foreground |
 | Run sharing | `share_plus` | System share sheet for GPX export |
 | UUIDs for run IDs | `uuid` | Avoid sync collisions |
-| Env config | `flutter_dotenv` | Loads `.env.local` |
+| Env config | `flutter_dotenv` | Loads the bundled `.env.development` (debug only) under `--dart-define` overrides |
 | Local persistence | JSON files via `path_provider` | One file per run / per route — no sqlite or hive. Plus a single `in_progress.json` rewritten every 10s during a recording for crash-safe recovery. |
 | Backend client | `supabase_flutter` (via shared `api_client` package) | Same backend as the web app |
 
@@ -471,7 +523,7 @@ The two local stores ([`LocalRunStore`](lib/local_run_store.dart) and [`LocalRou
 ### "Connection refused" or network errors
 
 - Make sure the backend is running (`supabase start`)
-- Make sure you're using `http://10.0.2.2:54321`, not `http://localhost:54321`
+- Make sure you're using `http://10.0.2.2:24321`, not `http://localhost:24321`
 - Check that the emulator has internet access (try opening a URL in the emulator's browser)
 
 ### Map showing blank/grey

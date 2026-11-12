@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 
@@ -165,7 +165,8 @@ test.describe('/settings/account — data export', () => {
 
 	test('Cloud export (GPX zip) calls the server endpoint and opens the signed URL', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// PUBLIC_EXPORT_HUB_URL is unset in the dev `.env`, so the
 		// button takes the fallback path: `supabase.functions.invoke
@@ -179,7 +180,7 @@ test.describe('/settings/account — data export', () => {
 		// behaviour after success.
 		const fakeSignedUrl =
 			'https://signed.example/runs/exports/abc?token=fake';
-		await page.route('**/functions/v1/export-data', (route) =>
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -280,7 +281,8 @@ test.describe('/settings/account — data export', () => {
 
 	test('Full account archive posts {format:"backup"} and opens the signed URL', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// The comprehensive GDPR Art. 20 export. Unlike the runs-only
 		// CSV / JSON / GPX buttons, this is the server-built
@@ -292,7 +294,7 @@ test.describe('/settings/account — data export', () => {
 		const fakeSignedUrl =
 			'https://signed.example/runs/exports/full-archive?token=fake';
 		let requestedFormat: string | null = null;
-		await page.route('**/functions/v1/export-data', (route) => {
+		await mockRoute(page, '**/functions/v1/export-data', (route) => {
 			requestedFormat =
 				(route.request().postDataJSON() as { format?: string })?.format ??
 				null;
@@ -351,5 +353,143 @@ test.describe('/settings/account — data export', () => {
 		await expect(page.getByText(/Export failed:/)).toBeVisible({
 			timeout: 5_000
 		});
+	});
+
+	test('a truncated cloud export says so instead of "Export ready"', async ({
+		page,
+		context,
+		mockRoute
+	}) => {
+		// The endpoint pages the runs and reports `complete: false` when
+		// the archive is short of the account (the 5000-run ceiling, or a
+		// page that failed to read). Before this, both clients said only
+		// "Export ready" and the shortfall was visible nowhere but inside
+		// manifest.json — a runner had no way to know their Art. 20
+		// archive was missing half their history.
+		const fakeSignedUrl = 'https://signed.example/runs/exports/short?token=fake';
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: fakeSignedUrl,
+					expires_in: 600,
+					count: 5000,
+					total: 7412,
+					complete: false,
+					format: 'gpx'
+				})
+			})
+		);
+		await context.route('**/runs/exports/**', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'text/plain',
+				body: 'fake-export'
+			})
+		);
+
+		await page.goto('/settings/account');
+		const popupPromise = context.waitForEvent('page');
+		await page.getByRole('button', { name: /Cloud export \(GPX zip\)/ }).click();
+		const popup = await popupPromise;
+		await popup.waitForLoadState('domcontentloaded');
+
+		await expect(
+			page.getByText(/Export ready, but partial — 5000 runs of 7412/)
+		).toBeVisible({ timeout: 5_000 });
+		// And the unqualified success wording must NOT appear.
+		await expect(page.getByText(/^Export ready \(/)).toHaveCount(0);
+
+		// The toast expires; the notice on the page does not.
+		const notice = page.getByTestId('export-shortfall');
+		await expect(notice).toBeVisible();
+		await expect(notice).toContainText('5000');
+		await expect(notice).toContainText('7412');
+		await expect(notice).toContainText('manifest.json');
+	});
+
+	test('a truncated full account archive surfaces the same notice', async ({
+		page,
+		context,
+		mockRoute
+	}) => {
+		const fakeSignedUrl =
+			'https://signed.example/runs/exports/short-archive?token=fake';
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: fakeSignedUrl,
+					expires_in: 600,
+					count: 5000,
+					total: 6001,
+					complete: false,
+					format: 'backup'
+				})
+			})
+		);
+		await context.route('**/runs/exports/**', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'text/plain',
+				body: 'fake-archive'
+			})
+		);
+
+		await page.goto('/settings/account');
+		const popupPromise = context.waitForEvent('page');
+		await page
+			.getByRole('button', { name: /Download full account archive/ })
+			.click();
+		const popup = await popupPromise;
+		await popup.waitForLoadState('domcontentloaded');
+
+		const notice = page.getByTestId('export-shortfall');
+		await expect(notice).toBeVisible({ timeout: 5_000 });
+		await expect(notice).toContainText('6001');
+	});
+
+	test('a complete export leaves no shortfall notice on the page', async ({
+		page,
+		context,
+		mockRoute
+	}) => {
+		// The other half of the honesty contract: a whole archive must
+		// not be labelled partial, so `complete: true` renders nothing.
+		const fakeSignedUrl = 'https://signed.example/runs/exports/whole?token=fake';
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: fakeSignedUrl,
+					expires_in: 600,
+					count: 12,
+					total: 12,
+					complete: true,
+					format: 'gpx'
+				})
+			})
+		);
+		await context.route('**/runs/exports/**', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'text/plain',
+				body: 'fake-export'
+			})
+		);
+
+		await page.goto('/settings/account');
+		const popupPromise = context.waitForEvent('page');
+		await page.getByRole('button', { name: /Cloud export \(GPX zip\)/ }).click();
+		const popup = await popupPromise;
+		await popup.waitForLoadState('domcontentloaded');
+
+		await expect(page.getByText(/Export ready \(12 runs\)/)).toBeVisible({
+			timeout: 5_000
+		});
+		await expect(page.getByTestId('export-shortfall')).toHaveCount(0);
 	});
 });

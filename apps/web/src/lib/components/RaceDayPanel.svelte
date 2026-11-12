@@ -5,21 +5,22 @@
 		MILE_METRES,
 		negativeSplitPacing,
 		raceChecklist,
-		fmtSplitTime,
 		goalFeasibility,
-	} from '$lib/runs/race_day';
-	import { riegelPredict, predictionConfidence } from '$lib/training/training';
-	import { fmtKm, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run } from '$lib/types';
+	} from '#lib/runs/race_day.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { riegelPredict, predictionConfidence } from '#lib/training/training.ts';
+	import { fmtKm, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
 	interface Props {
 		raceDate: string;
+		raceName?: string | null;
 		distanceM: number;
 		goalTimeSec: number | null;
 		recentRuns: Run[];
 	}
-	let { raceDate, distanceM, goalTimeSec, recentRuns }: Props = $props();
+	let { raceDate, raceName = null, distanceM, goalTimeSec, recentRuns }: Props = $props();
 
 	let today = $state(new Date());
 
@@ -79,7 +80,7 @@
 	let feasibilityLabel = $derived.by(() => {
 		if (feasibility == null) return null;
 		return m(`raceDayPanel.feasibility_${feasibility.verdict}`, {
-			delta: fmtSplitTime(Math.abs(feasibility.deltaSec)),
+			delta: formatDuration(Math.abs(feasibility.deltaSec)),
 		});
 	});
 
@@ -116,11 +117,21 @@
 {#if daysOut >= 0}
 	<section class="race-day-panel">
 		<header>
-			<span class="kicker">{m('raceDayPanel.raceDay')}</span>
+			<span class="kicker">{raceName ?? m('raceDayPanel.raceDay')}</span>
 			<h2>{countdownLabel}</h2>
-			{#if predictedSec != null}
-				<p class="prediction">
-					{m('raceDayPanel.predictedFinishPrefix')} <strong>{fmtSplitTime(predictedSec)}</strong>
+			{#if fromGoal && goalTimeSec != null}
+				<p class="prediction" data-testid="race-day-goal">
+					{m('raceDayPanel.goalFinishPrefix')} <strong>{formatDuration(goalTimeSec)}</strong>
+					{m('raceDayPanel.predictedFinishFor')} {fmtKm(distanceM, 1)}
+				</p>
+				{#if dataPrediction.sec != null}
+					<p class="projection" data-testid="race-day-projection">
+						{m('raceDayPanel.predictedFinishPrefix')} <strong>{formatDuration(dataPrediction.sec)}</strong>
+					</p>
+				{/if}
+			{:else if predictedSec != null}
+				<p class="prediction" data-testid="race-day-prediction">
+					{m('raceDayPanel.predictedFinishPrefix')} <strong>{formatDuration(predictedSec)}</strong>
 					{m('raceDayPanel.predictedFinishFor')} {fmtKm(distanceM, 1)}
 				</p>
 				{#if confidenceLabel != null}
@@ -156,7 +167,7 @@
 					{#each pacing.splitsSec as sp, i (i)}
 						<li>
 							<span class="split-km">{splitUnitLabel} {i + 1}</span>
-							<span class="split-time">{fmtSplitTime(sp)}</span>
+							<span class="split-time">{formatDuration(sp)}</span>
 						</li>
 					{/each}
 				</ol>
@@ -215,6 +226,8 @@
 	}
 	.prediction { margin: 0; font-size: 1rem; opacity: 0.95; }
 	.prediction strong { font-weight: 800; }
+	.projection { margin: 0.2rem 0 0; font-size: 0.9rem; opacity: 0.95; }
+	.projection strong { font-weight: 700; }
 
 	.confidence-chip {
 		display: inline-block;

@@ -1,30 +1,58 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
+		fetchPlanOwnerId,
 		fetchWorkout,
 		markWorkoutCompleted,
 		markWorkoutSkipped,
 		fetchRelinkCandidateRuns,
+		fetchRunDistances,
 		type RelinkCandidateRun
-	} from '$lib/core/data';
-	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '$lib/training/training';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { formatDateShort } from '$lib/format/time';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { PlanWorkout } from '$lib/types';
-	import type { WorkoutStructure } from '$lib/training/training';
+	} from '#lib/core/data.ts';
+	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
+	import { workoutKindLabel, WORKOUT_ADVICE_KEY } from '#lib/training/workout_labels.ts';
+	import { workoutAdviceKind } from '#lib/training/plan_advice.ts';
+	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
+	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
+	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
+	import { fmtOverrun } from '#lib/format/overrun.ts';
+	import { workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
+	import { formatDateShort } from '#lib/format/time.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import type { WorkoutStructure } from '#lib/training/training.ts';
+	import {
+		paceZoneName,
+		structureSegments,
+		structureTotal,
+		walkRunPattern,
+		type SegmentRole
+	} from '#lib/training/workout_summary.ts';
+	import {
+		formatPaceZone,
+		formatWalkRunPattern,
+		formatWalkRunTotal
+	} from '#lib/training/workout_summary_format.ts';
 
-	let planId = $derived($page.params.id as string);
-	let wid = $derived($page.params.wid as string);
+	let planId = $derived(page.params.id as string);
+	let wid = $derived(page.params.wid as string);
 	let workout = $state<PlanWorkout | null>(null);
+	let ownerId = $state<string | null>(null);
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 	let loading = $state(true);
 	let loadError = $state(false);
 	let showUnlinkConfirm = $state(false);
@@ -34,6 +62,9 @@
 	let relinkError = $state(false);
 	let relinkCandidates = $state<RelinkCandidateRun[]>([]);
 	let relinkSaving = $state(false);
+	/// A failed link, as opposed to a failed load: the candidates stay on
+	/// screen so another tap retries.
+	let relinkSaveError = $state<string | null>(null);
 
 	let cameFromPlan = $state(false);
 	afterNavigate(({ from }) => {
@@ -51,8 +82,9 @@
 	async function load() {
 		loading = true;
 		loadError = false;
-		const res = await fetchWorkout(wid);
+		const [res, owner] = await Promise.all([fetchWorkout(wid), fetchPlanOwnerId(planId)]);
 		workout = res.workout;
+		ownerId = owner;
 		loadError = res.error !== null;
 		loading = false;
 	}
@@ -62,28 +94,61 @@
 		await load();
 	});
 
+	let rpeLabel = $derived(workout ? rpeTargetLabel(workout.target_rpe_min, workout.target_rpe_max) : null);
+	let hrLabel = $derived(
+		workout && hrPrescription ? hrTargetLabel(workout.target_hr_min_bpm, workout.target_hr_max_bpm) : null
+	);
+	let editedByCoach = $derived(workout != null && isEditedByCoach(workout, ownerId, auth.user?.id));
+
+	/// The linked run's distance, for "Done · +3 km". Auxiliary (L4): a failed
+	/// read leaves the plain "Done".
+	let linkedRunDistance = $state<number | null>(null);
+	$effect(() => {
+		const runId = workout?.completed_run_id ?? null;
+		linkedRunDistance = null;
+		if (!runId) return;
+		let live = true;
+		fetchRunDistances([runId])
+			.then((d) => {
+				if (live) linkedRunDistance = d.get(runId) ?? null;
+			})
+			.catch((e) => console.error('Reading the linked run distance failed', e));
+		return () => {
+			live = false;
+		};
+	});
+	let overrunM = $derived(
+		workout?.completed_run_id ? workoutOverrunMetres(workout.target_distance_m, linkedRunDistance, workout.kind) : null
+	);
+
 	let structure = $derived(
 		(workout?.structure as unknown as WorkoutStructure | null) ?? null
 	);
 
+	// Unlinking a matched run confirms: putting it back means finding the run
+	// again. A hand mark is set and cleared with one tap, as Skip is, because
+	// the other button on the same panel puts it back (conventions.md §
+	// Destructive actions). Mobile twin: WorkoutDetailScreen._setCompleted.
 	function unlink() {
 		if (!workout || !isWorkoutCompleted(workout)) return;
-		showUnlinkConfirm = true;
+		if (workout.completed_run_id) showUnlinkConfirm = true;
+		else void setCompleted(false);
 	}
 
-	let unlinking = $state(false);
-	async function confirmUnlink() {
-		if (!workout || unlinking) return;
-		unlinking = true;
+	let updating = $state(false);
+	async function setCompleted(done: boolean) {
+		if (!workout || updating) return;
+		updating = true;
+		const unlinkingRun = !done && workout.completed_run_id != null;
 		try {
-			await markWorkoutCompleted(workout.id, null);
+			await markWorkoutCompleted(workout.id, null, { manual: done });
 			showUnlinkConfirm = false;
 			await load();
 		} catch (e) {
-			console.error('markWorkoutCompleted(unlink) failed', e);
-			showToast(t('workoutDetail.unlinkFailed'), 'error');
+			console.error('markWorkoutCompleted failed', e);
+			showToast(t(unlinkingRun ? 'workoutDetail.unlinkFailed' : 'workoutDetail.updateFailed'), 'error');
 		} finally {
-			unlinking = false;
+			updating = false;
 		}
 	}
 
@@ -91,6 +156,7 @@
 		if (!workout) return;
 		showRelink = true;
 		relinkError = false;
+		relinkSaveError = null;
 		relinkLoading = true;
 		relinkCandidates = [];
 		try {
@@ -121,62 +187,69 @@
 	async function pickRelink(runId: string) {
 		if (!workout || relinkSaving) return;
 		relinkSaving = true;
+		relinkSaveError = null;
 		try {
 			await markWorkoutCompleted(workout.id, runId);
 			showRelink = false;
 			await load();
 		} catch (e) {
-			console.error('re-link failed', e);
-			relinkError = true;
+			relinkSaveError = t('workoutDetail.relinkSaveFailed', {
+				error: errorCopy(e, t, 'workoutDetail.relinkSaveFailed'),
+			});
 		} finally {
 			relinkSaving = false;
 		}
 	}
 
-	// A step's "magnitude" for the proportional bar: distance when present,
-	// else duration (walk-run sessions are fully time-based — see training.md).
-	function mag(b: { distance_m?: number; duration_s?: number } | undefined): number {
-		if (!b) return 0;
-		return b.distance_m ?? b.duration_s ?? 0;
-	}
-	function repMag(r: WorkoutStructure['repeats']): number {
-		return r?.distance_m ?? r?.duration_s ?? 0;
-	}
-	function recMag(r: WorkoutStructure['repeats']): number {
-		return r?.recovery_distance_m ?? r?.recovery_duration_s ?? 0;
+	// A step reads as its distance when it has one, else its duration: a
+	// walk-run session carries only duration_s, and "—" told a beginner nothing.
+	function stepAmount(distanceM: number | undefined, durationS: number | undefined, digits: number): string {
+		if (distanceM != null) return fmtKm(distanceM, digits);
+		if (durationS != null) return fmtHms(durationS);
+		return '—';
 	}
 
-	function intervalTotal(s: WorkoutStructure): number {
-		return (
-			mag(s.warmup) +
-			(s.repeats ? s.repeats.count * (repMag(s.repeats) + recMag(s.repeats)) : 0) +
-			mag(s.steady) +
-			mag(s.cooldown)
-		);
+	function totalLabel(s: WorkoutStructure): string | null {
+		const total = structureTotal(s);
+		if (!total) return null;
+		return total.kind === 'distance' ? fmtKm(total.metres, 2) : fmtHms(total.seconds);
 	}
 
-	type SegmentVisual = {
-		role: 'warmup' | 'work' | 'recovery' | 'steady' | 'cooldown';
-		fraction: number;
-	};
+	let walkRun = $derived(walkRunPattern(structure));
 
-	function segmentVisuals(s: WorkoutStructure): SegmentVisual[] {
-		const total = intervalTotal(s);
-		if (total <= 0) return [];
-		const out: SegmentVisual[] = [];
-		if (s.warmup) out.push({ role: 'warmup', fraction: mag(s.warmup) / total });
-		if (s.repeats) {
-			for (let i = 0; i < s.repeats.count; i++) {
-				out.push({ role: 'work', fraction: repMag(s.repeats) / total });
-				if (i < s.repeats.count - 1) {
-					out.push({ role: 'recovery', fraction: recMag(s.repeats) / total });
-				}
-			}
-			out.push({ role: 'recovery', fraction: recMag(s.repeats) / total });
+	function recoveryEffort(pace: string | undefined): string | null {
+		switch (pace) {
+			case 'jog':
+				return t('workoutDetail.effortJog');
+			case 'easy':
+				return t('workoutDetail.effortEasy');
+			case 'walk':
+				return t('workoutDetail.effortWalk');
+			default:
+				return null;
 		}
-		if (s.steady) out.push({ role: 'steady', fraction: mag(s.steady) / total });
-		if (s.cooldown) out.push({ role: 'cooldown', fraction: mag(s.cooldown) / total });
-		return out;
+	}
+
+	function segmentLabel(role: SegmentRole): string {
+		switch (role) {
+			case 'warmup':
+				return t('workoutDetail.warmup');
+			case 'work':
+				return t('workoutDetail.repeats');
+			case 'recovery':
+				return t('workoutDetail.recovery');
+			case 'steady':
+				return t('workoutDetail.steady');
+			case 'cooldown':
+				return t('workoutDetail.cooldown');
+		}
+	}
+
+	function recoveryLabel(r: NonNullable<WorkoutStructure['repeats']>): string | null {
+		if (r.recovery_distance_m == null && r.recovery_duration_s == null) return null;
+		const distance = stepAmount(r.recovery_distance_m, r.recovery_duration_s, 2);
+		const effort = recoveryEffort(r.recovery_pace);
+		return effort ? t('workoutDetail.recoveryDetail', { distance, effort }) : distance;
 	}
 
 	function fmtIsoDate(iso: string): string {
@@ -196,39 +269,40 @@
 {#if loading}
 	<div class="page" aria-busy="true" aria-label={t('workoutDetail.loadingWorkout')}>
 		<span class="back-skel" aria-hidden="true">
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-20"></span>
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-60"></span>
+				<SkeletonBlock height="0.75rem" width="20%" />
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="60%" />
 			</div>
 		</div>
 		<div class="skel-card" aria-hidden="true">
-			<span class="skel skel-line skel-w-20"></span>
-			<span class="skel skel-line skel-w-80"></span>
-			<span class="skel skel-line skel-w-60"></span>
+			<SkeletonBlock height="0.75rem" width="20%" />
+			<SkeletonBlock height="0.75rem" width="80%" />
+			<SkeletonBlock height="0.75rem" width="60%" />
 		</div>
 	</div>
-	<p class="sr-only" role="status">{t('workoutDetail.loadingWorkoutEllipsis')}</p>
+	<p class="visually-hidden" role="status">{t('workoutDetail.loadingWorkoutEllipsis')}</p>
 {:else if loadError}
 	<div class="page">
 		<a class="back" href="/plans/{planId}">
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</a>
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h2>{t('workoutDetail.loadFailedTitle')}</h2>
-			<p class="empty-text">
-				{t('workoutDetail.loadFailedText')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="error"
+			tone="danger"
+			title={t('workoutDetail.loadFailedTitle')}
+			text={t('workoutDetail.loadFailedText')}
+			role="alert"
+		>
+			{#snippet actions()}
 				<button type="button" class="btn btn-primary" onclick={load}>{t('workoutDetail.retry')}</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else if !workout}
 	<div class="page">
@@ -236,16 +310,11 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</a>
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h2>{t('workoutDetail.notFoundTitle')}</h2>
-			<p class="empty-text">
-				{t('workoutDetail.notFoundText')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState icon="search_off" title={t('workoutDetail.notFoundTitle')} text={t('workoutDetail.notFoundText')}>
+			{#snippet actions()}
 				<a class="btn btn-primary" href="/plans/{planId}">{t('workoutDetail.returnToPlan')}</a>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="page" data-kind={kindForChrome}>
@@ -259,7 +328,9 @@
 				<span class="kicker">{fmtIsoDate(workout.scheduled_date)}</span>
 				<h1>{workoutKindLabel(workout.kind)}</h1>
 				<p class="tagline">
-					{#if structure}
+					{#if workout.kind === 'walk_run'}
+						{t('workoutDetail.taglineWalkRun')}
+					{:else if structure}
 						{t('workoutDetail.taglineStructured')}
 					{:else if workout.kind === 'easy' || workout.kind === 'recovery'}
 						{t('workoutDetail.taglineEasy')}
@@ -274,7 +345,14 @@
 					{/if}
 				</p>
 				<div class="meta">
-					{#if workout.target_distance_m != null}
+					{#if walkRun}
+						<div class="metric session-metric" data-testid="walk-run-summary">
+							<span class="m-label">{t('workoutDetail.session')}</span>
+							<strong>{formatWalkRunTotal(t, walkRun, fmtOverrun)}</strong>
+							<span class="walk-run-pattern">{formatWalkRunPattern(t, walkRun, fmtOverrun)}</span>
+						</div>
+					{:else}
+						{#if workout.target_distance_m != null}
 						<div class="metric">
 							<span class="m-label">{t('workoutDetail.distance')}</span>
 							<strong>{fmtKm(workout.target_distance_m, 2)}</strong>
@@ -298,27 +376,53 @@
 							</strong>
 							<span class="pace-extras">
 								{#if workout.target_pace_tolerance_sec}
-									<span class="tol">±{workout.target_pace_tolerance_sec}s</span>
+									<span class="tol">{fmtPaceTolerance(workout.target_pace_tolerance_sec)}</span>
 								{/if}
 								{#if workout.pace_zone}
-									<span class="zone">{workout.pace_zone}</span>
+									<span class="zone" data-testid="pace-zone">
+										{formatPaceZone(t, workout.pace_zone, paceZoneName(workout.pace_zone))}
+									</span>
 								{/if}
 							</span>
 						</div>
 					{/if}
+					{/if}
+					{#if rpeLabel}
+						<div class="metric" data-testid="workout-rpe-target">
+							<span class="m-label">{t('workoutDetail.effort')}</span>
+							<strong>{rpeLabel}</strong>
+						</div>
+					{/if}
+					{#if hrPrescription && hrLabel}
+						<div class="metric" data-testid="workout-hr-target">
+							<span class="m-label">{t('workoutDetail.heartRate')}</span>
+							<strong>{hrLabel}</strong>
+						</div>
+					{/if}
 				</div>
+				{#if editedByCoach && workout.updated_at}
+					<p class="provenance" data-testid="workout-coach-edited">
+						<span class="material-symbols" aria-hidden="true">sports</span>
+						{t('workoutDetail.updatedByCoach', { date: formatDateShort(workout.updated_at) })}
+					</p>
+				{/if}
 			</div>
 			{#if isWorkoutCompleted(workout)}
 				<div class="completed-card">
 					<span class="material-symbols" aria-hidden="true">check_circle</span>
-					<span class="completed-label">{t('workoutDetail.completed')}</span>
+					<span class="completed-label" data-testid="workout-detail-done"
+						>{t('workoutDetail.completed')}{#if overrunM != null}<span aria-hidden="true"
+								>{' · '}{t('plan.overrun', { distance: fmtOverrun(overrunM) })}</span
+							><span class="sr-only">, {t('plan.overrunAria', { distance: fmtOverrun(overrunM) })}</span
+							>{/if}</span
+					>
 					<div class="completed-actions">
 						{#if workout.completed_run_id}
 							<button class="btn-ghost" onclick={openRelink}>
 								{t('workoutDetail.relink')}
 							</button>
 						{/if}
-						<button class="btn-ghost" onclick={unlink}>
+						<button class="btn-ghost" onclick={unlink} disabled={updating}>
 							{workout.completed_run_id ? t('workoutDetail.unlink') : t('workoutDetail.markNotDone')}
 						</button>
 					</div>
@@ -335,6 +439,9 @@
 				</div>
 			{:else if workout.kind !== 'rest'}
 				<div class="completed-actions skip-only">
+					<button class="btn-ghost" onclick={() => setCompleted(true)} disabled={updating}>
+						{t('workoutDetail.markDone')}
+					</button>
 					<button class="btn-ghost" onclick={toggleSkip} disabled={skipping}>
 						{t('workoutDetail.skip')}
 					</button>
@@ -353,11 +460,11 @@
 			<section class="card structure-card">
 				<h3>{t('workoutDetail.structure')}</h3>
 				<div class="timeline" role="img" aria-label={t('workoutDetail.segmentTimeline')}>
-					{#each segmentVisuals(structure) as seg, i (i)}
+					{#each structureSegments(structure) as seg, i (i)}
 						<span
 							class="tl-seg tl-{seg.role}"
 							style="flex: {Math.max(seg.fraction, 0.01)};"
-							title={seg.role}
+							title={segmentLabel(seg.role)}
 						></span>
 					{/each}
 				</div>
@@ -366,24 +473,32 @@
 						<li class="step step-warmup">
 							<span class="step-kind">{t('workoutDetail.warmup')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.warmup.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.warmup.distance_m, structure.warmup.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atEasy')}</span>
 							</span>
 						</li>
 					{/if}
 					{#if structure.repeats}
+						{@const reps = structure.repeats}
+						{@const recovery = recoveryLabel(reps)}
 						<li class="step step-work">
 							<span class="step-kind">{t('workoutDetail.repeats')}</span>
 							<span class="step-body">
 								<span class="step-main">
-									{t('workoutDetail.repeatsDetail', {
-										count: structure.repeats.count,
-										distance: fmtKm(structure.repeats.distance_m, 2),
-										pace: fmtPace(structure.repeats.pace_sec_per_km),
-										recoveryDistance: fmtKm(structure.repeats.recovery_distance_m, 2),
-										recoveryPace: structure.repeats.recovery_pace ?? ''
+									{t('workoutDetail.repeatsMain', {
+										count: reps.count,
+										distance: stepAmount(reps.distance_m, reps.duration_s, 2)
 									})}
 								</span>
+								{#if reps.pace_sec_per_km != null}
+									<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(reps.pace_sec_per_km) })}</span>
+								{/if}
+								{#if recovery}
+									<span class="step-sub" data-testid="step-recovery">
+										<span class="sub-label">{t('workoutDetail.recovery')}</span>
+										<span>{recovery}</span>
+									</span>
+								{/if}
 							</span>
 						</li>
 					{/if}
@@ -391,8 +506,10 @@
 						<li class="step step-steady">
 							<span class="step-kind">{t('workoutDetail.steady')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.steady.distance_m, 1)}</span>
-								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(structure.steady.pace_sec_per_km) })}</span>
+								<span class="step-main">{stepAmount(structure.steady.distance_m, structure.steady.duration_s, 1)}</span>
+								{#if structure.steady.pace_sec_per_km != null}
+									<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(structure.steady.pace_sec_per_km) })}</span>
+								{/if}
 							</span>
 						</li>
 					{/if}
@@ -400,13 +517,17 @@
 						<li class="step step-cooldown">
 							<span class="step-kind">{t('workoutDetail.cooldown')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.cooldown.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.cooldown.distance_m, structure.cooldown.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atEasy')}</span>
 							</span>
 						</li>
 					{/if}
 				</ol>
-				<p class="total">{t('workoutDetail.total', { value: fmtKm(intervalTotal(structure), 2) })}</p>
+				{#if totalLabel(structure)}
+					<p class="total" data-testid="structure-total">
+						{t('workoutDetail.total', { value: totalLabel(structure) ?? '' })}
+					</p>
+				{/if}
 			</section>
 		{:else if workout.kind !== 'rest'}
 			<section class="card structure-empty">
@@ -425,29 +546,7 @@
 
 		<section class="card advice">
 			<h3>{t('workoutDetail.howToRunIt')}</h3>
-			{#if workout.kind === 'easy' || workout.kind === 'recovery'}
-				<p>{t('workoutDetail.adviceEasy')}</p>
-			{:else if workout.kind === 'long'}
-				<p>
-					{t('workoutDetail.adviceLong')}
-				</p>
-			{:else if workout.kind === 'tempo'}
-				<p>
-					{t('workoutDetail.adviceTempo')}
-				</p>
-			{:else if workout.kind === 'interval'}
-				<p>
-					{t('workoutDetail.adviceInterval')}
-				</p>
-			{:else if workout.kind === 'marathon_pace'}
-				<p>
-					{t('workoutDetail.adviceMarathonPace')}
-				</p>
-			{:else if workout.kind === 'race'}
-				<p>{t('workoutDetail.adviceRace')}</p>
-			{:else}
-				<p>{t('workoutDetail.adviceRest')}</p>
-			{/if}
+			<p data-testid="workout-advice">{t(WORKOUT_ADVICE_KEY[workoutAdviceKind(workout)])}</p>
 		</section>
 	</div>
 
@@ -456,7 +555,7 @@
 	title={t('workoutDetail.unlinkRunTitle')}
 	message={t('workoutDetail.unlinkRunMessage')}
 	confirmLabel={t('workoutDetail.unlink')}
-	onconfirm={confirmUnlink}
+	onconfirm={() => setCompleted(false)}
 	oncancel={() => showUnlinkConfirm = false}
 	danger
 />
@@ -472,10 +571,18 @@
 	{#if relinkLoading}
 		<p class="relink-status" role="status">{t('workoutDetail.relinkLoading')}</p>
 	{:else if relinkError}
-		<p class="relink-status relink-error" role="alert">{t('workoutDetail.relinkError')}</p>
+		<div class="relink-status relink-error" role="alert">
+			<p>{t('workoutDetail.relinkError')}</p>
+			<button class="btn btn-secondary btn-sm" onclick={openRelink}>
+				{t('workoutDetail.relinkRetry')}
+			</button>
+		</div>
 	{:else if relinkCandidates.length === 0}
 		<p class="relink-status">{t('workoutDetail.relinkEmpty')}</p>
 	{:else}
+		{#if relinkSaveError}
+			<p class="relink-status relink-error" role="alert">{relinkSaveError}</p>
+		{/if}
 		<ul class="relink-list">
 			{#each relinkCandidates as run (run.id)}
 				<li>
@@ -582,6 +689,17 @@
 		flex-wrap: wrap;
 		gap: 2rem;
 		margin-top: var(--space-2xs);
+	}
+	.provenance {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		margin: var(--space-xs) 0 0 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.provenance .material-symbols {
+		font-size: 1.1rem;
 	}
 	.metric {
 		display: flex;
@@ -810,6 +928,23 @@
 		font-variant-numeric: tabular-nums;
 		font-size: 0.92rem;
 	}
+	.step-sub {
+		flex-basis: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		color: var(--color-text-secondary);
+		font-size: 0.92rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.sub-label {
+		font-weight: 600;
+	}
+	.session-metric .walk-run-pattern {
+		display: block;
+		color: var(--color-text-secondary);
+		font-size: 0.92rem;
+	}
 	.total {
 		margin: var(--space-sm) 0 0 0;
 		color: var(--color-text-secondary);
@@ -839,41 +974,6 @@
 	}
 	.muted { color: var(--color-text-tertiary); font-size: 0.88rem; }
 
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h2 {
-		margin: 0;
-		font-size: 1.2rem;
-		font-weight: 700;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-
 	.back-skel {
 		display: inline-flex;
 		align-items: center;
@@ -883,24 +983,6 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-20 { width: 20%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.skel-hero {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -919,13 +1001,6 @@
 		flex-direction: column;
 		gap: 0.55rem;
 		margin-bottom: var(--space-md);
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 
 	.sr-only {

@@ -82,4 +82,25 @@ void main() {
     expect(p.totalCarbsG, 0);
     expect(p.totalFluidMl, 0);
   });
+
+  test('weight-based fluid is the default rate at the reference weight and scales with mass', () {
+    expect(weightFluidPerHourMl(weightFluidReferenceKg), defaultFluidPerHourMl);
+    // 500 × 90 / 70 = 642.9 → nearest 25 ml.
+    expect(weightFluidPerHourMl(90), 650);
+    // 500 × 63 / 70 = 450.
+    expect(weightFluidPerHourMl(63), 450);
+  });
+
+  test('weight-based fluid is held to the 400-800 ml/h band', () {
+    expect(weightFluidPerHourMl(50), weightFluidMinMl);
+    expect(weightFluidPerHourMl(130), weightFluidMaxMl);
+    expect(weightFluidPerHourMl(20), weightFluidMinMl);
+    expect(weightFluidPerHourMl(250), weightFluidMaxMl);
+  });
+
+  test('no usable weight gives no weight-based rate, so the flat rate stands', () {
+    for (final w in <double?>[null, 0, -70, 19.9, 250.1, double.nan, double.infinity]) {
+      expect(weightFluidPerHourMl(w), isNull, reason: '$w');
+    }
+  });
 }

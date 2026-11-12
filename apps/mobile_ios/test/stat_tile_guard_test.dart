@@ -8,7 +8,7 @@
 //
 // Three rules:
 //
-//  * The set of remaining stat-named `StatelessWidget`s is CLOSED. Each entry
+//  * The set of remaining stat-named widgets is CLOSED. Each entry
 //    below is a documented non-tile, and the reason is part of the entry: a
 //    thirteenth hand-rolled tile fails this test rather than passing review.
 //  * The migrated surfaces must still REFERENCE `StatTile`, so the adoption
@@ -40,13 +40,17 @@ const _notTiles = <String, String>{
   // Label above the value inside a Card. One caller, so a `labelAbove` flag
   // on StatTile would serve exactly this screen.
   'lib/screens/recap_screen.dart::_StatCard': 'label-above card body',
+  // The loading placeholder for a StatGrid: blank pulsing blocks, no value
+  // and no label, so there is no tile in it to migrate (decisions § 2288).
+  'lib/widgets/loading_skeletons.dart::SkeletonStatStrip':
+      'loading placeholder for a stat row, holds no value or label',
   // A dismissible Card of inline label:value chips in a Wrap — a panel, and
   // its chips are not stacked pairs.
   'lib/screens/run_detail_screen.dart::_SegmentStatsCard':
       'dismissible chip panel, not a tile',
-  // The frosted map overlay that COMPOSES StatTile.medium, plus a clock,
-  // dividers and every recording control.
-  'lib/screens/run_screen.dart::_StatsOverlay': 'overlay that composes tiles',
+  // The frosted map overlay that COMPOSES StatTile.large / .medium into one
+  // paged row, plus a clock, dividers and every recording control.
+  'lib/screens/run_screen.dart::LiveStatsOverlay': 'overlay that composes tiles',
   // A clock and a hold-to-stop button — a bar, with no stat in it.
   'lib/screens/run_screen.dart::_CollapsedStatsBar': 'collapsed control bar',
   // Composes StatTile.large and adds the tap-for-explanation affordance; the
@@ -56,6 +60,10 @@ const _notTiles = <String, String>{
   // A rasterised share card on a fixed dark canvas with hardcoded type and
   // colour — deliberately theme-free per § 482.
   'lib/widgets/route_share_card.dart::_Stat': 'rasterised share-card stat',
+  // Composes StatTile.large and adds the derived-metric disclosure; the tile
+  // is the content, this is the gesture that opens the definition (#902 §1).
+  'lib/widgets/metric_label.dart::MetricStat':
+      'tile plus a definition disclosure',
 };
 
 /// Surfaces that must go on referencing the shared tile.
@@ -67,6 +75,7 @@ const _mustUseStatTile = <String>[
   'lib/screens/route_detail_screen.dart',
   'lib/screens/period_summary_screen.dart',
   'lib/widgets/fitness_card.dart',
+  'lib/widgets/metric_label.dart',
 ];
 
 /// `path::ClassName` -> why it is not a `SectionHeader`.
@@ -83,7 +92,7 @@ Iterable<File> _sources() => Directory('lib')
     .whereType<File>()
     .where((f) => f.path.endsWith('.dart'));
 
-/// Stateless widget class declarations whose name matches [pattern], keyed
+/// Widget class declarations whose name matches [pattern], keyed
 /// `path::ClassName`. `State` / `Status` / `Static` names are not stat tiles
 /// and are filtered by the caller's pattern, not here.
 Map<String, String> _declarations(RegExp pattern) {
@@ -99,7 +108,7 @@ Map<String, String> _declarations(RegExp pattern) {
 void main() {
   test('the set of hand-rolled stat widgets is closed', () {
     final pattern = RegExp(
-        r'^class (_?[A-Za-z0-9]*Stat[A-Za-z0-9]*) extends StatelessWidget',
+        r'^class (_?[A-Za-z0-9]*Stat[A-Za-z0-9]*) extends State(?:less|ful)Widget',
         multiLine: true);
     final found = _declarations(pattern).keys.where((k) {
       final name = k.split('::').last;

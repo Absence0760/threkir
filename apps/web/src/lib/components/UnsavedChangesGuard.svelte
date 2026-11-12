@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { beforeNavigate, goto } from '$app/navigation';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		/// Probed when a navigation is attempted, never sampled at build time —
-		/// see `trackDirty` in $lib/core/form_dirty.
+		/// see `trackDirty` in #lib/core/form_dirty.
 		isDirty: () => boolean;
 		/// Surface-specific replacement for the generic "leave without saving?"
 		/// body (e.g. a builder that says what is about to be thrown away).

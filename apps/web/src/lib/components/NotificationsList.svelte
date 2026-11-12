@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		fetchNotificationsWithError,
@@ -9,14 +11,17 @@
 		markAllNotificationsRead,
 		deleteNotifications,
 		type NotificationView,
-	} from '$lib/core/data';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { notificationLinkFor } from '$lib/social/notification_link';
-	import { groupNotifications, type NotificationGroup } from '$lib/social/notification_groups';
+	} from '#lib/core/data.ts';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
+	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
+	import { notificationLinkFor } from '#lib/social/notification_link.ts';
+	import { groupNotifications, type NotificationGroup } from '#lib/social/notification_groups.ts';
 
 	let items = $state<NotificationView[]>([]);
 	let loading = $state(true);
@@ -29,12 +34,12 @@
 		try {
 			const res = await fetchNotificationsWithError(100);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'NotificationsList: loadError');
 				return;
 			}
 			items = res.notifications;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'NotificationsList: loadError');
 		} finally {
 			loading = false;
 		}
@@ -119,7 +124,7 @@
 			onCommitError: (e) => {
 				showToast(
 					m('notificationsList.deleteFailed', {
-						error: e instanceof Error ? e.message : String(e),
+						error: errorCopy(e, m, 'notificationsList.deleteFailed'),
 					}),
 					'error',
 				);
@@ -154,7 +159,7 @@
 				row: { ...x.row, read_at: x.row.read_at ?? new Date().toISOString() },
 			}));
 		} catch (e) {
-			showToast(m('notificationsList.markAllFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('notificationsList.markAllFailed', { error: errorCopy(e, m, 'notificationsList.markAllFailed') }), 'error');
 		}
 	}
 
@@ -186,16 +191,62 @@
 					: m('notificationsList.verbCommentNoDistance', { name });
 			case 'comment_reply':
 				return m('notificationsList.verbCommentReply', { name });
+			case 'reaction':
+				return m('notificationsList.verbReaction', { name });
+			case 'comment_like':
+				return m('notificationsList.verbCommentLike', { name });
+			case 'mention':
+				return m('notificationsList.verbMention', { name });
 			case 'follow':
 				return m('notificationsList.verbFollow', { name });
+			case 'follow_request':
+				return m('notificationsList.verbFollowRequest', { name });
 			case 'event_rsvp':
 				return item.event_title
 					? m('notificationsList.verbEventRsvpTitled', { name, title: item.event_title })
 					: m('notificationsList.verbEventRsvp', { name });
-			case 'event_cancel':
+			case 'event_cancel': {
+				const msg = eventCancelMessage('notificationsList', item.row, item.event_title);
+				return m(msg.key, msg.params);
+			}
+			case 'event_updated':
 				return item.event_title
-					? m('notificationsList.verbEventCancelTitled', { title: item.event_title })
-					: m('notificationsList.verbEventCancel');
+					? m('notificationsList.verbEventUpdatedTitled', { title: item.event_title })
+					: m('notificationsList.verbEventUpdated');
+			case 'course_alert':
+				return item.club_name
+					? m('notificationsList.verbCourseAlertNamed', { club: item.club_name })
+					: m('notificationsList.verbCourseAlert');
+			case 'organiser_dispute':
+				return item.club_name
+					? m('notificationsList.verbOrganiserDisputeNamed', { club: item.club_name })
+					: m('notificationsList.verbOrganiserDispute');
+			case 'park_course_report':
+				return m('notificationsList.verbParkCourseReport');
+			case 'race_starting_soon':
+				return item.event_title
+					? m('notificationsList.verbRaceStartingSoonTitled', { title: item.event_title })
+					: m('notificationsList.verbRaceStartingSoon');
+			case 'race_start_moved':
+				return item.event_title
+					? m('notificationsList.verbRaceStartMovedTitled', { title: item.event_title })
+					: m('notificationsList.verbRaceStartMoved');
+			case 'club_join_request':
+				return item.club_name
+					? m('notificationsList.verbClubJoinRequestNamed', { name, club: item.club_name })
+					: m('notificationsList.verbClubJoinRequest', { name });
+			case 'club_join_approved':
+				return item.club_name
+					? m('notificationsList.verbClubJoinApprovedNamed', { club: item.club_name })
+					: m('notificationsList.verbClubJoinApproved');
+			case 'club_verification':
+				return item.club_name
+					? m('notificationsList.verbClubVerificationNamed', { club: item.club_name })
+					: m('notificationsList.verbClubVerification');
+			case 'event_waitlist_slot': {
+				const msg = waitlistSlotMessage('notificationsList', item.event_title);
+				return m(msg.key, msg.params);
+			}
 			case 'event_reminder':
 				return item.event_title
 					? m('notificationsList.verbEventReminderTitled', { title: item.event_title })
@@ -204,8 +255,20 @@
 				return m('notificationsList.verbPlanUpdate', { name });
 			case 'plan_assigned':
 				return m('notificationsList.verbPlanAssigned', { name });
+			case 'plan_ai_edit':
+				return m('notificationsList.verbPlanAiEdit', { name });
+			case 'plan_change_request':
+				return m('notificationsList.verbPlanChangeRequest', { name });
+			case 'plan_change_decision':
+				return m('notificationsList.verbPlanChangeDecision', { name });
+			case 'workout_reminder':
+				return m('notificationsList.verbWorkoutReminder');
 			case 'message':
-				return m('notificationsList.verbMessage', { name });
+				return item.row.conversation_id
+					? m('notificationsList.verbGroupMessage', { name })
+					: m('notificationsList.verbMessage', { name });
+			case 'group_invite':
+				return m('notificationsList.verbGroupInvite', { name });
 			case 'club_post':
 				return item.club_name
 					? m('notificationsList.verbClubPostNamed', { name, club: item.club_name })
@@ -218,8 +281,14 @@
 				return m('notificationsList.verbAchievement');
 			case 'challenge_complete':
 				return m('notificationsList.verbChallengeComplete');
+			case 'personal_record':
+				return m('notificationsList.verbPersonalRecord');
 			case 'content_hidden':
 				return m('notificationsList.verbContentHidden');
+			case 'data_export_ready':
+				return m('notificationsList.verbDataExportReady');
+			case 'refund_failed':
+				return m('notificationsList.verbRefundFailed');
 			default:
 				return m('notificationsList.verbGeneric');
 		}
@@ -239,6 +308,7 @@
 
 <div class="wrap">
 	<header class="head">
+		<HelpLink route="/notifications" />
 		<div class="filter-tabs">
 			<button class="filter" class:active={filter === 'all'} onclick={() => (filter = 'all')}>
 				{m('notificationsList.tabAll')}
@@ -259,24 +329,25 @@
 
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('profile.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>
 	{:else if visible.length === 0}
-		<div class="empty">
-			{#if filter === 'unread'}
-				<p>{m('notificationsList.allCaughtUp')}</p>
-			{:else}
-				<p>{m('notificationsList.emptyAll')}</p>
-				<a href="/social?tab=people" class="btn btn-primary">{m('notificationsList.findPeople')}</a>
-			{/if}
-		</div>
+		{#if filter === 'unread'}
+			<EmptyState icon="check_circle" title={m('notificationsList.allCaughtUp')} data-testid="notifications-empty" />
+		{:else}
+			<EmptyState icon="notifications" title={m('notificationsList.emptyAll')} data-testid="notifications-empty">
+				{#snippet actions()}
+					<a href="/social?tab=people" class="btn btn-primary">{m('notificationsList.findPeople')}</a>
+				{/snippet}
+			</EmptyState>
+		{/if}
 	{:else}
 		<ul class="list">
 			{#each groups as group (group.key + group.lead.id)}
@@ -428,15 +499,6 @@
 		color: var(--color-text-tertiary);
 		font-size: 0.95rem;
 		margin: 0;
-	}
-	.empty {
-		text-align: center;
-		padding: var(--space-2xl);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
 	}
 	.error-banner {
 		display: flex;

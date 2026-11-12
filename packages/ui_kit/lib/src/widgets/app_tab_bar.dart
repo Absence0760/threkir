@@ -41,9 +41,13 @@ class AppTabBar extends StatelessWidget implements PreferredSizeWidget {
     final style = theme.tabBarTheme.labelStyle ?? theme.textTheme.titleSmall;
     final scaler = MediaQuery.textScalerOf(context);
     final direction = Directionality.of(context);
-    // What the strip needs to lay every label out whole, at the size the OS is
-    // currently rendering type: the text plus Material's own per-tab padding.
-    var needed = 0.0;
+    // What each label needs to lay out whole, at the size the OS is currently
+    // rendering type: the text plus Material's own per-tab padding. A filled
+    // strip gives every tab an EQUAL share, so it is the widest label times
+    // the tab count that has to fit, not the sum: four labels whose sum fits
+    // still clipped "Achievements" on another runner's profile, because its
+    // quarter of the width was narrower than it.
+    var widest = 0.0;
     for (final label in labels) {
       final painter = TextPainter(
         text: TextSpan(text: label, style: style),
@@ -51,9 +55,11 @@ class AppTabBar extends StatelessWidget implements PreferredSizeWidget {
         textScaler: scaler,
         maxLines: 1,
       )..layout();
-      needed += painter.width + kTabLabelPadding.horizontal;
+      final w = painter.width + kTabLabelPadding.horizontal;
+      if (w > widest) widest = w;
       painter.dispose();
     }
+    final needed = widest * labels.length;
     return LayoutBuilder(
       builder: (context, constraints) {
         final scrollable = needed > constraints.maxWidth;

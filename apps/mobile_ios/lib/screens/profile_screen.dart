@@ -3,15 +3,23 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
+import '../entity_link.dart';
+import '../help_destination.dart';
+import '../help_guides.dart' show HelpDestination;
 import '../l10n/gen/app_localizations.dart';
 import '../notification_groups.dart';
 import '../preferences.dart';
+import '../race_service.dart';
+import '../settings_destination.dart';
 import '../social_service.dart';
 import '../training_service.dart';
 import '../undo_queue.dart';
+import '../web_base_url.dart';
 import '../widgets/badge_grid.dart';
+import '../widgets/badge_share_sheet.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/error_state.dart';
 import '../widgets/report_sheet.dart';
@@ -19,9 +27,16 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import 'challenge_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'follow_requests_screen.dart';
+import 'group_thread_screen.dart';
+import 'message_thread_screen.dart';
+import 'messages_screen.dart';
+import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
+import 'race_detail_screen.dart';
 
 /// Page size for the followers / following tabs. Same value as the
 /// runs + routes screens — the convention is one consistent page size
@@ -35,10 +50,24 @@ const int _kFollowsPageSize = 20;
 /// was inserted ahead of it).
 enum ProfileTab { runs, badges, followers, following, notifications }
 
-/// Lines the profile header gives a display name. A name is a name; two lines
-/// is generous, and the cap is what keeps the header from starving the tabs
-/// below it (decisions § 537).
-const int kProfileNameMaxLines = 2;
+/// How many public runs the Runs tab reads. The header's run count comes from
+/// `fetchProfileRunCounts`; only when that call fails does it fall back to the
+/// length of this page, so a full page is then shown as "30+" rather than as a
+/// total it is not.
+const int _kProfileRunsLimit = 30;
+
+/// The overflow menu's entries on another runner's profile.
+enum _ProfileMenuAction { report, block }
+
+const Set<String> _kRunNotificationKinds = {
+  'kudos',
+  'comment',
+  'comment_reply',
+  'reaction',
+  'comment_like',
+  'mention',
+  'run_completed',
+};
 
 /// Public profile screen — mirrors the web `/u/[id]` page (decisions §31).
 ///
@@ -73,6 +102,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _runsLoading = true;
   Object? _runsError;
   List<RunRow> _runs = const [];
+  // Null until the head counts land, or when they fail: the header then falls
+  // back to the loaded page's length.
+  ({int publicCount, int? privateCount})? _runCounts;
 
   bool _followersLoading = true;
   Object? _followersError;
@@ -101,6 +133,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   // footer's visibility and the in-flight spinner.
   bool _followersHasMore = true;
   bool _followingHasMore = true;
+  // The keyset cursor for each tab's next page (see ApiClient.fetchFollowers).
+  List<Object?>? _followersNext;
+  List<Object?>? _followingNext;
   bool _loadingMoreFollowers = false;
   bool _loadingMoreFollowing = false;
 
@@ -146,6 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     await Future.wait([
       _loadSummary(),
       _loadRuns(),
+      _loadRunCounts(),
       _loadFollowers(),
       _loadFollowing(),
       _loadBadges(),
@@ -193,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     try {
       final runs = await widget.api.fetchPublicRunsByUser(
         widget.userId,
-        limit: 30,
+        limit: _kProfileRunsLimit,
       );
       if (!mounted) return;
       setState(() {
@@ -206,6 +242,21 @@ class _ProfileScreenState extends State<ProfileScreen>
         _runsError = e;
         _runsLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadRunCounts() async {
+    try {
+      final counts = await widget.api.fetchProfileRunCounts(
+        widget.userId,
+        isSelf: _isSelf,
+      );
+      if (!mounted) return;
+      setState(() => _runCounts = counts);
+    } catch (e) {
+      debugPrint('profile run counts failed: $e');
+      if (!mounted) return;
+      setState(() => _runCounts = null);
     }
   }
 
@@ -224,8 +275,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
       if (!mounted) return;
       setState(() {
-        _followers = followers;
-        _followersHasMore = followers.length == _kFollowsPageSize;
+        _followers = followers.rows;
+        _followersNext = followers.next;
+        _followersHasMore = followers.next != null;
         _followersLoading = false;
       });
     } catch (e) {
@@ -250,8 +302,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
       if (!mounted) return;
       setState(() {
-        _following = following;
-        _followingHasMore = following.length == _kFollowsPageSize;
+        _following = following.rows;
+        _followingNext = following.next;
+        _followingHasMore = following.next != null;
         _followingLoading = false;
       });
     } catch (e) {
@@ -262,6 +315,19 @@ class _ProfileScreenState extends State<ProfileScreen>
       });
     }
   }
+
+  Future<void> _openBadge(AchievementRow badge) => showBadgeShareSheet(
+        context,
+        badge: badge,
+        setVisibility: (id, isPublic) =>
+            widget.api.setBadgeVisibility(id, isPublic: isPublic),
+        onChanged: (next) {
+          if (!mounted) return;
+          setState(() => _badges = [
+                for (final b in _badges) b.id == next.id ? next : b,
+              ]);
+        },
+      );
 
   Future<void> _loadBadges() async {
     if (!mounted) return;
@@ -308,18 +374,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadMoreFollowers() async {
-    if (_loadingMoreFollowers || !_followersHasMore) return;
+    final after = _followersNext;
+    if (_loadingMoreFollowers || !_followersHasMore || after == null) return;
     setState(() => _loadingMoreFollowers = true);
     try {
       final more = await widget.api.fetchFollowers(
         widget.userId,
         limit: _kFollowsPageSize,
-        offset: _followers.length,
+        after: after,
       );
       if (!mounted) return;
       setState(() {
-        _followers = [..._followers, ...more];
-        _followersHasMore = more.length == _kFollowsPageSize;
+        _followers = appendPage(_followers, more.rows, (p) => p.id);
+        _followersNext = more.next;
+        _followersHasMore = more.next != null;
       });
     } catch (e) {
       debugPrint('Load more followers failed: $e');
@@ -335,18 +403,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadMoreFollowing() async {
-    if (_loadingMoreFollowing || !_followingHasMore) return;
+    final after = _followingNext;
+    if (_loadingMoreFollowing || !_followingHasMore || after == null) return;
     setState(() => _loadingMoreFollowing = true);
     try {
       final more = await widget.api.fetchFollowing(
         widget.userId,
         limit: _kFollowsPageSize,
-        offset: _following.length,
+        after: after,
       );
       if (!mounted) return;
       setState(() {
-        _following = [..._following, ...more];
-        _followingHasMore = more.length == _kFollowsPageSize;
+        _following = appendPage(_following, more.rows, (p) => p.id);
+        _followingNext = more.next;
+        _followingHasMore = more.next != null;
       });
     } catch (e) {
       debugPrint('Load more following failed: $e');
@@ -375,24 +445,51 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     setState(() => _followBusy = true);
     final wasFollowing = summary.viewerFollows;
-    // Optimistic update
-    setState(() {
-      _summary = ProfileSummary(
-        id: summary.id,
-        displayName: summary.displayName,
-        avatarUrl: summary.avatarUrl,
-        followerCount: wasFollowing
-            ? (summary.followerCount - 1).clamp(0, 1 << 30)
-            : summary.followerCount + 1,
-        followingCount: summary.followingCount,
-        viewerFollows: !wasFollowing,
-      );
-    });
+    final wasRequested = summary.viewerRequested;
+    // Optimistic only for a public profile's follow and for any unfollow: a
+    // tap on a private profile files a request the server decides on, so the
+    // button waits for the answer rather than guessing it.
+    if (wasFollowing || !summary.profilePrivate) {
+      setState(() {
+        _summary = summary.copyWith(
+          followerCount: wasFollowing
+              ? (summary.followerCount - 1).clamp(0, 1 << 30)
+              : summary.followerCount + 1,
+          viewerFollows: !wasFollowing,
+          contentVisible: wasFollowing ? !summary.profilePrivate : null,
+        );
+      });
+    }
     try {
+      final l10n = AppLocalizations.of(context);
       if (wasFollowing) {
         await widget.api.unfollowUser(widget.userId);
+        if (summary.profilePrivate && mounted) {
+          setState(() {
+            _runs = const [];
+            _runCounts = null;
+            _followers = const [];
+            _following = const [];
+          });
+        }
+      } else if (wasRequested) {
+        await widget.api.cancelFollowRequest(widget.userId);
+        if (!mounted) return;
+        setState(() => _summary = summary.copyWith(viewerRequested: false));
+        showTopBanner(context, l10n.profileRequestWithdrawn);
       } else {
-        await widget.api.followUser(widget.userId);
+        final outcome = await widget.api.followUser(widget.userId);
+        if (!mounted) return;
+        if (outcome == FollowOutcome.requested) {
+          setState(() => _summary = summary.copyWith(viewerRequested: true));
+          showTopBanner(context, l10n.profileRequestSent);
+        } else if (summary.profilePrivate) {
+          setState(() => _summary = summary.copyWith(
+                followerCount: summary.followerCount + 1,
+                viewerFollows: true,
+                contentVisible: true,
+              ));
+        }
       }
     } catch (e) {
       debugPrint('profile follow update failed: $e');
@@ -458,15 +555,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       // that or the Follow button would lie until reload.
       setState(() {
         _blocked = true;
-        _summary = ProfileSummary(
-          id: summary.id,
-          displayName: summary.displayName,
-          avatarUrl: summary.avatarUrl,
+        _summary = summary.copyWith(
           followerCount: summary.viewerFollows
               ? (summary.followerCount - 1).clamp(0, 1 << 30)
               : summary.followerCount,
-          followingCount: summary.followingCount,
           viewerFollows: false,
+          viewerRequested: false,
         );
       });
       showTopBanner(
@@ -522,28 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final now = DateTime.now();
     setState(() {
       _notifications = _notifications
-          .map(
-            (n) => n.row.id == item.row.id
-                ? NotificationView(
-                    row: NotificationRow(
-                      id: n.row.id,
-                      userId: n.row.userId,
-                      actorId: n.row.actorId,
-                      kind: n.row.kind,
-                      runId: n.row.runId,
-                      commentId: n.row.commentId,
-                      readAt: now,
-                      createdAt: n.row.createdAt,
-                      eventId: n.row.eventId,
-                    ),
-                    actor: n.actor,
-                    runDistanceM: n.runDistanceM,
-                    commentExcerpt: n.commentExcerpt,
-                    eventTitle: n.eventTitle,
-                    eventClubSlug: n.eventClubSlug,
-                  )
-                : n,
-          )
+          .map((n) => n.row.id == item.row.id ? n.markedRead(now) : n)
           .toList();
     });
     try {
@@ -559,28 +632,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) return;
       final now = DateTime.now();
       setState(() {
-        _notifications = _notifications
-            .map(
-              (n) => NotificationView(
-                row: NotificationRow(
-                  id: n.row.id,
-                  userId: n.row.userId,
-                  actorId: n.row.actorId,
-                  kind: n.row.kind,
-                  runId: n.row.runId,
-                  commentId: n.row.commentId,
-                  readAt: n.row.readAt ?? now,
-                  createdAt: n.row.createdAt,
-                  eventId: n.row.eventId,
-                ),
-                actor: n.actor,
-                runDistanceM: n.runDistanceM,
-                commentExcerpt: n.commentExcerpt,
-                eventTitle: n.eventTitle,
-                eventClubSlug: n.eventClubSlug,
-              ),
-            )
-            .toList();
+        _notifications = _notifications.map((n) => n.markedRead(now)).toList();
       });
     } catch (e) {
       debugPrint('profile mark all read failed: $e');
@@ -645,26 +697,46 @@ class _ProfileScreenState extends State<ProfileScreen>
       appBar: AppBar(
         title: Text(_summary?.displayName ?? l10n.profileTitle),
         actions: [
+          // Report and Block are rare and one is destructive, so they share
+          // an overflow menu rather than sitting as two bare icons beside the
+          // title (web keeps them as header buttons; there is room there).
           if (!_isSelf)
-            IconButton(
-              tooltip: l10n.profileReportUser,
-              icon: const Icon(Icons.flag_outlined),
-              onPressed: () => showReportSheet(
-                context,
-                api: widget.api,
-                targetKind: 'user',
-                targetId: widget.userId,
-              ),
-            ),
-          if (!_isSelf)
-            IconButton(
-              tooltip: _blocked ? l10n.profileUnblock : l10n.profileBlock,
-              icon: Icon(
-                Icons.block,
-                color: _blocked ? Theme.of(context).colorScheme.error : null,
-              ),
-              isSelected: _blocked,
-              onPressed: _blockBusy ? null : _toggleBlock,
+            PopupMenuButton<_ProfileMenuAction>(
+              key: const ValueKey('profile-more'),
+              tooltip: l10n.commonMore,
+              onSelected: (action) => switch (action) {
+                _ProfileMenuAction.report => showReportSheet(
+                  context,
+                  api: widget.api,
+                  targetKind: 'user',
+                  targetId: widget.userId,
+                ),
+                _ProfileMenuAction.block => _toggleBlock(),
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _ProfileMenuAction.report,
+                  child: ListTile(
+                    leading: const Icon(Icons.flag_outlined),
+                    title: Text(l10n.profileReportUser),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _ProfileMenuAction.block,
+                  enabled: !_blockBusy,
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.block,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      _blocked ? l10n.profileUnblock : l10n.profileBlock,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
             ),
         ],
       ),
@@ -680,7 +752,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ListSkeleton.section(
               label: l10n.commonLoading,
               rows: 1,
-              rowHeight: 56,
+              rowHeight: 80,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             )
           else
@@ -697,70 +769,192 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_loadError != null) {
       return ErrorState(message: l10n.profileLoadError, onRetry: _load);
     }
-    if (_summary == null) {
+    final summary = _summary;
+    if (summary == null) {
       return EmptyState(
         icon: Icons.person_off_outlined,
         title: l10n.profileNotFound,
       );
     }
+    if (!summary.contentVisible && tab != ProfileTab.notifications) {
+      return EmptyState(
+        key: const ValueKey('profile-private-panel'),
+        icon: Icons.lock_outline,
+        title: l10n.profilePrivateTitle,
+        body: summary.viewerRequested
+            ? l10n.profilePrivateRequestedBody
+            : l10n.profilePrivateBody(
+                summary.displayName ?? l10n.profileThisRunner,
+              ),
+      );
+    }
     return _tabView(theme, l10n, tab);
   }
 
+  /// The identity band: avatar beside the three counts, then Follow and
+  /// Message on another runner's profile. The name is the AppBar title only,
+  /// so it is not printed twice, and it stays in view once the band scrolls
+  /// away. Mirrors web `/u/[id]`, whose counts also select their tab.
   Widget _buildHeader(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     final s = _summary!;
+    final signedIn = widget.api.userId != null;
+    final counts = _runCounts;
+    final runsLabel = counts != null
+        ? '${counts.publicCount}'
+        : _runsLoading || _runsError != null
+            ? '–'
+            : _runs.length >= _kProfileRunsLimit
+                ? '$_kProfileRunsLimit+'
+                : '${_runs.length}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          IdentityAvatar(
-            seed: s.id,
-            name: s.displayName,
-            size: 56,
-            imageUrl: s.avatarUrl,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.displayName ?? l10n.profileRunnerFallback,
-                  // Same fixed-band-above-a-TabBarView shape as club detail
-                  // (decisions § 537): this header is the only unbounded
-                  // child of a `Column` whose sibling is `Expanded`, and
-                  // `user_profiles.display_name` has no DB length constraint,
-                  // so an uncapped name takes the tabs' height and then
-                  // overflows.
-                  maxLines: kProfileNameMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            children: [
+              IdentityAvatar(
+                seed: s.id,
+                name: s.displayName,
+                size: 80,
+                imageUrl: s.avatarUrl,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  children: [
+                    _stat(
+                      theme,
+                      key: const ValueKey('profile-stat-runs'),
+                      value: runsLabel,
+                      label: l10n.profileTabRuns,
+                      tab: ProfileTab.runs,
+                    ),
+                    // The user_follows select is authenticated-only, so a
+                    // signed-out viewer's counts are always zero — hide them
+                    // rather than present the zeros as fact.
+                    if (signedIn) ...[
+                      _stat(
+                        theme,
+                        key: const ValueKey('profile-stat-followers'),
+                        value: '${s.followerCount}',
+                        label: l10n.profileTabFollowers,
+                        tab: ProfileTab.followers,
+                      ),
+                      _stat(
+                        theme,
+                        key: const ValueKey('profile-stat-following'),
+                        value: '${s.followingCount}',
+                        label: l10n.profileTabFollowing,
+                        tab: ProfileTab.following,
+                      ),
+                    ],
+                  ],
                 ),
-                // The user_follows select is authenticated-only, so a
-                // signed-out viewer's counts are always zero — hide the
-                // line rather than present the zeros as fact.
-                if (widget.api.userId != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.profileFollowStats(s.followerCount, s.followingCount),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+          if (!_isSelf) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: s.viewerFollows || s.viewerRequested
+                      ? OutlinedButton.icon(
+                          key: const ValueKey('profile-follow'),
+                          onPressed: _followBusy ? null : _toggleFollow,
+                          icon: Icon(
+                            s.viewerFollows ? Icons.check : Icons.schedule,
+                          ),
+                          label: Text(
+                            s.viewerFollows
+                                ? l10n.profileFollowing
+                                : l10n.profileRequested,
+                          ),
+                        )
+                      : FilledButton.icon(
+                          key: const ValueKey('profile-follow'),
+                          onPressed: _followBusy ? null : _toggleFollow,
+                          icon: const Icon(Icons.person_add_alt_1),
+                          label: Text(
+                            s.profilePrivate
+                                ? l10n.profileRequestToFollow
+                                : l10n.profileFollow,
+                          ),
+                        ),
+                ),
+                // Same gate as web's `/u/[id]`: another runner's profile,
+                // signed in. Whether the send is admitted (a follow edge
+                // either way, no block either way) is the server's answer,
+                // not a reason to hide the button — a client cannot see a
+                // block placed on it.
+                if (signedIn) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('profile-message'),
+                      onPressed: () => _openConversation(
+                        s.id,
+                        name: s.displayName,
+                        avatarUrl: s.avatarUrl,
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: Text(l10n.profileMessage),
                     ),
                   ),
                 ],
               ],
             ),
-          ),
-          if (!_isSelf)
-            FilledButton.tonal(
-              onPressed: _followBusy ? null : _toggleFollow,
-              child: Text(
-                s.viewerFollows ? l10n.profileFollowing : l10n.profileFollow,
-              ),
-            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// One count in the header, which selects the tab that lists it.
+  Widget _stat(
+    ThemeData theme, {
+    required Key key,
+    required String value,
+    required String label,
+    required ProfileTab tab,
+  }) {
+    // Each count takes an equal share and shrinks rather than overflowing:
+    // three labels at a large OS text scale do not fit beside an 80 dp avatar
+    // on a 360 dp phone.
+    return Expanded(
+      child: MergeSemantics(
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _tabs.animateTo(_tabOrder.indexOf(tab)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
       ),
     );
   }
@@ -779,13 +973,17 @@ class _ProfileScreenState extends State<ProfileScreen>
           loading: _runsLoading,
           error: _runsError,
           onRetry: _loadRuns,
-          child: () => _buildRunsTab(theme),
+          child: () => _buildRunsTab(theme, l10n),
         ),
         ProfileTab.badges => _tabScope(
           loading: _badgesLoading,
           error: _badgesError,
           onRetry: _loadBadges,
-          child: () => BadgeGrid(badges: _badges, isOwner: _isSelf),
+          child: () => BadgeGrid(
+            badges: _badges,
+            isOwner: _isSelf,
+            onOpen: _openBadge,
+          ),
         ),
         ProfileTab.followers => _tabScope(
           loading: _followersLoading,
@@ -837,13 +1035,70 @@ class _ProfileScreenState extends State<ProfileScreen>
     return child();
   }
 
-  Widget _buildRunsTab(ThemeData theme) {
+  Widget _buildRunsTab(ThemeData theme, AppLocalizations l10n) {
+    final list = _buildRunsList(l10n);
+    final privateCount = _isSelf ? _runCounts?.privateCount ?? 0 : 0;
+    if (privateCount == 0) return list;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _privateRunsNote(theme, l10n, privateCount),
+        Expanded(child: list),
+      ],
+    );
+  }
+
+  /// Owner-only: the profile lists public runs alone, so say how many of
+  /// theirs are not here and hand them to the full run list. Mirrors the web
+  /// profile's note under the tabs.
+  Widget _privateRunsNote(
+    ThemeData theme,
+    AppLocalizations l10n,
+    int privateCount,
+  ) {
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      key: const ValueKey('profile-private-runs-note'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(Icons.lock_outline, size: 18, color: muted),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.profilePrivateRunsNote(privateCount),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                ),
+                TextButton(
+                  key: const ValueKey('profile-private-runs-link'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(48, 48),
+                    alignment: Alignment.centerLeft,
+                  ),
+                  onPressed: () => openHelpDestination(HelpDestination.runs),
+                  child: Text(l10n.profilePrivateRunsNoteLink),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRunsList(AppLocalizations l10n) {
     if (_runs.isEmpty) {
       return EmptyState(
         icon: Icons.directions_run,
-        title: _isSelf
-            ? AppLocalizations.of(context).profileRunsEmptySelf
-            : AppLocalizations.of(context).profileRunsEmptyOther,
+        title: _isSelf ? l10n.profileRunsEmptySelf : l10n.profileRunsEmptyOther,
       );
     }
     return RefreshIndicator(
@@ -854,23 +1109,30 @@ class _ProfileScreenState extends State<ProfileScreen>
         itemCount: _runs.length,
         itemBuilder: (_, i) {
           final r = _runs[i];
-          // The run row, shared with Fitness -> Runs. Tap-into-detail routes
-          // through `PublicRunScreen` (which takes a `runId`) so this works
-          // for non-owner viewers too, and `ownerUserId` sends the thumbnail
-          // through the clipping function when the profile is not the
-          // viewer's own.
+          // The run row, shared with Fitness -> Runs. Another runner's run
+          // opens `PublicRunScreen` (which takes a `runId`); the viewer's own
+          // goes through the shell, which holds the run store and opens the
+          // owner's detail screen. `ownerUserId` sends the thumbnail through
+          // the clipping function when the profile is not the viewer's own.
           return RunListTile.public(
             key: ValueKey(r.id),
             row: r,
             ownerUserId: widget.userId,
             unit: activeDistanceUnit,
             api: widget.api,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PublicRunScreen(api: widget.api, runId: r.id),
-              ),
-            ),
+            onTap: () {
+              if (_isSelf) {
+                openRunLink(r.id);
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PublicRunScreen(api: widget.api, runId: r.id),
+                ),
+              );
+            },
           );
         },
       ),
@@ -1194,11 +1456,58 @@ class _ProfileScreenState extends State<ProfileScreen>
     _dismissNotifs(ids, AppLocalizations.of(context).undoDismissed(ids.length));
   }
 
+  Future<void> _openConversation(
+    String partnerId, {
+    String? name,
+    String? avatarUrl,
+  }) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MessageThreadScreen(
+            api: widget.api,
+            partnerId: partnerId,
+            partnerName: name,
+            partnerAvatarUrl: avatarUrl,
+          ),
+        ),
+      );
+
   Future<void> _onNotifTap(NotificationView item) async {
     await _markNotifRead(item);
     if (!mounted) return;
     final kind = item.row.kind;
-    if (kind == 'event_rsvp' &&
+    if (kind == 'message' && item.row.conversationId != null) {
+      // A group message opens its group, never a 1:1 thread with the sender.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GroupThreadScreen(
+            api: widget.api,
+            conversationId: item.row.conversationId!,
+          ),
+        ),
+      );
+    } else if (kind == 'group_invite') {
+      // Join and Decline sit in the inbox's Requests list; the group itself
+      // opens only once accepted (decisions § 2463).
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              MessagesScreen(api: widget.api, initialShowRequests: true),
+        ),
+      );
+    } else if (kind == 'message' && item.row.actorId != null) {
+      await _openConversation(
+        item.row.actorId!,
+        name: item.actor?.displayName,
+        avatarUrl: item.actor?.avatarUrl,
+      );
+    } else if ((kind == 'event_rsvp' ||
+            kind == 'event_cancel' ||
+            kind == 'event_reminder' ||
+            kind == 'event_waitlist_slot' ||
+            kind == 'event_updated' ||
+            kind == 'race_starting_soon' ||
+            kind == 'race_start_moved') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1210,7 +1519,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
-    } else if (kind == 'club_post' && item.clubSlug != null) {
+    } else if ((kind == 'club_post' ||
+            kind == 'club_join_request' ||
+            kind == 'club_join_approved' ||
+            kind == 'club_verification' ||
+            // A deleted event's cancel links no event, only the club it
+            // belonged to (decisions § 2358).
+            (kind == 'event_cancel' && item.row.eventId == null)) &&
+        item.clubSlug != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ClubDetailScreen(
@@ -1220,13 +1536,130 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
-    } else if (kind == 'run_completed' && item.row.runId != null) {
+    } else if (_kRunNotificationKinds.contains(kind) && item.row.runId != null) {
+      // A reply, a comment like or a mention need not be on the recipient's
+      // own run, and this screen holds no run store to tell, so the shell
+      // decides: the owner's detail screen for a run on this device, else the
+      // non-owner view, as web's /runs/[id] and the push path do.
+      openRunLink(item.row.runId!);
+    } else if (kind == 'personal_record' && item.row.runId != null) {
+      // The recipient's own run, opened on its PR card (web's
+      // `/runs/<id>?share=pr`).
+      openRunLink(item.row.runId!, sharePr: true);
+    } else if (kind == 'follow' && item.row.actorId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              PublicRunScreen(api: widget.api, runId: item.row.runId!),
+              ProfileScreen(api: widget.api, userId: item.row.actorId!),
         ),
       );
+    } else if ((kind == 'plan_update' ||
+            kind == 'plan_assigned' ||
+            kind == 'plan_ai_edit' ||
+            kind == 'plan_change_request' ||
+            kind == 'plan_change_decision' ||
+            kind == 'workout_reminder') &&
+        item.row.planId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanDetailScreen(
+            training: TrainingService(),
+            planId: item.row.planId!,
+          ),
+        ),
+      );
+    } else if (kind == 'organiser_dispute') {
+      // Both sides read the decision and any rename deadline on the web's
+      // disputes page; the review is web-only (decisions § 24, § 2441).
+      await _openOnWeb('/disputes');
+    } else if (kind == 'park_course_report') {
+      // App admins review park course reports in the web queue (§ 2449).
+      await _openOnWeb('/admin/reports');
+    } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
+      await _openCourseAlert(item.row.courseAlertId!);
+    } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ChallengeDetailScreen(
+            social: SocialService(),
+            challengeId: item.row.challengeId!,
+          ),
+        ),
+      );
+    } else if (kind == 'achievement') {
+      _tabs.animateTo(_tabOrder.indexOf(ProfileTab.badges));
+    } else if (kind == 'follow_request') {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => FollowRequestsScreen(api: widget.api),
+        ),
+      );
+    } else if (kind == 'data_export_ready') {
+      // The archive is collected from Settings → Account, which this screen
+      // cannot construct (it holds none of that screen's dependencies), so
+      // the request is parked for the shell to drain — decisions § 710.
+      openSettings(SettingsDestination.account);
+    } else if (kind == 'refund_failed' &&
+        item.row.eventId != null &&
+        item.eventClubSlug != null) {
+      // Only the event-order half has somewhere to go. A donation refund
+      // failure carries no FK — `donations` has no client SELECT policy, so
+      // there is no donor-facing row on any platform — and the inbox line is
+      // the whole message rather than a pointer to one (decisions § 825).
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => EventDetailScreen(
+            social: SocialService(),
+            clubSlug: item.eventClubSlug!,
+            eventId: item.row.eventId!,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openOnWeb(String path) async {
+    final url = '${resolveWebBaseUrl()}$path';
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        showTopBanner(context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    } catch (e) {
+      debugPrint('ProfileScreen: opening $url failed: $e');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    }
+  }
+
+  /// The race or route a course alert is on (decisions § 2407): a race opens
+  /// here, a route goes through the shell, which holds the route stores. An
+  /// alert that is gone says so rather than opening nothing.
+  Future<void> _openCourseAlert(String alertId) async {
+    final l10n = AppLocalizations.of(context);
+    final service = RaceService();
+    ({String? listingId, String? routeId})? target;
+    try {
+      target = await service.fetchCourseAlertTarget(alertId);
+    } catch (e) {
+      debugPrint('ProfileScreen: course alert resolve failed: $e');
+    }
+    if (!mounted) return;
+    final listingId = target?.listingId;
+    final routeId = target?.routeId;
+    if (listingId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              RaceDetailScreen(service: service, listingId: listingId),
+        ),
+      );
+    } else if (routeId != null) {
+      pendingEntityLink.value = EntityLink(EntityLinkKind.route, routeId);
+    } else {
+      showTopBanner(context, l10n.courseAlertsNotFound);
     }
   }
 
@@ -1249,32 +1682,112 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifComment(name, dist);
       case 'comment_reply':
         return l10n.profileNotifCommentReply(name);
+      case 'reaction':
+        return l10n.profileNotifReaction(name);
+      case 'comment_like':
+        return l10n.profileNotifCommentLike(name);
+      case 'mention':
+        return l10n.profileNotifMention(name);
       case 'follow':
         return l10n.profileNotifFollow(name);
+      case 'follow_request':
+        return l10n.profileNotifFollowRequest(name);
       case 'event_rsvp':
         return item.eventTitle != null
             ? l10n.profileNotifEventRsvpTitled(name, item.eventTitle!)
             : l10n.profileNotifEventRsvp(name);
       case 'event_cancel':
+        // `refunded` marks a refund that is owed, not one Stripe has
+        // confirmed, so the copy says it is being refunded.
+        if (item.row.refunded) {
+          return item.eventTitle != null
+              ? l10n.profileNotifEventCancelRefundedTitled(item.eventTitle!)
+              : l10n.profileNotifEventCancelRefunded;
+        }
+        // No event id: the whole event was deleted, and the notice was
+        // written unlinked so the delete could not erase it (decisions § 2358).
+        if (item.row.eventId == null) {
+          return item.eventTitle != null
+              ? l10n.profileNotifEventDeletedTitled(item.eventTitle!)
+              : l10n.profileNotifEventDeleted;
+        }
         return item.eventTitle != null
             ? l10n.profileNotifEventCancelTitled(item.eventTitle!)
             : l10n.profileNotifEventCancel;
+      case 'event_updated':
+        return item.eventTitle != null
+            ? l10n.profileNotifEventUpdatedTitled(item.eventTitle!)
+            : l10n.profileNotifEventUpdated;
+      case 'course_alert':
+        return item.clubName != null
+            ? l10n.profileNotifCourseAlertNamed(item.clubName!)
+            : l10n.profileNotifCourseAlert;
+      case 'race_starting_soon':
+        return item.eventTitle != null
+            ? l10n.profileNotifRaceStartingSoonTitled(item.eventTitle!)
+            : l10n.profileNotifRaceStartingSoon;
+      case 'race_start_moved':
+        return item.eventTitle != null
+            ? l10n.profileNotifRaceStartMovedTitled(item.eventTitle!)
+            : l10n.profileNotifRaceStartMoved;
+      case 'club_join_request':
+        return item.clubName != null
+            ? l10n.profileNotifClubJoinRequestNamed(name, item.clubName!)
+            : l10n.profileNotifClubJoinRequest(name);
+      case 'club_join_approved':
+        return item.clubName != null
+            ? l10n.profileNotifClubJoinApprovedNamed(item.clubName!)
+            : l10n.profileNotifClubJoinApproved;
+      case 'club_verification':
+        return item.clubName != null
+            ? l10n.profileNotifClubVerificationNamed(item.clubName!)
+            : l10n.profileNotifClubVerification;
+      case 'organiser_dispute':
+        return item.clubName != null
+            ? l10n.profileNotifOrganiserDisputeNamed(item.clubName!)
+            : l10n.profileNotifOrganiserDispute;
+      case 'park_course_report':
+        return l10n.profileNotifParkCourseReport;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)
             : l10n.profileNotifEventReminder;
+      case 'event_waitlist_slot':
+        // A paid occurrence's freed seat, held for this waitlister until a
+        // deadline (migration 20270726000002). Claiming it is a web checkout.
+        return item.eventTitle != null
+            ? l10n.profileNotifWaitlistSlotTitled(item.eventTitle!)
+            : l10n.profileNotifWaitlistSlot;
       case 'plan_update':
         return l10n.profileNotifPlanUpdate(name);
       case 'plan_assigned':
         return l10n.profileNotifPlanAssigned(name);
+      case 'plan_ai_edit':
+        return l10n.profileNotifPlanAiEdit(name);
+      case 'plan_change_request':
+        return l10n.profileNotifPlanChangeRequest(name);
+      case 'plan_change_decision':
+        return l10n.profileNotifPlanChangeDecision(name);
+      case 'workout_reminder':
+        return l10n.profileNotifWorkoutReminder;
       case 'achievement':
         return l10n.profileNotifAchievement;
       case 'challenge_complete':
         return l10n.profileNotifChallengeComplete;
+      case 'personal_record':
+        return l10n.profileNotifPersonalRecord;
       case 'content_hidden':
         return l10n.profileNotifContentHidden;
+      case 'data_export_ready':
+        return l10n.profileNotifDataExportReady;
+      case 'refund_failed':
+        return l10n.profileNotifRefundFailed;
       case 'message':
-        return l10n.profileNotifMessage(name);
+        return item.row.conversationId != null
+            ? l10n.profileNotifGroupMessage(name)
+            : l10n.profileNotifMessage(name);
+      case 'group_invite':
+        return l10n.profileNotifGroupInvite(name);
       case 'club_post':
         return item.clubName != null
             ? l10n.profileNotifClubPostNamed(name, item.clubName!)

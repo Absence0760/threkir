@@ -1,0 +1,81 @@
+[
+  {
+    "id": "racing-an-event",
+    "title": "Racing an event",
+    "summary": "Start, pause and finish a race recording from the event page.",
+    "kind": "start",
+    "category": "races",
+    "audience": ["participant"],
+    "platforms": ["web", "android", "ios"],
+    "routes": ["/clubs/[slug]/events/[id]"],
+    "sections": [
+      {
+        "heading": "Before the start",
+        "blocks": [
+          { "type": "p", "text": "Open the event and tap **Start race**. Find more on [[route:/races|the races list]] or read [[guide:following-live|how spectators follow you]]." },
+          { "type": "steps", "items": ["Open the event.", "Tap **Start race**.", "Keep the phone on you."] },
+          { "type": "video", "url": "https://example.com/v.mp4" },
+          { "type": "list", "items": ["Bib number", "A charged phone"] },
+          { "type": "note", "tone": "tip", "text": "Pausing keeps the *gun clock* running." },
+          { "type": "note", "tone": "caution", "text": "Finishing early records a DNF. See [[route:/no/such/route|the old page]]." }
+        ]
+      }
+    ],
+    "related": ["following-live", "missing-guide"]
+  },
+  {
+    "id": "following-live",
+    "title": "Following a runner live",
+    "summary": "Watch someone's race from a shared live link.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": ["spectator"],
+    "platforms": ["web", "android"],
+    "routes": ["/live/[id]", "/live/event/[id]/[instance]"],
+    "sections": [
+      { "heading": "Opening the link", "blocks": [ { "type": "p", "text": "Tap the link someone shared." } ] }
+    ]
+  },
+  {
+    "id": "paid-class-setup",
+    "title": "Charging for a class",
+    "summary": "Take payment for a class event.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": ["instructor"],
+    "requires": ["stripe-connected", "paid-rail-live"],
+    "platforms": ["web"],
+    "routes": ["/clubs/[slug]/events/[id]"],
+    "sections": [
+      { "heading": "Setting a price", "blocks": [ { "type": "p", "text": "Add a price when you create the race-day class." } ] }
+    ]
+  },
+  {
+    "id": "connect-strava",
+    "title": "Connecting Strava",
+    "summary": "Bring your Strava history in.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": ["everyone"],
+    "platforms": ["web", "android", "ios"],
+    "routes": ["/settings/integrations"],
+    "sections": [
+      { "heading": "Connecting", "blocks": [ { "type": "p", "text": "Open [[route:/settings/integrations|Integrations]] and tap **Connect**." } ] }
+    ]
+  },
+  {
+    "id": "future-category",
+    "title": "A guide in a newer category",
+    "summary": "From a build newer than this app.",
+    "kind": "explainer",
+    "category": "coaching",
+    "audience": ["runner"],
+    "platforms": ["web"],
+    "sections": [ { "heading": "Body", "blocks": [ { "type": "p", "text": "Text." } ] } ]
+  },
+  {
+    "id": "no-title",
+    "summary": "Missing its title, so it is dropped.",
+    "sections": []
+  }
+]

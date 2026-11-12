@@ -33,5 +33,37 @@ class Run {
 
   factory Run.fromJson(Map<String, dynamic> json) => _$RunFromJson(json);
 
-  Map<String, dynamic> toJson() => _$RunToJson(this);
+  /// Always encodable.
+  ///
+  /// `jsonEncode` refuses a non-finite double with a `JsonUnsupportedObjectError`
+  /// — an `Error`, so `on Exception` does not see it — and the generated
+  /// serializer would hand it one straight from a track point or from
+  /// [distanceMetres]. Every writer of a run goes through here: the local
+  /// store's five encode sites and the backup archive, so a run that carries a
+  /// value that is not a number is still saveable rather than permanently
+  /// stuck. A non-finite distance resolves to zero, which is what the column's
+  /// own `runs_distance_m_check` would demand anyway (decisions § 986) and
+  /// which — unlike a NaN — cannot poison the local index every other run
+  /// shares.
+  Map<String, dynamic> toJson() {
+    final json = _$RunToJson(this);
+    final usable = finiteWaypoints(track);
+    if (!identical(usable, track)) {
+      json['track'] = <Map<String, dynamic>>[
+        for (final w in usable) w.toJson(),
+      ];
+    }
+    json['distanceMetres'] = storableDistanceMetres(distanceMetres);
+    return json;
+  }
 }
+
+/// The distance a writer may store for [d].
+///
+/// A non-finite distance resolves to zero: `jsonEncode` refuses one outright,
+/// and zero is what `runs_distance_m_check` would demand anyway (decisions
+/// § 986). One home, because the domain serializer and the row builder both
+/// need the answer and two copies of a coercion rule drift — which is exactly
+/// how `RunRow` came to carry a NaN the local store could no longer hold
+/// (decisions § 1010).
+double storableDistanceMetres(double d) => d.isFinite ? d : 0.0;

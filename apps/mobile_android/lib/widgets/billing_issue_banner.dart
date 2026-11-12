@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
+import '../revenuecat.dart';
 
 /// Persistent banner shown when the signed-in Pro user has a recent
 /// `BILLING_ISSUE` event from RevenueCat — a renewal payment failed
@@ -48,9 +49,9 @@ String relativeDaysSince(AppLocalizations l10n, DateTime since,
 class BillingIssueBanner extends StatefulWidget {
   final ApiClient? apiClient;
 
-  /// Override target the banner CTA navigates to. Defaults to the
-  /// hosted upgrade page (matches the existing "Manage subscription"
-  /// tile in `settings_screen.dart`). Tests inject a no-op so the
+  /// Override for opening the page the banner CTA resolves — the same
+  /// [resolveManageSubscriptionUrl] target as the "Manage subscription"
+  /// tile in `settings_pro_screen.dart`. Tests inject a no-op so the
   /// `url_launcher` plugin isn't reached.
   final Future<void> Function(String url)? onOpenExternal;
 
@@ -66,8 +67,6 @@ class BillingIssueBanner extends StatefulWidget {
 
 class _BillingIssueBannerState extends State<BillingIssueBanner>
     with WidgetsBindingObserver {
-  static const _manageUrl = 'https://threkir.com/settings/upgrade';
-
   String? _subscriptionTier;
   DateTime? _billingIssueAt;
 
@@ -111,7 +110,9 @@ class _BillingIssueBannerState extends State<BillingIssueBanner>
     final opener =
         widget.onOpenExternal ?? (url) => launchUrl(Uri.parse(url));
     try {
-      await opener(_manageUrl);
+      final url =
+          await resolveManageSubscriptionUrl(widget.apiClient?.userId);
+      await opener(url);
     } catch (_) {
       // L4: silent. Same rationale — banner is decorative.
     }

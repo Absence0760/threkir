@@ -1,0 +1,4084 @@
+[
+  {
+    "id": "notifications-reactions-and-mentions",
+    "lang": "en",
+    "title": "Reactions, mentions and your notifications",
+    "summary": "React to runs, like comments and mention other runners, then choose which notifications also reach your email and phone.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/notifications",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "React, like and mention",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "On someone else's run, next to the kudos, pick a reaction: **On fire**, **Strong**, **Champion**, **Nice** or **Hello**. You can leave more than one, and choosing one again takes it back.",
+              "To like a comment, choose the heart beside it. You can't react to your own run or like your own comment.",
+              "To mention someone in a comment, type @ and the start of their name, then pick them from the list that appears. They are notified only if they can already see the run and neither of you has blocked the other."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Reactions and comment likes show on the run itself. Cards in the feed still show only kudos and comment counts."
+          }
+        ]
+      },
+      {
+        "heading": "Where notifications show up",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Every notification lands in the app: under the bell on the web, and on the **Notifications** tab of your profile in the phone app. Whether it also reaches your email or your phone is up to you."
+          }
+        ]
+      },
+      {
+        "heading": "Choose what is emailed and pushed",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "On the web, open [[route:/settings/notifications|Notifications]] in Settings. In the phone app, open **Preferences** in the **You** tab and scroll to **Notifications**.",
+              "Set **Email notifications** and **Push notifications** separately."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Important only**, the default: things you are waiting on or that change your plans, such as messages, event reminders and cancellations, a waitlist place held for you, mentions, follow requests and a finished data export.",
+              "**Everything**: the important ones plus the social ones, such as kudos, comments, new followers, reactions and comment likes.",
+              "**Off**: nothing on that channel. The app still shows everything."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Turn off a single kind",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "On the web, the same page lets you silence some kinds without changing a whole channel: **Data export ready**, **Mentions**, **Reactions to my runs**, **Likes on my comments** and **Follow requests**. Untick one and it stops being emailed and pushed, on your phone as well, but it still appears in the app."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "These switches only ever turn things off. Reactions and comment likes are sent only when a channel is set to **Everything**, and a channel set to **Off** stays silent whatever they say."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "The single-kind switches are on the web only for now. The phone app shows the email and push settings."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "private-profile-and-follow-requests",
+      "your-data-and-privacy",
+      "using-help"
+    ]
+  },
+  {
+    "id": "private-profile-and-follow-requests",
+    "lang": "en",
+    "title": "Make your profile private and approve followers",
+    "summary": "Turn on a private profile so only followers you approve see your runs, then approve or decline follow requests as they arrive.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/follow-requests",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What a private profile hides",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "With a private profile, only followers you have approved see your runs and other activities, and the lists of who follows you and who you follow. Everyone else sees your name, picture and follower counts, with **This profile is private** where your runs would be."
+          },
+          {
+            "type": "list",
+            "items": [
+              "People can still find you by name and ask to follow you. To stay out of name search too, turn off **Show me in name search** on the same page.",
+              "Anyone who already follows you when you switch it on keeps following you.",
+              "Routes, event results and badges keep their own visibility, because each one is shared on its own.",
+              "A live link you send during a run, including the link in a safety alert, still works for the people you sent it to."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Turn it on",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "On the web, open [[route:/settings/privacy|Privacy & sharing]] in Settings and tick **Private profile** under **Being found**.",
+              "In the phone app, open **Preferences** in the **You** tab and turn on **Private profile** under **Privacy & sharing**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "The change saves straight away."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Turning it off again approves every request that is still waiting, so those people start following you at once."
+          }
+        ]
+      },
+      {
+        "heading": "Approve or decline requests",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When someone asks to follow you, you get a notification. Follow requests count as important, so by default they are emailed and pushed to you as well."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open the notification. You can also select **Review follow requests** under **Private profile** on the web, or tap **Follow requests** under **Private profile** in the phone app.",
+              "Choose **Approve** to let that person see your profile, or **Decline** to turn the request down. They aren't notified when you decline."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Follow someone with a private profile",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open their profile and choose **Request to follow**.",
+              "The button shows **Requested** while you wait. Choose it again to withdraw the request.",
+              "Once they approve, the button shows **Following** and their runs appear."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "If you unfollow someone with a private profile, you have to ask again to see their runs."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "notifications-reactions-and-mentions",
+      "privacy-zones"
+    ]
+  },
+  {
+    "id": "using-help",
+    "lang": "en",
+    "title": "Finding help in the app",
+    "summary": "Where the help guides live, how to search them, and how to jump from a screen to the guide that explains it.",
+    "kind": "start",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/help",
+      "/help/search"
+    ],
+    "sections": [
+      {
+        "heading": "Opening help",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Select your name at the bottom of the sidebar. In a narrow window the sidebar shrinks to icons, so select the round avatar with your initial instead.",
+              "Choose **Help** in the menu that opens."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "The contents page lists every guide by topic. The chips under **Show guides for** narrow the list to the guides written for you, such as **Organisers** or **Spectators**; **All** shows everything again."
+          }
+        ]
+      },
+      {
+        "heading": "Searching the guides",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Type a word or two into **Search the guides** at the top of [[route:/help|Help]] and press **Search**. Guides with your words in the title come first, then guides that mention them in the summary, then the rest."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Capitals and accents do not matter, so *cafe* finds *Café*. Every word you type has to appear somewhere in a guide for it to be listed."
+          }
+        ]
+      },
+      {
+        "heading": "Help from the screen you are on",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A screen that has a guide shows a **How this works** link near its title. It opens the guide for that screen; where several guides cover it, it opens a short list to choose from."
+          },
+          {
+            "type": "p",
+            "text": "Some cards and settings carry a small round *i* button. It explains the feature in a sentence or two, and when a guide goes further it ends with **Read the guide**."
+          }
+        ]
+      },
+      {
+        "heading": "Reading a guide",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "The badges under the title say which apps the guide applies to and whether you need something first, such as Pro or a club admin role.",
+              "**On this page** lists the sections of a longer guide and jumps to the one you pick.",
+              "**Related guides** at the end points to what you are likely to need next."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Guides are shown in the language the app is set to. A guide that has not been translated into it yet is shown in English, with a note at the top saying so."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "what-pro-includes",
+    "lang": "en",
+    "title": "What Pro includes",
+    "summary": "Almost everything in Threkir is free; Pro raises your AI Coach allowance, adds a few AI extras and moves some background work up the queue.",
+    "kind": "explainer",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/upgrade",
+      "/messages/coach"
+    ],
+    "sections": [
+      {
+        "heading": "What stays free",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Almost nothing in the app is locked behind Pro. Free accounts get unlimited recording on phone and watch, routes, training plans and the numbers behind them, clubs and events, the social feed, safety contacts, imports and backups."
+          }
+        ]
+      },
+      {
+        "heading": "What Pro adds",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**AI Coach — 10/day**: ten Coach messages a day instead of two. The count resets at midnight UTC.",
+              "Longer, more thorough Coach answers that can take more of your runs into account.",
+              "**Priority map-matching**: your GPS tracks are snapped to roads ahead of free accounts, so they are ready sooner.",
+              "**Priority cloud exports**: up to 8 GPX bundle exports an hour instead of 2.",
+              "**Server route generation**: loops traced on the real street network when you generate a route by distance. Free accounts still get loop generation, worked out in the browser.",
+              "Richer route descriptions: on a route's page, **Enhance with AI** turns the standard description into a fuller paragraph.",
+              "**Log from a photo**: photograph a meal and get your food log filled in for you to check. See [[guide:log-a-meal-from-a-photo|Log a meal from a photo]]."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Some of these depend on services that may not be switched on yet. The Pro card in [[route:/settings/upgrade|Pro & support]] only lists what is working today; if it says **Pro unlocks the AI Coach — coming soon.**, Pro can't be bought yet."
+          }
+        ]
+      },
+      {
+        "heading": "How to get Pro",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Pro is a monthly or yearly subscription; the Pro card shows the current prices. Where you can buy it depends on your device:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "On an iPhone, open **Pro & support** in the **You** tab and subscribe through the App Store.",
+              "On the web, open [[route:/settings/upgrade|Pro & support]] in Settings. If it says **Subscribing on the web is coming soon.**, subscribe in the iPhone app instead."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Pro belongs to your account, not your device, so a subscription bought on one device works everywhere you sign in."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Prices are in US dollars, and the App Store charges the price set for your country. Some countries and payment methods can't be served by our payment processor."
+          }
+        ]
+      },
+      {
+        "heading": "Managing or cancelling",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Cancel or change your plan where you started it: the App Store, the Play Store, or the web billing portal. **Manage subscription** takes you there.",
+              "On a new phone, tap **Restore purchases** in **Pro & support** to bring an existing subscription across.",
+              "Prefer a one-off contribution? **Donate** is on the same page."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "log-a-meal-from-a-photo",
+      "using-help"
+    ]
+  },
+  {
+    "id": "your-data-and-privacy",
+    "lang": "en",
+    "title": "Your data and privacy",
+    "summary": "See what other people can see, choose who sees new runs, download everything we hold about you, and delete your account.",
+    "kind": "explainer",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/settings/account",
+      "/delete-account",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What other people can see",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Your profile page, with your display name, picture, follower counts and your public runs, can be opened by anyone with its link. With a private profile, only followers you approve see your runs and follower lists; see [[guide:private-profile-and-follow-requests|Make your profile private and approve followers]].",
+              "Runs you make public appear on your profile and in the feed. Private runs are visible only to you.",
+              "Membership of a public club, and anything you post there, can be seen by people who can see the club.",
+              "While you share a live link, the run in progress can be seen by anyone with the link.",
+              "A photo you mark **Show on race page**, on a public run linked to a race, appears on that race's public page with its caption and your name. Untick it, or make the run private, to take it down."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Privacy zones trim the start and end of your tracks wherever someone else sees them. See [[guide:privacy-zones|Hide your home with privacy zones]]."
+          }
+        ]
+      },
+      {
+        "heading": "Choose who sees new runs",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "On the web open [[route:/settings/privacy|Privacy & sharing]] in Settings and pick a **Default Visibility for New Runs**. In the phone app, it is **Default run privacy** under **Preferences** in the **You** tab.",
+              "To change a single run later, open it and tap the **Private** or **Public** chip under its title. Making a run public asks first, and shows what your privacy zones will hide."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Only **Public** makes new runs visible to others. Runs don't have a followers-only setting yet, so choosing followers as your default keeps new runs private, and your followers won't see them."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Show me in name search**: turn off to keep your account out of name searches. Your profile and public runs can still be opened by anyone who has the link.",
+              "**Show me in Runners nearby**, where it is offered: off by default. When on, runners near the area you set can find you. Only a rough area is stored, never your live location."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Download your data",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "On the web, open **Account** in Settings. The phone app has the same choices under **Account** in the **You** tab."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Download full account archive** (on the phone, **Account export**): everything we hold about you, including coach chats, messages, integrations and safety contacts, as one zip. It is built on our server, so you can close the page and come back for it. A finished export is kept for 7 days.",
+              "**Download full backup** (on the phone, **Full backup**): every run with its GPS trace, plus your routes, profile and preferences, in a file you can restore later with **Restore from backup**.",
+              "**Cloud export (GPX zip)**: one GPX file per run, with heart rate, ready to import into other apps. Free accounts can export twice an hour, Pro accounts eight times.",
+              "**Export All Runs (CSV)** (on the phone, **Export runs as CSV**): one row per run for a spreadsheet, without GPS traces."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Delete your account",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Download anything you want to keep first. Deletion cannot be undone.",
+              "On the web, open **Account** in Settings and select **Delete Account** under **Danger Zone**. In the phone app, open **Account** in the **You** tab and tap **Delete account**.",
+              "Type DELETE to confirm, then select **Delete my account** on the web or **Delete** in the app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "This permanently removes your account, runs, routes, tracks, club memberships and preferences from our servers. On a phone, runs stored on the device itself stay there until you sign in as someone else or remove the app."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Can't get into the app? [[route:/delete-account|Delete your account]] explains how to ask for deletion without it."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "privacy-zones",
+      "private-profile-and-follow-requests",
+      "live-tracking-and-safety",
+      "what-pro-includes"
+    ]
+  },
+  {
+    "id": "create-a-club",
+    "lang": "en",
+    "title": "Create a club",
+    "summary": "Start a club for your running group, choose who can find it and how people join, then post your first event.",
+    "kind": "how-to",
+    "category": "clubs",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/social",
+      "/clubs/new",
+      "/clubs/[slug]"
+    ],
+    "sections": [
+      {
+        "heading": "On the web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open [[route:/social|Social]] and choose the **Clubs** tab.",
+              "Select **Create club**.",
+              "Fill in **Name**. Members search for the club by this name, and the club's web address is built from it when you create the club. Renaming the club later does not change that address.",
+              "Add a **Description** and a **Location** if you like. Both are optional, but a town and country in **Location** helps runners nearby find you when they search their own region.",
+              "Pick a **Visibility**: **Public** clubs appear in **Browse**, while **Private** clubs are hidden and people can only join through an invite link.",
+              "Under **Who can join?** choose **Anyone can join**, **Approval required** or **Invite only**.",
+              "Tick **Require an activity-risk acknowledgement to join** if you want every new member to confirm they understand the risks of group runs. This can only be set now, while the club is being created.",
+              "Select **Create club**. You are taken to the new club's page, and you are its owner."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "On the phone app",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the **Social** tab and choose **Clubs**.",
+              "Tap **New club**.",
+              "Enter a **Name**, and optionally a **Description (optional)** and **Location (optional)**.",
+              "Choose **Public** or **Private**, then pick a **Join policy**: **Open — anyone joins**, **Request — admins approve** or **Invite only**.",
+              "Tap **Create**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "The activity-risk acknowledgement and the club's website and social links can only be set on the web."
+          }
+        ]
+      },
+      {
+        "heading": "After you create it",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Your club page has tabs for **Feed**, **Events**, **Routes**, **Templates**, **Photos** and **Members**. As the owner you can post updates to the feed, add events and manage members."
+          },
+          {
+            "type": "list",
+            "items": [
+              "To change the name, description, visibility, join policy or links later, open the club on the web and select **Edit club**.",
+              "To add your first group run, select **New event** on the web, or tap **Create event** on the **Events** tab in the phone app.",
+              "To bring people in, see [[guide:invite-members-and-roles|Invite members and give them roles]]."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Deleting a club removes all of its events, posts and members for everyone, and it cannot be undone."
+          }
+        ]
+      },
+      {
+        "heading": "Bring a club across from Strava",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If your Strava account is connected, open [[route:/social|Social]] on the web, choose **Clubs** and then **My clubs**. Under **Your Strava clubs** you see the Strava clubs you belong to. Only you can see this list."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Set up on Threkir** opens a new club form with its name and location filled in, and links the two once you create the club.",
+              "**Link to my club** connects it to a club you already run here: pick it under **Which of your clubs is this?** and select **Link**.",
+              "**Unlink** removes the connection. Neither club is changed."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Only an admin of the club on Strava can link it, and only to a club they own or help run here. If the section is missing, connect Strava under [[route:/settings/integrations|Integrations]] in Settings first."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "invite-members-and-roles",
+      "recurring-events",
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "import-your-history"
+    ]
+  },
+  {
+    "id": "invite-members-and-roles",
+    "lang": "en",
+    "title": "Invite members and give them roles",
+    "summary": "Share an invite link, approve join requests, and give trusted members the admin, event organiser or race director role.",
+    "kind": "how-to",
+    "category": "clubs",
+    "audience": [
+      "club-admin",
+      "organiser"
+    ],
+    "requires": [
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/join/[token]"
+    ],
+    "sections": [
+      {
+        "heading": "How people join",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "How someone joins depends on the club's join policy, which you chose when you created it and can change with **Edit club** on the web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Anyone can join**: people select **Join club** on the club page and are in straight away.",
+              "**Approval required**: people select **Request to join** and wait in a queue until an admin approves them.",
+              "**Invite only**: people need an invite link from an admin."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Share an invite link",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open your club. On the web, admins see an **Invite link** panel on the club page whatever the join policy. In the phone app, tap the invite button at the top of the club screen.",
+              "Select **Generate invite link** the first time, then **Copy** to put the link on your clipboard, or **Share** to send it from your share sheet.",
+              "Send the link however you like. Anyone who opens it and signs in joins the club as a member."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "If a link has spread further than you wanted, select **Rotate**. A new link is made and the old one stops working immediately."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "An invite link lets people straight in: it skips the approval queue, so only share it with people you are happy to admit. If the club requires the activity-risk acknowledgement, the link asks for it before letting anyone in."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and paste the whole link or just the code after /clubs/join/. Opening the link in a phone browser works too."
+          },
+          {
+            "type": "p",
+            "text": "A public club also has a **Share club** button that anyone can use. It shares the club's public page, which shows what the club is without letting anyone in, so people still join the usual way. Private clubs have no public page, so share the invite link instead."
+          }
+        ]
+      },
+      {
+        "heading": "Approve or reject join requests",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When the club needs approval, admins see **Pending requests** with a count beside it."
+          },
+          {
+            "type": "list",
+            "items": [
+              "On the web, select **Approve** or **Reject** on each request, or **Approve all** when several are waiting. Rejecting asks you to confirm first.",
+              "In the phone app, open the club's **Members** tab and tap **Approve** or **Deny** on each request."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Give members a role",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Every club has one **Owner**, the person who created it. Other people can hold one of these roles:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Admin**: changes the club's settings, manages members and their roles, runs events and races, and approves results.",
+              "**Event organiser**: creates, edits and deletes events and adds attendees, without access to club settings or members.",
+              "**Race director**: arms, starts and ends races and approves or rejects results.",
+              "**Member**: posts replies, RSVPs to events and submits their own race results."
+            ]
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open your club on the web and choose the **Members** tab.",
+              "Use the role menu beside a member to pick their new role. The change saves straight away.",
+              "To take someone out of the club, use the remove button beside them and confirm."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Changing roles and removing members is web-only for now. The phone app's **Members** tab shows the member count and the pending requests, not the full list."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "create-a-club",
+      "recurring-events",
+      "set-up-a-race"
+    ]
+  },
+  {
+    "id": "recurring-events",
+    "lang": "en",
+    "title": "Set up a recurring club event",
+    "summary": "Turn a club event into a weekly, fortnightly or monthly series, RSVP to a single date, and call off one occurrence without touching the rest.",
+    "kind": "how-to",
+    "category": "clubs",
+    "audience": [
+      "organiser",
+      "club-admin",
+      "participant"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Create the series",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Club owners, admins and event organisers can create events. A recurring event is one event that repeats, so everything you fill in applies to every date."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open your club on the web and select **New event**.",
+              "Fill in the **Title**, **Start time** and the other details as for a one-off event. The start time you pick is the first date of the series.",
+              "Under **Repeats**, choose **Weekly**, **Every 2 weeks** or **Monthly** instead of **One-off**.",
+              "For a weekly or fortnightly series, pick the weekdays under **On these days:**. A monthly series repeats on the same day of the month as the start date.",
+              "Decide where the series stops: set **Ends on** to a date, **End after** to a number of occurrences, or both, and whichever comes first wins. Leave both empty and it keeps repeating.",
+              "Select **Create event**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "The repeat pattern can only be chosen while the event is being created. **Edit event** changes the title, time, meeting point and other details for the whole series, but not how often it repeats."
+          },
+          {
+            "type": "p",
+            "text": "In the phone app, tap **Create event** on the club's **Events** tab and choose **Weekly**, **Bi-weekly** or **Monthly** under **Recurrence**. The phone repeats the event on the weekday of its start date and has no end date or occurrence count, so use the web if the series needs to stop."
+          }
+        ]
+      },
+      {
+        "heading": "RSVP to one date",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Each date in a series has its own RSVPs, attendee list, capacity and results."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open the event and use **Pick an occurrence** to choose the date. The next few dates are shown, and **Show all 12 upcoming** (the number is how many dates are left) expands the list to every upcoming date in the next year.",
+              "Choose **I'm in**, **Maybe** or **Can't make it** for that date."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "To put the dates in your own calendar, select **Add to calendar**. On a series you can choose **Add this occurrence** for one date or **Add whole series** for every date."
+          }
+        ]
+      },
+      {
+        "heading": "Cancel one occurrence",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If one date can't go ahead, call off just that date and leave the rest of the series alone."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open the event on the web and pick the date you need to cancel.",
+              "Select **Cancel this occurrence**.",
+              "Add a **Reason (optional)**, such as a flooded course or a public holiday, and confirm. Select **Keep it** if you change your mind."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Everyone who RSVP'd to that date, whether going, maybe or waitlisted, gets a notification. The date shows **This occurrence was cancelled.** and nobody can RSVP to it. To bring it back, open the date and select **Reinstate this occurrence**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Cancelling and reinstating a date is web-only. **Delete event** removes every occurrence of the series, not just one."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "If the event is a paid class, cancelling an occurrence refunds everyone registered for it in full. See [[guide:host-a-paid-yoga-class|Host a paid yoga class]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "create-a-club",
+      "invite-members-and-roles",
+      "host-a-paid-yoga-class"
+    ]
+  },
+  {
+    "id": "build-a-gym-routine",
+    "lang": "en",
+    "title": "Build a gym routine",
+    "summary": "Turn a workout you teach or repeat into a reusable routine with sets, reps, load, rest and supersets, then run it guided or share it with your club.",
+    "kind": "how-to",
+    "category": "instructors",
+    "audience": [
+      "instructor",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/gym/routines",
+      "/gym/routines/new",
+      "/gym/routines/[id]",
+      "/gym/session/[routineId]",
+      "/plans/new",
+      "/gym/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Two ways to start",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "From scratch: open [[route:/gym/routines|Routines]] and press **New routine**. On the web you can also go to [[route:/plans/new|New plan]] and pick **Gym routine**.",
+              "From a workout you already logged: open it in your gym log and press **Save as routine**. Its exercises and sets become the routine's targets. **Repeat last** starts a new log from the same workout instead."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "On the phone app, open the gym screen and tap **Routines**, then **New routine**."
+          }
+        ]
+      },
+      {
+        "heading": "Fill it in",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Give it a **Routine name**, named after the day rather than the first exercise, for example \"Bootcamp A\".",
+              "Type the first exercise name. Reuse a name you already log, so your records for that lift stay in one place.",
+              "Pick what it is **Measured by**: weight and reps, bodyweight, time, or distance. The set rows change to ask for the matching target.",
+              "For each set, give a **Set type** and its targets, such as **Target reps** and weight, and a **Rest (s)**. Press **Add set** for more sets.",
+              "To run two exercises back to back, turn on **Superset with the next exercise** on the first one.",
+              "Press **Add exercise** for the next one, and repeat.",
+              "Optionally open **Advanced** and choose a **Progression** rule, which suggests next session's numbers from this one's result. Left on None, your targets stay exactly as typed.",
+              "Add any **Notes (optional)** and press **Save routine**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Each set row is a target, not a log. It is what a session started from the routine is filled in with, and you can still change the numbers as you go."
+          }
+        ]
+      },
+      {
+        "heading": "Run it",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Open the routine and press **Start routine** (on the phone app, **Start session**). You are guided one set at a time with your target shown: log what you did and press **Complete set**, or **Skip set**, with a rest timer between sets. Press **Finish** at the end and the session is saved to your gym log, with how it compared to the plan."
+          }
+        ]
+      },
+      {
+        "heading": "Share it with a class",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Publish to a club**: choose the club from **Pick a club…** and press **Publish**. It shows on that club's **Templates** tab under **Gym routine templates**, where members press **Adopt** to get their own copy. Edits to a copy don't change your original.",
+              "**Publish to public library**: anyone signed in can preview and adopt it. Your logged workouts stay private."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Running a paid class around the routine? See [[guide:host-a-paid-gym-class|Host a paid HIIT, strength or bootcamp class]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-gym-class",
+      "build-a-session-plan",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "build-a-session-plan",
+    "lang": "en",
+    "title": "Build a session plan for yoga, pilates or mobility",
+    "summary": "Write a timed sequence of holds, flows and reps with per-side movements and cues, then teach from it, attach it to a class and follow along.",
+    "kind": "how-to",
+    "category": "instructors",
+    "audience": [
+      "instructor",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/plans/new",
+      "/sessions",
+      "/sessions/[id]",
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Where to build it",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Session plans are written on the web. The phone app lists them and runs them, but has no editor yet."
+          },
+          {
+            "type": "list",
+            "items": [
+              "For yourself: open [[route:/plans/new|New plan]] and pick **Session plan**, or press **New session** on [[route:/sessions|Sessions]].",
+              "For your club: on the club's **Templates** tab, press **Add template** and pick **Session plan**. It is saved as a club template straight away."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Fill it in",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Give it a **Title** that names the sequence, such as \"Hip opener flow, 45 min\".",
+              "Add a **Discipline** (for example Vinyasa yoga) and the **Equipment** people should have out, such as a mat or a reformer.",
+              "Optionally press **Add block** to split it into sections like Warm-up, Standing and Cool-down. A plan with no blocks runs straight through.",
+              "Press **Add movement** for each pose or exercise and type its name in **Movement**.",
+              "Pick its **Type**: **Hold** for a timed pose, **Flow** for a timed sequence of movement, or **Reps** for a counted exercise. Then enter the **Seconds** or **Reps**, and the **Block** it belongs to.",
+              "Tick **Per side (left & right)** for anything done on each side. It runs once each way, so it takes twice as long.",
+              "Optionally add a **Tempo** and a **Cue**, the breath or alignment prompt shown beside the movement while someone follows along.",
+              "Check the estimated length the editor works out for you, then press **Save**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Movement names are suggested from your earlier plans as you type. Picking a suggestion keeps the same pose spelled the same way everywhere."
+          }
+        ]
+      },
+      {
+        "heading": "Attach it to a class",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "When creating a class, pick the plan under **Session plan**.",
+              "Already created the class? On the class page, organisers press **Attach to a class event** in the **Session sequence** card."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Attendees then see the full sequence on the class page. A private plan stays private to everyone else, but the people at a class you attach it to can see it."
+          }
+        ]
+      },
+      {
+        "heading": "Follow along",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Open the plan and press **Start session**. Timed holds and flows move on by themselves; for reps, press **Done** when finished. You can **Pause**, **Resume**, **Skip** a step, or **Abandon**. When you finish it is saved to your gym log as a workout."
+          },
+          {
+            "type": "p",
+            "text": "The phone app runs the same follow-along, reads the cues aloud, keeps the screen awake, and keeps time if you switch to another app."
+          }
+        ]
+      },
+      {
+        "heading": "Share it",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Make public** lets anyone find and follow it. **Copy share link** makes the plan public and copies a link that works without signing in.",
+              "**Publish to a club**: pick the club from **Pick a club…** and press **Publish**. It appears under **Session templates** on the club's **Templates** tab, and members press **Adopt** to get their own copy."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-yoga-class",
+      "build-a-gym-routine",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "take-attendance",
+    "lang": "en",
+    "title": "Take attendance at a class",
+    "summary": "Mark who actually came to each occurrence of a class, separately from who said they would, on the web or the phone app.",
+    "kind": "how-to",
+    "category": "instructors",
+    "audience": [
+      "instructor",
+      "organiser"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Who can take it, and where",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Attendance is for events with the **Class** type, and only the club's admins and event organisers can mark it. It works the same on the web and in the phone app, so you can do it from your phone at the front of the room."
+          },
+          {
+            "type": "p",
+            "text": "It is separate from the RSVP. Someone can be **Going**, or registered and paid, and still be marked as a no-show; marking attendance never changes their registration or refunds anyone."
+          }
+        ]
+      },
+      {
+        "heading": "Mark who came",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the class. If it repeats, use **Pick an occurrence** to choose today's date, because attendance is recorded per occurrence.",
+              "Scroll to the attendee list.",
+              "Next to each person, press **Mark attended** or **Mark no-show**.",
+              "Pressed the wrong one? Press the same button again to clear it."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "You don't have to mark everyone. Anyone left unmarked simply has no attendance recorded."
+          }
+        ]
+      },
+      {
+        "heading": "What others see",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Other people looking at the class see an **Attended** or **No-show** label next to each name you marked, but can't change it."
+          },
+          {
+            "type": "p",
+            "text": "Attendance doesn't add the class to anyone's training history. Attendees do that themselves with **Log this as a workout** on the class page, or by following the class's session plan: see [[guide:build-a-session-plan|Build a session plan]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class",
+      "build-a-session-plan",
+      "build-a-gym-routine"
+    ]
+  },
+  {
+    "id": "cancel-a-class",
+    "lang": "en",
+    "title": "Cancel a class and refund everyone who paid",
+    "summary": "Call off one occurrence of a repeating class; everyone who paid for it is refunded in full automatically, with an hourly retry and a Refund now fallback.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "organiser",
+      "instructor"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Paid classes are not live yet: they need the host's Stripe account connected and the platform's paid rail switched on. If payments aren't available when you try to cancel an occurrence that has paid registrations, you'll see **This occurrence has paid registrations and payments aren't available right now, so it can't be cancelled yet. Nothing has changed.** The class is left on, so nobody is left holding a payment for a class that isn't happening."
+          },
+          {
+            "type": "p",
+            "text": "Cancelling is for admins and event organisers of the club, and it is done on the web. Free classes cancel the same way, just without the refunds."
+          }
+        ]
+      },
+      {
+        "heading": "Cancel one occurrence",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the class on the web. If it repeats, use **Pick an occurrence** to choose the date you are calling off.",
+              "Press **Cancel this occurrence**.",
+              "The dialog explains that only this occurrence is called off and the rest of the series is unaffected. On a paid class it adds: **Everyone registered for this occurrence is refunded in full, whatever the refund policy says.**",
+              "Optionally add a **Reason (optional)**, then press **Cancel this occurrence** again to confirm, or **Keep it** to back out."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "When it finishes you see how many people are being refunded, for example *Occurrence cancelled. 8 registrants are being refunded in full.* Anyone who was part-way through checkout has their held spot released and is not charged. Nobody on the waitlist is moved into a cancelled class."
+          }
+        ]
+      },
+      {
+        "heading": "What your attendees are told",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Everyone who RSVP'd to that occurrence (going, maybe, or waitlisted) is notified. People who paid get a notification that reads like *An occurrence of \"Tuesday Reformer\" was cancelled — your payment is being refunded*, and the same wording goes out by email or push to anyone who gets those. It says *being* refunded because the refund is started at that moment and can take a few days to reach their bank."
+          }
+        ]
+      },
+      {
+        "heading": "If a refund fails",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "The occurrence is still cancelled even if Stripe refuses a refund. You'll see a message saying how many refunds couldn't be started, and the class page gains a **Refunds on cancelled occurrences** card listing, per cancelled date, who hasn't been refunded yet, which refunds are in progress, and any the bank sent back."
+          },
+          {
+            "type": "list",
+            "items": [
+              "The app retries every refund still owed on a cancelled class automatically, once an hour.",
+              "You don't have to wait: press **Refund now** next to the occurrence to try again straight away. It never refunds anyone twice.",
+              "A refund the bank sends back can't be retried this way; it is returned to the person another way."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Don't refund people by hand from a Stripe dashboard. A refund made there can skip reversing your payout and the platform fee, and the app may then refund the rest on top. Use **Refund now** instead."
+          }
+        ]
+      },
+      {
+        "heading": "One-off classes and whole series",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Cancel this occurrence** is only offered on a repeating class. There is no single button to call off a whole series: cancel each upcoming occurrence that has registrations."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "**Delete event** is not a cancellation. It removes the event and all its occurrences and does not refund anyone who paid. Don't delete a paid class that still has registrations."
+          },
+          {
+            "type": "p",
+            "text": "Changed your mind? **Reinstate this occurrence** puts a cancelled date back on the calendar, but refunds already made are not undone, so people will need to register again."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "refund-policies",
+      "waitlist-and-claim-window",
+      "get-paid-with-stripe",
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class"
+    ]
+  },
+  {
+    "id": "get-paid-with-stripe",
+    "lang": "en",
+    "title": "Get paid for the events you host",
+    "summary": "Connect a Stripe payout account once so the classes and events you host can take payment, with the money going to you rather than the club.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "organiser",
+      "instructor"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/settings/payouts",
+      "/clubs/[slug]"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Paid registration is not live yet. Charging for an event needs two things: your own Stripe account connected here, and the platform switching its paid rail on. Until both are true, nobody can be charged. If pressing **Set up payments** shows **Payments aren't configured on this build yet.**, the second one is still missing and there is nothing for you to do yet."
+          },
+          {
+            "type": "p",
+            "text": "Payouts belong to *you*, not to a club. The money for an event goes to the person who hosts it, so a co-organiser who never hosts a class never sees money that isn't theirs, and you keep your earnings if you stop organising for a club. One payout account covers every club you host for and every kind of event, a [[guide:set-up-a-race|race]] included."
+          }
+        ]
+      },
+      {
+        "heading": "Connect your payout account",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open [[route:/settings/payouts|Settings, Payouts]] on the web.",
+              "Press **Set up payments**. You are taken to Stripe to enter your details and the bank account you want paid into.",
+              "Finish Stripe's steps. When you come back, the page shows your status.",
+              "If it says **Onboarding incomplete — finish to start charging** or **Your payout account needs attention before you can take payment**, press **Finish setting up payments** to go back to Stripe and pick up where you left off."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "What the status means",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Ready to take payment**: Stripe has enabled charges on your account, and **Open Stripe dashboard** takes you to your Stripe account. This is what \"charges enabled\" means, and it is the only state in which the **Charge for this event** switch on a new event can be turned on.",
+              "**Onboarding incomplete — finish to start charging**: Stripe still needs something from you before it will accept a charge.",
+              "**Your payout account needs attention before you can take payment**: Stripe has restricted the account, usually because it wants more information. **Finish setting up payments** takes you to what it is asking for."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Until you are ready to take payment, the event form shows **Set up payouts to charge for events.** with a **Set up payouts** link back to this page."
+          }
+        ]
+      },
+      {
+        "heading": "Fees and who handles what",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "The platform takes a small fee from each registration, shown as **Platform fee** in your earnings. The platform is the merchant of record: the charge carries its name on your buyer's statement, refunds are issued by the platform under the refund policy you set on each event, and a disputed charge is taken from the platform's Stripe account, not yours. When an order is fully refunded, the platform fee on it is given back too."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Don't refund a buyer by hand in Stripe. Use the app's own paths ([[guide:refund-policies|a buyer's cancellation]] or [[guide:cancel-a-class|cancelling an occurrence]]), which reverse your payout and the platform fee together and keep your earnings figures right."
+          }
+        ]
+      },
+      {
+        "heading": "See what you earned",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "The **Earnings** section on the same page shows what you were paid for your classes, one block per month and currency. A class is filed under the month it ran in its own timezone, not the month someone paid, so \"my October classes\" means the classes that happened in October."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Registrations**, **Gross**, **Refunded** and **Platform fee** for the month, and **Net to you** at the end.",
+              "A breakdown by class with **Class** and **When** columns.",
+              "A refund the bank sent back is left out of the totals until it is resolved, and the section says how many there are."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Before anyone has paid, it reads **No paid registrations yet. Once someone pays for one of your classes, it shows up here.** Earnings are on the web only for now."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class",
+      "refund-policies",
+      "cancel-a-class",
+      "set-up-a-race"
+    ]
+  },
+  {
+    "id": "host-a-paid-gym-class",
+    "lang": "en",
+    "title": "Host a paid HIIT, strength or bootcamp class",
+    "summary": "Schedule a recurring gym class with a spot limit and drop-in price, share the workout as a club routine, and let attendees log it to their own history.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "instructor",
+      "organiser"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]",
+      "/gym/routines/[id]",
+      "/plans/new"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Paid classes are not live yet. Taking money needs your own Stripe account connected ([[guide:get-paid-with-stripe|Get paid for the events you host]]) and the platform's paid rail switched on. Until then the **Charge for this event** switch stays off and you can still run the class for free."
+          },
+          {
+            "type": "p",
+            "text": "You need to be an admin or event organiser of the club. Price, capacity and the repeat schedule are set on the web; the phone app can create a class but has no fields for them."
+          }
+        ]
+      },
+      {
+        "heading": "Create the class",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open your club, go to the **Events** tab and press **New event**.",
+              "Under **Event type**, pick **Class**. Route, distance, pace and race results are hidden for a class.",
+              "Fill in **Discipline**, for example \"HIIT\" or \"Bootcamp\", and a **Title** people will recognise on the calendar.",
+              "Set **Default workout length** to the class length in minutes. This is what lets attendees log the class in one tap afterwards.",
+              "Set the **Date**, **Start time**, **Duration** and **Meeting point**.",
+              "Under **Repeats**, pick **Weekly**, **Every 2 weeks** or **Monthly** and the days. You can only choose this while creating the event.",
+              "Set **Capacity** to your racks, bikes or spots.",
+              "Turn on **Charge for this event**, then set **Price**, **Currency**, **Stop sales (minutes before start)** and a **Refund policy**. Price and currency can't be changed after the event is created.",
+              "Press **Create event**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Share the workout with your class",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A class can't carry a gym routine directly yet. Instead, publish your routine to the club, where members can copy it into their own routines and run it."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Build the routine: see [[guide:build-a-gym-routine|Build a gym routine]].",
+              "Open the routine, and under **Publish to a club** choose your club from **Pick a club…** and press **Publish**.",
+              "It appears on the club's **Templates** tab under **Gym routine templates**, marked **Club template**. Members press **Adopt** to get their own copy."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Club admins can also go straight to the **Templates** tab, press **Add template** and choose **Gym routine**. It is saved as a club template in one step."
+          }
+        ]
+      },
+      {
+        "heading": "Attendees log the class to their own history",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "On the class page, any signed-in attendee sees **Log this as a workout**. It opens a gym log already named after the class, which they can adjust with their own sets and weights before saving. They then see **Added to your gym log**, and the class counts in their training history like any other workout. This works on the web and in the phone app."
+          },
+          {
+            "type": "p",
+            "text": "Someone who adopted your routine can instead open it and press **Start routine** to be guided set by set; that session is saved to their gym log as well."
+          }
+        ]
+      },
+      {
+        "heading": "Registration, the day itself and changes",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Attendees register and pay on the web, see **You're registered**, and can cancel under your [[guide:refund-policies|refund policy]].",
+              "When the spots are taken it shows **Sold out** and offers **Join the waitlist**: see [[guide:waitlist-and-claim-window|Waitlists and the 12-hour claim window]].",
+              "Mark who turned up: [[guide:take-attendance|Take attendance]].",
+              "Calling a session off refunds everyone who paid: [[guide:cancel-a-class|Cancel a class]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "get-paid-with-stripe",
+      "build-a-gym-routine",
+      "refund-policies",
+      "waitlist-and-claim-window",
+      "cancel-a-class",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "host-a-paid-yoga-class",
+    "lang": "en",
+    "title": "Host a paid yoga or pilates class",
+    "summary": "Schedule a recurring class for your club, cap the mats, set a drop-in price and refund policy, and attach a timed sequence people can follow.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "instructor",
+      "organiser"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]",
+      "/settings/payouts",
+      "/sessions/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Paid classes are not live yet. Taking money needs your own Stripe account connected ([[guide:get-paid-with-stripe|Get paid for the events you host]]) and the platform's paid rail switched on. Until then the **Charge for this event** switch stays off and you can still run the class for free."
+          },
+          {
+            "type": "list",
+            "items": [
+              "You need to be an admin or event organiser of the club. The club page tells you which with **You're an admin** or **You're an event organiser**.",
+              "Price, capacity, the repeat schedule and the session plan are all set on the web. The phone app can create a class and shows it to members, but it has no price, capacity or session plan fields.",
+              "Build your sequence first if you want to attach one: see [[guide:build-a-session-plan|Build a session plan]]."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Create the class",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open your club, go to the **Events** tab and press **New event**.",
+              "Under **Event type**, pick **Class**. Route, distance, pace and race results disappear, because a class doesn't need them.",
+              "Fill in **Discipline**, for example \"Reformer pilates\". It names the style on the listing.",
+              "Optionally set **Default workout length** in minutes. With a discipline or a length set, attendees get a **Log this as a workout** button on the class page.",
+              "Optionally pick a **Session plan** to attach your timed sequence. Left on **None**, the class runs without one.",
+              "Give it a **Title**, then the **Date**, **Start time**, **Duration** and a **Meeting point** a stranger could find, such as the studio address."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Schedule, capacity and price",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Under **Repeats**, choose **Weekly**, **Every 2 weeks** or **Monthly**, then the days and when the series ends with **Ends on** or **End after**. The schedule can only be chosen while you are creating the event.",
+              "Set **Capacity** to the number of mats. Once that many people are registered, the next person joins a waitlist instead.",
+              "Turn on **Charge for this event** and enter the **Price** and **Currency**. Both are fixed once the event is created, so check them now.",
+              "Set **Stop sales (minutes before start)**. Zero keeps registration open right up to the start.",
+              "Choose a **Refund policy**: **Full refund until start time**, **Full refund until 24h before** or **No refunds**. See [[guide:refund-policies|Refund policies]].",
+              "Press **Create event**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Paid registration is for in-person classes only. Each occurrence of a repeating class is paid for separately, like a drop-in."
+          }
+        ]
+      },
+      {
+        "heading": "What your attendees see",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "The discipline, time, place, the **Price** and a line about cancellation, such as **Free cancellation until 24 hours before the start**.",
+              "A button reading *Register · $22* (with your price) that takes them to checkout. When they come back it says **Payment confirmed — you're registered.**",
+              "**Sold out** when the mats are taken, with **Join the waitlist** while sales are open ([[guide:waitlist-and-claim-window|how the waitlist works]]), and **Registration closed** once sales stop.",
+              "Your sequence under **Session sequence**. They can open it and press **Start session** to follow along at home."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Registering and paying happen on the web. The phone app shows the class but has no register button yet."
+          }
+        ]
+      },
+      {
+        "heading": "On the day and after",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Mark who came: [[guide:take-attendance|Take attendance]].",
+              "Need to call one off? [[guide:cancel-a-class|Cancel a class]] refunds everyone who paid.",
+              "The money goes to your own payout account, minus the platform fee, and shows under **Earnings** in [[route:/settings/payouts|Payouts]]."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Forgot the plan at creation? On the class page, organisers can use **Attach to a class event** in the **Session sequence** card to pick one later."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "get-paid-with-stripe",
+      "build-a-session-plan",
+      "refund-policies",
+      "waitlist-and-claim-window",
+      "cancel-a-class",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "refund-policies",
+    "lang": "en",
+    "title": "Refund policies and cancelling your registration",
+    "summary": "How the three refund policies work, how a participant cancels a paid registration, and what they see when they do.",
+    "kind": "explainer",
+    "category": "paid-classes",
+    "audience": [
+      "organiser",
+      "instructor",
+      "participant"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/clubs/[slug]/events/new"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Paid registration is not live yet. It needs the host's Stripe account connected and the platform's paid rail switched on. Until then no event can be charged for, so there is nothing to refund."
+          }
+        ]
+      },
+      {
+        "heading": "The three policies",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "The host picks one **Refund policy** when creating a paid event. It decides what someone gets back if *they* cancel, and it is shown on the event page before anyone pays."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Full refund until start time**: shown to participants as **Free cancellation until the event starts**.",
+              "**Full refund until 24h before**: shown as **Free cancellation until 24 hours before the start**. This is the default.",
+              "**No refunds**: shown as **No refund on cancellation**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "A refund is all or nothing: inside the window you get the full price back, outside it you get nothing back. The window is measured against the start of the occurrence you registered for."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "The policy only covers a participant cancelling. If the host calls a class off, everyone who paid is refunded in full whatever the policy says: see [[guide:cancel-a-class|Cancel a class]]."
+          }
+        ]
+      },
+      {
+        "heading": "Cancel your own registration",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the event on the web. Where it says **You're registered**, press **Cancel registration**.",
+              "Read the dialog. Inside the refund window it says you'll be refunded to your original payment method and that your spot opens up for someone on the waitlist.",
+              "Press **Cancel registration** to go ahead, or **Keep my spot** to back out."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Once it goes through you see **Refund started — it can take a few days to appear. Your spot has been released.** Until your bank confirms it, the page shows **Refund in progress**."
+          },
+          {
+            "type": "p",
+            "text": "If you left checkout before paying, the same button cancels the pending registration instead: your held spot is released and no payment is taken."
+          }
+        ]
+      },
+      {
+        "heading": "Outside the refund window",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Past the window, or on a **No refunds** event, the app can't cancel your registration for you. The dialog warns you before you try, you keep your spot, and if you go ahead you'll see **This registration is past the refund window. Contact the host to cancel.**"
+          }
+        ]
+      },
+      {
+        "heading": "If a refund doesn't arrive",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Occasionally a bank sends a refund back. The event page then shows **Your refund didn't reach you** and a notification says **A refund didn't go through — we'll be in touch**. You don't need to pay again; use **Contact billing** and it will be returned another way."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "cancel-a-class",
+      "waitlist-and-claim-window",
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class",
+      "get-paid-with-stripe"
+    ]
+  },
+  {
+    "id": "waitlist-and-claim-window",
+    "lang": "en",
+    "title": "Waitlists and the 12-hour claim window",
+    "summary": "How joining a full class works, how a freed place is held for you for 12 hours on a paid class, and what happens if you don't claim it.",
+    "kind": "explainer",
+    "category": "paid-classes",
+    "audience": [
+      "participant",
+      "organiser",
+      "instructor"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/notifications"
+    ],
+    "sections": [
+      {
+        "heading": "Free classes: you are moved in automatically",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When a free class with a **Capacity** is full, pressing **I'm in** puts you on the waitlist and your RSVP shows **Waitlisted**. When someone drops out, the earliest person on the waitlist is moved to **Going** automatically; there is nothing to claim. This works on the web and in the phone app."
+          }
+        ]
+      },
+      {
+        "heading": "Paid classes: a place is held, then you pay",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Paid classes are not live yet: they need the host's Stripe account connected and the platform's paid rail switched on. Everything in this section applies once they are."
+          },
+          {
+            "type": "p",
+            "text": "Nobody is charged just for being on a waitlist. Instead, when a place opens you are offered it and pay to take it."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "On a full paid class the page shows **Sold out**. While sales are still open, press **Join the waitlist**. You'll see **You're on the waitlist. If a place opens, we'll hold it for you and let you know.**",
+              "When a place opens and you are first in line, you get a notification: *A place opened in \"Tuesday Reformer\" and is held for you — pay to claim it*.",
+              "Open the class on the web. It says when your hold ends, for example *A place is held for you until Tue 6 May, 18:00. Pay to claim it, or it goes to the next person on the waitlist.*",
+              "Press the claim button (it reads *Claim your place* with the price) and pay at checkout. Once paid you are registered like everyone else."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Claiming happens on the web. The phone app shows the notification and opens the class, but it has no checkout yet, so open the class in a browser to pay."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Three people wait in line. The first is offered the open place, which is held for them for a limited time."
+          }
+        ]
+      },
+      {
+        "heading": "How long the hold lasts",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "You have 12 hours to claim, long enough that nobody loses a place by being asleep.",
+              "The hold is cut short when sales close for that class (the host's stop-sales time before the start). No place is offered after sales close, because nobody could pay for it.",
+              "While your place is held, nobody else can buy it, even though the class looks full to them.",
+              "If you are part-way through checkout when the time runs out, the hold stays while that checkout is still open."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "If you don't claim it",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When the hold runs out, the place is offered to the next person on the waitlist and you leave the waitlist. If you still want in, press **Join the waitlist** again; you go to the back of the queue."
+          },
+          {
+            "type": "p",
+            "text": "Changed your mind while you are still waiting? Press **Leave the waitlist**. It warns you that you'll lose your place in the queue; if you join again later, you go to the back. If a place is already being held for you and you don't want it, just let the hold run out."
+          }
+        ]
+      },
+      {
+        "heading": "For hosts",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "The waitlist runs itself. Set a **Capacity** on the class and the rest happens automatically; the 12-hour window can't be changed per class.",
+              "A held place counts against your capacity, so you never end up with more people than mats.",
+              "If someone cancels with a refund, their place goes to the waitlist. If you cancel an occurrence, nobody from the waitlist is moved into it: see [[guide:cancel-a-class|Cancel a class]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "refund-policies",
+      "cancel-a-class",
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class"
+    ]
+  },
+  {
+    "id": "choose-how-your-race-starts",
+    "lang": "en",
+    "title": "Choose how your race starts",
+    "summary": "Host GO, Scheduled GO or a Self-timed window: when to use each, what you do on the day, and how results are approved.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Three ways to start",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Host GO**: you arm the race and press GO at the line. Use it when you are at the start with everyone, for a mass start.",
+              "**Scheduled GO**: the race starts itself at the time you set. Use it when the start time is fixed but you may not be at the line, or want to run yourself. You can delay or cancel it until then.",
+              "**Self-timed window**: there is no shared start. Each runner times their own attempt between the start line and the finish line, any time the window is open. Use it for a weekly time trial, or a course people run when they can. There is no gun time."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Choose under **How the race starts** in the event editor on the web, for a group run or cycle event. The phone app can run the race on the day (arm it early, delay it, extend it or end it), but the start is chosen on the web."
+          }
+        ]
+      },
+      {
+        "heading": "Setting the times",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Scheduled GO: set the **GO time** and the **GO day** (on the day, the day before or the day after the event). Under **Ends after, days** and **Hours**, set how long after GO the race ends by itself, unless you end it first.",
+              "Self-timed window: set **Window opens at** and **Opens on** (from the day before the event to a week after it), and how long it stays open under **Window length, days** and **Hours**, from 1 minute to 7 days."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "You type and see the times on the event's own clock, in its time zone. On the event page, the race panel shows that time zone and, when yours is different, your own time beside it."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "The times are kept relative to each occurrence of the event. Move the event, or one occurrence of it, and its race times move with it. Change the times in the editor and every occurrence that has not started yet takes the new times."
+          }
+        ]
+      },
+      {
+        "heading": "On the day: Host GO",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "You arm the race, fire GO and end it yourself. See [[guide:race-day-for-hosts|Race day for hosts]]."
+          }
+        ]
+      },
+      {
+        "heading": "On the day: Scheduled GO",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "You do not need to do anything. The race is set up about a day before its start, and starts itself at the scheduled time.",
+              "To check the course lines sooner, choose **Arm early**.",
+              "Before the start, the race panel shows **GO at** with the time and a countdown. To push the start back, enter the minutes and choose **Delay start**; everyone going is told the start has moved. Choose **Cancel** to call the race off.",
+              "Once the start time has passed, the race can no longer be cancelled. It ends itself when its time is up, or choose **End race** to end it sooner.",
+              "Runners' phones count down to the start on the server's clock and speak the last seconds, so everyone starts together."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "On the day: Self-timed",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "There is nothing to press. The window opens and closes by itself.",
+              "Before it opens you can **Delay start** or **Cancel**, as for a scheduled race.",
+              "While it is open, enter the hours and choose **Extend window** to keep it open longer (up to 7 days from when it opened), or choose **End window now** to close it early.",
+              "When the window closes, a runner who started an attempt but sent no result is marked DNF, as when you end any race."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Every course needs a start line and a finish line, and they are frozen for the race when the window opens. See [[guide:start-and-finish-lines|Start and finish lines]]."
+          }
+        ]
+      },
+      {
+        "heading": "Approving self-timed results",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Nobody stands at the line in a self-timed race, so its results wait for you by default: **Auto-approve submitted results** starts off. Each result shows as **PENDING** until you choose **Approve**."
+          },
+          {
+            "type": "p",
+            "text": "Some results are held for your review even when auto-approve is on: one with no start-line crossing (from an older app or an Apple Watch), one that starts outside the window, and one whose crossings the runner's own live positions do not back up. A runner who changes their own time also goes back to pending."
+          },
+          {
+            "type": "p",
+            "text": "A runner can make several attempts. Their best finish timed by both lines counts, and a slower attempt does not replace it."
+          }
+        ]
+      },
+      {
+        "heading": "Starting soon notices",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "About 10 minutes before a scheduled GO, everyone going gets a push notice that the race starts soon, unless an event reminder reached them in the last hour. When you delay a start, they get one saying it has moved. These notices are never emailed."
+          },
+          {
+            "type": "p",
+            "text": "Runners turn both off with **Race starting soon**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Preferences** in the **You** tab."
+          }
+        ]
+      },
+      {
+        "heading": "Runners need a recent app",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Scheduled and self-timed races need the latest app on the phone or Wear OS watch. Results from older apps and from the Apple Watch are kept for your review rather than refused."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "start-and-finish-lines",
+      "race-day-for-hosts",
+      "run-a-self-timed-race"
+    ]
+  },
+  {
+    "id": "drive-a-course",
+    "lang": "en",
+    "title": "Drive a race course before race day",
+    "summary": "Open a public course in your Maps app, see which stretches it can't follow, and have the phone app read the course notes aloud as you drive.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/routes/[id]",
+      "/races/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What it does",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "On a public route or a race with a public course, **Drive this course** splits the course into legs that Google Maps, Apple Maps or Waze can follow. Your Maps app does the driving, including on CarPlay and Android Auto."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Google Maps takes several stops per leg. Apple Maps and Waze take one destination at a time, so you open each leg in turn.",
+              "Race courses use paths, bridges and closed roads. The list under the legs shows the stretches Maps can't follow, so you know which parts you won't see.",
+              "The Maps route is only a guide. The course notes follow the real course."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Drive this course is being switched on gradually. If a public course doesn't show **Drive this course**, it isn't available to you yet."
+          }
+        ]
+      },
+      {
+        "heading": "Open a course in Maps",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the route or the race and select **Drive this course**.",
+              "Choose your Maps app, then select **Drive to the start**.",
+              "At the start, open leg 1. When a leg ends, open the next one."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "The web page also lists every course note with its distance, and you can print the list for a passenger."
+          }
+        ]
+      },
+      {
+        "heading": "Hear the course notes on the phone",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "In the phone app, open the route or the race and tap **Drive this course**.",
+              "Read the safety notice and tap **I understand**. It only appears once on each phone.",
+              "Tap **Start spoken notes**, then switch to your Maps app and lock the phone."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Each aid station, cut-off, climb, hazard and note is read out about 15 seconds before you reach it, and again when you are there. If you join part way, the notes start from where you are. They stop at the finish, or after 10 minutes off the course. Tap **Stop** to end them sooner."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Use it with a passenger or a mounted phone, and don't touch the phone while driving. Follow road rules and signs, and remember that course roads may be closed on race day."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "follow-a-race-live",
+    "lang": "en",
+    "title": "Follow a race live",
+    "summary": "Watch a race as it happens on the live race page: runners on a map, who is on course, and who has finished on each course.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "spectator",
+      "everyone"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/live/event/[id]/[instance]"
+    ],
+    "sections": [
+      {
+        "heading": "Open the live page",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "The host shares a link to the live race page, or, if you can see the event, open it and choose **Spectator view**. You do not need an account. If the event is **Members only**, you need to be a club member to see it."
+          },
+          {
+            "type": "p",
+            "text": "The top of the page shows the race state:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Pre-race**: the organiser has not armed the race timer yet.",
+              "**Armed**: the timer is armed and waiting for the start.",
+              "**Running**: the race is on, with the elapsed time.",
+              "**Finished**: the race is over.",
+              "**Cancelled**: the organiser cancelled the race."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "A race with a scheduled start shows **Armed** with the time it starts by itself. A self-timed race shows **Self-timed window** with when it opens, then **Self-timed window open** with when it closes: each runner starts when they cross the start line."
+          }
+        ]
+      },
+      {
+        "heading": "The map",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Unless you have already allowed maps in your cookie settings, the map stays off until you choose **Load map**, because loading it sends your IP address to our map tile provider. Once loaded, each runner is a coloured dot with a short trail of their recent path. Runners' phones and watches send a position about every 10 seconds, and the page updates on its own."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "A course on a map with runners along it, each a coloured dot with a short trail of their recent path, and a flag at the finish."
+          },
+          {
+            "type": "p",
+            "text": "The map also draws each course's start and finish lines, the ones the race was armed with."
+          }
+        ]
+      },
+      {
+        "heading": "On course",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time, with one board per course when the race has more than one. Each row also says how long ago it was last updated."
+          },
+          {
+            "type": "p",
+            "text": "There is no separate \"paused\" label. A runner who has stopped (to tie a lace, at an aid station, or because they paused their recording) or who has lost signal simply stops updating. After about 90 seconds without an update their row is marked **DELAYED**. That does not mean anything is wrong; it often just means no signal."
+          },
+          {
+            "type": "p",
+            "text": "In a self-timed race, runners are ordered by how long ago they crossed the start line, longest first. Runners with no start-line time yet are listed after them, under **No start-line time yet**."
+          }
+        ]
+      },
+      {
+        "heading": "Finished",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Finishers appear under **Finished** as their results arrive, with one board per course when the race has more than one. Runners who did not finish are listed under **Did not finish**. A result the host has not approved yet is marked **Pending**."
+          },
+          {
+            "type": "p",
+            "text": "What the times and badges mean is in [[guide:race-results-explained|Race results explained]]."
+          }
+        ]
+      },
+      {
+        "heading": "Privacy",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Runners' real names are shown only to people connected to them by a follow, in either direction. Everyone else sees an anonymous handle such as Runner #A1B2.",
+              "Near a runner's privacy zone, their exact position is hidden. You see **Last seen near here · approximate** instead, shown as a hollow ring rather than a dot.",
+              "Finishers imported by the host from a bib list have no account, so they keep the name the host entered."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Anyone with the link can watch. If you are racing and would rather not be followed live, talk to the host before the race."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "race-results-explained",
+      "racing-in-a-race",
+      "run-a-self-timed-race",
+      "race-day-for-hosts"
+    ]
+  },
+  {
+    "id": "race-day-for-hosts",
+    "lang": "en",
+    "title": "Race day for hosts",
+    "summary": "Arm the race, fire GO, watch it live, end it, then approve and correct the results.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser"
+    ],
+    "requires": [
+      "race-director"
+    ],
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/live/event/[id]/[instance]"
+    ],
+    "sections": [
+      {
+        "heading": "Who can run a race",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Both can approve and edit results."
+          },
+          {
+            "type": "p",
+            "text": "Make sure the event has courses first — see [[guide:set-up-a-race|Set up a race]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "Race day in four steps, from left to right: arm the race, fire GO, watch it live, then end it at the finish."
+          },
+          {
+            "type": "p",
+            "text": "These steps are for a **Host GO** race. A **Scheduled GO** race starts by itself and a **Self-timed window** needs nothing from you on the day; see [[guide:choose-how-your-race-starts|Choose how your race starts]]."
+          }
+        ]
+      },
+      {
+        "heading": "1. Arm the race",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the event and pick today's occurrence if it repeats.",
+              "Leave **Auto-approve submitted results** ticked to publish results as they arrive, or untick it to approve each one yourself. (In the phone app it reads **Auto-approve submitted times**.)",
+              "Choose **Arm race** when everyone is gathered."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Racers who said **I'm in** now see **Race armed** on their phone's Run tab and \"RACE ARMED\" on their Wear OS watch."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Armed is a waiting state. Nothing is timed and no results can be saved until you fire GO."
+          },
+          {
+            "type": "p",
+            "text": "Before the race is armed, each course's start and finish lines are checked, and anything worth a look is listed under **Before you arm the race**. A warning lets you **Arm anyway**; see [[guide:start-and-finish-lines|Start and finish lines]]. Arming also freezes the lines for this race."
+          }
+        ]
+      },
+      {
+        "heading": "2. Fire GO",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Press **GO** on the web or in the phone app at the moment the race starts."
+          },
+          {
+            "type": "p",
+            "text": "The start time is stamped by our server, not by your device, so it is the same gun time for every racer even if your phone's clock is a few seconds off. Each racer's gun time is measured from it."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "GO does not start anyone's recording. Racers press Start on their own phone or watch, either on the line while the race is armed (the recording joins the race at GO) or after they see **Race LIVE**. Remind them to start one."
+          }
+        ]
+      },
+      {
+        "heading": "3. Watch it live",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "The race control card shows **Running** with the elapsed time.",
+              "Choose **Spectator view** for the live map, the **On course** board and the **Finished** board. See [[guide:follow-a-race-live|Follow a race live]].",
+              "Racers' devices finish them automatically at the finish line, so results appear on the event page while the race is still running."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "4. End the race",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "When the last racer is in (or your cut-off has passed), choose **End race**.",
+              "The confirmation, on the web and in the phone app, tells you how many racers who started have no result. Those racers will be marked DNF.",
+              "Confirm with **End race**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Ending files a DNF for every racer who sent at least one live position but has no result, using the distance and time from their last position. These DNFs carry the host mark. Racers who never started recording get nothing filed."
+          },
+          {
+            "type": "p",
+            "text": "A racer whose phone or watch was out of signal at the finish can still send a queued result for up to 24 hours after you end the race, and it replaces the DNF."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ending cannot be undone. Once ended, racers' devices stop expecting a result. To race the same occurrence again, arm a new session."
+          }
+        ]
+      },
+      {
+        "heading": "Cancelling",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "You can cancel only while the race is armed: choose **Cancel** next to **GO**, then **Cancel race**. Once you have fired GO the race can only be ended."
+          },
+          {
+            "type": "p",
+            "text": "Cancelling files no DNFs. The spectator page says the race was cancelled by the organiser, and racers see that the race has ended."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Cancelling cannot be undone. Use **End race** instead if people actually raced and you want their results."
+          }
+        ]
+      },
+      {
+        "heading": "Approve and edit results",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Results are on the event page under **Results**, with one board per course. In the phone app, each result has a menu with the same **Approve**, **Unverify** and **Edit** actions."
+          },
+          {
+            "type": "list",
+            "items": [
+              "If auto-approve was off, new results show **PENDING** and no place. Choose **Approve** to publish one. **Unverify** puts an approved result back into pending.",
+              "To correct a result, choose **Edit**, enter a **Time (h:mm:ss)** and a **Status** (**Finished**, **DNF** or **DNS**), then **Save result**.",
+              "An edited result is marked **Host edited** so everyone can see it was changed by the host. The edit moves the racer's gun time with it.",
+              "**Download results CSV** exports the boards."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "In a self-timed race, results wait for your approval by default, and some are held for review even with auto-approve on. See [[guide:choose-how-your-race-starts|Choose how your race starts]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "start-and-finish-lines",
+      "follow-a-race-live",
+      "race-results-explained",
+      "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "race-results-explained",
+    "lang": "en",
+    "title": "Race results explained",
+    "summary": "What gun and chip time mean, how places are worked out, what the Manual, Host, DNF, DNS and pending marks say, and how to re-time from your track.",
+    "kind": "explainer",
+    "category": "races",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/live/event/[id]/[instance]",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Gun time and chip time",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Gun time** is measured from the moment the host fired GO to the moment you crossed the finish. GO is stamped by our server, so everyone in the race shares the same start.",
+              "**Chip time** is measured from when you crossed the course's start line to your finish. If your phone or watch saw no start-line crossing, it runs from when you pressed Start on your own device, including any pauses.",
+              "A self-timed race has no GO, so it has no gun time: its board shows your chip time, from the start line to the finish line.",
+              "The big time on the board is your gun time when the race had a GO, otherwise your chip time. Places are worked out from that big time."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "On the web the smaller line under a time reads like \"gun 41:58 · chip 41:20\". In the phone app, a \"Chip\" time is shown under the main time when it differs from it. If you started late, your gun time is longer than your chip time."
+          }
+        ]
+      },
+      {
+        "heading": "Places are per course",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When a race has more than one course, each course has its own board and its own places. A 5K finisher is never ranked against a 10K finisher. Results with no course are grouped together (**No course** on the event page, **Other** on the live page)."
+          },
+          {
+            "type": "p",
+            "text": "Only finishers get a place. Ties are broken by whoever's result arrived first."
+          }
+        ]
+      },
+      {
+        "heading": "How the finish was recorded",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**No badge**: the racer's phone or watch timed the finish, at the moment they crossed the finish line, or at the 30 m circle around the finish on a course with no finish line. This is the normal case, so neither the web nor the phone app marks it.",
+              "**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.",
+              "**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "DNF and DNS",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**DNF** (did not finish): the racer started but did not finish. This happens when someone chooses **Finish as DNF** before covering 90% of the course, when the host ends the race while they are still out, or when the host records it.",
+              "**DNS** (did not start): recorded by the racer with **Record DNS** or by the host.",
+              "Neither gets a place. On the live page they are listed under **Did not finish**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Pending results",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If the host turned off auto-approve, each new result waits for the host. On the web event page it shows **PENDING** with no place yet; in the phone app and on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "A finisher **Certificate** can be downloaded only once a finished result has been approved."
+          }
+        ]
+      },
+      {
+        "heading": "Re-time from your track",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If your phone missed a line, your result is a DNF you did not expect, or you raced with an Apple Watch, you can time your result again from the run you recorded. Open the run on the web: if it belongs to a race, it shows **Re-time from my track** with your current result beside the one your track gives."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Check the two columns: gun time, chip time, and whether the start and the finish were timed by the line.",
+              "Choose **Re-time result**, then **Replace result**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "It times your track by the start and finish lines the race was run with, on the same clock your phone or watch used during the race.",
+              "You can re-time until 24 hours after the race finished. After that, your time, course and distance are locked, and only the organiser can change your time.",
+              "It replaces a DNF, a time finished by hand and a result waiting for review. It never replaces a time the organiser set, or a result already timed by both lines; in a self-timed race, only a faster attempt timed by both lines replaces it.",
+              "If the organiser approves results by hand, a re-timed result goes back to them for approval."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Something looks wrong",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "No result at all? If your device had no signal at the finish, it sends the result when it reconnects, within 24 hours of the race ending. Within the same 24 hours you can also re-time it from your track.",
+              "A DNF you think is wrong, or a time that is off? Ask the host. They can correct it on the web, and the result will then show the host mark."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "For the racer side, see [[guide:racing-in-a-race|Racing in a live race]]. Hosts: [[guide:race-day-for-hosts|Race day for hosts]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-day-for-hosts",
+      "follow-a-race-live",
+      "using-help"
+    ]
+  },
+  {
+    "id": "racing-in-a-race",
+    "lang": "en",
+    "title": "Racing in a live race",
+    "summary": "Sign up, pick your course, start recording before the start line and let your phone or watch time you from the start line to the finish line.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear",
+      "apple-watch"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Which devices can race",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Android phone app: full support. It shows the race banner, sends your live position and times you by the start and finish lines.",
+              "iPhone app: runs the same code as Android, but it has not been tested on an iPhone in a real race yet.",
+              "Wear OS watch: full support on the wrist, including timing by the lines. You still sign up and choose your course on the web or the phone.",
+              "Apple Watch: early support only. It shows the race banner, sends your position and reports your time through your iPhone, but it does not detect the start and finish lines, so it has no automatic finish, and it has not been proven in a real race. Carry your phone as a backup, or re-time your result from your track on the web afterwards.",
+              "Web: use it to sign up, pick a course, see results and re-time a result from a run's track. A browser cannot record a run."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Sign up and pick a course",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the race event.",
+              "If there is more than one course, choose yours from **Your course** on the web. In the phone app you are asked to **Pick your course** when you tap **I'm in**.",
+              "Tap **I'm in**. Only an **I'm in** sign-up gets race alerts on your device; **Maybe** does not."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Changed your mind? On the web, choose a different course from **Your course** (you will see \"Course updated.\"). In the phone app, tap **Change course**. Settle on your course before you start recording: your phone or watch reads it when your race recording begins, and your result goes on that course's board."
+          }
+        ]
+      },
+      {
+        "heading": "Race armed and Race LIVE",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When the host arms the race, the Run tab of the phone app shows **Race armed** with \"waiting for GO\". The Wear OS watch shows \"RACE ARMED\" above its Start button. When the host fires GO it changes to **Race LIVE** (\"RACE LIVE\" on the watch) with the elapsed time and \"tap Start\"."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Your phone or watch does not start recording by itself: press Start yourself, before you reach the start line. You can start while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch."
+          },
+          {
+            "type": "p",
+            "text": "The phone app checks for races you said **I'm in** to that start within the next day. If the banner is slow to appear, keep the app open on the Run tab for a minute."
+          }
+        ]
+      },
+      {
+        "heading": "Crossing the start line",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When your course has a start line, the Run screen shows how far away it is, for example \"120 m to the start line\". Run through it the way the course goes. After GO, your phone or Wear OS watch then buzzes, says \"Start line crossed, timing\" if voice cues are on, and your chip time runs from that moment."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Already past the start line when GO sounds? Your start is GO itself.",
+              "Crossing the line before GO, for example while warming up, does not count. After GO, your start counts once you are about 50 m down the course without coming back over the line.",
+              "If your phone or watch never sees you cross the start line, your chip time runs from when you pressed Start instead."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Finishing automatically",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "You do not need to press anything at the finish. When your course has a finish line, your phone or Wear OS watch finishes you the moment you run through it the way the course goes, once you have covered enough of the course: 60% of its distance since your start-line crossing, or 90% when no start-line crossing was seen. That stops a loop course, which starts where it finishes, from finishing you on the way out."
+          },
+          {
+            "type": "p",
+            "text": "Running past the finish line on a path beside it does not count, because you never pass through it. Your time is taken at the moment you crossed the line. The phone buzzes and shows \"Finished!\" with your gun time."
+          },
+          {
+            "type": "p",
+            "text": "A course with a finish point but no finish line keeps the older rule: you finish once you are within 30 m of the finish and have covered 90% of the course, timed at the moment you were closest to it. On a course with a finish line, that 30 m circle counts only if you press Stop or **Finish race** inside it."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "There is no automatic finish if your course has no distance, has neither a finish line nor a finish point, or has a route that crosses its own finish line before the end, as a course of laps does. Use Stop and then **Finish race** when you cross the line."
+          }
+        ]
+      },
+      {
+        "heading": "Not finished? Resume",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A finish by the line is sent straight away and your recording pauses. For the next 60 seconds the Run screen offers **Not finished? Resume**, on the phone and on a Wear OS watch. If you are not finished, for example you crossed the line early on a lap, tap it: your result is taken back and recording carries on. If you do nothing, the recording stops and the result stands."
+          },
+          {
+            "type": "p",
+            "text": "After you undo a finish, finish the rest of the race by hand: tap Stop, then **Finish race**, when you really finish. If the app restarts before then, it watches the finish line again, but never counts the finish you undid."
+          }
+        ]
+      },
+      {
+        "heading": "Stopping during the race",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "During a live race, Stop does not end your race. It pauses your recording and shows **Race paused**. The race clock keeps running."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Resume race** carries on recording.",
+              "**Finish race** ends your race now. If you have covered at least 90% of the course this is a manual finish at that moment.",
+              "Below 90% the button reads **Finish as DNF**, and finishing records a DNF."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "On a Wear OS watch the paused screen offers \"Go\" to resume, and you hold **Finish** to finish."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Finishing before 90% of the course records a DNF. If you only stopped to tie a lace, choose **Resume race**."
+          }
+        ]
+      },
+      {
+        "heading": "No signal at the finish",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Finish lines often have poor signal. Your phone and Wear OS watch save your result first and send it as soon as they reconnect, so it is not lost. It must reach us within 24 hours of the host ending the race. Don't sign out of the app before it has been sent."
+          }
+        ]
+      },
+      {
+        "heading": "Gun time, chip time and late starts",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.",
+              "**Chip time** runs from your start-line crossing to your finish. If no start-line crossing was seen, it runs from when you pressed Start, or from GO if you pressed Start earlier. It is never longer than your gun time.",
+              "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice and a Wear OS watch keeps **Late start** under the race clock. Your gun time still counts from GO, so a late start makes it longer than your chip time."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "More on reading the board in [[guide:race-results-explained|Race results explained]]."
+          }
+        ]
+      },
+      {
+        "heading": "If the host ends the race first",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If the host ends the race before you finish, your phone tells you so and your watch shows \"Race ended\". Your run keeps recording as a normal run, but your device sends no race result. If you had already sent a live position, the race marks you DNF."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "race-results-explained",
+      "follow-a-race-live",
+      "run-a-self-timed-race",
+      "using-help"
+    ]
+  },
+  {
+    "id": "run-a-self-timed-race",
+    "lang": "en",
+    "title": "Run a self-timed race",
+    "summary": "Join a race that is open for a window of time, mark your run as your attempt, and run from the start line to the finish line whenever suits you.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What a self-timed race is",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A self-timed race has no group start. The organiser opens a window, which can last up to a week, and you run the course whenever you like while it is open. Your time runs from when you cross the start line to when you cross the finish line, so there is no gun time."
+          },
+          {
+            "type": "p",
+            "text": "You record your attempt with the phone app or a Wear OS watch. The web is for joining and for seeing results; a browser cannot record a run."
+          }
+        ]
+      },
+      {
+        "heading": "Before you go",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the race event, on the web or in the phone app.",
+              "If there is more than one course, choose yours first.",
+              "Choose **Join and attempt**. If you have already said **I'm in**, you are already in.",
+              "Open the app once while you have signal, before you set off. It then knows about the race, so the race banner and your attempt still work where there is no signal."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Start your attempt",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "On the Run tab of the phone app, the race banner shows **Self-timed** and when the window closes.",
+              "Tap **This run is my attempt**. It changes to **Attempt ready: tap Start**; tap it again if you change your mind.",
+              "Press Start before you reach the start line, then run through the start line the way the course goes."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "On a Wear OS watch, the screen before you start shows SELF-TIMED. Tap **This run is my attempt**, then Start."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A run you do not mark as your attempt never joins the race: it sends no live position and gets no result. That way a run you did not mean to race never lands on the board."
+          }
+        ]
+      },
+      {
+        "heading": "Attempts and your result",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "You can make more than one attempt while the window is open. Tap **This run is my attempt** before each one.",
+              "Your best finish timed by both lines counts. A slower attempt does not replace it.",
+              "Your result may wait for the organiser to approve it. Until then it shows as pending and has no place.",
+              "A result with no start-line crossing, such as one sent from an Apple Watch or an older version of the app, is kept, but the organiser reviews it before it counts."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "What the times on the board mean is in [[guide:race-results-explained|Race results explained]]."
+          }
+        ]
+      },
+      {
+        "heading": "If your phone missed a line",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Your phone or watch says \"Start line crossed, timing\" when it sees you cross the start line, and finishes you at the finish line. If it misses one, for example under trees or when you start a little to the side of the line:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "At the finish, tap Stop, then **Finish race**. Once you have covered 90% of the course, that sends your time, and the organiser reviews it before it counts.",
+              "Or re-time your attempt from its track afterwards: open the run on the web and choose **Re-time from my track**. It times the track by the race's lines and replaces a result waiting for review, or a slower one. You can do this until 24 hours after the window closes.",
+              "Raced with an Apple Watch? It does not detect the lines, so re-timing from your track is how your attempt gets a line-timed result."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "More on re-timing in [[guide:race-results-explained|Race results explained]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-results-explained",
+      "follow-a-race-live"
+    ]
+  },
+  {
+    "id": "set-up-a-race",
+    "lang": "en",
+    "title": "Set up a race",
+    "summary": "Create a club event with one or more courses so racers can pick a distance, be timed live and land on a leaderboard per course.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A race is an ordinary club event with courses attached. Club owners, admins and event organisers can create events. Running the race on the day (Arm, GO, End) needs an owner, an admin or a **Race director** — see [[guide:race-day-for-hosts|Race day for hosts]]."
+          },
+          {
+            "type": "p",
+            "text": "Courses are built on the web. The phone app can create a simple event, but it has no course editor, so add or change courses from a browser."
+          }
+        ]
+      },
+      {
+        "heading": "Create the event",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open your club and choose **New event**.",
+              "Under **Event type**, pick **Group run** (or **Cycle**). Class and social events have no route, distance, race controls or results.",
+              "Give it a **Title** and a **Date**. Set a repeat only if the race really recurs; each occurrence is raced separately.",
+              "Choose a **Route** and fill in **Distance**. Together these are your *main course*.",
+              "Optionally type a **Main course name** under **Race courses** (for example \"Half marathon\"). If you leave it blank, the route name is used.",
+              "Choose **Create event**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Each course gets a start line at the first point of its route and a finish line at the last. Draw the route so it ends exactly where your finish arch will be, or move the lines afterwards; see [[guide:start-and-finish-lines|Start and finish lines]]."
+          },
+          {
+            "type": "p",
+            "text": "Under **How the race starts**, choose **Host GO**, **Scheduled GO** or **Self-timed window**. See [[guide:choose-how-your-race-starts|Choose how your race starts]]."
+          }
+        ]
+      },
+      {
+        "heading": "Add more courses",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Racing more than one distance on the same day? Add each extra distance as its own course. Every course gets its own leaderboard."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "In the event editor, find **Race courses** and choose **Add a course**.",
+              "Give it a **Course name**, pick its **Route** and enter its distance.",
+              "Use the up and down arrows to reorder courses, or remove one you no longer need.",
+              "Save the event."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Every course needs a name, and no two courses can share one.",
+              "A course with no route has no finish point, so its racers are not finished automatically; they finish by hand from their device.",
+              "A course with no distance cannot check that a racer covered most of the course, so its racers also finish by hand."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Attaching a route shows its finish point to everyone who can see the event, even if the route itself is private. You can only attach routes you are allowed to see."
+          },
+          {
+            "type": "p",
+            "text": "A course with no route gets no start or finish line from a route, but once the event is saved you can place both lines for it yourself."
+          }
+        ]
+      },
+      {
+        "heading": "What racers see",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "On the event page racers see the courses. When there is more than one, they must choose one from **Your course** before **I'm in** will work; otherwise they see \"Pick your course first.\"",
+              "In the phone app, tapping **I'm in** on a multi-course race asks them to **Pick your course**, and they can use **Change course** later.",
+              "With a single course, nobody has to choose anything.",
+              "Paid registrations do not ask for a course yet. A paid racer picks one afterwards from the same **Your course** menu."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "The racer side is covered in [[guide:racing-in-a-race|Racing in a live race]]."
+          }
+        ]
+      },
+      {
+        "heading": "Approving results automatically",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Just before you arm the race you choose whether results go straight onto the leaderboard. **Auto-approve submitted results** is ticked by default. Untick it if you want to check every result first; each one then shows as **PENDING** until you approve it."
+          },
+          {
+            "type": "p",
+            "text": "For a **Scheduled GO** or **Self-timed window** race, set it in the event editor instead, under **How the race starts**. For a self-timed race it starts unticked."
+          }
+        ]
+      },
+      {
+        "heading": "Share the spectator link",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Every race occurrence has a live page with a map and boards. On the event page, the race control card has a **Spectator view** link that opens it in a new tab. Copy that address and share it with family, friends and your race channel."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "For a **Members only** event, only club members can see the event, so the spectator page will not work for people outside the club."
+          },
+          {
+            "type": "p",
+            "text": "What spectators see is explained in [[guide:follow-a-race-live|Follow a race live]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "start-and-finish-lines",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts",
+      "racing-in-a-race",
+      "follow-a-race-live",
+      "race-results-explained"
+    ]
+  },
+  {
+    "id": "start-and-finish-lines",
+    "lang": "en",
+    "title": "Start and finish lines",
+    "summary": "What a course's start and finish lines are, how they are placed for you, and how to move, turn, widen or place them yourself.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What a line is",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Every course in a race has a start line and a finish line. A line sits across the course at one point, faces the way runners travel, and reaches a set distance to each side. A runner crosses it only by passing through it in that direction, within its reach."
+          },
+          {
+            "type": "p",
+            "text": "That is the difference from a finish point with a 30 m circle around it. A circle counts anyone who comes near: a runner on a path running alongside, or on the way out of an out-and-back course that comes home the same way. A line does not, because they never pass through it in the right direction."
+          }
+        ]
+      },
+      {
+        "heading": "Lines placed for you",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When a course has a route, it gets both lines from it. The start line sits on the route's first point, facing along the route. The finish line sits on its last point, facing the way the route arrives. Each reaches 15 m to each side. They follow the route: change the route and they move with it."
+          },
+          {
+            "type": "p",
+            "text": "Lines appear once the event is saved with at least one course. Open the event, choose **Edit event** and find **Start and finish lines**. Each course has a map and a row for each line, which says where the line came from: **From the route**, **Placed by an organiser** or **None**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "If the route's owner has a privacy zone over the start or the end of the route, that end is hidden from everyone else, so it gets no line. Place that line yourself."
+          }
+        ]
+      },
+      {
+        "heading": "Move, turn or widen a line",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Next to **Start line** or **Finish line**, choose **Edit**.",
+              "On the map, drag the middle of the line to move it, and drag its handle to turn it. If the map is off, choose **Load map**, or skip the map and type the values instead.",
+              "Or type the **Latitude**, **Longitude** and **Direction (degrees)**. The direction is the way runners cross, clockwise from north: 0 is north, 90 east, 180 south and 270 west.",
+              "Set **Reach each side**, from 5 to 100 m. Make it wide enough to cover the whole road or path, and a little more.",
+              "Choose **Save line**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Each line saves on its own, straight away; you do not need to save the event. A line you have moved shows **Placed by an organiser**. Choose **Reset to route** to put it back where the route places it."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A line you placed stays exactly where you put it, even if you later change the course route. After changing a route, check the warnings under each line."
+          }
+        ]
+      },
+      {
+        "heading": "Warnings in the editor",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "The line is more than 100 m from the course route. Check it is in the right place.",
+              "The line faces against the route, so runners following the route would cross it backwards. Turn it round.",
+              "The route crosses its own finish line before the end, as a course of laps or a track does. Finishing by the line is then turned off for that course, and runners finish by pressing Stop or Finish."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Courses with no route",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A course with no route has no lines until you place them. Choose **Place start line** or **Place finish line**. If you have moved the map to the spot first, the line starts at the middle of the map; otherwise type its position. Then set its direction and reach and choose **Save line**. **Remove line** takes a line you placed away again."
+          }
+        ]
+      },
+      {
+        "heading": "Lines are frozen when a race starts",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When you arm a race (for a self-timed race, when its window opens), each course's lines are copied for that race. Every runner in it then crosses the same lines, whatever changes during the race. A change you make later applies from the next race. The event page and the live race page show the lines the race was armed with."
+          }
+        ]
+      },
+      {
+        "heading": "Checks before a race",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Before a race is armed, the lines of every course are checked, on the web and in the phone app. A warning lets you **Arm anyway**; a problem marked **Must fix:** stops the race being armed until you fix it in the event editor on the web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "A course with no finish line and no finish point: a warning, because its runners finish by hand. A self-timed race must fix it.",
+              "A course with no start line: a self-timed race must fix it. Other races can start without one.",
+              "A route that crosses its own finish line before the end: a warning, because finishing by the line is off for that course. A self-timed race must fix it.",
+              "A line more than 100 m from the route: a warning in every kind of race."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Which kind of race you are running is set under **How the race starts**; see [[guide:choose-how-your-race-starts|Choose how your race starts]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts"
+    ]
+  },
+  {
+    "id": "adjust-a-plan-with-ai",
+    "lang": "en",
+    "title": "Adjust a training plan with AI",
+    "summary": "Describe a change to your plan in your own words, check every suggested edit, and save only when you agree with it.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/plans/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What it can change",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Adjust with AI turns a request such as *move my long run to Saturday* or *make next week easier* into edits to a plan you have saved. It can move a workout to another day in the same week, swap two days, scale a week up or down a little, make a week a recovery week, or skip a workout."
+          },
+          {
+            "type": "p",
+            "text": "Threkir's own plan rules carry out each change. The AI never writes a workout, a distance or a pace, so a request like *add a hill session* is answered with a note that it can't do that. Use **Edit plan** for anything else."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Adjust with AI is on the web only, and it may not be switched on yet. If **Adjust with AI** is not listed under **Adjust plan**, it isn't available to you."
+          }
+        ]
+      },
+      {
+        "heading": "Ask for a change",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open your plan on the web and select **Adjust plan**.",
+              "Choose **Adjust with AI**.",
+              "Type what you want changed, then select **Suggest changes**.",
+              "Read the **Suggested changes**: each workout that moves, is skipped or is eased, and each week target that changes, before and after.",
+              "Select **Apply AI-suggested changes** to save them. Until you do, nothing in your plan has changed; select **Cancel** to leave it as it was."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Safety checks before saving",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Changes that would push a week into the high injury-risk range for your recent training can't be applied. The page says which week.",
+              "If the changes make a week harder than your recent training supports, or put two hard sessions on back-to-back days, you are asked **Apply harder changes?** and have to choose **Apply anyway**.",
+              "A suggestion that couldn't be applied safely is left out, and the page tells you so."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "What it uses",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Each request uses one of your daily AI Coach messages, the same allowance as the Coach.",
+              "It needs the latest AI disclosure. If you are asked to accept it, select **Review it in Settings** and accept it there.",
+              "Only your plan's upcoming workouts and the change you typed are sent to the AI."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "You can also ask the Coach to change your plan. It replies with a link that opens Adjust with AI with your request already filled in."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "how-segment-times-are-measured",
+    "lang": "en",
+    "title": "How segment times are measured",
+    "summary": "Segment and park course times run from a start line to an end line, crossed the right way, and your fastest pass counts.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/segments/[id]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Start and end lines",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Each segment has a start line and an end line, one across the path at each end, facing the way the segment runs and reaching 15 m to each side. A park course is a segment too, so it is timed the same way."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Your time runs from the moment your run crosses the start line to the moment it crosses the end line.",
+              "Each crossing is worked out between the two GPS points either side of the line, not taken at whichever point happened to be nearest, so the time is closer to the real one.",
+              "Both lines must be crossed going the way the segment runs. Crossing one backwards does not count.",
+              "The distance you covered between the two crossings must be within 25% of the segment's length, and on a park course you must pass every checkpoint, in order, in between."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Why a path alongside does not count",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A run on a path running alongside the segment, 20 m away, comes close to both ends without ever passing through the lines, so it gets no time. Neither does the way out of an out-and-back route that only passes near the end."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Start recording a little before the start line. A run whose recording starts on the line, or past it, never crosses it, and gets no time on that segment."
+          }
+        ]
+      },
+      {
+        "heading": "More than one pass",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "If your run passes the segment more than once, your fastest pass counts.",
+              "A warm-up that loops back over the start line does not lengthen your time: the time starts from your last crossing of the start line before the end.",
+              "On a loop, every complete lap is timed and your fastest lap counts. Where the start and end are the same line, the crossing that ends one lap also starts the next."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Segments without lines",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A segment too short at one end to place a line there has no lines. It is still timed the old way: your run must pass within 35 m of its start and then within 35 m of its end."
+          }
+        ]
+      },
+      {
+        "heading": "Older efforts",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Efforts recorded before segments had lines were measured the old way, by passing near the start and the end. Each is measured again by the lines the next time its runner opens the run on the website. Its time can change, and it can disappear if the run never crossed the lines."
+          },
+          {
+            "type": "p",
+            "text": "Until every effort on a segment has been measured again, its board says that some older efforts were measured the old way."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "park-courses",
+      "import-your-history"
+    ]
+  },
+  {
+    "id": "import-your-history",
+    "lang": "en",
+    "title": "Import your running history",
+    "summary": "Bring your past runs in from Strava, a Garmin export, or your phone's health app, and know what happens to GPX files.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/integrations",
+      "/routes"
+    ],
+    "sections": [
+      {
+        "heading": "Connect Strava for recent and new runs",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "On the web open [[route:/settings/integrations|Integrations]] in Settings and select **Connect** on the Strava card, or in the phone app open **Integrations** in the **You** tab and tap Strava.",
+              "Sign in to Strava and allow access.",
+              "Your last 90 days of runs, walks and hikes are copied across, and new Strava activities follow automatically."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Select **Sync now** to pull again. On the web, **How far back to sync** reaches up to a year back."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "Runs from a watch, a connected account and a file all flow into one list of runs."
+          }
+        ]
+      },
+      {
+        "heading": "Bring in your whole Strava archive",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Connecting Strava only reaches recent activity. For years of history, use a Strava data export."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "In Strava, go to Settings, My Account, and request your archive. Strava emails you a link to a zip file.",
+              "On the web, open [[route:/settings/integrations|Integrations]], find **Bulk import from a Strava export** and select **Choose Strava export zip**. In the phone app, open **Account** in the **You** tab, then **Import from another app**, and tap **Import Strava ZIP**.",
+              "Wait for the import to finish. Runs you already have, for example from your Strava connection, are skipped, so it is safe to run it again."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Garmin and FIT files",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "An automatic Garmin Connect link isn't available yet because Garmin has to approve it. Until then you can import Garmin files on the web."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "In Garmin Connect, either export one activity with Export Original, which gives you a .fit file, or request your full data export from Garmin Account Management.",
+              "On the web, open [[route:/settings/integrations|Integrations]], find **Bulk import from a Garmin export** and select **Choose Garmin export**.",
+              "Pick the .fit file or the zip. Activities you already imported are skipped."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "On Android, workouts your Garmin, Samsung or Fitbit app writes to Health Connect can come in through **Import from another app** too. On an iPhone the same card reads Apple Health."
+          }
+        ]
+      },
+      {
+        "heading": "GPX and other single files",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A single GPX, KML, KMZ, GeoJSON or TCX file is imported as a route you can follow, not as a run in your history. Open [[route:/routes|Routes]] on the web or the routes list in the app and import it there."
+          },
+          {
+            "type": "p",
+            "text": "GPX and TCX files inside a Strava or Garmin export zip are read as runs, so the bulk imports above are the way to add a history of GPX activities."
+          }
+        ]
+      },
+      {
+        "heading": "If something doesn't import",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When some activities are left out, the import lists each one and why, such as a dropped connection or a file that couldn't be read. Run the import again to retry them: anything that already landed is skipped, so nothing is duplicated."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Imported runs follow your default run privacy, so check it before a big import if you don't want years of runs to appear publicly at once. See [[guide:your-data-and-privacy|Your data and privacy]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "live-tracking-and-safety",
+    "lang": "en",
+    "title": "Live tracking and safety contacts",
+    "summary": "Let someone follow your run live, and have trusted contacts emailed when you finish, go quiet or are not back on time.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner",
+      "spectator"
+    ],
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
+    "routes": [
+      "/live/[id]",
+      "/settings/safety",
+      "/safety/confirm"
+    ],
+    "sections": [
+      {
+        "heading": "Share a live link",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Sign in on the phone app. A live link only works for a signed-in runner.",
+              "On the run screen, before you start, tap **Share live link** and send it with any app on your phone.",
+              "Tap **START**. The link goes live as the run begins."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Whoever has the link can open it in a web browser and watch your position and stats, with no account needed. Privacy zones still apply to the live map."
+          },
+          {
+            "type": "p",
+            "text": "While sharing, a **Live** badge shows on the recording screen. Tap it to **Share link again**, **Stop sharing**, or set a **Not back by…** time."
+          },
+          {
+            "type": "p",
+            "text": "When the run ends, the link stops updating. If your runs are normally not public, you are asked whether to **Keep public** the saved run for people with the link; otherwise it goes back to your usual run privacy."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "To share every run without remembering to, turn on **Auto live share** under **Safety contacts** in the **You** tab. It applies to that phone only. Its description says who can follow: anyone with the link, or only your safety contacts (see the last section)."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "A runner's phone sends its live position to two people, who each watch it on their own screen."
+          }
+        ]
+      },
+      {
+        "heading": "Add safety contacts",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A safety contact is someone you trust, such as a partner, friend or family member. They are emailed when you finish a run, even a private one, so they know you got back."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "On the web open [[route:/settings/safety|Safety]] in Settings, or in the phone app open **Safety contacts** in the **You** tab.",
+              "Enter their **Contact email**. You can also add a **Phone for SMS (optional)** in international format, such as +447700900123.",
+              "Select **Add contact**. They get an email asking them to confirm.",
+              "Their status shows **Pending — waiting for them to confirm** until they accept, then **Confirmed**. Only confirmed contacts are alerted."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "If someone adds you as their contact, the request appears under **Requests for you**, where you can **Confirm** or **Decline**. Later, under **You are a safety contact**, you can change how you are alerted or **Withdraw**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Email alerts are always sent. Text messages also need the contact to agree when they confirm, and SMS sending is not switched on everywhere yet, so don't rely on SMS alone."
+          }
+        ]
+      },
+      {
+        "heading": "Alerts when something seems wrong",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "These alerts only cover runs with live sharing on, because the live link is what tells us where you are. Each contact gets at most one alert per run."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Overdue alert**: choose a time under **Alert contacts after silence of** on the web, or **Alert after silence of** in the app. If your live run sends nothing for that long, your confirmed contacts are emailed your live link. It is **Off** until you pick a time.",
+              "**Not back by…**: during a live-shared run, tap the **Live** badge and pick when you expect to be done. If the run is still going then, your contacts are alerted. The time is kept on our server, so it still counts if your phone dies. You can also set it from your own live page on the web."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Losing phone signal looks the same as going quiet, and a run that finishes with no signal can still trigger an alert until it uploads. The email tells your contacts that signal loss is a possible cause."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "An automatic alert to your contacts when you leave your planned route is built but not switched on yet. Until it is, the **Off-route alert** setting stays hidden."
+          }
+        ]
+      },
+      {
+        "heading": "Off-route warnings while you run",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If you follow a saved route, the run screen warns you when you stray from it, showing how far away you are, and can say so out loud if audio cues are on. This warning is for you; it does not contact anyone."
+          }
+        ]
+      },
+      {
+        "heading": "Sharing with your safety contacts only",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Where safety-only sharing is switched on, the description under **Auto live share** says the share is never public. The run in progress is then hidden from everyone but you until an overdue or off-route alert fires. Only then does each confirmed contact get their own link, in the alert email or text."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Auto live share** turns on by itself once you set an overdue alert, unless you have switched it off yourself.",
+              "Tapping **Share live link** still makes a public link, as described above.",
+              "A contact's link shows **Safety contacts only**. It is for them alone, so ask them not to forward it. It stops working when the run ends, when you stop sharing, or after 48 hours."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Safety-only sharing may not be switched on yet. Until it is, an automatic live share can be viewed by anyone with the link."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "privacy-zones",
+      "record-your-first-run",
+      "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "location-permission",
+    "lang": "en",
+    "title": "Location access for recording runs",
+    "summary": "Which location option to pick on Android and iPhone, what each one means for your runs, and how to change it later in Settings.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Why the app asks for your location",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Your location draws the map of a run and measures its distance and pace. Without it a run still records time and steps, but no map, distance or pace."
+          },
+          {
+            "type": "p",
+            "text": "You are asked during setup: after the **Location access** page, tapping **Grant permission** opens your phone's own prompt. If you decline, the app tells you so and offers **Open settings**. If you still haven't allowed it when you tap **START**, your phone may ask again."
+          }
+        ]
+      },
+      {
+        "heading": "On Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Android's first prompt can only give access while the app is in use. Keeping the run tracked with the screen off needs **Allow all the time**, which Android only lets you choose in Settings."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "In the prompt, leave **Precise** selected and tap **While using the app**.",
+              "Before your first run the app shows **Allow location all the time**. Tap **Open settings**.",
+              "Under **Permissions**, tap **Location** and choose **Allow all the time**, then go back to the app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "If you tap **Start anyway**, the run records normally while the app is on screen. With the screen off or another app open, Android may stop sending your location: the clock keeps running and nothing already recorded is lost, but distance covered while you were away is not counted. When that happens, a message starting **Tracking paused while you were away** appears as you come back, with a **Settings** button."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "The reminder before a run appears once. It comes back only if you allowed all the time and that access was later removed, for example by Android resetting the permissions of apps you haven't opened in a while."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Approximate** location is too rough to measure a run: you will see **Approximate location — distance paused** for the whole run.",
+              "**Only this time** works for the run you are about to start, and you are asked again next time.",
+              "**Don't allow** leaves runs with time and steps only."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "On iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "On iPhone, access while the app is in use is enough: a run keeps recording with the screen locked or while you use another app. The app never asks for **Always**, and you don't need it."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "In the prompt, tap **Allow While Using App**.",
+              "Leave precise location switched on in the prompt. Without it your position is too rough to measure distance, and the run shows **Approximate location — distance paused**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Allow Once** works for this run only, and you are asked again next time. **Don't Allow** leaves runs with time and steps only."
+          }
+        ]
+      },
+      {
+        "heading": "Battery savers",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Some Android phones (Samsung, Xiaomi, OnePlus and others) put apps to sleep to save battery, which can stop a long run recording with the screen off, even with **Allow all the time**. Before your first run the app shows **Keep recording alive in the background** once: tap **Open settings** and exclude Threkir from battery optimisation. If you tapped **Not now**, open the app's page in your phone's Settings, tap **Battery** and choose **Unrestricted**. The names differ a little from one phone maker to another."
+          }
+        ]
+      },
+      {
+        "heading": "Change it later",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "On Android:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open your phone's **Settings** and tap **Apps**, then **Threkir**.",
+              "Tap **Permissions**, then **Location**.",
+              "Choose **Allow all the time** and switch on **Use precise location**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "On iPhone:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Open **Settings** › **Privacy & Security** › **Location Services**, and check **Location Services** is on.",
+              "Tap **Threkir** and choose **While Using the App**.",
+              "Switch on **Precise Location**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "If location is off or blocked when you start a run, the run screen says so and its **Settings** button takes you to the right place."
+          }
+        ]
+      },
+      {
+        "heading": "What the app does with your location",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "It reads your location while you record a run, and when a map centres on you, such as while you build a route or place a privacy zone. It does not follow you between runs.",
+              "On Android, a notification shows while a run is recording, if you allow notifications.",
+              "A run's track stays on your phone until it syncs to your account or you share it, and who can see it follows your privacy settings: see [[guide:your-data-and-privacy|your data and privacy]].",
+              "To hide where you live, set up [[guide:privacy-zones|privacy zones]]. Your live position is only shared if you turn on [[guide:live-tracking-and-safety|live tracking]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
+    "id": "log-a-meal-from-a-photo",
+    "lang": "en",
+    "title": "Log a meal from a photo",
+    "summary": "Photograph your plate, let Threkir estimate what is on it, then check and edit every item before it goes into your food log.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "requires": [
+      "pro"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/nutrition",
+      "/nutrition/log"
+    ],
+    "sections": [
+      {
+        "heading": "Before you start",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Logging from a photo is part of Pro. Logging food by hand stays free.",
+              "It uses AI, so it needs the latest AI disclosure. If you are asked to accept it, open Settings → Account and accept it there.",
+              "The photo is used only to estimate what is on the plate. Location and camera details are removed before it is sent, and Threkir does not keep the photo."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "It may not be switched on yet. If you don't see **Log from a photo**, it isn't available to you."
+          }
+        ]
+      },
+      {
+        "heading": "On the web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open [[route:/nutrition|Nutrition]] and select **Log food**, then **Log from a photo**.",
+              "Select **Choose a photo** and pick a picture of your meal.",
+              "Add a **Note (optional)** if it helps, such as half portion.",
+              "Select **Estimate**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "On the phone app",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open **Fitness**, choose the **Nutrition** tab and tap the camera button, **Log from a photo**.",
+              "Tap **Take a photo** or **Choose a photo**.",
+              "Add a **Note (optional)** if it helps, then tap **Estimate**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Check before you save",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Under **Check these before saving**, each food is listed with its calories, protein, carbs and fat. They are estimates, so check them."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Change any name or number that looks wrong. Items marked **Low confidence** are the ones most worth a second look.",
+              "Remove anything that isn't on your plate.",
+              "Choose the **Meal** the food belongs to.",
+              "Select **Save entries** to add what is left to your food log. Nothing is saved before that."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "If no food is recognised, or you have logged a lot of photos in the last hour, add the meal by hand as usual."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "park-courses",
+    "lang": "en",
+    "title": "Park courses: checkpoints, seasons and the boards",
+    "summary": "How a park course times your run, why every checkpoint counts, when a season starts, and how the Fastest and Most completions boards rank people.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/races",
+      "/parks",
+      "/parks/[region]/[park]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "What a park course is",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]]."
+          },
+          {
+            "type": "list",
+            "items": [
+              "It is a time trial, not a race. The trail stays open to everyone and nobody marshals it, so follow the park's rules and give way to other people on the trail.",
+              "Each course page shows the distance, elevation gain, shape, surface and difficulty, where the course line came from, and whether the course is open.",
+              "Select **Navigate this course** to follow the course as a route. It isn't offered while the course is closed.",
+              "The course page's **Route guide** lists where to park and every turn in order, by trail name, with the bridges, fords, surface changes and climbs on the way. It is drafted from map data; until someone has walked it at the park, it says so above the list. The same guide is in the course's GPX file."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A closed course takes no new times: a run over it while it is closed is not timed, and the times it already has stay on its boards. Please don't run it until it reopens. The page shows when its status was last checked."
+          }
+        ]
+      },
+      {
+        "heading": "Checkpoints: why shortcuts never count",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Besides the start and the finish, a course can have checkpoints along the way. Your run is only timed when it passes every checkpoint, in order, between the start and the finish. A run that cuts a corner, skips a switchback or takes a path across the middle misses a checkpoint and gets no time."
+          },
+          {
+            "type": "p",
+            "text": "Stay on the marked trail. Cutting a trail damages it, and parks treat it as a breach of their rules."
+          }
+        ]
+      },
+      {
+        "heading": "Seasons follow the park's clock",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A season is a calendar year in the park's own time zone, not yours. The boards start again at midnight on 1 January where the park is."
+          },
+          {
+            "type": "p",
+            "text": "For example, a run that starts at 22:00 on 31 December in a Virginia park counts for that year, even if your phone is set to a time zone where it is already 1 January."
+          }
+        ]
+      },
+      {
+        "heading": "The Fastest board",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.",
+              "It shows this year by default. Select **All time** for the best times ever.",
+              "Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "The Most completions board",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Most completions** rewards the regulars. It counts the days you completed the course, in the park's time zone, so running several laps on one day counts as one."
+          }
+        ]
+      },
+      {
+        "heading": "Who appears on the boards",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "You need to be signed in to see the boards. Signed out, a course page still shows the course and a **Sign in** link.",
+              "A time from a run other people can't see isn't shown to them.",
+              "You won't see people you have blocked, and they won't see you."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A run is checked against park courses on our servers shortly after it's saved or imported, from any device. A new time can take a few minutes to appear on a board."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "how-segment-times-are-measured",
+      "import-your-history",
+      "record-your-first-run"
+    ]
+  },
+  {
+    "id": "privacy-zones",
+    "lang": "en",
+    "title": "Hide your home with privacy zones",
+    "summary": "Draw a circle around home, work or anywhere else so the start and end of your runs and routes inside it are hidden from everyone but you.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy"
+    ],
+    "sections": [
+      {
+        "heading": "What a privacy zone does",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A privacy zone is a circle on the map. When a run or route starts or ends inside one, that part of the track is cut off before anyone else sees it, so the line appears to begin and end at the edge of the circle."
+          },
+          {
+            "type": "list",
+            "items": [
+              "It applies to what other people see: shared runs and routes, your public profile, the feed, heatmaps, the live tracking page, and the run maps a coach you work with can open.",
+              "It applies to runs you have already recorded as well as new ones, because the track is trimmed each time someone else views it.",
+              "You always see your own full track, and files you export for yourself keep the full track too."
+            ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "A route line starts at a house inside a circle. The part inside the circle is hidden from other people, so the line they see begins at the circle's edge."
+          }
+        ]
+      },
+      {
+        "heading": "Add a zone on the web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open [[route:/settings/privacy|Privacy & sharing]] in Settings.",
+              "Under **Privacy zones**, select **Add a zone**.",
+              "Click the map where the zone should be centred, or select **Use current location**, then drag the marker to fine-tune it.",
+              "Set the **Radius**. Anything inside the red circle is hidden from public shares.",
+              "Select **Add zone**. The zone is saved straight away."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "To delete a zone, select **Remove** beside it and confirm. Removing a zone shows that area on public shares again."
+          }
+        ]
+      },
+      {
+        "heading": "Add a zone on the phone app",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the **You** tab, then **Preferences**, and under **Privacy & sharing** tap **Privacy zones**.",
+              "Tap the map to drop a zone. Use **Search places…** or **Locate me** to move the map first.",
+              "Adjust the **Radius** slider.",
+              "Tap **Save**. Nothing changes until you save."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "To delete a zone, tap its marker and confirm, or use **Clear all** to remove every zone at once. Then tap **Save**; removing a zone shows that area on public shares again."
+          }
+        ]
+      },
+      {
+        "heading": "Choosing a good zone",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Centre the zone near, rather than exactly on, your front door, so the edge of the circle doesn't point straight at your house.",
+              "Make it big enough to cover a few streets. A tiny circle can still give your home away.",
+              "Add one for anywhere you regularly start from, such as work or a friend's house."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Zones trim the map line only. A run's title, description and photos are shown as you wrote them, so leave addresses out of those."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "live-tracking-and-safety",
+      "record-your-first-run"
+    ]
+  },
+  {
+    "id": "record-your-first-run",
+    "lang": "en",
+    "title": "Record your first run",
+    "summary": "Start a run on your phone, pause and stop it safely, get a good GPS signal, and see what gets saved afterwards.",
+    "kind": "start",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Start recording",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Runs are recorded in the phone app or on a watch. The web app shows your runs but cannot record one."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Tap the big button in the middle of the bottom bar. It reads **Start run**, or **Log** if you have switched on gym or nutrition, in which case choose **Log run**.",
+              "Tap **START**. The first time, your phone asks for location access: allow it, or the run records time only, with no distance or map.",
+              "A three-second countdown runs while the GPS warms up, then the clock starts."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "On Android, choose **Allow all the time** for location. With access only while the app is open, distance you cover with the screen off may not be counted, although the clock keeps running. See [[guide:location-permission|which location option to pick]]."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "A phone with a big round start button, picking up a GPS signal from a satellite overhead."
+          }
+        ]
+      },
+      {
+        "heading": "Pausing and stopping",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "There is no auto-pause: the clock runs until you pause it. Use the pause button for a stop you want left out of your time, and the resume button to carry on."
+          },
+          {
+            "type": "p",
+            "text": "Standing at a crossing without pausing does no harm. After the run, **Moving** time leaves out the stretches where you were standing still, and your pace is worked out from moving time."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "To finish, press and hold the stop button. The hint reads **Hold to stop**, so a stray tap in your pocket doesn't end the run.",
+              "The **Run Complete** summary shows your distance, **Time**, **Moving** time, pace and any other stats your phone measured.",
+              "Tap **Done** to go back to the start screen."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Getting a good GPS signal",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Start outside, away from tall buildings and thick tree cover, so the countdown has a clear view of the sky.",
+              "If you see **GPS signal lost — move to open sky**, keep going: the clock keeps running and distance picks up again when the signal returns.",
+              "**Weak GPS — distance paused** means your position is too uncertain to count. Distance resumes as soon as the signal improves.",
+              "Keep location services on and battery saving off for the app, so your phone doesn't stop the recording in the background."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "If the app closes mid-run, open it again: you are asked **Resume your run?** and can resume, finish now, or discard it."
+          }
+        ]
+      },
+      {
+        "heading": "What gets saved",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When you stop, the run is saved on your phone first, then uploaded to your account. The summary shows **Synced** once it is safely in the cloud, or **Saved offline.** if you are signed out. A run that couldn't upload stays on the phone and retries later."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Distance, elapsed time, moving time and pace.",
+              "Your GPS track, which draws the map and splits.",
+              "Elevation, steps, and heart rate if you paired a heart-rate strap."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Who can see the run follows your **Default run privacy** setting, which you can change for any single run afterwards. To hide where you live, set up [[guide:privacy-zones|privacy zones]] before you share anything."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "location-permission",
+      "privacy-zones",
+      "live-tracking-and-safety",
+      "import-your-history"
+    ]
+  }
+]

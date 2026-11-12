@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { buildYearInRunningRecap, buildMonthInRunningRecap, recapHeadline } from './recap';
+import {
+	buildYearInRunningRecap,
+	buildMonthInRunningRecap,
+	recapHeadline,
+	__TEST_ONLY__,
+} from './recap';
 import type { Run } from '../types';
 
 function mkRun(opts: {
@@ -309,6 +314,17 @@ test('buildYearInRunningRecap: negative / fractional extras are clamped to a non
 	assert.equal(r.personalRecordCount, 2);
 });
 
+test('park course extras flow through and clamp', () => {
+	const run = mkRun({ startedAt: '2026-03-01T10:00:00', distance_m: 5000, duration_s: 1500 });
+	const year = buildYearInRunningRecap([run], 2026, { parkCourseCount: 4, parkCount: 2 });
+	assert.equal(year.parkCourseCount, 4);
+	assert.equal(year.parkCount, 2);
+	const month = buildMonthInRunningRecap([run], 2026, 3, { parkCourseCount: 1.7, parkCount: -1 });
+	assert.equal(month.parkCourseCount, 1);
+	assert.equal(month.parkCount, 0);
+	assert.equal(buildYearInRunningRecap([run], 2026).parkCourseCount, 0);
+});
+
 test('badges: one badge per category — the highest tier reached wins', () => {
 	// 1,200 km should produce the 1,000 km badge, not 500 + 100 too.
 	const runs = Array.from({ length: 12 }, (_, i) =>
@@ -413,4 +429,215 @@ test('buildMonthInRunningRecap: out-of-range month is zero, never throws', () =>
 	);
 	assert.equal(r.runCount, 0);
 	assert.equal(r.totalDistanceM, 0);
+});
+
+// --- Cross-year-boundary streaks -------------------------------------------
+//
+// Streaks are the one recap output derived from runs OUTSIDE the recap period:
+// `computeRunStreaks` is handed the whole run set, clamped only at the period's
+// last day. So a streak running 28 Dec → 3 Jan is the 2026 card's best streak
+// even though four of its days are 2025 runs. These pin that dependency before
+// any windowed fetch lands underneath the pages (#734).
+
+const BOUNDARY_STREAK_DAYS = [
+	'2025-12-28',
+	'2025-12-29',
+	'2025-12-30',
+	'2025-12-31',
+	'2026-01-01',
+	'2026-01-02',
+	'2026-01-03',
+];
+
+function boundaryStreakRuns(): Run[] {
+	return BOUNDARY_STREAK_DAYS.map((day) =>
+		mkRun({ startedAt: `${day}T10:00:00`, distance_m: 5000, duration_s: 1500 }),
+	);
+}
+
+test('buildYearInRunningRecap: the 2026 best streak counts the December 2025 days', () => {
+	const r = buildYearInRunningRecap(boundaryStreakRuns(), 2026);
+	// Only the three January runs are inside the year…
+	assert.equal(r.runCount, 3);
+	assert.equal(r.totalDistanceM, 15000);
+	// …but the streak spans the boundary, so dropping the 2025 runs from the
+	// input would report 3 here instead of 7.
+	assert.equal(r.bestStreakDays, 7);
+	// `now` is stated, not inherited from the clock. Read against a January
+	// 2027 reader the January 2026 streak is long dead, and that is the ONLY
+	// reason this is 0 — before the anchor fix the assertion held for a
+	// second, wrong reason (the card anchored at 31 Dec 2026 regardless of
+	// when it was opened), so it stayed green over the live-streak case it
+	// never exercised. The test below is that case.
+	assert.equal(r.currentStreakDays, 0);
+});
+
+test('buildYearInRunningRecap: the card for the year you are IN reports the live streak', () => {
+	// The anchor used to be 31 Dec of the card's year unconditionally. For the
+	// current year that day is in the future, so `computeRunStreaks` looked for
+	// a run on 31 Dec, then on its grace day of 30 Dec, found neither, and
+	// returned 0 — every runner opening their own in-progress recap on a live
+	// streak was told they had none.
+	const now = new Date(2026, 2, 10, 9, 0); // 10 Mar 2026, 09:00 local
+	const runs = ['2026-03-07', '2026-03-08', '2026-03-09', '2026-03-10'].map((day) =>
+		mkRun({ startedAt: `${day}T07:00:00`, distance_m: 5000, duration_s: 1500 }),
+	);
+	const r = buildYearInRunningRecap(runs, 2026, {}, now);
+	assert.equal(
+		r.currentStreakDays,
+		4,
+		'a streak running up to and including today is the current streak',
+	);
+	assert.equal(r.bestStreakDays, 4);
+
+	// The Strava grace day still applies at the near end: no run yet today,
+	// but yesterday had one, so the streak is alive at its pre-today length.
+	const beforeTodaysRun = buildYearInRunningRecap(runs.slice(0, 3), 2026, {}, now);
+	assert.equal(
+		beforeTodaysRun.currentStreakDays,
+		3,
+		'the grace day keeps a streak alive on a morning before the run',
+	);
+
+	// And a past year's card is unaffected: it still clamps at its own 31 Dec
+	// rather than being dragged forward to now.
+	const pastYear = buildYearInRunningRecap(boundaryStreakRuns(), 2025, {}, now);
+	assert.equal(pastYear.currentStreakDays, 4);
+});
+
+test('buildMonthInRunningRecap: the month you are IN reports the live streak', () => {
+	const now = new Date(2026, 2, 10, 9, 0);
+	const runs = ['2026-03-07', '2026-03-08', '2026-03-09', '2026-03-10'].map((day) =>
+		mkRun({ startedAt: `${day}T07:00:00`, distance_m: 5000, duration_s: 1500 }),
+	);
+	assert.equal(buildMonthInRunningRecap(runs, 2026, 3, {}, now).currentStreakDays, 4);
+	// A finished month still clamps at its own last day.
+	assert.equal(buildMonthInRunningRecap(boundaryStreakRuns(), 2025, 12, {}, now).currentStreakDays, 4);
+});
+
+test('buildYearInRunningRecap: the 2025 card clamps the streak at 31 Dec 2025', () => {
+	const r = buildYearInRunningRecap(boundaryStreakRuns(), 2025);
+	assert.equal(r.runCount, 4);
+	// Runs after the anchor day are excluded, so the 2026 half is not counted.
+	assert.equal(r.bestStreakDays, 4);
+	assert.equal(r.currentStreakDays, 4);
+});
+
+test('buildMonthInRunningRecap: January 2026 best streak counts the December 2025 days', () => {
+	const r = buildMonthInRunningRecap(boundaryStreakRuns(), 2026, 1);
+	assert.equal(r.runCount, 3);
+	assert.equal(r.bestStreakDays, 7);
+	// The month card still carries the whole year's monthly buckets, so a month
+	// page needs the full year's runs, not just the month's.
+	assert.equal(r.monthly.length, 12);
+	assert.equal(r.monthly[0].runCount, 3);
+});
+
+// --- Out-of-period streaks -------------------------------------------------
+//
+// The flip side of the boundary rule: a streak has to *reach* the period to be
+// the period's streak. `computeRunStreaks` clamps only at the anchor day, so
+// the whole of the runner's history used to be in scope and a long-dead streak
+// became "your best streak" on a card titled with a year it never touched —
+// and shipped in the public share image.
+
+/** A 40-day streak in early 2024, then a short one inside the target period. */
+function staleStreakRuns(): Run[] {
+	const out: Run[] = [];
+	for (let i = 0; i < 40; i++) {
+		const d = new Date(2024, 1, 1 + i);
+		out.push(
+			mkRun({
+				id: `old-${i}`,
+				startedAt: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T10:00:00`,
+				distance_m: 5000,
+				duration_s: 1500,
+			}),
+		);
+	}
+	for (const day of ['2026-03-10', '2026-03-11', '2026-03-12']) {
+		out.push(mkRun({ id: day, startedAt: `${day}T10:00:00`, distance_m: 5000, duration_s: 1500 }));
+	}
+	return out;
+}
+
+test('buildYearInRunningRecap: a streak from a previous year is not this year’s best', () => {
+	const r = buildYearInRunningRecap(staleStreakRuns(), 2026);
+	assert.equal(r.runCount, 3);
+	assert.equal(r.bestStreakDays, 3, 'the 2024 streak must not headline the 2026 card');
+});
+
+test('buildYearInRunningRecap: an out-of-period streak earns no trophy', () => {
+	const r = buildYearInRunningRecap(staleStreakRuns(), 2026);
+	assert.equal(
+		r.badges.find((b) => b.id.startsWith('streak')),
+		undefined,
+		'a 2024 streak must not put a streak trophy on the 2026 grid',
+	);
+});
+
+test('buildYearInRunningRecap: a year with no runs at all has no streak', () => {
+	const r = buildYearInRunningRecap(staleStreakRuns(), 2025);
+	assert.equal(r.runCount, 0);
+	assert.equal(r.bestStreakDays, 0);
+	assert.equal(r.currentStreakDays, 0);
+});
+
+test('buildMonthInRunningRecap: a streak from an earlier month is not this month’s best', () => {
+	// The 3-day streak sits in March; the April card must not claim it.
+	const r = buildMonthInRunningRecap(staleStreakRuns(), 2026, 4);
+	assert.equal(r.runCount, 0);
+	assert.equal(r.bestStreakDays, 0);
+	assert.equal(r.badges.find((b) => b.id.startsWith('streak')), undefined);
+});
+
+test('buildMonthInRunningRecap: the month the streak ran in still reports it', () => {
+	const r = buildMonthInRunningRecap(staleStreakRuns(), 2026, 3);
+	assert.equal(r.runCount, 3);
+	assert.equal(r.bestStreakDays, 3);
+});
+
+test('a non-numeric extras count is floored to 0, not propagated as NaN', () => {
+	// `Math.max(0, Math.trunc(x ?? 0))` does not floor a NaN — `Math.trunc(NaN)`
+	// is NaN and `Math.max(0, NaN)` is NaN — so a non-numeric count from
+	// `fetchRecapExtras` reached the recap object, the badge thresholds it
+	// feeds, and every snapshot published to `public_recaps`.
+	const bad = { photoCount: NaN, personalRecordCount: Infinity };
+	const y = buildYearInRunningRecap([], 2026, bad);
+	assert.equal(y.photoCount, 0);
+	assert.equal(y.personalRecordCount, 0);
+	const mth = buildMonthInRunningRecap([], 2026, 3, bad);
+	assert.equal(mth.photoCount, 0);
+	assert.equal(mth.personalRecordCount, 0);
+	// A count that IS a number still survives the same path.
+	assert.equal(buildYearInRunningRecap([], 2026, { photoCount: 7.9 }).photoCount, 7);
+});
+
+test('the recap week is ISO Monday-anchored, deliberately unlike the dashboard strip', () => {
+	// `training/current_week.ts` honours the runner's `week_start` over the same
+	// runs; this does not, and the difference is a decision rather than drift. A
+	// recap is PUBLISHED to `public_recaps` and re-rendered by /recap/share/[id]
+	// and the OG image for readers who are not the runner, from a payload whose
+	// Dart producer writes the same field shape from another device — a week
+	// boundary that varied with a preference would make one artifact mean two
+	// things with nothing in it saying which.
+	const { mondayOf } = __TEST_ONLY__;
+	// 2026-03-08 is a Sunday; a Sunday-first reading would open a week there.
+	assert.equal(mondayOf(new Date(2026, 2, 8)), '2026-03-02');
+	assert.equal(mondayOf(new Date(2026, 2, 9)), '2026-03-09');
+});
+
+test('buildYearInRunningRecap: a duration past the ten-day bound adds no time', () => {
+	// Issue #1300 § 5: 2 km stored at 44,400,094 s (12,333 h). Its distance and
+	// its count still stand; its time cannot swamp the year.
+	const runs = [
+		mkRun({ startedAt: '2026-11-04T10:00:00Z', distance_m: 5000, duration_s: 1500 }),
+		mkRun({ startedAt: '2026-11-05T10:00:00Z', distance_m: 2000, duration_s: 44_400_094 }),
+	];
+	const r = buildYearInRunningRecap(runs, 2026);
+	assert.equal(r.runCount, 2);
+	assert.equal(r.totalDistanceM, 7000);
+	assert.equal(r.totalDurationS, 1500);
+	assert.equal(r.monthly[10].durationS, 1500);
+	assert.equal(buildYearInRunningRecap([runs[1]], 2026).fastestPaceSecPerKm, null);
 });

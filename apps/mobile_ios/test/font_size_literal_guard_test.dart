@@ -15,7 +15,7 @@
 // `BoxFit.scaleDown`. Text inside a load-bearing graphic is not on the scale.
 //
 // The exemptions below are all surfaces the theme deliberately does not reach:
-// the three `RepaintBoundary` share rasterisers and the period share card
+// the `RepaintBoundary` share rasterisers and the period share card
 // (which paint a fixed dark canvas to a PNG, hardcoded hexes and all), the map
 // overlay chips / pins / cartographic markers §482 named, the run screen's two
 // load-bearing graphics, and `ErrorWidget.builder`, which has no `Theme`
@@ -49,8 +49,12 @@ const _allowlist = <String, int>{
   // hexes are theme-free by design (§482), and so are their sizes.
   'lib/widgets/finisher_certificate_card.dart': 9,
   'lib/widgets/route_share_card.dart': 5,
-  'lib/widgets/run_share_card.dart': 7,
+  'lib/widgets/run_share_card.dart': 6,
   'lib/screens/period_summary_screen.dart': 6,
+  'lib/widgets/head_to_head_card.dart': 6,
+  // The PR card's time numeral is 84 on the web twin's canvas
+  // (`pr_card_canvas.ts` TIME); no step reaches it and the PNG must match.
+  'lib/widgets/run_share_overlays.dart': 1,
   // Map overlay chips / pins / cartographic markers: drawn over basemap
   // tiles, not over a theme surface, so they carry bespoke values per §482.
   // `run_detail`'s is the map-match pill (black scrim + white type),

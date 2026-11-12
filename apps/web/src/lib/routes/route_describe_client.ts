@@ -2,7 +2,7 @@
 //
 // The pure, locale/unit-aware templated renderer lives in
 // `route_description.ts` (`localisedTemplate`) so it stays free of the
-// SvelteKit `$env` graph and unit-testable. This module is the part that
+// SvelteKit `$app/env` graph and unit-testable. This module is the part that
 // needs the Supabase client + fetch: it posts the route's stats to the
 // Pro-gated enhancement endpoint and resolves to `{ description, source,
 // upgrade }`. It refreshes the JWT once on a 401, mirroring CoachChat.
@@ -12,8 +12,11 @@
 // error and keep the locally-rendered baseline.
 
 import { supabase } from '../core/supabase';
+import { AI_DISCLOSURE_ERROR } from '../core/ai_disclosure';
 import { payloadSha256Hex } from '../util/payload_hash';
 import type { RouteDescriptionInput } from './route_description';
+import type { PreferredUnit } from '../types';
+import type { Locale } from '../i18n/locale';
 
 export interface AiDescriptionResult {
 	description: string;
@@ -23,15 +26,29 @@ export interface AiDescriptionResult {
 	upgrade: boolean;
 }
 
-/** Map the route's stored fields into the endpoint's request body. */
-function toBody(input: RouteDescriptionInput): Record<string, unknown> {
+/**
+ * Map the route's stored fields into the endpoint's request body. `unit` and
+ * `locale` are the viewer's, so the paragraph comes back in the unit and the
+ * language they read. `route_id` is how the server decides whether the name may
+ * go to the model at all (owner or public route only); `name` only shapes the
+ * templated fallback it answers with.
+ */
+function toBody(
+	input: RouteDescriptionInput,
+	unit: PreferredUnit,
+	locale: Locale,
+	routeId: string,
+): Record<string, unknown> {
 	return {
+		route_id: routeId,
 		name: input.name,
 		distance_m: input.distanceM,
 		elevation_m: input.elevationM,
 		surface: input.surface,
 		start: input.start ?? null,
 		end: input.end ?? null,
+		unit,
+		locale,
 	};
 }
 
@@ -42,8 +59,11 @@ function toBody(input: RouteDescriptionInput): Record<string, unknown> {
  */
 export async function requestAiDescription(
 	input: RouteDescriptionInput,
+	unit: PreferredUnit,
+	locale: Locale,
+	routeId: string,
 ): Promise<AiDescriptionResult> {
-	const body = JSON.stringify(toBody(input));
+	const body = JSON.stringify(toBody(input, unit, locale, routeId));
 	// CloudFront's Lambda OAC can't hash the body itself — the client
 	// supplies the sigv4 payload hash or the Function URL 403s (#590).
 	const bodyHash = await payloadSha256Hex(body);
@@ -74,6 +94,16 @@ export async function requestAiDescription(
 	}
 
 	if (!res.ok) {
+		// A 403 carrying the AI-disclosure code is a consent gap, not a
+		// broken request: the caller has to accept the widened disclosure
+		// before the enhancement is lawful. Surface it as its own error so
+		// the page can point somewhere useful instead of "try again".
+		if (res.status === 403) {
+			const body = (await res.json().catch(() => null)) as { code?: string } | null;
+			if (body?.code === AI_DISCLOSURE_ERROR) {
+				throw new Error(AI_DISCLOSURE_ERROR);
+			}
+		}
 		throw new Error(`route_describe_failed_${res.status}`);
 	}
 	const json = (await res.json()) as {

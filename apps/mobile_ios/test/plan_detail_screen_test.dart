@@ -1,13 +1,14 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
+import 'supabase_test_init.dart';
+import 'plan_sections_open.dart';
 
 ClubView _club({
   required String id,
@@ -42,10 +43,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -66,20 +64,23 @@ void main() {
   setUpAll(_ensureSupabase);
 
   group('PlanDetailScreen — initial render', () {
-    testWidgets('first frame shows the full-body loader', (tester) async {
-      // Reason: while _loading is true the screen returns a bare
-      // Scaffold carrying nothing but the loader — no AppBar yet. This
-      // is the only deterministic surface without a stub TrainingService.
+    testWidgets('first frame shows a skeleton of the plan page',
+        (tester) async {
+      // Reason: while _loading is true the screen holds the layout it will
+      // settle into (decisions § 2288). This is the only deterministic
+      // surface without a stub TrainingService.
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 
-    testWidgets('initial Scaffold has no AppBar yet', (tester) async {
-      // Reason: the loading-state Scaffold is bare; the AppBar with
-      // the plan name only paints after the fetch resolves.
+    testWidgets('the loading frame already carries the app bar',
+        (tester) async {
+      // Back is reachable while the fetch is in flight; the plan name joins
+      // the bar once it resolves, so the bar itself does not pop in.
       await _pump(tester);
-      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(AppBar), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
     });
   });
 
@@ -218,6 +219,8 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      // Signed out in this harness, so the remembered layout is the anon one.
+      await rememberPlanSectionsOpen(tester, null);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -239,12 +242,13 @@ void main() {
     });
 
     testWidgets(
-        'the today workout row carries a labelled dot and a heavier weekday, '
-        'because its tint is 1.003:1 against the row beside it', (tester) async {
+        'the today workout row carries a dot, a heavier weekday and an '
+        'accessible name that says today', (tester) async {
       tester.view.physicalSize = const Size(400, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      await rememberPlanSectionsOpen(tester, null);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -272,12 +276,13 @@ void main() {
       expect(
         find.ancestor(
           of: dots,
-          matching: find.byWidgetPredicate(
-              (w) => w is Semantics && w.properties.label == 'TODAY'),
+          matching: find.byWidgetPredicate((w) =>
+              w is Semantics &&
+              (w.properties.label ?? '').endsWith(', today')),
         ),
         findsOneWidget,
-        reason: 'a dot with no accessible name is a cue only a sighted user '
-            'gets',
+        reason: 'the row says "today" to a screen reader, not only to a '
+            'sighted user',
       );
 
       final weights = tester

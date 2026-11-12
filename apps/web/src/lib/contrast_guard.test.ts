@@ -7,6 +7,13 @@
 //
 // Web-only: app.css has no mobile/Dart twin (Flutter themes its own
 // colours), so there is no parity counterpart to keep in lockstep.
+//
+// Every scan below strips `/* … */` and deliberately NOT `//`, which the JS
+// guards in this tree all blank through `core/strip_comments`. `//` is not a
+// comment in CSS: blanking it would delete a protocol-relative
+// `url(//host/x.woff2)` and the tail of any `content: '…//…'`. The register in
+// `source_scanner_guards.test.ts` records the exemption so it reads as chosen
+// rather than overlooked (decisions § 1001).
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -18,6 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(resolve(__dirname, '../app.css'), 'utf-8');
 
 import { RUN_SOURCES, sourceColor, sourceInk } from './runs/source_badge.js';
+import { planWorkoutStatusLook } from './training/plan_workout_status_style.js';
 
 /** The four surfaces that render a `.source-badge`. */
 const BADGE_SURFACES = [
@@ -784,19 +792,19 @@ test('workout-kind tokens match mobile ChartPalette.kinds', () => {
 });
 
 // Mobile pinned the same token per brightness in § 487 and web's surfaces ARE
-// mobile's (parchment / parchmentDim / duskDeep / midnight are --color-bg /
-// --color-bg-tertiary / --color-surface / --color-bg), so the two hairlines
+// mobile's (snow / white / nightRaised / night are --color-bg /
+// --color-surface / --color-surface / --color-bg, § 1772), so the two hairlines
 // must be the same colour or a card reads apart on one platform and not the
 // other. A Dart file cannot import a CSS custom property, so the lockstep is
 // checked here, the same way the chart, zone and semantic palettes already are.
-test('the line token matches mobile AppTheme.parchmentLine / duskLine', () => {
+test('the line token matches mobile AppTheme.snowLine / nightLine', () => {
 	const dart = readFileSync(
 		resolve(__dirname, '../../../../packages/ui_kit/lib/src/theme/app_theme.dart'),
 		'utf-8',
 	);
 	for (const [marker, symbol] of [
-		[':root {', 'parchmentLine'],
-		[':root[data-theme="dark"]', 'duskLine'],
+		[':root {', 'snowLine'],
+		[':root[data-theme="dark"]', 'nightLine'],
 	] as const) {
 		const hex = dart.match(
 			new RegExp(`static const Color ${symbol} = Color\\(0xFF([0-9A-Fa-f]{6})\\)`),
@@ -1286,18 +1294,73 @@ test('every boundary drawn on a tinted surface clears 3:1 where it lands', () =>
 	);
 });
 
-// Count-pinned so the one shape the scan cannot resolve stays the one shape it
-// cannot resolve. A new `var(--x, var(--color-border))` edge on a tinted surface
-// fails here rather than passing silently.
-test('exactly one tinted-surface boundary defers to a per-instance fallback', () => {
+// Count-pinned so the shape the scan cannot resolve stays absent. The one it
+// used to defer, the plan grid's kind stripe over the done tint, went when the
+// plan-workout state fills moved into plan_workout_status_style.ts (decisions
+// § 2084), which the plan-workout status test below resolves instead. A new
+// `var(--x, var(--color-border))` edge on a tinted surface fails here rather
+// than passing silently.
+test('no tinted-surface boundary defers to a per-instance fallback', () => {
 	const { deferred } = tintedBoundaryFindings();
 	assert.equal(
 		deferred.length,
-		1,
-		`the tinted-boundary scan defers ${deferred.length} declaration(s), expected 1 ` +
-			`(the plan grid's kind stripe):\n${deferred.join('\n')}`,
+		0,
+		`the tinted-boundary scan defers ${deferred.length} declaration(s):\n${deferred.join('\n')}`,
 	);
-	assert.match(deferred[0], /plans\/\[id\]\/\+page\.svelte/);
+});
+
+// One paint expression from plan_workout_status_style.ts, as hex over the
+// surface the cell sits on: a #hex or rgba() token, a two-token color-mix, or
+// transparent.
+function resolvePlanPaint(marker: string, expr: string, surface: string): string {
+	const e = expr.trim();
+	if (e === 'transparent') return surface;
+	const mix = e.match(/^color-mix\(in srgb, var\(--([\w-]+)\) ([\d.]+)%, var\(--([\w-]+)\)\)$/);
+	if (mix) {
+		return mixOverHex(
+			resolvePlanPaint(marker, `var(--${mix[1]})`, surface),
+			parseFloat(mix[2]),
+			resolvePlanPaint(marker, `var(--${mix[3]})`, surface),
+		);
+	}
+	const name = e.match(/^var\(--([\w-]+)\)$/)?.[1];
+	assert.ok(name, `plan status paint "${e}" is not a shape this guard resolves`);
+	const themeBlock = marker === ':root {' ? block(':root {') : block(marker);
+	const src =
+		themeBlock.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim() ??
+		block(':root {').match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim();
+	const rgba = src?.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/);
+	if (rgba) {
+		const hex = '#' + [rgba[1], rgba[2], rgba[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+		return mixOverHex(hex, parseFloat(rgba[4]) * 100, surface);
+	}
+	return resolveToken(marker, name!);
+}
+
+// The plan-workout states (done / missed / skipped) are told apart by their
+// glyph and, for missed, by its dashed outline, so both are state-carrying
+// graphics under WCAG 1.4.11 and must clear 3:1 against the cell they sit in,
+// on every surface a plan cell is drawn over, in every theme.
+test('plan-workout status glyphs and the missed outline clear 3:1 on every plan surface', () => {
+	const bad: string[] = [];
+	for (const { label, marker } of THEMES) {
+		for (const surfaceName of ['color-bg', 'color-bg-secondary', 'color-surface']) {
+			const surface = resolveToken(marker, surfaceName);
+			for (const status of ['done', 'missed', 'skipped', 'upcoming', 'rest'] as const) {
+				const look = planWorkoutStatusLook(status);
+				const bg = look.bg ? resolvePlanPaint(marker, look.bg, surface) : surface;
+				if (look.glyph) {
+					const ratio = contrastRatio(resolvePlanPaint(marker, look.glyphColor, bg), bg);
+					if (ratio < AA_NON_TEXT) bad.push(`${status} glyph on --${surfaceName} [${label}]: ${ratio.toFixed(3)}:1`);
+				}
+				if (status === 'missed') {
+					const ratio = contrastRatio(resolvePlanPaint(marker, look.border!, bg), bg);
+					if (ratio < AA_NON_TEXT) bad.push(`missed outline on --${surfaceName} [${label}]: ${ratio.toFixed(3)}:1`);
+				}
+			}
+		}
+	}
+	assert.deepEqual(bad, []);
 });
 
 // The scan's own machinery, in both directions. Each of these is a bug it had
@@ -1426,31 +1489,29 @@ test('every ink on the race-day fixed canvas clears AA over its own veil', () =>
 	assert.deepEqual(thin, [], 'a foreground on the hero may not be thinned below 0.9.');
 });
 
-// The public landing's four feature-icon accents. Each is a base token's tint
-// under a theme-aware ink, and the rules are READ OUT OF THE SOURCE so the pair
-// cannot drift apart or be re-frozen as a hex: the four literals they replace
-// (#4F46E5 / #EC4899 / #10B981 / #F97316) each failed in exactly one theme
-// because a fixed hue cannot suit both a near-white and a dark-violet card.
-// Marketing copy is still content, so the 4.5:1 floor applies rather than 3:1.
+// The public landing's four feature accents. They were icon inks on a 12% tint
+// until the icons were replaced by product previews; they are now the eyebrow
+// labels, read straight off --color-surface. The rules are still READ OUT OF
+// THE SOURCE so a re-frozen hex cannot creep back: the four literals they
+// originally replaced (#4F46E5 / #EC4899 / #10B981 / #F97316) each failed in
+// exactly one theme, because a fixed hue cannot suit both a near-white and a
+// dark card. An eyebrow is small but it is still content, so the 4.5:1 floor
+// applies rather than 3:1.
 for (const { label, marker } of THEMES) {
 	test(`landing feature-icon accents meet AA on their own tint — ${label}`, () => {
 		const page = readFileSync(resolve(__dirname, '../routes/+page.svelte'), 'utf-8');
 		const rules = [
 			...page.matchAll(
-				/\.feature:nth-child\((\d)\) \.feature-icon \{\s*background:\s*color-mix\(in srgb, var\(--([\w-]+)\) (\d+)%, var\(--([\w-]+)\)\);\s*color:\s*var\(--([\w-]+)\);/g,
+				/\.feature:nth-child\((\d)\) \.feature-eyebrow \{ color: var\(--([\w-]+)\); \}/g,
 			),
 		];
 		assert.equal(rules.length, 4, 'the landing must declare four token-based feature accents');
-		for (const [, nth, base, pct, surfaceName, ink] of rules) {
-			const tint = mixOverHex(
-				resolveToken(marker, base),
-				Number(pct),
-				resolveToken(marker, surfaceName),
-			);
-			const ratio = contrastRatio(resolveToken(marker, ink), tint);
+		const ground = resolveToken(marker, 'color-surface');
+		for (const [, nth, ink] of rules) {
+			const ratio = contrastRatio(resolveToken(marker, ink), ground);
 			assert.ok(
 				ratio >= AA_NORMAL,
-				`feature card ${nth}: --${ink} on --${base}@${pct}% over --${surfaceName} (${tint}) is ${ratio.toFixed(3)}:1 in ${label}; WCAG AA requires >=${AA_NORMAL}:1.`,
+				`feature card ${nth}: --${ink} on --color-surface (${ground}) is ${ratio.toFixed(3)}:1 in ${label}; WCAG AA requires >=${AA_NORMAL}:1.`,
 			);
 		}
 	});
@@ -1601,34 +1662,31 @@ test('success/danger -text tokens match mobile AppSemanticColors', () => {
 	}
 });
 
-// The accent foreground is the same idea on both platforms and, since round 13,
-// the same value: mobile's light `colorScheme.secondary` is `AppTheme.coralMark`
-// because every mobile site that reads `secondary` paints an icon, and the base
-// coral it used to hold reads 2.767:1 on parchment. Rather than mint a second
-// guess at "coral, but legible", it took the value web had already measured for
-// exactly this. Mobile's FILL coral — the FAB background and the navigation
-// bar's indicator tint — stays `AppTheme.coralDeep`, which is web's
-// `--color-secondary`; that half of the pair is asserted here too, so a change
-// to either colour has to face both platforms. Dark is excluded on purpose:
-// web's dark `-text` token aliases to its base and mobile's dark `secondary` is
-// lilac, so there is no shared value to pin.
-test('the light accent foreground and fill match mobile AppTheme', () => {
+// The accent and the secondary are one value per brightness across the two
+// platforms (decisions § 1772): mobile's colorScheme.primary is web's
+// --color-primary, and mobile's colorScheme.secondary is web's
+// --color-secondary-text, the token web paints secondary-coloured marks with.
+// A Dart file cannot import a CSS custom property, so a change to any of these
+// has to face both platforms here.
+test('the accent and secondary match mobile AppTheme in both themes', () => {
 	const dart = readFileSync(
 		resolve(__dirname, '../../../../packages/ui_kit/lib/src/theme/app_theme.dart'),
 		'utf-8',
 	);
-	for (const [symbol, token] of [
-		['coralMark', 'color-secondary-text'],
-		['coralDeep', 'color-secondary'],
+	for (const [marker, symbol, token] of [
+		[':root {', 'coralDeep', 'color-primary'],
+		[':root {', 'violet', 'color-secondary-text'],
+		[':root[data-theme="dark"]', 'coral', 'color-primary'],
+		[':root[data-theme="dark"]', 'lilac', 'color-secondary'],
 	] as const) {
 		const hex: string | undefined = dart.match(
 			new RegExp(`static const Color ${symbol} = Color\\(0xFF([0-9A-Fa-f]{6})\\)`),
 		)?.[1];
 		assert.ok(hex, `app_theme.dart has no ${symbol}`);
 		assert.equal(
-			resolveToken(':root {', token).toUpperCase(),
+			resolveToken(marker, token).toUpperCase(),
 			`#${hex!.toUpperCase()}`,
-			`--${token} has drifted from AppTheme.${symbol}.`,
+			`--${token} in ${marker} has drifted from AppTheme.${symbol}.`,
 		);
 	}
 });
@@ -1676,8 +1734,12 @@ function sidebarStops(marker: string): string[] {
 }
 
 const SECTIONS = [
-	'dashboard', 'history', 'runs', 'gym', 'nutrition', 'coach', 'social',
+	'dashboard', 'history', 'runs', 'gym', 'nutrition', 'coach', 'social', 'messages',
 ] as const;
+
+// The sections the sidebar names. The Coach has no sidebar row since it moved
+// into Messages (decisions § 2227); its pair paints the Coach's avatar there.
+const NAV_SECTIONS = SECTIONS.filter((s) => s !== 'coach');
 
 // Every tint share the tree paints an ink on: the nav disc idle (14) and hover
 // (24), the dashboard lift disc and the history lift chip (18), the meal chip
@@ -1728,8 +1790,8 @@ for (const { label, marker } of THEMES) {
 		}
 		const fills = SECTIONS.map((s) => resolveToken(marker, `section-${s}`));
 		const inks = SECTIONS.map((s) => resolveToken(marker, `section-${s}-ink`));
-		assert.equal(new Set(fills).size, 7, `section accents collide in ${label}`);
-		assert.equal(new Set(inks).size, 7, `section inks collide in ${label}`);
+		assert.equal(new Set(fills).size, SECTIONS.length, `section accents collide in ${label}`);
+		assert.equal(new Set(inks).size, SECTIONS.length, `section inks collide in ${label}`);
 		// Non-regression per PAIR rather than an absolute floor, because no
 		// absolute floor is available: dashboard's peach and history's terracotta
 		// are 1.6 deg apart as shipped accents and are the closest pair either
@@ -1776,9 +1838,7 @@ for (const { label, marker } of THEMES) {
 // REPLACES the base `.integration-icon` background rather than tinting over it,
 // which is the ground § 526 measured against and the reason four of the six
 // figures it recorded were too pessimistic.
-const PROVIDERS = [
-	'strava', 'parkrun', 'garmin', 'healthkit', 'runsignup', 'ultrasignup', 'chronotrack',
-] as const;
+const PROVIDERS = ['strava', 'garmin', 'healthkit', 'runsignup', 'chronotrack'] as const;
 
 for (const { label, marker } of THEMES) {
 	test(`provider glyph inks clear 1.4.11 on their own brand disc — ${label}`, () => {
@@ -1849,7 +1909,12 @@ for (const { label, marker } of THEMES) {
 const SECTION_ACCENT_SURFACES: Array<[file: string, tokens: string[]]> = [
 	['routes/+layout.svelte', ['--section-dashboard', '--section-dashboard-ink', '--section-on-accent']],
 	['routes/dashboard/+page.svelte', ['--section-gym', '--section-gym-ink']],
-	['routes/history/+page.svelte', ['--section-gym-ink', '--section-nutrition-ink']],
+	// The timeline rows moved out of /history into the component it shares with
+	// the /runs list view (decisions § 2117); the accent moved with them.
+	['lib/components/TimelineDayList.svelte', ['--section-gym-ink', '--section-nutrition-ink']],
+	['routes/messages/+layout.svelte', ['--section-coach', '--section-coach-ink']],
+	['routes/messages/coach/+page.svelte', ['--section-coach', '--section-coach-ink']],
+	['lib/components/CoachChat.svelte', ['--section-coach', '--section-coach-ink']],
 ];
 
 test('the surfaces that mark a modality still read the section pairs', () => {
@@ -1866,7 +1931,7 @@ test('the surfaces that mark a modality still read the section pairs', () => {
 	// The nav accents cannot go back to being hexes in the TS array: the ink
 	// half has to flip per theme and a TS string cannot.
 	const layout = readFileSync(join(root, 'routes/+layout.svelte'), 'utf-8');
-	for (const section of SECTIONS) {
+	for (const section of NAV_SECTIONS) {
 		assert.match(
 			layout,
 			new RegExp(`section: '${section}'`),
@@ -1966,4 +2031,103 @@ test('the opacity scan reads the badge block it claims to', () => {
 	assert.ok(planted && /\bopacity\s*:/.test(planted[1]));
 	const commented = /\.source-badge\s*\{([\s\S]*?)\}/.exec('.source-badge { /* opacity: 1 */ }');
 	assert.ok(commented && !/\bopacity\s*:/.test(commented[1].replace(/\/\*[\s\S]*?\*\//g, '')));
+});
+
+// The run-social chips (kudos, reactions, comment likes) mark the viewer's own
+// with a 12% primary tint over `transparent`. The chip sits on the run page's
+// section (--color-bg) and on the share view's card (--color-surface), so every
+// surface token is checked rather than a guess at one. Primary as the label on
+// that tint read 3.404-4.058:1 in light mode (3.855 on --color-bg, the run
+// page) — under AA for text, the same defect mobile measured at 3.869:1 on its
+// reaction chip. The label stays in a text token; the glyph alone carries
+// primary, and needs only the 3:1 non-text floor.
+const SOCIAL_CHIPS = ['kudos-btn', 'reaction-btn', 'like-btn'];
+const PRIMARY_TINT_OVER_TRANSPARENT =
+	/background:\s*color-mix\(\s*in srgb\s*,\s*var\(\s*--color-primary\s*\)\s*([\d.]+)%\s*,\s*transparent\s*\)/;
+const socialSource = readFileSync(resolve(__dirname, 'components/RunSocial.svelte'), 'utf-8');
+const socialStyle = socialSource.slice(socialSource.indexOf('<style>'));
+const givenChipRules = leafRules(socialStyle).filter((r) =>
+	SOCIAL_CHIPS.some((c) => subject(r.selector).includes(`.${c}.given`)),
+);
+
+for (const { label, marker } of THEMES) {
+	test(`a given social chip's label and glyph clear AA on its primary tint — ${label}`, () => {
+		const tinted = givenChipRules.filter((r) => PRIMARY_TINT_OVER_TRANSPARENT.test(r.body));
+		assert.equal(tinted.length, 2, 'expected the kudos and the reaction/like given tints');
+		const primary = resolveToken(marker, 'color-primary');
+		for (const rule of tinted) {
+			const pct = Number(rule.body.match(PRIMARY_TINT_OVER_TRANSPARENT)![1]);
+			const ink = rule.body.match(/(?<![\w-])color:\s*var\(\s*--([\w-]+)\s*\)/)?.[1];
+			assert.ok(ink, `${rule.selector} must name its label ink as a token`);
+			for (const surface of SURFACE_TOKENS) {
+				const ground = mixOverHex(primary, pct, resolveToken(marker, surface));
+				const text = contrastRatio(resolveToken(marker, ink!), ground);
+				assert.ok(
+					text >= AA_NORMAL,
+					`${rule.selector}: --${ink} on ${pct}% primary over --${surface} (${ground}) is ${text.toFixed(3)}:1 in ${label}; WCAG AA requires >=${AA_NORMAL}:1.`,
+				);
+				const glyph = contrastRatio(primary, ground);
+				assert.ok(
+					glyph >= AA_NON_TEXT,
+					`the given glyph on ${pct}% primary over --${surface} is ${glyph.toFixed(3)}:1 in ${label}; 1.4.11 requires >=${AA_NON_TEXT}:1.`,
+				);
+			}
+		}
+	});
+}
+
+test('only the glyph of a given social chip is painted primary', () => {
+	// A primary `color` anywhere else that can match a given chip — the kudos
+	// hover rule did, at higher specificity than `.given` — puts the label
+	// back on the tint at the failing ratio.
+	for (const rule of leafRules(socialStyle)) {
+		if (!/(?<![\w-])color:\s*var\(\s*--color-primary\s*\)/.test(rule.body)) continue;
+		for (const sel of rule.selector.split(',').map((s) => s.trim())) {
+			const chip = SOCIAL_CHIPS.find((c) => sel.includes(`.${c}`));
+			if (!chip) continue;
+			const glyphOnly = /\.material-symbols$/.test(sel);
+			const excludesGiven = sel.includes(':not(.given)');
+			assert.ok(
+				glyphOnly || excludesGiven,
+				`RunSocial.svelte:${rule.line} \`${sel}\` paints the label primary on a chip that can be given; scope it with :not(.given) or to .material-symbols.`,
+			);
+		}
+	}
+});
+
+test('a given reaction is marked by its count weight, not by colour alone', () => {
+	// The reaction glyph does not change when given (kudos and likes swap
+	// favorite_border for favorite), so the count's weight is the non-colour cue.
+	const rule = leafRules(socialStyle).find((r) => r.selector === '.reaction-btn.given .reaction-count');
+	assert.ok(rule, 'RunSocial.svelte must style .reaction-btn.given .reaction-count');
+	assert.match(rule!.body, /font-weight:\s*700/);
+});
+
+// Mobile's primaryContainer pair is the counterpart of web's --color-primary
+// tint (the help illustrations' `accent-soft` is one on each platform). It was
+// seeded from the brand violet while the accent was coral, so the run screen
+// drew a coral flag on a purple disc (issue #1300). Web paints its tint FROM
+// --color-primary, so the hue is what has to agree across the two.
+test('mobile primaryContainer stays in the web accent hue, both themes', () => {
+	const dart = readFileSync(
+		resolve(__dirname, '../../../../packages/ui_kit/lib/src/theme/app_theme.dart'),
+		'utf-8',
+	);
+	const dartHex = (symbol: string): string => {
+		const hex = dart.match(
+			new RegExp(`static const Color ${symbol} = Color\\(0xFF([0-9A-Fa-f]{6})\\)`),
+		)?.[1];
+		assert.ok(hex, `app_theme.dart has no ${symbol}`);
+		return `#${hex!}`;
+	};
+	assert.match(dart, /primaryContainer: coralTint,\s*onPrimaryContainer: coralInk,/);
+	assert.match(dart, /primaryContainer: coralInk,\s*onPrimaryContainer: coralTint,/);
+	for (const marker of [':root {', ':root[data-theme="dark"]']) {
+		const accent = hueAngle(resolveToken(marker, 'color-primary'));
+		for (const symbol of ['coralTint', 'coralInk']) {
+			const raw = Math.abs(hueAngle(dartHex(symbol)) - accent) % 360;
+			const gap = raw > 180 ? 360 - raw : raw;
+			assert.ok(gap < 10, `AppTheme.${symbol} is ${gap.toFixed(1)} deg off --color-primary in ${marker}`);
+		}
+	}
 });

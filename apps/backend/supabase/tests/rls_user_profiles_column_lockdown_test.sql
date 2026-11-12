@@ -77,8 +77,7 @@ select results_eq(
 --    locked-down columns. This is the only path auth bootstrap and
 --    backup export rely on for self-tier / self-parkrun reads.
 select results_eq(
-  $$ select (get_my_profile()).subscription_tier,
-            (get_my_profile()).parkrun_number $$,
+  $$ select subscription_tier, parkrun_number from get_my_profile() $$,
   $$ values ('pro'::text, 'A777'::text) $$,
   'get_my_profile() returns full self row including locked-down columns'
 );

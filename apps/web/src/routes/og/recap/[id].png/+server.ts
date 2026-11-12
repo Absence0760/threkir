@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { renderRecapOgPng } from '$lib/share/og_recap_png';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { renderRecapOgPng } from '#lib/share/og_recap_png.ts';
 
 // Per-recap og:image PNG renderer. Served at REQUEST time, never
 // prerendered (a recap published after the last build wouldn't exist as a

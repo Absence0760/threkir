@@ -17,7 +17,6 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/runs_screen.dart';
 import '../lib/widgets/activity_timeline_list.dart';
-import '../lib/widgets/surface_peer_strip.dart';
 
 /// Fake client: signed in, no remote runs. The History timeline is now built
 /// from the LOCAL stores (not `fetchActivities`), so the test seeds those
@@ -27,10 +26,15 @@ class _FakeApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async =>
+      (runs: const <Run>[], cursor: cursor);
+
+  @override
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async =>
       const [];
 }
@@ -45,10 +49,15 @@ class _HydrationProbeApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async =>
+      (runs: const <Run>[], cursor: cursor);
+
+  @override
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async =>
       const [];
 
@@ -56,6 +65,14 @@ class _HydrationProbeApi extends ApiClient {
   Future<List<({Map<String, dynamic> workout, List<Map<String, dynamic>> sets})>>
       fetchGymWorkoutsWithSets({int limit = 50}) async {
     gymFetches++;
+    throw StateError('probe: server unavailable');
+  }
+
+  @override
+  Future<List<FoodLogRow>> fetchFoodLog({
+    required DateTime from,
+    required DateTime to,
+  }) async {
     throw StateError('probe: server unavailable');
   }
 }
@@ -235,7 +252,7 @@ void main() {
     // Runs chip → the manual Add-run FAB.
     await tester.tap(find.text('Runs'));
     await tester.pumpAndSettle();
-    expect(find.descendant(of: fab, matching: find.text(l10n.historyAddRun)),
+    expect(find.descendant(of: fab, matching: find.text(l10n.historyAddPastRun)),
         findsOneWidget);
 
     // Lifts chip → adds a lift straight away.
@@ -257,7 +274,7 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(FloatingActionButton),
-            matching: find.text(l10n.historyAddRun)),
+            matching: find.text(l10n.historyAddPastRun)),
         findsOneWidget);
   });
 
@@ -280,6 +297,41 @@ void main() {
     await pump(tester, withGym: true, api: api);
     expect(api.gymFetches, greaterThan(0),
         reason: 'History should hydrate the gym store on mount');
+  });
+
+  // A failed read is not an empty result. Both hops used to be swallowed into
+  // a debugPrint, so a dropped connection rendered as the "no runs yet" state
+  // (or, with runs, as the run list instead of the timeline) with nothing to
+  // say so. Mirrors web /history's `history-load-error` card.
+  testWidgets('a failed modality hydrate with nothing to show offers a retry',
+      (tester) async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final api = _HydrationProbeApi();
+    await pump(tester, withGym: true, api: api);
+    expect(find.text(l10n.historyModalityLoadFailed), findsOneWidget);
+    expect(find.text(l10n.historyEmptyTitle), findsNothing);
+
+    final before = api.gymFetches;
+    await tester.tap(find.text(l10n.errorStateRetry));
+    await tester.pumpAndSettle();
+    expect(api.gymFetches, greaterThan(before),
+        reason: 'Retry should re-run the hydrate');
+    // Still failing, so the surface says so again rather than falling back to
+    // the empty state.
+    expect(find.text(l10n.historyModalityLoadFailed), findsOneWidget);
+  });
+
+  testWidgets('a failed modality hydrate keeps the local rows and warns above '
+      'them', (tester) async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pump(tester,
+        runs: [runRow('r1')], withGym: true, api: _HydrationProbeApi());
+    // The locally-held run is still listed — replacing it with an error card
+    // would hide data the device really has.
+    expect(find.byType(RunsScreen), findsOneWidget);
+    expect(find.text(l10n.historyModalityLoadFailed), findsOneWidget);
+    expect(find.text(l10n.errorStateRetry), findsOneWidget);
+    expect(find.text(l10n.historyEmptyTitle), findsNothing);
   });
 
   testWidgets('expanded width caps the timeline at kContentMaxWidth',
@@ -305,94 +357,5 @@ void main() {
         lifts: [liftRow('l1', 'Leg day')],
         meals: [mealRow('m1', 'Rice bowl')]);
     expect(tester.getSize(find.byType(ActivityTimelineList)).width, 800);
-  });
-
-  /// Mount the run-list (Runs sub-tab) shape with the labelled peer strip
-  /// wired, the way the Fitness hub's Runs tab does.
-  Future<void> pumpRunList(
-    WidgetTester tester, {
-    List<SurfacePeer>? peers,
-  }) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = Preferences();
-    await prefs.init();
-    final runStore = LocalRunStore();
-    await runStore.init(overrideDirectory: tmp('runs_nav_'));
-
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: RunsScreen(
-        apiClient: _FakeApi(),
-        runStore: runStore,
-        routeStore: LocalRouteStore(),
-        preferences: prefs,
-        surfacePeers: peers,
-      ),
-    ));
-    await tester.pumpAndSettle();
-  }
-
-  testWidgets(
-      'the run surface renders every peer as a label and fires the tapped one',
-      (tester) async {
-    var routesTaps = 0;
-    var plansTaps = 0;
-    var racesTaps = 0;
-    await pumpRunList(tester, peers: [
-      const SurfacePeer(label: 'Runs'),
-      SurfacePeer(label: 'Routes', onTap: () => routesTaps++),
-      SurfacePeer(label: 'Plans', onTap: () => plansTaps++),
-      SurfacePeer(label: 'Races', onTap: () => racesTaps++),
-    ]);
-
-    final strip = find.byType(SurfacePeerStrip);
-    expect(strip, findsOneWidget);
-    for (final label in ['Runs', 'Routes', 'Plans', 'Races']) {
-      expect(find.descendant(of: strip, matching: find.text(label)),
-          findsOneWidget);
-    }
-
-    await tester.tap(find.descendant(of: strip, matching: find.text('Plans')));
-    await tester.pumpAndSettle();
-    expect(plansTaps, 1);
-    expect(routesTaps, 0);
-    expect(racesTaps, 0);
-  });
-
-  testWidgets('the current peer is marked selected and does not navigate',
-      (tester) async {
-    await pumpRunList(tester, peers: [
-      const SurfacePeer(label: 'Runs'),
-      SurfacePeer(label: 'Routes', onTap: () {}),
-    ]);
-
-    final chips = tester.widgetList<ChoiceChip>(find.byType(ChoiceChip)).toList();
-    expect(chips.length, 2);
-    expect(chips[0].selected, isTrue);
-    expect(chips[1].selected, isFalse);
-
-    // Tapping the peer you are already on is a no-op, not a re-push.
-    await tester.tap(find.text('Runs'));
-    await tester.pumpAndSettle();
-    expect(find.byType(RunsScreen), findsOneWidget);
-  });
-
-  testWidgets('no peer strip on a mount that supplies none', (tester) async {
-    await pumpRunList(tester);
-    expect(find.byType(SurfacePeerStrip), findsNothing);
-  });
-
-  testWidgets('the peer strip survives 320dp with the longest German labels',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(320, 640));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await pumpRunList(tester, peers: [
-      const SurfacePeer(label: 'Läufe'),
-      SurfacePeer(label: 'Routen', onTap: () {}),
-      SurfacePeer(label: 'Trainingspläne', onTap: () {}),
-      SurfacePeer(label: 'Rennkalender', onTap: () {}),
-    ]);
-    expect(tester.takeException(), isNull);
   });
 }

@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { liveMonthLabel, seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent, showAllPlanWeeks, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — PlanCalendar.svelte (the month-view calendar mounted
@@ -18,7 +19,7 @@ import { USER_A } from '../fixtures/users';
  *   - Cells outside the plan window (.out-plan) drawn as ghosts
  *   - Today marker (.today, primary border + shadow)
  *   - Per-workout cell: kind-colour border-left, kind pill, distance,
- *     completed checkmark, .done background tint
+ *     completed checkmark, data-status="done" tint
  *   - onSelect handler dispatch when the host wants the click to open
  *     an editor instead of navigating to /plans/[id]/workouts/[wid]
  *
@@ -91,13 +92,9 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		// intercept pointer events on the modal buttons we click below.
 		// The banner mounts on every cold page load when localStorage
 		// has no `cookie_consent` entry — Playwright contexts start
-		// without one even though the auth storage state is loaded.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		// without one even though the auth storage state is loaded. The
+		// Calendar section starts shut (decisions § 2375); these read inside it.
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	// The narrowest type in the app used to live here: `.kind-pill` shrank to
@@ -131,10 +128,12 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 	});
 
 	test('Calendar section mounts under the plan-detail hero', async ({ page }) => {
-		// `<section class="calendar-section">` + `<h2 class="section-title">Calendar</h2>`
-		// + `.cal` from PlanCalendar. A regression that dropped the
-		// component from the page (e.g. inadvertent {#if} guard) would
-		// surface here. The .cal class is unique to PlanCalendar.
+		// `<section class="calendar-section">` — a named expander since #905
+		// workstream 3, so the `<h2 class="section-title">Calendar</h2>` now sits
+		// in its `<summary>` and `.cal` from PlanCalendar in its body. Open by
+		// default. A regression that dropped the component from the page (e.g.
+		// inadvertent {#if} guard) would surface here. The .cal class is unique
+		// to PlanCalendar.
 		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 		await expect(page.locator('section.calendar-section')).toBeVisible({
 			timeout: 10_000
@@ -241,7 +240,7 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		expect(styleAttr).toContain('--kind:');
 	});
 
-	test('Completed workout cell shows the check icon and .done class', async ({
+	test('Completed workout cell shows the check icon and the done status', async ({
 		page
 	}) => {
 		// The seed marks the week-0 long run completed via
@@ -249,13 +248,13 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		// PlanCalendar's `isWorkoutCompleted` returns true for either
 		// `manually_completed = true` OR a non-null completed_run_id.
 		// Walk to the plan's first month (where 2026-03-29 lands after
-		// the seed shift) + assert at least one .done cell.
+		// the seed shift) + assert at least one done cell.
 		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 		await expect(page.locator('.cal')).toBeVisible({ timeout: 10_000 });
 
 		await walkToMonth(page, FIRST_MONTH_LABEL);
 
-		const doneCells = page.locator('.cal .cell.has-workout.done');
+		const doneCells = page.locator('.cal .cell.has-workout[data-status="done"]');
 		expect(await doneCells.count()).toBeGreaterThanOrEqual(1);
 		await expect(doneCells.first().locator('.check')).toBeVisible();
 	});
@@ -351,12 +350,12 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		expect(workoutCount).toBeGreaterThanOrEqual(0);
 	});
 
-	test('Newly-marked-done workout flips the calendar cell to .done after reload', async ({
+	test('Newly-marked-done workout flips the calendar cell to done after reload', async ({
 		page
 	}) => {
 		// Round-trip test: open a non-completed workout via the cal,
 		// Mark as done, then re-navigate to the same month and assert
-		// the cell now carries .done. Pins the load() → re-fetch path
+		// the cell now carries data-status="done". Pins the load() → re-fetch path
 		// that ties WorkoutEditor's onSaved callback back to the
 		// PlanCalendar render. Without it, the calendar would render
 		// stale data after a write.
@@ -368,7 +367,8 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		// also flips the matching calendar cell because PlanCalendar
 		// renders from the same `workouts` array. Pick a specific
 		// non-completed workout (Apr 7 tempo) to keep this deterministic.
-		const tempoDay = page.locator('.weeks .week .day:not(.completed) .day-link', {
+		await showAllPlanWeeks(page);
+		const tempoDay = page.locator('.weeks .week .day:not([data-status="done"]) .day-link', {
 			hasText: /Tempo/
 		}).first();
 		await tempoDay.click();
@@ -384,10 +384,10 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		await walkToMonth(page, SECOND_MONTH_LABEL);
 
 		// load() re-fetched; the Apr 7 Tempo cell in the calendar now
-		// carries .done. Locate by kind pill so the assertion targets
+		// carries data-status="done". Locate by kind pill so the assertion targets
 		// the precise cell — not the seed-completed Apr 5 Long.
 		await expect(
-			page.locator('.cal .cell.has-workout.done', {
+			page.locator('.cal .cell.has-workout[data-status="done"]', {
 				has: page.locator('.kind-pill', { hasText: /^Tempo$/ })
 			})
 		).toBeVisible({ timeout: 10_000 });

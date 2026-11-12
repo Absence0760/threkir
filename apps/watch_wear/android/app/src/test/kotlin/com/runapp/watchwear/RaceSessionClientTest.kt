@@ -1,8 +1,15 @@
 package com.runapp.watchwear
 
 import java.io.File
+import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -134,7 +141,7 @@ class RaceSessionClientTest {
     // ───────────── source-level fix guard ─────────────
 
     @Test
-    fun `fetchActive interpolations route through enc helper`() {
+    fun `instance interpolations route through enc helper`() {
         // Source-level guard: the bug was raw `$instance` /
         // `$eventId` / `$userId` interpolation. The fix wraps every
         // value with `enc(...)`. Pin that the listener can't quietly
@@ -145,12 +152,16 @@ class RaceSessionClientTest {
         val src = File(
             "src/main/kotlin/com/runapp/watchwear/RaceSessionClient.kt"
         ).readText()
-        // The fix uses `enc(instance)` — assert the encoded form is
-        // present AND no `=eq.$instance` raw form sneaked back in.
+        // Discovery is one RPC now (#1306), so the instance a query
+        // interpolates is the course and status reads' `instanceStart`:
+        // assert the encoded form is present AND no raw form sneaked back.
         assertTrue(
-            "fetchActive must interpolate `instance` via enc(...) — " +
-                "got source with no `enc(instance)` call",
-            src.contains("enc(instance)"),
+            "instance reads must interpolate `instanceStart` via enc(...)",
+            src.contains("enc(instanceStart)"),
+        )
+        assertFalse(
+            "raw `=eq.\$instanceStart` interpolation regressed the fix",
+            src.contains("=eq.\$instanceStart"),
         )
         assertFalse(
             "raw `=eq.\$instance` interpolation regressed the fix",
@@ -165,5 +176,292 @@ class RaceSessionClientTest {
             "raw `=eq.\$eventId` interpolation regressed the fix",
             src.contains("=eq.\$eventId"),
         )
+    }
+
+    // ───────────── course read: the finish comes off the course row ─────────────
+
+    /// A client whose every request is answered from [bodies] by path, with
+    /// the URLs it was asked for recorded — no socket is opened.
+    private fun recordingClient(
+        bodies: Map<String, String>,
+        seen: MutableList<String>,
+    ): RaceSessionClient {
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request()
+                seen += req.url.toString()
+                val body = bodies[req.url.encodedPath] ?: "[]"
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody(null))
+                    .build()
+            }
+            .build()
+        return RaceSessionClient("https://example.test", "anon", http)
+    }
+
+    @Test
+    fun `fetchCourse reads the finish point from the course row and never the route`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":51.1,"finish_lng":0.2}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }
+        assertNotNull(course)
+        assertEquals(51.1, course!!.finishLat!!, 0.0)
+        assertEquals(0.2, course.finishLng!!, 0.0)
+        assertEquals(10_000.0, course.distanceM!!, 0.0)
+        assertEquals("attendee, live course row, frozen copy", 3, seen.size)
+        assertTrue(seen[1].contains("finish_lat") && seen[1].contains("finish_lng"))
+        assertFalse("the route must not be read", seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    @Test
+    fun `fetchCourse times by the race's frozen copy of the course, lines included`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"5K","distance_m":5200,"finish_lat":51.2,"finish_lng":0.3,
+                        "start_lat":51.0,"start_lng":0.1,
+                        "start_gate_lat":51.0,"start_gate_lng":0.1,"start_gate_bearing_deg":45,"start_gate_half_width_m":10}]""",
+                "/rest/v1/race_session_courses" to
+                    """[{"course_id":"c1","distance_m":5000,"finish_lat":51.1,"finish_lng":0.2,
+                        "start_gate_lat":51.01,"start_gate_lng":0.11,"start_gate_bearing_deg":90,"start_gate_half_width_m":15,
+                        "finish_gate_lat":51.1,"finish_gate_lng":0.2,"finish_gate_bearing_deg":90,"finish_gate_half_width_m":15,
+                        "finish_line_self_cross":true,"finish_lap_count":3}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00+00:00") }!!
+        assertEquals("a mid-race edit of the live row moves only the next race", 5000.0, course.distanceM!!, 0.0)
+        assertEquals(51.1, course.finishLat!!, 0.0)
+        assertEquals(Gate(51.01, 0.11, 90.0, 15.0), course.startGate)
+        assertEquals(Gate(51.1, 0.2, 90.0, 15.0), course.finishGate)
+        assertTrue(course.finishLineSelfCross)
+        assertEquals("the late-start point stays the live row's", 51.0, course.startLat!!, 0.0)
+        val frozen = seen.single { it.contains("/rest/v1/race_session_courses") }
+        assertTrue(frozen.contains("course_id=eq.c1") && frozen.contains("%2B00%3A00"))
+        assertTrue(frozen.contains("finish_line_self_cross"))
+        assertEquals("the frozen lap count (decisions § 2472)", 3, course.lapCount)
+        assertTrue(frozen.contains("finish_lap_count"))
+    }
+
+    @Test
+    fun `fetchCourse keeps the live row's lines when the race has no frozen copy`() {
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"5K","distance_m":5000,"finish_lat":51.1,"finish_lng":0.2,
+                        "finish_gate_lat":51.1,"finish_gate_lng":0.2,"finish_gate_bearing_deg":90,"finish_gate_half_width_m":15,
+                        "start_gate_lat":51.0,"start_gate_lng":null,"start_gate_bearing_deg":90,"start_gate_half_width_m":15}]""",
+            ),
+            mutableListOf(),
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }!!
+        assertEquals(Gate(51.1, 0.2, 90.0, 15.0), course.finishGate)
+        assertNull("a line missing a column is no line", course.startGate)
+        assertFalse(course.finishLineSelfCross)
+        assertNull("the live row has no lap count", course.lapCount)
+    }
+
+    @Test
+    fun `deleteOwnAutoResult deletes only the runner's own automatic row`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                seen += chain.request()
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(204)
+                    .message("No Content")
+                    .body("".toResponseBody(null))
+                    .build()
+            }
+            .build()
+        val client = RaceSessionClient("https://example.test", "anon", http)
+        runBlocking { client.deleteOwnAutoResult("t", "u1", "e1", "2026-05-22T18:00:00+00:00") }
+        val req = seen.single()
+        assertEquals("DELETE", req.method)
+        assertEquals("/rest/v1/event_results", req.url.encodedPath)
+        assertEquals("eq.auto", req.url.queryParameter("finish_method"))
+        assertEquals("eq.u1", req.url.queryParameter("user_id"))
+        assertEquals("eq.e1", req.url.queryParameter("event_id"))
+        assertEquals("eq.2026-05-22T18:00:00+00:00", req.url.queryParameter("instance_start"))
+    }
+
+    @Test
+    fun `submitResult files through file_event_result with the result under p_result`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                seen += chain.request()
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(204)
+                    .message("No Content")
+                    .body("".toResponseBody(null))
+                    .build()
+            }
+            .build()
+        val client = RaceSessionClient("https://example.test", "anon", http)
+        val result = PendingRaceResult(
+            userId = "u1",
+            eventId = "e1",
+            instanceStart = "2026-05-22T18:00:00+00:00",
+            runId = null,
+            durationS = 1500,
+            distanceM = 5000.0,
+            finisherStatus = "finished",
+        )
+        runBlocking { client.submitResult("t", result) }
+        val req = seen.single()
+        assertEquals("POST", req.method)
+        assertEquals("/rest/v1/rpc/file_event_result", req.url.encodedPath)
+        assertNull("no upsert resolution on an RPC", req.header("Prefer"))
+        val buffer = okio.Buffer()
+        req.body!!.writeTo(buffer)
+        val sent = kotlinx.serialization.json.Json.parseToJsonElement(buffer.readUtf8())
+            as kotlinx.serialization.json.JsonObject
+        assertEquals(setOf("p_result"), sent.keys)
+        assertEquals(RaceSessionClient.resultBody(result), sent["p_result"])
+    }
+
+    @Test
+    fun `fetchCourse with no finish point returns the course for a manual finish, no route read`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":null,"finish_lng":null}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }!!
+        assertEquals("c1", course.id)
+        assertNull(RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM))
+        assertFalse(seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    @Test
+    fun `fetchCourse reads the start point off the course row for the late-start check`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":51.1,"finish_lng":0.2,"start_lat":51.0,"start_lng":0.1}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }!!
+        assertTrue(course.hasStart)
+        assertEquals(51.0, course.startLat!!, 0.0)
+        assertEquals(0.1, course.startLng!!, 0.0)
+        assertTrue(seen[1].contains("start_lat") && seen[1].contains("start_lng"))
+        assertFalse("the route must not be read", seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    @Test
+    fun `a missing or half start pair reads as no start point`() {
+        val missing = RaceSessionClient.parseCourse("""[{"id":"c1","finish_lat":51.1,"finish_lng":0.2}]""")!!
+        assertFalse(missing.hasStart)
+        val half = RaceSessionClient.parseCourse("""[{"id":"c1","start_lat":51.0,"start_lng":null}]""")!!
+        assertFalse(half.hasStart)
+        assertNull(half.startLat)
+    }
+
+    // ───────────── ping: the clock offset's server timestamp ─────────────
+
+    private fun pingClient(body: String, seen: MutableList<okhttp3.Request>): RaceSessionClient {
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request()
+                seen += req
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(201)
+                    .message("Created")
+                    .body(body.toResponseBody(null))
+                    .build()
+            }
+            .build()
+        return RaceSessionClient("https://example.test", "anon", http)
+    }
+
+    private fun ping(client: RaceSessionClient) = runBlocking {
+        client.pushPing("t", "u1", "e1", "2026-05-22T18:00:00Z", 51.1, 0.2, 1200.0, 360, null)
+    }
+
+    @Test
+    fun `pushPing reads the inserted row's at back as a clock sample`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val sample = ping(pingClient("""[{"at":"2026-05-22T18:06:00.25+00:00"}]""", seen))
+        assertNotNull(sample)
+        assertEquals(1_779_473_160_250L, sample!!.serverAtMs)
+        assertTrue(sample.receivedAtMs >= sample.sentAtMs)
+        val req = seen.single()
+        assertEquals("POST", req.method)
+        assertEquals("/rest/v1/race_pings", req.url.encodedPath)
+        assertEquals("at", req.url.queryParameter("select"))
+        assertEquals("return=representation", req.header("Prefer"))
+    }
+
+    @Test
+    fun `pushPing with no readable at gives no sample`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        assertNull(ping(pingClient("[]", seen)))
+        assertNull(ping(pingClient("""[{"at":"not a time"}]""", seen)))
+        assertNull(RaceSessionClient.parsePingAtMs("""[{"at":null}]"""))
+    }
+
+    @Test
+    fun `discovery reads my_race_sessions by window, preferring a live race`() {
+        val body = """[
+          {"event_id":"e1","instance_start":"2026-11-08T09:00:00+00:00","status":"armed",
+           "effective_status":"armed","start_mode":"scheduled","started_at":null,
+           "scheduled_start_at":"2026-11-08T09:30:00+00:00","window_opens_at":null,
+           "window_closes_at":"2026-11-08T12:30:00+00:00","event_title":"Saturday 5K"},
+          {"event_id":"e2","instance_start":"2026-11-01T09:00:00+00:00","status":"running",
+           "effective_status":"running","start_mode":"self_timed","started_at":"2026-11-02T06:00:00+00:00",
+           "scheduled_start_at":null,"window_opens_at":"2026-11-02T06:00:00+00:00",
+           "window_closes_at":"2026-11-09T06:00:00+00:00","event_title":"Park trial"},
+          {"instance_start":"broken row"}
+        ]"""
+        val races = RaceSessionClient.parseMyRaceSessions(body)
+        assertEquals(2, races.size)
+        assertEquals("scheduled", races[0].startMode)
+        assertEquals("2026-11-08T09:30:00+00:00", races[0].startInstantIso)
+        val pick = RaceSessionClient.pickActiveRace(races)
+        assertEquals("e2", pick?.eventId)
+        assertEquals("self_timed", pick?.startMode)
+        assertEquals(
+            "a self-timed window starts at its opening, days after the occurrence",
+            "2026-11-02T06:00:00+00:00",
+            pick?.startInstantIso,
+        )
+    }
+
+    @Test
+    fun `the effective status wins over the stored one`() {
+        val body = """[{"event_id":"e1","instance_start":"2026-11-08T09:00:00+00:00",
+          "status":"armed","effective_status":"running","start_mode":"scheduled",
+          "scheduled_start_at":"2026-11-08T09:00:00+00:00"}]"""
+        assertEquals("running", RaceSessionClient.parseMyRaceSessions(body).single().status)
+        assertTrue(RaceSessionClient.parseMyRaceSessions("not json").isEmpty())
     }
 }

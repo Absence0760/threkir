@@ -28,7 +28,7 @@ Run _run({Map<String, dynamic>? metadata, List<Waypoint>? track}) => Run(
     );
 
 RunRow _row({dynamic metadata, String activityType = 'run', double? elevationGainM}) =>
-    RunRow(
+    RunRow(safetyAudience: false, 
       id: 'run-1',
       userId: 'owner-1',
       startedAt: _startedAt,
@@ -36,6 +36,7 @@ RunRow _row({dynamic metadata, String activityType = 'run', double? elevationGai
       distanceM: 5000,
       source: 'app',
       isDnf: false,
+      followersOnly: false,
       metadata: metadata,
       activityType: activityType,
       elevationGainM: elevationGainM,
@@ -102,7 +103,7 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(RunListTile), findsOneWidget);
   });
 
   testWidgets('a row with no metadata bag builds', (tester) async {
@@ -117,7 +118,7 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(RunListTile), findsOneWidget);
   });
 
   testWidgets('the row does not widen on a flat run', (tester) async {
@@ -202,7 +203,7 @@ void main() {
       await _pump(tester, tile);
       widths.add(tester
           .getRect(find.descendant(
-              of: find.byType(ListTile), matching: find.byType(SizedBox).first))
+              of: find.byType(RunListTile), matching: find.byType(SizedBox).first))
           .width);
     }
     expect(widths.toSet(), hasLength(1),
@@ -237,5 +238,85 @@ void main() {
     expect(find.byIcon(Icons.cloud_upload_outlined), findsNothing,
         reason: 'sync state is the owner\'s own concern; a profile row has no '
             'field for it, which is why the constructors are separate');
+  });
+
+  testWidgets('a parked run reads as stuck, not as queued', (tester) async {
+    // "Waiting" and "stuck" are different promises and only one of them is
+    // true. Before decisions § 1070 both rendered as the queued-to-sync cloud,
+    // so a run that would never sync advertised that it was about to.
+    await _pump(
+      tester,
+      RunListTile.owned(
+        run: _run(),
+        unit: DistanceUnit.km,
+        api: null,
+        onTap: () {},
+        isUnsynced: true,
+        isBlocked: true,
+      ),
+    );
+
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_upload_outlined), findsNothing,
+        reason: 'the blocked mark outranks the queued one; showing both, or '
+            'showing the queued one, promises a sync that cannot happen');
+
+    final semantics = tester.widget<Semantics>(
+      find.ancestor(
+        of: find.byType(Card),
+        matching: find.byType(Semantics),
+      ).first,
+    );
+    final en = lookupAppLocalizations(const Locale('en'));
+    expect(semantics.properties.label,
+        contains(en.historyBlockedRowSemantics));
+    expect(semantics.properties.label,
+        isNot(contains(en.historyUnsyncedRowSemantics)));
+  });
+
+  testWidgets('the row fits a phone at 2x text with the sync mark showing',
+      (tester) async {
+    // ListTile capped its trailing slot at 56 px, so the value-over-unit
+    // stack overflowed by 16 px at 2x. The row now grows with its content;
+    // a narrow phone is the other half, where the title must ellipsize
+    // rather than push past the metric.
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    await Preferences().init();
+
+    final heights = <double>[];
+    for (final scale in const [1.0, 2.0]) {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: Scaffold(
+            body: ListView(children: [
+              RunListTile.owned(
+                run: _run(metadata: const {'activity_type': 'run'}),
+                unit: DistanceUnit.km,
+                api: null,
+                onTap: () {},
+                isUnsynced: true,
+              ),
+            ]),
+          ),
+        ),
+      ));
+      await tester.pump();
+      final e = tester.takeException(); if (e != null) { debugPrint((e as FlutterError).toStringDeep()); } expect(e, isNull);
+
+      final value = tester.getRect(find.text('5:00'));
+      final unit = tester.getRect(find.text('/km'));
+      expect(unit.top, greaterThanOrEqualTo(value.bottom),
+          reason: 'the unit stays under the value');
+      heights.add(tester.getSize(find.byType(Card)).height);
+    }
+    expect(heights.last, greaterThan(heights.first),
+        reason: 'the row grows with the text instead of clipping it');
   });
 }

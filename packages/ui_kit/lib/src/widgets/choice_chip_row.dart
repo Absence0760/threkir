@@ -11,9 +11,10 @@ class ChoiceChipOption<T> {
   /// only be English.
   final String label;
 
-  /// Optional leading glyph. Material swaps it for the selection checkmark
-  /// while the chip is selected, which is the behaviour that makes selection
-  /// legible without relying on the fill colour alone.
+  /// Optional leading glyph, replaced by a checkmark while the chip is
+  /// selected — which is what makes selection legible without relying on the
+  /// fill colour alone. Without one the chip still reserves the slot, so
+  /// selecting it does not change its width.
   final IconData? icon;
 }
 
@@ -34,7 +35,7 @@ class ChoiceChipOption<T> {
 /// A `Wrap` of `ChoiceChip`s cannot do either. A chip is sized by its own
 /// label, so nothing is clipped; when the run no longer fits, it moves to a
 /// second line. One run of chips lays out exactly as the segmented row did, so
-/// the common case is unchanged. It also restores the M3 checkmark that
+/// the common case is unchanged. It also restores the checkmark that
 /// `SegmentedButton` sites had been switching off to save width, so selection
 /// stops being signalled by fill colour alone.
 class ChoiceChipRow<T> extends StatelessWidget {
@@ -65,7 +66,26 @@ class ChoiceChipRow<T> extends StatelessWidget {
         for (final option in options)
           ChoiceChip(
             label: Text(option.label),
-            avatar: option.icon == null ? null : Icon(option.icon, size: 18),
+            // Never a null avatar. With no avatar, Material grows the chip to
+            // fit the checkmark as it animates in and shrinks the one losing
+            // it, so every selection resized two chips and slid the row
+            // sideways. With one, every chip holds the same square slot.
+            //
+            // The checkmark is ours, not Material's: Material paints its own
+            // over the avatar after darkening the avatar's circle, so a chip
+            // with an icon showed a dark disc with the glyph and the check
+            // drawn through each other. Swapping the glyph for the check
+            // keeps the cue and drops the collision.
+            avatar: option.value == selected
+                ? Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Theme.of(context).chipTheme.checkmarkColor,
+                  )
+                : option.icon == null
+                    ? const SizedBox.shrink()
+                    : Icon(option.icon, size: 18),
+            showCheckmark: false,
             selected: option.value == selected,
             onSelected:
                 onChanged == null ? null : (_) => onChanged!(option.value),

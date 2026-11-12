@@ -16,11 +16,19 @@
 // would otherwise pick up the global class and overlay the page (a
 // clickjacking vector documented in the audit pass-2 report).
 //
-// `ALLOWED_URI_REGEXP` is locked down to https/http/mailto. DOMPurify's
-// default allow-list also includes `tel:`, `sms:`, `xmpp:`, `cid:`,
-// `matrix:`, `callto:` — none of which a running-app coach should
-// emit. Matches the mobile `flutter_markdown` `_onCoachLinkTap`
+// `ALLOWED_URI_REGEXP` is locked down to https/http/mailto plus root-relative
+// app paths. DOMPurify's default allow-list also includes `tel:`, `sms:`,
+// `xmpp:`, `cid:`, `matrix:`, `callto:` — none of which a running-app coach
+// should emit. Matches the mobile `flutter_markdown` `_onCoachLinkTap`
 // allow-list. /audit/all xss Medium.
+//
+// Root-relative paths (`/runs/<id>`, `/plans/new?describe=…`) are the links
+// the system prompt tells the coach to write. `//host` and `/\host` are
+// refused: a browser resolves both as protocol-relative, i.e. off-site.
+// DOMPurify tests the value with whitespace stripped, so a tab or space
+// between the slashes cannot smuggle one through. An app path loses the forced
+// `target`: SvelteKit's router treats any anchor with one as external, so the
+// link would open the app in a second tab instead of navigating in place.
 
 import { marked } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
@@ -41,10 +49,13 @@ const COACH_ALLOWED_TAGS = [
 // to digits-only, so they carry no script vector even then.
 const COACH_ALLOWED_ATTR = ['href', 'lang', 'title'];
 
+const APP_PATH = /^\/(?![\/\\])/;
+
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 	if (node.tagName === 'A') {
 		node.setAttribute('target', '_blank');
 		node.setAttribute('rel', 'noopener noreferrer');
+		if (APP_PATH.test(node.getAttribute('href') ?? '')) node.removeAttribute('target');
 	}
 });
 
@@ -54,6 +65,6 @@ export function renderCoachMarkdown(content: string): string {
 		ALLOWED_TAGS: COACH_ALLOWED_TAGS,
 		ALLOWED_ATTR: COACH_ALLOWED_ATTR,
 		ALLOW_DATA_ATTR: false,
-		ALLOWED_URI_REGEXP: /^(?:https?|mailto):/i,
+		ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?![\/\\]))/i,
 	});
 }

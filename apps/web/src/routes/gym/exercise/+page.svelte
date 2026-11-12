@@ -1,16 +1,20 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchExerciseSetHistoryWithError } from '$lib/core/data';
-	import { exerciseProgress, type ExerciseProgress, type ExerciseSession } from '$lib/gym/exercise_history';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { smartBack } from '$lib/util/smart_back';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchExerciseSetHistoryWithError } from '#lib/core/data.ts';
+	import { exerciseProgress, type ExerciseProgress, type ExerciseSession } from '#lib/gym/exercise_history.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 
 	const back = smartBack();
-	const name = $derived($page.url.searchParams.get('name') ?? '');
+	const name = $derived(page.url.searchParams.get('name') ?? '');
 
 	let progress = $state<ExerciseProgress | null>(null);
 	let loading = $state(true);
@@ -26,7 +30,7 @@
 		}
 		const res = await fetchExerciseSetHistoryWithError(name);
 		progress = res.error ? null : exerciseProgress(res.sets, name);
-		loadError = res.error;
+		loadError = res.error ? errorCopy(res.error, t, 'gym exercise: loadError') : null;
 		loading = false;
 	}
 
@@ -93,15 +97,15 @@
 
 	{#if loading}
 		<div class="skel-head" aria-hidden="true">
-			<span class="skel skel-line skel-w-50"></span>
-			<span class="skel skel-line skel-w-30"></span>
+			<SkeletonBlock height="1.4rem" width="50%" />
+			<SkeletonBlock height="0.95rem" width="30%" />
 		</div>
 		<ul class="session-list" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
-				<li class="skel-row"><span class="skel skel-line"></span></li>
+				<li class="skel-row"><SkeletonBlock height="0.95rem" /></li>
 			{/each}
 		</ul>
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -112,18 +116,18 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if !progress}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">monitoring</span>
-			<p class="empty-text">{t('gym.exercise.empty')}</p>
-			<a href="/gym/records" class="btn btn-outline" onclick={back.handle}>{t('gym.exercise.back')}</a>
-		</div>
+		<EmptyState icon="monitoring" title={t('gym.exercise.empty')}>
+			{#snippet actions()}
+				<a href="/gym/records" class="btn btn-outline" onclick={back.handle}>{t('gym.exercise.back')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<header class="head">
 			<h1>{progress.exerciseName}</h1>
 			<div class="headline">
 				{#if progress.latestEst1RmKg != null}
 					<span class="big-1rm">{formatWeight(progress.latestEst1RmKg)}</span>
-					<span class="section-label">{t('gym.pr.e1rm')}</span>
+					<span class="section-label"><MetricLabel metric="e1rm" /></span>
 				{/if}
 				{#if progress.est1RmDeltaKg != null}
 					<span class="delta delta-{deltaDir(progress)}">
@@ -156,7 +160,7 @@
 							{#if s.isEst1RmPr}
 								<span class="pr-badge">
 									<span class="material-symbols" aria-hidden="true">trophy</span>
-									{t('gym.pr.e1rm')}
+									<MetricLabel metric="e1rm" plain />
 								</span>
 							{/if}
 							<span class="row-top-set">{topSetLine(s)}</span>
@@ -166,7 +170,7 @@
 								<div class="bar-fill" style="width: {barPct(s)}%"></div>
 							</div>
 							<div class="row-metrics">
-								<span>{formatWeight(s.bestEst1RmKg)} <span class="section-label">{t('gym.pr.e1rm')}</span></span>
+								<span>{formatWeight(s.bestEst1RmKg)} <span class="section-label"><MetricLabel metric="e1rm" plain /></span></span>
 								{#if s.volumeKg > 0}
 									<span>{formatWeight(s.volumeKg)} <span class="section-label">{t('gym.volumeLabel')}</span></span>
 								{/if}
@@ -326,31 +330,6 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-	}
-	.empty-card .btn {
-		margin-top: var(--space-xs);
-	}
-
 	.skel-head {
 		display: flex;
 		flex-direction: column;
@@ -363,52 +342,7 @@
 		border-radius: var(--radius-lg);
 		background: var(--color-surface);
 	}
-	.skel {
-		display: block;
-		height: 0.95rem;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-w-30 {
-		width: 30%;
-	}
-	.skel-w-50 {
-		width: 50%;
-		height: 1.4rem;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.error-banner {
 		display: flex;
 		align-items: center;

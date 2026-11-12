@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -106,3 +106,41 @@ for (const { name, file } of legalPages) {
 		);
 	});
 }
+
+/**
+ * The scraping integrations were removed on a legal memo: parkrun-import
+ * scraped parkrun against its terms and accepted anyone's athlete number, and
+ * UltraSignup's results leg read the site's internal name-keyed feed. Neither
+ * may come back through a catalogue entry or a stray invoke.
+ */
+function sourceFiles(dir: string): string[] {
+	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+		const path = resolve(dir, entry.name);
+		if (entry.isDirectory()) return sourceFiles(path);
+		return /\.(ts|svelte)$/.test(entry.name) && !entry.name.endsWith('.test.ts') ? [path] : [];
+	});
+}
+
+test('no integration card offers a scraped provider', () => {
+	const availability = readFileSync(
+		resolve(repoRoot, 'apps/web/src/lib/integrations/availability.ts'),
+		'utf-8',
+	);
+	const providers = [...availability.matchAll(/\{\s*provider:\s*'([a-z]+)'/g)].map((m) => m[1]);
+	assert.ok(providers.includes('strava'), 'read no catalogue out of availability.ts — re-anchor this guard');
+	for (const scraped of ['parkrun', 'ultrasignup']) {
+		assert.ok(!providers.includes(scraped), `${scraped} is back in the integration catalogue`);
+	}
+});
+
+test('no web source invokes a scraping leg', () => {
+	const src = resolve(repoRoot, 'apps/web/src');
+	for (const file of sourceFiles(src)) {
+		const text = readFileSync(file, 'utf-8');
+		assert.ok(!text.includes('parkrun-import'), `${file} reaches the removed parkrun-import function`);
+		assert.ok(
+			!/ultraSignUp(FirstName|LastName|PersonId)/.test(text),
+			`${file} sends an UltraSignup person to the removed results leg`,
+		);
+	}
+});

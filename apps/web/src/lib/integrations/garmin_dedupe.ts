@@ -2,6 +2,8 @@
 /// `garmin-zip.ts` so it can be unit-tested without pulling in that
 /// module's Svelte / Supabase dependency graph.
 
+import { KEYSET_WALK_PAGE_SIZE, walkKeyset, type KeysetKey } from '../core/keyset_page';
+
 /// Canonical dedupe key for the `started_at + distance` fallback path.
 /// The three sources that feed the importer's `seenComposite` set format
 /// these fields differently — the DB serialises `started_at` as a
@@ -63,39 +65,47 @@ export function isCrossProviderDuplicate(
 	return false;
 }
 
-/// A raw `{ started_at, distance_m }` row as PostgREST returns it.
+/// A raw `{ id, started_at, distance_m }` row as PostgREST returns it; `id`
+/// and `started_at` are the walk's cursor.
 export interface RawRunRow {
+	id: string;
 	started_at: string | null;
 	distance_m: number | null;
 }
 
-/// Page size + safety ceiling for `collectRunIdentities`, matching the
-/// `fetchRuns` workaround in `core/data.ts`.
-export const RUN_IDENTITY_PAGE_SIZE = 1000;
-export const RUN_IDENTITY_SAFETY_MAX = 50_000;
+/// The order both ZIP importers walk the existing runs in: newest first, `id`
+/// breaking a `started_at` tie so the order is total. Both NOT NULL.
+export const RUN_DEDUPE_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
 
-/// Pull every existing run's start + distance identity across ALL sources by
-/// paging `fetchPage` in `RUN_IDENTITY_PAGE_SIZE` chunks — PostgREST caps an
-/// unbounded SELECT at 1000 rows, which for the high-volume pros the
-/// cross-provider guard exists to protect (1000+ runs) would otherwise
-/// compare against an arbitrary slice and re-import duplicates anyway. Mirrors
-/// the paging loop in `fetchRuns`. `fetchPage` returns the rows for the
-/// inclusive `[from, to]` range, or `null` on error (loop stops, no throw).
+/// One keyset page of the existing runs: apply `after` (null on the first
+/// page), sort by `RUN_DEDUPE_ORDER`, take `limit`.
+export type DedupePage<R> = (
+	after: string | null,
+	limit: number,
+) => PromiseLike<{ data: R[] | null; error: unknown }>;
+
+/// Pull every existing run's start + distance identity across ALL sources.
+/// PostgREST caps an unbounded SELECT at 1000 rows, which for the high-volume
+/// pros the cross-provider guard exists to protect (1000+ runs) would compare
+/// against an arbitrary slice and re-import duplicates anyway — so the read
+/// is walked, and walked by keyset cursor: an OFFSET walk over a history that
+/// a sync changes mid-import drops a row at a page boundary, and a dropped
+/// identity is a run imported twice (§ 1936). A page error ends the walk with
+/// what it has rather than throwing, as it always has.
 export async function collectRunIdentities(
-	fetchPage: (from: number, to: number) => PromiseLike<RawRunRow[] | null>,
-	pageSize: number = RUN_IDENTITY_PAGE_SIZE,
-	safetyMax: number = RUN_IDENTITY_SAFETY_MAX,
+	fetchPage: DedupePage<RawRunRow>,
+	pageSize: number = KEYSET_WALK_PAGE_SIZE,
 ): Promise<RunIdentity[]> {
+	const walk = await walkKeyset(RUN_DEDUPE_ORDER, fetchPage, { pageSize });
+	if (!walk.complete) console.warn('collectRunIdentities: the walk ended short', walk.error);
 	const out: RunIdentity[] = [];
-	for (let from = 0; from < safetyMax; from += pageSize) {
-		const data = await fetchPage(from, from + pageSize - 1);
-		if (!data) break;
-		for (const r of data) {
-			const ms = Date.parse(r.started_at ?? '');
-			if (!Number.isFinite(ms)) continue;
-			out.push({ startedAtMs: ms, distanceM: Number(r.distance_m ?? 0) });
-		}
-		if (data.length < pageSize) break;
+	for (const r of walk.rows) {
+		const ms = Date.parse(r.started_at ?? '');
+		if (!Number.isFinite(ms)) continue;
+		out.push({ startedAtMs: ms, distanceM: Number(r.distance_m ?? 0) });
 	}
 	return out;
 }

@@ -4,14 +4,15 @@
 		fetchRouteConditionsWithError,
 		addRouteCondition,
 		deleteRouteCondition,
-	} from '$lib/core/data';
-	import type { RouteCondition, RouteConditionKind, RouteConditionSeverity } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatRelativeTime } from '$lib/format/time';
-	import { formatDistance } from '$lib/format/units.svelte';
+	} from '#lib/core/data.ts';
+	import type { RouteCondition, RouteConditionKind, RouteConditionSeverity } from '#lib/types.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
 
 	interface Props {
 		routeId: string;
@@ -59,12 +60,12 @@
 		try {
 			const res = await fetchRouteConditionsWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RouteConditions: loadError');
 				return;
 			}
 			conditions = res.conditions;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'RouteConditions: loadError');
 		} finally {
 			loading = false;
 		}
@@ -131,7 +132,7 @@
 			composerOpen = false;
 			showToast(m('routeConditions.reported'), 'success');
 		} catch (e: any) {
-			showToast(m('routeConditions.reportFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('routeConditions.reportFailed', { error: errorCopy(e, m, 'routeConditions.reportFailed') }), 'error');
 		} finally {
 			submitting = false;
 		}
@@ -151,7 +152,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('routeConditions.deleteFailed', { error: e instanceof Error ? e.message : String(e) }),
+					m('routeConditions.deleteFailed', { error: errorCopy(e, m, 'routeConditions.deleteFailed') }),
 					'error',
 				),
 		});
@@ -216,12 +217,12 @@
 
 	{#if loading}
 		<p class="muted">{m('routeConditions.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('routesPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('routesPage.retry')}</button>
 		</div>

@@ -11,12 +11,20 @@
  * lockstep (same parse tolerance, same build rules, same draft shape).
  */
 
+import { namesAnExercise } from '../gym/gym_prs';
+import { prefillFromRoutine, type PlannedRoutine } from '../gym/gym_routine';
 import type { SessionStep } from './session_steps';
 
-export interface EventGymTemplate {
+/**
+ * An alias rather than an interface, and that is load-bearing: only an alias
+ * of an object type gets TypeScript's implicit index signature, so an
+ * interface is refused as the `Json` this jsonb column takes however
+ * JSON-shaped it is. The Dart twin has no such distinction.
+ */
+export type EventGymTemplate = {
 	discipline: string | null;
 	duration_min: number | null;
-}
+};
 
 /** The minimal GymEditor seed the seam produces from a template. */
 export interface GymWorkoutDraft {
@@ -111,5 +119,58 @@ export function workoutDraftFromSession(
 			duration_s: step.durationS,
 			reps: step.reps
 		}))
+	};
+}
+
+/** One logged set per planned routine set (the class -> gym log seam). */
+export interface RoutineDraftItem {
+	exercise_name: string;
+	reps: number | null;
+	weight_kg: number | null;
+	rpe: number | null;
+}
+
+function wholeOrNull(input: string): number | null {
+	if (input === '') return null;
+	const n = Number(input);
+	return Number.isInteger(n) ? n : null;
+}
+
+function finiteOrNull(input: string): number | null {
+	if (input === '') return null;
+	const n = Number(input);
+	return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Produce the gym-log prefill from a class's attached gym routine. The routine
+ * is the club's template and stays theirs: this only seeds the attendee's own
+ * new workout (decisions § 1869). Goes through `prefillFromRoutine`, so the
+ * order and target-to-field mapping are exactly the "Start routine" ones: one
+ * set per planned set, its reps from the target minimum (a fractional target
+ * reads as no reps), weight from the target load, RPE from the target RPE. An
+ * exercise with no planned sets keeps one blank row; a blank-named exercise is
+ * dropped. The title prefers the class discipline, then the routine title.
+ */
+export function workoutDraftFromRoutine(
+	routine: PlannedRoutine,
+	discipline: string | null | undefined
+): GymWorkoutDraft & { sets: RoutineDraftItem[] } {
+	const sets: RoutineDraftItem[] = [];
+	for (const block of prefillFromRoutine(routine)) {
+		if (!namesAnExercise(block.name)) continue;
+		for (const s of block.sets) {
+			sets.push({
+				exercise_name: block.name,
+				reps: wholeOrNull(s.reps),
+				weight_kg: s.weightKg,
+				rpe: finiteOrNull(s.rpe)
+			});
+		}
+	}
+	return {
+		title: asString(discipline ?? null) ?? asString(routine.title),
+		duration_s: null,
+		sets
 	};
 }

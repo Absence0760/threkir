@@ -7,15 +7,24 @@ import {
 	FIRMWARE_FILE,
 	PAIRS,
 	UNCLAIMED,
+	compareAdvertisedUuid,
 	compareTables,
+	parseAdvertisedServiceUuid,
 	parseDart,
 	parseFirmware,
 } from './check_watch_ble_uuids.mjs';
 
+/**
+ * A GATT row or a Dart constant as the fixtures write it: `[name, uuid]`.
+ * @typedef {readonly [string, string]} Row
+ */
+
+/** @param {string | number} n */
 const U = (n) => `d1f6a7e${n}-5b2c-4e9a-9c3d-1a2b3c4d5e6f`;
 
 // The shape the firmware declares, minimal but structurally faithful — the
 // attribute macro, the extra attribute keys, the doc comment between rows.
+/** @param {readonly Row[]} rows */
 function fakeFirmware(rows) {
 	const body = rows
 		.map(
@@ -36,6 +45,7 @@ function fakeFirmware(rows) {
 	);
 }
 
+/** @param {readonly Row[]} consts */
 function fakeDart(consts) {
 	return (
 		`class ReactiveBleWatchTransport implements WatchBleTransport {\n` +
@@ -49,6 +59,7 @@ function fakeDart(consts) {
 
 // Every firmware row the phone claims, aligned. The baseline the mutations
 // below diverge from.
+/** @type {readonly Row[]} */
 const ALIGNED_ROWS = [
 	['frame', U(1)],
 	['run_manifest', U(2)],
@@ -60,6 +71,7 @@ const ALIGNED_ROWS = [
 	['roadbook', U(8)],
 	['push_status', U(9)],
 ];
+/** @type {readonly Row[]} */
 const ALIGNED_CONSTS = [
 	['frameCharUuid', U(1)],
 	['manifestCharUuid', U(2)],
@@ -72,6 +84,12 @@ const ALIGNED_CONSTS = [
 	['pushStatusCharUuid', U(9)],
 ];
 
+/**
+ * @param {readonly Row[]} rows
+ * @param {readonly Row[]} consts
+ * @param {typeof PAIRS} [pairs]
+ * @param {readonly string[]} [unclaimed]
+ */
 const verdict = (rows, consts, pairs, unclaimed) =>
 	compareTables(
 		parseFirmware(fakeFirmware(rows)),
@@ -139,14 +157,16 @@ test('an unclaimed firmware row the phone leaves alone passes', () => {
 });
 
 test('an unclaimed firmware row a Dart constant points at fails', () => {
+	// Named rather than sliced by index: the aligned table grows every time
+	// the watch does, and a positional edit here silently drops a pair from
+	// the fixture — which is the very failure the guard exists to catch.
+	/** @type {readonly Row[]} */
+	const misaimed = ALIGNED_CONSTS.map(([n, u]) =>
+		n === 'roadbookCharUuid' ? [n, U('a')] : [n, u],
+	);
 	const { errors } = verdict(
 		[...ALIGNED_ROWS, ['telemetry', U('a')]],
-		// Named rather than sliced by index: the aligned table grows every time
-		// the watch does, and a positional edit here silently drops a pair from
-		// the fixture — which is the very failure the guard exists to catch.
-		ALIGNED_CONSTS.map(([n, u]) =>
-			n === 'roadbookCharUuid' ? [n, U('a')] : [n, u],
-		),
+		misaimed,
 		PAIRS,
 		['telemetry'],
 	);
@@ -166,6 +186,7 @@ test('a UUID belonging to no characteristic at all says so', () => {
 });
 
 test('a renamed firmware row fails rather than silently dropping out', () => {
+	/** @type {readonly Row[]} */
 	const renamed = ALIGNED_ROWS.map(([n, u]) =>
 		n === 'course' ? ['course_v2', u] : [n, u],
 	);
@@ -213,4 +234,133 @@ test('a parse that reads nothing fails loudly instead of passing vacuously', () 
 	assert.ok(blind.errors.length > 2);
 	assert.match(blind.errors[0], /Parsed no GATT rows/);
 	assert.match(blind.errors[1], /Parsed no Uuid constants/);
+});
+
+// ───────────── decisions § 773 — both parsers read comments ─────────────
+
+// The service match was not global, so the first `gatt_service(uuid = "…")`
+// ANYWHERE in ble.rs won — and the module doc is above the declaration.
+test('a UUID quoted in the firmware module doc does not answer for the declaration', () => {
+	const src =
+		`//! The service is \`gatt_service(uuid = "aaaaaaaa-0000-0000-0000-000000000000")\`.\n` +
+		fakeFirmware(ALIGNED_ROWS);
+	assert.equal(parseFirmware(src).get('service'), U(0));
+});
+
+// The characteristic scan is last-writer-wins, so a table preserved in a
+// TRAILING comment overwrote every live row.
+test('a table preserved in a trailing firmware comment does not overwrite the live one', () => {
+	const shifted = ALIGNED_ROWS.map(([name], i) => /** @type {Row} */ ([name, U(i + 2)]));
+	const src =
+		fakeFirmware(shifted) +
+		'\n// Previous layout, kept while the migration lands:\n' +
+		fakeFirmware(ALIGNED_ROWS)
+			.split('\n')
+			.map((l) => `// ${l}`)
+			.join('\n');
+	const parsed = parseFirmware(src);
+	assert.equal(parsed.get('frame'), U(2));
+	assert.equal(parsed.get('run_manifest'), U(3));
+});
+
+// The whole point: this is § 410's one-row shift, and before the fix it
+// produced zero errors and a full set of [OK] lines.
+test('a shifted firmware table with the old one in a comment is caught, not certified', () => {
+	const shifted = ALIGNED_ROWS.map(([name], i) => /** @type {Row} */ ([name, U(i + 2)]));
+	const src =
+		fakeFirmware(shifted) +
+		'\n' +
+		fakeFirmware(ALIGNED_ROWS)
+			.split('\n')
+			.map((l) => `// ${l}`)
+			.join('\n');
+	const { errors, ok } = compareTables(parseFirmware(src), parseDart(fakeDart(ALIGNED_CONSTS)));
+	assert.ok(errors.length > 0, 'a one-row shift must not read as agreement');
+	assert.ok(errors.some((e) => /UUID drift on "frame"/.test(e)));
+	assert.equal(ok.length, 1, 'only the service, whose UUID did not move, still agrees');
+});
+
+// The Dart window is 40 characters, which crosses the `//` of a commented-out
+// declaration and reads its initialiser as live.
+test('a commented-out Dart constant is not read as a live one', () => {
+	const src =
+		`class X {\n` +
+		`  // static final Uuid frameCharUuid =\n` +
+		`  //     Uuid.parse('${U(1)}');\n` +
+		`  static final Uuid frameCharUuid =\n      Uuid.parse('${U('f')}');\n` +
+		`}\n`;
+	assert.deepEqual([...parseDart(src)], [['frameCharUuid', U('f')]]);
+});
+
+test('a UUID inside a Dart doc comment is not a constant', () => {
+	const src =
+		`/// The table mirrors the firmware: \`..e1\` frame.\n` +
+		`/// static final Uuid frameCharUuid = Uuid.parse('${U(1)}');\n` +
+		`class X {}\n`;
+	assert.deepEqual([...parseDart(src)], []);
+});
+
+// Which of two GATT tables the phone talks to is not something this parser can
+// know, and the first-match-wins read was answering anyway.
+test('a second gatt_service declaration throws rather than picking one', () => {
+	assert.throws(
+		() => parseFirmware(fakeFirmware(ALIGNED_ROWS) + fakeFirmware(ALIGNED_ROWS)),
+		/2 gatt_service declarations/,
+	);
+});
+
+// Measured while fixing it: the committed files carry no UUID in a comment, so
+// the misread was latent — a measurement rather than a claim.
+test('blanking comments changes nothing about the committed tables', () => {
+	const fw = parseFirmware(readFileSync(FIRMWARE_FILE, 'utf-8'));
+	const dt = parseDart(readFileSync(DART_FILE, 'utf-8'));
+	assert.equal(fw.size, PAIRS.length + UNCLAIMED.length);
+	assert.equal(dt.size, PAIRS.length);
+	assert.deepEqual(compareTables(fw, dt).errors, []);
+});
+
+
+test('the advertised u128 is read without depending on where its underscores fall', () => {
+	assert.equal(
+		parseAdvertisedServiceUuid(
+			'const LINK_SERVICE_UUID: u128 = 0xd1f6a7e0_5b2c_4e9a_9c3d_1a2b3c4d5e6f;',
+		),
+		'd1f6a7e0-5b2c-4e9a-9c3d-1a2b3c4d5e6f',
+	);
+	assert.equal(
+		parseAdvertisedServiceUuid(
+			'const LINK_SERVICE_UUID: u128 = 0xd1f6a7e05b2c_4e9a9c3d1a2b3c4d5e6f;',
+		),
+		'd1f6a7e0-5b2c-4e9a-9c3d-1a2b3c4d5e6f',
+	);
+	assert.equal(parseAdvertisedServiceUuid('let x = 1;'), null);
+});
+
+test('a u128 quoted only in a comment is not the declaration', () => {
+	assert.equal(
+		parseAdvertisedServiceUuid('// const LINK_SERVICE_UUID: u128 = 0xdead;\n'),
+		null,
+	);
+});
+
+test('an advertised UUID that has drifted from the gatt_service attribute fails', () => {
+	const fw = new Map([['service', 'd1f6a7e0-5b2c-4e9a-9c3d-1a2b3c4d5e6f']]);
+	assert.equal(compareAdvertisedUuid(fw, 'd1f6a7e0-5b2c-4e9a-9c3d-1a2b3c4d5e6f').errors.length, 0);
+	const drifted = compareAdvertisedUuid(fw, 'd1f6a7e1-5b2c-4e9a-9c3d-1a2b3c4d5e6f');
+	assert.equal(drifted.errors.length, 1);
+	assert.match(drifted.errors[0], /never finds the service/);
+});
+
+test('a u128 the parser cannot find is an error, not a silent pass', () => {
+	const fw = new Map([['service', 'd1f6a7e0-5b2c-4e9a-9c3d-1a2b3c4d5e6f']]);
+	assert.equal(compareAdvertisedUuid(fw, null).errors.length, 1);
+	// With no service attribute parsed at all, compareTables already fails on
+	// the empty table; this check stays quiet rather than piling on.
+	assert.equal(compareAdvertisedUuid(new Map(), null).errors.length, 0);
+});
+
+test('the live firmware advertises the service it declares', () => {
+	const src = readFileSync(FIRMWARE_FILE, 'utf-8');
+	const { errors } = compareAdvertisedUuid(parseFirmware(src), parseAdvertisedServiceUuid(src));
+	assert.deepEqual(errors, []);
 });

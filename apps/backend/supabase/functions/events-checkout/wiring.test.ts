@@ -1,0 +1,137 @@
+/// Run with `cd apps/backend && deno test --allow-read supabase/functions/events-checkout/wiring.test.ts`.
+///
+/// Source-grep guards in the `delete-account/wiring.test.ts` idiom. The
+/// handler itself needs a live Supabase plus operator `sk_test_` keys to
+/// exercise, but the idempotency contract is positional and readable off
+/// the source — and it is the half `lib.test.ts` cannot see.
+
+import { assert } from 'https://deno.land/std@0.224.0/assert/mod.ts';
+
+const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
+
+Deno.test('the Checkout Session expiry is derived from the order, not the clock', () => {
+  // Stripe rejects a reused idempotency key whose request body has moved
+  // (`idempotency_error`) instead of replaying it, and holds the key ~24 h.
+  // A `Date.now()`-derived `expires_at` moved the body every second, so
+  // every retry 502'd for a day. The anchor has to come off the order row.
+  const arg = SRC.match(/expiresAtUnix:\s*([^\n,]+)/);
+  assert(arg, 'no expiresAtUnix argument found — has the create call moved?');
+  assert(
+    arg[1].trim() === 'checkoutExpiresAtUnix(anchorMs)',
+    `expires_at must be anchored on the order via checkoutExpiresAtUnix(anchorMs), got: ${arg[1]}`,
+  );
+  assert(
+    /const anchorMs = hold\.anchorMs \?\? nowMs;/.test(SRC),
+    'anchorMs must come from the resolved hold, falling back to now only for a brand-new order',
+  );
+});
+
+Deno.test('the idempotency key is scoped to the order, not to (buyer, event, instance)', () => {
+  // (buyer, event, instance) spans every hold that pair will ever open, and
+  // each hold carries its own order_id and expiry — so the key was certain
+  // to be reused against a changed body. The order is the widest scope over
+  // which the whole body is constant.
+  const arg = SRC.match(/idempotencyKey:\s*([^\n}]+)/);
+  assert(arg, 'no idempotencyKey found on the Stripe create call');
+  assert(
+    arg[1].trim().startsWith('checkoutIdempotencyKey(orderId)'),
+    `the key must be checkoutIdempotencyKey(orderId), got: ${arg[1]}`,
+  );
+});
+
+Deno.test('reusing a live hold does not extend its reservation', () => {
+  // The hold is 15 min and the Stripe session 30, both anchored on the same
+  // creation instant. Extending `reserved_until` on every re-click would let
+  // the hold outlive the session backing it — the buyer would be handed a
+  // dead checkout URL while still occupying a seat — and would let a buyer
+  // hold a seat indefinitely by re-clicking.
+  const reuse = SRC.slice(SRC.indexOf('if (hold.orderId) {'), SRC.indexOf('} else {'));
+  assert(reuse.length > 0, 'the hold-reuse branch is gone — has the flow changed?');
+  assert(
+    !/reserved_until\s*:/.test(reuse),
+    'the reuse branch must not write reserved_until',
+  );
+});
+
+Deno.test('a superseded hold is expired at Stripe before its replacement opens', () => {
+  // A lapsed hold released its seat but its session stays payable for another
+  // ~15 min. Two open sessions for one registration is a double-charge.
+  const idx = SRC.indexOf('checkout.sessions.expire(hold.supersedeSessionId)');
+  assert(idx !== -1, 'the superseded session is never expired at Stripe');
+  assert(
+    idx < SRC.indexOf('checkout.sessions.create('),
+    'the supersede must run before the replacement session is created',
+  );
+});
+
+Deno.test('the sales window is graded on the occurrence being bought', () => {
+  // `events.starts_at` is the SERIES row — the first occurrence. Grading the
+  // window on it closed every later occurrence of a recurring class the
+  // instant the first one began, so a weekly paid class was permanently
+  // `sales_closed` from week two on while its pricing, capacity and refund
+  // policy all resolved per instance. `events-cancel` already measures its
+  // refund cutoff from `instanceStart`.
+  const call = SRC.match(/isSalesWindowOpen\(\s*([^\n,]+),/);
+  assert(call, 'no isSalesWindowOpen call found — has the gate moved?');
+  assert(
+    call[1].trim() === 'Date.parse(instanceStart)',
+    `the window must bound the requested occurrence, got: ${call[1]}`,
+  );
+  // The series column is what the bug read; nothing in the handler may go
+  // back to it. Paired with the positive above so an emptied file cannot
+  // satisfy this on its own.
+  assert(
+    !SRC.includes('event.starts_at'),
+    'the handler must not grade or price anything off the series starts_at',
+  );
+});
+
+Deno.test('the capacity precheck is handed the caller, so their own offer is left out', () => {
+  // The precheck itself is driven against a fake client in capacity.test.ts;
+  // the call site is what a fake cannot see.
+  assert(
+    /precheckCapacity\(\s*service,\s*eventId,\s*instanceStart,[\s\S]*?user\.id,\s*\);/.test(SRC),
+    'the caller id must be passed so their own offer is excluded',
+  );
+  assert(/from '\.\/capacity\.ts'/.test(SRC), 'index.ts no longer uses the shared precheck');
+});
+
+Deno.test('an unreadable hold refuses the sale instead of selling the seat', () => {
+  const call = SRC.indexOf("if (capacityOutcome === 'unknown')");
+  assert(call !== -1, "the 'unknown' precheck outcome is not handled");
+  assert(
+    call < SRC.indexOf('checkout.sessions.create('),
+    'the refusal must come before a session is opened',
+  );
+});
+
+Deno.test('the occurrence gate runs on the request instant before pricing, any hold or any session', () => {
+  // `instance_start` is client-supplied. Pricing resolves to the series
+  // default for any instant, so the gate has to stand ahead of it, and ahead
+  // of the capacity count, the Stripe create and the order write (§ 1921).
+  // The gate's own behaviour is driven against a fake client in
+  // occurrence.test.ts; where it is called is what a fake cannot see.
+  const call = SRC.match(/await gateOccurrence\(([^)]*)\)/);
+  assert(call, 'events-checkout no longer asks whether the instant is an occurrence');
+  assert(
+    call[1].replace(/\s+/g, ' ').trim() ===
+      'service, eventId, instanceStart, event.recurrence_until',
+    `the gate must grade the requested instant, got: ${call[1]}`,
+  );
+  const at = SRC.indexOf('await gateOccurrence(');
+  for (const later of [
+    "from('event_pricing')",
+    'precheckCapacity(',
+    'checkout.sessions.create(',
+    "from('event_orders')",
+  ]) {
+    const idx = SRC.indexOf(later);
+    assert(idx !== -1, `${later} is gone from the handler — has the flow changed?`);
+    assert(at < idx, `the occurrence gate must run before ${later}`);
+  }
+  assert(
+    /if \(refusal\) \{\s*return Response\.json\(\{ error: refusal\.error \}, \{ status: refusal\.status \}\);/
+      .test(SRC),
+    'a refusal from the gate must end the request',
+  );
+});

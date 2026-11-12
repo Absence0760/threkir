@@ -1,0 +1,78 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "comment" : "Purpose string for the HealthKit read prompt raised by HealthKitManager.requestAuthorization(). Shown on the wrist before the first workout session.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir liest während eines Laufs deine Herzfrequenz, um sie live anzuzeigen und mit dem Workout zu speichern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir reads your heart rate during a run to show it live and save it with the workout." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir lee tu frecuencia cardíaca durante la carrera para mostrarla en directo y guardarla con el entrenamiento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir lit votre fréquence cardiaque pendant une course pour l’afficher en direct et l’enregistrer avec la séance." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はラン中の心拍数を読み取り、リアルタイムで表示してワークアウトとともに保存します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir lê sua frequência cardíaca durante a corrida para mostrá-la ao vivo e salvá-la com o treino." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir lê a sua frequência cardíaca durante a corrida para a mostrar em direto e guardá-la com o treino." } }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "comment" : "Purpose string for the HealthKit write prompt raised by HealthKitManager.requestAuthorization() so a finished workout is saved to Health.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir speichert Workout-Daten in Apple Health, damit deine Läufe zusammen mit deinen übrigen Fitness-Aktivitäten erfasst werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs to save workout data to Health so your runs are tracked alongside your other fitness activities." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir guarda los entrenamientos en Apple Salud para que tus carreras queden junto al resto de tus actividades deportivas." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir enregistre vos séances dans Apple Santé pour que vos courses figurent aux côtés de vos autres activités sportives." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はワークアウトデータを Apple Health に保存し、ランを他のフィットネスアクティビティと一緒に記録します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir salva os dados de treino no Apple Saúde para que suas corridas fiquem junto das suas outras atividades físicas." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir guarda os dados de treino no Apple Saúde para que as suas corridas fiquem junto das outras atividades físicas." } }
+      }
+    },
+    "NSMotionUsageDescription" : {
+      "comment" : "Purpose string for the Motion & Fitness prompt raised by Pedometer when a run starts. Shown on the wrist the first time a run is recorded.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir zählt deine Schritte während eines Laufs, damit Schrittfrequenz und Gesamtschritte mit dem Lauf gespeichert werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir counts the steps you take during a run so your cadence and step total are saved with it." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir cuenta los pasos que das durante una carrera para guardar la cadencia y el total de pasos junto con ella." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir compte vos pas pendant une course afin d'enregistrer votre cadence et votre nombre total de pas avec celle-ci." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はラン中の歩数を計測し、ケイデンスと総歩数をランと一緒に保存します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir conta os passos que você dá durante a corrida para salvar a cadência e o total de passos junto com ela." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir conta os passos que dá durante a corrida para guardar a cadência e o total de passos com ela." } }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Purpose string for the foreground location prompt raised by WorkoutManager's embedded CLLocationManager at the start of a run.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir benötigt deinen Standort, um deine Route aufzuzeichnen, die Distanz zu berechnen und die Pace anzuzeigen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs your location to track your running route, calculate distance, and provide pace information." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir necesita tu ubicación para seguir la ruta de tus carreras, calcular la distancia y mostrar el ritmo." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir a besoin de votre position pour suivre le tracé de votre course, calculer la distance et indiquer votre allure." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はランのルートを記録し、距離を計算してペースを表示するために位置情報を使用します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização para rastrear a rota da corrida, calcular a distância e mostrar o ritmo." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização para registar o percurso da corrida, calcular a distância e mostrar o ritmo." } }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "comment" : "Purpose string for the always-on location prompt behind allowsBackgroundLocationUpdates, so a run keeps recording once the wrist drops.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir zeichnet deinen Lauf weiter auf, wenn sich das Display der Uhr während eines Workouts ausschaltet." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir continues tracking your run when your watch display turns off during a workout." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir sigue registrando tu carrera cuando la pantalla del reloj se apaga durante un entrenamiento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir continue de suivre votre course lorsque l’écran de la montre s’éteint pendant une séance." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はワークアウト中にウォッチの画面が消えても、ランの記録を続けます。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir continua registrando sua corrida quando a tela do relógio desliga durante um treino." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir continua a registar a sua corrida quando o ecrã do relógio se desliga durante um treino." } }
+      }
+    },
+    "PreciseRunTracking" : {
+      "comment" : "Purpose string for the one-run full-accuracy sheet WorkoutManager raises through requestTemporaryFullAccuracyAuthorization when Precise Location is off. The key is the NSLocationTemporaryUsageDescriptionDictionary purpose key, shared with the iPhone app.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir benötigt für diesen Lauf deinen genauen Standort, damit Distanz, Pace und Karte stimmen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs your precise location for this run so its distance, pace and map are accurate." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir necesita tu ubicación exacta durante esta carrera para que la distancia, el ritmo y el mapa sean precisos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir a besoin de votre position exacte pendant cette course pour que la distance, l’allure et la carte soient justes." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "このランの距離、ペース、マップを正確にするため、Threkir は正確な位置情報を使用します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização exata durante esta corrida para que a distância, o ritmo e o mapa fiquem corretos." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização exata durante esta corrida para que a distância, o ritmo e o mapa estejam corretos." } }
+      }
+    }
+  }
+}

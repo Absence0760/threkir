@@ -1,141 +1,244 @@
+import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppIconSize, AppRadius;
 
 import '../l10n/gen/app_localizations.dart';
+import '../overrun_format.dart';
+import '../plan_current.dart';
+import '../planned_size_label.dart';
 import '../training.dart';
 import '../training_labels.dart';
-import '../training_service.dart';
+import '../workout_summary.dart';
+import '../workout_summary_format.dart';
+import 'plan_workout_status_style.dart';
 
-/// Priority card on the Run-tab idle state when the user's active plan has a
-/// workout scheduled for today. Beats the last-run summary, which is already
-/// behind the upcoming-event card in priority.
+/// Today's planned workout, on Home (the plan hero), the Run tab's idle state
+/// and plan detail. On the Run tab it beats the last-run summary, which is
+/// already behind the upcoming-event card in priority.
+///
+/// The fill is solid `primary` under `onPrimary`: a gradient into
+/// `surfaceContainerHighest` left the white type at about 1.3:1 at the far
+/// corner in light mode (WCAG 1.4.3), pinned in `contrast_guard_test.dart`.
+///
+/// [onStart] adds an explicit Start button, which is hidden once the workout
+/// is done or skipped. Home passes none: its card opens plan detail, because
+/// the dashboard's role is overview, not starting a run.
 class TodaysWorkoutCard extends StatelessWidget {
-  final ActivePlanOverview overview;
+  final PlanWorkoutRow workout;
   final VoidCallback? onTap;
-  const TodaysWorkoutCard({super.key, required this.overview, this.onTap});
+  final VoidCallback? onStart;
+
+  /// How far the linked run went past the target (`workoutOverrunMetres`),
+  /// shown after "Done" as "+3 km"; null says nothing.
+  final double? overrunMetres;
+  const TodaysWorkoutCard({
+    super.key,
+    required this.workout,
+    this.onTap,
+    this.onStart,
+    this.overrunMetres,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final w = overview.todayWorkout!;
+    final w = workout;
     final kind = workoutKindFromDb(w.kind);
-    final done = w.completedRunId != null || w.manuallyCompleted;
+    final done = isWorkoutCompleted(w);
+    final skipped = !done && isWorkoutSkipped(w.skippedAt);
+    final doneLook = planWorkoutStatusLook(
+        theme,
+        done
+            ? PlanWorkoutStatus.done
+            : skipped
+                ? PlanWorkoutStatus.skipped
+                : PlanWorkoutStatus.upcoming);
+    final showStart = onStart != null && !done && !skipped;
+    final size = plannedSizeLabel(l10n, w);
+    // The minutes alone don't tell a beginner what the session asks of them.
+    final walkRun =
+        plannedWalkRunPattern(kind: w.kind, structure: w.structure);
+    final pattern = walkRun == null
+        ? null
+        : formatWalkRunPattern(l10n, walkRun, (m) => fmtOverrun(m.toDouble()));
+    final pace = w.targetPaceSecPerKm == null || w.kind == 'walk_run'
+        ? null
+        : l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm));
+    final overrun = done && overrunMetres != null ? fmtOverrun(overrunMetres!) : null;
+    final label = [
+      done ? l10n.todaysWorkoutDone : l10n.todaysWorkoutToday,
+      if (overrun != null) l10n.planWorkoutOverrunA11y(overrun),
+      workoutKindLabel(l10n, kind),
+      ?size,
+      ?pattern,
+      ?pace,
+    ].join(', ');
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
+    final summary = Semantics(
+      button: onTap != null,
+      label: label,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary,
-              theme.colorScheme.surfaceContainerHighest,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.surface,
+                ),
+                child: Icon(
+                  doneLook.glyph != null && (done || skipped)
+                      ? doneLook.glyph
+                      : _iconFor(kind),
+                  color: done || skipped
+                      ? doneLook.glyphColor
+                      : theme.colorScheme.primary,
+                  size: AppIconSize.material,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      key: const Key('todaysWorkoutStatus'),
+                      done
+                          ? overrun == null
+                              ? l10n.todaysWorkoutDone
+                              : '${l10n.todaysWorkoutDone} · ${l10n.planWorkoutOverrun(overrun)}'
+                          : l10n.todaysWorkoutToday,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimary,
+                        letterSpacing: 0.7,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      workoutKindLabel(l10n, kind),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (size != null)
+                          Row(
+                            key: const Key('todaysWorkoutSize'),
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.straighten,
+                                size: AppIconSize.dense,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  size,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (pace != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.speed,
+                                size: AppIconSize.dense,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  pace,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    if (pattern != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          pattern,
+                          key: const Key('todaysWorkoutPattern'),
+                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.surface,
-              ),
-              child: Icon(
-                done ? Icons.check_circle : _iconFor(kind),
-                color: theme.colorScheme.primary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    done ? l10n.todaysWorkoutDone : l10n.todaysWorkoutToday,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      letterSpacing: 0.7,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    workoutKindLabel(l10n, kind),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 2,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (w.targetDistanceM != null)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.straighten,
-                                size: 14, color: theme.colorScheme.onPrimary),
-                            const SizedBox(width: 3),
-                            Flexible(
-                              child: Text(fmtKm(w.targetDistanceM),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                  )),
-                            ),
-                          ],
-                        ),
-                      if (w.targetPaceSecPerKm != null)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.speed,
-                                size: 14, color: theme.colorScheme.onPrimary),
-                            const SizedBox(width: 3),
-                            Flexible(
-                              child: Text('@ ${fmtPace(w.targetPaceSecPerKm)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                  )),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
+    );
+
+    return Material(
+      color: theme.colorScheme.primary,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      clipBehavior: Clip.antiAlias,
+      child: showStart
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                summary,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: FilledButton.icon(
+                    key: const Key('todaysWorkoutStart'),
+                    onPressed: onStart,
+                    icon: const Icon(Icons.play_arrow),
+                    label: Text(l10n.workoutStart),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.onPrimary,
+                      foregroundColor: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : summary,
     );
   }
 
   IconData _iconFor(WorkoutKind k) => switch (k) {
-        WorkoutKind.easy || WorkoutKind.recovery => Icons.directions_walk,
-        WorkoutKind.long => Icons.directions_run,
-        WorkoutKind.tempo => Icons.speed,
-        WorkoutKind.interval => Icons.timelapse,
-        WorkoutKind.walkRun => Icons.directions_walk,
-        WorkoutKind.marathonPace => Icons.flag_outlined,
-        WorkoutKind.race => Icons.emoji_events,
-        WorkoutKind.rest => Icons.self_improvement,
-      };
+    WorkoutKind.easy || WorkoutKind.recovery => Icons.directions_walk,
+    WorkoutKind.long => Icons.directions_run,
+    WorkoutKind.tempo => Icons.speed,
+    WorkoutKind.interval => Icons.timelapse,
+    WorkoutKind.walkRun => Icons.directions_walk,
+    WorkoutKind.marathonPace => Icons.flag_outlined,
+    WorkoutKind.race => Icons.emoji_events,
+    WorkoutKind.rest => Icons.self_improvement,
+  };
 }

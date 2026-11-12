@@ -11,8 +11,10 @@
 /// fetched — a session plan carries no author fitness data, so nothing private
 /// leaks past what the owner chose to make public.
 
-import { createClient } from '@supabase/supabase-js';
-import type { SessionItemKind } from '$lib/social/session_steps';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SessionItemKind } from '#lib/social/session_steps.ts';
+import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedSessionBlock {
 	id: string;
@@ -60,44 +62,63 @@ export interface SharedSessionLookupConfig {
 export async function lookupSharedSession(
 	id: string,
 	config: SharedSessionLookupConfig | null,
+	makeClient: (url: string, key: string) => SupabaseClient = (url, key) =>
+		createClient(url, key, { auth: { persistSession: false } }),
 ): Promise<SharedSessionLookup> {
 	if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
 		return { session: null, displayName: null };
 	}
+	// A non-uuid segment raises 22P02 on the uuid column, which PostgREST
+	// returns as an error — indistinguishable at this layer from Supabase
+	// being down, so reject it before querying and keep the tagged line below
+	// meaning "outage" only.
+	if (!isEntityId(id)) return { session: null, displayName: null };
 	try {
-		const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
-			auth: { persistSession: false },
-		});
+		const supabase = makeClient(config.supabaseUrl, config.supabaseAnonKey);
 		// `is_public = true` is enforced by RLS, but filter explicitly too so a
 		// non-public id resolves to "not found" rather than relying on RLS to
 		// blank the row.
-		const { data: plan } = await supabase
+		const { data: plan, error } = await supabase
 			.from('session_plans')
 			.select('id, author_id, title, discipline, equipment, est_duration_min, is_public')
 			.eq('id', id)
 			.eq('is_public', true)
 			.maybeSingle();
+		// Non-null error (vs a clean data:null not-found) = Supabase unreachable
+		// / 5xx; the page degrades to the branded 404 with no Lambda Errors
+		// metric. Tagged line drives the share-session-upstream-unreachable alarm.
+		if (error) {
+			console.error('[share-session] upstream_unreachable');
+			return { session: null, displayName: null };
+		}
 		if (!plan) return { session: null, displayName: null };
 
-		const [{ data: blocks }, { data: items }] = await Promise.all([
-			supabase
-				.from('session_plan_blocks')
-				.select('id, position, name')
-				.eq('plan_id', id)
-				.order('position', { ascending: true }),
-			supabase
-				.from('session_plan_items')
-				.select(
-					'id, block_id, position, movement_name, kind, duration_s, reps, per_side, tempo, cue',
-				)
-				.eq('plan_id', id)
-				.order('position', { ascending: true }),
-		]);
+		const [{ data: blocks, error: blocksError }, { data: items, error: itemsError }] =
+			await Promise.all([
+				supabase
+					.from('session_plan_blocks')
+					.select('id, position, name')
+					.eq('plan_id', id)
+					.order('position', { ascending: true }),
+				supabase
+					.from('session_plan_items')
+					.select(
+						'id, block_id, position, movement_name, kind, duration_s, reps, per_side, tempo, cue',
+					)
+					.eq('plan_id', id)
+					.order('position', { ascending: true }),
+			]);
+		// A hollow page — the plan's title with an empty sequence — is worse than
+		// the branded 404, and it is what an unchecked child-query error renders.
+		if (blocksError || itemsError) {
+			console.error('[share-session] upstream_unreachable');
+			return { session: null, displayName: null };
+		}
 
 		let displayName: string | null = null;
 		if (plan.author_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: plan.author_id })
+				.rpc('public_profile_by_id', { p_id: plan.author_id }, { get: true })
 				.maybeSingle();
 			displayName =
 				(profile as { display_name?: string | null } | null)?.display_name ?? null;
@@ -116,7 +137,10 @@ export async function lookupSharedSession(
 			displayName,
 		};
 	} catch (err) {
-		console.warn('lookupSharedSession: fetch failed', err);
+		console.error(
+			'[share-session] upstream_unreachable',
+			thrownMessage(err),
+		);
 		return { session: null, displayName: null };
 	}
 }

@@ -20,13 +20,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Paste the invite code your club admin shared with you.';
+      'Paste the invite link or code your club admin shared with you.';
 
   @override
   String get clubInviteCodeLabel => 'Invite code';
 
   @override
   String get clubInviteJoinButton => 'Join';
+
+  @override
+  String get clubWaiverTitle => 'One thing before you join';
+
+  @override
+  String get clubWaiverBody =>
+      'This club asks every member to acknowledge the physical risks of running together before joining.';
+
+  @override
+  String get clubWaiverAck =>
+      'I understand the physical risks of group running and join at my own risk.';
+
+  @override
+  String get clubWaiverAccept => 'Accept and join';
 
   @override
   String recapShareHeadline(Object year) {
@@ -135,6 +149,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapLatestStartLabel => 'Latest start';
 
   @override
+  String get recapParkCoursesLabel => 'Park courses';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'in $n parks',
+      one: 'in $n park',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parks you ran';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Choose route';
 
   @override
@@ -223,6 +265,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable => 'This file isn\'t in the expected format.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'This file is $sizeMb MB, over the $limitMb MB limit. Split it into smaller exports and import each one.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'This isn\'t a Strava export: there\'s no activities.csv inside it.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'The activity list in this export is missing the columns it needs.';
+
+  @override
+  String get importRefusedNotBackup => 'This isn\'t a backup made by this app.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'This backup was made by a newer version of the app. Update the app, then restore it.';
+
+  @override
   String get importStatusRestoringBackup => 'Restoring backup...';
 
   @override
@@ -269,6 +334,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Apple Health';
+
+  @override
+  String get healthPlatformNameAndroid => 'Health Connect';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -305,6 +376,148 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'Restored offline: runs are saved on this device and will sync once you sign in. Profile and settings were skipped.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'This backup says it was incomplete when it was made. Nothing was overwritten — restore from a complete backup to fill the gaps.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'Profile and settings weren\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'Run #$index in the backup has no ID and was skipped.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'Route #$index in the backup has no ID and was skipped.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'Run $id is already on this device and was skipped.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'The GPS track for run $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'The heart-rate data for run $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'Run $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'Route $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'Gym workouts weren\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'The food log wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Skipped fields this version of the app doesn\'t use: $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'Runs weren\'t restored: this device\'s run storage isn\'t available.';
+
+  @override
+  String importFailuresHeading(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activities didn\'t import',
+      one: '1 activity didn\'t import',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get importFailuresIntro =>
+      'Re-run the import to retry these — anything that already landed is skipped, so nothing is duplicated.';
+
+  @override
+  String importFailuresTruncated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count further failures were not recorded.',
+      one: '1 further failure was not recorded.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get importFailuresShowDetail => 'Show each activity';
+
+  @override
+  String get importFailuresShare => 'Share report (CSV)';
+
+  @override
+  String get importFailuresShareFailed => 'Could not share the report.';
+
+  @override
+  String get importFailuresDismiss => 'Dismiss';
+
+  @override
+  String get importFailuresNoDate => 'Date unknown';
+
+  @override
+  String get importFailuresReasonNetwork => 'Connection dropped';
+
+  @override
+  String get importFailuresReasonAuth => 'Signed out';
+
+  @override
+  String get importFailuresReasonRateLimited => 'Rate limited';
+
+  @override
+  String get importFailuresReasonTooLarge => 'File too large';
+
+  @override
+  String get importFailuresReasonUnparseable => 'File could not be read';
+
+  @override
+  String get importFailuresReasonRejected => 'Rejected by the server';
+
+  @override
+  String get importFailuresReasonUnknown => 'Unknown error';
+
+  @override
+  String importStatusCloudPushDeferred(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count runs are saved on this device — their upload to the cloud didn\'t go through. They will retry on the next sync.',
+      one:
+          '1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Pull workouts you\'ve recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health';
 
@@ -318,7 +531,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.';
+      'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -436,6 +649,93 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get peopleNearbyHeader => 'Runners nearby';
+
+  @override
+  String get peopleNearbySubtitle =>
+      'Runners who opted in near the area you set. Approximate distance only — never a live location.';
+
+  @override
+  String get peopleNearbyEmptyTitle => 'Nobody nearby yet';
+
+  @override
+  String get peopleNearbyEmptyBody =>
+      'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.';
+
+  @override
+  String get peopleNearbyEmptyAction => 'Open Preferences';
+
+  @override
+  String get peopleNearbyLoadFailed => 'Could not load runners nearby.';
+
+  @override
+  String peopleNearbyWithin(String distance) {
+    return 'Within $distance';
+  }
+
+  @override
+  String peopleNearbyBeyond(String distance) {
+    return 'Beyond $distance';
+  }
+
+  @override
+  String get prefsDiscoverableNearby => 'Show me to runners nearby';
+
+  @override
+  String get prefsDiscoverableNearbySubtitle =>
+      'Off by default. When on, other runners who also opted in can see that you are roughly nearby — an approximate distance from the area you set, never your location.';
+
+  @override
+  String get nearbyAreaTitle => 'Your area';
+
+  @override
+  String get nearbyAreaExplainer =>
+      'Pick the city or neighbourhood you run in. It is stored rounded to about a kilometre and is never your live location. Other runners only ever see an approximate distance, never the area itself.';
+
+  @override
+  String get nearbyAreaNone => 'No area set';
+
+  @override
+  String nearbyAreaCurrent(String label) {
+    return 'Current area: $label';
+  }
+
+  @override
+  String get nearbyAreaSearchHint => 'Search for a city or neighbourhood';
+
+  @override
+  String get nearbyAreaSearchUnavailable =>
+      'Place search is unavailable right now.';
+
+  @override
+  String get nearbyAreaNoResults => 'No places matched that search.';
+
+  @override
+  String get nearbyAreaSaved => 'Area saved';
+
+  @override
+  String get nearbyAreaSaveFailed => 'Could not save your area.';
+
+  @override
+  String get nearbyAreaLoadFailed => 'Could not load your area.';
+
+  @override
+  String get nearbyAreaForget => 'Forget my area';
+
+  @override
+  String get nearbyAreaForgetConfirmTitle => 'Forget your area?';
+
+  @override
+  String get nearbyAreaForgetConfirmBody =>
+      'You will stop appearing to runners nearby until you set an area again.';
+
+  @override
+  String get nearbyAreaForgotten => 'Area forgotten';
+
+  @override
+  String get nearbyAreaForgetFailed => 'Could not forget your area.';
+
+  @override
   String get peopleFallbackDisplayName => 'Runner';
 
   @override
@@ -462,6 +762,117 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get readinessBandLow => 'low';
+
+  @override
+  String get readinessContributorForm => 'Training balance';
+
+  @override
+  String get readinessContributorSleep => 'Sleep';
+
+  @override
+  String get readinessContributorRestingHr => 'Resting heart rate';
+
+  @override
+  String get dashboardTrendsDivider => 'Trends';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volume';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'How much you have run, week by week';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Fitness and form';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Readiness, fitness and training load';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Performance';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Personal bests and predicted race times';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Effort';
+
+  @override
+  String get dashboardTrendGroupEffortHint => 'How hard your training has been';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Recent';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Your latest sessions';
+
+  @override
+  String get dashboardHeroNothingPlanned => 'Nothing planned today';
+
+  @override
+  String get dashboardHeroRestDay => 'Rest day';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nothing on the plan today.';
+
+  @override
+  String get dashboardHeroRestDayGrisnir =>
+      'Back by morning, like Thor\'s goats.';
+
+  @override
+  String get mascotMilestoneFirstRun => 'First run in. That\'s the hard one.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Your first 5K. That counts.';
+
+  @override
+  String get mascotMilestoneBadge => 'Badge earned. Worth a hop.';
+
+  @override
+  String get mascotMilestoneBest => 'A new best. Worth a hop.';
+
+  @override
+  String get mascotMilestoneLongest => 'Your longest run yet.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir waits at the trailhead.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Readiness $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Hide from Home';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name is hidden. You can bring it back in Settings.';
+  }
+
+  @override
+  String get dashboardHideCardFailed => 'Couldn\'t hide that card. Try again.';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Scored from your training load only. Sleep and resting heart rate are not part of it yet.';
+
+  @override
+  String get intensityZone1 => 'Z1 (recovery)';
+
+  @override
+  String get intensityZone2 => 'Z2 (easy)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (threshold)';
+
+  @override
+  String get intensityZone5 => 'Z5 (max)';
 
   @override
   String get missingMapTilesTitle => 'Using OpenStreetMap fallback tiles';
@@ -512,7 +923,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logA11yLabel => 'Log an activity';
 
   @override
+  String get navStartRun => 'Start run';
+
+  @override
+  String get navStartWalk => 'Start walk';
+
+  @override
+  String get navStartRide => 'Start ride';
+
+  @override
+  String get navStartTrailRun => 'Start trail run';
+
+  @override
+  String get navStartStroller => 'Start stroller run';
+
+  @override
+  String get startRecordingRun => 'Start a run';
+
+  @override
+  String get startRecordingWalk => 'Start a walk';
+
+  @override
+  String get startRecordingRide => 'Start a ride';
+
+  @override
+  String get startRecordingTrailRun => 'Start a trail run';
+
+  @override
+  String get startRecordingStroller => 'Start a stroller run';
+
+  @override
+  String get logModalityShownGym => 'Gym is now shown';
+
+  @override
+  String get logModalityShownNutrition => 'Nutrition is now shown';
+
+  @override
+  String get navRecording => 'Recording';
+
+  @override
+  String get navStop => 'Stop';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Return to your run';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Training';
 
   @override
   String get navYou => 'You';
@@ -533,13 +992,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fitnessRunsPlans => 'Training plans';
 
   @override
-  String get runSurfaceLabel => 'Run surface sections';
-
-  @override
   String get runSurfaceTabPlans => 'Plans';
 
   @override
-  String get runSurfaceTabRaces => 'Races';
+  String get runSurfaceTabRacesCourses => 'Races & courses';
 
   @override
   String get gymSurfaceLabel => 'Gym sections';
@@ -551,6 +1007,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gymTabRecords => 'Records';
 
   @override
+  String get gymPeerRoutines => 'Gym routines';
+
+  @override
+  String get gymPeerSessions => 'Session plans';
+
+  @override
   String get homeAskCoach => 'Ask your coach';
 
   @override
@@ -558,7 +1020,53 @@ class AppLocalizationsEn extends AppLocalizations {
       'Advice across your runs, lifts, and nutrition';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Advice on your runs, training and recovery';
+
+  @override
   String get youProfileTitle => 'Your profile';
+
+  @override
+  String get homeTrainingPlanLabel => 'Training plan';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Race in $days days',
+      one: 'Race in $days day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Race tomorrow';
+
+  @override
+  String get homeRaceDay => 'Race day';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Starts in $days days',
+      one: 'Starts in $days day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homePlanUpNext(String name, String date) {
+    return 'Up next: $name, starts $date';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Starts tomorrow';
+
+  @override
+  String get youViewProfile => 'View profile';
 
   @override
   String get logSheetTitle => 'Log';
@@ -577,7 +1085,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tap the centre button to start a run; long-press for the full log menu';
+      'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'On while Gym and Nutrition are hidden. Show either one to choose';
+
+  @override
+  String get prefsSectionModalities => 'Gym & nutrition';
+
+  @override
+  String get prefsShowGym => 'Show Gym';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Adds the Gym tab, Log lift and your lifts on Home';
+
+  @override
+  String get prefsShowNutrition => 'Show Nutrition';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Adds the Nutrition tab, Log food and today\'s meals on Home';
 
   @override
   String get bodyMetricsTitle => 'Body metrics';
@@ -607,6 +1136,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get bodyMetricsTargetsHint =>
       'Used to estimate your daily calorie and macro targets.';
+
+  @override
+  String get bodyMetricsSaveHint =>
+      'This section saves only when you tap Save.';
+
+  @override
+  String get bodyMetricsUnsaved => 'Unsaved changes';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Nutrition targets';
+
+  @override
+  String get bodyMetricsAutosaveHint => 'Changes here save automatically.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'You changed your body metrics but haven\'t saved them. Leave without saving?';
 
   @override
   String get bodyMetricsConsentRequired =>
@@ -654,6 +1200,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get safetyAddHint => 'partner@example.com';
+
+  @override
+  String get safetyPhoneLabel => 'Phone for SMS (optional)';
+
+  @override
+  String get safetyPhoneHint =>
+      'Add a mobile number and this contact can also be alerted by SMS — they choose whether to when they confirm. Alerts by email are always sent.';
+
+  @override
+  String get safetyInvalidPhone =>
+      'Enter the phone in international format, e.g. +447700900123.';
+
+  @override
+  String get safetySmsBadge => 'SMS on';
+
+  @override
+  String get safetySmsPending => 'SMS off — they haven\'t opted in yet';
+
+  @override
+  String get safetyConfirmSmsLabel => 'Also alert me by SMS';
+
+  @override
+  String get safetyContactOfTitle => 'You are a safety contact';
+
+  @override
+  String get safetyContactOfIntro =>
+      'These runners named you as their emergency contact and you confirmed. Change how you\'re alerted, or withdraw, whenever you like.';
+
+  @override
+  String safetyContactOfFor(String name) {
+    return 'Emergency contact for $name';
+  }
+
+  @override
+  String get safetyContactOfSmsLabel => 'Alert me by SMS as well as email';
+
+  @override
+  String get safetyContactOfNoPhone =>
+      'SMS alerts need a mobile number for you, and none is on file. Email alerts are always sent.';
+
+  @override
+  String get safetyContactOfSmsOnToast => 'SMS alerts on.';
+
+  @override
+  String get safetyContactOfSmsOffToast => 'SMS alerts off.';
+
+  @override
+  String get safetyContactOfSmsNoChange =>
+      'That request is no longer active — the runner may have removed it.';
+
+  @override
+  String safetyContactOfSmsFailed(String error) {
+    return 'Could not update your SMS choice: $error';
+  }
+
+  @override
+  String get safetyContactOfWithdraw => 'Withdraw';
+
+  @override
+  String get safetyContactOfWithdrawConfirm =>
+      'Stop being this runner\'s safety contact? They won\'t be able to alert you any more, and they\'d have to send a new request to add you back.';
+
+  @override
+  String get safetyContactOfWithdrawnToast =>
+      'You\'re no longer a safety contact.';
+
+  @override
+  String safetyContactOfWithdrawFailed(String error) {
+    return 'Could not withdraw: $error';
+  }
 
   @override
   String get safetyAddButton => 'Add contact';
@@ -760,6 +1376,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Start a live share automatically when a run starts on this phone. The in-progress run is viewable by anyone with the link; when the run ends it returns to your default run visibility.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Start a live share automatically when a run starts on this phone. It is never public: only your confirmed safety contacts can follow it, through the link an overdue or off-route alert sends them. On by default once an alert is set.';
+
+  @override
   String get safetyOffRouteTitle => 'Off-route alert';
 
   @override
@@ -773,6 +1393,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Live sharing is on — use Share live link to send it';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Safety share is on — only your safety contacts can follow, and only once an alert fires';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -809,7 +1433,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodaysLift => 'Today\'s lift';
 
   @override
-  String get settingsSectionProfile => 'Profile';
+  String get settingsSectionTraining => 'Training';
+
+  @override
+  String get settingsSectionSettings => 'Settings';
 
   @override
   String get settingsSectionAppsData => 'Apps & data';
@@ -861,6 +1488,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get authErrorEmailNotConfirmed =>
       'Confirm your email first — check your inbox for the confirmation link.';
+
+  @override
+  String get authErrorLinkExpired =>
+      'That link has expired or was already used. Request a new one to continue.';
 
   @override
   String authErrorWeakPassword(int minLength) {
@@ -1005,8 +1636,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingLocationTitle => 'Location access';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir records your runs by sampling your GPS location while the app is in the foreground AND in the background (so it keeps tracking when your screen is off or you switch apps to take a photo). Location data is stored on your device and only uploaded to Threkir\'s servers when you choose to share or sync a run. If you decline background location, runs will stop recording the moment you switch away from the app — you can change this later in Settings → Apps → Threkir → Permissions.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir samples your GPS location to record a run and keeps requesting it while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give: under it, Android may stop sending your location while the screen is off or you are in another app. Before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable then. Decline, and runs still record time and steps — but no map, distance or pace.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir samples your GPS location to record a run, including while your screen is off or you are in another app. Your location stays on this device unless you sync or share a run. You can change this any time in Settings › Privacy & Security › Location Services › Threkir. Decline, and runs still record time and steps — but no map, distance or pace.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'No location access';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir can still time your runs and count steps, but without location there is no map, no distance and no pace. You can grant it whenever you like.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Open settings';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continue without it';
 
   @override
   String get onboardingPrivacyTitle => 'Who sees your runs?';
@@ -1014,6 +1662,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onboardingPrivacyBody =>
       'Pick a default for new runs. You can change it any time in Settings, and override it on any single run.';
+
+  @override
+  String get onboardingAccountTitle => 'Keep your runs beyond this phone';
+
+  @override
+  String get onboardingAccountBody =>
+      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.';
+
+  @override
+  String get onboardingAccountCreate => 'Create a free account';
+
+  @override
+  String get onboardingAccountSignIn => 'I already have an account';
+
+  @override
+  String get onboardingAccountLater => 'Not now';
 
   @override
   String get onboardingGrantPermission => 'Grant permission';
@@ -1029,6 +1693,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupSkipStep => 'Skip';
+
+  @override
+  String get setupLeaveTitle => 'Leave setup?';
+
+  @override
+  String get setupLeaveBody =>
+      'Anything you\'ve entered here won\'t be saved. You can set all of it up later from Settings.';
+
+  @override
+  String get setupLeaveStay => 'Keep setting up';
+
+  @override
+  String get setupLeaveConfirm => 'Leave';
 
   @override
   String get setupBack => 'Back';
@@ -1176,6 +1853,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose how many push notifications you\'d like. You can fine-tune this later in Settings.';
 
   @override
+  String get setupTrackTitle => 'What do you want to track?';
+
+  @override
+  String get setupTrackHint =>
+      'Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.';
+
+  @override
+  String get setupTrackRunning => 'Running';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Always on';
+
+  @override
+  String get setupImportTitle => 'Bring your running history';
+
+  @override
+  String get setupImportHint =>
+      'Already log runs somewhere else? Bring them in so your dashboard, records and badges start full. Each one opens its import, and you come back here after.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Runs from any app that syncs to Health Connect, including Garmin and Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Workouts from Apple Watch and any app that saves to Apple Health, including Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Upload the archive Strava emails you, with every activity you\'ve logged';
+
+  @override
   String get setupDoneTitle => 'You\'re all set';
 
   @override
@@ -1225,6 +1934,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runShareLiveLink => 'Share live link';
 
   @override
+  String get runLiveShareArmed => 'Live link shared';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Sign in to share a live tracking link.';
 
@@ -1249,7 +1961,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runLiveShareStop => 'Stop sharing';
 
   @override
+  String get runLiveShareExpectedReturn => 'Not back by…';
+
+  @override
+  String get runExpectedReturnTitle => 'Not back by…';
+
+  @override
+  String get runExpectedReturnIntro =>
+      'Pick when you expect to be done. If this run is still going then, your confirmed safety contacts get one alert with your live link.';
+
+  @override
+  String get runExpectedReturnServerNote =>
+      'The deadline is kept on the server, so it still counts if this phone dies. It clears when the run saves — a run that finishes with no signal can still alert until it syncs.';
+
+  @override
+  String runExpectedReturnOptionMinutes(int minutes) {
+    return 'In $minutes min';
+  }
+
+  @override
+  String runExpectedReturnOptionHours(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'In $hours hours',
+      one: 'In 1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String runExpectedReturnBy(String time) {
+    return 'Back by $time';
+  }
+
+  @override
+  String runExpectedReturnActive(String time) {
+    return 'Alert set for $time.';
+  }
+
+  @override
+  String get runExpectedReturnClear => 'Clear the alert';
+
+  @override
+  String get runExpectedReturnSetToast => 'Return-time alert set.';
+
+  @override
+  String get runExpectedReturnClearedToast => 'Return-time alert cleared.';
+
+  @override
+  String get runExpectedReturnFailed =>
+      'Could not update the return-time alert.';
+
+  @override
+  String get runExpectedReturnUnavailable =>
+      'Could not reach the server to set a return-time alert.';
+
+  @override
   String get runLiveShareStopped => 'Live sharing stopped';
+
+  @override
+  String get runLiveShareNoPingYet =>
+      'Your live link hasn\'t sent a location yet — spectators are still waiting. Check your signal.';
 
   @override
   String get runLiveShareEndedTitle => 'Live sharing ended';
@@ -1281,6 +2054,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runFollowing => 'FOLLOWING';
+
+  @override
+  String get runClearRouteTooltip => 'Remove route';
 
   @override
   String get runRaceFallbackTitle => 'Race';
@@ -1323,6 +2099,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runStatAvgPace => 'Avg Pace';
 
   @override
+  String get runStoppedChip => 'Stopped';
+
+  @override
   String get runStatAvgSpeed => 'Avg Speed';
 
   @override
@@ -1342,9 +2121,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'spm';
@@ -1381,6 +2157,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runStopA11yHint => 'Ends the recording and saves the run';
 
   @override
+  String get runHoldToStopRunA11yHint => 'Hold to stop the run';
+
+  @override
   String get runHoldToStopHint => 'Hold to stop';
 
   @override
@@ -1413,6 +2192,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runExpandStatsPanel => 'Expand stats panel';
 
   @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Stats page $page of $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Shows the next stats';
+
+  @override
   String runRouteRemaining(String distance) {
     return '$distance to go';
   }
@@ -1430,6 +2217,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runWeakGps => 'Weak GPS — distance paused';
+
+  @override
+  String get runWeakGpsApproximate => 'Approximate location — distance paused';
+
+  @override
+  String get runTurnOnPreciseLocation => 'Turn on precise location';
 
   @override
   String get runA11yStarted => 'Run started';
@@ -1464,8 +2257,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runResumeDialogTitle => 'Resume your run?';
 
   @override
-  String get runResumeDialogBody =>
-      'A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'A run from an earlier session is still in progress ($distance, $duration). Resume recording where you left off, finish it now, or discard it.';
+  }
 
   @override
   String get runResumeAction => 'Resume';
@@ -1483,14 +2277,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Discarded your previous run.';
 
   @override
-  String get runStartWorkout => 'Start workout';
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Saved an unfinished run from a previous session ($distance, $duration).';
+  }
 
   @override
-  String get runStartWorkoutSubtitle =>
-      'Run with live step targets, audio cues, and a planned-vs-actual review.';
-
-  @override
-  String get runViewWorkoutDetails => 'View details';
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Discarded an unfinished recording from a previous session ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure => 'This workout has no runnable structure.';
@@ -1505,6 +2299,14 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return 'Workout loaded · $_temp0 — tap GO to start';
   }
+
+  @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Workout loaded: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Unload workout';
 
   @override
   String get runAbandonWorkoutTitle => 'Abandon workout?';
@@ -1591,6 +2393,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runTreadmillNotFound => 'Couldn\'t reach the treadmill';
 
   @override
+  String get runTreadmillConnecting => 'Connecting to the treadmill…';
+
+  @override
+  String get runTreadmillNoBeltData => 'No belt data — distance from GPS';
+
+  @override
   String get runSaveFailedRelaunch =>
       'Couldn\'t save locally. Relaunch the app to recover.';
 
@@ -1618,8 +2426,36 @@ class AppLocalizationsEn extends AppLocalizations {
       'No GPS — tracking will start when permission is granted.';
 
   @override
-  String get runGpsAllowAllTheTime =>
-      'Set Location to \"Allow all the time\" — runs stop recording when you switch apps without background permission.';
+  String get runNoGpsStartTitle => 'Start without GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'Location is off on this phone, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'Location access is off for this app, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Record time only';
+
+  @override
+  String get runNoDistanceTitle => 'No distance recorded';
+
+  @override
+  String get runNoDistanceBody =>
+      'This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Save as time-only';
+
+  @override
+  String get runBackgroundLocationPaused =>
+      'Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.';
+
+  @override
+  String get runPreciseLocationOff =>
+      'Precise location is off — the map and GPS distance for this run will be missing or far off, but the timer still records. Turn on precise location in Settings for an accurate track.';
 
   @override
   String get runGpsSensorFailed =>
@@ -1686,6 +2522,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String runWorkoutStepHeaderUnpaced(String label, String target) {
+    return '$label · $target';
+  }
+
+  @override
   String runWorkoutStepCounter(int current, int total) {
     return '$current/$total';
   }
@@ -1700,13 +2541,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandon';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return '$yards yd to go';
-  }
+  String get runWorkoutMoreActions => 'More workout actions';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return '$metres m to go';
+  String runWorkoutRemainingDistance(String distance) {
+    return '$distance to go';
   }
 
   @override
@@ -1812,6 +2651,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyAddRunTooltip => 'Add a run manually';
 
   @override
+  String get historyAddPastRun => 'Add past run';
+
+  @override
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Tap $button to start recording, or add one you have already finished';
+  }
+
+  @override
   String get historyLogTooltip => 'Log a run, lift or meal';
 
   @override
@@ -1833,6 +2680,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyKindMeals => 'Meals';
+
+  @override
+  String get historyModalityLoadFailed => 'Couldn\'t load your lifts and meals';
 
   @override
   String get historyViewAll => 'View all';
@@ -1863,7 +2713,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyEmptyTitle => 'No runs yet';
 
   @override
-  String get historyEmptyBody => 'Tap the Run tab to start your first run';
+  String get historyEmptyBody =>
+      'Tap Log to record a run, or add one you have already finished';
 
   @override
   String get historyFilterAll => 'All';
@@ -1892,7 +2743,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Apple Health';
 
   @override
   String get historySourceHealthConnect => 'Health Connect';
@@ -1946,6 +2797,71 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyDelete => 'Delete';
+
+  @override
+  String get historyUnsyncedRowSemantics => 'not yet synced';
+
+  @override
+  String get historyBlockedRowSemantics => 'cannot be uploaded';
+
+  @override
+  String get historyBlockedRowTooltip => 'Can\'t be uploaded';
+
+  @override
+  String historyBlockedTooltip(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs can\'t be uploaded',
+      one: '$count run can\'t be uploaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historySyncBlocked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count runs can\'t be uploaded and won\'t be retried. Open each one to choose what to do.',
+      one:
+          '$count run can\'t be uploaded and won\'t be retried. Open it to choose what to do.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get runDetailBlockedDropTrack => 'Upload without the trace';
+
+  @override
+  String get runDetailBlockedExport => 'Export a copy';
+
+  @override
+  String get runDetailBlockedTitle => 'This run can\'t be uploaded';
+
+  @override
+  String runDetailBlockedTrackTooLarge(int waypoints) {
+    return 'Its GPS trace ($waypoints points) is larger than the cloud store will hold, so trying again will never work. Everything else about the run — distance, time, pace, elevation — can still be saved.';
+  }
+
+  @override
+  String get runDetailDropTrackBody =>
+      'The trace is removed from this device and the run uploads without a map. Its distance, time, pace and elevation are unchanged. Export a copy first if you want to keep it.';
+
+  @override
+  String get runDetailDropTrackConfirm => 'Upload without it';
+
+  @override
+  String get runDetailDropTrackDone =>
+      'Trace removed. The run syncs on the next cycle.';
+
+  @override
+  String get runDetailDropTrackFailed =>
+      'The trace could not be removed. Try again.';
+
+  @override
+  String get runDetailDropTrackTitle => 'Upload without the GPS trace?';
 
   @override
   String get historyQueuedToSync => 'Queued to sync';
@@ -2050,6 +2966,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get addRunNoRoutes =>
       'No saved routes yet — build or import one to attach it here';
+
+  @override
+  String get addRunBuildRoute => 'Build a route';
+
+  @override
+  String get addRunImportRoute => 'Import a file';
 
   @override
   String get addRunDistanceInvalid => 'Enter a distance greater than 0';
@@ -2176,6 +3098,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailStatElevLoss => 'Elev Loss';
 
   @override
+  String get runDetailStatHrCoverage => 'HR coverage';
+
+  @override
+  String runDetailHrCoveragePercent(int pct) {
+    return '$pct%';
+  }
+
+  @override
+  String runDetailHrCoverageOnly(int pct) {
+    return '$pct% covered';
+  }
+
+  @override
   String get runDetailStatAvgHr => 'Avg HR';
 
   @override
@@ -2188,16 +3123,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailSectionElevation => 'Elevation';
 
   @override
-  String get runDetailPaceLegendTitle => 'Pace vs median';
-
-  @override
   String get runDetailPaceBandFaster => 'Faster';
 
   @override
-  String get runDetailPaceBandSteady => 'Steady';
+  String get runDetailPaceBandSlower => 'Slower';
 
   @override
-  String get runDetailPaceBandSlower => 'Slower';
+  String get runDetailMapPaceColours => 'Pace colours';
 
   @override
   String get runDetailSectionLaps => 'Laps';
@@ -2282,7 +3214,135 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runDetailPacing => 'Pacing';
+
+  @override
+  String get runDetailPacingFirstHalf => 'First half';
+
+  @override
+  String get runDetailPacingSecondHalf => 'Second half';
+
+  @override
+  String get runDetailPacingNegative => 'Negative split';
+
+  @override
+  String get runDetailPacingEven => 'Even split';
+
+  @override
+  String get runDetailPacingPositive => 'Positive split';
+
+  @override
+  String runDetailPacingFaster(String delta) {
+    return '$delta faster over the second half';
+  }
+
+  @override
+  String runDetailPacingSlower(String delta) {
+    return '$delta slower over the second half';
+  }
+
+  @override
+  String get runDetailPacingHeld => 'Steady across both halves';
+
+  @override
+  String get runDetailPacingGapNegative =>
+      'Adjusted for the terrain, you sped up over the second half.';
+
+  @override
+  String get runDetailPacingGapEven =>
+      'Adjusted for the terrain, your effort was even across both halves.';
+
+  @override
+  String get runDetailPacingGapPositive =>
+      'Adjusted for the terrain, you slowed over the second half.';
+
+  @override
+  String get runDetailStrategyTitle => 'Pacing strategy';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Goal $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Target';
+
+  @override
+  String get runDetailStrategyNotReached => 'not reached';
+
+  @override
+  String get runDetailStrategyPartial => 'partial';
+
+  @override
+  String get runDetailStrategyOnPace => 'on pace';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'On plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Went out too fast';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Faded';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Finished stronger than planned';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Faster than plan';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Slower than plan';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'No goal time was set, so each target is the plan\'s shape at your average pace.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'This run has no timed GPS track, so its phases can\'t be graded.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'No goal time was set, so a one-phase even plan has nothing to grade against.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Ended at $distance of the planned $planned, so the later phases weren\'t run.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'A phase within 1.5% of its target pace counts as on target; paces exclude stops.';
+
+  @override
+  String get runDetailGapColumn => 'Grade-adj.';
+
+  @override
+  String get runDetailGapColumnHint =>
+      'Grade-adjusted pace is the flat-ground pace that would have cost the same effort as the hills you actually ran.';
+
+  @override
   String get runDetailSectionSegments => 'Segments';
+
+  @override
+  String get runDetailParkCourses => 'Park courses on this run';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return '#$rank in $season';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed =>
+      'Couldn\'t load your park course times.';
+
+  @override
+  String get runDetailParkCourseOpenFailed => 'Couldn\'t open this course.';
 
   @override
   String get runDetailSaveAsRouteTitle => 'Save as route';
@@ -2315,6 +3375,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runDetailRecalculateDistance => 'Recalculate distance';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => 'Recalculate distance?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'This run\'s distance will be recomputed from its GPS track with the improved GPS filter, which removes the extra distance GPS jitter adds. The originally recorded distance is kept and shown beside the new one.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Recalculate';
+
+  @override
+  String get runDetailRecalculatingDistance =>
+      'Recalculating — refresh in a minute';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'Couldn\'t recalculate distance: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner =>
+      'Only the runner who recorded this run can recalculate its distance.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack =>
+      'This run has no GPS track to recalculate from.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Originally recorded: $distance';
+  }
+
+  @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
     return 'Saved \"$name\" — $kept waypoints ($smoothed smoothed out)';
   }
@@ -2328,6 +3423,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String runDetailMakePublicFailed(String error) {
     return 'Could not make run public: $error';
   }
+
+  @override
+  String get runDetailShareZonesUnknown =>
+      'Couldn\'t load your privacy zones, so nothing was shared. Check your connection and try again.';
 
   @override
   String get runDetailMakePublicTitle => 'Make this run public?';
@@ -2364,6 +3463,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runDetailMadePrivate => 'Run is now private';
+
+  @override
+  String get runDetailMadePublic => 'Run is now public';
+
+  @override
+  String get runDetailVisibilityPublic => 'Public';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Private';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Followers';
+
+  @override
+  String get runDetailVisibilityShared => 'Shared';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Private. Make this run public';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Public. Make this run private';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Change who can see this run';
+  }
 
   @override
   String get runDetailDeleteTitle => 'Delete run?';
@@ -2427,6 +3554,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailSegDismiss => 'Dismiss';
 
   @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
+
+  @override
   String get publicRunLiveTitle => 'Live right now';
 
   @override
@@ -2466,6 +3598,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not sync routes — working offline';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'Could not load your bookmarked routes';
+
+  @override
   String get routesLoadMoreFailed => 'Could not load more routes';
 
   @override
@@ -2494,7 +3630,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routesImportSharedFailed =>
-      'Couldn\'t import that file — it isn\'t a valid GPX or KML route.';
+      'Couldn\'t import that file — it isn\'t a valid route.';
 
   @override
   String routesSaved(String name) {
@@ -2512,7 +3648,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routesEmptyBody =>
-      'Tap Build to draw a route on the map, or Import a GPX, KML, or TCX file.';
+      'Tap Build to draw a route on the map, or Import a GPX, KML, KMZ, GeoJSON, or TCX file.';
 
   @override
   String get routesBuild => 'Build';
@@ -2676,6 +3812,51 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => 'Draw a shape';
+
+  @override
+  String get routeBuilderDrawHint => 'Drag on the map to draw your shape';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Draw a bigger shape — the line needs to be at least 300 m long.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'That drawing is longer than 100 km. Zoom in and draw a smaller shape.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'That drawing has too much detail to route. Try a simpler shape.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Part of your drawing has no road or path nearby. Move it onto streets or paths and try again.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'Routing isn\'t available right now, so your drawing couldn\'t be matched. Try again in a moment.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'The roads and paths here match only $score% of your drawing, so it hasn\'t become a route. Try a bigger shape, or draw along streets.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Matches your drawing: $score%';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Close match';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Rough match';
+
+  @override
+  String get routeBuilderDrawMatchPoor => 'Too far from your drawing';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'Routing failed: $error';
   }
@@ -2716,9 +3897,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeBuilderSearchHint => 'Search places…';
-
-  @override
-  String get routeBuilderMore => 'More';
 
   @override
   String get routeBuilderGenerateLoop => 'Generate loop';
@@ -2888,6 +4066,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Course sent to the watch ($points points), but its course markers couldn\'t be loaded, so no schedule went with it.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Course sent to the watch — thinned from $source points to $points to fit';
   }
@@ -3020,6 +4203,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeDetailStatDistance => 'Distance';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Official distance';
+
+  @override
+  String get routeDetailStatMeasured => 'Measured';
+
+  @override
   String get routeDetailStatElevation => 'Elevation';
 
   @override
@@ -3073,6 +4262,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routeDetailDescribeFailed =>
       'Couldn\'t generate a description. Please try again.';
+
+  @override
+  String get routeDetailDescribeConsentRequired =>
+      'AI descriptions need your consent to the updated AI disclosure.';
+
+  @override
+  String get routeDetailReviewDisclosure => 'Review disclosure';
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
@@ -3256,6 +4452,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Couldn\'t load your clubs — check your network.';
 
@@ -3286,6 +4486,143 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String routeDetailDeleteFailed(String error) {
     return 'Delete failed: $error';
+  }
+
+  @override
+  String get routeDetailDeleteImpactUnknown =>
+      'We couldn\'t check what else uses this route.';
+
+  @override
+  String get routeDetailDeleteNotAllowed =>
+      'Only the route\'s owner can delete it.';
+
+  @override
+  String get routeDetailDeleteImpactPublic =>
+      'It is public, so other runners can find and follow it.';
+
+  @override
+  String routeDetailDeleteImpactRaceListings(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count race listings use it as their course and will lose the course.',
+      one:
+          '$count race listing uses it as its course and will lose the course.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count club events use it and will lose their route.',
+      one: '$count club event uses it and will lose its route.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count other runners have saved it.',
+      one: '$count other runner has saved it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactShares(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people it is shared with will lose access.',
+      one: '$count person it is shared with will lose access.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSegments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count segments other runners made on it will be deleted.',
+      one: '$count segment other runners made on it will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEfforts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count efforts other runners logged on its segments will be deleted.',
+      one:
+          '$count effort other runners logged on its segments will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactReviews(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reviews by other runners will be deleted.',
+      one: '$count review by another runner will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactConditions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count condition reports by other runners will be deleted.',
+      one: '$count condition report by another runner will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs that followed it keep their stats but lose the link.',
+      one: '$count run that followed it keeps its stats but loses the link.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Its $count photos will be deleted.',
+      one: 'Its $count photo will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactMarkers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Its $count markers will be deleted.',
+      one: 'Its $count marker will be deleted.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -3372,6 +4709,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Location permission required to find nearby routes';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Location unavailable: $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       'Could not find nearby routes. Tap retry to try again.';
 
@@ -3413,34 +4755,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exploreRoutesSort => 'Sort';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'Couldn\'t save \"$name\" — check your connection and try again.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'Couldn\'t save \"$name\".';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return 'Saved \"$name\" to your library';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Already saved';
-
-  @override
   String get exploreRoutesSaveToLibrary => 'Save to library';
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Trail';
+  String get exploreRoutesRemoveFromLibrary => 'Remove from your library';
 
   @override
-  String get exploreRoutesSurfaceMixedShort => 'Mixed';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Road';
+  String exploreRoutesRemoved(String name) {
+    return 'Removed \"$name\" from your library';
+  }
 
   @override
   String get exploreRoutesDistanceUnderKm => 'Under 5 km';
@@ -3539,10 +4867,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get heatmapHeatDensity => 'Heat density';
 
   @override
+  String get heatmapUpcomingRaces => 'Upcoming races';
+
+  @override
+  String get heatmapViewRace => 'View race';
+
+  @override
+  String get heatmapRaceFallbackName => 'Race';
+
+  @override
   String get heatmapResetFilters => 'Reset filters';
 
   @override
   String get heatmapLensPopular => 'Popular';
+
+  @override
+  String get heatmapLensOfficial => 'Official';
 
   @override
   String get heatmapLensFriends => 'Friends';
@@ -3805,17 +5145,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNotFound => 'Profile not found.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers followers',
-      one: '$followers follower',
-    );
-    return '$_temp0 · $following following';
-  }
-
-  @override
   String get profileFollowing => 'Following';
 
   @override
@@ -3826,6 +5155,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileRunsEmptyOther => 'No public runs yet.';
+
+  @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count of your runs aren\'t public, so they aren\'t listed here.',
+      one: '1 of your runs isn\'t public, so it isn\'t listed here.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'View all in Runs';
 
   @override
   String get profileFollowersEmpty => 'No followers yet.';
@@ -3953,6 +5296,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$name reacted to your run';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$name liked your comment';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name mentioned you in a comment';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$name started following you';
   }
@@ -4003,6 +5361,145 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name applied AI-suggested changes to a plan you assigned';
+  }
+
+  @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$name suggested a change to a plan you assigned';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$name answered your suggested plan change';
+  }
+
+  @override
+  String get planChangeTitle => 'Suggested plan change';
+
+  @override
+  String get planChangeWaitingForCoach => 'Waiting for your coach to answer';
+
+  @override
+  String get planChangeWaitingForYou =>
+      'Your athlete is waiting for your answer';
+
+  @override
+  String get planChangeApprovedByCoach => 'Approved by the coach and applied';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'Approved in part by the coach; the lines shown were applied';
+
+  @override
+  String get planChangeDeclinedByCoach => 'Declined by the coach';
+
+  @override
+  String get planChangeWithdrawnByAthlete => 'Withdrawn by the athlete';
+
+  @override
+  String get planChangeAppliedByAthlete =>
+      'Applied by the athlete without the coach';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'Include this change: $line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return 'Week $n target';
+  }
+
+  @override
+  String get planChangeSkipped => 'Skipped';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return 'Week $n target: $from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable =>
+      'Some of these changes can no longer be shown.';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'Coach\'s note: $note';
+  }
+
+  @override
+  String get planChangeNoteLabel => 'Note to your athlete (optional)';
+
+  @override
+  String get planChangeNotePlaceholder => 'Why you approved or declined';
+
+  @override
+  String get planChangeDecline => 'Decline';
+
+  @override
+  String get planChangeApprove => 'Approve';
+
+  @override
+  String get planChangeApproveSelected => 'Approve selected';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'You own this plan, so you can apply the change yourself. Your coach will be told.';
+
+  @override
+  String get planChangeWithdraw => 'Withdraw';
+
+  @override
+  String get planChangeApplyMyself => 'Apply it myself';
+
+  @override
+  String get planChangeWithdrawConfirmTitle =>
+      'Withdraw this suggested change?';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'Your coach will no longer be asked to approve it. To suggest it again, ask the Coach to adjust your plan again.';
+
+  @override
+  String get planChangeKeep => 'Keep it';
+
+  @override
+  String planChangeFailed(String error) {
+    return 'Couldn\'t update the suggested change: $error';
+  }
+
+  @override
+  String get planChangeApprovedToast =>
+      'Change approved and applied to the plan';
+
+  @override
+  String get planChangeDeclinedToast => 'Change declined';
+
+  @override
+  String get planChangeWithdrawnToast => 'Suggestion withdrawn';
+
+  @override
+  String get planChangeAppliedToast =>
+      'Change applied to your plan; your coach has been told';
+
+  @override
+  String get planChangeLoadFailed => 'Couldn\'t load suggested plan changes.';
+
+  @override
+  String get planChangeRetry => 'Try again';
+
+  @override
+  String get profileNotifWorkoutReminder =>
+      'Today\'s workout is waiting in your plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'An occurrence of \"$title\" was cancelled';
   }
@@ -4010,6 +5507,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get profileNotifEventCancel =>
       'An event occurrence you RSVP\'d to was cancelled';
+
+  @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name asked to join your club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name asked to join $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Your request to join a club was approved';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'You\'re in — your request to join $club was approved';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'An event you\'re going to was updated';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '\"$title\" was updated — check the new details';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'An event you RSVP\'d to was cancelled';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '\"$title\" was cancelled';
+  }
+
+  @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'An occurrence of \"$title\" was cancelled — your payment is being refunded';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'An event occurrence you paid for was cancelled — your payment is being refunded';
+
+  @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'A place opened in \"$title\" and is held for you — pay to claim it';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'A place opened in an event you\'re waitlisted for and is held for you — pay to claim it';
 
   @override
   String profileNotifEventReminderTitled(String title) {
@@ -4029,6 +5581,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get profileNotifContentHidden =>
       'One of your posts was hidden after being reported';
+
+  @override
+  String get profileNotifDataExportReady =>
+      'Your data export is ready to download';
+
+  @override
+  String get profileNotifRefundFailed =>
+      'A refund we started couldn\'t be completed. The money is still with us and we\'ll arrange another way to return it.';
 
   @override
   String profileNotifGeneric(String name) {
@@ -4187,7 +5747,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubsEmptyMineTitle => 'You haven\'t joined a club yet.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Try a different name or location.';
+  String get clubsMissingClubBody =>
+      'Is your club missing? It may not be on Threkir yet. Set up its page and invite your members to join.';
+
+  @override
+  String get clubsSetUpYourClub => 'Set up your club';
+
+  @override
+  String get clubsHowToCreateClub => 'How to create a club';
 
   @override
   String get clubsEmptyMineBody => 'Head to Browse to find one.';
@@ -4247,7 +5814,68 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Member';
+  String clubDetailNameHint(String handle) {
+    return 'Club members see you as $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'You can add your name in your account settings.';
+
+  @override
+  String get clubRoleOwner => 'Owner';
+
+  @override
+  String get clubRoleAdmin => 'Admin';
+
+  @override
+  String get clubRoleEventOrganiser => 'Event organiser';
+
+  @override
+  String get clubRoleRaceDirector => 'Race director';
+
+  @override
+  String get clubRoleMember => 'Member';
+
+  @override
+  String get clubDetailMembersEmptyTitle => 'No members yet';
+
+  @override
+  String get clubDetailMembersEmptyBody =>
+      'As soon as someone joins, they\'ll appear here with their role.';
+
+  @override
+  String get clubDetailMembersLoadFailed => 'Could not load members';
+
+  @override
+  String get clubDetailMembersLoadMore => 'Load more';
+
+  @override
+  String get clubDetailMemberActions => 'Member actions';
+
+  @override
+  String get clubDetailRemoveFromClub => 'Remove from club';
+
+  @override
+  String get clubDetailRemoveMemberTitle => 'Remove member';
+
+  @override
+  String clubDetailRemoveMemberBody(String name, String club) {
+    return 'Remove $name from $club?';
+  }
+
+  @override
+  String get clubDetailRemoveMemberConfirm => 'Remove';
+
+  @override
+  String clubDetailRoleChangeFailed(String error) {
+    return 'Failed to change role: $error';
+  }
+
+  @override
+  String clubDetailRemoveMemberFailed(String error) {
+    return 'Failed to remove member: $error';
+  }
 
   @override
   String get clubDetailRequestPending => 'Request pending';
@@ -4347,11 +5975,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String clubDetailPendingRequests(int count) {
     return 'Pending requests ($count)';
-  }
-
-  @override
-  String clubDetailUserShort(String id) {
-    return 'User $id…';
   }
 
   @override
@@ -4516,6 +6139,60 @@ class AppLocalizationsEn extends AppLocalizations {
       'No recent runs found. Record a run first, then come back.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Add event photo';
+
+  @override
+  String get eventAddPhotoFromRun => 'Add from my run';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'None of your runs started during this event. Photos attach to a run that started up to 2 hours before and within 24 hours after the start.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Couldn\'t load your runs: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'Couldn\'t load the photos.';
+
+  @override
+  String get eventPhotosRetry => 'Reload photos';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Hidden';
+
+  @override
+  String get eventPhotoHide => 'Hide';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Hide photo by $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Restore';
+
+  @override
+  String get eventPhotoDelete => 'Delete';
+
+  @override
+  String get eventPhotoHidden => 'Photo hidden from the event';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Couldn\'t update the photo: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Photo deleted';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Couldn\'t delete the photo: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'A runner';
 
   @override
@@ -4523,9 +6200,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'No RSVPs yet — be the first.';
-
-  @override
-  String get eventAttendeeMember => 'Member';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -4592,10 +6266,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Tap Fire Go when the race begins. Participants\' watches show the armed banner now.';
+      'Tap GO when the race begins. Participants\' watches show the armed banner now.';
 
   @override
-  String get eventRaceFireGo => 'Fire Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Cancel';
@@ -4696,14 +6370,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveSpectatorConnectError => 'Could not connect.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'Waiting for the runner to send the first ping…';
+  String get liveSpectatorWaitingGps =>
+      'Waiting for the runner\'s GPS — their position appears as soon as their phone gets a fix';
 
   @override
   String get liveSpectatorBadgeLive => 'Live';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Idle';
+  String get liveSpectatorBadgeWaitingGps => 'Waiting for GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Connecting';
@@ -4718,10 +6392,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveSpectatorApproximateSub => 'Last seen near here — approximate';
 
   @override
+  String get liveSpectatorWeakGpsSub =>
+      'Approximate — the runner\'s GPS signal is weak';
+
+  @override
   String get liveSpectatorBadgeFinished => 'Finished';
 
   @override
   String get liveSpectatorBadgeDnf => 'DNF';
+
+  @override
+  String get liveSpectatorStatRaceTime => 'Race time';
+
+  @override
+  String get liveSpectatorStatTimer => 'Timer';
+
+  @override
+  String get liveSpectatorStatTimerStale => 'Timer, last fix';
 
   @override
   String get liveSpectatorRecentPace => 'Recent';
@@ -4729,6 +6416,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String liveSpectatorCourseProgress(int p) {
     return '$p% of route';
+  }
+
+  @override
+  String liveSpectatorMotionStopped(int n) {
+    return 'Not moving — $n min in the same spot';
+  }
+
+  @override
+  String liveSpectatorMotionStoppedAtLeast(int n) {
+    return 'Not moving — at least $n min in the same spot';
   }
 
   @override
@@ -4795,6 +6492,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveCutoffSignalLost => 'Signal lost — can\'t project arrival';
 
   @override
+  String get liveCutoffExpired => 'Cut-off time has passed';
+
+  @override
+  String liveCutoffRequiredPace(String pace) {
+    return 'Needs $pace from here';
+  }
+
+  @override
+  String liveCutoffRequiredPaceStale(String pace) {
+    return 'Needs $pace from the last fix';
+  }
+
+  @override
   String get plansTitle => 'Training plans';
 
   @override
@@ -4823,7 +6533,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'You can create a new plan after.';
+  String get plansAbandonBody =>
+      'Its weeks, workouts and linked runs are kept. You can create a new plan after.';
 
   @override
   String plansActionFailed(String error) {
@@ -4831,16 +6542,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count days/wk';
-  }
-
-  @override
-  String get plansSignInTitle => 'Sign in to use training plans';
-
-  @override
-  String get plansSignInBody =>
-      'Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.';
+  String get plansStatusUpcoming => 'upcoming';
 
   @override
   String get plansEmptyTitle => 'No plans yet.';
@@ -4858,6 +6560,84 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t load training plans. Tap retry to try again.';
 
   @override
+  String get plansStatusActive => 'active';
+
+  @override
+  String get plansStatusPaused => 'paused';
+
+  @override
+  String get plansStatusCompleted => 'completed';
+
+  @override
+  String get plansStatusAbandoned => 'abandoned';
+
+  @override
+  String get plansFilterGroupLabel => 'Filter plans by status';
+
+  @override
+  String get plansFilterAll => 'All';
+
+  @override
+  String get plansFilterActive => 'Active';
+
+  @override
+  String get plansFilterPaused => 'Paused';
+
+  @override
+  String get plansFilterCompleted => 'Completed';
+
+  @override
+  String get plansFilterAbandoned => 'Abandoned';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'No $status plans.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Show all plans';
+
+  @override
+  String get plansHeroGoal => 'Goal';
+
+  @override
+  String get plansHeroTarget => 'Target';
+
+  @override
+  String get plansGoalFinish => 'Finish';
+
+  @override
+  String get plansEventHalf => 'Half marathon';
+
+  @override
+  String get plansEventFull => 'Marathon';
+
+  @override
+  String get plansEventCustom => 'Custom';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Week $week of $total';
+  }
+
+  @override
+  String get plansEnded => 'Ended';
+
+  @override
+  String get plansProgressLabel => 'Plan progress';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks · $days days/week',
+      one: '$weeks week · $days days/week',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get planNewTitle => 'New plan';
 
   @override
@@ -4865,9 +6645,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planNewNameHint => 'e.g. Autumn half marathon';
-
-  @override
-  String get planNewNameRequiredHint => 'Add a plan name to enable Create.';
 
   @override
   String planNewDefaultName(String goal) {
@@ -4881,6 +6658,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planNewGoalRace => 'Goal race';
+
+  @override
+  String get planNewUltraOther => 'Other ultra distance';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'Race distance ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'Ultra courses vary — Comrades runs 86–90 km depending on the year. Enter your race\'s exact distance. Long runs are set by time on feet, not pace.';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'An ultra is longer than a marathon. Pick Marathon, or enter a longer distance.';
 
   @override
   String get planNewStartDate => 'Start date';
@@ -4916,15 +6709,163 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planNewRecent5kWarning =>
-      'Until you confirm, paces stay on the conservative goal-based estimate. Anchoring on an old result can prescribe paces that are too fast for a returning runner.';
-
-  @override
-  String get planNewOverrideHint => 'Override total weeks';
+      'Until you confirm, paces come from your goal time, or from a cautious default if you leave it blank. An old result can set paces that are too fast for a returning runner, and so can an ambitious goal.';
 
   @override
   String planNewOverrideLabel(int count) {
     return 'Override weeks ($count default)';
   }
+
+  @override
+  String planNewRaceAnchored(int weeks) {
+    return 'Sized for your race: a $weeks-week plan whose final week is race week. Adjust anything below before creating it.';
+  }
+
+  @override
+  String planNewRaceChained(String date) {
+    return 'Starts $date, after your current plan and its recovery days.';
+  }
+
+  @override
+  String get planNewRacePast =>
+      'That race has already been run, so the dates below are the usual defaults.';
+
+  @override
+  String get planNewRaceTooSoon =>
+      'That race is too close to build a full plan for, so the dates below are the usual defaults.';
+
+  @override
+  String get planNewRaceUnreadable =>
+      'We couldn\'t read that race\'s date, so the dates below are the usual defaults.';
+
+  @override
+  String get planNewAiTitle => 'Describe the plan you want';
+
+  @override
+  String get planNewAiHint =>
+      'Write it in plain English and the form below is filled in for you. The app\'s own generator still builds the plan — check every field before you create it.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'e.g. A sub-2 half marathon on 14 March. I can train 4 days a week and my last 5K was 26:30.';
+
+  @override
+  String get planNewAiButton => 'Fill in the form';
+
+  @override
+  String get planNewAiWorking => 'Reading…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Filled in from your description — check each field.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'The plan is built by the app\'s own generator from these fields, not by the AI.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Your 5K time was added but not confirmed. Tick the box only if it reflects your fitness today.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Start date and plan length set so race week includes $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'That race date has already passed, so the start date was left as it was.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Race day is less than four weeks away, so the start date was left as it was — a plan needs at least four weeks.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'That race date couldn\'t be read, so the start date was left as it was.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'No race distance was mentioned, so the goal is set to a half marathon.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'No training days were mentioned, so it\'s set to 4 days a week.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Training days were set to the nearest the planner supports (3 to 7 a week).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'Plan length was set to the nearest the planner supports (4 to 24 weeks).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'The race date couldn\'t be used — it has to be a future date within two years.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'The goal time looked out of range for that distance, so it was left blank.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'The 5K time looked out of range, so it was left blank.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'A race that couldn\'t be read was left out.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'A race was left out because its date couldn\'t be used — it has to be a future date within two years.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'A race was left out because its distance is outside what the planner supports (5 km to 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'A date given without a year had already passed this year, so it was moved to next year.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'A goal time looked out of range for its distance, so that race has no goal time.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'A race mentioned twice is listed once.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Only the first 12 races are listed — a season can hold up to 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Races without a priority were set to B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'No race was marked as your A race, so the longest one is.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'The plan assistant needs the updated AI disclosure.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Review disclosure';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'You\'ve used today\'s AI requests. Fill in the form yourself, or try again tomorrow.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'Couldn\'t read that — fill in the form yourself.';
 
   @override
   String get planNewCancel => 'Cancel';
@@ -4963,12 +6904,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get planNewWeekOutline => 'Week outline';
+  String get planNewRampLabel => 'Plan vs. your recent training';
 
   @override
-  String planNewMoreWeeks(int count) {
-    return '+ $count more weeks';
+  String planNewRampUnder(String peak, String recent) {
+    return 'This plan peaks at $peak a week, below the $recent a week you\'ve averaged over the last four weeks. A longer goal race or more training days would make better use of that base.';
   }
+
+  @override
+  String planNewRampElevated(String opening, String recent) {
+    return 'Week 1 asks for $opening against the $recent a week you\'ve averaged over the last four weeks — a real step up. Ease into it, or drop a training day.';
+  }
+
+  @override
+  String planNewRampHigh(String opening, String recent) {
+    return 'Week 1 asks for $opening, well above the $recent a week you\'ve averaged over the last four weeks. Fewer training days, a shorter goal race, or a few weeks of base building first would make that first step safer.';
+  }
+
+  @override
+  String get planNewWeekOutline => 'Week outline';
 
   @override
   String planNewSessions(int count) {
@@ -4976,26 +6930,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get planNewTemplateTitle => 'Start from a club template';
-
-  @override
-  String get planNewTemplateSubtitle =>
-      'Adopt a plan a club you belong to has published. It clones into your account with the start date below — edit it like any other plan.';
-
-  @override
-  String get planNewTemplateButton => 'Browse templates';
-
-  @override
   String get planNewTemplateCloning => 'Adopting…';
 
   @override
   String get planNewTemplateCloneFailed => 'Couldn\'t adopt that template.';
-
-  @override
-  String get planNewTemplatePickerTitle => 'Choose a template';
-
-  @override
-  String get planNewTemplatePickerCancel => 'Cancel';
 
   @override
   String get planLibraryTitle => 'Public plan library';
@@ -5030,16 +6968,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planLibraryAnonymous => 'a runner';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks weeks';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/week';
-  }
-
-  @override
   String get planLibraryClone => 'Clone into my plans';
 
   @override
@@ -5069,6 +6997,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get planDetailPublishLibraryLabel => 'Public plan library';
 
   @override
@@ -5076,7 +7015,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.';
+      'Share this plan\'s weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -5089,6 +7028,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailUnpublishLibrary => 'Unpublish';
+
+  @override
+  String get planDetailUnpublishTitle => 'Unpublish this plan?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'It leaves the public library. Anyone who opens a link you shared to it will find it gone, and publishing again creates a new link.';
 
   @override
   String get planDetailUnpublishSuccess => 'Removed from the public library.';
@@ -5109,20 +7055,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewStarterTitle => 'Start from a built-in plan';
 
   @override
-  String get planNewStarterSubtitle =>
-      'Pick a proven training plan and we\'ll schedule it from your start date — you can tweak it after.';
-
-  @override
-  String get planNewStarterButton => 'Browse starter plans';
-
-  @override
   String get planNewStarterCreating => 'Creating…';
-
-  @override
-  String get planNewStarterPickerTitle => 'Choose a starter plan';
-
-  @override
-  String get planNewStarterPickerCancel => 'Cancel';
 
   @override
   String get planNewStarterCreateFailed => 'Couldn\'t create that plan.';
@@ -5131,19 +7064,221 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewReplaceActiveTitle => 'Replace your active plan?';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'You already have an active plan: \"$name\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'You already have an active plan. Creating a new plan will mark the current one as completed. Continue?';
-
-  @override
   String get planNewReplaceActiveConfirm => 'Replace plan';
 
   @override
   String get planNewReplaceActiveKeep => 'Keep current';
+
+  @override
+  String get planOverlapTitle => 'These dates overlap an active plan';
+
+  @override
+  String planOverlapBody(String start, String end) {
+    return 'Your new plan runs $start – $end. Only one plan can be active on any day, and it overlaps:';
+  }
+
+  @override
+  String planOverlapPlanLine(String name, String start, String end) {
+    return '$name: $start – $end';
+  }
+
+  @override
+  String get planOverlapReplaceHint =>
+      'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.';
+
+  @override
+  String planOverlapTrimHint(String name, String date) {
+    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it abandoned.';
+  }
+
+  @override
+  String planOverlapTrim(String name, String date) {
+    return 'End $name on $date';
+  }
+
+  @override
+  String planOverlapTrimMany(String date) {
+    return 'End them on $date';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them abandoned.';
+  }
+
+  @override
+  String get planOverlapConflict =>
+      'Another active plan now covers these dates. Check your plans and try again.';
+
+  @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$plan has completed workouts after $date. Replace it instead, or start the new plan later.';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return 'The plan you chose to end early has completed workouts after $date. Replace it instead, or start the new plan later.';
+  }
+
+  @override
+  String get planDetailDuplicateWeekOverlap =>
+      'Duplicating this week would push the plan into another active plan\'s dates. Move or end that plan first.';
+
+  @override
+  String get planNewImportButton => 'Import a plan';
+
+  @override
+  String get planImportTitle => 'Import a plan';
+
+  @override
+  String get planImportIntro =>
+      'Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.';
+
+  @override
+  String get planImportPasteLabel => 'Plan table or JSON';
+
+  @override
+  String get planImportLoad => 'Load';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'Couldn\'t read that plan: $detail';
+  }
+
+  @override
+  String planImportErrorBadDistance(String cell) {
+    return 'Couldn\'t read the distance \"$cell\".';
+  }
+
+  @override
+  String planImportErrorBadPace(String cell) {
+    return 'Couldn\'t read the pace \"$cell\". Use m:ss.';
+  }
+
+  @override
+  String planImportErrorDuplicateColumn(String column) {
+    return 'The column \"$column\" appears twice.';
+  }
+
+  @override
+  String planImportErrorMissingColumn(String column) {
+    return 'The table has no \"$column\" column.';
+  }
+
+  @override
+  String planImportErrorRaceNameTooLong(String name, String max) {
+    return 'The race name \"$name\" is longer than $max characters.';
+  }
+
+  @override
+  String planImportErrorBadRacePriority(String cell) {
+    return 'Couldn\'t read the race priority \"$cell\". Use A, B or C.';
+  }
+
+  @override
+  String planImportErrorBadGoalTime(String cell) {
+    return 'Couldn\'t read the goal time \"$cell\". Use h:mm:ss.';
+  }
+
+  @override
+  String planImportErrorBadWeek(String cell) {
+    return 'Couldn\'t read the week number \"$cell\".';
+  }
+
+  @override
+  String planImportErrorBadDate(String cell) {
+    return 'Couldn\'t read the date \"$cell\". Use YYYY-MM-DD.';
+  }
+
+  @override
+  String planImportErrorUnknownKind(String cell) {
+    return '\"$cell\" isn\'t a workout type this app knows.';
+  }
+
+  @override
+  String planImportErrorRaceFieldsOnNonRace(String date) {
+    return 'Race, priority and goal apply only to race rows, and the workout on $date isn\'t a race.';
+  }
+
+  @override
+  String get planImportErrorNoRows =>
+      'No workout rows found. Paste a table with Week, Date and Type columns.';
+
+  @override
+  String get planImportErrorNoGoalDistance =>
+      'Couldn\'t work out the plan\'s goal distance.';
+
+  @override
+  String planImportErrorBeforeStart(String date, String start) {
+    return 'The workout on $date is before the plan\'s start date, $start.';
+  }
+
+  @override
+  String get planImportErrorNotJson => 'This isn\'t valid JSON.';
+
+  @override
+  String get planImportErrorNoWorkoutsArray => 'The JSON has no workouts list.';
+
+  @override
+  String get planImportErrorBadJsonShape =>
+      'The JSON\'s workouts aren\'t in the export format.';
+
+  @override
+  String planImportErrorBadTaperStamp(String value, String date) {
+    return 'Couldn\'t read the taper date \"$value\" on $date.';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return '$start to $end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '1 week',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts workouts',
+      one: '1 workout',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts workouts',
+      one: '1 workout',
+    );
+    return 'Week $week: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'Race: $name, $date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => 'Unnamed race';
+
+  @override
+  String get planImportCreate => 'Create plan';
+
+  @override
+  String get planImportCreateFailed =>
+      'Couldn\'t create the plan. Check your connection and try again.';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'Couldn\'t check your active plans for these dates. Check your connection and try again.';
 
   @override
   String get planNewStarterC25k => 'Couch to 5K (beginner walk-run)';
@@ -5166,10 +7301,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailNotFound => 'Plan not found.';
 
   @override
-  String get planDetailLongestLongRun => 'Longest long run';
+  String planDetailLongestLongRun(String distance) {
+    return 'Longest long run: $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publish as club template';
+
+  @override
+  String get planDetailRacesTitle => 'Races in this plan';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return 'Priority $priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -5183,21 +7328,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailToday => 'TODAY';
 
   @override
-  String get planDetailCompleted => 'Completed';
-
-  @override
   String planDetailWeek(int number) {
     return 'Week $number';
   }
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Running $pct% over plan this week — ease back on the easy days so you don\'t dig a fatigue hole.';
+    return 'Running $pct% over plan so far this week — ease back on the easy days so you don\'t dig a fatigue hole.';
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Running $pct% under plan this week — the planned volume drives the adaptation.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'So far this week you\'ve run $done of the $planned due by now.';
   }
 
   @override
@@ -5217,6 +7359,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => 'Adaptive re-plan';
+
+  @override
+  String get planDetailAdjustPlan => 'Adjust plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Pick the change that fits what happened. Each option says what it changes.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Makes up a missed long run, or eases the next week after you ran more than planned. Use it when one week didn\'t go to plan.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.';
+
+  @override
+  String get planDetailRaceTaper => 'Taper around B/C races';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      'Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.';
+
+  @override
+  String get planDetailRaceTaperNone =>
+      'No upcoming B or C race needs a taper.';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle => 'Proposed taper and recovery';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — taper for $race';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — shakeout before $race';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — recovery after $race';
+  }
+
+  @override
+  String get planDetailRaceTaperNotesCleared => 'Notes cleared';
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return 'Next race: $name';
+  }
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Makes this your active plan again. Use it when you\'re ready to pick the plan back up.';
+
+  @override
+  String get planDetailPausePlan => 'Pause plan';
+
+  @override
+  String get planDetailResumePlan => 'Resume plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan paused.';
+
+  @override
+  String get planDetailResumeDone => 'Plan resumed.';
+
+  @override
+  String get planDetailResumeOverlap =>
+      'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -5254,6 +7472,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your plan\'s on track — nothing to adjust.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'Couldn\'t load your recent runs, so the plan can\'t be checked against them yet. Try again in a moment.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -5265,11 +7487,99 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => 'Running a little less than planned';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'You\'ve run less than planned in $n of the last $total weeks. There\'s a suggested adjustment to the weeks ahead.';
+  }
+
+  @override
+  String get planNudgeAnchorUnderTitle => 'Last week came in short';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'The weeks ahead still step up from the plan, not from what you ran. There\'s a suggested change to build back from last week instead.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Easing back into your plan';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n weeks',
+      one: '$n week',
+    );
+    return 'You\'ve been away from the plan for $_temp0. There\'s a suggested change so the weeks ahead build back up from what you last ran.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'A big week';
+
+  @override
+  String get planNudgeEaseBody =>
+      'You ran well over plan last week. Easing next week\'s shorter runs helps your body absorb it.';
+
+  @override
+  String get planNudgeRestTitle => 'Running on rest days';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'You\'ve run on rest days in $n of the last $total weeks. Those runs count toward your week, but rest days are where the training sinks in.';
+  }
+
+  @override
+  String get planNudgeReview => 'Review the changes';
+
+  @override
+  String get planNudgeDismiss => 'Dismiss';
+
+  @override
+  String get planNudgeDismissA11y => 'Dismiss this suggestion';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'Couldn\'t hide that suggestion. Try again.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '$distance more than planned';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => 'Proposed changes';
 
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Long run $from → $to — make up a missed long run';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — build back from what you ran';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Your last week of running came in at $km, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n weeks',
+      one: '$n week',
+    );
+    return 'You\'ve been away from the plan for $_temp0. These weeks restart at about half of the $km you last ran in a week and build about 10% a week. The taper stays as planned.';
   }
 
   @override
@@ -5373,6 +7683,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutMetricTargetPace => 'Target pace';
 
   @override
+  String get workoutMetricEffort => 'Effort';
+
+  @override
+  String get workoutMetricHeartRate => 'Heart rate';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Updated by your coach on $date';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'Effort $min–$max/10';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'Effort $value/10';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'Effort up to $max/10';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'Effort $min/10 or harder';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Cap $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'At least $min bpm';
+  }
+
+  @override
   String get workoutCompleted => 'Completed';
 
   @override
@@ -5387,6 +7748,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutUnlinkError => 'Couldn\'t unlink the run. Try again.';
+
+  @override
+  String get workoutMarkDone => 'Mark as done';
+
+  @override
+  String get workoutMarkNotDone => 'Mark not done';
+
+  @override
+  String get workoutUpdateError => 'Couldn\'t update the workout. Try again.';
 
   @override
   String get workoutSkipped => 'Skipped';
@@ -5415,6 +7785,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutRelinkError => 'Couldn\'t load your runs. Try again.';
+
+  @override
+  String get workoutRelinkSaveError => 'Couldn\'t link that run. Try again.';
 
   @override
   String get workoutRelinkEmpty => 'No eligible runs near this date.';
@@ -5447,16 +7820,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutStructCooldown => 'Cooldown';
 
   @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ easy';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ easy';
-  }
-
-  @override
   String get workoutAdviceEasy =>
       'Conversational pace. If you can\'t hold a conversation, you\'re running it too fast.';
 
@@ -5481,6 +7844,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Alternate easy running and walking on the timed intervals. The walk breaks are part of the workout — take them even when you feel fresh.';
 
   @override
+  String get planDetailWeekAdviceRace => 'Race week — trust the work.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Taper — volume comes down, sharpness stays.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Final week — it ends with your first 5K.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Take the walk breaks even when you feel good — they make the runs sustainable.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Back-to-back weekend — two long runs on consecutive days, the second on tired legs.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Run by effort and fuel early — the clock looks after itself.';
+
+  @override
   String get workoutAdviceRace =>
       'Trust the plan. Don\'t chase a PB in the first mile.';
 
@@ -5495,30 +7885,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachNewConversation => 'New conversation';
 
   @override
-  String get coachConsentHeadline => 'Before you chat with Coach';
+  String get coachConsentHeadline => 'Before you use Threkir\'s AI features';
 
   @override
   String get coachConsentIntro =>
-      'To give you grounded advice, Coach forwards a slice of your training data to Anthropic, our AI model provider in the United States. That slice includes:';
+      'Threkir\'s AI features forward a slice of your data to Anthropic, our AI model provider in the United States, so it can write the Coach\'s replies and the other AI features\' suggestions for you. Depending on which feature you use, that slice includes:';
 
   @override
   String get coachConsentBulletProfile =>
-      'Your date of birth, gender, and HR zones if set.';
+      'Only if you\'ve given health-data consent: your date of birth and configured HR zones, if you\'ve set them.';
 
   @override
-  String get coachConsentBulletRuns => 'A window of your most recent runs.';
+  String get coachConsentBulletRuns =>
+      'A window of your most recent runs: the date, distance, duration, activity type, elevation gain, whether it was indoors and how it went against a planned workout, plus your average heart rate only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletPlan =>
-      'The active training plan you have selected.';
+      'The training plan or plans you have selected: for each plan, its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletMessages =>
-      'The chat messages you type in the screen below.';
+      'The messages you send the Coach, including anything you write about your health or injuries, so leave out anything you\'d rather not share.';
+
+  @override
+  String get coachConsentBulletRoutes =>
+      'For the AI route assistant: the route\'s name and stats, the request you type, and a coarse place label — never your precise coordinates.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir\'s own generator, not the AI.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Your distance units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'A summary of your most recent gym sessions: the date, the session name, how many exercises and sets, and the total weight lifted.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Only if you\'ve given health-data consent: a 7-day summary of your food log (days logged and average calories, protein, carbs and fat), never individual meals.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'For AI plan edits: the upcoming workouts in the plan you are changing (dates, types and distances) and the change you type, used only to suggest edits you review before anything is saved — the AI cannot add workouts or set paces.';
 
   @override
   String get coachConsentProcessing =>
-      'Anthropic processes the data on Threkir\'s behalf under their data-processing terms; they do not train their models on Threkir customer data by default. Full details — including transfer mechanism, retention, and your withdrawal rights — are in our privacy policy.';
+      'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time in Settings → Account; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.';
 
   @override
   String get coachConsentAction =>
@@ -5528,13 +7947,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachConsentCancel => 'Cancel';
 
   @override
-  String get coachConsentAccept => 'I consent — start Coach';
+  String get coachConsentAccept => 'I consent — enable AI features';
 
   @override
   String get coachConsentSaving => 'Recording consent…';
 
   @override
+  String aiDisclosureRecordFailed(Object error) {
+    return 'Couldn\'t record consent: $error';
+  }
+
+  @override
   String get coachNoPlanOption => 'No plan (recent runs only)';
+
+  @override
+  String get coachSeasonOption =>
+      'My season (current plan and the plans queued after it)';
+
+  @override
+  String get coachSeasonName => 'My season';
 
   @override
   String coachPlanActive(String name) {
@@ -5585,6 +8016,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      'Racing again after this plan? Tap Add to my season on the race, and My season shows up here.';
+
+  @override
+  String get coachSeasonHintAction => 'Find a race';
+
+  @override
+  String get coachPlanPickerTooltip => 'Plan context';
+
+  @override
   String get coachContextNoRuns => 'No runs';
 
   @override
@@ -5594,8 +8035,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachContextHr => 'HR';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/wk';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/wk';
   }
 
   @override
@@ -5674,6 +8115,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachSuggestNewWalkRun => 'Is it OK to walk during my runs?';
 
   @override
+  String get coachSuggestBuildHalfPlan =>
+      'Build me a half marathon training plan';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Build me a beginner plan to run my first 5K';
+
+  @override
+  String get coachSuggestPlanNextRace => 'Help me plan my next race';
+
+  @override
   String get coachEditMessageLabel => 'Edit your message';
 
   @override
@@ -5746,6 +8198,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Could not open archive.';
+
+  @override
+  String get coachJumpToLatest => 'Jump to latest';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -5847,11 +8302,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'This permanently removes your runs, routes, and profile from the server. Local device data is kept unless you sign in as a new user. This cannot be undone.';
 
   @override
-  String get settingsAccountDeleteChallengeText => 'Type \"DELETE\" to confirm';
+  String get settingsAccountDeleteChallengeWord => 'DELETE';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Type your email ($email) to confirm';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Type \"$word\" to confirm';
   }
 
   @override
@@ -5865,20 +8320,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountDeleted => 'Account deleted';
 
   @override
-  String get settingsAccountCoachConsentWithdraw => 'Withdraw AI Coach consent';
+  String get settingsAccountCoachConsentWithdraw =>
+      'Withdraw AI features consent';
 
   @override
   String get settingsAccountCoachConsentActive =>
-      'Stop the Coach from using your training data. You can grant consent again any time.';
+      'Stop Threkir\'s AI features from using your data. You can consent again any time.';
 
   @override
   String get settingsAccountCoachConsentWithdrawn =>
-      'AI Coach consent withdrawn.';
+      'AI features consent withdrawn.';
 
   @override
   String settingsAccountCoachConsentWithdrawFailed(Object error) {
     return 'Couldn\'t withdraw consent: $error';
   }
+
+  @override
+  String get settingsAccountAiConsentUpdateTitle =>
+      'Accept the updated AI disclosure';
+
+  @override
+  String get settingsAccountAiConsentUpdateSubtitle =>
+      'The disclosure now covers more features. Review and accept it to use every AI feature it describes.';
+
+  @override
+  String get settingsAccountAiConsentGrantTitle => 'Review the AI disclosure';
+
+  @override
+  String get settingsAccountAiConsentGrantSubtitle =>
+      'Threkir\'s AI features ask for your consent before using your data. Read the disclosure and accept it here.';
+
+  @override
+  String get settingsAccountAiConsentAccepted => 'AI disclosure accepted.';
 
   @override
   String settingsAccountDeleteFailed(Object error) {
@@ -5909,6 +8383,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String settingsAccountBackupFailed(Object error) {
     return 'Backup failed: $error';
+  }
+
+  @override
+  String settingsAccountBackupPartial(int count, int total) {
+    return 'Export is partial — $count of $total runs.';
+  }
+
+  @override
+  String settingsAccountBackupPartialNotice(int count, int total) {
+    return 'Your last export is partial: it holds $count of the $total runs on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.';
+  }
+
+  @override
+  String settingsAccountBackupTracksPartial(int missing, int total) {
+    return 'Backup is missing $missing of $total GPS files.';
+  }
+
+  @override
+  String settingsAccountBackupTracksPartialNotice(int missing, int total) {
+    return 'Your last backup could not download $missing of the $total GPS track files. Every run is in the archive; export again to retry the traces. Its manifest.json says complete: false.';
+  }
+
+  @override
+  String settingsAccountRestoreIncompleteArchive(int runs) {
+    return 'That archive said it was incomplete. $runs runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.';
   }
 
   @override
@@ -5971,7 +8470,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountAvatar => 'Profile photo';
 
   @override
-  String get settingsAccountAvatarHint => 'JPEG, PNG, or WebP, up to 2 MB.';
+  String get settingsAccountAvatarHint =>
+      'JPEG, PNG, or WebP. You can crop and rotate it before saving.';
 
   @override
   String get settingsAccountAvatarRemove => 'Remove photo';
@@ -6038,6 +8538,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t update your display name. Please try again.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'Couldn\'t load your profile, so your photo and display name can\'t be changed yet.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Error reporting enabled — restart the app to apply.';
 
@@ -6049,7 +8553,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountImport => 'Import from another app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava export, health app, CSV or backup';
+
+  @override
+  String get settingsAccountAccountExport => 'Account export';
+
+  @override
+  String get settingsAccountAccountExportSubtitle =>
+      'Everything on your account — runs, routes, messages, orders, integrations, safety contacts. Built on our server; you can close the app while it runs.';
+
+  @override
+  String get settingsAccountExportQueued =>
+      'Building your export. You can close the app — come back here to download it.';
+
+  @override
+  String get settingsAccountExportBuildingNotice =>
+      'Your account export is being built. You can close the app; it keeps building without you.';
+
+  @override
+  String get settingsAccountExportReadyNotice =>
+      'Your account export is ready.';
+
+  @override
+  String get settingsAccountExportDownload => 'Download and share';
+
+  @override
+  String settingsAccountExportFailedNotice(String error) {
+    return 'Your last account export failed ($error). Nothing was deleted — ask for another one.';
+  }
+
+  @override
+  String get settingsAccountExportStalledNotice =>
+      'Your last account export stopped responding. Nothing was deleted — ask for another one.';
+
+  @override
+  String get settingsAccountExportExpiredNotice =>
+      'Your last account export has expired. Exports are deleted after 7 days — ask for another one.';
+
+  @override
+  String get settingsAccountExportStatusUnavailable =>
+      'Can\'t reach the export service to check on your export. It may still be building.';
+
+  @override
+  String get settingsAccountExportUnavailable =>
+      'The account export service isn\'t set up in this build. Full backup below is built on this device and doesn\'t include your account records.';
+
+  @override
+  String settingsAccountExportUnsyncedWarning(int count) {
+    return '$count runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.';
+  }
+
+  @override
+  String get settingsAccountBackupOnDeviceNotice =>
+      'Your last full backup was built on this device. It holds your runs, routes, profile, preferences, gym and food logs — but not your account records. Use Account export for the complete copy.';
+
+  @override
+  String settingsAccountExportRateLimited(int seconds) {
+    return 'Export limit reached — try again in $seconds seconds.';
+  }
+
+  @override
+  String settingsAccountExportRequestFailed(String error) {
+    return 'Couldn\'t request your export: $error';
+  }
+
+  @override
+  String settingsAccountExportDownloadFailed(String error) {
+    return 'Couldn\'t download your export: $error';
+  }
+
+  @override
+  String settingsAccountExportReadyBanner(int count) {
+    return 'Your account export is ready — $count runs.';
+  }
 
   @override
   String get settingsAccountFullBackup => 'Full backup';
@@ -6132,11 +8709,59 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaErrNotConfigured =>
+      'Strava isn\'t set up on this server yet.';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'Strava didn\'t share all your activities. Connect again and leave every permission ticked.';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'Strava didn\'t accept the sign-in. Try connecting again.';
+
+  @override
+  String get integrationsStravaErrReconnect =>
+      'Strava no longer accepts this connection. Disconnect Strava, then connect it again.';
+
+  @override
   String get integrationsStravaConnected => 'Strava connected.';
 
   @override
   String integrationsSyncResult(int imported, int skipped) {
     return 'Synced. $imported new, $skipped already present.';
+  }
+
+  @override
+  String integrationsSyncPartial(int imported, int skipped) {
+    return 'Sync stopped early. $imported new, $skipped already present — some activities were not fetched. Sync again to finish.';
+  }
+
+  @override
+  String integrationsSyncPartialRateLimited(int imported, int skipped) {
+    return 'Strava is limiting requests, so the sync stopped early. $imported new, $skipped already present. Try again in about 15 minutes.';
+  }
+
+  @override
+  String integrationsSyncResultWithFailed(
+    int imported,
+    int skipped,
+    int failed,
+  ) {
+    return 'Synced. $imported new, $skipped already present, $failed failed.';
+  }
+
+  @override
+  String integrationsStravaConnectedPartial(int imported, int skipped) {
+    return 'Strava connected, but the first import stopped early. $imported imported, $skipped already present — sync again to finish.';
+  }
+
+  @override
+  String integrationsStravaConnectedPartialRateLimited(
+    int imported,
+    int skipped,
+  ) {
+    return 'Strava connected, but Strava is limiting requests so the first import stopped early. $imported imported, $skipped already present. Sync again in about 15 minutes.';
   }
 
   @override
@@ -6166,40 +8791,73 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get integrationsParkrunTitle => 'Import parkrun results';
-
-  @override
-  String get integrationsParkrunBody =>
-      'Enter your parkrun athlete number (e.g. A123456). We\'ll fetch your finish history and add any new results to your runs list.';
-
-  @override
   String get integrationsParkrunFieldLabel => 'Athlete number';
 
   @override
-  String get integrationsImport => 'Import';
+  String get parkrunBarcodeTitle => 'parkrun barcode';
 
   @override
-  String get integrationsParkrunImporting => 'Importing parkrun results…';
+  String get parkrunBarcodeTileSubtitle =>
+      'Show it at the finish, even offline.';
 
   @override
-  String integrationsParkrunImported(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Imported $count parkrun results.',
-      one: 'Imported $count parkrun result.',
-    );
-    return '$_temp0';
+  String parkrunBarcodeSemantics(String number) {
+    return 'parkrun barcode for athlete number $number';
   }
 
   @override
-  String get integrationsParkrunNoneNew =>
-      'No new parkrun results since last import.';
+  String get parkrunBarcodeHint =>
+      'Show this at the finish so it can be scanned with your finish token.';
 
   @override
-  String integrationsImportFailed(Object error) {
-    return 'Import failed: $error';
+  String get parkrunBarcodePaperNote =>
+      'parkrun doesn\'t officially support barcodes on screens, so bring a printed copy in case a scanner can\'t read this one.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Add your parkrun athlete number to show your barcode here.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Your saved athlete number isn\'t in parkrun\'s format (A followed by digits), so it can\'t be shown as a barcode.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Add athlete number';
+
+  @override
+  String get parkrunBarcodeEdit => 'Change athlete number';
+
+  @override
+  String get parkrunBarcodeSave => 'Save';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'Couldn\'t save your athlete number: $error';
   }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Enter A followed by digits, for example A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'Couldn\'t load your athlete number. Check your connection and try again.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Try again';
+
+  @override
+  String get parkrunBarcodeOfflineCopy =>
+      'Showing the copy saved on this phone.';
+
+  @override
+  String integrationsImportPartial(int n) {
+    return 'Not all results could be read. Imported: $n.';
+  }
+
+  @override
+  String get integrationsImportTruncated =>
+      'The results list was too long to read to the end, so your result could not be confirmed. Enter it manually instead.';
 
   @override
   String get integrationsStravaName => 'Strava';
@@ -6218,25 +8876,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaSyncHistory => 'Sync older history…';
+
+  @override
+  String get integrationsStravaLookbackTitle => 'How far back to sync';
+
+  @override
+  String get integrationsStravaLookback90 => 'Last 90 days';
+
+  @override
+  String get integrationsStravaLookback180 => 'Last 6 months';
+
+  @override
+  String get integrationsStravaLookback365 => 'Last year';
+
+  @override
+  String get integrationsSyncPartialNoteResumable =>
+      'The last sync stopped before the end of the window. Syncing again picks up where it stopped.';
+
+  @override
+  String get integrationsSyncPartialNote =>
+      'The last sync stopped before the end of the window and recorded no restart point. Sync again to retry it.';
+
+  @override
   String get integrationsSyncNow => 'Sync now';
-
-  @override
-  String get integrationsParkrunName => 'parkrun';
-
-  @override
-  String get integrationsParkrunTileSubtitle =>
-      'Import results by athlete number';
-
-  @override
-  String get integrationsParkrunRegionNote =>
-      'parkrun runs in a limited set of countries and may not have events near you — you can still import results with a parkrun athlete ID.';
 
   @override
   String get integrationsSignInTitle => 'Sign in to connect services';
 
   @override
   String get integrationsSignInSubtitle =>
-      'Strava + parkrun require an account so synced activities land in your history.';
+      'Strava requires an account so synced activities land in your history.';
 
   @override
   String get integrationsHealthConnectTitle => 'Write runs to Health Connect';
@@ -6363,20 +9033,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proRestoreFailed => 'Restore failed. Try again later.';
 
   @override
-  String get proRestoreUnavailable => 'Restore unavailable in this build.';
-
-  @override
   String proSubscribeTitle(String price) {
     return 'Subscribe to Pro — $price/month';
   }
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Unlimited AI coach + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.';
+      '10 AI coach messages a day + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.';
 
   @override
   String get proSubscribeSubtitleWeb =>
       'Opens the subscription portal in your browser. Auto-renews monthly until cancelled.';
+
+  @override
+  String proPlanMonthly(String price) {
+    return 'Monthly — $price/month';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Yearly — $price/year';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return 'Save $percent% compared with paying monthly';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Subscribe to Pro — $price/year';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      '10 AI coach messages a day + priority processing. Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.';
 
   @override
   String get proComingSoonTitle => 'Pro — coming soon';
@@ -6402,6 +9093,33 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get proManageSubscriptionSubtitle =>
       'Cancel, change plan, or update payment method';
+
+  @override
+  String get proActiveTitle => 'You\'re on Pro';
+
+  @override
+  String get proActivePlanMonthly => 'Monthly plan';
+
+  @override
+  String get proActivePlanAnnual => 'Yearly plan';
+
+  @override
+  String proActiveRenews(String date) {
+    return 'Renews $date';
+  }
+
+  @override
+  String proActiveEnds(String date) {
+    return 'Ends $date, won\'t renew';
+  }
+
+  @override
+  String get proActiveThanks =>
+      'Your Pro benefits are active. Thanks for supporting the app.';
+
+  @override
+  String get proActivePending =>
+      'Your purchase went through. Unlocking your Pro benefits on your account can take a minute.';
 
   @override
   String get proSupport => 'Support the app';
@@ -6802,6 +9520,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gearRotationDone => 'Done';
 
   @override
+  String gearRotationNextUp(String name) {
+    return 'Next up: $name';
+  }
+
+  @override
+  String get gearRotationNextUpWhy => 'Least worn in this rotation.';
+
+  @override
+  String get gearRotationMakeCurrent => 'Make current';
+
+  @override
+  String gearRotationMakeCurrentLabel(String name) {
+    return 'Make $name the current pair — new runs will auto-tag with it';
+  }
+
+  @override
+  String get gearRotationNextUpIsCurrent => 'Already the current pair.';
+
+  @override
+  String get gearRotationAllWorn =>
+      'Every pair here is at or past its replacement target.';
+
+  @override
+  String gearRotationMakeCurrentFailed(Object error) {
+    return 'Couldn\'t change the current pair: $error';
+  }
+
+  @override
   String get privacyZonesSaved => 'Privacy zones saved.';
 
   @override
@@ -6887,6 +9633,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsTitle => 'Preferences';
 
   @override
+  String get prefsOfflineNotice =>
+      'Offline — edits stay on this device and sync when you reconnect.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override
@@ -6904,6 +9654,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsCancel => 'Cancel';
 
   @override
+  String prefsValueOutOfRange(int min, int max) {
+    return 'Enter a value between $min and $max.';
+  }
+
+  @override
   String get prefsSave => 'Save';
 
   @override
@@ -6913,8 +9668,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsSplitIntervalDefault => 'Default';
 
   @override
-  String get prefsSplitIntervalDefaultSubtitle =>
-      'Default (1 km for running, 5 km for cycling)';
+  String prefsSplitIntervalDefaultSubtitle(String run, String cycle) {
+    return 'Default ($run for running, $cycle for cycling)';
+  }
 
   @override
   String get prefsSplitPaceMode => 'Splits announce';
@@ -7072,6 +9828,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.';
 
   @override
+  String get prefsEmailNewDeviceAlerts => 'New-device sign-in alerts';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Today\'s workout';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'On the morning of a planned workout, remind me in the inbox and by email and push.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Couldn\'t lift your earlier unsubscribe. Emails may still be blocked — try again.';
 
@@ -7130,7 +9900,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsHrZonesDialogTitle => 'Heart-rate zones (upper bounds, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Weekly mileage goal';
+  String get prefsWeeklyGoal => 'Weekly distance goal';
 
   @override
   String get prefsSectionActivityRecording => 'Activity & recording';
@@ -7187,7 +9957,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Higher accuracy, finer track detail, more battery usage';
+      'Records a more detailed track line. Distance is unchanged.';
 
   @override
   String get prefsShowRawTrack => 'Show raw GPS track';
@@ -7202,6 +9972,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       'Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.';
+
+  @override
+  String get prefsShowMascot => 'Show Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'Threkir\'s goat. He rests with you on rest days and sits in a corner of your share images.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Default run privacy';
@@ -7237,10 +10014,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Your dashboard fills in once you record a run, set a goal, or import your history.';
-
-  @override
-  String get dashboardStartRun => 'Start a run';
+      'Your dashboard fills in once you record an activity, set a goal, or import your history.';
 
   @override
   String get dashboardSetGoal => 'Set a goal';
@@ -7249,7 +10023,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardImportRuns => 'Import runs';
 
   @override
-  String get dashboardPeriodWeek => 'Week';
+  String get dashboardFirstRunBodyWithPlan =>
+      'Your plan is ready above. Log your first run and this page fills in — your distance, your pace, and how you\'re tracking against the plan.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Lifting instead?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Log a gym session';
 
   @override
   String get dashboardPeriodMonth => 'Month';
@@ -7544,6 +10325,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Gym sessions included — lifts add to fatigue too.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Less reliable: you said your heart rate is affected by medication, which makes the heart-rate load read low.';
+
+  @override
   String get intensityTitle => 'TRAINING INTENSITY';
 
   @override
@@ -7563,7 +10348,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Mileage';
+  String get mileageTitle => 'Distance';
 
   @override
   String get mileageWeek => 'Week';
@@ -7684,6 +10469,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String runSocialDeleteError(String error) {
     return 'Failed to delete: $error';
   }
+
+  @override
+  String get runSocialReactionsLabel => 'Reactions';
+
+  @override
+  String get runSocialReactionFire => 'On fire';
+
+  @override
+  String get runSocialReactionStrong => 'Strong';
+
+  @override
+  String get runSocialReactionTrophy => 'Champion';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Nice';
+
+  @override
+  String get runSocialReactionWave => 'Hello';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'React with $label';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Remove your $label reaction';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Couldn\'t update your reaction: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Like this comment';
+
+  @override
+  String get runSocialUnlikeComment => 'Unlike this comment';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Couldn\'t update your like: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'People to mention';
 
   @override
   String get runPhotosLoading => 'Loading photos…';
@@ -7884,6 +10716,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runSegEffortsRankUnknown => 'Rank unavailable';
+
+  @override
   String get runSegEffortsChecking => 'Checking segments…';
 
   @override
@@ -8055,6 +10890,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get segmentsPanelLeaderboardEmpty =>
       'No efforts yet — be the first to run this segment.';
+
+  @override
+  String get segmentOldMatchNote =>
+      'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.';
 
   @override
   String segmentsPanelCrownBanner(String label) {
@@ -8323,6 +11162,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportTitleReview => 'Report review';
 
   @override
+  String get reportTitleMessage => 'Report message';
+
+  @override
+  String get reportTitleGroupInvite => 'Report group invitation';
+
+  @override
   String get reportTitleContent => 'Report content';
 
   @override
@@ -8401,19 +11246,83 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditKindLabel => 'Kind';
 
   @override
-  String get workoutEditDistanceLabel => 'Target distance (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Target distance ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'e.g. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Target pace (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Target pace (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'e.g. 5:30';
 
   @override
+  String get workoutEditRpeFromLabel => 'Effort from (1–10)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Effort up to (1–10)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'How hard it should feel, from 1 (very easy) to 10 (all-out). Either end can stay empty: 3 to 4 is a conversational easy run.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Heart rate from (bpm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Heart rate up to (bpm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Leave the low end empty for a cap, such as 125. Heart rate is health data, so a target needs the runner\'s health-data consent.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Use whole numbers from $min to $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'The first number can\'t be higher than the second.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'A heart-rate target needs the runner\'s health-data consent. Clear it, or ask them to give consent in their settings.';
+
+  @override
   String get workoutEditNotesLabel => 'Notes';
+
+  @override
+  String get workoutEditRaceNameLabel => 'Race name';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'Race priority';
+
+  @override
+  String get workoutEditRacePriorityAuto => 'Automatic';
+
+  @override
+  String get racePriorityOptionA => 'A — goal race';
+
+  @override
+  String get racePriorityOptionB => 'B — important race';
+
+  @override
+  String get racePriorityOptionC => 'C — tune-up race';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => 'Goal time';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => 'e.g. 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime => 'Goal time must look like 6:30:00';
 
   @override
   String get workoutEditCancel => 'Cancel';
@@ -8422,7 +11331,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditSave => 'Save';
 
   @override
-  String get workoutEditErrDistance => 'Enter a positive distance in km';
+  String workoutEditErrDistance(String unit) {
+    return 'Enter a positive distance in $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'Pace must look like 5:30';
@@ -8468,6 +11379,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todaysWorkoutToday => 'TODAY\'S WORKOUT';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Retry';
 
   @override
@@ -8475,6 +11391,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareCardExport => 'Export';
+
+  @override
+  String get shareCardShareLink => 'Share link';
+
+  @override
+  String get shareCardMark => 'Show the Threkir mark';
 
   @override
   String get shareCardImage => 'Image';
@@ -8492,13 +11414,106 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardStatSpeed => 'Speed';
 
   @override
-  String get shareCardBrandRun => 'RUN';
+  String get shareCardBrandRun => 'Threkir';
 
   @override
   String get shareCardImageError => 'Could not create share image';
 
   @override
   String get shareCardFileError => 'Could not export file';
+
+  @override
+  String get shareCardStyleCard => 'Map card';
+
+  @override
+  String get shareCardStylePhoto => 'Photo';
+
+  @override
+  String get shareCardStyleSticker => 'Sticker';
+
+  @override
+  String get shareCardPickPhoto => 'Choose a photo';
+
+  @override
+  String get shareCardChangePhoto => 'Change photo';
+
+  @override
+  String get shareCardPlacementLabel => 'Stats position';
+
+  @override
+  String get shareCardPlacementHint =>
+      'Drag the stats to move them, pinch to resize them, double-tap to put them back.';
+
+  @override
+  String get shareCardPlacementReset => 'Reset position';
+
+  @override
+  String get shareCardPhotoError => 'Could not open that photo';
+
+  @override
+  String get shareCardStickerHint =>
+      'Transparent background. Save it, then add it to a story or photo as a sticker.';
+
+  @override
+  String get shareCardLayout => 'Layout';
+
+  @override
+  String get shareCardLayoutStack => 'Stack';
+
+  @override
+  String get shareCardLayoutRoute => 'Route';
+
+  @override
+  String get shareCardLayoutStrip => 'Strip';
+
+  @override
+  String get shareCardLayoutHero => 'Big number';
+
+  @override
+  String get shareCardInk => 'Colour';
+
+  @override
+  String get shareCardInkLight => 'White';
+
+  @override
+  String get shareCardInkDark => 'Black';
+
+  @override
+  String get shareCardInkBrand => 'Coral';
+
+  @override
+  String get shareCardAspect => 'Size';
+
+  @override
+  String get shareCardAspectStory => 'Story 9:16';
+
+  @override
+  String get shareCardAspectPost => 'Post 4:5';
+
+  @override
+  String get shareCardStats => 'Stats';
+
+  @override
+  String get shareCardStatClimb => 'Climb';
+
+  @override
+  String get shareCardStatHeartRate => 'Avg HR';
+
+  @override
+  String get shareCardSave => 'Save to Photos';
+
+  @override
+  String get shareCardSaved => 'Saved to your photos';
+
+  @override
+  String get shareCardSaveError => 'Could not save the image';
+
+  @override
+  String get shareCardSaveDenied =>
+      'Allow photo access in Settings to save images';
+
+  @override
+  String get shareCardPreviewLabel => 'Share image preview';
 
   @override
   String get shareCardRouteTitle => 'Share route';
@@ -8691,6 +11706,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveRunMapWaitingGps => 'Waiting for GPS...';
 
   @override
+  String get liveRunMapApproximateLocation =>
+      'Precise location is off — the map can\'t show where you are';
+
+  @override
   String get liveRunMapRecentre => 'Re-centre on my location';
 
   @override
@@ -8720,13 +11739,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsStepLastFifty => 'Fifty metres to go';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Ease up — $delta seconds ahead pace.';
+  String get ttsStepLastFiftyYards => 'Fifty yards to go';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Ten seconds to go';
+
+  @override
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Ease up — $delta seconds per kilometre ahead of pace.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Pick it up — $delta seconds behind pace.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Ease up — $delta seconds per mile ahead of pace.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Pick it up — $delta seconds per kilometre behind pace.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Pick it up — $delta seconds per mile behind pace.';
   }
 
   @override
@@ -8802,6 +11837,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsStepCooldown => 'Cooldown';
 
   @override
+  String get ttsStepWarmupWalk => 'Warm-up walk';
+
+  @override
+  String get ttsStepCooldownWalk => 'Cool-down walk';
+
+  @override
   String get ttsStepRep => 'Rep';
 
   @override
@@ -8869,6 +11910,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String ttsStepDuration(String intro, String duration) {
     return '$intro. $duration.';
+  }
+
+  @override
+  String ttsStepDistance(String intro, String distance) {
+    return '$intro. $distance.';
   }
 
   @override
@@ -9110,14 +12156,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBackendNotConfigured => 'Backend not configured';
 
   @override
-  String get settingsAccountSignedIn => 'Signed in';
-
-  @override
   String get settingsDevicesSignedOutSubtitle =>
       'Sign in to see where you\'re signed in';
 
   @override
   String get verifiedClubTooltip => 'Official verified club';
+
+  @override
+  String get officialBadgeLabel => 'Official';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Official: published by a verified organiser';
+
+  @override
+  String get officialBadgeParkCourseLabel => 'Official Threkir course';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Official Threkir course: published by Threkir, not by the park';
 
   @override
   String get raceDistance5k => '5 km';
@@ -9141,7 +12198,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, race calendar, heart-rate strap, treadmill, watch';
+      'Strava, race calendar, heart-rate strap, treadmill, watch';
 
   @override
   String get settingsTabDevicesSubtitle =>
@@ -9372,6 +12429,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubEventLogAsWorkoutSaved => 'Added to your gym log';
 
   @override
+  String get clubEventAddToCalendar => 'Add to calendar';
+
+  @override
+  String get clubEventAddOccurrenceToCalendar => 'Add this occurrence';
+
+  @override
+  String get clubEventAddSeriesToCalendar => 'Add whole series';
+
+  @override
+  String get clubEventCalendarUnavailable =>
+      'Couldn\'t open your calendar app.';
+
+  @override
+  String clubEventCalendarCancelledNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Your calendar can\'t skip called-off dates, so $count cancelled occurrences will still appear.',
+      one:
+          'Your calendar can\'t skip called-off dates, so 1 cancelled occurrence will still appear.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get clubEventDownloadCertificate => 'Finisher certificate';
 
   @override
@@ -9461,6 +12544,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gymCatalogueEmpty => 'No exercises match.';
 
   @override
+  String get gymCatalogueUnavailable =>
+      'Couldn\'t load the exercise catalogue, so this list may be incomplete.';
+
+  @override
+  String get gymCatalogueShadowsBuiltIn =>
+      'Added. It replaces the built-in exercise of the same name.';
+
+  @override
+  String gymCatalogueOtherCategory(String name, String category) {
+    return '“$name” is already in the catalogue, under $category.';
+  }
+
+  @override
   String get gymCatalogueCustomBadge => 'Custom';
 
   @override
@@ -9531,9 +12627,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Start routine';
-
-  @override
   String get gymRoutinePublishLabel => 'Publish to a club';
 
   @override
@@ -9547,6 +12640,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gymRoutinePublishFailed => 'Couldn\'t publish the routine.';
+
+  @override
+  String get gymRoutineHistoryTitle => 'Routine history';
+
+  @override
+  String get gymRoutineHistoryRecent => 'Recent sessions';
+
+  @override
+  String gymRoutineHistoryLastDone(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Done $days days ago',
+      one: 'Done yesterday',
+      zero: 'Done today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gymRoutineHistoryCompletedRate(int completed, int graded) {
+    return '$completed of $graded completed';
+  }
+
+  @override
+  String get gymRoutineHistoryVerdictUngraded => 'Not graded';
+
+  @override
+  String get gymRoutineHistoryLoadError =>
+      'Couldn’t load this routine’s history.';
 
   @override
   String get gymRoutineClubTemplateBadge => 'Club template';
@@ -9805,7 +12928,143 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionTitle => 'Nutrition';
 
   @override
+  String get nutritionDayNavLabel => 'Diary day';
+
+  @override
+  String get nutritionDayPrevious => 'Previous day';
+
+  @override
+  String get nutritionDayNext => 'Next day';
+
+  @override
+  String get nutritionDayToday => 'Today';
+
+  @override
+  String get nutritionDayYesterday => 'Yesterday';
+
+  @override
+  String get nutritionDayBackfillHint =>
+      'Anything you log here is added to this day.';
+
+  @override
+  String get nutritionDayEmptyPast => 'Nothing logged on this day.';
+
+  @override
+  String nutritionDayGoalBreakdown(int base, int exercise) {
+    return 'Goal $base + $exercise kcal burned that day';
+  }
+
+  @override
+  String nutritionDayTrendEnding(String date) {
+    return '7 days to $date';
+  }
+
+  @override
+  String nutritionDayLogHeadingFor(String date) {
+    return 'Log food — $date';
+  }
+
+  @override
   String get nutritionLogFood => 'Log food';
+
+  @override
+  String get nutritionLogFromPhoto => 'Log from a photo';
+
+  @override
+  String get platePhotoTitle => 'Log from a photo';
+
+  @override
+  String get platePhotoIntro =>
+      'Take or choose a photo of your meal. Threkir estimates what\'s on the plate, and you check and edit every entry before anything is saved.';
+
+  @override
+  String get platePhotoTakePhoto => 'Take a photo';
+
+  @override
+  String get platePhotoChoosePhoto => 'Choose a photo';
+
+  @override
+  String get platePhotoPreviewLabel => 'Your meal photo';
+
+  @override
+  String get platePhotoNoteLabel => 'Note (optional)';
+
+  @override
+  String get platePhotoNoteHint => 'e.g. half portion, no dressing';
+
+  @override
+  String get platePhotoEstimate => 'Estimate';
+
+  @override
+  String get platePhotoEstimating => 'Estimating…';
+
+  @override
+  String get platePhotoEmpty =>
+      'No food was recognised in that photo. Go back and try another, or add the meal by hand.';
+
+  @override
+  String get platePhotoReviewHeading => 'Check these before saving';
+
+  @override
+  String get platePhotoReviewHint =>
+      'These are estimates. Edit anything that looks wrong and remove anything that isn\'t there.';
+
+  @override
+  String get platePhotoMealSlot => 'Meal';
+
+  @override
+  String get platePhotoItemName => 'Food';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Remove $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Low confidence';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Protein (g)';
+
+  @override
+  String get platePhotoCarbs => 'Carbs (g)';
+
+  @override
+  String get platePhotoFat => 'Fat (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Save entries ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'Saving…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.';
+
+  @override
+  String get platePhotoErrorPro => 'Logging from a photo is a Pro feature.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'You\'ve logged a lot of photos this hour. Try again later, or add the meal by hand.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'That picture couldn\'t be read. Try another photo.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Couldn\'t make out the food in that photo. Try another, or add it by hand.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Logging from a photo isn\'t available right now. Add the meal by hand.';
 
   @override
   String get nutritionCalories => 'Calories';
@@ -9835,6 +13094,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionCholesterol => 'Cholesterol';
 
   @override
+  String get nutritionNutrients => 'Nutrients';
+
+  @override
+  String get nutritionNutrientsHint =>
+      'Reference intakes. Each total counts only the logged items that report that nutrient.';
+
+  @override
+  String get nutritionNutrientAtLeast => 'at least';
+
+  @override
+  String nutritionNutrientPartial(int reported, int total, String nutrient) {
+    return '$reported of $total logged items report $nutrient';
+  }
+
+  @override
+  String nutritionNutrientOver(String n, String unit) {
+    return '$n $unit over';
+  }
+
+  @override
+  String nutritionNutrientLeft(String n, String unit) {
+    return '$n $unit left';
+  }
+
+  @override
+  String get nutritionNutrientReached => 'Goal reached';
+
+  @override
+  String get nutritionNutrientUntargeted => 'No daily target';
+
+  @override
   String get nutritionWater => 'Water';
 
   @override
@@ -9849,6 +13139,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionAddBodyMetrics => 'Add body metrics';
+
+  @override
+  String get nutritionTargetsLink => 'Targets';
+
+  @override
+  String get nutritionTargetsTitle => 'Calorie & macro targets';
+
+  @override
+  String get nutritionTargetsSubtitle =>
+      'How today\'s goal is worked out, and the two settings that shape it.';
+
+  @override
+  String get nutritionTargetsTotal => 'Eat-to goal today';
+
+  @override
+  String get nutritionTargetsBmr => 'Resting metabolism';
+
+  @override
+  String get nutritionTargetsBase => 'Base goal';
+
+  @override
+  String nutritionTargetsBaseFloored(int n) {
+    return 'Held at the $n kcal floor — the lowest daily goal we\'ll suggest.';
+  }
+
+  @override
+  String get nutritionTargetsExercise => 'Today\'s workouts';
+
+  @override
+  String get nutritionTargetsExerciseHint =>
+      'Runs and gym sessions you log today are added on top.';
+
+  @override
+  String get nutritionTargetsMacrosHeading => 'Macros';
+
+  @override
+  String nutritionTargetsProteinHint(String n) {
+    return '$n g per kg of bodyweight';
+  }
+
+  @override
+  String get nutritionTargetsCarbsHint => 'Whatever\'s left — your fuel';
+
+  @override
+  String nutritionTargetsFatHint(int n) {
+    return '$n% of calories';
+  }
+
+  @override
+  String get nutritionTargetsDefaultsHeading => 'Your defaults';
+
+  @override
+  String get nutritionTargetsDefaultsHint =>
+      'Activity level is your typical day excluding workouts — the runs and gym sessions you log are added separately. Both save as you change them.';
+
+  @override
+  String get nutritionTargetsMetricsHeading => 'Body metrics';
+
+  @override
+  String get nutritionTargetsMetricsHint =>
+      'Height, weight, date of birth and sex are health data, so they\'re edited in Settings behind their consent gate.';
+
+  @override
+  String get nutritionTargetsEditMetrics => 'Edit in Settings';
+
+  @override
+  String get nutritionTargetsUnset => 'Not set';
+
+  @override
+  String get nutritionTargetsEmptyTitle => 'No targets yet';
+
+  @override
+  String get nutritionTargetsEmptyBody =>
+      'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.';
+
+  @override
+  String get nutritionTargetsAge => 'Age';
+
+  @override
+  String nutritionTargetsAgeYears(int n) {
+    return '$n years';
+  }
+
+  @override
+  String get nutritionTargetsAgeConsentWithheld => 'Needs health-data consent';
+
+  @override
+  String get nutritionTargetsLoadError => 'Couldn\'t load your targets.';
 
   @override
   String get nutritionWeeklyTrend => 'Last 7 days';
@@ -9883,8 +13261,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionWaterGoalReached => 'Goal reached';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml left';
+  String nutritionWaterRemaining(String n) {
+    return '$n L left';
   }
 
   @override
@@ -9928,6 +13306,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsExcludeGymFromReadinessHint =>
       'By default, gym sessions add to your fatigue and lower your readiness, like a run. Turn this on to keep your fitness, fatigue and form based on runs only.';
+
+  @override
+  String get prefsHrMedicationAffected =>
+      'My heart rate is affected by medication';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'For example a beta blocker. Age-based zones and the heart-rate training load read low, so the training load is marked as less reliable. This is health data, and it is cleared if you withdraw consent.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'This is health data, so it needs your health-data consent first.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Set a measured max heart rate, from a hard effort or a test, so your zones fit you.';
 
   @override
   String get nutritionEmptyTitle => 'No food logged today';
@@ -10302,6 +13696,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gymComposeDraftTitle => 'Unfinished workout';
+
+  @override
+  String get gymComposeDraftBody =>
+      'You started this workout but never saved it.';
+
+  @override
   String get gymDraftResume => 'Resume';
 
   @override
@@ -10488,6 +13889,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachingRosterRiskInsufficient => 'New';
 
   @override
+  String coachingRosterMissStreak(int n) {
+    return '$n missed in a row';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'Easy HR +$pct%';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'On planned easy runs over the last two weeks, heart rate is higher for the same pace than in the six weeks before. Shown only for athletes who gave health-data consent.';
+
+  @override
+  String get metricEasyHrDriftLabel => 'Easy HR drift';
+
+  @override
+  String get metricMissStreakLabel => 'Missed in a row';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn\'t count and doesn\'t break the run; a done workout ends it.';
+
+  @override
+  String get metricRouteHistoryDefinition =>
+      'An attempt is a run on this route with the same activity type that covered more than 100 m and has a recorded time (above zero, under ten days). Attempts rank fastest first; equal times share a rank, so a run that ties the best time is a PB too.';
+
+  @override
   String get coachingRosterRiskLow => 'Low';
 
   @override
@@ -10638,8 +14067,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachingAthleteAssignedByYou => 'Assigned by you';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'This athlete already has an active plan. They\'ll need to finish or end it before you can assign a new one.';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return '$name\'s plan “$plan” runs until $end. A plan you assign can\'t overlap it, so start it after that date.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return '$name\'s plan “$plan” runs until $end, and “$next” runs $nextStart – $nextEnd. A plan you assign can\'t overlap either of them.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$name has $count plans still ahead: $plans. A plan you assign can\'t overlap any of them, so start it after $end or in a gap between them.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'Those dates overlap $name\'s plan “$plan” ($start – $end). Pick a start date after it ends.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'Those dates overlap one of $name\'s active plans. Pick a start date after it ends.';
+  }
+
+  @override
+  String get coachingAthleteAssignError =>
+      'Couldn\'t assign the plan. Please try again.';
 
   @override
   String get coachingAthleteComplete => 'complete';
@@ -10662,6 +14133,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachingAthleteStatusUpcoming => 'Upcoming';
+
+  @override
+  String get coachingAthleteStatusSkipped => 'Skipped';
 
   @override
   String get coachingAthleteRecentRuns => 'Recent runs';
@@ -10691,6 +14165,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'No course markers yet. Add aid stations, cutoffs, and more along the route.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Couldn\'t load this route\'s course markers. They have not been deleted — check your connection and try again.';
 
   @override
   String get routeMarkerEdit => 'Edit marker';
@@ -10924,6 +14402,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Fluid from body weight';
+
+  @override
+  String get roadbookWeightHint =>
+      'Scales the fluid rate by your body weight, within the 400–800 ml per hour range sports-medicine guidance gives for running. A planning baseline, not a sweat test.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Fluid: $ml ml per hour from your body weight.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'To base fluid on your body weight, add your weight under Body metrics and give health-data consent there.';
+
+  @override
+  String get roadbookColTarget => 'Target';
+
+  @override
+  String get roadbookColLegPace => 'Leg pace';
+
+  @override
+  String get roadbookTargetAhead => 'ahead';
+
+  @override
+  String get roadbookTargetOn => 'on plan';
+
+  @override
+  String get roadbookTargetBehind => 'behind';
+
+  @override
   String get checkpointCheckinAction => 'Checkpoint check-in';
 
   @override
@@ -11007,7 +14516,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Runner consents to recording health data';
 
   @override
-  String get checkpointWeighInWeightKg => 'Body weight (kg)';
+  String get checkpointWeighInBodyWeight => 'Body weight';
 
   @override
   String get checkpointMedicalHold => 'Place on medical hold';
@@ -11041,6 +14550,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get challengesDelete => 'Delete';
+
+  @override
+  String get challengesDeleteChallenge => 'Delete challenge';
 
   @override
   String get challengesMetricDistance => 'Distance';
@@ -11094,12 +14606,196 @@ class AppLocalizationsEn extends AppLocalizations {
   String get challengesLeaderboard => 'Leaderboard';
 
   @override
+  String get challengeInviteTitle => 'Challenge invite';
+
+  @override
+  String get challengeInviteLoadFailed =>
+      'Couldn\'t load this invite. Check your connection and try again.';
+
+  @override
+  String get challengeInviteMissingTitle => 'This invite link doesn\'t work';
+
+  @override
+  String get challengeInviteMissingBody =>
+      'It may have been reset by the person who shared it, or invite links aren\'t available yet. Ask them for a new link.';
+
+  @override
+  String challengeInviteFrom(String name) {
+    return 'Invited by $name';
+  }
+
+  @override
+  String challengeInviteParticipants(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n runners in',
+      one: '1 runner in',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String challengeInviteStartsIn(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Starts in $n days',
+      one: 'Starts in 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeInviteAlreadyIn => 'You\'re already in this challenge.';
+
+  @override
+  String get challengeInviteOpen => 'Open challenge';
+
+  @override
+  String get challengeInviteSignInBody =>
+      'Sign in or create a free account, then you join straight away.';
+
+  @override
+  String get challengeInviteJoin => 'Join challenge';
+
+  @override
+  String get challengeInviteLinkTitle => 'Invite link';
+
+  @override
+  String get challengeInviteLinkBodyPrivate =>
+      'Anyone with this link can see this challenge and join it, even though it isn\'t public.';
+
+  @override
+  String get challengeInviteLinkBodyPublic =>
+      'Anyone with this link can join in one tap after signing up.';
+
+  @override
+  String get challengeInviteLinkLoadFailed => 'Couldn\'t load the invite link.';
+
+  @override
+  String get challengeInviteShare => 'Share link';
+
+  @override
+  String get challengeInviteCopy => 'Copy link';
+
+  @override
+  String get challengeInviteCopied => 'Link copied';
+
+  @override
+  String get challengeInviteCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get challengeInviteRotate => 'Reset link';
+
+  @override
+  String get challengeInviteRotateTitle => 'Reset the invite link?';
+
+  @override
+  String get challengeInviteRotateBody =>
+      'The current link stops working straight away. Anyone who already joined stays in.';
+
+  @override
+  String get challengeInviteRotateFailed =>
+      'Couldn\'t reset the link. Try again.';
+
+  @override
+  String get challengeInviteShareBody =>
+      'Public challenges also have a share page that shows the leaderboard without signing in.';
+
+  @override
+  String get challengeInviteSharePage => 'Share the challenge page';
+
+  @override
+  String get clubInviteLinkTitle => 'Invite link';
+
+  @override
+  String get clubInviteBodyInvite => 'Only people with this link can join.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Anyone with this link joins straight away, without waiting for approval.';
+
+  @override
+  String get clubInviteBodyOpen => 'Anyone with this link can join.';
+
+  @override
+  String get clubInviteGenerate => 'Create invite link';
+
+  @override
+  String get clubInviteShare => 'Share link';
+
+  @override
+  String get clubInviteCopy => 'Copy link';
+
+  @override
+  String get clubInviteCopied => 'Invite link copied';
+
+  @override
+  String get clubInviteCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get clubInviteLoadFailed => 'Couldn\'t load the invite link.';
+
+  @override
+  String get clubInviteRotate => 'Reset link';
+
+  @override
+  String get clubInviteRotateTitle => 'Reset the invite link?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'The current link stops working straight away. Anyone who already joined stays in.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Couldn\'t update the invite link. Try again.';
+
+  @override
+  String get clubShareClub => 'Share club';
+
+  @override
+  String get clubShareLinkCopied => 'Club link copied';
+
+  @override
   String get challengesLeaderboardEmpty => 'No progress logged yet.';
 
   @override
   String challengesLeaderboardRank(int rank) {
     return '#$rank';
   }
+
+  @override
+  String get challengesStandingTitle => 'Your standing';
+
+  @override
+  String get challengesStandingTitleTeam => 'Your team\'s standing';
+
+  @override
+  String challengesStandingRank(int rank, int total) {
+    return '#$rank of $total';
+  }
+
+  @override
+  String get challengesStandingTiedOne => 'Tied with 1 other';
+
+  @override
+  String challengesStandingTiedMany(int n) {
+    return 'Tied with $n others';
+  }
+
+  @override
+  String challengesStandingBehind(String gap, String name) {
+    return '$gap behind $name';
+  }
+
+  @override
+  String challengesStandingAhead(String gap, String name) {
+    return '$gap ahead of $name';
+  }
+
+  @override
+  String get challengesStandingLeading => 'Leading';
 
   @override
   String challengesParticipants(int n) {
@@ -11117,6 +14813,28 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String challengesUnitActivities(int n) {
     return '$n';
+  }
+
+  @override
+  String get challengesMetricParkCourses => 'Park courses';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'courses';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Counts park courses in $region';
   }
 
   @override
@@ -11147,6 +14865,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get challengesLoadFailed => 'Couldn\'t load challenges.';
+
+  @override
+  String get challengesProgressUnavailable =>
+      'Progress unavailable — open for your result';
+
+  @override
+  String get challengesTeamNoClub => 'No club';
+
+  @override
+  String get challengesTeamPrivateClub => 'Private club';
 
   @override
   String fundraiserRaisedOfGoal(String raised, String goal) {
@@ -11180,13 +14908,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesTitle => 'Race calendar';
 
   @override
+  String get racesSectionUpcoming => 'Upcoming races';
+
+  @override
+  String get racesSectionAnyTime => 'Run any time';
+
+  @override
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Fastest in $year: $time';
+  }
+
+  @override
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Fastest in $year: $time by $name';
+  }
+
+  @override
+  String get racesAnyTimeNoTimeYet =>
+      'No time yet this season. Yours could be the first.';
+
+  @override
+  String racesAnyTimeAway(String distance) {
+    return '$distance away';
+  }
+
+  @override
+  String get racesAnyTimeFastestFailed =>
+      'Couldn\'t load this season\'s fastest times.';
+
+  @override
   String get racesSearchPlaceholder => 'Search races by name…';
+
+  @override
+  String get racesFilters => 'Filters';
+
+  @override
+  String racesFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filters, $count on',
+      one: 'Filters, 1 on',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String racesRemoveFilter(String filter) {
+    return 'Remove filter: $filter';
+  }
+
+  @override
+  String racesNearChip(String place) {
+    return 'Near $place';
+  }
+
+  @override
+  String get racesFiltersDone => 'Done';
+
+  @override
+  String get racesDistanceGroup => 'Distance';
 
   @override
   String get racesNearPlace => 'Near a place…';
 
   @override
-  String racesKmAway(String distance) {
+  String racesDistanceAway(String distance) {
     return '$distance away';
   }
 
@@ -11209,7 +14996,247 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Register';
+  String get racesRegister => 'Race page & register';
+
+  @override
+  String get racesTrainForThis => 'Train for this race';
+
+  @override
+  String get racesBuildPlan => 'Build a plan for this race';
+
+  @override
+  String get racesTailorWithAi => 'Tailor it with AI';
+
+  @override
+  String get racesAddToSeason => 'Add to my season';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return 'Starts after $plan ends on $date, with $days days to recover.';
+  }
+
+  @override
+  String get racesWhenGroup => 'When';
+
+  @override
+  String get racesWhenUpcoming => 'Upcoming';
+
+  @override
+  String get racesWhenRecent => 'Recent results';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Recent results lists races from the last $days days, newest first, so you can find a race you ran and import your result.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'No races in the last $days days match these filters.';
+  }
+
+  @override
+  String get racesDetailLoadFailed =>
+      'Couldn\'t load this race. Check your connection and try again.';
+
+  @override
+  String get racesDetailNotFound =>
+      'This race isn\'t in the calendar any more.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Listed on $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Added by a runner';
+
+  @override
+  String racesSourceClub(String club) {
+    return 'Added by $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Official course from $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Course drawn by $club from the race\'s published map';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'last checked $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Course updated $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Race course';
+
+  @override
+  String get raceCourseClaim => 'Claim this race';
+
+  @override
+  String get raceCourseClaimTitle => 'Claim this race for your club';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Claiming marks the race as verified and lets your club link its course. Claim only a race your club organises or draws courses for.';
+
+  @override
+  String get raceCourseClaimClub => 'Club';
+
+  @override
+  String get raceCourseClaimConfirm => 'Claim race';
+
+  @override
+  String get raceCourseClaimed => 'Race claimed.';
+
+  @override
+  String get raceCourseClaimFailed => 'Couldn\'t claim this race.';
+
+  @override
+  String get raceCourseLinkCourse => 'Link course';
+
+  @override
+  String get raceCourseChangeCourse => 'Change course';
+
+  @override
+  String get raceCourseLinkTitle => 'Link the course';
+
+  @override
+  String get raceCourseLinkRoute => 'Course route';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'Your club has no public routes yet. Create one from the club\'s Routes tab, make it public, then link it here.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Where the course comes from';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'The organiser\'s official course';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traced from the race\'s published map';
+
+  @override
+  String get raceCourseLinkConfirm => 'Link course';
+
+  @override
+  String get raceCourseLinked => 'Course linked.';
+
+  @override
+  String get raceCourseLinkFailed => 'Couldn\'t update the course.';
+
+  @override
+  String get raceCourseMarkChecked => 'Mark course checked';
+
+  @override
+  String get raceCourseCheckedDone => 'Course marked as checked.';
+
+  @override
+  String get raceCourseSuggest => 'Suggest a course';
+
+  @override
+  String get raceCourseSuggestTitle => 'Suggest a course for this race';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Pick one of your public routes. The race\'s organiser reviews it, or a verified club if nobody has claimed the race yet.';
+
+  @override
+  String get raceCourseSuggestRoute => 'Your route';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'You have no public routes yet. Make a route public to suggest it.';
+
+  @override
+  String get raceCourseSuggestNote => 'Note (optional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Send suggestion';
+
+  @override
+  String get raceCourseSuggested => 'Suggestion sent.';
+
+  @override
+  String get raceCourseSuggestFailed => 'Couldn\'t send your suggestion.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'You suggested a course. It\'s waiting for review.';
+
+  @override
+  String get raceCourseUnlink => 'Remove course';
+
+  @override
+  String get raceCourseUnlinked => 'Course removed.';
+
+  @override
+  String get raceCourseReviewHeading => 'Course suggestions';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Claim this race to approve or reject a suggestion.';
+
+  @override
+  String get raceCourseReviewApprove => 'Approve';
+
+  @override
+  String get raceCourseReviewReject => 'Reject';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Approve this course';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'The course must be a public route your club owns. Pick the club\'s copy of $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Suggestion approved and course linked.';
+
+  @override
+  String get raceCourseReviewRejected => 'Suggestion rejected.';
+
+  @override
+  String get raceCourseReviewFailed => 'Couldn\'t review the suggestion.';
+
+  @override
+  String get racesDetailShare => 'Share';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'You can import your official result from race day, $date.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'Your runs at this race';
+
+  @override
+  String get racesCourseHeading => 'Course';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value elevation gain';
+  }
+
+  @override
+  String get racesDetailRunsFailed => 'Couldn\'t load your runs for this race.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.';
 
   @override
   String get racesViewResults => 'View results';
@@ -11245,6 +15272,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesImported => 'Official result imported.';
 
   @override
+  String planLinkPromptEarly(String day) {
+    return 'Did you do $day\'s planned workout early?';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return 'Did you do $day\'s planned workout late?';
+  }
+
+  @override
+  String get planLinkConfirm => 'Link to plan';
+
+  @override
+  String get planLinkDismiss => 'Not this one';
+
+  @override
+  String get planLinkLinked => 'Linked to your plan.';
+
+  @override
+  String get planLinkFailed => 'Couldn\'t link this to your plan. Try again.';
+
+  @override
+  String get planLinkDismissFailed =>
+      'Couldn\'t save that answer. You may be asked again.';
+
+  @override
   String get racesOfficialResult => 'Official result';
 
   @override
@@ -11258,6 +15311,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesAgeGroupPlace => 'Age-group place';
+
+  @override
+  String get racesDivisionAwardPlace => 'Award place';
 
   @override
   String get racesAgeGroup => 'Age group';
@@ -11321,8 +15377,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Open the race calendar';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'About $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava is a popular app for recording and sharing runs. Connecting it copies your Strava activities across — the last 90 days first, then each new one as it appears. You\'ll sign in to Strava and approve access, and you can disconnect at any time.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack times a lot of road races with chips and mats. If your race was ChronoTrack-timed, find it in the race calendar and enter your bib number to pull in your official result.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
-      'RunSignUp import isn\'t available yet. parkrun and manual paste still work.';
+      'RunSignUp import isn\'t available yet. Manual paste still works.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -11336,7 +15409,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get integrationsChronotrackUnavailable =>
-      'ChronoTrack import isn\'t available yet. parkrun and manual paste still work.';
+      'ChronoTrack import isn\'t available yet. Manual paste still works.';
 
   @override
   String get routeConditionsTitle => 'Conditions';
@@ -11612,6 +15685,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Completed 10 training plans';
+
+  @override
+  String get badgesParkCourses1Label => 'First park course';
+
+  @override
+  String get badgesParkCourses1Desc => 'Completed a park course';
+
+  @override
+  String get badgesParkCourses5Label => 'Park regular';
+
+  @override
+  String get badgesParkCourses5Desc => 'Completed 5 different park courses';
+
+  @override
+  String get badgesParkCourses10Label => 'Trail collector';
+
+  @override
+  String get badgesParkCourses10Desc => 'Completed 10 different park courses';
+
+  @override
+  String get badgesParkCourses25Label => 'Park explorer';
+
+  @override
+  String get badgesParkCourses25Desc => 'Completed 25 different park courses';
+
+  @override
+  String get badgesParkComplete1Label => 'Park finisher';
+
+  @override
+  String get badgesParkComplete1Desc => 'Completed every course in a park';
+
+  @override
+  String get badgesParkComplete3Label => 'Three parks finished';
+
+  @override
+  String get badgesParkComplete3Desc => 'Completed every course in 3 parks';
+
+  @override
+  String get badgesParkComplete10Label => 'Park completionist';
+
+  @override
+  String get badgesParkComplete10Desc => 'Completed every course in 10 parks';
+
+  @override
+  String get badgesParkPassport1Label => 'Park passport';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Completed a course in every park of a state';
+
+  @override
+  String get badgesParkPassport3Label => 'Passport stamped';
+
+  @override
+  String get badgesParkPassport3Desc => 'Completed a park passport in 3 states';
+
+  @override
+  String get badgesParkPassport10Label => 'Passport collector';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Completed a park passport in 10 states';
 
   @override
   String get racePredictorTitle => 'Race-time predictor';
@@ -12002,10 +16137,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only active when you pick a Race strategy for the run. Announces each phase and its intent as it starts. Example: “Phase 2 of 3. Settle into your goal pace.”';
 
   @override
+  String get prefsCueGuidedRun => 'Guided runs';
+
+  @override
+  String get prefsCueGuidedRunSubtitle =>
+      'The coach script of a guided run you armed before starting';
+
+  @override
+  String get prefsCueGuidedRunInfo =>
+      'Only active when you arm a guided run on the recording screen before you start. Speaks each scripted coach cue as you reach its mark. Example: “Five minutes in. Settle into a rhythm you could hold all day.”';
+
+  @override
+  String get runGuidedRun => 'Guided run';
+
+  @override
+  String get runGuidedRunNone => 'No guided run';
+
+  @override
+  String get runClearGuidedRunTooltip => 'Remove guided run';
+
+  @override
+  String runGuidedRunOption(int minutes, String subtitle) {
+    return '$minutes min · $subtitle';
+  }
+
+  @override
   String get runRaceStrategy => 'Race strategy';
 
   @override
   String get runStrategyNone => 'No strategy';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'Remove race strategy';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';
@@ -12483,4 +16646,5606 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsGearUnavailable => 'Gear isn\'t available on this build';
+
+  @override
+  String get loadRampTitle => 'Training load ramp';
+
+  @override
+  String get loadRampRatioCaption => 'this week vs your 4-week average';
+
+  @override
+  String get loadRampAcuteLabel => 'Last 7 days';
+
+  @override
+  String get loadRampChronicLabel => '4-week weekly average';
+
+  @override
+  String get loadRampBandLow => 'Low';
+
+  @override
+  String get loadRampBandOptimal => 'Optimal';
+
+  @override
+  String get loadRampBandElevated => 'Elevated';
+
+  @override
+  String get loadRampBandHigh => 'High';
+
+  @override
+  String get loadRampMeaningLow =>
+      'You\'re running below your recent base. Fine for a taper or a recovery week; sustained, it\'s detraining.';
+
+  @override
+  String get loadRampMeaningOptimal =>
+      'Your week sits in the range that best protects against injury. Keep building at this rate.';
+
+  @override
+  String get loadRampMeaningElevated =>
+      'You\'ve stepped up faster than your recent base supports. Hold this week steady rather than adding more.';
+
+  @override
+  String get loadRampMeaningHigh =>
+      'This is a sharp spike over your recent base — the pattern most associated with injury. Consider an easier week.';
+
+  @override
+  String get loadRampTrendRamping => 'Your load is ramping up.';
+
+  @override
+  String get loadRampTrendSteady => 'Your load is holding steady.';
+
+  @override
+  String get loadRampTrendTapering => 'Your load is tapering off.';
+
+  @override
+  String get comebackTitle => 'Coming back from a break';
+
+  @override
+  String get comebackVerdictEasingIn => 'Easing in';
+
+  @override
+  String get comebackVerdictSteep => 'Big first week';
+
+  @override
+  String comebackLayoff(int weeks) {
+    return '$weeks weeks without a run';
+  }
+
+  @override
+  String get comebackShareCaption =>
+      'this week vs your average week before the break';
+
+  @override
+  String get comebackMeaningEasingIn =>
+      'This week sits comfortably under the weeks you were running before the break. Building back gradually from here is what makes the comeback stick.';
+
+  @override
+  String get comebackMeaningSteep =>
+      'This week is already more than half of what you were running before the break. Your body has lost the base that made those weeks routine, so a shorter week now costs far less than a setback later.';
+
+  @override
+  String get comebackThisWeekLabel => 'Last 7 days';
+
+  @override
+  String get comebackBaseLabel => 'Weekly average before the break';
+
+  @override
+  String get comebackFootnote =>
+      'Your training load ramp comes back once you have a few consistent weeks again.';
+
+  @override
+  String get segmentCatalogueTitle => 'Famous segments';
+
+  @override
+  String get segmentCatalogueIntro =>
+      'Curated climbs, bridges and park loops from around the world. Run one and your time lands on its leaderboard automatically.';
+
+  @override
+  String get segmentCatalogueSearchLabel => 'Search';
+
+  @override
+  String get segmentCatalogueSearchHint => 'Name or place';
+
+  @override
+  String get segmentCatalogueRegion => 'Region';
+
+  @override
+  String get segmentCatalogueAllRegions => 'All regions';
+
+  @override
+  String get segmentCatalogueSurface => 'Surface';
+
+  @override
+  String get segmentCatalogueAllSurfaces => 'All surfaces';
+
+  @override
+  String get segmentCatalogueSort => 'Sort';
+
+  @override
+  String get segmentCatalogueSortName => 'Name';
+
+  @override
+  String get segmentCatalogueSortShortest => 'Shortest first';
+
+  @override
+  String get segmentCatalogueSortLongest => 'Longest first';
+
+  @override
+  String get segmentCatalogueSortClimb => 'Most climb';
+
+  @override
+  String segmentCatalogueCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count segments',
+      one: '$count segment',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get segmentCatalogueLoadFailed =>
+      'Couldn’t load the segment catalogue.';
+
+  @override
+  String get segmentCatalogueEmpty =>
+      'No famous segments in the catalogue yet.';
+
+  @override
+  String get segmentCatalogueNoMatches =>
+      'No segments match these filters — try widening them.';
+
+  @override
+  String get segmentCatalogueBrowseAll => 'Browse all';
+
+  @override
+  String get segmentCatalogueNotFoundTitle => 'Segment not found';
+
+  @override
+  String get segmentCatalogueNotFoundBody =>
+      'This segment isn’t in the catalogue, or has been retired.';
+
+  @override
+  String get segmentCatalogueDetailFailedTitle => 'Couldn’t load this segment';
+
+  @override
+  String get segmentCatalogueDetailFailedBody =>
+      'Check your connection and try again.';
+
+  @override
+  String get segmentCatalogueStatDistance => 'Distance';
+
+  @override
+  String get segmentCatalogueStatElevation => 'Elevation gain';
+
+  @override
+  String get segmentCatalogueStatSurface => 'Surface';
+
+  @override
+  String get segmentCatalogueLeaderboard => 'Leaderboard';
+
+  @override
+  String get runSurfaceTabSegments => 'Segments';
+
+  @override
+  String rateLimitCreateClub(String wait) {
+    return 'You\'re creating clubs too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitCreateRoute(String wait) {
+    return 'You\'re creating routes too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitCreateReport(String wait) {
+    return 'You\'re filing reports too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitCreateChallenge(String wait) {
+    return 'You\'re creating challenges too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitJoinChallenge(String wait) {
+    return 'You\'re joining challenges too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitAdoptPlan(String wait) {
+    return 'You\'re adopting plans too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitAdoptSessionPlan(String wait) {
+    return 'You\'re adopting session plans too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitAdoptGymRoutine(String wait) {
+    return 'You\'re adopting gym routines too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitPublishRoutine(String wait) {
+    return 'You\'re publishing routines too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitSendMessage(String wait) {
+    return 'You\'re sending messages too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitEditMessage(String wait) {
+    return 'You\'re editing messages too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'You\'ve started a lot of message requests today — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitGeneric(String wait) {
+    return 'You\'re doing that too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitWaitSeconds(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n seconds',
+      one: '1 second',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rateLimitWaitMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n minutes',
+      one: '1 minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rateLimitWaitSoon => 'a few seconds';
+
+  @override
+  String get challengesCreate => 'Create challenge';
+
+  @override
+  String get challengesTitleLabel => 'Title';
+
+  @override
+  String get challengesDescriptionLabel => 'Description';
+
+  @override
+  String get challengesMetricLabel => 'Metric';
+
+  @override
+  String get challengesScopeLabel => 'Type';
+
+  @override
+  String get challengesGoalOptional => 'Goal (optional)';
+
+  @override
+  String get challengesActivityTypeLabel => 'Activity';
+
+  @override
+  String get challengesActivityAny => 'Any';
+
+  @override
+  String get challengesClubLabel => 'Club';
+
+  @override
+  String get challengesClubNone => 'Open (anyone)';
+
+  @override
+  String get challengesStartLabel => 'Starts';
+
+  @override
+  String get challengesEndLabel => 'Ends';
+
+  @override
+  String get challengesScopeIndividual => 'Individual';
+
+  @override
+  String get challengesScopeClubVsClub => 'Club vs club';
+
+  @override
+  String get challengesScopeGroupGoal => 'Group goal';
+
+  @override
+  String get challengesSuffixHours => 'h';
+
+  @override
+  String get challengesSuffixActivities => 'activities';
+
+  @override
+  String get challengesSuffixDays => 'days';
+
+  @override
+  String challengesGoalPreview(String value) {
+    return 'Entrants see $value';
+  }
+
+  @override
+  String challengesGoalStreakCeiling(int n) {
+    return 'At most $n active days fit in this window.';
+  }
+
+  @override
+  String get challengesErrTitle => 'Give the challenge a title.';
+
+  @override
+  String get challengesErrGoal => 'Goal: enter a positive number';
+
+  @override
+  String get challengesErrWindow => 'The end must be after the start.';
+
+  @override
+  String limitsWeightOutOfRange(String min, String max, String unit) {
+    return 'Enter a weight between $min and $max $unit.';
+  }
+
+  @override
+  String limitsHeightOutOfRange(String min, String max) {
+    return 'Enter a height between $min and $max cm.';
+  }
+
+  @override
+  String limitsServingsOutOfRange(String min, String max) {
+    return 'Enter a number of servings between $min and $max.';
+  }
+
+  @override
+  String runDetailGuidedRun(String title) {
+    return 'Guided run: $title';
+  }
+
+  @override
+  String get runDetailGuidedRunUnavailable =>
+      'Guided run no longer in the library';
+
+  @override
+  String get guidedRunUseThisRun => 'Use this run';
+
+  @override
+  String get backExitRecordingTitle => 'Run still recording';
+
+  @override
+  String get backExitRecordingBody =>
+      'Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.';
+
+  @override
+  String get backExitRecordingLeave => 'Leave anyway';
+
+  @override
+  String get backExitRecordingStay => 'Keep recording';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'You\'re already on $page';
+  }
+
+  @override
+  String metricAbout(String name) {
+    return 'About $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.';
+
+  @override
+  String get metricVertLabel => 'Vert';
+
+  @override
+  String get metricVertDefinition =>
+      'The total height you climbed, added up across every uphill.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.';
+
+  @override
+  String get metricRiegelLabel => 'Riegel formula';
+
+  @override
+  String get metricRiegelDefinition =>
+      'A standard way to predict your time at one race distance from a time you ran at another.';
+
+  @override
+  String get metricE1rmLabel => 'Est. 1RM';
+
+  @override
+  String get metricE1rmDefinition =>
+      'One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.';
+
+  @override
+  String get bleUnavailableOff =>
+      'Bluetooth is off — turn it on to use your heart-rate strap.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir isn\'t allowed to use Bluetooth. Allow it in Settings to use a heart-rate strap.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'This phone doesn\'t support Bluetooth LE, so a heart-rate strap can\'t be used.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Turn on Location services so Android can scan for your heart-rate strap.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'Bluetooth didn\'t respond. Try again in a moment.';
+
+  @override
+  String get bleOpenSettings => 'Open settings';
+
+  @override
+  String get bleScanRetry => 'Scan again';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Plan progress';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Phases, plan totals, longest long run';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Plan rules';
+
+  @override
+  String get planDetailSectionRulesHint => 'What this plan sticks to';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Calendar';
+
+  @override
+  String get planDetailSectionCalendarHint => 'Every workout on its real date';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Week by week';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'All $n weeks, day by day';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Share & publish';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Club template and public plan library';
+
+  @override
+  String get confirmAgeHeading => 'One more step';
+
+  @override
+  String get confirmAgeLede =>
+      'Before you start, please confirm a couple of things. We do this once per account — it won\'t show again.';
+
+  @override
+  String get confirmAgeContinue => 'Continue';
+
+  @override
+  String get confirmAgeRecordError => 'Could not record consent.';
+
+  @override
+  String get avatarCropTitle => 'Adjust profile photo';
+
+  @override
+  String get avatarCropHint =>
+      'Drag to reposition. Pinch or use the slider to zoom.';
+
+  @override
+  String get avatarCropRotateLeft => 'Rotate left';
+
+  @override
+  String get avatarCropRotateRight => 'Rotate right';
+
+  @override
+  String get avatarCropZoom => 'Zoom';
+
+  @override
+  String get avatarCropConfirm => 'Use photo';
+
+  @override
+  String get avatarCropLoading => 'Loading photo…';
+
+  @override
+  String get avatarCropLoadFailed =>
+      'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.';
+
+  @override
+  String get dashboardLeadTitle => 'Your week';
+
+  @override
+  String get dashboardLeadEmpty => 'No runs yet';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '$done of $target planned';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '$done of your $target weekly goal';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '$done of $target activities, your weekly goal',
+      one: '$done of 1 activity, your weekly goal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Your weekly average over the last $weeks weeks: $avg',
+      one: 'Last week: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria =>
+      'This week\'s distance against your plan';
+
+  @override
+  String get dashboardLeadGoalProgressAria =>
+      'This week\'s progress against your weekly goal';
+
+  @override
+  String get dashboardLeadNextSession => 'Next session';
+
+  @override
+  String get dashboardLeadToday => 'Today';
+
+  @override
+  String get dashboardLeadTomorrow => 'Tomorrow';
+
+  @override
+  String get dashboardLeadNoNextSession =>
+      'No more sessions scheduled in your plan.';
+
+  @override
+  String planFinishTitle(String name) {
+    return '$name has ended';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'Its last day was $date. Finish it to move it to your completed plans.';
+  }
+
+  @override
+  String get planFinishAction => 'Finish plan';
+
+  @override
+  String get planFinishFinishing => 'Finishing…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name is in your completed plans.';
+  }
+
+  @override
+  String get planFinishFailed => 'Couldn\'t finish the plan. Try again.';
+
+  @override
+  String get dashboardLeadAddRun => 'Add a run';
+
+  @override
+  String get runRaceStopTitle => 'Race paused';
+
+  @override
+  String get runRaceStopBody =>
+      'The race clock keeps running. Resume to carry on, or finish the race now.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'You\'ve covered less than 90% of the course, so finishing now records a DNF.';
+
+  @override
+  String get runRaceResume => 'Resume race';
+
+  @override
+  String get runRaceFinish => 'Finish race';
+
+  @override
+  String get runRaceFinishDnf => 'Finish as DNF';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'Finished! Gun time $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Race finish recorded';
+
+  @override
+  String get runRaceEnded =>
+      'The host ended the race. Your run keeps recording, but no result will be submitted.';
+
+  @override
+  String get runRaceLateStart =>
+      'Late start: you began more than 5 minutes after GO or away from the start line.';
+
+  @override
+  String get eventCoursesTitle => 'Courses';
+
+  @override
+  String get eventCoursePickTitle => 'Pick your course';
+
+  @override
+  String get eventChangeCourse => 'Change course';
+
+  @override
+  String get eventYourCourse => 'Your course';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Couldn\'t save your course. Try again.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Chip $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Other results';
+
+  @override
+  String get eventFinishMethodManual => 'Manual';
+
+  @override
+  String get eventFinishMethodHost => 'Host';
+
+  @override
+  String get helpTitle => 'Help';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'How races, classes, clubs and the app work';
+
+  @override
+  String get helpSearchHint => 'Search help';
+
+  @override
+  String get helpSearchClear => 'Clear search';
+
+  @override
+  String get helpAudienceLabel => 'Show guides for';
+
+  @override
+  String get helpAudienceAll => 'All';
+
+  @override
+  String get helpAudienceRunner => 'Runners';
+
+  @override
+  String get helpAudienceOrganiser => 'Organisers';
+
+  @override
+  String get helpAudienceParticipant => 'Participants';
+
+  @override
+  String get helpAudienceSpectator => 'Spectators';
+
+  @override
+  String get helpAudienceInstructor => 'Instructors';
+
+  @override
+  String get helpAudienceClubAdmin => 'Club admins';
+
+  @override
+  String get helpCategoryRaces => 'Races';
+
+  @override
+  String get helpCategoryPaidClasses => 'Paid classes';
+
+  @override
+  String get helpCategoryInstructors => 'Instructors';
+
+  @override
+  String get helpCategoryClubs => 'Clubs';
+
+  @override
+  String get helpCategoryRunning => 'Running';
+
+  @override
+  String get helpCategoryAccount => 'Account';
+
+  @override
+  String get helpCategoryOther => 'More guides';
+
+  @override
+  String get helpRequiresPro => 'Needs Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Club admins only';
+
+  @override
+  String get helpRequiresRaceDirector => 'Race directors only';
+
+  @override
+  String get helpRequiresStripeConnected => 'Needs Stripe connected';
+
+  @override
+  String get helpRequiresPaidRailLive => 'Needs paid registration on';
+
+  @override
+  String get helpPlatformsLabel => 'Works on';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Tip';
+
+  @override
+  String get helpNoteCaution => 'Caution';
+
+  @override
+  String get helpRelated => 'Related guides';
+
+  @override
+  String get helpResultsHeader => 'Results';
+
+  @override
+  String get helpNoResultsTitle => 'No matching guides';
+
+  @override
+  String get helpNoResultsBody => 'Try another word, or show guides for all.';
+
+  @override
+  String get helpLoading => 'Loading guides';
+
+  @override
+  String get helpUnavailable => 'Help guides could not be loaded.';
+
+  @override
+  String get helpGuideMissing => 'This guide is not available.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'This guide has not been translated into your language yet, so it is shown in English.';
+
+  @override
+  String get helpHowThisWorks => 'How this works';
+
+  @override
+  String get helpForThisScreen => 'Guides for this screen';
+
+  @override
+  String get helpBrowseAll => 'Browse all guides';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Step $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Read the guide';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'End the race? $count racers who started have no result and will be marked DNF. This can\'t be undone.',
+      one:
+          'End the race? $count racer who started has no result and will be marked DNF. This can\'t be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pending';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Result actions for $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Approve';
+
+  @override
+  String get eventResultUnverify => 'Unverify';
+
+  @override
+  String get eventResultEdit => 'Edit';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Edit result: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Your edit replaces this time on the leaderboard and is marked as host edited.';
+
+  @override
+  String get eventResultEditTime => 'Time (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Status';
+
+  @override
+  String get eventResultStatusFinished => 'Finished';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Save result';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Enter a finish time like 42:10 or 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Couldn\'t update the result: $error';
+  }
+
+  @override
+  String get eventCancelOccurrence => 'Cancel this occurrence';
+
+  @override
+  String get eventCancelEvent => 'Cancel event';
+
+  @override
+  String get eventCancelSeries => 'Cancel the whole series';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Only this occurrence is called off — the rest of the series is unaffected. Everyone who RSVP\'d to it (going, maybe, or waitlisted) is notified.';
+
+  @override
+  String get eventCancelEventBody =>
+      'The event is called off. Everyone who RSVP\'d (going, maybe, or waitlisted) is notified.';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'The series ends now and no later occurrences are scheduled. Every upcoming occurrence someone RSVP\'d to is called off, and they are notified.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Anyone who paid is refunded in full, whatever the refund policy says.';
+
+  @override
+  String get eventCancelReasonLabel => 'Reason (optional)';
+
+  @override
+  String get eventCancelKeep => 'Keep it';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cancelled. $count registrants are being refunded in full.',
+      one: 'Cancelled. 1 registrant is being refunded in full.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count refunds couldn\'t be started. Retry them',
+      one: '1 refund couldn\'t be started. Retry it',
+    );
+    return 'Cancelled, but $_temp0 from the event on the web.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Cancelled.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Series cancelled.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'There are paid registrations and payments aren\'t available right now, so this can\'t be cancelled yet. Nothing has changed.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Only an organiser of this club can cancel an occurrence.';
+
+  @override
+  String get eventCancelFailed => 'Couldn\'t cancel. Please try again.';
+
+  @override
+  String get eventReinstateOccurrence => 'Reinstate this occurrence';
+
+  @override
+  String get eventReinstateEvent => 'Reinstate this event';
+
+  @override
+  String get eventReinstateFailed => 'Could not reinstate this occurrence';
+
+  @override
+  String get eventEventCancelled => 'This event was cancelled.';
+
+  @override
+  String get eventSeriesWasCancelled => 'This series was cancelled.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'A place is held for you until $time. Pay to claim it, or it goes to the next person on the waitlist.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'Payment happens on the web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Claim on the web';
+
+  @override
+  String get eventFormCapacity => 'Capacity';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Once this many people are going, the next person to say yes joins a waitlist instead of being turned away. Leave it empty for no limit.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Enter a whole number of 1 or more, or leave it empty.';
+
+  @override
+  String get eventFormEndsOn => 'Ends on';
+
+  @override
+  String get eventFormEndsOnNone => 'No end date';
+
+  @override
+  String get eventFormEndsOnClear => 'Clear end date';
+
+  @override
+  String get eventFormEndAfter => 'End after';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Where the series stops. Set either, or both — whichever comes first wins. Leave both empty and it keeps repeating.';
+
+  @override
+  String get eventFormErrCount =>
+      'Enter a whole number from 1 to 520, or leave it empty.';
+
+  @override
+  String get eventFormSessionPlan => 'Session plan';
+
+  @override
+  String get eventFormSessionPlanNone => 'None';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'No session plans yet. Build one on the web.';
+
+  @override
+  String get eventFormCharge => 'Charge for this event';
+
+  @override
+  String get eventFormChargeHint =>
+      'Takes a fee at registration. The money settles into your own payout account rather than the club\'s, and only an in-person event can charge.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Set up payouts on the web to charge for events.';
+
+  @override
+  String get eventFormPrice => 'Price';
+
+  @override
+  String get eventFormCurrency => 'Currency';
+
+  @override
+  String get eventFormErrPrice => 'Enter a price of at least 0.50.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Use a three-letter currency code, like USD.';
+
+  @override
+  String get eventFormSalesClose => 'Stop sales (minutes before start)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'How long before the start registration shuts. Zero keeps it open right up to the start time.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Enter a whole number of minutes from 0 to 10080.';
+
+  @override
+  String get eventFormRefundPolicy => 'Refund policy';
+
+  @override
+  String get eventFormRefundFullUntilStart => 'Full refund until start time';
+
+  @override
+  String get eventFormRefundFullUntil24h => 'Full refund until 24h before';
+
+  @override
+  String get eventFormRefundNone => 'No refunds';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Event created, but saving the price failed. Set the price from the event on the web.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Event created, but the session plan couldn\'t be attached. Attach it from the event page.';
+
+  @override
+  String get eventFormGymRoutine => 'Gym routine';
+
+  @override
+  String get eventFormGymRoutineNone => 'None';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'One of this club\'s routine templates. Attendees log the class pre-filled from it. A class carries a routine or a session plan, not both.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'This club has no routine templates yet. Publish a routine to the club first.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Event created, but the routine couldn\'t be attached. Attach it from the event page.';
+
+  @override
+  String get clubEventGymRoutineTitle => 'Class routine';
+
+  @override
+  String get clubEventGymRoutineAttach => 'Attach a routine';
+
+  @override
+  String get clubEventGymRoutineNone => 'No routine attached.';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sets',
+      one: '1 set',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => 'Save';
+
+  @override
+  String get clubEventGymRoutineSaved => 'Class routine updated.';
+
+  @override
+  String get clubEventGymRoutineSaveFailed =>
+      'Couldn\'t update the class routine.';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'Attaching a routine removes the session plan — a class carries one or the other.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Session sequence';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Attach to a class event';
+
+  @override
+  String get clubEventSessionPlanSave => 'Save';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Session plan updated.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed =>
+      'Couldn\'t update the session plan.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Attaching a session plan removes the gym routine — a class carries one or the other.';
+
+  @override
+  String get audienceTitle => 'Who can see this';
+
+  @override
+  String get audienceLevelPrivate => 'Only me';
+
+  @override
+  String get audienceLevelPrivateHint => 'Nobody else can open it.';
+
+  @override
+  String get audienceLevelFollowers => 'Followers';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'People who follow you can open it from a link. It stays out of feeds, notifications and search.';
+
+  @override
+  String get audienceLevelSpecific => 'Specific people';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Only the people you pick can open it. You can stop sharing with anyone at any time.';
+
+  @override
+  String get audienceLevelPublic => 'Public';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Anyone with the link can open it, and it can appear in feeds and search.';
+
+  @override
+  String get audienceClipNote =>
+      'Everyone but you sees the map with your privacy zones trimmed off.';
+
+  @override
+  String get audienceSharedWith => 'Shared with';
+
+  @override
+  String get audienceSharedWithNobody => 'Not shared with anyone yet.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Stop sharing with $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name can no longer open it.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'Couldn\'t stop sharing: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Add people';
+
+  @override
+  String get audienceSearchHint => 'Search people you follow or who follow you';
+
+  @override
+  String get audienceShareAction => 'Share';
+
+  @override
+  String get audienceAlreadyShared => 'Shared';
+
+  @override
+  String audienceShared(String name) {
+    return '$name can now open it.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'Couldn\'t share: $error';
+  }
+
+  @override
+  String get audienceLoadFailed => 'Couldn\'t load who this is shared with.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'Couldn\'t load the people you can share with.';
+
+  @override
+  String get audienceNoPeople =>
+      'You can share with people you follow or who follow you, and you don\'t have any yet.';
+
+  @override
+  String get audienceNoMatches => 'No one matches that name.';
+
+  @override
+  String get audienceRetry => 'Retry';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'Couldn\'t change who can see this: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Updated who can see this.';
+
+  @override
+  String get audienceRevokeAllTitle => 'Stop sharing with everyone?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Everyone you shared it with will no longer be able to open it.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Only me';
+
+  @override
+  String get audienceShareLink => 'Share link';
+
+  @override
+  String get audienceSharedWithYou => 'Shared with you';
+
+  @override
+  String get audienceSharedWithYouHint =>
+      'Shared with you. It isn\'t public — only the people it\'s shared with can open it.';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'Runner #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'Runner';
+
+  @override
+  String get logMoreTitle => 'More options';
+
+  @override
+  String get logMoreLongPressHint => 'show more options';
+
+  @override
+  String get logMoreTodaysWorkout => 'Start today\'s workout';
+
+  @override
+  String get runnerMenuFollowRoute => 'Follow a route';
+
+  @override
+  String get runnerMenuAllRoutes => 'All routes…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return 'Follow $name';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count steps',
+      one: '$count step',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesTitle => 'Messages';
+
+  @override
+  String get messagesEmptyTitle => 'No conversations yet';
+
+  @override
+  String get messagesEmptyBody =>
+      'Open a runner\'s profile and tap Message to start a conversation.';
+
+  @override
+  String get messagesLoadError => 'Couldn\'t load your conversations.';
+
+  @override
+  String get messagesThreadLoadError => 'Couldn\'t load this conversation.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'You: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unread messages',
+      one: '$count unread message',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'No messages yet. Say hi.';
+
+  @override
+  String get messagesComposerHint => 'Message…';
+
+  @override
+  String get messagesSend => 'Send';
+
+  @override
+  String get messagesSending => 'Sending…';
+
+  @override
+  String get messagesSendFailed => 'Couldn\'t send your message. Try again.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.';
+
+  @override
+  String get messagesLoadEarlier => 'Load earlier messages';
+
+  @override
+  String get messagesLoadEarlierFailed => 'Couldn\'t load earlier messages.';
+
+  @override
+  String get messagesViewProfile => 'View profile';
+
+  @override
+  String get messagesRouteEyebrow => 'Route';
+
+  @override
+  String get messagesRouteUntitled => 'Untitled route';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'This route isn\'t available to you any more.';
+
+  @override
+  String get messagesRouteLoading => 'Loading route';
+
+  @override
+  String get messagesDeletedAccount => 'Deleted account';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'This account was deleted. You can still read the messages you sent, but you can\'t reply.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Message unsent';
+
+  @override
+  String messagesSeenAt(String time) {
+    return 'Seen $time';
+  }
+
+  @override
+  String get messagesUnsend => 'Unsend';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Unsend this message?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'The text will be removed for both of you. This can\'t be undone. If the message was already reported, the report keeps a copy.';
+
+  @override
+  String get messagesUnsendFailed => 'Couldn\'t unsend the message.';
+
+  @override
+  String get messagesEdit => 'Edit';
+
+  @override
+  String get messagesEdited => 'Edited';
+
+  @override
+  String get messagesEditTitle => 'Edit message';
+
+  @override
+  String get messagesEditSave => 'Save';
+
+  @override
+  String get messagesEditFailed => 'Couldn\'t edit the message.';
+
+  @override
+  String get messagesEditClosed => 'This message can no longer be edited.';
+
+  @override
+  String get messagesReport => 'Report';
+
+  @override
+  String get messagesOptionsHint => 'show message options';
+
+  @override
+  String get messagesBlock => 'Block';
+
+  @override
+  String get messagesUnblock => 'Unblock';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Neither of you will be able to message the other, and they won\'t be able to follow you or give kudos to or comment on your runs. Any follow between you in either direction is cleared, and unblocking doesn\'t bring it back.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'You blocked $name, so neither of you can message the other.';
+  }
+
+  @override
+  String get messagesMute => 'Mute';
+
+  @override
+  String get messagesUnmute => 'Unmute';
+
+  @override
+  String get messagesArchive => 'Archive';
+
+  @override
+  String get messagesUnarchive => 'Unarchive';
+
+  @override
+  String get messagesDeleteConversation => 'Delete conversation';
+
+  @override
+  String get messagesConversationDeleted => 'Conversation deleted';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Couldn\'t update the conversation: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archived ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Back to inbox';
+
+  @override
+  String get messagesRequestCapReached =>
+      'You can send up to 3 messages until they accept your request.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Requests ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name wants to message you. They won\'t know you\'ve read this unless you accept.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Accept';
+
+  @override
+  String get messagesRequestDecline => 'Decline';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Decline this request?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'Their messages leave your Requests, and they can\'t message you again unless you message them first. They won\'t be told.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Request accepted';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Request declined';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Couldn\'t update the request: $error';
+  }
+
+  @override
+  String get messagesMutedMark => 'Muted';
+
+  @override
+  String get messagesMutedToast =>
+      'Muted. You won\'t be notified about new messages here.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archived. A new message brings it back to your inbox.';
+
+  @override
+  String get messagesMarkUnread => 'Mark as unread';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marked as unread. It stays highlighted in your inbox until you open it.';
+
+  @override
+  String get profileMessage => 'Message';
+
+  @override
+  String get routeDetailSendToFollower => 'Send to a follower';
+
+  @override
+  String get routeDetailSendDmTitle => 'Send this route';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Pick a runner you follow, or who follows you. The route link lands in your conversation with them.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'They get the public share link, so anyone they pass it on to can open it too.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'It stays private: only the person you send it to can open the link, and you can stop sharing at any time.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Search people';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'Couldn\'t load who you can send to.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'You don\'t follow anyone yet, and nobody follows you yet.';
+
+  @override
+  String get routeDetailSendDmNoMatches => 'Nobody matches that search.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'You follow each other';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Follows you';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'You follow them';
+
+  @override
+  String get routeDetailSendDmSend => 'Send';
+
+  @override
+  String get routeDetailSendDmSending => 'Sending…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Route sent to $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Open conversation';
+
+  @override
+  String get routeDetailSendDmDone => 'Done';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Show on race page';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remove from race page';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Tap the medal on a photo to show it on this race\'s public page. Anyone can see that page, and you can remove a photo at any time.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Make this run public to share its photos on the race page.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Could not update the race page: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'Request to follow';
+
+  @override
+  String get profileRequested => 'Requested';
+
+  @override
+  String get profileRequestSent => 'Follow request sent';
+
+  @override
+  String get profileRequestWithdrawn => 'Follow request withdrawn';
+
+  @override
+  String get profilePrivateTitle => 'This profile is private';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Follow $name to see their runs and who they follow. They approve each request.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Your request is waiting for approval. You\'ll see their runs once it\'s accepted.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name asked to follow you';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Private profile';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Couldn\'t update your profile privacy.';
+
+  @override
+  String get followRequestsTitle => 'Follow requests';
+
+  @override
+  String get followRequestsEmptyTitle => 'No pending requests';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'When someone asks to follow your private profile, they\'ll show up here.';
+
+  @override
+  String get followRequestsApprove => 'Approve';
+
+  @override
+  String get followRequestsDecline => 'Decline';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name can now see your profile';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Request declined';
+
+  @override
+  String get followRequestsLoadError => 'Couldn\'t load follow requests.';
+
+  @override
+  String get followRequestsActionFailed => 'Couldn\'t update the request.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Maps leave out the areas this athlete hides with privacy zones.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Map of the run on $date, with the athlete\'s privacy zones removed';
+  }
+
+  @override
+  String get stravaClubsHeading => 'Your Strava clubs';
+
+  @override
+  String get stravaClubsIntro =>
+      'Clubs you belong to on Strava. Only you can see this list.';
+
+  @override
+  String get stravaClubsEmpty => 'You\'re not in any clubs on Strava.';
+
+  @override
+  String get stravaClubsLoadError => 'Couldn\'t load your Strava clubs.';
+
+  @override
+  String get stravaClubsReconnectText =>
+      'Your Strava connection has expired, so your Strava clubs can’t be shown.';
+
+  @override
+  String get stravaClubsReconnect => 'Reconnect Strava';
+
+  @override
+  String get stravaClubsSetUp => 'Set up on Threkir';
+
+  @override
+  String get stravaClubsLinkToMine => 'Link to my club';
+
+  @override
+  String get stravaClubsPickClubLabel => 'Which of your clubs is this?';
+
+  @override
+  String get stravaClubsAdminOnly =>
+      'Only an admin of this club on Strava can bring it to Threkir.';
+
+  @override
+  String stravaClubsViewOnThrekir(String name) {
+    return 'View $name';
+  }
+
+  @override
+  String get stravaClubsUnlink => 'Unlink';
+
+  @override
+  String stravaClubsLinked(String name) {
+    return 'Linked to $name.';
+  }
+
+  @override
+  String get stravaClubsLinkedNew => 'Your club is linked to its Strava club.';
+
+  @override
+  String stravaClubsUnlinked(String name) {
+    return 'Unlinked $name from Strava.';
+  }
+
+  @override
+  String get stravaClubsSetUpNote =>
+      'Once your club is created it will be linked to its Strava club.';
+
+  @override
+  String stravaClubsCreatedNotLinked(String reason) {
+    return 'Your club was created, but it isn’t linked to Strava: $reason';
+  }
+
+  @override
+  String get stravaClubsErrAdminRequired =>
+      'Strava says you aren’t an admin of this club, so it can’t be linked.';
+
+  @override
+  String get stravaClubsErrAlreadyLinked =>
+      'This Strava club is already linked to another club on Threkir.';
+
+  @override
+  String get stravaClubsErrNotClubAdmin =>
+      'Only an owner or admin of the Threkir club can link it.';
+
+  @override
+  String get stravaClubsErrReconnect =>
+      'Reconnect Strava in Settings, then try again.';
+
+  @override
+  String get stravaClubsErrGeneric => 'Couldn\'t link the club. Try again.';
+
+  @override
+  String get stravaClubsErrUnlink => 'Couldn\'t unlink the club. Try again.';
+
+  @override
+  String get seasonPlanTitle => 'Plan a season';
+
+  @override
+  String get seasonPlanIntro =>
+      'List the races in your season. Each A race gets its own plan, the plans run one after another with recovery between them, and each B or C race goes into the plan it falls inside.';
+
+  @override
+  String get seasonPlanDescribeTitle => 'Describe your season';
+
+  @override
+  String get seasonPlanDescribeHint =>
+      'Name your races, their dates and distances, and which ones matter most. The races are listed below for you to check; nothing is planned until you confirm them.';
+
+  @override
+  String get seasonPlanDescribePlaceholder =>
+      'e.g. Richmond Marathon on 14 November, then Two Oceans on 3 April as a tune-up, and Comrades on 13 June.';
+
+  @override
+  String get seasonPlanDescribeButton => 'Find my races';
+
+  @override
+  String get seasonPlanDescribeWorking => 'Reading…';
+
+  @override
+  String get seasonPlanDescribeFound =>
+      'Races found in your description. Check each one before you continue.';
+
+  @override
+  String get seasonPlanErrorConsent =>
+      'The season assistant needs the updated AI disclosure. You can still add your races below.';
+
+  @override
+  String get seasonPlanErrorDailyLimit =>
+      'You\'ve used today\'s AI requests. Add your races below yourself, or try again tomorrow.';
+
+  @override
+  String get seasonPlanErrorNotUnderstood =>
+      'No races could be found in that. Add them below yourself.';
+
+  @override
+  String get seasonPlanErrorInvalid =>
+      'That description couldn\'t be used. Add your races below yourself.';
+
+  @override
+  String get seasonPlanErrorSignIn =>
+      'Sign in again to use the assistant. You can still add your races below.';
+
+  @override
+  String get seasonPlanErrorUnavailable =>
+      'The assistant isn\'t available right now. Add your races below yourself.';
+
+  @override
+  String get seasonPlanRacesTitle => 'Your races';
+
+  @override
+  String get seasonPlanRacesHint =>
+      'A races are the ones the season builds to, and each gets its own plan. B races are tune-ups you race properly; C races are run as training.';
+
+  @override
+  String get seasonPlanNoRaces =>
+      'No races yet. Describe your season above or add a race.';
+
+  @override
+  String seasonPlanRaceLegend(int n) {
+    return 'Race $n';
+  }
+
+  @override
+  String seasonPlanRemoveRace(int n) {
+    return 'Remove race $n';
+  }
+
+  @override
+  String get seasonPlanRaceName => 'Name';
+
+  @override
+  String get seasonPlanRaceDate => 'Date';
+
+  @override
+  String seasonPlanRaceDistance(String unit) {
+    return 'Distance ($unit)';
+  }
+
+  @override
+  String get seasonPlanRacePriority => 'Priority';
+
+  @override
+  String get seasonPlanPriorityA => 'A — goal race';
+
+  @override
+  String get seasonPlanPriorityB => 'B — tune-up';
+
+  @override
+  String get seasonPlanPriorityC => 'C — training race';
+
+  @override
+  String get seasonPlanRaceGoal => 'Goal time (optional)';
+
+  @override
+  String get seasonPlanAddRace => 'Add a race';
+
+  @override
+  String get seasonPlanDaysPerWeek => 'Days per week';
+
+  @override
+  String get seasonPlanDaysPerWeekHint =>
+      'How many days a week you can train, used for every plan in the season.';
+
+  @override
+  String get seasonPlanPreviewButton => 'Confirm races and preview plans';
+
+  @override
+  String get seasonPlanPreviewTitle => 'Your season';
+
+  @override
+  String get seasonPlanRefusedEmpty => 'Add at least one race.';
+
+  @override
+  String seasonPlanRefusedInvalid(String races) {
+    return 'Check these races: $races. Each needs a name of up to 80 characters, a date and a distance.';
+  }
+
+  @override
+  String seasonPlanRefusedNotAhead(String races) {
+    return 'These races are today or already past: $races. Remove them or change the date.';
+  }
+
+  @override
+  String get seasonPlanRefusedNoA =>
+      'Mark at least one race as A. A races are the ones the season builds plans for.';
+
+  @override
+  String seasonPlanRefusedFirstTooSoon(String races) {
+    return '$races is less than four weeks away, too soon for a plan. Make it a B or C race, or plan for a later A race.';
+  }
+
+  @override
+  String seasonPlanRefusedTooClose(String races) {
+    return '$races are too close together for recovery and a plan of at least four weeks between them. Make one of them a B race.';
+  }
+
+  @override
+  String seasonPlanPreviewHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plans',
+      one: '$count plan',
+    );
+    return '$_temp0, built by the app\'s own generator. Check them, then create them.';
+  }
+
+  @override
+  String seasonPlanPlanWindow(String start, String end, int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    return '$start – $end · $_temp0';
+  }
+
+  @override
+  String seasonPlanPlanGoal(String distance, String date) {
+    return 'Goal: $distance on $date';
+  }
+
+  @override
+  String seasonPlanPlanGoalTime(String time) {
+    return 'goal time $time';
+  }
+
+  @override
+  String get seasonPlanPlanRaces => 'Races in this plan';
+
+  @override
+  String seasonPlanPlanRaceLine(
+    String priority,
+    String name,
+    String distance,
+    String date,
+  ) {
+    return '$priority · $name · $distance · $date';
+  }
+
+  @override
+  String get seasonPlanPlanCreated => 'Created';
+
+  @override
+  String seasonPlanRecoveryLine(String race, int days, String from, String to) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'Recovery after $race: $_temp0 with no plan ($from – $to)';
+  }
+
+  @override
+  String get seasonPlanUnplacedTitle => 'Not in any plan';
+
+  @override
+  String seasonPlanUnplacedBefore(String race, String date) {
+    return '$race on $date is before the first plan starts.';
+  }
+
+  @override
+  String seasonPlanUnplacedBetween(String race, String date) {
+    return '$race on $date falls in the recovery between two plans.';
+  }
+
+  @override
+  String seasonPlanUnplacedAfter(String race, String date) {
+    return '$race on $date is after the last A race.';
+  }
+
+  @override
+  String seasonPlanUnplacedSameDay(String race, String date) {
+    return '$race on $date is on the same day as another race in its plan.';
+  }
+
+  @override
+  String get seasonPlanUnplacedHint =>
+      'These races won\'t be added. Change their date or priority to include them.';
+
+  @override
+  String get seasonPlanCreating => 'Creating…';
+
+  @override
+  String get seasonPlanRetry => 'Create the remaining plans';
+
+  @override
+  String seasonPlanCreateButton(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Create $count plans',
+      one: 'Create $count plan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String seasonPlanBlocked(String plan, String existing) {
+    return '$plan would overlap your plan $existing. Nothing was created. End or move that plan first.';
+  }
+
+  @override
+  String seasonPlanFailedNone(String error) {
+    return 'No plans were created: $error';
+  }
+
+  @override
+  String seasonPlanFailedPartial(String created, String failed, String error) {
+    return 'Created: $created. Not created yet: $failed ($error).';
+  }
+
+  @override
+  String get seasonPlanReviewDisclosure => 'Review the AI disclosure';
+
+  @override
+  String get seasonPlanRaceDatePick => 'Pick the race day';
+
+  @override
+  String get seasonPlanRaceGoalHint =>
+      'h:mm:ss, e.g. 3:45:00. Leave blank for no goal time.';
+
+  @override
+  String seasonPlanRowInvalid(int n) {
+    return 'Race $n needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.';
+  }
+
+  @override
+  String get workoutMoveAction => 'Move to another day';
+
+  @override
+  String get workoutMoveHint =>
+      'Pick a day in this week. A workout already on that day takes this one\'s old day.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Swaps with $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Couldn\'t move this workout: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Save or discard your changes before moving this workout.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run run / $walk walk)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run run';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration warm-up';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration cool-down';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'about $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zone $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zone $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'jog';
+
+  @override
+  String get workoutEffortEasy => 'easy';
+
+  @override
+  String get workoutEffortWalk => 'walk';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Walk-run session. Alternate running and walking on the timer.';
+
+  @override
+  String get workoutMetricSession => 'Session';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recovery';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance $effort';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ easy';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'Workout segment timeline';
+
+  @override
+  String get workoutFreeFormTitle => 'Free-form run';
+
+  @override
+  String get workoutFreeFormHint =>
+      'No segments to follow — just run the distance at the suggested pace.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Structured workout — follow each segment as written.';
+
+  @override
+  String get workoutTaglineEasy => 'Free-form easy effort. Run by feel.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Free-form long run. Pace yourself for the back half.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Rest day. Light movement only if you feel like it.';
+
+  @override
+  String get workoutTaglineRace => 'Race day. Trust the taper.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Free-form run.';
+
+  @override
+  String get workoutKindShortEasy => 'E';
+
+  @override
+  String get workoutKindShortLong => 'L';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'MP';
+
+  @override
+  String get workoutKindShortWalkRun => 'W/R';
+
+  @override
+  String get workoutKindShortRace => 'Race';
+
+  @override
+  String get workoutKindShortRest => 'Rest';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', completed';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', skipped';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', missed';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', today';
+
+  @override
+  String get planDetailNextUp => 'Next up';
+
+  @override
+  String get planDetailGoAndRunIt => 'Go and run it.';
+
+  @override
+  String get planDetailRestDayTitle => 'Rest day';
+
+  @override
+  String get planDetailRestDayHint =>
+      'No workout scheduled — recover and roll into tomorrow.';
+
+  @override
+  String get planDetailTodayLabel => 'Today';
+
+  @override
+  String get planDetailRaceDayTitle => 'Race day';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Workout completion';
+
+  @override
+  String get planDetailFirstWeek => 'First week';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Assigned by $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Assigned by your coach';
+
+  @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Built for $race · $date';
+  }
+
+  @override
+  String planDetailStartedFrom(String author) {
+    return 'Started from $author\'s plan';
+  }
+
+  @override
+  String get planDetailStartedFromRunner =>
+      'Started from another runner\'s plan';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Week $week of $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Paused';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total done';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count earlier weeks',
+      one: '1 earlier week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Show earlier weeks';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Hide earlier weeks';
+
+  @override
+  String get planDetailGoToThisWeek => 'Go to this week';
+
+  @override
+  String get planNewStartingPoint => 'Where are you starting from?';
+
+  @override
+  String get planNewStartingPointNew => 'I\'ve never run';
+
+  @override
+  String get planNewStartingPointNewHint =>
+      'A walk-run plan on 2 or 3 days a week that builds up to running without a walk break.';
+
+  @override
+  String get planNewStartingPointBuilding => 'I run a bit and want to build up';
+
+  @override
+  String get planNewStartingPointBuildingHint =>
+      'No race in mind: pick a distance to build towards, with no goal time.';
+
+  @override
+  String get planNewStartingPointRace => 'I\'m training for a race';
+
+  @override
+  String get planNewStartingPointRaceHint =>
+      'A goal race, and a goal time if you have one.';
+
+  @override
+  String get planNewStartDateHintWalkRun =>
+      'Week 1 begins here. A walk-run plan can start on any day, today included.';
+
+  @override
+  String get planNewDaysPerWeekHint =>
+      'How many days a week the plan puts a run on; the rest are rest days. Pick the number you can hold every week, not the number your best week had.';
+
+  @override
+  String get planNewDaysPerWeekWalkRunHint =>
+      'A walk-run plan puts a rest day after every session, so it runs 2 or 3 days a week.';
+
+  @override
+  String get planNewGoalRaceHint =>
+      'Sets how many weeks the plan runs and how far the long runs build to. Pick the distance you are training towards, not one you have already run.';
+
+  @override
+  String get planNewGoalTimeHint =>
+      'Drives the pace targets. Leave blank for a volume-only plan.';
+
+  @override
+  String get planNewOverrideHelp =>
+      'Leave blank for the usual length for your goal race. Set it when you are working back from a race date that is closer or further off.';
+
+  @override
+  String get planNewNameHelp =>
+      'What the plan is called in your plans list and at the top of every week. It has no effect on the schedule.';
+
+  @override
+  String get planNewRecent5kConfirmHint =>
+      'Leave it unticked and your paces come from your goal time instead of the time above.';
+
+  @override
+  String planNewGoalAheadOfRecent(String predicted) {
+    return 'Your goal is quicker than your recent runs suggest: they point to about $predicted for this distance. Paces are set from the goal, so if it\'s ambitious, every pace in the plan is too. A slower goal, or a recent 5K you confirm below, sets them from what you can run now.';
+  }
+
+  @override
+  String get planNewReturnTitle => 'Coming back from a break';
+
+  @override
+  String planNewReturnBody(int weeks, String pre, String cap) {
+    return 'You\'ve had about $weeks weeks off. Before that you averaged $pre a week, so week 1 asks for no more than $cap and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.';
+  }
+
+  @override
+  String get planNewReturnEaseBack => 'Ease me back in';
+
+  @override
+  String get planNewReturnWalkRun => 'Return with walk-run intervals instead';
+
+  @override
+  String planNewThinHistory(String opening) {
+    return 'You\'ve run in fewer than 3 of the last 4 weeks, so this plan can\'t be checked against your recent training. If week 1 ($opening) is more than you\'ve been running, fewer days or walk-run intervals make a gentler start.';
+  }
+
+  @override
+  String get planNewThinHistoryWalkRun => 'Start with walk-run intervals';
+
+  @override
+  String planNewStarterSummary(int weeks, int days) {
+    return '$weeks weeks · $days days a week';
+  }
+
+  @override
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
+    return '$weeks weeks · $days days a week · $min–$max min a session';
+  }
+
+  @override
+  String plansStarterStarts(String date) {
+    return 'Starts $date';
+  }
+
+  @override
+  String get plansStarterStart => 'Start this plan';
+
+  @override
+  String get planNewStartDateHint =>
+      'Week 1 begins here. The plan\'s weeks run Sunday to Saturday, so only a Sunday can be picked.';
+
+  @override
+  String get planNewStartDatePickerHelp => 'Pick a Sunday';
+
+  @override
+  String get planNewStartDatePickerHelpWalkRun => 'Pick any day';
+
+  @override
+  String get planNewHoursLabel => 'Hours';
+
+  @override
+  String get planNewMinutesLabel => 'Minutes';
+
+  @override
+  String get planNewSecondsLabel => 'Seconds';
+
+  @override
+  String get planNewNameRequired => 'Add a plan name.';
+
+  @override
+  String get planNewReadyMadeTitle => 'Start from a ready-made plan';
+
+  @override
+  String get planNewReadyMadeBody =>
+      'A built-in plan, or one a club you belong to has published. You can edit it after.';
+
+  @override
+  String get planNewReadyMadeButton => 'Browse ready-made plans';
+
+  @override
+  String get planNewReadyMadeBuiltIn => 'Built-in plans';
+
+  @override
+  String get planNewReadyMadeClubs => 'From your clubs';
+
+  @override
+  String get planNewBuildOwn => 'Or build your own';
+
+  @override
+  String planNewSummary(int weeks, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    return '$_temp0 · ends $date';
+  }
+
+  @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'You\'re making new calendar links too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitRestartPlan(String wait) {
+    return 'You\'re restarting plans too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String get planCalendarFeedTitle => 'Training plan calendar';
+
+  @override
+  String get planCalendarFeedTileSubtitle =>
+      'Your plan\'s workouts in Google, Apple or Outlook calendar';
+
+  @override
+  String get planCalendarFeedDescription =>
+      'Subscribe from Google Calendar, Apple Calendar or Outlook to see your active plan\'s workouts as all-day entries. They follow your plan as it changes.';
+
+  @override
+  String get planCalendarFeedLoadFailed => 'Couldn\'t load your calendar link.';
+
+  @override
+  String get planCalendarFeedRetry => 'Try again';
+
+  @override
+  String get planCalendarFeedCreate => 'Create calendar link';
+
+  @override
+  String get planCalendarFeedCreateFailed =>
+      'Couldn\'t create a calendar link. Try again.';
+
+  @override
+  String get planCalendarFeedRevokeFailed =>
+      'Couldn\'t turn off the calendar link. Try again.';
+
+  @override
+  String get planCalendarFeedUrlLabel => 'Calendar link';
+
+  @override
+  String get planCalendarFeedShownOnce =>
+      'Copy this link now. It is shown only once; if you lose it, make a new one.';
+
+  @override
+  String get planCalendarFeedCopy => 'Copy link';
+
+  @override
+  String get planCalendarFeedCopied => 'Link copied';
+
+  @override
+  String get planCalendarFeedSubscribe => 'Open in calendar app';
+
+  @override
+  String planCalendarFeedActiveSince(String date) {
+    return 'Calendar link created: $date';
+  }
+
+  @override
+  String planCalendarFeedLastRead(String date) {
+    return 'Last read by a calendar: $date';
+  }
+
+  @override
+  String get planCalendarFeedNeverRead => 'No calendar has read it yet.';
+
+  @override
+  String get planCalendarFeedLostLink =>
+      'The link can\'t be shown again. Make a new one if you need it; the old one then stops working.';
+
+  @override
+  String get planCalendarFeedRotate => 'Make a new link';
+
+  @override
+  String get planCalendarFeedRevoke => 'Turn off';
+
+  @override
+  String get planCalendarFeedRotateTitle => 'Make a new calendar link?';
+
+  @override
+  String get planCalendarFeedRotateMessage =>
+      'The current link stops working right away. A calendar subscribed to it stops updating until you subscribe again with the new link.';
+
+  @override
+  String get planCalendarFeedRevokeTitle => 'Turn off the calendar link?';
+
+  @override
+  String get planCalendarFeedRevokeMessage =>
+      'The link stops working right away and subscribed calendars stop updating. Entries a calendar already copied can stay until it next refreshes.';
+
+  @override
+  String get planCalendarFeedPrivacy =>
+      'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.';
+
+  @override
+  String get commonStaleOffline =>
+      'You\'re offline. Showing what was last loaded.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Couldn\'t refresh. Showing what was last loaded.';
+
+  @override
+  String get planDetailMoreActions => 'More plan actions';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Week $n actions';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Shift dates…';
+
+  @override
+  String get planDetailShiftTitle => 'Shift the whole plan?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'This moves every workout and your race date. You can shift again to undo it.';
+
+  @override
+  String get planDetailShiftDaysLabel =>
+      'Days to shift (negative moves earlier)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Enter a whole number of days from -366 to 366, other than 0.';
+
+  @override
+  String get planDetailShiftApply => 'Shift dates';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan shifted by $n days',
+      one: 'Plan shifted by $n day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Move the plans after this one too?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Shifting by $n days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.',
+      one:
+          'Shifting by $n day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Move them too';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.';
+
+  @override
+  String get planDetailMarkRecovery => 'Make recovery week';
+
+  @override
+  String get planDetailRecoveryConfirmTitle => 'Make this a recovery week?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'This eases week $n\'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can\'t be restored.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Week eased to a recovery week';
+
+  @override
+  String get planDetailExportMarkdown => 'Export as Markdown';
+
+  @override
+  String get planDetailExportJson => 'Export as JSON';
+
+  @override
+  String get planDetailAbandonPlan => 'Abandon plan';
+
+  @override
+  String get planDetailDeletePlan => 'Delete plan';
+
+  @override
+  String get planDetailEditDetails => 'Edit plan details';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Enter a goal time above zero, with minutes and seconds up to 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Changing it re-derives the pace targets of the workouts still ahead. Past, done and skipped ones keep theirs, and a plan built from a recent 5K keeps its paces.';
+
+  @override
+  String get planDetailNotesLabel => 'Notes';
+
+  @override
+  String get planDetailRulesLabel => 'Plan rules, one per line';
+
+  @override
+  String get planDetailSaveDetails => 'Save';
+
+  @override
+  String get planDetailDetailsSaved => 'Plan updated.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan updated. Paces re-derived for $n upcoming workouts.',
+      one: 'Plan updated. Paces re-derived for $n upcoming workout.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'Adjust for my cycle';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => 'Adjust for pregnancy';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle => 'Adjust remaining weeks?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Upcoming weeks adjusted.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'No upcoming workouts needed adjusting.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Resume and push back?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'This plan becomes your active plan again. The weeks you had not started move back $n weeks, so it picks up next week instead of counting them as missed. It now ends on $date.',
+      one:
+          'This plan becomes your active plan again. The weeks you had not started move back $n week, so it picks up next week instead of counting them as missed. It now ends on $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan resumed and pushed back $n weeks.',
+      one: 'Plan resumed and pushed back $n week.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailRestartPlan => 'Restart plan…';
+
+  @override
+  String get planDetailRestartTitle => 'Restart this plan';
+
+  @override
+  String get planDetailRestartChangeDate => 'Change start date';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'The new copy starts on $date and ends on $end. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'The new copy starts on $date and ends on $end. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'Race day moves to $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'This plan\'s race on $date is still ahead. Restarting would move race day, so change the race date or start a new plan instead.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'This plan has a race still ahead, so it can\'t be restarted.';
+
+  @override
+  String get planDetailRestartBeforeTodayError =>
+      'That start date is before today where your account\'s time zone is set. Pick a later date.';
+
+  @override
+  String get planDetailRestartConfirm => 'Restart plan';
+
+  @override
+  String get planDetailRestartDone => 'Plan restarted. This is your new copy.';
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'Paused. Resume to pick it up again; the weeks you missed move back.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Change race date…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'New race date';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Change race date?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Your race moves to $date. $n build weeks are added before the taper, which stays as it is. Weeks you have already started don\'t change.',
+      one:
+          'Your race moves to $date. $n build week is added before the taper, which stays as it is. Weeks you have already started don\'t change.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Your race moves to $date. $n build weeks are cut, and the taper stays as it is. Weeks you have already started don\'t change.',
+      one:
+          'Your race moves to $date. $n build week is cut, and the taper stays as it is. Weeks you have already started don\'t change.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Your race moves to $date, in the same week. No weeks are added or cut, and the taper stays as it is.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Change race date';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Race date changed to $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return '$date is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast => 'Pick a race date after today.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'That isn\'t a valid date.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Your race is already on that day.';
+
+  @override
+  String get planDetailRaceDateNoRace => 'This plan has no race ahead to move.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'That is more than a year further out. Start a new plan for that race instead.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'This plan has no build week to repeat, so it can\'t be made longer.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Another race or a completed session sits in the weeks that would move. Change that first.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'The new race date runs into another active plan. Move or end that plan first.';
+
+  @override
+  String get phoneSurfaceVibrationCues => 'Vibration cues';
+
+  @override
+  String get phoneSurfaceVibrationCuesSubtitle =>
+      'Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Today';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'No training plan';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Pick a plan';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nothing scheduled';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Open Threkir to update';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Rest day';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Done';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Skipped';
+
+  @override
+  String get dashboardTrainForSomething => 'Train for something';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Your 5K of $time on $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Build a plan from it. You confirm it still reflects your fitness before it sets any paces.';
+
+  @override
+  String get dashboardRecent5kCta => 'Build a plan from it';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Not now';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Couldn\'t save that, so the suggestion may come back.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.';
+
+  @override
+  String get planBreakTitle => 'Coming back after a break';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'No run or plan workout logged for $_temp0, since $date.';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return 'You can pick the plan up where you left off. Race day stays $date and the taper is kept; a later build week makes room for each week you run again.';
+  }
+
+  @override
+  String get planBreakHintNoRace =>
+      'You can pick the plan up where you left off; the rest of the plan moves back to make room.';
+
+  @override
+  String get planBreakRepeat => 'Repeat this week';
+
+  @override
+  String get planBreakWeeksLabel => 'Weeks';
+
+  @override
+  String get planBreakPushBack => 'Push the plan back';
+
+  @override
+  String get planBreakShortenBuild => 'Shorten the build';
+
+  @override
+  String get planBreakDismiss => 'Keep the plan as it is';
+
+  @override
+  String get planBreakConfirmTitle => 'Change your plan?';
+
+  @override
+  String get planBreakConfirmApply => 'Change plan';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'The last $n weeks run again, starting next week.',
+      one: 'This week runs again next week.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n later build weeks are',
+      one: '$n later build week is',
+    );
+    return '$_temp0 taken out to make room; the taper stays as it is.';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'Race day stays $date.';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return 'The weeks after move back, and the plan now ends $date.';
+  }
+
+  @override
+  String get planBreakPreviewPast =>
+      'Weeks you have already run and anything you have done don\'t change.';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'Plan updated. It ends $date.';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'Couldn\'t change the plan: $error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return 'Couldn\'t save that: $error';
+  }
+
+  @override
+  String get planBreakUnavailable =>
+      'That many weeks can\'t be run again in this plan.';
+
+  @override
+  String get planBreakWeeksFewer => 'One week fewer';
+
+  @override
+  String get planBreakWeeksMore => 'One week more';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Missed: $kind on $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Make it up by stretching your next long run from $from to $to. You\'ll see the change before it\'s saved.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Your next long run already covers it, so there\'s nothing to add.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'A recovery week is next, so let it go and let that week absorb it.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.';
+
+  @override
+  String get missedPromptMakeUp => 'Make it up';
+
+  @override
+  String get missedPromptLetGo => 'Let it go';
+
+  @override
+  String get missedPromptRecommended => 'Recommended';
+
+  @override
+  String get missedPromptLetGoDone => 'Let go. Your plan carries on as it was.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Couldn\'t save your answer: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'There\'s nothing left to make up.';
+
+  @override
+  String get planDetailRepeatWeek => 'Repeat this week';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Too hard?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Run this week again next week. What you\'ve done stays done, and the rest of the plan moves back a week.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Repeat week $n?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'Week $n runs again as week $copy, from $start. Every week after it moves back one, and the plan now ends on $end. Workouts you\'ve done stay as they are.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'Week $n runs again as week $copy, from $start. To keep race day on $race, one later week before the taper comes out. Workouts you\'ve done stay as they are.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Repeat week';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'Week $n runs again from $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'There\'s no week left before the taper to make room, so repeating this week would move race day. Change the race date instead.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'A week that would move holds a race or a workout you\'ve done, so this week can\'t be repeated.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'This is the plan\'s last week, so there\'s nothing to push back.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Only this week or last week of an active plan can run again.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'You\'re repeating plan weeks too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitCreateOverlayLink(String wait) {
+    return 'You\'re making new overlay links too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Repeating this week would run the plan into another active plan. Move or end that plan first.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There\'s no penalty for repeating a week.';
+
+  @override
+  String get walkRunGraduationTitle => 'You did it: couch to 5K';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'You ran 5K without stopping. You started with one-minute runs between walks.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.';
+
+  @override
+  String get walkRunGraduationNextTitle => 'What next?';
+
+  @override
+  String get walkRunGraduationTenK => 'Train for a 10K';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'Or keep the habit: three easy runs a week hold on to what you\'ve built, no plan needed.';
+
+  @override
+  String planRecapTitle(String name) {
+    return 'How $name went';
+  }
+
+  @override
+  String get planRecapLoading => 'Loading your recap…';
+
+  @override
+  String get planRecapLoadFailed => 'Couldn\'t load the recap.';
+
+  @override
+  String get planRecapRetry => 'Try again';
+
+  @override
+  String get planRecapSessionsLabel => 'Sessions';
+
+  @override
+  String planRecapSessionsValue(int done, int total) {
+    return '$done of $total';
+  }
+
+  @override
+  String planRecapSessionsPct(int pct) {
+    return '$pct% done';
+  }
+
+  @override
+  String planRecapSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count skipped',
+      one: '$count skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planRecapMissed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count missed',
+      one: '$count missed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planRecapLongRunsLabel => 'Long runs';
+
+  @override
+  String planRecapLongRunsRange(String first, String longest) {
+    return 'From $first up to $longest';
+  }
+
+  @override
+  String planRecapLongRunsLongest(String longest) {
+    return 'Longest $longest';
+  }
+
+  @override
+  String get planRecapDistanceLabel => 'Distance';
+
+  @override
+  String get planRecapTimeLabel => 'Time';
+
+  @override
+  String planRecapVolumeValue(String done, String planned) {
+    return '$done of $planned';
+  }
+
+  @override
+  String planRecapTimeValue(int h, int m) {
+    return '$h h $m min';
+  }
+
+  @override
+  String get planRecapRaceLabel => 'Race day';
+
+  @override
+  String planRecapRaceRun(String time, String distance) {
+    return '$time for $distance';
+  }
+
+  @override
+  String get planRecapRaceDnf => 'Did not finish';
+
+  @override
+  String get planRecapRaceNoRun => 'Marked done, no run linked';
+
+  @override
+  String get planRecapRaceNotRun => 'No run on race day';
+
+  @override
+  String get planRecapRecordsLabel => 'Personal records';
+
+  @override
+  String get planRecapRecordsNone =>
+      'No new personal records during this plan.';
+
+  @override
+  String get planRecapBracketMile => 'Mile';
+
+  @override
+  String get planRecapBracket5k => '5K';
+
+  @override
+  String get planRecapBracket8k => '8K';
+
+  @override
+  String get planRecapBracket10k => '10K';
+
+  @override
+  String get planRecapBracket12k => '12K';
+
+  @override
+  String get planRecapBracketHalf => 'Half marathon';
+
+  @override
+  String get planRecapBracketMarathon => 'Marathon';
+
+  @override
+  String get planRecapNextTitle => 'What\'s next';
+
+  @override
+  String planRecapRecovery(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days easy days',
+      one: '$days easy day',
+    );
+    return 'Recover first: $_temp0, through $date.';
+  }
+
+  @override
+  String planRecapNextPlan(String date) {
+    return 'Your next plan can start on $date.';
+  }
+
+  @override
+  String planRecapNextPlanSeeded(String date, String time) {
+    return 'Your next plan can start on $date, with paces from a $time 5K, your race\'s equivalent. You confirm it in the wizard.';
+  }
+
+  @override
+  String get planRecapNextPlanCta => 'Build your next plan';
+
+  @override
+  String get prefsExtraRecovery => 'More recovery between hard days';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'New plans leave 72 hours between your long run and the next hard session, and ease off every third week instead of every fourth. Plans already do this from age 50 when your date of birth is on record.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Spaces hard sessions further apart and eases off every third week. Saved to your training settings, so every new plan uses it.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Couldn\'t save that setting. Try again.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Because you\'re 50 or over, this plan spaces hard sessions further apart and eases off every third week.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Plans give runners aged 50 and over more recovery automatically.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Add your date of birth';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Plans can only use your date of birth to adjust for age with your consent to health-data use.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Review consent';
+
+  @override
+  String get messagesAiTag => 'AI';
+
+  @override
+  String get messagesAiTagSr => 'AI-generated';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Ask about your training, your plan or a run.';
+
+  @override
+  String get messagesCoachPin => 'Pin AI Coach to the top';
+
+  @override
+  String get messagesCoachUnpin => 'Unpin AI Coach';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Couldn\'t save where AI Coach goes. Try again.';
+
+  @override
+  String get prefsSectionMessages => 'Messages';
+
+  @override
+  String get prefsCoachInMessages => 'AI Coach in Messages';
+
+  @override
+  String get prefsReadReceipts => 'Read receipts';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Show people when you\'ve read their messages. Turn this off and you won\'t see when they\'ve read yours either.';
+
+  @override
+  String get prefsReadReceiptsFailed => 'Couldn\'t update read receipts.';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Pinned at the top';
+
+  @override
+  String get prefsCoachInMessagesListed => 'With your conversations';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Hidden';
+
+  @override
+  String get prefsDisclosureLevel => 'How much detail';
+
+  @override
+  String get prefsHomeCards => 'Home cards';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Untick a group to take it off Home. The choice follows you to every device.';
+
+  @override
+  String get prefsDisclosureAuto => 'Automatic';
+
+  @override
+  String get prefsDisclosureSimple => 'Just the basics';
+
+  @override
+  String get prefsDisclosureStandard => 'The usual';
+
+  @override
+  String get prefsDisclosureFull => 'Everything';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'How much the app opens up before you ask for more. Automatic reads the goal you set and how many runs you have logged, and picks $level today. Nothing is ever hidden for good — a folded section is one tap from open.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Training load';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'My $period in running';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'across $count runs',
+      one: 'across 1 run',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'On foot';
+
+  @override
+  String get recapCardClimbed => 'Climbed';
+
+  @override
+  String get recapCardActiveMonths => 'Active months';
+
+  @override
+  String get recapShareSheetTitle => 'Share your recap';
+
+  @override
+  String get recapShareAspectSquare => 'Square';
+
+  @override
+  String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapShareStyleVideo => 'Video';
+
+  @override
+  String get recapShareVideoBody =>
+      'Turn this recap into a short vertical video. It\'s made in your browser on threkir.com; share or save it from there.';
+
+  @override
+  String get recapSharePreviewLabel => 'Preview of the recap image';
+
+  @override
+  String get recapShareImage => 'Share image';
+
+  @override
+  String get recapShareAsText => 'Share as text';
+
+  @override
+  String get recapShareImageError =>
+      'Couldn\'t make the recap image. Try again.';
+
+  @override
+  String get shareCardStyleVideo => 'Video';
+
+  @override
+  String get shareCardVideoBody =>
+      'Turn this run into a vertical 3D flyover video. It\'s made in your browser on threkir.com; share or save it from there.';
+
+  @override
+  String get shareCardVideoOpen => 'Open video export';
+
+  @override
+  String get shareCardVideoError => 'Couldn\'t open the browser. Try again.';
+
+  @override
+  String get headToHeadCompare => 'Compare with a friend';
+
+  @override
+  String get headToHeadTitle => 'Head to head';
+
+  @override
+  String get headToHeadStyleVersus => 'Versus';
+
+  @override
+  String get headToHeadFriend => 'Friend';
+
+  @override
+  String get headToHeadLoading => 'Finding friends to compare with…';
+
+  @override
+  String get headToHeadEmpty =>
+      'No friend to compare with here yet. It takes a friend you follow who follows you back, with a public profile, and a public run here from each of you.';
+
+  @override
+  String get headToHeadLoadFailed => 'Couldn\'t load the comparison.';
+
+  @override
+  String get headToHeadRetry => 'Try again';
+
+  @override
+  String get headToHeadMe => 'Me';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'I won by $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name won by $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Dead heat';
+
+  @override
+  String get headToHeadFriendFallback => 'A friend';
+
+  @override
+  String get headToHeadPreview => 'Head-to-head card preview';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Only friends who follow you back and have a public profile can be compared, and only on public runs.';
+
+  @override
+  String get streamerOverlayTitle => 'Streamer overlay';
+
+  @override
+  String get streamerOverlayIntro =>
+      'Add this link to OBS or your streaming app as a browser source. It shows your live stats without making your run public.';
+
+  @override
+  String get streamerOverlayCreate => 'Create overlay link';
+
+  @override
+  String get streamerOverlayCreated => 'Overlay link ready';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'Couldn\'t create the overlay link. Try again.';
+
+  @override
+  String get streamerOverlayUrlLabel => 'Browser source URL';
+
+  @override
+  String get streamerOverlayCopy => 'Copy link';
+
+  @override
+  String get streamerOverlayCopied => 'Link copied';
+
+  @override
+  String get streamerOverlayCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get streamerOverlayReplace => 'Replace link';
+
+  @override
+  String get streamerOverlayReplaceTitle => 'Replace the overlay link?';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      'The old link stops working at once. Update the browser source in your streaming app.';
+
+  @override
+  String get streamerOverlayRevoke => 'Turn off overlay';
+
+  @override
+  String get streamerOverlayRevokeTitle => 'Turn off the streamer overlay?';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'The link stops working at once. You can create a new one later.';
+
+  @override
+  String get streamerOverlayRevoked => 'Streamer overlay turned off';
+
+  @override
+  String get streamerOverlayRevokeFailed =>
+      'Couldn\'t turn off the overlay. Try again.';
+
+  @override
+  String get streamerOverlayDelayLabel => 'Stream delay';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      'Viewers see your stats this long after they happen. The delay is applied on our server, so nobody can skip it.';
+
+  @override
+  String get streamerOverlayDelayNone => 'No delay';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => 'Delay saved';
+
+  @override
+  String get streamerOverlayDelayFailed =>
+      'Couldn\'t change the delay. Try again.';
+
+  @override
+  String get streamerOverlayLoadFailed =>
+      'Couldn\'t load your streamer overlay.';
+
+  @override
+  String get streamerOverlayRetry => 'Retry';
+
+  @override
+  String get streamerOverlayUnavailable =>
+      'The streamer overlay isn\'t available right now.';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.';
+
+  @override
+  String get liveSpectatorHeartRate => 'Heart rate';
+
+  @override
+  String get shareCardStylePr => 'PR card';
+
+  @override
+  String get shareCardPrHeadline => 'New personal record';
+
+  @override
+  String get shareCardPrHeld => 'Personal record';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time faster';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Previous best $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'First $distance on record';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Record';
+
+  @override
+  String get shareCardPrHint =>
+      'Your record times stay private. Only this image leaves when you share it.';
+
+  @override
+  String get shareCardKind => 'Highlight';
+
+  @override
+  String get shareCardKindStats => 'Stats';
+
+  @override
+  String get shareCardKindSplits => 'Splits';
+
+  @override
+  String get shareCardKindPr => 'PR';
+
+  @override
+  String get shareCardKindStreak => 'Streak';
+
+  @override
+  String get shareCardKindRace => 'Race';
+
+  @override
+  String get shareCardKindBadge => 'Badge';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count splits · avg $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'days in a row';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Badge earned';
+
+  @override
+  String get shareCardKindCourse => 'Park course';
+
+  @override
+  String get shareCardCourseKicker => 'Park course time';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return '#$rank in $season';
+  }
+
+  @override
+  String get runDetailSharePr => 'Share PR card';
+
+  @override
+  String get profileNotifPersonalRecord => 'You set a new personal record';
+
+  @override
+  String get badgesMakePublic => 'Make public';
+
+  @override
+  String get badgesMakePrivate => 'Make private';
+
+  @override
+  String get badgesPrivate => 'Private';
+
+  @override
+  String get badgesShare => 'Share badge';
+
+  @override
+  String get badgesToggleError => 'Couldn\'t change visibility. Try again.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'I earned the $badge badge on Threkir: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint => 'Make this badge public to share it.';
+
+  @override
+  String get sharesTitle => 'Your shares';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visits, sign-ups and joins from links you shared';
+
+  @override
+  String get sharesTagline =>
+      'How your share links did over the last 90 days. These are counts only: nobody who opens a link is identified.';
+
+  @override
+  String get sharesLoadFailed => 'Couldn\'t load your shares.';
+
+  @override
+  String get sharesEmptyTitle => 'Nothing shared yet';
+
+  @override
+  String get sharesEmptyBody =>
+      'Share a public plan, a challenge, a session, a workout or your profile, and its numbers show up here.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Challenge';
+
+  @override
+  String get sharesKindProfile => 'Profile';
+
+  @override
+  String get sharesKindSession => 'Session';
+
+  @override
+  String get sharesKindWorkout => 'Workout';
+
+  @override
+  String get sharesYourProfile => 'Your profile';
+
+  @override
+  String get sharesUntitled => 'Untitled';
+
+  @override
+  String get sharesVisits => 'Visits';
+
+  @override
+  String get sharesSignups => 'Sign-ups';
+
+  @override
+  String get sharesStarts => 'Plan starts';
+
+  @override
+  String get sharesJoins => 'Challenge joins';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count through your link',
+      one: '$count through your link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Plus $count visits from crawlers, not counted above.',
+      one: 'Plus $count visit from a crawler, not counted above.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Couldn\'t load the route line. Check your connection and try again.';
+
+  @override
+  String get routeDetailLineEmpty => 'This route has no line to show.';
+
+  @override
+  String get routeDetailLineRetry => 'Try again';
+
+  @override
+  String get locationErrorPermissionDenied => 'location permission is off';
+
+  @override
+  String get locationErrorServicesOff =>
+      'location is turned off on this device';
+
+  @override
+  String get locationErrorNoFix => 'no position yet, try again in a moment';
+
+  @override
+  String get routesImportNoTrack =>
+      'Import failed: that file holds no route with at least two points.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use whole numbers only';
+
+  @override
+  String get manualDurationErrorMinutes => 'Minutes must be between 0 and 59';
+
+  @override
+  String get manualDurationErrorSeconds => 'Seconds must be between 0 and 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'A run can\'t be longer than $hours hours';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Check the duration';
+
+  @override
+  String get manualDurationSlowBody =>
+      'That\'s far slower than walking pace for this distance. Did a number land in the wrong box?';
+
+  @override
+  String get manualDurationSlowSave => 'Save anyway';
+
+  @override
+  String get manualDurationSlowFix => 'Fix it';
+
+  @override
+  String get addRunStartInFuture => 'The start time can\'t be in the future';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'This run lasts longer than $hours hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.';
+  }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'In $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'In $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Now: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Now: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Just passed: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Just passed: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Services: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance at about $grade percent.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Cut-off at $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Cut-off $time after the start.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Drive notes on.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Leg $done done. Leg $next is ready.';
+  }
+
+  @override
+  String get ttsDriveFinished =>
+      'You\'ve reached the finish. Drive notes stopped.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'You\'ve been off the course for a while, so drive notes have stopped.';
+
+  @override
+  String get courseDriveTitle => 'Drive this course';
+
+  @override
+  String get courseDriveNoticeTitle => 'Before you drive';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use this with a passenger or a mounted phone, and don\'t touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.';
+
+  @override
+  String get courseDriveNoticeAccept => 'I understand';
+
+  @override
+  String get courseDriveMapsApp => 'Open in';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Apple Maps';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Drive to the start';
+
+  @override
+  String get courseDriveLegsHeading => 'Legs';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Leg $n: $from to $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'The Maps route is guidance only. The notes follow the real course.';
+
+  @override
+  String get courseDriveChecking => 'Checking which stretches Maps can follow…';
+
+  @override
+  String get courseDriveAllDrivable => 'Maps can follow the whole course.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'We couldn\'t check which stretches Maps can follow.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'Maps can\'t follow these stretches';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Course notes';
+
+  @override
+  String get courseDriveNoNotes => 'This course has no markers to read out.';
+
+  @override
+  String get courseDriveStart => 'Start spoken notes';
+
+  @override
+  String get courseDriveStop => 'Stop';
+
+  @override
+  String get courseDriveWaiting =>
+      'Head to the course. Notes start when you reach it.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Next note in $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'No more notes ahead.';
+
+  @override
+  String get courseDriveFinished => 'You reached the finish.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Stopped: you were off the course for 10 minutes.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'Location is off, so the notes can\'t follow you.';
+
+  @override
+  String get courseDriveLoadFailed => 'Couldn\'t load this course.';
+
+  @override
+  String get courseDriveOpenFailed => 'Couldn\'t open the Maps app.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Cut-off at $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Cut-off $time after the start';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance at about $grade%';
+  }
+
+  @override
+  String get parksTitle => 'Park courses';
+
+  @override
+  String get parksIntro =>
+      'Standing time-trial courses in state and national parks. Run one whenever the park is open and your time lands on this year\'s board.';
+
+  @override
+  String get parksLoading => 'Loading park courses…';
+
+  @override
+  String get parksLoadFailed => 'Couldn\'t load park courses.';
+
+  @override
+  String get parksRetry => 'Retry';
+
+  @override
+  String get parksEmpty =>
+      'No park courses yet. The first ones are on their way.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'All park courses';
+
+  @override
+  String get parksParkNotFoundTitle => 'Park not found';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'This park isn\'t listed, or isn\'t listed any more.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Course not found';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'This course isn\'t listed, or isn\'t listed any more.';
+
+  @override
+  String get parksWebsite => 'Park website';
+
+  @override
+  String get parksNoCourses => 'No courses listed in this park yet.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'State park';
+
+  @override
+  String get parksAgencyCounty => 'County park';
+
+  @override
+  String get parksAgencyOther => 'Park';
+
+  @override
+  String get parksShapeLoop => 'Loop';
+
+  @override
+  String get parksShapeOutAndBack => 'Out and back';
+
+  @override
+  String get parksShapePointToPoint => 'Point to point';
+
+  @override
+  String get parksStatusOpen => 'Open';
+
+  @override
+  String get parksStatusClosed => 'Closed';
+
+  @override
+  String get parksStatusSeasonal => 'Seasonal';
+
+  @override
+  String get parksClosedBanner =>
+      'This course is closed. Its times and boards stay, but please don\'t run it until it reopens.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Status checked $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Easy';
+
+  @override
+  String get parksDifficultyModerate => 'Moderate';
+
+  @override
+  String get parksDifficultyHard => 'Hard';
+
+  @override
+  String get parksStatDistance => 'Distance';
+
+  @override
+  String get parksStatElevation => 'Elevation gain';
+
+  @override
+  String get parksStatShape => 'Shape';
+
+  @override
+  String get parksStatSurface => 'Surface';
+
+  @override
+  String get parksStatDifficulty => 'Difficulty';
+
+  @override
+  String get parksBoardFastest => 'Fastest';
+
+  @override
+  String get parksBoardCompletions => 'Most completions';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'This year ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'All time';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days',
+      one: '$n day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'No times on this board yet. Run the course and yours is the first.';
+
+  @override
+  String get parksSignInForBoards => 'Sign in to see this course\'s boards.';
+
+  @override
+  String get parksSignIn => 'Sign in';
+
+  @override
+  String get parksBoardFailed => 'Couldn\'t load this board.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.';
+
+  @override
+  String get parksNotAffiliated =>
+      'Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.';
+
+  @override
+  String get parksTimesNotEventResults =>
+      'Times here are Threkir times on these paths. They are not results of any event held on them.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.';
+
+  @override
+  String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';
+
+  @override
+  String get parksAttributionNps =>
+      'Course line from National Park Service trail data';
+
+  @override
+  String get parksAttributionAgency =>
+      'Course line from the park\'s own trail data';
+
+  @override
+  String get parksAttributionTraced =>
+      'Course line traced against the park\'s published map';
+
+  @override
+  String get parksNavigate => 'Navigate this course';
+
+  @override
+  String get parksShareGpx => 'Share GPX';
+
+  @override
+  String get parksBrowseLink => 'Park courses';
+
+  @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n laps',
+      one: '$n lap',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation climb';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed => 'Couldn\'t open the park website.';
+
+  @override
+  String get parksElevationProfile => 'Elevation profile';
+
+  @override
+  String get parksBoardEmptyTitle => 'No times yet. Yours could be the first.';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.';
+
+  @override
+  String get parksLegendTitle => 'Map key';
+
+  @override
+  String get parksLegendStart => 'Start';
+
+  @override
+  String get parksLegendFinish => 'Finish';
+
+  @override
+  String get parksLegendStartFinish => 'Start and finish';
+
+  @override
+  String get parksLegendCheckpoints => 'Checkpoint: your run must pass it';
+
+  @override
+  String get parksLegendDirection => 'Direction to run';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Course map with $n checkpoints. The key below names each mark.',
+      one: 'Course map with 1 checkpoint. The key below names each mark.',
+      zero: 'Course map. The key below names each mark.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Map of the park\'s $n courses',
+      one: 'Map of the park\'s course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Map of the course\'s start and finish lines';
+
+  @override
+  String get eventCourseLinesMapStart => 'Map of the course\'s start line';
+
+  @override
+  String get eventCourseLinesMapFinish => 'Map of the course\'s finish line';
+
+  @override
+  String get eventRacePreflightTitle => 'Check the courses before arming';
+
+  @override
+  String get eventRacePreflightBlockedTitle => 'This race can\'t be armed yet';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Course lines are edited in the event editor on the web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Arm anyway';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: no finish line or finish point, so runners finish by hand.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: no start line. A self-timed race needs one.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: the route crosses its own finish line before the end, so a finish by the line could come early.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: the start line is more than 100 m from the route.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: the finish line is more than 100 m from the route.';
+  }
+
+  @override
+  String get runRaceScheduled => 'Scheduled start';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label starts in $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Self-timed';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Self-timed window';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label: tap This run is my attempt, then Start, and cross the start line. Open until $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label opens at $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance to the start line';
+  }
+
+  @override
+  String get runRaceStartCrossed => 'Start line crossed, timing';
+
+  @override
+  String get runRaceUndoResume => 'Not finished? Resume';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Finish undone. When you finish, tap Stop, then Finish race.';
+
+  @override
+  String get runRaceThisIsMyAttempt => 'This run is my attempt';
+
+  @override
+  String get runRaceAttemptReady => 'Attempt ready: tap Start';
+
+  @override
+  String get eventRaceArmEarly => 'Arm early';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Starts by itself at its scheduled time. Arm early to check the lines now.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'Opens by itself. Arm early to check the lines now.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'GO at $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Opens at $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Open until $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Ends by itself at $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Delay start';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Extend window';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'End window now';
+
+  @override
+  String get eventRaceJoinAttempt => 'Join and attempt';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Self-timed race open until $time. Join, then time your attempt from the run screen.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'A race you\'re going to starts in about 10 minutes';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '\"$title\" starts in about 10 minutes';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'The start of a race you\'re going to has moved';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'The start of \"$title\" has moved';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Race starting soon';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Official verification';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verified as the official presence of $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verified as an official organisation.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'The request for $org is waiting for review. No domain proof found yet.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'The request for $org is waiting for review. Domain proof found.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'The last request was not approved: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'The badge was removed: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'The badge was removed after a change to the club or its domain, and needs a new review.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'The last request was withdrawn.';
+
+  @override
+  String get clubVerificationStatusNone => 'Not verified.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Requests and domain proof are managed on the web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Couldn\'t load the verification status.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Retry';
+
+  @override
+  String get profileNotifClubVerification =>
+      'There\'s a verification update for your club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'There\'s a verification update for $club';
+  }
+
+  @override
+  String get provenanceVerifiedSource => 'Verified source';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Verified source: listed by a race data partner';
+
+  @override
+  String get provenanceTraced => 'Traced';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Traced: drawn by a verified club from the race\'s published map';
+
+  @override
+  String get provenanceCommunity => 'Community';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Community: added by a runner, not checked by the organiser';
+
+  @override
+  String get courseAlertsHeading => 'Course alerts';
+
+  @override
+  String get courseAlertsEmpty =>
+      'No alerts. Post one when the course changes, and runners training for it are told.';
+
+  @override
+  String get courseAlertsLoadFailed => 'Couldn\'t load the course alerts.';
+
+  @override
+  String get courseAlertsRetry => 'Try again';
+
+  @override
+  String get courseAlertsKindReroute => 'Reroute';
+
+  @override
+  String get courseAlertsKindClosure => 'Closure';
+
+  @override
+  String get courseAlertsKindDirection => 'Course direction';
+
+  @override
+  String get courseAlertsKindNotice => 'Notice';
+
+  @override
+  String get courseAlertsKindLabel => 'Type';
+
+  @override
+  String get courseAlertsMessageLabel => 'What changed';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Runners training for this race and runners who saved its course are notified once.';
+
+  @override
+  String get courseAlertsPost => 'Post alert';
+
+  @override
+  String get courseAlertsPosted => 'Course alert posted.';
+
+  @override
+  String get courseAlertsPostFailed => 'Couldn\'t post the alert. Try again.';
+
+  @override
+  String get courseAlertsRemove => 'Remove';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Remove the $kind alert';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Course alert removed.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'Couldn\'t remove the alert.';
+
+  @override
+  String get courseAlertsNotFound => 'This alert is no longer available';
+
+  @override
+  String get profileNotifCourseAlert => 'The organiser posted a course alert';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club posted a course alert';
+  }
+
+  @override
+  String get reportReasonOrganiserDispute =>
+      'Impersonates or copies my organisation';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      'For owners and admins of a verified club. A reviewer decides; nothing is hidden automatically.';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return 'You\'re reporting for $club.';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => 'Report for';
+
+  @override
+  String get reportErrNotOrganiser =>
+      'Only an owner or admin of a verified club can report this.';
+
+  @override
+  String get profileNotifOrganiserDispute =>
+      'There\'s an update on a naming dispute';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return 'There\'s an update on a naming dispute with $club';
+  }
+
+  @override
+  String get coachShareAction => 'Share with coach';
+
+  @override
+  String get coachShareTitle => 'Share with your coach';
+
+  @override
+  String get coachShareIntro =>
+      'Pick the parts of this answer to send. Your coach sees them as a quote from your AI Coach, not as your own words.';
+
+  @override
+  String get coachShareCoachLegend => 'Send to';
+
+  @override
+  String coachShareTo(String name) {
+    return 'Sending to $name';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => 'Parts to share';
+
+  @override
+  String coachShareTooLong(int max) {
+    return 'That is more than $max characters. Leave a part out.';
+  }
+
+  @override
+  String get coachShareLabelNote =>
+      'It is labelled as AI in the conversation. Nothing new is sent to the AI.';
+
+  @override
+  String get coachShareSend => 'Share';
+
+  @override
+  String get coachShareSending => 'Sharing…';
+
+  @override
+  String coachShareSent(String name) {
+    return 'Shared with $name.';
+  }
+
+  @override
+  String get coachShareOpenThread => 'Open conversation';
+
+  @override
+  String get coachShareDone => 'Done';
+
+  @override
+  String get coachShareCardLabel => 'AI Coach answer';
+
+  @override
+  String get coachShareCardFromMe => 'You shared this from your AI Coach';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$name shared this from their AI Coach';
+  }
+
+  @override
+  String get coachShareOpenSource => 'Open in AI Coach';
+
+  @override
+  String get coachShareUnavailable =>
+      'Sharing with your coach is not available yet.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'For coaches using the coach assistant: what you ask it, and, only for an athlete who has allowed it on your coaching link, their recent messages with you, their plan and upcoming workouts, and their recent runs, used only to draft a message only you see. You edit and send it yourself, and it is marked AI-assisted.';
+
+  @override
+  String get coachAssistMarker => 'AI-assisted';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Written by the coach with help from an AI draft';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Let $name use AI assistance';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'What this shares';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'When $name asks the coach assistant for a draft, Threkir sends this to Anthropic, the AI provider, to write it:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Your recent messages with this coach (the text and when it was sent).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'The plan you are on: its name, goal race and target time, its dates, and your workouts for the next two weeks (date, type, distance or time, pace, and whether you did or skipped them).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Your 10 most recent activities: the date, distance, time and activity type. Never your heart rate, your route or anything you wrote about a run.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Only $name sees the drafts. They edit and send any message themselves, and it is marked AI-assisted. Nothing is sent while this is off, and you can turn it off at any time.';
+  }
+
+  @override
+  String get coachAssistConsentFailed => 'Could not save that. Try again.';
+
+  @override
+  String get parkGuideTitle => 'Route guide';
+
+  @override
+  String get parkGuidePending =>
+      'Drafted from map data, not yet checked on the ground.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Checked on the ground on $date.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Getting there';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Start on $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Start on the fire road.';
+
+  @override
+  String get parkGuideStartRoad => 'Start on the park road.';
+
+  @override
+  String get parkGuideStartPath => 'Start on the path.';
+
+  @override
+  String get parkGuideClockwise => 'Run the loop clockwise.';
+
+  @override
+  String get parkGuideCounterclockwise => 'Run the loop counterclockwise.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return 'Keep $landmark on your left.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return 'Keep $landmark on your right.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Pass every checkpoint in order, or the run is not timed.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at: turn left onto $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at: turn right onto $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at: continue straight onto $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at: turn left onto the fire road.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at: turn right onto the fire road.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at: continue straight along the fire road.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at: turn left onto the park road.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at: turn right onto the park road.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at: continue straight along the park road.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at: turn left onto the path.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at: turn right onto the path.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at: continue straight along the path.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at: cross the bridge.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at: cross the ford. There is no bridge, so expect water.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at: paved from here.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at: gravel from here.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at: dirt trail from here.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at: unpaved from here.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at: boardwalk from here.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at: a climb of $gain over $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at: checkpoint $n of $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at: start lap $n of $total and repeat the loop.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at: finish.';
+  }
+
+  @override
+  String get parkCourseReportAction => 'Report a problem with this course';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'What\'s the problem?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'A hazard on the course';
+
+  @override
+  String get parkCourseReportReasonClosure => 'The course or trail is closed';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'The line leaves the designated trail';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'A request from the land manager';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'For park or agency staff. Ask us to take the course down and we close it within two business days.';
+
+  @override
+  String get parkCourseReportReasonRightsHolder =>
+      'A request from a rights holder';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We acknowledge your request within two business days.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Something else';
+
+  @override
+  String get parkCourseReportNotesLabel => 'What should we know?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Where on the course, what you saw and when.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Your email (optional)';
+
+  @override
+  String get parkCourseReportEmailLabelRequired => 'Your email';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      'Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancel';
+
+  @override
+  String get parkCourseReportSubmit => 'Send report';
+
+  @override
+  String get parkCourseReportSent =>
+      'Thanks. Your report is with the Threkir team.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Couldn\'t send the report. Try again.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Too many reports right now. Try again later.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'You\'ve already reported this course, and that report is still open.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'This course is no longer listed.';
+
+  @override
+  String get parkCourseReportErrorInvalid => 'Check the report and try again.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'That email address doesn\'t look right.';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      'A rights-holder request needs an email address so we can answer it.';
+
+  @override
+  String get profileNotifParkCourseReport => 'A park course was reported';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'You\'re reacting too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return 'You\'ve sent a lot of photos — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'You\'re creating groups too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'You\'ve sent a lot of group invitations today — please wait $wait and try again.';
+  }
+
+  @override
+  String get prefsMessageRequests => 'Message requests';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      'Let people you share a club or an event with message you first. Turn this off and only people you follow, or who follow you, can start a conversation with you.';
+
+  @override
+  String get prefsMessageRequestsFailed => 'Couldn\'t update message requests.';
+
+  @override
+  String get messagesReact => 'React';
+
+  @override
+  String get messagesReactPickerLabel => 'Choose a reaction';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction, $count';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'Thumbs up';
+
+  @override
+  String get messagesReactionHeart => 'Heart';
+
+  @override
+  String get messagesReactionLaugh => 'Laughing';
+
+  @override
+  String get messagesReactionSurprised => 'Surprised';
+
+  @override
+  String get messagesReactionSad => 'Sad';
+
+  @override
+  String get messagesReactionFire => 'Fire';
+
+  @override
+  String get messagesReactionRefused => 'You can\'t react to this message.';
+
+  @override
+  String get messagesSearchPlaceholder => 'Search messages';
+
+  @override
+  String get messagesSearchLabel => 'Search your messages';
+
+  @override
+  String get messagesSearchEmpty => 'No messages match.';
+
+  @override
+  String get messagesSearchFailed =>
+      'Couldn\'t search your messages. Try again.';
+
+  @override
+  String get messagesPhotoAttach => 'Attach a photo';
+
+  @override
+  String get messagesPhotoRemove => 'Remove photo';
+
+  @override
+  String get messagesPhotoDraftAlt => 'Photo to send';
+
+  @override
+  String get messagesPhotoAlt => 'Photo in the message';
+
+  @override
+  String get messagesPhotoProcessing => 'Preparing photo…';
+
+  @override
+  String get messagesPhotoRejected => 'This photo couldn\'t be sent.';
+
+  @override
+  String get messagesPhotoUnavailableToView => 'Photo unavailable';
+
+  @override
+  String get messagesPhotoPreview => 'Photo';
+
+  @override
+  String get messagesPhotoTooLarge => 'That photo is too large to send.';
+
+  @override
+  String get messagesPhotoUnreadable =>
+      'That file couldn\'t be read as a photo.';
+
+  @override
+  String get messagesPhotoUnavailable =>
+      'Photos in messages aren\'t available yet.';
+
+  @override
+  String get messagesPhotoUploadFailed =>
+      'Couldn\'t upload the photo. Try again.';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      'Photos can go to people you follow or who follow you, or into a conversation they\'ve accepted, unless either of you has blocked the other.';
+
+  @override
+  String get messagesLinkOpenFailed => 'Couldn\'t open that link.';
+
+  @override
+  String get groupsNewGroup => 'New group';
+
+  @override
+  String get groupsGroupFallback => 'Group';
+
+  @override
+  String groupsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '$count member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsMembersTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '$count member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsMembersButton => 'Members';
+
+  @override
+  String get groupsYouLeftPreview => 'You left this group';
+
+  @override
+  String groupsRenamedPreview(String title) {
+    return 'Group renamed to $title';
+  }
+
+  @override
+  String get groupsNoMessagesYet => 'No messages yet';
+
+  @override
+  String get groupsInvitesHeading => 'Group invitations';
+
+  @override
+  String groupsInviteLine(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '$count member',
+    );
+    return '$name invited you · $_temp0';
+  }
+
+  @override
+  String get groupsInviteAccept => 'Join';
+
+  @override
+  String get groupsInviteDecline => 'Decline';
+
+  @override
+  String get groupsInviteReport => 'Report';
+
+  @override
+  String groupsInviteAcceptedToast(String title) {
+    return 'You joined $title';
+  }
+
+  @override
+  String get groupsInviteDeclinedToast => 'Invitation declined';
+
+  @override
+  String groupsInviteActionFailed(String error) {
+    return 'Couldn\'t answer the invitation: $error';
+  }
+
+  @override
+  String groupsInviteDeclineConfirmTitle(String title) {
+    return 'Decline the invitation to $title?';
+  }
+
+  @override
+  String get groupsInviteDeclineConfirmMessage =>
+      'You won\'t join the group, and it can\'t invite you again for 14 days. Nobody is told why.';
+
+  @override
+  String get groupsCreateTitle => 'New group';
+
+  @override
+  String get groupsTitleLabel => 'Group name';
+
+  @override
+  String get groupsCreateHint =>
+      'Pick at least two people. Each gets an invitation and joins only if they accept. People see messages from the moment they join.';
+
+  @override
+  String get groupsCreateSubmit => 'Create group';
+
+  @override
+  String get groupsCreating => 'Creating…';
+
+  @override
+  String groupsCreatedToast(String title) {
+    return '$title created. Invitations sent.';
+  }
+
+  @override
+  String get groupsCreateFailed => 'Couldn\'t create the group.';
+
+  @override
+  String get groupsPeopleLoadFailed =>
+      'Couldn\'t load the people you can invite.';
+
+  @override
+  String get groupsPeopleEmpty =>
+      'Nobody to invite yet. You can invite people you follow or who follow you.';
+
+  @override
+  String get groupsPeopleSearch => 'Search people';
+
+  @override
+  String groupsPeopleSelected(int count, int max) {
+    return '$count of $max selected';
+  }
+
+  @override
+  String get groupsPeopleNoMatches => 'No one matches that name.';
+
+  @override
+  String groupsPeopleFull(int max) {
+    return 'A group holds at most 32 people, invitations included. $max more can be invited.';
+  }
+
+  @override
+  String get groupsUnavailable =>
+      'Group conversations aren\'t available right now.';
+
+  @override
+  String get groupsNotFound => 'This group isn\'t available.';
+
+  @override
+  String get groupsNotAvailable => 'This group isn\'t available.';
+
+  @override
+  String get groupsActionRefused => 'You can\'t do that in this group.';
+
+  @override
+  String get groupsInviteRefused => 'One of these people can\'t be invited.';
+
+  @override
+  String get groupsCapReached =>
+      'A group holds at most 32 people, invitations included.';
+
+  @override
+  String get groupsTitleInvalid => 'A group name is 1 to 60 characters.';
+
+  @override
+  String get groupsSendNotAllowed => 'You can\'t send to this group.';
+
+  @override
+  String groupsActionFailed(String error) {
+    return 'That didn\'t work: $error';
+  }
+
+  @override
+  String get groupsHistoryNote =>
+      'Messages from before you joined aren\'t shown.';
+
+  @override
+  String get groupsEmptyThread => 'No messages yet. Say hello.';
+
+  @override
+  String get groupsBlockedPlaceholder => 'Message from someone you blocked';
+
+  @override
+  String groupsRenamedLine(String name, String title) {
+    return '$name renamed the group to $title';
+  }
+
+  @override
+  String groupsRenamedLineYou(String title) {
+    return 'You renamed the group to $title';
+  }
+
+  @override
+  String get groupsLeftNotice =>
+      'You left this group. You can still unsend your own messages.';
+
+  @override
+  String groupsComposerLabel(String title) {
+    return 'Message $title';
+  }
+
+  @override
+  String get groupsLeave => 'Leave';
+
+  @override
+  String groupsLeaveConfirmTitle(String title) {
+    return 'Leave $title?';
+  }
+
+  @override
+  String get groupsLeaveConfirmMessage =>
+      'You\'ll stop seeing the group\'s messages at once, and you need a new invitation to come back. Your own messages stay in the group until you unsend them. Anything already on other members\' devices stays there.';
+
+  @override
+  String groupsLeftToast(String title) {
+    return 'You left $title';
+  }
+
+  @override
+  String get groupsRename => 'Rename';
+
+  @override
+  String get groupsRenameSave => 'Save';
+
+  @override
+  String get groupsRenamedToast => 'Group renamed';
+
+  @override
+  String get groupsInviteMore => 'Invite';
+
+  @override
+  String groupsInviteSend(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Invite $count people',
+      one: 'Invite $count person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsInvitedToast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count invitations sent',
+      one: 'Invitation sent',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsRoleInvited => 'Invited';
+
+  @override
+  String get groupsYouSuffix => '(you)';
+
+  @override
+  String get groupsMakeAdmin => 'Make admin';
+
+  @override
+  String get groupsRemoveAdmin => 'Remove as admin';
+
+  @override
+  String groupsMadeAdminToast(String name) {
+    return '$name is now an admin';
+  }
+
+  @override
+  String groupsRemovedAdminToast(String name) {
+    return '$name is no longer an admin';
+  }
+
+  @override
+  String get groupsMakeOwner => 'Make owner';
+
+  @override
+  String groupsTransferConfirmTitle(String name) {
+    return 'Make $name the owner?';
+  }
+
+  @override
+  String get groupsTransferConfirmMessage =>
+      'You become an admin. Only the new owner can give ownership back.';
+
+  @override
+  String groupsTransferredToast(String name) {
+    return '$name is now the owner';
+  }
+
+  @override
+  String get groupsRemove => 'Remove';
+
+  @override
+  String groupsRemoveConfirmTitle(String name) {
+    return 'Remove $name from the group?';
+  }
+
+  @override
+  String get groupsRemoveConfirmMessage =>
+      'They stop seeing the group\'s messages at once and need a new invitation to come back. Their own messages stay. They aren\'t told who removed them.';
+
+  @override
+  String groupsRemovedToast(String name) {
+    return '$name was removed';
+  }
+
+  @override
+  String get groupsCancelInvite => 'Cancel invitation';
+
+  @override
+  String groupsCancelInviteConfirmTitle(String name) {
+    return 'Cancel the invitation to $name?';
+  }
+
+  @override
+  String get groupsCancelInviteConfirmMessage =>
+      'They won\'t be able to join with it. You can invite them again later.';
+
+  @override
+  String groupsInviteCancelledToast(String name) {
+    return 'Invitation to $name cancelled';
+  }
+
+  @override
+  String profileNotifGroupMessage(String name) {
+    return '$name wrote in a group';
+  }
+
+  @override
+  String profileNotifGroupInvite(String name) {
+    return '$name invited you to a group';
+  }
 }

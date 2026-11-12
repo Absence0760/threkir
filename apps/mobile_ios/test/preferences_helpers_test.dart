@@ -1,7 +1,55 @@
+import 'package:core_models/core_models.dart'
+    show ActivityType, DistanceUnit, kMetresPerMile;
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/preferences.dart';
 
 void main() {
+  group('runIsPrimaryLogAction', () {
+    test('a pure runner gets the one-tap run start with no preference set', () {
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: false, gymShown: false, nutritionShown: false),
+        isTrue,
+        reason: 'the fan has nothing to choose between, so it is pure cost',
+      );
+    });
+
+    test('either other modality being shown brings the fan back', () {
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: false, gymShown: true, nutritionShown: false),
+        isFalse,
+      );
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: false, gymShown: false, nutritionShown: true),
+        isFalse,
+      );
+    });
+
+    test('the explicit preference pins the run start over the data', () {
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: true, gymShown: true, nutritionShown: true),
+        isTrue,
+      );
+    });
+  });
+
+  group('modalityShown', () {
+    test('unset: hidden for a runner with no data, shown once there is some',
+        () {
+      expect(modalityShown(explicit: null, hasData: false), isFalse);
+      expect(modalityShown(explicit: null, hasData: true), isTrue,
+          reason: 'someone already logging lifts must not lose the surface');
+    });
+
+    test('an explicit choice wins over the data either way', () {
+      expect(modalityShown(explicit: true, hasData: false), isTrue);
+      expect(modalityShown(explicit: false, hasData: true), isFalse);
+    });
+  });
+
   group('ActivityType.splitIntervalMetresFor', () {
     test('an imperial runner gets mile splits by default', () {
       // The default used to be a flat 1 km whatever the preference, so an
@@ -87,6 +135,31 @@ void main() {
       expect(UnitFormat.pace(330.4, DistanceUnit.km), '5:30');
       expect(UnitFormat.pace(330.5, DistanceUnit.km), '5:31');
     });
+
+    test('degenerate input gets the placeholder, never NaN, Infinity or a throw',
+        () {
+      // What a brand-new account's minimal data divides to: seconds over a
+      // 0 m run is Infinity, 0 s over 0 m is NaN, and a 10 s / 3 m run is a
+      // real (slow) 55:33. Mirrors the degenerate table in web's
+      // pace_format.test.ts, except that 0 is already '--:--' here.
+      const cases = <(double, String, String, String)>[
+        (double.infinity, '--:--', '--', '—'),
+        (double.negativeInfinity, '--:--', '--', '—'),
+        (double.nan, '--:--', '--', '—'),
+        (-1.0, '--:--', '--', '—'),
+        (-0.0, '--:--', '--', '—'),
+        (0.0, '--:--', '--', '—'),
+        (3333.3, '55:33', '1.1', '55:33 /km'),
+      ];
+      for (final (input, pace, speed, forPref) in cases) {
+        expect(UnitFormat.pace(input, DistanceUnit.km), pace,
+            reason: 'UnitFormat.pace($input)');
+        expect(UnitFormat.speed(input, DistanceUnit.km), speed,
+            reason: 'UnitFormat.speed($input)');
+        expect(formatPaceForPref(input), forPref,
+            reason: 'formatPaceForPref($input)');
+      }
+    });
   });
 
   group('UnitFormat.paceLabel', () {
@@ -141,6 +214,35 @@ void main() {
     });
   });
 
+  group('formatEffortTime', () {
+    test('a real effort renders M:SS under an hour and H:MM:SS from one', () {
+      expect(formatEffortTime(65), '1:05');
+      expect(formatEffortTime(1925.4), '32:05');
+      expect(formatEffortTime(59.6), '1:00');
+      expect(formatEffortTime(3599.6), '1:00:00');
+      expect(formatEffortTime(3725), '1:02:05');
+    });
+
+    test('degenerate input gets the em dash, never NaN, Infinity or a throw',
+        () {
+      // Mirrors the formatDuration degenerate table in web's time.test.ts.
+      const cases = <(double, String)>[
+        (double.infinity, '—'),
+        (double.negativeInfinity, '—'),
+        (double.nan, '—'),
+        (-90.0, '—'),
+        (-0.0, '0:00'),
+        (0.0, '0:00'),
+        (0.4, '0:00'),
+        (10.0, '0:10'),
+      ];
+      for (final (input, expected) in cases) {
+        expect(formatEffortTime(input), expected,
+            reason: 'formatEffortTime($input)');
+      }
+    });
+  });
+
   group('UnitFormat.speedLabel', () {
     test('returns "km/h" or "mph"', () {
       expect(UnitFormat.speedLabel(DistanceUnit.km), 'km/h');
@@ -149,7 +251,7 @@ void main() {
   });
 
   group('UnitFormat.elevation', () {
-    // Mirrors `formatElevation` in `apps/web/src/lib/units.svelte.ts`.
+    // Mirrors `formatElevation` in `apps/web/src/lib/format/units.svelte.ts`.
     // Persona-hunt Round 3 finding Ultra #4: vert is a first-class
     // metric for ultra / pro runners and the dashboard hid it.
     test('km mode renders metres rounded to the nearest integer', () {

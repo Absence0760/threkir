@@ -41,5 +41,10 @@ export function safeReturnTo(
 
 	// Re-serialise from the parsed URL so only the path/query/hash
 	// survive — never the host, even if a parser quirk let one through.
-	return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+	// Dot-segment removal can still collapse '/.//evil.com' (or '/..//',
+	// '/%2e//') to a pathname of '//evil.com', which is same-origin here
+	// but protocol-relative to the browser that receives it.
+	const path = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+	if (path[1] === '/' || path[1] === '\\') return fallback;
+	return path;
 }

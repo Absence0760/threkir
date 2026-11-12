@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertEvent, deleteEvent, deleteClub } from '../fixtures/simulate';
+import { readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Social cross-surface journey — EVENT discovery via the /social Discover
@@ -45,13 +47,6 @@ import { insertEvent, deleteEvent, deleteClub } from '../fixtures/simulate';
 
 const RICHMOND = { lng: -77.436, lat: 37.5407 }; // club's geocoded point
 const FAR_AWAY = { lng: 139.6917, lat: 35.6895 }; // Tokyo — ~9,500 km off
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('social journey — non-member discovers a public-club event + RSVPs', () => {
 	// Filter -> find -> open -> RSVP across two surfaces, plus a saga
@@ -161,19 +156,22 @@ test.describe('social journey — non-member discovers a public-club event + RSV
 
 		// ── precondition: the discoverer is NOT a member of the host club ──
 		await test.step('precondition: discoverer is outside the hosting club', async () => {
-			const { data } = await admin
-				.from('club_members')
-				.select('user_id')
-				.eq('club_id', clubId!)
-				.eq('user_id', discoverer.id)
-				.maybeSingle();
+			const data = await readMaybeRow(
+				'club_members by club_id+user_id',
+				admin
+					.from('club_members')
+					.select('user_id')
+					.eq('club_id', clubId!)
+					.eq('user_id', discoverer.id)
+					.maybeSingle()
+			);
 			expect(data).toBeNull();
 		});
 
 		const ctx = await browser.newContext({ storageState: discoverer.storageStatePath });
 		// Pre-accept consent BEFORE the first navigation — the banner dialog
 		// otherwise floats over the filter chips and eats their clicks.
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {
@@ -265,12 +263,15 @@ test.describe('social journey — non-member discovers a public-club event + RSV
 				// The RSVP must land server-side as a `going` attendee row for
 				// the discoverer on this event.
 				await expect(async () => {
-					const { data } = await admin
-						.from('event_attendees')
-						.select('status')
-						.eq('event_id', eventId!)
-						.eq('user_id', discoverer.id)
-						.maybeSingle();
+					const data = await readMaybeRow(
+						'event_attendees by event_id+user_id',
+						admin
+							.from('event_attendees')
+							.select('status')
+							.eq('event_id', eventId!)
+							.eq('user_id', discoverer.id)
+							.maybeSingle()
+					);
 					expect(data?.status).toBe('going');
 				}).toPass({ timeout: 10_000 });
 			});

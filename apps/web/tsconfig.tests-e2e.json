@@ -1,0 +1,22 @@
+{
+	// The Playwright tree is outside `tsconfig.json`'s `include` (`src`,
+	// `test` and the root files), and Playwright transpiles specs with esbuild
+	// without ever type-checking them — so nothing typechecked `tests-e2e/` at
+	// all. This config closes that, and is a SEPARATE root rather than an
+	// entry added to `tsconfig.json`, so the specs' Node and Playwright types
+	// stay out of the app's program.
+	//
+	// Run: `npm run check:e2e-types --workspace=apps/web`
+	// CI:  the `parity-types` job in .github/workflows/ci.yml.
+	// The include list is guarded by tests-e2e/fixtures/tsconfig-coverage.test.ts.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		// Explicit because nothing here pulls @types/node in on its own: the
+		// automatic type-root scan does not fire under this config chain, and
+		// `moduleResolution: bundler` skips `node:`-prefixed specifiers, so the
+		// node globals every spec uses arrived only because `jszip` happens to
+		// carry a `/// <reference types="node" />` (decisions § 752).
+		"types": ["node"]
+	},
+	"include": ["tests-e2e/**/*.ts", "tests-e2e/**/*.mjs"]
+}

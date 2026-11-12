@@ -4,8 +4,8 @@
   "description": "Track your runs, plan your training, and share your progress.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#A01E77",
-  "theme_color": "#FE5932",
+  "background_color": "#5B4B8A",
+  "theme_color": "#C24E24",
   "icons": [
     {
       "src": "/icon-192.png",

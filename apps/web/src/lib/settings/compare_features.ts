@@ -30,13 +30,19 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 	{
 		title: 'Recording + privacy',
 		rows: [
-			{ name: 'GPS run recording with auto-pause', ours: 'yes', stravaFree: 'yes', stravaPro: 'yes' },
+			{
+				name: 'GPS run recording',
+				ours: 'yes',
+				stravaFree: 'yes',
+				stravaPro: 'yes',
+				note: 'The clock runs until you pause it; moving time is worked out from the track afterwards.',
+			},
 			{
 				name: 'Privacy zones (hide start / end of public tracks)',
 				ours: 'yes',
 				stravaFree: 'yes',
 				stravaPro: 'yes',
-				note: 'Server-side clipping via SECURITY DEFINER RPC so zones never leave the database.',
+				note: 'Your chosen zones are cut out on our servers, so the hidden part of the track is never sent to anyone.',
 			},
 			{
 				name: 'Live spectator tracking',
@@ -61,7 +67,7 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 				ours: 'yes',
 				stravaFree: 'no',
 				stravaPro: 'yes',
-				note: 'NRC-style pace-coloured polyline with age-band fade.',
+				note: 'The line on the map is coloured by how fast you were running at each point.',
 			},
 			{
 				name: 'Best-effort detection (1k / 5k / 10k / HM / FM in a single run)',
@@ -100,13 +106,13 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 				stravaPro: 'yes',
 			},
 			{
-				name: 'Gender + age-band tiered leaderboards (KOM/QOM tiers)',
+				name: 'Gender + age-band tiered leaderboards',
 				ours: 'yes',
 				stravaFree: 'no',
 				stravaPro: 'yes',
 			},
 			{
-				name: 'KOM/QOM crowns on rank-1',
+				name: 'KOM/QOM (King / Queen of the Mountain) crowns on rank-1',
 				ours: 'yes',
 				stravaFree: 'yes',
 				stravaPro: 'yes',

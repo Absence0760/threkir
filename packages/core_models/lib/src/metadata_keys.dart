@@ -22,18 +22,29 @@ class MetadataKeys {
   static const String cadenceSpm = 'cadence_spm';
   static const String chipTime = 'chip_time';
   static const String createdByUserId = 'created_by_user_id';
+  static const String distanceEstimator = 'distance_estimator';
+  static const String distanceRecomputedAt = 'distance_recomputed_at';
+  static const String distanceRecordedM = 'distance_recorded_m';
   static const String distanceSource = 'distance_source';
+  static const String distanceStepFilledM = 'distance_step_filled_m';
+  static const String distanceStepOverChordM = 'distance_step_over_chord_m';
+  static const String distanceSegments = 'distance_segments';
   static const String elevationM = 'elevation_m';
   static const String event = 'event';
+  static const String eventId = 'event_id';
+  static const String expectedReturnAt = 'expected_return_at';
   static const String fastest10kS = 'fastest_10k_s';
   static const String fastest5kS = 'fastest_5k_s';
   static const String fastestHalfMarathonS = 'fastest_half_marathon_s';
   static const String fastestMarathonS = 'fastest_marathon_s';
   static const String garminId = 'garmin_id';
+  static const String gnssSignal = 'gnss_signal';
+  static const String guidedRunId = 'guided_run_id';
   static const String gymAdherence = 'gym_adherence';
   static const String gymSessionDraft = 'gym_session_draft';
   static const String gymStepResults = 'gym_step_results';
   static const String healthConnectType = 'health_connect_type';
+  static const String hrCoverage = 'hr_coverage';
   static const String hrSeriesUrl = 'hr_series_url';
   static const String importedAt = 'imported_at';
   static const String importedFrom = 'imported_from';
@@ -44,6 +55,7 @@ class MetadataKeys {
   static const String isDnf = 'is_dnf';
   static const String laps = 'laps';
   static const String lastModifiedAt = 'last_modified_at';
+  static const String locationProvider = 'location_provider';
   static const String manualEntry = 'manual_entry';
   static const String maxBpm = 'max_bpm';
   static const String notes = 'notes';
@@ -53,20 +65,24 @@ class MetadataKeys {
   static const String planWorkoutId = 'plan_workout_id';
   static const String position = 'position';
   static const String raceName = 'race_name';
+  static const String raceUndoneFinishAt = 'race_undone_finish_at';
   static const String recoveredFromCrash = 'recovered_from_crash';
   static const String recoveredUnfinished = 'recovered_unfinished';
   static const String routineId = 'routine_id';
   static const String runningDynamics = 'running_dynamics';
   static const String runNumber = 'run_number';
+  static const String serverUpdatedAt = 'server_updated_at';
   static const String sessionAdherence = 'session_adherence';
   static const String sessionPlanId = 'session_plan_id';
   static const String sessionStepResults = 'session_step_results';
+  static const String smoothedSidecarSha256 = 'smoothed_sidecar_sha256';
   static const String sourceFile = 'source_file';
   static const String steps = 'steps';
   static const String stravaActivityType = 'strava_activity_type';
   static const String stravaId = 'strava_id';
   static const String subSport = 'sub_sport';
   static const String title = 'title';
+  static const String trackComplete = 'track_complete';
   static const String trackUrl = 'track_url';
   static const String watchWorkout = 'watch_workout';
   static const String workoutAdherence = 'workout_adherence';
@@ -86,4 +102,17 @@ class StorageBuckets {
   static const String routePhotos = 'route-photos';
   static const String clubPhotos = 'club-photos';
   static const String avatars = 'avatars';
+
+  /// The `runs` bucket's own `file_size_limit`, in bytes (migration
+  /// `20260620_001_storage_bucket_limits.sql`).
+  ///
+  /// A client rail on a server bound, like `text_limits` and `column_limits`:
+  /// Storage refuses a larger object with a 413 whose only stable identity is
+  /// an English message, and the uploader can know the answer before it spends
+  /// the network. Measured 2026-09-02: a track blob gzips to 27.3 bytes per
+  /// waypoint, so this is ~960,000 waypoints — 266 hours of 1 Hz recording,
+  /// which the recorder cannot reach, but well inside what a single imported
+  /// GPX can carry (a 94 MiB GPX deflates to 8.3 MiB, 60x under the 500 MiB
+  /// Strava-archive cap). See decisions § 1009.
+  static const int runsBucketMaxBytes = 26214400;
 }

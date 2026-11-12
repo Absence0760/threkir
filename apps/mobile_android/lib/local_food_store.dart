@@ -31,10 +31,7 @@ class StoredFood implements SyncEntry {
   /// `.entry.itemName` instead of reaching into the raw `row` map.
   FoodEntry get entry => FoodEntry.fromRow(row);
 
-  DateTime? get startedAt {
-    final v = row['started_at'];
-    return v is String ? DateTime.tryParse(v) : null;
-  }
+  DateTime? get startedAt => parseServerTimestamp(row['started_at']);
 
   @override
   Map<String, dynamic> toJson() => {
@@ -47,10 +44,7 @@ class StoredFood implements SyncEntry {
   factory StoredFood.fromJson(Map<String, dynamic> json) => StoredFood(
         row: Map<String, dynamic>.from(json['row'] as Map),
         syncState: syncStateFromWire(json['sync_state'] as String?),
-        lastModifiedAt:
-            DateTime.tryParse(json['last_modified_at'] as String? ?? '')
-                    ?.toUtc() ??
-                DateTime.now().toUtc(),
+        lastModifiedAt: storedClockOrEpoch(json['last_modified_at']),
       );
 }
 
@@ -149,8 +143,7 @@ class LocalFoodStore extends OfflineSyncStore<StoredFood> {
   /// newest-logged first. The nutrition screen renders a single day.
   List<Map<String, dynamic>> entriesForRange(DateTime from, DateTime to) =>
       rows.where((r) {
-        final v = r['started_at'];
-        final at = v is String ? DateTime.tryParse(v) : null;
+        final at = parseServerTimestamp(r['started_at']);
         if (at == null) return false;
         return !at.isBefore(from) && at.isBefore(to);
       }).toList();
@@ -281,12 +274,14 @@ class LocalFoodStore extends OfflineSyncStore<StoredFood> {
     DateTime? windowStart,
     DateTime? windowEnd,
   }) async {
+    requireInitialised('replaceFromServer');
     final preserved = <String, StoredFood>{};
     final syncedLocal = <String, StoredFood>{};
     for (final entry in rowsById.entries) {
       if (entry.value.syncState != SyncState.synced) {
         preserved[entry.key] = entry.value;
-      } else if (_outsideWindow(entry.value.startedAt, windowStart, windowEnd)) {
+      } else if (outsideFetchWindow(
+          entry.value.startedAt, windowStart, windowEnd)) {
         preserved[entry.key] = entry.value;
       } else {
         syncedLocal[entry.key] = entry.value;
@@ -304,7 +299,7 @@ class LocalFoodStore extends OfflineSyncStore<StoredFood> {
       // clobber a more-recent already-pushed edit. Mirrors
       // LocalRunStore.saveFromRemote's guard.
       final local = syncedLocal[id];
-      final serverTs = _parseTs(row['last_modified_at']);
+      final serverTs = parseServerTimestamp(row['last_modified_at']);
       if (local != null &&
           serverTs != null &&
           local.lastModifiedAt.isAfter(serverTs)) {
@@ -323,23 +318,6 @@ class LocalFoodStore extends OfflineSyncStore<StoredFood> {
     rowsById.addAll(preserved);
     await rewriteAll();
     notifyListeners();
-  }
-
-  static DateTime? _parseTs(dynamic v) {
-    if (v is String && v.isNotEmpty) return DateTime.tryParse(v)?.toUtc();
-    return null;
-  }
-
-  /// True when [at] falls outside the half-open fetch window `[start, end)`.
-  /// A null timestamp can't be placed, so it's treated as in-window (eligible
-  /// for prune) — preserving the no-window full-replace contract when both
-  /// bounds are null. Compares absolute instants, so a UTC `started_at` and a
-  /// local window bound compare correctly.
-  static bool _outsideWindow(DateTime? at, DateTime? start, DateTime? end) {
-    if (at == null) return false;
-    if (start != null && at.isBefore(start)) return true;
-    if (end != null && !at.isBefore(end)) return true;
-    return false;
   }
 
   @override

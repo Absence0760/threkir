@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchSessionPlans, type SessionPlan } from '$lib/core/data';
-	import Modal from '$lib/components/Modal.svelte';
-	import SessionPlanEditor from '$lib/components/SessionPlanEditor.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let plans = $state<SessionPlan[]>([]);
 	let loading = $state(true);
@@ -21,7 +24,7 @@
 		try {
 			plans = await fetchSessionPlans();
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'sessions: loadError');
 		} finally {
 			loading = false;
 		}
@@ -60,26 +63,28 @@
 
 	{#if loading}
 		<p class="muted">…</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="sessions-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('session.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{t('session.run.retry')}</button>
 		</div>
 	{:else if plans.length === 0}
-		<div class="empty" data-testid="sessions-empty">
-			<p>{t('session.empty')}</p>
-			<p class="muted">{t('session.emptyHint')}</p>
-		</div>
+		<EmptyState
+			icon="self_improvement"
+			title={t('session.empty')}
+			text={t('session.emptyHint')}
+			data-testid="sessions-empty"
+		/>
 	{:else}
 		<ul class="plan-list">
 			{#each plans as plan (plan.id)}
 				<li>
 					<a class="card-elevated plan-row" href={`/sessions/${plan.id}`}>
-						<span class="plan-title">{plan.title || t('session.untitled')}</span>
+						<span class="plan-title">{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge />{/if}</span>
 						<span class="plan-meta">
 							{#if plan.discipline}{plan.discipline}{/if}
 							{#if plan.est_duration_min}
@@ -118,10 +123,6 @@
 	}
 	.muted {
 		color: var(--color-text-tertiary);
-	}
-	.empty {
-		padding: var(--space-2xl);
-		text-align: center;
 	}
 	.plan-list {
 		list-style: none;

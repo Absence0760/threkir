@@ -80,6 +80,26 @@ void main() {
       expect(qualifying, hasLength(1));
       expect(qualifying.first.id, outdoor.id);
     });
+
+    test('drops cycling, so one commute cannot set the VDOT ceiling', () {
+      // Mirrors the cycling-exclusion test in fitness.test.ts. currentVdot takes
+      // the MAX over qualifying runs, so a 20 km/h ride scored as a run doubles
+      // the runner's VDOT and every figure derived from it.
+      final now = DateTime.utc(2026, 5, 1);
+      final runs = [
+        _r(distance: 5000, durationS: 1800, startedAt: now.subtract(const Duration(days: 9))),
+        _r(distance: 5001, durationS: 1800, startedAt: now.subtract(const Duration(days: 5))),
+      ];
+      final ride = _r(
+        distance: 25000,
+        durationS: 4500,
+        startedAt: now.subtract(const Duration(days: 3)),
+        metadata: {'activity_type': 'cycle'},
+      );
+      expect(qualifyingRuns([...runs, ride]).map((r) => r.id).toList(),
+          runs.map((r) => r.id).toList());
+      expect(currentVdot([...runs, ride], now: now), currentVdot(runs, now: now));
+    });
   });
 
   group('currentVdot', () {
@@ -114,13 +134,35 @@ void main() {
       expect(v!, lessThan(90)); // the real 20-min 5k, not the glitch
     });
 
-    test('excludes parkrun and race sources from VDOT qualifying set', () {
-      final r = _r(
+    test('a parkrun result anchors VDOT like any other timed effort', () {
+      // Mirrors the web case of the same name. The concrete consequence: a
+      // runner whose best effort is a 19:30 parkrun 5K, with slower
+      // app-recorded runs otherwise, had their whole fitness picture
+      // (threshold pace, every run's TSS, ATL/CTL/TSB, and the race
+      // predictor's anchor pool) computed off the slower run.
+      //
+      // `now` is pinned. This assertion used to read `expect(currentVdot([r]),
+      // isNull)` against the shipped _sourceQualifies map, which says the
+      // opposite — it passed only because `_r`'s fixed 2026-01-01 fixture date
+      // had fallen out of the unpinned rolling 90-day window, so the recency
+      // guard answered before the source filter ever ran.
+      final now = DateTime.utc(2026, 4, 5);
+      final parkrun = _r(
         distance: 5000,
-        durationS: 900,
+        durationS: 1170,
+        startedAt: DateTime.utc(2026, 4, 1, 8),
         source: RunSource.parkrun,
       );
-      expect(currentVdot([r]), isNull);
+      final tempo = _r(
+        distance: 8000,
+        durationS: 2160,
+        startedAt: DateTime.utc(2026, 4, 2, 8),
+      );
+      final withParkrun = currentVdot([parkrun, tempo], now: now);
+      final without = currentVdot([tempo], now: now);
+      expect(withParkrun, isNotNull);
+      expect(without, isNotNull);
+      expect(withParkrun!, greaterThan(without! + 5));
     });
   });
 
@@ -154,6 +196,24 @@ void main() {
       expect(runTss(50, 60, 300), 0);
       expect(runTss(1000, 10, 300), 0);
       expect(runTss(1000, 600, 0), 0);
+    });
+
+    test('degenerate runs contribute nothing, never NaN (with vdotFromRun)', () {
+      // A 0 m run, a 10 s / 3 m blip, a 0 s run, and a corrupt NaN field.
+      // One NaN TSS used to poison every later day of the CTL/ATL EWMA. Same
+      // table as fitness.test.ts.
+      const cases = <(double, int, double)>[
+        (0.0, 0, 300.0),
+        (3.0, 10, 300.0),
+        (1000.0, 0, 300.0),
+        (double.nan, 600, 300.0),
+        (500.0, 600, double.nan),
+      ];
+      for (final (distanceM, durationS, threshold) in cases) {
+        final label = '$distanceM m / $durationS s / $threshold';
+        expect(runTss(distanceM, durationS, threshold), 0, reason: label);
+        expect(vdotFromRun(distanceM, durationS), isNull, reason: label);
+      }
     });
 
     test('matches Coggan-style ranges for a steady 1h at threshold', () {
@@ -388,5 +448,24 @@ void main() {
       expect(snap.acuteLoad, isNull);
       expect(snap.qualifyingRunCount, 0);
     });
+  });
+
+  test('qualifyingRuns accepts every value of the RunSource enum', () {
+    // The web twin's test listed six sources and called that "every recognised
+    // source", so it passed while `parkrun` and `race` — a certified weekly 5K
+    // and a chip-timed official result, the two most authoritative sources
+    // there are — were silently dropped from every fitness calculation.
+    // Enumerate the real enum so a new value fails here until classified.
+    for (final source in RunSource.values) {
+      final run = Run(
+        id: 'r-${source.name}',
+        startedAt: DateTime.utc(2026, 4, 1, 7),
+        distanceMetres: 5000,
+        duration: const Duration(seconds: 1500),
+        source: source,
+      );
+      expect(qualifyingRuns([run]).length, 1,
+          reason: 'source ${source.name} must qualify');
+    }
   });
 }

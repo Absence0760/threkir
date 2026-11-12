@@ -1,12 +1,10 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:ui_kit/ui_kit.dart' show EmptyState, StatGrid, StatTile;
 
 import '../goals.dart';
@@ -14,11 +12,16 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_run_store.dart';
+import '../metrics.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
+import '../share_sheet.dart';
+import '../widgets/capture_png.dart';
 import 'run_detail_screen.dart';
+import '../widgets/activity_heatmap.dart';
 import '../widgets/run_list_tile.dart';
+import '../widgets/this_week_strip.dart';
 import '../widgets/top_banner.dart';
 
 enum PeriodType { week, month, all }
@@ -55,6 +58,14 @@ DateTime periodEnd(PeriodType period, DateTime anchor,
   }
 }
 
+/// Whether the period holding [anchor] is over at [now], which is when Next
+/// may step past it. [periodEnd] is the next period's local midnight, so the
+/// period's last day is still inside it: a day of slack here once enabled Next
+/// on a period's last day and stepped into a week that had not begun.
+bool periodHasEnded(PeriodType period, DateTime anchor, DateTime now,
+        {String weekStartDay = 'monday'}) =>
+    !periodEnd(period, anchor, weekStartDay: weekStartDay).isAfter(now);
+
 String periodTitle(PeriodType period, DateTime anchor, String localeTag,
     {String weekStartDay = 'monday'}) {
   switch (period) {
@@ -78,7 +89,7 @@ String periodLabel(PeriodType period, DateTime anchor, String localeTag,
   final start = periodStart(period, anchor, weekStartDay: weekStartDay);
   switch (period) {
     case PeriodType.week:
-      final end = start.add(const Duration(days: 6));
+      final end = DateTime(start.year, start.month, start.day + 6);
       return '${shortDate(start, localeTag)} – ${shortDate(end, localeTag)}';
     case PeriodType.month:
       return '${monthName(start.month, localeTag)} ${start.year}';
@@ -92,21 +103,38 @@ class PeriodStats {
   final double totalDistanceMetres;
   final int totalDurationSec;
   final double? avgPaceSecPerKm;
+  final double totalVertMetres;
 
   const PeriodStats({
     required this.runCount,
     required this.totalDistanceMetres,
     required this.totalDurationSec,
     required this.avgPaceSecPerKm,
+    this.totalVertMetres = 0,
   });
+}
+
+/// Positive-only elevation gain (metres) of one run, from the canonical
+/// `metadata.elevation_m` key web's `/dashboard` and `lib/recap.dart` read.
+double runVertMetres(Run r) {
+  final raw = r.metadata?['elevation_m'];
+  if (raw is num) {
+    final v = raw.toDouble();
+    return v > 0 ? v : 0;
+  }
+  return 0;
 }
 
 PeriodStats computePeriodStats(List<Run> runs) {
   var totalDistance = 0.0;
   var totalDurationSec = 0;
+  var totalVert = 0.0;
   for (final r in runs) {
     totalDistance += r.distanceMetres;
-    totalDurationSec += r.duration.inSeconds;
+    if (isPlausibleRunDuration(r.duration.inSeconds)) {
+      totalDurationSec += r.duration.inSeconds;
+    }
+    totalVert += runVertMetres(r);
   }
   // Compute avg pace from running/walking/hiking only — mixing in cycling
   // distances and durations produces a nonsensical pace figure.
@@ -115,6 +143,7 @@ PeriodStats computePeriodStats(List<Run> runs) {
   for (final r in runs) {
     final activity = r.metadata?['activity_type'] as String?;
     if (activity == 'cycle') continue;
+    if (!isPlausibleRunDuration(r.duration.inSeconds)) continue;
     paceDistance += r.distanceMetres;
     paceDurationSec += r.duration.inSeconds;
   }
@@ -126,6 +155,7 @@ PeriodStats computePeriodStats(List<Run> runs) {
     totalDistanceMetres: totalDistance,
     totalDurationSec: totalDurationSec,
     avgPaceSecPerKm: avgPace,
+    totalVertMetres: totalVert,
   );
 }
 
@@ -250,17 +280,29 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
   }
 
-  bool get _isFuture {
-    final now = DateTime.now();
-    final end = periodEnd(_period, _anchor, weekStartDay: _weekStartDay);
-    return end.isAfter(now.add(const Duration(days: 1)));
+  bool get _showsCurrentWeek =>
+      _period == PeriodType.week &&
+      periodStart(_period, _anchor, weekStartDay: _weekStartDay) ==
+          periodStart(_period, DateTime.now(), weekStartDay: _weekStartDay);
+
+  bool get _isFuture => !periodHasEnded(_period, _anchor, DateTime.now(),
+      weekStartDay: _weekStartDay);
+
+  void _showWeek(DateTime anchor) {
+    setState(() {
+      _anchor = anchor;
+      _recompute();
+    });
   }
 
   void _previous() {
     setState(() {
       switch (_period) {
         case PeriodType.week:
-          _anchor = _anchor.subtract(const Duration(days: 7));
+          // Calendar weeks — a fixed 168-hour step drifts an hour at each DST
+          // transition, and once it crosses midnight the anchor lands in the
+          // adjacent week and paging skips one.
+          _anchor = DateTime(_anchor.year, _anchor.month, _anchor.day - 7);
         case PeriodType.month:
           _anchor = DateTime(
             _anchor.month == 1 ? _anchor.year - 1 : _anchor.year,
@@ -279,7 +321,7 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
     setState(() {
       switch (_period) {
         case PeriodType.week:
-          _anchor = _anchor.add(const Duration(days: 7));
+          _anchor = DateTime(_anchor.year, _anchor.month, _anchor.day + 7);
         case PeriodType.month:
           _anchor = DateTime(
             _anchor.month == 12 ? _anchor.year + 1 : _anchor.year,
@@ -357,6 +399,40 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           _buildPeriodNav(theme),
           const SizedBox(height: 16),
           _buildStatsCard(theme, unit, stats),
+          // The day-by-day strip Home used to show beside the week lead
+          // (decisions § 2283). It draws the calendar week holding today, so
+          // it shows on that week only.
+          if (_showsCurrentWeek) ...[
+            const SizedBox(height: 16),
+            Card(
+              key: const Key('periodSummaryWeekStrip'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ThisWeekStrip(
+                  runs: _periodRuns,
+                  unit: unit,
+                  weekStartDay: _weekStartDay,
+                  now: DateTime.now(),
+                ),
+              ),
+            ),
+          ],
+          // The 20-week heatmap that left Home (decisions § 2284) is this
+          // screen's week picker: a tapped column moves the summary to it.
+          if (_period == PeriodType.week) ...[
+            const SizedBox(height: 16),
+            Card(
+              key: const Key('periodSummaryHeatmap'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ActivityHeatmap(
+                  runs: widget.runStore.summaryRuns,
+                  weekStartDay: _weekStartDay,
+                  onWeekTap: _showWeek,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           if (_periodRuns.isEmpty)
             _buildEmptyState()
@@ -491,12 +567,25 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
                 ),
               ],
             ),
-            if (stats.avgPaceSecPerKm != null) ...[
+            if (stats.avgPaceSecPerKm != null || stats.totalVertMetres > 0) ...[
               const SizedBox(height: 16),
-              StatTile.large(
-                label: l10n.periodStatAvgPace,
-                value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
-                unit: UnitFormat.paceLabel(unit),
+              StatGrid(
+                cells: [
+                  if (stats.avgPaceSecPerKm != null)
+                    StatTile.large(
+                      label: l10n.periodStatAvgPace,
+                      value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
+                      unit: UnitFormat.paceLabel(unit),
+                    ),
+                  if (stats.totalVertMetres > 0)
+                    StatTile.large(
+                      key: const Key('periodSummaryVert'),
+                      label: metricText(l10n, Metric.vert),
+                      value:
+                          UnitFormat.elevationValue(stats.totalVertMetres, unit),
+                      unit: UnitFormat.elevationLabel(unit),
+                    ),
+                ],
               ),
             ],
           ],
@@ -562,20 +651,17 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
       // `finisher_certificate_card`, the other tile-free card.
       await WidgetsBinding.instance.endOfFrame;
 
-      final boundary = _cardKey.currentContext!.findRenderObject()
-          as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
+      final bytes = await capturePngBytes(_cardKey);
 
       final tmp = await getTemporaryDirectory();
       final file = File(
         '${tmp.path}/period-${widget.periodName}-${widget.periodStartIso}.png',
       );
-      await file.writeAsBytes(byteData.buffer.asUint8List());
+      await file.writeAsBytes(bytes);
 
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'image/png')],
+      await shareFilesFrom(
+        context,
+        files: [XFile(file.path, mimeType: 'image/png')],
         text: widget.periodTitle,
       );
     } catch (e) {
@@ -588,8 +674,8 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
     }
   }
 
-  void _shareText() {
-    Share.share(widget.shareText);
+  Future<void> _shareText() async {
+    await shareTextFrom(context, text: widget.shareText);
   }
 
   @override
@@ -691,7 +777,7 @@ class _PeriodShareCard extends StatelessWidget {
     final paceLabel = UnitFormat.paceLabel(unit);
 
     return Container(
-      color: const Color(0xFF0B0A1F),
+      color: const Color(0xFF121117),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -714,7 +800,7 @@ class _PeriodShareCard extends StatelessWidget {
               Text(
                 periodLabel,
                 style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFFA9A4B6),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   height: 1.1,
@@ -789,7 +875,7 @@ class _PeriodShareCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: Color(0xFF9CA3AF),
+            color: Color(0xFFA9A4B6),
             fontSize: 9,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w600,
@@ -820,7 +906,7 @@ class _PeriodShareCard extends StatelessWidget {
               Text(
                 unitLabel,
                 style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFFA9A4B6),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   height: 1.0,

@@ -2,20 +2,30 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
-import '../lib/training.dart' show toIsoDate;
+import '../lib/training.dart' show fmtKm;
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
+import 'pump_until.dart';
+import 'plan_sections_open.dart';
 
 const _uid = 'owner-uuid';
 
-DateTime _mondayThisWeek() {
-  final now = DateTime.now();
-  final d = DateTime(now.year, now.month, now.day);
-  return d.subtract(Duration(days: d.weekday - DateTime.monday));
-}
+/// A fixed Wednesday. Every fixture below is built relative to it and the
+/// screen is given it as its clock, because the adherence window is the days
+/// of the current week that have ALREADY ENDED: on a Monday none have, so
+/// `weeklyDriftToDate` has no baseline and the banner does not render at all.
+/// Against the real clock the under-running test therefore passed six days in
+/// seven and failed every Monday, and the missed-long test's guard skipped
+/// its only assertion on the seventh.
+final DateTime _today = DateTime(2026, 3, 11);
+
+DateTime _mondayThisWeek() =>
+    _today.subtract(Duration(days: _today.weekday - DateTime.monday));
 
 class _FakeTraining extends TrainingService {
   final TrainingPlanRow plan;
@@ -36,8 +46,11 @@ class _FakeTraining extends TrainingService {
     return (plan: plan, weeks: weeks, workouts: workouts);
   }
 
+  bool duplicateOverlaps = false;
+
   @override
   Future<String> duplicatePlanWeek(String planId, int weekIndex) async {
+    if (duplicateOverlaps) throw const ActivePlanExistsError();
     duplicated.add('$planId:$weekIndex');
     return 'new-week-id';
   }
@@ -46,19 +59,35 @@ class _FakeTraining extends TrainingService {
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    String? fromKind,
+    PlanWorkoutTargets? targets,
     String? notes,
+    PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
-    if (targetDistanceM != null) updated[workoutId] = targetDistanceM;
+    final distanceM = targets?.distanceM;
+    if (distanceM != null) updated[workoutId] = distanceM;
+  }
+
+  @override
+  Future<void> applyReplan({
+    required String planId,
+    required Map<String, double> distances,
+  }) async {
+    updated.addAll(distances);
   }
 }
 
 class _FakeSocial extends SocialService {
   final List<RecentRunRow> runs;
-  _FakeSocial(this.runs);
+  final Object? error;
+  _FakeSocial(this.runs, {this.error});
   @override
-  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async => runs;
+  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async {
+    if (error != null) throw error!;
+    return runs;
+  }
 }
 
 TrainingPlanRow _plan(DateTime start) => TrainingPlanRow(
@@ -98,7 +127,17 @@ Future<void> _pump(
   required _FakeSocial social,
   String? viewerId = _uid,
   double textScale = 1.0,
+  DateTime? today,
+  bool tallView = true,
 }) async {
+  if (tallView) {
+    // Tall enough that the whole lazy body is built: what the screen shows
+    // should not depend on where the list's cache extent happens to end.
+    tester.view.physicalSize = const Size(2400, 12000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+  }
+  await rememberPlanSectionsOpen(tester, viewerId);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -113,18 +152,19 @@ Future<void> _pump(
         planId: 'plan-1',
         social: social,
         viewerIdOverride: viewerId,
+        now: () => today ?? _today,
       ),
     ),
   );
-  // _load (plan fetch) + _loadRecentRuns are async.
-  await tester.runAsync(() async {
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-  });
-  await tester.pump();
+  // _load's plan fetch is async; the trailing pump lands the setState that
+  // _loadRecentRuns — kicked off once the plan is in — resolves into.
+  await pumpUntil(tester, () => !tester.any(find.byType(SectionedDetailSkeleton)),
+      describe: 'the plan fetch to replace the full-body loader');
   await tester.pump();
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   group('PlanDetailScreen — adherence banner', () {
     testWidgets('flags under-running when actual mileage is well below plan',
         (tester) async {
@@ -145,13 +185,31 @@ void main() {
         ),
       ]);
       await _pump(tester, training: training, social: social);
-      expect(find.textContaining('under plan this week'), findsOneWidget);
+      expect(find.textContaining('So far this week you'), findsOneWidget);
+      expect(find.textContaining('10.0 km'), findsOneWidget);
+      expect(find.textContaining('under plan'), findsNothing);
+    });
+
+    // A failed read used to leave the empty list behind, read as "ran
+    // nothing": "0.0 km of the 8.0 km due". Unknown runs flag nothing.
+    testWidgets('flags nothing when the recent runs failed to load',
+        (tester) async {
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      );
+      await _pump(tester,
+          training: training,
+          social: _FakeSocial(const [], error: Exception('offline')));
+      expect(find.textContaining('So far this week you'), findsNothing);
     });
 
     testWidgets('surfaces make-up advice for a missed long run', (tester) async {
       final start = _mondayThisWeek();
       // A long run earlier today/this week, uncompleted + in the past.
-      final pastLong = start; // Monday — at or before today this week.
+      final pastLong = start; // Monday, two days before the pinned today.
       final training = _FakeTraining(
         _plan(start),
         [_week('w0', 0, 'build', 40000)],
@@ -168,11 +226,33 @@ void main() {
         ),
       ]);
       await _pump(tester, training: training, social: social);
-      // Only assert the missed-long flag when the long run actually sits in
-      // the past (Monday < today). On a Monday run the day, it won't — skip.
-      if (toIsoDate(pastLong).compareTo(toIsoDate(DateTime.now())) < 0) {
-        expect(find.textContaining('missed'), findsWidgets);
-      }
+      expect(find.textContaining('missed'), findsWidgets);
+    });
+
+    testWidgets('absent on a Monday, when no day of the week has ended yet',
+        (tester) async {
+      // The banner is windowed on days that have ALREADY ENDED, so on the
+      // first day of the week it has nothing to compare and must stay silent
+      // rather than report a runner who has not yet trained as 100% under
+      // plan. Same fixture as the under-running case above; only the day
+      // moves. This is what made the real-clock fixture a Monday time bomb.
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      );
+      final social = _FakeSocial([
+        RecentRunRow(
+          id: 'r1',
+          startedAt: start.add(const Duration(days: 1)),
+          durationS: 3000,
+          distanceM: 10000,
+          activityType: 'run',
+        ),
+      ]);
+      await _pump(tester, training: training, social: social, today: start);
+      expect(find.textContaining('So far this week you'), findsNothing);
     });
 
     testWidgets('hidden for a non-owner viewer', (tester) async {
@@ -193,8 +273,8 @@ void main() {
       ]);
       await _pump(tester,
           training: training, social: social, viewerId: 'someone-else');
-      expect(find.textContaining('under plan this week'), findsNothing);
-      expect(find.text('Re-plan remaining weeks'), findsNothing);
+      expect(find.textContaining('So far this week you'), findsNothing);
+      expect(find.text('Adjust plan'), findsNothing);
     });
   });
 
@@ -219,19 +299,22 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
 
-      await tester.tap(find.text('Re-plan remaining weeks'));
+      // Both re-plans sit behind the one Adjust plan dialog now.
+      await tester.tap(find.text('Adjust plan'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Re-plan remaining weeks')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Proposed changes'), findsOneWidget);
 
       await tester.tap(find.text('Apply changes'));
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      });
-      await tester.pump();
+      await pumpUntil(tester, () => training.updated.isNotEmpty,
+          describe: 'the re-plan to write its week updates');
       // 28 km capped to 22 km * 1.15 = 25300.
       expect(training.updated['next'], (22000 * 1.15).round());
-      // Drain the showTopBanner auto-dismiss timer before teardown.
-      await tester.pump(const Duration(seconds: 4));
     });
   });
 
@@ -247,11 +330,21 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
 
-      final dup = find.byTooltip('Duplicate week');
+      final dup = find.byTooltip('Week 1 actions');
+      // Both primitives, because the two Flutter versions leave the button in
+      // different states: scrollUntilVisible builds it where the list is lazy
+      // (it is absent from the tree entirely on 3.44), and ensureVisible then
+      // pulls it inside the 800x600 viewport where it is built but below the
+      // fold (3.47 lands it at y=612.5, so the tap misses the render tree).
+      // Either one alone passes on one version and fails on the other.
       await tester.scrollUntilVisible(dup, 200,
           scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(dup);
+      await tester.pumpAndSettle();
       expect(dup, findsOneWidget);
       await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate week').last);
       await tester.pumpAndSettle();
       // The dialog gates the destructive RPC — nothing fired yet.
       expect(find.byType(AlertDialog), findsOneWidget);
@@ -260,11 +353,42 @@ void main() {
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog),
           matching: find.widgetWithText(FilledButton, 'Duplicate')));
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      });
-      await tester.pump();
+      await pumpUntil(tester, () => training.duplicated.isNotEmpty,
+          describe: 'the confirmed duplicate to reach the RPC');
       expect(training.duplicated, contains('plan-1:0'));
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets(
+        'a duplicate refused for overlapping the next plan says why',
+        (tester) async {
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      )..duplicateOverlaps = true;
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+
+      final dup = find.byTooltip('Week 1 actions');
+      await tester.scrollUntilVisible(dup, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate week').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Duplicate')));
+      await pumpUntil(
+          tester,
+          () => tester.any(find.textContaining(
+              "would push the plan into another active plan's dates")),
+          describe: 'the overlap banner');
+      expect(training.duplicated, isEmpty);
+      expect(find.textContaining('Something went wrong'), findsNothing);
       await tester.pump(const Duration(seconds: 4));
     });
 
@@ -278,10 +402,20 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
 
-      final dup = find.byTooltip('Duplicate week');
+      final dup = find.byTooltip('Week 1 actions');
+      // Both primitives, because the two Flutter versions leave the button in
+      // different states: scrollUntilVisible builds it where the list is lazy
+      // (it is absent from the tree entirely on 3.44), and ensureVisible then
+      // pulls it inside the 800x600 viewport where it is built but below the
+      // fold (3.47 lands it at y=612.5, so the tap misses the render tree).
+      // Either one alone passes on one version and fails on the other.
       await tester.scrollUntilVisible(dup, 200,
           scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(dup);
+      await tester.pumpAndSettle();
       await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate week').last);
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog),
@@ -301,7 +435,7 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester,
           training: training, social: social, viewerId: 'someone-else');
-      expect(find.byTooltip('Duplicate week'), findsNothing);
+      expect(find.byTooltip('Week 1 actions'), findsNothing);
     });
   });
 
@@ -320,7 +454,12 @@ void main() {
       );
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
-      expect(find.textContaining('Longest long run'), findsOneWidget);
+      // One localized line, colon included: the label used to be built as
+      // `'$label: '` beside a second Text, so French lost its space before
+      // the colon and the reading order was fixed in code.
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(en.planDetailLongestLongRun(fmtKm(28000))),
+          findsOneWidget);
     });
 
     testWidgets('hides the progress section with no completed long run',
@@ -352,7 +491,10 @@ void main() {
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
-      await _pump(tester, training: training(), social: _FakeSocial(const []));
+      await _pump(tester,
+          training: training(),
+          social: _FakeSocial(const []),
+          tallView: false);
       // 1280dp surface → the body ListView is centered + capped at 900dp.
       expect(tester.getSize(find.byType(ListView).first).width, 900);
     });
@@ -361,7 +503,10 @@ void main() {
       tester.view.physicalSize = const Size(1200, 2400);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
-      await _pump(tester, training: training(), social: _FakeSocial(const []));
+      await _pump(tester,
+          training: training(),
+          social: _FakeSocial(const []),
+          tallView: false);
       expect(tester.getSize(find.byType(ListView).first).width, 400);
     });
   });

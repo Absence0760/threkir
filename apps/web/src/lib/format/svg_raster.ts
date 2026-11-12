@@ -35,6 +35,11 @@ export async function rasterizeSvgToPng(
 	}
 }
 
+/// A title reduced to the lowercase ASCII-and-hyphen run a download name can carry.
+export function fileNamePart(title: string): string {
+	return title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+}
+
 /// Trigger a browser download of a Blob under `filename`.
 export function downloadBlob(blob: Blob, filename: string): void {
 	const url = URL.createObjectURL(blob);

@@ -27,14 +27,24 @@ function deepEqual(a: unknown, b: unknown): boolean {
 	);
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+	return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
 export interface DirtyTracker {
 	/// Whether the form's fields differ from the last baseline.
 	isDirty(): boolean;
 	/// Re-take the baseline: the form's current values become the new "clean"
-	/// state. Two callers — a successful save (the edits are persisted, so
-	/// leaving loses nothing) and an async seed that lands after the form is
-	/// built (a preference fetch writing a default is not a user edit).
+	/// state. For a successful save — the edits are persisted, so leaving
+	/// loses nothing. Never for a seed that lands while the user may be
+	/// typing: it would absorb their edits too and disarm the guard. Use
+	/// `seed` for that.
 	rebaseline(): void;
+	/// Apply a default that arrives after the form is built (a preference
+	/// fetch, an account currency) without it reading as a user edit. Only the
+	/// fields `apply` itself changes move into the baseline, so an edit made
+	/// before the seed landed stays dirty.
+	seed(apply: () => void): void;
 }
 
 export function trackDirty<T>(snapshot: () => T): DirtyTracker {
@@ -43,6 +53,23 @@ export function trackDirty<T>(snapshot: () => T): DirtyTracker {
 		isDirty: () => !deepEqual(baseline, snapshot()),
 		rebaseline: () => {
 			baseline = snapshot();
+		},
+		seed: (apply) => {
+			const before = snapshot();
+			apply();
+			const after = snapshot();
+			if (isRecord(baseline) && isRecord(before) && isRecord(after)) {
+				const next: Record<string, unknown> = { ...baseline };
+				for (const k of Object.keys(after)) {
+					if (!deepEqual(before[k], after[k])) next[k] = after[k];
+				}
+				baseline = next as T;
+			} else if (deepEqual(baseline, before)) {
+				// A snapshot that is not a record has no fields to separate, so the
+				// seed is absorbed only onto a clean form; on a dirty one the prompt
+				// errs toward asking.
+				baseline = after;
+			}
 		},
 	};
 }

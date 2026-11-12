@@ -3,6 +3,7 @@ package stravahook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,9 +32,9 @@ func (f *fakeEnqueuer) EnqueueStravaEvent(_ context.Context, p StravaEventPayloa
 }
 
 type fakeWebhookEvents struct {
-	mu    sync.Mutex
-	seen  map[string]bool
-	err   error
+	mu   sync.Mutex
+	seen map[string]bool
+	err  error
 }
 
 func newFakeWebhookEvents() *fakeWebhookEvents {
@@ -120,6 +121,62 @@ func TestServer_RejectsWrongUrlSecret(t *testing.T) {
 	defer teardown()
 
 	resp, err := http.Get(base + "/v1/strava/webhook?secret=wrong-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 403 {
+		t.Fatalf("status=%d, want 403", resp.StatusCode)
+	}
+}
+
+func TestServer_AcceptsSecretFromHeader(t *testing.T) {
+	// The header path exists so the secret stops riding in the query
+	// string, where every request log line records it verbatim. Strava
+	// itself can only be configured with a URL, so the query path stays
+	// — but any other caller (and Strava, once re-registered) should use
+	// the header.
+	srv := &Server{WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok"}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+
+	req, err := http.NewRequest(http.MethodGet, base+"/v1/strava/webhook?hub.challenge=abc123&hub.verify_token=verify-tok", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(WebhookSecretHeader, "url-secret-32-chars-long-deadbeef")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("status=%d, want 200", resp.StatusCode)
+	}
+	var body map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["hub.challenge"] != "abc123" {
+		t.Fatalf("hub.challenge=%q, want abc123", body["hub.challenge"])
+	}
+}
+
+func TestServer_WrongHeaderSecretDoesNotFallBackToQuery(t *testing.T) {
+	// A caller that supplies the header gets ONE judgement on it. If a
+	// wrong header fell through to the query param, an attacker who
+	// learned the URL secret from a log could keep using it while
+	// probing the header, and the header path would add nothing.
+	srv := &Server{WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok"}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+
+	req, err := http.NewRequest(http.MethodGet, base+"/v1/strava/webhook?secret=url-secret-32-chars-long-deadbeef&hub.challenge=abc&hub.verify_token=verify-tok", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(WebhookSecretHeader, "wrong-secret")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -474,5 +531,169 @@ func TestServer_IPRateLimitPerKey(t *testing.T) {
 		if resp.StatusCode != 200 {
 			t.Fatalf("ip %s first call should pass, got %d", ip, resp.StatusCode)
 		}
+	}
+}
+
+// TestIPRateLimiterTableStaysBounded pins the limiter table's size. clientIP
+// keys on caller-supplied forwarding headers and the throttle runs before the
+// shared-secret compare, so an unauthenticated caller could mint one permanent
+// bucket per fabricated header value — 500k of them retained ~88 MB for the
+// process lifetime, in the process the job-drain loop runs in.
+func TestIPRateLimiterTableStaysBounded(t *testing.T) {
+	l := newIPRateLimiter(60, time.Hour)
+	now := time.Unix(1_700_000_000, 0)
+	for i := 0; i < 200_000; i++ {
+		l.allow(fmt.Sprintf("10.%d.%d.%d", i>>16&255, i>>8&255, i&255), now)
+	}
+	l.mu.Lock()
+	n := len(l.buckets)
+	l.mu.Unlock()
+	if n > maxIPBuckets {
+		t.Fatalf("limiter retained %d buckets after 200k distinct keys, cap is %d", n, maxIPBuckets)
+	}
+}
+
+// TestIPRateLimiterEvictsIdleButKeepsLiveThrottle pins that bounding the table
+// didn't cost the throttle: a caller inside the window still gets cut off at
+// the rate, and a bucket that has sat idle past the refill interval (and is
+// therefore back at the full token cap) is dropped rather than kept forever.
+func TestIPRateLimiterEvictsIdleButKeepsLiveThrottle(t *testing.T) {
+	l := newIPRateLimiter(3, time.Hour)
+	now := time.Unix(1_700_000_000, 0)
+
+	for i := 0; i < 3; i++ {
+		if !l.allow("1.2.3.4", now) {
+			t.Fatalf("request %d inside the rate was throttled", i)
+		}
+	}
+	if l.allow("1.2.3.4", now) {
+		t.Fatal("4th request in the window should be throttled")
+	}
+
+	// Two hours on: the idle bucket has refilled to the cap, so it carries no
+	// state and the next new key's eviction pass drops it.
+	later := now.Add(2 * time.Hour)
+	l.allow("5.6.7.8", later)
+	l.mu.Lock()
+	_, stillThere := l.buckets["1.2.3.4"]
+	l.mu.Unlock()
+	if stillThere {
+		t.Fatal("bucket idle past the refill interval should have been evicted")
+	}
+}
+
+func postStrava(t *testing.T, base, body string) (int, map[string]any) {
+	t.Helper()
+	resp, err := http.Post(base+"/v1/strava/webhook?secret=url-secret-32-chars-long-deadbeef", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+// Strava sends `subscription_id` and `updates` on every delivery, and the
+// decoder refuses unknown fields: a payload in Strava's real shape must
+// decode rather than 400.
+func TestServer_PostAcceptsStravasRealPayloadShape(t *testing.T) {
+	enqueuer := &fakeEnqueuer{}
+	srv := &Server{
+		WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+		Enqueuer: enqueuer, WebhookEvents: newFakeWebhookEvents(),
+	}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+
+	body := `{"aspect_type":"create","event_time":` + jsonInt(time.Now().Unix()) +
+		`,"object_id":1360128428,"object_type":"activity","owner_id":134815,"subscription_id":120475,"updates":{}}`
+	status, _ := postStrava(t, base, body)
+	if status != 200 {
+		t.Fatalf("status=%d, want 200", status)
+	}
+	if len(enqueuer.calls) != 1 {
+		t.Fatalf("a real-shape create must enqueue; got %d", len(enqueuer.calls))
+	}
+}
+
+func TestServer_PostEnqueuesAthleteDeauthorization(t *testing.T) {
+	enqueuer := &fakeEnqueuer{}
+	events := newFakeWebhookEvents()
+	srv := &Server{
+		WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+		Enqueuer: enqueuer, WebhookEvents: events,
+	}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+
+	body := `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+		`,"object_id":134815,"object_type":"athlete","owner_id":134815,"subscription_id":120475,"updates":{"authorized":"false"}}`
+	status, _ := postStrava(t, base, body)
+	if status != 200 {
+		t.Fatalf("status=%d, want 200", status)
+	}
+	if len(enqueuer.calls) != 1 {
+		t.Fatalf("a deauthorization must enqueue; got %d", len(enqueuer.calls))
+	}
+	got := enqueuer.calls[0]
+	if got.OwnerID != 134815 || got.Updates["authorized"] != "false" {
+		t.Errorf("enqueued %+v, want owner 134815 with authorized=false", got)
+	}
+	if len(events.seen) != 0 {
+		t.Errorf("a deauthorization is idempotent and must not burn a dedupe row; got %d", len(events.seen))
+	}
+}
+
+func TestServer_PostDeauthorizationAlways200s(t *testing.T) {
+	stale := time.Now().Add(-30 * 24 * time.Hour).Unix()
+	cases := []struct {
+		name     string
+		body     string
+		enqueErr error
+	}{
+		{"stale", `{"aspect_type":"update","event_time":` + jsonInt(stale) +
+			`,"object_id":1,"object_type":"athlete","owner_id":1,"updates":{"authorized":"false"}}`, nil},
+		{"no owner", `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+			`,"object_id":1,"object_type":"athlete","updates":{"authorized":"false"}}`, nil},
+		{"enqueue fails", `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+			`,"object_id":1,"object_type":"athlete","owner_id":1,"updates":{"authorized":"false"}}`, fmt.Errorf("db down")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			enqueuer := &fakeEnqueuer{err: tc.enqueErr}
+			srv := &Server{
+				WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+				Enqueuer: enqueuer, WebhookEvents: newFakeWebhookEvents(),
+			}
+			base, teardown := newTestServer(t, srv)
+			defer teardown()
+			status, _ := postStrava(t, base, tc.body)
+			if status != 200 {
+				t.Fatalf("status=%d, want 200", status)
+			}
+			if len(enqueuer.calls) != 0 {
+				t.Errorf("nothing should have been enqueued; got %d", len(enqueuer.calls))
+			}
+		})
+	}
+}
+
+func TestServer_PostAthleteUpdateOtherThanDeauthorizationIsSkipped(t *testing.T) {
+	enqueuer := &fakeEnqueuer{}
+	srv := &Server{
+		WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+		Enqueuer: enqueuer, WebhookEvents: newFakeWebhookEvents(),
+	}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+	body := `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+		`,"object_id":1,"object_type":"athlete","owner_id":1,"updates":{"authorized":"true"}}`
+	status, out := postStrava(t, base, body)
+	if status != 200 || out["skipped"] != "non_activity" {
+		t.Fatalf("status=%d body=%v, want 200 non_activity", status, out)
+	}
+	if len(enqueuer.calls) != 0 {
+		t.Errorf("must not enqueue; got %d", len(enqueuer.calls))
 	}
 }

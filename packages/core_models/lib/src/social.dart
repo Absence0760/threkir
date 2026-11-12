@@ -11,6 +11,7 @@
 /// the same Supabase queries.
 
 import 'generated/db_rows.dart';
+import 'iso_parse.dart';
 
 /// Compact public-facing user view used everywhere a profile is
 /// referenced from another row — feed avatar, kudos giver pills,
@@ -53,6 +54,16 @@ class ProfileSummary extends PublicProfile {
   final int followingCount;
   final bool viewerFollows;
 
+  /// The owner made the profile private (decisions § 1967): follows become
+  /// requests and the runs / follower lists open only to approved followers.
+  final bool profilePrivate;
+
+  /// The viewer has a pending request to follow this profile.
+  final bool viewerRequested;
+
+  /// Whether the viewer may read the profile's activity and lists.
+  final bool contentVisible;
+
   const ProfileSummary({
     required super.id,
     super.displayName,
@@ -60,6 +71,42 @@ class ProfileSummary extends PublicProfile {
     required this.followerCount,
     required this.followingCount,
     required this.viewerFollows,
+    this.profilePrivate = false,
+    this.viewerRequested = false,
+    this.contentVisible = true,
+  });
+
+  ProfileSummary copyWith({
+    int? followerCount,
+    bool? viewerFollows,
+    bool? viewerRequested,
+    bool? contentVisible,
+  }) =>
+      ProfileSummary(
+        id: id,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        followerCount: followerCount ?? this.followerCount,
+        followingCount: followingCount,
+        viewerFollows: viewerFollows ?? this.viewerFollows,
+        profilePrivate: profilePrivate,
+        viewerRequested: viewerRequested ?? this.viewerRequested,
+        contentVisible: contentVisible ?? this.contentVisible,
+      );
+}
+
+/// What a follow tap did: followed a public profile at once, or filed a
+/// request with a private one. Mirrors web `FollowOutcome`.
+enum FollowOutcome { following, requested }
+
+/// One pending request to follow the signed-in user.
+class IncomingFollowRequest {
+  final PublicProfile requester;
+  final DateTime requestedAt;
+
+  const IncomingFollowRequest({
+    required this.requester,
+    required this.requestedAt,
   });
 }
 
@@ -155,6 +202,21 @@ class NotificationView {
     this.clubName,
     this.clubSlug,
   });
+
+  /// This notification with its row stamped read at [at]. The row half goes
+  /// through the generated `copyWith`, so no column — the link to the
+  /// notification's target among them — can be dropped by the rebuild
+  /// (decisions § 1836). An already-read row keeps its original stamp.
+  NotificationView markedRead(DateTime at) => NotificationView(
+        row: row.readAt != null ? row : row.copyWith(readAt: at),
+        actor: actor,
+        runDistanceM: runDistanceM,
+        commentExcerpt: commentExcerpt,
+        eventTitle: eventTitle,
+        eventClubSlug: eventClubSlug,
+        clubName: clubName,
+        clubSlug: clubSlug,
+      );
 }
 
 /// Per-run kudos + comment count rollup with the viewer's own
@@ -210,6 +272,27 @@ class PeopleSuggestion extends PublicProfile {
   });
 }
 
+/// One row of the opt-in "runners nearby" coarse discovery list (issue #466):
+/// a runner's public identity plus a coarse distance BUCKET. Never a
+/// coordinate and never exact metres — the bucket is computed server-side by
+/// `discoverable_runners_near`, which is what stops a caller triangulating
+/// someone who opted in. Mirror of web's `NearbyRunner` in
+/// `apps/web/src/lib/core/data.ts`.
+class NearbyRunner extends PublicProfile {
+  /// Index into the shared bucket ladder (`nearby.dart` / `nearby.ts`), not a
+  /// distance. Render it through `nearbyBucketUpperBoundM` — never as a number.
+  final int bucket;
+  final bool viewerFollows;
+
+  const NearbyRunner({
+    required super.id,
+    super.displayName,
+    super.avatarUrl,
+    required this.bucket,
+    required this.viewerFollows,
+  });
+}
+
 /// A discoverable public-club event returned by `search_public_events`
 /// (the cross-club activity Discover surface — web `/social?tab=discover`,
 /// mobile the Social Discover tab). Mirror of the web `PublicEventResult`
@@ -261,7 +344,7 @@ class PublicEventResult {
       title: row['title'] as String,
       category: row['category'] as String,
       discipline: row['discipline'] as String?,
-      startsAt: DateTime.parse(row['starts_at'] as String),
+      startsAt: parseIsoStrictRequired(row['starts_at'], 'starts_at'),
       timezone: row['timezone'] as String?,
       durationMin: (row['duration_min'] as num?)?.toInt(),
       recurrenceFreq: row['recurrence_freq'] as String?,
@@ -280,9 +363,96 @@ class PublicEventResult {
 class SegmentEffortWithSegment {
   final SegmentEffortRow effort;
   final SegmentRow segment;
-  final int rank;
+
+  /// Null when `segment_effort_ranks` did not answer for this effort. The
+  /// rank does not live on the effort row, so an absent answer is a genuinely
+  /// unknown standing — never `1`, which is a crown (decisions §746).
+  final int? rank;
 
   const SegmentEffortWithSegment({
+    required this.effort,
+    required this.segment,
+    required this.rank,
+  });
+}
+
+/// One row of a free-standing catalogue-segment leaderboard (decisions §233).
+/// The global-catalogue twin of [SegmentLeaderboardEntry]; mirrors the web
+/// `GlobalSegmentLeaderboardEntry` interface.
+class GlobalSegmentLeaderboardEntry {
+  final GlobalSegmentEffortRow effort;
+  final PublicProfile athlete;
+  final int rank;
+
+  const GlobalSegmentLeaderboardEntry({
+    required this.effort,
+    required this.athlete,
+    required this.rank,
+  });
+}
+
+/// A park with the calendar year it is now where the park is (`park_season`,
+/// migration 20271115002383). Mirrors the web `Park` type.
+class ParkListing {
+  final ParkRow park;
+  final int season;
+
+  const ParkListing({required this.park, required this.season});
+}
+
+/// A park course with the catalogue segment it is timed on. [checkpoints] is
+/// the raw `checkpoints` jsonb; the app reads it with `parseCourseCheckpoints`.
+/// Mirrors the web `ParkCourse` type.
+class ParkCourseListing {
+  final ParkCourseRow course;
+  final GlobalSegmentRow segment;
+
+  const ParkCourseListing({required this.course, required this.segment});
+}
+
+/// The fastest visible time on a park course in its park's current season
+/// (`park_course_records`). Mirrors the web `ParkCourseRecord` type.
+class ParkCourseRecord {
+  final int season;
+  final double timeSeconds;
+  final String? displayName;
+
+  const ParkCourseRecord({
+    required this.season,
+    required this.timeSeconds,
+    this.displayName,
+  });
+}
+
+/// One row of the most-completions board on a catalogue segment
+/// (`global_segment_completions`): distinct local days with a visible effort.
+/// Tied counts share a rank. Mirrors the web `CompletionsEntry`.
+class GlobalSegmentCompletionsEntry {
+  final PublicProfile athlete;
+  final int completions;
+  final DateTime lastCompletedAt;
+  final int rank;
+
+  const GlobalSegmentCompletionsEntry({
+    required this.athlete,
+    required this.completions,
+    required this.lastCompletedAt,
+    required this.rank,
+  });
+}
+
+/// One catalogue-segment effort a run earned, joined to the segment and ranked.
+/// The global-catalogue twin of [SegmentEffortWithSegment]; mirrors the web
+/// `GlobalSegmentEffortWithSegment` interface.
+class GlobalSegmentEffortWithSegment {
+  final GlobalSegmentEffortRow effort;
+  final GlobalSegmentRow segment;
+
+  /// Null when `global_segment_effort_ranks` did not answer for this effort —
+  /// same contract as [SegmentEffortWithSegment.rank].
+  final int? rank;
+
+  const GlobalSegmentEffortWithSegment({
     required this.effort,
     required this.segment,
     required this.rank,
@@ -316,6 +486,11 @@ class DiscoverableRoutePin {
   final double lat;
   final double lng;
 
+  /// Published by a verified organiser (migration 20271021000030). Official
+  /// routes rank first; outside the `official` lens at most a quarter of the
+  /// viewport's pins rank ahead of community routes.
+  final bool official;
+
   const DiscoverableRoutePin({
     required this.id,
     required this.name,
@@ -327,6 +502,7 @@ class DiscoverableRoutePin {
     required this.runCount,
     required this.lat,
     required this.lng,
+    this.official = false,
   });
 }
 
@@ -342,6 +518,10 @@ class ClubPin {
   final double lat;
   final double lng;
 
+  /// Verified clubs rank first in `clubs_in_bbox` (migration
+  /// 20271021000031); the club sheet carries the badge.
+  final bool isVerified;
+
   const ClubPin({
     required this.id,
     required this.name,
@@ -349,6 +529,37 @@ class ClubPin {
     this.avatarUrl,
     this.locationLabel,
     required this.memberCount,
+    required this.lat,
+    required this.lng,
+    this.isVerified = false,
+  });
+}
+
+/// An upcoming verified race returned by `upcoming_races_in_bbox` (migration
+/// 20271125002408). Mobile mirror of the web `UpcomingRacePin`: the pin sits
+/// at a publicly shown course's start, else the listing's location.
+/// [official] races (claimed by a verified organiser club) rank first.
+class UpcomingRacePin {
+  final String id;
+  final String name;
+
+  /// `YYYY-MM-DD`, the race's local calendar day.
+  final String raceDate;
+  final int? distanceM;
+  final String? locationLabel;
+  final bool official;
+  final bool hasCourse;
+  final double lat;
+  final double lng;
+
+  const UpcomingRacePin({
+    required this.id,
+    required this.name,
+    required this.raceDate,
+    this.distanceM,
+    this.locationLabel,
+    this.official = false,
+    this.hasCourse = false,
     required this.lat,
     required this.lng,
   });
@@ -359,31 +570,50 @@ class ClubPin {
 /// settings list shows — never `confirm_token` (the email-link capability) or
 /// `owner_id`. `confirmedAt == null` means pending (the contact hasn't opted
 /// in yet, so no finish alerts are sent).
+///
+/// [contactPhone] and [smsOptInAt] are the two halves of the SMS escalation
+/// leg (migration `20270410_001`): the owner stores the number, the CONTACT
+/// consents to being texted. Both are required before an SMS is ever
+/// enqueued, which is why [isSmsReachable] reads them together — a stored
+/// number on its own reaches nobody.
 class SafetyContact {
   final String id;
   final String contactEmail;
+  final String? contactPhone;
   final String? contactUserId;
   final DateTime? confirmedAt;
+  final DateTime? smsOptInAt;
   final DateTime createdAt;
 
   const SafetyContact({
     required this.id,
     required this.contactEmail,
+    this.contactPhone,
     this.contactUserId,
     this.confirmedAt,
+    this.smsOptInAt,
     required this.createdAt,
   });
 
   bool get isConfirmed => confirmedAt != null;
 
+  /// Whether an overdue alert would actually reach this contact by SMS. The
+  /// scan's join requires all three, so anything less is email-only.
+  bool get isSmsReachable =>
+      isConfirmed && contactPhone != null && smsOptInAt != null;
+
+  /// A number is on file but the contact has not consented to SMS — the
+  /// state the owner must not read as "SMS is on".
+  bool get isSmsAwaitingOptIn => contactPhone != null && smsOptInAt == null;
+
   factory SafetyContact.fromJson(Map<String, dynamic> json) => SafetyContact(
         id: json['id'] as String,
         contactEmail: json['contact_email'] as String,
+        contactPhone: json['contact_phone'] as String?,
         contactUserId: json['contact_user_id'] as String?,
-        confirmedAt: json['confirmed_at'] == null
-            ? null
-            : DateTime.parse(json['confirmed_at'] as String),
-        createdAt: DateTime.parse(json['created_at'] as String),
+        confirmedAt: parseIsoStrictValue(json['confirmed_at']),
+        smsOptInAt: parseIsoStrictValue(json['sms_opt_in_at']),
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
       );
 }
 
@@ -395,11 +625,18 @@ class SafetyContact {
 class PendingSafetyRequest {
   final String id;
   final String ownerName;
+
+  /// Whether the owner stored a phone number for this relationship. The RPC
+  /// reports the FACT, never the number — so the confirm surface can offer
+  /// the SMS opt-in only where it would do something, without disclosing a
+  /// third party's phone to the person being asked.
+  final bool hasPhone;
   final DateTime createdAt;
 
   const PendingSafetyRequest({
     required this.id,
     required this.ownerName,
+    this.hasPhone = false,
     required this.createdAt,
   });
 
@@ -407,7 +644,52 @@ class PendingSafetyRequest {
       PendingSafetyRequest(
         id: json['id'] as String,
         ownerName: (json['owner_name'] as String?) ?? '',
-        createdAt: DateTime.parse(json['created_at'] as String),
+        hasPhone: json['has_phone'] == true,
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+      );
+}
+
+/// A relationship in which SOMEONE ELSE named the signed-in user as their
+/// safety contact and the user confirmed — the mirror image of
+/// [SafetyContact], and the only place `set_safety_sms_opt_in` can be called
+/// from once the confirm step is behind you. Mobile mirror of the web
+/// `SafetyContactOf` interface (`apps/web/src/lib/core/data.ts`).
+///
+/// [hasPhone] reports the FACT that the owner stored a number, never the
+/// digits — the same posture `my_pending_safety_requests` takes. It gates
+/// whether the SMS consent toggle would do anything; there is no owner
+/// UPDATE policy, so a contact could not correct a wrong number from here
+/// even if it were shown.
+class SafetyContactOf {
+  final String id;
+  final String ownerId;
+  final String? ownerName;
+  final bool hasPhone;
+  final DateTime? smsOptInAt;
+  final DateTime createdAt;
+
+  const SafetyContactOf({
+    required this.id,
+    required this.ownerId,
+    this.ownerName,
+    this.hasPhone = false,
+    this.smsOptInAt,
+    required this.createdAt,
+  });
+
+  bool get isSmsOptedIn => smsOptInAt != null;
+
+  factory SafetyContactOf.fromJson(
+    Map<String, dynamic> json,
+    String? ownerName,
+  ) =>
+      SafetyContactOf(
+        id: json['id'] as String,
+        ownerId: json['owner_id'] as String,
+        ownerName: ownerName,
+        hasPhone: json['contact_phone'] != null,
+        smsOptInAt: parseIsoStrictValue(json['sms_opt_in_at']),
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
       );
 }
 

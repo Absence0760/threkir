@@ -38,7 +38,11 @@ drive the worker:
   enqueued once per run by the `enqueue_safety_overdue_emails()` pg_cron scan
   when a live-broadcast run goes silent past the owner's
   `safety_overdue_minutes` window; carries started/last-seen **times + the
-  `/live/{run_id}` link, never coordinates**; docs/features/safety.md).
+  `/live/{run_id}` link, never coordinates**; docs/features/safety.md). On a
+  safety-audience run (decisions § 1964) the `overdue` and `off_route` payloads
+  (and the matching `safety_sms`) carry `view_token`, that contact's own link,
+  which the worker appends as `#k=<token>` — a fragment, so it never reaches a
+  server log.
   Crucially **not** gated on the runner's `email_notifications` preference — a
   safety contact opted in explicitly and must not be silenced by the runner's
   social-email setting. `decisions.md § 131`.
@@ -66,6 +70,28 @@ drive the worker:
   then renders the fixed per-template copy with an RFC 8058 one-click
   unsubscribe scoped to the drip stream. `decisions.md § 177`.
 
+- **`security_email`** — account-security mail (`{user_id, template, browser,
+  platform, signed_in_at}`, migration `20270804000001`). One template,
+  `new_device_sign_in`, enqueued by the `auth.sessions` triggers the first time
+  a coarse device class signs in to an account that already had one. Neither
+  of the kinds above: it carries per-sign-in context, so not `lifecycle_email`,
+  and it has its OWN opt-out (`email_new_device_alerts`), which lifecycle mail
+  does not. Transactional, so `email_notifications` never mutes it. The
+  password-changed notice is **not** this kind — GoTrue sends it through the
+  `auth-email` hook. § Security emails below; decisions 1893 / 1894.
+
+- **`club_verification_email`** — the email proof of a club verification
+  request (`{email, locale, club_name, organisation, domain, token}`, migration
+  `20271120000003` / `20271120000004`). Enqueued by `send_club_verification_email`
+  (the club owner names the part before the @; the domain is the club's
+  website), at most three a request a day. The recipient need not be a user, so
+  the address and the submitter's locale ride in the payload; no preference
+  gates it. The CTA is `/club-verification/confirm#token=…` (fragment, so the
+  token never reaches a server log), and the page confirms only on a click, so a
+  mail scanner that opens the link confirms nothing. The club name and
+  organisation are kept out of the subject. Footer `footerClubVerification`.
+  Decisions § 2398.
+
 A **non-email** job kind reuses the same notifications rows over a
 different transport:
 
@@ -89,10 +115,11 @@ different transport:
   `device_tokens` row), the SAME `push_notifications` preference web-push gates on
   (one "push" channel covers browser + native — no separate pref), and a SEPARATE
   `native_push_sent_at` send-state guard. The handler (`handler_native_push.go`)
-  fans out over the user's enabled device tokens, routing on
-  `device_tokens.platform`: `android` → FCM HTTP v1, `ios` → APNs HTTP/2 (sender
-  package `internal/nativepush/`, stdlib + `golang-jwt`, no Firebase Admin SDK).
-  A dead token (FCM `UNREGISTERED` 404 / APNs 410) is pruned via
+  fans out over the user's enabled device tokens, sending one FCM HTTP v1
+  message per device — iOS included, since FCM forwards to Apple (sender
+  package `internal/nativepush/`, stdlib + `golang-jwt`, no Firebase Admin SDK;
+  `decisions.md § 1682`).
+  A dead token (FCM `UNREGISTERED` 404) is pruned via
   `clear_device_token`; a 429/5xx defers. Gated on operator-supplied
   Firebase/APNs credentials (below) — unset → jobs finish done, rows stay
   pending. `decisions.md § 161`.
@@ -100,7 +127,7 @@ different transport:
 Shared pieces:
 
 - **Transport** — `internal/mailer.go` `SMTPSender` (Mailpit in local dev on
-  `127.0.0.1:54325`; a provider's SMTP — Resend / SES — in prod). Sent as
+  `127.0.0.1:24325`; a provider's SMTP — Resend / SES — in prod). Sent as
   **multipart/alternative**: a branded, email-client-safe HTML part (table
   layout, inline styles, ≤600 px card, teal header matching app.css
   `--color-primary`, H1, CTA button, footer, inbox preheader) + a plain-text
@@ -109,11 +136,29 @@ Shared pieces:
 - **Address** — resolved via the GoTrue admin API (email lives only in
   `auth.users`, not a public table).
 - **Localization** — `internal/email_i18n.go` holds a per-locale catalogue for
-  all six app locales (`en/de/fr/es/ja/pt-BR`). The recipient's language comes
-  from `user_settings.prefs.locale`, which web + mobile write as a side effect
-  of the language picker (`decisions.md § 120`). Unknown/region tags normalize
-  to a supported locale; English is the per-key fallback. `<html lang>` is set.
-  A catalogue-parity test mirrors the web/mobile l10n-parity tests.
+  all seven app locales (`en/de/fr/es/ja/pt-BR/pt-PT`). The recipient's language
+  comes from `user_settings.prefs.locale`, which web + mobile write as a side
+  effect of the language picker (`decisions.md § 120`). Unknown/region tags
+  normalize to a supported locale; English is the per-key fallback. `<html lang>`
+  is set. `TestEmailCatalogueParity` (`email_i18n_test.go`) mirrors the
+  web/mobile l10n-parity tests.
+  **The locale set is derived, not listed** (`decisions.md § 761`): `emailLocales`
+  is `emailCatalogue`'s own keys, because four separate test loops range that
+  slice and a locale added to the maps but missed in a hand-written list would be
+  skipped by all of them. `TestEmailLocaleSetIsDerivedAndReachable` additionally
+  holds `emailSharedByLocale` and `smsCatalogue` to the same set and asserts every
+  catalogue is reachable from a tag a client can write — a catalogue nothing
+  normalizes to renders for nobody.
+  **`normalizeEmailLocale` is one chokepoint for eight handlers** — notification
+  email, lifecycle email, lifecycle drip, weekly digest, safety email, safety SMS,
+  web push and native push all resolve through it via `localeFromPrefs`. Its
+  `emailExact` / `emailBase` tables mirror `EXACT` / `BASE_TO_LOCALE` in
+  `apps/web/src/lib/i18n/locale.ts`: `pt-BR` by its own tag, and bare `pt` /
+  `pt-AO` / `pt-MZ` / `pt-CV` → `pt-PT`. It used to be `strings.HasPrefix(t,"pt")`
+  → `pt-BR`, which handed a Lisbon reader European Portuguese in the browser and
+  on the wrist and Brazilian everywhere the worker sends. The one deliberate
+  difference from web: the server reads `_` as a separator too, because
+  `prefs.locale` is whatever a client wrote, not a negotiated `navigator.language`.
 - **Copy coverage** — the catalogue's `"default"` entry ("You have a new
   notification on Threkir." + an "Open Threkir" CTA) exists for a kind a
   *running binary predates* — an older worker draining a queue a newer deploy is
@@ -144,8 +189,21 @@ Shared pieces:
 - **Preference** — `user_settings.prefs.email_notifications` (`all | important
   | off`, default `important`) gates the **notification** channel only;
   transactional/lifecycle mail ignores it (you can't opt out of a receipt).
-  Toggle on web `/settings/preferences` + mobile Settings → Preferences.
+  Toggle on web `/settings/notifications` + mobile Settings → Preferences.
   Registry: `docs/backend/settings.md`.
+- **Per-kind mutes** — `mailer.go` `kindMutePrefKey` maps a notification kind to
+  a prefs-bag key that silences it on the OUTBOUND channels (email + both
+  pushes), leaving the inbox row alone. One entry today:
+  `notify_data_export_ready` for the `data_export_ready` kind
+  (`decisions.md § 729`). It exists for kinds where the three-mode channel
+  setting is too blunt — muting `email_notifications` to stop one notice also
+  stops direct messages. **It can only ever subtract**: `kindMuted` is consulted
+  INSIDE `shouldEmail` / `shouldPush` alongside the channel mode, never instead
+  of it, so a channel mute still wins and a per-kind `'on'` can never promote a
+  kind past one. Both gates take the whole prefs bag rather than a pre-resolved
+  mode for exactly this reason — a caller that had to remember a second key
+  separately would eventually be a channel that forgot to, and the miss is
+  invisible because the mail still sends.
 - **Deep links** — `internal/mailer.go` `pathForKind` is the single kind → URL
   map, shared by the email CTA, the web-push payload and the native-push
   message, so a wrong target misroutes all three channels at once. Its inputs
@@ -166,7 +224,17 @@ Shared pieces:
   public run; that fixed the surface, not the reason this link points at
   `/share`.) Each kind targets the same entity `apps/web`'s `notificationLinkFor`
   does — `/plans/{plan_id}`, `/challenges/{challenge_id}`,
-  `/share/badge/{achievement_id}` — which needs `plan_id`, `achievement_id` and
+  `/share/badge/{achievement_id}` — though not always the same page: the
+  in-app inbox opens `run_completed` at `/runs/{id}` and `achievement` at the
+  recipient's `/u/{id}?tab=achievements&badge={id}`, since its reader is
+  signed in (decisions § 2152), and the phone's `push_target.dart` maps the
+  worker's `/share/run` and `/share/badge` URLs onto those same in-app
+  screens. `personal_record` (decisions § 2266) links to the recipient's own
+  `/runs/{run_id}?share=pr` on every channel, the run opened on its PR card;
+  the phone reads `share=pr` into `PushTargetKind.runPrCard`. Like
+  `achievement` it is in neither important set, so it leaves the inbox only
+  for a runner on `all`. The share page itself offers a signed-in visitor a way back into
+  the app. The worker's links need `plan_id`, `achievement_id` and
   `challenge_id` in all three `FetchNotificationFor*` projections; a partial
   projection silently degrades one channel to the list-page fallback, since one
   `pathForKind` serves all three renders. Every arm degrades to a list page or
@@ -188,8 +256,10 @@ Shared pieces:
 
 | Email | Kind | Trigger | Localized | ADR |
 |---|---|---|---|---|
-| Notification → email (kudos, comment, follow, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
+| Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
+| **Today's-workout reminder** (scheduled) | `notification_email` (`workout_reminder`) | hourly pg_cron `enqueue_workout_reminders()`: one per runner per local morning (07:00-11:59 in `prefs.time_zone`, nobody without a known zone) when the active plan's day holds an outstanding workout; emailed only under `email_notifications = all` (pushed under the default); `notify_workout_reminder = 'off'` withholds the row itself | ✓ | §2087 |
+| **Race starting soon / start moved** (scheduled race, push only) | `notification_email` rail skipped: `race_starting_soon` / `race_start_moved` are in `pushOnlyKinds`, so no mode emails them | per-minute pg_cron `race_sessions_tick()` about 10 minutes before a scheduled GO (skipped after an `event_reminder` within the hour; `notify_race_starting_soon = 'off'` withholds the row); a Delay's `race_sessions_notify_start_moved_trg` | ✓ (push copy) | §2400 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
 | **Payment-failed dunning** | `lifecycle_email` (`payment_failed`) | `user_profiles` AFTER UPDATE, `billing_issue_at` null→non-null | ✓ | §121 |
@@ -197,13 +267,23 @@ Shared pieces:
 | **Safety-contact finish alert** (any finish, incl. private) | `safety_email` (`finish`) | `runs` INSERT or live-stub→saved UPDATE (never the stub INSERT — `20270401_001`), per confirmed contact, 24h recency, **no `is_public` gate, no preference gate** | ✓ | §131 |
 | **Safety-contact overdue escalation** (live run gone silent) | `safety_email` (`overdue`) | `enqueue_safety_overdue_emails()` pg_cron (5 min) — in-progress live run silent past the owner's `safety_overdue_minutes` pref, once per run (`metadata.safety_escalated_at` stamp), per confirmed contact | ✓ | safety.md |
 | **Account-deletion receipt** | `lifecycle_email` (`account_deleted`) | `delete-account` EF enqueues it **inline** (address + locale in payload, no `user_id`) AFTER the cascade; send-once via the non-cascading `account_deletion_receipts` table | ✓ | §121 |
+| **Data export ready** (a queued Art 20 export has finished building) | `notification_email` (`data_export_ready`) + `web_push` + `native_push` | `notify_data_export_ready()` called by the Go worker's `data_export` handler once the row is `ready` with an object path; idempotent server-side via `data_export_jobs.notified_at` | ✓ | §729 |
 | **Web push** (browser system notification, same notification rows) | `web_push` | `notifications` AFTER INSERT, gated on a registered `push_subscription` + the separate `push_notifications` pref | n/a (title/body from the shared catalogue) | §133 |
 | **Native push** (locked-phone FCM/APNs, same notification rows) | `native_push` | `notifications` AFTER INSERT, gated on an enabled `device_tokens` row + the same `push_notifications` pref | gated on operator FCM/APNs creds (title/body from the shared catalogue) | §166 |
 | **Lifecycle drip** (onboarding / first-week / re-engagement / streak nudges) | `lifecycle_drip` (`drip_onboarding`, `drip_first_week`, `drip_reengagement`, `drip_streak`) | daily pg_cron `enqueue_lifecycle_drip()` selects the cohort in SQL; handler gates on the opt-IN `email_lifecycle_drip` pref + `email_suppressions` + a working opt-out (unset `WEEKLY_DIGEST_UNSUB_SECRET` → no unsubscribe URL → log + skip); RFC 8058 one-click unsubscribe (`/unsubscribe/lifecycle-drip`). Enqueue dedupe excludes `done` for onboarding + first-week + re-engagement (`20270423_001`, issue #376) so the daily cron can't re-send a completed nudge; streak stays daily-repeating by design. **SEND fail-closed on the unset SMTP credential + CISO/counsel sign-off** (built, migration `20270223_001`) | ✓ | §177 |
+| **Password changed** (security notice, not optional) | GoTrue `password_changed_notification` → `auth-email` hook | every password change a user makes — settings change and recovery reset alike; enabled by `config.toml [auth.email.notification.password_changed]` locally, the Auth → Emails security-notification toggle in prod | ✓ | 1893 |
+| **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | 1894 |
+| **Club verification proof** (confirm link to an address at the club's domain) | `club_verification_email` | `send_club_verification_email` RPC, owner only, ≤ 3 a request a day | ✓ | 2398 |
+| **Club verification update** (approved / rejected / revoked / lapsed) | `notification_email` (`club_verification`) + push | `private.notify_club_verification`, to the club's owner and active admins; important kind | ✓ | 2398 |
+| **Park course report** (to app admins) | `notification_email` (`park_course_report`) + push | `submit_park_course_report`, to every `app_admins` row on the first pending report on a course and on every land-manager or rights-holder request; important kind, links `/admin/reports` | ✓ | 2449, 2469 |
+| **Email address changed** (security notice, not optional) | GoTrue `email_changed_notification` → `auth-email` hook | a confirmed email change; sent to the **previous** address (`email_data.old_email`); `config.toml [auth.email.notification.email_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
+| **Phone number changed** (security notice, not optional) | GoTrue `phone_changed_notification` → `auth-email` hook | a confirmed phone change; `config.toml [auth.email.notification.phone_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
+| **Sign-in method linked / removed** (security notice, not optional) | GoTrue `identity_linked_notification` / `identity_unlinked_notification` → `auth-email` hook | an identity (Google, Apple, email…) linked to or unlinked from the account; names the provider; `config.toml [auth.email.notification.identity_linked]` / `identity_unlinked` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
+| **MFA method added / removed** (security notice, not optional) | GoTrue `mfa_factor_enrolled_notification` / `mfa_factor_unenrolled_notification` → `auth-email` hook | an MFA factor enrolled or unenrolled; names the factor type; `config.toml [auth.email.notification.mfa_factor_enrolled]` / `mfa_factor_unenrolled` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
 | Branded HTML + inbox preview text | — | all email of the above | ✓ | — |
 
 All shipped emails are end-to-end tested against the local Docker Mailpit
-(`http://127.0.0.1:54324`); none required Firebase/APNs credentials.
+(`http://127.0.0.1:24324`); none required Firebase/APNs credentials.
 
 ## GoTrue auth emails (`auth-email` Edge Function)
 
@@ -230,35 +310,58 @@ Dashboard → Auth → Hooks in prod):
   GoTrue's own format validation); an invalid recipient is a 400
   `invalid_recipient`, never a silent skip, and `smtpSend` re-checks at the
   wire as a last-line guard. Pinned by `lib.test.ts` + `handler.test.ts`
-  (45 deno tests) and three wire-level cases in
-  `_shared/handler_envelope.test.ts`.
+  (45 deno tests) and four cases in `_shared/handler_envelope.test.ts` —
+  three refusals plus, since [decisions § 1100](../architecture/decisions.md),
+  the positive path: a correctly signed signup hook delivered into the local
+  Mailpit, asserted on the localized subject and on this run's own
+  `token_hash`. The CI boot step writes `SMTP_HOST=host.docker.internal` /
+  `SMTP_PORT=24325` / `SMTP_FROM` for it; `127.0.0.1` there would be the
+  functions container's own loopback.
 - **Locale** — `user_settings.prefs.locale` (service-role read, the same
   §120 pref the worker uses) → signup-time `user_metadata.locale` → `en`. The
   settings read is auxiliary: if it fails the mail still goes out in the
   fallback locale, never blocks the auth flow. The catalogue covers the same
-  six locales as `email_i18n.go` (`en/de/fr/es/ja/pt-BR`), same normalization
-  (region collapse, `pt* → pt-BR`, unknown → `en`), and the HTML/text layout
-  is a port of the worker's renderer so auth mail is visually identical to
-  product mail.
+  seven locales as `email_i18n.go` (`en/de/fr/es/ja/pt-BR/pt-PT`), the same
+  normalization (exact tag, then base language, unknown → `en`; `pt-BR` by its
+  own tag and bare `pt` / `pt-AO` / `pt-MZ` / `pt-CV` → `pt-PT`), and the
+  HTML/text layout is a port of the worker's renderer so auth mail is visually
+  identical to product mail. `AUTH_EMAIL_LOCALES` is derived from
+  `authEmailCatalogue`'s keys; the parity test compares `authEmailShared`'s key
+  set against it and probes the normalizer in both directions
+  (`decisions.md § 761`).
 - **Actions** — one catalogue entry per `email_action_type`: `signup`,
   `invite`, `magiclink`, `recovery` (+ `email` OTP reusing the magic-link
   copy), `email_change` (a secure email change sends TWO mails from one hook
   invocation — the current address pairs `token` + `token_hash_new`, the new
   address `token_new` + `token_hash`; the field names are reversed upstream
   for backwards compatibility), `reauthentication` (code-only, no link), and
-  `password_changed_notification`. Unknown/future action types fall through
+  `password_changed_notification` (no token; states the change time from the
+  signed `webhook-timestamp` and links `APP_BASE_URL/login?reset=1` — § Security
+  emails), and the six other account-change notices (`email_changed`,
+  `phone_changed`, `identity_linked`, `identity_unlinked`,
+  `mfa_factor_enrolled`, `mfa_factor_unenrolled` + `_notification`, same
+  shape — § Security emails). Unknown/future action types fall through
   to an informational default and never fail the hook — a hook failure
   surfaces as a GoTrue API error to the user mid-signup/reset.
-- **Verify link** — built byte-compatible with GoTrue's own
-  `{base}/auth/v1/verify?token={token_hash}&type={action}&redirect_to=…`
-  (including GoTrue's leave-unencoded-unless-`&=#` redirect quirk), so the web
-  e2e reset flow's `extractLink` + `/auth/reset` greps keep working. The OTP
-  code rides along as the link alternative. The base is `API_EXTERNAL_URL`
+- **Action link** — for an http(s) landing (every web flow) the link points
+  straight at that landing carrying the hash the page redeems:
+  `{redirect_to}?token_hash={token_hash}&type={action}`. `verifyOtp` mints the
+  session from the hash alone, so it works in whatever browser opened the
+  mail. The GoTrue `{base}/auth/v1/verify?token=…&type=…&redirect_to=…` hop —
+  byte-compatible with GoTrue's own, including the
+  leave-unencoded-unless-`&=#` redirect quirk — is kept only for a
+  non-http(s) target (the mobile `com.threkir.app://` deep link, where the
+  flow starts and finishes in one app that holds its PKCE verifier, and
+  `supabase_flutter` only understands the resulting `?code=`) and for a
+  missing `redirect_to`. See `decisions.md § 1618` and
+  `docs/features/web_app_auth.md § Email confirmation redirect`. The OTP
+  code rides along as the link alternative. The verify-hop base is
+  `API_EXTERNAL_URL`
   when set, else the runtime-injected `SUPABASE_URL`: the local stack injects
   the Docker-internal `http://kong:8000` as `SUPABASE_URL`, which no browser
   resolves (CI run 28707481878 broke every reset-password e2e this way), so
   the committed `supabase/functions/.env` pins `API_EXTERNAL_URL` to
-  `http://127.0.0.1:54321`. Prod leaves it unset — the hosted runtime's
+  `http://127.0.0.1:24321`. Prod leaves it unset — the hosted runtime's
   `SUPABASE_URL` is already the public project URL. (The name mirrors
   GoTrue's `api_external_url`; a `SUPABASE_`-prefixed name can't be used —
   the CLI reserves the prefix and drops such vars from env files.)
@@ -287,12 +390,132 @@ Dashboard → Auth → Hooks in prod):
   the local stack (`cd apps/backend && supabase stop && supabase start`),
   trigger a mail-sending auth flow from the web app (e.g. `/login?reset=1` →
   send reset link for `runner@test.com`), and check Mailpit at
-  `http://127.0.0.1:54324` for the branded, localized message whose verify
+  `http://127.0.0.1:24324` for the branded, localized message whose verify
   link round-trips.
+
+## Security emails
+
+Account-security notices, all **shipped**: the password-changed and
+new-device notices (round 10, closing the followups entry), and GoTrue's six
+other account-change notices (decisions 1900). Both are transactional: muting `email_notifications` mutes
+neither, and neither carries a `List-Unsubscribe` header.
+
+### Password changed — GoTrue's notice, through the existing hook
+
+- **Trigger: GoTrue itself**, not a database trigger (decisions 1893).
+  GoTrue sends `password_changed_notification` from `PUT /user` whenever a
+  user's password changes — the Settings change-password form and the
+  recovery-link reset both go through that endpoint — once
+  `[auth.email.notification.password_changed] enabled = true` is set (local
+  `config.toml`) or the matching security-notification toggle is on (prod).
+  An admin password update (service role, `PUT /admin/users`) does not send
+  it; nothing in the product does that.
+- **Render:** the send-email hook (`auth-email`) already had the catalogue
+  entry; it now states **when** (`2026-10-14 09:30 UTC`, from the signed
+  `webhook-timestamp` — the hook's own clock-checked time, within GoTrue's send
+  latency of the change), what to do if it was not you (reset from the sign-in
+  page, then write to `security@threkir.com`), and a **Reset password** CTA to
+  `APP_BASE_URL/login?reset=1`. Unset `APP_BASE_URL` → the mail goes out
+  without a button and its copy still names the sign-in page; a missing
+  timestamp → the time paragraph falls back to the preheader rather than
+  rendering an empty placeholder. Seven locales.
+- **No opt-out, by design.** It is the one mail an account takeover must not
+  be able to silence; there is no settings key for it on any surface.
+- Pinned by `auth-email/lib.test.ts` (time, CTA, contact, every locale's
+  placeholder count) + `handler.test.ts` (the signed hook time reaches the
+  MIME).
+
+### The other account-change notices — GoTrue's, through the same hook
+
+- **Trigger: GoTrue itself**, like the password notice. Action types and
+  payload fields are GoTrue's own (`internal/mailer/mailer.go`,
+  `EmailData`): `email_changed_notification` (+ `old_email`),
+  `phone_changed_notification` (+ `old_phone`),
+  `identity_linked_notification` / `identity_unlinked_notification`
+  (+ `provider`), `mfa_factor_enrolled_notification` /
+  `mfa_factor_unenrolled_notification` (+ `factor_type`). Each is enabled by
+  its `config.toml [auth.email.notification.<name>]` block locally and by its
+  toggle under Dashboard → Authentication → Emails → Templates → **Security**
+  in prod.
+- **Render:** one catalogue entry per action in all seven locales, the
+  password notice's shape — what changed, when (UTC), "if this was you,
+  nothing to do", and the not-you path with `security@threkir.com`. A
+  `{method}` line names the provider (`Google`, `Apple`, "Email and
+  password"…) or factor (`totp` → "Authenticator app", `phone` → SMS code,
+  `webauthn` → "Security key or passkey"); an unknown or missing value drops
+  that line and nothing else, so a raw id never reaches the mail.
+- **Email changed goes to the previous address.** By the time GoTrue fires
+  it, `user.email` already holds the new one; the mailbox that needs the
+  warning is `email_data.old_email` (GoTrue's own mailer sends there too).
+  A payload without `old_email` sends nothing and logs the miss: falling
+  back to `user.email` would warn only the address that took the account.
+  It has **no** Reset password button — a reset requested now would mail the
+  new address — so its copy sends the reader to the security contact.
+  The other five carry the same `/login?reset=1` CTA as the password notice.
+- **Privacy:** no notice prints an email address or phone number — not the
+  new one, not the old one. The old mailbox may be one the user deliberately
+  left (a former employer, a shared inbox), so telling it where the account
+  went is a disclosure; the account holder already knows, and an intruder's
+  address is something the security contact can look up.
+- **No opt-out**, same reasoning as the password notice.
+- Pinned by `auth-email/lib.test.ts` (routing, `old_email` recipient,
+  provider / factor labels and their fallback, every locale's `{when}` +
+  contact + no-address) + `handler.test.ts` (the email-changed send reaches
+  the old address without printing either).
+
+### New-device sign-in — `sign_in_devices` + `security_email`
+
+- **What counts as a device:** a `(browser family, platform family)` pair —
+  `chrome|edge|firefox|safari|opera|samsung|threkir_app|other` ×
+  `android|ios|windows|macos|linux|chromeos|other` — computed inside the
+  trigger by `sign_in_browser_class` / `sign_in_platform_class` from the
+  session's User-Agent. The mobile apps reach GoTrue over dart:io
+  (`Dart/x (dart:io)`), so the app is its own class with platform `other`.
+  Coarse on purpose: a browser upgrade, a new phone of the same kind or a new
+  IP is not a new device, so the alert stays rare enough to be read.
+- **Privacy:** only the two enum values and first/last-seen times are stored
+  (`sign_in_devices`); never the raw User-Agent, never an IP, never a
+  location — GoTrue's own `auth.sessions.ip` is not read at all. The values are
+  not hashed, because hashing a ~60-value space would be a privacy claim
+  anyone holding the table could undo by hashing all sixty. The job payload
+  carries the same two classes and a UTC time, and so does the email.
+  Retention: 180 days unseen, refreshed from live sessions first, never below
+  one class per account; exported in the Art 20 archive
+  (`sign_in_devices.json`); cascades on deletion. decisions 1894;
+  `derived_state.md § sign_in_devices`.
+- **When it fires:** the `auth.sessions` AFTER INSERT trigger (one row per
+  sign-in — password, OTP, magic link, OAuth) plus an AFTER UPDATE OF
+  `user_agent` trigger for a session whose User-Agent GoTrue fills in after
+  the insert. A **token refresh never fires it** — it updates an existing
+  session, and the update trigger's `old.user_agent is null` guard excludes
+  every refresh that rewrites the same value.
+- **Who is not emailed:** the account's **first-ever** sign-in (signing up
+  signs the new user straight in — that session becomes the silent baseline);
+  anonymous users; anyone with `email_new_device_alerts = 'off'`; a class the
+  account has used before. Existing accounts were baselined from their live
+  sessions by the migration, so the deploy mails no one.
+- **Send:** `handler_security_email.go` reads prefs at send time (a failed read
+  retries the job — it carries the opt-out, so the worker never guesses),
+  resolves the address, and renders the subject, the device phrase (`Firefox
+  on Linux`, `the Threkir app`, `an unrecognised device`), the UTC time, a
+  **Reset password** CTA to `/login?reset=1`, `security@threkir.com`, and a
+  footer link to the email preferences that hold the opt-out. Seven locales,
+  with Japanese ordering platform before browser through indexed verbs.
+- **Opt-out:** `email_new_device_alerts` (`docs/backend/settings.md`), opt-OUT
+  and default on; only the literal `'off'` mutes. Web Settings → Notifications
+  and mobile Settings → Preferences.
+- **Layered resilience:** the trigger traps every error and returns, so the
+  bookkeeping can never fail a sign-in; the worst case is one missed alert.
+- **Volume bound:** at most one mail per class per account per retention
+  window — the class space is ~60 values, so a hostile sign-in loop cannot
+  turn this into a mail cannon.
+- Pinned by `sign_in_devices_test.sql` (pgtap) and
+  `handler_security_email_test.go` (send, opt-out, channel-mute independence,
+  prefs-read retry, skips, device phrases, every locale renders).
 
 ## Planned / not built
 
-- [~] **Weekly digest** (engagement) — **FULLY BUILT INCL. SCHEDULER, SEND STILL GATED
+- [~] **Weekly digest** (engagement) — code complete, send gated; the open half is **Email — production ops** in [`roadmap.md`](../product/roadmap.md). **FULLY BUILT INCL. SCHEDULER, SEND STILL GATED
   ON SMTP + CISO/COUNSEL (2026-06-20, scheduler migration `20270220_001`; decisions §174).**
   The missing piece — a `pg_cron` `enqueue_weekly_digests()` (Monday 08:00 UTC,
   opt-in-only, dedupe-safe) — now ships; the send is fail-closed on the unset
@@ -320,9 +543,11 @@ Dashboard → Auth → Hooks in prod):
   silently dropped every future send while the toggle read 'on' (#392); the
   address-keyed row covers every stream, so re-opting into either engagement
   stream lifts it and the per-stream opt-in prefs become the authoritative gate
-  again. **NOT enabled:** the builder is
-  **UNSCHEDULED** — no `pg_cron` ships (no marketing send fires). The **opt-in
-  preference toggle** ships on web `/settings/preferences` + mobile Settings →
+  again. The Go builder
+  `digest_builder.go` (`EnqueueAllWeeklyDigests`) stays the manual backfill path
+  and is deliberately unscheduled; the scheduled producer is the SQL
+  `enqueue_weekly_digests()` that `20270220_001` puts on `pg_cron`. The **opt-in
+  preference toggle** ships on web `/settings/notifications` + mobile Settings →
   Preferences (default off). The **provider bounce/complaint suppression
   webhook** is now built (`POST /v1/email/bounce`, worker
   `internal/bouncehook/` — parses Resend event JSON / SES-over-SNS
@@ -333,7 +558,7 @@ Dashboard → Auth → Hooks in prod):
   **gated on CISO + counsel sign-off** (bulk/promotional mail under CAN-SPAM +
   GDPR/ePrivacy, unlike the transactional kinds) — the only remaining work for
   an enabled send is that operator-side `pg_cron` schedule + the sign-off.
-- [~] **Lifecycle drip** (engagement) — **FULLY BUILT INCL. SCHEDULER, SEND STILL
+- [~] **Lifecycle drip** (engagement) — code complete, send gated; the open half is **Email — production ops** in [`roadmap.md`](../product/roadmap.md). **FULLY BUILT INCL. SCHEDULER, SEND STILL
   GATED ON SMTP + CISO/COUNSEL (2026-06-20, migration `20270223_001`; decisions
   §177).** Onboarding / re-engagement / streak nudges on the SAME rails as the
   weekly digest — a new `lifecycle_drip` jobs.kind carrying `{user_id, template}`
@@ -367,7 +592,7 @@ Dashboard → Auth → Hooks in prod):
   is harmless no-op churn until then). The **opt-in preference toggle** ships on
   web Settings → Preferences (`email-lifecycle-drip` checkbox) + mobile
   Settings → Preferences (`prefsEmailLifecycleDrip` switch, default off),
-  i18n'd across all six locales — the in-app equivalent of the one-click
+  i18n'd across every web locale + every ARB — the in-app equivalent of the one-click
   unsubscribe, mirroring the digest toggle.
 - [x] **Account-deletion receipt** — SHIPPED 2026-06-20 (migration
   `20270217_001`, `account_deleted` template). Built as **enqueue-with-inline-
@@ -381,37 +606,208 @@ Dashboard → Auth → Hooks in prod):
   inline-address template to `handleAccountDeletionReceipt`, which dedups on a
   SHA-256 hash of the address via the non-cascading `account_deletion_receipts`
   table (`lifecycle_email_log` would have cascaded away with the user). The
-  receipt copy carries no `/settings/preferences` link (the account is gone).
+  receipt copy carries no preferences link, old or new (the account is gone).
+  Because the EF holds no catalogue of its own, `normalizeReceiptLocale` can
+  name a locale the worker has no `account_deleted` copy for and the receipt
+  would silently arrive in English. `lib.test.ts` therefore parses the worker's
+  `emailCatalogue` out of the Go source and holds `RECEIPT_LOCALES` to it — the
+  only cross-tier locale guard in the repo (`decisions.md § 761`).
   The deleted address lingers in `jobs.payload` only until the job drains
   (minutes), then in `account_deletion_receipts` only as a hash, pruned at 30
   days. `decisions.md § 121`.
 - [x] **Web push server-side delivery** — SHIPPED 2026-06-04 (migration
   `20261219_001`, `web_push` kind). See the architecture note above. Gated on the
   operator-generated `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` (self-generated, not a
-  third-party credential); unset → jobs finish done, rows stay pending. A
-  `push_notifications` category UI toggle (web + mobile) is the small remaining
-  follow-up — gating works on the `important` default without it.
-- [~] **Native push (FCM / APNs)** — backend + client BUILT 2026-06-19 (migration
+  third-party credential); unset → jobs finish done, rows stay pending. The
+  `push_notifications` category toggle ships on both platforms
+  (`settings/notifications/+page.svelte`, `settings_preferences_screen.dart`);
+  gating works on the `important` default without it.
+- [~] **Native push (FCM / APNs)** — code complete, send gated; the open half is **Native push delivery** in [`followups.md`](../product/followups.md). Backend + client BUILT 2026-06-19 (migration
   `20270212_001`, `native_push` kind), **send gated on operator credentials**. Same
   `notifications` source of truth + sibling-consumer pattern the `web_push` kind
-  demonstrates; the FCM/APNs sender (`internal/nativepush/`) + handler
+  demonstrates; the FCM sender (`internal/nativepush/`) + handler
   (`handler_native_push.go`) + the mobile `firebase_messaging` device-token
   registration (`push_messaging_bridge.dart`, both twins) all ship. Going live is
-  blocked only on operator-supplied Firebase/APNs credentials on the worker
-  (`FCM_*` / `APNS_*`) + the per-app config files (`google-services.json` /
-  `GoogleService-Info.plist`); unset → jobs finish done, rows stay pending. roadmap
+  blocked only on operator-supplied Firebase credentials on the worker
+  (`FCM_*`) + the per-app config files (`google-services.json` /
+  `GoogleService-Info.plist`), plus — for Apple delivery — the APNs auth key
+  uploaded to the Firebase project; unset → jobs finish done, rows stay pending. roadmap
   Phase 4b. See the architecture sibling note above + `decisions.md § 161`.
+
+- [x] **Data-export-ready notification** — SHIPPED 2026-08-25 (migration
+  `20270607_001`, `data_export_ready` notification kind; `decisions.md § 729`).
+  This was the longest-standing **Not planned** entry in this doc, on a
+  precondition that has since expired: "the export endpoint is synchronous and
+  returns a 10-minute signed URL inline, so an async email would arrive stale."
+  The export is a queued job since `§ 717` and the only rail on either client
+  since `§ 724`. The staleness objection is answered by the same design that
+  closed it rather than waived: the signed URL is minted when the subject asks
+  (web's status endpoint at read time, mobile at the Download tap), never when
+  the worker finishes, so the message links to **`/settings/account`** and
+  carries no URL and no expiry of its own. It is ONE `notifications` row, so all
+  three existing transports pick it up as siblings; the idempotency stamp is
+  `data_export_jobs.notified_at`, written in the same statement as the inbox row
+  by `notify_data_export_ready()`, which makes an at-least-once redelivery
+  silent AND lets the already-built branch re-ask (repairing a crash between the
+  finish write and the announcement). A failed announcement never fails the
+  export. The **opt-OUT** `notify_data_export_ready` pref is the per-kind mute
+  (default on, web Settings → Preferences), deliberately the opposite direction
+  from the engagement streams' opt-IN — see `docs/backend/settings.md` and the
+  ADR for why. Goes live with the shared `SMTP_HOST` worker gate like every
+  other notification kind; no new credential.
+
+- [x] **Reversed-refund notification** — SHIPPED 2026-08-31 (migration
+  `20270701000001`, `refund_failed` notification kind; `decisions.md § 825`).
+  A refund the bank sent back leaves money with us that we owe the payer, and
+  `decisions.md § 789` gave that state an honest name and an operator worklist
+  but no reader — the buyer's seat was gone, the refund never arrived, and
+  nothing said why. This is the sentence the app should be saying.
+  A **notification kind rather than a `jobs.kind`**, for two reasons that are
+  both about reach: the fan-out already turns one row into the inbox entry, the
+  email and both pushes, and the inbox is the **only one of those four mobile
+  renders** (there is no paid-registration surface on mobile at all —
+  `club_events.md` P3); and on the **donation** ledger it is the only surface
+  that can exist, because `donations` carries no client SELECT policy and a
+  donor cannot read their own row anywhere, so the message carries the whole
+  sentence rather than pointing at a ledger they cannot see.
+  In `importantKinds`, so the default `important` mode delivers it. It gets
+  **no `kindMutePrefKey` entry** — a per-kind opt-out of being told we still
+  hold your money is not a control anyone benefits from having, and
+  `email_notifications = off` still silences it, which is the fail-closed
+  property that matters. There is no `notified_at` stamp either: the enqueue
+  trigger is `after update of status ... when (old.status is distinct from
+  new.status)`, and the webhook CASes against the status it read, so a
+  redelivery updates no row and announces nothing — the § Idempotency rule for
+  recurring transactional templates, not the once-per-account one.
+  `pathForKind` has **two arms**: an event order carries `event_id` and goes to
+  `/events/{id}`, a donation carries no FK and goes to the inbox, because
+  `eventPath`'s own `/clubs` fallback would answer "we still have your money"
+  with a club directory. An **anonymous** donation (`donor_user_id` null) has
+  no account to reach and is skipped in the trigger. Goes live with the shared
+  `SMTP_HOST` worker gate; no new credential.
+
+- [x] **The cancel email says a paid registrant is being refunded** — SHIPPED
+  2026-10-13 (migration `20270725000002`, `decisions.md § 1834`). Not a new
+  kind: an `event_cancel` row carries `notifications.refunded`, set by
+  `notify_event_cancel` for a recipient holding a `paid` / `partially_refunded`
+  order on the occurrence. `copyKeyFor(row)` resolves such a row to the
+  `event_cancel_refunded` catalogue entry, and the email, web-push and
+  native-push renders all go through it, so one flag changes all three. The
+  key sits apart from the kind table (it is not a kind, so the
+  kind-coverage guards ignore it) and carries copy in all seven locales. The
+  wording is "is being refunded", never "has been": `events-cancel` records the
+  cancel before it calls Stripe, so the row is written while the refund is
+  still owed. Deep link and `importantKinds` membership are the plain
+  `event_cancel`'s.
+
+- [x] **A held waitlist seat is announced on every channel** — SHIPPED
+  2026-10-13 (migration `20270726000002`, `event_waitlist_slot` notification
+  kind; `decisions.md § 1840`). When a seat frees on a paid occurrence, the
+  earliest unpaid waitlister is offered it for 12 hours (clamped to sales
+  close) and told so by one `notifications` row that `private.fill_event_seats`
+  inserts with `event_id` + `event_instance_start`. The message is the one
+  whose value lapses if it is not delivered — an unclaimed offer passes to the
+  next person — so the kind is in `importantKinds` (the default `important`
+  mode emails and pushes it) and has no `kindMutePrefKey` entry;
+  `email_notifications = off` / `push_notifications = off` still silence it.
+  Copy in all seven locales on email, web push and native push says the place
+  is HELD and must be paid for, never that it is booked, and that nothing is
+  charged unless they pay; the deadline itself lives on the event page, which
+  `pathForKind` links to (`/events/{id}`, the event family's arm). No stamp
+  column: each offer is a distinct seat event, made under the occurrence's
+  advisory lock, and a row is never offered twice (`offer_expires_at is null`
+  is the candidate filter). The kind widen is the `NOT VALID` half in
+  `20270726000002` and the `VALIDATE` in `20270726000022`. Goes live with the
+  shared `SMTP_HOST` worker gate; no new credential.
+
+- [x] **Reactions, comment likes and mentions on every channel** — SHIPPED
+  2026-10-15 (migration `20270826000001`, kinds `reaction`, `comment_like`,
+  `mention`; `decisions.md § 1971`). `mention` is in `importantKinds` — someone
+  addressed the recipient by handle, which is closer to a direct message than
+  to the social loop — so the default `important` mode emails and pushes it;
+  `reaction` and `comment_like` are social-loop signals like kudos and leave
+  the inbox only under `all`. Each has its own opt-OUT `kindMutePrefKey`
+  (`notify_mention`, `notify_reaction`, `notify_comment_like`, web Settings →
+  Notifications), subtract-only like `notify_data_export_ready`. All three
+  deep-link to `/runs/{id}`, which serves a non-owner the shared view of any
+  run their audience admits — the mention gate already required that audience.
+- [x] **Follow requests reach the default mode** — `follow_request` (private
+  profiles, `decisions.md § 1967`) is in `importantKinds` since § 1983: only the
+  owner can let the asker in, so the default `important` mode emails and pushes
+  it, where a plain `follow` stays under `all`. Deep link `/follow-requests`.
+  Its own opt-OUT mute is `notify_follow_request` (web Settings →
+  Notifications), subtract-only like the other per-kind mutes. A requester
+  who asks, withdraws and asks again raises one notification (so one email
+  and push) per owner per 24 h, not one per ask: the trigger claims a row in
+  `private.follow_request_notices` before inserting, which the withdrawal does
+  not clear (migration `20270829000012`).
+  Copy in all seven locales; no new credential. The kind widen is the
+  `NOT VALID` half in `20270826000001` and the `VALIDATE` in `20270826000002`.
+- [x] **Today's-workout reminder** — `workout_reminder` (issue #1186,
+  `decisions.md § 2087`) is raised by the hourly `enqueue_workout_reminders()`
+  cron, not a trigger. It is in `pushImportantKinds`, not `importantKinds`, so
+  the default `important` mode pushes it and does not email it: a daily email
+  by default is too heavy for a morning nudge, and `email_notifications = all`
+  opts in (decisions § 2098). Only a runner with a known `time_zone` is
+  reminded (decisions § 2097). Deep link `/plans/{plan_id}`. Its opt-OUT mute
+  `notify_workout_reminder` is the one per-kind mute applied before the row
+  exists as well as in `kindMuted`. One per runner per local day, claimed in
+  `private.workout_reminder_claims`. The kind widen is the `NOT VALID` half in
+  `20270913000001` and the `VALIDATE` in `20270913000002`.
+- [x] **Course alerts** — issue #1190, `decisions.md § 2407`, migrations
+  `20271124002407`-`09`. `course_alert` (to runners training for a race, or
+  who saved its course, when the verified organiser posts a reroute,
+  closure, course-direction or notice) is in `importantKinds` with the
+  opt-OUT mute `notify_course_alert`. Deep link `/course-alerts/{id}`, the
+  web resolver that opens the race or route. Copy in all seven locales.
+- [x] **Race start notices** — `race_starting_soon` and `race_start_moved`
+  (issue #1306, `decisions.md § 2400`, migration `20271121002400`, the kind
+  widen's `VALIDATE` in `…2401`). Raised for a Scheduled GO race: about 10
+  minutes before the server fires GO, for everyone going, by the per-minute
+  `race_sessions_tick()` (skipped when an `event_reminder` reached the runner
+  within the hour), and when the organiser delays the start. Both are in
+  `pushImportantKinds` and the new `pushOnlyKinds`, which `shouldEmail`
+  refuses under every mode, `all` included: a ten-minute warning is stale in a
+  mailbox. One opt-OUT mute covers both, `notify_race_starting_soon` (web
+  Settings → Notifications, mobile Settings → Preferences); the tick reads it
+  and raises no starting-soon row for a muted runner. The copy is static like
+  every other kind and names no time: the start can move again before the
+  push is read, so the time is one tap away on the event page, which is the
+  deep link (`/events/{event_id}`). Copy in all seven locales.
+- [x] **Club and event notices** — issue #1300 BUG-009 / 010 / 016,
+  `decisions.md § 2358`, migrations `20271112000010`-`13` (the kind widen's
+  `VALIDATE` is `20271112000011`). `club_join_request` (to a request-to-join
+  club's owner and admins), `club_join_approved` (to the member an admin let
+  in) and `event_updated` (to the upcoming attendees when an event's time,
+  place or description changes, at most one per event per 15 minutes) are in
+  `importantKinds`, so the default mode emails and pushes them. `event_rsvp`
+  moved into `pushImportantKinds`: the default mode now pushes an organiser
+  each RSVP and still emails it only under `all`, because a busy event raises
+  one per RSVP. Each has an opt-OUT mute (`notify_club_join_request`,
+  `notify_club_join_approved`, `notify_event_updated`, `notify_event_rsvp`;
+  web Settings → Notifications), subtract-only like the others. Deep links:
+  the join kinds go to `/clubs/{club_id}`, `event_updated` to
+  `/events/{event_id}`. Deleting an event now leaves each upcoming attendee
+  an `event_cancel` with no `event_id` (the cascade would have erased a
+  linked one) and the club in `club_id`, so `pathForKind` sends it to
+  `/clubs/{club_id}` rather than the hub; its copy is the existing
+  `event_cancel` catalogue entry. Copy for the three new kinds in all seven
+  locales.
+
+- [ ] **Park course reporter acknowledgement** — issue #1346, `decisions.md
+  § 2449`. A park course reporter may leave a contact email and need not be a
+  user. No mail is sent to it: the operator replies by hand from the address
+  `/admin/reports` links, and the purge clears it 30 days after resolution. An
+  automated acknowledgement would be a new non-user kind on the
+  `club_verification_email` pattern (inline address and locale in the payload,
+  no preference gate, its own footer), plus a stated basis for mailing a
+  non-user, which waits on an owner decision.
 
 ### Not planned (with reason)
 
-- **Data-export-ready email** — the export endpoint is **synchronous** and
-  returns a 10-minute signed URL inline; an async email would arrive stale.
-  Revisit only if export moves to an async/job model.
-- **New-device sign-in alerts** — there's no sign-in/device tracking to key
-  them off. The send-email hook IS now configured (§ GoTrue auth emails) and
-  its catalogue already carries `password_changed_notification` copy, so if
-  GoTrue's security-notification sends are ever enabled they arrive localized
-  — but we don't enable them today.
+- Nothing open in this section. The last entry — GoTrue's other security
+  notices falling through to the generic default — closed with decisions
+  1900; new-device sign-in alerts shipped with 1894.
 
 ## Production ops (required before any email actually sends)
 
@@ -429,16 +825,20 @@ None of this sends in prod until an operator:
    subscribed with — apps/web's `PUBLIC_VAPID_PUBLIC_KEY`), `VAPID_PRIVATE_KEY`,
    and `VAPID_SUBJECT` (`mailto:` contact) on the worker. Until then `web_push`
    jobs finish done while leaving the notification rows pending.
-2c. (For **native push**) provisions a Firebase project + an APNs auth key, then:
-   on the **worker**, sets `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` (Android)
-   and/or `APNS_KEY_P8` + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_TOPIC`
-   (+ `APNS_SANDBOX=1` for dev builds) (iOS); on the **mobile apps**, drops
-   `google-services.json` into `apps/mobile_android/android/` and
-   `GoogleService-Info.plist` + the APNs push entitlement into
-   `apps/mobile_ios/ios/`. Either credential group alone enables that platform;
-   neither set → `native_push` jobs finish done while leaving the rows pending,
-   and the mobile bridge no-ops (compiles + runs without the config files). A
-   configured-but-invalid credential fails the worker loudly at startup.
+2c. (For **native push**) provisions a Firebase project, then: on the
+   **worker**, sets `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID`, which serve
+   Android and iOS alike; on the **mobile apps**, supplies
+   `google-services.json` and `GoogleService-Info.plist` as the
+   `GOOGLE_SERVICES_JSON_BASE64` / `GOOGLE_SERVICE_INFO_PLIST_BASE64` repo
+   secrets the release workflows decode into
+   `apps/mobile_android/android/app/` and `apps/mobile_ios/ios/Runner/` (both
+   files are gitignored — public repo); and, for **Apple delivery only**,
+   uploads the APNs auth key `.p8` into the Firebase project rather than to
+   the worker. Unset → `native_push` jobs finish done while leaving
+   the rows pending, and the mobile bridge no-ops. A configured-but-invalid
+   credential fails the worker loudly at startup. **The ordered runbook, with
+   where each artifact lives and how to verify each leg, is
+   [`native_push.md` § Operator provisioning](native_push.md#operator-provisioning-the-credential-gate).**
 2d. (For **auth emails**) prod auth mail has three independent knobs — the
    **sender** (SMTP), the **templates** (the send-email hook), and the **URL
    config**. Provider is **Resend, already wired**: the DKIM/SPF/DMARC for
@@ -474,6 +874,24 @@ None of this sends in prod until an operator:
      localhost. **Confirm email** (Auth → Providers → Email) is off on a fresh
      project *and* in local `config.toml`, so the signup-confirmation path is
      prod-only — see web_app_auth.md § Email confirmation redirect.
+2e. (For the **security emails**, § Security emails) turns on the
+   **password-changed** security notification on the hosted project (Dashboard
+   → Auth → Emails → security notifications, or the Management API
+   `config/auth` field `mailer_notifications_password_changed_enabled: true`)
+   — `config.toml` does not reach prod — and sets `APP_BASE_URL` (the web
+   origin, `https://threkir.com`) as an `auth-email` function secret so the
+   notice carries its Reset password button. With the send-email hook enabled
+   the hook renders it localized; without it GoTrue sends its built-in English
+   template over the project SMTP. The **six other account-change notices**
+   (email address changed, phone number changed, sign-in method linked /
+   removed, MFA method added / removed) need the same flip, each its own
+   toggle under Authentication → Emails → Templates → **Security** (Management
+   API: `mailer_notifications_{email_changed,phone_changed,identity_linked,identity_unlinked,mfa_factor_enrolled,mfa_factor_unenrolled}_enabled`).
+   Flip them only **after** the `auth-email` deploy carrying decisions 1900
+   is live — before it, each would render the generic default. The **new-device** alert needs no new
+   credential: it rides the worker's existing `SMTP_HOST` + `APP_BASE_URL`,
+   and its schedule (`prune-sign-in-devices`, daily) is created by the
+   migration — confirm it with the other pg_cron jobs in step 2.
 3. **Sets up domain auth** — SPF / DKIM / DMARC for `threkir.com` so mail isn't
    spam-filed. **Already done for Resend** — the record set is Terraformed in
    `infra/dns` (`email_auth_records`), so a DR rebuild restores deliverability;
@@ -495,6 +913,36 @@ None of this sends in prod until an operator:
 6. (For the **sender brand logo**, BIMI — issue #211) so inbox clients render
    the Threkir mark next to `noreply@threkir.com` instead of a generic letter
    avatar. See § Sender brand logo (BIMI) below for the two fail-closed gates.
+
+## Header mark (the logo inside the message)
+
+Both templates — the Go worker's `renderHTMLBody` and `auth-email`'s
+`renderAuthEmail` — open with the app mark beside the wordmark on the teal
+bar. This is separate from BIMI below: BIMI is the avatar the *inbox* draws
+next to the sender, this is the logo *inside* the message. They are the same
+mark by design, so the two agree once BIMI is honoured.
+
+- **Asset** — `assets/email-logo.svg` (source, gradient pinned by
+  `brand_icon_color_guard`) rendered to `apps/web/static/email-logo.png`
+  (96x96, 3x the 32px display size) by `assets/gen-email-logo.sh`. Served at
+  `https://threkir.com/email-logo.png` off the apex CloudFront distribution.
+  Email clients can't display an SVG, so only the PNG ships.
+- **Base URL** — BOTH resolve it against `APP_BASE_URL`, the WEB origin.
+  `auth-email` needs it as its own function secret (`supabase secrets set
+  APP_BASE_URL=https://threkir.com`). It must NOT come from the hook payload's
+  `site_url`: GoTrue sends the **API external URL** there
+  (`<ref>.supabase.co/auth/v1`), not the dashboard's Site URL, so a mark built
+  from it points at the API host and renders broken in every client — which is
+  exactly what shipped on 2026-09-18 before this was found. Unset → the
+  wordmark renders alone rather than a broken image, which is also what an
+  image-blocking client shows.
+- **`alt` is empty on purpose.** The wordmark beside it is real text; a
+  populated alt makes a screen reader announce the brand twice.
+- **Don't add an anchor above the CTA.** `tests-e2e/fixtures/mailpit.ts`'s
+  `extractLink` reads the first anchor href to find the action link — it used
+  to read the first URL, which the mark's `<img src>` broke. An image is not
+  an anchor, so the mark is safe; a second link would not be. See
+  [decisions.md § 1642](../architecture/decisions.md).
 
 ## Sender brand logo (BIMI)
 
@@ -545,14 +993,22 @@ The code side is built and committed:
 
 ## Where the code lives
 
+- Brand mark: `assets/email-logo.svg` + `assets/gen-email-logo.sh` →
+  `apps/web/static/email-logo.png` (§ Header mark above).
 - Worker: `apps/job_worker/internal/` — `mailer.go` (transport + HTML/text
-  render incl. `renderWeeklyDigest`), `email_i18n.go` (catalogue),
+  render incl. `renderWeeklyDigest`, `renderBrandLockup` + `emailLogoURL`; also `importantKinds` / `inAppOnlyKinds` /
+  `kindMutePrefKey` + `pathForKind`), `email_i18n.go` (catalogue),
   `handler_notification_email.go`, `handler_lifecycle_email.go`,
-  `handler_safety_email.go`. Web push: `handler_web_push.go`, `push_render.go`
+  `handler_safety_email.go`, `handler_security_email.go` (+ `renderSecurityEmail` /
+  `deviceLabel` in `mailer.go`). Data-export-ready: the announcement hook is
+  `handler_data_export.go`'s `announceExportReady` over
+  `SupabaseClient.NotifyDataExportReady` (`supabase_dataexport_jobs.go`) — it
+  runs on BOTH the fresh-build path and the already-built early return, and
+  never returns an error. Web push: `handler_web_push.go`, `push_render.go`
   (pref gate + payload), and the `internal/webpush/` RFC 8291/8292 sender.
   Native push: `handler_native_push.go` (reuses `push_render.go`'s `pushMode` /
   `shouldPush` pref gate + the shared title/body catalogue), and the
-  `internal/nativepush/` FCM HTTP v1 + APNs HTTP/2 sender (stdlib + `golang-jwt`).
+  `internal/nativepush/` FCM HTTP v1 sender (stdlib + `golang-jwt`).
   Weekly digest (behind the gate): `handler_weekly_digest.go` (gate + render),
   `digest_builder.go` (`EnqueueAllWeeklyDigests` — UNSCHEDULED),
   `internal/digesttoken/` (the stateless RFC 8058 HMAC token, now **stream-aware**:
@@ -579,7 +1035,22 @@ The code side is built and committed:
   `20270223_001` (lifecycle drip — the `lifecycle_drip` jobs.kind + the
   `enqueue_lifecycle_drip()` cohort-selection function + the daily
   `enqueue-lifecycle-drip` pg_cron; the opt-in `email_lifecycle_drip` pref is a
-  jsonb key with no migration, like the digest pref).
+  jsonb key with no migration, like the digest pref), `20270607_001`
+  (data-export-ready — the `data_export_ready` notifications kind, widened with
+  the `NOT VALID` + `VALIDATE` two-step because `notifications` is a guarded
+  table, plus `data_export_jobs.notified_at` and the `notify_data_export_ready()`
+  service-role RPC; the opt-OUT `notify_data_export_ready` pref is a jsonb key
+  with no migration), `20270701000001` (reversed refund — the `refund_failed`
+  notifications kind on the same two-step, plus one `after update of status`
+  trigger per money ledger; no stamp column and no pref, decisions § 825),
+  `20270726000002` + `20270726000022` (waitlist seat offer — the
+  `event_waitlist_slot` notifications kind, widened `NOT VALID` in the first and
+  validated in the second so the scan runs outside the DROP's lock, decisions
+  § 1840), `20270804000001` + `20270804000002` (security emails — the
+  `security_email` jobs.kind, then `sign_in_devices`, the two classifiers, the
+  `auth.sessions` triggers, the baseline backfill and the
+  `prune-sign-in-devices` pg_cron; the opt-OUT `email_new_device_alerts` pref
+  is a jsonb key with no migration).
 - Native-push client leg: the mobile device-token registration —
   `apps/mobile_android/lib/push_messaging_bridge.dart` +
   `firebase_push_messaging.dart` (byte-identical iOS twins), wired in `main.dart`,
@@ -595,7 +1066,7 @@ The code side is built and committed:
   byte-identical iOS twin) add/confirm/remove + incoming-request confirm/decline;
   schema in `docs/backend/api_database.md`. The email-link confirm page stays
   web-only (no mobile deep-link route).
-- Clients (locale write): web `apps/web/src/routes/settings/preferences/`,
+- Clients (locale write): web `apps/web/src/lib/settings/prefs_page.svelte.ts` (backfill on any preference page) + `apps/web/src/routes/settings/display/` (the language picker),
   mobile `apps/mobile_android/lib/screens/settings_preferences_screen.dart`.
 - Auth emails: `apps/backend/supabase/functions/auth-email/` — `lib.ts`
   (Standard Webhooks verification + the six-locale catalogue + send plan +
@@ -605,4 +1076,7 @@ The code side is built and committed:
   the committed `supabase/functions/.env`.
 - ADRs: `decisions.md` §117 (channel), §119 (lifecycle kind), §120 (i18n),
   §121 (subscription emails), §131 (safety-contact alerts), §203 (auth-email
-  hook).
+  hook), §729 (data-export-ready + the per-kind mute), §825 (reversed refund),
+  1893 (password-changed through GoTrue's hook) + 1894 (new-device
+  detection and its privacy design) + 1900 (GoTrue's other account-change
+  notices).

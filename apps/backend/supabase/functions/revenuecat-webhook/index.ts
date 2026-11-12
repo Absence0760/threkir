@@ -5,21 +5,25 @@
 /// between "has an active entitlement" and "doesn't", and map that to
 /// `user_profiles.subscription_tier`.
 ///
-/// Auth: the webhook request is verified via HMAC (the shared secret is
-/// the REVENUECAT_WEBHOOK_SECRET env var). The function runs with the
+/// Auth: RevenueCat's HMAC webhook signing — an
+/// `X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>` header over
+/// `${t}.${body}`, keyed by the signing secret the dashboard shows once when
+/// signing is switched on (the REVENUECAT_WEBHOOK_SECRET env var). The function runs with the
 /// Supabase service role so it can update any user's tier.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
+import type { Database, DbClient, TablesUpdate } from '../_shared/database.ts';
 import { readTextWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { isValidUuid } from '../_shared/input_validation.ts';
 import {
-  hmacHex,
   isAnonymousAppUserId,
-  isValidUuid,
-  timingSafeEqual,
+  shouldReleaseDedupe,
   validateFreshness,
+  verifyTimestampedHmac,
 } from '../_shared/webhook_security.ts';
 import {
+  ACTIVATING_EVENTS,
   DEACTIVATING_EVENTS,
   mapEventToBillingIssue,
   mapEventToTier,
@@ -45,15 +49,11 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
     return Response.json({ error: 'webhook_not_configured' }, { status: 503 });
   }
 
-  // Verify HMAC signature with a constant-time compare so an attacker
-  // can't tease the digest out one byte at a time via response-timing
-  // (low practical risk over a network, but free to do correctly).
-  const sig = req.headers.get('x-revenuecat-hmac');
+  const sig = req.headers.get('x-revenuecat-webhook-signature');
   if (!sig) {
     return Response.json({ error: 'missing_signature' }, { status: 401 });
   }
-  const expected = await hmacHex(secret, body);
-  if (!timingSafeEqual(sig, expected)) {
+  if (!(await verifyTimestampedHmac(body, sig, secret, Date.now()))) {
     return Response.json({ error: 'bad_signature' }, { status: 401 });
   }
 
@@ -62,6 +62,14 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
     event = JSON.parse(body).event;
   } catch {
     return Response.json({ error: 'invalid_json' }, { status: 400 });
+  }
+  // A body that parses but carries no `event` object is not a 500. `{}`
+  // parses fine and leaves `event` undefined, and the first field read below
+  // then threw a TypeError past the handler into withSentry's 500 — which
+  // RevenueCat treats as a delivery failure and retries for three days, on a
+  // payload that can never succeed.
+  if (typeof event !== 'object' || event === null) {
+    return Response.json({ error: 'missing_event' }, { status: 400 });
   }
 
   // Replay protection. HMAC authenticates the body but nothing
@@ -100,7 +108,7 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
     return Response.json({ ok: true, skipped: 'invalid_app_user_id' });
   }
 
-  const supabase = createClient(
+  const supabase = createClient<Database>(
     Deno.env.get('SUPABASE_URL')!,
     secretKey(),
   );
@@ -108,10 +116,10 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
   // Reserve the event-id row before doing any tier work. The unique
   // constraint on (provider, event_id) means a replayed delivery
   // raises 23505 which we map to a 200 (RevenueCat retries on
-  // non-2xx). Insert-first means the side effect can't run twice
-  // even if the function crashes between the insert and the update —
-  // the worst case is a missed update, which RC's next renewal/state
-  // event corrects.
+  // non-2xx). Insert-first means the side effect can't run twice even
+  // if the function crashes between the insert and the update; the
+  // release below is what keeps that from also meaning it can never
+  // run at all.
   const { error: dedupeErr } = await supabase
     .from('webhook_events')
     .insert({ provider: 'revenuecat', event_id: eventId });
@@ -127,25 +135,76 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
     return Response.json({ ok: false, error: 'dedupe_failed' }, { status: 500 });
   }
 
+  // Apply behind a dedupe release. The dedupe row is written BEFORE the tier
+  // work (so two concurrent deliveries of one event can't both act), which
+  // means an application that fails owes the row back: RevenueCat retries on a
+  // non-2xx, and the retry would hit the 23505 path above, answer 200
+  // 'duplicate_event', and close the delivery for good. "The next renewal
+  // corrects it" was the reasoning for not doing this, and it does not hold for
+  // a NON_RENEWING_PURCHASE: a lifetime buyer has no later event, so a single
+  // transient failure on the profile write leaves them paid-up and on `free`
+  // permanently. stripe-events-webhook and strava-webhook both give the row
+  // back for the same reason.
+  let res: Response;
+  try {
+    res = await applyRevenueCatEvent(supabase, event, userId, eventTsMs);
+  } catch (err) {
+    await releaseDedupe(supabase, eventId);
+    throw err;
+  }
+  if (shouldReleaseDedupe(res.status)) {
+    await releaseDedupe(supabase, eventId);
+  }
+  return res;
+}));
+
+/// Give back the insert-first dedupe row so RevenueCat's retry is processed
+/// instead of being swallowed as a duplicate. Best-effort: if this fails the
+/// event is stuck either way, and logging is all we can usefully do.
+async function releaseDedupe(supabase: DbClient, eventId: string): Promise<void> {
+  const { error } = await supabase
+    .from('webhook_events')
+    .delete()
+    .eq('provider', 'revenuecat')
+    .eq('event_id', eventId);
+  if (error) {
+    console.error('failed to release dedupe row before retry (code):', error?.code ?? 'unknown');
+  }
+}
+
+async function applyRevenueCatEvent(
+  supabase: DbClient,
+  event: RevenueCatEvent,
+  userId: string,
+  eventTsMs: number,
+): Promise<Response> {
   // Resolve the user's current tier so the tier mapper can avoid demoting a
-  // `lifetime` holder. Needed for deactivating events (don't reset lifetime on
-  // a parallel-sub expiry) AND for PRODUCT_CHANGE (a plan change on a parallel
-  // sub must not knock lifetime down to pro). Other activating events always
-  // grant at least pro, so the lookup is skipped for them.
+  // `lifetime` holder — for EVERY event that can move the tier, not only the
+  // deactivating ones and PRODUCT_CHANGE. "Other activating events always
+  // grant at least pro" was the reasoning for skipping the read, and it is
+  // wrong in one direction: lifetime outranks pro. A lifetime owner carrying
+  // a parallel monthly sub gets a RENEWAL on that sub every month, and each
+  // one reached `mapEventToTier` with `currentTier: null`, wrote `pro` over
+  // `lifetime`, and made the guard in the mapper unreachable for four of the
+  // five activating types. The monthly's eventual EXPIRATION then read `pro`
+  // and finished the job at `free`.
   let currentTier: string | null = null;
   if (
     (DEACTIVATING_EVENTS as readonly string[]).includes(event.type) ||
-    event.type === 'PRODUCT_CHANGE'
+    (ACTIVATING_EVENTS as readonly string[]).includes(event.type)
   ) {
     const { data } = await supabase
       .from('user_profiles')
       .select('subscription_tier')
       .eq('id', userId)
       .single();
-    currentTier = (data?.subscription_tier as string | null) ?? null;
+    currentTier = data?.subscription_tier ?? null;
   }
 
-  const newTier = mapEventToTier(event.type, event.product_id ?? null, currentTier);
+  const newTier = mapEventToTier(event.type, event.product_id ?? null, currentTier, {
+    expirationAtMs: event.expiration_at_ms,
+    cancelReason: event.cancel_reason,
+  });
   const billingIssueAt = mapEventToBillingIssue(event.type);
 
   // Build the patch — at most one round trip per webhook. Tier and
@@ -162,7 +221,7 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
   // moved the tier; a stale deactivation matches zero rows atomically (no
   // read-then-write race) and the tier is left as-is. A billing-issue-only
   // write stays unconditional — it doesn't move the tier dimension.
-  const patch: Record<string, unknown> = {};
+  const patch: TablesUpdate<'user_profiles'> = {};
   if (newTier !== null) {
     patch.subscription_tier = newTier;
     patch.tier_updated_event_ts = eventTsMs;
@@ -189,7 +248,8 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
     new_tier: newTier,
     billing_issue_at: billingIssueAt ?? undefined,
   });
-}));
+}
+
 
 interface RevenueCatEvent {
   type: string;
@@ -197,6 +257,8 @@ interface RevenueCatEvent {
   product_id?: string;
   id?: string;
   event_timestamp_ms?: number;
+  expiration_at_ms?: number | null;
+  cancel_reason?: string;
   [key: string]: unknown;
 }
 

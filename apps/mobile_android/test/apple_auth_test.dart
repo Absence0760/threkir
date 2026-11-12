@@ -55,4 +55,14 @@ void main() {
       expect(appleWebAuthOptions(), isNull);
     });
   });
+
+  // apple-token-exchange exchanges the code against the client that issued
+  // it, and Apple refuses the other: an Android code sent as native-flow was
+  // how every Android user's revocation credential would have been lost.
+  test('only iOS reports the native flow', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    expect(appleUsesNativeFlow(), isTrue);
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(appleUsesNativeFlow(), isFalse);
+  });
 }

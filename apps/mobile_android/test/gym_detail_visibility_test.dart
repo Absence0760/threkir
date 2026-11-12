@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
@@ -9,6 +10,8 @@ import 'package:ui_kit/ui_kit.dart' show TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/screens/gym_detail_screen.dart';
+import 'pump_until.dart';
+import 'store_write_watch.dart';
 
 /// Counts updateLocal calls so the double-submit guard can be asserted.
 class _CountingGymStore extends LocalGymStore {
@@ -57,6 +60,21 @@ Future<({LocalGymStore store, Directory dir, String id})> _seed() async {
   return (store: store, dir: dir, id: stored.id);
 }
 
+/// Whether the workout's on-disk record says public.
+///
+/// The visibility chip is NOT this signal. `persist` installs the new row in
+/// `rowsById` synchronously, so the chip flips on the very next frame while the
+/// atomic write is still in flight — and the temp-directory teardown below then
+/// removed that write's `.tmp` sibling out from under its rename, surfacing a
+/// `PathNotFoundException` through the screen's L4 handler. Waiting on the file
+/// is what actually proves the offline-first write landed.
+bool _publicOnDisk(Directory dir, String id) {
+  final file = File('${dir.path}/$id.json');
+  if (!file.existsSync()) return false;
+  final row = (jsonDecode(file.readAsStringSync()) as Map)['row'] as Map;
+  return row['is_public'] == true;
+}
+
 Widget _screen(LocalGymStore store, String id) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -86,14 +104,11 @@ void main() {
     expect(find.byTooltip('Make public'), findsOneWidget);
     expect(store.byId(id)!.workout.isPublic, isFalse);
 
-    // Toggle to public.
-    await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Make public'));
-      // Let the fire-and-forget async store write + its listener notify settle.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
-    await tester.pump();
+    await tester.runAsync(() => tester.tap(find.byTooltip('Make public')));
+    await pumpUntil(tester, () => tester.any(find.text('Public')),
+        describe: 'the visibility chip to flip to public');
+    await pumpUntil(tester, () => _publicOnDisk(dir, id),
+        describe: 'the visibility write to reach disk');
 
     // Store flipped to public + queued for the next sync (pendingUpdate).
     final updated = store.byId(id)!;
@@ -102,6 +117,7 @@ void main() {
     // The chip + tooltip now reflect public.
     expect(find.text('Public'), findsOneWidget);
     expect(find.byTooltip('Make private'), findsOneWidget);
+    await pumpUntilStoreWritesSettle(tester);
   });
 
   testWidgets(
@@ -190,18 +206,14 @@ void main() {
       of: find.byType(AlertDialog),
       matching: find.widgetWithText(TextButton, 'Delete'),
     );
-    await tester.runAsync(() async {
-      await tester.tap(confirm);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pump();
-    await tester.pump();
+    await tester.runAsync(() => tester.tap(confirm));
+    await pumpUntil(
+        tester, () => tester.any(find.textContaining("Couldn't delete the workout")),
+        describe: 'the failed delete to surface its error banner');
 
     // The delete threw; the detail screen stays open (no pop) and an error
     // banner shows rather than the failure being swallowed silently.
     expect(find.textContaining("Couldn't delete the workout"), findsOneWidget);
-    // Drain the showTopBanner auto-dismiss timer.
-    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('double-tapping the visibility toggle writes the store only once',
@@ -234,13 +246,15 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.byTooltip('Make public'));
       await tester.tap(find.byTooltip('Make public'), warnIfMissed: false);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
-    await tester.pump();
-    await tester.pump();
+    await pumpUntil(tester, () => tester.any(find.text('Public')),
+        describe: 'the first toggle to land and flip the chip');
+    await pumpUntil(tester, () => _publicOnDisk(dir, id),
+        describe: 'the first toggle\'s write to reach disk');
 
     expect(store.updateCalls, 1);
     expect(store.byId(id)!.workout.isPublic, isTrue);
+    await pumpUntilStoreWritesSettle(tester);
   });
 
   group('GymDetailScreen — the set-number lane holds its localized label', () {

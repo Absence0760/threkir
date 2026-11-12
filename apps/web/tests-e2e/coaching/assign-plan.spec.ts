@@ -1,6 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B, USER_C_PRO } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
+import { browserDate } from '../fixtures/dates';
 
 // USER_B (alex) is the coach; USER_C_PRO (morgan) is the linked athlete.
 const INVITE_TOKEN = 'e2eassignplantoken00000000000001';
@@ -60,31 +62,61 @@ test.describe('/coaching/athletes/[id] — assign a plan', () => {
 
 		// And it really landed in the athlete's account, owned by them.
 		const admin = getAdminClient();
-		const { data } = await admin
-			.from('training_plans')
-			.select('user_id, status, assigned_by_coach_id')
-			.eq('user_id', USER_C_PRO.id)
-			.eq('status', 'active')
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'training_plans by user_id+status',
+			admin
+				.from('training_plans')
+				.select('user_id, status, assigned_by_coach_id')
+				.eq('user_id', USER_C_PRO.id)
+				.eq('status', 'active')
+				.maybeSingle()
+		);
 		expect(data?.assigned_by_coach_id).toBe(USER_B.id);
 	});
 
-	test('refuses to assign when the athlete already has an active plan', async ({ page }) => {
+	test('an athlete with an active plan still gets the form, naming the plan and starting after it', async ({ page }) => {
 		await getAdminClient().from('training_plans').insert({
 			user_id: USER_C_PRO.id,
 			name: 'Athlete own plan',
 			goal_event: 'distance_5k',
 			goal_distance_m: 5000,
-			start_date: '2026-06-01',
-			end_date: '2026-07-01',
+			start_date: browserDate(-5),
+			end_date: browserDate(20),
 			status: 'active'
 		});
 
 		await page.goto(`/coaching/athletes/${USER_C_PRO.id}`);
-		// No assign form (athlete has a plan); the explanatory note shows instead.
-		await expect(page.getByText(/already has an active plan/i)).toBeVisible({ timeout: 10_000 });
-		await expect(
-			page.getByRole('heading', { level: 3, name: 'Assign a plan' })
-		).toHaveCount(0);
+		await expect(page.getByRole('link', { name: 'Athlete own plan' })).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByRole('heading', { level: 3, name: 'Assign a plan' })).toBeVisible();
+		await expect(page.getByTestId('assign-blockers')).toContainText('“Athlete own plan” runs until');
+		await expect(page.getByLabel('Start date')).toHaveValue(browserDate(21));
+		await expect(page.getByText(/already has an active plan/i)).toHaveCount(0);
+	});
+
+	test("the coach's plan lists hold only the coach's own plans, never the athlete's", async ({ page }) => {
+		// Coach RLS can read a linked athlete's plans, so an unscoped list read
+		// would offer the athlete's plan back to them and show it on /plans.
+		await getAdminClient().from('training_plans').insert({
+			user_id: USER_C_PRO.id,
+			name: 'Athlete own plan',
+			goal_event: 'distance_5k',
+			goal_distance_m: 5000,
+			start_date: browserDate(-5),
+			end_date: browserDate(20),
+			status: 'active'
+		});
+
+		await page.goto(`/coaching/athletes/${USER_C_PRO.id}`);
+		const picker = page.getByLabel('Plan to assign');
+		await expect(picker.locator('option', { hasText: SOURCE_PLAN_NAME })).toHaveCount(1, {
+			timeout: 10_000
+		});
+		await expect(picker.locator('option', { hasText: 'Athlete own plan' })).toHaveCount(0);
+
+		await page.goto('/plans');
+		await expect(page.getByRole('heading', { name: SOURCE_PLAN_NAME })).toBeVisible({
+			timeout: 10_000
+		});
+		await expect(page.getByRole('heading', { name: 'Athlete own plan' })).toHaveCount(0);
 	});
 });

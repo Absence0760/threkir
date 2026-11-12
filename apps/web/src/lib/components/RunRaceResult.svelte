@@ -1,24 +1,35 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		fetchRaceResultForRun,
 		findRaceMatchCandidates,
 		importRaceResult,
 		type RaceResultForRun,
-		type RaceListingResult
-	} from '$lib/core/data';
-	import { raceMatchScore, isRaceMatchCandidate } from '$lib/integrations/race_match';
+		type RaceListingResult,
+		RACE_IMPORT_UNAVAILABLE
+	} from '#lib/core/data.ts';
+	import { raceMatchScore, isRaceMatchCandidate } from '#lib/integrations/race_match.ts';
+	import {
+		RACE_IMPORT_LEGS,
+		type RaceImportLeg,
+		type RaceImportProvider
+	} from '#lib/integrations/race_import_providers.ts';
 
 	interface Props {
 		runId: string;
 		runOwnerId: string;
 		startedAt: string;
 		distanceM: number | null;
+		/// The publicly readable listing the run is linked to, reported after
+		/// every load so a just-confirmed match reaches the photo toggle.
+		onlisting?: (listingId: string | null) => void;
 	}
-	let { runId, runOwnerId, startedAt, distanceM }: Props = $props();
+	let { runId, runOwnerId, startedAt, distanceM, onlisting }: Props = $props();
 
 	const isOwner = $derived(auth.user?.id === runOwnerId);
 
@@ -54,6 +65,7 @@
 		} catch {
 			result = null;
 		}
+		onlisting?.(result?.race_listing?.id ?? null);
 		// Auto-match seam: only offer a candidate when no official result is
 		// already stamped. Best-effort — a failure here must never break the page.
 		if (!hasResult && isOwner) {
@@ -70,7 +82,6 @@
 	function bestCandidate(listings: RaceListingResult[]): RaceListingResult | null {
 		const run = {
 			runDate: startedAt,
-			runStartLatLng: null,
 			runDistanceM: distanceM
 		};
 		let best: RaceListingResult | null = null;
@@ -90,7 +101,7 @@
 		return best;
 	}
 
-	async function confirmMatch(provider: 'runsignup' | 'paste') {
+	async function confirmMatch(provider: RaceImportProvider) {
 		if (!candidate) return;
 		// A paste-only candidate (manual listing, no provider auto-pull) has no
 		// server pull to attempt — open the paste form so the owner can enter
@@ -105,7 +116,7 @@
 				provider,
 				listingId: candidate.id,
 				matchRunId: runId,
-				bib: provider === 'runsignup' ? matchBib.trim() || undefined : undefined,
+				bib: provider !== 'paste' ? matchBib.trim() || undefined : undefined,
 				result:
 					provider === 'paste'
 						? {
@@ -122,8 +133,11 @@
 			matchBib = '';
 			await load();
 		} catch (e) {
-			if ((e as Error).message === 'RUNSIGNUP_UNAVAILABLE') {
-				// RunSignUp leg unconfigured — drop to the manual paste form.
+			// Any leg's unconfigured signal drops to the manual paste form. Keyed
+			// off the map rather than the one literal, or a ChronoTrack candidate
+			// on an unconfigured leg reports a generic failure and offers nothing.
+			const message = thrownMessage(e);
+			if (Object.values(RACE_IMPORT_UNAVAILABLE).includes(message)) {
 				pasting = true;
 			} else {
 				showToast(m('races.importFailed'), 'error');
@@ -139,7 +153,14 @@
 		matchBib = '';
 	}
 
-	const isRunSignUpCandidate = $derived(candidate?.provider === 'runsignup');
+	// The candidate's own leg, or null when its listing has no import leg
+	// (ultrasignup / manual / raceresult) — those are paste-only by construction.
+	const matchLeg = $derived<RaceImportLeg | null>(
+		candidate && candidate.provider in RACE_IMPORT_LEGS
+			? (candidate.provider as RaceImportLeg)
+			: null
+	);
+	const matchSpec = $derived(matchLeg ? RACE_IMPORT_LEGS[matchLeg] : null);
 
 	onMount(load);
 </script>
@@ -148,6 +169,7 @@
 	{#if hasResult && result}
 		<section class="section race-result" data-testid="race-result">
 			<h2>{m('races.officialResult')}</h2>
+			<HelpLink route="/runs/[id]" />
 			<dl class="race-grid">
 				{#if result.race_name}
 					<div><dt>{m('races.title')}</dt><dd data-testid="race-result-name">{result.race_name}</dd></div>
@@ -156,7 +178,7 @@
 					<div><dt>{m('races.chipTime')}</dt><dd data-testid="race-result-chip">{result.chip_time}</dd></div>
 				{/if}
 				{#if result.gun_time}
-					<div><dt>{m('races.gunTime')}</dt><dd>{result.gun_time}</dd></div>
+					<div><dt>{m('races.gunTime')}</dt><dd data-testid="race-result-gun">{result.gun_time}</dd></div>
 				{/if}
 				{#if result.overall_place != null}
 					<div><dt>{m('races.overallPlace')}</dt><dd>{result.overall_place}</dd></div>
@@ -165,6 +187,12 @@
 					<div>
 						<dt>{m('races.ageGroupPlace')}</dt>
 						<dd>{result.age_group_place}{result.age_group ? ` (${result.age_group})` : ''}</dd>
+					</div>
+				{/if}
+				{#if result.division_award_place != null && result.division_award}
+					<div>
+						<dt>{m('races.divisionAwardPlace')}</dt>
+						<dd data-testid="race-result-award">{result.division_award_place} ({result.division_award})</dd>
 					</div>
 				{/if}
 				{#if result.bib}
@@ -222,12 +250,17 @@
 					</div>
 				</form>
 			{:else}
-				{#if isRunSignUpCandidate}
+				{#if matchSpec}
 					<label class="match-bib">
-						<span>{m('races.bib')}</span>
-						<input type="text" bind:value={matchBib} data-testid="match-runsignup-bib" />
+						<span>{m(matchSpec.labelKey)}</span>
+						<input
+							type="text"
+							bind:value={matchBib}
+							data-testid="match-runsignup-bib"
+							data-leg={matchLeg}
+						/>
 					</label>
-					<p class="match-hint">{m('races.runSignUpBibHint')}</p>
+					<p class="match-hint">{m(matchSpec.hintKey)}</p>
 				{/if}
 				<div class="match-actions">
 					<button type="button" class="btn btn-outline btn-sm" onclick={dismiss} data-testid="match-dismiss">
@@ -236,8 +269,9 @@
 					<button
 						type="button"
 						class="btn btn-primary btn-sm"
-						disabled={busy || (isRunSignUpCandidate && !matchBib.trim())}
-						onclick={() => confirmMatch(isRunSignUpCandidate ? 'runsignup' : 'paste')}
+						disabled={busy ||
+							(matchSpec?.scopeRequired && !matchBib.trim())}
+						onclick={() => confirmMatch(matchLeg ?? 'paste')}
 						data-testid="match-confirm"
 					>
 						{m('races.matchConfirm')}

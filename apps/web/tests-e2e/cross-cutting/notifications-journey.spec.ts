@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearNotifications, deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { readCount } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Notifications journey — cross-user engagement drives ONE notification
@@ -51,13 +53,6 @@ import { USER_A, USER_C_PRO } from '../fixtures/users';
  * WORKFLOW, driven by USER_C_PRO entirely through the UI, exercising
  * kudos + comment + follow together.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('notifications journey — engagement → bell → inbox → read', () => {
 	test.describe.configure({ timeout: 90_000 });
@@ -116,7 +111,8 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 	});
 
 	test('morgan kudos + comments + follows → runner bell badge, popover, inbox, then mark-all-read clears it', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const ctxMorgan = await browser.newContext({
 			storageState: USER_C_PRO.storageStatePath
@@ -127,8 +123,8 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 		// Pre-accept the consent banner in both contexts so the fixed
 		// dialog can't intercept pointer events on the kudos button,
 		// composer, Follow toggle, or bell/inbox controls.
-		await ctxMorgan.addInitScript(setConsentAccepted);
-		await ctxRunner.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctxMorgan);
+		await acceptCookieConsent(ctxRunner);
 		const morgan = await ctxMorgan.newPage();
 		const runner = await ctxRunner.newPage();
 
@@ -155,7 +151,7 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 				// The share page asks the clip-public-track Edge Function to
 				// redact the (absent) track for a non-owner viewer; stub it so
 				// the page renders without the function running locally.
-				await morgan.route('**/functions/v1/clip-public-track', (route) =>
+				await mockRoute(morgan, '**/functions/v1/clip-public-track', (route) =>
 					route.fulfill({
 						status: 200,
 						contentType: 'application/json',
@@ -209,11 +205,14 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 			await test.step('three unread notifications landed for runner', async () => {
 				const admin = getAdminClient();
 				await expect(async () => {
-					const { count } = await admin
-						.from('notifications')
-						.select('*', { count: 'exact', head: true })
-						.eq('user_id', USER_A.id)
-						.is('read_at', null);
+					const count = await readCount(
+						'notifications by user_id+read_at',
+						admin
+							.from('notifications')
+							.select('*', { count: 'exact', head: true })
+							.eq('user_id', USER_A.id)
+							.is('read_at', null)
+					);
 					expect(count).toBe(3);
 				}).toPass({ timeout: 10_000 });
 			});
@@ -273,7 +272,7 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 				// Unread filter → the "all caught up" empty state.
 				await runner.getByRole('button', { name: /Unread/ }).click();
 				await expect(
-					runner.locator('.empty', { hasText: "You're all caught up" })
+					runner.getByTestId('notifications-empty').filter({ hasText: "You're all caught up" })
 				).toBeVisible({ timeout: 5_000 });
 
 				// All rows survive but none retain the unread class.

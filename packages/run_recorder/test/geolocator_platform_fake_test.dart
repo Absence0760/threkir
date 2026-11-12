@@ -7,8 +7,9 @@ import 'package:run_recorder/run_recorder.dart';
 
 /// Test fake for [GeolocatorPlatform]. Replaces the real platform
 /// channel so [Geolocator.checkPermission], [Geolocator.requestPermission],
-/// [Geolocator.isLocationServiceEnabled], and [Geolocator.getPositionStream]
-/// all flow through configurable values + a controllable position stream.
+/// [Geolocator.isLocationServiceEnabled], [Geolocator.getPositionStream],
+/// [Geolocator.getLocationAccuracy] and
+/// [Geolocator.requestTemporaryFullAccuracy] all flow through configurable values + a controllable position stream.
 ///
 /// Extends (not implements) so `PlatformInterface.verify` passes.
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
@@ -26,8 +27,16 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   // pauseLocationUpdatesAutomatically, activityType, FGS config, ...).
   final List<LocationSettings?> lastLocationSettings = <LocationSettings?>[];
 
+  // When set, isLocationServiceEnabled parks on this completer — lets a test
+  // hold the GPS retry loop mid-precheck while something else happens.
+  Completer<bool>? serviceEnabledGate;
+
   @override
-  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+  Future<bool> isLocationServiceEnabled() async {
+    final gate = serviceEnabledGate;
+    if (gate != null) return gate.future;
+    return serviceEnabled;
+  }
 
   @override
   Future<LocationPermission> checkPermission() async => permissionState;
@@ -37,6 +46,29 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
     final result = requestPermissionResult ?? permissionState;
     permissionState = result;
     return result;
+  }
+
+  LocationAccuracyStatus accuracyStatus = LocationAccuracyStatus.precise;
+  // What the iOS temporary-full-accuracy prompt resolves to; null mirrors
+  // the current [accuracyStatus] (the runner declined).
+  LocationAccuracyStatus? temporaryFullAccuracyResult;
+  Object? accuracyError;
+  final List<String> temporaryFullAccuracyPurposeKeys = <String>[];
+
+  @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async {
+    final error = accuracyError;
+    if (error != null) throw error;
+    return accuracyStatus;
+  }
+
+  @override
+  Future<LocationAccuracyStatus> requestTemporaryFullAccuracy({
+    required String purposeKey,
+  }) async {
+    temporaryFullAccuracyPurposeKeys.add(purposeKey);
+    accuracyStatus = temporaryFullAccuracyResult ?? accuracyStatus;
+    return accuracyStatus;
   }
 
   @override
@@ -150,23 +182,32 @@ void main() {
       r.dispose();
     });
 
-    test('throws LocationPermissionWhileInUseError on Android when permission is whileInUse',
+    test('records under a whileInUse grant on Android, flagging it as limited',
         () async {
+      // Android's first-run dialog cannot grant more than "While using the
+      // app" — "Allow all the time" is a separate trip to Settings. Refusing
+      // the grant meant the DEFAULT Android runner got no position stream at
+      // all: no fixes, a map stuck on "Waiting for GPS", distance frozen at
+      // 0, the run saved as indoor. Foreground fixes work fine under it, so
+      // the recorder records and reports the limitation instead.
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
       fake.permissionState = LocationPermission.whileInUse;
       final r = RunRecorder();
-      await expectLater(
-        r.prepare(),
-        throwsA(isA<LocationPermissionWhileInUseError>()),
-      );
-      // Same contract as the other prepare errors — _prepared flips to true
-      // so the screen can still run a time-only / indoor session.
+      await r.prepare();
       expect(r.prepared, isTrue);
+      expect(
+        fake.subscriptionsOpened,
+        1,
+        reason: 'a foreground-only grant must still open the position '
+            'stream — the map and distance depend on it.',
+      );
+      expect(r.backgroundLocationLimited, isTrue,
+          reason: 'the caller needs the limitation disclosed, not hidden.');
       r.dispose();
     });
 
-    test('does NOT throw on iOS when permission is whileInUse', () async {
+    test('does NOT flag whileInUse as limited on iOS', () async {
       // iOS treats "While Using the App" + UIBackgroundModes:location as
       // a valid background-recording configuration — only Android needs
       // the escalation to "Allow all the time".
@@ -176,6 +217,146 @@ void main() {
       final r = RunRecorder();
       await r.prepare();
       expect(r.prepared, isTrue);
+      expect(r.backgroundLocationLimited, isFalse);
+      r.dispose();
+    });
+
+    test('does NOT flag an always grant as limited on Android', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.permissionState = LocationPermission.always;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.backgroundLocationLimited, isFalse);
+      r.dispose();
+    });
+
+    test('clears backgroundLocationLimited when a later prepare is unrestricted',
+        () async {
+      // The runner upgrades to "Allow all the time" from Settings and starts
+      // a second run: the stale flag must not keep warning them.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.permissionState = LocationPermission.whileInUse;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.backgroundLocationLimited, isTrue);
+
+      fake.permissionState = LocationPermission.always;
+      await r.prepare();
+      expect(r.backgroundLocationLimited, isFalse);
+      r.dispose();
+    });
+
+    test('flags an approximate-only grant on Android without re-requesting',
+        () async {
+      // Android 12+ lets the runner grant only approximate location: fixes
+      // land kilometres off and the GPS_PROVIDER bridge cannot open.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.permissionState = LocationPermission.whileInUse;
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.preciseLocationOff, isTrue);
+      expect(fake.subscriptionsOpened, 1,
+          reason: 'a rough grant still records — the clock and pedometer '
+              'do not depend on precision.');
+      expect(fake.temporaryFullAccuracyPurposeKeys, isEmpty,
+          reason: 'temporary full accuracy is an iOS-only grant.');
+      r.dispose();
+    });
+
+    test('asks iOS once for temporary full accuracy and clears the flag '
+        'when granted', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      fake.temporaryFullAccuracyResult = LocationAccuracyStatus.precise;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(fake.temporaryFullAccuracyPurposeKeys,
+          [RunRecorder.fullAccuracyPurposeKey]);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('flags Precise Location off on iOS when the runner declines '
+        'temporary full accuracy', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(fake.temporaryFullAccuracyPurposeKeys, hasLength(1));
+      expect(r.preciseLocationOff, isTrue);
+      r.dispose();
+    });
+
+    test('does not ask for temporary full accuracy when already precise',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final r = RunRecorder();
+      await r.prepare();
+      expect(fake.temporaryFullAccuracyPurposeKeys, isEmpty);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('an unreadable accuracy status reads as precise and still records',
+        () async {
+      fake.accuracyError = Exception('accuracy channel down');
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.prepared, isTrue);
+      expect(fake.subscriptionsOpened, 1);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('clears preciseLocationOff when a later prepare is precise',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.preciseLocationOff, isTrue);
+
+      fake.accuracyStatus = LocationAccuracyStatus.precise;
+      await r.prepare();
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('a fix that clears the accuracy gate clears preciseLocationOff, '
+        'a coarse one does not', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      await Future<void>.delayed(Duration.zero);
+      r.begin();
+
+      fake.emit(_pos(secondsFromStart: 1, accuracy: 2000));
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugWeakGps, isTrue);
+      expect(r.preciseLocationOff, isTrue,
+          reason: 'an approximate fix is what the reduced grant produces');
+
+      fake.emit(_pos(secondsFromStart: 2, accuracy: 5));
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugWeakGps, isFalse);
+      expect(r.preciseLocationOff, isFalse,
+          reason: 'a 5 m fix proves precision is back on, so a later stall '
+              'must not be blamed on an approximate grant');
+
+      fake.emit(_pos(secondsFromStart: 3, accuracy: 60));
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugWeakGps, isTrue);
+      expect(r.preciseLocationOff, isFalse);
       r.dispose();
     });
 
@@ -229,6 +410,10 @@ void main() {
           reason: 'distanceFilter must stay 0 so every fix flows through '
               'software filtering (same rule as Android — see ADR §21).');
       expect(apple.allowBackgroundLocationUpdates, isTrue);
+      expect(apple.accuracy, LocationAccuracy.bestForNavigation,
+          reason: 'geolocator_apple maps `high` to '
+              'kCLLocationAccuracyNearestTenMeters; a run needs full GPS '
+              'accuracy (#1090 item 0).');
       r.dispose();
     });
 
@@ -262,6 +447,11 @@ void main() {
       expect(android.distanceFilter, 0,
           reason: 'distanceFilter must stay 0 so every fix flows through '
               'software filtering (ADR §21).');
+      expect(android.intervalDuration, const Duration(seconds: 1),
+          reason: 'without it geolocator_android requests a fix every '
+              '5000 ms, and on Android 13+ also sets that as the minimum '
+              'update interval (#1090 item 0).');
+      expect(android.accuracy, LocationAccuracy.bestForNavigation);
       r.dispose();
     });
   });
@@ -295,9 +485,11 @@ void main() {
       expect(r.debugTrack.length, 1);
 
       // Subsequent fix above the movement threshold accumulates distance.
-      fake.emit(_pos(metresEast: 10, secondsFromStart: 3));
+      // 5 m in 2 s, matching the fixture's 2.5 m/s Doppler speed.
+      fake.emit(_pos(metresEast: 5, secondsFromStart: 3));
       await Future<void>.delayed(Duration.zero);
-      expect(r.debugDistanceMetres, greaterThan(5));
+      expect(r.debugDistanceMetres, closeTo(5, 0.5));
+      expect(r.debugTrack.length, 2);
 
       r.dispose();
     });
@@ -328,25 +520,23 @@ void main() {
   group('RunRecorder — GPS retry loop honours prepare()\'s permission gate (#671)',
       () {
     test(
-      'does NOT silently open a stream ~3s after a whileInUse prepare() failure',
+      'does NOT silently open a stream ~3s after a denied prepare() failure',
       () async {
-        // Reproduces #671: _startGpsRetryLoop() used to only bail on
-        // denied/deniedForever, not whileInUse, so the retry timer opened
-        // the stream anyway a few seconds after prepare() had just thrown
-        // LocationPermissionWhileInUseError for the exact same permission
-        // state — silently reintroducing the background-freeze prepare()
-        // exists to prevent, with no warning surfaced to the runner.
+        // #671: the retry loop must not reopen a stream prepare() has just
+        // refused to open for the same permission state — a run that told
+        // the user GPS was unavailable must not start tracking three
+        // seconds later with no notice.
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
         addTearDown(() => debugDefaultTargetPlatformOverride = null);
-        fake.permissionState = LocationPermission.whileInUse;
+        fake.permissionState = LocationPermission.deniedForever;
         final r = RunRecorder();
         await expectLater(
           r.prepare(),
-          throwsA(isA<LocationPermissionWhileInUseError>()),
+          throwsA(isA<LocationPermissionDeniedError>()),
         );
         expect(fake.subscriptionsOpened, 0,
             reason: 'prepare() must not open the stream when permission is '
-                'only whileInUse on Android.');
+                'denied.');
 
         // The retry loop's interval is 3s — wait past at least one tick.
         await Future<void>.delayed(const Duration(seconds: 4));
@@ -354,9 +544,9 @@ void main() {
         expect(
           fake.subscriptionsOpened,
           0,
-          reason: 'The retry loop\'s precheck must bail on whileInUse just '
-              'like prepare() does — it must not open a stream permission '
-              'still forbids.',
+          reason: 'The retry loop\'s precheck must bail on a denied grant '
+              'just like prepare() does — it must not open a stream '
+              'permission still forbids.',
         );
         r.dispose();
       },
@@ -364,20 +554,19 @@ void main() {
     );
 
     test(
-      'DOES reopen the stream once permission is later escalated to always',
+      'DOES open the stream once permission is later granted',
       () async {
-        // The legitimate flip side of the same gate: a runner who initially
-        // only granted whileInUse can go to Settings mid-run and upgrade to
-        // "Allow all the time". The retry loop must still pick that up —
-        // the fix must not turn the loop into a permanent no-op once
-        // prepare() has failed once.
+        // The legitimate flip side of the same gate: a runner who denied the
+        // dialog can relent from Settings mid-run. The retry loop must still
+        // pick that up — the gate must not turn the loop into a permanent
+        // no-op once prepare() has failed once.
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
         addTearDown(() => debugDefaultTargetPlatformOverride = null);
-        fake.permissionState = LocationPermission.whileInUse;
+        fake.permissionState = LocationPermission.deniedForever;
         final r = RunRecorder();
         await expectLater(
           r.prepare(),
-          throwsA(isA<LocationPermissionWhileInUseError>()),
+          throwsA(isA<LocationPermissionDeniedError>()),
         );
         expect(fake.subscriptionsOpened, 0);
 
@@ -388,9 +577,34 @@ void main() {
         expect(
           fake.subscriptionsOpened,
           greaterThanOrEqualTo(1),
-          reason: 'Once permission is upgraded to always, the retry loop '
-              'must reopen the stream — the whileInUse gate must not break '
-              'the legitimate retry-after-grant path.',
+          reason: 'Once permission is granted, the retry loop must open the '
+              'stream — the gate must not break the retry-after-grant path.',
+        );
+        r.dispose();
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
+
+    test(
+      'a whileInUse grant needs no retry — prepare() already opened the stream',
+      () async {
+        // The regression this whole change exists to prevent: an Android
+        // runner on the default first-run grant must be tracking from the
+        // moment prepare() returns, not waiting on a retry that never fires.
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        fake.permissionState = LocationPermission.whileInUse;
+        final r = RunRecorder();
+        await r.prepare();
+        expect(fake.subscriptionsOpened, 1);
+
+        await Future<void>.delayed(const Duration(seconds: 4));
+
+        expect(
+          fake.subscriptionsOpened,
+          1,
+          reason: 'the healthy stream must be left alone — the retry loop '
+              'is a repair path, not a second subscriber.',
         );
         r.dispose();
       },
@@ -418,6 +632,57 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(r.debugTrack.length, firstTrackLen,
           reason: 'dispose should have cancelled the position subscription');
+    });
+
+    test(
+      'a retry callback in flight during dispose cannot re-open the stream',
+      () async {
+        // The retry loop awaits its service/permission precheck. A callback
+        // parked on that await when the recorder is disposed used to resume and
+        // subscribe again — a subscription nothing is left to cancel, holding
+        // the GPS radio and the foreground service for the life of the process
+        // while every fix raised on the closed snapshot sink.
+        final r = RunRecorder();
+        await r.prepare();
+        await Future<void>.delayed(Duration.zero);
+        r.begin();
+        expect(fake.subscriptionsOpened, 1);
+
+        // Tear the stream down so the retry loop has work to do, and park its
+        // precheck.
+        final gate = Completer<bool>();
+        fake.serviceEnabledGate = gate;
+        fake.emitError(Exception('platform stream torn down'));
+        await Future<void>.delayed(Duration.zero);
+
+        // Wait past a retry tick (the interval is 3 s) so a callback is parked
+        // on the gate, then dispose while it is still in flight.
+        await Future<void>.delayed(const Duration(seconds: 4));
+        r.dispose();
+        gate.complete(true);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(fake.subscriptionsOpened, 1,
+            reason: 'dispose must be terminal — no stream may be opened after '
+                'it, whatever was already in flight');
+
+        // Nothing is listening, but a re-opened stream would push this fix
+        // through _emitSnapshot and raise on the closed controller.
+        fake.emit(_pos(metresEast: 50, secondsFromStart: 5));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(r.debugTrack, isEmpty);
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
+
+    test('prepare() after dispose() throws rather than returning a zombie',
+        () async {
+      final r = RunRecorder();
+      await r.prepare();
+      r.dispose();
+      await expectLater(r.prepare(), throwsA(isA<StateError>()));
+      expect(r.prepared, isFalse);
+      expect(fake.subscriptionsOpened, 1);
     });
   });
 }

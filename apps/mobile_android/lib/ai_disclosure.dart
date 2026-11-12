@@ -1,0 +1,155 @@
+/// Versioned AI-processing consent — the record every surface that ships a
+/// runner's data to Anthropic grades before it offers the feature. GDPR
+/// Art 6(1)(a).
+///
+/// The record is `user_profiles.ai_disclosure_version` (which disclosure was
+/// accepted) paired with `coach_consent_at` (when). Neither column is in the
+/// cross-user column grant, so it is read through the SECURITY DEFINER
+/// `get_my_profile()` RPC and written only by `record_ai_disclosure_consent()`
+/// (migration 20270511_001).
+///
+/// Versions are a monotone ladder — each one a strict superset of the last —
+/// which is what makes "accepted >= required" sound:
+///
+///   1  AI Coach only.
+///   2  The Coach plus the AI route assistant.
+///   3  v2 plus the AI plan assistant (the typed plan description, sent
+///      only to extract plan-wizard settings).
+///   4  v3 plus AI plan edits (the active plan's upcoming workouts and the
+///      typed change request, sent only to propose edits the runner
+///      reviews before anything is saved).
+///   5  v4 plus the plate-photo logger (one meal photo, sent only to
+///      propose food-log rows the runner edits before saving).
+///   6  All AI features: v5 plus the Coach's cross-training context (recent
+///      gym-session summaries and, with health-data consent, a 7-day
+///      nutrition summary). The Coach itself still needs only v1: the server
+///      withholds those two lanes of its context below v6.
+///   7  v6 plus the coach assistant, for coaches: with an athlete's own
+///      per-link consent, that athlete's messages with the coach, plan and
+///      recent runs, and what the coach types, sent to draft a message only
+///      the coach sees (issue #1215 Phase 4).
+///
+/// Adding the next AI feature means a new version with new copy, not a new
+/// boolean and not quietly widening what an existing acceptance covers.
+///
+/// Dart twin of the client half of web's `core/ai_disclosure.ts` — the
+/// ladder, the record shape, and the fail-closed grading. Web's
+/// `gateAiDisclosure` / `aiDisclosureDenialBody` are server-side and have no
+/// mobile counterpart: the clients grade the record to decide what to
+/// *offer*, the server still decides what to *serve*.
+library;
+
+/// Minimum disclosure version the AI Coach requires.
+const int kAiDisclosureVersionCoach = 1;
+
+/// Minimum disclosure version the AI route assistant requires
+/// (`/api/coach/route-describe` + `/api/coach/route-request`). Higher than
+/// the Coach's because the route endpoints send a different payload — the
+/// typed request text and a coarse location label — for a different purpose
+/// than the Coach copy described.
+const int kAiDisclosureVersionRouteAi = 2;
+
+/// Minimum disclosure version the AI plan assistant requires
+/// (`/api/coach/plan-request`). Its own rung because it sends the typed plan
+/// description (goal race, target and recent times, training days) to
+/// extract plan-wizard settings — a payload and purpose neither the Coach nor
+/// the route copy described.
+const int kAiDisclosureVersionPlanAi = 3;
+
+/// Minimum disclosure version AI plan edits require (`/api/coach/plan-edit`,
+/// web-only). Its own rung even though the v1 Coach copy already names the
+/// active plan: the Coach sends the plan so it can comment on it, while plan
+/// edits send it with the runner's change request so the model can propose
+/// changes to it — a new purpose (decisions § 571).
+const int kAiDisclosureVersionPlanEditAi = 4;
+
+/// Minimum disclosure version the plate-photo logger requires
+/// (`/api/coach/plate-photo`). Its own rung because it sends a photograph of
+/// the runner's meal — a payload that can carry anything in frame — to
+/// estimate food-log rows (decisions § 1972).
+const int kAiDisclosureVersionFoodPhotoAi = 5;
+
+/// Minimum disclosure version for the Coach context's gym and nutrition lanes.
+/// Not an endpoint minimum: `/api/coach` still requires only
+/// [kAiDisclosureVersionCoach], and the server leaves both lanes out of the
+/// context of a runner below this rung (issue #1217). Mobile offers it only
+/// as the version a new acceptance records.
+const int kAiDisclosureVersionCoachCrossTraining = 6;
+
+/// Minimum disclosure version the coach assistant (`/api/coach/assist`,
+/// web-only) requires of the COACH. Its own rung: the coach's request and
+/// their conversation with an athlete go to Anthropic to draft a message, a
+/// purpose no earlier copy described. The athlete's data needs the athlete's
+/// own per-link consent on top of this (`coach_assist_consent.dart`).
+const int kAiDisclosureVersionCoachAssist = 7;
+
+/// The newest disclosure this build knows how to present. Must equal the SQL
+/// `ai_disclosure_current_version()` and web's `AI_DISCLOSURE_CURRENT_VERSION`.
+const int kAiDisclosureCurrentVersion = kAiDisclosureVersionCoachAssist;
+
+/// Machine-readable marker on every AI-consent denial. It rides a `code`
+/// field rather than `error` because the endpoints already use `error` for
+/// their own (differently-shaped) strings — clients branch on `code`.
+const String kAiDisclosureError = 'ai_disclosure_required';
+
+/// - [missing] — nothing on record (never accepted, or withdrawn).
+/// - [stale]   — accepted an older disclosure that did not cover this use.
+/// - [unknown] — the record is unreadable or names a version this build
+///               cannot describe. Denied rather than trusted: a disclosure
+///               we cannot render is a disclosure we cannot prove was made.
+enum AiDisclosureDenial { missing, stale, unknown }
+
+/// The consent record as the server holds it, values untyped on purpose —
+/// grading a malformed record is [checkAiDisclosure]'s job, not the parser's.
+class AiDisclosureRecord {
+  final Object? version;
+  final Object? acceptedAt;
+
+  const AiDisclosureRecord({this.version, this.acceptedAt});
+}
+
+class AiDisclosureCheck {
+  final bool ok;
+  final int? version;
+  final AiDisclosureDenial? reason;
+
+  const AiDisclosureCheck._(this.ok, this.version, this.reason);
+
+  const AiDisclosureCheck.granted(int version) : this._(true, version, null);
+
+  const AiDisclosureCheck.denied(AiDisclosureDenial reason)
+      : this._(false, null, reason);
+}
+
+/// Pull the consent record out of a `get_my_profile()` row of unknown shape.
+AiDisclosureRecord aiDisclosureFromProfileRow(Object? row) {
+  if (row is! Map) return const AiDisclosureRecord();
+  return AiDisclosureRecord(
+    version: row['ai_disclosure_version'],
+    acceptedAt: row['coach_consent_at'],
+  );
+}
+
+/// Fail-closed: anything that is not a complete, known, sufficient record
+/// denies.
+AiDisclosureCheck checkAiDisclosure(
+  AiDisclosureRecord record,
+  int requiredVersion,
+) {
+  final acceptedAt = record.acceptedAt;
+  final hasAcceptedAt = acceptedAt is String && acceptedAt.isNotEmpty;
+  final version = record.version;
+  if (version == null || !hasAcceptedAt) {
+    return const AiDisclosureCheck.denied(AiDisclosureDenial.missing);
+  }
+  if (version is! int) {
+    return const AiDisclosureCheck.denied(AiDisclosureDenial.unknown);
+  }
+  if (version < 1 || version > kAiDisclosureCurrentVersion) {
+    return const AiDisclosureCheck.denied(AiDisclosureDenial.unknown);
+  }
+  if (version < requiredVersion) {
+    return const AiDisclosureCheck.denied(AiDisclosureDenial.stale);
+  }
+  return AiDisclosureCheck.granted(version);
+}

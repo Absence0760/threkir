@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:core_models/core_models.dart';
 
-/// Pure Dart port of `apps/web/src/lib/training_load.ts` (decisions §34).
+/// Pure Dart port of `apps/web/src/lib/training/training_load.ts` (decisions §34).
 /// Computes a per-run training-stress score (TRIMP when HR available,
 /// distance proxy otherwise), aggregates by local calendar day, and
 /// returns a 90-day daily series with the EWMA Fitness / Fatigue / Form
@@ -88,7 +88,13 @@ double computeLiftStress(LiftForLoad lift) {
   for (final s in lift.sets) {
     final reps = s.reps;
     final weight = s.weightKg;
-    if (reps == null || reps <= 0 || weight == null || weight <= 0) continue;
+    // Non-finite has to be rejected here, not downstream: NaN <= 0 is false,
+    // so a NaN set survives aggregateDailyLiftStress' `stress <= 0` skip and
+    // then poisons every subsequent atl/ctl/tsb point in the series. Infinity
+    // is worse than useless — it silently clamps to the cap and reports a
+    // full-sized phantom session. Mirrors the web twin's numericOrNull.
+    if (reps == null || !reps.toDouble().isFinite || reps <= 0) continue;
+    if (weight == null || !weight.toDouble().isFinite || weight <= 0) continue;
     weighted += reps * weight * rpeFactor(s.rpe);
   }
   final stress = weighted * kLiftStressPerKgTonnage;
@@ -144,6 +150,7 @@ StressCalibration computeCalibration(
     final avgBpm = _numericOrNull(r.metadata?['avg_bpm']);
     final km = r.distanceMetres / 1000.0;
     if (avgBpm == null || km <= 0 || r.duration.inSeconds <= 0) continue;
+    if (!isPlausibleRunDuration(r.duration.inSeconds)) continue;
     final trimp = _banisterTrimp(r.duration.inSeconds, avgBpm, rest, max);
     if (trimp > 0) trimpsPerKm.add(trimp / km);
   }
@@ -193,7 +200,11 @@ double computeStress(
   if (cal.mode == 'trimp') {
     final km = run.distanceMetres / 1000.0;
     final rate = cal.trimpPerKmFallback ?? 7;
-    if (avgBpm != null && rest != null && max != null && max > rest) {
+    if (avgBpm != null &&
+        rest != null &&
+        max != null &&
+        max > rest &&
+        isPlausibleRunDuration(run.duration.inSeconds)) {
       final trimp = _banisterTrimp(run.duration.inSeconds, avgBpm, rest, max);
       // A run whose avg_bpm <= resting_hr (misconfigured resting HR, strap
       // dropout, a genuine recovery shuffle) computes hrr=0 → trimp=0, and
@@ -333,3 +344,12 @@ bool hasTrimpSignal(List<Run> runs, [HrPrefs prefs = const HrPrefs()]) {
   }
   return false;
 }
+
+/// Whether the chart's load should be labelled low-confidence: it is reading
+/// heart rate ([hasTrimpSignal]) and the runner has said their heart rate is
+/// medication-affected (`hr_medication_affected`, decisions § 2092). A beta
+/// blocker caps and flattens the HR response that TRIMP weights, so the
+/// HR-derived stress under-reads effort even against a measured max. The
+/// distance-only curve is not HR-derived and is never flagged.
+bool isTrimpLowConfidence(bool hasTrimp, bool hrMedicationAffected) =>
+    hasTrimp && hrMedicationAffected;

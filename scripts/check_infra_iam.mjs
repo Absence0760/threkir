@@ -1,0 +1,2133 @@
+#!/usr/bin/env node
+// Guardrail: the IAM rails under infra/ say what the pipeline needs and
+// nothing wider, and the two halves of the OIDC trust contract move together.
+//
+// infra/github-oidc/ mints the only two AWS identities anything outside this
+// account can assume. Their trust policies are the highest-value lines in the
+// Terraform tree: `token.actions.githubusercontent.com:sub` is what stops a
+// job in another repository — or a pull_request build in this one, or a fork —
+// from requesting the production deploy role. Nothing read those lines. The
+// file's own header records that the halves have already come apart once: the
+// web@1.0.3 release failed AssumeRoleWithWebIdentity when the deploy jobs
+// started declaring GitHub environments while the trust policies still matched
+// the old `refs/tags/web@*` ref shape. That header ends "the two halves must
+// move together", which is a rule stated in prose and enforced by nothing —
+// the § 439 shape.
+//
+// What is checked, and why each one is worth a job:
+//
+//   1. Trust shape. `StringEquals` on both `:aud` and `:sub`; a `:sub` with no
+//      wildcard in it, anchored to `var.github_repo`, naming a GitHub
+//      ENVIRONMENT rather than a ref. `StringLike` with a trailing `*` is the
+//      canonical way this goes wrong, and it is one character from correct.
+//   2. Environment lockstep. The set of environments the trust policies accept
+//      equals the set release-web.yml can declare, and the role a tag-triggered
+//      run assumes is the role whose resources are the production ones. This is
+//      the half that broke.
+//   3. No wildcard grant. No `Action` ending in `:*`, and `Resource = "*"` only
+//      for actions AWS models no resource for — declared here with a reason,
+//      and an exemption nothing uses fails as loudly as a missing one.
+//   4. Blast-radius separation. Every resource ARN in a role's policy carries
+//      that role's own environment token. A copy-pasted `prod` in the preview
+//      role would hand every push-to-main preview deploy write access to the
+//      production bucket, and the policy would still read as two tidy blocks.
+//   5. Lambda coverage. The eight Lambda ARNs in each deploy policy are a
+//      fourth hand-maintained transcription of the module's function list, next
+//      to the three check_lambda_alias_sync.mjs already compares. A ninth
+//      function reaches Terraform, the sync script and the release workflow and
+//      then fails at `aws lambda update-function-code` with AccessDenied,
+//      mid-release, against production.
+//   6. Origin reachability. Every Lambda Function URL is AWS_IAM-authed and
+//      carries BOTH CloudFront grants — `lambda:InvokeFunctionUrl` AND plain
+//      `lambda:InvokeFunction`. Issue #590 measured what one grant alone does:
+//      the URL 403s before invocation and the distribution's SPA error fallback
+//      rewrites that 403 into the shell at 200, so the surface reads healthy
+//      while the function never runs.
+//
+//   7. Alias lockstep. Each Function URL is created ON the function's `live`
+//      alias, and a Lambda resource policy is attached per qualifier — so a
+//      grant written without the alias qualifier covers the unqualified ARN and
+//      not the one CloudFront invokes. That is #590's failure exactly, one
+//      field over, and it fails the same invisible way. The parser also
+//      declares how many blocks it SKIPPED: a Function URL written so the
+//      function-name regex misses it is one whose auth type nothing reads, and
+//      a smaller loop looks identical to a smaller stack.
+//
+//   8. Secret scope, in two halves.
+//
+//      (a) No Lambda environment merges the decrypted sops map whole. A key
+//      added to the file for one function otherwise reaches every function
+//      whose env takes the bag, which is the same over-grant as a wildcard
+//      Action and is invisible in exactly the same way — the Terraform reads
+//      as one tidy `merge(...)` line either way.
+//
+//      (b) NO CREDENTIAL REACHES A LAMBDA ENVIRONMENT IN PLAINTEXT. (a) was
+//      never the whole finding: `environment { variables }` is returned by
+//      every API that returns a FunctionConfiguration, INCLUDING
+//      `lambda:UpdateFunctionCode`, which the release genuinely calls — so any
+//      principal that can deploy could read ANTHROPIC_API_KEY and
+//      SUPABASE_SECRET_KEY by uploading the same zip and reading the response.
+//      The module's own comment said half of this out loud ("visible to anyone
+//      who can call GetFunctionConfiguration") without following it to the
+//      deploy role. Since decisions § 1671 the credentials are encrypted at
+//      apply time into an `aws_kms_ciphertext` blob per function and decrypted
+//      by the handler at cold start, so the claim is: every sops key that
+//      still arrives as a plain env var is named in NON_CREDENTIAL_SOPS_KEYS
+//      with a reason, no key is BOTH encrypted and plaintext, each blob is
+//      bound to one function by an encryption context (all eight share one
+//      execution role), and each blob is consumed by exactly one env. Every
+//      direction fails, including a stale exemption for a key no env carries.
+//
+//   9. Decrypt-grant justification. The env's secrets CMK is the one key in the
+//      account whose loss is unrecoverable, and its decrypt statement is where
+//      a principal quietly accumulates. Both env roots now leave
+//      `kms_decrypt_principal_arn` at "" — the GitHub deploy role is NOT a
+//      decrypt principal — and that is only correct while two premises hold,
+//      neither of which is stated anywhere a change would trip over:
+//      no CREDENTIALED workflow job runs `terraform` (so nothing in CI ever
+//      reaches `data.sops_file`), and no `aws_lambda_function` sets
+//      `kms_key_arn` (so `lambda:UpdateFunctionCode` from the
+//      deploy role never transits this key). The check runs BOTH ways: a
+//      non-empty wire while both premises hold is standing privilege, and an
+//      empty wire once either premise breaks is a release that fails with
+//      AccessDenied against production, mid-deploy. decisions § 1021.
+//
+//      The EXECUTION role's identifier in the same statement is checked too,
+//      and for the opposite reason. It was unexercised until § 1671 and is
+//      load-bearing now: it is what decrypts the claim-8(b) blob at cold
+//      start, so deleting it reads as least-privilege hygiene and is an outage
+//      on both credential-carrying functions, on their first invocation in
+//      every fresh container.
+//
+//      The workflow scan reads `.github/workflows/*.yml` and nothing else,
+//      because a composite action's `runs.steps` is a different shape and
+//      needs a second parser. Rather than leave that as a silent blind spot,
+//      the claim asserts what makes it safe: no composite action under
+//      .github/actions/ assumes an AWS role. The day one does, this fails and
+//      says to widen the scan — which is the only outcome that cannot be a
+//      false negative about a credentialed terraform run nobody read.
+//
+//  10. Lambda verb scope, PER ENVIRONMENT. The `lambda:` actions on each deploy
+//      role equal the set of `aws lambda` operations the workflows invoke
+//      AGAINST THAT ROLE'S OWN ENVIRONMENT, derived from their `run:` bodies.
+//      `GetFunction`, `GetAlias` and `PublishVersion` were granted and
+//      exercised by nothing (§ 1085) — the same shape as the KMS grant § 1021
+//      removed, and the same way it accumulated: a verb is added when someone
+//      is unsure, and nothing ever asks again. The derivation's premise is that
+//      a workflow is the only thing holding these roles' credentials, which
+//      claim 9's scan already establishes; the operator's own SSO profile is
+//      what runs `bin/lambda-alias-sync.sh`.
+//
+//      Comparing both roles against the UNION of every verb any workflow runs
+//      is right only while every credentialed job deploys every environment,
+//      which release-web.yml does today. A workflow deploying one environment
+//      only would make the union demand a verb the other never issues, and the
+//      fix would then read as widening a role rather than narrowing a
+//      derivation. So a verb is attributed to the environments its job can
+//      assume a role for — the `AWS_DEPLOY_ROLE_ARN_<ENV>` Secrets it names —
+//      narrowed by the step's own `if:` when that reads an output of the job's
+//      env branch. § 1110.
+//
+// Offline by design: no AWS credentials, no `terraform init`. Nothing here is
+// transcribed — every name, every environment, every function suffix and every
+// workflow job is read out of one of the sources, which are the github-oidc
+// stack and its variables, the web-stack module, the two env roots, and every
+// workflow under .github/workflows/.
+//
+// Run: `node scripts/check_infra_iam.mjs`
+// CI:  the `infra-guards` job in .github/workflows/ci.yml, which is in the
+//      `CI gate` aggregator's `needs:` list — a guard nothing runs enforces
+//      nothing.
+// Unit tests: `node --test scripts/check_infra_iam.test.mjs`
+
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** @import { Step } from './check_ci_diagnostics.mjs' */
+import { parseSteps, runBody } from './check_ci_diagnostics.mjs';
+import {
+  blockEnd,
+  hclBlocks,
+  hclResources,
+  nestedBlock,
+  nestedBlocks,
+  stripComments,
+} from './hcl_lex.mjs';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// Overridable so the whole script — exit code and all — can be pointed at
+// mutated copies of the sources, which is how a guard is shown to fail.
+export const OIDC_FILE =
+  process.env.INFRA_IAM_OIDC ?? join(REPO_ROOT, 'infra/github-oidc/main.tf');
+export const OIDC_VARS_FILE =
+  process.env.INFRA_IAM_OIDC_VARS ??
+  join(REPO_ROOT, 'infra/github-oidc/variables.tf');
+export const OIDC_TFVARS_FILE =
+  process.env.INFRA_IAM_OIDC_TFVARS ??
+  join(REPO_ROOT, 'infra/github-oidc/terraform.tfvars');
+export const MODULE_FILE =
+  process.env.INFRA_IAM_MODULE ??
+  join(REPO_ROOT, 'infra/modules/web-stack/main.tf');
+export const RELEASE_FILE =
+  process.env.INFRA_IAM_RELEASE ??
+  join(REPO_ROOT, '.github/workflows/release-web.yml');
+
+/// The two env roots that call the web-stack module, and the workflow
+/// directory. Claim 9 reads the wire on one side and the pipeline on the
+/// other; both have to be sources rather than assumptions, or the guard is
+/// just the sentence it replaced.
+export const ENV_FILES =
+  process.env.INFRA_IAM_ENVS?.split(',') ??
+  ['prod', 'preview'].map((e) => join(REPO_ROOT, `infra/envs/${e}/main.tf`));
+export const WORKFLOW_DIR =
+  process.env.INFRA_IAM_WORKFLOWS ?? join(REPO_ROOT, '.github/workflows');
+export const ACTION_DIR =
+  process.env.INFRA_IAM_ACTIONS ?? join(REPO_ROOT, '.github/actions');
+
+/// The action every credentialed job in this repo assumes a role through. A
+/// job without it holds no AWS identity at all, so its `terraform` — which is
+/// what terraform.yml runs on every PR — cannot reach KMS whatever it says.
+export const CREDENTIALS_ACTION = 'aws-actions/configure-aws-credentials';
+
+/// The GitHub OIDC issuer and the audience AWS's STS expects. Both are fixed
+/// by the two providers, not by us — a stack naming anything else is not
+/// talking to GitHub Actions.
+export const OIDC_ISSUER = 'https://token.actions.githubusercontent.com';
+export const OIDC_AUDIENCE = 'sts.amazonaws.com';
+export const CLAIM_PREFIX = 'token.actions.githubusercontent.com';
+
+/// The same prefix as a regex-safe literal. Spelled out rather than escaped at
+/// the use site: the dots are metacharacters, and an escape applied by a call
+/// is one a reader (and a scanner) has to notice to trust the pattern.
+export const CLAIM_PREFIX_PATTERN = 'token\\.actions\\.githubusercontent\\.com';
+
+/// Actions granted on `Resource: "*"` because AWS models no resource for them,
+/// each with the reason. An action on `*` that is absent from this map fails;
+/// an entry here that no statement uses fails too, because a stale exemption
+/// reads as a deliberate decision long after the grant it excused is gone.
+export const RESOURCELESS_ACTIONS = new Map([
+  [
+    'cloudfront:CreateInvalidation',
+    'IAM does not match distribution ARNs for this action — AWS enforces account isolation only',
+  ],
+  [
+    'cloudfront:ListDistributions',
+    'a list action has no resource to scope to; the release workflow resolves the distribution id by alias',
+  ],
+]);
+
+/**
+ * @typedef {{ sid: string | null, effect: string | null, actions: string[], resources: string[] }} Statement
+ * @typedef {{ label: string, name: string | null, envToken: string | null, providerRef: string | null,
+ *             action: string | null, operators: string[], claims: Map<string, string> }} DeployRole
+ * @typedef {{ roleLabel: string | null, statements: Statement[] }} RolePolicy
+ * @typedef {{ issuer: string | null, audiences: string[] }} OidcProvider
+ * @typedef {{ provider: OidcProvider | null, providerLabel: string | null, roles: DeployRole[],
+ *             policies: RolePolicy[] }} OidcStack
+ * @typedef {{ predicate: string | null, whenTrue: string | null, whenFalse: string | null }} Branch
+ * @typedef {{ environment: Branch, resourceEnv: Branch }} ReleaseWorkflow
+ * @typedef {{ authType: string | null, qualifier: string | null }} FunctionUrl
+ * @typedef {{ fn: string | null, action: string | null, principal: string | null,
+ *             sourceArn: string | null, qualifier: string | null }} InvokeGrant
+ * @typedef {{ label: string, name: string | null, fn: string | null }} FunctionAlias
+ * @typedef {{ local: string, filter: string | null }} SecretMerge
+ * @typedef {{ found: boolean, identifiers: string[], cmkEnvFunctions: string[], statements: number }} KmsDecryptGrant
+ * @typedef {{ file: string, job: string, credentialed: boolean, terraform: boolean, steps: number }} WorkflowJob
+ * @typedef {{ prefix: string | null, functions: Map<string, string>, urls: Map<string, FunctionUrl>,
+ *             aliases: Map<string, FunctionAlias>, permissions: InvokeGrant[],
+ *             secretMerges: SecretMerge[],
+ *             declared: { urls: number, permissions: number } }} WebStack
+ */
+
+// ───────────────────────────── value readers ─────────────────────────────
+
+/// Every double-quoted string assigned to `key`, whether the assignment is one
+/// scalar (`Resource = "*"`) or a list. Returns null when the key is absent, so
+/// a caller can tell "no Resource clause" from "an empty one".
+/**
+ * @param {string} body already comment-stripped
+ * @param {string} key
+ * @returns {string[] | null}
+ */
+export function stringsFor(body, key) {
+  const re = new RegExp(`(?:^|[\\s{,])${key}\\s*=\\s*`, 'm');
+  const m = body.match(re);
+  if (!m || m.index === undefined) return null;
+  const rest = body.slice(m.index + m[0].length);
+  if (rest.startsWith('"')) {
+    const one = rest.match(/^"([^"]*)"/);
+    return one ? [one[1]] : [];
+  }
+  if (!rest.startsWith('[')) return [];
+  const close = matchingBracket(rest, 0);
+  if (close < 0) return [];
+  return [...rest.slice(1, close).matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+}
+
+/// Lambda verbs a deploy role may hold that no workflow invokes, each with the
+/// reason it is still needed. Empty, and it staying empty is the point: an
+/// entry here is standing privilege, and a declared exemption nothing uses
+/// fails as loudly as an undeclared verb.
+/** @type {Map<string, string>} */
+export const UNEXERCISED_LAMBDA_ACTIONS = new Map();
+
+/// `aws lambda <kebab-verb>` -> the IAM action it authorises. IAM models one
+/// action per API operation, so the mapping is the operation name and nothing
+/// else — notably `update-function-code --publish` is ONE operation whose
+/// request carries a `Publish` boolean, not an UpdateFunctionCode followed by a
+/// PublishVersion.
+/** @param {string} verb @returns {string} */
+export function iamActionForCliVerb(verb) {
+  return verb
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('');
+}
+
+/// The repo Secret a job names to pick a deploy role, and the environment
+/// token it carries. This is the only statement in a workflow of WHICH
+/// identity its AWS steps run as, so it is what an invoked verb is attributed
+/// to — a job naming one of these targets one environment, a job naming both
+/// targets both.
+export const ROLE_ARN_SECRET = /secrets\.AWS_DEPLOY_ROLE_ARN_([A-Z0-9_]+)/g;
+
+/// One job's own text, from its key line to the next job's. Needed because a
+/// job states two things outside any step: which role ARNs it can assume, and
+/// the branch its steps are conditioned on.
+/**
+ * @param {string} text
+ * @returns {Map<string, string>} job name -> its lines
+ */
+export function jobRegions(text) {
+  const lines = text.split('\n');
+  /** @type {Map<string, string>} */
+  const regions = new Map();
+  /** @type {string | null} */
+  let job = null;
+  /** @type {string[]} */
+  let buf = [];
+  const flush = () => {
+    if (job !== null) regions.set(job, buf.join('\n'));
+  };
+  for (const line of lines) {
+    const key = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
+    if (key) {
+      flush();
+      job = key[1];
+      buf = [];
+      continue;
+    }
+    if (job !== null) buf.push(line);
+  }
+  flush();
+  return regions;
+}
+
+/// Every `k=v` written to $GITHUB_OUTPUT on each side of a job's env-deciding
+/// `if … then … else … fi`. `parseReleaseWorkflow` reads the same shell for
+/// claim 2 and keeps only `env=`; this keeps all of them, because the output a
+/// step's `if:` is written against (`is_prod`) is not the one that names the
+/// environment (`env`), and attributing a step needs both.
+/**
+ * @param {string} jobBody
+ * @returns {Map<string, { whenTrue: string | null, whenFalse: string | null }>}
+ */
+export function parseBranchOutputs(jobBody) {
+  /** @type {Map<string, { whenTrue: string | null, whenFalse: string | null }>} */
+  const outputs = new Map();
+  const shell = jobBody.match(
+    /if\s*\[\[[\s\S]*?\]\];\s*then([\s\S]*?)\n\s*else\n([\s\S]*?)\n\s*fi/,
+  );
+  if (!shell) return outputs;
+  /** @param {string} side @param {'whenTrue' | 'whenFalse'} slot */
+  const read = (side, slot) => {
+    for (const m of side.matchAll(/echo\s+"([A-Za-z0-9_]+)=([^"]*)"\s*>>\s*"\$GITHUB_OUTPUT"/g)) {
+      const entry = outputs.get(m[1]) ?? { whenTrue: null, whenFalse: null };
+      entry[slot] = m[2];
+      outputs.set(m[1], entry);
+    }
+  };
+  read(shell[1], 'whenTrue');
+  read(shell[2], 'whenFalse');
+  return outputs;
+}
+
+/// Which branch(es) of the job's env decision a step's `if:` leaves reachable,
+/// as the environments they produce. Null when the condition names no output
+/// this reader knows, which is not an error — it means the step runs on both
+/// branches as far as anything here can tell, and attributing it to both is
+/// the reading that can only over-demand a grant, never under-demand one.
+/**
+ * @param {string | null} cond
+ * @param {Map<string, { whenTrue: string | null, whenFalse: string | null }>} outputs
+ * @returns {string[] | null}
+ */
+export function envsForCondition(cond, outputs) {
+  if (!cond) return null;
+  const m = cond.match(
+    /steps\.[A-Za-z0-9_-]+\.outputs\.([A-Za-z0-9_]+)\s*(==|!=)\s*'([^']*)'/,
+  );
+  if (!m) return null;
+  const branch = outputs.get(m[1]);
+  const envs = outputs.get('env');
+  if (!branch || !envs) return null;
+  const holds = (/** @type {string | null} */ value) =>
+    m[2] === '==' ? value === m[3] : value !== m[3];
+  /** @type {string[]} */
+  const reachable = [];
+  if (holds(branch.whenTrue) && envs.whenTrue !== null) reachable.push(envs.whenTrue);
+  if (holds(branch.whenFalse) && envs.whenFalse !== null) reachable.push(envs.whenFalse);
+  return reachable;
+}
+
+/**
+ * @typedef {{ where: string, action: string, envs: string[] }} LambdaInvocation
+ * @typedef {{ byEnv: Map<string, Set<string>>, unattributed: string[], uncredentialed: string[],
+ *             invocations: LambdaInvocation[] }} LambdaScan
+ */
+
+/// Every `lambda:` action the workflows' own shell reaches for, PAIRED WITH THE
+/// ENVIRONMENT the invoking job deploys to.
+///
+/// The union of all of them was what each role used to be compared against,
+/// which is right only while every credentialed job deploys to every
+/// environment. release-web.yml does — it runs the same steps down both
+/// branches — so the union and this agree today. The moment a workflow deploys
+/// one environment only, the union demands a verb the other never uses, and
+/// the fix then looks like widening a role rather than narrowing a derivation.
+///
+/// Attribution has two levels. A job's environments are the ones its
+/// role-ARN Secrets name, because that Secret is the only place a workflow
+/// says which identity it assumes. A step's are those narrowed by its own
+/// `if:` when the condition reads an output of the job's env branch.
+///
+/// Comment lines are skipped: ci.yml's run bodies discuss
+/// `aws lambda update-function-code` in prose, and reading that as an
+/// invocation would let a verb justify itself by being mentioned.
+/**
+ * @param {readonly {name: string, text: string}[]} files
+ * @returns {LambdaScan}
+ */
+export function scanWorkflowLambdaActions(files) {
+  /** @type {Map<string, Set<string>>} */
+  const byEnv = new Map();
+  /** @type {string[]} */
+  const unattributed = [];
+  /** @type {string[]} */
+  const uncredentialed = [];
+  /** @type {LambdaInvocation[]} */
+  const invocations = [];
+
+  for (const { name, text } of files) {
+    const regions = jobRegions(text);
+    /** @type {Map<string, Step[]>} */
+    const byJob = new Map();
+    for (const step of parseSteps(text)) {
+      const list = byJob.get(step.job) ?? [];
+      list.push(step);
+      byJob.set(step.job, list);
+    }
+
+    for (const [job, steps] of byJob) {
+      const region = regions.get(job) ?? steps.map((s) => s.body).join('\n');
+      /** @type {string[]} */
+      const jobEnvs = [
+        ...new Set([...region.matchAll(ROLE_ARN_SECRET)].map((m) => m[1].toLowerCase())),
+      ];
+      const credentialed = steps.some((s) => s.body.includes(CREDENTIALS_ACTION));
+      const outputs = parseBranchOutputs(region);
+
+      for (const step of steps) {
+        if (!step.hasRun) continue;
+        /** @type {Set<string>} */
+        const actions = new Set();
+        for (const line of runBody(step).split('\n')) {
+          if (/^\s*#/.test(line)) continue;
+          for (const m of line.matchAll(/\baws\s+lambda\s+([a-z][a-z0-9-]*)/g)) {
+            actions.add(`lambda:${iamActionForCliVerb(m[1])}`);
+          }
+        }
+        if (actions.size === 0) continue;
+        const where = `${name}:${job}${step.name === null ? '' : ` / ${step.name}`}`;
+
+        if (!credentialed) {
+          uncredentialed.push(`${where} (${[...actions].sort().join(', ')})`);
+          continue;
+        }
+        if (jobEnvs.length === 0) {
+          unattributed.push(`${where} (${[...actions].sort().join(', ')})`);
+          continue;
+        }
+        const narrowed = envsForCondition(step.if, outputs);
+        const envs =
+          narrowed === null ? jobEnvs : jobEnvs.filter((e) => narrowed.includes(e));
+        if (envs.length === 0) {
+          unattributed.push(
+            `${where} (${[...actions].sort().join(', ')}) — its \`if:\` leaves no branch ` +
+              `reachable among the environments the job can assume (${jobEnvs.join(', ')})`,
+          );
+          continue;
+        }
+        for (const action of actions) {
+          invocations.push({ where, action, envs });
+          for (const env of envs) {
+            const set = byEnv.get(env) ?? new Set();
+            set.add(action);
+            byEnv.set(env, set);
+          }
+        }
+      }
+    }
+  }
+
+  return { byEnv, unattributed, uncredentialed, invocations };
+}
+
+/**
+ * Claim 10: no deploy role holds a `lambda:` action the pipeline never uses
+ * AGAINST THAT ROLE'S OWN ENVIRONMENT, and none is missing one it does.
+ *
+ * @param {OidcStack} oidc
+ * @param {LambdaScan} scan
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkLambdaActionScope(oidc, scan) {
+  /** @type {string[]} */
+  const errors = [];
+  /** @type {string[]} */
+  const ok = [];
+
+  for (const where of scan.unattributed) {
+    errors.push(
+      `${where} runs an \`aws lambda\` verb under an assumed AWS role, but which environment it ` +
+        'deploys to could not be read. A job states that by naming an ' +
+        'AWS_DEPLOY_ROLE_ARN_<ENV> Secret; without one, the verb belongs to no role and this ' +
+        'guard would silently stop asking for it. decisions § 1110.',
+    );
+  }
+
+  if (scan.byEnv.size === 0) {
+    errors.push(
+      'no `aws lambda <verb>` invocation was attributed to any environment, so the granted sets ' +
+        'below would have been compared against nothing. Either the release stopped deploying ' +
+        'Lambdas or this reader stopped matching.',
+    );
+    return { errors, ok };
+  }
+
+  /** @type {Map<string, string>} */
+  const roleEnv = new Map();
+  for (const role of oidc.roles) if (role.envToken !== null) roleEnv.set(role.label, role.envToken);
+
+  /** @type {Set<string>} */
+  const envsChecked = new Set();
+  let statements = 0;
+  for (const policy of oidc.policies) {
+    for (const statement of policy.statements) {
+      const granted = statement.actions.filter((a) => a.startsWith('lambda:'));
+      if (granted.length === 0) continue;
+      statements++;
+      const where = `${policy.roleLabel ?? '?'} / ${statement.sid ?? 'unnamed statement'}`;
+      const env = policy.roleLabel === null ? undefined : roleEnv.get(policy.roleLabel);
+      if (env === undefined) {
+        errors.push(
+          `${where} grants ${granted.join(', ')} but its role carries no Environment tag, so there ` +
+            'is no environment to compare the grant against. Claim 4 reads the same tag.',
+        );
+        continue;
+      }
+      envsChecked.add(env);
+      const invoked = scan.byEnv.get(env) ?? new Set();
+      if (invoked.size === 0) {
+        errors.push(
+          `${where} grants ${granted.join(', ')} against the ${env} environment, which no workflow ` +
+            'runs any `aws lambda` verb for. Either nothing deploys Lambdas there any more — in ' +
+            'which case the statement is standing privilege — or the job that does no longer ' +
+            `names an AWS_DEPLOY_ROLE_ARN_${env.toUpperCase()} Secret.`,
+        );
+        continue;
+      }
+      const extra = granted.filter((a) => !invoked.has(a) && !UNEXERCISED_LAMBDA_ACTIONS.has(a));
+      const missing = [...invoked].filter((a) => !granted.includes(a));
+      if (extra.length > 0) {
+        errors.push(
+          `${where} grants ${extra.join(', ')}, which no workflow invokes against ${env}. The ` +
+            `only \`aws lambda\` verbs any workflow runs there are ` +
+            `${[...invoked].sort().join(', ')}; the operator's own SSO ` +
+            'profile is what runs bin/lambda-alias-sync.sh. Remove them, or declare each in ' +
+            'UNEXERCISED_LAMBDA_ACTIONS with the reason it is still needed. decisions § 1085.',
+        );
+      }
+      if (missing.length > 0) {
+        errors.push(
+          `${where} is missing ${missing.join(', ')}, which a workflow invokes against ${env} — ` +
+            'the release fails with AccessDenied mid-deploy, against that environment.',
+        );
+      }
+      if (extra.length === 0 && missing.length === 0) {
+        ok.push(
+          `${where}: lambda actions equal the ${granted.length} the pipeline invokes against ${env}`,
+        );
+      }
+    }
+  }
+  for (const env of scan.byEnv.keys()) {
+    if (!envsChecked.has(env)) {
+      errors.push(
+        `a workflow runs ${[...(scan.byEnv.get(env) ?? [])].sort().join(', ')} against the ${env} ` +
+          'environment, for which no deploy role grants any `lambda:` action. That deploy fails ' +
+          'with AccessDenied, or assumes a role this stack does not create.',
+      );
+    }
+  }
+  for (const [action, reason] of UNEXERCISED_LAMBDA_ACTIONS) {
+    const held = oidc.policies.some((p) => p.statements.some((st) => st.actions.includes(action)));
+    if (!held) {
+      errors.push(
+        `UNEXERCISED_LAMBDA_ACTIONS declares ${action} ("${reason}") but no role grants it. A ` +
+          'stale exemption is a rule nobody is following.',
+      );
+    }
+  }
+  if (statements === 0) {
+    errors.push(
+      'no statement granting any `lambda:` action was found on either deploy role. The release ' +
+        'calls `aws lambda update-function-code` eight times, so this is either a broken parse or ' +
+        'a release that can no longer deploy.',
+    );
+  }
+  if (errors.length === 0) {
+    ok.push(
+      `${scan.invocations.length} \`aws lambda\` invocation(s) attributed across ` +
+        `${scan.byEnv.size} environment(s)` +
+        (scan.uncredentialed.length === 0
+          ? ''
+          : `; ${scan.uncredentialed.length} in job(s) that assume no AWS role, not attributed ` +
+            `(${scan.uncredentialed.join('; ')})`),
+    );
+  }
+
+  return { errors, ok };
+}
+
+/// Index of the `]` closing the `[` at `open`, or -1. Brackets inside strings
+/// do not count.
+/**
+ * @param {string} src
+ * @param {number} open
+ * @returns {number}
+ */
+export function matchingBracket(src, open) {
+  let depth = 0;
+  let inString = false;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (inString) {
+      if (c === '\\') i++;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '[') depth++;
+    else if (c === ']') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/// Every `{ … }` element of the `Statement = [ … ]` array in one jsonencode'd
+/// policy body, read as `{sid, effect, actions, resources}`.
+/**
+ * @param {string} policyBody already comment-stripped
+ * @returns {Statement[]}
+ */
+export function parseStatements(policyBody) {
+  const head = policyBody.match(/Statement\s*=\s*\[/);
+  if (!head || head.index === undefined) {
+    // A single-statement policy writes `Statement = [{ … }]` in this repo, so a
+    // missing array is a shape change worth reporting rather than absorbing.
+    return [];
+  }
+  const open = policyBody.indexOf('[', head.index);
+  const close = matchingBracket(policyBody, open);
+  if (close < 0) return [];
+  const inner = policyBody.slice(open + 1, close);
+
+  /** @type {Statement[]} */
+  const out = [];
+  let i = 0;
+  while (i < inner.length) {
+    const start = inner.indexOf('{', i);
+    if (start < 0) break;
+    const end = braceEnd(inner, start);
+    if (end < 0) break;
+    const body = inner.slice(start + 1, end);
+    out.push({
+      sid: stringsFor(body, 'Sid')?.[0] ?? null,
+      effect: stringsFor(body, 'Effect')?.[0] ?? null,
+      actions: stringsFor(body, 'Action') ?? [],
+      resources: stringsFor(body, 'Resource') ?? [],
+    });
+    i = end + 1;
+  }
+  return out;
+}
+
+/**
+ * @param {string} src
+ * @param {number} open
+ * @returns {number}
+ */
+function braceEnd(src, open) {
+  let depth = 0;
+  let inString = false;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (inString) {
+      if (c === '\\') i++;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+// ─────────────────────────────── parsers ────────────────────────────────
+
+/**
+ * @param {string} raw
+ * @returns {OidcStack}
+ */
+export function parseOidcStack(raw) {
+  const src = stripComments(raw);
+
+  /** @type {OidcProvider | null} */
+  let provider = null;
+  /** @type {string | null} */
+  let providerLabel = null;
+  for (const { label, body } of hclResources(
+    src,
+    'aws_iam_openid_connect_provider',
+  )) {
+    providerLabel = label;
+    provider = {
+      issuer: body.match(/^\s*url\s*=\s*"([^"]*)"/m)?.[1] ?? null,
+      audiences: stringsFor(body, 'client_id_list') ?? [],
+    };
+  }
+
+  /** @type {DeployRole[]} */
+  const roles = [];
+  for (const { label, body } of hclResources(src, 'aws_iam_role')) {
+    const policy = nestedBlock(
+      body,
+      /assume_role_policy\s*=\s*jsonencode\(\s*\{/,
+    );
+    /** @type {Map<string, string>} */
+    const claims = new Map();
+    /** @type {string[]} */
+    const operators = [];
+    if (policy !== null) {
+      const condition = nestedBlock(policy, /Condition\s*=\s*\{/);
+      if (condition !== null) {
+        for (const m of condition.matchAll(
+          /^\s*([A-Za-z][A-Za-z0-9:]*)\s*=\s*\{/gm,
+        )) {
+          operators.push(m[1]);
+        }
+        for (const m of condition.matchAll(
+          new RegExp(
+            `"${CLAIM_PREFIX_PATTERN}:([a-z_]+)"\\s*=\\s*"([^"]*)"`,
+            'g',
+          ),
+        )) {
+          claims.set(m[1], m[2]);
+        }
+      }
+    }
+    roles.push({
+      label,
+      name: body.match(/^\s*name\s*=\s*"([^"]*)"/m)?.[1] ?? null,
+      envToken: body.match(/Environment\s*=\s*"([^"]*)"/)?.[1] ?? null,
+      providerRef:
+        policy?.match(
+          /Federated\s*=\s*aws_iam_openid_connect_provider\.([A-Za-z0-9_-]+)\.arn/,
+        )?.[1] ?? null,
+      action: policy ? (stringsFor(policy, 'Action')?.[0] ?? null) : null,
+      operators,
+      claims,
+    });
+  }
+
+  /** @type {RolePolicy[]} */
+  const policies = [];
+  for (const { body } of hclResources(src, 'aws_iam_role_policy')) {
+    const inline = nestedBlock(body, /policy\s*=\s*jsonencode\(\s*\{/);
+    policies.push({
+      roleLabel:
+        body.match(/^\s*role\s*=\s*aws_iam_role\.([A-Za-z0-9_-]+)\./m)?.[1] ??
+        null,
+      statements: inline === null ? [] : parseStatements(inline),
+    });
+  }
+
+  return { provider, providerLabel, roles, policies };
+}
+
+/// The two branches release-web.yml takes on the same `refs/tags/web@`
+/// predicate: which GitHub environment the job declares, and which resource
+/// environment its steps then target. Pairing them is what links a trust claim
+/// to a set of ARNs.
+/**
+ * @param {string} src
+ * @returns {ReleaseWorkflow}
+ */
+export function parseReleaseWorkflow(src) {
+  const nameLine = src.match(
+    /^\s*name:\s*\$\{\{\s*(.+?)\s*&&\s*'([^']*)'\s*\|\|\s*'([^']*)'\s*\}\}/m,
+  );
+  /** @type {Branch} */
+  const environment = {
+    predicate: nameLine?.[1] ?? null,
+    whenTrue: nameLine?.[2] ?? null,
+    whenFalse: nameLine?.[3] ?? null,
+  };
+
+  // The shell that decides which resource environment the run deploys to.
+  // Read as its own branch rather than assumed to agree with the one above —
+  // the whole point is that the two are separate statements of one fact.
+  const shell = src.match(
+    /if\s*\[\[\s*"\$GITHUB_REF"\s*==\s*(\S+)\s*\]\];\s*then([\s\S]*?)\n\s*else\n([\s\S]*?)\n\s*fi/,
+  );
+  /** @type {Branch} */
+  const resourceEnv = {
+    predicate: shell?.[1] ?? null,
+    whenTrue: shell?.[2].match(/echo\s+"env=([a-z]+)"/)?.[1] ?? null,
+    whenFalse: shell?.[3].match(/echo\s+"env=([a-z]+)"/)?.[1] ?? null,
+  };
+
+  return { environment, resourceEnv };
+}
+
+/**
+ * @param {string} raw
+ * @returns {WebStack}
+ */
+export function parseWebStack(raw) {
+  const src = stripComments(raw);
+  const prefix =
+    src.match(/^\s*resource_prefix\s*=\s*"([^"]*)"/m)?.[1] ?? null;
+
+  /** @type {Map<string, string>} */
+  const functions = new Map();
+  for (const { label, body } of hclResources(src, 'aws_lambda_function')) {
+    const name = body.match(/^\s*function_name\s*=\s*"([^"]*)"/m)?.[1];
+    if (name === undefined || prefix === null) continue;
+    if (!name.startsWith('${local.resource_prefix}-')) continue;
+    functions.set(label, name.slice('${local.resource_prefix}-'.length));
+  }
+
+  /** @type {Map<string, FunctionAlias>} */
+  const aliases = new Map();
+  for (const { label, body } of hclResources(src, 'aws_lambda_alias')) {
+    aliases.set(label, {
+      label,
+      name: body.match(/^\s*name\s*=\s*"([^"]*)"/m)?.[1] ?? null,
+      fn:
+        body.match(
+          /^\s*function_name\s*=\s*aws_lambda_function\.([A-Za-z0-9_-]+)\./m,
+        )?.[1] ?? null,
+    });
+  }
+
+  const urlBlocks = hclResources(src, 'aws_lambda_function_url');
+  /** @type {Map<string, FunctionUrl>} */
+  const urls = new Map();
+  for (const { body } of urlBlocks) {
+    const fn = body.match(
+      /^\s*function_name\s*=\s*aws_lambda_function\.([A-Za-z0-9_-]+)\./m,
+    )?.[1];
+    if (fn === undefined) continue;
+    urls.set(fn, {
+      authType: body.match(/^\s*authorization_type\s*=\s*"([^"]*)"/m)?.[1] ?? null,
+      qualifier: body.match(/^\s*qualifier\s*=\s*(\S+)/m)?.[1] ?? null,
+    });
+  }
+
+  const permissionBlocks = hclResources(src, 'aws_lambda_permission');
+  /** @type {InvokeGrant[]} */
+  const permissions = [];
+  for (const { body } of permissionBlocks) {
+    permissions.push({
+      fn:
+        body.match(
+          /^\s*function_name\s*=\s*aws_lambda_function\.([A-Za-z0-9_-]+)\./m,
+        )?.[1] ?? null,
+      action: body.match(/^\s*action\s*=\s*"([^"]*)"/m)?.[1] ?? null,
+      principal: body.match(/^\s*principal\s*=\s*"([^"]*)"/m)?.[1] ?? null,
+      sourceArn: body.match(/^\s*source_arn\s*=\s*(\S+)/m)?.[1] ?? null,
+      qualifier: body.match(/^\s*qualifier\s*=\s*(\S+)/m)?.[1] ?? null,
+    });
+  }
+
+  return {
+    prefix,
+    functions,
+    urls,
+    aliases,
+    permissions,
+    secretMerges: parseSecretMerges(src),
+    declared: { urls: urlBlocks.length, permissions: permissionBlocks.length },
+  };
+}
+
+/// Index of the `)` closing the call that opens at `open`, or -1. Parens inside
+/// a double-quoted string do not count.
+/**
+ * @param {string} src
+ * @param {number} open
+ * @returns {number}
+ */
+function parenEnd(src, open) {
+  let depth = 0;
+  let inString = false;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (inString) {
+      if (c === '\\') i++;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '(') depth++;
+    else if (c === ')') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/// Every place a `*_lambda_env` local reaches into the decrypted sops map, and
+/// the filter — if any — standing between the map and the Lambda's
+/// environment. A reference wrapped in `{ for k, v in <map> : k => v if … }`
+/// admits the keys the predicate names; a bare reference admits the file.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {SecretMerge[]}
+ */
+export function parseSecretMerges(src) {
+  /** @type {SecretMerge[]} */
+  const out = [];
+  const envLocal = /^\s*([A-Za-z0-9_]*lambda_env)\s*=\s*merge\(/gm;
+  let m;
+  while ((m = envLocal.exec(src)) !== null) {
+    const open = src.indexOf('(', m.index + m[0].length - 1);
+    const close = parenEnd(src, open);
+    if (close < 0) continue;
+    for (const filter of sopsFilters(src.slice(open + 1, close)))
+      out.push({ local: m[1], filter });
+  }
+  return out;
+}
+
+/// One filter per reference to the decrypted sops map inside an expression:
+/// the `if` predicate of the comprehension wrapping it, or `null` when the map
+/// arrives whole — which includes a comprehension carrying no predicate, a
+/// shape that looks filtered and is not.
+/**
+ * @param {string} body
+ * @returns {(string | null)[]}
+ */
+export function sopsFilters(body) {
+  /** @type {(string | null)[]} */
+  const out = [];
+  for (const ref of body.matchAll(/data\.sops_file\.secrets\[0\]\.data/g)) {
+    const before = body.slice(0, ref.index);
+    const brace = before.lastIndexOf('{');
+    // `{ for k, v in ` is the only thing that may sit between the opening
+    // brace and the map. Anything else — including no brace at all — is the
+    // whole file arriving in the environment.
+    const comprehension =
+      brace >= 0 && /^\s*for\s+[A-Za-z0-9_]+\s*,\s*[A-Za-z0-9_]+\s+in\s*$/.test(before.slice(brace + 1));
+    if (!comprehension) {
+      out.push(null);
+      continue;
+    }
+    const after = body.slice(ref.index + ref[0].length);
+    const predicate = after.match(/^\s*:[^\n}]*?\bif\b([^\n}]*)/)?.[1] ?? null;
+    out.push(predicate === null ? null : predicate.trim());
+  }
+  return out;
+}
+
+/// Sops keys that may still arrive as a PLAIN environment variable, and why
+/// each one is not a credential. An exemption nothing uses fails as loudly as
+/// a missing one — the same discipline RESOURCELESS_ACTIONS is held to.
+export const NON_CREDENTIAL_SOPS_KEYS = {
+  SENTRY_DSN:
+    'an ingest URL. It authorises WRITING an event to one Sentry project and ' +
+    'reads nothing back; every Sentry SDK that runs in a browser ships it in ' +
+    'the client bundle by design',
+  COACH_PROVIDER:
+    "selects between 'anthropic' and 'openai'. The coach handler reads it " +
+    'before it has a bag to read, and it authorises nothing',
+  OPENAI_BASE_URL: 'an endpoint, not a credential — the OpenAI-compatible base URL',
+  OPENAI_MODEL: 'a model name, not a credential',
+  AI_PLAN_ENABLED:
+    'a feature switch: /api/coach/plan-request and /api/coach/season-request ' +
+    'answer 503 unless it is truthy. It turns two routes off or on and ' +
+    'authorises no caller',
+  PLATE_PHOTO_ENABLED:
+    'a feature switch: /api/coach/plate-photo answers 503 unless it is ' +
+    'truthy. It turns a route off or on and authorises no caller',
+  COACH_FUEL_ENABLED:
+    'a feature switch: it selects whether the coach system prompt carries ' +
+    'the fuelling handoff. It changes prompt text and authorises no caller',
+  AI_PLAN_EDIT_ENABLED:
+    'a feature switch: /api/coach/plan-edit answers 503 unless it is ' +
+    'truthy. It turns a route off or on and authorises no caller',
+  COACH_ASSIST_ENABLED:
+    'a feature switch: /api/coach/assist answers 503 unless it is ' +
+    'truthy. It turns a route off or on and authorises no caller',
+};
+
+/// `name = ["A", "B"]` entries in a `locals` block, which is what a
+/// `contains(local.x, k)` predicate has to be resolved against.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {Map<string, string[]>}
+ */
+export function parseLocalStringLists(src) {
+  /** @type {Map<string, string[]>} */
+  const out = new Map();
+  for (const m of src.matchAll(/^\s{2}([A-Za-z0-9_]+)\s*=\s*\[([^\]]*)\]/gm))
+    out.set(m[1], [...m[2].matchAll(/"([^"]*)"/g)].map((k) => k[1]));
+  return out;
+}
+
+/// The key names a `for … if <predicate>` admits out of the sops map. `null`
+/// when the predicate cannot be read as a set of names, which the callers treat
+/// the same way they treat no predicate at all: unreadable is not safe.
+/**
+ * @param {string | null} predicate
+ * @param {Map<string, string[]>} lists
+ * @returns {string[] | null}
+ */
+export function admittedKeys(predicate, lists) {
+  if (predicate === null) return null;
+  const contains = predicate.match(/^contains\(local\.([A-Za-z0-9_]+),\s*[A-Za-z0-9_]+\)$/);
+  if (contains) return lists.get(contains[1]) ?? null;
+  // `k == "A" || k == "B"` — every term must be one of these, or the whole
+  // predicate is unread.
+  const terms = predicate.split('||').map((t) => t.trim());
+  /** @type {string[]} */
+  const keys = [];
+  for (const term of terms) {
+    const eq = term.match(/^[A-Za-z0-9_]+\s*==\s*"([^"]*)"$/);
+    if (!eq) return null;
+    keys.push(eq[1]);
+  }
+  return keys.length > 0 ? keys : null;
+}
+
+/**
+ * @typedef {{ local: string, whole: boolean, keys: string[], body: string, refs: string[] }} SopsLocal
+ */
+
+/// Every `locals` entry defined as `merge(…)` that either reaches into the
+/// decrypted sops map or is one of the per-function `*_lambda_env` envs, plus
+/// the other locals it merges. `*_lambda_env` is not the only shape that
+/// matters — `sentry_env` is its own local merged into all eight envs, so a
+/// reader that looked only at `*_lambda_env` would never see the key it
+/// carries — and an env whose own body holds no sops reference still inherits
+/// whatever the locals it merges carry.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {SopsLocal[]}
+ */
+export function parseSopsLocals(src) {
+  const lists = parseLocalStringLists(src);
+  /** @type {SopsLocal[]} */
+  const out = [];
+  const localDef = /^\s{2}([A-Za-z0-9_]+)\s*=\s*merge\(/gm;
+  let m;
+  while ((m = localDef.exec(src)) !== null) {
+    const open = src.indexOf('(', m.index + m[0].length - 1);
+    const close = parenEnd(src, open);
+    if (close < 0) continue;
+    const body = src.slice(open + 1, close);
+    const name = m[1];
+    if (!body.includes('data.sops_file') && !/lambda_env$/.test(name)) continue;
+    /** @type {SopsLocal} */
+    const entry = {
+      local: name,
+      whole: false,
+      keys: [],
+      body,
+      refs: [...body.matchAll(/local\.([A-Za-z0-9_]+)/g)].map((r) => r[1]),
+    };
+    for (const filter of sopsFilters(body)) {
+      const keys = admittedKeys(filter, lists);
+      if (keys === null) entry.whole = true;
+      else entry.keys.push(...keys);
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
+/// The plaintext sops keys each `*_lambda_env` local puts in a function's
+/// environment, following the intermediate locals it merges.
+/**
+ * @param {readonly SopsLocal[]} locals
+ * @returns {Map<string, string[]>}
+ */
+export function envPlaintextKeys(locals) {
+  const byName = new Map(locals.map((l) => [l.local, l]));
+  /** @type {Map<string, string[]>} */
+  const out = new Map();
+  for (const entry of locals) {
+    if (!/lambda_env$/.test(entry.local)) continue;
+    const keys = new Set(entry.keys);
+    for (const ref of entry.refs) for (const k of byName.get(ref)?.keys ?? []) keys.add(k);
+    out.set(entry.local, [...keys].sort());
+  }
+  return out;
+}
+
+/**
+ * @typedef {{ label: string, keys: string[] | null, context: boolean, consumers: string[] }} Ciphertext
+ */
+
+/// The `aws_kms_ciphertext` resources: which sops keys each one encrypts,
+/// whether it binds the blob to one function with an encryption context, and
+/// which `*_lambda_env` locals read its `ciphertext_blob`.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {Ciphertext[]}
+ */
+export function parseKmsCiphertexts(src) {
+  const lists = parseLocalStringLists(src);
+  /** @type {Ciphertext[]} */
+  const out = [];
+  for (const { label, body } of hclResources(src, 'aws_kms_ciphertext')) {
+    const predicate =
+      body.match(/data\.sops_file\.secrets\[0\]\.data\s*:[^\n}]*?\bif\b([^\n}]*)/)?.[1]?.trim() ??
+      null;
+    /** @type {string[]} */
+    const consumers = [];
+    const ref = new RegExp(`aws_kms_ciphertext\\.${label}\\[0\\]\\.ciphertext_blob`);
+    for (const l of parseSopsLocals(src))
+      if (/lambda_env$/.test(l.local) && ref.test(l.body)) consumers.push(l.local);
+    out.push({
+      label,
+      keys: body.includes('data.sops_file') ? admittedKeys(predicate, lists) : [],
+      context: /^\s*context\s*=/m.test(body),
+      consumers,
+    });
+  }
+  return out;
+}
+
+/// Claim 8(b). See the header.
+/**
+ * @param {readonly SopsLocal[]} sopsLocals
+ * @param {readonly Ciphertext[]} ciphertexts
+ * @param {Record<string, string>} exemptions
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkPlaintextCredentials(
+  sopsLocals,
+  ciphertexts,
+  exemptions = NON_CREDENTIAL_SOPS_KEYS,
+) {
+  /** @type {string[]} */
+  const errors = [];
+  /** @type {string[]} */
+  const ok = [];
+
+  if (ciphertexts.length === 0) {
+    errors.push(
+      'no `aws_kms_ciphertext` resource in the web-stack module. The coach and generate-route ' +
+        'credentials reach their functions as one encrypted blob each (decisions § 1671); with ' +
+        'none, either they are back in the environment in plaintext — readable by every principal ' +
+        'that can call UpdateFunctionCode — or this reader stopped matching.',
+    );
+  }
+
+  /** @type {Map<string, string>} */
+  const encrypted = new Map();
+  for (const ct of ciphertexts) {
+    if (ct.keys === null || ct.keys.length === 0) {
+      errors.push(
+        `aws_kms_ciphertext.${ct.label} encrypts no sops key this reader can name. A blob whose ` +
+          'predicate cannot be read is one whose contents nothing here can compare against the ' +
+          'plaintext envs below.',
+      );
+      continue;
+    }
+    if (!ct.context)
+      errors.push(
+        `aws_kms_ciphertext.${ct.label} sets no encryption context. All eight Lambdas share one ` +
+          "execution role, so without a per-function context any function's blob decrypts under " +
+          'any other — the boundary between them would be which env var they happen to hold.',
+      );
+    if (ct.consumers.length !== 1)
+      errors.push(
+        `aws_kms_ciphertext.${ct.label}.ciphertext_blob is read by ${ct.consumers.length} ` +
+          `\`*_lambda_env\` local(s) (${ct.consumers.join(', ') || 'none'}), not exactly one. An ` +
+          'orphan blob is a credential nothing can read; a shared one hands two functions the ' +
+          "same bag and makes the encryption context a label rather than a boundary.",
+      );
+    for (const key of ct.keys) encrypted.set(key, ct.label);
+  }
+
+  const plaintext = envPlaintextKeys(sopsLocals);
+  if (plaintext.size === 0)
+    errors.push(
+      'no `*_lambda_env` local was read, so nothing was checked about what reaches a function ' +
+        'environment in plaintext.',
+    );
+
+  /** @type {Set<string>} */
+  const exemptionsUsed = new Set();
+  for (const [local, keys] of [...plaintext].sort()) {
+    for (const key of keys) {
+      if (encrypted.has(key)) {
+        errors.push(
+          `local.${local} puts ${key} in a function environment as PLAINTEXT while ` +
+            `aws_kms_ciphertext.${encrypted.get(key)} also encrypts it. The encrypted copy buys ` +
+            'nothing while the clear one is still there for every caller of ' +
+            'GetFunctionConfiguration and UpdateFunctionCode.',
+        );
+        continue;
+      }
+      if (key in exemptions) {
+        exemptionsUsed.add(key);
+        continue;
+      }
+      errors.push(
+        `local.${local} puts the sops key ${key} in a function environment as PLAINTEXT. Every ` +
+          'API that returns a FunctionConfiguration returns it, including ' +
+          'lambda:UpdateFunctionCode, which the release role holds — so a deploy can read it ' +
+          '(decisions § 1671). Encrypt it into that function\'s `aws_kms_ciphertext` blob, or, if ' +
+          `it is genuinely not a credential, add ${key} to NON_CREDENTIAL_SOPS_KEYS with the ` +
+          'reason.',
+      );
+    }
+    ok.push(`local.${local}: ${keys.length} plaintext sops key(s), all declared non-credential`);
+  }
+
+  // The sops file is the likely regression, not the only one: an env can name
+  // an encrypted key directly, from a module variable or a literal, and the
+  // comprehension reader above would never see it.
+  for (const entry of sopsLocals) {
+    if (!/lambda_env$/.test(entry.local)) continue;
+    for (const key of encrypted.keys())
+      if (new RegExp(`\\b${key}\\s*=[^=]`).test(entry.body))
+        errors.push(
+          `local.${entry.local} assigns ${key} directly, so the value reaches the function ` +
+            `environment in plaintext alongside the aws_kms_ciphertext.${encrypted.get(key)} blob ` +
+            'that exists to keep it out of there.',
+        );
+  }
+
+  for (const key of Object.keys(exemptions))
+    if (!exemptionsUsed.has(key))
+      errors.push(
+        `NON_CREDENTIAL_SOPS_KEYS exempts ${key}, but no \`*_lambda_env\` local carries it. A ` +
+          'stale exemption is the shape that lets the next key in under a reason written for a ' +
+          'different one.',
+      );
+
+  if (encrypted.size > 0)
+    ok.push(
+      `${encrypted.size} credential(s) reach a Lambda only as ciphertext: ${[...encrypted.keys()].sort().join(', ')}`,
+    );
+
+  return { errors, ok };
+}
+
+// ────────────────────────────── comparison ──────────────────────────────
+
+/// The secrets CMK's decrypt statement, and whether any Lambda holds its
+/// environment under that same key.
+///
+/// The statement is located by what it GRANTS (an AWS-principal statement whose
+/// actions include `kms:Decrypt`) rather than by its Sid, because a Sid is a
+/// label and renaming one must not turn this claim off silently.
+/**
+ * @param {string} raw the web-stack module source
+ * @returns {KmsDecryptGrant}
+ */
+export function parseKmsDecryptGrant(raw) {
+  const src = stripComments(raw);
+  /** @type {string[]} */
+  const identifiers = [];
+  let statements = 0;
+  let found = false;
+  for (const doc of hclBlocks(src, 'data', 'aws_iam_policy_document')) {
+    for (const st of nestedBlocks(doc.body, /(?:^|\n)\s*statement\s*\{/)) {
+      statements++;
+      const actions = stringsFor(st.body, 'actions') ?? [];
+      if (!actions.includes('kms:Decrypt')) continue;
+      const principals = nestedBlock(st.body, /(?:^|\n)\s*principals\s*\{/);
+      if (principals === null) continue;
+      if (!/^\s*type\s*=\s*"AWS"/m.test(principals)) continue;
+      // The env's own root principal is the operator's sops path, not a
+      // pipeline grant, and is out of scope for this claim.
+      if (/identifiers\s*=\s*\[\s*"arn:aws:iam::\$\{[^"]*\}:root"\s*\]/.test(principals))
+        continue;
+      found = true;
+      const list = principals.slice(principals.indexOf('['), principals.lastIndexOf(']') + 1);
+      for (const m of list.matchAll(/"([^"]*)"|(var\.[A-Za-z0-9_]+)/g))
+        identifiers.push(m[1] ?? m[2]);
+    }
+  }
+
+  /** @type {string[]} */
+  const cmkEnvFunctions = [];
+  for (const { label, body } of hclResources(src, 'aws_lambda_function'))
+    if (/^\s*kms_key_arn\s*=/m.test(body)) cmkEnvFunctions.push(label);
+
+  return { found, identifiers, cmkEnvFunctions, statements };
+}
+
+/// The `kms_decrypt_principal_arn` an env root passes into the module, as the
+/// literal right-hand side. `null` when the argument is absent — which is the
+/// state that leaves the module default `""` in force, and is what both roots
+/// do since decisions § 1021.
+/**
+ * @param {string} raw an `infra/envs/<env>/main.tf`
+ * @returns {{ hasModuleCall: boolean, wire: string | null }}
+ */
+export function parseEnvWire(raw) {
+  const src = stripComments(raw);
+  // `module "web" {` carries ONE label, not the two hclBlocks expects.
+  const re = /(?:^|\n)\s*module\s+"[A-Za-z0-9_-]+"\s*\{/g;
+  let found = false;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const open = m.index + m[0].length - 1;
+    const close = blockEnd(src, open);
+    if (close < 0) continue;
+    found = true;
+    const body = src.slice(open + 1, close);
+    const wire = body.match(/^\s*kms_decrypt_principal_arn\s*=\s*(.+?)\s*$/m);
+    if (wire) return { hasModuleCall: true, wire: wire[1] };
+    re.lastIndex = close;
+  }
+  return { hasModuleCall: found, wire: null };
+}
+
+/// Every workflow job, tagged with whether it assumes an AWS role and whether
+/// any of its `run:` steps invokes `terraform`.
+///
+/// A command is a terraform invocation when `terraform` is the FIRST word of a
+/// `&&` / `;` / `|`-separated segment of a run line. Prose cannot satisfy that:
+/// a YAML comment's first word is `#`, which is why the four `terraform apply`
+/// mentions in ci.yml's and terraform.yml's own comments are not read as runs.
+/**
+ * @param {readonly {name: string, text: string}[]} files
+ * @returns {WorkflowJob[]}
+ */
+export function parseWorkflowJobs(files) {
+  /** @type {Map<string, WorkflowJob>} */
+  const jobs = new Map();
+  for (const { name, text } of files) {
+    for (const step of parseSteps(text)) {
+      const key = `${name}:${step.job}`;
+      const job = jobs.get(key) ?? {
+        file: name,
+        job: step.job,
+        credentialed: false,
+        terraform: false,
+        steps: 0,
+      };
+      job.steps++;
+      if (step.body.includes(CREDENTIALS_ACTION)) job.credentialed = true;
+      if (step.hasRun)
+        for (const line of runBody(step).split('\n'))
+          for (const segment of line.split(/&&|\|\||;|\|/))
+            if (/^\s*(?:-\s+)?(?:run:\s*)?terraform(?:\s|$)/.test(segment))
+              job.terraform = true;
+      jobs.set(key, job);
+    }
+  }
+  return [...jobs.values()];
+}
+
+/**
+ * @param {string} dir
+ * @returns {{ name: string, text: string }[]}
+ */
+export function readWorkflowFiles(dir) {
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
+    .sort()
+    .map((name) => ({ name, text: readFileSync(join(dir, name), 'utf-8') }));
+}
+
+/// Composite actions, one `action.yml` per directory. Read only to prove none
+/// of them assumes an AWS role — see the note in claim 9's header.
+/**
+ * @param {string} dir
+ * @returns {string[]} the names of the actions that assume an AWS role
+ */
+export function credentialedActions(dir) {
+  /** @type {string[]} */
+  const found = [];
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (!entry.isDirectory()) continue;
+    for (const file of ['action.yml', 'action.yaml']) {
+      let text;
+      try {
+        text = readFileSync(join(dir, entry.name, file), 'utf-8');
+      } catch {
+        continue;
+      }
+      if (text.includes(CREDENTIALS_ACTION)) found.push(entry.name);
+    }
+  }
+  return found;
+}
+
+/// Claim 9. See the header.
+/**
+ * @param {KmsDecryptGrant} grant
+ * @param {{ path: string, hasModuleCall: boolean, wire: string | null }[]} envs
+ * @param {readonly WorkflowJob[]} jobs
+ * @param {readonly string[]} credentialedCompositeActions
+ * @param {readonly string[]} ciphertextLabels
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkDecryptGrant(
+  grant,
+  envs,
+  jobs,
+  credentialedCompositeActions = [],
+  ciphertextLabels = [],
+) {
+  /** @type {string[]} */
+  const errors = [];
+  /** @type {string[]} */
+  const ok = [];
+
+  if (grant.statements === 0 || !grant.found) {
+    errors.push(
+      'no kms:Decrypt statement with an AWS principal found in the web-stack module ' +
+        `(${grant.statements} statement(s) read). Either the secrets key policy moved or this ` +
+        'reader stopped matching — and a decrypt grant nothing reads is exactly what claim 9 exists ' +
+        'to stop accumulating.',
+    );
+    return { errors, ok };
+  }
+  if (!grant.identifiers.includes('var.kms_decrypt_principal_arn')) {
+    errors.push(
+      'the module\'s kms:Decrypt statement no longer takes `var.kms_decrypt_principal_arn` in its ' +
+        `identifiers (read: ${JSON.stringify(grant.identifiers)}). That variable is the one knob ` +
+        'for restoring the grant the day CI needs it; without it the two halves below are comparing ' +
+        'a wire against nothing.',
+    );
+  }
+
+  // The EXECUTION role's own identifier, which the module builds from
+  // local.resource_prefix rather than referencing the role (a key -> role -> key
+  // cycle). Unexercised until § 1671 and load-bearing since: it is what decrypts
+  // the claim-8(b) blob at cold start, so its removal is not hygiene, it is a
+  // 503 on the first invocation in every fresh container.
+  const execRole = grant.identifiers.find((i) => /:role\/\$\{local\.resource_prefix\}/.test(i));
+  if (ciphertextLabels.length > 0 && execRole === undefined)
+    errors.push(
+      "the module's kms:Decrypt statement no longer names the Lambda execution role " +
+        `(read: ${JSON.stringify(grant.identifiers)}), while aws_kms_ciphertext.` +
+        `${ciphertextLabels.join(', aws_kms_ciphertext.')} put(s) a ciphertext in a function ` +
+        'environment for the handler to decrypt at cold start. Without the grant both credential-' +
+        'carrying Lambdas answer 503 on every cold start (decisions § 1671).',
+    );
+  else if (execRole !== undefined && ciphertextLabels.length > 0)
+    ok.push(
+      `the Lambda execution role holds kms:Decrypt, which ${ciphertextLabels.length} cold-start ` +
+        'ciphertext blob(s) depend on',
+    );
+
+  if (envs.length === 0) {
+    errors.push('no env root was read, so nothing about the decrypt wire was checked.');
+    return { errors, ok };
+  }
+  for (const env of envs) {
+    if (!env.hasModuleCall)
+      errors.push(
+        `${env.path} holds no \`module "web"\` block — the env root moved or this reader stopped ` +
+          'matching, and its decrypt wire was not read.',
+      );
+  }
+
+  const credentialedTerraform = jobs.filter((j) => j.credentialed && j.terraform);
+  const needed = credentialedTerraform.length > 0 || grant.cmkEnvFunctions.length > 0;
+  /** @type {string[]} */
+  const because = [];
+  if (credentialedTerraform.length > 0)
+    because.push(
+      `${credentialedTerraform.map((j) => `${j.file}:${j.job}`).join(', ')} assume(s) an AWS role AND run(s) terraform`,
+    );
+  if (grant.cmkEnvFunctions.length > 0)
+    because.push(
+      `aws_lambda_function.${grant.cmkEnvFunctions.join(', aws_lambda_function.')} set(s) kms_key_arn, so the deploy role's lambda:UpdateFunctionCode transits this key`,
+    );
+
+  for (const env of envs) {
+    if (!env.hasModuleCall) continue;
+    const wired = env.wire !== null && env.wire !== '""';
+    if (needed && !wired) {
+      errors.push(
+        `${env.path} leaves \`kms_decrypt_principal_arn\` empty, but ${because.join(' and ')}. ` +
+          'That deploy will fail with AccessDenied against the secrets CMK, mid-release. Wire the ' +
+          "env's deploy role back in (decisions § 1021 removed it precisely because neither was true).",
+      );
+      continue;
+    }
+    if (!needed && wired) {
+      errors.push(
+        `${env.path} wires \`kms_decrypt_principal_arn = ${env.wire}\`, granting that principal ` +
+          'kms:Decrypt on the key protecting ANTHROPIC_API_KEY and SUPABASE_SECRET_KEY — while no ' +
+          'credentialed workflow job runs terraform and no Lambda holds its environment under this ' +
+          'key. Nothing in the pipeline can exercise the grant, so it is standing privilege on the ' +
+          'one key in the account whose loss is unrecoverable (decisions § 1021).',
+      );
+      continue;
+    }
+    ok.push(
+      needed
+        ? `${env.path}: decrypt principal wired, and the pipeline needs it (${because.join('; ')})`
+        : `${env.path}: no CI decrypt principal on the secrets CMK, and nothing in the pipeline needs one`,
+    );
+  }
+
+  if (credentialedCompositeActions.length > 0)
+    errors.push(
+      `composite action(s) ${credentialedCompositeActions.join(', ')} assume an AWS role. This ` +
+        "claim's terraform scan reads .github/workflows/*.yml only — a composite action's " +
+        '`runs.steps` is a different shape — so a credentialed action running terraform would go ' +
+        'unread. Widen the scan before letting one hold AWS credentials.',
+    );
+
+  if (jobs.length === 0)
+    errors.push(
+      'no workflow job was read, so "no credentialed job runs terraform" rests on an empty scan ' +
+        'rather than on the workflows.',
+    );
+  else if (!needed)
+    ok.push(
+      `${jobs.length} workflow job(s) read; ${jobs.filter((j) => j.credentialed).length} assume an ` +
+        `AWS role, ${jobs.filter((j) => j.terraform).length} run terraform, none does both`,
+    );
+
+  return { errors, ok };
+}
+
+/**
+ * @param {OidcStack} oidc
+ * @param {ReleaseWorkflow} release
+ * @param {WebStack} web
+ * @param {string} oidcVars
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function compareSources(oidc, release, web, oidcVars) {
+  /** @type {string[]} */
+  const errors = [];
+  /** @type {string[]} */
+  const ok = [];
+
+  // ── 1. the OIDC provider itself ──
+  if (oidc.provider === null) {
+    errors.push(
+      'no aws_iam_openid_connect_provider in the github-oidc stack — either the ' +
+        'provider moved or the parser stopped matching, and either way nothing ' +
+        'below was really checked.',
+    );
+  } else {
+    if (oidc.provider.issuer !== OIDC_ISSUER) {
+      errors.push(
+        `OIDC provider url is ${JSON.stringify(oidc.provider.issuer)}, not ${OIDC_ISSUER} — ` +
+          'a provider pointed anywhere else is not GitHub Actions.',
+      );
+    }
+    if (
+      oidc.provider.audiences.length !== 1 ||
+      oidc.provider.audiences[0] !== OIDC_AUDIENCE
+    ) {
+      errors.push(
+        `OIDC provider client_id_list is ${JSON.stringify(oidc.provider.audiences)}; it must be ` +
+          `exactly ["${OIDC_AUDIENCE}"]. Every extra audience is one more token shape AWS will accept.`,
+      );
+    } else {
+      ok.push(`OIDC provider trusts ${OIDC_ISSUER} for ${OIDC_AUDIENCE} alone`);
+    }
+  }
+
+  if (oidc.roles.length === 0) {
+    errors.push(
+      'no aws_iam_role found in the github-oidc stack — nothing was checked.',
+    );
+    return { errors, ok };
+  }
+
+  // ── 2. trust-policy shape, per role ──
+  /** @type {Map<string, string>} */
+  const roleEnvToSub = new Map();
+  const envTokens = new Set(
+    oidc.roles.map((r) => r.envToken).filter((t) => t !== null),
+  );
+
+  for (const role of oidc.roles) {
+    const where = `aws_iam_role.${role.label}`;
+    if (role.action !== 'sts:AssumeRoleWithWebIdentity') {
+      errors.push(
+        `${where}: assume-role Action is ${JSON.stringify(role.action)}, not sts:AssumeRoleWithWebIdentity.`,
+      );
+    }
+    if (role.providerRef !== oidc.providerLabel) {
+      errors.push(
+        `${where}: Principal.Federated is ${JSON.stringify(role.providerRef)} rather than the ` +
+          `stack's own aws_iam_openid_connect_provider.${oidc.providerLabel}.`,
+      );
+    }
+    if (role.operators.length !== 1 || role.operators[0] !== 'StringEquals') {
+      errors.push(
+        `${where}: trust Condition uses ${JSON.stringify(role.operators)}. It must be exactly ` +
+          '["StringEquals"] — StringLike (or any Ignore-case / ForAnyValue form) turns the sub ' +
+          'claim from an identity into a pattern, and a pattern is one `*` from matching a fork.',
+      );
+    }
+    if (role.claims.get('aud') !== OIDC_AUDIENCE) {
+      errors.push(
+        `${where}: trust policy does not pin ${CLAIM_PREFIX}:aud to ${OIDC_AUDIENCE} ` +
+          `(got ${JSON.stringify(role.claims.get('aud') ?? null)}).`,
+      );
+    }
+
+    const sub = role.claims.get('sub');
+    if (sub === undefined) {
+      errors.push(
+        `${where}: trust policy pins no ${CLAIM_PREFIX}:sub. Without it any repository on GitHub ` +
+          'that can reach this provider can assume the role.',
+      );
+      continue;
+    }
+    if (/[*?]/.test(sub)) {
+      errors.push(
+        `${where}: sub claim ${JSON.stringify(sub)} contains a wildcard. Under StringEquals it ` +
+          'matches nothing; under StringLike it matches far too much.',
+      );
+    }
+    // `${var.github_subject_prefix}` is the immutable-subject form: GitHub
+    // substitutes numeric org and repo IDs for the names, so the prefix cannot
+    // be built from the slug and is carried whole. The value itself is shape-
+    // checked against the tfvars below — accepting the token here would
+    // otherwise let any string through under a variable's name.
+    const shape = sub.match(
+      /^(?:\$\{var\.github_subject_prefix\}|repo:(?:\$\{var\.github_repo\}|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)):environment:([A-Za-z0-9_-]+)$/,
+    );
+    if (!shape) {
+      errors.push(
+        `${where}: sub claim ${JSON.stringify(sub)} is not ` +
+          '`repo:<owner/repo>:environment:<name>`. A ref- or pull_request-shaped sub is assumable ' +
+          'by any branch or any PR build, including one opened from a fork.',
+      );
+      continue;
+    }
+    if (role.envToken === null) {
+      errors.push(
+        `${where}: no Environment tag, so the role's own environment cannot be read and its ` +
+          'resource scoping cannot be checked against it.',
+      );
+      continue;
+    }
+    if (role.name === null || !role.name.endsWith(`-${role.envToken}`)) {
+      errors.push(
+        `${where}: role name ${JSON.stringify(role.name)} does not end in its Environment tag ` +
+          `(-${role.envToken}). The name is what an operator reads in the console; the tag is what ` +
+          'cost and access reviews group by. They must agree.',
+      );
+    }
+    roleEnvToSub.set(role.envToken, shape[1]);
+    ok.push(
+      `${where}: StringEquals sub = <repo prefix>:environment:${shape[1]}, aud pinned`,
+    );
+  }
+
+  // A variable with a default is a variable that can go unset without anyone
+  // noticing — and this one is the repository the whole trust policy anchors to.
+  const repoVar = oidcVars.match(
+    /variable\s+"github_repo"\s*\{([\s\S]*?)\n\}/,
+  )?.[1];
+  if (repoVar === undefined) {
+    errors.push(
+      'infra/github-oidc/variables.tf declares no `github_repo` variable — the sub claim ' +
+        'interpolates it, so the parser and the source disagree.',
+    );
+  } else if (/^\s*default\s*=/m.test(repoVar)) {
+    errors.push(
+      'infra/github-oidc/variables.tf gives `github_repo` a default. It must have none: an ' +
+        'apply with the tfvars missing would then mint deploy roles trusting whatever repository ' +
+        'the default names, silently.',
+    );
+  } else {
+    ok.push('github_repo has no default — an unset apply fails rather than guesses');
+  }
+
+  // A variable is only as tight as the value behind it. The sub check accepts
+  // `${var.github_subject_prefix}` as a prefix; this is what stops that from
+  // being a hole. The immutable form carries numeric IDs
+  // (repo:<owner>@<id>/<repo>@<id>); the legacy form carries the slug. Anything
+  // else — a ref, a wildcard, an empty string — is refused here.
+  const usesSubjectPrefix = oidc.roles.some((r) =>
+    (r.claims.get('sub') ?? '').startsWith('${var.github_subject_prefix}'),
+  );
+  if (usesSubjectPrefix) {
+    const prefixVar = oidcVars.match(
+      /variable\s+"github_subject_prefix"\s*\{([\s\S]*?)\n\}/,
+    )?.[1];
+    if (prefixVar === undefined) {
+      errors.push(
+        'infra/github-oidc/variables.tf declares no `github_subject_prefix` variable — the sub ' +
+          'claim interpolates it, so the parser and the source disagree.',
+      );
+    } else if (/^\s*default\s*=/m.test(prefixVar)) {
+      errors.push(
+        'infra/github-oidc/variables.tf gives `github_subject_prefix` a default. It must have ' +
+          'none: an apply with the tfvars missing would mint deploy roles trusting whatever ' +
+          'subject the default names, silently.',
+      );
+    }
+    let tfvars = '';
+    try {
+      tfvars = readFileSync(OIDC_TFVARS_FILE, 'utf-8');
+    } catch {
+      errors.push(
+        `${OIDC_TFVARS_FILE} is unreadable, so the subject prefix the roles trust cannot be ` +
+          'checked. It is the one value standing between these roles and any repository.',
+      );
+    }
+    const value = tfvars.match(/^\s*github_subject_prefix\s*=\s*"([^"]*)"/m)?.[1];
+    if (tfvars !== '' && value === undefined) {
+      errors.push(
+        'infra/github-oidc/terraform.tfvars sets no `github_subject_prefix`. The apply would ' +
+          'prompt, or fail, rather than trust the subject GitHub actually issues.',
+      );
+    } else if (
+      value !== undefined &&
+      !/^repo:[A-Za-z0-9_.-]+(@\d+)?\/[A-Za-z0-9_.-]+(@\d+)?$/.test(value)
+    ) {
+      errors.push(
+        `infra/github-oidc/terraform.tfvars: github_subject_prefix ${JSON.stringify(value)} is ` +
+          'not `repo:<owner>[@<id>]/<repo>[@<id>]`. Read it, never guess it: ' +
+          '`gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix`.',
+      );
+    } else if (value !== undefined) {
+      ok.push(`github_subject_prefix is repo-shaped (${value})`);
+    }
+  }
+
+  // ── 3. environment lockstep with the release workflow ──
+  const { environment, resourceEnv } = release;
+  const branchesRead =
+    environment.whenTrue !== null &&
+    environment.whenFalse !== null &&
+    resourceEnv.whenTrue !== null &&
+    resourceEnv.whenFalse !== null;
+  if (!branchesRead) {
+    errors.push(
+      'could not read both branches of release-web.yml — the job-level `environment: name:` ' +
+        'expression and the `Determine env + version` shell. One of them has moved, and the ' +
+        'lockstep that failed the web@1.0.3 release is unchecked until this parses again.',
+    );
+  } else {
+    const linked =
+      (environment.predicate ?? '').includes('refs/tags/web@') &&
+      (resourceEnv.predicate ?? '').includes('refs/tags/web@');
+    if (!linked) {
+      errors.push(
+        'the GitHub-environment branch and the resource-environment branch in release-web.yml no ' +
+          'longer test the same `refs/tags/web@` predicate, so which trust claim goes with which ' +
+          'set of ARNs can no longer be derived from the workflow.',
+      );
+    }
+    const declared = new Set([environment.whenTrue, environment.whenFalse]);
+    const trusted = new Set(roleEnvToSub.values());
+    const missing = [...declared].filter((e) => e !== null && !trusted.has(e));
+    const extra = [...trusted].filter((e) => !declared.has(e));
+    if (missing.length > 0) {
+      errors.push(
+        `release-web.yml can declare GitHub environment(s) ${JSON.stringify(missing)} that no ` +
+          'deploy role trusts — that run reaches AssumeRoleWithWebIdentity and is refused, which ' +
+          'is exactly how web@1.0.3 failed.',
+      );
+    }
+    if (extra.length > 0) {
+      errors.push(
+        `deploy role(s) trust GitHub environment(s) ${JSON.stringify(extra)} that release-web.yml ` +
+          'never declares. A trusted environment nothing uses is a role anyone who can create that ' +
+          'environment can assume.',
+      );
+    }
+    for (const [resEnv, ghEnv] of [
+      [resourceEnv.whenTrue, environment.whenTrue],
+      [resourceEnv.whenFalse, environment.whenFalse],
+    ]) {
+      if (resEnv === null || ghEnv === null) continue;
+      const got = roleEnvToSub.get(resEnv);
+      if (got === undefined) {
+        errors.push(
+          `release-web.yml deploys to the "${resEnv}" resources but no deploy role carries that ` +
+            'Environment tag.',
+        );
+      } else if (got !== ghEnv) {
+        errors.push(
+          `the "${resEnv}" deploy role trusts GitHub environment "${got}", but a run that targets ` +
+            `the "${resEnv}" resources declares environment "${ghEnv}". A run in one environment ` +
+            "would be assuming the other environment's role.",
+        );
+      } else {
+        ok.push(`GitHub environment "${ghEnv}" ↔ ${resEnv} deploy role`);
+      }
+    }
+  }
+
+  // ── 4. + 5. inline policies: no wildcards, one environment each ──
+  /** @type {Set<string>} */
+  const usedExemptions = new Set();
+  const byRole = new Map(oidc.policies.map((p) => [p.roleLabel, p]));
+
+  for (const role of oidc.roles) {
+    const policy = byRole.get(role.label);
+    if (policy === undefined || policy.statements.length === 0) {
+      errors.push(
+        `aws_iam_role.${role.label} has no readable inline aws_iam_role_policy — its grants were ` +
+          'not checked.',
+      );
+      continue;
+    }
+    for (const st of policy.statements) {
+      const at = `aws_iam_role.${role.label} statement ${JSON.stringify(st.sid)}`;
+      if (st.actions.length === 0) {
+        errors.push(`${at}: no Action list could be read.`);
+        continue;
+      }
+      for (const action of st.actions) {
+        if (action === '*' || action.endsWith(':*')) {
+          errors.push(
+            `${at}: grants ${JSON.stringify(action)}. A service-wide action grant is never what a ` +
+              'deploy pipeline needs — enumerate the calls the workflow actually makes.',
+          );
+        }
+      }
+      if (st.resources.includes('*')) {
+        for (const action of st.actions) {
+          const reason = RESOURCELESS_ACTIONS.get(action);
+          if (reason === undefined) {
+            errors.push(
+              `${at}: grants ${JSON.stringify(action)} on Resource "*". Scope it to an ARN, or add ` +
+                'it to RESOURCELESS_ACTIONS in this guard with the reason AWS models no resource for it.',
+            );
+          } else {
+            usedExemptions.add(action);
+          }
+        }
+      }
+      for (const resource of st.resources) {
+        if (resource === '*') continue;
+        const fields = resource.split(':');
+        if (fields[3] === '*' || fields[4] === '*') {
+          errors.push(
+            `${at}: resource ${JSON.stringify(resource)} wildcards its region or account field.`,
+          );
+        }
+        if (role.envToken === null) continue;
+        if (!resource.includes(`-${role.envToken}-`)) {
+          errors.push(
+            `${at}: resource ${JSON.stringify(resource)} carries no -${role.envToken}- token, so ` +
+              "this role's reach cannot be confirmed to stop at its own environment.",
+          );
+        }
+        for (const other of envTokens) {
+          if (other === role.envToken) continue;
+          if (resource.includes(`-${other}-`)) {
+            errors.push(
+              `${at}: the ${role.envToken} role can reach ${JSON.stringify(resource)}, which belongs ` +
+                `to ${other}. This is the copy-paste that hands a ${role.envToken} deploy write ` +
+                `access to ${other}.`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  for (const [action, reason] of RESOURCELESS_ACTIONS) {
+    if (!usedExemptions.has(action)) {
+      errors.push(
+        `RESOURCELESS_ACTIONS exempts ${JSON.stringify(action)} ("${reason}") but no statement ` +
+          'grants it on "*" any more. Drop the entry — a stale exemption reads as a decision ' +
+          'someone made about a grant that is gone.',
+      );
+    }
+  }
+
+  // ── 6. the deploy policies' Lambda list vs the module's functions ──
+  if (web.prefix === null || !web.prefix.includes('${var.env}')) {
+    errors.push(
+      'could not read `local.resource_prefix` from the web-stack module, so the deploy policies\' ' +
+        'Lambda ARNs were not compared with the functions they are meant to cover.',
+    );
+  } else if (web.functions.size === 0) {
+    errors.push(
+      'no aws_lambda_function with an interpolated name was read from the web-stack module — the ' +
+        'Lambda coverage check would pass vacuously.',
+    );
+  } else {
+    const head = web.prefix.slice(0, web.prefix.indexOf('${var.env}'));
+    const suffixes = new Set(web.functions.values());
+    for (const role of oidc.roles) {
+      const policy = byRole.get(role.label);
+      if (policy === undefined || role.envToken === null) continue;
+      /** @type {Set<string>} */
+      const granted = new Set();
+      for (const st of policy.statements) {
+        for (const resource of st.resources) {
+          const fn = resource.match(/:function:(.+)$/)?.[1];
+          if (fn === undefined) continue;
+          const bare = fn.endsWith('*') ? fn.slice(0, -1) : fn;
+          const expectedHead = `${head}${role.envToken}-`;
+          if (!bare.startsWith(expectedHead)) {
+            errors.push(
+              `aws_iam_role.${role.label}: Lambda resource ${JSON.stringify(resource)} does not name a ` +
+                `${expectedHead}* function.`,
+            );
+            continue;
+          }
+          granted.add(bare.slice(expectedHead.length));
+        }
+      }
+      const uncovered = [...suffixes].filter((s) => !granted.has(s));
+      const unknown = [...granted].filter((s) => !suffixes.has(s));
+      if (uncovered.length > 0) {
+        errors.push(
+          `aws_iam_role.${role.label}: the module declares Lambda(s) ${JSON.stringify(uncovered)} that ` +
+            'this deploy policy does not grant. The release workflow updates every function, so the ' +
+            'run fails at `aws lambda update-function-code` with AccessDenied — mid-deploy, after the ' +
+            'S3 sync has already landed.',
+        );
+      }
+      if (unknown.length > 0) {
+        errors.push(
+          `aws_iam_role.${role.label}: the deploy policy grants Lambda(s) ${JSON.stringify(unknown)} ` +
+            'that the module does not declare. Either a function was renamed and the grant left behind, ' +
+            'or the policy reaches something Terraform does not own.',
+        );
+      }
+      if (uncovered.length === 0 && unknown.length === 0) {
+        ok.push(
+          `aws_iam_role.${role.label}: grants exactly the ${suffixes.size} module Lambda(s)`,
+        );
+      }
+    }
+  }
+
+  // ── 7. every Function URL is AWS_IAM and carries both CloudFront grants ──
+  if (web.urls.size === 0) {
+    errors.push(
+      'no aws_lambda_function_url was read from the web-stack module — the origin-reachability ' +
+        'check would pass vacuously.',
+    );
+  }
+  // A block whose `function_name` is not written as `aws_lambda_function.<label>.`
+  // is skipped by the parser above, and a skipped Function URL is one whose
+  // authorization_type nothing reads. That is silent: the loop below simply has
+  // one fewer thing to iterate, which looks exactly like a stack with one fewer
+  // Lambda.
+  if (web.declared.urls !== web.urls.size) {
+    errors.push(
+      `${web.declared.urls} aws_lambda_function_url block(s) in the module, ${web.urls.size} read. ` +
+        'A block naming its function some other way is skipped, and a skipped Function URL is one ' +
+        'whose auth type and CloudFront grants are checked by nothing.',
+    );
+  }
+  const unattributed = web.permissions.filter((p) => p.fn === null).length;
+  if (unattributed > 0) {
+    errors.push(
+      `${unattributed} aws_lambda_permission block(s) name no aws_lambda_function, so they belong to ` +
+        'no function below and every grant they carry went unread.',
+    );
+  }
+  for (const [fn, url] of web.urls) {
+    const authType = url.authType;
+    // The Function URL is created ON THE ALIAS, so the URL invokes the alias
+    // ARN. A resource-policy statement carrying no qualifier is attached to the
+    // UNQUALIFIED function and does not authorise that invocation: the URL 403s
+    // before invocation and the distribution's SPA error fallback rewrites the
+    // 403 into the shell at 200 — the same invisible outage issue #590
+    // measured, one field over.
+    if (url.qualifier !== null) {
+      const aliasLabel = url.qualifier.match(/^aws_lambda_alias\.([A-Za-z0-9_-]+)\.name$/)?.[1];
+      const alias = aliasLabel === undefined ? undefined : web.aliases.get(aliasLabel);
+      if (alias === undefined) {
+        errors.push(
+          `aws_lambda_function_url for ${fn}: qualifier ${JSON.stringify(url.qualifier)} does not ` +
+            'name an aws_lambda_alias this module declares, so which version the URL serves could ' +
+            'not be read.',
+        );
+      } else if (alias.fn !== fn) {
+        errors.push(
+          `aws_lambda_function_url for ${fn}: qualified by aws_lambda_alias.${alias.label}, which is ` +
+            `an alias of ${alias.fn}. Every alias here is named "live", so this applies cleanly and ` +
+            'serves the wrong function rather than failing.',
+        );
+      }
+    }
+    const grants = web.permissions.filter((p) => p.fn === fn);
+    for (const action of ['lambda:InvokeFunctionUrl', 'lambda:InvokeFunction']) {
+      const grant = grants.find((g) => g.action === action);
+      if (grant !== undefined && grant.qualifier !== url.qualifier) {
+        errors.push(
+          `${fn}: the Function URL is qualified by ${JSON.stringify(url.qualifier)} but its ${action} ` +
+            `grant by ${JSON.stringify(grant.qualifier)}. A Lambda resource policy is attached per ` +
+            'qualifier, so the grant does not cover the ARN CloudFront actually invokes: the URL ' +
+            "403s before invocation and the distribution's SPA fallback rewrites that into the shell " +
+            'at 200, so the surface reads healthy while the function never runs (issue #590).',
+        );
+      }
+    }
+    if (authType !== 'AWS_IAM') {
+      errors.push(
+        `aws_lambda_function_url for ${fn}: authorization_type is ${JSON.stringify(authType)}. ` +
+          'Anything but AWS_IAM makes the .lambda-url hostname world-invocable, bypassing CloudFront, ' +
+          'its WAF rate limits and its response-headers policy.',
+      );
+    }
+    for (const action of ['lambda:InvokeFunctionUrl', 'lambda:InvokeFunction']) {
+      const grant = grants.find((g) => g.action === action);
+      if (grant === undefined) {
+        errors.push(
+          `${fn}: no aws_lambda_permission grants ${action} to CloudFront. AWS's OAC-for-Lambda ` +
+            'contract needs BOTH grants; with one, the Function URL 403s before invocation and the ' +
+            "distribution's SPA error fallback rewrites that 403 into the shell at 200 — the surface " +
+            'reads healthy while the function never runs (issue #590).',
+        );
+        continue;
+      }
+      if (grant.principal !== 'cloudfront.amazonaws.com') {
+        errors.push(
+          `${fn}: the ${action} grant names principal ${JSON.stringify(grant.principal)} rather than ` +
+            'cloudfront.amazonaws.com.',
+        );
+      }
+      if (grant.sourceArn !== 'aws_cloudfront_distribution.this.arn') {
+        errors.push(
+          `${fn}: the ${action} grant's source_arn is ${JSON.stringify(grant.sourceArn)} rather than ` +
+            "this env's own distribution — without it any CloudFront distribution in any account can " +
+            'invoke the function.',
+        );
+      }
+    }
+    if (grants.length >= 2) {
+      ok.push(`${fn}: AWS_IAM Function URL with both CloudFront invoke grants`);
+    }
+  }
+
+  // ── 8. no Lambda environment takes the secrets file whole ──
+  if (web.secretMerges.length === 0) {
+    errors.push(
+      'no `*_lambda_env` local was read reaching into data.sops_file — either no Lambda takes a ' +
+        'secret any more, or this reader stopped matching and a whole-file merge would go unseen.',
+    );
+  }
+  for (const merge of web.secretMerges) {
+    if (merge.filter === null) {
+      errors.push(
+        `local.${merge.local} merges the decrypted sops map whole. Every key the file grows for any ` +
+          "OTHER consumer then lands in that function's environment whether its handler reads it or " +
+          'not — readable by anyone who can call GetFunctionConfiguration, and by any code-execution ' +
+          'bug in the handler. Take the keys by name, the way the generate-route env does.',
+      );
+    } else {
+      ok.push(`local.${merge.local}: sops keys filtered by \`${merge.filter}\``);
+    }
+  }
+
+  return { errors, ok };
+}
+
+export function main() {
+  const moduleSrc = readFileSync(MODULE_FILE, 'utf-8');
+  const strippedModule = stripComments(moduleSrc);
+  const ciphertexts = parseKmsCiphertexts(strippedModule);
+  const { errors, ok } = compareSources(
+    parseOidcStack(readFileSync(OIDC_FILE, 'utf-8')),
+    parseReleaseWorkflow(readFileSync(RELEASE_FILE, 'utf-8')),
+    parseWebStack(moduleSrc),
+    readFileSync(OIDC_VARS_FILE, 'utf-8'),
+  );
+
+  const grant = checkDecryptGrant(
+    parseKmsDecryptGrant(moduleSrc),
+    ENV_FILES.map((path) => ({
+      path,
+      ...parseEnvWire(readFileSync(path, 'utf-8')),
+    })),
+    parseWorkflowJobs(readWorkflowFiles(WORKFLOW_DIR)),
+    credentialedActions(ACTION_DIR),
+    ciphertexts.map((c) => c.label),
+  );
+  errors.push(...grant.errors);
+  ok.push(...grant.ok);
+
+  const plaintext = checkPlaintextCredentials(parseSopsLocals(strippedModule), ciphertexts);
+  errors.push(...plaintext.errors);
+  ok.push(...plaintext.ok);
+
+  const workflowFiles = readWorkflowFiles(WORKFLOW_DIR);
+  const scope = checkLambdaActionScope(
+    parseOidcStack(readFileSync(OIDC_FILE, 'utf-8')),
+    scanWorkflowLambdaActions(workflowFiles),
+  );
+  errors.push(...scope.errors);
+  ok.push(...scope.ok);
+
+  for (const line of ok) console.log(`[OK] ${line}`);
+  for (const line of errors) console.error(`[FAIL] ${line}`);
+
+  if (errors.length > 0) {
+    console.error(
+      `\n${errors.length} IAM finding(s) under infra/.\n` +
+        `  oidc:      ${OIDC_FILE}\n` +
+        `  module:    ${MODULE_FILE}\n` +
+        `  release:   ${RELEASE_FILE}\n` +
+        `  envs:      ${ENV_FILES.join(', ')}\n` +
+        `  workflows: ${WORKFLOW_DIR}\n`,
+    );
+    return 1;
+  }
+  console.log(`\n${ok.length} IAM property/properties hold across infra/.`);
+  return 0;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(main());

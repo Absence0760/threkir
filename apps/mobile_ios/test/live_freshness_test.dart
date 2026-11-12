@@ -43,6 +43,82 @@ void main() {
     expect(f.bucket, FreshnessBucket.now);
     expect(f.stale, false);
   });
+
+  test('liveElapsedS advances the race clock by the ping age', () {
+    // A cut-off deadline runs on wall time. 40 min after the last ping the
+    // runner has burned 40 min of their budget whether or not it reached us.
+    expect(liveElapsedS(3600, 0), 3600);
+    expect(liveElapsedS(3600, 40 * 60000), 3600 + 2400);
+    // Sub-second remainders floor, matching the seconds-granularity readout.
+    expect(liveElapsedS(3600, 1999), 3601);
+  });
+
+  test('liveElapsedS composes with a freshness age', () {
+    final f = freshnessFor(now - 5 * 60000, now);
+    expect(f.stale, true);
+    expect(liveElapsedS(7200, f.ageMs), 7200 + 300);
+  });
+
+  test('liveElapsedS never rewinds the clock or invents time it cannot date',
+      () {
+    // An age we cannot establish advances nothing — better the last known
+    // figure than a guess. Same for a future-dated (clock-skewed) ping.
+    expect(liveElapsedS(3600, null), 3600);
+    expect(liveElapsedS(3600, -60000), 3600);
+    expect(liveElapsedS(-10, 60000), 60);
+  });
+
+  test('raceClockS states the wall clock since the start, not the runner timer',
+      () {
+    // The whole point of the helper: it needs no ping and no estimate.
+    expect(raceClockS(now - 4 * 3600000, now), 4 * 3600);
+    // Sub-second remainders floor, matching the seconds-granularity readout.
+    expect(raceClockS(now - 1999, now), 1);
+    expect(raceClockS(now, now), 0);
+  });
+
+  test('raceClockS keeps running through a dead zone the runner timer sits out',
+      () {
+    // The case the stat strip used to get wrong: an 18 h blackout on a 240
+    // mile race. The last ping's own timer read 4 h and stopped there; the
+    // race clock a spectator does cut-off arithmetic against did not.
+    final lastPingAtMs = now - 18 * 3600000;
+    const anchorElapsedS = 4 * 3600;
+    final f = freshnessFor(lastPingAtMs, now);
+    expect(f.stale, true);
+    expect(raceClockS(now - 22 * 3600000, now), 22 * 3600);
+    // liveElapsedS reconstructs a LOWER BOUND on the same clock from the ping
+    // age; it can only ever undershoot, never exceed, the true race clock.
+    expect(
+      liveElapsedS(anchorElapsedS, f.ageMs) <=
+          raceClockS(now - 22 * 3600000, now)!,
+      true,
+    );
+  });
+
+  test('raceClockS measures to a conclusion instant so a finished run stops '
+      'ticking', () {
+    final startedAtMs = now - 5 * 3600000;
+    final concludedAtMs = now - 3 * 3600000;
+    expect(raceClockS(startedAtMs, concludedAtMs), 2 * 3600);
+    // Same run measured to `now` would keep counting hours after it ended.
+    expect(raceClockS(startedAtMs, now), 5 * 3600);
+  });
+
+  test('raceClockS claims nothing rather than inventing a clock it cannot date',
+      () {
+    // A run with no known start, and a run with no known end instant (a
+    // concluded broadcast predating the concluded_at marker), each withhold.
+    expect(raceClockS(null, now), null);
+    expect(raceClockS(now - 3600000, null), null);
+  });
+
+  test('raceClockS clamps a future-dated start to zero, never a negative clock',
+      () {
+    // Clock skew between the recorder that stamped started_at and the
+    // spectator reading it — the same clamp freshnessFor makes on an age.
+    expect(raceClockS(now + 30000, now), 0);
+  });
 }
 
 (FreshnessBucket, int) _pick(Freshness f) => (f.bucket, f.value);

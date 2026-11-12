@@ -1,15 +1,17 @@
 <script lang="ts">
-	import { myActiveChallenges } from '$lib/core/data';
-	import type { ChallengeWithMeta, ChallengeMetric } from '$lib/types';
+	import { myActiveChallenges } from '#lib/core/data.ts';
+	import type { ChallengeWithMeta, ChallengeMetric } from '#lib/types.ts';
 	import ChallengeProgressBar from './ChallengeProgressBar.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	const METRIC_ICON: Record<ChallengeMetric, string> = {
 		distance: 'straighten',
 		duration: 'timer',
 		vert: 'terrain',
 		activity_count: 'format_list_numbered',
-		streak_days: 'local_fire_department'
+		streak_days: 'local_fire_department',
+		park_courses: 'park'
 	};
 	function metricLabel(metric: ChallengeMetric): string {
 		switch (metric) {
@@ -23,6 +25,8 @@
 				return m('challenges.metricActivityCount');
 			case 'streak_days':
 				return m('challenges.metricStreak');
+			case 'park_courses':
+				return m('challenges.metricParkCourses');
 		}
 	}
 
@@ -39,7 +43,7 @@
 		try {
 			challenges = await myActiveChallenges();
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'ChallengesPanel: loadError');
 		}
 	}
 
@@ -48,13 +52,13 @@
 	});
 </script>
 
-{#if loadError}
+{#if loadError !== null}
 	<section class="challenges-strip card-elevated" aria-label={m('challenges.myChallenges')}>
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('challenges.loadFailed')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('plansPage.retry')}</button>
 		</div>

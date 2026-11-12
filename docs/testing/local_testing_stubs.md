@@ -16,7 +16,7 @@ Seed user: `runner@test.com` / `testtest`. See [apps/backend/local_testing.md](.
 
 | Feature | Local mode | What you can verify |
 |---|---|---|
-| **Auth (email / password)** | Real, against local Supabase | Sign in, sign up, password reset (delivery into Mailpit at <http://127.0.0.1:54324>), 16+ age gate, ToS acceptance |
+| **Auth (email / password)** | Real, against local Supabase | Sign in, sign up, password reset (delivery into Mailpit at <http://127.0.0.1:24324>), 16+ age gate, ToS acceptance |
 | **Auth (Google)** | Manual setup (see [apps/mobile_android/local_testing.md](../../apps/mobile_android/local_testing.md#google-sign-in-optional)) | OAuth-only — needs real Google Cloud client |
 | **Auth (Apple)** | Not testable locally | Apple Sign-In needs a real Apple Developer account + paired domain |
 | **GPS recording** | Real, on real device | Phone in foreground, screen off, lap markers, hold-to-stop |
@@ -24,7 +24,6 @@ Seed user: `runner@test.com` / `testtest`. See [apps/backend/local_testing.md](.
 | **Run sync** | Real, against local Supabase | Background, foreground, on-connectivity, after-conflict |
 | **Strava import (ZIP)** | Real | Strava lets you export your own data as a ZIP from Settings → My Account → Download — drop the ZIP into the importer |
 | **Strava OAuth + webhook** | Stubbed (see below) | The Edge Function `strava-import` accepts a `connect` action; mock `STRAVA_OAUTH_URL` + a fixture access token |
-| **parkrun import** | Real | The scraper hits public profile pages; use your own athlete number or `A123` for the seed |
 | **Health Connect / HealthKit** | Real, on device | Emulator + real device both work for read; write isn't wired |
 | **AI Coach (Anthropic)** | Real with throwaway `sk-ant-` key, or stubbed (see below) | Real run on a sandbox API key burns ~$0.01 / chat at small context. Or set `COACH_PROVIDER=openai` + `OPENAI_BASE_URL=http://localhost:11434/v1` to point at local Ollama |
 | **AI Coach (OpenAI fallback)** | Stubbed via local Ollama | `COACH_PROVIDER=openai` + `OPENAI_BASE_URL=http://localhost:11434/v1` + `OPENAI_MODEL=llama3` — zero $ cost |
@@ -53,18 +52,18 @@ Stripe's **test mode** is the canonical local-testing path. RevenueCat acts as a
 
 1. <https://app.revenuecat.com> → create a project for local testing (separate from prod).
 2. Project settings → Integrations → Stripe → paste `sk_test_...`.
-3. Add a product: `pro_monthly` with the Stripe test-mode price you create.
+3. Add two products: `pro_monthly` and `pro_annual`, each with the Stripe test-mode price you create ($9.99 / month and $79.99 / year), as packages `$rc_monthly` and `$rc_annual` of offering `default`, both attached to entitlement `threkir_pro` (the identifier `proEntitlementId` in `apps/mobile_android/lib/revenuecat.dart` reads; RevenueCat cannot rename one).
 4. Project settings → API keys → copy the **public web** key.
 
 ### 3. Wire into the app
 
 ```bash
 # apps/web/.env.local
-PUBLIC_REVENUECAT_WEB_CHECKOUT_URL=https://pay.rev.cat/xxxxxxxx   # sandbox Web Paywall Link
+PUBLIC_REVENUECAT_WEB_CHECKOUT_URL=https://pay.rev.cat/<token>   # sandbox Web Paywall Link (a placeholder token reads as unset)
 PUBLIC_REVENUECAT_WEB_PORTAL_URL=                                  # optional customer-portal link
 
 # apps/backend/.env.local
-REVENUECAT_WEBHOOK_SECRET=whsec_xxx        # sandbox webhook signing secret
+REVENUECAT_WEBHOOK_SECRET=...              # RC webhook → HMAC webhook signing → signing secret (shown once)
 ```
 
 Restart `pnpm dev:run:web` so the SvelteKit Vite dev server picks them up.
@@ -93,7 +92,7 @@ pnpm dev:payments:status     # what's running / configured
 pnpm dev:payments:stop       # stop functions serve (DB stays up)
 ```
 
-To actually exercise the happy path (tier flip), use the signed replay — it POSTs a RevenueCat-shaped event with a correct `x-revenuecat-hmac`, fresh timestamp, and the seed user's id:
+To actually exercise the happy path (tier flip), use the signed replay — it POSTs a RevenueCat-shaped event with a correct `X-RevenueCat-Webhook-Signature`, fresh timestamp, and the seed user's id:
 
 ```bash
 pnpm dev:payments:replay                    # seed user -> pro (INITIAL_PURCHASE / pro_monthly)
@@ -107,18 +106,18 @@ A `200` means the handler validated the HMAC, deduped via `webhook_events`, and 
 **(b) Raw `stripe listen` (manual).** The same forwarder the wrapper runs, by hand:
 
 ```bash
-stripe listen --forward-to http://127.0.0.1:54321/functions/v1/revenuecat-webhook
+stripe listen --forward-to http://127.0.0.1:24321/functions/v1/revenuecat-webhook
 stripe trigger checkout.session.completed     # in a second terminal
 ```
 
-Caveat: this forwards **raw Stripe** events straight to our handler, which requires the RevenueCat `x-revenuecat-hmac` header — so forwarded Stripe events return `401 missing_signature` (expected, not a bug). It confirms the endpoint is reachable and lets you watch real events, but it does **not** flip the tier. The genuine Stripe → RevenueCat → our-handler loop needs RevenueCat (cloud) to reach your localhost: configure a public tunnel (ngrok / cloudflared) as the RC sandbox webhook URL, then a real test purchase round-trips. For day-to-day local dev, the signed `replay` above is the shortcut.
+Caveat: this forwards **raw Stripe** events straight to our handler, which requires the RevenueCat `X-RevenueCat-Webhook-Signature` header — so forwarded Stripe events return `401 missing_signature` (expected, not a bug). It confirms the endpoint is reachable and lets you watch real events, but it does **not** flip the tier. The genuine Stripe → RevenueCat → our-handler loop needs RevenueCat (cloud) to reach your localhost: configure a public tunnel (ngrok / cloudflared) as the RC sandbox webhook URL, then a real test purchase round-trips. For day-to-day local dev, the signed `replay` above is the shortcut.
 
 **(c) Curl replay (manual).** Capture a payload from the RevenueCat dashboard "Test webhook" feature, sign it with the secret, replay. `pnpm dev:payments:replay` automates exactly this.
 
 ### 6. Verify
 
 ```bash
-psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -c \
+psql 'postgresql://postgres:postgres@127.0.0.1:24322/postgres' -c \
   "SELECT id, subscription_tier FROM user_profiles WHERE id='<runner-uuid>';"
 ```
 
@@ -126,7 +125,7 @@ You should see `subscription_tier = 'pro'`. The `/settings/upgrade` page now sho
 
 ## Stripe Connect (paid events — club_events.md slice P1)
 
-This is a **separate** Stripe surface from the Pro purchase above: paid event registration uses **Stripe Connect destination charges** so a host (instructor) is the merchant of record and the platform takes an application fee. Three Edge Functions implement it — `events-connect-onboard` (host Express onboarding), `events-checkout` (destination-charge Checkout Session + soft reservation), `stripe-events-webhook` (the one idempotent order webhook). **TEST MODE ONLY** — use `sk_test_` / `ca_` / `whsec_` keys; never a live key.
+This is a **separate** Stripe surface from the Pro purchase above: paid event registration uses **Stripe Connect destination charges** so the money lands in a host's (instructor's) connected account and the platform takes an application fee. The platform, not the host, is the merchant of record — `on_behalf_of` is not sent ([club_events.md § Money movement](../features/club_events.md#money-movement--to-the-host-not-the-club)). Three Edge Functions implement it — `events-connect-onboard` (host Express onboarding), `events-checkout` (destination-charge Checkout Session + soft reservation), `stripe-events-webhook` (the one idempotent order webhook). **TEST MODE ONLY** — use `sk_test_` / `ca_` / `whsec_` keys; never a live key.
 
 > **This webhook + secret are SEPARATE from the RevenueCat one.** `stripe-events-webhook` has its own endpoint and its own `STRIPE_EVENTS_WEBHOOK_SECRET`. Do **not** reuse `pnpm dev:payments`' forwarder — that targets `revenuecat-webhook` and signs with the RevenueCat HMAC scheme; a Stripe event forwarded there returns `401 missing_signature`.
 
@@ -155,16 +154,23 @@ supabase functions serve --env-file .env.local
 Point the Stripe CLI at **this** endpoint (not the RevenueCat one). It prints a `whsec_...` — paste it into `STRIPE_EVENTS_WEBHOOK_SECRET` and restart `functions serve`:
 
 ```bash
-stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-events-webhook
+stripe listen --forward-to http://127.0.0.1:24321/functions/v1/stripe-events-webhook
 ```
 
-Then trigger the three handled event types:
+Then trigger the handled event types:
 
 ```bash
-stripe trigger checkout.session.completed   # CAS pending->paid + seat the 'going' attendee
-stripe trigger checkout.session.expired     # CAS pending->canceled + release the soft reservation
-stripe trigger account.updated              # mirror charges_enabled / payouts_enabled / details_submitted
+stripe trigger checkout.session.completed                # CAS pending->paid + seat the 'going' attendee, IF payment_status says the money arrived
+stripe trigger checkout.session.async_payment_succeeded  # the same path, for a delayed-notification method settling days later
+stripe trigger checkout.session.async_payment_failed     # CAS pending->failed + release the soft reservation
+stripe trigger checkout.session.expired                  # CAS pending->canceled + release the soft reservation
+stripe trigger charge.refunded                           # CAS the donation or the order; the seat is released only on a FULL refund
+stripe trigger account.updated                           # mirror charges_enabled / payouts_enabled / details_submitted
 ```
+
+A dashboard endpoint that does not subscribe to the two async types silently
+never hears a delayed payment's real outcome: the order sits `pending`
+forever, holding a seat it never issues (decisions § 785).
 
 `stripe trigger`'s canned fixtures won't carry our `metadata` (`event_id` / `instance_start` / `buyer_user_id` / `order_id`) or a real `order_id`, so the completed/expired handlers log "missing metadata" / "unknown order" and 200-skip — that confirms signature verification + dedupe + dispatch work. The full seat-an-attendee path needs a real `events-checkout` call first (which sets the metadata) and then the matching `checkout.session.completed` for that session.
 
@@ -195,7 +201,7 @@ These can't be exercised on a laptop without the matching device + a sandbox tes
 **iOS:**
 
 1. App Store Connect → Users + Access → Sandbox → add a test user (e.g. `pro+sandbox-1@example.com`). Use this email/password to sign in to Settings → iTunes Store on a real device or simulator with sandbox sign-in enabled.
-2. App Store Connect → In-App Purchases → create the `pro_monthly` product. Status: "Ready to Submit" is sufficient for sandbox.
+2. App Store Connect → In-App Purchases → create the `pro_monthly` and `pro_annual` products. Status: "Ready to Submit" is sufficient for sandbox.
 3. Build the app with the RevenueCat iOS SDK keyed to the sandbox project.
 4. Sandbox subscriptions have an accelerated renewal cycle (1 month = 5 minutes). Burn a few sandbox cycles to verify the renewal webhook.
 
@@ -208,7 +214,7 @@ These can't be exercised on a laptop without the matching device + a sandbox tes
 
 ## Mocking outbound HTTP for Edge Functions
 
-For Strava / parkrun / Garmin / Anthropic happy-path tests where we don't want to hit the real provider, the Edge Function pattern is to inject the fetcher. Deno makes this easy because `fetch` is a globally-replaceable name. Example pattern in [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
+For Strava / Garmin / RunSignUp / Anthropic happy-path tests where we don't want to hit the real provider, the Edge Function pattern is to inject the fetcher. Deno makes this easy because `fetch` is a globally-replaceable name. Example pattern in [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
 For per-test fixture servers, drop a tiny `python -m http.server` in `apps/backend/fixtures/` and override the relevant base URL via env.
 

@@ -5,9 +5,9 @@
 // Output: apps/web/lambda/share-recap/dist/share-recap.zip
 //
 // Same strategy as lambda/share-run/build.mjs: esbuild bundles src/index.ts
-// (+ everything it imports from $lib/*) into one index.mjs; supabase-js is
+// (+ everything it imports from #lib/*) into one index.mjs; supabase-js is
 // inlined; @resvg/resvg-js is a native addon kept external and copied into
-// the zip's node_modules; the SPA-shell index.html is substituted in as
+// the zip's node_modules; the SPA shell 200.html is substituted in as
 // __SPA_SHELL_HTML__. See lambda/share-run/README.md for the rationale.
 
 import { build } from 'esbuild';
@@ -17,10 +17,12 @@ import { mkdirSync, rmSync, writeFileSync, existsSync, readFileSync, cpSync } fr
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
+import { copyOgFonts, OG_FONT_DIR_NAME } from '../og_fonts_bundle.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(here, '..', '..');
 const distDir = resolve(here, 'dist');
-const spaShellPath = resolve(webRoot, 'build', 'index.html');
+const spaShellPath = resolve(webRoot, 'build', '200.html');
 
 const RESVG_LOADER = '@resvg/resvg-js';
 const RESVG_ARM64 = '@resvg/resvg-js-linux-arm64-gnu';
@@ -29,7 +31,7 @@ const RESVG_EXTERNAL = [RESVG_LOADER, RESVG_ARM64];
 if (!existsSync(spaShellPath)) {
 	console.error(
 		`[share-recap build] missing SPA shell at ${spaShellPath}. ` +
-			`Run \`npm run build\` (from apps/web/) first so the index.html template exists.`,
+			`Run \`npm run build\` (from apps/web/) first so the 200.html shell exists.`,
 	);
 	process.exit(1);
 }
@@ -50,7 +52,14 @@ await build({
 	banner: {
 		js: 'import { createRequire as __cr } from "module"; const require = __cr(import.meta.url);',
 	},
+	// The release identifies the ARTIFACT, so it is baked in here rather than
+	// read from the Lambda env at runtime. Terraform owns `environment`, so
+	// CI writing APP_RELEASE there would be reverted by the next apply, and
+	// tfvars cannot know the tag. release-web.yml passes APP_RELEASE on this
+	// bundle step; a local build leaves it unset and Sentry tags the events
+	// `dev`, which is the honest answer for a bundle built off a tag.
 	define: {
+		'process.env.APP_RELEASE': JSON.stringify(process.env.APP_RELEASE ?? 'dev'),
 		__SPA_SHELL_HTML__: JSON.stringify(spaShellHtml),
 	},
 	minify: true,
@@ -64,8 +73,9 @@ writeFileSync(
 );
 
 copyResvgPackages();
+copyOgFonts(distDir);
 
-execSync('zip -qr share-recap.zip index.mjs index.mjs.map package.json node_modules', {
+execSync(`zip -qr share-recap.zip index.mjs index.mjs.map package.json node_modules ${OG_FONT_DIR_NAME}`, {
 	cwd: distDir,
 	stdio: 'inherit',
 });

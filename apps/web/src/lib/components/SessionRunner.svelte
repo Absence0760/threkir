@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import SessionExecutionBand from '$lib/components/SessionExecutionBand.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import SessionExecutionBand from '#lib/components/SessionExecutionBand.svelte';
 	import {
 		computeSessionAdherence,
 		type SessionStep,
 		type SessionStepResult,
 		type SessionAdherence
-	} from '$lib/social/session_steps';
-	import type { SessionPlanWithItems } from '$lib/types';
+	} from '#lib/social/session_steps.ts';
+	import type { SessionPlanWithItems } from '#lib/types.ts';
 
 	interface Props {
 		plan: SessionPlanWithItems;

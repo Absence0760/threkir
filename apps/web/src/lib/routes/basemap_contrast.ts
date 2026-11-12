@@ -51,10 +51,19 @@ export function mapOverlayOutline(darkBasemap: boolean): string {
 	return darkBasemap ? '#FFFFFF' : '#1E1B4B';
 }
 
-/// The recorded / saved track line.
+/// The recorded / saved track line, in the theme's coral (decisions § 1772).
+/// The light rung is deep enough to hold 3:1 over water as well as land.
 export function mapTrackLine(darkBasemap: boolean): string {
-	return darkBasemap ? '#818CF8' : '#4F46E5';
+	return darkBasemap ? '#F08A5D' : '#A33D1A';
 }
+
+/// Direction-arrow ink and its outline, the same on every basemap. One flat
+/// colour cannot read on both track rungs (navy is 6.3:1 on the dark rung but
+/// 2.4:1 on the light one, white the reverse), so the glyph is navy for the
+/// bright rung and carries a white halo that is the edge on the deep one.
+/// Twin of mobile's `chevronInk` / `chevronOutline`.
+export const MAP_ARROW_INK = '#172554';
+export const MAP_ARROW_OUTLINE = '#FFFFFF';
 
 /// Transient amber accent — the selected-segment highlight, the animated
 /// replay trace, and a coarse (privacy-clipped) last-seen position. Twin of
@@ -124,14 +133,45 @@ export function mapOverlapLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#C084FC' : '#7E22CE';
 }
 
-/// A live spectator trace.
+/// A live spectator trace: the runner's track as it is being recorded, so the
+/// same coral as a recorded track (§ 1772), and the colour mobile's spectator
+/// map already draws it in.
 export function mapLiveLine(darkBasemap: boolean): string {
-	return darkBasemap ? '#7FB3C2' : '#2C5F6E';
+	return mapTrackLine(darkBasemap);
+}
+
+/// A climb highlighted over the course line in the 3D course preview. Magenta,
+/// so it reads apart from the coral track it is drawn on top of.
+export function mapClimbLine(darkBasemap: boolean): string {
+	return darkBasemap ? '#F472B6' : '#9D174D';
 }
 
 /// A dashed hint line — the un-snapped preview, the waypoint tethers.
 export function mapHintLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#94A3B8' : '#475569';
+}
+
+/// The opacity the personal heatmap's cells and its track lines rest at:
+/// the heat cloud's ceiling below the crossfade zoom, and the lines' once
+/// past it. Each rung of [mapHeatRamp] and the [mapTrackLine] it crossfades
+/// into is held to the floor COMPOSITED at this value, not at full
+/// strength. The lines used to rest at 0.55, which put a single pass of
+/// the light track rung at 2.198:1 over water and the dark one at 2.997:1.
+export const MAP_HEAT_OPACITY = 0.85;
+
+/// The personal heatmap's density ramp, low to high, for the basemap it is
+/// drawn over. It replaced one fixed blue / green / amber / red set at
+/// 0.45-0.9 alpha that was eyeballed on dark ground: on the light basemap
+/// the amber stop read 1.871:1 even at full strength. The hue order is
+/// kept so the cloud still reads cool-to-hot; each brightness takes the
+/// rung of that hue that clears the floor against every ground of its own
+/// basemap at [MAP_HEAT_OPACITY].
+export function mapHeatRamp(
+	darkBasemap: boolean,
+): readonly [string, string, string, string] {
+	return darkBasemap
+		? ['#60A5FA', '#34D399', '#FBBF24', '#F87171']
+		: ['#1D4ED8', '#065F46', '#92400E', '#991B1B'];
 }
 
 /// The thicker halo marking a featured route's pin. On the light basemap

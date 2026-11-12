@@ -5,12 +5,14 @@ import {
   assertEquals,
   assertStrictEquals,
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
+import { assert } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
   hmacHex,
   isAnonymousAppUserId,
-  isValidUuid,
+  shouldReleaseDedupe,
   timingSafeEqual,
   validateFreshness,
+  verifyTimestampedHmac,
 } from './webhook_security.ts';
 
 // Reference vector pinned by RFC 4868 §2.7.2 (SHA-256 case 4): a key
@@ -141,27 +143,6 @@ Deno.test('validateFreshness — custom windowMs / clockSkewMs are honoured', ()
   assertEquals(validateFreshness(now + 100, now, 7 * 24 * 60 * 60 * 1000, 1), 'too_future');
 });
 
-Deno.test('isValidUuid — accepts standard 8-4-4-4-12 hex shape', () => {
-  assertStrictEquals(isValidUuid('00000000-0000-0000-0000-000000000000'), true);
-  assertStrictEquals(isValidUuid('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'), true);
-  assertStrictEquals(isValidUuid('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA'), true);
-  // Real-shape user-id from the seed.
-  assertStrictEquals(isValidUuid('12345678-1234-1234-1234-123456789abc'), true);
-});
-
-Deno.test('isValidUuid — rejects malformed shapes', () => {
-  // Wrong segment lengths.
-  assertStrictEquals(isValidUuid('0000-0000-0000-0000-000000000000'), false);
-  assertStrictEquals(isValidUuid('00000000-0000-0000-0000-00000000000'), false);
-  assertStrictEquals(isValidUuid('00000000-0000-0000-0000-0000000000000'), false);
-  // Non-hex characters.
-  assertStrictEquals(isValidUuid('zzzzzzzz-0000-0000-0000-000000000000'), false);
-  // Empty / wrong type.
-  assertStrictEquals(isValidUuid(''), false);
-  // RevenueCat anonymous prefix shape.
-  assertStrictEquals(isValidUuid('$RCAnonymousID:abcdef'), false);
-});
-
 Deno.test('isAnonymousAppUserId — RC anonymous prefix detected', () => {
   assertStrictEquals(isAnonymousAppUserId('$RCAnonymousID:abc123'), true);
   assertStrictEquals(isAnonymousAppUserId('$RCAnonymousID'), true);
@@ -174,4 +155,173 @@ Deno.test('isAnonymousAppUserId — non-anonymous ids return false', () => {
   );
   assertStrictEquals(isAnonymousAppUserId(''), false);
   assertStrictEquals(isAnonymousAppUserId('rcanonymousid:abc'), false);
+});
+
+Deno.test('validateFreshness — an unusable stamp is refused, not waved through', () => {
+  // Every comparison against NaN is false, so both gates fell through and the
+  // replay window opened for anything a caller could make unparseable —
+  // `Date.parse` of a bad string, a field read off a body with no schema, an
+  // arithmetic overflow. The two live callers type-check their field first,
+  // which is why nothing had noticed; the gate must not depend on that.
+  const now = Date.now();
+  for (const bad of [NaN, Infinity, -Infinity]) {
+    assertEquals(validateFreshness(bad, now), 'too_old', String(bad));
+  }
+  // A broken clock on our side is the same problem from the other direction.
+  assertEquals(validateFreshness(now, NaN), 'too_old');
+  // The positive control beside it: a good stamp against a good clock is
+  // still ok, so the guard is not a blanket refusal.
+  assertEquals(validateFreshness(now - 1000, now), 'ok');
+});
+
+Deno.test('validateFreshness — the future edge is exclusive, like the past one', () => {
+  // The past side has both its edges pinned above. The future side had only
+  // an inside and an outside point, so a `<` / `<=` slip was invisible.
+  const now = Date.now();
+  const skew = 60 * 1000;
+  assertEquals(validateFreshness(now + skew, now), 'ok');
+  assertEquals(validateFreshness(now + skew + 1, now), 'too_future');
+});
+
+// ── insert-first dedupe: the row has to come back ────────────────────────────
+//
+// Every webhook here reserves `webhook_events` BEFORE the side effect, so two
+// concurrent deliveries of one event cannot both act. The price is that a
+// handler which fails owes the row back — the provider retries on a non-2xx
+// and the retry hits the 23505 path, answers 200 `duplicate_event`, and closes
+// the delivery for good. Stripe and Strava released it; RevenueCat did not,
+// and RevenueCat is the one that grants a paid tier.
+
+Deno.test('shouldReleaseDedupe — every 5xx, and the boundary is 500 exactly', () => {
+  for (const status of [500, 502, 503, 504, 599]) {
+    assertEquals(shouldReleaseDedupe(status), true, `status ${status} must release`);
+  }
+  for (const status of [200, 201, 204, 400, 401, 404, 409, 429, 499]) {
+    assertEquals(shouldReleaseDedupe(status), false, `status ${status} must keep the row`);
+  }
+});
+
+Deno.test('every insert-first deduper gives the row back on a 5xx', async () => {
+  // Derived from the tree rather than listed, so a fourth webhook that
+  // reserves a dedupe row is covered the day it lands. The pairing is the
+  // whole check: reserving without releasing is not a stricter posture, it is
+  // a delivery that can never be retried.
+  const dir = new URL('../', import.meta.url);
+  const reserving: string[] = [];
+  for await (const entry of Deno.readDir(dir)) {
+    if (!entry.isDirectory || entry.name.startsWith('_')) continue;
+    let src: string;
+    try {
+      src = await Deno.readTextFile(new URL(`${entry.name}/index.ts`, dir));
+    } catch {
+      continue;
+    }
+    if (!/\.from\('webhook_events'\)\s*\n?\s*\.insert\(/.test(src)) continue;
+    reserving.push(entry.name);
+    assert(
+      /\.from\('webhook_events'\)\s*\n?\s*\.delete\(\)/.test(src),
+      `${entry.name} reserves a webhook_events row and never deletes one, so a failed ` +
+        'delivery is answered 200 duplicate_event on every retry and is lost',
+    );
+  }
+  // A positive control: an empty tree, or a rename of the table, would satisfy
+  // the loop above by iterating zero times.
+  assertEquals(
+    reserving.sort(),
+    ['revenuecat-webhook', 'strava-webhook', 'stripe-events-webhook'],
+    'the set of insert-first dedupers changed — check the new one releases too',
+  );
+});
+
+Deno.test('the two webhooks that dispatch behind a release use this rule, not a local one', async () => {
+  // Stripe's copy lived in its own lib for as long as RevenueCat went without
+  // any. Both now read the same function, so the boundary cannot drift to two
+  // different numbers on two providers whose retry envelopes are the same.
+  for (const fn of ['stripe-events-webhook', 'revenuecat-webhook']) {
+    const src = await Deno.readTextFile(new URL(`../${fn}/index.ts`, import.meta.url));
+    assert(
+      /if \(shouldReleaseDedupe\(res\.status\)\) \{/.test(src),
+      `${fn} must gate its release on shouldReleaseDedupe(res.status)`,
+    );
+    assert(
+      !/res\.status >= 500/.test(src),
+      `${fn} must not re-spell the 5xx boundary inline`,
+    );
+  }
+});
+
+Deno.test('a throw past the dispatcher releases the row too', async () => {
+  // withSentry answers 500 for an uncaught throw, and that 500 never passes
+  // through the status check above it — so the catch arm is the only thing
+  // between a thrown handler and a permanently-swallowed delivery.
+  for (const fn of ['stripe-events-webhook', 'revenuecat-webhook']) {
+    const src = await Deno.readTextFile(new URL(`../${fn}/index.ts`, import.meta.url));
+    assert(
+      /\} catch \(err\) \{\s*\n\s*await releaseDedupe\([^)]*\);\s*\n\s*throw err;/.test(src),
+      `${fn} must release the dedupe row before rethrowing`,
+    );
+  }
+});
+
+// `t=<unix>,v1=<hex>` over `${t}.${body}` — RevenueCat's
+// X-RevenueCat-Webhook-Signature and Stripe's Stripe-Signature. The digests
+// were computed with `openssl dgst -sha256 -hmac`, not with hmacHex, so a
+// change to what gets signed cannot pass by agreeing with itself.
+const TS_SECRET = 'rc_signing_secret';
+const TS_BODY = '{"event":{"id":"evt_1"}}';
+const TS_T = 1700000000;
+const TS_NOW_MS = TS_T * 1000;
+const TS_V1 = '60cd9c38377698f209eb1653cd8137c3c3fc2846adc53cefcc539f15a4ecb0bf';
+const BODY_ONLY_V1 = '6052cd627d188bae462d6cc408bc7d6d1da15ab5b2b50497324eb0fdc3b20181';
+
+Deno.test('verifyTimestampedHmac accepts the documented t=,v1= header', async () => {
+  assert(await verifyTimestampedHmac(TS_BODY, `t=${TS_T},v1=${TS_V1}`, TS_SECRET, TS_NOW_MS));
+});
+
+Deno.test('verifyTimestampedHmac rejects a digest over the body alone', async () => {
+  // hmac(body) was the scheme revenuecat-webhook used to expect; the signed
+  // payload must include the timestamp or a captured digest never expires.
+  assertStrictEquals(
+    await verifyTimestampedHmac(TS_BODY, `t=${TS_T},v1=${BODY_ONLY_V1}`, TS_SECRET, TS_NOW_MS),
+    false,
+  );
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, BODY_ONLY_V1, TS_SECRET, TS_NOW_MS), false);
+});
+
+Deno.test('verifyTimestampedHmac rejects a stale or future-dated timestamp', async () => {
+  const header = `t=${TS_T},v1=${TS_V1}`;
+  assert(await verifyTimestampedHmac(TS_BODY, header, TS_SECRET, TS_NOW_MS + 300_000));
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, header, TS_SECRET, TS_NOW_MS + 301_000), false);
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, header, TS_SECRET, TS_NOW_MS - 301_000), false);
+});
+
+Deno.test('verifyTimestampedHmac accepts any v1 during a rotation, and nothing without a secret', async () => {
+  const rotating = `t=${TS_T},v1=${'0'.repeat(64)},v1=${TS_V1}`;
+  assert(await verifyTimestampedHmac(TS_BODY, rotating, TS_SECRET, TS_NOW_MS));
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, rotating, '', TS_NOW_MS), false);
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, null, TS_SECRET, TS_NOW_MS), false);
+});
+
+// The signed payload is `${t}.${body}` with `t` exactly as the header carries
+// it. Rebuilt from the parsed integer instead, a zero-padded `t` that parses to
+// the signed second verified under a digest computed over different text.
+Deno.test('verifyTimestampedHmac refuses a zero-padded t whose integer was signed', async () => {
+  for (const t of [`0${TS_T}`, `000${TS_T}`]) {
+    assertStrictEquals(
+      await verifyTimestampedHmac(TS_BODY, `t=${t},v1=${TS_V1}`, TS_SECRET, TS_NOW_MS),
+      false,
+      t,
+    );
+  }
+  // Positive control: the same digest under the literal it was computed over.
+  assert(await verifyTimestampedHmac(TS_BODY, ` t = ${TS_T} , v1 = ${TS_V1} `, TS_SECRET, TS_NOW_MS));
+});
+
+Deno.test('revenuecat-webhook verifies the header RevenueCat sends', async () => {
+  const src = await Deno.readTextFile(new URL('../revenuecat-webhook/index.ts', import.meta.url));
+  assert(
+    src.includes(`req.headers.get('x-revenuecat-webhook-signature')`),
+    'revenuecat-webhook must read X-RevenueCat-Webhook-Signature — the only header RevenueCat signs',
+  );
+  assert(src.includes('verifyTimestampedHmac('), 'revenuecat-webhook must verify through verifyTimestampedHmac');
 });

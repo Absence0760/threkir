@@ -8,7 +8,7 @@
  * 75; positive contributors push it up, negative ones drag it down,
  * and the result is clamped to 0–100.
  *
- * Pure — no Supabase, no DOM. Mirrors
+ * Pure — no Supabase, no DOM. TS↔Dart parity pair with
  * `apps/mobile_android/lib/readiness.dart`. Keep in lockstep — the
  * shared-library-syncer agent watches the pair.
  */
@@ -26,9 +26,16 @@ export interface ReadinessInputs {
 
 export type ReadinessBand = 'low' | 'moderate' | 'high';
 
+/**
+ * Which input a contribution came from. The UI names it in the reader's
+ * locale. The form input is deliberately not labelled like the TSB tile it is
+ * derived from: this is the POINTS form added to the score, not the TSB value,
+ * and one name over two different numbers read as a contradiction (#902).
+ */
+export type ReadinessContributorKind = 'form' | 'sleep' | 'resting_hr';
+
 export interface ReadinessContribution {
-	/** Short label — UI surfaces it in a per-input list. */
-	name: string;
+	kind: ReadinessContributorKind;
 	/** Signed delta this input added to the score. */
 	delta: number;
 	/** One-line reason. */
@@ -70,7 +77,10 @@ function bandFor(score: number): ReadinessBand {
  *               risk" / blunted edge — small but real)
  */
 function scoreTsb(tsb: number | null): ReadinessContribution | null {
-	if (tsb == null) return null;
+	// A non-finite TSB (a NaN out of a poisoned load series) is no signal:
+	// every comparison below is false for NaN, so it used to land on the
+	// final "over-tapered" branch and cost the score 3 points.
+	if (tsb == null || !Number.isFinite(tsb)) return null;
 	let delta = 0;
 	let note = '';
 	if (tsb < -20) {
@@ -95,11 +105,11 @@ function scoreTsb(tsb: number | null): ReadinessContribution | null {
 		delta = -3;
 		note = 'Over-tapered — edge may be blunted';
 	}
-	return { name: 'Form (TSB)', delta, note };
+	return { kind: 'form', delta, note };
 }
 
 function scoreSleep(hours: number | null | undefined): ReadinessContribution | null {
-	if (hours == null) return null;
+	if (hours == null || !Number.isFinite(hours)) return null;
 	let delta = 0;
 	let note = '';
 	if (hours < 5) {
@@ -118,14 +128,14 @@ function scoreSleep(hours: number | null | undefined): ReadinessContribution | n
 		delta = 0;
 		note = 'Extended sleep — recovery should be solid';
 	}
-	return { name: 'Sleep', delta, note };
+	return { kind: 'sleep', delta, note };
 }
 
 function scoreRestingHr(
 	resting: number | null | undefined,
 	baseline: number | null | undefined,
 ): ReadinessContribution | null {
-	if (resting == null || baseline == null) return null;
+	if (resting == null || baseline == null || !Number.isFinite(resting - baseline)) return null;
 	const diff = resting - baseline;
 	let delta = 0;
 	let note = '';
@@ -145,7 +155,7 @@ function scoreRestingHr(
 		delta = 3;
 		note = 'Resting HR below baseline — well recovered';
 	}
-	return { name: 'Resting HR', delta, note };
+	return { kind: 'resting_hr', delta, note };
 }
 
 /** Pick the contributor that pushed the score the most (in absolute terms). */
@@ -156,6 +166,11 @@ function dominantAdvice(contributors: ReadinessContribution[], band: ReadinessBa
 			? 'Looks like a good day to push the pace.'
 			: 'Connect sleep + HR data for a real readiness picture.';
 	}
+	// Ties in |delta| are common — a TSB of -12 and six hours of sleep both
+	// score -12, and the two carry DIFFERENT advice — so which one wins is a
+	// contract, not an accident. `Array.prototype.sort` is stable, so the
+	// first contributor added wins; the Dart twin's `List.sort` is NOT, and
+	// carries an explicit index tiebreak to match.
 	const dom = contributors.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0];
 	const tail =
 		band === 'low'

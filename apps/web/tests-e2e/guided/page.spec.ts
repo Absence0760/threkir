@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /guided + /guided/[id] — guided audio run library.
@@ -39,18 +40,11 @@ const KNOWN_RUNS = [
 	}
 ];
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 test.describe('/guided — index page (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('renders the kicker, h1, tagline + "preview only" mobile callout', async ({ page }) => {
@@ -123,7 +117,7 @@ test.describe('/guided/[id] — detail pages (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	for (const r of KNOWN_RUNS) {
@@ -185,14 +179,14 @@ test.describe('/guided/[id] — detail pages (anon)', () => {
 		expect(res?.status() ?? 200).toBeGreaterThanOrEqual(200);
 		await expect(page.getByText(/Unknown guided run/)).toBeVisible();
 		await expect(
-			page.locator('.empty').getByRole('link', { name: /Back to library/, exact: true })
+			page.getByTestId('guided-unknown').getByRole('link', { name: /Back to library/, exact: true })
 		).toHaveAttribute('href', '/guided');
 	});
 
 	test('empty-state Back to library CTA round-trips to /guided', async ({ page }) => {
 		await page.goto('/guided/no-such-run-id');
 		await page
-			.locator('.empty')
+			.getByTestId('guided-unknown')
 			.getByRole('link', { name: /Back to library/, exact: true })
 			.click();
 		await expect(page).toHaveURL(/\/guided$/);
@@ -209,7 +203,7 @@ test.describe('/guided ↔ /guided/[id] — navigation round-trip', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('library card click → detail → Library back link → library', async ({ page }) => {
@@ -226,38 +220,39 @@ test.describe('/guided ↔ /guided/[id] — navigation round-trip', () => {
 test.describe('/guided — signed-in back-to-Coach round-trip', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('signed-in user sees a Back-to-Coach link with href=/coach', async ({ page }) => {
+	test('signed-in user sees a Back-to-Coach link with href=/messages/coach', async ({ page }) => {
 		await page.goto('/guided');
 		const back = page.getByRole('link', { name: /Back to Coach/ });
 		await expect(back).toBeVisible({ timeout: 10_000 });
-		await expect(back).toHaveAttribute('href', '/coach');
+		await expect(back).toHaveAttribute('href', '/messages/coach');
 	});
 
-	test('/coach → "See the full library" → /guided → Back to Coach → /coach', async ({ page }) => {
+	test('/messages/coach → "See the full library" → /guided → Back to Coach → /messages/coach', async ({ page }) => {
 		// Pins the snapshot-restoring history pop pattern: the
 		// /guided afterNavigate hook flips cameFromCoach when the
-		// previous route was /coach, and Back-to-Coach calls
+		// previous route was /messages/coach (the Coach's home since it
+		// became a pinned conversation, decisions § 2227), and Back-to-Coach calls
 		// history.back() so the original coach state survives.
-		await page.goto('/coach');
-		await expect(page).toHaveURL(/\/coach/);
+		await page.goto('/messages/coach');
+		await expect(page).toHaveURL(/\/messages\/coach$/);
 		await page.getByRole('link', { name: /See the full library/ }).click();
 		await expect(page).toHaveURL(/\/guided$/);
 		const back = page.getByRole('link', { name: /Back to Coach/ });
 		await expect(back).toBeVisible({ timeout: 10_000 });
 		await back.click();
-		await expect(page).toHaveURL(/\/coach/);
+		await expect(page).toHaveURL(/\/messages\/coach$/);
 	});
 
 	test('cold-load /guided (no /coach referrer) keeps the back-link as a normal nav', async ({
 		page
 	}) => {
-		// When the user lands on /guided directly (not from /coach),
+		// When the user lands on /guided directly (not from the Coach),
 		// cameFromCoach stays false — clicking Back to Coach is a
 		// plain soft-nav with no history.back() side effect.
 		await page.goto('/guided');
 		const back = page.getByRole('link', { name: /Back to Coach/ });
 		await expect(back).toBeVisible({ timeout: 10_000 });
 		await back.click();
-		await expect(page).toHaveURL(/\/coach/);
+		await expect(page).toHaveURL(/\/messages\/coach$/);
 	});
 });

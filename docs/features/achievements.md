@@ -5,15 +5,16 @@
 > ## Shipped state (web)
 >
 > - **Catalogue (code):** `apps/web/src/lib/social/badges.ts` — `BADGE_CATALOGUE` + pure `evaluateBadges(input)` + `tierFor` + `englishBadge` (server-safe label resolver for the SSR/Lambda share path). Families shipped in V1: `distance_single` (5k/half/marathon/ultra), `distance_lifetime` (100/500/1000/5000 km), `streak` (7/30/100/365 d), `pr` (1/3/5 records held), `plan_finisher` (1/3/10 plans). **Segment badges were deferred** (open question #1 — leaderboard rank is too volatile for a durable award); the `segment` `source_kind` is reserved in the CHECK + union for a future family. 15 unit tests in `badges.test.ts`.
-> - **DB:** `achievements` table + RLS (`achievements_self_select`, `achievements_public_select`, owner-only `achievements_owner_update`; no client INSERT/DELETE) + `award_achievements_for_user(p_user)` SECURITY DEFINER full-rebuild (returns only newly-inserted rows; `on conflict do nothing`) + AFTER triggers on `runs`, `personal_records`, `training_plans` + the `'achievement'` notification kind (full CHECK re-stated) + an `achievement_id` FK on `notifications` (the `activity_kind` CHECK was left untouched per the plan's "dedicated column" option) + a `notify_achievement_earned` AFTER-INSERT trigger + a migration-tail back-fill over all existing users. 16 pgtap assertions in `achievements_test.sql`.
-> - **Threshold contract:** the SQL award function duplicates the catalogue thresholds verbatim; `badges.test.ts` + `achievements_test.sql` pin both sides.
+> - **DB:** `achievements` table + RLS (`achievements_self_select`, `achievements_public_select`, owner-only `achievements_owner_update`; no client INSERT/DELETE — neither verb is granted to `anon`/`authenticated` since `20270616_001`, so the refusal is at the privilege layer rather than only the absent policy) + `award_achievements_for_user(p_user)` SECURITY DEFINER full-rebuild (returns only newly-inserted rows; `on conflict do nothing`) + AFTER triggers on `runs`, `personal_records`, `training_plans` + the `'achievement'` notification kind (full CHECK re-stated) + an `achievement_id` FK on `notifications` (the `activity_kind` CHECK was left untouched per the plan's "dedicated column" option) + a `notify_achievement_earned` AFTER-INSERT trigger + a migration-tail back-fill over all existing users. 20 pgtap assertions in `achievements_test.sql`.
+> - **Threshold contract:** the SQL earned-set function `achievement_tiers_met(p_user)` (split out of the award function by `20270719000002`, so the awarder and the revoker below read one copy) duplicates the catalogue thresholds verbatim; `badges.test.ts` + `achievements_test.sql` pin both sides, and `scripts/check_shared_constants.mjs` compares the ladders across web, mobile and SQL.
+> - **Awards are durable, with one exception — a distance recompute.** Nothing else takes a badge back: a deleted run, an edited distance, a later DNF flag all leave earned awards in place. The owner-requested GPS distance recompute ([gps_distance.md § Server recompute](gps_distance.md#server-recompute)) is different in kind: it says the recorded number was wrong, not that the run changed. When the worker's write changes both `runs.distance_m` and `metadata.distance_recomputed_at`, the `runs_achievements_revoke_on_distance_recompute` trigger calls `revoke_unmet_distance_achievements`, which deletes that user's `distance_single` / `distance_lifetime` tiers their current runs no longer meet (same thresholds and eligible-run rules as the awarder), then the award trigger inserts any lower tier still met. `streak`, `pr` and `plan_finisher` are never revoked. The revoked badge's bell notification is removed with it (FK cascade); no notification announces the revocation. Pinned by `achievements_distance_recompute_revoke_test.sql`.
 > - **Narrow unions:** `AchievementTier` + `AchievementSourceKind` in `types.ts` (+ the `Achievement` overlay), both pairs added to `check_constraint_unions.mjs`; `'achievement'` added to `NotificationKind`.
-> - **Web surfaces:** `BadgeGrid.svelte` mounted as a new **Achievements** tab on `/u/[id]` (owner sees private + a per-badge public toggle + share-link; non-owner sees only public via RLS); a recent-badges strip in `SocialFeed.svelte` (`fetchFollowingBadgeAwards`); the public `/share/badge/[id]` page + `/og/badge/[id].png` endpoint + the `apps/web/lambda/share-badge/` SSR handler (mirrors `share-run`). data.ts: `fetchUserBadges` / `fetchMyBadges` / `setBadgeVisibility` / `fetchBadgeForShare` / `fetchFollowingBadgeAwards`. 4 Playwright assertions in `tests-e2e/social/badges.spec.ts`; the share-page chrome (header logo + footer home/sign-in, matching the sibling `/share/*` pages) is pinned in `tests-e2e/share/badge.spec.ts`.
-> - **i18n:** all six web locales (chrome + a label/desc pair per catalogue entry).
+> - **Web surfaces:** `BadgeGrid.svelte` mounted as a new **Achievements** tab on `/u/[id]` (owner sees private + a per-badge public toggle + share-link; non-owner sees only public via RLS); a recent-badges strip in `SocialFeed.svelte` (`fetchFollowingBadgeAwards`) whose chips, like the `achievement` notification, open the earner's tab deep-linked to the badge (`/u/[id]?tab=achievements&badge=[id]`, which `BadgeGrid`'s `focusId` scrolls to and outlines); the public `/share/badge/[id]` page + `/og/badge/[id].png` endpoint + the `apps/web/lambda/share-badge/` SSR handler (mirrors `share-run`). data.ts: `fetchUserBadges` / `fetchMyBadges` / `setBadgeVisibility` / `fetchBadgeForShare` / `fetchFollowingBadgeAwards`. 4 Playwright assertions in `tests-e2e/social/badges.spec.ts`; the share-page chrome (header logo + footer home/sign-in, matching the sibling `/share/*` pages) is pinned in `tests-e2e/share/badge.spec.ts`.
+> - **i18n:** every web locale (chrome + a label/desc pair per catalogue entry).
 >
 > ## Shipped state (mobile read surface, 2026-06-20)
 >
-> The mobile twin mirrors web's **read** surfaces (profile grid + feed strip). Awards are still derived server-side by the trigger; mobile never writes `achievements`. The owner visibility-toggle, per-badge share-link, and the `/share/badge/[id]` page stay **web-only** (no Dart twin) — sharing a badge from mobile is a future follow-up.
+> The mobile twin mirrors web's **read** surfaces (profile grid + feed strip). Awards are still derived server-side by the trigger; the only `achievements` write mobile makes is the owner's `is_public` toggle (below). The `/share/badge/[id]` page stays web-only: the phone shares its link.
 >
 > - **Catalogue twin:** `apps/mobile_android/lib/badges.dart` — `kBadgeCatalogue` + `evaluateBadges` + `tierFor`, byte-identical ids / tier thresholds / tier order / icon ligature names to `badges.ts` (only the label/desc keys differ: web `MessageKey`s ↔ mobile camelCase ARB keys, not part of the lockstep). Registered as the `badges` parity pair; 15 mirror tests in `test/badges_test.dart`.
 > - **Widget:** `apps/mobile_android/lib/widgets/badge_grid.dart` — a tier-coloured tile `GridView` (`BadgeGrid`) + the shared `badgeLabelFor` / `badgeIconData` / `badgeTierColor` / `badgeTierLabel` resolvers (the Material-Symbols ligature → `IconData` map + the dotted-key → `AppLocalizations` switch). 6 tests in `test/badge_grid_test.dart`.
@@ -22,7 +23,17 @@
 > - **i18n:** the same key set as web, camelCased into all six mobile ARBs (`en/de/es/fr/ja/pt_BR` + the `pt` fallback), gen-l10n regenerated and mirrored to the iOS twin.
 > - **Twin:** every `lib/`+`test/` change mirrored byte-for-byte into `apps/mobile_ios/` ([decisions.md § 39](../architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase)).
 >
-> - **Deferred:** the CloudFront wiring + release-workflow entry for the `share-badge` Lambda (SvelteKit dev endpoints own the path locally; static build serves the SPA-shell fallback in prod until wired), the mobile owner visibility-toggle / badge share-sheet, and segment badges.
+> - **Owner badge sheet (mobile, 2026-11-03, issue #1273 item 7):** tapping one of your own badges on the Achievements tab opens `widgets/badge_share_sheet.dart` — the badge, a Share button that hands the public `/share/badge/<id>` link to the OS share sheet (disabled, with a hint, while the badge is private, since that page answers "not found" for it), and Make public / Make private through `ApiClient.setBadgeVisibility` (an UPDATE of `is_public`, which RLS limits to the owner; an empty answer is treated as the refusal it is). A private badge carries a lock icon on its tile for the owner. Mirrors the owner controls on web's `BadgeGrid.svelte`. Tests: `test/badge_share_sheet_test.dart`.
+> - **Share page in production:** `/share/badge/*` and `/og/badge/*` are CloudFront behaviours routed to the `share-badge` Lambda (`infra/modules/web-stack/main.tf`), bundled and deployed by `release-web.yml` on every `web@*` tag. (This section used to list that wiring as deferred; it shipped.)
+> - **Deferred:** rank-based segment badges. Completion-based park course families shipped instead (below).
+>
+> ## Park course families (2026-11-08, issue #1313 phase 5)
+>
+> `park_courses` (distinct park courses: 1 / 5 / 10 / 25), `park_complete` (parks where every course not closed is done: 1 / 3 / 10) and `park_passport` (regions with a course done in every active park: 1 / 3 / 10), all `source_kind = 'segment'` with `source_id` null, so a public badge names no course or park. They count completions, which do not move the way a rank does, so they are durable and the revoker never touches them. Awarded from statement triggers on `global_segment_efforts` and `park_courses` (migration `20271123002404`, [decisions § 2404](../architecture/decisions.md)); ladders in `achievement_tiers_met` and both catalogues, compared by `check_shared_constants.mjs`. Details and the floors in [park_courses.md § Collections](park_courses.md#collections). Tests: `park_course_badges_test.sql` and the park cases in `badges.test.ts` ↔ `badges_test.dart`.
+>
+> ## PR cards (2026-11-03, issue #1273 item 7)
+>
+> A run that beats the runner's `personal_records` cache raises one `personal_record` notification and logs what it beat in the owner-only `personal_record_improvements` table (migration `20271104000002`, [decisions § 2266](../architecture/decisions.md)). The detection lives inside `refresh_personal_records_for_user`, compared against the cache it replaced, so a no-op recompute raises nothing and a deleted PR run is not a record; one bell row per run however many brackets it improved, and only for a run started in the last 7 days, so a history import does not flood the bell. The notification opens the run on a **PR card** in the share editor (web `RunShareImageDialog.svelte` → `pr_card_canvas.ts`; mobile `run_share_card.dart` → `RunPrShareCard`): the bracket, the record time, how much faster and the time it beat, the run's date, its clipped route line and the Threkir mark, in the post or story canvas and the three inks. The run's own page offers it too (web: the "Share PR card" chip by the visibility chip; mobile: the medal action in the app bar). The pure half is the `pr_card` parity pair. Free; the times stay owner-only and only the exported image leaves. Bell-only by default like `achievement`: email and push only for a runner on `all`.
 
 # Achievements / badges — implementation plan
 
@@ -182,7 +193,7 @@ Build after web ships + review (decisions §24). Byte-identical iOS twin in the 
   branch for `kind='achievement'` in `notification_bell` / `NotificationsList` mirror (web first).
 - **Nav placement**: none added (badges live inside Profile + Feed + Notifications — all existing surfaces). The
   mobile bottom-nav (Home / Fitness / Log / Social / You in `home_screen.dart`) is untouched. Share uses the OS share
-  sheet (`Share.share` of the `/share/badge/[id]` URL).
+  sheet (`shareTextFrom` of the `/share/badge/[id]` URL).
 
 ## TS↔Dart parity helpers
 
@@ -201,7 +212,7 @@ Build after web ships + review (decisions §24). Byte-identical iOS twin in the 
     assert the expected `achievements` rows exist with correct `badge_key`/`tier`/`value_num`.
   - Idempotency: call twice → no duplicate rows (the unique constraint + `on conflict do nothing`).
   - RLS: U reads own badges (incl. private); another user reads only U's `is_public=true` badges; anon reads only
-    public; no client INSERT/DELETE succeeds (42501); only owner can flip `is_public`.
+    public; no client INSERT/DELETE succeeds (both raise 42501 from the absent grant since `20270616_001`); only owner can flip `is_public`.
   - Notification: a new award writes a `notifications` row with `kind='achievement'` for the owner.
   - Use the double-quoted `set local "request.jwt.claims"` idiom; hex-only synthetic UUIDs; every `runs` insert carries
     `metadata.activity_type`.
@@ -214,7 +225,7 @@ Build after web ships + review (decisions §24). Byte-identical iOS twin in the 
 - **CHECK↔union guard**: the two new pairs in `check_constraint_unions.mjs` are exercised by the existing
   `parity-types` job.
 
-## i18n keys to add (all six web locales + ARBs)
+## i18n keys to add (every web locale + ARBs)
 
 Web dotted / mobile ARB camelCase. Representative subset (one `label` + `desc` per badge family, plus chrome):
 
@@ -227,7 +238,7 @@ Web dotted / mobile ARB camelCase. Representative subset (one `label` + `desc` p
 - `badges.notif` → "You earned a new badge: {badge}"
 - Per badge family (each with `.label` + `.desc`): `badges.distance5k`, `badges.distance100k`,
   `badges.distanceMarathon`, `badges.streak7`, `badges.streak30`, `badges.streak100`, `badges.pr5k`, `badges.prAll`,
-  `badges.segmentKing`, `badges.planFinisher` … (every catalogue entry gets a key pair in all six locales — real
+  `badges.segmentKing`, `badges.planFinisher` … (every catalogue entry gets a key pair in every web locale — real
   translations, `test/l10n_parity_test.dart` + `messages_parity.test.ts` enforce parity).
 
 Run `flutter gen-l10n` after ARB edits; mirror `lib/l10n/gen/` to the iOS twin.
@@ -270,7 +281,7 @@ Run `flutter gen-l10n` after ARB edits; mirror `lib/l10n/gen/` to the iOS twin.
    `check_constraint_unions.mjs` pairs + `achievements_test.sql` + `seed.sql` badge fixture.
 3. `feat(web): badges on profile + share page + feed` — `BadgeGrid.svelte`, `u/[id]/+page.svelte`,
    `share/badge/[id]/+page.svelte`, `og/badge/[id].png/+server.ts`, `lambda/share-badge/`, data.ts helpers, types.ts
-   unions, i18n in all six locales, `apps/web/tests-e2e/social/badges.spec.ts`.
+   unions, i18n in every web locale, `apps/web/tests-e2e/social/badges.spec.ts`.
 4. `feat(mobile): badge catalogue twin + grid + profile/feed surfaces` — `badges.dart` + `badges_test.dart`,
    `badge_grid.dart`, profile/feed/notification branches, api_client + core_models model, ARBs + gen-l10n.
    **Mirror every `lib/`+`test/` path to `apps/mobile_ios` in the same commit.**
@@ -300,7 +311,7 @@ Run `flutter gen-l10n` after ARB edits; mirror `lib/l10n/gen/` to the iOS twin.
    `notifications` kind extension), using the catalogue thresholds; add `achievements` to `_tables`; `supabase db
    reset`; run both codegen commands; add the two CHECK↔union pairs; write pgtap + seed fixture (commit 2).
 3. Build the web surfaces: `BadgeGrid`, profile section, share page + OG + lambda, feed card, data.ts helpers,
-   types.ts unions, i18n in all six locales, Playwright spec; `npm run check` (commit 3).
+   types.ts unions, i18n in every web locale, Playwright spec; `npm run check` (commit 3).
 4. Mirror to mobile: `badges.dart` + tests, `badge_grid.dart`, profile/feed/notification branches, api_client +
    core_models model, ARBs + gen-l10n; diff-verify iOS twin byte-identical (commit 4).
 5. Docs sweep (commit 5).

@@ -8,6 +8,7 @@ import {
 	fetchRoundTrip,
 	GraphHopperError,
 	parseRoundTrip,
+	ROUTE_PREFERENCES,
 	type Fetcher,
 } from './graphhopper';
 import { areaEfficiency, enclosedAreaM2, inBandScore, pickBestLoop } from './select';
@@ -42,6 +43,15 @@ function ghResponse(coords: [number, number][], distanceM: number): Response {
 		JSON.stringify({ paths: [{ distance: distanceM, points: { type: 'LineString', coordinates: coords } }] }),
 		{ status: 200, headers: { 'content-type': 'application/json' } },
 	);
+}
+
+/// A sidecar /cycle response reporting a loop-poor start, so the handler falls
+/// through to the round_trip race.
+function gcLoopPoor(): Response {
+	return new Response(JSON.stringify({ found: false, largestClean: null }), {
+		status: 200,
+		headers: { 'content-type': 'application/json' },
+	});
 }
 
 // --- graphhopper.ts ---
@@ -168,6 +178,58 @@ test('enclosedAreaM2 of an out-and-back spur is ~zero', () => {
 	assert.ok(enclosedAreaM2(spurLoop(0, 0, 0.01)) < 1);
 });
 
+test('enclosedAreaM2 is unchanged by the antimeridian', () => {
+	// WRAPPED coordinates, which is what GraphHopper and GeoJSON actually emit:
+	// a ring straddling 180° comes back as 179.99… then -179.99…, not an
+	// unwrapped 180.004. The first version of this test built the square from
+	// unwrapped longitudes, so it never crossed the line at all — it failed
+	// pre-fix only by a 6.6x floating-point cancellation margin, pinning the
+	// shoelace-origin change rather than unwrapLonDeg.
+	const lat = -16.8; // Taveuni, Fiji — the meridian runs through the island.
+	const half = 0.005;
+	const control = squareLoop(179.0, lat, half);
+	const crossing: [number, number][] = squareLoop(180.0, lat, half).map(
+		([lng, la]) => [lng > 180 ? lng - 360 : lng, la]
+	);
+	// Precondition: the ring really does straddle the line.
+	assert.ok(crossing.some(([lng]) => lng > 0));
+	assert.ok(crossing.some(([lng]) => lng < 0));
+	assert.ok(
+		Math.abs(enclosedAreaM2(crossing) - enclosedAreaM2(control)) /
+			enclosedAreaM2(control) < 1e-9,
+		'a loop straddling 180° must enclose the same area as one that does not'
+	);
+});
+
+test('pickBestLoop is not hijacked by a spur that crosses the antimeridian', () => {
+	// The spur needs a non-zero latitude extent: a flat one has an exactly-zero
+	// shoelace in EVERY longitude representation (each term telescopes), so the
+	// first version of this test passed against the pre-fix code too.
+	//
+	// inBandScore = areaEfficiency x closeness, and closeness never drops below
+	// 0.85 in-band — so a line-crossing candidate whose area is inflated by four
+	// orders of magnitude beats every well-formed loop outright.
+	const lat = -16.8;
+	const wrap = (lng: number) => (lng > 180 ? lng - 360 : lng);
+	const spur: [number, number][] = [
+		[wrap(179.995), lat],
+		[wrap(180.005), lat],
+		[wrap(180.005), lat + 0.00002],
+		[wrap(179.995), lat + 0.00002],
+		[wrap(179.995), lat]
+	];
+	assert.ok(spur.some(([lng]) => lng > 0) && spur.some(([lng]) => lng < 0));
+	const round = squareLoop(179.0, lat, 0.005);
+	const best = pickBestLoop(
+		[
+			{ coordinates: spur, distanceM: 4000 },
+			{ coordinates: round, distanceM: 4000 }
+		] as never,
+		4000
+	);
+	assert.deepEqual(best?.coordinates, round);
+});
+
 test('areaEfficiency ranks a square loop well above a spur', () => {
 	const sq = { coordinates: squareLoop(0, 0, 0.01), distanceM: 4 * 0.02 * 111320 };
 	const sp = { coordinates: spurLoop(0, 0, 0.01), distanceM: 4 * 0.01 * 111320 };
@@ -213,6 +275,20 @@ test('pickBestLoop picks the closest-to-target when nothing is in-band', () => {
 	assert.equal(best, nearSpur);
 });
 
+test('inBandScore is roundness discounted by distance, and nothing else', () => {
+	// The default generator is the regression nothing else here would catch, and
+	// a preference must not reach this score at all: the sidecar returns its one
+	// chosen loop straight to the caller, so selection only ever ranks the
+	// unmeasured round_trip pool.
+	const a = { coordinates: squareLoop(0, 0, 0.005614), distanceM: 5000 };
+	const b = { coordinates: squareLoop(0, 0, 0.006231), distanceM: 5550 };
+	const spur = { coordinates: spurLoop(0, 0, 0.01), distanceM: 5000 };
+	assert.equal(pickBestLoop([a, b, spur], 5000), a);
+	for (const c of [a, b, spur]) {
+		assert.equal(inBandScore(c, 5000), areaEfficiency(c) * (1 - Math.abs(c.distanceM - 5000) / 5000));
+	}
+});
+
 test('pickBestLoop returns null when no candidate is usable', () => {
 	assert.equal(pickBestLoop([], 5000), null);
 	assert.equal(pickBestLoop([{ coordinates: [[0, 0]], distanceM: 5000 }], 5000), null);
@@ -237,7 +313,7 @@ test('parseGenerateRequest accepts a well-formed body', () => {
 
 const OK_CFG = {
 	graphhopperUrl: BASE,
-	publicSupabaseUrl: 'http://127.0.0.1:54321',
+	publicSupabaseUrl: 'http://127.0.0.1:24321',
 	publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 	bypassPaywallEnabled: false,
 };
@@ -345,6 +421,57 @@ test('handleGenerate → 502 when every seed fails upstream', async () => {
 	const fetcher: Fetcher = async () => new Response('down', { status: 503 });
 	const res = await handleGenerate(AUTH, { start: { lat: 0, lng: 0 }, targetDistanceM: 5000 }, OK_CFG, { fetcher, proChecker: asPro });
 	assert.equal(res.status, 502);
+	assert.deepEqual(res.body, { error: 'route engine unavailable' });
+});
+
+// The Lambda logs the alarm-driving `engine_unreachable` line on every 502, so
+// each of these three had to be told apart: a loop-poor neighbourhood is the
+// user's street layout, not an outage, and lumping them together also hid a
+// genuine engine failure inside the noise.
+const GC_CFG = { ...OK_CFG, graphCycleUrl: 'http://gc.local', graphhopperUrl: undefined };
+
+function gcResponse(body: unknown): Response {
+	return new Response(JSON.stringify(body), {
+		status: 200,
+		headers: { 'content-type': 'application/json' },
+	});
+}
+
+test('handleGenerate → 422 when graph-cycle answers loop-poor and there is no fallback engine', async () => {
+	const fetcher: Fetcher = async () => gcResponse({ found: false, largestClean: null });
+	const res = await handleGenerate(AUTH, VALID_BODY, GC_CFG, { fetcher, proChecker: asPro });
+	assert.equal(res.status, 422);
+	assert.deepEqual(res.body, { error: 'no usable route' });
+});
+
+test('handleGenerate → 502 when graph-cycle itself is unreachable and there is no fallback engine', async () => {
+	const fetcher: Fetcher = async () => {
+		throw new Error('connect ECONNREFUSED');
+	};
+	const res = await handleGenerate(AUTH, VALID_BODY, GC_CFG, { fetcher, proChecker: asPro });
+	assert.equal(res.status, 502);
+	assert.deepEqual(res.body, { error: 'route engine unavailable' });
+});
+
+test('handleGenerate → 422 when every seed reports no_route at this start', async () => {
+	// GraphHopper answered on every seed; it just cannot build a loop here.
+	const fetcher: Fetcher = async () => new Response(JSON.stringify({ paths: [] }), { status: 200 });
+	const res = await handleGenerate(AUTH, VALID_BODY, OK_CFG, { fetcher, proChecker: asPro });
+	assert.equal(res.status, 422);
+	assert.deepEqual(res.body, { error: 'no usable route' });
+});
+
+test('handleGenerate → 422 when candidates come back but none is usable', async () => {
+	// Paths with geometry but no reported distance survive the parse and are
+	// then rejected by the selector — the engine is plainly healthy.
+	const fetcher: Fetcher = async () =>
+		new Response(
+			JSON.stringify({ paths: [{ points: { coordinates: squareLoop(0, 0, 0.0056) } }] }),
+			{ status: 200, headers: { 'content-type': 'application/json' } },
+		);
+	const res = await handleGenerate(AUTH, VALID_BODY, OK_CFG, { fetcher, proChecker: asPro });
+	assert.equal(res.status, 422);
+	assert.deepEqual(res.body, { error: 'no usable route' });
 });
 
 test('handleGenerate races N seeds and returns the best-shaped loop', async () => {
@@ -449,6 +576,48 @@ test("buildCustomModel('quiet') down-weights arterials, up-weights residential",
 	for (const r of rules) assert.ok(r.multiply_by > 0, 'no hard exclusion');
 });
 
+test("buildCustomModel('scenic') promotes paths and still penalises arterials", () => {
+	const model = buildCustomModel('scenic');
+	assert.ok(model);
+	const rules = model.priority;
+	const path = rules.find((r) => r.if === 'road_class == PATH');
+	const footway = rules.find((r) => r.else_if === 'road_class == FOOTWAY');
+	const motorway = rules.find((r) => r.if === 'road_class == MOTORWAY');
+	assert.ok(path && path.multiply_by > 1, 'paths must be favoured');
+	assert.ok(footway && footway.multiply_by > 1, 'footways must be favoured');
+	assert.ok(motorway && motorway.multiply_by < 1, 'an arterial is not scenic either');
+	for (const r of rules) assert.ok(r.multiply_by > 0, 'no hard exclusion');
+	// Stairs are scenic and unrunnable; leaving STEPS unweighted is deliberate.
+	assert.equal(
+		rules.some((r) => (r.if ?? r.else_if) === 'road_class == STEPS'),
+		false,
+	);
+});
+
+test('every custom model spends only encoded values the deployed engine carries', () => {
+	// `graph.encoded_values` in apps/job_worker/graphhopper/config.yml declares
+	// only the foot-profile set; road_class rides GraphHopper's always-imported
+	// defaults. Naming anything else fails the whole request, not the one clause,
+	// and the never-deny retry would hide that as a silently-ignored preference.
+	for (const pref of ROUTE_PREFERENCES) {
+		const model = buildCustomModel(pref);
+		if (!model) continue;
+		for (const r of model.priority) {
+			const expr = r.if ?? r.else_if ?? '';
+			assert.ok(
+				expr.startsWith('road_class == '),
+				`${pref} references a non-road_class encoded value: ${expr}`,
+			);
+		}
+	}
+});
+
+test("buildCustomModel('cul_de_sac') has no GraphHopper expression", () => {
+	// A capped stub into a quiet dead-end is a property of the assembled loop,
+	// not of any edge — round_trip runs plain and only the sidecar can honour it.
+	assert.equal(buildCustomModel('cul_de_sac'), null);
+});
+
 test('buildRoundTripBody carries the custom_model + ch.disable + round_trip params', () => {
 	const model = buildCustomModel('quiet')!;
 	const body = buildRoundTripBody(
@@ -499,24 +668,156 @@ test('fetchRoundTrip stays a GET with no body when no preference is set', async 
 	assert.equal(body, undefined);
 });
 
-test('parseGenerateRequest keeps a known preference, drops an unknown one', () => {
-	assert.equal(
-		parseGenerateRequest({ start: { lat: 1, lng: 2 }, targetDistanceM: 5000, preference: 'quiet' })?.preference,
-		'quiet',
-	);
+test('parseGenerateRequest keeps every known preference, drops an unknown one', () => {
+	for (const pref of ROUTE_PREFERENCES) {
+		assert.equal(
+			parseGenerateRequest({ start: { lat: 1, lng: 2 }, targetDistanceM: 5000, preference: pref })
+				?.preference,
+			pref,
+		);
+	}
 	// Unrecognised preference is silently dropped (never a 400) so a stale knob
 	// can't block generation.
-	assert.equal(
-		parseGenerateRequest({ start: { lat: 1, lng: 2 }, targetDistanceM: 5000, preference: 'scenic' })?.preference,
-		undefined,
-	);
+	for (const bogus of ['elevation', '', 'QUIET', 7, null]) {
+		assert.equal(
+			parseGenerateRequest({ start: { lat: 1, lng: 2 }, targetDistanceM: 5000, preference: bogus })
+				?.preference,
+			undefined,
+		);
+	}
 });
 
-test('handleGenerate with a preference POSTs a custom model and skips graph-cycle', async () => {
+test('a sidecar that REFUSES the preference field still serves a route', async () => {
+	// Version skew: the Lambda and the sidecar deploy separately, and the
+	// sidecar's decoder rejects unknown fields, so one deployed before this
+	// preference existed answers 400. On a graph-cycle-only deploy that used to
+	// turn the whole request into a 502 — the alarm-driving status — with the
+	// preference as the sole reason a buildable route was denied.
+	const bodies: string[] = [];
+	const fetcher: Fetcher = async (_url, init) => {
+		const body = String(init?.body ?? '');
+		bodies.push(body);
+		if (body.includes('preference')) {
+			return new Response('json: unknown field "preference"', { status: 400 });
+		}
+		return gcResponse({ found: true, coordinates: squareLoop(0, 0, 0.0056), distanceM: 5000 });
+	};
+	const res = await handleGenerate(
+		AUTH,
+		{ ...VALID_BODY, preference: 'quiet' },
+		GC_CFG,
+		{ fetcher, proChecker: asPro },
+	);
+	assert.equal(res.status, 200);
+	assert.equal(bodies.length, 2, 'the refusal must be retried once without the preference');
+	assert.ok(!bodies[1].includes('preference'));
+	// The retry served an unweighted loop, so nothing may claim the ask landed.
+	if (res.status === 200) assert.equal(res.body.preferenceApplied, undefined);
+});
+
+test('a sidecar that is UNREACHABLE is not retried — only a refusal is', async () => {
+	// The retry exists for a decoder that answered and refused. A transport
+	// failure has no answer to read, so retrying only doubles the wait before
+	// the honest 502.
+	let calls = 0;
+	const fetcher: Fetcher = async () => {
+		calls++;
+		throw new Error('ECONNREFUSED');
+	};
+	const res = await handleGenerate(
+		AUTH,
+		{ ...VALID_BODY, preference: 'quiet' },
+		GC_CFG,
+		{ fetcher, proChecker: asPro },
+	);
+	assert.equal(res.status, 502);
+	assert.equal(calls, 1);
+});
+
+test('the sidecar cannot name a preference this request never carried', async () => {
+	// It is a separately deployed service: a bare echo of its answer would let a
+	// future or wrong version tell the runner their route is something it isn't.
+	const fetcher: Fetcher = async () =>
+		gcResponse({
+			found: true,
+			coordinates: squareLoop(0, 0, 0.0056),
+			distanceM: 5000,
+			preferenceApplied: 'scenic',
+		});
+	const asked = await handleGenerate(AUTH, { ...VALID_BODY, preference: 'quiet' }, GC_CFG, {
+		fetcher,
+		proChecker: asPro,
+	});
+	assert.equal(asked.status, 200);
+	if (asked.status === 200) assert.equal(asked.body.preferenceApplied, undefined);
+	const unasked = await handleGenerate(AUTH, VALID_BODY, GC_CFG, { fetcher, proChecker: asPro });
+	assert.equal(unasked.status, 200);
+	if (unasked.status === 200) assert.equal(unasked.body.preferenceApplied, undefined);
+});
+
+test('cul_de_sac does not race round_trip twice — its first race was already plain', async () => {
+	// buildCustomModel returns null for it, so the preference race and the
+	// never-deny retry are byte-identical requests. Firing both doubles the
+	// upstream fan-out precisely when the engine is already failing.
+	let ghCalls = 0;
+	const fetcher: Fetcher = async (url) => {
+		if (url.includes('gc.local')) return gcResponse({ found: false, largestClean: null });
+		ghCalls++;
+		// A 200 carrying no path: the engine ANSWERED that it cannot build a loop
+		// here, which is the 422 branch rather than the 502 one.
+		return new Response(JSON.stringify({ paths: [] }), {
+			status: 200,
+			headers: { 'content-type': 'application/json' },
+		});
+	};
+	const res = await handleGenerate(
+		AUTH,
+		{ start: { lat: 0, lng: 0 }, targetDistanceM: 5000, preference: 'cul_de_sac', seeds: 1 },
+		{ ...OK_CFG, graphCycleUrl: 'http://gc.local' },
+		{ fetcher, proChecker: asPro },
+	);
+	assert.equal(res.status, 422);
+	// One race: REQUEST_MULTIPLIERS x seeds. A second would double it.
+	assert.equal(ghCalls, REQUEST_MULTIPLIERS.length);
+});
+
+test('handleGenerate with a preference still runs graph-cycle first', async () => {
+	// The preference used to divert the whole request onto round_trip, silently
+	// downgrading the runner off the durable v3 generator. It must not.
 	let sawGraphCycle = false;
+	let sawRoundTrip = false;
+	const fetcher: Fetcher = async (url) => {
+		if (url.includes('gc.local')) {
+			sawGraphCycle = true;
+			return new Response(
+				JSON.stringify({
+					found: true,
+					coordinates: squareLoop(0, 0, 0.0056),
+					distanceM: 5000,
+					preferenceApplied: 'quiet',
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } },
+			);
+		}
+		sawRoundTrip = true;
+		return ghResponse(squareLoop(0, 0, 0.0056), 5000);
+	};
+	const res = await handleGenerate(
+		AUTH,
+		{ start: { lat: 0, lng: 0 }, targetDistanceM: 5000, preference: 'quiet', seeds: 1 },
+		{ ...OK_CFG, graphCycleUrl: 'http://gc.local' },
+		{ fetcher, proChecker: asPro },
+	);
+	assert.equal(res.status, 200);
+	assert.ok(sawGraphCycle, 'the preference must ride the graph-cycle rail, not skip it');
+	assert.equal(sawRoundTrip, false, 'a served graph-cycle loop needs no round_trip race');
+	if (res.status === 200) assert.equal(res.body.preferenceApplied, 'quiet');
+});
+
+test('handleGenerate POSTs a custom model on the round_trip fallback and reports it', async () => {
 	let postedModel = false;
 	const fetcher: Fetcher = async (url, init) => {
-		if (url.includes('gc.local')) sawGraphCycle = true;
+		if (url.includes('gc.local')) return gcLoopPoor();
 		if (init?.method === 'POST' && typeof init.body === 'string' && init.body.includes('custom_model')) {
 			postedModel = true;
 		}
@@ -529,8 +830,25 @@ test('handleGenerate with a preference POSTs a custom model and skips graph-cycl
 		{ fetcher, proChecker: asPro },
 	);
 	assert.equal(res.status, 200);
-	assert.equal(sawGraphCycle, false, 'preference path must skip the graph-cycle sidecar');
-	assert.ok(postedModel, 'preference path must carry the custom model');
+	assert.ok(postedModel, 'the fallback must carry the custom model');
+	if (res.status === 200) assert.equal(res.body.preferenceApplied, 'quiet');
+});
+
+test('handleGenerate never claims a preference GraphHopper cannot express', async () => {
+	// cul_de_sac has no custom model, so a round_trip fallback serves a plain
+	// loop — reporting it as applied would be a lie the UI would repeat.
+	const fetcher: Fetcher = async (url) => {
+		if (url.includes('gc.local')) return gcLoopPoor();
+		return ghResponse(squareLoop(0, 0, 0.0056), 5000);
+	};
+	const res = await handleGenerate(
+		AUTH,
+		{ start: { lat: 0, lng: 0 }, targetDistanceM: 5000, preference: 'cul_de_sac', seeds: 1 },
+		{ ...OK_CFG, graphCycleUrl: 'http://gc.local' },
+		{ fetcher, proChecker: asPro },
+	);
+	assert.equal(res.status, 200);
+	if (res.status === 200) assert.equal(res.body.preferenceApplied, undefined);
 });
 
 test('handleGenerate falls back to plain generation when the preference race finds nothing', async () => {
@@ -553,4 +871,6 @@ test('handleGenerate falls back to plain generation when the preference race fin
 	);
 	assert.equal(res.status, 200, 'a rejected preference must never deny a buildable route');
 	assert.ok(plainServed, 'fallback must retry without the preference');
+	// The loop that got served was built without the model, so nothing applied.
+	if (res.status === 200) assert.equal(res.body.preferenceApplied, undefined);
 });

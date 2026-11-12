@@ -1,9 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { settleTransitions } from '../fixtures/transitions';
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
- * The sidebar's seven per-section identity accents (decisions § 529).
+ * The sidebar's per-section identity accents (decisions § 529, § 2007).
  *
  * Each nav row names a `--section-<x>` / `--section-<x>-ink` pair in app.css
  * via an inline `style="--accent: var(...)"`, and the icon glyph paints the
@@ -27,6 +30,7 @@ const SECTIONS = [
 	'nutrition',
 	'coach',
 	'social',
+	'messages',
 ] as const;
 
 async function tokens(page: Page, names: string[]): Promise<string[]> {
@@ -45,6 +49,20 @@ async function tokens(page: Page, names: string[]): Promise<string[]> {
 	}, names);
 }
 
+/**
+ * Gym and Nutrition join the sidebar once the session's visibility read lands
+ * (decisions § 1739 amendment). USER_A's seed logs both, so both resolve shown
+ * and must be in the list before anything is measured; reading earlier would
+ * check six or seven sections and call it eight.
+ */
+async function navSettled(page: Page): Promise<void> {
+	for (const href of ['/gym', '/nutrition']) {
+		await expect(page.locator(`nav.sidebar .nav-link[href="${href}"]`)).toBeVisible({
+			timeout: 15_000,
+		});
+	}
+}
+
 function glyphColours(page: Page): Promise<string[]> {
 	return page
 		.locator('nav.sidebar .nav-link .nav-icon')
@@ -56,21 +74,19 @@ test.describe('sidebar section accents', () => {
 
 	for (const theme of ['light', 'dark'] as const) {
 		test(`each nav glyph resolves its own section ink — ${theme}`, async ({ page }) => {
-			await page.addInitScript(
-				(t) => window.localStorage.setItem('run_app.theme', t),
-				theme,
-			);
+			await setStorageOnLoad(page, { local: { 'run_app.theme': theme } });
 			await page.goto('/dashboard');
 			await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+			await navSettled(page);
 
 			const links = page.locator('nav.sidebar .nav-link');
 			// The AI Coach row hides when the Coach is off, so the set is the
-			// sections present, not always all seven.
+			// sections present, not always all eight.
 			const hrefs = await links.evaluateAll((els) =>
 				els.map((el) => el.getAttribute('href') ?? ''),
 			);
 			const present = SECTIONS.filter((s) => hrefs.includes(`/${s}`));
-			expect(present.length).toBeGreaterThanOrEqual(6);
+			expect(present.length).toBeGreaterThanOrEqual(7);
 
 			const glyphs = await glyphColours(page);
 			expect(glyphs).toHaveLength(hrefs.length);
@@ -105,14 +121,19 @@ test.describe('sidebar section accents', () => {
 	}
 
 	test('the ink half flips with the theme while the accents stay put', async ({ page }) => {
-		await page.addInitScript(() => window.localStorage.setItem('run_app.theme', 'light'));
+		await setStorageOnLoad(page, { local: { 'run_app.theme': 'light' } });
 		await page.goto('/dashboard');
+		await navSettled(page);
 		const light = await glyphColours(page);
 
 		await page.evaluate(() => {
 			window.localStorage.setItem('run_app.theme', 'dark');
 			document.documentElement.dataset.theme = 'dark';
 		});
+		// The glyph inherits its colour from .nav-icon-wrap, which transitions
+		// `color`, so a read straight after the flip returns the light value
+		// mid-transition.
+		await settleTransitions(page.locator('nav.sidebar'));
 		const dark = await glyphColours(page);
 
 		expect(dark).toHaveLength(light.length);

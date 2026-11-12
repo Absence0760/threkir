@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchExerciseRecordsWithError, type ExerciseRecord } from '$lib/core/data';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchExerciseRecordsWithError, type ExerciseRecord } from '#lib/core/data.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 
 	let records = $state<ExerciseRecord[]>([]);
 	let loading = $state(true);
@@ -14,7 +18,7 @@
 		loading = true;
 		const res = await fetchExerciseRecordsWithError();
 		records = res.records;
-		loadError = res.error;
+		loadError = res.error ? errorCopy(res.error, t, 'gym records: loadError') : null;
 		loading = false;
 	}
 
@@ -47,20 +51,20 @@
 
 	<header class="page-header">
 		<h1>{t('gym.records.title')}</h1>
-		<p class="head-sub">{t('gym.records.subtitle')}</p>
+		<p class="head-sub"><MetricLabel metric="e1rm" variant="inline" sentence="gym.records.subtitle" /></p>
 	</header>
 
 	{#if loading}
 		<ul class="record-grid" aria-hidden="true">
 			{#each Array(6) as _, i (i)}
 				<li class="skel-card">
-					<span class="skel skel-line skel-w-50"></span>
-					<span class="skel skel-line skel-w-70"></span>
-					<span class="skel skel-line skel-w-40"></span>
+					<SkeletonBlock height="0.95rem" width="50%" />
+					<SkeletonBlock height="0.95rem" width="70%" />
+					<SkeletonBlock height="0.95rem" width="40%" />
 				</li>
 			{/each}
 		</ul>
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -71,11 +75,11 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if records.length === 0}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">trophy</span>
-			<p class="empty-text">{t('gym.records.empty')}</p>
-			<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
-		</div>
+		<EmptyState icon="trophy" title={t('gym.records.empty')}>
+			{#snippet actions()}
+				<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="record-grid">
 			{#each records as r (r.exerciseName)}
@@ -85,7 +89,7 @@
 					<dl class="metrics">
 						{#if r.bestEst1RmKg != null}
 							<div class="metric metric-primary">
-								<dt class="section-label">{t('gym.pr.e1rm')}</dt>
+								<dt class="section-label"><MetricLabel metric="e1rm" plain /></dt>
 								<dd>{formatWeight(r.bestEst1RmKg)}</dd>
 							</div>
 						{/if}
@@ -220,34 +224,7 @@
 		color: var(--color-text-tertiary);
 	}
 
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 32rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-card .btn {
-		margin-top: var(--space-xs);
-	}
-
-	/* Skeleton — same shimmer language as the gym list. */
+	/* Skeleton card — the blocks are SkeletonBlock. */
 	.skel-card {
 		display: flex;
 		flex-direction: column;
@@ -257,54 +234,7 @@
 		border-radius: var(--radius-lg);
 		background: var(--color-surface);
 	}
-	.skel {
-		display: block;
-		height: 0.95rem;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-w-40 {
-		width: 40%;
-	}
-	.skel-w-50 {
-		width: 50%;
-	}
-	.skel-w-70 {
-		width: 70%;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.error-banner {
 		display: flex;
 		align-items: center;

@@ -1,19 +1,17 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { originOf } from '../fixtures/base-url';
+import { browserYear } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
-const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_YEAR = browserYear();
 
 test.describe('/recap/[year] — anon visitor', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('valid year still loads (no auth-wall redirect)', async ({ page }) => {
@@ -170,6 +168,40 @@ test.describe('/recap/[year] — signed-in seed user', () => {
 		void shared;
 	});
 
+	test('Share as story shares a 1080x1920 card image', async ({ page }) => {
+		await page.addInitScript(() => {
+			const w = window as unknown as { __shared?: Record<string, unknown> };
+			Object.defineProperty(navigator, 'canShare', {
+				value: (data: { files?: unknown[] }) => Array.isArray(data?.files),
+				configurable: true
+			});
+			Object.defineProperty(navigator, 'share', {
+				value: async (data: { files?: File[] }) => {
+					const file = data.files?.[0];
+					const size = file
+						? await createImageBitmap(file).then((b) => [b.width, b.height])
+						: null;
+					w.__shared = { fileName: file?.name ?? null, size };
+				},
+				configurable: true
+			});
+		});
+
+		await page.goto(`/recap/${CURRENT_YEAR}`);
+		await expect(page.getByText(`My ${CURRENT_YEAR} in running`).first()).toBeVisible({
+			timeout: 10_000
+		});
+		await page.getByRole('button', { name: 'Share as story' }).click();
+
+		await expect
+			.poll(
+				async () =>
+					page.evaluate(() => (window as unknown as { __shared?: unknown }).__shared ?? null),
+				{ timeout: 5_000 }
+			)
+			.toEqual({ fileName: `threkir-${CURRENT_YEAR}-story.png`, size: [1080, 1920] });
+	});
+
 	test('Share recap downloads the card image when file-share is unavailable', async ({ page }) => {
 		await page.addInitScript(() => {
 			Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
@@ -187,9 +219,13 @@ test.describe('/recap/[year] — signed-in seed user', () => {
 		expect(download.suggestedFilename()).toBe(`threkir-${CURRENT_YEAR}.png`);
 	});
 
-	test('Falls back to clipboard text when card rendering fails', async ({ page, context }) => {
+	test('Falls back to clipboard text when card rendering fails', async ({
+		page,
+		context,
+		baseURL
+	}) => {
 		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-			origin: 'http://localhost:7777'
+			origin: originOf(baseURL)
 		});
 
 		await page.addInitScript(() => {

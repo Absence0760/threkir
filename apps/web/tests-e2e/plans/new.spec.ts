@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 
 /**
  * /plans/new — the standalone wizard route.
@@ -51,7 +52,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(page.locator('.plan-editor')).toBeVisible({ timeout: 5_000 });
 	});
 
-	test('fill wizard → Replace-plan confirm → land on /plans/<new-id>; DB invariants honoured', async ({
+	test('fill wizard → overlap dialog → Replace → land on /plans/<new-id>; DB invariants honoured', async ({
 		page
 	}) => {
 		const name = `e2e-new-plan ${Date.now()}`;
@@ -72,9 +73,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(submit).toBeEnabled({ timeout: 5_000 });
 		await submit.click();
 
-		const replace = page.locator('.modal.modal-narrow', {
-			hasText: /Replace your active plan/
-		});
+		const replace = page.getByTestId('plan-overlap-dialog');
 		await expect(replace).toBeVisible({ timeout: 5_000 });
 		await expect(replace).toContainText('Richmond Half 2026');
 		await replace.getByRole('button', { name: 'Replace plan' }).click();
@@ -86,22 +85,28 @@ test.describe('/plans/new — standalone wizard', () => {
 			.toBeVisible({ timeout: 10_000 });
 
 		const admin = getAdminClient();
-		const { data: newRow } = await admin
-			.from('training_plans')
-			.select('id, name, status, is_template')
-			.eq('id', plantedPlanId)
-			.single();
+		const newRow = await readMaybeRow(
+			'training_plans by id',
+			admin
+				.from('training_plans')
+				.select('id, name, status, is_template')
+				.eq('id', plantedPlanId)
+				.single()
+		);
 		expect(newRow).not.toBeNull();
 		expect(newRow!.name).toBe(name);
 		expect(newRow!.status).toBe('active');
 		expect(newRow!.is_template).toBe(false);
 
-		const { data: oldRow } = await admin
-			.from('training_plans')
-			.select('status')
-			.eq('id', SEED_PLAN_ID)
-			.single();
-		expect(oldRow!.status).toBe('completed');
+		const oldRow = await readRow(
+			'training_plans by id',
+			admin
+				.from('training_plans')
+				.select('status')
+				.eq('id', SEED_PLAN_ID)
+				.single()
+		);
+		expect(oldRow.status).toBe('abandoned');
 	});
 
 	test('edit a week before save → workout distance persists on detail page', async ({ page }) => {
@@ -145,9 +150,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(submit).toBeEnabled();
 		await submit.click();
 
-		const replace = page.locator('.modal.modal-narrow', {
-			hasText: /Replace your active plan/
-		});
+		const replace = page.getByTestId('plan-overlap-dialog');
 		await expect(replace).toBeVisible({ timeout: 5_000 });
 		await replace.getByRole('button', { name: 'Replace plan' }).click();
 
@@ -162,12 +165,15 @@ test.describe('/plans/new — standalone wizard', () => {
 					.select('id')
 					.eq('plan_id', plantedPlanId)
 			).data?.map((w) => w.id) ?? [];
-		const { data: persisted } = await admin
-			.from('plan_workouts')
-			.select('id, target_distance_m, kind')
-			.in('week_id', weekIds)
-			.eq('target_distance_m', 9500);
-		expect((persisted ?? []).length).toBeGreaterThan(0);
+		const persisted = await readRows(
+			'plan_workouts by target_distance_m',
+			admin
+				.from('plan_workouts')
+				.select('id, target_distance_m, kind')
+				.in('week_id', weekIds)
+				.eq('target_distance_m', 9500)
+		);
+		expect(persisted.length).toBeGreaterThan(0);
 	});
 
 	test('cancel mid-wizard via back-link discards the in-flight plan', async ({ page }) => {
@@ -183,11 +189,14 @@ test.describe('/plans/new — standalone wizard', () => {
 		await page.waitForURL(/\/plans(\?|$)/, { timeout: 5_000 });
 
 		const admin = getAdminClient();
-		const { data: leaked } = await admin
-			.from('training_plans')
-			.select('id')
-			.eq('user_id', USER_A.id)
-			.eq('name', name);
-		expect(leaked ?? []).toHaveLength(0);
+		const leaked = await readRows(
+			'training_plans by user_id+name',
+			admin
+				.from('training_plans')
+				.select('id')
+				.eq('user_id', USER_A.id)
+				.eq('name', name)
+		);
+		expect(leaked).toHaveLength(0);
 	});
 });

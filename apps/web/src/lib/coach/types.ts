@@ -10,6 +10,19 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type CoachMode = 'send' | 'regenerate' | 'edit';
 
+/// Which plans the Coach context carries (issue #1213). `plan` is the plan
+/// pinned with `plan_id`, else the one plan_current.ts picks; `season` is that
+/// plan and the active plans chained after it (decisions § 2008); `none` is no
+/// plan at all, the picker's "No plan".
+export type CoachPlanScope = 'plan' | 'season' | 'none';
+export const COACH_PLAN_SCOPES: readonly CoachPlanScope[] = ['plan', 'season', 'none'];
+
+// coach_messages.role — who wrote a turn. The column's CHECK (migration
+// 20260511_001) admits exactly these two; `system` is not persisted (the
+// system prompt is rebuilt per request, never a row). Keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type CoachMessageRole = 'user' | 'assistant';
+
 /// Factory shape for the Supabase client the handler builds internally.
 /// Prod leaves `CoachConfig.createClient` unset and the handler falls back
 /// to the real `@supabase/supabase-js` `createClient`; the field exists so
@@ -23,14 +36,23 @@ export type SupabaseClientFactory = (
 ) => SupabaseClient;
 
 export interface CoachRequestBody {
-	messages: { role: 'user' | 'assistant'; content: string }[];
+	messages: { role: CoachMessageRole; content: string }[];
 	plan_id?: string;
+	// Which plans the context carries (context.ts `CoachPlanScope`). Absent
+	// reads as 'plan', which is what a client built before the season picker
+	// sends. With 'season', `plan_id` names the anchor the thread is kept
+	// under, and the season is that plan and the plans chained after it.
+	plan_scope?: CoachPlanScope;
 	recent_runs_limit?: number;
 	mode?: CoachMode;
 	// Anchor for regenerate / edit. The server deletes this message and
 	// every later message in the same (user, plan, archived_at=null)
 	// thread before running.
 	anchor_message_id?: string;
+	// The runner's local date (YYYY-MM-DD). The server has no viewer
+	// timezone, so it picks the current plan by this when it is within a day
+	// of its own UTC date, and by the UTC date otherwise (decisions § 2052).
+	today?: string;
 }
 
 export interface CoachConfig {
@@ -72,11 +94,32 @@ export interface CoachConfig {
 	// accidental prod activation shows up immediately in CloudWatch.
 	bypassPaywallEnabled: boolean;
 
+	// The AI plan assistant's deploy flag (ai_plan_flag.ts), read by the
+	// caller: PUBLIC_AI_PLAN_ENABLED in the dev wrapper, AI_PLAN_ENABLED in
+	// the Lambda. Selects which plan-handoff addendum the system prompt
+	// carries — a deep link into the assistant, or a bare link to the plan
+	// builder — so the coach never points at a box the runner cannot see.
+	aiPlanEnabled: boolean;
+
+	// The coach fuelling handoff's server flag (coach_fuel_flag.ts is the
+	// client half): PUBLIC_COACH_FUEL_ENABLED in the dev wrapper,
+	// COACH_FUEL_ENABLED in the Lambda. On, the system prompt carries the
+	// fuelHandoffAddendum and the coach answers a fuelling question with a link
+	// to /nutrition/fuel; off, the addendum is empty (decisions § 1975).
+	fuelHandoffEnabled: boolean;
+	// AI plan edits' deploy flag (ai_plan_edit_flag.ts), read the same way:
+	// PUBLIC_AI_PLAN_EDIT_ENABLED in the dev wrapper, AI_PLAN_EDIT_ENABLED in
+	// the Lambda. Adds the plan-edit handoff addendum only when the endpoint it
+	// links into is live.
+	aiPlanEditEnabled: boolean;
+
 	// Test seam only. Injects the Supabase-client factory so the handler's
 	// post-auth branches (notably the regenerate/edit anchor-miss fail-
 	// closed path) can be unit-tested without a live Supabase. Prod callers
 	// leave this unset — the handler falls back to the real `createClient`.
 	createClient?: SupabaseClientFactory;
+	// Test seam only: the server clock `today` is checked against.
+	now?: () => number;
 }
 
 export type CoachResult =
@@ -111,8 +154,8 @@ export interface ProviderStream {
 
 // Both tiers carry a finite daily cap. Pro was previously uncapped;
 // it was lowered to 10/day in May 2026 to bound worst-case Anthropic
-// spend per stolen Pro session token (~$0.50/day at 10×2048 output
-// tokens + ~50k input tokens). Free at 2/day is generous enough to
+// spend per stolen Pro session token (~$0.30/day at 10×2048 output
+// tokens + ~50k input tokens on claude-sonnet-5-5's $2/$10 per MTok). Free at 2/day is generous enough to
 // let a new user have a real exchange with the coach (one prompt +
 // one clarifying follow-up) before deciding whether to upgrade.
 // Pro `maxRunsLimit` was lowered from 200 to 75 in audit pass 3.

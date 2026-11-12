@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Coach <-> athlete link lifecycle boundaries the existing coaching specs don't
@@ -41,12 +43,6 @@ async function seedActiveLink() {
 	});
 }
 
-function isoDate(offsetDays: number): string {
-	const d = new Date();
-	d.setDate(d.getDate() + offsetDays);
-	return d.toISOString().slice(0, 10);
-}
-
 test.describe('/coaching — coach side (USER_B)', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
@@ -82,13 +78,16 @@ test.describe('/coaching — coach side (USER_B)', () => {
 		});
 
 		// And the link row is ended (not deleted).
-		const { data } = await getAdminClient()
-			.from('coach_athletes')
-			.select('status')
-			.eq('coach_id', USER_B.id)
-			.eq('athlete_id', USER_C_PRO.id)
-			.single();
-		expect(data?.status).toBe('ended');
+		const data = await readRow(
+			'coach_athletes by coach_id+athlete_id',
+			getAdminClient()
+				.from('coach_athletes')
+				.select('status')
+				.eq('coach_id', USER_B.id)
+				.eq('athlete_id', USER_C_PRO.id)
+				.single()
+		);
+		expect(data.status).toBe('ended');
 	});
 
 	test('an assigned plan shows compliance counts and done/missed pills', async ({ page }) => {
@@ -102,8 +101,8 @@ test.describe('/coaching — coach side (USER_B)', () => {
 				name: 'E2E Compliance Plan',
 				goal_event: 'distance_10k',
 				goal_distance_m: 10000,
-				start_date: isoDate(-7),
-				end_date: isoDate(21),
+				start_date: browserDate(-7),
+				end_date: browserDate(21),
 				status: 'active',
 				assigned_by_coach_id: USER_B.id
 			})
@@ -124,9 +123,9 @@ test.describe('/coaching — coach side (USER_B)', () => {
 		// default — for any row that omits a key the batch otherwise carries,
 		// which the NOT NULL constraint rejects.
 		await admin.from('plan_workouts').insert([
-			{ week_id: weekId, scheduled_date: isoDate(-2), kind: 'easy', manually_completed: true },
-			{ week_id: weekId, scheduled_date: isoDate(-3), kind: 'easy', manually_completed: false },
-			{ week_id: weekId, scheduled_date: isoDate(-4), kind: 'easy', manually_completed: false }
+			{ week_id: weekId, scheduled_date: browserDate(-2), kind: 'easy', manually_completed: true },
+			{ week_id: weekId, scheduled_date: browserDate(-3), kind: 'easy', manually_completed: false },
+			{ week_id: weekId, scheduled_date: browserDate(-4), kind: 'easy', manually_completed: false }
 		]);
 
 		await page.goto(`/coaching/athletes/${USER_C_PRO.id}`);
@@ -168,13 +167,16 @@ test.describe('/coaching — athlete side (USER_C_PRO)', () => {
 
 		await expect(coachLink).toHaveCount(0, { timeout: 10_000 });
 
-		const { data } = await getAdminClient()
-			.from('coach_athletes')
-			.select('status')
-			.eq('coach_id', USER_B.id)
-			.eq('athlete_id', USER_C_PRO.id)
-			.single();
-		expect(data?.status).toBe('ended');
+		const data = await readRow(
+			'coach_athletes by coach_id+athlete_id',
+			getAdminClient()
+				.from('coach_athletes')
+				.select('status')
+				.eq('coach_id', USER_B.id)
+				.eq('athlete_id', USER_C_PRO.id)
+				.single()
+		);
+		expect(data.status).toBe('ended');
 	});
 });
 
@@ -210,16 +212,19 @@ test.describe('/coaching/accept/[token] — already redeemed', () => {
 		await expect(page.getByRole('heading', { name: 'Invite problem' })).toBeVisible({
 			timeout: 10_000
 		});
-		await expect(page.getByRole('link', { name: 'Go to coaching' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Go to Athletes & coaches' })).toBeVisible();
 		await expect(page).toHaveURL(/\/coaching\/accept\//);
 
 		// The existing link is untouched — USER_A did not get linked.
-		const { data } = await getAdminClient()
-			.from('coach_athletes')
-			.select('athlete_id, status')
-			.eq('coach_id', USER_B.id);
+		const data = await readRows(
+			'coach_athletes by coach_id',
+			getAdminClient()
+				.from('coach_athletes')
+				.select('athlete_id, status')
+				.eq('coach_id', USER_B.id)
+		);
 		expect(data).toHaveLength(1);
-		expect(data![0].athlete_id).toBe(USER_C_PRO.id);
-		expect(data![0].status).toBe('active');
+		expect(data[0].athlete_id).toBe(USER_C_PRO.id);
+		expect(data[0].status).toBe('active');
 	});
 });

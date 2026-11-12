@@ -5,11 +5,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../diary_day.dart';
+import '../food_composer.dart';
 import '../food_search.dart';
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_food_store.dart';
 import '../nutrition_totals.dart';
+import '../typed_decimal.dart';
 import 'full_screen_form.dart';
 
 /// Open the nutrition log composer as a fullscreen dialog. Resolves `true`
@@ -19,17 +23,29 @@ import 'full_screen_form.dart';
 /// Flutter twin of web `/nutrition/log`: search Open Food Facts -> tap a
 /// result -> confirm portion, with manual macro entry as the no-match
 /// fallback. Writes through [LocalFoodStore] so logging works offline.
+///
+/// [diaryDate] is the `YYYY-MM-DD` day the caller is viewing; the entry is
+/// stamped inside that day rather than at now, so a forgotten yesterday can be
+/// back-filled. Null (the quick-log entry points, which are always about today)
+/// stamps now.
 Future<bool?> showNutritionLogSheet({
   required BuildContext context,
   required LocalFoodStore store,
+  String? diaryDate,
 }) {
   final l10n = AppLocalizations.of(context);
   final formKey = GlobalKey<_NutritionLogSheetState>();
+  final day = diaryDate == null ? null : diaryWindow(diaryDate)?.start;
+  final title = day == null || isDiaryToday(diaryDate!, DateTime.now())
+      ? l10n.nutritionLogTitle
+      : l10n.nutritionDayLogHeadingFor(
+          formatDateMed(day, localeToTag(Localizations.localeOf(context))));
   return showFullScreenForm<bool>(
     context,
-    title: l10n.nutritionLogTitle,
+    title: title,
     isDirty: () => formKey.currentState?.isDirty ?? false,
-    builder: (ctx) => NutritionLogSheet(key: formKey, store: store),
+    builder: (ctx) =>
+        NutritionLogSheet(key: formKey, store: store, diaryDate: diaryDate),
   );
 }
 
@@ -57,12 +73,16 @@ class NutritionLogSheet extends StatefulWidget {
 
   /// Test seam — override the USDA key (defaults to the env-bundle value).
   final String? usdaApiKey;
+
+  /// `YYYY-MM-DD` day the entry belongs to; null stamps now.
+  final String? diaryDate;
   const NutritionLogSheet({
     super.key,
     required this.store,
     this.fetcher,
     this.scanner,
     this.usdaApiKey,
+    this.diaryDate,
   });
 
   @override
@@ -71,7 +91,14 @@ class NutritionLogSheet extends StatefulWidget {
 
 class _NutritionLogSheetState extends State<NutritionLogSheet> {
   final _queryCtl = TextEditingController();
-  String _mealSlot = 'breakfast';
+
+  /// Seeded from the clock in [initState], not from a literal: the composer
+  /// used to open on breakfast whatever the hour, so every dinner was one
+  /// unprompted dropdown away from being filed in the morning.
+  late String _mealSlot;
+
+  /// Distinct foods this runner has logged before, newest first. Read once —
+  /// the store cannot change under an open composer, and logging pops it.
   bool _searching = false;
   bool _searched = false;
   bool _searchFailed = false;
@@ -109,6 +136,13 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
         _manualSatFat,
         _manualCholesterol,
       ].any((c) => c.text.trim().isNotEmpty);
+
+  @override
+  void initState() {
+    super.initState();
+    _mealSlot = mealSlotForTime(
+        entryTimestampFor(widget.diaryDate ?? '', DateTime.now()));
+  }
 
   @override
   void dispose() {
@@ -242,15 +276,15 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
     if (name.isEmpty) return;
     await _log(
       itemName: name,
-      calories: double.tryParse(_manualKcal.text),
-      proteinG: double.tryParse(_manualProtein.text),
-      carbsG: double.tryParse(_manualCarbs.text),
-      fatG: double.tryParse(_manualFat.text),
-      fiberG: double.tryParse(_manualFiber.text),
-      sugarG: double.tryParse(_manualSugar.text),
-      sodiumMg: double.tryParse(_manualSodium.text),
-      saturatedFatG: double.tryParse(_manualSatFat.text),
-      cholesterolMg: double.tryParse(_manualCholesterol.text),
+      calories: parseTypedDecimal(_manualKcal.text),
+      proteinG: parseTypedDecimal(_manualProtein.text),
+      carbsG: parseTypedDecimal(_manualCarbs.text),
+      fatG: parseTypedDecimal(_manualFat.text),
+      fiberG: parseTypedDecimal(_manualFiber.text),
+      sugarG: parseTypedDecimal(_manualSugar.text),
+      sodiumMg: parseTypedDecimal(_manualSodium.text),
+      saturatedFatG: parseTypedDecimal(_manualSatFat.text),
+      cholesterolMg: parseTypedDecimal(_manualCholesterol.text),
     );
   }
 
@@ -271,8 +305,10 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
       _error = null;
     });
     try {
+      final day = widget.diaryDate;
       await widget.store.createLocal(
-        startedAt: DateTime.now(),
+        startedAt:
+            day == null ? DateTime.now() : entryTimestampFor(day, DateTime.now()),
         itemName: itemName,
         mealSlot: _mealSlot,
         calories: calories,
@@ -311,7 +347,7 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
             for (final s in mealSlots)
               DropdownMenuItem(value: s, child: Text(_slotLabel(l10n, s))),
           ],
-          onChanged: (v) => setState(() => _mealSlot = v ?? 'breakfast'),
+          onChanged: (v) => setState(() => _mealSlot = v ?? _mealSlot),
         ),
         if (_error != null) ...[
           const SizedBox(height: 8),

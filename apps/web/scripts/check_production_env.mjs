@@ -7,47 +7,201 @@
  * silently bakes a broken config into the static artifact.
  *
  * Rules enforced for a production build:
- *   - PUBLIC_SUPABASE_URL must be a real https://*.supabase.co URL.
- *     Empty, `placeholder.supabase.co`, or `http://127.0.0.1:54321`
- *     all abort the build. Without this guard, a missing secret in
- *     the release workflow would deploy a static site whose
- *     `entries()` calls return [] (the og:image + share-page
- *     prerender then ships without any prerendered ids), and our
- *     handleUnseenRoutes: 'warn' config quietly accepts the empty
- *     set rather than failing loud.
+ *   - PUBLIC_SUPABASE_URL must PARSE as an https URL on a public host.
+ *     Empty, unparseable, plaintext http, `placeholder.supabase.co`,
+ *     and any loopback / private / link-local / dotless host all abort
+ *     the build. Without this guard, a missing secret in the release
+ *     workflow would deploy a static site whose `entries()` calls
+ *     return [] (the og:image + share-page prerender then ships
+ *     without any prerendered ids), and our handleUnseenRoutes: 'warn'
+ *     config quietly accepts the empty set rather than failing loud.
+ *
+ *     This rule used to be written as "a real https://*.supabase.co
+ *     URL" and implemented as two deny-lists, which let through every
+ *     misconfiguration that was not on them: a bare project ref, a
+ *     `postgresql://user:password@…` connection string (Vite inlines
+ *     PUBLIC_* into every client bundle, so that one publishes a
+ *     database password), plaintext `http://…supabase.co`, a Docker
+ *     service host like `http://kong:8000`, a LAN address, and the
+ *     literal `TODO-set-me`. All six are refused now (decisions § 774).
+ *     `*.supabase.co` is deliberately NOT required — a self-hosted
+ *     Supabase behind a custom domain is a legitimate prod config, and
+ *     a guard has to enforce the rule it can actually state.
  *   - PUBLIC_SUPABASE_ANON_KEY must be non-empty.
  *   - PUBLIC_MAPTILER_KEY must be non-empty. Used by the og:image
  *     PNG renderer at prerender time and by the maplibre tile
  *     source at runtime; an empty key bakes broken map / share-
  *     image URLs into every public route + run page.
- *   - PUBLIC_REVENUECAT_WEB_CHECKOUT_URL must be non-empty — but only
- *     when Pro is sellable, i.e. PUBLIC_COACH_ENABLED or
- *     PUBLIC_ROUTE_GEN_ENABLED is truthy (Pro's two perks, decisions
- *     §204). With both flags off (the rock-bottom tier,
- *     deployment_lean.md) /settings/upgrade deliberately shows the
- *     "coming soon" teaser instead of selling, so an empty checkout
- *     link is the intended config, not a broken one.
+ *   - PUBLIC_REVENUECAT_WEB_CHECKOUT_URL may be unset, but a value that
+ *     IS set must be a RevenueCat Web Purchase Link: https, host
+ *     pay.rev.cat, a real token (no placeholder). The test is
+ *     `checkoutBaseProblem` in src/lib/billing/revenuecat_links.ts — the
+ *     same one /settings/upgrade applies before it renders a buy button,
+ *     so a value this guard passes is a value the page redirects to.
+ *     Unset with a Pro perk flag on (PUBLIC_COACH_ENABLED /
+ *     PUBLIC_ROUTE_GEN_ENABLED) used to fail the build; it is now a
+ *     supported configuration — Pro is sold through the iPhone app's
+ *     In-App Purchase and the page says so (decisions § 1826) — and the
+ *     CLI prints a `::notice::` naming the state instead.
+ *   - PUBLIC_DONATE_URL may be unset (no donate link renders), but a value
+ *     that IS set must be a Stripe Payment Link: https, host
+ *     donate.stripe.com or buy.stripe.com, a link id. The test is
+ *     `donateUrlProblem` in src/lib/billing/donate_link.ts, the same one
+ *     the pages apply before they render a donate link.
+ *   - The OPTIONAL origins below (PUBLIC_SITE_URL, PUBLIC_LIVE_HUB_URL,
+ *     PUBLIC_EXPORT_HUB_URL) may be unset — each has a defined
+ *     unconfigured behaviour — but a value that IS set has to be a
+ *     production URL by the same test PUBLIC_SUPABASE_URL takes. This
+ *     is the mirror of `env_isolation.mjs`, which refuses these three
+ *     when they are NOT loopback in dev and had nothing saying the
+ *     opposite for a release. A `.env.development` value inherited into
+ *     a release build bakes `http://localhost:7777` into every
+ *     prerendered canonical and og:url, and points the live + export
+ *     hubs at each visitor's own machine — all three fail silently, in
+ *     the artifact, for everyone.
+ *
+ *   - PUBLIC_AI_PLAN_ENABLED may be on or off, but on with
+ *     PUBLIC_COACH_ENABLED off is a no-op (the /plans/new box needs both),
+ *     so the CLI names that state in a `::notice::`. The same holds for
+ *     PUBLIC_PLATE_PHOTO_ENABLED and the /nutrition/log photo control.
+ *
+ *   - PUBLIC_COACH_FUEL_ENABLED may be on or off, but on with
+ *     PUBLIC_COACH_ENABLED off renders /nutrition/fuel with nothing linking
+ *     to it (the Coach writes the only link), so the CLI names that state in
+ *     a `::notice::` too.
+ *   - PUBLIC_AI_PLAN_EDIT_ENABLED the same way: on with
+ *     PUBLIC_COACH_ENABLED off, the "Adjust with AI" option on /plans/[id]
+ *     stays hidden, and the CLI says so.
+ *   - PUBLIC_COACH_ASSIST_ENABLED the same way: on with PUBLIC_COACH_ENABLED
+ *     off, the coach assistant and the athlete's consent toggle stay hidden.
  *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
  *     is optional. An empty value degrades the "Manage subscription"
  *     button to a "manage where you started it" hint rather than
  *     breaking the page.
+ *   - PUBLIC_VAPID_PUBLIC_KEY may be unset (web push then reports itself
+ *     unconfigured and no browser subscribes), but a value that IS set must be
+ *     a 65-byte uncompressed P-256 point — see vapidPublicKeyProblem.
  *   - PUBLIC_SENTRY_DSN — error reporting is optional. An empty DSN
  *     disables Sentry rather than breaking anything; small projects
  *     ship without it deliberately.
  *
- * The check is invoked by `npm run check:prod-env` (CLI entry below)
- * and by the release-web.yml workflow as a pre-build step. The
- * `check_production_env.test.mjs` suite covers the matcher.
+ * The CLI below is invoked by the release-web.yml workflow as a
+ * pre-build step, and only there: it asserts about a RELEASE env, and
+ * CI has placeholders by design (`build-web` compiles against
+ * `placeholder.supabase.co`, which this guard exists to refuse). What
+ * the required `CI gate` holds is the `check_production_env.test.mjs`
+ * suite — it covers the matcher and spawns this CLI against crafted
+ * envs — from the `env-isolation` job of ci.yml (decisions § 862).
  */
 
-const LOCAL_HOST_RE = /^https?:\/\/(127\.0\.0\.1|localhost|10\.0\.2\.2|host\.docker\.internal)(?::\d+)?(?:\/|$)/;
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { checkoutBaseProblem } from '../src/lib/billing/revenuecat_links.ts';
+import { donateUrlProblem } from '../src/lib/billing/donate_link.ts';
+import { isTruthyFlagValue } from '../src/lib/core/env_flag.ts';
+
 const PLACEHOLDER_HOST_RE = /\bplaceholder\.supabase\.co\b/i;
+
+/// Hosts that exist only inside a developer's machine or network. A production
+/// bundle is served to browsers on the public internet, so any of them means
+/// the release picked up a dev value.
+const PRIVATE_HOST_RE =
+	/^(?:localhost|.*\.localhost|.*\.local|.*\.internal|host\.docker\.internal|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|\[?::1\]?)$/i;
+
+/**
+ * Why this value cannot be a production Supabase URL, or null if it can be.
+ *
+ * @param {string} url
+ * @returns {string | null}
+ */
+export function productionUrlProblem(url) {
+	/** @type {URL} */
+	let parsed;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return 'Not a URL. A bare project ref or a placeholder string inlines into every client bundle as a broken endpoint.';
+	}
+	// Host before scheme: a dev value is far more often `http://127.0.0.1` than
+	// a plaintext public host, and "points at a loopback host" is the diagnosis
+	// that names what the operator actually did.
+	if (PLACEHOLDER_HOST_RE.test(parsed.hostname)) {
+		return 'Looks like the CI bundle-budget placeholder (`placeholder.supabase.co`). The release workflow needs the real prod URL.';
+	}
+	if (PRIVATE_HOST_RE.test(parsed.hostname)) {
+		return 'Points at a loopback / private / emulator host. Production builds must use a remotely reachable Supabase URL.';
+	}
+	if (!parsed.hostname.includes('.')) {
+		return 'Host has no dot, so it resolves only inside a container network (a Docker service name such as `kong`). Production builds must use a publicly resolvable host.';
+	}
+	if (parsed.protocol !== 'https:') {
+		return `Scheme is \`${parsed.protocol}\`, not https. Vite inlines PUBLIC_* into the client bundle, so a plaintext endpoint ships to every browser — and a \`postgresql://\` connection string would publish the database password with it.`;
+	}
+	return null;
+}
+
+/// What a finding may print. The guard reports the value it refused, and one
+/// of the values it now refuses is a `postgresql://user:password@…` connection
+/// string pasted into the wrong secret — which must not be echoed into a CI
+/// log on its way to being rejected.
+/**
+ * @param {string} url
+ * @returns {string}
+ */
+export function redactCredentials(url) {
+	try {
+		const parsed = new URL(url);
+		if (!parsed.username && !parsed.password) return url;
+		if (parsed.username) parsed.username = '***';
+		if (parsed.password) parsed.password = '***';
+		return parsed.toString();
+	} catch {
+		return url;
+	}
+}
+
+/**
+ * Origins the bundle may legitimately ship without, but must not ship pointing
+ * somewhere local. Each is an absolute base other code concatenates paths onto
+ * (`siteOrigin`, `buildSnapshotUrl`, `buildCloudExportJobsUrl`), so a
+ * loopback or placeholder value is inert in production rather than noisy.
+ */
+const OPTIONAL_ENDPOINT_VARS = ['PUBLIC_SITE_URL', 'PUBLIC_LIVE_HUB_URL', 'PUBLIC_EXPORT_HUB_URL'];
+
+/// Why a VAPID public key gets checked here at all: it is the one PUBLIC_* var
+/// whose two halves live in different systems. The browser subscribes with
+/// this key and the worker signs with `VAPID_PRIVATE_KEY`, whose
+/// `webpush.NewSender` derives the public point and refuses a mismatched pair
+/// at boot — so the worker can catch a swapped pair and this build cannot.
+/// What it CAN catch is the shape: `web-push generate-vapid-keys` prints the
+/// private half first, and a 32-byte scalar pasted here makes
+/// `applicationServerKey` throw inside `pushManager.subscribe` in every
+/// browser, where nothing reports it. Same 65-byte-uncompressed-point test the
+/// sender applies, so the two ends cannot disagree about what a key is.
+/**
+ * @param {string} value
+ * @returns {string | null}
+ */
+export function vapidPublicKeyProblem(value) {
+	if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+		return 'Not base64url. Expected the `Public Key:` line from `npx web-push generate-vapid-keys` verbatim — no padding, no quotes, no `BEGIN PUBLIC KEY` armour.';
+	}
+	const bytes = Buffer.from(value, 'base64url');
+	if (bytes.length === 32) {
+		return 'Is a 32-byte scalar, which is the PRIVATE half of the keypair. That half belongs in the worker\'s VAPID_PRIVATE_KEY (a Fly secret), never in a PUBLIC_* var that Vite inlines into every browser bundle. Paste the public key here and rotate the pair.';
+	}
+	if (bytes.length !== 65 || bytes[0] !== 0x04) {
+		return `Is ${bytes.length} bytes, not the 65-byte uncompressed P-256 point (leading 0x04) a VAPID application server key is. \`pushManager.subscribe\` throws on it in the browser, silently, so no device ever registers.`;
+	}
+	return null;
+}
 
 /**
  * @typedef {{ envVar: string; value: string; reason: string }} Finding
- * @typedef {{ ok: boolean; findings: Finding[] }} GuardResult
+ * @typedef {{ ok: boolean; findings: Finding[]; notices: string[] }} GuardResult
  */
 
 /**
@@ -65,18 +219,15 @@ export function checkProductionEnv(env) {
 			value: '<empty>',
 			reason: 'Missing / empty. Production builds must inline a real Supabase URL or every share-page / og-image prerender ships empty.',
 		});
-	} else if (PLACEHOLDER_HOST_RE.test(url)) {
-		findings.push({
-			envVar: 'PUBLIC_SUPABASE_URL',
-			value: url,
-			reason: 'Looks like the CI bundle-budget placeholder (`placeholder.supabase.co`). The release workflow needs the real prod URL.',
-		});
-	} else if (LOCAL_HOST_RE.test(url)) {
-		findings.push({
-			envVar: 'PUBLIC_SUPABASE_URL',
-			value: url,
-			reason: 'Points at a loopback / emulator host. Production builds must use a remote Supabase URL.',
-		});
+	} else {
+		const problem = productionUrlProblem(url);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_SUPABASE_URL',
+				value: redactCredentials(url),
+				reason: problem,
+			});
+		}
 	}
 
 	const anonKey = String(env.PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
@@ -97,22 +248,114 @@ export function checkProductionEnv(env) {
 		});
 	}
 
-	// Same truthiness as coach_flag.ts / route_gen_flag.ts.
-	const flagOn = (v) => {
-		const raw = String(v ?? '').trim().toLowerCase();
-		return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
-	};
-	const proSellable = flagOn(env.PUBLIC_COACH_ENABLED) || flagOn(env.PUBLIC_ROUTE_GEN_ENABLED);
-	const revenueCatCheckout = String(env.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '').trim();
-	if (proSellable && !revenueCatCheckout) {
-		findings.push({
-			envVar: 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL',
-			value: '<empty>',
-			reason: 'Missing / empty while a Pro perk flag (PUBLIC_COACH_ENABLED / PUBLIC_ROUTE_GEN_ENABLED) is on. A sellable Pro with no hosted-checkout link silently disables the purchase flow on /settings/upgrade.',
-		});
+	// Optional origins: unset is a real configuration (each has a defined
+	// unconfigured behaviour -- `siteOrigin` folds to DEFAULT_SITE_URL, the
+	// live hub reports itself off, the export hub falls back to the Edge
+	// Function). A value that is SET has to be a production URL, because none
+	// of these fails loudly: a loopback origin renders a canonical nobody can
+	// follow and posts every runner's telemetry at their own machine.
+	for (const envVar of OPTIONAL_ENDPOINT_VARS) {
+		const value = String(env[envVar] ?? '').trim();
+		if (!value) continue;
+		const problem = productionUrlProblem(value);
+		if (problem) {
+			findings.push({ envVar, value: redactCredentials(value), reason: problem });
+		}
 	}
 
-	return { ok: findings.length === 0, findings };
+	// Optional, and the failure it guards is invisible: with no key the push
+	// card reads "not configured" and nobody subscribes, which is a legitimate
+	// build. With a malformed one the subscribe call throws in the browser.
+	const vapidPublicKey = String(env.PUBLIC_VAPID_PUBLIC_KEY ?? '').trim();
+	if (vapidPublicKey) {
+		const problem = vapidPublicKeyProblem(vapidPublicKey);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_VAPID_PUBLIC_KEY',
+				// The private half is the one value this guard may be handed by
+				// mistake, so report its length rather than the value.
+				value: `<${vapidPublicKey.length} chars>`,
+				reason: problem,
+			});
+		}
+	}
+
+	/** @type {string[]} */
+	const notices = [];
+	const proSellable =
+		isTruthyFlagValue(env.PUBLIC_COACH_ENABLED) || isTruthyFlagValue(env.PUBLIC_ROUTE_GEN_ENABLED);
+	const revenueCatCheckout = String(env.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '').trim();
+	if (revenueCatCheckout) {
+		const problem = checkoutBaseProblem(revenueCatCheckout);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL',
+				value: redactCredentials(revenueCatCheckout),
+				reason: `${problem} /settings/upgrade refuses a link like this and hides the buy button, so the release would ship believing web checkout is live when it is not.`,
+			});
+		}
+	} else if (proSellable) {
+		notices.push(
+			'Web checkout is off: PUBLIC_REVENUECAT_WEB_CHECKOUT_URL is unset while a Pro perk flag is on, so /settings/upgrade sells Pro through the iPhone app only (decisions § 1826). Set the secret to a https://pay.rev.cat/<token> link to turn web checkout on.',
+		);
+	}
+
+	const donateLink = String(env.PUBLIC_DONATE_URL ?? '').trim();
+	if (donateLink) {
+		const problem = donateUrlProblem(donateLink);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_DONATE_URL',
+				value: redactCredentials(donateLink),
+				reason: `${problem} The site refuses a link like this and hides every donate link, so the release would ship believing donations are live when they are not.`,
+			});
+		}
+	}
+
+	// The plan assistant's box renders only when the Coach is on too (it is a
+	// coach-equivalent call on the Coach's key and daily counter), so the
+	// flag alone changes nothing. A legitimate build, but one an operator who
+	// just flipped the flag would otherwise read as broken.
+	if (isTruthyFlagValue(env.PUBLIC_AI_PLAN_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
+		notices.push(
+			'The AI plan assistant stays hidden: PUBLIC_AI_PLAN_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/new shows the box only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_ENABLED.',
+		);
+	}
+	if (
+		isTruthyFlagValue(env.PUBLIC_AI_PLAN_EDIT_ENABLED) &&
+		!isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)
+	) {
+		notices.push(
+			'AI plan edits stay hidden: PUBLIC_AI_PLAN_EDIT_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/[id] shows "Adjust with AI" only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_EDIT_ENABLED.',
+		);
+	}
+	if (
+		isTruthyFlagValue(env.PUBLIC_COACH_ASSIST_ENABLED) &&
+		!isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)
+	) {
+		notices.push(
+			'The coach assistant stays hidden: PUBLIC_COACH_ASSIST_ENABLED is on but PUBLIC_COACH_ENABLED is not, and a coach sees the AI draft panel only when both are. Turn the Coach on as well, or unset PUBLIC_COACH_ASSIST_ENABLED.',
+		);
+	}
+
+	// The fuelling page is reachable without the Coach, but the Coach's
+	// handoff is the only thing that links to it, so the flag on with the
+	// Coach off ships a page nobody is sent to.
+	if (isTruthyFlagValue(env.PUBLIC_COACH_FUEL_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
+		notices.push(
+			'The Coach fuelling handoff has no way in: PUBLIC_COACH_FUEL_ENABLED is on but PUBLIC_COACH_ENABLED is not, so /nutrition/fuel renders and nothing links to it. Turn the Coach on as well (and COACH_FUEL_ENABLED in the coach Lambda), or unset PUBLIC_COACH_FUEL_ENABLED.',
+		);
+	}
+
+	// Same shape for the plate-photo logger: it runs on the Coach's key, and
+	// /nutrition/log shows the control only when both flags are on.
+	if (isTruthyFlagValue(env.PUBLIC_PLATE_PHOTO_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
+		notices.push(
+			'The plate-photo logger stays hidden: PUBLIC_PLATE_PHOTO_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /nutrition/log shows the control only when both are. Turn the Coach on as well, or unset PUBLIC_PLATE_PHOTO_ENABLED.',
+		);
+	}
+
+	return { ok: findings.length === 0, findings, notices };
 }
 
 /**
@@ -142,7 +385,6 @@ export function formatGuardError(result) {
 	lines.push('  - PUBLIC_SUPABASE_URL');
 	lines.push('  - PUBLIC_SUPABASE_ANON_KEY');
 	lines.push('  - PUBLIC_MAPTILER_KEY');
-	lines.push('  - PUBLIC_REVENUECAT_WEB_CHECKOUT_URL');
 	lines.push('');
 	lines.push(banner);
 	lines.push('');
@@ -151,11 +393,16 @@ export function formatGuardError(result) {
 
 // CLI entry. Invoked as `node apps/web/scripts/check_production_env.mjs`
 // from the release-web.yml workflow before `npm run build`.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const result = checkProductionEnv(process.env);
 	if (!result.ok) {
 		process.stderr.write(formatGuardError(result));
 		process.exit(1);
+	}
+	// GitHub Actions turns a `::notice::` line into an annotation on the run;
+	// anywhere else it reads as a plain line.
+	for (const notice of result.notices) {
+		process.stdout.write(`::notice title=check-production-env::${notice}\n`);
 	}
 	process.stdout.write('[check-production-env] PUBLIC_SUPABASE_URL + ANON_KEY look real — proceeding.\n');
 }

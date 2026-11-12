@@ -2,7 +2,6 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../lib/screens/period_summary_screen.dart';
-import '../lib/preferences.dart';
 
 Run _makeRun({
   required DateTime startedAt,
@@ -65,6 +64,32 @@ void main() {
     });
   });
 
+  group('periodHasEnded', () {
+    final week = DateTime(2026, 4, 15); // Mon 13 Apr .. Sun 19 Apr
+
+    test('a week is not over on its last evening', () {
+      expect(
+          periodHasEnded(PeriodType.week, week, DateTime(2026, 4, 19, 23, 30)),
+          isFalse);
+    });
+
+    test('a week is over at the next one\'s midnight', () {
+      expect(periodHasEnded(PeriodType.week, week, DateTime(2026, 4, 20)),
+          isTrue);
+    });
+
+    test('a month is not over on its last day', () {
+      expect(
+          periodHasEnded(
+              PeriodType.month, DateTime(2026, 4, 2), DateTime(2026, 4, 30, 9)),
+          isFalse);
+      expect(
+          periodHasEnded(
+              PeriodType.month, DateTime(2026, 4, 2), DateTime(2026, 5, 1, 9)),
+          isTrue);
+    });
+  });
+
   // ── periodTitle / periodLabel ────────────────────────────────────────
 
   group('periodTitle', () {
@@ -124,6 +149,47 @@ void main() {
   // ── computePeriodStats ───────────────────────────────────────────────
 
   group('computePeriodStats', () {
+    test('climb sums each run\'s positive elevation_m and skips the rest', () {
+      Run withElevation(String id, Object? elevation) => Run(
+            id: id,
+            startedAt: DateTime(2026, 4, 14),
+            duration: const Duration(minutes: 30),
+            distanceMetres: 5000,
+            source: RunSource.app,
+            metadata: {'elevation_m': elevation},
+          );
+      final stats = computePeriodStats([
+        withElevation('a', 120),
+        withElevation('b', 35.5),
+        withElevation('c', -40),
+        withElevation('d', 'high'),
+        withElevation('e', null),
+      ]);
+      expect(stats.totalVertMetres, 155.5);
+      expect(computePeriodStats([]).totalVertMetres, 0);
+    });
+
+    test('a duration past the ten-day bound adds no time and no pace', () {
+      final stats = computePeriodStats([
+        _makeRun(
+          id: 'ok',
+          startedAt: DateTime(2026, 4, 14),
+          distanceMetres: 5000,
+          durationSeconds: 1500,
+        ),
+        _makeRun(
+          id: 'bad',
+          startedAt: DateTime(2026, 4, 15),
+          distanceMetres: 2000,
+          durationSeconds: 44400094,
+        ),
+      ]);
+      expect(stats.runCount, 2);
+      expect(stats.totalDistanceMetres, 7000);
+      expect(stats.totalDurationSec, 1500);
+      expect(stats.avgPaceSecPerKm, 300);
+    });
+
     test('empty list gives zeroes and null pace', () {
       final stats = computePeriodStats([]);
       expect(stats.runCount, 0);

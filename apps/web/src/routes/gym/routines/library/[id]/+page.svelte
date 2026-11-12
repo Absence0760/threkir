@@ -1,21 +1,25 @@
 <script lang="ts">
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
 		fetchGymRoutineDetail,
 		fetchPublicGymRoutineLibrary,
 		cloneGymRoutineTemplate,
 		type GymRoutineDetail,
-	} from '$lib/core/data';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
-	const routineId = $derived($page.params.id ?? '');
+	const routineId = $derived(page.params.id ?? '');
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let authorHandle = $state<string | null>(null);
+	let isOfficial = $state(false);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let notFound = $state(false);
@@ -31,7 +35,7 @@
 		} catch (e) {
 			// The loadError banner below was previously unreachable — nothing
 			// ever assigned it, so a failed read showed "Routine not found".
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, t, 'gym/routines/library/[id]: loadError');
 			loading = false;
 			return;
 		}
@@ -47,8 +51,10 @@
 		const lib = await fetchPublicGymRoutineLibrary('');
 		// The library read carries its own error field, which was being
 		// discarded — a failure silently rendered the author as "Anonymous".
-		loadError = lib.error ?? null;
-		authorHandle = lib.routines.find((r) => r.id === routineId)?.author_handle ?? null;
+		loadError = lib.error ? errorCopy(lib.error, t, 'gym/routines/library/[id]: loadError') : null;
+		const entry = lib.routines.find((r) => r.id === routineId);
+		authorHandle = entry?.author_handle ?? null;
+		isOfficial = entry?.is_official ?? false;
 		loading = false;
 	}
 
@@ -109,7 +115,7 @@
 
 	{#if loading}
 		<p class="state" role="status">{t('gymLibrary.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="state error" role="alert">
 			<p>{t('gymLibrary.loadError')}</p>
 			<button class="btn btn-outline" type="button" onclick={load}>{t('gymLibrary.retry')}</button>
@@ -118,7 +124,7 @@
 		<p class="state" data-testid="gym-library-not-found">{t('gymLibrary.notFound')}</p>
 	{:else}
 		<header class="preview-head">
-			<h1>{detail.routine.title}</h1>
+			<h1>{detail.routine.title}{#if isOfficial}<OfficialBadge size={18} />{/if}</h1>
 			<p class="author">
 				{t('gymLibrary.byAuthor', {
 					author: authorHandle ?? t('gymLibrary.anonymousAuthor'),
@@ -142,6 +148,13 @@
 			>
 				{adopting ? t('gymLibrary.adopting') : t('gymLibrary.adopt')}
 			</button>
+			<OrganiserDisputeAction
+				targetKind="gym_routine"
+				targetId={detail.routine.id}
+				targetLabel={detail.routine.title}
+				targetClubId={detail.routine.club_id ?? null}
+				ownerId={detail.routine.author_id ?? null}
+			/>
 		</section>
 
 		<section class="exercises">

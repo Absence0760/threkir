@@ -48,6 +48,15 @@ dockerfile = "Dockerfile"
 # anything not listed gets a 403 at the WS handshake.
 LIVEHUB_ALLOWED_ORIGINS = "https://threkir.com,https://www.threkir.com,https://preview.threkir.com"
 
+# Soft heap ceiling for the Go runtime, below the 256 MB VM. Without it the GC
+# lets the heap grow to twice the live set, and a dm_image_process job holds
+# up to ~60 MB live (an 8.4 MP decode, the downscaled copy and both encoded
+# buffers), so a second burst could pass the VM before a collection ran and
+# the kernel would OOM-kill the hub with it. 180 MiB leaves ~64 MiB for the
+# kernel, Fly's init, the binary and goroutine stacks. Keep it about 70% of
+# [[vm]] memory if that changes; see deployment.md § Sizing.
+GOMEMLIMIT = "180MiB"
+
 # Fail-closed sentinel. With LIVEHUB_REQUIRE_AUTH=1, main.go refuses to
 # start the binary unless LIVEHUB_ALLOWED_ORIGINS is set AND some token
 # verification is configured — either SUPABASE_JWT_SECRET (legacy HS256
@@ -57,6 +66,21 @@ LIVEHUB_ALLOWED_ORIGINS = "https://threkir.com,https://www.threkir.com,https://p
 # user. Local dev leaves this unset to keep the permissive path.
 # /audit/livehub May 2026 H3 + H4.
 LIVEHUB_REQUIRE_AUTH = "1"
+
+# Outbound mail via Resend. SMTP_HOST is the gate: unset, main.go logs
+# "notification_email: DISABLED" and every mail job finishes done while
+# leaving its row unstamped, so enabling it later still sends the backlog.
+#
+# SMTP_USERNAME is the literal string "resend" for every Resend account —
+# it is NOT the API key. The key is SMTP_PASSWORD, which is a secret and
+# therefore lives in `fly secrets`, never here.
+#
+# SMTP_PORT, SMTP_FROM and APP_BASE_URL are deliberately absent: main.go
+# already defaults them to 587, "Threkir <noreply@threkir.com>" and
+# https://threkir.com. Setting them here would be a second copy of a value
+# that is already correct, and a second place to forget to change it.
+SMTP_HOST = "smtp.resend.com"
+SMTP_USERNAME = "resend"
 
 # SECURITY — live-hub WebSocket subscribers carry their Supabase JWT
 # in the `Sec-WebSocket-Protocol: livehub-bearer, <jwt>` offer (the

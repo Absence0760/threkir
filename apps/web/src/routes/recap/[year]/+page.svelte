@@ -1,28 +1,42 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchRuns, fetchRecapExtras, publishRecap } from '$lib/core/data';
-	import { buildYearInRunningRecap, type YearInRunningRecap } from '$lib/runs/recap';
-	import { buildRecapShareSvg } from '$lib/share/recap_share_image';
-	import { buildRecapShareCanonical } from '$lib/share/share_recap_meta';
-	import RecapView from '$lib/components/RecapView.svelte';
-	import { svgToPngBlob } from '$lib/share/svg_to_png';
-	import { fmtKm, getUnit } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import type { Run } from '$lib/types';
+	import { page } from '$app/state';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import {
+		fetchRunsForRecap,
+		fetchRecapExtras,
+		fetchRecapParkCourses,
+		publishRecap,
+		type RecapRun
+	} from '#lib/core/data.ts';
+	import { recapParkSummary, type RecapParkSummary } from '#lib/parks/park_courses.ts';
+	import { buildYearInRunningRecap, type YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { buildRecapShareSvg } from '#lib/share/recap_share_image.ts';
+	import { recapCardText } from '#lib/share/recap_card_text.ts';
+	import { recapCardLayout, type RecapCardAspect } from '#lib/share/recap_card_layout.ts';
+	import { buildRecapShareCanonical } from '#lib/share/share_recap_meta.ts';
+	import RecapView from '#lib/components/RecapView.svelte';
+	import { rasterizeSvgToPng } from '#lib/format/svg_raster.ts';
+	import { fmtKm, getUnit } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
-	let runs = $state<Run[]>([]);
+	let runs = $state<RecapRun[]>([]);
 	let extras = $state<{ photoCount: number; personalRecordCount: number }>({
 		photoCount: 0,
 		personalRecordCount: 0
 	});
 	let loading = $state(true);
+	let parkSummary = $state<RecapParkSummary>(recapParkSummary([]));
 	let recap = $state<YearInRunningRecap | null>(null);
 	let publishing = $state(false);
 
-	let year = $derived(parseInt($page.params.year ?? '0', 10));
+	let year = $derived(parseInt(page.params.year ?? '0', 10));
+	/// `?video=1` is the phone's Video share option handing the slideshow
+	/// export to the browser (decisions § 2269).
+	const videoRequested = $derived(page.url.searchParams.get('video') === '1');
 	let valid = $derived(!Number.isNaN(year) && year >= 2010 && year <= 2100);
 
 	onMount(async () => {
@@ -32,8 +46,15 @@
 			return;
 		}
 		const yr = year;
+		// L4: the park card is auxiliary, so its failure leaves the card off
+		// and the rest of the recap untouched.
+		if (valid) {
+			fetchRecapParkCourses(new Date(yr, 0, 1).toISOString(), new Date(yr + 1, 0, 1).toISOString())
+				.then((rows) => (parkSummary = recapParkSummary(rows)))
+				.catch((e) => console.warn('recap park courses read failed', e));
+		}
 		[runs, extras] = await Promise.all([
-			fetchRuns(),
+			valid ? fetchRunsForRecap(yr) : Promise.resolve([] as RecapRun[]),
 			valid ? fetchRecapExtras(yr) : Promise.resolve({ photoCount: 0, personalRecordCount: 0 })
 		]);
 		loading = false;
@@ -41,10 +62,14 @@
 
 	$effect(() => {
 		if (!valid) return;
-		recap = buildYearInRunningRecap(runs, year, extras);
+		recap = buildYearInRunningRecap(runs, year, {
+			...extras,
+			parkCourseCount: parkSummary.courseCount,
+			parkCount: parkSummary.parkCount
+		});
 	});
 
-	async function shareRecap() {
+	async function shareRecap(aspect: RecapCardAspect = 'square') {
 		if (!recap) return;
 		const lines = [
 			t('recap.shareTitle', { year: recap.year }),
@@ -57,9 +82,12 @@
 		const text = lines.join('\n');
 
 		try {
-			const svg = buildRecapShareSvg(recap, getUnit());
-			const blob = await svgToPngBlob(svg, 1080);
-			const file = new File([blob], `threkir-${recap.year}.png`, { type: 'image/png' });
+			const layout = recapCardLayout(aspect);
+			const card = recapCardText(recap, getUnit(), t, { locale: activeFormatLocale() });
+			const svg = buildRecapShareSvg(card, { aspect });
+			const blob = await rasterizeSvgToPng(svg, layout.width, layout.height);
+			const name = `threkir-${recap.year}${aspect === 'story' ? '-story' : ''}.png`;
+			const file = new File([blob], name, { type: 'image/png' });
 			if (navigator.canShare?.({ files: [file] })) {
 				await navigator.share({
 					files: [file],
@@ -71,7 +99,7 @@
 			const dl = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = dl;
-			a.download = `threkir-${recap.year}.png`;
+			a.download = name;
 			a.click();
 			URL.revokeObjectURL(dl);
 			return;
@@ -144,9 +172,16 @@
 			{recap}
 			kicker={t('recap.heroKicker', { year: recap.year })}
 			shareLabel={t('recap.shareMyYear', { year: recap.year })}
-			onshare={shareRecap}
+			onshare={() => shareRecap()}
+			onsharestory={() => shareRecap('story')}
 			onpublish={publishAndShareLink}
 			{publishing}
+			parks={parkSummary.parks}
+			video={{
+				title: t('recap.shareTitle', { year: recap.year }),
+				fileStem: `recap ${recap.year}`,
+				autoStart: videoRequested,
+			}}
 		/>
 	{/if}
 </div>

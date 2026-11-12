@@ -29,7 +29,7 @@ users exist; it buys:
 
 **Compute add-ons:** none at launch. Revisit when:
 - p95 query latency on the dashboard query exceeds 500 ms (Supabase Reports → Database → Query Performance)
-- The `mv_weekly_mileage` refresh starts taking >30 s (currently ~2 s on dev)
+- A background job's runtime becomes the dominant compute draw (this line used to name the `mv_weekly_mileage` refresh; that matview was dropped unread in `20270530_001` and the repo now runs no matview refresh at all)
 
 ---
 
@@ -69,10 +69,11 @@ supabase db reset --linked   # NEVER on a project with real users.
 
 ```bash
 # Deploy one:
-supabase functions deploy parkrun-import --project-ref <ref>
+supabase functions deploy strava-import --project-ref <ref>
 
-# Deploy all seven at once (this is what the release workflow does):
-for fn in parkrun-import refresh-tokens strava-import strava-webhook \
+# Deploy these at once (the release workflow deploys every directory under supabase/functions/,
+# then deletes what ops/prod_config.json lists under retired_functions):
+for fn in refresh-tokens strava-import strava-webhook \
           revenuecat-webhook delete-account export-data; do
   supabase functions deploy "$fn" --project-ref <ref>
 done
@@ -84,7 +85,6 @@ done
 cd apps/backend
 
 supabase secrets set --project-ref <ref> \
-  PARKRUN_USER_AGENT="run-app/1.0 (+https://threkir.com/bot)" \
   STRAVA_CLIENT_ID="..." \
   STRAVA_CLIENT_SECRET="..." \
   STRAVA_VERIFY_TOKEN="$(openssl rand -hex 16)" \
@@ -100,7 +100,7 @@ supabase secrets set --project-ref <ref> \
 
 **RevenueCat webhook URL.** In the RevenueCat dashboard → Project → Integrations → Webhooks, set:
 - URL: `https://<ref>.supabase.co/functions/v1/revenuecat-webhook`
-- Auth header: `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`
+- Leave the authorization header empty, and turn on **HMAC webhook signing**. The signing secret it shows (once) is `REVENUECAT_WEBHOOK_SECRET`. The function verifies RevenueCat's `X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>` header over `<t>.<body>`, and refuses any delivery without it.
 
 **Strava webhook URL.** Once you're issuing OAuth tokens you'll need to call `POST https://www.strava.com/api/v3/push_subscriptions` with our callback URL `https://<ref>.supabase.co/functions/v1/strava-webhook?secret=<STRAVA_WEBHOOK_SECRET>` and the `STRAVA_VERIFY_TOKEN`. Strava verifies, persists the subscription, and starts firing events.
 
@@ -211,7 +211,7 @@ Without exercising it, the backup is a fiction. Run this once per quarter, docum
 
 ```bash
 # 1. Create a fresh staging project at supabase.com (free tier is fine).
-# 2. From a local clone of project-running:
+# 2. From a local clone of threkir:
 cd apps/backend
 supabase link --project-ref <staging-ref>
 
@@ -286,8 +286,8 @@ Before flipping the row in [`docs/ops/deployment.md`](../../docs/ops/deployment.
 - [ ] Tier decision recorded — Free today; upgrade to Pro (+ billing alert) before real users exist
 - [ ] `eu-west-2` region (or whichever was picked) confirmed
 - [ ] `supabase db push` ran clean against the live project
-- [ ] All seven Edge Functions deployed; each logs a successful test invocation
-- [ ] EF secrets set (`PARKRUN_USER_AGENT`, Strava env, RevenueCat env)
+- [ ] All Edge Functions deployed; each logs a successful test invocation
+- [ ] EF secrets set (Strava env, RevenueCat env)
 - [ ] Custom domain `api.threkir.com` verified (Pro + add-on only — skipped on Free; clients use the raw project URL)
 - [ ] `pg_cron` schedules confirmed (`SELECT * FROM cron.job;` from SQL editor)
 - [ ] Storage versioning on for `runs`

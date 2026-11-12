@@ -1,28 +1,34 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { tick } from 'svelte';
-	import { smartBack } from '$lib/util/smart_back';
-	import { nudgeLatLng, waypointKeyAction } from '$lib/routes/waypoint_keyboard';
-	import type { TrackPoint } from '$lib/types';
-	import { page } from '$app/stores';
-	import RouteBuilder from '$lib/components/RouteBuilder.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import { toGpx, toKml, downloadFile } from '$lib/routes/gpx';
-	import { saveRoute } from '$lib/core/data';
-	import { pickSavePolyline } from '$lib/routes/route_save_polyline';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { distanceInPreferred, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { env } from '$env/dynamic/public';
-	import { routeGenEnabled } from '$lib/routes/route_gen_flag';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { nudgeLatLng, waypointKeyAction } from '#lib/routes/waypoint_keyboard.ts';
+	import type { TrackPoint } from '#lib/types.ts';
+	import { page } from '$app/state';
+	import RouteBuilder from '#lib/components/RouteBuilder.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
+	import { saveRoute } from '#lib/core/data.ts';
+	import { pickSavePolyline } from '#lib/routes/route_save_polyline.ts';
+	import { RETURN_PARAM, savedRouteDestination } from '#lib/routes/route_return.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { distanceInPreferred, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { PUBLIC_TILE_STYLE_URL } from '$app/env/public';
+	import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 	import {
 		requestRouteConstraints,
 		RouteRequestError,
-	} from '$lib/routes/route_request_client';
+	} from '#lib/routes/route_request_client.ts';
+	import type { RoutePreference } from '#lib/routes/generate/graphhopper.ts';
+	import type { ArtFidelity, FidelityVerdict } from '#lib/routes/route_art.ts';
 
 	// True when the local Protomaps tile-style override is set —
 	// in that mode all three map-style buttons (streets/satellite/
@@ -32,19 +38,28 @@
 	// the override is on so only the "Streets" affordance shows.
 	// See decisions.md § 68 + the May 2026 audit pass.
 	const tileOverrideActive =
-		(env.PUBLIC_TILE_STYLE_URL ?? '').trim().length > 0;
+		(PUBLIC_TILE_STYLE_URL ?? '').trim().length > 0;
 
 	const METRES_PER_MILE = 1609.344;
 
 	// `?club=<uuid>` makes the new route club-owned. The club home page's
 	// Routes tab links here with this param so route creation lands the
 	// row directly under the club rather than the user.
-	let clubId = $derived($page.url.searchParams.get('club'));
+	let clubId = $derived(page.url.searchParams.get('club'));
 
 	let routeName = $state('');
 	let routeDescription = $state('');
 	let isPublic = $state(false);
 	let mode = $state<'road' | 'trail'>('road');
+	// Draw mode: a drag on the map draws a shape matched to roads and paths
+	// (decisions § 2263). The surface buttons still pick what is saved.
+	let drawMode = $state(false);
+	let artFidelity = $state<ArtFidelity | null>(null);
+	const ART_VERDICT_KEYS: Record<FidelityVerdict, MessageKey> = {
+		close: 'routeNew.drawMatchClose',
+		rough: 'routeNew.drawMatchRough',
+		poor: 'routeNew.drawMatchPoor',
+	};
 	let waypointCount = $state(0);
 	let distance = $state(0);
 	let elevation = $state(0);
@@ -112,7 +127,7 @@
 
 	// Reactive: tracks the module-level unit signal so every km/mi
 	// label in the template re-renders the instant the user flips the
-	// preference on /settings/preferences. Without these derived
+	// preference on /settings/display. Without these derived
 	// values, the route builder kept showing km even after Save —
 	// formatDistance-based pages already worked because they read the
 	// signal indirectly; these inline strings were hardcoded.
@@ -284,6 +299,10 @@
 	function doClear() {
 		builder?.clearWaypoints();
 		routed = false;
+		// The note is a claim about a specific served route; clearing the
+		// waypoints destroys that route, so leaving it up accuses the
+		// generator over something no longer on the map.
+		preferenceOutcome = null;
 	}
 
 	// Strip a route name down to a filesystem-safe ASCII basename for the
@@ -314,11 +333,30 @@
 	let paceSec = $state(30);
 	let targetKm = $state(5);
 	let showDistanceTarget = $state(false);
-	// Avoid-highways / prefer-residential preference for distance generation.
-	// Off → today's generation; on → the server biases the loop onto quiet
-	// streets via a GraphHopper custom model, falling back to plain generation
-	// if the engine can't honour it.
-	let quietRoads = $state(false);
+	// Route-design preference for distance generation. The three values are
+	// mutually exclusive on the wire, so this is single-choice; null sends no
+	// preference field at all.
+	let preference = $state<RoutePreference | null>(null);
+	// The preference the in-flight generation asked for, captured at call time
+	// so a control change mid-generation can't be graded as the ask.
+	let preferenceAsked: RoutePreference | null = null;
+	// What the last completed generation asked for against what the server said
+	// it applied. An absent `preferenceApplied` grades as not-applied — a
+	// deployment that predates the field must not read as an honoured ask.
+	let preferenceOutcome = $state<{
+		asked: RoutePreference;
+		applied: RoutePreference | null;
+	} | null>(null);
+
+	// Keyed by the union rather than an if-chain, so a value added to
+	// ROUTE_PREFERENCES fails the build here instead of rendering under
+	// whichever label the fall-through happened to end on — stating a
+	// preference the runner never asked for as fact.
+	const PREFERENCE_LABEL_KEYS: Record<RoutePreference, MessageKey> = {
+		quiet: 'routeNew.quietRoads',
+		scenic: 'routeNew.preferenceScenic',
+		cul_de_sac: 'routeNew.preferenceCulDeSac',
+	};
 	let pickingPoint = $state<'start' | 'end' | null>(null);
 	let startPoint = $state<{ lat: number; lng: number } | null>(null);
 	let endPoint = $state<{ lat: number; lng: number } | null>(null);
@@ -410,11 +448,11 @@
 	let nlBusy = $state(false);
 	let nlError = $state<string | null>(null);
 	// Set after a successful extraction so the user sees what was applied
-	// (incl. constraints the form can't render directly — shape /
-	// avoid-highways) and which fields were assumed from a default.
+	// (incl. the shape, which the form can't render directly) and which
+	// fields were assumed from a default.
 	let nlApplied = $state<{
 		shape: 'loop' | 'out_and_back' | 'point_to_point';
-		avoidHighways: boolean;
+		preference: RoutePreference | null;
 		assumptions: string[];
 	} | null>(null);
 
@@ -441,9 +479,15 @@
 			mode = c.surface === 'trail' ? 'trail' : 'road';
 			// Make the distance panel visible so the populated controls show.
 			showDistanceTarget = true;
+			// An explicit preference outranks the older boolean: `avoidHighways`
+			// is the same ask expressed in the vocabulary that predates the
+			// three-value union, so it maps onto 'quiet' when nothing narrower
+			// came back. Before this the summary reported avoid-highways as
+			// applied while the control stayed off and the request omitted it.
+			preference = c.preference ?? (c.avoidHighways ? 'quiet' : null);
 			nlApplied = {
 				shape: c.shape,
-				avoidHighways: c.avoidHighways,
+				preference,
 				assumptions: c.assumptions,
 			};
 		} catch (err) {
@@ -451,11 +495,13 @@
 				nlError =
 					err.kind === 'upgrade'
 						? m('routeNew.aiRequestProOnly')
-						: err.kind === 'not_understood'
-							? m('routeNew.aiRequestNotUnderstood')
-							: err.kind === 'not_authenticated'
-								? m('routeNew.aiRequestSignedOut')
-								: m('routeNew.aiRequestUnavailable');
+						: err.kind === 'consent'
+							? m('routeNew.aiRequestConsentRequired')
+							: err.kind === 'not_understood'
+								? m('routeNew.aiRequestNotUnderstood')
+								: err.kind === 'not_authenticated'
+									? m('routeNew.aiRequestSignedOut')
+									: m('routeNew.aiRequestUnavailable');
 			} else {
 				nlError = m('routeNew.aiRequestUnavailable');
 			}
@@ -495,7 +541,14 @@
 				// only updated the sidebar label + painted a marker that
 				// could be off-screen, so on the default world view the
 				// button looked dead — the reported "does nothing".
-				builder?.flyTo(point);
+				//
+				// Before the tile-provider consent gate is taken there is no
+				// map to pan at all, and the sidebar label is the only thing
+				// that moves — which reads as a dead button a second time.
+				// Say so instead of letting the recentre vanish.
+				if (builder?.flyTo(point) === false) {
+					showToast(m('routeNew.loadMapToSeeLocation'), 'info');
+				}
 			},
 			(err) => {
 				// Don't fail silently — the old empty callback left the button
@@ -546,11 +599,13 @@
 		const start = startPoint ?? undefined;
 		const end = endPoint ?? undefined;
 
+		preferenceAsked = preference;
+		preferenceOutcome = null;
 		const ok = await builder?.generateLoop(
 			targetKm * 1000,
 			start,
 			end,
-			quietRoads ? 'quiet' : undefined,
+			preference ?? undefined,
 		);
 		routed = !!ok;
 	}
@@ -576,7 +631,9 @@
 		targetKm = Math.round(largest / 100) / 10;
 		const start = startPoint ?? undefined;
 		const end = endPoint ?? undefined;
-		const ok = await builder?.generateLoop(largest, start, end, quietRoads ? 'quiet' : undefined);
+		preferenceAsked = preference;
+		preferenceOutcome = null;
+		const ok = await builder?.generateLoop(largest, start, end, preference ?? undefined);
 		routed = !!ok;
 	}
 
@@ -587,6 +644,7 @@
 		routingError = null;
 		builder?.clearWaypoints();
 		routed = false;
+		preferenceOutcome = null;
 		pickingPoint = 'start';
 	}
 
@@ -639,12 +697,15 @@
 			showSaveModal = false;
 			saved = true;
 			showToast(m('routeNew.savedToast'), 'success');
-			goto(`/routes/${route.id}`);
+			goto(
+				savedRouteDestination(page.url.searchParams.get(RETURN_PARAM), route.id) ??
+					`/routes/${route.id}`,
+			);
 		} catch (err) {
 			// Surface the failure IN the save modal (persistent, in-context)
 			// and keep it open with the user's work intact — a transient toast
 			// would vanish and read as a half-navigated dead end.
-			saveError = err instanceof Error ? err.message : m('routeNew.saveFailedError');
+			saveError = errorCopy(err, m, 'routeNew.saveFailedError', 'routeNew.saveFailedError');
 		} finally {
 			saving = false;
 		}
@@ -684,7 +745,7 @@
 						onclick={() => (mode = 'road')}
 					>
 						<span class="material-symbols" aria-hidden="true">directions_car</span>
-						{m('routeNew.road')}
+						{routeSurfaceLabel('road')}
 					</button>
 					<button
 						class="mode-btn"
@@ -692,10 +753,37 @@
 						onclick={() => (mode = 'trail')}
 					>
 						<span class="material-symbols" aria-hidden="true">forest</span>
-						{m('routeNew.trail')}
+						{routeSurfaceLabel('trail')}
 					</button>
 				</div>
 			</fieldset>
+
+			<div class="control-group draw-group">
+				<button
+					class="mode-btn draw-btn"
+					class:active={drawMode}
+					aria-pressed={drawMode}
+					aria-describedby="route-draw-hint"
+					data-testid="draw-mode-toggle"
+					onclick={() => (drawMode = !drawMode)}
+				>
+					<span class="material-symbols" aria-hidden="true">edit</span>
+					{m('routeNew.drawShape')}
+				</button>
+				<p class="builder-hint" id="route-draw-hint">{m('routeNew.drawShapeHint')}</p>
+				{#if artFidelity}
+					<div
+						class="art-match"
+						class:art-match-poor={artFidelity.verdict === 'poor'}
+						role="status"
+						data-testid="art-match"
+					>
+						<span class="art-match-label">{m('routeNew.drawMatchLabel')}</span>
+						<span class="art-match-score">{m('routeNew.drawMatchScore', { score: artFidelity.score })}</span>
+						<span class="art-match-verdict">{m(ART_VERDICT_KEYS[artFidelity.verdict])}</span>
+					</div>
+				{/if}
+			</div>
 
 			<fieldset class="control-group">
 				<legend class="section-label">{m('routeNew.mapStyle')}</legend>
@@ -728,11 +816,28 @@
 					<span class="time-value">{estimatedTime}</span>
 					<div class="pace-input">
 						<span class="pace-label">{m('routeNew.paceAt')}</span>
-						<input type="number" min="2" max="15" bind:value={paceMin} class="pace-num" aria-label={m('routeNew.paceMinutesLabel')} />
+						<input
+							type="number"
+							min="2"
+							max="15"
+							bind:value={paceMin}
+							class="pace-num"
+							aria-label={m('routeNew.paceMinutesLabel')}
+							aria-describedby="route-pace-hint"
+						/>
 						<span>:</span>
-						<input type="number" min="0" max="59" bind:value={paceSec} class="pace-num" aria-label={m('routeNew.paceSecondsLabel')} />
+						<input
+							type="number"
+							min="0"
+							max="59"
+							bind:value={paceSec}
+							class="pace-num"
+							aria-label={m('routeNew.paceSecondsLabel')}
+							aria-describedby="route-pace-hint"
+						/>
 						<span class="pace-label">/{unitLabel}</span>
 					</div>
+					<p class="builder-hint" id="route-pace-hint">{m('routeNew.paceEstimateHint')}</p>
 				</div>
 			{/if}
 
@@ -750,7 +855,7 @@
 			<div class="elevation-preview">
 				<span class="section-label">{m('routeNew.elevationProfile')}</span>
 				{#if elevations.length >= 2}
-					<ElevationProfile {elevations} totalDistance={distance} />
+					<ElevationProfile {elevations} totalGain={elevation} totalDistance={distance} />
 				{:else}
 					<div class="elevation-empty">
 						<span class="material-symbols">show_chart</span>
@@ -832,7 +937,7 @@
 				<div class="target-panel">
 					<div class="ai-request">
 						<span class="section-label">{m('routeNew.aiRequestLabel')}</span>
-						<p class="ai-request-hint">{m('routeNew.aiRequestHint')}</p>
+						<p class="ai-request-hint" id="route-ai-request-hint">{m('routeNew.aiRequestHint')}</p>
 						<form
 							class="ai-request-form"
 							onsubmit={(e) => { e.preventDefault(); handleNlRequest(); }}
@@ -844,6 +949,7 @@
 								placeholder={m('routeNew.aiRequestPlaceholder')}
 								aria-label={m('routeNew.aiRequestLabel')}
 								disabled={nlBusy}
+								aria-describedby="route-ai-request-hint"
 							/>
 							<button
 								type="submit"
@@ -872,8 +978,12 @@
 												: m('routeNew.aiRequestShapePointToPoint')}
 										</li>
 									{/if}
-									{#if nlApplied.avoidHighways}
-										<li>{m('routeNew.aiRequestAvoidHighways')}</li>
+									{#if nlApplied.preference}
+										<li>
+											{m('routeNew.aiRequestPreference', {
+												preference: m(PREFERENCE_LABEL_KEYS[nlApplied.preference]),
+											})}
+										</li>
 									{/if}
 									{#if nlApplied.assumptions.length > 0}
 										<li>{m('routeNew.aiRequestAssumed')}</li>
@@ -904,10 +1014,27 @@
 					</div>
 					<!-- Keyboard alternative to map-tap (WCAG 2.1.1). -->
 					<form class="coord-entry" onsubmit={(e) => { e.preventDefault(); applyCoords('start'); }}>
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={startLatInput} aria-label={m('routeNew.startLatitude')} placeholder={m('routeNew.latPlaceholder')} />
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={startLngInput} aria-label={m('routeNew.startLongitude')} placeholder={m('routeNew.lngPlaceholder')} />
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={startLatInput}
+							aria-label={m('routeNew.startLatitude')}
+							placeholder={m('routeNew.latPlaceholder')}
+							aria-describedby="route-start-coord-hint"
+						/>
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={startLngInput}
+							aria-label={m('routeNew.startLongitude')}
+							placeholder={m('routeNew.lngPlaceholder')}
+							aria-describedby="route-start-coord-hint"
+						/>
 						<button type="submit" class="btn btn-sm btn-secondary">{m('routeNew.setStart')}</button>
 					</form>
+					<p class="builder-hint" id="route-start-coord-hint">{m('routeNew.startCoordHint')}</p>
 					{#if startCoordError}
 						<p class="coord-error" role="alert">{startCoordError}</p>
 					{/if}
@@ -933,16 +1060,36 @@
 					</div>
 					<!-- Keyboard alternative to map-tap (WCAG 2.1.1). -->
 					<form class="coord-entry" onsubmit={(e) => { e.preventDefault(); applyCoords('end'); }}>
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={endLatInput} aria-label={m('routeNew.endLatitude')} placeholder={m('routeNew.latPlaceholder')} />
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={endLngInput} aria-label={m('routeNew.endLongitude')} placeholder={m('routeNew.lngPlaceholder')} />
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={endLatInput}
+							aria-label={m('routeNew.endLatitude')}
+							placeholder={m('routeNew.latPlaceholder')}
+							aria-describedby="route-end-coord-hint"
+						/>
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={endLngInput}
+							aria-label={m('routeNew.endLongitude')}
+							placeholder={m('routeNew.lngPlaceholder')}
+							aria-describedby="route-end-coord-hint"
+						/>
 						<button type="submit" class="btn btn-sm btn-secondary">{m('routeNew.setEnd')}</button>
 					</form>
+					<p class="builder-hint" id="route-end-coord-hint">{m('routeNew.endCoordHint')}</p>
 					{#if endCoordError}
 						<p class="coord-error" role="alert">{endCoordError}</p>
 					{/if}
 
-					<span class="section-label">{m('routeNew.distance')}</span>
+					<span class="section-label" id="route-target-distance-label">{m('routeNew.distance')}</span>
 					<div class="target-row">
+						<!-- aria-valuetext carries the unit: the raw value is a bare number,
+						     so a screen reader otherwise announces "5" for both 5 km and
+						     5 mi. -->
 						<input
 							type="range"
 							min={targetDisplayMin}
@@ -951,6 +1098,9 @@
 							value={targetDisplayValue}
 							oninput={(e) => setTargetFromDisplay(parseFloat((e.target as HTMLInputElement).value))}
 							class="target-slider"
+							aria-labelledby="route-target-distance-label"
+							aria-valuetext="{targetDisplayValue.toFixed(1)} {unitLabel}"
+							aria-describedby="route-target-distance-hint"
 						/>
 						<span class="target-value">{targetDisplayValue.toFixed(1)} {unitLabel}</span>
 					</div>
@@ -964,10 +1114,61 @@
 						<button onclick={() => setTargetFromKm(21.1)}>Half</button>
 						<button onclick={() => setTargetFromKm(42.2)}>Full</button>
 					</div>
-					<label class="quiet-roads" title={m('routeNew.quietRoadsHint')}>
-						<input type="checkbox" bind:checked={quietRoads} data-testid="quiet-roads-toggle" />
-						<span>{m('routeNew.quietRoads')}</span>
-					</label>
+					<p class="builder-hint" id="route-target-distance-hint">
+						{m('routeNew.targetDistanceHint')}
+					</p>
+					<span class="section-label" id="route-preference-label">{m('routeNew.preferenceLabel')}</span>
+					<p class="builder-hint" id="route-preference-hint">{m('routeNew.preferenceHint')}</p>
+					<div class="pref-group" role="radiogroup" aria-labelledby="route-preference-label" aria-describedby="route-preference-hint">
+						<label class="pref-option">
+							<input
+								type="radio"
+								name="route-preference"
+								checked={preference === null}
+								onchange={() => (preference = null)}
+								data-testid="route-pref-none"
+								aria-describedby="route-pref-none-hint"
+							/>
+							<span>{m('routeNew.preferenceNone')}</span>
+						</label>
+						<span class="pref-hint" id="route-pref-none-hint">{m('routeNew.preferenceNoneHint')}</span>
+						<label class="pref-option">
+							<input
+								type="radio"
+								name="route-preference"
+								checked={preference === 'quiet'}
+								onchange={() => (preference = 'quiet')}
+								data-testid="route-pref-quiet"
+								aria-describedby="route-pref-quiet-hint"
+							/>
+							<span>{m('routeNew.quietRoads')}</span>
+						</label>
+						<span class="pref-hint" id="route-pref-quiet-hint">{m('routeNew.quietRoadsHint')}</span>
+						<label class="pref-option">
+							<input
+								type="radio"
+								name="route-preference"
+								checked={preference === 'scenic'}
+								onchange={() => (preference = 'scenic')}
+								data-testid="route-pref-scenic"
+								aria-describedby="route-pref-scenic-hint"
+							/>
+							<span>{m('routeNew.preferenceScenic')}</span>
+						</label>
+						<span class="pref-hint" id="route-pref-scenic-hint">{m('routeNew.preferenceScenicHint')}</span>
+						<label class="pref-option">
+							<input
+								type="radio"
+								name="route-preference"
+								checked={preference === 'cul_de_sac'}
+								onchange={() => (preference = 'cul_de_sac')}
+								data-testid="route-pref-cul-de-sac"
+								aria-describedby="route-pref-cul-de-sac-hint"
+							/>
+							<span>{m('routeNew.preferenceCulDeSac')}</span>
+						</label>
+						<span class="pref-hint" id="route-pref-cul-de-sac-hint">{m('routeNew.preferenceCulDeSacHint')}</span>
+					</div>
 					{#if builderBusy}
 						<button class="btn btn-outline" onclick={() => builder?.cancelGeneration()}>
 							{m('routeNew.cancelGenerating')}
@@ -985,6 +1186,11 @@
 							<a href="/settings/upgrade">{m('routeNew.generateProUpsellCta')}</a>
 						</p>
 					{/if}
+					<p class="pref-not-applied" aria-live="polite" data-testid="route-pref-not-applied">
+						{preferenceOutcome && preferenceOutcome.applied !== preferenceOutcome.asked
+							? m('routeNew.preferenceNotApplied')
+							: ''}
+					</p>
 				</div>
 			{/if}
 
@@ -1047,6 +1253,8 @@
 		<RouteBuilder
 			bind:this={builder}
 			{mode}
+			drawing={drawMode}
+			onartmatch={(f) => (artFidelity = f)}
 			onupdate={handleUpdate}
 			onmapclick={handleMapPick}
 			onerror={handleRoutingError}
@@ -1054,10 +1262,12 @@
 			ongeneratemismatch={(achievedM, _targetM, largestLoopM) =>
 				(generateShortfall = { achievedM, largestLoopM })}
 			onprorequired={() => (showGenerateProUpsell = routeGenEnabled())}
+			onpreferenceapplied={(applied) =>
+				(preferenceOutcome = preferenceAsked ? { asked: preferenceAsked, applied } : null)}
 			onrequestclear={handleClear}
 		/>
 
-		{#if waypointCount === 0 && !pickingPoint}
+		{#if waypointCount === 0 && !pickingPoint && !drawMode}
 			<div class="canvas-empty" role="status">
 				<span class="material-symbols">add_location</span>
 				<h3>{m('routeNew.canvasEmptyTitle')}</h3>
@@ -1115,15 +1325,19 @@
 		class="save-form"
 		onsubmit={(e) => { e.preventDefault(); handleSaveRoute(); }}
 	>
-		<label class="field">
-			<span class="section-label">{m('routeNew.nameLabel')}</span>
-			<input
-				type="text"
-				placeholder={m('routeNew.namePlaceholder')}
-				bind:value={routeName}
-				required
-			/>
-		</label>
+		<div class="field">
+			<label>
+				<span class="section-label">{m('routeNew.nameLabel')}</span>
+				<input
+					type="text"
+					placeholder={m('routeNew.namePlaceholder')}
+					bind:value={routeName}
+					required
+					aria-describedby="route-name-hint"
+				/>
+			</label>
+			<span class="save-hint" id="route-name-hint">{m('routeNew.nameHint')}</span>
+		</div>
 
 		<label class="field">
 			<span class="section-label">{m('routeNew.descriptionLabel')} <span class="label-hint">{m('routeNew.optionalHint')}</span></span>
@@ -1144,7 +1358,7 @@
 				<span class="save-summary-label">{m('routeNew.elevation')}</span>
 			</div>
 			<div>
-				<span class="save-summary-value">{mode === 'trail' ? m('routeNew.trail') : m('routeNew.road')}</span>
+				<span class="save-summary-value">{routeSurfaceLabel(mode)}</span>
 				<span class="save-summary-label">{m('routeNew.surface')}</span>
 			</div>
 		</div>
@@ -1153,7 +1367,7 @@
 			<input type="checkbox" bind:checked={isPublic} />
 			<span>
 				<strong>{m('routeNew.public')}</strong>
-				<span class="visibility-hint">{m('routeNew.publicHint')}</span>
+				<span class="hint">{m('routeNew.publicHint')}</span>
 			</span>
 		</label>
 
@@ -1365,6 +1579,40 @@
 		background: var(--color-primary-light);
 		border-color: var(--color-primary);
 		color: var(--color-primary);
+	}
+
+	.draw-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.art-match {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-xs) var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		border: 1.5px solid var(--color-primary);
+		border-radius: var(--radius-md);
+		background: var(--color-primary-light);
+		color: var(--color-text);
+	}
+	.art-match-poor {
+		border-color: var(--color-border);
+		background: var(--color-bg);
+	}
+	.art-match-label {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+	.art-match-score {
+		font-size: 1.05rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	.art-match-verdict {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
 	}
 
 	.stats-row {
@@ -1680,18 +1928,39 @@
 		color: var(--color-primary);
 	}
 
-	.quiet-roads {
+	.pref-group {
 		display: flex;
-		align-items: center;
-		gap: var(--space-sm);
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.pref-option {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		align-items: baseline;
+		column-gap: var(--space-sm);
 		font-size: 0.8rem;
 		color: var(--color-text);
 		cursor: pointer;
 	}
-	.quiet-roads input[type="checkbox"] {
+	.pref-option input[type="radio"] {
 		width: auto;
-		flex-shrink: 0;
 		accent-color: var(--color-primary);
+	}
+	/* The hint is a SIBLING of its option, not a cell inside it: an
+	   explanation inside the <label> would join the radio's accessible name
+	   instead of describing it (decisions § 1659). */
+	.pref-hint {
+		font-size: 0.72rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+		padding-inline-start: 1.5rem;
+		margin-top: calc(var(--space-xs) * -1 + 0.1rem);
+	}
+
+	.pref-not-applied {
+		margin: var(--space-xs) 0 0;
+		font-size: 0.72rem;
+		color: var(--color-text-secondary);
 	}
 
 	.pro-upsell {
@@ -1743,15 +2012,23 @@
 	 * button variants — the buttons themselves use `.btn` / `.btn-ghost`
 	 * / `.btn-primary` etc. from app.css (per conventions § Web buttons).
 	 */
+	/* Wraps because the row grew a fourth button (Add point) while the
+	 * pane's default width stayed at 0.28 of the split. `flex: 1` alone
+	 * does not save it: a flex item's `min-width` is `auto`, so each
+	 * button floors at its icon+label min-content width and the row
+	 * overflows instead of shrinking — at the default split that hid
+	 * Clear completely and made the panel scroll sideways. */
 	.toolbar-group {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-2xs);
 		padding: var(--space-2xs);
 		background: var(--color-bg-secondary);
 		border-radius: var(--radius-md);
 	}
 	.toolbar-group .btn {
-		flex: 1;
+		flex: 1 1 auto;
+		min-width: 0;
 		justify-content: center;
 		padding: var(--space-xs) var(--space-sm);
 	}
@@ -1868,10 +2145,17 @@
 
 	.primary-actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-sm);
 	}
+	/* Save grows into whatever the row has left; when the three no
+	 * longer fit, GPX + KML wrap under it rather than hanging off the
+	 * panel's edge. */
 	.primary-actions .btn:first-child {
-		flex: 1;
+		flex: 1 1 auto;
+	}
+	.primary-actions .btn {
+		min-width: 0;
 	}
 
 	/*
@@ -2044,6 +2328,21 @@
 		flex-direction: column;
 		gap: var(--space-md);
 	}
+	.field label {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.save-hint {
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+	}
+	.builder-hint {
+		margin: var(--space-2xs) 0 0;
+		font-size: 0.72rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
 	.field {
 		display: flex;
 		flex-direction: column;
@@ -2088,7 +2387,7 @@
 		display: block;
 		font-size: 0.9rem;
 	}
-	.visibility-hint {
+	.visibility .hint {
 		font-size: 0.78rem;
 		color: var(--color-text-secondary);
 	}

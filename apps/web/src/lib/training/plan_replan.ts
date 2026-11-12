@@ -61,7 +61,9 @@ export interface ReplanWeek {
 	workouts: ReplanWorkout[];
 }
 
-export type ReplanReason = 'make_up_long' | 'ease_over_running';
+/// `anchor_actual_volume` is proposed by `plan_volume_anchor.ts`, never by
+/// `replanRemaining`; it shares this shape so it previews and applies the same way.
+export type ReplanReason = 'make_up_long' | 'ease_over_running' | 'anchor_actual_volume';
 
 export interface ReplanChange {
 	workoutId: string;
@@ -118,9 +120,10 @@ export function easeOffNextWeek(
 }
 
 /// Whether a step-back week (a >15% planned-volume drop) immediately
-/// follows `week` — mirrors the heuristic the plan-detail adherence
-/// surface uses.
-function recoveryWeekImminent(weeks: ReplanWeek[], idx: number): boolean {
+/// follows `weeks[idx]` — mirrors the heuristic the plan-detail adherence
+/// surface uses. Exported so the missed-workout prompt (`plan_missed_prompt`)
+/// advises on the same week the make-up would.
+export function recoveryWeekImminent(weeks: ReplanWeek[], idx: number): boolean {
 	const cur = weeks[idx];
 	const next = weeks.find((w) => w.weekIndex === cur.weekIndex + 1);
 	if (!next || !(cur.plannedMetres > 0) || !(next.plannedMetres > 0)) return false;
@@ -135,11 +138,20 @@ export function replanRemaining(input: {
 	const weeks = [...input.weeks].sort((a, b) => a.weekIndex - b.weekIndex);
 	const changes: ReplanChange[] = [];
 
-	// Future, non-taper workouts available to absorb a make-up or ease-off.
-	const futureLongRuns = weeks
-		.flatMap((w) => (isTaper(w.phase) ? [] : w.workouts))
-		.filter((wo) => !wo.isPast && wo.kind === 'long')
-		.sort((a, b) => (a.scheduledDate < b.scheduledDate ? -1 : 1));
+	// Earliest future, non-taper long run available to absorb a make-up. Only
+	// the minimum is ever read, so this scans rather than sorts: a strict `<`
+	// keeps the FIRST of two long runs sharing a date — the plan's own
+	// week-then-workout order — with no dependence on a sort's stability. The
+	// Dart twin and the firmware port scan identically, so all three rails pick
+	// the same session out of a double-long-run day.
+	let nextLong: ReplanWorkout | null = null;
+	for (const week of weeks) {
+		if (isTaper(week.phase)) continue;
+		for (const wo of week.workouts) {
+			if (wo.isPast || wo.kind !== 'long') continue;
+			if (nextLong === null || wo.scheduledDate < nextLong.scheduledDate) nextLong = wo;
+		}
+	}
 
 	// ── 1. Missed long runs in past weeks → make up in the future ──
 	// The missed run itself is FROZEN (past) — we never mutate it; it just
@@ -163,7 +175,6 @@ export function replanRemaining(input: {
 	}
 	// Make up by ensuring the NEXT future long run doesn't regress below the
 	// largest missed distance — capped so it can't spike.
-	const nextLong = futureLongRuns[0];
 	if (nextLong && maxMissedLong > 0) {
 		const plannedNext = nextLong.targetDistanceM ?? 0;
 		if (plannedNext > 0) {

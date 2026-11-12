@@ -19,7 +19,18 @@ No Supabase connection is needed directly from the watch — it syncs through th
 
 ## Setup
 
-No package manager needed — the watch app is a standalone Xcode project with no external dependencies.
+No package manager needed — the watch app has no external dependencies.
+
+**Two Xcode projects build it, and which one you open matters.**
+`apps/watch_ios/WatchApp.xcodeproj` is the **development + test** project: it is
+what the `test-watch-ios` CI job builds, the only one that runs `WatchAppTests`,
+and the fastest thing to iterate in because it does not drag the Flutter phone
+app along. `apps/mobile_ios/ios/Runner.xcodeproj` carries a second `WatchApp`
+target that **references the same source files** and embeds the product in the
+phone app's bundle — that is the one a release goes through. Open the standalone
+project for everything below; open the Runner workspace when you need the watch
+app installed **beside** the phone app, e.g. to exercise WatchConnectivity end to
+end. See [decisions § 1679](../../docs/architecture/decisions.md).
 
 ---
 
@@ -32,7 +43,7 @@ open apps/watch_ios/WatchApp.xcodeproj
 In Xcode:
 
 1. Select scheme: **WatchApp**
-2. Select destination: **Apple Watch Series 9 (or later) simulator** paired with your iOS simulator
+2. Select destination: any watchOS simulator paired with your iOS simulator. **Don't go looking for a specific model name** — the concrete device types rotate with every Xcode release, and `Apple Watch Series 9` no longer exists on a current one. Pick whatever the destination menu offers.
 3. **Cmd+R** to build and run
 
 The watch simulator opens alongside the iOS simulator. Both must be running for WatchConnectivity to work.
@@ -43,7 +54,7 @@ The watch simulator opens alongside the iOS simulator. Both must be running for 
 
 The watch simulator must be paired with an iOS simulator:
 
-1. In Simulator: **File → Open Simulator → watchOS → Apple Watch Series 9 - 45mm**
+1. In Simulator: **File → Open Simulator → watchOS →** whichever watch the menu lists
 2. This automatically opens the paired iPhone simulator as well
 3. If no pairing exists: **Window → Devices and Simulators → Simulators → +** to create a paired set
 
@@ -78,6 +89,16 @@ End to end: pick a route on the iPhone, follow it on the wrist.
 3. Expect a banner: "Route sent to Apple Watch (N points)", or "…thinned from M points to N to fit" on a route over the 512-point budget. A route with fewer than two positions is refused outright with "This route has too few points to follow on Apple Watch" — nothing is queued.
 4. On the watch, `PreRunView` now shows **Route**, the route name, and its total distance, with a **Clear route** button. The push is `transferUserInfo`, so it may take a few seconds and it survives the watch app being closed — background delivery is normal.
 5. Start a run. Under the stat row the run screen shows **X.XX km to go**, counting down as you move along the line.
+
+### In-run mini-map
+
+The run screen is two pages: stats + controls on page one, the live-position mini-map on page two. Swipe left to reach it.
+
+1. Start a run **before** the simulator has a location (Features → Location → None). The map page shows "Waiting for GPS" on an empty field — **not** a position dot, and not a dot in the middle of the map.
+2. Set Features → Location → City Run (or Freeway Drive for a faster trail). The dot appears and a coral track grows behind it, the frame re-fitting as the run spreads out. A short run stays a stub near the centre rather than filling the screen with jitter — the frame floors at a 200 m ground span.
+3. With a route armed (see above), the route draws as a lilac line with a filled marker at the start; a point-to-point route also carries a hollow marker at the finish, a loop only the one.
+4. Swipe back to page one: the elapsed clock, the stats and Pause/Stop are unmoved. Nothing on the map page can stop the recording, and there is no map control there by design.
+5. There are **no map tiles** and there is no network call — the map is a `Canvas` polyline, so it behaves identically with the phone simulator shut down. See [decisions.md § 702](../../docs/architecture/decisions.md).
 6. Drive the simulated location off the route by more than 40 m (iOS simulator → **Features → Location → Custom Location**): the line turns into a red **Off route · N m** warning. Come back inside 20 m and it clears. On a physical watch the transition also fires one `WKInterfaceDevice` haptic (haptics are no-ops in the simulator).
 7. Feed the watch a location it can't project (or arm a degenerate route) and the screen reads **Route position unknown** rather than silently claiming you're on route.
 8. Tap **Clear route** on `PreRunView` — the next run records with no guidance block at all.
@@ -151,3 +172,39 @@ Make sure the deployment target in the Xcode project matches your watchOS simula
 ---
 
 *Last updated: April 2026*
+
+---
+
+## Running the test suite
+
+From a shell, resolving the simulator by UDID rather than by name:
+
+```bash
+xcodebuild test -project apps/watch_ios/WatchApp.xcodeproj \
+  -scheme WatchApp \
+  -destination "platform=watchOS Simulator,id=$(xcrun simctl list devices available --json \
+    | jq -r '[.devices | to_entries[] | select(.key | test("watchOS"))
+              | .value[] | select(.isAvailable)] | .[0].udid')" \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+That is what CI runs. **225 tests, green on Xcode 26.4 / watchOS 26.4 as of
+2026-09-18** — including on an unpaired watch simulator, which is where the
+companion declaration in `Info.plist` would have bitten if it were going to.
+
+## Verifying the embed
+
+The watch app reaches a wrist inside the phone app's bundle, so the thing to
+check after touching either project is the built product, not the source:
+
+```bash
+cd apps/mobile_ios && flutter build ios --simulator --debug
+ls build/ios/iphonesimulator/Runner.app/Watch/WatchApp.app/
+plutil -p build/ios/iphonesimulator/Runner.app/Watch/WatchApp.app/Info.plist
+```
+
+You want `Watch/WatchApp.app` to exist, `CFBundleDisplayName = Threkir`,
+`WKCompanionAppBundleIdentifier = com.threkir.app`, the same
+`CFBundleShortVersionString` / `CFBundleVersion` as the phone bundle beside it,
+and one `.lproj` per shipped locale. `node scripts/check_watch_ios_source.mjs`
+(claim 15) catches the source-level half of this without a Mac.

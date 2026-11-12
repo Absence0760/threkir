@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {
 	redactBreadcrumb,
 	redactEventSignedUrls,
+	redactFragment,
 	redactLiveHubToken,
 	redactSignedUrl,
+	redactStreamedSpan,
 	redactUrl,
 } from './redact';
 
@@ -149,4 +151,81 @@ test('redactEventSignedUrls — redacts live-hub URL on request + transaction + 
 	assert.equal(out.transaction, LH_URL_REDACTED);
 	assert.equal(out.request!.url, LH_URL_REDACTED);
 	assert.equal(out.spans![0].data!.url, LH_URL_REDACTED);
+});
+
+// ─────────────── redactStreamedSpan ───────────────
+
+test('redactStreamedSpan — redacts a signed URL in the span name', () => {
+	const span = { name: `GET ${SIGNED_URL}`, attributes: {} };
+	assert.equal(redactStreamedSpan(span).name, `GET ${SIGNED_URL_REDACTED}`);
+});
+
+test('redactStreamedSpan — redacts bare and { value } string attributes', () => {
+	const span = {
+		name: 'GET /runs',
+		attributes: {
+			'url.full': SIGNED_URL,
+			'http.url': { value: SIGNED_URL },
+			'http.response.status_code': 200,
+			'sentry.op': 'http.client',
+		} as Record<string, unknown>,
+	};
+	redactStreamedSpan(span);
+	assert.equal(span.attributes['url.full'], SIGNED_URL_REDACTED);
+	assert.deepEqual(span.attributes['http.url'], { value: SIGNED_URL_REDACTED });
+	assert.equal(span.attributes['http.response.status_code'], 200);
+	assert.equal(span.attributes['sentry.op'], 'http.client');
+});
+
+test('redactStreamedSpan — strips a live-hub JWT from an attribute', () => {
+	const span = {
+		name: 'websocket',
+		attributes: { 'url.full': 'wss://hub.example/v1/live/abc/subscribe?token=eyJ.secret&x=1' } as Record<string, unknown>,
+	};
+	redactStreamedSpan(span);
+	assert.equal(span.attributes['url.full'], 'wss://hub.example/v1/live/abc/subscribe?token=<redacted>&x=1');
+});
+
+// ─────────────── redactFragment ───────────────
+
+const OVERLAY_URL = 'https://threkir.com/live/overlay?units=km#t=0123456789abcdef';
+const OVERLAY_REDACTED = 'https://threkir.com/live/overlay?units=km#[redacted]';
+
+test('redactFragment — drops the bearer token from an overlay URL', () => {
+	assert.equal(redactFragment(OVERLAY_URL), OVERLAY_REDACTED);
+});
+
+test('redactFragment — drops the fragment from a root-relative path', () => {
+	assert.equal(redactFragment('/live/overlay#t=abc'), '/live/overlay#[redacted]');
+});
+
+test('redactFragment — redacts a URL embedded in a span name or message', () => {
+	assert.equal(
+		redactFragment(`GET ${OVERLAY_URL} failed`),
+		`GET ${OVERLAY_REDACTED} failed`,
+	);
+});
+
+test('redactFragment — leaves a # outside a URL alone', () => {
+	assert.equal(redactFragment('see issue #12 and C# docs'), 'see issue #12 and C# docs');
+});
+
+test('redactFragment — leaves a URL without a fragment alone', () => {
+	assert.equal(redactFragment('https://threkir.com/live/overlay'), 'https://threkir.com/live/overlay');
+});
+
+test('redactEventSignedUrls — strips the overlay token from request.url and the transaction', () => {
+	const out = redactEventSignedUrls({ request: { url: OVERLAY_URL }, transaction: OVERLAY_URL });
+	assert.equal(out.request!.url, OVERLAY_REDACTED);
+	assert.equal(out.transaction, OVERLAY_REDACTED);
+});
+
+test('redactBreadcrumb — strips the fragment from a navigation breadcrumb', () => {
+	const b = { category: 'navigation', data: { from: '/dashboard', to: '/live/overlay#t=abc' } };
+	assert.deepEqual(redactBreadcrumb(b).data, { from: '/dashboard', to: '/live/overlay#[redacted]' });
+});
+
+test('redactStreamedSpan — strips the fragment from url.full', () => {
+	const span = { name: '/live/overlay', attributes: { 'url.full': { value: OVERLAY_URL } } };
+	assert.deepEqual(redactStreamedSpan(span).attributes['url.full'], { value: OVERLAY_REDACTED });
 });

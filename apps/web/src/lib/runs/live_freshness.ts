@@ -10,33 +10,56 @@
 /// Returns a *structured* result (no language) so web (`m()`) and the Dart
 /// twin (ARB) localize identically. TS↔Dart parity pair with
 /// `apps/mobile_android/lib/live_freshness.dart` — keep in lockstep.
+///
+/// The `unknown` bucket is deliberately web-only: Dart's `int` parameters
+/// cannot represent NaN, so the twin has no way to be handed an age it
+/// cannot establish. Adding the enum value there would be dead code.
 
 /// A ping older than this is treated as stale. ~18 missed 5s broadcaster
 /// pings: long enough to ride out ordinary cellular flakiness, short
 /// enough that a real signal loss surfaces within a minute and a half.
 export const LIVE_STALE_AFTER_MS = 90_000;
 
-export type FreshnessBucket = 'now' | 'seconds' | 'minutes' | 'hours' | 'days';
+export type FreshnessBucket = 'now' | 'seconds' | 'minutes' | 'hours' | 'days' | 'unknown';
 
-export interface Freshness {
-	/// Age of the last ping in ms, clamped to >= 0 (a future-dated ping
-	/// from clock skew reads as "just now", never a negative age).
-	ageMs: number;
-	/// True once `ageMs >= staleAfterMs` — the caller should stop
-	/// presenting the position as live-current.
-	stale: boolean;
-	/// Coarsened time bucket for display; pair with `value`.
-	bucket: FreshnessBucket;
-	/// The number to show for the bucket (e.g. bucket `minutes`, value 3
-	/// → "Updated 3 min ago"). 0 for `now`.
-	value: number;
-}
+/// Discriminated on `bucket` so a caller that switches on it narrows `value`
+/// to a real number on every displayable branch, and cannot pass the
+/// unknown-age null into a formatter expecting one.
+export type Freshness =
+	| {
+			/// Age of the last ping in ms, clamped to >= 0 (a future-dated ping
+			/// from clock skew reads as "just now", never a negative age).
+			ageMs: number;
+			/// True once `ageMs >= staleAfterMs` — the caller should stop
+			/// presenting the position as live-current.
+			stale: boolean;
+			/// Coarsened time bucket for display; pair with `value`.
+			bucket: Exclude<FreshnessBucket, 'unknown'>;
+			/// The number to show for the bucket (e.g. bucket `minutes`, value 3
+			/// → "Updated 3 min ago"). 0 for `now`.
+			value: number;
+	  }
+	| {
+			/// The age could not be established at all.
+			ageMs: null;
+			/// Always true — an unknown age fails closed.
+			stale: true;
+			bucket: 'unknown';
+			value: null;
+	  };
 
 export function freshnessFor(
 	sentAtMs: number,
 	nowMs: number,
 	staleAfterMs: number = LIVE_STALE_AFTER_MS,
 ): Freshness {
+	// A malformed `at` column / missing `sent_at_ms` yields NaN here, and every
+	// downstream comparison against NaN is false — so an age we cannot establish
+	// would render as a green LIVE dot, the exact failure this module exists to
+	// prevent. Fail closed: unknown age is stale.
+	if (!Number.isFinite(sentAtMs) || !Number.isFinite(nowMs)) {
+		return { ageMs: null, stale: true, bucket: 'unknown', value: null };
+	}
 	const ageMs = Math.max(0, nowMs - sentAtMs);
 	const stale = ageMs >= staleAfterMs;
 	const s = Math.floor(ageMs / 1000);
@@ -47,4 +70,54 @@ export function freshnessFor(
 	const h = Math.floor(min / 60);
 	if (h < 24) return { ageMs, stale, bucket: 'hours', value: h };
 	return { ageMs, stale, bucket: 'days', value: Math.floor(h / 24) };
+}
+
+/// The race clock as it reads *now*, from the elapsed time the last ping
+/// reported plus how long ago that ping was.
+///
+/// A cut-off is a deadline measured from the runner's start, and it keeps
+/// running while they are out of signal. Driving cut-off maths straight off
+/// the last ping's `elapsed_s` freezes the clock the moment the pings stop —
+/// so a runner who went dark 40 min before their cut-off would still show the
+/// budget they had at the last fix, and a limit that has since expired would
+/// never register. Advance the clock by the ping age instead: no new distance
+/// is invented (the position stays at the last fix), only time that has
+/// genuinely passed.
+///
+/// An age we cannot establish advances nothing — the caller is already in the
+/// `unknown`/stale branch above, which labels the readout rather than
+/// guessing at it.
+///
+/// This is the FALLBACK for a caller that cannot resolve the run's start
+/// instant. Where it can, `raceClockS` below states the same clock exactly
+/// instead of reconstructing a lower bound on it.
+export function liveElapsedS(anchorElapsedS: number, ageMs: number | null): number {
+	const base = Number.isFinite(anchorElapsedS) ? Math.max(0, anchorElapsedS) : 0;
+	if (ageMs == null || !Number.isFinite(ageMs) || ageMs <= 0) return base;
+	return base + Math.floor(ageMs / 1000);
+}
+
+/// The race clock: wall-clock seconds from the runner's start to `atMs`.
+///
+/// This is a different quantity from the ping's `elapsed_s`, and the spectator
+/// page used to present them as one. `elapsed_s` is the runner's own recording
+/// timer — it stops whenever they tap pause, and it is frozen at the instant of
+/// the last fix, so during a dead zone it states a time that stopped hours ago.
+/// The race clock is what a cut-off is measured against, and it needs no
+/// estimate: the run's `started_at` is on the row the spectator already reads.
+///
+/// Prefer this over `liveElapsedS` wherever the start instant is known —
+/// `liveElapsedS` can only ever be a lower bound on it (it credits nothing for
+/// time the runner had the recording paused before the last fix).
+///
+/// `atMs` is the instant to measure to: `now` for a live run, and the
+/// conclusion instant for one that has ended — a finished run's race clock must
+/// not keep ticking. Null when the start instant is unknown: no race clock is
+/// claimed rather than one being reconstructed from the frozen timer. Clamped
+/// to >= 0 so a start stamped in the viewer's future (clock skew) reads 0,
+/// never a negative clock — the same clamp `freshnessFor` makes on an age.
+export function raceClockS(startedAtMs: number | null, atMs: number | null): number | null {
+	if (startedAtMs == null || atMs == null) return null;
+	if (!Number.isFinite(startedAtMs) || !Number.isFinite(atMs)) return null;
+	return Math.floor(Math.max(0, atMs - startedAtMs) / 1000);
 }

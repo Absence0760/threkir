@@ -61,6 +61,31 @@ void main() {
       expect(find.text('Health Connect'), findsOneWidget);
     });
 
+    test('the Settings import tile names only the importers this screen has',
+        () {
+      // GPX and TCX arrive inside the Strava export ZIP, or as routes from
+      // the Routes tab; there is no standalone GPX/TCX run import, so the
+      // tile that opens this screen must not promise one in any locale.
+      for (final locale in AppLocalizations.supportedLocales) {
+        final subtitle =
+            lookupAppLocalizations(locale).settingsAccountImportSubtitle;
+        expect(subtitle, isNot(contains('GPX')), reason: '$locale');
+        expect(subtitle, isNot(contains('TCX')), reason: '$locale');
+      }
+    });
+
+    testWidgets('the Health Connect card does not deny the map import it offers',
+        (tester) async {
+      // Health Connect hands over a workout's GPS route when it is allowed
+      // to, and the card offers "Allow map import" when it holds one back,
+      // so the description must not say routes can never come across.
+      final store = await _makeStore();
+      await _pump(tester, store);
+      expect(find.textContaining('GPS map comes too'), findsOneWidget);
+      expect(find.textContaining('not exposed'), findsNothing);
+      expect(find.textContaining("won't have a map trace"), findsNothing);
+    });
+
     testWidgets('Import Strava ZIP button is present and enabled', (tester) async {
       final store = await _makeStore();
       await _pump(tester, store);
@@ -147,8 +172,38 @@ void main() {
   group('Platform-aware Health label helpers', () {
     test('healthLabelFor names HealthKit on iOS, Health Connect on Android',
         () {
-      expect(healthLabelFor(isIOS: true), 'Apple Health');
-      expect(healthLabelFor(isIOS: false), 'Health Connect');
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(healthLabelFor(en, isIOS: true), 'Apple Health');
+      expect(healthLabelFor(en, isIOS: false), 'Health Connect');
+    });
+
+    test('healthLabelFor uses each vendor\'s own name in the reader\'s locale',
+        () {
+      // Apple and Google localize these apps' names; the label must follow
+      // so the card title matches the copy under it (decisions § 2226).
+      String ios(String tag) =>
+          healthLabelFor(lookupAppLocalizations(Locale(tag)), isIOS: true);
+      String android(String tag) =>
+          healthLabelFor(lookupAppLocalizations(Locale(tag)), isIOS: false);
+      expect(ios('fr'), 'Apple Santé');
+      expect(ios('es'), 'Salud de Apple');
+      expect(ios('ja'), 'ヘルスケア');
+      expect(ios('de'), 'Apple Health');
+      expect(android('fr'), 'Santé Connect');
+      expect(android('es'), 'Salud conectada');
+      expect(android('ja'), 'ヘルスコネクト');
+      expect(android('de'), 'Health Connect');
+    });
+
+    test('the health platform names match the run-history source labels', () {
+      for (final locale in AppLocalizations.supportedLocales) {
+        final l10n = lookupAppLocalizations(locale);
+        expect(healthLabelFor(l10n, isIOS: false),
+            l10n.historySourceHealthConnect,
+            reason: '$locale');
+        expect(healthLabelFor(l10n, isIOS: true), l10n.historySourceHealthKit,
+            reason: '$locale');
+      }
     });
   });
 

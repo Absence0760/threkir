@@ -40,11 +40,24 @@ class StoredCrossing implements SyncEntry {
   factory StoredCrossing.fromJson(Map<String, dynamic> json) => StoredCrossing(
         row: Map<String, dynamic>.from(json['row'] as Map),
         syncState: syncStateFromWire(json['sync_state'] as String?),
-        lastModifiedAt:
-            DateTime.tryParse(json['last_modified_at'] as String? ?? '')
-                    ?.toUtc() ??
-                DateTime.now().toUtc(),
+        lastModifiedAt: storedClockOrEpoch(json['last_modified_at']),
       );
+}
+
+/// True when [raw] — an `instance_start` off a stored or server row — names
+/// the same occurrence as [at].
+///
+/// An INSTANT comparison, deliberately not the string equality this replaced
+/// (decisions § 1343). One occurrence has several spellings on the wire:
+/// PostgREST answers `2026-06-01T18:00:00+00:00`, `CheckpointCrossingRow`
+/// re-serialises that as `…T18:00:00.000Z`, and a row this store wrote before
+/// § 1343 carries the writer's bare wall clock with no designator at all.
+/// Comparing the text meant a server-fetched crossing never matched the
+/// instance the screen was asking about, so "who has already been stamped
+/// here" listed only the stamps this phone had made.
+bool sameInstance(dynamic raw, DateTime at) {
+  final parsed = parseServerTimestamp(raw);
+  return parsed != null && parsed.isAtSameMomentAs(at);
 }
 
 /// Disk-backed store for aid-station checkpoint crossings logged by a
@@ -116,12 +129,12 @@ class LocalCrossingsStore extends OfflineSyncStore<StoredCrossing> {
     String checkpointId,
     DateTime instanceStart,
   ) {
-    final iso = instanceStart.toIso8601String();
+    final at = instanceStart.toUtc();
     return rows
         .where((r) =>
             r['event_id'] == eventId &&
             r['checkpoint_id'] == checkpointId &&
-            r['instance_start'] == iso)
+            sameInstance(r['instance_start'], at))
         .toList();
   }
 
@@ -152,7 +165,7 @@ class LocalCrossingsStore extends OfflineSyncStore<StoredCrossing> {
       'id': id,
       'event_id': eventId,
       'checkpoint_id': checkpointId,
-      'instance_start': instanceStart.toIso8601String(),
+      'instance_start': instanceStartKey(instanceStart),
       'user_id': userId,
       'bib': bib,
       'runner_name': runnerName,
@@ -210,12 +223,13 @@ class LocalCrossingsStore extends OfflineSyncStore<StoredCrossing> {
     String? eventId,
     DateTime? instanceStart,
   }) async {
+    requireInitialised('replaceFromServer');
     final now = DateTime.now().toUtc();
-    final iso = instanceStart?.toIso8601String();
+    final at = instanceStart?.toUtc();
     bool outOfScope(Map<String, dynamic> row) =>
         eventId != null &&
         (row['event_id'] != eventId ||
-            (iso != null && row['instance_start'] != iso));
+            (at != null && !sameInstance(row['instance_start'], at)));
     final preserved = <String, StoredCrossing>{};
     for (final entry in rowsById.entries) {
       if (entry.value.syncState != SyncState.synced) {
@@ -244,7 +258,7 @@ class LocalCrossingsStore extends OfflineSyncStore<StoredCrossing> {
   }
 
   static bool _beyondRetention(dynamic recordedAt, DateTime now) {
-    final at = _parseTime(recordedAt)?.toUtc();
+    final at = parseServerTimestamp(recordedAt);
     if (at == null) return false;
     return now.difference(at) > kSyncedRetention;
   }
@@ -254,13 +268,22 @@ class LocalCrossingsStore extends OfflineSyncStore<StoredCrossing> {
       api.upsertCheckpointCrossing(
         eventId: stored.row['event_id'] as String,
         checkpointId: stored.row['checkpoint_id'] as String,
-        instanceStart:
-            DateTime.parse(stored.row['instance_start'] as String),
+        // A row written before § 1343 carries the unnormalised local wall
+        // clock; reading it back through [parseServerTimestamp] recovers the
+        // instant that produced it, and [instanceStartKey] then sends what
+        // every other writer of the key now sends. A crossing whose stored
+        // instance is unreadable is refused rather than filed under a guessed
+        // occurrence — the drain isolates the failure per row and the stamp
+        // stays pending.
+        instanceStart: parseServerTimestamp(stored.row['instance_start']) ??
+            (throw StateError(
+                'local_crossings_store: crossing ${stored.id} has no readable '
+                'instance_start')),
         userId: stored.row['user_id'] as String?,
         bib: stored.row['bib'] as String?,
         runnerName: stored.row['runner_name'] as String?,
-        inTime: _parseTime(stored.row['in_time']),
-        outTime: _parseTime(stored.row['out_time']),
+        inTime: parseServerTimestamp(stored.row['in_time']),
+        outTime: parseServerTimestamp(stored.row['out_time']),
         healthConsent: (stored.row['health_consent'] as bool?) ?? false,
         bodyWeightKg: (stored.row['body_weight_kg'] as num?)?.toDouble(),
         bodyWeightPct: (stored.row['body_weight_pct'] as num?)?.toDouble(),
@@ -277,9 +300,4 @@ class LocalCrossingsStore extends OfflineSyncStore<StoredCrossing> {
 
   @override
   Future<void> pushDelete(ApiClient api, StoredCrossing stored) async {}
-
-  static DateTime? _parseTime(dynamic v) {
-    if (v is String && v.isNotEmpty) return DateTime.tryParse(v);
-    return null;
-  }
 }

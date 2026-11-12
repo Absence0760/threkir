@@ -18,7 +18,7 @@ Recorded as [decisions § 377](../architecture/decisions.md), and amended by
 [§ 378](../architecture/decisions.md), which closed the largest gap this page
 opened with: **there is now a user-reachable factory erase** — a guarded
 settings-menu row, reachable on the device alone. See
-[*The erase*](#the-erase-378) below.
+[*The erase*](#the-erase--378) below.
 
 ## What the watch holds
 
@@ -59,7 +59,7 @@ owner. That is a property of the design worth keeping.
 | UARTE1 → TCP (`tasks::phone`) | the same `link::status_frame` bytes, unencrypted and unauthenticated | **simulator only** — the module is `#![cfg(not(feature = "ble"))]`, so it is compiled out of every hardware build |
 
 **The BLE data plane is fail-closed** ([§ 285](../architecture/decisions.md#285-run-store-v2-byte-15-becomes-a-record-tag-laps-interleave-with-points-and-a-full-slot-decimates-instead-of-truncating-the-threkir-gatt-service-is-encrypted-only-with-one-persisted-bond),
-issue #598). All seven characteristics carry `security = "justworks"` —
+issue #598). Every characteristic carries `security = "justworks"` —
 Security Mode 1 Level 2 — so the SoftDevice rejects every read, write and CCCD
 subscription from an unencrypted connection. An unbonded central can discover
 the service's shape and nothing else. This is **build-verified only** and can
@@ -181,8 +181,8 @@ no account identity to match against, which is a property worth keeping.
 
 ## Why `privacy.rs` is dormant, and what would wire it
 
-`core/src/privacy.rs` is a faithful port of the web zone-clipping helper, with
-nine host tests. **It has zero callers.** That is correct, and it should stay
+`core/src/privacy.rs` is a faithful port of the web zone-clipping
+helper, with ten host tests. **It has zero callers.** That is correct, and it should stay
 that way at tier 1.
 
 Clipping in this product is a **read-time, viewer-keyed** transform, not a
@@ -251,7 +251,7 @@ deleting.
 
 1. ~~**No user-reachable erase — the largest gap on this page.**~~ **Closed
    2026-07-31 by [§ 378](../architecture/decisions.md)** — see
-   [*The erase*](#the-erase-378) above. What is left of it is one bench item
+   [*The erase*](#the-erase--378) above. What is left of it is one bench item
    (that the page erase really returns the slots to `0xFF`, which Renode cannot
    settle) and one bounded limit (a live BLE connection is not torn down; the
    durable bond is). Kept as item 1 rather than deleted, because the two items

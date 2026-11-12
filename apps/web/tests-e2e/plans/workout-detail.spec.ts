@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow } from '../fixtures/db-read';
 
 /**
  * /plans/[id]/workouts/[wid] — single-workout drill-down.
@@ -30,20 +31,26 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 		// one off the plan's first week so we have a deterministic
 		// target. The admin client bypasses RLS — fine for fixture
 		// setup, never for the assertion (we navigate as runner).
-		const { data: weekRow } = await getAdminClient()
-			.from('plan_weeks')
-			.select('id')
-			.eq('plan_id', SEED_PLAN_ID)
-			.eq('week_index', 0)
-			.maybeSingle();
+		const weekRow = await readMaybeRow(
+			'plan_weeks by plan_id+week_index',
+			getAdminClient()
+				.from('plan_weeks')
+				.select('id')
+				.eq('plan_id', SEED_PLAN_ID)
+				.eq('week_index', 0)
+				.maybeSingle()
+		);
 		expect(weekRow).not.toBeNull();
-		const { data: woRow } = await getAdminClient()
-			.from('plan_workouts')
-			.select('id, kind')
-			.eq('week_id', (weekRow as { id: string }).id)
-			.order('scheduled_date', { ascending: true })
-			.limit(1)
-			.maybeSingle();
+		const woRow = await readMaybeRow(
+			'plan_workouts by week_id',
+			getAdminClient()
+				.from('plan_workouts')
+				.select('id, kind')
+				.eq('week_id', (weekRow as { id: string }).id)
+				.order('scheduled_date', { ascending: true })
+				.limit(1)
+				.maybeSingle()
+		);
 		expect(woRow).not.toBeNull();
 		const wo = woRow as { id: string; kind: string };
 
@@ -83,15 +90,18 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 			.eq('plan_id', SEED_PLAN_ID)
 			.eq('week_index', 0)
 			.maybeSingle();
-		const { data: woRow } = await admin
-			.from('plan_workouts')
-			.select('id, kind')
-			.eq('week_id', (weekRow as { id: string }).id)
-			.neq('kind', 'rest')
-			.is('completed_run_id', null)
-			.order('scheduled_date', { ascending: true })
-			.limit(1)
-			.maybeSingle();
+		const woRow = await readMaybeRow(
+			'plan_workouts by week_id+kind+completed_run_id',
+			admin
+				.from('plan_workouts')
+				.select('id, kind')
+				.eq('week_id', (weekRow as { id: string }).id)
+				.neq('kind', 'rest')
+				.is('completed_run_id', null)
+				.order('scheduled_date', { ascending: true })
+				.limit(1)
+				.maybeSingle()
+		);
 		expect(woRow).not.toBeNull();
 		const wo = woRow as { id: string };
 
@@ -112,11 +122,14 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 			await expect(unskip).toBeVisible();
 
 			// Server-side: skipped_at stamped.
-			const { data: afterSkip } = await admin
-				.from('plan_workouts')
-				.select('skipped_at')
-				.eq('id', wo.id)
-				.maybeSingle();
+			const afterSkip = await readMaybeRow(
+				'plan_workouts by id',
+				admin
+					.from('plan_workouts')
+					.select('skipped_at')
+					.eq('id', wo.id)
+					.maybeSingle()
+			);
 			expect((afterSkip as { skipped_at: string | null }).skipped_at).not.toBeNull();
 
 			// Un-skip returns it to a plain to-do (the Skip button is back).
@@ -124,16 +137,154 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 			await expect(
 				page.getByRole('button', { name: /^Skip this workout$/i })
 			).toBeVisible({ timeout: 10_000 });
-			const { data: afterUnskip } = await admin
-				.from('plan_workouts')
-				.select('skipped_at')
-				.eq('id', wo.id)
-				.maybeSingle();
+			const afterUnskip = await readMaybeRow(
+				'plan_workouts by id',
+				admin
+					.from('plan_workouts')
+					.select('skipped_at')
+					.eq('id', wo.id)
+					.maybeSingle()
+			);
 			expect((afterUnskip as { skipped_at: string | null }).skipped_at).toBeNull();
 		} finally {
 			await admin
 				.from('plan_workouts')
 				.update({ skipped_at: null })
+				.eq('id', wo.id);
+		}
+	});
+
+	test('a walk-run session reads as time, not as a dash or a bogus distance', async ({
+		page
+	}) => {
+		// The C25K generator writes only duration_s on every step. The page
+		// used to print "—" for each step and sum the seconds as metres into
+		// "Total: 1.98 km". Borrow one seeded workout, give it a walk-run
+		// structure, and put it back afterwards.
+		const admin = getAdminClient();
+		const weekRow = await readMaybeRow(
+			'plan_weeks by plan_id+week_index',
+			admin
+				.from('plan_weeks')
+				.select('id')
+				.eq('plan_id', SEED_PLAN_ID)
+				.eq('week_index', 0)
+				.maybeSingle()
+		);
+		const woRow = await readMaybeRow(
+			'plan_workouts by week_id',
+			admin
+				.from('plan_workouts')
+				.select('id, structure')
+				.eq('week_id', (weekRow as { id: string }).id)
+				.neq('kind', 'rest')
+				.order('scheduled_date', { ascending: false })
+				.limit(1)
+				.maybeSingle()
+		);
+		expect(woRow).not.toBeNull();
+		const wo = woRow as { id: string; structure: unknown };
+
+		try {
+			await admin
+				.from('plan_workouts')
+				.update({
+					structure: {
+						warmup: { duration_s: 300, pace: 'easy' },
+						repeats: {
+							count: 8,
+							duration_s: 60,
+							pace_sec_per_km: 420,
+							recovery_pace: 'walk',
+							recovery_duration_s: 90
+						},
+						cooldown: { duration_s: 300, pace: 'easy' }
+					}
+				})
+				.eq('id', wo.id);
+
+			await page.goto(`/plans/${SEED_PLAN_ID}/workouts/${wo.id}`);
+
+			const steps = page.locator('ol.steps');
+			await expect(steps).toBeVisible({ timeout: 10_000 });
+			await expect(steps.locator('.step-warmup .step-main')).toHaveText('5:00');
+			await expect(steps.locator('.step-cooldown .step-main')).toHaveText('5:00');
+			await expect(steps.locator('.step-work .step-main')).toHaveText('8× 1:00');
+			await expect(steps.getByTestId('step-recovery')).toHaveText(/Recovery\s*1:30 walk/);
+			await expect(steps).not.toContainText('—');
+			// A recovery sits between reps, never after the last:
+			// 300 + 8 × 60 + 7 × 90 + 300 = 1710 s.
+			await expect(page.getByTestId('structure-total')).toHaveText('Total: 28:30');
+			const summary = page.getByTestId('walk-run-summary');
+			await expect(summary).toContainText('about 29 min');
+			await expect(summary).toContainText(
+				'5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down'
+			);
+		} finally {
+			await admin.from('plan_workouts').update({ structure: wo.structure }).eq('id', wo.id);
+		}
+	});
+
+	test('a workout done without a recording is marked by hand, and cleared with one tap', async ({
+		page
+	}) => {
+		// #1186 parity: the detail page offered Skip but no "Mark as done", so a
+		// session run without the phone could only be ticked from the editor.
+		// Clearing a hand mark takes no dialog: "Mark as done" on the same
+		// panel puts it back, as Un-skip does for Skip.
+		const admin = getAdminClient();
+		const weekRow = await readMaybeRow(
+			'plan_weeks by plan_id+week_index',
+			admin
+				.from('plan_weeks')
+				.select('id')
+				.eq('plan_id', SEED_PLAN_ID)
+				.eq('week_index', 0)
+				.maybeSingle()
+		);
+		const woRow = await readMaybeRow(
+			'plan_workouts by week_id',
+			admin
+				.from('plan_workouts')
+				.select('id')
+				.eq('week_id', (weekRow as { id: string }).id)
+				.neq('kind', 'rest')
+				.is('completed_run_id', null)
+				.order('scheduled_date', { ascending: false })
+				.range(1, 1)
+				.maybeSingle()
+		);
+		expect(woRow).not.toBeNull();
+		const wo = woRow as { id: string };
+		const readManual = async () =>
+			(
+				(await readMaybeRow(
+					'plan_workouts by id',
+					admin.from('plan_workouts').select('manually_completed').eq('id', wo.id).maybeSingle()
+				)) as { manually_completed: boolean }
+			).manually_completed;
+
+		try {
+			await admin
+				.from('plan_workouts')
+				.update({ manually_completed: false, completed_at: null, skipped_at: null })
+				.eq('id', wo.id);
+
+			await page.goto(`/plans/${SEED_PLAN_ID}/workouts/${wo.id}`);
+			await page.getByRole('button', { name: /^Mark as done$/ }).click();
+			await expect(page.getByTestId('workout-detail-done')).toBeVisible({ timeout: 10_000 });
+			expect(await readManual()).toBe(true);
+
+			await page.getByRole('button', { name: /^Mark not done$/ }).click();
+			await expect(page.getByRole('dialog')).toHaveCount(0);
+			await expect(page.getByRole('button', { name: /^Skip this workout$/i })).toBeVisible({
+				timeout: 10_000
+			});
+			expect(await readManual()).toBe(false);
+		} finally {
+			await admin
+				.from('plan_workouts')
+				.update({ manually_completed: false, completed_at: null })
 				.eq('id', wo.id);
 		}
 	});

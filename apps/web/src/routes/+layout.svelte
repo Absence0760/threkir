@@ -1,34 +1,38 @@
 <script lang="ts">
 	import '../app.css';
-	// Self-hosted Material Symbols Outlined. JS-side import so Vite
-	// reliably pulls both the package's @font-face CSS AND the
-	// referenced .woff2 into the bundle. audit/cookie-consent
-	// (May 2026) Critical: previously loaded from fonts.googleapis.com
-	// unconditionally, leaking EU IPs to a US sub-processor before
-	// the consent banner had rendered.
-	import 'material-symbols/outlined.css';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { accountLabel } from '$lib/format/account_label';
-	import { initTheme } from '$lib/settings/theme';
-	import { setMapStyle, type MapStyle } from '$lib/routes/map-style.svelte';
-	import { setUnit, setWeightUnit } from '$lib/format/units.svelte';
-	import { defaultWeightUnitForDistanceUnit } from '$lib/format/weight';
-	import BillingIssueBanner from '$lib/components/BillingIssueBanner.svelte';
-	import CookieConsentBanner from '$lib/components/CookieConsentBanner.svelte';
-	import ToastContainer from '$lib/components/ToastContainer.svelte';
-	import UndoBar from '$lib/components/UndoBar.svelte';
-	import { setUndoWindowS } from '$lib/stores/undo.svelte';
-	import NotificationBell from '$lib/components/NotificationBell.svelte';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import { m, initLocale } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { coachEnabled } from '$lib/coach/coach_flag';
-	import { strayConfirmationTarget } from '$lib/core/auth_confirmation';
-	import { env } from '$env/dynamic/public';
+	import { browser } from '$app/env';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { accountLabel } from '#lib/format/account_label.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { initTheme } from '#lib/settings/theme.ts';
+	import { setMapStyle, type MapStyle } from '#lib/routes/map-style.svelte.ts';
+	import { setUnit, setWeightUnit } from '#lib/format/units.svelte.ts';
+	import { defaultWeightUnitForDistanceUnit } from '#lib/format/weight.ts';
+	import BillingIssueBanner from '#lib/components/BillingIssueBanner.svelte';
+	import CookieConsentBanner from '#lib/components/CookieConsentBanner.svelte';
+	import ToastContainer from '#lib/components/ToastContainer.svelte';
+	import UndoBar from '#lib/components/UndoBar.svelte';
+	import { setUndoOwner, setUndoWindowS, undoStore } from '#lib/stores/undo.svelte.ts';
+	import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
+	import NotificationBell from '#lib/components/NotificationBell.svelte';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { dmUnreadStore, DM_UNREAD_POLL_MS } from '#lib/stores/dm_unread.svelte.ts';
+	import { m, initLocale } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import {
+		hasNonRunData,
+		hydrateModalityVisibility,
+		modalityVisible,
+		resetModalityVisibility,
+	} from '#lib/stores/modality_visibility.svelte.ts';
+	import type { Modality } from '#lib/settings/modality_visibility.ts';
+	import { strayConfirmationTarget } from '#lib/core/auth_confirmation.ts';
+	import { CONSENT_PATH, ONBOARDING_PATH, holdAppShell } from '#lib/core/post_auth_route.ts';
+	import { browserSessionStore, captureFirstTouch } from '#lib/core/signup_source.ts';
+	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 	// Warm the connection to the Supabase origin every page hits on
 	// mount (the auth-session check + all data fetches). A preconnect
@@ -38,7 +42,7 @@
 	// can't throw during render.
 	const supabaseOrigin = (() => {
 		try {
-			return env.PUBLIC_SUPABASE_URL ? new URL(env.PUBLIC_SUPABASE_URL).origin : '';
+			return PUBLIC_SUPABASE_URL ? new URL(PUBLIC_SUPABASE_URL).origin : '';
 		} catch {
 			return '';
 		}
@@ -61,18 +65,29 @@
 			)
 		: null;
 	onMount(() => {
-		if (strayLanding) goto(strayLanding, { replaceState: true });
+		if (strayLanding) goto(strayLanding, { replace: true });
 	});
 
 	// Apply the persisted theme on first client mount. A blocking
 	// bootstrap <script> in app.html would kill the first-paint flash
-	// entirely, but the hash-based CSP (svelte.config.js) forbids a
+	// entirely, but the hash-based CSP (vite.config.ts) forbids a
 	// hand-written inline script; the `<meta name="color-scheme">` in
 	// app.html is the CSP-safe partial mitigation (correct UA default
 	// background before CSS), and this reconciles to the exact
 	// [data-theme] on mount.
 	onMount(() => {
 		initTheme();
+	});
+
+	// The tab's first touch, held until a sign-up sends it (decisions § 2350).
+	onMount(() => {
+		captureFirstTouch(
+			browserSessionStore(),
+			window.location.pathname,
+			window.location.search,
+			document.referrer,
+			window.location.hostname,
+		);
 	});
 
 	// Detect + apply the visitor's locale (stored choice → browser
@@ -118,13 +133,34 @@
 	// otherwise a browser overridden to 'mi' would silently render km.
 	$effect(() => {
 		const uid = auth.user?.id;
-		if (!browser || !uid) return;
+		if (!browser) return;
+		if (!uid) {
+			resetModalityVisibility();
+			return;
+		}
 		(async () => {
 			try {
-				const { loadSettings, effective, effectivePreferredUnit } = await import(
-					'$lib/settings/settings'
+				const { loadSettings, effective, effectivePreferredUnit, updateUniversal } = await import(
+					'#lib/settings/settings.ts'
 				);
 				const settings = await loadSettings(uid);
+				// The coach roster picks this runner's current plan by their local
+				// date (issue #1182); keep the server's copy of their zone current.
+				// Never on a bag that came from neither the server nor the cache:
+				// the write would seed the cache with a bag holding no privacy
+				// zones, which the share paths then read as "no zones set".
+				const { browserTimeZone, timeZoneToWrite } = await import('#lib/settings/time_zone.ts');
+				const tz = settings.universalUnknown
+					? null
+					: timeZoneToWrite(settings.universal.time_zone, browserTimeZone());
+				if (tz != null) {
+					void updateUniversal(uid, { time_zone: tz }).catch((e) =>
+						console.warn('time zone sync failed', e),
+					);
+				}
+				void hydrateModalityVisibility(uid, settings).catch((e) =>
+					console.warn('modality visibility hydrate failed', e),
+				);
 				const ms = effective<MapStyle>(settings, 'map_style');
 				setMapStyle(ms);
 				const distanceUnit = effectivePreferredUnit(settings, auth.user?.preferred_unit);
@@ -163,14 +199,61 @@
 		};
 	});
 
+	// A delete still inside its undo window belongs to the account that made
+	// it. Our own Sign out commits it first (signOutWithScope); a session that
+	// ends or changes some other way (another tab) can no longer commit it as
+	// that account, so it is put back rather than run as nobody or as the next
+	// account. A commit already running when that happens is not stopped; if it
+	// fails, the queue sees the owner changed and only logs it. Keyed on the id
+	// alone: a refreshed user object is not a change. The queue is told a
+	// session ended only when it has (`null`); a live session whose profile is
+	// not loaded yet is `undefined`, so the same account's failure still
+	// restores and reports.
+	const undoOwnerId = $derived(auth.user?.id);
+	const undoSessionEnded = $derived(!auth.loading && !auth.loggedIn);
+	$effect(() => {
+		const uid = undoOwnerId;
+		return () => {
+			if (uid) undoStore.undo();
+		};
+	});
+	$effect(() => {
+		setUndoOwner(undoOwnerId ?? (undoSessionEnded ? null : undefined));
+	});
+
+	// Messages badge — the inbox has no Realtime channel, so it is read on
+	// auth-ready, on focus, and every minute while the tab is visible.
+	$effect(() => {
+		const uid = auth.user?.id;
+		if (!browser || !uid) {
+			dmUnreadStore.clear();
+			dmPendingHides.clear();
+			return;
+		}
+		dmUnreadStore.bind(uid);
+		dmUnreadStore.refresh();
+		const onFocus = () => dmUnreadStore.refresh();
+		window.addEventListener('focus', onFocus);
+		const timer = setInterval(() => {
+			if (document.visibilityState === 'visible') dmUnreadStore.refresh();
+		}, DM_UNREAD_POLL_MS);
+		return () => {
+			window.removeEventListener('focus', onFocus);
+			clearInterval(timer);
+		};
+	});
+
 	// Order is runner-led: log + review + train is the daily loop, then
 	// content, then social. Settings lives in the profile popover at the
 	// bottom of the sidebar; Feed is a self-only tab on /u/[me]; Guided runs
-	// are surfaced from /coach (both are coach-driven). Top-down scan time
-	// matches frequency-of-use. Gym + Nutrition are always present (matching
-	// mobile's always-reachable Log sheet, decisions §63 amendment) — the
-	// pure-runner clutter is kept off the *content* surfaces instead, which
-	// self-hide their gym/nutrition cards on no data (/dashboard, /history).
+	// are surfaced beside the Coach's conversation in Messages. Top-down scan time
+	// matches frequency-of-use. Gym + Nutrition appear only while
+	// `modalityVisible` says so: the runner's show_gym / show_nutrition choice,
+	// or, with none made, whether that modality has data (decisions § 1739).
+	// Hiding takes away the entry point, not the page: /gym still loads by URL.
+	// History appears only once a lift or a meal has been logged, whatever the
+	// toggles say: for a runner with runs alone it repeats /runs, and /history
+	// sends them to the run list's day view (decisions § 2117).
 	// `section` names the --section-<x> / --section-<x>-ink token pair in
 	// app.css. The hue cannot live here as a hex: the ink half has to flip per
 	// theme and a TS string cannot, which is how all seven glyphs came to read
@@ -181,13 +264,19 @@
 		{ href: '/runs', labelKey: 'nav.runs', icon: 'directions_run', section: 'runs' },
 		{ href: '/gym', labelKey: 'nav.gym', icon: 'fitness_center', section: 'gym' },
 		{ href: '/nutrition', labelKey: 'nav.nutrition', icon: 'nutrition', section: 'nutrition' },
-		{ href: '/coach', labelKey: 'nav.coach', icon: 'sports', section: 'coach' },
 		{ href: '/social', labelKey: 'nav.social', icon: 'public', section: 'social' },
+		{ href: '/messages', labelKey: 'nav.messages', icon: 'chat_bubble', section: 'messages' },
 	];
-	// The AI Coach nav entry is hidden when the Coach is off (rock-bottom
-	// deploy, PUBLIC_COACH_ENABLED unset) — don't surface a nav door that
-	// only leads to a "coming soon" page. coach_flag.ts.
-	const navItems = navItemsBase.filter((item) => coachEnabled() || item.href !== '/coach');
+	// The AI Coach has no sidebar row: it is a conversation in Messages,
+	// pinned at the top of the inbox (decisions § 2227).
+	const NAV_MODALITY: Record<string, Modality> = { '/gym': 'gym', '/nutrition': 'nutrition' };
+	const navItems = $derived(
+		navItemsBase.filter((item) => {
+			if (item.href === '/history') return hasNonRunData() === true;
+			const modality = NAV_MODALITY[item.href];
+			return modality === undefined || modalityVisible(modality);
+		}),
+	);
 
 	// "Shell-less" surfaces: rendered without the app sidebar regardless of
 	// auth state. Landing, auth flows, and the share / spectator pages that
@@ -214,7 +303,15 @@
 		path.startsWith('/live/') ||
 		path.startsWith('/learn') ||
 		path.startsWith('/clubs/join/') ||
+		path.startsWith('/challenges/join/') ||
 		path.startsWith('/coaching/accept/');
+
+	// Rendered into a stream (the OBS browser source, decisions § 2265): no
+	// toast, undo bar, offline or cookie banner may paint over the broadcast.
+	// Hiding the banner means consent is never asked here: Sentry stays off
+	// unless this browser accepted it elsewhere, and then the overlay token
+	// in the fragment is redacted before it leaves (sentry/redact.ts).
+	const isChromeless = (path: string) => path === '/live/overlay';
 
 	// "Anon-allowed" surfaces: reachable without auth. Superset of shell-less
 	// — also includes the legal pages, marketing pages, and the guided /
@@ -229,6 +326,19 @@
 		'/delete-account',
 		'/compare',
 		'/guided',
+		// The segment catalogue: `global_segments` carries an explicit
+		// `grant select ... to anon` (migration 20270512_001) and the page
+		// takes no auth gate, so the guard was the only thing turning an
+		// anon visitor away from world-readable content — and /sitemap.xml
+		// now points crawlers at it (decisions.md § 677). The per-segment
+		// leaderboard at /segments/[id] stays gated: it names runners.
+		'/segments',
+		// The fuelling plan the Coach hands a fuelling question to (decisions
+		// § 1975). The mobile Coach opens it on the web host, where the runner
+		// is usually signed out, and the page needs no session: it plans from
+		// the link and the app defaults, and reads saved rates only for a
+		// signed-in runner.
+		'/nutrition/fuel',
 	];
 	// `/clubs/*` paths that REQUIRE auth — keep them out of the anon-
 	// allowed set so a signed-in user lands directly in the loggedIn
@@ -250,7 +360,23 @@
 		// /events/[id] only resolves the club slug and forwards to the
 		// nested page above; gating it tighter than its destination would
 		// bounce an anon visitor who could have read the event.
-		path.startsWith('/events/');
+		path.startsWith('/events/') ||
+		// Park courses (decisions § 2383): the catalogue tables grant select
+		// to anon, and a signed-out visitor sees the course and its safety
+		// notice. The boards name runners, so the page asks for a sign-in
+		// before it reads them.
+		path === '/parks' ||
+		path.startsWith('/parks/') ||
+		// A fundraiser page is a share target a logged-out stranger follows in
+		// order to donate — the anchor-visibility RLS and the donations
+		// checkout both admit anon (fundraising.md). Without the prefix the
+		// auth guard bounced exactly that visitor to /login.
+		path.startsWith('/fundraisers/') ||
+		// The help centre is static guide data with no per-user read, and the
+		// public live-event page links a signed-out spectator into it
+		// (decisions § 1866). Still noindex + robots-disallowed.
+		path === '/help' ||
+		path.startsWith('/help/');
 
 	function isActive(href: string, path: string): boolean {
 		return path.startsWith(href);
@@ -263,11 +389,30 @@
 	// to /runs/<id> gets bounced to the dashboard after sign-in and has to
 	// hunt for the destination.
 	$effect(() => {
-		if (browser && !auth.loading && !auth.loggedIn && !isAnonAllowed($page.url.pathname)) {
-			const returnTo = $page.url.pathname + $page.url.search;
+		if (browser && !auth.loading && !auth.loggedIn && !isAnonAllowed(page.url.pathname)) {
+			const returnTo = page.url.pathname + page.url.search;
 			const isDefault = returnTo === '/dashboard' || returnTo === '/';
 			goto(isDefault ? '/login' : `/login?return_to=${encodeURIComponent(returnTo)}`);
 		}
+	});
+
+	// Consent gate (GDPR Art 8) — a signed-in user whose profile does not
+	// record both the age affirmation and terms acceptance goes to
+	// /auth/confirm-age before any feature surface. The sign-in hops
+	// (/auth/callback, the /login sign-up branch) route there directly;
+	// this catches every session that reaches the app another way — a
+	// tab closed on the gate, a stale deep link, or a row that was never
+	// stamped (issue #1065). Runs ahead of the onboarding gate, which
+	// waits for it. Anon-allowed surfaces (legal pages included) stay
+	// reachable so the terms can be read before accepting them.
+	$effect(() => {
+		if (!browser) return;
+		if (auth.loading || !auth.loggedIn || !auth.user) return;
+		if (auth.user.consent_recorded) return;
+		const path = page.url.pathname;
+		if (path === CONSENT_PATH) return;
+		if (isAnonAllowed(path)) return;
+		goto(CONSENT_PATH, { replaceState: true });
 	});
 
 	// Onboarding gate — a signed-in user whose `user_profiles.onboarded_at`
@@ -282,11 +427,29 @@
 		if (!browser) return;
 		if (auth.loading || !auth.loggedIn || !auth.user) return;
 		if (auth.user.onboarded_at != null) return;
-		const path = $page.url.pathname;
-		if (path === '/onboarding') return;
+		if (!auth.user.consent_recorded) return;
+		const path = page.url.pathname;
+		if (path === ONBOARDING_PATH) return;
 		if (isAnonAllowed(path)) return;
-		goto('/onboarding');
+		goto(ONBOARDING_PATH, { replaceState: true });
 	});
+
+	// The two gates above only run once the profile has hydrated, which is
+	// after the requested page would already have painted. Until a signed-in
+	// session's profile says it owes neither gate, a gated path renders the
+	// loading screen instead of the shell, so a reload, deep link or second
+	// tab cannot flash the dashboard at a fresh account (decisions § 2149).
+	// The gates navigate with replaceState so the held URL leaves no history
+	// entry to bounce back through.
+	const shellHeld = $derived(
+		browser &&
+			holdAppShell({
+				loggedIn: auth.loggedIn,
+				gatedPath: !isAnonAllowed(page.url.pathname),
+				profile: auth.user,
+				profileFailed: auth.profileFailed,
+			}),
+	);
 
 	let showLogoutModal = $state(false);
 	// Profile popover focus management. audit/accessibility (May 2026)
@@ -402,23 +565,38 @@
 </script>
 
 <svelte:head>
+	<!-- The site-wide default title, and the ONLY place a default may live:
+	     Svelte's SSR renderer keeps one title per document, the deepest one
+	     in the component tree, so a page that sets its own replaces this and
+	     a page that sets none still has one. A literal in app.html cannot be
+	     replaced that way and became a second element instead (§ 1167). -->
+	<title>Threkir</title>
 	{#if supabaseOrigin}
 		<link rel="preconnect" href={supabaseOrigin} crossorigin="anonymous" />
 	{/if}
 </svelte:head>
 
-<ToastContainer />
-<UndoBar />
-<CookieConsentBanner />
-
-{#if isOffline}
-	<div class="offline-banner" role="status" aria-live="polite" data-testid="offline-banner">
-		<span class="material-symbols offline-icon" aria-hidden="true">wifi_off</span>
-		{m('shell.offline')}
-	</div>
+{#if !isChromeless(page.url.pathname)}
+	<ToastContainer />
+	<UndoBar />
+	<CookieConsentBanner />
 {/if}
 
-{#if isShellless($page.url.pathname)}
+<!-- The region is permanently mounted and only the banner inside it comes and
+     goes: a live region announces changes made INSIDE it, not its own arrival,
+     so mounting region and message together announces nothing (decisions.md
+     § 736). The wrapper carries no styles — the banner keeps its own fixed
+     positioning. -->
+<div role="status" aria-live="polite">
+	{#if isOffline && !isChromeless(page.url.pathname)}
+		<div class="offline-banner" data-testid="offline-banner">
+			<span class="material-symbols offline-icon" aria-hidden="true">wifi_off</span>
+			{m('shell.offline')}
+		</div>
+	{/if}
+</div>
+
+{#if isShellless(page.url.pathname)}
 	<!-- Landing, login, share, live, club-invite — these have their own
 	     chrome and render shell-less regardless of auth state. -->
 	<!-- WCAG 2.4.1. The other two branches have had a skip link since the
@@ -428,7 +606,7 @@
 	     why the landmark work had to land first. -->
 	<a href="#main-content" class="skip-link">{m('shell.skipToMain')}</a>
 	<slot />
-{:else if !auth.loggedIn && isAnonAllowed($page.url.pathname)}
+{:else if !auth.loggedIn && isAnonAllowed(page.url.pathname)}
 	<!-- Anon viewer on an anon-allowed content page (/privacy, /terms,
 	     /cookie-notice, /compare, /guided, /guided/*, /recap/*). Render
 	     the slot without the signed-in shell. Bypasses the auth.loading
@@ -442,8 +620,8 @@
 	<main id="main-content">
 		<slot />
 	</main>
-{:else if auth.loading}
-	<div class="loading-screen">
+{:else if auth.loading || shellHeld}
+	<div class="loading-screen" data-testid="app-shell-hold">
 		<span class="loading-text">{m('shell.loading')}</span>
 	</div>
 {:else if auth.loggedIn}
@@ -461,19 +639,31 @@
 			</div>
 
 			<ul class="nav-list">
-				{#each navItems as item}
+				<!-- Keyed: Gym and Nutrition join the list once their visibility
+				     resolves, and an unkeyed list would hand an existing row the
+				     next item's href and accent, animating its glyph from one
+				     section's colour to another. -->
+				{#each navItems as item (item.href)}
 					<li>
 						<a
 							href={item.href}
 							class="nav-link"
-							class:active={isActive(item.href, $page.url.pathname)}
+							class:active={isActive(item.href, page.url.pathname)}
 							style="--accent: var(--section-{item.section}); --accent-ink: var(--section-{item.section}-ink);"
 							title={sidebarCollapsed ? m(item.labelKey) : undefined}
 						>
 							<span class="nav-icon-wrap">
-								<span class="nav-icon material-symbols">{item.icon}</span>
+								<span class="nav-icon material-symbols" aria-hidden="true">{item.icon}</span>
+								{#if item.href === '/messages' && dmUnreadStore.count > 0}
+									<span class="nav-badge" aria-hidden="true">
+										{dmUnreadStore.count > 9 ? '9+' : dmUnreadStore.count}
+									</span>
+								{/if}
 							</span>
 							<span class="nav-label">{m(item.labelKey)}</span>
+							{#if item.href === '/messages' && dmUnreadStore.count > 0}
+								<span class="visually-hidden">{m('nav.messagesUnread', { n: dmUnreadStore.count })}</span>
+							{/if}
 						</a>
 					</li>
 				{/each}
@@ -490,9 +680,9 @@
 						title={sidebarCollapsed ? accountLabel(auth.user.display_name) : undefined}
 						bind:this={profileBtnEl}
 					>
-						<div class="user-avatar">
-							{auth.user.display_name?.[0]?.toUpperCase() ?? '?'}
-						</div>
+						<span class="user-avatar" data-testid="sidebar-avatar">
+							<Avatar url={auth.user.avatar_url} name={auth.user.display_name} size="2.25rem" font="0.85rem" />
+						</span>
 						<div class="user-details">
 							<span class="user-name">{accountLabel(auth.user.display_name)}</span>
 							<span class="user-email">{auth.user.email}</span>
@@ -533,9 +723,9 @@
 		<div class="popover-backdrop" onclick={() => (showLogoutModal = false)} role="presentation"></div>
 		<div class="popover" bind:this={popoverEl}>
 			<div class="popover-header">
-				<div class="popover-avatar">
-					{auth.user?.display_name?.[0]?.toUpperCase() ?? '?'}
-				</div>
+				<span class="popover-avatar" data-testid="account-menu-avatar">
+					<Avatar url={auth.user?.avatar_url} name={auth.user?.display_name} size="2rem" font="0.8rem" />
+				</span>
 				<div class="popover-info">
 					<span class="popover-name">{accountLabel(auth.user?.display_name)}</span>
 					<span class="popover-email">{auth.user?.email}</span>
@@ -571,11 +761,20 @@
 					<a
 						class="popover-item"
 						role="menuitem"
-						href="/settings"
+						href="/settings/account"
 						onclick={() => (showLogoutModal = false)}
 					>
 						<span class="material-symbols" aria-hidden="true">settings</span>
 						{m('shell.settings')}
+					</a>
+					<a
+						class="popover-item"
+						role="menuitem"
+						href="/help"
+						onclick={() => (showLogoutModal = false)}
+					>
+						<span class="material-symbols" aria-hidden="true">help</span>
+						{m('shell.help')}
 					</a>
 					<div class="popover-divider" role="separator"></div>
 				{/if}
@@ -775,6 +974,30 @@
 		transition: transform var(--transition-base);
 	}
 
+	.nav-icon-wrap {
+		position: relative;
+	}
+	/* Same treatment as the bell's count, so the two badges read as one
+	   system: --color-danger-strong keeps bold white at AA in both themes. */
+	.nav-badge {
+		position: absolute;
+		top: -4px;
+		inset-inline-end: -4px;
+		min-width: 1rem;
+		height: 1rem;
+		padding: 0 var(--space-xs);
+		display: inline-grid;
+		place-items: center;
+		background: var(--color-danger-strong);
+		color: white;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		line-height: 1;
+		border-radius: 9999px;
+		font-variant-numeric: tabular-nums;
+		box-shadow: 0 0 0 2px var(--color-bg-secondary);
+	}
+
 	.nav-link:hover .nav-icon-wrap {
 		background: color-mix(in srgb, var(--accent) 24%, transparent);
 		box-shadow:
@@ -863,16 +1086,8 @@
 	}
 
 	.user-avatar {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		background: var(--gradient-avatar);
-		color: var(--color-on-primary);
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.85rem;
-		font-weight: 700;
+		border-radius: 50%;
 		flex-shrink: 0;
 		box-shadow: var(--shadow-sm);
 	}
@@ -934,16 +1149,7 @@
 		padding: var(--space-sm);
 	}
 	.popover-avatar {
-		width: 2rem;
-		height: 2rem;
-		border-radius: 50%;
-		background: var(--gradient-avatar);
-		color: var(--color-on-primary);
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.8rem;
-		font-weight: 700;
 		flex-shrink: 0;
 	}
 	.popover-info {

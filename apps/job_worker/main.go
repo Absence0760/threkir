@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,16 +15,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Absence0760/project-running/apps/job_worker/internal"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/bouncehook"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/dataexport"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/livehub"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/nativepush"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/premium"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/stravahook"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/supajwt"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/unsubscribe"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/webpush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/bouncehook"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/dataexport"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/livehub"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/nativepush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/premium"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/stravahook"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/supajwt"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/unsubscribe"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/webpush"
 )
 
 // stravaJobEnqueuer adapts SupabaseClient.EnqueueStravaEvent to the
@@ -42,6 +43,7 @@ func (e *stravaJobEnqueuer) EnqueueStravaEvent(ctx context.Context, p stravahook
 		"aspect_type": p.AspectType,
 		"owner_id":    p.OwnerID,
 		"event_time":  p.EventTime,
+		"updates":     p.Updates,
 	})
 }
 
@@ -57,24 +59,38 @@ func (b *dataexportBackend) CheckRateLimitTiered(ctx context.Context, userID, bu
 	return b.client.CheckRateLimitTiered(ctx, userID, bucket, freeMax, proMax, windowSec)
 }
 
-func (b *dataexportBackend) FetchExportRuns(ctx context.Context, userID string, limit int) ([]dataexport.ExportRun, error) {
-	rows, err := b.client.FetchExportRuns(ctx, userID, limit)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]dataexport.ExportRun, len(rows))
-	for i, r := range rows {
-		out[i] = dataexport.ExportRun{
-			ID: r.ID, UserID: r.UserID, StartedAt: r.StartedAt,
-			DurationS: r.DurationS, DistanceM: r.DistanceM,
-			Source: r.Source, ActivityType: r.ActivityType, IsDNF: r.IsDNF,
-			ExternalID: r.ExternalID,
-			Metadata:   r.Metadata, TrackURL: r.TrackURL, HrSeriesURL: r.HrSeriesURL,
-			IsPublic: r.IsPublic, EventID: r.EventID, RouteID: r.RouteID,
-			CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+func (b *dataexportBackend) StreamExportRuns(ctx context.Context, userID string, emit func([]dataexport.ExportRun) error) (dataexport.ExportCompleteness, error) {
+	comp, err := b.client.StreamExportRuns(ctx, userID, func(rows []internal.ExportRunRow) error {
+		out := make([]dataexport.ExportRun, len(rows))
+		for i, r := range rows {
+			out[i] = exportRunFromRow(r)
 		}
+		return emit(out)
+	})
+	return exportCompleteness(comp), err
+}
+
+// exportRunFromRow bridges the two identical row structs the leaf-package
+// rule keeps apart (`internal` must not import `dataexport`). A field
+// forgotten here is a column selected from the database and then dropped
+// on the way to the archive, which nothing downstream can see -- so it is
+// its own function rather than an inline literal, and
+// TestExportRunFromRowCopiesEveryField fills every field and compares the
+// two as JSON.
+func exportRunFromRow(r internal.ExportRunRow) dataexport.ExportRun {
+	return dataexport.ExportRun{
+		ID: r.ID, UserID: r.UserID, StartedAt: r.StartedAt, ConcludedAt: r.ConcludedAt,
+		DurationS: r.DurationS, DistanceM: r.DistanceM, ElevationGainM: r.ElevationGainM,
+		Source: r.Source, ActivityType: r.ActivityType, IsDNF: r.IsDNF,
+		ExternalID: r.ExternalID,
+		Metadata:   r.Metadata, TrackURL: r.TrackURL, HrSeriesURL: r.HrSeriesURL,
+		IsPublic: r.IsPublic, FollowersOnly: r.FollowersOnly, SafetyAudience: r.SafetyAudience,
+		EventID: r.EventID, RouteID: r.RouteID,
+		RaceListingID: r.RaceListingID,
+		Fastest5kS:    r.Fastest5kS, Fastest10kS: r.Fastest10kS,
+		FastestHalfMarathonS: r.FastestHalfMarathonS, FastestMarathonS: r.FastestMarathonS,
+		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
 	}
-	return out, nil
 }
 
 func (b *dataexportBackend) DownloadTrackBytes(ctx context.Context, path string) ([]dataexport.TrackPoint, error) {
@@ -101,23 +117,22 @@ func (b *dataexportBackend) DownloadTrackBytes(ctx context.Context, path string)
 	return out, nil
 }
 
-func (b *dataexportBackend) FetchExportRoutes(ctx context.Context, userID string) ([]dataexport.ExportRoute, error) {
-	rows, err := b.client.FetchExportRoutes(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]dataexport.ExportRoute, len(rows))
-	for i, r := range rows {
-		out[i] = dataexport.ExportRoute{
-			ID: r.ID, Name: r.Name, Waypoints: r.Waypoints,
-			DistanceM: r.DistanceM, ElevationM: r.ElevationM,
-			Surface: r.Surface, IsPublic: r.IsPublic, Slug: r.Slug,
-			Tags: r.Tags, Featured: r.Featured, RunCount: r.RunCount,
-			IsStarred: r.IsStarred, Description: r.Description,
-			ClubID: r.ClubID, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+func (b *dataexportBackend) StreamExportRoutes(ctx context.Context, userID string, emit func([]dataexport.ExportRoute) error) (dataexport.ExportCompleteness, error) {
+	comp, err := b.client.StreamExportRoutes(ctx, userID, func(rows []internal.ExportRouteRow) error {
+		out := make([]dataexport.ExportRoute, len(rows))
+		for i, r := range rows {
+			out[i] = dataexport.ExportRoute{
+				ID: r.ID, Name: r.Name, Waypoints: r.Waypoints,
+				DistanceM: r.DistanceM, ElevationM: r.ElevationM,
+				Surface: r.Surface, IsPublic: r.IsPublic, FollowersOnly: r.FollowersOnly, Slug: r.Slug,
+				Tags: r.Tags, Featured: r.Featured, RunCount: r.RunCount,
+				IsStarred: r.IsStarred, Description: r.Description,
+				ClubID: r.ClubID, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+			}
 		}
-	}
-	return out, nil
+		return emit(out)
+	})
+	return exportCompleteness(comp), err
 }
 
 func (b *dataexportBackend) FetchExportProfile(ctx context.Context, userID string) (map[string]interface{}, error) {
@@ -140,20 +155,89 @@ func (b *dataexportBackend) DownloadAvatar(ctx context.Context, path string) ([]
 	return b.client.DownloadAvatar(ctx, path)
 }
 
+func (b *dataexportBackend) DownloadDmImage(ctx context.Context, path string, maxBytes int64) ([]byte, error) {
+	return b.client.DownloadDmImage(ctx, path, maxBytes)
+}
+
 func (b *dataexportBackend) ListStorageObjects(ctx context.Context, bucket, prefix string) ([]string, error) {
 	return b.client.ListStorageObjects(ctx, bucket, prefix)
 }
 
-func (b *dataexportBackend) FetchExportPersonalDataTables(ctx context.Context, userID string) (map[string][]map[string]interface{}, error) {
-	return b.client.FetchExportPersonalDataTables(ctx, userID)
+func (b *dataexportBackend) StreamExportPersonalDataTables(ctx context.Context, userID string, emit func(string, []map[string]interface{}) error) (dataexport.ExportCompleteness, error) {
+	comp, err := b.client.StreamExportPersonalDataTables(ctx, userID, emit)
+	return exportCompleteness(comp), err
 }
 
-func (b *dataexportBackend) UploadExportArtifact(ctx context.Context, path, contentType string, body []byte) error {
-	return b.client.UploadExportArtifact(ctx, path, contentType, body)
+// exportCompleteness bridges the two mirror types — `internal` stays a
+// leaf and doesn't import `dataexport`, same as ExportRun/ExportRoute.
+func exportCompleteness(c internal.ExportCompleteness) dataexport.ExportCompleteness {
+	return dataexport.ExportCompleteness{Totals: c.Totals, Incomplete: c.Incomplete}
+}
+
+func (b *dataexportBackend) OpenExportArtifact(ctx context.Context, path, contentType string) dataexport.ArtifactSink {
+	return b.client.OpenExportArtifact(ctx, path, contentType)
 }
 
 func (b *dataexportBackend) CreateSignedURL(ctx context.Context, path string, ttlSec int) (string, error) {
-	return b.client.CreateSignedURL(ctx, path, ttlSec)
+	signed, err := b.client.CreateSignedURL(ctx, path, ttlSec)
+	if err != nil {
+		// A 404 from the sign endpoint means the artifact is gone — the
+		// 7-day retention sweep collected it, or an operator removed it.
+		// The queued rail reports that as an expiry; anything else is an
+		// outage and must not be dressed up as one. Translating here
+		// keeps `internal.HTTPError` out of the leaf package.
+		var hErr *internal.HTTPError
+		if errors.As(err, &hErr) && hErr.StatusCode == http.StatusNotFound {
+			return "", fmt.Errorf("%w: %v", dataexport.ErrArtifactGone, err)
+		}
+		return "", err
+	}
+	return signed, nil
+}
+
+func (b *dataexportBackend) EnqueueDataExport(ctx context.Context, userID, format string) (dataexport.ExportJobRef, error) {
+	ref, err := b.client.EnqueueDataExport(ctx, userID, format)
+	if err != nil {
+		return dataexport.ExportJobRef{}, err
+	}
+	return dataexport.ExportJobRef(ref), nil
+}
+
+func (b *dataexportBackend) LatestDataExportJob(ctx context.Context, userID string) (*dataexport.ExportJobRow, error) {
+	row, err := b.client.LatestDataExportJob(ctx, userID)
+	if err != nil || row == nil {
+		return nil, err
+	}
+	out := dataexport.ExportJobRow(*row)
+	return &out, nil
+}
+
+// dataexportBuilder adapts the shared archive builder to the worker's
+// `data_export` handler. It is also where a build failure acquires the
+// machine token the subject's client renders — the leaf package reports
+// WHAT failed, this names it.
+type dataexportBuilder struct {
+	backend dataexport.Backend
+	log     *slog.Logger
+}
+
+func (b *dataexportBuilder) BuildExportArtifact(ctx context.Context, userID, format string) (internal.ExportArtifact, error) {
+	built, err := dataexport.BuildArtifact(ctx, b.backend, b.log, userID, format)
+	if err != nil {
+		code := "build_failed"
+		if section := dataexport.SectionOf(err); section != "" {
+			code = section + "_fetch_failed"
+		} else if errors.Is(err, dataexport.ErrUpload) {
+			code = "upload_failed"
+		}
+		return internal.ExportArtifact{}, &internal.ExportBuildError{Code: code, Err: err}
+	}
+	return internal.ExportArtifact{
+		ObjectPath: built.ObjectPath,
+		Runs:       built.Runs,
+		TotalRuns:  built.TotalRuns,
+		Complete:   built.Complete,
+	}, nil
 }
 
 // premiumBackend adapts SupabaseClient to premium.Backend.
@@ -312,8 +396,8 @@ func main() {
 	// SMTP_HOST is unset the worker still drains every other kind, and
 	// notification_email jobs finish done while leaving the rows pending
 	// (so a later email-enabled deploy can send them). Local dev points
-	// at the Supabase Mailpit catcher: SMTP_HOST=127.0.0.1 SMTP_PORT=54325,
-	// no auth, inspect at http://127.0.0.1:54324. Production sets a real
+	// at the Supabase Mailpit catcher: SMTP_HOST=127.0.0.1 SMTP_PORT=24325,
+	// no auth, inspect at http://127.0.0.1:24324. Production sets a real
 	// provider (Resend / SES SMTP) with SMTP_USERNAME + SMTP_PASSWORD.
 	var emailSender internal.EmailSender
 	if smtpHost := os.Getenv("SMTP_HOST"); smtpHost != "" {
@@ -373,36 +457,30 @@ func main() {
 		logger.Warn("web_push: DISABLED — VAPID_PUBLIC_KEY unset; web_push jobs finish without sending")
 	}
 
-	// Native-push sender for kind='native_push' jobs (FCM HTTP v1 for Android,
-	// APNs HTTP/2 for iOS). Optional + fail-closed — when neither transport is
-	// credentialed the worker still drains every other kind, and native_push
-	// jobs finish done while leaving the rows pending (so a later credentialed
-	// deploy delivers the backlog). FCM needs FCM_SERVICE_ACCOUNT_JSON +
-	// FCM_PROJECT_ID; APNs needs APNS_KEY_P8 + APNS_KEY_ID + APNS_TEAM_ID +
-	// APNS_TOPIC (+ optional APNS_SANDBOX=1). Either group alone enables that
-	// platform; an invalid credential fails the worker at startup (exit 2).
+	// Native-push sender for kind='native_push' jobs — one FCM HTTP v1 POST per
+	// device, Android and iOS alike. Optional + fail-closed: with the
+	// credentials unset the worker still drains every other kind, and
+	// native_push jobs finish done while leaving the rows pending (so a later
+	// credentialed deploy delivers the backlog). Needs FCM_SERVICE_ACCOUNT_JSON
+	// + FCM_PROJECT_ID; an invalid credential fails the worker at startup
+	// (exit 2). There is no APNs group: iOS is delivered by FCM, and the APNs
+	// .p8 is uploaded to the Firebase project rather than held here — see the
+	// internal/nativepush package doc.
 	var nativePushSender internal.NativePushSender
 	nativeCfg := nativepush.Config{
 		FCMServiceAccountJSON: []byte(os.Getenv("FCM_SERVICE_ACCOUNT_JSON")),
 		FCMProjectID:          os.Getenv("FCM_PROJECT_ID"),
-		APNSKeyP8:             []byte(os.Getenv("APNS_KEY_P8")),
-		APNSKeyID:             os.Getenv("APNS_KEY_ID"),
-		APNSTeamID:            os.Getenv("APNS_TEAM_ID"),
-		APNSTopic:             os.Getenv("APNS_TOPIC"),
-		APNSSandbox:           os.Getenv("APNS_SANDBOX") == "1",
 	}
 	if sender, err := nativepush.NewSender(nativeCfg, client.HTTP); err != nil {
 		// A configured-but-invalid credential is a deploy misconfiguration —
 		// fail loudly rather than silently dropping every native push.
-		logger.Error("native_push: invalid FCM/APNs configuration — refusing to start", "err", err)
+		logger.Error("native_push: invalid FCM configuration — refusing to start", "err", err)
 		os.Exit(2)
 	} else if sender != nil {
 		nativePushSender = sender
-		logger.Info("native_push: enabled",
-			"fcm", nativeCfg.FCMProjectID != "",
-			"apns", len(nativeCfg.APNSKeyP8) > 0)
+		logger.Info("native_push: enabled", "project", nativeCfg.FCMProjectID)
 	} else {
-		logger.Warn("native_push: DISABLED — no FCM/APNs credentials set; native_push jobs finish without sending")
+		logger.Warn("native_push: DISABLED — no FCM credentials set; native_push jobs finish without sending")
 	}
 
 	// SMS sender for kind='safety_sms' jobs (the overdue-runner SMS escalation
@@ -451,6 +529,13 @@ func main() {
 	// enabling that is a separate CISO/counsel step (decisions / email.md).
 	digestUnsubSecret := os.Getenv("WEEKLY_DIGEST_UNSUB_SECRET")
 
+	// Keys the account-deletion receipt's send-once digest. Same env var the
+	// delete-account Edge Function reads, and it must be set on BOTH processes
+	// to key both records — setting it here alone is fine and vice versa, each
+	// falls back to its own legacy digest independently. Optional; unset keeps
+	// today's behaviour exactly (decisions § 1600).
+	deletionAuditKey := os.Getenv("DELETION_AUDIT_KEY")
+
 	worker := &internal.Worker{
 		Backend:           client,
 		Matcher:           matcher,
@@ -461,6 +546,7 @@ func main() {
 		Sms:               smsSender,
 		AppBaseURL:        appBaseURL,
 		DigestUnsubSecret: digestUnsubSecret,
+		DeletionAuditKey:  deletionAuditKey,
 		Config: internal.Config{
 			WorkerID:       workerID,
 			PollInterval:   2 * time.Second,
@@ -592,16 +678,28 @@ func main() {
 		// authorizer's run-meta fetcher (cache is shared per room).
 		Persister: client,
 		RunMeta:   runMetaFetcher,
+		HeartRate: runMetaFetcher,
 	}
-	// Start the idle-room GC sweeper. Only the in-process Hub needs
-	// it — the Redis backend's per-room key has a 24h TTL set on
-	// every publish. /audit/livehub C2 + M4.
+	// Reap idle push-rate-limiter buckets. They live on the Server, not
+	// the Hub, so this is backend-agnostic — gating it on the in-process
+	// Hub left every Redis deploy leaking one bucket per distinct run for
+	// the process lifetime, the exact leak StartLimiterGC exists to close.
+	hubSrv.StartLimiterGC(ctx, livehub.GCInterval, livehub.IdleRoomTTL)
+	// Start the idle-room GC sweeper. Both backends need one: the Redis
+	// backend's per-run KEYS carry a 24h TTL, but its per-process zone +
+	// run-meta room cache does not. /audit/livehub C2 + M4.
+	if redisHub, ok := hub.(*livehub.RedisHub); ok {
+		redisHub.StartGC(ctx, livehub.GCInterval, livehub.IdleRoomTTL)
+	}
+	if skip := livehub.BridgeSkipReason(hub, serviceKey); skip != "" {
+		// A dropped bridge used to be silent on the Redis path, so the one
+		// population the transport rollover exists for — a hub spectator
+		// watching a runner still on legacy Realtime — saw nothing, and
+		// nothing in the log said why (decisions § 756).
+		logger.Warn("live-ping bridge: DISABLED", "reason", skip)
+	}
 	if inProc, ok := hub.(*livehub.Hub); ok {
 		inProc.StartGC(ctx, livehub.GCInterval, livehub.IdleRoomTTL)
-		// Reap idle push-rate-limiter buckets on the same cadence — they
-		// live on the Server, not the Hub, so the room GC above doesn't
-		// touch them (they would otherwise leak one entry per distinct run).
-		hubSrv.StartLimiterGC(ctx, livehub.GCInterval, livehub.IdleRoomTTL)
 		// Live-ping Bridge: republish legacy Supabase Realtime pings
 		// (recorders still on live_run_pings) into hub rooms, so a hub
 		// spectator sees a run recorded on the legacy transport during
@@ -614,8 +712,6 @@ func main() {
 			bridge := livehub.NewBridge(inProc, client, logger.With("component", "livehub-bridge"))
 			go bridge.Run(ctx)
 			logger.Info("live-ping bridge: enabled (Realtime → hub republish)")
-		} else {
-			logger.Warn("live-ping bridge: DISABLED — no service key; hub spectators won't see legacy-transport runs")
 		}
 	}
 	if authorizer != nil {
@@ -649,21 +745,35 @@ func main() {
 		logger.Warn("stravahook: DISABLED — STRAVA_WEBHOOK_SECRET / STRAVA_VERIFY_TOKEN unset; webhook endpoint returns 503")
 	}
 
-	// Data export endpoint — POST /v1/export. JWT-authed (the same
-	// verifier the live hub uses), service-role for the Storage upload
-	// + signed URL. Replaces the export-data Edge Function. Refuses
-	// with 503 when no verification is configured — matching the live
-	// hub's posture.
+	// Data export endpoints — POST /v1/export/jobs + GET
+	// /v1/export/jobs/latest. JWT-authed (the same verifier the live hub
+	// uses), service-role for the Storage upload + signed URL. Replaces
+	// the export-data Edge Function. Refuses with 503 when no
+	// verification is configured — matching the live hub's posture.
 	var exportSrv *dataexport.Server
 	if verifier.Enabled() {
+		exportBackend := &dataexportBackend{client: client}
+		exportLog := logger.With("component", "dataexport")
 		exportSrv = &dataexport.Server{
 			Verifier: verifier,
-			Backend:  &dataexportBackend{client: client},
-			Log:      logger.With("component", "dataexport"),
+			Backend:  exportBackend,
+			Log:      exportLog,
+			// The web client posts from the site's origin, never the
+			// worker's, so the browser rail needs an allowlist or its
+			// preflight is refused. Shares LIVEHUB_ALLOWED_ORIGINS
+			// because it is the same site talking to the same service;
+			// a second variable would be one more thing to set and
+			// exactly one more thing to forget.
+			AllowedOrigins: allowedOrigins,
 		}
-		logger.Info("dataexport: enabled (export endpoint mounted at /v1/export)")
+		// The same backend drains the queue. Wiring it here rather than
+		// beside the Worker literal keeps the two halves of the export
+		// on one condition: an endpoint that can accept a request but no
+		// worker to serve it would leave every export queued for ever.
+		worker.DataExport = &dataexportBuilder{backend: exportBackend, log: exportLog}
+		logger.Info("dataexport: enabled (queued rail at /v1/export/jobs + /v1/export/jobs/latest)")
 	} else {
-		logger.Warn("dataexport: DISABLED — no token verification configured; export endpoint returns 503")
+		logger.Warn("dataexport: DISABLED — no token verification configured; export endpoint returns 503 and data_export jobs fail")
 	}
 
 	// Premium endpoints — Pro-tier-gated POSTs at /v1/premium/{vo2max,

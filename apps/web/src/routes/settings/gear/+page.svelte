@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMyGear,
+		fetchRuns,
 		createGear,
 		updateGear,
 		retireGear,
@@ -17,21 +18,30 @@
 		renameGearRotation,
 		deleteGearRotation,
 		setGearRotationMembers,
+		type Gear,
 		type GearKind,
 		type GearWithDistance,
 		type GearWearArea,
 		type GearWearLog,
 		type GearRotationWithMembers,
-	} from '$lib/core/data';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { gearWear } from '$lib/gear/gear_wear';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+		type RunColumns,
+	} from '#lib/core/data.ts';
+	import type { Run } from '#lib/types.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { gearWear } from '#lib/gear/gear_wear.ts';
+	import { rotationPick } from '#lib/gear/rotation_pick.ts';
+	import { gearBackfillCandidates, gearPurchaseSince } from '#lib/gear/gear_backfill.ts';
+	import GearBackfillModal from '#lib/components/GearBackfillModal.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	let gear = $state<GearWithDistance[]>([]);
 	let loading = $state(true);
@@ -52,6 +62,19 @@
 
 	// Wear log — loaded lazily when the edit modal opens for an existing item.
 	let wearLogs = $state<GearWearLog[]>([]);
+	/// Bumped by every replacement of the list above, so a DEFERRED restore
+	/// can tell whether the list it snapshotted is still the one on screen.
+	/// The wear-log delete commits when the undo window closes, which may be
+	/// after the runner has closed this modal and opened another pair's —
+	/// and a restore that fires then writes one pair's observations under
+	/// another pair's name. Every write goes through `setWearLogs` so a new
+	/// one cannot forget to bump it; `gear_undo_scope.test.ts` pins that.
+	let wearLogsEpoch = $state(0);
+
+	function setWearLogs(next: GearWearLog[]) {
+		wearLogs = next;
+		wearLogsEpoch += 1;
+	}
 	let wearLogLoading = $state(false);
 	let wearNote = $state('');
 	let wearArea = $state<GearWearArea | ''>('');
@@ -70,7 +93,7 @@
 	async function loadWearLogs(gearId: string) {
 		wearLogLoading = true;
 		try {
-			wearLogs = await fetchGearWearLogs(gearId);
+			setWearLogs(await fetchGearWearLogs(gearId));
 		} finally {
 			wearLogLoading = false;
 		}
@@ -86,11 +109,11 @@
 				note,
 				area: wearArea || null,
 			});
-			wearLogs = [created, ...wearLogs];
+			setWearLogs([created, ...wearLogs]);
 			wearNote = '';
 			wearArea = '';
 		} catch (e) {
-			showToast(t('settingsGear.wearLogAddFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.wearLogAddFailed', { error: errorCopy(e, t, 'settingsGear.wearLogAddFailed') }), 'error');
 		} finally {
 			addingWear = false;
 		}
@@ -104,17 +127,25 @@
 	// their confirms: those cascade.
 	function removeWearLog(log: GearWearLog) {
 		const before = wearLogs;
-		wearLogs = wearLogs.filter((l) => l.id !== log.id);
+		setWearLogs(wearLogs.filter((l) => l.id !== log.id));
+		const epoch = wearLogsEpoch;
 		deferDestructive({
 			message: t('settingsGear.wearLogRemoved'),
 			commit: () => deleteGearWearLog(log.id),
 			restore: () => {
-				wearLogs = before;
+				// Undo runs immediately, so the epoch still matches and the
+				// list goes back. A failed COMMIT can arrive much later,
+				// against a list that has moved on — a different pair's
+				// modal, a reload, a note added since. The row survived
+				// either way (the fail-safe direction) and `onCommitError`
+				// still says so, so there is nothing to put back here.
+				if (wearLogsEpoch !== epoch) return;
+				setWearLogs(before);
 			},
 			onCommitError: (e) =>
 				showToast(
 					t('settingsGear.wearLogDeleteFailed', {
-						error: e instanceof Error ? e.message : String(e),
+						error: errorCopy(e, t, 'settingsGear.wearLogDeleteFailed'),
 					}),
 					'error',
 				),
@@ -153,7 +184,7 @@
 			newRotationName = '';
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		} finally {
 			creatingRotation = false;
 		}
@@ -169,7 +200,7 @@
 			renameRotationName = '';
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		}
 	}
 
@@ -180,7 +211,7 @@
 			await deleteGearRotation(r.id);
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		} finally {
 			confirmingRotationDelete = null;
 		}
@@ -207,9 +238,48 @@
 			managingRotation = null;
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		} finally {
 			savingMembers = false;
+		}
+	}
+
+	// Which pair of a rotation comes out next. A rotation may hold both shoes
+	// and bikes (§183) while the star is scoped to (owner, kind), so the answer
+	// is computed within the kind the tab is showing.
+	function nextUpFor(r: GearRotationWithMembers) {
+		const memberIds = new Set(r.gear_ids);
+		const members = gear.filter((g) => memberIds.has(g.id) && g.kind === activeTab);
+		const pick = rotationPick(
+			members.map((g) => ({
+				id: g.id,
+				totalDistanceM: g.total_distance_m,
+				targetDistanceM: g.target_distance_m,
+				retiredAt: g.retired_at,
+				isCurrent: g.is_default,
+			})),
+		);
+		// Fewer than two pairs still in service is not a rotation — there is
+		// nothing to choose between. Gate on what the pick actually ranked, not
+		// on the membership count: a retired member is dropped by the pick, so
+		// counting memberships offers a "next up" for a single usable pair.
+		if (pick.ranked.length < 2) return null;
+		const picked = members.find((g) => g.id === pick.pickId);
+		if (!picked) return null;
+		return { picked, isCurrent: pick.pickIsCurrent, allWorn: pick.allWorn };
+	}
+
+	let movingStar = $state(false);
+
+	async function handleWearNext(g: GearWithDistance) {
+		movingStar = true;
+		try {
+			await setDefaultGear(g.id, g.kind);
+			gear = await fetchMyGear();
+		} catch (e) {
+			showToast(t('settingsGear.failed', { error: errorCopy(e, t, 'settingsGear.failed') }), 'error');
+		} finally {
+			movingStar = false;
 		}
 	}
 
@@ -266,7 +336,7 @@
 		formTargetDisplay = '';
 		formNotes = '';
 		editingId = null;
-		wearLogs = [];
+		setWearLogs([]);
 		wearNote = '';
 		wearArea = '';
 		dirty.rebaseline();
@@ -280,11 +350,71 @@
 		formPurchased = g.purchased_at ?? '';
 		formTargetDisplay = metresToTargetDisplay(g.target_distance_m);
 		formNotes = g.notes ?? '';
-		wearLogs = [];
+		setWearLogs([]);
 		wearNote = '';
 		wearArea = '';
 		dirty.rebaseline();
 		loadWearLogs(g.id);
+	}
+
+	// Post-create backfill offer: the gear the runner just registered, plus the
+	// past runs it could plausibly have been worn for. Non-null only while the
+	// prompt is up, so each offer gets a fresh modal instance.
+	/// The columns the backfill offer reads, declared once: the tuple is what
+	/// `fetchRuns` projects AND what the candidate type is `Pick`ed from, so the
+	/// prompt cannot read a field the read did not fetch.
+	const BACKFILL_RUN_COLUMNS = [
+		'id',
+		'started_at',
+		'distance_m',
+		'activity_type',
+	] as const satisfies RunColumns;
+	type BackfillRun = Pick<Run, (typeof BACKFILL_RUN_COLUMNS)[number]>;
+	let backfill = $state<{ gear: Gear; candidates: BackfillRun[] } | null>(null);
+
+	/// A pair of shoes is rarely registered the day it's bought — by the time
+	/// the runner adds it, some of its mileage is already in the app on runs
+	/// that carry no gear. Without this the retirement target starts wrong and
+	/// stays wrong. Offered only for a purchase date in the past; a gear item
+	/// with no purchase date has no window to search and prompts nothing.
+	async function maybeOfferBackfill(created: Gear) {
+		const sinceMs = gearPurchaseSince(created.purchased_at);
+		if (sinceMs == null || sinceMs > Date.now()) return;
+		try {
+			// Bound the read at the purchase date and narrow the columns: the
+			// window can be years wide, and the prompt reads four fields.
+			const runs = await fetchRuns({
+				columns: BACKFILL_RUN_COLUMNS,
+				startedAtFrom: new Date(sinceMs).toISOString(),
+			});
+			const candidates = gearBackfillCandidates({
+				gearKind: created.kind,
+				sinceMs,
+				runs,
+			});
+			if (candidates.length === 0) return;
+			backfill = { gear: created, candidates };
+		} catch (e) {
+			// The gear itself is already saved. An offer that can't be built
+			// is not a failed save, so it degrades to nothing rather than
+			// surfacing an error the runner can't act on.
+			console.error('gear backfill offer failed', e);
+		}
+	}
+
+	async function handleBackfillAttached(count: number) {
+		const name = backfill?.gear.name ?? '';
+		backfill = null;
+		if (count <= 0) return;
+		showToast(
+			t(count === 1 ? 'settingsGear.backfillAttachedOne' : 'settingsGear.backfillAttached', {
+				name,
+				n: count,
+			}),
+			'success',
+		);
+		// The attached runs now count towards this item's accrued distance.
+		gear = await fetchMyGear();
 	}
 
 	async function handleSave() {
@@ -292,6 +422,7 @@
 		saving = true;
 		try {
 			const target = targetDisplayToMetres(formTargetDisplay);
+			let created: Gear | null = null;
 			if (editingId) {
 				await updateGear(editingId, {
 					name: formName.trim(),
@@ -302,7 +433,7 @@
 					notes: formNotes.trim() || null,
 				});
 			} else {
-				await createGear({
+				created = await createGear({
 					kind: activeTab,
 					name: formName.trim(),
 					brand: formBrand.trim() || null,
@@ -315,8 +446,9 @@
 			gear = await fetchMyGear();
 			resetForm();
 			showCreate = false;
+			if (created) await maybeOfferBackfill(created);
 		} catch (e) {
-			showToast(t('settingsGear.saveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.saveFailed', { error: errorCopy(e, t, 'settingsGear.saveFailed') }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -331,7 +463,7 @@
 			await setDefaultGear(g.is_default ? null : g.id, g.kind);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: errorCopy(e, t, 'settingsGear.failed') }), 'error');
 		}
 	}
 
@@ -344,7 +476,7 @@
 			}
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: errorCopy(e, t, 'settingsGear.failed') }), 'error');
 		}
 	}
 
@@ -354,7 +486,7 @@
 			await deleteGear(confirmingDelete.id);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.deleteFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.deleteFailed', { error: errorCopy(e, t, 'settingsGear.deleteFailed') }), 'error');
 		} finally {
 			confirmingDelete = null;
 		}
@@ -428,39 +560,35 @@
 			{#each Array(3) as _, i (i)}
 				<div class="skel-row">
 					<div class="skel-info">
-						<span class="skel skel-line skel-w-40"></span>
-						<span class="skel skel-bar"></span>
-						<span class="skel skel-line skel-w-30"></span>
+						<SkeletonBlock height="0.85rem" width="40%" />
+						<SkeletonBlock height="0.4rem" radius="3px" />
+						<SkeletonBlock height="0.85rem" width="30%" />
 					</div>
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{t('settingsGear.loadingGear')}</p>
+		<p class="visually-hidden" role="status">{t('settingsGear.loadingGear')}</p>
 	{:else if visible.length === 0}
-		<section class="card empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">
-				{activeTab === 'shoe' ? 'directions_run' : 'directions_bike'}
-			</span>
-			<h3>{activeTab === 'shoe' ? t('settingsGear.emptyShoesTitle') : t('settingsGear.emptyBikesTitle')}</h3>
-			<p class="empty-text">
-				{#if activeTab === 'shoe'}
-					{t('settingsGear.emptyShoesText')}
-				{:else}
-					{t('settingsGear.emptyBikesText')}
-				{/if}
-			</p>
-			<button
-				class="btn btn-primary"
-				type="button"
-				onclick={() => {
-					resetForm();
-					showCreate = true;
-				}}
-			>
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{activeTab === 'shoe' ? t('settingsGear.addShoes') : t('settingsGear.addBike')}
-			</button>
-		</section>
+		<EmptyState
+			icon={activeTab === 'shoe' ? 'directions_run' : 'directions_bike'}
+			title={activeTab === 'shoe' ? t('settingsGear.emptyShoesTitle') : t('settingsGear.emptyBikesTitle')}
+			text={activeTab === 'shoe' ? t('settingsGear.emptyShoesText') : t('settingsGear.emptyBikesText')}
+			data-testid="gear-empty"
+		>
+			{#snippet actions()}
+				<button
+					class="btn btn-primary"
+					type="button"
+					onclick={() => {
+						resetForm();
+						showCreate = true;
+					}}
+				>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{activeTab === 'shoe' ? t('settingsGear.addShoes') : t('settingsGear.addBike')}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		{#if active.length > 0}
 			<ul class="gear-list">
@@ -587,12 +715,40 @@
 			{:else}
 				<ul class="rotation-list">
 					{#each rotations as r (r.id)}
+						{@const next = nextUpFor(r)}
 						<li class="rotation-row">
 							<div class="rotation-info">
 								<strong>{r.name}</strong>
 								<span class="muted">
 									{t(r.gear_ids.length === 1 ? 'settingsGear.rotationMemberCount' : 'settingsGear.rotationMemberCountMany', { n: r.gear_ids.length })}
 								</span>
+								{#if next}
+									<div class="rotation-next" data-testid="rotation-next">
+										<span class="rotation-next-name">
+											{t('settingsGear.rotationNextUp', { name: next.picked.name })}
+										</span>
+										{#if next.isCurrent}
+											<span class="muted">{t('settingsGear.rotationNextUpIsCurrent')}</span>
+										{:else}
+											<button
+												class="btn-outline btn-sm"
+												type="button"
+												disabled={movingStar}
+												aria-label={t('settingsGear.rotationMakeCurrentLabel', { name: next.picked.name })}
+												onclick={() => handleWearNext(next.picked)}
+											>
+												{t('settingsGear.rotationMakeCurrent')}
+											</button>
+										{/if}
+										<span class="muted">{t('settingsGear.rotationNextUpWhy')}</span>
+									</div>
+									{#if next.allWorn}
+										<p class="rotation-next-warn">
+											<span class="material-symbols" aria-hidden="true">change_circle</span>
+											{t('settingsGear.rotationAllWorn')}
+										</p>
+									{/if}
+								{/if}
 							</div>
 							<div class="rotation-actions">
 								<button class="btn-outline btn-sm" onclick={() => openManageRotation(r)}>
@@ -698,6 +854,18 @@
 	onconfirm={handleDeleteRotation}
 	oncancel={() => (confirmingRotationDelete = null)}
 />
+
+{#if backfill}
+	<GearBackfillModal
+		open={true}
+		gearId={backfill.gear.id}
+		gearName={backfill.gear.name}
+		gearKind={backfill.gear.kind}
+		candidates={backfill.candidates}
+		onclose={() => (backfill = null)}
+		onattached={handleBackfillAttached}
+	/>
+{/if}
 
 <UnsavedChangesGuard isDirty={gearFormDirty} />
 
@@ -887,36 +1055,6 @@
 		font-weight: 600;
 	}
 	.spacer { flex: 1; }
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
 
 	.skeleton-stack {
 		display: flex;
@@ -934,30 +1072,6 @@
 		pointer-events: none;
 	}
 	.skel-info { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-bar { height: 0.4rem; border-radius: 3px; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
 	.sr-only {
 		position: absolute;
 		width: 1px;
@@ -1319,6 +1433,28 @@
 		gap: 0.2rem;
 		min-width: 0;
 	}
+	.rotation-next {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 0.2rem;
+		font-size: 0.85rem;
+	}
+	.rotation-next-name {
+		color: var(--color-text);
+		font-weight: 600;
+	}
+	.rotation-next-warn {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		margin: 0.3rem 0 0;
+		font-size: 0.8rem;
+		line-height: 1.4;
+		color: var(--color-danger-text);
+	}
+	.rotation-next-warn .material-symbols { font-size: 1rem; }
 	.rotation-actions {
 		display: flex;
 		align-items: center;

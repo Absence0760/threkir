@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -42,6 +43,24 @@ void main() {
       expect(result, LogAction.lift);
       // The overlay is torn down once a pick is made.
       expect(find.byTooltip('Log lift'), findsNothing);
+    });
+
+    testWidgets('a switched-off modality is left out, and the remaining pair '
+        'sits level either side of the button', (tester) async {
+      await tester.pumpWidget(_harness((context) async {
+        await showLogSpeedDial(context: context, hidden: {LogAction.lift});
+      }));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      final run = tester.getCenter(find.byTooltip('Log run'));
+      final food = tester.getCenter(find.byTooltip('Log food'));
+      expect(run.dy, moreOrLessEquals(food.dy),
+          reason: 'two items on the top-and-side slots read as lopsided');
+      final mid = tester.view.physicalSize.width / tester.view.devicePixelRatio / 2;
+      expect(run.dx, lessThan(mid));
+      expect(food.dx, greaterThan(mid));
     });
 
     testWidgets('each fan item renders its label as visible text',
@@ -119,6 +138,43 @@ void main() {
       expect(resolved, isTrue);
       expect(result, isNull);
       expect(find.byTooltip('Log run'), findsNothing);
+    });
+
+    testWidgets('the system back gesture dismisses and resolves null',
+        (tester) async {
+      // The docstring has always promised "null on scrim tap / back". As a
+      // bare OverlayEntry the fan was not on the Navigator, so back reached
+      // straight past it to the app's only route and closed the app with the
+      // fan still painted.
+      final exits = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemNavigator.pop') exits.add(call.method);
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      var resolved = false;
+      LogAction? result;
+      await tester.pumpWidget(_harness((context) async {
+        result = await showLogSpeedDial(context: context);
+        resolved = true;
+      }));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Log run'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(resolved, isTrue);
+      expect(result, isNull);
+      expect(find.byTooltip('Log run'), findsNothing);
+      expect(exits, isEmpty, reason: 'back closed the fan, not the app');
+      expect(find.text('open'), findsOneWidget);
     });
 
     testWidgets('the recent action takes the top-centre slot (highest in the arc)',

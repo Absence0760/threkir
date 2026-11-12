@@ -1,17 +1,18 @@
 import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_SITE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
 import {
 	buildRunCountByRouteId,
 	buildSitemap,
 	composeEntries,
+	courseEntries,
 	entityEntries,
 	learnEntries,
-} from '$lib/share/sitemap';
-import { listGuides } from '$lib/learn/guides';
-import { CATEGORIES } from '$lib/learn/categories';
-import { DEFAULT_SITE_URL } from '$lib/core/site_url';
+} from '#lib/share/sitemap.ts';
+import { listGuides } from '#lib/learn/guides.ts';
+import { CATEGORIES } from '#lib/learn/categories.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
+import { TABLES } from '#lib/core/schema.ts';
 
 // Build-time sitemap. `adapter-static` runs this once during the
 // production build because of `prerender = true`; the resulting
@@ -22,7 +23,7 @@ import { DEFAULT_SITE_URL } from '$lib/core/site_url';
 // readable per their grant statements). Anon JWT only — the
 // service-role key never enters the static bundle.
 //
-// PUBLIC_SITE_URL (`$env/dynamic/public`) lets preview vs prod use
+// PUBLIC_SITE_URL (`$app/env/public`) lets preview vs prod use
 // different canonical hosts; defaults to https://threkir.com when
 // unset so the local prerender still emits sensible URLs.
 export const prerender = true;
@@ -45,7 +46,7 @@ const MAX_ENTITIES = 10_000;
 const SITEMAP_MAX_URLS = 50_000;
 
 export const GET: RequestHandler = async () => {
-	const base = env.PUBLIC_SITE_URL || DEFAULT_SITE_URL;
+	const base = siteOrigin(PUBLIC_SITE_URL);
 	// Tolerate a missing or unreachable Supabase instance at build
 	// time — preview / local builds shouldn't hard-fail the static
 	// build over a sitemap. Fall through to a top-level-only sitemap
@@ -66,12 +67,21 @@ export const GET: RequestHandler = async () => {
 	let events: Array<{ id: string; updated_at: string | null }> = [];
 	let clubs: Array<{ slug: string; updated_at: string | null }> = [];
 	let races: Array<{ id: string; updated_at: string | null }> = [];
+	// Park courses (decisions § 2394): curated catalogue pages that name no
+	// runner. `parks` RLS hides an inactive park and `global_segments` a
+	// pulled segment, so the inner joins drop both.
+	let courses: Array<{
+		slug: string;
+		park_slug: string;
+		region_code: string;
+		updated_at: string | null;
+	}> = [];
 	if (PUBLIC_SUPABASE_URL && PUBLIC_SUPABASE_ANON_KEY) {
 		try {
 			const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 				auth: { persistSession: false },
 			});
-			const [routesRes, runsRes, popularityRes, eventsRes, clubsRes, racesRes] =
+			const [routesRes, runsRes, popularityRes, eventsRes, clubsRes, racesRes, coursesRes] =
 				await Promise.all([
 				supabase
 					.from('public_routes')
@@ -121,6 +131,12 @@ export const GET: RequestHandler = async () => {
 					.select('id, updated_at')
 					.order('race_date', { ascending: false })
 					.limit(MAX_ENTITIES),
+				supabase
+					.from(TABLES.park_courses)
+					.select(
+						'slug, created_at, status_checked_at, parks!inner(slug, region_code), global_segments!inner(id)',
+					)
+					.limit(MAX_ENTITIES),
 			]);
 			if (routesRes.error) {
 				console.warn('sitemap: public_routes fetch failed', routesRes.error);
@@ -134,6 +150,7 @@ export const GET: RequestHandler = async () => {
 			if (eventsRes.error) console.warn('sitemap: events fetch failed', eventsRes.error);
 			if (clubsRes.error) console.warn('sitemap: clubs fetch failed', clubsRes.error);
 			if (racesRes.error) console.warn('sitemap: race_listings fetch failed', racesRes.error);
+			if (coursesRes.error) console.warn('sitemap: park_courses fetch failed', coursesRes.error);
 			routes = routesRes.data ?? [];
 			runs = (runsRes.data ?? []).map((r) => ({
 				id: r.id,
@@ -145,6 +162,20 @@ export const GET: RequestHandler = async () => {
 			events = (eventsRes.data ?? []).map((e) => ({ id: e.id, updated_at: e.updated_at }));
 			clubs = clubsRes.data ?? [];
 			races = racesRes.data ?? [];
+			courses = (coursesRes.data ?? []).flatMap((c) => {
+				// A to-one embed; the untyped client types it as a list.
+				const park = Array.isArray(c.parks) ? c.parks[0] : c.parks;
+				return park
+					? [
+							{
+								slug: c.slug,
+								park_slug: park.slug,
+								region_code: park.region_code,
+								updated_at: c.status_checked_at ?? c.created_at,
+							},
+						]
+					: [];
+			});
 		} catch (err) {
 			console.warn('sitemap: supabase fetch failed; emitting top-level-only', err);
 		}
@@ -164,6 +195,7 @@ export const GET: RequestHandler = async () => {
 		...composeEntries(base, routes, runs, runCountByRouteId),
 		...learn,
 		...entityEntries(base, events, clubs, races),
+		...courseEntries(base, courses),
 	];
 	if (entries.length > SITEMAP_MAX_URLS) {
 		// Not a silent cap — surface that the single-file sitemap has

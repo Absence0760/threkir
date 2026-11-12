@@ -27,6 +27,33 @@ void main() {
           'source': 'watch',
         };
 
+    test('a race run carries its event through to the promoted column', () {
+      // `runs.event_id` exists so a run detail can get back to the event it
+      // was part of. The key rides the bag between the watch bridge and
+      // `runRowFromRun`, which promotes it and strips it — so the column is
+      // the only stored copy and no bag copy can shadow a later edit.
+      final run = runFromWatchPayload(
+        _basePayload()..['event_id'] = 'event-1',
+      );
+      expect(run.metadata?[MetadataKeys.eventId], 'event-1');
+      final row = runRowFromRun(run, userId: 'owner-1');
+      expect(row.eventId, 'event-1');
+      expect(row.toJson()[RunRow.colMetadata], isNull);
+    });
+
+    test('a blank or non-string event is dropped rather than sent as one', () {
+      // The column is a uuid FK: Postgres refuses `''` and takes the whole
+      // run upsert with it, so an empty stamp would lose the RUN, not the
+      // link — an auxiliary field breaking the core write.
+      for (final bad in <Object?>['', 42, null]) {
+        final raw = _basePayload();
+        if (bad != null) raw['event_id'] = bad;
+        final run = runFromWatchPayload(raw);
+        expect(run.metadata?[MetadataKeys.eventId], isNull, reason: '$bad');
+        expect(runRowFromRun(run, userId: 'owner-1').eventId, isNull);
+      }
+    });
+
     test('decodes the required fields', () {
       final run = runFromWatchPayload(_basePayload());
       expect(run.id, 'r-1');
@@ -51,6 +78,35 @@ void main() {
       // must fail on the parse side where drain quarantines it.
       expect(() => runFromWatchPayload(_basePayload()..remove('id')),
           throwsFormatException);
+    });
+
+    test('an impossible start throws instead of landing on a rolled-over day',
+        () {
+      // `DateTime.parse` answers this with 2027-02-18T04:40:39Z — a run filed
+      // ten months from the day the watch recorded it, and nothing downstream
+      // can tell that from a real start. Quarantining the entry is the same
+      // treatment a blank id gets above (decisions § 1430).
+      expect(DateTime.parse('2026-13-45T99:99:99Z'),
+          DateTime.utc(2027, 2, 18, 4, 40, 39));
+      expect(
+          () => runFromWatchPayload(
+              _basePayload()..['started_at'] = '2026-13-45T99:99:99Z'),
+          throwsFormatException);
+      expect(
+          () => runFromWatchPayload(
+              _basePayload()..['started_at'] = '2026-06-32'),
+          throwsFormatException);
+    });
+
+    test('an impossible point timestamp is no timestamp, not a wrong one', () {
+      final raw = _basePayload()
+        ..['track'] = [
+          {'lat': 37.0, 'lng': -122.0, 'ts': '2026-04-32T07:30:05Z'},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.single.timestamp, isNull);
+      expect(run.track.single.lat, 37.0,
+          reason: 'an unreadable stamp must not discard the fix itself');
     });
 
     test('decodes track waypoints with optional ele + ts', () {
@@ -129,6 +185,230 @@ void main() {
       // "overwrite with {}". We must keep null when nothing was set.
       final run = runFromWatchPayload(_basePayload());
       expect(run.metadata, isNull);
+    });
+
+    test('keeps the estimator fix fields on each track point', () {
+      final raw = _basePayload()
+        ..['track'] = [
+          {
+            'lat': 40.0,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:30:01Z',
+            'accuracyMetres': 4.5,
+            'speedMps': 2.68,
+            'speedAccuracyMps': 0.4,
+            'bearingDeg': 91.5,
+          },
+          {'lat': 40.0001, 'lng': -75.0, 'ts': '2026-04-15T07:30:02Z'},
+        ];
+      final run = runFromWatchPayload(raw);
+      final first = run.track.first;
+      expect(first.accuracyMetres, 4.5);
+      expect(first.speedMps, 2.68);
+      expect(first.speedAccuracyMps, 0.4);
+      expect(first.bearingDeg, 91.5);
+      expect(run.track.last.speedMps, isNull);
+    });
+
+    test('forwards the distance estimator stamp and step-filled metres', () {
+      final raw = _basePayload()
+        ..['distance_estimator'] = 'kalman_v1'
+        ..['distance_step_filled_m'] = 105.7;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata![MetadataKeys.distanceEstimator], 'kalman_v1');
+      expect(run.metadata![MetadataKeys.distanceStepFilledM], 105.7);
+    });
+
+    test('forwards the step-over-chord metres only beside the step-filled ones',
+        () {
+      final both = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v1'
+        ..['distance_step_filled_m'] = 104.0
+        ..['distance_step_over_chord_m'] = 48.6);
+      expect(both.metadata![MetadataKeys.distanceStepOverChordM], 48.6);
+      final zero = runFromWatchPayload(_basePayload()
+        ..['distance_step_filled_m'] = 57.6
+        ..['distance_step_over_chord_m'] = 0);
+      expect(zero.metadata![MetadataKeys.distanceStepOverChordM], 0.0);
+      for (final bad in <Object>[-1, 'x', double.nan]) {
+        final run = runFromWatchPayload(_basePayload()
+          ..['distance_step_filled_m'] = 57.6
+          ..['distance_step_over_chord_m'] = bad);
+        expect(run.metadata!.containsKey(MetadataKeys.distanceStepOverChordM),
+            isFalse,
+            reason: '$bad');
+      }
+      final alone = runFromWatchPayload(
+          _basePayload()..['distance_step_over_chord_m'] = 48.6);
+      expect(alone.metadata, isNull);
+    });
+
+    test('forwards a whole segment count of one or more beside the estimator',
+        () {
+      final run = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v4'
+        ..['distance_segments'] = 3);
+      expect(run.metadata![MetadataKeys.distanceSegments], 3);
+      final whole = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v4'
+        ..['distance_segments'] = 2.0);
+      expect(whole.metadata![MetadataKeys.distanceSegments], 2);
+      for (final bad in <Object>[0, -1, 1.5, '2', double.nan]) {
+        final r = runFromWatchPayload(_basePayload()
+          ..['distance_estimator'] = 'kalman_v4'
+          ..['distance_segments'] = bad);
+        expect(r.metadata!.containsKey(MetadataKeys.distanceSegments), isFalse,
+            reason: '$bad');
+      }
+      final alone =
+          runFromWatchPayload(_basePayload()..['distance_segments'] = 2);
+      expect(alone.metadata, isNull);
+    });
+
+    test('keeps an off-track fix flagged, in order, and forwards track_complete',
+        () {
+      final raw = _basePayload()
+        ..['track_complete'] = true
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z', 'distM': 0},
+          {
+            'lat': 40.0001,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:30:01Z',
+            'accuracyMetres': 38.0,
+            'distM': 11.1,
+            'offTrack': true,
+          },
+          {'lat': 40.0002, 'lng': -75.0, 'ts': '2026-04-15T07:30:02Z', 'distM': 22.2},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.map((w) => w.offTrack), [false, true, false]);
+      expect(run.track[1].cumulativeDistanceMetres, 11.1);
+      expect(trackLine(run.track), hasLength(2));
+      expect(run.metadata![MetadataKeys.trackComplete], isTrue);
+    });
+
+    test('keeps a segment-start fix marked, in order, as the watch wrote it',
+        () {
+      final raw = _basePayload()
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z', 'distM': 0},
+          {
+            'lat': 40.001,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:32:00Z',
+            'distM': 80,
+            'segmentStart': true,
+          },
+          {'lat': 40.0011, 'lng': -75.0, 'ts': '2026-04-15T07:32:01Z', 'distM': 84},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.map((w) => w.segmentStart), [false, true, false]);
+      expect(trackLine(run.track), hasLength(3));
+    });
+
+    test('an older watch payload reads as all on-track and claims nothing', () {
+      final raw = _basePayload()
+        ..['track_complete'] = 'yes'
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z'},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.single.offTrack, isFalse);
+      expect(run.metadata, isNull);
+    });
+
+    test('drops a zero or non-numeric step-filled distance', () {
+      final zero = runFromWatchPayload(
+          _basePayload()..['distance_step_filled_m'] = 0);
+      expect(zero.metadata, isNull);
+      final junk = runFromWatchPayload(
+          _basePayload()..['distance_step_filled_m'] = 'x');
+      expect(junk.metadata, isNull);
+    });
+
+    test('promotes hr_coverage into metadata beside the average', () {
+      final raw = _basePayload()
+        ..['avg_bpm'] = 145
+        ..['hr_coverage'] = 0.42;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata!['hr_coverage'], 0.42);
+    });
+
+    test('hr_coverage arrives on its own when the average was suppressed', () {
+      // The watch clients suppress `avg_bpm` below 0.5 coverage, so a run
+      // carrying the share and NO average is the most informative shape the
+      // key has — and the one both run-detail screens give its own sentence.
+      final raw = _basePayload()..['hr_coverage'] = 0.31;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata!['hr_coverage'], 0.31);
+      expect(run.metadata!.containsKey('avg_bpm'), isFalse);
+    });
+
+    test('a zero hr_coverage is kept — it is a measurement, not an absence',
+        () {
+      final raw = _basePayload()..['hr_coverage'] = 0;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata!['hr_coverage'], 0.0);
+    });
+
+    test('non-num hr_coverage is ignored', () {
+      final raw = _basePayload()..['hr_coverage'] = 'most of it';
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata, isNull);
+    });
+
+    test('a non-finite hr_coverage is refused', () {
+      // Not fastidiousness: metadata is JSON-encoded on the way to Postgres,
+      // and a non-finite double throws there and takes the whole run with it.
+      for (final v in [double.nan, double.infinity, double.negativeInfinity]) {
+        final raw = _basePayload()..['hr_coverage'] = v;
+        expect(runFromWatchPayload(raw).metadata, isNull, reason: '$v');
+      }
+    });
+
+    test('an out-of-range hr_coverage is stored, not dropped', () {
+      // Every reader grades the range itself and the Art 20 export keeps the
+      // raw value in its `metadata` column. Dropping it here would move the
+      // run into the ambiguous "no key" population metadata.md enumerates,
+      // which is strictly less diagnosable than a figure nothing renders.
+      final raw = _basePayload()..['hr_coverage'] = 85;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata!['hr_coverage'], 85.0);
+    });
+
+    test('a JSON-string track decodes — the shape the Apple Watch sends', () {
+      // `WatchIngestBridge.swift` sets `payload["track"]` to the raw JSON TEXT
+      // of the file the watch wrote. Until this decoder understood that, an
+      // Apple Watch run that arrived while the runner was signed out was
+      // enqueued and replayed with an EMPTY track — the run's whole GPS trace,
+      // lost on the sign-in state at the moment it happened to arrive.
+      final raw = _basePayload()
+        ..['track'] = '[{"lat":51.5,"lng":-0.1,"ele":12.5,'
+            '"ts":"2026-04-15T07:30:05Z","bpm":142},'
+            '{"lat":51.51,"lng":-0.11}]';
+      final run = runFromWatchPayload(raw);
+      expect(run.track, hasLength(2));
+      expect(run.track.first.lat, 51.5);
+      expect(run.track.first.elevationMetres, 12.5);
+      expect(run.track.first.bpm, 142);
+      expect(run.track.first.timestamp!.toUtc(),
+          DateTime.utc(2026, 4, 15, 7, 30, 5));
+      expect(run.track.last.bpm, isNull);
+    });
+
+    test('the bridge empty-track sentinel decodes to no points', () {
+      // The bridge writes "[]" when it cannot read the file it was handed.
+      final raw = _basePayload()..['track'] = '[]';
+      expect(runFromWatchPayload(raw).track, isEmpty);
+    });
+
+    test('an undecodable track string throws rather than landing trackless',
+        () {
+      // drain quarantines the entry, the same treatment a blank id gets.
+      // Silently landing a run with no track is the defect, not the fallback.
+      final raw = _basePayload()..['track'] = '{not json';
+      expect(() => runFromWatchPayload(raw), throwsA(isA<FormatException>()));
     });
 
     test('non-num avg_bpm is ignored', () {
@@ -213,6 +493,27 @@ void main() {
       final run = runFromWatchPayload(raw);
       // metadata stays null because no other field was set either.
       expect(run.metadata, isNull);
+    });
+  });
+
+  group('isPublicFromWatchPayload', () {
+    test('only an explicit true publishes', () {
+      expect(isPublicFromWatchPayload({'is_public': true}), isTrue);
+    });
+
+    test('false, absent and junk all leave the column to its private default',
+        () {
+      // Null rather than false: `saveRun` upserts and strips nulls, so a
+      // `false` on a re-delivered run would un-publish one the runner has
+      // since shared.
+      for (final raw in <Map<String, dynamic>>[
+        {'is_public': false},
+        {},
+        {'is_public': 'true'},
+        {'is_public': 1},
+      ]) {
+        expect(isPublicFromWatchPayload(raw), isNull, reason: '$raw');
+      }
     });
   });
 }

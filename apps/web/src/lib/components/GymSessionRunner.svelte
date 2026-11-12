@@ -1,26 +1,26 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
-	import type { RoutineStep } from '$lib/gym/gym_routine';
-	import type { GymRoutineSummary, GymWorkout } from '$lib/core/data';
+	import type { RoutineStep } from '#lib/gym/gym_routine.ts';
+	import type { GymRoutineSummary, GymWorkout } from '#lib/core/data.ts';
 	import {
 		createGymWorkout,
 		deleteGymWorkout,
 		updateGymWorkout,
 		type GymSetInput,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		computeRoutineAdherence,
 		refKey,
 		type PlannedSetRef,
 		type ActualSetRef,
-	} from '$lib/gym/gym_adherence';
+	} from '#lib/gym/gym_adherence.ts';
 	import GymExecutionBand from './GymExecutionBand.svelte';
-	import type { EnteredSet, StepOutcome } from '$lib/gym/gym_session_types';
-	import { draftMetadata, restoreSessionDraft, resumedStartedAt } from '$lib/gym/gym_session_draft';
+	import type { EnteredSet, StepOutcome } from '#lib/gym/gym_session_types.ts';
+	import { draftMetadata, restoreSessionDraft, resumedStartedAt } from '#lib/gym/gym_session_draft.ts';
 	import RestTimer from './RestTimer.svelte';
 	import Modal from './Modal.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		routine: GymRoutineSummary;

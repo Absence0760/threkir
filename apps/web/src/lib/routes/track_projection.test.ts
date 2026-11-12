@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { isTrackRenderable, projectTrack } from './track_projection';
+import {
+	isTrackRenderable,
+	MIN_RENDERABLE_SPAN_M,
+	projectTrack,
+} from './track_projection';
 import type { TrackPoint } from '../types';
 
 /// Mirror of `apps/mobile_android/test/track_preview_test.dart`'s
@@ -113,6 +117,34 @@ test('isTrackRenderable rejects empty, single-point, and sub-5 m jitter tracks',
 	);
 });
 
+test('the renderable gate sits exactly at the named span', () => {
+	// Two claims, failing to different mutations. The VALUE is pinned flat
+	// because the number is one of three rails — the Dart twin's
+	// `kMinRenderableSpanM` and the firmware's `MIN_RENDERABLE_SPAN_M` —
+	// held together by check_watch_wire_vectors.mjs, which can only read a
+	// rail whose constant is named.
+	assert.equal(MIN_RENDERABLE_SPAN_M, 5);
+	// And the constant is the number actually COMPARED, not one declared
+	// beside a literal that has drifted from it. A degree of latitude is
+	// 111,320 m under the same flat approximation the gate uses, so these
+	// two tracks bracket the threshold from either side by 1 cm.
+	const deg = (m: number) => m / 111_320;
+	assert.equal(
+		isTrackRenderable([
+			{ lat: 0, lng: 0 },
+			{ lat: deg(MIN_RENDERABLE_SPAN_M - 0.01), lng: 0 },
+		]),
+		false,
+	);
+	assert.equal(
+		isTrackRenderable([
+			{ lat: 0, lng: 0 },
+			{ lat: deg(MIN_RENDERABLE_SPAN_M + 0.01), lng: 0 },
+		]),
+		true,
+	);
+});
+
 test('isTrackRenderable accepts a tiny but genuine lap', () => {
 	// ~14 m diagonal — small but real.
 	assert.equal(
@@ -145,5 +177,38 @@ test('isTrackRenderable accepts a genuine run crossing the antimeridian', () => 
 			{ lat: 0, lng: -179.9995 },
 		]),
 		true,
+	);
+});
+
+test('projectTrack draws the smoothed position when the stored track carries it', () => {
+	// Raw fixes zig-zag 3 m either side of a north-bound line; the smoothed
+	// positions sit on it, so the projected line is vertical.
+	const step = 10 / 111_320;
+	const off = 3 / 111_320;
+	const track: TrackPoint[] = Array.from({ length: 11 }, (_, i) => ({
+		lat: i * step,
+		lng: i % 2 === 1 ? off : -off,
+		smoothedLat: i * step,
+		smoothedLng: 0,
+	}));
+	const xs = new Set(projectTrack(track, 100, 100).map((p) => p.x));
+	assert.equal(xs.size, 1);
+	const raw = projectTrack(
+		track.map(({ lat, lng }) => ({ lat, lng })),
+		100,
+		100,
+	);
+	assert.ok(new Set(raw.map((p) => p.x)).size > 1);
+});
+
+test('isTrackRenderable judges the smoothed span when present', () => {
+	// A stationary jitter cluster whose smoothed positions collapse to one
+	// spot is not worth drawing, however far the raw fixes scatter.
+	assert.equal(
+		isTrackRenderable([
+			{ lat: 0, lng: 0, smoothedLat: 0, smoothedLng: 0 },
+			{ lat: 0.0001, lng: 0.0001, smoothedLat: 0.000001, smoothedLng: 0 },
+		]),
+		false,
 	);
 });

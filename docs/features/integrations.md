@@ -4,7 +4,7 @@ A reference for every external data source the app connects to, how each integra
 
 ---
 
-**Contents:** [Overview](#overview) · [Apple HealthKit](#apple-healthkit) · [Android Health Connect](#android-health-connect) · [Strava](#strava) · [parkrun](#parkrun) · [Garmin Connect](#garmin-connect) · [Race results (RunSignUp + general scraping)](#race-results-runsignup--general-scraping) · [Treadmills (BLE FTMS)](#treadmills-ble-ftms) · [The `health` Flutter package](#the-health-flutter-package) · [Deduplication strategy](#deduplication-strategy)
+**Contents:** [Overview](#overview) · [Which integrations a deployment offers](#which-integrations-a-deployment-offers) · [Onboarding entry point](#onboarding-entry-point) · [Apple HealthKit](#apple-healthkit) · [Android Health Connect](#android-health-connect) · [Strava](#strava) · [parkrun barcode](#parkrun-barcode) · [Garmin Connect](#garmin-connect) · [Race results (RunSignUp, ChronoTrack, paste)](#race-results-runsignup-chronotrack-paste) · [Treadmills (BLE FTMS)](#treadmills-ble-ftms) · [The `health` Flutter package](#the-health-flutter-package) · [Deduplication strategy](#deduplication-strategy)
 
 > The Treadmills (BLE FTMS) integration has **shipped on mobile**, including the live run-screen treadmill-mode toggle. The watch (Wear OS / watchOS) BLE plumbing is the remaining follow-up.
 
@@ -15,10 +15,55 @@ A reference for every external data source the app connects to, how each integra
 | Apple HealthKit | On-device SDK | System permission | All iOS workouts from any app | Phase 1 |
 | Android Health Connect | On-device SDK | System permission | All Android workouts from any app (read) + writes finished runs back (opt-in) | Phase 1 |
 | Strava | Official REST API | OAuth 2.0 + webhook | Activities, routes, GPS streams | Phase 3 |
-| parkrun | HTML scrape | Athlete number (public) | 5k times, event history | Phase 3 |
 | Garmin Connect | Official developer program | OAuth 2.0 + webhook | .FIT files, HR, training data | Phase 3 |
-| RunSignUp | Official REST API | API key | Race results by participant | Phase 3 |
-| Race results (general) | HTML scrape | Bib number (public) | Finishing times, splits | Phase 3 |
+| RunSignUp | Official REST API (public) | Bib number (public); no key | Race results by bib, upcoming races by state | Phase 3 |
+| ChronoTrack | Official REST API (ChronoTrack Live) | Partner credentials (`CHRONOTRACK_*`), fail-closed | Race results by bib | Phase 3 |
+| Race results (any other timing platform) | Manual paste | None | Finishing time, place, age group as the runner types them | Phase 3 |
+
+**No integration scrapes a third party's website** ([decisions § 2467](../architecture/decisions.md), 2026-11-10). Every source above is an official API, an on-device SDK, a file the runner exports themselves, or the runner's own typing. The parkrun results import, the parkrun upcoming-events feed and the UltraSignup results import were removed for that reason — see [Removed: scraped integrations](#removed-scraped-integrations).
+
+---
+
+## Which integrations a deployment offers
+
+Every integration surface renders through one gate, so a deployment offers only what it can actually honour. The rules are the `integration_visibility` parity pair (`apps/web/src/lib/integrations/integration_visibility.ts` ↔ `apps/mobile_android/lib/integration_visibility.dart`); the catalogue that feeds them is web's `integrations/availability.ts` and mobile's `_connectSpecs` + `raceImportProviders`. Rationale in [decisions.md § 1621](../architecture/decisions.md).
+
+A provider declares **how** its availability is decided, and the kind is a fact about the provider rather than about one deployment:
+
+| Gate | Decided by | Providers |
+|---|---|---|
+| `env` | A build-time public env var | Strava (`PUBLIC_STRAVA_CLIENT_ID` on web, `STRAVA_CLIENT_ID` in dotenv on mobile) |
+| `probe` | An Edge Function probe, fail-closed | RunSignUp / ChronoTrack (`race-results-import`) |
+| `always` | Nothing — the work is entirely client-side | The Strava + Garmin bulk importers (web), the BLE strap / treadmill / watch relay (mobile) |
+| `unsupported` | Cannot work on this client at all | Apple HealthKit **on web** — an on-device iOS framework with no web binding |
+| `unbuilt` | No leg exists on any deployment | Garmin Connect OAuth — blocked on Garmin's developer programme |
+
+The resolved answer is `true` / `false` / **not yet** (a probe in flight), and the three are distinct: a pending gate hides like a refused one, but carries no explainer, because there is nothing true to say until the probe lands. Web resolves every gate before the loading skeleton clears, so a card never renders and then vanishes.
+
+Two rules sit on top:
+
+- **A connected row is always visible, whatever its gate says.** A row outlives the configuration that created it, and the placeholder Garmin / HealthKit rows the old ungated cards wrote are on real accounts. Hiding one would leave no surface to disconnect it from.
+- **Stranded is narrower than not-actionable.** The Strava env var gates starting a *new* grant (it builds the OAuth redirect); syncing an existing one runs on the Edge Function's own credentials and still works, so a connected Strava keeps **Sync now** on a deployment with no client ID. Only `unsupported` / `unbuilt` rows get the "this can't sync here" note.
+
+**Every card and tile also carries an `(i)`** explaining what the provider is and how to use it — `InfoTip.svelte` on web, `widgets/info_tip.dart` on mobile ([decisions.md § 1622](../architecture/decisions.md)). The copy is per-platform where the instruction differs.
+
+**Adding a provider** means adding a catalogue entry with its gate, a `*Info` string in all seven locales on each platform it ships to, and — for a `probe` gate — the probe itself. A provider with no gate is not a thing the catalogue can express.
+
+---
+
+## Onboarding entry point
+
+The setup wizard on both clients ends with a skippable **"Bring your running history"** step (between `track` and `done`) so a new account can fill its dashboard, PRs and badges on day one ([decisions § 2224](../architecture/decisions.md)). It runs no import of its own: every row opens an import surface this document already describes, so its gates, permission sheets and failure reports apply unchanged.
+
+| Client | Row | Opens | Gate |
+|---|---|---|---|
+| Web | Strava | `/settings/integrations` (OAuth card + archive upload) | `always` — the archive upload needs nothing |
+| Web | Garmin | `/settings/integrations` (bulk `.fit` / `.zip` upload) | `always` |
+| Android | Health Connect | `ImportScreen` | the OS permission sheet, inside the screen |
+| iOS | Apple Health | `ImportScreen` | the OS permission sheet, inside the screen |
+| Mobile | Strava | `ImportScreen` (archive upload) | none |
+
+The lists live in `settings/onboarding.ts` (`ONBOARDING_IMPORT_SOURCES`) and `onboarding.dart` (`setupWizardImportSources`). Web shows no health platform (no web binding); mobile shows no Garmin row (no mobile Garmin importer — Garmin reaches a phone through the health platform). Web saves the wizard and navigates, because its layout gate would bounce an un-onboarded account back to `/onboarding`; mobile pushes the screen over the wizard route and returns to the same step.
 
 ---
 
@@ -92,6 +137,16 @@ final data = await health.getHealthDataFromTypes(
 );
 ```
 
+### What an imported workout carries
+
+A session's **summary** (start, duration, distance, type) always imports. Three things ride alongside it, each conditional and each degrading to absence rather than to a wrong value:
+
+- **The GPS route** (`READ_EXERCISE_ROUTES`, #664). An `ExerciseSessionRecord` may carry an `ExerciseRoute`, but reading one written by *another* app needs that grant on top of the session read, and Health Connect withholds it from a background read even when it is held. The plugin renders the refusal as a `WORKOUT_ROUTE` point with **zero locations** and emits nothing at all for a session that genuinely has no route — so an empty point means "there is a route here you may not read", which is the only state worth offering the grant for. `HealthConnectImporter.fetchRoutes` separates the two into `tracks` + `withheldSessionIds`, and carries `readFailure` so a read that *threw* is not reported as a source holding no routes. The grant is asked for only on an explicit tap (never chained onto the import's own permission sheet), via the `HealthRoutePermissionBridge` method channel — the `health` plugin maps route *reads* onto the session read permission alone, so the grant is otherwise unreachable from outside the Health Connect app. Granting it later runs `runsWithBackfilledTracks` over the already-imported runs, because a Health Connect re-import is suppressed by `isCrossSourceDuplicate` and would never reach them.
+- **The step count** (`READ_STEPS`, #664). Health Connect has no per-session step field: the plugin builds a workout's `totalSteps` by summing every `StepsRecord` overlapping the session window, whoever wrote it. Without the grant that sub-read yields nothing and the field is always null. `stepsForWorkout` screens what arrives — `cycle` is excluded (the phone counts pocket jostle, and run-detail divides whatever is stored by moving time and calls the result spm), and a count implying a cadence past 300 spm is a foreign record summed into the window rather than a step count. It writes `metadata.steps` and **no** `cadence_spm`: steps is the fact, and the existing `steps / moving_time_minutes` fallback shared by `run_detail_screen.dart` and web's `avgCadence` is the single place that derives a cadence from it.
+- **Average heart rate**, meaned over the session window from `HEART_RATE` samples, clamped to 30–230 bpm.
+
+**Laps are not reachable.** `ExerciseSessionRecord` carries `laps` and `segments`, but the `health` package surfaces them only on the **write** path (`HealthDataWriter.kt` preserves them across an update); there is no read binding and no `HealthDataType` for them, so an imported multi-lap session flattens to one interval. Closing that needs a lap read of our own alongside `HealthRoutePermissionBridge`, or an upstream change — filed, not built.
+
 ### Write-back (persona #36)
 
 Read is not the only direction — Threkir also **writes finished runs back** to Health Connect so they flow on to Google Fit / Samsung Health / Fitbit / anything that reads it. `lib/health_connect_exporter.dart#writeRun` maps `metadata.activity_type` → `HealthWorkoutActivityType` and calls `health.writeWorkoutData` (an `ExerciseSessionRecord` + a `DistanceRecord`), plus best-effort heart rate (per-point chest-strap BPM from the track, else a single `metadata.avg_bpm` sample; selection in the pure `heartRateSamplesForRun`), needing the `WRITE_EXERCISE` + `WRITE_DISTANCE` + `WRITE_HEART_RATE` permissions (added to `AndroidManifest.xml` + `res/xml/health_permissions.xml`). The HR write is wrapped separately so a missing grant can't roll back the workout write. It's **opt-in per device**: off by default, toggled from Settings → Integrations (which requests the write grant and only flips the local `Preferences.writeToHealthConnect` flag if granted). When on, `run_screen` fires a best-effort, fire-and-forget `writeRun` after the local save (Android-only, never blocks the finish flow). The flag is local-only (Health Connect is an on-device capability, not a roaming account pref) and the write path is gated on `Platform.isAndroid`, so iOS/HealthKit is unaffected (HealthKit write would need separate entitlements — deferred).
@@ -153,19 +208,71 @@ Native in-app OAuth via `flutter_web_auth_2` — Chrome Custom Tabs on Android, 
    POSTs to `strava-import` with `action: 'connect'` — same code-for-token
    exchange + 90-day backfill as web.
 6. "Sync now" tile calls `ApiClient.syncStrava` (`action: 'sync'`).
-   "Disconnect" deletes the integrations row.
+   "Disconnect" calls `action: 'disconnect'`, which revokes the grant at
+   Strava, drops the Vault tokens and stamps the row `disconnected_at`.
 ```
 
+### What a refused connect may say
+
+Every refusal `connect` answers is a stable `{ error: '<code>' }` from `STRAVA_CONNECT_ERROR_CODES` (`strava-import/connect_errors.ts`). The missing-`activity:read_all` refusal used to be an English sentence in a text/plain body. Both clients map a code to a reason through the `stravaConnectError` parity pair (`strava_sync_result.ts` ↔ `strava_sync_result.dart`): `not_configured`, `missing_scope`, `code_rejected`, `signed_out`, or `generic`. Each reason is worded from the catalogue: web throws an `AppError` (`stravaConnectAppError`), and mobile's `ApiClient.completeStravaOAuth` throws a `StravaConnectFailure` that `stravaConnectErrorMessage` renders. A `generic` code is rethrown as the transport raised it, so a dropped connection still reads as offline. The code itself and the OAuth callback's `error` parameter are logged and never shown. Backward compatibility: mobile builds before `497c1b42e` show a failed connect as `Strava sign-in failed: <exception>`, and the exception's text prints the decoded body, so they showed the old sentence verbatim. The missing-scope refusal therefore answers `{ error: 'missing_scope', message: '<the old sentence>' }` (`LEGACY_CONNECT_MESSAGES`) and those builds keep the sentence inside their banner; current clients read `error` only. Web builds of the same age read `error` only, falling back to `connect_failed` when there is none, so they showed a code before and after. **Deploy order:** the function can ship before or after the clients, because both bodies are readable by both generations; drop `message` only once the minimum supported mobile build includes `497c1b42e` (`connect_errors.test.ts` names the condition). Pinned by `connect_errors.test.ts` (Deno), `strava_connect_error.test.ts`, `strava_connect_call_test.dart` and `strava_connect_error_message_test.dart`.
+
+A `sync` Strava refuses because it no longer accepts the stored grant answers `401 { error: 'refresh_failed', reconnect_required: true }`. The same mapping reads it as `reconnect`, and both clients word it as "Strava no longer accepts this connection. Disconnect Strava, then connect it again." (`settingsIntegrations.stravaErrReconnect` / `integrationsStravaErrReconnect`) inside their sync-failed line, rather than the generic "Something went wrong". Web gets it through `stravaRefusal` (sync and disconnect); mobile's `ApiClient.syncStrava` throws `StravaConnectFailure` like the connect call. Pinned by `strava_connect_error.test.ts`, `strava_connect_call_test.dart`, and `strava-sync-refusal.spec.ts`.
+
+### What a sync is allowed to claim
+
+The backfill walks Strava's activity pages until it reaches the end of the lookback window, and has **seven** exits. Five of them leave activities in the window unfetched: Strava throttling us (429/503), an upstream error, a **transport failure** (`fetch` rejecting on DNS / TLS / a dropped connection, or `resp.json()` on an HTML error page from anything in front of Strava), a page body that is JSON but not an array, and the 20-page / 1000-activity safety cap. Only the throttle case ever carried a field — `rate_limited` — and neither client declared it, so all of them rendered as a finished sync ([decisions § 766](../architecture/decisions.md)). The transport pair was worse still: it escaped `backfill` entirely, was answered as a 500 `internal_error`, and **discarded every count the walk had earned** ([decisions § 768](../architecture/decisions.md)).
+
+So `backfill` returns `complete` alongside the counts, raised only on the two end-of-window exits, and `last_sync_at` is stamped only when it is true — a truncated walk leaves the previous, true timestamp rather than claiming the tile just synced. Both clients grade the response through the `strava_sync_result` parity pair (`apps/web/src/lib/integrations/strava_sync_result.ts` ↔ `packages/core_models/lib/src/strava_sync_result.dart`) rather than casting it: only an explicit `complete: true` earns the success copy, and an unrecognised shape, an absent field or an embedded `error` reads as partial. The rate-limited case keeps its own sentence because it is the one cause a runner can act on (wait ~15 minutes) rather than merely retry.
+
+### Resuming a truncated walk
+
+`after=` used to be derived from `Date.now() - lookbackDays` on every call, with `integrations.sync_cursor` written by nothing, so a re-sync re-walked the same window from page 1 — and for the one runner the 20-page cap can reach, "sync again to finish" was an instruction that could never succeed. **A truncated walk now records the window still to walk on `integrations.sync_cursor`** and the next sync resumes it ([decisions § 768](../architecture/decisions.md)).
+
+The cursor is `{"v":1,"from":<epoch s>,"after":<epoch s>,"before":<epoch s|null>}`, and each part is load-bearing:
+
+- **`from`** is the oldest instant the JOB covers, not the oldest still to fetch. `after=` is recomputed from the clock on every call, so it is never equal to the one the previous walk used; a resume test against the frontier alone refuses every same-lookback re-sync there is. A stored cursor is honoured only when the caller's requested floor does not reach further back than `from` — a runner widening `lookbackDays` is asking a question the cursor's window does not answer, and the wider walk subsumes the cursor's remainder anyway.
+- **`after` / `before`** bound the remainder. Which end moves depends on the walk direction, which is **measured off the page** rather than assumed: Strava returns the activity list oldest-first when `after` is set and newest-first otherwise. Oldest-first moves the floor up to the newest activity seen; newest-first moves the ceiling down to the oldest.
+- A cursor that would not narrow the window is **not written** — a resume making no progress would loop a runner between two syncs forever. A truncation that got nowhere (throttled on page 1) therefore writes nothing, leaving a cursor it could not advance intact for the next attempt.
+- A **finished** window clears the cursor and stamps `last_sync_at` in the same update; `connect` and `disconnect` clear it too, so a fresh grant never resumes a window measured against another athlete's list.
+
+The response carries `resumable`, which is what lets a client say "syncing again picks up where it stopped" only when that is true. It is fail-closed like `complete` and never true alongside it.
+
+### Choosing how far back to sync
+
+The Edge Function has always accepted `lookbackDays` up to 365, and until 2026-08-28 **no caller passed anything** — web's `syncStrava(lookbackDays = 90)` and `ApiClient.syncStrava` both defaulted and were both called bare. A runner who dismissed "sync complete" and came back four months later could not reach the missed activities from the app at all; the bulk export below was the only remaining path. Both clients now offer the window: web as a select beside **Sync now** on the connected Strava card, mobile as a **Sync older history…** item in the tile's menu opening a picker. The three windows (90 days / 6 months / a year) and the maximum live in the `strava_sync_result` parity pair, and a guard pins the maximum to the `400 invalid_lookback_days` bound the function itself enforces.
+
+**The default stays at 90 deliberately.** Strava's per-user budget is 100 requests / 15 minutes and the walk spends one request per 50 activities, so raising the default would make every routine sync several times heavier for history the runner already has. Widening is an explicit act, taken once, to recover from a truncation left too long. Anything older than a year still needs the bulk export, and the note under the card says so.
+
+A truncated sync is now a **state of the connection**, not a moment: both surfaces keep a note on the Strava card / tile until a walk reaches the end of the window. A toast or a top banner is said once and dismissed, and the window is measured from now, so the record of "there is more to fetch" has to outlive it.
+
+This is separate from `ImportFailureLog` below, and deliberately so: that vocabulary describes **per-activity** failures inside a client-side archive walk, where every entry names an activity that was seen and refused. A truncated page walk has no such entry — the activities it did not fetch were never seen. The word `rate_limited` is shared; the record is not.
+
 Operational pre-requisites:
-- The `threkir://strava-callback` URI must be allow-listed in the Strava developer console **and** in `STRAVA_ALLOWED_REDIRECTS` on the Edge Function.
+- The `threkir://strava-callback` URI must be allow-listed in the Strava developer console **and** in `STRAVA_ALLOWED_REDIRECTS` on the Edge Function. The comparison is **whole-string**, not by origin — Strava's own callback-domain check is path-prefix loose, so any path under our domain would otherwise be exchangeable, and a custom scheme has no origin to compare anyway. An unset or empty allowlist **fails closed** (503 `strava_not_configured`); a claim outside it is 400 `invalid_redirect_uri`. Parse + comparison live in `apps/backend/supabase/functions/_shared/redirect_allowlist.ts`, shared with the three Stripe-events functions, and both branches are covered by `_shared/redirect_allowlist.test.ts` ([decisions § 750](../architecture/decisions.md)). Both `apps/backend/.env.development` and `.env.example` carry the mobile callback alongside the web one since 2026-08-28 — `.env.example` is what an operator copies to configure production, where a missing entry is not inert. A local mobile connect still needs the real `STRAVA_CLIENT_ID` that local dev leaves empty. `strava-import/wiring.test.ts` pins both files against `kStravaCallbackUri` in the Dart client, so moving the scheme moves the guard.
 - Falls back to the web browser hand-off on builds where the client ID is unconfigured (matches the existing `url_launcher` path used before native OAuth shipped).
 - `lib/strava.dart` mirrors `apps/web/src/lib/integrations/strava.ts` and is unit-tested (16 tests in `test/strava_test.dart` on URL building + callback parsing + configured-state checks).
 
 ### Bulk export (ZIP) import
 
-Independent of OAuth, both clients import Strava's "Request your archive" download — a ZIP with a root-level `activities.csv` index plus an `activities/` folder of per-run GPX / TCX / FIT files (modern exports gzip the inner files: `.gpx.gz`, `.tcx.gz`, `.fit.gz`). Web: `apps/web/src/lib/integrations/strava-zip.ts` (+ the pure header map `strava-zip-header.ts`). Mobile: `apps/mobile_android/lib/strava_importer.dart`. The CSV supplies scalar metadata (id, date, name, type, distance, moving time, avg HR) and the per-activity file supplies the GPS track; the two are combined so metadata survives even when a file is missing. Dedup tags each run with `metadata.strava_id` + `external_id = strava:{id}`.
+Independent of OAuth, both clients import Strava's "Request your archive" download — a ZIP with a root-level `activities.csv` index plus an `activities/` folder of per-run GPX / TCX / FIT files (modern exports gzip the inner files: `.gpx.gz`, `.tcx.gz`, `.fit.gz`). Web: `apps/web/src/lib/integrations/strava-zip.ts` (+ the pure header map `strava-zip-header.ts`). Mobile: `apps/mobile_android/lib/strava_importer.dart`. The CSV supplies scalar metadata (id, date, name, type, distance, moving time, avg HR) and the per-activity file supplies the GPS track; the two are combined so metadata survives even when a file is missing. Dedup tags each run with `metadata.strava_id` + `external_id = strava:{id}`. **A row with an empty `Filename` is a manually-entered or indoor activity — Strava points at no track file for it — and imports trackless off the CSV's own date / distance / elapsed time on both clients.** Mobile used to `continue` past those rows before any counter, so a migrating runner's whole treadmill history vanished from an import that reported cleanly (fixed 2026-08-18). **A `Filename` that names a file the archive does not hold, or a format neither parser reads, fails the row into the `ImportFailureReport` on BOTH clients** — the export promised something it did not deliver, which is a different fact from never promising one. Web was the lenient one until 2026-08-18 (it fell through to a summary-only run and swallowed a parse throw besides); the decision now lives in the pure `integrations/strava_track_member.ts` ↔ `_parseTrackFile` in `strava_importer.dart`. The one asymmetry is deliberate: a failed gunzip still imports trackless on web, because `gunzipBlob` cannot tell a corrupt member from a browser with no `DecompressionStream`, where Dart's `GZipDecoder` throws. Both refusals are worded (`Malformed export: track file not found in zip: …` / `Unsupported file format: …`) so `classifyImportFailure` reports them as `unparseable`, not `unknown` — see [decisions § 676](../architecture/decisions.md).
+
+**Six columns are mandatory, and the reason is not that the importer cannot proceed without one.** `indexHeader` answers `-1` for a header it cannot find, `row[-1]` is `undefined`, and every read of it in `importOne` FABRICATES a value for every row in the archive rather than failing — a missing `Activity Type` defaults each row to `run` (a migrant's rides and swims imported as runs), a missing `Activity Date` stamps each row with the moment of the import (five years of history on today), a missing `Moving Time` gives every run a zero duration, and no distance column at all gives every run zero distance. So `Activity ID` / `Filename` / `Activity Type` / `Activity Date` / `Moving Time` / `Distance` are refused at the header, naming whichever are missing; `Distance` is satisfied by EITHER numeric block (see the unit quirk below). A blank CELL stays lenient per row — except the date, where an unparseable cell refuses that row into the failure report rather than filing it under today (decisions § 979 + § 1042). The list lives in `missingRequiredStravaColumns` in `strava-zip-header.ts`, not inline in the importer, so both guards over it execute rather than reading the importer as text ([decisions § 1059](../architecture/decisions.md)).
+
+**A refusal of the WHOLE file is translated; a per-row failure keeps its diagnostic English.** The six file-level refusals both web importers can raise — signed out, the 500 MB archive cap, a zip with no root `activities.csv`, an `activities.csv` with no rows, the missing-column list, and Garmin's "choose a .fit or a .zip" — travel as an `ImportRefusedError` carrying a reason IDENTIFIER plus its specifics as data (`integrations/import_refusal.ts`), and `i18n/import_refusal_message.ts` assembles the sentence from the catalogue at the render layer. Nothing else thrown is shown bare either: it is framed inside `settingsIntegrations.stravaZipImportFailed` / `garminImportFailed`'s `{error}` slot, the issue #345 shape. The per-row `detail` in the `ImportFailureReport` stays a raw log-safe string on purpose — it is a diagnostic pasted into a support thread, beside a `reason` that IS keyed ([decisions § 1058](../architecture/decisions.md)).
 
 **Unit quirk (issue #380).** `activities.csv` carries **two** numeric blocks. The first ("summary") block's `Distance` follows the athlete's **display unit at export time** — km for a metric athlete, **miles for an imperial one** — a documented Strava behaviour with no format option. The second ("raw") block repeats `Distance` (~col 18) always in **SI metres**. The importers therefore prefer the raw-block metric column (`stravaDistanceMetres` in `strava-zip-header.ts` ↔ `stravaCsvDistanceMetres` in `strava_importer.dart` — matching logic, both unit-tested), falling back to the display column only when a single `Distance` exists (honouring an explicit `Distance in Miles` / `Distance in Kilometers` header, else assuming km — on mobile the parsed track's distance overrides this fallback anyway). Before the fix both clients treated the display `Distance` as km unconditionally, so every imperial-athlete import came in ~1.609× short, silently corrupting mileage / pace / PRs / VDOT. `Elevation Gain` appears only in the raw SI block, so it is always metres and needs no unit branch.
+
+### Import failure reporting
+
+Both web bulk importers (`strava-zip.ts`, `garmin-zip.ts`) carry a `failures: ImportFailureLog` alongside the `failed` counter. Each caught error is classified by the pure `apps/web/src/lib/integrations/import_failures.ts` into one of `network` / `auth` / `rate_limited` / `too_large` / `unparseable` / `rejected` / `unknown` and recorded with the activity name, its start (Strava, from the CSV cell), and a log-safe `code: message` detail — never the PostgREST `.details` / `.hint`, which echo row fragments (`core/supabase_error.ts`). The list is capped at 200 entries with the overflow counted in `truncated`, so a pathological archive can't turn the failure log itself into the OOM.
+
+`ImportFailureReport.svelte` renders it under each import card on `/settings/integrations`: a reason tally, a per-activity list, and a CSV download (`<provider>-import-failures.csv`, English column headers so two reports merge). It is held in its own state so it outlives the progress bar, which self-clears a few seconds after the walk finishes. **Re-running the import is the retry** — both importers dedupe against what already landed, so nothing duplicates; what the runner was missing is the information to decide whether re-running is worth it.
+
+**Mobile carries the same report.** `apps/mobile_android/lib/import_failures.dart` is the Dart twin (registered as the `import_failures` parity pair, 22 mirror tests each), and `widgets/import_failure_report.dart` renders it on the Import screen — reason chips, an expandable per-activity list, and a CSV handed to the OS share sheet rather than downloaded. All three mobile importers feed it **at the point they catch**: `strava_importer.dart` records the CSV row's activity name and parsed start rather than the archive path, `health_connect_importer.dart` records the workouts it previously dropped into a `debugPrint` with nothing on screen (plus a route read that failed outright, which is otherwise indistinguishable from a source holding no routes), and `csv_run_importer.dart` records each rejected row under its 1-based row number. The shared save loop in `import_screen.dart` appends its own local-save failures to the same log, so the runner reads one list.
+
+One mobile-only disclosure has no web counterpart: web imports one activity at a time, so a push failure IS a per-item failure, whereas mobile saves locally then batch-pushes. That push reported nothing at all — it swallowed its throw, and `saveRunsBatch` signals a PARTIAL failure by returning the ids whose track upload failed rather than by throwing, so a half-landed batch read as a clean import too. Both push sites (the shared save loop and the route backfill) now count the returned set as well as the throw, and `importStatusCloudPushDeferred` carries the number: 3-of-400 pending is a different fact from 400-of-400. It stays a note rather than N `ImportFailureReport` entries, because those name an activity that did not import and exist to decide whether re-running is worth it — these runs DID import, are on the device, and `SyncService` retries them without one. The sidecar write that records the pushed runs as synced is its OWN try/catch, not part of that count: it runs after `saveRunsBatch` returned, so its failure cannot mean the runs are absent from the server — it only leaves this device re-reading them as unsynced on the next cold start, and the re-push upserts onto the same rows. Folding it into the push's catch reported the whole batch as deferred when every upload had succeeded, so it gets a `debugPrint` and no disclosure rather than a borrowed one.
+
+A consequence for Garmin: `importFitFile` / `importRouteFile` no longer return a `'failed'` disposition, they **throw**, so the loop's single catch is the one funnel where a failure gets a reason. A per-activity `.zip` wrapper still falls through to a later `.fit` member if an earlier one throws.
 
 ### Webhook (real-time sync)
 
@@ -216,6 +323,16 @@ Important properties of the real implementation:
 - **Tokens live in Vault** (decisions §41). The integration row exposes `user_id` + `external_id` + `scope`; the actual `access_token` / `refresh_token` go through `get_integration_tokens` / `set_integration_tokens` SECURITY DEFINER RPCs.
 - **Dedupe key is `metadata.strava_id`** (jsonb), not a column, not `external_id`. The shared `isAlreadyImported` helper checks both the legacy `external_id LIKE 'strava:%'` shape and the metadata shape so historic and current rows both block re-ingestion.
 - **Sport-type filter narrows to run / walk / hike.** A user's bike ride or swim is acknowledged but not ingested.
+- **An athlete deauthorization disconnects the integration.** When an athlete revokes our access from their Strava settings, Strava pushes `object_type: "athlete"`, `aspect_type: "update"`, `updates: { authorized: "false" }`, and its API terms require acting on it. Both receivers do: the Edge Function calls `disconnectDeauthorizedAthlete` (`_shared/strava_disconnect.ts`), and the Go endpoint enqueues a `strava_event` job whose handler does the same work. Either way the Vault tokens are dropped (`delete_user_provider_secrets`) and the row is stamped `disconnected_at` with `disconnected_reason = 'athlete_deauthorized'` — the same teardown as the user-initiated Disconnect (`disconnectStravaLocally`, reason `user_initiated`), minus the `/oauth/deauthorize` call, since the grant is already dead at Strava. The event is freshness-gated but not deduped (disconnecting is idempotent), and every exit is a 200. The Go decoder now also declares `subscription_id` and `updates`, which Strava sends on every event and which its refuse-unknown-fields decoder used to answer with a 400.
+
+### Your Strava clubs (web)
+
+A connected runner sees their own Strava clubs on **My clubs** and can set each up on Threkir or link it to a club they run there (issue #1151 step 4, [decisions § 1959](../architecture/decisions.md); the surface is described in [clubs.md § Your Strava clubs](clubs.md#your-strava-clubs)). The `strava-clubs` Edge Function serves it, for the caller only:
+
+- `{ action: 'list' }` calls `GET /athlete/clubs` (100 per page, at most 3 pages) with the caller's stored token, refreshed through `refreshStravaToken` when it is within 5 minutes of expiry, and answers `{ status: 'connected', clubs }` — Strava club id, name, city / state / country, sport type, member count, https profile image, whether Strava said the caller administers it, and the Threkir club linked to it when the caller can see that club. Not connected is `{ status: 'not_connected' }` and a refused refresh or a Strava 401 is `{ status: 'reconnect_required' }`, both 200s. Strava 429 is a 503, any other failure a 502. Nothing is stored: Strava's terms allow showing an athlete their own clubs, not collecting them into a directory.
+- `{ action: 'link', club_id, strava_club_id }` calls `GET /clubs/{id}` and proceeds only when the body says `membership: 'member'` with `admin` or `owner` true, then records the link through the service-role-only `set_club_strava_link` RPC.
+
+Both endpoints are readable with the `read` scope, which the connect flow has always requested alongside `activity:read_all`, so no reconnect is needed. The web half is gated on `isStravaConfigured()` and is inert on a build without `PUBLIC_STRAVA_CLIENT_ID`. Mobile does not have it yet (followups).
 
 ### Key endpoints
 
@@ -224,6 +341,8 @@ Important properties of the real implementation:
 | `/athlete/activities` | GET | Backfill historical activities (paginated) |
 | `/activities/{id}` | GET | Full activity detail (splits, gear, HR) |
 | `/activities/{id}/streams` | GET | Raw GPS track, altitude, HR timeseries |
+| `/athlete/clubs` | GET | The caller's own clubs (`strava-clubs` `list`) |
+| `/clubs/{id}` | GET | One club, with the caller's `membership` / `admin` / `owner` (`strava-clubs` `link`) |
 | `/push_subscriptions` | POST | Register webhook endpoint |
 | `/oauth/token` | POST | Exchange auth code or refresh token |
 
@@ -253,78 +372,32 @@ function toRun(activity: StravaActivity, stream: StravaStream, userId: string): 
 
 ---
 
-## parkrun
+## parkrun barcode
 
-### What it gives you
+A runner can carry their parkrun barcode in the app and show it at the finish funnel (issue #1148 steps 4-5). It needs no parkrun data, only the runner's own athlete number, which they type in themselves, so nothing is fetched from parkrun. It is the only parkrun feature left: the results import and the upcoming-events feed were removed ([Removed: scraped integrations](#removed-scraped-integrations)). Runs imported before the removal keep `source = 'parkrun'`, their source badge and filter, and their `runs.metadata` `event` / `position` / `age_grade` / `run_number` keys (legacy now, with no writer — [metadata.md](../backend/metadata.md)), and they still count toward PRs (#429).
 
-A runner's complete parkrun history — every 5k time, event location, position, and age grade percentage.
+- **Storage.** The number lives where it already did: `user_profiles.parkrun_number`, column-locked from every non-owner read (`20260707_001`; the owner reads it through `get_my_profile`). It is in the Art 20 export (`profile.json` + the backup's `user_profiles.json`) and goes with the row at Art 17 deletion (`user_profiles` cascades from `auth.users`). Both clients save it in canonical form through `normalizeParkrunAthleteNumber` (web `integrations/parkrun_barcode.ts` ↔ mobile `parkrun_barcode.dart`, a parity pair), which accepts `^A\d{1,12}$` after forgiving whitespace and a lowercase `a`. The web account field (`/settings/account`) and the mobile barcode screen's number dialog refuse anything else. The column enforces the same format since `20270818000001` / `…02` ([decisions § 1948](../architecture/decisions.md)): `private.normalize_parkrun_number` is the normaliser's SQL twin, a BEFORE trigger canonicalises any write it can (an older mobile build sending `a 123 456` still saves), and `user_profiles_parkrun_number_format_chk` (`^A[0-9]{1,12}$`) refuses the rest with 23514. Existing values were rewritten through the normaliser, NULL where it could not place them. A backup restore never writes the field: both clients strip it from the archived profile.
+- **Symbology.** Code 128, carrying the number with its leading `A` (`A123456`). Verified against two independent third-party implementations rather than guessed: the [dfyb.run](https://github.com/sargant/dfyb.run) Apple Wallet pass generator emits `PKBarcodeFormatCode128` with the athlete id as the message, and the [parkrun barcode Connect IQ widget](https://github.com/xehpuk/parkrun-barcode-garmin-connect-iq) draws Code 128 set B (start symbol 104) over the id's bytes. parkrun publishes no specification. The encoder is in-repo (no barcode dependency existed in either tree, and the symbology is a 107-entry table plus a mod-103 checksum), always set B, and its tests pin reference module strings built from JsBarcode's independent `BARS` table. A 10-module quiet zone is drawn each side, per ISO/IEC 15417.
+- **Surfaces.** Web: a card on `/settings/integrations` (`ParkrunBarcodeCard.svelte`, ungated) with a full-screen overlay. Mobile: `ParkrunBarcodeScreen`, reached from a tile on the integrations screen and, once the device holds a number, from a shortcut on the You tab. Both draw black on white in either theme, print the number under the bars, and label the code for screen readers.
+- **Offline.** Mobile caches the number in `SharedPreferences` (`parkrun_barcode_cache.dart`), tagged with the account that wrote it, read back only for that account, refreshed whenever the screen reaches the server, and cleared at sign-out. A failed refresh keeps the cached code on screen with a note saying so.
+- **Brightness.** The screen keeps the display awake (`wakelock_plus`, already a dependency) and raises it to full through `run_app/screen_brightness`, a small channel rather than a new plugin: Android overrides only the activity window (`ScreenBrightnessBridge.kt`), iOS saves and restores the device level (`AppDelegate.swift`), and the screen restores it whenever the app leaves the foreground. Web cannot set brightness, so the full-screen view asks the runner to.
+- **Phone screens.** parkrun's support centre has an article titled "Can I bring my barcode on my smartphone or watch instead of printing it?", and the Connect IQ widget's README says digital barcodes are not endorsed by parkrun, though volunteers using the Virtual Volunteer app scan them. Both surfaces therefore say, neutrally, that phone barcodes are not officially supported and a printed copy is worth carrying.
 
-### How it works
+## Removed: scraped integrations
 
-parkrun has no official public API. Results are scraped from their public HTML results pages using the athlete's public ID number (e.g. `A123456`). No password or OAuth required — results are publicly accessible.
+Removed 2026-11-10 by owner decision ([decisions § 2467](../architecture/decisions.md)): **no integration may scrape a third party's website.** Each of these read pages or internal feeds the provider does not publish as an API, so each was removed outright rather than gated.
 
-```
-User enters athlete number: A123456
-  → Edge Function fetches:
-    https://www.parkrun.org.uk/results/athleteresultshistory/?athleteNumber=A123456
-  → Parse HTML <table> with Cheerio
-  → Extract rows: event name, date, run number, time, position, age grade
-  → Map to Run objects with source='parkrun'
-  → Upsert, deduplicating on external_id = 'parkrun:{event}:{date}'
-```
+| Removed | What it did | Why it went |
+|---|---|---|
+| parkrun results import (`parkrun-import` Edge Function) | Scraped parkrun's public athlete results pages by athlete number into `source = 'parkrun'` runs. Surfaces: web Settings → Account "Pull latest parkrun results", the parkrun card / tile on both clients, the mobile import dialog, the onboarding "Bring your running history" parkrun row, `api_client.importParkrunResults` | No permission from parkrun, against its stated position on scraping and its registration terms; accepted any athlete number, so it could pull a third party's personal data; likely engaged Apple App Review guideline 5.2.2; and the landing page listed parkrun as if it were a partner |
+| parkrun upcoming-events feed (`race-listings-sync` / `race-listings-sweep` parkrun leg, `parkrun.ts`) | Read parkrun's `events.json` into `race_listings` rows with `provider = 'parkrun'` | Built and never switched on (`PARKRUN_EVENTS_ENABLED` stayed unset pending permission parkrun never gave); same scraping position |
+| UltraSignup results import (`race-results-import`'s `ultrasignup` provider) | Looked a runner up by name in UltraSignup's undocumented internal `service/events.svc/historybyname/{first}/{last}/` JSON feed (the one its own participant page uses), linked a person id, then imported per race | An undocumented internal feed queried by a person's name is a scrape, and it sent runners' names to UltraSignup from our egress IP |
 
-### Edge Function
+What went with them: the `{probe}` gate and the `parkrun-import` / `parkrun-import:probe` / `race-results-import:lookup` rate-limit buckets; the `PARKRUN_USER_AGENT`, `PARKRUN_EVENTS_ENABLED` and `ULTRASIGNUP_RESULTS_ENABLED` secrets (the prod-sync `FUNCTION_ENV_ALLOW` list is now empty, and all three are in `retired_function_env`); web `UltraSignUpLinkPanel.svelte` and `ultrasignup_person.ts`, mobile `widgets/ultrasignup_link.dart`, `ApiClient.linkUltraSignUpPerson` and `ultrasignup_person.dart`; the `parkrun_regions` TS↔Dart pair; the `link-ultrasignup-results` help guide. Migration `20271216170001_retire_scraped_integrations.sql` (+ `…02_…_validate.sql`) deletes the `integrations` rows with provider `parkrun` (placeholders, no token) and `ultrasignup` (person id + name), deletes the `provider = 'parkrun'` `race_listings` rows, drops `integrations_ultrasignup_identity_chk`, and narrows `integrations_provider_check` to `strava` / `garmin` / `runsignup` and `race_listings_provider_check` to `runsignup` / `manual` / `chronotrack` / `raceresult` / `ultrasignup`. `integrations.external_first_name` / `external_last_name` are NULL everywhere and no longer exported; a later migration drops them once the job worker and web releases carrying this change are live ([followups.md](../product/followups.md)).
 
-```typescript
-// apps/backend/supabase/functions/parkrun-import/index.ts
-import * as cheerio from 'cheerio';
+**Kept, because none of it scrapes:** the Strava OAuth API; HealthKit / Health Connect; the Strava and Garmin bulk-file importers; RunSignUp results and listings (its documented public REST API, [runsignup.com/API/Methods](https://runsignup.com/API/Methods)); ChronoTrack (the credentialed ChronoTrack Live API); the UltraSignup **listings** leg of `race-listings-sync` (gated on a partner `ULTRASIGNUP_API_KEY` / `_SECRET`); manual paste; the parkrun barcode above. An `ultrasignup` race listing now offers manual paste only, like `manual` and `raceresult` listings.
 
-export async function POST(req: Request) {
-  const { athleteNumber, userId } = await req.json();
-
-  const url = `https://www.parkrun.org.uk/results/athleteresultshistory/?athleteNumber=${athleteNumber}`;
-  const html = await fetch(url).then(r => r.text());
-  const $ = cheerio.load(html);
-
-  const runs: Run[] = [];
-  $('table tbody tr').each((_, row) => {
-    const cells = $(row).find('td');
-    runs.push({
-      id: crypto.randomUUID(),
-      user_id: userId,
-      started_at: parseDate($(cells[0]).text()),   // e.g. "05/04/2025"
-      duration_s: parseTime($(cells[4]).text()),   // e.g. "24:31"
-      distance_m: 5000,                            // always 5k
-      source: 'parkrun',
-      external_id: `parkrun:${$(cells[1]).text()}:${$(cells[0]).text()}`,
-      metadata: {
-        event: $(cells[1]).text(),                 // e.g. "Richmond"
-        position: parseInt($(cells[5]).text()),
-        age_grade: $(cells[6]).text(),             // e.g. "54.23%"
-        run_number: parseInt($(cells[2]).text()),  // user's nth parkrun
-      },
-    });
-  });
-
-  await supabase.from('runs').upsert(runs, { onConflict: 'external_id' });
-  return Response.json({ imported: runs.length });
-}
-```
-
-### Fragility warning
-
-parkrun can change their HTML structure without notice. This scraper will silently return zero results if the table format changes. Mitigations:
-
-- Store the raw HTML in Supabase Storage on each import (for debugging)
-- Alert if imported count drops to zero unexpectedly
-- Build graceful degradation into the UI — show "parkrun sync unavailable" rather than an error
-- The importer skips any scraped row that doesn't yield BOTH a valid finish time and a valid calendar date (`isUsableParkrunResult` in `parkrun-import/lib.ts`). This drops sub-header / footer rows and `--:--` assisted/unknown times, so one junk row can neither fail the whole batch on an unparseable `started_at` nor import a corrupt 5000 m / 0 s run.
-
-### Finding athlete numbers
-
-Every parkrun participant has a public athlete page at `parkrun.org.uk/parkrunner/{number}`. Users can find their number from their parkrun barcode or results email. Display a link to `parkrun.org.uk/register/` for users who don't know their number.
-
----
+Removing the code does not remove the deployed function: `prod_config.json` declares `parkrun-import` and the three secrets retired, and the backend release deletes / unsets them ([deployment.md § Retired scraper functions and secrets](../ops/deployment.md#retired-scraper-functions-and-secrets)).
 
 ## Garmin Connect
 
@@ -371,26 +444,39 @@ Two paths today, both unblocked:
 
 ---
 
-## Race results (RunSignUp + general scraping)
+## Race results (RunSignUp, ChronoTrack, paste)
 
-> **Status: shipped (2026-06-20, migration `20270214_001`, race_calendar.md).** The race calendar (`race_listings`) + the `race-results-import` / `race-listings-sync` Edge Functions + the auto-match-on-record seam are live on web (`/races`, run-detail) and mobile (`RacesScreen`, run-detail). The **RunSignUp leg is prod-gated, fail-closed**: with `RUNSIGNUP_API_KEY`/`RUNSIGNUP_API_SECRET` unset (the dev/CI default) both EFs return `503 provider_not_configured` and the UI shows the unavailable explainer — provisioning the key on the deployed project is the only remaining go-live step (record it on the deploy checklist). The **ChronoTrack leg is prod-gated, fail-closed** the same way: with `CHRONOTRACK_CLIENT_ID`/`CHRONOTRACK_USER_ID`/`CHRONOTRACK_PASSWORD` unset (the dev/CI default) the `chronotrack` import branch + the `provider:'chronotrack', probe:true` availability probe both return `503 provider_not_configured` and the Settings card shows the unavailable explainer — provisioning the three CTLive credentials is the only remaining go-live step. **parkrun** stays the shipped scraper; **manual paste** is the durable non-API path for every other timing platform. RaceResult / UltraSignup per-site scrapers remain scoped follow-ups — the URL-pattern table below is the reference for when one is built, not a description of shipped behaviour. See [decisions.md § 168](../architecture/decisions.md#168-race-results-live-on-the-runs-row-sourcerace-a-public-race_listings-calendar-is-its-own-table-and-auto-match-on-record-is-an-inform-tier-layered-resilience-wrapped-post-save-check) + [§ 178](../architecture/decisions.md).
+> **Status: shipped (2026-06-20, migration `20270214_001`, race_calendar.md).** The race calendar (`race_listings`) + the `race-results-import` / `race-listings-sync` Edge Functions + the auto-match-on-record seam are live on web (`/races`, run-detail) and mobile (`RacesScreen`, run-detail). **`race-listings-sync` stopped being a stub on 2026-09-02** ([decisions § 977](../architecture/decisions.md)): the provider fetch, per-provider row readers, batch reconciliation, service-role insert and differential update are written behind the unchanged fail-closed credential gate. **Since 2026-10-14 its RunSignUp leg is keyless and reads the real feed** ([§ RunSignUp listings](#runsignup-race-listings-public-no-key) below): `GET /Rest/races` is public, so the sync no longer 503s without `RUNSIGNUP_API_KEY`, and the reader is pinned against a recorded live payload. Its UltraSignup **listings** leg (a partner API gated on `ULTRASIGNUP_API_KEY` / `_SECRET`, not a scrape) is still unverified, so that reader stays optional-with-drop and the response reports `unusable` — a differently-shaped feed answers `synced: 0` on the first call instead of writing junk into the calendar. **Since 2026-10-14 the RunSignUp results leg is keyless too** ([§ RunSignUp](#runsignup) below, [decisions § 1903](../architecture/decisions.md)): it resolves the listing day's events, asks each for the runner's bib, and reads the real row shape; there is no 503 and no key to provision. **And the calendar is filled on a schedule** ([decisions § 1902](../architecture/decisions.md)): `race-listings-sweep` pulls one state over one 14-day window every five minutes, a full pass of the next 84 days every 25.5 hours, once its Vault secret is armed; synced races are placed on the map from their ZIP ([decisions § 1901](../architecture/decisions.md)). The **ChronoTrack leg is prod-gated, fail-closed** the same way: with `CHRONOTRACK_CLIENT_ID`/`CHRONOTRACK_USER_ID`/`CHRONOTRACK_PASSWORD` unset (the dev/CI default) the `chronotrack` import branch + the `provider:'chronotrack', probe:true` availability probe both return `503 provider_not_configured` and the Settings card shows the unavailable explainer — provisioning the three CTLive credentials is the only remaining go-live step. The **UltraSignup results leg was removed on 2026-11-10** ([decisions § 2467](../architecture/decisions.md)): it read UltraSignup's undocumented internal name-keyed feed, a scrape ([Removed: scraped integrations](#removed-scraped-integrations)). Since 2026-08-30 the legs are surfaced on mobile as well as web — the credential-gated providers carry a Settings tile and a reachable per-listing import on the phone, generated from the `raceImportProviders` catalogue in `race_service.dart` rather than branched on by name. **Manual paste** is the path for every timing platform without an official API: an `ultrasignup` / `manual` / `raceresult` listing offers paste alone. No scraper is built and none will be ([decisions § 2467](../architecture/decisions.md)). **Client-side corrections landed 2026-09-02** (one of them, the UltraSignup results tile's probe, went with that leg on 2026-11-10). RunSignUp is deliberately still probing the sync: `race-results-import` has no probe/import rate-limit split, so its 8/hour free bucket is shared with real imports and moving its probe there would exhaust a runner's ability to import after about two settings visits — filed, behind applying [§ 977](../architecture/decisions.md)'s split to that function. Separately, mobile's `isProviderConfigured` had been failing OPEN on anything but a 503 (a 429, any 5xx, a dropped connection, Supabase not yet initialised all read as *configured*) while web was already fail-closed; the phone now uses the same grading ([decisions § 1007](../architecture/decisions.md)).
+
+**The importer reports how much it read, and both clients say so.** `race-results-import` bounds its result set at 2,000 finishers and says so with `complete`. Until 2026-09-02 nothing read the field, so a capped field and a whole one both presented as a successful import of everything that existed. `parseImportCompleteness` grades it, fail-closed in `parseStravaSyncResult`'s direction — an absent `complete` is PARTIAL, because the importer is one transport shipped from this repo alongside its callers ([decisions § 1014](../architecture/decisions.md)). The `502 upstream_results_truncated` refusal also has its own sentence now on both platforms rather than falling through to a generic import failure; it is not a failure a retry fixes, and the manual paste form beside it is the answer.
+
+See [decisions.md § 168](../architecture/decisions.md#168-race-results-live-on-the-runs-row-sourcerace-a-public-race_listings-calendar-is-its-own-table-and-auto-match-on-record-is-an-inform-tier-layered-resilience-wrapped-post-save-check) + [§ 178](../architecture/decisions.md).
 
 ### RunSignUp
 
-RunSignUp powers a large portion of US road races and has an official REST API. The shipped importer calls the results endpoint server-side from `race-results-import/index.ts` (key from the Edge-only `RUNSIGNUP_API_KEY`/`_SECRET` env), maps each finisher through `lib.ts` (`mapRunSignUpResult` → a `source='race'` run with `external_id=race:{name}:{date}:{bib}` + the owner-only race metadata), and upserts with per-user `external_id` dedup. Until the key is provisioned the leg is inert (503).
-
-**Athlete-scoping is required (issue #360).** `get-results` returns the entire finisher field when unfiltered, so the leg is fail-closed: a request that names neither the runner's RunSignUp user id (`runSignUpUserId`, narrows the upstream fetch) nor a bib (`bib`, narrows the mapped field client-side via `filterResultsByBib`) is rejected `400 runsignup_athlete_id_required` before any fetch. In the `matchRunId` enrich path the leg additionally rejects `400 ambiguous_match` unless exactly one result maps — never silently merging `mapped[0]` (usually the winner) onto the caller's run. The web `/races` import modal + run-detail match banner and the mobile import sheet collect the bib; the gates are the pure `runSignUpScopeGate` / `matchResultGate` in `lib.ts`.
+RunSignUp powers a large portion of US road races, and both endpoints the importer reads are public (measured 2026-10-14: HTTP 200 with no key). `race-results-import` reads them server-side with no credential; `RUNSIGNUP_API_KEY` / `_SECRET` are appended only when both are set and are never a gate, so the `{ provider: 'runsignup', probe: true }` probe answers `configured: true` on every deployment ([decisions § 1903](../architecture/decisions.md)).
 
 ```
+GET https://runsignup.com/Rest/race/{race_id}?format=json
+  → race.events[]: every edition's events (event_id, start_time "M/D/YYYY HH:MM", distance, event_type, volunteer)
 GET https://runsignup.com/Rest/race/{race_id}/results/get-results
-  ?format=json
-  &tmp_key={API_KEY}
-  &user_id={USER_ID}    ← user's RunSignUp account ID
+  ?format=json&event_id={EVENT_ID}&bib_num={BIB}&results_per_page=2000
+  → individual_results_sets[].results[] + results_headers
 ```
 
-Returns: finish time, gun time, chip time, age group place, overall place, splits.
+- **`event_id` is required.** Without it the answer is `{"error":{"error_code":3,...}}` with **HTTP 200**, so every RunSignUp response is checked for that envelope (`runSignUpErrorOf`) and a refusal is a `502`, never an empty field. The import takes the listing day's in-person running events from the race (the edition whose `start_time` date is the listing's `race_date`), the listing's own distance first, at most eight, and asks each for the bib until one answers. The run is filed at the distance of the event that answered.
+- **The row:** `bib` (a number), `place`, `chip_time` (often `""`, so the time falls back to `clock_time`), `clock_time`, both with hundredths — rounded **up** to a whole second, because `runs.duration_s` is an integer. There is no age-group field: a row holds a `division-<id>-placement` per division, named in the set's `results_headers`, and the age group is the one placed division whose name is an **age band** ([decisions § 1913](../architecture/decisions.md)): a range (`F 30-39`, `Male 20 to 29`, `Ages 18-24`), an open end (`Female 70 and Over`, `M75+`, `F14&UND`, `Under 18`), a sex letter fused to its bounds (`M2029`, `F0119`), or one age after the word "age" (`Boys age 10`), optionally under an event code (`5K_F30-39`). A digit is not enough: weight classes are banded by age themselves (`Clydesdale 40 and Over`, `F Athena Under 40`), and they, overall and masters awards (`M Top 3 Overall`, `Top 10 Female`, `M Masters (40+)`), teams (`2 Person Team`) and whole-field catch-alls (`M 1-99`) all place a runner *instead of* their age group, so none is one. None or two matching placements (two age schemes side by side, `M 20-24` beside `M2024`) leave it unset. Mapped onto the same owner-only `source='race'` run as every leg (`external_id=race:{name}:{date}:{bib}`). A re-import skips a result whose `external_id` is stored **or** whose bib is already filed under the same listing: the sweep rewrites a listing's name when RunSignUp does, and the id spells the name, so the id alone would file the race a second time after a rename. A bib-less paste of the same finish is matched by clock instead (above). A failed dedupe read refuses the import (`500`) rather than inserting blind ([decisions § 1911](../architecture/decisions.md)). Pinned against `race-results-import/fixtures/runsignup_{race,results}.json`, plus two recorded division sets for the age band (`runsignup_results_{clydesdale_bands,top3_weight_classes}.json`), recorded live with names and cities replaced.
 
-Users connect their RunSignUp account via OAuth, then you can query their race history automatically.
+**Scoping is required, and only a bib scopes (issue #360).** `get-results` returns the whole finisher field when unfiltered, and keyless it **ignores `user_id`** — a user-id-scoped request answered every finisher. So `runSignUpScopeGate` accepts a bib alone and rejects anything else `400 runsignup_bib_required` before any fetch; the bib narrows upstream (`bib_num`) and again over the mapped rows (`filterResultsByBib`), because the gate proves the request was scoped, not that the feed honoured it. In the `matchRunId` enrich path the leg additionally rejects `400 ambiguous_match` unless exactly one result maps. The web `/races` import modal + run-detail match banner and the mobile import sheet collect the bib for every `RaceImportScope.bib` provider.
+
+#### RunSignUp race listings (public, no key)
+
+`race-listings-sync` (on a caller's request) and `race-listings-sweep` (on the five-minute schedule, [decisions § 1902](../architecture/decisions.md)) read `GET https://runsignup.com/Rest/races?format=json&events=T&sort=date ASC&results_per_page=500` — the sync with `start_date=today` and an optional ZIP hint, the sweep with `country_code=US&state={ST}&start_date&end_date` for its slot's 14-day window — which answers without a key (measured 2026-10-14). Keyless, only the first page of 1,000 is served (`page=2` is refused with HTTP 200 and an error envelope, which both read as a `502`), which is why the sweep's windows are sized to fit one page. Any other body that is not `{"races": [...]}` — what an empty window answers — is a `502 runsignup upstream shape` rather than a window with no races, so a reshaped feed fails every run loudly instead of letting every sweep report success while the calendar stops filling. The request is bounded at `UPSTREAM_TIMEOUT_MS` (30 s, headers and body together): a feed that stalls answers `504`, one that cannot be reached `502` ([decisions § 1911](../architecture/decisions.md)). `RUNSIGNUP_API_KEY` / `_SECRET` are appended only when both are set; they are not a gate, so `{ provider: 'runsignup' }` probes answer `configured: true` on every deployment. One request per sync, up to `MAX_LISTING_ROWS` (500 races, ~2.9 MB with events), sorted by date so the cap trims the far future; `complete: false` says the cap was hit.
+
+- **One listing per race** — `provider_race_id` is the RunSignUp `race_id` the results endpoint takes. `race_date` is `next_date` (falling back to `last_date`), already the race's local calendar day, so no timezone shift. `location_label` is `address.city, state, country_code`; `entry_url` is `url`; `results_url` is `external_results_url` when set.
+- **Distance** is the longest in-person running event (`event_type` in `running_race` / `running_only` / `trail_race` / `ultra`, not a volunteer slot), parsed from the feed's spellings: `5K`, `3.1 Miles`, `100 Yards`, `5000m` (lower-case glued `m` is metres in this feed), plus named `Marathon` / `Half Marathon`. An unreadable distance stays null rather than guessed.
+- **Excluded, and counted as `excluded`** (apart from `unusable`, which still means "the shape moved"): drafts, private races, and races whose events include no in-person running event — virtual-only challenges and walk-only events.
+- **Region:** RunSignUp has no coordinate search — `lat`/`lng` are silently ignored — and its documented location filter is `zipcode` + `radius` (miles, US only). So the RunSignUp hint is `near: { postal_code, radius_m }`; a point-only hint answers `400 near_postal_code_required` and a non-US code `400 near_postal_code_not_us`, rather than becoming a national pull filed as local. The feed carries no coordinates, so a race is **placed from its ZIP** ([decisions § 1901](../architecture/decisions.md)): `address.zipcode` (a US five-digit ZIP, `+4` dropped) is looked up in `us_zcta_points`, the Census 2024 Gazetteer ZCTA internal points, once per batch for its distinct ZIPs, and written as the listing's `location_point`. A ZIP with no ZCTA, or a failed lookup, writes the listing without a point and counts it in the response's `unplaced`; a stored race gains its point the first time one is known, is re-placed when its ZIP moves to another ZCTA (within one city the label does not change, so the stored hex EWKB is decoded and compared), and loses it when the new address has no ZCTA or no US ZIP — a point at the old venue is a race on the map where it is not. A failed lookup never moves or clears one ([decisions § 1911](../architecture/decisions.md)). The centroid is ZIP-sized: right for "near me", coarse for auto-match on a large rural ZIP.
 
 ### ChronoTrack
 
@@ -407,26 +493,9 @@ GET https://api.chronotrack.com/api/event/{event_id}/results
 
 Returns: bib, net (chip) time, gun time, overall rank, division (age-group) rank, division label — mapped onto the same race metadata keys the other providers write. The listing's `provider_race_id` carries the ChronoTrack `event_id`. CTLive results are nested under `event_results[]` (the extractor tolerates a top-level `results[]` too) and capped at `MAX_RESULTS_ROWS`.
 
-### General race results scraping
+### Other timing platforms: manual paste
 
-For races not on RunSignUp (ChronoTrack, RaceResult, local timing systems):
-
-```
-User workflow:
-  1. User pastes their result URL or enters bib number + race name
-  2. Edge Function fetches the results page
-  3. Parse finishing time and splits from HTML table
-  4. Import as Run with source='race', distance from race metadata
-```
-
-Common timing platforms and their URL patterns:
-
-| Platform | Powers | Result URL pattern |
-|---|---|---|
-| ChronoTrack | Many majors (Chicago, Boston qualifier events) | `results.chronotrack.com/r/...` |
-| RaceResult | European races, some US | `my.raceresult.com/...` |
-| UltraSignup | Trail + ultra events | `ultrasignup.com/results_athlete.aspx?uid=...` |
-| FindMyMarathon | Large marathon aggregator | `findmymarathon.com/results/...` |
+Races timed on anything without an official API — UltraSignup results, RaceResult, FindMyMarathon, local timing systems — are imported by **manual paste**: the runner types or pastes their result (a usable time, and optionally bib and placings) into the form on the race listing or run page, and `race-results-import` with `provider: 'paste'` files it as the same `source='race'` run, deduped like the provider legs. No Edge Function fetches a result page or an internal feed for these platforms ([decisions § 2467](../architecture/decisions.md)); a new provider leg needs an official, documented API first.
 
 ### Data mapping for race runs
 
@@ -470,7 +539,7 @@ The mobile implementation mirrors the existing BLE chest-strap pattern in `apps/
 4. **Recorder seam:** `packages/run_recorder/lib/src/run_recorder.dart` exposes an additive opt-in seam — `setTreadmillSample(speedMps, {totalDistanceMetres})` flips the recorder into treadmill mode (belt distance overrides the GPS-accumulated headline distance), and `clearTreadmillMode()` reverts to the GPS path. Belt distance only influences a run while treadmill mode is on; the GPS L0/L1 + auto-pause path is untouched, paused belt-advance is excluded, and a dropped BLE link falls back to the L0 clock. On `stop()` the recorder writes `metadata['indoor_source'] = 'treadmill'` (and `metadata['distance_source'] = 'treadmill'`).
 5. **Metadata flag:** `metadata.indoor_source = "treadmill"` sits alongside the existing `indoor_estimated` / `distance_source` keys; no new union. Registered in [docs/backend/metadata.md](../backend/metadata.md).
 6. Map / off-route / privacy-zone surfaces are skipped automatically because the run carries no track points — the same code path indoor pedometer runs already use.
-7. **Run-screen toggle:** `run_screen.dart` `_toggleTreadmillMode` renders a `SwitchListTile` over the recording view, gated on a paired belt (`pairedName()`). Turning it on subscribes the belt `stream` and pumps each sample into `setTreadmillSample`; turning it off cancels and calls `clearTreadmillMode`. It's an **L4 opt-in** — the subscription + recorder calls each carry their own try/catch + `debugPrint`, a fault shows a banner and reverts the toggle, and the L0 clock / L1 distance path is never disturbed. The belt's `statusStream` drives drop/reconnect disclosure banners (mirroring the HR strap), and `connectFailed` offers a one-tap reconnect. The toggle is off by default and never auto-engages, so a belt in range can't hijack an outdoor GPS run. See [treadmill_live_mode.md](treadmill_live_mode.md).
+7. **Run-screen toggle:** `run_screen.dart` `_toggleTreadmillMode` renders a `SwitchListTile` over the recording view, gated on a paired belt (`pairedName()`). Turning it on subscribes the belt `stream` and pumps each sample into `setTreadmillSample`; turning it off cancels and calls `clearTreadmillMode`. It's an **L4 opt-in** — the subscription + recorder calls each carry their own try/catch + `debugPrint`, a fault shows a banner and reverts the toggle, and the L0 clock / L1 distance path is never disturbed. The belt's `statusStream` drives drop/reconnect disclosure banners (mirroring the HR strap), and `connectFailed` offers a one-tap reconnect. **The toggle's subtitle is switched on `BleTreadmillStatus`, not on whether a speed is known** (2026-08-21, [decisions § 704](../architecture/decisions.md)): `connected` is the only arm that can format a belt speed, and `reconnecting` / `connecting` / `disconnected` / `connectFailed` each state that the belt is not feeding — so a non-feeding belt stays disclosed after the transient banner expires, and no belt-derived figure can survive a drop. The toggle is off by default and never auto-engages, so a belt in range can't hijack an outdoor GPS run. **Hardware-in-the-loop verification against a real FTMS belt is still owed** — a device gate on the decode + reconnect behaviour of actual hardware, not on unwritten code. See [treadmill_live_mode.md](treadmill_live_mode.md).
 
 **Still deferred:** the watch (Wear OS / watchOS) BLE plumbing — Wear OS has its own `BluetoothGatt` API and Apple Watch can pair FTMS via `CBCentralManager`; watch pairing is downstream of phone pairing, not a parallel item.
 
@@ -522,7 +591,7 @@ Pure emitter: `apps/web/src/lib/routes/route_gpx.ts`
 **"GPX + markers"** download on `/routes/[id]` + `/routes/[id]/roadbook`
 (web, shown only when the route has ≥1 marker) and the **"Share as GPX +
 markers"** route-detail action on mobile. Distinct from the plain
-[GPX route export](features.md#gpx--kml-import) (line only, no waypoints),
+[GPX route export](../product/features.md#gpx--kml-import) (line only, no waypoints),
 which both still offer.
 
 ---
@@ -570,10 +639,12 @@ Runs can arrive from multiple sources simultaneously (e.g. a Garmin run syncs vi
 | Android Health Connect | `healthconnect:{hc-uuid}` |
 | Strava | `strava:{activity-id}` |
 | Garmin Connect | `garmin:{activity-id}` |
-| parkrun | `parkrun:{event-name}:{date}` |
-| Race results | `race:{race-name}:{date}:{bib}` |
+| parkrun (legacy, no writer since 2026-11-10) | `parkrun:{event-name}:{date}` |
+| Race results | `race:{race-name}:{date}:{bib}`; with no bib, `race:{race-name}:{date}::{finish}` |
 
 All upserts use `ON CONFLICT (external_id) DO NOTHING` — the first-written record wins, subsequent duplicates are silently ignored.
+
+**A race result with no bib is keyed on its finish** ([decisions § 1920](../architecture/decisions.md)). `{finish}` is `c` chip seconds, `g` gun seconds (rounded up, as `duration_s` is) and `p` overall place, each only when the result carries it — `race:Example 5K:2026-09-19::c1284p10`. Those are the readings `isSameFinish` compares ([§ 1912](../architecture/decisions.md)), so two bib-less results that share an id are always one finish, and two finishes under one listing (a 5K and a kids' mile, two runners on one account) get two ids and both file. The id is not the only dedupe: `race-results-import` also matches every result against the caller's runs under the listing with `isSameFinish`, which is what catches one finish read a fraction differently (`21:24` against `21:24.40`) and a bib-less run stored before § 1920 as `race:{name}:{date}:`. Those old ids are left as they are; nothing parses the shape.
 
 ### Same-source re-import: stable local id (mobile) (#361)
 
@@ -598,7 +669,7 @@ The Strava backfill (`strava-import`) and the Garmin ZIP importer (`garmin-zip.t
 
 ### Embedded best efforts on import
 
-Every importer that carries a per-point track also computes per-canonical-distance embedded best efforts (`metadata.fastest_{5k,10k,half_marathon,marathon}_s`) from the imported activity's track/stream, matching the live recorder's `fastestWindowOf` algorithm (shared `computeEmbeddedBests` on web/EF; `enrichMetadataWithEmbeddedBests` in `apps/mobile_android/lib/embedded_bests.dart` on mobile — wired into the Strava ZIP importer, the only mobile importer that carries a track; Health Connect + CSV imports are trackless, so there is nothing to compute). Without them, a fast 5k/10k *inside* a long imported run misses every whole-run canonical bracket and never reaches `personal_records` / the dashboard PR card / the public profile. A track with no per-point timestamps (indoor / treadmill / a route file with no times) writes nothing — no fake bests. See [`docs/backend/metadata.md` § Personal-records hints](../backend/metadata.md).
+Every importer that carries a per-point track also computes per-canonical-distance embedded best efforts (`metadata.fastest_{5k,10k,half_marathon,marathon}_s`) from the imported activity's track/stream, matching the live recorder's `fastestWindowOf` algorithm (shared `computeEmbeddedBests` on web/EF; `enrichMetadataWithEmbeddedBests` in `apps/mobile_android/lib/embedded_bests.dart` on mobile — wired into the Strava ZIP importer, the only mobile importer that carries a track; CSV imports are trackless, so there is nothing to compute; a Health Connect import computes them whenever the route grant released a timestamped track, so a backfilled run and a first-time routed import are indistinguishable). Without them, a fast 5k/10k *inside* a long imported run misses every whole-run canonical bracket and never reaches `personal_records` / the dashboard PR card / the public profile. A track with no per-point timestamps (indoor / treadmill / a route file with no times) writes nothing — no fake bests. See [`docs/backend/metadata.md` § Personal-records hints](../backend/metadata.md).
 
 ---
 

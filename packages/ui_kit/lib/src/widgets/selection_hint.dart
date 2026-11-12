@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// there is no hover, no menu entry, and nothing on screen changes until the
 /// press lands. This is the hint, not a second affordance.
 ///
-/// [label] is required for the reason [ActivityLoader]'s is — ui_kit has no
+/// [label] is required for the reason [ListSkeleton]'s is — ui_kit has no
 /// localization catalogue, so a default could only be English.
 class SelectionHint extends StatelessWidget {
   const SelectionHint({super.key, required this.label});

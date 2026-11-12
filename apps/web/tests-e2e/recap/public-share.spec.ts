@@ -1,8 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { originOf } from '../fixtures/base-url';
+import { browserYear } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
-const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_YEAR = browserYear();
 // A random, never-published uuid — the private-by-default / revoked case.
 const UNKNOWN_ID = '00000000-0000-4000-8000-00000000dead';
 
@@ -10,12 +13,7 @@ test.describe('/recap/share/[id] — anon visitor', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('an unpublished id renders the not-found fallback, not a 500', async ({ page }) => {
@@ -39,22 +37,18 @@ test.describe('/recap/share/[id] — publish round-trip (seed user)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('publish from /recap/[year] then load the public link with OG tags', async ({
 		page,
-		context
+		context,
+		baseURL
 	}) => {
 		// Stub the share sheet + clipboard so "Publish & copy link" resolves
 		// deterministically and we can read the minted URL back.
 		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-			origin: 'http://localhost:7777'
+			origin: originOf(baseURL)
 		});
 		await page.addInitScript(() => {
 			Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });

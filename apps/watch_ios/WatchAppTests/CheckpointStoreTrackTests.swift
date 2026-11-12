@@ -58,6 +58,23 @@ final class CheckpointStoreTrackTests: XCTestCase {
         XCTAssertEqual(loaded[2].lat, 51.4516, accuracy: 0.00001)
     }
 
+    /// A run resumed from the checkpoint uploads the credited distance each
+    /// fix was stamped with before the process died.
+    func testCreditedDistanceSurvivesTheCheckpoint() {
+        store.appendTrackPoints([
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z", distM: 0),
+            TrackPointRecord(lat: 51.4514, lng: -0.1961, ele: nil, ts: "2026-04-15T07:30:11Z", distM: 14.25),
+            point(51.4515, -0.1960, ts: "2026-04-15T07:30:21Z"),
+        ])
+        store.closeAppendHandle()
+
+        let loaded = collect()
+        XCTAssertEqual(loaded.count, 3)
+        XCTAssertEqual(loaded[0].distM, 0)
+        XCTAssertEqual(loaded[1].distM, 14.25)
+        XCTAssertNil(loaded[2].distM)
+    }
+
     func testMultipleAppendBatchesAccumulate() {
         store.appendTrackPoints([point(1, 1), point(2, 2)])
         store.appendTrackPoints([point(3, 3)])
@@ -208,7 +225,10 @@ final class CheckpointStoreTrackTests: XCTestCase {
             pausedIntervalSeconds: 30,
             trackPointCount: 200,
             cacheFileURL: store.trackFileURL,
-            averageBPM: 150
+            averageBPM: 150,
+            hrCoverage: 0.5,
+            steps: nil,
+            laps: nil
         )
         store.write(checkpoint: cp)
         defer { CheckpointStore.clearStatic() }
@@ -218,12 +238,13 @@ final class CheckpointStoreTrackTests: XCTestCase {
         XCTAssertEqual(peeked?.id, runId)
         XCTAssertEqual(peeked?.distanceMetres ?? -1, 4200, accuracy: 0.0001)
         XCTAssertEqual(peeked?.averageBPM, 150)
+        XCTAssertEqual(peeked?.hrCoverage, 0.5)
     }
 
     func testClearStaticRemovesCheckpoint() {
         let cp = RunCheckpoint(
             id: runId, startedAt: Date(), distanceMetres: 1, activeDurationSeconds: 1,
-            pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil
+            pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil, hrCoverage: nil, steps: nil, laps: nil
         )
         store.write(checkpoint: cp)
         XCTAssertNotNil(CheckpointStore.peekCheckpoint())
@@ -237,7 +258,7 @@ final class CheckpointStoreTrackTests: XCTestCase {
         store.closeAppendHandle()
         store.write(checkpoint: RunCheckpoint(
             id: runId, startedAt: Date(), distanceMetres: 1, activeDurationSeconds: 1,
-            pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil
+            pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil, hrCoverage: nil, steps: nil, laps: nil
         ))
         CheckpointStore.clearStatic()
         XCTAssertNil(CheckpointStore.peekCheckpoint())

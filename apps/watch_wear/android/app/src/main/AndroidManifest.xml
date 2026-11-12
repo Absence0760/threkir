@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature android:name="android.hardware.type.watch" />
+    <!-- The recorder prefers the watch's own receiver (GPS_PROVIDER) and
+         falls back to fused, so a watch without one still records. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -11,11 +14,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
-    <!-- BODY_SENSORS alone is not enough on Wear OS 3.5+ (API 34+):
-         the platform stops delivering HR samples once the display
-         goes ambient unless BODY_SENSORS_BACKGROUND is also granted.
-         We declare this in the Wear OS Play Data Safety form too. -->
-    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />
+    <!-- BODY_SENSORS_BACKGROUND is deliberately NOT declared. It gates
+         PassiveMonitoringClient's background body-sensor access; heart
+         rate here comes from MeasureClient, whose documented background
+         access is "no" and which no permission changes. Declaring an
+         unobtainable sensor permission only widens the install prompt
+         and the Play Data Safety form. See ManifestGuardsTest. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <!-- Foreground service for long-running GPS recording. Without this
          the OS kills the recording the moment the watch goes ambient. -->
@@ -33,6 +37,14 @@
          the foreground service after ~10 minutes. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- The pace alert's haptic. `Vibrator.vibrate` is permission-gated, so
+         without this the call throws SecurityException across the binder on
+         EVERY watch and the alert degrades silently to TTS-only — losing the
+         two-pulse-vs-one-pulse direction cue a runner is meant to read by
+         feel with headphones paused. Normal permission: granted at install,
+         nothing to request. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- networkSecurityConfig (res/xml/network_security_config.xml) is
          the canonical mechanism — it scopes cleartext to the dev
          loopback (10.0.2.2) only. The application-level
@@ -40,6 +52,7 @@
          flag it on the manifest scan without reading the NSC,
          so we drop it. -->
     <application
+        android:name=".WatchWearApplication"
         android:label="Threkir"
         android:icon="@mipmap/ic_launcher"
         android:localeConfig="@xml/locales_config"
@@ -54,6 +67,14 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
+
+        <!-- Sentry's SentryInitProvider would otherwise start the SDK before
+             any app code and throw "DSN is required" when SENTRY_DSN is
+             empty, killing the app on launch. WatchWearApplication starts it
+             instead, only when a DSN is set. See ManifestGuardsTest. -->
+        <meta-data
+            android:name="io.sentry.auto-init"
+            android:value="false" />
 
         <activity
             android:name=".MainActivity"
@@ -88,6 +109,48 @@
             <meta-data
                 android:name="androidx.wear.tiles.PREVIEW"
                 android:resource="@drawable/tile_active_run_preview" />
+        </service>
+
+        <!-- Wakes on a new today's-workout push from the phone and asks the
+             tile and the complication to re-read it; the live listener in
+             WorkoutBridge only exists while the app is open. exported=true is
+             required for Play services to deliver; the filter limits the
+             wake-up to the one Data Layer path. -->
+        <service
+            android:name=".tiles.TodaysWorkoutListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/todays_workout" />
+            </intent-filter>
+        </service>
+
+        <!-- Watch-face complication: the live run, or the last run this watch
+             recorded. BIND_COMPLICATION_PROVIDER is enforced by the platform,
+             so only the complication host can bind and exported=true is safe
+             (and required). UPDATE_PERIOD_SECONDS is an hourly safety net: the
+             recording service and RunViewModel push every real change through
+             ActiveRunComplicationService.requestUpdate, and the face ticks the
+             live elapsed time itself. Not directBootAware: the last-run entry
+             lives in credential-encrypted DataStore. -->
+        <service
+            android:name=".complications.ActiveRunComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_complication_mark"
+            android:label="@string/complication_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT,LONG_TEXT,ICON" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="3600" />
         </service>
     </application>
 </manifest>

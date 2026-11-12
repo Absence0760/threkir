@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/preferences.dart' show kMapStyles;
 import '../lib/widgets/live_run_map.dart';
 
 /// Unit tests for [resolveTileUrl] / [resolveBasemapIsDark] — the pure
@@ -155,8 +156,8 @@ void main() {
     });
 
     test('override wins even when MAPTILER_KEY is also set', () {
-      // Dev path keeps the key in .env.local for production builds
-      // — the override flips the URL only when present.
+      // A dev build can carry the production key alongside the
+      // override — the override flips the URL only when present.
       final url = _url(const {
         'MAPTILER_KEY': 'production-key',
         'TILE_URL_TEMPLATE':
@@ -210,7 +211,7 @@ void main() {
 
     test('whitespace-only override falls back to MapTiler (no silent breakage)',
         () {
-      // A stray space after `TILE_URL_TEMPLATE=` in .env.local is
+      // A stray space after `TILE_URL_TEMPLATE=` in an env file is
       // a really common copy/paste mistake. Treating it as a valid
       // override would silently disable MapTiler + send tile
       // requests to ` ` (literal space) which flutter_map fails
@@ -381,6 +382,193 @@ void main() {
       expect(_contrast(preFix, _lightBasemapSample), lessThan(2.0));
       expect(mapAccentColour(darkBasemap: false), isNot(preFix));
       expect(mapAccentColour(darkBasemap: true), preFix);
+    });
+  });
+
+  // A list thumbnail is a static image of the basemap every live map
+  // resolves. Pre-fix it hard-coded `streets-v2-dark`, so a light-theme
+  // runner saw a dark street map in every list (decisions § 1749).
+  group('resolveStaticMapUrl', () {
+    String? staticUrl(
+      Map<String, String> env, {
+      String mapStyle = 'streets',
+      Brightness brightness = Brightness.light,
+    }) =>
+        resolveStaticMapUrl(env,
+            mapStyle: mapStyle,
+            brightness: brightness,
+            width: 72,
+            height: 40,
+            path: 'P');
+
+    const expected = {
+      'streets': {Brightness.light: 'streets-v2', Brightness.dark: 'streets-v2-dark'},
+      'satellite': {Brightness.light: 'satellite', Brightness.dark: 'satellite'},
+      'outdoors': {Brightness.light: 'outdoor-v2', Brightness.dark: 'outdoor-v2'},
+      'dark': {Brightness.light: 'streets-v2-dark', Brightness.dark: 'streets-v2-dark'},
+    };
+
+    test('every map_style × theme requests the slug the live map tiles use', () {
+      const env = {'MAPTILER_KEY': 'k'};
+      for (final style in kMapStyles) {
+        for (final brightness in Brightness.values) {
+          final slug = expected[style]![brightness]!;
+          expect(
+            staticUrl(env, mapStyle: style, brightness: brightness),
+            'https://api.maptiler.com/maps/$slug/static/auto/72x40@2x.png?key=k&path=P',
+            reason: '$style / ${brightness.name}',
+          );
+          // Same basemap as the live map's raster tiles.
+          expect(_url(env, mapStyle: style, brightness: brightness),
+              contains('/maps/$slug/{z}/'));
+        }
+      }
+    });
+
+    test('light streets in the light theme (the reported bug)', () {
+      final url = staticUrl(const {'MAPTILER_KEY': 'k'})!;
+      expect(url, contains('/maps/streets-v2/static/'));
+      expect(url, isNot(contains('streets-v2-dark')));
+    });
+
+    test('an unknown style falls back to streets', () {
+      expect(
+        staticUrl(const {'MAPTILER_KEY': 'k'}, mapStyle: 'from-a-newer-client'),
+        contains('/maps/streets-v2/static/'),
+      );
+    });
+
+    test('the dev override wins, at twice the size for density', () {
+      expect(
+        staticUrl(const {
+          'TILE_URL_TEMPLATE': ' http://127.0.0.1:8080/styles/basic/{z}/{x}/{y}.png ',
+          'MAPTILER_KEY': 'k',
+        }, mapStyle: 'satellite', brightness: Brightness.dark),
+        'http://127.0.0.1:8080/styles/basic/static/auto/144x80.png?path=P',
+      );
+    });
+
+    test('an override that is not a raster template falls through to MapTiler',
+        () {
+      expect(
+        staticUrl(const {
+          'TILE_URL_TEMPLATE': 'http://example.test/tiles',
+          'MAPTILER_KEY': 'k',
+        }),
+        startsWith('https://api.maptiler.com/maps/streets-v2/static/'),
+      );
+    });
+
+    test('nothing configured → null, so the widget paints its fallback', () {
+      expect(staticUrl(const {}), isNull);
+      expect(staticUrl(const {'MAPTILER_KEY': '  '}), isNull);
+      expect(staticUrl(const {'TILE_URL_TEMPLATE': 'http://example.test/x'}),
+          isNull);
+    });
+  });
+
+  group('mapHeatRamp', () {
+    // Composite [fg] at [alpha] over an opaque [bg], as the eye sees it.
+    Color over(Color fg, double alpha, Color bg) => Color.fromARGB(
+          255,
+          // ignore: deprecated_member_use
+          (fg.red * alpha + bg.red * (1 - alpha)).round(),
+          // ignore: deprecated_member_use
+          (fg.green * alpha + bg.green * (1 - alpha)).round(),
+          // ignore: deprecated_member_use
+          (fg.blue * alpha + bg.blue * (1 - alpha)).round(),
+        );
+    const lightGrounds = [
+      _lightBasemapSample,
+      Color(0xFFAAD3DF),
+      Color(0xFFDCDCDC),
+    ];
+
+    test('every rung and the line it fades into clear the floor at the '
+        'opacity they rest at', () {
+      var graded = 0;
+      for (final dark in [false, true]) {
+        for (final c in [
+          ...mapHeatRamp(darkBasemap: dark),
+          mapTrackLine(darkBasemap: dark),
+        ]) {
+          for (final ground in dark ? [_darkBasemapSample] : lightGrounds) {
+            graded++;
+            expect(_contrast(over(c, mapHeatOpacity, ground), ground),
+                greaterThanOrEqualTo(_overlayFloor),
+                reason: '$c at $mapHeatOpacity on $ground');
+          }
+        }
+      }
+      expect(graded, 20, reason: 'five marks on three light grounds and one dark');
+    });
+
+    test('the fixed ramp and violet line it replaced did not', () {
+      for (final c in const [
+        Color(0xFF3B82F6),
+        Color(0xFF10B981),
+        Color(0xFFF59E0B),
+        Color(0xFFEF4444),
+      ]) {
+        expect(
+            _contrast(over(c, 0.85 * 0.5, _lightBasemapSample),
+                _lightBasemapSample),
+            lessThan(_overlayFloor));
+      }
+      expect(
+          _contrast(over(const Color(0xFF6366F1), 0.55, _darkBasemapSample),
+              _darkBasemapSample),
+          lessThan(_overlayFloor));
+    });
+
+    test("is web's mapHeatRamp, low to high", () {
+      expect(mapHeatRamp(darkBasemap: false), const [
+        Color(0xFF1D4ED8),
+        Color(0xFF065F46),
+        Color(0xFF92400E),
+        Color(0xFF991B1B),
+      ]);
+      expect(mapHeatRamp(darkBasemap: true), const [
+        Color(0xFF60A5FA),
+        Color(0xFF34D399),
+        Color(0xFFFBBF24),
+        Color(0xFFF87171),
+      ]);
+    });
+  });
+
+  group('mapTrackLine', () {
+    test('a direction chevron keeps a 3:1 edge on the line of either basemap',
+        () {
+      // The navy body or the white outline has to clear the line it sits on;
+      // the pair must also separate, or the outline reads as the glyph.
+      expect(_contrast(chevronInk, Colors.white), greaterThanOrEqualTo(3));
+      for (final dark in [false, true]) {
+        final line = mapTrackLine(darkBasemap: dark);
+        final best = math.max(
+          _contrast(chevronInk, line),
+          _contrast(Colors.white, line),
+        );
+        expect(best, greaterThanOrEqualTo(_overlayFloor));
+      }
+    });
+
+    test('clears the floor against the basemap it is keyed to', () {
+      expect(_contrast(mapTrackLine(darkBasemap: false), _lightBasemapSample),
+          greaterThanOrEqualTo(_overlayFloor));
+      expect(_contrast(mapTrackLine(darkBasemap: false), const Color(0xFFAAD3DF)),
+          greaterThanOrEqualTo(_overlayFloor));
+      expect(_contrast(mapTrackLine(darkBasemap: true), _darkBasemapSample),
+          greaterThanOrEqualTo(_overlayFloor));
+    });
+
+    test("is web's mapTrackLine and the gradient's middle stop", () {
+      expect(mapTrackLine(darkBasemap: false), const Color(0xFFA33D1A));
+      expect(mapTrackLine(darkBasemap: true), const Color(0xFFF08A5D));
+      for (final dark in [false, true]) {
+        expect(mapTrackLine(darkBasemap: dark),
+            trackGradientColours(darkBasemap: dark)[1]);
+      }
     });
   });
 }

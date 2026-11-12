@@ -11,12 +11,22 @@
  * `apps/mobile_android/test/backup_format_compat_test.dart`.
  */
 
+import type { JsonObject } from '../types';
 import {
 	coalesceRunActivity,
 	extractEventIds,
 	stripServerManagedProfileFields,
 	type ParsedBackup
 } from './backup_reader';
+import {
+	keepKnownColumns,
+	PROFILE_RESTORE_COLUMNS,
+	ROUTE_RESTORE_COLUMNS,
+	RUN_RESTORE_COLUMNS
+} from './restore_columns';
+import { thrownMessage } from '../core/supabase_error';
+import { loggableMessage } from '../util/loggable_message';
+import { isEntityId } from '../core/entity_id';
 
 export interface RestoreProgress {
 	stage: 'reading' | 'profile' | 'tracks' | 'runs' | 'routes' | 'done';
@@ -24,12 +34,77 @@ export interface RestoreProgress {
 	total: number;
 }
 
+/**
+ * One part of the restore that did not land, as data rather than a sentence.
+ *
+ * It used to be `` `run ${origId}: ${thrownMessage(e)}` ``: PostgREST's English
+ * (table and constraint names) in a field a page could render. The account
+ * page shows only the count today, and the mobile twin renders each one
+ * through localized copy (`restore_warning.dart`, decisions § 2320), so the
+ * caught failure rides in `error` for the log and never as text.
+ */
+export type RestoreWarningKind =
+	| 'profile'
+	| 'settings'
+	| 'runUnreadable'
+	| 'routeUnreadable'
+	| 'track'
+	| 'run'
+	| 'route'
+	| 'columnsDropped';
+
+export interface RestoreWarning {
+	kind: RestoreWarningKind;
+	/** The archive's id for the row, when it had one. */
+	itemId?: string;
+	/** The row's zero-based position in its section of the archive. */
+	index?: number;
+	/** The section a `columnsDropped` warning is about, and the names it dropped. */
+	section?: 'profile' | 'runs' | 'routes';
+	columns?: string[];
+	/** The caught failure. For the log only, never rendered as text. */
+	error?: unknown;
+}
+
 export interface RestoreResult {
 	runsImported: number;
 	routesImported: number;
 	tracksUploaded: number;
 	profileRestored: boolean;
-	warnings: string[];
+	warnings: RestoreWarning[];
+	/** The archive's own `complete: false` verdict, carried to the UI. */
+	archiveIncomplete: boolean;
+	/** Section identifiers the archive named as short. May be empty. */
+	archiveIncompleteSections: string[];
+}
+
+/**
+ * Carry an archive's own completeness verdict into the restore result.
+ *
+ * Restore is additive — the upsert re-homes rows rather than replacing an
+ * account — so a short archive cannot delete anything. What it CAN do is
+ * read as a full history to someone about to wipe a device on the strength
+ * of it, which is why the verdict has to reach the runner rather than
+ * stopping at the manifest.
+ *
+ * Only an explicit `complete: false` claims a shortfall, matching
+ * `cloudExportShortfall` and the mobile reader
+ * ([decisions.md § 668](../../../../docs/architecture/decisions.md)): an
+ * archive from a writer that predates the field says nothing about its own
+ * completeness, and warning on every one of those would be its own
+ * dishonesty.
+ */
+export function noteIncompleteArchive(
+	manifest: unknown,
+	result: RestoreResult
+): void {
+	if (!manifest || typeof manifest !== 'object') return;
+	const m = manifest as { complete?: unknown; incomplete?: unknown };
+	if (m.complete !== false) return;
+	result.archiveIncomplete = true;
+	result.archiveIncompleteSections = Array.isArray(m.incomplete)
+		? m.incomplete.filter((s): s is string => typeof s === 'string')
+		: [];
 }
 
 /**
@@ -43,11 +118,11 @@ export interface RestoreResult {
  * than one that fails entirely on the 6th.
  */
 export interface RestoreBackend {
-	upsertProfile(row: Record<string, unknown>): Promise<void>;
-	upsertSettings(prefs: Record<string, unknown>): Promise<void>;
+	upsertProfile(row: JsonObject): Promise<void>;
+	upsertSettings(prefs: JsonObject): Promise<void>;
 	uploadTrack(path: string, bytes: Uint8Array): Promise<void>;
-	upsertRun(row: Record<string, unknown>): Promise<void>;
-	upsertRoute(row: Record<string, unknown>): Promise<void>;
+	upsertRun(row: JsonObject): Promise<void>;
+	upsertRoute(row: JsonObject): Promise<void>;
 	/**
 	 * Returns the subset of `ids` that exist in the destination
 	 * `events` table. Runs whose `event_id` doesn't resolve get
@@ -55,6 +130,57 @@ export interface RestoreBackend {
 	 * FK-fail.
 	 */
 	fetchValidEventIds(ids: string[]): Promise<Set<string>>;
+}
+
+/**
+ * One warning per section naming every column the archive carried that this
+ * build's schema has no home for — not one per row.
+ *
+ * The account page renders the warning COUNT, not the text, so a stale archive
+ * of 500 runs used to read as "500 warnings" beside an import of zero. The
+ * names are what a reader can act on, and they are the same handful on every
+ * row of a section by construction.
+ */
+function noteDroppedColumns(
+	section: 'profile' | 'runs' | 'routes',
+	dropped: readonly string[],
+	result: RestoreResult
+): void {
+	if (dropped.length === 0) return;
+	warn(result, { kind: 'columnsDropped', section, columns: [...dropped].sort() });
+}
+
+/**
+ * What the log records for a warning: nothing the archive could have written.
+ *
+ * Console output becomes a Sentry breadcrumb once the reader consents, and the
+ * archive is a file anyone can hand-edit, so its row ids and its JSON keys are
+ * free text a stranger chose. An id is kept only when it is shaped like one
+ * of our row ids; dropped columns are counted, never named; the caught
+ * failure goes through `loggableMessage`. `kind`, `index` and `section` are
+ * the orchestrator's own values. The warning itself still carries the raw id
+ * and names for the page.
+ */
+export function restoreWarningLogFields(w: RestoreWarning): Record<string, unknown> {
+	return {
+		itemId: w.itemId === undefined ? undefined : isEntityId(w.itemId) ? w.itemId : '<invalid>',
+		index: w.index,
+		section: w.section,
+		columnsDropped: w.columns?.length,
+		error: w.error === undefined ? undefined : loggableMessage(thrownMessage(w.error))
+	};
+}
+
+function warn(result: RestoreResult, w: RestoreWarning): void {
+	console.warn('[restore]', w.kind, restoreWarningLogFields(w));
+	result.warnings.push(w);
+}
+
+/// The archive is a file from disk, so a list entry can be any JSON value. A
+/// null or a string reaching `r.id` used to throw out of the whole restore,
+/// taking every later run and the routes section with it.
+function isRowObject(r: unknown): r is JsonObject {
+	return typeof r === 'object' && r !== null && !Array.isArray(r);
 }
 
 export interface RestoreOrchestrateOptions {
@@ -77,25 +203,33 @@ export async function restoreOrchestrate(
 		routesImported: 0,
 		tracksUploaded: 0,
 		profileRestored: false,
-		warnings: []
+		warnings: [],
+		archiveIncomplete: false,
+		archiveIncompleteSections: []
 	};
+	noteIncompleteArchive(parsed.manifest, result);
 
 	// Profile + settings first — later rows may reference preferences.
 	if (parsed.profile) {
 		onProgress?.({ stage: 'profile', current: 0, total: 1 });
 		try {
 			const portableProfile = stripServerManagedProfileFields(parsed.profile);
-			await backend.upsertProfile({ ...portableProfile, id: userId });
+			const known = keepKnownColumns(
+				{ ...portableProfile, id: userId },
+				PROFILE_RESTORE_COLUMNS
+			);
+			noteDroppedColumns('profile', known.dropped, result);
+			await backend.upsertProfile(known.row);
 			result.profileRestored = true;
 		} catch (e) {
-			result.warnings.push(`profile: ${(e as Error).message}`);
+			warn(result, { kind: 'profile', error: e });
 		}
 	}
 	if (Object.keys(parsed.settingsPrefs).length > 0) {
 		try {
 			await backend.upsertSettings(parsed.settingsPrefs);
 		} catch (e) {
-			result.warnings.push(`settings_prefs: ${(e as Error).message}`);
+			warn(result, { kind: 'settings', error: e });
 		}
 	}
 
@@ -109,12 +243,18 @@ export async function restoreOrchestrate(
 				: new Set<string>();
 
 		let i = 0;
+		const droppedRunColumns = new Set<string>();
 		for (const r of runs) {
 			onProgress?.({ stage: 'runs', current: i, total: runs.length });
+			if (!isRowObject(r)) {
+				warn(result, { kind: 'runUnreadable', index: i });
+				i++;
+				continue;
+			}
 			const origId = r.id as string;
 			const newId = opts.generateNewIds ? newUUID() : origId;
 
-			let trackUrl: string | null = null;
+			let trackUrl: string | undefined;
 			const trackBytes = await parsed.getTrackBytes(origId);
 			if (trackBytes) {
 				const path = `${userId}/${newId}.json.gz`;
@@ -123,7 +263,7 @@ export async function restoreOrchestrate(
 					trackUrl = path;
 					result.tracksUploaded++;
 				} catch (e) {
-					result.warnings.push(`track ${origId}: ${(e as Error).message}`);
+					warn(result, { kind: 'track', itemId: origId, error: e });
 				}
 			}
 
@@ -133,41 +273,73 @@ export async function restoreOrchestrate(
 					: null;
 
 			const { activity_type, metadata } = coalesceRunActivity(r);
-			const row = {
+			const row: JsonObject = {
 				...r,
 				id: newId,
 				user_id: userId,
 				event_id: eventId,
-				track_url: trackUrl,
 				activity_type,
 				metadata
 			};
+			// A storage path is OMITTED, never nulled and never carried over
+			// from the archive, when this restore uploaded no blob for it.
+			// Nulling cost the run its trace whenever a track-short archive
+			// was restored into the account it came from — the row's own
+			// valid path was overwritten and the Storage object orphaned —
+			// while letting the archived value through re-homes a path that
+			// names the previous owner and run id. PostgREST leaves a column
+			// absent from the payload untouched on the update leg, so an
+			// existing row keeps its own path and a fresh insert still lands
+			// null. `hr_series_url` is always in that case: no web archive
+			// carries hr blobs, so its archived value can only be a foreign
+			// path (and would fail `runs_hr_series_url_path_shape`, § 116).
+			if (trackUrl !== undefined) row.track_url = trackUrl;
+			else delete row.track_url;
+			delete row.hr_series_url;
+
+			const known = keepKnownColumns(row, RUN_RESTORE_COLUMNS);
+			for (const name of known.dropped) droppedRunColumns.add(name);
 
 			try {
-				await backend.upsertRun(row);
+				await backend.upsertRun(known.row);
 				result.runsImported++;
 			} catch (e) {
-				result.warnings.push(`run ${origId}: ${(e as Error).message}`);
+				warn(result, { kind: 'run', itemId: origId, error: e });
 			}
 			i++;
 		}
+		noteDroppedColumns('runs', [...droppedRunColumns], result);
 	}
 
 	// Routes.
 	if (parsed.routes.length > 0) {
 		const routes = parsed.routes;
 		let i = 0;
+		const droppedRouteColumns = new Set<string>();
 		for (const r of routes) {
 			onProgress?.({ stage: 'routes', current: i, total: routes.length });
+			if (!isRowObject(r)) {
+				warn(result, { kind: 'routeUnreadable', index: i });
+				i++;
+				continue;
+			}
 			const newId = opts.generateNewIds ? newUUID() : (r.id as string);
+			const known = keepKnownColumns({ ...r, id: newId, user_id: userId }, ROUTE_RESTORE_COLUMNS);
+			for (const name of known.dropped) droppedRouteColumns.add(name);
 			try {
-				await backend.upsertRoute({ ...r, id: newId, user_id: userId });
+				await backend.upsertRoute(known.row);
 				result.routesImported++;
 			} catch (e) {
-				result.warnings.push(`route ${r.id}: ${(e as Error).message}`);
+				warn(result, {
+					kind: 'route',
+					itemId: typeof r.id === 'string' ? r.id : undefined,
+					index: i,
+					error: e
+				});
 			}
 			i++;
 		}
+		noteDroppedColumns('routes', [...droppedRouteColumns], result);
 	}
 
 	onProgress?.({ stage: 'done', current: 1, total: 1 });

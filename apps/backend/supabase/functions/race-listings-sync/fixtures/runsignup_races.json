@@ -1,0 +1,269 @@
+{
+  "races": [
+    {
+      "race": {
+        "race_id": 68640,
+        "name": "\"Bacon & Bubbles\" 5K or 1 Mile to support A BEAUTIFUL ME®",
+        "last_date": "06/13/2026",
+        "last_end_date": "06/13/2026",
+        "next_date": "06/12/2027",
+        "next_end_date": "06/12/2027",
+        "is_draft_race": "F",
+        "is_private_race": "F",
+        "is_registration_open": "F",
+        "created": "11/1/2018 05:46",
+        "last_modified": "6/28/2026 22:00",
+        "description": "(trimmed from the live payload)",
+        "url": "https://runsignup.com/Race/MI/PortHuron/BaconandBubbles5k1Mile",
+        "external_race_url": null,
+        "external_results_url": null,
+        "fb_page_id": "1943613662761455",
+        "fb_event_id": 1943613662761455,
+        "address": {
+          "street": "DoubleTree by Hilton",
+          "street2": "800 Harker St.",
+          "city": "Port Huron",
+          "state": "MI",
+          "zipcode": "48060",
+          "country_code": "US"
+        },
+        "timezone": "America/New_York",
+        "logo_url": "https://d368g9lw5ileu7.cloudfront.net/uploads/generic/genericImage-websiteLogo-75309-1781820490.3748-0.bQngXk.png",
+        "real_time_notifications_enabled": "F",
+        "events": [
+          {
+            "event_id": 1174942,
+            "race_event_days_id": 410811,
+            "name": "5K RUN",
+            "details": null,
+            "start_time": "6/12/2027 09:00",
+            "end_time": null,
+            "age_calc_base_date": null,
+            "registration_opens": "2/12/2027 00:00",
+            "event_type": "running_race",
+            "distance": "3.1 Miles",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "2/12/2027 00:00",
+                "registration_closes": "2/12/2027 23:59",
+                "race_fee": "$20.00",
+                "processing_fee": "$2.70"
+              }
+            ],
+            "giveaway": "T-Shirt"
+          },
+          {
+            "event_id": 1174943,
+            "race_event_days_id": 410811,
+            "name": "1 Mile WALK",
+            "details": null,
+            "start_time": "6/12/2027 09:00",
+            "end_time": null,
+            "age_calc_base_date": null,
+            "registration_opens": "2/12/2027 00:00",
+            "event_type": "walking_only",
+            "distance": "1 Miles",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "2/12/2027 00:00",
+                "registration_closes": "2/12/2027 23:59",
+                "race_fee": "$20.00",
+                "processing_fee": "$2.70"
+              }
+            ],
+            "giveaway": "T-Shirt"
+          }
+        ]
+      }
+    },
+    {
+      "race": {
+        "race_id": 199796,
+        "name": "The Best Races 5K/10K/13.1 (2026 TIMED Results)",
+        "last_date": null,
+        "last_end_date": null,
+        "next_date": "01/01/2026",
+        "next_end_date": "12/31/2026",
+        "is_draft_race": "F",
+        "is_private_race": "F",
+        "is_registration_open": "F",
+        "created": "1/24/2026 08:26",
+        "last_modified": "10/14/2026 10:51",
+        "description": "(trimmed from the live payload)",
+        "url": "https://runsignup.com/Race/NY/AllLocations/TheBestRaces5K10KTIMEDResults",
+        "external_race_url": "http://www.thebestraces.com",
+        "external_results_url": "https://www.thebestraces.com/results/",
+        "fb_page_id": null,
+        "fb_event_id": null,
+        "address": {
+          "street": "All Locations",
+          "street2": null,
+          "city": "All Locations",
+          "state": "NY",
+          "zipcode": "10001",
+          "country_code": "US"
+        },
+        "timezone": "America/New_York",
+        "logo_url": "https://d368g9lw5ileu7.cloudfront.net/uploads/generic/genericImage-websiteLogo-272902-1769261366.367-0.bPDmK2.png",
+        "real_time_notifications_enabled": "F",
+        "events": [
+          {
+            "event_id": 1112464,
+            "race_event_days_id": 388829,
+            "name": "5K Run",
+            "details": null,
+            "start_time": "1/1/2026 08:00",
+            "end_time": "12/31/2026 20:00",
+            "age_calc_base_date": null,
+            "registration_opens": "1/23/2023 21:53",
+            "event_type": "running_race",
+            "distance": "5K",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "1/23/2023 21:53",
+                "registration_closes": "7/2/2025 23:59",
+                "race_fee": "$42.00",
+                "processing_fee": "$3.52"
+              }
+            ]
+          },
+          {
+            "event_id": 1112465,
+            "race_event_days_id": 388829,
+            "name": "10K Run",
+            "details": null,
+            "start_time": "1/1/2026 08:00",
+            "end_time": "12/31/2026 20:00",
+            "age_calc_base_date": null,
+            "registration_opens": "4/21/2023 11:24",
+            "event_type": "running_race",
+            "distance": "10K",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "4/21/2023 11:24",
+                "registration_closes": "7/2/2025 23:59",
+                "race_fee": "$45.00",
+                "processing_fee": "$3.70"
+              }
+            ]
+          },
+          {
+            "event_id": 1112466,
+            "race_event_days_id": 388829,
+            "name": "13.1 Run",
+            "details": null,
+            "start_time": "1/1/2026 08:00",
+            "end_time": "12/31/2026 20:00",
+            "age_calc_base_date": null,
+            "registration_opens": "5/17/2023 11:24",
+            "event_type": "running_race",
+            "distance": "13.1 Miles",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "5/17/2023 11:24",
+                "registration_closes": "7/2/2025 23:59",
+                "race_fee": "$55.00",
+                "processing_fee": "$4.30"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "race": {
+        "race_id": 126710,
+        "name": "Hip-Hop Runzz (half & MARATHON)",
+        "last_date": "01/01/2025",
+        "last_end_date": "12/31/2025",
+        "next_date": "01/01/2026",
+        "next_end_date": "12/31/2026",
+        "is_draft_race": "F",
+        "is_private_race": "F",
+        "is_registration_open": "T",
+        "created": "3/5/2022 10:11",
+        "last_modified": "9/21/2026 15:39",
+        "description": "(trimmed from the live payload)",
+        "url": "https://runsignup.com/Race/NY/Bronx/HipHopRunzzLLC",
+        "external_race_url": null,
+        "external_results_url": null,
+        "fb_page_id": "hiphoprunzz",
+        "fb_event_id": null,
+        "address": {
+          "street": "4275 Park Avenue",
+          "street2": "Apt 206",
+          "city": "Bronx",
+          "state": "NY",
+          "zipcode": "10457",
+          "country_code": "US"
+        },
+        "timezone": "America/New_York",
+        "logo_url": "https://d368g9lw5ileu7.cloudfront.net/uploads/generic/genericImage-websiteLogo-133279-1747953151.0731-0.bOl6x_.png",
+        "real_time_notifications_enabled": "T",
+        "events": [
+          {
+            "event_id": 1098226,
+            "race_event_days_id": 384314,
+            "name": "virtual half marathon",
+            "details": null,
+            "start_time": "1/1/2026 10:00",
+            "end_time": "12/31/2026 23:59",
+            "age_calc_base_date": null,
+            "registration_opens": "1/1/2026 09:30",
+            "event_type": "virtual_race",
+            "distance": "13.1 Miles",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "1/1/2026 09:30",
+                "registration_closes": "12/31/2026 16:00",
+                "race_fee": "$35.00",
+                "processing_fee": "$3.10"
+              }
+            ]
+          },
+          {
+            "event_id": 1098227,
+            "race_event_days_id": 384314,
+            "name": "VIRTUAL MARATHON",
+            "details": null,
+            "start_time": "1/1/2026 10:00",
+            "end_time": "12/31/2026 23:59",
+            "age_calc_base_date": null,
+            "registration_opens": "1/1/2026 09:30",
+            "event_type": "virtual_race",
+            "distance": "26.2 Miles",
+            "volunteer": "F",
+            "require_dob": "T",
+            "require_phone": "T",
+            "registration_periods": [
+              {
+                "registration_opens": "1/1/2026 09:30",
+                "registration_closes": "12/31/2026 16:00",
+                "race_fee": "$35.00",
+                "processing_fee": "$3.10"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

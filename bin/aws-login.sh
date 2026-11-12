@@ -5,14 +5,14 @@
 # tab to authenticate, and verifies the session afterwards.
 #
 # Usage:
-#   bin/aws-login.sh                   # uses $AWS_PROFILE, defaults to running
+#   bin/aws-login.sh                   # uses $AWS_PROFILE, defaults to threkir
 #   bin/aws-login.sh mgmt    # explicit profile
 
 set -euo pipefail
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
-PROFILE="${1:-${AWS_PROFILE:-running}}"
+PROFILE="${1:-${AWS_PROFILE:-threkir}}"
 
 need_cmd aws
 

@@ -15,7 +15,8 @@ is **not** trying to mirror web's feature surface.
 **Build here:**
 
 - **Wrist-only capabilities**: standalone `HKWorkoutSession`-equivalent via
-  Health Services, `FusedLocationProviderClient` background recording,
+  Health Services, background recording from the watch's own satellite
+  receiver (`GPS_PROVIDER`, with `FusedLocationProviderClient` as fallback),
   on-device crash recovery, on-watch HR via Health Services `MeasureClient`,
   haptic pace alerts, route preview on-watch, ambient-mode rendering, watch
   faces / tiles / complications.
@@ -25,6 +26,9 @@ is **not** trying to mirror web's feature surface.
 
 **Don't build here:**
 
+- Nutrition, meal plans included. Nobody logs a meal or follows a macro target
+  on a wrist, and [nutrition_programming.md § Mobile & watch](../../docs/features/nutrition_programming.md#mobile--watch)
+  defers a watch surface indefinitely.
 - Anything that belongs in a pocket app: history browse, settings panels,
   social feed, club detail, plan editing, photo upload, OAuth setup. The
   watch is a recording surface and a status surface — not a phone in a
@@ -58,9 +62,10 @@ apps/watch_wear/
             ├── AndroidManifest.xml
             ├── kotlin/com/runapp/watchwear/
             │   ├── MainActivity.kt
+            │   ├── WatchWearApplication.kt  # the only Sentry init (manifest auto-init is off)
             │   ├── RunViewModel.kt          # single source of UI state
             │   ├── SupabaseClient.kt        # OkHttp REST + Storage client
-            │   ├── GpsRecorder.kt           # FusedLocationProviderClient wrapper
+            │   ├── GpsRecorder.kt           # GPS_PROVIDER receiver + fused fallback streams
             │   ├── HeartRateMonitor.kt      # Health Services MeasureClient
             │   ├── Pedometer.kt             # Sensor.TYPE_STEP_COUNTER wrapper
             │   ├── LocalRunStore.kt         # DataStore-backed retry queue (`queued_runs_v2`)
@@ -69,21 +74,37 @@ apps/watch_wear/
             │   ├── WatchRunMetadata.kt      # `buildRunMetadata` + queued-run encoder
             │   ├── SessionBridge.kt         # Wearable Data Layer listener for phone-handed session
             │   ├── RoutesBridge.kt          # Wearable Data Layer listener for phone-pushed starred routes
+            │   ├── WorkoutBridge.kt         # Wearable Data Layer listener for today's planned workout (`/todays_workout`)
+            │   ├── workout/                 # today's workout: `PushedWorkout.kt` (fail-closed decode + day check), `WorkoutRunner.kt` (port of the phone's step runner, held to `fixtures/watch_workout_payload.json`), `WorkoutCues.kt` (one haptic per feed), `WorkoutSpeech.kt` (which feed is spoken under the synced voice prefs + the phone's sentence for it); see docs/features/workout_execution.md § On the wrist
             │   ├── SessionStore.kt          # EncryptedSharedPreferences cache of the auth session (tokens encrypted at rest)
-            │   ├── RaceSessionClient.kt     # live race-mode ping client (`race_pings`)
+            │   ├── SingleFlight.kt          # coalesces concurrent token refreshes (rotating refresh token)
+            │   ├── RaceSessionClient.kt     # race-mode REST client: armed/running poll, chosen course, pings, `event_results` upsert
+            │   ├── RaceFinish.kt            # finish detector, Kotlin half of the `race_finish` parity pair (30 m zone, 90 % gate, closest approach) + `ServerClockOffset`
+            │   ├── RaceRun.kt               # pure race-mode model + transitions RunViewModel acts on (Stop, Finish race, bind, host End, device-clock fix stamp, late start, the result row with its crossings)
+            │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo, the finish line re-armed after an undo and a restart
+            │   ├── RaceResultOutbox.kt      # every event_results write + undo delete for a race, in one order (bank, send, void)
+            │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course, the kept server clock offset (24 h) and an undone finish (decisions § 2450)
+            │   ├── LineCalibration.kt       # debug builds only: the #1304 line-calibration capture + scoring + CSV, Kotlin half of the phone's `line_calibration.dart` (decisions § 2453)
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
+            │   ├── ui/LineCalibrationScreen.kt # debug builds only: the line-calibration screen, opened from the pre-run list behind `BuildConfig.DEBUG`
             │   ├── ui/RouteMiniMap.kt       # Polyline + position-dot + track-so-far + raster tiles
             │   ├── ui/TileSource.kt         # MapTiler raster tile fetcher (OkHttp + LRU)
             │   ├── ui/TileLayer.kt          # Compose composable that draws tile bitmaps
-            │   ├── ui/Theme.kt              # MaterialTheme palette + typography
+            │   ├── ui/Theme.kt              # MaterialTheme palette + typography + BrandPalette
+            │   ├── ui/BrandEdgeButton.kt    # bezel-hugging primary button (M1.7 rebuild of M3 EdgeButton)
             │   ├── recording/                # foreground-service-owned recording loop
             │   │   ├── RunRecordingService.kt   # foregroundServiceType=location
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
+            │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.6 forward Kalman distance (shared vectors)
+            │   │   ├── LocationSourceArbiter.kt # receiver-vs-fused arbitration, mirrors the phone's RunRecorder
+            │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
+            │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
             │   │   ├── ElapsedMath.kt           # pure pause/resume elapsed-time math
             │   │   ├── RouteMath.kt             # off-route distance + remaining km
-            │   │   ├── TtsAnnouncer.kt          # split + pace-alert TTS
+            │   │   ├── TtsAnnouncer.kt          # split + pace-alert + workout-step TTS (workout cues outrank splits in the queue)
             │   │   ├── MercatorTiles.kt         # Web Mercator + tile coords
             │   │   └── TrackOverlayBuffer.kt    # rolling-buffer geometric halving
             │   ├── system/
@@ -92,7 +113,14 @@ apps/watch_wear/
             │   │   ├── BatteryStatus.kt         # capacity reading for pre-run warning
             │   │   └── NetworkWatcher.kt        # ConnectivityManager.NetworkCallback flow
             │   ├── tiles/
-            │   │   └── ActiveRunTileService.kt  # active-run tile (Wear Tiles + ProtoLayout)
+            │   │   ├── ActiveRunTileService.kt  # active-run tile (Wear Tiles + ProtoLayout); idle state shows today's workout until local midnight
+            │   │   ├── TodayWorkoutGlance.kt    # pure: today's workout for the tile + complication (offer rule, "6 × 400 m" headline, day end)
+            │   │   ├── TodayGlanceSource.kt     # local reads behind it (Data Layer item + LastRunStore), fail-to-idle
+            │   │   └── TodaysWorkoutListenerService.kt  # wakes on a `/todays_workout` push, refreshes tile + complication
+            │   ├── complications/
+            │   │   ├── ActiveRunComplicationService.kt  # watch-face complication data source
+            │   │   ├── RunComplicationContent.kt        # pure: what the slot shows + push cadence
+            │   │   └── LastRunStore.kt                  # last run kept for the idle slot (DataStore)
             │   └── generated/DbRows.kt      # GENERATED — do not edit
             └── res/mipmap-*/ic_launcher.png
 ```
@@ -122,14 +150,24 @@ watch talks to Supabase directly — no paired-phone handoff, no Wearable
 Data Layer proxy. `SupabaseClient` is a thin OkHttp wrapper:
 
 1. `signIn(email, password)` → POST `/auth/v1/token?grant_type=password`, stashes access token + user id in memory.
-2. `saveRun(...)` → gzips the track JSON, uploads to `/storage/v1/object/runs/{user_id}/{run_id}.json.gz` with `x-upsert: true` (idempotent overwrite — the track object is keyed deterministically, so a retry after a partial-success save must overwrite it, not `409 Duplicate`; mirrors mobile's `upsert: true` and `buildUploadTrackRequest` pins the header), then POSTs the row to `/rest/v1/runs` with `Prefer: resolution=merge-duplicates,return=minimal`. Both halves are now idempotent, so a run whose row POST failed drains cleanly on the next attempt instead of wedging the queue. Matches the Dart `ApiClient.saveRun` contract byte-for-byte so the web/Android apps read Wear-produced runs without special cases.
+2. `saveRun(...)` → gzips the track JSON, uploads to `/storage/v1/object/runs/{user_id}/{run_id}.json.gz` as `application/gzip` (`TRACK_UPLOAD_CONTENT_TYPE`; the `runs` bucket's `allowed_mime_types` refuses `application/json` with `invalid_mime_type`, which is why no watch run synced until the watch matched the phone. `buildUploadTrackRequest` builds the body itself, because OkHttp sends the BODY's media type whatever the header says, and sends no `Content-Encoding` — the object is a gzip file. `scripts/check_shared_constants.mjs` holds this constant, every phone / web / importer upload into the bucket, and the bucket's allowlist to each other) with `x-upsert: true` (idempotent overwrite — the track object is keyed deterministically, so a retry after a partial-success save must overwrite it, not `409 Duplicate`; mirrors mobile's `upsert: true` and `buildUploadTrackRequest` pins the header), then POSTs the row to `/rest/v1/runs` with `Prefer: resolution=merge-duplicates,return=minimal`. Both halves are now idempotent, so a run whose row POST failed drains cleanly on the next attempt instead of wedging the queue. Matches the Dart `ApiClient.saveRun` contract byte-for-byte so the web/Android apps read Wear-produced runs without special cases.
 
 **Primary path — phone handoff.** Auth comes from the paired Android phone
 over the Wearable Data Layer. `mobile_android` pushes `{access_token,
 refresh_token, user_id, base_url, anon_key, expires_at_ms}` to
 `/supabase_session` whenever Supabase's `onAuthStateChange` fires;
 `SessionBridge` on the watch receives it and `SessionStore` caches it to
-DataStore so a cold launch while offline still has credentials.
+DataStore so a cold launch while offline still has credentials. **The receive
+side grades before it applies** (`decisions.md § 879`): `fromDataMapOrNull`
+refuses a push whose access token, refresh token, user id, base URL or anon key
+is missing or blank, because the accept path SAVES over the encrypted cached
+session and sets `authed = true` — so a half-formed push used to destroy the one
+credential an out-of-range watch still had and then hide the sign-in affordance
+behind it. A refusal drops the event rather than emitting `SessionEvent.Cleared`:
+`Cleared` runs `tearDownSession`, which wipes the unsynced-run queue, so treating
+a corrupt frame as a sign-out would be worse than the bug. `DataLayerContractTest`
+compares the path and the `DataMap` key set against the phone's writer, in both
+directions.
 `RunViewModel.refreshIfExpired` exchanges the refresh token for a new
 access token automatically, and `drainQueue` retries once on HTTP 401 by
 refreshing then re-pushing.
@@ -180,10 +218,26 @@ same drain path with a `syncing` UI flag for the spinner).
 `HeartRateMonitor` registers a `MeasureCallback` on
 `HealthServices.getClient(context).measureClient` for
 `DataType.HEART_RATE_BPM` and exposes a `Flow<Int>` of live samples.
-`RunViewModel` collects into a list during recording, averages on stop,
-writes `avg_bpm` into `run.metadata` before upload. Behaviour matches
-`watch_ios`'s HealthKit integration — [docs/backend/metadata.md](../../docs/backend/metadata.md)
-registers the key.
+`RunRecordingService` folds the samples into a rolling `bpmSum`/`bpmCount`
+pair, grades it on stop, and writes `avg_bpm` into `run.metadata` before
+upload. Behaviour matches `watch_ios`'s HealthKit integration —
+[docs/backend/metadata.md](../../docs/backend/metadata.md) registers the key.
+
+**The mean is graded against how much of the run produced it.**
+`MeasureClient` is documented foreground-only ([decisions § 1015](../../docs/architecture/decisions.md)),
+so the samples reaching the pair on a twelve-hour ultra can be the minutes the
+runner spent looking at the watch — and `avg_bpm` was saved as *the run's*
+average either way. `recording/HeartRateCoverage.kt` is the pure grader both
+producers of an average go through (the normal stop and `recoverCheckpoint`):
+it writes `metadata.hr_coverage`, the share of ACTIVE elapsed time the sensor
+was delivering, and suppresses `avg_bpm` below `MIN_AVG_BPM_COVERAGE` (0.5),
+because a mean over less of the run than not is not the run's average. Coverage
+is accumulated on the recording ticker against the AGE of the last usable
+sample, not by closing an interval on an availability event — a foreground-only
+client the platform stops feeding can go quiet without ever reporting
+`UNAVAILABLE`. A null coverage is *unmeasured*, not zero: a checkpoint written
+by a build predating the field recovers its average unqualified.
+[decisions § 1083](../../docs/architecture/decisions.md).
 
 ## Running it locally
 
@@ -191,7 +245,7 @@ See [local_testing.md](local_testing.md).
 
 ## Deploying to production
 
-See [deployment.md](deployment.md) — separate Play listing under `app.threkir.watchwear`, separate upload keystore from the phone app, shared Play service account, observability, rollback, DR.
+See [deployment.md](deployment.md) — separate Play listing under `com.threkir.watchwear`, separate upload keystore from the phone app, shared Play service account, observability, rollback, DR.
 
 Build and install on a Wear OS emulator (after `npm run dev:core` from the repo
 root starts the local stack + runs `adb reverse` for the watch):
@@ -203,7 +257,7 @@ cd apps/watch_wear/android
 
 That works on a fresh clone with **no `-P` flags**: the committed
 `apps/watch_wear/android/.env.local` is applied by the `debug` build type
-(local-stack Supabase on `127.0.0.1:54321`, seed-user auto-login, local
+(local-stack Supabase on `127.0.0.1:24321`, seed-user auto-login, local
 Protomaps tiles). A **release** build reads `SUPABASE_URL` / `SUPABASE_ANON_KEY`
 from `-P` flags instead (the release workflow injects production values) and
 ignores `.env.local` entirely:
@@ -223,6 +277,13 @@ Edit it locally for a real MapTiler/Sentry key but **don't commit the change**
 (`git update-index --skip-worktree` it). Changes require a rebuild
 (`./gradlew installDebug`).
 
+Boolean flags accept the repo's set — `1`, `true`, `yes`, `on`, trimmed and
+case-insensitive — and nothing else, matching `apps/web/src/lib/core/env_flag.ts`
+and `apps/mobile_android/lib/env_flag.dart`. `EnvFlagParityTest` reads the
+accepted set off the web rail rather than restating it, so a fifth affirmative
+added there fails here rather than leaving this rail behind
+(`decisions.md § 880`).
+
 | Flag | Default | Effect |
 |---|---|---|
 | `BYPASS_LOGIN` | `false` | On app start, if no cached session and no phone handoff, auto-sign-in as `runner@test.com` / `testtest`. Skips the sign-in screen. Use only against local/dev Supabase. **Not a sign-out switch**: flipping to `false` won't sign out a user whose session is already cached — tap the "Sign out" chip on PreRun or `./gradlew uninstallDebug && ./gradlew installDebug` to get a clean slate. |
@@ -240,7 +301,7 @@ API we need only exists on a pre-stable build (Health Services rc,
 security-crypto alpha — each called out below). Key points:
 
 - **AGP 9.1.0** + **Gradle 9.4.1**. AGP 9 removed the `org.jetbrains.kotlin.android` plugin — it's now built-in — and removed the `kotlinOptions {}` DSL block in favour of `kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }`. Both changes are reflected in the root plugin list + `app/build.gradle.kts`.
-- **Kotlin 2.3.21** (compose + serialization plugins, pinned in `settings.gradle.kts`). Kotlin 2.0+ means the Compose Compiler is a Kotlin plugin (`org.jetbrains.kotlin.plugin.compose`), versioned with Kotlin itself. **Do NOT bump to 2.4.x yet** — CodeQL's Kotlin extractor can't analyse Kotlin 2.4.0 ("kotlin-version-too-new" diagnostic → the `codeql-kotlin` job in `.github/workflows/security.yml` fails as a configuration error). Dependabot's `minor-and-patch` group shipped exactly this (PR #68) and reddened Security on `main`; it's now held by an `ignore: >=2.4.0` rule on both plugins in `.github/dependabot.yml`. When CodeQL adds 2.4.0 support: drop that ignore, bump both plugin lines here, and remove the pin comment in `settings.gradle.kts`. The base Kotlin compiler is the one AGP 9.x bundles; the compose-compiler plugin version must match it, so move both plugins together.
+- **Kotlin 2.4.10** (compose + serialization plugins, pinned in `settings.gradle.kts`). Kotlin 2.0+ means the Compose Compiler is a Kotlin plugin (`org.jetbrains.kotlin.plugin.compose`), versioned with Kotlin itself. **These two plugin lines set the compiler, not just the plugins.** AGP 9's built-in Kotlin only carries a runtime floor (`kotlin-gradle-plugin` 2.2.10 on AGP 9.4.1); the compose plugin's Gradle module metadata requires `kotlin-gradle-plugin` at its own version, so the build compiles with whatever these lines say and the compose compiler matches it by construction. Move both together. **The Kotlin version is capped by CodeQL's extractor, not by anything on this watch.** Bumping past the cap does not degrade the scan — it fails the `codeql-kotlin` job in `.github/workflows/security.yml` outright, from inside a `compileDebugKotlin` task, so the whole `java-kotlin` analysis is lost. Dependabot's `minor-and-patch` group shipped exactly that (PR #68, Kotlin 2.4.0 under an older bundle) and reddened Security on `main`. The bundle the pinned `github/codeql-action` SHA ships is CodeQL 2.27.0, whose extractor refuses ≥ 2.4.20 ("Kotlin version 2.4.20 is too recent. CodeQL currently supports versions below 2.4.20", measured against the real CLI in [decisions § 1672](../../docs/architecture/decisions.md); the bundle's own supported-versions table reads "Kotlin 1.8.0 to 2.4.1x"), so 2.4.10 is the highest analysable release and is what the app sits on. Both plugins are held by an `ignore: >=2.4.20` rule in `.github/dependabot.yml`. Raise the pin and the ignore together, and only once the bundle the pinned action SHA ships raises the ceiling (2.27.1 supports through 2.4.20 — check its supported-versions table, not this note).
 - **Compose BOM 2026.03.01** pins core Compose artifacts; **Wear Compose 1.6.1** (material / foundation / navigation) is declared separately because it's not under the core BOM.
 - **Health Services 1.1.0-rc01**. Last stable is 1.0.0 but lacks some of the APIs we rely on; bump to 1.1.0 stable when it ships.
 - **security-crypto 1.1.0-alpha06** (`EncryptedSharedPreferences` for the auth session — see `SessionStore.kt`). Deliberately NOT on the last stable (1.0.0): 1.0.0 predates the `MasterKey.Builder` API and only exposes the deprecated `MasterKeys` helper. The whole `androidx.security.crypto` line has had no release past 1.1.0-alpha06 in a long time, so there's no stable to bump to yet — revisit if/when a 1.1.0 beta/stable ships. This is the one dep NOT on a stable channel by choice rather than necessity.
@@ -271,13 +332,48 @@ backgrounding, low-memory kills).
   the whole point.
 - `recording/RunRecordingService.kt` — owns the GPS + HR streams, ticks
   the elapsed clock every 500ms, posts notification updates, holds the
-  wake lock.
+  wake lock. Live pace (the screen, the tile, the split cue and the
+  pace alert) is `recording/LivePace.kt`'s `LivePaceWindow`: the
+  estimator's distance gained over the last ~200 m, sealed with every
+  segment and across a re-anchored GPS gap, and null until the window spans
+  50 m and 20 s (the phone's `paceIsReady`, decisions § 2364). It was the
+  whole-run average (elapsed / distance) until #1090.
 - `recording/CheckpointStore.kt` — DataStore snapshot of an in-progress
-  run, written every 15s during recording. On next launch, if a
-  checkpoint exists, the pre-run screen shows a **"Recover unsaved
-  run?"** prompt — accepting saves it as a finished run (queued for
-  upload), discarding clears it. This is what saves a run when the
-  process is killed mid-recording.
+  run, written every 15s during recording. On next launch a surviving
+  checkpoint is graded (below); one that still holds the only copy of a
+  run raises the **"Recover unsaved run?"** prompt on the pre-run screen
+  — accepting saves it as a finished run (queued for upload), discarding
+  clears it. **Discard is behind a two-press confirm** (`ui/ConfirmGuard.kt`,
+  decisions § 1206): the first press arms and relabels the chip, names what
+  is at stake, and lapses after `CONFIRM_WINDOW_MS`; only a second press
+  inside that window calls `discardCheckpoint`. The checkpoint is the run's
+  only durable record while the queue does not hold it, and since § 1154
+  Discard is the only enabled control on the screen whenever the queue is
+  unreadable. This is what saves a run when the process is killed
+  mid-recording. **The service never clears it**: stopping publishes
+  `Finished` and tears the service down, and the checkpoint is cleared by
+  `RunViewModel.handleFinishedRun` *after* `LocalRunStore` has accepted
+  the run. Clearing it in the service ran concurrently with that write,
+  right as the process left foreground-service state, so a kill in the
+  window lost both records of the run. Both halves of that cleanup are scoped to
+  the finished run (`checkpoints.clearIfFor(runId)`,
+  `RecordingRepository.resetIfFinished(runId)`): it runs on a background
+  job, and the next run can start before it gets there — an unscoped reset
+  wiped the new run to idle while the service kept recording it.
+  `NextRunLifecycleTest` pins it.
+- `recording/CheckpointRecovery.kt` — grades a surviving checkpoint
+  before it is offered (`recoveryActionFor`), because `saveRun` upserts
+  on the run id and re-uploads to the same Storage key: recovering a run
+  the app already captured **overwrites** it rather than adding one. A
+  run already in `LocalRunStore`, or one whose track file `pushRun` has
+  deleted after a successful upload, is discarded silently; a checkpoint
+  belonging to a live recording is left untouched (clearing it would
+  disarm an in-progress run's safety net). The grade is re-taken when
+  the runner accepts, since the cold-start drain can upload the run
+  while the prompt is on screen. `sealTrackFileOrNull` closes an
+  unterminated JSON array but returns null for a *missing* file rather
+  than stubbing `[]` — publishing an empty track would blank the
+  finished run's Storage object. See `decisions.md § 590`.
 - `system/BatteryOptimization.kt` — checks
   `PowerManager.isIgnoringBatteryOptimizations` at launch and on each
   `onResume`. If we're not whitelisted, the pre-run screen surfaces a
@@ -308,9 +404,17 @@ pieces extend that to all-day efforts without drifting into O(n) memory
 or hammering the NotificationManager:
 
 - `recording/TrackWriter.kt` streams GPS points to a JSON array on disk
-  (cache dir, `tracks/{runId}.json`) with a flush every 32 points. The
-  in-memory point list is gone — `RecordingRepository.Metrics` carries
-  only `trackPointCount` + `latestPoint` + `trackFilePath`.
+  (`filesDir/tracks/{runId}.json`, resolved by `recording/TrackStorage.kt`)
+  with a flush every 32 points. The in-memory point list is gone —
+  `RecordingRepository.Metrics` carries only `trackPointCount` +
+  `latestPoint` + `trackFilePath`. **`filesDir`, not `cacheDir`**: until the
+  run has uploaded that file is the only copy of the trace, and the platform
+  reclaims the cache dir under storage pressure without asking.
+  `TrackStorage` also owns the cache→files migration for an install that
+  already had runs queued, and the orphan sweep that replaces the platform's
+  own reclamation — `RunViewModel.reconcileTrackStorage` runs both once per
+  process, under the drain mutex, keeping the queue and the pending crash
+  checkpoint and the live recording.
 - Rolling HR. `RunRecordingService` tracks `bpmSum: Long` + `bpmCount:
   Long` instead of a list; avg is O(1) regardless of sample count.
   `Checkpoint` carries the same rolling pair, so recovery works without
@@ -318,8 +422,15 @@ or hammering the NotificationManager:
 - Notification refresh is throttled to every 10 tickerJob iterations (~5s).
   The UI still gets its 500ms elapsed tick, but NotificationManager only
   sees a fraction of the churn.
-- `SupabaseClient.saveRun` takes a `File` and gzips disk-to-disk into a
-  sibling temp file before uploading — peak memory is one 8 KiB buffer.
+- `SupabaseClient.saveRun` takes a `File?` and gzips disk-to-disk into a
+  sibling temp file before uploading — peak memory is one 8 KiB buffer. A
+  null means the payload is genuinely gone (purged out of the pre-migration
+  cache dir), and the row is posted with a null `track_url` — the same shape
+  an indoor recording takes — rather than the run sticking in the queue
+  promising a sync that can never happen. `drainQueue` deletes the track file
+  only **after** the queue entry is removed, so a missing file always means
+  the track was never uploaded and the null cannot erase one already in
+  Storage.
 - `system/BatteryStatus.kt` reads `BATTERY_PROPERTY_CAPACITY` and the
   pre-run screen surfaces a warning below 40%. A 10-hour run on a half-
   charged watch is the single most common way to lose an ultra attempt.
@@ -327,6 +438,50 @@ or hammering the NotificationManager:
 Permissions added in the manifest: `FOREGROUND_SERVICE`,
 `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`,
 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`.
+
+**Declaring a permission is half of it.** A runtime permission also has to be
+asked for, and the only place this app asks is `permissionLauncher.launch(...)`
+in `ui/RunWatchApp.kt`. `POST_NOTIFICATIONS` was declared and never requested,
+so on API 33+ the ongoing-activity notification never reached the shade
+(`decisions.md § 881`). `ManifestPermissionCoverageTest` derives the obligation
+from the manifest: every declared permission is requested, install-time, or a
+registered exemption with its reason. There are no exemptions left.
+`ACCESS_COARSE_LOCATION` used to be one, and is now requested beside the fine
+one: from Android 12 a fine request without coarse is ignored with no dialog,
+and the runner may still grant Approximate only. `permissionOutcome` grades
+that as `PermissionCost.PreciseLocation` and blocks the run like a location
+denial, because approximate fixes never pass the accuracy gate and the run
+would record the clock alone.
+`BODY_SENSORS_BACKGROUND` used to be the second, and was removed rather than
+wired: it gates `PassiveMonitoringClient`, and this app reads heart rate through
+`MeasureClient`, whose background access is documented as no
+(`decisions.md § 1015`).
+
+**Declaring a foreground-service TYPE is half of it too, and the halves live in
+different files.** The manifest's `foregroundServiceType="location|health"` and
+the mask passed to `startForeground` are two separate declarations of the same
+fact; from API 34 it is the runtime mask the platform reads when deciding
+whether the service may keep using a while-in-use permission. The service
+declared both types and started with one for as long as the declaration existed
+(`decisions.md § 1016`). `foregroundServiceTypeMask` computes it now — location
+unconditionally, health on API 34+ once `BODY_SENSORS` or `ACTIVITY_RECOGNITION`
+is granted, which is the platform's own prerequisite for that type — and the
+guard derives the obligation from the manifest so a third type needs no new
+test.
+
+**A sensor that fails must cost that sensor.** All three device streams the
+recording service collects carry a `.catch`, and `HeartRateMonitor` closes its
+flow on both the synchronous throw and the `onRegistrationFailed` callback. A
+`SupervisorJob` does not stop an unhandled exception in a `launch` from reaching
+the process, so before this a declined `BODY_SENSORS` ended the whole recording
+(`decisions.md § 1017`). `SensorStreamResilienceTest` derives the rule from the
+source: every `<x>.stream()` in the service is followed by `.catch`.
+
+**A denied permission dialog reports what it cost.** `permissionOutcome` grades
+the launcher's result map into `canStart` plus the ordered list of losses, and
+`PermissionNotice` renders one sentence each plus the routes back. An absent key
+is not a denial — `POST_NOTIFICATIONS` is only requested from API 33
+(`decisions.md § 1018`).
 
 ## What's still deferred
 
@@ -376,12 +531,34 @@ Pure formatters (`formatElapsed`, `formatStatRow`, `formatPaceSecPerKm`) are the
 
 Updates flow from `RunRecordingService`: every stage transition (`startRecording`, `pauseRecording`, `resumeRecording`, `stopRecording`) calls `ActiveRunTileService.requestUpdate(this)`. The platform debounces multiple rapid calls; we deliberately don't push per-second ticks because Wear OS throttles tile refreshes. The `freshnessIntervalMillis = 30_000L` on the active-state Tile lets the platform re-bind every 30 s when the user swipes to it mid-run, which catches up the elapsed display without us needing per-tick wake-ups. The wiring guard in `RouteMiniMapWiringTest` pins ≥4 `requestUpdate` call sites in `RunRecordingService`.
 
+**The updater is always bound through the application context.** `requestUpdate` takes any `Context` but hands `TileService.getUpdater` its `applicationContext`. `SysUiTileUpdateRequester` keeps the context it is given and unbinds SysUI through it later, on its own executor thread; given the recording Service, that unbind ran after `stopRecording`'s `stopSelf()` had torn the Service's bindings down, threw `IllegalArgumentException: Service not registered`, and killed the app on every Stop. The `try/catch` cannot reach that thread, so the context is the only fix. `ActiveRunTileResilienceTest` reads every `getUpdater(` in the main source set and fails on any argument that is not an application context.
+
 Manifest: `<service android:name=".tiles.ActiveRunTileService">` with `permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER"` (only the Wear OS Tiles host can bind; `exported=true` is required because the host is a separate process). Preview drawable `res/drawable/tile_active_run_preview.xml` is what the watch face's tile picker shows when the user adds the tile; the live tile re-renders dynamically at request time. `res/values/strings.xml`'s `tile_active_run_label` is the picker chip text.
+
+## Watch-face complication
+
+`complications/ActiveRunComplicationService.kt` is a `ComplicationDataSourceService` (`androidx.wear.watchface:watchface-complications-data-source`) a runner can put in any free slot on any watch face. It serves `SHORT_TEXT`, `LONG_TEXT` and `ICON` (the manifest spelling of `MONOCHROMATIC_IMAGE`), answers from `RecordingRepository.metrics` or one DataStore read, and makes no network call. Three states, chosen by the pure `complicationContent` in `RunComplicationContent.kt`:
+
+- **Recording** — elapsed time as a count-up `TimeDifferenceComplicationText` the face ticks every second itself, plus distance; the long form adds pace ("5.12 km · 5:30/km").
+- **Paused** — the frozen elapsed time and distance, labelled PAUSED.
+- **Idle** — the last run this watch recorded ("Last" / "5.21 km"), or a start prompt. `LastRunStore` holds it: written in `handleFinishedRun` after the queue write, cleared by that run's discard and by sign-out (a watch face is on show to anyone). Weekly distance was rejected because the watch keeps no run history and never sees phone-recorded runs, which is also why there is no `RANGED_VALUE`.
+
+Updates: `RunRecordingService` calls `ActiveRunComplicationService.requestUpdate(this)` beside every tile push and once a minute while recording (`isComplicationPushTick`, 120 ticker ticks); `RunViewModel` pushes when the last-run entry changes. `UPDATE_PERIOD_SECONDS = 3600` is only a safety net. `requestUpdate` is guarded and bound through the application context, like the tile's. Tapping opens `MainActivity`. The icon is `res/drawable/ic_complication_mark.xml`, the thorn mark from `apps/web/static/logo-mark.svg`. Tests: `RunComplicationContentTest`, `LastRunStoreTest`, `ComplicationWiringTest`; the `ComplicationData` mapping is compile-only. See [decisions § 1895](../../docs/architecture/decisions.md).
 
 ## Recording UX — what's shipped on the Running screen
 
 What the UI exposes during a recording, for quick reference when reading
 `ui/RunWatchApp.kt`:
+
+**Post-run Discard is a two-press confirm, like the recovery prompt's.**
+`PostRunScreen`'s bottom-end `×` renders only on the `!synced` branch, and
+`RunViewModel.discard` is `store.remove(id)` — the queue is the only place
+that run exists. The first tap arms; the whole bottom cluster is then replaced
+by a labelled `Discard?` chip with "Not saved anywhere else" above it, and only
+a tap on THAT chip calls `onDiscard`. The arm lapses after `CONFIRM_WINDOW_MS`
+and a sync that lands while armed retires it. The confirm sits at bottom-CENTRE
+rather than in the corner the arming tap landed in, so a double tap cannot
+reach it. Pinned by `PostRunDiscardConfirmTest`; decisions § 1253.
 
 **Post-run calories (persona samsung #34).** `PostRunScreen` shows a
 `kcal` figure computed by `recording/RunCalories.kt` — the same
@@ -392,19 +569,28 @@ because the watch reads `user_settings.prefs` only, not the
 `user_profiles.gender` column — the run-detail pages recompute with
 gender once synced, so the only place the watch figure is final is its
 own summary. Pinned by `RunCaloriesTest`. See decisions.md § 77.
+The weight reaches the bag from onboarding, the Health Connect import and,
+since decisions § 1811, every consented save on Settings → Body metrics (web
+and phone), which also clear it on a withdrawal. There is no phone→watch
+DataLayer settings envelope on Wear OS — the watch reads the bag over its own
+session — so don't add one for this key.
 
-**Rotary input (bezel / crown).** The genuinely scrollable list screens —
-`BatteryInstructions` and the route picker — attach
+**Rotary input (bezel / crown).** The scrollable list screens —
+`PreRunScreen`, `BatteryInstructions` and the route picker — attach
 `Modifier.rotaryScrollable(RotaryScrollableDefaults.behavior(scrollableState
 = listState), focusRequester)` and request focus on appearance, so a
 Galaxy Watch physical bezel or a Pixel Watch crown scrolls them (persona
-samsung #32). The pre-run screen is deliberately NOT a scrolling column —
-it's a region-anchored `Box` so overflow in one region can't push the
-Start button off-frame — and the sign-in screen is excluded because its
+samsung #32). The pre-run screen is a `ScalingLazyColumn` of value chips
+(Activity, Pace, Route, then the battery-exemption and Sign out chips) with
+the Start `BrandEdgeButton` pinned to the bottom bezel OUTSIDE the list, so
+overflow only scrolls the list and can never push Start off-frame (the old
+region-anchored `Box` existed for that; `PreRunHomeLayoutTest` pins it) —
+and the sign-in screen is excluded because its
 `FocusRequester` belongs to the text inputs (auto-focusing the list would
 steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
 
-- **Pre-run activity picker.** `CompactChip` on `PreRunScreen` cycles
+- **Pre-run activity picker.** The Activity value chip (`PreRunSettingChip`,
+  label "Activity", current activity as its value) on `PreRunScreen` cycles
   `run → walk → hike → cycle`; the choice flows through to
   `metadata.activity_type` on save.
 - **3-second start countdown.** Between permission grant and
@@ -435,6 +621,85 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   registered while silently emitting nothing — a failure mode
   Geolocator surfaces as a stream error. Initial no-fix
   (`lastPointAtMs == 0L`) is explicitly not a stall; that's indoor mode.
+  The loop reopens the `GPS_PROVIDER` receiver stream as well, at most
+  once per 30 s, so a watch with no receiver isn't asked every tick.
+- **The watch records from its own receiver; fused is the fallback.**
+  `GpsRecorder` opens two streams: `LocationManager.GPS_PROVIDER` at
+  1 Hz and `FusedLocationProviderClient` (`PRIORITY_HIGH_ACCURACY`, 1 s).
+  Fused alone was the old source, and on Wear OS it can feed the watch the
+  paired phone's location, so the track need not come from the wrist; on
+  a phone the same provider read +10.4% long (decisions § 1960, § 1984).
+  `recording/LocationSourceArbiter.kt` applies the phone `RunRecorder`'s
+  rules unchanged: the receiver takes the run after 3 consecutive usable
+  fixes (within the 30 m `arbitrationGateM`) each arriving within 12 s of the last; fused
+  feeds the run only after > 12 s with no usable receiver fix; the fused
+  stream stays open throughout; arbitration is on arrival time
+  (monotonic), never fix timestamps. Each switch starts a new
+  `GpsDistanceEstimator` segment with the stride carried over, so no
+  learned Doppler or cross-check state crosses sources; a fused segment
+  never learns stride (spec v1.4 `learnStride`). A watch with no
+  GPS chip, or a disabled or erroring provider, simply never gets receiver
+  fixes and fused carries the run. The saved run records which stream it
+  came from in `metadata.location_provider` (`gps` / `fused` / `mixed`).
+  `GpsRecorder.gnssStatusStream()` registers a `GnssStatus.Callback`
+  (at most 1 Hz) and the service folds each unpaused reading into
+  `recording/GnssSignalQuality.kt`'s `GnssSignalAccumulator`, saved as
+  `metadata.gnss_signal` through the finished metrics, the upload queue and
+  the checkpoint. A port of the phone's summariser, pinned by
+  `fixtures/gnss_signal_vectors.json`; nothing reads it live.
+  Not yet verified on a device: one run on a Wear watch beside the Garmin,
+  checking it saves `location_provider: gps`.
+- **Distance is the shared estimator, not a hop sum.**
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.6
+  forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
+  Doppler cross-check and debias, pedometer ZUPT; no smoother —
+  [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
+  held to `fixtures/gps_distance_vectors.json` after every event by
+  `GpsDistanceEstimatorTest`. Change it only together with the reference and
+  every other port. `onGps` feeds it every fix from the current source up to
+  the estimator's 50 m cap (`ESTIMATOR_ACCURACY_CAP_M`), stamped with the fix's own `elapsedRealtimeNanos`
+  (never the wall-clock `time`), plus `Location.speed` / `speedAccuracy` /
+  `bearing` only when the matching `has*()` is true; the pedometer feeds
+  `addSteps`. A pause closes the estimator segment (`finish` + bank the
+  totals + `nextSegment()`), so the paused span is never credited and the
+  next fix re-anchors; the fresh estimator is seeded (`initialStrideM`) with
+  the closing segment's stride, so a GPS gap right after a resume is still
+  step-filled. Fixes arrive at 1 s, so `expectedIntervalS` stays 1. The
+  ceiling is per activity (`maxSpeedMpsFor`, the phone's
+  `ActivityType.maxSpeedMps` values, stroller included, held to
+  `fixtures/activity_speed_caps.json` by `ActivitySpeedCapsTest`). The overlay, the latest point, the route
+  match and the post-run map take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
+  canopy fix moves distance and pace and is stored in the track file flagged
+  `"offTrack":true` (`TrackWriter.append(point, distM, offTrack)`), so the
+  server's replay sees every fix the estimator took. The first fix stored
+  after a pause or a source switch closes the estimator's segment is written
+  `"segmentStart":true` (`closeDistanceSegment` sets `markSegmentStart`,
+  `onGps` writes and clears it), so the server replays each segment apart
+  (spec v1.8), and `TrackWriter.segmentCount` counts the segments the file
+  holds into `metadata.distance_segments`, which the server matches against
+  its replay before it reads the gap key; the finished run and the
+  checkpoint carry `trackComplete` into `metadata.track_complete`
+  (docs/features/gps_distance.md § Stored track). Each point now also carries the optional `accuracyMetres`,
+  `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
+  recompute, plus `distM`, the run's credited distance through that fix
+  (`TrackWriter.append(point, distM)`, written after the estimator has
+  taken it), which splits and moving time measure on (decisions § 1997). Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
+  when > 0, `distance_step_filled_m` with, beside it,
+  `distance_step_over_chord_m` (the estimator's `stepOverChordM`, banked per
+  segment, spec v1.7); a run queued or checkpointed by an older hop-summing
+  build carries neither. The stamp is what queues the
+  server's smoother: once the row has its `track_url`, the
+  `runs_enqueue_watch_distance_recompute` trigger queues a
+  `distance_recompute` job, which replays this track and replaces
+  `distance_m` with the smoothed figure (its gaps credited the larger of
+  `distance_step_over_chord_m` and the run-total rule when
+  `distance_segments` matches the replay, otherwise the run-total rule, the
+  larger of their chords and the step-filled metres; each segment is
+  replayed apart from its `segmentStart` fix, so a close's trailing steps
+  are banked whole),
+  keeping the wrist's figure as `distance_recorded_m`
+  ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
+  decisions § 1991).
 - **Indoor / no-GPS mode.** The elapsed clock ticks regardless of GPS;
   distance stays 0 until the first fix lands. `TrackWriter.close()`
   produces a valid empty `[]` track, so the upload and downstream run
@@ -464,7 +729,10 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   `docs/architecture/decisions.md § 64`.
   Selected waypoints flow via `ACTION_START` extras into
   `RunRecordingService.parseRouteWaypoints`, which calls
-  `RouteMath.offRouteDistanceM` + `routeRemainingM` per GPS sample.
+  `RouteMath.routeProgress` per GPS sample, passing the previous route
+  match back in so a loop start is not read as its finish and an
+  out-and-back return leg is not read as its outbound one (a port of web
+  `route_geometry.ts` `progressAlongRoute`).
   `RunningScreen` renders the "Off route · N m" banner (with hysteresis
   at 40 m / 20 m and a double-haptic on entry) and a "X.XX km to go"
   badge under the distance readout. `ui/RouteMiniMap.kt` draws the
@@ -478,8 +746,7 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   length. Tile background is still deferred (see "What's still
   deferred" above).
 - **TTS audio cues.** `recording/TtsAnnouncer.kt` wraps
-  `android.speech.tts.TextToSpeech` with an async init + flush-queued
-  speak. `RunRecordingService` announces "Run started" on begin,
+  `android.speech.tts.TextToSpeech` with an async init. `RunRecordingService` announces "Run started" on begin,
   a split on each completed unit of the runner's `preferred_unit`
   ("1 kilometre. Pace 5 minutes 30 seconds per kilometre" / "1 mile.
   Pace 8 minutes 2 seconds per mile" — same phrasing as Android's
@@ -488,18 +755,44 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   follow the unit: the trigger is `completedSplits(distance, unit)` and
   each phrase has a `_km` / `_mi` resource (`decisions.md § 467`). Gated
   on `BuildConfig.ENABLE_TTS` (defaults on; set `DISABLE_TTS=true` in
-  `.env.local` to silence).
+  `.env.local` to silence) and at run time on the universal
+  `voice_feedback_enabled`.
+- **Spoken workout steps (issue #1186).** A run following today's workout
+  speaks, beside the unchanged step haptics, the phone's step sentence on
+  every step change, the first included ("Rep 3 of 6. 400 metres at 4
+  minutes per kilometre." / "Walk 1 of 8. 1 minute 30 seconds."; an unpaced
+  distance step drops the pace), "Workout complete. Nice work.", and in
+  `full` verbosity also the end-of-step warning ("Fifty metres to go" /
+  "Fifty yards to go" / "Ten seconds to go" on a timed step) and the
+  step's pace-drift nudge, which replaces the generic pace-alert phrase for
+  a workout. `workout/WorkoutSpeech.kt` is pure (`workoutSpeech` picks the
+  cue, `renderWorkoutSpeech` builds the sentence through a `SpeechStrings`
+  seam) and `WorkoutSpeechTest` reads it through the real
+  `values*/strings.xml`. Gated as the phone gates it: `voice_feedback_enabled`,
+  `voice_cue_types.workout_steps` and `voice_feedback_verbosity`, all read
+  from the universal bag and passed through `ACTION_START`. Queue:
+  `cueQueueMode` in `TtsPhrases.kt` — a workout cue waits behind a split
+  already speaking, a split waits behind a workout cue, and a newer workout
+  cue flushes an older one; a workout cue raised before the engine is ready
+  is held and spoken on ready. `onStop` releases audio focus for whatever a
+  flush dropped (it used to leak, leaving the runner's music ducked).
 - **Target-pace picker + haptic pace alerts.** Pre-run **Pace** chip
   cycles `off / 4:00 / 4:30 / 5:00 / 5:30 / 6:00 / 6:30 / 7:00 /km` via
   `RunViewModel.cycleTargetPace`. `start()` passes the value through
   `EXTRA_TARGET_PACE_SEC_PER_KM`; the service compares live pace every
-  GPS sample (after the 50 m stabilisation gate used for pace) and
+  GPS sample and
   calls `firePaceAlert(tooSlow)` when drift > 30 s/km, rate-limited to
   one alert per 30 s. Haptic fires via `VibratorManager` — a
   `createWaveform(longArrayOf(0, 180, 180, 180), ...)` double pulse
   for "speed up", a `createOneShot(220, DEFAULT_AMPLITUDE)` single
   pulse for "slow down", paired with a TTS nudge. Matches the
-  two-pulse vs single-pulse pattern on Android.
+  two-pulse vs single-pulse pattern on Android. `Vibrator.vibrate` is
+  permission-gated, so the manifest's `VIBRATE` declaration is load-bearing:
+  without it the call throws `SecurityException` on every watch and the
+  alert silently degrades to TTS-only, which is indistinguishable at the
+  call site from a watch with no vibrator (decisions § 1302 — it was in
+  that state until 2026-09-06, pinned now by the used-to-declared half of
+  `ManifestPermissionCoverageTest`).
 - **Pedometer.** `Pedometer.kt` wraps `Sensor.TYPE_STEP_COUNTER` with a
   per-run baseline subtraction so the flow yields cumulative steps
   since recording started. `RunRecordingService` collects into
@@ -517,18 +810,19 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
 
 ## Localization (i18n)
 
-The app ships in six locales (`en/de/fr/es/ja/pt-BR`) via **standard Android
-string resources** — no custom framework, no in-app picker (device-locale-follow
-is the platform norm on a tiny screen).
+The app ships in seven locales (`en/de/fr/es/ja/pt-BR/pt-PT`) via **standard
+Android string resources** — no custom framework, no in-app picker
+(device-locale-follow is the platform norm on a tiny screen).
 
 - **Resources**: default English in `res/values/strings.xml`; translations in
-  `res/values-de/`, `-fr/`, `-es/`, `-ja/`, and `res/values-b+pt+BR/`
-  (BCP-47 qualifier for pt-BR). Every user-facing literal in `ui/RunWatchApp.kt`,
+  `res/values-de/`, `-fr/`, `-es/`, `-ja/`, `res/values-b+pt+BR/` and
+  `res/values-b+pt+PT/` (the BCP-47 `b+` qualifier both Portuguese variants
+  need). Every user-facing literal in `ui/RunWatchApp.kt`,
   `recording/RunRecordingService.kt` (notification + ongoing-activity text),
   `tiles/ActiveRunTileService.kt`, and the `Token refresh failed` error in
   `RunViewModel` reads from resources. Compose uses `stringResource` /
   `pluralStringResource`; services/tiles use `context.getString(...)`.
-- **Per-app language**: `res/xml/locales_config.xml` lists the six and is
+- **Per-app language**: `res/xml/locales_config.xml` lists the seven and is
   referenced from `<application android:localeConfig=...>` so Android 13+
   surfaces a per-app language toggle in system settings.
 - **Number formatting + distance unit**: `recording/UnitFormat.kt` is the
@@ -556,18 +850,47 @@ is the platform norm on a tiny screen).
   keeps only the pure numeric decomposition (`paceMinSec` / `paceMinSecFor`,
   `finishMinutes`, `finishDistanceSpoken` — the spoken distance uses a period
   decimal so no engine reads "comma").
+- **Shared vocabularies are the phone's, verbatim.** The five `activity_*`
+  labels are the same words `apps/mobile_android/lib/l10n/app_*.arb` and
+  `apps/web/src/lib/i18n/locales/*.ts` use, not shorter ones chosen for the
+  wrist. They render as the full-width Activity chip's value line, which
+  ellipsises if a word still overflows, and the `contentDescription`
+  carries the whole word (decisions § 713). There is no
+  divergence left: `hike` read "Hike" here and "Trail run" there under a guard
+  exemption until decisions § 1155 took the owner call and the wrist adopted
+  the phone's word in all six locales that differed. The guard now compares
+  the whole vocabulary with nothing exempt.
 - **Tests**: `L10nResourceParityTest` (Wear-OS analogue of the mobile
   `l10n_parity_test`) asserts every `values-xx` declares exactly the default
-  key set, no empty values, and matching format-arg sets. `UnitFormatTest`
-  pins the locale decimal separator; `TtsLocaleWiringTest` pins the
-  device-locale + resource-phrase wiring.
-- **When you add a user-facing string**: add it to `values/strings.xml` AND all
-  five `values-xx` files (the parity test fails otherwise), keep format args
-  (`%1$s` …) intact and in the right order, and escape apostrophes as `\'`.
+  key set, no empty values, and matching format-arg sets.
+  `ActivityTypeVocabularyTest` asserts the activity words equal the ARB's and
+  the web catalogue's locale for locale with no exemptions,
+  and pins the phone catalogues the wrist does not mirror —
+  `unmirroredPhoneCatalogues` is `emptySet()` since the wrist gained European
+  Portuguese, and it is checked in BOTH directions, so a phone locale with no
+  `values-*` directory and a stale entry the wrist has caught up on each fail.
+  `LocaleReachTest` + `WearLocalesTest` hold every site that DECLARES the
+  locale set — `locales_config.xml`, the manifest's `localeConfig` reference,
+  and both test-side lists — to the `values-*` directories on disk via
+  `WearLocales`, so a new string set cannot ship unlisted or unchecked
+  (decisions § 748). Note the test task takes `src/main/res` as an input only
+  because `app/build.gradle.kts` says so; without that a resource-only change
+  leaves `testDebugUnitTest` UP-TO-DATE.
+  `UnitFormatTest` pins the locale decimal separator; `TtsLocaleWiringTest`
+  pins the device-locale + resource-phrase wiring.
+- **When you add a user-facing string**: add it to `values/strings.xml` AND
+  every `values-xx` file (the parity test reads the directory, so it fails on
+  whichever ones exist), keep format args (`%1$s` …) intact and in the right
+  order, and escape apostrophes as `\'`.
+- **When you add a LOCALE**: create `values-xx/strings.xml`, add the tag to
+  `res/xml/locales_config.xml`, and pair the directory with its phone + web
+  catalogue in `ActivityTypeVocabularyTest.localeCatalogues`. Nothing else
+  needs touching — every other site derives. `LocaleReachTest` names whichever
+  step you skipped.
 
 ## Testing convention
 
-Pure-JVM JUnit tests in `app/src/test/kotlin/com/runapp/watchwear/`. Run with `./gradlew testDebugUnitTest`. Current total: ~395 tests across ~32 files. No Robolectric, no Compose UI test instrumentation — deliberate. The pattern when a load-bearing piece of logic is bound to an Android API (foreground service, OkHttp, Health Services, SensorEventListener, Compose):
+Pure-JVM JUnit tests in `app/src/test/kotlin/com/runapp/watchwear/`. Run with `./gradlew testDebugUnitTest`. Current total: 717 tests across 70 files (measured 2026-09-03; the count is not gated and drifts fast). No Robolectric, no Compose UI test instrumentation — deliberate. The pattern when a load-bearing piece of logic is bound to an Android API (foreground service, OkHttp, Health Services, SensorEventListener, Compose):
 
 1. **Extract the pure logic** into a file-level `internal fun` (or a `companion object` static when it must live on the host class). The Android-bound wrapper method delegates one-line to the helper.
 2. **Test the helper** in isolation against a JVM target. No Robolectric runner, no `androidx.compose.ui.test.*`.

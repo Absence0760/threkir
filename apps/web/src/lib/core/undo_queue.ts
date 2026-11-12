@@ -20,7 +20,14 @@
  * done) while `commit` is held. Undo cancels the pending commit and
  * calls `restore`; the server was never touched. A commit that later
  * fails also calls `restore`, so a list never claims a row is gone
- * while the server still holds it.
+ * while the server still holds it — unless the account that queued it
+ * is provably no longer the one signed in: the session has ended, or a
+ * different account is signed in (another tab changed it while the
+ * commit was in flight). That failure is logged and nothing else: no
+ * toast to a signed-out reader, and no restore into what is now another
+ * account's list. An owner that is merely not known yet (the profile is
+ * still hydrating for a live session) is not a change, so the same
+ * account's failure still restores and reports.
  *
  * One slot, deliberately: a second destruction commits the first
  * immediately rather than stacking bars whose ordering the user would
@@ -71,6 +78,19 @@ export interface PendingUndo {
 
 type TimerHandle = unknown;
 
+/// An account id, `null` for a session that has ended, or `undefined` for a
+/// live session whose account is not known yet.
+export type UndoOwner = string | null | undefined;
+
+/// Whether a commit failure belongs to someone other than the account that
+/// queued it. Only a confirmed end, or a different known account, counts: a
+/// gap in what the app knows about the same session is not a sign-out.
+export function undoOwnerChanged(queuedBy: UndoOwner, now: UndoOwner): boolean {
+	if (now === undefined) return false;
+	if (now === null) return true;
+	return typeof queuedBy === 'string' && now !== queuedBy;
+}
+
 export interface UndoQueueDeps {
 	/// The undo window in ms, read at defer time. `0` or less disables
 	/// the timer entirely (WCAG 2.2.1 "turn off").
@@ -79,13 +99,22 @@ export interface UndoQueueDeps {
 	clearTimer: (handle: TimerHandle) => void;
 	now: () => number;
 	onChange: (pending: PendingUndo | null) => void;
+	/// The signed-in account, read when a destruction is queued and again
+	/// when its commit fails: its id, `null` once the session has ended, or
+	/// `undefined` while a live session's account is not known yet. Absent,
+	/// every destruction has one owner.
+	owner?: () => UndoOwner;
 }
 
 export interface UndoQueue {
 	defer: (destruction: DeferredDestruction) => void;
 	undo: () => void;
 	/// Commit the pending destruction now — the dismiss button, a
-	/// navigation, or a second destruction arriving.
+	/// navigation, a second destruction arriving, or a sign-out. Resolves
+	/// once every commit this queue has started has settled, including one
+	/// the window timer or a later `defer` set going before this call: a
+	/// sign-out that awaits it ends the session only after a failure has
+	/// restored and reported to the account that made the delete.
 	flush: () => Promise<void>;
 	pause: () => void;
 	resume: () => void;
@@ -93,9 +122,11 @@ export interface UndoQueue {
 }
 
 export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
+	const owner = deps.owner ?? ((): UndoOwner => undefined);
 	let nextId = 1;
 	let current: {
 		id: number;
+		owner: UndoOwner;
 		destruction: DeferredDestruction;
 		windowMs: number;
 		remainingMs: number;
@@ -133,25 +164,49 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 
 	/// Detaches the pending entry so a concurrent flush/undo/defer can't
 	/// act on it twice. Returns null when there was nothing pending.
-	function take(): DeferredDestruction | null {
+	function take(): { destruction: DeferredDestruction; owner: UndoOwner } | null {
 		const c = current;
 		if (c === null || c.settled) return null;
 		c.settled = true;
 		disarm();
 		current = null;
 		publish();
-		return c.destruction;
+		return { destruction: c.destruction, owner: c.owner };
+	}
+
+	/// Commits that have left the slot and not yet settled. `take` detaches
+	/// an entry before its commit runs, so without this a flush that found
+	/// the slot empty could not see a commit the timer or `defer` had
+	/// already started.
+	const inFlight = new Set<Promise<void>>();
+
+	function settle(taken: { destruction: DeferredDestruction; owner: UndoOwner }): Promise<void> {
+		const { destruction } = taken;
+		const settling = (async () => {
+			try {
+				await destruction.commit();
+			} catch (error) {
+				if (undoOwnerChanged(taken.owner, owner())) {
+					console.error('undo: a held delete failed after the account that made it signed out', error);
+					return;
+				}
+				destruction.restore();
+				destruction.onCommitError?.(error);
+			}
+		})();
+		inFlight.add(settling);
+		const forget = () => {
+			inFlight.delete(settling);
+		};
+		settling.then(forget, forget);
+		return settling;
 	}
 
 	async function flush(): Promise<void> {
-		const destruction = take();
-		if (destruction === null) return;
-		try {
-			await destruction.commit();
-		} catch (error) {
-			destruction.restore();
-			destruction.onCommitError?.(error);
-		}
+		const taken = take();
+		const own = taken === null ? null : settle(taken);
+		await Promise.allSettled([...inFlight].filter((p) => p !== own));
+		if (own !== null) await own;
 	}
 
 	function defer(destruction: DeferredDestruction): void {
@@ -159,6 +214,7 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 		const windowMs = Math.max(0, deps.windowMs());
 		current = {
 			id: nextId++,
+			owner: owner(),
 			destruction,
 			windowMs,
 			remainingMs: windowMs,
@@ -172,9 +228,9 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 	}
 
 	function undo(): void {
-		const destruction = take();
-		if (destruction === null) return;
-		destruction.restore();
+		const taken = take();
+		if (taken === null) return;
+		taken.destruction.restore();
 	}
 
 	function pause(): void {

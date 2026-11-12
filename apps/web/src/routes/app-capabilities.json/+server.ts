@@ -1,6 +1,10 @@
 import type { RequestHandler } from './$types';
-import { coachEnabled } from '$lib/coach/coach_flag';
-import { routeGenEnabled } from '$lib/routes/route_gen_flag';
+import { webCheckoutAvailable } from '#lib/billing/revenuecat.ts';
+import { coachEnabled } from '#lib/coach/coach_flag.ts';
+import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
+import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
+import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
 
 // Build-time capability manifest for the native clients. `adapter-static`
 // prerenders this once (like /sitemap.xml) into a plain file in `build/`,
@@ -17,7 +21,28 @@ import { routeGenEnabled } from '$lib/routes/route_gen_flag';
 // /api/coach. There is no second flag to keep in sync — flipping the env
 // and redeploying web moves both storefronts at once.
 //
-// Public by construction: both values are already PUBLIC_ flags present in
+// `web_checkout` is the third answer the storefront reads: whether this
+// deploy can take a Pro payment on the web (`webCheckoutAvailable()`, the
+// same gate the /settings/upgrade buy button renders under). A mobile build
+// that cannot sell through its own store falls back to the web page only
+// when this is true; otherwise that page could only point at the iPhone app
+// (decisions § 1826). It is not a perk and sells nothing on its own.
+//
+// `ai_plan` is whether the AI plan assistant is live — the same
+// `coachEnabled() && aiPlanEnabled()` the web plan wizard renders its box
+// under. A native client reads it to decide whether to offer the assistant
+// and the coach's `/plans/new?describe=` handoff; it is not a Pro perk.
+//
+// `plate_photo` is whether the plate-photo logger is live, under the same
+// `coachEnabled() && platePhotoEnabled()` /nutrition/log renders it under. The
+// endpoint is a Pro perk checked per call; this answer sells nothing.
+//
+// `coach_assist` is whether the coach assistant is live (issue #1215 Phase 4),
+// the same `coachAssistEnabled()` the web /coaching consent toggle renders
+// under. A native client reads it to decide whether to offer an athlete the
+// per-link consent toggle; the endpoint checks every consent on each call.
+//
+// Public by construction: every value derives from a PUBLIC_ var present in
 // the client bundle every visitor downloads. Nothing here is a secret.
 //
 // The release workflow gives this file the short HTML-style cache-control
@@ -26,7 +51,14 @@ export const prerender = true;
 
 export const GET: RequestHandler = () =>
 	new Response(
-		JSON.stringify({ coach: coachEnabled(), route_gen: routeGenEnabled() }),
+		JSON.stringify({
+			coach: coachEnabled(),
+			route_gen: routeGenEnabled(),
+			web_checkout: webCheckoutAvailable(),
+			ai_plan: coachEnabled() && aiPlanEnabled(),
+			plate_photo: coachEnabled() && platePhotoEnabled(),
+			coach_assist: coachAssistEnabled(),
+		}),
 		{
 			headers: {
 				'content-type': 'application/json',

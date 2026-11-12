@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
-import { switchRunsToAllTime } from '../fixtures/helpers';
+import { setStorageOnLoad, switchRunsToAllTime } from '../fixtures/helpers';
 import { createSagaUsers, deleteSagaUsers } from '../fixtures/saga-users';
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -253,7 +253,7 @@ test.describe('/runs', () => {
 		// Seed runs are March-April 2026 and the describe's beforeEach
 		// cleared the current week, so real-wall-clock "today" is empty;
 		// force the default filter first.
-		await page.addInitScript(() => localStorage.removeItem('runs_filters_v1'));
+		await setStorageOnLoad(page, { local: { runs_filters_v1: null } });
 		await page.goto('/runs');
 
 		const filteredEmpty = page.getByTestId('runs-empty-filtered');
@@ -582,7 +582,7 @@ test.describe('/runs', () => {
 		// passes the runs CHECK constraint (distance > 0).
 		await page.locator('input[type="datetime-local"]').first().fill('2026-04-29T08:00');
 		await page.locator('input[type="number"]').first().fill('5'); // distance km
-		await page.locator('input[type="number"]').nth(1).fill('25'); // duration min
+		await page.getByTestId('run-editor-minutes').fill('25');
 		await page.locator('textarea').fill(title);
 
 		await page.locator('form button[type="submit"]').click();

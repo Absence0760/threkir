@@ -7,7 +7,7 @@
 -- The aggregates (runs_7d / distance_7d_m / plan_completion_pct) match the
 -- seeded data, and ending a link mid-test drops the athlete immediately.
 begin;
-select plan(13);
+select plan(14);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -99,25 +99,40 @@ select is(
 -- A non-coach sees an empty roster (the mine CTE is the only gate).
 -- ============================================================
 set local "request.jwt.claims" = '{"sub":"aaaaaaaa-0000-0000-0000-0000000000e1","role":"authenticated"}';
+-- refusal: the coach link is the grant; an empty roster is the refusal
 select is(
   (select count(*)::int from coach_roster_summary()),
   0, 'a non-coach gets zero roster rows');
 
 -- The athlete is not a coach of their own coach (directional gate).
 set local "request.jwt.claims" = '{"sub":"aaaaaaaa-0000-0000-0000-0000000000a1","role":"authenticated"}';
+-- refusal: the coach link is directional, and the reverse direction grants nothing
 select is(
   (select count(*)::int from coach_roster_summary()),
   0, 'an athlete is not a coach -- their roster is empty');
 
 -- ============================================================
--- Anon / unauthenticated: the function raises (fail-closed).
+-- Unauthenticated: fail-closed twice over.
+--
+-- Until 20270626000001 this asserted that an `anon` caller reached the
+-- body and was refused by it -- which held only on an image that grants
+-- anon EXECUTE at create time, and was the evidence separating the two
+-- images in decisions.md 799. The grant is now withheld on both, so the
+-- refusal an anonymous caller meets is the ACL's; the body's own
+-- fail-closed guard is asserted through a role that can still reach it.
+-- The rule those two images differ on is pinned directly, with probe
+-- functions, in anon_execute_registry_test.sql.
 -- ============================================================
-set local role anon;
-set local "request.jwt.claims" = '{"role":"anon"}';
+select ok(
+  not has_function_privilege('anon', 'public.coach_roster_summary()', 'EXECUTE'),
+  'coach_roster_summary is not executable by anon at all');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"role":"authenticated"}';
 select throws_ok(
   $$select * from coach_roster_summary()$$,
   'not authenticated',
-  'coach_roster_summary raises for an unauthenticated caller');
+  'coach_roster_summary raises for a caller with no subject');
 
 -- ============================================================
 -- Ending the active link revokes the athlete from the roster immediately.
@@ -130,6 +145,7 @@ update coach_athletes set status = 'ended', ended_at = now()
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"aaaaaaaa-0000-0000-0000-0000000000c1","role":"authenticated"}';
+-- refusal: a revoked grant is access control expressed as a lifecycle
 select is(
   (select count(*)::int from coach_roster_summary()),
   0, 'ending the last active link empties the coach roster');
@@ -143,10 +159,12 @@ insert into coach_athletes (coach_id, status, invite_token)
   values ('aaaaaaaa-0000-0000-0000-0000000000c1', 'pending', 'crs-tok-pending');
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"aaaaaaaa-0000-0000-0000-0000000000c1","role":"authenticated"}';
+-- refusal: an unredeemed invite is not consent, so it grants no read
 select is(
   (select count(*)::int from coach_roster_summary()),
   0, 'a pending invite (unredeemed) contributes no roster row');
 
+-- refusal: an unredeemed invite is not consent, so it grants no read
 select is(
   (select count(*)::int from coach_roster_summary()),
   0, 'roster is still empty -- pending is not active consent');

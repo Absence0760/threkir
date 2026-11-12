@@ -1,0 +1,117 @@
+{
+  "total": "11",
+  "limit": "50",
+  "start": "0",
+  "data": [
+    {
+      "id": "C612A958-DEEC-4BC9-A2E3-45FDC86E1882",
+      "url": "",
+      "title": "Prescribed Fire in Big Meadows",
+      "parkCode": "shen",
+      "description": "Weather permitting, fire personnel plan to conduct a prescribed fire in Big Meadows from 6 a.m. Tuesday, November 10 until 6 p.m. Thursday, November 12. For public safety, Big Meadows and Rapidan Road will be closed to the public for the duration of the prescribed fire operation. Visitors should slow their speeds and turn their headlights on when driving through smoke.",
+      "category": "Caution",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-11-09 00:00:00.0"
+    },
+    {
+      "id": "945557F5-5C8E-4606-8331-DA7793F266BF",
+      "url": "",
+      "title": "Visitor Center Closed on Tuesdays, Wednesdays, and Thursdays",
+      "parkCode": "prwi",
+      "description": "The Visitor Center will only be open Friday, Saturday, Sunday, and Monday from 8:00 a.m. - 4:00 p.m. The Visitor Center will also be closed on the following holidays: Thanksgiving Day, Christmas Day, and New Year's Day.",
+      "category": "Information",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-11-01 00:00:00.0"
+    },
+    {
+      "id": "E5AFC264-9AD7-44CC-A85B-D97E776AB4D6",
+      "url": "",
+      "title": "Parking Lot E Closed for Construction",
+      "parkCode": "prwi",
+      "description": "Parking Lot E is closed for construction. The park is currently working to expand this parking area, and the lot will be closed while the expansion is being built. Visitors can still access the Mary Byrd Branch Trail and Quantico Cascades Trail by following trail reroute signs and parking vehicles in Turkey Run parking area. For your safety, please follow all closures and only park in designated parking spots.",
+      "category": "Park Closure",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-11-01 00:00:00.0"
+    },
+    {
+      "id": "2DC60C7E-23DA-4C5F-915E-5971F1B408F6",
+      "url": "https://www.nps.gov/shen/planyourvisit/naked-creek-backcountry-zone-closure.htm",
+      "title": "Active Closure",
+      "parkCode": "shen",
+      "description": "Due to recent wildlife interactions and out of an abundance of caution, the Naked Creek backcountry zone is closed to all recreation until further notice. A camping closure remains in effect for the Appalachian Trail (AT) from Lewis Mountain to Big Meadows, including the Bearfence AT Hut. The AT is still accessible to hikers for day-use only.",
+      "category": "Park Closure",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-10-14 00:00:00.0"
+    },
+    {
+      "id": "F4AB8754-5847-4FB2-AB55-670DAD3FE1DF",
+      "url": "",
+      "title": "Infrastructure Improvements to Old Rag Trailhead",
+      "parkCode": "shen",
+      "description": "Effective May 4, Shenandoah National Park will begin infrastructure enhancements at the Old Rag Trailhead main parking lot. We expect to complete work by November 2026. Until then, the main parking lot is closed to all vehicle and pedestrian traffic. Visitors can access Old Rag Trailhead via existing overflow parking lots. Day-use tickets are still required from March 1 through November 30 in addition to a park entrance fee.",
+      "category": "Information",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-04-22 00:00:00.0"
+    },
+    {
+      "id": "BC3F8F95-D556-41DE-AD27-7DFB09526C66",
+      "url": "",
+      "title": "Shenandoah National Park Moved to Fully Cashless Fee Collection",
+      "parkCode": "shen",
+      "description": "On July 1, 2025, the park transitioned to a fully cashless system at our fee entrance stations. Only credit cards, debit cards, or mobile payments will be accepted.",
+      "category": "Information",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-04-22 00:00:00.0"
+    },
+    {
+      "id": "BCAC8B26-7ADE-40F6-8D05-36D666064F3D",
+      "url": "https://www.nps.gov/gwmp/learn/management/record-of-determination-for-temporary-closure-of-the-aid-box-climbing-area-at-great-falls-park-closure-is-required-due-to-a-geological-event-making-most-climbing-routes-no-longer-accessible.htm",
+      "title": "Aid Box Rock Climbing Area Closed",
+      "parkCode": "grfa",
+      "description": "The Aid Box rock climbing area is temporarily closed due to a recent rock topple.",
+      "category": "Park Closure",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-03-31 00:00:00.0"
+    },
+    {
+      "id": "2D29B6CC-8C04-424A-802B-1312CA14B682",
+      "url": "",
+      "title": "Temporary Closures of Park Entrance Possible if Parking Lots Become Full",
+      "parkCode": "grfa",
+      "description": "If parking lots become full, there will be a temporary closure of the park entrance at Georgetown Pike & Old Dominion Drive. The park entrance will re-open as soon as space becomes available. For updated information about parking, call Visitor Center at 703-757-3101",
+      "category": "Information",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2026-03-13 00:00:00.0"
+    },
+    {
+      "id": "94BF0A56-2B9D-4CB0-B420-8D98104FAB72",
+      "url": "",
+      "title": "Parking at Boundary Access Areas",
+      "parkCode": "shen",
+      "description": "Visitors are reminded to park in designated parking areas when accessing the park via boundary trailheads. Parking in unauthorized locations may result in your vehicle being towed at the owner's expense. Park on the right side of the road approaching Thompson Hollow. Parking is authorized up to the \"No Parking\" sign before a private driveway.",
+      "category": "Caution",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2025-11-20 00:00:00.0"
+    },
+    {
+      "id": "3E4B8C08-23A0-4F40-B290-53BB4959E6CD",
+      "url": "https://www.nps.gov/shen/planyourvisit/alert-system.htm",
+      "title": "Get Skyline Drive Status Updates",
+      "parkCode": "shen",
+      "description": "Sign up for Shenandoah Alerts by texting SHENALERTS to 888777. Any time there are closures, re-openings, or other important safety-related alerts, subscribers will receive a notification via text. You may unsubscribe at any time.",
+      "category": "Information",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2025-09-29 00:00:00.0"
+    },
+    {
+      "id": "C5CE178E-5255-42E2-9F8F-285637B4C84E",
+      "url": "https://www.nps.gov/shen/planyourvisit/faqs-oldrag.htm",
+      "title": "Ticket Required to Hike Old Rag",
+      "parkCode": "shen",
+      "description": "March 1 - November 30 those wishing to hike Old Rag are required to obtain a day-use ticket before arriving.",
+      "category": "Information",
+      "relatedRoadEvents": [],
+      "lastIndexedDate": "2024-01-17 13:20:06.0"
+    }
+  ]
+}

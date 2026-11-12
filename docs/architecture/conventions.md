@@ -6,13 +6,13 @@ Rules are grouped by area below. (Section anchors are deep-linked from `CLAUDE.m
 
 **Code style** — [Comments](#comments) · [Naming](#naming) · [Logging](#logging)
 
-**Error handling & architecture** — [Error handling](#error-handling) · [Layered resilience](#layered-resilience) · [Pagination](#pagination--first-page--load-more) · [Dependency discipline](#dependency-discipline) · [Preemptive abstractions — don't](#preemptive-abstractions--dont) · [Backwards compatibility](#backwards-compatibility)
+**Error handling & architecture** — [Mobile pure helpers](#mobile-pure-helpers-live-in-lib-and-a-screen-is-never-another-screens-library) · [Error handling](#error-handling) · [Layered resilience](#layered-resilience) · [Pagination](#pagination--first-page--load-more) · [Dependency discipline](#dependency-discipline) · [Preemptive abstractions — don't](#preemptive-abstractions--dont) · [Backwards compatibility](#backwards-compatibility)
 
 **Bug & quality discipline** — [Fix bugs, don't code around them](#fix-bugs-dont-code-around-them) · [If you see something wrong, fix it](#if-you-see-something-wrong-fix-it)
 
 **Web UI** — [Page padding](#web-page-padding) · [Page titles & sidebar](#web-page-titles-and-sidebar-chrome) · [Material Symbols](#material-symbols-icons) · [Buttons](#web-buttons) · [Svelte 5 `$effect`](#svelte-5-effect--never-read-state-you-write-in-the-same-effect) · [Modals](#web-modals) · [List-page scroll](#web-list-pages--preserve-scroll-on-back-navigation)
 
-**Mobile & cross-platform** — [In-app notifications](#mobile-in-app-notifications--showtopbanner) · [Local-tz date strings](#local-tz-date-strings)
+**Mobile & cross-platform** — [In-app notifications](#mobile-in-app-notifications--showtopbanner) · [OS share sheet](#mobile-os-share-sheet--sharefilesfrom--sharetextfrom-never-share_plus-directly) · [Local-tz date strings](#local-tz-date-strings)
 
 **Testing** — [Testing](#testing) · [Test hygiene](#test-hygiene--review-then-unit-then-e2e)
 
@@ -102,7 +102,7 @@ Every imported activity row carries `external_id text` namespaced as
 `<provider>:<native_id>` so two providers can't collide on the same numeric id.
 The format is already universal across all importers and must stay so:
 
-- `strava:{activity_id}` · `garmin:{file_id}` · `parkrun:{event}:{date}` ·
+- `strava:{activity_id}` · `garmin:{file_id}` · `parkrun:{event}:{date}` (legacy, no writer) ·
   `csv:{iso}-{distance}-{duration}`. New importers follow the same shape; put
   the prefix-building in one helper (e.g. `garminExternalId`) rather than
   inlining the literal.
@@ -142,6 +142,28 @@ stays in the bag. If only (2) holds on rare rows, it stays in the bag too.
 - **Stayed in the bag** (display-only telemetry): `avg_bpm`, `steps`,
   `elevation_m` — shown on the run detail, never filtered or aggregated in SQL.
 
+**A bag key that criterion (2) filters on cannot be rescued later with an
+expression index** — promoting it is the only fix, so weigh (2) as if the index
+were never an option. `create index … ((metadata ->> 'key'))` is unusable as an
+index qual in any query **RLS enforces**, because `jsonb_object_field_text` is
+not `LEAKPROOF`: the planner may not evaluate a non-leakproof qual below an RLS
+security qual, so the expression stays a heap `Filter` and only the leading
+plain columns reach `Index Cond`. `jsonb_contains` (`@>`, the GIN path) and
+`jsonb_exists` (`?`) are not leakproof either, so no jsonb access path escapes
+it. Measured against `gym_routine_history`'s own predicate as `authenticated`
+over 60 000 synthetic `gym_workouts` (one account holding 2 008 sessions, 153 on
+the target routine): the existing `(user_id, started_at desc)` index reads 1 278
+heap blocks / 1 296 buffers in 1.7 ms; adding the partial expression index makes
+it **slower** (1 277 heap blocks, 1 300 buffers, 2.5 ms — identical heap work
+plus a second index to walk and to maintain on every write); the same predicate
+over a promoted plain `uuid` column reads 154 heap blocks / 158 buffers in
+0.37 ms, because `uuid_eq` is leakproof and a plain `Var` invokes no function at
+all. The exception is a path where RLS does not apply — `service_role`, or a
+`SECURITY DEFINER` function owned by the table owner — where the expression
+index *is* used; don't flip an RPC's security model to buy a plan, though (the
+gym aggregates are uniformly `security invoker` with a load-bearing explicit
+`auth.uid()` filter, and that is worth more than the milliseconds).
+
 **When you do add a column to an activity table:**
 
 - `snake_case`; use `started_at` for "when it happened" and the right
@@ -174,18 +196,53 @@ become a flat dumping ground: `core/` (Supabase queries + client),
   `apps/backend/package.json`. Don't move either.
 - **Tests co-locate with their module** (`routes/static_map.ts` →
   `routes/route_preview_helpers.test.ts`). Cross-cutting guard tests that read
-  several source files by path (`security_guards.test.ts`,
+  several source files by path (`privacy_guards.test.ts`,
   `contrast_guard.test.ts`, …) and tests of the two root modules stay at the
   lib root.
-- **Import across folders with the `$lib/<folder>/<stem>` alias**, not deep
-  relative `../../` chains; siblings within a folder use `./`.
-- When a **TS↔Dart parity helper** moves, update its path in the
-  `shared-library-syncer` agent table and the reference in this file in the
-  same change — they're how the lockstep convention is found.
+- **Import across folders with the `#lib/<folder>/<file>` subpath import**,
+  not deep relative `../../` chains; siblings within a folder use `./`. `#lib`
+  is declared in `apps/web/package.json`'s `imports`, and a `#lib` specifier
+  names its file with its extension (`#lib/format/time.ts`,
+  `#lib/stores/auth.svelte.ts`) because TypeScript adds none to a subpath
+  import. Node and `tsx` resolve it without `svelte-kit sync`; `$app/*` is a
+  Vite virtual module they cannot load at all.
+- **Environment variables are declared once in `apps/web/src/env.ts`**
+  (`defineEnvVars`) and read as named imports from `$app/env/public` or
+  `$app/env/private` — never `$env/*`, which SvelteKit 3 deprecates. Declare a
+  new optional variable with `schema: optional` so an unset one reads as
+  `undefined`; mark it `static: true` only when the value must be inlined at
+  build, and leave a deploy-time feature gate non-static.
+- A **TS↔Dart parity helper** is registered in two places: the root
+  `CLAUDE.md` lockstep bullet (what a session reads) and the
+  `shared-library-syncer` agent's table (what the agent works from). Adding,
+  moving or retiring one means editing both in the same change, plus the
+  reference in this file. `scripts/check_parity_pair_registry.mjs` fails the
+  PR when the two disagree in either direction, or when either points at a
+  file that no longer exists (decisions.md § 604).
 
 `src/lib/lib_structure_guards.test.ts` enforces all of the above (root
 cleanliness, parity-path existence, and the recursive `src/lib/**/*.test.ts`
 unit-test glob) so the structure can't silently erode.
+
+## Mobile pure helpers live in `lib/`, and a screen is never another screen's library
+
+Mobile's `lib/` root is deliberately flat (the web subfolder rule above is
+web-only), so the rule here is about *which layer*, not which folder:
+
+- **A pure function belongs in a `lib/<topic>.dart` module, never in a
+  `lib/screens/` or `lib/widgets/` file** — even when only one screen calls it
+  today. A reduction parked in a widget file is only reusable by importing a
+  screen, and the second consumer then has no good option.
+- **A screen may import another screen to navigate to it** (`MaterialPageRoute`
+  needs the widget class) **but never for a non-widget symbol.** If you find
+  yourself writing `import 'other_screen.dart' show someHelper;`, the helper is
+  in the wrong file — move it, don't import it. An import cycle between two
+  screens is the symptom; misplaced logic is the cause (decisions.md § 695).
+- **Tests follow the code.** Cases that never mount a widget belong in the
+  helper's own `test/<topic>_test.dart`, not in a screen's widget-test file.
+- Mobile-only glue is fine and common — it is **not** automatically a TS↔Dart
+  parity pair. Only register a pair when web genuinely has the same reduction;
+  see the parity-registry bullet above.
 
 ## Error handling
 
@@ -198,6 +255,11 @@ unit-test glob) so the structure can't silently erode.
 
 - **Dart:** throw `Exception` / `StateError` / `ArgumentError` for truly exceptional conditions. Prefer returning `null` or a sum-type-style result for "expected miss" (e.g. `fetchRunById` returning `null` when the ID is unknown). Don't catch and swallow — if a caller can't handle it, let it propagate.
 - **TypeScript:** throw `Error` or a subclass at the boundary; return `null` / `{ ok: false, error }` shapes for expected failures within the app. Don't `catch (e) { console.log(e) }` and continue — either handle it meaningfully or let it propagate.
+- **TypeScript — throwing a Supabase result's error:** `throw dbError(error)` from `apps/web/src/lib/core/supabase_error.ts`, never `throw error` / `throw res.error`. postgrest-js hands `error` back as a plain object, so the raw throw gave Sentry no stack and made `instanceof Error` lie; `DbError` keeps `code` (and `status`) for the branches that read them and drops `details` / `hint`, which can echo row data. For `throw error ?? new Error('x')` write `throw error ? dbError(error) : new Error('x')`. An RPC refusal a caller matches by its message (`activity_waiver_required`) is re-raised as `new Error(CODE)` before the `dbError` throw, because a `DbError`'s message ends in ` (code)`. `db_error_guard.test.ts` fails the PR on a raw throw ([decisions.md § 1917](decisions.md)).
+- **TypeScript — formatting a caught value:** use `thrownMessage(e)` from `apps/web/src/lib/core/supabase_error.ts`, never `e instanceof Error ? e.message : String(e)`, `` `${e}` ``, `String(e)`, `(e as Error).message` or `e?.message`. The data layer throws PostgREST errors as they come, and those are plain objects, so every hand formatter printed "[object Object]" (or `undefined`) whenever a read failed at the database. `thrownMessage` returns `''` for a value with no readable message, so a state that gates an error banner compares against `null` (`{:else if loadError !== null}`), and the detail line renders only when there is one (`{#if loadError}<span class="error-detail">…</span>{/if}`). Where a surface falls back to its own copy, write `errorCopy(e, m, ctx, 'copy')` (next bullet), not `appErrorMessage(e) ?? m('copy')`, which showed any app-raised `Error` as it was. `e instanceof Error ? e.message : …` is banned, because a `DbError` is an `Error` and would print the database's text there ([decisions.md § 1917](decisions.md)). `thrown_message_guard.test.ts` fails the PR on a hand formatter anywhere in `apps/web/src` ([decisions.md § 1914](decisions.md)).
+- **TypeScript — a failure inside a localised sentence:** fill the `{error}` slot with `errorCopy(e, m, '<the key>')` from `apps/web/src/lib/i18n/error_copy.ts`, not `thrownMessage(e)`. `thrownMessage` is the detail for a log line or a developer surface; in a toast it put the database's or the browser's English inside a French sentence ("Échec de la publication : new row violates check constraint …", "… : Failed to fetch"). `errorCopy` maps the failures the app can name (offline, timeout, signed out, permission, duplicate, not found, a refused value, the plan overlap, a rate limit) to catalogue copy, falls back to a generic line, and sends the code and a scrubbed message (`loggableMessage`: quoted values, `Key (…)=(…)` details and email addresses blanked, cut to 160 characters) to the console, because console output reaches error reporting as breadcrumbs once a reader consents. A SQLSTATE or PostgREST code decides the category on its own; the message is read only when there is no database code or the code is the bare-raise `P0001` (`databaseCodeDecides`, over `isDatabaseCode` in `core/auth_errors.ts` and its Dart twin: `PGRST` plus three digits, or a five-character code whose first two characters are a known SQLSTATE class, in any case, so a GoTrue, Storage or errno code is never taken for one), plus the RPCs' `not authenticated` under `42501`, so a constraint or bucket name that happens to say "not found" or "rate limit" is not filed under it. Mobile's `classifyAuthError` (and web's `core/auth_errors.ts`, its pair) apply the same database-code rule. Since 2026-11-03 it also names too many requests, a reused password, a weak password and a taken email (Supabase Auth's codes), and takes an optional fourth `fallback` key that replaces only the generic line, for a surface that shows the copy on its own (`errorCopy(e, m, ctx, 'settingsAccount.passwordUpdateFailed')`). A standalone detail line (`{#if loadError}<span class="error-detail">…`) is filled with `errorCopy` too. A parser with its own refusal vocabulary renders its code instead (`planParseMessage` for a pasted plan). A failure the app raises that needs a sentence of its own is thrown as `new AppError('<key>', { params, message })` (`core/app_error.ts`): `errorCopy` renders the key and params, and `message` is the English kept for logs and for code that still reads the text (`classifyImportFailure`). A free-text `throw new Error('Image too large …')` now reaches a reader only as the surface's fallback, and so does a `TypeError` that is not a failed fetch. A page that maps a server refusal (`event_full`, `stripe_not_configured`) to its own copy reads the code with `refusalCode(e)` (`core/supabase_error.ts`: a lower-snake-case message on an app-raised `Error`, else `''`) and sends every unmapped failure to `errorCopy` with its fallback key. `appErrorMessage` is for the data layer only. `i18n/error_copy_guard.test.ts` fails the PR when a `.svelte` / `.svelte.ts` file calls `appErrorMessage(…)` or passes `thrownMessage(…)`, a caught value's `.message`, `String(e)` or `${e}` — or the same on a reader result's `.error` (`res.error.message`, `String(res.error)`, `${res.error}`, `{res.error}` in markup) — anywhere but a `console.*` call, a `throw new Error(…)` or a comparison; a classifier that only compares the text with a machine code goes in its counted `ALLOWED` table with a reason ([decisions.md § 2291](decisions.md)).
+- **Dart — a failure in user-visible copy (mobile error copy):** a caught value reaches a banner, a status line, a dialog or a `Text` only through `friendlyError(l10n, e)` (`lib/auth_error.dart`; `friendlyAuthError` on the sign-in and sign-up screens) or a surface's own classifier that ends in it — `importErrorText` (`lib/import_refusal.dart`: a typed `ImportRefused` names its own refusal, any other `FormatException` reads as an unreadable file — so it belongs only on a path that read a file the runner picked; a Health Connect import, which reads records, uses `friendlyError`), `dmSendErrorMessage`, `planOverlapErrorText`, `rateLimitErrorMessage`. Never `'$e'`, `e.toString()`, `e.message`, or `e` handed bare to an `l10n.x({error})` slot: an `Object` placeholder renders the exception's own English, a PostgREST message names tables and constraints, and an RPC's raise text names the function and a row id. Keep the raw value in a `debugPrint` beside it. A data-layer method rethrows the `PostgrestException` it caught rather than wrapping its message in a fresh `Exception`, so the caller can still classify it. `apps/mobile_android/test/raw_error_copy_guard_test.dart` scans `lib/` and every `packages/*/lib`, and fails the PR when a name bound by a `catch`, an `onError:` / `catchError(` / `errorBuilder:` parameter, any function or closure taking an `Object e` / `dynamic err` parameter, an `Object?` failure field (or any `Object?` / `dynamic` slot named for an error) or an `AsyncSnapshot`'s `.error` is used raw inside a sink — `showTopBanner`, `showSnackBar`, `SnackBar`, `Text`, `Text.rich`, `TextSpan`, `AlertDialog`, `Tooltip`, `Semantics`, an `errorText:`, a `.value =`, a localized-message call, an `=` or `+=` to a `_…error` / `_…message` / `_…status` / `_…notice` / `_…hint` / `_…text` / `_…label` / `_…reason` slot, or the return of a `String` helper that takes the error — following a local that copies the raw text. Raw is `$e`, `${e}`, or `e.toString()` / `e.message` / `e.details` with anything chained after it (`e.toString().trim()` is still the exception's text); a chain ending in `.contains` / `.startsWith` / `.isEmpty` / `==` / `is` is classification, another member (`${e.code}`) is not raw, and a closure or `for` that rebinds the name shadows it. Its allowlist holds only surfaces that are not the runner's (the loopback-only watch simulator, the import failure report's log-safe detail column), one entry per line keyed by its occurrence in the file so a pasted copy is a new hit, each with a reason, and an entry that no longer matches fails.
+- **Dart — auth streams:** every `.listen` on `onAuthStateChange` or `ApiClient.authUserChanges` supplies `onError`. supabase_flutter reports a refused auth deep link (an expired or used email link) by adding the `AuthException` to `onAuthStateChange` as a stream error, so a listener without `onError` turns it into an uncaught fatal and the person is told nothing. The app root shows it with `showAuthStreamError` (`lib/auth_stream_error.dart`); `authUserChanges` already drops it with `handleError`, so its subscribers see only transitions and their `onError` is a backstop. Handle it at each subscriber rather than filtering the stream once: the stream belongs to supabase_flutter, and a listener added later would hit the same fault ([decisions.md § 2247](decisions.md)).
 - **Swift:** use `throws` + `Result` at API boundaries; `do/catch` only at the outermost view or service layer. `try?` is acceptable for best-effort reads where `nil` is a valid outcome.
 
 ### A failed read is not an empty result
@@ -218,7 +280,14 @@ Rules:
   (or `{ item, error }`) rather than collapsing both into `[]` / `null`. The
   established names are the `fetchXWithError` siblings and, where a helper has
   a single caller, changing the helper itself. Alternatively `throw` and let
-  the caller catch — pick one per helper, don't do both.
+  the caller catch — pick one per helper, don't do both. `error` is the
+  failure itself, put through `dbError` (`error: Error | null`), never its
+  text and never an English fallback: the screen renders it with
+  `errorCopy(res.error, m, '<context>')`, and a caller that rethrows it writes
+  `throw dbError(res.error)`. A string-typed `error` field put PostgREST's English in
+  front of the reader through a field no scan could tell from copy;
+  `error_copy_guard.test.ts` fails the PR on a `core/data.ts` reader that
+  declares one; there is no allowlist.
 - **Keep a genuine miss distinguishable.** A read that succeeded and matched
   nothing is still an empty result: preserve it. `supabase-js` gives
   `PGRST116` for `.single()` no-rows and `{data: null, error: null}` for
@@ -241,6 +310,45 @@ The exception is an **auxiliary** read (see below): something genuinely
 additive, like a suggestion chip or an attached-plan panel, degrades to absent
 rather than failing the page — but say so in a comment, because from the
 outside a degraded auxiliary read and a swallowed primary one look identical.
+
+### A read-only RPC goes out as a GET
+
+supabase-js sends every `.rpc()` as a POST unless the call passes
+`{ get: true }`, and a POST is the one method nothing on the path will replay:
+Kong's upstream retry and postgrest-js's own backoff are both GET/HEAD-only,
+so a keep-alive race that nginx silently retries for a GET surfaces as a 502
+for a POST (decisions § 1703). **On web, a function that is declared `stable`
+or `immutable` and whose every input is a scalar is called with `{ get: true }`**
+— a no-argument one as `.rpc('fn', undefined, { get: true })`.
+
+The shape limits are real, not stylistic. PostgREST runs a GET in a
+read-only transaction, so a `volatile` function that writes answers 405 there,
+and one that happens not to write is one edit away from doing so — declare it
+`stable` in a migration rather than GET-ing it undeclared. postgrest-js
+stringifies each GET argument: a `jsonb` / composite becomes `[object Object]`,
+an array becomes an unquoted `{a,b}` that a comma inside an element corrupts,
+and **`null` becomes the string `"null"`** (a `uuid` parameter then answers
+400, a `text` one searches for the word). So a GET omits an optional argument
+— `?? undefined`, which falls to the SQL default — and never sends `null`.
+An argument named `select`, `order`, `limit` or `offset` would be read as a
+PostgREST directive and cannot travel as a query parameter at all.
+
+`apps/web/src/lib/rpc_transport_guard.test.ts` derives each function's final
+volatility and argument types from the migrations and fails a PR that POSTs a
+GET-able function, GETs one that is not, sends a `null` in a GET, or omits an
+argument that has no default. A function that must stay a POST despite
+qualifying goes in its `POST_EXEMPT` table with the reason.
+
+**The same rule holds on Dart** (decisions § 1803): `_client.rpc('fn', params:
+{...}, get: true)`. Two things differ from web. postgrest-dart throws
+`ArgumentError` on a GET with no params map, so a no-argument read is
+`rpc('fn', params: const {}, get: true)`. And a Dart POST sent an explicit
+`null` where web's `undefined` was always dropped, so a Dart GET may omit an
+argument — `'p_x': ?x`, or a collection-`if` — only when its SQL default is
+NULL; otherwise omitting it changes what the function receives.
+`scripts/check_dart_rpc_transport.mjs` holds `packages/*/lib` and
+`apps/mobile_android/lib` to this, reading the migrations through
+`scripts/rpc_transport.mjs`, the module the web test reads them through too.
 
 ### What not to catch
 
@@ -269,7 +377,10 @@ The rule when adding any feature that touches a mature flow (recording, sync, au
 1. **Identify the layer.** What does your feature depend on? Stopwatch (L0), sensors (L1), network (L2), third-party widgets (L3), side-effects (L4). Put it at the highest layer that needs it — don't wire a new visual into the state that drives the clock.
 2. **Degrade, don't fail.** If the dependency is unavailable (GPS off, network dead, tile layer crashed), the layers below must still work. Provide a fallback (pedometer distance when GPS is absent, cached tiles when offline, typed errors that leave the recorder usable). Silent stalls and white screens are bugs.
 3. **Wrap risky subtrees.** User-facing surfaces that depend on complex third-party widgets (`flutter_map` is the prime example) need a release-mode `ErrorWidget.builder` override so a subtree crash replaces *only* that subtree, not the entire screen. Debug keeps the default red screen.
-4. **Independent fetches get independent error state.** A screen that loads several unrelated sections (a profile's Runs / Achievements / Followers / Following / Notifications tabs) must give each its own loading + error + retry, not bundle them into one `Future.wait` under a single `try`/`catch` — one failed call there blanks every section, including the ones that succeeded. Only a fetch the whole page structurally needs (the profile header's summary) may gate the page; each per-section fetch owns a scoped `ErrorState` + Retry. See `apps/mobile_android/lib/screens/profile_screen.dart` (`#508`).
+4. **A `try` covers what it `await`s, not what it starts.** `return someAsyncCall();` inside a `try` hands the future to the caller before it completes, so a rejection lands upstream of your `catch` and any fallback in it silently never runs — the failure mode is a degradation path that reads as handled and is dead. Write `return await …` whenever the `try` is there to catch something. Dart 3.13's `unawaited_return_in_try_block` flags this; see `decisions.md` § 595 for the case that motivated it.
+5. **Independent fetches get independent error state.** A screen that loads several unrelated sections (a profile's Runs / Achievements / Followers / Following / Notifications tabs) must give each its own loading + error + retry, not bundle them into one `Future.wait` under a single `try`/`catch` — one failed call there blanks every section, including the ones that succeeded. Only a fetch the whole page structurally needs (the profile header's summary) may gate the page; each per-section fetch owns a scoped `ErrorState` + Retry. See `apps/mobile_android/lib/screens/profile_screen.dart` (`#508`).
+6. **A decorative remote image falls back when its request fails, not only when no URL can be built.** On web every static-map `<img>` renders through `StaticMapImage.svelte`, which swaps a failed image for a fallback snippet (the SVG track preview on thumbnails, nothing on the share card) — a MapTiler outage once left every route and run card a broken image. `static_map_image_guard.test.ts` fails a new static-map consumer that bypasses it; mobile's equivalent is an `errorBuilder` on `Image.network` ([decisions § 1636](decisions.md)).
+7. **The primary action of a basics surface is pinned, never the end of a scroll.** The mobile idle run screen's Start floats in a fixed bottom area over the scrollable cards (race, route, loaded workout, event, today's plan workout, last run), clear of the bottom bar and the docked centre FAB (`DockedFabInset`), and shrinks rather than leaving the view on a short screen (`idleStartButtonSize`). The cards run on behind it under a pointer-transparent fade rather than ending on a hard edge, and the scroll is padded by the floating area's height (`idleStartAreaHeight`) so the last card scrolls wholly clear of Start. Each new auxiliary card goes in the scroll above it; when Start ended the scroll, the plan card pushed it under the tabs. Pinned by `apps/mobile_android/test/run_screen_idle_start_pinned_test.dart` at 360x640 and text scale up to 2.0.
 
 The canonical write-up with the L0–L4 table and failure modes is [run_recording.md § Hardening § Layering](../features/run_recording.md#layering). Read it before touching the recording stack; copy the pattern when building the next "basics must always work" surface (e.g. sync, auth, navigation).
 
@@ -291,6 +402,9 @@ See [testing.md](../testing/testing.md) for the full reference — patterns, fix
 - **Dependency injection for filesystem / permissions / sensors.** `LocalRunStore` takes a `Directory` so tests can pass `Directory.systemTemp.createTempSync()`. Follow the same pattern for anything touching the platform.
 - **`@visibleForTesting` is the escape hatch.** If a test needs to poke at a private, mark the member `@visibleForTesting` and use it in tests. Don't make things public just to test them.
 - **No mocks for things we own.** Build a fake that implements the interface you need. Mock libraries (`mocktail`, `mockito`) are acceptable for third-party boundaries only.
+- **A fixture date that is compared against `now` must be derived from `now`.** Any timestamp a retention window, a staleness gate, or a date-range filter will measure against the clock (`recorded_at`, `last_modified_at`, `started_at`) is an *age*, not a constant — write it as `DateTime.now().toUtc().subtract(...)`, never as a literal. A literal one is a countdown: `local_crossings_store_test.dart` went red on every open PR at once the day its rows aged past `kSyncedRetention` ([decisions.md § 1611](decisions.md)), and the sibling case asserting `isEmpty` over the same fixture had been passing vacuously since that same day. Corollary: **a negative assertion needs a positive one in front of it** — assert the fixture is actually resident before asserting the lookup finds nothing, or an empty input is indistinguishable from an empty result. An occurrence key or an id-like instant is not an age and stays fixed. Web's analogue is `tests-e2e/fixtures/dates.ts` ([decisions.md § 728](decisions.md)).
+- **But a fixture whose meaning depends on WHERE in a cycle today falls must pin the clock, not derive from it.** The rule above is about an *age*; this is its mirror image, and doing the first one to a cycle-phase fixture is what breaks. `plan_detail_adherence_test.dart` built its plan week from a `_mondayThisWeek()` read off `DateTime.now()`, and the adherence banner it asserted is windowed on the days of the current week that have **already ended** — so on a Monday none have, the banner correctly renders nothing, and the test failed. It passed six days in seven for months and went red on a Monday with no diff that touched Dart, while its sibling case hid the same dependency in an `if (…) { expect(…) }` that skipped its only assertion that day. When the behaviour turns on a day of the week, a month or quarter boundary, or any other phase of the calendar, inject the clock (`DateTime Function() now = DateTime.now`, the `live_watch_forwarder.dart` / `watch_live_screen.dart` shape) and derive every fixture from the pinned value — then a case that wants the awkward phase asks for it explicitly instead of waiting for it. **Never gate an assertion on the real date to dodge this**: a conditional `expect` is a test that reports green on the day it stops testing anything ([decisions.md § 1689](decisions.md)).
+- **A Playwright route mock goes through `mockRoute`, and a mock that never fires is a failure.** A glob is anchored at both ends, so `**/auth/v1/user` cannot match the `?redirect_to=…` the SDK sends — and nothing reports the miss: the request reaches the real endpoint and every assertion beside the stub is scored against a handler that never ran. Take `test` from `tests-e2e/fixtures/mock-route.ts` and register through `mockRoute(page, pattern, handler)`; where a mock is meant to stay silent, say why with `{ neverFires: 'reason' }`, which asserts the count at zero and fails when one starts firing, or — for a `beforeEach` stub one case does not exercise — `mockRoute.neverFires(pattern, 'reason')` from inside that case, which fails if it names a pattern nothing registered. `fixtures/mock-route.test.ts` fails the PR on a bare `.route()` whose handler counts its own hits or answers a GoTrue / Edge Function / `/api/` endpoint with a success — the two shapes whose absence is invisible ([decisions.md § 1667](decisions.md)). A `/rest/v1/` read shaped with a 4xx/5xx is exempt by construction: if it stops firing, the error state never renders and the case fails on its own assertion.
 - **No database mocks.** Integration tests that touch Supabase should hit a real local instance (`supabase start`), not a mock client. Drift between a mock and the real schema is the bug we're trying to catch.
 - **SECURITY DEFINER + `vault.*` paths get inline DO-block assertions in `seed.sql`.** Edge Function CI doesn't deploy and exercise functions end-to-end, so contract tests for `check_rate_limit`, `get_integration_tokens` etc. live in `apps/backend/supabase/seed.sql` as `do $$ ... raise exception ... end $$` blocks. They run on every `supabase db reset` (locally) but not on production migrations — exactly the semantics we want for tests. Use `set_config('request.jwt.claim.role', ...)` / `request.jwt.claim.sub` to simulate auth contexts; clean up any test rows at the end of the block so the seed leaves no residue. See the trailing "Regression tests" section of `seed.sql` for the canonical shape.
 
@@ -299,7 +413,7 @@ See [testing.md](../testing/testing.md) for the full reference — patterns, fix
 **Default to a bounded first page on any list that talks to the network or scans an unbounded store.** The shape we follow across web, mobile, and watch:
 
 - **Page size: 20.** Concrete enough to render fast on the slowest device, big enough that most users never tap Load more. Don't twiddle the value per screen — consistency across surfaces is more valuable than micro-tuning.
-- **Cursor over offset.** A row id or `started_at`/`created_at` value is stable against concurrent inserts and deletes; offset shifts a row out from under the user. The `before:` parameter on `ApiClient.getRuns` and the `(startedAt, id)` cursor on `fetchFollowingFeed` are the canonical shapes.
+- **Cursor over offset.** A row id or `started_at`/`created_at` value is stable against concurrent inserts and deletes; offset shifts a row out from under the user. The `before:` parameter on `ApiClient.getRuns` and the `(startedAt, id)` cursor on `fetchFollowingFeed` are the canonical shapes, and `keysetAfter` / `nextCursor` in `lib/core/keyset_page.ts` (Dart: `core_models` `keyset_page.dart`, a parity pair) build one from any total order. The order must be total: end it on the primary key, or two rows sharing a sort value straddle a page boundary and one is skipped.
 - **`hasMore = lastPage.length == pageSize`.** That's the "out of pages" signal — no separate count query.
 - **A visible "Load more" footer**, not infinite scroll. Infinite scroll loses scroll position on back-navigation and surprises users on cellular. Reference implementations: `apps/web/src/routes/runs/+page.svelte`, `apps/web/src/routes/feed/+page.svelte`, `apps/mobile_android/lib/screens/runs_screen.dart` (helper: `shouldShowRunsLoadMore`), `apps/mobile_android/lib/screens/feed_screen.dart`.
 - **Reset paging on filter/sort change.** If the user narrows the view, drop back to page 1 — don't carry the previous depth. The pure helper for the visibility decision should take primitives so the boundary cases are unit-testable without mounting the screen.
@@ -314,6 +428,19 @@ Don't paginate when the bound is intrinsic and small (members of a club ≤ a fe
 - Don't add a dependency without checking that it's maintained. "Last updated 3 years ago" is a red flag; "no tests" is a red flag; "single maintainer on a personal account" is a red flag. Combine them and it's a veto.
 - `melos bootstrap` / `npm install` at the workspace root after changing `pubspec.yaml` / `package.json`. Commit the lockfile updates.
 
+### An `overrides` entry is a security pin, and it is checked as an outcome
+
+The workspace carries three dependency overrides — `devalue`, `glob`, `source-map-js` — each nudging a transitive dependency off a version with a live advisory that its own parent has not bumped past. The reason for each lives in root `package.json`'s `_overrides_rationale`; drop one when the parent's own declared range excludes the vulnerable versions, and drop it sooner if the parent moves to a major the pin does not cover — a stale pin then forces the parent onto a line it does not declare, which is how `undici: ^7.28.0` ended up holding jsdom 30 (which declares `^8.9.0`) on a 7.x copy with ten newer advisories ([decisions.md § 1790](decisions.md)). The one deliberate exception is a pin ABOVE the parent's declared major when no release of the parent clears the advisory and the parent's only use of the package is unaffected by the major's breaks: `glob: ^14.0.3` holds `@sentry/bundler-plugins` (which declares `^13.0.6`) on 14, and its rationale names the one call it checked ([decisions.md § 2252](decisions.md)).
+
+They are declared **twice on purpose**: `overrides:` in `pnpm-workspace.yaml` in pnpm's flat spelling (`'@sveltejs/kit>cookie'`) and the npm-style top-level `overrides` in root `package.json` in npm's nested-object spelling, because `parity-types` / `build-web` / `cross-client-roundtrip` install with `npm ci` off `package-lock.json` while the Playwright, live-hub, export-hub and SSO lanes install with `pnpm install --frozen-lockfile` off `pnpm-lock.yaml`. Both must agree, or half of CI installs a patched tree and half does not.
+
+- **Never hand-edit an `overrides:` block in a lockfile.** Change both declarations (`pnpm-workspace.yaml` and `package.json`), then run `pnpm install --lockfile-only` and commit both lockfiles.
+- **The floor is the patched version, not a range that happens to contain it.** A `^5.0.8` pin is satisfied by 5.0.9, so when a new advisory lands at `<5.0.12` neither resolver moves until the floor does. Raise the floor to the first patched release.
+- **Never declare them under `pnpm.overrides` in `package.json`.** pnpm 11+ does not read the `pnpm` field of `package.json`, so a pin there is applied by CI's pnpm 10 and dropped by the next lockfile a newer pnpm writes. That is what Dependabot did to #1324, #1331 and #1332 on 2026-11-09: every frozen install died at `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. `pnpm-workspace.yaml` is read by pnpm 10 and every later major, and the two produce byte-identical lockfiles from it. The guard below fails if `pnpm.overrides` reappears.
+- **Regenerate with pnpm 10, the major CI pins** (`version: 10` on every `pnpm/action-setup` step): `npx pnpm@10 install --lockfile-only`, then `npm install --package-lock-only --ignore-scripts`. A newer pnpm can apply its own supply-chain policy (`minimumReleaseAge`) and write exclusions into `pnpm-workspace.yaml`; don't commit those.
+- **A declared pin is not an applied pin.** `pnpm install --frozen-lockfile` compares the declaration and stops there, so a lockfile that records the override and resolved around it looks healthy to it. npm's lockfile does not record the declaration at all — it records the outcome.
+- `scripts/check_pnpm_overrides.mjs`, in the `parity-types` job (also `pnpm check:pnpm-overrides`), fails the build when a lockfile is missing the block, when `pnpm.overrides` is back in `package.json`, when the two declarations disagree, and when any resolved copy in either lockfile's package tree — nested copies included — falls outside a pin. It never rewrites a lockfile: regenerating one re-resolves the whole graph, which is a human's change to review ([decisions.md § 730](decisions.md)).
+
 ### GitHub Actions: pin to commit SHAs, not tags
 
 Every `uses:` line in `.github/workflows/*.yml` pins the action to a 40-character commit SHA, with a trailing `# vN` comment for human readability:
@@ -324,13 +451,17 @@ Every `uses:` line in `.github/workflows/*.yml` pins the action to a 40-characte
 
 Tag-based refs (`@v4`, `@main`) are mutable — the publisher can force-push a malicious version under the same tag and every workflow that uses it pulls the malicious code on the next run. SHAs are immutable. This applies to ALL workflows, not just secret-touching ones, because `actions/checkout@<sha>` runs with `GITHUB_TOKEN` and a malicious checkout step can read repo contents + write commits.
 
+It applies to **commented-out lines too**, and to composite actions under `.github/actions/`. A commented reference is not dead code — it is what someone uncomments on the day they are trying to ship, which is the worst day to discover the pin ([decisions.md § 711](decisions.md)); and Dependabot's github-actions ecosystem scans `.github/workflows` plus a *root* `action.yml` only, so a reference inside a composite action gets no update PRs either.
+
 When upgrading an action: resolve the new SHA via
 
 ```bash
-git ls-remote https://github.com/<owner>/<repo>.git refs/tags/v5
+git ls-remote https://github.com/<owner>/<repo>.git 'refs/tags/v5*'
 ```
 
-and update both the SHA and the `# vN` comment together. Don't update one without the other.
+A release tag is often **annotated**, so its own object hash is not the commit — take the `refs/tags/v5^{}` row, or dereference through the API (`git/ref/tags/v5` → `git/tags/<sha>` → `.object.sha`). Update both the SHA and the `# vN` comment together; don't update one without the other. `scripts/check_toolchain_pins.mjs`, in the `workflow-lint` job, fails the build on a tag pin and on a SHA pin with no version comment.
+
+The same principle covers the programs a step runs, not just the actions it uses: **`npx <bin>` / `pnpm exec <bin>` may only name a binary a declared dependency provides.** When nothing declares it, `npx` resolves the name against the public registry and executes the newest answer — no pin, no lockfile entry, no integrity hash, in a job holding this checkout and its `GITHUB_TOKEN`. The web unit suite ran that way for its whole life ([decisions.md § 764](decisions.md)); `scripts/check_workflow_binaries.mjs`, in the same job, now refuses it, and an unmapped binary fails rather than being skipped.
 
 ## Fix bugs, don't code around them
 
@@ -369,6 +500,28 @@ There is no third option. These count as "papering over with the test" and are f
 
 When you spot a candidate fix that fits one of those patterns, stop and surface the underlying issue. If you cannot fix the app issue in the same session, raise it explicitly — don't half-mask it via the test.
 
+### A wait must name a signal only the thing being waited on can produce
+
+The rule behind the "real readiness signal" clause above, and the one three separate CI flakes broke at once ([decisions.md § 579](decisions.md)). A check that observes something *correlated* with readiness passes early and turns into a flake that reads as a bug somewhere else:
+
+- **`pumpEventQueue()` is not a wait on an async service.** It runs a fixed number of event-loop turns; a cycle doing real disk I/O can outlast them, and the assertion then reads pre-completion state. Give the service a `@visibleForTesting` accessor that returns the in-flight future and `await` it. A fire-and-forget that outlives its test also writes into the directory `tearDown` just deleted — same defect.
+- **An intermediary's error is not a readiness signal.** A gateway answers `502/503/504` precisely *because* it could not reach the thing you are waiting for. Probe for a status the upstream itself authors (a handler's own `405`, a real password grant's `200`) and treat the 5xx family as not-ready.
+- **An inner deadline must fit inside the outer budget**, or the outer one always fires first and the specific diagnosis underneath is dead code. Prefer a deadline re-armed on progress over one multiplied by the number of expected steps.
+- **When a stall has two possible causes, check the cheap one first.** A firmware that stops receiving GPS and a runner who stopped moving look identical from inside the recorder; a wait on distance that cannot tell them apart blames the wrong component every time.
+
+### A CI failure names the step that produced it
+
+The sibling on the reporting side, and the same class of confident-but-wrong sentence ([decisions.md § 711](decisions.md)). A step condition of `failure()` is true for a failure *anywhere earlier in the job*, so a diagnosis printed from a trailing on-failure step speaks for every step above it — `parity-types` ended in one that printed "database.types.ts is out of sync with the Supabase schema" and told the reader to run `npm run gen:types`, which is what a web unit-test failure five steps up produced.
+
+- **A diagnosis lives in the step it describes**, as `if ! cmd; then echo "::error::<what broke>"; echo "<how to fix it>"; exit 1; fi` — the form the `twin-parity` and `schema-codegen-drift` jobs already use. Scoping a trailing step with `steps.<id>.outcome == 'failure'` is the other legal shape; a bare `failure()` is not.
+- **An on-failure step that claims nothing is fine.** Uploading a Playwright report or staging a sim log under `if: failure()` asserts nothing about which step failed. The rule is about claims, not about running on failure.
+- **A job whose name cannot say which check broke owes a diagnosis per step, and which jobs those are is derived rather than listed.** A job running two or more of this repo's own guards is bundled by that fact — nothing has to remember to register it, which is how three such jobs went years without one ([decisions.md § 764](decisions.md)). The steps asked are its named `run:` steps plus every guard step named or not, so deleting a step's name is not a way out. Splitting such a job so its name does the work is the alternative, and it costs a hosted-runner slot on every PR *and* a line in the `CI gate`'s `needs:` list; per-step annotations surface on the checks summary for free.
+- **In a bundled job, one failing check does not skip the checks after it.** A step with no `if:` runs on `success()`, so the first red check used to hide every verdict below it: on PR #1220 a false positive in the reimplementation guard skipped the web unit suite, three typechecks and the live-schema check. From a bundled job's first self-diagnosing step on, every step carries `if: ${{ !cancelled() && steps.<id>.outcome == 'success' }}`, naming the earlier step it actually needs: `deps` for `npm ci`, `build` for the production build, `supabase_stack` for the local stack. The prerequisite is what stops a failed install from setting twenty guards off, each blaming itself; `always()` is not accepted, because it outlives a cancel ([decisions.md § 2233](decisions.md)).
+- **Every job in `ci.yml` is named in the `CI gate` aggregator's `needs:` list.** That aggregator is the single required status check and it passes when every job it needs passed **or was skipped**, so a job outside the list has a red that blocks nothing and reads as one more green row. A `needs:` entry naming no job fails too.
+- **A check that must block a merge is a JOB in `ci.yml`, not a workflow of its own.** An aggregator's `needs:` can only name jobs in its own file, so a check in `foo.yml` gates nothing however red it goes — three of them have shipped that way ([decisions.md § 775](decisions.md), [§ 862](decisions.md), [§ 865](decisions.md)), each with a path filter that made its absence indistinguishable from its success. A workflow of its own is for work that is release-time (a tag), advisory, scheduled, or event-driven. Bundle into an existing install-free job where one shares the subject rather than adding a job per check; the per-step `::error::` above is what makes that readable. A guard's own unit suite is held to the same rule and enforced by the census in `check_ci_diagnostics.test.mjs`: it has to be run from `ci.yml`, or named in `SUITE_OFF_THE_GATE` with a reason ([§ 863](decisions.md)).
+
+`scripts/check_ci_diagnostics.mjs`, in the `workflow-lint` job, fails the build on the first four; its own suite carries the guard-and-suite census behind the fourth.
+
 ## If you see something wrong, fix it
 
 A sibling rule to the one above. When you're working in a file and notice something **that doesn't look right, doesn't act correctly, or isn't optimal**, fix it in the same session. Don't walk past it on the grounds of "out of scope" — by the time anyone else looks, the broken thing will still be broken AND your touch in the file's git blame will look like a tacit endorsement.
@@ -405,6 +558,314 @@ Specifically:
 - Don't build a plugin system for importers when `health_connect_importer.dart` and `strava_importer.dart` are the only two and they share ~zero code.
 - Don't refactor in a bug-fix PR. Split the refactor into its own change.
 
+## A constant with more than one home is registered, and the guard reads every home
+
+A value written in two places drifts. The repo already enforces two shapes of
+this — `scripts/check_parity_pair_registry.mjs` for a TS↔Dart function pair,
+`apps/web/scripts/check_constraint_unions.mjs` for a CHECK's value set against
+its TS union — and between them sits every threshold, bucket boundary,
+vocabulary, size cap and eligibility list copied into SQL, out of SQL into two
+clients, from one SQL function into the next, or across the Rust / Kotlin /
+Swift / Go rails. Four of those had already diverged when the class was first
+swept ([decisions § 787](decisions.md)).
+
+When you write a value that a second language also has to know:
+
+- **Register it in `scripts/check_shared_constants.mjs`.** An entry names every
+  home, extracts the value from each, and states what a drift costs. The
+  registry lives in the script rather than in markdown so it has exactly one
+  home itself.
+- **Read the rails; never transcribe one.** A test that restates the other
+  side's number is a snapshot: it stays green while the thing it describes
+  moves. `scripts/check_watch_ble_uuids.mjs` is the model — it parses both
+  sources.
+- **A rail that extracts nothing is a failure, not a match.** Two empty sets
+  agree. Both the guard and any hand-written mirror must fail loudly when the
+  shape they read changes.
+- **A vocabulary a guard cannot point at is a vocabulary nothing guards.** An
+  anonymous inline union — `status: 'reviewed' | 'dismissed'` written out at
+  three call sites — is a rail with no name, and `check_constraint_unions.mjs`
+  filed four of those as "no client enumerates this column" while sixteen
+  spellings of them shipped ([decisions § 817](decisions.md)). Name the
+  vocabulary once, in one exported declaration, and derive any narrower use of
+  it (`Exclude<FinisherStatus, 'finished'>`) rather than re-typing the subset.
+- **Where the language cannot make the lookup exhaustive, the guard reads the
+  lookup itself.** Web's `Record<Union, X>` label maps need no rail because
+  `tsc` checks them; a Dart `switch` over a `String` cannot be exhaustive, so
+  it silently falls to `default:` when its CHECK grows and it gets a `switch`
+  rail instead ([§ 818](decisions.md)). Do NOT install a const list beside the
+  switch for the guard to read — that is a second declaration nothing checks
+  against the switch, the [§ 641](decisions.md) shape. Point the rail at the
+  authority.
+- **Resolve SQL by replay, not by filename.** The body a function has in
+  production is the one the last `create or replace function` wrote, and that
+  is routinely in a migration named after something else. Reading the migration
+  that first introduced a value certifies the value it used to have.
+- **Some shapes do not belong in the registry.** A formula written three times
+  (`challenge_goal`'s ceiling) is not a literal, and extracting one constant out
+  of it certifies nothing about the shape around it; two homes that hold
+  deliberately *different* numbers in a stated relation (the 48 h Postgres
+  live-ping window against the 24 h Redis TTL) are not an equality. Pin those
+  with mirror suites and say so where the numbers are written.
+
+## Ordering a name list: fold where a Dart twin exists, collate where the surface is web-only
+
+`localeCompare` is an ICU collation, and Dart ships no collator at all — its only
+ordering primitive is `String.compareTo`, UTF-16 code-unit order. Measured over
+the 145,672 Unicode letters as single-character names the two orderings disagree
+about 31.75 % of all pairs ([decisions § 1337](decisions.md)), so a collation
+inside a module that has a Dart half is a divergence by construction rather than
+a risk that might be realised.
+
+The criterion, which four rounds each re-derived from scratch
+([§ 1276](decisions.md), [§ 1334](decisions.md) / [§ 1337](decisions.md),
+[§ 1383](decisions.md), [§ 1400](decisions.md)):
+
+- **A module with a Dart twin folds.** Use `compareFoldedNames` from
+  `#lib/segments/catalogue_browse` (`catalogue_browse.dart` on the phone). It is
+  answered by a table committed beside the code, so both platforms give the same
+  answer and a test can pin it. The residual is stated where the function lives:
+  a fold is not a collation, so `ø`, `đ`, `ł`, `ß` and `æ` file after `z`.
+- **A web-only surface collates, and should.** A collation gives each reader
+  their own correct order; a fold gives everyone the English one. § 1400
+  measured five distinct orders across seven host locales for one list of nine
+  names, and that variation is the feature. Break the tie on an `id` so the
+  comparator is a total order — a collation returns 0 for two *different*
+  strings, and `Array.prototype.sort`'s stability then leaks the query's order.
+
+`apps/web/src/lib/segments/parity_collation_guard.test.ts` reads the pair list
+out of `.claude/agents/engineering/shared-library-syncer.md` and fails the PR when a
+registered half collates, so registering a pair puts it under the rule the same
+day. The second half is a permission, not an obligation, and needs no guard.
+
+## A client input bound goes in `column_limits`, and it has to sit inside the column's CHECK
+
+A composer or numeric field whose column carries a CHECK is one edit away from a
+raw postgres error the runner cannot act on — a `23514` naming a constraint and
+no field, or a `22003` when the column's `numeric(p, s)` precision is the
+binding ceiling. Four fields were in that state when the class was swept
+([decisions § 792](decisions.md)).
+
+- **State the bound once per client**, in `apps/web/src/lib/core/column_limits.ts`
+  and `apps/mobile_android/lib/column_limits.dart`, keyed by
+  `<table>.<column>`. The key is the locator: `check_shared_constants.mjs`
+  splits it, resolves that column's live CHECKs by replaying every migration,
+  intersects them with the precision ceiling, and proves the client's bound sits
+  inside. Nothing restates a number the database owns.
+- **Stricter than the column is fine; looser is the bug.** The comparison is
+  containment, not equality — a club post capped at 1200 against a 4096 column
+  is a product decision. What is not fine is the two clients disagreeing, which
+  the guard checks separately: a stricter phone silently truncates what the web
+  accepted.
+- **`min` / `max` on a web input are only real inside a form.** A card that
+  saves from a button's `onclick` never runs the browser's constraint
+  validation, so the attributes are decoration and the gate has to be in the
+  code (issue #677, and § 792 again). Mobile has no native validation at all.
+- **A bound is stated in the unit the field is TYPED in.** A weight column is
+  kilograms and the field may be pounds, so convert — rounding the floor UP and
+  the ceiling DOWN, or the range advertises a value its own gate refuses.
+
+## A narrowed select gets a narrowed row type, derived from the same column list
+
+A `.select()` that enumerates columns instead of `'*'` is a good thing — `geom`
+duplicates `waypoints` purely for server-side spatial queries and doubles the
+wire payload, `start_point` leaks a run's start location, `shadow_hidden` is
+moderation state the client has no business reading. What is not fine is
+handing the resulting rows back under the table's full row type. The absent
+fields are `undefined` at runtime under a type that declares them, so a
+consumer that reads one gets `undefined` with the compiler's blessing: no
+throw, no error, and a `{#if}` that can never be true. `routes` shipped that
+way — eleven of twenty-two columns absent behind `Route`
+([decisions § 1294](decisions.md)).
+
+- **Declare the projection once and derive both halves from it.** The column
+  tuple is the source: `as const satisfies readonly (keyof Row)[]`, so a column
+  a migration dropped fails to compile; the wire string is `join`ed from it and
+  the row type is `Pick`ed from it. A hand-written `Pick<Row, …>` beside a
+  hand-written select string is two declarations and the [§ 641](decisions.md)
+  shape — they agree until they don't. `apps/web/src/lib/routes/route_list_columns.ts`
+  is the model.
+- **The narrowed type is what the fetcher returns**, not what one careful
+  consumer annotates. A return type of the full row is the lie; every consumer
+  that has to remember to narrow it is a consumer that will forget.
+- **Pin it at compile time, because no runtime test can see it.** A read of an
+  absent field yields `undefined` rather than throwing, so the assertions are
+  `@ts-expect-error` on each withheld column and an `Exclude<…> extends never`
+  on the set — checked by `svelte-check`, not by `tsx --test`. Mutation-test
+  both directions: widening the type must leave the `@ts-expect-error`s unused,
+  and dropping a projected column must fail the consumers.
+- **A view that withholds a column is filled, not cast.** Where two reads merge
+  into one list, the narrower half supplies the difference with values that
+  state what is true ([§ 1229](decisions.md)) — and the fill's coverage is a
+  type-level claim, so it cannot be partially right.
+- **A read type must not name a column the client's grants withhold.** SELECT on
+  `clubs` and `events` is revoked wholesale and re-granted column by column, so
+  `invite_token`, `location_point`, `host_user_id`, `meet_lat` and `meet_lng`
+  do not read as null — a select naming one raises 42501 and the whole query
+  fails. A `Omit<XRow, …>` overlay that declares them promises what the reader
+  is not permitted to ask for ([§ 1329](decisions.md)). The same applies to a
+  column the read strips for privacy (`shadow_hidden`, `activity_waiver_ack_at`)
+  or moderation: unanimous withholding is the strongest reason to leave a field
+  off the type, not a reason to leave it on.
+- **The projection-vs-type claim is guard-able at runtime, and the guard is an
+  equality.** Parse the column set out of the `.select()` literal, derive the
+  key set from the `Omit`/intersection crossed with `database.types.ts`, and
+  assert they are equal — never restate either as a literal in the test, which
+  would be a third declaration of the same thing. Both directions fail for a
+  reason: a column on the type and not the wire is the original defect; one on
+  the wire and not the type is width paid for and unreadable.
+- **The select list has to reach supabase-js as ONE string literal.**
+  `Array.prototype.join` is declared to return `string`, and the typed client's
+  select-list parser answers `GenericStringError` for anything but a literal —
+  every property read off the resulting row is an error, and the row degrades
+  to something no consumer can be checked against. So a list built from a
+  column tuple is restated as the literal that tuple spells, through
+  `Join<T, D>` in `core/database.ts`; a list built by concatenation or held in
+  a variable is `string` and makes the typed client vacuous on that query
+  ([§ 1365](decisions.md)). This is why the hand-written `CLUB_SELECT_COLS` /
+  `EVENT_SELECT_COLS` carry `as const`.
+
+- **A `setof <view>` RPC is typed from the view, not from the table behind it.**
+  The server fixes the projection, so derive the row type from the generated
+  view row rather than casting to the table's — and `Pick` it from the client
+  overlay rather than taking the generated view row verbatim, because postgres
+  cannot prove a view column NOT NULL and the generated row types every one of
+  them nullable ([§ 1328](decisions.md)).
+
+## A narrowed column is narrowed by a call at the read boundary, not by the declaration
+
+`Run.source` says `RunSource`; the `runs` row says `string`; the CHECK
+constraint is what makes the second true of the data. None of that makes the
+row's value become the union — only a `parseRunSource` at the read does, and
+where a read skips it the client has asserted rather than checked. That is not
+hypothetical: typing the Supabase client found `activity_type`, `provider`,
+`join_policy`, `preferred_unit` and `subscription_tier` all being assigned
+straight from a `string` into their unions ([§ 1364](decisions.md)).
+
+- **One parser per narrowed union, in `types.ts`**, in the shape
+  `parseRunSource` established: a `switch` over the members with a stated
+  fallback, never a cast.
+- **One normaliser per table, not one per read.** `asRun`, `asRoute`, `asClub`,
+  `asGlobalSegment` in `data.ts` each do everything that separates a row from
+  its client type — parse the unions, strip the columns the read boundary
+  withholds, narrow the jsonb — so the several reads of a table cannot drift
+  into doing different subsets of it. `fetchClubRoutes` and `saveRoute` did
+  none of it while three sibling reads did all of it.
+- **The fallback is a decision, and where it has a consequence, say so and pin
+  it.** `parseSubscriptionTier` falls back to `'free'` because the paywall
+  reads the tier and an unrecognised value read as `'pro'` opens every gated
+  surface; `parseJoinPolicy` falls back to `'request'`, the only value that
+  neither lets a stranger into a club whose policy this build cannot read nor
+  strands every legitimate applicant. Both are pinned in `types.test.ts` with
+  the reason in the test name.
+- **A jsonb column narrows to a shape, and a value that is not that shape is
+  refused rather than asserted.** `Json` admits a scalar and an array as well
+  as an object; `asRoute` turns a non-array `waypoints` into `[]` and `asRun`
+  turns a non-object `metadata` into `null`, because handing back a bag every
+  reader will index into, or an absent line under a type promising one, is the
+  failure [§ 1229](decisions.md) exists to prevent.
+
+## Local stores — a directory transition is serialised, not just atomic
+
+`writeStringAtomic` gives each in-flight write its own `.tmp` sibling and renames
+it over the target, so a crash leaves either the old file or the whole new one.
+That is a guarantee about ONE write. It says nothing about two *operations* over
+the same directory, and every mobile store operation is a multi-step directory
+transition: write the row then the index, delete the row then rewrite the index,
+write every row then prune, delete every file.
+
+So every directory-mutating entry point on every local store —
+`OfflineSyncStore`, `LocalRunStore`, `LocalRouteStore` — runs on one serial
+chain, `serialiseStoreWrite` in `core_models`, and a new one must go on it too.
+Five properties are load-bearing and a change that weakens any of them reopens a
+measured bug (decisions § 821, § 828, § 829):
+
+- **Whole-directory, not per-id.** `clear`, `rewriteAll`, `loadAll` and the index
+  flush touch files no row id names, so per-id exclusion still lets them race a
+  row write.
+- **Keyed on the directory, not the instance.** All instances of a store type
+  share one directory — `offline_store_wipe.dart` relies on exactly that to wipe
+  from a throwaway instance — so a per-instance lock leaves a sign-out `clear()`
+  free to delete the temp file of the live screen's in-flight write.
+- **The chain never becomes an error future.** A failed write reports to its own
+  caller; it must not reject every write queued behind it.
+- **Re-entrant on its own key.** The stores share `_persistIndex` /
+  `_persistSyncedIds` / `_persistOwnerTags` across ~30 entry points, so a helper
+  that queued behind its own caller would deadlock — silently, with no error and
+  no completion. A nested call on the same key runs inline.
+- **Nothing with unbounded latency inside a chained body.** No network call, no
+  untimed lock. Queueing behind a bounded operation is safe; queueing behind one
+  that may never return is a durability gap, not a race fix.
+
+Two things stay OFF the chain, and both are the recording stack. The in-progress
+recorder path (`saveInProgress` / `clearInProgress` / `loadInProgress`) owns
+`in_progress.json`, which nothing chained touches, and already has its own
+skip-don't-queue exclusion; `WatchIngestQueue.enqueue` writes a fresh uuid
+nothing else names, and its `drain` awaits an upload per file. **An L0/L1 write
+must never be able to queue behind a directory operation** — a write that never
+lands is worse than the race. Pin that with a test that holds the chain open
+through a never-completed `Completer` and asserts the recording write still
+lands, not with a timing assertion.
+
+Store durability is one mechanism, not a menu. A `FileLock` alongside the chain
+is not defence in depth: POSIX record locks are owned by the process, so they
+exclude neither a second store instance nor a second isolate (§ 829). What
+survives an interleaved isolate is the merge-never-replace in each sidecar
+writer.
+
+The corollary for tests: a widget test's UI signal is usually the in-memory row,
+which `persist` installs synchronously *before* its file write. Tearing a temp
+directory down on that signal deletes a `.tmp` mid-rename. Wait on the file (or
+on `debugWritesSettled`, which every chained store exposes), which is also the
+only thing that actually pins the offline-first durability the surface is
+claiming.
+
+## Feature gates — one parser, and a define a release build can actually read
+
+Every fail-closed feature gate on either client parses its env string through the
+canonical helper, never a hand-written comparison:
+
+- Web: `isTruthyFlagValue` from `core/env_flag.ts`.
+- Mobile: `isTruthyFlagValue` from `lib/env_flag.dart`.
+
+The two are a registered parity pair, so the accepted set is one contract across
+both platforms: `1` / `true` / `yes` / `on`, trimmed and case-insensitive; unset,
+empty, `false`, `0`, or anything unrecognised reads as OFF. Fail-closed means a
+gate can only be turned ON by an explicit affirmative — never left on by a typo.
+
+A copy of that chain is what this rule exists to stop. Eight modules carried one
+before decisions § 709, and the narrowest of them accepted two of the four values,
+so `WEIGH_IN_GATE=yes` silently left an Art 9 surface off while the same string
+enabled every other gate. Both suites now scan for the pattern and fail on a new
+copy; on web, every `*_flag.ts` module must additionally reach the canonical
+parser, directly or through one named delegate.
+
+A flag whose parser belongs to a TS↔Dart parity pair (`off_route_alert`,
+`plan_adaptive_replan`) keeps its named function and delegates to the canonical
+one — on **both** sides, in the same change, or the pair diverges.
+
+**One binding module per flag, and the surfaces read the gate — never the key.**
+A flag's env key and its fail-closed guard live together in a `*_flag` module
+(`nearby_flag.dart` / `off_route_flag.dart` / `adaptive_fitness_flag.dart` /
+`weigh_in_flag.dart`; on web the `*_flag.ts` layer), which exports the key const
+and a named gate getter. A surface imports the getter. It does not spell
+`dotenv.env['KEY']` / `env.PUBLIC_KEY` itself, because a guard written at the
+call site is only as good as that call site: four mobile gates all failed closed
+while their bindings sat at five call sites in two idioms, two of them duplicates
+and two private to a screen and therefore unassertable (decisions § 822). The
+mobile suite fails on a gate key read literally outside its own module, and on a
+gate that throws rather than answering `false` against an uninitialised dotenv.
+
+**On mobile the gate is not finished until the key is in `main.dart`'s
+`String.fromEnvironment` bridge.** Release builds never load `.env.development`
+(decisions § 13), so the bridge is the only path a value has into `dotenv`: a key
+read at runtime but absent from it is readable in debug and unreachable in
+production. Three sign-off-gated flags shipped in exactly that state. Add the
+`String.fromEnvironment` const *and* the matching `'KEY=$def'` entry — the
+reachability guard in `env_flag_test.dart` fails on either half missing. Whether
+a release *workflow* passes the define is a separate deploy-time decision, and
+the place to record it is `apps/<app>/deployment.md`.
+
 ## Backwards compatibility
 
 This is a pre-launch codebase with no shipped users. Backwards-compatibility shims are almost never warranted:
@@ -418,7 +879,7 @@ When you genuinely need a migration (e.g. on-disk data format changing), write t
 
 ## Web page padding
 
-Every top-level web page wraps its content in a `.page` div with `padding: var(--page-padding-y) var(--page-padding-x)` and is **left-aligned**. **Read the tokens, never the `--space-*` pair they resolve to** — they are 2rem / 3rem at desktop and narrow to `--space-lg` / `--space-md` below 40 rem, where a 3rem gutter each side costs 96px of a 320px screen on top of the 72px sidebar rail ([§ 535](decisions.md)) — do not add `margin: 0 auto`. The constant `var(--space-2xl)` left gutter is the gap between the sidebar and the content; centering with `margin: 0 auto` makes that gap balloon on wide screens whenever the page sets a small `max-width`, and makes navigating between pages feel like the content is jumping around. List and detail pages **do not set `max-width`** — they fill the available width so card grids, week strips, and run lists use the full screen instead of stranding empty space on the right. Focused single-form pages may still cap narrow (40–48rem) and tabbed settings panes cap at 64rem so labelled rows don't stretch awkwardly; everything else stays uncapped. Keep the horizontal padding fixed and don't centre. Public layouts without the sidebar (`/`, `/login`, `/share/...`, `/clubs/join/[token]`, `/live/...`) are exempt because they don't share the chrome and centring is the right call there.
+Every top-level web page wraps its content in a `.page` div with `padding: var(--page-padding-y) var(--page-padding-x)` and is **left-aligned**. **Read the tokens, never the `--space-*` pair they resolve to** — they are 2rem / 3rem at desktop and narrow to `--space-lg` / `--space-md` below 40 rem, where a 3rem gutter each side costs 96px of a 320px screen on top of the 72px sidebar rail ([§ 535](decisions.md)) — do not add `margin: 0 auto`. The constant `var(--space-2xl)` left gutter is the gap between the sidebar and the content; centering with `margin: 0 auto` makes that gap balloon on wide screens whenever the page sets a small `max-width`, and makes navigating between pages feel like the content is jumping around. List and detail pages **do not set `max-width`** — they fill the available width so card grids, week strips, and run lists use the full screen instead of stranding empty space on the right. Focused single-form pages may still cap narrow (40–48rem) and tabbed settings panes cap at 64rem so labelled rows don't stretch awkwardly; everything else stays uncapped. Keep the horizontal padding fixed and don't centre. When an uncapped page holds a block that reads as broken at full width — a stat strip whose three cells each end up mostly empty, a leaderboard row that strands the time a screen-width from the name, a paragraph past a readable measure — **cap that block, not the page** (`/segments/[id]` caps its stat strip, its leaderboard and its description at 48rem and lets the map keep the full width). The reading measure is the `--page-measure` token (48rem) in `app.css`; the help centre uses it this way — `/help` caps only its intro, and a guide or search page caps its children while the wrapper keeps the full frame. A long-form article is not a focused form: capping its wrapper is what once left `/help` with a ~460px dead band at 1870px, and `tests-e2e/help/layout.spec.ts` pins the frame against `/history`. Public layouts without the sidebar (`/`, `/login`, `/share/...`, `/clubs/join/[token]`, `/live/...`) are exempt because they don't share the chrome and centring is the right call there.
 
 ## Web page titles and sidebar chrome
 
@@ -428,19 +889,81 @@ Sidebar palette is theme-aware via CSS variables in `app.css`: `--gradient-sideb
 
 The sidebar is collapsible — there's a `menu` / `menu_open` icon button in `.sidebar-head` that toggles between full width (`var(--sidebar-width)`, ~15rem) and an icon-only rail (`var(--sidebar-collapsed-width)`, ~4.5rem). State persists in `localStorage` under the key `sidebar_collapsed` (`'1'` / `'0'`). When collapsed, `.nav-label` and `.user-details` are hidden via `visibility: hidden; width: 0`; the logo is `display: none` so the menu button stands alone on the rail. Don't add features that assume the sidebar is always expanded — width-sensitive content lives in `.main-content`, which has its own `margin-left` transition.
 
+## Web motion — the resting state is the markup's own
+
+Motion on the public pages (`/`, `/login`, `/auth/*`) is a decoration over a finished page, never a requirement for seeing one ([decisions § 1626](decisions.md)). Four rules, each pinned by `tests-e2e/landing/motion.spec.ts` or `tests-e2e/auth/shell.spec.ts`:
+
+1. **The last keyframe is the resting state.** An entrance animates FROM hidden TO the element's own style with `fill: backwards` (CSS) or `fill: 'backwards'` (WAAPI), never to a state that only a `forwards` fill holds. No JS, a failed hydration and reduced motion all leave the finished page.
+2. **Only script that can reveal an element may hide it.** Scroll reveals go through `use:reveal` from `lib/motion/actions.ts`, which sets the hidden starting state itself, never through a stylesheet class a script later removes, and leaves anything already on screen at mount alone. Its `[data-grow]`, `[data-draw]` and `[data-pop]` hooks animate a card's figure as the card arrives.
+3. **Entrances are declared under `@media (prefers-reduced-motion: no-preference)`.** The global reduced-motion rule in `app.css` shrinks durations and zeroes delays, but a `from` keyframe that hides content still paints for one frame before the timeline ticks. Don't rely on the catch-all for anything that starts hidden.
+4. **Motion that starts on its own settles within five seconds of starting** (WCAG 2.2.2 then asks for no pause control, and the public pages carry none — [decisions § 1907](decisions.md)). No `infinite`, no `setInterval`, no `iterations: Infinity`, no SMIL `repeatCount="indefinite"`: give an ambient loop a finite iteration count whose `delay + duration × count` is at most 5 s, and write a drift as a `from` keyframe so it settles into the element's own style. Motion below the fold goes under a `[data-seen]` selector, which `use:seen` from `lib/motion/actions.ts` sets on first sight, so it plays when the visitor arrives instead of finishing unseen. A script-driven figure that updates on its own (the phone's clock) stops inside the same five seconds, and anything that starts on its own reads `motion.reduced` from `lib/motion/motion.svelte.ts` when it would begin. `landing_motion_guard.test.ts` reads every timing in every file the landing page reaches and fails on a loop or a longer run; `tests-e2e/landing/motion.spec.ts` measures the same bound in the browser. A form page carries no decorative continuous motion. The one loop allowed there is a functional loading indicator (the `/auth/callback` spinner): it reports status, stops when the page navigates, and the global reduced-motion rule stills it, which is 2.2.2's "essential" exception rather than decoration.
+
+Scroll-linked effects (`animation-timeline: view()` / `scroll()`) go inside `@supports` plus the no-preference query, so a browser without scroll timelines shows the finished state. Rendered art never sits under copy (the gradient guard cannot measure a raster). Regenerate it with `assets/marketing/gen-marketing.sh`; don't hand-edit the WebP or SVG.
+
 ## Material Symbols icons
 
 The web app loads Material Symbols Outlined as a webfont and renders icons via **font ligatures** — `<span class="material-symbols">close</span>`, `<span class="material-symbols">menu_open</span>`, etc. Ligatures only form when the icon name is the only text node inside the span, **with no surrounding whitespace**. That means `<span class="material-symbols">{cond ? 'menu' : 'menu_open'}</span>` works, but breaking the expression onto its own line — leaving newlines and indentation between the tags — makes the browser render the literal text `"menu_open"`. Keep dynamic icon names on the same line as their tags.
 
 The class is always **`material-symbols`** — the one styled in `app.css` with the fixed sizing box and FOUC-clipping (`overflow: hidden`). Don't use `material-symbols-outlined`: that's the bare class the `material-symbols` npm package ships, so icons still render with it, but they skip the app's sizing/clip treatment and fall out of step with every other page. (The gym pages once drifted onto it — see git history.)
 
+**The font is a subset, so adding a new icon means regenerating it.** `apps/web/src/lib/assets/material-symbols-subset.woff2` carries only the icons this tree names — 347 of the font's 4271, 74 KB against the full font's 3866 KB ([decisions § 780](decisions.md)). The set is derived from the source, not hand-listed: element text at every render site, plus every quoted `[a-z0-9_]+` literal under `src` that the upstream font can render, which is how a name reaching the span through `{item.icon}` gets found. Adding an icon the subset does not carry fails `build-web` with the name in the message; fix it with `pnpm gen:icon-font` and commit the regenerated `.woff2` **and** its `.json` manifest. `@font-face` and `font-display: block` live in `app.css` — `block` is deliberate, because for a ligature font every other value paints the icon's NAME in the fallback face while it loads.
+
+## Web derived metrics — through `<MetricLabel>`, never a bare acronym or a `title=`
+
+A derived metric's name (VO₂ max, CTL / ATL / TSB, VDOT, 1RM, RPE, age grade, vert, TRIMP, the Riegel formula, KOM/QOM, distance banked, the plan phases) renders through **`<MetricLabel metric="…" />`** (`lib/components/MetricLabel.svelte`), which puts a one-line plain-English definition behind a button a runner can open by touch or keyboard. The names and definitions live in **one registry**, `lib/metrics/metric_registry.ts`; add a metric there, with its definition in all seven locales, before rendering it anywhere.
+
+- **Never a `title=` tooltip for a definition.** It never appears on touch, a keyboard cannot reach it, and screen readers announce it inconsistently — the dashboard's four definitions existed in every locale and nobody on a phone could read them ([decisions § 1639](decisions.md)).
+- **Mid-sentence**, give the catalogue string a `{term}` placeholder, list the key in the entry's `sentences`, and render `<MetricLabel metric="…" sentence="key" />`.
+- **Captioning an input**, pass `labelFor={inputId}` and make the wrapper a `<div>`, not a `<label>`: the component renders the `<label for>` and the disclosure side by side. An input named by `aria-label` reads the name through `metricName()` (`lib/metrics/metric_name.ts`).
+- **Where no disclosure can sit** (an `aria-hidden` header, a `<label>`, a repeated row) use `plain`, and render the interactive label for the same metric elsewhere in the file.
+- **An `<option>`** cannot hold a disclosure, so its string spells the term out and is registered under `expandedIn` with the reason.
+- **Jargon that is not a metric** (TTS) goes in `JARGON` and is replaced with plain words rather than defined.
+
+`src/lib/metrics/metric_label_guard.test.ts` enforces all of it from the registry itself and fails the unit job on a key rendered around the component, a term typed into markup, English copy carrying a term with no expansion, a disclosure in a forbidden ancestor, or a plain label with no interactive sibling.
+
 ## Mobile in-app notifications — `showTopBanner`
 
-On the Flutter apps (`apps/mobile_android`, `apps/mobile_ios`), the canonical transient notification primitive is `showTopBanner(context, message, ...)` from `lib/widgets/top_banner.dart`. It renders a top-anchored pill via `Overlay`, auto-positions below an `AppBar` when one is present, and coalesces to a single banner at a time.
+On the Flutter apps (`apps/mobile_android`, `apps/mobile_ios`), the canonical transient notification primitive is `showTopBanner(context, message, ...)` from `lib/widgets/top_banner.dart`. It renders a top-anchored pill via `Overlay`, auto-positions 12 px below the lowest `AppBar` of every `Scaffold` enclosing the calling context (a tab `Scaffold` nested in a shell's body has none of its own, so the nearest alone put the pill over the shell's), measured in the overlay's coordinates. A context with no enclosing `Scaffold` — a screen `State`'s own `context`, which sits above the `Scaffold` it builds, or the root navigator's, as a callback that outlives its screen must use — measures the app bars of its route, or of the screen on top. On a screen with no app bar the pill sits 12 px under the status bar read from the **view** (`MediaQueryData.fromView`), never the caller's `MediaQuery`: under a `SafeArea` or a `Scaffold` body that padding has already been removed and reads 0, which put the pill under the notch, and coalesces to a single banner at a time.
 
 **Don't call `ScaffoldMessenger.of(context).showSnackBar(...)` inside `lib/screens/` or `lib/widgets/`.** Material's floating SnackBar docks at the bottom of the screen, where it overlapped the Pause / Stop / Lap controls on the recording surface — a runner couldn't reach Stop without dismissing a snack first. Top-anchored eliminates that overlap on every screen and gives notifications a consistent shape app-wide. Two architecture-guard tests in `apps/mobile_android/test/architecture_guards_test.dart` (mirrored on iOS) fail any new `showSnackBar` or `ScaffoldMessenger.of(context)` use under those folders.
 
 If the notification has an action (e.g. "Settings" on the GPS-unavailable banner), pass `actionLabel:` + `onAction:`. Tapping the action runs the callback and dismisses the banner.
+
+## Mobile OS share sheet — `shareFilesFrom` / `shareTextFrom`, never `share_plus` directly
+
+On the Flutter apps, every hand-off to the OS share sheet goes through `shareFilesFrom(context, files: …)` or `shareTextFrom(context, text: …)` in `lib/share_sheet.dart`. That module is the only file under `lib/` allowed to import `package:share_plus/share_plus.dart`.
+
+The reason is iPadOS, and it is not cosmetic. UIKit presents `UIActivityViewController` as a **popover** there and refuses to present one without a non-empty source rect inside the host view; share_plus's iOS plugin turns a missing or empty anchor into a `PlatformException`, so the sheet never appears and the share silently fails. The apps ship to iPad (`TARGETED_DEVICE_FAMILY = "1,2"`), and every one of the 21 share call sites in the tree once omitted the anchor — an optional parameter that Android and iPhone never miss is one nobody remembers.
+
+So the helper takes the `BuildContext` it derives the anchor from as a **required positional** parameter. There is deliberately no overload that accepts a bare `Rect`, and none that accepts nothing: a caller cannot express a share without an anchor. Derivation degrades rather than throwing (the invoking widget's own global bounds, clipped to the view; else a small rect at the view's centre; else a one-pixel rect at its origin) because a share is an L4 auxiliary effect — a screen must not go down because its anchor could not be resolved. It never yields an empty rect, since an empty rect is the failure itself.
+
+Four source guards in `apps/mobile_android/test/architecture_guards_test.dart` (mirrored on iOS) hold this: nothing but the helper imports `share_plus`, nothing but the helper names `Share.share*` or `SharePlus.instance`, every `ShareParams` the helper builds carries `sharePositionOrigin`, and every entry point's first parameter is a `BuildContext`.
+
+## Mobile async gaps — the `mounted` check goes BEFORE the `setState`, not after
+
+On the Flutter apps, every `setState` reached after an `await` needs `if (!mounted) return;` between the two. During the gap the runner can pop the route, sign out, or be navigated away by a deep link; `setState` on a defunct `State` throws, and the throw only ever happens to someone who left mid-request.
+
+Write the guard **immediately after the await that opened the gap** — not after the `setState`, and not only on the failure arm. Both were real: `runs_screen.dart` set `_syncing = false` and asked about `mounted` on the next line, and the route-detail tag row checked only inside its `catch` while the success arm wrote straight through (issue #734, 34 sites).
+
+`apps/mobile_android/test/post_await_setstate_guard_test.dart` (mirrored on iOS) scans `lib/` and fails on the next one. It is deliberately precision-tuned — a guard that lives in a helper the method calls is not seen — so a hit is a real finding, and the allowlist is empty on purpose. A dialog `await` counts: `showDatePicker`, `confirmDestructive` and `Navigator.push` all open the same gap as a network call.
+
+## Mobile distances and paces render through the unit pref, never a hand-rolled divide
+
+A user-facing distance, pace, speed or elevation on the Flutter apps is formatted by `UnitFormat` (with an explicit `DistanceUnit`) or, on a surface that carries no `Preferences` dep, by the top-level `formatDistanceForPref` / `formatPaceForPref` / `formatElevationForPref` in `lib/preferences.dart`. **Never `'${(metres / 1000).toStringAsFixed(2)} km'`** — that is the shape that leaves a mile-unit runner reading kilometres, and it has been swept out of the browse surfaces twice now (#733 target pace, #734 race calendar / event photos / event results / last-run card).
+
+Two corollaries. **Don't add a second formatter beside the shared one** — `social_service.dart` grew its own km-only `fmtPace`, so the event target-pace metric disagreed with the unit-aware distance printed next to it. And **an i18n key names the concept, not the unit**: the message takes an already-formatted `{distance}`, so `racesKmAway` was renamed to `racesDistanceAway`; a key that claims kilometres is how the next edit reintroduces them.
+
+## Mobile typed numbers are read by `parseTypedDecimal`, never `double.tryParse`
+
+A number the user typed arrives as the text of a `TextEditingController`, and five of the seven shipped locales (de, es, fr, pt, pt_BR) put a **comma** on the decimal key. `double.tryParse` understands only a dot, so a raw parse loses the value in one of two silent ways. Behind an `inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]` filter the comma is deleted before the parse runs at all and "5,2" reads as **52** — a 5.2 km run saved as 52 km, and a weigh-in of 72,4 kg saved as 724. Without such a filter the parse returns null and the field is dropped on the floor, which is how manual food macros lost every gram a German user typed.
+
+So read typed text with `parseTypedDecimal` (`lib/typed_decimal.dart`) and filter the field with `typedDecimalInputFormatters`. It takes either separator, resolves a grouping separator the way a reader would (of two separators the rightmost is the decimal point, and a separator that repeats can only be grouping), and refuses the `NaN` / `Infinity` literals `double.tryParse` accepts. **Machine-formatted input is not its business** — CSV columns, Strava exports and API JSON stay on `double.tryParse`, where a dot is the only correct separator and a comma is a delimiter. Two source guards in `architecture_guards_test.dart` fail the suite on a `double.tryParse` over `.text` and on a filter that admits `.` but not `,`.
+
+## Web money crosses the minor-unit boundary through `minor_units`, never `/ 100`
+
+Every `*_cents` column holds a Stripe amount in the currency's **minor** unit, and 100 is not that unit's scale in every currency. Stripe stores a zero-decimal currency (JPY, KRW, VND, CLP, ISK, XOF…) in its **base** unit — a ¥1,000 donation arrives as `1000` — and a three-decimal one (BHD, JOD, KWD, OMR, TND) in thousandths, where it further requires the amount to be a multiple of 10. So convert with `fromMinorUnits(amountMinor, currency)` / `toMinorUnits(amountMajor, currency)` in `src/lib/format/minor_units.ts`, which reads the scale off the currency (Intl first, with Stripe's explicit tables as the fallback). A blanket `/ 100` renders that yen donation as ¥10 on a public feed; a blanket `* 100` charges a host a hundredfold.
+
+`formatPrice` takes a **major**-unit amount and sets no fraction-digit override — the currency's own convention is the correct one, and forcing two prints ¥1,000.00 and truncates KWD 1.500 to 1.50. A source guard in `minor_units.test.ts` fails the suite on a hard-coded 100 beside a cents identifier.
 
 ## Mobile create/edit-entity forms — `showFullScreenForm`
 
@@ -506,7 +1029,7 @@ Every rung is graded against **four** grounds, not two: the dark land sample, an
 
 ## Web boundaries — `--color-border` is a line, `--color-fill-subtle` is a fill
 
-**A border token is a line or a fill, never both** — § 503's rule for status tokens, one role over. `--color-border` is the *one* line token and its whole guarantee is WCAG 1.4.11's **3:1** against every surface a boundary is drawn on (3.906 / 3.531 / 3.313 / 3.112 light, 3.330 / 3.911 / 4.068 dark, in lockstep with mobile's `AppTheme.parchmentLine` / `duskLine` — [decisions.md § 487](decisions.md)). It shipped at 1.458:1 on the light card, which meant web had **no** token guaranteeing a visible boundary while mobile's whole card/divider grammar rested on one. In light the card fill is `#FFFFFF` on a `#F7F3EC` page — 1.116:1 apart — so the hairline is the only separation there is, which is exactly the "visual information required to identify a UI component" 1.4.11 sets at 3:1.
+**A border token is a line or a fill, never both** — § 503's rule for status tokens, one role over. `--color-border` is the *one* line token and its whole guarantee is WCAG 1.4.11's **3:1** against every surface a boundary is drawn on (3.906 / 3.531 / 3.313 / 3.112 light, 3.330 / 3.911 / 4.068 dark, in lockstep with mobile's `AppTheme.snowLine` / `nightLine` — [decisions.md § 487](decisions.md), values re-set by [§ 1772](decisions.md); the ratios quoted here are the § 487 originals and `contrast_guard.test.ts` holds the live ones). It shipped at 1.458:1 on the light card, which meant web had **no** token guaranteeing a visible boundary while mobile's whole card/divider grammar rested on one. In light the card fill is `#FFFFFF` on a `#F7F3EC` page — 1.116:1 apart — so the hairline is the only separation there is, which is exactly the "visual information required to identify a UI component" 1.4.11 sets at 3:1.
 
 So: **draw every border, outline and divider in `--color-border`, and every subtle neutral *fill* in `--color-fill-subtle`.** The second holds the value the first shipped with, so a progress-bar track, an inactive bar cell, the neutral metadata chip, a button hover and a skeleton shimmer stop did not move when the line token was raised. Three rules, all in `contrast_guard.test.ts` with both-direction fixtures, because the split is decided by the **CSS property** and nothing else:
 
@@ -544,16 +1067,43 @@ Pairwise 3:1 between marks is often unreachable — *n* marks need 3^(n−1) and
 
 A min/max-normalised series drawn without an axis shows shape and hides scale: CTL 45 and CTL 450 render pixel-identically. Any plot that normalises to its own extremes owes a labelled y-scale — a gutter, round ticks off a 1/2/5×10^n ladder, and gridlines. On web, y labels go in a **CSS gutter beside** the SVG when the chart uses `preserveAspectRatio="none"`; text inside that viewBox is stretched horizontally at every viewport width.
 
+## Web keyed `{#each}` — a key is an identity, never content
+
+Svelte throws `each_key_duplicate` when two items in a keyed `{#each}` share a key, and an uncaught render error takes the whole page into the 500 boundary, not just the list. So a key must be unique **by construction**: a row's primary key, a value a DB constraint makes unique within the list, or the item's position when the list is display-only and rebuilt wholesale. Never key on something derived from the data that two items can share: a rounded or formatted number (the training-load ticks keyed `-0.5` and `0` both as `0` and took `/dashboard` down for a new account's one 10 s run, PR #1155), an exercise or place name (a superset logs the same lift twice), a coordinate pair from a geocoder, a calendar day, or a tag a writer other than ours may have repeated. When the list is built by code, build it in a pure module and test that the keys are unique on the degenerate input: zero span, one point, `-0`, the same name twice. `load_chart_ticks.ts`, `gym/exercise_blocks.ts` and `gym/next_target_hints.ts` are the shapes to copy. A load-more list pages by keyset cursor (`lib/core/keyset_page.ts`, see Pagination above) and appends through `appendPage` from the same module, so a row whose sort value moved past the cursor between reads still can't render twice.
+
+## A localised string is prose — never recover a part of it by cutting it up
+
+`toLocaleDateString` and friends return output written for a human in their
+language, not a record with fields. Splitting, slicing or regexing one to get
+"just the day" or "just the month" encodes one locale's word order as a
+universal, and it fails silently in every other one.
+
+The dashboard's mileage axis shipped `week.split(' ')[0]` against a
+`{ day: 'numeric', month: 'short' }` label. en-GB gives `31 Aug` → `31`, which
+is what the author saw. en-US gives `Aug 31` → **`Aug` under every bar in
+August**; de gives `31. Aug.` → `31.`; ja gives `8月31日`, which contains no
+space, so the whole date landed under a 30 px bar
+([decisions.md § 1630](decisions.md)).
+
+**Format the part you want in its own right.** Call the formatter again with
+the fields you need (`{ day: 'numeric' }`), or use `Intl.DateTimeFormat`'s
+`formatToParts` when several parts are wanted from one call. Where both a long
+and a short form are needed, carry both: `WeekBar` has `week` for the hover and
+`axis` for the tick, each formatted separately. The same rule holds for a
+number — never parse back a string `Intl.NumberFormat` produced — and for a
+duration or pace, which is why `paceMinutesSeconds` takes seconds rather than a
+formatted string.
+
 ## Mobile component themes — style in `AppTheme`, not at the call site
 
 On the Flutter apps, presentation that every instance of a widget should share lives in `packages/ui_kit/lib/src/theme/app_theme.dart` (both the `light` and `dark` getters), never repeated per call site. Five contracts are now themed, each guarded by a test in `packages/ui_kit/test/` ([decisions.md § 482](decisions.md) and [§ 487](decisions.md)):
 
-- **Lines.** There is **one line token per brightness** — `AppTheme.parchmentLine` / `AppTheme.duskLine`, each ≥ 3:1 against the surfaces it is drawn on (WCAG 2.2 SC 1.4.11). It is pinned in three places at once, because Material 3 reads three different names for the same job: `ThemeData.dividerColor` (hand-drawn `Border`s), `DividerThemeData.color` (`Divider`/`VerticalDivider`), and `colorScheme.outlineVariant` (`Divider`'s M3 default, `TabBar`'s divider). **Never write a literal grey for a hairline** — read `theme.dividerColor`. A *text* colour is a different bar (4.5:1) and takes `onSurfaceVariant`, not the line token — and not `colorScheme.outline` either (see § Mobile muted text).
+- **Lines.** There is **one line token per brightness** — `AppTheme.snowLine` / `AppTheme.nightLine`, each ≥ 3:1 against the surfaces it is drawn on (WCAG 2.2 SC 1.4.11). It is pinned in three places at once, because Material 3 reads three different names for the same job: `ThemeData.dividerColor` (hand-drawn `Border`s), `DividerThemeData.color` (`Divider`/`VerticalDivider`), and `colorScheme.outlineVariant` (`Divider`'s M3 default, `TabBar`'s divider). **Never write a literal grey for a hairline** — read `theme.dividerColor`. A *text* colour is a different bar (4.5:1) and takes `onSurfaceVariant`, not the line token — and not `colorScheme.outline` either (see § Mobile muted text).
 - **App bars.** `AppBarThemeData.backgroundColor` is a `WidgetStateColor` that resolves a distinct fill in the `scrolledUnder` state, with `surfaceTintColor` disabled (the seeded tint is off-palette). Don't pass `backgroundColor:` to an `AppBar` — a plain colour resolves the same in both states and re-flattens the bar.
 - **Bottom sheets.** `bottomSheetTheme` owns background, top radius, drag handle and `clipBehavior`; a call site names only what it genuinely differs on. `useSafeArea` is **not** a theme field, so the rule is per call: **`isScrollControlled: true` implies `useSafeArea: true`**, or a tall sheet paints under the status bar. `bottom_sheet_safe_area_guard_test.dart` (both twins) fails the pair.
 - **Text fields.** `inputDecorationTheme` names the outlined language at radius 12. **Don't declare `border: OutlineInputBorder()` at a call site** — it re-pins the radius to Material's default 4. A field that is deliberately a different component (a filled borderless search box, a pill composer) still says so locally.
 - **Cards.** The card theme carries **no horizontal margin**. Horizontal insets are the layout's job, so every card in a list starts at its parent's padding edge; a card that insets itself lands at a different left edge from its siblings. The vertical 4 stays, because stacked-card sites rely on it for separation.
-- **Accent coral is two tokens, a fill and a mark.** `AppTheme.coralDeep` is the light theme's accent **fill** — the FAB background and the navigation bar's indicator tint — and nothing else: at 2.767:1 on parchment it can carry neither a glyph nor type. `AppTheme.coralMark` is the accent **foreground**, and is light `colorScheme.secondary` for that reason (≥ 4.566:1 on every light surface). Dark needs no split: its `secondary` is `lilac`, already legible. The mark value is web's `--color-secondary-text` and the fill value is web's `--color-secondary`, and both halves of that lockstep are asserted from `apps/web/src/lib/contrast_guard.test.ts`.
+- **Accent coral is one token per brightness, used as fill and as mark** ([decisions § 1772](decisions.md)). `AppTheme.coralDeep` is light `colorScheme.primary` — the filled button, the FAB, the selected chip, the nav indicator and its icon — deep enough to carry white type (4.77:1) and to be a mark on the card and the scaffold (≥ 4.54:1). `AppTheme.coral` is the same job in dark, under `onCoral`. The secondary is `AppTheme.violet` in light and `lilac` in dark. The container pair is coral too: `coralTint` under `coralInk` in light, swapped in dark ([decisions § 2363](decisions.md)). Type on `primaryContainer` is `onPrimaryContainer` (or `onSurfaceVariant` when muted), never `primary`, which clears only the 3:1 mark floor there; `hintColor` is not a measured token and does not belong on it. Light primary is web's light `--color-primary`, light secondary web's `--color-secondary-text`, and dark primary / secondary web's dark `--color-primary` / `--color-secondary`; all four are asserted from `apps/web/src/lib/contrast_guard.test.ts`.
 
 **A component theme owes the same measurement a call site does, on the surface the widget actually paints.** `AppTheme` is where the tokens are declared, which is exactly why nobody re-measures it — two of its own pairings shipped under 1.4.11's 3:1 for a year. Both were found only by asking what pixel sits behind the mark, per [§ 503](decisions.md): the navigation bar's **selected icon is drawn inside the indicator pill**, not on the bar, so the tint is its background (`coralDeep` read 2.337:1 there and 2.767:1 on the bar — the flattering figure was the one on the bar); and a **FAB is a fill with its own elevation and shadow**, so the boundary is not the fill's to earn and the *glyph* is what owed the ratio (the fix moved the foreground to `ink`, 5.757:1, not the fill). `packages/ui_kit/test/app_theme_nav_fab_contrast_test.dart` computes all of it in both brightnesses and pins each repair in both directions.
 
@@ -573,7 +1123,7 @@ So: **name the step.** `theme.textTheme.<step>`, or `.copyWith(...)` on it when 
 
 A metric shown as a value over the name of the thing it measures is ui_kit's `StatTile`, at one of three emphases — `.small` (a dense secondary grid cell, icon-led), `.medium` (a live-updating column, and the only tier with tabular figures, because a proportional digit changes the value's width every second), `.large` (a hero row) — never a new private class. Twelve of those had accumulated by round 11 of the #666 audit, drifting to six value type sizes, two label sizes and two muted colours ([decisions.md § 509](decisions.md)).
 
-**A value may only shrink; a label may truncate.** `.medium` and `.large` scale the value+unit pair with `BoxFit.scaleDown`, which needs a **bounded** parent — an intrinsically-sized cell in a `Row(mainAxisAlignment: spaceAround)` has no bound, so the row bursts instead of the number shrinking. Lay a stat row out with `StatGrid`, which bounds every cell by construction and derives its column count from the width a cell needs at the current text scale (`kStatCellMinWidth`, scaled); with four or fewer cells that fit it is byte-identical to the `Row` of `Expanded` it replaces. Muted text is `onSurfaceVariant`, never `colorScheme.outline`.
+**A value may only shrink; a label may truncate.** `.medium` and `.large` scale the value+unit pair with `BoxFit.scaleDown`, which needs a **bounded** parent — an intrinsically-sized cell in a `Row(mainAxisAlignment: spaceAround)` has no bound, so the row bursts instead of the number shrinking. Lay a stat row out with `StatGrid`, which bounds every cell by construction and derives its column count from the width a cell needs at the current text scale — each tile reports its tier's `minCellWidth` (72 / 84 / 104 dp at 1.0x, scaled), the grid takes the widest, and a cell that wraps a tile passes `minCellWidth` explicitly. When the cells wrap, the columns are evened over the runs (four hero cells go 2 × 2, never 3 + 1), and a `.medium` / `.large` value sits in a fixed-height, bottom-aligned slot so a shrunk value never lifts its label off the row's line ([decisions.md § 2360](decisions.md)). With four or fewer cells that fit it is byte-identical to the `Row` of `Expanded` it replaces. A `.small` label wraps to two centred lines before it ellipsises (its cell is the narrowest, and "Grade-Adj. Pace" did not fit one, #1300); `.medium` / `.large` labels stay on one. Muted text is `onSurfaceVariant`, never `colorScheme.outline`.
 
 A list group's uppercased eyebrow is ui_kit's `SectionHeader`. It is deliberately distinct from `ChartCardHeader` (the chart-card title, with a note slot) and from a `titleMedium` *section title*, which is a heading rather than an eyebrow. `apps/mobile_android/test/stat_tile_guard_test.dart` (mirrored on iOS) closes both class sets: a new stat-named `StatelessWidget` or a new `_SectionHeader` fails until it is either migrated or listed with the reason it is not one.
 
@@ -581,16 +1131,22 @@ A list group's uppercased eyebrow is ui_kit's `SectionHeader`. It is deliberatel
 
 On the Flutter apps, a whole-surface "nothing here yet / not found" state renders ui_kit's `EmptyState` (icon 48, `all(32)` padding, titleMedium title, bodySmall body, optional CTA — reusing `ErrorState`'s icon size and padding; [decisions.md § 485](decisions.md)), never a hand-rolled centred `Text` or bespoke icon column; tiny inline empty hints inside a larger card/list section stay inline. `architecture_guards_test.dart` fails any `class …EmptyState` declared in `lib/`.
 
-## Mobile loading surfaces — never a bare centred spinner
+## Loading surfaces — a skeleton shaped like the screen it becomes
 
-On the Flutter apps a loading surface says what is coming, and holds the space it will occupy. **Never `Center(child: CircularProgressIndicator())`** — it reports only that something is happening, occupies none of the room the content needs, and lands the arriving frame as a re-layout instead of a fill. Choose by the shape of the surface that is loading ([decisions.md § 492](decisions.md) for the primitives, § 502 for the per-surface split):
+**A screen loading content shows a skeleton shaped like the screen it becomes**, on every platform ([decisions.md § 2288](decisions.md), superseding § 199 and the loader half of § 492 / § 504). It holds the space the content will occupy, so the arriving frame fills the blocks instead of re-laying the page out. There is one loading language: no spinner, and no running figure — the animated athlete that detail pages used to show is deleted on both platforms, and a guard on each fails if it returns.
+
+**Mobile.** **Never `Center(child: CircularProgressIndicator())`.** Compose ui_kit's three primitives into the loaded layout ([decisions.md § 492](decisions.md), § 504, § 2288):
 
 - **Rows in a bounded host** (a tab body, a `Scaffold` body, a settings form, a chat pane inside an `Expanded`) → `ListSkeleton(rows:, rowHeight:, hasLeading:)`. It owns a non-scrolling viewport, so it clips rather than overflowing when the host is short.
 - **One section of an already-laid-out scrollable** (a comment list under a run, a picker inside a dialog) → `ListSkeleton.section(...)`. Same rows at intrinsic height, no viewport, so it is safe where the incoming height is unbounded and the default constructor would throw.
-- **A genuinely mixed layout** (a map plus stats, a detail body of prose and controls) → `FullBodyLoader(kind:, label:)`.
-- **A composite** — compose the primitives into the shape the surface settles into rather than reaching for a fourth thing; `profile_screen`'s header-plus-tabs load is a `section` block, a `Divider`, and an `Expanded(ListSkeleton(...))`.
+- **A part with no row rhythm** (a map, a chart, a stat strip, a barcode, a form field) → `SkeletonBlock(height:, width:, radius:)`, beside the rows. Same 900 ms pulse and reduced-motion pose as `ListSkeleton`.
+- **A shape several screens share** → the compositions in `lib/widgets/loading_skeletons.dart`: `MapDetailSkeleton` (hero map at `detailMapHeight`, stat strip, rows), `TabbedDetailSkeleton` (header band, tab strip, rows — `profile_screen`'s whole-profile load is the same shape), `SectionedDetailSkeleton` (title band, optional stats and action, rows). Anything else composes the primitives inline in the screen. Don't add a fourth primitive; composition has covered every screen so far.
 
-ui_kit carries no localisations, so every one of these takes a `label` for the screen reader — pass `l10n.commonLoading` rather than a literal. `architecture_guards_test.dart` fails any bare centred spinner in `lib/`.
+Keep the loaded screen's `AppBar` on the loading `Scaffold` (an empty `AppBar()` when the title is not known yet), so back works during the fetch and the bar does not pop in. ui_kit carries no localisations, so pass `l10n.commonLoading` as the `label` — once per composition: `ListSkeleton` requires it, and a `SkeletonBlock` stays silent unless it is the only element. `architecture_guards_test.dart` fails any bare centred spinner in `lib/` and any `ActivityLoader` / `FullBodyLoader` in `lib/` or ui_kit.
+
+**Web.** Compose `lib/components/SkeletonBlock.svelte` — `height`, optional `width` (default `100%`) and `radius` (default `var(--radius-sm)`) — into the loaded layout, mark the skeleton's container `aria-hidden="true"`, and announce the load once with a `<p class="visually-hidden" role="status">` line. It is the only shimmer on web: a page keeps its own `.skel-*` *layout* wrappers (card frame, row flex, a `flex: 1` or `aspect-ratio` host with a `height="100%"` block inside) and nothing else. The block paints `--color-fill-subtle` (the subtle-fill token, § Web boundaries) because `--color-bg-tertiary` is byte-identical to `--color-surface` in dark, and its 1.4 s sweep is a functional loading indicator that ends when the content arrives and freezes under `prefers-reduced-motion`. `loading_skeleton_guard.test.ts` fails any `ActivityLoader` under `src/`, and any `.skel` class or shimmer `@keyframes` (named `shimmer`/`skel`, or sweeping `background-position`) outside `SkeletonBlock.svelte`.
+
+A wait that is **not** page content — GPS acquisition, finishing a sign-in — may earn an indicator of its own, but under a new name and with the reason recorded beside the guard.
 
 ## Mobile shared controls — three widgets a screen may not rebuild by hand
 
@@ -598,7 +1154,7 @@ Three cross-cutting shapes had drifted to one bespoke copy per call site, and ea
 
 - **`ProgressBar`, never a bare `LinearProgressIndicator`.** Eleven bars had five heights, four radii and four track colours. A bar owes 1.4.11's 3:1 **twice** — the track against the page (so an empty bar is not nothing) and the fill against the track (so you can see where it ends) — and no colour pays both: chaining two 3:1 steps needs 9:1 between the page and the weakest fill, and `AppSemanticColors.warning` is 5.499:1 from parchment, capping the best possible answer at 2.345:1 light / 2.563:1 dark. So the track is chosen for the fill axis (`surfaceContainerHighest`, worst fill 4.724 / 4.997) and the component boundary is a **drawn hairline** in the § 487 line token (3.531 / 3.330). A fill you pass must clear 3:1 on that track — `colorScheme.error` does not (2.991:1 light); pass `AppSemanticColors.danger`.
 - **`StatusPill`, never a hand-built stadium `Container` around a `Text`.** Twenty-four of them carried nine paddings and four spellings of the label size, two of which (`labelMedium` and `bodySmall`) are the same 12sp. The pill has two sizes and the padding, the type step, the glyph size and the dot size all follow the size — a call site picks *which pill*, never a number. Two survivors are count-pinned with reasons in `status_pill_guard_test.dart`; a new one needs a reason of that kind, not a new padding.
-- **`ChoiceChipRow`, never `SegmentedButton`.** The segmented control divides its width equally and then truncates the labels inside — no ellipsis, no fade, no overflow banner. Ten of eleven sites lost characters against real Roboto; two lost them at 1.0x. The ban is **allowlist-free**: the one site that measured clean did so for two labels in seven locales, which is a coincidence and not a property.
+- **`ChoiceChipRow`, never `SegmentedButton`.** The segmented control divides its width equally and then truncates the labels inside — no ellipsis, no fade, no overflow banner. Ten of eleven sites lost characters against real Roboto; two lost them at 1.0x. The ban is **allowlist-free**: the one site that measured clean did so for two labels in seven locales, which is a coincidence and not a property. The row draws its own checkmark: `showCheckmark` is off and the selected chip's leading icon is swapped for an `Icons.check` in the theme's `checkmarkColor`, because Material paints its check over the avatar after darkening it, and the glyph and the check collided. Don't turn Material's checkmark back on at a call site ([decisions.md § 2245](decisions.md)).
 
 Two habits these three carry, both general:
 
@@ -608,6 +1164,12 @@ Two habits these three carry, both general:
 ## Mobile tap targets — no `VisualDensity.compact` on IconButtons
 
 On the Flutter apps, every `IconButton` keeps a ≥48dp tap target (WCAG 2.5.8 / the Material touch-target floor). **Never set `visualDensity: VisualDensity.compact` on an IconButton** — compact density subtracts 8dp per axis *after* constraint resolution, so it shrinks the hit area to ~40dp even when the button carries an explicit `BoxConstraints(minWidth: 48, minHeight: 48)` (measured by hit-testing; the earlier "keep compact, add the constraint" idiom from issue #255 was a placebo — see [decisions.md § 435](decisions.md)). For visual tightness shrink the *icon* (`size:` / `iconSize:`) and keep the 48dp box; don't declare sub-48 `constraints:` and don't cap the button with a sub-48 `SizedBox`. `apps/mobile_android/test/tap_target_guard_test.dart` (mirrored on iOS) scans all of `lib/` and fails any of the three patterns. Labeled buttons (Text/Filled/Outlined/Segmented) may keep compact density: they retain a ≥40dp padded target plus a wide label surface, which clears WCAG 2.5.8's 24px floor — the 48dp floor is the icon-button spec, where the glyph is the whole target.
+
+## Web tap targets — size from `--tap-target-min`, never from the bar
+
+On the web app the product bar for an **icon button** — a control whose glyph is the whole target — is 44 CSS px, and the e2e sweeps assert exactly that. **Never write the bar itself into a rule.** `.pr-hide` carried `min-width/min-height: 44px` and therefore measured 44.0 x 44.0 on all 480 samples of a 12-load run, sitting precisely on the threshold its own assertion tested: a fractional device pixel ratio, an ancestor transform mid-animation, or a compositor quad rounding to 43.999 turns a correct control into a red build, and the tempting repair is to lower the assertion, which is the one repair the [Never adjust the test to hide an app bug](#never-adjust-the-test-to-hide-an-app-bug) rule forbids. Size from `--tap-target-min` (48px, `app.css`) instead — the same number the Flutter twin's IconButtons use, four px clear of the bar. `a11y_guards.test.ts` fails the unit job if the token stops exceeding the bar; `tests-e2e/dashboard/tap-targets.spec.ts` sweeps every icon button on /dashboard through `tests-e2e/fixtures/tap-targets.ts` and fails one that misses its floor **or meets it exactly**.
+
+Labelled controls are out of scope for the 44 px bar, the same line the Flutter rule above draws: a wide text surface takes WCAG 2.5.8's own spacing exception. The one icon button held lower is an **inline disclosure** — `MetricLabel`'s definition toggletip, whose size is constrained by the line-height of the text around it (2.5.8's Inline exception). It sizes from `--tap-target-inline-min` (28px), four px clear of the WCAG 24 px floor, and is named with its reason in `INLINE_DISCLOSURE` in the fixture. An exemption is a claim about one control: the sweep fails on anything under the bar that is not on that list.
 
 ## Mobile fixed boxes and OS text scale — four mechanisms, chosen by what the box is for
 
@@ -638,7 +1200,11 @@ A header laid out above `Expanded(TabBarView)` in a non-scrolling `Column` is no
 
 ## Mobile FAB clearance — `fabScrollClearance`, never a hand-picked number
 
-On the Flutter apps, a scroll view that a `FloatingActionButton` floats over reserves `fabScrollClearance(context)` at its bottom edge (`lib/fab_clearance.dart`), and a two-FAB column passes `fabCount: 2`. `Scaffold` paints the button over the body with its bottom `kFloatingActionButtonMargin` above the content bottom, lifted clear of `minViewPadding`, so the occluded band is `padding.bottom + 16 + fab height` — a number nobody guesses right. Before this rule four screens reserved nothing at all and six reserved four different values, of which the largest still under-cleared a stacked pair. The helper reads `MediaQuery.padding`, not `viewPadding`, so it composes with an enclosing `SafeArea` or a parent `Scaffold` that already has a `bottomNavigationBar` — both report zero, which is exactly where adding the inset again would leave a dead band. **Don't re-read `viewPaddingOf(context).bottom` beside it**, and don't wrap the FAB itself in a `Padding` for the same inset: `Scaffold` already applies it. `architecture_guards_test.dart` fails any new FAB screen that does either.
+On the Flutter apps, a scroll view that a `FloatingActionButton` floats over reserves `fabScrollClearance(context)` at its bottom edge (`lib/fab_clearance.dart`), and a two-FAB column passes `fabCount: 2`. A `FloatingActionButton.small` stacked over an extended FAB is shorter than a second regular FAB, so that column adds `kSmallFabSlot + kFabStackGap` to the single-FAB clearance instead (`routes_screen.dart`). `Scaffold` paints the button over the body with its bottom `kFloatingActionButtonMargin` above the content bottom, lifted clear of `minViewPadding`, so the occluded band is `padding.bottom + 16 + fab height` — a number nobody guesses right. Before this rule four screens reserved nothing at all and six reserved four different values, of which the largest still under-cleared a stacked pair. The helper reads `MediaQuery.padding`, not `viewPadding`, so it composes with an enclosing `SafeArea` or a parent `Scaffold` that already has a `bottomNavigationBar` — both report zero, which is exactly where adding the inset again would leave a dead band. **Don't re-read `viewPaddingOf(context).bottom` beside it**, and don't wrap the FAB itself in a `Padding` for the same inset: `Scaffold` already applies it. `architecture_guards_test.dart` fails any new FAB screen that does either.
+
+## Mobile FAB placement — `pageFabLocation`, on every page
+
+On the Flutter apps, every `Scaffold` that sets a `floatingActionButton` also sets `floatingActionButtonLocation: pageFabLocation(context)` (`lib/fab_clearance.dart`). A page inside the phone shell has a `Scaffold` of its own that knows nothing of the shell's: at the default `endFloat` its button sits 16dp above the bar while the shell's `centerDocked` button rises `kDockedFabOverhang` (28dp) into the page, and an extended label as long as "Create challenge" reaches across the middle into it (issue #1300 § 4). The helper is `endFloat` lifted by `DockedFabInset`, which the shell publishes only on the phone layout with the keyboard down, so a pushed route and the tablet rail read 0 and get plain `endFloat` back — that is why the rule is every Scaffold rather than a list of in-shell pages, which no file can see. `fabScrollClearance` adds the same inset, so a list under a lifted button still ends above it. `page_fab_location_guard_test.dart` fails any Scaffold that sets a FAB without it; the shell's own `centerDocked` is the one exemption.
 
 ## Mobile app-bar actions — `AppBarActions`, three slots
 
@@ -654,6 +1220,14 @@ On the Flutter apps, a hero map at the top of a detail scroll view takes `detail
 
 A test that reaches content below such a map must not drag by a fixed offset — the map's height moves with the surface, and a drag that starts *on* the map is claimed by `FlutterMap` rather than the list. Pump a tall surface so the whole body builds, as `dashboard_card_alignment_test` does.
 
+## Mobile location has two intents — browse through `quiet_location.dart`, record through `RunRecorder`
+
+(A third, narrow one exists for Drive this course: `lib/course_drive_location.dart` opens a background stream with no recorder behind it, and is the only other file `quiet_location_test.dart` lets call `getPositionStream`. It records nothing; see [course_drive.md](../features/course_drive.md) gotcha 7. The heading keeps its wording because it is deep-linked.)
+
+On the Flutter apps, every position read outside the run recorder is a **browse** read and goes through `lib/quiet_location.dart`. A map screen that centres itself on the runner when it opens takes its fixes from `quietPositionFixes()`: the cached last-known fix, then a fresh one within five seconds. It only checks permission and never requests it, because a prompt the runner did not tap for is a surprise; with permission withheld, services off or no fix in time, the stream just ends and the screen keeps the centre it opened on. An explicit locate action (a Locate FAB, Explore's "Near me") calls `locateForBrowse()`, which may ask for an unanswered permission and falls back to the cached fix when a fresh one fails. Both read with `browseLocationSettings()`: balanced accuracy and, on Android, `forceLocationManager`, because geolocator's fused client checks location settings before every request and raises Google's "Location Accuracy" dialog when they fall short ([decisions.md § 2277](decisions.md)). Neither ever calls `isLocationServiceEnabled`, `openLocationSettings`, `getLocationAccuracy` or `requestTemporaryFullAccuracy`.
+
+The **record** intent belongs to `RunRecorder` (`packages/run_recorder`) alone: it checks services, asks for high accuracy and iOS temporary full accuracy, and lets the fused client prompt, because GPS quality decides the track. `test/quiet_location_test.dart` fails a file in `lib/` that reads a position or asks for settings or accuracy anywhere else; the run screen's Location settings button is its one allowance. Don't inline another copy of the permission / last-known / current-position sequence, and don't open on a hard-coded city when the camera centre feeds something the runner builds, as Generate loop does ([decisions.md § 2246](decisions.md)).
+
 ## Mobile cards name themselves; a section header heads a group
 
 On the Flutter apps, a card that needs a title carries it *inside* as `ChartCardHeader` (ui_kit), matching web's `<section class="card-elevated"><h2>`. An external section header is for a **group** of cards plus that group's action — the dashboard's goals section is the one that qualifies. Consequently a stack of self-heading cards separates by the card theme's own vertical margin and nothing else, and `_kSectionGap` marks only a real block boundary. Before this rule the dashboard changed grammar halfway down: an external `_SectionHeader` plus a 24dp gap above, then two cards hand-rolling the same `titleMedium` heading internally *and* padding themselves with a trailing `SizedBox(height: 24)`, one inlining a copy of `ChartCardHeader`'s typography, and one more with a `TextButton` beside a `titleMedium` — measured, the seams came out at three different values. `chart_surface_guard_test.dart` requires every dashboard card to reference `ChartCardHeader`, forbids `textTheme.titleMedium` in a card widget, and count-pins `_SectionHeader` at its one group use; `dashboard_card_rhythm_test.dart` asserts the stack repeats one gap and that the gap equals the card theme's margin.
@@ -664,7 +1238,7 @@ On the Flutter apps, every list of runs draws `RunListTile` (`lib/widgets/run_li
 
 ## Mobile motion — `AppMotion`'s rungs, and a loop that stops rather than hurries
 
-On the Flutter apps, an animation's duration comes from `AppMotion` (`packages/ui_kit/lib/src/motion.dart`) — `brief` (200 ms, an element changing in place), `standard` (300 ms, an animated scroll or page change), `pulse` (1500 ms, a repeating loop) — and its curve from `AppMotion.curveStandard` / `curveEmphasised` / `curveOvershoot` / `curveLinear`. Each rung is the **modal value of its role** in what was already shipping, so the tier moved the off-mode sites and left the majority alone; a new role with no mode to derive from gets a documented local, not an invented fourth rung (the indeterminate-progress cadences — typing dots at 600, skeleton shimmer at 900, `ActivityLoader`'s web-ported 720/1050/1500 gait — are that case). `reduce_motion_test.dart` (both twins) fails any `Curves.` outside `motion.dart` and requires every rung to have an adopter.
+On the Flutter apps, an animation's duration comes from `AppMotion` (`packages/ui_kit/lib/src/motion.dart`) — `brief` (200 ms, an element changing in place), `standard` (300 ms, an animated scroll or page change), `pulse` (1500 ms, a repeating loop) — and its curve from `AppMotion.curveStandard` / `curveEmphasised` / `curveOvershoot` / `curveLinear`. Each rung is the **modal value of its role** in what was already shipping, so the tier moved the off-mode sites and left the majority alone; a new role with no mode to derive from gets a documented local, not an invented fourth rung (the indeterminate-progress cadences — typing dots at 600, skeleton pulse at 900 — are that case; the running-figure loader's 720/1050 gait was the third until § 2288 retired it). `reduce_motion_test.dart` (both twins) fails any `Curves.` outside `motion.dart` and requires every rung to have an adopter.
 
 **Reduce-motion is not a duration problem, and the framework only half-covers it.** Flutter scales a one-shot `forward`/`reverse`/`animateTo` to 5 % when `MediaQuery.disableAnimations` is set, so implicit widgets and one-shot controllers are handled already. It does **not** touch `repeat()` — `AnimationController._animateToInternal` holds the scale and `repeat` does not, for the reason its own source gives — and it does not touch an animated scroll, because `DrivenScrollActivity` runs on an `AnimationController.unbounded` that defaults to `AnimationBehavior.preserve`. Those two are the whole gap:
 
@@ -675,11 +1249,35 @@ On the Flutter apps, an animation's duration comes from `AppMotion` (`packages/u
 
 Two animations deliberately do **not** collapse, and a new one that plays continuously should say which case it is: `run_detail_screen`'s trace replay and `undo_bar`'s countdown ring. The first is playback the user pressed play on and can stop (WCAG 2.2.2 is met by the control, and killing it would remove the feature); the second reports a real deadline, and a vestibular user needs the remaining time as much as anyone.
 
-On web the same decision is already in force and needs no mirror: `app.css` carries the global `@media (prefers-reduced-motion: reduce)` net (pinned by `security_guards.test.ts`) plus per-component blocks, and `--transition-fast` / `--transition-base` are its duration rungs. Mobile's derived `brief` landing on 200 ms — web's existing `--transition-base` — is a convergence, not a copy.
+On web the same decision is already in force and needs no mirror: `app.css` carries the global `@media (prefers-reduced-motion: reduce)` net (pinned by `a11y_guards.test.ts`) plus per-component blocks, and `--transition-fast` / `--transition-base` are its duration rungs. Mobile's derived `brief` landing on 200 ms — web's existing `--transition-base` — is a convergence, not a copy.
 
 ## Local-tz date strings
 
 Don't use `new Date().toISOString().slice(0, 10)` to derive a "yyyy-mm-dd today" or "yyyy-mm-dd of week start" string. `toISOString()` formats in UTC, so in any positive-offset timezone it rolls the date back a day before midnight local — week boundaries snap to the wrong Monday and prev/next navigation jumps two periods at once. Use `formatISO(d)` (or `todayISO()`) from `apps/web/src/lib/training/training.ts` — both build the string from `getFullYear` / `getMonth` / `getDate`, which stay in local time. The same rule applies to Dart on the mobile side: call `DateTime.local()` and format the components yourself, don't go via UTC.
+
+## Web browser baseline
+
+`apps/web` supports the browsers below, and nothing older. The floor is declared once, as `browserslist` in `apps/web/package.json`; `scripts/browser_baseline.mjs` reads it, `vite.config.ts` compiles to it, and `src/lib/browser_baseline_guard.test.ts` holds this table and every feature detect in the tree to it.
+
+| browserslist key | floor | why this number |
+| --- | --- | --- |
+| `chrome` | 111 | Vite's own `baseline-widely-available` target, which the build inherited before the floor was stated. |
+| `edge` | 111 | same. |
+| `firefox` | 121 | `:has()` landed here, and the tree ships it in four stylesheets with no fallback. |
+| `safari` | 16.4 | Vite's target; container queries, which the tree also ships unguarded, arrived at 16.0. |
+| `ios_saf` | 16.4 | same. |
+| `and_chr` | 111 | Chromium fork; the engine row above is the real constraint. |
+| `and_ff` | 121 | Gecko fork of the Firefox row. |
+| `android` | 111 | Chromium fork. |
+| `opera` | 97 | Chromium 111. |
+| `op_mob` | 80 | Chromium fork. |
+| `samsung` | 20 | the first release with container queries. |
+
+Measured against caniuse-lite 1.0.30001810, that floor reaches **92.51%** of globally tracked page views. The 7.5% below it is Internet Explorer, Opera Mini, KaiOS, Android Browser ≤ 4.4 and pre-2023 releases of the engines above — none of which can render a WebGL2 MapLibre map, so the floor excludes nobody the app could serve anyway.
+
+**Above the floor, an API is used directly: no detect, no fallback.** Below it the app is unsupported. A runtime feature detect is therefore an exception, and it says exactly one of three things — `above-floor` (the API needs a newer release than the floor names), `optional-capability` (it is absent for a reason that is not a version: a permission, a secure context, an install state, a device) or `value-shape` (the probe is about a value, not the platform). `EXCEPTIONS` in `browser_baseline_guard.test.ts` carries every one with its reason, and a detect for an API the floor already guarantees has no reason available to it and fails the suite until it is deleted. An `above-floor` entry also names the release that retires it, so the exception cannot outlive its reason — the floor reaching that release fails the suite too.
+
+Two things are deliberately outside all of this. A test of a bare global — `typeof window === 'undefined'`, `typeof localStorage` — asks whether there is a browser at all, which every module that also runs on a share Lambda or under prerender has to ask; that is not a question about a browser's age. And `apps/web/lambda` is Node 24 with full ICU, so the floor does not apply to it at all — which is exactly how the crawler-facing `<head>` and the tab's can differ. See [decisions.md § 1670](decisions.md).
 
 ## Web buttons
 
@@ -688,6 +1286,32 @@ Canonical button styles live in `apps/web/src/app.css` under the comma-separated
 **Don't redefine these classes in a page or component.** Local copies drift over time and the buttons stop matching across pages — exactly the problem the centralisation solved. If you need a one-off variant, give it a page-specific name (`.btn-google`, `.btn-save`, `.btn-ghost`, `.btn-connect`, ...) and let it extend the canonical class via the markup (`class="btn btn-primary btn-save"`). Avoid overriding the `padding` or `font-size` of the canonical classes — that's how drift starts.
 
 The `/settings/upgrade`, `/login`, and `/` (landing) surfaces deliberately ship larger marketing-CTA buttons; those override the canonical sizes via Svelte-scoped local rules and are documented exceptions, not the pattern.
+
+## Web file pickers — a button drives the input, never a `<label>` wrapping it
+
+A native `<input type="file">` cannot be styled, so every picker hides it. The
+tempting shorthand — a `<label>` wrapping a `hidden` input — leaves the control
+with **no focusable element at all**: the input is out of the tab order and a
+label is not a control, so clicking the label is the only way to open the
+chooser. Four shipped that way (`/settings/integrations` twice,
+`/clubs/[slug]/events/[id]`'s results CSV import, and `ImportRoute`'s drop
+zone — whose own comment claimed keyboard users had a Browse button).
+
+The idiom is a real `<button type="button">` whose `onclick` forwards to a
+bound, off-screen input:
+
+```svelte
+<button type="button" class="my-btn" onclick={() => picker?.click()}>Choose file</button>
+<input bind:this={picker} type="file" accept=".csv" onchange={onPick} style="display: none" />
+```
+
+**Not extracted into a shared component**, deliberately: the button carries each
+surface's own component-scoped class (`.browse-btn`, `.import-file`, `.zip-btn`),
+and Svelte's scoped styles do not reach into a child component's markup, so a
+wrapper would force every caller to restyle or to leak its rules through
+`:global()`. What generalises is the guard —
+`a11y_picker_guards.test.ts` sweeps every template, bounding each `<label>` at
+its own closing tag before looking inside it.
 
 ## Svelte 5 `$effect` — never read state you write in the same effect
 
@@ -732,13 +1356,47 @@ Canonical modal classes live in `apps/web/src/app.css` (`.modal-backdrop`, `.mod
 A destructive action gets **exactly one** guard. Pick it by asking whether the
 action can honestly be reversed:
 
-- **Undoable** → call `deferDestructive` (`$lib/stores/undo.svelte`) and drop the
+- **Undoable** → call `deferDestructive` (`#lib/stores/undo.svelte`) and drop the
   `ConfirmDialog`. The row leaves the caller's local list immediately and the
   server mutation is **held** for the undo window, so `Undo` cancels a timer
   rather than compensating for a completed delete — it cannot fail. Restore by
   snapshotting the list (`const before = rows; rows = rows.filter(...)`) and
   putting the snapshot back, so ordering survives; if the delete cascades
   children server-side, filter the children out too or the list renders orphans.
+  A held mutation belongs to the account that made it: Sign out commits it
+  first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`; a
+  failure there is logged and the sign-out still runs, since signing out is
+  the core action; so is a settle still running after
+  `SIGN_OUT_SETTLE_TIMEOUT_MS`, 5 s, whose request keeps its own token and may
+  still land); Delete account settles the same way (`settleBeforeSessionEnds`)
+  before it calls the delete, while the account still exists. `flush` waits
+  for every commit the queue has started, not only the one still in the slot:
+  a commit the window timer or a second delete already set going is on the
+  wire with the slot empty, and a sign-out that went ahead under it left that
+  commit's failure to a signed-out reader, logged and never restored or
+  reported. The 5 s cap bounds that wait too. And a
+  session that ends or changes some other way (another tab) runs Undo instead,
+  from the root layout, so it never commits with no session or as the next
+  account. A commit already running when the session ends is not stopped; the
+  queue records the account each delete was queued under (`setUndoOwner`, set
+  by the root layout) and, if that commit fails once the session has ended or
+  another known account is signed in (`undoOwnerChanged`), only logs it: no
+  `onCommitError` toast to a signed-out reader and no `restore` into the next
+  account's list. A live session whose profile is not loaded yet reads as
+  unknown (`undefined`), not as signed out, so the same account's failure
+  still restores and reports.
+  Mobile follows the same rules. Settings → Sign out and the age-gate's Sign
+  out go through `signOutAfterSettling` (`lib/sign_out.dart`, passed
+  `undoQueue.flush`, which waits for in-flight commits the same way, capped
+  at `kSignOutSettleTimeout`, 5 s); Delete account
+  settles before it calls the delete, while the account still exists. Any
+  other session change (a revoked token, another account) runs Undo from
+  `UndoSessionGuard` at the app root, which also keeps the queue's owner
+  (`setUndoOwner`) current, so a commit that fails after its account is gone
+  is logged only. Mobile's timer belongs to the app-wide queue rather than to
+  any screen, so without this the held commit fired on schedule after the
+  sign-out. `sign_out_test.dart` fails when a file in `lib/` calls `signOut`
+  without settling the queue.
 - **Not undoable** → keep the `ConfirmDialog`. Use it when the delete cascades
   something the actor could not reconstruct, or when the row is an authored
   reusable artefact rather than a line of data (a routine, a saved meal, a
@@ -784,7 +1442,7 @@ setting. The list is the optimistic surface; a server-sourced aggregate is not.
 
 **A timed undo is an accessibility surface.** WCAG 2.2.1 requires the limit be
 turnable-off, adjustable, or extendable; the `undo_window_s` preference
-(`/settings/preferences` on web, Settings → Preferences on mobile, registered in
+(`/settings/display` on web, Settings → Preferences on mobile, registered in
 [settings.md](../backend/settings.md)) carries a `0` = *no time limit* choice, and
 hover/focus (web) or backgrounding (mobile) pauses a running window. Keep the
 countdown out of the announced region — a ticking number re-announces on every
@@ -822,6 +1480,27 @@ are mobile-specific:
   `deferred-commit undo outlives its surface` group in
   `architecture_guards_test.dart`.
 
+### Where a whole-entity delete lives — never the primary slot
+
+The guard above decides *how* a delete asks; this decides *where* it sits. A
+delete that removes a whole entity other people depend on — a club, a
+challenge, the account — is never a primary action. It does not share a row
+with Join / Leave / Edit / New, and it is never a bare verb.
+
+- **Web** renders it in `DangerZone` (`#lib/components/DangerZone.svelte`)
+  after the page's own content: a labelled region, one line saying what the
+  delete removes, and a `btn-danger` named for what it deletes ("Delete club",
+  "Delete challenge"), still routed through `ConfirmDialog`. `/settings/account`,
+  `/clubs/[slug]` and `/challenges/[id]` use it; don't hand-roll another
+  danger card.
+- **Mobile** passes it to `AppBarActions` as `destructive: true`, which is never
+  promoted to a visible toolbar icon and renders last in the overflow menu,
+  labelled, in the error colour (see *Mobile app-bar actions* and decisions
+  § 498) — even when it is the screen's only action.
+
+A delete of one row inside a list (a post, a set, a gear item) is not this
+rule: an inline, labelled per-row control is fine there. See decisions § 1634.
+
 ## Web cards — `.card-elevated` is the shared elevated panel
 
 The app has **two** card flavours, and the distinction is load-bearing — don't collapse them:
@@ -830,6 +1509,10 @@ The app has **two** card flavours, and the distinction is load-bearing — don't
 - **Flat** (no shadow): ~17 pages (settings, plans, coaching, recap, share, onboarding, …) deliberately use a page-scoped, shadowless local `.card`. These are intentionally *not* elevated. **Do not add a `box-shadow` to a bare global `.card` name** — it would cascade a shadow into every one of those flat pages. There is intentionally no global `.card`; the flat look stays page-scoped until someone does a full design-system pass to name it (`.card-flat`) and migrate all the copies.
 
 When you need an elevated panel: `class="card-elevated"` (+ a layout modifier). When you need a flat panel: keep the existing page-scoped `.card`. Never give the global an unqualified `.card` rule.
+
+## Web empty states — `EmptyState.svelte`
+
+A whole-surface "nothing here yet" or "nothing matches these filters" state renders `apps/web/src/lib/components/EmptyState.svelte` (icon, heading, explainer as `text` or a `body` snippet, an `actions` snippet, and optional `children` inside the card), never a bare grey `<p>` or a page-local `.empty-card` rule. It spans the content width and caps only its prose; `tone="danger"` gives a failed read the same shape. The web's analogue of mobile's ui_kit `EmptyState` (§ Mobile empty states). Every whole-surface empty, not-found and failed-read card on the web renders it. An empty row inside a card that holds other content (a leaderboard, a contacts list, a chart) stays an inline hint instead, since a card inside a card doubles the border. `apps/web/src/lib/empty_state_guard.test.ts` fails a `.svelte` file other than `EmptyState.svelte` that defines or uses an `*empty-card` class.
 
 ## Web status / accent colour tokens — pick the variant for the JOB
 
@@ -925,7 +1608,7 @@ A message that interpolates a fragment carrying its own grammar will double it. 
 
 **Give each branch its own whole-sentence key.** No fragment can be fixed here rather than replaced: German needs the dative "deinem" after the kudos verb and the accusative "deinen" after the comment verb, and French "course" is feminine where an interpolated "5,2 km" is masculine, so one template and one fragment cannot both be grammatical. Interpolate **data** (a name, a distance, a count) and never a phrase that carries a determiner, a preposition, or an inflection the surrounding template also carries.
 
-**Guard it derivationally, and not with a repeat check.** The obvious rule — reject a back-to-back repeated token — **spares German**, whose doubling is two different inflections of the one possessive. `notification_phrasing.test.ts` renders every branch in all six locales, counts second-person possessives, and pins the population (48 renders); the pre-fix string from each of the six locales sits in a must-flag fixture table.
+**Guard it derivationally, and not with a repeat check.** The obvious rule — reject a back-to-back repeated token — **spares German**, whose doubling is two different inflections of the one possessive. `notification_phrasing.test.ts` renders every branch in every shipped locale, counts second-person possessives, and pins the population (`SUPPORTED_LOCALES.length * 8` — 56 renders at seven locales, derived so a new locale widens the guard rather than escaping it); the pre-fix string from each locale sits in a must-flag fixture table.
 
 **A kind is an identifier, not a label.** Hand-capitalising a database enum value prints English on a localized page and loses whatever the catalogue adds — `long` is "Long run", not "Long". Route it through the presentation helper (`workoutKindLabel` / `planPhaseLabel` in `lib/training/workout_labels.ts`), whose map is asserted total over the generated `workout_kind` enum so an unmapped kind fails instead of falling back to the raw string. `workout_labels.test.ts` scans the `x.charAt(0).toUpperCase() + x.slice(1)` **shape** across the tree rather than keying on identifiers containing "kind": the defect it closed was written through a one-letter alias, and a name-keyed matcher demonstrably spares it. The three surviving sites are count-pinned and named, one of them still a defect (`activityLabel` on `/coaching/athletes/[id]`, which has no catalogue vocabulary to route onto yet).
 
@@ -959,6 +1642,25 @@ Every create / edit editor (`ClubEditor`, `EventEditor`, `RunEditor`, `GymEditor
 - Native checkbox / radio colour is the global `accent-color: var(--color-primary)` rule (also in `app.css`), not a per-editor declaration.
 - Dense builders (`RoutineEditor`, `SessionPlanEditor`) intentionally use the shared global `.section-label` (uppercase micro-label) for labels that double as set-grid column headers — that's a shared primitive, not duplication, and is left uppercase by design.
 
+### A control on a swept surface carries a one-line explanation
+
+The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts` (decisions § 1640, § 1651, § 1659). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows. **Read the list rather than repeating it here** — a second copy of it rotted before it was a month old.
+
+- A `<select>`, an `<input>`, a radio or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container, or in `<div class="radio-field">` for a radio option, which indents the line under the option's title.
+- A checkbox carries the explanation inside its own label, as a `.hint` / `.field-hint`, because a checkbox's label is short enough to absorb it.
+- **Say what the control changes, or what happens on versus off.** A line that restates the label adds density, which is the problem the pattern exists to solve. Where the label plus the placeholder is already the whole story — a free-text `<textarea>` — add nothing; the guard does not scan textareas.
+- Several controls may share one paragraph when a line under each would repeat (the per-workout grid in `PlanEditor`'s week outline points every cell at the outline's own explanation).
+- **A repeated block renders its explanation once.** An exercise, a set row or a session item inside an `{#each}` renders its line on the first iteration only, and every later iteration's controls point at that same id — a sentence under each of eight cells, repeated per exercise, is the density this exists to remove.
+- **Wiring an existing explanation counts; inventing one to satisfy the scan does not.** `/onboarding` was registered without a single new string: its per-step hints were already the right copy and only needed an id and an `aria-describedby`.
+
+## A page that mixes explicit-save and auto-save sections labels each one
+
+Most settings auto-save (decisions § 111); a section holding Art 9 data saves only on its own button. When one page carries both, a page-level "Saved" cue is not enough — the runner cannot tell which controls are already stored. On web and mobile alike (decisions § 2115):
+
+- **Each section states its save model in place**, next to its controls: the auto-save section shows its own Saving / Saved status, the explicit one says it saves only on its button.
+- **The explicit section shows an unsaved-changes state** the moment it is edited, and clears it on a successful save.
+- **The explicit section guards navigation** while it is dirty — `UnsavedChangesGuard` on web, the same prompt-on-pop on mobile — so leaving the page cannot silently drop an edit the runner believed was kept.
+
 ## Web list pages — preserve scroll on back-navigation
 
 Any list page that links into a detail page (`/history`, `/routes`, `/plans`, `/clubs`, `/feed`, `/u/[id]`-style surfaces, …) must `export const snapshot` (SvelteKit's [snapshot API](https://svelte.dev/docs/kit/snapshots)) so clicking a row, then `back`, lands the user at the same scroll position they left at. Without this, the page remounts empty, SvelteKit's built-in scroll restoration runs against a 0-height body, and the user is bounced back to the top.
@@ -988,6 +1690,8 @@ onMount(() => {
 
 Capture the heaviest stateful arrays (the items list, pagination cursors), not derived values — derived state recomputes from restored inputs. Filters that already live in `localStorage` don't need to be in the snapshot.
 
+**A restored list must not predate a write.** The create flow writes on the list page and then navigates to the new entity's detail page, and the detail page's back link pops into the restore — so a snapshot taken on leave holds the list *without* the row just created, and an edit or delete made on the detail page comes back undone. `lib/core/list_freshness.ts` closes this at the data layer: every write in `data.ts` (and anywhere else in `src/`) to a table a snapshotted list shows calls `markListsStale(...)` for each list in `LISTS_BY_TABLE`, before the write. The page notes `listToken('<list>')` as its load **starts** (not at capture, which is already after the create), carries it in the snapshot, and restore checks `isListStale('<list>', s.listToken)` first: when stale it restores only the filters / tab and leaves the list empty and `loading` set, so the page fetches under the user's filters; when current it behaves as above. A page that folds its own write into the list in memory (bulk delete on `/runs`, the optimistic star on `/routes`) re-notes the token once the write settles. A new snapshotted list is added to `SNAPSHOT_LISTS`, and `list_freshness_guard.test.ts` fails a snapshot page that isn't registered, a write that doesn't mark, and a restore that puts the list back before checking. See [decisions.md § 1822](decisions.md).
+
 ## Web share URLs — the path is defined once, the base belongs to the caller
 
 Every public path an entity has is spelled in exactly one builder, and the builder takes the base as a parameter. There are **two** such paths per entity, not one: the share page (`build<X>ShareCanonical`) and its unfurl image (`build<X>OgImageUrl`). Never interpolate a base into a path at a call site — `${window.location.origin}/share/run/${id}` is the defect, `buildRunShareCanonical(window.location.origin, id)` is the same URL with the path defined once. Which base depends on the *use*, and both are correct: a `<head>` canonical resolves against `PUBLIC_SITE_URL` (the public home of the content is not whichever host the reader is on), while a copy-to-clipboard link resolves against `location.origin` (a preview host has to yield a preview link). See [decisions.md § 520](decisions.md) / [§ 531](decisions.md) / [§ 546](decisions.md).
@@ -1001,11 +1705,11 @@ Every public path an entity has is spelled in exactly one builder, and the build
 
 A detail / create page reachable from **more than one surface** must not send `back` to a hardcoded parent. A gym routine opened from a club's Templates tab, a session plan opened from a club event, a route builder launched from a club's Routes tab — each should return to where the user *came from*, not to `/gym/routines` / `/sessions` / `/routes`.
 
-Use the shared `smartBack` helper (`$lib/util/smart_back`): it registers an `afterNavigate` that latches whether there was an in-app referrer, and its `handle` pops history (`history.back()`) when there was one, falling through to the anchor's static `href` on a hard load / deep link. Because `history.back()` is a popstate, it also re-triggers the source list's `snapshot.restore` (see the section above) — so popping to the referrer is strictly better than a hardcoded `href` for scroll/filter preservation too.
+Use the shared `smartBack` helper (`#lib/util/smart_back`): it registers an `afterNavigate` that latches whether there was an in-app referrer, and its `handle` pops history (`history.back()`) when there was one, falling through to the anchor's static `href` on a hard load / deep link. Because `history.back()` is a popstate, it also re-triggers the source list's `snapshot.restore` (see the section above) — so popping to the referrer is strictly better than a hardcoded `href` for scroll/filter preservation too.
 
 ```svelte
 <script lang="ts">
-  import { smartBack } from '$lib/util/smart_back';
+  import { smartBack } from '#lib/util/smart_back.ts';
   const back = smartBack(); // omit the arg to pop for ANY in-app referrer
 </script>
 
@@ -1021,7 +1725,7 @@ Keep the `href` — it is the deep-link / hard-load fallback and the link's sema
 
 Several read paths are deliberately scoped to the viewer: `fetchRunById` filters `.eq('user_id', userId)`, because it is the only read path that downloads the **unclipped** GPS track. A page whose only row source is such a fetch renders its "Run not found" empty state for anyone else's row — a real, public row presented as deleted. That is still the shape of every `/gym/[id]`-style owner surface.
 
-So: **a surface that renders someone else's row links to the public twin, not the owner surface.** `/share/run/[id]`, `/share/workout/[id]`, `/share/event/[id]`, `/u/[id]`. The social feed, a club roster, a challenge leaderboard, a segment board, a notification about a followee's activity — all of these are other-people surfaces, and the public twin is additionally the right target because it is anon-reachable and indexable while the app routes sit behind the layout auth-gate. Only `/history`, `/runs`, `/dashboard` and friends list the viewer's own rows and may use the owner route.
+So: **a surface that renders someone else's row links to a page that renders it for a non-owner, never to an owner-only one.** Inside the app, that is the in-app page when it has a non-owner branch — `/runs/[id]` (issue #666), `/u/[id]` (a badge is `/u/[owner]?tab=achievements&badge=[id]`), `/routes/[id]`, `/clubs/[slug]/events/[id]` — because `/share/*` is the logged-out surface: no sidebar, no way back, and a signed-in reader who taps into it has left the app (decisions § 2152). The public twin (`/share/run/[id]`, `/share/workout/[id]`, …) is the target for a link that **leaves** the app — an email, a push a phone maps itself, a copied share link — since it opens without a session, and for an in-app row with no non-owner in-app view: the feed's lift card stays on `/share/workout/[id]` because `gym_workouts` is owner-only to read. The share pages give a signed-in visitor a header control back into the app either way. Only `/history`, `/runs`, `/dashboard` and friends list the viewer's own rows and may use the owner route.
 
 This is not a cosmetic difference: the failure is silent and looks exactly like a deleted row, so it survives review and reads as correct in a screenshot taken by the owner. `apps/web/src/lib/cross_user_link_guards.test.ts` pins the feed; extend it when a new cross-user surface ships.
 
@@ -1030,7 +1734,7 @@ This is not a cosmetic difference: the failure is silent and looks exactly like 
 - **The non-owner row never enters the owner state.** `run` is assigned only from `fetchRunById`; a non-owner takes a sibling `{#if}` branch. Every owner affordance (edit, delete, visibility, gear, save-as-route, rematch) lives inside the owner branch, so suppression is structural rather than a list of `{#if isOwner}` guards that a later edit can forget.
 - **The non-owner branch renders through the existing public component**, so the privacy-zone clip stays single-sourced: `RunShareView` is the one place that calls `fetchClippedTrackForRun` (decisions §33). A hand-rolled non-owner renderer would be one `fetchTrackByPath` away from serving the unclipped trace.
 
-The same rule reaches the Go worker's notification deep links — `run_completed` fires at a *followee's followers*, so it links to `/share/run/{id}`. See `docs/features/email.md § Architecture` for the deep-link contract and its route-tree guard.
+The same rule reaches the Go worker's notification deep links — `run_completed` fires at a *followee's followers*, and an emailed link must open without a session, so it links to `/share/run/{id}`. The in-app inbox (`notificationLinkFor`) and the phone's push mapper (`push_target.dart`) open the in-app run for the same notification. See `docs/features/email.md § Architecture` for the deep-link contract and its route-tree guard.
 
 ## Deep links that leave the app must resolve forever
 
@@ -1074,13 +1778,17 @@ Pairs with the "Test hygiene" section below — tests for a piece go in the **sa
 ## A value domain gets ONE vocabulary, and a destination gets a name of its own
 
 Two rules from the same failure — a user-facing name that more than one place
-was allowed to decide (decisions § 547).
+was allowed to decide (decisions § 547, generalised in § 572).
 
 **A closed value domain has exactly one catalogue namespace and one resolver.**
 When a column's value set is fixed by a CHECK constraint (`activity_type`,
-`workout_kind`, …), every surface that names a value resolves through the one
-helper — web `runs/activity_type.svelte.ts#activityTypeLabel`, mobile
-`activity_type_labels.dart#activityTypeLabel`. Do NOT mint
+`workout_kind`, `surface`, `join_policy`, `role`, an RSVP `status`, …), every
+surface that names a value resolves through the one helper — web
+`runs/activity_type.svelte.ts#activityTypeLabel` and
+`i18n/enum_labels.svelte.ts` (`routeSurfaceLabel` / `joinPolicyLabel` /
+`clubRoleLabel` / `rsvpStatusLabel`), mobile
+`activity_type_labels.dart#activityTypeLabel`. Register a new union in
+`i18n/enum_labels.ts` and the guard picks it up. Do NOT mint
 `<surface>.activity<Value>` keys for a picker, a filter chip and a detail
 header: seven such namespaces existed for five values and they disagreed
 *inside* a locale (German `hike` was both "Wandern" and "Wanderung"), and four
@@ -1096,12 +1804,34 @@ token "stroller" in every language. Corollaries:
   — so a new one fails wherever it lands, and an entry must say why the value
   cannot be resolved (an open vendor string like a FIT `sub_sport` can; a closed
   domain cannot).
+- **Never interpolate the stored token into the DOM.** `{route.surface}`,
+  `{club.join_policy}`, `{club.viewer_role}`, `{run.activity_type}` — nine such
+  renders shipped, and they read as English in all six locales while the page
+  around them was translated. `i18n/enum_vocabulary.test.ts` scans every
+  template for the shape in **text position only**: picking an icon, a class or
+  a prop off the value (`title={seg.role}`, `class="tl-{seg.role}"`) is
+  legitimate and never shown.
 - **Derive the value set, don't restate it.** The guards parse the CHECK out of
-  the migration, so widening the domain fails the build until every catalogue
-  carries the new key.
+  the migration or the union out of `types.ts`, so widening the domain fails the
+  build until every catalogue carries the new key.
+- **The key-shape sweep does not see abbreviations.** `clubHome.roleOptionDirector`
+  named `race_director` and no matcher keyed on the value can catch it; widening
+  the tail to any word swallows `plansPage.statusActive`. The blind spot is
+  pinned as a must-spare fixture rather than papered over — when you add a
+  vocabulary, hand-sweep for abbreviated duplicates once.
 - **An unrecognised value renders VERBATIM, never title-cased.** A title-cased
   token is indistinguishable from a real translation and hides the drift on
   exactly the surface where it would be noticed.
+- **A narrow surface truncates; it does not get its own shorter words.** The
+  Wear OS pre-run chip carried four abbreviated activity labels on the theory
+  that a 56 dp `maxLines = 1` chip needed them. Measured, its label box is
+  32 dp and the abbreviations overflowed it too (`Caminar` 38 dp, `ウォーク`
+  40 dp) while the long words the same chip already shipped ran to 60 dp
+  (`Kinderwagen`) — so the fork bought a fourth vocabulary and no fit
+  (decisions § 713). Ellipsis plus a full `contentDescription` is how a cramped
+  surface handles a long word. If a constrained surface ever genuinely does
+  need shorter forms, they are a *documented abbreviation table* with a row per
+  locale, agreed as such — never a quietly different translation.
 
 **Two destinations may not have names a reader cannot tell apart.** A
 destination's name is the thing a user searches for, so "Coach" (the AI chat)
@@ -1112,6 +1842,126 @@ words: separating the two in English can leave them colliding in German, and
 nothing else would notice (its first run found "Über"/"Übersicht" and
 "Einstellungen" naming both Settings and its Preferences tab). Add a new
 sidebar item, popover entry or Settings tab to `DESTINATION_KEYS`.
+
+## A shipped locale catalogue is derived from disk, never listed by hand
+
+A translation catalogue that no runtime path resolves to costs bytes in every
+build and reaches nobody, and nothing about the file says so — it looks exactly
+like a catalogue that works. European Portuguese shipped that way twice, first
+missing from `supportedLocales` and then, after that was fixed, missing from a
+language picker that spelled its six options out beside a seven-entry supported
+list (decisions § 740).
+
+So the rule is that **the set of locales a surface offers is derived from the
+supported set, not written down beside it** — web's picker is
+`{#each SUPPORTED_LOCALES}`, mobile's builds from `supportedLocales`. And the
+supported set itself is held to the catalogue directory by a guard:
+`apps/mobile_android/test/architecture_guards_test.dart § locale reach` and
+`apps/web/src/lib/i18n/locale_reach.test.ts`. Adding a locale means adding the
+file and letting the guard name every declaration site that has not caught up
+(on mobile that is `supportedLocales`, `localeLabels`, `_exact`,
+`_baseToLocale`, the generated delegate, `l10n_parity_test.dart`'s own list and
+the iOS bundle's `CFBundleLocalizations`); deleting one means deleting the file
+and doing the same in reverse. The base-language fallback is the single rule a
+catalogue may legitimately fail, because a base tag can point at only one
+variant per language, and that carries a reason-per-entry allowlist with a
+companion test asserting each entry is still exempt.
+
+Distinct from key parity, which `messages_parity.test.ts` and
+`l10n_parity_test.dart` already own: those prove a *shipped* locale is
+complete, this proves the shipped set is the set that exists.
+
+## A web message key's catalogue part is derived, never placed
+
+Each web locale ships as a core catalogue plus one per **area**
+(`apps/web/src/lib/i18n/areas.ts`, decisions § 1802) and one per derived
+**group** (§ 1812): the build-time split puts a key in area A when every route
+that can render a file naming it lies under one of A's route prefixes; else in
+the group named by the exact set of areas and unregistered segments that render
+it, when that set holds 1 KB of English source or more; and in core otherwise
+(always, for a key the root layout renders). **Adding a key is unchanged** —
+write it in `locales/<tag>.ts` for every locale and call `m('key')`. Reusing a
+key on a second area's screen is unchanged too; the next build moves it to a
+group or to core on its own. Nobody lists a group. What the split relies on,
+and `area_catalogues.test.ts` holds:
+
+- **Name a key where its reader can see it.** The scan follows literals: a key
+  written in full (`'gym.title'`), a template with a dotted static head
+  (`` `nutrition.slot_${s}` ``), or a dotted / underscored prefix glued on with
+  `+`. A key built with no static head at all (`` `${vocab}.${value}` ``) is
+  invisible to it, so its namespace must be pinned to core —
+  `pinnedNamespaces()` derives that set from `ENUM_VOCABULARIES`, and the guard
+  fails on a second builder of that shape.
+- **Never call `m()` from a `load` function** other than the root one. Loads
+  run in parallel, so a page load can run before the root load has fetched its
+  area; components render after every load resolves, which is why they are safe.
+- **App code never imports a whole catalogue** (`locales/<tag>.ts`,
+  `i18n/catalogues.ts`). Resolve through `m()`. The bundle budget fails if a
+  whole catalogue reaches a code chunk anyway (`catalogue-leak`).
+- **An area earns its place.** A new entry in `AREAS` must name a real route
+  and receive at least one key; a segment whose own sentences are a few hundred
+  bytes is cheaper in core than as a round trip. A segment no area covers gets
+  a derived `_segment` group on its own once it is big enough, so an area is
+  only worth declaring for a sub-route split (`/settings/account`) or a
+  segment you want held to that name.
+- **Choose structure by `structureLocale()`, words by `m()`.** A page's first
+  load applies the reader's locale before it renders, including when it
+  hydrates English markup the server wrote (decisions § 1812). Svelte rewrites
+  differing text and attributes as it hydrates, but a different component or
+  `{#if}` branch per locale is a hydration mismatch. A component that picks
+  WHICH subtree to render by locale (the learn guide body picks a per-locale
+  mdsvex component) reads `structureLocale()`, which answers the server's
+  locale until the app mounts and the reader's after.
+
+## A size budget measures what one reader downloads, not what the build emits
+
+A total over every emitted file is the right metric for a dependency: a dep
+splits into two lazy chunks and every reader still fetches both eventually, so
+summing them is what stops code-splitting being mistaken for a saving. It is
+the wrong metric for an artifact only *some* readers ever request. The web
+bundle ceiling summed the message catalogues, of which a reader fetches one, so
+each new language charged every reader ~88 KB they would never download and the
+ceiling had to be raised — pt-PT moved it 2400 → 2700 while the largest chunk
+stayed byte-identical, and the gate's sensitivity to a rogue dep fell by one
+language's worth every time (decisions § 771).
+
+So the rule is that **a build artifact only some readers fetch gets a budget of
+its own, sized per artifact rather than summed**, and the shared budget keeps
+only what every reader downloads whatever they are. `MAX_CORE_CATALOGUE_KB` and
+`MAX_AREA_CATALOGUE_KB` in `scripts/check_web_bundle_budget.mjs` are per
+catalogue part (a locale's core, or one of its areas — decisions § 1802) and
+never totalled, so a new locale cannot move them and a bloated part still trips
+them; `MAX_CODE_KB` holds everything unconditional and stays fixed as languages
+ship. The total of the
+optional population is still *reported*, deliberately — a number nobody may
+gate on is the one that cannot silently become a ceiling again.
+
+Two things decide which side an artifact falls on, and neither is its file
+type. **Ask what a reader actually fetches**: the English core catalogue is
+statically imported as the synchronous fallback dict, so it is in the shared
+chunk every reader downloads before a locale is negotiated — it is
+unconditional weight and it sits in the code budget, even though it is a
+translation. (Before § 1802 that was the whole English catalogue; the English
+areas are lazy parts now, and the guard fails if a whole catalogue leaks back
+into a code chunk.) And **classify from the build's own module graph, not from a
+filename**: client chunks are content-hashed with no name component, so the
+mapping comes from vite's manifest, and a chunk that stops being separately
+loadable disappears from it — which the guard fails on by name rather than
+letting the bytes land in the other budget under the wrong diagnosis.
+
+**A budget's population is every file the build emits, not the file types
+someone thought of.** The same walk matched `*.js` and `*.css` only, so fonts,
+images and prerendered HTML — 33 files and 4058 KB gzipped, one of them a
+3866 KB unsubsetted icon font — were outside all three ceilings entirely
+(decisions § 775). `MAX_ASSET_KB` now holds every non-JS/CSS emitted file, per
+file for the reason catalogues are per catalogue: a reader loads one prerendered
+page and one favicon. Where one artifact genuinely has to exceed a ceiling,
+**exempt it by name with its own number, never by widening the ceiling** — and
+make the exemption fail when it stops describing the build, both when it matches
+nothing and when the artifact it covers has shrunk back under the general
+ceiling. The same shape governs `GRANDFATHERED_VIOLATIONS` in
+`apps/backend/scripts/check_migration_online_safety.mjs`, and for the same
+reason: a moving boundary exempts things nobody has read, a name cannot.
 
 ## A tab index is an ordered enum, never a raw int
 
@@ -1124,6 +1974,94 @@ so the notification bell opened the wrong tab in silence. With an enum, out of
 range is unrepresentable, so the test to write is not a clamp test but the
 property a clamp cannot give: every value opens its own tab, and the strip is
 exactly as long as the enum.
+
+## Mobile embedded surfaces name a Settings destination, they don't acquire it
+
+A surface that sits inside a nav destination — a sub-tab of `SocialScreen`, a
+card on the dashboard, a widget in a sheet — links into Settings by calling
+`openSettings(SettingsDestination.x)` from `settings_destination.dart`.
+`HomeScreen` drains the parked intent and pushes the screen with the
+dependencies it already holds. Do NOT thread `Preferences` /
+`SettingsSyncService` / `ApiClient` down through the intermediate hosts so a
+leaf can build a settings screen: that makes each host carry dependencies it has
+no other use for, and the next surface that wants a Settings link is a different
+host with a different set to thread (decisions § 710). Naming a path in prose —
+"turn this on in Settings → Preferences" — is the same gap, one step worse: it is
+a link the reader has to walk by hand, and it must be re-translated into six
+catalogues every time the settings IA moves.
+
+Two limits are real, and both are reasons to keep the direct `Navigator.push`:
+
+- **The caller must have nothing to do when the screen closes.** A parked intent
+  is fire-and-forget and cannot report a pop, so a caller that awaits the push
+  and refreshes on return (`nutrition_screen.dart`'s `_openBodyMetrics`) keeps
+  its own push.
+- **A surface that already holds the dependencies for its own reads keeps its
+  own push.** `run_detail_screen.dart` reads `Preferences` throughout; routing
+  its "Set max HR" button through the seam would trade a button that works
+  wherever the screen is pushed for one that needs the shell above it.
+
+Adding a destination means adding an enum value and its arm in the shell's
+`switch` — the arm is exhaustive, so a new value fails the build until it is
+wired. Only *pushable* sub-screens are destinations; the Settings landing is
+embedded in the You tab, so opening it is a tab switch, not a push.
+
+## Step a date through the calendar, never through a fixed `Duration`
+
+A local calendar day is 23 or 25 hours across a DST transition, so
+`someDate.add(Duration(days: n))` — which adds absolute time — walks off the
+calendar. On a fall-back a midnight cursor lands at 23:00 the *previous* day:
+the date repeats, the last day of a window is never produced, and every offset
+past the transition is shifted by one. Step dates with `DateTime(y, m, d + n)`
+(or `addDays` in `training.dart`), which normalises through the calendar. Web's
+twins take the same shape via `Date.setDate()`; `Date.getTime() + n * 86_400_000`
+is the same bug in TypeScript.
+
+The exceptions are real but narrow: a `DateTime.now()` or `.toUtc()` receiver is
+an *instant*, and a genuine elapsed-time span (a rolling 90-day cutoff, an API
+query bound, a search horizon) means 24-hour blocks and should stay that way.
+Mark those `// elapsed-time: <why>` — `calendar_day_arithmetic_guard_test.dart`
+fails the mobile suite on every unmarked site, because this class had already
+been fixed four times in isolation before the fifth bought the guard
+(`decisions.md § 589`).
+
+## "This week" comes from `weekStartLocal`, handed the preference
+
+A calendar week starts on the runner's `week_start_day`. Every surface that
+names a week — a tile, a chart bucket, a strip, a goal, a summary, a heatmap
+column — takes its window from `weekStartLocal` (web `training/goals.ts`,
+mobile `goals.dart`) and passes the preference it was given. Do not re-derive
+the `getDay()` / `weekday` offset, and do not default the preference at a
+widget or component boundary: two adjacent cards on two private copies, one
+handed a default, is how the Home tile and chart came to disagree
+(`decisions.md § 1747`). `week_start_guard.test.ts` and
+`architecture_guards_test.dart` fail on either. A deliberately Monday-only
+week (ISO-8601 recap weeks, the weekly-recurrence anchor) is listed in the
+guard with its reason.
+
+## Parse a date-only string as a calendar day, an ISO timestamp as an instant
+
+`new Date('2026-11-15')` is **UTC midnight** — ECMA-262 gives the date-only form
+that special case — so rendering it through any local-time formatter shows the
+day before at every negative offset. A `date` column names a calendar day and
+must read the same in Auckland and Los Angeles; a `timestamptz` names an
+instant and genuinely belongs to different days in different places.
+
+Web's shared `formatDate` / `formatDateShort` / `formatRelativeTime`
+(`#lib/format/time`) now handle both: a bare `yyyy-mm-dd` is built from its
+calendar components (local midnight), anything else falls through to the normal
+parse. **Prefer them over a hand-rolled parse** — the older idioms
+(`new Date(iso + 'T00:00:00')`, a `split('-')` + `new Date(y, m-1, d)` helper)
+are correct but were each invented locally, and the one place that *didn't*
+hand-roll it was the shared helper every call site trusted (`decisions.md § 607`).
+
+When you must parse inline, `T00:00:00` (no `Z`) is the shortest correct form.
+Never format a `date` column with a bare `new Date(iso)`.
+
+Timezone-dependent behaviour is invisible under the e2e suite's global
+`timezoneId: 'UTC'`, so a test for this class must set the zone itself —
+`process.env.TZ` per case in a unit test, `test.use({ timezoneId })` in
+Playwright — and must be confirmed to fail against the unfixed code.
 
 ## Docs hygiene
 
@@ -1138,7 +2076,7 @@ Every non-trivial dev change goes through three gates before it's "done." Skippi
 3. **End-to-end tests — web and backend only.**
    - **Web:** Playwright spec in [`apps/web/tests-e2e/`](../../apps/web/tests-e2e). Smoke + security + data-flow split. Sign-in / cross-user isolation / privacy clipping / CRUD round-trips are the load-bearing categories. Don't add an e2e test for a pure helper — that belongs as a unit test.
    - **Backend:** pgtap in [`apps/backend/supabase/tests/`](../../apps/backend/supabase/tests) for RLS / SECURITY DEFINER / trigger / view contracts; Deno tests next to the Edge Function for security-critical helpers (HMAC, replay window, identity validation, tier transition). Inline DO-blocks in `seed.sql` are fine for SECURITY DEFINER + `vault.*` paths that need the same `request.jwt.claim.*` simulation.
-   - **Mobile / watch:** **no e2e equivalent** — Flutter `integration_test` is too slow + flaky on CI and the existing widget tests + cross-platform fixture tests already cover the high-blast paths. The honest discussion is in [testing.md § What's not covered](../testing/testing.md#whats-not-covered-honest).
+   - **Mobile / watch:** **no per-change e2e requirement.** The widget tests and cross-platform fixture tests cover the high-blast paths. The phones do have an on-device `integration_test/` smoke ([decisions § 1820](decisions.md)), but it runs on a simulator or emulator, not in CI, so a change is not expected to add a case to it. A change to a screen that smoke drives (onboarding, the bottom nav) must keep it passing, and the edit must land on both twins. The honest discussion is in [testing.md § What's not covered](../testing/testing.md#whats-not-covered-honest).
 
 Use the `/check` command to run review + test-gap-checker + doc-hygiene-checker in parallel against the working diff. It reports gaps; the human decides what to apply. The `test-gap-checker` agent walks the diff, classifies each modified file, and flags missing test surface — it doesn't write tests, it just makes the gap visible.
 
@@ -1146,7 +2084,25 @@ When a Playwright / pgtap test surfaces a real bug in the app code, fix the bug 
 
 **The same-commit rule.** Tests for a piece of work go in the **same commit** as the piece — not a follow-up commit, not "I'll add tests next session." A bug fix lands with the pinning test in the same commit (the test is the bug's headstone — without it, the next regression slips through silently). A new module lands with its unit tests in the same commit. A new web route lands with at least one Playwright e2e in the same commit.
 
+**A new `handler_envelope.test.ts` case lands with the mutation that kills it.** The three mutation guards (`check_pgtap_refusal_assertions.mjs`, `check_edge_function_test_vacuity.mjs`, `check_served_envelope_mutations.mjs`) all derive their population, so a new pgtap refusal or a new Deno unit case is measured the moment it exists. The served-host one cannot: its operator is a table of named source edits, so it enforces coverage instead — a case the baseline ran that no mutation claims **fails the build**, and so does a mutation naming a case that no longer exists. Adding a case to that file therefore means adding the entry in `apps/backend/scripts/check_served_envelope_mutations.mjs` that opens the gate the case names, in the same change. That is the point rather than the friction: the entry is where you find out whether the assertion discriminates, and three of the file's cases turned out not to ([decisions § 815](decisions.md)).
+
+**A test waits on a condition, never on a duration.** A fixed sleep, a fixed number of `pump`s, or a bounded loop that silently falls through when its deadline expires are all the same defect: the test is guessing how long some async work takes, so it passes on a developer machine and fails on a loaded CI runner. Wait on the observable thing instead — the future the trigger hands back, the row the save writes, the widget the state change mounts — with a deadline whose only job is to turn a hang into a named failure. On mobile that is `pumpUntil` / `holdFinish` in `apps/mobile_android/test/pump_until.dart`; on web, Playwright's auto-waiting `expect` rather than `waitForTimeout`. Never widen a timeout to make a test pass — that is the same rule as "don't inflate a timeout or a retry to hide a bug", applied to the harness. The exception is a delay that *models elapsed time* (a debounce window, a throttle, a signal blackout, a hanging fetcher proving a `.timeout()` fires): there the duration is the test's subject. See [decisions.md § 715](decisions.md).
+
 **When a test genuinely isn't viable** (pure docs, runbook updates, infra blocked on credentials, orchestration code that pulls in SvelteKit virtual imports / Supabase / native plugins and would need heavyweight DI to unit-test), say so explicitly in the commit message — `no unit test viable; e2e covers it` is fine, silence isn't. Future you (and future code-reviewer agents) will read the message and either accept the trade-off or argue with it; either way the reasoning is recorded.
+
+## Every compilable file belongs to a tsc root, and each package root guards its own coverage
+
+TypeScript does **not** merge `include` across `extends`. A tree therefore belongs to no program until somebody says so, and a plain-JavaScript file in a program with `checkJs` off is read and asserted about by nothing. That combination is how the Playwright tree ([decisions § 749](decisions.md)), then `apps/web/scripts/` + eight production Lambda handlers + the service worker ([§ 752](decisions.md)), then all 35 of the repo's own guard scripts + the CloudFront Function at the edge ([§ 757](decisions.md)) each sat outside every typecheck for as long as they had existed.
+
+The rule, in three parts:
+
+1. **A new tree gets a root, not a widened `include`.** Widening an existing root means pasting a generated list (SvelteKit's) into a committed file and re-pasting it whenever the generator changes, which goes stale silently. A separate `tsconfig.<thing>.json` that `extends` the shared strictness base is the durable shape. Some trees *cannot* share a program at all — a service worker's `WebWorker` lib and `DOM` both declare `Event`; a CloudFront Function's runtime has no `Promise` — and for those the separate root is what makes the check mean anything.
+2. **Declare `types` explicitly.** The automatic type-root scan does not fire under this config chain and `moduleResolution: bundler` skips `node:`-prefixed specifiers, so a Node-side root without `"types": ["node"]` reads every `process` as an unresolved name — and one that appears to work is usually borrowing a `/// <reference types="node" />` from a dependency, one bump away from vanishing.
+3. **Each package root carries a coverage guard, and the guard names no tree.** It reads the `tsconfig*.json` files beside it, resolves each root's effective `include` by following `extends` until one declares it, and requires every compilable file git reports in its scope to match one — so a root added later counts the moment it exists and a tree added later is uncovered the moment it appears. Two guards exist today (`apps/web/scripts/tsconfig_coverage.test.mjs` and `scripts/tsconfig_coverage.test.mjs`) because one cannot state the other's coverage: the first must resolve SvelteKit's *generated* config and so needs a `svelte-kit sync`, the second must run against a bare checkout. Where two guards divide a repo between them, **each asserts the other still exists** — the seam is the part that opens silently. A tree a `tsc` root genuinely cannot read (the Deno Edge Functions, whose `npm:` / `jsr:` / `https:` specifiers tsc cannot resolve) is exempted *by derivation from that toolchain's own config file*, never by a hardcoded path, and the exemption names the lane that does cover it — see 4.
+
+4. **A tree with its own compiler gets its own lane and its own coverage guard, and that guard derives the file set from the lane.** The Edge Functions are the case: `deno check`, not `tsc`, so there is no root to add them to ([decisions § 762](decisions.md)). The lane is a CI step whose command *derives* what it checks (`files=$(find … -name '*.ts')`), never a list of paths — the sibling `deno test` step in the same job was once three hardcoded paths and silently missed four `*.test.ts` files added afterwards. The guard then does not restate the file set either: it reads the workflow, lifts that step's own expression out of it, runs it, and compares the result against every compilable file git reports under the tree, so the two cannot disagree. Check the tests too. A test that does not typecheck is as free to assert something impossible as any other module, and the first run over the Edge Functions found one that was.
+
+Every root is reachable as an npm script and runs in CI; the guard asserts both, because a typecheck nothing runs is not a typecheck. Bringing a tree in for the first time is a **defect hunt, not a formatting pass**: across § 752, § 757 and § 762 the majority of the error count was one diagnostic (an unannotated parameter, a missing `@returns {never}`) and the residue was real — dead config silently ignored on every build, an unvalidated env var that would 404 the whole site, and ten CI guards that could pass vacuously, throw instead of reporting, or not see the very thing they existed to police. Fix those; never reach for `// @ts-ignore`, `any`, or a loosened option. And read a zero as a question rather than an answer: the one Edge Function reporting no errors before § 762 was the one whose thirteen client parameters were annotated `SupabaseClient` — that is `SupabaseClient<any>` — so it was the least-checked file in the tier and looked like the best-typed one.
 
 ## Strava integration log keys
 
@@ -1187,6 +2143,154 @@ When you fix an audit, flip each finding to `[x]` (with the commit hash) in its
 with a reason (promote durable ones to `roadmap.md` / `followups.md`); and
 delete a file once every finding is resolved or its references have gone stale.
 Full lifecycle: [`reviews/README.md`](../../reviews/README.md).
+
+## Doc checkboxes — three states, and a partial box names where the rest is tracked
+
+Surveys of open work are built by grepping `- [ ]`. That instrument sees two of
+the three states this repo actually writes, so every `- [~]` is invisible to it:
+issue #789 was assembled that way and missed the category whole. Until now the
+marker also had no stated meaning outside `reviews/`, where
+[`reviews/README.md`](../../reviews/README.md) defines it as *deferred* — close
+to the opposite of the "built, not yet live" sense the docs tree had adopted.
+`docs/custom_watch/roadmap.md` read it a third way again, and one line there
+carried `[~]` while its neighbour, in the same build state, carried `[ ]` under
+that file's own bench-verification rule.
+
+<!-- doc-checkbox-states -->
+
+- `[ ]` open — none of it has shipped
+- `[x]` done — all of it has shipped, and nothing is holding it back
+- `[~]` partial — some has shipped and some has not, which includes a feature
+  whose code is merged but which no user can reach yet: an unset credential, a
+  flag defaulting off, a sign-off still owed. Say in the bullet which half is
+  which, and link the file tracking the open half
+
+<!-- /doc-checkbox-states -->
+
+There is no fourth state. `scripts/check_doc_checkboxes.mjs` reads the block
+above rather than restating it, so a new marker has to be documented here before
+it can appear in a doc, and it holds `reviews/README.md` to the same *set* of
+markers — the two describe different meanings on purpose, but a state added to
+one belongs in the other.
+
+The link is what keeps the category reachable. A `[~]` links
+[`followups.md`](../product/followups.md) or
+[`roadmap.md`](../product/roadmap.md), because those are the files a survey
+reads, and the open half has to exist there as an ordinary `- [ ]` box that a
+grep can find. This is the rule `reviews/README.md` § 2 already states for a
+deferred finding, applied to the tree the surveys walk. A document that is a
+dated snapshot rather than a live list says so with `<!-- doc-checkbox-frozen -->`
+and is exempt from the link — [`followups_archive.md`](../product/followups_archive.md)
+is a verbatim capture of the day it was taken, and rewriting its boxes to satisfy
+a rule written afterwards would destroy the one thing it is for. That
+declaration lives in the file it describes, so the guard carries no list of
+exceptions.
+
+## A checkbox is ticked against the merged tree, not against one lane's worktree
+
+A parallel round runs several lanes in separate worktrees, each of which can see
+only its own. That produces a specific, recurring, *structural* miss: lane A
+files a `- [ ]` for something it cannot take because the owning tree is lane B's,
+lane B fixes exactly that thing, and nobody ticks the box — B never saw the
+filing, and A's tree does not contain the fix. Both lanes behaved correctly. In
+round 43 two of one lane's five assigned items were already satisfied by the
+commit the lane was branched from, landed by a sibling in the previous round's
+own PR; the boxes were still open because a lane can only tick what it can see.
+
+So the tick is not a lane's obligation. **Whoever integrates the round re-reads
+every `- [ ]` the round's own branches touched or filed against, checks it
+against the MERGED tree, and ticks the ones the merged tree already satisfies.**
+The check is cheap because the population is bounded: the boxes each lane's
+report claims, plus the boxes each lane filed. A lane that finds its assigned
+item already done says so in its report rather than deleting the box, so the
+integrator has the list.
+
+Two related passes belong to the same moment, for the same reason:
+
+- **The census is reconciled LAST.** Per-file test counts in
+  [`test_inventory.md`](../testing/test_inventory.md) move under several lanes at
+  once, so a lane that recomputes them conflicts with every other lane and
+  measures a tree that no longer exists by the time the round lands. Each lane
+  reports the recompute command for any count it moved;
+  `scripts/check_test_inventory_counts.mjs` then re-derives all of them on the
+  merged tree in one pass.
+- **A count a lane states is stated with the command that produced it**, so
+  reconciliation is arithmetic rather than archaeology. "Wear OS is now 774
+  across 75" is worth less than the `find`/`grep` that says so, because only the
+  second survives another lane also adding a test.
+
+## A lane's temporary files live in its own scratchpad subdirectory, and a restore is a `git checkout`
+
+The harness hands one scratchpad path per *session*, and a subagent inherits the
+spawning session's path unchanged — including one started with
+`isolation: "worktree"`, which separates the tree and the index and not this.
+So every lane of a fan-out resolves the same directory, and a lane that writes a
+bare filename there is writing somewhere a sibling will write too. Each lane
+gets `<scratchpad>/<lane-slug>/` and keeps everything under it; the command that
+fans the lanes out names each lane's subdirectory in that lane's own prompt,
+because a lane cannot pick a name that is unique against lanes it cannot see. A
+fixed path in `/tmp` is the same defect one scope wider — that directory is
+shared by every session on the machine, not merely every lane of one round.
+
+**A file mutated to test something is restored with `git checkout HEAD -- <path>`,
+never a `.bak` copy.** The save/restore pair is what actually did the damage:
+`cp x x.bak` collided with a sibling lane's file of that name, the interactive
+`cp -i` alias declined to overwrite it and said nothing, and the restore copied
+THAT lane's file into this worktree, where it would have been committed by
+anyone who did not diff first. git already holds every committed byte, so the
+save half buys nothing and the collision has nowhere left to happen — which is a
+stronger property than giving the `.bak` a private directory to sit in. When the
+change you need back is uncommitted, write the patch to your own subdirectory
+(`git diff -- <path> > <scratchpad>/<lane-slug>/x.patch`) and `git apply` it
+afterwards.
+
+`apps/web/src/lib/fanout_scratchpad_guard.test.ts` derives the fan-out commands
+from their own bodies rather than listing them, so a new one is covered the day
+it is written.
+
+## A merge gate and an agent name each have exactly one definition
+
+Two invariants about this repo's own tooling, both guarded in `apps/web/src/lib/ci_workflow_guards.test.ts` because both fail *green*:
+
+- **Only `ci.yml` may declare a job named `CI gate`.** That job name is the required status check on `main`. GitHub does not require every check sharing a name to pass, so a second, trivially-passing emitter can satisfy branch protection while the real jobs are still queued — observed on #457, removed by #577. If `ci.yml` ever needs to skip work on a docs-only diff, skip the heavy *jobs* and let the gate job still report from `ci.yml`.
+- **An agent's `name:` is unique across `.claude/agents/**`.** Claude resolves a subagent by that frontmatter name, never by path, so two files declaring one name are two definitions of one agent and which answers is unpredictable. Putting a copy in a different directory does not separate them.
+
+Both have been breached by an automated sync from the `templates` repo, which is additive by path and therefore blind to a name it collides with, so neither rule can rely on review alone.
+
+## A revoke names every channel the grantee can reach the object through
+
+A `REVOKE` is not a statement about a role, it is a statement about one **entry** in an ACL, and Postgres admits a role through the broadest entry it holds. So a revoke that names one channel while the role holds another withholds nothing, reports success, and leaves no trace in the catalogue for a state assertion to find later — the statement is the only place the intent was ever legible. This has now shipped twice, on two object classes.
+
+- **Columns.** `revoke select (col) on t from anon` is a no-op while `anon` holds table-level SELECT, because `has_column_privilege` answers off the broader grant ([decisions § 781](decisions.md)). The prescription is the opposite order: revoke the table-level privilege, then `grant select (…)` the columns the client may read.
+- **Functions.** `revoke execute on function f() from public` withholds `anon` on a workstation CLI image and **nothing** on the CI and Cloud image, where Supabase's `alter default privileges` hands every new `public` function an EXECUTE grant to `anon`, `authenticated` and `service_role` **by name**. `revoke ... from anon` is the no-op on the other image. Neither single-grantee form is portable, so the house form names both — `revoke execute on function public.f(args) from public, anon;` — and adds `authenticated` when no client role should hold it at all ([decisions § 799](decisions.md), [§ 800](decisions.md), [§ 827](decisions.md)).
+
+Three rules follow, and they generalise past these two cases:
+
+- **`drop function` / `drop table` takes the ACL with it.** A signature change re-issues the image default, so any migration that drops and recreates must re-emit its `revoke` / `grant` pair or a withholding decision is silently reverted. No migration is wrong on its own words when this happens, which is why a text replay cannot catch it.
+- **A statement guard and a state guard are different guards, and a no-op revoke needs both.** The statement guard (`check_migration_column_revoke_noop.mjs`, `check_migration_function_revoke_noop.mjs`) replays the migration set in version order and reports a revoke whose other channel is still at its default at the end — so a repair is a later migration rather than an edit to the guard, and neither carries an allowlist. The state guard is a pgtap catalogue assertion (`anon_execute_contract_test.sql`, `column_grant_lockdown_registry_test.sql`) that answers the question the statement guard cannot: *is the object actually closed*, including for an object nobody ever wrote a revoke for. Write both, or the class reopens through whichever half you skipped.
+- **A privilege change reaches every surface that exercises the privilege.** Closing an ACL moves the refusal outward: a body that used to return null on a null `auth.uid()` now raises `42501` at the grant, so a test asserting the inner answer breaks. pgtap is not the whole search space — grep the function names across `tests-e2e/` too.
+
+Before withholding, read the **reference graph**, not just the call sites. A SECURITY INVOKER body and an RLS policy expression are both privilege-checked against the *querying* role, so a function named by a policy `to public` on a table `anon` can read must keep its grant or an anonymous read turns into `42501` ([decisions § 746](decisions.md)). `is_challenge_visible` is the live example.
+
+## A guard parses its input, or refuses it — it never pattern-matches a language
+
+A CI guard's whole value is that its verdict is true, so a guard that reads its input approximately is worse than no guard: it is a green tick over text nobody looked at. Four of them were found doing exactly that ([decisions § 770](decisions.md), after [§ 757](decisions.md)), and the repair is the same four rules every time.
+
+- **A delimiter that can be quoted, nested or escaped is not a splitter.** `split(';')` over SQL fragments every `$$` body — 3441 real statements became 7366 pieces across the committed migrations — and a `--` eaten before anything knew whether it opened a comment swallowed a statement's own terminator. Lex the language (`apps/backend/scripts/sql_lex.mjs` does it for Postgres, `scripts/markdown_lines.mjs` for the Markdown registries) or do not claim to read it. Markdown's version of this is that a table row's wrapping pipes are BOTH optional, so `line.startsWith('|')` is not a row detector — GFM's rule is stateful and a row written without one renders identically ([decisions § 774](decisions.md), [§ 779](decisions.md)).
+- **Ask the tool that already knows.** git knows which files a diff ADDED (`--diff-filter=A`); inferring it from a `@@ … +1` hunk header was wrong 22 times in 28. The same goes for a version a lockfile resolves, a job list a workflow declares, a path a `package.json` names.
+- **Two facts in the same file are not two facts in the same scope.** A cache key belongs to its job, a `NOT VALID` to its action, an `env:` to its file. Matching per file because that is what a `readFileSync` hands you produces a verdict about a pairing that does not exist.
+- **Input the guard cannot read is refused, loudly, naming the file.** Never consumed to end of input, never caught into an empty result, never skipped. A guard that reports a clean tree over something it failed to parse is the failure mode all three rules above collapse into.
+- **A filter that routes around a lexer's limitation is a scope reduction, and it comes out the day the limitation does.** `check_watch_wire_vectors.mjs` read 7 of 521 phone-side test files because the shared Dart lexer could not blank a file whose strings interpolated; the narrowing was honest and documented, and it still meant a golden spelled without a magic byte in it sat outside the sweep with nothing to report it ([decisions § 816](decisions.md)). Fix the reader, then widen the scan back and re-measure — the widening is where the next defect surfaces. And where a lexer is shared, one of its suites reads the WHOLE tree it is meant to handle: `comment_strip.test.mjs` lexes all 1056 committed Dart files on the phone rail in about 0.4 s, which is the only reason the hole cannot reopen silently.
+
+And where a rule genuinely has a blind spot, the guard **reports the blind spot** — `check_ci_diagnostics.mjs` lists the steps it does not ask to diagnose themselves — rather than leaving its boundary in a paragraph someone has to re-derive.
+
+## A secret-scan allowlist names the value, never the file — and the difference has to be tested
+
+`.gitleaks.toml`'s entries are matched on the matched **secret**, not on a path, so the scanner stays live on the source a false positive sits in. That is the file's stated convention and it is load-bearing: an entry keyed on a path is indistinguishable from switching the scanner off over that file, and the file where a fixture lives is exactly the file a real key is most likely to be pasted into next.
+
+**Assert it, don't state it.** The convention had been written down and never checked. The way to check it is to plant a token of a shape gitleaks actually detects — a `ghp_`-shaped one does — in the allowlisted file itself and confirm it still fails while the allowlisted literal beside it does not. Do that when adding an entry; a canary built from a credential the scanner does not recognise in the first place tests nothing and reads as a pass ([decisions.md § 1697](decisions.md)).
+
+**A literal that exists in several languages needs the entry to cover every spelling.** The badge catalogue's i18n keys are dotted in Rust and camelCase in Dart and TypeScript. One regex covered the Rust form, its comment claimed the other two, and 22 findings a week went unread for nineteen weeks on the strength of that claim. When the value is generated or transliterated per language, write the entry against each spelling or against a shape that spans them.
 
 ## Exceptions
 

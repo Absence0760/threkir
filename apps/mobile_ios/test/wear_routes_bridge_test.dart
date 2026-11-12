@@ -87,6 +87,7 @@ void main() {
   });
 
   tearDown(() {
+    WearRoutesBridge().detach();
     channel.uninstall();
     // Restore the production default so a test that intentionally
     // sets a non-zero window can rely on it for its lifetime.
@@ -174,6 +175,38 @@ void main() {
       expect(ids, {'starred-1', 'starred-2'});
     });
 
+    test('never pushes a starred route owned by somebody else', () async {
+      // The same privacy-zone leak the Apple bridge had, and older: the
+      // Wear push has always sent `Route.waypoints` raw. `is_starred` is
+      // per-owner curation the public view drops (20260703_001), so this
+      // row's star belongs to its owner, not to the runner holding this
+      // phone. Asserted on the CHANNEL payload, because the helper being
+      // correct says nothing about whether `_push` calls it.
+      store.currentUserIdProvider = () => 'uid';
+      await store.save(_makeRoute(id: 'mine', isStarred: true));
+      await store.save(
+        Route(
+          id: 'theirs',
+          userId: 'someone-else',
+          name: 'theirs',
+          distanceMetres: 5000,
+          isStarred: true,
+          waypoints: const [
+            Waypoint(lat: 47.37, lng: 8.54),
+            Waypoint(lat: 47.371, lng: 8.541),
+          ],
+        ),
+      );
+
+      WearRoutesBridge().attach(store);
+      await Future<void>.delayed(Duration.zero);
+
+      final payload = jsonDecode(
+        channel.pushCalls.last['routes_json'] as String,
+      ) as List;
+      expect(payload.map((r) => (r as Map)['id']).toList(), ['mine']);
+    });
+
     test('empty starred list still pushes — lets the watch clear its cache',
         () async {
       // No starred routes; only a plain one.
@@ -251,6 +284,26 @@ void main() {
       expect(channel.pushCalls, hasLength(1),
           reason: 're-attach must remove the prior listener — '
               'otherwise every save triggers two pushes');
+    });
+
+    test('every construction is the same bridge, so the sign-out nudge '
+        'replaces the startup subscription rather than adding a second',
+        () async {
+      // `main.dart` writes `WearRoutesBridge().attach(routeStore)` at
+      // startup and again on sign-out. While each call built a fresh
+      // instance, the second one's `detach()` had nothing to remove and the
+      // startup listener stayed on the store, so every edit after a
+      // sign-out pushed twice.
+      expect(identical(WearRoutesBridge(), WearRoutesBridge()), isTrue);
+
+      WearRoutesBridge().attach(store);
+      WearRoutesBridge().attach(store);
+      await Future<void>.delayed(Duration.zero);
+
+      channel.pushCalls.clear();
+      await store.save(_makeRoute(id: 'r-1', isStarred: true));
+      await Future<void>.delayed(Duration.zero);
+      expect(channel.pushCalls, hasLength(1));
     });
 
     test('attach after detach also fires fresh — both detach + re-attach safe',
@@ -373,14 +426,39 @@ void main() {
     });
 
     test('default maxRoutes is the published constant', () {
-      expect(WearRoutesBridge.kMaxRoutesPerPush, 50,
-          reason: 'changing the cap is a wire-format-adjacent decision; '
-              'update the watch DataLayer 100 KB budget calc if you change it');
+      expect(WearRoutesBridge.kMaxRoutesPerPush, 30,
+          reason: 'the cap is the watch store\'s LocalRouteStore.MAX_ROUTES; '
+              'pushing past it shows routes the watch drops on the next '
+              'restart. scripts/check_shared_constants.mjs reads both rails');
       final routes = [
         for (var i = 0; i < 60; i++) _makeRoute(id: 'r-$i', isStarred: true),
       ];
       final picked = WearRoutesBridge.pickRoutesForWatchPush(routes);
-      expect(picked, hasLength(50));
+      expect(picked, hasLength(30));
+    });
+
+    test('the cap equals the watch store it exists to respect', () {
+      // Divergence 3 of decisions 787: this was 50 here and 30 on the watch,
+      // each file documenting the other's number, and TWO green unit tests
+      // transcribed the two different values. A literal on one rail cannot
+      // detect that; reading the other rail can. The phone follows the
+      // watch, which owns the constraint — a Preferences DataStore rewritten
+      // whole on every save, and a 1.4-inch picker.
+      final kotlin = File(
+          '../watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/'
+          'LocalRouteStore.kt');
+      expect(kotlin.existsSync(), isTrue,
+          reason: 'the watch-side store moved — repoint this guard rather '
+              'than deleting it, or the cap goes back to being two numbers');
+      final m = RegExp(r'const\s+val\s+MAX_ROUTES\s*=\s*(\d+)')
+          .firstMatch(kotlin.readAsStringSync());
+      expect(m, isNotNull,
+          reason: 'MAX_ROUTES is no longer a literal const in '
+              'LocalRouteStore.kt — this guard is reading nothing');
+      expect(WearRoutesBridge.kMaxRoutesPerPush, int.parse(m!.group(1)!),
+          reason: 'a push larger than the watch keeps shows routes in the '
+              'live picker that vanish at the next restart, with nothing '
+              'reported to the runner');
     });
 
     test('mixed starred + plain over the cap honours both filters', () {
@@ -872,7 +950,7 @@ void main() {
       final payload = jsonDecode(
         channel.pushCalls.single['routes_json'] as String,
       ) as List;
-      expect(payload, hasLength(50));
+      expect(payload, hasLength(WearRoutesBridge.kMaxRoutesPerPush));
     });
 
     test('detach mid-burst stops further pushes', () async {
@@ -945,29 +1023,6 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(channel.pushCalls, hasLength(1),
           reason: 'a new bridge instance pushes once on attach');
-    });
-
-    test('two bridge instances pointed at the same store push '
-        'independently', () async {
-      // This shouldn't happen in production (main.dart attaches a
-      // single bridge) but pin the behavior — each bridge has its
-      // own diff cache + lifecycle.
-      await store.save(_makeRoute(id: 'r-1', isStarred: true));
-      final b1 = WearRoutesBridge();
-      final b2 = WearRoutesBridge();
-      b1.attach(store);
-      b2.attach(store);
-      await Future<void>.delayed(Duration.zero);
-      // Both bridges share the same channel mock, so two attaches
-      // = two pushes.
-      expect(channel.pushCalls.length, greaterThanOrEqualTo(2),
-          reason: 'separate bridge instances both push on attach');
-
-      channel.pushCalls.clear();
-      await store.save(_makeRoute(id: 'r-2', isStarred: true));
-      await Future<void>.delayed(Duration.zero);
-      expect(channel.pushCalls.length, greaterThanOrEqualTo(2),
-          reason: 'separate bridges each fire on each save');
     });
   });
 

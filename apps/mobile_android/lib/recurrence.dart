@@ -1,7 +1,10 @@
 // Client-side expansion of the enum-recurrence model used by Phase 2 events.
-// Dart port of apps/web/src/lib/recurrence.ts. The two implementations must
+// Dart port of apps/web/src/lib/social/recurrence.ts. The two implementations must
 // stay in sync so web and Android render the same instance timestamps for a
 // given event row. See docs/architecture/decisions.md #10.
+
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 enum Weekday { mo, tu, we, th, fr, sa, su }
 
@@ -37,26 +40,6 @@ Weekday? weekdayFromCode(String code) {
 String weekdayCode(Weekday w) => _isoCodes[w]!;
 String weekdayLabel(Weekday w) => _weekdayLabels[w]!;
 
-/// DateTime.weekday is 1=Mon..7=Sun. Normalise to our enum.
-Weekday _dartWeekday(DateTime d) {
-  switch (d.weekday) {
-    case DateTime.monday:
-      return Weekday.mo;
-    case DateTime.tuesday:
-      return Weekday.tu;
-    case DateTime.wednesday:
-      return Weekday.we;
-    case DateTime.thursday:
-      return Weekday.th;
-    case DateTime.friday:
-      return Weekday.fr;
-    case DateTime.saturday:
-      return Weekday.sa;
-    default:
-      return Weekday.su;
-  }
-}
-
 RecurrenceFreq? recurrenceFromString(String? s) {
   switch (s) {
     case 'weekly':
@@ -70,21 +53,68 @@ RecurrenceFreq? recurrenceFromString(String? s) {
   }
 }
 
-/// [base] advanced by [months] whole months, clamping the day-of-month to the
-/// target month's last day so a day-31 anchor lands on Feb-28/29 instead of
-/// overflowing into the following month (DateTime(y, 2, 31) → March). [useUtc]
-/// reads + builds in UTC wall-clock so the result is viewer-independent for a
-/// timezoned event (see expandInstances).
-DateTime _addMonthsClamped(DateTime base, int months, bool useUtc) {
-  final total = base.month - 1 + months;
-  final year = base.year + (total ~/ 12);
-  final month = total % 12 + 1;
-  final lastDay = (useUtc ? DateTime.utc(year, month + 1, 0) : DateTime(year, month + 1, 0)).day;
-  final day = base.day < lastDay ? base.day : lastDay;
-  return useUtc
-      ? DateTime.utc(year, month, day, base.hour, base.minute, base.second)
-      : DateTime(year, month, day, base.hour, base.minute, base.second);
+abstract class _Zone {
+  int offset(int ms);
 }
+
+class _UtcZone implements _Zone {
+  const _UtcZone();
+  @override
+  int offset(int ms) => 0;
+}
+
+class _LocalZone implements _Zone {
+  const _LocalZone();
+  @override
+  int offset(int ms) =>
+      DateTime.fromMillisecondsSinceEpoch(ms).timeZoneOffset.inMilliseconds;
+}
+
+class _NamedZone implements _Zone {
+  final tz.Location location;
+  const _NamedZone(this.location);
+  @override
+  int offset(int ms) => location.timeZone(ms).offset.inMilliseconds;
+}
+
+const _day = 86400000;
+
+var _tzReady = false;
+
+/// The zone a series expands in. The tz database is loaded on first use, so
+/// every caller — the app, a background isolate, a test — gets it without an
+/// init step it could forget. A name the database does not know expands in
+/// UTC, as web does when `Intl` rejects it and as the SQL does.
+_Zone _eventZone(String? name) {
+  if (name == null) return const _LocalZone();
+  if (name == 'UTC') return const _UtcZone();
+  if (!_tzReady) {
+    tzdata.initializeTimeZones();
+    _tzReady = true;
+  }
+  try {
+    return _NamedZone(tz.getLocation(name));
+  } on tz.LocationNotFoundException {
+    return const _UtcZone();
+  }
+}
+
+int _floorDiv(int a, int b) => (a - a % b) ~/ b;
+
+/// The instant a local wall-clock names: the earlier of two in a fall-back
+/// overlap, the pre-transition offset (so a later wall time) in a gap.
+int _wallToInstant(_Zone zone, int wall) {
+  final before = zone.offset(wall - _day);
+  final after = zone.offset(wall + _day);
+  int? best;
+  for (final o in [before, after]) {
+    final t = wall - o;
+    if (zone.offset(t) == o && (best == null || t < best)) best = t;
+  }
+  return best ?? wall - before;
+}
+
+int _isoDow(int day) => (day + 3) % 7 + 1;
 
 class EventRecurrence {
   final DateTime startsAt;
@@ -94,10 +124,9 @@ class EventRecurrence {
   final int? count;
 
   /// IANA timezone the event's wall-clock is expressed in (events.timezone,
-  /// migration 20270111_001). When non-null, expandInstances anchors the
-  /// recurrence fields to UTC so every viewer computes the same instant; null
-  /// (legacy rows) keeps the original viewer-local stamping. See the comment
-  /// on [expandInstances].
+  /// migration 20270111_001). When non-null the series expands on that zone's
+  /// wall-clock, identically for every viewer; null (legacy rows) expands in
+  /// the device's zone. See [expandInstances].
   final String? timezone;
 
   const EventRecurrence({
@@ -114,18 +143,26 @@ class EventRecurrence {
 /// `[startsAt]` for non-recurring events if it's in-window, else `[]`.
 ///
 /// A recurring instance's start is its per-occurrence capacity key
-/// (20261018_001) and live-race arm key — every viewer MUST compute the
-/// IDENTICAL instant, or two spectators in different zones RSVP against
-/// different keys and a cross-TZ viewer sees a live race as "not armed". The
-/// wall-clock the organiser meant is fixed in the EVENT's zone, not the
-/// viewer's. The old `.toLocal()` + local-field stamping built the instant in
-/// the VIEWER's zone, so it drifted by the viewer-vs-event offset. When the
-/// event carries a timezone (e.timezone, 20270111_001) we read + stamp the
-/// fields in UTC — a zone-independent anchor identical on every viewer and
-/// both platforms (the server's discovery filter likewise normalises via `at
-/// time zone`). Legacy rows with no timezone keep the original local-zone
-/// stamping so their already-placed RSVPs don't shift. Mirrors
-/// apps/web/src/lib/social/recurrence.ts — keep the two in lockstep.
+/// (20261018_001) and live-race arm key, so every viewer must compute the
+/// identical instant. An occurrence is a LOCAL date in the event's own zone: a
+/// weekday in `byday` (else startsAt's local weekday), biweekly counted in
+/// local weeks from the local Monday of startsAt, monthly on startsAt's local
+/// day-of-month clamped to the month's end, stamped at startsAt's local time
+/// of day. A wall-clock inside a spring-forward gap moves forward by the gap;
+/// one inside a fall-back overlap takes the EARLIER instant (RFC 5545). The
+/// occurrence on startsAt's own local date is startsAt, to the second. A
+/// legacy series with no timezone expands in the DEVICE's zone, as it always
+/// has. Mirrors apps/web/src/lib/social/recurrence.ts and the SQL
+/// private.event_occurrences / private.is_event_occurrence (decisions § 1918).
+///
+/// A timezoned instance is a UTC `DateTime`; a legacy one is a LOCAL
+/// `DateTime` naming the same absolute instant web's `new Date(...)` does.
+/// That stops being fine at SERIALISATION, because `toIso8601String()` writes
+/// no zone designator for a local `DateTime` where JS's `toISOString()` always
+/// emits `Z` — so the wire form is normalised at the boundary that owns it
+/// (`instanceStartKey` in `api_client`), not here (decisions § 1343), and
+/// enforced by `test/instance_start_wire_guard_test.dart` over the whole of
+/// `lib/` (decisions § 1379).
 List<DateTime> expandInstances(
   EventRecurrence e,
   DateTime from,
@@ -137,27 +174,53 @@ List<DateTime> expandInstances(
         ? [e.startsAt]
         : [];
   }
-  final useUtc = e.timezone != null;
+  final zone = _eventZone(e.timezone);
+  final asUtc = e.timezone != null;
+  DateTime instant(int ms) => DateTime.fromMillisecondsSinceEpoch(ms, isUtc: asUtc);
   final hardCap = e.count ?? 1 << 30;
   final results = <DateTime>[];
+  // Every instant is rebuilt from whole seconds, so a startsAt carrying a
+  // sub-second part is compared, and stands as its own first occurrence, at
+  // that resolution. `%` is floor-based for a positive divisor, so a pre-epoch
+  // startsAt truncates downward too.
+  final startSecond = e.startsAt.millisecondsSinceEpoch -
+      e.startsAt.millisecondsSinceEpoch % 1000;
+  final startLocal = startSecond + zone.offset(startSecond);
+  final startDay = _floorDiv(startLocal, _day);
+  final timeOfDay = startLocal - startDay * _day;
+  int stamp(int day) =>
+      day == startDay ? startSecond : _wallToInstant(zone, day * _day + timeOfDay);
+  int localDay(DateTime t) {
+    final ms = t.millisecondsSinceEpoch;
+    return _floorDiv(ms + zone.offset(ms), _day);
+  }
 
+  // The walk always starts at startsAt (occurrences before [from] still count
+  // toward `count`), so its budget has to reach the far end of the requested
+  // window, not [max] periods past the start.
+  final scanEnd = (e.until != null && e.until!.isBefore(to)) ? e.until! : to;
+
+  var produced = 0;
   if (e.freq == RecurrenceFreq.monthly) {
-    // Read the anchor in the chosen clock so day-of-month + time-of-day match
-    // the organiser's intended wall-clock (UTC) or the viewer's (legacy local).
-    final base = useUtc ? e.startsAt.toUtc() : e.startsAt;
-    var produced = 0;
+    // Each instance is `i` whole months from start with the day clamped to the
+    // target month's last day (Jan-31 → Feb-28/29). Stepping a running cursor
+    // would let a clamp permanently shrink the day-of-month.
+    final s = DateTime.fromMillisecondsSinceEpoch(startDay * _day, isUtc: true);
+    final end = DateTime.fromMillisecondsSinceEpoch(localDay(scanEnd) * _day, isUtc: true);
+    final monthBudget = (end.year - s.year) * 12 + (end.month - s.month) + 1;
     for (var i = 0; produced < hardCap; i++) {
-      if (i >= max * 12) break;
-      // Anchor on startsAt's day-of-month and step `i` whole months from it,
-      // clamping to the target month's last day (Jan-31 → Feb-28/29). Stepping
-      // a running cursor instead would let a clamp permanently shrink the
-      // day-of-month (Jan-31 → Feb-28 → Mar-28), drifting off the intended day.
-      final cursor = _addMonthsClamped(base, i, useUtc);
+      if (i > monthBudget) break;
+      final total = s.month - 1 + i;
+      final year = s.year + _floorDiv(total, 12);
+      final month = total % 12 + 1;
+      final lastDay = DateTime.utc(year, month + 1, 0).day;
+      final day = DateTime.utc(year, month, s.day < lastDay ? s.day : lastDay)
+              .millisecondsSinceEpoch ~/
+          _day;
+      final cursor = instant(stamp(day));
       if (e.until != null && cursor.isAfter(e.until!)) break;
       // count caps TOTAL occurrences from startsAt, not the ones inside
-      // [from, to]. Counting only in-window occurrences let a count-limited
-      // series resurrect phantom instances past its real end when viewed after
-      // it had started (from = now > startsAt).
+      // [from, to].
       produced++;
       if (cursor.isAfter(to)) break;
       if (!cursor.isBefore(from)) {
@@ -168,70 +231,41 @@ List<DateTime> expandInstances(
     return results;
   }
 
-  final stepDays = e.freq == RecurrenceFreq.biweekly ? 14 : 7;
-  // Anchor on the Monday of startsAt's week so weekIndex * 7 == elapsed weeks.
-  // Must match the web twin's Monday anchor (recurrence.ts: (getDay()+6)%7) —
-  // a Sunday anchor here disagreed with web on which calendar weeks are "even"
-  // for biweekly events whose byday set crosses the weekend, producing
-  // different instance dates on the two platforms. `weekday - 1` (Dart weekday
-  // is 1=Mon..7=Sun) is the exact offset web computes. For a timezoned event
-  // the date fields are read in UTC (viewer-independent); legacy rows convert
-  // to local so the fields match the user's wall-clock day.
-  final start = useUtc ? e.startsAt.toUtc() : e.startsAt.toLocal();
+  final stepWeeks = e.freq == RecurrenceFreq.biweekly ? 2 : 1;
   final byday = (e.byday == null || e.byday!.isEmpty)
-      ? [_dartWeekday(start)]
+      ? [weekdayChoices[_isoDow(startDay) - 1]]
       : e.byday!;
-  final startDayOnly = useUtc
-      ? DateTime.utc(start.year, start.month, start.day)
-      : DateTime(start.year, start.month, start.day);
-  final anchor = startDayOnly.subtract(Duration(days: start.weekday - 1));
+  // Weeks are counted from the local Monday of startsAt's week, matching web
+  // and the SQL. The cursor is a civil day number, so a DST change can never
+  // repeat or skip a calendar day.
+  final anchor = startDay - (_isoDow(startDay) - 1);
+  final lastScanDay = localDay(scanEnd) + 1;
+  for (var day = startDay; day <= lastScanDay; day++) {
+    if (_floorDiv(day - anchor, 7) % stepWeeks != 0) continue;
+    if (!byday.contains(weekdayChoices[_isoDow(day) - 1])) continue;
 
-  var produced = 0;
-  for (var dayOffset = 0; dayOffset < max * stepDays * 7; dayOffset++) {
-    final d = anchor.add(Duration(days: dayOffset));
-    if (d.isBefore(startDayOnly)) {
-      continue;
-    }
-    // Early break — `d` is the candidate day at midnight (in the chosen
-    // clock), the actual instance is `stamped` (at startsAt's time-of-day) up
-    // to a day later in absolute time. Once `d` is more than a day past the
-    // boundary, no future `stamped` can fall before it.
-    if (e.until != null && d.isAfter(e.until!.add(const Duration(days: 1)))) {
-      break;
-    }
-    if (d.isAfter(to.add(const Duration(days: 1)))) break;
-
-    final weekIndex = dayOffset ~/ 7;
-    if (weekIndex % (stepDays ~/ 7) != 0) continue;
-    if (!byday.contains(_dartWeekday(d))) continue;
-
-    final stamped = useUtc
-        ? DateTime.utc(d.year, d.month, d.day, start.hour, start.minute, start.second)
-        : DateTime(d.year, d.month, d.day, start.hour, start.minute, start.second);
-    // Precise boundary checks against the absolute instance time.
-    // Comparing `d` directly against `until` was zone-dependent: a UTC
-    // host saw `d == until` so the loop didn't break, then stamped at
-    // startsAt's hour-of-day landed past until; an EDT host saw `d`
-    // already after until and broke a day early. Compare stamped.
+    final stamped = instant(stamp(day));
     if (e.until != null && stamped.isAfter(e.until!)) continue;
     if (stamped.isAfter(to)) continue;
-    if (stamped.isBefore(e.startsAt)) continue;
+    if (stamped.millisecondsSinceEpoch < startSecond) continue;
 
-    // Count every real occurrence toward count — not just the in-window ones —
-    // so a count-limited series stops at its true end even when the window
-    // starts after startsAt (see the monthly branch above).
+    // Every real occurrence counts toward count, in-window or not, and the cap
+    // is checked BEFORE counting so a stored count of 0 yields no occurrence
+    // (decisions § 1910).
+    if (produced >= hardCap) break;
     produced++;
     if (!stamped.isBefore(from)) {
       results.add(stamped);
       if (results.length >= max) break;
     }
-    if (produced >= hardCap) break;
   }
   return results;
 }
 
 DateTime? nextInstanceAfter(EventRecurrence e, [DateTime? after]) {
   final start = after ?? DateTime.now();
+  // elapsed-time: a ten-year search horizon, mirroring web's
+  // `after.getTime() + 10 * 365 * 24 * 3600 * 1000`.
   final tenYears = start.add(const Duration(days: 365 * 10));
   final xs = expandInstances(e, start, tenYears, max: 1);
   return xs.isEmpty ? null : xs.first;

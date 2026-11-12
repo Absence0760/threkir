@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- Prerender default only. The web app is statically prerendered with no
      per-request SSR (adapter-static), so lang/dir are baked as en/ltr at
-     build time and then updated client-side on first mount by the i18n
-     runtime ($lib/i18n/store.svelte initLocale → document.documentElement),
+     build time and then updated client-side before the first render by the
+     i18n runtime (#lib/i18n/store.svelte loadRouteCatalogues → document.documentElement),
      mirroring the theme + unit signals. dir is the single RTL switch-point:
      the app shell uses CSS logical properties so flipping it to "rtl"
      mirrors the frame with no further plumbing. audit/i18n-readiness W-2. -->
@@ -14,7 +14,7 @@
 		     paints the correct default background (and form-control /
 		     scrollbar colours) BEFORE app.css loads. This is the earliest,
 		     CSP-safe mitigation for the dark/auto first-paint flash: the
-		     hash-based CSP (svelte.config.js) forbids a hand-written inline
+		     hash-based CSP (vite.config.ts) forbids a hand-written inline
 		     bootstrap <script>, so this meta is the tool that runs before
 		     paint. The theme reconciles to the persisted [data-theme] on
 		     first mount (settings/theme.ts). -->
@@ -22,20 +22,26 @@
 		<link rel="icon" type="image/png" href="%sveltekit.assets%/favicon.png" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
-		<meta name="theme-color" content="#FE5932" />
+		<meta name="theme-color" content="#C24E24" />
 		<meta name="application-name" content="Threkir" />
 		<meta name="apple-mobile-web-app-title" content="Threkir" />
-		<title>Threkir</title>
+		<!-- No title element here on purpose: a literal in this template is
+		     emitted before the SvelteKit head placeholder below and is
+		     invisible to Svelte's SSR head dedupe, so it followed every page's
+		     own title instead of being replaced by it. The default lives in the
+		     root layout's <svelte:head>. Do not name that placeholder in prose
+		     here: SvelteKit substitutes its FIRST occurrence in the template,
+		     so a mention inside a comment swallows the head. decisions.md
+		     § 1167. -->
 		<!--
-		Material Symbols Outlined: self-hosted via the `material-symbols`
-		npm package, imported from app.css (`@import 'material-symbols/outlined.css'`).
-		Prior shape loaded the font from fonts.googleapis.com /
-		fonts.gstatic.com unconditionally on every page hit, which
-		audit/cookie-consent (May 2026) flagged as a critical ePrivacy
-		Art 5(3) violation: EU users' IPs reached a US sub-processor
-		before the consent banner had rendered. Self-hosting moves the
-		fetch onto our own origin (CloudFront) so no third-party data
-		flow occurs.
+		Material Symbols Outlined: self-hosted, @font-face'd from app.css
+		against a subset built by scripts/gen_web_icon_font.mjs. Prior shape
+		loaded the font from fonts.googleapis.com / fonts.gstatic.com
+		unconditionally on every page hit, which audit/cookie-consent
+		(May 2026) flagged as a critical ePrivacy Art 5(3) violation: EU
+		users' IPs reached a US sub-processor before the consent banner had
+		rendered. Self-hosting moves the fetch onto our own origin
+		(CloudFront) so no third-party data flow occurs.
 		-->
 		%sveltekit.head%
 	</head>

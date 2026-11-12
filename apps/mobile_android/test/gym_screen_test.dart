@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
+import '../lib/backend_timeout.dart';
 import '../lib/gym_prs.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
@@ -18,6 +19,8 @@ import '../lib/screens/routine_library_screen.dart';
 import '../lib/screens/sessions_screen.dart';
 import '../lib/widgets/pending_sync_banner.dart';
 import '../lib/widgets/surface_peer_strip.dart';
+import 'pump_until.dart';
+import 'store_write_watch.dart';
 
 /// No-op so a resumed session screen's `WakelockPlus.enable()` / `.disable()`
 /// don't hit the real pigeon channel (which throws under flutter_test).
@@ -151,30 +154,74 @@ class _RejectingSyncApi extends ApiClient {
   }
 }
 
+/// Online api whose workout fetch succeeds and whose CATALOGUE read fails —
+/// the state the screen has to tell apart from an empty catalogue.
+class _CatalogueDownApi extends ApiClient {
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<List<({Map<String, dynamic> workout, List<Map<String, dynamic>> sets})>>
+      fetchGymWorkoutsWithSets({int limit = 50}) async => const [];
+
+  @override
+  Future<List<ExerciseRow>> fetchExerciseCatalogue() async =>
+      throw Exception('catalogue read failed');
+}
+
+/// The same api with a catalogue read that ANSWERS, and answers empty.
+class _EmptyCatalogueApi extends ApiClient {
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<List<({Map<String, dynamic> workout, List<Map<String, dynamic>> sets})>>
+      fetchGymWorkoutsWithSets({int limit = 50}) async => const [];
+
+  @override
+  Future<List<ExerciseRow>> fetchExerciseCatalogue() async => const [];
+}
+
 /// Real file I/O driven from mount has no completion hook to await, so poll
 /// the observable end-state rather than sleeping a fixed duration (same
 /// pattern as nutrition_screen_test).
+///
+/// [describe] is required for the reason § 723 gives: a deadline that expires
+/// has to name the condition that never held, and one generic string shared
+/// across every call site in a file has given that away.
 Future<void> _pumpUntil(
   WidgetTester tester,
   bool Function() done, {
+  required String describe,
   Duration timeout = const Duration(seconds: 10),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (!done()) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail('timed out after $timeout waiting for the expected state');
-    }
-    await tester
-        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
-    await tester.pump();
-  }
-}
+}) =>
+    pumpUntil(tester, done, describe: describe, timeout: timeout);
+
+/// Sentinel for "leave the draft marker at its well-formed shape" — null is a
+/// value a caller wants to seed, so it cannot double as the default.
+const Object _defaultMarker = Object();
+
+const Map<String, Object?> _draftSnapshot = {
+  'saved_at': '2026-03-01T10:05:00Z',
+  'results': [
+    {
+      'step_index': 0,
+      'status': 'completed',
+      'reps': 5,
+      'weight_kg': 80.0,
+      'rpe': null,
+      'duration_s': null,
+      'distance_m': null,
+    },
+  ],
+};
 
 /// A store pair seeded with an in-flight guided-session draft (one logged
 /// bench set of a two-set routine) plus the routine it came from — the state
 /// a mid-session process kill leaves behind.
 Future<({LocalGymStore store, LocalRoutineStore routines, Directory dir})>
-    _seedDraft(WidgetTester tester, {bool withRoutine = true}) async {
+    _seedDraft(WidgetTester tester,
+        {bool withRoutine = true, Object? draftMarker = _defaultMarker}) async {
   late LocalGymStore store;
   late LocalRoutineStore routines;
   late Directory dir;
@@ -201,20 +248,8 @@ Future<({LocalGymStore store, LocalRoutineStore routines, Directory dir})>
       ],
       metadata: {
         'routine_id': 'routine-1',
-        'gym_session_draft': {
-          'saved_at': '2026-03-01T10:05:00Z',
-          'results': [
-            {
-              'step_index': 0,
-              'status': 'completed',
-              'reps': 5,
-              'weight_kg': 80.0,
-              'rpe': null,
-              'duration_s': null,
-              'distance_m': null,
-            },
-          ],
-        },
+        'gym_session_draft':
+            identical(draftMarker, _defaultMarker) ? _draftSnapshot : draftMarker,
       },
     );
     if (withRoutine) {
@@ -279,6 +314,21 @@ void main() {
         _s('  ', reps: 1), // blank ignored
       ]);
       expect(gymExerciseCount(w), 2);
+    });
+
+    test('gymExerciseCount buckets on the canonical key, not trim+toLowerCase',
+        () {
+      // The row stat has to answer what every keyed surface answers. An
+      // internal whitespace run and a non-breaking space both survive
+      // `trim().toLowerCase()`, so this workout used to read as four
+      // exercises where `gym_workout_summaries` reports one (§ 1248).
+      final w = _w('a', sets: [
+        _s('Bench Press', reps: 5, weight: 100),
+        _s('Bench  Press', reps: 5, weight: 100),
+        _s('bench\u00a0press', reps: 5, weight: 100),
+        _s(' BENCH PRESS ', reps: 5, weight: 100),
+      ]);
+      expect(gymExerciseCount(w), 1);
     });
 
     test('gymPrWorkoutIds: first workout + any later workout that beats it', () {
@@ -377,6 +427,106 @@ void main() {
       expect(out.first, 'Bench Press');
       expect(out, containsAll(['Bench Press', 'Squat', 'Deadlift']));
     });
+
+    test('gymExerciseSuggestions merges spellings the canonical fold merges',
+        () {
+      // The composer's autocomplete is a local re-derivation of what the
+      // server's `gym_exercise_names` answers, so it has to bucket the way
+      // `exercise_key` does. Keyed on `trim().toLowerCase()` the double space
+      // survived, so one lift appeared twice in the list and its use count —
+      // which decides the order — was split between the two entries (§ 1248).
+      final a = _w('a', sets: [
+        _s('Bench  Press', reps: 5, weight: 100),
+        _s('Bench Press', reps: 5, weight: 100),
+        _s('Squat', reps: 5, weight: 140),
+        _s('Squat', reps: 5, weight: 140),
+      ]);
+      final out = gymExerciseSuggestions([a]);
+      expect(out, ['Bench  Press', 'Squat']);
+    });
+  });
+
+  group('GymScreen widget — the catalogue third state', () {
+    /// Mount the screen against [api], open the composer, and report whether
+    /// the browse affordance is offered.
+    ///
+    /// The affordance is the observable half of the flag: the catalogue is
+    /// empty in both cases, and only the screen knows whether that is a fact
+    /// about the catalogue or about the read.
+    Future<bool> browseOffered(WidgetTester tester, ApiClient api) async {
+      final dir = Directory.systemTemp.createTempSync('gym_screen_cat_');
+      final store = LocalGymStore();
+      await store.init(overrideDirectory: dir);
+      try {
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: GymScreen(api: api, store: store),
+        ));
+        await _pumpUntil(
+          tester,
+          () => find.byIcon(Icons.add).evaluate().isNotEmpty,
+          describe: 'the gym screen to finish its mount refresh',
+        );
+        // The mount refresh writes the (empty) server list through the store
+        // from the fake zone, so the real file I/O has to land before the temp
+        // dir is deleted — and `debugWritesSettled` cannot drain a fake-zone
+        // chain link (§ 1093).
+        await pumpUntilStoreWritesSettle(tester);
+        await tester.tap(find.byIcon(Icons.add).first);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        return find.byIcon(Icons.menu_book_outlined).evaluate().isNotEmpty;
+      } finally {
+        dir.deleteSync(recursive: true);
+      }
+    }
+
+    testWidgets('a failed catalogue read leaves the composer able to browse',
+        (tester) async {
+      // The screen used to catch the fetch, debugPrint, and leave `_catalogue`
+      // at `const []` — the one state in which every typed name looks free.
+      expect(await browseOffered(tester, _CatalogueDownApi()), isTrue);
+    });
+
+    testWidgets('a catalogue that answered empty hides the browse affordance',
+        (tester) async {
+      // The other half of the pair: an empty catalogue is a FACT here, so
+      // there is nothing to browse and the affordance is honestly absent.
+      expect(await browseOffered(tester, _EmptyCatalogueApi()), isFalse);
+    });
+  });
+
+  group('GymScreen widget — the add control', () {
+    // The arrival refresh is three sequential round trips, and the one add
+    // control on the screen used to be disabled for the whole of it — an
+    // offline-first write gated behind a read that may never answer.
+    testWidgets('stays usable while the arrival refresh never answers',
+        (tester) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final dir = Directory.systemTemp.createTempSync('gym_screen_add_');
+      final store = LocalGymStore();
+      await store.init(overrideDirectory: dir);
+      try {
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: GymScreen(api: _HangingApi(), store: store),
+        ));
+        await tester.pump();
+        final add = find.byTooltip(l10n.gymLog);
+        expect(add, findsOneWidget);
+        await tester.tap(add);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(l10n.gymEditorNewTitle), findsOneWidget);
+        // And the read is bounded: its client timeout expires instead of
+        // leaving the screen waiting on a request that never answers.
+        await tester.pump(kBackendLoadTimeout + const Duration(seconds: 1));
+      } finally {
+        dir.deleteSync(recursive: true);
+      }
+    });
   });
 
   group('GymScreen widget — offline / no api', () {
@@ -466,7 +616,7 @@ void main() {
       return (store: store, routines: routines, dir: dir);
     }
 
-    testWidgets('names Log + Routines; Records only once a record exists',
+    testWidgets('names Log + Gym routines; Records only once a record exists',
         (tester) async {
       final s = await seed(tester);
       await tester.pumpWidget(_gymScreen(s.store, s.routines));
@@ -476,12 +626,14 @@ void main() {
       expect(strip, findsOneWidget);
       expect(
           find.descendant(of: strip, matching: find.text('Log')), findsOneWidget);
-      expect(find.descendant(of: strip, matching: find.text('Routines')),
+      expect(find.descendant(of: strip, matching: find.text('Gym routines')),
           findsOneWidget);
+      expect(find.descendant(of: strip, matching: find.text('Routines')),
+          findsNothing);
       expect(find.descendant(of: strip, matching: find.text('Records')),
           findsNothing);
       // Signed out, so the server-backed session plans are not offered.
-      expect(find.descendant(of: strip, matching: find.text('Sessions')),
+      expect(find.descendant(of: strip, matching: find.text('Session plans')),
           findsNothing);
     });
 
@@ -499,12 +651,32 @@ void main() {
       expect(find.byType(GymRecordsScreen), findsOneWidget);
     });
 
-    testWidgets('Routines opens the routine library', (tester) async {
+    testWidgets('an un-init()ed routine store hides the Gym routines peer',
+        (tester) async {
+      // A routine store whose init() threw is resident but directoryless, and
+      // every write to it then refuses (decisions § 660). Offering the peer
+      // over one advertises a surface that cannot save a routine.
+      final s = await seed(tester);
+      await tester.pumpWidget(_gymScreen(s.store, LocalRoutineStore()));
+      await tester.pumpAndSettle();
+      expect(
+          find.descendant(
+              of: find.byType(SurfacePeerStrip),
+              matching: find.text('Gym routines')),
+          findsNothing);
+      expect(
+          find.descendant(
+              of: find.byType(SurfacePeerStrip), matching: find.text('Log')),
+          findsOneWidget);
+    });
+
+    testWidgets('Gym routines opens the routine library', (tester) async {
       final s = await seed(tester);
       await tester.pumpWidget(_gymScreen(s.store, s.routines));
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(
-          of: find.byType(SurfacePeerStrip), matching: find.text('Routines')));
+          of: find.byType(SurfacePeerStrip),
+          matching: find.text('Gym routines')));
       await tester.pumpAndSettle();
       expect(find.byType(RoutineLibraryScreen), findsOneWidget);
     });
@@ -523,9 +695,12 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      final sessions = find.descendant(
-          of: find.byType(SurfacePeerStrip), matching: find.text('Sessions'));
+      final strip = find.byType(SurfacePeerStrip);
+      final sessions =
+          find.descendant(of: strip, matching: find.text('Session plans'));
       expect(sessions, findsOneWidget);
+      expect(find.descendant(of: strip, matching: find.text('Sessions')),
+          findsNothing);
       await tester.tap(sessions);
       await tester.pumpAndSettle();
       expect(find.byType(SessionsScreen), findsOneWidget);
@@ -555,6 +730,9 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(SurfacePeerStrip), findsOneWidget);
       expect(find.byType(PendingSyncBanner), findsOneWidget);
+      // The arrival read is bounded now, so let its client timeout expire
+      // rather than leaving the timer pending at teardown.
+      await tester.pump(kBackendLoadTimeout + const Duration(seconds: 1));
     });
   });
 
@@ -576,13 +754,12 @@ void main() {
           home: GymScreen(api: _RejectingSyncApi(), store: store),
         ));
         await _pumpUntil(
-            tester, () => tester.any(find.text("1 change hasn't synced")));
+            tester, () => tester.any(find.text("1 change hasn't synced")),
+            describe: 'the rejected sync to surface the unsynced-count banner');
         expect(find.text('Retry'), findsOneWidget);
         expect(store.hasPending, isTrue);
         // Let the in-flight refresh drain before tearing the temp dir down.
-        await tester.runAsync(
-            () => Future<void>.delayed(const Duration(milliseconds: 100)));
-        await tester.pump();
+        await pumpUntilStoreWritesSettle(tester);
       } finally {
         dir.deleteSync(recursive: true);
       }
@@ -650,6 +827,25 @@ void main() {
       expect(find.text('Workout in progress'), findsNothing);
     });
 
+    // decisions.md § 662: the marker is a draft only when it is a JSON
+    // object. A bare presence check offered a resume the runner's own routine
+    // history — and the RPC behind it — both count as a session performed.
+    testWidgets('a non-object under the draft key surfaces no resume card',
+        (tester) async {
+      for (final marker in <Object?>[<dynamic>[], 'draft', 7, null]) {
+        final s = await _seedDraft(tester, draftMarker: marker);
+        addTearDown(() => s.dir.deleteSync(recursive: true));
+
+        await tester.pumpWidget(_gymScreen(s.store, s.routines));
+        await tester.pump();
+
+        expect(find.text('Workout in progress'), findsNothing,
+            reason: 'marker $marker is not a JSON object, so not a draft');
+        expect(find.text('Bench routine'), findsOneWidget,
+            reason: 'the row still lists as a plain performed workout');
+      }
+    });
+
     testWidgets('no card when the draft routine no longer exists',
         (tester) async {
       final s = await _seedDraft(tester, withRoutine: false);
@@ -684,7 +880,8 @@ void main() {
       await tester.tap(find.text('Finish'));
       // The save banner is the last thing _finishAndSave does, so waiting for
       // it proves the store write it awaited first has landed.
-      await _pumpUntil(tester, () => tester.any(find.text('Workout saved')));
+      await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+          describe: 'the saved banner _finishAndSave shows after its write');
 
       final w = s.store.workouts.single;
       expect(w.sets.length, 2,
@@ -695,8 +892,6 @@ void main() {
           reason: 'finishing must clear the draft marker');
       expect(meta['gym_adherence'], 'completed');
 
-      // Drain the confirmation banner's auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 6));
     });
 
     testWidgets('Save as is keeps the sets and clears the draft marker',
@@ -709,7 +904,8 @@ void main() {
 
       await tester.tap(find.widgetWithText(TextButton, 'Save as is'));
       await _pumpUntil(
-          tester, () => !tester.any(find.text('Workout in progress')));
+          tester, () => !tester.any(find.text('Workout in progress')),
+          describe: 'the in-progress card to clear after "Save as is"');
 
       final w = s.store.workouts.single;
       expect(w.sets.length, 1);
@@ -717,8 +913,6 @@ void main() {
       expect(meta.containsKey('gym_session_draft'), isFalse);
       expect(meta['routine_id'], 'routine-1');
 
-      // Drain the confirmation banner's auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 6));
     });
 
     testWidgets('Discard confirms, then deletes the draft row',
@@ -744,7 +938,8 @@ void main() {
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog), matching: find.text('Discard')));
       await _pumpUntil(
-          tester, () => !tester.any(find.text('Workout in progress')));
+          tester, () => !tester.any(find.text('Workout in progress')),
+          describe: 'the in-progress card to clear after the discard');
 
       expect(s.store.workouts, isEmpty);
     });

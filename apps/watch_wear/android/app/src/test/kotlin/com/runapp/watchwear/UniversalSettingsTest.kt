@@ -50,12 +50,12 @@ class UniversalSettingsTest {
     fun `prefs object with missing default_activity_type returns null`() {
         // Other prefs present but no default_activity_type. Same
         // outcome as no key at all — and same for privacy_default
-        // when only the other field is set. (Pick a key the wrist
-        // doesn't consume — `voice_feedback_enabled` is a phone/web
-        // pref with no wrist reader, so it never lands on
-        // `UniversalSettings`.)
+        // when only the other field is set. (The key picked here used
+        // to be `voice_feedback_enabled`, on the grounds that the
+        // wrist had no reader for it; it has one now, so this uses a
+        // key that genuinely lands nowhere on `UniversalSettings`.)
         val out = parseUniversalSettings(
-            """[{"prefs":{"voice_feedback_enabled":true}}]""",
+            """[{"prefs":{"units_pace_format":"min_per_km"}}]""",
         )
         assertEquals(null, out?.defaultActivityType)
         assertEquals(null, out?.privacyDefault)
@@ -100,9 +100,98 @@ class UniversalSettingsTest {
         assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":true}}]""")?.showCalories)
         assertEquals(true, parseUniversalSettings("""[{"prefs":{"default_activity_type":"run"}}]""")?.showCalories)
         assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":"nonsense"}}]""")?.showCalories)
+        // A stringified boolean is not a boolean. `booleanOrNull` reads the
+        // content without asking whether it was quoted, so `"false"` used to
+        // hide the figure here while web's `!== false` kept showing it — the
+        // same account disagreeing with itself across two surfaces.
+        assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":"false"}}]""")?.showCalories)
+        assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":0}}]""")?.showCalories)
         assertEquals(true, parseUniversalSettings("""[{"prefs":{}}]""")?.showCalories)
         // No settings row at all → default on.
         assertEquals(true, parseUniversalSettings("""[]""")?.showCalories)
+    }
+
+    @Test
+    fun `voice_feedback_enabled silences the wrist only on an explicit false`() {
+        // Until 2026-09 the watch's only gate on spoken cues was
+        // `BuildConfig.ENABLE_TTS`, a BUILD flag — so a shipped watch had
+        // no off switch on any surface the runner owns, and the switch they
+        // DO own (mobile Settings, and the web Recording & voice page, both
+        // writing this key) reached the phone and stopped there.
+        assertEquals(
+            false,
+            parseUniversalSettings("""[{"prefs":{"voice_feedback_enabled":false}}]""")
+                ?.voiceFeedbackEnabled,
+        )
+        // Negative controls: the registry default is ON, so nothing but an
+        // explicit false may mute a runner who never asked for silence —
+        // including a bag written by a build that predates the key, and a
+        // value of the wrong type (which must not be coerced).
+        for (body in listOf(
+            """[{"prefs":{"voice_feedback_enabled":true}}]""",
+            """[{"prefs":{"voice_feedback_enabled":"false"}}]""",
+            """[{"prefs":{"voice_feedback_enabled":0}}]""",
+            """[{"prefs":{"default_activity_type":"run"}}]""",
+            """[{"prefs":{}}]""",
+            """[]""",
+        )) {
+            assertEquals(body, true, parseUniversalSettings(body)?.voiceFeedbackEnabled)
+        }
+    }
+
+    @Test
+    fun `voice_feedback_verbosity is minimal only on the exact token`() {
+        assertEquals(
+            com.runapp.watchwear.workout.VoiceVerbosity.MINIMAL,
+            parseUniversalSettings("""[{"prefs":{"voice_feedback_verbosity":"minimal"}}]""")
+                ?.voiceFeedbackVerbosity,
+        )
+        for (body in listOf(
+            """[{"prefs":{"voice_feedback_verbosity":"full"}}]""",
+            """[{"prefs":{"voice_feedback_verbosity":"Minimal"}}]""",
+            """[{"prefs":{"voice_feedback_verbosity":1}}]""",
+            """[{"prefs":{}}]""",
+            """[]""",
+        )) {
+            assertEquals(
+                body,
+                com.runapp.watchwear.workout.VoiceVerbosity.FULL,
+                parseUniversalSettings(body)?.voiceFeedbackVerbosity,
+            )
+        }
+    }
+
+    @Test
+    fun `the workout_steps voice cue is off only on an explicit false`() {
+        assertEquals(
+            false,
+            parseUniversalSettings("""[{"prefs":{"voice_cue_types":{"workout_steps":false}}}]""")
+                ?.workoutStepCuesEnabled,
+        )
+        // Absent id is ON (the registry's rule), and a wrong type is dropped,
+        // never coerced, like voice_feedback_enabled.
+        for (body in listOf(
+            """[{"prefs":{"voice_cue_types":{"workout_steps":true}}}]""",
+            """[{"prefs":{"voice_cue_types":{"splits":false}}}]""",
+            """[{"prefs":{"voice_cue_types":{"workout_steps":"false"}}}]""",
+            """[{"prefs":{"voice_cue_types":false}}]""",
+            """[{"prefs":{}}]""",
+            """[]""",
+        )) {
+            assertEquals(body, true, parseUniversalSettings(body)?.workoutStepCuesEnabled)
+        }
+    }
+
+    @Test
+    fun `the cue switch and the unit ride the same bag read`() {
+        // One fetch feeds both, and the Apple Watch carries the same pair
+        // over WCSession. A parse that dropped one would leave that wrist
+        // and this one disagreeing about the same account.
+        val s = parseUniversalSettings(
+            """[{"prefs":{"preferred_unit":"mi","voice_feedback_enabled":false}}]""",
+        )
+        assertEquals("mi", s?.preferredUnit)
+        assertEquals(false, s?.voiceFeedbackEnabled)
     }
 
     @Test
@@ -271,13 +360,32 @@ class UniversalSettingsTest {
 
     @Test
     fun `out-of-range resting and max hr are sanitised`() {
-        // resting in [25, 120], max in [100, 240]. Anything outside
+        // resting in [25, 120], max in MAX_HR_BPM_RANGE. Anything outside
         // is treated as a corrupt write and zeroed.
         val out = parseUniversalSettings(
-            """[{"prefs":{"resting_hr_bpm":15,"max_hr_bpm":80}}]""",
+            """[{"prefs":{"resting_hr_bpm":15,"max_hr_bpm":40}}]""",
         )
         assertNull(out?.restingHrBpm)
         assertNull(out?.maxHrBpm)
+    }
+
+    @Test
+    fun `the max hr parse gate is the shared range, not a narrower one of its own`() {
+        // This parse is the only producer of a `UniversalSettings`, so a gate
+        // narrower than `MAX_HR_BPM_RANGE` is not belt-and-braces — it makes
+        // `resolveZoneCutoffs`' own check unreachable over the difference and
+        // silently disagrees with web and the phone about the same stored
+        // number. It read 100..240 against a shared 80..240, which is exactly
+        // the band a beta-blocked masters runner's real max falls in
+        // (decisions § 1303).
+        for (bpm in listOf(MAX_HR_BPM_RANGE.first, 95, MAX_HR_BPM_RANGE.last)) {
+            val out = parseUniversalSettings("""[{"prefs":{"max_hr_bpm":$bpm}}]""")
+            assertEquals("stored $bpm is inside the shared range", bpm, out?.maxHrBpm)
+        }
+        for (bpm in listOf(MAX_HR_BPM_RANGE.first - 1, MAX_HR_BPM_RANGE.last + 1)) {
+            val out = parseUniversalSettings("""[{"prefs":{"max_hr_bpm":$bpm}}]""")
+            assertNull("stored $bpm is outside the shared range", out?.maxHrBpm)
+        }
     }
 
     @Test
@@ -371,8 +479,53 @@ class UniversalSettingsTest {
 
     @Test
     fun `resolveZoneCutoffs returns null when no signal available`() {
-        // Empty bag → no zones to show.
+        // Empty bag → no zones to show. This is the one place the three
+        // hr_zones rails differ on purpose: web and Dart end their ladder at
+        // the legacy 190 cutoffs, the watch shows nothing rather than a
+        // stranger's zones (decisions § 1245).
         val s = UniversalSettings(defaultActivityType = null, privacyDefault = null)
         assertNull(resolveZoneCutoffs(s, 0L))
+    }
+
+    // `max_hr_bpm` is a jsonb prefs key with no CHECK and the web preferences
+    // page writes it as a bare parseInt, so an out-of-range value really does
+    // reach here. Applying it flat gave the same run different zones on the
+    // watch and the phone.
+    @Test
+    fun `resolveZoneCutoffs ignores a max_hr_bpm outside the usable range`() {
+        for (bpm in listOf(300, 79, 0, -1)) {
+            val s = UniversalSettings(
+                defaultActivityType = null,
+                privacyDefault = null,
+                maxHrBpm = bpm,
+            )
+            assertNull(resolveZoneCutoffs(s, 0L))
+        }
+    }
+
+    @Test
+    fun `resolveZoneCutoffs falls through an out-of-range max_hr_bpm to age`() {
+        // Born 1990-01-01, "now" 2026-01-01 → 36 → Tanaka 183.
+        val s = UniversalSettings(
+            defaultActivityType = null,
+            privacyDefault = null,
+            maxHrBpm = 300,
+            dateOfBirth = "1990-01-01",
+        )
+        val now2026 = java.time.LocalDate.of(2026, 1, 1)
+            .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        assertEquals(listOf(110, 128, 146, 165, 183), resolveZoneCutoffs(s, now2026))
+    }
+
+    @Test
+    fun `resolveZoneCutoffs accepts both ends of the usable range`() {
+        for (bpm in listOf(80, 240)) {
+            val s = UniversalSettings(
+                defaultActivityType = null,
+                privacyDefault = null,
+                maxHrBpm = bpm,
+            )
+            assertEquals(bpm, resolveZoneCutoffs(s, 0L)?.last())
+        }
     }
 }

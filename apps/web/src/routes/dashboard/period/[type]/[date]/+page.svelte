@@ -1,24 +1,26 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { fetchRunsForPeriodSummary } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { formatISO } from '$lib/training/training';
-	import { m } from '$lib/i18n/store.svelte';
-	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
-	import type { Run } from '$lib/types';
+	import { fetchRunsForPeriodSummary, type PeriodSummaryRun } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { effective, loadSettings, peekCachedSettings } from '#lib/settings/settings.ts';
+	import type { LoadedSettings } from '#lib/settings/settings.ts';
+	import { formatISO } from '#lib/training/training.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	type PeriodType = 'week' | 'month' | 'all';
 
 	let type = $derived<PeriodType>(
-		$page.params.type === 'month'
+		page.params.type === 'month'
 			? 'month'
-			: $page.params.type === 'all'
+			: page.params.type === 'all'
 				? 'all'
 				: 'week',
 	);
-	let initialDate = $derived<Date>(parsePeriodDate($page.params.date ?? ''));
+	let initialDate = $derived<Date>(parsePeriodDate(page.params.date ?? ''));
 
 	// Resolve the heading copy in the script rather than inline in the
 	// markup. A text-expression tag whose body starts with the bare
@@ -41,9 +43,10 @@
 				: m('period.taglineAll'),
 	);
 
-	let runs = $state<Run[]>([]);
+	let runs = $state<PeriodSummaryRun[]>([]);
 	let loading = $state(true);
 	let loadFailed = $state(false);
+	let weekStartDay = $state<'monday' | 'sunday'>('monday');
 
 	let cameFromDashboard = $state(false);
 	afterNavigate(({ from }) => {
@@ -65,13 +68,26 @@
 		// would return [] and every period stat would render "—". Same
 		// pattern the dashboard / coach / plans routes use (auth_ready.ts).
 		await auth.ready();
+		const uid = auth.user?.id;
+		if (uid) applyWeekStart(peekCachedSettings(uid));
+		// The week this page shows must be the one the dashboard tile counted,
+		// so the preference is read alongside the runs. A settings blip leaves
+		// the cached (or Monday) week rather than failing the page.
+		const settings = uid ? loadSettings(uid).catch(() => null) : Promise.resolve(null);
 		try {
 			runs = await fetchRunsForPeriodSummary();
 		} catch (_) {
 			loadFailed = true;
 		}
+		const loaded = await settings;
+		if (loaded) applyWeekStart(loaded);
 		loading = false;
 	});
+
+	function applyWeekStart(s: LoadedSettings) {
+		const wsd = effective<string>(s, 'week_start_day');
+		if (wsd === 'sunday' || wsd === 'monday') weekStartDay = wsd;
+	}
 
 	function parsePeriodDate(raw: string): Date {
 		const parsed = new Date(raw);
@@ -79,7 +95,7 @@
 	}
 
 	function handlePeriodChange(t: PeriodType, d: Date) {
-		goto(`/dashboard/period/${t}/${formatISO(d)}`, { replaceState: true });
+		goto(`/dashboard/period/${t}/${formatISO(d)}`, { replace: true });
 	}
 </script>
 
@@ -98,12 +114,12 @@
 	{#if loading}
 		<div class="skel-card" aria-hidden="true">
 			<div class="skel-row">
-				<span class="skel skel-line skel-w-20"></span>
-				<span class="skel skel-line skel-w-30"></span>
+				<SkeletonBlock height="0.85rem" width="20%" />
+				<SkeletonBlock height="0.85rem" width="30%" />
 			</div>
-			<span class="skel skel-block"></span>
-			<span class="skel skel-block"></span>
-			<span class="skel skel-block"></span>
+			<SkeletonBlock height="2.6rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="2.6rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="2.6rem" radius="var(--radius-md)" />
 		</div>
 		<p class="sr-only" role="status">{m('period.loading')}</p>
 	{:else if loadFailed}
@@ -113,6 +129,7 @@
 			{runs}
 			initialType={type}
 			{initialDate}
+			{weekStartDay}
 			onPeriodChange={handlePeriodChange}
 		/>
 	{/if}
@@ -175,31 +192,6 @@
 		display: flex;
 		justify-content: space-between;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-block { height: 2.6rem; border-radius: var(--radius-md); }
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
 	.sr-only {
 		position: absolute;
 		width: 1px;

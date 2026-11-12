@@ -4,7 +4,17 @@ import {
   assertEquals,
   assertStrictEquals,
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { cancelAction, resolveRefundEligibility } from './lib.ts';
+import {
+  buildRefundParams,
+  CANCEL_REASON_MAX_CHARS,
+  cancelAction,
+  normalizeCancelReason,
+  parseCancelScope,
+  resolveRefundEligibility,
+  seriesCancelCutoff,
+  seriesCancelInstances,
+  seriesEndUntil,
+} from './lib.ts';
 
 const HOUR = 60 * 60 * 1000;
 const START = Date.parse('2026-07-01T18:00:00Z');
@@ -77,8 +87,132 @@ Deno.test('cancelAction — paid + eligible refunds, paid + not eligible is poli
 });
 
 Deno.test('cancelAction — terminal statuses no-op', () => {
-  for (const s of ['refunded', 'canceled', 'failed', 'partially_refunded']) {
+  // `partially_refunded` is deliberately NOT in this list: it is a held seat,
+  // not a finished order. See the test below.
+  for (const s of ['refunded', 'canceled', 'failed']) {
     assertStrictEquals(cancelAction(s, true), 'noop');
     assertStrictEquals(cancelAction(s, false), 'noop');
   }
+});
+
+Deno.test('cancelAction — a partially-refunded order decides exactly as a paid one', () => {
+  // The buyer kept the seat when part of the money came back, so they must
+  // still be able to give it up. Reading this as terminal made the whole
+  // cancel path a silent no-op for such an order: index.ts already selects it,
+  // the 20270522_001 buyer policy already admits it, and the web toast reports
+  // "reservation released" on the `noop` it got back — while no refund is
+  // created and the seat is never released. decisions § 769.
+  assertStrictEquals(cancelAction('partially_refunded', true), 'refund');
+  assertStrictEquals(cancelAction('partially_refunded', false), 'policy_no_refund');
+  // Same answer as `paid` for both eligibilities — that identity is the point.
+  assertStrictEquals(
+    cancelAction('partially_refunded', true),
+    cancelAction('paid', true),
+  );
+  assertStrictEquals(
+    cancelAction('partially_refunded', false),
+    cancelAction('paid', false),
+  );
+});
+
+Deno.test('buildRefundParams — a destination-charge refund reverses the transfer', () => {
+  // Stripe: "by default the destination account keeps the funds that were
+  // transferred to it, leaving the platform account to cover the negative
+  // balance from the refund", and "If you refund the application fee for a
+  // destination charge, you must also reverse the transfer." Sending
+  // refund_application_fee alone — which this call did — pays the host our fee
+  // ON TOP of the ticket they keep, so the platform funds the whole
+  // cancellation twice over. decisions § 769.
+  assertEquals(buildRefundParams('pi_123'), {
+    payment_intent: 'pi_123',
+    refund_application_fee: true,
+    reverse_transfer: true,
+  });
+});
+
+Deno.test('buildRefundParams — sends no amount, so Stripe refunds what is still owed', () => {
+  // The whole remaining unrefunded balance: the entire ticket for a `paid`
+  // order, and only the outstanding part for a `partially_refunded` one. An
+  // explicit amount would over-refund the second (Stripe errors) or would have
+  // to be reconstructed from a ledger this EF does not hold.
+  assertStrictEquals('amount' in buildRefundParams('pi_123'), false);
+});
+
+Deno.test('parseCancelScope — absent is the buyer path, the three scopes pass, anything else is refused', () => {
+  assertStrictEquals(parseCancelScope(undefined), 'self');
+  assertStrictEquals(parseCancelScope(null), 'self');
+  assertStrictEquals(parseCancelScope('self'), 'self');
+  assertStrictEquals(parseCancelScope('occurrence'), 'occurrence');
+  assertStrictEquals(parseCancelScope('series'), 'series');
+  // A typo must not fall back to `self`: the host would be told their class
+  // was handled while nobody was refunded.
+  for (const bad of ['Occurrence', 'Series', 'instance', 'all', '', 1, true, {}, []]) {
+    assertStrictEquals(parseCancelScope(bad), null, JSON.stringify(bad));
+  }
+});
+
+Deno.test('normalizeCancelReason — trims, blank is none, the column cap is a refusal', () => {
+  assertStrictEquals(normalizeCancelReason(undefined), null);
+  assertStrictEquals(normalizeCancelReason(null), null);
+  assertStrictEquals(normalizeCancelReason('   '), null);
+  assertStrictEquals(normalizeCancelReason('  Studio flooded \n'), 'Studio flooded');
+  assertStrictEquals(CANCEL_REASON_MAX_CHARS, 500);
+  const atCap = 'x'.repeat(500);
+  assertStrictEquals(normalizeCancelReason(atCap), atCap);
+  assertStrictEquals(normalizeCancelReason('x'.repeat(501)), undefined);
+  // Counted in code points, as char_length() counts them: 500 emoji are 1000
+  // UTF-16 units and still fit the column.
+  const emoji = '\u{1F9D8}'.repeat(500);
+  assertStrictEquals(normalizeCancelReason(emoji), emoji);
+  for (const bad of [42, true, {}, ['x']]) {
+    assertStrictEquals(normalizeCancelReason(bad), undefined, JSON.stringify(bad));
+  }
+});
+
+Deno.test('seriesCancelInstances — every signed-up occurrence from the cutoff on, once, oldest first', () => {
+  const cutoff = Date.parse('2026-09-01T12:00:00Z');
+  const rows = [
+    { instance_start: '2026-09-15T18:00:00+00:00' },
+    // The same occurrence from another table, in the other rendering.
+    { instance_start: '2026-09-15T18:00:00.000Z' },
+    { instance_start: '2026-09-08T18:00:00+00:00' },
+    // Before the cutoff: an occurrence that has already happened stays.
+    { instance_start: '2026-08-25T18:00:00+00:00' },
+    // Already cancelled: no second row.
+    { instance_start: '2026-09-22T18:00:00+00:00' },
+    { instance_start: 'garbage' },
+  ];
+  assertEquals(
+    seriesCancelInstances(rows, ['2026-09-22T18:00:00.000Z'], cutoff),
+    ['2026-09-08T18:00:00+00:00', '2026-09-15T18:00:00+00:00'],
+  );
+});
+
+Deno.test('seriesCancelInstances — an occurrence starting exactly at the cutoff is called off', () => {
+  const at = '2026-09-01T12:00:00Z';
+  assertEquals(seriesCancelInstances([{ instance_start: at }], [], Date.parse(at)), [at]);
+  assertEquals(seriesCancelInstances([], [], Date.parse(at)), []);
+});
+
+Deno.test('seriesEndUntil — ends an open series at the cutoff and never lengthens one', () => {
+  const cutoff = '2026-09-01T12:00:00.000Z';
+  assertStrictEquals(seriesEndUntil(null, cutoff), cutoff);
+  assertStrictEquals(seriesEndUntil('2027-01-01T00:00:00+00:00', cutoff), cutoff);
+  // Already ending sooner: left alone.
+  assertStrictEquals(seriesEndUntil('2026-08-01T00:00:00+00:00', cutoff), null);
+  assertStrictEquals(seriesEndUntil(cutoff, cutoff), null);
+  assertStrictEquals(seriesEndUntil('not a date', cutoff), cutoff);
+});
+
+Deno.test('seriesCancelCutoff — a retry keeps the first call\'s window', () => {
+  const now = '2026-09-02T12:00:00.000Z';
+  assertStrictEquals(seriesCancelCutoff(null, now), now);
+  // An end still ahead: this is the first cancel, so it works from now.
+  assertStrictEquals(seriesCancelCutoff('2027-01-01T00:00:00+00:00', now), now);
+  // Already ended (by the earlier call): resume from that end.
+  assertStrictEquals(
+    seriesCancelCutoff('2026-09-01T12:00:00+00:00', now),
+    '2026-09-01T12:00:00.000Z',
+  );
+  assertStrictEquals(seriesCancelCutoff('garbage', now), now);
 });

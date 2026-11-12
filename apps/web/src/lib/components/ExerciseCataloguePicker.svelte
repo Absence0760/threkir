@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import type { Exercise, ExerciseCategory } from '$lib/types';
-	import { createCustomExercise } from '$lib/core/data';
-	import { normaliseExerciseName } from '$lib/gym/gym_prs';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import type { Exercise, ExerciseCategory } from '#lib/types.ts';
+	import { createCustomExercise } from '#lib/core/data.ts';
+	import { cataloguePickerView, shadowsSeededGlobal } from './exercise_catalogue_picker';
+	import { dedupeShadowedExercises } from '#lib/gym/exercise_catalogue.ts';
+	import { namesAnExercise } from '#lib/gym/gym_prs.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		/// The catalogue to browse — seeded globals + the user's customs, as
@@ -16,9 +17,14 @@
 		/// A freshly-created owner custom. The host merges it into its binding map
 		/// so a name typed/picked from it links its id even before the next reload.
 		oncreated?: (exercise: Exercise) => void;
+		/// The catalogue read failed, or has not answered yet — so `catalogue` is
+		/// whatever was last known and not a statement about what exists. The
+		/// create affordance fails closed on it: every claim this picker makes
+		/// about a name being free is a claim about the whole catalogue.
+		unavailable?: boolean;
 	}
 
-	let { catalogue, onpick, oncreated }: Props = $props();
+	let { catalogue, onpick, oncreated, unavailable = false }: Props = $props();
 
 	// The category filter dropdown order: an "all" sentinel plus the nine
 	// catalogue categories (exercises.category CHECK, migration 20270222_001).
@@ -37,17 +43,29 @@
 	let query = $state('');
 	let category = $state<ExerciseCategory | 'all'>('all');
 
-	// A local copy so a just-created custom appears in the list immediately,
-	// without waiting for the host to reload the catalogue from the server.
-	let entries = $state<Exercise[]>(untrack(() => [...catalogue]));
+	// Customs created here this session, so a new one appears in the list
+	// immediately without waiting for the host to reload. Held BESIDE the prop
+	// rather than merged into a snapshot of it: the host loads the catalogue
+	// asynchronously, so a snapshot taken while the read was still in flight
+	// stayed empty for the life of the picker — and an empty list makes every
+	// name look free, which is the fail-open state `unavailable` exists to
+	// prevent, reached by a different route.
+	let created = $state<Exercise[]>([]);
 
-	const filtered = $derived.by(() => {
-		const q = query.trim().toLowerCase();
-		return entries
-			.filter((e) => category === 'all' || e.category === category)
-			.filter((e) => q === '' || e.name.toLowerCase().includes(q))
-			.sort((a, b) => a.name.localeCompare(b.name));
-	});
+	// The precedence rule the read applies (`dedupeShadowedExercises`) applies
+	// to this merge too, or a custom created against a stale list leaves the
+	// global it shadows in the picker beside it.
+	const entries = $derived(dedupeShadowedExercises([...catalogue, ...created]));
+
+	// The picker's three states — a result list, an explanation, a create
+	// affordance — are decided by `cataloguePickerView`, a pure module the unit
+	// suite can hold. They used to be three `$derived` expressions here, which
+	// is why the fix that closed § 1276's dead end shipped with no behavioural
+	// pin (§ 1278) and why the residual half of that dead end survived it: the
+	// exact-match test scanned the whole catalogue while the list also applied
+	// the category filter, so an exact name in another category rendered
+	// "No exercises match." beside no create button and no explanation.
+	const view = $derived(cataloguePickerView(entries, { query, category, unavailable }));
 
 	function categoryLabel(c: ExerciseCategory): string {
 		return t(`gym.catalogue.category.${c}`);
@@ -55,19 +73,16 @@
 
 	let creating = $state(false);
 
-	// Show the create-custom affordance only when the search has no exact match
-	// by normalised key and the query is non-empty — the picker becomes the
-	// "can't find it? add it" path without a separate form.
 	const trimmed = $derived(query.trim());
-	const hasExact = $derived.by(() => {
-		const key = normaliseExerciseName(trimmed);
-		return key !== '' && entries.some((e) => normaliseExerciseName(e.name) === key);
-	});
-	const canCreate = $derived(trimmed !== '' && !hasExact && !creating);
+	const canCreate = $derived(view.canCreate && !creating);
 
 	async function create() {
 		const name = trimmed;
-		if (name === '' || creating) return;
+		// The same blankness test cataloguePickerView already makes on the key,
+		// rather than a second one on the spelling: exercises.name_key carries
+		// `length(...) between 1 and 120`, so the two disagreeing would mean the
+		// create button stays hidden while this path still attempts the insert.
+		if (!namesAnExercise(name) || creating) return;
 		creating = true;
 		const made = await createCustomExercise({
 			name,
@@ -78,7 +93,13 @@
 			showToast(t('gym.catalogue.createFailed'));
 			return;
 		}
-		entries = [...entries, made];
+		// A create that succeeded against a seeded global's name has replaced it
+		// for this reader: the read resolves the pair to the custom and the
+		// built-in stops appearing anywhere. Said here because it is the only
+		// moment it can be — `onpick` closes the modal, so the created row is
+		// never rendered (§ 1574).
+		if (shadowsSeededGlobal(catalogue, made)) showToast(t('gym.catalogue.shadowsBuiltIn'));
+		created = [...created, made];
 		oncreated?.(made);
 		onpick(made);
 	}
@@ -107,11 +128,13 @@
 		</label>
 	</div>
 
-	{#if filtered.length === 0 && !canCreate}
-		<p class="empty">{t('gym.catalogue.empty')}</p>
-	{:else}
+	{#if view.unavailable}
+		<p class="empty" data-testid="catalogue-unavailable">{t('gym.catalogue.unavailable')}</p>
+	{/if}
+
+	{#if view.matches.length > 0}
 		<ul class="results" data-testid="catalogue-results">
-			{#each filtered as e (e.id)}
+			{#each view.matches as e (e.id)}
 				<li>
 					<button type="button" class="result" onclick={() => onpick(e)} data-testid="catalogue-pick">
 						<span class="name">{e.name}</span>
@@ -125,6 +148,15 @@
 				</li>
 			{/each}
 		</ul>
+	{:else if view.hiddenExact}
+		<p class="empty" data-testid="catalogue-other-category">
+			{t('gym.catalogue.otherCategory', {
+				name: view.hiddenExact.name,
+				category: categoryLabel(view.hiddenExact.category),
+			})}
+		</p>
+	{:else if !canCreate && !view.unavailable}
+		<p class="empty">{t('gym.catalogue.empty')}</p>
 	{/if}
 
 	{#if canCreate}

@@ -1,18 +1,23 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] duplicate-a-week bulk op (atomic duplicate_plan_week RPC).
  * The re-index is unit-pinned in pgtap; this pins the owner UI: clicking
  * Duplicate on a week inserts a copy after it, pushes the later week +7
  * days, and extends the plan. Throwaway plan (status `completed` to dodge
- * the one-active unique index — duplication doesn't gate on status).
+ * the active-plan overlap constraint — duplication doesn't gate on status).
  */
 
 test.describe('/plans/[id] duplicate week', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('Duplicate inserts a copy, re-indexes the tail, and extends the plan', async ({
 		page

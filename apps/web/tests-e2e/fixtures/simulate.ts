@@ -2,15 +2,29 @@ import { gzipSync } from 'zlib';
 
 import { getAdminClient } from './local-supabase';
 
+/// The one bucket every run-scoped object in this file lives in.
+const BUCKET_RUNS = 'runs';
+
 interface TrackPoint {
 	lat: number;
 	lng: number;
 	ele?: number | null;
-	t?: string | null;
+	/// Per-point ISO timestamp. `ts`, matching `src/lib/types.ts`'s own
+	/// `TrackPoint` -- the gzipped object this fixture writes is read back
+	/// verbatim by `fetchTrack`, with no key renaming anywhere, so a field
+	/// spelled anything else is data no code path ever sees. It was `t` for
+	/// the life of this file, which is why three specs planted a track the app
+	/// read as having no timestamps at all (decisions § 1404).
+	ts?: string | null;
 	/// Per-point heart rate in BPM (matches `src/lib/types.ts`
 	/// TrackPoint.bpm). Lets HR-zone e2e tests plant a track that
 	/// the run-detail page reads to compute the zone breakdown.
 	bpm?: number;
+	/// The GPS distance smoother's position for the fix (matches
+	/// `src/lib/types.ts` TrackPoint.smoothedLat / smoothedLng). Lets a spec
+	/// plant a fix whose drawn position differs from its raw one.
+	smoothedLat?: number;
+	smoothedLng?: number;
 }
 
 /**
@@ -34,16 +48,53 @@ interface TrackPoint {
  *     user is too slow.
  */
 
+/**
+ * The sentence a Storage failure throws with.
+ *
+ * `upErr.message` alone is not attributable. The one occurrence this exists
+ * for read `simulate.insertRun track upload failed: An invalid response was
+ * received from the upstream server` — Kong's 502 body, which names neither
+ * the bucket, nor the object, nor the status, so a CI flake here reads as a
+ * spec defect ([§ 1403](../../../../docs/architecture/decisions.md)).
+ *
+ * **It is deliberately not a retry.** Measured on the shared local stack:
+ * 1,800 uploads — 300 sequential and 1,500 at concurrency 12 — failed zero
+ * times, and no race is available to the fixture anyway, since the path
+ * embeds a freshly minted `runs.id` and `upsert: true` makes even a collision
+ * a no-op. What DOES reproduce it exactly is another lane restarting the
+ * shared Supabase stack: a `docker restart` of the storage container while
+ * uploading gives a contiguous ~5.5 s burst of `502 An invalid response was
+ * received from the upstream server` and then nothing. A retry would paper
+ * over a stack that is going down locally, and on CI — where the stack is
+ * this job's alone — a 502 is a real signal that deserves to fail loudly.
+ * Naming the status is what separates the two readings.
+ */
+export function storageFailure(
+	what: string,
+	bucket: string,
+	path: string,
+	err: { message: string; status?: number; statusCode?: string | number },
+): Error {
+	const status = err.status ?? err.statusCode;
+	return new Error(
+		`simulate.${what} failed: bucket ${bucket}, path ${path}` +
+			`${status == null ? '' : `, status ${status}`}: ${err.message}`,
+	);
+}
+
 export async function insertRun(opts: {
 	user_id: string;
 	started_at?: string;
 	duration_s: number;
 	distance_m: number;
-	source?: 'app' | 'strava' | 'parkrun' | 'healthkit';
+	source?: 'app' | 'watch' | 'strava' | 'parkrun' | 'healthkit';
 	is_public?: boolean;
 	/** Real `runs.activity_type` column (20261207_001). Defaults to 'run'. */
 	activity_type?: 'run' | 'walk' | 'hike' | 'cycle' | 'stroller';
 	is_dnf?: boolean;
+	/** Promoted embedded-best column (20270325_001): the fastest 5 km window
+	 *  measured inside the run, in seconds. */
+	fastest_5k_s?: number | null;
 	/** Positive live-finish marker (runs.concluded_at, 20270427_001). Set to
 	 *  an ISO string to simulate a concluded broadcast — the spectator page
 	 *  reads this over the old duration-staleness inference. */
@@ -74,6 +125,7 @@ export async function insertRun(opts: {
 			is_public: opts.is_public ?? false,
 			activity_type: opts.activity_type ?? 'run',
 			is_dnf: opts.is_dnf ?? false,
+			fastest_5k_s: opts.fastest_5k_s ?? null,
 			concluded_at: opts.concluded_at ?? null,
 			route_id: opts.route_id ?? null,
 			metadata: opts.metadata ?? {}
@@ -90,14 +142,12 @@ export async function insertRun(opts: {
 		const json = JSON.stringify(opts.track);
 		const gzipped = gzipSync(Buffer.from(json, 'utf-8'));
 		const { error: upErr } = await admin.storage
-			.from('runs')
+			.from(BUCKET_RUNS)
 			.upload(path, gzipped, {
 				contentType: 'application/octet-stream',
 				upsert: true
 			});
-		if (upErr) {
-			throw new Error(`simulate.insertRun track upload failed: ${upErr.message}`);
-		}
+		if (upErr) throw storageFailure('insertRun track upload', BUCKET_RUNS, path, upErr);
 		const { error: updErr } = await admin
 			.from('runs')
 			.update({ track_url: path })
@@ -111,11 +161,9 @@ export async function insertRun(opts: {
 		const path = `${opts.user_id}/${runId}.hr.json.gz`;
 		const gzipped = gzipSync(Buffer.from(JSON.stringify(opts.hrSeries), 'utf-8'));
 		const { error: upErr } = await admin.storage
-			.from('runs')
+			.from(BUCKET_RUNS)
 			.upload(path, gzipped, { contentType: 'application/octet-stream', upsert: true });
-		if (upErr) {
-			throw new Error(`simulate.insertRun hr-series upload failed: ${upErr.message}`);
-		}
+		if (upErr) throw storageFailure('insertRun hr-series upload', BUCKET_RUNS, path, upErr);
 		const { error: updErr } = await admin
 			.from('runs')
 			.update({ hr_series_url: path })
@@ -128,24 +176,146 @@ export async function insertRun(opts: {
 	return runId;
 }
 
+/**
+ * Plant the map-matched line for a run: the gzipped object the job worker
+ * would have written, plus the `run_matched_tracks` row that points at it.
+ *
+ * The path is derived here rather than passed in because
+ * `run_matched_tracks_matched_track_url_shape` (migration 20260719_001)
+ * pins it to `{user_id}/{run_id}.matched.json.gz` — a caller free to name it
+ * would be free to name something the column refuses. Upsert, not insert:
+ * `insertRun`'s own `track_url` write fires `runs_enqueue_match_job_trigger`,
+ * which has already left a `pending` row for this run.
+ *
+ * Returns the planted object's path, or null for a status that carries none.
+ */
+export async function insertMatchedTrack(opts: {
+	run_id: string;
+	user_id: string;
+	/** Omit for a `failed` / `skipped` / `pending` row — no object is written. */
+	track?: TrackPoint[];
+	status?: 'pending' | 'matched' | 'failed' | 'skipped';
+	algorithm?: string;
+	algorithm_version?: string;
+}): Promise<string | null> {
+	const admin = getAdminClient();
+	const status = opts.status ?? 'matched';
+	let path: string | null = null;
+
+	if (opts.track && opts.track.length > 0) {
+		path = `${opts.user_id}/${opts.run_id}.matched.json.gz`;
+		const gzipped = gzipSync(Buffer.from(JSON.stringify(opts.track), 'utf-8'));
+		const { error: upErr } = await admin.storage
+			.from(BUCKET_RUNS)
+			.upload(path, gzipped, { contentType: 'application/octet-stream', upsert: true });
+		if (upErr) throw storageFailure('insertMatchedTrack upload', BUCKET_RUNS, path, upErr);
+	}
+
+	const { error } = await admin.from('run_matched_tracks').upsert(
+		{
+			run_id: opts.run_id,
+			status,
+			matched_track_url: path,
+			matched_at: status === 'matched' ? new Date().toISOString() : null,
+			algorithm: opts.algorithm ?? 'osrm',
+			algorithm_version: opts.algorithm_version ?? 'e2e'
+		},
+		{ onConflict: 'run_id' }
+	);
+	if (error) {
+		throw new Error(`simulate.insertMatchedTrack row upsert failed: ${error.message}`);
+	}
+	return path;
+}
+
 export async function deleteRun(runId: string): Promise<void> {
 	const admin = getAdminClient();
 	// Try to remove the gzipped track from Storage too, if any. List
-	// the user folder by reading the row first.
+	// the user folder by reading the row first. The matched line is a
+	// third object under the same folder, and the row naming it is about
+	// to go with the run's own cascade — so read it before the delete or
+	// the object is orphaned with nothing left pointing at it.
 	const { data: row } = await admin
 		.from('runs')
 		.select('track_url, hr_series_url')
 		.eq('id', runId)
 		.maybeSingle();
-	const paths = [row?.track_url, row?.hr_series_url].filter(
+	const { data: matched } = await admin
+		.from('run_matched_tracks')
+		.select('matched_track_url')
+		.eq('run_id', runId)
+		.maybeSingle();
+	const paths = [row?.track_url, row?.hr_series_url, matched?.matched_track_url].filter(
 		(p): p is string => !!p,
 	);
 	if (paths.length > 0) {
-		await admin.storage.from('runs').remove(paths);
+		await admin.storage.from(BUCKET_RUNS).remove(paths);
 	}
 	const { error } = await admin.from('runs').delete().eq('id', runId);
 	if (error) {
 		throw new Error(`simulate.deleteRun failed: ${error.message}`);
+	}
+}
+
+/// Service-role insert of one race-calendar listing. `provider` is the
+/// `race_listings.provider` value under test — it decides which import leg the
+/// /races modal offers, so a spec about that seam names it explicitly.
+/// `search_race_listings` only returns listings from `current_date` forward,
+/// so build the date through `dates.ts` rather than a literal.
+export async function insertRaceListing(opts: {
+	provider: string;
+	name: string;
+	race_date: string;
+	distance_m?: number | null;
+	location_label?: string | null;
+	provider_race_id?: string | null;
+	is_verified?: boolean;
+	entry_url?: string | null;
+	/// EWKT, the shape race-listings-sync writes from a ZIP centroid.
+	location_point?: string | null;
+}): Promise<string> {
+	const admin = getAdminClient();
+	const { data, error } = await admin
+		.from('race_listings')
+		.insert({
+			provider: opts.provider,
+			name: opts.name,
+			race_date: opts.race_date,
+			distance_m: opts.distance_m ?? 21_097,
+			location_label: opts.location_label ?? null,
+			provider_race_id: opts.provider_race_id ?? null,
+			is_verified: opts.is_verified ?? true,
+			entry_url: opts.entry_url ?? null,
+			location_point: opts.location_point ?? null
+		})
+		.select('id')
+		.single();
+	if (error) {
+		throw new Error(`simulate.insertRaceListing failed: ${error.message}`);
+	}
+	return (data as { id: string }).id;
+}
+
+export async function deleteRaceListing(listingId: string): Promise<void> {
+	const admin = getAdminClient();
+	const { error } = await admin.from('race_listings').delete().eq('id', listingId);
+	if (error) {
+		throw new Error(`simulate.deleteRaceListing failed: ${error.message}`);
+	}
+}
+
+/// Service-role delete of one of a user's `integrations` rows. A spec that
+/// links a provider through the real UI removes the row afterwards, so the
+/// seeded user does not carry the link into another spec.
+export async function deleteIntegration(userId: string, provider: string): Promise<void> {
+	const admin = getAdminClient();
+	const { error } = await admin
+		.from('integrations')
+		.delete()
+		.eq('user_id', userId)
+		.eq('provider', provider);
+	if (error) {
+		throw new Error(`simulate.deleteIntegration failed: ${error.message}`);
 	}
 }
 
@@ -253,7 +423,7 @@ export async function insertRouteMarker(opts: {
 
 /// Clear the seed's now()-relative "Morning easy 8K" run (and any other
 /// trailing-8-day runs) for `userId`, returning a callback that restores
-/// them verbatim. Why: a freshly planted current-week goal would
+/// them verbatim, plan-workout links included. Why: a freshly planted current-week goal would
 /// otherwise read 32%, not the 0% baseline these tests assert — and the
 /// /nutrition + dashboard-readiness specs still need the seed run, so it
 /// must be put back (the 8-day window covers Monday- and Sunday-start
@@ -270,6 +440,21 @@ export async function withCleanCurrentWeek(userId: string): Promise<() => Promis
 		throw new Error(`simulate.withCleanCurrentWeek snapshot failed: ${error.message}`);
 	}
 	const snapshot = (data ?? []) as Record<string, unknown>[];
+	const runIds = snapshot.map((r) => r.id as string);
+	// Deleting a run unlinks its plan workout, and re-inserting it lets the
+	// database matcher (migration 20270901000001) link one that was open
+	// before. Snapshot the links so the restore puts back exactly these.
+	const { data: linkRows, error: linkErr } =
+		runIds.length > 0
+			? await admin
+					.from('plan_workouts')
+					.select('id, completed_run_id, completed_at')
+					.in('completed_run_id', runIds)
+			: { data: [], error: null };
+	if (linkErr) {
+		throw new Error(`simulate.withCleanCurrentWeek link snapshot failed: ${linkErr.message}`);
+	}
+	const links = (linkRows ?? []) as { id: string; completed_run_id: string; completed_at: string | null }[];
 	if (snapshot.length > 0) {
 		const { error: delErr } = await admin
 			.from('runs')
@@ -285,6 +470,35 @@ export async function withCleanCurrentWeek(userId: string): Promise<() => Promis
 		const { error: insErr } = await admin.from('runs').insert(snapshot);
 		if (insErr) {
 			throw new Error(`simulate.withCleanCurrentWeek restore failed: ${insErr.message}`);
+		}
+		const linkedBefore = new Set(links.map((l) => l.id));
+		const { data: relinked, error: relinkedErr } = await admin
+			.from('plan_workouts')
+			.select('id')
+			.in('completed_run_id', runIds);
+		if (relinkedErr) {
+			throw new Error(`simulate.withCleanCurrentWeek link read failed: ${relinkedErr.message}`);
+		}
+		const stray = (relinked ?? [])
+			.map((r) => (r as { id: string }).id)
+			.filter((id) => !linkedBefore.has(id));
+		if (stray.length > 0) {
+			const { error: unlinkErr } = await admin
+				.from('plan_workouts')
+				.update({ completed_run_id: null, completed_at: null })
+				.in('id', stray);
+			if (unlinkErr) {
+				throw new Error(`simulate.withCleanCurrentWeek unlink failed: ${unlinkErr.message}`);
+			}
+		}
+		for (const l of links) {
+			const { error: relinkErr } = await admin
+				.from('plan_workouts')
+				.update({ completed_run_id: l.completed_run_id, completed_at: l.completed_at })
+				.eq('id', l.id);
+			if (relinkErr) {
+				throw new Error(`simulate.withCleanCurrentWeek relink failed: ${relinkErr.message}`);
+			}
 		}
 	};
 }
@@ -336,6 +550,11 @@ export async function insertEvent(opts: {
 	category?: 'run' | 'cycle' | 'class' | 'social';
 	discipline?: string | null;
 	gym_template?: { discipline: string | null; duration_min: number | null } | null;
+	timezone?: string | null;
+	race_start_mode?: 'host_go' | 'scheduled' | 'self_timed';
+	race_scheduled_offset_s?: number | null;
+	race_window_open_offset_s?: number | null;
+	race_window_length_s?: number | null;
 }): Promise<string> {
 	const { data, error } = await getAdminClient()
 		.from('events')
@@ -356,7 +575,12 @@ export async function insertEvent(opts: {
 			capacity: opts.capacity ?? null,
 			distance_m: opts.distance_m ?? null,
 			pace_target_sec: opts.pace_target_sec ?? null,
-			gym_template: opts.gym_template ?? null
+			gym_template: opts.gym_template ?? null,
+			timezone: opts.timezone ?? null,
+			race_start_mode: opts.race_start_mode ?? 'host_go',
+			race_scheduled_offset_s: opts.race_scheduled_offset_s ?? null,
+			race_window_open_offset_s: opts.race_window_open_offset_s ?? null,
+			race_window_length_s: opts.race_window_length_s ?? null
 		})
 		.select('id')
 		.single();
@@ -442,6 +666,8 @@ export async function insertLivePings(opts: {
 		elapsed_s?: number;
 		at?: string;
 		coarse?: boolean;
+		weak_gps?: boolean;
+		bpm?: number;
 	}>;
 }): Promise<void> {
 	// Plant a sequence of live_run_pings rows for the spectator page to
@@ -459,7 +685,9 @@ export async function insertLivePings(opts: {
 		distance_m: p.distance_m ?? null,
 		elapsed_s: p.elapsed_s ?? null,
 		at: p.at ?? new Date(Date.now() - (opts.points.length - i) * 1000).toISOString(),
-		coarse: p.coarse ?? false
+		coarse: p.coarse ?? false,
+		weak_gps: p.weak_gps ?? false,
+		bpm: p.bpm ?? null
 	}));
 	const { error } = await getAdminClient().from('live_run_pings').insert(rows);
 	if (error) {

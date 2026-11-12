@@ -1,19 +1,19 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { repurposeTodayWorkout } from '../fixtures/plan-today';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Auto-complete a planned workout from a matching logged run.
  *
- * `autoMatchRunToPlanWorkout` (apps/web/src/lib/core/data.ts)
- * implements the canonical match algorithm (same user, same calendar
- * date, target distance within ±25%, sorted by delta) and is invoked
- * after a successful insert by both `createManualRun` (/runs/new) and
- * `saveRun` (importer path), wrapped in its own try/catch so a match
- * failure never blocks the run save. The first test drives the full
+ * The database matches every run write (a trigger on `runs`, migration
+ * 20270901000001, pinned rule by rule in
+ * apps/backend/supabase/tests/match_runs_to_plan_workouts_test.sql): the
+ * runner's local day, at least 75% of the target, the closest run winning,
+ * and a matching failure never blocks the run save. The first test drives the full
  * end-to-end saga: log a run via /runs/new → today's matching plan
  * workout flips `completed_run_id`.
  *
@@ -43,12 +43,7 @@ test.describe('Plan auto-complete from linked run', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('log a matching run via /runs/new → today\'s workout auto-marks done', async ({
@@ -85,7 +80,7 @@ test.describe('Plan auto-complete from linked run', () => {
 			const distanceKm = target / 1000;
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill(distanceKm.toString());
-			await numberInputs.nth(1).fill('30');
+			await page.getByTestId('run-editor-minutes').fill('30');
 
 			await page.getByRole('button', { name: 'Save run' }).click();
 			await page.waitForURL(/\/runs\/[0-9a-f-]+$/, { timeout: 15_000 });

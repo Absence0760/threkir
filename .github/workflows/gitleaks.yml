@@ -5,6 +5,17 @@ name: gitleaks
 # role tokens, Strava client secrets, etc. — anything an automated
 # pattern can recognise.
 #
+# CALLED by ci.yml's `gitleaks` job for the push / PR half, and
+# triggered on its own only by the weekly cron. It ran on its own
+# `push` + `pull_request` triggers until 2026-09-05, which made a
+# found secret ADVISORY: branch protection requires exactly one
+# context, the `CI gate` aggregator in ci.yml, and a `needs:` entry
+# cannot name a job in another workflow — so a red gitleaks row
+# merged (decisions § 1264). The action exits 1 on a detection
+# (`process.exit(1)` in its `src/index.js` at the pinned SHA), and a
+# called workflow's job result fans into the calling job, so that
+# exit is now the merge gate it always read as.
+#
 # Complements existing controls:
 #   - CodeQL (workflows/security.yml) — finds source-level injection
 #     vulns, not secrets.
@@ -23,23 +34,28 @@ name: gitleaks
 # fake test fixtures and documented dev placeholders, scoped to the exact
 # secret (not the file) so a real key in the same source still fails.
 
+# TRIGGERED BY NOBODY. `ci.yml` calls this for the push / PR half, and
+# `gitleaks-sweep.yml` calls it for the weekly full-history sweep. The cron
+# used to live here and moved when the sweep gained a reporting job: a called
+# workflow's job may not request a permission its CALLER lacks, and reporting
+# needs `issues: write` that `ci.yml`'s one-line caller has no reason to hold.
+# Declaring it here failed `ci.yml` at STARTUP -- the whole workflow, not the
+# one job, and whether or not that job would have run.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    # Weekly full-history sweep. The push / PR triggers above only
-    # diff against the base, so a secret that landed on a forgotten
-    # branch and got merged via fast-forward could slip through.
-    - cron: '0 6 * * 1'
+  workflow_call:
 
+# A called workflow cannot escalate past what the calling job grants,
+# so these are declared in BOTH places and the caller's are the ceiling.
+# `security-events: write` used to sit here with a comment saying the
+# action POSTs SARIF findings to the Security tab. It does not: read at
+# the pinned SHA, none of gitleaks-action's four source files mentions
+# `code-scanning`, `sarifs` or `security-events` at all. It writes a job
+# summary, uploads a `gitleaks-results.sarif` ARTIFACT (which
+# GITLEAKS_ENABLE_UPLOAD_ARTIFACT below turns off), and attempts PR
+# review comments. So the scan's only signal is this job's own exit
+# status, and the write scope was granted for nothing (decisions § 1264).
 permissions:
-  # The action POSTs SARIF findings via the same security-events
-  # permission the CodeQL / Trivy jobs use — keeps the Security tab
-  # the single pane of glass.
   contents: read
-  security-events: write
   pull-requests: read
 
 jobs:
@@ -50,6 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           # `fetch-depth: 0` is required for the full-history scan
           # on the scheduled run. Push/PR triggers ignore the depth
           # because they have access to the base ref via the
@@ -64,3 +81,44 @@ jobs:
           # want the upstream-managed dashboard, set the license as a
           # repo secret and the action will pick it up.
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+          # The comment path needs `pull-requests: write`, which no caller
+          # grants: it lists existing comments with the read scope, then
+          # fails the POST and `core.warning`s. Off rather than warning on
+          # every run about something it is not permitted to do; the job
+          # summary and the exit status carry the finding.
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+
+      # The scan above cannot see content that reached the branch through a
+      # merge. `gitleaks-action` builds its own range and builds it as
+      # `--log-opts=--no-merges --first-parent <base>^..<head>` (src/gitleaks.js
+      # at the pinned SHA, both the `push` and `pull_request` arms), so a commit
+      # sitting on a merge's SECOND parent is never walked. That is not an edge
+      # case here: splitting a large change into `wip/*` branches and merging
+      # them into the PR branch is an ordinary way to work, and it takes that
+      # content out of the secret gate entirely. Measured on #994 -- eleven
+      # commits scanned, the file carrying the finding not among them, the PR
+      # green, and `main` red on the squash commit the moment it landed, which
+      # is after branch protection can act (decisions § 1719 + § 1721).
+      #
+      # A tree scan closes it by asking a question the commit graph cannot
+      # route around: is a secret present in the code as it will exist on
+      # `main`. It is not a replacement for either neighbour -- the range scan
+      # still catches a secret that was committed and then deleted within the
+      # branch, and the weekly sweep still reads the whole of history -- so all
+      # three stay. `gitleaks` is on PATH because the action `core.addPath`s it,
+      # so this needs no second download and no second version pin. ~2 s.
+      #
+      # `--redact` is not optional: this repo is public, so an unredacted
+      # finding would publish the secret it found into the run log.
+      - name: Scan the working tree, not just the commit range
+        if: ${{ !cancelled() }}
+        run: |
+          if ! command -v gitleaks >/dev/null; then
+            echo "::error::gitleaks is not on PATH, so the working-tree scan ran over nothing. The action step above is what installs it -- this is a defect in this job, not a finding about the repo."
+            exit 1
+          fi
+          if ! gitleaks dir . -c .gitleaks.toml --no-banner --redact -v --exit-code 1; then
+            echo "::error::gitleaks found a secret in the working tree. If it is a false positive, add a value-matched entry to .gitleaks.toml (see the entries there for the shape); do not path-allowlist the file. Note this scan sees content the range scan above cannot -- anything that arrived via a merge parent."
+            exit 1
+          fi
+

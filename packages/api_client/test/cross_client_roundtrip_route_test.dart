@@ -43,7 +43,7 @@ import 'package:test/test.dart';
 /// `cross_client_roundtrip_test.dart`). Run locally with:
 /// ```
 /// cd apps/backend && supabase status -o env   # copy ANON_KEY
-/// export SUPABASE_TEST_URL=http://127.0.0.1:54321
+/// export SUPABASE_TEST_URL=http://127.0.0.1:24321
 /// export SUPABASE_TEST_ANON_KEY=<ANON_KEY>
 /// export CROSS_CLIENT_ROUTE_FIXTURE_OUT=/abs/path/to/route_fixture.json
 /// cd packages/api_client
@@ -151,7 +151,7 @@ void main() {
       // Node, so a save that silently no-op'd fails here with a Dart-side
       // message rather than as an opaque Node assertion.
       final all = await api.getRoutes(limit: 200);
-      final saved = all.where((r) => r.id == id).toList();
+      final saved = all.rows.where((r) => r.id == id).toList();
       expect(saved, hasLength(1),
           reason: 'saveRoute must persist a row visible via getRoutes');
       expect(saved.first.distanceMetres, 5123.5);

@@ -1,20 +1,23 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { checkSignUpGates } from '$lib/core/auth_gates';
-	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { checkSignUpGates } from '#lib/core/auth_gates.ts';
+	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 
-	// Post-OAuth fallback gate. Reached from /auth/callback when the
-	// user's user_profiles row is missing `age_confirmed_at` or
-	// `terms_accepted_at`. Re-asks for the same affirmation the
-	// /login sign-up flow captures, then stamps via the SECURITY
-	// DEFINER `confirm_age_and_terms()` RPC.
+	// Consent gate. Reached from /auth/callback, the /login sign-up branch,
+	// or the root layout's consent gate whenever the user's user_profiles
+	// row is missing `age_confirmed_at` or `terms_accepted_at`. Re-asks
+	// for the same affirmation the /login sign-up flow captures, then
+	// stamps via the SECURITY DEFINER `confirm_age_and_terms()` RPC.
 	//
-	// Server-side enforcement story: a user who skips this page (closes
-	// the tab, or hits /dashboard directly via a stale URL) keeps a
-	// profile with null consent timestamps. Future RPC guards can
-	// reject privileged operations against such accounts. See migration
+	// A user who closes the tab here is routed back by the layout gate on
+	// their next load, and the server-side write gate (migration
+	// 20270424000004) rejects their writes meanwhile. See migration
 	// 20260929_001 + audit/gdpr (2026-05-25) Critical.
 
 	let confirmAdult = $state(false);
@@ -35,10 +38,14 @@
 			const { error: rpcError } = await supabase.rpc('confirm_age_and_terms', {
 				p_preferred_unit: defaultUnitForLocale(navigator.language),
 			});
-			if (rpcError) throw rpcError;
+			if (rpcError) throw dbError(rpcError);
+			// Re-hydrate before leaving: the root layout's consent gate reads
+			// `auth.user.consent_recorded`, and a stale `false` would bounce
+			// straight back here.
+			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('confirmAge.recordConsentError');
+			error = errorCopy(err, m, 'confirmAge.recordConsentError', 'confirmAge.recordConsentError');
 		} finally {
 			loading = false;
 		}
@@ -49,8 +56,8 @@
 	<title>{m('confirmAge.title')} — Threkir</title>
 </svelte:head>
 
-<div class="confirm-page">
-	<main class="card" id="main-content">
+<AuthShell>
+	<main class="auth-card confirm-card" id="main-content">
 		<h1>{m('confirmAge.heading')}</h1>
 		<p class="lede">
 			{m('confirmAge.lede')}
@@ -77,7 +84,7 @@
 
 			<button
 				type="submit"
-				class="btn btn-primary"
+				class="btn btn-primary confirm-cta"
 				disabled={loading || !confirmAdult || !acceptTerms}
 			>
 				{loading ? m('confirmAge.saving') : m('confirmAge.continue')}
@@ -88,49 +95,71 @@
 			{m('confirmAge.finePrefix')} {m('confirmAge.fineRequiredValues')}
 		</p>
 	</main>
-</div>
+</AuthShell>
 
 <style>
-	.confirm-page {
-		min-height: 100vh;
-		display: grid;
-		place-items: center;
-		padding: 2rem 1rem;
-		background: var(--color-bg);
-	}
-	.card {
-		max-width: 32rem;
-		width: 100%;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: 1rem;
-		padding: 2rem;
+	/* The card chrome and the brand panel belong to AuthShell. */
+	.confirm-card {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: var(--space-md);
 	}
 	h1 {
 		margin: 0;
-		font-size: 1.75rem;
+		font-size: 1.85rem;
+		font-weight: 800;
+		line-height: 1.15;
+		letter-spacing: -0.025em;
+		text-wrap: balance;
 	}
 	.lede {
 		color: var(--color-text-secondary);
 		margin: 0;
+		line-height: 1.55;
 	}
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-		margin-top: 0.5rem;
+		gap: var(--space-sm);
+		margin-top: var(--space-xs);
 	}
+	/* Each confirmation is a whole-row target, and a ticked row says so with
+	   more than a 13px box. */
 	.check {
 		display: flex;
-		gap: 0.75rem;
+		gap: var(--space-sm);
 		align-items: flex-start;
-		line-height: 1.4;
+		line-height: 1.45;
+		padding: var(--space-md);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		cursor: pointer;
+		transition:
+			border-color var(--transition-fast),
+			background var(--transition-fast),
+			box-shadow var(--transition-fast);
+	}
+	.check:hover {
+		border-color: var(--color-text-secondary);
+	}
+	.check:has(input:checked) {
+		border-color: var(--color-primary);
+		background: var(--color-primary-light);
+		box-shadow: 0 0 0 1px var(--color-primary);
 	}
 	.check input {
 		margin-top: 0.2rem;
+		flex-shrink: 0;
+	}
+	.check a {
+		color: inherit;
+		text-decoration: underline;
+	}
+	.confirm-cta {
+		min-height: 3rem;
+		border-radius: var(--radius-lg);
+		margin-top: var(--space-xs);
 	}
 	.error {
 		color: var(--color-danger-text);
@@ -139,6 +168,7 @@
 	.fine {
 		font-size: 0.875rem;
 		color: var(--color-text-secondary);
+		line-height: 1.5;
 		margin: 0;
 	}
 </style>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
@@ -12,8 +12,9 @@ import { USER_A, USER_C_PRO } from '../fixtures/users';
  * (JWT verify, is_pro gate, model call, templated fallback) is unit-
  * tested in `src/lib/routes/route_describe/handler.test.ts`. Here we
  * verify the page wiring — the templated baseline renders instantly,
- * the AI text replaces it on a Pro success, the upgrade hint shows for
- * a free user, and a hard failure keeps the baseline.
+ * the AI text replaces it on a Pro success, a server template never
+ * replaces it, the upgrade hint shows for a free user, and a hard
+ * failure keeps the baseline.
  *
  * The seeded route (RUNNER_PUBLIC_ROUTE_ID) has no stored description,
  * so the Describe button is present. Each beforeEach clears any
@@ -32,15 +33,17 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 	test.beforeEach(clearDescription);
 
-	test('Describe renders the templated baseline + a Pro upgrade hint', async ({ page }) => {
+	test('Describe renders the templated baseline + a Pro upgrade hint', async ({ page, mockRoute }) => {
 		let called = false;
-		await page.route('**/api/coach/route-describe', async (route) => {
+		let sentRouteId: unknown = null;
+		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
 			called = true;
+			sentRouteId = (route.request().postDataJSON() as { route_id?: unknown }).route_id;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
-					description: 'E2E demo public route is a 10.00 km road point-to-point route.',
+					description: 'Server English template sentinel.',
 					source: 'template',
 					upgrade: true
 				})
@@ -62,7 +65,12 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 		await expect(page.locator('.desc-upgrade')).toContainText(/Pro/i);
 		// No AI attribution on the free / templated path.
 		await expect(page.locator('.desc-attribution')).toHaveCount(0);
+		// The server's template is English by contract; the page keeps its
+		// own sentence, rendered in the viewer's locale.
+		await expect(page.locator('.route-description')).not.toContainText('sentinel');
 		expect(called).toBe(true);
+		// The server decides from the id whether the name may reach the model.
+		expect(sentRouteId).toBe(RUNNER_PUBLIC_ROUTE_ID);
 	});
 
 	test('hard failure keeps the templated baseline and shows a non-blocking error', async ({
@@ -94,8 +102,13 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 	test.use({ storageState: USER_C_PRO.storageStatePath });
 	test.beforeEach(clearDescription);
 
-	test('Describe replaces the baseline with AI text + attribution', async ({ page }) => {
-		await page.route('**/api/coach/route-describe', async (route) => {
+	test('Describe replaces the baseline with AI text + attribution', async ({ page, mockRoute }) => {
+		let sentUnit: unknown;
+		let sentLocale: unknown;
+		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
+			const sent = route.request().postDataJSON() as { unit?: unknown; locale?: unknown };
+			sentUnit = sent.unit;
+			sentLocale = sent.locale;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -120,5 +133,10 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 		// AI source shows the attribution; no upgrade hint.
 		await expect(page.locator('.desc-attribution')).toBeVisible();
 		await expect(page.locator('.desc-upgrade')).toHaveCount(0);
+		// The viewer's unit rides along so the paragraph comes back in it.
+		expect(['km', 'mi']).toContain(sentUnit);
+		// So does the active UI locale, so the paragraph comes back in the
+		// reader's language rather than always in English.
+		expect(sentLocale).toBe('en');
 	});
 });

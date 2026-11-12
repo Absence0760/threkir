@@ -9,6 +9,7 @@
 
 import type { Component } from 'svelte';
 import { CATEGORIES } from './categories';
+import { compareOrdinal } from '../util/ordinal_compare';
 
 export type GuideFrontmatter = {
 	title: string;
@@ -16,10 +17,44 @@ export type GuideFrontmatter = {
 	category: string;
 	slug: string;
 	order: number;
-	updated: string;
+	/// Never the plain `yyyy-mm-dd` the author typed. mdsvex parses
+	/// frontmatter with js-yaml's default schema, which resolves a bare
+	/// `YYYY-MM-DD` scalar through the YAML 1.1 `!!timestamp` tag into a Date
+	/// at UTC midnight — and then JSON-serialises the metadata export, so
+	/// what reaches the app is the string `2026-06-15T00:00:00.000Z`. The
+	/// type used to claim a bare date string and every reader believed it.
+	/// Run it through `frontmatterDate` at the index boundary.
+	updated: string | Date;
 	heroImage?: string;
 	cta?: { feature: string };
 };
+
+const UTC_MIDNIGHT = /^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.000)?Z$/;
+
+/**
+ * Normalise a frontmatter date to the `yyyy-mm-dd` the author actually typed.
+ *
+ * Two shapes arrive, both from the same cause. A reader working off raw
+ * frontmatter gets js-yaml's `Date`; the compiled module gets that Date
+ * JSON-serialised to `2026-06-15T00:00:00.000Z`. Either way the value is UTC
+ * midnight, and rendering UTC midnight through a local formatter walks the day
+ * backwards at every negative offset — the bug decisions § 607 closed for the
+ * shared formatters, arriving here by a different road.
+ *
+ * The Date branch reads **UTC** getters for exactly that reason. The string
+ * branch only strips a suffix that is precisely UTC midnight: a value carrying
+ * a real time of day is a genuine instant and must not be flattened into a
+ * calendar day. Anything else passes through untouched.
+ */
+export function frontmatterDate(value: string | Date | null | undefined): string {
+	if (value instanceof Date) {
+		if (Number.isNaN(value.getTime())) return '';
+		const pad = (n: number) => String(n).padStart(2, '0');
+		return `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())}`;
+	}
+	if (!value) return '';
+	return UTC_MIDNIGHT.exec(value)?.[1] ?? value;
+}
 
 export type GuideComponent = Component;
 
@@ -66,8 +101,31 @@ export function listGuideSlugs(entries: GuideIndexEntry[]): string[] {
 	return listGuides(entries).map((e) => e.slug);
 }
 
-/// Resolve a guide by slug for the active locale, falling back to English
-/// when no localized file exists. Returns `null` for an unknown slug.
+/// The language half of a locale tag: `pt-BR` and `pt-PT` are both `pt`.
+function baseLanguage(locale: string): string {
+	return locale.toLowerCase().split('-')[0];
+}
+
+/// A guide written in the reader's LANGUAGE, whatever the region. Sorted so
+/// two same-language variants resolve deterministically rather than by
+/// whichever the glob happened to list first.
+function sameLanguageEntry(
+	entries: GuideIndexEntry[],
+	slug: string,
+	locale: string,
+): GuideIndexEntry | undefined {
+	const base = baseLanguage(locale);
+	return entries
+		.filter((e) => e.slug === slug && baseLanguage(e.locale) === base)
+		.sort((a, b) => compareOrdinal(a.locale, b.locale))[0];
+}
+
+/// Resolve a guide by slug for the active locale: the exact locale, then any
+/// guide in the same LANGUAGE, then English. The middle step is what keeps a
+/// reader in their own language when we ship two variants of it and only one
+/// has the prose — a Lisbon reader gets the Brazilian guide, which is far
+/// closer to them than English, and gets it silently because it IS their
+/// language. Returns `null` for an unknown slug.
 export function getGuide(
 	entries: GuideIndexEntry[],
 	slug: string,
@@ -75,19 +133,25 @@ export function getGuide(
 ): GuideIndexEntry | null {
 	const localized = entries.find((e) => e.slug === slug && e.locale === locale);
 	if (localized) return localized;
-	return entries.find((e) => e.slug === slug && e.locale === DEFAULT_LOCALE) ?? null;
+	return (
+		sameLanguageEntry(entries, slug, locale) ??
+		entries.find((e) => e.slug === slug && e.locale === DEFAULT_LOCALE) ??
+		null
+	);
 }
 
 /// True when the active-locale guide is being served as the English
-/// fallback (no localized file for this slug). Drives the "this guide is
-/// in English" notice on the article page.
+/// fallback. Drives the "this guide is in English" notice on the article
+/// page, so it must ask whether the reader's LANGUAGE is served, not whether
+/// their exact tag is: a pt-PT reader handed the Brazilian guide is reading
+/// Portuguese, and telling them it is in English would be false.
 export function isEnglishFallback(
 	entries: GuideIndexEntry[],
 	slug: string,
 	locale: string,
 ): boolean {
-	if (locale === DEFAULT_LOCALE) return false;
-	return !entries.some((e) => e.slug === slug && e.locale === locale);
+	if (baseLanguage(locale) === DEFAULT_LOCALE) return false;
+	return !sameLanguageEntry(entries, slug, locale);
 }
 
 /// The localized title + description for a guide card. The hub + category
@@ -105,10 +169,15 @@ export function localizedGuideMeta(
 ): GuideMeta | null {
 	const en = entries.find((e) => e.slug === slug && e.locale === DEFAULT_LOCALE);
 	if (!en) return null;
+	// Same resolution order as getGuide, or the card and the body disagree:
+	// this function exists so a reader never meets an English title above a
+	// localized body, and a pt-PT reader served the Brazilian body would have
+	// got exactly that.
 	const localized =
 		locale === DEFAULT_LOCALE
 			? undefined
-			: entries.find((e) => e.slug === slug && e.locale === locale);
+			: (entries.find((e) => e.slug === slug && e.locale === locale) ??
+				sameLanguageEntry(entries, slug, locale));
 	return {
 		slug,
 		title: localized?.title ?? en.title,
@@ -127,4 +196,34 @@ export function nonEmptyCategories(entries: GuideIndexEntry[]) {
 	return CATEGORIES.filter((c) => guidesByCategory(entries, c.id).length > 0).sort(
 		(a, b) => a.order - b.order,
 	);
+}
+
+/// Words a typical adult reads per minute of prose. 200 is the low end of the
+/// usual 200-250 range, chosen so the estimate errs generous — a guide that
+/// takes longer than promised is a worse surprise than one that takes less.
+const WORDS_PER_MINUTE = 200;
+
+/**
+ * Estimate a guide's reading time in whole minutes from its raw markdown.
+ *
+ * The body is stripped of everything a reader does not read WORD BY WORD
+ * before counting: YAML frontmatter, fenced code, inline code, image alts,
+ * link URLs (the link TEXT stays, because that is read) and the punctuation
+ * of headings, emphasis and list markers. Counting the raw file instead
+ * inflates every guide by its frontmatter and its link targets.
+ *
+ * Always at least 1 — "0 min read" reads as an error, not as a short guide.
+ */
+export function estimateReadingMinutes(markdown: string): number {
+	const prose = markdown
+		.replace(/^---\n[\s\S]*?\n---\n/, '')
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/`[^`]*`/g, ' ')
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/^[>\s]*[-*+]\s+/gm, ' ')
+		.replace(/^#{1,6}\s+/gm, ' ')
+		.replace(/[*_~#>|]/g, ' ');
+	const words = prose.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+	return Math.max(1, Math.round(words.length / WORDS_PER_MINUTE));
 }

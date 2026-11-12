@@ -1,22 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { distanceInPreferred } from '$lib/format/units.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
 	import {
 		fetchGlobalSegment,
+		fetchParkCourseCredit,
 		fetchGlobalSegmentLeaderboard,
 		SEGMENT_AGE_BANDS,
 		type GlobalSegment,
 		type GlobalSegmentLeaderboardEntry,
 		type SegmentGenderFilter,
 		type SegmentAgeBand,
-	} from '$lib/core/data';
-	import { crownLabel } from '$lib/segments/segments';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { crownLabel } from '#lib/segments/segments.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
+	import OldMatchNote from '#lib/components/OldMatchNote.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
 
@@ -27,6 +32,11 @@
 	let boardFailed = $state(false);
 	let genderFilter = $state<SegmentGenderFilter | null>(null);
 	let ageFilter = $state<SegmentAgeBand | null>(null);
+	let showHeadToHead = $state(false);
+	// A park course's segment carries its source credit in its own column, not
+	// in the description (decisions § 2438). A failed read shows none; the
+	// credit is auxiliary to the page.
+	let courseCredit = $state<string | null>(null);
 
 	// The catalogue geometry is public curated data (world-readable table),
 	// NOT any athlete's GPS track — safe to render directly. The leaderboard
@@ -67,6 +77,11 @@
 		loadFailed = false;
 		try {
 			segment = await fetchGlobalSegment(data.id);
+			if (segment) {
+				fetchParkCourseCredit({ segmentId: segment.id })
+					.then((credit) => (courseCredit = credit))
+					.catch((e) => console.warn('fetchParkCourseCredit failed', e));
+			}
 		} catch (e) {
 			console.error('fetchGlobalSegment failed', e);
 			loadFailed = true;
@@ -98,12 +113,12 @@
 </script>
 
 {#if loading}
-	<div class="segment-detail"><p class="loading">&nbsp;</p></div>
+	<div class="page"><p class="loading">&nbsp;</p></div>
 {:else if loadFailed}
-	<div class="segment-detail">
-		<a href="/dashboard" class="back-link">
-			<span class="material-symbols">arrow_back</span>
-			{m('segmentDetail.back')}
+	<div class="page">
+		<a href="/segments" class="back-link">
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
+			{m('segments.browseTitle')}
 		</a>
 		<div class="not-found" role="alert" data-testid="segment-load-error">
 			<h1>{m('segmentDetail.loadFailedTitle')}</h1>
@@ -114,10 +129,10 @@
 		</div>
 	</div>
 {:else if !segment}
-	<div class="segment-detail">
-		<a href="/dashboard" class="back-link">
-			<span class="material-symbols">arrow_back</span>
-			{m('segmentDetail.back')}
+	<div class="page">
+		<a href="/segments" class="back-link">
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
+			{m('segments.browseTitle')}
 		</a>
 		<div class="not-found">
 			<h1>{m('segmentDetail.notFoundTitle')}</h1>
@@ -125,13 +140,14 @@
 		</div>
 	</div>
 {:else}
-	<div class="segment-detail">
-		<a href="/dashboard" class="back-link">
-			<span class="material-symbols">arrow_back</span>
-			{m('segmentDetail.back')}
+	<div class="page">
+		<a href="/segments" class="back-link">
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
+			{m('segments.browseTitle')}
 		</a>
 		<header class="detail-header">
 			<h1>{segment.name}</h1>
+			<HelpLink route="/segments/[id]" />
 			{#if segment.region}
 				<p class="region">
 					<span class="material-symbols">place</span>
@@ -143,22 +159,25 @@
 					<span class="key-stat-value">{fmtDist(Number(segment.distance_m))}</span>
 					<span class="key-stat-label">{m('segmentDetail.statDistance')}</span>
 				</div>
-				{#if segment.elevation_m != null && segment.elevation_m > 0}
+				{#if segment.elevation_m != null && Number(segment.elevation_m) > 0}
 					<div class="key-stat">
-						<span class="key-stat-value">{segment.elevation_m} m</span>
+						<span class="key-stat-value">{formatElevation(Number(segment.elevation_m))}</span>
 						<span class="key-stat-label">{m('segmentDetail.statElevation')}</span>
 					</div>
 				{/if}
 				<div class="key-stat key-stat-surface">
 					<span class="key-stat-value">
 						<span class="material-symbols">{surfaceIcon}</span>
-						{segment.surface}
+						{routeSurfaceLabel(segment.surface)}
 					</span>
 					<span class="key-stat-label">{m('segmentDetail.statSurface')}</span>
 				</div>
 			</div>
 			{#if segment.description}
 				<p class="description">{segment.description}</p>
+			{/if}
+			{#if courseCredit}
+				<p class="course-credit" data-testid="segment-course-credit">{courseCredit}</p>
 			{/if}
 		</header>
 
@@ -171,7 +190,20 @@
 		{/if}
 
 		<section class="section">
-			<h2>{m('segmentDetail.leaderboard')}</h2>
+			<div class="board-head">
+				<h2>{m('segmentDetail.leaderboard')}</h2>
+				{#if auth.loggedIn}
+					<button
+						type="button"
+						class="btn btn-outline btn-sm h2h-open"
+						onclick={() => (showHeadToHead = true)}
+						data-testid="segment-head-to-head-open"
+					>
+						<span class="material-symbols" aria-hidden="true">group</span>
+						{m('headToHead.compare')}
+					</button>
+				{/if}
+			</div>
 			<div class="tier-filters">
 				<label>
 					{m('segments.gender')}
@@ -203,6 +235,8 @@
 					</button>
 				{/if}
 			</div>
+
+			<OldMatchNote {segment} />
 
 			{#if boardFailed}
 				<p class="muted small board-error" role="alert" data-testid="segment-board-error">
@@ -264,21 +298,23 @@
 			{/if}
 		</section>
 	</div>
+	<HeadToHeadDialog
+		open={showHeadToHead}
+		onclose={() => (showHeadToHead = false)}
+		kind="global_segment"
+		targetId={segment.id}
+	/>
 {/if}
 
 <style>
-	.segment-detail {
-		max-width: 760px;
-		margin: 0 auto;
-		padding: var(--space-lg) var(--space-md);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-lg);
+	.page {
+		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 	.back-link {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
+		margin-bottom: var(--space-md);
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		text-decoration: none;
@@ -303,8 +339,7 @@
 		gap: var(--space-sm);
 	}
 	.detail-header h1 {
-		margin: 0 0 0.3rem;
-		font-size: 1.4rem;
+		margin: 0 0 0.25rem;
 	}
 	.region {
 		display: inline-flex;
@@ -317,10 +352,17 @@
 	.region .material-symbols {
 		font-size: 1rem;
 	}
+	/* The page fills the screen (conventions.md "Web page padding"), but three
+	   blocks read as broken when they do: stat cells split across a 1400 px row
+	   leave each one mostly empty, a leaderboard row strands the time a
+	   screen-width away from the name it belongs to, and the description runs
+	   past a readable measure. Cap the blocks, not the page — the map keeps the
+	   full width, which is the one thing here that gains from it. */
 	.key-stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
 		gap: 1px;
+		max-width: 48rem;
 		background: var(--color-border);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
@@ -355,8 +397,33 @@
 	}
 	.description {
 		margin: var(--space-md) 0 0;
+		max-width: 48rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+	}
+	.course-credit {
+		margin: var(--space-sm) 0 0;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+	}
+	.section {
+		margin-top: var(--space-lg);
+	}
+	.board-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		margin-bottom: var(--space-sm);
+	}
+	.board-head h2 {
+		margin: 0;
+	}
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 	.section h2 {
 		margin: 0 0 var(--space-sm);
@@ -425,6 +492,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		max-width: 48rem;
 		display: flex;
 		flex-direction: column;
 	}

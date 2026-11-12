@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readMaybeRow, readRows } from '../fixtures/db-read';
 
 /**
  * /clubs/[slug]/events/[id] — admin deletes an event from the
@@ -104,24 +105,33 @@ test.describe('/clubs/[slug]/events/[id] — admin event delete', () => {
 
 		await page.waitForURL(/\/clubs\/richmond-run-club$/, { timeout: 10_000 });
 
-		const { data: eventRow } = await admin
-			.from('events')
-			.select('id')
-			.eq('id', eventId)
-			.maybeSingle();
+		const eventRow = await readMaybeRow(
+			'events by id',
+			admin
+				.from('events')
+				.select('id')
+				.eq('id', eventId)
+				.maybeSingle()
+		);
 		expect(eventRow).toBeNull();
 
-		const { data: attRows } = await admin
-			.from('event_attendees')
-			.select('event_id')
-			.eq('event_id', eventId);
-		expect(attRows?.length ?? 0).toBe(0);
+		const attRows = await readRows(
+			'event_attendees by event_id',
+			admin
+				.from('event_attendees')
+				.select('event_id')
+				.eq('event_id', eventId)
+		);
+		expect(attRows.length).toBe(0);
 
-		const { data: resRows } = await admin
-			.from('event_results')
-			.select('event_id')
-			.eq('event_id', eventId);
-		expect(resRows?.length ?? 0).toBe(0);
+		const resRows = await readRows(
+			'event_results by event_id',
+			admin
+				.from('event_results')
+				.select('event_id')
+				.eq('event_id', eventId)
+		);
+		expect(resRows.length).toBe(0);
 
 		eventId = null;
 	});

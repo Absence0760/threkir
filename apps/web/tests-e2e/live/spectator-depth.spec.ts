@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertLivePings, insertRun, setUserSetting } from '../fixtures/simulate';
@@ -229,7 +229,7 @@ test.describe('/live/[id] — finished-run 2-minute boundary (anon)', () => {
 			);
 			// Saved totals frozen: 7.5 km / 30:00.
 			await expect(page.locator('.live-stat-value').first()).toContainText('7.5');
-			await expect(page.locator('.live-stat-value').nth(1)).toContainText('30:00');
+			await expect(page.getByTestId('runner-timer')).toContainText('30:00');
 		} finally {
 			await deleteRun(runId);
 		}
@@ -242,7 +242,7 @@ test.describe('/live/[id] — mile-preference viewer sees miles (signed-in)', ()
 	// reachable for a signed-in user whose profile says 'mi'.
 	//
 	// A real mi-preference user has the choice written at BOTH layers —
-	// pickDistanceUnit on /settings/preferences dual-writes the universal
+	// pickDistanceUnit on /settings/display dual-writes the universal
 	// user_settings bag AND the legacy user_profiles column. The app
 	// resolves the effective unit via effectivePreferredUnit, which reads
 	// the universal bag FIRST (device → universal → column). The seed

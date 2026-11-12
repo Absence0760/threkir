@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Threkir</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -18,30 +20,49 @@
 		<string>es</string>
 		<string>ja</string>
 		<string>pt-BR</string>
+		<string>pt-PT</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SupabaseAnonKey</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SENTRY_DSN</key>
+	<string>$(SENTRY_DSN)</string>
+	<key>APP_RELEASE</key>
+	<string>$(APP_RELEASE)</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Threkir needs access to your health data to record workout metrics like heart rate and calories burned during your runs.</string>
+	<string>Threkir reads your heart rate during a run to show it live and save it with the workout.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Threkir needs to save workout data to Health so your runs are tracked alongside your other fitness activities.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Threkir counts the steps you take during a run so your cadence and step total are saved with it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Threkir needs your location to track your running route, calculate distance, and provide pace information.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Threkir continues tracking your run when your watch display turns off during a workout.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseRunTracking</key>
+		<string>Threkir needs your precise location for this run so its distance, pace and map are accurate.</string>
+	</dict>
 	<key>WKApplication</key>
 	<true/>
-	<key>WKWatchOnly</key>
-	<true/>
-	<key>WKBackgroundModes</key>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.threkir.app</string>
+	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+	</array>
+	<key>WKBackgroundModes</key>
+	<array>
 		<string>workout-processing</string>
 	</array>
 </dict>

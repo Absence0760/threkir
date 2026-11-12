@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
+	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-11-11';
 </script>
 
 <svelte:head>
@@ -59,7 +59,7 @@
 		<a href="mailto:hello@threkir.com">hello@threkir.com</a> and we will take a second look.
 	</p>
 
-	<h2>4. Copyright complaints</h2>
+	<h2>4. Copyright and trade mark complaints</h2>
 	<p>
 		If you believe content on Threkir infringes your copyright, send a notice to
 		<a href="mailto:dmca@threkir.com">dmca@threkir.com</a> including: identification of the
@@ -69,6 +69,21 @@
 		your physical or electronic signature. We will remove or disable access to material we
 		determine to be infringing, and terminate repeat infringers. The user who posted the material
 		may send a counter-notice with the corresponding statutory elements to the same address.
+	</p>
+	<p>
+		If you believe Threkir uses your trade mark, event name, or course data without permission,
+		email <a href="mailto:dmca@threkir.com">dmca@threkir.com</a> with the mark, name or data, where
+		it appears, how to reach you, and what you would like us to do. For a park course, you can
+		also use <strong>Report a problem with this course</strong> on the course page and choose
+		<strong>A request from a rights holder</strong>. We acknowledge a rights holder's request
+		within two business days, reply once we have looked into it, and may close or change a
+		course while we do.
+	</p>
+	<p>
+		Times on park courses and segments are recorded by people using Threkir on public paths.
+		They are not the results of any event held on those paths, and no event organiser has
+		reviewed or endorsed them. Names of third-party events belong to their owners, and Threkir is
+		not affiliated with them.
 	</p>
 
 	<h2>5. Pro subscription</h2>
@@ -113,38 +128,46 @@
 	<p>
 		Clubs on Threkir can host paid events (for example a class with a per-session fee), and
 		users can attach fundraising pages to runs and events. For these transactions
-		<strong>Threkir is a platform, not the seller</strong>:
+		<strong>Threkir takes the payment and the host provides the event</strong>. Those are two
+		different responsibilities and they sit with two different people:
 	</p>
 	<ul>
-		<li>
-			<strong>Your contract is with the host.</strong> When you buy an event registration, the
-			seller (merchant of record) is the event host — the person teaching the class or organising
-			the event — not Threkir. Payment is processed by Stripe into the host's own Stripe account;
-			Threkir charges the host a platform fee per transaction. The host, not Threkir, is
-			responsible for delivering the event and for its tax obligations.
+		<li data-merchant-of-record="platform">
+			<strong>Threkir is the merchant of record; the host provides the event.</strong> When you
+			buy an event registration your card is charged by Threkir through Stripe, and it is our
+			name that appears on your statement. We pass the money to the host's own Stripe account,
+			less a platform fee we charge the host per transaction. The <em>host</em> — the person
+			teaching the class or organising the event — is who delivers the event, describes it, sets
+			its refund policy, and is responsible for their own tax obligations. So your contract for
+			<em>attending</em> the event is with the host; your contract for the <em>payment</em> is
+			with us.
 		</li>
 		<li>
 			<strong>Refunds for event registrations</strong> follow the refund policy the host sets for
 			each event (full refund until the event starts, full refund until 24 hours before, or no
-			refund), shown on the event page. You can cancel a registration from the event page; if
-			your order is refund-eligible the refund is issued automatically, including our platform
-			fee. If the <em>host</em> cancels an occurrence, every paid registration for it is refunded
-			in full regardless of the policy.
+			refund), shown on the event page before you pay. You can cancel a registration from the
+			event page; if your order is refund-eligible <strong>we</strong> issue the refund
+			automatically, including our platform fee. If the <em>host</em> cancels an occurrence,
+			every paid registration for it is refunded in full regardless of the policy. Because the
+			charge is ours, a dispute you raise with your card issuer is raised against Threkir — talk
+			to us first and we will usually settle it faster than a chargeback will.
 		</li>
-		<li>
-			<strong>Donations</strong> to a fundraiser are payments to the fundraiser's owner, made
-			into that person's own Stripe account. Threkir does not verify charitable status, is not a
-			party to any commitment the fundraiser owner makes to pass funds on, and does not issue
-			tax receipts. Check the fundraiser owner's identity and promises before donating; nothing
-			on a fundraiser page is tax or financial advice.
+		<li data-merchant-of-record="platform">
+			<strong>Donations</strong> to a fundraiser are charged by Threkir on the same basis and
+			passed to the fundraiser owner's own Stripe account. Threkir does not verify charitable
+			status, is not a party to any commitment the fundraiser owner makes to pass funds on, and
+			does not issue tax receipts. Check the fundraiser owner's identity and promises before
+			donating; nothing on a fundraiser page is tax or financial advice.
 		</li>
-		<li>
+		<li data-merchant-of-record="platform">
 			<strong>If you host paid events or fundraisers</strong>, you must onboard a payout account
-			with Stripe and accept the Stripe Connected Account Agreement. You are the merchant of
-			record: you own refunds, chargebacks (including our platform fee being reversed on a
-			refund or chargeback), and your own tax reporting. You must describe events accurately,
-			honour the refund policy you set, and use donation proceeds consistently with what your
-			fundraiser page says.
+			with Stripe and accept the Stripe Connected Account Agreement. <strong>Threkir, not you,
+			is the merchant of record</strong>: the charge carries our name on your buyer's statement,
+			we issue refunds under the policy you set on each event, and a disputed charge is debited
+			from our Stripe account rather than yours. The platform fee comes back to you when an
+			order is refunded. What is yours is the event and your own tax reporting: you must
+			describe events accurately, deliver what you sold, honour the refund policy you set, and
+			use donation proceeds consistently with what your fundraiser page says.
 		</li>
 	</ul>
 
@@ -167,6 +190,12 @@
 		safety-contact features depend on your phone's network and battery state, may be delayed or
 		absent without warning, and are <strong>not an emergency service</strong>. In an emergency,
 		contact your local emergency services directly.
+	</p>
+	<p>
+		Courses, routes and park courses are information to help you plan, not organised or
+		supervised events. We don't inspect, maintain or mark the trails they use. You are
+		responsible for following the rules, hours, closures and fees of the land you run on and for
+		staying on designated trails.
 	</p>
 
 	<h2>9. Disclaimers</h2>
@@ -249,7 +278,8 @@
 		<br />Privacy: <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>
 		<br />Security: <a href="mailto:security@threkir.com">security@threkir.com</a>
 		<br />Copyright: <a href="mailto:dmca@threkir.com">dmca@threkir.com</a>
-		<br />Postal: {#if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
+		<br />Postal: {#if OPERATOR.postalAddress === NOT_PROVIDED}not published — use the email
+			addresses above{:else if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
 			publication — use the email addresses above in the meantime</em>{/if}
 	</p>
 </div>

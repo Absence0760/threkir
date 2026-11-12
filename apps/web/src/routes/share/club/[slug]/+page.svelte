@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import {
 		buildClubJsonLd,
 		buildClubShareCanonical,
 		buildClubShareDescription,
 		buildClubShareTitle,
-	} from '$lib/share/share_club_meta';
+	} from '#lib/share/share_club_meta.ts';
 
 	let { data } = $props();
 
@@ -39,7 +39,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell {appHref}>
 	{#if hasClub}
 		<!-- The landmark rides the hero rather than a wrapper: .hero is a flex
 		     child of SharePageShell's .share-page, so wrapping it would move

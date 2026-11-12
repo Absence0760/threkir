@@ -29,27 +29,34 @@ String _fitnessInputBody(String screen) {
 
 void main() {
   test('the P2 fitness gate is fail-closed and reads ADAPTIVE_FITNESS_GATE', () {
-    final screen = _read('lib/screens/plan_detail_screen.dart');
-    expect(screen.contains("dotenv.env['ADAPTIVE_FITNESS_GATE']"), true,
+    // The binding lives in its own module (decisions § 822); the screen reads
+    // the named gate and must not re-spell the env read.
+    final flag = _read('lib/adaptive_fitness_flag.dart');
+    expect(flag.contains("'ADAPTIVE_FITNESS_GATE'"), true,
         reason: 'the gate must read ADAPTIVE_FITNESS_GATE from dotenv');
     // Delegating to the parity-pair parser is what keeps web and mobile from
     // accepting different values for the same documented flag.
     expect(
         RegExp(r'adaptiveFitnessGateEnabled\(\s*dotenv\.env\[')
-            .hasMatch(screen),
+            .hasMatch(flag),
         true,
         reason: 'the gate must delegate to the shared adaptiveFitnessGateEnabled parser');
     // dotenv not loaded (widget tests, a stripped build) must read as OFF, not
     // throw its way past the gate.
-    expect(RegExp(r'catch \(_\) \{[^}]*return false;').hasMatch(screen), true,
+    expect(RegExp(r'catch \(_\) \{[^}]*return false;').hasMatch(flag), true,
         reason: 'an unreadable dotenv must fail closed');
+
+    final screen = _read('lib/screens/plan_detail_screen.dart');
+    expect(screen.contains("dotenv.env['ADAPTIVE_FITNESS_GATE']"), false,
+        reason: 'the screen must read the gate getter, not the env key — a '
+            'guard written at the call site is only as good as that call site');
   });
 
   test('the plan screen passes no fitness at all while the gate is off', () {
     final body = _fitnessInputBody(_read('lib/screens/plan_detail_screen.dart'));
-    expect(body.contains('if (!_adaptiveFitnessGate) return null;'), true,
+    expect(body.contains('if (!adaptiveFitnessGate) return null;'), true,
         reason: '_adaptiveFitnessInput must return null before touching the load series');
-    final guardIdx = body.indexOf('_adaptiveFitnessGate');
+    final guardIdx = body.indexOf('adaptiveFitnessGate');
     final seriesIdx = body.indexOf('computeTrainingLoadSeries');
     expect(seriesIdx > guardIdx, true,
         reason: 'the load series must only be computed after the gate check');
@@ -77,17 +84,114 @@ void main() {
 
     // The only thing an applied re-plan writes is the workout distance the
     // shipped engine proposed — no load column, no new field.
-    final applyStart = screen.indexOf('Future<void> _applyReplan()');
+    final applyStart = screen.indexOf('Future<void> _applyReplan(');
     expect(applyStart >= 0, true, reason: 'could not locate _applyReplan — rename?');
     final applyBody = screen.substring(
         applyStart, screen.indexOf('await _load();', applyStart));
     expect(applyBody.isNotEmpty, true, reason: 'could not slice _applyReplan');
     expect(
-        RegExp(r'updateWorkout\(c\.workoutId,\s*targetDistanceM:\s*c\.toMetres\)')
+        RegExp(r'applyReplan\(\s*planId:\s*plan\.id,\s*distances:\s*\{\s*for \(final c in changes\)\s*c\.workoutId:\s*c\.toMetres\s*\},?\s*\)')
             .hasMatch(applyBody),
         true,
-        reason: 'applying a re-plan must write only targetDistanceM');
+        reason: 'applying a re-plan must send only each workout\'s proposed distance');
+    final service = _read('lib/training_service.dart');
+    final replanStart = service.indexOf('Future<void> applyReplan(');
+    expect(replanStart >= 0, true, reason: 'could not locate applyReplan — rename?');
+    final replanBody = service.substring(
+        replanStart, service.indexOf('Future<void> _applyWorkoutAdjustments(', replanStart));
+    expect(
+        RegExp(r'e\.key:\s*\{PlanWorkoutRow\.colTargetDistanceM:\s*e\.value\}')
+            .hasMatch(replanBody),
+        true,
+        reason: 'the re-plan write must patch only target_distance_m');
+    expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(replanBody), false,
+        reason: 'the re-plan write must not carry a load value');
     expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(applyBody), false,
         reason: 'the apply path must not carry a load value');
+  });
+
+  test('the plan screen is the only caller that can pass fitness, so no second call site escapes these guards',
+      () {
+    // Every property above is pinned on ONE call site; a second caller would
+    // pass whatever it liked and none of this would see it (decisions § 1977).
+    // Home's plan card is the one admitted second caller, and only because the
+    // next test pins that it passes no fitness at all (decisions § 2125).
+    final callers = <String>[];
+    for (final e in Directory('lib').listSync(recursive: true)) {
+      if (e is! File || !e.path.endsWith('.dart')) continue;
+      if (e.path.endsWith('plan_adaptive_replan.dart')) continue;
+      if (RegExp(r'\badaptiveReplanRemaining\(').hasMatch(e.readAsStringSync())) {
+        callers.add(e.path.replaceAll('\\', '/'));
+      }
+    }
+    expect(callers..sort(),
+        ['lib/plan_nudges.dart', 'lib/screens/plan_detail_screen.dart']);
+  });
+
+  test("Home's plan card calls the engine with no fitness and holds no load value",
+      () {
+    final code = _read('lib/plan_nudges.dart')
+        .split('\n')
+        .where((l) => !RegExp(r'^\s*//').hasMatch(l))
+        .join('\n');
+    final calls = RegExp(r'\badaptiveReplanRemaining\(([^)]*)\)')
+        .allMatches(code)
+        .map((m) => m.group(0))
+        .toList();
+    expect(calls, ['adaptiveReplanRemaining(weeks: sorted, today: today)'],
+        reason: 'the Home card must pass only the weeks and today, never a fitness snapshot');
+    expect(
+        RegExp(r'\b(fitness|tsb|atl|ctl|AdaptiveFitness)\b', caseSensitive: false)
+            .hasMatch(code),
+        false,
+        reason: 'a load value or fitness input appears in plan_nudges.dart');
+  });
+
+  test('the plan screen holds no load value outside _adaptiveFitnessInput', () {
+    final screen = _read('lib/screens/plan_detail_screen.dart');
+    final outside = screen.replaceFirst(_fitnessInputBody(screen), '');
+    expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(outside), false,
+        reason: 'a load value appears on the plan screen outside _adaptiveFitnessInput()');
+  });
+
+  test('the comeback ramp is reached only through the gate (decisions § 2090)',
+      () {
+    String code(String path) => _read(path)
+        .split('\n')
+        .where((l) => !RegExp(r'^\s*//').hasMatch(l))
+        .join('\n');
+    final callers = <String>[];
+    for (final e in Directory('lib').listSync(recursive: true)) {
+      if (e is! File || !e.path.endsWith('.dart')) continue;
+      if (e.path.endsWith('plan_volume_anchor.dart')) continue;
+      if (RegExp(r'\banchorToActualVolume\(').hasMatch(code(e.path))) {
+        callers.add(e.path.replaceAll('\\', '/'));
+      }
+    }
+    expect(callers..sort(),
+        ['lib/plan_nudges.dart', 'lib/screens/plan_detail_screen.dart']);
+
+    final screen = code('lib/screens/plan_detail_screen.dart');
+    expect(RegExp(r'\banchorToActualVolume\(').allMatches(screen).length, 1,
+        reason: 'the plan screen must call anchorToActualVolume only inside _volumeAnchor()');
+    expect(
+        RegExp(r'VolumeAnchor\? _volumeAnchor\([^)]*\) \{\s*if \(!adaptiveFitnessGate\) return null;\s*return anchorToActualVolume\(')
+            .hasMatch(screen),
+        true,
+        reason: '_volumeAnchor() must return null before anchoring while the gate is off');
+
+    expect(
+        code('lib/plan_nudges.dart').contains(
+            'anchorVolume ? anchorToActualVolume(weeks: sorted) : null'),
+        true,
+        reason: 'planNudge must anchor only when the caller passes anchorVolume: true');
+    expect(RegExp(r'bool anchorVolume = false').hasMatch(code('lib/plan_nudges.dart')),
+        true,
+        reason: 'an absent anchorVolume must read as off');
+    expect(
+        code('lib/screens/dashboard_screen.dart')
+            .contains('final anchorVolume = adaptiveFitnessGate;'),
+        true,
+        reason: 'Home passes the gate itself as anchorVolume');
   });
 }

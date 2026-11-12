@@ -74,16 +74,14 @@ void main() {
     });
 
     group('$name repaired sites', () {
-      test('the coach-card subtitle: 0.8 failed AA, full does not', () {
+      test('the coach-card subtitle takes onPrimaryContainer at full', () {
+        // 0.8 read 4.470:1 on the violet container this was measured on. The
+        // coral pair moved it to 4.559:1, which no longer fails, so the revert
+        // direction cannot be pinned by contrast; thinned_token_register_test
+        // still counts the site, which keeps a new alpha from slipping in.
         final bg = s.primaryContainer;
         expect(_contrast(s.onPrimaryContainer, bg),
             greaterThanOrEqualTo(_aaText));
-        if (name == 'light') {
-          // 4.470:1 — under AA by a margin no eye would catch, which is why it
-          // shipped. Dark read 5.276:1, so only one brightness ever failed.
-          expect(_contrast(_thin(s.onPrimaryContainer, 0.8, bg), bg),
-              lessThan(_aaText));
-        }
       });
 
       test('the map-tiles hint border is its only boundary', () {
@@ -119,19 +117,6 @@ void main() {
 
       test('the calorie goal line could not simply be un-thinned', () {
         expect(_contrast(s.outline, card), greaterThanOrEqualTo(_aaMark));
-        if (name == 'light') {
-          // 2.006:1 thinned — and the finding that decided the token, rather
-          // than merely the alpha: light `secondary` was coralDeep, 2.767:1 on
-          // parchment at FULL strength, so un-thinning would have left the mark
-          // failing. A thinning is not always a thinning problem. Dark read
-          // 4.402:1 thinned, so only light ever failed. The colour is named
-          // directly because light `secondary` has since moved to coralMark:
-          // that repaired the token, it did not make the old figure untrue, and
-          // the line keeps `outline` because a boundary is what it draws.
-          expect(_contrast(_thin(AppTheme.coralDeep, 0.7, card), card),
-              lessThan(_aaMark));
-          expect(_contrast(AppTheme.coralDeep, card), lessThan(_aaMark));
-        }
       });
 
       test('both calorie-trend bar hues clear the floor on their card', () {
@@ -175,6 +160,46 @@ void main() {
         expect(_contrast(s.onSurfaceVariant, tint),
             greaterThanOrEqualTo(_aaText),
             reason: 'the weekday abbreviation the weight thickens');
+      });
+
+      test('the given-reaction chip fill is not the cue, and primary type '
+          'cannot sit on it', () {
+        final tint = _thin(s.primary, 0.12, scaffold);
+        expect(_contrast(tint, scaffold), lessThan(1.2));
+        expect(_contrast(s.primary, tint), greaterThanOrEqualTo(_aaMark),
+            reason: 'the glyph and the border');
+        expect(_contrast(s.onSurfaceVariant, tint),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'the count the weight thickens');
+        if (name == 'light') {
+          // 3.869:1 — the count was drawn in `primary` here first.
+          expect(_contrast(s.primary, tint), lessThan(_aaText));
+        }
+      });
+
+      test('the park course board viewer row keeps its type over the page', () {
+        // Drawn straight on the scaffold, not on a card like the catalogue
+        // leaderboard's, so it is measured over the page colour itself.
+        // The tint is not the cue in either theme (the row says You and the
+        // name goes w700); what it owes is the floor of the type drawn on it.
+        final tint = _thin(s.primaryContainer, 0.5, scaffold);
+        expect(_contrast(s.onSurfaceVariant, tint),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'the "You" label and the rank');
+        expect(_contrast(s.onSurface, tint), greaterThanOrEqualTo(_aaText),
+            reason: 'the athlete name and the time');
+      });
+
+      test('the inbox search match highlight keeps its type over the page',
+          () {
+        // The matched run of a DM search snippet, `primary@0.18` behind the
+        // ListTile subtitle on the scaffold (1.274/1.334 against the page). Not
+        // the cue: the match goes w700. What it owes is the floor of the
+        // subtitle type drawn on it — 6.286/8.056.
+        final tint = _thin(s.primary, 0.18, scaffold);
+        expect(_contrast(s.onSurfaceVariant, tint),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'the matched text the weight thickens');
       });
 
       test('the leaderboard viewer row is invisible against its neighbour', () {

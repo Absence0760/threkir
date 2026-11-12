@@ -9,10 +9,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
+import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coaching_athlete_screen.dart';
+import '../lib/training_service.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi({
@@ -20,16 +23,47 @@ class _FakeApi extends ApiClient {
     this.overview,
     this.plans = const [],
     this.assignError,
+    this.assignOverlap = false,
+    this.overviewAfterRefusal,
     this.loadError,
+    this.mapEnabled = false,
+    this.rereadError,
   });
 
   final List<AthleteRunSummary> runs;
-  final AthletePlanOverview? overview;
+  AthletePlanOverview? overview;
   final List<TrainingPlanRow> plans;
-  final String? assignError;
+  final Object? assignError;
+
+  /// Refuse the assignment the way the server does for an overlap (23P01).
+  final bool assignOverlap;
+
+  /// What the overview re-read returns after an overlap refusal.
+  final AthletePlanOverview? overviewAfterRefusal;
+  DateTime? lastAssignedStart;
   final Object? loadError;
+  final bool mapEnabled;
+
+  /// Thrown by every overview read after the first, i.e. the re-read that
+  /// follows an assign.
+  final Object? rereadError;
+  int _overviewReads = 0;
 
   String? lastAssignedPlanId;
+  final List<String> clipped = [];
+
+  @override
+  Future<bool> coachRunMapEnabled() async => mapEnabled;
+
+  @override
+  Future<List<Waypoint>> fetchClippedTrackForRun(String runId) async {
+    clipped.add(runId);
+    return const [
+      Waypoint(lat: -33.87, lng: 151.22),
+      Waypoint(lat: -33.88, lng: 151.23),
+      Waypoint(lat: -33.89, lng: 151.24),
+    ];
+  }
 
   @override
   String? get userId => 'coach-1';
@@ -42,8 +76,13 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<AthletePlanOverview?> fetchAthletePlanOverview(String athleteId) async =>
-      overview;
+  Future<AthletePlanOverview?> fetchAthletePlanOverview(
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async {
+    if (_overviewReads++ > 0 && rereadError != null) throw rereadError!;
+    return overview;
+  }
 
   @override
   Future<List<TrainingPlanRow>> fetchMyPlans({int limit = 100}) async => plans;
@@ -55,7 +94,13 @@ class _FakeApi extends ApiClient {
     required DateTime startDate,
     String? Function(DateTime)? toIso,
   }) async {
-    if (assignError != null) throw Exception(assignError);
+    lastAssignedStart = startDate;
+    if (assignOverlap) {
+      if (overviewAfterRefusal != null) overview = overviewAfterRefusal;
+      throw const PlanAssignOverlapException(
+          'assign_plan_to_athlete: these dates overlap the athlete\'s active plan');
+    }
+    if (assignError != null) throw assignError!;
     lastAssignedPlanId = sourcePlanId;
     return 'new-plan';
   }
@@ -76,6 +121,53 @@ TrainingPlanRow _plan(String id, String name, {String? assignedBy}) =>
       isTemplate: false,
       isPublicTemplate: false,
       assignedByCoachId: assignedBy,
+    );
+
+DateTime _day(int offset) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day + offset);
+}
+
+/// An athlete plan dated relative to today.
+TrainingPlanRow _athletePlan(String id, String name, int startOffset, int endOffset) =>
+    TrainingPlanRow(
+      id: id,
+      userId: 'a1',
+      name: name,
+      goalEvent: 'distance_10k',
+      goalDistanceM: 10000,
+      startDate: _day(startOffset),
+      endDate: _day(endOffset),
+      daysPerWeek: 4,
+      status: 'active',
+      source: 'generated',
+      isTemplate: false,
+      isPublicTemplate: false,
+    );
+
+/// A 28-day coach source plan.
+TrainingPlanRow _sourcePlan() => TrainingPlanRow(
+      id: 'src',
+      userId: 'coach-1',
+      name: 'Base Builder',
+      goalEvent: 'distance_10k',
+      goalDistanceM: 10000,
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 28),
+      daysPerWeek: 4,
+      status: 'completed',
+      source: 'generated',
+      isTemplate: false,
+      isPublicTemplate: false,
+    );
+
+AthletePlanOverview _overviewOf(TrainingPlanRow shown, List<TrainingPlanRow> active) =>
+    AthletePlanOverview(
+      plan: shown,
+      weeks: const [],
+      workouts: const [],
+      completionPct: 0,
+      activePlans: active,
     );
 
 /// Every value of the `workout_kind` postgres enum except 'rest', which
@@ -120,6 +212,19 @@ AthleteRunSummary _run(String id) => AthleteRunSummary(
       metadata: null,
     );
 
+AthleteRunSummary _trackedRun(String id) => AthleteRunSummary(
+      id: id,
+      startedAt: DateTime.utc(2026, 1, 11, 7),
+      distanceM: 8000,
+      durationS: 2400,
+      isPublic: false,
+      source: 'app',
+      routeId: null,
+      activityType: 'run',
+      metadata: null,
+      trackUrl: 'a1/$id.json.gz',
+    );
+
 AthleteRunSummary _strollerRun() => AthleteRunSummary(
       id: 'r-stroller',
       startedAt: DateTime.utc(2026, 3, 28, 7),
@@ -144,8 +249,9 @@ class _HangingApi extends ApiClient {
 
   @override
   Future<AthletePlanOverview?> fetchAthletePlanOverview(
-    String athleteId,
-  ) async =>
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async =>
       null;
 
   @override
@@ -164,6 +270,8 @@ Future<void> _pump(
   ApiClient api,
   Preferences prefs, {
   Locale? locale,
+  TrainingService? training,
+  bool? hrPrescription,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -176,11 +284,33 @@ Future<void> _pump(
         athleteId: 'a1',
         displayName: 'Alice Runner',
         acceptedAt: DateTime.utc(2026, 1, 2),
+        training: training,
+        hrPrescription: hrPrescription,
       ),
     ),
   );
   await tester.pump();
   await tester.pump();
+}
+
+class _EditTraining extends TrainingService {
+  String? editedId;
+  PlanWorkoutRange? rpe;
+
+  @override
+  Future<void> updateWorkout(
+    String workoutId, {
+    String? kind,
+    String? fromKind,
+    PlanWorkoutTargets? targets,
+    String? notes,
+    PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
+  }) async {
+    editedId = workoutId;
+    this.rpe = rpe;
+  }
 }
 
 void main() {
@@ -207,6 +337,30 @@ void main() {
     expect(find.text(l10n.coachingAthleteRecentRuns), findsOneWidget);
   });
 
+  testWidgets(
+      'with the coach map gate open, a tracked run draws its map through the '
+      'clipped non-owner path', (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(runs: [_trackedRun('t1'), _run('r1')], mapEnabled: true);
+    await _pump(tester, api, prefs);
+    await tester.pump();
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.byKey(const ValueKey('coach-run-map-t1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('coach-run-map-r1')), findsNothing);
+    expect(find.text(l10n.coachingAthleteMapsClippedNote), findsOneWidget);
+    expect(api.clipped, ['t1']);
+  });
+
+  testWidgets('with the gate closed no map is drawn and nothing is fetched',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(runs: [_trackedRun('t1')]);
+    await _pump(tester, api, prefs);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('coach-run-map-t1')), findsNothing);
+    expect(api.clipped, isEmpty);
+  });
+
   testWidgets('offers the assign control when the coach has plans and the '
       'athlete has none', (tester) async {
     final prefs = await _prefs();
@@ -215,6 +369,133 @@ void main() {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.coachingAthleteAssignTitle), findsOneWidget);
     expect(find.text(l10n.coachingAthleteAssignButton), findsOneWidget);
+  });
+
+  Future<void> pickSourceAndAssign(WidgetTester tester, AppLocalizations l10n) async {
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Base Builder').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(l10n.coachingAthleteAssignButton));
+    await tester.tap(find.text(l10n.coachingAthleteAssignButton));
+    await tester.pump();
+    await tester.pump();
+  }
+
+  testWidgets(
+      'an athlete with an active plan still gets the assign control, naming '
+      'the plan and starting the picker after it', (tester) async {
+    final prefs = await _prefs();
+    final own = _athletePlan('own', 'Spring Half', -5, 20);
+    final api = _FakeApi(plans: [_sourcePlan()], overview: _overviewOf(own, [own]));
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.coachingAthleteAssignTitle), findsOneWidget);
+    expect(
+        find.text(l10n.coachingAthleteAssignAfterOne('Alice Runner', 'Spring Half',
+            formatDateMed(_day(20), 'en'))),
+        findsOneWidget);
+    expect(find.text(formatDateMed(_day(21), 'en')), findsOneWidget);
+
+    await pickSourceAndAssign(tester, l10n);
+    expect(api.lastAssignedPlanId, 'src');
+    expect(api.lastAssignedStart, _day(21));
+  });
+
+  testWidgets(
+      'a current and a queued plan are both named and the picker starts after '
+      'the queued one', (tester) async {
+    final prefs = await _prefs();
+    final own = _athletePlan('own', 'Spring Half', -5, 20);
+    final queued = _athletePlan('q', 'Autumn Full', 30, 60);
+    final api = _FakeApi(plans: [_sourcePlan()], overview: _overviewOf(own, [queued, own]));
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(
+        find.text(l10n.coachingAthleteAssignAfterTwo(
+          'Alice Runner',
+          'Spring Half',
+          formatDateMed(_day(20), 'en'),
+          'Autumn Full',
+          formatDateMed(_day(30), 'en'),
+          formatDateMed(_day(60), 'en'),
+        )),
+        findsOneWidget);
+    expect(find.text(formatDateMed(_day(61), 'en')), findsOneWidget);
+  });
+
+  testWidgets(
+      'an overlap refusal re-reads the athlete\'s plans and names the one in '
+      'the way', (tester) async {
+    final prefs = await _prefs();
+    final appeared = _athletePlan('new', 'Surprise 10K', 10, 40);
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignOverlap: true,
+      overviewAfterRefusal: _overviewOf(appeared, [appeared]),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+    expect(
+        find.text(l10n.coachingAthleteAssignOverlapNamed('Alice Runner',
+            'Surprise 10K', formatDateMed(_day(10), 'en'), formatDateMed(_day(40), 'en'))),
+        findsOneWidget);
+    expect(find.textContaining('assign_plan_to_athlete'), findsNothing);
+    expect(find.textContaining('try again'), findsNothing);
+  });
+
+  testWidgets(
+      'with three plans ahead every one is named and the picker starts after '
+      'the last', (tester) async {
+    final prefs = await _prefs();
+    final own = _athletePlan('own', 'Spring Half', -5, 20);
+    final queued = _athletePlan('q', 'Autumn Full', 21, 50);
+    final third = _athletePlan('t', 'Winter Ultra', 60, 90);
+    final api = _FakeApi(
+        plans: [_sourcePlan()], overview: _overviewOf(own, [third, own, queued]));
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(
+        find.text(l10n.coachingAthleteAssignAfterMany('Alice Runner', 3,
+            'Spring Half, Autumn Full, Winter Ultra', formatDateMed(_day(90), 'en'))),
+        findsOneWidget);
+    expect(find.text(formatDateMed(_day(91), 'en')), findsOneWidget);
+  });
+
+  testWidgets(
+      'a refusal names the plan in the way even when it is neither the one '
+      'shown nor the one after it', (tester) async {
+    final prefs = await _prefs();
+    final shown = _athletePlan('a', 'Shown Block', 40, 60);
+    final after = _athletePlan('b', 'After Block', 70, 90);
+    final early = _athletePlan('c', 'Early Block', 5, 30);
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignOverlap: true,
+      overviewAfterRefusal: _overviewOf(shown, [shown, after, early]),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+    expect(
+        find.text(l10n.coachingAthleteAssignOverlapNamed('Alice Runner',
+            'Early Block', formatDateMed(_day(5), 'en'), formatDateMed(_day(30), 'en'))),
+        findsOneWidget);
+  });
+
+  testWidgets('an overlap refusal it cannot attribute still says what to do',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(plans: [_sourcePlan()], assignOverlap: true);
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+    expect(find.text(l10n.coachingAthleteAssignOverlap('Alice Runner')),
+        findsOneWidget);
   });
 
   testWidgets('shows the assigned-by-you badge for a plan the coach assigned',
@@ -230,6 +511,85 @@ void main() {
     await _pump(tester, _FakeApi(overview: overview), prefs);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.coachingAthleteAssignedByYou), findsOneWidget);
+  });
+
+  testWidgets('a past skipped workout reads Skipped, not Missed, and is off '
+      'the books', (tester) async {
+    final prefs = await _prefs();
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final overview = AthletePlanOverview(
+      plan: _plan('p1', 'My Plan'),
+      weeks: const [],
+      workouts: [
+        PlanWorkoutRow(
+          id: 'skipped',
+          weekId: 'wk1',
+          scheduledDate: yesterday,
+          kind: 'easy',
+          manuallyCompleted: false,
+          skippedAt: yesterday,
+        ),
+        PlanWorkoutRow(
+          id: 'missed',
+          weekId: 'wk1',
+          scheduledDate: yesterday,
+          kind: 'tempo',
+          manuallyCompleted: false,
+        ),
+      ],
+      completionPct: 0,
+    );
+    await _pump(tester, _FakeApi(overview: overview), prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.coachingAthleteStatusSkipped), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteStatusMissed), findsOneWidget);
+    expect(
+      find.textContaining(l10n.coachingAthleteDoneCount(0, 1), findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(l10n.coachingAthleteMissedCount(1), findRichText: true),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'a workout row shows its effort targets and opens the edit sheet for '
+      'the coach (decisions § 2092)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(500, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final prefs = await _prefs();
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final overview = AthletePlanOverview(
+      plan: _plan('p1', 'My Plan'),
+      weeks: const [],
+      workouts: [
+        PlanWorkoutRow(
+          id: 'easy-1',
+          weekId: 'wk1',
+          scheduledDate: tomorrow,
+          kind: 'easy',
+          targetRpeMin: 3,
+          targetRpeMax: 4,
+          targetHrMaxBpm: 125,
+          manuallyCompleted: false,
+        ),
+      ],
+      completionPct: 0,
+    );
+    final training = _EditTraining();
+    await _pump(tester, _FakeApi(overview: overview), prefs,
+        training: training, hrPrescription: true);
+    expect(find.textContaining('Effort 3–4/10 · Cap 125 bpm'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('coachWorkoutRow-easy-1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '5');
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(training.editedId, 'easy-1');
+    expect(training.rpe, (min: 3, max: 5));
   });
 
   testWidgets('every workout kind renders the catalogue label, not the raw '
@@ -263,12 +623,16 @@ void main() {
     expect(find.text('Walk run'), findsNothing);
   });
 
-  testWidgets('surfaces the assign RPC raise as a banner (no swallow)',
+  testWidgets(
+      'an assign refusal shows localized copy, never the RPC raise text',
       (tester) async {
     final prefs = await _prefs();
     final api = _FakeApi(
       plans: [_plan('p1', 'Base Builder')],
-      assignError: 'athlete already has an active plan',
+      assignError: const PostgrestException(
+        code: 'P0001',
+        message: 'assign_plan_to_athlete: not an active coach of athlete a1',
+      ),
     );
     await _pump(tester, api, prefs);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
@@ -282,10 +646,66 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('athlete already has an active plan'), findsOneWidget);
-    // showTopBanner schedules an auto-dismiss timer; drain it past the hard
-    // ceiling so the test doesn't trip the pending-timer invariant.
-    await tester.pump(const Duration(seconds: 7));
+    expect(find.text(l10n.coachingAthleteAssignError), findsOneWidget);
+    expect(find.textContaining('assign_plan_to_athlete'), findsNothing);
+  });
+
+  testWidgets(
+      'an assign that fails offline says so, not that the assign was refused',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignError: const SocketException("Failed host lookup: 'xyz.supabase.co'"),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+
+    expect(find.text(l10n.authErrorOffline), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+  });
+
+  testWidgets('an assign refused for a signed-out caller asks them to sign in',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignError: const PostgrestException(
+        code: 'P0001',
+        message: 'assign_plan_to_athlete: not authenticated',
+      ),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+
+    expect(find.text(l10n.authErrorNotSignedIn), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+  });
+
+  testWidgets(
+      'a re-read that fails after the plan is assigned still reports the '
+      'assign, and clears the pick so it is not sent twice', (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      rereadError: const SocketException('Connection reset by peer'),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+
+    expect(api.lastAssignedPlanId, 'src');
+    expect(find.text(l10n.coachingAthleteAssignSuccess('Alice Runner')),
+        findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+    final button = tester.widget<ButtonStyleButton>(find.ancestor(
+        of: find.text(l10n.coachingAthleteAssignButton),
+        matching: find.bySubtype<ButtonStyleButton>()));
+    expect(button.onPressed, isNull,
+        reason: 'the pick is cleared, so the same plan is not assigned again');
   });
 
   testWidgets(
@@ -303,9 +723,6 @@ void main() {
     expect(find.textContaining('SocketException'), findsNothing);
     expect(find.textContaining('Exception:'), findsNothing);
 
-    // showTopBanner schedules an auto-dismiss timer; drain it past the hard
-    // ceiling so the test doesn't trip the pending-timer invariant.
-    await tester.pump(const Duration(seconds: 7));
   });
 
   group('CoachingAthleteScreen — the run-row lanes', () {

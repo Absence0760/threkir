@@ -1,7 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import type Anthropic from '@anthropic-ai/sdk';
 
-import { humaniseUpstreamError } from './providers';
+import {
+	anthropicCoachRequest,
+	anthropicTextTokens,
+	COACH_ANTHROPIC_MODEL,
+	humaniseUpstreamError,
+} from './providers';
+import { TIER_LIMITS } from './types';
 
 const LOCAL = 'http://127.0.0.1:11434/v1';
 const REMOTE = 'https://openrouter.ai/api/v1';
@@ -117,4 +124,103 @@ test('404 without "model" in the message falls through to the generic envelope',
 	);
 	assert.match(out, /^Coach upstream 404: /);
 	assert.doesNotMatch(out, /Coach can't reach model/);
+});
+
+// ─────────────── Anthropic request shape ───────────────
+//
+// Pinned because the coach model is retired on a date (claude-sonnet-4-5
+// reached end of life 2026-11-30) and its successor rejects shapes the
+// old one accepted: non-default sampling parameters 400, and omitting
+// `thinking` runs adaptive thinking whose tokens count against
+// max_tokens, which would spend the free tier's 768-token reply cap
+// before the reply started.
+
+const CALLER = [
+	{ role: 'user' as const, content: 'plan my week' },
+	{ role: 'assistant' as const, content: 'Here is a plan.' },
+	{ role: 'user' as const, content: 'swap thursday' },
+];
+
+test('anthropicCoachRequest — current Sonnet, no extended thinking, no sampling overrides', () => {
+	const req = anthropicCoachRequest('SYSTEM', 'CONTEXT', CALLER, TIER_LIMITS.free);
+	assert.equal(COACH_ANTHROPIC_MODEL, 'claude-sonnet-5-5');
+	assert.equal(req.model, COACH_ANTHROPIC_MODEL);
+	assert.deepEqual(req.thinking, { type: 'between_tools' });
+	// between_tools is refused above effort `high`.
+	assert.ok(
+		['low', 'medium', 'high'].includes(String(req.output_config?.effort)),
+		`effort must be low/medium/high with between_tools, got ${req.output_config?.effort}`,
+	);
+	for (const key of ['temperature', 'top_p', 'top_k'] as const) {
+		assert.equal(key in req, false, `${key} is rejected by the model when non-default`);
+	}
+});
+
+test('anthropicCoachRequest — max_tokens is the tier reply cap', () => {
+	for (const tier of ['free', 'pro'] as const) {
+		const req = anthropicCoachRequest('S', 'C', CALLER, TIER_LIMITS[tier]);
+		assert.equal(req.max_tokens, TIER_LIMITS[tier].maxTokens);
+	}
+});
+
+test('anthropicCoachRequest — context turn is cached and the caller turn is last', () => {
+	const req = anthropicCoachRequest('S', 'C', CALLER, TIER_LIMITS.pro);
+	assert.equal(req.messages.length, CALLER.length + 2);
+	assert.equal(req.messages[0].role, 'user');
+	assert.equal(req.messages[1].role, 'assistant');
+	const last = req.messages[req.messages.length - 1];
+	assert.equal(last.role, 'user');
+	assert.deepEqual(last.content, [{ type: 'text', text: 'swap thursday' }]);
+});
+
+// ─────────────── Anthropic token stream ───────────────
+
+async function* events(list: unknown[]): AsyncIterable<Anthropic.MessageStreamEvent> {
+	for (const e of list) yield e as Anthropic.MessageStreamEvent;
+}
+
+async function collect(it: AsyncIterable<string>): Promise<{ out: string[]; err: Error | null }> {
+	const out: string[] = [];
+	try {
+		for await (const t of it) out.push(t);
+		return { out, err: null };
+	} catch (e) {
+		return { out, err: e as Error };
+	}
+}
+
+test('anthropicTextTokens — yields only text deltas', async () => {
+	const { out, err } = await collect(
+		anthropicTextTokens(
+			events([
+				{ type: 'message_start' },
+				{ type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'x' } },
+				{ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Easy ' } },
+				{ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'run.' } },
+				{ type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+				{ type: 'message_stop' },
+			]),
+		),
+	);
+	assert.equal(err, null);
+	assert.deepEqual(out, ['Easy ', 'run.']);
+});
+
+test('anthropicTextTokens — a refusal stop throws instead of ending as a normal turn', async () => {
+	// Reason: a decline arrives as stop_reason "refusal" on an otherwise
+	// successful stream. Ending quietly would emit `done` with an empty
+	// answer and keep the runner's daily slot; throwing sends it down the
+	// handler's mid-stream error path, which refunds a zero-token turn.
+	const { out, err } = await collect(
+		anthropicTextTokens(
+			events([
+				{ type: 'message_start' },
+				{ type: 'message_delta', delta: { stop_reason: 'refusal' } },
+				{ type: 'message_stop' },
+			]),
+		),
+	);
+	assert.deepEqual(out, []);
+	assert.ok(err, 'refusal must throw');
+	assert.match(err!.message, /refusal/);
 });

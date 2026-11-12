@@ -1,0 +1,1722 @@
+{
+ "_comment": "Route guide reader + renderer cases (issue #1344, decisions § 2448), read by apps/web/src/lib/parks/route_guide.test.ts and apps/mobile_android/test/route_guide_test.dart. 'parsed' null means the reader refuses the guide; 'lines' are the templates and raw values, in order, before formatting.",
+ "cases": [
+  {
+   "name": "a full guide reads every kind of step in order",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": "Park by the boathouse."
+   },
+   "lines": [
+    {
+     "key": "startNamed",
+     "name": "Lake Trail"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "passCheckpoints"
+    },
+    {
+     "key": "leftNamed",
+     "at": 400,
+     "name": "Ridge Trail"
+    },
+    {
+     "key": "bridge",
+     "at": 600
+    },
+    {
+     "key": "surfaceGravel",
+     "at": 700
+    },
+    {
+     "key": "climb",
+     "at": 800,
+     "gain": 14,
+     "length": 300
+    },
+    {
+     "key": "checkpoint",
+     "at": 995,
+     "n": 1,
+     "total": 2
+    },
+    {
+     "key": "straightFireRoad",
+     "at": 1200
+    },
+    {
+     "key": "ford",
+     "at": 1300
+    },
+    {
+     "key": "rightRoad",
+     "at": 1400
+    },
+    {
+     "key": "surfacePaved",
+     "at": 1450
+    },
+    {
+     "key": "checkpoint",
+     "at": 1500,
+     "n": 2,
+     "total": 2
+    },
+    {
+     "key": "leftPath",
+     "at": 1600
+    },
+    {
+     "key": "finish",
+     "at": 1990
+    }
+   ]
+  },
+  {
+   "name": "a lapped guide with a landmark and no checkpoints",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "path"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "counterclockwise",
+      "keep_on": "left",
+      "landmark": "Mill Pond"
+     },
+     {
+      "kind": "surface",
+      "at_m": 100,
+      "surface": "dirt"
+     },
+     {
+      "kind": "surface",
+      "at_m": 200,
+      "surface": "unpaved"
+     },
+     {
+      "kind": "surface",
+      "at_m": 300,
+      "surface": "boardwalk"
+     },
+     {
+      "kind": "lap",
+      "at_m": 2500,
+      "lap": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 4900,
+      "turn": "right",
+      "name": "Co-op Trail"
+     },
+     {
+      "kind": "finish",
+      "at_m": 5000
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startPath"
+    },
+    {
+     "key": "counterclockwise"
+    },
+    {
+     "key": "keepLeft",
+     "landmark": "Mill Pond"
+    },
+    {
+     "key": "surfaceDirt",
+     "at": 100
+    },
+    {
+     "key": "surfaceUnpaved",
+     "at": 200
+    },
+    {
+     "key": "surfaceBoardwalk",
+     "at": 300
+    },
+    {
+     "key": "lap",
+     "at": 2500,
+     "n": 2,
+     "total": 2
+    },
+    {
+     "key": "rightNamed",
+     "at": 4900,
+     "name": "Co-op Trail"
+    },
+    {
+     "key": "finish",
+     "at": 5000
+    }
+   ]
+  },
+  {
+   "name": "the other turns and starts",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "fire_road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 10,
+      "turn": "right",
+      "name": "A"
+     },
+     {
+      "kind": "junction",
+      "at_m": 20,
+      "turn": "straight",
+      "name": "B"
+     },
+     {
+      "kind": "junction",
+      "at_m": 30,
+      "turn": "left",
+      "way": "fire_road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 40,
+      "turn": "right",
+      "way": "fire_road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 50,
+      "turn": "left",
+      "way": "road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 60,
+      "turn": "straight",
+      "way": "road"
+     },
+     {
+      "kind": "junction",
+      "at_m": 70,
+      "turn": "right",
+      "way": "path"
+     },
+     {
+      "kind": "junction",
+      "at_m": 80,
+      "turn": "straight",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 90
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startFireRoad"
+    },
+    {
+     "key": "rightNamed",
+     "at": 10,
+     "name": "A"
+    },
+    {
+     "key": "straightNamed",
+     "at": 20,
+     "name": "B"
+    },
+    {
+     "key": "leftFireRoad",
+     "at": 30
+    },
+    {
+     "key": "rightFireRoad",
+     "at": 40
+    },
+    {
+     "key": "leftRoad",
+     "at": 50
+    },
+    {
+     "key": "straightRoad",
+     "at": 60
+    },
+    {
+     "key": "rightPath",
+     "at": 70
+    },
+    {
+     "key": "straightPath",
+     "at": 80
+    },
+    {
+     "key": "finish",
+     "at": 90
+    }
+   ]
+  },
+  {
+   "name": "a road start and a right-hand landmark",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "way": "road"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise",
+      "keep_on": "right",
+      "landmark": "Swift Creek Lake"
+     },
+     {
+      "kind": "finish",
+      "at_m": 10
+     }
+    ]
+   },
+   "parsed": {
+    "lang": "en",
+    "getting_there": null
+   },
+   "lines": [
+    {
+     "key": "startRoad"
+    },
+    {
+     "key": "clockwise"
+    },
+    {
+     "key": "keepRight",
+     "landmark": "Swift Creek Lake"
+    },
+    {
+     "key": "finish",
+     "at": 10
+    }
+   ]
+  },
+  {
+   "name": "an unknown step kind hides the whole guide",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "waypoint",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "steps out of distance order",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 100,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a junction with both a name and a way",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail",
+      "way": "path"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a junction with neither",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "an unknown turn",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "uturn",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "an unknown surface",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "lava"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a fractional distance",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600.5,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a guide that does not open with its start",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a guide that does not close with its finish",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a landmark without its side",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise",
+      "landmark": "Lake"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a checkpoint past its total",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 3,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a climb with a text gain",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": "14",
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a getting_there that is not text",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": 5,
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "another version",
+   "guide": {
+    "version": 2,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 0,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "a start away from 0",
+   "guide": {
+    "version": 1,
+    "lang": "en",
+    "getting_there": "  Park by the boathouse.  ",
+    "steps": [
+     {
+      "kind": "start",
+      "at_m": 5,
+      "name": "Lake Trail"
+     },
+     {
+      "kind": "direction",
+      "at_m": 0,
+      "rotation": "clockwise"
+     },
+     {
+      "kind": "junction",
+      "at_m": 400,
+      "turn": "left",
+      "name": "Ridge Trail"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 600,
+      "crossing": "bridge"
+     },
+     {
+      "kind": "surface",
+      "at_m": 700,
+      "surface": "gravel"
+     },
+     {
+      "kind": "climb",
+      "at_m": 800,
+      "gain_m": 14,
+      "length_m": 300
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 995,
+      "order": 1,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1200,
+      "turn": "straight",
+      "way": "fire_road"
+     },
+     {
+      "kind": "crossing",
+      "at_m": 1300,
+      "crossing": "ford"
+     },
+     {
+      "kind": "junction",
+      "at_m": 1400,
+      "turn": "right",
+      "way": "road"
+     },
+     {
+      "kind": "surface",
+      "at_m": 1450,
+      "surface": "paved"
+     },
+     {
+      "kind": "checkpoint",
+      "at_m": 1500,
+      "order": 2,
+      "of": 2
+     },
+     {
+      "kind": "junction",
+      "at_m": 1600,
+      "turn": "left",
+      "way": "path"
+     },
+     {
+      "kind": "finish",
+      "at_m": 1990
+     }
+    ]
+   },
+   "parsed": null
+  },
+  {
+   "name": "not an object",
+   "guide": [],
+   "parsed": null
+  },
+  {
+   "name": "null",
+   "guide": null,
+   "parsed": null
+  }
+ ]
+}

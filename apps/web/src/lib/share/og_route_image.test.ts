@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {
 	buildMetaLine,
 	buildRouteOgSvg,
-	truncate,
-	xmlEscape,
 } from './og_route_image';
+import { escapeHtml } from '../util/html_escape';
+import { estimateSvgTextWidthPx } from './svg_text_width';
 
 const sampleTrack = [
 	{ lat: 51.5, lng: -0.1 },
@@ -72,6 +72,11 @@ test('buildMetaLine — km only when surface absent', () => {
 	assert.equal(buildMetaLine(5000, null), '5.0 km');
 });
 
+test('buildMetaLine — an official distance replaces the traced one', () => {
+	assert.equal(buildMetaLine(42670, 'road', 42195), '42.195 km · road');
+	assert.equal(buildMetaLine(42670, 'road', null), '42.67 km · road');
+});
+
 test('buildMetaLine — surface only when distance absent', () => {
 	assert.equal(buildMetaLine(null, 'road'), 'road');
 });
@@ -84,15 +89,48 @@ test('buildMetaLine — marathon uses two-decimal km', () => {
 	assert.equal(buildMetaLine(42195, 'road'), '42.20 km · road');
 });
 
-test('truncate — passes short strings through', () => {
-	assert.equal(truncate('hi', 30), 'hi');
+/// The title as it reaches the rasteriser.
+function titleOf(svg: string): string {
+	return /font-size="56"[^>]*>([^<]*)</.exec(svg)?.[1] ?? '';
+}
+
+/// The card's title box: W 1200 less two 40 px pads.
+const TITLE_BOX_PX = 1120;
+
+test('buildRouteOgSvg — a long route name is clipped to the card, ellipsis included', () => {
+	const name = 'a route name far longer than the title line can hold';
+	const title = titleOf(buildRouteOgSvg({ name, track: sampleTrack }));
+	assert.ok(title.endsWith('…'));
+	assert.ok(name.startsWith(title.slice(0, -1)));
+	assert.ok(estimateSvgTextWidthPx(title, 56) <= TITLE_BOX_PX);
 });
 
-test('truncate — uses an ellipsis when over the cap', () => {
-	const s = 'this string is long enough to be cut off';
-	assert.equal(truncate(s, 10), 'this stri…');
+test('buildRouteOgSvg — the title budget is the box, not a cluster count', () => {
+	// Both names are 30 clusters, which the old budget passed unclipped; one of
+	// them painted 1645 px into a 1120 px box and the other 1142. A budget in
+	// clusters cannot bound a box in pixels, so neither survives whole now and
+	// the wider one is cut harder.
+	const capitals = titleOf(buildRouteOgSvg({ name: 'M'.repeat(30), track: sampleTrack }));
+	const lower = titleOf(buildRouteOgSvg({ name: 'n'.repeat(30), track: sampleTrack }));
+	for (const title of [capitals, lower]) {
+		assert.ok(title.endsWith('…'), `${JSON.stringify(title)} was not clipped at all`);
+		assert.ok(estimateSvgTextWidthPx(title, 56) <= TITLE_BOX_PX);
+	}
+	assert.ok(
+		capitals.length < lower.length,
+		`capitals kept ${capitals.length} against lowercase's ${lower.length}`
+	);
 });
 
-test('xmlEscape — escapes the five reserved characters', () => {
-	assert.equal(xmlEscape(`a<b>&c"d'e`), 'a&lt;b&gt;&amp;c&quot;d&apos;e');
+test('escapeHtml — escapes the five reserved characters', () => {
+	assert.equal(escapeHtml(`a<b>&c"d'e`), 'a&lt;b&gt;&amp;c&quot;d&#39;e');
+});
+
+test('buildRouteOgSvg — a route name cut mid-emoji does not reach the rasteriser broken', () => {
+	const svg = buildRouteOgSvg({
+		name: `${'a'.repeat(28)}\u{1F3C3} and more of the name`,
+		track: sampleTrack,
+	});
+	assert.equal(Buffer.from(svg, 'utf8').toString('utf8'), svg);
+	assert.doesNotMatch(svg, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
 });

@@ -1,26 +1,31 @@
 <script lang="ts">
-	import { createClub, updateClub } from '$lib/core/data';
-	import { geocodePlace } from '$lib/routes/geocoding';
-	import type { Club, JoinPolicy } from '$lib/types';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { createClub, updateClub } from '#lib/core/data.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { geocodePlace } from '#lib/routes/geocoding.ts';
+	import type { Club, JoinPolicy } from '#lib/types.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { joinPolicyLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { untrack } from 'svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { TEXT_LIMITS } from '$lib/core/text_limits';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
+	import { clubNameNamesSomething } from '#lib/social/club_slug.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface Props {
 		/// When set, the editor edits this club instead of creating a new one.
 		existing?: Club;
+		initialName?: string;
+		initialLocation?: string;
 		oncreated?: (club: { slug: string; id: string }) => void;
 		onsaved?: () => void;
 		oncancel?: () => void;
 	}
-	let { existing, oncreated, onsaved, oncancel }: Props = $props();
+	let { existing, initialName, initialLocation, oncreated, onsaved, oncancel }: Props = $props();
 
-	let name = $state(untrack(() => existing?.name ?? ''));
+	let name = $state(untrack(() => existing?.name ?? initialName ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
-	let location = $state(untrack(() => existing?.location_label ?? ''));
+	let location = $state(untrack(() => existing?.location_label ?? initialLocation ?? ''));
 	let visibility = $state<'public' | 'private'>(
 		untrack(() => (existing && !existing.is_public ? 'private' : 'public'))
 	);
@@ -59,6 +64,15 @@
 	async function submit(e: Event) {
 		e.preventDefault();
 		if (!name.trim() || busy) return;
+		// A name has to name something. Without this a club called `!!!` was
+		// creatable here and refused on the phone, and it landed under the
+		// `CLUB_SLUG_FALLBACK` slug — a permanent public URL of `club` for a club
+		// whose name spells nothing (decisions § 1338). The predicate is the
+		// pair's, not this component's, so the two clients cannot disagree.
+		if (!clubNameNamesSomething(name)) {
+			showToast(m('clubEditor.errNameNeedsCharacter'), 'error');
+			return;
+		}
 		busy = true;
 		try {
 			if (existing) {
@@ -103,7 +117,7 @@
 			dirty.rebaseline();
 			oncreated?.(club);
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEditor.createFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEditor.createFailed', 'clubEditor.createFailed'), 'error');
 		} finally {
 			busy = false;
 		}
@@ -113,16 +127,25 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <form onsubmit={submit} class="editor-form">
-	<label>
-		<span>{m('clubEditor.name')}</span>
-		<input
-			type="text"
-			bind:value={name}
-			placeholder={m('clubEditor.namePlaceholder')}
-			required
-			maxlength={TEXT_LIMITS.clubName}
-		/>
-	</label>
+	{#if existing?.is_verified}
+		<p class="field-hint verified-lock" role="note" data-testid="club-editor-verified-lock">
+			{m('clubEditor.verifiedLockWarning')}
+		</p>
+	{/if}
+	<div class="field">
+		<label>
+			<span>{m('clubEditor.name')}</span>
+			<input
+				type="text"
+				bind:value={name}
+				placeholder={m('clubEditor.namePlaceholder')}
+				required
+				maxlength={TEXT_LIMITS.clubName}
+				aria-describedby="club-name-hint"
+			/>
+		</label>
+		<span class="field-hint" id="club-name-hint">{m('clubEditor.nameHint')}</span>
+	</div>
 
 	<label>
 		<span>{m('clubEditor.description')} <span class="optional">{m('clubEditor.optional')}</span></span>
@@ -134,95 +157,128 @@
 		></textarea>
 	</label>
 
-	<label>
-		<span>{m('clubEditor.location')} <span class="optional">{m('clubEditor.optional')}</span></span>
-		<input
-			type="text"
-			bind:value={location}
-			placeholder={m('clubEditor.locationPlaceholder')}
-			maxlength={TEXT_LIMITS.clubLocationLabel}
-		/>
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('clubEditor.location')} <span class="optional">{m('clubEditor.optional')}</span></span>
+			<input
+				type="text"
+				bind:value={location}
+				placeholder={m('clubEditor.locationPlaceholder')}
+				maxlength={TEXT_LIMITS.clubLocationLabel}
+				aria-describedby="club-location-hint"
+			/>
+		</label>
+		<span class="field-hint" id="club-location-hint">{m('clubEditor.locationHint')}</span>
+	</div>
 
 	<fieldset>
 		<legend>{m('clubEditor.links')} <span class="optional">{m('clubEditor.optional')}</span></legend>
 		<label class="link-field">
 			<span>{m('clubEditor.website')}</span>
-			<input type="url" bind:value={websiteUrl} placeholder="https://example.com" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={websiteUrl}
+				placeholder="https://example.com"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
 		<label class="link-field">
 			<span>{m('clubEditor.instagram')}</span>
-			<input type="url" bind:value={instagramUrl} placeholder="https://instagram.com/yourclub" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={instagramUrl}
+				placeholder="https://instagram.com/yourclub"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
 		<label class="link-field">
 			<span>{m('clubEditor.strava')}</span>
-			<input type="url" bind:value={stravaUrl} placeholder="https://strava.com/clubs/yourclub" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={stravaUrl}
+				placeholder="https://strava.com/clubs/yourclub"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
 		<label class="link-field">
 			<span>{m('clubEditor.facebook')}</span>
-			<input type="url" bind:value={facebookUrl} placeholder="https://facebook.com/yourclub" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={facebookUrl}
+				placeholder="https://facebook.com/yourclub"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
+		<span class="hint" id="club-links-hint">{m('clubEditor.linksHint')}</span>
 	</fieldset>
 
 	<fieldset>
 		<legend>{m('clubEditor.visibility')}</legend>
-		<label class="radio">
-			<input
-				type="radio"
-				name="vis"
-				checked={visibility === 'public'}
-				onchange={() => (visibility = 'public')}
-			/>
-			<span>
-				<strong>{m('clubEditor.public')}</strong>
-				<span class="hint">{m('clubEditor.publicHint')}</span>
-			</span>
-		</label>
-		<label class="radio">
-			<input
-				type="radio"
-				name="vis"
-				checked={visibility === 'private'}
-				onchange={() => (visibility = 'private')}
-			/>
-			<span>
-				<strong>{m('clubEditor.private')}</strong>
-				<span class="hint">
-					{m('clubEditor.privateHint')}
-				</span>
-			</span>
-		</label>
+		<div class="radio-field">
+			<label class="radio">
+				<input
+					type="radio"
+					name="vis"
+					checked={visibility === 'public'}
+					onchange={() => (visibility = 'public')}
+					aria-describedby="club-vis-public-hint"
+				/>
+				<span><strong>{m('clubEditor.public')}</strong></span>
+			</label>
+			<span class="hint" id="club-vis-public-hint">{m('clubEditor.publicHint')}</span>
+		</div>
+		<div class="radio-field">
+			<label class="radio">
+				<input
+					type="radio"
+					name="vis"
+					checked={visibility === 'private'}
+					onchange={() => (visibility = 'private')}
+					aria-describedby="club-vis-private-hint"
+				/>
+				<span><strong>{m('clubEditor.private')}</strong></span>
+			</label>
+			<span class="hint" id="club-vis-private-hint">{m('clubEditor.privateHint')}</span>
+		</div>
 	</fieldset>
 
 	{#if visibility === 'public' && !existing}
 		<fieldset>
 			<legend>{m('clubEditor.whoCanJoin')}</legend>
-			<label class="radio">
-				<input
-					type="radio"
-					name="policy"
-					checked={joinPolicy === 'open'}
-					onchange={() => (joinPolicy = 'open')}
-				/>
-				<span>
-					<strong>{m('clubEditor.anyone')}</strong>
-					<span class="hint">{m('clubEditor.anyoneHint')}</span>
-				</span>
-			</label>
-			<label class="radio">
-				<input
-					type="radio"
-					name="policy"
-					checked={joinPolicy === 'request'}
-					onchange={() => (joinPolicy = 'request')}
-				/>
-				<span>
-					<strong>{m('clubEditor.approvalRequired')}</strong>
-					<span class="hint">
-						{m('clubEditor.approvalRequiredHint')}
-					</span>
-				</span>
-			</label>
+			<div class="radio-field">
+				<label class="radio">
+					<input
+						type="radio"
+						name="policy"
+						checked={joinPolicy === 'open'}
+						onchange={() => (joinPolicy = 'open')}
+						aria-describedby="club-policy-open-hint"
+					/>
+					<span><strong>{joinPolicyLabel('open')}</strong></span>
+				</label>
+				<span class="hint" id="club-policy-open-hint">{m('clubEditor.anyoneHint')}</span>
+			</div>
+			<div class="radio-field">
+				<label class="radio">
+					<input
+						type="radio"
+						name="policy"
+						checked={joinPolicy === 'request'}
+						onchange={() => (joinPolicy = 'request')}
+						aria-describedby="club-policy-request-hint"
+					/>
+					<span><strong>{joinPolicyLabel('request')}</strong></span>
+				</label>
+				<span class="hint" id="club-policy-request-hint">{m('clubEditor.approvalRequiredHint')}</span>
+			</div>
 		</fieldset>
 	{/if}
 
@@ -230,7 +286,8 @@
 		<label class="toggle-row">
 			<input type="checkbox" bind:checked={requireWaiver} />
 			<span>
-				{m('clubEditor.waiverLabel')}
+				<strong>{m('clubEditor.waiverLabel')}</strong>
+				<span class="hint">{m('clubEditor.waiverHint')}</span>
 			</span>
 		</label>
 	{/if}

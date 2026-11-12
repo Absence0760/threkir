@@ -1,0 +1,27 @@
+{
+	// The Node side of `apps/web` — the tooling scripts and the AWS Lambda
+	// handlers and their build wrappers. None of it is inside
+	// `tsconfig.json`'s `include` (`src`, `test` and the root files), so
+	// `npm run check` has never read any of it — including eight production
+	// Lambda handlers. A SEPARATE root rather than a wider `include` there,
+	// because this tree needs Node's types and the app's must not have them.
+	// See decisions § 752, and § 749 for the sibling root over the
+	// Playwright tree.
+	//
+	// `types` is explicit because nothing here pulls `@types/node` in on its
+	// own, and `moduleResolution: bundler` skips `node:`-prefixed specifiers
+	// outright — without this, every `process` and every `node:fs` import
+	// reads as an unresolved name.
+	//
+	// Run: `npm run check:node-types --workspace=apps/web`
+	// CI:  the `parity-types` job in .github/workflows/ci.yml.
+	// The include list is guarded by scripts/tsconfig_coverage.test.mjs.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"types": ["node"],
+		// The cross-client round-trip scripts import the real web lib by its
+		// `.ts` path and run under `tsx`, which resolves that.
+		"allowImportingTsExtensions": true
+	},
+	"include": ["scripts/**/*.mjs", "lambda/**/*.mjs", "lambda/**/*.ts"]
+}

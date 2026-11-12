@@ -17,9 +17,20 @@
 //! [`crate::training_load`]'s precedent — a run carries a plain **day index**
 //! ([`RunForFitness::day`], calendar days from any fixed epoch, local tz) and
 //! every window (`now_day` for the layoff/gap/90-day cutoffs, the trainingLoad
-//! walk) is integer day arithmetic. Only relative day differences matter, so
-//! this is the honest collapse of `localDateKey` + `Date.now()`, and every test
-//! maps a `Date` offset to a day offset one-for-one.
+//! walk) is integer day arithmetic, and every test maps a `Date` offset to a
+//! day offset one-for-one.
+//!
+//! **That collapse is exact for the trainingLoad walk and a rounding for the
+//! three cutoffs**, and the difference is worth naming rather than leaving as an
+//! "only relative differences matter". Web buckets the EWMA walk by
+//! `localDateKey`, so the day index IS its unit there. But
+//! `isReturningFromLayoff`, `hasLayoffGap` and `currentVdot`'s 90-day cutoff are
+//! measured on web in raw MILLISECONDS between instants — so a gap web calls
+//! 27 d 20 h is 28 whole calendar days here, and a latest run web calls 14 d 1 h
+//! stale is 14 days here. Each cutoff therefore sits up to a day wider on this
+//! rail. Nothing on the wire carries a time of day for a run, so this is not a
+//! rounding that could be tightened without a frame change; it is a stated
+//! difference, pinned by `layoff_windows_are_measured_in_whole_calendar_days`.
 //!
 //! Human-readable advice is modelled as the [`RecoveryAdvice`] enum rather than
 //! English string literals — the presentation layer owns the wording, matching
@@ -73,9 +84,20 @@ const BASELINE_DAYS: i32 = 42;
 /// realistic on-watch fitness history.
 const MAX_RUNS: usize = 256;
 
-/// Where a run's `source` came from — the recognised recording / import origins
-/// qualify for fitness math; anything else ([`RunSource::Other`], e.g. a manual
-/// entry) is excluded because its distance isn't measured.
+/// Where a run's `source` came from. The eight variants below `Other` are web's
+/// `RunSource` union one for one; [`RunSource::Other`] has no web counterpart
+/// and is this port's bucket for a source string the phone sent that this build
+/// does not recognise.
+///
+/// `Parkrun` and `Race` were missing until now, which is not a cosmetic gap: a
+/// caller mapping a pushed source had no variant for them and would have had to
+/// choose `Other`, and `Other` does not qualify — so a certified weekly 5K and
+/// a chip-timed official result, the two most authoritative distances a runner
+/// has, would have been silently dropped from the fitness math. That is exactly
+/// the defect web fixed when it replaced its own `||` chain with a total map
+/// (and that migration `20270424_001_pr_achievements_include_parkrun_race`
+/// fixed on the SQL side); the port inherited the shape that makes it possible
+/// rather than the fix.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RunSource {
@@ -85,12 +107,36 @@ pub enum RunSource {
     Garmin,
     HealthKit,
     HealthConnect,
+    Parkrun,
+    Race,
+    /// A source string this build does not recognise. Excluded: an unmeasured
+    /// distance is not VDOT-worthy, and a firmware that cannot name where a
+    /// number came from should not derive a fitness ceiling from it.
     Other,
 }
 
 impl RunSource {
-    fn is_qualifying(self) -> bool {
-        !matches!(self, RunSource::Other)
+    /// Which sources carry a distance + duration trustworthy enough for fitness
+    /// math.
+    ///
+    /// An exhaustive match rather than `!matches!(self, Other)`, mirroring web's
+    /// total `Record<RunSource, boolean>` and for web's stated reason: a variant
+    /// added to the enum is then a compile error here until it is consciously
+    /// classified. The negated-match form silently qualifies every new variant,
+    /// which is the same failure in the opposite direction to the `||` chain
+    /// web replaced.
+    const fn is_qualifying(self) -> bool {
+        match self {
+            RunSource::App
+            | RunSource::Watch
+            | RunSource::Strava
+            | RunSource::Garmin
+            | RunSource::HealthKit
+            | RunSource::HealthConnect
+            | RunSource::Parkrun
+            | RunSource::Race => true,
+            RunSource::Other => false,
+        }
     }
 }
 
@@ -165,6 +211,19 @@ pub enum RecoveryAdvice {
 
 /// Whether a run qualifies for fitness math: measured source, far/long enough,
 /// not indoor.
+///
+/// **Web's fourth filter, `activity_type !== 'cycle'`, is deliberately not
+/// ported.** Its reason is real — `current_vdot` takes the MAX over runs, so a
+/// single bike commute rides straight to the top and takes the threshold pace,
+/// TSS and race predictions with it — but the filter needs an activity type,
+/// and [`RunForFitness`] has none because this device has no sport selector:
+/// the recorder records a run and there is no path by which a ride becomes one
+/// of these. A field nothing can populate, filtering a case nothing can
+/// produce, is a port made for the count rather than for the wrist
+/// (decisions.md § 24). The trigger that changes it is a phone push of run
+/// HISTORY (nothing pushes one today — [`RunForFitness`] has no non-test
+/// constructor at all), at which point the field arrives WITH the wiring that
+/// fills it and this filter comes with it.
 pub fn is_qualifying_run(run: &RunForFitness) -> bool {
     run.distance_m >= MIN_QUALIFYING_DISTANCE_M
         && run.duration_s >= MIN_QUALIFYING_DURATION_S
@@ -244,7 +303,15 @@ pub fn vo2_max_from_vdot(vdot: Option<f64>) -> Option<f64> {
 /// Training stress score for a single run: `duration_h x intensity^2 x 100`,
 /// intensity = threshold_pace / run_pace.
 pub fn run_tss(distance_m: f64, duration_s: f64, threshold_pace_sec_per_km: f64) -> f64 {
-    if distance_m < 100.0 || duration_s < 30.0 || threshold_pace_sec_per_km <= 0.0 {
+    // NaN spelled out: `NaN < 100.0` is false, so the floors alone let it
+    // through, and one NaN TSS poisons every later day of the CTL/ATL EWMA.
+    if distance_m.is_nan()
+        || distance_m < 100.0
+        || duration_s.is_nan()
+        || duration_s < 30.0
+        || threshold_pace_sec_per_km.is_nan()
+        || threshold_pace_sec_per_km <= 0.0
+    {
         return 0.0;
     }
     let run_pace_sec_per_km = duration_s / (distance_m / 1000.0);
@@ -535,18 +602,24 @@ mod tests {
         );
     }
 
+    /// Every value web's `RunSource` union can hold, in its order. A variant
+    /// added to the enum without a row here leaves it untested, which is the
+    /// half `is_qualifying`'s exhaustive match cannot enforce on its own.
+    const WEB_SOURCES: [RunSource; 8] = [
+        RunSource::App,
+        RunSource::Watch,
+        RunSource::HealthKit,
+        RunSource::HealthConnect,
+        RunSource::Strava,
+        RunSource::Garmin,
+        RunSource::Parkrun,
+        RunSource::Race,
+    ];
+
     #[test]
     fn qualifying_runs_accepts_recognised_sources_drops_others() {
-        let sources = [
-            RunSource::App,
-            RunSource::Watch,
-            RunSource::Strava,
-            RunSource::Garmin,
-            RunSource::HealthKit,
-            RunSource::HealthConnect,
-        ];
-        let mut runs: heapless::Vec<RunForFitness, 8> = heapless::Vec::new();
-        for s in sources {
+        let mut runs: heapless::Vec<RunForFitness, 16> = heapless::Vec::new();
+        for s in WEB_SOURCES {
             runs.push(RunForFitness {
                 source: s,
                 ..run(REF - 29, 5000.0, 1500)
@@ -558,7 +631,46 @@ mod tests {
             ..run(REF - 29, 5000.0, 1500)
         })
         .unwrap();
-        assert_eq!(qualifying_runs(&runs).len(), sources.len());
+        assert_eq!(qualifying_runs(&runs).len(), WEB_SOURCES.len());
+    }
+
+    #[test]
+    fn a_parkrun_and_a_chip_timed_race_are_the_most_authoritative_sources_there_are() {
+        // The gap this enum had: neither value existed, so a caller mapping a
+        // pushed source had to choose `Other` — which is excluded. A certified
+        // weekly 5K and an official result would have been the two distances
+        // silently kept out of the runner's fitness ceiling. Web's own `||`
+        // chain omitted exactly these two, and migration
+        // `20270424_001_pr_achievements_include_parkrun_race` fixed the same
+        // omission in SQL.
+        for s in [RunSource::Parkrun, RunSource::Race] {
+            let r = RunForFitness {
+                source: s,
+                ..run(REF - 29, 5000.0, 1500)
+            };
+            assert!(is_qualifying_run(&r), "{s:?} must qualify");
+        }
+    }
+
+    #[test]
+    fn the_enum_holds_every_web_source_and_qualifies_all_of_them() {
+        // Web's `SOURCE_QUALIFIES` is a total map that is `true` for all eight,
+        // so this port's answer for each must be `true` too. The register above
+        // is the enum minus `Other`, which has no web counterpart; a variant
+        // added to one and not the other is what this pins.
+        for s in WEB_SOURCES {
+            let r = RunForFitness {
+                source: s,
+                ..run(REF - 29, 5000.0, 1500)
+            };
+            assert!(is_qualifying_run(&r), "{s:?}");
+            assert_ne!(s, RunSource::Other);
+        }
+        let unknown = RunForFitness {
+            source: RunSource::Other,
+            ..run(REF - 29, 5000.0, 1500)
+        };
+        assert!(!is_qualifying_run(&unknown));
     }
 
     // ─────────────── vdot_from_run ───────────────
@@ -667,6 +779,25 @@ mod tests {
         assert_eq!(run_tss(50.0, 60.0, 300.0), 0.0);
         assert_eq!(run_tss(1000.0, 10.0, 300.0), 0.0);
         assert_eq!(run_tss(5000.0, 1500.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn run_tss_degenerate_input_is_zero_never_nan() {
+        let cases = [
+            (0.0, 0.0, 300.0),
+            (3.0, 10.0, 300.0),
+            (1000.0, 0.0, 300.0),
+            (f64::NAN, 600.0, 300.0),
+            (1000.0, f64::NAN, 300.0),
+            (500.0, 600.0, f64::NAN),
+        ];
+        for (distance_m, duration_s, threshold) in cases {
+            assert_eq!(
+                run_tss(distance_m, duration_s, threshold),
+                0.0,
+                "{distance_m} m / {duration_s} s / {threshold}"
+            );
+        }
     }
 
     #[test]
@@ -883,6 +1014,35 @@ mod tests {
     fn is_returning_from_layoff_true_after_gap() {
         let runs = [run(REF - 150, 10000.0, 3000), run(REF - 1, 5000.0, 1800)];
         assert!(is_returning_from_layoff(&runs, REF));
+    }
+
+    /// The rail's own rule, stated because it is NOT web's. Web measures both
+    /// layoff windows on raw instants; this rail has only a day index, so a run
+    /// exactly `LAYOFF_ACTIVE_WINDOW_DAYS` back still counts as active and a gap
+    /// of exactly `LAYOFF_RESET_DAYS` calendar days still counts as a layoff —
+    /// where the same two instants, an hour either side, would answer the other
+    /// way on web.
+    #[test]
+    fn layoff_windows_are_measured_in_whole_calendar_days() {
+        let latest = REF - LAYOFF_ACTIVE_WINDOW_DAYS;
+        let runs = [
+            run(latest - LAYOFF_RESET_DAYS, 10000.0, 3000),
+            run(latest, 5000.0, 1800),
+        ];
+        assert!(is_returning_from_layoff(&runs, REF));
+
+        // One day past either edge and the answer flips, so the test is about
+        // the edges rather than about the pair being unusual.
+        let stale = [
+            run(latest - 1 - LAYOFF_RESET_DAYS, 10000.0, 3000),
+            run(latest - 1, 5000.0, 1800),
+        ];
+        assert!(!is_returning_from_layoff(&stale, REF));
+        let short_gap = [
+            run(latest - (LAYOFF_RESET_DAYS - 1), 10000.0, 3000),
+            run(latest, 5000.0, 1800),
+        ];
+        assert!(!is_returning_from_layoff(&short_gap, REF));
     }
 
     #[test]

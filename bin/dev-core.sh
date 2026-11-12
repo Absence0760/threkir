@@ -5,11 +5,11 @@
 # then prints the commands to run the apps. Idempotent — safe to re-run (e.g.
 # after replugging a phone, which clears `adb reverse`).
 #
-#   • Supabase (Postgres + Auth + Storage + Edge runtime) on :54321, seeded
+#   • Supabase (Postgres + Auth + Storage + Edge runtime) on :24321, seeded
 #     with runner@test.com / testtest (+ GPS tracks so runs render on a map)
 #   • Protomaps map tiles on :8080
 #   • adb reverse for every attached Android device/emulator
-#     (54321 Supabase, 54322 Postgres, 7777 web/Coach, 8080 tiles)
+#     (24321 Supabase, 24322 Postgres, 7777 web/Coach, 8080 tiles)
 #   • Ollama check + optional model pull for the local AI Coach
 #
 # Then start the apps in their own terminals:
@@ -33,7 +33,7 @@ warn() { printf '  %s⚠%s %s\n' "$YEL" "$RST" "$1"; }
 err()  { printf '  %s✗%s %s\n' "$RED" "$RST" "$1"; }
 
 # ── Supabase ──────────────────────────────────────────────────────────────
-step "Supabase (local stack on :54321)"
+step "Supabase (local stack on :24321)"
 if ! command -v supabase >/dev/null 2>&1; then
   err "supabase CLI not found — install it (see apps/backend/CLAUDE.md), then re-run."
   exit 1
@@ -73,8 +73,8 @@ if command -v adb >/dev/null 2>&1; then
     warn "no Android device/emulator attached — start one and re-run 'npm run dev:core'"
   else
     for d in "${DEVICES[@]}"; do
-      for p in 54321 54322 7777 8080; do adb -s "$d" reverse "tcp:$p" "tcp:$p" >/dev/null; done
-      ok "$d → 54321 / 54322 / 7777 / 8080"
+      for p in 24321 24322 7777 8080; do adb -s "$d" reverse "tcp:$p" "tcp:$p" >/dev/null; done
+      ok "$d → 24321 / 24322 / 7777 / 8080"
     done
   fi
 else

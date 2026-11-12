@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { browserDayStart } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
 
 /**
  * /nutrition — meal templates (docs/features/multi_modal.md § Nutrition mid
@@ -30,13 +32,11 @@ test.describe('/nutrition — meal templates', () => {
 		// this test asserts the template has exactly one item. Sibling specs
 		// sharing USER_A can leave today's food_log dirty, so clear today's
 		// entries first — this test owns today's meals for its window.
-		const todayStart = new Date();
-		todayStart.setHours(0, 0, 0, 0);
 		await admin
 			.from('food_log')
 			.delete()
 			.eq('user_id', USER_A.id)
-			.gte('started_at', todayStart.toISOString());
+			.gte('started_at', browserDayStart());
 
 		// Seed one logged entry today so "Save as meal" has something to capture.
 		const { data: seedEntry } = await admin
@@ -88,20 +88,26 @@ test.describe('/nutrition — meal templates', () => {
 					{ timeout: 10_000 },
 				)
 				.toBe(1);
-			const { data: tmpl } = await admin
-				.from('meal_templates')
-				.select('id, name, item_count, meal_slot, user_id')
-				.eq('user_id', USER_A.id)
-				.eq('name', templateName);
-			expect(tmpl?.length).toBe(1);
+			const tmpl = await readRows(
+				'meal_templates by user_id+name',
+				admin
+					.from('meal_templates')
+					.select('id, name, item_count, meal_slot, user_id')
+					.eq('user_id', USER_A.id)
+					.eq('name', templateName)
+			);
+			expect(tmpl.length).toBe(1);
 			templateId = tmpl![0].id;
 			expect(tmpl![0].item_count).toBe(1);
 			expect(tmpl![0].meal_slot).toBe('breakfast');
-			const { data: items } = await admin
-				.from('meal_template_items')
-				.select('item_name, calories, meal_slot')
-				.eq('template_id', templateId);
-			expect(items?.length).toBe(1);
+			const items = await readRows(
+				'meal_template_items by template_id',
+				admin
+					.from('meal_template_items')
+					.select('item_name, calories, meal_slot')
+					.eq('template_id', templateId)
+			);
+			expect(items.length).toBe(1);
 			expect(items![0].item_name).toBe(item);
 			expect(Number(items![0].calories)).toBe(300);
 
@@ -136,19 +142,25 @@ test.describe('/nutrition — meal templates', () => {
 			await expect(templateRow).toHaveCount(0, { timeout: 10_000 });
 
 			// The template (and its items, by cascade) is gone…
-			const { data: afterTmpl } = await admin
-				.from('meal_templates')
-				.select('id')
-				.eq('id', templateId);
-			expect(afterTmpl?.length ?? 0).toBe(0);
+			const afterTmpl = await readRows(
+				'meal_templates by id',
+				admin
+					.from('meal_templates')
+					.select('id')
+					.eq('id', templateId)
+			);
+			expect(afterTmpl.length).toBe(0);
 			templateId = null;
 			// …but the food_log entries it logged remain (parallel plan, no FK).
-			const { data: stillLogged } = await admin
-				.from('food_log')
-				.select('id')
-				.eq('user_id', USER_A.id)
-				.eq('item_name', item);
-			expect((stillLogged?.length ?? 0)).toBeGreaterThanOrEqual(1);
+			const stillLogged = await readRows(
+				'food_log by user_id+item_name',
+				admin
+					.from('food_log')
+					.select('id')
+					.eq('user_id', USER_A.id)
+					.eq('item_name', item)
+			);
+			expect((stillLogged.length)).toBeGreaterThanOrEqual(1);
 		} finally {
 			if (templateId) await admin.from('meal_templates').delete().eq('id', templateId);
 			await admin.from('food_log').delete().eq('user_id', USER_A.id).eq('item_name', item);

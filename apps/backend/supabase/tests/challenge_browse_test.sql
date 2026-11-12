@@ -90,6 +90,7 @@ select results_eq(
 select is(
   (select count(*)::int from browse_public_challenges(null, 24, 0) where title = 'JOINED board'),
   0, 'a challenge the caller joined is excluded from Browse');
+-- refusal: the challenge's own is_public flag is what authorises the listing
 select is(
   (select count(*)::int from browse_public_challenges(null, 24, 0) where title = 'PRIVATE board'),
   0, 'a private challenge is excluded from Browse');
@@ -138,12 +139,12 @@ insert into challenges (id, creator_id, title, metric, scope, starts_at, ends_at
   select gen_random_uuid(), '00000000-0000-0000-0000-0000bb000001', 'rl ' || g,
          'distance', 'individual', now(), now() + interval '10 days'
   from generate_series(1, 30) g;
-select throws_ok(
+select throws_matching(
   $$ insert into challenges (id, creator_id, title, metric, scope, starts_at, ends_at)
      values (gen_random_uuid(), '00000000-0000-0000-0000-0000bb000001', 'rl over',
              'distance', 'individual', now(), now() + interval '10 days') $$,
-  'challenge_create_rate_limited',
-  'the 31st create in the window is rate-limited');
+  '^rate limit exceeded for create_challenge, retry in [0-9]+s$',
+  'the 31st create in the window is rate-limited, in the client-parser format');
 
 select * from finish();
 

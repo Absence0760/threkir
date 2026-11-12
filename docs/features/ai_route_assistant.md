@@ -20,6 +20,46 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
 
 - **Server**: the endpoint enforces `is_pro()` and degrades to the templated
   text on every failure (`decisions.md § 151`).
+- **Route name scope**: the route's name reaches the model only when the
+  caller owns the route or it is public. Both clients send the route's
+  `route_id`; the handler reads the name itself (`promptRouteName` — the base
+  `routes` row under the caller's RLS, then the `public_routes` view) and
+  never takes it from the body, so a club-mate, a named share recipient or a
+  follower describing someone else's non-public route sends Anthropic the
+  stats with "This route" in place of the name (`WITHHELD_ROUTE_NAME`). A
+  missing or malformed id, a route that does not resolve and a failed lookup
+  all withhold it too. The body's `name` only shapes the templated fallback
+  the endpoint answers with, which never leaves the server for the model.
+- **Unit**: both clients send the viewer's `unit` (`km` / `mi`). The handler
+  admits only `PreferredUnit`'s two members (`parseRequestedUnit`); a missing
+  or malformed value falls back to the account's stored `preferred_unit`, then
+  km. The facts in the prompt are stated in that unit (`assembleEnglish(parts,
+  name, unit)`, miles and feet for a miles runner) and the user turn tells the
+  model to keep every distance and climb in it (`routeDescribeUserMessage`), so
+  a miles runner is never handed a paragraph in kilometres. The templated
+  fallback the endpoint returns is in the same unit.
+- **Language**: both clients also send the viewer's UI `locale` — web the
+  active i18n locale (`currentLocale()`), mobile the app's resolved
+  `Localizations` locale as its canonical tag (`routeDescribeLocaleTag`, so
+  gen-l10n's bare `pt` base reads as `pt-PT`). The handler admits only the
+  seven tags the apps ship (`parseRequestedLocale` — `en`, `de`, `fr`, `es`,
+  `ja`, `pt-PT`, `pt-BR`, exact); anything else falls back to the account's
+  stored `user_settings.prefs.locale` (normalised exact → base language →
+  English, like the email renderer), then English. That lookup runs only on
+  the path that reaches the model, and a failed read is logged and answered in
+  English rather than refusing the paragraph. The user turn names the language
+  in English (`LANGUAGE_NAME` — Portuguese names its variant) and tells the
+  model to keep the route name and place names untranslated; the facts and the
+  unit rule stay English, since they are the model's input, not the reader's
+  text. Before this, every AI paragraph was English whatever the reader's
+  locale. Unlike the Coach, which answers in the language the runner writes
+  in, this endpoint has no free text from the runner to infer a language from.
+- **Which text is shown**: every response carries `source` (`'ai'` from the
+  model, `'template'` on any fallback). The endpoint's template is
+  `assembleEnglish`, English by contract, so neither client ever displays it:
+  `shownDescription(localised, response)` — a `route_description` parity-pair
+  helper on both sides — swaps in the server text only when `source` is
+  `'ai'`, and otherwise keeps the client's own sentence in the viewer's locale.
 - **Web**: `localisedTemplate` (`apps/web/src/lib/routes/route_description.ts`)
   + `route_describe_client.ts` on `/routes/[id]`.
 - **Mobile**: the `describeRoute` twin helper
@@ -32,7 +72,9 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
 
 ## What's shipped (Component A — request → constraints)
 
-A "Describe the route you want" box on `/routes/new` calls `/api/coach/route-request` (`claude-opus-4-8`, **forced tool_choice** `extract_route_constraints`), which extracts a strictly validated constraints object the existing deterministic generator consumes. The LLM never routes; `route_request/constraints.ts` (`validateConstraints`) is the single trust boundary — every field (distance band, shape, surface, avoid-highways) is clamped/whitelisted before it reaches the generator, so a hallucinated value collapses to a safe default. Pro-gated server-side on `is_pro()`, **fail-closed** (unknown Pro status → 503; non-Pro → 403 upsell); purely additive — the manual generator form is untouched on any failure. The box populates distance + surface and surfaces shape / avoid-highways / assumptions as a review hint. Files: `route_request/handler.ts` + `route_request/constraints.ts` + `route_request_client.ts` + the `/api/coach/route-request` SvelteKit endpoint + the coach Lambda `/route-request` dispatch. Tests: `constraints.test.ts` (clamp/validate) + `handler.test.ts` (pre-Supabase branches) + Playwright `route-request.spec.ts` (mocked endpoint).
+A "Describe the route you want" box on `/routes/new` calls `/api/coach/route-request` (`claude-opus-4-8`, **forced tool_choice** `extract_route_constraints`), which extracts a strictly validated constraints object the existing deterministic generator consumes. The LLM never routes; `route_request/constraints.ts` (`validateConstraints`) is the single trust boundary — every field (distance band, shape, surface, avoid-highways, road-design preference) is clamped/whitelisted before it reaches the generator, so a hallucinated value collapses to a safe default. The optional `location_label` hint is a place label only: the builder labels a typed or map-picked start with its own coordinates to four decimals, so both the client (`route_request_client.ts`) and the handler drop any label that states a position (`promptLocationLabel` in `route_request/location_label.ts`), keeping the consent copy's "never your precise coordinates" true even for an older client. Pro-gated server-side on `is_pro()`, **fail-closed** (unknown Pro status → 503; non-Pro → 403 upsell); purely additive — the manual generator form is untouched on any failure. The box populates distance + surface and surfaces shape / avoid-highways / preference / assumptions as a review hint.
+
+**Road-design preference (2026-08-30, decisions § 798).** `preference` is `'quiet' | 'scenic' | 'cul_de_sac'` — the generator's own `RoutePreference` vocabulary, whitelisted against a `ReadonlySet` exactly as `shape` and `surface` are, so the model cannot invent a fourth. It is the one field whose absence is carried as `null` rather than defaulted: the others fall back to something the runner would plausibly have picked, whereas a defaulted preference would bias every generated route toward a design nobody asked for. When the model names none, one is **derived** from what it did name — `avoid_highways` → `quiet`, then a `trail` surface → `scenic`, with the stated road constraint outranking the surface inference — and the derivation is recorded in `assumptions` so the review panel shows it. `cul_de_sac` is never derived, only asked for: it inverts part of the loop score ([graph_cycle_loop_generation.md § Extension](graph_cycle_loop_generation.md)), so inferring it would hand a runner dead-end spurs. `avoidHighways` stays on the object beside `preference` — the form checkbox binds to the boolean, the generate body carries the enum. Files: `route_request/handler.ts` + `route_request/constraints.ts` + `route_request_client.ts` + the `/api/coach/route-request` SvelteKit endpoint + the coach Lambda `/route-request` dispatch. Tests: `constraints.test.ts` (clamp/validate) + `handler.test.ts` (pre-Supabase branches) + Playwright `route-request.spec.ts` (mocked endpoint).
 
 ## Core principle: the LLM is the interface, not the router
 
@@ -65,7 +107,9 @@ object the generator already understands:
 - **Validate before trusting.** Parse the LLM output against the same schema the
   generate endpoint enforces (clamp distance to the slider range, whitelist the
   `avoid`/`prefer` tag sets, reject unknowns). The engine stays the source of
-  truth; a hallucinated constraint is dropped, not executed.
+  truth; a hallucinated constraint is dropped, not executed. Shipped as the
+  three whitelisted enums (`shape`, `surface`, `preference`) plus the clamped
+  distance band — the `prefer` half is the generator's `RoutePreference`.
 - **Ambiguity** → fill from sensible defaults and surface what was assumed ("5 km
   loop from your location, avoiding main roads"); let the user adjust. Don't block.
 
@@ -96,9 +140,33 @@ the water tower, then a flat return along the river path."*
 - **Cost + paywall.** LLM calls cost money + latency. The AI Coach is already
   Pro-gated ([paywall.md](paywall.md)); gate the NL/description LLM calls the same
   way, with the templated description as the free default. Cache by request text.
-- **Privacy.** The NL request + start coordinates go to Anthropic — the *same*
-  sub-processor and posture as the coach (already disclosed). No new third party,
-  but record the start-location egress in the sub-processor list.
+- **Privacy.** The NL request + a coarse place label go to Anthropic — the *same*
+  sub-processor as the coach, but **not the same processing purpose**, and that
+  distinction cost us a real gap: both endpoints shipped with **no consent gate at
+  all** while `/api/coach` had one (issue #734). Reusing `coach_consent_at` was
+  not the fix — the copy the user accepted described the Coach using their
+  *training data*, so treating it as covering a typed route request would have
+  retroactively widened their agreement. Both endpoints now require
+  `AI_DISCLOSURE_VERSION_ROUTE_AI` of the versioned consent record
+  (`ai_disclosure_version`, migration `20270511_001`), and a user holding only the
+  older Coach-scoped acceptance gets a 403 with
+  `code: "ai_disclosure_required"` until they accept the widened disclosure in
+  Settings → Account. The dev `BYPASS_PAYWALL` flag deliberately does **not**
+  reach this gate — it skips a billing check, not a lawful basis. See
+  [api_database.md](../backend/api_database.md) and decisions § 571.
+- **Where a runner accepts it.** One disclosure component per platform, rendered
+  by every host that writes the record: web's `AiDisclosureNotice.svelte` (the
+  `/coach` first-use dialog + Settings → Account) and mobile's
+  `widgets/ai_disclosure_notice.dart` (the Coach gate, a Settings → Account tile,
+  and the route-detail fallback notice, which offers it inline and re-runs the
+  enhancement on acceptance). Mobile writes `record_ai_disclosure_consent()`
+  directly — the v1 `record_coach_consent()` wrapper has no client left — and
+  offers the acceptance whenever the record is not current, missing or stale, so
+  the route-detail notice always leads somewhere that can act on it. Both
+  platforms branch on the 403 body's `code`, never on the bare status: the
+  paywall answers 403 on the same endpoint, and a consent gap shown as a Pro
+  upsell sends a runner to buy something that would not unlock it. The templated
+  description keeps rendering underneath (decisions § 573).
 - **Injection.** The surface is small (the output is a constraint object the engine
   re-validates), but hold the line: never let extracted text reach a shell, a SQL
   query, or `{@html}`; only typed, whitelisted fields cross into the engine.

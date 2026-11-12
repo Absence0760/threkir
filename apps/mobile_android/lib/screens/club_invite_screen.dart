@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../auth_error.dart';
+import '../club_invite_link.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../social_service.dart';
 import '../training_service.dart';
+import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import 'club_detail_screen.dart';
@@ -15,6 +17,11 @@ import 'club_detail_screen.dart';
 /// the "Join with code" entry on the Social → Clubs tab, OR via a
 /// deep link (universal link / app intent) that drops the user
 /// here with [initialToken] pre-filled.
+///
+/// The field takes the code or the whole pasted link
+/// ([parseClubInviteToken]). When the club requires the activity-risk
+/// acknowledgement the RPC refuses the bare token, and the screen asks for
+/// it before calling again.
 ///
 /// On success, redirects to the club's detail screen so the user
 /// sees the club they just joined immediately. On failure, the
@@ -62,9 +69,9 @@ class _ClubInviteScreenState extends State<ClubInviteScreen> {
     super.dispose();
   }
 
-  Future<void> _redeem() async {
-    final token = _tokenCtl.text.trim();
-    if (token.isEmpty) {
+  Future<void> _redeem({bool ackWaiver = false}) async {
+    final token = parseClubInviteToken(_tokenCtl.text);
+    if (token == null) {
       setState(
         () => _error = AppLocalizations.of(context).clubInviteEnterCodeError,
       );
@@ -79,10 +86,16 @@ class _ClubInviteScreenState extends State<ClubInviteScreen> {
       _busy = true;
       _error = null;
     });
+    var needsWaiver = false;
     try {
-      final slug = await widget.social.joinClubByToken(token);
+      final slug =
+          await widget.social.joinClubByToken(token, ackWaiver: ackWaiver);
       if (!mounted) return;
       showTopBanner(context, AppLocalizations.of(context).clubInviteJoinedBanner);
+      if (slug == null) {
+        Navigator.of(context).pop();
+        return;
+      }
       // Replace the invite screen with the club detail so a back-tap
       // returns the user to where they were before redemption (not
       // back into the redemption form).
@@ -95,6 +108,16 @@ class _ClubInviteScreenState extends State<ClubInviteScreen> {
           ),
         ),
       );
+    } on ActivityWaiverRequired catch (e) {
+      if (ackWaiver) {
+        debugPrint('ClubInviteScreen._redeem refused after the waiver: $e');
+        if (mounted) {
+          setState(
+              () => _error = friendlyError(AppLocalizations.of(context), e));
+        }
+      } else {
+        needsWaiver = true;
+      }
     } catch (e) {
       debugPrint('ClubInviteScreen._redeem failed: $e');
       if (mounted) {
@@ -102,6 +125,9 @@ class _ClubInviteScreenState extends State<ClubInviteScreen> {
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+    if (needsWaiver && mounted && await confirmActivityWaiver(context)) {
+      await _redeem(ackWaiver: true);
     }
   }
 

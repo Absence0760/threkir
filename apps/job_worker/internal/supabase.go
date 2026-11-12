@@ -17,13 +17,14 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/Absence0760/project-running/apps/job_worker/internal/livehub"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/schema"
-	"github.com/Absence0760/project-running/apps/job_worker/internal/supakey"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/livehub"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/supakey"
 )
 
 // SupabaseClient wraps the REST surface the worker needs. All calls
@@ -88,27 +89,35 @@ func (e *HTTPError) Error() string {
 }
 
 func (c *SupabaseClient) do(ctx context.Context, req *http.Request) ([]byte, error) {
+	body, _, err := c.doWithHeaders(ctx, req)
+	return body, err
+}
+
+// doWithHeaders is `do` plus the response headers, which the export
+// pager needs: PostgREST reports the authoritative row count of a
+// filtered set only in `Content-Range`, never in the body.
+func (c *SupabaseClient) doWithHeaders(ctx context.Context, req *http.Request) ([]byte, http.Header, error) {
 	supakey.SetAuthHeaders(req.Header, c.ServiceKey)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, &HTTPError{
+		return nil, resp.Header, &HTTPError{
 			StatusCode: resp.StatusCode,
 			Method:     req.Method,
 			Endpoint:   req.URL.Path,
 			Body:       string(body),
 		}
 	}
-	return body, nil
+	return body, resp.Header, nil
 }
 
 // rpc invokes a PostgREST function endpoint with the supplied JSON body
@@ -213,20 +222,57 @@ func (c *SupabaseClient) DownloadTrack(ctx context.Context, path string) ([]Trac
 	return pts, nil
 }
 
+// storedTrackPoint is a TrackPoint plus the smoother's filtered position
+// and the off-track flag (docs/features/gps_distance.md § Waypoint fields).
+type storedTrackPoint struct {
+	TrackPoint
+	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
+	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
+	OffTrack    bool     `json:"offTrack,omitempty"`
+}
+
+// parseTrack decodes a stored track for the matcher and the GPX export:
+// the line, so it drops every off-track fix (a fix the distance estimator
+// took that failed the recorder's track gate) and takes the smoothed
+// position of a waypoint that carries both smoothedLat and smoothedLng.
+// Raw lat/lng stay in the stored file; the output carries neither the
+// smoothed keys nor the flag.
 func parseTrack(body []byte) ([]TrackPoint, error) {
+	stored, err := decodeTrack[storedTrackPoint](body)
+	if err != nil {
+		return nil, err
+	}
+	pts := make([]TrackPoint, 0, len(stored))
+	for _, sp := range stored {
+		if sp.OffTrack {
+			continue
+		}
+		p := sp.TrackPoint
+		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
+			p.Lat, p.Lng = *sp.SmoothedLat, *sp.SmoothedLng
+		}
+		pts = append(pts, p)
+	}
+	return pts, nil
+}
+
+// decodeTrack decodes a stored track into any point shape: TrackPoint
+// for the matcher, RecordedTrackPoint for the distance recompute, which
+// also reads the spec-v1 Doppler keys.
+func decodeTrack[T any](body []byte) ([]T, error) {
 	if len(body) >= 2 && body[0] == 0x1f && body[1] == 0x8b {
 		zr, err := gzip.NewReader(bytes.NewReader(body))
 		if err != nil {
 			return nil, err
 		}
 		defer zr.Close()
-		var pts []TrackPoint
+		var pts []T
 		if err := json.NewDecoder(zr).Decode(&pts); err != nil {
 			return nil, err
 		}
 		return pts, nil
 	}
-	var pts []TrackPoint
+	var pts []T
 	if err := json.Unmarshal(body, &pts); err != nil {
 		return nil, err
 	}
@@ -236,9 +282,15 @@ func parseTrack(body []byte) ([]TrackPoint, error) {
 // UploadMatchedTrack gzips and stores the matched track at the given
 // path. Uses upsert=true so a re-match overwrites any prior file.
 func (c *SupabaseClient) UploadMatchedTrack(ctx context.Context, path string, points []TrackPoint) error {
+	return c.uploadGzippedJSON(ctx, path, points)
+}
+
+// uploadGzippedJSON gzips v's JSON and stores it in the `runs` bucket at path,
+// overwriting any object already there.
+func (c *SupabaseClient) uploadGzippedJSON(ctx context.Context, path string, v any) error {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	if err := json.NewEncoder(zw).Encode(points); err != nil {
+	if err := json.NewEncoder(zw).Encode(v); err != nil {
 		return err
 	}
 	if err := zw.Close(); err != nil {
@@ -256,7 +308,7 @@ func (c *SupabaseClient) UploadMatchedTrack(ctx context.Context, path string, po
 	// invite intermediaries to transparently decompress a body the
 	// consumers gunzip explicitly.
 	req.Header.Set("Content-Type", "application/gzip")
-	// Storage's "x-upsert: true" header lets re-matches overwrite the
+	// Storage's "x-upsert: true" header lets a rewrite overwrite the
 	// previous file rather than 409ing.
 	req.Header.Set("x-upsert", "true")
 	_, err = c.do(ctx, req)
@@ -352,10 +404,39 @@ func (c *SupabaseClient) DownloadAvatar(ctx context.Context, path string) ([]byt
 // with a null id, so the walk pages each folder and descends on the
 // null-id entries. Backs the backup export's orphan sweep.
 func (c *SupabaseClient) ListStorageObjects(ctx context.Context, bucket, prefix string) ([]string, error) {
+	entries, err := c.ListStorageObjectsWithMeta(ctx, bucket, prefix)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, e.Path)
+	}
+	return out, nil
+}
+
+// ListStorageObjectsWithMeta is the same walk carrying each object's
+// creation time, which is what a retention sweep selects on. Kept as one
+// implementation rather than two so the paging and the folder descent cannot
+// drift; ListStorageObjects is the name-only projection of it.
+//
+// An entry whose `created_at` the API does not send is returned with a zero
+// time. A caller filtering on age must treat that as UNKNOWN and skip it —
+// a zero time is older than every cutoff, so reading it as an age would
+// delete an object whose age was never established.
+func (c *SupabaseClient) ListStorageObjectsWithMeta(ctx context.Context, bucket, prefix string) ([]StorageObject, error) {
 	const pageSize = 100
-	var out []string
+	var out []StorageObject
 	var walk func(folder string) error
 	walk = func(folder string) error {
+		// The bucket root is "", and a caller may write a prefix with a
+		// trailing separator. `storage.objects.name` carries neither a
+		// leading nor a doubled "/", so joining blindly named no object at
+		// all: a whole-bucket walk yielded "/u1/a.zip" and a "u1/exports/"
+		// prefix yielded "u1/exports//a.zip". Both are accepted by the
+		// multi-delete endpoint and match nothing, so the reap reported
+		// success and erased nothing.
+		folder = strings.TrimSuffix(folder, "/")
 		for offset := 0; ; offset += pageSize {
 			payload, err := json.Marshal(map[string]any{
 				"prefix": folder,
@@ -377,8 +458,9 @@ func (c *SupabaseClient) ListStorageObjects(ctx context.Context, bucket, prefix 
 				return err
 			}
 			var entries []struct {
-				Name string  `json:"name"`
-				ID   *string `json:"id"`
+				Name      string     `json:"name"`
+				ID        *string    `json:"id"`
+				CreatedAt *time.Time `json:"created_at"`
 			}
 			if err := json.Unmarshal(body, &entries); err != nil {
 				return err
@@ -387,14 +469,21 @@ func (c *SupabaseClient) ListStorageObjects(ctx context.Context, bucket, prefix 
 				if e.Name == "" {
 					continue
 				}
-				full := folder + "/" + e.Name
+				full := e.Name
+				if folder != "" {
+					full = folder + "/" + e.Name
+				}
 				if e.ID == nil {
 					if err := walk(full); err != nil {
 						return err
 					}
 					continue
 				}
-				out = append(out, full)
+				var created time.Time
+				if e.CreatedAt != nil {
+					created = *e.CreatedAt
+				}
+				out = append(out, StorageObject{Path: full, CreatedAt: created})
 			}
 			if len(entries) < pageSize {
 				return nil
@@ -402,6 +491,47 @@ func (c *SupabaseClient) ListStorageObjects(ctx context.Context, bucket, prefix 
 		}
 	}
 	if err := walk(prefix); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DeleteStorageObjects removes objects through the Storage API, which is the
+// only caller that erases the BYTES: a DELETE against storage.objects removes
+// the row and leaves the file on the backend, measured in decisions § 1049.
+// storage-api's own `protect_objects_delete` trigger exists to say so.
+//
+// The multi-object form (`DELETE /object/<bucket>` with a `prefixes` body) is
+// one round trip per batch. It is idempotent — a path already gone is simply
+// absent from the response — so a retried job cannot fail on its own progress.
+func (c *SupabaseClient) DeleteStorageObjects(ctx context.Context, bucket string, paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	payload, err := json.Marshal(map[string]any{"prefixes": paths})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete,
+		c.BaseURL+"/storage/v1/object/"+bucket, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	_, err = c.do(ctx, req)
+	return err
+}
+
+// RoutePhotoOrphanPaths calls `route_photo_orphan_paths`, the service-role
+// worklist for the route-photo orphan sweep. A nil `paths` is sent as SQL
+// NULL (the graced backstop); a non-nil one scopes the result to it.
+func (c *SupabaseClient) RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error) {
+	params := map[string]any{"p_paths": nil, "p_limit": limit}
+	if paths != nil {
+		params["p_paths"] = paths
+	}
+	var out []string
+	if err := c.rpc(ctx, "route_photo_orphan_paths", params, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -459,90 +589,69 @@ func (c *SupabaseClient) UpdateClubPhotoThumb512Path(ctx context.Context, photoI
 	return c.updateThumb512Path(ctx, schema.TableClubPhotos, photoID, path)
 }
 
-// ErrStaleSourceTrackURL is returned by UpdateMatchedTrackRow when the
-// conditional PATCH found zero rows — meaning a re-upload trigger
-// reset the row's source_track_url between the worker reading it and
-// writing the result. Caller treats this as "discard cleanly": the
-// match the worker just produced is for an old track, and a fresh
-// job already queued by the trigger will produce the right answer.
-var ErrStaleSourceTrackURL = errors.New("source_track_url changed during match")
+// ErrStaleSourceTrackURL is returned by UpdateMatchedTrackRow when
+// record_map_match_result refused the write: the run's track_url, or the
+// Storage version of the bytes behind it, is no longer the one the worker
+// matched. Caller treats this as "discard cleanly": finish_job re-queues
+// the job, because the rewrite left run_matched_tracks pending.
+var ErrStaleSourceTrackURL = errors.New("track changed during match")
 
-// UpdateMatchedTrackRow PATCHes the run_matched_tracks row with the
-// match output. When `expectedSourceTrackURL` is non-empty, the PATCH
-// is conditional on `source_track_url = <value>` — closing the
-// re-upload race at the DB level via CAS. Service role bypasses RLS
-// so the standard PostgREST surface works without going through a
-// definer function.
+// UpdateMatchedTrackRow records the match output through the
+// record_map_match_result RPC (migration 20270719000020), which locks the
+// run_matched_tracks row and writes only while runs.track_url and the
+// stored object's version still equal src. A PATCH filtered on
+// source_track_url cannot express that: track_url is the same path for
+// every upload of a run's track, so only the object version tells a
+// re-upload apart, and storage.objects is not on the PostgREST surface.
 //
-// Returns ErrStaleSourceTrackURL when the CAS matched 0 rows. Pass
-// the empty string to skip the CAS for callers that don't care
-// (none today; left as an escape hatch).
+// Returns ErrStaleSourceTrackURL when the RPC refused.
 func (c *SupabaseClient) UpdateMatchedTrackRow(
 	ctx context.Context,
 	runID string,
-	expectedSourceTrackURL string,
+	src TrackSource,
 	row MatchedTrackRow,
 ) error {
-	payload, err := json.Marshal(row)
-	if err != nil {
+	params := map[string]any{
+		"p_run_id":            runID,
+		"p_source_track_url":  src.URL,
+		"p_track_version":     src.Version,
+		"p_status":            row.Status,
+		"p_matched_track_url": row.MatchedTrackURL,
+		"p_matched_at":        row.MatchedAt,
+		"p_algorithm":         row.Algorithm,
+		"p_algorithm_version": row.AlgorithmVersion,
+		"p_error_message":     row.ErrorMessage,
+	}
+	var recorded bool
+	if err := c.rpc(ctx, "record_map_match_result", params, &recorded); err != nil {
 		return err
 	}
-	q := "run_id=eq." + runID
-	if expectedSourceTrackURL != "" {
-		q += "&source_track_url=eq." + url.QueryEscape(expectedSourceTrackURL)
-	}
-	endpoint := c.BaseURL + "/rest/v1/" + schema.TableRunMatchedTracks + "?" + q
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, endpoint, bytes.NewReader(payload))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	// Prefer=return=representation makes PostgREST return the
-	// updated rows in the response body — that's how we count
-	// affected rows for the CAS check. With return=minimal we'd
-	// just get a 204 and have no idea whether the conditional
-	// matched.
-	req.Header.Set("Prefer", "return=representation")
-	body, err := c.do(ctx, req)
-	if err != nil {
-		return err
-	}
-	if expectedSourceTrackURL != "" {
-		var rows []json.RawMessage
-		if err := json.Unmarshal(body, &rows); err != nil {
-			return fmt.Errorf("decode update response: %w", err)
-		}
-		if len(rows) == 0 {
-			return ErrStaleSourceTrackURL
-		}
+	if !recorded {
+		return ErrStaleSourceTrackURL
 	}
 	return nil
 }
 
-// ReadRunTrackURL fetches just the runs.track_url for a given id. The
-// trigger payload carries user_id but not the path; we look it up at
-// match time so a re-upload that changes track_url is matched against
-// the latest version.
-func (c *SupabaseClient) ReadRunTrackURL(ctx context.Context, runID string) (string, error) {
-	url := c.BaseURL + "/rest/v1/" + schema.TableRuns + "?id=eq." + runID + "&select=track_url"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
-	}
-	body, err := c.do(ctx, req)
-	if err != nil {
-		return "", err
-	}
+// ReadRunTrackSource fetches runs.track_url and the Storage version of the
+// object behind it, read together by the map_match_track_source RPC. The
+// trigger payload carries user_id but not the path; we look both up at
+// match time so a re-upload is matched against the latest bytes.
+func (c *SupabaseClient) ReadRunTrackSource(ctx context.Context, runID string) (TrackSource, error) {
 	var rows []struct {
-		TrackURL *string `json:"track_url"`
+		TrackURL     *string `json:"track_url"`
+		TrackVersion *string `json:"track_version"`
 	}
-	if err := json.Unmarshal(body, &rows); err != nil {
-		return "", err
+	if err := c.rpc(ctx, "map_match_track_source", map[string]any{"p_run_id": runID}, &rows); err != nil {
+		return TrackSource{}, err
 	}
 	if len(rows) == 0 || rows[0].TrackURL == nil {
-		return "", errors.New("run has no track_url")
+		return TrackSource{}, errors.New("run has no track_url")
 	}
-	return *rows[0].TrackURL, nil
+	src := TrackSource{URL: *rows[0].TrackURL}
+	if rows[0].TrackVersion != nil {
+		src.Version = *rows[0].TrackVersion
+	}
+	return src, nil
 }
 
 // MaxLivePingID returns the current highest live_run_pings.id, or 0
@@ -579,7 +688,7 @@ func (c *SupabaseClient) ReadLivePingsSince(
 ) ([]livehub.PersistedPing, error) {
 	q := url.Values{}
 	q.Set("id", "gt."+strconv.FormatInt(afterID, 10))
-	q.Set("select", "id,run_id,lat,lng,ele,elapsed_s,distance_m,bpm,coarse")
+	q.Set("select", "id,run_id,lat,lng,ele,elapsed_s,distance_m,bpm,coarse,weak_gps")
 	q.Set("order", "id.asc")
 	q.Set("limit", strconv.Itoa(limit))
 	u := c.BaseURL + "/rest/v1/" + schema.TableLiveRunPings + "?" + q.Encode()
@@ -601,6 +710,7 @@ func (c *SupabaseClient) ReadLivePingsSince(
 		DistanceM *float64 `json:"distance_m"`
 		BPM       *int     `json:"bpm"`
 		Coarse    bool     `json:"coarse"`
+		WeakGPS   bool     `json:"weak_gps"`
 	}
 	if err := json.Unmarshal(body, &rows); err != nil {
 		return nil, err
@@ -617,6 +727,7 @@ func (c *SupabaseClient) ReadLivePingsSince(
 			DistanceM: r.DistanceM,
 			BPM:       r.BPM,
 			Coarse:    r.Coarse,
+			WeakGPS:   r.WeakGPS,
 		}
 	}
 	return out, nil
@@ -648,6 +759,9 @@ func (c *SupabaseClient) InsertLivePing(
 	row["distance_m"] = p.DistanceM
 	if p.BPM != nil {
 		row["bpm"] = *p.BPM
+	}
+	if p.WeakGPS {
+		row["weak_gps"] = true
 	}
 	payload, err := json.Marshal(row)
 	if err != nil {
@@ -833,6 +947,14 @@ func (c *SupabaseClient) SetIntegrationTokens(ctx context.Context, userID, provi
 		"p_token_expiry":  tokenExpiry.UTC().Format(time.RFC3339),
 	}
 	return c.rpc(ctx, "set_integration_tokens", params, nil)
+}
+
+// DeleteUserProviderSecrets calls the `delete_user_provider_secrets` RPC
+// (migration 20261005_001): drops the Vault token rows for the user +
+// provider and clears the integration's token references. Idempotent.
+func (c *SupabaseClient) DeleteUserProviderSecrets(ctx context.Context, userID, provider string) error {
+	return c.rpc(ctx, "delete_user_provider_secrets",
+		map[string]string{"p_user_id": userID, "p_provider": provider}, nil)
 }
 
 // FindIntegrationUserByAthlete maps a Strava athlete id (the external
@@ -1041,26 +1163,39 @@ func (c *SupabaseClient) FetchRunIdentitiesNear(ctx context.Context, userID stri
 	return out, nil
 }
 
-// privacyDefaultIsPublic resolves whether a newly-imported run for this
-// user should be public, from the universal `privacy_default` pref in
-// user_settings.prefs. Only an explicit 'public' default publishes;
-// followers/private/unset — and any read error — fall closed to private.
-// Mirrors the web `privacyDefaultToIsPublic` mapping + the EF parkrun /
-// strava-import paths (persona #27).
-func (c *SupabaseClient) privacyDefaultIsPublic(ctx context.Context, userID string) bool {
+// privacyDefaultAudience resolves the visibility columns of a newly-imported
+// run for this user from the universal `privacy_default` pref in
+// user_settings.prefs: 'public' publishes, 'followers' writes followers_only,
+// and anything else is owner-only, including an unset pref, whose registered
+// fallback is 'private' (decisions § 1881). A read error falls closed to owner-only. Mirrors the web
+// `privacyDefaultToAudience` mapping and the EF importers'
+// `_shared/privacy_default.ts` (persona #27, decisions § 1875). The
+// server stores followers_only as owner-only until audience sharing is on.
+func (c *SupabaseClient) privacyDefaultAudience(ctx context.Context, userID string) (isPublic, followersOnly bool) {
 	prefs, err := c.FetchUserSettingsPrefs(ctx, userID)
 	if err != nil {
-		return false
+		return false, false
 	}
-	return prefs["privacy_default"] == "public"
+	pref, ok := prefs["privacy_default"]
+	if !ok || pref == nil {
+		pref = "private"
+	}
+	switch pref {
+	case "public":
+		return true, false
+	case "followers":
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 // InsertStravaRun inserts a runs row sourced from a Strava activity.
 // Mirrors the EF `ingestActivity` row shape (apps/backend/supabase/
 // functions/_shared/strava.ts) — fields, source='strava', metadata
 // keys all in lockstep so dashboard queries that read across both
-// writers see one consistent shape. is_public honours the user's
-// privacy_default (persona #27), fail-closed to private.
+// writers see one consistent shape. is_public / followers_only honour the
+// user's privacy_default (persona #27), fail-closed to owner-only.
 //
 // Returns the inserted row's id (so the caller can subsequently
 // upload the gzipped track + PATCH track_url).
@@ -1102,16 +1237,18 @@ func (c *SupabaseClient) InsertStravaRun(ctx context.Context, userID string, act
 		duration = act.ElapsedTime
 	}
 
+	isPublic, followersOnly := c.privacyDefaultAudience(ctx, userID)
 	row := map[string]any{
 		"user_id": userID,
 		// activity_type is a real column now (F3 / 20261207_001), no
 		// longer a metadata key. is_dnf defaults to false at the DB.
-		"activity_type": activityType,
-		"started_at":    act.StartDate,
-		"distance_m":    int(math.Round(act.Distance)),
-		"duration_s":    duration,
-		"source":        "strava",
-		"is_public":     c.privacyDefaultIsPublic(ctx, userID),
+		"activity_type":  activityType,
+		"started_at":     act.StartDate,
+		"distance_m":     int(math.Round(act.Distance)),
+		"duration_s":     duration,
+		"source":         "strava",
+		"is_public":      isPublic,
+		"followers_only": followersOnly,
 		// `external_id = 'strava:<id>'` is the cross-source dedupe key
 		// — same shape mobile ZIP writes. /audit/strava M3.
 		"external_id": "strava:" + stravaIDStr,
@@ -1291,83 +1428,243 @@ func (c *SupabaseClient) CheckRateLimitTiered(ctx context.Context, userID, bucke
 	return !rows[0].Allowed, rows[0].RetryAfterSeconds, nil
 }
 
-// FetchExportRuns reads the user's runs with the column projection
-// the GDPR export needs. Service role bypasses RLS; the userID
-// filter is the only access gate. Ordered most-recent-first, capped
-// at `limit`. Returns dataexport.ExportRun rows so the adapter
-// doesn't need to translate fields.
-func (c *SupabaseClient) FetchExportRuns(ctx context.Context, userID string, limit int) ([]dataexportRow, error) {
+// ─────────────────── Art 20 export paging ───────────────────
+//
+// PostgREST clamps every response to `db-max-rows` (1000 on Supabase)
+// and signals the truncation nowhere in the body: an unbounded SELECT
+// returns the first 1000 rows, and an explicit `limit=5000` is clamped
+// to the same 1000. Every export read therefore walks pages, and every
+// section carries whether the walk actually finished — a data-subject
+// export that is short must say so rather than assert completeness.
+
+// exportPageSize matches PostgREST's server-side cap; asking for more
+// per request buys nothing.
+const exportPageSize = 1000
+
+// orderByTable holds the export tables whose primary key is not a bare
+// `id`. Offset paging is only stable under a total order and PostgREST
+// applies none by default — two pages of an unordered read can repeat
+// one row and skip another, which in an Art 20 export is a row the
+// subject never receives. Keep in lockstep with ORDER_BY_TABLE in the
+// EF's backup_spec.ts.
+var orderByTable = map[string]string{
+	schema.TableChallengeParticipants:    "challenge_id,user_id",
+	schema.TableClubMembers:              "club_id,user_id",
+	schema.TableConversationParticipants: "conversation_id,user_id",
+	schema.TableDirectMessageReactions:   "message_id,user_id",
+	schema.TableEventAttendees:           "event_id,user_id,instance_start",
+	schema.TableEventExceptions:          "event_id,instance_start",
+	schema.TableEventPricing:             "event_id,instance_start",
+	schema.TableFollowRequests:           "requester_id,target_id",
+	schema.TableInstructorPayoutAccounts: "user_id",
+	schema.TablePersonalRecords:          "user_id,distance",
+	schema.TableRunGear:                  "run_id,gear_id",
+	schema.TableRunCommentLikes:          "user_id,comment_id",
+	schema.TableRunKudos:                 "user_id,run_id",
+	schema.TableRunReactions:             "user_id,run_id,reaction",
+	schema.TableSavedRoutes:              "user_id,route_id",
+	schema.TableSignInDevices:            "user_id,browser,platform",
+	schema.TableUserBlocks:               "blocker_id,blocked_id",
+	schema.TableUserCoachUsage:           "user_id,usage_date",
+	schema.TableUserDeviceSettings:       "user_id,device_id",
+	schema.TableUserFollows:              "follower_id,followee_id",
+	schema.TableUserSettings:             "user_id",
+}
+
+func orderForExportTable(table string) string {
+	if o, ok := orderByTable[table]; ok {
+		return o
+	}
+	return "id"
+}
+
+// parseContentRangeTotal reads the total out of a PostgREST
+// `Content-Range` (`0-999/1212`). Returns -1 for the countless form
+// (`0-999/*`) and for anything unparseable — an unknown total must
+// never be mistaken for a small one.
+func parseContentRangeTotal(v string) int {
+	i := strings.LastIndex(v, "/")
+	if i < 0 {
+		return -1
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v[i+1:]))
+	if err != nil || n < 0 {
+		return -1
+	}
+	return n
+}
+
+// ExportCompleteness is the honesty ledger a paged export carries beside
+// its rows: the authoritative row count the database holds for each
+// section, and the sections whose pages could not all be read. It is
+// what keeps manifest.json from presenting a truncated archive as whole.
+type ExportCompleteness struct {
+	Totals     map[string]int
+	Incomplete []string
+}
+
+func newExportCompleteness() ExportCompleteness {
+	return ExportCompleteness{Totals: map[string]int{}}
+}
+
+// note records one section. An empty table stays absent from Totals (the
+// convention both export paths share), but a section that FAILED short
+// is recorded even at zero rows — an absent key must not be readable as
+// "the subject has none of these".
+func (e *ExportCompleteness) note(key string, fetched, total int, complete bool) {
+	short := !complete || fetched < total
+	if fetched > 0 || short {
+		if total < fetched {
+			total = fetched
+		}
+		e.Totals[key] = total
+	}
+	if short {
+		e.Incomplete = append(e.Incomplete, key)
+	}
+}
+
+// emitError wraps a failure raised by the CONSUMER of a page walk (the
+// zip writer, the chunked upload) rather than by the read. A section
+// read that fails is tolerated by some callers and reported as short; a
+// consumer that fails has lost the archive, and must never be recorded
+// as "this table came up short".
+type emitError struct{ err error }
+
+func (e *emitError) Error() string { return e.err.Error() }
+func (e *emitError) Unwrap() error { return e.err }
+
+// walkExportPages walks `baseURL` (a PostgREST query already carrying
+// select + filter + order, and no limit/offset) in exportPageSize
+// chunks, handing each page to `onPage` and then dropping it. Returns
+// the authoritative count the server reported (-1 when it reported
+// none) and whether the walk reached the end.
+//
+// Nothing accumulates here, which is the point: `live_run_pings` runs
+// into the millions on a deep history, and collecting a section before
+// serialising it is what forced the 50,000-row ceiling this replaced.
+// Only the first page asks for `count=exact`, so the total costs one
+// COUNT per section rather than one per page.
+func walkExportPages[T any](ctx context.Context, c *SupabaseClient, baseURL string, onPage func([]T) error) (int, bool, error) {
+	total := -1
+	for offset := 0; ; offset += exportPageSize {
+		u := fmt.Sprintf("%s&limit=%d&offset=%d", baseURL, exportPageSize, offset)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return total, false, err
+		}
+		if offset == 0 {
+			req.Header.Set("Prefer", "count=exact")
+		}
+		body, hdr, err := c.doWithHeaders(ctx, req)
+		if err != nil {
+			return total, false, err
+		}
+		if offset == 0 && hdr != nil {
+			if n := parseContentRangeTotal(hdr.Get("Content-Range")); n >= 0 {
+				total = n
+			}
+		}
+		var page []T
+		if err := json.Unmarshal(body, &page); err != nil {
+			return total, false, err
+		}
+		if len(page) > 0 {
+			if err := onPage(page); err != nil {
+				return total, false, &emitError{err: err}
+			}
+		}
+		if len(page) < exportPageSize {
+			return total, true, nil
+		}
+	}
+}
+
+// StreamExportRuns walks the user's runs with the column projection the
+// GDPR export needs, handing each page to `emit` and dropping it.
+// Service role bypasses RLS; the userID filter is the only access gate.
+// Ordered most-recent-first. No ceiling: the caller serialises each page
+// straight into the archive, so a runner's thirty-thousandth run costs
+// the same memory as their first.
+func (c *SupabaseClient) StreamExportRuns(ctx context.Context, userID string, emit func([]ExportRunRow) error) (ExportCompleteness, error) {
 	q := url.Values{}
 	q.Set("user_id", "eq."+userID)
-	q.Set("select",
-		"id,user_id,started_at,duration_s,distance_m,source,activity_type,is_dnf,external_id,metadata,track_url,hr_series_url,is_public,event_id,route_id,created_at,updated_at")
-	q.Set("order", "started_at.desc")
-	q.Set("limit", strconv.Itoa(limit))
+	q.Set("select", exportRunsSelect)
+	// `id` is the tiebreaker: two runs can share a `started_at`, and
+	// offset paging under a non-total order repeats one row and drops
+	// another.
+	q.Set("order", "started_at.desc,id.asc")
 	u := c.BaseURL + "/rest/v1/" + schema.TableRuns + "?" + q.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	body, err := c.do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	var rows []dataexportRow
-	if err := json.Unmarshal(body, &rows); err != nil {
-		return nil, err
-	}
-	return rows, nil
+	written := 0
+	total, complete, err := walkExportPages(ctx, c, u, func(page []ExportRunRow) error {
+		if err := emit(page); err != nil {
+			return err
+		}
+		written += len(page)
+		return nil
+	})
+	comp := newExportCompleteness()
+	comp.note("runs", written, total, complete)
+	return comp, err
 }
 
-// dataexportRow mirrors dataexport.ExportRun. We don't import the
+// exportRunsSelect is every column of `public.runs`, in ExportRunRow
+// order. Not a curated subset: what each output format omits is decided
+// at the renderer, and a column that is not selected cannot be omitted
+// deliberately -- it just disappears, which is what happened to seven of
+// them (decisions § 1171). Held to the Edge Function's own RUNS_SELECT
+// and to the generated row type by
+// TestExportRunProjectionCoversEveryRunsColumn.
+const exportRunsSelect = "id,user_id,started_at,concluded_at,duration_s,distance_m," +
+	"elevation_gain_m,source,activity_type,is_dnf,external_id,metadata,track_url," +
+	"hr_series_url,is_public,followers_only,safety_audience,event_id,route_id,race_listing_id,fastest_5k_s," +
+	"fastest_10k_s,fastest_half_marathon_s,fastest_marathon_s,created_at,updated_at"
+
+// ExportRunRow mirrors dataexport.ExportRun. We don't import the
 // dataexport package here to keep `internal` a leaf (the adapter
-// in main.go bridges across).
-type dataexportRow struct {
-	ID           string                 `json:"id"`
-	UserID       string                 `json:"user_id"`
-	StartedAt    string                 `json:"started_at"`
-	DurationS    int                    `json:"duration_s"`
-	DistanceM    float64                `json:"distance_m"`
-	Source       string                 `json:"source"`
-	ActivityType string                 `json:"activity_type"`
-	IsDNF        bool                   `json:"is_dnf"`
-	ExternalID   *string                `json:"external_id"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	TrackURL     *string                `json:"track_url"`
-	HrSeriesURL  *string                `json:"hr_series_url"`
-	IsPublic     *bool                  `json:"is_public"`
-	EventID      *string                `json:"event_id"`
-	RouteID      *string                `json:"route_id"`
-	CreatedAt    string                 `json:"created_at"`
-	UpdatedAt    string                 `json:"updated_at"`
+// in main.go bridges across). Exported because it is the page type
+// StreamExportRuns hands to its caller.
+type ExportRunRow struct {
+	ID                   string                 `json:"id"`
+	UserID               string                 `json:"user_id"`
+	StartedAt            string                 `json:"started_at"`
+	ConcludedAt          *string                `json:"concluded_at"`
+	DurationS            int                    `json:"duration_s"`
+	DistanceM            float64                `json:"distance_m"`
+	ElevationGainM       *float64               `json:"elevation_gain_m"`
+	Source               string                 `json:"source"`
+	ActivityType         string                 `json:"activity_type"`
+	IsDNF                bool                   `json:"is_dnf"`
+	ExternalID           *string                `json:"external_id"`
+	Metadata             map[string]interface{} `json:"metadata"`
+	TrackURL             *string                `json:"track_url"`
+	HrSeriesURL          *string                `json:"hr_series_url"`
+	IsPublic             *bool                  `json:"is_public"`
+	FollowersOnly        bool                   `json:"followers_only"`
+	SafetyAudience       bool                   `json:"safety_audience"`
+	EventID              *string                `json:"event_id"`
+	RouteID              *string                `json:"route_id"`
+	RaceListingID        *string                `json:"race_listing_id"`
+	Fastest5kS           *int                   `json:"fastest_5k_s"`
+	Fastest10kS          *int                   `json:"fastest_10k_s"`
+	FastestHalfMarathonS *int                   `json:"fastest_half_marathon_s"`
+	FastestMarathonS     *int                   `json:"fastest_marathon_s"`
+	CreatedAt            string                 `json:"created_at"`
+	UpdatedAt            string                 `json:"updated_at"`
 }
 
-// UploadExportArtifact stores the assembled CSV / GPX-zip body to
-// the `runs` bucket. `upsert=false` so a duplicate path doesn't
-// stomp on an existing export (the caller picks a ms-precision
-// timestamped path).
-func (c *SupabaseClient) UploadExportArtifact(ctx context.Context, path, contentType string, body []byte) error {
-	u := c.BaseURL + "/storage/v1/object/" + schema.BucketRuns + "/" + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("x-upsert", "false")
-	_, err = c.do(ctx, req)
-	return err
-}
-
-// CreateSignedURL calls the Storage /object/sign endpoint to mint
-// a time-bounded download URL. The returned `signedURL` is a path
-// (e.g. `/object/sign/runs/...?token=...`) — we prepend the
-// project's storage host so the caller hands back a full URL.
+// CreateSignedURL calls the Storage /object/sign endpoint to mint a
+// time-bounded download URL for an export artifact. The returned
+// `signedURL` is a path (e.g. `/object/sign/exports/...?token=...`) — we
+// prepend the project's storage host so the caller hands back a full
+// URL. Same bucket the artifact was written to; the `exports` bucket
+// carries no storage.objects policy, so this URL is the only way in.
 func (c *SupabaseClient) CreateSignedURL(ctx context.Context, path string, ttlSec int) (string, error) {
 	body, err := json.Marshal(map[string]any{"expiresIn": ttlSec})
 	if err != nil {
 		return "", err
 	}
-	u := c.BaseURL + "/storage/v1/object/sign/" + schema.BucketRuns + "/" + path
+	u := c.BaseURL + "/storage/v1/object/sign/" + schema.BucketExports + "/" + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		return "", err
@@ -1386,58 +1683,65 @@ func (c *SupabaseClient) CreateSignedURL(ctx context.Context, path string, ttlSe
 	if parsed.SignedURL == "" {
 		return "", errors.New("signed url: empty")
 	}
-	// The signedURL field is path-relative (`/storage/v1/object/sign/...`).
-	// Front it with the base URL so the client doesn't need to know.
+	// Storage answers with a path relative to the STORAGE API, not to
+	// the project root — `/object/sign/...`, with no `/storage/v1` on
+	// it — so fronting it with the base URL alone yields a 404 on
+	// every download. Both shapes are accepted because which one a
+	// deployment returns is the storage service's business, not ours.
 	if strings.HasPrefix(parsed.SignedURL, "/") {
-		return strings.TrimRight(c.BaseURL, "/") + parsed.SignedURL, nil
+		base := strings.TrimRight(c.BaseURL, "/")
+		if !strings.HasPrefix(parsed.SignedURL, "/storage/v1/") {
+			base += "/storage/v1"
+		}
+		return base + parsed.SignedURL, nil
 	}
 	return parsed.SignedURL, nil
 }
 
-// FetchExportRoutes reads the user's saved routes for the backup
-// export format. Service role bypasses RLS; the userID filter is
-// the only access gate. Mirrors the column shape mobile + web
+// StreamExportRoutes walks the user's saved routes for the backup
+// export format, page by page. Service role bypasses RLS; the userID
+// filter is the only access gate. Mirrors the column shape mobile + web
 // backup writers archive.
-func (c *SupabaseClient) FetchExportRoutes(ctx context.Context, userID string) ([]exportRouteRow, error) {
+func (c *SupabaseClient) StreamExportRoutes(ctx context.Context, userID string, emit func([]ExportRouteRow) error) (ExportCompleteness, error) {
 	q := url.Values{}
 	q.Set("user_id", "eq."+userID)
 	q.Set("select", "*")
+	q.Set("order", orderForExportTable(schema.TableRoutes))
 	u := c.BaseURL + "/rest/v1/" + schema.TableRoutes + "?" + q.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	body, err := c.do(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	var rows []exportRouteRow
-	if err := json.Unmarshal(body, &rows); err != nil {
-		return nil, err
-	}
-	return rows, nil
+	written := 0
+	total, complete, err := walkExportPages(ctx, c, u, func(page []ExportRouteRow) error {
+		if err := emit(page); err != nil {
+			return err
+		}
+		written += len(page)
+		return nil
+	})
+	comp := newExportCompleteness()
+	comp.note("routes", written, total, complete)
+	return comp, err
 }
 
-// exportRouteRow mirrors dataexport.ExportRoute. Same leaf-package
-// reasoning as `dataexportRow` — keep `internal` from importing
+// ExportRouteRow mirrors dataexport.ExportRoute. Same leaf-package
+// reasoning as `ExportRunRow` — keep `internal` from importing
 // `dataexport`.
-type exportRouteRow struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Waypoints   interface{} `json:"waypoints"`
-	DistanceM   *float64    `json:"distance_m,omitempty"`
-	ElevationM  *float64    `json:"elevation_m,omitempty"`
-	Surface     *string     `json:"surface,omitempty"`
-	IsPublic    *bool       `json:"is_public,omitempty"`
-	Slug        *string     `json:"slug,omitempty"`
-	Tags        []string    `json:"tags,omitempty"`
-	Featured    *bool       `json:"is_featured,omitempty"`
-	RunCount    *int        `json:"run_count,omitempty"`
-	IsStarred   *bool       `json:"is_starred,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	ClubID      *string     `json:"club_id,omitempty"`
-	CreatedAt   *string     `json:"created_at,omitempty"`
-	UpdatedAt   *string     `json:"updated_at,omitempty"`
+type ExportRouteRow struct {
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Waypoints     interface{} `json:"waypoints"`
+	DistanceM     *float64    `json:"distance_m,omitempty"`
+	ElevationM    *float64    `json:"elevation_m,omitempty"`
+	Surface       *string     `json:"surface,omitempty"`
+	IsPublic      *bool       `json:"is_public,omitempty"`
+	FollowersOnly *bool       `json:"followers_only,omitempty"`
+	Slug          *string     `json:"slug,omitempty"`
+	Tags          []string    `json:"tags,omitempty"`
+	Featured      *bool       `json:"is_featured,omitempty"`
+	RunCount      *int        `json:"run_count,omitempty"`
+	IsStarred     *bool       `json:"is_starred,omitempty"`
+	Description   *string     `json:"description,omitempty"`
+	ClubID        *string     `json:"club_id,omitempty"`
+	CreatedAt     *string     `json:"created_at,omitempty"`
+	UpdatedAt     *string     `json:"updated_at,omitempty"`
 }
 
 // FetchExportProfile reads the user's profile with a direct
@@ -1465,9 +1769,23 @@ func (c *SupabaseClient) FetchExportProfile(ctx context.Context, userID string) 
 	// server-managed, but still commercial data the business holds
 	// about the subject under Art 15(1) / CCPA right-to-know, and
 	// user_profiles is the only place it lives (RevenueCat keys by the
-	// Supabase user id). Keep in lockstep with the EF twin's
-	// PROFILE_SELECT in export-data/backup_spec.ts.
-	q.Set("select", "id,display_name,avatar_url,bio,location,preferred_unit,created_at,hr_zones,date_of_birth,parkrun_number,gender,activity_default,privacy_default,subscription_tier,subscription_at,billing_issue_at")
+	// Supabase user id).
+	//
+	// This table reaches the archive through THIS projection and nothing
+	// else — it is not in exportPersonalDataSpecs — so a column absent
+	// here is a column absent from the subject's Art 20 copy, which is
+	// how `handle`, `height_cm`, `onboarded_at` and the four consent
+	// records came to be missing. personal_data_export_profile_guard_test.go
+	// now fails on any column that is neither projected nor consciously
+	// excluded. `height_cm` in particular belongs with `date_of_birth`
+	// and `gender`: withdraw_health_data_consent() clears the three as
+	// one Art 9 set (decisions.md § 718), so exporting two of them is an
+	// archive that disagrees with the controller's own account.
+	//
+	q.Set("select", "id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,"+
+		"date_of_birth,gender,height_cm,parkrun_number,profile_private,"+
+		"subscription_tier,subscription_at,billing_issue_at,"+
+		"terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableUserProfiles + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1525,7 +1843,7 @@ func (c *SupabaseClient) FetchUserSettingsPrefs(ctx context.Context, userID stri
 func (c *SupabaseClient) FetchNotificationForEmail(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,email_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,conversation_id,refunded,email_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1600,7 +1918,7 @@ func (c *SupabaseClient) MarkNotificationEmailed(ctx context.Context, notificati
 func (c *SupabaseClient) FetchNotificationForWebPush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,web_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,conversation_id,refunded,web_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1710,7 +2028,7 @@ func (c *SupabaseClient) ClearPushSubscription(ctx context.Context, userID, devi
 func (c *SupabaseClient) FetchNotificationForNativePush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,native_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,conversation_id,refunded,native_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1957,6 +2275,23 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "runs.user_id=eq." + uid,
 			sel:    "*,runs!inner(user_id)",
 		},
+		// run_reactions and run_comment_likes (decisions § 1971): the ones
+		// the subject left, then the ones left on their runs / comments.
+		// Same inner-join shape as the kudos pair above; a like carries no
+		// run owner either, so it joins the comment and filters on its
+		// author.
+		{name: "run_reactions.json", table: schema.TableRunReactions, filter: uidEq, sel: "*"},
+		{name: "run_comment_likes.json", table: schema.TableRunCommentLikes, filter: uidEq, sel: "*"},
+		{
+			name: "run_reactions_received.json", table: schema.TableRunReactions,
+			filter: "runs.user_id=eq." + uid,
+			sel:    "*,runs!inner(user_id)",
+		},
+		{
+			name: "run_comment_likes_received.json", table: schema.TableRunCommentLikes,
+			filter: "run_comments.author_id=eq." + uid,
+			sel:    "*,run_comments!inner(author_id)",
+		},
 		// run_photos metadata. The image bytes themselves are bundled
 		// under `photos/` by BuildBackupZip via DownloadPhoto, keyed off
 		// each row's `storage_path` (audit-findings 2026-05-30 High).
@@ -1986,8 +2321,15 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{name: "fitness_snapshots.json", table: schema.TableFitnessSnapshots, filter: uidEq, sel: "*"},
 		// personal_records.
 		{name: "personal_records.json", table: schema.TablePersonalRecords, filter: uidEq, sel: "*"},
+		// personal_record_improvements — each time a run beat the cache, with
+		// the time it replaced (the PR card's history).
+		{name: "personal_record_improvements.json", table: schema.TablePersonalRecordImprovements, filter: uidEq, sel: "*"},
 		// device_tokens — redact the raw token below.
 		{name: "device_tokens.json", table: schema.TableDeviceTokens, filter: uidEq, sel: "*"},
+		// sign_in_devices — the coarse (browser, platform) classes that have
+		// signed in, kept for the new-device alert. Observed data about the
+		// subject, so it ships; it holds no User-Agent and no IP to redact.
+		{name: "sign_in_devices.json", table: schema.TableSignInDevices, filter: uidEq, sel: "*"},
 		// live_run_pings — short-TTL but in-flight rows may exist
 		// when an export is taken.
 		{name: "live_run_pings.json", table: schema.TableLiveRunPings, filter: uidEq, sel: "*"},
@@ -1999,6 +2341,19 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "followers.json", table: schema.TableUserFollows,
 			filter: "followee_id=eq." + uid, sel: "*",
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs: requests the subject made and requests
+		// made to them. Keyed by requester_id / target_id, neither of which the
+		// guard's owner-FK scan names, so both are wired in explicitly. An
+		// approved or declined request is deleted, so there is no history.
+		{
+			name: "follow_requests_sent.json", table: schema.TableFollowRequests,
+			filter: "requester_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "follow_requests_received.json", table: schema.TableFollowRequests,
+			filter: "target_id=eq." + uid, sel: "*",
 		},
 		// event_attendees — RSVPs.
 		{name: "event_attendees.json", table: schema.TableEventAttendees, filter: uidEq, sel: "*"},
@@ -2053,26 +2408,72 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// Art 15(1)(c) gives the data subject the right to know
 		// recipients of their data, including moderation actions
 		// taken against them. We project a narrow column set —
-		// reporter_id is anonymised (competing rights under Art 15(4))
-		// while existence + reason + status disclose the action.
+		// reporter_id and the reporter's notes are withheld (competing
+		// rights under Art 15(4)) while existence + reason + status
+		// disclose the action.
 		// audit/data-export-completeness May 2026 Low closeout.
 		{
 			name:   "reports_against_me.json",
 			table:  "reports",
 			filter: "target_kind=eq.user&target_id=eq." + uid,
-			sel:    "id,target_kind,target_id,reason,status,notes,created_at,resolved_at",
+			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at",
+		},
+		// reports on the user's own direct messages. submit_report snapshots
+		// the reported message (migration 20271021000003) and the snapshot
+		// outlives an unsend, so it is the subject's own words held in a
+		// second place, disclosed under Art 15. Only the recipient can report
+		// a direct message, so the reporter is identifiable: the notes are
+		// never included and a pending report is held back (Art 15(4)).
+		{
+			name:   "reports_against_my_messages.json",
+			table:  "reports",
+			filter: "target_kind=eq.direct_message&snapshot_author_id=eq." + uid + "&status=neq.pending",
+			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at,snapshot_original_body",
 		},
 		// direct_messages — private 1:1 conversations, both directions
 		// (messages the user sent and messages they received). `body`
 		// ships verbatim: it is the subject's own correspondence.
 		// audit/data-export-completeness (2026-05-30) Critical.
+		// The sent side leaves out read_at, the recipient's own read time
+		// (20271113000001); seen_at is what the recipient chose to share.
+		// edited_at and original_body (the text before an edit,
+		// 20271114000210) are the subject's own words. Group messages
+		// (20271216000003, decisions § 2461) ship on the sent side only: they
+		// have no recipient, and other members' group messages are not the
+		// subject's data (owner decision D5).
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
-			filter: "sender_id=eq." + uid, sel: "*",
+			filter: "sender_id=eq." + uid,
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id,is_group",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
 			filter: "recipient_id=eq." + uid, sel: "*",
+		},
+		// direct_message_reactions — the reactions the subject put on
+		// messages (migration 20271213121602). Only their own: the partner's
+		// reactions are the partner's data.
+		{
+			name: "direct_message_reactions.json", table: schema.TableDirectMessageReactions,
+			filter: "user_id=eq." + uid, sel: "message_id,reaction,created_at",
+		},
+		// direct_message_images — the photos the subject sent (migration
+		// 20271213121604). The re-encoded bytes ship under
+		// storage/dm-images/; the paths are left out because the object
+		// keys already carry them.
+		{
+			name: "direct_message_images.json", table: schema.TableDirectMessageImages,
+			filter: "owner_id=eq." + uid, sel: "id,message_id,status,width,height,created_at,processed_at",
+		},
+		// conversation_participants — the subject's own view of each
+		// conversation (joined, deleted-for-me, muted, archived, marked
+		// unread, message-request state; migrations 20271105000010,
+		// 20271109000020, 20271115002384) and their group memberships (state,
+		// role, invited/removed by, invited/left at, read position;
+		// 20271216000002). Only their own row.
+		{
+			name: "conversation_settings.json", table: schema.TableConversationParticipants,
+			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at",
 		},
 		// coach_athletes — the subject's coaching relationships, as coach
 		// and as athlete. `invite_token` is a redeemable credential
@@ -2082,12 +2483,22 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "coaching_as_coach.json", table: schema.TableCoachAthletes,
 			filter: "coach_id=eq." + uid,
-			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at",
 		},
 		{
 			name: "coaching_as_athlete.json", table: schema.TableCoachAthletes,
 			filter: "athlete_id=eq." + uid,
-			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at",
+		},
+		// plan_change_requests — changes to a coach-assigned plan the subject
+		// sent as athlete or decided as coach (issue #1215 Phase 2).
+		{
+			name: "plan_change_requests_as_athlete.json", table: schema.TablePlanChangeRequests,
+			filter: "athlete_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "plan_change_requests_as_coach.json", table: schema.TablePlanChangeRequests,
+			filter: "coach_id=eq." + uid, sel: "*",
 		},
 		// event_results — the subject's own race finish records (time,
 		// rank, DNF/DNS, age-grade). Health-adjacent performance data.
@@ -2115,6 +2526,49 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "event_result_claims.json", table: schema.TableEventResultClaims,
 			filter: "claimant_id=eq." + uid, sel: "*",
+		},
+		// race_course_suggestions — the routes the subject suggested as a
+		// race's course, with their note and the review outcome (migration
+		// 20271114002381). reviewed_by is the organiser-club admin who ruled
+		// on it, kept as a recipient disclosure under Art 15(1)(c).
+		{name: "race_course_suggestions.json", table: schema.TableRaceCourseSuggestions, filter: uidEq, sel: "*"},
+		// race_listing_audit — the race claims, course links and reviews the
+		// subject made as a verified club's admin (migration 20271114002381).
+		{
+			name: "race_listing_audit.json", table: schema.TableRaceListingAudit,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// club_verification_requests — the verification requests the
+		// subject submitted as a club owner (migration 20271120000004). The
+		// reviewer is kept as an id only, as a recipient disclosure.
+		{
+			name: "club_verification_requests.json", table: schema.TableClubVerificationRequests,
+			filter: "submitted_by=eq." + uid, sel: "*",
+		},
+		// club_verification_audit — the verification actions the subject took.
+		{
+			name: "club_verification_audit.json", table: schema.TableClubVerificationAudit,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// organiser_dispute_actions — the naming disputes the subject filed
+		// for a verified club and, as a site admin, the reviews they made
+		// (migration 20271202000003).
+		{
+			name: "organiser_dispute_actions.json", table: schema.TableOrganiserDisputeActions,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// organiser_dispute_notices — the reviewed disputes about content the
+		// subject owns, without the reviewer.
+		{
+			name: "organiser_dispute_notices.json", table: schema.TableOrganiserDisputeActions,
+			filter: "target_owner_id=eq." + uid + "&action=neq.filed",
+			sel:    "id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at",
+		},
+		// course_alerts — the course alerts the subject posted as a verified
+		// organiser club's admin (migration 20271124002407).
+		{
+			name: "course_alerts.json", table: schema.TableCourseAlerts,
+			filter: "author_id=eq." + uid, sel: "*",
 		},
 		// user_blocks — the subject's own block list (who they blocked +
 		// why). audit-findings (2026-05-30) High.
@@ -2198,6 +2652,23 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: uidEq,
 			sel:    "*,ingredients:recipe_ingredients(*)",
 		},
+		// nutrition_plans — the subject's authored meal plans (nutrition
+		// programming P1, migration 20270815000001). Keyed by author_id (NOT
+		// user_id), like gym_routines. Keep in lockstep with backup_spec.ts.
+		{
+			name: "nutrition_plans.json", table: schema.TableNutritionPlans,
+			filter: "author_id=eq." + uid,
+			sel:    "*",
+		},
+		// nutrition_plan_assignments — which plan governed the subject's diary
+		// days, keyed by client_id. In P1 every row is a self-assignment, so
+		// this leg is the whole table for the subject; the P3 nutritionist
+		// adds an assigner leg.
+		{
+			name: "nutrition_plan_assignments.json", table: schema.TableNutritionAssignments,
+			filter: "client_id=eq." + uid,
+			sel:    "*",
+		},
 		// body_metrics — Phase 4 nutrition weight time-series (migration
 		// 20261216_001). GDPR special-category health data; owner-scoped and
 		// squarely within the Art 20 right to receive. height_cm lives on
@@ -2233,6 +2704,17 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "contact_user_id=eq." + uid,
 			sel:    "id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at",
 		},
+		// run_shares / route_shares — named-person read grants (migration
+		// 20270802000002). The subject is on both legs: grants they made
+		// (owner_id — whom they shared which run or route with) and grants
+		// made to them (recipient_id — who shared with them). Keyed by
+		// owner_id / recipient_id, which the guard's owner-FK scan reaches
+		// through owner_id only, so all four are wired in explicitly. A revoked
+		// grant is deleted, so there is no history to ship.
+		{name: "run_shares_owned.json", table: schema.TableRunShares, filter: "owner_id=eq." + uid, sel: "*"},
+		{name: "run_shares_received.json", table: schema.TableRunShares, filter: "recipient_id=eq." + uid, sel: "*"},
+		{name: "route_shares_owned.json", table: schema.TableRouteShares, filter: "owner_id=eq." + uid, sel: "*"},
+		{name: "route_shares_received.json", table: schema.TableRouteShares, filter: "recipient_id=eq." + uid, sel: "*"},
 		// session_plans (+ blocks + items via nested embeds). The yoga/pilates
 		// session-planner P1 authored content (migration 20270103_001). Keyed by
 		// author_id (NOT user_id), so the export-completeness guard's user_id-column
@@ -2306,12 +2788,18 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 	}
 }
 
-// FetchExportPersonalDataTables bundles the personal-data tables
-// the audit/data-export-completeness (May 2026) pass added to the
-// Art 20 export. One call per table; failures on individual tables
-// are tolerated (the table is omitted from the result rather than
-// failing the whole export) so a single missing migration or
-// rename doesn't strand the user's data.
+// StreamExportPersonalDataTables walks the personal-data tables the
+// audit/data-export-completeness (May 2026) pass added to the Art 20
+// export, handing each page to `emit` and dropping it. One walk per
+// table; pages of one table arrive consecutively and tables never
+// interleave, so the consumer opens an archive entry on a table's first
+// page and closes it when the next table (or the walk) ends.
+//
+// Read failures on individual tables are tolerated — the table is
+// recorded short in the ledger rather than failing the whole export — so
+// a single missing migration or rename doesn't strand the user's data.
+// A failure raised by `emit` is not: the archive is gone, and that error
+// is returned.
 //
 // `device_tokens.token` is redacted to "<redacted>" — the bare
 // FCM/APNs token is server-managed credential material and isn't
@@ -2320,13 +2808,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 // `integrations.access_token` / `refresh_token` columns aren't
 // fetched at all (column projection scrubs them).
 //
-// Return-value convention: empty table => key absent. The backup
-// builder treats an absent key the same as a zero-row entry so the
-// zip stays small.
-func (c *SupabaseClient) FetchExportPersonalDataTables(
+// Convention: an empty table emits nothing, so it gets no archive entry.
+func (c *SupabaseClient) StreamExportPersonalDataTables(
 	ctx context.Context,
 	userID string,
-) (map[string][]map[string]interface{}, error) {
+	emit func(entry string, rows []map[string]interface{}) error,
+) (ExportCompleteness, error) {
 	// Each spec is (zip entry name, table, filter param, select clause).
 	// The filter param is the column the table joins on; almost all are
 	// `user_id`, with a few exceptions (run_comments, run_kudos use
@@ -2340,48 +2827,60 @@ func (c *SupabaseClient) FetchExportPersonalDataTables(
 	uid := url.QueryEscape(userID)
 	specs := exportPersonalDataSpecs(uid)
 
-	out := make(map[string][]map[string]interface{}, len(specs))
+	comp := newExportCompleteness()
+	// The gear ids run_gear filters on. Ids, not rows: a two-step fetch
+	// needs the identifiers, and retaining a uuid per piece of gear is
+	// bounded by what a person owns.
+	var gearIDs []string
 	for _, s := range specs {
 		q := url.Values{}
 		// `filter` is a pre-built KV like `user_id=eq.<uid>` or with
 		// the `in.(select ...)` form — pass through verbatim.
 		q.Set("select", s.sel)
+		// A total order, so offset paging can't repeat one row and skip
+		// another. See orderForExportTable.
+		q.Set("order", orderForExportTable(s.table))
 		// Strip the explicit user-id filter from `q` since it's
 		// already in the raw filter param; append the filter at the
 		// end of the URL string instead of through url.Values so
 		// nested-query commas aren't escaped.
 		u := c.BaseURL + "/rest/v1/" + s.table + "?" + q.Encode() + "&" + s.filter
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-		if err != nil {
-			// A single table failing is logged + skipped; the rest
-			// of the export still ships. Falls through the loop's
-			// error swallow below.
-			continue
-		}
-		body, err := c.do(ctx, req)
-		if err != nil {
-			// Tolerate per-table failure; the audit notes "partial
-			// export with a manifest count" is better than no
-			// export.
-			continue
-		}
-		var rows []map[string]interface{}
-		if err := json.Unmarshal(body, &rows); err != nil {
-			continue
-		}
-		if len(rows) == 0 {
-			continue
-		}
-		// device_tokens.token is server-managed credential material
-		// and shouldn't ship in a portability export. Redact it.
-		if s.name == "device_tokens.json" {
-			for _, row := range rows {
-				if _, ok := row["token"]; ok {
-					row["token"] = "<redacted>"
+		written := 0
+		total, complete, err := walkExportPages(ctx, c, u, func(page []map[string]interface{}) error {
+			// device_tokens.token is server-managed credential material
+			// and shouldn't ship in a portability export. Redact it.
+			if s.name == "device_tokens.json" {
+				for _, row := range page {
+					if _, ok := row["token"]; ok {
+						row["token"] = "<redacted>"
+					}
 				}
 			}
+			if s.name == "gear.json" {
+				for _, row := range page {
+					if id, ok := row["id"].(string); ok && id != "" {
+						gearIDs = append(gearIDs, id)
+					}
+				}
+			}
+			if err := emit(s.name, page); err != nil {
+				return err
+			}
+			written += len(page)
+			return nil
+		})
+		if err != nil {
+			// Tolerate per-table READ failure: the audit notes "partial
+			// export with a manifest count" beats no export. The rows
+			// already written still ship — the section is recorded short
+			// rather than silently dropped. A consumer failure is fatal.
+			var ee *emitError
+			if errors.As(err, &ee) {
+				return comp, ee.err
+			}
+			complete = false
 		}
-		out[s.name] = rows
+		comp.note(strings.TrimSuffix(s.name, ".json"), written, total, complete)
 	}
 
 	// jobs summary — GDPR Art 15(1) right-to-know, audit/data-export-
@@ -2391,71 +2890,84 @@ func (c *SupabaseClient) FetchExportPersonalDataTables(
 	// details; the audit's preferred shape is a count-by-kind summary.
 	//
 	// Fetch the kind column only via PostgREST jsonb path filter, then
-	// group + count in Go. Failure to fetch is tolerated as with every
-	// other table — the rest of the export still ships.
+	// group + count in Go. The counts are a reduction, so the walk keeps
+	// one integer per kind however many jobs the subject has run.
+	// Failure to fetch is tolerated as with every other table — the rest
+	// of the export still ships.
 	{
 		jq := url.Values{}
 		jq.Set("select", "kind")
+		jq.Set("order", orderForExportTable(schema.TableJobs))
 		u := c.BaseURL + "/rest/v1/" + schema.TableJobs + "?" + jq.Encode() +
 			"&payload->>user_id=eq." + uid
-		if req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil); err == nil {
-			if body, err := c.do(ctx, req); err == nil {
-				var rows []struct {
-					Kind string `json:"kind"`
-				}
-				if json.Unmarshal(body, &rows) == nil && len(rows) > 0 {
-					counts := make(map[string]int, len(rows))
-					for _, r := range rows {
-						counts[r.Kind]++
-					}
-					summary := make([]map[string]interface{}, 0, len(counts))
-					for kind, n := range counts {
-						summary = append(summary, map[string]interface{}{
-							"kind":  kind,
-							"count": n,
-						})
-					}
-					if len(summary) > 0 {
-						out["jobs_summary.json"] = summary
-					}
-				}
+		type jobKindRow struct {
+			Kind string `json:"kind"`
+		}
+		counts := map[string]int{}
+		_, complete, err := walkExportPages(ctx, c, u, func(page []jobKindRow) error {
+			for _, r := range page {
+				counts[r.Kind]++
+			}
+			return nil
+		})
+		if err != nil {
+			complete = false
+		}
+		kinds := make([]string, 0, len(counts))
+		for kind := range counts {
+			kinds = append(kinds, kind)
+		}
+		sort.Strings(kinds)
+		summary := make([]map[string]interface{}, 0, len(kinds))
+		for _, kind := range kinds {
+			summary = append(summary, map[string]interface{}{
+				"kind":  kind,
+				"count": counts[kind],
+			})
+		}
+		if len(summary) > 0 {
+			if err := emit("jobs_summary.json", summary); err != nil {
+				return comp, err
 			}
 		}
+		// One entry per kind, not one per job — but the aggregate is
+		// only trustworthy if every job row was scanned.
+		comp.note("jobs_summary", len(summary), len(summary), complete)
 	}
 
 	// Two-step fetch for run_gear: PostgREST's `in.()` filter takes
-	// a comma-separated value list, not a SQL subselect. Pull the
-	// user's gear ids first, then filter run_gear by that list. A
-	// runner with hundreds of pieces of gear is unlikely, so a
-	// single id-list filter is fine; if it ever grows past
-	// PostgREST's URL length cap, page through it.
-	if gearRows, ok := out["gear.json"]; ok && len(gearRows) > 0 {
-		ids := make([]string, 0, len(gearRows))
-		for _, g := range gearRows {
-			if id, ok := g["id"].(string); ok && id != "" {
-				ids = append(ids, id)
+	// a comma-separated value list, not a SQL subselect. The gear ids
+	// were retained as the gear table streamed past. A runner with
+	// hundreds of pieces of gear is unlikely, so a single id-list filter
+	// is fine; if it ever grows past PostgREST's URL length cap, page
+	// through it.
+	if len(gearIDs) > 0 {
+		// Build the `in.(uuid1,uuid2,...)` value list. UUIDs
+		// don't need URL-encoding but join with commas only.
+		q := url.Values{}
+		q.Set("select", "*")
+		q.Set("order", orderForExportTable(schema.TableRunGear))
+		u := c.BaseURL + "/rest/v1/" + schema.TableRunGear + "?" + q.Encode() +
+			"&gear_id=in.(" + strings.Join(gearIDs, ",") + ")"
+		written := 0
+		total, complete, err := walkExportPages(ctx, c, u, func(page []map[string]interface{}) error {
+			if err := emit("run_gear.json", page); err != nil {
+				return err
 			}
-		}
-		if len(ids) > 0 {
-			// Build the `in.(uuid1,uuid2,...)` value list. UUIDs
-			// don't need URL-encoding but join with commas only.
-			q := url.Values{}
-			q.Set("select", "*")
-			u := c.BaseURL + "/rest/v1/" + schema.TableRunGear + "?" + q.Encode() +
-				"&gear_id=in.(" + strings.Join(ids, ",") + ")"
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-			if err == nil {
-				if body, err := c.do(ctx, req); err == nil {
-					var rows []map[string]interface{}
-					if err := json.Unmarshal(body, &rows); err == nil && len(rows) > 0 {
-						out["run_gear.json"] = rows
-					}
-				}
+			written += len(page)
+			return nil
+		})
+		if err != nil {
+			var ee *emitError
+			if errors.As(err, &ee) {
+				return comp, ee.err
 			}
+			complete = false
 		}
+		comp.note("run_gear", written, total, complete)
 	}
 
-	return out, nil
+	return comp, nil
 }
 
 // DownloadRawTrackBytes pulls the **gzipped** bytes from Storage

@@ -10,5 +10,50 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- APNs. Resolved from the per-configuration APS_ENVIRONMENT build setting
+	     (Debug + Profile `development`, Release `production`) rather than
+	     hardcoded, because one entitlements file serves all three configurations
+	     and the sandbox and production APNs hosts reject each other's tokens.
+	     Pinning `development` here and trusting the distribution export to
+	     rewrite it is the shape that ships a TestFlight build whose tokens the
+	     worker's production host answers BadDeviceToken for — push that never
+	     arrives and never errors. An undefined setting expands to the literal
+	     string, which no profile carries, so the failure is loud at signing.
+	     The key is the bare iOS spelling; `com.apple.developer.aps-environment`
+	     is the macOS one and no iOS profile carries it. decisions.md § 742,
+	     § 1740. -->
+	<key>aps-environment</key>
+	<string>$(APS_ENVIRONMENT)</string>
+	<!-- `group.com.threkir.app.share`: the shared container the Share
+	     Extension writes a shared route file into and this app reads it back
+	     out of. Deliberately a second group rather than the watch
+	     complication's `group.com.threkir.app.activerun`: the extension clears
+	     this container's root on every activation, which would be destructive
+	     to a group holding anything else. Both this file and
+	     ShareExtension.entitlements must carry it, and the id must match
+	     Info.plist's AppGroupId and SharedRouteHandoff.appGroup.
+
+	     `group.com.threkir.app.widget`: the Today widget's snapshot, written
+	     here by HomeWidgetBridge and read by the RunActivity extension. Its
+	     own group for the same reason: the share group's root is wiped on
+	     every share. This file and RunActivity/RunActivity.entitlements must
+	     carry it, and it must match TodayWidget.appGroup —
+	     TodayWidgetSnapshotTests compares the three. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.threkir.app.share</string>
+		<string>group.com.threkir.app.widget</string>
+	</array>
+	<!-- Universal links: https://threkir.com/clubs/join/<token>, /runs/<uuid>
+	     and /routes/<uuid> open here through app_links once iOS has fetched
+	     https://threkir.com/.well-known/apple-app-site-association (source:
+	     apps/web/static/.well-known/), the twin of Android's autoVerify
+	     filters. The App Store profile must carry the capability or the
+	     signed release fails; development profiles pick it up from the App ID
+	     under automatic signing. decisions.md § 1865, § 1924. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:threkir.com</string>
+	</array>
 </dict>
 </plist>

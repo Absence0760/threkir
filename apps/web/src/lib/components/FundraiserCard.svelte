@@ -1,47 +1,32 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import GoalThermometer from './GoalThermometer.svelte';
-	import { startDonationCheckout } from '$lib/core/data';
-	import type { Fundraiser, FundraiserTotals } from '$lib/types';
+	import type { Fundraiser, FundraiserTotals } from '#lib/types.ts';
 
 	let {
 		fundraiser,
 		totals,
+		totalsFailed = false,
 		compact = false
 	}: {
 		fundraiser: Fundraiser;
 		totals: FundraiserTotals | null;
+		/// The totals read FAILED, as distinct from `totals === null` meaning
+		/// nothing has been donated yet. A thermometer at zero is a claim about
+		/// someone else's campaign, so the failure gets said out loud instead.
+		totalsFailed?: boolean;
 		compact?: boolean;
 	} = $props();
-
-	let donating = $state(false);
 
 	const raised = $derived(totals?.raised_cents ?? 0);
 	const goal = $derived(totals?.goal_cents ?? fundraiser.goal_cents);
 	const donorCount = $derived(totals?.donor_count ?? 0);
 	const closed = $derived(fundraiser.status === 'closed');
 
-	async function donate() {
+	function donate() {
 		// The compact card hands off to the full fundraiser page, which hosts the
 		// amount picker. A bare "Donate" here just routes there.
 		window.location.href = `/fundraisers/${fundraiser.id}`;
-	}
-
-	export async function donateAmount(
-		amountCents: number,
-		opts: { displayName?: string | null; message?: string | null; isAnonymous?: boolean }
-	) {
-		if (donating || closed) return;
-		donating = true;
-		try {
-			const { url } = await startDonationCheckout(fundraiser.id, amountCents, opts);
-			window.location.href = url;
-		} catch (e) {
-			showToast(m('fundraiser.donateFailed'), 'error');
-			console.error('donation checkout failed', e);
-			donating = false;
-		}
 	}
 </script>
 
@@ -57,12 +42,18 @@
 		</p>
 	</header>
 
-	<GoalThermometer raisedCents={raised} goalCents={goal} {donorCount} currency={fundraiser.currency} />
+	{#if totalsFailed}
+		<p class="totals-error" role="alert" data-testid="fundraiser-card-totals-error">
+			{m('fundraiser.totalsFailed')}
+		</p>
+	{:else}
+		<GoalThermometer raisedCents={raised} goalCents={goal} {donorCount} currency={fundraiser.currency} />
+	{/if}
 
 	{#if closed}
 		<p class="closed">{m('fundraiser.closed')}</p>
 	{:else}
-		<button type="button" class="btn btn-primary" onclick={donate} disabled={donating}>
+		<button type="button" class="btn btn-primary" onclick={donate}>
 			{m('fundraiser.donate')}
 		</button>
 	{/if}
@@ -84,6 +75,10 @@
 	.closed {
 		color: var(--color-text-secondary);
 		font-weight: 600;
+	}
+	.totals-error {
+		margin: 0;
+		color: var(--color-text-secondary);
 	}
 	.fundraiser-card.compact header h3 {
 		font-size: 1rem;

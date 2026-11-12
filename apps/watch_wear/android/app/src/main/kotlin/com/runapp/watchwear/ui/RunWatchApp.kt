@@ -1,12 +1,14 @@
 package com.runapp.watchwear.ui
 
 import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,18 +18,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,7 +45,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -85,11 +94,12 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
+import com.runapp.watchwear.BuildConfig
+import com.runapp.watchwear.LineCalibrationCapture
 import com.runapp.watchwear.R
 import com.runapp.watchwear.RunViewModel
 import com.runapp.watchwear.Stage
 import com.runapp.watchwear.hrZoneOf
-import com.runapp.watchwear.recording.formatKm
 import com.runapp.watchwear.system.BatteryOptimization
 import android.app.Activity
 import kotlinx.coroutines.Job
@@ -97,6 +107,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
+import com.runapp.watchwear.HeartRateAvailability
+import com.runapp.watchwear.HeartRateCaptionKind
+import com.runapp.watchwear.heartRateCaption
+import com.runapp.watchwear.PermissionCost
+import com.runapp.watchwear.PermissionOutcome
+import com.runapp.watchwear.permissionOutcome
+import com.runapp.watchwear.shouldInterruptForCosts
+import com.runapp.watchwear.system.AppSettings
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -113,10 +131,43 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
     // `start()` call. UI-only — the recording service isn't live during
     // the countdown. Mirrors the user-visible behaviour on Android.
     var showCountdown by remember { mutableStateOf(false) }
+    // Non-null while the notice is up. A denial used to set nothing at
+    // all, so tapping GO and declining returned the runner to an
+    // unchanged pre-run screen — a dead button on a device with no
+    // keyboard to ask questions with.
+    var permissionNotice by remember { mutableStateOf<PermissionOutcome?>(null) }
+    var degradedNoticeShown by rememberSaveable { mutableStateOf(false) }
+    val requestedPermissions = remember {
+        buildList {
+            add(Manifest.permission.ACCESS_FINE_LOCATION)
+            // From Android 12 a FINE request without COARSE is ignored
+            // outright and no dialog appears. Asking for both
+            // is also what makes the dialog re-offer Precise to a runner who
+            // granted Approximate before.
+            add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            add(Manifest.permission.BODY_SENSORS)
+            // Needed for `TYPE_STEP_COUNTER` on API 29+. Granting is not
+            // blocking — the step flow is silent if the user denies.
+            add(Manifest.permission.ACTIVITY_RECOGNITION)
+            // The recording service's ongoing notification IS the
+            // runner's way back into a live run from the watch face. On
+            // API 33+ it is withheld from the shade until this is
+            // granted — declaring it in the manifest is not enough, and
+            // the service posts one either way, so the failure is
+            // invisible from inside the app.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+    }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { granted ->
-        if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+        val outcome = permissionOutcome(granted)
+        if (shouldInterruptForCosts(outcome, degradedNoticeShown)) {
+            if (outcome.canStart) degradedNoticeShown = true
+            permissionNotice = outcome
+        } else if (outcome.canStart) {
             showCountdown = true
         }
     }
@@ -129,21 +180,79 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
         if (showCountdown) vm.prefetchTilesForRunStart()
     }
 
+    // Hoisted so the clock can scroll away with the pre-run list instead of
+    // sitting on top of the chip passing under it.
+    val preRunListState = rememberScalingLazyListState(initialCenterItemIndex = 0)
+
     DuskTheme {
         Scaffold(
-            timeText = { TimeText() },
-            vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
+            timeText = {
+                // `scrollAway` keys on the CENTRE item, and the pre-run list is
+                // top-anchored, so it read the list at rest as already scrolled
+                // and hid the clock. "Has scrolled off the top" is the question.
+                val scrolled = state.stage == Stage.PreRun && preRunListState.canScrollBackward
+                AnimatedVisibility(visible = !scrolled, enter = fadeIn(), exit = fadeOut()) {
+                    TimeText()
+                }
+            },
+            // PreRun's bottom edge is the brand Start button, which a bottom
+            // vignette would only muddy.
+            vignette = {
+                Vignette(
+                    vignettePosition = if (state.stage == Stage.PreRun) {
+                        VignettePosition.Top
+                    } else {
+                        VignettePosition.TopAndBottom
+                    },
+                )
+            },
         ) {
             when (state.stage) {
                 Stage.PreRun -> {
                     var batteryHelp by remember { mutableStateOf(false) }
+                    var calibrationOpen by remember { mutableStateOf(false) }
                     // Auto-dismiss the instruction card when the user has
                     // actually granted the exemption — VM state flips from
                     // `batteryOptimised = true` → `false`.
                     LaunchedEffect(state.batteryOptimised) {
                         if (!state.batteryOptimised) batteryHelp = false
                     }
-                    if (batteryHelp) {
+                    val notice = permissionNotice
+                    var settingsUnavailable by remember { mutableStateOf(false) }
+                    val canOpenSettings = remember(settingsUnavailable) {
+                        !settingsUnavailable && AppSettings.canOpen(activity)
+                    }
+                    if (BuildConfig.DEBUG && calibrationOpen) {
+                        LineCalibrationScreen(
+                            capture = LineCalibrationCapture.shared,
+                            sampleServerClock = { vm.sampleServerClock() },
+                            lastPosition = { vm.lastKnownPosition() },
+                            onClose = { calibrationOpen = false },
+                        )
+                    } else if (notice != null) {
+                        PermissionNotice(
+                            outcome = notice,
+                            canOpenSettings = canOpenSettings,
+                            onOpenSettings = {
+                                // A chip that resolved but then failed to
+                                // launch disappears rather than staying as a
+                                // second dead affordance; the written steps
+                                // below it are the path that always works.
+                                if (!AppSettings.open(activity)) {
+                                    settingsUnavailable = true
+                                }
+                            },
+                            onAskAgain = {
+                                permissionNotice = null
+                                permissionLauncher.launch(requestedPermissions)
+                            },
+                            onStartAnyway = {
+                                permissionNotice = null
+                                showCountdown = true
+                            },
+                            onClose = { permissionNotice = null },
+                        )
+                    } else if (batteryHelp) {
                         BatteryInstructions(
                             // Samsung One UI Watch: the auto-open intent is a
                             // no-op, so lead with the Galaxy Wearable manual
@@ -157,18 +266,26 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     } else {
                         PreRunScreen(
                             queuedCount = state.queuedCount,
+                            queueUnreadable = state.queueUnreadable,
+                            rejectedCount = state.rejectedRunIds.size,
+                            syncBlockedBy = state.syncBlockedBy,
                             syncing = state.syncing,
                             authed = state.authed,
-                            authError = state.authError,
+                            authFault = state.authFault,
                             online = state.online,
                             batteryOptimised = state.batteryOptimised,
                             batteryPercent = state.batteryPercent,
                             pendingRecoveryDistance = state.pendingRecovery?.distanceM,
+                            preferredUnit = state.preferredUnit,
                             activityType = state.activityType,
                             activeRace = state.activeRace,
+                            onToggleAttempt = vm::toggleAttempt,
                             selectedRouteName = state.selectedRoute?.name,
                             selectedRouteWaypoints = state.selectedRoute?.toLatLngs() ?: emptyList(),
                             targetPaceSecPerKm = state.targetPaceSecPerKm,
+                            todaysWorkout = state.todaysWorkout,
+                            followWorkout = state.followWorkout,
+                            onToggleWorkout = vm::toggleFollowWorkout,
                             onCycleActivity = {
                                 val order = listOf("run", "walk", "hike", "cycle")
                                 val next = order[(order.indexOf(state.activityType) + 1) % order.size]
@@ -177,17 +294,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                             onCyclePace = vm::cycleTargetPace,
                             onOpenRoutePicker = vm::openRoutePicker,
                             onStart = {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.BODY_SENSORS,
-                                        // Needed for `TYPE_STEP_COUNTER` on
-                                        // API 29+. Granting is not blocking
-                                        // — the step flow is silent if the
-                                        // user denies.
-                                        Manifest.permission.ACTIVITY_RECOGNITION,
-                                    )
-                                )
+                                permissionLauncher.launch(requestedPermissions)
                             },
                             onSignIn = vm::openSignIn,
                             onSignOut = vm::signOut,
@@ -195,11 +302,18 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                             onRecover = vm::recoverCheckpoint,
                             onDiscardRecovery = vm::discardCheckpoint,
                             onSync = vm::sync,
+                            onDiscardRejected = vm::discardRejectedRuns,
+                            onOpenCalibration = if (BuildConfig.DEBUG) {
+                                { calibrationOpen = true }
+                            } else {
+                                null
+                            },
+                            listState = preRunListState,
                         )
                     }
                 }
                 Stage.SignIn -> SignInScreen(
-                    authError = state.authError,
+                    authFault = state.authFault,
                     loading = state.signInLoading,
                     onSubmit = vm::signInWithEmail,
                     onCancel = vm::cancelSignIn,
@@ -210,6 +324,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     paceSecPerKm = state.paceSecPerKm,
                     preferredUnit = state.preferredUnit,
                     bpm = state.bpm,
+                    hrAvailability = state.hrAvailability,
                     hrZoneCutoffs = state.hrZoneCutoffs,
                     steps = state.steps,
                     lapCount = state.lapCount,
@@ -228,6 +343,9 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     fallbackLatLng = state.lastKnownLatLng,
                     trackOverlayPoints = state.trackOverlayPoints,
                     ambient = isAmbient,
+                    raceRun = state.raceRun,
+                    raceToStartM = state.raceToStartM,
+                    workoutView = state.workoutView,
                     onPause = vm::pause,
                     onResume = vm::resume,
                     onLap = vm::markLap,
@@ -240,8 +358,10 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     preferredUnit = state.preferredUnit,
                     synced = state.thisRunSynced,
                     syncing = state.syncing,
-                    syncError = state.syncError,
+                    syncFault = state.syncFault,
+                    authed = state.authed,
                     onSync = vm::sync,
+                    onSignIn = vm::openSignIn,
                     onStartNext = vm::startNextRun,
                     onDiscard = vm::discard,
                 )
@@ -249,6 +369,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     routes = state.routes,
                     selectedId = state.selectedRoute?.id,
                     loading = state.routesLoading,
+                    unavailable = state.routesUnavailable,
                     preferredUnit = state.preferredUnit,
                     onPick = vm::selectRoute,
                     onClear = vm::clearSelectedRoute,
@@ -344,7 +465,7 @@ private fun CountdownOverlay(
             style = MaterialTheme.typography.display1.copy(
                 shadow = Shadow(Color.Black.copy(alpha = 0.8f), Offset(0f, 2f), 8f),
             ),
-            color = DuskPalette.parchment,
+            color = DuskPalette.mist,
             fontSize = 84.sp,
         )
     }
@@ -395,7 +516,7 @@ private fun BatteryInstructions(
                     stringResource(R.string.battery_stock_summary)
                 },
                 style = MaterialTheme.typography.caption2,
-                color = DuskPalette.haze,
+                color = DuskPalette.mistMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 6.dp),
             )
@@ -410,7 +531,7 @@ private fun BatteryInstructions(
                     stringResource(R.string.battery_stock_steps)
                 },
                 style = MaterialTheme.typography.caption2,
-                color = DuskPalette.parchment,
+                color = DuskPalette.mist,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
@@ -423,7 +544,7 @@ private fun BatteryInstructions(
                 Text(
                     stringResource(R.string.battery_on_watch_steps),
                     style = MaterialTheme.typography.caption3,
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                     textAlign = TextAlign.Start,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                 )
@@ -453,21 +574,156 @@ private fun BatteryInstructions(
     }
 }
 
+/// Full-screen card shown when the GO tap's permission dialog came back
+/// with something declined. One line per capability actually lost, then
+/// the routes back: ask again (the system still prompts until a second
+/// refusal), the app's own permission screen where the watch has one, and
+/// the written path that works on every build.
+///
+/// `Start anyway` appears only when location survived — a run without it
+/// records the clock and nothing else, so offering to start one would be
+/// the dead GO button again wearing a different label.
+@Composable
+private fun PermissionNotice(
+    outcome: PermissionOutcome,
+    canOpenSettings: Boolean,
+    onOpenSettings: () -> Unit,
+    onAskAgain: () -> Unit,
+    onStartAnyway: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val listState = rememberScalingLazyListState()
+    val rotaryFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { rotaryFocus.requestFocus() }
+    ScalingLazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .rotaryScrollable(
+                RotaryScrollableDefaults.behavior(scrollableState = listState),
+                focusRequester = rotaryFocus,
+            ),
+        state = listState,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        autoCentering = AutoCenteringParams(itemIndex = 0),
+        contentPadding = PaddingValues(horizontal = 14.dp),
+    ) {
+        item {
+            Text(
+                stringResource(
+                    when {
+                        outcome.canStart -> R.string.perm_title_degraded
+                        PermissionCost.PreciseLocation in outcome.costs ->
+                            R.string.perm_title_precise
+                        else -> R.string.perm_title_blocked
+                    }
+                ),
+                style = MaterialTheme.typography.title3,
+                textAlign = TextAlign.Center,
+            )
+        }
+        items(outcome.costs.size) { i ->
+            Text(
+                stringResource(permissionCostLabel(outcome.costs[i])),
+                style = MaterialTheme.typography.caption2,
+                color = DuskPalette.mist,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+            )
+        }
+        item {
+            Text(
+                stringResource(R.string.perm_watch_steps),
+                style = MaterialTheme.typography.caption3,
+                color = DuskPalette.mistMuted,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+            )
+        }
+        item {
+            Chip(
+                onClick = onAskAgain,
+                label = {
+                    Text(
+                        stringResource(R.string.perm_try_again),
+                        style = MaterialTheme.typography.caption2,
+                    )
+                },
+                colors = ChipDefaults.secondaryChipColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (canOpenSettings) {
+            item {
+                Chip(
+                    onClick = onOpenSettings,
+                    label = {
+                        Text(
+                            stringResource(R.string.perm_open_settings),
+                            style = MaterialTheme.typography.caption2,
+                        )
+                    },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        if (outcome.canStart) {
+            item {
+                Chip(
+                    onClick = onStartAnyway,
+                    label = {
+                        Text(
+                            stringResource(R.string.perm_start_anyway),
+                            style = MaterialTheme.typography.caption2,
+                        )
+                    },
+                    colors = ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        item {
+            Chip(
+                onClick = onClose,
+                label = { Text(stringResource(R.string.done)) },
+                colors = ChipDefaults.secondaryChipColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+private fun permissionCostLabel(cost: PermissionCost): Int = when (cost) {
+    PermissionCost.Location -> R.string.perm_cost_location
+    PermissionCost.PreciseLocation -> R.string.perm_cost_precise_location
+    PermissionCost.HeartRate -> R.string.perm_cost_heart_rate
+    PermissionCost.Steps -> R.string.perm_cost_steps
+    PermissionCost.OngoingNotification -> R.string.perm_cost_notification
+}
+
 @Composable
 private fun PreRunScreen(
     queuedCount: Int,
+    queueUnreadable: Boolean,
+    rejectedCount: Int,
+    syncBlockedBy: com.runapp.watchwear.SyncFault?,
     syncing: Boolean,
     authed: Boolean,
-    authError: String?,
+    authFault: com.runapp.watchwear.AuthFault?,
     online: Boolean,
     batteryOptimised: Boolean,
     batteryPercent: Int?,
     activeRace: com.runapp.watchwear.ActiveRaceState?,
+    onToggleAttempt: () -> Unit,
     pendingRecoveryDistance: Double?,
+    preferredUnit: com.runapp.watchwear.recording.DistanceUnit,
     activityType: String,
     selectedRouteName: String?,
     selectedRouteWaypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
     targetPaceSecPerKm: Int?,
+    todaysWorkout: com.runapp.watchwear.workout.PushedWorkout?,
+    followWorkout: Boolean,
+    onToggleWorkout: () -> Unit,
     onCycleActivity: () -> Unit,
     onCyclePace: () -> Unit,
     onOpenRoutePicker: () -> Unit,
@@ -478,30 +734,114 @@ private fun PreRunScreen(
     onRecover: () -> Unit,
     onDiscardRecovery: () -> Unit,
     onSync: () -> Unit,
+    onDiscardRejected: () -> Unit,
+    onOpenCalibration: (() -> Unit)?,
+    listState: ScalingLazyListState,
 ) {
     // Recovery prompt takes precedence — user has unsaved-run state from
     // a previous app kill. Show that exclusively until they decide.
     if (pendingRecoveryDistance != null) {
+        // Scrollable because the decision has to stay REACHABLE, not because
+        // the content is long: the title, the distance and two 52 dp chips
+        // already measure past the ~152 dp a 192 dp round watch leaves inside
+        // this padding, so Discard was the part falling off the bottom edge
+        // with no way to reach it — and the unreadable line below adds to it.
+        // Centred while it fits, so nothing moves on the common path, and
+        // rotary-wired so the bezel/crown reaches it like every other
+        // scrolling surface here (decisions § 1154).
+        val recoveryScroll = rememberScrollState()
+        val rotaryFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { rotaryFocus.requestFocus() }
+        // Discard destroys the run's only durable record — while the queue
+        // does not hold it, the checkpoint IS the run (decisions § 1107) — so
+        // it is behind the estate's two-press confirm rather than one tap.
+        // The arm is announced, and it lapses on its own so a runner who put
+        // the watch down does not come back to a live destructive control.
+        var discardArmedAtMs by remember { mutableStateOf<Long?>(null) }
+        LaunchedEffect(discardArmedAtMs) {
+            val armedAt = discardArmedAtMs ?: return@LaunchedEffect
+            delay(CONFIRM_WINDOW_MS)
+            if (discardArmedAtMs == armedAt) discardArmedAtMs = null
+        }
         Box(modifier = Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(recoveryScroll)
+                    .rotaryScrollable(
+                        RotaryScrollableDefaults.behavior(scrollableState = recoveryScroll),
+                        focusRequester = rotaryFocus,
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 Text(stringResource(R.string.recover_unsaved_run), style = MaterialTheme.typography.title3, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    stringResource(R.string.distance_km_recorded, formatKm(pendingRecoveryDistance)),
+                    distanceRecordedLabel(pendingRecoveryDistance, preferredUnit),
                     style = MaterialTheme.typography.caption2,
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                 )
+                // The one condition under which "Save it" cannot work, said
+                // out loud. `recoverCheckpoint` re-grades on the tap and an
+                // unreadable queue grades `Ignore` — nothing is queued and
+                // nothing is cleared, correctly, because `store.save` reads
+                // the same file the grade could not (decisions § 1107). The
+                // tap was therefore silent: this prompt is a takeover and
+                // `syncError` renders on `PostRunScreen`, a screen the runner
+                // cannot be on. Disabled rather than left tappable-and-inert,
+                // because an affordance that does nothing reads as a broken
+                // app rather than as a fault that will clear — and it does
+                // clear: `observeQueue` retries the read on its own, and the
+                // chip re-enables the moment it succeeds. Discard stays live
+                // on purpose. It is the only way off a screen with no Start
+                // button, and stranding a runner who wants to record NOW
+                // behind a corrupt file would cost them the next run as well
+                // as this one.
+                if (queueUnreadable) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.sync_queue_unreadable),
+                        style = MaterialTheme.typography.caption3,
+                        color = DuskPalette.warning,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Chip(
                     onClick = onRecover,
+                    enabled = !queueUnreadable,
                     label = { Text(stringResource(R.string.save_it)) },
                     colors = ChipDefaults.primaryChipColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (discardArmedAtMs != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        pluralStringResource(R.plurals.discard_stake, 1),
+                        style = MaterialTheme.typography.caption3,
+                        color = DuskPalette.warning,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
                 Chip(
-                    onClick = onDiscardRecovery,
-                    label = { Text(stringResource(R.string.discard)) },
+                    onClick = {
+                        val now = System.currentTimeMillis()
+                        when (confirmPress(discardArmedAtMs, now)) {
+                            ConfirmPress.Armed -> discardArmedAtMs = now
+                            ConfirmPress.Confirmed -> {
+                                discardArmedAtMs = null
+                                onDiscardRecovery()
+                            }
+                        }
+                    },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (discardArmedAtMs != null) R.string.discard_confirm
+                                else R.string.discard
+                            )
+                        )
+                    },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -510,380 +850,613 @@ private fun PreRunScreen(
         return
     }
 
-    // Pre-run layout matches the running screen's edge-anchored
-    // pattern: route preview fills the watch face as a background,
-    // status banners hug the top arc, Start lives at dead centre,
-    // and the settings chip rail + auxiliary chips cluster at the
-    // bottom edge. Aligned via Box.align() so each region is
-    // independently positioned — content overflow in one region
-    // can't push another out of frame, which was the bug that
-    // shoved Start into the system TimeText when a route was
-    // selected.
-    val captionShadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 0.5f), 3f)
+    // One scrolling list of label-plus-value chips under a separately anchored
+    // Start. Start is NOT a list item: it is pinned to the bottom bezel by its
+    // own `align`, so however much status text stacks up above, it can only
+    // scroll the list — never push Start off-frame, which is what the old
+    // region-anchored Box existed to prevent (a selected route once shoved
+    // Start into the TimeText). The list owns overflow instead of clipping it
+    // at the bezel, and the bezel / crown scroll it like every other list here.
+    val listFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { listFocus.requestFocus() }
+    val density = LocalDensity.current
+    var startHeight by remember { mutableStateOf(BrandEdgeButtonDefaults.MinHeight) }
+    val routeSelected = authed && selectedRouteWaypoints.isNotEmpty()
+    val statusChipColors = ChipDefaults.secondaryChipColors(
+        backgroundColor = MaterialTheme.colors.surface,
+        contentColor = MaterialTheme.colors.onSurface,
+    )
+    val warningChipColors = ChipDefaults.secondaryChipColors(
+        backgroundColor = MaterialTheme.colors.surface,
+        contentColor = DuskPalette.warning,
+    )
+    // Five facts compete for the one status slot and WHICH of them wins is
+    // decided by `syncChipState`, not by the order of the branches below — a
+    // precedence expressed as source order can only be asserted by reading the
+    // source back, which is what three separate guard files were doing without
+    // any of them able to evaluate it.
+    val syncSlot = syncChipState(
+        queueUnreadable = queueUnreadable,
+        rejectedCount = rejectedCount,
+        queuedCount = queuedCount,
+        syncBlockedBy = syncBlockedBy,
+        online = online,
+        authed = authed,
+    )
     Box(modifier = Modifier.fillMaxSize()) {
-        // Background: full-screen route preview when one's picked
-        // (same canvas as the in-run map, with `current = null` so
-        // it fits-bounds and frames the whole polyline). Without a
-        // route, the watch background shows through unchanged.
-        if (authed && selectedRouteWaypoints.isNotEmpty()) {
-            val routePreviewCd = stringResource(R.string.cd_route_preview_change)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(onClick = onOpenRoutePicker)
-                    .semantics {
-                        contentDescription = routePreviewCd
-                        role = Role.Button
-                    }
-            ) {
-                RouteMiniMap(
-                    route = selectedRouteWaypoints,
-                    current = null,
-                    modifier = Modifier.fillMaxSize(),
-                    clipShape = androidx.compose.ui.graphics.RectangleShape,
-                )
-            }
-        }
-
-        // Top arc: thin status captions. Padding clears the system
-        // `TimeText` (rendered by the parent Scaffold) — without
-        // this padding the queued-count line lands in the same
-        // pixels as the clock and goes unreadable. The battery `!`
-        // and sign-out icon buttons live further down on the chord
-        // curve (top=50.dp), so the centred pills here don't have
-        // to dodge them at the narrow upper chord.
-        Column(
+        ScalingLazyColumn(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 30.dp, start = 16.dp, end = 16.dp),
+                .fillMaxSize()
+                .rotaryScrollable(
+                    RotaryScrollableDefaults.behavior(scrollableState = listState),
+                    focusRequester = listFocus,
+                ),
+            state = listState,
+            // Top-anchored, not centred: this is a home screen, and centring
+            // the first item is what left the upper third of the face empty.
+            autoCentering = null,
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            contentPadding = PaddingValues(
+                start = 10.dp,
+                end = 10.dp,
+                top = 30.dp,
+                bottom = startHeight + 8.dp,
+            ),
         ) {
-            if (queuedCount > 0) {
-                // Tappable so the runner can force a retry — the queue
-                // also drains automatically on every connectivity edge
-                // and on app cold-start, but if the user just got home
-                // and wants their run synced *now* (e.g., to check it
-                // on the phone), waiting for a network event is the
-                // wrong feel. While the drain is in flight we replace
-                // the label with a small spinner; offline / unauthed
-                // keep the chip disabled because retrying is guaranteed
-                // to fail until the network or session comes back —
-                // CompactChip dims it visually so the user can tell.
-                //
-                // Visual styling matches the Activity / Route / Pace
-                // chips at the bottom arc: same `translucentChip`
-                // colours (white-alpha-0.15 + parchment) and `caption3`
-                // typography so the four chips read as one family.
-                CompactChip(
-                    onClick = onSync,
-                    enabled = online && authed && !syncing,
-                    label = {
-                        if (syncing) {
-                            CircularProgressIndicator(
-                                strokeWidth = 1.5.dp,
-                                modifier = Modifier.size(12.dp),
-                                indicatorColor = DuskPalette.parchment,
+            if (syncSlot != SyncChipState.Silent) item(key = "sync") {
+                when (syncSlot) {
+                    SyncChipState.Unreadable -> {
+                        // The queue read failed, so there is no count to state and
+                        // "Sync ?" would be worse than the silence it replaces. What
+                        // the runner needs is not the number — it is the one
+                        // affordance that can recover the queue, which is exactly
+                        // what the counted chip's `queuedCount > 0` gate withheld on
+                        // the only condition that guarantees the count is wrong.
+                        //
+                        // It occupies the counted chip's own slot, so nothing else
+                        // moves, and it states no figure it cannot support. NOT
+                        // gated on `online`: the read is a local file open and the
+                        // network is not a party to whether it succeeds, so
+                        // disabling it offline would withhold the recovery path for
+                        // a purely local fault. Still gated on `authed`, because
+                        // `drainQueue` bails before reading anything without a
+                        // session. The warning colour is not the only signal — the
+                        // label differs from the counted one and the content
+                        // description carries the whole sentence (decisions § 1104).
+                        val unreadableCd = stringResource(R.string.cd_sync_unreadable_retry)
+                        CompactChip(
+                            onClick = onSync,
+                            enabled = !syncing,
+                            label = {
+                                if (syncing) {
+                                    CircularProgressIndicator(
+                                        strokeWidth = 1.5.dp,
+                                        modifier = Modifier.size(12.dp),
+                                        indicatorColor = DuskPalette.warning,
+                                    )
+                                } else {
+                                    Text(
+                                        stringResource(R.string.sync_retry),
+                                        style = MaterialTheme.typography.caption2,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    )
+                                }
+                            },
+                            colors = warningChipColors,
+                            modifier = Modifier
+                                .semantics { contentDescription = unreadableCd },
+                        )
+                    }
+                    SyncChipState.Rejected -> {
+                        // The server has permanently refused these entries — a
+                        // 400/404/409/422 that no retry moves. They stay queued by
+                        // design (§ 17: dropping one silently loses a run), so the
+                        // counted chip's own claim is the one thing this state makes
+                        // false: it offers a Sync that reports success on every tap
+                        // while the count it states never falls. It therefore yields
+                        // the slot, exactly as it does to the unreadable chip
+                        // (decisions § 1104), and for the same reason — the figure is
+                        // right and the sentence around it is not.
+                        //
+                        // Yielding costs the manual Sync of any run queued behind the
+                        // stuck ones, and that is the intended order: the entry that
+                        // cannot move is what the runner has to clear first, and once
+                        // they have, the counted chip is back with the rest.
+                        //
+                        // Destructive, so the estate's two-press confirm guards it
+                        // (decisions § 1253) — the first tap arms and relabels, the
+                        // second discards, and the arm lapses on its own so a watch
+                        // put down does not come back one tap from destroying a run.
+                        // The label carries the count in both states because the
+                        // runner is agreeing to a number, and `discard_stake` renders
+                        // only while armed so the screen states no stake for a run
+                        // nobody is discarding. It takes the count too: the caption is
+                        // a predicate about the runs, so French, Spanish and Portuguese
+                        // inflect it (decisions § 1389).
+                        var discardArmedAtMs by remember { mutableStateOf<Long?>(null) }
+                        LaunchedEffect(discardArmedAtMs) {
+                            val armedAt = discardArmedAtMs ?: return@LaunchedEffect
+                            delay(CONFIRM_WINDOW_MS)
+                            if (discardArmedAtMs == armedAt) discardArmedAtMs = null
+                        }
+                        // A drain that lands between the arm and the confirm changes
+                        // what the second tap would destroy. Disarm rather than let it
+                        // commit to a set the runner never saw.
+                        LaunchedEffect(rejectedCount) { discardArmedAtMs = null }
+                        val armed = discardArmedAtMs != null
+                        val rejectedCd = if (armed) {
+                            pluralStringResource(
+                                R.plurals.cd_sync_rejected_confirm, rejectedCount, rejectedCount
                             )
                         } else {
+                            pluralStringResource(R.plurals.cd_sync_rejected, rejectedCount, rejectedCount)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CompactChip(
+                                onClick = {
+                                    val now = System.currentTimeMillis()
+                                    when (confirmPress(discardArmedAtMs, now)) {
+                                        ConfirmPress.Armed -> discardArmedAtMs = now
+                                        ConfirmPress.Confirmed -> {
+                                            discardArmedAtMs = null
+                                            onDiscardRejected()
+                                        }
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        if (armed) {
+                                            stringResource(R.string.sync_rejected_discard, rejectedCount)
+                                        } else {
+                                            pluralStringResource(
+                                                R.plurals.sync_rejected, rejectedCount, rejectedCount
+                                            )
+                                        },
+                                        style = MaterialTheme.typography.caption2,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    )
+                                },
+                                colors = warningChipColors,
+                                modifier = Modifier
+                                    .semantics { contentDescription = rejectedCd },
+                            )
+                            if (armed) {
+                                Text(
+                                    pluralStringResource(R.plurals.discard_stake, rejectedCount),
+                                    style = MaterialTheme.typography.caption3,
+                                    color = DuskPalette.warning,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
+                    }
+                    SyncChipState.SignInRequired -> {
+                        // The one stop the counted chip cannot describe and must
+                        // not offer. `classifyDrainError` reads a 401 as
+                        // `RetryAfterRefresh`; when the refresh itself is refused,
+                        // the pass ends with `SyncFault.SignInRequired` and every
+                        // tap on "Retry N" re-runs the same drain, 401s again and
+                        // fails the same refresh — an affordance that is enabled,
+                        // fires, and cannot ever succeed (decisions § 1544).
+                        //
+                        // So this one TAKES the slot where a transient only
+                        // relabels it (§ 1390). The drain that follows a successful
+                        // sign-in is automatic (`signInWithEmailInternal` forces
+                        // one), so nothing is lost by spending the slot.
+                        //
+                        // Same three signals as its neighbours: a label that is
+                        // not the counted one, the warning colour, and a content
+                        // description carrying the sentence and the count that
+                        // neither the label nor the colour can hold.
+                        val signInCd = pluralStringResource(
+                            R.plurals.cd_sync_sign_in_required, queuedCount, queuedCount
+                        )
+                        CompactChip(
+                            onClick = onSignIn,
+                            enabled = !syncing,
+                            label = {
+                                if (syncing) {
+                                    CircularProgressIndicator(
+                                        strokeWidth = 1.5.dp,
+                                        modifier = Modifier.size(12.dp),
+                                        indicatorColor = DuskPalette.warning,
+                                    )
+                                } else {
+                                    Text(
+                                        stringResource(R.string.sign_in),
+                                        style = MaterialTheme.typography.caption2,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    )
+                                }
+                            },
+                            colors = warningChipColors,
+                            modifier = Modifier
+                                .semantics { contentDescription = signInCd },
+                        )
+                    }
+                    SyncChipState.Queued, SyncChipState.RetryQueued -> {
+                        // Tappable so the runner can force a retry — the queue
+                        // also drains automatically on every connectivity edge
+                        // and on app cold-start, but if the user just got home
+                        // and wants their run synced *now*, waiting for a network
+                        // event is the wrong feel. While the drain is in flight
+                        // the label becomes a small spinner; offline / unauthed
+                        // keep the chip disabled because retrying is guaranteed
+                        // to fail until the network or session comes back.
+                        //
+                        // …and it is also where a TRANSIENT failure gets said. A
+                        // 5xx or a dead socket left this screen silent while
+                        // `drainBackoff` was armed behind it (decisions § 1390).
+                        // It is the SAME chip rather than another branch because
+                        // Sync is still the useful affordance during a transient,
+                        // and it is a label change, not only a colour: the label
+                        // states the action, the warning colour marks it, and the
+                        // content description carries the sentence neither can
+                        // hold — the three-signal shape § 1104 settled.
+                        //
+                        // Which of the two this is, `syncChipState` has already
+                        // decided — including the `online` conjunction behind it,
+                        // because offline the chip is already disabled and a dimmed
+                        // control reading "Retry" invites a tap that cannot fire.
+                        val syncFailedNow = syncSlot == SyncChipState.RetryQueued
+                        val syncCd = if (syncFailedNow) {
+                            pluralStringResource(R.plurals.cd_sync_failed_retry, queuedCount, queuedCount)
+                        } else {
+                            pluralStringResource(R.plurals.cd_sync_queued, queuedCount, queuedCount)
+                        }
+                        CompactChip(
+                            onClick = onSync,
+                            enabled = online && authed && !syncing,
+                            label = {
+                                if (syncing) {
+                                    CircularProgressIndicator(
+                                        strokeWidth = 1.5.dp,
+                                        modifier = Modifier.size(12.dp),
+                                        indicatorColor = if (syncFailedNow) {
+                                            DuskPalette.warning
+                                        } else {
+                                            DuskPalette.mist
+                                        },
+                                    )
+                                } else {
+                                    Text(
+                                        stringResource(
+                                            if (syncFailedNow) R.string.sync_retry_count
+                                            else R.string.sync_count,
+                                            queuedCount,
+                                        ),
+                                        style = MaterialTheme.typography.caption2,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    )
+                                }
+                            },
+                            colors = if (syncFailedNow) warningChipColors else statusChipColors,
+                            modifier = Modifier
+                                .semantics { contentDescription = syncCd },
+                        )
+                    }
+                    SyncChipState.Offline -> {
+                        Text(
+                            stringResource(R.string.offline),
+                            style = MaterialTheme.typography.caption2,
+                            color = DuskPalette.warning,
+                        )
+                    }
+                    SyncChipState.Silent -> Unit
+                }
+            }
+            if (!authed) {
+                // NOT `offline`. A runner who has never signed in on the wrist
+                // is usually perfectly online, and telling them the watch is
+                // offline sends them to check Bluetooth while the affordance
+                // that actually fixes it -- the Sign in chip, immediately below
+                // -- is the one they walk away from.
+                item(key = "signed-out") {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            stringResource(R.string.not_signed_in),
+                            style = MaterialTheme.typography.caption2,
+                            color = DuskPalette.warning,
+                            textAlign = TextAlign.Center,
+                        )
+                        if (authFault != null) {
                             Text(
-                                stringResource(R.string.sync_count, queuedCount),
+                                stringResource(com.runapp.watchwear.authFaultMessage(authFault)),
                                 style = MaterialTheme.typography.caption3,
+                                color = DuskPalette.error,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+                // Signing in is the one thing a signed-out watch needs before it
+                // can sync, so it leads the list rather than trailing it the way
+                // Sign out does.
+                item(key = "sign-in") {
+                    val signInCd = stringResource(R.string.cd_sign_in)
+                    Chip(
+                        onClick = onSignIn,
+                        label = {
+                            Text(
+                                stringResource(R.string.sign_in),
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             )
-                        }
-                    },
-                    colors = ChipDefaults.secondaryChipColors(
-                        backgroundColor = Color.White.copy(alpha = 0.15f),
-                        contentColor = DuskPalette.parchment,
-                    ),
-                    modifier = Modifier.widthIn(max = 100.dp),
-                )
-            } else if (!online && authed) {
-                Text(
-                    stringResource(R.string.offline),
-                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                    color = DuskPalette.warning,
-                )
-            }
-            if (!authed) {
-                Text(
-                    stringResource(R.string.offline),
-                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                    color = DuskPalette.warning,
-                )
-                if (authError != null) {
-                    Text(
-                        authError,
-                        style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                        color = DuskPalette.error,
-                        textAlign = TextAlign.Center,
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.AccountCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(ChipDefaults.IconSize),
+                            )
+                        },
+                        colors = ChipDefaults.secondaryChipColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = signInCd },
                     )
                 }
             }
             if (batteryPercent != null &&
                 batteryPercent < com.runapp.watchwear.system.BatteryStatus.LOW_THRESHOLD_PERCENT) {
-                Text(
-                    stringResource(R.string.battery_consider_charging, batteryPercent),
-                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                    color = DuskPalette.warning,
-                    textAlign = TextAlign.Center,
-                )
+                item(key = "battery-low") {
+                    Text(
+                        stringResource(R.string.battery_consider_charging, batteryPercent),
+                        style = MaterialTheme.typography.caption2,
+                        color = DuskPalette.warning,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             if (activeRace != null) {
-                Text(
-                    if (activeRace.isArmed) stringResource(R.string.race_armed) else stringResource(R.string.race_live),
-                    style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
-                    color = MaterialTheme.colors.primary,
-                )
-                val title = activeRace.eventTitle ?: stringResource(R.string.event)
-                Text(
-                    if (activeRace.isArmed) stringResource(R.string.race_wait_for_go, title)
-                    else stringResource(R.string.race_tap_start, title),
-                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                    color = DuskPalette.parchment,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            // Route name pill at the top arc — only when a route is
-            // picked. Replaces the centre Route chip in the bottom
-            // cluster so Start can take the centre-bottom slot. Tap
-            // re-opens the picker, same as the bottom chip would.
-            if (authed && selectedRouteWaypoints.isNotEmpty() && selectedRouteName != null) {
-                Spacer(Modifier.height(2.dp))
-                val routeSelectedCd = stringResource(R.string.cd_route_selected, selectedRouteName)
-                CompactChip(
-                    onClick = onOpenRoutePicker,
-                    label = {
+                item(key = "race") {
+                    val selfTimedOpen = activeRace.isSelfTimed && activeRace.isRunning
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            selectedRouteName,
-                            style = MaterialTheme.typography.caption3,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            when {
+                                selfTimedOpen -> stringResource(R.string.race_self_timed)
+                                activeRace.isArmed -> stringResource(R.string.race_armed)
+                                else -> stringResource(R.string.race_live)
+                            },
+                            style = MaterialTheme.typography.caption1,
+                            color = MaterialTheme.colors.primary,
                         )
-                    },
-                    colors = ChipDefaults.secondaryChipColors(
-                        backgroundColor = Color.White.copy(alpha = 0.15f),
-                        contentColor = DuskPalette.parchment,
-                    ),
-                    // 90 dp leaves clear horizontal space on each
-                    // side for the TopStart/TopEnd corner icons that
-                    // share this vertical band — wider pills (e.g.
-                    // 130 dp) bump into the sign-out icon on names
-                    // like "Battersea Park Out & Back".
-                    modifier = Modifier
-                        .widthIn(max = 90.dp)
-                        .semantics {
-                            contentDescription = routeSelectedCd
+                        val title = activeRace.eventTitle ?: stringResource(R.string.event)
+                        Text(
+                            when {
+                                selfTimedOpen -> stringResource(R.string.race_self_timed_how, title)
+                                activeRace.isArmed -> stringResource(R.string.race_wait_for_go, title)
+                                else -> stringResource(R.string.race_tap_start, title)
+                            },
+                            style = MaterialTheme.typography.caption2,
+                            color = MaterialTheme.colors.onBackground,
+                            textAlign = TextAlign.Center,
+                        )
+                        if (selfTimedOpen) {
+                            val label = if (activeRace.attemptArmed) {
+                                stringResource(R.string.race_attempt_ready)
+                            } else {
+                                stringResource(R.string.race_attempt)
+                            }
+                            PreRunSettingChip(
+                                label = stringResource(R.string.race_self_timed),
+                                value = label,
+                                contentDescription = label,
+                                onClick = onToggleAttempt,
+                            )
+                        }
+                    }
+                }
+            }
+            if (todaysWorkout != null) {
+                item(key = "workout") {
+                    val summary = workoutSummaryLabel(todaysWorkout, preferredUnit)
+                    PreRunSettingChip(
+                        label = stringResource(R.string.workout),
+                        value = if (followWorkout) summary else stringResource(R.string.workout_off),
+                        contentDescription = if (followWorkout) {
+                            stringResource(R.string.cd_workout_on, summary)
+                        } else {
+                            stringResource(R.string.cd_workout_off)
                         },
+                        onClick = onToggleWorkout,
+                    )
+                }
+            }
+            item(key = "activity") {
+                val label = activityLabel(activityType)
+                PreRunSettingChip(
+                    label = stringResource(R.string.activity),
+                    value = label,
+                    // The description carries the whole word and the action, so
+                    // TalkBack says what the chip does, not only what it shows.
+                    contentDescription = stringResource(R.string.cd_activity_type, label),
+                    onClick = onCycleActivity,
                 )
             }
-        }
-
-        // Primary action. Two distinct shapes depending on context:
-        //   * No route ⇒ BIG circular Button dead centre, anchoring
-        //     the otherwise-empty midnight screen.
-        //   * Route picked ⇒ small CompactChip at the bottom-centre
-        //     of the curved cluster, alongside Activity / Pace.
-        //     Same chip size as its neighbours so the four-button
-        //     arc reads as a uniform row, and the route preview
-        //     above the cluster stays unobstructed. Route name is
-        //     surfaced as a tappable pill in the top status area.
-        val routeSelected = authed && selectedRouteWaypoints.isNotEmpty()
-        if (!routeSelected) {
-            Button(
-                onClick = onStart,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(ButtonDefaults.LargeButtonSize),
-            ) {
-                Text(
-                    stringResource(R.string.start),
-                    style = MaterialTheme.typography.title3,
-                )
-            }
-        } else {
-            CompactChip(
-                onClick = onStart,
-                label = {
-                    Text(
-                        stringResource(R.string.start),
-                        style = MaterialTheme.typography.caption2,
-                    )
-                },
-                colors = ChipDefaults.primaryChipColors(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp)
-                    .widthIn(max = 100.dp),
-            )
-        }
-
-        // Bottom arc: three settings chips positioned independently
-        // so they hug the inscribed circle's curve, matching the
-        // running screen's Pause / Lap / Stop pattern. Centre chip
-        // (Route, or Sign-in when unauthed) sits at the lowest
-        // point; Activity and Pace sit on the sides higher up
-        // (~36 dp from the bottom edge) where the chord is wide
-        // enough that their rounded corners aren't clipped by the
-        // bezel — at the very bottom, the chord narrows to ~140 dp
-        // and a 60-dp chip with 8 dp side padding falls outside it.
-        // Backdrop is white-alpha-0.15 instead of black-alpha-0.55
-        // so the chips remain visible against the midnight
-        // background (no-route case) AND against street tiles
-        // (route-selected case) — frosted-glass on either.
-        val translucentChip = ChipDefaults.secondaryChipColors(
-            backgroundColor = Color.White.copy(alpha = 0.15f),
-            contentColor = DuskPalette.parchment,
-        )
-        val activityLabel = activityLabel(activityType)
-        val activityCd = stringResource(R.string.cd_activity_type, activityLabel)
-        CompactChip(
-            onClick = onCycleActivity,
-            label = {
-                Text(
-                    activityLabel,
-                    style = MaterialTheme.typography.caption3,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            },
-            colors = translucentChip,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 22.dp, bottom = 36.dp)
-                .widthIn(max = 56.dp)
-                // The label is a single abbreviated word ("Run"); without
-                // this a TalkBack user can't tell it's a cycle control or
-                // what it does. Spell out the action + current value.
-                .semantics {
-                    contentDescription = activityCd
-                },
-        )
-        if (authed && !routeSelected) {
-            // Bottom-centre Route picker chip — only when no route
-            // is picked yet. When a route IS picked, Start takes
-            // this slot in the curve and the route name pill
-            // appears at the top arc.
-            val chooseRouteCd = stringResource(R.string.cd_choose_route)
-            CompactChip(
-                onClick = onOpenRoutePicker,
-                label = {
-                    Text(
-                        stringResource(R.string.route),
-                        style = MaterialTheme.typography.caption3,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                },
-                colors = translucentChip,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp)
-                    .widthIn(max = 100.dp)
-                    .semantics {
-                        contentDescription = chooseRouteCd
+            item(key = "pace") {
+                // The target is a per-kilometre figure — `cycleTargetPace` steps
+                // whole km paces — so it is shown as one, unit and all, rather
+                // than as a bare "5:30" a miles runner would misread.
+                val pace = targetPaceSecPerKm?.let { formatPace(it.toDouble()) }
+                PreRunSettingChip(
+                    label = stringResource(R.string.pace),
+                    value = if (pace == null) {
+                        stringResource(R.string.pace_off)
+                    } else {
+                        stringResource(R.string.pace_per_km, pace)
                     },
-            )
-        } else if (!authed) {
-            // Replaces the Route chip with Sign-in when unauthed.
-            // Same position so the curve looks identical regardless
-            // of auth state.
-            val signInCd = stringResource(R.string.cd_sign_in)
-            CompactChip(
-                onClick = onSignIn,
-                label = {
-                    Text(
-                        stringResource(R.string.sign_in),
-                        style = MaterialTheme.typography.caption3,
-                        maxLines = 1,
-                    )
-                },
-                colors = translucentChip,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 14.dp)
-                    .semantics {
-                        contentDescription = signInCd
+                    contentDescription = if (pace == null) {
+                        stringResource(R.string.cd_target_pace_off)
+                    } else {
+                        stringResource(R.string.cd_target_pace, pace)
                     },
-            )
-        }
-        val paceCd = if (targetPaceSecPerKm == null) {
-            stringResource(R.string.cd_target_pace_off)
-        } else {
-            stringResource(R.string.cd_target_pace, formatPace(targetPaceSecPerKm.toDouble()))
-        }
-        val paceOffLabel = stringResource(R.string.pace)
-        CompactChip(
-            onClick = onCyclePace,
-            label = {
-                Text(
-                    if (targetPaceSecPerKm == null) paceOffLabel
-                    else formatPace(targetPaceSecPerKm.toDouble()),
-                    style = MaterialTheme.typography.caption3,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    onClick = onCyclePace,
                 )
-            },
-            colors = translucentChip,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 22.dp, bottom = 36.dp)
-                .widthIn(max = 56.dp)
-                .semantics {
-                    contentDescription = paceCd
-                },
-        )
+            }
+            if (authed) {
+                item(key = "route") {
+                    PreRunSettingChip(
+                        label = stringResource(R.string.route),
+                        value = if (routeSelected && selectedRouteName != null) {
+                            selectedRouteName
+                        } else {
+                            stringResource(R.string.route_none)
+                        },
+                        contentDescription = if (routeSelected && selectedRouteName != null) {
+                            stringResource(R.string.cd_route_selected, selectedRouteName)
+                        } else {
+                            stringResource(R.string.cd_choose_route)
+                        },
+                        onClick = onOpenRoutePicker,
+                    )
+                }
+            }
+            // The route's shape, framed whole (`current = null` fits the
+            // bounds), so the runner can check it is the loop they meant before
+            // tapping Start. A card in the list rather than a full-screen
+            // backdrop: under a column of chips the street tiles were noise.
+            if (authed && selectedRouteWaypoints.isNotEmpty()) {
+                item(key = "route-preview") {
+                    val routePreviewCd = stringResource(R.string.cd_route_preview_change)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .aspectRatio(1.6f)
+                            .clip(RoundedCornerShape(24.dp))
+                            .clickable(onClick = onOpenRoutePicker)
+                            .semantics {
+                                contentDescription = routePreviewCd
+                                role = Role.Button
+                            }
+                    ) {
+                        RouteMiniMap(
+                            route = selectedRouteWaypoints,
+                            current = null,
+                            modifier = Modifier.fillMaxSize(),
+                            clipShape = androidx.compose.ui.graphics.RectangleShape,
+                        )
+                    }
+                }
+            }
+            if (batteryOptimised) {
+                // Without the exemption, recording is throttled after ~10
+                // minutes. A labelled chip rather than the bare "!" glyph that
+                // used to sit in the corner with no name for TalkBack to read.
+                item(key = "battery-fix") {
+                    Chip(
+                        onClick = onFixBattery,
+                        label = {
+                            Text(
+                                stringResource(R.string.battery_allow_background),
+                                maxLines = 2,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(ChipDefaults.IconSize),
+                            )
+                        },
+                        colors = ChipDefaults.secondaryChipColors(
+                            contentColor = DuskPalette.warning,
+                            iconColor = DuskPalette.warning,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            // Debug builds only: the timing-line calibration tool (#1304 § 6).
+            if (onOpenCalibration != null) {
+                item(key = "line-calibration") {
+                    Chip(
+                        onClick = onOpenCalibration,
+                        label = { Text("Line calibration (debug)", maxLines = 1) },
+                        colors = ChipDefaults.childChipColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            // Account actions are not glance material, so Sign out trails the
+            // list: reachable by a scroll, never one stray tap from the home face
+            // the way the old unlabelled corner icon was.
+            if (authed) {
+                item(key = "sign-out") {
+                    Chip(
+                        onClick = onSignOut,
+                        label = {
+                            Text(
+                                stringResource(R.string.sign_out),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = null,
+                                modifier = Modifier.size(ChipDefaults.IconSize),
+                            )
+                        },
+                        colors = ChipDefaults.childChipColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
 
-        // Top side icon buttons, mirroring the bottom Activity / Pace
-        // chip arrangement: sign-out on the right, "fix battery
-        // optimisation" warning on the left. Padding (top=36.dp,
-        // start/end=22.dp) matches the bottom row's 36 dp distance
-        // from the bezel — the previous 50.dp left a visible gap
-        // above the icons that the bottom row didn't have, so the
-        // face read as bottom-heavy. The centred route-name pill is
-        // capped at 90 dp width so it never collides horizontally
-        // with the corner icons even though they share a vertical
-        // band. Translucent backgrounds so the icons don't blot
-        // out the route map underneath.
-        val cornerIconColors = ButtonDefaults.secondaryButtonColors(
-            backgroundColor = Color.Black.copy(alpha = 0.55f),
-            contentColor = DuskPalette.parchment,
+        PositionIndicator(scalingLazyListState = listState)
+
+        BrandEdgeButton(
+            label = stringResource(R.string.start),
+            onClick = onStart,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onSizeChanged { startHeight = with(density) { it.height.toDp() } },
         )
-        if (batteryOptimised) {
-            CompactButton(
-                onClick = onFixBattery,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 36.dp, start = 22.dp),
-                colors = ButtonDefaults.secondaryButtonColors(
-                    backgroundColor = Color.Black.copy(alpha = 0.55f),
-                    contentColor = DuskPalette.warning,
-                ),
-            ) {
-                Text(
-                    "!",
-                    style = MaterialTheme.typography.caption1,
-                    color = DuskPalette.warning,
-                )
-            }
-        }
-        if (authed) {
-            CompactButton(
-                onClick = onSignOut,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 36.dp, end = 22.dp),
-                colors = cornerIconColors,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ExitToApp,
-                    contentDescription = stringResource(R.string.sign_out),
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-        }
     }
+}
+
+/// One pre-run setting: what it is, and what it is set to now. The value is
+/// the part a runner glances for, so it takes the secondary accent; the whole
+/// chip is one tap target with one spoken description.
+@Composable
+private fun PreRunSettingChip(
+    label: String,
+    value: String,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Chip(
+        onClick = onClick,
+        label = {
+            Text(
+                label,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        },
+        secondaryLabel = {
+            Text(
+                value,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        },
+        colors = ChipDefaults.secondaryChipColors(
+            secondaryContentColor = MaterialTheme.colors.secondary,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { this.contentDescription = contentDescription },
+    )
 }
 
 /// Direct email/password sign-in for users without a paired Android phone.
@@ -895,7 +1468,7 @@ private fun PreRunScreen(
 /// retail watches have one.
 @Composable
 private fun SignInScreen(
-    authError: String?,
+    authFault: com.runapp.watchwear.AuthFault?,
     loading: Boolean,
     onSubmit: (email: String, password: String) -> Unit,
     onCancel: () -> Unit,
@@ -960,10 +1533,10 @@ private fun SignInScreen(
             )
         }
 
-        if (authError != null) {
+        if (authFault != null) {
             item {
                 Text(
-                    authError,
+                    stringResource(com.runapp.watchwear.authFaultMessage(authFault)),
                     style = MaterialTheme.typography.caption3,
                     color = DuskPalette.error,
                     textAlign = TextAlign.Center,
@@ -1003,7 +1576,7 @@ private fun SignInScreen(
 }
 
 @Composable
-private fun InlineTextField(
+internal fun InlineTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -1057,7 +1630,7 @@ private fun InlineTextField(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(DuskPalette.dusk)
+            .background(DuskPalette.nightHigh)
             .clickable {
                 focusRequester.requestFocus()
                 keyboard?.show()
@@ -1068,14 +1641,14 @@ private fun InlineTextField(
             Text(
                 label,
                 style = MaterialTheme.typography.caption3,
-                color = DuskPalette.haze,
+                color = DuskPalette.mistMuted,
             )
             Box {
                 if (value.isEmpty()) {
                     Text(
                         stringResource(R.string.tap_here),
                         style = MaterialTheme.typography.body2,
-                        color = DuskPalette.haze,
+                        color = DuskPalette.mistMuted,
                     )
                 }
                 BasicTextField(
@@ -1110,10 +1683,10 @@ private fun InlineTextField(
                         VisualTransformation.None
                     },
                     textStyle = TextStyle(
-                        color = DuskPalette.parchment,
+                        color = DuskPalette.mist,
                         fontSize = MaterialTheme.typography.body2.fontSize,
                     ),
-                    cursorBrush = SolidColor(DuskPalette.parchment),
+                    cursorBrush = SolidColor(DuskPalette.mist),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
@@ -1131,6 +1704,7 @@ private fun RunningScreen(
     paceSecPerKm: Double?,
     preferredUnit: com.runapp.watchwear.recording.DistanceUnit,
     bpm: Int?,
+    hrAvailability: HeartRateAvailability,
     hrZoneCutoffs: List<Int>?,
     steps: Int?,
     lapCount: Int,
@@ -1150,12 +1724,20 @@ private fun RunningScreen(
     fallbackLatLng: com.runapp.watchwear.recording.RouteMath.LatLng?,
     trackOverlayPoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
     ambient: Boolean,
+    /// Race mode for this run. While it is live (not ended), Stop pauses and
+    /// the held button on the paused screen is "Finish race".
+    raceRun: com.runapp.watchwear.RaceRunState?,
+    /// Metres to the race's start line, until the start is timed (#1307).
+    raceToStartM: Double?,
+    /// The live step of today's workout; null on a free run.
+    workoutView: com.runapp.watchwear.workout.WorkoutView?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onLap: () -> Unit,
     onStop: () -> Unit,
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val raceLive = raceRun != null && (!raceRun.ended || raceRun.finishPending)
 
     // Off-route hysteresis: alert above 40 m, clear below 20 m. Single
     // haptic pulse when the state flips to "off" — drivers an alert
@@ -1300,15 +1882,37 @@ private fun RunningScreen(
                     color = DuskPalette.warning,
                 )
             }
+            if (raceRun != null) {
+                RaceCaption(raceRun = raceRun, shadow = captionShadow)
+            }
+            // How far the start line is, until the start is timed: before the
+            // race binds as well as after, so the runner on the line before GO
+            // can see it (#1307).
+            if (raceToStartM != null && raceRun?.undoOpen != true) {
+                Text(
+                    stringResource(R.string.race_to_start_line, distanceLabel(raceToStartM, preferredUnit)),
+                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
+                    color = DuskPalette.lilac,
+                )
+            }
             Text(
                 formatElapsed(elapsedMs),
                 style = timeStyle,
-                color = if (paused) DuskPalette.haze else DuskPalette.parchment,
+                color = if (paused) DuskPalette.mistMuted else DuskPalette.mist,
             )
             Text(
                 distanceLabel(distanceM, preferredUnit),
                 style = MaterialTheme.typography.body2.copy(shadow = captionShadow),
             )
+            if (workoutView != null) {
+                Text(
+                    workoutStepLine(workoutView, preferredUnit),
+                    style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
+                    color = DuskPalette.lilac,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
         }
 
         // Bottom secondary metrics. Anchored above where the curved
@@ -1325,7 +1929,7 @@ private fun RunningScreen(
                 Text(
                     paceLabel(paceSecPerKm, preferredUnit),
                     style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
-                    color = DuskPalette.parchment,
+                    color = DuskPalette.mist,
                 )
             }
             if (routeRemainingM != null && routeRemainingM > 1.0) {
@@ -1335,16 +1939,29 @@ private fun RunningScreen(
                     color = DuskPalette.lilac,
                 )
             }
-            val secondary = listOfNotNull(
+            // The heart-rate slot reports its own absence rather than
+            // collapsing: a blank space read the same for a declined
+            // permission, a watch with no sensor, a refused registration
+            // and a sample that simply had not landed yet. It reuses the
+            // slot the reading occupies, so the 46 mm layout carries no
+            // extra line (decisions § 1052).
+            val hrLabel = when (heartRateCaption(hrAvailability, bpm)) {
                 // Zone badge sits adjacent to the BPM reading so the
                 // runner can read both in a single glance. Falls back
                 // to bare "146 bpm" when the cutoffs haven't been
                 // resolved (no hr_zones / max_hr_bpm / DOB set, or the
                 // session-restore prefs fetch hasn't returned yet).
-                bpm?.let { b ->
+                HeartRateCaptionKind.Reading -> bpm?.let { b ->
                     val z = hrZoneOf(b, hrZoneCutoffs)
                     if (z != null) stringResource(R.string.bpm_zone, b, z) else stringResource(R.string.bpm, b)
-                },
+                }
+                HeartRateCaptionKind.Acquiring -> stringResource(R.string.hr_acquiring)
+                HeartRateCaptionKind.OffWrist -> stringResource(R.string.hr_off_wrist)
+                HeartRateCaptionKind.Unavailable -> stringResource(R.string.hr_none)
+                HeartRateCaptionKind.None -> null
+            }
+            val secondary = listOfNotNull(
+                hrLabel,
                 steps?.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.steps, it, it) },
                 lapCount.takeIf { it > 0 }?.let { stringResource(R.string.lap_number, it) },
             )
@@ -1352,7 +1969,7 @@ private fun RunningScreen(
                 Text(
                     secondary.joinToString(" · "),
                     style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                 )
             }
         }
@@ -1372,7 +1989,7 @@ private fun RunningScreen(
         ) {
             val translucent = ButtonDefaults.secondaryButtonColors(
                 backgroundColor = Color.Black.copy(alpha = 0.55f),
-                contentColor = DuskPalette.parchment,
+                contentColor = DuskPalette.mist,
             )
             // audit/accessibility (May 2026) High — every running-screen
             // Button below now declares a Modifier.semantics {
@@ -1380,9 +1997,19 @@ private fun RunningScreen(
             // announces a useful label instead of the visual content
             // ("||", "Go", "Lap"). Mirrors the recording-screen Semantics
             // fix on the mobile twin (commit 6b2ef21).
-            val resumeCd = stringResource(R.string.cd_resume_run)
+            // Inside "Not finished? Resume" the resume control IS the undo, so
+            // it says so to TalkBack as well as on the caption above.
+            val resumeCd = if (raceRun?.undoOpen == true) {
+                stringResource(R.string.race_undo_resume)
+            } else {
+                stringResource(R.string.cd_resume_run)
+            }
             val pauseCd = stringResource(R.string.cd_pause_run)
-            val lapCd = stringResource(R.string.cd_mark_lap)
+            val lapCd = if (workoutView?.step != null) {
+                stringResource(R.string.cd_mark_lap_skip_step)
+            } else {
+                stringResource(R.string.cd_mark_lap)
+            }
             val resumeLabel = stringResource(R.string.resume_short)
             val lapLabel = stringResource(R.string.lap)
             Box(modifier = Modifier.fillMaxSize()) {
@@ -1444,6 +2071,16 @@ private fun RunningScreen(
                 }
                 HoldToStopButton(
                     onStop = onStop,
+                    label = if (raceLive && paused) {
+                        stringResource(R.string.race_finish_short)
+                    } else {
+                        stringResource(R.string.stop)
+                    },
+                    contentDescription = if (raceLive && paused) {
+                        stringResource(R.string.cd_finish_race)
+                    } else {
+                        null
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 28.dp, bottom = 32.dp),
@@ -1463,6 +2100,7 @@ private fun RoutePickerScreen(
     routes: List<com.runapp.watchwear.SavedRoute>,
     selectedId: String?,
     loading: Boolean,
+    unavailable: Boolean,
     preferredUnit: com.runapp.watchwear.recording.DistanceUnit,
     onPick: (com.runapp.watchwear.SavedRoute) -> Unit,
     onClear: () -> Unit,
@@ -1528,7 +2166,7 @@ private fun RoutePickerScreen(
                         Text(
                             distanceLabel(r.distanceM, preferredUnit),
                             style = MaterialTheme.typography.caption3,
-                            color = DuskPalette.haze,
+                            color = DuskPalette.mistMuted,
                         )
                     }
                 },
@@ -1541,9 +2179,20 @@ private fun RoutePickerScreen(
         if (routes.isEmpty() && !loading) {
             item {
                 Text(
-                    stringResource(R.string.route_picker_empty),
+                    // An empty list has two causes and they need different
+                    // sentences. "Build a route on the phone or web first"
+                    // is advice for a runner who has none; it is wrong, and
+                    // unactionable, for one whose watch simply could not
+                    // reach the list.
+                    stringResource(
+                        if (unavailable) {
+                            R.string.route_picker_unavailable
+                        } else {
+                            R.string.route_picker_empty
+                        }
+                    ),
                     style = MaterialTheme.typography.caption3,
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                 )
@@ -1560,6 +2209,58 @@ private fun RoutePickerScreen(
     }
 }
 
+/// The race line on the running screen: the gun clock while the race is
+/// live, ticking from the device clock against the offset-corrected gun so it
+/// keeps counting through a pause; "Race ended" once the host has ended it.
+/// A late start stays on the screen for the rest of the race rather than
+/// flashing past as the phone's banner does: a glance can land at any time.
+@Composable
+private fun RaceCaption(raceRun: com.runapp.watchwear.RaceRunState, shadow: Shadow) {
+    // A line finish filed and the run held: say so, and that the resume
+    // button takes it back for the next minute (#1307 m11).
+    if (raceRun.undoOpen) {
+        Text(
+            stringResource(R.string.race_finish_recorded),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = MaterialTheme.colors.primary,
+        )
+        Text(
+            stringResource(R.string.race_undo_resume),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = DuskPalette.warning,
+        )
+        return
+    }
+    if (raceRun.ended) {
+        Text(
+            stringResource(R.string.race_ended),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = DuskPalette.warning,
+        )
+        return
+    }
+    if (raceRun.lateStart) {
+        Text(
+            stringResource(R.string.race_late_start),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = DuskPalette.warning,
+        )
+    }
+    val gun = raceRun.gunStartDeviceMs ?: return
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(gun) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    Text(
+        stringResource(R.string.race_clock, formatElapsed((now - gun).coerceAtLeast(0L))),
+        style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+        color = MaterialTheme.colors.primary,
+    )
+}
+
 /// Stop button that requires an ~800 ms press before firing `onStop`.
 /// A circular progress ring fills around the button during the hold;
 /// releasing early cancels. Prevents a single accidental tap from ending
@@ -1567,6 +2268,8 @@ private fun RoutePickerScreen(
 @Composable
 private fun HoldToStopButton(
     onStop: () -> Unit,
+    label: String,
+    contentDescription: String?,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -1623,9 +2326,14 @@ private fun HoldToStopButton(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                stringResource(R.string.stop),
+                label,
                 style = MaterialTheme.typography.caption2,
                 color = MaterialTheme.colors.onPrimary,
+                modifier = if (contentDescription != null) {
+                    Modifier.semantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                },
             )
         }
     }
@@ -1639,8 +2347,10 @@ private fun PostRunScreen(
     preferredUnit: com.runapp.watchwear.recording.DistanceUnit,
     synced: Boolean,
     syncing: Boolean,
-    syncError: String?,
+    syncFault: com.runapp.watchwear.SyncFault?,
+    authed: Boolean,
     onSync: () -> Unit,
+    onSignIn: () -> Unit,
     onStartNext: () -> Unit,
     onDiscard: () -> Unit,
 ) {
@@ -1682,13 +2392,24 @@ private fun PostRunScreen(
                 Text(
                     distanceLabel(summary.distanceM, preferredUnit),
                     style = MaterialTheme.typography.title2.copy(shadow = titleShadow),
-                    color = DuskPalette.parchment,
+                    color = DuskPalette.mist,
                 )
                 Text(
                     formatDuration(summary.durationS),
                     style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                 )
+                summary.race?.let { race ->
+                    Text(
+                        if (race.finished) {
+                            stringResource(R.string.race_result_finished, formatDuration(race.durationS))
+                        } else {
+                            stringResource(R.string.race_result_dnf)
+                        },
+                        style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
+                        color = MaterialTheme.colors.primary,
+                    )
+                }
                 if (summary.avgBpm != null) {
                     Text(
                         stringResource(R.string.bpm_avg, summary.avgBpm.toInt()),
@@ -1715,7 +2436,7 @@ private fun PostRunScreen(
                                 kcal,
                             ),
                             style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                            color = DuskPalette.haze,
+                            color = DuskPalette.mistMuted,
                         )
                     }
                 }
@@ -1726,9 +2447,9 @@ private fun PostRunScreen(
                         color = DuskPalette.success,
                     )
                 }
-                if (syncError != null) {
+                if (syncFault != null) {
                     Text(
-                        syncError,
+                        stringResource(com.runapp.watchwear.syncFaultMessage(syncFault)),
                         style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
                         color = DuskPalette.error,
                         textAlign = TextAlign.Center,
@@ -1742,98 +2463,252 @@ private fun PostRunScreen(
         // surface vocabulary is consistent.
         val translucent = ButtonDefaults.secondaryButtonColors(
             backgroundColor = Color.White.copy(alpha = 0.15f),
-            contentColor = DuskPalette.parchment,
+            contentColor = DuskPalette.mist,
         )
 
-        // Bottom-centre: primary action. Sync until the run lands;
-        // Done after. Sized to SmallButtonSize like the running
-        // screen's Lap / Stop buttons — the previous full-width chip
-        // dwarfed the route preview.
-        // audit/accessibility (May 2026) High — same Modifier.semantics
-        // pattern as the running-screen buttons above. "Sync" / "Done"
-        // / "Next" / "×" announce as their visual content otherwise;
-        // the contentDescription names each action explicitly.
-        val primaryCd = when {
-            syncing -> stringResource(R.string.cd_syncing_run)
-            synced -> stringResource(R.string.cd_start_next_run)
-            else -> stringResource(R.string.cd_sync_run)
+        // Discard on this screen ends an UNSYNCED run: `RunViewModel.discard`
+        // drops the queue entry and the track file it points at (§ 1388), and
+        // while the run has not reached Supabase those two are the only place
+        // it exists. So it is behind the estate's two-press confirm (decisions
+        // § 1206) like the crash-recovery prompt's Discard and both watchOS
+        // ones (§ 1208), not a single tap.
+        //
+        // The arm cannot be announced on the control itself: the whole visual
+        // is a 52 dp `×` with no room for a word, and recolouring it would make
+        // the arm a colour, which this module already refuses to accept as a
+        // signal. So the armed state replaces the whole bottom cluster with a
+        // labelled chip and the stake above it. That also moves the commit
+        // target away from where the arming tap landed — a double tap in the
+        // bottom-end corner reaches empty space, not the confirm.
+        var discardArmedAtMs by remember { mutableStateOf<Long?>(null) }
+        LaunchedEffect(discardArmedAtMs) {
+            val armedAt = discardArmedAtMs ?: return@LaunchedEffect
+            delay(CONFIRM_WINDOW_MS)
+            if (discardArmedAtMs == armedAt) discardArmedAtMs = null
         }
-        Button(
-            onClick = if (synced) onStartNext else onSync,
-            enabled = !syncing,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 14.dp)
-                .size(ButtonDefaults.SmallButtonSize)
-                .semantics {
-                    contentDescription = primaryCd
-                    role = Role.Button
-                },
-        ) {
-            when {
-                syncing -> CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(16.dp),
-                )
-                synced -> Text(
-                    stringResource(R.string.done),
-                    style = MaterialTheme.typography.caption3,
-                )
-                else -> Text(
-                    stringResource(R.string.sync),
-                    style = MaterialTheme.typography.caption3,
-                )
+        val onDiscardPress: () -> Unit = {
+            val now = System.currentTimeMillis()
+            when (confirmPress(discardArmedAtMs, now)) {
+                ConfirmPress.Armed -> discardArmedAtMs = now
+                ConfirmPress.Confirmed -> {
+                    discardArmedAtMs = null
+                    onDiscard()
+                }
             }
         }
+        // A sync that lands while the guard is armed retires the confirm rather
+        // than leaving it live over a run that is no longer only here.
+        val discardArmed = discardArmedAtMs != null && !synced && summary != null
 
-        // Bottom-start: "Start next run" — only meaningful while the
-        // current run is not yet synced (post-sync the centre button
-        // already routes to Next). Sits at the curve like Pause on
-        // the running screen.
-        if (!synced && summary != null) {
-            val nextCd = stringResource(R.string.cd_start_next_run)
-            Button(
-                onClick = onStartNext,
+        if (discardArmed) {
+            val confirmCd = stringResource(R.string.cd_discard_confirm)
+            Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 22.dp, bottom = 36.dp)
-                    .size(ButtonDefaults.SmallButtonSize)
-                    .semantics {
-                        contentDescription = nextCd
-                        role = Role.Button
-                    },
-                colors = translucent,
-            ) {
-                Text(stringResource(R.string.next), style = MaterialTheme.typography.caption3)
-            }
-        }
-
-        // Bottom-end: discard. Mirror of Stop on the running screen
-        // — destructive action positioned where the runner's hand
-        // already expects it. Single tap (no hold) is fine here:
-        // the run isn't running, just unsaved, and a Discard tap
-        // can be re-triggered if dismissed by mistake.
-        if (!synced && summary != null) {
-            val discardCd = stringResource(R.string.cd_discard_unsaved_run)
-            Button(
-                onClick = onDiscard,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 22.dp, bottom = 36.dp)
-                    .size(ButtonDefaults.SmallButtonSize)
-                    .semantics {
-                        contentDescription = discardCd
-                        role = Role.Button
-                    },
-                colors = translucent,
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    stringResource(R.string.discard_short),
-                    style = MaterialTheme.typography.body2,
+                    pluralStringResource(R.plurals.discard_stake, 1),
+                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
+                    color = DuskPalette.warning,
+                    textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(4.dp))
+                CompactChip(
+                    onClick = onDiscardPress,
+                    label = {
+                        Text(
+                            stringResource(R.string.discard_confirm),
+                            style = MaterialTheme.typography.caption3,
+                        )
+                    },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.semantics {
+                        contentDescription = confirmCd
+                        role = Role.Button
+                    },
+                )
+            }
+        } else {
+            // The two states in which the primary action cannot be Sync,
+            // because a drain cannot get through without a session and this
+            // screen carried no way to get one (decisions § 1545). The banner
+            // above already says `sync_fault_sign_in` — "Sign in again to
+            // sync" — and the only control that could act on it was Next,
+            // which the sentence does not name and which costs the runner the
+            // summary of the run they just finished.
+            //
+            // `!authed` is the same dead affordance one step earlier: a run
+            // recorded signed-out queues locally, `drainQueue` returns before
+            // reading anything without a session, and the Sync button then
+            // spins for the auth-wait and reports nothing at all. One sentence
+            // covers both — the remedy is identical — so gating on only the
+            // fault would have left the plainer case dead.
+            val needsSignIn = !synced && (!authed || syncFault == com.runapp.watchwear.SyncFault.SignInRequired)
+
+            // Bottom-centre: primary action. Sync until the run lands;
+            // Done after. Sized to SmallButtonSize like the running
+            // screen's Lap / Stop buttons — the previous full-width chip
+            // dwarfed the route preview.
+            // audit/accessibility (May 2026) High — same Modifier.semantics
+            // pattern as the running-screen buttons above. "Sync" / "Done"
+            // / "Next" / "×" announce as their visual content otherwise;
+            // the contentDescription names each action explicitly.
+            val primaryCd = when {
+                syncing -> stringResource(R.string.cd_syncing_run)
+                synced -> stringResource(R.string.cd_start_next_run)
+                needsSignIn -> stringResource(R.string.cd_sign_in)
+                else -> stringResource(R.string.cd_sync_run)
+            }
+            if (needsSignIn && !syncing) {
+                // A chip rather than the round Button beside it, because this
+                // is the one primary label that is a phrase: "Se connecter"
+                // and "Iniciar sesión" do not fit a 52 dp circle where "Sync"
+                // and "Done" do. Same shape the PreRun sign-in chip already
+                // uses, in the slot the Sync button would occupy — Next and
+                // the discard keep their corners, so nothing else moves.
+                CompactChip(
+                    onClick = onSignIn,
+                    label = {
+                        Text(
+                            stringResource(R.string.sign_in),
+                            style = MaterialTheme.typography.caption3,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    },
+                    colors = ChipDefaults.secondaryChipColors(
+                        backgroundColor = Color.White.copy(alpha = 0.15f),
+                        contentColor = DuskPalette.warning,
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 14.dp)
+                        .widthIn(max = 110.dp)
+                        .semantics {
+                            contentDescription = primaryCd
+                            role = Role.Button
+                        },
+                )
+            } else {
+                Button(
+                    onClick = if (synced) onStartNext else onSync,
+                    enabled = !syncing,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 14.dp)
+                        .size(ButtonDefaults.SmallButtonSize)
+                        .semantics {
+                            contentDescription = primaryCd
+                            role = Role.Button
+                        },
+                ) {
+                    when {
+                        syncing -> CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        synced -> Text(
+                            stringResource(R.string.done),
+                            style = MaterialTheme.typography.caption3,
+                        )
+                        else -> Text(
+                            stringResource(R.string.sync),
+                            style = MaterialTheme.typography.caption3,
+                        )
+                    }
+                }
+            }
+
+            // Bottom-start: "Start next run" — only meaningful while the
+            // current run is not yet synced (post-sync the centre button
+            // already routes to Next). Sits at the curve like Pause on
+            // the running screen.
+            if (!synced && summary != null) {
+                val nextCd = stringResource(R.string.cd_start_next_run)
+                Button(
+                    onClick = onStartNext,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 22.dp, bottom = 36.dp)
+                        .size(ButtonDefaults.SmallButtonSize)
+                        .semantics {
+                            contentDescription = nextCd
+                            role = Role.Button
+                        },
+                    colors = translucent,
+                ) {
+                    Text(stringResource(R.string.next), style = MaterialTheme.typography.caption3)
+                }
+            }
+
+            // Bottom-end: discard. Mirror of Stop on the running screen
+            // — destructive action positioned where the runner's hand
+            // already expects it. One tap ARMS; the confirm that commits
+            // renders in place of this whole cluster.
+            if (!synced && summary != null) {
+                val discardCd = stringResource(R.string.cd_discard_unsaved_run)
+                Button(
+                    onClick = onDiscardPress,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 22.dp, bottom = 36.dp)
+                        .size(ButtonDefaults.SmallButtonSize)
+                        .semantics {
+                            contentDescription = discardCd
+                            role = Role.Button
+                        },
+                    colors = translucent,
+                ) {
+                    Text(
+                        stringResource(R.string.discard_short),
+                        style = MaterialTheme.typography.body2,
+                    )
+                }
             }
         }
     }
+}
+
+/// The pre-run chip's summary of today's workout: its step count and what it
+/// covers, distance and time both when it mixes the two axes.
+@Composable
+private fun workoutSummaryLabel(
+    workout: com.runapp.watchwear.workout.PushedWorkout,
+    unit: com.runapp.watchwear.recording.DistanceUnit,
+): String = listOfNotNull(
+    pluralStringResource(R.plurals.workout_step_count, workout.steps.size, workout.steps.size),
+    workout.totalDistanceM?.let { distanceLabel(it.toDouble(), unit) },
+    workout.totalDurationS?.let { formatDuration(it) },
+).joinToString(" · ")
+
+/// The running screen's step line: what the step is, and what is left of it
+/// on its own axis.
+@Composable
+private fun workoutStepLine(
+    view: com.runapp.watchwear.workout.WorkoutView,
+    unit: com.runapp.watchwear.recording.DistanceUnit,
+): String {
+    val step = view.step ?: return stringResource(R.string.workout_done)
+    val kind = stringResource(
+        when (step.kind) {
+            com.runapp.watchwear.workout.StepKind.Warmup -> R.string.workout_step_warmup
+            com.runapp.watchwear.workout.StepKind.Rep -> R.string.workout_step_rep
+            com.runapp.watchwear.workout.StepKind.Recovery -> R.string.workout_step_recovery
+            com.runapp.watchwear.workout.StepKind.Walk -> R.string.workout_step_walk
+            com.runapp.watchwear.workout.StepKind.Steady -> R.string.workout_step_steady
+            com.runapp.watchwear.workout.StepKind.Cooldown -> R.string.workout_step_cooldown
+        },
+    )
+    val name = if (step.repIndex != null && step.repTotal != null) {
+        "$kind ${step.repIndex}/${step.repTotal}"
+    } else {
+        kind
+    }
+    val left = view.remainingS?.let { formatDuration(it) }
+        ?: view.remainingM?.let { distanceLabel(it, unit) }
+    return listOfNotNull(name, left).joinToString(" · ")
 }
 
 private fun formatDuration(totalS: Int): String {
@@ -1875,6 +2750,23 @@ private fun distanceLabel(
     return stringResource(res, num)
 }
 
+/// Localized "X.XX km/mi recorded" for the crash-recovery prompt, in the
+/// runner's [unit]. The prompt is how a runner decides whether the surviving
+/// checkpoint is the run they care about, so a figure in the unit they do not
+/// think in is the one place a wrong unit costs something.
+@Composable
+private fun distanceRecordedLabel(
+    distanceM: Double,
+    unit: com.runapp.watchwear.recording.DistanceUnit,
+): String {
+    val num = com.runapp.watchwear.recording.formatDistance(distanceM, unit)
+    val res = when (unit) {
+        com.runapp.watchwear.recording.DistanceUnit.KM -> R.string.distance_km_recorded
+        com.runapp.watchwear.recording.DistanceUnit.MI -> R.string.distance_mi_recorded
+    }
+    return stringResource(res, num)
+}
+
 /// Localized "X.XX km/mi to go" route-remaining badge in the runner's [unit].
 @Composable
 private fun distanceToGoLabel(
@@ -1904,15 +2796,22 @@ private fun paceLabel(
     return stringResource(res, formatPace(perUnit))
 }
 
-/// Resolve a localized label for a cycled activity type. Unknown values
-/// fall back to a capitalized form of the raw key so a future activity
-/// added to the cycle list still renders something readable before its
-/// string lands.
+/// Resolve a localized label for an activity type. Covers every value the
+/// `runs_activity_type_check` constraint admits, not only the four the chip
+/// cycles: `default_activity_type` primes this from the phone's settings bag
+/// unfiltered, so `stroller` reaches the wrist without ever being cycled to.
+///
+/// An unrecognised value is returned VERBATIM rather than capitalized. It can
+/// only appear when this watch is older than the database, and a capitalized
+/// token ("Stroller") is indistinguishable from a real translation — it hides
+/// the drift on exactly the surface where it would be noticed. Web's
+/// `activity_type.svelte.ts` refuses for the same reason.
 @Composable
 private fun activityLabel(activityType: String): String = when (activityType) {
     "run" -> stringResource(R.string.activity_run)
     "walk" -> stringResource(R.string.activity_walk)
     "hike" -> stringResource(R.string.activity_hike)
     "cycle" -> stringResource(R.string.activity_cycle)
-    else -> activityType.replaceFirstChar { it.uppercase() }
+    "stroller" -> stringResource(R.string.activity_stroller)
+    else -> activityType
 }

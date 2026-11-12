@@ -6,6 +6,7 @@ import {
 	summarizeRouteFromTrack,
 	type LatLng,
 } from './route_simplify';
+import type { Json } from '../database.types';
 
 test('simplifyTrack — fewer than 3 points returns the input unchanged', () => {
 	assert.deepEqual(simplifyTrack([]), []);
@@ -121,6 +122,17 @@ test('computeElevationGain — a dropout carries the last reading across the gap
 		]),
 		35,
 	);
+	// An ABSENT `ele` is the same dropout as an explicit null: the track type
+	// makes the field optional, and the run-detail page feeds this raw
+	// waypoints where a lost fix simply omits it.
+	assert.equal(
+		computeElevationGain([
+			{ lat: 0, lng: 0, ele: 100 },
+			{ lat: 0, lng: 0.001 },
+			{ lat: 0, lng: 0.002, ele: 110 },
+		]),
+		10,
+	);
 });
 
 test('computeElevationGain — jitter inside the noise band is not climb', () => {
@@ -156,6 +168,13 @@ test('computeElevationGain — a descent resets the reference to the valley', ()
 		]),
 		100,
 	);
+});
+
+test('computeElevationGain — a wider band ignores a climb that fits inside it', () => {
+	const track = [400, 408, 400, 409].map((ele, i) => ({ lat: 0, lng: i * 0.0001, ele }));
+	assert.equal(computeElevationGain(track), 17);
+	assert.equal(computeElevationGain(track, 10), 0);
+	assert.equal(computeElevationGain([...track, { lat: 0, lng: 0.0005, ele: 411 }], 10), 11);
 });
 
 test('computeElevationGain — empty / single-point track returns 0', () => {
@@ -308,4 +327,17 @@ test('summarizeRouteFromTrack — a leg across the antimeridian measures 0.06°,
 		Math.abs(out.distance_m - 6671.7) < 1,
 		`got ${out.distance_m}`,
 	);
+});
+
+test('a simplified track is assignable to the jsonb column that stores it', () => {
+	// Same alias-not-interface contract as `privacy.ts`'s `PrivacyZone`, and
+	// the same failure mode: `summarizeRouteFromTrack`'s output goes straight
+	// into `routes.waypoints`, and while `LatLng` was an interface the caller
+	// had to annotate the destructure with a hand-written twin of this shape.
+	const line: LatLng[] = [
+		{ lat: 0, lng: 0, ele: 1 },
+		{ lat: 0, lng: 0.01, ele: null },
+	];
+	const asJson: Json = line;
+	assert.deepEqual(asJson, line);
 });

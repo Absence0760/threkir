@@ -1,10 +1,10 @@
 -- Pins migration 20261026_001 — direct-message RLS + notification
 -- (very-social persona #55). Asserts the follow-graph gate, the block
--- override, recipient read access + mark-read, and the 'message'
+-- override in both directions, recipient read access + mark-read, and the 'message'
 -- notification.
 
 begin;
-select plan(6);
+select plan(7);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -57,6 +57,17 @@ select throws_ok(
   null,
   'a block overrides the follow relationship');
 
+-- ── D → A: refused the other way too (the blocker cannot message the person
+-- they blocked, which is what the thread's blocked notice tells them) ──
+set local "request.jwt.claims" = '{"sub":"99999999-9999-9999-9999-99990000d5d4","role":"authenticated"}';
+select throws_ok(
+  $$insert into direct_messages (sender_id, recipient_id, body)
+    values ('99999999-9999-9999-9999-99990000d5d4',
+            '99999999-9999-9999-9999-99990000d5a1', 'blocker dm')$$,
+  '42501',
+  null,
+  'the blocker cannot message the person they blocked');
+
 -- ── B reads + marks read ──
 set local "request.jwt.claims" = '{"sub":"99999999-9999-9999-9999-99990000d5b2","role":"authenticated"}';
 select is(
@@ -65,11 +76,9 @@ select is(
   1,
   'the recipient can read the message');
 
-update direct_messages set read_at = now()
-  where id = '11111111-0000-0000-0000-0000000000d5';
-select isnt(
-  (select read_at from direct_messages where id = '11111111-0000-0000-0000-0000000000d5'),
-  null,
+select is(
+  mark_direct_messages_read('99999999-9999-9999-9999-99990000d5a1', '11111111-0000-0000-0000-0000000000d5'),
+  1,
   'the recipient can mark the message read');
 
 -- ── notification fired to B ──

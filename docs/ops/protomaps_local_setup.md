@@ -34,8 +34,11 @@ Boots `tileserver-gl` in a Docker container that serves a regional PMTiles extra
 |---|---|---|
 | Web (MapLibre GL JS) | `/styles/basic/style.json` | vector + style |
 | Mobile + Wear OS | `/styles/basic/{z}/{x}/{y}.png` | server-rasterised PNG |
+| Run / route list thumbnails (web + mobile) | `/styles/basic/static/auto/{w}x{h}.png?path=…` | server-rendered PNG, derived from the same override |
 
 Tileserver-gl uses MapLibre Native to rasterise vector tiles on demand, so all four surfaces (web, Android, iOS twin, Wear OS) point at the same dev server with nothing more than an env override.
+
+**`basic` is a light style**, on the light ground sample `basemap_contrast.ts` grades overlays against. Every client classifies an override as light ground unless its URL names a dark style, and picks overlay colours from that. The static endpoint has no theme of its own: a thumbnail is exactly as light or dark as the style it names. The script also serves **`dark`** (`/styles/dark/…`) on the dark ground sample. Point the override at it to see the dark-ground palette, and the URL tells the classifiers it is dark. The `basic` style was once written dark, which made dev thumbnails dark in the light theme ([decisions § 1749](../architecture/decisions.md)). Both styles' vector source carries the basemap credit, "© Protomaps © OpenStreetMap contributors" with links, the same credit the mobile maps print over these tiles: the web map's attribution control and the flyover video's credit line both read it out of the style, so a style without it rendered OpenStreetMap data uncredited, which the ODbL forbids (`scripts/protomaps_dev_style.test.mjs` pins it). Restart the server (`bin/protomaps-dev.sh restart`, or `stop` + `start`) to pick up the regenerated styles.
 
 ## Prerequisites
 
@@ -103,6 +106,21 @@ Once `bin/protomaps-dev.sh start` succeeds, paste the printed snippets into each
 | `apps/mobile_android` + `apps/mobile_ios` | `TILE_URL_TEMPLATE` | `{z}/{x}/{y}` template with placeholders — typically `http://localhost:8080/styles/basic/{z}/{x}/{y}.png`. |
 | `apps/watch_wear` | `PUBLIC_TILE_URL_TEMPLATE` (BuildConfig — pass `-PPUBLIC_TILE_URL_TEMPLATE=…` to gradle) | same shape as mobile |
 
+### Courses outside the local extract
+
+The extract only covers the bbox it was cut to (a Virginia slice on most dev machines, US-state polygons for the `fetch` sample), so a run or route anywhere else would sit on an empty ground. Two ways around it ([issue #1285](https://github.com/Absence0760/threkir/issues/1285)):
+
+- **Automatic, web, `vite dev` only.** `apps/web/src/lib/routes/dev_basemap_fallback.ts` reads the extract's `bounds` from the TileJSON tileserver-gl publishes for each source of the override style (`/data/v3.json`), so it follows whichever PMTiles file is mounted rather than a hard-coded box. When a map settles (`load` / `moveend`) on a viewport not entirely inside those bounds, it swaps the map to the keyless `osm-fallback-style.json` (the same OSM raster every surface uses without a MapTiler key), carrying the surface's own overlays, terrain and glyphs across; it swaps back when the viewport returns inside. The console logs each swap as `[dev-basemap] …`. `maplibre.ts` imports it dynamically inside an `import.meta.env.DEV` branch, which a build removes, so production bundles do not contain it; `scripts/check_web_dev_only_code.mjs` fails `build-web` if a chunk ever carries its `[dev-basemap]` marker. Installing is idempotent (a hot update re-running `maplibre.ts` replaces the previous wrapper rather than stacking one), and a settle that lands while a coverage check is running triggers one more check when it finishes. A tileserver that publishes no `bounds` is treated as covering everything (no swap). The flyover video export's offscreen map is left on the local style, because a video renders thousands of tiles and OSM's tile policy forbids that ([decisions § 2270](../architecture/decisions.md)); export a course outside the extract with the keyless override below instead. The decision itself is the pure `dev_basemap_coverage.ts`, pinned by `dev_basemap_coverage.test.ts`; the swap glue is pinned against a fake engine by `dev_basemap_fallback.test.ts`.
+- **Keyless public style for the whole session (web).** Point the override at a public style that needs no key, for example OpenFreeMap's `liberty` (OSM data, credited in the style as "OpenFreeMap © OpenMapTiles Data from OpenStreetMap"):
+
+  ```bash
+  # shell env, or apps/web/.env.development.local (NOT .env.local, which ranks below .env.development)
+  PUBLIC_TILE_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+  ```
+
+  This needs no tileserver at all and covers the planet. The dev env-isolation guard allows it (`PUBLIC_TILE_STYLE_URL` is in `NOT_ISOLATED_URL_VARS`: tiles are read-only), and the dev `<meta>` CSP restricts only scripts and workers. It is a dev override only: production reads MapTiler, and the CloudFront CSP does not list OpenFreeMap.
+- **Mobile and Wear OS** have the same gap and no automatic fallback (`TILE_URL_TEMPLATE` / `PUBLIC_TILE_URL_TEMPLATE` is a raster template, and `flutter_map` has no viewport-coverage hook to swap on). Leave the override and the MapTiler key unset to get the keyless OSM raster everywhere, rather than pointing the template at OSM: with the override set, `basemapCreditsFor` credits Protomaps, which would then be the wrong party.
+
 ### Android-emulator gotcha
 
 The Android emulator's loopback alias for the host machine is `10.0.2.2` — `localhost` from inside the emulator points at the emulator's own VM, not your laptop. If you're running an emulator, swap `localhost` for `10.0.2.2` in the mobile + Wear OS values. The bootstrap script's `env` output makes a note of this.
@@ -128,6 +146,16 @@ File-level `resolveTileUrl(env, mapStyle:, brightness:)` reads `TILE_URL_TEMPLAT
 ### Wear OS (`apps/watch_wear/.../ui/TileSource.kt`)
 
 File-level `buildTileUrl(z, x, y, template, maptilerKey, styleSlug)` does the same: non-blank template wins, otherwise build the MapTiler URL. The `enabled` flag now lights up when EITHER `PUBLIC_TILE_URL_TEMPLATE` OR `PUBLIC_MAPTILER_KEY` is non-empty, so the dev path doesn't need a MapTiler key sitting around.
+
+### Terrain for the 3D course preview (web only — `PUBLIC_TERRAIN_URL`)
+
+The 3D course preview drapes the basemap over a `raster-dem` elevation source that is separate from the style above, so `bin/protomaps-dev.sh` does **not** cover it — the Protomaps basemap carries no elevation. `resolveTerrainSource` in `apps/web/src/lib/routes/terrain_source.ts` picks, in order: `PUBLIC_TERRAIN_URL`, then MapTiler `terrain-rgb-v2` when `PUBLIC_MAPTILER_KEY` is set, then the keyless AWS Open Data Terrain Tiles (`elevation-tiles-prod.s3.amazonaws.com/terrarium/…`). [decisions § 2251](../architecture/decisions.md).
+
+- **Online local dev needs nothing.** With the key unset the preview reads the keyless AWS bucket.
+- **Offline / self-hosted.** Serve an elevation tileset (an `.mbtiles` of Terrarium or Mapbox Terrain-RGB tiles) from any tile server — tileserver-gl serves an mbtiles at `http://localhost:8080/data/<id>/{z}/{x}/{y}.<ext>` — and set `PUBLIC_TERRAIN_URL` to that `{z}/{x}/{y}` **template** (not a style URL) in your shell env or `apps/web/.env.development.local` (the same precedence rule as the style override above). A template whose URL contains `terrarium` is read as Terrarium-encoded 256 px tiles (max zoom 15); anything else as Mapbox Terrain-RGB 512 px (max zoom 14), so name the tileset accordingly.
+- **No terrain source reachable.** The preview still opens; MapLibre gets no elevation tiles and the course renders tilted over flat ground.
+
+Like every map tile, terrain loads only after cookie consent.
 
 ## Tests
 
@@ -164,8 +192,8 @@ The web + mobile + Wear OS code in production calls the same URL builders — th
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `docker daemon is not running` | Docker service stopped | `sudo systemctl start docker` |
-| Container won't bind 8080 | Port collision (Supabase Studio uses 54323, the local Supabase API is 54321 — neither conflicts; check `lsof -i :8080`) | Set `PROTOMAPS_PORT=8081` and re-run `start` |
-| Web map renders but mobile is blank | Forgot the `10.0.2.2` alias inside the emulator | Update `TILE_URL_TEMPLATE` in mobile `.env.local` |
+| Container won't bind 8080 | Port collision (Supabase Studio uses 24323, the local Supabase API is 24321 — neither conflicts; check `lsof -i :8080`) | Set `PROTOMAPS_PORT=8081` and re-run `start` |
+| Web map renders but mobile is blank | `localhost` inside the emulator/device is not your laptop | Run `adb reverse tcp:8080 tcp:8080` (`npm run dev:core` does it) so the committed `127.0.0.1` template reaches the host, or pass `--dart-define=TILE_URL_TEMPLATE=http://10.0.2.2:8080/…` to `flutter run`; mobile reads no `.env.local` (decisions § 137) |
 | Wear OS doesn't pick up the override after editing `.env.local` | BuildConfig values are baked at compile time | `./gradlew installDebug -PPUBLIC_TILE_URL_TEMPLATE=…` rebuilds with the new value |
 | `PMTiles download failed` | `DEFAULT_SAMPLE_URL` unreachable, or build.protomaps.com is down | Override `DEFAULT_SAMPLE_URL` (used by `fetch`) to a known-good extract, or build your own extract and point `PMTILES_FILE` at it |
 

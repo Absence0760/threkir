@@ -1,6 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import '../lib/preferences.dart';
+import '../lib/training.dart' show WorkoutKind;
 import '../lib/training_service.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/workout_edit_sheet.dart';
@@ -9,27 +16,44 @@ class _FakeTraining extends TrainingService {
   ({
     String workoutId,
     String? kind,
+    String? fromKind,
+    PlanWorkoutTargets? targets,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
+    PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   })? lastUpdate;
   Object? errorToThrow;
+
+  /// Holds the save open until completed, when set.
+  Completer<void>? gate;
 
   @override
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    String? fromKind,
+    PlanWorkoutTargets? targets,
     String? notes,
+    PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
+    await gate?.future;
     if (errorToThrow != null) throw errorToThrow!;
     lastUpdate = (
       workoutId: workoutId,
       kind: kind,
-      targetDistanceM: targetDistanceM,
-      targetPaceSecPerKm: targetPaceSecPerKm,
+      fromKind: fromKind,
+      targets: targets,
+      targetDistanceM: targets?.distanceM,
+      targetPaceSecPerKm: targets?.paceSecPerKm,
       notes: notes,
+      race: race,
+      rpe: rpe,
+      hr: hr,
     );
   }
 }
@@ -39,6 +63,9 @@ PlanWorkoutRow _workout({
   double? targetDistanceM = 8000,
   int? targetPaceSecPerKm = 300,
   String? notes = 'Easy effort',
+  int? targetDurationSeconds,
+  String? raceName,
+  String? racePriority,
 }) =>
     PlanWorkoutRow(
       id: 'wo1',
@@ -48,14 +75,18 @@ PlanWorkoutRow _workout({
       targetDistanceM: targetDistanceM,
       targetPaceSecPerKm: targetPaceSecPerKm,
       notes: notes,
+      targetDurationSeconds: targetDurationSeconds,
+      raceName: raceName,
+      racePriority: racePriority,
       manuallyCompleted: false,
     );
 
 Future<bool?> _pumpSheet(
   WidgetTester tester,
   PlanWorkoutRow workout,
-  _FakeTraining training,
-) async {
+  _FakeTraining training, {
+  bool hrPrescription = false,
+}) async {
   bool? result;
   await tester.binding.setSurfaceSize(const Size(400, 700));
   await tester.pumpWidget(
@@ -70,6 +101,7 @@ Future<bool?> _pumpSheet(
                 ctx,
                 workout: workout,
                 training: training,
+                hrPrescription: hrPrescription,
               );
             },
             child: const Text('Open'),
@@ -162,6 +194,21 @@ void main() {
       expect(training.lastUpdate, isNull);
     });
 
+    testWidgets('a save the backend never answers gives up and keeps the sheet',
+        (tester) async {
+      final training = _FakeTraining()..gate = Completer<void>();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 16));
+      await tester.pump();
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.textContaining(en.workoutEditSaveError('').trim()),
+          findsOneWidget);
+      expect(find.text('Save'), findsOneWidget);
+    });
+
     testWidgets('Save calls updateWorkout with the edited values', (tester) async {
       final training = _FakeTraining();
       await _pumpSheet(
@@ -179,6 +226,151 @@ void main() {
       await tester.pumpAndSettle();
       expect(training.lastUpdate, isNotNull);
       expect(training.lastUpdate!.targetDistanceM, closeTo(12000, 1));
+    });
+  });
+
+  group('WorkoutEditSheet — race fields', () {
+    PlanWorkoutRow race() => _workout(
+          kind: 'race',
+          targetDistanceM: 56000,
+          targetPaceSecPerKm: null,
+          notes: '',
+          targetDurationSeconds: 23400,
+          raceName: 'Two Oceans Ultra',
+          racePriority: 'B',
+        );
+
+    testWidgets('a non-race workout shows no race fields', (tester) async {
+      await _pumpSheet(tester, _workout(), _FakeTraining());
+      expect(find.byKey(const Key('workoutEditRaceName')), findsNothing);
+      expect(find.byKey(const Key('workoutEditRacePriority')), findsNothing);
+      expect(find.byKey(const Key('workoutEditRaceGoal')), findsNothing);
+    });
+
+    testWidgets('a race workout pre-populates its name, priority and goal time',
+        (tester) async {
+      await _pumpSheet(tester, race(), _FakeTraining());
+      expect(find.widgetWithText(TextField, 'Two Oceans Ultra'),
+          findsOneWidget);
+      expect(find.text('B — important race'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '6:30:00'), findsOneWidget);
+    });
+
+    testWidgets('Save writes the edited race name, priority and goal time',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, race(), training);
+      await tester.ensureVisible(find.byKey(const Key('workoutEditRaceName')));
+      await tester.enterText(
+          find.byKey(const Key('workoutEditRaceName')), 'Two Oceans');
+      await tester.ensureVisible(find.byKey(const Key('workoutEditRaceGoal')));
+      await tester.enterText(
+          find.byKey(const Key('workoutEditRaceGoal')), '6:15:00');
+      await tester.ensureVisible(find.byKey(const Key('workoutEditRacePriority')));
+      await tester.tap(find.byKey(const Key('workoutEditRacePriority')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('A — goal race').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      final race0 = training.lastUpdate!.race!;
+      expect(race0.name, 'Two Oceans');
+      expect(race0.priority, 'A');
+      expect(race0.goalTimeSec, 22500);
+    });
+
+    testWidgets(
+        'a sub-hour goal on a race with no distance survives an untouched save',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(
+          tester,
+          _workout(
+            kind: 'race',
+            targetDistanceM: null,
+            targetPaceSecPerKm: null,
+            targetDurationSeconds: 2700,
+            raceName: 'Parkrun PB',
+          ),
+          training);
+      expect(find.widgetWithText(TextField, '0:45:00'), findsOneWidget);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.race!.goalTimeSec, 2700);
+    });
+
+    for (final typed in ['45:00', '5:45']) {
+      testWidgets('a two-part goal "$typed" is rejected, not unit-guessed',
+          (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(tester, race(), training);
+        final goal = find.byKey(const Key('workoutEditRaceGoal'));
+        await tester.ensureVisible(goal);
+        await tester.enterText(goal, typed);
+        await tester.ensureVisible(find.text('Save'));
+        await tester.tap(find.text('Save'));
+        await tester.pump();
+        expect(tester.widget<TextField>(goal).decoration?.errorText,
+            'Goal time must look like 6:30:00');
+        expect(training.lastUpdate, isNull);
+      });
+    }
+
+    testWidgets('changing a race to another kind reports it was a race',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, race(), training);
+      await tester.tap(find.byType(DropdownButtonFormField<WorkoutKind>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Long run').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.kind, 'long');
+      expect(training.lastUpdate!.fromKind, 'race');
+      expect(training.lastUpdate!.race, isNull);
+    });
+
+    testWidgets('choosing Automatic clears the priority', (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, race(), training);
+      await tester.ensureVisible(find.byKey(const Key('workoutEditRacePriority')));
+      await tester.tap(find.byKey(const Key('workoutEditRacePriority')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Automatic').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.race!.priority, isNull);
+    });
+
+    testWidgets('an unreadable goal time is flagged and nothing is saved',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, race(), training);
+      final goal = find.byKey(const Key('workoutEditRaceGoal'));
+      await tester.ensureVisible(goal);
+      await tester.enterText(goal, 'soon');
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      expect(tester.widget<TextField>(goal).decoration?.errorText,
+          'Goal time must look like 6:30:00');
+      expect(training.lastUpdate, isNull);
+    });
+
+    testWidgets('a non-race save sends no race fields', (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.kind, 'tempo');
+      expect(training.lastUpdate!.race, isNull);
     });
   });
 
@@ -237,5 +429,201 @@ void main() {
       expect(find.byType(AppBar), findsNothing);
       expect(training.lastUpdate, isNull);
     });
+  });
+
+  group('WorkoutEditSheet — clearing, rest and units', () {
+    Future<void> withUnit(bool miles) async {
+      SharedPreferences.setMockInitialValues({'use_miles': miles});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+    }
+
+    tearDown(() async => withUnit(false));
+
+    Future<void> save(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('emptying distance and pace clears both targets',
+        (tester) async {
+      // A null used to mean "leave it", so an emptied field kept its target.
+      final training = _FakeTraining();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.enterText(
+          find.byKey(const Key('workoutEditDistance')), '');
+      await tester.enterText(find.byKey(const Key('workoutEditPace')), '');
+      await save(tester);
+      expect(training.lastUpdate!.targets, isNotNull);
+      expect(training.lastUpdate!.targets!.distanceM, isNull);
+      expect(training.lastUpdate!.targets!.paceSecPerKm, isNull);
+      expect(
+        planWorkoutPatch(targets: training.lastUpdate!.targets),
+        {'target_distance_m': null, 'target_pace_sec_per_km': null},
+      );
+    });
+
+    testWidgets('an untouched form re-saves the stored values exactly',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(
+          tester, _workout(targetDistanceM: 8050, targetPaceSecPerKm: 301),
+          training);
+      await save(tester);
+      expect(training.lastUpdate!.targetDistanceM, 8050);
+      expect(training.lastUpdate!.targetPaceSecPerKm, 301);
+    });
+
+    testWidgets('switching to rest disables the targets and clears them',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.tap(find.text('Tempo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rest').last);
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const Key('workoutEditDistance')))
+              .enabled,
+          isFalse);
+      await save(tester);
+      expect(training.lastUpdate!.kind, 'rest');
+      final patch = planWorkoutPatch(
+        kind: training.lastUpdate!.kind,
+        targets: training.lastUpdate!.targets,
+      );
+      expect(patch['target_distance_m'], isNull);
+      expect(patch['target_pace_sec_per_km'], isNull);
+      expect(patch.containsKey('target_pace_tolerance_sec'), isTrue);
+      expect(patch.containsKey('structure'), isTrue);
+    });
+
+    testWidgets('miles mode labels, shows and reads targets in miles',
+        (tester) async {
+      await tester.runAsync(() => withUnit(true));
+      final training = _FakeTraining();
+      // 8046.72 m = 5.0 mi; 300 s/km = 8:03/mi.
+      await _pumpSheet(
+          tester, _workout(targetDistanceM: 8046.72, targetPaceSecPerKm: 300),
+          training);
+      expect(find.text('Target distance (mi)'), findsOneWidget);
+      expect(find.text('Target pace (mm:ss /mi)'), findsOneWidget);
+      expect(find.text('5.0'), findsOneWidget);
+      expect(find.text('8:03'), findsOneWidget);
+
+      await tester.enterText(
+          find.byKey(const Key('workoutEditDistance')), '10');
+      await tester.enterText(find.byKey(const Key('workoutEditPace')), '8:00');
+      await save(tester);
+      expect(training.lastUpdate!.targetDistanceM, closeTo(16093.44, 0.01));
+      // 480 s/mi / 1.609344 = 298.26 s/km.
+      expect(training.lastUpdate!.targetPaceSecPerKm, 298);
+    });
+
+    group('effort and heart-rate targets (decisions § 2092)', () {
+      Future<void> save(WidgetTester tester) async {
+        await tester.ensureVisible(find.text('Save'));
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('an RPE range and a bpm cap are written as typed',
+          (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(tester, _workout(), training, hrPrescription: true);
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMin')), '3');
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '4');
+        await tester.enterText(find.byKey(const Key('workoutEditHrMax')), '125');
+        await save(tester);
+        expect(training.lastUpdate?.rpe, (min: 3, max: 4));
+        expect(training.lastUpdate?.hr, (min: null, max: 125));
+      });
+
+      testWidgets('a reversed or out-of-range RPE is refused in the field',
+          (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(tester, _workout(), training);
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMin')), '5');
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '4');
+        await save(tester);
+        expect(training.lastUpdate, isNull);
+        expect(find.text("The first number can't be higher than the second."),
+            findsOneWidget);
+
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMin')), '');
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '11');
+        await save(tester);
+        expect(training.lastUpdate, isNull);
+        expect(find.text('Use whole numbers from 1 to 10.'), findsOneWidget);
+      });
+
+      for (final typed in ['NaN', '1e400', '-Infinity']) {
+        testWidgets('a non-finite RPE "$typed" is refused in the field',
+            (tester) async {
+          final training = _FakeTraining();
+          await _pumpSheet(tester, _workout(), training);
+          await tester.enterText(
+              find.byKey(const Key('workoutEditRpeMax')), typed);
+          await save(tester);
+          expect(training.lastUpdate, isNull);
+          expect(find.text('Use whole numbers from 1 to 10.'), findsOneWidget);
+        });
+      }
+
+      testWidgets(
+          'with the gate off there is no bpm field and a stored bpm target is '
+          'left alone', (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(
+          tester,
+          PlanWorkoutRow(
+            id: 'wo1',
+            weekId: 'wk1',
+            scheduledDate: DateTime(2026, 4, 25),
+            kind: 'easy',
+            targetDistanceM: 8000,
+            targetHrMaxBpm: 130,
+            manuallyCompleted: false,
+          ),
+          training,
+        );
+        expect(find.byKey(const Key('workoutEditHrMax')), findsNothing);
+        await save(tester);
+        expect(training.lastUpdate, isNotNull);
+        expect(training.lastUpdate?.hr, isNull);
+        expect(training.lastUpdate?.rpe, (min: null, max: null));
+      });
+
+      testWidgets(
+          'a server refusal for want of consent says so, not a generic error',
+          (tester) async {
+        final training = _FakeTraining()
+          ..errorToThrow = const PostgrestException(
+              message: 'needs consent', code: '42501');
+        await _pumpSheet(tester, _workout(), training, hrPrescription: true);
+        await tester.enterText(find.byKey(const Key('workoutEditHrMax')), '125');
+        await save(tester);
+        expect(
+            find.textContaining("needs the runner's health-data consent"),
+            findsWidgets);
+      });
+    });
+  });
+
+  // Two plan surfaces spelled the unit out themselves; the one label for it is
+  // UnitFormat.distanceLabel, so a change there reaches every field.
+  test('plan editors name the distance unit through UnitFormat', () {
+    for (final path in [
+      'lib/widgets/workout_edit_sheet.dart',
+      'lib/screens/plan_new_screen.dart',
+    ]) {
+      final src = File(path).readAsStringSync();
+      expect(src, contains('UnitFormat.distanceLabel('), reason: path);
+      expect(RegExp(r"\? 'mi' : 'km'|\? 'km' : 'mi'").hasMatch(src), isFalse,
+          reason: '$path spells the unit label itself');
+    }
   });
 }

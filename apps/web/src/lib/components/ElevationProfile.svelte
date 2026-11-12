@@ -1,19 +1,27 @@
 <script lang="ts">
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { minMax } from '$lib/util/min_max';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { minMax } from '#lib/util/min_max.ts';
+	import { elevationDomain } from '#lib/runs/elevation_profile.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	/// `onhover` is fired with the elevations-index the user is
 	/// currently inspecting (null when the pointer leaves the chart).
 	/// The parent maps that index back to a lat/lng on the track and
 	/// paints a hover marker on the map — the chart-to-map linked
 	/// cursor / brushing pattern Nike Run Club + Strava both ship.
+	///
+	/// `totalGain` is the page's own climb figure, never one this chart
+	/// derives: the series it draws can be a simplified or privacy-clipped
+	/// line whose summed climb reads lower than the route's, and the page
+	/// already states the climb beside it (issue #902). Null hides it.
 	let {
 		elevations = [],
+		totalGain,
 		totalDistance = 0,
 		onhover,
 	}: {
 		elevations: number[];
+		totalGain: number | null;
 		totalDistance: number;
 		onhover?: (idx: number | null) => void;
 	} = $props();
@@ -32,21 +40,13 @@
 	// `minMax` reduces instead of spreading: `Math.min(...elevations)` throws
 	// RangeError past ~110k args, and an ultra track is ~180k points.
 	let extent = $derived(minMax(elevations));
-	let minEle = $derived(extent?.min ?? 0);
-	let maxEle = $derived(extent?.max ?? 100);
-	let eleRange = $derived(Math.max(maxEle - minEle, 1));
-
-	/// Total elevation gain — sum of positive deltas across the
-	/// elevations array. Surfaced in the tooltip so users get the same
-	/// roll-up they see on the route detail page tile.
-	let totalGain = $derived.by(() => {
-		let g = 0;
-		for (let i = 1; i < elevations.length; i++) {
-			const d = elevations[i] - elevations[i - 1];
-			if (d > 0) g += d;
-		}
-		return Math.round(g);
-	});
+	/// At least ELEVATION_MIN_SPAN_M tall with headroom, so a flat run is
+	/// not stretched into a mountain range and the line never hits the frame.
+	let domain = $derived(extent ? elevationDomain(extent.min, extent.max) : { lo: 0, hi: 100 });
+	let minEle = $derived(domain.lo);
+	let dataMin = $derived(extent?.min ?? 0);
+	let dataMax = $derived(extent?.max ?? 0);
+	let eleRange = $derived(domain.hi - domain.lo);
 
 	function xFor(i: number): number {
 		if (elevations.length < 2) return padding.left;
@@ -171,7 +171,7 @@
 			</span>
 			<span class="tt-cell">
 				<span class="tt-label">{m('elevationProfile.elevation')}</span>
-				<span class="tt-value">{Math.round(crosshair.ele)} m</span>
+				<span class="tt-value">{formatElevation(crosshair.ele)}</span>
 			</span>
 			<span class="tt-cell">
 				<span class="tt-label">{m('elevationProfile.gainSoFar')}</span>
@@ -182,16 +182,18 @@
 							const d = elevations[i] - elevations[i - 1];
 							if (d > 0) g += d;
 						}
-						return Math.round(g);
-					})()} m
+						return formatElevation(g);
+					})()}
 				</span>
 			</span>
 		{:else if elevations.length >= 2}
 			<span class="tt-hint">{m('elevationProfile.tapOrDragToInspect')}</span>
-			<span class="tt-cell tt-cell-right">
-				<span class="tt-label">{m('elevationProfile.totalGain')}</span>
-				<span class="tt-value">{totalGain} m</span>
-			</span>
+			{#if totalGain != null}
+				<span class="tt-cell tt-cell-right">
+					<span class="tt-label">{m('elevationProfile.totalGain')}</span>
+					<span class="tt-value" data-testid="elevation-profile-total-gain">{formatElevation(totalGain)}</span>
+				</span>
+			{/if}
 		{/if}
 	</div>
 
@@ -236,18 +238,18 @@
 				<path d={areaD} class="area" />
 				<path d={pathD} class="line" />
 
-				<!-- Min / max corner pills, mirroring the Android chart's
-				     top-left max + bottom-left min annotations. -->
+				<!-- The run's own min / max as corner pills; the axis itself is
+				     padded past both. -->
 				<g class="extreme">
-					<rect x={padding.left + 4} y={padding.top - 12} width="56" height="16" rx="4" class="extreme-pill" />
-					<text x={padding.left + 32} y={padding.top - 0.5} class="extreme-text" text-anchor="middle">
-						▲ {Math.round(maxEle)} m
+					<rect x={padding.left + 4} y={padding.top - 12} width="72" height="16" rx="4" class="extreme-pill" />
+					<text x={padding.left + 40} y={padding.top - 0.5} class="extreme-text" text-anchor="middle">
+						▲ {formatElevation(dataMax)}
 					</text>
 				</g>
 				<g class="extreme">
-					<rect x={padding.left + 4} y={padding.top + plotHeight - 4} width="56" height="16" rx="4" class="extreme-pill" />
-					<text x={padding.left + 32} y={padding.top + plotHeight + 7.5} class="extreme-text" text-anchor="middle">
-						▼ {Math.round(minEle)} m
+					<rect x={padding.left + 4} y={padding.top + plotHeight - 4} width="72" height="16" rx="4" class="extreme-pill" />
+					<text x={padding.left + 40} y={padding.top + plotHeight + 7.5} class="extreme-text" text-anchor="middle">
+						▼ {formatElevation(dataMin)}
 					</text>
 				</g>
 

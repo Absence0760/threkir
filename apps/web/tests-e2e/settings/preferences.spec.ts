@@ -1,11 +1,19 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
+import { getAdminClient } from '../fixtures/local-supabase';
+import { readRow } from '../fixtures/db-read';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
+import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
+import { browserDate, browserYear } from '../fixtures/dates';
 
 /**
- * /settings/preferences — units / pace format / map style / theme /
- * default activity / privacy zones / coach personality, etc.
+ * The preference pages /settings/preferences was split into (issue #905) —
+ * units / pace format / map style / theme on /settings/display, the channels
+ * and optional emails on /settings/notifications, heart rate on
+ * /settings/training, demographics on /settings/body — plus the landing page
+ * the old URL became and the redirects its section anchors now take.
  *
  * The theme toggle is the load-bearing test today because it pins
  * BOTH the localStorage round-trip AND the html[data-theme] attribute
@@ -14,7 +22,7 @@ import { USER_A } from '../fixtures/users';
  * feedback toggle persists.
  */
 
-test.describe('/settings/preferences', () => {
+test.describe('settings preference pages', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('distance unit toggle: km → mi propagates to /runs after save', async ({
@@ -27,7 +35,7 @@ test.describe('/settings/preferences', () => {
 		// /runs → assert distances render with " mi" suffix instead
 		// of " km". Catches regressions in the auth store's setUnit
 		// fan-out OR the Save handler dropping preferredUnit.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		// Switch to Miles.
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
@@ -41,7 +49,7 @@ test.describe('/settings/preferences', () => {
 		await expect(firstStat).toContainText('mi');
 
 		// Restore to km so subsequent tests render against the default.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
@@ -57,7 +65,7 @@ test.describe('/settings/preferences', () => {
 		// import the formatter (hardcoding " km" in the template) OR
 		// from `auth.setUnit(...)` not running on a fresh page mount.
 		// Touching multiple surfaces in one test catches both classes.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
@@ -102,7 +110,7 @@ test.describe('/settings/preferences', () => {
 		await expect(firstWeekVolume).toContainText('mi', { timeout: 10_000 });
 
 		// Restore to km so subsequent tests render against the default.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
@@ -116,7 +124,7 @@ test.describe('/settings/preferences', () => {
 		// surface in the app re-render except this one. The audit
 		// caught it; this test pins the new unit-aware bindings so it
 		// can't silently regress.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 
@@ -150,7 +158,7 @@ test.describe('/settings/preferences', () => {
 			await expect(generateBtn).not.toContainText(/\bkm\b/);
 		} finally {
 			// Restore to km so subsequent tests render against the default.
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/display');
 			await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 		}
@@ -167,7 +175,7 @@ test.describe('/settings/preferences', () => {
 		// The propagation to formatPace currently goes through
 		// preferred_unit (not pace_format) — see units.svelte.ts.
 		// Pinning the persistence is the load-bearing assertion.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		// Needed: inputValue() below snapshots — no auto-retry — so a
 		// pre-fetch read would capture the default rather than the
 		// user's saved selection.
@@ -198,7 +206,7 @@ test.describe('/settings/preferences', () => {
 		// and the value survives a reload — a regression that dropped the
 		// key from the autoSave payload would silently leave every user on
 		// the default forever.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const sel = page
@@ -225,6 +233,28 @@ test.describe('/settings/preferences', () => {
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
 
+	test('the mention / reaction / comment-like / follow-request / workout-reminder mutes save off and survive a reload', async ({
+		page
+	}) => {
+		// decisions § 1971: opt-OUT per-kind mutes the worker's kindMuted
+		// reads. Absent reads as on; unticking writes the literal 'off'.
+		await page.goto('/settings/notifications');
+		await page.waitForLoadState('networkidle');
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
+			const box = page.getByTestId(id);
+			await expect(box).toBeChecked();
+			await box.uncheck();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+		}
+		await page.reload();
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
+			const box = page.getByTestId(id);
+			await expect(box).not.toBeChecked();
+			await box.check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+		}
+	});
+
 	test('Push notifications <select> save round-trip persists across reload', async ({
 		page
 	}) => {
@@ -234,7 +264,7 @@ test.describe('/settings/preferences', () => {
 		// independent key from email_notifications (muting email must not
 		// mute push). The load-bearing assertion is the picker writes the
 		// bag and the value survives a reload.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const sel = page
@@ -271,7 +301,7 @@ test.describe('/settings/preferences', () => {
 		// load-bearing assertion is that the toggle writes the bag with the
 		// 'on'/'off' string and survives a reload — a regression that dropped
 		// the key from autoSave would leave every user permanently opted out.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const toggle = page.getByTestId('email-weekly-digest');
@@ -279,12 +309,12 @@ test.describe('/settings/preferences', () => {
 		await expect(toggle).not.toBeChecked();
 
 		// Opt in. The bag write must be the literal 'on' string. The push is
-		// a POST upsert, not a PATCH — a missing client-provisioned row makes
-		// an update match 0 rows and silently drop the change (#234).
+		// the merge RPC's upsert, not a PATCH — a missing client-provisioned row
+		// makes an update match 0 rows and silently drop the change (#234).
 		const optInPatch = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"email_weekly_digest":"on"'),
 			{ timeout: 8_000 }
 		);
@@ -322,7 +352,7 @@ test.describe('/settings/preferences', () => {
 		// The Go worker's lifecycle_drip handler reads it server-side, so the
 		// load-bearing assertion is that the toggle writes the bag with the
 		// 'on'/'off' string and survives a reload.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const toggle = page.getByTestId('email-lifecycle-drip');
@@ -334,7 +364,7 @@ test.describe('/settings/preferences', () => {
 		const optInPatch = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"email_lifecycle_drip":"on"'),
 			{ timeout: 8_000 }
 		);
@@ -361,6 +391,50 @@ test.describe('/settings/preferences', () => {
 		await expect(page.getByTestId('email-lifecycle-drip')).not.toBeChecked();
 	});
 
+	test('New-device sign-in alert opt-out toggle save round-trip persists across reload', async ({
+		page
+	}) => {
+		// email_new_device_alerts is an OPT-OUT security alert (default on), the
+		// reverse of the two engagement opt-ins above: only the literal 'off'
+		// mutes it, and the Go worker's security_email handler reads it at send
+		// time. The password-changed notice has no control at all, so this is the
+		// only security toggle on the page.
+		await page.goto('/settings/notifications');
+		await page.waitForLoadState('networkidle');
+
+		const toggle = page.getByTestId('email-new-device-alerts');
+		// Default when the key is absent: on (checked).
+		await expect(toggle).toBeChecked();
+
+		const optOut = page.waitForRequest(
+			(req) =>
+				req.method() === 'POST' &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
+				(req.postData() ?? '').includes('"email_new_device_alerts":"off"'),
+			{ timeout: 8_000 }
+		);
+		await toggle.uncheck();
+		await optOut; // throws if the opt-out write never fires
+		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+
+		await page.reload();
+		await expect(page.getByTestId('email-new-device-alerts')).not.toBeChecked();
+
+		// Turn it back on so later specs see the default; the write is 'on'.
+		const optIn = page.waitForRequest(
+			(req) =>
+				req.method() === 'POST' &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
+				(req.postData() ?? '').includes('"email_new_device_alerts":"on"'),
+			{ timeout: 8_000 }
+		);
+		await page.getByTestId('email-new-device-alerts').check();
+		await optIn;
+		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+		await page.reload();
+		await expect(page.getByTestId('email-new-device-alerts')).toBeChecked();
+	});
+
 	test('changing language writes locale to the settings bag (email localization)', async ({
 		page
 	}) => {
@@ -369,7 +443,7 @@ test.describe('/settings/preferences', () => {
 		// email (decisions §120). Assert the write actually fires by catching
 		// the user_settings upsert — a regression dropping it would silently
 		// leave every user's email in English.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.waitForLoadState('networkidle');
 
 		const sel = page.getByTestId('language-select');
@@ -378,7 +452,7 @@ test.describe('/settings/preferences', () => {
 		const patch = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"locale":"de"'),
 			{ timeout: 8_000 }
 		);
@@ -399,7 +473,7 @@ test.describe('/settings/preferences', () => {
 		// regression that dropped map_style from the saved prefs blob
 		// (it shares a single Save handler with theme + unit) would
 		// surface here.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		// Pick Satellite via the labelled <select>.
 		const sel = page
@@ -428,7 +502,7 @@ test.describe('/settings/preferences', () => {
 		// Pin: both inputs render under the HR section, persist through the
 		// same Save handler as every other pref, and survive reload. The
 		// clear-to-null path matters (an empty input must NOT write 0).
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/training');
 		await page.waitForLoadState('networkidle');
 
 		const resting = page
@@ -461,6 +535,73 @@ test.describe('/settings/preferences', () => {
 		await expect(max).toHaveValue('');
 	});
 
+	test('the heart-rate medication flag saves and asks for a measured max', async ({
+		page
+	}) => {
+		// decisions § 2092: Art 9, behind the server's hr_prescription gate (open
+		// in the seed) and the health-data consent USER_A has in the seed.
+		const admin = getAdminClient();
+		const before = await readRow(
+			'user_settings before the HR-medication toggle',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single()
+		);
+		const original = (before.prefs as Record<string, unknown>) ?? {};
+		const start = { ...original };
+		delete start.hr_medication_affected;
+		delete start.max_hr_bpm;
+		await admin.from('user_settings').update({ prefs: start }).eq('user_id', USER_A.id);
+		try {
+			await page.goto('/settings/training');
+			const toggle = page.getByTestId('hr-medication-toggle');
+			await expect(toggle).toBeEnabled({ timeout: 10_000 });
+			await expect(toggle).not.toBeChecked();
+			await expect(page.getByTestId('hr-medication-max-prompt')).toHaveCount(0);
+
+			await toggle.check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await expect(page.getByTestId('hr-medication-max-prompt')).toBeVisible();
+
+			await page.getByTestId('max-hr').fill('150');
+			await page.getByTestId('max-hr').blur();
+			await expect(page.getByTestId('hr-medication-max-prompt')).toHaveCount(0);
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+
+			await page.reload();
+			await expect(page.getByTestId('hr-medication-toggle')).toBeChecked({ timeout: 10_000 });
+			const after = await readRow(
+				'user_settings after the HR-medication toggle',
+				admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single()
+			);
+			expect((after.prefs as Record<string, unknown>).hr_medication_affected).toBe(true);
+		} finally {
+			await admin.from('user_settings').update({ prefs: original }).eq('user_id', USER_A.id);
+		}
+	});
+
+	test('a failed health-consent read shuts the medication toggle and loads the rest of the page', async ({
+		page
+	}) => {
+		// The consent read decides only whether the Art 9 medication toggle may
+		// be turned on (decisions § 2092). It used to throw out of the page
+		// loader, so one failed read left every training preference unloaded.
+		// The app shell reads the same RPC for the signed-in profile, so the
+		// failure is armed only once the shell has loaded, and the page is then
+		// reached by a client-side navigation that reads it again.
+		await page.goto('/settings/display');
+		await expect(page.getByRole('button', { name: 'Miles', exact: true })).toBeVisible({ timeout: 10_000 });
+		await page.route('**/rest/v1/rpc/get_my_profile**', (route) =>
+			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+		);
+		await page.locator('a[href="/settings/training"]').first().click();
+		await expect(page).toHaveURL(/\/settings\/training$/);
+		await expect(page.getByTestId('hr-medication-consent-failed')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('hr-medication-toggle')).toBeDisabled();
+		// The form rendered at all: a loader throw leaves the page in its
+		// failed phase, with an alert and no fields.
+		await expect(page.getByTestId('carbs-per-hour')).toBeVisible();
+		await expect(page.getByTestId('max-hr')).toBeVisible();
+	});
+
 	test('theme toggle: Dark applies html[data-theme] + survives reload', async ({
 		page
 	}) => {
@@ -471,7 +612,7 @@ test.describe('/settings/preferences', () => {
 		// "user picks dark, comes back tomorrow, sees light" which is
 		// a subtle UX bug you'd never catch without an integration
 		// test.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		await page.getByRole('button', { name: 'Dark', exact: true }).click();
 		await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -495,7 +636,7 @@ test.describe('/settings/preferences', () => {
 		// rearm). A regression that never showed the cue, or left it stuck on
 		// "Saved", surfaces here. Errors still toast; the happy path is silent
 		// beyond this cue.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		const status = page.getByTestId('save-status');
 
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
@@ -516,7 +657,7 @@ test.describe('/settings/preferences', () => {
 		// change must NOT trigger the auto-save path. This pins the deliberate
 		// asymmetry. All interactions here are in-memory (nothing is saved, so
 		// USER_A's stored consent + profile are untouched).
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		await expect(page.getByTestId('save-demographics')).toBeVisible();
 
 		const consent = page
@@ -542,6 +683,92 @@ test.describe('/settings/preferences', () => {
 		await consent.uncheck();
 	});
 
+	test('each body-metrics card says how it saves, and the explicit one says when it is unsaved', async ({
+		page
+	}) => {
+		// The demographics card saves on its button (Art 9) and the nutrition
+		// card saves on change. Side by side with nothing saying so, a runner
+		// who changed the activity level reached for Save demographics, and one
+		// who changed a birth date assumed it had saved like the card below.
+		// In-memory only for demographics; the activity level is put back.
+		await page.goto('/settings/body');
+		const hint = page.getByTestId('demographics-save-hint');
+		await expect(hint).toContainText('saves only when you press Save demographics');
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('save automatically');
+
+		await page.getByTestId('date-of-birth-year').selectOption('1950');
+		await expect(hint).toContainText('Unsaved changes');
+
+		const level = page.getByTestId('activity-level');
+		const before = await level.inputValue();
+		await level.selectOption(before === 'light' ? 'moderate' : 'light');
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('Saved');
+		await level.selectOption(before);
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('Saved');
+	});
+
+	test('an out-of-range height or weight is refused in the field, not by postgres', async ({
+		page
+	}) => {
+		// `body_metrics.weight_kg` is CHECK-bounded `> 0 and <= 500` and
+		// `user_profiles.height_cm` `> 0 and <= 300`, and this card saves from a
+		// button's onclick rather than a form submit — so `min`/`max` never run
+		// and a typed 600 kg used to round-trip as a raw postgres 23514 naming a
+		// constraint and no field (decisions § 792). All in-memory: the Save
+		// button is disabled throughout, so nothing is written for USER_A.
+		await page.goto('/settings/body');
+		const consent = page
+			.locator('label.consent-checkbox', { hasText: 'date of birth' })
+			.locator('input[type="checkbox"]');
+		if (!(await consent.isChecked())) await consent.check();
+
+		const weight = page.getByTestId('weight');
+		await weight.fill('600');
+		await expect(page.getByTestId('weight-error')).toBeVisible();
+		await expect(page.getByTestId('save-demographics')).toBeDisabled();
+
+		// And the field accepts a real one again.
+		await weight.fill('72');
+		await expect(page.getByTestId('weight-error')).toHaveCount(0);
+		await expect(page.getByTestId('save-demographics')).toBeEnabled();
+
+		const height = page.getByTestId('height-cm');
+		await height.fill('500');
+		await expect(page.getByTestId('height-cm-error')).toBeVisible();
+		await expect(page.getByTestId('save-demographics')).toBeDisabled();
+
+		// Leave the card clean and unsaved.
+		await height.fill('');
+		await weight.fill('');
+		await consent.uncheck();
+	});
+
+	test('the DOB field stays reachable with health-data consent off', async ({
+		page
+	}) => {
+		// decisions § 718: the column DOB writes is the age record behind the
+		// under-18 discoverability floor — a child-protection purpose. Gating
+		// the FIELD on the Art 9 checkbox left a minor who declined it unable
+		// to record a birth date at all, so the floor never fired for exactly
+		// the account it exists to protect. Consent gates the prefs-bag
+		// mirror and the other three fields, which stay disabled here.
+		// In-memory only: nothing is saved, so USER_A's stored state is
+		// untouched.
+		await page.goto('/settings/body');
+		const consent = page
+			.locator('label.consent-checkbox', { hasText: 'date of birth' })
+			.locator('input[type="checkbox"]');
+		if (await consent.isChecked()) await consent.uncheck();
+
+		await expect(page.getByTestId('date-of-birth-year')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-month')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-day')).toBeEnabled();
+		await expect(page.getByTestId('height-cm')).toBeDisabled();
+		await expect(page.getByTestId('weight')).toBeDisabled();
+		// The purpose line has to say why an ungated field is asking.
+		await expect(page.locator('#dob-purpose')).toContainText(/under-18|name search/i);
+	});
+
 	test('skeleton renders during initial load + is replaced by real content', async ({
 		page
 	}) => {
@@ -561,7 +788,7 @@ test.describe('/settings/preferences', () => {
 			await route.continue();
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		await expect(page.locator('.skel-card').first()).toBeVisible({
 			timeout: 5_000
@@ -583,7 +810,7 @@ test.describe('/settings/preferences', () => {
 		// `prefs.activity_*` i18n keys (not ACTIVITY_LEVELS[].label), so those
 		// strings must NOT describe weekly exercise frequency — that wording
 		// guides a runner into the exact double-count this avoids.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		const optionText = (
 			await page.getByTestId('activity-level').locator('option').allInnerTexts()
 		)
@@ -596,22 +823,110 @@ test.describe('/settings/preferences', () => {
 		).toBeVisible();
 	});
 
-	test('Date of birth input caps at today and leaves birth years unbounded', async ({
+	test('Date of birth is picked by year, not paged back from today, and refuses half or future dates', async ({
 		page
 	}) => {
-		// A birth year decades back must stay reachable through the native
-		// picker: no `min` fencing off realistic birth years, and a `max`
-		// of today blocking future DOBs — mirrors the /onboarding DOB
-		// field (issue #222).
-		await page.goto('/settings/preferences');
-		const dob = page.getByLabel('Date of birth', { exact: true });
-		const max = await dob.getAttribute('max');
-		expect(max).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-		expect(Math.abs(Date.parse(`${max}T00:00:00Z`) - Date.now())).toBeLessThan(
-			48 * 3600 * 1000
+		// The native `<input type="date">` popup opened on the current month,
+		// so reaching a birth year meant scrolling back through decades. The
+		// field is now three selects with the year newest-first. In-memory
+		// only: nothing is saved, so USER_A's stored DOB is untouched.
+		await page.goto('/settings/body');
+		const dob = dateOfBirth(page);
+		const thisYear = browserYear();
+		// The page paints a skeleton first and evaluateAll does not wait, so
+		// wait for the full list: the placeholder plus 121 years.
+		await expect(dob.year.locator('option')).toHaveCount(122);
+		const years = await dob.year.locator('option').evaluateAll((os) =>
+			os.map((o) => (o as HTMLOptionElement).value).filter(Boolean).map(Number),
 		);
-		expect(await dob.getAttribute('min')).toBeNull();
+		expect(years[0]).toBe(thisYear);
+		expect(years.at(-1)).toBe(thisYear - 120);
+
+		await fillDateOfBirth(page, '1979-02-28');
+		await expect(dob.month).toHaveValue('2');
+		await expect(dob.day).toHaveValue('28');
+		await expect(page.getByTestId('date-of-birth-error')).toHaveCount(0);
+
+		// Clearing one part reports the half-picked date instead of saving it.
+		await dob.day.selectOption('');
+		await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
+		await expect(dob.group).toHaveAttribute('aria-describedby', /^dob-purpose \S+-error$/);
+
+		// A day the new month lacks clamps to its last day.
+		await dob.month.selectOption('1');
+		await dob.day.selectOption('31');
+		await dob.month.selectOption('4');
+		await expect(dob.day).toHaveValue('30');
+
+		// No birth date can be after today.
+		await dob.year.selectOption(String(thisYear));
+		await dob.month.selectOption('12');
+		await dob.day.selectOption('31');
+		const todayIsLastDay = browserDate().endsWith('-12-31');
+		if (!todayIsLastDay) await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
 	});
+});
+
+test.describe('settings preference pages — every control explains itself', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('the explanation under a control is its accessible description', async ({ page }) => {
+		// #905 workstream 5: a one-line explanation sits under each control and
+		// is wired with aria-describedby, so a screen reader announces it without
+		// it becoming part of the control's name.
+		await page.goto('/settings/display');
+		await expect(page.getByTestId('language-select')).toHaveAccessibleDescription(
+			/language the app shows/i,
+			{ timeout: 10_000 }
+		);
+		await expect(page.getByTestId('language-select')).not.toHaveAccessibleName(
+			/language the app shows/i
+		);
+		await expect(page.getByRole('group', { name: 'Distance Unit' })).toHaveAccessibleDescription(
+			/kilometres or miles/i
+		);
+
+		await page.goto('/settings/training');
+		await expect(page.getByTestId('resting-hr')).toHaveAccessibleDescription(
+			/heart rate \(HR\).*beats per minute \(bpm\)/,
+			{ timeout: 10_000 }
+		);
+	});
+});
+
+test.describe('/settings/preferences — landing page for old links', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('lists every preference group, each linking to its page', async ({ page }) => {
+		await page.goto('/settings/preferences');
+		const groups = page.getByTestId('preferences-groups');
+		await expect(groups).toBeVisible({ timeout: 10_000 });
+		for (const [href, name] of [
+			['/settings/display', 'Units & display'],
+			['/settings/recording', 'Recording & voice'],
+			['/settings/training', 'Training'],
+			['/settings/privacy', 'Privacy & sharing'],
+			['/settings/notifications', 'Notifications'],
+			['/settings/body', 'Body metrics'],
+		] as const) {
+			await expect(groups.locator(`a[href="${href}"]`)).toContainText(name);
+		}
+		await groups.locator('a[href="/settings/notifications"]').click();
+		await expect(page).toHaveURL(/\/settings\/notifications$/);
+		await expect(page.getByTestId('email-weekly-digest')).toBeVisible({ timeout: 10_000 });
+	});
+
+	for (const [anchor, path, landmark] of [
+		['heart-rate-zones', '/settings/training', 'max-hr'],
+		['weekly-mileage-goal', '/settings/training', 'weekly-distance-goal'],
+		['body-metrics', '/settings/body', 'save-demographics'],
+	] as const) {
+		test(`an old #${anchor} link lands on the section's new page`, async ({ page }) => {
+			await page.goto(`/settings/preferences#${anchor}`);
+			await expect(page).toHaveURL(new RegExp(`${path}#`), { timeout: 10_000 });
+			await expect(page.getByTestId(landmark)).toBeVisible({ timeout: 10_000 });
+		});
+	}
 });
 
 test.describe('/settings/preferences — anon', () => {
@@ -621,12 +936,7 @@ test.describe('/settings/preferences — anon', () => {
 		page,
 		context
 	}) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await page.goto('/settings/preferences');
 		await page.waitForURL(/\/login(\?|$)/, { timeout: 10_000 });
 		// return_to round-trip: the layout guard preserves the original

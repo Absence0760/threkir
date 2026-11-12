@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { page } from '$app/stores';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { page } from '$app/state';
 
 	// /clubs is now hosted under /social as the third tab. Kept as a
 	// redirect so existing bookmarks, search results, mobile deep links,
 	// and email links keep resolving. Sub-routes (/clubs/[slug],
 	// /clubs/new, /clubs/[slug]/events/...) are unchanged.
 	onMount(async () => {
-		const subtab = $page.url.searchParams.get('tab');
+		const subtab = page.url.searchParams.get('tab');
 		const target = subtab === 'browse'
 			? '/social?tab=clubs&clubs-sub=browse'
 			: '/social?tab=clubs';
-		await goto(target, { replaceState: true });
+		await goto(target, { replace: true });
 	});
 </script>
 

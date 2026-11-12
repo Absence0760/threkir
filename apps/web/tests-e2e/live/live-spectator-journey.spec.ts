@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { switchRunsToAllTime } from '../fixtures/helpers';
 import { deleteRun, insertLivePings, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { readRow } from '../fixtures/db-read';
 
 /**
  * Live-tracking journey — the full life of ONE live broadcast threaded
@@ -109,13 +110,16 @@ test.describe('live-tracking journey', () => {
 					is_public: true
 				});
 
-				const { data: row } = await admin
-					.from('runs')
-					.select('user_id, is_public')
-					.eq('id', runId)
-					.single();
-				expect(row?.user_id).toBe(USER_A.id);
-				expect(row?.is_public).toBe(true);
+				const row = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('user_id, is_public')
+						.eq('id', runId)
+						.single()
+				);
+				expect(row.user_id).toBe(USER_A.id);
+				expect(row.is_public).toBe(true);
 			});
 
 			// ── 2. A position update lands (the recorder's backlog) ─────
@@ -169,9 +173,7 @@ test.describe('live-tracking journey', () => {
 				await expect(
 					spectator.locator('.live-stat-value').first()
 				).toContainText('3.5');
-				await expect(
-					spectator.locator('.live-stat-value').nth(1)
-				).toContainText('17:30');
+				await expect(spectator.getByTestId('runner-timer')).toContainText('17:30');
 
 				// Freshness consumed the ping's `at` clock — the sub-line is
 				// an "Updated …" age, not the static fallback copy.
@@ -202,9 +204,9 @@ test.describe('live-tracking journey', () => {
 				await expect(
 					spectator.locator('.live-stat-value').first()
 				).toContainText('5', { timeout: 15_000 });
-				await expect(
-					spectator.locator('.live-stat-value').nth(1)
-				).toContainText('25:00', { timeout: 15_000 });
+				await expect(spectator.getByTestId('runner-timer')).toContainText('25:00', {
+					timeout: 15_000
+				});
 				// Still LIVE + fresh — the new ping is current.
 				await expect(spectator.locator('.live-badge')).toHaveClass(/active/);
 			});
@@ -314,9 +316,7 @@ test.describe('live-tracking journey', () => {
 				await expect(
 					spectator.locator('.live-stat-value').first()
 				).toContainText('7.5');
-				await expect(
-					spectator.locator('.live-stat-value').nth(1)
-				).toContainText('30:00');
+				await expect(spectator.getByTestId('runner-timer')).toContainText('30:00');
 			});
 
 			// ── 7. It's now an ordinary completed run for the owner ─────
@@ -339,14 +339,17 @@ test.describe('live-tracking journey', () => {
 
 				// Backend: still the same single row, now with the final
 				// saved totals.
-				const { data: finalRow } = await admin
-					.from('runs')
-					.select('id, distance_m, duration_s')
-					.eq('id', runId)
-					.single();
-				expect(finalRow?.id).toBe(runId);
-				expect(finalRow?.distance_m).toBe(7_500);
-				expect(finalRow?.duration_s).toBe(1_800);
+				const finalRow = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('id, distance_m, duration_s')
+						.eq('id', runId)
+						.single()
+				);
+				expect(finalRow.id).toBe(runId);
+				expect(finalRow.distance_m).toBe(7_500);
+				expect(finalRow.duration_s).toBe(1_800);
 			});
 		} finally {
 			await spectatorCtx.close();

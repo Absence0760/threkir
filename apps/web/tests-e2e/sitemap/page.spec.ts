@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_ROUTE_ID, RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 
@@ -12,7 +12,7 @@ import { RUNNER_PUBLIC_ROUTE_ID, RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded
  *   - It exists at /sitemap.xml.
  *   - Content-Type is application/xml.
  *   - Doc shape is a valid <urlset>.
- *   - Top-level surfaces (/, /feed, /routes?tab=explore) all appear.
+ *   - Top-level surfaces (/, /feed, /routes?tab=explore, /segments) appear.
  *   - At least one seeded public run + route appear via their share URLs.
  *   - robots.txt advertises the sitemap so crawlers find it.
  */
@@ -22,7 +22,7 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('served as application/xml with a sane document shape', async ({ request }) => {
-		const res = await request.get('http://localhost:7777/sitemap.xml');
+		const res = await request.get('/sitemap.xml');
 		expect(res.status()).toBe(200);
 		const ct = res.headers()['content-type'] ?? '';
 		expect(ct).toMatch(/application\/xml/);
@@ -33,23 +33,34 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 	});
 
 	test('top-level surfaces are present', async ({ request }) => {
-		const body = await (await request.get('http://localhost:7777/sitemap.xml')).text();
-		// Each of the three top-level surfaces should appear. The host
+		const body = await (await request.get('/sitemap.xml')).text();
+		// Each of the four top-level surfaces should appear. The host
 		// is whatever PUBLIC_SITE_URL is set to at build time (defaults
 		// to threkir.com); match the path suffix to stay env-agnostic.
 		expect(body).toMatch(/<loc>https?:\/\/[^<]+\/<\/loc>/);
 		expect(body).toMatch(/<loc>https?:\/\/[^<]+\/feed<\/loc>/);
 		expect(body).toMatch(/<loc>https?:\/\/[^<]+\/routes\?tab=explore<\/loc>/);
+		// The segment catalogue — world-readable curated content that was
+		// crawl-invisible until decisions.md § 677.
+		expect(body).toMatch(/<loc>https?:\/\/[^<]+\/segments<\/loc>/);
+	});
+
+	test('individual segment pages are NOT enumerated', async ({ request }) => {
+		// A per-segment page is a leaderboard of named runners; enumerating
+		// them builds the people-directory that keeps profiles out of the
+		// manifest. Only the catalogue index is listed.
+		const body = await (await request.get('/sitemap.xml')).text();
+		expect(body).not.toMatch(/<loc>https?:\/\/[^<]+\/segments\/[^<]+<\/loc>/);
 	});
 
 	test('seeded public run + route appear as share URLs', async ({ request }) => {
-		const body = await (await request.get('http://localhost:7777/sitemap.xml')).text();
+		const body = await (await request.get('/sitemap.xml')).text();
 		expect(body).toContain(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
 		expect(body).toContain(`/share/route/${RUNNER_PUBLIC_ROUTE_ID}`);
 	});
 
 	test('robots.txt advertises the sitemap location', async ({ request }) => {
-		const res = await request.get('http://localhost:7777/robots.txt');
+		const res = await request.get('/robots.txt');
 		expect(res.status()).toBe(200);
 		const body = await res.text();
 		expect(body).toMatch(/Sitemap:\s*\/sitemap\.xml/);
@@ -62,7 +73,7 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 		// budget. Pin the negative — these stay out of /sitemap.xml.
 		// /runs is the auth-gated run list (parallel to /history); it must
 		// stay out too so crawlers never land on a 401.
-		const body = await (await request.get('http://localhost:7777/sitemap.xml')).text();
+		const body = await (await request.get('/sitemap.xml')).text();
 		expect(body).not.toMatch(/<loc>https?:\/\/[^<]+\/dashboard<\/loc>/);
 		expect(body).not.toMatch(/<loc>https?:\/\/[^<]+\/history<\/loc>/);
 		expect(body).not.toMatch(/<loc>https?:\/\/[^<]+\/runs<\/loc>/);
@@ -74,7 +85,7 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 		// Sitemaps spec requires one <loc> per <url>. A bug in the
 		// builder that emitted two would still parse but confuse
 		// crawlers. Pin the invariant by counting tags.
-		const body = await (await request.get('http://localhost:7777/sitemap.xml')).text();
+		const body = await (await request.get('/sitemap.xml')).text();
 		const urlCount = (body.match(/<url>/g) ?? []).length;
 		const locCount = (body.match(/<loc>/g) ?? []).length;
 		expect(urlCount).toBeGreaterThan(0);
@@ -85,7 +96,7 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 		// Sitemaps spec: each <loc> must be a fully-qualified URL.
 		// Build-time path-only URLs slip through XML validation but
 		// fail every major crawler.
-		const body = await (await request.get('http://localhost:7777/sitemap.xml')).text();
+		const body = await (await request.get('/sitemap.xml')).text();
 		const matches = body.match(/<loc>([^<]+)<\/loc>/g) ?? [];
 		expect(matches.length).toBeGreaterThan(0);
 		for (const m of matches) {

@@ -75,15 +75,19 @@ activity's data-field picker.
 - **Stopped / walking** (< 0.4 m/s) → field shows `--:--`, never a garbage
   number or a divide-by-zero.
 - **Metric vs statute**: change the simulated device's units; pace unit
-  (min/km vs min/mi) follows `System.getDeviceSettings().distanceUnits`.
+  (min/km vs min/mi) follows `System.getDeviceSettings().paceUnits`. Set the
+  simulator's PACE and DISTANCE preferences to different systems and check the
+  cell follows pace — the two are separate settings and this field renders a
+  pace.
 
 ## 6. Run the unit tests
 
 The Minetti GAP model has host-pure unit tests under `source-test/`
 (`GradeAdjustedPaceTest.mc`), written against the Connect IQ `Test` framework
 (`(:test)` functions taking a `Test.Logger`). They drive the static helpers
-(`costAtGrade` / `gradeFactor` / `gapPace` / `formatPace`) directly, so they
-need **no** simulated `Activity.Info` sensor feed — just the simulator process.
+(`costAtGrade` / `gradeFactor` / `gapPace` / `formatPace`) and the `GradeTracker`
+state machine directly, so they need **no** simulated `Activity.Info` sensor
+feed — just the simulator process.
 
 `monkey.jungle` adds `source-test` to `base.sourcePath` and excludes it from
 release builds via `base.excludeAnnotations = test`, so the test code only
@@ -105,9 +109,30 @@ numbers in the suite are pinned to the canonical TS/Dart parity oracle
 `apps/mobile_android/lib/grade_adjusted_pace.dart`) so the field can't drift
 from the web/mobile GAP surfaces.
 
+## 7. The source-level guard (no SDK needed)
+
+```
+bash apps/watch_garmin/scripts/check_garmin_source.sh
+```
+
+Pure text parse in bash + python3, so it runs anywhere the rest of the repo
+does. It does **not** compile Monkey C and is no evidence that the app builds
+or that the GAP numbers are right — it holds the five contracts a compiler
+could not: the `GradeTracker` reset wiring, the `(:test)` annotation discipline
+that keeps test code off the watch, permission-gated Toybox modules being
+declared in `manifest.xml`, the cross-rail constants being named rather than
+inlined, and the string table agreeing with its call sites in both directions.
+The guard's own mutation suite is `node --test scripts/check_garmin_source.test.mjs`;
+both run in the `watch-garmin-source` CI job. See
+[docs/custom_watch/quality_standards.md](../../docs/custom_watch/quality_standards.md)
+for what each rung of evidence may claim.
+
 ## Not wired up yet
 
-No CI job builds this OR runs the unit tests (no `monkeyc` on the GitHub
-runners, and the SDK isn't installed on this workstation yet). No Supabase
-sync — the field only reads on-watch `Activity.Info`. All deliberate for the
-spike; see [CLAUDE.md](CLAUDE.md) for the path each would take.
+No CI job builds this or runs the `(:test)` unit tests (no `monkeyc` on the
+GitHub runners, and the SDK isn't installed on this workstation — so **every
+expected value in `GradeAdjustedPaceTest.mc` is authored, not executed**). The
+source guard above is the one of the three that needs no SDK, and it now runs
+in the `watch-garmin-source` CI job. No Supabase sync — the field
+only reads on-watch `Activity.Info`. All deliberate for the spike; see
+[CLAUDE.md](CLAUDE.md) for the path each would take.

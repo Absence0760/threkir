@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRoute, insertRun, deleteRoute, deleteRun } from '../fixtures/simulate';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Segment-leaderboard journey — one segment on a saved route, threaded
@@ -170,11 +172,14 @@ test.describe('segment leaderboard journey', () => {
 				});
 
 				// No effort exists yet — the track is the only input.
-				const { data: pre } = await admin
-					.from('segment_efforts')
-					.select('id')
-					.eq('segment_id', segmentId);
-				expect(pre?.length ?? 0).toBe(0);
+				const pre = await readRows(
+					'segment_efforts by segment_id',
+					admin
+						.from('segment_efforts')
+						.select('id')
+						.eq('segment_id', segmentId)
+				);
+				expect(pre.length).toBe(0);
 			});
 
 			// ── 3. /runs/[id] auto-generates USER_A's effort + chip ─────
@@ -206,13 +211,16 @@ test.describe('segment leaderboard journey', () => {
 				).toBeVisible();
 
 				// Backend: exactly one effort now exists, USER_A's, ~400 s.
-				const { data: eff } = await admin
-					.from('segment_efforts')
-					.select('user_id, time_seconds')
-					.eq('segment_id', segmentId);
-				expect(eff?.length ?? 0).toBe(1);
-				expect(eff?.[0]?.user_id).toBe(USER_A.id);
-				expect(Math.round(Number(eff?.[0]?.time_seconds))).toBe(A_EFFORT_S);
+				const eff = await readRows(
+					'segment_efforts by segment_id',
+					admin
+						.from('segment_efforts')
+						.select('user_id, time_seconds')
+						.eq('segment_id', segmentId)
+				);
+				expect(eff.length).toBe(1);
+				expect(eff[0]?.user_id).toBe(USER_A.id);
+				expect(Math.round(Number(eff[0]?.time_seconds))).toBe(A_EFFORT_S);
 			});
 
 			// ── 4. /routes/[id] leaderboard: USER_A holds the crown ─────
@@ -258,12 +266,7 @@ test.describe('segment leaderboard journey', () => {
 				});
 				const guestPage = await ctx.newPage();
 				try {
-					await guestPage.addInitScript(() => {
-						localStorage.setItem(
-							'cookie_consent',
-							JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-						);
-					});
+					await acceptCookieConsent(guestPage);
 					await guestPage.goto(`/runs/${runCId}`);
 
 					// USER_C's RunSegmentEfforts generates USER_C's effort
@@ -277,13 +280,16 @@ test.describe('segment leaderboard journey', () => {
 				}
 
 				// Backend: two efforts now, C strictly faster than A.
-				const { data: eff } = await admin
-					.from('segment_efforts')
-					.select('user_id, time_seconds')
-					.eq('segment_id', segmentId);
-				expect(eff?.length ?? 0).toBe(2);
+				const eff = await readRows(
+					'segment_efforts by segment_id',
+					admin
+						.from('segment_efforts')
+						.select('user_id, time_seconds')
+						.eq('segment_id', segmentId)
+				);
+				expect(eff.length).toBe(2);
 				const byUser = new Map(
-					(eff ?? []).map((e) => [e.user_id, Number(e.time_seconds)])
+					eff.map((e) => [e.user_id, Number(e.time_seconds)])
 				);
 				expect(Math.round(byUser.get(USER_C_PRO.id)!)).toBe(C_EFFORT_S);
 				expect(byUser.get(USER_C_PRO.id)!).toBeLessThan(byUser.get(USER_A.id)!);

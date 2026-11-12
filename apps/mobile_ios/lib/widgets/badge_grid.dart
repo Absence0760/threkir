@@ -62,6 +62,18 @@ IconData badgeIconData(String name) {
       return Icons.emoji_events;
     case 'flag':
       return Icons.flag_outlined;
+    case 'park':
+      return Icons.park_outlined;
+    case 'hiking':
+      return Icons.hiking;
+    case 'forest':
+      return Icons.forest;
+    case 'explore':
+      return Icons.explore;
+    case 'flag_circle':
+      return Icons.flag_circle;
+    case 'map':
+      return Icons.map_outlined;
     default:
       return Icons.military_tech;
   }
@@ -144,6 +156,46 @@ String badgeText(AppLocalizations l10n, String key) {
       return l10n.badgesPlan10Label;
     case 'badgesPlan10Desc':
       return l10n.badgesPlan10Desc;
+    case 'badgesParkCourses1Label':
+      return l10n.badgesParkCourses1Label;
+    case 'badgesParkCourses1Desc':
+      return l10n.badgesParkCourses1Desc;
+    case 'badgesParkCourses5Label':
+      return l10n.badgesParkCourses5Label;
+    case 'badgesParkCourses5Desc':
+      return l10n.badgesParkCourses5Desc;
+    case 'badgesParkCourses10Label':
+      return l10n.badgesParkCourses10Label;
+    case 'badgesParkCourses10Desc':
+      return l10n.badgesParkCourses10Desc;
+    case 'badgesParkCourses25Label':
+      return l10n.badgesParkCourses25Label;
+    case 'badgesParkCourses25Desc':
+      return l10n.badgesParkCourses25Desc;
+    case 'badgesParkComplete1Label':
+      return l10n.badgesParkComplete1Label;
+    case 'badgesParkComplete1Desc':
+      return l10n.badgesParkComplete1Desc;
+    case 'badgesParkComplete3Label':
+      return l10n.badgesParkComplete3Label;
+    case 'badgesParkComplete3Desc':
+      return l10n.badgesParkComplete3Desc;
+    case 'badgesParkComplete10Label':
+      return l10n.badgesParkComplete10Label;
+    case 'badgesParkComplete10Desc':
+      return l10n.badgesParkComplete10Desc;
+    case 'badgesParkPassport1Label':
+      return l10n.badgesParkPassport1Label;
+    case 'badgesParkPassport1Desc':
+      return l10n.badgesParkPassport1Desc;
+    case 'badgesParkPassport3Label':
+      return l10n.badgesParkPassport3Label;
+    case 'badgesParkPassport3Desc':
+      return l10n.badgesParkPassport3Desc;
+    case 'badgesParkPassport10Label':
+      return l10n.badgesParkPassport10Label;
+    case 'badgesParkPassport10Desc':
+      return l10n.badgesParkPassport10Desc;
     default:
       return key;
   }
@@ -156,14 +208,20 @@ String badgeLabelFor(AppLocalizations l10n, String badgeKey, String tier) {
   return t != null ? badgeText(l10n, t.labelKey) : badgeKey;
 }
 
-/// A tier-coloured grid of earned badges. Mirrors the web `BadgeGrid.svelte`
-/// read surface (the read-only mobile twin omits the owner visibility /
-/// share controls — those live on web).
+/// A tier-coloured grid of earned badges. Mirrors the web `BadgeGrid.svelte`:
+/// the owner sees their private badges flagged, and tapping one of their own
+/// opens [onOpen] (the badge share sheet, with the visibility toggle).
 class BadgeGrid extends StatelessWidget {
   final List<AchievementRow> badges;
   final bool isOwner;
+  final ValueChanged<AchievementRow>? onOpen;
 
-  const BadgeGrid({super.key, required this.badges, this.isOwner = false});
+  const BadgeGrid({
+    super.key,
+    required this.badges,
+    this.isOwner = false,
+    this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -184,15 +242,21 @@ class BadgeGrid extends StatelessWidget {
         mainAxisSpacing: 12,
       ),
       itemCount: badges.length,
-      itemBuilder: (context, i) => _BadgeTile(badge: badges[i]),
+      itemBuilder: (context, i) => _BadgeTile(
+        badge: badges[i],
+        showPrivate: isOwner,
+        onTap: isOwner && onOpen != null ? () => onOpen!(badges[i]) : null,
+      ),
     );
   }
 }
 
 class _BadgeTile extends StatelessWidget {
   final AchievementRow badge;
+  final bool showPrivate;
+  final VoidCallback? onTap;
 
-  const _BadgeTile({required this.badge});
+  const _BadgeTile({required this.badge, this.showPrivate = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -200,69 +264,101 @@ class _BadgeTile extends StatelessWidget {
     final theme = Theme.of(context);
     final tierColor = badgeTierColor(badge.tier);
     final tier = tierFor(badge.badgeKey, badge.tier);
-    final label = tier != null ? badgeText(l10n, tier.labelKey) : badge.badgeKey;
+    final label = tier != null
+        ? badgeText(l10n, tier.labelKey)
+        : badge.badgeKey;
     final desc = tier != null ? badgeText(l10n, tier.descKey) : null;
     final icon = badgeIconData(tier?.icon ?? 'military_tech');
     final earned = formatDateMed(badge.earnedAt, activeLocaleTag);
     return Opacity(
       opacity: badge.isPublic ? 1 : 0.72,
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Column(
-          children: [
-            Container(height: 3, color: tierColor),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          // Ink, not a Container, so the tap's splash draws over the ground.
+          child: Ink(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Stack(
+              children: [
+                Column(
                   children: [
-                    Icon(icon, size: 40, color: tierColor),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (desc != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        desc,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                    Container(height: 3, color: tierColor),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Text(
-                      badgeTierLabel(l10n, badge.tier).toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: tierColor,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      l10n.badgesEarnedOn(earned),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(icon, size: 40, color: tierColor),
+                            const SizedBox(height: 6),
+                            Text(
+                              label,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (desc != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                desc,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Text(
+                              badgeTierLabel(l10n, badge.tier).toUpperCase(),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: tierColor,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              l10n.badgesEarnedOn(earned),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                if (showPrivate && !badge.isPublic)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Tooltip(
+                      message: l10n.badgesPrivate,
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        semanticLabel: l10n.badgesPrivate,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import SocialFeed from '$lib/components/SocialFeed.svelte';
-	import SocialPeople from '$lib/components/SocialPeople.svelte';
-	import SocialClubs from '$lib/components/SocialClubs.svelte';
-	import SocialDiscover from '$lib/components/SocialDiscover.svelte';
-	import ChallengesPanel from '$lib/components/ChallengesPanel.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import SocialFeed from '#lib/components/SocialFeed.svelte';
+	import SocialPeople from '#lib/components/SocialPeople.svelte';
+	import SocialClubs from '#lib/components/SocialClubs.svelte';
+	import SocialDiscover from '#lib/components/SocialDiscover.svelte';
+	import ChallengesPanel from '#lib/components/ChallengesPanel.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	type Tab = 'feed' | 'people' | 'clubs' | 'discover' | 'challenges';
 	const TABS: { id: Tab; labelKey: MessageKey; icon: string }[] = [
@@ -21,20 +21,20 @@
 	let tab = $state<Tab>('feed');
 
 	$effect(() => {
-		const t = $page.url.searchParams.get('tab');
+		const t = page.url.searchParams.get('tab');
 		if (t === 'people' || t === 'clubs' || t === 'discover' || t === 'challenges' || t === 'feed') tab = t;
 		else tab = 'feed';
 	});
 
 	function setTab(next: Tab) {
 		if (next === tab) return;
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (next === 'feed') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', next);
 		// Clear the Clubs subtab when leaving Clubs so a back-nav doesn't
 		// re-deep-link into Browse.
 		if (next !== 'clubs') url.searchParams.delete('clubs-sub');
-		goto(url, { replaceState: false, noScroll: true, keepFocus: true });
+		goto(url, { replace: false, reset: false });
 		tab = next;
 	}
 </script>

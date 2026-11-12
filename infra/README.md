@@ -21,9 +21,148 @@ infra/
 
 Each stack has its own remote state in the bucket created by `bootstrap`. State locking is S3-native via `use_lockfile = true` (Terraform ≥ 1.10) — no DynamoDB table required. The `dns` and `github-oidc` outputs are consumed by per-env stacks via `terraform_remote_state`.
 
-**Region.** Everything sits in `us-east-1`. The ACM cert for CloudFront *has* to live there regardless, and putting the rest of the stack alongside it avoids cross-region complexity. The per-env stacks still expose a `us_east_1` provider alias so a future region move only touches the primary region. To deploy somewhere else, change the default in every `aws_region` variable + every `region` field in the `backend.tf` files + the `AWS_REGION` env in `.github/workflows/release-web.yml`.
+**Region.** Everything sits in `us-east-1`. The ACM cert for CloudFront *has* to live there regardless, and putting the rest of the stack alongside it avoids cross-region complexity. The per-env stacks still expose a `us_east_1` provider alias so a future region move only touches the primary region. To deploy somewhere else, change the default in every `aws_region` variable + every `region` field in the `backend.tf` files + the `AWS_REGION` env in `.github/workflows/release-web.yml` — and read the two `aws_cloudfront_*` alarms in `modules/web-stack/alarms.tf`, which deliberately use the DEFAULT provider: CloudFront publishes its metrics only in `us-east-1`, and a CloudWatch alarm's actions must live in the alarm's own region as `aws_sns_topic.alerts` does.
 
 **Cost.** Idle monthly: hosted zone $0.50 + 2 KMS keys $2 + S3 / CloudFront / Lambda well under $1 = **~$3/month**. Plus domain registration if you don't already own one (~$15/year for a `.app`).
+
+## What CI enforces about this tree
+
+Four jobs read `infra/`, none of which needs AWS credentials, and all four
+block a merge. The first three live in `terraform.yml`, which since
+2026-09-04 is a `workflow_call`-only file that `ci.yml`'s `terraform` job
+calls — before that it carried its own path-filtered triggers, which made
+its rows advisory: branch protection requires one context, the `CI gate`
+aggregator in `ci.yml`, and a `needs:` entry cannot name a job in another
+workflow (decisions § 1149). The call is skipped, not run, when a diff
+touches nothing under `infra/` — `ci.yml`'s `changes` job carries the path
+filter that used to sit on the triggers.
+
+| Job (`.github/workflows/…`) | What it proves |
+|---|---|
+| `fmt (whole tree)` (`terraform.yml`, called by `ci.yml`) | `terraform fmt -check -recursive infra`. One pass over every directory, including ones outside the validate matrix — a per-stack `working-directory` reads that stack's own `.tf` files and nothing below them, which left `modules/web-stack` unformatted-checked (decisions § 1111). |
+| `validate` (`terraform.yml`, called by `ci.yml`, one per stack) | `terraform validate` with `-backend=false`. Syntax, provider constraints, reference shapes. **Not** anything about applied state. `modules/web-stack` is not in the matrix — a module taking an aliased provider from its caller cannot be validated standalone — and is validated transitively by both env roots instead (measured: an undeclared-variable reference in the module fails `validate` in `envs/prod`). |
+| `Trivy IaC scan` (`security.yml`, every PR, push and weekly) | Known-bad IaC patterns across the whole tree. Suppressions with rationale live in `.trivyignore` at the repo root. |
+| `infra-guards` (`ci.yml`) | `scripts/check_infra_iam.mjs` + `scripts/check_infra_error_responses.mjs` + `scripts/check_infra_coverage.mjs` + `scripts/check_terraform_lock_platforms.mjs` — see below. |
+
+**`check_infra_iam.mjs`** reads `github-oidc/main.tf` + its `variables.tf`,
+`modules/web-stack/main.tf`, both `envs/<env>/main.tf`, every workflow under
+`.github/workflows/` and every composite action under `.github/actions/`:
+
+- each deploy role's trust policy uses `StringEquals` (never `StringLike`) on a
+  wildcard-free `repo:<owner/repo>:environment:<name>` sub, with `:aud` pinned;
+- the GitHub environments `release-web.yml` can declare are exactly the ones the
+  roles trust, paired through the one `refs/tags/web@` predicate both branch on
+  — the lockstep whose breakage failed the `web@1.0.3` release;
+- no action ending in `:*`, and `Resource = "*"` only for actions declared in the
+  guard's `RESOURCELESS_ACTIONS` with the reason AWS models no resource for them;
+- every resource ARN in a role's policy carries that role's own environment
+  token and none of the other's, so a copy-pasted `prod` in the preview policy
+  fails rather than reading as two tidy blocks;
+- the eight Lambda ARNs in each deploy policy match the module's functions;
+- every Lambda Function URL is `AWS_IAM`-authed and carries **both** CloudFront
+  grants (`lambda:InvokeFunctionUrl` and plain `lambda:InvokeFunction`);
+- no Lambda environment merges the decrypted sops map whole;
+- **no credential reaches a Lambda environment in plaintext.** `environment {
+  variables }` is returned by every API that returns a `FunctionConfiguration`,
+  including `lambda:UpdateFunctionCode`, which the release role holds — so a
+  plaintext key there is readable by anything that can deploy. The coach and
+  generate-route credentials are encrypted at apply time into one
+  `aws_kms_ciphertext` blob per function and decrypted by the handler at cold
+  start ([§ 1671](../docs/architecture/decisions.md)). The guard fails on a
+  plaintext sops key that is not declared non-credential with a reason, on a key
+  that is both encrypted and plaintext, on a blob with no per-function
+  encryption context, on a blob no env reads or two envs share, and on a stale
+  exemption;
+- **no env root makes a principal CI can assume a `kms:Decrypt` principal on the
+  secrets CMK**, while no credentialed workflow job runs `terraform` and no
+  `aws_lambda_function` sets `kms_key_arn` — which none may, because that field
+  makes Lambda hand the decrypted environment back to the same callers and
+  demands the DEPLOY role hold `kms:Decrypt`. The EXECUTION role's identifier in
+  the same statement is checked in the other direction: it was unexercised until
+  § 1671 and is load-bearing now, because it is what decrypts the cold-start
+  blob. Both directions fail: a wire
+  restored while nothing exercises it is standing privilege on the one key whose
+  loss is unrecoverable, and an empty wire once either premise breaks is a
+  release that `AccessDenied`s mid-deploy ([§ 1021](../docs/architecture/decisions.md)).
+  The knob is `kms_decrypt_principal_arn`, which both env roots leave at `""`.
+- the `lambda:` actions on each deploy role equal the set of `aws lambda`
+  operations the workflows actually invoke, derived from their `run:` bodies
+  (comment lines excluded, so a verb cannot justify itself by being mentioned).
+  `GetFunction`, `GetAlias` and `PublishVersion` were granted and exercised by
+  nothing ([§ 1085](../docs/architecture/decisions.md)). A verb a role needs but
+  lacks fails too — that direction is a release that `AccessDenied`s mid-deploy.
+
+**`check_infra_coverage.mjs`** reads the directory listing, `terraform.yml`,
+`.github/dependabot.yml`, the module + its `variables.tf`, `waf.tf` and both
+env roots:
+
+- every directory holding `.tf` is in the terraform workflow's `stack:` matrix
+  (or exempt with the measured reason `validate` cannot run against it) **and**
+  has a `terraform` ecosystem entry in `dependabot.yml`, in both directions;
+- every `aws_lambda_function` in the module carries an error-rate alarm and a
+  p95 alarm, and the distribution carries a 4xx and a 5xx rate alarm;
+- no `custom_error_response` maps a 4xx/5xx to a **2xx**. `custom_error_response`
+  is distribution-wide, so one that does launders every origin's error at once —
+  which is what made ten `/share/*` paths soft 404s. The single legitimate
+  mapping (403 → 200, the SPA deep-link path) is declared in
+  `ALLOWED_STATUS_LAUNDERING` with its reason, and a declared exemption nothing
+  uses fails too ([§ 1022](../docs/architecture/decisions.md));
+
+**`check_infra_error_responses.mjs`** reads the module's distribution and the
+`apps/web/lambda/share-*` handlers together, because the second is the premise
+under the first:
+
+- there is no `custom_error_response` for **404**. The five share Lambdas return
+  the SPA shell at 404 themselves since [§ 1036](../docs/architecture/decisions.md),
+  so the mapping replaced their body with an identical one from S3 minus the
+  `noindex` that lives only in the Lambda body — dropping it is what puts the tag
+  on the wire, and it also stops `/api/coach*`'s JSON 404 being answered as HTML
+  ([§ 1084](../docs/architecture/decisions.md));
+- the **403** mapping is still there and still answers 200. Answering it honestly
+  is the opposite failure: every dynamic client route is a missing S3 key, so a
+  403 the SPA does not absorb breaks the whole app;
+- every share handler still answers its own 404 with `notFoundShell`, derived
+  from the directory listing rather than a list. With the mapping gone, whatever
+  the handler returns is what the reader gets.
+
+- every WAF rate-limit scope-down matching `uri_path` carries a `URL_DECODE`
+  text transformation and no `LOWERCASE`, and no rate-based rule is left with no
+  readable scope-down at all ([§ 1023](../docs/architecture/decisions.md));
+- every routing-engine URL the module takes — derived as a `_url` string input
+  defaulting to `""` — is declared and wired in **every** env root, so preview
+  can be configured the way prod can ([§ 1024](../docs/architecture/decisions.md)).
+
+Each guard has its own `node --test` suite, run in the same job: a source-reading
+guard's failure mode is a parser that silently stops matching and passes
+vacuously, not a false negative. See [decisions.md §§ 889-893](../docs/architecture/decisions.md)
+for what each rule is about, [§§ 1021-1024](../docs/architecture/decisions.md) for
+the four added in round 34, and § 893 for where the guards stop — nothing here
+compares the Terraform against applied state, which needs credentials and a plan.
+
+**`check_terraform_lock_platforms.mjs`** reads every committed
+`.terraform.lock.hcl`. Each provider block must carry an `h1:` hash for each of
+`linux_amd64` (CI, Dependabot), `darwin_arm64` and `darwin_amd64` (operator
+workstations). `init` checks the package it installs against the `h1:` set, so a
+lock carrying only the CI runner's hash made `terraform validate` exit 1 on a Mac
+("the cached package ... does not match any of the checksums recorded in the
+dependency lock file") until `init` rewrote a committed file. An `h1:` does not
+name its platform, so the guard counts distinct ones per block and also requires
+the same provider version to carry the same `h1:` set in every stack that locks
+it; every validated stack must have a lock at all. Dependabot's terraform updater
+re-locks for whichever platforms the existing `h1:` hashes match (it tries
+`linux_amd64`, `darwin_amd64`, `windows_amd64`, `darwin_arm64`, `linux_arm64`),
+so a bump keeps all three — replayed against these locks, not assumed. If a bump
+or a hand re-lock ever strips one, this is the check that goes red. Repair, from
+the stack's directory (an env root needs `terraform get` first, for its local
+module; neither touches credentials or the backend):
+
+```bash
+terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64
+```
+
+Adding a stack means: the directory, an entry in the `stack:` matrix, an entry in
+`dependabot.yml`, and a lock produced by the command above. The guards will tell
+you which one you forgot.
 
 ## First-time deploy
 
@@ -33,7 +172,7 @@ Each stack has its own remote state in the bucket created by `bootstrap`. State 
 > ```bash
 > bin/aws-preflight.sh                                 # confirm tooling + AWS auth
 > bin/deploy-preview.sh                                # apply bootstrap → dns → oidc → preview, idempotent
-> bin/sops-init.sh preview                             # wire KMS ARN into ../infra-secrets + seed running/preview.sops.yaml
+> bin/sops-init.sh preview                             # wire KMS ARN into ../infra-secrets + seed threkir/preview.sops.yaml
 > bin/secret-set.sh preview ANTHROPIC_API_KEY < ~/key  # write the real Anthropic key (stdin, never argv)
 > cd infra/envs/preview && terraform apply             # push the new env var to Lambda
 > bin/preview-status.sh preview                        # health check
@@ -53,7 +192,7 @@ Working from zero — no AWS account, no domain, no AWS CLI:
 
 **0.2 — Domain.** Either register one fresh (Porkbun, Namecheap, Cloudflare Registrar — all fine; you don't need Route 53 to register, only to host DNS) or pick an apex you already own. The default examples use `threkir.com` — search the repo for it and swap if you're using something else. The places that hardcode it are:
 - `infra/dns/` — set `apex_domain` in the committed `infra/dns/terraform.tfvars` (which also carries `email_auth_records`, the Resend DKIM/SPF/MX/DMARC set plus the `default._bimi` sender-logo record — public DNS data, Terraformed so a DR rebuild restores mail deliverability instead of dropping it; the BIMI logo render is gated on DMARC reaching enforcement + a paid VMC, see docs/features/email.md § Sender brand logo)
-- `infra/envs/{preview,prod}/terraform.tfvars` — set `apex_domain` there (canonical copies live in the private estate repo as `../infra-secrets/running/{preview,prod}.tfvars`, symlinked into place — see § 4/5)
+- `infra/envs/{preview,prod}/terraform.tfvars` — set `apex_domain` there (canonical copies live in the private estate repo as `../infra-secrets/threkir/{preview,prod}.tfvars`, symlinked into place — see § 4/5)
 - `infra/envs/preview/variables.tf` + `infra/envs/prod/variables.tf` — `default = "threkir.com"` if you want a fallback
 
 **0.3 — Workstation tooling.**
@@ -61,7 +200,7 @@ Working from zero — no AWS account, no domain, no AWS CLI:
 - Terraform ≥ 1.13 (`dnf install terraform`)
 - AWS CLI v2 (already installed per workstation conventions)
 - sops (already installed; uses age locally + AWS KMS for shared)
-- The PRIVATE estate secrets repo cloned as a sibling of this repo: `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets`. Production sops ciphertext lives there (under `running/`), never in this public repo. Set `INFRA_SECRETS_DIR` / `TF_VAR_secrets_file` if your clone lives elsewhere.
+- The PRIVATE estate secrets repo cloned as a sibling of this repo: `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets`. Production sops ciphertext lives there (under `threkir/`), never in this public repo. Set `INFRA_SECRETS_DIR` / `TF_VAR_secrets_file` if your clone lives elsewhere.
 
 **0.4 — AWS CLI SSO.**
 
@@ -71,14 +210,22 @@ aws configure sso
 # SSO Region: us-east-1
 # default region: us-east-1
 # default output: json
-# profile name: running     (or whatever you want)
+# profile name: threkir     (the commands below assume this name)
 
-aws sso login --profile running
-aws sts get-caller-identity --profile running   # proves it works
+aws sso login --profile threkir
+aws sts get-caller-identity --profile threkir   # proves it works
 
 # Persist the profile choice for future shells:
-echo 'export AWS_PROFILE=running' > ~/.bashrc.d/26-aliases-aws.sh
+echo 'export AWS_PROFILE=threkir' > ~/.bashrc.d/26-aliases-aws.sh
 ```
+
+The committed `.terraform.lock.hcl` in each stack already carries provider
+hashes for Linux and both macOS architectures, so the `terraform init` calls
+below install against it without rewriting it. If `init` or `validate` reports
+a checksum mismatch, or a lock file shows as modified after `init`, your
+platform is missing from the lock: re-lock with the command under
+[What CI enforces](#what-ci-enforces-about-this-tree) and commit that, not the
+`init` rewrite.
 
 ### 1. Bootstrap (one-time — S3 state bucket)
 
@@ -126,12 +273,12 @@ While you're in the GitHub Secrets UI, add the **build-input** secrets too. Thes
 | `PUBLIC_SUPABASE_URL` | Supabase project settings → API → URL | yes |
 | `PUBLIC_SUPABASE_ANON_KEY` | Supabase project settings → API keys → the **`sb_publishable_…`** key (the legacy `anon` JWT still works until legacy keys are disabled; NEVER a secret/`service_role` key) | yes |
 | `PUBLIC_MAPTILER_KEY` | maptiler.com → Account → Keys | yes (maps don't render without it) |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | RevenueCat dashboard → Web Paywall Link (`https://pay.rev.cat/<token>`) | only when Pro is sellable — `PUBLIC_COACH_ENABLED` or `PUBLIC_ROUTE_GEN_ENABLED` truthy (the build guard enforces it then; with both flags unset — the rock-bottom tier — leave it unset too) |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | RevenueCat dashboard → Web Paywall Link (`https://pay.rev.cat/<token>`) | optional — set it to turn web checkout on. Unset with `PUBLIC_COACH_ENABLED` / `PUBLIC_ROUTE_GEN_ENABLED` on sells Pro in the iPhone app only (decisions § 1826; the build guard prints a notice); a set value must be `https://pay.rev.cat/<token>` or the build guard fails |
 | `PUBLIC_COACH_ENABLED` / `PUBLIC_ROUTE_GEN_ENABLED` | set `true` when the coach / route engines go live (decisions §204) | no — leave unset at rock-bottom; unset = Pro not sold, coach UI hidden |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | RevenueCat dashboard → customer portal link | optional (manage-subscription button degrades to a hint) |
 | `PUBLIC_SENTRY_DSN` | Sentry → Settings → Projects → Client Keys (DSN) | optional |
 
-If a secret is unset, the workflow writes an empty string into `.env` and `svelte-check` errors with `Module '$env/static/public' has no exported member 'PUBLIC_X'`. Set the required three before the first deploy.
+If a secret is unset, the workflow writes an empty string into `.env`, and `apps/web/scripts/check_production_env.mjs` refuses the release before the build runs (an empty string satisfies `src/env.ts`'s required declarations, so the build alone would not catch it). Set the required three before the first deploy.
 
 ### 4. Preview env (apply first to flush out config issues against a non-prod blast radius)
 
@@ -141,7 +288,7 @@ cd ../envs/preview
 # are non-secret: publishable key, public URLs, alert emails; the private repo
 # keeps them off public GitHub and makes any workstation deploy-ready). Symlink
 # it in; fall back to cp-from-example only if you're not using the estate repo.
-ln -s ../../../../infra-secrets/running/preview.tfvars terraform.tfvars
+ln -s ../../../../infra-secrets/threkir/preview.tfvars terraform.tfvars
 $EDITOR terraform.tfvars                          # fill in supabase URL + anon key
 terraform init
 terraform apply
@@ -151,11 +298,11 @@ The first apply creates the KMS key, S3 bucket, CloudFront distribution, and Lam
 
 > **Secrets live in the PRIVATE estate repo, NOT here.** This repo is PUBLIC.
 > Production sops ciphertext is committed to `Absence0760/infra-secrets` (cloned
-> as a sibling at `../infra-secrets`), under `running/<env>.sops.yaml` — never
+> as a sibling at `../infra-secrets`), under `threkir/<env>.sops.yaml` — never
 > under `infra/` (a sops file in public history leaks KMS-ARN metadata + secret
 > key names; `infra/.gitignore` blocks it as a fail-safe). The Terraform
 > `sops_file` data source reads the external path via the `secrets_file` var
-> (default `../infra-secrets/running/<env>.sops.yaml`); set `TF_VAR_secrets_file`
+> (default `../infra-secrets/threkir/<env>.sops.yaml`); set `TF_VAR_secrets_file`
 > if your estate clone lives elsewhere. See [decisions.md §53](../docs/architecture/decisions.md) and `infra/.sops.yaml`.
 
 The scripted path does the rest (`bin/sops-init.sh` wires the env's KMS ARN into the estate `.sops.yaml` and seeds the encrypted file; `bin/secret-set.sh` writes a key). The equivalent manual steps for preview:
@@ -163,15 +310,14 @@ The scripted path does the rest (`bin/sops-init.sh` wires the env's KMS ARN into
 ```bash
 ARN=$(terraform output -raw kms_key_arn)                       # from infra/envs/preview
 cd ../../../../infra-secrets                                   # the private estate repo
-sed -i "s|KMS_RUNNING_PREVIEW_ARN_PLACEHOLDER|$ARN|" .sops.yaml
-grep -q 'KMS_RUNNING_PREVIEW_ARN_PLACEHOLDER' .sops.yaml && { echo 'ERROR: estate .sops.yaml still has the preview placeholder'; exit 1; }
-mkdir -p running
+$EDITOR .sops.yaml                                             # set `kms:` on the ^threkir/preview\.sops\.yaml$ rule to $ARN
+mkdir -p threkir
 echo 'ANTHROPIC_API_KEY: sk-ant-...' > /tmp/coach.yaml
 echo 'SUPABASE_SECRET_KEY: sb_secret_...' >> /tmp/coach.yaml   # coach assistant-message persistence (XSS audit H1); without it the coach streams but doesn't save replies. Use the sb_secret_… key (decisions §280), not the legacy service_role JWT
 echo 'SENTRY_DSN: ...' >> /tmp/coach.yaml      # optional
-sops --encrypt /tmp/coach.yaml > running/preview.sops.yaml
+sops --config "$PWD/.sops.yaml" --filename-override "$PWD/threkir/preview.sops.yaml" --output threkir/preview.sops.yaml --encrypt /tmp/coach.yaml   # sops picks the rule by the INPUT's name, so name the target, in full
 shred -u /tmp/coach.yaml
-git add running/preview.sops.yaml .sops.yaml && git commit -m 'running: preview secrets'   # commit in the PRIVATE repo
+git add threkir/preview.sops.yaml .sops.yaml && git commit -m 'threkir: preview secrets'   # commit in the PRIVATE repo
 ```
 
 Re-apply (back in `infra/envs/preview`) to wire the secrets into the Lambda:
@@ -180,6 +326,12 @@ Re-apply (back in `infra/envs/preview`) to wire the secrets into the Lambda:
 cd -    # back to infra/envs/preview
 terraform apply
 ```
+
+The apply encrypts the credential half of the file into
+`aws_kms_ciphertext.coach` / `aws_kms_ciphertext.generate_route` and puts those
+blobs — not the keys — in the two functions' environments. Re-run it after every
+`bin/secret-set.sh`: the blob is a resource, so a changed plaintext is a changed
+blob, and a function still holding the old one decrypts the old value.
 
 ### 5. Prod env
 
@@ -193,24 +345,23 @@ terraform apply
 > apply and/or set the two `*_reserved_concurrency = -1` tfvars overrides while it's pending —
 > full recipe in [deployment_lean.md § Rock-bottom deploy steps](../docs/ops/deployment_lean.md#rock-bottom-deploy-steps).
 
-Same flow, in `envs/prod/` (ciphertext → `../infra-secrets/running/prod.sops.yaml`):
+Same flow, in `envs/prod/` (ciphertext → `../infra-secrets/threkir/prod.sops.yaml`):
 
 ```bash
 cd ../prod
-ln -s ../../../../infra-secrets/running/prod.tfvars terraform.tfvars   # canonical copy in the estate repo (see § 4)
+ln -s ../../../../infra-secrets/threkir/prod.tfvars terraform.tfvars   # canonical copy in the estate repo (see § 4)
 $EDITOR terraform.tfvars
 terraform init
 terraform apply
 ARN=$(terraform output -raw kms_key_arn)
 ( cd ../../../../infra-secrets
-  sed -i "s|KMS_RUNNING_PROD_ARN_PLACEHOLDER|$ARN|" .sops.yaml
-  grep -q 'KMS_RUNNING_PROD_ARN_PLACEHOLDER' .sops.yaml && { echo 'ERROR: estate .sops.yaml still has the prod placeholder'; exit 1; }
-  mkdir -p running
+  $EDITOR .sops.yaml                                           # set `kms:` on the ^threkir/prod\.sops\.yaml$ rule to $ARN
+  mkdir -p threkir
   echo 'ANTHROPIC_API_KEY: sk-ant-...' > /tmp/coach.yaml
   echo 'SUPABASE_SECRET_KEY: sb_secret_...' >> /tmp/coach.yaml   # coach assistant-message persistence (XSS audit H1)
-  sops --encrypt /tmp/coach.yaml > running/prod.sops.yaml
+  sops --config "$PWD/.sops.yaml" --filename-override "$PWD/threkir/prod.sops.yaml" --output threkir/prod.sops.yaml --encrypt /tmp/coach.yaml
   shred -u /tmp/coach.yaml
-  git add running/prod.sops.yaml .sops.yaml && git commit -m 'running: prod secrets' )
+  git add threkir/prod.sops.yaml .sops.yaml && git commit -m 'threkir: prod secrets' )
 terraform apply
 ```
 
@@ -220,7 +371,7 @@ Push a no-op commit to `main` (or push a `web@*` tag for prod) — `.github/work
 
 If the workflow fails with `Could not load credentials from any providers` on the `aws-actions/configure-aws-credentials` step, the GitHub secret for that env's role ARN is missing — re-check step 3.
 
-If it fails on `npm run check` with `Module '$env/static/public' has no exported member 'PUBLIC_X'`, the corresponding `PUBLIC_*` GitHub secret from step 3 is missing.
+If it fails on the production-env check naming a `PUBLIC_*` variable, or the build stops at `env_invalid`, the corresponding `PUBLIC_*` GitHub secret from step 3 is missing.
 
 Once green: visit `preview.<your-apex>` (or `<your-apex>` for prod) and confirm the SvelteKit static site renders.
 
@@ -229,24 +380,22 @@ Once green: visit `preview.<your-apex>` (or `<your-apex>` for prod) and confirm 
 Edit a secret in place (the encrypted file lives in the PRIVATE estate repo):
 
 ```bash
-sops ../infra-secrets/running/prod.sops.yaml      # opens $EDITOR with decrypted YAML
+sops ../infra-secrets/threkir/prod.sops.yaml      # opens $EDITOR with decrypted YAML
 ( cd ../infra-secrets && git commit -am 'running: rotate prod secret' )   # commit in the private repo
-cd infra/envs/prod && terraform apply             # publishes a new Lambda version with the new env
-bin/lambda-alias-sync.sh prod                     # repoint the CI-owned `live` aliases so it actually serves
+bin/deploy-prod.sh                                # applies infra/envs/prod (new Lambda version with the new env) and repoints the CI-owned `live` aliases
 ```
 
-Or non-interactively for one specific key (no shell history leak — value comes via stdin / `--from-file`; `bin/secret-set.sh` writes to `../infra-secrets/running/<env>.sops.yaml`):
+Or non-interactively for one specific key (no shell history leak — value comes via stdin / `--from-file`; `bin/secret-set.sh` writes to `../infra-secrets/threkir/<env>.sops.yaml`):
 
 ```bash
 echo -n "$NEW_VALUE" | bin/secret-set.sh prod ANTHROPIC_API_KEY
 ( cd ../infra-secrets && git commit -am 'running: rotate ANTHROPIC_API_KEY' )
-cd infra/envs/prod && terraform apply
-bin/lambda-alias-sync.sh prod
+bin/deploy-prod.sh
 ```
 
 If you ever change the *KMS key itself* (destroyed + recreated, or moved in the estate `.sops.yaml`), the existing encrypted file still decrypts under the OLD key in its metadata. Re-encrypt under the new key with [`bin/key-rotate.sh`](../bin/README.md). For *AWS-native key material* rotation (`aws kms enable-key-rotation`) no re-encrypt is needed — sops sees the same key alias.
 
-**An env-only apply does not reach the serving path by itself** (issue #590 defect 2). The functions publish on every apply (`publish = true`), but the `live` aliases — which the Function URLs target — are CI-owned (`ignore_changes` in Terraform; `release-web.yml` repoints them on code deploys), so the apply's freshly published version sits unserved while the alias keeps the old version's frozen env snapshot. Run `bin/lambda-alias-sync.sh <env>` after the apply (or cut a release); it repoints each of the eight web Lambdas' `live` alias to its newest published version. In-flight requests finish on the old config; new requests pick up the new value within ~10 s of the repoint.
+**An env-only apply does not reach the serving path by itself** (issue #590 defect 2). The functions publish on every apply (`publish = true`), but the `live` aliases — which the Function URLs target — are CI-owned (`ignore_changes` in Terraform; `release-web.yml` repoints them on code deploys), so the apply's freshly published version sits unserved while the alias keeps the old version's frozen env snapshot. `bin/deploy-env.sh` (behind `deploy-preview` / `deploy-prod`) closes that gap itself: it snapshots every alias before applying `infra/envs/<env>` and runs `bin/lambda-alias-sync.sh <env> --after-apply` afterwards, which repoints each of the eight web Lambdas' `live` alias to its newest published version. An alias that was already behind before the apply is held with a warning, because a rolled-back alias and a forgotten sync look identical and every new version carries the newest code ([decisions § 1825](../docs/architecture/decisions.md)). After a bare `terraform apply` in `infra/envs/<env>`, run `bin/lambda-alias-sync.sh <env>` by hand (or cut a release). In-flight requests finish on the old config; new requests pick up the new value within ~10 s of the repoint.
 
 ## State
 
@@ -254,7 +403,7 @@ Remote state in `s3://threkir-tfstate/`. Locking is S3-native via `use_lockfile 
 
 ## Disaster recovery
 
-If the AWS account itself is gone, see [`apps/web/deployment.md` § Disaster recovery](../apps/web/deployment.md#disaster-recovery) for the rebuild procedure. Important nuance: KMS keys can't be cross-account-recovered, so the existing `../infra-secrets/running/*.sops.yaml` ciphertext is unrecoverable in that scenario (the plaintext is gone with the key) — re-issue the secrets fresh and re-encrypt against the new env's KMS key. The private estate repo is the backup of record for the *encrypted* blobs, but it cannot rescue you from a lost KMS key.
+If the AWS account itself is gone, see [`apps/web/deployment.md` § Disaster recovery](../apps/web/deployment.md#disaster-recovery) for the rebuild procedure. Important nuance: KMS keys can't be cross-account-recovered, so the existing `../infra-secrets/threkir/*.sops.yaml` ciphertext is unrecoverable in that scenario (the plaintext is gone with the key) — re-issue the secrets fresh and re-encrypt against the new env's KMS key. The private estate repo is the backup of record for the *encrypted* blobs, but it cannot rescue you from a lost KMS key.
 
 For an interactive rebuild walkthrough that probes which phases are already done and resumes mid-flow, run [`bin/disaster-recovery.sh`](../bin/README.md) (or `bin/disaster-recovery.sh --status` for a read-only state check).
 

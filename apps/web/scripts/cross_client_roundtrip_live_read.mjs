@@ -12,7 +12,7 @@
 //        .eq('id', id).maybeSingle()        // only present when is_public = true
 //
 //   2. catch-up:   supabase.from('live_run_pings')
-//        .select('lat, lng, distance_m, elapsed_s, at, coarse')
+//        .select('lat, lng, distance_m, elapsed_s, at, coarse, weak_gps')
 //        .eq('run_id', id).order('at', { ascending: true })
 //
 // and asserts field-for-field equality against the fixture the Dart half
@@ -26,7 +26,7 @@
 // round-trip (the view filters `where is_public = true`).
 //
 // Env contract (all required):
-//   SUPABASE_TEST_URL             local stack API url (http://127.0.0.1:54321)
+//   SUPABASE_TEST_URL             local stack API url (http://127.0.0.1:24321)
 //   SUPABASE_TEST_ANON_KEY        local stack anon key
 //   CROSS_CLIENT_LIVE_FIXTURE_IN  path to the fixture JSON the Dart half wrote
 //
@@ -38,11 +38,17 @@
 
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
+/** @import { SupabaseClient } from '@supabase/supabase-js' */
+/** @import { Database } from '../src/lib/database.types.ts' */
 
 const url = process.env.SUPABASE_TEST_URL;
 const anonKey = process.env.SUPABASE_TEST_ANON_KEY;
 const fixturePath = process.env.CROSS_CLIENT_LIVE_FIXTURE_IN;
 
+/**
+ * @param {string} msg
+ * @returns {never}
+ */
 function fail(msg) {
 	console.error(`✗ cross-client live round-trip: ${msg}`);
 	process.exit(1);
@@ -53,7 +59,7 @@ if (!fixturePath) fail('CROSS_CLIENT_LIVE_FIXTURE_IN must point to the fixture J
 
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
 
-const supabase = createClient(url, anonKey);
+const supabase = /** @type {SupabaseClient<Database>} */ (createClient(url, anonKey));
 
 const { data: signIn, error: signInError } = await supabase.auth.signInWithPassword({
 	email: 'runner@test.com',
@@ -72,18 +78,21 @@ const { data: runRow, error: runErr } = await supabase
 if (runErr || !runRow) {
 	fail(`in-progress run ${fixture.run_id} not visible via public_runs: ${runErr?.message ?? 'no row (is_public not true?)'}`);
 }
+// A row with no start instant would make `new Date(...)` read as the epoch and
+// quietly compare that against the fixture.
+if (!runRow.started_at) fail(`public_runs row ${fixture.run_id} carries no started_at`);
 
 // 2) Catch-up read — mirror the live-page ping hydration query exactly:
 //    the same columns, ordered by `at asc`.
 const { data: pings, error: pingErr } = await supabase
 	.from('live_run_pings')
-	.select('lat, lng, distance_m, elapsed_s, at, coarse')
+	.select('lat, lng, distance_m, elapsed_s, at, coarse, weak_gps')
 	.eq('run_id', fixture.run_id)
 	.order('at', { ascending: true });
 if (pingErr || !pings) fail(`live_run_pings read failed for ${fixture.run_id}: ${pingErr?.message ?? 'no rows'}`);
 
-const first = pings[0] ?? {};
-const last = pings.at(-1) ?? {};
+const first = pings.at(0);
+const last = pings.at(-1);
 
 // The Dart ping payload carries `ele`, but the live-page catch-up query does
 // not select it (the spectator map only draws lat/lng + the distance/elapsed
@@ -110,21 +119,26 @@ const checks = [
 	['started_at (instant)', new Date(runRow.started_at).toISOString(), fixture.started_at_iso, 'string'],
 	['stub distance_m', Number(runRow.distance_m ?? -1), fixture.distance_m, 'number'],
 	['ping count', pings.length, fixture.ping_count, 'number'],
-	['first ping lat', first.lat, fixture.first_lat, 'number'],
-	['first ping lng', first.lng, fixture.first_lng, 'number'],
+	['first ping lat', first?.lat, fixture.first_lat, 'number'],
+	['first ping lng', first?.lng, fixture.first_lng, 'number'],
 	['first ping ele', firstEle, fixture.first_ele, 'number'],
-	['first ping distance_m', first.distance_m, fixture.first_distance_m, 'number'],
-	['first ping elapsed_s', first.elapsed_s, fixture.first_elapsed_s, 'number'],
-	['last ping lat', last.lat, fixture.last_lat, 'number'],
-	['last ping lng', last.lng, fixture.last_lng, 'number'],
+	['first ping distance_m', first?.distance_m, fixture.first_distance_m, 'number'],
+	['first ping elapsed_s', first?.elapsed_s, fixture.first_elapsed_s, 'number'],
+	['last ping lat', last?.lat, fixture.last_lat, 'number'],
+	['last ping lng', last?.lng, fixture.last_lng, 'number'],
 	['last ping ele', lastEle, fixture.last_ele, 'number'],
-	['last ping distance_m', last.distance_m, fixture.last_distance_m, 'number'],
-	['last ping elapsed_s', last.elapsed_s, fixture.last_elapsed_s, 'number'],
+	['last ping distance_m', last?.distance_m, fixture.last_distance_m, 'number'],
+	['last ping elapsed_s', last?.elapsed_s, fixture.last_elapsed_s, 'number'],
 	// coarse is trigger-owned, defaults false for an out-of-zone ping, and is
 	// part of the catch-up read shape — assert it round-trips false on every
 	// ping so the spectator never renders a precise live fix as approximate.
-	['first ping coarse', first.coarse, fixture.coarse, 'bool'],
-	['last ping coarse', last.coarse, fixture.coarse, 'bool']
+	['first ping coarse', first?.coarse, fixture.coarse, 'bool'],
+	['last ping coarse', last?.coarse, fixture.coarse, 'bool'],
+	// weak_gps (migration 20271112000030) is the recorder's own flag: the
+	// Dart half publishes the last ping weak, so a spectator draws it as an
+	// approximate position rather than joining it into the line.
+	['first ping weak_gps', first?.weak_gps, fixture.first_weak_gps, 'bool'],
+	['last ping weak_gps', last?.weak_gps, fixture.last_weak_gps, 'bool']
 ];
 
 const failures = [];

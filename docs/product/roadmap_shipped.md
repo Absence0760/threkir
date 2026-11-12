@@ -59,6 +59,8 @@ Persist completed runs locally with distance, duration, average pace, and a map 
 - [x] Edit run title and notes (Android); manual-entry runs also let the user correct distance + duration in the same dialog
 - [x] Share run as GPX (Android)
 - [x] Share run as image card — map + headline stats (Android)
+- [x] Move and resize the stats on a photo share (Android + iOS twin) — drag to move, pinch to resize, double tap or Reset position to restore; clamped inside the canvas and clear of a story's reply bar, kept per aspect, exported where shown (decisions § 2342)
+- [x] Share run on your own photo, or as a transparent stats sticker for a story (Android + iOS twin) — four layouts, three inks, a stat picker with climb and heart rate, story and post sizes, 1080 px exports, Save to Photos, the Threkir mark on every image, and a remembered look; privacy-zone-clipped route outline, decisions § 2248 + § 2250
 - [x] Save a history run as a reusable route (Douglas–Peucker simplified track) (Android)
 - [x] Add a run manually — date/time, duration, distance, optional saved route (Android)
 - [x] Delete runs (Android)
@@ -116,7 +118,11 @@ Persist completed runs locally with distance, duration, average pace, and a map 
 - [x] Standalone workout session (no phone required)
 - [x] Heart rate via HealthKit sensor (live BPM in `RunningView`, `avg_bpm` forwarded in run metadata)
 - [x] Haptic pace alerts (above / below target)
+- [x] Lap markers — a Lap button on the running page, a split list on the post-run summary, and `run.metadata.laps` in the registered per-lap shape via `RunLaps.splits` (the twin of Wear's `buildFinishedLapsList`, trailing-partial gate included). The cumulative marks ride the 15 s crash checkpoint, so a recovered run lands the laps the runner took.
+- [x] Pedometer + `metadata.steps` — `Pedometer.swift` wraps Core Motion's `CMPedometer` behind a per-run baseline (`PedometerMath.stepsSinceBaseline`, Wear's twin); the count is checkpointed and written only when positive, so an unmeasured run omits the key rather than claiming zero. Needs `NSMotionUsageDescription` + the Motion & Fitness grant. **Simulator-unverifiable** — no watchOS simulator has a pedometer, so the sensor half is device-gated.
 - [x] Syncs run data via Watch Connectivity framework — `WatchConnectivityManager.swift` posts gzipped track + metadata via `WCSession.transferFile(_:metadata:)`; the iOS Flutter `WatchIngestBridge` decodes and persists. WatchIngestQueue on the phone side persists pre-auth payloads to disk so a restart between watch transfer and sign-in doesn't lose the run.
+- [x] GPS self-heal retry — `WorkoutManager.selfHealGps` on a 10 s poll, deciding through the pure `GpsHealth.retryTrigger`; plus `didFailWithError` (stops updates on everything but the transient `.locationUnknown`) and `locationManagerDidChangeAuthorization` (restarts them on a grant that lands mid-run). Wear's dead-subscription trigger is deliberately not ported — `CLLocationManager` has no subscription that can die. **Host-tested only**: a simulator cannot wedge CoreLocation, so no real dropout has been observed ([decisions § 1676](../architecture/decisions.md)).
+- [x] Indoor / no-GPS mode (time-only) — the in-run banner reads "No GPS — time only" until a fix lands and "GPS lost" after one does, from `GpsHealth.banner` over the age of the last ACCEPTED fix. The clock always ticked and `writeTrackJSON` already wrote a valid `[]` for a zero-point run, so a treadmill session syncs over `WCSession` unchanged.
 
 ### Wear OS standalone GPS recording
 
@@ -203,6 +209,8 @@ Pure route-geometry helpers (`offRouteDistanceM`, `routeRemainingM`) are ported 
 - [x] Back link to run list
 - [x] Trace animation (replay run as moving dot with animated trace)
 - [x] Comparison against previous runs on same route — `lib/routes/route_history.ts` ports the mobile filter (same `route_id` + same `metadata.activity_type` + > 100 m, sorted by duration); `RouteHistory.svelte` mounts on `/runs/[id]` and renders the PB / "+Δs behind PB" / "Attempt N of M — PB: H:MM:SS" card. 10 unit tests in `lib/routes/route_history.test.ts`.
+- [x] Share a run as a map card, on your own photo, or as a transparent stats sticker (issue #1273 item 2) — the phone's three styles, four layouts, three inks, story and post sizes and stat picker in a web editor on `/runs/[id]`; photo and sticker drawn on a canvas at 1080 px (EXIF never exported, sticker cropped to its content), the map card now signed with the mark and its tile credit, look remembered per browser, decisions § 2258
+- [x] Move and resize the stats on a photo share — pointer drag, the corner grip, a pinch or the wheel, arrow keys and +/- from the keyboard, and Reset position; the PNG is the preview, so the stats export where the editor shows them (decisions § 2342)
 
 ### Account and integrations management
 
@@ -233,10 +241,10 @@ Pure route-geometry helpers (`offRouteDistanceM`, `routeRemainingM`) are ported 
 
 - [x] Supabase config: auth redirect URLs, email confirmations disabled for dev
 - [x] Seed script with test user, runs, routes, integrations
-- [x] `mv_weekly_mileage` materialized view
+- [x] ~~`mv_weekly_mileage` materialized view~~ — shipped, then **dropped unread in `20270530_001`** (decisions § 690)
 - [x] Full-text search index on `routes.name`
 - [x] Composite indexes for dashboard queries (runs by source, distance range)
-- [x] `pg_cron` job to refresh materialized view (every 15 min) — migration `20260602_001_pg_cron_schedules.sql` schedules `refresh materialized view concurrently mv_weekly_mileage` (later bumped from `*/5` to `*/15` in `20260706_001_pg_cron_mv_refresh_15min.sql` after the cost-controls audit flagged the cadence as the dominant Supabase background-compute draw) plus a 15-minute `cleanup_stale_live_run_pings()` sweep that the `20260509_001` follow-up note had pending.
+- [x] `pg_cron` job to refresh materialized view (every 15 min) — migration `20260602_001_pg_cron_schedules.sql` schedules `refresh materialized view concurrently mv_weekly_mileage` (later bumped from `*/5` to `*/15` in `20260706_001_pg_cron_mv_refresh_15min.sql` after the cost-controls audit flagged the cadence as the dominant Supabase background-compute draw) plus a 15-minute `cleanup_stale_live_run_pings()` sweep that the `20260509_001` follow-up note had pending. **The matview refresh half is gone**: `20270530_001` unscheduled it and dropped the unread view; the ping sweep is untouched and still runs.
 - [x] Verify dashboard queries perform under 2 seconds for users with 200+ runs — measured locally at 2074 runs for the seed user (10× the target). `fetchRuns(limit:50)` 0.11 ms via `runs_user_started_at` index scan; `fetchWeeklyMileage` 0.99 ms (seq scan + sort — planner correctly picks seq when the user owns ~all rows); `fetchPersonalRecords` 0.31 ms via the trigger-maintained PR cache. All three queries land ~1000× under the 2 s budget. Indexes already in place from `20260405_001_initial_schema.sql` carry it.
 
 ## Phase 3 — growth and monetisation

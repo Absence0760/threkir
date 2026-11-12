@@ -1,0 +1,426 @@
+/**
+ * Camera-path math for the 3D course flyover (#1270). Pure and deterministic:
+ * the same course and distance always produce the same camera pose, so a
+ * paused frame, a scrubbed frame and a played frame agree.
+ *
+ * Every lookup is a binary search over the precomputed cumulative distances,
+ * because playback asks for a pose every animation frame and an ultra course
+ * carries tens of thousands of points.
+ *
+ * Web-only (decisions §24), so no Dart twin.
+ */
+import { lonDeltaDeg, wrapLonDeg } from './geo';
+import { haversineMetres } from '../runs/run_stats';
+import { MILE_METRES } from '../runs/race_day';
+import { courseDistanceScale } from './official_distance';
+
+export interface PathPoint {
+	lat: number;
+	lng: number;
+	ele: number | null;
+}
+
+export interface FlyoverPath {
+	points: PathPoint[];
+	cumM: number[];
+	totalM: number;
+}
+
+export interface CameraPose {
+	/** Where the camera looks: the course position smoothed over the flight (`frameCentre`). */
+	center: [number, number];
+	/** The course position at the distance itself, where the dot is drawn. */
+	position: [number, number];
+	bearing: number;
+	lookAt: [number, number];
+}
+
+export interface DistanceMarker {
+	label: number;
+	dM: number;
+	lat: number;
+	lng: number;
+}
+
+export const FLYOVER_SPEEDS: readonly number[] = [100, 250, 500, 1000];
+export const DEFAULT_FLYOVER_SPEED_MPS = 250;
+
+const DEFAULT_LOOK_AHEAD_M = 300;
+const DEFAULT_SMOOTHING_M = 400;
+/** The heading window spans this much flight, so at the default 250 m/s it is the 400 m it always was. */
+const SMOOTHING_S = DEFAULT_SMOOTHING_M / DEFAULT_FLYOVER_SPEED_MPS;
+/** A drone pilot's slow yaw; caps the turn per second of flight, whatever the speed (decisions § 2418). */
+export const MAX_TURN_DEG_PER_S = 45;
+/** The camera centre averages this much flight either side of the dot, triangle-weighted (decisions § 2419). */
+const CENTRE_SMOOTHING_S = 1.2;
+const MIN_CENTRE_SMOOTHING_M = 150;
+/** The dot stays within this many CSS px of the frame centre: 20% of a 360 px wide phone, so inside its middle 40%. */
+export const MAX_DOT_OFFSET_PX = 72;
+const DEFAULT_FLIGHT_ZOOM = 14;
+/** MapLibre's 512 px tiles: metres per CSS px at zoom 0 on the equator. */
+const M_PER_PX_Z0 = 40075016.686 / 512;
+const M_PER_DEG_LAT = 111320;
+
+export function buildFlyoverPath(points: readonly PathPoint[]): FlyoverPath {
+	const kept: PathPoint[] = [];
+	const cumM: number[] = [];
+	let total = 0;
+	for (const p of points) {
+		if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+		const ele = p.ele !== null && Number.isFinite(p.ele) ? p.ele : null;
+		const prev = kept[kept.length - 1];
+		if (prev && prev.lat === p.lat && prev.lng === p.lng) {
+			if (prev.ele === null && ele !== null) prev.ele = ele;
+			continue;
+		}
+		if (prev) total += haversineMetres(prev.lat, prev.lng, p.lat, p.lng);
+		kept.push({ lat: p.lat, lng: p.lng, ele });
+		cumM.push(total);
+	}
+	return { points: kept, cumM, totalM: total };
+}
+
+/** Throws on an empty path: there is no position to give, and a made-up one would fly the camera to 0,0. */
+export function pointAtDistance(
+	path: FlyoverPath,
+	dM: number,
+): { lat: number; lng: number; ele: number | null; index: number } {
+	const { points, cumM } = path;
+	if (points.length === 0) throw new RangeError('pointAtDistance: empty flyover path');
+	const d = clampDistance(dM, path.totalM);
+	const last = points.length - 1;
+	if (last === 0 || d >= path.totalM) {
+		const p = points[last];
+		return { lat: p.lat, lng: p.lng, ele: p.ele, index: last };
+	}
+	const i = segmentIndex(cumM, d);
+	const a = points[i];
+	const b = points[i + 1];
+	const segLen = cumM[i + 1] - cumM[i];
+	const t = segLen > 0 ? (d - cumM[i]) / segLen : 0;
+	return {
+		lat: a.lat + (b.lat - a.lat) * t,
+		lng: wrapLonDeg(a.lng + lonDeltaDeg(a.lng, b.lng) * t),
+		ele: lerpNullable(a.ele, b.ele, t),
+		index: i,
+	};
+}
+
+/**
+ * The bearing is the length-weighted average of the path's segment headings
+ * over a window centred on `dM`, summed as unit vectors so a heading of 359°
+ * and one of 1° average to 0° rather than 180°. A short switchback inside the
+ * window cancels out instead of whipping the camera round.
+ *
+ * A reversal longer than the window does not cancel: the summed vector passes
+ * through zero and would flip the camera 180° in a frame, so the smoothed
+ * heading is also turn-rate limited along the course.
+ *
+ * Both are set by `speedMps`, the speed the flight covers the course at: the
+ * window spans `SMOOTHING_S` of flight (never under 400 m) and the turn is
+ * capped at `MAX_TURN_DEG_PER_S` of flight (never over 0.6° a metre). Per
+ * metre alone, an export flying a 50K in 20 s would swing the camera at every
+ * switchback. An explicit `smoothingM` replaces the window; `smoothingM: 0` is
+ * the raw segment heading, unsmoothed and unlimited.
+ *
+ * The centre is smoothed too (`frameCentre`), so a wiggle in the traced line
+ * moves the dot a little in the frame instead of jolting the whole map. The
+ * dot itself is drawn at `position`. `centreSmoothingM: 0` centres on the dot.
+ */
+export function cameraAt(
+	path: FlyoverPath,
+	dM: number,
+	opts: {
+		lookAheadM?: number;
+		smoothingM?: number;
+		speedMps?: number;
+		centreSmoothingM?: number;
+		maxDotOffsetM?: number;
+	} = {},
+): CameraPose {
+	const lookAheadM = nonNegative(opts.lookAheadM, DEFAULT_LOOK_AHEAD_M);
+	const speedMps = flightSpeed(opts.speedMps);
+	const smoothingM = nonNegative(opts.smoothingM, flightSmoothingM(speedMps));
+	const centreM = nonNegative(opts.centreSmoothingM, flightCentreSmoothingM(speedMps));
+	const d = clampDistance(dM, path.totalM);
+	const here = pointAtDistance(path, d);
+	const maxOffsetM = nonNegative(opts.maxDotOffsetM, maxDotOffsetM(DEFAULT_FLIGHT_ZOOM, here.lat));
+	const position: [number, number] = [here.lng, here.lat];
+	const center = frameCentre(path, d, centreM, maxOffsetM);
+	const lookAt = frameCentre(path, Math.min(path.totalM, d + lookAheadM), centreM, maxOffsetM);
+	const bearing =
+		smoothingM > 0 && path.totalM > 0
+			? normalizeBearing(lookupBearing(bearingTable(path, smoothingM, maxTurnDegPerM(speedMps)), d))
+			: windowBearing(path, d, smoothingM, lookAheadM);
+	return { center, position, bearing, lookAt };
+}
+
+/** The centre window at `speedMps`: `CENTRE_SMOOTHING_S` of flight, never under 150 m. */
+export function flightCentreSmoothingM(speedMps: number): number {
+	return Math.max(MIN_CENTRE_SMOOTHING_M, flightSpeed(speedMps) * CENTRE_SMOOTHING_S);
+}
+
+/** How far the frame centre may sit from the dot, in metres, at `zoom` and latitude `lat`. */
+export function maxDotOffsetM(zoom: number, lat: number): number {
+	const cosLat = Math.max(1e-6, Math.cos((lat * Math.PI) / 180));
+	return (MAX_DOT_OFFSET_PX * M_PER_PX_Z0 * cosLat) / 2 ** zoom;
+}
+
+/**
+ * The triangle-weighted mean position of the course over `windowM` centred on
+ * `d`, integrated exactly over the line's segments (Simpson's rule is exact
+ * for a linear weight times a linear position), so it moves smoothly however
+ * the points are spaced. The window shrinks symmetrically near either end, so
+ * the centre is on the start at the start and on the finish at the finish.
+ * Its offset from the dot is squashed by `L·tanh(|o| / L)`, which leaves a
+ * small offset as it is and never reaches `L` (`maxOffsetM`), smoothly.
+ */
+function frameCentre(path: FlyoverPath, d: number, windowM: number, maxOffsetM: number): [number, number] {
+	const here = pointAtDistance(path, d);
+	const h = Math.min(windowM / 2, d, path.totalM - d);
+	const { points, cumM } = path;
+	if (!(h > 0) || points.length < 2) return [here.lng, here.lat];
+	const cosLat = Math.max(1e-6, Math.cos((here.lat * Math.PI) / 180));
+	const lo = d - h;
+	const hi = d + h;
+	let sx = 0;
+	let sy = 0;
+	let sw = 0;
+	const add = (i: number, s: number, coef: number) => {
+		const segLen = cumM[i + 1] - cumM[i];
+		const t = segLen > 0 ? (s - cumM[i]) / segLen : 0;
+		const a = points[i];
+		const b = points[i + 1];
+		const x = (lonDeltaDeg(here.lng, a.lng) + lonDeltaDeg(a.lng, b.lng) * t) * cosLat * M_PER_DEG_LAT;
+		const y = (a.lat + (b.lat - a.lat) * t - here.lat) * M_PER_DEG_LAT;
+		const w = coef * (1 - Math.abs(s - d) / h);
+		sx += w * x;
+		sy += w * y;
+		sw += w;
+	};
+	const piece = (i: number, s0: number, s1: number) => {
+		const len = s1 - s0;
+		if (!(len > 0)) return;
+		add(i, s0, len);
+		add(i, (s0 + s1) / 2, 4 * len);
+		add(i, s1, len);
+	};
+	for (let i = segmentIndex(cumM, lo); i < points.length - 1 && cumM[i] < hi; i++) {
+		const s0 = Math.max(lo, cumM[i]);
+		const s1 = Math.min(hi, cumM[i + 1]);
+		if (s0 < d && d < s1) {
+			piece(i, s0, d);
+			piece(i, d, s1);
+		} else {
+			piece(i, s0, s1);
+		}
+	}
+	if (!(sw > 0)) return [here.lng, here.lat];
+	let ox = sx / sw;
+	let oy = sy / sw;
+	const len = Math.hypot(ox, oy);
+	if (len > 0) {
+		const k = maxOffsetM > 0 && Number.isFinite(maxOffsetM) ? (maxOffsetM * Math.tanh(len / maxOffsetM)) / len : maxOffsetM > 0 ? 1 : 0;
+		ox *= k;
+		oy *= k;
+	}
+	return [wrapLonDeg(here.lng + ox / (cosLat * M_PER_DEG_LAT)), here.lat + oy / M_PER_DEG_LAT];
+}
+
+const BEARING_STEP_M = 5;
+const MAX_TURN_DEG_PER_M = 0.6;
+
+function flightSpeed(speedMps: number | undefined): number {
+	return speedMps !== undefined && Number.isFinite(speedMps) && speedMps > 0 ? speedMps : DEFAULT_FLYOVER_SPEED_MPS;
+}
+
+/** The heading window at `speedMps`: `SMOOTHING_S` of flight, never under 400 m. */
+export function flightSmoothingM(speedMps: number): number {
+	return Math.max(DEFAULT_SMOOTHING_M, flightSpeed(speedMps) * SMOOTHING_S);
+}
+
+/** The turn allowed per metre at `speedMps`: `MAX_TURN_DEG_PER_S` of flight, never over 0.6°. */
+export function maxTurnDegPerM(speedMps: number): number {
+	return Math.min(MAX_TURN_DEG_PER_M, MAX_TURN_DEG_PER_S / flightSpeed(speedMps));
+}
+
+interface BearingTable {
+	stepM: number;
+	totalM: number;
+	deg: Float64Array;
+}
+
+/** Keyed by window and turn limit together: the dialog's speed menu changes both. */
+const bearingTables = new WeakMap<FlyoverPath, Map<string, BearingTable>>();
+
+function bearingTable(path: FlyoverPath, smoothingM: number, turnDegPerM: number): BearingTable {
+	let byKey = bearingTables.get(path);
+	if (!byKey) {
+		byKey = new Map();
+		bearingTables.set(path, byKey);
+	}
+	const key = `${smoothingM}|${turnDegPerM}`;
+	const cached = byKey.get(key);
+	if (cached && cached.totalM === path.totalM) return cached;
+	const table = buildBearingTable(path, smoothingM, turnDegPerM);
+	byKey.set(key, table);
+	return table;
+}
+
+/** Unwrapped degrees at `sampleAt(k)`, so a turn through north is a run of numbers, not a jump from 359 to 0. */
+function buildBearingTable(path: FlyoverPath, smoothingM: number, turnDegPerM: number): BearingTable {
+	const totalM = path.totalM;
+	const n = Math.ceil(totalM / BEARING_STEP_M);
+	const at = (k: number) => Math.min(totalM, k * BEARING_STEP_M);
+	const raw = new Float64Array(n + 1);
+	for (let k = 0; k <= n; k++) {
+		const d = at(k);
+		const deg = windowBearing(path, d, smoothingM, DEFAULT_LOOK_AHEAD_M);
+		raw[k] = k === 0 ? deg : raw[k - 1] + shortestTurn(raw[k - 1], deg);
+	}
+	const forward = new Float64Array(n + 1);
+	forward[0] = raw[0];
+	for (let k = 1; k <= n; k++) {
+		const limit = turnDegPerM * (at(k) - at(k - 1));
+		forward[k] = forward[k - 1] + clampAbs(raw[k] - forward[k - 1], limit);
+	}
+	const backward = new Float64Array(n + 1);
+	backward[n] = raw[n];
+	for (let k = n - 1; k >= 0; k--) {
+		const limit = turnDegPerM * (at(k + 1) - at(k));
+		backward[k] = backward[k + 1] + clampAbs(raw[k] - backward[k + 1], limit);
+	}
+	const deg = new Float64Array(n + 1);
+	for (let k = 0; k <= n; k++) deg[k] = (forward[k] + backward[k]) / 2;
+	return { stepM: BEARING_STEP_M, totalM, deg };
+}
+
+function lookupBearing(table: BearingTable, d: number): number {
+	const { deg, stepM, totalM } = table;
+	const last = deg.length - 1;
+	const k = Math.min(last, Math.floor(d / stepM));
+	if (k >= last) return deg[last];
+	const from = k * stepM;
+	const to = Math.min(totalM, (k + 1) * stepM);
+	const t = to > from ? (d - from) / (to - from) : 0;
+	return deg[k] + (deg[k + 1] - deg[k]) * t;
+}
+
+function windowBearing(path: FlyoverPath, d: number, smoothingM: number, lookAheadM: number): number {
+	let [x, y] = windowHeading(path, d - smoothingM / 2, d + smoothingM / 2);
+	if (x === 0 && y === 0) [x, y] = windowHeading(path, d, d + 1e-6);
+	if (x === 0 && y === 0) {
+		const ahead = pointAtDistance(path, Math.min(path.totalM, d + lookAheadM));
+		[x, y] = planarUnit(pointAtDistance(path, d), ahead);
+	}
+	return toBearing(x, y);
+}
+
+/** Signed degrees in (-180, 180] from `from` to `to`. */
+export function shortestTurn(from: number, to: number): number {
+	const diff = (((to - from) % 360) + 540) % 360 - 180;
+	return diff === -180 ? 180 : diff;
+}
+
+function clampAbs(v: number, limit: number): number {
+	return Math.max(-limit, Math.min(limit, v));
+}
+
+function normalizeBearing(deg: number): number {
+	const b = ((deg % 360) + 360) % 360;
+	return b === 360 ? 0 : b;
+}
+
+/** With an [officialDistanceM], marker k is the course's km k, placed at k / scale along the line. */
+export function distanceMarkers(
+	path: FlyoverPath,
+	unit: 'km' | 'mi',
+	officialDistanceM?: number | null,
+): DistanceMarker[] {
+	const step = unit === 'mi' ? MILE_METRES : 1000;
+	if (path.points.length < 2 || !(path.totalM > 0)) return [];
+	const scale = courseDistanceScale(path.totalM, officialDistanceM);
+	const count = Math.floor((path.totalM * scale) / step + 1e-9);
+	const markers: DistanceMarker[] = [];
+	for (let k = 1; k <= count; k++) {
+		const dM = Math.min((k * step) / scale, path.totalM);
+		const p = pointAtDistance(path, dM);
+		markers.push({ label: k, dM, lat: p.lat, lng: p.lng });
+	}
+	return markers;
+}
+
+/** A negative or non-finite elapsed time or speed moves nothing — a skewed frame clock must not rewind the flight. */
+export function advance(dM: number, elapsedMs: number, speedMps: number, totalM: number): number {
+	if (!Number.isFinite(totalM) || totalM <= 0) return 0;
+	const start = clampDistance(dM, totalM);
+	if (!Number.isFinite(elapsedMs) || !Number.isFinite(speedMps)) return start;
+	const step = Math.max(0, elapsedMs) * Math.max(0, speedMps) / 1000;
+	return Math.min(totalM, start + step);
+}
+
+function clampDistance(dM: number, totalM: number): number {
+	if (Number.isNaN(dM)) return 0;
+	return Math.min(totalM, Math.max(0, dM));
+}
+
+function nonNegative(v: number | undefined, fallback: number): number {
+	return v !== undefined && Number.isFinite(v) ? Math.max(0, v) : fallback;
+}
+
+/** Largest i with cumM[i] <= d, capped so a segment i..i+1 exists. */
+function segmentIndex(cumM: readonly number[], d: number): number {
+	let lo = 0;
+	let hi = cumM.length - 2;
+	while (lo < hi) {
+		const mid = (lo + hi + 1) >> 1;
+		if (cumM[mid] <= d) lo = mid;
+		else hi = mid - 1;
+	}
+	return lo;
+}
+
+function windowHeading(path: FlyoverPath, fromM: number, toM: number): [number, number] {
+	const { points, cumM } = path;
+	if (points.length < 2) return [0, 0];
+	const lo = Math.max(0, fromM);
+	const hi = Math.min(path.totalM, toM);
+	if (!(hi > lo)) return [0, 0];
+	let x = 0;
+	let y = 0;
+	for (let i = segmentIndex(cumM, lo); i < points.length - 1 && cumM[i] < hi; i++) {
+		const overlap = Math.min(hi, cumM[i + 1]) - Math.max(lo, cumM[i]);
+		if (overlap <= 0) continue;
+		const [ux, uy] = planarUnit(points[i], points[i + 1]);
+		x += ux * overlap;
+		y += uy * overlap;
+	}
+	const len = Math.hypot(x, y);
+	return len > 1e-9 ? [x / len, y / len] : [0, 0];
+}
+
+/** Unit vector (east, north) from a to b in a local planar frame; [0, 0] when they coincide. */
+function planarUnit(
+	a: { lat: number; lng: number },
+	b: { lat: number; lng: number },
+): [number, number] {
+	const midLat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
+	const east = lonDeltaDeg(a.lng, b.lng) * Math.cos(midLat) * M_PER_DEG_LAT;
+	const north = (b.lat - a.lat) * M_PER_DEG_LAT;
+	const len = Math.hypot(east, north);
+	return len > 0 ? [east / len, north / len] : [0, 0];
+}
+
+function toBearing(east: number, north: number): number {
+	if (east === 0 && north === 0) return 0;
+	const deg = (Math.atan2(east, north) * 180) / Math.PI;
+	const b = ((deg % 360) + 360) % 360;
+	return b === 360 ? 0 : b;
+}
+
+function lerpNullable(a: number | null, b: number | null, t: number): number | null {
+	if (a === null && b === null) return null;
+	if (a === null) return b;
+	if (b === null) return a;
+	return a + (b - a) * t;
+}

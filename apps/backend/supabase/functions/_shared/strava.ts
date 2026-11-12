@@ -9,7 +9,9 @@
 // in `docs/backend/metadata.md` (the single source of truth for which keys
 // readers can rely on).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import type { DbClient, Json, TablesUpdate } from './database.ts';
+import { type GpsEvent, smoothDistance } from './gps_distance.ts';
+import { KEYSET_WALK_PAGE_SIZE, type KeysetKey, walkKeyset } from './keyset_page.ts';
 
 export type StravaTokens = {
 	access_token: string;
@@ -56,7 +58,7 @@ export type StravaRefreshFailureReason = 'invalid_grant' | 'unauthorized';
 /// so the row isn't retried forever. A 5xx is transient: no callback, the
 /// caller retries next tick.
 export async function refreshStravaToken(
-	supabase: ReturnType<typeof createClient>,
+	supabase: DbClient,
 	userId: string,
 	refreshToken: string,
 	onPermanentFailure?: (reason: StravaRefreshFailureReason) => Promise<void>,
@@ -157,7 +159,7 @@ export async function fetchStravaActivity(
 /// check via metadata.strava_id. Both EFs use this so a webhook fired
 /// during a backfill doesn't double-insert.
 export async function isAlreadyImported(
-	supabase: ReturnType<typeof createClient>,
+	supabase: DbClient,
 	userId: string,
 	stravaId: number,
 ): Promise<boolean> {
@@ -190,19 +192,21 @@ export function isStravaRunFamily(sport: string | null | undefined): boolean {
 /// Insert a Strava activity as a `runs` row + (best-effort) upload its
 /// gzipped GPS track to Storage. Caller is responsible for dedupe.
 ///
-/// Note: `runs` has no `title` or `elevation_m` columns — both live on
+/// Note: `runs` has no `title` column — it lives on
 /// `metadata` per docs/backend/metadata.md (matches the apps/web/src/lib/data.ts
 /// saveRun writer used by the Strava + Garmin ZIP importers).
 export async function ingestActivity(
-	supabase: ReturnType<typeof createClient>,
+	supabase: DbClient,
 	userId: string,
 	accessToken: string,
 	act: StravaActivity,
 	// Honour the user's privacy_default for imported runs (persona #27).
-	// The caller resolves the pref once and passes it; defaults to private
-	// (fail-closed) so a caller that doesn't pass it — e.g. the deprecated
-	// strava-webhook rollback path — never publishes.
+	// The caller resolves the pref once (`_shared/privacy_default.ts`) and
+	// passes both columns; they default to owner-only (fail-closed) so a
+	// caller that doesn't pass them — e.g. the deprecated strava-webhook
+	// rollback path — never widens anything.
 	isPublic = false,
+	followersOnly = false,
 ): Promise<void> {
 	// Reject non-run-family payloads ahead of the insert. The webhook +
 	// backfill paths pre-filter, but a future caller that doesn't (or
@@ -229,7 +233,7 @@ export async function ingestActivity(
 	// downstream pure-TS readers compare against typeof === 'string'.
 	// /audit/strava L3.
 	const stravaId = String(act.id);
-	const metadata: Record<string, unknown> = {
+	const metadata: Record<string, Json> = {
 		strava_id: stravaId,
 		imported_from: 'strava',
 		imported_at: new Date().toISOString(),
@@ -251,12 +255,21 @@ export async function ingestActivity(
 			// longer a metadata key. is_dnf defaults to false at the DB.
 			activity_type: activityType,
 			is_public: isPublic,
+			followers_only: !isPublic && followersOnly,
 			// `external_id = 'strava:<id>'` is the cross-source dedupe key
 			// — same shape mobile ZIP writes. A future unique constraint
 			// on `(user_id, external_id) WHERE external_id IS NOT NULL`
 			// would catch the OAuth-then-ZIP double-import path that
 			// today only `metadata.strava_id` checks against. /audit/strava M3.
 			external_id: `strava:${stravaId}`,
+			// The promoted column the vert challenge aggregate SUMS — it sums
+			// base columns, not the jsonb bag, so writing only
+			// metadata.elevation_m left every vert board at 0 m. 20270302_001's
+			// contract is "writers populate both"; this is the live OAuth ingest
+			// (strava-import + strava-webhook), i.e. the largest population.
+			...(act.total_elevation_gain != null
+				? { elevation_gain_m: Math.round(act.total_elevation_gain) }
+				: {}),
 			metadata,
 		})
 		.select('id')
@@ -271,12 +284,12 @@ export async function ingestActivity(
 	if (act.distance >= 200) {
 		try {
 			const streamResp = await fetch(
-				`https://www.strava.com/api/v3/activities/${act.id}/streams?keys=latlng,altitude,time,heartrate&key_by_type=true`,
+				`https://www.strava.com/api/v3/activities/${act.id}/streams?keys=latlng,altitude,time,heartrate,distance&key_by_type=true`,
 				{ headers: { Authorization: `Bearer ${accessToken}` } },
 			);
 			if (streamResp.ok) {
 				const streams = await streamResp.json();
-				const track = buildTrackFromStreams(streams, act.start_date);
+				const { track, distance } = buildTrackAndDistanceFromStreams(streams, act.start_date);
 				if (track.length >= 2) {
 					await uploadTrack(supabase, userId, runId, track);
 					// Embedded best efforts: a fast 5k/10k inside a long run
@@ -286,8 +299,9 @@ export async function ingestActivity(
 					// stream is materialised — so both `strava-import` and
 					// `strava-webhook` get it off a single fetch. Skipped silently
 					// (no write) when the track is too short to cover any
-					// canonical distance.
-					const bests = computeEmbeddedBests(track);
+					// canonical distance. Measured on Strava's own `distance`
+					// stream when it is usable, the estimator otherwise.
+					const bests = computeEmbeddedBests(track, activityType, distance);
 					if (Object.keys(bests).length > 0) {
 						await supabase
 							.from('runs')
@@ -296,21 +310,58 @@ export async function ingestActivity(
 					}
 				}
 			}
-		} catch (_) {
-			// Swallow — the row is still valid without a track.
+		} catch (err) {
+			// The row is still valid without a track, so this never fails the
+			// import — but it is logged rather than swallowed. Silent, the arm
+			// covered a 404 for an indoor activity (expected, frequent) and a
+			// systematic breakage — a changed streams endpoint, a revoked
+			// Storage grant, a quota — with the same perfect silence, and the
+			// second one loses the GPS trace of every run imported while it
+			// lasts with nothing anywhere recording that it happened.
+			// Message only: an error off PostgREST carries `details`/`hint`
+			// that can echo row values into the shared log aggregator. It is
+			// also not an `Error` — supabase-js resolves `{ error: {...} }` and
+			// `uploadTrack` rethrows that object as it stands — so an
+			// `instanceof` test alone reports every storage and pointer fault
+			// as 'unknown' and the line names no cause at all.
+			console.error('strava ingest: track unavailable for activity', {
+				activityId: act.id,
+				runId,
+				error: errorMessage(err),
+			});
 		}
 	}
 }
 
+type StreamTrackPoint = { lat: number; lng: number; ele?: number; ts?: string; bpm?: number };
+
 export function buildTrackFromStreams(
 	streams: Record<string, { data: unknown[] }>,
 	startIso: string,
-): Array<{ lat: number; lng: number; ele?: number; ts?: string; bpm?: number }> {
+): StreamTrackPoint[] {
+	return buildTrackAndDistanceFromStreams(streams, startIso).track;
+}
+
+/// The sanitised track plus Strava's `distance` stream sample for each point
+/// that survived sanitising, so the two stay index-aligned. `distance` is null
+/// when the response carried no `distance` stream or one of a different
+/// length than `latlng`; a kept point whose sample is not a number gets NaN,
+/// which `deviceCumulativeMetres` then rejects. The distance never reaches
+/// the stored track: it only feeds the embedded bests.
+export function buildTrackAndDistanceFromStreams(
+	streams: Record<string, { data: unknown[] }>,
+	startIso: string,
+): { track: StreamTrackPoint[]; distance: number[] | null } {
 	const latlng = streams.latlng?.data as [number, number][] | undefined;
-	if (!Array.isArray(latlng) || latlng.length === 0) return [];
+	if (!Array.isArray(latlng) || latlng.length === 0) return { track: [], distance: null };
 	const altitude = streams.altitude?.data as number[] | undefined;
 	const time = streams.time?.data as number[] | undefined;
 	const hr = streams.heartrate?.data as number[] | undefined;
+	const rawDistance = streams.distance?.data;
+	const distanceIn = Array.isArray(rawDistance) && rawDistance.length === latlng.length
+		? rawDistance
+		: null;
+	const distanceOut: number[] = [];
 	const startMs = Date.parse(startIso);
 
 	// audit/strava May 2026 High #4 — bounds-check every sample.
@@ -318,7 +369,7 @@ export function buildTrackFromStreams(
 	// _event.go BuildTrackFromStreams: any drift between the EF and
 	// Go path causes the same activity to render differently
 	// depending on which transport ingested it.
-	const out: Array<{ lat: number; lng: number; ele?: number; ts?: string; bpm?: number }> = [];
+	const out: StreamTrackPoint[] = [];
 	let lastTs = -1;
 	for (let i = 0; i < latlng.length; i++) {
 		const pair = latlng[i];
@@ -326,10 +377,7 @@ export function buildTrackFromStreams(
 		const [lat, lng] = pair;
 		if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 		if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
-		const point: { lat: number; lng: number; ele?: number; ts?: string; bpm?: number } = {
-			lat,
-			lng,
-		};
+		const point: StreamTrackPoint = { lat, lng };
 		if (altitude?.[i] != null) {
 			const ele = altitude[i];
 			if (Number.isFinite(ele) && ele >= -500 && ele <= 9000) point.ele = ele;
@@ -355,12 +403,26 @@ export function buildTrackFromStreams(
 		}
 		if (hr?.[i] != null && hr[i] >= 30 && hr[i] <= 230) point.bpm = hr[i];
 		out.push(point);
+		if (distanceIn) {
+			const d = distanceIn[i];
+			distanceOut.push(typeof d === 'number' ? d : NaN);
+		}
 	}
-	return out;
+	return { track: out, distance: distanceIn ? distanceOut : null };
+}
+
+/// The one log-safe field of a thrown value. supabase-js rejects with a plain
+/// `{ message, details, hint, code }` object rather than an `Error`, and only
+/// `message` may reach the shared function-log aggregator — `details` and
+/// `hint` can echo the offending row's values.
+function errorMessage(err: unknown): string {
+	if (err instanceof Error) return err.message;
+	const m = (err as { message?: unknown } | null | undefined)?.message;
+	return typeof m === 'string' && m.length > 0 ? m : 'unknown';
 }
 
 export async function uploadTrack(
-	supabase: ReturnType<typeof createClient>,
+	supabase: DbClient,
 	userId: string,
 	runId: string,
 	track: unknown[],
@@ -375,7 +437,17 @@ export async function uploadTrack(
 			upsert: true,
 		});
 	if (upErr) throw upErr;
-	await supabase.from('runs').update({ track_url: path }).eq('id', runId);
+	// And the pointer, checked. A swallowed error here is the mirror of the
+	// swallowed upload above: the object is in Storage and no row names it, so
+	// every reader shows a run with no trace while the bytes sit there. It is
+	// unrecoverable without operator work — `isAlreadyImported` matches on
+	// `metadata.strava_id`, so the next sync skips the activity and never
+	// retries the pointer.
+	const { error: ptrErr } = await supabase
+		.from('runs')
+		.update({ track_url: path })
+		.eq('id', runId);
+	if (ptrErr) throw ptrErr;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,37 +502,50 @@ export function isCrossProviderDuplicate(
 	return false;
 }
 
-/// A raw `{ started_at, distance_m }` row as PostgREST returns it.
+/// A raw `{ id, started_at, distance_m }` row as PostgREST returns it; `id`
+/// and `started_at` are the walk's cursor.
 export interface RawRunRow {
+	id: string;
 	started_at: string | null;
 	distance_m: number | null;
 }
 
-/// Page size + safety ceiling for `collectRunIdentities`.
-export const RUN_IDENTITY_PAGE_SIZE = 1000;
-export const RUN_IDENTITY_SAFETY_MAX = 50_000;
+/// The order the existing runs are walked in: newest first, `id` breaking a
+/// `started_at` tie so the order is total. Both NOT NULL. The web twin's
+/// `RUN_DEDUPE_ORDER`.
+export const RUN_DEDUPE_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
 
-/// Pull every existing run's start + distance identity across ALL sources by
-/// paging `fetchPage` in `RUN_IDENTITY_PAGE_SIZE` chunks — PostgREST caps an
-/// unbounded SELECT at 1000 rows, so a pro with 1000+ runs would otherwise
-/// compare against an arbitrary slice and re-import duplicates anyway, the
-/// exact failure the cross-provider guard exists to close. Keep in lockstep
-/// with the web twin in `apps/web/src/lib/integrations/garmin_dedupe.ts`.
+/// One keyset page of the existing runs: apply `after` (null on the first
+/// page), sort by `RUN_DEDUPE_ORDER`, take `limit`.
+export type DedupePage<R> = (
+	after: string | null,
+	limit: number,
+) => PromiseLike<{ data: R[] | null; error: unknown }>;
+
+/// Pull every existing run's start + distance identity across ALL sources.
+/// PostgREST caps an unbounded SELECT at 1000 rows, so a pro with 1000+ runs
+/// would otherwise compare against an arbitrary slice and re-import
+/// duplicates anyway — the exact failure the cross-provider guard exists to
+/// close. The read is walked by keyset cursor rather than OFFSET: a sync
+/// changing the history mid-walk would shift an OFFSET page boundary and drop
+/// an identity, and a dropped identity is a run imported twice (decisions
+/// § 1936). A page error ends the walk with what it has rather than throwing.
+/// Keep in lockstep with the web twin in
+/// `apps/web/src/lib/integrations/garmin_dedupe.ts`.
 export async function collectRunIdentities(
-	fetchPage: (from: number, to: number) => PromiseLike<RawRunRow[] | null>,
-	pageSize: number = RUN_IDENTITY_PAGE_SIZE,
-	safetyMax: number = RUN_IDENTITY_SAFETY_MAX,
+	fetchPage: DedupePage<RawRunRow>,
+	pageSize: number = KEYSET_WALK_PAGE_SIZE,
 ): Promise<RunIdentity[]> {
+	const walk = await walkKeyset(RUN_DEDUPE_ORDER, fetchPage, { pageSize });
+	if (!walk.complete) console.warn('collectRunIdentities: the walk ended short', walk.error);
 	const out: RunIdentity[] = [];
-	for (let from = 0; from < safetyMax; from += pageSize) {
-		const data = await fetchPage(from, from + pageSize - 1);
-		if (!data) break;
-		for (const r of data) {
-			const ms = Date.parse(r.started_at ?? '');
-			if (!Number.isFinite(ms)) continue;
-			out.push({ startedAtMs: ms, distanceM: Number(r.distance_m ?? 0) });
-		}
-		if (data.length < pageSize) break;
+	for (const r of walk.rows) {
+		const ms = Date.parse(r.started_at ?? '');
+		if (!Number.isFinite(ms)) continue;
+		out.push({ startedAtMs: ms, distanceM: Number(r.distance_m ?? 0) });
 	}
 	return out;
 }
@@ -476,12 +561,21 @@ export async function collectRunIdentities(
 // in lockstep with `fastestWindowOf` in
 // `apps/mobile_android/lib/run_stats.dart` + `enrichMetadataWithEmbeddedBests`
 // in `apps/mobile_android/lib/embedded_bests.dart` so an imported run's best
-// matches what a live recording of the same effort would write.
+// matches what a live recording of the same effort would write. Windows are
+// measured on the GPS distance estimator's cumulative, not the raw hop-sum.
 // ---------------------------------------------------------------------------
+
+/// The four promoted `runs` columns an embedded best effort can land in.
+/// Typed as columns rather than as strings so a typo in the table below fails
+/// to compile instead of writing a key PostgREST would reject at runtime.
+export type EmbeddedBestColumn = Extract<
+	keyof TablesUpdate<'runs'>,
+	`fastest_${string}_s`
+>;
 
 /// Canonical distances (metres) → runs column. Matches the bracket
 /// midpoints the SQL trigger searches (±2 % wide, so 5000 m exactly).
-export const EMBEDDED_BEST_DISTANCES: ReadonlyArray<readonly [string, number]> = [
+export const EMBEDDED_BEST_DISTANCES: ReadonlyArray<readonly [EmbeddedBestColumn, number]> = [
 	['fastest_5k_s', 5000],
 	['fastest_10k_s', 10000],
 	['fastest_half_marathon_s', 21097.5],
@@ -494,15 +588,31 @@ interface EmbeddedTrackPoint {
 	ts?: string;
 }
 
-function embeddedHaversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+/// The third rail of `haversineMetres`, and the one that has to be a copy: a
+/// Deno Edge Function cannot import from `apps/web/src/lib`, and this module
+/// is what decides the `fastest_*_s` an IMPORTED run lands with while the two
+/// clients decide it for a recorded one. Exported so the twin contract can be
+/// pinned to the last bit rather than described. Expression for expression the
+/// same as `runs/run_stats.ts` and `run_stats.dart`, clamp included — this used
+/// to take the unclamped `atan2` form, and on an evenly-spaced 5 km track the
+/// two forms sum to 5000.000000000002 m and 4999.999999999998 m respectively, so
+/// against a strict window comparison the importer found a 5 km best in a run
+/// the phone found none in (§ 1525).
+export function embeddedHaversineM(
+	lat1: number,
+	lng1: number,
+	lat2: number,
+	lng2: number,
+): number {
 	const r = 6371000;
-	const toRad = Math.PI / 180;
-	const dLat = (lat2 - lat1) * toRad;
-	const dLng = (lng2 - lng1) * toRad;
-	const s1 = Math.sin(dLat / 2);
-	const s2 = Math.sin(dLng / 2);
-	const a = s1 * s1 + Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * s2 * s2;
-	return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	const dLat = ((lat2 - lat1) * Math.PI) / 180;
+	const dLng = ((lng2 - lng1) * Math.PI) / 180;
+	const sinLat = Math.sin(dLat / 2);
+	const sinLng = Math.sin(dLng / 2);
+	const a = sinLat * sinLat +
+		Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * sinLng * sinLng;
+	const clamped = a > 1 ? 1 : a < 0 ? 0 : a;
+	return r * 2 * Math.asin(Math.sqrt(clamped));
 }
 
 function pointMs(p: EmbeddedTrackPoint): number | null {
@@ -511,29 +621,120 @@ function pointMs(p: EmbeddedTrackPoint): number | null {
 	return Number.isFinite(ms) ? ms : null;
 }
 
+/// Relative slack on the window comparison. `cum` is an accumulated sum of
+/// hundreds of great-circle legs, so a track that IS exactly the window
+/// measures a hair either side of it and the strict `<` decided whether a
+/// nominally-10.00 km effort produced a best at all on the last bit. Scaled by
+/// the window rather than absolute, because the drift grows with the sum:
+/// measured, an evenly-spaced 10 km track of 1 000 legs sums to
+/// 9 999.999 999 999 900 m, and the largest relative drift over 20 000 legs of
+/// a marathon window is 9.2e-14. 1e-9 of the marathon window is 42 µm — four
+/// orders of magnitude above that and far below any GPS fix.
+export const WINDOW_TOLERANCE_RATIO = 1e-9;
+
+/// Mirrors `ActivityType.maxSpeedMps` in
+/// packages/core_models/lib/src/activity_type.dart; unknown or absent → run.
+export function maxSpeedMpsForActivity(activityType: string | null | undefined): number {
+	switch (activityType) {
+		case 'walk':
+			return 5;
+		case 'cycle':
+			return 25;
+		case 'hike':
+			return 6;
+		case 'stroller':
+			return 9;
+		default:
+			return 10;
+	}
+}
+
+/// Median of the positive intervals (seconds) between consecutive
+/// timestamped points; 1 when there are none. An even count takes the mean
+/// of the two middle values.
+export function medianFixIntervalS(track: readonly EmbeddedTrackPoint[]): number {
+	const intervals: number[] = [];
+	let prev: number | null = null;
+	for (const p of track) {
+		const ms = pointMs(p);
+		if (ms == null) continue;
+		if (prev != null && ms > prev) intervals.push((ms - prev) / 1000);
+		prev = ms;
+	}
+	if (intervals.length === 0) return 1;
+	intervals.sort((a, b) => a - b);
+	const mid = Math.floor(intervals.length / 2);
+	return intervals.length % 2 === 1 ? intervals[mid] : (intervals[mid - 1] + intervals[mid]) / 2;
+}
+
+/// Distance covered up to each point, replaying the track through the GPS
+/// distance smoother (spec v1.2, docs/features/gps_distance.md) — the same
+/// figure a saved or recomputed run carries. The raw hop-sum is inflated by
+/// GPS noise, so a "5 km" window measured on it closes early and the best
+/// reads too fast. A point without a timestamp carries the previous
+/// cumulative. Lockstep with `estimatorCumulativeMetres` in
+/// apps/web/src/lib/integrations/garmin-fit.ts.
+export function estimatorCumulativeMetres(
+	track: readonly EmbeddedTrackPoint[],
+	maxSpeedMps = 10,
+): number[] {
+	const events: GpsEvent[] = [];
+	const eventOf = new Array<number>(track.length).fill(-1);
+	let t0: number | null = null;
+	for (let i = 0; i < track.length; i++) {
+		const p = track[i];
+		const ms = pointMs(p);
+		if (ms == null) continue;
+		if (t0 == null) t0 = ms;
+		eventOf[i] = events.length;
+		events.push({ type: 'fix', t: (ms - t0) / 1000, lat: p.lat, lng: p.lng });
+	}
+	const cum = smoothDistance(events, maxSpeedMps, medianFixIntervalS(track), null).cumulativeM;
+	const out = new Array<number>(track.length).fill(0);
+	let last = 0;
+	for (let i = 0; i < track.length; i++) {
+		if (eventOf[i] >= 0) last = cum[eventOf[i]];
+		out[i] = last;
+	}
+	return out;
+}
+
 /// Fastest continuous `windowMetres` (whole seconds) anywhere in the track,
 /// or null when the track has < 2 points, is shorter than the window, or has
 /// no timestamped window. Sliding-window with linear interpolation at the
 /// exact distance boundary — the port of Dart's `fastestWindowOf`.
+/// `cumulative`, when given, is the distance up to each point and replaces
+/// the raw haversine hop-sum.
 export function fastestWindowSeconds(
 	track: readonly EmbeddedTrackPoint[],
 	windowMetres: number,
+	cumulative?: readonly number[],
 ): number | null {
 	const n = track.length;
 	if (n < 2 || windowMetres <= 0) return null;
-
-	const cum = new Array<number>(n).fill(0);
-	for (let i = 1; i < n; i++) {
-		cum[i] = cum[i - 1] +
-			embeddedHaversineM(track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+	if (cumulative && cumulative.length !== n) {
+		throw new RangeError(`cumulative has ${cumulative.length} entries for ${n} points`);
 	}
-	if (cum[n - 1] < windowMetres) return null;
+
+	let cum: readonly number[];
+	if (cumulative) {
+		cum = cumulative;
+	} else {
+		const hop = new Array<number>(n).fill(0);
+		for (let i = 1; i < n; i++) {
+			hop[i] = hop[i - 1] +
+				embeddedHaversineM(track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+		}
+		cum = hop;
+	}
+	const covers = windowMetres * (1 - WINDOW_TOLERANCE_RATIO);
+	if (cum[n - 1] < covers) return null;
 
 	let best: number | null = null;
 	let i = 0;
 	for (let j = 1; j < n; j++) {
-		while (i + 1 < j && cum[j] - cum[i + 1] >= windowMetres) i++;
-		if (cum[j] - cum[i] < windowMetres) continue;
+		while (i + 1 < j && cum[j] - cum[i + 1] >= covers) i++;
+		if (cum[j] - cum[i] < covers) continue;
 
 		const ti = pointMs(track[i]);
 		const tj = pointMs(track[j]);
@@ -561,34 +762,75 @@ export function fastestWindowSeconds(
 	return best == null ? null : Math.round(best / 1000);
 }
 
+/// The provider's own per-point distance stream, rebased to 0 at the first
+/// point, or null when it cannot stand in for the estimator: absent, a length
+/// other than the track's, any value missing / non-finite / negative, a step
+/// backwards, or no distance gained at all. It is what the device measured,
+/// so it is preferred over re-estimating from the positions — the same
+/// choice Strava makes. One bad sample rejects the whole stream rather than
+/// splicing two measurements of the same run together. Lockstep with
+/// `deviceCumulativeMetres` in apps/web/src/lib/integrations/garmin-fit.ts.
+export function deviceCumulativeMetres(
+	stream: readonly unknown[] | null | undefined,
+	pointCount: number,
+): number[] | null {
+	if (!Array.isArray(stream) || stream.length !== pointCount || pointCount < 2) return null;
+	const out = new Array<number>(pointCount);
+	let prev = -Infinity;
+	for (let i = 0; i < pointCount; i++) {
+		const v = stream[i];
+		if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v < prev) return null;
+		prev = v;
+		out[i] = v;
+	}
+	const base = out[0];
+	if (!(out[pointCount - 1] > base)) return null;
+	for (let i = 0; i < pointCount; i++) out[i] -= base;
+	return out;
+}
+
 /// Embedded best-effort seconds for every canonical distance the track is
-/// long enough to cover. Returns `{}` (no fake bests) when the track has < 3
-/// points or covers no canonical distance; callers write the result to the
-/// promoted runs columns and skip the write when empty.
+/// long enough to cover. Measured on the provider's distance stream when
+/// `deviceDistance` passes `deviceCumulativeMetres`, otherwise on the
+/// estimator's cumulative with the activity's speed ceiling (run when
+/// absent). Returns `{}` (no fake bests) when the track has < 3 points or
+/// covers no canonical distance; callers write the result to the promoted
+/// runs columns and skip the write when empty.
 export function computeEmbeddedBests(
 	track: readonly EmbeddedTrackPoint[],
-): Record<string, number> {
-	const out: Record<string, number> = {};
+	activityType?: string | null,
+	deviceDistance?: readonly unknown[] | null,
+): Partial<Record<EmbeddedBestColumn, number>> {
+	const out: Partial<Record<EmbeddedBestColumn, number>> = {};
 	if (!Array.isArray(track) || track.length < 3) return out;
+	const cum =
+		deviceCumulativeMetres(deviceDistance, track.length) ??
+		estimatorCumulativeMetres(track, maxSpeedMpsForActivity(activityType));
 	for (const [key, dist] of EMBEDDED_BEST_DISTANCES) {
-		const secs = fastestWindowSeconds(track, dist);
+		const secs = fastestWindowSeconds(track, dist, cum);
 		if (secs != null && secs > 0) out[key] = secs;
 	}
 	return out;
 }
 
-export async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
-	const cs = new (globalThis as any).CompressionStream('gzip');
+/// `Uint8Array<ArrayBuffer>`, not a bare `Uint8Array`: the bare form is backed
+/// by `ArrayBufferLike`, which includes `SharedArrayBuffer`, and neither
+/// `Response` nor `Blob` accepts a view onto shared memory. Every caller
+/// already hands over an `ArrayBuffer`-backed view (`TextEncoder.encode`), so
+/// this narrows the signature to what the body actually requires rather than
+/// promising a width the first line would throw on.
+export async function gzipBytes(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+	const cs = new CompressionStream('gzip');
 	const stream = new Response(data).body!.pipeThrough(cs);
 	const chunks: Uint8Array[] = [];
 	const reader = stream.getReader();
 	while (true) {
 		const { done, value } = await reader.read();
 		if (done) break;
-		chunks.push(value as Uint8Array);
+		chunks.push(value);
 	}
 	const total = chunks.reduce((a, c) => a + c.length, 0);
-	const out = new Uint8Array(total);
+	const out = new Uint8Array(new ArrayBuffer(total));
 	let offset = 0;
 	for (const c of chunks) {
 		out.set(c, offset);

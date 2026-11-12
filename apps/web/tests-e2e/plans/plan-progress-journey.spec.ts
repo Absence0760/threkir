@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan, deleteRun, insertRun, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { browserDayAt } from '../fixtures/dates';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Plan PROGRESS / COMPLETION / ADHERENCE / RE-PLAN journey.
@@ -19,7 +21,7 @@ import { USER_A } from '../fixtures/users';
  *   1. Create via the /plans/new Training wizard (PlanEditor → the
  *      Riegel → VDOT → week-phasing generator → row insert). The seed
  *      has an active plan, so the create flow gates on the
- *      Replace-plan ConfirmDialog; confirm it and land on /plans/[id].
+ *      overlap dialog; Replace and land on /plans/[id].
  *   2. Verify the progress surface on the generated plan: the
  *      progress ring (.progress-ring + .pct), the today card
  *      (section.today), the phase marker (.phase-marker / base→…→taper)
@@ -33,15 +35,15 @@ import { USER_A } from '../fixtures/users';
  *      specs each seed their own throwaway plan for one slice — here
  *      we drive them all on the lifecycle plan.)
  *   4. Complete a workout by MARKING IT DONE in the day-grid modal
- *      (WorkoutEditor → markWorkoutCompleted(manual)). The web
- *      auto-complete-from-run write path is unwired
- *      (auto-complete-from-run.spec.ts), so mark-done is the real UI
- *      completion path. Verify the day flips to .completed and the
+ *      (WorkoutEditor → markWorkoutCompleted(manual)), the completion
+ *      path a runner drives by hand (a same-day run links in the
+ *      database, auto-complete-from-run.spec.ts). Verify the day flips
+ *      to data-status="done" and the
  *      progress ring pct ticks up.
  *   5. Verify the adherence banner renders: the over-running drift
  *      flag (.adherence-flag.drift-over) and the missed-long-run
  *      make-up flag (.adherence-flag.missed-make_up).
- *   6. Exercise the Re-plan flow: "Re-plan remaining weeks" →
+ *   6. Exercise the Re-plan flow: Adjust plan → "Re-plan remaining weeks" →
  *      .replan-preview proposes a make-up on the next long run →
  *      Apply changes → the future long run's target_distance_m is
  *      rewritten (capped to 1.15×).
@@ -51,7 +53,7 @@ import { USER_A } from '../fixtures/users';
  *
  * Cleanup: service-role deletePlan + deleteRun safety net, and the
  * seed's Richmond Half is restored to `active` (the create flow
- * demotes it to take the one-active-plan slot — same restore as
+ * demotes it because its window overlaps the new plan — same restore as
  * plans/create.spec.ts) so downstream specs see it active.
  */
 
@@ -61,6 +63,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 test.describe('plan progress journey', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	let plantedPlanId: string | null = null;
 	const seededRunIds: string[] = [];
@@ -74,7 +80,7 @@ test.describe('plan progress journey', () => {
 			plantedPlanId = null;
 		}
 		// The create flow auto-demotes the seed's active Richmond Half to
-		// `completed` to claim the one-active slot. Restore it so the rest
+		// `completed` because its window overlaps the new plan. Restore it so the rest
 		// of the suite (e.g. /coach active-plan default) is unaffected.
 		await setPlanStatus(SEED_PLAN_ID, 'active').catch(() => {});
 	});
@@ -102,11 +108,9 @@ test.describe('plan progress journey', () => {
 			await expect(submit).toBeEnabled({ timeout: 5_000 });
 			await submit.click();
 
-			// Seed has an active plan → Replace-plan ConfirmDialog gates
-			// the create. Confirm to proceed.
-			const replace = page.locator('.modal.modal-narrow', {
-				hasText: /Replace your active plan/
-			});
+			// The seeded active plan overlaps this window → the overlap
+			// dialog gates the create. Replace to proceed.
+			const replace = page.getByTestId('plan-overlap-dialog');
 			await expect(replace).toBeVisible({ timeout: 5_000 });
 			await replace.getByRole('button', { name: 'Replace plan' }).click();
 
@@ -208,11 +212,14 @@ test.describe('plan progress journey', () => {
 			]);
 
 			// Two real runs inside week 0 summing ~52 km → +30% over the
-			// 40 km plan → the drift-over flag.
+			// 40 km plan → the drift-over flag. Both on a day with no
+			// workout: the database matcher (migration 20270901000001)
+			// would otherwise link one to yesterday's long run and clear
+			// the missed-long flag this spec is about.
 			for (let i = 0; i < 2; i++) {
 				const id = await insertRun({
 					user_id: USER_A.id,
-					started_at: new Date(Date.now() - (i + 1) * DAY_MS).toISOString(),
+					started_at: browserDayAt(-2, 8 + i * 4),
 					distance_m: 26_000,
 					duration_s: 7800
 				});
@@ -234,7 +241,7 @@ test.describe('plan progress journey', () => {
 			};
 			const initialPct = await readPct();
 			expect(initialPct).toBeGreaterThanOrEqual(0);
-			const completedCells = page.locator('.day.completed');
+			const completedCells = page.locator('.day-grid .day[data-status="done"]');
 			const initialCompleted = await completedCells.count();
 
 			// Open today's cell (the only workout scheduled today) and mark
@@ -261,7 +268,11 @@ test.describe('plan progress journey', () => {
 
 		// ── 6. Re-plan flow proposes + applies a make-up ───────────
 		await test.step('re-plan proposes a make-up and Apply rewrites the future long run', async () => {
-			await page.getByRole('button', { name: /Re-plan remaining weeks/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: /Re-plan remaining weeks/ })
+				.click();
 
 			const preview = page.locator('.replan-preview');
 			await expect(preview).toBeVisible({ timeout: 10_000 });

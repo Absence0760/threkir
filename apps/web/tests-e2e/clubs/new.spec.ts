@@ -1,7 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRow } from '../fixtures/db-read';
 
 /**
  * /clubs/new — standalone wrapper around <ClubEditor>.
@@ -68,6 +70,11 @@ test.describe('/clubs/new', () => {
 
 	test.afterEach(async () => {
 		await cleanupPlantedClubs();
+		// Playwright abandons a timed-out test rather than unwinding it, so the
+		// cap test below cannot undo its own plant from the test body: a timeout
+		// between the plant and an in-body `finally` leaves USER_A's counter at
+		// the cap for the rest of the clock hour. decisions § 1554 / § 1606.
+		await resetRateLimit(USER_A.id, 'create_club');
 	});
 
 	test('renders page chrome (kicker, h1, tagline, back link to /social?tab=clubs)', async ({
@@ -104,27 +111,33 @@ test.describe('/clubs/new', () => {
 		await page.getByRole('button', { name: 'Create club' }).click();
 		const { slug, id } = await captureCreatedSlugAndId(page);
 
-		const { data: row } = await admin
-			.from('clubs')
-			.select('name, slug, is_public, join_policy, owner_id, description, location_label')
-			.eq('id', id)
-			.single();
-		expect(row?.name).toBe(name);
-		expect(row?.slug).toBe(slug);
-		expect(row?.is_public).toBe(true);
-		expect(row?.join_policy).toBe('open');
-		expect(row?.owner_id).toBe(USER_A.id);
-		expect(row?.description).toBe('Public + open weekly meetup');
-		expect(row?.location_label).toBe('Sydney, AU');
+		const row = await readRow(
+			'clubs by id',
+			admin
+				.from('clubs')
+				.select('name, slug, is_public, join_policy, owner_id, description, location_label')
+				.eq('id', id)
+				.single()
+		);
+		expect(row.name).toBe(name);
+		expect(row.slug).toBe(slug);
+		expect(row.is_public).toBe(true);
+		expect(row.join_policy).toBe('open');
+		expect(row.owner_id).toBe(USER_A.id);
+		expect(row.description).toBe('Public + open weekly meetup');
+		expect(row.location_label).toBe('Sydney, AU');
 
-		const { data: member } = await admin
-			.from('club_members')
-			.select('role, status')
-			.eq('club_id', id)
-			.eq('user_id', USER_A.id)
-			.single();
-		expect(member?.role).toBe('owner');
-		expect(member?.status).toBe('active');
+		const member = await readRow(
+			'club_members by club_id+user_id',
+			admin
+				.from('club_members')
+				.select('role, status')
+				.eq('club_id', id)
+				.eq('user_id', USER_A.id)
+				.single()
+		);
+		expect(member.role).toBe('owner');
+		expect(member.status).toBe('active');
 	});
 
 	test('public + approval (request) round-trip persists join_policy=request', async ({
@@ -145,14 +158,17 @@ test.describe('/clubs/new', () => {
 		await page.getByRole('button', { name: 'Create club' }).click();
 		const { id } = await captureCreatedSlugAndId(page);
 
-		const { data: row } = await admin
-			.from('clubs')
-			.select('is_public, join_policy, invite_token')
-			.eq('id', id)
-			.single();
-		expect(row?.is_public).toBe(true);
-		expect(row?.join_policy).toBe('request');
-		expect(row?.invite_token).toBeNull();
+		const row = await readRow(
+			'clubs by id',
+			admin
+				.from('clubs')
+				.select('is_public, join_policy, invite_token')
+				.eq('id', id)
+				.single()
+		);
+		expect(row.is_public).toBe(true);
+		expect(row.join_policy).toBe('request');
+		expect(row.invite_token).toBeNull();
 	});
 
 	test('private → join_policy auto-coerced to invite + invite_token generated', async ({
@@ -176,15 +192,18 @@ test.describe('/clubs/new', () => {
 		await page.getByRole('button', { name: 'Create club' }).click();
 		const { id } = await captureCreatedSlugAndId(page);
 
-		const { data: row } = await admin
-			.from('clubs')
-			.select('is_public, join_policy, invite_token')
-			.eq('id', id)
-			.single();
-		expect(row?.is_public).toBe(false);
-		expect(row?.join_policy).toBe('invite');
-		expect(typeof row?.invite_token).toBe('string');
-		expect((row?.invite_token as string).length).toBeGreaterThan(16);
+		const row = await readRow(
+			'clubs by id',
+			admin
+				.from('clubs')
+				.select('is_public, join_policy, invite_token')
+				.eq('id', id)
+				.single()
+		);
+		expect(row.is_public).toBe(false);
+		expect(row.join_policy).toBe('invite');
+		expect(typeof row.invite_token).toBe('string');
+		expect((row.invite_token as string).length).toBeGreaterThan(16);
 	});
 
 	test('toggling Private then Public coerces join_policy back to open', async ({
@@ -212,14 +231,17 @@ test.describe('/clubs/new', () => {
 		await page.getByRole('button', { name: 'Create club' }).click();
 		const { id } = await captureCreatedSlugAndId(page);
 
-		const { data: row } = await admin
-			.from('clubs')
-			.select('is_public, join_policy, invite_token')
-			.eq('id', id)
-			.single();
-		expect(row?.is_public).toBe(true);
-		expect(row?.join_policy).toBe('open');
-		expect(row?.invite_token).toBeNull();
+		const row = await readRow(
+			'clubs by id',
+			admin
+				.from('clubs')
+				.select('is_public, join_policy, invite_token')
+				.eq('id', id)
+				.single()
+		);
+		expect(row.is_public).toBe(true);
+		expect(row.join_policy).toBe('open');
+		expect(row.invite_token).toBeNull();
 	});
 
 	test('slug is derived from the name and visiting /clubs/[slug] resolves', async ({
@@ -307,23 +329,17 @@ test.describe('/clubs/new', () => {
 			count: 5,
 		});
 
-		try {
-			await page.goto('/clubs/new');
-			await page.locator('input[type="text"]').first().fill(uniqueName('e2e-cap'));
-			await page.getByRole('button', { name: 'Create club' }).click();
+		await page.goto('/clubs/new');
+		await page.locator('input[type="text"]').first().fill(uniqueName('e2e-cap'));
+		await page.getByRole('button', { name: 'Create club' }).click();
 
-			const errorToast = page.locator('.toast-error');
-			await expect(errorToast).toBeVisible({ timeout: 10_000 });
-			await expect(errorToast).toHaveText(/creating clubs too quickly/i);
-			// Negative pin: the old fallback wording must not appear.
-			await expect(page.getByText('Failed to create club')).toHaveCount(0);
-		} finally {
-			await admin
-				.from('rate_limits')
-				.delete()
-				.eq('user_id', USER_A.id)
-				.eq('bucket', 'create_club');
-		}
+		const errorToast = page.locator('.toast-error');
+		await expect(errorToast).toBeVisible({ timeout: 10_000 });
+		await expect(errorToast).toHaveText(/creating clubs too quickly/i);
+		// Negative pin: the old fallback wording must not appear.
+		await expect(page.getByText('Failed to create club')).toHaveCount(0);
+		// The plant is undone in test.afterEach, not here: a timeout in this
+		// body skips a `finally` and leaves the counter at the cap.
 	});
 
 	test('Cancel button returns to /social?tab=clubs without planting a row', async ({

@@ -10,22 +10,31 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill, StatusPillSize;
 
-import '../auth_error.dart';
 import '../distance_bands.dart';
 import '../geocoding.dart';
 import '../heatmap_clustering.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../preferences.dart' show formatDistanceForPref;
+import '../preferences.dart'
+    show formatDistanceForPref, formatElevationForPref;
+import '../quiet_location.dart';
+import '../route_surface_label.dart';
 import '../widgets/live_run_map.dart'
     show
         basemapTileLayer,
         basemapVoidColour,
         currentBasemapIsDark,
-        currentTileUrl;
+        currentTileUrl,
+        mapHoverLine,
+        mapPinnedLine,
+        solidMapLine;
+import '../last_map_view.dart';
 import '../widgets/map_attribution.dart';
+import '../park_course_routes.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/place_search_panel.dart';
+import '../race_service.dart';
 import 'public_route_screen.dart';
+import 'race_detail_screen.dart';
 
 /// Route-discovery browser. Mobile mirror of the web RouteHeatmap.svelte
 /// surface (web keeps its desktop sidebar — this is a deliberate
@@ -36,16 +45,19 @@ import 'public_route_screen.dart';
 /// draws just that route's line + shows a compact card (the touch-device
 /// equivalent of web's hover preview). Nothing permanently covers the
 /// map. Backed by `heatmap_points_in_bbox`, `discoverable_routes_in_bbox`,
-/// and `clubs_in_bbox`.
+/// `clubs_in_bbox` and `upcoming_races_in_bbox` (verified races in the next
+/// ~6 months; a tap opens the race).
 ///
 /// Navigation:
 ///   * AppBar search field — MapTiler geocoding place search.
 ///   * AppBar Filters button — lens (popular/friends/featured/hidden
 ///     gems) + multi-select race-distance bands (5K/10K/Half/Marathon/
 ///     Ultra), with an active-filter badge.
-///   * Locate-me FAB — Geolocator current-position fix at zoom 14. The
+///   * Locate-me FAB — a browse fix (`locateForBrowse`) at zoom 14. The
 ///     map also auto-centres on the user's location once on open (until
-///     they pan), rather than sitting at the neutral London default.
+///     they pan). Until a fix lands, and when none does, it opens on the
+///     view it was last left on (`last_map_view.dart`); with neither, it
+///     widens to the route data.
 class RoutesHeatmapScreen extends StatefulWidget {
   final ApiClient api;
 
@@ -66,6 +78,10 @@ class RoutesHeatmapScreen extends StatefulWidget {
   /// MapController. Production callers leave null (city-scale default).
   final double? initialZoom;
 
+  /// Test seam — replaces pushing the race detail screen when a race pin's
+  /// sheet opens its race. Production callers leave null.
+  final void Function(BuildContext context, String raceId)? openRaceOverride;
+
   const RoutesHeatmapScreen({
     super.key,
     required this.api,
@@ -73,6 +89,7 @@ class RoutesHeatmapScreen extends StatefulWidget {
     this.locateFn,
     this.backgroundLocateFn,
     this.initialZoom,
+    this.openRaceOverride,
   });
 
   @override
@@ -85,10 +102,18 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
 
   List<cm.HeatmapPoint> _points = const [];
   List<cm.DiscoverableRoutePin> _pins = const [];
+  late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup(
+    (ids) => widget.api.fetchParkCourseRouteIds(ids),
+  );
   List<cm.ClubPin> _clubs = const [];
+  List<cm.UpcomingRacePin> _races = const [];
 
-  /// Discovery lens: 'popular' (default) | 'friends' | 'featured' |
-  /// 'hidden_gems'. Mirrors the web DiscoverFilter union.
+  /// Upcoming verified race pins, on by default like the club pins; off
+  /// skips the fetch.
+  bool _showRaces = true;
+
+  /// Discovery lens: 'popular' (default) | 'official' | 'friends' |
+  /// 'featured' | 'hidden_gems'. Mirrors the web DiscoverFilter union.
   String _filter = 'popular';
 
   /// Selected race-distance band keys (multi-select). Empty = no filter.
@@ -137,6 +162,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   /// so the multiple give-up paths don't widen the camera more than once.
   bool _dataFallbackStarted = false;
 
+  /// Where the map was last left, read once on open. The camera opens there
+  /// while a fix is pending and stays there when none arrives.
+  MapView? _savedView;
+
+  /// The camera as of the last map event, saved as the next visit's
+  /// [_savedView] when the screen closes.
+  MapCamera? _lastCamera;
+
   /// Pixel radius for merging pins into a cluster at the current zoom.
   static const double _clusterRadiusPx = 50.0;
 
@@ -145,6 +178,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
 
   static const List<String> _lenses = [
     'popular',
+    'official',
     'friends',
     'featured',
     'hidden_gems',
@@ -153,6 +187,8 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   String _lensLabel(String key) {
     final l10n = AppLocalizations.of(context);
     switch (key) {
+      case 'official':
+        return l10n.heatmapLensOfficial;
       case 'friends':
         return l10n.heatmapLensFriends;
       case 'featured':
@@ -183,13 +219,29 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadSavedView());
     unawaited(_backgroundLocate());
+  }
+
+  /// Read beside the location fix rather than ahead of it, so a slow or
+  /// failing preferences read never holds up centring on the runner.
+  Future<void> _loadSavedView() async {
+    final saved = await loadLastBrowseMapView();
+    if (!mounted || saved == null) return;
+    _savedView = saved;
+    _openOnSavedView();
   }
 
   @override
   void dispose() {
+    final camera = _lastCamera;
+    if (camera != null && (_didInitialFit || _userMovedMap)) {
+      unawaited(
+          saveLastBrowseMapView((center: camera.center, zoom: camera.zoom)));
+    }
     _debounce?.cancel();
     _searchDebounce?.cancel();
+    _parkCourses.dispose();
     _searchCtl.dispose();
     super.dispose();
   }
@@ -224,12 +276,25 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
         maxLng: bounds.east,
         maxLat: bounds.north,
       );
+      final races = _showRaces
+          ? await widget.api.fetchUpcomingRacesInBbox(
+              minLng: bounds.west,
+              minLat: bounds.south,
+              maxLng: bounds.east,
+              maxLat: bounds.north,
+              officialOnly: _filter == 'official',
+            )
+          : const <cm.UpcomingRacePin>[];
       if (!mounted) return;
       setState(() {
         _points = heat;
         _pins = pins;
         _clubs = clubs;
+        _races = races;
       });
+      unawaited(
+        _parkCourses.check(pins.where((p) => p.official).map((p) => p.id)),
+      );
       // If geolocation has already bowed out, frame the view on this
       // freshly-loaded data (no-op once the view has been framed).
       _fitToPins();
@@ -310,15 +375,17 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                 title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Row(
                   children: [
+                    if (p.official) _OfficialMark(routeId: p.id, lookup: _parkCourses),
                     if (bandForDistance(p.distanceM) != null)
                       _bandBadge(bandForDistance(p.distanceM)!.label),
                     Flexible(
                       child: Text(
                         <String>[
                           formatDistanceForPref(p.distanceM),
-                          if (p.surface.isNotEmpty) p.surface,
+                          if (p.surface.isNotEmpty)
+                            routeSurfaceLabel(AppLocalizations.of(ctx), p.surface),
                           if (p.runCount > 0)
-                            '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+                            AppLocalizations.of(ctx).routeDetailRunCount(p.runCount),
                         ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -401,6 +468,62 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     });
   }
 
+  Future<void> _showRaceSheet(cm.UpcomingRacePin race) async {
+    final l10n = AppLocalizations.of(context);
+    final meta = [
+      race.raceDate,
+      if (race.distanceM != null)
+        formatDistanceForPref(race.distanceM!.toDouble()),
+    ].join(' · ');
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                race.name.isEmpty ? l10n.heatmapRaceFallbackName : race.name,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(meta, style: Theme.of(ctx).textTheme.bodyMedium),
+              if ((race.locationLabel ?? '').isNotEmpty)
+                Text(race.locationLabel!,
+                    style: Theme.of(ctx).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              FilledButton(
+                key: const ValueKey('heatmap-race-view'),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _openRace(race.id);
+                },
+                child: Text(l10n.heatmapViewRace),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openRace(String raceId) {
+    final override = widget.openRaceOverride;
+    if (override != null) {
+      override(context, raceId);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => RaceDetailScreen(
+        service: RaceService(api: widget.api),
+        listingId: raceId,
+      ),
+    ));
+  }
+
   Future<void> _openFilterSheet() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -468,6 +591,17 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                           _refresh();
                         },
                       ),
+                      FilterChip(
+                        key: const ValueKey('heatmap-race-pins-chip'),
+                        label: Text(AppLocalizations.of(context)
+                            .heatmapUpcomingRaces),
+                        selected: _showRaces,
+                        onSelected: (_) {
+                          setState(() => _showRaces = !_showRaces);
+                          setSheet(() {});
+                          _refresh();
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -505,7 +639,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       final ll = LatLng(pos.latitude, pos.longitude);
       _mapController.move(ll, 14);
@@ -516,7 +650,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       debugPrint('heatmap location unavailable: $e');
       if (!mounted) return;
       showTopBanner(
-          context, AppLocalizations.of(context).heatmapLocationUnavailable(friendlyError(AppLocalizations.of(context), e)));
+          context, AppLocalizations.of(context).heatmapLocationUnavailable(browseLocateErrorText(AppLocalizations.of(context), e)));
     }
   }
 
@@ -539,33 +673,18 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       }
       return;
     }
-    if (kIsWeb) {
-      _giveUpOnLocate();
-      return;
-    }
-    try {
-      final perm = await Geolocator.checkPermission();
-      if (perm != LocationPermission.always &&
-          perm != LocationPermission.whileInUse) {
-        _giveUpOnLocate();
-        return;
-      }
-      // Fast path: a cached fix centres the map instantly so it doesn't
-      // open on London and then jump once the fresh fix lands.
-      final last = await Geolocator.getLastKnownPosition();
-      if (last != null && mounted) {
-        setState(() => _userLatLng = LatLng(last.latitude, last.longitude));
-        _maybeAutoCenter();
-      }
-      final pos = await Geolocator.getCurrentPosition()
-          .timeout(const Duration(seconds: 5));
+    // The cached fix lands first, so the map does not open on the default
+    // view and then jump once the fresh fix arrives. No fix at all (denied,
+    // services off, timed out): the FAB is the user-initiated retry, and the
+    // map falls back to the data view.
+    var located = false;
+    await for (final pos in quietPositionFixes()) {
       if (!mounted) return;
+      located = true;
       setState(() => _userLatLng = LatLng(pos.latitude, pos.longitude));
       _maybeAutoCenter();
-    } catch (_) {
-      // The FAB is the user-initiated retry; fall back to the data view.
-      _giveUpOnLocate();
     }
+    if (!located && mounted) _giveUpOnLocate();
   }
 
   /// The on-open auto-locate won't frame the map (denied / unavailable /
@@ -590,7 +709,26 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       return;
     }
     _dataFallbackStarted = true;
-    _mapController.move(const LatLng(30, 0), 2);
+    final saved = _savedView;
+    if (saved != null) {
+      _mapController.move(saved.center, saved.zoom);
+      _didInitialFit = true;
+    } else {
+      _mapController.move(const LatLng(30, 0), 2);
+    }
+    _refresh();
+  }
+
+  /// Moves to [_savedView] while the on-open fix is still pending, so the
+  /// map does not sit on the London default in the meantime, or after the
+  /// locate has already given up and widened to the world.
+  void _openOnSavedView() {
+    final saved = _savedView;
+    if (saved == null || !_mapReady || _userMovedMap || _didInitialFit) {
+      return;
+    }
+    _mapController.move(saved.center, saved.zoom);
+    if (_wantDataFit) _didInitialFit = true;
     _refresh();
   }
 
@@ -628,23 +766,6 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     _didInitialFit = true;
     _refresh();
     return true;
-  }
-
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Locate unavailable on web');
-    }
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   Future<void> _onSearchChanged(String query) async {
@@ -740,6 +861,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
               initialZoom: widget.initialZoom ?? 11,
               onMapReady: () {
                 _mapReady = true;
+                _lastCamera = _mapController.camera;
                 // If a fix already arrived, open centred on it. If the
                 // locate already gave up, widen to the data view. Otherwise
                 // load the default view while a fix is still pending.
@@ -748,9 +870,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                   _startDataFallback();
                   return;
                 }
+                final saved = _savedView;
+                if (saved != null) {
+                  _mapController.move(saved.center, saved.zoom);
+                }
                 _refresh();
               },
               onPositionChanged: (pos, hasGesture) {
+                _lastCamera = pos;
                 if (hasGesture) {
                   _userMovedMap = true;
                   _scheduleRefresh();
@@ -774,48 +901,28 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       ),
                   ],
                 ),
-              // Pinned ("kept") route lines — violet, distinct from the
-              // cyan preview, drawn below it and persistent until unpinned.
-              // Cartographic, like the cyan and the casing under both: chosen
-              // against arbitrary basemap tiles, so it is a fixed hex on the
-              // MAP and nowhere else. The chrome that names the same state
-              // takes `colorScheme.primary`, which is measured per brightness.
+              // Pinned ("kept") route lines, distinct from the preview, drawn
+              // below it and persistent until unpinned. Both take web's
+              // basemap-aware rungs (`mapPinnedLine` / `mapHoverLine`) over the
+              // shared casing: the fixed dark-map hexes held under 3:1 on a
+              // light basemap.
               if (_pinnedIds.isNotEmpty)
                 PolylineLayer(
                   key: const ValueKey('heatmap-pinned-routes'),
                   polylines: [
                     for (final id in _pinnedIds)
-                      if (_geomCache[id] != null) ...[
-                        Polyline(
-                          points: _geomCache[id]!,
-                          strokeWidth: 6,
-                          color: const Color(0x731E293B),
-                        ),
-                        Polyline(
-                          points: _geomCache[id]!,
-                          strokeWidth: 3.5,
-                          color: const Color(0xFF8B5CF6),
-                        ),
-                      ],
+                      if (_geomCache[id] != null)
+                        ...solidMapLine(_geomCache[id]!,
+                            mapPinnedLine(darkBasemap: darkBasemap)),
                   ],
                 ),
               // The previewed route's line — hidden until a pin / row is
-              // tapped. Dark casing + cyan body, matching web.
+              // tapped.
               if (_selectedLine != null)
                 PolylineLayer(
                   key: const ValueKey('heatmap-selected-route'),
-                  polylines: [
-                    Polyline(
-                      points: _selectedLine!,
-                      strokeWidth: 7,
-                      color: const Color(0x731E293B),
-                    ),
-                    Polyline(
-                      points: _selectedLine!,
-                      strokeWidth: 4,
-                      color: const Color(0xFF22D3EE),
-                    ),
-                  ],
+                  polylines: solidMapLine(
+                      _selectedLine!, mapHoverLine(darkBasemap: darkBasemap)),
                 ),
               // Halo ring under the selected route's start dot.
               if (_selectedPin != null)
@@ -825,8 +932,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       point: LatLng(_selectedPin!.lat, _selectedPin!.lng),
                       radius: 16,
                       useRadiusInMeter: false,
-                      color: const Color(0x2922D3EE),
-                      borderColor: const Color(0xFF22D3EE),
+                      color: mapHoverLine(darkBasemap: darkBasemap)
+                          .withValues(alpha: 0.16),
+                      borderColor: mapHoverLine(darkBasemap: darkBasemap),
                       borderStrokeWidth: 2,
                     ),
                   ],
@@ -839,10 +947,33 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       point: LatLng(club.lat, club.lng),
                       width: 18,
                       height: 18,
-                      child: const _ClubPinDot(),
+                      child: _ClubPinDot(verified: club.isVerified),
                     ),
                 ],
               ),
+              // Upcoming verified race pins (violet); a tap opens the race's
+              // card.
+              if (_showRaces)
+                MarkerLayer(
+                  markers: [
+                    for (final race in _races)
+                      Marker(
+                        key: ValueKey('heatmap-race-pin-${race.id}'),
+                        point: LatLng(race.lat, race.lng),
+                        width: 48,
+                        height: 48,
+                        child: Semantics(
+                          button: true,
+                          label: race.name,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _showRaceSheet(race),
+                            child: _RacePinDot(official: race.official),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               // Clustered route pins — rebuilds on every camera change so
               // clusters break apart as you zoom in.
               Builder(
@@ -878,7 +1009,6 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                   ],
                 ),
-              MapAttribution(darkBasemap: darkBasemap),
             ],
           ),
           // Search-results dropdown — overlays without pushing content.
@@ -924,11 +1054,15 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                     child: _selectedPin != null
                         ? _selectionCard(_selectedPin!)
                         : Center(child: _resultsPill()),
                   ),
+                  // The credit closes the column rather than riding the map's
+                  // bottom edge, which sits under the system navigation bar
+                  // and under the pill above.
+                  MapAttribution(darkBasemap: darkBasemap),
                 ],
               ),
             ),
@@ -1061,8 +1195,10 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final band = bandForDistance(p.distanceM);
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
-      if (p.surface.isNotEmpty) p.surface,
-      if (p.runCount > 0) '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+      if (p.surface.isNotEmpty)
+        routeSurfaceLabel(AppLocalizations.of(context), p.surface),
+      if (p.runCount > 0)
+        AppLocalizations.of(context).routeDetailRunCount(p.runCount),
     ].join(' · ');
     return ListTile(
       dense: true,
@@ -1073,6 +1209,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Row(
         children: [
+          if (p.official) _OfficialMark(routeId: p.id, lookup: _parkCourses),
           if (band != null) _bandBadge(band.label),
           Flexible(
             child: Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -1115,9 +1252,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
       if (p.elevationM != null && p.elevationM! > 0)
-        '${p.elevationM!.round()} m',
-      if (p.surface.isNotEmpty) p.surface,
-      if (p.runCount > 0) '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+        formatElevationForPref(p.elevationM),
+      if (p.surface.isNotEmpty) routeSurfaceLabel(l10n, p.surface),
+      if (p.runCount > 0) l10n.routeDetailRunCount(p.runCount),
     ].join(' · ');
     return Material(
       elevation: 8,
@@ -1253,7 +1390,7 @@ class _ClusterBubble extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xF2F2A07B),
+        color: const Color(0xF2F08A5D),
         border: Border.all(color: const Color(0xFF0F172A), width: 2),
       ),
       child: Center(
@@ -1270,6 +1407,10 @@ class _ClusterBubble extends StatelessWidget {
   }
 }
 
+/// The gold ring an editorial route pick and an official organiser's race
+/// carry.
+const Color _featuredRing = Color(0xFFFACC15);
+
 /// A single route pin — orange, gold ring when featured, enlarged when
 /// it's the currently selected route.
 class _RoutePinDot extends StatelessWidget {
@@ -1285,9 +1426,9 @@ class _RoutePinDot extends StatelessWidget {
         height: selected ? 18 : 14,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFFF2A07B),
+          color: const Color(0xFFF08A5D),
           border: Border.all(
-            color: featured ? const Color(0xFFFACC15) : const Color(0xFF0F172A),
+            color: featured ? _featuredRing : const Color(0xFF0F172A),
             width: featured ? 3 : 2,
           ),
         ),
@@ -1296,19 +1437,66 @@ class _RoutePinDot extends StatelessWidget {
   }
 }
 
+/// A club pin — teal, ringed in the verified blue when the club is
+/// verified (verified clubs also rank first in `clubs_in_bbox`).
 class _ClubPinDot extends StatelessWidget {
-  const _ClubPinDot();
+  final bool verified;
+  const _ClubPinDot({required this.verified});
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
+    return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0xFF7FB3C2),
+        color: const Color(0xFF7FB3C2),
         border: Border.fromBorderSide(
-          BorderSide(color: Color(0xFF0F172A), width: 2),
+          BorderSide(
+            color: verified ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
+            width: verified ? 3 : 2,
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// An upcoming verified race pin — violet, gold ring when an official
+/// organiser's race (official races also rank first).
+class _RacePinDot extends StatelessWidget {
+  final bool official;
+  const _RacePinDot({required this.official});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF9C7FD6),
+          border: Border.all(
+            color: official ? _featuredRing : const Color(0xFF0F172A),
+            width: official ? 3 : 2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Official badge in a result row, spaced like the band badge.
+class _OfficialMark extends StatelessWidget {
+  final String routeId;
+  final ParkCourseRouteLookup lookup;
+
+  const _OfficialMark({required this.routeId, required this.lookup});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: OfficialRouteBadge(routeId: routeId, lookup: lookup, size: 12),
     );
   }
 }

@@ -4,12 +4,15 @@
 // unit-tested directly; the data layer (`bulkImportEventResults`) maps the
 // output onto account-optional `event_results` rows.
 
+import type { FinisherStatus } from '../types';
+import { neutraliseSpreadsheetFormula } from '../util/csv_formula';
+
 export interface ParsedResultRow {
 	bib: string;
 	finisherName: string;
 	durationS: number;
 	distanceM: number;
-	finisherStatus: 'finished' | 'dnf' | 'dns';
+	finisherStatus: FinisherStatus;
 }
 
 export interface ParsedResultCsv {
@@ -91,7 +94,17 @@ export function parseDurationToSeconds(raw: string | undefined): number | null {
 		if (parts.length > 3) return null;
 		let total = 0;
 		for (let i = 0; i < parts.length; i++) {
-			const n = Number(parts[i]);
+			const raw = parts[i].trim();
+			// Every component must be a plain decimal count. `Number('')` is 0,
+			// so a stray or doubled colon used to parse as a real time: ':',
+			// '::', '1:' and '  :  ' all returned a number, and a finished row
+			// then carried a 0 s finish that ranks first and mints a course
+			// record out of an empty cell. The blank-cell case is already
+			// rejected; a cell holding only separators has to be too. The class
+			// is spelled out rather than left to `Number`, which also reads
+			// '0x10', '1e3' and '+5' as counts of seconds.
+			if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+			const n = Number(raw);
 			if (!Number.isFinite(n) || n < 0) return null;
 			// Only the leading field is unbounded (hours, or total minutes in
 			// MM:SS). A minutes/seconds field >= 60 is a malformed time
@@ -103,12 +116,13 @@ export function parseDurationToSeconds(raw: string | undefined): number | null {
 		}
 		return Math.round(total);
 	}
+	if (!/^\d+(?:\.\d+)?$/.test(s)) return null;
 	const n = Number(s);
 	if (!Number.isFinite(n) || n < 0) return null;
 	return Math.round(n);
 }
 
-function parseStatus(raw: string | undefined): 'finished' | 'dnf' | 'dns' {
+function parseStatus(raw: string | undefined): FinisherStatus {
 	const s = (raw ?? '').trim().toLowerCase();
 	if (s === 'dnf') return 'dnf';
 	if (s === 'dns') return 'dns';
@@ -188,7 +202,7 @@ export interface ExportResultRow {
 	finisherName: string | null;
 	durationS: number;
 	distanceM: number;
-	finisherStatus: 'finished' | 'dnf' | 'dns';
+	finisherStatus: FinisherStatus;
 	rank: number | null;
 }
 
@@ -204,12 +218,10 @@ function formatDurationCsv(totalS: number): string {
 }
 
 function escapeCsvField(value: string): string {
-	// Formula-injection guard: a field a spreadsheet would evaluate as a
-	// formula (leading = + - @, or a tab/CR it strips first) is prefixed
-	// with a single quote so Sheets/Excel render it as text. Finisher
-	// names + bibs are user-controlled (imported from an external sheet),
-	// so this matters even though only an organiser downloads the export.
-	const neutralised = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+	// Finisher names + bibs are user-controlled (imported from an external
+	// sheet), so the formula guard matters even though only an organiser
+	// downloads the export.
+	const neutralised = neutraliseSpreadsheetFormula(value);
 	return /[",\n\r]/.test(neutralised)
 		? `"${neutralised.replace(/"/g, '""')}"`
 		: neutralised;

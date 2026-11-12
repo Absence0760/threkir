@@ -1,0 +1,972 @@
+{
+  "_comment": "Shared vectors for metadata.gnss_signal: per-sample reduction of the used satellites, and the run summary. Read by packages/run_recorder/test/gnss_signal_quality_test.dart and apps/watch_wear/.../recording/GnssSignalQualityTest.kt.",
+  "sampleCases": [
+    {
+      "name": "top four of six used, one on L5",
+      "cn0DbHz": [
+        41.0,
+        38.0,
+        44.0,
+        22.0,
+        35.0,
+        30.0
+      ],
+      "carrierHz": [
+        1575420000.0,
+        1575420000.0,
+        1176450000.0,
+        1575420000.0,
+        1561098000.0,
+        0.0
+      ],
+      "expect": {
+        "meanTopCn0DbHz": 39.5,
+        "usedInFix": 6,
+        "l5Used": true
+      }
+    },
+    {
+      "name": "fewer than four used, no carrier reported",
+      "cn0DbHz": [
+        30.0,
+        20.0
+      ],
+      "carrierHz": [
+        0.0,
+        0.0
+      ],
+      "expect": {
+        "meanTopCn0DbHz": 25.0,
+        "usedInFix": 2,
+        "l5Used": false
+      }
+    },
+    {
+      "name": "no satellite used",
+      "cn0DbHz": [],
+      "carrierHz": [],
+      "expect": {
+        "meanTopCn0DbHz": null,
+        "usedInFix": 0,
+        "l5Used": false
+      }
+    },
+    {
+      "name": "E5a within tolerance, GLONASS L3 is not L5",
+      "cn0DbHz": [
+        33.0,
+        31.0,
+        29.0,
+        27.0,
+        25.0
+      ],
+      "carrierHz": [
+        1176000000.0,
+        1202025000.0,
+        1575420000.0,
+        1575420000.0,
+        1575420000.0
+      ],
+      "expect": {
+        "meanTopCn0DbHz": 30.0,
+        "usedInFix": 5,
+        "l5Used": true
+      }
+    },
+    {
+      "name": "carrier just outside tolerance",
+      "cn0DbHz": [
+        40.0,
+        40.0,
+        40.0,
+        40.0
+      ],
+      "carrierHz": [
+        1177460000.0,
+        1175440000.0,
+        1575420000.0,
+        1575420000.0
+      ],
+      "expect": {
+        "meanTopCn0DbHz": 40.0,
+        "usedInFix": 4,
+        "l5Used": false
+      }
+    }
+  ],
+  "summaryCases": [
+    {
+      "name": "no samples",
+      "samples": [],
+      "expect": null
+    },
+    {
+      "name": "one sample",
+      "samples": [
+        {
+          "meanTopCn0DbHz": 37.5,
+          "usedInFix": 9,
+          "l5Used": true
+        }
+      ],
+      "expect": {
+        "samples": 1,
+        "used_median": 9,
+        "cn0_median_dbhz": 37.5,
+        "cn0_p10_dbhz": 37.5,
+        "l5_fraction": 1.0
+      }
+    },
+    {
+      "name": "even count takes the lower median",
+      "samples": [
+        {
+          "meanTopCn0DbHz": 30.0,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 32.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 34.0,
+          "usedInFix": 10,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 36.0,
+          "usedInFix": 12,
+          "l5Used": true
+        }
+      ],
+      "expect": {
+        "samples": 4,
+        "used_median": 8,
+        "cn0_median_dbhz": 32.0,
+        "cn0_p10_dbhz": 30.0,
+        "l5_fraction": 0.5
+      }
+    },
+    {
+      "name": "samples with no fix count toward used only",
+      "samples": [
+        {
+          "meanTopCn0DbHz": null,
+          "usedInFix": 0,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": null,
+          "usedInFix": 0,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": null,
+          "usedInFix": 0,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 28.3,
+          "usedInFix": 5,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 31.7,
+          "usedInFix": 7,
+          "l5Used": false
+        }
+      ],
+      "expect": {
+        "samples": 5,
+        "used_median": 0,
+        "cn0_median_dbhz": 28.3,
+        "cn0_p10_dbhz": 28.3,
+        "l5_fraction": 0.5
+      }
+    },
+    {
+      "name": "only no-fix samples omit the C/N0 figures",
+      "samples": [
+        {
+          "meanTopCn0DbHz": null,
+          "usedInFix": 0,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": null,
+          "usedInFix": 0,
+          "l5Used": false
+        }
+      ],
+      "expect": {
+        "samples": 2,
+        "used_median": 0
+      }
+    },
+    {
+      "name": "ten samples, p10 is the lowest",
+      "samples": [
+        {
+          "meanTopCn0DbHz": 20.0,
+          "usedInFix": 4,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 21.0,
+          "usedInFix": 5,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 22.0,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 23.0,
+          "usedInFix": 7,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 24.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 25.0,
+          "usedInFix": 9,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 26.0,
+          "usedInFix": 10,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 27.0,
+          "usedInFix": 11,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 28.0,
+          "usedInFix": 12,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 29.0,
+          "usedInFix": 13,
+          "l5Used": true
+        }
+      ],
+      "expect": {
+        "samples": 10,
+        "used_median": 8,
+        "cn0_median_dbhz": 24.0,
+        "cn0_p10_dbhz": 20.0,
+        "l5_fraction": 0.4
+      }
+    },
+    {
+      "name": "thirty samples, p10 rank is exactly three",
+      "samples": [
+        {
+          "meanTopCn0DbHz": 10.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 11.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 12.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 13.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 14.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 15.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 16.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 17.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 18.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 19.0,
+          "usedInFix": 8,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 20.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 21.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 22.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 23.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 24.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 25.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 26.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 28.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 29.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 30.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 31.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 32.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 33.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 34.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 35.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 36.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 37.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 38.0,
+          "usedInFix": 8,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 39.0,
+          "usedInFix": 8,
+          "l5Used": false
+        }
+      ],
+      "expect": {
+        "samples": 30,
+        "used_median": 8,
+        "cn0_median_dbhz": 24.0,
+        "cn0_p10_dbhz": 12.0,
+        "l5_fraction": 0.333
+      }
+    },
+    {
+      "name": "clamped: C/N0 past 99.9 and used past 99",
+      "samples": [
+        {
+          "meanTopCn0DbHz": 120.0,
+          "usedInFix": 150,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 120.0,
+          "usedInFix": 150,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": -4.0,
+          "usedInFix": 3,
+          "l5Used": false
+        }
+      ],
+      "expect": {
+        "samples": 3,
+        "used_median": 99,
+        "cn0_median_dbhz": 99.9,
+        "cn0_p10_dbhz": 0.0,
+        "l5_fraction": 0.0
+      }
+    },
+    {
+      "name": "canopy run",
+      "samples": [
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 27.85,
+          "usedInFix": 6,
+          "l5Used": false
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        },
+        {
+          "meanTopCn0DbHz": 39.12,
+          "usedInFix": 14,
+          "l5Used": true
+        }
+      ],
+      "expect": {
+        "samples": 100,
+        "used_median": 14,
+        "cn0_median_dbhz": 39.1,
+        "cn0_p10_dbhz": 27.9,
+        "l5_fraction": 0.6
+      }
+    }
+  ]
+}

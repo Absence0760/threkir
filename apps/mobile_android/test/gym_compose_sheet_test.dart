@@ -1,14 +1,19 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show ExerciseRow;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show TextLane;
 
+import '../lib/gym_compose_draft.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/widgets/gym_compose_sheet.dart';
+import 'pump_until.dart';
+import 'store_write_watch.dart';
 
 /// Flush the real event loop until [ready] holds, then settle the route pop.
 ///
@@ -18,22 +23,63 @@ import '../lib/widgets/gym_compose_sheet.dart';
 /// CI runner, and the `finally` that deletes the temp directory then raced the
 /// write still in flight. Waiting on the condition itself ends as soon as the
 /// write lands and only reports a failure when the save is genuinely broken.
-Future<void> _settleUntil(WidgetTester tester, bool Function() ready) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 10));
-  while (!ready() && DateTime.now().isBefore(deadline)) {
-    await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 5)));
-    await tester.pump();
-  }
+///
+/// [describe] is required for the reason decisions 723 gives: one generic
+/// sentence shared by every call site in a file means an expired deadline no
+/// longer says which condition never held.
+Future<void> _settleUntil(WidgetTester tester, bool Function() ready,
+    {required String describe}) async {
+  await pumpUntil(tester, ready, describe: describe);
   await tester.pump(const Duration(milliseconds: 350));
 }
 
-Future<({LocalGymStore store, Directory dir})> _store(String tag) async {
+/// The composer's store, its temp dir, and a `persisted` probe.
+///
+/// `OfflineSyncStore.persist` puts the row into its in-memory map BEFORE the
+/// atomic write and notifies only once the row file and the index are both
+/// down, so `workouts.isNotEmpty` returns while the write is still in flight
+/// and the `finally` that deletes the temp dir then races it (decisions 723).
+/// Measured: every one of these waits spent ZERO loop turns on the row count
+/// — it was already true — so the wait proved nothing and the teardown race
+/// was live. The notification is the signal.
+Future<({LocalGymStore store, Directory dir, bool Function() persisted})>
+    _store(String tag) async {
   final dir = Directory.systemTemp.createTempSync('gym_compose_$tag');
   final store = LocalGymStore();
   await store.init(overrideDirectory: dir);
-  return (store: store, dir: dir);
+  var persisted = false;
+  store.addListener(() => persisted = true);
+  return (store: store, dir: dir, persisted: () => persisted);
 }
+
+/// An `ApiClient` whose create is scripted, so the composer's catalogue
+/// create-custom path runs without Supabase. Constructing the base class is
+/// safe as long as nothing reads `_client`, which overriding the one method it
+/// would call guarantees.
+class _ScriptedApi extends ApiClient {
+  _ScriptedApi(this.result);
+
+  final ExerciseRow result;
+
+  @override
+  Future<ExerciseRow?> createCustomExercise({
+    required String name,
+    String category = 'other',
+    String modality = 'weight_reps',
+  }) async =>
+      result;
+}
+
+ExerciseRow _row(String id, String name, String nameKey) => ExerciseRow(
+      id: id,
+      authorId: 'me',
+      name: name,
+      nameKey: nameKey,
+      category: 'chest',
+      modality: 'weight_reps',
+      lastModifiedAt: DateTime.utc(2026),
+      createdAt: DateTime.utc(2026),
+    );
 
 /// A store whose create always fails, to drive the composer's save-error path.
 class _ThrowingGymStore extends LocalGymStore {
@@ -132,7 +178,8 @@ void main() {
       await tester.runAsync(() async {
         await tester.tap(find.text('Save workout'));
       });
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
       expect(f.store.workouts, hasLength(1));
     } finally {
       f.dir.deleteSync(recursive: true);
@@ -158,7 +205,8 @@ void main() {
       await tester.tap(find.text('Save workout'));
       // The composer's save awaits a real file write (createLocal) — flush the
       // real event loop so it completes, then settle the route pop.
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
       final w = f.store.workouts.first;
@@ -195,7 +243,8 @@ void main() {
       await tester.tap(find.byType(FilledButton));
 
       // Now let the real file write complete and settle the route pop.
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
     } finally {
@@ -224,7 +273,8 @@ void main() {
       // The failing store rejects inside the same async chain, so wait on the
       // rendered error rather than on a duration.
       await _settleUntil(
-          tester, () => find.text("Couldn't save workout.").evaluate().isNotEmpty);
+          tester, () => find.text("Couldn't save workout.").evaluate().isNotEmpty,
+          describe: 'the rejected save to surface its error');
       await tester.pump();
 
       expect(find.text("Couldn't save workout."), findsOneWidget);
@@ -245,7 +295,13 @@ void main() {
     final f = await _store('catalogue_');
     try {
       const catalogue = <GymCatalogueEntry>[
-        (name: 'Bench Press', id: 'cat-bench-1', category: 'chest', authorId: null),
+        (
+          name: 'Bench Press',
+          id: 'cat-bench-1',
+          category: 'chest',
+          authorId: null,
+          nameKey: 'bench press',
+        ),
       ];
       await tester.pumpWidget(MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -267,7 +323,8 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Save workout'));
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
       final sets = f.store.workouts.first.sets;
@@ -284,7 +341,13 @@ void main() {
     final f = await _store('catalogue_free_');
     try {
       const catalogue = <GymCatalogueEntry>[
-        (name: 'Bench Press', id: 'cat-bench-1', category: 'chest', authorId: null),
+        (
+          name: 'Bench Press',
+          id: 'cat-bench-1',
+          category: 'chest',
+          authorId: null,
+          nameKey: 'bench press',
+        ),
       ];
       await tester.pumpWidget(MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -303,7 +366,8 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Save workout'));
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
       final sets = f.store.workouts.first.sets;
@@ -324,8 +388,20 @@ void main() {
     final f = await _store('picker_');
     try {
       const catalogue = <GymCatalogueEntry>[
-        (name: 'Deadlift', id: 'cat-dead-1', category: 'legs', authorId: null),
-        (name: 'Bench Press', id: 'cat-bench-1', category: 'chest', authorId: null),
+        (
+          name: 'Deadlift',
+          id: 'cat-dead-1',
+          category: 'legs',
+          authorId: null,
+          nameKey: 'deadlift',
+        ),
+        (
+          name: 'Bench Press',
+          id: 'cat-bench-1',
+          category: 'chest',
+          authorId: null,
+          nameKey: 'bench press',
+        ),
       ];
       await tester.pumpWidget(MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -363,7 +439,8 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Save workout'));
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
       final sets = f.store.workouts.first.sets;
@@ -386,6 +463,366 @@ void main() {
       ));
       await tester.pump();
       expect(find.byIcon(Icons.menu_book_outlined), findsNothing);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets(
+      'an unavailable catalogue keeps browse reachable and refuses the create',
+      (tester) async {
+    // A feature that silently vanishes on a transient error explains nothing,
+    // so the browse affordance stays reachable while the catalogue is unknown
+    // — and the picker behind it then refuses to call any name free.
+    final f = await _store('catalogue_unavailable_');
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: GymComposeSheet(
+            store: f.store,
+            catalogueUnavailable: true,
+            api: _ScriptedApi(_row('mine-1', 'Farmer Carry', 'farmer carry')),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.menu_book_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        find.text(
+            "Couldn't load the exercise catalogue, so this list may be incomplete."),
+        findsOneWidget,
+      );
+      await tester.enterText(find.byType(TextField).first, 'Farmer Carry');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Add “Farmer Carry” as a custom exercise'), findsNothing);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('a catalogue that lands after the sheet mounts still binds an id',
+      (tester) async {
+    // The host fills its catalogue from an async read, so the prop arrives
+    // late. Snapshotting it in `initState` bound every typed name to nothing
+    // whenever it landed after the sheet opened — the sheet has to track the
+    // prop, not a copy of what it was at mount.
+    final f = await _store('catalogue_late_');
+    try {
+      var catalogue = const <GymCatalogueEntry>[];
+      late StateSetter setHost;
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: StatefulBuilder(builder: (ctx, setState) {
+            setHost = setState;
+            return GymComposeSheet(store: f.store, catalogue: catalogue);
+          }),
+        ),
+      ));
+      await tester.pump();
+
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), 'Bench day');
+      await tester.enterText(fields.at(1), 'Bench Press');
+      await tester.enterText(fields.at(2), '5');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      setHost(() => catalogue = const [
+            (
+              name: 'Bench Press',
+              id: 'cat-bench-1',
+              category: 'chest',
+              authorId: null,
+              nameKey: 'bench press',
+            ),
+          ]);
+      await tester.pump();
+
+      await tester.tap(find.text('Save workout'));
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
+
+      expect(f.store.workouts.first.sets.first['exercise_id'], 'cat-bench-1');
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+
+  testWidgets(
+      'a catalogue landing while the composer is open on its own route still binds an id',
+      (tester) async {
+    // The production shape the StatefulBuilder harness above cannot reach.
+    // `showGymComposeSheet` presents through `showFullScreenForm`, which pushes
+    // a MaterialPageRoute whose builder runs ONCE — so a catalogue passed by
+    // value is frozen for the life of that route however carefully the sheet
+    // reads `widget.catalogue` on every build. A host that reads
+    // asynchronously has to publish a listenable instead (§ 1571).
+    final f = await _store('catalogue_route_');
+    try {
+      final source = ValueNotifier<GymCatalogueState>(
+        (entries: const [], unavailable: true),
+      );
+      addTearDown(source.dispose);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) => Center(
+              child: ElevatedButton(
+                onPressed: () => showGymComposeSheet(
+                  context: ctx,
+                  store: f.store,
+                  catalogueSource: source,
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), 'Bench day');
+      await tester.enterText(fields.at(1), 'Bench Press');
+      await tester.enterText(fields.at(2), '5');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      // Only now does the host's read answer.
+      source.value = (
+        entries: const [
+          (
+            name: 'Bench Press',
+            id: 'cat-bench-1',
+            category: 'chest',
+            authorId: null,
+            nameKey: 'bench press',
+          ),
+        ],
+        unavailable: false,
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Save workout'));
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
+
+      expect(f.store.workouts.first.sets.first['exercise_id'], 'cat-bench-1');
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('the picker tracks a catalogue that lands while browse is open',
+      (tester) async {
+    // The picker is pushed as a route of its own, so its builder runs once too:
+    // a composer tracking its host perfectly still handed the picker a value
+    // frozen at push time, and browse opened during the seconds a first read is
+    // in flight showed an empty catalogue for the life of that route.
+    final f = await _store('catalogue_picker_route_');
+    try {
+      final source = ValueNotifier<GymCatalogueState>(
+        (entries: const [], unavailable: true),
+      );
+      addTearDown(source.dispose);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: GymComposeSheet(store: f.store, catalogueSource: source),
+        ),
+      ));
+      await tester.pump();
+
+      // Reachable while unavailable by design: a browse affordance that
+      // vanishes on a transient error explains nothing.
+      await tester.tap(find.byIcon(Icons.menu_book_outlined));
+      await tester.pumpAndSettle();
+      expect(find.text('Overhead Press'), findsNothing);
+
+      source.value = (
+        entries: const [
+          (
+            name: 'Overhead Press',
+            id: 'cat-ohp-1',
+            category: 'shoulders',
+            authorId: null,
+            nameKey: 'overhead press',
+          ),
+        ],
+        unavailable: false,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Overhead Press'), findsOneWidget,
+          reason: 'the picker must render the read that answered while it was open');
+
+      await tester.tap(find.text('Overhead Press'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField).at(1)).controller?.text,
+        'Overhead Press',
+      );
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets(
+      'a catalogue that goes unavailable while browse is open withdraws the create affordance',
+      (tester) async {
+    // The third state has to cross the same seam as the entries: a picker
+    // holding a stale `unavailable: false` offers to create a name it can no
+    // longer prove is free.
+    final f = await _store('catalogue_picker_unavail_');
+    try {
+      final source = ValueNotifier<GymCatalogueState>(
+        (entries: const [], unavailable: false),
+      );
+      addTearDown(source.dispose);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: GymComposeSheet(
+            store: f.store,
+            catalogueSource: source,
+            api: _ScriptedApi(_row('mine-1', 'Farmer Carry', 'farmer carry')),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      // An empty-but-vouched-for catalogue hides browse, so seed one row.
+      source.value = (
+        entries: const [
+          (
+            name: 'Deadlift',
+            id: 'cat-dead-1',
+            category: 'legs',
+            authorId: null,
+            nameKey: 'deadlift',
+          ),
+        ],
+        unavailable: false,
+      );
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.menu_book_outlined));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Farmer Carry');
+      await tester.pumpAndSettle();
+      expect(find.text('Add “Farmer Carry” as a custom exercise'), findsOneWidget);
+
+      source.value = (entries: source.value.entries, unavailable: true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add “Farmer Carry” as a custom exercise'), findsNothing,
+          reason: 'a catalogue that stopped being vouched for cannot say a name is free');
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets(
+      'a created custom shadowing a seeded global leaves one row, and it is the custom',
+      (tester) async {
+    // The author's partial unique on `exercises.name_key` cannot see a row
+    // whose `author_id` is null, so creating a custom under a seeded global's
+    // name succeeds and a merge of the two holds BOTH: the browse list shows
+    // one exercise twice, and which id a logged set binds to follows from
+    // whichever the key map happened to hold last. The `id` test the merge used
+    // cannot see that at all — the two rows are two ids under one folded key.
+    final f = await _store('catalogue_shadow_');
+    try {
+      var catalogue = const <GymCatalogueEntry>[
+        (
+          name: 'Deadlift',
+          id: 'cat-dead-1',
+          category: 'legs',
+          authorId: null,
+          nameKey: 'deadlift',
+        ),
+      ];
+      late StateSetter setHost;
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: StatefulBuilder(builder: (ctx, setState) {
+            setHost = setState;
+            return GymComposeSheet(
+              store: f.store,
+              catalogue: catalogue,
+              api: _ScriptedApi(_row('mine-1', 'Bench Press', 'bench press')),
+            );
+          }),
+        ),
+      ));
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.menu_book_outlined));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Bench Press');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add “Bench Press” as a custom exercise'));
+      await tester.pumpAndSettle();
+
+      // Only now does the catalogue read answer, carrying the global the
+      // client could not see when it created the custom.
+      setHost(() => catalogue = const [
+            (
+              name: 'Deadlift',
+              id: 'cat-dead-1',
+              category: 'legs',
+              authorId: null,
+              nameKey: 'deadlift',
+            ),
+            (
+              name: 'Bench Press',
+              id: 'cat-bench-1',
+              category: 'chest',
+              authorId: null,
+              nameKey: 'bench press',
+            ),
+          ]);
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.menu_book_outlined));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+            of: find.byType(ListTile), matching: find.text('Bench Press')),
+        findsOneWidget,
+      );
+      expect(find.text('Custom'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), 'Push day');
+      await tester.enterText(fields.at(2), '5');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      await tester.tap(find.text('Save workout'));
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
+
+      expect(f.store.workouts.first.sets.first['exercise_id'], 'mine-1');
     } finally {
       f.dir.deleteSync(recursive: true);
     }
@@ -430,7 +867,8 @@ void main() {
       await tester.enterText(fields.at(5), '90'); // duration seconds
 
       await tester.tap(find.text('Save workout'));
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
       final w = f.store.workouts.first;
@@ -468,7 +906,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Save workout'));
-      await _settleUntil(tester, () => f.store.workouts.isNotEmpty);
+      await _settleUntil(tester, f.persisted,
+          describe: "the composer's write to land on disk and notify");
 
       expect(f.store.workouts, hasLength(1));
       final sets = f.store.workouts.first.sets;
@@ -795,6 +1234,209 @@ void main() {
             reason: 'the action row striped instead of stacking');
       } finally {
         f.dir.deleteSync(recursive: true);
+      }
+    });
+  });
+
+  group('GymComposeSheet — the half-built workout survives a kill', () {
+    /// A draft store rooted in its own temp directory, plus that directory's
+    /// draft file.
+    Future<({GymComposeDraftStore store, Directory dir, File file})> drafts(
+        String tag) async {
+      final dir = Directory.systemTemp.createTempSync('gym_compose_dr_$tag');
+      final store = GymComposeDraftStore();
+      await store.init(overrideDirectory: dir);
+      return (store: store, dir: dir, file: File('${dir.path}/draft.json'));
+    }
+
+    Future<void> pumpComposer(
+      WidgetTester tester,
+      LocalGymStore store,
+      GymComposeDraftStore draftStore,
+    ) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: GymComposeSheet(store: store, draftStore: draftStore),
+        ),
+      ));
+      await tester.pump();
+    }
+
+    testWidgets(
+        'a workout typed but never saved is on disk before the composer closes',
+        (tester) async {
+      final f = await _store('durable_');
+      final d = await drafts('durable_');
+      try {
+        await pumpComposer(tester, f.store, d.store);
+
+        // Title, exercise name, reps — a session someone is mid-way through.
+        await tester.enterText(find.byType(TextField).at(0), 'Leg day');
+        await tester.enterText(find.byType(TextField).at(1), 'Squat');
+        await tester.enterText(find.byType(TextField).at(2), '5');
+        await tester.pump();
+
+        expect(d.file.existsSync(), isFalse,
+            reason: 'nothing should be written before the first save tick');
+
+        // One periodic durable-save tick, then let the real loop land the
+        // atomic write (the fake clock never turns file IO).
+        await tester.pump(const Duration(seconds: 11));
+        await pumpUntil(tester, d.file.existsSync,
+            describe: "the composer's periodic draft save to land on disk");
+
+        final json =
+            jsonDecode(d.file.readAsStringSync()) as Map<String, dynamic>;
+        expect(json['title'], 'Leg day');
+        final ex = (json['exercises'] as List).first as Map<String, dynamic>;
+        expect(ex['name'], 'Squat');
+        expect(((ex['sets'] as List).first as Map)['reps'], '5');
+
+        // And nothing was logged as a workout — a draft is not a session.
+        expect(f.store.workouts, isEmpty);
+
+        // Closing the composer deliberately resolves the draft; only a kill,
+        // which never reaches dispose, leaves it behind.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+        expect(d.file.existsSync(), isFalse);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
+      }
+    });
+
+    testWidgets('the next composer offers the draft back and restores it',
+        (tester) async {
+      final f = await _store('recover_');
+      final d = await drafts('recover_');
+      try {
+        d.file.writeAsStringSync(jsonEncode({
+          '_v': 1,
+          'title': 'Leg day',
+          'is_public': false,
+          'saved_at': '2026-09-17T10:30:00.000Z',
+          'exercises': [
+            {
+              'name': 'Squat',
+              'sets': [
+                {
+                  'reps': '5',
+                  'weight': '140',
+                  'rpe': '',
+                  'duration': '',
+                  'set_type': 'working',
+                },
+              ],
+            },
+          ],
+        }));
+
+        await pumpComposer(tester, f.store, d.store);
+        await pumpUntil(tester, () => find.text('Resume').evaluate().isNotEmpty,
+            describe: 'the recover card to read the draft off disk');
+        expect(find.text('Unfinished workout'), findsOneWidget);
+
+        await tester.tap(find.text('Resume'));
+        await tester.pump();
+
+        expect(find.text('Unfinished workout'), findsNothing);
+        expect(tester.widget<TextField>(find.byType(TextField).at(0)).controller?.text,
+            'Leg day');
+        expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller?.text,
+            'Squat');
+        expect(tester.widget<TextField>(find.byType(TextField).at(2)).controller?.text,
+            '5');
+        expect(tester.widget<TextField>(find.byType(TextField).at(3)).controller?.text,
+            '140');
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
+      }
+    });
+
+    testWidgets('discarding the offer clears the draft off disk',
+        (tester) async {
+      final f = await _store('discard_');
+      final d = await drafts('discard_');
+      try {
+        d.file.writeAsStringSync(jsonEncode({
+          '_v': 1,
+          'title': 'Leg day',
+          'is_public': false,
+          'saved_at': '2026-09-17T10:30:00.000Z',
+          'exercises': const [],
+        }));
+
+        await pumpComposer(tester, f.store, d.store);
+        await pumpUntil(tester, () => find.text('Discard').evaluate().isNotEmpty,
+            describe: 'the recover card to read the draft off disk');
+
+        await tester.tap(find.text('Discard'));
+        await tester.pump();
+        expect(find.text('Unfinished workout'), findsNothing);
+        await pumpUntilStoreWritesSettle(tester);
+        expect(d.file.existsSync(), isFalse);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
+      }
+    });
+
+    testWidgets('editing a stored workout never touches the create draft',
+        (tester) async {
+      final f = await _store('editpath_');
+      final d = await drafts('editpath_');
+      try {
+        late final StoredGymWorkout stored;
+        await tester.runAsync(() async {
+          stored = await f.store.createLocal(
+            title: 'Leg day',
+            startedAt: DateTime.utc(2026, 9, 17),
+            sets: [
+              (
+                exerciseName: 'Squat',
+                reps: 5,
+                weightKg: 140.0,
+                rpe: null,
+                setType: 'working',
+                durationS: null,
+                exerciseId: null,
+              ),
+            ],
+          );
+        });
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: GymComposeSheet(
+              store: f.store,
+              existing: f.store.byId(stored.id),
+              draftStore: d.store,
+            ),
+          ),
+        ));
+        await tester.pump();
+        await tester.enterText(find.byType(TextField).at(0), 'Leg day II');
+        await tester.pump(const Duration(seconds: 11));
+        await pumpUntilStoreWritesSettle(tester);
+        expect(d.file.existsSync(), isFalse);
+        expect(find.text('Unfinished workout'), findsNothing);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
       }
     });
   });

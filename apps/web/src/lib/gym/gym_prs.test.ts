@@ -4,11 +4,19 @@ import {
 	estimatedOneRepMax,
 	normaliseExerciseName,
 	computeExercisePrs,
+	distinctExerciseCount,
+	sameExerciseName,
+	namesAnExercise,
 	workoutPrs,
 	RunningPrTracker,
 	kE1rmMaxReps,
 	type GymSetLike,
 } from './gym_prs';
+import {
+	EXERCISE_FOLD_KEYS,
+	EXERCISE_FOLD_VALUES,
+	EXERCISE_FOLD_UNICODE_VERSION,
+} from './exercise_fold_table';
 
 function set(exercise_name: string, reps: number | null, weight_kg: number | null): GymSetLike {
 	return { exercise_name, reps, weight_kg };
@@ -143,6 +151,43 @@ test('workoutPrs: case-insensitive history match prevents a false PR', () => {
 	assert.deepEqual(prs, []);
 });
 
+test('workoutPrs: the result carries the grouping key, not a re-derivable display string', () => {
+	// The name carries BOTH collapses the naive fold misses, because the two
+	// runtimes miss DIFFERENT ones and the intersection is empty: measured over
+	// all 1,488 table entries, Node 24 (Unicode 17.0) disagrees with the frozen
+	// table at exactly U+0130 and Dart 3.12 disagrees at 465 others, none of
+	// them U+0130. The internal whitespace run is the witness that holds on
+	// both, so this test and its Dart mirror take the same input.
+	//
+	// A caller that keys a lookup on `exerciseName.trim().toLowerCase()` stores
+	// a key no block spelled `incline press` can ever hit, and the exercise's
+	// chips vanish with no error anywhere (§ 1248). An ASCII single-spaced name
+	// would pass either way.
+	const prs = workoutPrs([], [set('\u0130ncline  Press', 5, 100)]);
+	assert.equal(prs.length, 1);
+	assert.equal(prs[0].key, 'incline press');
+	assert.equal(prs[0].exerciseName, '\u0130ncline  Press');
+	assert.notEqual(prs[0].key, prs[0].exerciseName.trim().toLowerCase());
+	assert.equal(prs[0].key, normaliseExerciseName('incline press'));
+});
+
+test('distinctExerciseCount: spellings the canonical fold merges count once', () => {
+	// Each pair is one lift under two spellings that `trim().toLowerCase()`
+	// keeps apart: an internal whitespace run, a non-breaking space, and a
+	// code point the runtimes disagree about.
+	assert.equal(distinctExerciseCount(['Bench  Press', 'Bench Press']), 1);
+	assert.equal(distinctExerciseCount(['Bench\u00a0Press', 'bench press']), 1);
+	assert.equal(distinctExerciseCount(['\u0130ncline Press', 'incline press']), 1);
+	assert.equal(distinctExerciseCount(['Bench Press', 'Back Squat']), 2);
+});
+
+test('distinctExerciseCount: blank and whitespace-only names contribute nothing', () => {
+	// Matches computeExercisePrs, which drops a blank-named set outright — a
+	// count that included it disagreed with every keyed surface.
+	assert.equal(distinctExerciseCount(['', '   ', '\u00a0', 'Bench Press']), 1);
+	assert.equal(distinctExerciseCount([]), 0);
+});
+
 test('RunningPrTracker.judge matches workoutPrs walked over growing prior', () => {
 	// A chronological sequence of workouts (each a set list). The running
 	// tracker must produce, per workout, the SAME PR kinds as
@@ -169,4 +214,194 @@ test('RunningPrTracker.judge matches workoutPrs walked over growing prior', () =
 				.sort();
 		assert.deepEqual(norm(viaTracker), norm(viaLoop));
 	}
+});
+
+test('normaliseExerciseName folds the same whitespace class as the Dart twin', () => {
+	// exercise_key is PERSISTED, so a name that normalises differently on the
+	// two platforms buckets one exercise into two PRs. Dart's trim() strips
+	// every Unicode White_Space code point (incl. U+0085 NEL) and JS's does
+	// not, so the class is spelled out on both sides.
+	assert.equal(normaliseExerciseName('Bench Press\u0085'), 'bench press');
+	assert.equal(normaliseExerciseName('\u00a0Bench\u2003Press\u2028'), 'bench press');
+	assert.equal(normaliseExerciseName('  Bench   press '), 'bench press');
+});
+
+test('normaliseExerciseName folds what the SQL rail folds, and nothing more', () => {
+	// The key is derived on three rails and PERSISTED, so a name the server
+	// buckets differently from the clients splits one exercise into two: the
+	// local PR tracker says PR where gym_workout_summaries.is_pr says no.
+	// Every case here disagreed before migration 20270623000001
+	// (decisions § 790).
+	//
+	// btrim(text) strips U+0020 alone, so any other edge whitespace survived
+	// the trim and the \s+ pass then turned it into a leading/trailing SPACE.
+	assert.equal(normaliseExerciseName('\u0009Bench Press'), 'bench press');
+	assert.equal(normaliseExerciseName('Bench Press\u000a'), 'bench press');
+	// Postgres \s past ASCII is the locale provider's opinion, not Unicode's:
+	// the ICU provider folds NBSP and the libc one does not. Neither folds
+	// U+FEFF, which is invisible and must not split a bucket.
+	assert.equal(normaliseExerciseName('Bench\u00a0Press'), 'bench press');
+	assert.equal(normaliseExerciseName('Bench\ufeffPress'), 'bench press');
+	// A name that is nothing but whitespace is not an exercise. The server's
+	// btrim(coalesce(name,'')) <> '' filter kept a lone tab as an exercise
+	// named " "; both clients always dropped it.
+	assert.equal(normaliseExerciseName('\u0009\u00a0'), '');
+	// The ICU provider also folds U+001C-U+001F. Those are control characters,
+	// not spaces — the clients must NOT start folding them to match.
+	assert.equal(normaliseExerciseName('Bench\u001cPress'), 'bench\u001cpress');
+});
+
+test('normaliseExerciseName case-folds what the SQL rail case-folds', () => {
+	// No rail reaches for its own runtime's lowercase any more: all three fold
+	// through the frozen table (decisions § 1175). These are the cases that
+	// were reachable in a Latin or Greek exercise name while they did.
+	//
+	// U+0130's FULL lowercase is 'i' + U+0307 (what JS and ICU return); its
+	// SIMPLE one is a bare 'i', which is the mapping the table carries, so a
+	// mobile-written exercise_key for this name satisfies the CHECK on
+	// gym_routine_exercises.
+	assert.equal(normaliseExerciseName('\u0130tme'), 'itme');
+	assert.equal(normaliseExerciseName('\u0130TME'), 'itme');
+	// Final sigma: ICU and JS apply Unicode's contextual Final_Sigma rule and
+	// Dart and libc never do, so an all-caps Greek spelling has to be folded
+	// onto U+03C3 or it never meets its own lower-case one.
+	assert.equal(normaliseExerciseName('\u039f\u0394\u039f\u03a3'), '\u03bf\u03b4\u03bf\u03c3');
+	assert.equal(normaliseExerciseName('\u03bf\u03b4\u03bf\u03c2'), '\u03bf\u03b4\u03bf\u03c3');
+	// An ASCII capital I stays an i. Under a Turkish-locale database the old
+	// server derivation folded it to U+0131 and split every "Incline Press".
+	assert.equal(normaliseExerciseName('INCLINE Press'), 'incline press');
+	// And the accented-capital merge every non-English lifter depends on is
+	// intact — an ASCII-only fold would have split these two.
+	assert.equal(normaliseExerciseName('\u00dcBERZ\u00dcGE'), '\u00fcberz\u00fcge');
+	assert.equal(normaliseExerciseName('\u00fcberz\u00fcge'), '\u00fcberz\u00fcge');
+});
+
+test('the frozen fold table is 1:1, ascending and unchained', () => {
+	// Every rail applies the table in ONE pass — Postgres translate() and both
+	// clients' per-code-point lookup — so these are the claims that make the
+	// three answers the same answer rather than three passes that happen to
+	// agree today (decisions § 1175).
+	assert.equal(EXERCISE_FOLD_KEYS.length, EXERCISE_FOLD_VALUES.length);
+	const keys = new Set(EXERCISE_FOLD_KEYS);
+	assert.equal(keys.size, EXERCISE_FOLD_KEYS.length);
+	for (let i = 1; i < EXERCISE_FOLD_KEYS.length; i++) {
+		assert.ok(EXERCISE_FOLD_KEYS[i - 1] < EXERCISE_FOLD_KEYS[i]);
+	}
+	for (let i = 0; i < EXERCISE_FOLD_KEYS.length; i++) {
+		assert.notEqual(EXERCISE_FOLD_VALUES[i], EXERCISE_FOLD_KEYS[i]);
+		// A value the table also folds would make fold(fold(x)) differ from
+		// fold(x), and the CHECK re-derives the key from the name on every write.
+		assert.ok(!keys.has(EXERCISE_FOLD_VALUES[i]));
+	}
+	// The SQL rail takes a 26-pair fast path for an all-ASCII name, which is
+	// only answer-identical to the full table while its ASCII half is exactly
+	// this.
+	const ascii = EXERCISE_FOLD_KEYS.map((cp, i) => [cp, EXERCISE_FOLD_VALUES[i]] as const).filter(
+		([cp]) => cp < 0x80,
+	);
+	assert.deepEqual(
+		ascii,
+		Array.from({ length: 26 }, (_, i) => [0x41 + i, 0x61 + i]),
+	);
+});
+
+test('the frozen fold table is the simple lowercase mapping of the version it names', (t) => {
+	// The table is FROZEN, so a newer Node folding more letters is not drift —
+	// it is the next migration's work. This checks the table against the data it
+	// was rendered from only when the two are the same version, and says so
+	// rather than passing silently when they are not.
+	if (process.versions.unicode !== EXERCISE_FOLD_UNICODE_VERSION) {
+		t.skip(
+			`this Node carries Unicode ${process.versions.unicode}, the table is frozen at ${EXERCISE_FOLD_UNICODE_VERSION} — the cross-check needs the two to match`,
+		);
+		return;
+	}
+	const table = new Map(EXERCISE_FOLD_KEYS.map((cp, i) => [cp, EXERCISE_FOLD_VALUES[i]]));
+	for (let cp = 0; cp <= 0x10ffff; cp++) {
+		if (cp >= 0xd800 && cp <= 0xdfff) continue;
+		const source = String.fromCodePoint(cp);
+		const lowered = source.toLowerCase();
+		// U+0130 is the only code point whose UNCONDITIONAL full lowercase is
+		// longer than one code point; the table takes its simple mapping.
+		const expected =
+			lowered === source ? undefined : cp === 0x0130 ? 0x0069 : lowered.codePointAt(0);
+		assert.equal(
+			table.get(cp),
+			expected,
+			`U+${cp.toString(16).toUpperCase()} disagrees with this build's simple lowercase`,
+		);
+		if (lowered !== source && cp !== 0x0130) assert.equal([...lowered].length, 1);
+	}
+});
+
+test('normaliseExerciseName folds code points the runtimes disagreed about', () => {
+	// One from each family the 465-code-point web-to-mobile gap covered:
+	// Cherokee (Unicode 8.0), the Latin Extended-D additions, Garay and
+	// Medefaidrin in the supplementary planes. Dart's own toLowerCase leaves
+	// every one of them alone, so before the table these were names the phone
+	// could not persist without a 23514 (decisions § 1175).
+	assert.equal(normaliseExerciseName('\u13a0'), '\uab70');
+	assert.equal(normaliseExerciseName('\ua7cb'), '\u0264');
+	assert.equal(normaliseExerciseName('\u{10d50}'), '\u{10d70}');
+	assert.equal(normaliseExerciseName('\u{16e40}'), '\u{16e60}');
+});
+
+test('normaliseExerciseName folds by code point, not by code unit', () => {
+	// 307 of the 1,488 entries are outside the BMP. A code-unit walk would fold
+	// each half of the surrogate pair separately, match neither, and leave the
+	// name uppercase — a second bucket for the same lift.
+	const deseret = '\u{10400}\u{10401}';
+	assert.equal(normaliseExerciseName(deseret), '\u{10428}\u{10429}');
+	assert.equal(normaliseExerciseName(`Bench ${deseret} Press`), `bench \u{10428}\u{10429} press`);
+});
+
+test('sameExerciseName: spellings the canonical fold merges are the same lift', () => {
+	assert.equal(sameExerciseName('Bench Press', 'bench press'), true);
+	assert.equal(sameExerciseName('Bench  Press', 'Bench Press'), true);
+	assert.equal(sameExerciseName('Bench\u00a0Press', 'bench press'), true);
+	assert.equal(sameExerciseName('\u0130ncline Press', 'incline press'), true);
+	assert.equal(sameExerciseName('  Row  ', 'row'), true);
+});
+
+test('sameExerciseName: different lifts, and the blank cases', () => {
+	assert.equal(sameExerciseName('Bench Press', 'Back Squat'), false);
+	assert.equal(sameExerciseName('Row', ''), false);
+	// Blank spellings match each other, as they did on the raw comparison the
+	// grouping surfaces used to make.
+	assert.equal(sameExerciseName('', '   '), true);
+	assert.equal(sameExerciseName(null, undefined), true);
+});
+
+
+test('namesAnExercise: a spelling names a lift when its canonical key is non-empty', () => {
+	assert.equal(namesAnExercise('Bench Press'), true);
+	assert.equal(namesAnExercise('  Row  '), true);
+	assert.equal(namesAnExercise('İncline Press'), true);
+	assert.equal(namesAnExercise(''), false);
+	assert.equal(namesAnExercise('   '), false);
+	assert.equal(namesAnExercise(null), false);
+	assert.equal(namesAnExercise(undefined), false);
+	// Every member of the folded class, alone, is blank.
+	for (const cp of [0x09, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2028, 0x202f, 0x3000, 0xfeff]) {
+		assert.equal(namesAnExercise(String.fromCharCode(cp)), false, `U+${cp.toString(16)}`);
+	}
+	// U+001C-U+001F are deliberately outside the class (decisions 790), so they
+	// name a lift as any other character does.
+	assert.equal(namesAnExercise('\u001c'), true);
+});
+
+test('namesAnExercise: U+0085 is blank here and not blank to trim()', () => {
+	// The whole reason this is a function rather than `name.trim() === ''` at
+	// each call site. NEL is in the shared whitespace class and is not in the set
+	// JS strips, so the raw guard let a name through that every keyed surface
+	// downstream counts as nothing (decisions 1322, one layer out).
+	assert.equal('\u0085'.trim(), '\u0085');
+	assert.equal(namesAnExercise('\u0085'), false);
+	// Mixed with members JS DOES strip, the residue is still only NEL.
+	assert.equal(' \u00a0\u0085\u2028 '.trim(), '\u0085');
+	assert.equal(namesAnExercise(' \u00a0\u0085\u2028 '), false);
+	// A real name carrying one is still a real name, and the class collapses it
+	// to the separator every other member collapses to.
+	assert.equal(namesAnExercise('\u0085Row\u0085'), true);
+	assert.equal(normaliseExerciseName('Bench\u0085Press'), 'bench press');
 });

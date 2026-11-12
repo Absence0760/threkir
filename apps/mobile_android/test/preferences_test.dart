@@ -8,10 +8,13 @@
 // scope to the enum's pure methods so they run in <100ms with no
 // platform bindings.
 
+import 'package:core_models/core_models.dart'
+    show ActivityType, DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../lib/activity_type_labels.dart';
 import '../lib/preferences.dart';
 
 void main() {
@@ -50,6 +53,57 @@ void main() {
       await p.resetAccountScopedPrefs();
       expect(p.voiceCueEnabled(VoiceCue.paceAlerts), isTrue);
       expect(p.voiceCueTypes, isEmpty);
+    });
+  });
+
+  group('learnedStrideM', () {
+    test('persists per account and activity across a cold start', () async {
+      SharedPreferences.setMockInitialValues({});
+      final a = Preferences();
+      await a.init();
+      expect(a.learnedStrideM('u1', 'run'), isNull);
+      await a.setLearnedStrideM('u1', 'run', 1.12);
+      await a.setLearnedStrideM('u1', 'walk', 0.74);
+
+      final b = Preferences();
+      await b.init();
+      expect(b.learnedStrideM('u1', 'run'), 1.12);
+      expect(b.learnedStrideM('u1', 'walk'), 0.74);
+      expect(b.learnedStrideM('u2', 'run'), isNull,
+          reason: 'a second account never inherits the first one\'s stride');
+    });
+
+    test('two accounts on one phone each keep their own stride', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = Preferences();
+      await p.init();
+      await p.setLearnedStrideM('u1', 'run', 1.12);
+      await p.setLearnedStrideM('u2', 'run', 0.98);
+      expect(p.learnedStrideM('u1', 'run'), 1.12);
+      expect(p.learnedStrideM('u2', 'run'), 0.98);
+      expect(p.learnedStrideM('u2', 'walk'), isNull);
+    });
+
+    test('the latest run\'s stride replaces the earlier one', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = Preferences();
+      await p.init();
+      await p.setLearnedStrideM('u1', 'run', 1.12);
+      await p.setLearnedStrideM('u1', 'run', 1.05);
+
+      final next = Preferences();
+      await next.init();
+      expect(next.learnedStrideM('u1', 'run'), 1.05);
+    });
+
+    test('a non-finite or non-positive stride is not written', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = Preferences();
+      await p.init();
+      await p.setLearnedStrideM('u1', 'run', 1.0);
+      await p.setLearnedStrideM('u1', 'run', double.nan);
+      await p.setLearnedStrideM('u1', 'run', 0);
+      expect(p.learnedStrideM('u1', 'run'), 1.0);
     });
   });
 
@@ -374,7 +428,7 @@ void main() {
     });
   });
 
-  group('Preferences.privacyDefault + newRunsArePublic', () {
+  group('Preferences.privacyDefault + newRunsArePublic + newRunsAreFollowersOnly', () {
     // privacy_default drives the initial is_public flag at run-save
     // time. The setting was previously stranded — set in the UI but
     // never read at save time. Pinning the contract here keeps the
@@ -397,18 +451,26 @@ void main() {
       expect(prefs.newRunsArePublic, isTrue);
     });
 
-    test('"followers" is treated as private (no DB shape today)',
-        () async {
-      // No followers-only column on `runs` — `is_public` is a bool.
-      // The setter accepts 'followers' as a valid value (mirrors the
-      // web settings UI) but `newRunsArePublic` returns false so the
-      // run lands private. When the schema gains a third visibility
-      // state, this is the test that flips.
+    test('"followers" writes the followers level, not public', () async {
+      // `followers` used to collapse to private because `runs` had only
+      // `is_public`. The followers level gives it a column of its own
+      // (decisions § 1875); the server stores it private until audience
+      // sharing is switched on.
       SharedPreferences.setMockInitialValues({'privacy_default': 'followers'});
       final prefs = Preferences();
       await prefs.init();
       expect(prefs.privacyDefault, 'followers');
       expect(prefs.newRunsArePublic, isFalse);
+      expect(prefs.newRunsAreFollowersOnly, isTrue);
+    });
+
+    test('only "followers" asks for the followers level', () async {
+      for (final value in ['public', 'private']) {
+        SharedPreferences.setMockInitialValues({'privacy_default': value});
+        final prefs = Preferences();
+        await prefs.init();
+        expect(prefs.newRunsAreFollowersOnly, isFalse, reason: value);
+      }
     });
 
     test('setter accepts public / followers / private + persists', () async {

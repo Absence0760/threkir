@@ -15,9 +15,17 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/last_map_view.dart';
+import '../lib/preferences.dart';
 import '../lib/screens/routes_heatmap_screen.dart';
+import '../lib/widgets/live_run_map.dart'
+    show mapHoverLine, mapLineCasing;
+import '../lib/widgets/map_attribution.dart';
+import '../lib/widgets/official_badge.dart';
+import 'pump_until.dart';
 
 class _FakeApiClient extends ApiClient {
   int fetchCalls = 0;
@@ -35,6 +43,17 @@ class _FakeApiClient extends ApiClient {
   List<cm.DiscoverableRoutePin> nextPins = const [];
   List<cm.ClubPin> nextClubs = const [];
   cm.Route? nextRouteById;
+
+  // Upcoming race pins.
+  int raceCalls = 0;
+  bool? lastOfficialOnly;
+  List<cm.UpcomingRacePin> nextRaces = const [];
+
+  Set<String> parkCourseRouteIds = const {};
+
+  @override
+  Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async =>
+      routeIds.where(parkCourseRouteIds.contains).toSet();
 
   @override
   Future<List<HeatmapPoint>> fetchHeatmapPoints({
@@ -85,6 +104,20 @@ class _FakeApiClient extends ApiClient {
       nextClubs;
 
   @override
+  Future<List<cm.UpcomingRacePin>> fetchUpcomingRacesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    bool officialOnly = false,
+  }) async {
+    raceCalls++;
+    lastOfficialOnly = officialOnly;
+    return nextRaces;
+  }
+
+  @override
   Future<({cm.Route? route, String? ownerId})> fetchRouteById(
     String routeId,
   ) async =>
@@ -94,12 +127,15 @@ class _FakeApiClient extends ApiClient {
 Future<void> _pump(
   WidgetTester tester,
   _FakeApiClient api, {
+  Locale? locale,
   Future<String> Function(Uri)? geocodingFetcher,
   Future<Position> Function()? locateFn,
   Future<Position?> Function()? backgroundLocateFn,
+  void Function(BuildContext, String)? openRaceOverride,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: RoutesHeatmapScreen(
@@ -107,6 +143,7 @@ Future<void> _pump(
         geocodingFetcher: geocodingFetcher,
         locateFn: locateFn,
         backgroundLocateFn: backgroundLocateFn,
+        openRaceOverride: openRaceOverride,
       ),
     ),
   );
@@ -124,16 +161,21 @@ cm.DiscoverableRoutePin _pin({
   int runCount = 6,
   double lat = 39.74,
   double lng = -105.0,
+  bool official = false,
+  double? elevationM,
+  String surface = 'road',
 }) =>
     cm.DiscoverableRoutePin(
       id: id,
       name: name,
       featured: featured,
       distanceM: distanceM,
-      surface: 'road',
+      surface: surface,
       runCount: runCount,
       lat: lat,
       lng: lng,
+      official: official,
+      elevationM: elevationM,
     );
 
 Position _fakePosition({double lat = 40.7128, double lng = -74.0060}) =>
@@ -150,6 +192,27 @@ Position _fakePosition({double lat = 40.7128, double lng = -74.0060}) =>
       speedAccuracy: 0,
     );
 
+// A map that reaches the screen bottom drew its credit under the system
+// navigation bar (route builder field report; same root cause here).
+void simulateNavBar(WidgetTester tester) {
+  tester.view.physicalSize = const Size(360, 780);
+  tester.view.devicePixelRatio = 1;
+  tester.view.padding = const FakeViewPadding(bottom: 48);
+  tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+  addTearDown(tester.view.reset);
+}
+
+void expectCreditsAboveNavBar(WidgetTester tester) {
+  final credits = find.descendant(
+      of: find.byType(MapAttribution), matching: find.byType(Text));
+  expect(credits, findsWidgets);
+  for (final credit in credits.evaluate()) {
+    final rect = tester.getRect(find.byWidget(credit.widget));
+    expect(rect.bottom, lessThanOrEqualTo(780 - 48),
+        reason: 'credit $rect is under the navigation bar');
+  }
+}
+
 void main() {
   setUpAll(() {
     dotenv.loadFromString(isOptional: true);
@@ -163,6 +226,17 @@ void main() {
       expect(find.text('Search places…'), findsOneWidget);
       expect(find.byIcon(Icons.tune), findsOneWidget);
       expect(find.textContaining('Where people run'), findsNothing);
+    });
+
+    testWidgets('the map credit sits above the navigation bar and below the '
+        'route-count pill', (tester) async {
+      simulateNavBar(tester);
+      final api = _FakeApiClient();
+      await _pump(tester, api);
+      expectCreditsAboveNavBar(tester);
+      final strip = tester.getRect(find.byType(MapAttribution));
+      final fab = tester.getRect(find.byType(FloatingActionButton));
+      expect(strip.top, greaterThanOrEqualTo(fab.bottom));
     });
 
     testWidgets('shows the Locate-me FAB with my_location icon',
@@ -196,6 +270,25 @@ void main() {
       expect(api.discoverCalls, greaterThan(initialFetches),
           reason: 'Locate must schedule a refresh so discovery '
               "repopulates around the user's location.");
+    });
+
+    testWidgets('a refused Locate says the permission is off, not a raw error',
+        (tester) async {
+      final api = _FakeApiClient();
+      await _pump(
+        tester,
+        api,
+        locateFn: () async =>
+            throw const PermissionDeniedException('Location permission denied'),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      expect(find.text('Location unavailable: location permission is off'),
+          findsOneWidget);
+      expect(find.textContaining('PermissionDenied'), findsNothing);
+      // Let the banner's dismiss timer run out.
+      await tester.pump(const Duration(seconds: 10));
     });
 
     testWidgets('search degrades silently when MapTiler is unconfigured',
@@ -300,6 +393,58 @@ void main() {
               'the London default whose tight bbox returns nothing.');
     });
 
+    testWidgets(
+        'with no location fix, reopens on the view it was last left on',
+        (tester) async {
+      // Sydney: far from London and from the (30, 0) world fallback.
+      SharedPreferences.setMockInitialValues({
+        kLastBrowseMapViewKey:
+            jsonEncode({'lat': -33.8688, 'lng': 151.2093, 'zoom': 12.0}),
+      });
+      final api = _FakeApiClient()
+        ..nextPins = [_pin(id: 'va', lat: 37.5407, lng: -77.436)];
+      await _pump(tester, api, backgroundLocateFn: () async => null);
+      await pumpUntil(
+        tester,
+        () =>
+            api.lastMinLng != null &&
+            api.lastMinLng! <= 151.2093 &&
+            api.lastMaxLng! >= 151.2093,
+        describe: 'a discovery fetch over the saved Sydney view',
+      );
+      expect(api.lastMinLat! <= -33.8688 && api.lastMaxLat! >= -33.8688,
+          isTrue);
+      expect(api.lastMaxLng! - api.lastMinLng!, lessThan(5),
+          reason: 'the saved city-scale view, not the whole world and not '
+              'a fit to routes on another continent');
+    });
+
+    testWidgets('closing the map saves the view for the next visit',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final api = _FakeApiClient();
+      await _pump(
+        tester,
+        api,
+        backgroundLocateFn: () async =>
+            _fakePosition(lat: 40.7128, lng: -74.0060),
+      );
+      await pumpUntil(
+        tester,
+        () => api.lastMinLng != null && api.lastMinLng! <= -74.0060,
+        describe: 'a discovery fetch over the NYC fix',
+      );
+      await tester.pumpWidget(const SizedBox());
+      MapView? saved;
+      await tester.runAsync(() async {
+        saved = await loadLastBrowseMapView();
+      });
+      expect(saved, isNotNull);
+      expect(saved!.center.latitude, closeTo(40.7128, 0.01));
+      expect(saved!.center.longitude, closeTo(-74.0060, 0.01));
+      expect(saved!.zoom, 14);
+    });
+
     testWidgets('fetches discovery on mount with a valid bbox; heat is off',
         (tester) async {
       final api = _FakeApiClient();
@@ -346,6 +491,89 @@ void main() {
     });
   });
 
+  group('upcoming race pins', () {
+    // No saved view from an earlier test, so the camera opens on the
+    // default centre the race below sits at.
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    // At the map's initial centre, so the marker is on screen.
+    const race = cm.UpcomingRacePin(
+      id: 'race-1',
+      name: 'Thames Half',
+      raceDate: '2027-01-10',
+      distanceM: 21097,
+      locationLabel: 'London',
+      lat: 51.5074,
+      lng: -0.1276,
+    );
+
+    testWidgets('a race pin is on by default; its card opens the race',
+        (tester) async {
+      String? opened;
+      final api = _FakeApiClient()..nextRaces = const [race];
+      await _pump(tester, api, openRaceOverride: (_, id) => opened = id);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.raceCalls, greaterThanOrEqualTo(1));
+      expect(api.lastOfficialOnly, isFalse);
+
+      final pin = find.byKey(const ValueKey('heatmap-race-pin-race-1'));
+      expect(pin, findsOneWidget);
+      await tester.tap(pin);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Thames Half'), findsOneWidget);
+      expect(find.text('London'), findsOneWidget);
+      expect(find.textContaining('2027-01-10'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('heatmap-race-view')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(opened, 'race-1');
+    });
+
+    testWidgets('the Upcoming races chip hides the pins and stops the fetch',
+        (tester) async {
+      final api = _FakeApiClient()..nextRaces = const [race];
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const ValueKey('heatmap-race-pin-race-1')),
+          findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final chip = find.byKey(const ValueKey('heatmap-race-pins-chip'));
+      await tester.ensureVisible(chip);
+      await tester.pump();
+      await tester.tap(chip);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final callsWhenOff = api.raceCalls;
+      expect(find.byKey(const ValueKey('heatmap-race-pin-race-1')),
+          findsNothing);
+      // Another refetch while off asks for no races.
+      await tester.tap(find.text('Featured'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.raceCalls, callsWhenOff);
+    });
+
+    testWidgets('the Official lens asks for official races only',
+        (tester) async {
+      final api = _FakeApiClient();
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Official'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.lastOfficialOnly, isTrue);
+    });
+  });
+
   group('discovery pins + lens', () {
     testWidgets('fetches discoverable pins on mount + lists them via the pill',
         (tester) async {
@@ -366,6 +594,20 @@ void main() {
       expect(find.text('Wash Park 5K Loop'), findsOneWidget);
     });
 
+    testWidgets('a result row names the surface in the reader\'s language, '
+        'not the stored token', (tester) async {
+      final api = _FakeApiClient()
+        ..nextPins = [_pin(surface: 'trail', runCount: 2)];
+      await _pump(tester, api, locale: const Locale('fr'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.textContaining('1 '));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('Sentier'), findsOneWidget);
+      expect(find.textContaining('trail'), findsNothing);
+      expect(find.textContaining('2 runs'), findsNothing);
+    });
+
     testWidgets('the Filters sheet swaps the lens + refetches',
         (tester) async {
       // No pins → no band badges, so the only "Featured" text is the
@@ -383,6 +625,75 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(api.lastFilter, 'featured');
+    });
+
+    testWidgets('the Official lens refetches with p_filter official',
+        (tester) async {
+      final api = _FakeApiClient();
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Official'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.lastFilter, 'official');
+    });
+
+    testWidgets('an official pin carries the Official badge in the results',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..nextPins = [
+          _pin(id: 'o', name: 'Organiser Course', official: true),
+          _pin(id: 'c', name: 'Community Loop', lat: 39.75),
+        ];
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('2 routes'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final badge = find.byType(OfficialBadge);
+      expect(badge, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: badge, matching: find.byType(ListTile)),
+          matching: find.text('Organiser Course'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'a park course pin reads "Official Threkir course", not just "Official"',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..nextPins = [
+          _pin(id: 'park', name: 'Lake Loop', official: true),
+          _pin(id: 'o', name: 'Organiser Course', official: true, lat: 39.75),
+        ]
+        ..parkCourseRouteIds = {'park'};
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('2 routes'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(OfficialBadge), findsNWidgets(2));
+      expect(find.text('Official Threkir course'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Official Threkir course'),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.text('Lake Loop'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Official'), findsOneWidget);
     });
 
     testWidgets('picking a distance band threads the bounds to the RPC',
@@ -437,6 +748,53 @@ void main() {
       expect(find.text('View route'), findsOneWidget);
       expect(find.byKey(const ValueKey('heatmap-selected-route')),
           findsOneWidget);
+      // The basemap-aware preview rung over the shared casing: no
+      // MAPTILER_KEY in tests, so the basemap is the light OSM fallback,
+      // where the old fixed cyan held under 3:1.
+      final lines = tester
+          .widget<PolylineLayer>(
+              find.byKey(const ValueKey('heatmap-selected-route')))
+          .polylines;
+      expect(lines.first.color, mapLineCasing);
+      expect(lines.last.color, mapHoverLine(darkBasemap: false));
+    });
+
+    testWidgets('the selection card reads elevation and runs in the reader\'s '
+        'unit and language', (tester) async {
+      SharedPreferences.setMockInitialValues({'use_miles': true});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+      addTearDown(() async {
+        SharedPreferences.setMockInitialValues({});
+        final km = Preferences();
+        await km.init();
+        registerActivePreferences(km);
+      });
+      final api = _FakeApiClient()
+        ..nextPins = [_pin(elevationM: 229, runCount: 1)]
+        ..nextRouteById = cm.Route(
+          id: 'a',
+          userId: 'u',
+          name: 'Wash Park 5K Loop',
+          waypoints: const [
+            Waypoint(lat: 39.740, lng: -105.000),
+            Waypoint(lat: 39.745, lng: -105.005),
+          ],
+          distanceMetres: 5000,
+        );
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('1 route'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Wash Park 5K Loop'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.textContaining('751 ft'), findsOneWidget);
+      expect(find.textContaining('229 m'), findsNothing);
+      expect(find.textContaining('1 run'), findsWidgets);
     });
   });
 

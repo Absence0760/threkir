@@ -1,17 +1,26 @@
 <script lang="ts">
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m as tr } from '$lib/i18n/store.svelte';
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { clubRoleLabel, joinPolicyLabel, routeSurfaceLabel, rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { onMount, onDestroy } from 'svelte';
-	import { handleTablistKeydown } from '$lib/util/tablist';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hashHue } from '$lib/format/avatar';
-	import { page } from '$app/stores';
+	import { handleTablistKeydown } from '#lib/util/tablist.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
+	import { namedOrNull, runnerHandle } from '#lib/social/runner_handle.ts';
+	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
-	import { env } from '$env/dynamic/public';
-	import { buildClubShareCanonical } from '$lib/share/share_club_meta';
-	import { supabase } from '$lib/core/supabase';
-	import { isEntityId } from '$lib/core/entity_id';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildClubShareCanonical } from '#lib/share/share_club_meta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { isEntityId } from '#lib/core/entity_id.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchClubBySlug,
@@ -42,34 +51,42 @@
 		leaveClub,
 		createClubPost,
 		deleteClubPost,
-		deleteClub
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RouteTrackPreview from '$lib/components/RouteTrackPreview.svelte';
-	import type { GymRoutineSummary } from '$lib/core/data';
-	import type { Route, TrainingPlan, SessionPlan } from '$lib/types';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import ClubEditor from '$lib/components/ClubEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import VerifiedBadge from '$lib/components/VerifiedBadge.svelte';
-	import ClubPhotos from '$lib/components/ClubPhotos.svelte';
+		deleteClub,
+		PAID_EVENT_DELETE_REFUSAL
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
+	import type { GymRoutineSummary } from '#lib/core/data.ts';
+	import type { OfficialFlag, Route, TrainingPlan, SessionPlan } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DangerZone from '#lib/components/DangerZone.svelte';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
+	import ClubLogoControl from '#lib/components/ClubLogoControl.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
+	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import ClubVerificationCard from '#lib/components/ClubVerificationCard.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import ClubPhotos from '#lib/components/ClubPhotos.svelte';
 	import type {
 		ClubWithMeta,
 		EventWithMeta,
 		ClubPostWithAuthor,
 		ClubMember
-	} from '$lib/types';
+	} from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
+	let slug = $derived(page.params.slug as string);
 	// Fold this in-app (CSR) club page onto the public, crawlable
 	// /share/club/[slug] twin so search engines consolidate ranking
 	// signal there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildClubShareCanonical(env.PUBLIC_SITE_URL || DEFAULT_SITE_URL, slug)
+		buildClubShareCanonical(siteOrigin(PUBLIC_SITE_URL), slug)
 	);
 	let club = $state<ClubWithMeta | null>(null);
 	let upcoming = $state<EventWithMeta[]>([]);
@@ -77,10 +94,14 @@
 	let posts = $state<ClubPostWithAuthor[]>([]);
 	let members = $state<(ClubMember & { display_name: string | null; avatar_url: string | null })[]>([]);
 	let membersHasMore = $state(false);
+	// The keyset cursor for the roster's next page (see fetchClubMembers).
+	let membersNext = $state<KeysetCursor | null>(null);
 	let membersLoadingMore = $state(false);
 	let pending = $state<(ClubMember & { display_name: string | null; avatar_url: string | null })[]>([]);
+	let pendingError = $state<string | null>(null);
+	let pendingRetrying = $state(false);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 	type Tab = 'feed' | 'events' | 'routes' | 'templates' | 'photos' | 'members';
 	const TABS: readonly Tab[] = ['feed', 'events', 'routes', 'templates', 'photos', 'members'];
 	let tab = $state<Tab>('feed');
@@ -89,7 +110,7 @@
 	function setTab(next: Tab) {
 		tab = next;
 		const path = next === 'feed' ? `/clubs/${slug}` : `/clubs/${slug}?tab=${next}`;
-		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
+		goto(path, { replace: true, reset: false });
 	}
 
 	/// Back-link wiring: if the user landed here from /clubs, fire
@@ -110,14 +131,14 @@
 		}
 	}
 	let clubRoutes = $state<Route[]>([]);
-	let transferableRoutes = $state<Route[]>([]);
+	let transferableRoutes = $state<RouteListItem[]>([]);
 	let showTransferModal = $state(false);
 	let showEditModal = $state(false);
 	let transferRouteId = $state('');
 	let clubTemplates = $state<TrainingPlan[]>([]);
 	let sessionTemplates = $state<SessionPlan[]>([]);
 	let adoptingSession = $state('');
-	let gymRoutineTemplates = $state<GymRoutineSummary[]>([]);
+	let gymRoutineTemplates = $state<(GymRoutineSummary & OfficialFlag)[]>([]);
 	let adoptingRoutine = $state('');
 	const templatesCount = $derived(
 		clubTemplates.length + sessionTemplates.length + gymRoutineTemplates.length
@@ -167,6 +188,19 @@
 	let canManageEvents = $derived(isAdmin || club?.viewer_role === 'event_organiser');
 	let isMember = $derived(club?.viewer_role != null);
 
+	// A member with no display name is shown as their runnerHandle rather than
+	// a "Member" that made several unnamed people indistinguishable
+	// (decisions § 2365).
+	function shownName(name: string | null | undefined, userId: string): string {
+		return (
+			namedOrNull(name) ??
+			runnerHandle(userId, {
+				handle: (slug) => tr('live.runnerHandle', { slug }),
+				anonymous: tr('live.runnerAnonymous'),
+			})
+		);
+	}
+
 	// `target` is passed explicitly through the id → slug forward below rather
 	// than re-read from the reactive `slug`: after `goto` resolves, the derived
 	// has not necessarily propagated yet, so a recursive pass that re-read it
@@ -191,7 +225,7 @@
 			// canonical slug URL rather than showing "club not found".
 			const canonical = isEntityId(target) ? await fetchClubSlugById(target) : null;
 			if (canonical && canonical !== target) {
-				await goto(`/clubs/${canonical}`, { replaceState: true });
+				await goto(`/clubs/${canonical}`, { replace: true });
 				// Same route, different param: SvelteKit reuses this component
 				// rather than remounting it, so onMount — the only thing that
 				// calls load() on arrival — never fires again and the page
@@ -210,7 +244,7 @@
 			fetchClubPosts(club.id, 20),
 			fetchClubMembers(club.id, { limit: ROSTER_PAGE_SIZE }),
 			club.viewer_role === 'owner' || club.viewer_role === 'admin'
-				? fetchPendingRequests(club.id)
+				? loadPending(club.id)
 				: Promise.resolve([]),
 			fetchClubRoutes(club.id),
 			fetchClubTemplates(club.id),
@@ -220,8 +254,9 @@
 		upcoming = up;
 		past = pa;
 		posts = po;
-		members = me;
-		membersHasMore = me.length === ROSTER_PAGE_SIZE;
+		members = me.rows;
+		membersNext = me.next;
+		membersHasMore = me.next !== null;
 		pending = pe;
 		clubRoutes = rt;
 		clubTemplates = tp;
@@ -230,18 +265,43 @@
 		loading = false;
 	}
 
+	// The join queue is one admin card, so its failure is shown on that card
+	// with a retry rather than failing the club page or reading as "no one is
+	// waiting".
+	async function loadPending(clubId: string) {
+		try {
+			const rows = await fetchPendingRequests(clubId);
+			pendingError = null;
+			return rows;
+		} catch (e) {
+			pendingError = errorCopy(e, tr, 'clubs/[slug]: pendingError');
+			return [];
+		}
+	}
+
+	async function retryPending() {
+		if (!club || pendingRetrying) return;
+		pendingRetrying = true;
+		try {
+			pending = await loadPending(club.id);
+		} finally {
+			pendingRetrying = false;
+		}
+	}
+
 	async function loadMoreMembers() {
-		if (!club || membersLoadingMore || !membersHasMore) return;
+		if (!club || membersLoadingMore || !membersHasMore || !membersNext) return;
 		membersLoadingMore = true;
 		try {
 			const more = await fetchClubMembers(club.id, {
 				limit: ROSTER_PAGE_SIZE,
-				offset: members.length
+				after: membersNext
 			});
-			members = [...members, ...more];
-			membersHasMore = more.length === ROSTER_PAGE_SIZE;
+			members = appendPage(members, more.rows, (row) => row.user_id);
+			membersNext = more.next;
+			membersHasMore = more.next !== null;
 		} catch (e) {
-			showToast(tr('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(tr('profile.loadMoreError', { error: errorCopy(e, tr, 'profile.loadMoreError') }), 'error');
 		} finally {
 			membersLoadingMore = false;
 		}
@@ -256,7 +316,7 @@
 			goto(`/gym/routines/${newId}`);
 		} catch (e) {
 			showToast(
-				tr('clubHome.toastFailed', { error: e instanceof Error ? e.message : String(e) }),
+				tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }),
 				'error'
 			);
 		} finally {
@@ -272,7 +332,7 @@
 			showToast(tr('clubHome.sessionAdopted'));
 		} catch (e) {
 			showToast(
-				tr('clubHome.toastFailed', { error: e instanceof Error ? e.message : String(e) }),
+				tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }),
 				'error'
 			);
 		} finally {
@@ -293,7 +353,7 @@
 			showToast(tr('clubHome.toastTemplateRemoved'), 'success');
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }), 'error');
 		} finally {
 			unpublishBusyId = null;
 		}
@@ -315,7 +375,7 @@
 			showToast(tr('clubHome.toastRouteTransferred'));
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRouteTransferFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastRouteTransferFailed', { error: errorCopy(e, tr, 'clubHome.toastRouteTransferFailed') }), 'error');
 		}
 	}
 
@@ -331,7 +391,7 @@
 			showToast(tr('clubHome.toastRouteReturned'));
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRouteRemoveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastRouteRemoveFailed', { error: errorCopy(e, tr, 'clubHome.toastRouteRemoveFailed') }), 'error');
 		}
 	}
 
@@ -342,7 +402,7 @@
 	let realtimeReady = $state(false);
 
 	onMount(async () => {
-		const initial = $page.url.searchParams.get('tab');
+		const initial = page.url.searchParams.get('tab');
 		if (initial && (TABS as readonly string[]).includes(initial)) {
 			tab = initial as Tab;
 		}
@@ -532,7 +592,7 @@
 			}
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : tr('clubHome.failedToJoin');
+			error = errorCopy(e, tr, 'clubHome.failedToJoin', 'clubHome.failedToJoin');
 		} finally {
 			joinBusy = false;
 		}
@@ -551,7 +611,7 @@
 			await leaveClub(club.id);
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : tr('clubHome.failedToLeave');
+			error = errorCopy(e, tr, 'clubHome.failedToLeave', 'clubHome.failedToLeave');
 		} finally {
 			joinBusy = false;
 		}
@@ -565,7 +625,7 @@
 			await approveMember(club.id, userId);
 			await load();
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastApproveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastApproveFailed', { error: errorCopy(e, tr, 'clubHome.toastApproveFailed') }), 'error');
 		} finally {
 			const next = new Set(pendingBusy);
 			next.delete(userId);
@@ -585,7 +645,7 @@
 			await load();
 			showToast(tr('clubHome.toastApprovedAll'));
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastApproveAllFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastApproveAllFailed', { error: errorCopy(e, tr, 'clubHome.toastApproveAllFailed') }), 'error');
 		} finally {
 			approvingAll = false;
 		}
@@ -600,7 +660,7 @@
 			await rejectMember(club.id, userId);
 			await load();
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastRejectFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastRejectFailed', { error: errorCopy(e, tr, 'clubHome.toastRejectFailed') }), 'error');
 		} finally {
 			const next = new Set(pendingBusy);
 			next.delete(userId);
@@ -616,33 +676,87 @@
 			await removeMember(club.id, userId);
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRemoveMemberFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(tr('clubHome.toastRemoveMemberFailed', { error: errorCopy(e, tr, 'clubHome.toastRemoveMemberFailed') }), 'error');
 		}
 	}
 
-	async function copyInvite() {
+	// A public share link only for a club anon can read: /share/club/[slug]
+	// renders nothing for a private or moderation-hidden club, so handing
+	// that link out would only send people to a dead end.
+	let canShareClub = $derived(!!club && club.is_public && !club.shadow_hidden);
+	let inviteBusy = $state(false);
+
+	function inviteUrl(token: string): string {
+		return `${location.origin}/clubs/join/${encodeURIComponent(token)}`;
+	}
+
+	async function copyLink(url: string, copiedMessage: string) {
+		try {
+			await navigator.clipboard.writeText(url);
+			showToast(copiedMessage, 'success');
+		} catch (e) {
+			console.error('club link copy failed', e);
+			showToast(tr('clubHome.copyFailed'), 'error');
+		}
+	}
+
+	async function shareLink(url: string, title: string, copiedMessage: string) {
+		if (typeof navigator.share === 'function') {
+			try {
+				await navigator.share({ title, url });
+				return;
+			} catch (e) {
+				if (e instanceof DOMException && e.name === 'AbortError') return;
+				console.warn('club share sheet failed, copying instead', e);
+			}
+		}
+		await copyLink(url, copiedMessage);
+	}
+
+	function copyInvite() {
 		if (!club?.invite_token) return;
-		const link = `${location.origin}/clubs/join/${club.invite_token}`;
-		await navigator.clipboard.writeText(link);
-		error = tr('clubHome.inviteCopied');
+		void copyLink(inviteUrl(club.invite_token), tr('clubHome.inviteCopied'));
+	}
+
+	function shareInvite() {
+		if (!club?.invite_token) return;
+		void shareLink(inviteUrl(club.invite_token), club.name, tr('clubHome.inviteCopied'));
+	}
+
+	function shareClub() {
+		if (!club || !canShareClub) return;
+		void shareLink(
+			buildClubShareCanonical(location.origin, club.slug),
+			club.name,
+			tr('clubHome.shareLinkCopied')
+		);
 	}
 
 	function regenerateInvite() {
 		if (!club) return;
-		showRegenConfirm = true;
+		// Only replacing a live link breaks anything; minting the first one does not.
+		if (club.invite_token) showRegenConfirm = true;
+		else void writeInviteToken();
 	}
 
-	async function confirmRegenerate() {
-		if (!club) return;
+	function confirmRegenerate() {
 		showRegenConfirm = false;
+		void writeInviteToken();
+	}
+
+	async function writeInviteToken() {
+		if (!club || inviteBusy) return;
+		inviteBusy = true;
 		try {
 			const token = await regenerateInviteToken(club.id);
 			club = { ...club, invite_token: token };
 		} catch (e) {
 			showToast(
-				tr('clubHome.regenerateFailed', { error: e instanceof Error ? e.message : String(e) }),
+				tr('clubHome.regenerateFailed', { error: errorCopy(e, tr, 'clubHome.regenerateFailed') }),
 				'error'
 			);
+		} finally {
+			inviteBusy = false;
 		}
 	}
 
@@ -651,8 +765,15 @@
 			expandedThreads = { ...expandedThreads, [postId]: null };
 			return;
 		}
-		const replies = await fetchPostReplies(postId);
-		expandedThreads = { ...expandedThreads, [postId]: replies };
+		try {
+			const replies = await fetchPostReplies(postId);
+			expandedThreads = { ...expandedThreads, [postId]: replies };
+		} catch (e) {
+			showToast(
+				tr('clubHome.repliesLoadFailed', { error: errorCopy(e, tr, 'clubHome.repliesLoadFailed') }),
+				'error'
+			);
+		}
 	}
 
 	async function sendReply(postId: string) {
@@ -667,6 +788,13 @@
 			expandedThreads = { ...expandedThreads, [postId]: replies };
 			// Refresh reply counts on the top-level post list.
 			posts = await fetchClubPosts(club.id, 20);
+		} catch (e) {
+			// The draft is only cleared once the write lands, so it is still
+			// in the box to send again.
+			showToast(
+				tr('clubHome.replyFailed', { error: errorCopy(e, tr, 'clubHome.replyFailed') }),
+				'error'
+			);
 		} finally {
 			replyBusyId = null;
 		}
@@ -681,7 +809,7 @@
 			draftPost = '';
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : tr('clubHome.failedToPost');
+			error = errorCopy(e, tr, 'clubHome.failedToPost', 'clubHome.failedToPost');
 		} finally {
 			postingBusy = false;
 		}
@@ -701,7 +829,7 @@
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e) {
 			showToast(
-				tr('clubHome.deletePostFailed', { error: e instanceof Error ? e.message : String(e) }),
+				tr('clubHome.deletePostFailed', { error: errorCopy(e, tr, 'clubHome.deletePostFailed') }),
 				'error'
 			);
 		}
@@ -718,8 +846,12 @@
 		try {
 			await deleteClub(club.id);
 		} catch (e) {
+			if (e instanceof Error && e.message === PAID_EVENT_DELETE_REFUSAL) {
+				showToast(tr('clubHome.deleteClubHasPayments'), 'error');
+				return;
+			}
 			showToast(
-				tr('clubHome.deleteClubFailed', { error: e instanceof Error ? e.message : String(e) }),
+				tr('clubHome.deleteClubFailed', { error: errorCopy(e, tr, 'clubHome.deleteClubFailed') }),
 				'error'
 			);
 			return;
@@ -740,8 +872,8 @@
 	}
 
 	function fmtKm(m: number | null | undefined): string {
-		// Defers to the unit-aware formatter in $lib/format/units.svelte so a
-		// km → mi preference flip on /settings/preferences re-renders
+		// Defers to the unit-aware formatter in #lib/format/units.svelte so a
+		// km → mi preference flip on /settings/display re-renders
 		// every distance string on this page. The previous local
 		// implementation hardcoded " km" — the audit caught it.
 		if (m == null) return '';
@@ -775,35 +907,35 @@
 			{tr('clubHome.allClubs')}
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
-			<span class="skel skel-avatar-lg"></span>
+			<SkeletonBlock height="4.5rem" width="4.5rem" radius="50%" />
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-30"></span>
-				<span class="skel skel-line skel-w-80"></span>
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="30%" />
+				<SkeletonBlock height="0.75rem" width="80%" />
 			</div>
 		</div>
 		<div class="tabs-skel" aria-hidden="true">
 			{#each Array(5) as _, i (i)}
-				<span class="skel skel-line skel-tab"></span>
+				<SkeletonBlock height="0.9rem" width="4rem" />
 			{/each}
 		</div>
 		<div class="feed-skel" aria-hidden="true">
 			{#each Array(3) as _, i (i)}
 				<div class="skel-post">
 					<div class="skel-post-head">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.1rem" width="2.1rem" radius="50%" />
 						<div class="skel-post-meta">
-							<span class="skel skel-line skel-w-30"></span>
-							<span class="skel skel-line skel-w-20"></span>
+							<SkeletonBlock height="0.75rem" width="30%" />
+							<SkeletonBlock height="0.75rem" width="20%" />
 						</div>
 					</div>
-					<span class="skel skel-line skel-w-80"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.75rem" width="80%" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
 	</div>
-	<p class="sr-only" role="status">{tr('clubHome.loadingClub')}</p>
+	<p class="visually-hidden" role="status">{tr('clubHome.loadingClub')}</p>
 {:else if loadError}
 	<div class="not-found" role="alert" data-testid="club-load-error">
 		<h2>{tr('clubHome.loadErrorTitle')}</h2>
@@ -824,7 +956,18 @@
 		</a>
 
 		<div class="hero">
-			<Avatar name={club.name} size="4.5rem" font="2rem" bg="seed" seedHue={hashHue(club.id)} />
+			<div class="hero-logo">
+				<ClubAvatar {club} size="4.5rem" font="2rem" />
+				{#if isAdmin}
+					<ClubLogoControl
+						clubId={club.id}
+						hasLogo={!!club.avatar_url}
+						onchange={(url) => {
+							if (club) club = { ...club, avatar_url: url };
+						}}
+					/>
+				{/if}
+			</div>
 			<div class="hero-text">
 				<div class="hero-title-row">
 					<h1>
@@ -837,6 +980,7 @@
 						<span class="badge">{tr('clubHome.privateBadge')}</span>
 					{/if}
 				</div>
+				<HelpLink route="/clubs/[slug]" />
 				{#if club.location_label}
 					<p class="location">
 						<span class="material-symbols" aria-hidden="true">place</span>
@@ -850,27 +994,27 @@
 				{#if club.viewer_role === 'owner'}
 					<p class="role-line">
 						<span class="material-symbols" aria-hidden="true">shield_person</span>
-						{tr('clubHome.roleOwnerPrefix')} <strong>{tr('clubHome.roleOwner')}</strong>
+						<strong>{tr('clubHome.viewerRoleOwner')}</strong>
 					</p>
 				{:else if club.viewer_role === 'admin'}
 					<p class="role-line">
 						<span class="material-symbols" aria-hidden="true">shield_person</span>
-						{tr('clubHome.roleAdminPrefix')} <strong>{tr('clubHome.roleAdmin')}</strong>
+						<strong>{tr('clubHome.viewerRoleAdmin')}</strong>
 					</p>
 				{:else if club.viewer_role === 'event_organiser'}
 					<p class="role-line">
 						<span class="material-symbols" aria-hidden="true">shield_person</span>
-						{tr('clubHome.roleOrganiserPrefix')} <strong>{tr('clubHome.roleOrganiser')}</strong>
+						<strong>{tr('clubHome.viewerRoleOrganiser')}</strong>
 					</p>
 				{:else if club.viewer_role === 'race_director'}
 					<p class="role-line">
 						<span class="material-symbols" aria-hidden="true">shield_person</span>
-						{tr('clubHome.roleDirectorPrefix')} <strong>{tr('clubHome.roleDirector')}</strong>
+						<strong>{tr('clubHome.viewerRoleDirector')}</strong>
 					</p>
 				{:else if club.viewer_role === 'member'}
 					<p class="role-line subtle">
 						<span class="material-symbols" aria-hidden="true">check_circle</span>
-						{tr('clubHome.roleMember')}
+						{tr('clubHome.viewerRoleMember')}
 					</p>
 				{/if}
 				{#if club.description}
@@ -929,9 +1073,7 @@
 							{tr('clubHome.joinClub')}
 						{/if}
 					</button>
-				{:else if club.viewer_role === 'owner'}
-					<button class="btn-secondary danger" onclick={handleDeleteClub}>{tr('clubHome.deleteClub')}</button>
-				{:else}
+				{:else if club.viewer_role !== 'owner'}
 					<button class="btn-secondary" onclick={leave} disabled={joinBusy}>
 						{joinBusy ? tr('clubHome.leaving') : tr('clubHome.leave')}
 					</button>
@@ -948,6 +1090,12 @@
 						{tr('clubHome.editClub')}
 					</button>
 				{/if}
+				{#if canShareClub}
+					<button class="btn-secondary" type="button" onclick={shareClub} data-testid="club-share">
+						<span class="material-symbols" aria-hidden="true">share</span>
+						{tr('clubHome.shareClub')}
+					</button>
+				{/if}
 				{#if !isAdmin && auth.loggedIn}
 					<button
 						class="btn-secondary btn-icon-only"
@@ -959,6 +1107,14 @@
 						<span class="material-symbols" aria-hidden="true">flag</span>
 					</button>
 				{/if}
+				{#if !isAdmin && auth.loggedIn && club.is_public}
+					<OrganiserDisputeAction
+						targetKind="club"
+						targetId={club.id}
+						targetLabel={club.name}
+						targetClubId={club.id}
+					/>
+				{/if}
 			</div>
 		</div>
 
@@ -966,32 +1122,59 @@
 			<p class="error" role="alert">{error}</p>
 		{/if}
 
-		{#if isAdmin && (club.join_policy === 'invite' || club.invite_token)}
-			<section class="admin-card">
+		{#if isAdmin}
+			<section class="admin-card" data-testid="club-invite-card">
 				<div class="admin-card-title">
 					<span class="material-symbols" aria-hidden="true">link</span>
 					<strong>{tr('clubHome.inviteLink')}</strong>
-					<span class="policy-chip">{club.join_policy}</span>
+					<span class="policy-chip">{joinPolicyLabel(club.join_policy)}</span>
 				</div>
+				<p class="invite-body">
+					{club.join_policy === 'invite'
+						? tr('clubHome.inviteBodyInvite')
+						: club.join_policy === 'request'
+							? tr('clubHome.inviteBodyRequest')
+							: tr('clubHome.inviteBodyOpen')}
+				</p>
 				{#if club.invite_token}
 					<div class="invite-row">
-						<code class="invite-link">{location.origin}/clubs/join/{club.invite_token}</code>
+						<code class="invite-link">{inviteUrl(club.invite_token)}</code>
 						<button class="btn-ghost" onclick={copyInvite}>
 							<span class="material-symbols" aria-hidden="true">content_copy</span>
 							{tr('clubHome.copy')}
 						</button>
-						<button class="btn-ghost" onclick={regenerateInvite}>
+						<button class="btn-ghost" onclick={shareInvite}>
+							<span class="material-symbols" aria-hidden="true">share</span>
+							{tr('clubHome.share')}
+						</button>
+						<button class="btn-ghost" onclick={regenerateInvite} disabled={inviteBusy}>
 							<span class="material-symbols" aria-hidden="true">refresh</span>
 							{tr('clubHome.rotate')}
 						</button>
 					</div>
 				{:else}
-					<button class="btn-secondary" onclick={regenerateInvite}>{tr('clubHome.generateInviteLink')}</button>
+					<button class="btn-secondary" onclick={regenerateInvite} disabled={inviteBusy}>
+						{tr('clubHome.generateInviteLink')}
+					</button>
 				{/if}
 			</section>
 		{/if}
 
-		{#if isAdmin && pending.length > 0}
+		{#if isAdmin}
+			<ClubVerificationCard {club} isOwner={club.viewer_role === 'owner'} />
+		{/if}
+
+		{#if isAdmin && pendingError}
+			<section class="admin-card" role="alert">
+				<div class="admin-card-title">
+					<span class="material-symbols" aria-hidden="true">error</span>
+					<strong>{tr('clubHome.pendingLoadFailed', { error: pendingError })}</strong>
+					<button class="btn-secondary btn-sm approve-all" type="button" onclick={retryPending} disabled={pendingRetrying}>
+						{tr('clubHome.retry')}
+					</button>
+				</div>
+			</section>
+		{:else if isAdmin && pending.length > 0}
 			<section class="admin-card">
 				<div class="admin-card-title">
 					<span class="material-symbols" aria-hidden="true">hourglass_top</span>
@@ -1010,9 +1193,9 @@
 				<div class="pending-list">
 					{#each pending as p (p.user_id)}
 						<div class="pending-row">
-							<Avatar name={p.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(p.user_id)} />
+							<Avatar url={p.avatar_url} name={shownName(p.display_name, p.user_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(p.user_id)} />
 							<div class="pending-info">
-								<strong>{p.display_name ?? tr('clubHome.memberFallback')}</strong>
+								<strong>{shownName(p.display_name, p.user_id)}</strong>
 								<span class="when">{tr('clubHome.requestedRelative', { time: fmtRelative(p.joined_at ?? new Date().toISOString()) })}</span>
 							</div>
 							<button class="btn-primary btn-sm" onclick={() => approve(p.user_id)} disabled={pendingBusy.has(p.user_id)}>{tr('clubHome.approve')}</button>
@@ -1021,6 +1204,16 @@
 					{/each}
 				</div>
 			</section>
+		{/if}
+
+		{#if isMember && auth.user && !namedOrNull(auth.user.display_name)}
+			<aside class="name-hint" data-testid="club-name-hint">
+				<span class="material-symbols" aria-hidden="true">info</span>
+				<p>
+					{tr('clubHome.nameHint', { handle: shownName(null, auth.user.id) })}
+					<a href="/settings/account">{tr('clubHome.nameHintAction')}</a>
+				</p>
+			</aside>
 		{/if}
 
 		<!-- tabindex=-1: keydown bubbles here from the focused tab; the tabs
@@ -1097,7 +1290,7 @@
 						<div class="next-event-meta">
 							<span>
 								<span class="material-symbols" aria-hidden="true">calendar_today</span>
-								{fmtDate(upcoming[0].starts_at)}
+								{fmtDate(upcoming[0].next_instance_start ?? upcoming[0].starts_at)}
 							</span>
 							{#if upcoming[0].meet_label}
 								<span>
@@ -1120,7 +1313,7 @@
 						bind:value={draftPost}
 						placeholder={tr('clubHome.postPlaceholder')}
 						rows="3"
-						maxlength="1200"
+						maxlength={lengthLimit('club_posts.body')}
 					></textarea>
 					<button class="btn-primary" type="submit" disabled={!draftPost.trim() || postingBusy}>
 						{postingBusy ? tr('clubHome.posting') : tr('clubHome.post')}
@@ -1129,18 +1322,14 @@
 			{/if}
 
 			{#if posts.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyFeedTitle')}</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="chat"
+					headingLevel={3}
+					title={tr('clubHome.emptyFeedTitle')}
+					text={isMember ? tr('clubHome.emptyFeedMember') : tr('clubHome.emptyFeedNonMember')}
+				>
+					{#snippet actions()}
 						{#if isMember}
-							{tr('clubHome.emptyFeedMember')}
-						{:else}
-							{tr('clubHome.emptyFeedNonMember')}
-						{/if}
-					</p>
-					{#if isMember}
-						<div class="empty-actions">
 							<button
 								type="button"
 								class="btn btn-primary"
@@ -1152,18 +1341,18 @@
 								<span class="material-symbols" aria-hidden="true">edit</span>
 								{tr('clubHome.writeFirstPost')}
 							</button>
-						</div>
-					{/if}
-				</div>
+						{/if}
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="feed">
 					{#each posts as post (post.id)}
 						<article class="post">
 							<div class="post-author">
 								<a href="/u/{post.author_id}" class="author-link">
-									<Avatar name={post.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(post.author_id)} />
+									<Avatar url={post.author_avatar_url} name={shownName(post.author_display_name, post.author_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(post.author_id)} />
 									<div>
-										<strong>{post.author_display_name ?? tr('clubHome.memberFallback')}</strong>
+										<strong>{shownName(post.author_display_name, post.author_id)}</strong>
 										<span class="when">{fmtRelative(post.created_at ?? new Date().toISOString())}</span>
 									</div>
 								</a>
@@ -1203,12 +1392,14 @@
 									<div class="replies">
 										{#each expandedThreads[post.id] ?? [] as reply (reply.id)}
 											<div class="reply">
-												<a href="/u/{reply.author_id}" class="reply-author-link">
-													<Avatar name={reply.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(reply.author_id)} />
+												<!-- Redundant image link for the same destination as the
+												     author-name link below (WCAG technique H2). See RunSocial. -->
+												<a href="/u/{reply.author_id}" class="reply-author-link" tabindex="-1" aria-hidden="true">
+													<Avatar url={reply.author_avatar_url} name={shownName(reply.author_display_name, reply.author_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(reply.author_id)} />
 												</a>
 												<div class="reply-body">
 													<div class="reply-head">
-														<a href="/u/{reply.author_id}" class="author-link"><strong>{reply.author_display_name ?? tr('clubHome.memberFallback')}</strong></a>
+														<a href="/u/{reply.author_id}" class="author-link"><strong>{shownName(reply.author_display_name, reply.author_id)}</strong></a>
 														<span class="when">{fmtRelative(reply.created_at ?? new Date().toISOString())}</span>
 													</div>
 													<p>{reply.body}</p>
@@ -1250,15 +1441,15 @@
 					{#each upcoming as evt (evt.id)}
 						<a href="/clubs/{club.slug}/events/{evt.id}" class="event-row">
 							<div class="event-date">
-								{new Date(evt.starts_at).toLocaleDateString(activeFormatLocale(), {
-									month: 'short',
-									day: 'numeric'
-								})}
+								{new Date(evt.next_instance_start ?? evt.starts_at).toLocaleDateString(
+									activeFormatLocale(),
+									{ month: 'short', day: 'numeric' }
+								)}
 								<span class="time">
-									{new Date(evt.starts_at).toLocaleTimeString(activeFormatLocale(), {
-										hour: 'numeric',
-										minute: '2-digit'
-									})}
+									{new Date(evt.next_instance_start ?? evt.starts_at).toLocaleTimeString(
+										activeFormatLocale(),
+										{ hour: 'numeric', minute: '2-digit' }
+									)}
 								</span>
 							</div>
 							<div class="event-main">
@@ -1283,26 +1474,22 @@
 								</div>
 							</div>
 							{#if evt.viewer_rsvp === 'going'}
-								<span class="chip chip-going">{tr('clubHome.rsvpGoing')}</span>
+								<span class="chip chip-going">{rsvpStatusLabel('going')}</span>
 							{:else if evt.viewer_rsvp === 'maybe'}
-								<span class="chip chip-maybe">{tr('clubHome.rsvpMaybe')}</span>
+								<span class="chip chip-maybe">{rsvpStatusLabel('maybe')}</span>
 							{/if}
 						</a>
 					{/each}
 				</div>
 			{:else}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyEventsTitle')}</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="event"
+					headingLevel={3}
+					title={tr('clubHome.emptyEventsTitle')}
+					text={isAdmin ? tr('clubHome.emptyEventsAdmin') : tr('clubHome.emptyEventsNonAdmin')}
+				>
+					{#snippet actions()}
 						{#if isAdmin}
-							{tr('clubHome.emptyEventsAdmin')}
-						{:else}
-							{tr('clubHome.emptyEventsNonAdmin')}
-						{/if}
-					</p>
-					{#if isAdmin}
-						<div class="empty-actions">
 							<button
 								class="btn btn-primary"
 								type="button"
@@ -1311,9 +1498,9 @@
 								<span class="material-symbols" aria-hidden="true">add</span>
 								{tr('clubHome.createFirstEvent')}
 							</button>
-						</div>
-					{/if}
-				</div>
+						{/if}
+					{/snippet}
+				</EmptyState>
 			{/if}
 
 			{#if past.length > 0}
@@ -1354,19 +1541,16 @@
 				</div>
 			{/if}
 			{#if clubRoutes.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyRoutesTitle')}</h3>
-					<p class="empty-text">
+				{@const clubId = club.id}
+				<EmptyState
+					icon="route"
+					headingLevel={3}
+					title={tr('clubHome.emptyRoutesTitle')}
+					text={isAdmin ? tr('clubHome.emptyRoutesAdmin') : tr('clubHome.emptyRoutesNonAdmin')}
+				>
+					{#snippet actions()}
 						{#if isAdmin}
-							{tr('clubHome.emptyRoutesAdmin')}
-						{:else}
-							{tr('clubHome.emptyRoutesNonAdmin')}
-						{/if}
-					</p>
-					{#if isAdmin}
-						<div class="empty-actions">
-							<a href="/routes/new?club={club.id}" class="btn btn-primary">
+							<a href="/routes/new?club={clubId}" class="btn btn-primary">
 								<span class="material-symbols" aria-hidden="true">add</span>
 								{tr('clubHome.buildARoute')}
 							</a>
@@ -1374,16 +1558,14 @@
 								<span class="material-symbols" aria-hidden="true">arrow_outward</span>
 								{tr('clubHome.transferOneIn')}
 							</button>
-						</div>
-					{:else}
-						<div class="empty-actions">
+						{:else}
 							<a href="/routes" class="btn btn-outline">
 								<span class="material-symbols" aria-hidden="true">route</span>
 								{tr('clubHome.browseMyRoutes')}
 							</a>
-						</div>
-					{/if}
-				</div>
+						{/if}
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="club-route-grid">
 					{#each clubRoutes as route (route.id)}
@@ -1403,13 +1585,15 @@
 								<div class="club-route-info">
 									<h3>{route.name}</h3>
 									<div class="club-route-meta">
-										<span>{formatDistance(route.distance_m)}</span>
+										<span>{formatDistance(routeDisplayDistanceM(route.distance_m, route.official_distance_m))}</span>
 										{#if route.elevation_m}
 											<span class="meta-sep">·</span>
 											<span>{tr('clubHome.elevation', { n: route.elevation_m })}</span>
 										{/if}
-										<span class="meta-sep">·</span>
-										<span class="surface-tag">{route.surface}</span>
+										{#if route.surface}
+											<span class="meta-sep">·</span>
+											<span class="surface-tag">{routeSurfaceLabel(route.surface)}</span>
+										{/if}
 										{#if route.is_public}
 											<span class="meta-sep">·</span>
 											<span class="public-tag">{tr('clubHome.publicTag')}</span>
@@ -1443,11 +1627,12 @@
 			{/if}
 
 			{#if clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyTemplatesTitle')}</h3>
-					<p class="empty-text">{tr('clubHome.emptyTemplatesBody')}</p>
-				</div>
+				<EmptyState
+					icon="list_alt"
+					headingLevel={3}
+					title={tr('clubHome.emptyTemplatesTitle')}
+					text={tr('clubHome.emptyTemplatesBody')}
+				/>
 			{:else}
 			<!-- Training plan templates -->
 			{#if clubTemplates.length > 0}
@@ -1540,7 +1725,7 @@
 						{#each gymRoutineTemplates as g (g.id)}
 							<li class="template-row">
 								<a href="/gym/routines/{g.id}" class="template-link">
-									<strong>{g.title}</strong>
+									<strong>{g.title}{#if g.is_official}<OfficialBadge />{/if}</strong>
 									<span class="template-meta">
 										{tr('clubHome.routineExerciseCount', { n: g.exercise_count })}
 									</span>
@@ -1569,23 +1754,22 @@
 			<ClubPhotos clubId={club.id} canUpload={isMember} canModerate={isAdmin} />
 		{:else if tab === 'members'}
 			{#if members.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyMembersTitle')}</h3>
-					<p class="empty-text">
-						{tr('clubHome.emptyMembersBody')}
-					</p>
-				</div>
+				<EmptyState
+					icon="group"
+					headingLevel={3}
+					title={tr('clubHome.emptyMembersTitle')}
+					text={tr('clubHome.emptyMembersBody')}
+				/>
 			{:else}
 				<div class="member-list">
 					{#each members as m (m.user_id)}
 						<div class="member">
 							<a href="/u/{m.user_id}" class="member-link">
-								<Avatar name={m.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(m.user_id)} />
+								<Avatar url={m.avatar_url} name={shownName(m.display_name, m.user_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(m.user_id)} />
 								<div class="member-name">
-									<strong>{m.display_name ?? tr('clubHome.memberFallback')}</strong>
+									<strong>{shownName(m.display_name, m.user_id)}</strong>
 									{#if m.role !== 'member' && (!isAdmin || m.role === 'owner' || m.user_id === club?.owner_id)}
-										<span class="role-badge role-{m.role}">{m.role.replace('_', ' ')}</span>
+										<span class="role-badge role-{m.role}">{clubRoleLabel(m.role)}</span>
 									{/if}
 								</div>
 							</a>
@@ -1604,14 +1788,14 @@
 												m.role = newRole;
 											} catch (err) {
 												target.value = m.role;
-												showToast(tr('clubHome.toastRoleChangeFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+												showToast(tr('clubHome.toastRoleChangeFailed', { error: errorCopy(err, tr, 'clubHome.toastRoleChangeFailed') }), 'error');
 											}
 										}}
 									>
-										<option value="admin">{tr('clubHome.roleOptionAdmin')}</option>
-										<option value="event_organiser">{tr('clubHome.roleOptionOrganiser')}</option>
-										<option value="race_director">{tr('clubHome.roleOptionDirector')}</option>
-										<option value="member">{tr('clubHome.roleOptionMember')}</option>
+										<option value="admin">{clubRoleLabel('admin')}</option>
+										<option value="event_organiser">{clubRoleLabel('event_organiser')}</option>
+										<option value="race_director">{clubRoleLabel('race_director')}</option>
+										<option value="member">{clubRoleLabel('member')}</option>
 									</select>
 									{#if m.user_id !== auth.user?.id}
 										<button
@@ -1636,6 +1820,17 @@
 					</div>
 				{/if}
 			{/if}
+		{/if}
+
+		{#if club.viewer_role === 'owner'}
+			<DangerZone
+				heading={tr('clubHome.dangerZoneHeading')}
+				description={tr('clubHome.dangerZoneDesc')}
+			>
+				<button class="btn btn-danger" type="button" onclick={handleDeleteClub}>
+					{tr('clubHome.deleteClub')}
+				</button>
+			</DangerZone>
 		{/if}
 	</div>
 
@@ -1702,7 +1897,7 @@
 	open={removingMemberId !== null}
 	title={tr('clubHome.removeMemberTitle')}
 	message={tr('clubHome.removeMemberMessage', {
-		name: members.find((m) => m.user_id === removingMemberId)?.display_name ?? tr('clubHome.thisMember'),
+		name: namedOrNull(members.find((m) => m.user_id === removingMemberId)?.display_name) ?? tr('clubHome.thisMember'),
 		club: club?.name ?? tr('clubHome.theClub')
 	})}
 	confirmLabel={tr('clubHome.remove')}
@@ -1715,7 +1910,7 @@
 	open={rejectingMemberId !== null}
 	title={tr('clubHome.rejectRequestTitle')}
 	message={tr('clubHome.rejectRequestMessage', {
-		name: pending.find((p) => p.user_id === rejectingMemberId)?.display_name ?? tr('clubHome.thisMember'),
+		name: namedOrNull(pending.find((p) => p.user_id === rejectingMemberId)?.display_name) ?? tr('clubHome.thisMember'),
 		club: club?.name ?? tr('clubHome.theClub')
 	})}
 	confirmLabel={tr('clubHome.reject')}
@@ -1840,8 +2035,12 @@
 		margin-bottom: var(--space-lg);
 	}
 
-
-
+	.hero-logo {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-sm);
+	}
 	.hero-text h1 {
 		font-size: 1.6rem;
 		margin: 0;
@@ -1879,14 +2078,6 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		align-items: stretch;
-	}
-
-	.btn-secondary.danger {
-		color: var(--color-danger-text);
-		border-color: var(--color-danger-light);
-	}
-	.btn-secondary.danger:hover {
-		background: var(--color-danger-light);
 	}
 
 	.badge {
@@ -1948,6 +2139,12 @@
 		border-radius: var(--radius-sm);
 		background: var(--color-bg-tertiary);
 		color: var(--color-text-secondary);
+	}
+
+	.invite-body {
+		margin: 0 0 0.6rem;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
 	}
 
 	.invite-row {
@@ -2396,48 +2593,6 @@
 		color: color-mix(in srgb, var(--color-warning) 45%, var(--color-text));
 	}
 
-	/* Canonical empty-card pattern (mirrors /clubs, /routes, /runs, /plans).
-	   Card with brand-mark, h3, explainer, primary CTA + secondary actions. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols {
-		font-size: 1.1rem;
-	}
-
 	.error {
 		color: var(--color-danger-text);
 		background: var(--color-danger-light);
@@ -2679,7 +2834,7 @@
 		text-transform: capitalize;
 	}
 
-	/* Skeleton — same shimmer language as /clubs + /routes. The hero / tab
+	/* Skeleton layout for SkeletonBlock. The hero / tab
 	   / feed scaffold lands at the real layout's height so the data swap
 	   doesn't shift the page. */
 	.back-skel {
@@ -2691,26 +2846,8 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-hero {
 		grid-template-columns: auto 1fr;
-	}
-	.skel-avatar-lg {
-		width: 4.5rem;
-		height: 4.5rem;
-		border-radius: 50%;
 	}
 	.skel-hero-text {
 		display: flex;
@@ -2718,30 +2855,12 @@
 		gap: 0.5rem;
 		justify-content: center;
 	}
-	.skel-avatar {
-		width: 2.1rem;
-		height: 2.1rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.tabs-skel {
 		display: flex;
 		gap: 1.5rem;
 		margin-bottom: var(--space-md);
 		padding-bottom: 0.7rem;
 		border-bottom: 1px solid var(--color-border);
-	}
-	.skel-tab {
-		width: 4rem;
-		height: 0.9rem;
 	}
 	.feed-skel {
 		display: flex;
@@ -2768,25 +2887,6 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		flex: 1;
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	/* <=50rem (small tablet / large phone). Stack hero action column
@@ -2817,7 +2917,25 @@
 		.hero {
 			grid-template-columns: minmax(0, 1fr);
 		}
+		.hero-logo {
+			align-items: flex-start;
+		}
 	}
 
 	/* .modal-* classes live in app.css. */
+	.name-hint {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0 0 1rem;
+		padding: 0.7rem 0.9rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.name-hint p {
+		margin: 0;
+	}
 </style>

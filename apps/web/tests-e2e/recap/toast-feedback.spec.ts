@@ -1,5 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { originOf } from '../fixtures/base-url';
+import { browserYear } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -7,17 +9,18 @@ import { USER_A } from '../fixtures/users';
  * toast system, never a blocking native alert(). Pins the alert()→showToast
  * conversion on both the year and month recap surfaces.
  */
-const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_YEAR = browserYear();
 
 test.describe('/recap — feedback uses toasts, not native alert()', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('clipboard-text fallback shows a success toast and never a native dialog', async ({
 		page,
-		context
+		context,
+		baseURL
 	}) => {
 		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-			origin: 'http://localhost:7777'
+			origin: originOf(baseURL)
 		});
 
 		await page.addInitScript(() => {
@@ -73,9 +76,13 @@ test.describe('/recap — feedback uses toasts, not native alert()', () => {
 		expect(dialogs).toHaveLength(0);
 	});
 
-	test('monthly recap clipboard fallback also uses a success toast', async ({ page, context }) => {
+	test('monthly recap clipboard fallback also uses a success toast', async ({
+		page,
+		context,
+		baseURL
+	}) => {
 		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-			origin: 'http://localhost:7777'
+			origin: originOf(baseURL)
 		});
 
 		await page.addInitScript(() => {

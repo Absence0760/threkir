@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import {
@@ -7,6 +7,9 @@ import {
 	type SagaUser,
 } from '../fixtures/saga-users';
 import { deleteRun, deleteRoute, insertRun, insertRoute } from '../fixtures/simulate';
+import { readRows } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Single-run ENRICHMENT lifecycle — the arc a GPS-recorded run takes
@@ -69,19 +72,10 @@ const ONE_PIXEL_PNG = Buffer.from([
 	0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ]);
 
-// Saga-user contexts float a cookie-consent banner (role=dialog) over
-// the page; pre-accepting it keeps the banner from intercepting clicks
-// on the share icon / file input (it broke a prior spec).
-function setConsentAccepted(): void {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
-
 test.describe('single-run enrichment journey', () => {
 	test('track + HR run lights up /runs/[id] detail surfaces, then renders enriched + clipped on /share/run/[id]', async ({
 		browser,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 
@@ -168,7 +162,7 @@ test.describe('single-run enrichment journey', () => {
 			const ctx = await browser.newContext({
 				storageState: owner.storageStatePath,
 			});
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {
@@ -272,13 +266,16 @@ test.describe('single-run enrichment journey', () => {
 					).toBeVisible({ timeout: 5_000 });
 
 					// Backend cross-check + capture the Storage path for teardown.
-					const { data: photoRows } = await admin
-						.from('run_photos')
-						.select('storage_path, caption')
-						.eq('run_id', runId);
-					expect(photoRows?.length).toBe(1);
-					expect((photoRows?.[0] as { caption: string }).caption).toBe(caption);
-					photoStoragePath = (photoRows?.[0] as { storage_path: string })
+					const photoRows = await readRows(
+						'run_photos by run_id',
+						admin
+							.from('run_photos')
+							.select('storage_path, caption')
+							.eq('run_id', runId)
+					);
+					expect(photoRows.length).toBe(1);
+					expect((photoRows[0] as { caption: string }).caption).toBe(caption);
+					photoStoragePath = (photoRows[0] as { storage_path: string })
 						.storage_path;
 
 					// Gear: the saga user has no gear yet, so plant one shoe via
@@ -323,11 +320,14 @@ test.describe('single-run enrichment journey', () => {
 					).toBeVisible({ timeout: 10_000 });
 
 					// Backend cross-check on the run_gear link.
-					const { data: linkRows } = await admin
-						.from('run_gear')
-						.select('gear_id')
-						.eq('run_id', runId);
-					expect(linkRows?.some((r) => (r as { gear_id: string }).gear_id === gearId))
+					const linkRows = await readRows(
+						'run_gear by run_id',
+						admin
+							.from('run_gear')
+							.select('gear_id')
+							.eq('run_id', runId)
+					);
+					expect(linkRows.some((r) => (r as { gear_id: string }).gear_id === gearId))
 						.toBe(true);
 				});
 
@@ -349,7 +349,7 @@ test.describe('single-run enrichment journey', () => {
 							writeText: () => Promise.resolve(),
 						};
 					});
-					await page.locator('button[title="Share link"]').click();
+					await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 					const shareDialog = page.locator('.modal', {
 						hasText: 'Make this run public?',
 					});
@@ -389,7 +389,7 @@ test.describe('single-run enrichment journey', () => {
 				const anonCtx = await browser.newContext({
 					storageState: { cookies: [], origins: [] },
 				});
-				await anonCtx.addInitScript(setConsentAccepted);
+				await acceptCookieConsent(anonCtx);
 				const anonPage = await anonCtx.newPage();
 				try {
 					// Non-owner track comes through the clip-public-track Edge
@@ -404,7 +404,7 @@ test.describe('single-run enrichment journey', () => {
 						ele: p.ele,
 						ts: p.ts,
 					}));
-					await anonPage.route(
+					await mockRoute(anonPage, 
 						'**/functions/v1/clip-public-track',
 						(route) =>
 							route.fulfill({

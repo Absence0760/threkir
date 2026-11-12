@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		seconds: number;

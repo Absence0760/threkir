@@ -29,7 +29,10 @@ import {
 } from '../../../src/lib/share/share_route_meta';
 import { injectShareRouteMeta } from '../../../src/lib/share/share_route_spa_shell';
 import { renderRouteOgPng } from '../../../src/lib/share/og_route_png';
-import { DEFAULT_SITE_URL } from '../../../src/lib/core/site_url';
+import { siteOrigin } from '../../../src/lib/core/site_url';
+import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
+import { notFoundShell } from '../../../src/lib/share/entity_spa_shell';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 // SPA-shell HTML embedded at build time by lambda/share-route/build.mjs.
 // The bundler substitutes `__SPA_SHELL_HTML__` with the contents of
@@ -47,6 +50,12 @@ declare const __SPA_SHELL_HTML__: string;
 const CACHE_CONTROL =
 	'public, max-age=300, s-maxage=300, stale-while-revalidate=60';
 
+// A 503 here is an unexpected throw, and it is the ONE response on these
+// behaviours that must not carry the window above. Cached for five minutes at
+// the edge, a transient failure becomes a five-minute outage for every viewer
+// who shares a cache node with the request that tripped it (decisions § 969).
+const NO_STORE = 'no-store';
+
 const HTML_PATH_RE = /^\/share\/route\/([^/]+)\/?$/;
 const PNG_PATH_RE = /^\/og\/route\/([^/]+)\.png$/;
 
@@ -54,9 +63,16 @@ export const handler = async (
 	event: LambdaFunctionURLEvent,
 ): Promise<LambdaFunctionURLResult> => {
 	try {
+		const refused = shareMethodRefusal(event.requestContext?.http?.method);
+		if (refused) return refused;
+
 		const supabaseUrl = process.env.PUBLIC_SUPABASE_URL ?? '';
 		const supabaseAnonKey = process.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
-		const siteUrl = process.env.PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
+		// `siteOrigin`, not `?? DEFAULT_SITE_URL`: `??` fires only on
+		// null/undefined, so a `PUBLIC_SITE_URL=""` in the function's env
+		// survives as the empty string and every og:url / og:image below
+		// comes out root-relative (decisions § 895).
+		const siteUrl = siteOrigin(process.env.PUBLIC_SITE_URL);
 
 		const path = event.rawPath || '/';
 		const htmlMatch = path.match(HTML_PATH_RE);
@@ -77,14 +93,15 @@ export const handler = async (
 		// Anything else routed to this Lambda is a misconfiguration
 		// (CloudFront behaviour should never send us paths other than
 		// the patterns above). Return a 404 rather than guess.
-		return jsonResponse(404, { error: 'not found' });
+		return jsonResponse(404, { error: 'not found' }, CACHE_CONTROL);
 	} catch (err) {
 		console.error('[share-route lambda] unhandled_error', {
 			path: event.rawPath,
 			message: err instanceof Error ? err.message : String(err),
 			stack: err instanceof Error ? err.stack : undefined,
 		});
-		return jsonResponse(503, { error: 'temporarily unavailable' });
+		await reportException('share-route', err, { path: event.rawPath });
+		return jsonResponse(503, { error: 'temporarily unavailable' }, NO_STORE);
 	}
 };
 
@@ -117,7 +134,7 @@ async function handleHtml(
 				'content-type': 'text/html; charset=utf-8',
 				'cache-control': CACHE_CONTROL,
 			},
-			body: notFoundHtml(),
+			body: notFoundShell(__SPA_SHELL_HTML__, 'Route not found — Threkir'),
 		};
 	}
 	const head: ShareRouteHead = buildShareRouteHead({
@@ -168,25 +185,13 @@ async function handlePng(
 function jsonResponse(
 	statusCode: number,
 	body: unknown,
+	cacheControl: string,
 ): LambdaFunctionURLResult {
 	return {
 		statusCode,
-		headers: { 'content-type': 'application/json' },
+		headers: { 'content-type': 'application/json', 'cache-control': cacheControl },
 		body: JSON.stringify(body),
 	};
 }
 
-function notFoundHtml(): string {
-	// Minimal not-found shell. Doesn't try to load the SPA bundle — the
-	// route doesn't exist, so loading the SPA would just render its own
-	// 404. Generic title so the crawler's unfurl is honest.
-	return [
-		'<!DOCTYPE html>',
-		'<html lang="en"><head><meta charset="utf-8">',
-		'<title>Route not found — Threkir</title>',
-		'<meta name="robots" content="noindex">',
-		'</head><body><h1>Route not found</h1>',
-		'<p>This share link is no longer available.</p>',
-		'</body></html>',
-	].join('\n');
-}
+

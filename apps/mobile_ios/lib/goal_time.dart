@@ -4,6 +4,8 @@
 /// one screen and three-and-a-half minutes on another.
 library;
 
+import 'plan_races.dart' show raceGoalMaxHours;
+
 /// Parse a goal-time string. Accepts h:mm:ss, h:mm, mm:ss, or bare
 /// minutes. A two-part value is ambiguous ("3:30" the marathon vs
 /// "25:00" the 5K); when [distanceM] is known the reading whose implied
@@ -50,4 +52,30 @@ String formatGoalTimeS(int s) {
   final sec = s % 60;
   String two(int v) => v.toString().padLeft(2, '0');
   return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
+}
+
+/// A plan race's goal time, always h:mm:ss — a sub-hour goal included
+/// ("0:45:00") — so the race field's prefill reads back through
+/// [parseRaceGoalTimeS] unchanged whether or not the race has a distance.
+String formatRaceGoalTimeS(int s) {
+  final h = s ~/ 3600;
+  final m = (s % 3600) ~/ 60;
+  final sec = s % 60;
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '$h:${two(m)}:${two(sec)}';
+}
+
+/// Parse a plan race's goal time: exactly h:mm:ss, hours 0–[raceGoalMaxHours]
+/// (a 240-mile race runs past 100 hours), minutes and seconds 0–59. No pace
+/// guess and no two-part form, because a race may have no distance to
+/// disambiguate "45:00" with.
+int? parseRaceGoalTimeS(String raw) {
+  final m = RegExp(r'^(\d{1,3}):(\d{2}):(\d{2})$').firstMatch(raw.trim());
+  if (m == null) return null;
+  final h = int.parse(m.group(1)!);
+  final min = int.parse(m.group(2)!);
+  final sec = int.parse(m.group(3)!);
+  if (h > raceGoalMaxHours || min > 59 || sec > 59) return null;
+  final s = h * 3600 + min * 60 + sec;
+  return s > 0 ? s : null;
 }

@@ -1,5 +1,5 @@
 // Dart port of the parity test suite at
-// `apps/web/src/lib/recap.test.ts`. The recap aggregator emits the
+// `apps/web/src/lib/runs/recap.test.ts`. The recap aggregator emits the
 // hero numbers for the year-in-running surface — total distance,
 // longest run, top week, monthly breakdown, etc. Test cases cover:
 // - empty-year (returns zero-shaped record)
@@ -317,7 +317,8 @@ void main() {
       // A streak that started in late December of the previous year
       // should count its in-year days against the target year. Pass
       // every run; the helper passes them all through to
-      // computeRunStreaks anchored at Dec 31 of the target year.
+      // computeRunStreaks anchored at Dec 31 of the target year (a past
+      // year here, so the anchor is not clamped to now).
       final runs = [
         for (var i = 0; i < 10; i++)
           _run(
@@ -360,6 +361,28 @@ void main() {
       expect(r.totalElevationM, 50);
     });
 
+    test('a non-finite elevation contributes nothing rather than poisoning the '
+        'total', () {
+      // The bag is schemaless jsonb; `raw is num` admits a NaN the way the TS
+      // half's `Number.isFinite` does not, and one such run would take every
+      // other run's climb in the year down with it.
+      final runs = [
+        _run(
+          id: 'a',
+          startedAt: DateTime(2025, 2, 1),
+          distanceM: 5000,
+          elevationM: double.nan,
+        ),
+        _run(
+          id: 'b',
+          startedAt: DateTime(2025, 2, 2),
+          distanceM: 5000,
+          elevationM: 50,
+        ),
+      ];
+      expect(buildYearInRunningRecap(runs, 2025).totalElevationM, 50);
+    });
+
     test('zero runs → null earliest + latest start', () {
       final r = buildYearInRunningRecap(const [], 2025);
       expect(r.earliestStartLocal, isNull);
@@ -399,6 +422,26 @@ void main() {
       );
       expect(r.photoCount, 0);
       expect(r.personalRecordCount, 2);
+    });
+
+    test('park course extras flow through and clamp', () {
+      final year = buildYearInRunningRecap(
+        const [],
+        2025,
+        const RecapExtras(parkCourseCount: 4, parkCount: -1),
+      );
+      expect(year.parkCourseCount, 4);
+      expect(year.parkCount, 0);
+      final month = buildMonthInRunningRecap(
+        const [],
+        2025,
+        6,
+        const RecapExtras(parkCourseCount: 2, parkCount: 1),
+      );
+      expect(month.parkCourseCount, 2);
+      expect(month.parkCount, 1);
+      expect(recapSnapshotJson(month)['parkCourseCount'], 2);
+      expect(recapSnapshotJson(month)['parkCount'], 1);
     });
 
     test('one badge per category — the highest tier reached wins', () {
@@ -598,5 +641,191 @@ void main() {
       final json = recapSnapshotJson(r);
       expect(json['month'], 3);
     });
+  });
+
+  // The flip side of the boundary rule: a streak has to *reach* the period
+  // to be the period's streak. computeRunStreaks clamps only at the anchor
+  // day, so the whole of the runner's history used to be in scope and a
+  // long-dead streak became "your best streak" on a card titled with a year
+  // it never touched — and shipped in the published snapshot.
+  group('out-of-period streaks', () {
+    /// A 40-day streak in early 2024, then a short one inside the period.
+    List<Run> staleStreakRuns() => [
+          for (var i = 0; i < 40; i++)
+            _run(
+              id: 'old-$i',
+              startedAt: DateTime(2024, 2, 1 + i, 10),
+              distanceM: 5000,
+            ),
+          for (var i = 0; i < 3; i++)
+            _run(
+              id: 'new-$i',
+              startedAt: DateTime(2026, 3, 10 + i, 10),
+              distanceM: 5000,
+            ),
+        ];
+
+    test('a streak from a previous year is not this year\'s best', () {
+      final r = buildYearInRunningRecap(staleStreakRuns(), 2026);
+      expect(r.runCount, 3);
+      expect(r.bestStreakDays, 3,
+          reason: 'the 2024 streak must not headline the 2026 card');
+    });
+
+    test('an out-of-period streak earns no trophy', () {
+      final r = buildYearInRunningRecap(staleStreakRuns(), 2026);
+      expect(
+        r.badges.where((b) => b.id.startsWith('streak')),
+        isEmpty,
+        reason: 'a 2024 streak must not put a streak trophy on the 2026 grid',
+      );
+    });
+
+    test('a year with no runs at all has no streak', () {
+      final r = buildYearInRunningRecap(staleStreakRuns(), 2025);
+      expect(r.runCount, 0);
+      expect(r.bestStreakDays, 0);
+      expect(r.currentStreakDays, 0);
+    });
+
+    test('a streak from an earlier month is not this month\'s best', () {
+      // The 3-day streak sits in March; the April card must not claim it.
+      final r = buildMonthInRunningRecap(staleStreakRuns(), 2026, 4);
+      expect(r.runCount, 0);
+      expect(r.bestStreakDays, 0);
+      expect(r.badges.where((b) => b.id.startsWith('streak')), isEmpty);
+    });
+
+    test('the month the streak ran in still reports it', () {
+      final r = buildMonthInRunningRecap(staleStreakRuns(), 2026, 3);
+      expect(r.runCount, 3);
+      expect(r.bestStreakDays, 3);
+    });
+
+    test('the published snapshot carries the period-bounded streak', () {
+      final json = recapSnapshotJson(
+        buildYearInRunningRecap(staleStreakRuns(), 2026),
+      );
+      expect(json['bestStreakDays'], 3);
+    });
+  });
+
+  // Mirrors `recap.test.ts`'s anchor cases (decisions § 1221 / § 1239). The
+  // anchor used to be 31 Dec of the card's year unconditionally, so for the
+  // year you are living in the walk looked for a run on 31 Dec, then on its
+  // grace day of 30 Dec, found neither, and reported 0 for every live streak.
+  group('current-streak anchor', () {
+    /// A 4-day streak ending on the stated `now`.
+    List<Run> liveStreakRuns() => [
+          for (var i = 0; i < 4; i++)
+            _run(
+              id: 'live-$i',
+              startedAt: DateTime(2026, 3, 7 + i, 7),
+              distanceM: 5000,
+            ),
+        ];
+
+    final now = DateTime(2026, 3, 10, 9); // 10 Mar 2026, 09:00 local
+
+    test('the card for the year you are IN reports the live streak', () {
+      final r = buildYearInRunningRecap(
+          liveStreakRuns(), 2026, const RecapExtras(), now);
+      expect(r.currentStreakDays, 4,
+          reason: 'a streak running up to and including today is the current '
+              'streak');
+      expect(r.bestStreakDays, 4);
+    });
+
+    test('the grace day keeps a streak alive on a morning before the run', () {
+      final r = buildYearInRunningRecap(
+          liveStreakRuns().sublist(0, 3), 2026, const RecapExtras(), now);
+      expect(r.currentStreakDays, 3);
+    });
+
+    /// The web suite's `BOUNDARY_STREAK_DAYS`: a 7-day streak straddling the
+    /// year end, four of whose days are in 2025.
+    List<Run> boundaryStreakRuns() => [
+          for (final d in [
+            DateTime(2025, 12, 28, 10),
+            DateTime(2025, 12, 29, 10),
+            DateTime(2025, 12, 30, 10),
+            DateTime(2025, 12, 31, 10),
+            DateTime(2026, 1, 1, 10),
+            DateTime(2026, 1, 2, 10),
+            DateTime(2026, 1, 3, 10),
+          ])
+            _run(
+                id: 'b-${d.year}-${d.month}-${d.day}',
+                startedAt: d,
+                distanceM: 5000),
+        ];
+
+    test('a past year still clamps at its own 31 Dec', () {
+      // The 2025 card counts the four days up to its own year end rather than
+      // being dragged forward to `now`, and the 2026 half is excluded because
+      // it falls after the anchor.
+      final r = buildYearInRunningRecap(
+          boundaryStreakRuns(), 2025, const RecapExtras(), now);
+      expect(r.currentStreakDays, 4);
+    });
+
+    test('the month you are IN reports the live streak', () {
+      final r = buildMonthInRunningRecap(
+          liveStreakRuns(), 2026, 3, const RecapExtras(), now);
+      expect(r.currentStreakDays, 4);
+    });
+
+    test('a finished month still clamps at its own last day', () {
+      final r = buildMonthInRunningRecap(
+          boundaryStreakRuns(), 2025, 12, const RecapExtras(), now);
+      expect(r.currentStreakDays, 4);
+    });
+
+    test('a month already over reports no current streak', () {
+      // March 2026 held a streak that ended on the 10th; read from September
+      // the anchor is the month's own 31 Mar, two clear days past the last run,
+      // so the card reports no live streak rather than the length it had.
+      final r = buildMonthInRunningRecap(
+          liveStreakRuns(), 2026, 3, const RecapExtras(), DateTime(2026, 9, 5));
+      expect(r.currentStreakDays, 0);
+      expect(r.bestStreakDays, 4);
+    });
+
+    test('recapSnapshotJson carries the live streak, not a zero', () {
+      // `recapSnapshotJson` writes `public_recaps`, so the anchor defect made a
+      // phone-published snapshot of an in-progress period render a zero on the
+      // web share page while the web-built one rendered the real streak.
+      final json = recapSnapshotJson(buildYearInRunningRecap(
+          liveStreakRuns(), 2026, const RecapExtras(), now));
+      expect(json['currentStreakDays'], 4);
+    });
+  });
+
+  // Issue #1300 § 5: 2 km stored at 44,400,094 s (12,333 h). Its distance and
+  // its count still stand; its time cannot swamp the year.
+  test('a duration past the ten-day bound adds no time', () {
+    final bad = _run(
+      id: 'bad',
+      startedAt: DateTime.utc(2026, 11, 5, 10),
+      distanceM: 2000,
+      duration: const Duration(seconds: 44400094),
+    );
+    final r = buildYearInRunningRecap([
+      _run(
+        id: 'ok',
+        startedAt: DateTime.utc(2026, 11, 4, 10),
+        distanceM: 5000,
+        duration: const Duration(seconds: 1500),
+      ),
+      bad,
+    ], 2026);
+    expect(r.runCount, 2);
+    expect(r.totalDistanceM, 7000);
+    expect(r.totalDurationS, 1500);
+    expect(r.monthly[10].durationS, 1500);
+    expect(
+      buildYearInRunningRecap([bad], 2026).fastestPaceSecPerKm,
+      isNull,
+    );
   });
 }

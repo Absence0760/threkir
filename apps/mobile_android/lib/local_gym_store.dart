@@ -36,10 +36,7 @@ class StoredGymWorkout implements SyncEntry {
   /// read `.workout.title` instead of reaching into the raw `row` map.
   GymWorkout get workout => GymWorkout.fromRow(row, sets: sets);
 
-  DateTime? get startedAt {
-    final v = row['started_at'];
-    return v is String ? DateTime.tryParse(v) : null;
-  }
+  DateTime? get startedAt => parseServerTimestamp(row['started_at']);
 
   @override
   Map<String, dynamic> toJson() => {
@@ -57,10 +54,7 @@ class StoredGymWorkout implements SyncEntry {
             .map((s) => Map<String, dynamic>.from(s as Map))
             .toList(),
         syncState: syncStateFromWire(json['sync_state'] as String?),
-        lastModifiedAt:
-            DateTime.tryParse(json['last_modified_at'] as String? ?? '')
-                    ?.toUtc() ??
-                DateTime.now().toUtc(),
+        lastModifiedAt: storedClockOrEpoch(json['last_modified_at']),
       );
 }
 
@@ -274,12 +268,13 @@ class LocalGymStore extends OfflineSyncStore<StoredGymWorkout> {
     DateTime? windowEnd,
     int? fetchLimit,
   }) async {
+    requireInitialised('replaceFromServer');
     if (windowStart == null &&
         fetchLimit != null &&
         serverWorkouts.length >= fetchLimit) {
       DateTime? oldest;
       for (final w in serverWorkouts) {
-        final ts = _parseTs(w.workout['started_at']);
+        final ts = parseServerTimestamp(w.workout['started_at']);
         if (ts != null && (oldest == null || ts.isBefore(oldest))) oldest = ts;
       }
       windowStart = oldest;
@@ -289,7 +284,8 @@ class LocalGymStore extends OfflineSyncStore<StoredGymWorkout> {
     for (final entry in rowsById.entries) {
       if (entry.value.syncState != SyncState.synced) {
         preserved[entry.key] = entry.value;
-      } else if (_outsideWindow(entry.value.startedAt, windowStart, windowEnd)) {
+      } else if (outsideFetchWindow(
+          entry.value.startedAt, windowStart, windowEnd)) {
         preserved[entry.key] = entry.value;
       } else {
         syncedLocal[entry.key] = entry.value;
@@ -307,7 +303,7 @@ class LocalGymStore extends OfflineSyncStore<StoredGymWorkout> {
       // clobber a more-recent already-pushed edit. Mirrors
       // LocalRunStore.saveFromRemote's guard.
       final local = syncedLocal[id];
-      final serverTs = _parseTs(w.workout['last_modified_at']);
+      final serverTs = parseServerTimestamp(w.workout['last_modified_at']);
       if (local != null &&
           serverTs != null &&
           local.lastModifiedAt.isAfter(serverTs)) {
@@ -327,21 +323,6 @@ class LocalGymStore extends OfflineSyncStore<StoredGymWorkout> {
     rowsById.addAll(preserved);
     await rewriteAll();
     notifyListeners();
-  }
-
-  static DateTime? _parseTs(dynamic v) {
-    if (v is String && v.isNotEmpty) return DateTime.tryParse(v)?.toUtc();
-    return null;
-  }
-
-  /// True when [at] falls outside the half-open fetch window `[start, end)`.
-  /// A null timestamp is treated as in-window (eligible for prune), preserving
-  /// the no-window full-replace contract. Compares absolute instants.
-  static bool _outsideWindow(DateTime? at, DateTime? start, DateTime? end) {
-    if (at == null) return false;
-    if (start != null && at.isBefore(start)) return true;
-    if (end != null && !at.isBefore(end)) return true;
-    return false;
   }
 
   @override

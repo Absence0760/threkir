@@ -100,7 +100,7 @@ void main() {
             (
               'plain surface',
               theme.brightness == Brightness.dark
-                  ? AppTheme.midnight
+                  ? AppTheme.night
                   : const Color(0xFFFFFFFF),
             ),
           ]) {
@@ -173,7 +173,7 @@ void main() {
         (
           'plain surface',
           theme.brightness == Brightness.dark
-              ? AppTheme.midnight
+              ? AppTheme.night
               : const Color(0xFFFFFFFF),
         ),
       ];

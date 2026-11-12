@@ -71,7 +71,7 @@ class _CapturingApiClient extends ApiClient {
   String? get userId => fakeUserId;
 
   @override
-  Future<Set<String>> saveRunsBatch(
+  Future<cm.RunPushOutcome> saveRunsBatch(
     List<cm.Run> runs, {
     int uploadConcurrency = 8,
     int rowChunkSize = 100,
@@ -81,7 +81,7 @@ class _CapturingApiClient extends ApiClient {
     savedBatchIds.add(runs.map((r) => r.id).toList());
     // Full-success default for this capture fake; the partial-failure
     // path is exercised in sync_service_test.dart.
-    return const <String>{};
+    return const cm.RunPushOutcome();
   }
 }
 
@@ -140,9 +140,10 @@ void main() {
 
     recorder.begin();
 
-    // 6 fixes, 10 m apart, one per second → ~50 m of accumulated track.
+    // 6 fixes, 5 m apart every 2 s — the fixture's 2.5 m/s Doppler speed →
+    // ~25 m of accumulated distance.
     for (var i = 0; i < 6; i++) {
-      fake.emit(_pos(metresEast: (i * 10).toDouble(), secondsFromStart: i));
+      fake.emit(_pos(metresEast: (i * 5).toDouble(), secondsFromStart: i * 2));
       await Future<void>.delayed(Duration.zero);
     }
 

@@ -2,11 +2,46 @@ import 'package:flutter/material.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../backend_timeout.dart';
+import '../screens/event_detail_screen.dart';
 import '../social_service.dart';
 
-/// Small tappable card shown on the Run tab idle state when the user has
-/// RSVP'd "going" to a club event within the next 48 hours. Replaces the
-/// last-run card in that window so the imminent commitment gets priority.
+/// How far ahead Home's Today block looks for the runner's next club event
+/// (decisions § 2285). The Run tab keeps `fetchNextRsvpedEvent`'s own 48 h
+/// default, where the card stands in for the last run just before the event.
+const kHomeEventWindow = Duration(days: 7);
+
+/// Opens [event]'s detail screen. An event row carries its club's id, not the
+/// slug the detail route needs, so the slug comes from the runner's clubs; a
+/// club that cannot be resolved (the read failed, or the runner left it)
+/// leaves the tap doing nothing rather than opening a broken screen.
+Future<void> openUpcomingEvent(
+    BuildContext context, SocialService social, EventView event) async {
+  List<ClubView> clubs = const [];
+  try {
+    clubs = await social.fetchMyClubs().timeout(kBackendLoadTimeout);
+  } catch (e) {
+    debugPrint('fetchMyClubs failed: $e');
+  }
+  final match = clubs.where((c) => c.row.id == event.row.clubId).toList();
+  if (!context.mounted) return;
+  final slug = match.isEmpty ? null : match.first.row.slug;
+  if (slug == null) return;
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => EventDetailScreen(
+        social: social,
+        clubSlug: slug,
+        eventId: event.row.id,
+      ),
+    ),
+  );
+}
+
+/// Small tappable card for the runner's next `going` club event: on the Run
+/// tab's idle state within 48 hours, where it replaces the last-run card so
+/// the imminent commitment gets priority, and in Home's Today block within
+/// [kHomeEventWindow].
 class UpcomingEventCard extends StatelessWidget {
   final EventView event;
   final VoidCallback? onTap;
@@ -57,7 +92,7 @@ class UpcomingEventCard extends StatelessWidget {
                   Text(
                     l10n.upcomingEventBadge(relative),
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
+                      color: theme.colorScheme.onPrimaryContainer,
                       letterSpacing: 0.7,
                       fontWeight: FontWeight.w700,
                     ),
@@ -75,7 +110,7 @@ class UpcomingEventCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.schedule, size: 14,
-                          color: theme.colorScheme.outline),
+                          color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 3),
                       Flexible(
                         child: Text(
@@ -88,7 +123,7 @@ class UpcomingEventCard extends StatelessWidget {
                       if (event.row.meetLabel != null) ...[
                         const SizedBox(width: 10),
                         Icon(Icons.place, size: 14,
-                            color: theme.colorScheme.outline),
+                            color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(

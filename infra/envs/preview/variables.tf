@@ -31,7 +31,7 @@ variable "extra_lambda_env" {
 }
 
 variable "secrets_file" {
-  description = "Path to this env's sops-encrypted secrets file. Defaults to ../infra-secrets/running/preview.sops.yaml (the PRIVATE estate repo, cloned as a sibling). NEVER point this inside this public repo. Empty = use the default path."
+  description = "Path to this env's sops-encrypted secrets file. Defaults to ../infra-secrets/threkir/preview.sops.yaml (the PRIVATE estate repo, cloned as a sibling). NEVER point this inside this public repo. Empty = use the default path."
   type        = string
   default     = ""
 }
@@ -44,6 +44,12 @@ variable "graphhopper_url" {
 
 variable "osrm_url" {
   description = "Base URL of the self-hosted OSRM engine for the osrm-proxy Lambda (route-builder snapping, issue #198). Non-secret, server-only. Defaults to '' on preview so the proxy stays unconfigured (501) and the builder degrades to straight-line segments."
+  type        = string
+  default     = ""
+}
+
+variable "graph_cycle_url" {
+  description = "Base URL of the self-hosted graph_cycle map sidecar for the generate-route Lambda's v3 graph-cycle loop generation (tried FIRST, ahead of GraphHopper round_trip). Non-secret; the GRAPH_CYCLE_API_KEY shared secret comes from sops. Defaults to '' on preview so the handler skips graph-cycle and serves round_trip; set it only if a preview must exercise the v3 path. Declared for the same reason graphhopper_url and osrm_url are: an env that cannot be configured the way prod can cannot rehearse a prod change, and this was the one of the three engine URLs preview could not set (decisions § 1024)."
   type        = string
   default     = ""
 }

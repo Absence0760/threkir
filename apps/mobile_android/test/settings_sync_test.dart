@@ -45,15 +45,21 @@ class _MemCache implements SettingsCache {
 }
 
 class _FakeSettingsService implements SettingsService {
+  _FakeSettingsService(
+      {this.universalBag = const <String, dynamic>{},
+      this.serverHydrated = true});
+
+  final Map<String, dynamic> universalBag;
+  final bool serverHydrated;
   final List<Map<String, dynamic>> universalWrites = [];
   final List<Map<String, dynamic>> deviceWrites = [];
 
   @override
-  Map<String, dynamic> get universal => const <String, dynamic>{};
+  Map<String, dynamic> get universal => universalBag;
   @override
   Map<String, dynamic> get device => const <String, dynamic>{};
   @override
-  bool get isServerHydrated => true;
+  bool get isServerHydrated => serverHydrated;
   @override
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     universalWrites.add(changes);
@@ -64,12 +70,73 @@ class _FakeSettingsService implements SettingsService {
     deviceWrites.add(changes);
   }
 
+  int loads = 0;
+  @override
+  Future<SettingsService> load() async {
+    loads++;
+    return this;
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('time_zone sync on sign-in (issue #1182)', () {
+    Future<_FakeSettingsService> signIn(
+        Map<String, dynamic> bag, Future<String?> Function() reader) async {
+      final fake = _FakeSettingsService(universalBag: bag);
+      final svc = SettingsSyncService(
+        preferences: await freshPrefs(),
+        serviceLoader: () async => fake,
+        timeZoneReader: reader,
+      );
+      await svc.onSignedIn();
+      expect(svc.synced, isTrue);
+      return fake;
+    }
+
+    test('writes the device zone when the bag has none', () async {
+      final fake = await signIn({}, () async => 'Pacific/Auckland');
+      expect(fake.universalWrites, [
+        {SettingsKeys.timeZone: 'Pacific/Auckland'},
+      ]);
+    });
+
+    test('writes nothing over a bag the server did not return', () async {
+      final fake = _FakeSettingsService(serverHydrated: false);
+      final svc = SettingsSyncService(
+        preferences: await freshPrefs(),
+        serviceLoader: () async => fake,
+        timeZoneReader: () async => 'Pacific/Auckland',
+      );
+      await svc.onSignedIn();
+      expect(svc.synced, isTrue);
+      expect(fake.universalWrites, isEmpty);
+    });
+
+    test('writes a changed zone, and nothing when it is unchanged', () async {
+      final moved = await signIn(
+          {SettingsKeys.timeZone: 'Europe/London'}, () async => 'America/Denver');
+      expect(moved.universalWrites, [
+        {SettingsKeys.timeZone: 'America/Denver'},
+      ]);
+      final stayed = await signIn(
+          {SettingsKeys.timeZone: 'Europe/London'}, () async => 'Europe/London');
+      expect(stayed.universalWrites, isEmpty);
+    });
+
+    test('an unknown device zone or a failing reader writes nothing and does '
+        'not fail the sign-in', () async {
+      expect((await signIn({}, () async => null)).universalWrites, isEmpty);
+      expect(
+          (await signIn({}, () async => throw StateError('no plugin')))
+              .universalWrites,
+          isEmpty);
+    });
+  });
 
   group('debugApplyUniversal', () {
     test('preferred_unit "mi" sets useMiles to true', () async {
@@ -101,6 +168,26 @@ void main() {
       svc.debugApplyUniversal({SettingsKeys.preferredUnit: 42});
 
       expect(prefs.useMiles, isFalse);
+    });
+
+    test('voice_split_pace_mode updates the local split pace mode', () async {
+      final prefs = await freshPrefs();
+      expect(prefs.splitPaceMode, SplitPaceMode.split);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyUniversal({SettingsKeys.voiceSplitPaceMode: 'average'});
+
+      expect(prefs.splitPaceMode, SplitPaceMode.average);
+    });
+
+    test('an unknown voice_split_pace_mode falls back to split', () async {
+      final prefs = await freshPrefs();
+      await prefs.setSplitPaceMode(SplitPaceMode.both);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyUniversal({SettingsKeys.voiceSplitPaceMode: 'loud'});
+
+      expect(prefs.splitPaceMode, SplitPaceMode.split);
     });
 
     test('default_activity_type updates the local default', () async {
@@ -453,6 +540,22 @@ void main() {
       expect(prefs.keepScreenOn, isFalse);
     });
 
+    test('haptic_feedback_enabled round-trips, a non-bool is dropped',
+        () async {
+      final prefs = await freshPrefs();
+      expect(prefs.hapticFeedback, isTrue);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: false});
+      expect(prefs.hapticFeedback, isFalse);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: 'on'});
+      expect(prefs.hapticFeedback, isFalse);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: true});
+      expect(prefs.hapticFeedback, isTrue);
+    });
+
     test('empty device bag is a no-op', () async {
       final prefs = await freshPrefs();
       await prefs.setAudioCues(true);
@@ -473,7 +576,6 @@ void main() {
 
       expect(svc.synced, isFalse);
       expect(svc.service, isNull);
-      expect(svc.lastError, isNull);
     });
 
     test('writes load the service on demand when onSignedIn never ran',
@@ -558,6 +660,38 @@ void main() {
     });
   });
 
+  group('reloadedService', () {
+    // Which zones a run is published under must see a zone added on another
+    // device since sign-in, so this re-reads the server rather than handing
+    // back the bags sign-in loaded.
+    test('loads the service once, then re-reads it on every call', () async {
+      final prefs = await freshPrefs();
+      final fake = _FakeSettingsService();
+      var loaderCalls = 0;
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async {
+          loaderCalls++;
+          return fake;
+        },
+      );
+
+      expect(await svc.reloadedService(), same(fake));
+      expect(await svc.reloadedService(), same(fake));
+      expect(loaderCalls, 1);
+      expect(fake.loads, 2);
+    });
+
+    test('throws with no session to load against', () async {
+      final prefs = await freshPrefs();
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => throw Exception('Not authenticated'),
+      );
+      expect(svc.reloadedService(), throwsException);
+    });
+  });
+
   group('onSignedOut account reset (issue #231)', () {
     // The sign-in overlay only overwrites keys PRESENT in the next
     // account's bag, so any bag-mirrored pref left set at sign-out
@@ -579,7 +713,7 @@ void main() {
         period: GoalPeriod.week,
         distanceMetres: 40000,
       ));
-      await prefs.setRunsLastFetchedAt(DateTime.utc(2026, 7, 1));
+      await prefs.setRunsSyncCursor(DateTime.utc(2026, 7, 1));
 
       await svc.onSignedOut();
 
@@ -596,7 +730,7 @@ void main() {
       expect(prefs.splitIntervalMetres, 0);
       expect(prefs.goals, isEmpty,
           reason: "A's goals must not render as B's");
-      expect(prefs.runsLastFetchedAt, isNull,
+      expect(prefs.runsSyncCursor, isNull,
           reason: "clearing the watermark forces B's first fetch down the "
               'FULL path — a delta against A\'s timestamp would skip '
               "B's older history");
@@ -625,4 +759,113 @@ void main() {
       expect(prefs.privacyDefault, 'private');
     });
   });
+
+  group('Apple Watch zone mirror', () {
+    test('sign-in derives the ladder from the bag and pushes it', () async {
+      final prefs = await freshPrefs();
+      final zones = <List<int>?>[];
+      prefs.appleWatchPrefsPush = _recordZones(zones);
+      final bag = _BagSettingsService({SettingsKeys.maxHrBpm: 200});
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => bag,
+      );
+
+      await svc.onSignedIn();
+      await pumpEventQueue();
+
+      expect(zones.last, [120, 140, 160, 180, 200]);
+    });
+
+    test('an edit through updateUniversal reaches the wrist without a relaunch',
+        () async {
+      final prefs = await freshPrefs();
+      final zones = <List<int>?>[];
+      prefs.appleWatchPrefsPush = _recordZones(zones);
+      final bag = _BagSettingsService({});
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => bag,
+      );
+      await svc.onSignedIn();
+      await pumpEventQueue();
+      expect(zones.last, isEmpty,
+          reason: 'no signal is an explicit clear, never the legacy 190 ladder');
+
+      await svc.updateUniversal({
+        SettingsKeys.hrZones: {'z1': 110, 'z2': 130, 'z3': 150, 'z4': 165, 'z5': 185},
+      });
+      await pumpEventQueue();
+      expect(zones.last, [110, 130, 150, 165, 185]);
+
+      await svc.updateUniversal({SettingsKeys.hrZones: null});
+      await pumpEventQueue();
+      expect(zones.last, isEmpty);
+    });
+
+    test('a service that cannot answer does not fail the write', () async {
+      // `_FakeSettingsService` has no `effective`; the mirror is L4.
+      final prefs = await freshPrefs();
+      final fake = _FakeSettingsService();
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => fake,
+      );
+      await svc.updateUniversal({SettingsKeys.maxHrBpm: 190});
+      expect(fake.universalWrites, [
+        {SettingsKeys.maxHrBpm: 190},
+      ]);
+    });
+  });
+}
+
+Future<bool> Function({
+  required String preferredUnit,
+  required bool audioCues,
+  String? defaultActivityType,
+  String? privacyDefault,
+  List<int>? hrZoneCutoffs,
+  String? voiceFeedbackVerbosity,
+  bool? workoutStepCues,
+}) _recordZones(List<List<int>?> into) => ({
+      required preferredUnit,
+      required audioCues,
+      defaultActivityType,
+      privacyDefault,
+      hrZoneCutoffs,
+      voiceFeedbackVerbosity,
+      workoutStepCues,
+    }) async {
+      into.add(hrZoneCutoffs);
+      return true;
+    };
+
+/// A bag that answers `effective` the way the real service does for a
+/// universal-only key, and applies writes (null removes).
+class _BagSettingsService implements SettingsService {
+  _BagSettingsService(Map<String, dynamic> seed) : _bag = {...seed};
+  final Map<String, dynamic> _bag;
+
+  @override
+  Map<String, dynamic> get universal => Map.unmodifiable(_bag);
+  @override
+  Map<String, dynamic> get device => const <String, dynamic>{};
+  @override
+  bool get isServerHydrated => true;
+  @override
+  T? effective<T>(String key, {T? fallback}) =>
+      _bag[key] == null ? fallback : _bag[key] as T?;
+  @override
+  Future<void> updateUniversal(Map<String, dynamic> changes) async {
+    for (final e in changes.entries) {
+      if (e.value == null) {
+        _bag.remove(e.key);
+      } else {
+        _bag[e.key] = e.value;
+      }
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

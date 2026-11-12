@@ -6,21 +6,51 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../fitness_surface_requests.dart';
+import '../auth_error.dart';
+import '../integration_visibility.dart';
 import '../ble_heart_rate.dart';
+import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../health_connect_exporter.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../parkrun_regions.dart';
 import '../preferences.dart';
+import '../race_provider_labels.dart';
 import '../race_service.dart';
 import '../settings_sync.dart';
+import '../share_sheet.dart';
 import '../strava.dart';
+import '../widgets/help_button.dart';
+import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
+import 'parkrun_barcode_screen.dart';
+import 'plan_calendar_feed_screen.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
+
+/// The reason a refused Strava connect or sync gives, in the runner's
+/// language. The function's code picks it (`stravaConnectError`) and is never
+/// shown itself; web words the same reasons through `stravaConnectAppError`.
+String stravaConnectErrorMessage(
+    AppLocalizations l10n, StravaConnectError reason) {
+  switch (reason) {
+    case StravaConnectError.notConfigured:
+      return l10n.integrationsStravaErrNotConfigured;
+    case StravaConnectError.missingScope:
+      return l10n.integrationsStravaErrMissingScope;
+    case StravaConnectError.codeRejected:
+      return l10n.integrationsStravaErrCodeRejected;
+    case StravaConnectError.signedOut:
+      return l10n.authErrorNotSignedIn;
+    case StravaConnectError.reconnect:
+      return l10n.integrationsStravaErrReconnect;
+    case StravaConnectError.generic:
+      return l10n.authErrorGeneric;
+  }
+}
 
 class SettingsIntegrationsScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -33,6 +63,10 @@ class SettingsIntegrationsScreen extends StatefulWidget {
   /// (decisions §33).
   final SettingsSyncService? settingsSync;
 
+  /// Test-only DI seam for the race-provider probes; production callsites let
+  /// the screen build its own.
+  final RaceService? raceService;
+
   const SettingsIntegrationsScreen({
     super.key,
     required this.apiClient,
@@ -40,6 +74,7 @@ class SettingsIntegrationsScreen extends StatefulWidget {
     required this.treadmill,
     required this.preferences,
     this.settingsSync,
+    this.raceService,
   });
 
   @override
@@ -51,34 +86,46 @@ class _SettingsIntegrationsScreenState
     extends State<SettingsIntegrationsScreen> {
   List<IntegrationRow> _integrations = const [];
   bool _stravaBusy = false;
-  final RaceService _raceService = RaceService();
-  bool _runSignUpAvailable = false;
-  bool _chronoTrackAvailable = false;
+
+  /// A truncated sync is a state of the connection, not a moment. The banner
+  /// says it once and slides away; the lookback window is measured from now,
+  /// so the record of "there is more to fetch" has to outlive it or the rest
+  /// ages out unnoticed. Null once a walk has reached the end of the window.
+  bool? _stravaResumable;
+  late final RaceService _raceService = widget.raceService ?? RaceService();
+
+  /// Resolved gate answers, keyed by provider. Starts EMPTY, which every gate
+  /// reads as `pending` — so no tile is offered before its gate has answered,
+  /// and a deployment that configured none of this offers none of it.
+  final Map<String, bool?> _verdicts = {};
+
+  /// The account-connection tiles, in render order.
+  static const _connectSpecs = [
+    IntegrationSpec(provider: 'strava', gate: IntegrationGate.env),
+  ];
 
   @override
   void initState() {
     super.initState();
     _refreshIntegrations();
-    _probeRunSignUp();
-    _probeChronoTrack();
-  }
-
-  Future<void> _probeRunSignUp() async {
-    try {
-      final ok = await _raceService.isRunSignUpConfigured();
-      if (mounted) setState(() => _runSignUpAvailable = ok);
-    } catch (_) {
-      if (mounted) setState(() => _runSignUpAvailable = false);
+    // Synchronous, so the Strava tile never renders and then vanishes.
+    _verdicts['strava'] = isStravaConfigured();
+    for (final spec in raceImportProviders) {
+      _probeRaceProvider(spec.provider);
     }
   }
 
-  Future<void> _probeChronoTrack() async {
+  /// A probe is a network call (L4): each provider degrades to unavailable on
+  /// its own so one unreachable leg neither disables its peers nor takes the
+  /// screen down.
+  Future<void> _probeRaceProvider(String provider) async {
+    var ok = false;
     try {
-      final ok = await _raceService.isChronoTrackConfigured();
-      if (mounted) setState(() => _chronoTrackAvailable = ok);
-    } catch (_) {
-      if (mounted) setState(() => _chronoTrackAvailable = false);
+      ok = await _raceService.isProviderConfigured(provider);
+    } catch (e) {
+      debugPrint('settings: $provider probe failed: $e');
     }
+    if (mounted) setState(() => _verdicts[provider] = ok);
   }
 
   Future<void> _refreshIntegrations() async {
@@ -114,15 +161,18 @@ class _SettingsIntegrationsScreenState
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
-        await Share.share(url);
+        await shareTextFrom(context, text: url);
       }
     } catch (_) {
       if (!mounted) return;
       try {
-        await Share.share(url);
+        await shareTextFrom(context, text: url);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] share fallback failed: $e');
         if (!mounted) return;
-        showTopBanner(context, AppLocalizations.of(context).integrationsCouldNotOpen(e));
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+            context, l10n.integrationsCouldNotOpen(friendlyError(l10n, e)));
       }
     }
   }
@@ -133,7 +183,7 @@ class _SettingsIntegrationsScreenState
     if (api == null) return;
 
     if (!isStravaConfigured()) {
-      await _openExternal('https://threkir.com/settings/integrations');
+      await _openExternal(stravaWebConnectUrl());
       if (!mounted) return;
       showTopBanner(context, l10n.integrationsStravaBrowserHint);
       return;
@@ -150,13 +200,15 @@ class _SettingsIntegrationsScreenState
       );
       final cb = parseStravaCallback(resultUrl);
       if (!cb.isSuccess) {
+        // The callback URL's `error` names the reason; it is never shown.
+        debugPrint('[SettingsIntegrationsScreen] Strava callback: ${cb.error}');
         if (!mounted) return;
         showTopBanner(
           context,
           cb.error == 'access_denied'
               ? l10n.integrationsStravaCancelled
               : l10n.integrationsStravaSignInFailed(
-                  cb.error ?? 'no code returned'),
+                  l10n.integrationsStravaErrCodeRejected),
         );
         return;
       }
@@ -171,36 +223,92 @@ class _SettingsIntegrationsScreenState
         redirectUri: kStravaCallbackUri,
       );
       if (!mounted) return;
-      final err = res['error'];
-      if (err is String) {
-        showTopBanner(context, l10n.integrationsStravaConnectFailed(err));
+      final err = res.error;
+      if (err != null) {
+        debugPrint('[SettingsIntegrationsScreen] Strava connect error: $err');
+        showTopBanner(
+          context,
+          l10n.integrationsStravaConnectFailed(
+              stravaConnectErrorMessage(l10n, stravaConnectError(err))),
+        );
         return;
       }
-      showTopBanner(context, l10n.integrationsStravaConnected);
+      // Connecting triggers a 90-day backfill, and Strava can throttle it
+      // (or the walk can stop early for three other reasons). Saying only
+      // "Strava connected" is what stops the runner coming back for the
+      // rest — which stays fetchable only until it ages out of the window.
+      showTopBanner(
+        context,
+        res.complete
+            ? l10n.integrationsStravaConnected
+            : res.rateLimited
+                ? l10n.integrationsStravaConnectedPartialRateLimited(
+                    res.imported,
+                    res.skipped,
+                  )
+                : l10n.integrationsStravaConnectedPartial(
+                    res.imported,
+                    res.skipped,
+                  ),
+      );
       await _refreshIntegrations();
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava sign-in failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsStravaSignInFailed(e));
+      showTopBanner(
+        context,
+        e is StravaConnectFailure
+            ? l10n.integrationsStravaConnectFailed(
+                stravaConnectErrorMessage(l10n, e.reason))
+            : l10n.integrationsStravaSignInFailed(friendlyError(l10n, e)),
+      );
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
   }
 
-  Future<void> _syncStrava() async {
+  /// The window a manual sync asks for defaults to 90 days. Strava's per-user
+  /// budget is 100 requests / 15 minutes and the walk spends one per 50
+  /// activities, so raising it for every routine sync would be several times
+  /// heavier for history the runner already has. Widening is the recovery path
+  /// for a truncation left long enough that the missed activities have aged
+  /// out of the default window.
+  Future<void> _syncStrava({int lookbackDays = kStravaLookbackDefaultDays}) async {
     final l10n = AppLocalizations.of(context);
     final api = widget.apiClient;
     if (api == null) return;
     setState(() => _stravaBusy = true);
     try {
-      final res = await api.syncStrava();
+      final res = await api.syncStrava(lookbackDays: lookbackDays);
       if (!mounted) return;
-      final imported = (res['imported'] as num?)?.toInt() ?? 0;
-      final skipped = (res['skipped'] as num?)?.toInt() ?? 0;
-      showTopBanner(context, l10n.integrationsSyncResult(imported, skipped));
+      setState(() => _stravaResumable = res.complete ? null : res.resumable);
+      showTopBanner(
+        context,
+        !res.complete
+            ? res.rateLimited
+                ? l10n.integrationsSyncPartialRateLimited(
+                    res.imported,
+                    res.skipped,
+                  )
+                : l10n.integrationsSyncPartial(res.imported, res.skipped)
+            : res.failed > 0
+                ? l10n.integrationsSyncResultWithFailed(
+                    res.imported,
+                    res.skipped,
+                    res.failed,
+                  )
+                : l10n.integrationsSyncResult(res.imported, res.skipped),
+      );
       await _refreshIntegrations();
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava sync failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsSyncFailed(e));
+      showTopBanner(
+        context,
+        l10n.integrationsSyncFailed(e is StravaConnectFailure
+            ? stravaConnectErrorMessage(l10n, e.reason)
+            : friendlyError(l10n, e)),
+      );
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -229,6 +337,7 @@ class _SettingsIntegrationsScreenState
         ) ??
         false;
     if (!ok) return;
+    if (!mounted) return;
     setState(() => _stravaBusy = true);
     try {
       await api.disconnectIntegration('strava');
@@ -236,8 +345,10 @@ class _SettingsIntegrationsScreenState
       if (!mounted) return;
       showTopBanner(context, l10n.integrationsStravaDisconnected);
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava disconnect failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsDisconnectFailed(e));
+      showTopBanner(
+          context, l10n.integrationsDisconnectFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -267,93 +378,70 @@ class _SettingsIntegrationsScreenState
     } catch (e) {
       debugPrint('settings: MAPTILER_KEY unreadable: $e');
     }
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => RacesScreen(service: _raceService, mapTilerKey: key),
+    openFitnessSurface(
+      context,
+      FitnessTab.races,
+      fallback: () => RacesScreen(
+        service: _raceService,
+        mapTilerKey: key,
+        api: widget.apiClient,
+      ),
+    );
+  }
+
+  void _openParkrunBarcode() {
+    final api = widget.apiClient;
+    if (api == null) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ParkrunBarcodeScreen(api: api),
     ));
   }
 
-  Future<void> _importParkrun() async {
+  String _lookbackLabel(AppLocalizations l10n, int days) => switch (days) {
+        180 => l10n.integrationsStravaLookback180,
+        365 => l10n.integrationsStravaLookback365,
+        _ => l10n.integrationsStravaLookback90,
+      };
+
+  /// Ask for a window wider than the default. Neither client could raise the
+  /// lookback above 90 days, so a truncation left long enough for the missed
+  /// activities to age out of that window had no in-app recovery at all — the
+  /// only remaining path was the Strava bulk export.
+  Future<void> _pickStravaLookback() async {
     final l10n = AppLocalizations.of(context);
-    final api = widget.apiClient;
-    if (api == null || api.userId == null) return;
-
-    String existing = '';
-    try {
-      final profile = await api.fetchMyProfile();
-      existing = profile?.parkrunNumber ?? '';
-    } catch (e) {
-      debugPrint('settings: parkrun profile fetch failed: $e');
-    }
-
-    final ctrl = TextEditingController(text: existing);
-    if (!mounted) return;
-    final athleteNumber = await showDialog<String>(
+    var choice = kStravaLookbackDefaultDays;
+    final picked = await showDialog<int>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.integrationsParkrunTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.integrationsParkrunBody),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              maxLength: 20,
-              decoration: InputDecoration(
-                labelText: l10n.integrationsParkrunFieldLabel,
-                hintText: 'A123456',
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(l10n.integrationsStravaLookbackTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final days in kStravaLookbackOptions)
+                RadioListTile<int>(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(_lookbackLabel(l10n, days)),
+                  value: days,
+                  groupValue: choice,
+                  onChanged: (v) => setLocal(() => choice = v ?? choice),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.commonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(choice),
+              child: Text(l10n.integrationsSyncNow),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.integrationsCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: Text(l10n.integrationsImport),
-          ),
-        ],
       ),
     );
-    if (mounted) FocusScope.of(context).unfocus();
-    if (athleteNumber == null || athleteNumber.isEmpty) return;
-    if (!mounted) return;
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 16),
-            Expanded(child: Text(l10n.integrationsParkrunImporting)),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      await api.setParkrunAthleteNumber(athleteNumber);
-      final imported = await api.importParkrunResults(athleteNumber);
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      showTopBanner(
-        context,
-        imported > 0
-            ? l10n.integrationsParkrunImported(imported)
-            : l10n.integrationsParkrunNoneNew,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      showTopBanner(context, l10n.integrationsImportFailed(e));
-    }
+    if (picked != null) await _syncStrava(lookbackDays: picked);
   }
 
   Widget _buildStravaTile() {
@@ -366,10 +454,34 @@ class _SettingsIntegrationsScreenState
         : last == null
             ? l10n.integrationsStravaWaitingFirstSync
             : l10n.integrationsStravaLastSync(_relTime(last, l10n));
+    final resumable = _stravaResumable;
     return ListTile(
       leading: const Icon(Icons.sync, color: Color(0xFFFC4C02)),
-      title: Text(l10n.integrationsStravaName),
-      subtitle: Text(subtitle),
+      title: infoTipTitle(
+        l10n.integrationsStravaName,
+        InfoTipButton(
+          label: l10n.integrationsInfoAbout(l10n.integrationsStravaName),
+          title: l10n.integrationsStravaName,
+          body: l10n.integrationsStravaInfo,
+        ),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(subtitle),
+          if (connected && resumable != null)
+            Text(
+              resumable
+                  ? l10n.integrationsSyncPartialNoteResumable
+                  : l10n.integrationsSyncPartialNote,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
+      ),
       trailing: _stravaBusy
           ? const SizedBox(
               width: 20,
@@ -380,11 +492,15 @@ class _SettingsIntegrationsScreenState
               ? PopupMenuButton<String>(
                   onSelected: (v) {
                     if (v == 'sync') _syncStrava();
+                    if (v == 'history') _pickStravaLookback();
                     if (v == 'disconnect') _disconnectStrava();
                   },
                   itemBuilder: (_) => [
                     PopupMenuItem(
                         value: 'sync', child: Text(l10n.integrationsSyncNow)),
+                    PopupMenuItem(
+                        value: 'history',
+                        child: Text(l10n.integrationsStravaSyncHistory)),
                     PopupMenuItem(
                         value: 'disconnect',
                         child: Text(l10n.integrationsDisconnect)),
@@ -400,58 +516,79 @@ class _SettingsIntegrationsScreenState
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.apiClient?.userId != null;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.integrationsTitle)),
+      appBar: AppBar(
+        title: Text(l10n.integrationsTitle),
+        actions: const [HelpButton(routes: ['/settings/integrations'])],
+      ),
       body: SafeArea(
         child: ListView(
           children: [
             if (signedIn) ...[
-              _buildStravaTile(),
+              // Only what this deployment can honour. A tile whose gate has not
+              // answered, or has answered no, is not drawn — except while a
+              // connected row for it exists, which keeps a disconnect reachable
+              // after the configuration behind it goes away.
+              for (final gated in visibleIntegrations(
+                _connectSpecs,
+                _verdicts,
+                [for (final i in _integrations) i.provider],
+              ))
+                if (gated.spec.provider == 'strava') _buildStravaTile(),
               ListTile(
-                leading: const Icon(Icons.directions_run),
-                title: Text(l10n.integrationsParkrunName),
-                // Outside parkrun's ~20-country footprint the tile stays
-                // tappable (an expat can still import by athlete ID) but
-                // discloses that there may be no events nearby, mirroring
-                // web's parkrun_regions.ts note.
-                subtitle: Text(parkrunLikelyUnavailable(WidgetsBinding
-                        .instance.platformDispatcher.locale
-                        .toLanguageTag())
-                    ? l10n.integrationsParkrunRegionNote
-                    : l10n.integrationsParkrunTileSubtitle),
+                key: const ValueKey('integrations-parkrun-barcode'),
+                leading: const Icon(Icons.badge_outlined),
+                title: Text(l10n.parkrunBarcodeTitle),
+                subtitle: Text(l10n.parkrunBarcodeTileSubtitle),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _importParkrun,
+                onTap: _openParkrunBarcode,
               ),
-              // Both tiles stay tappable whatever the provider probe says:
-              // they are secondary deep links into the race calendar, whose
-              // search never needed a provider key. The subtitle discloses
-              // whether the *import* leg is live; the second line says where
-              // the tap actually goes (decisions § 488).
-              ListTile(
-                isThreeLine: true,
-                leading: const Icon(Icons.flag_outlined),
-                title: Text(l10n.integrationsRunsignup),
-                subtitle: _integrationSubtitle(
-                  _runSignUpAvailable
-                      ? l10n.integrationsRunsignupConnect
-                      : l10n.integrationsRunsignupUnavailable,
-                  l10n.integrationsRunsignupOpen,
+              if (widget.apiClient case final api?)
+                ListTile(
+                  key: const ValueKey('integrations-plan-calendar-feed'),
+                  leading: const Icon(Icons.calendar_month),
+                  title: Text(l10n.planCalendarFeedTitle),
+                  subtitle: Text(l10n.planCalendarFeedTileSubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PlanCalendarFeedScreen(
+                        loadStatus: api.planCalendarFeedStatus,
+                        rotate: api.rotatePlanCalendarFeed,
+                        revoke: api.revokePlanCalendarFeed,
+                        supabaseUrl: dotenv.isInitialized
+                            ? dotenv.env['SUPABASE_URL']
+                            : null,
+                      ),
+                    ),
+                  ),
                 ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _openRaces,
-              ),
-              ListTile(
-                isThreeLine: true,
-                leading: const Icon(Icons.timer),
-                title: Text(l10n.integrationsChronotrack),
-                subtitle: _integrationSubtitle(
-                  _chronoTrackAvailable
-                      ? l10n.integrationsChronotrackConnect
-                      : l10n.integrationsChronotrackUnavailable,
-                  l10n.integrationsChronotrackOpen,
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _openRaces,
-              ),
+              // Each race tile used to stay tappable whatever its probe said,
+              // on the reasoning that it is a secondary deep link into the race
+              // calendar and the calendar's search never needed a provider key
+              // (decisions § 488). What it advertises, though, is THAT
+              // provider's import, and the calendar has its own entry point on
+              // the fitness hub — so a tile for a leg this deployment cannot run
+              // is an offer with nothing behind it. The explainer a runner
+              // actually needs stays on the race whose result they are trying to
+              // import (§ 488 amendment).
+              for (final spec in raceImportProviders)
+                if (_verdicts[spec.provider] ?? false)
+                  if (raceProviderLabels(l10n)[spec.provider] case final p?)
+                    ListTile(
+                      isThreeLine: true,
+                      leading: Icon(p.icon),
+                      title: infoTipTitle(
+                        p.name,
+                        InfoTipButton(
+                          label: l10n.integrationsInfoAbout(p.name),
+                          title: p.name,
+                          body: p.info,
+                        ),
+                      ),
+                      subtitle: _integrationSubtitle(p.connect, p.open),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _openRaces,
+                    ),
             ] else
               ListTile(
                 leading: const Icon(Icons.lock_outline),
@@ -555,9 +692,11 @@ class _HeartRateMonitorTileState extends State<HeartRateMonitorTile> {
       try {
         await widget.heartRate.pair(device);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] HR pair failed: $e');
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           showTopBanner(
-              context, AppLocalizations.of(context).integrationsHrPairFailed(e));
+              context, l10n.integrationsHrPairFailed(friendlyError(l10n, e)));
         }
       }
       await _refresh();
@@ -628,15 +767,42 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
   bool _scanning = true;
   StreamSubscription<List<BleDeviceCandidate>>? _sub;
 
+  /// Why the adapter refused the scan, or null when it served one. Without
+  /// it the sheet's only outcome is an empty list, which reads as "no strap
+  /// nearby" whether the strap is asleep, the radio is off, or the Bluetooth
+  /// grant was denied — and on iOS the last of those is the one state the
+  /// sheet can never scan its way out of.
+  BleReadiness? _unavailable;
+
   @override
   void initState() {
     super.initState();
+    _startScan();
+  }
+
+  /// Start (or restart) the scan. Re-entrant: the previous subscription is
+  /// cancelled first, which is what stops the old scan in the transport.
+  void _startScan() {
+    _sub?.cancel();
+    setState(() {
+      _results = const [];
+      _scanning = true;
+      _unavailable = null;
+    });
     _sub = widget.heartRate.scan().listen(
       (list) {
         if (mounted) setState(() => _results = list);
       },
       onDone: () {
         if (mounted) setState(() => _scanning = false);
+      },
+      onError: (Object e) {
+        if (!mounted) return;
+        setState(() {
+          _scanning = false;
+          _unavailable =
+              e is BleUnavailable ? e.reason : BleReadiness.initialising;
+        });
       },
     );
   }
@@ -645,6 +811,17 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
   void dispose() {
     _sub?.cancel();
     super.dispose();
+  }
+
+  /// Deep-link to the app's own OS settings page, the only place a denied
+  /// Bluetooth grant can be restored on iOS. Never throws — a sheet that
+  /// crashes on the remedy is worse than one that merely sits there.
+  Future<void> _openAppSettings() async {
+    try {
+      await openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (BLE grant) failed: $e');
+    }
   }
 
   @override
@@ -684,7 +861,36 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
                   ),
             ),
             const SizedBox(height: 12),
-            if (_results.isEmpty && !_scanning)
+            if (_unavailable != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  bleReadinessMessage(l10n, _unavailable!) ??
+                      l10n.bleUnavailableUnknown,
+                ),
+              ),
+              // A named reason the runner cannot act on is only half the
+              // fix, so each one carries the control that matches it: the
+              // Settings app for a denied grant, another scan for a reason
+              // that could clear on its own, and nothing at all for a phone
+              // with no BLE radio.
+              if (bleReadinessNeedsAppSettings(_unavailable!))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonal(
+                    onPressed: _openAppSettings,
+                    child: Text(l10n.bleOpenSettings),
+                  ),
+                )
+              else if (bleReadinessIsRetryable(_unavailable!))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonal(
+                    onPressed: _startScan,
+                    child: Text(l10n.bleScanRetry),
+                  ),
+                ),
+            ] else if (_results.isEmpty && !_scanning)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(l10n.integrationsHrScanEmpty),
@@ -769,9 +975,11 @@ class _TreadmillTileState extends State<TreadmillTile> {
       try {
         await widget.treadmill.pair(device);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] treadmill pair failed: $e');
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           showTopBanner(context,
-              AppLocalizations.of(context).integrationsTreadmillPairFailed(e));
+              l10n.integrationsTreadmillPairFailed(friendlyError(l10n, e)));
         }
       }
       await _refresh();

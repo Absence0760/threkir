@@ -1,0 +1,163 @@
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+
+	interface Props {
+		/// Stable key: the persistence key for this section and the prefix of
+		/// the heading id the region is named by.
+		id: string;
+		title: string;
+		/// One short line saying what is inside, so a collapsed section can be
+		/// judged without opening it.
+		hint?: string;
+		open: boolean;
+		ontoggle: (open: boolean) => void;
+		/// Class carried on the region so the host page keeps its own layout
+		/// hooks (and the selectors its specs are written against).
+		sectionClass?: string;
+		/// When set, a Hide button sits beside the heading. Its accessible name
+		/// is [hideLabel], which should name the section.
+		onhide?: () => void;
+		hideLabel?: string;
+		children: Snippet;
+	}
+
+	const {
+		id,
+		title,
+		hint,
+		open,
+		ontoggle,
+		sectionClass = '',
+		onhide,
+		hideLabel,
+		children,
+	}: Props = $props();
+</script>
+
+<section class="disclosure {sectionClass}" class:has-hide={onhide != null} aria-labelledby="{id}-title">
+	<!-- Outside the <summary>: a button inside it would be a control nested in
+	     the summary's own button role, and a click would also fold. -->
+	{#if onhide}
+		<button
+			type="button"
+			class="disclosure-hide"
+			aria-label={hideLabel}
+			title={hideLabel}
+			data-testid="{id}-hide"
+			onclick={onhide}
+		>
+			<span class="material-symbols" aria-hidden="true">visibility_off</span>
+		</button>
+	{/if}
+	<!-- The reader's choice is read off the summary click, not the toggle
+	     event. A toggle is queued for every change of `open`, the host's own
+	     included, and a click can land on a <details> the page re-renders
+	     away before that event fires, so the choice was lost (or a stale
+	     element reported its old state). The click is the intent; the toggle
+	     handler only catches the browser opening a section itself (find in
+	     page), and only from a live element that disagrees with the prop. -->
+	<details
+		{open}
+		ontoggle={(e) => {
+			const el = e.currentTarget;
+			if (el.isConnected && el.open !== open) ontoggle(el.open);
+		}}
+	>
+		<summary
+			class="disclosure-summary"
+			onclick={(e) => {
+				e.preventDefault();
+				ontoggle(!open);
+			}}
+		>
+			<span class="material-symbols disclosure-chevron" aria-hidden="true">expand_more</span>
+			<h2 class="section-title" id="{id}-title">{title}</h2>
+			{#if hint}
+				<span class="disclosure-hint">{hint}</span>
+			{/if}
+		</summary>
+		<div class="disclosure-body">
+			{@render children()}
+		</div>
+	</details>
+</section>
+
+<style>
+	.disclosure {
+		margin-bottom: var(--space-md);
+		position: relative;
+	}
+	.has-hide .disclosure-summary {
+		padding-inline-end: var(--tap-target-min);
+	}
+	.disclosure-hide {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-end: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--tap-target-min);
+		height: var(--tap-target-min);
+		border: 0;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--color-text-tertiary);
+		cursor: pointer;
+	}
+	.disclosure-hide:hover {
+		color: var(--color-text);
+		background: var(--color-bg-secondary);
+	}
+	.disclosure-hide:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.disclosure-hide .material-symbols {
+		font-size: 1.15rem;
+	}
+	.disclosure-summary {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-sm);
+		padding: var(--space-2xs) 0;
+		cursor: pointer;
+		list-style: none;
+		border-radius: var(--radius-sm);
+	}
+	.disclosure-summary::-webkit-details-marker {
+		display: none;
+	}
+	.disclosure-summary:hover .section-title {
+		color: var(--color-primary);
+	}
+	.disclosure-summary:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.disclosure-chevron {
+		align-self: center;
+		font-size: 1.1rem;
+		color: var(--color-text-tertiary);
+		flex-shrink: 0;
+	}
+	details[open] .disclosure-chevron {
+		transform: rotate(180deg);
+	}
+	.section-title {
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-secondary);
+		margin: 0;
+	}
+	.disclosure-hint {
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.disclosure-body {
+		padding-top: var(--space-sm);
+	}
+</style>

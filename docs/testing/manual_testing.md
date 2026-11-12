@@ -10,6 +10,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 
 - [Setup once, before anything else](#setup-once-before-anything-else)
 - [Platform-by-platform launch checklist](#platform-by-platform-launch-checklist)
+- [iOS runtime verification](#ios-runtime-verification)
 - [Auth and onboarding](#auth-and-onboarding)
 - [Recording a run](#recording-a-run)
 - [Run detail and history](#run-detail-and-history)
@@ -24,7 +25,8 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Segments](#segments)
 - [Photos on runs](#photos-on-runs)
 - [Live race spectator + race mode](#live-race-spectator--race-mode)
-- [Imports — Strava, Garmin, parkrun, Health Connect, HealthKit](#imports--strava-garmin-parkrun-health-connect-healthkit)
+- [Imports — Strava, Garmin, Health Connect, HealthKit](#imports--strava-garmin-health-connect-healthkit)
+- [Settings — preference pages](#settings--preference-pages)
 - [Privacy zones](#privacy-zones)
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
 - [Backup, restore, account deletion, GDPR export](#backup-restore-account-deletion-gdpr-export)
@@ -44,7 +46,7 @@ cd apps/backend && supabase start
 supabase status -o env
 ```
 
-The local stack ports: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. The web dev server runs on `7777`, preview on `8888`. The seed user is **`runner@test.com` / `testtest`**, with 12 seeded runs and 5 routes (Melbourne-area; matches the OSRM dev region).
+The local stack ports: API `24321`, DB `24322`, Studio `24323`, Mailpit `24324`. The web dev server runs on `7777`, preview on `8888`. The seed user is **`runner@test.com` / `testtest`**, with 12 seeded runs and 5 routes (Melbourne-area; matches the OSRM dev region).
 
 For each app the canonical environment-setup guide is its own `local_testing.md`:
 
@@ -119,11 +121,19 @@ cd apps/watch_ios && open WatchApp.xcodeproj
 
 ---
 
+## iOS runtime verification
+
+The launch check above is the whole of what this guide asks of iOS, and that is deliberate. [parity.md](../product/parity.md)'s iOS column is **derived from the Android column rather than observed**, so walking a recipe below on an iOS simulator does not convert a cell — and the matrix's own guard refuses a per-row iOS tick outright. Converting that column is a separate exercise with its own evidence rules: which verification rung a result may claim, what a simulator can and cannot reach, the traps that make a green simulator run weaker than it looks, and a log of what every attempt so far actually reached.
+
+It lives in **[ios_verification.md](ios_verification.md)**. Read it before claiming any iOS result, and append to its results log rather than editing cells in the matrix.
+
+---
+
 ## Auth and onboarding
 
 | Surface | What to test | How |
 |---|---|---|
-| Web — email/password | New account + existing account, password reset email lands in Mailpit | `/login`, then check `http://localhost:54324`. |
+| Web — email/password | New account + existing account, password reset email lands in Mailpit | `/login`, then check `http://localhost:24324`. |
 | Web — Google OAuth | One-tap sign-in returns to the dashboard | `/login` → Continue with Google. Needs a real Google client id (won't work on stock seed). |
 | Web — Apple OAuth | Same as Google | `/login` → Continue with Apple. Needs the Apple Services ID. |
 | Mobile — Google Sign-In | One-tap exchanges ID token through `ApiClient.signInWithGoogleIdToken` | `sign_in_screen.dart`. Needs the Google client id baked into `dart_defines.json`. |
@@ -134,7 +144,7 @@ cd apps/watch_ios && open WatchApp.xcodeproj
 | Apple Watch — phone handoff | iPhone signs in, watch reads via WatchConnectivity `applicationContext` | Sign in on `mobile_ios`, then on the simulator launch the Watch app. |
 
 **Onboarding gotchas:**
-- Mobile permission ask must fire before any GPS feature works. If location permission is `whileInUse` only, background recording will silently stop when the screen locks; the app surfaces an inline banner asking to upgrade.
+- Mobile permission ask must fire before any GPS feature works. If location permission is `whileInUse` only, recording and the live map work normally while the run screen is up, and the location-typed foreground service usually keeps fixes arriving off screen too — but Android may stop delivering, and the app records anyway. **Regression check:** start a run with "While using the app" — the map must show your position within a few seconds, not sit on "Waiting for GPS", and no permission banner may appear at the start. **Second check (the disclosure, #785):** mid-run, background the app for a minute somewhere with poor signal; on return, a top banner appears once explaining that the off-screen distance was not counted while the clock kept running. Coming back to a run that kept receiving fixes must stay silent.
 - iOS needs `NSLocationAlwaysAndWhenInUseUsageDescription` in Info.plist (real device) for background recording — simulator works without it.
 - Watch onboarding paths require the corresponding phone permission already granted, otherwise the bridge buffers payloads forever.
 
@@ -154,16 +164,20 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Lap mark | Tap Lap mid-run twice | Two laps appear in the splits table with correct deltas; `metadata.laps` is written to the run; the per-lap shape matches [metadata.md](../backend/metadata.md) (1-based `index`, cumulative-BEFORE `start_offset_s`, per-lap `distance_m` + `duration_s` deltas). |
 | GPS lost mid-run | Disable location → wait 30 s → re-enable | "GPS lost" banner appears with the dropout count; resuming GPS clears it; track has a small gap, total distance excludes the no-fix interval. |
 | Permission revoked mid-run | Background-pull location permission → return to app | "Location permission revoked" banner; recording continues against last-known until permission returns. |
+| Precise location off (iOS) | Settings > Privacy & Security > Location Services > Threkir → turn off Precise Location → Record → Start | During the countdown the system's one-time full-accuracy prompt shows the `PreciseRunTracking` purpose string. Allow → no banner, the track draws. Decline → the run still starts and an 8 s top banner reads "Precise location is off…" with a Settings action that opens the app's settings page. |
+| Precise location off (Android 12+) | App info → Permissions → Location → turn off "Use precise location" → Record → Start | The pre-run location dialog offers Precise again. Keep Approximate → the run still starts and the same 8 s banner with a Settings action shows. |
 | Audio cues at split | Set split interval to 1 km in Settings → record a 2 km run | TTS announces "1 kilometre. Pace 5 minutes 30 seconds per kilometre" at the 1 km split. |
 | Activity-type filter | Switch chip to Walk, record a slow 200 m | Run saves with the `activity_type='walk'` column set (web + mobile write the column post-Tier-2, not the jsonb key); the home filter chip surfaces it under Walk, not Run. |
 | Off-route detection | Pick a route in pre-run, run perpendicular to it | "Off route · N m" banner with hysteresis at 40 m on, 20 m off; haptic on entry. |
+| Idle setup, visible and removable (#1226) | On the Run tab: pick a route, arm a guided run, set a race strategy, tap Share live link, then Start today's workout | Every setup-row item is the same pill; the ones that are set are filled. The FOLLOWING card has an x and opens the picker on tap; backing out of the picker keeps the route, "No route" clears it. "Workout loaded: <kind>" sits beside the route card (today's card steps aside while it is the one loaded), and its x unloads it. Guided run and race strategy each have an x. The live chip reads "Live link shared" and opens the re-share / stop sheet. No x asks to confirm. Finish the workout run, tap Done, record a second run: the second run's detail has no Workout section. |
 | Workout execution | Start a `plans/[id]/workouts/[wid]` from the home Today card | Live workout band shows current step; Skip / Abandon work; finished metadata carries `plan_workout_id` + `workout_step_results` (see [workout_execution.md](../features/workout_execution.md)). |
-| Crash recovery | Open run, get to ~1 km, force-kill the process, re-open | Home screen surfaces a "Recover unsaved run?" prompt; accepting saves a run reconstructed from the incremental snapshot with `metadata.recovered_from_crash=true`. |
+| Crash recovery | Open run, get to ~1 km, force-kill the process, re-open. Repeat standing still for ~11 min (a few metres of jitter) | The app opens on the Run tab with "Resume your run?" stating the distance in your unit and the elapsed time (`0.01 km, 11:02` for the stationary case); Resume continues the same run, Finish now saves it with `metadata.recovered_from_crash=true`, Discard drops it. A Start tapped and killed within seconds shows "Discarded an unfinished recording…" instead. |
 | Per-cue voice toggles (#607) | Settings → Preferences → "Spoken cues": switch Splits off, leave Pace alerts on → record past a split with a target pace set | No split announcement; pace alert still speaks and includes the amount ("Speed up by 15 seconds per kilometre"). Toggles survive an app restart and sync to the device bag (`voice_cue_types`). |
-| Per-cue voice toggles set from web (#607) | On web, Settings → Preferences → enable "Spoken split announcements" → under "Spoken cues" switch Off-route warning off. Then sign in on the phone (or sign out/in) and open Settings → Preferences | The phone's "Off-route warning" switch reads off, and no other cue changed. Web writes the UNIVERSAL bag (a browser is its own device row and never records) and the phone reads universal-then-device, so a phone-side override for the same cue still wins — see [decisions.md § 469](../architecture/decisions.md). |
+| Per-cue voice toggles set from web (#607) | On web, Settings → Recording & voice (`/settings/recording`) → enable "Spoken split announcements" → under "Spoken cues" switch Off-route warning off. Then sign in on the phone (or sign out/in) and open Settings → Preferences | The phone's "Off-route warning" switch reads off, and no other cue changed. Web writes the UNIVERSAL bag (a browser is its own device row and never records) and the phone reads universal-then-device, so a phone-side override for the same cue still wins — see [decisions.md § 469](../architecture/decisions.md). |
 | Cutoff catch-up cue (#607) | Follow a route whose markers carry cutoffs; simulate GPS slower than the cutoff demands | When the next-cutoff card turns tight/behind, TTS speaks "Next cutoff in X. You need M minutes S seconds per kilometre to make it" — immediately on a WORSENING status change (tight→behind; improvement flapping never bypasses), then at most every 2 min, and never while manually paused; once the limit has truly passed it says the limit has passed (no impossible pace, and never within 50 m of the cutoff where the pace projection is merely meaningless). |
 | Marker target cue (#608) | On web, give a route marker a target time (or roadbook → "Save as marker targets") → follow the route past the marker | Crossing the marker speaks "{label}: {time} ahead of/behind plan" (or "on plan" within ±15 s), once per marker even with GPS jitter. Gated on the "Course marker targets" toggle. |
 | Race strategy 10-10-10 (#609) | Pre-run → "Race strategy" → 10-10-10, distance prefilled from route, goal time set → record through a phase boundary | Phase chip shows "Phase 1/3 — Hold back · pace"; crossing 38.1 % of the distance speaks "Phase 2 of 3. Settle into your goal pace. Target …"; pace alerts use the phase target; saved run carries `metadata.pacing_strategy` per [metadata.md](../backend/metadata.md). |
+| Pacing-strategy review (§ 1915) | Finish the 10-10-10 run above (or any run recorded under a strategy) → open it on the phone, then on web `/runs/[id]` | A *Pacing strategy* section under the workout review: preset · distance · goal, one row per phase (Hold back / Settle / Race with its distance range) showing target pace, actual moving pace and the gap in the preferred unit, plus a verdict pill. Switch the unit to miles and the paces + gaps follow. Stop a run well short of the distance and the last phase reads *not reached* with an "Ended at … of the planned …" note; a run with no goal time grades the plan's shape at the run's average pace. Same section on both platforms. |
 
 **GPS simulation in the emulator:** Android Studio → emulator controls (`...` button) → Location → Routes → import a GPX or draw a path; play it back. iOS Simulator → Features → Location → Custom Location / Freeway Drive.
 
@@ -177,7 +191,10 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Lap haptic | Tap Lap mid-run | Haptic confirmation pulse fires; lap appears on PostRun summary. |
 | Pace alert | Pre-run set Pace target to 5:30/km, run faster or slower than target | After ~50 m stabilisation, double-pulse haptic for "speed up", single-pulse for "slow down"; rate-limited to one alert per 30 s; TTS nudge accompanies. |
 | Route follow + active-run tile | Pre-run pick a route → Start → swipe to the tile carousel | Active-run tile shows status pip (RUNNING/PAUSED), elapsed time as headline, distance + pace stat row. Route polyline rendered on the round canvas with track-so-far fade-in. |
+| Watch-face complication | Long-press the face → Customize → pick a short-text, a long-text and an icon slot → **Run stats** (thorn icon). Then idle → Start → Pause → Resume → Stop → discard; then record and keep a run; then sign out | Editor preview reads 26:15 / 5.00 km. Idle with nothing recorded: RUN / *Tap to start*. Recording: elapsed counts every second on its own, distance moves about once a minute. Paused: time frozen under PAUSED; resume continues without a jump. After a kept run: *Last* + its distance (miles for a miles runner), long slot *Last run* + distance + duration. Discard or sign-out: back to the start prompt. Tap mid-run opens the running screen. Renders in ambient. No noticeable battery cost over an hour. Repeat on a Wear OS 6 watch and an older one (two update paths). |
 | Connectivity drain | Stop Supabase → record a run → restart Supabase → wait | Run uploads via `RunViewModel.observeConnectivity` watching `system/NetworkWatcher.kt`'s offline → online edge. Queued-count badge clears without user action. |
+| Location ask on a fresh install (Wear OS 4+) | Uninstall the app → install → open → Start | The system location dialog appears (the app requests fine + coarse together; a fine-only request shows nothing on Android 12+). |
+| Approximate only (Wear OS) | In that dialog choose Approximate → Start | GO is blocked on a "Precise location off" screen naming the fix (choose Precise, or turn on Use precise location); granting Precise lets the run start. |
 | Indoor mode (no GPS) | Toggle off Location on the watch → Start | Elapsed clock ticks regardless; distance stays 0; banner reads "No GPS — time only". Stopping produces a valid empty `[]` track that uploads + renders cleanly. |
 
 ### Apple Watch
@@ -187,6 +204,8 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Standalone recording | Watch app → Start → walk → Stop | Run records via `HKWorkoutSession` + `CLLocationManager`; transfers to phone on stop via WatchConnectivity. |
 | BPM stream | Wear the watch → record a run | `metadata.avg_bpm` is set on the run; track points carry per-point `bpm` (the recorder pulls `HKLiveWorkoutBuilder` HR samples). |
 | Phone ingest | After Stop, open the iOS Flutter app | Run appears in the home list within a few seconds; `lib/watch_ingest_queue.dart` decoded the payload via the `run_app/watch_ingest` method channel and saved through `LocalRunStore.save`. |
+| In-run mini-map | Start a run, swipe left off the stats page | Page two draws the track so far and a white position dot, auto-fitting as the run grows; an armed route draws as a lilac line with a start marker. Before the first fix it reads "Waiting for GPS" with no dot — never a dot at the centre of the map. Swiping back leaves the clock, distance and Pause/Stop exactly where they were. |
+| Precise Location off | On the paired iPhone, Settings > Privacy & Security > Location Services > Threkir → turn off Precise Location; on the watch, Start | Once the run starts, the system's one-run full-accuracy sheet shows the `PreciseRunTracking` purpose string. Allow → no notice, distance accrues normally. Decline → the run keeps recording and the stats page shows "Precise Location is off" with where to turn it back on; the sheet does not come back mid-run. Turning Precise Location back on mid-run clears the notice. |
 
 ---
 
@@ -196,8 +215,12 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 |---|---|
 | Web `/history` | List paginates, source + activity-type filters narrow the list, the timeline ordering is descending. |
 | Web `/runs/[id]` | Map renders the track (raw or matched — see [§ Map matching](#map-matching-server-side-snap)), elevation profile + splits + segments are populated, edit Title / Notes / Activity type round-trips through `data.ts:updateRun`. |
+| Web `/runs/[id]` key stats | Open a run, then a ride (activity `cycle`), with the map pane at its default width: a run shows AVG PACE and no AVG SPEED, a ride AVG SPEED and no AVG PACE, and no tile value ends in `…` (a long one wraps between number and unit). The trash icon at the end of the owner toolbar is red before you hover it. |
 | Web run share | Toggle `is_public` → copy link → open in incognito → page loads, track is privacy-clipped (see [§ Privacy zones](#privacy-zones)). |
+| Web flyover video | On a run with a track, in a recent Chrome, Edge or Safari over https or localhost (WebCodecs needs a secure context): **Replay in 3D** → **Export video** → the progress reaches 100 %, **Share or save video** downloads (desktop) or opens the share sheet (phone) an `.mp4` that plays 1080x1920, flies the privacy-trimmed line, and shows the credits line, the whole-course overview with its slow turn, and the end card. On a two-core device (or with the flat-map fallback) the button is absent. With `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` unset the tile requests go to OpenStreetMap and the AWS terrain bucket, never to MapTiler (decisions § 2259). |
+| Web recap story | `/recap/<year>` → **Share as story** → a 1080x1920 PNG named `threkir-<year>-story.png`. |
 | Mobile run detail | Same map + splits + elevation; share-as-GPX produces a valid file; delete confirms then removes the run from the list and Storage. |
+| Mobile share Video / recap image | With `FLYOVER_VIDEO_MAPTILER_ENABLED=true` (unset hides the style, decisions § 2271): run share sheet on a run with a track → **Video** → **Open video export** opens `/runs/<id>?video=1` in the browser, which opens the 3D preview. Recap screen → share → Square / Story preview → **Share image** hands a PNG to the share sheet; **Share as text** keeps the old summary. |
 | Mobile edit | Edit title + notes through the bottom sheet → reopens with values; offline edits sync when connectivity returns. |
 | Personal records | Sign in → check `/dashboard` PB card on web or the home PB row on mobile. Importing a fast run should bump the relevant PB. |
 
@@ -208,14 +231,18 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Scenario | Surface | Steps | Pass criteria |
 |---|---|---|---|
 | Browse my routes | Mobile + Web `/routes` | Default tab lists owned routes | Card per route with distance + thumbnail; tap opens detail. |
-| Explore community routes | Web `/routes?tab=explore` | Search a tag, browse the cards | `RouteExplorer` populates from `search_public_routes` RPC; clicking opens the detail screen. |
-| Create a route | Web `/routes/new` | Click points on the map, save with a name | Route saves; OSRM-snapped polyline (Web uses OSRM client-side for the planner — separate from the server-side run-match OSRM) appears in the saved-routes list. |
+| Map thumbnails survive a map outage | Web `/routes`, `/runs` | Accept the cookie banner with `PUBLIC_MAPTILER_KEY` set, then block `api.maptiler.com` in DevTools (Network → Block request domain) and reload | Every card draws its route line on the plain background; no broken-image icon anywhere. Unblock and reload — the map thumbnails return. |
+| Route detail states one climb | Web `/routes/[id]` for a route whose waypoints carry altitude (a saved run, a GPX import) | Compare the header's ELEVATION GAIN, the Elevation section's Gain tile and the figure under the chart | All three are the same number; Loss is present unless the route's stored climb is less than its profile's net rise. |
+| Explore community routes | Web `/routes?tab=explore` | Search a tag, browse the cards | `RouteExplorer` populates from the `public_routes` view, one keyset page at a time (Load more continues the submitted search); clicking opens the detail screen. |
+| Create a route | Web `/routes/new` | Click points on the map, save with a name | Route saves; OSRM-snapped polyline (web snaps through the `/api/routes/osrm` proxy per [decisions.md §198](../architecture/decisions.md) — separate from the server-side run-match OSRM) appears in the saved-routes list. |
+| Create a route with the engine down | Web `/routes/new` | Point `OSRM_URL` at nothing (or block `/api/routes/osrm/*`), drop points, save | Amber banner says the points are joined by straight lines; **Save, GPX and KML all stay enabled** and the route saves as drawn ([decisions.md §1613](../architecture/decisions.md)). Generate-by-distance still refuses — an unsnapped loop is not a generated route. |
 | Import a route file | Mobile + Web | Upload a GPX / KML / KMZ / GeoJSON | `gpx_parser` decodes it, route appears in the list, distance + waypoint count look right. |
 | Follow a route | Mobile run pre-screen | Pick a saved route → Start | Live banner shows distance-to-go; off-route detection fires if you stray. |
 | Star a route for the watch | Web `/routes/[id]` header or mobile route detail | Tap the star toggle | Watch route picker (Wear OS) shows the route at the top, ordered by `updated_at` desc, capped at 30. Un-starring removes it. See [decisions.md §44](../architecture/decisions.md#44-watch-route-picker-is-gated-by-an-owner-curated-is_starred-flag-not-recents-or-all-routes). |
 | Public route share | Web | Toggle `is_public` on `/routes/[id]` → copy `/share/route/[id]` link → open in incognito | Page renders without auth; map shows a privacy-clipped trace if owner has zones. |
 | Auto-link a recorded run | Any client that completes a recording near a saved route | Record a run that mostly overlaps a saved route | After the worker completes (see [§ Map matching](#map-matching-server-side-snap)), the run shows a "Suggested route" banner; accept links the run via `data.ts:linkRunToRoute`. |
 | Route history | Web | Open a route's detail | "Past efforts" panel lists every prior run on this route with date + time. Sourced from `route_history.ts` (10 unit tests). |
+| Drive this course (real drive) | Web `/routes/[id]` or `/races/[id]` + mobile route / race screen, `PUBLIC_COURSE_DRIVE_ENABLED` / `COURSE_DRIVE_ENABLED` set, a public course with aid-station, climb and cut-off markers ([course_drive.md](../features/course_drive.md)) | Web: open **Drive this course**, check the legs, the "can't follow" list against a stretch you know is a path, and print the notes. Phone, with a passenger driving: accept the notice once, tap **Start spoken notes**, open leg 1 in Google Maps, lock the phone and drive the course at 30–90 km/h with Maps' own voice on. Repeat once with Apple Maps and once with Waze. | Each note is heard once ahead (about 15 s) and once at it, over Maps' prompts without either being cut off (Android ducks both ways; iOS mixes and ducks); "Leg N done" at each leg end; a note stepped over in a GPS gap is said as "Just passed"; joining mid-course reads nothing behind you; the finish line or 10 minutes off course stops the notes and says so. Google's app accepts all nine stops of a leg (record the result: Google documents nine only for the URL). No run, PR, live session or challenge credit appears afterwards. |
 
 ---
 
@@ -256,8 +283,8 @@ The Go worker at `apps/job_worker/` drains the `jobs` queue. Default matcher is 
 | Wear OS session push | Wear OS + Android phone, paired | Sign in on phone → watch app reads `{access_token, refresh_token, user_id, base_url, anon_key, expires_at_ms}` from `/supabase_session` data layer | Watch pre-run shows the user's display name without the Sign-in chip. |
 | Wear OS token refresh | Wear OS | Let the watch sit until the access token expires, then drain the queue | `RunViewModel.refreshIfExpired` exchanges the refresh token; `drainQueue` retries once on HTTP 401 by refreshing then re-pushing. Sync succeeds. |
 | Apple Watch run ingest | Apple Watch + iOS Flutter | Record on the watch, stop, foreground iOS Flutter | Watch transfers a `WCSessionFile` (gzipped JSON track + metadata); `WatchIngestBridge.swift` posts to Dart via `run_app/watch_ingest`; `LocalRunStore.save` persists; run appears in the home list. |
-| Pre-Flutter buffering | Apple Watch | Send a watch payload while the iOS Flutter app is force-stopped | `WatchIngestBridge` buffers in-process; flushes on next attach. |
-| iOS WatchIngestQueue persistence | iOS Flutter | Receive a watch payload, then sign out before sync, then sign in | The queue persists to disk and replays on sign-in — no run lost. |
+| Pre-Flutter buffering | Apple Watch | Send a watch payload while the iOS Flutter app is force-stopped | `WatchIngestBridge` holds it in its pen until Dart signals `ready`, then hands it to `WatchIngestQueue`, which writes it to disk before answering (decisions § 1801). |
+| iOS WatchIngestQueue persistence | iOS Flutter | Receive a watch payload signed in but offline, force-quit the app, relaunch with connectivity | The run was on disk before the bridge let go of it; the relaunch's `SyncService` startup trigger drains it — no run lost (decisions § 1801). |
 
 ---
 
@@ -269,9 +296,21 @@ See [training.md](../features/training.md) for the engine + week phasing logic, 
 |---|---|---|
 | Generate a plan | Web `/plans/new` → wizard | Plan creates with N weeks of phased volume; week grid editable; submit persists `training_plans` + `plan_weeks` + `plan_workouts`. |
 | Edit a plan's meta | Web `/plans/[id]` → Edit-plan button | Owner-only `PlanMetaEditor` modal; non-owners get a 403 from RLS. |
+| Adjust a plan | Web `/plans/[id]` as the owner → Adjust plan | One dialog lists Shift dates, Re-plan remaining weeks, Adaptive re-plan and Pause plan (Resume plan on a paused plan), each with a sentence on what it does and when to use it; none of them sits loose on the page. Shift and Pause open the confirm dialog and Cancel changes nothing; each re-plan either toasts "on track" or shows the preview under the adherence flags with focus on its heading, and Cancel returns focus to Adjust plan. |
+| Shift into a queued plan | Web, two active plans back to back (A ends the day before B starts) → open A → Adjust plan → Shift dates by 7 | The confirm names B and its button reads "Also move B by 7 days". Apply moves A and B (and every workout in both) by 7 days and leaves the gap between them as it was; Cancel moves nothing. A shift of A that stops short of B asks the plain "Shift the whole plan?" with no mention of B. Shifting B back by 7 instead is refused with a toast naming A, and nothing moves. |
+| Resume a paused plan over an active one | Web, pause plan P, then create a plan that overlaps P's dates → open P → Adjust plan → Resume plan → Apply | A toast says another active plan overlaps these dates and to pause, finish or end it earlier first; P stays paused and the other plan is untouched. Resuming P after the other plan ends (or after trimming it to end before P) works. |
+| Adjust a plan (mobile) | Mobile Train → a plan you own → Adjust plan | One dialog lists Re-plan remaining weeks, Adaptive re-plan and Pause plan (Resume plan on a paused plan), each with a sentence on what it does and when to use it; no re-plan button sits loose on the screen. Each re-plan either banners "on track" or shows the preview in place, and its Apply changes is the only confirmation. Pause applies on the tap with a "Plan paused." banner and **no second dialog** — the plan then offers Resume. Resuming while another plan is active banners "You already have an active plan." Shift dates and the cycle adjust are web-only (decisions § 1653). |
+| Queue a plan behind the current one | Web `/plans/new` (or mobile New plan) → a plan starting the day after your current plan ends | No overlap dialog; both plans are active; `/plans` badges the new one Upcoming; the dashboard / Home shows "Up next: …"; the day after the first plan ends the second becomes current. |
+| Create over an active plan | Web or mobile: create, clone a club template, clone from the library, or start a starter plan whose dates overlap an active plan | The overlap dialog names the overlapping plan(s) and offers End early (only when they start before the new plan), Replace, Cancel; End early leaves the old plan ending the day before with its later workouts removed; a failed lookup creates nothing and says so. |
+| Races inside a plan | Web WorkoutEditor (or mobile workout sheet) → set a workout's kind to Race, name it, priority B, goal time; or import a table with Race / Priority / Goal columns | "Races in this plan" lists every race with its priority; the countdown, race-week panel and plan header follow the next race; changing the kind away from Race clears the race fields. |
+| Taper around a B race | Web `/plans/[id]` or mobile plan detail → Adjust plan → Taper around B/C races | Preview lists the eased days before and recovery days after each upcoming B/C race; Apply changes only those workouts; the A race and its taper are untouched. |
+| Plan a season | Web `/plans/new` → Plan a season (or mobile New plan → Plan a season) → add three races: an A 10K about nine weeks out, a B 10K about sixteen weeks out, an A half about twenty weeks out → Confirm races and preview plans → Create 2 plans | The preview shows two plans (the second listing the B race), the recovery gap after the first A race, and nothing unplaced; Create opens the first plan; `/plans` shows both active, the second Upcoming and starting after the gap; the second plan's Races in this plan lists the B race on its date. With no A race, or two A races a few weeks apart, the preview refuses and names the races. With the assistant on, a failed Find my races leaves a blank race to fill in. |
+| Import a plan on mobile | Mobile New plan → Import a plan → paste a table or JSON → Load → Create plan | Preview shows the date range, weeks, workouts and races; Create runs through the overlap prompt; a malformed table shows the parser's reason. |
+| Publish a plan | Web `/plans/[id]` as the owner, scroll past the week-by-week plan | Share & publish section holds Publish as a club template (only with an admin club) and Public plan library; neither row appears between the header and the plan, and neither renders on a template. |
 | Execute a workout | Mobile Today card → Start | Live workout band shows current step; Skip / Abandon callbacks work; finished run carries `plan_workout_id` + `workout_step_results` + `workout_adherence` per [metadata.md](../backend/metadata.md). |
 | Workout review | Mobile run detail of a plan run | "Workout review" section renders one row per step; on / amber / off tones based on the 10 s tolerance; em-dash for null pace. |
-| Auto-link to plan workout | Record a run on the same date as a scheduled workout | `autoMatchRunToPlanWorkout` ties the run to the workout; the workout flips to completed. |
+| Auto-link to plan workout | Record a run on the same local day as a scheduled workout in the active plan, at 75% of its target or more (from web, phone or Wear OS) | The database matcher (trigger on `runs`, migration `20270901000001`) ties the run to the workout; the workout flips to completed. Save a second, closer run the same day: the workout moves to it. Relink by hand, then save a closer run: the hand link stays. A run started from the workout's own card links it at any distance. |
+| Cross-day workout prompt | Log a run the day before a planned workout (nothing planned on the run's own day), at 75% of the workout's target or more; open the run's detail (web, then phone) | "Did you do <weekday>'s planned workout early?" with the workout's kind and target. "Link to plan" links it (the workout flips to done) and the prompt goes; "Not this one" shows the next candidate or hides, links nothing, and the question does not come back after a reload. |
 | Clone from template | Web → `clone_plan_template` RPC via club-shared template | New plan owned by caller, dates shifted by `(new_start - template_start)`; `parent_template_id` points back at the source. See [decisions.md §35](../architecture/decisions.md). |
 | Pace anchoring | Provide a `current_5k_seconds` on the wizard | Plan workouts use VDOT-derived paces; without 5k anchor, falls back to volume-only structure. |
 
@@ -283,9 +322,10 @@ The Coach endpoint at `/api/coach/+server.ts` is the only server-runtime web rou
 
 | Scenario | Steps | Pass |
 |---|---|---|
-| Send a message | `/coach` page → type a question | Streams a response; grounded-in context strip lists which runs/plans were sent. |
+| Send a message | Messages → the pinned AI Coach row (`/messages/coach`; `/coach` redirects there) → type a question | Streams a response; grounded-in context strip lists which runs/plans were sent. |
 | Plan switcher | `?plan=<id>` query param | Coach context is scoped to the picked plan only. |
 | Runs window | Adjust the 10/20/50/100 selector | More history loaded into context; visible in the strip. |
+| Coach row in Messages | Open Messages; tap the pin on the AI Coach row; reload; then Settings → Display → AI Coach in Messages → Hidden | Pinned at the top with an AI tag by default; unpinned it sorts by its newest message and stays so after reload; hidden takes it out of the inbox. Without AI consent the row describes the Coach and quotes nothing. Mobile: You → Messages, same row; Preferences → Messages for the setting. |
 | Rate limit | Send >N requests as a free user (config in `check_rate_limit_tiered`) | 429 with Retry-After; pro users see a higher ceiling. |
 | Pro-only paths | `/api/coach` calls `is_pro()` to gate paywalled features per [paywall.md](../features/paywall.md) | Free users hit the hard ceiling; pro users get the higher one. |
 
@@ -298,6 +338,8 @@ See [clubs.md](../features/clubs.md) for the deferred items.
 | Scenario | Steps | Pass |
 |---|---|---|
 | Create a club | Web `/clubs/new` | Club created with visibility + join policy; creator becomes admin. |
+| Delete a club | Web `/clubs/[slug]` as the owner | The hero shows New event and Edit club but no delete; Delete club sits in the Danger zone after the tab content, asks in a confirm dialog, and Cancel keeps the club. An admin who is not the owner sees no Danger zone. |
+| Delete a challenge | Web `/challenges/[id]` as the creator (or a club admin of a club challenge); mobile challenge detail as the creator | Web: the Leave / Edit challenge row has no delete; Delete challenge sits in the Danger zone after the leaderboard and confirms. Mobile: no delete icon in the AppBar; the overflow menu's red Delete challenge item confirms. |
 | Invite link | Club → Invite | Generate token; `/clubs/join/[token]` redeems via `join_club_by_token` RPC. Atomic — partial failures roll back. |
 | Club feed | `/clubs/[slug]/feed` | Threaded posts; admins can pin / delete; per-event update threads. |
 | Create event | `/clubs/[slug]/events/new` | One-off OR weekly/biweekly/monthly recurrence (see `recurrence_test.dart` — 8 tests pin the expansion). RSVP per-instance. |
@@ -351,22 +393,128 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 | Race mode start | Race director on `/clubs/[slug]/events/[id]` → Start race | `race_sessions.status` transitions `armed → running`; pings start flowing from connected watches. |
 | Race mode finish | Director or auto-finalize | `running → finished`; `event_results` rows are created for finishers; `recompute_event_ranks` orders them. |
 | Cleanup | Wait or trigger | `cleanup-stale-live-run-pings` cron purges `race_pings` older than the configured window. |
+| Set up a Self-timed race (organiser) | Web, as a club owner or admin: `/clubs/[slug]` → New event, Group run, a route and distance; under How the race starts pick **Self-timed window**, set Window opens at / Opens on and a window length; Create event. Reopen it → Edit event → Start and finish lines; check each course shows a start and a finish line (From the route), drag or retype one and Save line | The editor shows the self-timed hints (lines required, latest app, auto-approve off by default), and saving an existing self-timed race whose course lacks a line is refused (a new one is created, then says which course needs one). Each line saves on its own and reads "Placed by an organiser"; Reset to route puts it back. The event page's race panel reads **Self-timed window** with Arm early before the server creates the session, then Opens / Open until with Delay start and Cancel (before) or Extend window and End window now (while open). Arm early with a course missing a start line shows the preflight with "Must fix:" and no Arm anyway. "How this works" in the lines section, the start-mode picker and the race panel opens `start-and-finish-lines` / `choose-how-your-race-starts`; a runner's panel opens `run-a-self-timed-race`. |
+| Self-timed attempt (runner) | Another account, phone app: open the event while the window is open → Join and attempt (choose a course first on a multi-course race); Run tab → **This run is my attempt** → Start | The Run tab banner reads Self-timed with the close time; the button becomes "Attempt ready: tap Start" and a second tap takes it back. A run started without it never joins the race. The submitted result shows PENDING on the event page until the organiser approves it (auto-approve off), and the live page lists the runner under the self-timed board. |
+
+### Field test: timing by the lines (#1307)
+
+Not yet run. Needs a real park, a course whose start and finish lines are placed on the web event editor, an organiser account and one runner account on the phone and on a Wear OS watch (run each row on both; on the watch the undo is the paused screen's resume button and the distance to the start line sits under the race clock). Record each row's result here with the date, devices and OS versions.
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| 90° crossing | Arm a Host GO race, GO, run straight through the start line and later the finish line at right angles | Voice "Start line crossed, timing" and a haptic about 50 m past the start; the finish line cues and pauses the run behind Not finished? Resume; the result shows `start_detection = gate`, `finish_detection = gate`, and the server's gun time matches the organiser's stopwatch within a second or two. |
+| 30° crossing | Same, crossing both lines at about 30° | Same as above. |
+| Parallel path | Run past the finish line on a path about 20 m beside it, then on | No finish; a Stop afterwards opens Resume race / Finish race. |
+| Loop with warm-up | A course whose start and finish lines coincide; jog a warm-up lap through both before GO, then race | No early finish: the warm-up crossings are before GO, and the race finishes only after the course's distance. |
+| Lap course | A route drawn as one lap whose start and finish lines coincide, the course distance set to 3 laps; Arm (Host GO), GO, run 3 laps | `race_session_courses.finish_lap_count` is 3; no finish on laps 1 and 2; the finish line at the end of lap 3 cues and files (decisions § 2472). Stop after lap 2 and choose Finish race: a DNF. Run it again weaving the lap 2 pass 20 m wide of the line's end: no line finish at lap 3, but stopping on the line finishes. Repeat with a routeless course whose two organiser lines coincide: the same, the floor measured from the runner's laps. |
+| Self-timed laps | A Self-timed window on the same 3-lap course; turn on This run is my attempt and run 3 laps | The start cues once, about 50 m past the line on lap 1; the later laps' start-line crossings change nothing; the finish files at the end of lap 3 with the chip time from lap 1's crossing. |
+| Self-timed out-and-back | A Self-timed window on an out-and-back whose finish line sits 5 to 20 m beyond the start line on the way home | Coming home across the start line does not cancel the start; the finish line files the finish, timed from the outward start crossing. |
+| On the start line at GO | Stand on or just past the start line when GO fires | No start cue (nobody crossed); the result's `start_at` is GO and `start_detection = gate`. |
+| Phone in a pocket | Run the whole race with the screen off and the phone in a pocket | Cues heard and felt; the finish files; the run saves after 60 s. |
+| Undo after a false finish | Trigger a finish (for example cross the finish line before the end on a course whose distance is set well short of the route), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
+| Offline | Open the race once with signal, then turn on airplane mode before the start | Distance to the start line shows, the start and finish are detected and cued, and the result is queued and lands when signal returns. |
+| Undo, then restart | After Not finished? Resume, kill the app (phone) or let the activity be recreated while the service records (Wear), reopen, run on and cross the finish line again after 90% of the course from the start | The undone crossing is not filed again; the later crossing finishes, timed from the original start-line crossing; the saved run carries `metadata.race_undone_finish_at`. |
+| Clock offset across a restart | Start a race recording with signal, kill the app, turn on airplane mode, reopen and finish | The gun time still matches the stopwatch within a second or two (the offset is remembered for 24 h). |
+| Web re-time | Within 24 h of the race finishing, open one of these runs on the web as its owner | **Re-time from my track** shows the track's result beside the current one; on a run whose finish was undone it refuses the undone finish; replacing a DNF or a hand finish files `gate` / `gate` and the board updates. Note how far the re-timed gun time sits from the live one (fix delivery latency, § 2462). |
 
 (Live race recording on the watch is roadmap-pending in some cells; see [parity.md "Live race mode"](../product/parity.md).)
 
+### Timing-line calibration (#1304 § 6)
+
+Not yet run. Measures the error of the timing lines on the production fix feed, so the provisional constants (`halfWidthM`, `maxGapS`, `maxHopM`, `rejectGapS`, `startCommitM`, the with-start coverage threshold) can be replaced by measured ones ([decisions § 2453](../architecture/decisions.md)). Record the date, devices and OS versions, and the per-cell median and p95 |error|, missed and false counts, in a new decisions entry.
+
+**Kit.** A debug build of the phone app (`flutter run` or a debug APK; the screen does not exist in a release build), a Wear OS watch with a debug build of the Wear app (`./gradlew installDebug` from `apps/watch_wear/android`; the entry does not exist in a release build) and `adb` connected to it, a line marked on the ground with two cones, a camera filming the line with an NTP-synced clock in frame (a second phone showing time.is, say) and signal for the clock measurement.
+
+**The matrix (about 120 crossings).** Ten crossings per cell:
+
+| Approach | Pace | Carry |
+|---|---|---|
+| 90° to the line | walk, run | phone in hand, phone in pocket, Wear |
+| 30° to the line | walk, run | phone in hand, phone in pocket, Wear |
+
+Plus passes along parallel paths 20 m and 40 m beside the line (none should cross it), and standing still on the line for a few minutes (no crossing at all). The phone scores the phone cells and the watch scores the Wear cells, each on its own fix feed, into the same CSV format.
+
+**Per cell.**
+1. Phone: Settings > Line calibration. Stand at the centre of the line and tap Centre at my position (or type the centre), type the bearing of travel through it and the half-width (15 m today). Tap Measure server clock (10 round trips); the offset's uncertainty is half the round trip shown with each result.
+2. Pick the cell (approach, pace, carry) and tap Start capture.
+3. Run tab: Start a recording (no race needed) and make the cell's ten crossings, then Stop. Each recording is kept apart, so several in one capture are fine.
+4. Line calibration: Stop capture. From the video, write down each crossing's instant on the NTP clock (the frame where the runner's chest crosses the line) as `HH:MM:SS.fff` in the phone's zone, or as an ISO instant with its zone when the clock shows UTC or the session crosses midnight. Paste them one per line and tap Score this capture.
+5. Read the line it adds: matched of true, missed, false, near misses, median error and |error| p50 / p95. Nothing matched while detections sit about an hour away means a time-zone slip in the typed instants, not a detector failure.
+
+**Per Wear cell.** The same steps on the watch, wrist-worn:
+1. Pre-run screen, scrolled to the end: **Line calibration (debug)**. Type the line centre (or **Centre at my position**, the watch's last known fix), the bearing of travel and the half-width, and tap **Measure server clock** (10 round trips; it needs signal, or type the offset).
+2. Cycle **Approach** and **Pace** to the cell (carry is always `wear_wrist`) and tap **Start capture**, then **Close**.
+3. Pre-run Start, make the cell's crossings, Stop. Each recording is kept apart.
+4. Back in Line calibration: **Stop capture**, type the video-timed instants into **True crossing instants**, separated by commas (`HH:MM:SS.fff` in the watch's zone, or an ISO instant with its zone), and tap **Score this capture**. The line it adds reads as the phone's.
+5. **Save CSV** writes `files/line_calibration.csv` in the app's private storage (each save replaces it with every capture scored this session). Take it off the watch with `adb exec-out run-as com.threkir.watchwear cat files/line_calibration.csv > wear_calibration.csv`; it never leaves by sync or share.
+
+**Export.** Share CSV (or Copy CSV) sends one row per crossing (outcome, error in ms, lateral offset from the line's centre, gapped, why a miss was missed) and one summary row per capture. It holds no position and no instant: nothing in it says where the session was.
+
+### Replay regression: old circle vs new lines (#1304 § 6, step 2)
+
+Checks that the lines do not miss finishes the old 30 m circle caught, on the owner's own stored tracks. Run locally only; real tracks must never be committed (this repository is public).
+
+1. Download your own tracks: web Settings > Account > Download full backup, then unzip it into a directory outside the repo (for example `~/race-replay/`). Its `tracks/<run id>.json.gz` are what the replay reads.
+2. Optional, for the races you actually ran: in the Supabase SQL editor of the project you own, run the query below with your user id and save the result as `cases.json` beside `tracks/`. Without it every track is replayed over a course laid over the track itself (a start line 20 m in, a finish line 50 m before the end).
+
+   ```sql
+   select coalesce(json_agg(json_build_object(
+     'run_id', r.run_id, 'start_mode', s.start_mode, 'started_at', s.started_at,
+     'distance_m', coalesce(f.distance_m, c.distance_m),
+     'finish_lat', coalesce(f.finish_lat, c.finish_lat),
+     'finish_lng', coalesce(f.finish_lng, c.finish_lng),
+     'finish_line_self_cross', coalesce(f.finish_line_self_cross, c.finish_line_self_cross),
+     'finish_lap_count', f.finish_lap_count,
+     'start_gate_lat', coalesce(f.start_gate_lat, c.start_gate_lat),
+     'start_gate_lng', coalesce(f.start_gate_lng, c.start_gate_lng),
+     'start_gate_bearing_deg', coalesce(f.start_gate_bearing_deg, c.start_gate_bearing_deg),
+     'start_gate_half_width_m', coalesce(f.start_gate_half_width_m, c.start_gate_half_width_m),
+     'finish_gate_lat', coalesce(f.finish_gate_lat, c.finish_gate_lat),
+     'finish_gate_lng', coalesce(f.finish_gate_lng, c.finish_gate_lng),
+     'finish_gate_bearing_deg', coalesce(f.finish_gate_bearing_deg, c.finish_gate_bearing_deg),
+     'finish_gate_half_width_m', coalesce(f.finish_gate_half_width_m, c.finish_gate_half_width_m))), '[]')
+   from event_results r
+   join event_courses c on c.id = r.course_id
+   left join race_sessions s on s.event_id = r.event_id and s.instance_start = r.instance_start
+   left join race_session_courses f on f.event_id = r.event_id
+     and f.instance_start = r.instance_start and f.course_id = r.course_id
+   where r.user_id = '<your user id>' and r.run_id is not null;
+   ```
+
+3. From `apps/mobile_android`: `RACE_REPLAY_DIR=~/race-replay RACE_REPLAY_OUT=~/race-replay/report.csv flutter test test/race_finish_replay_test.dart`. Set `RACE_REPLAY_SYNTH=0` to replay only the `cases.json` races.
+
+It prints how many tracks it replayed, how many both detectors finished and how many the lines lost, and fails naming each lost run. `report.csv` has one row per track (`case,course,v1_finished,v2_finished,v2_detection,delta_s,regression`), with run ids and no coordinates; keep it with the tracks, outside the repo.
+
 ---
 
-## Imports — Strava, Garmin, parkrun, Health Connect, HealthKit
+## Imports — Strava, Garmin, Health Connect, HealthKit
 
 | Source | Surface | Steps | Pass |
 |---|---|---|---|
 | Strava ZIP (web) | `/settings/integrations` → Strava bulk import | Upload the export ZIP | Activities import; `metadata.strava_id` set for dedupe; tracks land in Storage. |
 | Strava OAuth (Edge Function) | OAuth flow then `strava-import` EF | `{action: 'connect', code, scope}` after redirect, then `{action: 'sync'}` for backfill | Activities import; tokens land in Vault via `set_integration_tokens`; `metadata.title` + `metadata.elevation_m` populated when present (recently-fixed bug — these used to be written as columns that don't exist). |
-| Strava webhook | `strava-webhook` EF | (a) send a `GET ?secret=<STRAVA_WEBHOOK_SECRET>&hub.mode=subscribe&hub.verify_token=<STRAVA_VERIFY_TOKEN>&hub.challenge=ping`; (b) send a `POST` event with `{object_type:'activity',aspect_type:'create',owner_id,object_id}` and the secret query string | (a) responds 200 with `{"hub.challenge":"ping"}`; (b) returns 200 (always — Strava retries on non-2xx) and an authed Run row appears for `owner_id` with `metadata.strava_id == object_id`. Replay the same POST → no duplicate (dedupe via `metadata.strava_id`). Activity types other than run/walk/hike are silently ignored. |
+| Strava webhook | `strava-webhook` EF | Pass the secret as `X-Webhook-Secret: <STRAVA_WEBHOOK_SECRET>` — the query-string form still works (Strava can only be configured with a URL) but logs the secret on every call, so manual pokes should use the header. (a) send a `GET ?hub.mode=subscribe&hub.verify_token=<STRAVA_VERIFY_TOKEN>&hub.challenge=ping`; (b) send a `POST` event with `{object_type:'activity',aspect_type:'create',owner_id,object_id}` | (a) responds 200 with `{"hub.challenge":"ping"}`; (b) returns 200 (always — Strava retries on non-2xx) and an authed Run row appears for `owner_id` with `metadata.strava_id == object_id`. Replay the same POST → no duplicate (dedupe via `metadata.strava_id`). Activity types other than run/walk/hike are silently ignored. |
 | Garmin ZIP (web) | `/settings/integrations` → Garmin bulk | Upload either a single `.fit` or the Account Data `.zip` | Activities import via `garmin-zip.ts`; `metadata.garmin_id` set; routed inner GPX/TCX go through `parseRouteFile`. |
-| parkrun (mobile) | Settings → Import parkrun results → enter athlete number | Calls `parkrun-import` EF | New results land as runs with `source='parkrun'`; `metadata.event` + `metadata.position` + `metadata.age_grade` set. |
 | Health Connect (Android) | Settings → Import from Health Connect | Pick a date range | Workouts come in via `health_connect_importer.dart`; `metadata.health_connect_type` preserves the original enum. |
 | HealthKit (iOS) | Settings → Import from HealthKit | Same | Same shape via the `health` package's HealthKit backend. |
+
+---
+
+## Settings — preference pages
+
+The single `/settings/preferences` page was split by topic (issue #905, [decisions § 1640](../architecture/decisions.md)); where each key now lives is in [settings.md § Where each key is edited on web](../backend/settings.md#where-each-key-is-edited-on-web).
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| Nav | Web: open `/settings/account` | The side nav shows four sections — Profile (Account, Body metrics, Safety), Preferences (Units & display, Recording & voice, Training, Privacy & sharing, Notifications), Apps & data, Account & legal. There is no "Preferences" tab linking to `/settings/preferences`. |
+| Landing page | Open `/settings/preferences` with no hash | A list of the six groups, each with a one-line summary; clicking one opens that page. Nothing on it is editable. |
+| Old section links | Open `/settings/preferences#heart-rate-zones`, then `#weekly-mileage-goal`, then `#body-metrics` | Each replaces the URL with `/settings/training#heart-rate-zones`, `/settings/training#weekly-distance-goal` and `/settings/body#body-metrics`, and scrolls to that section once it has loaded. Browser Back does not return to the landing page. |
+| Email footer | Trigger any notification email to Mailpit (`:24324`) | "Manage preferences" and the `List-Unsubscribe` header both point at `/settings/notifications`. An older email's `/settings/preferences` link still lands on the landing page. |
+| Save + load failure | On any preference page change a select; then block `get_my_profile` in devtools and open Body metrics from the nav | The header shows Saving… then Saved. With the read blocked, an alert with Retry replaces the form (no defaults are shown), and Retry restores it once unblocked. |
+| Every control explained | Walk the six pages | Every select, field and toggle group has one plain line under it, and a screen reader announces it as the control's description. Hints spell out HR, bpm, kg, lbs, km/h, mph, cm and AI. |
+| How much detail (web) | `/settings/display` → "How much detail" reads Automatic on an account that never touched it; note what the hint says it picks today. Set it to Just the basics, open `/dashboard`; then set it to Everything and reload the dashboard | The hint names one of Just the basics / The usual / Everything, derived from the onboarding goal and the run count — not a fixed word. At Just the basics the dashboard shows a collapsed "Training load" section where the VO₂ max / CTL / ATL / TSB card and the Fitness, Fatigue & Form chart were; opening it and reloading finds it still open, closing it and reloading finds it closed. At Everything there is no collapsed section and the page looks exactly as it did before. Choosing Automatic again removes `disclosure_level` from `user_settings.prefs` rather than storing a fourth value. |
+| Weekly distance goal (web) | `/settings/display` → Kilometres, then `/settings/training` → type 42.2 in "Weekly distance goal (km)" and tab away; reload | Field reads 42.2; `user_settings.prefs.weekly_mileage_goal_m` is 42200. Switch to Miles: the field reads 26.2 (mi). Focus and blur without typing: the stored value does not change. 600 shows "Enter a goal between 0.1 and 500 km." and nothing is saved. |
+| Weekly distance goal (mobile) | Settings → Preferences → Weekly distance goal, with Use miles on and a 50000 m goal stored | Tile reads "31.1 mi / week"; the dialog pre-fills 31.1 with an "mi" suffix; Save without editing leaves 50000. The coach context chip reads "31.1 mi/wk". |
 
 ---
 
@@ -376,7 +524,7 @@ See [decisions.md §33](../architecture/decisions.md#33-privacy-zones-live-in-us
 
 | Scenario | Steps | Pass |
 |---|---|---|
-| Configure zones | Web `/settings/account` → Privacy zones | `PrivacyZonePicker` (MapLibre) lets you draw circular zones; persists to `user_settings.prefs.privacy_zones`. |
+| Configure zones | Web `/settings/privacy` → Privacy zones | `PrivacyZonePicker` (MapLibre) lets you draw circular zones; persists to `user_settings.prefs.privacy_zones`. |
 | Owner view | Open `/runs/[id]` of a clipped run as the owner | Full track visible — owner is exempt. |
 | Public viewer | Same run via `/share/run/[id]` in incognito | Track is clipped: leading + trailing in-zone points removed via the `clip_track_for_user` RPC, contiguous middle returned. Zones never leave the database. |
 | Cap | Run with >50 000 points (synthetic) | RPC truncates to bound the dense-grid probe attack. |
@@ -405,9 +553,14 @@ See [paywall.md](../features/paywall.md) for the full tier matrix and feature ga
 | Web full backup ZIP | `/settings/account` → Create backup | Downloads a `run-app-backup` v1 ZIP with `runs.json` + `routes.json` + `profile.json` + `manifest.json` + per-run gzipped tracks. |
 | Web restore | Same screen → Restore | Round-trips the same ZIP; idempotent on `external_id`. |
 | Web single-file export | Same screen → Export runs JSON | Downloads `runs-{ts}.json` (no tracks, `user_id` stripped). Identical row shape to the ZIP's `runs.json`. |
-| GDPR export (Edge Function, CSV) | `POST /functions/v1/export-data` with `{format:'csv'}` and a user JWT | Returns `{url, path, expires_in:600, count, format:'csv'}`. The signed URL downloads a single CSV with one row per run (columns: `id, started_at, distance_m, duration_s, source, activity_type, title, avg_bpm, steps, elevation_m, route_id, event_id, external_id, is_public, track_url, metadata, created_at, updated_at`). Capped at 5000 runs; rate-limit 2/h free, 8/h pro. |
+| GDPR export (Edge Function, CSV — the rollback rail; the Go worker's is queued, below) | `POST /functions/v1/export-data` with `{format:'csv'}` and a user JWT | Returns `{url, path, expires_in:600, count, format:'csv'}`. The signed URL downloads a single CSV with one row per run (columns: `id, started_at, concluded_at, distance_m, duration_s, source, activity_type, is_dnf, title, avg_bpm, hr_coverage, steps, elevation_m, elevation_gain_m, fastest_5k_s, fastest_10k_s, fastest_half_marathon_s, fastest_marathon_s, route_id, event_id, race_listing_id, external_id, is_public, followers_only, metadata, created_at, updated_at`). No run cap (the archive streams into Storage in 6 MiB chunks, decisions § 703); an export that runs past the 120 s budget reports `complete: false`. Rate-limit 2/h free, 8/h pro. |
 | GDPR export (Edge Function, GPX zip) | Same EF with `{format:'gpx'}` | Same response shape; the signed URL downloads a `.zip` containing one `.gpx` per run plus a `manifest.json`. GPX 1.1 with `<ele>`, `<time>`, and `<gpxtpx:hr>` extensions when the source data carries them. |
 | GDPR export (rate limit) | Hit the EF 3× as a free user within an hour | Third call returns 429 with `Retry-After`. |
+| GDPR export (Go worker, queued — web) | `/settings/account` → Full account archive, with `PUBLIC_EXPORT_HUB_URL` set | Returns at once with "Your export is building"; the buttons disable while it runs. Close the tab, reopen `/settings/account` — the state card comes back with no local state, and once the worker finishes it offers a real Download link (not a popup: the completion arrives on a timer, outside a user gesture). The link's 10-minute clock starts at the read that produced it, and the page re-reads at half that so it cannot expire under you. decisions §717. |
+| GDPR export (Go worker, queued — mobile) | Settings → Account → **Account export**, with `LIVE_HUB_URL` set | Banner: "Building your export. You can close the app". **Force-quit the app**, reopen, return to Settings → Account: the card is there — building or ready — because nothing about the job was persisted on the device and the status endpoint answers for your latest export. Tapping **Download and share** mints a fresh signed URL at the tap and opens the share sheet. decisions §724. |
+| GDPR export (mobile, which archive did I get?) | Settings → Account → **Full backup** | A notice appears under the tile naming this as the on-device archive and saying it does NOT carry your account records. The two tiles are two different archives and must never substitute for one another — a failed Account export must surface its own failure, not quietly hand over this one. |
+| GDPR export (mobile, unsynced runs) | Record a run offline, then open Settings → Account | A standing notice under **Account export** says how many runs have not synced and that the server-built archive cannot include them. It must not silently build the local archive instead. |
+| GDPR export (Go worker, refused) | Ask for an export 3× within an hour as a free user | The third attempt banners a rate limit naming the retry window; the export state card is unchanged and no on-device archive is produced. |
 | Account deletion | Web `/settings/account` → Delete account | `delete-account` EF runs admin delete (User JWT + service role); cascading FKs clear `runs`, `routes`, `clubs` membership, etc. |
 
 ---

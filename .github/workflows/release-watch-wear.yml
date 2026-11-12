@@ -1,6 +1,6 @@
 name: Release Wear OS
 
-# Tag: `watch_wear@1.2.3`. Builds a signed release APK + uploads to the
+# Tag: `watch_wear@1.2.3`. Builds a signed release AAB + uploads to the
 # Play Internal track under a distinct `applicationId` from the phone
 # app (Play lists Wear OS apps separately even when they share a phone
 # app — the current release workflow treats them independently).
@@ -40,11 +40,18 @@ jobs:
     # Guard: `on: release` fires for every published release in the repo,
     # so only act on watch_wear@* releases.
     if: startsWith(github.event.release.tag_name, 'watch_wear@')
+    # Pause on the `production` environment's required-reviewer rule before
+    # any prod credentials or steps run. It is also where the signing and
+    # Play secrets live: PLAY_SERVICE_ACCOUNT_JSON and the WATCH_WEAR_*
+    # keystore secrets are environment secrets, invisible to a job that
+    # names no environment.
+    environment: production
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Parse version from tag
@@ -56,52 +63,103 @@ jobs:
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: "21"
 
-      - name: Cache Gradle
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-watch-wear-${{ hashFiles('apps/watch_wear/android/**/*.gradle*', 'apps/watch_wear/android/gradle/wrapper/gradle-wrapper.properties') }}
+      # No dependency cache on a release build: a cache is writable by any
+      # workflow run on the default branch, so restoring one here would let a
+      # poisoned entry reach a signed artifact. A release builds from a cold
+      # Gradle home every time.
 
       - name: Pin versionCode + versionName from tag
         working-directory: apps/watch_wear/android/app
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
         run: |
           # watch_wear's gradle file hardcodes versionCode / versionName
           # today. Rewrite those two lines in place before building so
           # the signed artifact carries the tag's numbers.
-          sed -i "s/versionCode = [0-9]*/versionCode = ${{ steps.version.outputs.code }}/" build.gradle.kts
-          sed -i "s/versionName = \".*\"/versionName = \"${{ steps.version.outputs.name }}\"/" build.gradle.kts
+          sed -i "s/versionCode = [0-9]*/versionCode = ${VERSION_CODE}/" build.gradle.kts
+          sed -i "s/versionName = \".*\"/versionName = \"${VERSION_NAME}\"/" build.gradle.kts
           grep -E 'versionCode|versionName' build.gradle.kts
 
       - name: Decode release keystore
         env:
           WATCH_WEAR_KEYSTORE_BASE64: ${{ secrets.WATCH_WEAR_KEYSTORE_BASE64 }}
+          WATCH_WEAR_KEYSTORE_PASSWORD: ${{ secrets.WATCH_WEAR_KEYSTORE_PASSWORD }}
+          WATCH_WEAR_KEY_PASSWORD: ${{ secrets.WATCH_WEAR_KEY_PASSWORD }}
+          WATCH_WEAR_KEY_ALIAS: ${{ secrets.WATCH_WEAR_KEY_ALIAS }}
         run: |
           echo "$WATCH_WEAR_KEYSTORE_BASE64" | base64 -d > apps/watch_wear/android/app/upload-keystore.jks
-          cat > apps/watch_wear/android/key.properties <<EOF
-          storePassword=${{ secrets.WATCH_WEAR_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.WATCH_WEAR_KEY_PASSWORD }}
-          keyAlias=${{ secrets.WATCH_WEAR_KEY_ALIAS }}
-          storeFile=app/upload-keystore.jks
-          EOF
+          # Both halves mirror the mobile release workflow, which documents
+          # having already hit each of them:
+          #  - printf from env vars, NOT a secrets-interpolated heredoc: an
+          #    unquoted heredoc shell-expands the substituted values, silently
+          #    mangling a password containing a dollar sign or a backtick.
+          #  - storeFile is resolved by Gradle's file() relative to the
+          #    android/app module dir, not android/ where key.properties lives,
+          #    so an `app/` prefix doubles into android/app/app/ and
+          #    validateSigningRelease fails with "Keystore file not found".
+          #    key.properties exists by then, so the release signing config is
+          #    selected and the build fails hard rather than falling back.
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' \
+            "$WATCH_WEAR_KEYSTORE_PASSWORD" "$WATCH_WEAR_KEY_PASSWORD" "$WATCH_WEAR_KEY_ALIAS" \
+            > apps/watch_wear/android/key.properties
 
-      - name: Build AAB + APK (signed)
+      - name: Build AAB (signed)
         working-directory: apps/watch_wear/android
+        # Every value reaches gradle through the environment, never through a
+        # `${{ }}` spliced into the script: the release tag is free text, and a
+        # quote in it would end the argument and run what follows.
+        env:
+          SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+          PUBLIC_MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
+          SENTRY_DSN: ${{ secrets.WATCH_WEAR_SENTRY_DSN }}
+          APP_RELEASE: ${{ github.event.release.tag_name }}
         run: |
           # Use the same PUBLIC_SUPABASE_* secret names the web release
           # workflow reads — keeps a single pair of GitHub secrets in
           # sync with the Supabase project's anon key + URL across all
           # client deploys.
-          ./gradlew bundleRelease assembleRelease \
-            -PSUPABASE_URL='${{ secrets.PUBLIC_SUPABASE_URL }}' \
-            -PSUPABASE_ANON_KEY='${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}' \
+          #
+          # SENTRY_DSN is optional: unset, the build carries an empty DSN and
+          # WatchWearApplication leaves Sentry off (decisions § 1763).
+          ./gradlew bundleRelease \
+            -PSUPABASE_URL="$SUPABASE_URL" \
+            -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            -PPUBLIC_MAPTILER_KEY="$PUBLIC_MAPTILER_KEY" \
+            -PSENTRY_DSN="$SENTRY_DSN" \
+            -PAPP_RELEASE="$APP_RELEASE" \
             --no-daemon
+
+      - name: Attach artifacts to the Release
+        # The Release already exists — it triggered this run. Upload the
+        # signed AAB onto it (no name/notes → the human-authored release
+        # title + notes aren't clobbered). Runs BEFORE the Play upload, as in
+        # release-android.yml: when that upload fails (Play permissions, the
+        # manual-first-upload rule for a new app), the signed AAB must still
+        # land somewhere it can be hand-uploaded from.
+        #
+        # Deliberately AAB-only, matching release-android.yml. A directly
+        # installable `.apk` here would be distribution outside Google
+        # Play, which from 2026-09-30 requires registering
+        # `com.threkir.watchwear` by hand in the Android Developer
+        # Console. Play-only distribution auto-registers the package.
+        #
+        # `gh release upload` exits non-zero on a path that does not exist,
+        # so a moved build output fails here rather than attaching nothing
+        # (decisions.md § 1674). `--clobber` replaces an asset of the same
+        # name, so re-running the job re-attaches instead of failing.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload to Play Internal
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
@@ -111,14 +169,3 @@ jobs:
           releaseFiles: apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
-
-      - name: Attach artifacts to the Release
-        # The Release already exists — it triggered this run. Upload the
-        # signed AAB + APK onto it (no name/notes → the human-authored
-        # release title + notes aren't clobbered).
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: |
-            apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
-            apps/watch_wear/android/app/build/outputs/apk/release/app-release.apk

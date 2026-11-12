@@ -1,17 +1,23 @@
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../auth_error.dart';
 import '../coach_load.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../metrics.dart';
 import '../preferences.dart';
+import '../pro_sellable.dart';
+import '../share_sheet.dart';
+import '../web_base_url.dart';
+import '../widgets/coach_assist_consent_switch.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_athlete_screen.dart';
 
@@ -20,14 +26,48 @@ import 'coaching_athlete_screen.dart';
 /// shareable invite links + manages their athlete roster; an athlete sees the
 /// coaches they're linked to. Reads/writes through [ApiClient]'s coaching
 /// methods. DISTINCT from `coach_screen.dart`, which is the AI-chat coach.
+/// The roster in the order a coach should read it: riskiest band first, then
+/// within a band the athlete who went quiet longest (a never-ran athlete
+/// first of all), then the id so the order is total. Mirrors web
+/// `sortRoster(rows, 'risk', 'desc')` in `routes/coaching/roster_sort.ts`.
+List<CoachRosterRow> sortRosterByAttention(List<CoachRosterRow> roster) {
+  const rank = {
+    InjuryRiskBand.high: 4,
+    InjuryRiskBand.elevated: 3,
+    InjuryRiskBand.optimal: 2,
+    InjuryRiskBand.low: 1,
+    InjuryRiskBand.insufficient: 0,
+  };
+  return [...roster]..sort((a, b) {
+      final byRisk = (rank[injuryRiskBand(b.loadAcute, b.loadChronic)] ?? 0) -
+          (rank[injuryRiskBand(a.loadAcute, a.loadChronic)] ?? 0);
+      if (byRisk != 0) return byRisk;
+      final aMs = a.lastRunAt?.millisecondsSinceEpoch ?? 0;
+      final bMs = b.lastRunAt?.millisecondsSinceEpoch ?? 0;
+      final byStaleness = aMs.compareTo(bMs);
+      if (byStaleness != 0) return byStaleness;
+      return a.athleteId.compareTo(b.athleteId);
+    });
+}
+
 class CoachingScreen extends StatefulWidget {
   final ApiClient api;
   final Preferences preferences;
+
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
+
+  /// Whether to offer the athlete the per-coach AI-assistance consent switch.
+  /// Defaults to the deploy's capability manifest; tests inject an answer.
+  final Future<bool> Function()? loadCoachAssistAvailable;
 
   const CoachingScreen({
     super.key,
     required this.api,
     required this.preferences,
+    this.hrPrescription,
+    this.loadCoachAssistAvailable,
   });
 
   @override
@@ -39,27 +79,34 @@ class CoachingScreen extends StatefulWidget {
 /// from `WEB_BASE_URL` (set at build time, e.g. the preview host) and falls
 /// back to the production host. Pure so it can be unit-tested.
 String coachInviteLink(String token, {String? webBase}) {
-  var base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          '')
-      .trim();
-  if (base.isEmpty) base = 'https://threkir.com';
-  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
-  return '$base/coaching/accept/$token';
+  return '${resolveWebBaseUrl(override: webBase)}/coaching/accept/$token';
 }
 
 class _CoachingScreenState extends State<CoachingScreen> {
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   bool _loading = true;
   bool _minting = false;
   List<CoachAthleteLink> _athletes = const [];
   List<PendingCoachInvite> _pending = const [];
   List<CoachAthleteLink> _coaches = const [];
   List<CoachRosterRow> _roster = const [];
+  bool _coachAssist = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadCoachAssistAvailability();
+  }
+
+  Future<void> _loadCoachAssistAvailability() async {
+    try {
+      final available = await (widget.loadCoachAssistAvailable ??
+          fetchCoachAssistAvailable)();
+      if (mounted) setState(() => _coachAssist = available);
+    } catch (e) {
+      debugPrint('coaching_screen: capability fetch failed: $e');
+    }
   }
 
   Future<void> _load() async {
@@ -101,7 +148,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
 
   Future<void> _shareLink(String token) async {
     final link = coachInviteLink(token);
-    await Share.share(link);
+    await shareTextFrom(context, text: link);
   }
 
   Future<void> _mintInvite() async {
@@ -221,24 +268,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
   Widget _rosterCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final unit = widget.preferences.unit;
-    // Risk-first, then most-stale last-run first, so the athletes who need
-    // attention float to the top (mirrors the web roster sort default).
-    const rank = {
-      InjuryRiskBand.high: 4,
-      InjuryRiskBand.elevated: 3,
-      InjuryRiskBand.optimal: 2,
-      InjuryRiskBand.low: 1,
-      InjuryRiskBand.insufficient: 0,
-    };
-    final rows = [..._roster];
-    rows.sort((a, b) {
-      final byRisk = (rank[injuryRiskBand(b.loadAcute, b.loadChronic)] ?? 0) -
-          (rank[injuryRiskBand(a.loadAcute, a.loadChronic)] ?? 0);
-      if (byRisk != 0) return byRisk;
-      final aMs = a.lastRunAt?.millisecondsSinceEpoch ?? 0;
-      final bMs = b.lastRunAt?.millisecondsSinceEpoch ?? 0;
-      return bMs.compareTo(aMs);
-    });
+    final rows = sortRosterByAttention(_roster);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -270,19 +300,80 @@ class _CoachingScreenState extends State<CoachingScreen> {
     final plan = r.activePlanId == null
         ? l10n.coachingRosterNoPlan
         : '${r.planCompletionPct}%';
+    final today = r.athleteToday;
+    final misses = r.activePlanId == null || today == null
+        ? 0
+        : consecutiveMissedWorkouts(
+            parseRosterRecentWorkouts(r.recentWorkouts), today);
+    final drift = _hrPrescription && isEasyHrDriftFlagged(r.easyHrDriftPct);
+    final summary = Text(
+      '$lastRun · ${UnitFormat.distance(r.distance7dM, unit)} · $plan',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: CircleAvatar(child: Text(_initial(r.displayName))),
+      leading: IdentityAvatar(
+          seed: r.athleteId,
+          name: r.displayName,
+          imageUrl: r.avatarUrl,
+          size: 40),
       title: Text(r.displayName ?? l10n.coachingRunner,
           maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        '$lastRun · ${UnitFormat.distance(r.distance7dM, unit)} · $plan',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
+      subtitle: misses < consecutiveMissFlag && !drift
+          ? summary
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summary,
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (misses >= consecutiveMissFlag)
+                      _metricFlag(
+                          metricText(l10n, Metric.missStreak,
+                              variant: 'chip', args: {'n': '$misses'}),
+                          const MetricInfoButton(metric: Metric.missStreak),
+                          key: Key('rosterMissFlag-${r.athleteId}')),
+                    if (drift)
+                      _metricFlag(
+                          metricText(l10n, Metric.easyHrDrift,
+                              variant: 'chip',
+                              args: {'pct': '${r.easyHrDriftPct!.round()}'}),
+                          const MetricInfoButton(metric: Metric.easyHrDrift),
+                          key: Key('rosterHrDriftFlag-${r.athleteId}')),
+                  ],
+                ),
+              ],
+            ),
       trailing: _riskChip(band, l10n),
-      onTap: () => _openAthleteById(r.athleteId, r.displayName),
+      onTap: () =>
+          _openAthleteById(r.athleteId, r.displayName, r.avatarUrl),
+    );
+  }
+
+  Widget _metricFlag(String label, Widget disclosure, {required Key key}) =>
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [_flagChip(label, key: key), disclosure],
+      );
+
+  Widget _flagChip(String label, {Key? key}) {
+    final theme = Theme.of(context);
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label,
+          style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onTertiaryContainer,
+              fontWeight: FontWeight.w700)),
     );
   }
 
@@ -327,7 +418,8 @@ class _CoachingScreenState extends State<CoachingScreen> {
     );
   }
 
-  void _openAthleteById(String athleteId, String? displayName) {
+  void _openAthleteById(
+      String athleteId, String? displayName, String? avatarUrl) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CoachingAthleteScreen(
@@ -335,7 +427,9 @@ class _CoachingScreenState extends State<CoachingScreen> {
           preferences: widget.preferences,
           athleteId: athleteId,
           displayName: displayName,
+          avatarUrl: avatarUrl,
           acceptedAt: null,
+          hrPrescription: _hrPrescription,
         ),
       ),
     );
@@ -418,7 +512,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           children: [
             IconButton(
               tooltip: l10n.coachingCopyLink,
-              icon: const Icon(Icons.copy_outlined),
+              icon: const Icon(Icons.copy),
               onPressed: () => _copyLink(inv.inviteToken),
             ),
             IconButton(
@@ -440,7 +534,11 @@ class _CoachingScreenState extends State<CoachingScreen> {
   Widget _athleteRow(CoachAthleteLink a, AppLocalizations l10n) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: CircleAvatar(child: Text(_initial(a.displayName))),
+      leading: IdentityAvatar(
+          seed: a.userId,
+          name: a.displayName,
+          imageUrl: a.avatarUrl,
+          size: 40),
       title: Text(a.displayName ?? l10n.coachingRunner,
           maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(l10n.coachingCoachingSince(_sinceLabel(a.acceptedAt))),
@@ -469,7 +567,9 @@ class _CoachingScreenState extends State<CoachingScreen> {
           preferences: widget.preferences,
           athleteId: a.userId,
           displayName: a.displayName,
+          avatarUrl: a.avatarUrl,
           acceptedAt: a.acceptedAt,
+          hrPrescription: _hrPrescription,
         ),
       ),
     );
@@ -501,10 +601,14 @@ class _CoachingScreenState extends State<CoachingScreen> {
                     )),
               )
             else
-              for (final c in _coaches)
+              for (final c in _coaches) ...[
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  leading: CircleAvatar(child: Text(_initial(c.displayName))),
+                  leading: IdentityAvatar(
+                      seed: c.userId,
+                      name: c.displayName,
+                      imageUrl: c.avatarUrl,
+                      size: 40),
                   title: Text(c.displayName ?? l10n.coachingCoach,
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle:
@@ -514,14 +618,21 @@ class _CoachingScreenState extends State<CoachingScreen> {
                     child: Text(l10n.coachingLeave),
                   ),
                 ),
+                if (_coachAssist)
+                  CoachAssistConsentSwitch(
+                    key: ValueKey('coach-assist-consent-${c.id}'),
+                    api: widget.api,
+                    link: c,
+                    coachName: c.displayName ?? l10n.coachingCoach,
+                    onChanged: (v) => setState(() => _coaches = [
+                          for (final x in _coaches)
+                            x.id == c.id ? x.withAiAssistConsentVersion(v) : x,
+                        ]),
+                  ),
+              ],
           ],
         ),
       ),
     );
-  }
-
-  static String _initial(String? name) {
-    final n = name?.trim() ?? '';
-    return n.isEmpty ? '?' : n.substring(0, 1).toUpperCase();
   }
 }

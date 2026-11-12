@@ -15,6 +15,8 @@
 // All three are single-set metrics so they're deterministic and a typo in
 // one set can't poison a session aggregate.
 
+import { EXERCISE_FOLD_KEYS, EXERCISE_FOLD_VALUES } from './exercise_fold_table';
+
 export interface GymSetLike {
 	exercise_name: string;
 	reps: number | null;
@@ -58,8 +60,79 @@ export function estimatedOneRepMax(weightKg: number, reps: number): number {
 /// internal whitespace collapsed. "Bench Press", "bench  press" and
 /// "  Bench press " all collapse to one PR bucket.
 export function normaliseExerciseName(name: string): string {
-	return name.trim().toLowerCase().replace(/\s+/g, ' ');
+	return foldExerciseCase(name.replace(EXERCISE_WS, ' ').trim())
+		.replaceAll(EXERCISE_CASE_POST_FOLD[0], EXERCISE_CASE_POST_FOLD[1])
+		.replace(/ +/g, ' ');
 }
+
+/// Lower-case through the FROZEN table rather than through `toLowerCase()`.
+///
+/// The runtime's own table is the last thing about this key that still moved
+/// with the runtime. Measured over every assignable code point, JS full case
+/// mapping, Dart simple case mapping from an older Unicode revision and the
+/// server's ICU root collation answered differently at 465 / 410 / 55 code
+/// points, and the key is PERSISTED — so one rail writes a key the CHECK the
+/// other two agree on rejects outright (decisions § 1175). The table is
+/// generated from Unicode's own data by `scripts/gen_exercise_fold_table.mjs`
+/// and frozen at the version stamped into it; the mirrors are
+/// `packages/core_models/lib/src/exercise_fold_table.dart` and the `translate()`
+/// inside `public.exercise_fold_case`.
+///
+/// Iterating with `for..of` is load-bearing: 307 of the 1,488 entries are
+/// outside the BMP, and a code-unit walk would fold each half of a surrogate
+/// pair separately and match nothing.
+function foldExerciseCase(value: string): string {
+	let out = '';
+	for (const ch of value) {
+		const folded = EXERCISE_FOLD.get(ch.codePointAt(0) as number);
+		out += folded === undefined ? ch : folded;
+	}
+	return out;
+}
+
+const EXERCISE_FOLD: ReadonlyMap<number, string> = new Map(
+	EXERCISE_FOLD_KEYS.map((cp, i) => [cp, String.fromCodePoint(EXERCISE_FOLD_VALUES[i])]),
+);
+
+/// The one case fold applied around the table, spelled out by code point for
+/// the same reason the whitespace class below is.
+///
+/// U+03C2 folds to U+03C3 AFTER the table. Final sigma is a CONTEXT, not a
+/// case: ICU and JS produce it when lowercasing a word-final capital sigma and
+/// Dart and libc never do, and no per-code-point table can express either
+/// behaviour. The table always answers U+03C3, so this collapses a lifter's own
+/// typed final sigma onto it and an all-caps Greek spelling meets its
+/// lower-case one on all three rails.
+const EXERCISE_CASE_POST_FOLD = ['\u03c2', '\u03c3'] as const;
+
+/// The whitespace class every rail folds, spelled out by code point rather
+/// than left to a runtime's default.
+///
+/// This value is PERSISTED as `gym_sets.exercise_key` (server-stamped),
+/// `gym_routine_exercises.exercise_key` and `exercises.name_key`, so all three
+/// rails must produce an identical key or one exercise buckets as two: the
+/// local PR tracker says PR where `gym_workout_summaries.is_pr` says no, and
+/// `gym_exercise_set_history(p_name)` returns an empty history for a lift that
+/// has one.
+///
+/// Naming the set is what removes the dependency on each runtime's idea of
+/// whitespace, and the three ideas genuinely differ. Dart's `String.trim()`
+/// strips every Unicode `White_Space` code point including U+0085 (NEL) where
+/// JS's `trim()` and `\s` do not. Postgres is worse than either: `btrim(text)`
+/// with no second argument strips U+0020 ALONE, and `\s` is `[[:space:]]`,
+/// whose membership past ASCII is decided by the database's locale provider —
+/// measured on PG 17.6, the ICU provider folds U+00A0 / U+2007 / U+202F /
+/// U+001C-U+001F and the libc `en_US.utf8` provider folds none of them. A
+/// persisted key cannot be a function of the server's collation.
+///
+/// The class is Unicode `White_Space` plus U+FEFF, which is not White_Space but
+/// is invisible and must not split a bucket. U+001C-U+001F are deliberately
+/// absent: they are control characters, not spaces, and Postgres folding them
+/// under one provider was a divergence to close, not a rule to copy. The SQL
+/// mirror is `public.normalise_exercise_name` (migration 20270623000001);
+/// `scripts/check_shared_constants.mjs` compares all three. decisions § 790.
+const EXERCISE_WS =
+	/[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+/g;
 
 function round1(n: number): number {
 	return Math.round(n * 10) / 10;
@@ -118,7 +191,82 @@ export function computeExercisePrs(sets: GymSetLike[]): Map<string, ExercisePr> 
 	return out;
 }
 
+/// How many distinct exercises a flat set list covers, bucketed by the same
+/// canonical key the PR engine groups on. Blank names contribute nothing, as
+/// they do to the PR map.
+///
+/// The header stat, the dashboard lift card and the mobile list row each
+/// counted this with the runtime's own `trim().toLowerCase()`, which splits an
+/// internal whitespace run and every code point the frozen fold collapses —
+/// so one lift logged under two spellings was reported as two exercises while
+/// every keyed surface treated it as one (§ 1248).
+export function distinctExerciseCount(exerciseNames: Iterable<string>): number {
+	const keys = new Set<string>();
+	for (const n of exerciseNames) {
+		const key = normaliseExerciseName(n ?? '');
+		if (key !== '') keys.add(key);
+	}
+	return keys.size;
+}
+
+/// Do two free-text exercise spellings name the same lift?
+///
+/// The one comparison every *consecutive-set* block grouping must make. Four
+/// display surfaces plus the routine promotion each walked a flat set list and
+/// opened a new block on `last.name !== s.exercise_name` -- the raw DISPLAY
+/// spelling -- so two consecutive sets of one lift typed two ways rendered as
+/// two blocks beside a header stat counting one, `distinctExerciseCount`
+/// having been keyed since [decisions 1248]. Adjacency itself is load-bearing
+/// and stays: a superset alternates A/B/A and has to stay three blocks. Only
+/// the equality test moves onto the key.
+///
+/// Blank spellings compare equal to each other, as they did on the raw
+/// comparison -- a surface that renders an unnamed set still renders it, and
+/// deciding to split those into a block each is a separate call no caller has
+/// asked for.
+export function sameExerciseName(
+	a: string | null | undefined,
+	b: string | null | undefined,
+): boolean {
+	return normaliseExerciseName(a ?? '') === normaliseExerciseName(b ?? '');
+}
+
+/// Does this free-text spelling name an exercise at all?
+///
+/// The one blankness test every surface that PERSISTS an exercise name must
+/// make, and the companion to [sameExerciseName]: identity and emptiness are
+/// both properties of the KEY, and a surface that reads either off the display
+/// spelling disagrees with every surface that reads it off the key.
+///
+/// `name.trim() === ''` is not this test. The two answers differ on exactly
+/// one code point — U+0085 (NEL), which is in the shared whitespace class this
+/// module folds and is NOT in the set JS `trim()` strips (it is category Cc,
+/// so neither a `WhiteSpace` nor a `LineTerminator` to the language). That one
+/// gap is the same one [decisions 1322] closed inside `routineFromWorkout`,
+/// and it survived one layer out in the two editors and the catalogue picker:
+/// a name made only of U+0085 passed their raw drop guards, so the web editor
+/// SAVED a `gym_sets` row whose server-stamped `exercise_key` is `''` — a row
+/// `distinctExerciseCount` counts as nothing, `gym_workout_summaries` excludes,
+/// and `routineFromWorkout` drops, while the editor kept rendering it. The
+/// routine editor and the picker had it worse: `gym_routine_exercises
+/// .exercise_key` and `exercises.name_key` both carry `length(...) between 1
+/// and 120`, so the same name reached the user as an unactionable 23514.
+///
+/// Dart's `String.trim()` strips the whole Unicode `White_Space` set plus
+/// U+FEFF, which is this module's class exactly — so the mobile twin answered
+/// correctly by coincidence of its runtime, which is the precise thing the
+/// spelled-out class exists to stop relying on. Both rails now name the test.
+export function namesAnExercise(name: string | null | undefined): boolean {
+	return normaliseExerciseName(name ?? '') !== '';
+}
+
 export interface WorkoutPrResult {
+	/// The grouping key — [normaliseExerciseName] of the exercise. Carried so a
+	/// caller keying a lookup on the result never re-derives it from
+	/// [exerciseName], which is a DISPLAY string: re-deriving it with the
+	/// runtime's own `toLowerCase()` misses every spelling the frozen fold
+	/// collapses and the exercise's chips silently stop rendering (§ 1248).
+	key: string;
 	/// Display spelling of the exercise that set the PR(s).
 	exerciseName: string;
 	/// Which metrics this workout's sets newly bettered vs. all prior sets.
@@ -146,7 +294,7 @@ export function workoutPrs(
 		if (beats(cur.heaviestWeightKg, before?.heaviestWeightKg)) kinds.push('weight');
 		if (beats(cur.bestVolumeKg, before?.bestVolumeKg)) kinds.push('volume');
 		if (beats(cur.bestEst1RmKg, before?.bestEst1RmKg)) kinds.push('e1rm');
-		if (kinds.length > 0) results.push({ exerciseName: cur.exerciseName, kinds });
+		if (kinds.length > 0) results.push({ key, exerciseName: cur.exerciseName, kinds });
 	}
 	return results;
 }
@@ -172,7 +320,7 @@ export class RunningPrTracker {
 			if (beats(cur.heaviestWeightKg, before?.heaviestWeightKg)) kinds.push('weight');
 			if (beats(cur.bestVolumeKg, before?.bestVolumeKg)) kinds.push('volume');
 			if (beats(cur.bestEst1RmKg, before?.bestEst1RmKg)) kinds.push('e1rm');
-			if (kinds.length > 0) results.push({ exerciseName: cur.exerciseName, kinds });
+			if (kinds.length > 0) results.push({ key, exerciseName: cur.exerciseName, kinds });
 		}
 		for (const s of workoutSets) accumulateSet(this.running, s);
 		return results;

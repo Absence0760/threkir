@@ -27,10 +27,14 @@ export type RecapOgInput = {
 };
 
 import { OG_CARD_DARK } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
+import { escapeXml } from '../util/html_escape';
+import { grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
 const PAD = 64;
+const RECAP_GRISNIR_HEIGHT = 160;
 
 const BG = OG_CARD_DARK.bg;
 const BRAND = OG_CARD_DARK.brand;
@@ -44,21 +48,12 @@ function fmtDistanceKm(meters: number | null | undefined, unit: 'km' | 'mi'): st
 	return `${(m / 1000).toFixed(0)} km`;
 }
 
-export function xmlEscape(s: string): string {
-	return s
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
-}
-
 /// Build the og:image SVG for a public recap share page. `unit` defaults to
 /// km (the og:image is served to crawlers, not a logged-in user, so there's
 /// no preference to read — km is the canonical storage unit and the most
 /// common locale default).
 export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): string {
-	const F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+	const F = OG_FONT_STACK;
 	const parts: string[] = [];
 	parts.push(
 		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,
@@ -70,16 +65,20 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 		`<text x="${PAD}" y="${PAD + 24}" font-family="${F}" font-size="32" font-weight="800" fill="${BRAND}">Threkir</text>`,
 	);
 
+	// Grisnir, top-right, a little smaller so the hero numeral below him keeps
+	// its full width.
+	parts.push(grisnirBadgeSvg(W - PAD - grisnirBadgeWidth(RECAP_GRISNIR_HEIGHT), PAD - 24, RECAP_GRISNIR_HEIGHT));
+
 	// Kicker.
 	const period = (input.periodLabel ?? (input.year != null ? String(input.year) : '')).trim();
 	const kicker = period ? `MY ${period.toUpperCase()} IN RUNNING` : 'MY YEAR IN RUNNING';
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 84}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">${xmlEscape(kicker)}</text>`,
+		`<text x="${PAD}" y="${PAD + 84}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">${escapeXml(kicker)}</text>`,
 	);
 
 	// Hero — total distance.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 230}" font-family="${F}" font-size="150" font-weight="900" fill="${HERO_FILL}">${xmlEscape(fmtDistanceKm(input.totalDistanceM, unit))}</text>`,
+		`<text x="${PAD}" y="${PAD + 230}" font-family="${F}" font-size="150" font-weight="900" fill="${HERO_FILL}">${escapeXml(fmtDistanceKm(input.totalDistanceM, unit))}</text>`,
 	);
 
 	// Subhead — run count (+ attribution).
@@ -88,7 +87,7 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	const by = input.displayName?.trim();
 	const subhead = by ? `${n} ${runWord} · ${by}` : `across ${n} ${runWord}`;
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 296}" font-family="${F}" font-size="40" font-weight="600" fill="${STAT_FILL}">${xmlEscape(subhead)}</text>`,
+		`<text x="${PAD}" y="${PAD + 296}" font-family="${F}" font-size="40" font-weight="600" fill="${STAT_FILL}">${escapeXml(subhead)}</text>`,
 	);
 
 	// Stat row along the bottom — three headline cells.
@@ -102,10 +101,10 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	cells.forEach((cell, i) => {
 		const x = PAD + i * colW;
 		parts.push(
-			`<text x="${x}" y="${rowY}" font-family="${F}" font-size="24" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${xmlEscape(cell.label)}</text>`,
+			`<text x="${x}" y="${rowY}" font-family="${F}" font-size="24" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeXml(cell.label)}</text>`,
 		);
 		parts.push(
-			`<text x="${x}" y="${rowY + 46}" font-family="${F}" font-size="48" font-weight="800" fill="${STAT_FILL}">${xmlEscape(cell.value)}</text>`,
+			`<text x="${x}" y="${rowY + 46}" font-family="${F}" font-size="48" font-weight="800" fill="${STAT_FILL}">${escapeXml(cell.value)}</text>`,
 		);
 	});
 

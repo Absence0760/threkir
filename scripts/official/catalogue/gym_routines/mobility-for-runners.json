@@ -1,0 +1,95 @@
+{
+	"slug": "mobility-for-runners",
+	"title": "Mobility for runners",
+	"notes": "About 15 minutes, after an easy run or on a rest day. Move slowly and stay in a range that feels comfortable; a stretch should never hurt.",
+	"periodisation": "none",
+	"exercises": [
+		{
+			"name": "Cat-Cow",
+			"modality": "time",
+			"sets": [
+				{
+					"target_duration_s": 60,
+					"rest_s": 0
+				}
+			]
+		},
+		{
+			"name": "Hip Flexor Stretch",
+			"modality": "time",
+			"notes": "Time is per side.",
+			"sets": [
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				},
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				}
+			]
+		},
+		{
+			"name": "Hamstring Stretch",
+			"modality": "time",
+			"notes": "Time is per side.",
+			"sets": [
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				},
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				}
+			]
+		},
+		{
+			"name": "Glute Stretch",
+			"modality": "time",
+			"notes": "Time is per side.",
+			"sets": [
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				},
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				}
+			]
+		},
+		{
+			"name": "Calf Stretch",
+			"modality": "time",
+			"notes": "Time is per side. Bend the knee on the second hold.",
+			"sets": [
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				},
+				{
+					"target_duration_s": 30,
+					"rest_s": 0
+				}
+			]
+		},
+		{
+			"name": "Ankle Rocks",
+			"modality": "bodyweight_reps",
+			"notes": "Knee over toes and back. Reps are per side.",
+			"sets": [
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 10,
+					"rest_s": 0
+				},
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 10,
+					"rest_s": 0
+				}
+			]
+		}
+	]
+}

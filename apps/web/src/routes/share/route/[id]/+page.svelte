@@ -1,22 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { fetchRouteById } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import RoutePhotos from '$lib/components/RoutePhotos.svelte';
-	import RouteConditions from '$lib/components/RouteConditions.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { fetchRouteById } from '#lib/core/data.ts';
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import { routeElevation } from '#lib/routes/route_elevation.ts';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { hasPreviewableCourse, routePathPoints } from '#lib/routes/course_preview_points.ts';
+	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
+	import RouteConditions from '#lib/components/RouteConditions.svelte';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import {
 		buildRouteJsonLd,
 		buildRouteOgImageUrl,
 		buildRouteShareCanonical,
 		buildRouteShareDescription,
 		buildRouteShareTitle,
-	} from '$lib/share/share_meta';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Route, TrackPoint } from '$lib/types';
+	} from '#lib/share/share_meta.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import type { Route, TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
 
@@ -24,26 +29,40 @@
 	let waypoints = $state<TrackPoint[]>([]);
 	let loading = $state(true);
 	let notFound = $state(false);
+	let loadFailed = $state(false);
 
-	onMount(async () => {
-		// `fetchRouteById` is the owner-aware reader: owner / club member
-		// gets the full route via RLS; anon / non-owner gets the
-		// `public_routes` view (no `geom` / `start_point`) plus
-		// server-side privacy-zone clipping for `waypoints`.
-		const r = await fetchRouteById(data.id);
-		if (!r) {
-			notFound = true;
-		} else {
-			route = r;
-			waypoints = (r.waypoints ?? []) as TrackPoint[];
+	async function load() {
+		loading = true;
+		notFound = false;
+		loadFailed = false;
+		try {
+			// `fetchRouteById` is the owner-aware reader: owner / club member
+			// gets the full route via RLS; anon / non-owner gets the
+			// `public_routes` view (no `geom` / `start_point`) plus
+			// server-side privacy-zone clipping for `waypoints`.
+			const r = await fetchRouteById(data.id);
+			if (!r) {
+				notFound = true;
+			} else {
+				route = r;
+				waypoints = (r.waypoints ?? []) as TrackPoint[];
+			}
+		} catch (e) {
+			console.error('share route load failed', e);
+			loadFailed = true;
+		} finally {
+			loading = false;
 		}
-		loading = false;
-	});
+	}
 
-	let elevations = $derived(waypoints.map((w) => w.ele ?? 0));
-	let hasElevationData = $derived(
-		elevations.length > 1 && Math.max(...elevations) > Math.min(...elevations)
-	);
+	onMount(load);
+
+	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, waypoints));
+	// The line the 2D map draws, so the preview flies no more of the route
+	// than the page already shows a non-owner (the clip_route_for_viewer
+	// output). No video export here: the owner's read is unclipped, and this
+	// page's viewer can be anyone.
+	let previewPoints = $derived(routePathPoints(waypoints));
 	let metaSource = $derived(route ?? data.route ?? null);
 	let pageTitle = $derived(buildRouteShareTitle(metaSource));
 	let pageDesc = $derived(buildRouteShareDescription(metaSource));
@@ -80,9 +99,21 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell appHref={`/routes/${data.id}`}>
 	{#if loading}
 		<main class="content" id="main-content"><p class="status">{m('shell.loading')}</p></main>
+	{:else if loadFailed}
+		<main class="content" id="main-content">
+			<div class="notfound-card" role="alert" data-testid="share-route-load-error">
+				<h1>{m('routeDetail.loadFailedTitle')}</h1>
+				<p class="notfound-sub">{m('routeDetail.loadFailedBody')}</p>
+				<div class="notfound-actions">
+					<button type="button" class="btn btn-primary" onclick={() => void load()}>
+						{m('routeDetail.retry')}
+					</button>
+				</div>
+			</div>
+		</main>
 	{:else if notFound}
 		<main class="content" id="main-content">
 			<div class="notfound-card">
@@ -102,26 +133,47 @@
 			<p class="kicker">{m('shareRoute.heroKicker')}</p>
 			<h1>{route.name}</h1>
 			<p class="route-meta">
-				<span>{formatDistance(route.distance_m)}</span>
+				<span data-testid="share-route-distance">{formatDistance(routeDisplayDistanceM(route.distance_m, route.official_distance_m))}</span>
 				{#if route.elevation_m}
 					<span class="meta-sep">&middot;</span>
-					<span>{m('shareRoute.elevationValue', { n: route.elevation_m })}</span>
+					<span>{m('shareRoute.elevationValue', { n: elevation.gain })}</span>
 				{/if}
-				<span class="meta-sep">&middot;</span>
-				<span class="surface-tag">{route.surface}</span>
+				{#if route.surface}
+					<span class="meta-sep">&middot;</span>
+					<span class="surface-tag">{routeSurfaceLabel(route.surface)}</span>
+				{/if}
 			</p>
 		</section>
 
 		<main class="content" id="main-content">
 			{#if waypoints.length > 0}
 				<div class="map-container">
-					<RunMap track={waypoints} requireExplicitConsent />
+					<RunMap
+						track={waypoints}
+						totalDistanceM={route.distance_m}
+						officialDistanceM={route.official_distance_m}
+						requireExplicitConsent
+					/>
 				</div>
+				{#if hasPreviewableCourse(previewPoints)}
+					<div class="preview-action">
+						<CoursePreviewButton
+							points={previewPoints}
+							title={route.name}
+							officialDistanceM={route.official_distance_m}
+							requireExplicitConsent
+						/>
+					</div>
+				{/if}
 
-				{#if hasElevationData}
+				{#if elevation.profile}
 					<section class="card">
 						<h2>{m('shareRoute.elevationProfile')}</h2>
-						<ElevationProfile {elevations} totalDistance={route.distance_m} />
+						<ElevationProfile
+							elevations={elevation.profile}
+							totalGain={route.elevation_m ? elevation.gain : null}
+							totalDistance={routeDisplayDistanceM(route.distance_m, route.official_distance_m)}
+						/>
 					</section>
 				{/if}
 			{/if}
@@ -217,6 +269,12 @@
 		overflow: hidden;
 		margin-bottom: var(--space-md);
 		border: 1px solid var(--color-border);
+	}
+
+	.preview-action {
+		display: flex;
+		justify-content: center;
+		margin-bottom: var(--space-md);
 	}
 
 	.card {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -57,6 +58,104 @@ abstract class SyncEntry {
   Map<String, dynamic> toJson();
 }
 
+/// True when [at] falls outside the half-open fetch window `[start, end)`.
+///
+/// A windowed [OfflineSyncStore.replaceFromServer]-style refresh may only prune
+/// a synced row the fetch COULD have returned; a row outside the window is
+/// absent because it was never asked for, not because the server deleted it.
+/// This is the one place that decides which, because the half-open convention
+/// is the whole contract: three stores carried the predicate — two byte for
+/// byte, one open-coded with the `end` bound dropped — and a drift on any one
+/// of them changes which synced rows a refresh is allowed to clobber, with
+/// nothing in the tree comparing them.
+///
+/// A null [at] cannot be placed, so it is in-window and therefore eligible for
+/// prune, which is what preserves the full-replace contract when both bounds
+/// are null. Compares absolute instants, so a UTC timestamp and a local window
+/// bound compare correctly.
+bool outsideFetchWindow(DateTime? at, DateTime? start, DateTime? end) {
+  if (at == null) return false;
+  if (start != null && at.isBefore(start)) return true;
+  if (end != null && !at.isBefore(end)) return true;
+  return false;
+}
+
+// The strict ISO reader both named readers below go through, `parseIsoStrict`,
+// lives in `core_models` (decisions § 1377) rather than here: the same
+// `DateTime.tryParse` rollover reaches the stores' neighbours —
+// `local_run_store`, `social_service`, `race_controller` — and the row DTOs in
+// that package, and a second copy here would be the divergence it exists to
+// remove. The two readers differ only in the `.toUtc()`, and that difference is
+// the whole contract.
+
+/// Reads a `timestamptz` column off a row map as an absolute instant,
+/// normalised to UTC.
+///
+/// The UTC step is the reason this is not a bare [DateTime.tryParse]:
+/// `tryParse` answers with a LOCAL `DateTime` whenever the text carries no
+/// zone designator, and every value read here is re-serialised through
+/// `toIso8601String()`, which then writes no zone designator either. The next
+/// reader re-anchors that wall clock in whatever zone it is in — Postgres
+/// among them, since it resolves a zone-less literal in the session's own
+/// TimeZone, so a stored crossing pushed from a device two hours east of UTC
+/// would land two hours off.
+///
+/// NOT for a `date` column. `gear.purchased_at` / `gear.retired_at` are
+/// `date`, whose zone-less text is a calendar DAY rather than an instant:
+/// parsing it gives local midnight, and converting THAT to UTC moves the day
+/// itself for every device AHEAD of UTC. Use [parseCalendarDate] for those
+/// (decisions § 1289, whose prose has that hemisphere backwards — § 1344).
+DateTime? parseServerTimestamp(dynamic v) => parseIsoStrictValue(v)?.toUtc();
+
+/// Reads a `date` column off a row map as the calendar DAY it names, at local
+/// midnight.
+///
+/// Deliberately NOT normalised to UTC, and that omission is load-bearing:
+/// `gear.purchased_at` / `gear.retired_at` are `date` columns whose zone-less
+/// text is a calendar day rather than an instant, so `.toUtc()` would move the
+/// day itself for every device AHEAD of UTC — local midnight at +03:00 is
+/// 21:00 the previous day, so a shoe bought on the 3rd would read as bought on
+/// the 2nd and `gearBackfillCandidates` would drop the purchase day's own
+/// runs. (§ 1289 states this hemisphere backwards; measured in § 1344, and a
+/// west-of-Greenwich test runner cannot tell the two apart because there the
+/// day does NOT move.) Shared here rather
+/// than kept as a private static so the family has two named readers with
+/// their difference stated once, instead of one reader plus an exception.
+DateTime? parseCalendarDate(dynamic v) => parseIsoStrictValue(v);
+
+/// The clock a record gets when it carries none this build can read.
+///
+/// The epoch, because the one thing an UNKNOWN clock must not do is win
+/// (decisions § 1342). It loses every `isAfter` comparison there is, which is
+/// the honest answer in both directions.
+final DateTime kUnknownStoredClock = DateTime.utc(1970);
+
+/// The modification clock a stored record carries, or [kUnknownStoredClock]
+/// when it carries none this build can read.
+///
+/// Seven `fromJson` factories spelled this out, each casting the field with
+/// `as String?` before parsing it. So an absent clock, an empty one and an
+/// unparseable one all fell back to a value, while a clock of the wrong TYPE
+/// threw — and the load and restore paths both catch, so the whole record was
+/// discarded instead. Nothing chose that: a record is not worth less than its
+/// clock, and on the restore path the record came out of a backup archive
+/// carrying work that exists nowhere else (decisions § 1290).
+///
+/// The value that fallback yields was `now`, which is a confident wrong
+/// answer rather than an absent one. `now` is later than every
+/// `last_modified_at` the server will ever have stamped, so a `synced` row
+/// handed it wins `local.lastModifiedAt.isAfter(serverTs)` in every
+/// subsequent `replaceFromServer`; `rewriteAll` then persists that clock, so
+/// the row goes on winning across launches and the server copy can never
+/// reach it. It also sorts such a record to the HEAD of the three
+/// most-recently-modified lists (routines, recipes, meal templates), claiming
+/// it is the freshest thing the user owns. The epoch loses both, and loses
+/// nothing that matters: `replaceFromServer` preserves every non-`synced` row
+/// before the comparison runs, so unsent work is still kept and still pushed
+/// (decisions § 1342).
+DateTime storedClockOrEpoch(dynamic v) =>
+    parseServerTimestamp(v) ?? kUnknownStoredClock;
+
 /// Disk-backed per-row sync-state machine shared by the gear / gym / food
 /// stores (decisions §73 + §122). One JSON file per row under
 /// `<appDocs>/<storeSubdir>/`, an in-memory `ChangeNotifier` so screens
@@ -86,6 +185,57 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   /// into 0. Populated on cold-load + every write; a skipped row keeps its
   /// existing file, so the crash-atomic write-before-prune contract is intact.
   final Map<String, String> _writtenJson = <String, String>{};
+
+  /// Serialises every directory-mutating operation this store performs.
+  ///
+  /// Each public write below owns a whole directory transition: [persist]
+  /// writes a row file then the index, [dropRow] removes a row file then
+  /// rewrites the index, [rewriteAll] writes every row then prunes what is
+  /// left, [clear] deletes every file outright, and [loadAll] rebuilds the
+  /// resident state from what it finds. Every caller awaits its own call, but
+  /// two callers over one store are ordinary — a screen firing a save
+  /// unawaited, a connectivity return draining while the user edits, sign-out
+  /// landing mid-save — and nothing ordered them against each other.
+  ///
+  /// Two measured interleavings. [clear] deletes EVERY file in the directory,
+  /// including the `.tmp` sibling of an in-flight [persist], so that write's
+  /// `rename` then failed with a `PathNotFoundException` naming a temp path
+  /// its caller has never heard of. Worse, and silent: a delete that overtook
+  /// an in-flight write to the same id renamed the row's file back into place
+  /// AFTER the delete removed it, leaving `rowsById` saying the row was gone
+  /// and the next cold-load resurrecting it — no exception anywhere.
+  ///
+  /// A whole-directory chain rather than a per-id lock, because [clear],
+  /// [rewriteAll], [loadAll] and the index flush are directory-wide: per-id
+  /// exclusion would still let each of them race a row write. Ordering costs
+  /// nothing here — these are single small files, and every existing caller
+  /// already awaited them one at a time.
+  ///
+  /// Keyed on the directory, NOT on the instance, because the interleaving
+  /// that matters is between two instances: the sign-out wipe constructs a
+  /// throwaway store per screen-owned type precisely because all instances of
+  /// a type share one on-disk directory (`offline_store_wipe.dart`), so a
+  /// per-instance chain would have left its [clear] free to race the live
+  /// screen's write. `serialiseStoreWrite` holds that shape for the sibling
+  /// file stores too (§ 828); a separate isolate is out of reach of any
+  /// in-process lock, which is what `kAtomicOrphanMinAge` already allows for.
+  String get _chainKey =>
+      dir?.path ?? 'uninitialised:${identityHashCode(this)}';
+
+  Future<T> _serialised<T>(Future<T> Function() body) =>
+      serialiseStoreWrite(_chainKey, body);
+
+  /// Test-only: a future that completes once every write queued so far has
+  /// finished. A widget test whose UI signal is the in-memory row (which
+  /// [persist] installs synchronously, before its file write) is otherwise
+  /// free to tear its temp directory down under a write still in flight.
+  ///
+  /// Only awaitable when the write it waits on was queued from inside
+  /// `tester.runAsync`; after a fake-zone tap, wait on an observable
+  /// outcome with `pumpUntil` instead. The wait is bounded and reports
+  /// itself rather than hanging when it is not (decisions § 1093).
+  @visibleForTesting
+  Future<void> debugWritesSettled() => storeWritesSettled(_chainKey);
 
   int _revision = 0;
 
@@ -173,7 +323,9 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
     await loadAll();
   }
 
-  Future<void> loadAll() async {
+  Future<void> loadAll() => _serialised(_loadAll);
+
+  Future<void> _loadAll() async {
     rowsById.clear();
     _summaries.clear();
     _writtenJson.clear();
@@ -205,7 +357,7 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
       }
     }
 
-    sweepAtomicWriteOrphans(d, onError: (m) => debugPrint('$debugLabel: $m'));
+    sweepStoreScratchFiles(d, onError: (m) => debugPrint('$debugLabel: $m'));
 
     // Reuse a valid, matching on-disk index for the summary view — its id-set
     // must equal the on-disk row-file id-set (membership only, no reads). A
@@ -226,9 +378,13 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
       // Skip writing an index for a fresh empty store (no rows AND no prior
       // index file) — there's nothing to cache, the rebuild-from-empty path is
       // O(0), and it avoids a pointless disk write on every cold-load of an
-      // unused store. It also keeps widget tests that init an empty store
-      // outside tester.runAsync from deadlocking the fake-async zone on the
-      // index write (the first real createLocal flushes the index anyway).
+      // unused store. Removing it was measured (decisions § 1196) and does not
+      // merely cost that write: `_readIndex` short-circuits on a missing file,
+      // so this is the ONLY real-async await a fresh empty store's `init()`
+      // would carry, and a widget test that inits one outside
+      // `tester.runAsync` then never completes it. That failure is a HANG, not
+      // a teardown report — the store-write watch (§ 1129) speaks at teardown
+      // and a test that never ends never reaches it.
       if (rowsById.isNotEmpty || _indexFile.existsSync()) {
         await _persistIndex();
       } else {
@@ -359,15 +515,7 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
               break;
             case SyncState.pendingDelete:
               await pushDelete(api, stored);
-              // Same rule as markSynced: only drop the row we actually
-              // deleted. A row re-created during the push is a NEW local row
-              // that has never been sent.
-              if (identical(rowsById[stored.id], stored)) {
-                await dropRow(stored.id);
-              } else {
-                debugPrint('$debugLabel: ${stored.id} was replaced during its '
-                    'delete push — keeping the resident row');
-              }
+              await dropIfUnchanged(stored);
               drained++;
               break;
             case SyncState.synced:
@@ -399,18 +547,76 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   /// Entries are immutable and every mutation installs a new instance, so
   /// identity is an exact "did this row change under us" test. A false
   /// negative only costs one more drain.
+  ///
+  /// The test runs INSIDE the write chain, because [persist] only QUEUES:
+  /// a screen's edit fired while the chain was busy — which is where the
+  /// drain's own previous mark leaves it — had not yet installed its new
+  /// instance when the check looked, so the check passed and the pre-push
+  /// copy then landed on top of the edit, marked `synced`. That is the loss
+  /// this guard exists to prevent, moved one step later and made permanent:
+  /// a `synced` row is never pushed again, and `replaceFromServer`'s
+  /// newer-wins keeps the local copy. `LocalRunStore.markSynced` had it
+  /// inside its chain already.
+  /// [serialiseStoreWrite] is re-entrant, so the [persist] inside runs INLINE
+  /// rather than queueing behind the chain this already holds — which is what
+  /// lets the decision and the write it implies be one step, without closing
+  /// the subclass seam that lets a fake store persist nowhere.
   Future<void> markSynced(S pushed) async {
-    final existing = rowsById[pushed.id];
-    if (existing == null) return;
-    if (!identical(existing, pushed)) {
-      debugPrint('$debugLabel: ${pushed.id} changed during its push — left '
-          'pending for the next drain');
-      return;
-    }
-    await persist(asSynced(existing));
+    await _serialised(() async {
+      final existing = rowsById[pushed.id];
+      if (existing == null) return;
+      if (!identical(existing, pushed)) {
+        debugPrint('$debugLabel: ${pushed.id} changed during its push — left '
+            'pending for the next drain');
+        return;
+      }
+      await persist(asSynced(existing));
+    });
+  }
+
+  /// Drop [pushed] now that its server DELETE has returned — but only while
+  /// it is still the resident copy, and decided inside the write chain for
+  /// exactly the reason [markSynced] is. A row re-created during the push is
+  /// a NEW local row that has never been sent, and dropping it deletes a row
+  /// the runner is looking at.
+  @protected
+  Future<void> dropIfUnchanged(S pushed) async {
+    await _serialised(() async {
+      final existing = rowsById[pushed.id];
+      if (existing == null) return;
+      if (!identical(existing, pushed)) {
+        debugPrint('$debugLabel: ${pushed.id} was replaced during its delete '
+            'push — keeping the resident row');
+        return;
+      }
+      await dropRow(pushed.id);
+    });
+  }
+
+  /// Refuse a write on a store that was never [init]ed.
+  ///
+  /// [dir] is null only in that case, and every write path then dies on a bare
+  /// `dir!` — an opaque "Null check operator used on a null value" that reads
+  /// like a bug in the caller. Worse, the in-memory mutation happened first, so
+  /// the row appeared in the list, the screen reported a failure over the top
+  /// of it, and nothing was ever written to disk or drained to the server
+  /// (`NutritionScreen` shipped in exactly that state). Raising here, BEFORE
+  /// `rowsById` is touched, keeps the resident state honest: a write that
+  /// cannot be durable leaves no trace that says it was.
+  @protected
+  void requireInitialised(String op) {
+    if (dir != null) return;
+    throw StateError(
+        '$debugLabel: $op before init() — the store has no directory, so this '
+        'write could never reach disk or the server');
   }
 
   Future<void> dropRow(String id) async {
+    requireInitialised('dropRow');
+    await _serialised(() => _dropRow(id));
+  }
+
+  Future<void> _dropRow(String id) async {
     rowsById.remove(id);
     _writtenJson.remove(id);
     final file = File('${dir!.path}/$id.json');
@@ -421,9 +627,12 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   }
 
   Future<void> persist(S stored) async {
-    await _persistRow(stored);
-    await _persistIndex();
-    notifyListeners();
+    requireInitialised('persist');
+    return _serialised(() async {
+      await _persistRow(stored);
+      await _persistIndex();
+      notifyListeners();
+    });
   }
 
   /// Write a single row + reflect it in [_summaries] without flushing the
@@ -432,6 +641,7 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   /// not a live row) but still writes its on-disk file so the drain can push
   /// the server DELETE.
   Future<void> _persistRow(S stored) async {
+    requireInitialised('persist');
     rowsById[stored.id] = stored;
     final file = File('${dir!.path}/${stored.id}.json');
     final json = stored.toJson();
@@ -454,9 +664,19 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   /// longer exist. Both passes isolate per-file failures so one bad row can't
   /// abort the rest; a row whose write throws is still kept so its prior file
   /// (left intact by the atomic write) isn't then deleted as an orphan.
+  ///
+  /// Refuses on an uninitialised store like every other write path (§ 660).
+  /// The callers are the subclasses' `replaceFromServer`, which have already
+  /// rebuilt `rowsById` from the fetch by the time they get here, so each of
+  /// them re-checks BEFORE that rebuild — a silent return here left the
+  /// resident rows replaced and nothing on disk agreeing with them.
   Future<void> rewriteAll() async {
-    final d = dir;
-    if (d == null) return;
+    requireInitialised('rewriteAll');
+    await _serialised(_rewriteAll);
+  }
+
+  Future<void> _rewriteAll() async {
+    final d = dir!;
     final keep = <String>{};
     for (final stored in rowsById.values) {
       final file = File('${d.path}/${stored.id}.json');
@@ -481,12 +701,26 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
       if (keep.contains(entity.path)) continue;
       try {
         await entity.delete();
+        // And forget what that file held. The diff-skip above trusts
+        // `_writtenJson` to say what is already on disk, so a row pruned here
+        // and handed back UNCHANGED by a later fetch matched its own stale
+        // entry and was never rewritten: resident, rendered, and absent from
+        // disk until the next cold load dropped it.
+        _writtenJson.remove(_idOfRowFile(entity.path));
       } catch (e) {
         debugPrint('$debugLabel: orphan delete failed ${entity.path}: $e');
       }
     }
     _rebuildSummaries();
     await _persistIndex();
+  }
+
+  /// The row id a `<id>.json` path carries.
+  static String _idOfRowFile(String path) {
+    final name = path.split(Platform.pathSeparator).last;
+    return name.endsWith('.json')
+        ? name.substring(0, name.length - '.json'.length)
+        : name;
   }
 
   /// Hydrate rows from a backup archive (the entry `toJson()` shape). Each is
@@ -496,7 +730,13 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   Future<int> restoreFromBackup(
     List<Map<String, dynamic>> records, {
     bool generateNewIds = false,
-  }) async {
+  }) =>
+      _serialised(() => _restoreFromBackup(records, generateNewIds));
+
+  Future<int> _restoreFromBackup(
+    List<Map<String, dynamic>> records,
+    bool generateNewIds,
+  ) async {
     var imported = 0;
     for (final json in records) {
       try {
@@ -571,7 +811,9 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   /// §72) isn't available here — these stores aren't user-namespaced on disk —
   /// so sign-out clears them outright. Idempotent; tolerates a per-file delete
   /// failure so one undeletable file can't strand the rest still on disk.
-  Future<void> clear() async {
+  Future<void> clear() => _serialised(_clear);
+
+  Future<void> _clear() async {
     rowsById.clear();
     _summaries.clear();
     _writtenJson.clear();
@@ -662,7 +904,7 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
     final ids = <String>[];
     for (final summary in _summaries.values) {
       final raw = summary[key];
-      final at = raw is String ? DateTime.tryParse(raw) : null;
+      final at = parseServerTimestamp(raw);
       if (at == null) continue;
       if (!at.isBefore(from) && at.isBefore(to)) {
         ids.add(summary['id'] as String);

@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type BrowserContext } from '@playwright/test';
+import type { Browser, BrowserContext } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import {
@@ -7,6 +8,7 @@ import {
 	type SagaUser
 } from '../fixtures/saga-users';
 import { insertRoute, deleteRoute } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — CROSS-USER discover → save → review JOURNEY.
@@ -35,7 +37,7 @@ import { insertRoute, deleteRoute } from '../fixtures/simulate';
  * drives every assertion through the real UI.
  *
  * DISCOVERY PATH: the real community explorer. /routes?tab=explore mounts
- * RouteExplorer, whose search box drives the `search_public_routes` RPC
+ * RouteExplorer, whose search box reads the `public_routes` view
  * (name ILIKE). The route is planted with a unique name so the search
  * narrows to exactly this one row. The SAVE write goes through the
  * explorer's `.save-btn` (→ saved_routes), and the REVIEW write goes
@@ -51,13 +53,6 @@ import { insertRoute, deleteRoute } from '../fixtures/simulate';
 
 const uniqueSuffix = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 /**
  * A context for a saga user with the cookie-consent choice pre-seeded —
  * the GDPR banner is a role="dialog" that floats over the explorer cards,
@@ -67,7 +62,7 @@ function setConsentAccepted() {
  */
 async function sagaContext(browser: Browser, user: SagaUser): Promise<BrowserContext> {
 	const ctx = await browser.newContext({ storageState: user.storageStatePath });
-	await ctx.addInitScript(setConsentAccepted);
+	await acceptCookieConsent(ctx);
 	return ctx;
 }
 
@@ -135,7 +130,7 @@ test.describe('saga: discover a public route, save it, review it (cross-user)', 
 		try {
 			await test.step('1. DISCOVER — the public route surfaces in the community Explore search', async () => {
 				// /routes?tab=explore mounts RouteExplorer. Its search box
-				// drives search_public_routes (name ILIKE), so typing the
+				// drives the public_routes search (name ILIKE), so typing the
 				// unique name + Enter narrows to exactly this one row. No
 				// networkidle wait — the page holds an open realtime socket
 				// (it never settles); poll for the concrete card instead.

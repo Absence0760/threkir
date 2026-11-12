@@ -7,7 +7,7 @@ splash art.
 
 Each mark is built as a mesh directly from its path geometry (no SVG import —
 Blender's curve fill mishandles the compound thorn counter), extruded, bevelled,
-and rendered in Cycles on the GPU (OptiX) with the brand ember->magenta gradient
+and rendered in Cycles on the GPU (OptiX) with the brand coral->violet gradient
 as an emissive-tinted material on a transparent film.
 
 Run (headless):
@@ -30,8 +30,9 @@ RES = int(os.environ.get("RES", "1500"))
 
 def srgb(c):
     return c/12.92 if c <= 0.04045 else ((c+0.055)/1.055)**2.4
-EMBER = tuple(srgb(c) for c in (0.996, 0.235, 0.129)) + (1.0,)     # #FE5932
-MAGENTA = tuple(srgb(c) for c in (0.627, 0.055, 0.427)) + (1.0,)   # #A01E77
+CORAL = tuple(srgb(c) for c in (0.761, 0.306, 0.141)) + (1.0,)     # #C24E24
+VIOLET = tuple(srgb(c) for c in (0.357, 0.294, 0.541)) + (1.0,)   # #5B4B8A
+ROSE = tuple(srgb(c) for c in (0.659, 0.259, 0.416)) + (1.0,)     # #A8426A
 
 # ---------- geometry (SVG 100x100 space, y-down) ----------
 def arc(cx, cy, r, a0, a1, n, endpoint=True):
@@ -102,11 +103,11 @@ def gradient_material():
     mp = nt.nodes.new("ShaderNodeMapping"); mp.inputs["Rotation"].default_value = (0, 0, math.radians(50))
     grad = nt.nodes.new("ShaderNodeTexGradient")
     ramp = nt.nodes.new("ShaderNodeValToRGB")
-    # warm: ember holds ~58% of the sweep, magenta only blooms in the far corner
+    # coral into violet through a rose midpoint, so the blend never greys out
     e = ramp.color_ramp.elements
-    e[0].position = 0.0; e[0].color = EMBER
-    e[1].position = 1.0; e[1].color = MAGENTA
-    hold = ramp.color_ramp.elements.new(0.58); hold.color = EMBER
+    e[0].position = 0.0; e[0].color = CORAL
+    e[1].position = 1.0; e[1].color = VIOLET
+    mid = ramp.color_ramp.elements.new(0.5); mid.color = ROSE
     nt.links.new(tc.outputs["Generated"], mp.inputs["Vector"])
     nt.links.new(mp.outputs["Vector"], grad.inputs["Vector"])
     nt.links.new(grad.outputs["Color"], ramp.inputs["Fac"])

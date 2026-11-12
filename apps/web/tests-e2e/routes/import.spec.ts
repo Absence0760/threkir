@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { deleteRoute } from '../fixtures/simulate';
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readCount, readRow } from '../fixtures/db-read';
 
 const MULTI_ROUTE_GPX = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="e2e-import-spec" xmlns="http://www.topografix.com/GPX/1/1">
@@ -116,6 +117,14 @@ test.describe('/routes — Import route modal', () => {
 
 	let routeId: string | null = null;
 
+	// `rate_limits` holds one row per (user, bucket, hour) shared by every
+	// spec in the run and by any run started in the same clock hour, so a
+	// create budget is whatever the last test left rather than a fresh 30.
+	// State the precondition instead of inheriting it.
+	test.beforeEach(async () => {
+		await resetRateLimit(USER_A.id, 'create_route');
+	});
+
 	test.afterEach(async () => {
 		if (routeId) {
 			try {
@@ -125,6 +134,28 @@ test.describe('/routes — Import route modal', () => {
 			}
 			routeId = null;
 		}
+		// Playwright abandons a timed-out test rather than unwinding it, so
+		// the cap test below cannot undo its own plant from the test body.
+		await resetRateLimit(USER_A.id, 'create_route');
+	});
+
+	test('the Browse-files picker opens the file chooser from the keyboard', async ({ page }) => {
+		// It was a <label> wrapping a `hidden` input: no focusable element in
+		// the drop zone at all, so the picker was mouse-only — while the drop
+		// zone's own comment claimed keyboard users had a Browse button.
+		await page.goto('/routes');
+		await page.getByRole('button', { name: /Import/ }).first().click();
+		await expect(page.locator('[aria-label="Route file drop zone"]')).toBeVisible({
+			timeout: 5_000
+		});
+
+		const browse = page.getByRole('button', { name: 'Browse files' });
+		await browse.focus();
+		await expect(browse).toBeFocused();
+
+		const chooser = page.waitForEvent('filechooser', { timeout: 10_000 });
+		await page.keyboard.press('Enter');
+		expect(await chooser).toBeTruthy();
 	});
 
 	test('GPX import: drop a file → preview → Save → land on /routes/[new-id]', async ({
@@ -139,9 +170,9 @@ test.describe('/routes — Import route modal', () => {
 		const dropZone = page.locator('[aria-label="Route file drop zone"]');
 		await expect(dropZone).toBeVisible({ timeout: 5_000 });
 
-		// The hidden <input type="file"> inside the Browse-button
-		// label is what setInputFiles drives. Use buffer-based upload
-		// so we don't need an actual fixture file on disk.
+		// The off-screen <input type="file"> the Browse button drives is
+		// what setInputFiles targets. Use buffer-based upload so we don't
+		// need an actual fixture file on disk.
 		await page.locator('input[type="file"]').setInputFiles({
 			name: 'e2e-import-route.gpx',
 			mimeType: 'application/gpx+xml',
@@ -170,14 +201,17 @@ test.describe('/routes — Import route modal', () => {
 		// import default per ImportRoute.svelte handleSave) and the
 		// correct user_id.
 		const admin = getAdminClient();
-		const { data: row } = await admin
-			.from('routes')
-			.select('user_id, surface, name')
-			.eq('id', routeId)
-			.single();
-		expect(row?.user_id).toBe(USER_A.id);
-		expect(row?.surface).toBe('road');
-		expect(row?.name).toBe(name);
+		const row = await readRow(
+			'routes by id',
+			admin
+				.from('routes')
+				.select('user_id, surface, name')
+				.eq('id', routeId)
+				.single()
+		);
+		expect(row.user_id).toBe(USER_A.id);
+		expect(row.surface).toBe('road');
+		expect(row.name).toBe(name);
 	});
 
 	test('multi-route GPX import: 3 tracks → multi-preview → import 2 selected', async ({
@@ -242,11 +276,14 @@ test.describe('/routes — Import route modal', () => {
 			// stamp (the original parsed name was "e2e-multi-B" — left
 			// unchanged after deselecting; confirm the un-stamped name
 			// also isn't there).
-			const { count: bCount } = await admin
-				.from('routes')
-				.select('id', { count: 'exact', head: true })
-				.eq('user_id', USER_A.id)
-				.eq('name', 'e2e-multi-B');
+			const bCount = await readCount(
+				'routes by user_id+name',
+				admin
+					.from('routes')
+					.select('id', { count: 'exact', head: true })
+					.eq('user_id', USER_A.id)
+					.eq('name', 'e2e-multi-B')
+			);
 			expect(bCount).toBe(0);
 		} finally {
 			for (const id of createdIds) {
@@ -298,13 +335,16 @@ test.describe('/routes — Import route modal', () => {
 		// lat=151.X, lng=-33.X (i.e. somewhere in the Pacific east of
 		// Russia) and the next assertion would fail.
 		const admin = getAdminClient();
-		const { data: row } = await admin
-			.from('routes')
-			.select('user_id, name, waypoints')
-			.eq('id', routeId)
-			.single();
-		expect(row?.user_id).toBe(USER_A.id);
-		expect(row?.name).toBe(name);
+		const row = await readRow(
+			'routes by id',
+			admin
+				.from('routes')
+				.select('user_id, name, waypoints')
+				.eq('id', routeId)
+				.single()
+		);
+		expect(row.user_id).toBe(USER_A.id);
+		expect(row.name).toBe(name);
 		const wp = (row as { waypoints: Array<{ lat: number; lng: number }> }).waypoints;
 		expect(wp.length).toBeGreaterThan(0);
 		expect(wp[0].lat).toBeLessThan(0); // southern hemisphere
@@ -345,12 +385,15 @@ test.describe('/routes — Import route modal', () => {
 			.toBeVisible({ timeout: 10_000 });
 
 		const admin = getAdminClient();
-		const { data: row } = await admin
-			.from('routes')
-			.select('user_id, waypoints')
-			.eq('id', routeId)
-			.single();
-		expect(row?.user_id).toBe(USER_A.id);
+		const row = await readRow(
+			'routes by id',
+			admin
+				.from('routes')
+				.select('user_id, waypoints')
+				.eq('id', routeId)
+				.single()
+		);
+		expect(row.user_id).toBe(USER_A.id);
 		const wp = (row as { waypoints: Array<{ lat: number; lng: number }> }).waypoints;
 		expect(wp.length).toBeGreaterThan(0);
 		// Same hemisphere check — GeoJSON lng-first must not flip to
@@ -422,36 +465,32 @@ test.describe('/routes — Import route modal', () => {
 			count: 30
 		});
 
-		try {
-			await page.goto('/routes');
-			await page.getByRole('button', { name: /Import/ }).first().click();
-			await expect(
-				page.locator('[aria-label="Route file drop zone"]')
-			).toBeVisible({ timeout: 5_000 });
+		await page.goto('/routes');
+		await page.getByRole('button', { name: /Import/ }).first().click();
+		await expect(
+			page.locator('[aria-label="Route file drop zone"]')
+		).toBeVisible({ timeout: 5_000 });
 
-			await page.locator('input[type="file"]').setInputFiles({
-				name: 'e2e-import-ratelimited.gpx',
-				mimeType: 'application/gpx+xml',
-				buffer: Buffer.from(MINIMAL_GPX, 'utf-8')
-			});
+		await page.locator('input[type="file"]').setInputFiles({
+			name: 'e2e-import-ratelimited.gpx',
+			mimeType: 'application/gpx+xml',
+			buffer: Buffer.from(MINIMAL_GPX, 'utf-8')
+		});
 
-			const nameInput = page.locator('.preview input[type="text"]').first();
-			await expect(nameInput).toBeVisible({ timeout: 5_000 });
-			await nameInput.fill(`rate-limited import ${Date.now()}`);
+		const nameInput = page.locator('.preview input[type="text"]').first();
+		await expect(nameInput).toBeVisible({ timeout: 5_000 });
+		await nameInput.fill(`rate-limited import ${Date.now()}`);
 
-			await page.getByRole('button', { name: /^Save Route$/ }).click();
+		await page.getByRole('button', { name: /^Save Route$/ }).click();
 
-			const errorToast = page.locator('.toast-error');
-			await expect(errorToast).toBeVisible({ timeout: 10_000 });
-			await expect(errorToast).toHaveText(/creating routes too quickly/i);
-			// Negative pin: generic fallback + raw exception must not leak.
-			await expect(page.getByText('Failed to save route')).toHaveCount(0);
-			await expect(
-				page.getByText(/rate limit exceeded for create_route/i)
-			).toHaveCount(0);
-		} finally {
-			await resetRateLimit(USER_A.id, 'create_route');
-		}
+		const errorToast = page.locator('.toast-error');
+		await expect(errorToast).toBeVisible({ timeout: 10_000 });
+		await expect(errorToast).toHaveText(/creating routes too quickly/i);
+		// Negative pin: generic fallback + raw exception must not leak.
+		await expect(page.getByText('Failed to save route')).toHaveCount(0);
+		await expect(
+			page.getByText(/rate limit exceeded for create_route/i)
+		).toHaveCount(0);
 	});
 
 	test('cancel the modal with X button: closes without import or error toast', async ({

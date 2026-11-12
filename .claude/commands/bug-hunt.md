@@ -42,12 +42,14 @@ Spawn hunters in a single message so they run concurrently. Two flavours, both *
 
 Keep each hunter's scope tight (a handful of files) so it reads deeply rather than skimming.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ### 3. Verify every finding before touching code
 
 This is the step that separates a real fix from a regression:
 - **Read the cited code yourself.** Confirm the wrong behaviour is reachable and the tests genuinely miss it. Hunters are confidently wrong sometimes (a suggested fix may not even work — e.g. a proposed `onConflict` target that still fails against a *partial* unique index).
 - **Compute any numeric claim** (a threshold, a ratio, an off-by-one) rather than trusting it.
-- **For SQL/DB findings, prove it against the running stack** (`psql` on `127.0.0.1:54322`): reproduce the wrong result, and confirm your fix produces the right one. (e.g. demonstrate `ON CONFLICT (...) → 42P10` before rewriting the upsert.)
+- **For SQL/DB findings, prove it against the running stack** (`psql` on `127.0.0.1:24322`): reproduce the wrong result, and confirm your fix produces the right one. (e.g. demonstrate `ON CONFLICT (...) → 42P10` before rewriting the upsert.)
 - Check whether the same defect is **copied elsewhere** — fix all instances, don't leave the pattern to be recopied.
 
 ### 4. Escalate the intricate ones — don't rush them

@@ -1,17 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
-import { USER_A } from '../fixtures/users';
+import { USER_A, USER_B } from '../fixtures/users';
+import { readRow } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
+import { deleteRoute, insertRoute } from '../fixtures/simulate';
 
 /**
  * /routes/[id] — owner-only route detail page.
  *
  * Operations covered: public toggle, star toggle (with /routes filter
- * round-trip), tag add + remove. The anon /share/route/[id] view is
- * in share/route.spec.ts. Routes have NO UI delete affordance — the
- * only delete path is service-role / SQL — so there's no
- * "delete via UI" test here.
+ * round-trip), tag add + remove, name + description edit. The anon /share/route/[id] view is
+ * in share/route.spec.ts, and the owner's Delete in routes/delete.spec.ts.
  */
 
 test.describe('/routes/[id]', () => {
@@ -73,7 +74,7 @@ test.describe('/routes/[id]', () => {
 		const shareBtn = page.getByRole('button', { name: 'Share', exact: true });
 
 		// First Share click opens the confirm — it must NOT flip the route yet.
-		await shareBtn.click();
+		await shareChoosingPublic(page, shareBtn);
 		await expect(dialog).toBeVisible();
 		await expect(shareBar).toBeHidden();
 
@@ -82,16 +83,19 @@ test.describe('/routes/[id]', () => {
 		await expect(dialog).toBeHidden();
 		await expect(shareBar).toBeHidden();
 		{
-			const { data } = await admin
-				.from('routes')
-				.select('is_public')
-				.eq('id', RUNNER_PUBLIC_ROUTE_ID)
-				.single();
-			expect(data?.is_public).toBe(false);
+			const data = await readRow(
+				'routes by id',
+				admin
+					.from('routes')
+					.select('is_public')
+					.eq('id', RUNNER_PUBLIC_ROUTE_ID)
+					.single()
+			);
+			expect(data.is_public).toBe(false);
 		}
 
 		// Confirm flips it public, discloses the flip, and reveals the link.
-		await shareBtn.click();
+		await shareChoosingPublic(page, shareBtn);
 		await expect(dialog).toBeVisible();
 		await dialog.getByRole('button', { name: 'Make public & share' }).click();
 		await expect(
@@ -99,59 +103,87 @@ test.describe('/routes/[id]', () => {
 		).toBeVisible();
 		await expect(shareBar).toBeVisible();
 		{
-			const { data } = await admin
-				.from('routes')
-				.select('is_public')
-				.eq('id', RUNNER_PUBLIC_ROUTE_ID)
-				.single();
-			expect(data?.is_public).toBe(true);
+			const data = await readRow(
+				'routes by id',
+				admin
+					.from('routes')
+					.select('is_public')
+					.eq('id', RUNNER_PUBLIC_ROUTE_ID)
+					.single()
+			);
+			expect(data.is_public).toBe(true);
 		}
 	});
 
-	test('public toggle: Public → Private, reload persists, back to Public', async ({
+	test('audience control: Public → Only me, reload persists, back to Public', async ({
 		page
 	}) => {
-		// `togglePublic` calls setRoutePublic which updates `is_public`
-		// on the routes row. Owner-only button — gated on `isOwner`.
-		// The button text flips between "Public" / "Private". Catches
-		// regressions in either the write (RLS dropping the update)
-		// or the optimistic rollback (button text reverts on error).
-		// Pinned route starts public; cleanup leaves it public.
-		await page.goto(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
-		// Needed: togglePublic is gated on `isOwner`, which derives from
-		// auth.user + the fetched route. Clicking the toggle before both
-		// have resolved (i.e. before Svelte finishes hydrating with auth
-		// loaded) is a no-op — Playwright's actionability check on
-		// .click() doesn't cover Svelte hydration.
-		await page.waitForLoadState('networkidle');
-
-		// The button text content is "public Public" (icon ligature +
-		// label) so a plain text regex pulls in the icon span. Target
-		// by the `title` attribute which is unique to this button —
-		// "Public — tap to make private" / "Private — tap to make
-		// public".
-		const toggleBtn = () =>
-			page.locator('button[title^="Public"], button[title^="Private"]');
-		await expect(toggleBtn()).toBeVisible({ timeout: 10_000 });
-		await expect(toggleBtn()).toHaveAttribute('title', /^Public/);
-
-		await toggleBtn().click();
-		await expect(toggleBtn()).toHaveAttribute('title', /^Private/, {
-			timeout: 5_000
+		// With audience sharing on (the seed opens the gate) the owner's one
+		// visibility control is the audience picker; the old public toggle is
+		// gone so two buttons never disagree. Only me writes is_public=false;
+		// Public goes back through the make-public confirm. The test owns its
+		// route: the seeded one is flipped by other spec files running in
+		// parallel workers, which raced this round trip.
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name: `Audience round trip ${Date.now()}`,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450,
+			is_public: true
 		});
+		try {
+			await page.goto(`/routes/${routeId}`);
+			// The control is gated on `isOwner`, which derives from auth.user
+			// and the fetched route; a click before hydration is a no-op.
+			await page.waitForLoadState('networkidle');
 
-		// Reload — server-side state must agree.
-		await page.reload();
-		await expect(toggleBtn()).toHaveAttribute('title', /^Private/, {
-			timeout: 10_000
-		});
+			const audienceBtn = page.getByTestId('route-audience-btn');
+			await expect(audienceBtn).toContainText('Public', { timeout: 10_000 });
+			await expect(
+				page.locator('button[title^="Public —"], button[title^="Private —"]')
+			).toHaveCount(0);
 
-		// Restore.
-		await toggleBtn().click();
-		await expect(toggleBtn()).toHaveAttribute('title', /^Public/, {
-			timeout: 5_000
-		});
+			await audienceBtn.click();
+			await expect(page.getByTestId('audience-dialog')).toBeVisible();
+			await page.getByTestId('audience-level-private').click();
+			await expect(audienceBtn).toContainText('Only me', { timeout: 5_000 });
+			await page.keyboard.press('Escape');
+
+			// Reload — server-side state must agree.
+			await page.reload();
+			await expect(audienceBtn).toContainText('Only me', { timeout: 10_000 });
+
+			// Restore through the make-public confirm, the same path Share
+			// takes on a private route. No networkidle wait here: a private
+			// route page never goes quiet, and the "Only me" label above is
+			// already rendered by the hydrated page.
+			await shareChoosingPublic(page, page.getByRole('button', { name: 'Share', exact: true }));
+			const confirm = page.getByTestId('share-confirm-dialog');
+			await expect(confirm).toBeVisible();
+			await confirm.getByRole('button', { name: 'Make public & share' }).click();
+			await expect(audienceBtn).toContainText('Public', { timeout: 5_000 });
+		} finally {
+			await deleteRoute(routeId);
+		}
 	});
+
+	// `toggleStar` is optimistic, so the button's class says nothing about
+	// whether the write reached the server. This reads the row the click is
+	// about, for the two places the test needs that distinction.
+	const readStarredFlag = async (): Promise<boolean> =>
+		(
+			await readRow(
+				'routes by id',
+				getAdminClient()
+					.from('routes')
+					.select('is_starred')
+					.eq('id', RUNNER_PUBLIC_ROUTE_ID)
+					.single()
+			)
+		).is_starred as boolean;
 
 	test('star + reload + starred-only filter shows it + unstar restores', async ({
 		page
@@ -180,6 +212,15 @@ test.describe('/routes/[id]', () => {
 		await starBtn.click();
 		await expect(starBtn).toHaveClass(/starred/);
 
+		// `toggleStar` flips the class BEFORE `setRouteStar` resolves, so the
+		// class is not evidence the write left the browser — and `reload()`
+		// cancels whatever is still in flight. Reloading straight off the
+		// optimistic flip therefore races the PATCH it is supposed to be
+		// checking, and loses under load: the row stays unstarred and the
+		// assertion below reports it as a failed round-trip. Wait for the
+		// server to agree first, which is what the next line claims to test.
+		await expect.poll(readStarredFlag).toBe(true);
+
 		// Reload — server-side state must agree.
 		await page.reload();
 		await expect(page.locator('button.star-btn')).toHaveClass(/starred/, {
@@ -204,10 +245,21 @@ test.describe('/routes/[id]', () => {
 		// click above the aria-label flipped to "Show all routes".
 		await page.getByRole('button', { name: /Show all routes/ }).click();
 		await page.goto(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
-		// Same hydration gate as the first click — owner-gated handler.
-		await page.waitForLoadState('networkidle');
-		await page.locator('button.star-btn').click();
-		await expect(page.locator('button.star-btn')).not.toHaveClass(/starred/);
+		// Not `networkidle`: the page's fetches are sequential, so any 500 ms
+		// gap between them satisfies it, and it says nothing about whether
+		// the owner-gated handler is mounted. The button renders only under
+		// `isOwner` and its class carries the state this click inverts, so
+		// asserting the starred class IS the readiness gate — and a failure
+		// then names which half went wrong instead of timing out on the
+		// post-state with no idea what the pre-state was.
+		const unstarBtn = page.locator('button.star-btn');
+		await expect(unstarBtn).toHaveClass(/starred/, { timeout: 10_000 });
+		await unstarBtn.click();
+		await expect(unstarBtn).not.toHaveClass(/starred/);
+		// The optimistic flip happens before `setRouteStar` resolves, so the
+		// class alone cannot tell a landed write from one still in flight —
+		// which is exactly the ambiguity the round-43 report was left with.
+		await expect.poll(readStarredFlag).toBe(false);
 	});
 
 	test('tag add → reload persists → remove restores', async ({ page }) => {
@@ -338,12 +390,15 @@ test.describe('/routes/[id]', () => {
 			).toBeVisible({ timeout: 10_000 });
 
 			// Backend confirms the row.
-			const { data: row } = await admin
-				.from('route_reviews')
-				.select('rating, comment')
-				.eq('route_id', RUNNER_PUBLIC_ROUTE_ID)
-				.eq('user_id', USER_A.id)
-				.single();
+			const row = await readRow(
+				'route_reviews by route_id+user_id',
+				admin
+					.from('route_reviews')
+					.select('rating, comment')
+					.eq('route_id', RUNNER_PUBLIC_ROUTE_ID)
+					.eq('user_id', USER_A.id)
+					.single()
+			);
 			expect((row as { rating: number }).rating).toBe(3);
 			expect((row as { comment: string }).comment).toBe(comment);
 		} finally {
@@ -353,6 +408,161 @@ test.describe('/routes/[id]', () => {
 				.delete()
 				.eq('route_id', RUNNER_PUBLIC_ROUTE_ID)
 				.eq('user_id', USER_A.id);
+		}
+	});
+
+	test('edit name + description → reload persists → clearing the description stores null', async ({
+		page
+	}) => {
+		// The test owns its route: the seeded one's name is read by other
+		// spec files running in parallel workers.
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name: `Rename round trip ${Date.now()}`,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450,
+			is_public: true
+		});
+		const admin = getAdminClient();
+		const readDetails = () =>
+			readRow(
+				'routes by id',
+				admin.from('routes').select('name, description').eq('id', routeId).single()
+			);
+		try {
+			await page.goto(`/routes/${routeId}`);
+			const editBtn = page.getByTestId('route-edit-details');
+			await expect(editBtn).toBeVisible({ timeout: 10_000 });
+			await editBtn.click();
+
+			const form = page.getByTestId('route-details-form');
+			await expect(form).toContainText('This route is public');
+			await form.getByLabel('Name').fill('  Richmond Marathon 2026 course (unofficial)  ');
+			await form.getByLabel('Description').fill('Redrawn by Threkir.');
+			await form.getByRole('button', { name: 'Save' }).click();
+
+			await expect(form).toBeHidden();
+			await expect(
+				page.getByRole('heading', { level: 1, name: 'Richmond Marathon 2026 course (unofficial)' })
+			).toBeVisible();
+			await expect(page.locator('.route-description')).toHaveText('Redrawn by Threkir.');
+			expect(await readDetails()).toEqual({
+				name: 'Richmond Marathon 2026 course (unofficial)',
+				description: 'Redrawn by Threkir.'
+			});
+
+			await page.reload();
+			await expect(
+				page.getByRole('heading', { level: 1, name: 'Richmond Marathon 2026 course (unofficial)' })
+			).toBeVisible({ timeout: 10_000 });
+
+			// Clearing the description writes null, which brings the
+			// "Describe this route" affordance back.
+			await page.getByTestId('route-edit-details').click();
+			await form.getByLabel('Description').fill('   ');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.locator('.describe-btn')).toBeVisible();
+			await expect.poll(async () => (await readDetails()).description).toBeNull();
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
+
+	test('edit details refuses a blank name and writes nothing', async ({ page }) => {
+		const name = `Blank name guard ${Date.now()}`;
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450
+		});
+		try {
+			let patched = false;
+			page.on('request', (r) => {
+				if (r.method() === 'PATCH' && r.url().includes('/rest/v1/routes')) patched = true;
+			});
+			await page.goto(`/routes/${routeId}`);
+			await page.getByTestId('route-edit-details').click();
+			const form = page.getByTestId('route-details-form');
+			// `required` would stop a native submit of an empty field, so fill
+			// whitespace: the trim rule is what has to catch it.
+			await form.getByLabel('Name').fill('   ');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form.getByRole('alert')).toHaveText('Give the route a name.');
+			expect(patched).toBe(false);
+
+			await form.getByRole('button', { name: 'Cancel' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
+
+	test('set an official distance → key stat shows it over the measured one → clearing restores it', async ({
+		page
+	}) => {
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name: `Official distance ${Date.now()}`,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 10200,
+			is_public: true
+		});
+		const admin = getAdminClient();
+		const readOfficial = async () =>
+			(
+				await readRow(
+					'routes by id',
+					admin.from('routes').select('official_distance_m').eq('id', routeId).single()
+				)
+			).official_distance_m;
+		try {
+			await page.goto(`/routes/${routeId}`);
+			await page.getByTestId('route-edit-details').click();
+			const form = page.getByTestId('route-details-form');
+			const field = page.getByTestId('route-official-distance-input');
+			await expect(field).toHaveValue('');
+
+			// More than 10% off the measured 10.2 km is refused before any write.
+			await field.fill('12');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form.getByRole('alert')).toContainText('within 10%');
+			expect(await readOfficial()).toBeNull();
+
+			await field.fill('10');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.locator('.key-stat-label').first()).toHaveText('Official distance');
+			await expect(page.getByTestId('route-key-measured')).toContainText('Measured');
+			await expect.poll(readOfficial).toBe(10000);
+
+			await page.reload();
+			await expect(page.getByTestId('route-key-measured')).toBeVisible({ timeout: 10_000 });
+			await page.goto(`/share/route/${routeId}`);
+			await expect(page.getByTestId('share-route-distance')).toContainText('10');
+			await expect(page.getByTestId('share-route-distance')).not.toContainText('10.2');
+
+			await page.goto(`/routes/${routeId}`);
+			await page.getByTestId('route-edit-details').click();
+			await expect(field).toHaveValue('10');
+			await field.fill('');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.getByTestId('route-key-measured')).toHaveCount(0);
+			await expect.poll(readOfficial).toBeNull();
+		} finally {
+			await deleteRoute(routeId);
 		}
 	});
 
@@ -372,5 +582,32 @@ test.describe('/routes/[id]', () => {
 		await expect(
 			page.getByRole('link', { name: 'Back to your routes' })
 		).toBeVisible();
+	});
+});
+
+test.describe('/routes/[id] as a non-owner', () => {
+	test.use({ storageState: USER_B.storageStatePath });
+
+	test('a public route shows no edit button to someone who does not own it', async ({ page }) => {
+		// Its own public route: the seeded one is flipped private by other
+		// specs, and a not-found page would pass this vacuously.
+		const name = `Not mine to edit ${Date.now()}`;
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450,
+			is_public: true
+		});
+		try {
+			await page.goto(`/routes/${routeId}`);
+			await expect(page.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('route-edit-details')).toHaveCount(0);
+		} finally {
+			await deleteRoute(routeId);
+		}
 	});
 });

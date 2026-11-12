@@ -33,7 +33,13 @@ class ProgressionSetLike {
   final num? reps;
   final num? weightKg;
   final num? rpe;
-  const ProgressionSetLike({this.reps, this.weightKg, this.rpe});
+
+  /// gym_sets.set_type — raw string (matches the DB CHECK union). A
+  /// deliberately submaximal set is not evidence about the working target, so
+  /// it must not be judged against it (see `_unjudgedSetTypes`). Null reads as
+  /// 'working', matching the column default.
+  final String? setType;
+  const ProgressionSetLike({this.reps, this.weightKg, this.rpe, this.setType});
 }
 
 class ProgressionInput {
@@ -83,8 +89,93 @@ double _positiveOr(Object? v, double fallback) {
   return (n != null && n > 0) ? n : fallback;
 }
 
-/// The heaviest working weight across the session — the anchor a load increment
-/// is added to. Null when no set carried a positive weight (bodyweight work).
+/// Set types a progression judgement must never grade. All three are
+/// deliberately submaximal — a `warmup` before the working weight, a `backoff`
+/// after it, a `dropset` down from it — so "did they reach the target reps at
+/// the target weight" can only ever read them as a miss, which holds the load
+/// and, under fiveByFive, banks a deload the lifter never earned.
+///
+/// The top-weight narrowing in [workingSets] already drops a lighter set
+/// whether or not it carries a label; this is what covers the case that
+/// narrowing cannot see. A BODYWEIGHT session has no positive weight to narrow
+/// on, so every completed set survives — and a set of assisted pull-ups typed
+/// `dropset` after three clean sets of eight stalled the exercise permanently,
+/// exactly as an unlabelled warmup would have (decisions.md § 680).
+///
+/// `amrap` and `failure` are deliberately NOT here: both are performed AT the
+/// working weight and their rep count is real evidence about it.
+const Set<String> _unjudgedSetTypes = {'warmup', 'backoff', 'dropset'};
+
+List<ProgressionSetLike> _completedSets(List<ProgressionSetLike> sets) {
+  return sets.where((s) {
+    if (_unjudgedSetTypes.contains(s.setType ?? 'working')) return false;
+    final r = _numericOrNull(s.reps);
+    return r != null && r > 0;
+  }).toList();
+}
+
+/// The sets a prescription is judged against: completed sets (warmups and
+/// rep-less rows dropped — `gym_sets.reps` is nullable and CHECK-allows 0),
+/// narrowed to those done at the session's top completed weight.
+///
+/// That second pass holds the judgement even when the set_type LABEL is
+/// missing: a lighter submaximal set is dropped whether or not it was typed.
+/// Both history RPCs return the column since migration 20270525_001, so the
+/// label now carries the rest — a warmup or drop set logged AT the working
+/// weight survives this narrowing and is excluded by set_type alone. Grading at the working weight
+/// is also the truer reading of "5 sets of 5": a lighter back-off set is not
+/// one of the five. A session with no positive weight anywhere (bodyweight)
+/// keeps every completed set.
+///
+/// Shared with the consecutive-miss reducer so a past session is judged by
+/// exactly the sets the prescriber judges the last one by.
+List<ProgressionSetLike> workingSets(List<ProgressionSetLike> sets) {
+  final completed = _completedSets(sets);
+  final top = _topWeight(completed);
+  if (top == null) return completed;
+  return completed.where((s) => _numericOrNull(s.weightKg) == top).toList();
+}
+
+class FiveByFiveTargets {
+  final double targetSets;
+  final double targetReps;
+  const FiveByFiveTargets({required this.targetSets, required this.targetReps});
+}
+
+/// The 5×5 bar for one session — how many working sets at how many reps clear
+/// it. The routine's own rep target wins, then `params['targetReps']`, then the
+/// classic five. Exported so a caller deriving the miss streak from history
+/// grades an older session by the same bar.
+FiveByFiveTargets fiveByFiveTargets({
+  num? targetRepsMin,
+  num? targetRepsMax,
+  Map<String, Object?>? params,
+}) {
+  final p = params ?? const {};
+  final repsMin = _numericOrNull(targetRepsMin);
+  final repsMax = _numericOrNull(targetRepsMax);
+  return FiveByFiveTargets(
+    targetSets: _positiveOr(p['targetSets'], 5),
+    targetReps: repsMax ?? repsMin ?? _positiveOr(p['targetReps'], 5),
+  );
+}
+
+/// Did one session clear the bar? At least `targetSets` completed working sets,
+/// every one of them reaching `targetReps`.
+bool fiveByFiveSessionSucceeded(
+  List<ProgressionSetLike> sets,
+  FiveByFiveTargets targets,
+) {
+  final working = workingSets(sets);
+  return working.length >= targets.targetSets &&
+      working.every((s) => (_numericOrNull(s.reps) ?? 0) >= targets.targetReps);
+}
+
+/// The heaviest weight the lifter actually COMPLETED — the anchor a load
+/// increment is added to. Null when no completed set carried a positive weight
+/// (bodyweight work). Callers must pass the completed subset: anchoring on a
+/// set that was merely attempted prescribes a load off a weight the lifter
+/// failed to lift.
 double? _topWeight(List<ProgressionSetLike> sets) {
   double? top;
   for (final s in sets) {
@@ -107,14 +198,25 @@ ProgressionSuggestion nextPrescription(ProgressionInput input) {
 
   final params = input.params ?? const {};
   final sets = input.lastSets;
-  final completed = sets.where((s) {
-    final r = _numericOrNull(s.reps);
-    return r != null && r > 0;
-  }).toList();
+  // Warmups, back-off sets and drop sets are excluded before anything is
+  // judged (_unjudgedSetTypes). Every "did they hit the target?" test below is
+  // an `every` over this list, so a 2-rep ramp-up set counted as a failed
+  // working set and held the load — forever, for anyone who warms up, which is
+  // everyone. gym_adherence states the same rule for
+  // planned-vs-actual grading. A null setType is 'working', matching the DB
+  // default — the working-weight narrowing inside workingSets is what catches a
+  // ramp-up that still reaches the prescriber unlabelled.
+  final completed = workingSets(sets);
 
   final repsMin = _numericOrNull(input.targetRepsMin);
   final repsMax = _numericOrNull(input.targetRepsMax);
-  final weight = _topWeight(sets);
+  // Anchor on what was COMPLETED, not on what was attempted. `gym_sets.reps`
+  // is nullable and CHECK-allows 0, and the editor writes a row for every set
+  // typed — so "weight entered, reps left blank" and "failed attempt logged as
+  // 0" are normal shapes. Scanning the raw list made the failed heavier attempt
+  // the anchor and then added the increment to it, prescribing more than a
+  // weight the lifter had just missed.
+  final weight = _topWeight(completed);
   final step = _positiveOr(params['incrementKg'], 2.5);
 
   switch (input.scheme) {
@@ -206,13 +308,18 @@ ProgressionSuggestion nextPrescription(ProgressionInput input) {
 
     case ProgressionScheme.fiveByFive:
       {
-        final targetSets = _positiveOr(params['targetSets'], 5);
-        final targetReps =
-            repsMax ?? repsMin ?? _positiveOr(params['targetReps'], 5);
+        final targets = fiveByFiveTargets(
+          targetRepsMin: input.targetRepsMin,
+          targetRepsMax: input.targetRepsMax,
+          params: params,
+        );
+        final targetReps = targets.targetReps;
         final maxMisses = _positiveOr(params['maxConsecutiveMisses'], 3);
+        // Author-set params never carry this — it is derived from logged
+        // history by progression_prefill.progressionParamsWithStreak, without
+        // which the deload branch below is unreachable.
         final misses = _positiveOr(params['consecutiveMisses'], 0);
-        final success = completed.length >= targetSets &&
-            completed.every((s) => (_numericOrNull(s.reps) ?? 0) >= targetReps);
+        final success = fiveByFiveSessionSucceeded(sets, targets);
 
         if (success) {
           if (weight != null) {

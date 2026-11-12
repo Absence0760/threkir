@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ChallengeEditor from '$lib/components/ChallengeEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import { goto } from '$app/navigation';
 </script>
 

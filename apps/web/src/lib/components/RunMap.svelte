@@ -1,59 +1,48 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { getUnit } from '$lib/format/units.svelte';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { getUnit } from '#lib/format/units.svelte.ts';
 	import {
 		basemapIsDarkFromEnv,
 		getMapStyle,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapAccentColour,
 		mapFinishColour,
 		mapLabelHalo,
 		mapLabelInk,
+		MAP_ARROW_INK,
+		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
 		mapStartColour,
 		mapTrackLine,
-	} from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { minMax } from '$lib/util/min_max';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { OverlayDrawState, type OverlayStep } from '#lib/routes/overlay_draw.ts';
+	import { minMax } from '#lib/util/min_max.ts';
+	import type { TrackPoint } from '#lib/types.ts';
+	import { lineLngLat } from '#lib/runs/track_line.ts';
+	import { buildCumulative, buildSegment, type SelectedSegment } from '#lib/runs/track_segment.ts';
 	import {
-		buildPaceSegments,
-		hasTrackTimestamps,
+		PACE_GRADIENT_RAMP,
+		paceGradientColour,
+		paceGradientStops,
 		type ActivityKind,
-	} from '$lib/segments/pace_segments';
-	import { snapToPolyline } from '$lib/routes/route_snap';
+		type PaceStop,
+	} from '#lib/segments/pace_segments.ts';
+	import { snapToPolyline } from '#lib/routes/route_snap.ts';
+	import { computeDistanceMarkers, METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
 	import {
-		haversineMetres as haversine,
 		buildTrackIndex,
 		nearestIndex,
 		type TrackIndex,
-	} from '$lib/routes/nearest_track_point';
-
-	/// Segment-detail callback. When set, clicks anywhere on the map
-	/// snap to the nearest track point, compute a small window (±150 m
-	/// of cumulative track distance) around it, and fire `onSegmentSelect`
-	/// with stats for that window. The host page renders the popup. Set
-	/// to `null` from the host to clear the highlight.
-	export interface SelectedSegment {
-		startIdx: number;
-		endIdx: number;
-		clickIdx: number;
-		distance_m: number;
-		duration_s: number | null;
-		avg_pace_sec_per_km: number | null;
-		avg_bpm: number | null;
-		ele_gain_m: number;
-		ele_loss_m: number;
-		mid: TrackPoint;
-	}
+	} from '#lib/routes/nearest_track_point.ts';
 
 	/// A course marker to paint on the map. `color` is the shared hex from
 	/// ROUTE_MARKER_KINDS so a pin matches the schedule list + the mobile twin.
@@ -68,6 +57,9 @@
 	interface Props {
 		track: TrackPoint[];
 		animatable?: boolean;
+		/// When set, a click snaps to the nearest track point and fires with
+		/// the ±150 m stretch around it (`runs/track_segment.ts`); the host
+		/// renders the card. Set the host's segment to `null` to clear it.
 		onSegmentSelect?: (seg: SelectedSegment | null) => void;
 		/// When provided AND the polyline distance is shorter than the
 		/// authoritative route distance, scale the marker positions so
@@ -77,13 +69,14 @@
 		/// route can render with only one mile-marker because the
 		/// straight-line polyline is just 1.5mi long.
 		totalDistanceM?: number;
-		/// When set (and the track carries per-point timestamps), the
-		/// trace renders as a per-segment NRC-style pace heatmap instead
-		/// of the single indigo line. Activity scales the speed
-		/// breakpoints so a 5:00/km run and a 25 km/h ride both land
-		/// mid-ramp. Routes (which never carry timestamps) and
-		/// imports without `ts` fall through to the legacy single-line
-		/// render.
+		/// A route's official distance. Set, the km / mile markers count the
+		/// course's own distance along the line (`courseDistanceScale`).
+		officialDistanceM?: number | null;
+		/// When set (and the track carries per-point timestamps), the map
+		/// offers a "Pace colours" toggle that paints the trace as a smoothed
+		/// pace gradient on the run's own scale. The default is the single
+		/// line, as on Strava and Garmin Connect. Routes (which never carry
+		/// timestamps) and imports without `ts` never show the toggle.
 		activity?: ActivityKind;
 		/// Linked-cursor index (Nike/Strava-style). When non-null AND in
 		/// range of `track`, paint a small pulsing marker at that point
@@ -98,14 +91,12 @@
 		/// Twin of the `previewPosition` prop on Flutter's
 		/// `LiveRunMap`. Null = no marker.
 		previewLngLat?: [number, number] | null;
-		/// When `true`, the component will NOT instantiate maplibregl
-		/// until the user explicitly accepts loading the map. Anonymous
-		/// public pages (/share/run/[id], /share/route/[id]) pass true
-		/// per audit/cookie-consent (2026-05-25): MapTiler logs the
-		/// requester IP per tile fetch, so we cannot auto-initialise
-		/// before the visitor has consented. Authenticated surfaces
-		/// leave this false — those callers reach the component via a
-		/// signed-in session where consent is implicit.
+		/// When `true`, the map waits for this view's "Load map" tap even
+		/// if the cookie banner was accepted. The public share pages
+		/// (/share/run/[id], /share/route/[id]) pass it: the banner covers
+		/// error reporting only, and MapTiler logs the requester IP on
+		/// every tile fetch (decisions § 2298 amendment). Other callers
+		/// leave it false and auto-load once the banner was accepted.
 		requireExplicitConsent?: boolean;
 		/// Course markers (aid stations, cutoffs, …) to paint along the
 		/// route line as coloured pins with a label. Each carries its own
@@ -142,6 +133,7 @@
 		animatable = false,
 		onSegmentSelect,
 		totalDistanceM,
+		officialDistanceM = null,
 		activity,
 		hoverIdx = null,
 		previewLngLat = null,
@@ -156,14 +148,13 @@
 		snapToRoute = false,
 	}: Props = $props();
 
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
-	// Drives the placeholder ↔ map swap. MapTiler logs the requester IP
-	// per tile fetch, so we never auto-instantiate maplibregl before the
-	// user has accepted the cookie banner — on authenticated surfaces too
-	// (audit/gdpr May 2026 High: "implicit consent" for signed-in users
-	// is not a lawful basis under ePrivacy Art 5(3)). Anon callers
-	// (`requireExplicitConsent`) always start gated; authed callers start
-	// gated unless consent is already on record this session.
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
+	// Drives the placeholder ↔ map swap, and is decided once, here, so the
+	// container is in the DOM by the time onMount reads it. MapTiler logs
+	// the requester IP per tile fetch, so nothing loads before the banner
+	// was accepted (audit/gdpr May 2026 High) or, for
+	// `requireExplicitConsent`, before this view's tap. The only later
+	// flip is `loadMapNow`, which waits for the container to mount.
 	let mapConsented = $state(untrack(() => (requireExplicitConsent ? false : hasAcceptedConsent())));
 
 	const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -174,7 +165,33 @@
 	// one). See `basemap_contrast.ts`.
 	const darkBasemap = $derived(basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY, prefersDark));
 
-	const METRES_PER_MILE = 1609.344;
+	const DISTANCE_BADGE_ID = 'distance-marker-badge';
+	const DISTANCE_BADGE_RATIO = 2;
+
+	/// The km / mile badge as an image, so the badge and its number are one
+	/// symbol that collides as a unit: a filled circle of radius 11 with a
+	/// 2 px ring in the track colour. Null when the browser gives no 2D
+	/// context, in which case the map simply draws no badges.
+	function distanceBadgeImage(
+		fill: string,
+		stroke: string,
+	): { width: number; height: number; data: Uint8ClampedArray } | null {
+		const size = 26 * DISTANCE_BADGE_RATIO;
+		const canvas = document.createElement('canvas');
+		canvas.width = size;
+		canvas.height = size;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return null;
+		ctx.scale(DISTANCE_BADGE_RATIO, DISTANCE_BADGE_RATIO);
+		ctx.beginPath();
+		ctx.arc(13, 13, 11, 0, Math.PI * 2);
+		ctx.fillStyle = fill;
+		ctx.fill();
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = stroke;
+		ctx.stroke();
+		return { width: size, height: size, data: ctx.getImageData(0, 0, size, size).data };
+	}
 
 	function buildMarkerFeatures(
 		pins: MapMarkerPin[]
@@ -189,63 +206,6 @@
 		};
 	}
 
-	/// Walk the polyline and emit a GeoJSON FeatureCollection of point
-	/// markers — one at every kilometre (or mile, depending on the user
-	/// preference). Each feature's `label` property carries the digit
-	/// rendered in the marker pin (1, 2, 3, …). Markers near the start
-	/// and end are skipped since the green / red caps cover those.
-	function computeDistanceMarkers(coords: [number, number][]): GeoJSON.FeatureCollection<GeoJSON.Point, { label: string }> {
-		const features: GeoJSON.Feature<GeoJSON.Point, { label: string }>[] = [];
-		if (coords.length < 2) return { type: 'FeatureCollection', features };
-		const unit = getUnit();
-		const stepM = unit === 'mi' ? METRES_PER_MILE : 1000;
-
-		// Total polyline length — used both as the iteration bound and
-		// as the denominator for the legacy-sparse-waypoints rescale
-		// path below.
-		let polylineTotal = 0;
-		for (let i = 1; i < coords.length; i++) {
-			polylineTotal += haversine(coords[i - 1], coords[i]);
-		}
-
-		// When the authoritative route distance is meaningfully greater
-		// than what the polyline measures (sparse user clicks / seed
-		// data), scale every marker's *along-the-polyline* position by
-		// `polyline / real`. The marker count then reflects the real
-		// distance even though the rendered geometry is a coarse
-		// approximation.
-		const realTotal = totalDistanceM && totalDistanceM > polylineTotal * 1.1
-			? totalDistanceM
-			: polylineTotal;
-		const scale = polylineTotal > 0 ? polylineTotal / realTotal : 1;
-
-		let cumulative = 0;
-		let nextMarker = stepM * scale;
-		const maxAlongPolyline = polylineTotal;
-		for (let i = 1; i < coords.length; i++) {
-			const segmentM = haversine(coords[i - 1], coords[i]);
-			while (
-				cumulative + segmentM >= nextMarker &&
-				segmentM > 0 &&
-				nextMarker <= maxAlongPolyline + 0.5
-			) {
-				const t = (nextMarker - cumulative) / segmentM;
-				const lng = coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * t;
-				const lat = coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * t;
-				const realPos = nextMarker / scale;
-				const idx = Math.round(realPos / stepM);
-				features.push({
-					type: 'Feature',
-					geometry: { type: 'Point', coordinates: [lng, lat] },
-					properties: { label: String(idx) },
-				});
-				nextMarker += stepM * scale;
-			}
-			cumulative += segmentM;
-		}
-		return { type: 'FeatureCollection', features };
-	}
-
 	let mapContainer = $state<HTMLDivElement>();
 	let map: maplibregl.Map;
 	let stopResizeWatch: (() => void) | null = null;
@@ -255,7 +215,7 @@
 
 	export function startAnimation() {
 		if (!map || animating) return;
-		const coords: [number, number][] = track.map((p) => [p.lng, p.lat]);
+		const coords: [number, number][] = track.map(lineLngLat);
 		if (coords.length < 2) return;
 
 		animating = true;
@@ -338,7 +298,7 @@
 			hoverMarker = undefined;
 			return;
 		}
-		const at: [number, number] = [p.lng, p.lat];
+		const at: [number, number] = lineLngLat(p);
 		if (!hoverMarker) {
 			const el = document.createElement('div');
 			el.className = 'hover-marker';
@@ -392,96 +352,12 @@
 	/// Computed once when the track is mounted.
 	let cumulativeM: number[] = [];
 
-	function buildCumulative(coords: [number, number][]): number[] {
-		const out = new Array(coords.length).fill(0);
-		for (let i = 1; i < coords.length; i++) {
-			out[i] = out[i - 1] + haversine(coords[i - 1], coords[i]);
-		}
-		return out;
-	}
-
 	/// Spatial index over the track for tap-to-select. Built once with
 	/// `cumulativeM` when the track mounts so per-tap nearest-point
 	/// lookup stays bounded on a 150k+-point ultra track (a plain linear
 	/// scan visibly lagged); small tracks fall through to an exact
 	/// linear scan inside `nearestIndex`.
 	let trackIndex: TrackIndex = { coords: [], grid: null };
-
-	/// Build a segment of the track centred on `clickIdx`, expanding
-	/// outwards until the distance window (±150 m of cumulative track
-	/// length) is reached. Computes pace + HR + elevation deltas.
-	const SEGMENT_RADIUS_M = 150;
-
-	function buildSegment(clickIdx: number): SelectedSegment | null {
-		if (track.length < 2 || cumulativeM.length !== track.length) return null;
-		const target = cumulativeM[clickIdx];
-		let startIdx = clickIdx;
-		while (startIdx > 0 && cumulativeM[startIdx - 1] >= target - SEGMENT_RADIUS_M) startIdx--;
-		let endIdx = clickIdx;
-		while (
-			endIdx < cumulativeM.length - 1 &&
-			cumulativeM[endIdx + 1] <= target + SEGMENT_RADIUS_M
-		)
-			endIdx++;
-		if (startIdx === endIdx) {
-			// Edge of the track — widen by one neighbour so we have a real
-			// segment rather than a single-point degenerate.
-			if (endIdx < cumulativeM.length - 1) endIdx++;
-			else if (startIdx > 0) startIdx--;
-		}
-
-		const distance_m = cumulativeM[endIdx] - cumulativeM[startIdx];
-
-		// Duration + pace come from per-point timestamps when present.
-		const startTs = track[startIdx]?.ts;
-		const endTs = track[endIdx]?.ts;
-		let duration_s: number | null = null;
-		let avg_pace_sec_per_km: number | null = null;
-		if (startTs && endTs) {
-			const dt = (Date.parse(endTs) - Date.parse(startTs)) / 1000;
-			if (Number.isFinite(dt) && dt > 0) {
-				duration_s = Math.round(dt);
-				if (distance_m > 10) {
-					avg_pace_sec_per_km = Math.round(dt / (distance_m / 1000));
-				}
-			}
-		}
-
-		// HR + elevation deltas walk only the segment slice.
-		let bpmSum = 0;
-		let bpmCount = 0;
-		let eleGain = 0;
-		let eleLoss = 0;
-		for (let i = startIdx; i <= endIdx; i++) {
-			const b = track[i]?.bpm;
-			if (typeof b === 'number' && b >= 30 && b <= 230) {
-				bpmSum += b;
-				bpmCount++;
-			}
-			if (i > startIdx) {
-				const prev = track[i - 1]?.ele;
-				const cur = track[i]?.ele;
-				if (typeof prev === 'number' && typeof cur === 'number') {
-					const delta = cur - prev;
-					if (delta > 0) eleGain += delta;
-					else eleLoss += -delta;
-				}
-			}
-		}
-
-		return {
-			startIdx,
-			endIdx,
-			clickIdx,
-			distance_m,
-			duration_s,
-			avg_pace_sec_per_km,
-			avg_bpm: bpmCount > 0 ? Math.round(bpmSum / bpmCount) : null,
-			ele_gain_m: Math.round(eleGain),
-			ele_loss_m: Math.round(eleLoss),
-			mid: track[clickIdx],
-		};
-	}
 
 	/// Update / re-create the highlighted segment overlay on the map.
 	/// Idempotent — safe to call repeatedly with different segments.
@@ -519,6 +395,7 @@
 
 		map.addSource('trace', {
 			type: 'geojson',
+			lineMetrics: true,
 			data: {
 				type: 'Feature', properties: {},
 				geometry: { type: 'LineString', coordinates: coords }
@@ -533,40 +410,27 @@
 			layout: { 'line-join': 'round', 'line-cap': 'round' }
 		});
 
-		// Pace heatmap when the host knows the activity AND the track
-		// carries per-point timestamps; otherwise fall back to the
-		// single indigo line. Mirrors the mobile behaviour
-		// (`apps/mobile_android/lib/widgets/live_run_map.dart`) so a
-		// run looks the same on web and on mobile.
-		const heatmap = activity && hasTrackTimestamps(track)
-			? buildPaceSegments(track, activity)
-			: [];
-		if (heatmap.length > 0) {
-			map.addSource('trace-pace', {
-				type: 'geojson',
-				data: {
-					type: 'FeatureCollection',
-					features: heatmap.map((s) => ({
-						type: 'Feature',
-						properties: { color: s.color },
-						geometry: { type: 'LineString', coordinates: s.coords },
-					})),
-				},
-			});
+		map.addLayer({
+			id: 'trace-line',
+			type: 'line',
+			source: 'trace',
+			paint: { 'line-color': mapTrackLine(darkBasemap), 'line-width': 3.5 },
+			layout: { 'line-join': 'round', 'line-cap': 'round' },
+		});
+
+		// Drawn over the plain line rather than instead of it, so the plain
+		// line keeps the segment-select hover cursor whichever is showing.
+		if (activity && paceStops.length > 0) {
 			map.addLayer({
-				id: 'trace-line',
-				type: 'line',
-				source: 'trace-pace',
-				paint: { 'line-color': ['get', 'color'], 'line-width': 4 },
-				layout: { 'line-join': 'round', 'line-cap': 'round' },
-			});
-		} else {
-			map.addLayer({
-				id: 'trace-line',
+				id: 'trace-pace-line',
 				type: 'line',
 				source: 'trace',
-				paint: { 'line-color': mapTrackLine(darkBasemap), 'line-width': 3.5 },
-				layout: { 'line-join': 'round', 'line-cap': 'round' },
+				paint: { 'line-width': 4.5, 'line-gradient': paceLineGradient(paceStops) },
+				layout: {
+					'line-join': 'round',
+					'line-cap': 'round',
+					visibility: colorByPace ? 'visible' : 'none',
+				},
 			});
 		}
 
@@ -584,38 +448,43 @@
 				'text-allow-overlap': true,
 			},
 			paint: {
-				'text-color': mapOverlayOutline(darkBasemap),
-				'text-halo-color': mapTrackLine(darkBasemap),
+				'text-color': MAP_ARROW_INK,
+				'text-halo-color': MAP_ARROW_OUTLINE,
 				'text-halo-width': 1.5,
 			},
 		});
 
-		const distanceMarkers = computeDistanceMarkers(coords);
-		if (distanceMarkers.features.length > 0) {
+		const distanceMarkers = computeDistanceMarkers(
+			coords,
+			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
+			totalDistanceM,
+			officialDistanceM,
+		);
+		const badge = distanceBadgeImage(mapLabelHalo(darkBasemap), mapTrackLine(darkBasemap));
+		if (distanceMarkers.features.length > 0 && badge) {
+			if (map.hasImage(DISTANCE_BADGE_ID)) map.updateImage(DISTANCE_BADGE_ID, badge);
+			else map.addImage(DISTANCE_BADGE_ID, badge, { pixelRatio: DISTANCE_BADGE_RATIO });
 			map.addSource('distance-markers', {
 				type: 'geojson',
 				data: distanceMarkers,
 			});
+			// One symbol per badge, so MapLibre's collision pass drops the ones
+			// that would overlap (a marathon zoomed to fit, both legs of an
+			// out-and-back). The sort key places every 10th, then every 5th
+			// first, so zooming out keeps 10, 20, 30 and zooming in brings the
+			// rest back.
 			map.addLayer({
-				id: 'distance-marker-bg',
-				type: 'circle',
-				source: 'distance-markers',
-				paint: {
-					'circle-radius': 11,
-					'circle-color': mapLabelHalo(darkBasemap),
-					'circle-stroke-color': mapTrackLine(darkBasemap),
-					'circle-stroke-width': 2,
-				},
-			});
-			map.addLayer({
-				id: 'distance-marker-text',
+				id: 'distance-marker',
 				type: 'symbol',
 				source: 'distance-markers',
 				layout: {
+					'icon-image': DISTANCE_BADGE_ID,
+					'icon-allow-overlap': false,
 					'text-field': ['get', 'label'],
 					'text-size': 11,
 					'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-					'text-allow-overlap': true,
+					'text-allow-overlap': false,
+					'symbol-sort-key': ['get', 'rank'],
 				},
 				paint: {
 					'text-color': mapLabelInk(darkBasemap),
@@ -711,16 +580,115 @@
 		}
 	}
 
+	/// Every geojson source `addOverlays` creates. The layers are found FROM
+	/// this list rather than listed beside it, so a new layer over an existing
+	/// source needs no second edit -- only a new source does.
+	const OWNED_SOURCE_IDS = [
+		'trace',
+		'distance-markers',
+		'route-markers',
+		'animated-trace',
+		'selected-segment',
+	] as const;
+
+	/// Remove everything `addOverlays` added, so it can run again against a
+	/// clean style. The style-swap path gets this for free -- `setStyle` wipes
+	/// user layers -- but a track change does not.
+	function clearOverlays(): void {
+		if (!map) return;
+		const owned = new Set<string>(OWNED_SOURCE_IDS);
+		for (const layer of map.getStyle()?.layers ?? []) {
+			const src = (layer as { source?: string }).source;
+			if (src && owned.has(src)) map.removeLayer(layer.id);
+		}
+		for (const id of OWNED_SOURCE_IDS) {
+			if (map.getSource(id)) map.removeSource(id);
+		}
+	}
+
+	/// When a track change or a ready style may draw, and whether it clears
+	/// first. Drawing outside that is how /runs/[id] threw
+	/// `Source "trace" already exists` (decisions § 2043).
+	const overlayDraw = new OverlayDrawState();
+
+	function applyOverlayStep(step: OverlayStep): void {
+		if (step.clear) clearOverlays();
+		if (step.draw) addOverlays(trackCoords, trackBounds, step.fit);
+	}
+
+	// An owner saving an official distance moves the markers on the map
+	// already drawn, rather than waiting for the next track change.
+	$effect(() => {
+		const official = officialDistanceM;
+		untrack(() => {
+			const src = map?.getSource('distance-markers') as maplibregl.GeoJSONSource | undefined;
+			if (!src || trackCoords.length < 2) return;
+			src.setData(
+				computeDistanceMarkers(
+					trackCoords,
+					getUnit() === 'mi' ? METRES_PER_MILE : 1000,
+					totalDistanceM,
+					official,
+				),
+			);
+		});
+	});
+
 	let trackCoords: [number, number][] = [];
+	/// Pace colour stops for `track`, taken with the other snapshots.
+	let paceStops = $state<PaceStop[]>([]);
+	let colorByPace = $state(false);
+
+	/// MapLibre `line-gradient` expression for the stops. `line-progress` is
+	/// the fraction of the line's length, which is what each stop's
+	/// `fraction` measures.
+	type LineGradient = NonNullable<
+		NonNullable<Extract<maplibregl.AddLayerObject, { type: 'line' }>['paint']>['line-gradient']
+	>;
+	function paceLineGradient(stops: PaceStop[]): LineGradient {
+		const pairs: (number | string)[] = [];
+		let last = -1;
+		for (const stop of stops) {
+			if (stop.fraction <= last) continue;
+			pairs.push(stop.fraction, paceGradientColour(stop.t));
+			last = stop.fraction;
+		}
+		return [
+			'interpolate',
+			['linear'],
+			['line-progress'],
+			0,
+			paceGradientColour(stops[0].t),
+			...pairs,
+			1,
+			paceGradientColour(stops[stops.length - 1].t),
+		] as LineGradient;
+	}
+
+	$effect(() => {
+		const visibility = colorByPace ? 'visible' : 'none';
+		if (map?.getLayer('trace-pace-line')) {
+			map.setLayoutProperty('trace-pace-line', 'visibility', visibility);
+		}
+	});
 	let trackBounds: maplibregl.LngLatBoundsLike | undefined;
+	/// The `track` array the four snapshots below were taken from. Compared by
+	/// IDENTITY: every caller holds the value in `$state` or `$derived`, both
+	/// of which keep it stable until the value really changes.
+	let renderedTrack: TrackPoint[] | null = null;
 
-	onMount(() => {
-		// Honour the global banner choice on every surface: if the user
-		// has already accepted the cookie banner, auto-init the map
-		// (consent is on record) and skip the per-view "Load map" tap.
-		if (hasAcceptedConsent()) mapConsented = true;
-		trackCoords = track.map((p) => [p.lng, p.lat]);
-
+	/// Take every snapshot the map derives from `track`. `track` is a PROP and
+	/// it changes after mount -- /runs/[id] draws the recorded line and swaps
+	/// in the map-matched one when the second gzipped object lands -- and all
+	/// four of these used to be computed once, at mount. The drawn line, the
+	/// camera and the tap index therefore stayed on the recorded track forever
+	/// while `buildSegment` read `track[i]` reactively, so the segment card
+	/// mixed one track's indices with another's values, and returned null
+	/// outright whenever the two differed in length (decisions § 1402).
+	function snapshotTrack(): void {
+		trackCoords = track.map(lineLngLat);
+		paceStops = activity ? paceGradientStops(track) : [];
+		trackBounds = undefined;
 		if (trackCoords.length > 0) {
 			// Reduce, don't spread: `Math.min(...lngs)` throws RangeError past
 			// ~110k args and an ultra track is ~180k points.
@@ -733,9 +701,42 @@
 				];
 			}
 		}
+		cumulativeM = buildCumulative(trackCoords);
+		trackIndex = buildTrackIndex(trackCoords);
+		renderedTrack = track;
+	}
+
+	onMount(() => {
+		snapshotTrack();
 
 		if (!mapConsented) return; // Wait for the user to tap "Load map".
 		initMap();
+	});
+
+	// Adopt a track that changed after mount. Declared after `onMount` so it
+	// cannot run before the first snapshot, and gated on identity so an
+	// unrelated re-render never rebuilds a 180k-point index or yanks the
+	// camera. /runs/[id] is the caller this exists for: it draws the recorded
+	// line and swaps in the map-matched one a beat later, and its own comment
+	// has claimed "the map will swap to the matched line once it lands" since
+	// the day the matched line shipped (decisions § 1402).
+	$effect(() => {
+		const next = track;
+		if (!map || next === renderedTrack) return;
+		// The replay walks a copy of the old coordinates and paints into a
+		// source this is about to remove.
+		if (animating) stopAnimation();
+		// The selection was expressed as indices into the OLD track; there is
+		// no honest way to carry it across.
+		segmentMarker?.remove();
+		segmentMarker = undefined;
+		snapshotTrack();
+		// `data-map-idle` means "settled on the track being shown", so it has
+		// to come off until the new camera has settled -- a pointer-driven
+		// test waiting on it would otherwise read a position mid-animation.
+		mapContainer?.removeAttribute('data-map-idle');
+		map.once('idle', () => mapContainer?.setAttribute('data-map-idle', 'true'));
+		applyOverlayStep(overlayDraw.trackChanged());
 	});
 
 	function loadMapNow() {
@@ -748,6 +749,10 @@
 
 	function initMap() {
 		if (map || !mapContainer) return;
+		// Re-taken rather than trusted: `mapConsented` can flip long after
+		// mount, and the track may have changed in between. Guarded so the
+		// ordinary path does not walk a 180k-point track twice.
+		if (renderedTrack !== track) snapshotTrack();
 		map = new maplibregl.Map({
 			container: mapContainer,
 			style: mapStyleUrl(PUBLIC_MAPTILER_KEY, prefersDark),
@@ -756,15 +761,12 @@
 		});
 		// Resize-on-container-change wiring — catches the
 		// flex-mismeasure-at-mount + SplitPane-drag bugs. See
-		// `$lib/routes/map_resize`.
+		// `#lib/routes/map_resize`.
 		stopResizeWatch = watchMapResize(mapContainer, map);
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-		cumulativeM = buildCumulative(trackCoords);
-		trackIndex = buildTrackIndex(trackCoords);
-
-		map.on('load', () => addOverlays(trackCoords, trackBounds, true));
+		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
 		// The entrance fitBounds (inside the load handler above) animates the
 		// camera, so a pin's screen position keeps moving for a beat after it
 		// first renders. `idle` fires only once tiles are loaded AND no camera
@@ -797,7 +799,7 @@
 				if (!onSegmentSelect) return;
 				if (trackCoords.length < 2) return;
 				const idx = nearestIndex(trackIndex, e.lngLat.lng, e.lngLat.lat);
-				const seg = buildSegment(idx);
+				const seg = buildSegment(track, cumulativeM, idx);
 				renderSegmentHighlight(seg);
 				onSegmentSelect(seg);
 			});
@@ -963,8 +965,9 @@
 		const next = getMapStyle();
 		if (!map || next === currentStyle) return;
 		currentStyle = next;
+		overlayDraw.styleSwapped();
 		map.setStyle(mapStyleUrl(PUBLIC_MAPTILER_KEY, prefersDark));
-		map.once('style.load', () => addOverlays(trackCoords, trackBounds, false));
+		map.once('style.load', () => applyOverlayStep(overlayDraw.styleReady(false)));
 	});
 
 	onDestroy(() => {
@@ -1006,6 +1009,28 @@
 				<span class="material-symbols">{animating ? 'stop' : 'play_arrow'}</span>
 				{animating ? m('runMap.stop') : m('runMap.replay')}
 			</button>
+		{/if}
+		{#if activity && paceStops.length > 0}
+			<div class="pace-control">
+				<button
+					type="button"
+					class="pace-toggle"
+					aria-pressed={colorByPace}
+					onclick={() => (colorByPace = !colorByPace)}
+				>
+					{m('runMap.paceColours')}
+				</button>
+				{#if colorByPace}
+					<div class="pace-legend">
+						<span>{m('runMap.paceSlower')}</span>
+						<span
+							class="pace-legend-bar"
+							style:background={`linear-gradient(to right, ${PACE_GRADIENT_RAMP.join(', ')})`}
+						></span>
+						<span>{m('runMap.paceFaster')}</span>
+					</div>
+				{/if}
+			</div>
 		{/if}
 	{:else}
 		<!--
@@ -1082,6 +1107,53 @@
 		font-weight: 600;
 		cursor: pointer;
 		color: var(--color-text);
+	}
+
+	.pace-control {
+		position: absolute;
+		top: 12px;
+		inset-inline-start: 12px;
+		z-index: 10;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
+	}
+
+	.pace-toggle {
+		padding: 6px 12px;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		color: var(--color-text);
+	}
+
+	.pace-toggle[aria-pressed='true'] {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+
+	.pace-legend {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px;
+		background: var(--color-surface);
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		font-size: 0.75rem;
+		color: var(--color-text);
+	}
+
+	.pace-legend-bar {
+		width: 72px;
+		height: 6px;
+		border-radius: 3px;
 	}
 
 	.replay-btn:hover {

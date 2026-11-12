@@ -21,8 +21,11 @@
 
 import type { LambdaFunctionURLEvent, LambdaFunctionURLResult } from 'aws-lambda';
 import { handleOsrmProxy } from '../../../src/lib/routes/osrm_proxy/handler';
+import { methodRefusal } from '../../../src/lib/core/method_gate';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 const PATH_PREFIX = '/api/routes/osrm';
+const ALLOWED_METHODS = ['GET'] as const;
 
 function json(statusCode: number, body: unknown): LambdaFunctionURLResult {
 	return {
@@ -39,9 +42,12 @@ export const handler = async (
 	// unexpected throw becomes a generic 503 to the wire and a tagged operator
 	// log line, never the runtime's default error envelope.
 	try {
-		if (event.requestContext.http.method !== 'GET') {
-			return json(405, { error: 'method not allowed' });
-		}
+		// This behaviour's CloudFront allowed_methods include POST/PUT/PATCH/
+		// DELETE, so a non-GET really does reach this Lambda rather than being
+		// refused at the edge. Read without `?.` so a malformed event throws
+		// into the outer envelope rather than resolving to a 405.
+		const refused = methodRefusal(event.requestContext.http.method, ALLOWED_METHODS);
+		if (refused) return refused;
 		const rawPath = event.rawPath ?? '';
 		if (!rawPath.startsWith(PATH_PREFIX)) {
 			return json(400, { error: 'unsupported OSRM path' });
@@ -75,6 +81,7 @@ export const handler = async (
 			message: e instanceof Error ? e.message : String(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
+		await reportException('osrm-proxy', e);
 		return json(503, { error: 'waypoint routing is temporarily unavailable' });
 	}
 };

@@ -7,10 +7,11 @@
 // `apps/web/src/lib/routes/generate/handler.ts` and is also wrapped (for dev
 // only) by the SvelteKit `+server.ts`. This file:
 //   1. Parses the Function-URL event body (string, maybe base64).
-//   2. Reads GRAPH_CYCLE_URL + GRAPH_CYCLE_API_KEY (graph-cycle sidecar, tried
-//      FIRST) and GRAPHHOPPER_URL + GRAPHHOPPER_API_KEY (round_trip fallback)
-//      from process.env (Terraform sets them), plus PUBLIC_SUPABASE_URL +
-//      PUBLIC_SUPABASE_ANON_KEY for the Pro gate's is_pro() check.
+//   2. Reads the two non-secret engine URLs (GRAPH_CYCLE_URL, tried FIRST, and
+//      GRAPHHOPPER_URL) plus PUBLIC_SUPABASE_URL + PUBLIC_SUPABASE_ANON_KEY for
+//      the Pro gate's is_pro() check from process.env, and the two X-Engine-Key
+//      credentials from the KMS ciphertext bag `loadSecrets()` decrypts once per
+//      container (decisions § 1671).
 //   3. Calls the shared core, which verifies the caller's tier (server-side
 //      generation is a Pro perk — decisions §204; `bypassPaywallEnabled` is
 //      hardcoded false here, exactly like the coach Lambda), then searches the
@@ -23,12 +24,16 @@
 // GeoJSON line, so the simple LambdaFunctionURLResult shape is enough.
 
 import type { LambdaFunctionURLEvent, LambdaFunctionURLResult } from 'aws-lambda';
-import { Buffer } from 'node:buffer';
-import { handleGenerate } from '../../../src/lib/routes/generate/handler';
+import {
+	GENERATE_BODY_LIMIT_BYTES,
+	handleGenerate,
+} from '../../../src/lib/routes/generate/handler';
+import { decodeLambdaBody } from '../../../src/lib/coach/body';
+import { methodRefusal } from '../../../src/lib/core/method_gate';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
+import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
 
-// Bound on the inbound body — only a coordinate + distance + optional seed
-// count, a few dozen bytes. Mirrors the dev wrapper's cap.
-const BODY_LIMIT_BYTES = 4 * 1024;
+const ALLOWED_METHODS = ['POST'] as const;
 
 function json(statusCode: number, body: unknown): LambdaFunctionURLResult {
 	return {
@@ -45,18 +50,46 @@ export const handler = async (
 	// unexpected throw becomes a generic 503 to the wire and a tagged operator
 	// log line, never the runtime's default error envelope.
 	try {
-		const raw = event.body ?? '';
-		const decoded = event.isBase64Encoded === true ? Buffer.from(raw, 'base64') : Buffer.from(raw, 'utf-8');
-		if (decoded.byteLength > BODY_LIMIT_BYTES) {
-			return json(413, { error: 'request body too large' });
+		// POST only, mirroring the osrm-proxy Lambda's GET-only gate. The dev
+		// wrapper (`src/routes/api/routes/generate/+server.ts`) exports `POST`
+		// alone, so SvelteKit answers 405 to anything else while this — the
+		// surface that runs in production — ran the full Pro-gated engine call
+		// on any method (decisions § 896). Read without `?.` so a malformed
+		// event throws into the outer envelope rather than resolving to a 405.
+		const refused = methodRefusal(event.requestContext.http.method, ALLOWED_METHODS);
+		if (refused) return refused;
+		// `decodeLambdaBody`, not a private Buffer + byteLength pair: the coach's
+		// two wrappers once diverged on exactly that, a UTF-16 `length` check
+		// against a byte cap, and let a multi-byte payload roughly 3x the cap
+		// through. One decoder, one cap, both wrappers (decisions § 968).
+		const decoded = decodeLambdaBody(
+			event.body,
+			event.isBase64Encoded === true,
+			GENERATE_BODY_LIMIT_BYTES,
+		);
+		if (!decoded.ok) {
+			// The shared sentinel says `request too large`; this endpoint has
+			// always answered `request body too large` and its own test pins it.
+			return json(
+				decoded.status,
+				{ error: decoded.status === 413 ? 'request body too large' : decoded.error },
+			);
 		}
 		let rawBody: unknown;
 		try {
-			const text = decoded.toString('utf-8');
-			rawBody = text.length === 0 ? null : JSON.parse(text);
+			rawBody = decoded.body.length === 0 ? null : JSON.parse(decoded.body);
 		} catch {
 			return json(400, { error: 'invalid JSON' });
 		}
+
+		// The two engine keys live in the KMS ciphertext bag, not in this
+		// function's environment (decisions § 1671). A decrypt failure — or an
+		// env with no bag at all — throws into the outer envelope and answers
+		// 503. That is a deliberate change of direction from the old behaviour,
+		// where absent keys meant "send no X-Engine-Key and let the engine 403
+		// us into the fallback": a secret this function cannot read is a
+		// misconfiguration, and degrading quietly is what hid it.
+		const secrets = await loadSecrets();
 
 		const result = await handleGenerate(
 			event.headers?.['x-supabase-authorization'] ??
@@ -67,9 +100,9 @@ export const handler = async (
 				// graph_cycle sidecar — the v3 graph-cycle generator, tried FIRST.
 				// Server-only env, parity with the SvelteKit wrapper.
 				graphCycleUrl: process.env.GRAPH_CYCLE_URL,
-				graphCycleApiKey: process.env.GRAPH_CYCLE_API_KEY,
+				graphCycleApiKey: secrets.GRAPH_CYCLE_API_KEY,
 				graphhopperUrl: process.env.GRAPHHOPPER_URL,
-				graphhopperApiKey: process.env.GRAPHHOPPER_API_KEY,
+				graphhopperApiKey: secrets.GRAPHHOPPER_API_KEY,
 				// Missing envs fail closed inside the handler (500 tier-check
 				// error), so a partial Terraform apply can't skip the gate.
 				publicSupabaseUrl: process.env.PUBLIC_SUPABASE_URL ?? '',
@@ -91,6 +124,7 @@ export const handler = async (
 			message: e instanceof Error ? e.message : String(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
+		await reportException('generate-route', e);
 		return json(503, { error: 'route generation is temporarily unavailable' });
 	}
 };

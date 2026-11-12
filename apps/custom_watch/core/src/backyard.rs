@@ -102,6 +102,28 @@ pub struct BackyardView {
     pub warning_min: u8,
 }
 
+/// How long after the bell a corral press can still be the runner walking in
+/// from the loop the backstop banked — equivalently, the shortest time in which
+/// a *new* loop could have been run, since those are the same question asked
+/// from two sides.
+///
+/// Sized as the second: 6.706 km in fifteen minutes is 2:14/km, faster than the
+/// 10 km world record, so no press this soon can be a loop nobody has counted
+/// yet. The old five minutes was sized only as "a late walk-in", which left the
+/// ten minutes after it counting a bell-banked loop a second time — the runner
+/// crossing at bell+7 min and pressing as they always do added a loop they had
+/// not run.
+pub const BANK_CONSUME_WINDOW_S: u32 = 900;
+
+/// How far into the window the clock must step back before it is a bell rather
+/// than a clock.
+///
+/// Half a window. The fold runs at 1 Hz for as long as a run is live, so a real
+/// rollover always presents as a drop of nearly [`BELL_INTERVAL_S`] and no two
+/// bells can hide between two folds; anything smaller is the local-time
+/// extrapolation being re-disciplined, which no runner should be eliminated by.
+pub const BELL_ROLLOVER_MIN_DROP_S: u32 = BELL_INTERVAL_S / 2;
+
 /// The mode's state machine. Armed from the idle settings menu, so a run
 /// starts either wholly inside the mode or wholly outside it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -117,13 +139,34 @@ pub struct Backyard {
     distance_at_close_m: f64,
     last_return: Option<Return>,
     /// Seconds into the bell window at the last fold. A new window is
-    /// detected by this going backwards, which needs no date and cannot be
-    /// confused by midnight — a backyard runs for days.
+    /// detected by this going backwards by most of a window, which needs no
+    /// date and cannot be confused by midnight — a backyard runs for days.
     since_bell_s: u32,
     /// Whether any local clock has ever been folded in.
     clock_seen: bool,
     /// A loop has already closed inside the current window.
     closed_this_window: bool,
+    /// The bell has already banked a loop the runner is still walking in from.
+    ///
+    /// `on_clock` clears `closed_this_window` FOR THE NEW WINDOW before the
+    /// recorder calls `on_bell_lap`, so the backstop's loop left the new window
+    /// looking un-closed. A runner who crossed a few seconds after the bell and
+    /// pressed BTN5 as they always do then counted the SAME physical loop
+    /// twice, and the learned loop length halved with it — which then poisons
+    /// `return_margin_s` for every later loop.
+    ///
+    /// Setting `closed_this_window` in `on_bell_lap` instead would be wrong: it
+    /// would read as "the runner closed this window" at the next rollover and
+    /// disarm the backstop for the window they are actually out on.
+    bell_banked_pending: bool,
+    /// A bank has already been walked in from in THIS window, so a repeat press
+    /// inside the consume window is a fat finger, not a second loop.
+    ///
+    /// `closed_this_window` cannot serve here: the consumed press does not close
+    /// the current window (the runner is about to run it, and that loop's own
+    /// return must still count), so the ordinary double-press guard is not armed
+    /// during exactly the seconds a double press is most likely.
+    bank_consumed_this_window: bool,
     warned_min: u8,
     warning_seq: u16,
 }
@@ -145,6 +188,8 @@ impl Backyard {
             since_bell_s: 0,
             clock_seen: false,
             closed_this_window: false,
+            bell_banked_pending: false,
+            bank_consumed_this_window: false,
             warned_min: 0,
             warning_seq: 0,
         }
@@ -196,9 +241,19 @@ impl Backyard {
     ///
     /// Only the modulus of `local_tod_s` matters, so it needs no date and
     /// survives midnight, a leap second, and a multi-day race. A window is
-    /// recognised by that modulus going backwards, which is sound because the
-    /// recorder folds this at 1 Hz for as long as a run is live (through both
-    /// pause kinds) — no window can pass unobserved.
+    /// recognised by that modulus dropping by at least
+    /// [`BELL_ROLLOVER_MIN_DROP_S`], which is sound because the recorder folds
+    /// this at 1 Hz for as long as a run is live (through both pause kinds) —
+    /// no window can pass unobserved, so a real rollover always drops by nearly
+    /// a whole window.
+    ///
+    /// The size of the drop is load-bearing, not decoration. `local_tod_s` is
+    /// an extrapolation off the last receiver clock, so it retreats a second
+    /// whenever the oscillator is re-disciplined — about seven times over a
+    /// 100-hour backyard at 20 ppm. Reading *any* backward step as a bell rang
+    /// a phantom one: it cleared `closed_this_window`, so the return the runner
+    /// had already marked was forgotten and the real bell banked the same
+    /// physical loop a second time, and it re-armed the whistles.
     pub fn on_clock(&mut self, local_tod_s: u32) -> bool {
         if !self.armed {
             return false;
@@ -207,16 +262,25 @@ impl Backyard {
         let mut bell_lap_due = false;
         if !self.clock_seen {
             self.clock_seen = true;
-        } else if since < self.since_bell_s {
+            self.since_bell_s = since;
+        } else if self.since_bell_s.saturating_sub(since) >= BELL_ROLLOVER_MIN_DROP_S {
             // The window rolled over: the bell rang between the last fold and
             // this one.
             bell_lap_due = !self.closed_this_window;
             self.closed_this_window = false;
+            // A bank that was never walked in from must not swallow a return in
+            // the window after next.
+            self.bell_banked_pending = false;
+            self.bank_consumed_this_window = false;
             self.warned_min = 0;
+            self.since_bell_s = since;
+        } else {
+            // Held monotonic inside the window: a clock that stepped back a
+            // second is not a countdown that gained one.
+            self.since_bell_s = self.since_bell_s.max(since);
         }
-        self.since_bell_s = since;
 
-        let to_bell = BELL_INTERVAL_S - since;
+        let to_bell = BELL_INTERVAL_S - self.since_bell_s;
         // Tightest level first (the array reads longest-first for the reader),
         // so a fold that has passed several announces the one it reached.
         let due = BELL_WARNING_MIN
@@ -239,6 +303,35 @@ impl Backyard {
         if !self.armed {
             return;
         }
+        // A bank is only "walked in from" for the few minutes AFTER the bell.
+        //
+        // Without the time bound the consumption was open for the whole hour, so
+        // one press the watch never saw poisoned the rest of the race: the bell
+        // banks loop N, the runner runs loop N+1 in full and presses at +55 min,
+        // and that press — their own, for a loop the bell never counted — was
+        // swallowed as "walking in from the bank". `closed_this_window` then
+        // stayed false, the next bell banked again and re-armed the flag, and
+        // the latch sustained itself. A loop cannot be run inside
+        // BANK_CONSUME_WINDOW_S, so a press this soon can only be the previous
+        // loop arriving late.
+        let within_consume_window = self.since_bell_s <= BANK_CONSUME_WINDOW_S;
+        if self.bank_consumed_this_window && within_consume_window {
+            // Repeat press seconds after the one that consumed the bank.
+            return;
+        }
+        if self.bell_banked_pending && within_consume_window {
+            // This press is the runner walking in from the loop the bell
+            // already banked. Record the return, but do NOT count it again —
+            // and leave `closed_this_window` alone, because the loop they are
+            // now starting is still open and its own return must still count.
+            self.bell_banked_pending = false;
+            self.bank_consumed_this_window = true;
+            self.last_return = Some(Return {
+                uptime_s,
+                distance_m,
+            });
+            return;
+        }
         self.close_loop(distance_m);
         self.last_return = Some(Return {
             uptime_s,
@@ -255,6 +348,7 @@ impl Backyard {
             return;
         }
         self.close_loop(distance_m);
+        self.bell_banked_pending = true;
     }
 
     fn close_loop(&mut self, distance_m: f64) {
@@ -341,6 +435,15 @@ mod tests {
         b
     }
 
+    /// Fold across a bell the way the recorder does — at 1 Hz, so the window's
+    /// modulus drops by nearly a whole window rather than by a handful of
+    /// seconds. `into_s` is seconds into the new window; the return is the
+    /// backstop verdict for the window that just ended.
+    fn roll(b: &mut Backyard, hour: u32, into_s: u32) -> bool {
+        b.on_clock(hour * H - 1);
+        b.on_clock(hour * H + into_s)
+    }
+
     #[test]
     fn an_unarmed_mode_ignores_every_feed() {
         let mut b = Backyard::new();
@@ -423,6 +526,208 @@ mod tests {
     }
 
     #[test]
+    fn a_press_just_after_the_bell_is_the_same_loop_not_a_second() {
+        // The runner is still out when the bell sounds, so the backstop banks
+        // the loop; they cross 29 s later and press BTN5 as they always do.
+        // That is ONE physical loop.
+        //
+        // on_clock clears closed_this_window FOR THE NEW WINDOW before the
+        // recorder calls on_bell_lap, so the banked loop used to leave the new
+        // window looking un-closed and the press counted it again — doubling
+        // the one number the format is scored on, and halving the learned loop
+        // length with it, which then poisons return_margin_s for every later
+        // loop.
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        assert!(roll(&mut b, 10, 1), "runner still out: the backstop is due");
+        b.on_bell_lap(6_706.0);
+        assert_eq!(b.view(6_706.0, None, 3_600).loops, 1);
+
+        b.on_corral_return(3_629, 6_712.0);
+        let v = b.view(6_712.0, None, 3_629);
+        assert_eq!(v.loops, 1, "the bell already banked this loop");
+        assert_eq!(
+            v.loop_distance_m,
+            Some(6_706.0),
+            "and the learned loop is not halved"
+        );
+        assert!(v.in_corral, "the return still registers");
+    }
+
+    #[test]
+    fn a_one_second_clock_retreat_is_not_a_bell() {
+        // local_tod_s is extrapolated off the last receiver clock, so it steps
+        // back a second whenever the oscillator is re-disciplined — about seven
+        // times over a 100-hour backyard at 20 ppm. Reading that as a bell
+        // forgot the return the runner had already marked, and the real bell
+        // then banked the same physical loop a second time.
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        b.on_corral_return(100, 6_706.0);
+        assert_eq!(b.view(6_706.0, None, 100).loops, 1);
+
+        let before = b.view(6_706.0, None, 100).to_bell_s;
+        b.on_clock(9 * H + 1_800);
+        b.on_clock(9 * H + 1_799);
+        assert_eq!(
+            b.view(6_706.0, None, 1_799).loops,
+            1,
+            "a retreating clock rang a phantom bell"
+        );
+        assert!(
+            b.view(6_706.0, None, 1_799).to_bell_s < before,
+            "and the countdown must not gain a second back"
+        );
+
+        // The real bell now stands down, because the runner did close the
+        // window — which the phantom had erased.
+        assert!(
+            !roll(&mut b, 10, 1),
+            "the marked return survived the retreat"
+        );
+        assert_eq!(b.view(6_706.0, None, 3_601).loops, 1);
+    }
+
+    #[test]
+    fn a_late_walk_in_from_a_banked_loop_is_never_a_second_loop() {
+        // bell-then-press, past the old five-minute bound. The runner crosses
+        // seven minutes after the bell that banked their loop and presses as
+        // they always do. They cannot have run a 6.7 km loop in seven minutes,
+        // so this is the banked loop arriving late — the guard has to be sized
+        // as "the fastest a loop could be run", not as "how long a walk-in
+        // takes".
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        assert!(roll(&mut b, 10, 1));
+        b.on_bell_lap(6_706.0);
+        assert_eq!(b.view(6_706.0, None, 3_600).loops, 1);
+
+        b.on_clock(10 * H + 7 * 60);
+        b.on_corral_return(4_020, 6_760.0);
+        let v = b.view(6_760.0, None, 4_020);
+        assert_eq!(v.loops, 1, "a loop nobody ran was counted");
+        assert_eq!(
+            v.loop_distance_m,
+            Some(6_706.0),
+            "and the learned loop is not halved"
+        );
+        assert!(v.in_corral, "the return still registers");
+
+        // ...while the loop they go on to run still counts on its own return.
+        b.on_clock(10 * H + 55 * 60);
+        b.on_corral_return(6_900, 13_418.0);
+        assert_eq!(b.view(13_418.0, None, 6_900).loops, 2);
+    }
+
+    #[test]
+    fn the_loop_after_a_banked_one_still_counts_on_its_own_return() {
+        // The consumed bank must not stand in for the NEXT loop's close, or a
+        // runner who takes the bell backstop once would stop being counted.
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        assert!(roll(&mut b, 10, 1));
+        b.on_bell_lap(6_706.0);
+        b.on_corral_return(3_629, 6_712.0); // walks in from the banked loop
+        assert_eq!(b.view(6_712.0, None, 3_629).loops, 1);
+
+        // ...then runs loop 2 and returns inside its own window.
+        b.on_clock(10 * H + 55 * 60);
+        b.on_corral_return(6_900, 13_418.0);
+        assert_eq!(b.view(13_418.0, None, 6_900).loops, 2);
+
+        // The runner closed that window themselves, so the backstop stands down.
+        assert!(!roll(&mut b, 11, 1), "no backstop after a real return");
+    }
+
+    #[test]
+    fn a_bank_nobody_walked_in_from_does_not_swallow_a_later_return() {
+        // The pending bank is cleared at the next rollover: if the runner never
+        // pressed for the banked loop, a return two windows later is their own
+        // and must count.
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        assert!(roll(&mut b, 10, 1));
+        b.on_bell_lap(6_706.0);
+        assert_eq!(b.view(6_706.0, None, 3_600).loops, 1);
+
+        // No press at all this window; the bell banks again.
+        b.on_clock(10 * H + 30 * 60);
+        assert!(roll(&mut b, 11, 1));
+        b.on_bell_lap(13_412.0);
+        assert_eq!(b.view(13_412.0, None, 7_200).loops, 2);
+
+        // Now they press, in the third window.
+        b.on_corral_return(7_230, 13_420.0);
+        assert_eq!(
+            b.view(13_420.0, None, 7_230).loops,
+            2,
+            "the second bank is the loop they walked in from"
+        );
+    }
+
+    #[test]
+    fn a_missed_press_does_not_swallow_the_next_loops_own_return() {
+        // The hole the unbounded bank left. Loop 1's press never registers, so
+        // the bell banks it. The runner then runs loop 2 IN FULL and presses at
+        // the end of it — their own press, for a loop the bell never counted.
+        // With no time bound that press was consumed as "walking in from the
+        // bank", closed_this_window stayed false, the next bell banked again and
+        // re-armed the flag, and the latch sustained itself: the runner's presses
+        // stopped counting for the rest of the race.
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        b.on_clock(9 * H + 30 * 60);
+        assert!(roll(&mut b, 10, 1), "no press in window 1: backstop is due");
+        b.on_bell_lap(6_706.0);
+        assert_eq!(b.view(6_706.0, None, 3_600).loops, 1);
+
+        // Loop 2, run in full, pressed 55 minutes after the bell.
+        b.on_clock(10 * H + 55 * 60);
+        b.on_corral_return(6_900, 13_412.0);
+        assert_eq!(
+            b.view(13_412.0, None, 6_900).loops,
+            2,
+            "a press an hour after the bell is a new loop, not the banked one"
+        );
+
+        // ...and because it closed the window, the backstop stands down.
+        assert!(
+            !roll(&mut b, 11, 1),
+            "the runner closed window 2 themselves"
+        );
+    }
+
+    #[test]
+    fn a_double_press_right_after_consuming_a_bank_is_not_a_loop() {
+        // The module promises "a fat-fingered double press must not corrupt the
+        // one number the whole format is scored on". The consumed press does not
+        // close the current window — the runner is about to run it — so the
+        // ordinary closed_this_window guard is not armed during exactly the
+        // seconds a double press is most likely.
+        let mut b = armed();
+        b.on_clock(9 * H + 5);
+        assert!(roll(&mut b, 10, 1));
+        b.on_bell_lap(6_706.0);
+        b.on_corral_return(3_629, 6_712.0); // walks in from the bank
+        assert_eq!(b.view(6_712.0, None, 3_629).loops, 1);
+
+        b.on_clock(10 * H + 40);
+        b.on_corral_return(3_640, 6_713.0); // fat finger, 11 s later
+        let v = b.view(6_713.0, None, 3_640);
+        assert_eq!(v.loops, 1, "a repeat press is not a second loop");
+        assert_eq!(
+            v.loop_distance_m,
+            Some(6_706.0),
+            "and the learned loop is not halved"
+        );
+
+        // The loop they are now running still counts on its own return.
+        b.on_clock(10 * H + 55 * 60);
+        b.on_corral_return(6_900, 13_418.0);
+        assert_eq!(b.view(13_418.0, None, 6_900).loops, 2);
+    }
+
+    #[test]
     fn the_corral_state_flips_on_the_bell_with_no_event() {
         let mut b = armed();
         b.on_clock(9 * H + 52 * 60);
@@ -454,6 +759,7 @@ mod tests {
         );
         b.on_corral_return(3_100, 6_700.0);
         assert_eq!(b.view(6_700.0, None, 3_100).loop_distance_m, Some(6_700.0));
+        roll(&mut b, 10, 1);
         b.on_clock(10 * H + 50 * 60);
         b.on_corral_return(6_800, 13_420.0);
         // The mean over both loops, so one long GPS loop does not become the

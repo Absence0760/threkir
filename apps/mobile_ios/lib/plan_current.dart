@@ -1,0 +1,166 @@
+/// Which of a runner's active training plans is "current", and which is
+/// queued next.
+///
+/// A runner may hold several `status = 'active'` plans as long as their
+/// inclusive `[start_date, end_date]` windows do not overlap (the
+/// `training_plans_active_no_overlap` exclusion constraint), so a marathon
+/// block ending Nov 15 can have an ultra block starting Nov 16 queued behind
+/// it. Dates are ISO `yyyy-mm-dd` strings, which order lexically the same as
+/// they do chronologically, so no time zone enters the comparison.
+///
+/// Dart twin of `apps/web/src/lib/training/plan_current.ts` — keep the
+/// selection rules, tie-breaks, inclusive boundaries, and test counts in
+/// lockstep.
+library;
+
+class CurrentPlanPick<T> {
+  /// The plan whose window covers today; else the one that ended most
+  /// recently; else null.
+  final T? current;
+
+  /// The plan with the earliest start after today. Never [current], which
+  /// always starts on or before today.
+  final T? upcoming;
+
+  const CurrentPlanPick({required this.current, required this.upcoming});
+}
+
+/// Ties keep the earlier element, as the TS twin does; the exclusion
+/// constraint makes them impossible among active rows.
+CurrentPlanPick<T> pickCurrentPlan<T>(
+  List<T> activePlans,
+  String todayIso, {
+  required String Function(T plan) start,
+  required String Function(T plan) end,
+}) {
+  T? covering;
+  T? latestEnded;
+  for (final p in activePlans) {
+    final s = start(p);
+    final e = end(p);
+    if (s.compareTo(todayIso) <= 0 && e.compareTo(todayIso) >= 0) {
+      covering ??= p;
+    } else if (e.compareTo(todayIso) < 0) {
+      if (latestEnded == null || e.compareTo(end(latestEnded)) > 0) {
+        latestEnded = p;
+      }
+    }
+  }
+  final current = covering ?? latestEnded;
+
+  T? upcoming;
+  for (final p in activePlans) {
+    final s = start(p);
+    if (s.compareTo(todayIso) <= 0) continue;
+    if (upcoming == null || s.compareTo(start(upcoming)) < 0) {
+      upcoming = p;
+    }
+  }
+  return CurrentPlanPick(current: current, upcoming: upcoming);
+}
+
+/// [anchor] and the plans in [plans] that start after it ends, in date order:
+/// the blocks chained behind it (decisions § 2008). Active plans cannot
+/// overlap, so among active plans these are exactly the ones queued after the
+/// anchor; a plan that starts inside the anchor's window is left out, which
+/// keeps the result non-overlapping when the anchor is not itself active.
+/// Ties on start keep the input order.
+List<T> plansFollowing<T>(
+  T anchor,
+  List<T> plans, {
+  required String Function(T plan) start,
+  required String Function(T plan) end,
+}) {
+  final anchorEnd = end(anchor);
+  final later = [
+    for (var i = 0; i < plans.length; i++)
+      if (start(plans[i]).compareTo(anchorEnd) > 0) (i, plans[i]),
+  ]..sort((a, b) {
+      final byStart = start(a.$2).compareTo(start(b.$2));
+      return byStart != 0 ? byStart : a.$1 - b.$1;
+    });
+  return [anchor, for (final e in later) e.$2];
+}
+
+/// The runner's season as the Coach reads it: the plan [pickCurrentPlan] names
+/// (current, else upcoming) and the plans chained after it. Empty with no
+/// active plan.
+List<T> currentSeason<T>(
+  List<T> activePlans,
+  String todayIso, {
+  required String Function(T plan) start,
+  required String Function(T plan) end,
+}) {
+  final pick = pickCurrentPlan(activePlans, todayIso, start: start, end: end);
+  final anchor = pick.current ?? pick.upcoming;
+  if (anchor == null) return [];
+  return plansFollowing(anchor, activePlans, start: start, end: end);
+}
+
+/// The plans whose inclusive window shares at least one day with
+/// `[startIso, endIso]`. Two windows that share only a boundary day overlap;
+/// a window starting the day after another ends does not.
+List<T> overlappingPlans<T>(
+  List<T> plans,
+  String startIso,
+  String endIso, {
+  required String Function(T plan) start,
+  required String Function(T plan) end,
+}) =>
+    [
+      for (final p in plans)
+        if (start(p).compareTo(endIso) <= 0 && end(p).compareTo(startIso) >= 0)
+          p,
+    ];
+
+/// An `active` plan whose last day is behind [todayIso] (the runner's local
+/// day): its dates have run out but nothing has written `completed`, which
+/// only the runner confirming "Finish plan" does. A paused, completed or
+/// abandoned plan is never finished in this sense, and the end day itself is
+/// still inside the plan.
+bool isPlanFinished({
+  required String status,
+  required String endIso,
+  required String todayIso,
+}) =>
+    status == 'active' && endIso.compareTo(todayIso) < 0;
+
+
+/// Where a planned workout stands against the runner's local day. `done` and
+/// `skipped` are written facts; `missed` is derived, never stored: a past,
+/// non-rest workout that is neither done nor skipped once its day has ended in
+/// the runner's time zone. The scheduled day itself is never missed, so a
+/// workout still due tonight reads `upcoming`. Done wins over skipped, which
+/// the write layer keeps exclusive anyway.
+enum PlanWorkoutStatus { done, skipped, missed, upcoming, rest }
+
+PlanWorkoutStatus planWorkoutStatus({
+  required String scheduledIso,
+  required String kind,
+  required bool completed,
+  required bool skipped,
+  required String todayIso,
+}) {
+  if (completed) return PlanWorkoutStatus.done;
+  if (skipped) return PlanWorkoutStatus.skipped;
+  if (kind == 'rest') return PlanWorkoutStatus.rest;
+  return scheduledIso.compareTo(todayIso) < 0
+      ? PlanWorkoutStatus.missed
+      : PlanWorkoutStatus.upcoming;
+}
+
+bool isWorkoutMissed({
+  required String scheduledIso,
+  required String kind,
+  required bool completed,
+  required bool skipped,
+  required String todayIso,
+}) =>
+    planWorkoutStatus(
+      scheduledIso: scheduledIso,
+      kind: kind,
+      completed: completed,
+      skipped: skipped,
+      todayIso: todayIso,
+    ) ==
+    PlanWorkoutStatus.missed;

@@ -47,6 +47,10 @@ class RunNotificationBridge(
     private var dartReady = false
     private var pendingAction: String? = null
 
+    // Where the notification's self-ticking clock counts up from, held across
+    // reposts so the 1 Hz updates cannot jitter it. See RunClockAnchor.
+    private var clockAnchorMs: Long? = null
+
     init {
         instance = this
         methodChannel.setMethodCallHandler(this)
@@ -84,7 +88,9 @@ class RunNotificationBridge(
                 val text = args["text"] as? String ?: ""
                 val bigText = args["big_text"] as? String
                 val paused = args["paused"] as? Boolean ?: false
-                post(title, text, bigText, paused)
+                val elapsedMs = (args["elapsed_ms"] as? Number)?.toLong()
+                val elapsedText = args["elapsed_text"] as? String
+                post(title, text, bigText, paused, elapsedMs, elapsedText)
                 result.success(null)
             }
             "update_split" -> {
@@ -118,6 +124,7 @@ class RunNotificationBridge(
                 val nm = NotificationManagerCompat.from(context)
                 nm.cancel(GEOLOCATOR_NOTIFICATION_ID)
                 nm.cancel(SPLIT_NOTIFICATION_ID)
+                clockAnchorMs = null
                 result.success(null)
             }
             "clear_split" -> {
@@ -129,7 +136,7 @@ class RunNotificationBridge(
         }
     }
 
-    /// Forward a lock-screen action ("pause" / "resume" / "stop") to Dart.
+    /// Forward a lock-screen action ("pause" / "resume") to Dart.
     /// Called by `RunActionReceiver` when a notification-action broadcast
     /// fires. If Dart hasn't registered its handler yet, stash and flush on
     /// `ready`.
@@ -175,6 +182,20 @@ class RunNotificationBridge(
         nm.createNotificationChannel(channel)
     }
 
+    // Both factories below name their target component in the Intent
+    // constructor and pass FLAG_IMMUTABLE, so neither PendingIntent can be
+    // redirected or have its extras filled in by whoever holds it, and the
+    // only holder is the system notification shade. CodeQL's
+    // java/android/implicit-pendingintents flags them anyway
+    // (alerts #242/#243, dismissed as false positives): its mutability test
+    // walks a `BitwiseExpr`, and Kotlin has no bitwise operator — `a or b` is
+    // a call to `Int.or`, which that walk cannot follow, so every Kotlin
+    // PendingIntent combining flags reads as possibly-mutable. The query's own
+    // library says it "errs on the side of false positives" here. Do not
+    // resolve the alert by dropping FLAG_UPDATE_CURRENT; it is what keeps a
+    // re-posted action from carrying the previous run's extras, and the flag
+    // is not what the query is objecting to.
+
     /// PendingIntent that broadcasts a `run_action` to `RunActionReceiver`,
     /// which forwards it to Dart via `dispatchAction`. It is a broadcast, not
     /// an activity launch, so the button fires on a locked phone WITHOUT the
@@ -219,7 +240,7 @@ class RunNotificationBridge(
     private fun postSplit(title: String, text: String) {
         val builder = NotificationCompat.Builder(context, GEOLOCATOR_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_threkir)
-            .setColor(ContextCompat.getColor(context, R.color.brand_ember))
+            .setColor(ContextCompat.getColor(context, R.color.brand_coral))
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(false)
@@ -235,18 +256,31 @@ class RunNotificationBridge(
             .notify(SPLIT_NOTIFICATION_ID, builder.build())
     }
 
-    private fun post(title: String, text: String, bigText: String?, paused: Boolean) {
+    private fun post(
+        title: String,
+        text: String,
+        bigText: String?,
+        paused: Boolean,
+        elapsedMs: Long?,
+        elapsedText: String?,
+    ) {
         val pending = openAppIntent()
 
         val builder = NotificationCompat.Builder(context, GEOLOCATOR_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_threkir)
-            .setColor(ContextCompat.getColor(context, R.color.brand_ember))
+            .setColor(ContextCompat.getColor(context, R.color.brand_coral))
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            // Android 16 Live Update: the system promotes the row to the
+            // lock-screen card and status-bar chip (One UI's "Live
+            // notifications" + Now Bar). It only honours the request for an
+            // ongoing, titled, non-colorized row in a standard or BigText
+            // style with no custom view, so keep every one of those true.
+            // Older releases ignore the flag and render the row as before.
+            .setRequestPromotedOngoing(true)
             // Surface on the lock screen with full content. Geolocator's
             // default is PRIVATE which hides the text — ours is the whole
             // point of this bridge.
@@ -259,8 +293,26 @@ class RunNotificationBridge(
             builder.setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
         }
 
-        // #14: lock-screen controls. Pause toggles to Resume while paused;
-        // Stop ends the run. Icon 0 renders text-only, which is fine on a
+        // The clock ticks on its own from an anchor, so the card and the chip
+        // stay live between reposts and while the screen is off. A paused
+        // clock must not advance, so it is frozen text instead.
+        if (!paused && elapsedMs != null) {
+            val anchor = RunClockAnchor.next(
+                clockAnchorMs,
+                System.currentTimeMillis(),
+                elapsedMs,
+            )
+            clockAnchorMs = anchor
+            builder.setWhen(anchor).setShowWhen(true).setUsesChronometer(true)
+        } else {
+            builder.setShowWhen(false).setUsesChronometer(false)
+            if (!elapsedText.isNullOrBlank()) builder.setShortCriticalText(elapsedText)
+        }
+
+        // #14: lock-screen controls. Pause toggles to Resume while paused.
+        // There is deliberately no Stop: one tap on a locked phone (or in a
+        // pocket) would end the run, where the app's own Stop is a hold.
+        // Icon 0 renders text-only, which is fine on a
         // workout notification and avoids shipping new drawables.
         if (paused) {
             builder.addAction(
@@ -275,11 +327,6 @@ class RunNotificationBridge(
                 actionIntent(ACTION_PAUSE, RC_PAUSE),
             )
         }
-        builder.addAction(
-            0,
-            context.getString(R.string.run_notif_action_stop),
-            actionIntent(ACTION_STOP, RC_STOP),
-        )
 
         // Posting with the same (channel, id) that geolocator's foreground
         // service is using replaces the visible row without interfering
@@ -311,10 +358,8 @@ class RunNotificationBridge(
         const val EXTRA_RUN_ACTION = "run_action"
         private const val ACTION_PAUSE = "pause"
         private const val ACTION_RESUME = "resume"
-        private const val ACTION_STOP = "stop"
         private const val RC_PAUSE = 101
         private const val RC_RESUME = 102
-        private const val RC_STOP = 103
 
         /// Live instance so MainActivity can forward notification-action
         /// intents into the method channel. The bridge outlives any single
@@ -323,5 +368,22 @@ class RunNotificationBridge(
         @Volatile
         var instance: RunNotificationBridge? = null
             private set
+    }
+}
+
+/// Where the run notification's chronometer counts up from: now minus the
+/// time recorded. Held across reposts unless it moves by [TOLERANCE_MS],
+/// because the recorder's monotonic stopwatch and the wall clock skew by a
+/// fraction of a second per update and an anchor recomputed every time would
+/// make the clock skip or repeat a second. A resume moves it by the length of
+/// the pause and a crash-recovered run by minutes, so both re-anchor.
+/// Mirrors the iOS Live Activity's anchor (`live_activity_bridge.dart`).
+internal object RunClockAnchor {
+    const val TOLERANCE_MS = 1_500L
+
+    fun next(previousMs: Long?, nowMs: Long, elapsedMs: Long): Long {
+        val implied = nowMs - elapsedMs
+        if (previousMs == null) return implied
+        return if (kotlin.math.abs(implied - previousMs) >= TOLERANCE_MS) implied else previousMs
     }
 }

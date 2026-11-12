@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChoiceChipOption, ChoiceChipRow, TextLane;
 
@@ -6,6 +7,7 @@ import '../goals.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
+import '../typed_decimal.dart';
 import 'full_screen_form.dart';
 import 'top_banner.dart';
 
@@ -326,7 +328,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
     String? distanceError;
     final distanceText = _distanceCtl.text.trim();
     if (distanceText.isNotEmpty) {
-      final n = double.tryParse(distanceText);
+      final n = parseTypedDecimal(distanceText);
       if (n == null || n <= 0) {
         distanceError = l10n.goalEditorErrDistance;
       } else {
@@ -338,7 +340,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
     String? timeError;
     final timeText = _timeCtl.text.trim();
     if (timeText.isNotEmpty) {
-      final n = double.tryParse(timeText);
+      final n = parseTypedDecimal(timeText);
       if (n == null || n <= 0) {
         timeError = l10n.goalEditorErrTime;
       } else {
@@ -451,6 +453,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
         ) ??
         false;
     if (!ok || _saving) return;
+    if (!mounted) return;
     setState(() => _saving = true);
     try {
       await widget.preferences.removeGoal(id);

@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createClient } from '@supabase/supabase-js';
 
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { USER_C_PRO } from '../fixtures/users';
+import { readMaybeRow, readRows } from '../fixtures/db-read';
 
 /**
  * Private-club RLS negative cases.
@@ -75,11 +76,14 @@ test.describe('private club — PostgREST wire-level RLS', () => {
 		});
 		expect(signInErr).toBeNull();
 
-		const { data } = await client
-			.from('clubs')
-			.select('id, name, slug')
-			.eq('id', FRIENDS_OF_JARED_ID)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'clubs by id',
+			client
+				.from('clubs')
+				.select('id, name, slug')
+				.eq('id', FRIENDS_OF_JARED_ID)
+				.maybeSingle()
+		);
 
 		// RLS filters the row out for a non-member: zero rows, not an error.
 		expect(data).toBeNull();
@@ -91,19 +95,25 @@ test.describe('private club — PostgREST wire-level RLS', () => {
 			auth: { persistSession: false, autoRefreshToken: false }
 		});
 
-		const { data } = await anon
-			.from('clubs')
-			.select('id, name, slug')
-			.eq('id', FRIENDS_OF_JARED_ID)
-			.maybeSingle();
+		const data = await readMaybeRow(
+			'clubs by id',
+			anon
+				.from('clubs')
+				.select('id, name, slug')
+				.eq('id', FRIENDS_OF_JARED_ID)
+				.maybeSingle()
+		);
 		expect(data).toBeNull();
 
 		// And the private club must never appear in a broad public list.
-		const { data: list } = await anon
-			.from('clubs')
-			.select('id, slug')
-			.limit(50);
-		const slugs = (list ?? []).map((r) => r.slug);
+		const list = await readRows(
+			'clubs',
+			anon
+				.from('clubs')
+				.select('id, slug')
+				.limit(50)
+		);
+		const slugs = list.map((r) => r.slug);
 		expect(slugs).not.toContain('friends-of-jared');
 	});
 
@@ -136,12 +146,15 @@ test.describe('private club — PostgREST wire-level RLS', () => {
 				password: USER_C_PRO.password
 			});
 
-			const { data } = await client
-				.from('club_posts')
-				.select('id, body')
-				.eq('club_id', FRIENDS_OF_JARED_ID);
+			const data = await readRows(
+				'club_posts by club_id',
+				client
+					.from('club_posts')
+					.select('id, body')
+					.eq('club_id', FRIENDS_OF_JARED_ID)
+			);
 			// Non-member sees no rows of the private club's feed.
-			expect((data ?? []).map((r) => r.id)).not.toContain(postId);
+			expect(data.map((r) => r.id)).not.toContain(postId);
 		} finally {
 			await admin.from('club_posts').delete().eq('id', postId);
 		}

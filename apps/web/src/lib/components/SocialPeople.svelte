@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hashHue } from '$lib/format/avatar';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
 	import {
 		searchPeople,
 		fetchSuggestedPeople,
@@ -10,13 +12,14 @@
 		unfollowUser,
 		type PeopleSuggestion,
 		type NearbyRunner,
-	} from '$lib/core/data';
-	import { NEARBY_RUNNERS_ENABLED } from '$lib/social/nearby_flag';
-	import { NEARBY_BUCKET_BOUNDS_M, nearbyBucketUpperBoundM } from '$lib/social/nearby';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
+	import { NEARBY_BUCKET_BOUNDS_M, nearbyBucketUpperBoundM } from '#lib/social/nearby.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let query = $state('');
 	let results = $state<PeopleSuggestion[]>([]);
@@ -85,7 +88,7 @@
 			// the user looking at an empty results list with no
 			// feedback. Surface the failure so they know to retry.
 			if (gen === searchGen) {
-				showToast(m('socialPeople.searchFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+				showToast(m('socialPeople.searchFailed', { error: errorCopy(e, m, 'socialPeople.searchFailed') }), 'error');
 			}
 		} finally {
 			if (gen === searchGen) searching = false;
@@ -111,10 +114,14 @@
 		flipFollow(target.id, !wasFollowing);
 		try {
 			if (wasFollowing) await unfollowUser(target.id);
-			else await followUser(target.id);
+			else if ((await followUser(target.id)) === 'requested') {
+				// A private profile: a request went out, nothing is followed yet.
+				flipFollow(target.id, false);
+				showToast(m('socialPeople.requestSent'), 'success');
+			}
 		} catch (err) {
 			flipFollow(target.id, wasFollowing);
-			showToast(m('socialPeople.followFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+			showToast(m('socialPeople.followFailed', { error: errorCopy(err, m, 'socialPeople.followFailed') }), 'error');
 		} finally {
 			const next = new Set(rowBusy);
 			next.delete(target.id);
@@ -159,13 +166,12 @@
 		{#if searching}
 			<p class="muted" role="status">{m('socialPeople.searching')}</p>
 		{:else if results.length === 0}
-			<div class="empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
-				<h3>{m('socialPeople.noMatch', { query: query.trim() })}</h3>
-				<p class="empty-text">
-					{m('socialPeople.noMatchHelp')}
-				</p>
-			</div>
+			<EmptyState
+				icon="search_off"
+				headingLevel={3}
+				title={m('socialPeople.noMatch', { query: query.trim() })}
+				text={m('socialPeople.noMatchHelp')}
+			/>
 		{/if}
 	{:else}
 		<h2 class="section-title">{m('socialPeople.suggestedForYou')}</h2>
@@ -173,28 +179,30 @@
 			<div class="grid" aria-hidden="true">
 				{#each Array(4) as _, i (i)}
 					<div class="skel-row">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.5rem" width="2.5rem" radius="50%" />
 						<div class="skel-row-body">
-							<span class="skel skel-line skel-w-60"></span>
-							<span class="skel skel-line skel-w-40"></span>
+							<SkeletonBlock height="0.75rem" width="60%" />
+							<SkeletonBlock height="0.75rem" width="40%" />
 						</div>
-						<span class="skel skel-btn"></span>
+						<SkeletonBlock height="1.75rem" width="5.5rem" radius="999px" />
 					</div>
 				{/each}
 			</div>
-			<p class="sr-only" role="status">{m('socialPeople.loadingSuggestions')}</p>
+			<p class="visually-hidden" role="status">{m('socialPeople.loadingSuggestions')}</p>
 		{:else if suggestions.length === 0}
-			<div class="empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">groups</span>
-				<h3>{m('socialPeople.noSuggestions')}</h3>
-				<p class="empty-text">
-					{m('socialPeople.noSuggestionsHelp')}
-				</p>
-				<a class="btn btn-primary" href="/social?tab=clubs">
-					<span class="material-symbols" aria-hidden="true">groups</span>
-					{m('socialPeople.browseClubs')}
-				</a>
-			</div>
+			<EmptyState
+				icon="groups"
+				headingLevel={3}
+				title={m('socialPeople.noSuggestions')}
+				text={m('socialPeople.noSuggestionsHelp')}
+			>
+				{#snippet actions()}
+					<a class="btn btn-primary" href="/social?tab=clubs">
+						<span class="material-symbols" aria-hidden="true">groups</span>
+						{m('socialPeople.browseClubs')}
+					</a>
+				{/snippet}
+			</EmptyState>
 		{/if}
 	{/if}
 
@@ -254,15 +262,19 @@
 			{#if loadingNearby}
 				<p class="muted" role="status">{m('socialNearby.loading')}</p>
 			{:else if nearby.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">near_me</span>
-					<h3>{m('socialNearby.empty')}</h3>
-					<p class="empty-text">{m('socialNearby.emptyHelp')}</p>
-					<a class="btn btn-outline" href="/settings/preferences">
-						<span class="material-symbols" aria-hidden="true">settings</span>
-						{m('shell.settings')}
-					</a>
-				</div>
+				<EmptyState
+					icon="near_me"
+					headingLevel={3}
+					title={m('socialNearby.empty')}
+					text={m('socialNearby.emptyHelp')}
+				>
+					{#snippet actions()}
+						<a class="btn btn-outline" href="/settings/privacy">
+							<span class="material-symbols" aria-hidden="true">settings</span>
+							{m('shell.settings')}
+						</a>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="grid">
 					{#each nearby as person (person.id)}
@@ -468,34 +480,6 @@
 		opacity: 0.6;
 		cursor: progress;
 	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
 	.material-symbols {
 		font-family: 'Material Symbols Outlined';
 	}
@@ -513,50 +497,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-avatar {
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-btn {
-		width: 5.5rem;
-		height: 1.75rem;
-		border-radius: 999px;
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

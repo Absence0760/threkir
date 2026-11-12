@@ -42,3 +42,24 @@ internal fun finishDistanceSpoken(distanceM: Double, unit: DistanceUnit): String
     }
     return "%.2f".format(java.util.Locale.US, value)
 }
+
+/// How a new utterance enters the engine's queue.
+internal enum class CueQueue { FLUSH, ADD }
+
+/// The queue mode for a new utterance. A workout cue (a new step, the
+/// end-of-step warning, completion) outranks a split or pace alert but does
+/// not cut one off mid-sentence: it waits behind it, and the step's haptic
+/// has already fired at the moment of transition. It does flush an older
+/// workout cue still in the queue, which by now names a step the runner has
+/// left. A split or pace alert waits behind a workout cue, and otherwise
+/// replaces whatever is speaking, which is what every cue did before the
+/// workout spoke at all.
+internal fun cueQueueMode(
+    workoutCue: Boolean,
+    workoutCueInFlight: Boolean,
+    anyInFlight: Boolean,
+): CueQueue = when {
+    workoutCue -> if (workoutCueInFlight || !anyInFlight) CueQueue.FLUSH else CueQueue.ADD
+    workoutCueInFlight -> CueQueue.ADD
+    else -> CueQueue.FLUSH
+}

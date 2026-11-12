@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { effective, effectivePreferredUnit, type LoadedSettings } from './settings_overlay';
+import { effective, effectivePreferredUnit, knownEffective, type LoadedSettings } from './settings_overlay';
 
 const empty: LoadedSettings = { universal: {}, device: {} };
 
@@ -108,4 +108,23 @@ test('effectivePreferredUnit — a null device value falls through to the univer
 		device: { preferred_unit: null },
 	};
 	assert.equal(effectivePreferredUnit(s, 'km'), 'mi');
+});
+
+// A universal bag that came from neither the server nor the cache holds no
+// setting at all, so "no privacy zones" read off it would be a guess. That
+// guess is what let a share image go out unclipped.
+test('knownEffective — an unknown universal bag is null, not the fallback', () => {
+	const unknown: LoadedSettings = { universal: {}, device: {}, universalUnknown: true };
+	assert.equal(knownEffective<unknown[]>(unknown, 'privacy_zones'), null);
+	assert.deepEqual(effective<unknown[]>(unknown, 'privacy_zones', []), [], 'effective would answer the fallback');
+});
+
+test('knownEffective — a known bag reads like effective, and a device value is always known', () => {
+	const zones = [{ lat: 1, lng: 2, radius_m: 200 }];
+	assert.deepEqual(knownEffective(empty, 'privacy_zones'), undefined);
+	assert.deepEqual(knownEffective({ universal: { privacy_zones: zones }, device: {} }, 'privacy_zones'), zones);
+	assert.deepEqual(
+		knownEffective({ universal: {}, device: { privacy_zones: zones }, universalUnknown: true }, 'privacy_zones'),
+		zones,
+	);
 });

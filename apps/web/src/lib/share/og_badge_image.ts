@@ -7,8 +7,10 @@
 
 import { englishBadge, type AchievementTier } from '../social/badges';
 import { formatDateStable } from './share_meta';
-import { xmlEscape } from './og_run_image';
+import { escapeXml } from '../util/html_escape';
 import { OG_CARD_LIGHT } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
+import { OG_GRISNIR_HEIGHT, grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
@@ -47,22 +49,24 @@ export function buildBadgeOgSvg(input: BadgeImageInput): string {
 	parts.push(`<rect width="${W}" height="12" fill="${tierColor}"/>`);
 
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 36}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
+		`<text x="${PAD}" y="${PAD + 36}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
 	);
+	// Grisnir, top-right under the tier bar, clear of the centred badge name.
+	parts.push(grisnirBadgeSvg(W - PAD - grisnirBadgeWidth(OG_GRISNIR_HEIGHT), PAD + 12));
 
 	const heroText = resolved?.label || 'Achievement';
 	parts.push(
-		`<text x="${W / 2}" y="${H / 2 - 10}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="96" font-weight="800" fill="${STAT_FILL}" text-anchor="middle">${xmlEscape(heroText)}</text>`,
+		`<text x="${W / 2}" y="${H / 2 - 10}" font-family="${OG_FONT_STACK}" font-size="96" font-weight="800" fill="${STAT_FILL}" text-anchor="middle">${escapeXml(heroText)}</text>`,
 	);
 
 	parts.push(
-		`<text x="${W / 2}" y="${H / 2 + 64}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="40" font-weight="700" fill="${tierColor}" text-anchor="middle">${xmlEscape(tier.toUpperCase())}</text>`,
+		`<text x="${W / 2}" y="${H / 2 + 64}" font-family="${OG_FONT_STACK}" font-size="40" font-weight="700" fill="${tierColor}" text-anchor="middle">${escapeXml(tier.toUpperCase())}</text>`,
 	);
 
 	const sub = buildBadgeSubline(input);
 	if (sub) {
 		parts.push(
-			`<text x="${W / 2}" y="${H - PAD - 10}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="36" font-weight="500" fill="${META_FILL}" text-anchor="middle">${xmlEscape(sub)}</text>`,
+			`<text x="${W / 2}" y="${H - PAD - 10}" font-family="${OG_FONT_STACK}" font-size="36" font-weight="500" fill="${META_FILL}" text-anchor="middle">${escapeXml(sub)}</text>`,
 		);
 	}
 

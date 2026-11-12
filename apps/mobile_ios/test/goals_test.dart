@@ -31,6 +31,36 @@ void main() {
     return progress.targets.firstWhere((t) => t.kind == kind);
   }
 
+  // Issue #1300 § 5: one 12,333-hour row completed every time goal at once.
+  test('a duration past the ten-day bound counts toward no time or pace target',
+      () {
+    const goal = RunGoal(
+      id: 'g-bound',
+      period: GoalPeriod.week,
+      timeSeconds: 3600,
+      avgPaceSecPerKm: 360,
+    );
+    final p = evaluateGoal(goal, [
+      makeRun(
+        id: 'ok',
+        startedAt: DateTime(2026, 4, 13, 7),
+        distance: 5000,
+        duration: const Duration(seconds: 1800),
+      ),
+      makeRun(
+        id: 'bad',
+        startedAt: DateTime(2026, 4, 14, 7),
+        distance: 2000,
+        duration: const Duration(seconds: 44400094),
+      ),
+    ], now);
+    final time = targetOf(p, GoalTargetKind.time);
+    expect(time.percent, 0.5);
+    expect(time.complete, isFalse);
+    expect(targetOf(p, GoalTargetKind.avgPace).complete, isTrue);
+    expect(p.runCount, 2);
+  });
+
   group('period bounds', () {
     test('week start is Monday 00:00 local', () {
       expect(
@@ -73,6 +103,21 @@ void main() {
       expect(weekStartLocal(sun, weekStartDay: 'sunday'), DateTime(2026, 4, 12));
       // Monday default would push it back to Apr 6.
       expect(weekStartLocal(sun), DateTime(2026, 4, 6));
+    });
+
+    test('a late Saturday and an early Sunday straddle a Sunday-week boundary',
+        () {
+      // Sat 3 Jan 2026 23:30 and Sun 4 Jan 2026 00:30, local. Sunday-first,
+      // the hour around midnight is two different weeks; Monday-first, both
+      // belong to the week of Mon 29 Dec. Mirrors goals.test.ts.
+      final lateSat = DateTime(2026, 1, 3, 23, 30);
+      final earlySun = DateTime(2026, 1, 4, 0, 30);
+      expect(weekStartLocal(lateSat, weekStartDay: 'sunday'), DateTime(2025, 12, 28));
+      expect(weekStartLocal(earlySun, weekStartDay: 'sunday'), DateTime(2026, 1, 4));
+      expect(weekStartLocal(lateSat, weekStartDay: 'monday'), DateTime(2025, 12, 29));
+      expect(weekStartLocal(earlySun), DateTime(2025, 12, 29));
+      expect(goalPeriodStart(GoalPeriod.week, earlySun, weekStartDay: 'sunday'),
+          weekStartLocal(earlySun, weekStartDay: 'sunday'));
     });
 
     test('evaluateGoal week period shifts with week_start_day', () {
@@ -361,6 +406,84 @@ void main() {
     });
   });
 
+  group('marked done without a run', () {
+    _Done done(String date,
+            {double? targetDistanceM = 5000,
+            bool manuallyCompleted = true,
+            String? completedRunId,
+            String? kind}) =>
+        _Done(date, targetDistanceM, manuallyCompleted, completedRunId, kind);
+
+    test(
+        'markedDoneTally counts hand-marked sessions from the period start '
+        'through today only', () {
+      // now is Wed 2026-04-15; the Monday week starts 2026-04-13.
+      final tally = markedDoneTally(
+        [
+          done('2026-04-12'),
+          done('2026-04-13', targetDistanceM: 6000),
+          done('2026-04-14', targetDistanceM: null),
+          done('2026-04-14', completedRunId: 'r1'),
+          done('2026-04-15', manuallyCompleted: false),
+          done('2026-04-15'),
+          done('2026-04-16'),
+        ],
+        goalPeriodStart(GoalPeriod.week, now),
+        now,
+      );
+      expect(tally.distanceM, 11000);
+      expect(tally.count, 3);
+    });
+
+    test('markedDoneTally: a walk-run session marked done counts, but adds no distance',
+        () {
+      final tally = markedDoneTally(
+        [
+          done('2026-04-13', kind: 'walk_run', targetDistanceM: 2050),
+          done('2026-04-14', kind: 'easy', targetDistanceM: 6000),
+        ],
+        goalPeriodStart(GoalPeriod.week, now),
+        now,
+      );
+      expect(tally.distanceM, 6000);
+      expect(tally.count, 2);
+    });
+
+    test(
+        'evaluateGoal adds them to distance and run count, not time or pace',
+        () {
+      const goal = RunGoal(
+        id: 'g1',
+        period: GoalPeriod.week,
+        distanceMetres: 20000,
+        timeSeconds: 7200,
+        avgPaceSecPerKm: 300,
+        runCount: 2,
+      );
+      final p = evaluateGoal(
+        goal,
+        [
+          makeRun(
+            startedAt: DateTime(2026, 4, 14, 7),
+            distance: 10000,
+            duration: const Duration(minutes: 50),
+          ),
+        ],
+        now,
+        planWorkouts: [
+          done('2026-04-13', targetDistanceM: 8000),
+          done('2026-04-14', completedRunId: 'r-tue'),
+        ],
+      );
+      expect(p.runCount, 2);
+      expect(targetOf(p, GoalTargetKind.distance).current, 18000);
+      expect(targetOf(p, GoalTargetKind.time).current, 3000);
+      expect(targetOf(p, GoalTargetKind.avgPace).current, 300);
+      expect(targetOf(p, GoalTargetKind.runCount).current, 2);
+      expect(targetOf(p, GoalTargetKind.runCount).complete, isTrue);
+    });
+  });
+
   group('RunGoal JSON', () {
     test('round-trips a multi-target goal', () {
       const goal = RunGoal(
@@ -560,8 +683,8 @@ void main() {
     // 24-hour Duration breaks in a DST zone: the boundary walks off local
     // midnight, so a run near it lands in both adjacent weeks (spring forward)
     // or in neither (fall back). Run under TZ=America/New_York to see the old
-    // code fail; the source guard in architecture_guards_test.dart is what
-    // catches a regression on a UTC CI box.
+    // code fail; the `tz` tag is how CI does that, and the source guard in
+    // architecture_guards_test.dart catches the shape in the UTC run too.
     final transitionDays = <DateTime>[
       // US spring forward (23-hour day) and fall back (25-hour day).
       DateTime(2026, 3, 8, 12),
@@ -583,7 +706,7 @@ void main() {
             expect(start.second, 0, reason: 'not midnight for $probe');
           }
         }
-      });
+      }, tags: 'tz');
 
       test('a week end is exactly the next week start — no gap, no overlap '
           '($weekStart)', () {
@@ -599,7 +722,7 @@ void main() {
             expect(nextStart, end, reason: 'seam broken for $probe');
           }
         }
-      });
+      }, tags: 'tz');
 
       test('every day of a transition week is counted exactly once '
           '($weekStart)', () {
@@ -618,7 +741,23 @@ void main() {
                     '($start .. $end)');
           }
         }
-      });
+      }, tags: 'tz');
     }
   });
+}
+
+class _Done implements PlanCompletion {
+  @override
+  final String scheduledDate;
+  @override
+  final double? targetDistanceM;
+  @override
+  final bool manuallyCompleted;
+  @override
+  final String? completedRunId;
+  @override
+  final String? kind;
+  const _Done(this.scheduledDate, this.targetDistanceM, this.manuallyCompleted,
+      this.completedRunId,
+      [this.kind]);
 }

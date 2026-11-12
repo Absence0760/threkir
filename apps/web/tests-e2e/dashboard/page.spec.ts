@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
+import { noonOnBrowserDay } from '../fixtures/dates';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -20,11 +21,11 @@ test.describe('/dashboard', () => {
 	test('renders with seeded mileage + recent runs', async ({ page }) => {
 		await page.goto('/dashboard');
 
-		// "Mileage" + "Recent Runs" are h2's on the dashboard. Asserting
+		// "Distance" + "Recent Runs" are h2's on the dashboard. Asserting
 		// them proves the page rendered past the loading skeleton AND
 		// the per-section components loaded their seeded data.
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 })
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 })
 		).toBeVisible();
 		await expect(
 			page.getByRole('heading', { name: /recent runs/i, level: 2 })
@@ -128,20 +129,17 @@ test.describe('/dashboard', () => {
 		await expect(page.locator('.goal-card')).toHaveCount(initialCount);
 	});
 
-	test('clicking "This Week" stat tile opens the period summary modal', async ({
+	test('the week lead\'s Week summary opens the period summary modal', async ({
 		page
 	}) => {
-		// The dashboard's "This Week" stat card is a button (rather
-		// than a static tile) so the user can drill into the period.
-		// On click it sets `periodModal = { type: 'week', date: now }`
-		// which mounts the shared <PeriodSummary> inside a Modal with
-		// title "Period summary".
+		// The week drilldown used to be the grid's "This Week" tile; the
+		// tile left Home when the week lead became its one this-week view
+		// (§ 2283), and the lead's Week summary took over the tap-through.
+		// It sets `periodModal = { type: 'week', date: now }`, which mounts
+		// the shared <PeriodSummary> inside a Modal titled "Period summary".
 		await page.goto('/dashboard');
 
-		// The stat card may render with a 0 km value if "this week"
-		// (real wall-clock) doesn't intersect any seeded run — that's
-		// fine, we're testing modal-open, not the contents.
-		const thisWeekCard = page.getByRole('button', { name: /This Week/ }).first();
+		const thisWeekCard = page.getByTestId('dash-week-lead-open');
 		await expect(thisWeekCard).toBeVisible();
 		await thisWeekCard.click();
 
@@ -182,16 +180,17 @@ test.describe('/dashboard', () => {
 		).toBeVisible();
 	});
 
-	test('the four stat cards (This Week / Total Runs / Longest Run / Pace) render', async ({
+	test('the stat grid keeps the all-time cards and none of the this-week ones', async ({
 		page
 	}) => {
 		await page.goto('/dashboard');
-		const labels = page.locator('.stat-label');
-		await expect(labels.filter({ hasText: 'This Week' }).first())
-			.toBeVisible({ timeout: 10_000 });
-		await expect(labels.filter({ hasText: 'Total Runs' }).first()).toBeVisible();
+		const labels = page.locator('.stat-grid .stat-label');
+		await expect(labels.filter({ hasText: 'Total Runs' }).first()).toBeVisible({
+			timeout: 10_000
+		});
 		await expect(labels.filter({ hasText: 'Longest Run' }).first()).toBeVisible();
-		await expect(labels.filter({ hasText: /Pace/ }).first()).toBeVisible();
+		await expect(labels.filter({ hasText: /This Week/i })).toHaveCount(0);
+		await expect(labels.filter({ hasText: /Pace/ })).toHaveCount(0);
 	});
 
 	test('Training intensity card renders (replaces the old Activity heatmap)', async ({
@@ -364,11 +363,9 @@ test.describe('/dashboard', () => {
 		// User feedback: stat-grid was 5 cards but rendering as 4+1
 		// across two rows; the recap-link sat on its own horizontal rail
 		// above the source-filter chips, burning a line for one element.
-		// Fix: stat-grid lays out N-up at >=1100px (N = number of stat
-		// cards, currently 6 after the U4 web vert-on-dashboard
-		// commit `807e11e1` added the "This Week Vert" card), recap-link
-		// rides on the right side of the same row as the .filter-chips
-		// group.
+		// Fix: stat-grid lays out N-up (N = number of stat cards, three
+		// since the this-week cards left with § 2283), recap-link rides on
+		// the right side of the same row as the .filter-chips group.
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto('/dashboard');
 		await expect(page.locator('.stat-grid .stat-card').first()).toBeVisible({
@@ -391,7 +388,7 @@ test.describe('/dashboard', () => {
 		// (1440px wide). Count is asserted to catch the inverse
 		// regression: a card silently disappearing from the surface.
 		const cards = page.locator('.stat-grid .stat-card');
-		await expect(cards).toHaveCount(6);
+		await expect(cards).toHaveCount(3);
 		const count = await cards.count();
 		const tops: number[] = [];
 		for (let i = 0; i < count; i++) {
@@ -466,41 +463,22 @@ test.describe('/dashboard', () => {
 			if (runId) await deleteRun(runId);
 		}
 	});
-
-	test('PR hide (×) control has a >=44px tap target', async ({ page }) => {
-		// A11y: the per-record hide control must meet the 44x44 minimum
-		// touch-target size. Regression guard for the restyle that gave the
-		// bare-glyph button a real hit area.
-		let runId = '';
-		try {
-			// Guarantee at least one visible PR row (→ a .pr-hide button).
-			runId = await insertRun({
-				user_id: USER_A.id,
-				duration_s: 1080,
-				distance_m: 5000
-			});
-			await page.goto('/dashboard');
-
-			const hideBtn = page.locator('.pr-hide').first();
-			await expect(hideBtn).toBeVisible({ timeout: 10_000 });
-			const box = await hideBtn.boundingBox();
-			expect(box).not.toBeNull();
-			expect(box!.width).toBeGreaterThanOrEqual(44);
-			expect(box!.height).toBeGreaterThanOrEqual(44);
-		} finally {
-			if (runId) await deleteRun(runId);
-		}
-	});
 });
 
 /**
  * Zero-data new runner — Day One after signup, no runs logged.
  *
- * A brand-new saga user (no runs, no HR zones) should NOT be greeted
- * with the Training-intensity card's HR-zone jargon (new-runner #1 —
- * gate matches the sibling analytics cards), and the Mileage card
- * should show a worded empty-state hint rather than a header over
- * blank space (new-runner #3).
+ * A brand-new saga user should NOT be greeted with derived-metric jargon:
+ * no Training-intensity HR zones (new-runner #1), and since #905 no
+ * VO2 max / CTL / TSB tile row either — the whole derived block is replaced
+ * by the first-run card.
+ *
+ * This used to assert the Mileage card's worded empty-state hint (new-runner
+ * #3). That assertion is retired rather than relaxed: the card no longer
+ * renders at all for a runless account, so there is no header-over-blank-space
+ * left for it to guard against. `dash.mileageEmpty` is still live for an
+ * account that HAS runs but none inside the chart window, and
+ * dashboard-first-run.spec.ts owns the first-run card's own contract.
  */
 test.describe('/dashboard — zero-data new runner', () => {
 	let users: SagaUser[] = [];
@@ -515,10 +493,10 @@ test.describe('/dashboard — zero-data new runner', () => {
 		if (users.length > 0) await deleteSagaUsers(users);
 	});
 
-	test('hides the intensity card + shows the mileage empty-state hint for a runless account', async ({
-		browser
+	test('shows no derived-metric jargon at all to a runless account', async ({
+		browser,
+		baseURL
 	}) => {
-		const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:7777';
 		const ctx = await browser.newContext({
 			baseURL,
 			storageState: newRunner.storageStatePath
@@ -527,16 +505,72 @@ test.describe('/dashboard — zero-data new runner', () => {
 		try {
 			await page.goto('/dashboard');
 
-			// Mileage card renders a worded hint, not an empty chart area.
-			await expect(
-				page.getByText('Log your first run to see your weekly mileage here.')
-			).toBeVisible({ timeout: 10_000 });
+			// The first-run card is what a Day-One runner gets instead.
+			await expect(page.getByTestId('dash-first-run')).toBeVisible({ timeout: 10_000 });
 
-			// The Training-intensity card self-hides with zero runs, so the
-			// z1–z5 HR-zone empty state never reaches a Day-One runner.
+			// The Training-intensity card's z1-z5 HR-zone empty state never
+			// reaches a Day-One runner.
 			await expect(
 				page.getByRole('heading', { level: 2, name: /Training intensity/ })
 			).toHaveCount(0);
+
+			// Nor does any of the training-load vocabulary the page leads with
+			// for an established runner. These are the exact labels #902 found
+			// unexplained; none of them should be a new account's first screen.
+			const body = page.locator('body');
+			await expect(body).not.toContainText('VO\u2082 max');
+			await expect(body).not.toContainText('CTL');
+			await expect(body).not.toContainText('ATL');
+			await expect(body).not.toContainText('TSB');
+		} finally {
+			await ctx.close();
+		}
+	});
+});
+
+/**
+ * Readiness says what it is scored from. Nothing reads sleep or resting HR
+ * yet, so the score is training balance alone, and the card has to say that
+ * in words rather than leave a single contributor chip to imply it.
+ */
+test.describe('/dashboard — readiness discloses its only input', () => {
+	let users: SagaUser[] = [];
+	let runner: SagaUser;
+	const runIds: string[] = [];
+
+	test.beforeAll(async () => {
+		users = await createSagaUsers(1, { displayNames: ['Saga Readiness'] });
+		runner = users[0];
+		for (const d of [1, 3, 5, 7, 9, 11]) {
+			runIds.push(
+				await insertRun({
+					user_id: runner.id,
+					started_at: noonOnBrowserDay(-d),
+					distance_m: 8000,
+					duration_s: 2700
+				})
+			);
+		}
+	});
+
+	test.afterAll(async () => {
+		for (const id of runIds) await deleteRun(id);
+		if (users.length > 0) await deleteSagaUsers(users);
+	});
+
+	test('the readiness card says it is scored from training load only', async ({
+		browser,
+		baseURL
+	}) => {
+		const ctx = await browser.newContext({ baseURL, storageState: runner.storageStatePath });
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/dashboard');
+			const card = page.locator('.readiness-card');
+			await expect(card).toBeVisible({ timeout: 10_000 });
+			await expect(card.getByTestId('readiness-load-only')).toHaveText(
+				'Scored from your training load only. Sleep and resting heart rate are not part of it yet.'
+			);
 		} finally {
 			await ctx.close();
 		}

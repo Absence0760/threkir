@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../fixtures/test';
 
 import { getAdminClient } from '../../fixtures/local-supabase';
 import {
@@ -7,13 +7,7 @@ import {
 	insertEvent
 } from '../../fixtures/simulate';
 import { USER_A, USER_B } from '../../fixtures/users';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../../fixtures/helpers';
 
 /**
  * Cross-user event RSVP saga: USER_A (admin of Richmond Run Club) creates
@@ -64,8 +58,8 @@ test.describe('saga: alex RSVPs runner-owned event → runner inbox row', () => 
 			const ctxRunner = await browser.newContext({
 				storageState: USER_A.storageStatePath
 			});
-			await ctxAlex.addInitScript(setConsentAccepted);
-			await ctxRunner.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctxAlex);
+			await acceptCookieConsent(ctxRunner);
 			const alex = await ctxAlex.newPage();
 			const runner = await ctxRunner.newPage();
 

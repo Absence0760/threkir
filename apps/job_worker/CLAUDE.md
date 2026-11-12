@@ -18,10 +18,34 @@ roadmap Phase 4b, `decisions.md § 117`), `lifecycle_email`
 (transactional/relationship mail with no notifications row — the welcome
 on signup today, weekly digest / re-engagement later; keyed by a template
 name, `decisions.md § 119`), `safety_email` (safety-contact confirm +
-finish alerts, `decisions.md § 131`), and `web_push` (the browser Web Push
+finish alerts, `decisions.md § 131`), `security_email` (the new-device
+sign-in alert, enqueued by the `auth.sessions` triggers of migration
+`20270804000002`, gated at send time on the opt-out
+`email_new_device_alerts` — decisions 1894), and `web_push` (the browser Web Push
 delivery channel — sibling of `notification_email` over the same
 notifications rows; encrypted RFC 8291 messages signed with a VAPID key,
-`decisions.md § 133` / migration `20261219_001`). Data-export will land as an
+`decisions.md § 133` / migration `20261219_001`), and `route_photo_orphan_sweep`
+(erases `route-photos` bytes no `route_photos` row references: queued per
+delete statement by a `route_photos` trigger and nightly as a 24-hour-graced
+backstop, worklist from the service-role `route_photo_orphan_paths` RPC, erase
+through the Storage API; gated on `private.feature_flags`
+`route_photo_orphan_sweep`, absent = off, decisions § 2305), and
+`distance_recompute`
+(owner-requested via the `request_distance_recompute(p_run_id)` RPC: replays
+the stored track of an `app` / `watch` run through the spec-v1.4 GPS distance
+smoother in `internal/gpsdistance/` (post-hoc stop detection when the track
+has no Doppler; such a track keeps the forward pass unless `roadDistanceFor`
+classifies it as a road run, recorded as `distance_estimator_pass`) and
+rewrites `runs.distance_m` + the `fastest_*` bests,
+stamping `distance_estimator = "kalman_v4"` and keeping the recorder's figure
+in `metadata.distance_recorded_m`; a `kalman_v1`, `kalman_v2` or `kalman_v3` recompute is eligible again; imports, indoor /
+pedometer / treadmill, manual and in-progress runs are skipped as no-ops —
+[`../../docs/features/gps_distance.md`](../../docs/features/gps_distance.md)). `segment_match` (catalogue segment scoring, decisions § 2392 / § 2393: the
+worker validates the payload and POSTs it to the `segment-match` Edge Function,
+which runs the canonical TS matcher from a generated bundle and writes
+`global_segment_efforts`; the function's 2xx / 5xx / 4xx becomes done / retry /
+failed through `HTTPError` — there is deliberately no Go port of the matcher).
+Data-export will land as an
 additional kind in `internal/worker.go`'s dispatch when that Edge
 Function moves per
 [`../../docs/product/roadmap.md`](../../docs/product/roadmap.md) §214.
@@ -66,7 +90,23 @@ Function moves per
    Supabase outage drops the ping rather than risk leaking a home
    coordinate. Mirrors the `live_run_pings_drop_in_zone` BEFORE-INSERT
    trigger on the Supabase Realtime path so both transports honour
-   the same contract.
+   the same contract. **Heart rate** (decisions §2265): `/push`
+   strips `bpm` before fan-out unless `Server.HeartRate` (a
+   `HeartRateConsentFetcher`) answers true, which is the service-role
+   `live_heart_rate_shared(user_id)` RPC: the `live_overlay` flag is
+   open AND the runner has `health_data_consent_at` on record. Unknown
+   is no: a nil fetcher or a failed lookup withholds `bpm` (fail closed
+   on the field, open on the location feed), and a failure is not
+   cached. The answer is cached per owner for `HeartRateTTL` (5 s),
+   deliberately apart from the room's `RunMeta` and its 60 s
+   `CacheRefreshTTL`, so a consent withdrawal stops bpm on the hub
+   within seconds. The `live_run_pings_strip_bpm_before_insert`
+   trigger applies the same rule on the Realtime path, so the Bridge
+   only ever republishes stripped rows. The streamer overlay
+   (`/live/overlay`) does **not** read through the hub: it polls the
+   `live_overlay_feed` RPC, which returns only pings older than the
+   creator's delay (`at <= now() - delay_s`), so the delay is enforced
+   in Postgres and nothing newer leaves the database.
 
 **Build here:**
 
@@ -85,9 +125,27 @@ Function moves per
   three steps must land together — the DB rejects an unknown kind
   at INSERT (23514) rather than at the worker's dispatch, so
   shipping a new kind without all three slips it through silently.
+  Two of the three are now enforced rather than remembered:
+  `internal/worker_dispatch_coverage_test.go` replays the migrations
+  for the final `jobs_kind_chk` and fails a `case` the CHECK forbids
+  (dead code reading as a shipped feature) as well as an admitted
+  kind with no `case` (every enqueued row claimed, failed as unknown
+  and retried to exhaustion). So the migration and the switch line
+  are ONE commit — either alone is red, in opposite directions
+  (measured both ways for `export_blob_reap`, decisions § 1144).
+  The pgtap file is still on you.
   `token_refresh` (sweeps expiring Strava integrations + rotates via
   `/oauth/token`) is in `handler_token_refresh.go` and is the worked
   example for "port a scheduled Edge Function into the queue".
+- **`export_blob_reap` is written and not yet routable.**
+  `handler_export_blob_reap.go` + its tests are on `main`; the
+  `Worker.dispatch` case is deliberately absent because
+  `internal/worker_dispatch_coverage_test.go` fails a `case` for a kind
+  `jobs_kind_chk` forbids, and the CHECK is a migration. Adding the
+  migration, the pgtap case and the one-line `case "export_blob_reap":
+  return w.handleExportBlobReap(ctx, job)` is one commit; the exact SQL
+  is in `docs/product/followups.md`. Until then nothing enqueues it and
+  the handler runs only under its own tests. See `decisions.md § 1112`.
   `notification_email` (`handler_notification_email.go` +
   `mailer.go`) is the worked example for "trigger-enqueued fan-out with
   an external transport": the notifications AFTER-INSERT trigger queues
@@ -110,9 +168,18 @@ Function moves per
   but is the one INLINE-ADDRESS template (`inlineAddressTemplates`): its payload
   carries `{email, locale}` and no `user_id` (the user is gone by send time),
   so `handleLifecycleEmail` routes it to `handleAccountDeletionReceipt`, which
-  resolves the address from the payload (not GoTrue) and dedups on a SHA-256
-  hash of the address via the non-cascading `account_deletion_receipts` table
-  (not `lifecycle_email_log`, which cascades away with the user). All templates
+  resolves the address from the payload (not GoTrue) and dedups on a hash
+  of the address via the non-cascading `account_deletion_receipts` table
+  (not `lifecycle_email_log`, which cascades away with the user). **That hash
+  is keyed when `DELETION_AUDIT_KEY` is set on THIS process** — HMAC-SHA256 over
+  a domain-separated address — and the legacy bare SHA-256 when it is not: an
+  address is a guessable input, so only the keyed form stops a holder of a
+  candidate address recomputing the digest and asking the table whether that
+  person deleted their account (`decisions § 1551`, `§ 1600`). It is the same
+  env var `delete-account` reads for its own user-id HMAC, and setting it on one
+  process and not the other is a safe half-state, not an error. A keyed worker
+  probes its own digest first and the LEGACY one on a miss, so provisioning the
+  key re-sends nothing to anyone deleted inside the table's 30-day window. All templates
   live in `email_i18n.go`, localized across six locales. A future digest reuses
   the kind with a cron enqueue + its own opt-in preference.
   `lifecycle_drip` (`handler_lifecycle_drip.go`) is the engagement sibling of
@@ -135,15 +202,20 @@ Function moves per
   message encryption) + RFC 8292 (VAPID JWT) sender on stdlib crypto + the
   existing `golang-jwt`. A dead endpoint (404/410) is pruned via the
   `clear_push_subscription` RPC; a 429/5xx defers; gated on `VAPID_PUBLIC_KEY` +
-  `VAPID_PRIVATE_KEY` (unset → rows stay pending). When an FCM/APNs leg lands,
-  copy this shape (its own enqueue gate + `*_sent_at` column + handler).
+  `VAPID_PRIVATE_KEY` (unset → rows stay pending). `native_push`
+  (`internal/nativepush/` + `handler_native_push.go`) is that same shape over
+  the same rows — its own enqueue gate, `native_push_sent_at` column and
+  handler — sending one FCM message per registered device, iOS included.
   `strava_event` (per-activity ingest enqueued by the HTTP webhook
   endpoint at `/v1/strava/webhook`) is the worked example for
   "port a webhook Edge Function into HTTP-front + queue-back" — see
   `handler_strava_event.go` for the dispatch and
   `internal/stravahook/server.go` for the request-side validation.
   Data-export follows the request-side pattern; it doesn't fit the
-  job-queue shape because the user is waiting on a signed URL.
+  job-queue shape because the user is waiting on a signed URL — which is
+  itself the remaining bound on that endpoint (decisions § 708), and
+  moving it to a `jobs` kind is a client-contract change, not a
+  server-side one.
 - A new **`NotificationKind`** (as opposed to a new `jobs.kind`) has its own
   three-file rule, because the notifications AFTER-INSERT triggers enqueue an
   email job **and** a push job for every kind with **no allowlist**. The
@@ -168,6 +240,16 @@ Function moves per
   missing 1 or 2; `profile_screen_test.dart` reads the same union and fails on a
   missing 3. Before those guards existed, three kinds silently emailed "You have
   a new notification" and six rendered "{name} interacted with your activity".
+  A fourth, optional piece is a **per-kind mute**: `mailer.go`'s
+  `kindMutePrefKey` maps a kind to a `user_settings.prefs` key that silences it
+  on the outbound channels only, for the case where the three-mode channel
+  setting is too blunt (muting `email_notifications` to stop one notice also
+  stops direct messages). It can only ever SUBTRACT — `kindMuted` is consulted
+  inside `shouldEmail` / `shouldPush` alongside the channel mode, never instead
+  of it — and both gates take the whole prefs bag rather than a pre-resolved
+  mode so a new channel cannot forget to consult it. One entry today,
+  `notify_data_export_ready` (`decisions.md § 729`); register any new one in
+  `docs/backend/settings.md` too.
 - Live-hub extensions — Redis-backed storage (swap [`internal/livehub.Hub`](internal/livehub/hub.go)
   with a Redis pub/sub-backed variant), per-run ring buffer for
   late-joiner replay of more than the most recent ping.
@@ -219,26 +301,33 @@ apps/job_worker/
 ├── internal/
 │   ├── types.go             # Job, MapMatchPayload, TrackPoint, MatchedTrackRow, IntegrationRow, TokenPair
 │   ├── schema/schema.go     # registry: PostgREST table names + Storage bucket names + runs.metadata keys + prefs keys (every package routes its literals through here)
-│   ├── supabase.go          # PostgREST + Storage REST client (service role); exportPersonalDataSpecs is the single source of truth for the Art 20 export table list
+│   ├── supabase.go          # PostgREST + Storage REST client (service role); exportPersonalDataSpecs is the single source of truth for the Art 20 export table list; walkExportPages pages every export read without accumulating
+│   ├── supabase_resumable.go # chunked (tus) Storage upload the export archive streams into; fail-closed — no object until Finish
+│   ├── supabase_resumable_test.go # 12 tus cases incl. a real zip across chunk boundaries, offset mismatch, mid-stream failure
 │   ├── personal_data_export_guard_test.go # parses migrations for user_id tables; fails the build if one is missing from the export spec or the reasoned exclusion list
 │   ├── strava.go            # StravaClient — /oauth/token refresh_token grant
 │   ├── strava_test.go       # 4 tests: parse, error surface, malformed, default URL
 │   ├── matcher.go           # Matcher interface + PassthroughMatcher stub
 │   ├── matcher_test.go
-│   ├── matcher_osrm.go      # OSRMMatcher — /match/v1/foot, chunked
+│   ├── matcher_osrm.go      # OSRMMatcher — /match/v1/foot, chunked; MatchWithRoadDistance also sums the matched length along the road graph
 │   ├── matcher_osrm_test.go
+│   ├── road_distance.go     # map_match's last step: metadata.distance_map_matched_m for a road run (never trails, a track, indoor), CAS on track_url + metadata
+│   ├── road_distance_test.go
+│   ├── supabase_road_distance.go # ReadRunForRoadDistance (route surface embedded) + UpdateRunMetadata CAS PATCH
 │   ├── worker.go            # claim → handle → finish loop; dispatch by kind
 │   ├── handler_token_refresh.go  # kind='token_refresh' sweep + rotate
 │   ├── handler_notification_email.go # kind='notification_email' send-or-skip
 │   ├── handler_notification_email_test.go # 9 tests on gating / opt-out / idempotency
 │   ├── handler_lifecycle_email.go # kind='lifecycle_email' (welcome) render + send-once
 │   ├── handler_lifecycle_email_test.go # 6 tests on send / dedup / no-address / nil-sender
-│   ├── handler_account_deletion_receipt_test.go # 9 tests on inline-address send / hash send-once / no-address / send-error / nil-sender / locale / no-prefs-link
+│   ├── handler_account_deletion_receipt_test.go # 16 tests on inline-address send / hash send-once / no-address / send-error / nil-sender / locale / no-prefs-link / keyed + legacy digest + the changeover probe
 │   ├── mailer.go            # EmailSender iface + SMTPSender + pure render/preference logic; importantKinds + inAppOnlyKinds + pathForKind
 │   ├── mailer_test.go       # tests on emailMode / shouldEmail / inAppOnlyKinds / render / MIME + header-injection sanitizer (buildMIME + safety-email owner name, issue #375)
 │   ├── notification_copy_guard_test.go # TS↔Go lockstep: every NotificationKind has catalogue copy or a recorded inAppOnlyKinds exemption, renders something other than "default", and deep-links the same entity web does
 │   ├── notification_link_guard_test.go # every pathForKind target resolves against the real apps/web route tree, in every FK-presence permutation
 │   ├── handler_safety_email.go # kind='safety_email' confirm + finish alerts (decisions §131)
+│   ├── handler_security_email.go # kind='security_email' new-device sign-in alert; opt-out email_new_device_alerts read at send time (decisions 1894)
+│   ├── handler_security_email_test.go # send + device phrase + UTC time + reset CTA, opt-out, channel-mute independence, prefs-read retry, every locale
 │   ├── handler_web_push.go  # kind='web_push' — send-or-skip over the notifications rows; prune dead subs
 │   ├── handler_web_push_test.go # 14 tests on gating / opt-out / no-sub / prune / transient / idempotency
 │   ├── push_render.go       # pushMode / shouldPush (push_notifications pref) + webPushPayload JSON render
@@ -248,6 +337,17 @@ apps/job_worker/
 │   ├── handler_weekly_digest.go # kind='weekly_digest' — opt-in + suppression gate, bounded summary render (GATED on SMTP); engagementUnsubURL helper shared with the drip
 │   ├── handler_weekly_digest_test.go # 13 tests on opt-in / suppression hard-block / fail-closed / quiet-week / unsubscribe header
 │   ├── handler_lifecycle_drip.go # kind='lifecycle_drip' — onboarding/re-engagement/streak nudges; opt-IN email_lifecycle_drip + suppression gate (GATED on SMTP); cohort selection is in SQL, not here
+│   ├── handler_export_blob_reap.go # kind='export_blob_reap' — erases Art 20 export archives past the 7-day window through the Storage API (a storage.objects row delete leaves the bytes, decisions § 1049). NOT yet in dispatch: the CHECK is a migration
+│   ├── handler_export_blob_reap_test.go # 11 tests on the window boundary, unknown-age skip, batching, partial progress, idempotence
+│   ├── handler_route_photo_orphan_sweep.go # kind='route_photo_orphan_sweep' — erases route-photos objects no route_photos row references, worklist from the route_photo_orphan_paths RPC (24 h grace on the backstop, scoped to the deleted paths when the delete trigger queues it), Storage API erase, 20 x 100 per run, counts-only log (migration 20271106000020, decisions § 2305)
+│   ├── handler_route_photo_orphan_sweep_test.go # backstop vs paths scoping, empty-paths guard, per-run bound + resume, migration path cap fits one run (read from the last migration defining each function), not-erased detection, partial progress, no paths in logs, dispatch, RPC body
+│   ├── handler_distance_recompute.go # kind='distance_recompute' — replay the stored track through gpsdistance, CAS-PATCH distance_m + merged metadata; app/watch sources only
+│   ├── handler_distance_recompute_test.go # skip set, repeat keeps distance_recorded_m, CAS re-read, untimed waypoints, permanent vs transient, PostgREST wire shape
+│   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys, raw lat/lng only, fingerprints the inflated bytes) / UpdateRunDistance (conditional on track_url + metadata) / UploadSmoothedSidecar
+│   ├── smoothed_sidecar.go # {user_id}/{run_id}.smoothed.json.gz: the smoother's position per stored waypoint + the track's fingerprint; written by a smoothed-pass recompute (named in its distance write) and after a watch run's map_match (named by recordSmoothedSidecar), the hash recorded in metadata.smoothed_sidecar_sha256
+│   ├── gpsdistance/         # Go port of the GPS distance estimator spec v1 (scripts/gps_distance/reference.py)
+│   │   ├── estimator.go     # two 1-D constant-velocity Kalman filters + Doppler + stationary floor + gap re-anchor + pedometer stride
+│   │   └── estimator_test.go # replays fixtures/gps_distance_vectors.json, asserting distance after every event to tolerance_m
 │   ├── handler_lifecycle_drip_test.go # 14 tests on opt-in / digest-opt-in-does-not-imply-drip / suppression / per-template / fail-closed / unsubscribe
 │   ├── digest_builder.go    # EnqueueAllWeeklyDigests — selects opted-in recipients, chunked bulk-enqueues jobs (UNSCHEDULED; pg_cron is the CISO/counsel-gated step)
 │   ├── digest_builder_test.go # 5 tests on enqueue / no-candidates / select-error / chunking / failing-chunk skip
@@ -283,14 +383,15 @@ apps/job_worker/
 │   │   ├── server.go        # HTTP routes for /v1/live/{run_id}/* + zone clip
 │   │   ├── server_test.go   # 16 httptest + WebSocket integration tests
 │   │   ├── iface.go         # LivePubSub interface — both Hub + RedisHub satisfy
-│   │   ├── redis_hub.go     # Redis-backed pub/sub variant (multi-replica fan-out + 24h TTL)
-│   │   └── redis_hub_test.go # 14 miniredis-backed tests on the Redis path
+│   │   ├── redis_hub.go     # Redis-backed pub/sub variant (multi-replica fan-out + 24h TTL); RunGC/StartGC reap the process-local zone + run-meta room cache, which the per-run key TTL does NOT cover
+│   │   └── redis_hub_test.go # 16 miniredis-backed tests on the Redis path
 │   ├── stravahook/          # Strava webhook HTTP endpoint (POST → enqueue strava_event)
 │   │   ├── server.go        # GET handshake + POST validate / freshness / dedupe / enqueue
 │   │   └── server_test.go   # 13 httptest cases on every gate + the handshake
-│   ├── dataexport/          # GDPR data-export HTTP endpoint (POST /v1/export)
-│   │   ├── server.go        # JWT auth + tiered rate limit + CSV/GPX-zip builder + signed URL
-│   │   └── server_test.go   # 14 tests (9 httptest + 5 pure builder/helpers)
+│   ├── dataexport/          # GDPR data-export queue endpoints (POST /v1/export/jobs, GET /v1/export/jobs/latest)
+│   │   ├── server.go        # JWT auth + tiered rate limit + streaming CSV/GPX/backup writers + signed URL; no run cap, no row ceiling (decisions § 708)
+│   │   ├── server_test.go   # httptest gates + streaming + fail-closed + pure builder/helper cases
+│   │   └── wiring_test.go   # source-grep guards: nothing buffers the archive, no cap comes back, manifest.json stays last
 │   └── premium/             # Pro-only HTTP endpoints (POST /v1/premium/{vo2max,race-predictor,recovery,training-plan})
 │       ├── server.go        # Shared JWT + Pro-tier gate + 4 handlers; Backend leaf interface
 │       ├── compute.go       # Pure helpers — Daniels VDOT, Riegel, EWMA training load, recovery advice, plan generator
@@ -323,6 +424,11 @@ The worker reports back to the queue on every job:
   cron sees it — migration `20261201_001_jobs_failed_alert.sql`.
 - **permanent** (4xx, malformed payload, missing run, RLS denial) →
   `finish_job(failed, msg)`.
+- **panic** → caught by `dispatchSafely`'s barrier, logged with its stack, and
+  reported as **permanent**. `isTransient` refuses a `*panicError` outright
+  rather than letting it reach the substring sniffing below: a panic value is
+  arbitrary text, and one that happens to say `i/o timeout` would otherwise
+  read as a network blip worth retrying.
 
 The classifier lives in `isTransient` in `worker.go`. It branches on
 `HTTPError.StatusCode` first (typed error from `supabase.go`), then
@@ -330,33 +436,52 @@ falls back to substring sniffing the message for network-layer
 markers — same shape as the watch's drain classifier in
 `apps/watch_wear/.../RunViewModel.kt`.
 
+**Why the barrier is not optional.** The worker loop runs in `main`'s own
+goroutine, and `startHealthServer` mounts the live-spectator hub, the
+data-export endpoints, the Strava webhook, the unsubscribe endpoint and the
+bounce webhook on the SAME process. An escaping panic therefore ends live
+tracking for every spectator watching every runner, not just the one job. And
+the job itself would be unreachable afterwards: `claim_next_job` selects only
+`status = 'queued'`, nothing moves a row back out of `running`, and
+`find_stuck_jobs` (migration `20260731_001`) deliberately only alerts. Pinned
+by `worker_panic_test.go`.
+
 ## Re-upload race
 
-Closed at the DB level via a `source_track_url` CAS (migration
-`20260611_001_run_matched_tracks_cas.sql`). The trigger writes
-`NEW.track_url` into `run_matched_tracks.source_track_url` on every
-insert and every reset; the worker captures `runs.track_url` at job
-start and PATCHes the row conditionally on
-`?source_track_url=eq.<value>` via `Prefer: return=representation`.
-A re-upload that lands between the worker's read and write changes
-`source_track_url`, the conditional PATCH affects 0 rows, the worker
-client returns `ErrStaleSourceTrackURL`, and the worker logs +
-returns `nil` — the OLD job ends cleanly via `finish_job(done)`,
-the NEW job already queued by the trigger produces the right
-result.
+`runs.track_url` is one fixed path per run (`runs_track_url_path_shape`), so a
+client re-uploading a track rewrites the same Storage object and only the
+object's `version` changes. Closed at the DB level by migration
+`20270719000020_runs_track_rewrite_invalidates_match.sql`:
 
-The pre-write `track_url` recheck is kept as a fast path: it skips
-the upload + PATCH entirely when the change is already visible at
-read time, saving a wasted Storage write. Defence in depth — the
-CAS is what closes the actual race; the recheck is for niceness.
+- The worker reads `track_url` and the object version together
+  (`map_match_track_source`, `ReadRunTrackSource`) before downloading, and
+  records its result through `record_map_match_result`
+  (`UpdateMatchedTrackRow`), which locks the `run_matched_tracks` row and
+  writes only while `track_url` and the version are unchanged. A refusal is
+  `ErrStaleSourceTrackURL`; the worker logs and returns `nil`.
+- The road distance is written with `distance_map_matched_track_version`, and
+  the `runs_road_distance_matches_track` trigger drops any figure whose version
+  is not the stored object's.
+- A trigger on `storage.objects` resets the row to `pending`, drops the road
+  distance and queues a re-match on every rewrite; `finish_job` re-queues a
+  `map_match` job that finishes `done` with its row still `pending`, because
+  `jobs_dedupe_map_match` makes the rewrite's own enqueue a no-op while the job
+  runs.
+
+The pre-write recheck (same read, after matching) is kept as a fast path: it
+skips the upload + write entirely when the change is already visible, saving a
+wasted Storage write. The RPC is what closes the actual race.
 
 Pinned by:
-- `TestWorker_ReuploadDuringMatchDiscardsResult` — recheck path.
-- `TestWorker_StaleSourceTrackURLDiscardsResult` — CAS path
-  (recheck would have passed but the row was reset under the
-  worker's feet between recheck and PATCH).
+- `TestWorker_ReuploadDuringMatchDiscardsResult` /
+  `TestWorker_ReuploadInPlaceDuringMatchDiscardsResult` — recheck path
+  (track_url change; same path, new version).
+- `TestWorker_StaleSourceTrackURLDiscardsResult` /
+  `TestWorker_StaleTrackVersionDiscardsResult` — refused-write path.
+- pgtap `runs_track_rewrite_invalidates_match_test.sql` — the triggers, the
+  RPC's refusal and `finish_job`'s re-queue.
 
-If the matched gz was uploaded before the CAS rejected the PATCH,
+If the matched gz was uploaded before the RPC refused the write,
 the file is now an orphan in Storage. The worker logs the path so
 an operator can sweep these later; an automated cleanup job would
 be the natural follow-up.
@@ -376,7 +501,7 @@ go vet ./...
 go build .                      # produce a binary in cwd
 
 # Against a running supabase stack at apps/backend:
-SUPABASE_URL=http://127.0.0.1:54321 \
+SUPABASE_URL=http://127.0.0.1:24321 \
   SUPABASE_SECRET_KEY=$(cd ../backend && supabase status -o env | \
     awk -F= '/^SERVICE_ROLE_KEY=/ {gsub(/"/,"",$2); print $2}') \
   WORKER_ID=dev \
@@ -399,14 +524,14 @@ the channel against the local Supabase Mailpit catcher, add to the
 `go run .` invocation above:
 
 ```bash
-SMTP_HOST=127.0.0.1 SMTP_PORT=54325 \
+SMTP_HOST=127.0.0.1 SMTP_PORT=24325 \
   SMTP_FROM='Threkir <noreply@threkir.com>' \
   APP_BASE_URL=http://localhost:7777
 ```
 
 Then insert a notification (e.g. `psql … -c "insert into notifications
 (user_id, kind) values ('<uid>', 'message')"`) and watch it arrive at
-`http://127.0.0.1:54324`. Production also sets `SMTP_USERNAME` +
+`http://127.0.0.1:24324`. Production also sets `SMTP_USERNAME` +
 `SMTP_PASSWORD` (Resend / SES SMTP); `SMTP_PORT` defaults to 587 and
 `APP_BASE_URL` to `https://threkir.com` when unset. With `SMTP_HOST`
 unset the worker drains `notification_email` jobs to done but leaves the

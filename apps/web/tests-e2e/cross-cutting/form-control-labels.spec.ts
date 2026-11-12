@@ -1,8 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Accessible-name pins for form controls that had a visible-but-not-
@@ -103,10 +105,10 @@ test.describe('form-control accessible names', () => {
 		test('/settings/devices override value control exposes an accessible name', async ({
 			page,
 		}) => {
-			// loadSettings (called by /settings/preferences onMount) provisions
+			// loadSettings (called by /settings/display onMount) provisions
 			// this browser's device row, so /settings/devices has a current
 			// device with an "Add override" affordance.
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/display');
 			await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 				timeout: 10_000,
 			});
@@ -157,12 +159,7 @@ test.describe('form-control accessible names', () => {
 			const userQ = `label ${marker}: how hard should my long run be?`;
 
 			const ctx = await browser.newContext({ storageState: user.storageStatePath });
-			await ctx.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-				);
-			});
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {

@@ -2,8 +2,16 @@
 // /settings/account page. The account page persists date_of_birth into
 // user_settings.prefs (read by coach/context.ts). Before this gate it was
 // an unguarded second write path that bypassed the consent flow enforced
-// on /settings/preferences. If a future edit removes the gate, DOB starts
+// on /settings/body. If a future edit removes the gate, DOB starts
 // persisting again without explicit consent — a GDPR Art 9 regression.
+//
+// The gate is on the MIRROR, not on the field. `user_profiles.date_of_birth`
+// is the age record behind the under-18 discoverability floor — a
+// child-protection purpose written whenever the runner supplies a date
+// (decisions § 718). The page used to abort the entire save on
+// `dateOfBirth && !healthDataConsent`, which denied a non-consenting minor
+// that record and deadlocked every other field on the page behind a DOB
+// input the same condition disabled.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -16,13 +24,50 @@ function read(...parts: string[]): string {
 
 const SOURCE = 'src/routes/settings/account/+page.svelte';
 
-test('account page refuses to save DOB without health-data consent', () => {
+test('account page writes the DOB age record without a consent term', () => {
 	const source = read(SOURCE);
 	assert.match(
 		source,
-		/if\s*\(dateOfBirth\s*&&\s*!healthDataConsent\)/,
-		'DOB-without-consent guard missing',
+		/date_of_birth:\s*dateOfBirth\s*\|\|\s*null/,
+		'ungated age-record writeback to user_profiles missing',
 	);
+	assert.doesNotMatch(
+		source,
+		/if\s*\(dateOfBirth\s*&&\s*!healthDataConsent\)/,
+		'the whole-save abort is the deadlock § 718 removed — gate the mirror instead',
+	);
+});
+
+test('the withdrawal RPC is not asked to clear the age record', () => {
+	// § 721 moved this to the server: withdraw_health_data_consent() nulls
+	// the Art 9 columns and leaves user_profiles.date_of_birth alone, so the
+	// page no longer orders its profile write after the RPC to put the
+	// column back. What must not return is a client-side compensation that
+	// re-asserts the record only on the withdrawal arm — that is the
+	// crash-window § 718 filed and the pgtap
+	// withdraw_health_data_consent_test.sql now pins directly.
+	const source = read(SOURCE);
+	const withdrawArm = source.slice(
+		source.indexOf("supabase.rpc(\n\t\t\t\t'withdraw_health_data_consent',"),
+		source.indexOf('const profileUpdate'),
+	);
+	assert.ok(withdrawArm.length > 0, 'withdrawal arm not found');
+	assert.doesNotMatch(
+		withdrawArm,
+		/date_of_birth/,
+		'the withdrawal arm must not carry its own age-record write',
+	);
+});
+
+test('account page does not consent-disable the DOB input', () => {
+	// The field is the way into the age record. Disabling it on a withdrawn
+	// consent leaves a runner unable to enter — or correct — a DOB at all.
+	const source = read(SOURCE);
+	const dobInput = source
+		.split('\n')
+		.find((l) => l.includes('bind:value={dateOfBirth}'));
+	assert.ok(dobInput, 'DOB input not found');
+	assert.doesNotMatch(dobInput!, /disabled=\{!healthDataConsent\}/, 'DOB input is consent-disabled');
 });
 
 test('account page stamps consent via the SECURITY DEFINER RPC, not a direct write', () => {

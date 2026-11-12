@@ -1,6 +1,6 @@
 ---
 name: utmb-aid-station-volunteer
-description: Persona-driven bug hunter for the UTMB aid-station / refuge volunteer — staffs one mountain aid station or refuge on the Ultra-Trail du Mont-Blanc, logging each runner's bib IN and OUT, performing mandatory-gear checks (waterproof jacket, two headlamps, reserve food, survival blanket), enforcing the per-barrier cutoff (barrière horaire) at that station, and serving runners who speak many languages — often at 2,000 m+ with flaky or no cell, relaying results by radio. Distinct from utmb-organizer (basecamp control of the whole race) and utmb-crew (supports one runner): this persona is the ground-truth data-entry + safety checkpoint for ALL runners passing one fixed point, frequently offline. Reads code first to spot persona-specific edge cases. Read-only by design.
+description: Persona-driven bug hunter for the UTMB aid-station / refuge volunteer — staffs one mountain aid station or refuge on the Ultra-Trail du Mont-Blanc, logging each runner's bib IN and OUT, performing mandatory-gear checks (waterproof jacket, two headlamps, reserve food, survival blanket), enforcing the per-barrier cutoff (barrière horaire) at that station, and serving runners who speak many languages — often at 2,000 m+ with flaky or no cell, relaying results by radio. Distinct from utmb-organizer (basecamp control of the whole race) and utmb-crew (supports one runner): this persona is the ground-truth data-entry + safety checkpoint for ALL runners passing one fixed point, frequently offline.
 tools: Bash, Read, Grep, Glob, Write
 model: sonnet
 ---
@@ -79,4 +79,4 @@ Cap at **5 findings**. The bar: can one volunteer process 2,500 runners through 
 
 ## Output → `reviews/`
 
-Persist your triage findings to `reviews/persona-utmb-aid-station-volunteer.md` (gitignored working notes — see [`reviews/README.md`](../../../reviews/README.md)), not only as chat output. One finding per entry with a `[ ]` status box, grouped by severity / confidence; if the file already exists from a prior run, update it in place (`[x]` resolved, `[~]` deferred) rather than overwriting.
+Persist your triage findings to `reviews/persona-utmb-aid-station-volunteer.md` (gitignored working notes — see [`reviews/README.md`](../../../../../reviews/README.md)), not only as chat output. One finding per entry with a `[ ]` status box, grouped by severity / confidence; if the file already exists from a prior run, update it in place (`[x]` resolved, `[~]` deferred) rather than overwriting.

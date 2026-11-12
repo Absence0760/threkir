@@ -1,70 +1,155 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import {
+		isPlanOverlapError,
+		isPlanRestartBeforeTodayError,
+		isPlanRestartRaceAheadError,
+		thrownMessage,
+	} from '#lib/core/supabase_error.ts';
+	import { activeFormatLocale, formatDate, formatDateShort, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		fetchPlan,
 		fetchMyClubs,
 		fetchRuns,
+		fetchDisplayName,
+		fetchPlanStartedFrom,
+		fetchRaceListing,
+		fetchRunDistances,
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
 		unpublishFromLibrary,
-		fetchMyPublishedPlans,
+		applyWorkoutAdjustments,
+		answerMissedWorkouts,
 		updatePlanWorkout,
-		updatePlanWeek,
-		updatePlanMeta,
 		duplicatePlanWeek,
+		fetchMyActivePlanWindows,
+		shiftTrainingPlan,
+		changePlanRaceDate,
+		repeatPlanWeek,
 		pausePlan,
 		resumePlan,
+		updatePlanStatus,
+		restartTrainingPlan,
 		ActivePlanExistsError,
-	} from '$lib/core/data';
-	import { shiftIsoDate, recoveryWorkoutPatch, recoveryWeekVolume } from '$lib/training/plan_bulk_ops';
-	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '$lib/training/cycle_plan';
-	import { isCyclePlansEnabled } from '$lib/training/cycle_plan_flag';
-	import { replanRemaining, type ReplanChange, type ReplanWeek } from '$lib/training/plan_replan';
+		isActiveCoachOf,
+		type RaceListingDetail,
+		type PlanStartedFrom,
+	} from '#lib/core/data.ts';
+	import { planAuthorCredit } from '#lib/share/share_plan_meta.ts';
+	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
+	import { planShiftImpact } from '#lib/training/plan_shift.ts';
+	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
+	import { overlappingPlans } from '#lib/training/plan_current.ts';
+	import { repeatWeekChange, type RepeatWeekChange, type RepeatWeekRefusal } from '#lib/training/plan_repeat_week.ts';
+	import { workoutMoveDays } from '#lib/training/plan_move.ts';
+	import { startLocalDayTicker } from '#lib/format/local_day_ticker.ts';
+	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
+	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
+	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
+	import { buildReplanWeeks, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
+	import {
+		anchorToActualVolume,
+		preferVolumeAnchor,
+		type VolumeAnchor
+	} from '#lib/training/plan_volume_anchor.ts';
+	import {
+		raceTaperAdjustments,
+		raceTaperProposals,
+		type RaceTaperChange
+	} from '#lib/training/race_taper.ts';
 	import {
 		adaptiveReplanRemaining,
 		type AdaptiveReason,
 		type AdaptiveConfidence
-	} from '$lib/training/plan_adaptive_replan';
-	import { computeTrainingLoadSeries } from '$lib/training/training_load';
-	import { workoutKindMarkVar } from '$lib/training/workout_kind_color';
-	import { isAdaptiveFitnessGateEnabled } from '$lib/training/adaptive_fitness_flag';
-	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import PlanMetaEditor from '$lib/components/PlanMetaEditor.svelte';
-	import PlanCalendar from '$lib/components/PlanCalendar.svelte';
-	import CurrentWeekStrip from '$lib/components/CurrentWeekStrip.svelte';
-	import RaceDayPanel from '$lib/components/RaceDayPanel.svelte';
-	import { daysUntilRace } from '$lib/runs/race_day';
-	import type { Run } from '$lib/types';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	} from '#lib/training/plan_adaptive_replan.ts';
+	import { computeTrainingLoadSeries } from '#lib/training/training_load.ts';
+	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
+	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
+	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import PlanRecapCard from '#lib/components/PlanRecapCard.svelte';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
+	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
+	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
+	import WalkRunGraduationCard, { graduationFromRows } from '#lib/components/WalkRunGraduationCard.svelte';
+	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
+	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import PlanMetaEditor from '#lib/components/PlanMetaEditor.svelte';
+	import PlanCalendar from '#lib/components/PlanCalendar.svelte';
+	import CurrentWeekStrip from '#lib/components/CurrentWeekStrip.svelte';
+	import RaceDayPanel from '#lib/components/RaceDayPanel.svelte';
+	import DisclosureSection from '#lib/components/DisclosureSection.svelte';
+	import {
+		readDisclosureState,
+		writeDisclosureState,
+		type DisclosureState
+	} from '#lib/util/disclosure_state.ts';
+	import {
+		PLAN_DETAIL_DISCLOSURE_DEFAULTS,
+		PLAN_DETAIL_DISCLOSURE_SCOPE
+	} from '#lib/training/plan_detail_sections.ts';
+	import { daysUntilRace } from '#lib/runs/race_day.ts';
+	import type { Run } from '#lib/types.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		addDays,
 		fmtHms,
+		formatISO,
 		isWorkoutCompleted,
 		isWorkoutSkipped,
 		parseISO,
 		todayISO
-	} from '$lib/training/training';
-	import { weeklyDrift, missedWorkoutAdvice } from '$lib/training/plan_adherence';
-	import { currentPlanWeekIndex } from '$lib/training/plan_week';
+	} from '#lib/training/training.ts';
+	import { weeklyDriftToDate, missedWorkoutAdvice, weekJudgedByDistance } from '#lib/training/plan_adherence.ts';
+	import { plannedWalkRunPattern, plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
+	import { resumeShift } from '#lib/training/plan_resume.ts';
+	import {
+		alignRestartStartIso,
+		defaultRestartStartIso,
+		isWalkRunPlan,
+		restartedDateIso,
+		restartStartAllowed,
+		upcomingRaceIso,
+	} from '#lib/training/plan_restart.ts';
+	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
+	import { currentPlanWeekIndex, foldedPlanWeekCount } from '#lib/training/plan_week.ts';
 	import {
 		orderedPlanPhases,
 		longestCompletedLongRunMetres,
-		planDistanceBanked
-	} from '$lib/training/plan_progress';
-	import { planToMarkdown, planToJson, type ExportPlan } from '$lib/training/plan_serialize';
-	import { workoutKindLabel, planPhaseLabel } from '$lib/training/workout_labels';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import type { WeekStart } from '$lib/format/calendar';
-	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '$lib/types';
+		planDistanceBanked,
+		planWorkoutProgress
+	} from '#lib/training/plan_progress.ts';
+	import { planToMarkdown, planToJson, type ExportPlan } from '#lib/training/plan_serialize.ts';
+	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
+	import { planSlug } from '#lib/training/plan_slug.ts';
+	import { workoutKindLabel, planPhaseLabel, planWeekNote } from '#lib/training/workout_labels.ts';
+	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
+	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtOverrun } from '#lib/format/overrun.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import type { WeekStart } from '#lib/format/calendar.ts';
+	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
 
-	let id = $derived($page.params.id as string);
+	type PlanName = Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>;
+
+	let id = $derived(page.params.id as string);
 	let plan = $state<TrainingPlan | null>(null);
 	let weeks = $state<PlanWeek[]>([]);
 	let workouts = $state<PlanWorkout[]>([]);
@@ -76,13 +161,44 @@
 	let publishingTo = $state('');
 	let editingPlanMeta = $state(false);
 	let recentRuns = $state<Run[]>([]);
+	/// False until the owner's recent runs have landed. Until then an empty
+	/// list means "unknown", not "ran nothing": the drift flag and the re-plan
+	/// would otherwise judge the week against zero kilometres.
+	let recentRunsLoaded = $state(false);
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
+	// Coach RLS lets an athlete's active coach edit the workouts of a
+	// non-template plan; nobody else may, so nobody else gets the editor.
+	let coachesOwner = $state(false);
+	let canEditWorkouts = $derived(
+		plan != null && (isOwner || (coachesOwner && !plan.is_template))
+	);
+	function openWorkout(wo: PlanWorkout): void {
+		if (canEditWorkouts) {
+			editing = wo;
+		} else if (plan) {
+			void goto(`/plans/${plan.id}/workouts/${wo.id}`);
+		}
+	}
+
+	// ─── Named disclosures (#905 workstream 3, decisions § 2375) ───
+	// Today's session and this week lead the page; everything else sits behind
+	// a named expander, shut until the runner opens it and remembered per
+	// account. The scope and defaults are shared with the mobile twin.
+	const DISCLOSURE_SCOPE = PLAN_DETAIL_DISCLOSURE_SCOPE;
+	const DISCLOSURE_DEFAULTS = PLAN_DETAIL_DISCLOSURE_DEFAULTS;
+	let disclosure = $state<DisclosureState>({ ...DISCLOSURE_DEFAULTS });
+
+	function setDisclosure(key: string, open: boolean): void {
+		if (disclosure[key] === open) return;
+		disclosure = { ...disclosure, [key]: open };
+		writeDisclosureState(DISCLOSURE_SCOPE, auth.user?.id, disclosure);
+	}
 
 	let showRaceDay = $derived.by(() => {
-		if (!plan) return false;
-		const days = daysUntilRace(plan.end_date, new Date());
+		if (!upcomingRace || upcomingRace.distanceM == null) return false;
+		const days = daysUntilRace(upcomingRace.date, new Date());
 		// Show within 21 days of race day (Strava's "race week" surface
 		// is +/-14; we widen it slightly to cover a proper taper).
 		return days >= 0 && days <= 21;
@@ -141,17 +257,12 @@
 				target_distance_m: w.target_distance_m,
 				target_pace_sec_per_km: w.target_pace_sec_per_km,
 				notes: w.notes,
+				target_duration_seconds: w.target_duration_seconds,
+				race_name: w.race_name,
+				race_priority: w.race_priority,
+				race_taper_applied_at: w.race_taper_applied_at,
 			})),
 		};
-	}
-
-	function planSlug(): string {
-		return (
-			(plan?.name ?? 'plan')
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-|-$/g, '') || 'plan'
-		);
 	}
 
 	function downloadFile(content: string, filename: string, type: string): void {
@@ -173,18 +284,18 @@
 		} catch {
 			// Clipboard blocked (insecure context / permission) — fall back
 			// to a download so the export is never a dead end.
-			downloadFile(planToMarkdown(e), `${planSlug()}.md`, 'text/markdown');
+			downloadFile(planToMarkdown(e), `${planSlug(plan?.name)}.md`, 'text/markdown');
 		}
 	}
 
 	function downloadMarkdown(): void {
 		const e = buildExport();
-		if (e) downloadFile(planToMarkdown(e), `${planSlug()}.md`, 'text/markdown');
+		if (e) downloadFile(planToMarkdown(e), `${planSlug(plan?.name)}.md`, 'text/markdown');
 	}
 
 	function downloadJson(): void {
 		const e = buildExport();
-		if (e) downloadFile(planToJson(e), `${planSlug()}.json`, 'application/json');
+		if (e) downloadFile(planToJson(e), `${planSlug(plan?.name)}.json`, 'application/json');
 	}
 
 	// Export menu keyboard support (ARIA menu pattern over a native <details>).
@@ -237,12 +348,14 @@
 	// These three ops rewrite or re-date a chunk of the plan and can't be
 	// cleanly undone, so each routes through a ConfirmDialog before running.
 	let bulkConfirm = $state<
-		| { kind: 'shift' }
+		| { kind: 'shift'; following: PlanName[] }
 		| { kind: 'recovery'; week: PlanWeek }
 		| { kind: 'duplicate'; week: PlanWeek }
 		| { kind: 'cycle' }
 		| { kind: 'pause' }
 		| { kind: 'resume' }
+		| { kind: 'raceDate'; change: RaceDateChange }
+		| { kind: 'repeat'; week: PlanWeek; change: RepeatWeekChange }
 		| null
 	>(null);
 
@@ -252,39 +365,490 @@
 	const cyclePlansEnabled = isCyclePlansEnabled();
 	let cyclePlanConfig = $state<CyclePlanConfig | null>(null);
 
+	// ─── Adjust plan (owner-only) ───
+	// One entry point for every whole-plan change. Each option closes the
+	// dialog before opening its own flow: the Modal restores focus on close, so
+	// letting that settle first keeps it from landing behind the next dialog.
+	let adjustOpen = $state(false);
+	let adjustButton = $state<HTMLButtonElement>();
+	let replanPreviewHeading = $state<HTMLHeadingElement>();
+
+	async function chooseConfirmed(
+		c: { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
+	): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		bulkConfirm = c;
+	}
+
+	/// Check the shift against the runner's other active plans before asking
+	/// (plan_shift.ts, decisions § 2052). Landing on a plan queued after this
+	/// one turns the confirm into "also move it"; landing on the plan before is
+	/// refused here, since moving that one would rewrite history. A failed check
+	/// asks nothing: the shift is never offered blind.
+	async function chooseShift(): Promise<void> {
+		if (!plan || !shiftDays) return;
+		adjustOpen = false;
+		await tick();
+		let others: PlanName[];
+		try {
+			others = await fetchMyActivePlanWindows();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
+			return;
+		}
+		const impact = planShiftImpact(plan, others, shiftDays);
+		if (impact.kind === 'blocked') {
+			showToast(m('planDetail.shiftBlocked', { plans: planNames(impact.blocking) }), 'error');
+			return;
+		}
+		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
+	}
+
+	// ─── Change race date (owner-only) ───
+	let raceDateInput = $state('');
+
+	function openAdjust(): void {
+		raceDateInput = raceDateOffer ?? '';
+		adjustOpen = true;
+	}
+
+	function raceDateRefusalMessage(reason: RaceDateRefusal, date: string, earliestIso?: string): string {
+		switch (reason) {
+			case 'too_soon':
+				return m('planDetail.raceDateTooSoon', {
+					date: fmtRaceDate(date),
+					earliest: earliestIso ? fmtRaceDate(earliestIso) : ''
+				});
+			case 'past':
+				return m('planDetail.raceDatePast');
+			case 'invalid':
+				return m('planDetail.raceDateInvalid');
+			case 'unchanged':
+				return m('planDetail.raceDateUnchanged');
+			case 'no_race':
+				return m('planDetail.raceDateNoRace');
+			case 'race_week_started':
+				return m('planDetail.raceDateWeekStarted');
+			case 'too_far':
+				return m('planDetail.raceDateTooFar');
+			case 'no_build_week':
+				return m('planDetail.raceDateNoBuild');
+			case 'in_the_way':
+				return m('planDetail.raceDateInTheWay');
+		}
+	}
+
+	/// Work out which weeks the new race date drops or repeats, refuse here
+	/// what the plan cannot reach with its taper whole, and check a later end
+	/// against the runner's other active plans before asking. A failed check
+	/// asks nothing.
+	async function chooseRaceDate(): Promise<void> {
+		if (!plan || !raceDateInput) return;
+		const date = raceDateInput;
+		adjustOpen = false;
+		await tick();
+		const result = raceDateChange({ plan, weeks, workouts, raceDateIso: date, todayIso: today });
+		if (!result.ok) {
+			showToast(raceDateRefusalMessage(result.reason, date, result.earliestIso), 'error');
+			return;
+		}
+		if (plan.status === 'active' && date > plan.end_date) {
+			let others: PlanName[];
+			try {
+				others = await fetchMyActivePlanWindows();
+			} catch (e) {
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
+				return;
+			}
+			const blocking = overlappingPlans(
+				others.filter((p) => p.id !== plan?.id),
+				plan.start_date,
+				date
+			);
+			if (blocking.length > 0) {
+				showToast(
+					m('planDetail.raceDateBlocked', { date: fmtRaceDate(date), plans: planNames(blocking) }),
+					'error'
+				);
+				return;
+			}
+		}
+		bulkConfirm = { kind: 'raceDate', change: result.change };
+	}
+
+	// ─── Repeat this week (owner-only) ───
+	/// The weeks a runner may run again: this week and the one that just
+	/// finished. Shown while the change is possible, or while it is refused
+	/// for a reason worth explaining (a race plan with no room, a done workout
+	/// in the way); hidden where it could never apply.
+	function repeatOffer(week: PlanWeek): ReturnType<typeof repeatWeekChange> | null {
+		if (!plan || !isOwner) return null;
+		const r = repeatWeekChange({ plan, weeks, workouts, weekId: week.id, todayIso: today });
+		if (r.ok || r.reason === 'no_room' || r.reason === 'in_the_way') return r;
+		return null;
+	}
+
+	function repeatWeekRefusalMessage(reason: RepeatWeekRefusal): string {
+		switch (reason) {
+			case 'no_room':
+				return m('planDetail.repeatWeekNoRoom');
+			case 'in_the_way':
+				return m('planDetail.repeatWeekInTheWay');
+			case 'last_week':
+				return m('planDetail.repeatWeekLastWeek');
+			default:
+				return m('planDetail.repeatWeekNotNow');
+		}
+	}
+
+	/// Work out the change, explain a refusal, and check a later end against
+	/// the runner's other active plans before asking. A failed check asks
+	/// nothing.
+	async function chooseRepeatWeek(week: PlanWeek): Promise<void> {
+		if (!plan) return;
+		const r = repeatWeekChange({ plan, weeks, workouts, weekId: week.id, todayIso: today });
+		if (!r.ok) {
+			showToast(repeatWeekRefusalMessage(r.reason), 'error');
+			return;
+		}
+		if (r.change.endIso > plan.end_date) {
+			let others: PlanName[];
+			try {
+				others = await fetchMyActivePlanWindows();
+			} catch (e) {
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
+				return;
+			}
+			const blocking = overlappingPlans(
+				others.filter((p) => p.id !== plan?.id),
+				plan.start_date,
+				r.change.endIso
+			);
+			if (blocking.length > 0) {
+				showToast(m('planDetail.repeatWeekBlocked', { plans: planNames(blocking) }), 'error');
+				return;
+			}
+		}
+		bulkConfirm = { kind: 'repeat', week, change: r.change };
+	}
+
+	function repeatWeekConfirmMessage(week: PlanWeek, change: RepeatWeekChange): string {
+		const params = {
+			n: week.week_index + 1,
+			copy: change.copyIndex + 1,
+			start: formatDateShort(change.copyStartIso)
+		};
+		if (change.raceDateIso) {
+			return m('planDetail.repeatWeekConfirmRace', { ...params, race: fmtRaceDate(change.raceDateIso) });
+		}
+		return m('planDetail.repeatWeekConfirmMessage', { ...params, end: formatDateShort(change.endIso) });
+	}
+
+	async function applyRepeatWeek(week: PlanWeek, change: RepeatWeekChange): Promise<void> {
+		if (!plan || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			await repeatPlanWeek(plan.id, change, today);
+			showToast(
+				m('planDetail.repeatWeekDone', { n: week.week_index + 1, start: formatDateShort(change.copyStartIso) })
+			);
+			await load();
+		} catch (e) {
+			planWriteFailed(e);
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	async function applyRaceDate(change: RaceDateChange): Promise<void> {
+		if (!plan || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			await changePlanRaceDate(plan.id, change, today);
+			showToast(m('planDetail.raceDateDone', { date: fmtRaceDate(change.raceDateIso) }));
+			await load();
+		} catch (e) {
+			planWriteFailed(e);
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function raceDateConfirmMessage(change: RaceDateChange): string {
+		const date = fmtRaceDate(change.raceDateIso);
+		if (change.weekDelta > 0) return m('planDetail.raceDateConfirmLater', { date, n: change.weekDelta });
+		if (change.weekDelta < 0) return m('planDetail.raceDateConfirmEarlier', { date, n: -change.weekDelta });
+		return m('planDetail.raceDateConfirmSameWeek', { date });
+	}
+
+	function planNames(plans: PlanName[]): string {
+		return new Intl.ListFormat(activeFormatLocale(), { type: 'conjunction' }).format(plans.map((p) => p.name));
+	}
+
+	/// A failed plan date write. 23P01 is the only exclusion constraint there
+	/// is (training_plans_active_no_overlap), so it is said in the runner's
+	/// language rather than as the data layer's English.
+	function planWriteFailed(e: unknown): void {
+		showToast(
+			isPlanOverlapError(e)
+				? m('planDetail.planOverlap')
+				: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
+			'error',
+		);
+	}
+
+	async function chooseReplan(propose: () => void): Promise<void> {
+		adjustOpen = false;
+		taperPreview = null;
+		await tick();
+		propose();
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
+	// ─── Taper around B/C races (owner-only, decisions § 2051) ───
+	// The plan's phases only taper for the A race at its end, so a B or C race
+	// mid-block gets its mini-taper and recovery proposed here, previewed like
+	// a re-plan, and applied only on the runner's say-so.
+	let taperPreview = $state<RaceTaperChange[] | null>(null);
+	let taperPreviewHeading = $state<HTMLHeadingElement>();
+
+	function proposeRaceTaper(): void {
+		if (!plan || !isOwner || bulkBusy) return;
+		const input = weeks.flatMap((wk) =>
+			(workoutsByWeek.get(wk.id) ?? []).map((x) => ({
+				id: x.id,
+				scheduledDate: x.scheduled_date,
+				kind: x.kind,
+				targetDistanceM: x.target_distance_m,
+				targetDurationSeconds: x.target_duration_seconds,
+				structure: x.structure,
+				notes: x.notes,
+				phase: wk.phase,
+				completed: isWorkoutCompleted(x),
+				skipped: isWorkoutSkipped(x),
+				taperApplied: x.race_taper_applied_at != null
+			}))
+		);
+		const changes = raceTaperProposals({ workouts: input, races, today });
+		replanPreview = null;
+		makeUpAnswers = null;
+		adaptiveInfo = null;
+		if (changes.length === 0) {
+			taperPreview = null;
+			showToast(m('planDetail.raceTaperNone'));
+			return;
+		}
+		taperPreview = changes;
+	}
+
+	async function chooseRaceTaper(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		proposeRaceTaper();
+		await tick();
+		taperPreviewHeading?.focus();
+	}
+
+	async function dismissRaceTaper(): Promise<void> {
+		taperPreview = null;
+		await tick();
+		adjustButton?.focus();
+	}
+
+	/// Writes every proposed patch and restates each touched week's volume in
+	/// one transaction (`apply_workout_adjustments`, decisions § 2062), so a
+	/// failure changes nothing. The page reloads either way, so it never shows
+	/// a state the server does not hold.
+	async function applyRaceTaper(): Promise<void> {
+		if (!plan || !taperPreview || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			const changes = taperPreview;
+			await applyWorkoutAdjustments(
+				plan.id,
+				raceTaperAdjustments(changes, new Date().toISOString())
+			);
+			showToast(m('planDetail.replanApplied', { n: changes.length }));
+			taperPreview = null;
+			await load();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
+			await load();
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function taperChangeLabel(c: RaceTaperChange): string {
+		const side = (kind: string, metres: number | null, seconds: number | null) =>
+			[
+				workoutKindLabel(kind),
+				metres != null ? fmtKm(metres) : null,
+				seconds != null ? formatDuration(seconds) : null
+			]
+				.filter((p) => p != null)
+				.join(' ');
+		const change = `${side(c.fromKind, c.fromMetres, c.fromDurationS)} → ${side(c.toKind, c.toMetres, c.toDurationS)}`;
+		const race = c.raceName ?? fmtRaceDate(c.raceDate);
+		if (c.reason === 'shakeout') return m('planDetail.raceTaperShakeout', { change, race });
+		if (c.reason === 'pre_race') return m('planDetail.raceTaperPre', { change, race });
+		return m('planDetail.raceTaperPost', { change, race });
+	}
+
+	// "Adjust with AI" (decisions § 1979). Needs the Coach on as well: a plan
+	// edit spends the Coach's key and daily counter.
+	const showAiAdjust = coachEnabled() && aiPlanEditEnabled();
+	let aiAdjustOpen = $state(false);
+	let aiAdjustRequest = $state<string | undefined>(undefined);
+
+	async function chooseAiAdjust(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		aiAdjustRequest = undefined;
+		aiAdjustOpen = true;
+	}
+
+	async function closeAiAdjust(): Promise<void> {
+		aiAdjustOpen = false;
+		aiAdjustRequest = undefined;
+		await tick();
+		adjustButton?.focus();
+	}
+
+	/// The Coach's plan-edit handoff lands here as `?adjust=<request>`. The
+	/// request spends a Coach message, so it runs once and leaves the URL: a
+	/// reload or a back-navigation must not run it again. The strip waits a
+	/// macrotask because SvelteKit refuses replaceState until its router has
+	/// finished starting.
+	function takeAdjustParam(): void {
+		const url = new URL(page.url.href);
+		const handed = url.searchParams.get('adjust')?.trim();
+		if (!handed) return;
+		if (showAiAdjust && plan && isOwner && !plan.is_template) {
+			aiAdjustRequest = handed;
+			aiAdjustOpen = true;
+		}
+		setTimeout(() => {
+			url.searchParams.delete('adjust');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the plan-edit request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// Home's paused-plan card lands here as `?resume=1`: open the resume
+	/// confirm, which says what moves, then leave the URL.
+	function takeResumeParam(): void {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get('resume') !== '1') return;
+		if (plan?.status === 'paused' && isOwner) bulkConfirm = { kind: 'resume' };
+		setTimeout(() => {
+			url.searchParams.delete('resume');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the resume request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// Home's missed-workout prompt lands here as `?makeup=1`: open the
+	/// make-up preview for the plan's current prompt, then leave the URL.
+	function takeMakeUpParam(): void {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get('makeup') !== '1') return;
+		if (plan && isOwner && missedPromptShown) {
+			const p = missedPromptFromRows(weeks, workouts, today);
+			if (p) void chooseMakeUp(p);
+			else showToast(m('missedPrompt.nothingToMakeUp'));
+		}
+		setTimeout(() => {
+			url.searchParams.delete('makeup');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the make-up request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// Home's plan card lands here as `?review=adaptive` or `?review=replan`:
+	/// open that existing preview, exactly as the Adjust plan dialog would,
+	/// then leave the URL so a reload does not propose it again.
+	function takeReviewParam(): void {
+		const url = new URL(page.url.href);
+		const review = url.searchParams.get('review');
+		if (!review) return;
+		if (plan && isOwner && !plan.is_template && plan.status === 'active') {
+			if (review === 'adaptive') void chooseReplan(proposeAdaptiveReplan);
+			else if (review === 'replan') void chooseReplan(proposeReplan);
+		}
+		setTimeout(() => {
+			url.searchParams.delete('review');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the review request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// The missed-workout prompt's "Make it up" (decisions § 2122): the
+	/// stretched next long run, previewed like a re-plan. Applying it records
+	/// the answer for every miss it honours, in the same transaction.
+	async function chooseMakeUp(p: MissedPrompt): Promise<void> {
+		if (!plan || !isOwner || bulkBusy) return;
+		if (!p.makeUp) {
+			showToast(m('missedPrompt.nothingToMakeUp'));
+			return;
+		}
+		adjustOpen = false;
+		taperPreview = null;
+		adaptiveInfo = null;
+		replanPreview = [p.makeUp];
+		makeUpAnswers = p.makeUpAnswers;
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
+	async function dismissReplan(): Promise<void> {
+		replanPreview = null;
+		makeUpAnswers = null;
+		adaptiveInfo = null;
+		await tick();
+		adjustButton?.focus();
+	}
+
 	function runBulkConfirm(): void {
 		const c = bulkConfirm;
 		bulkConfirm = null;
 		if (!c) return;
-		if (c.kind === 'shift') void shiftPlan();
+		if (c.kind === 'shift') void shiftPlan(c.following.length > 0);
 		else if (c.kind === 'recovery') void markWeekRecovery(c.week);
 		else if (c.kind === 'duplicate') void duplicateWeek(c.week);
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
 		else if (c.kind === 'pause') void doPausePlan();
+		else if (c.kind === 'raceDate') void applyRaceDate(c.change);
+		else if (c.kind === 'repeat') void applyRepeatWeek(c.week, c.change);
 		else void doResumePlan();
 	}
 
 	/// Move every workout + the plan's start/end by ±N days (race moved,
-	/// runner started a week late, …). Orchestrated client-side: one
-	/// update per workout then the plan meta; on partial failure the
-	/// reload surfaces the real server state.
-	async function shiftPlan(): Promise<void> {
+	/// runner started a week late, …) in one transaction (shift_training_plan),
+	/// with the plans queued after it when the runner chose to move them too.
+	async function shiftPlan(shiftFollowing: boolean): Promise<void> {
 		if (!plan || bulkBusy || !shiftDays) return;
 		bulkBusy = true;
 		try {
-			await Promise.all(
-				workouts.map((w) =>
-					updatePlanWorkout(w.id, { scheduled_date: shiftIsoDate(w.scheduled_date, shiftDays) }),
-				),
-			);
-			await updatePlanMeta(plan.id, {
-				start_date: shiftIsoDate(plan.start_date, shiftDays),
-				end_date: shiftIsoDate(plan.end_date, shiftDays),
-			});
+			await shiftTrainingPlan(plan.id, shiftDays, shiftFollowing);
 			showToast(m('planDetail.shiftDone', { n: Math.abs(shiftDays) }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -297,18 +861,16 @@
 		if (bulkBusy) return;
 		bulkBusy = true;
 		try {
-			const weekWorkouts = workoutsByWeek.get(week.id) ?? [];
-			await Promise.all(
-				weekWorkouts.map((w) => {
-					const patch = recoveryWorkoutPatch(w);
-					return patch ? updatePlanWorkout(w.id, patch) : Promise.resolve();
-				}),
-			);
-			await updatePlanWeek(week.id, { target_volume_m: recoveryWeekVolume(week.target_volume_m) });
+			const changes = (workoutsByWeek.get(week.id) ?? []).flatMap((w) => {
+				const patch = recoveryWorkoutPatch(w);
+				return patch ? [{ id: w.id, ...patch }] : [];
+			});
+			if (changes.length) await applyWorkoutAdjustments(plan!.id, changes);
 			showToast(m('planDetail.recoveryDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -326,7 +888,7 @@
 			showToast(m('planDetail.duplicateWeekDone', { n: week.week_index + 1 }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -334,9 +896,9 @@
 
 	/// Apply the cycle/pregnancy adjustment to the plan's FUTURE workouts only
 	/// (today onward) — the past is history, don't rewrite it. Each workout
-	/// gets its per-date patch (`cyclePlanWorkoutPatch`), then every touched
-	/// week's stated volume is recomputed from the patched distances so the
-	/// header stays honest. Orchestrated client-side like markWeekRecovery.
+	/// gets its per-date patch (`cyclePlanWorkoutPatch`), written with every
+	/// touched week's restated volume in one transaction
+	/// (`apply_workout_adjustments`, decisions § 2062).
 	async function applyCycleAdjustment(): Promise<void> {
 		if (!plan || !isOwner || bulkBusy || !cyclePlanConfig) return;
 		bulkBusy = true;
@@ -355,28 +917,15 @@
 				showToast(m('planDetail.cycleAdjustNone'));
 				return;
 			}
-			await Promise.all(
-				[...patchByWorkout].map(([wid, patch]) => updatePlanWorkout(wid, patch!)),
+			await applyWorkoutAdjustments(
+				plan.id,
+				[...patchByWorkout].map(([wid, patch]) => ({ id: wid, ...patch! })),
 			);
-			// Recompute the volume of every week that had a workout patched.
-			for (const wk of weeks) {
-				const wkWorkouts = workoutsByWeek.get(wk.id) ?? [];
-				if (!wkWorkouts.some((x) => patchByWorkout.has(x.id))) continue;
-				const vol = wkWorkouts.reduce((s, x) => {
-					if (x.kind === 'rest') return s;
-					const p = patchByWorkout.get(x.id);
-					const d =
-						p && 'target_distance_m' in p
-							? (p.target_distance_m ?? 0)
-							: (x.target_distance_m ?? 0);
-					return s + d;
-				}, 0);
-				await updatePlanWeek(wk.id, { target_volume_m: vol });
-			}
 			showToast(m('planDetail.cycleAdjustDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -391,7 +940,7 @@
 			showToast(m('planDetail.pauseDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -403,22 +952,51 @@
 		if (!plan || !isOwner || bulkBusy || !auth.user) return;
 		bulkBusy = true;
 		try {
-			await resumePlan(plan.id, auth.user.id);
-			showToast(m('planDetail.resumeDone'));
-			await load();
+			const shift = resumeOffer;
+			await resumePlan(plan.id, auth.user.id, shift);
+			showToast(shift ? m('planDetail.resumeShiftedDone', { n: shift.weeks }) : m('planDetail.resumeDone'));
+			await reloadAndOfferAnchor();
 		} catch (e) {
-			if (e instanceof ActivePlanExistsError) {
+			// The pre-check and the constraint say the same thing; the
+			// constraint catches a plan created between the two.
+			if (e instanceof ActivePlanExistsError || isPlanOverlapError(e)) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
-				showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			}
 		} finally {
 			bulkBusy = false;
 		}
 	}
 
+	// ─── Abandon (owner-only, active or paused) ───
+	// Not reversible from the UI, so it gets its own ConfirmDialog. A failure
+	// keeps the dialog open: the plan is still live, so closing would lie.
+	let abandonOpen = $state(false);
+
+	async function chooseAbandon(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		abandonOpen = true;
+	}
+
+	async function doAbandonPlan(): Promise<void> {
+		if (!plan || !isOwner) return;
+		try {
+			await updatePlanStatus(plan.id, 'abandoned');
+		} catch (e) {
+			showToast(m('plansPage.actionFailed', { error: errorCopy(e, m, 'plansPage.actionFailed') }), 'error');
+			return;
+		}
+		abandonOpen = false;
+		await load();
+	}
+
 	// ─── Re-plan around missed sessions (owner-only) ───
 	let replanPreview = $state<ReplanChange[] | null>(null);
+	/// Set only while the preview is the missed-workout prompt's make-up: the
+	/// misses its apply answers.
+	let makeUpAnswers = $state<string[] | null>(null);
 	/// Only a genuine multi-week TREND gets the badge — the `on_track` and
 	/// (P2) `deload_fatigue` outcomes explain themselves through a toast, so
 	/// they're excluded at the type level rather than by convention.
@@ -435,46 +1013,50 @@
 	/// week), completion + past flags.
 	function buildReplanInput(): ReplanWeek[] {
 		if (!plan) return [];
-		const todayD = parseISO(today);
-		return weeks.map((w) => {
-			const weekWorkouts = workoutsByWeek.get(w.id) ?? [];
-			let planned = w.target_volume_m ?? 0;
-			if (!(planned > 0)) {
-				planned = weekWorkouts.reduce(
-					(s, x) => s + (x.kind !== 'rest' ? (x.target_distance_m ?? 0) : 0),
-					0,
-				);
-			}
-			const weekStartD = addDays(parseISO(plan!.start_date), w.week_index * 7);
-			const weekEndD = addDays(weekStartD, 7);
-			let actual = 0;
-			for (const r of recentRuns) {
-				const t = new Date(r.started_at);
-				if (t >= weekStartD && t < weekEndD) actual += r.distance_m ?? 0;
-			}
-			return {
+		return buildReplanWeeks({
+			startDate: plan.start_date,
+			today,
+			runs: recentRuns.map((r) => ({
+				date: formatISO(new Date(r.started_at)),
+				distanceM: r.distance_m ?? 0,
+			})),
+			weeks: weeks.map((w) => ({
 				weekIndex: w.week_index,
 				phase: w.phase,
-				plannedMetres: planned,
-				actualMetres: actual,
-				isComplete: weekEndD <= todayD,
-				workouts: weekWorkouts.map((x) => ({
+				targetVolumeM: w.target_volume_m,
+				workouts: (workoutsByWeek.get(w.id) ?? []).map((x) => ({
 					id: x.id,
 					scheduledDate: x.scheduled_date,
 					kind: x.kind,
 					targetDistanceM: x.target_distance_m,
 					completed: isWorkoutCompleted(x),
 					skipped: isWorkoutSkipped(x),
-					isPast: x.scheduled_date < today,
+					answered: x.missed_ack_at != null,
 				})),
-			};
+			})),
 		});
+	}
+
+	/// The comeback ramp, only while `ADAPTIVE_FITNESS_GATE` is on (decisions
+	/// § 2090); off, every path below behaves as it did without it.
+	function volumeAnchor(input: ReplanWeek[]): VolumeAnchor | null {
+		if (!isAdaptiveFitnessGateEnabled()) return null;
+		return anchorToActualVolume({ weeks: input });
 	}
 
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
-		const { changes, onTrack } = replanRemaining({ weeks: buildReplanInput(), today });
-		if (onTrack || changes.length === 0) {
+		if (!recentRunsLoaded) {
+			showToast(m('planDetail.replanRunsUnavailable'), 'error');
+			return;
+		}
+		makeUpAnswers = null;
+		const input = buildReplanInput();
+		const changes = preferVolumeAnchor(
+			volumeAnchor(input),
+			replanRemaining({ weeks: input, today }).changes
+		);
+		if (changes.length === 0) {
 			showToast(m('planDetail.replanOnTrack'));
 			replanPreview = null;
 			adaptiveInfo = null;
@@ -496,8 +1078,14 @@
 
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		if (!recentRunsLoaded) {
+			showToast(m('planDetail.replanRunsUnavailable'), 'error');
+			return;
+		}
+		makeUpAnswers = null;
+		const input = buildReplanInput();
 		const r = adaptiveReplanRemaining({
-			weeks: buildReplanInput(),
+			weeks: input,
 			today,
 			fitness: adaptiveFitnessInput()
 		});
@@ -525,7 +1113,13 @@
 			adaptiveInfo = null;
 			return;
 		}
-		if (r.changes.length === 0) {
+		// An under-run trend is answered by building back from what was run
+		// (`plan_volume_anchor`), not by stretching a missed long run.
+		const changes =
+			reason === 'trend_underfitness'
+				? preferVolumeAnchor(volumeAnchor(input), r.changes)
+				: r.changes;
+		if (changes.length === 0) {
 			// A real multi-week trend, but the conservative rules prescribe no
 			// safe change (e.g. under-running easy volume is never crammed).
 			showToast(m('planDetail.adaptiveNoSafeChange'));
@@ -534,7 +1128,7 @@
 			return;
 		}
 		adaptiveInfo = { reason, confidence: r.confidence };
-		replanPreview = r.changes;
+		replanPreview = changes;
 	}
 
 	function adaptiveBadgeText(info: AdaptiveTrendInfo): string {
@@ -549,21 +1143,31 @@
 		return m('planDetail.adaptiveBadge', { reason, confidence });
 	}
 
+	/// Re-plan and adaptive re-plan write their distance changes, and restate
+	/// each touched week's volume, in one transaction
+	/// (`apply_workout_adjustments`, decisions § 2062); the page reloads on
+	/// failure so it never shows a half-applied plan.
 	async function applyReplan(): Promise<void> {
-		if (!replanPreview || bulkBusy) return;
+		if (!plan || !replanPreview || bulkBusy) return;
 		bulkBusy = true;
+		const answers = makeUpAnswers;
 		try {
-			await Promise.all(
-				replanPreview.map((c) =>
-					updatePlanWorkout(c.workoutId, { target_distance_m: c.toMetres }),
-				),
-			);
+			const changes = replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres }));
+			if (answers) await answerMissedWorkouts(plan.id, answers, changes);
+			else await applyWorkoutAdjustments(plan.id, changes);
 			showToast(m('planDetail.replanApplied', { n: replanPreview.length }));
 			replanPreview = null;
+			makeUpAnswers = null;
 			adaptiveInfo = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(
+				answers
+					? m('missedPrompt.saveFailed', { error: errorCopy(e, m, 'missedPrompt.saveFailed') })
+					: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
+				'error'
+			);
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -573,9 +1177,37 @@
 	function replanChangeLabel(c: ReplanChange): string {
 		const from = fmtKm(c.fromMetres);
 		const to = fmtKm(c.toMetres);
-		return c.reason === 'make_up_long'
-			? m('planDetail.replanMakeUp', { from, to })
-			: m('planDetail.replanEase', { from, to });
+		if (c.reason === 'make_up_long') return m('planDetail.replanMakeUp', { from, to });
+		if (c.reason === 'anchor_actual_volume') return m('planDetail.replanAnchor', { from, to });
+		return m('planDetail.replanEase', { from, to });
+	}
+
+	/// Set while the preview is the anchor's: what it builds back from.
+	let anchorInfo = $derived(
+		replanPreview?.some((c) => c.reason === 'anchor_actual_volume')
+			? volumeAnchor(buildReplanInput())
+			: null
+	);
+
+	/// After a resume or a break reschedule, the weeks ahead are offered
+	/// re-anchored to what the runner last ran, through the same preview. It
+	/// proposes only; nothing changes until Apply.
+	async function offerAnchor(): Promise<void> {
+		if (!plan || !isOwner || !recentRunsLoaded || plan.is_template || plan.status !== 'active')
+			return;
+		const anchor = volumeAnchor(buildReplanInput());
+		if (!anchor) return;
+		taperPreview = null;
+		makeUpAnswers = null;
+		adaptiveInfo = null;
+		replanPreview = anchor.changes;
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
+	async function reloadAndOfferAnchor(): Promise<void> {
+		await load();
+		await offerAnchor();
 	}
 
 	function handleBack(e: MouseEvent): void {
@@ -585,32 +1217,137 @@
 		}
 	}
 
+	/// Who assigned this plan, when a coach did and it is not the viewer.
+	let assigningCoachName = $state<string | null>(null);
+	/// The calendar race this plan was built for (decisions § 2156).
+	let linkedRace = $state<RaceListingDetail | null>(null);
+	/// Whose public plan this copy started from (decisions § 2262).
+	let startedFrom = $state<PlanStartedFrom | null>(null);
+
+	// SvelteKit keeps this component mounted across /plans/A → /plans/B, so
+	// onMount's load never runs for B; the effect below loads it instead.
+	let loadedId = $state<string | null>(null);
+	$effect(() => {
+		if (loadedId !== null && id !== loadedId) void load();
+	});
+
 	async function load() {
 		loading = true;
 		loadError = null;
+		loadedId = id;
 		try {
 			const res = await fetchPlan(id);
-			loadError = res.error;
+			loadError = res.error ? errorCopy(res.error, m, 'plans/[id]: loadError') : null;
 			plan = res.plan;
 			weeks = res.weeks;
 			workouts = res.workouts;
 		} catch (e) {
 			// A rejected fetch would otherwise leave the page stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = errorCopy(e, m, 'plans/[id]: loadError');
 		}
 		loading = false;
-		if (!loadError && plan != null && plan.user_id === auth.user?.id) {
+		assigningCoachName = null;
+		linkedRace = null;
+		startedFrom = null;
+		const startedFromId = plan?.source_author_id ? plan.id : null;
+		if (loadError === null && startedFromId && plan?.user_id === auth.user?.id) {
+			// Auxiliary: a failed read falls back to the plain "cloned" chip.
+			fetchPlanStartedFrom(startedFromId)
+				.then((from) => {
+					if (plan?.id === startedFromId) startedFrom = from;
+				})
+				.catch((e) => console.error('fetchPlanStartedFrom failed', e));
+		}
+		const raceListingId = plan?.race_listing_id;
+		if (loadError === null && raceListingId) {
+			// Auxiliary: a failed read leaves the plan without its race line.
+			fetchRaceListing(raceListingId)
+				.then((race) => {
+					if (plan?.race_listing_id === raceListingId) linkedRace = race;
+				})
+				.catch((e) => console.error('fetchRaceListing failed', e));
+		}
+		const coachId = plan?.assigned_by_coach_id;
+		if (loadError === null && coachId && coachId !== auth.user?.id) {
+			fetchDisplayName(coachId)
+				.then((name) => {
+					if (plan?.assigned_by_coach_id === coachId) assigningCoachName = name;
+				})
+				.catch((e) => console.error('fetchDisplayName failed', e));
+		}
+		coachesOwner = false;
+		if (loadError === null && plan != null && !plan.is_template && plan.user_id !== auth.user?.id) {
+			try {
+				coachesOwner = await isActiveCoachOf(plan.user_id);
+			} catch (e) {
+				// Fails closed: without the link the editor stays shut.
+				console.error('isActiveCoachOf failed', e);
+			}
+		}
+		if (loadError === null && plan != null && plan.user_id === auth.user?.id && plan.status === 'active') {
+			breakContext = await loadBreakContext(plan.user_id, today);
+		} else {
+			breakContext = null;
+		}
+		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
 			// drift flag (any time). 50 covers a heavy week comfortably.
 			try {
-				recentRuns = await fetchRuns({ limit: 50 });
-			} catch (_) {
-				// Best-effort: the adherence/projection extras degrade
-				// gracefully without recent runs — don't fail the page.
+				recentRuns = await fetchRuns({ limit: 50, throwOnError: true });
+				recentRunsLoaded = true;
+			} catch (e) {
+				// Best-effort: the adherence/projection extras stay hidden
+				// without recent runs — don't fail the page.
+				console.warn('plan detail recent runs failed', e);
 			}
 		}
+		await loadLinkedRunDistances();
+	}
+
+	/// Run distances behind each done workout, for "Done · +3 km". Auxiliary
+	/// (L4): a failed read just leaves the plain "Done".
+	let linkedRunDistances = $state<Map<string, number>>(new Map());
+	async function loadLinkedRunDistances(): Promise<void> {
+		const ids = workouts.flatMap((w) => (w.completed_run_id ? [w.completed_run_id] : []));
+		if (loadError !== null || ids.length === 0) {
+			linkedRunDistances = new Map();
+			return;
+		}
+		try {
+			linkedRunDistances = await fetchRunDistances(ids);
+		} catch (e) {
+			console.error('Reading the linked run distances failed', { message: thrownMessage(e) });
+		}
+	}
+
+	function overrunOf(wo: PlanWorkout): number | null {
+		if (!wo.completed_run_id) return null;
+		return workoutOverrunMetres(
+			wo.target_distance_m,
+			linkedRunDistances.get(wo.completed_run_id) ?? null,
+			wo.kind
+		);
+	}
+
+	/// A session's size as the plan states it (`plannedWorkoutSize`): a
+	/// walk-run session in minutes, never its estimated distance.
+	function sizeLabel(wo: PlanWorkout, digits?: number): string | null {
+		const size = plannedWorkoutSize({
+			kind: wo.kind,
+			targetDistanceM: wo.target_distance_m,
+			targetDurationS: wo.target_duration_seconds,
+			structure: wo.structure
+		});
+		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres, digits));
+	}
+
+	/// A walk-run session's intervals ("8 × (1 min run / 90 s walk)"), which
+	/// the minutes alone don't tell a beginner; null for any other session.
+	function patternLabel(wo: PlanWorkout): string | null {
+		const p = plannedWalkRunPattern({ kind: wo.kind, structure: wo.structure });
+		return p == null ? null : formatWalkRunPattern(m, p, fmtOverrun);
 	}
 
 	onMount(async () => {
@@ -619,7 +1356,15 @@
 		// to actually be set or the admin-clubs fetch silently no-ops
 		// for the plan owner.
 		await auth.ready();
+		// Hydrated before the first render of the plan body (the page is on its
+		// loading skeleton until `load()` resolves), so a remembered collapse
+		// never shows as a section opening and then shutting.
+		disclosure = readDisclosureState(DISCLOSURE_SCOPE, auth.user?.id, DISCLOSURE_DEFAULTS);
 		await load();
+		takeAdjustParam();
+		takeResumeParam();
+		takeMakeUpParam();
+		takeReviewParam();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
 			try {
@@ -657,40 +1402,41 @@
 			adminClubs = clubs.filter(
 				(c) => c.viewer_role === 'owner' || c.viewer_role === 'admin'
 			);
-			// Has the owner already published a copy of this plan to the
-			// public library? Match on parent_template_id is not set on the
-			// published copy, so detect by name + a published flag fetch.
-			const published = await fetchMyPublishedPlans();
-			publishedTemplate = published.find((t) => t.name === plan?.name) ?? null;
+			libraryCopyId = plan?.library_copy_id ?? null;
 		}
 	});
 
-	let publishedTemplate = $state<TrainingPlan | null>(null);
+	let libraryCopyId = $state<string | null>(null);
 	let libraryBusy = $state(false);
 
 	async function publishToLibrary() {
 		if (!plan || libraryBusy) return;
 		libraryBusy = true;
 		try {
-			const newId = await publishPlanToLibrary(plan.id);
-			publishedTemplate = { ...plan, id: newId, is_public_template: true };
+			libraryCopyId = await publishPlanToLibrary(plan.id);
 			showToast(m('planDetail.publishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.publishLibraryFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.publishLibraryFailed', { error: errorCopy(e, m, 'planDetail.publishLibraryFailed') }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
 	}
 
+	// Unpublishing deletes the library copy: a later publish mints a new id, so
+	// every shared "Train with me" link to this one stops resolving. Not
+	// reversible, so it confirms first; a failure keeps the dialog open.
+	let unpublishOpen = $state(false);
+
 	async function unpublishFromLibraryAction() {
-		if (!publishedTemplate || libraryBusy) return;
+		if (!libraryCopyId || libraryBusy) return;
 		libraryBusy = true;
 		try {
-			await unpublishFromLibrary(publishedTemplate.id);
-			publishedTemplate = null;
+			await unpublishFromLibrary(libraryCopyId);
+			libraryCopyId = null;
+			unpublishOpen = false;
 			showToast(m('planDetail.unpublishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.unpublishLibraryFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.unpublishLibraryFailed', { error: errorCopy(e, m, 'planDetail.unpublishLibraryFailed') }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
@@ -707,7 +1453,7 @@
 			// No reload needed — the source plan stayed put. The new
 			// template lives on the club's Templates tab.
 		} catch (e) {
-			showToast(m('planDetail.publishFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.publishFailed', { error: errorCopy(e, m, 'planDetail.publishFailed') }), 'error');
 		} finally {
 			publishingBusy = false;
 		}
@@ -723,7 +1469,134 @@
 		return m;
 	});
 
-	let today = $derived(todayISO());
+	// Rolls over at local midnight (local_day_ticker.ts), so a tab left open
+	// overnight stops calling yesterday today.
+	let today = $state(todayISO());
+
+	// ─── Restart this plan (owner-only) ───
+	let restartOpen = $state(false);
+	let restartBusy = $state(false);
+	let restartStart = $state('');
+	let restartWalkRun = $derived(isWalkRunPlan(workouts));
+	/// The couch-to-5K completion moment, once the plan's last walk-run
+	/// session is done. Owner-only, like the rest of the plan's coaching.
+	let walkRunGraduation = $derived(
+		plan && isOwner && !plan.is_template ? graduationFromRows(workouts) : null
+	);
+	let restartRaceAhead = $derived(upcomingRaceIso(workouts, today));
+	let restartEnd = $derived(
+		plan && restartStart ? restartedDateIso(plan.end_date, plan.start_date, restartStart) : null
+	);
+	let restartMovedRace = $derived.by(() => {
+		if (!plan || !restartStart) return null;
+		const last = workouts.filter((w) => w.kind === 'race').map((w) => w.scheduled_date).sort().at(-1);
+		return last ? restartedDateIso(last, plan.start_date, restartStart) : null;
+	});
+	let restartValid = $derived(
+		plan != null && restartStartAllowed(restartStart, plan.start_date, today, restartWalkRun)
+	);
+
+	async function chooseRestart(): Promise<void> {
+		if (!plan) return;
+		adjustOpen = false;
+		await tick();
+		restartStart = defaultRestartStartIso(plan.start_date, today, restartWalkRun);
+		restartOpen = true;
+	}
+
+	function onRestartStartChange(e: Event): void {
+		if (!plan) return;
+		const v = (e.currentTarget as HTMLInputElement).value;
+		restartStart = v ? alignRestartStartIso(v, plan.start_date, restartWalkRun) : '';
+	}
+
+	async function doRestartPlan(): Promise<void> {
+		if (!plan || !isOwner || restartBusy || !restartValid) return;
+		restartBusy = true;
+		try {
+			const newId = await restartTrainingPlan(plan.id, restartStart);
+			restartOpen = false;
+			showToast(m('planDetail.restartDone'));
+			await goto(`/plans/${newId}`);
+		} catch (e) {
+			showToast(
+				isPlanRestartRaceAheadError(e)
+					? m('planDetail.restartRaceAheadError')
+					: isPlanRestartBeforeTodayError(e)
+						? m('planDetail.restartBeforeTodayError')
+						: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
+				'error'
+			);
+		} finally {
+			restartBusy = false;
+		}
+	}
+
+	onMount(() => startLocalDayTicker((iso) => (today = iso)));
+	/// What resuming would push back: the weeks the runner had not started,
+	/// by the whole weeks the plan sat paused (`resumeShift`).
+	let resumeOffer = $derived(
+		plan?.status === 'paused'
+			? resumeShift({
+					startIso: plan.start_date,
+					pausedOnIso: plan.paused_at ? formatISO(new Date(plan.paused_at)) : null,
+					todayIso: today,
+					weekCount: weeks.length
+				})
+			: null
+	);
+
+	/// The days the workout being edited can move to (plan_move.ts, decisions
+	/// § 2073). Only the owner is offered the move.
+	let editingMoveDays = $derived.by(() => {
+		const wo = editing;
+		if (!plan || !wo || !isOwner) return [];
+		const week = weeks.find((w) => w.id === wo.week_id);
+		if (!week) return [];
+		return workoutMoveDays(plan.start_date, plan.end_date, week.week_index, wo, workouts, today);
+	});
+
+	/// Every race the plan builds toward (plan_races.ts, decisions § 2009); the
+	/// countdown, race-week panel and hero relation follow the next one, so a
+	/// B race mid-block gets its own run-in before the plan's A race.
+	let races = $derived(plan ? planRaces(plan, workouts) : []);
+	/// The race day the owner can move, or null for a plan with no race still
+	/// ahead (a walk-run plan, one ended early, one whose race has passed).
+	let raceDateOffer = $derived.by(() => {
+		const d = plan ? planRaceDate(plan, weeks) : null;
+		return d && d >= today ? d : null;
+	});
+	let upcomingRace = $derived(nextRace(races, today));
+	/// The hero's distance / goal / date follow the next race once it is not
+	/// the plan's own A race on the end date; the A goal stays in the races list.
+	let heroRace = $derived(
+		plan && upcomingRace && !(upcomingRace.priority === 'A' && upcomingRace.date === plan.end_date)
+			? upcomingRace
+			: null
+	);
+
+	/// The break offer's reads (decisions § 2128), loaded with the plan for
+	/// its owner: undefined until then, null when they failed. The offer
+	/// outranks the missed-workout prompt, here and for Home's `?makeup=1`.
+	let breakContext = $state<BreakContext | null | undefined>(undefined);
+	let planBreak = $derived(
+		plan && isOwner && plan.status === 'active'
+			? breakState(plan, weeks, workouts, today, breakContext)
+			: null
+	);
+	let planBreakQuiet = $derived(planBreak == null || (!planBreak.pending && !planBreak.showing));
+
+	/// The missed-workout prompt is the owner's, and only while the plan is
+	/// running: never for a coach viewing an athlete, a template, or a paused,
+	/// finished or abandoned plan.
+	let missedPromptShown = $derived(
+		plan != null &&
+			isOwner &&
+			planBreakQuiet &&
+			!plan.is_template &&
+			plan.status === 'active' &&
+			!isPlanFinished(plan, today)
+	);
 
 	let todayWorkout = $derived(
 		workouts.find((w) => w.scheduled_date === today) ?? null
@@ -748,6 +1621,12 @@
 		if (!plan) return null;
 		const start = parseISO(plan.start_date);
 		const end = parseISO(plan.end_date);
+		const raceDate = parseISO(upcomingRace?.date ?? plan.end_date);
+		// A named race before the plan's end reads as "<name> in N days".
+		const namedRace =
+			upcomingRace && upcomingRace.name && upcomingRace.date !== plan.end_date
+				? upcomingRace.name
+				: null;
 		const t = parseISO(today);
 		const dayMs = 86_400_000;
 		const totalWeeks = weeks.length > 0 ? weeks.length : 1;
@@ -767,26 +1646,50 @@
 			relation = m('planDetail.raceDayPast');
 			raceState = 'past';
 		} else {
-			const d = Math.round((end.getTime() - t.getTime()) / dayMs);
+			const d = Math.round((raceDate.getTime() - t.getTime()) / dayMs);
 			if (d === 0) {
-				relation = m('planDetail.raceDay');
+				relation = namedRace ? m('planDetail.namedRaceDay', { name: namedRace }) : m('planDetail.raceDay');
 				raceState = 'today';
 			} else if (d === 1) {
-				relation = m('planDetail.raceTomorrow');
+				relation = namedRace
+					? m('planDetail.namedRaceTomorrow', { name: namedRace })
+					: m('planDetail.raceTomorrow');
 				raceState = 'upcoming';
 			} else {
-				relation = m('planDetail.raceInDays', { d });
+				relation = namedRace
+					? m('planDetail.namedRaceInDays', { name: namedRace, d })
+					: m('planDetail.raceInDays', { d });
 				raceState = 'upcoming';
 			}
 		}
 		return { weekIndex, totalWeeks, totalDays, calendarPct, relation, raceState };
 	});
 
-	let completed = $derived(workouts.filter(isWorkoutCompleted).length);
-	let totalActive = $derived(
-		workouts.filter((w) => w.kind !== 'rest' && !isWorkoutSkipped(w)).length,
+	let progress = $derived(planWorkoutProgress(workouts));
+	let completed = $derived(progress.completed);
+	let totalActive = $derived(progress.total);
+	let pct = $derived(progress.pct);
+
+	let foldedWeeks = $derived(
+		plan ? foldedPlanWeekCount(plan.start_date, plan.end_date, today, weeks.length) : 0
 	);
-	let pct = $derived(totalActive === 0 ? 0 : Math.round((completed / totalActive) * 100));
+	let showEarlierWeeks = $state(false);
+	let earlierWeeksProgress = $derived(
+		planWorkoutProgress(
+			weeks
+				.filter((w) => w.week_index < foldedWeeks)
+				.flatMap((w) => workoutsByWeek.get(w.id) ?? [])
+		)
+	);
+
+	async function goToCurrentWeek(): Promise<void> {
+		setDisclosure('weeks', true);
+		await tick();
+		const el = document.getElementById('plan-week-current');
+		if (!el) return;
+		el.scrollIntoView({ block: 'start' });
+		el.focus({ preventScroll: true });
+	}
 
 	let currentWeek = $derived(
 		currentWeekIndex != null ? (weeks[currentWeekIndex] ?? null) : null
@@ -815,28 +1718,32 @@
 		return planDistanceBanked(workouts, actualById);
 	});
 
-	/// Current-week mileage drift vs plan. Owner-only (needs the runs
-	/// list). Planned volume is the week's target, falling back to the
-	/// sum of its non-rest workouts' distances; actual is every run dated
-	/// inside the week window. Null unless the drift trips the flag.
+	/// Current-week mileage drift vs the plan TO DATE. Owner-only (needs
+	/// the runs list). Both sides are windowed to the week's days that have
+	/// already ended, so a part-elapsed week is not judged against its full
+	/// seven-day target. Null unless the drift trips the flag.
 	let currentWeekDrift = $derived.by(() => {
-		if (!plan || !isOwner || currentWeek == null || currentWeekIndex == null) return null;
-		const weekWorkouts = workoutsByWeek.get(currentWeek.id) ?? [];
-		let planned = currentWeek.target_volume_m ?? 0;
-		if (!(planned > 0)) {
-			planned = weekWorkouts.reduce(
-				(s, w) => s + (w.kind !== 'rest' ? (w.target_distance_m ?? 0) : 0),
-				0
-			);
-		}
+		if (!plan || !isOwner || !recentRunsLoaded || currentWeek == null || currentWeekIndex == null)
+			return null;
 		const weekStartD = addDays(parseISO(plan.start_date), currentWeekIndex * 7);
 		const weekEndD = addDays(weekStartD, 7);
-		let actual = 0;
+		const runs = [];
 		for (const r of recentRuns) {
 			const t = new Date(r.started_at);
-			if (t >= weekStartD && t < weekEndD) actual += r.distance_m ?? 0;
+			if (t >= weekStartD && t < weekEndD) {
+				runs.push({ date: formatISO(t), distanceM: r.distance_m ?? 0 });
+			}
 		}
-		const d = weeklyDrift(planned, actual);
+		const d = weeklyDriftToDate({
+			workouts: (workoutsByWeek.get(currentWeek.id) ?? []).map((w) => ({
+				scheduledDate: w.scheduled_date,
+				kind: w.kind,
+				targetDistanceM: w.target_distance_m
+			})),
+			runs,
+			today,
+			weekTargetVolumeM: currentWeek.target_volume_m
+		});
 		return d.flagged ? d : null;
 	});
 
@@ -895,38 +1802,44 @@
 	}
 
 	function workoutAriaLabel(wo: PlanWorkout): string {
-		const dow = dayOfWeek(wo.scheduled_date);
-		const kind = workoutKindLabel(wo.kind);
-		const dist = wo.target_distance_m != null ? `, ${fmtKm(wo.target_distance_m)}` : '';
-		const status = isWorkoutCompleted(wo)
-			? m('planDetail.ariaCompletedSuffix')
-			: isWorkoutSkipped(wo)
-				? m('planDetail.ariaSkippedSuffix')
-				: '';
-		return `${dow}: ${kind}${dist}${status}`;
+		const over = overrunOf(wo);
+		const label = planWorkoutAriaLabel(
+			wo,
+			today,
+			{
+				day: `${dayOfWeek(wo.scheduled_date)} ${formatDateShort(wo.scheduled_date)}`,
+				kind: workoutKindLabel(wo.kind),
+				distance: sizeLabel(wo)
+			},
+			m
+		);
+		return over == null ? label : `${label}, ${m('plan.overrunAria', { distance: fmtOverrun(over) })}`;
 	}
 </script>
 
 {#if loading}
 	<div class="page" aria-busy="true" aria-label={m('planDetail.loadingPlan')}>
-		<div class="back-skel skeleton-shimmer"></div>
-		<div class="hero-skel skeleton-shimmer"></div>
-		<div class="today-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
+		<div aria-hidden="true">
+			<div class="back-skel"><SkeletonBlock height="1rem" width="8rem" /></div>
+			<div class="hero-skel"><SkeletonBlock height="9rem" radius="var(--radius-lg)" /></div>
+			<div class="today-skel"><SkeletonBlock height="5.5rem" radius="var(--radius-lg)" /></div>
+			{#each Array(3) as _, i (i)}
+				<div class="week-skel"><SkeletonBlock height="6rem" radius="var(--radius-lg)" /></div>
+			{/each}
+		</div>
 	</div>
-{:else if loadError}
+	<p class="visually-hidden" role="status">{m('planDetail.loadingPlan')}</p>
+{:else if loadError !== null}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('plansPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('plansPage.retry')}</button>
 		</div>
@@ -934,20 +1847,19 @@
 {:else if !plan}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
-		<div class="empty">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('planDetail.notFoundTitle')}</h3>
-			<p>{m('planDetail.notFoundBody')}</p>
-			<a href="/plans" class="btn btn-primary">{m('planDetail.backToYourPlans')}</a>
-		</div>
+		<EmptyState icon="search_off" title={m('planDetail.notFoundTitle')} text={m('planDetail.notFoundBody')}>
+			{#snippet actions()}
+				<a href="/plans" class="btn btn-primary">{m('planDetail.backToYourPlans')}</a>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 
@@ -963,14 +1875,24 @@
 							aria-label={m('planDetail.editPlanAria')}
 							onclick={() => (editingPlanMeta = true)}
 						>
-							<span class="material-symbols">edit</span>
+							<span class="material-symbols" aria-hidden="true">edit</span>
 							{m('planDetail.editPlan')}
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm hero-edit"
+							aria-haspopup="dialog"
+							bind:this={adjustButton}
+							onclick={openAdjust}
+						>
+							<span class="material-symbols" aria-hidden="true">tune</span>
+							{m('planDetail.adjustPlan')}
 						</button>
 					{/if}
 					{#if isOwner && workouts.length > 0}
 						<details class="export-menu" bind:this={exportMenu} ontoggle={onExportToggle}>
 							<summary class="btn btn-outline btn-sm">
-								<span class="material-symbols">ios_share</span>
+								<span class="material-symbols" aria-hidden="true">ios_share</span>
 								{m('planDetail.export')}
 							</summary>
 							<div class="export-actions" role="menu" tabindex="-1" onkeydown={onExportMenuKeydown}>
@@ -988,49 +1910,123 @@
 					{/if}
 				</div>
 				<div class="hero-chips">
-					{#if plan.parent_template_id}
+					{#if plan.assigned_by_coach_id && plan.assigned_by_coach_id !== auth.user?.id}
+						<a
+							class="chip chip-link"
+							href={assigningCoachName ? `/u/${plan.assigned_by_coach_id}` : '/coaching'}
+							data-testid="assigned-by-coach"
+						>
+							<span class="material-symbols" aria-hidden="true">sports</span>
+							{assigningCoachName
+								? m('planDetail.assignedBy', { name: assigningCoachName })
+								: m('planDetail.assignedByCoach')}
+						</a>
+					{/if}
+					{#if linkedRace}
+						<a class="chip chip-link" href="/races/{linkedRace.id}" data-testid="plan-linked-race">
+							<span class="material-symbols" aria-hidden="true">flag</span>
+							{m('planDetail.builtForRace', {
+								race: linkedRace.name,
+								date: formatDate(linkedRace.race_date),
+							})}
+						</a>
+					{/if}
+					{#if startedFrom}
+						{@const credit = planAuthorCredit(startedFrom.author)}
+						{@const label = credit
+							? m('planDetail.startedFrom', { author: credit })
+							: m('planDetail.startedFromRunner')}
+						{#if startedFrom.templateId}
+							<a
+								class="chip chip-link"
+								href="/plans/library/{startedFrom.templateId}"
+								data-testid="plan-started-from"
+							>
+								<span class="material-symbols" aria-hidden="true">person</span>
+								{label}
+							</a>
+						{:else}
+							<span class="chip" data-testid="plan-started-from">
+								<span class="material-symbols" aria-hidden="true">person</span>
+								{label}
+							</span>
+						{/if}
+					{:else if plan.parent_template_id}
 						<a class="chip chip-link" href="/plans/{plan.parent_template_id}">
-							<span class="material-symbols">link</span>
+							<span class="material-symbols" aria-hidden="true">link</span>
 							{m('planDetail.clonedFromTemplate')}
 						</a>
 					{/if}
 					{#if plan.is_template && plan.club_id}
 						<span class="chip">
-							<span class="material-symbols">groups</span>
+							<span class="material-symbols" aria-hidden="true">groups</span>
 							{m('planDetail.clubTemplate')}
 						</span>
 					{/if}
 				</div>
+				{#if heroRace}
+					<p class="hero-next-race" data-testid="hero-next-race">
+						<span
+							class="race-priority p-{heroRace.priority.toLowerCase()}"
+							aria-label={m('planDetail.racePriorityAria', { priority: heroRace.priority })}
+						>{heroRace.priority}</span>
+						{m('planDetail.heroNextRace', { name: heroRace.name ?? plan.name })}
+					</p>
+				{/if}
 				<div class="meta">
-					<span>
-						<span class="material-symbols">flag</span>
-						{fmtKm(plan.goal_distance_m, 1)}
-					</span>
-					{#if plan.goal_time_seconds}
+					{#if heroRace}
+						{#if heroRace.distanceM != null}
+							<span>
+								<span class="material-symbols" aria-hidden="true">flag</span>
+								{fmtKm(heroRace.distanceM, 1)}
+							</span>
+						{/if}
+						{#if heroRace.goalTimeSec != null}
+							<span>
+								<span class="material-symbols" aria-hidden="true">timer</span>
+								{fmtHms(heroRace.goalTimeSec)}
+							</span>
+						{/if}
+					{:else}
 						<span>
-							<span class="material-symbols">timer</span>
-							{fmtHms(plan.goal_time_seconds)}
+							<span class="material-symbols" aria-hidden="true">flag</span>
+							{fmtKm(plan.goal_distance_m, 1)}
 						</span>
+						{#if plan.goal_time_seconds}
+							<span>
+								<span class="material-symbols" aria-hidden="true">timer</span>
+								{fmtHms(plan.goal_time_seconds)}
+							</span>
+						{/if}
 					{/if}
 					{#if plan.vdot}
 						<span>
-							<span class="material-symbols">trending_up</span>
-							VDOT {Number(plan.vdot).toFixed(1)}
+							<span class="material-symbols" aria-hidden="true">trending_up</span>
+							<MetricLabel metric="vdot" />
+							{Number(plan.vdot).toFixed(1)}
 						</span>
 					{/if}
 					{#if planPosition}
 						<span>
-							<span class="material-symbols">event</span>
-							{fmtRaceDate(plan.end_date)}
+							<span class="material-symbols" aria-hidden="true">event</span>
+							{fmtRaceDate(heroRace?.date ?? plan.end_date)}
 						</span>
 					{/if}
 				</div>
 			</div>
 			<div class="hero-position">
 				{#if planPosition}
-					<span class="week-pill">
-						{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
-					</span>
+					{#if today >= plan.start_date}
+						<button
+							type="button"
+							class="week-pill"
+							data-testid="week-pill"
+							title={m('planDetail.goToThisWeek')}
+							onclick={goToCurrentWeek}
+						>
+							{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
+						</button>
+					{/if}
 					<span
 						class="relation-pill"
 						class:race-today={planPosition.raceState === 'today'}
@@ -1056,95 +2052,122 @@
 			</div>
 		</header>
 
-		{#if planPosition}
-			<div class="calendar-bar" aria-hidden="true">
-				<span
-					class="calendar-fill"
-					style="width: {planPosition.calendarPct}%"
-				></span>
-			</div>
+		{#if plan.assigned_by_coach_id}
+			<PlanChangeRequests scope={{ planId: plan.id }} onchanged={load} />
 		{/if}
 
-		{#if orderedPhases.length > 1 || longestLongRunMetres != null || distanceBanked.plannedMetres > 0}
-			<section class="plan-progress">
-				{#if orderedPhases.length > 1}
-					<ol class="phase-marker" aria-label={m('planDetail.phaseMarkerAria')}>
-						{#each orderedPhases as ph (ph)}
-							<li class="phase-step" class:active={ph === currentPhase}>
-								{planPhaseLabel(ph)}
-							</li>
-						{/each}
-					</ol>
+		{#if walkRunGraduation}
+			<WalkRunGraduationCard graduation={walkRunGraduation} />
+		{/if}
+
+		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
+			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
+		{/if}
+
+		{#if isOwner && !plan.is_template && plan.status === 'completed'}
+			<PlanRecapCard {plan} {workouts} />
+		{/if}
+
+		{#if planBreak?.showing && planBreak.found && breakContext}
+			<PlanBreakCard
+				{plan}
+				{weeks}
+				{workouts}
+				{today}
+				found={planBreak.found}
+				context={breakContext}
+				onanswered={(pref) => {
+					if (breakContext) breakContext = { ...breakContext, dismissedPref: pref };
+				}}
+				onapplied={reloadAndOfferAnchor}
+			/>
+		{/if}
+
+		{#if isOwner && !plan.is_template && replanPreview}
+			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
+				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
+				{#if adaptiveInfo}
+					<p class="replan-adaptive-badge">{adaptiveBadgeText(adaptiveInfo)}</p>
 				{/if}
-				<div class="plan-progress-stats">
-					{#if distanceBanked.plannedMetres > 0}
-						<div class="stat-chip" title={m('planDetail.distanceBanked')}>
-							<span class="material-symbols">route</span>
-							<span class="stat-label">{m('planDetail.distanceBanked')}</span>
-							<span class="stat-value">
-								{m('planDetail.distanceBankedValue', {
-									done: fmtKm(distanceBanked.completedMetres, 0),
-									total: fmtKm(distanceBanked.plannedMetres, 0)
-								})}
-							</span>
-						</div>
-					{/if}
-					{#if longestLongRunMetres != null}
-						<div class="stat-chip" title={m('planDetail.longestLongRun')}>
-							<span class="material-symbols">trending_up</span>
-							<span class="stat-label">{m('planDetail.longestLongRun')}</span>
-							<span class="stat-value">{fmtKm(longestLongRunMetres)}</span>
-						</div>
-					{/if}
+				{#if anchorInfo}
+					<p class="replan-anchor-note" data-testid="replan-anchor-note">
+						{anchorInfo.returning
+							? m('planDetail.anchorReturnNote', {
+									n: anchorInfo.idleWeeks,
+									km: fmtKm(anchorInfo.anchorMetres)
+								})
+							: m('planDetail.anchorUnderNote', { km: fmtKm(anchorInfo.anchorMetres) })}
+					</p>
+				{/if}
+				<ul>
+					{#each replanPreview as c (c.workoutId)}
+						<li>
+							<span class="replan-date">{c.scheduledDate}</span>
+							<span class="replan-change">{replanChangeLabel(c)}</span>
+						</li>
+					{/each}
+				</ul>
+				<div class="replan-actions">
+					<button type="button" class="btn btn-secondary btn-sm" onclick={dismissReplan} disabled={bulkBusy}>
+						{m('planDetail.replanCancel')}
+					</button>
+					<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
+						{m('planDetail.replanApply')}
+					</button>
 				</div>
 			</section>
 		{/if}
 
-		{#if currentWeekDrift || missedLongRun}
-			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
-				{#if currentWeekDrift}
-					<p class="adherence-flag drift-{currentWeekDrift.direction}">
-						<span class="material-symbols">monitoring</span>
-						{currentWeekDrift.direction === 'over'
-							? m('planDetail.driftOverFlag', {
-									pct: Math.round(currentWeekDrift.driftFraction * 100)
-								})
-							: m('planDetail.driftUnderFlag', {
-									pct: Math.round(Math.abs(currentWeekDrift.driftFraction) * 100)
-								})}
-					</p>
-				{/if}
-				{#if missedLongRun}
-					<p class="adherence-flag missed-{missedLongRun.recommendation}">
-						<span class="material-symbols">event_busy</span>
-						{missedLongRun.reason === 'taper'
-							? m('planDetail.missedLongTaper')
-							: missedLongRun.reason === 'recovery_soon'
-								? m('planDetail.missedLongRecovery')
-								: m('planDetail.missedLongMakeUp')}
-					</p>
-				{/if}
+		{#if isOwner && !plan.is_template && taperPreview}
+			<section
+				class="replan-preview"
+				aria-label={m('planDetail.raceTaperPreviewTitle')}
+				data-testid="race-taper-preview"
+			>
+				<h3 tabindex="-1" bind:this={taperPreviewHeading}>{m('planDetail.raceTaperPreviewTitle')}</h3>
+				<ul>
+					{#each taperPreview as c (c.workoutId)}
+						<li>
+							<span class="replan-date">{c.scheduledDate}</span>
+							<span class="replan-change">{taperChangeLabel(c)}</span>
+							{#if c.clearsNotes}
+								<span class="replan-note" data-testid="race-taper-notes-cleared">{m('planDetail.raceTaperNotesCleared')}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<div class="replan-actions">
+					<button type="button" class="btn btn-secondary btn-sm" onclick={dismissRaceTaper} disabled={bulkBusy}>
+						{m('planDetail.replanCancel')}
+					</button>
+					<button type="button" class="btn btn-primary btn-sm" onclick={applyRaceTaper} disabled={bulkBusy}>
+						{m('planDetail.replanApply')}
+					</button>
+				</div>
 			</section>
 		{/if}
 
-		{#if Array.isArray(plan.rules) && plan.rules.length > 0}
-			<aside class="rules-card">
-				<h3>{m('planDetail.rulesTitle')}</h3>
-				<ul>
-					{#each plan.rules as r}
-						<li>{r}</li>
-					{/each}
-				</ul>
-			</aside>
+		{#if isOwner && !plan.is_template && showAiAdjust && aiAdjustOpen}
+			<PlanAiAdjust
+				{plan}
+				{weeks}
+				{workouts}
+				{recentRuns}
+				{today}
+				initialRequest={aiAdjustRequest}
+				onclose={closeAiAdjust}
+				onapplied={async () => {
+					aiAdjustOpen = false;
+					aiAdjustRequest = undefined;
+					await load();
+				}}
+			/>
 		{/if}
 
-		{#if showRaceDay && plan != null}
-			<RaceDayPanel
-				raceDate={plan.end_date}
-				distanceM={plan.goal_distance_m}
-				goalTimeSec={plan.goal_time_seconds}
-				{recentRuns}
-			/>
+		{#if missedPromptShown && plan}
+			<div class="missed-prompt-slot">
+				<MissedWorkoutPrompt planId={plan.id} {weeks} {workouts} {today} onmakeup={chooseMakeUp} />
+			</div>
 		{/if}
 
 		{#if todayWorkout}
@@ -1153,15 +2176,21 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editTodayWorkoutAria', { kind: workoutKindLabel(todayWorkout.kind) })}
-					onclick={() => (editing = todayWorkout)}
+					onclick={() => todayWorkout && openWorkout(todayWorkout)}
 				>
-					<div class="today-icon" class:done={isWorkoutCompleted(todayWorkout)}>
+					<div
+						class="today-icon"
+						class:done={isWorkoutCompleted(todayWorkout)}
+						class:skipped={isWorkoutSkipped(todayWorkout)}
+					>
 						{#if isWorkoutCompleted(todayWorkout)}
-							<span class="material-symbols">check_circle</span>
+							<span class="material-symbols" aria-hidden="true">check_circle</span>
+						{:else if isWorkoutSkipped(todayWorkout)}
+							<span class="material-symbols" aria-hidden="true">skip_next</span>
 						{:else if todayWorkout.kind === 'rest'}
-							<span class="material-symbols">self_improvement</span>
+							<span class="material-symbols" aria-hidden="true">self_improvement</span>
 						{:else}
-							<span class="material-symbols">directions_run</span>
+							<span class="material-symbols" aria-hidden="true">directions_run</span>
 						{/if}
 					</div>
 					<div class="today-body">
@@ -1170,21 +2199,32 @@
 							{workoutKindLabel(todayWorkout.kind)}
 						</span>
 						<div class="today-meta">
-							{#if todayWorkout.target_distance_m != null}
-								<span>{fmtKm(todayWorkout.target_distance_m)}</span>
+							{#if sizeLabel(todayWorkout) != null}
+								<span>{sizeLabel(todayWorkout)}</span>
 							{/if}
-							{#if todayWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(todayWorkout.target_pace_sec_per_km)}</span>
+							{#if todayWorkout.target_pace_sec_per_km && todayWorkout.kind !== 'walk_run'}
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
-								<span class="today-done">{m('planDetail.completed')}</span>
+								{@const over = overrunOf(todayWorkout)}
+								<span class="today-done" data-testid="plan-today-done"
+									>{m('planDetail.completed')}{#if over != null}<span aria-hidden="true"
+											>{' · '}{m('plan.overrun', { distance: fmtOverrun(over) })}</span
+										><span class="sr-only">, {m('plan.overrunAria', { distance: fmtOverrun(over) })}</span
+										>{/if}</span
+								>
+							{:else if isWorkoutSkipped(todayWorkout)}
+								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
 						</div>
+						{#if patternLabel(todayWorkout) != null}
+							<span class="today-pattern" data-testid="plan-today-pattern">{patternLabel(todayWorkout)}</span>
+						{/if}
 						{#if todayWorkout.notes}
 							<p class="today-notes">{todayWorkout.notes}</p>
 						{/if}
 					</div>
-					<span class="material-symbols today-arrow">chevron_right</span>
+					<span class="material-symbols today-arrow" aria-hidden="true">chevron_right</span>
 				</button>
 			</section>
 		{:else if nextWorkout}
@@ -1193,10 +2233,10 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editNextWorkoutAria')}
-					onclick={() => (editing = nextWorkout)}
+					onclick={() => nextWorkout && openWorkout(nextWorkout)}
 				>
 					<div class="today-icon">
-						<span class="material-symbols">event_upcoming</span>
+						<span class="material-symbols" aria-hidden="true">event_upcoming</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.nextUp')}</span>
@@ -1204,23 +2244,26 @@
 							{workoutKindLabel(nextWorkout.kind)}
 						</span>
 						<div class="today-meta">
-							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {nextWorkout.scheduled_date}</span>
-							{#if nextWorkout.target_distance_m != null}
-								<span>{fmtKm(nextWorkout.target_distance_m)}</span>
+							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {formatDateShort(nextWorkout.scheduled_date)}</span>
+							{#if sizeLabel(nextWorkout) != null}
+								<span>{sizeLabel(nextWorkout)}</span>
 							{/if}
-							{#if nextWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(nextWorkout.target_pace_sec_per_km)}</span>
+							{#if nextWorkout.target_pace_sec_per_km && nextWorkout.kind !== 'walk_run'}
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
+						{#if patternLabel(nextWorkout) != null}
+							<span class="today-pattern" data-testid="plan-next-pattern">{patternLabel(nextWorkout)}</span>
+						{/if}
 					</div>
-					<span class="material-symbols today-arrow">chevron_right</span>
+					<span class="material-symbols today-arrow" aria-hidden="true">chevron_right</span>
 				</button>
 			</section>
 		{:else if planPosition?.raceState === 'today'}
 			<section class="today">
 				<div class="today-link today-static">
 					<div class="today-icon">
-						<span class="material-symbols">emoji_events</span>
+						<span class="material-symbols" aria-hidden="true">emoji_events</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.raceDay')}</span>
@@ -1232,7 +2275,7 @@
 			<section class="today">
 				<div class="today-link today-static">
 					<div class="today-icon">
-						<span class="material-symbols">self_improvement</span>
+						<span class="material-symbols" aria-hidden="true">self_improvement</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.today')}</span>
@@ -1245,195 +2288,237 @@
 			</section>
 		{/if}
 
-		{#if !plan.is_template && adminClubs.length > 0 && plan.user_id === auth.user?.id}
-			<section class="publish-row">
-				<span class="publish-label">{m('planDetail.publishLabel')}</span>
-				<select bind:value={publishingTo} aria-label={m('planDetail.clubToPublishAria')}>
-					<option value="">{m('planDetail.pickAClub')}</option>
-					{#each adminClubs as c (c.id)}
-						<option value={c.id}>{c.name}</option>
-					{/each}
-				</select>
-				<button
-					class="btn btn-outline"
-					type="button"
-					disabled={!publishingTo || publishingBusy}
-					onclick={publishAsTemplate}
-				>
-					{m('planDetail.publish')}
-				</button>
-			</section>
-		{/if}
-
-		{#if !plan.is_template && plan.user_id === auth.user?.id}
-			<section class="publish-row">
-				<span class="publish-label">{m('planDetail.publishLibraryLabel')}</span>
-				{#if publishedTemplate}
-					<span class="publish-hint">{m('planDetail.alreadyPublished')}</span>
-					<button
-						class="btn btn-outline"
-						type="button"
-						disabled={libraryBusy}
-						onclick={unpublishFromLibraryAction}
-					>
-						{m('planDetail.unpublishLibrary')}
-					</button>
-				{:else}
-					<span class="publish-hint">{m('planDetail.publishLibraryHint')}</span>
-					<button
-						class="btn btn-outline"
-						type="button"
-						disabled={libraryBusy}
-						onclick={publishToLibrary}
-					>
-						{m('planDetail.publishLibrary')}
-					</button>
-				{/if}
-			</section>
-		{/if}
-
 		<CurrentWeekStrip
+			title={today < plan.start_date ? m('planDetail.firstWeek') : undefined}
 			startDate={plan.start_date}
 			{currentWeek}
 			weekWorkouts={currentWeek ? (workoutsByWeek.get(currentWeek.id) ?? []) : []}
 			{today}
 			{weekStart}
-			onSelect={(wo) => (editing = wo)}
+			onSelect={openWorkout}
 		/>
 
-		<section class="calendar-section">
-			<h2 class="section-title">{m('planDetail.calendar')}</h2>
+		{#if restartWalkRun && currentWeek && repeatOffer(currentWeek)?.ok}
+			<section class="repeat-week-offer" data-testid="repeat-week-offer">
+				<p>
+					<strong>{m('planDetail.repeatWeekOfferTitle')}</strong>
+					{m('planDetail.repeatWeekOfferBody')}
+				</p>
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					disabled={bulkBusy}
+					onclick={() => currentWeek && chooseRepeatWeek(currentWeek)}
+				>
+					<span class="material-symbols" aria-hidden="true">replay</span>
+					{m('planDetail.repeatWeek')}
+				</button>
+			</section>
+		{/if}
+
+		{#if currentWeekDrift || missedLongRun}
+			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
+				{#if currentWeekDrift}
+					<p class="adherence-flag drift-{currentWeekDrift.direction}">
+						<span class="material-symbols" aria-hidden="true">monitoring</span>
+						{currentWeekDrift.direction === 'over'
+							? m('planDetail.driftOverFlag', {
+									pct: Math.round(currentWeekDrift.driftFraction * 100)
+								})
+							: m('planDetail.driftUnderFlag', {
+									done: fmtKm(currentWeekDrift.actualMetres, 1),
+									planned: fmtKm(currentWeekDrift.plannedMetres, 1)
+								})}
+					</p>
+				{/if}
+				{#if missedLongRun}
+					<p class="adherence-flag missed-{missedLongRun.recommendation}">
+						<span class="material-symbols" aria-hidden="true">event_busy</span>
+						{missedLongRun.reason === 'taper'
+							? m('planDetail.missedLongTaper')
+							: missedLongRun.reason === 'recovery_soon'
+								? m('planDetail.missedLongRecovery')
+								: m('planDetail.missedLongMakeUp')}
+					</p>
+				{/if}
+			</section>
+		{/if}
+
+		{#if races.length > 1}
+			<section class="plan-races" aria-labelledby="plan-races-title">
+				<h2 id="plan-races-title">{m('planDetail.racesTitle')}</h2>
+				<ul>
+					{#each races as r (r.workoutId ?? r.date)}
+						{@const isNext = upcomingRace != null && r.date === upcomingRace.date && r.workoutId === upcomingRace.workoutId}
+						<li class:next={isNext} class:past={r.date < today}>
+							<span
+								class="race-priority p-{r.priority.toLowerCase()}"
+								aria-label={m('planDetail.racePriorityAria', { priority: r.priority })}
+							>{r.priority}</span>
+							<span class="race-name">{r.name ?? plan.name}</span>
+							<span class="race-date">{fmtRaceDate(r.date)}</span>
+							{#if r.distanceM != null}
+								<span class="race-meta">{fmtKm(r.distanceM, 1)}</span>
+							{/if}
+							{#if r.goalTimeSec != null}
+								<span class="race-meta">
+									<span class="material-symbols" aria-hidden="true">timer</span>
+									{fmtHms(r.goalTimeSec)}
+								</span>
+							{/if}
+							{#if isNext}
+								<span class="race-next">{m('planDetail.raceNext')}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if showRaceDay && upcomingRace != null && upcomingRace.distanceM != null}
+			<RaceDayPanel
+				raceDate={upcomingRace.date}
+				raceName={upcomingRace.name}
+				distanceM={upcomingRace.distanceM}
+				goalTimeSec={upcomingRace.goalTimeSec}
+				{recentRuns}
+			/>
+		{/if}
+
+		<DisclosureSection
+			id="plan-progress"
+			title={m('planDetail.sectionProgressTitle')}
+			hint={m('planDetail.sectionProgressHint')}
+			open={disclosure.progress}
+			ontoggle={(o) => setDisclosure('progress', o)}
+			sectionClass="progress-section"
+		>
+			{#if planPosition}
+				<div class="calendar-bar" aria-hidden="true">
+					<span
+						class="calendar-fill"
+						style="width: {planPosition.calendarPct}%"
+					></span>
+				</div>
+			{/if}
+			{#if orderedPhases.length > 1 || longestLongRunMetres != null || distanceBanked.plannedMetres > 0}
+				<section class="plan-progress">
+					{#if orderedPhases.length > 1}
+						<div class="phase-marker-row">
+							<span class="phase-marker-label"><MetricLabel metric="planPhases" /></span>
+							<ol class="phase-marker" aria-label={m('planDetail.phaseMarkerAria')}>
+								{#each orderedPhases as ph (ph)}
+									<li class="phase-step" class:active={ph === currentPhase}>
+										{planPhaseLabel(ph)}
+									</li>
+								{/each}
+							</ol>
+						</div>
+					{/if}
+					<div class="plan-progress-stats">
+						{#if distanceBanked.plannedMetres > 0 && !restartWalkRun}
+							<div class="stat-chip">
+								<span class="material-symbols" aria-hidden="true">route</span>
+								<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
+								<span class="stat-value">
+									{m('planDetail.distanceBankedValue', {
+										done: fmtKm(distanceBanked.completedMetres, 0),
+										total: fmtKm(distanceBanked.plannedMetres, 0)
+									})}
+								</span>
+							</div>
+						{/if}
+						{#if longestLongRunMetres != null}
+							<div class="stat-chip" title={m('planDetail.longestLongRun')}>
+								<span class="material-symbols" aria-hidden="true">trending_up</span>
+								<span class="stat-label">{m('planDetail.longestLongRun')}</span>
+								<span class="stat-value">{fmtKm(longestLongRunMetres)}</span>
+							</div>
+						{/if}
+					</div>
+				</section>
+			{/if}
+		</DisclosureSection>
+
+		{#if Array.isArray(plan.rules) && plan.rules.length > 0}
+			<DisclosureSection
+				id="plan-rules"
+				title={m('planDetail.rulesTitle')}
+				hint={m('planDetail.sectionRulesHint')}
+				open={disclosure.rules}
+				ontoggle={(o) => setDisclosure('rules', o)}
+				sectionClass="rules-section"
+			>
+				<div class="rules-card">
+					<ul>
+						{#each plan.rules as r}
+							<li>{r}</li>
+						{/each}
+					</ul>
+				</div>
+			</DisclosureSection>
+		{/if}
+
+		<DisclosureSection
+			id="plan-calendar"
+			title={m('planDetail.calendar')}
+			hint={m('planDetail.sectionCalendarHint')}
+			open={disclosure.calendar}
+			ontoggle={(o) => setDisclosure('calendar', o)}
+			sectionClass="calendar-section"
+		>
 			<PlanCalendar
 				startDate={plan.start_date}
 				endDate={plan.end_date}
 				{workouts}
 				planId={plan.id}
 				{weekStart}
-				onSelect={(wo) => (editing = wo)}
+				{today}
+				onSelect={openWorkout}
 			/>
-		</section>
+		</DisclosureSection>
 
-		{#if isOwner && !plan.is_template}
-			<section class="plan-tools">
-				<span class="tools-label">{m('planDetail.shiftPlanLabel')}</span>
-				<div class="shift-control">
-					<input
-						type="number"
-						bind:value={shiftDays}
-						step="1"
-						aria-label={m('planDetail.shiftDaysAria')}
-						disabled={bulkBusy}
-					/>
-					<span class="shift-unit">{m('planDetail.days')}</span>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm"
-						onclick={() => (bulkConfirm = { kind: 'shift' })}
-						disabled={bulkBusy || !shiftDays}
+		<DisclosureSection
+			id="plan-weeks"
+			title={m('planDetail.weekByWeek')}
+			hint={m('planDetail.sectionWeeksHint', { n: weeks.length })}
+			open={disclosure.weeks}
+			ontoggle={(o) => setDisclosure('weeks', o)}
+			sectionClass="weeks"
+		>
+			{#if foldedWeeks > 0}
+				<button
+					type="button"
+					class="earlier-weeks"
+					data-testid="plan-earlier-weeks"
+					aria-expanded={showEarlierWeeks}
+					onclick={() => (showEarlierWeeks = !showEarlierWeeks)}
+				>
+					<span class="earlier-weeks-label">{m('planDetail.earlierWeeks', { n: foldedWeeks })}</span>
+					<span class="week-progress">
+						{earlierWeeksProgress.completed}<em> / {earlierWeeksProgress.total}</em> {m('planDetail.done')}
+					</span>
+					<span class="material-symbols earlier-weeks-chevron" aria-hidden="true"
+						>{showEarlierWeeks ? 'expand_less' : 'expand_more'}</span
 					>
-						{m('planDetail.shiftApply')}
-					</button>
-				</div>
-				<div class="replan-buttons">
-					<button
-						type="button"
-						class="btn btn-outline btn-sm replan-btn"
-						onclick={proposeReplan}
-						disabled={bulkBusy}
+					<span class="visually-hidden"
+						>{showEarlierWeeks ? m('planDetail.hideEarlierWeeks') : m('planDetail.showEarlierWeeks')}</span
 					>
-						<span class="material-symbols">auto_fix_high</span>
-						{m('planDetail.replan')}
-					</button>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm replan-btn"
-						onclick={proposeAdaptiveReplan}
-						disabled={bulkBusy}
-						title={m('planDetail.adaptiveReplanHint')}
-					>
-						<span class="material-symbols">trending_up</span>
-						{m('planDetail.adaptiveReplan')}
-					</button>
-				</div>
-				<div class="plan-lifecycle" data-testid="plan-lifecycle">
-					{#if plan.status === 'paused'}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							onclick={() => (bulkConfirm = { kind: 'resume' })}
-							disabled={bulkBusy}
-						>
-							<span class="material-symbols">play_arrow</span>
-							{m('planDetail.resumePlan')}
-						</button>
-					{:else if plan.status === 'active'}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							onclick={() => (bulkConfirm = { kind: 'pause' })}
-							disabled={bulkBusy}
-						>
-							<span class="material-symbols">pause</span>
-							{m('planDetail.pausePlan')}
-						</button>
-					{/if}
-					{#if cyclePlansEnabled && cyclePlanConfig}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							data-testid="cycle-adjust-btn"
-							onclick={() => (bulkConfirm = { kind: 'cycle' })}
-							disabled={bulkBusy}
-						>
-							<span class="material-symbols">favorite</span>
-							{cyclePlanConfig.mode === 'pregnancy'
-								? m('planDetail.cycleAdjustPregnancy')
-								: m('planDetail.cycleAdjustCycle')}
-						</button>
-					{:else if cyclePlansEnabled}
-						<a class="cycle-setup-hint" href="/settings/account">
-							{m('planDetail.cycleAdjustConfigure')}
-						</a>
-					{/if}
-				</div>
-			</section>
-
-			{#if replanPreview}
-				<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
-					<h3>{m('planDetail.replanPreviewTitle')}</h3>
-					{#if adaptiveInfo}
-						<p class="replan-adaptive-badge">{adaptiveBadgeText(adaptiveInfo)}</p>
-					{/if}
-					<ul>
-						{#each replanPreview as c (c.workoutId)}
-							<li>
-								<span class="replan-date">{c.scheduledDate}</span>
-								<span class="replan-change">{replanChangeLabel(c)}</span>
-							</li>
-						{/each}
-					</ul>
-					<div class="replan-actions">
-						<button type="button" class="btn btn-secondary btn-sm" onclick={() => { replanPreview = null; adaptiveInfo = null; }} disabled={bulkBusy}>
-							{m('planDetail.replanCancel')}
-						</button>
-						<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
-							{m('planDetail.replanApply')}
-						</button>
-					</div>
-				</section>
+				</button>
 			{/if}
-		{/if}
-
-		<section class="weeks">
-			<h2 class="section-title">{m('planDetail.weekByWeek')}</h2>
-			{#each weeks as w (w.id)}
+			{#each weeks.filter((w) => showEarlierWeeks || w.week_index >= foldedWeeks) as w (w.id)}
 				{@const weekWorkouts = workoutsByWeek.get(w.id) ?? []}
-				{@const weekActive = weekWorkouts.filter((x) => x.kind !== 'rest' && !isWorkoutSkipped(x))}
-				{@const weekDone = weekWorkouts.filter(isWorkoutCompleted).length}
+				{@const weekProgress = planWorkoutProgress(weekWorkouts)}
+				{@const weekActive = weekProgress.total}
+				{@const weekDone = weekProgress.completed}
 				{@const isPast = w.week_index < (currentWeekIndex ?? -1)}
 				{@const isFuture = w.week_index > (currentWeekIndex ?? -1)}
+				{@const weekNote = planWeekNote(w.notes, w.phase, weekWorkouts)}
 				<article
 					class="week"
+					id={w.week_index === currentWeekIndex ? 'plan-week-current' : undefined}
+					tabindex={w.week_index === currentWeekIndex ? -1 : undefined}
+					data-testid="plan-week"
 					class:current={w.week_index === currentWeekIndex}
 					class:past={isPast}
 					class:future={isFuture}
@@ -1447,9 +2532,11 @@
 						</div>
 						<div class="week-stats">
 							<span class="week-progress">
-								{weekDone}<em> / {weekActive.length}</em> {m('planDetail.done')}
+								{weekDone}<em> / {weekActive}</em> {m('planDetail.done')}
 							</span>
-							<span class="week-volume">{fmtKm(w.target_volume_m, 0)}</span>
+							{#if weekJudgedByDistance(weekWorkouts.map((x) => x.kind))}
+								<span class="week-volume" data-testid="plan-week-volume">{fmtKm(w.target_volume_m, 0)}</span>
+							{/if}
 							{#if isOwner && !plan.is_template && w.phase !== 'race'}
 								<button
 									type="button"
@@ -1458,8 +2545,21 @@
 									disabled={bulkBusy}
 									title={m('planDetail.markRecovery')}
 								>
-									<span class="material-symbols">trending_down</span>
+									<span class="material-symbols" aria-hidden="true">trending_down</span>
 									{m('planDetail.markRecovery')}
+								</button>
+							{/if}
+							{#if repeatOffer(w)}
+								<button
+									type="button"
+									class="week-recovery-btn"
+									data-testid="repeat-week-btn"
+									onclick={() => chooseRepeatWeek(w)}
+									disabled={bulkBusy}
+									title={m('planDetail.repeatWeekHint')}
+								>
+									<span class="material-symbols" aria-hidden="true">replay</span>
+									{m('planDetail.repeatWeekAction')}
 								</button>
 							{/if}
 							{#if isOwner && !plan.is_template}
@@ -1470,43 +2570,54 @@
 									disabled={bulkBusy}
 									title={m('planDetail.duplicateWeek')}
 								>
-									<span class="material-symbols">content_copy</span>
+									<span class="material-symbols" aria-hidden="true">content_copy</span>
 									{m('planDetail.duplicateWeek')}
 								</button>
 							{/if}
 						</div>
 					</header>
-					{#if w.notes}
-						<p class="week-note">{w.notes}</p>
+					{#if weekNote}
+						<p class="week-note" data-testid="plan-week-note">{weekNote}</p>
 					{/if}
 					<div class="day-grid">
 						{#each weekWorkouts as wo (wo.id)}
+							{@const status = planWorkoutStatusOf(wo, today)}
+							{@const look = planWorkoutStatusLook(status)}
 							<div
 								class="day"
 								class:today={wo.scheduled_date === today}
-								class:completed={isWorkoutCompleted(wo)}
-								class:skipped={isWorkoutSkipped(wo)}
+								class:skipped={status === 'skipped'}
 								class:rest={wo.kind === 'rest'}
-								class:past={wo.scheduled_date < today}
+								data-status={status}
 								style="--kind-color: {workoutKindMarkVar(wo.kind)}"
+								style:--wo-bg={look.bg}
+								style:--wo-border={look.border}
+								style:--wo-border-style={look.borderStyle}
+								style:--wo-glyph={look.glyphColor}
 							>
 								<button
 									class="day-link"
 									type="button"
 									aria-label={workoutAriaLabel(wo)}
-									onclick={() => (editing = wo)}
+									onclick={() => openWorkout(wo)}
 								>
 									<span class="dow">{dayOfWeek(wo.scheduled_date)}</span>
 									<span class="kind">
 										{workoutKindLabel(wo.kind)}
 									</span>
-									{#if wo.target_distance_m != null && wo.kind !== 'rest'}
-										<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
+									{#if sizeLabel(wo, 1) != null}
+										<span class="dist" data-testid="plan-day-size">{sizeLabel(wo, 1)}</span>
 									{/if}
-									{#if isWorkoutCompleted(wo)}
-										<span class="material-symbols check" aria-hidden="true">check_circle</span>
-									{:else if isWorkoutSkipped(wo)}
-										<span class="material-symbols skip-glyph" aria-hidden="true">skip_next</span>
+									{#if status === 'done'}
+										{@const over = overrunOf(wo)}
+										{#if over != null}
+											<span class="overrun" data-testid="plan-day-overrun"
+												>{m('plan.overrun', { distance: fmtOverrun(over) })}</span
+											>
+										{/if}
+									{/if}
+									{#if look.glyph}
+										<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
 									{/if}
 								</button>
 							</div>
@@ -1514,22 +2625,79 @@
 					</div>
 				</article>
 			{/each}
-		</section>
+		</DisclosureSection>
 
-		<a class="coach-link" href="/coach?plan={plan.id}">
-			<span class="material-symbols">sports</span>
+		<a class="coach-link" href="/messages/coach?plan={plan.id}">
+			<span class="material-symbols" aria-hidden="true">sports</span>
 			<div class="coach-link-body">
 				<strong>{m('planDetail.coachLinkTitle')}</strong>
 				<span>{m('planDetail.coachLinkSubtitle')}</span>
 			</div>
-			<span class="material-symbols arrow">chevron_right</span>
+			<span class="material-symbols arrow" aria-hidden="true">chevron_right</span>
 		</a>
+
+		{#if !plan.is_template && plan.user_id === auth.user?.id}
+			<DisclosureSection
+				id="plan-share"
+				title={m('planDetail.shareSectionTitle')}
+				hint={m('planDetail.sectionShareHint')}
+				open={disclosure.share}
+				ontoggle={(o) => setDisclosure('share', o)}
+				sectionClass="publish-section"
+			>
+				{#if adminClubs.length > 0}
+					<div class="publish-row">
+						<span class="publish-label">{m('planDetail.publishLabel')}</span>
+						<select bind:value={publishingTo} aria-label={m('planDetail.clubToPublishAria')}>
+							<option value="">{m('planDetail.pickAClub')}</option>
+							{#each adminClubs as c (c.id)}
+								<option value={c.id}>{c.name}</option>
+							{/each}
+						</select>
+						<button
+							class="btn btn-outline"
+							type="button"
+							disabled={!publishingTo || publishingBusy}
+							onclick={publishAsTemplate}
+						>
+							{m('planDetail.publish')}
+						</button>
+					</div>
+				{/if}
+				<div class="publish-row">
+					<span class="publish-label">{m('planDetail.publishLibraryLabel')}</span>
+					{#if libraryCopyId}
+						<span class="publish-hint">{m('planDetail.alreadyPublished')}</span>
+						<button
+							class="btn btn-outline"
+							type="button"
+							disabled={libraryBusy}
+							data-testid="plan-unpublish-library"
+							onclick={() => (unpublishOpen = true)}
+						>
+							{m('planDetail.unpublishLibrary')}
+						</button>
+					{:else}
+						<span class="publish-hint">{m('planDetail.publishLibraryHint')}</span>
+						<button
+							class="btn btn-outline"
+							type="button"
+							disabled={libraryBusy}
+							onclick={publishToLibrary}
+						>
+							{m('planDetail.publishLibrary')}
+						</button>
+					{/if}
+				</div>
+			</DisclosureSection>
+		{/if}
 	</div>
 {/if}
 
 {#if editing}
 	<WorkoutEditor
 		workout={editing}
+		moveDays={editingMoveDays}
 		onClose={() => (editing = null)}
 		onSaved={async () => {
 			editing = null;
@@ -1541,6 +2709,8 @@
 {#if editingPlanMeta && plan}
 	<PlanMetaEditor
 		{plan}
+		{workouts}
+		todayIso={today}
 		onClose={() => (editingPlanMeta = false)}
 		onSaved={async () => {
 			editingPlanMeta = false;
@@ -1549,12 +2719,281 @@
 	/>
 {/if}
 
+{#if plan && isOwner && !plan.is_template}
+	<Modal
+		open={adjustOpen}
+		title={m('planDetail.adjustPlan')}
+		onclose={() => (adjustOpen = false)}
+		data-testid="adjust-plan-dialog"
+	>
+		<p class="adjust-intro">{m('planDetail.adjustPlanIntro')}</p>
+		<ul class="adjust-options">
+			<li class="adjust-option">
+				<div class="shift-control">
+					<input
+						type="number"
+						bind:value={shiftDays}
+						step="1"
+						aria-label={m('planDetail.shiftDaysAria')}
+						disabled={bulkBusy}
+					/>
+					<span class="shift-unit">{m('planDetail.days')}</span>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-shift-desc"
+						onclick={chooseShift}
+						disabled={bulkBusy || !shiftDays}
+					>
+						<span class="material-symbols" aria-hidden="true">date_range</span>
+						{m('planDetail.shiftApply')}
+					</button>
+				</div>
+				<p class="adjust-option-desc" id="adjust-shift-desc">{m('planDetail.adjustShiftDesc')}</p>
+			</li>
+			{#if raceDateOffer}
+				<li class="adjust-option">
+					<div class="shift-control">
+						<input
+							type="date"
+							class="race-date-input"
+							bind:value={raceDateInput}
+							min={shiftIsoDate(today, 1)}
+							aria-label={m('planDetail.raceDateAria')}
+							data-testid="race-date-input"
+							disabled={bulkBusy}
+						/>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm adjust-option-btn"
+							aria-describedby="adjust-race-date-desc"
+							data-testid="race-date-btn"
+							onclick={chooseRaceDate}
+							disabled={bulkBusy || !raceDateInput}
+						>
+							<span class="material-symbols" aria-hidden="true">event</span>
+							{m('planDetail.raceDateChange')}
+						</button>
+					</div>
+					<p class="adjust-option-desc" id="adjust-race-date-desc">{m('planDetail.adjustRaceDateDesc')}</p>
+				</li>
+			{/if}
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					aria-describedby="adjust-replan-desc"
+					onclick={() => chooseReplan(proposeReplan)}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">auto_fix_high</span>
+					{m('planDetail.replan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-replan-desc">{m('planDetail.adjustReplanDesc')}</p>
+			</li>
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					aria-describedby="adjust-adaptive-desc"
+					onclick={() => chooseReplan(proposeAdaptiveReplan)}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">trending_up</span>
+					{m('planDetail.adaptiveReplan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-adaptive-desc">{m('planDetail.adjustAdaptiveDesc')}</p>
+			</li>
+			{#if races.some((r) => r.priority !== 'A' && r.date > today)}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						data-testid="race-taper-btn"
+						aria-describedby="adjust-race-taper-desc"
+						onclick={chooseRaceTaper}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">flag</span>
+						{m('planDetail.raceTaper')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-race-taper-desc">{m('planDetail.adjustRaceTaperDesc')}</p>
+				</li>
+			{/if}
+			{#if showAiAdjust}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-ai-desc"
+						onclick={chooseAiAdjust}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
+						{m('planDetail.aiAdjust')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-ai-desc">{m('planDetail.adjustAiDesc')}</p>
+				</li>
+			{/if}
+			{#if plan.status === 'paused' || plan.status === 'active'}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-lifecycle-desc"
+						onclick={() => chooseConfirmed({ kind: plan?.status === 'paused' ? 'resume' : 'pause' })}
+						disabled={bulkBusy}
+					>
+						{#if plan.status === 'paused'}
+							<span class="material-symbols" aria-hidden="true">play_arrow</span>
+							{m('planDetail.resumePlan')}
+						{:else}
+							<span class="material-symbols" aria-hidden="true">pause</span>
+							{m('planDetail.pausePlan')}
+						{/if}
+					</button>
+					<p class="adjust-option-desc" id="adjust-lifecycle-desc">
+						{plan.status === 'paused'
+							? m('planDetail.adjustResumeDesc')
+							: m('planDetail.adjustPauseDesc')}
+					</p>
+				</li>
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-abandon-desc"
+						onclick={chooseAbandon}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">cancel</span>
+						{m('plansPage.abandonTitle')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-abandon-desc">{m('planDetail.adjustAbandonDesc')}</p>
+				</li>
+			{/if}
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					data-testid="restart-plan-btn"
+					aria-describedby="adjust-restart-desc"
+					onclick={chooseRestart}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">replay</span>
+					{m('planDetail.restartPlan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-restart-desc">{m('planDetail.adjustRestartDesc')}</p>
+			</li>
+			{#if cyclePlansEnabled && cyclePlanConfig}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						data-testid="cycle-adjust-btn"
+						aria-describedby="adjust-cycle-desc"
+						onclick={() => chooseConfirmed({ kind: 'cycle' })}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">favorite</span>
+						{cyclePlanConfig.mode === 'pregnancy'
+							? m('planDetail.cycleAdjustPregnancy')
+							: m('planDetail.cycleAdjustCycle')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-cycle-desc">
+						{cyclePlanConfig.mode === 'pregnancy'
+							? m('planDetail.adjustPregnancyDesc')
+							: m('planDetail.adjustCycleDesc')}
+					</p>
+				</li>
+			{:else if cyclePlansEnabled}
+				<li class="adjust-option">
+					<a class="cycle-setup-hint" href="/settings/account">
+						{m('planDetail.cycleAdjustConfigure')}
+					</a>
+				</li>
+			{/if}
+		</ul>
+	</Modal>
+{/if}
+
+{#if plan && isOwner && !plan.is_template}
+	<Modal
+		open={restartOpen}
+		title={m('planDetail.restartTitle')}
+		onclose={() => {
+			if (!restartBusy) restartOpen = false;
+		}}
+		data-testid="restart-plan-dialog"
+	>
+		{#if restartRaceAhead}
+			<p class="restart-text" data-testid="restart-race-ahead">
+				{m('planDetail.restartRaceAhead', { date: formatDateShort(restartRaceAhead) })}
+			</p>
+			<div class="restart-actions">
+				<button type="button" class="btn btn-outline" onclick={() => (restartOpen = false)}>
+					{m('planDetail.replanCancel')}
+				</button>
+			</div>
+		{:else}
+			<label class="restart-field">
+				<span>{m('planDetail.restartStartLabel')}</span>
+				<input
+					type="date"
+					data-testid="restart-start-date"
+					value={restartStart}
+					min={today}
+					onchange={onRestartStartChange}
+					disabled={restartBusy}
+				/>
+			</label>
+			{#if restartValid && restartEnd}
+				<p class="restart-text" data-testid="restart-confirm-message">
+					{m(
+						plan.status === 'active' || plan.status === 'paused'
+							? 'planDetail.restartConfirmLive'
+							: 'planDetail.restartConfirmOver',
+						{ date: formatDateShort(restartStart), end: formatDateShort(restartEnd) }
+					)}
+					{#if restartMovedRace}
+						{m('planDetail.restartRaceMoves', { date: formatDateShort(restartMovedRace) })}
+					{/if}
+				</p>
+			{/if}
+			<div class="restart-actions">
+				<button
+					type="button"
+					class="btn btn-outline"
+					onclick={() => (restartOpen = false)}
+					disabled={restartBusy}
+				>
+					{m('planDetail.replanCancel')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-danger"
+					data-testid="restart-confirm"
+					onclick={doRestartPlan}
+					disabled={restartBusy || !restartValid}
+				>
+					{m('planDetail.restartPlan')}
+				</button>
+			</div>
+		{/if}
+	</Modal>
+{/if}
+
 <ConfirmDialog
 	open={bulkConfirm !== null}
 	danger
 	data-testid="bulk-confirm-dialog"
 	title={bulkConfirm?.kind === 'shift'
 		? m('planDetail.shiftConfirmTitle')
+		: bulkConfirm?.kind === 'raceDate'
+		? m('planDetail.raceDateConfirmTitle')
+		: bulkConfirm?.kind === 'repeat'
+		? m('planDetail.repeatWeekConfirmTitle', { n: bulkConfirm.week.week_index + 1 })
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmTitle')
 			: bulkConfirm?.kind === 'cycle'
@@ -1565,7 +3004,16 @@
 						? m('planDetail.resumeConfirmTitle')
 						: m('planDetail.duplicateConfirmTitle')}
 	message={bulkConfirm?.kind === 'shift'
-		? m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		? bulkConfirm.following.length > 0
+			? m('planDetail.shiftFollowingMessage', {
+					n: Math.abs(shiftDays),
+					plans: planNames(bulkConfirm.following),
+				})
+			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		: bulkConfirm?.kind === 'raceDate'
+		? raceDateConfirmMessage(bulkConfirm.change)
+		: bulkConfirm?.kind === 'repeat'
+		? repeatWeekConfirmMessage(bulkConfirm.week, bulkConfirm.change)
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -1577,17 +3025,58 @@
 					: bulkConfirm?.kind === 'pause'
 						? m('planDetail.pauseConfirmMessage')
 						: bulkConfirm?.kind === 'resume'
-							? m('planDetail.resumeConfirmMessage')
+							? resumeOffer && plan
+								? m('planDetail.resumeShiftConfirmMessage', {
+										n: resumeOffer.weeks,
+										date: formatDateShort(shiftIsoDate(plan.end_date, 7 * resumeOffer.weeks))
+									})
+								: m('planDetail.resumeConfirmMessage')
 							: ''}
-	confirmLabel={m('planDetail.bulkConfirm')}
+	confirmLabel={bulkConfirm?.kind === 'shift' && bulkConfirm.following.length > 0
+		? m('planDetail.shiftAlsoMove', {
+				plans: planNames(bulkConfirm.following),
+				n: Math.abs(shiftDays),
+			})
+		: bulkConfirm?.kind === 'repeat'
+		? m('planDetail.repeatWeekAction')
+		: m('planDetail.bulkConfirm')}
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}
 />
 
+<ConfirmDialog
+	open={unpublishOpen}
+	danger
+	data-testid="unpublish-confirm-dialog"
+	title={m('planDetail.unpublishLibraryTitle')}
+	message={m('planDetail.unpublishLibraryMessage')}
+	confirmLabel={m('planDetail.unpublishLibrary')}
+	cancelLabel={m('planDetail.replanCancel')}
+	onconfirm={unpublishFromLibraryAction}
+	oncancel={() => (unpublishOpen = false)}
+/>
+
+<ConfirmDialog
+	open={abandonOpen}
+	danger
+	data-testid="abandon-confirm-dialog"
+	title={m('plansPage.abandonTitle')}
+	message={m('plansPage.abandonMessage', { name: plan?.name ?? '' })}
+	confirmLabel={m('plansPage.abandon')}
+	onconfirm={doAbandonPlan}
+	oncancel={() => (abandonOpen = false)}
+/>
+
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
+	}
+	.finish-plan-slot {
+		margin: var(--space-lg) 0;
+	}
+	.missed-prompt-slot {
+		margin: var(--space-md) 0;
 	}
 	.back {
 		display: inline-flex;
@@ -1721,6 +3210,86 @@
 	.chip .material-symbols,
 	.chip-link .material-symbols { font-size: 0.95rem; }
 
+	.plan-races {
+		margin: 0 0 1.25rem;
+	}
+	.plan-races h2 {
+		font-size: 1rem;
+		margin: 0 0 0.5rem;
+	}
+	.plan-races ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+	.plan-races li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 0.75rem;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+	}
+	.plan-races li.next {
+		border-color: var(--color-primary);
+	}
+	.plan-races li.past {
+		opacity: 0.6;
+	}
+	.race-priority {
+		display: inline-grid;
+		place-items: center;
+		min-width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 999px;
+		font-weight: 700;
+		font-size: 0.8125rem;
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
+	}
+	.race-priority.p-a {
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+	.race-name {
+		font-weight: 600;
+		flex: 1 1 10rem;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.race-date,
+	.race-meta {
+		color: var(--color-text-secondary);
+		font-size: 0.875rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.race-meta .material-symbols {
+		font-size: 1rem;
+	}
+	.race-next {
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-primary);
+	}
+
+	.hero-next-race {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+
 	.meta {
 		display: flex;
 		flex-wrap: wrap;
@@ -1749,10 +3318,22 @@
 		min-width: 9rem;
 	}
 	.week-pill {
+		font: inherit;
 		font-size: 1.05rem;
 		font-weight: 700;
 		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
+		background: none;
+		border: none;
+		padding: 0;
+		min-height: 2.75rem;
+		cursor: pointer;
+		text-align: end;
+		text-decoration: underline dotted var(--color-text-tertiary);
+		text-underline-offset: 0.25em;
+	}
+	.week-pill:hover {
+		color: var(--color-primary);
 	}
 	.week-pill em {
 		font-style: normal;
@@ -1835,6 +3416,17 @@
 		gap: var(--space-md);
 		margin-bottom: var(--space-md);
 	}
+	.phase-marker-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem var(--space-sm);
+	}
+	.phase-marker-label {
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+	}
 	.phase-marker {
 		display: flex;
 		flex-wrap: wrap;
@@ -1886,6 +3478,27 @@
 		gap: var(--space-sm);
 		margin-bottom: var(--space-md);
 	}
+	.repeat-week-offer {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		margin-bottom: var(--space-md);
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-md);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+		background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
+	}
+	.repeat-week-offer p {
+		margin: 0;
+		flex: 1 1 16rem;
+		font-size: 0.9rem;
+		line-height: 1.4;
+	}
+	.repeat-week-offer .material-symbols {
+		font-size: 1.1rem;
+	}
 	.adherence-flag {
 		display: flex;
 		align-items: flex-start;
@@ -1925,27 +3538,65 @@
 		gap: var(--space-sm);
 		flex-wrap: wrap;
 		padding: var(--space-md) var(--space-lg);
-		margin: var(--space-md) 0;
+		margin: var(--space-sm) 0;
 		background: var(--color-surface);
 		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-md);
 	}
-	.plan-tools {
+	.adjust-intro {
+		margin: 0 0 var(--space-md);
+		font-size: 0.9rem;
+		color: var(--color-text-secondary);
+	}
+	.adjust-options {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.adjust-option {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: var(--space-sm);
-		margin: var(--space-md) 0;
+		gap: var(--space-xs);
+		padding: var(--space-md) 0;
+		border-top: 1px solid var(--color-border);
 	}
-	.tools-label {
-		font-size: 0.9rem;
-		font-weight: 600;
+	.adjust-option-btn .material-symbols {
+		font-size: 1rem;
+		vertical-align: -2px;
+		margin-inline-end: 0.2rem;
+	}
+	.restart-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-bottom: var(--space-md);
+	}
+	.restart-text {
+		margin: 0 0 var(--space-md);
+		line-height: 1.5;
+	}
+	.restart-actions {
+		display: flex;
+		justify-content: flex-end;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
+	.adjust-option-desc {
+		margin: 0;
+		font-size: 0.85rem;
+		line-height: 1.45;
 		color: var(--color-text-secondary);
 	}
 	.shift-control {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+	.shift-control .race-date-input {
+		width: auto;
 	}
 	.shift-control input {
 		width: 4.5rem;
@@ -1984,26 +3635,6 @@
 	.week-recovery-btn .material-symbols {
 		font-size: 0.95rem;
 	}
-	.replan-btn {
-		align-self: flex-start;
-	}
-	.replan-btn .material-symbols {
-		font-size: 1rem;
-		vertical-align: -2px;
-		margin-inline-end: 0.2rem;
-	}
-	.replan-buttons {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-	}
-	.plan-lifecycle {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
 	.cycle-setup-hint {
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
@@ -2019,6 +3650,10 @@
 	.replan-preview h3 {
 		margin: 0 0 var(--space-sm);
 		font-size: 0.95rem;
+	}
+	.replan-anchor-note {
+		margin: 0 0 var(--space-sm);
+		color: var(--color-text-secondary);
 	}
 	.replan-adaptive-badge {
 		margin: 0 0 var(--space-sm);
@@ -2043,6 +3678,13 @@
 		color: var(--color-text-tertiary);
 		font-variant-numeric: tabular-nums;
 		flex-shrink: 0;
+	}
+	.replan-preview li {
+		flex-wrap: wrap;
+	}
+	.replan-note {
+		color: var(--color-text-secondary);
+		font-size: 0.8rem;
 	}
 	.replan-actions {
 		display: flex;
@@ -2109,6 +3751,10 @@
 		background: color-mix(in srgb, var(--color-success) 18%, transparent);
 		color: var(--color-success-text);
 	}
+	.today-icon.skipped {
+		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
+		color: var(--color-text-tertiary);
+	}
 	.today-icon .material-symbols { font-size: 1.5rem; }
 	.today-static .today-icon {
 		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
@@ -2146,6 +3792,25 @@
 		color: var(--color-success-text);
 		font-weight: 600;
 	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+	.today-skipped {
+		color: var(--color-text-secondary);
+		font-weight: 600;
+	}
+	.today-pattern {
+		display: block;
+	}
+	.today-pattern,
 	.today-notes {
 		color: var(--color-text-secondary);
 		margin: 0.3rem 0 0;
@@ -2169,6 +3834,40 @@
 	.week.current {
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
 		opacity: 1;
+		scroll-margin-top: var(--space-xl);
+	}
+	.week.current:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.earlier-weeks {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		width: 100%;
+		min-height: 2.75rem;
+		margin-bottom: var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		color: inherit;
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+		font-variant-numeric: tabular-nums;
+	}
+	.earlier-weeks:hover {
+		border-color: var(--color-primary);
+	}
+	.earlier-weeks-label {
+		font-weight: 700;
+		flex: 1;
+		min-width: 0;
+	}
+	.earlier-weeks-chevron {
+		color: var(--color-text-tertiary);
+		font-size: 1.25rem;
 	}
 	.week-header {
 		display: flex;
@@ -2232,14 +3931,14 @@
 		}
 	}
 	.day {
-		--day-line: var(--color-border);
+		--day-line: var(--wo-border, transparent);
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
 		padding: 0.5rem 0.55rem;
-		background: var(--color-bg-secondary);
+		background: var(--wo-bg, var(--color-bg-secondary));
 		border-radius: var(--radius-md);
-		border: 1px solid var(--day-line);
+		border: 1px var(--wo-border-style, solid) var(--day-line);
 		color: inherit;
 		font-size: 0.8rem;
 		border-top: 3px solid var(--kind-color, var(--day-line));
@@ -2266,10 +3965,6 @@
 	.day.rest {
 		opacity: 0.55;
 	}
-	.day.past {
-		opacity: 0.7;
-	}
-	.day.past.completed,
 	.day.today {
 		opacity: 1;
 	}
@@ -2278,12 +3973,8 @@
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent);
 	}
-	.day.completed {
-		--day-line: color-mix(in srgb, var(--color-success) 30%, var(--color-border));
-		background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
-	}
-	.day.skipped {
-		opacity: 0.55;
+	.day.today[data-status='done'] {
+		background: var(--wo-bg);
 	}
 	.day.skipped .kind {
 		text-decoration: line-through;
@@ -2303,18 +3994,17 @@
 		color: var(--color-text-secondary);
 		font-variant-numeric: tabular-nums;
 	}
+	.day .overrun {
+		color: var(--color-success-text);
+		font-weight: 600;
+		font-size: 0.75rem;
+		font-variant-numeric: tabular-nums;
+	}
 	.day .check {
 		position: absolute;
 		top: 0.3rem;
 		inset-inline-end: 0.3rem;
-		color: var(--color-success-text);
-		font-size: 1rem;
-	}
-	.day .skip-glyph {
-		position: absolute;
-		top: 0.3rem;
-		inset-inline-end: 0.3rem;
-		color: var(--color-text-tertiary);
+		color: var(--wo-glyph);
 		font-size: 1rem;
 	}
 	.coach-link {
@@ -2352,32 +4042,11 @@
 	.coach-link .arrow {
 		color: var(--color-text-tertiary);
 	}
-	.calendar-section {
-		margin: var(--space-md) 0;
-	}
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-sm) 0;
-	}
-	.weeks .section-title {
-		margin-top: var(--space-lg);
-	}
 	.rules-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		padding: var(--space-md);
-		margin-bottom: var(--space-md);
-	}
-	.rules-card h3 {
-		font-size: 0.78rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-text-tertiary);
-		margin-bottom: 0.4rem;
 	}
 	.rules-card ul {
 		margin: 0;
@@ -2392,62 +4061,8 @@
 	   so the page rhythm is visible before data lands. */
 	.back-skel,
 	.hero-skel,
-	.today-skel,
-	.week-skel {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-lg);
-		animation: plan-skeleton-shimmer 1.6s ease-in-out infinite;
-	}
-	.back-skel {
-		height: 1rem;
-		width: 8rem;
-		margin-bottom: var(--space-md);
-		border-radius: var(--radius-sm);
-	}
-	.hero-skel { height: 9rem; margin-bottom: var(--space-md); }
-	.today-skel { height: 5.5rem; margin-bottom: var(--space-md); }
-	.week-skel { height: 6rem; margin-bottom: var(--space-sm); }
-	@keyframes plan-skeleton-shimmer {
-		0% { background-position: 100% 0; }
-		100% { background-position: -100% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.back-skel,
-		.hero-skel,
-		.today-skel,
-		.week-skel { animation: none; }
-	}
-
-	.empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-		max-width: 28rem;
-		margin: 0 auto;
-	}
-	.empty-mark {
-		opacity: 0.85;
-		border-radius: var(--radius-md);
-	}
-	.empty h3 {
-		font-size: 1.15rem;
-		font-weight: 700;
-		margin: 0;
-	}
-	.empty p {
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-sm);
-		font-size: 0.95rem;
-	}
+	.today-skel { margin-bottom: var(--space-md); }
+	.week-skel { margin-bottom: var(--space-sm); }
 
 	@media (max-width: 48rem) {
 		.page {

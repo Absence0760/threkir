@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Gear auto-tag end-to-end: the `auto_tag_default_gear` trigger
@@ -28,12 +29,7 @@ test.describe('Gear auto-tag flow', () => {
 	let plantedRunIds: string[] = [];
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.afterEach(async () => {
@@ -72,7 +68,7 @@ test.describe('Gear auto-tag flow', () => {
 			await page.goto('/runs/new');
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill('5');
-			await numberInputs.nth(1).fill('30');
+			await page.getByTestId('run-editor-minutes').fill('30');
 			await page.getByRole('button', { name: 'Save run' }).click();
 			await page.waitForURL(/\/runs\/[0-9a-f-]+$/, { timeout: 15_000 });
 			const id = page.url().match(/\/runs\/([0-9a-f-]+)$/)![1];
@@ -98,7 +94,7 @@ test.describe('Gear auto-tag flow', () => {
 			await page.goto('/runs/new');
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill('4');
-			await numberInputs.nth(1).fill('25');
+			await page.getByTestId('run-editor-minutes').fill('25');
 			await page.getByRole('button', { name: 'Save run' }).click();
 			await page.waitForURL(/\/runs\/[0-9a-f-]+$/, { timeout: 15_000 });
 			const id = page.url().match(/\/runs\/([0-9a-f-]+)$/)![1];

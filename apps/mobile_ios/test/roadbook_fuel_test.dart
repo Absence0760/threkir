@@ -1,11 +1,14 @@
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/roadbook_screen.dart';
+import '../lib/weight_fluid_flag.dart';
 
 Route _route() {
   final wps = <Waypoint>[];
@@ -41,7 +44,35 @@ RouteMarkerRow _marker(String kind, String label, double pos,
   );
 }
 
-Widget _host(List<RouteMarkerRow> markers, {Preferences? prefs}) {
+class _WeightApi extends ApiClient {
+  final DateTime? consentAt;
+  final double? weightKg;
+  int healthReads = 0;
+  _WeightApi({this.consentAt, this.weightKg});
+
+  @override
+  String? get userId => 'owner';
+
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async {
+    healthReads++;
+    return UserProfileRow(
+      profilePrivate: false,
+      id: 'owner',
+      shadowHidden: false,
+      healthDataConsentAt: consentAt,
+    );
+  }
+
+  @override
+  Future<double?> fetchLatestBodyWeightKg() async {
+    healthReads++;
+    return weightKg;
+  }
+}
+
+Widget _host(List<RouteMarkerRow> markers,
+    {Preferences? prefs, ApiClient? api}) {
   final r = _route();
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -49,7 +80,7 @@ Widget _host(List<RouteMarkerRow> markers, {Preferences? prefs}) {
     home: RoadbookScreen(
       route: r,
       waypoints: r.waypoints,
-      api: null,
+      api: api,
       preferences: prefs,
       initialMarkers: markers,
     ),
@@ -57,6 +88,9 @@ Widget _host(List<RouteMarkerRow> markers, {Preferences? prefs}) {
 }
 
 void main() {
+  setUpAll(() => dotenv.loadFromString(isOptional: true));
+  setUp(() => dotenv.env.remove(kWeightFluidEnvKey));
+
   testWidgets('fueling toggle reveals per-leg carbs and a carry hint',
       (tester) async {
     await tester.pumpWidget(_host([
@@ -112,5 +146,74 @@ void main() {
     // up — proving the screen reads the preference, not the flat constant.
     expect(at60, isNotEmpty);
     expect(at90, isNot(equals(at60)));
+  });
+
+  final aid = [
+    _marker('aid_station', 'Aid 1', 1000, const {'services': ['water', 'food']}),
+  ];
+
+  testWidgets(
+      'with consent and a weight, opting in uses the weight-based fluid rate',
+      (tester) async {
+    dotenv.env[kWeightFluidEnvKey] = 'true';
+    await tester.pumpWidget(_host(aid,
+        api: _WeightApi(consentAt: DateTime.utc(2026, 8, 1), weightKg: 90)));
+    await tester.pump();
+    await tester.tap(find.text('Fuel'));
+    await tester.pump();
+
+    final toggle = find.byKey(const Key('roadbook-weight-fluid'));
+    expect(tester.widget<SwitchListTile>(toggle).onChanged, isNotNull);
+    await tester.tap(toggle);
+    await tester.pump();
+
+    // 500 × 90 / 70 = 642.9 → 650 ml/h (decisions § 1976).
+    expect(find.text('Fluid: 650 ml per hour from your body weight.'),
+        findsOneWidget);
+  });
+
+  testWidgets('a weight without the Art 9 stamp is never offered or used',
+      (tester) async {
+    dotenv.env[kWeightFluidEnvKey] = 'true';
+    await tester.pumpWidget(_host(aid, api: _WeightApi(weightKg: 90)));
+    await tester.pump();
+    await tester.tap(find.text('Fuel'));
+    await tester.pump();
+
+    final toggle = find.byKey(const Key('roadbook-weight-fluid'));
+    expect(tester.widget<SwitchListTile>(toggle).onChanged, isNull);
+    expect(find.textContaining('give health-data consent'), findsOneWidget);
+    expect(find.textContaining('from your body weight'), findsNothing);
+  });
+
+  testWidgets(
+      'with the deploy gate off, no weight is read and no toggle is offered',
+      (tester) async {
+    final api =
+        _WeightApi(consentAt: DateTime.utc(2026, 8, 1), weightKg: 90);
+    await tester.pumpWidget(_host(aid, api: api));
+    await tester.pump();
+    await tester.tap(find.text('Fuel'));
+    await tester.pump();
+
+    expect(api.healthReads, 0);
+    expect(find.byKey(const Key('roadbook-weight-fluid')), findsNothing);
+    expect(find.byKey(const Key('roadbook-weight-hint')), findsNothing);
+    expect(find.textContaining('from your body weight'), findsNothing);
+  });
+
+  test('the gate parse is fail-closed', () {
+    for (final raw in [null, '', '0', 'false', 'off', 'maybe']) {
+      expect(weightFluidEnabled(raw), false, reason: '$raw');
+    }
+    for (final raw in ['1', 'true', ' YES ', 'on']) {
+      expect(weightFluidEnabled(raw), true, reason: raw);
+    }
+  });
+
+  test('an unloaded dotenv reads the gate off', () {
+    dotenv.clean();
+    expect(weightFluidGate, false);
+    dotenv.loadFromString(isOptional: true);
   });
 }

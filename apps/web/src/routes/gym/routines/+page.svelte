@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '$lib/core/data';
-	import { formatDate } from '$lib/format/time';
-	import ActivityLoader from '$lib/components/ActivityLoader.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '#lib/core/data.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let routines = $state<GymRoutineSummary[]>([]);
 	let loading = $state(true);
@@ -15,7 +17,7 @@
 		loadError = null;
 		const result = await fetchGymRoutinesWithError(100);
 		routines = result.routines;
-		loadError = result.error;
+		loadError = result.error ? errorCopy(result.error, t, 'gym routines: loadError') : null;
 		loading = false;
 	}
 
@@ -53,7 +55,18 @@
 	</header>
 
 	{#if loading}
-		<div class="act-load"><ActivityLoader kind="train" size={76} label={t('shell.loading')} /></div>
+		<ul class="routine-list" aria-hidden="true" data-testid="routine-skeleton">
+			{#each Array(4) as _, i (i)}
+				<li class="card-elevated routine-row">
+					<div class="row-main">
+						<SkeletonBlock height="1rem" width="{40 + (i % 3) * 12}%" />
+						<SkeletonBlock height="0.8rem" width="24%" />
+					</div>
+					<SkeletonBlock height="2rem" width="3rem" />
+				</li>
+			{/each}
+		</ul>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -64,11 +77,12 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if routines.length === 0}
-		<div class="card-elevated empty-card" data-testid="routine-empty">
-			<span class="material-symbols empty-icon" aria-hidden="true">list_alt</span>
-			<p class="empty-title empty-text">{t('gym.routine.empty.title')}</p>
-			<p class="empty-text empty-body">{t('gym.routine.empty.body')}</p>
-		</div>
+		<EmptyState
+			icon="list_alt"
+			title={t('gym.routine.empty.title')}
+			text={t('gym.routine.empty.body')}
+			data-testid="routine-empty"
+		/>
 	{:else}
 		<ul class="routine-list" data-testid="routine-list">
 			{#each routines as r (r.id)}
@@ -95,11 +109,6 @@
 </div>
 
 <style>
-	.act-load {
-		display: flex;
-		justify-content: center;
-		padding: var(--space-2xl) 0;
-	}
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
@@ -170,21 +179,6 @@
 	}
 	.chevron {
 		color: var(--color-text-tertiary);
-	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-2xs);
-		padding: var(--space-2xl);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-	}
-	.empty-title {
-		font-weight: 600;
 	}
 	.error-banner {
 		display: flex;

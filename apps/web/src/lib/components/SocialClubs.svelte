@@ -1,28 +1,35 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hashHue } from '$lib/format/avatar';
-	import { page } from '$app/stores';
+	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import ClubEditor from '$lib/components/ClubEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import VerifiedBadge from '$lib/components/VerifiedBadge.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { ClubWithMeta } from '$lib/types';
+	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import StravaClubsSection from '#lib/components/StravaClubsSection.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { clubRoleLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { CREATE_CLUB_GUIDE_ID, clubSetupHref } from '#lib/social/club_setup.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
 
 	let subtab = $state<'browse' | 'mine'>('mine');
 	let loading = $state(true);
 	let search = $state('');
 	let browseResults = $state<ClubWithMeta[]>([]);
 	let myClubs = $state<ClubWithMeta[]>([]);
-	let browseError = $state<string | null>(null);
-	let mineError = $state<string | null>(null);
+	let browseError = $state<Error | null>(null);
+	let mineError = $state<Error | null>(null);
 	let browseGen = $state(0);
 	let mineGen = $state(0);
 
 	let visible = $derived(subtab === 'browse' ? browseResults : myClubs);
+	let adminClubs = $derived(
+		myClubs.filter((c) => c.viewer_role === 'owner' || c.viewer_role === 'admin')
+	);
 	let loadError = $derived(subtab === 'browse' ? browseError : mineError);
 
 	async function loadBrowse() {
@@ -55,14 +62,14 @@
 		subtab = next;
 		// /social hosts this tab, so the subtab URL key is `clubs-sub` to
 		// avoid colliding with the top-level `?tab=clubs`.
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (next === 'mine') url.searchParams.delete('clubs-sub');
 		else url.searchParams.set('clubs-sub', next);
-		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+		goto(url, { replace: true, reset: false });
 	}
 
 	onMount(async () => {
-		const initial = $page.url.searchParams.get('clubs-sub');
+		const initial = page.url.searchParams.get('clubs-sub');
 		if (initial === 'browse') subtab = 'browse';
 
 		for (let i = 0; i < 20 && (auth.loading || !auth.user); i++) {
@@ -86,6 +93,62 @@
 	}
 
 </script>
+
+{#snippet missingClubActions(query: string)}
+	<a class="btn btn-primary" href={clubSetupHref(query)}>
+		<span class="material-symbols" aria-hidden="true">add</span>
+		{m('socialClubs.setUpYourClub')}
+	</a>
+	<a class="btn btn-outline" href="/help/{CREATE_CLUB_GUIDE_ID}">
+		<span class="material-symbols" aria-hidden="true">help</span>
+		{m('socialClubs.howToCreateClub')}
+	</a>
+{/snippet}
+
+{#snippet clubGrid()}
+	<div class="grid">
+		{#each visible as club (club.id)}
+			<a href="/clubs/{club.slug}" class="card">
+				<div class="card-header">
+					<ClubAvatar {club} size="2.5rem" font="1.1rem" />
+					<div class="card-title">
+						<h3>
+								{club.name}
+								{#if club.is_verified}
+									<VerifiedBadge />
+								{/if}
+							</h3>
+						{#if club.location_label}
+							<span class="location">
+								<span class="material-symbols" aria-hidden="true">place</span>
+								{club.location_label}
+							</span>
+						{/if}
+					</div>
+					{#if !club.is_public}
+						<span class="badge" title={m('socialClubs.privateTitle')}>{m('socialClubs.private')}</span>
+					{/if}
+				</div>
+				{#if club.description}
+					<p class="desc">{club.description}</p>
+				{/if}
+				<div class="card-foot">
+					<span class="members">
+						<span class="material-symbols" aria-hidden="true">group</span>
+						{m(club.member_count === 1 ? 'socialClubs.memberCountOne' : 'socialClubs.memberCountMany', { n: club.member_count })}
+					</span>
+					{#if club.viewer_role}
+						<span class="chip chip-mine">{clubRoleLabel(club.viewer_role)}</span>
+					{:else if club.viewer_status === 'pending'}
+						<span class="chip chip-pending" title={m('socialClubs.requestPendingTitle')}>
+							{m('socialClubs.requestPending')}
+						</span>
+					{/if}
+				</div>
+			</a>
+		{/each}
+	</div>
+{/snippet}
 
 <div class="clubs-panel">
 	<div class="tabs" role="tablist" aria-label={m('socialClubs.tablistLabel')}>
@@ -146,24 +209,42 @@
 			{#each Array(6) as _, i (i)}
 				<div class="skel-card">
 					<div class="skel-card-header">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.5rem" width="2.5rem" radius="50%" />
 						<div class="skel-card-title">
-							<span class="skel skel-line skel-w-60"></span>
-							<span class="skel skel-line skel-w-40"></span>
+							<SkeletonBlock height="0.75rem" width="60%" />
+							<SkeletonBlock height="0.75rem" width="40%" />
 						</div>
 					</div>
-					<span class="skel skel-line skel-w-80"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.75rem" width="80%" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('socialClubs.loadingClubs')}</p>
+		<p class="visually-hidden" role="status">{m('socialClubs.loadingClubs')}</p>
+	{:else if loadError && visible.length > 0}
+		<!-- The clubs read succeeded and only the viewer's own membership did
+		     not, so the list is real; say the roles and Join buttons are
+		     unreliable rather than replacing the list with an error. -->
+		<p class="membership-unknown" role="alert" data-testid="clubs-membership-unknown">
+			{m('socialClubs.membershipUnknown')}
+			<button
+				class="btn btn-secondary btn-sm"
+				type="button"
+				onclick={() => (subtab === 'browse' ? loadBrowse() : loadMine())}
+			>
+				{m('socialClubs.retry')}
+			</button>
+		</p>
+		{@render clubGrid()}
 	{:else if loadError}
-		<div class="empty-card" role="alert">
-			<span class="material-symbols empty-icon" aria-hidden="true">cloud_off</span>
-			<h3>{m('socialClubs.loadErrorTitle')}</h3>
-			<p class="empty-text">{m('socialClubs.loadErrorText')}</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="cloud_off"
+			tone="danger"
+			title={m('socialClubs.loadErrorTitle')}
+			text={m('socialClubs.loadErrorText')}
+			role="alert"
+		>
+			{#snippet actions()}
 				<button
 					class="btn btn-primary"
 					type="button"
@@ -172,17 +253,16 @@
 					<span class="material-symbols" aria-hidden="true">refresh</span>
 					{m('socialClubs.retry')}
 				</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{:else if visible.length === 0}
-		<div class="empty-card">
-			{#if subtab === 'mine'}
-				<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-				<h3>{m('socialClubs.emptyMineTitle')}</h3>
-				<p class="empty-text">
-					{m('socialClubs.emptyMineText')}
-				</p>
-				<div class="empty-actions">
+		{#if subtab === 'mine'}
+			<EmptyState
+				icon="groups"
+				title={m('socialClubs.emptyMineTitle')}
+				text={m('socialClubs.emptyMineText')}
+			>
+				{#snippet actions()}
 					<button class="btn btn-primary" type="button" onclick={() => setSubtab('browse')}>
 						<span class="material-symbols" aria-hidden="true">search</span>
 						{m('socialClubs.findAClub')}
@@ -191,86 +271,47 @@
 						<span class="material-symbols" aria-hidden="true">add</span>
 						{m('socialClubs.createOneInstead')}
 					</button>
-				</div>
-			{:else if search.trim()}
-				<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
-				<h3>{m('socialClubs.noClubsMatch', { query: search.trim() })}</h3>
-				<p class="empty-text">
-					{m('socialClubs.noClubsMatchText')}
-				</p>
-				<div class="empty-actions">
+				{/snippet}
+			</EmptyState>
+		{:else if search.trim()}
+			<EmptyState
+				icon="search_off"
+				title={m('socialClubs.noClubsMatch', { query: search.trim() })}
+				text={m('socialClubs.missingClubText')}
+				data-testid="clubs-missing-club"
+			>
+				{#snippet actions()}
+					{@render missingClubActions(search)}
 					<button
 						type="button"
-						class="btn btn-primary"
+						class="btn btn-secondary"
 						onclick={() => { search = ''; loadBrowse(); }}
 					>
 						{m('socialClubs.clearSearch')}
 					</button>
-				</div>
-			{:else}
-				<span class="material-symbols empty-icon" aria-hidden="true">groups</span>
-				<h3>{m('socialClubs.noPublicClubsTitle')}</h3>
-				<p class="empty-text">
-					{m('socialClubs.noPublicClubsText')}
-				</p>
-				<div class="empty-actions">
-					<button class="btn btn-primary" type="button" onclick={() => (showClubModal = true)}>
-						<span class="material-symbols" aria-hidden="true">add</span>
-						{m('socialClubs.createAClub')}
-					</button>
-				</div>
-			{/if}
-		</div>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<EmptyState
+				icon="groups"
+				title={m('socialClubs.noPublicClubsTitle')}
+				text={m('socialClubs.noPublicClubsText')}
+				data-testid="clubs-missing-club"
+			>
+				{#snippet actions()}
+					{@render missingClubActions('')}
+				{/snippet}
+			</EmptyState>
+		{/if}
 	{:else}
-		<div class="grid">
-			{#each visible as club (club.id)}
-				<a href="/clubs/{club.slug}" class="card">
-					<div class="card-header">
-						<Avatar
-							name={club.name}
-							size="2.5rem"
-							font="1.1rem"
-							bg="seed"
-							seedHue={hashHue(club.id)}
-						/>
-						<div class="card-title">
-							<h3>
-									{club.name}
-									{#if club.is_verified}
-										<VerifiedBadge />
-									{/if}
-								</h3>
-							{#if club.location_label}
-								<span class="location">
-									<span class="material-symbols" aria-hidden="true">place</span>
-									{club.location_label}
-								</span>
-							{/if}
-						</div>
-						{#if !club.is_public}
-							<span class="badge" title={m('socialClubs.privateTitle')}>{m('socialClubs.private')}</span>
-						{/if}
-					</div>
-					{#if club.description}
-						<p class="desc">{club.description}</p>
-					{/if}
-					<div class="card-foot">
-						<span class="members">
-							<span class="material-symbols" aria-hidden="true">group</span>
-							{m(club.member_count === 1 ? 'socialClubs.memberCountOne' : 'socialClubs.memberCountMany', { n: club.member_count })}
-						</span>
-						{#if club.viewer_role}
-							<span class="chip chip-mine">{club.viewer_role}</span>
-						{:else if club.viewer_status === 'pending'}
-							<span class="chip chip-pending" title={m('socialClubs.requestPendingTitle')}>
-								{m('socialClubs.requestPending')}
-							</span>
-						{/if}
-					</div>
-				</a>
-			{/each}
-		</div>
+		{@render clubGrid()}
 	{/if}
+
+	<!-- Hidden rather than unmounted on Browse, so switching tabs does not
+	     re-ask Strava (the list is rate-limited per caller). -->
+	<div hidden={subtab !== 'mine'}>
+		<StravaClubsSection {adminClubs} />
+	</div>
 </div>
 
 <Modal
@@ -282,6 +323,15 @@
 </Modal>
 
 <style>
+	.membership-unknown {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		flex-wrap: wrap;
+		margin: 0 0 var(--space-sm);
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
 	.clubs-panel {
 		display: flex;
 		flex-direction: column;
@@ -471,57 +521,7 @@
 		font-size: 0.75rem;
 		font-weight: 600;
 	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols { font-size: 1.1rem; }
 	.material-symbols { font-family: 'Material Symbols Outlined'; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
@@ -538,39 +538,11 @@
 		gap: 0.75rem;
 		margin-bottom: 0.2rem;
 	}
-	.skel-avatar {
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
 	.skel-card-title {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 	@media (max-width: 50rem) {
 		.toolbar-actions { margin-inline-start: 0; width: 100%; justify-content: flex-end; }

@@ -1,7 +1,43 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:purchases_flutter/purchases_flutter.dart'
+    show CustomerInfo, EntitlementInfo, EntitlementInfos, PackageType;
 
 import '../lib/revenuecat.dart';
+import '../lib/store_links.dart';
+import 'pro_plan_fixtures.dart';
+
+CustomerInfo customerWithActive(Map<String, EntitlementInfo> active) =>
+    CustomerInfo(
+      EntitlementInfos(active, active),
+      const {},
+      const [],
+      const [],
+      const [],
+      '2026-10-01T00:00:00Z',
+      'user-1',
+      const {},
+      '2026-10-14T00:00:00Z',
+    );
+
+EntitlementInfo activeEntitlement(
+  String identifier, {
+  String productIdentifier = 'pro_monthly',
+  bool isActive = true,
+  bool willRenew = true,
+  String? expirationDate = '2026-11-14T00:00:00Z',
+}) =>
+    EntitlementInfo(
+      identifier,
+      isActive,
+      willRenew,
+      '2026-10-14T00:00:00Z',
+      '2026-10-14T00:00:00Z',
+      productIdentifier,
+      true,
+      expirationDate: expirationDate,
+    );
 
 void main() {
   setUpAll(() {
@@ -56,8 +92,161 @@ void main() {
   group('startProCheckout', () {
     test('returns PurchaseResult.notConfigured when SDK has no API key',
         () async {
-      final r = await startProCheckout('user-1');
+      final r = await startProCheckout('user-1', plan: ProPlan.annual);
       expect(r, PurchaseResult.notConfigured);
+    });
+  });
+
+  group('pickProPackage', () {
+    final both = proOfferings([proMonthlyPackage, proAnnualPackage]);
+
+    test('the annual plan buys the annual package', () {
+      expect(pickProPackage(both, ProPlan.annual), proAnnualPackage);
+    });
+
+    test('the monthly plan buys the monthly package', () {
+      expect(pickProPackage(both, ProPlan.monthly), proMonthlyPackage);
+    });
+
+    test('never substitutes the other plan for a missing one', () {
+      final monthlyOnly = proOfferings([proMonthlyPackage]);
+      expect(pickProPackage(monthlyOnly, ProPlan.annual), isNull);
+      expect(pickProPackage(monthlyOnly, ProPlan.monthly), proMonthlyPackage);
+    });
+
+    test('no current offering buys nothing', () {
+      expect(pickProPackage(proOfferings(const []), ProPlan.monthly), isNull);
+    });
+  });
+
+  group('proPlanOptions', () {
+    test('both plans: annual is listed first and is the default', () {
+      final options =
+          proPlanOptions(proOfferings([proMonthlyPackage, proAnnualPackage]));
+      expect(options.plans, [ProPlan.annual, ProPlan.monthly]);
+      expect(options.defaultPlan, ProPlan.annual);
+      expect(options.savingPercent, 33);
+    });
+
+    test('a single package is the only plan, with no saving to state', () {
+      final options = proPlanOptions(proOfferings([proMonthlyPackage]));
+      expect(options.plans, [ProPlan.monthly]);
+      expect(options.defaultPlan, ProPlan.monthly);
+      expect(options.savingPercent, isNull);
+    });
+
+    test('custom-typed packages are recognised by identifier', () {
+      final monthly = proPackage('pro_monthly', PackageType.custom,
+          price: 9.99, priceString: r'$9.99');
+      final yearly = proPackage('pro_yearly', PackageType.custom,
+          price: 79.99, priceString: r'$79.99');
+      final options = proPlanOptions(proOfferings([yearly, monthly]));
+      expect(options.monthly, monthly);
+      expect(options.annual, yearly);
+    });
+
+    test('an unrecognisable single package is sold as the monthly plan', () {
+      final odd = proPackage('pro', PackageType.custom,
+          price: 9.99, priceString: r'$9.99');
+      final options = proPlanOptions(proOfferings([odd]));
+      expect(options.plans, [ProPlan.monthly]);
+      expect(options.monthly, odd);
+    });
+
+    test('no packages means no plans', () {
+      final options = proPlanOptions(proOfferings(const []));
+      expect(options.plans, isEmpty);
+      expect(options.defaultPlan, isNull);
+    });
+
+    test('no saving is stated across two currencies', () {
+      final eurAnnual = proPackage(r'$rc_annual', PackageType.annual,
+          price: 79.99, priceString: '79,99 €', currencyCode: 'EUR');
+      final options =
+          proPlanOptions(proOfferings([proMonthlyPackage, eurAnnual]));
+      expect(options.savingPercent, isNull);
+    });
+  });
+
+  group('annualSavingPercent', () {
+    test('rounds down so the saving is never overstated', () {
+      // 1 - 79.99 / 119.88 = 33.27%.
+      expect(annualSavingPercent(9.99, 79.99), 33);
+      // 1 - 9,800 / 14,400 = 31.94%: rounding would claim 32.
+      expect(annualSavingPercent(1200, 9800), 31);
+    });
+
+    test('an exact percentage is not floored below itself', () {
+      expect(annualSavingPercent(10, 90), 25);
+      expect(annualSavingPercent(10, 60), 50);
+    });
+
+    test('no saving when the year costs as much as twelve months or more', () {
+      expect(annualSavingPercent(9.99, 119.88), isNull);
+      expect(annualSavingPercent(9.99, 130), isNull);
+    });
+
+    test('a saving under one percent is not stated', () {
+      expect(annualSavingPercent(10, 119.5), isNull);
+    });
+
+    test('a zero or negative price states nothing', () {
+      expect(annualSavingPercent(0, 79.99), isNull);
+      expect(annualSavingPercent(9.99, 0), isNull);
+    });
+  });
+
+  group('proEntitlementFrom', () {
+    // The identifier the RevenueCat project defines for Pro. Spelled out
+    // rather than read from proEntitlementId: a fixture built from the
+    // constant agrees with the code whatever the constant says, which is
+    // how a wrong id once shipped with every test green.
+    const dashboardId = 'threkir_pro';
+
+    test('the code reads the entitlement the RevenueCat project defines', () {
+      expect(proEntitlementId, dashboardId);
+    });
+
+    test('an active threkir_pro entitlement is Pro, with its plan and renewal',
+        () {
+      final e = proEntitlementFrom(customerWithActive({
+        dashboardId: activeEntitlement(dashboardId,
+            productIdentifier: 'pro_annual:annual', willRenew: false),
+      }));
+      expect(e, isNotNull);
+      expect(e!.plan, ProPlan.annual);
+      expect(e.expiresAt, DateTime.utc(2026, 11, 14));
+      expect(e.willRenew, isFalse);
+    });
+
+    test('an entitlement under any other identifier is not Pro', () {
+      expect(
+        proEntitlementFrom(customerWithActive({
+          'pro': activeEntitlement('pro'),
+        })),
+        isNull,
+      );
+    });
+
+    test('no active entitlement is not Pro', () {
+      expect(proEntitlementFrom(customerWithActive(const {})), isNull);
+    });
+
+    test('an inactive entry is not Pro', () {
+      expect(
+        proEntitlementFrom(customerWithActive({
+          dashboardId: activeEntitlement(dashboardId, isActive: false),
+        })),
+        isNull,
+      );
+    });
+  });
+
+  group('loadProPlans', () {
+    test('returns null when SDK has no API key', () async {
+      // Unconfigured build: the Pro tile falls back to the $9.99 USD list
+      // price + regional note.
+      expect(await loadProPlans('user-1'), isNull);
     });
   });
 
@@ -68,12 +257,52 @@ void main() {
     });
   });
 
-  group('proMonthlyPriceString', () {
-    test('returns null when SDK has no API key', () async {
-      // Unconfigured build → configureRevenueCat returns false → null, so the
-      // Pro tile falls back to the $9.99 USD list price (+ regional note).
-      final price = await proMonthlyPriceString('user-1');
-      expect(price, isNull);
+  group('resolveManageSubscriptionUrl', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('falls back to the web page on Android when the SDK has no key',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(await resolveManageSubscriptionUrl('user-1'), webUpgradeUrl());
     });
+
+    test('falls back to Apple, not the page that sells Pro, on iOS',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(
+        await resolveManageSubscriptionUrl('user-1'),
+        appleSubscriptionsUrl,
+      );
+    });
+
+    test('a signed-out caller gets the fallback without reaching the SDK',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(
+        await resolveManageSubscriptionUrl(null, keyOverride: 'rc_test_key'),
+        appleSubscriptionsUrl,
+      );
+    });
+  });
+
+  group('proPlanForProduct', () {
+    test('names the App Store products', () {
+      expect(proPlanForProduct('pro_monthly'), ProPlan.monthly);
+      expect(proPlanForProduct('pro_annual'), ProPlan.annual);
+    });
+
+    test('reads a Play product:base-plan identifier', () {
+      expect(proPlanForProduct('pro_monthly:monthly'), ProPlan.monthly);
+      expect(proPlanForProduct('pro_annual:yearly'), ProPlan.annual);
+    });
+
+    test('names no plan for an unrecognisable product', () {
+      expect(proPlanForProduct('lifetime'), isNull);
+    });
+  });
+
+  test('loadProEntitlement returns null when the SDK has no API key',
+      () async {
+    expect(await loadProEntitlement('user-1', keyOverride: ''), isNull);
   });
 }

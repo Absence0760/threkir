@@ -6,11 +6,11 @@ import 'package:intl/intl.dart';
 /// expected `5,21 km`. These helpers route fixed-fraction-digit formatting
 /// through `intl`'s [NumberFormat] keyed by the active locale tag.
 ///
-/// [formatFixed] is the single primitive: fixed fraction digits, **no thousands
-/// grouping** (the old `toStringAsFixed` produced none — an elevation of
-/// `10000` rendered `"10000"`, not `"10,000"`, and existing en unit-test
-/// assertions depend on that). For `en` the output is byte-identical to the old
-/// `toStringAsFixed(n)`; only the separator changes for other locales.
+/// [formatFixed] is the fixed-fraction primitive: **no thousands grouping**,
+/// as the old `toStringAsFixed` had none. For `en` the output is
+/// byte-identical to the old `toStringAsFixed(n)`; only the separator changes
+/// for other locales. A whole-unit label that web groups (metres, yards,
+/// feet, elevation) goes through [formatInteger] instead.
 ///
 /// `NumberFormat` construction is non-trivial, and the run screen formats stats
 /// per GPS snapshot, so formatters are memoised by `(localeTag, digits)`.
@@ -32,5 +32,42 @@ String formatFixed(double value, int digits, String localeTag) {
     f.turnOffGrouping();
     return f;
   });
+  // intl prints NaN as "NaN", infinity as "∞", and keeps the sign of a
+  // negative that rounds to zero ("-0.0" for a training-stress balance of
+  // -0.04). None is a number a runner can read. Mirrors `formatDecimal` in
+  // apps/web/src/lib/format/number.ts.
+  if (!value.isFinite) return '—';
+  if (value.isNegative) {
+    final zero = fmt.format(0);
+    if (fmt.format(-value) == zero) return zero;
+  }
   return fmt.format(value);
+}
+
+final Map<String, NumberFormat> _integerFormatters = <String, NumberFormat>{};
+
+/// [value] rounded to a whole number WITH [localeTag]'s thousands grouping:
+/// `1,500` (en), `1.500` (de). [formatFixed] deliberately never groups; this
+/// is for a label that matches web's `formatInteger` in
+/// apps/web/src/lib/format/number.ts.
+String formatInteger(double value, String localeTag) {
+  if (!value.isFinite) return '—';
+  final fmt = _integerFormatters.putIfAbsent(
+      localeTag,
+      () => NumberFormat.decimalPattern(localeTag)
+        ..minimumFractionDigits = 0
+        ..maximumFractionDigits = 0);
+  return fmt.format(value.round());
+}
+
+final Map<String, NumberFormat> _percentFormatters = <String, NumberFormat>{};
+
+/// [fraction] (0.42) as a whole percentage in [localeTag]'s pattern: `42%`
+/// (en), `42 %` (de, fr), `42%` (ja). Replaces `'$pct%'`, which put the sign
+/// where English does in every language.
+String formatPercent(double fraction, String localeTag) {
+  if (!fraction.isFinite) return '—';
+  final fmt = _percentFormatters.putIfAbsent(
+      localeTag, () => NumberFormat.percentPattern(localeTag));
+  return fmt.format(fraction);
 }

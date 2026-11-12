@@ -5,6 +5,7 @@
  * same shaping against its local store).
  */
 
+import { isoDateOf } from './diary_day';
 import type { MealSlot } from './nutrition_totals';
 
 export interface MealDetailRow {
@@ -44,19 +45,12 @@ export function slotCalorieTrend(
 	for (let i = days - 1; i >= 0; i--) {
 		const d = new Date(anchor);
 		d.setDate(d.getDate() - i);
-		byDay.set(localDateKey(d), 0);
+		byDay.set(isoDateOf(d), 0);
 	}
 	for (const e of rows) {
 		if ((e.meal_slot ?? 'snack') !== slot) continue;
-		const key = localDateKey(new Date(e.started_at));
+		const key = isoDateOf(new Date(e.started_at));
 		if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + (e.calories ?? 0));
 	}
 	return [...byDay.entries()].map(([d, calories]) => ({ date: d, calories }));
-}
-
-/// Zero-padded local YYYY-MM-DD (not UTC) for a Date.
-export function localDateKey(d: Date): string {
-	const mm = String(d.getMonth() + 1).padStart(2, '0');
-	const dd = String(d.getDate()).padStart(2, '0');
-	return `${d.getFullYear()}-${mm}-${dd}`;
 }

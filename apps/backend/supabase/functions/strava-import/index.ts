@@ -1,18 +1,15 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
+import type { Database, DbClient } from '../_shared/database.ts';
 import { checkRateLimit, checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import {
-	type RawRunRow,
-	type StravaActivity,
-	type StravaTokens,
-	collectRunIdentities,
-	ingestActivity,
-	isCrossProviderDuplicate,
-	isStravaRunFamily,
-	refreshStravaToken,
-} from '../_shared/strava.ts';
+import { withCors } from '../_shared/cors.ts';
+import { type StravaTokens, refreshStravaToken } from '../_shared/strava.ts';
+import { disconnectStravaLocally } from '../_shared/strava_disconnect.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import { isExactRedirectAllowed, parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
+import { backfill } from './backfill.ts';
+import { connectRefusal } from './connect_errors.ts';
 
 // `strava-import` handles two modes, selected by the `action` field:
 //
@@ -32,7 +29,7 @@ import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 // lives in `../_shared/strava.ts` so the `strava-webhook` EF reuses
 // the same path without drift.
 
-Deno.serve(withSentry('strava-import', async (req: Request) => {
+Deno.serve(withCors(withSentry('strava-import', async (req: Request) => {
 	if (req.method !== 'POST') {
 		return Response.json({ error: 'method_not_allowed' }, { status: 405 });
 	}
@@ -46,7 +43,7 @@ Deno.serve(withSentry('strava-import', async (req: Request) => {
 	const authHeader = req.headers.get('Authorization');
 	if (!authHeader) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
-	const supabase = createClient(
+	const supabase = createClient<Database>(
 		Deno.env.get('SUPABASE_URL')!,
 		publishableKey(),
 		{ global: { headers: { Authorization: authHeader } } },
@@ -70,29 +67,48 @@ Deno.serve(withSentry('strava-import', async (req: Request) => {
 		);
 	}
 
-	// Validate body shape per action before any side effects. The
-	// later helpers cast straight from `body.<field>` and we don't
-	// want a number-typed `lookbackDays` to drive negative-epoch
-	// arithmetic, or a non-string scope to throw inside .split().
+	// Validate body shape per action before any side effects, and hand each
+	// handler the VALIDATED value rather than let it re-read the untyped bag.
+	// The checks and the call sites used to read `body.<field>` independently,
+	// so nothing tied what ran to what had been checked: the bounds test read
+	// `body.lookbackDays` while `handleSync` read it again through `?? 90`,
+	// and the only thing that rejected a JSON `null` was `Number.isInteger`
+	// happening to sit first in the `||` chain below. Re-order that chain so a
+	// bound comes first — the natural edit — and `null` reached the epoch
+	// arithmetic, where `null * 86400_000` is 0: the backfill would look back
+	// to this instant and report success having imported nothing. The explicit
+	// `typeof` test is what makes the refusal deliberate instead.
+	let code = '';
+	let scope = '';
+	let redirectUri = '';
+	// Absent means the 90-day default, which is what the web + mobile clients
+	// send explicitly anyway.
+	let lookbackDays = 90;
 	if (action === 'connect') {
 		if (typeof body.code !== 'string' || body.code.length === 0) {
-			return Response.json({ error: 'invalid_code' }, { status: 400 });
+			return connectRefusal('invalid_code', 400);
 		}
 		if (typeof body.scope !== 'string') {
-			return Response.json({ error: 'invalid_scope' }, { status: 400 });
+			return connectRefusal('invalid_scope', 400);
 		}
 		if (typeof body.redirect_uri !== 'string') {
-			return Response.json({ error: 'invalid_redirect_uri' }, { status: 400 });
+			return connectRefusal('invalid_redirect_uri', 400);
 		}
+		code = body.code;
+		scope = body.scope;
+		redirectUri = body.redirect_uri;
 	} else if (action === 'sync') {
 		if (body.lookbackDays !== undefined) {
+			const requested = body.lookbackDays;
 			if (
-				!Number.isInteger(body.lookbackDays) ||
-				body.lookbackDays <= 0 ||
-				body.lookbackDays > 365
+				typeof requested !== 'number' ||
+				!Number.isInteger(requested) ||
+				requested <= 0 ||
+				requested > 365
 			) {
 				return Response.json({ error: 'invalid_lookback_days' }, { status: 400 });
 			}
+			lookbackDays = requested;
 		}
 	}
 
@@ -103,11 +119,17 @@ Deno.serve(withSentry('strava-import', async (req: Request) => {
 	// the pro 16/h still stays well inside that envelope while
 	// removing the "refresh again in an hour" UX friction for paying
 	// users.
-	// `connect` is fail-closed: it exchanges an OAuth code (one-shot,
-	// time-bounded by Strava) and writes credentials to Vault. Letting
-	// the limiter fall open on RPC error means a stolen JWT during a
-	// DB blip can spam-exchange codes against Strava's per-app budget.
-	// `sync` stays fail-open — it's idempotent and read-mostly.
+	// Every action is fail-closed, `sync` most of all. It used to be the one
+	// exception here, on the grounds that it is "idempotent and read-mostly" —
+	// but the resource a sync spends is not ours: it walks ~20 pages of Strava's
+	// API and uploads a track per activity against Strava's PER-APPLICATION
+	// budget, which every user of this deployment shares. The posture was
+	// therefore inverted relative to the helper's own rule, guarding the two
+	// cheap single-write actions and dropping the guard on the expensive one.
+	// And the fail-open buys nothing even for the caller: the RPC that failed is
+	// `check_rate_limit` on the SAME database this import must then write its
+	// runs rows to, so letting the request through spends third-party quota on a
+	// walk that ends in a 500 at the insert (decisions § 974).
 	const denied = action === 'connect'
 		? await checkRateLimit(supabase, user.id, 'strava-import:connect', 10, 3600, {
 			failClosed: true,
@@ -116,20 +138,24 @@ Deno.serve(withSentry('strava-import', async (req: Request) => {
 			? await checkRateLimit(supabase, user.id, 'strava-import:disconnect', 10, 3600, {
 				failClosed: true,
 			})
-			: await checkRateLimitTiered(supabase, user.id, 'strava-import:sync', 4, 16, 3600);
+			: await checkRateLimitTiered(supabase, user.id, 'strava-import:sync', 4, 16, 3600, {
+				failClosed: true,
+			});
 	if (denied) return denied;
 
-	if (action === 'connect') {
-		return handleConnect(supabase, user.id, body.code, body.scope, body.redirect_uri);
+	// A switch over the narrowed union rather than three `if`s and a trailing
+	// `unknown_action`: that fallthrough was as unreachable as `handleConnect`'s
+	// own `if (!code)` was, and a shape the compiler proves exhaustive cannot
+	// grow a fourth one.
+	switch (action) {
+		case 'connect':
+			return handleConnect(supabase, user.id, code, scope, redirectUri);
+		case 'sync':
+			return handleSync(supabase, user.id, lookbackDays);
+		case 'disconnect':
+			return handleDisconnect(supabase, user.id);
 	}
-	if (action === 'sync') {
-		return handleSync(supabase, user.id, body.lookbackDays ?? 90);
-	}
-	if (action === 'disconnect') {
-		return handleDisconnect(supabase, user.id);
-	}
-	return Response.json({ error: 'unknown_action' }, { status: 400 });
-}));
+})));
 
 // audit/strava May 2026 High #1 — user-initiated Disconnect must
 // (a) revoke at Strava's end so the token can't be replayed,
@@ -139,7 +165,7 @@ Deno.serve(withSentry('strava-import', async (req: Request) => {
 // FROM integrations — left vault secrets orphaned + Strava-side
 // connection live indefinitely.
 async function handleDisconnect(
-	_userScopedSupabase: ReturnType<typeof createClient>,
+	_userScopedSupabase: DbClient,
 	userId: string,
 ): Promise<Response> {
 	// `delete_user_provider_secrets` is GRANTed to service_role only
@@ -149,7 +175,7 @@ async function handleDisconnect(
 	// `userId`. The other writes here (vault read via DEFINER RPC,
 	// integrations UPDATE on the user's own row) are reachable from
 	// either, so consolidating on one client keeps the path uniform.
-	const supabase = createClient(
+	const supabase = createClient<Database>(
 		Deno.env.get('SUPABASE_URL')!,
 		secretKey(),
 	);
@@ -199,44 +225,21 @@ async function handleDisconnect(
 		}
 	}
 
-	// Drop vault rows + clear FK + clear token_expiry. Idempotent
-	// — re-running yields 0 deletes + clean state.
-	const { error: rpcErr } = await supabase.rpc('delete_user_provider_secrets', {
-		p_user_id: userId,
-		p_provider: 'strava',
-	});
-	if (rpcErr) {
-		console.error('strava-import: delete_user_provider_secrets failed', rpcErr.message);
-		return Response.json({ error: 'vault_cleanup_failed' }, { status: 500 });
-	}
-
-	// Stamp `disconnected_at` so subsequent token-refresh sweeps
-	// skip the row + the UI shows Reconnect Strava.
-	const { error: stampErr } = await supabase
-		.from('integrations')
-		.update({
-			disconnected_at: new Date().toISOString(),
-			disconnected_reason: 'user_initiated',
-		})
-		.eq('user_id', userId)
-		.eq('provider', 'strava');
-	if (stampErr) {
-		console.error('strava-import: stamp disconnected_at failed', stampErr.message);
-		return Response.json({ error: 'stamp_failed' }, { status: 500 });
+	const result = await disconnectStravaLocally(supabase, userId, 'user_initiated');
+	if (result !== 'ok') {
+		return Response.json({ error: result }, { status: 500 });
 	}
 
 	return Response.json({ ok: true, strava_deauth: stravaDeauthOutcome });
 }
 
 async function handleConnect(
-	supabase: ReturnType<typeof createClient>,
+	supabase: DbClient,
 	userId: string,
 	code: string,
 	_clientClaimedScope: string,
-	redirectUri: string | undefined,
+	redirectUri: string,
 ): Promise<Response> {
-	if (!code) return Response.json({ error: 'missing_code' }, { status: 400 });
-
 	// We don't trust the client-supplied `scope` field — it's just a
 	// hint Strava's redirect echoed back, and a man-in-the-middle on
 	// that redirect could rewrite it. The authoritative scope comes
@@ -260,14 +263,11 @@ async function handleConnect(
 	// which 503 on missing config. A silent fall-through to "allow
 	// any redirect" would defeat the remediation in a single missed
 	// `supabase secrets set`.
-	const allowed = (Deno.env.get('STRAVA_ALLOWED_REDIRECTS') ?? '')
-		.split(',')
-		.map((s) => s.trim())
-		.filter(Boolean);
+	const allowed = parseRedirectAllowlist(Deno.env.get('STRAVA_ALLOWED_REDIRECTS'));
 	if (allowed.length === 0) {
-		return Response.json({ error: 'strava_not_configured' }, { status: 503 });
+		return connectRefusal('strava_not_configured', 503);
 	}
-	if (!redirectUri || !allowed.includes(redirectUri)) {
+	if (!isExactRedirectAllowed(redirectUri, allowed)) {
 		// audit/strava May 2026 Low #1 — debug log only on the host
 		// part of the URL (NOT the path or query — those can carry the
 		// OAuth code in some malformed callers). Lets an operator
@@ -283,7 +283,7 @@ async function handleConnect(
 			received_host: receivedHost,
 			allowed_count: allowed.length,
 		});
-		return Response.json({ error: 'invalid_redirect_uri' }, { status: 400 });
+		return connectRefusal('invalid_redirect_uri', 400);
 	}
 
 	const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
@@ -303,7 +303,7 @@ async function handleConnect(
 		// and shouldn't sit in function logs. The status alone is
 		// enough to debug a real exchange failure.
 		console.error('strava-import: token exchange failed', { status: tokenResponse.status });
-		return Response.json({ error: 'strava_token_exchange_failed' }, { status: 502 });
+		return connectRefusal('strava_token_exchange_failed', 502);
 	}
 
 	const tokens = (await tokenResponse.json()) as StravaTokens;
@@ -314,30 +314,33 @@ async function handleConnect(
 	// `activity:read_all` is missing, the backfill below would
 	// silently 401 every page and the user would see "connected,
 	// 0 imports" instead of a useful "missing permission, please
-	// reconnect" prompt.
+	// reconnect" prompt. A code, not a sentence: the clients word it.
 	const grantedScopes = (tokens.scope ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 	if (!grantedScopes.includes('activity:read_all')) {
-		return new Response(
-			'Strava connection is missing the activity:read_all scope. Please reconnect and accept all permissions.',
-			{ status: 400 },
-		);
+		return connectRefusal('missing_scope', 400);
 	}
 
 	// Upsert non-secret fields (external_id, scope) directly; the
 	// access / refresh tokens go to Vault via set_integration_tokens.
 	// Persist the *granted* scope, not the client-claimed value.
+	//
+	// `sync_cursor` is cleared because a connect starts a fresh 90-day walk:
+	// a resume point left by the previous connection describes a window of a
+	// possibly different athlete's list, and honouring it would skip the
+	// backfill this connect exists to run.
 	const { error: upsertErr } = await supabase.from('integrations').upsert(
 		{
 			user_id: userId,
 			provider: 'strava',
 			external_id: String(tokens.athlete.id),
 			scope: tokens.scope ?? '',
+			sync_cursor: null,
 		},
 		{ onConflict: 'user_id,provider' },
 	);
 	if (upsertErr) {
 		console.error('strava-import: integrations upsert failed:', upsertErr?.message ?? String(upsertErr));
-		return Response.json({ error: 'store_integration_failed' }, { status: 500 });
+		return connectRefusal('store_integration_failed', 500);
 	}
 
 	const { error: tokErr } = await supabase.rpc('set_integration_tokens', {
@@ -359,7 +362,7 @@ async function handleConnect(
 			error_class: 'vault_write',
 			error: msg,
 		});
-		return Response.json({ error: 'store_tokens_failed' }, { status: 500 });
+		return connectRefusal('store_tokens_failed', 500);
 	}
 
 	// First-time connects always trigger a backfill so the user sees data
@@ -371,7 +374,7 @@ async function handleConnect(
 }
 
 async function handleSync(
-	supabase: ReturnType<typeof createClient>,
+	supabase: DbClient,
 	userId: string,
 	lookbackDays: number,
 ): Promise<Response> {
@@ -416,136 +419,4 @@ async function handleSync(
 
 	const result = await backfill(supabase, userId, accessToken, lookbackDays);
 	return Response.json(result);
-}
-
-async function backfill(
-	supabase: ReturnType<typeof createClient>,
-	userId: string,
-	accessToken: string,
-	lookbackDays: number,
-): Promise<{ imported: number; skipped: number; failed: number }> {
-	const afterEpoch = Math.floor((Date.now() - lookbackDays * 86400_000) / 1000);
-	let page = 1;
-	const pageSize = 50;
-	let imported = 0;
-	let skipped = 0;
-	let failed = 0;
-
-	// Resolve privacy_default ONCE for the whole backfill (persona #27) so
-	// imported runs match the user's chosen visibility. Only an explicit
-	// 'public' default publishes; followers/private/unset and any read error
-	// fall closed to private.
-	let importIsPublic = false;
-	try {
-		const { data: settings } = await supabase
-			.from('user_settings')
-			.select('prefs')
-			.eq('user_id', userId)
-			.maybeSingle();
-		const prefs = (settings?.prefs ?? null) as Record<string, unknown> | null;
-		importIsPublic = prefs?.privacy_default === 'public';
-	} catch (_) {
-		importIsPublic = false;
-	}
-
-	// Pull existing Strava-sourced runs in one shot so we can dedupe
-	// without hitting the DB per activity. Keyed by Strava activity ID
-	// stored in metadata.
-	const { data: existing } = await supabase
-		.from('runs')
-		.select('metadata')
-		.eq('user_id', userId)
-		.eq('source', 'strava');
-	const seen = new Set<string>();
-	for (const r of existing ?? []) {
-		const sid = (r.metadata as Record<string, unknown> | null)?.strava_id;
-		if (sid) seen.add(String(sid));
-	}
-
-	// Cross-provider near-duplicate guard. The `seen` set above only catches
-	// a re-import of the SAME Strava activity; it never sees the same effort
-	// that already arrived under another source (a Garmin watch auto-uploaded
-	// to Strava, an Apple HealthKit copy, a Garmin bulk-export ZIP). Pull
-	// every existing run's start time + distance ACROSS ALL SOURCES so we can
-	// skip an activity that already exists under any provider.
-	//
-	// PAGE the read: PostgREST caps an unbounded SELECT at 1000 rows, so a pro
-	// with 1000+ runs would otherwise compare against an arbitrary slice and
-	// re-import duplicates anyway — the exact failure this guard exists to
-	// close. `collectRunIdentities` loops `.range()` in 1000-row chunks
-	// (mirrors `fetchRuns` on web).
-	const existingIdentities = await collectRunIdentities((from, to) =>
-		supabase
-			.from('runs')
-			.select('started_at, distance_m')
-			.eq('user_id', userId)
-			.order('started_at', { ascending: false })
-			.range(from, to)
-			.then(({ data, error }): RawRunRow[] | null => (error ? null : (data as RawRunRow[]))),
-	);
-
-	let rateLimited = false;
-	while (true) {
-		const url = `https://www.strava.com/api/v3/athlete/activities?after=${afterEpoch}&per_page=${pageSize}&page=${page}`;
-		const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-		if (resp.status === 429 || resp.status === 503) {
-			// Strava rate-limit / maintenance — surface to the caller so
-			// the client can show "Strava is rate-limiting us, try again
-			// in 15 minutes" rather than treating partial as success.
-			console.warn('strava backfill rate-limited', { page, status: resp.status });
-			rateLimited = true;
-			break;
-		}
-		if (!resp.ok) {
-			// Bail silently on the first non-rate-limit failure rather
-			// than looping forever — partial imports are still useful.
-			break;
-		}
-		const activities = (await resp.json()) as StravaActivity[];
-		if (!Array.isArray(activities) || activities.length === 0) break;
-
-		for (const act of activities) {
-			// Restrict to run-family activities (Run / TrailRun / VirtualRun
-			// / Walk / Hike). Strava's `sport_type` is the modern field;
-			// `type` is the legacy fallback. Routed through the shared
-			// helper so the allowlist stays in one place — ingestActivity
-			// now also rejects defensively (persona-hunt Pro #3).
-			if (!isStravaRunFamily(act.sport_type ?? act.type)) continue;
-			if (seen.has(String(act.id))) {
-				skipped++;
-				continue;
-			}
-			const startMs = Date.parse(act.start_date);
-			if (
-				Number.isFinite(startMs) &&
-				isCrossProviderDuplicate(
-					{ startedAtMs: startMs, distanceM: Math.round(act.distance) },
-					existingIdentities,
-				)
-			) {
-				// Already present under another source — skip so we don't
-				// double-insert the same physical activity.
-				skipped++;
-				continue;
-			}
-			try {
-				await ingestActivity(supabase, userId, accessToken, act, importIsPublic);
-				imported++;
-			} catch (_) {
-				failed++;
-			}
-		}
-
-		if (activities.length < pageSize) break;
-		page++;
-		if (page > 20) break; // safety cap — 1000 activities per sync
-	}
-
-	await supabase
-		.from('integrations')
-		.update({ last_sync_at: new Date().toISOString() })
-		.eq('user_id', userId)
-		.eq('provider', 'strava');
-
-	return { imported, skipped, failed, rate_limited: rateLimited };
 }

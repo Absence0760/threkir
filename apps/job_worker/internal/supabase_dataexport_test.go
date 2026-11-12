@@ -1,7 +1,7 @@
 package internal
 
 // HTTP-level coverage for the four `SupabaseClient` methods added in
-// the May 2026 backup work: FetchExportRoutes, FetchExportProfile,
+// the May 2026 backup work: StreamExportRoutes, FetchExportProfile,
 // FetchUserSettingsPrefs, DownloadRawTrackBytes. Spins up an
 // httptest.Server mimicking the Supabase REST + Storage shape; each
 // test asserts the request was shaped correctly (path, query
@@ -27,9 +27,9 @@ func newSupabaseTestServer(t *testing.T, handler http.HandlerFunc) *SupabaseClie
 	return NewSupabaseClient(srv.URL, testServiceKey)
 }
 
-// ─────────────────── FetchExportRoutes ───────────────────
+// ─────────────────── StreamExportRoutes ───────────────────
 
-func TestFetchExportRoutes_HappyPath(t *testing.T) {
+func TestStreamExportRoutes_HappyPath(t *testing.T) {
 	var capturedPath string
 	var capturedAuth string
 	var capturedApikey string
@@ -43,9 +43,9 @@ func TestFetchExportRoutes_HappyPath(t *testing.T) {
 			{"id":"rt-2","name":"Trail run","waypoints":[{"lat":51.5,"lng":-0.1},{"lat":51.6,"lng":-0.2}],"distance_m":10000,"surface":"trail"}
 		]`))
 	})
-	rows, err := client.FetchExportRoutes(context.Background(), "user-A")
+	rows, _, err := collectExportRoutes(client, context.Background(), "user-A")
 	if err != nil {
-		t.Fatalf("FetchExportRoutes: %v", err)
+		t.Fatalf("StreamExportRoutes: %v", err)
 	}
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 routes; got %d", len(rows))
@@ -70,27 +70,34 @@ func TestFetchExportRoutes_HappyPath(t *testing.T) {
 	}
 }
 
-func TestFetchExportRoutes_EmptyResultReturnsEmptySlice(t *testing.T) {
+// An empty section emits no page at all, so the archive writer never
+// opens an entry for it. `routes.json` still renders `[]` — the array
+// brackets are the writer's, not the row set's.
+func TestStreamExportRoutes_EmptyResultEmitsNoPage(t *testing.T) {
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`[]`))
 	})
-	rows, err := client.FetchExportRoutes(context.Background(), "user-A")
+	pages := 0
+	comp, err := client.StreamExportRoutes(context.Background(), "user-A", func([]ExportRouteRow) error {
+		pages++
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rows == nil {
-		t.Errorf("expected non-nil empty slice; got nil")
+	if pages != 0 {
+		t.Errorf("emitted %d pages for an empty section; want none", pages)
 	}
-	if len(rows) != 0 {
-		t.Errorf("expected 0 rows; got %d", len(rows))
+	if len(comp.Incomplete) != 0 {
+		t.Errorf("incomplete=%v; an empty section was read in full", comp.Incomplete)
 	}
 }
 
-func TestFetchExportRoutes_5xxReturnsHTTPError(t *testing.T) {
+func TestStreamExportRoutes_5xxReturnsHTTPError(t *testing.T) {
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "db down", http.StatusInternalServerError)
 	})
-	_, err := client.FetchExportRoutes(context.Background(), "user-A")
+	_, _, err := collectExportRoutes(client, context.Background(), "user-A")
 	if err == nil {
 		t.Fatal("expected error on 500")
 	}
@@ -103,17 +110,17 @@ func TestFetchExportRoutes_5xxReturnsHTTPError(t *testing.T) {
 	}
 }
 
-func TestFetchExportRoutes_MalformedJSONReturnsError(t *testing.T) {
+func TestStreamExportRoutes_MalformedJSONReturnsError(t *testing.T) {
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{not valid json`))
 	})
-	_, err := client.FetchExportRoutes(context.Background(), "user-A")
+	_, _, err := collectExportRoutes(client, context.Background(), "user-A")
 	if err == nil {
 		t.Fatal("expected error on malformed JSON")
 	}
 }
 
-func TestFetchExportRoutes_UrlEncodesUserId(t *testing.T) {
+func TestStreamExportRoutes_UrlEncodesUserId(t *testing.T) {
 	// A UID with a `+` (legacy non-uuid case) must round-trip through
 	// the URL query encoder rather than land as a literal space.
 	var capturedRaw string
@@ -121,7 +128,7 @@ func TestFetchExportRoutes_UrlEncodesUserId(t *testing.T) {
 		capturedRaw = r.URL.RawQuery
 		_, _ = w.Write([]byte(`[]`))
 	})
-	_, err := client.FetchExportRoutes(context.Background(), "user+with+plus")
+	_, _, err := collectExportRoutes(client, context.Background(), "user+with+plus")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +230,6 @@ func TestFetchExportProfile_IncludesPersonalDataColumns(t *testing.T) {
 		"date_of_birth",
 		"parkrun_number",
 		"display_name",
-		"hr_zones",
 		"gender",
 	}
 	for _, col := range required {
@@ -231,8 +237,24 @@ func TestFetchExportProfile_IncludesPersonalDataColumns(t *testing.T) {
 			t.Errorf("profile select must request %q: %q", col, capturedRaw)
 		}
 	}
-	if strings.Contains(capturedRaw, "birth_year") {
-		t.Errorf("profile select must not request birth_year — column does not exist (typo for date_of_birth)")
+	// Same failure mode as the birth_year typo above, and it outlived
+	// that fix: PostgREST rejects the WHOLE read when any projected
+	// column is absent, so one stale name means the subject's export
+	// ships no profile at all. `hr_zones`, `activity_default` and
+	// `privacy_default` live in the `user_settings.prefs` bag this
+	// worker exports separately (FetchUserSettingsPrefs); `bio` and
+	// `location` do not exist anywhere.
+	for _, col := range []string{
+		"birth_year",
+		"bio",
+		"location",
+		"hr_zones",
+		"activity_default",
+		"privacy_default",
+	} {
+		if strings.Contains(capturedRaw, col) {
+			t.Errorf("profile select must not request %q — user_profiles has no such column: %q", col, capturedRaw)
+		}
 	}
 }
 
@@ -435,7 +457,7 @@ func TestDownloadRawTrackBytes_LargeBodyRoundTrips(t *testing.T) {
 // methods round-trip the JSON shape the adapter then handles —
 // the adapter is a pure field-copy.
 
-func TestFetchExportRoutes_OptionalPointerFieldsRoundTrip(t *testing.T) {
+func TestStreamExportRoutes_OptionalPointerFieldsRoundTrip(t *testing.T) {
 	// A row with every optional column set — confirms the pointer
 	// fields decode to non-nil, with the right value.
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -461,7 +483,7 @@ func TestFetchExportRoutes_OptionalPointerFieldsRoundTrip(t *testing.T) {
 		})
 		_, _ = w.Write(body)
 	})
-	rows, err := client.FetchExportRoutes(context.Background(), "user-A")
+	rows, _, err := collectExportRoutes(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -498,7 +520,7 @@ func TestFetchExportRoutes_OptionalPointerFieldsRoundTrip(t *testing.T) {
 
 // ─────────────────── context cancellation ───────────────────
 
-func TestFetchExportRoutes_RespectsContextCancellation(t *testing.T) {
+func TestStreamExportRoutes_RespectsContextCancellation(t *testing.T) {
 	// Slow handler — cancel before it returns. The client must
 	// surface the cancellation rather than hang or return a stale
 	// response.
@@ -514,7 +536,7 @@ func TestFetchExportRoutes_RespectsContextCancellation(t *testing.T) {
 		// race-friendly because the assertion is "err != nil".
 		cancel()
 	}()
-	_, err := client.FetchExportRoutes(ctx, "user-A")
+	_, _, err := collectExportRoutes(client, ctx, "user-A")
 	if err == nil {
 		t.Fatal("expected error on context cancel")
 	}
@@ -558,7 +580,7 @@ func TestSupabaseClient_AllNewMethodsCarryAuthHeaders(t *testing.T) {
 	t.Cleanup(srv.Close)
 	c := NewSupabaseClient(srv.URL, testServiceKey)
 
-	_, _ = c.FetchExportRoutes(context.Background(), "user-A")
+	_, _, _ = collectExportRoutes(c, context.Background(), "user-A")
 	_, _ = c.FetchExportProfile(context.Background(), "user-A")
 	_, _ = c.FetchUserSettingsPrefs(context.Background(), "user-A")
 	_, _ = c.DownloadRawTrackBytes(context.Background(), "user-A/r.json.gz")
@@ -578,7 +600,7 @@ func TestSupabaseClient_AllNewMethodsCarryAuthHeaders(t *testing.T) {
 	}
 }
 
-// ─────────────────── FetchExportPersonalDataTables ───────────────────
+// ─────────────────── StreamExportPersonalDataTables ───────────────────
 //
 // audit/data-export-completeness (May 2026) — the audit/self-audit
 // pass caught that the run_gear filter used a SQL subselect inside
@@ -587,7 +609,7 @@ func TestSupabaseClient_AllNewMethodsCarryAuthHeaders(t *testing.T) {
 // fixed shape is a two-step fetch: gear ids first, then run_gear
 // filtered by the literal id list.
 
-func TestFetchExportPersonalDataTables_RunGearUsesTwoStepFetch(t *testing.T) {
+func TestStreamExportPersonalDataTables_RunGearUsesTwoStepFetch(t *testing.T) {
 	var observed []string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		observed = append(observed, r.URL.Path+"?"+r.URL.RawQuery)
@@ -601,9 +623,9 @@ func TestFetchExportPersonalDataTables_RunGearUsesTwoStepFetch(t *testing.T) {
 			_, _ = w.Write([]byte(`[]`))
 		}
 	})
-	_, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	_, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
-		t.Fatalf("FetchExportPersonalDataTables: %v", err)
+		t.Fatalf("StreamExportPersonalDataTables: %v", err)
 	}
 
 	// Verify the run_gear request used the literal id list, NOT a
@@ -630,7 +652,7 @@ func TestFetchExportPersonalDataTables_RunGearUsesTwoStepFetch(t *testing.T) {
 	}
 }
 
-func TestFetchExportPersonalDataTables_RunGearSkippedWhenUserHasNoGear(t *testing.T) {
+func TestStreamExportPersonalDataTables_RunGearSkippedWhenUserHasNoGear(t *testing.T) {
 	var runGearCalled bool
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -644,7 +666,7 @@ func TestFetchExportPersonalDataTables_RunGearSkippedWhenUserHasNoGear(t *testin
 			_, _ = w.Write([]byte(`[]`))
 		}
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -656,7 +678,7 @@ func TestFetchExportPersonalDataTables_RunGearSkippedWhenUserHasNoGear(t *testin
 	}
 }
 
-func TestFetchExportPersonalDataTables_RedactsDeviceTokens(t *testing.T) {
+func TestStreamExportPersonalDataTables_RedactsDeviceTokens(t *testing.T) {
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "/rest/v1/device_tokens") {
@@ -665,7 +687,7 @@ func TestFetchExportPersonalDataTables_RedactsDeviceTokens(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[]`))
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -689,7 +711,7 @@ func TestFetchExportPersonalDataTables_RedactsDeviceTokens(t *testing.T) {
 // secret columns are excluded). A regression that reverted the
 // select to the pre-fix shape would silently strip these from
 // every future export.
-func TestFetchExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColumns(t *testing.T) {
+func TestStreamExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColumns(t *testing.T) {
 	var integrationsURL string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -698,9 +720,9 @@ func TestFetchExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColum
 		}
 		_, _ = w.Write([]byte(`[]`))
 	})
-	_, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	_, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
-		t.Fatalf("FetchExportPersonalDataTables: %v", err)
+		t.Fatalf("StreamExportPersonalDataTables: %v", err)
 	}
 	if integrationsURL == "" {
 		t.Fatalf("expected a GET to /rest/v1/integrations")
@@ -711,6 +733,14 @@ func TestFetchExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColum
 	}
 	if !strings.Contains(integrationsURL, "disconnected_reason") {
 		t.Errorf("integrations select must include disconnected_reason. Got: %q", integrationsURL)
+	}
+	// 20271216170001 deleted every UltraSignup identity; both name columns are
+	// NULL everywhere and are dropped by a later migration, which would 400 an
+	// export that still selected them.
+	for _, col := range []string{"external_first_name", "external_last_name"} {
+		if strings.Contains(integrationsURL, col) {
+			t.Errorf("integrations select must not include the retired %s. Got: %q", col, integrationsURL)
+		}
 	}
 	// Vault secrets must STILL never surface — the original audit
 	// constraint stays in force.
@@ -730,7 +760,7 @@ func TestFetchExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColum
 // spec list must carry user_settings too. It must turn up in the export
 // when the subject has a row, scoped to the subject's own user_id, and
 // ship in full (no redaction — it's the subject's own data).
-func TestFetchExportPersonalDataTables_IncludesUserSettings(t *testing.T) {
+func TestStreamExportPersonalDataTables_IncludesUserSettings(t *testing.T) {
 	var userSettingsQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -742,7 +772,7 @@ func TestFetchExportPersonalDataTables_IncludesUserSettings(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[]`))
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -767,7 +797,7 @@ func TestFetchExportPersonalDataTables_IncludesUserSettings(t *testing.T) {
 	}
 }
 
-func TestFetchExportPersonalDataTables_PerTableErrorIsTolerated(t *testing.T) {
+func TestStreamExportPersonalDataTables_PerTableErrorIsTolerated(t *testing.T) {
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "/rest/v1/coach_messages") {
@@ -776,7 +806,7 @@ func TestFetchExportPersonalDataTables_PerTableErrorIsTolerated(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[{"id":"x"}]`))
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Errorf("per-table failures must be swallowed; got err=%v", err)
 	}
@@ -800,7 +830,7 @@ func extraTableKeys(m map[string][]map[string]interface{}) []string {
 // tables (race_pings, user_device_settings, user_coach_usage) plus
 // reports.reporter_id rows. Each must turn up in the export when the
 // underlying table has any rows for the subject.
-func TestFetchExportPersonalDataTables_IncludesAuditCompletenessTables(t *testing.T) {
+func TestStreamExportPersonalDataTables_IncludesAuditCompletenessTables(t *testing.T) {
 	hits := map[string]bool{
 		"race_pings":           false,
 		"user_device_settings": false,
@@ -828,7 +858,7 @@ func TestFetchExportPersonalDataTables_IncludesAuditCompletenessTables(t *testin
 			_, _ = w.Write([]byte(`[]`))
 		}
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -856,8 +886,8 @@ func TestFetchExportPersonalDataTables_IncludesAuditCompletenessTables(t *testin
 // directions), and event_results (own race finish records). Each must
 // appear in the manifest when the subject has rows; coach_athletes
 // must NOT leak the redeemable invite_token credential.
-func TestFetchExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T) {
-	var dmSentQ, dmRecvQ, coachQ, athleteQ, eventResQ string
+func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T) {
+	var dmSentQ, dmRecvQ, convQ, coachQ, athleteQ, eventResQ, pcrAthleteQ, pcrCoachQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		path := r.URL.Path
@@ -869,12 +899,21 @@ func TestFetchExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T)
 		case strings.Contains(path, "/rest/v1/direct_messages") && strings.Contains(query, "recipient_id="):
 			dmRecvQ = query
 			_, _ = w.Write([]byte(`[{"id":"dm2","body":"yo"}]`))
+		case strings.Contains(path, "/rest/v1/conversation_participants"):
+			convQ = query
+			_, _ = w.Write([]byte(`[{"conversation_id":"c1","muted_at":null}]`))
 		case strings.Contains(path, "/rest/v1/coach_athletes") && strings.Contains(query, "coach_id="):
 			coachQ = query
 			_, _ = w.Write([]byte(`[{"id":"ca1","status":"active"}]`))
 		case strings.Contains(path, "/rest/v1/coach_athletes") && strings.Contains(query, "athlete_id="):
 			athleteQ = query
 			_, _ = w.Write([]byte(`[{"id":"ca2","status":"pending"}]`))
+		case strings.Contains(path, "/rest/v1/plan_change_requests") && strings.Contains(query, "athlete_id="):
+			pcrAthleteQ = query
+			_, _ = w.Write([]byte(`[{"id":"pcr1","status":"pending"}]`))
+		case strings.Contains(path, "/rest/v1/plan_change_requests") && strings.Contains(query, "coach_id="):
+			pcrCoachQ = query
+			_, _ = w.Write([]byte(`[{"id":"pcr2","status":"approved"}]`))
 		case strings.Contains(path, "/rest/v1/event_results"):
 			eventResQ = query
 			_, _ = w.Write([]byte(`[{"event_id":"e1","rank":3,"duration_s":1500}]`))
@@ -882,7 +921,7 @@ func TestFetchExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T)
 			_, _ = w.Write([]byte(`[]`))
 		}
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -890,8 +929,11 @@ func TestFetchExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T)
 	for _, key := range []string{
 		"direct_messages_sent.json",
 		"direct_messages_received.json",
+		"conversation_settings.json",
 		"coaching_as_coach.json",
 		"coaching_as_athlete.json",
+		"plan_change_requests_as_athlete.json",
+		"plan_change_requests_as_coach.json",
 		"event_results.json",
 	} {
 		if rows, ok := out[key]; !ok || len(rows) == 0 {
@@ -908,13 +950,45 @@ func TestFetchExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T)
 	}{
 		{"direct_messages (sent)", dmSentQ, "sender_id=eq.user-A"},
 		{"direct_messages (received)", dmRecvQ, "recipient_id=eq.user-A"},
+		{"conversation_participants", convQ, "user_id=eq.user-A"},
 		{"coach_athletes (as coach)", coachQ, "coach_id=eq.user-A"},
 		{"coach_athletes (as athlete)", athleteQ, "athlete_id=eq.user-A"},
+		{"plan_change_requests (as athlete)", pcrAthleteQ, "athlete_id=eq.user-A"},
+		{"plan_change_requests (as coach)", pcrCoachQ, "coach_id=eq.user-A"},
 		{"event_results", eventResQ, "user_id=eq.user-A"},
 	} {
 		if !strings.Contains(c.query, c.want) {
 			t.Errorf("%s must be filtered by %q (scoped to the subject); got query=%q", c.name, c.want, c.query)
 		}
+	}
+	// read_at on a sent message is the recipient's own read time, withheld
+	// from the sender by a column grant (20271113000001); the export must not
+	// hand it back. seen_at is what the recipient chose to share.
+	if strings.Contains(dmSentQ, "read_at") || !strings.Contains(dmSentQ, "seen_at") {
+		t.Errorf("direct_messages (sent) select must carry seen_at and omit the recipient's read_at; got %q", dmSentQ)
+	}
+	// An edited message's text as first sent is the sender's own words
+	// (20271114000210), so the sent export carries it beside edited_at.
+	if !strings.Contains(dmSentQ, "edited_at") || !strings.Contains(dmSentQ, "original_body") {
+		t.Errorf("direct_messages (sent) select must carry edited_at and original_body; got %q", dmSentQ)
+	}
+	// A shared AI Coach answer (20271210001215) says what it is and which of
+	// the sender's own Coach answers it quoted.
+	if !strings.Contains(dmSentQ, "kind") || !strings.Contains(dmSentQ, "coach_message_id") {
+		t.Errorf("direct_messages (sent) select must carry kind and coach_message_id; got %q", dmSentQ)
+	}
+	// A photo (20271213121604) is named by image_id; the image's own row and
+	// bytes are in direct_message_images.json and storage/dm-images/.
+	if !strings.Contains(dmSentQ, "image_id") {
+		t.Errorf("direct_messages (sent) select must carry image_id; got %q", dmSentQ)
+	}
+	// Where a message request to or from the subject stands is their own
+	// conversation state (20271115002384).
+	if !strings.Contains(convQ, "request_state") || !strings.Contains(convQ, "requested_at") {
+		t.Errorf("conversation_participants select must carry request_state and requested_at; got %q", convQ)
+	}
+	if !strings.Contains(dmRecvQ, "select=%2A") && !strings.Contains(dmRecvQ, "select=*") {
+		t.Errorf("direct_messages (received) select must keep every column, the subject's own read_at included; got %q", dmRecvQ)
 	}
 	// invite_token is a redeemable credential — it must never be in the
 	// coach_athletes select projection.
@@ -930,7 +1004,7 @@ func TestFetchExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T)
 // user_blocks (own block list), club_posts (own authored posts), and
 // event_exceptions (own instance cancellations). Each must appear when
 // the subject has rows, scoped to the subject's own id column.
-func TestFetchExportPersonalDataTables_IncludesHighBatchTables(t *testing.T) {
+func TestStreamExportPersonalDataTables_IncludesHighBatchTables(t *testing.T) {
 	var claimsQ, blocksQ, postsQ, exceptionsQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -953,7 +1027,7 @@ func TestFetchExportPersonalDataTables_IncludesHighBatchTables(t *testing.T) {
 			_, _ = w.Write([]byte(`[]`))
 		}
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -992,7 +1066,7 @@ func TestFetchExportPersonalDataTables_IncludesHighBatchTables(t *testing.T) {
 // — it cascades from the parent workout, so it can't be filtered
 // directly), and food_log must ship scoped to the subject. Keep the
 // shape in lockstep with the TS twin in backup_spec.test.ts.
-func TestFetchExportPersonalDataTables_IncludesGymAndNutritionLogs(t *testing.T) {
+func TestStreamExportPersonalDataTables_IncludesGymAndNutritionLogs(t *testing.T) {
 	var gymQ, foodQ, bodyQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1010,7 +1084,7 @@ func TestFetchExportPersonalDataTables_IncludesGymAndNutritionLogs(t *testing.T)
 			_, _ = w.Write([]byte(`[]`))
 		}
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1052,7 +1126,7 @@ func TestFetchExportPersonalDataTables_IncludesGymAndNutritionLogs(t *testing.T)
 // they are the confirmed contact), so both must ship, and the
 // confirm_token capability credential must never appear in the export's
 // select projection. Keep in lockstep with the TS twin.
-func TestFetchExportPersonalDataTables_IncludesSafetyContactsBothWays(t *testing.T) {
+func TestStreamExportPersonalDataTables_IncludesSafetyContactsBothWays(t *testing.T) {
 	var queries []string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1067,7 +1141,7 @@ func TestFetchExportPersonalDataTables_IncludesSafetyContactsBothWays(t *testing
 		}
 		_, _ = w.Write([]byte(`[]`))
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1104,6 +1178,41 @@ func TestFetchExportPersonalDataTables_IncludesSafetyContactsBothWays(t *testing
 	}
 }
 
+// nutrition_programming.md § Compliance: the P1 meal plans key on author_id
+// and their assignments on client_id — neither is user_id, so both are wired
+// in explicitly and this test pins the filter each must ship under.
+func TestStreamExportPersonalDataTables_IncludesNutritionPlans(t *testing.T) {
+	queries := map[string]string{}
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/rest/v1/nutrition_plans"):
+			queries["plans"] = r.URL.RawQuery
+			_, _ = w.Write([]byte(`[{"id":"np1","title":"Marathon build","target_calories":2600}]`))
+		case strings.HasSuffix(r.URL.Path, "/rest/v1/nutrition_plan_assignments"):
+			queries["assignments"] = r.URL.RawQuery
+			_, _ = w.Write([]byte(`[{"id":"na1","plan_id":"np1","start_date":"2027-03-01"}]`))
+		default:
+			_, _ = w.Write([]byte(`[]`))
+		}
+	})
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range []string{"nutrition_plans.json", "nutrition_plan_assignments.json"} {
+		if rows, ok := out[entry]; !ok || len(rows) == 0 {
+			t.Fatalf("%s must appear in the export manifest with at least one row; got out=%v", entry, extraTableKeys(out))
+		}
+	}
+	if !strings.Contains(queries["plans"], "author_id=eq.user-A") {
+		t.Errorf("nutrition_plans must be scoped to the subject's author_id; got query=%q", queries["plans"])
+	}
+	if !strings.Contains(queries["assignments"], "client_id=eq.user-A") {
+		t.Errorf("nutrition_plan_assignments must be scoped to the subject's client_id; got query=%q", queries["assignments"])
+	}
+}
+
 // gym_programming.md § DSAR export: the gym-programming P1 reusable plan
 // (migration 20270101_001) keys on author_id, NOT user_id, so the
 // export-completeness guard's user_id-column scan can't flag it — it is
@@ -1113,7 +1222,7 @@ func TestFetchExportPersonalDataTables_IncludesSafetyContactsBothWays(t *testing
 // from the parent routine, so they can't be filtered directly), the same
 // nested-embed shape gym_workouts/gym_sets and training_plans use. Keep the
 // shape in lockstep with the TS twin in backup_spec.test.ts.
-func TestFetchExportPersonalDataTables_IncludesGymRoutines(t *testing.T) {
+func TestStreamExportPersonalDataTables_IncludesGymRoutines(t *testing.T) {
 	var routinesQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1124,7 +1233,7 @@ func TestFetchExportPersonalDataTables_IncludesGymRoutines(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[]`))
 	})
-	out, err := client.FetchExportPersonalDataTables(context.Background(), "user-A")
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1156,5 +1265,52 @@ func TestFetchExportPersonalDataTables_IncludesGymRoutines(t *testing.T) {
 	ex0, _ := exercises[0].(map[string]interface{})
 	if _, present := ex0["sets"]; !present {
 		t.Errorf("embedded gym_routine_exercises must carry their nested sets; got exercise=%v", ex0)
+	}
+}
+
+// decisions § 1971: run reactions and comment likes are personal data in both
+// directions — the ones the subject left, and the ones left on their runs and
+// comments. The received halves carry no owner column of their own, so they
+// must filter through an INNER embed of the parent (a plain embed leaves the
+// filter on an outer-joined relation and returns every row in the table).
+func TestStreamExportPersonalDataTables_IncludesReactionsAndCommentLikes(t *testing.T) {
+	queries := map[string][]string{}
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		for _, table := range []string{"run_reactions", "run_comment_likes"} {
+			if strings.HasSuffix(r.URL.Path, "/rest/v1/"+table) {
+				queries[table] = append(queries[table], r.URL.RawQuery)
+				_, _ = w.Write([]byte(`[{"user_id":"user-B"}]`))
+				return
+			}
+		}
+		_, _ = w.Write([]byte(`[]`))
+	})
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{
+		"run_reactions.json",
+		"run_reactions_received.json",
+		"run_comment_likes.json",
+		"run_comment_likes_received.json",
+	} {
+		if rows, ok := out[key]; !ok || len(rows) == 0 {
+			t.Errorf("%s must appear in the export manifest; got out=%v", key, extraTableKeys(out))
+		}
+	}
+	joined := func(table string) string { return strings.Join(queries[table], "\n") }
+	for _, c := range []struct{ table, want string }{
+		{"run_reactions", "user_id=eq.user-A"},
+		{"run_reactions", "runs.user_id=eq.user-A"},
+		{"run_reactions", "runs%21inner"},
+		{"run_comment_likes", "user_id=eq.user-A"},
+		{"run_comment_likes", "run_comments.author_id=eq.user-A"},
+		{"run_comment_likes", "run_comments%21inner"},
+	} {
+		if !strings.Contains(joined(c.table), c.want) {
+			t.Errorf("%s export queries must contain %q; got %q", c.table, c.want, joined(c.table))
+		}
 	}
 }

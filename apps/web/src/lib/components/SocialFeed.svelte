@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatDuration, formatRelativeTime } from '$lib/format/time';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		fetchFollowingActivityFeed,
 		fetchEngagementSummaries,
@@ -15,14 +18,14 @@
 		type RunFeedEntry,
 		type LiftFeedEntry,
 		type BadgeAwardFeedEntry,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 
-	import { formatDistance, formatPace, formatWeight } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import RunTrackPreview from '$lib/components/RunTrackPreview.svelte';
-	import { tierFor, type AchievementTier } from '$lib/social/badges';
-	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '$lib/runs/activity_type';
+	import { formatDistance, formatPace, formatWeight } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '#lib/runs/activity_type.ts';
 
 	// `all` and `lift` are not `activity_type` values — they are feed scopes, so
 	// they keep their own keys. The four real activity values resolve through the
@@ -90,7 +93,7 @@
 			return;
 		}
 		const { count } = await (
-			await import('$lib/core/supabase')
+			await import('#lib/core/supabase.ts')
 		).supabase
 			.from('user_follows')
 			.select('followee_id', { count: 'exact', head: true })
@@ -111,7 +114,7 @@
 			exhausted = entries.length < 20;
 			engagement = await fetchEngagementSummaries(runIds(entries));
 		} catch (e) {
-			showToast(m('socialFeed.loadFeedError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('socialFeed.loadFeedError', { error: errorCopy(e, m, 'socialFeed.loadFeedError') }), 'error');
 		} finally {
 			loading = false;
 			loaded = true;
@@ -139,7 +142,7 @@
 			// more" scroll trigger left the user scrolling forever
 			// waiting for entries that never arrived. Surface so they
 			// know to retry.
-			showToast(m('socialFeed.loadMoreError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('socialFeed.loadMoreError', { error: errorCopy(e, m, 'socialFeed.loadMoreError') }), 'error');
 		} finally {
 			loadingMore = false;
 		}
@@ -170,7 +173,7 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('socialFeed.kudosError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('socialFeed.kudosError', { error: errorCopy(e, m, 'socialFeed.kudosError') }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);
@@ -219,53 +222,53 @@
 		<div class="feed" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
 				<div class="skel-card">
-					<span class="skel skel-map"></span>
+					<div class="skel-map"><SkeletonBlock height="100%" radius="0" /></div>
 					<div class="skel-card-body">
-						<span class="skel skel-line skel-w-60"></span>
-						<span class="skel skel-line skel-w-40"></span>
+						<SkeletonBlock height="0.75rem" width="60%" />
+						<SkeletonBlock height="0.75rem" width="40%" />
 					</div>
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('socialFeed.loadingFeed')}</p>
+		<p class="visually-hidden" role="status">{m('socialFeed.loadingFeed')}</p>
 	{:else if entries.length === 0}
-		<div class="empty-card">
-			{#if !followsAnyone}
-				<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-				<h3>{m('socialFeed.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('socialFeed.emptyText')}
-				</p>
-				<a href="/social?tab=people" class="btn btn-primary">
-					<span class="material-symbols" aria-hidden="true">person_search</span>
-					{m('socialFeed.findPeople')}
-				</a>
-			{:else if activityFilter !== 'all'}
-				<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-				<h3>{m('socialFeed.noMatchesTitle')}</h3>
-				<p class="empty-text">
-					{m('socialFeed.noMatchesText', { n: FEED_WINDOW_DAYS })}
-				</p>
-				<button
-					class="btn btn-primary"
-					type="button"
-					onclick={() => (activityFilter = 'all')}
-				>
-					{m('socialFeed.clearFilters')}
-				</button>
-			{:else}
-				<span class="material-symbols empty-icon" aria-hidden="true">schedule</span>
-				<h3>{m('socialFeed.noActivityTitle')}</h3>
-				<p class="empty-text">
-					{m('socialFeed.noActivityText', { n: FEED_WINDOW_DAYS })}
-				</p>
-			{/if}
-		</div>
+		{#if !followsAnyone}
+			<EmptyState icon="dynamic_feed" title={m('socialFeed.emptyTitle')} text={m('socialFeed.emptyText')} mascot>
+				{#snippet actions()}
+					<a href="/social?tab=people" class="btn btn-primary">
+						<span class="material-symbols" aria-hidden="true">person_search</span>
+						{m('socialFeed.findPeople')}
+					</a>
+				{/snippet}
+			</EmptyState>
+		{:else if activityFilter !== 'all'}
+			<EmptyState
+				icon="filter_alt_off"
+				title={m('socialFeed.noMatchesTitle')}
+				text={m('socialFeed.noMatchesText', { n: FEED_WINDOW_DAYS })}
+			>
+				{#snippet actions()}
+					<button
+						class="btn btn-primary"
+						type="button"
+						onclick={() => (activityFilter = 'all')}
+					>
+						{m('socialFeed.clearFilters')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<EmptyState
+				icon="schedule"
+				title={m('socialFeed.noActivityTitle')}
+				text={m('socialFeed.noActivityText', { n: FEED_WINDOW_DAYS })}
+			/>
+		{/if}
 	{:else}
 		{#if badgeAwards.length > 0}
 			<section class="badge-strip" aria-label={m('badges.section.title')}>
 				{#each badgeAwards as b (b.badge.id)}
-					<a class="badge-chip tier-{b.badge.tier}" href="/share/badge/{b.badge.id}">
+					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
 						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
 						<span class="badge-chip-text">
 							{m('badges.feedEarned', {
@@ -321,7 +324,7 @@
 						     a "Run not found" page. The public share page is the run
 						     surface a non-owner can actually read — same target the
 						     lift card above and mobile's PublicRunScreen use. -->
-						<a class="entry-body" href="/share/run/{entry.id}">
+						<a class="entry-body" href="/runs/{entry.id}">
 							{#if entry.has_track}
 								<div class="entry-map">
 									<!-- public_runs dropped track_url; the non-owner clip
@@ -367,7 +370,7 @@
 								</span>
 								<span>{eng.kudos_count}</span>
 							</button>
-							<a class="comment-pill" href="/share/run/{entry.id}" aria-label={m('socialFeed.viewComments')}>
+							<a class="comment-pill" href="/runs/{entry.id}" aria-label={m('socialFeed.viewComments')}>
 								<span class="material-symbols" aria-hidden="true">chat_bubble_outline</span>
 								<span>{eng.comment_count}</span>
 							</a>
@@ -566,49 +569,7 @@
 		display: flex;
 		justify-content: center;
 	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
 	.material-symbols { font-family: 'Material Symbols Outlined'; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
@@ -617,34 +578,12 @@
 	}
 	.skel-map {
 		aspect-ratio: 16 / 9;
-		border-radius: 0;
 	}
 	.skel-card-body {
 		padding: var(--space-sm) var(--space-md);
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 	.badge-strip {
 		display: flex;

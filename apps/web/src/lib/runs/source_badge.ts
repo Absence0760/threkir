@@ -49,7 +49,7 @@ export function sourceColor(source: RunSource): string {
 
 /** Paired with `sourceColor`; both are theme-independent literals. */
 const BADGE_LIGHT_INK = '#FFFFFF';
-const BADGE_DARK_INK = '#1B1628';
+const BADGE_DARK_INK = '#1A1722';
 
 /**
  * The foreground a source badge must use on its own fill.

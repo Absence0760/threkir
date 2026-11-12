@@ -6,7 +6,8 @@ import WatchConnectivity
 /// `WCSession.transferFile(_:metadata:)` and forwards them to Dart via
 /// the `run_app/watch_ingest` method channel, and carries the opposite
 /// direction — a route the runner picked on the phone, pushed to the watch
-/// over `run_app/watch_route`.
+/// over `run_app/watch_route`, and the runner's unit + audio-cue preferences
+/// over `run_app/watch_prefs`.
 ///
 /// Both directions live here because `WCSession.delegate` is a single slot:
 /// a second class claiming its own session would take this one's delegate
@@ -14,9 +15,16 @@ import WatchConnectivity
 ///
 /// The singleton is installed in `AppDelegate` at launch (so the
 /// delegate is live before the Flutter engine exists) and the method
-/// channel is attached as soon as the engine spins up. Any runs that
-/// arrive before the engine is ready are queued in memory and flushed
-/// when the channel becomes available.
+/// channel is attached as soon as the engine spins up. Runs that arrive
+/// before Dart has installed its handler and said `ready` are held in
+/// memory and flushed when it does.
+///
+/// That holding pen is the only buffer here, and it is not where a run is
+/// kept safe. Dart writes every run to its on-disk `WatchIngestQueue` before
+/// it answers, and answers `true` once the write lands — signed in or not,
+/// online or not — so the queue, which knows the auth state and why an upload
+/// failed, owns every retry. Anything but `true` means Dart could not take the
+/// run at all, and it goes back in the pen (decisions § 1801).
 @objc class WatchIngestBridge: NSObject, WCSessionDelegate {
     @objc static let shared = WatchIngestBridge()
 
@@ -27,9 +35,55 @@ import WatchConnectivity
     /// would burn a durable transfer on a route that can never land.
     static let maxRoutePoints = 512
 
-    private var methodChannel: FlutterMethodChannel?
+    /// Routes one picker-list push may offer, and positions one of them may
+    /// carry. Must match `SavedRoutes.maxRoutes` / `SavedRoutes.maxPointsPerRoute`
+    /// in `apps/watch_ios/WatchApp/ArmedRoute.swift` and
+    /// `kMaxAppleWatchSavedRoutes` / `kMaxAppleWatchSavedRoutePoints` in
+    /// `apple_watch_route_bridge.dart`. `scripts/check_shared_constants.mjs`
+    /// reads all three rails, so these are not a transcription of the watch's
+    /// numbers — they are held against them.
+    ///
+    /// A quarter of `maxRoutePoints` per route because twelve ride in one
+    /// 65,536-byte user-info payload where an armed route rides alone.
+    static let maxSavedRoutes = 12
+    static let maxSavedRoutePoints = 128
+
+    /// Finisher times held here while no Flutter engine can take them. Matches
+    /// `PendingRaceResultStore.maxEntries` on the watch and
+    /// `kPendingRaceResultsMax` in `race_controller.dart`: one row per race, so
+    /// the cap only exists so a permanently-failing hand-off cannot grow the
+    /// buffer without limit. Oldest drop first.
+    static let maxPendingRaceResults = 20
+
+    /// `pending` and the ingest channel are touched from three queues: the
+    /// WCSession delegate queue, the main queue, and the method channel's reply
+    /// callback. Unsynchronised access to an `Array` across queues corrupts it.
+    private let state = DispatchQueue(label: "com.threkir.watch-ingest.state")
+    private var _methodChannel: FlutterMethodChannel?
+    private var _pending: [[String: Any]] = []
+    /// Dart has installed its `run` handler on this engine. Before that a
+    /// dispatch is answered "not implemented" by a channel nobody listens on.
+    private var _dartReady = false
+
     private var routeChannel: FlutterMethodChannel?
-    private var pending: [[String: Any]] = []
+    private var _raceChannel: FlutterMethodChannel?
+    private var _pendingRaceResults: [[String: Any]] = []
+    private var _raceResultRetries = 0
+
+    private var raceChannel: FlutterMethodChannel? {
+        state.sync { _raceChannel }
+    }
+    private var prefsChannel: FlutterMethodChannel?
+
+    /// The channel, but only once Dart can answer on it.
+    private var readyChannel: FlutterMethodChannel? {
+        state.sync { _dartReady ? _methodChannel : nil }
+    }
+
+    var pending: [[String: Any]] {
+        get { state.sync { _pending } }
+        set { state.sync { _pending = newValue } }
+    }
 
     func activate() {
         guard WCSession.isSupported() else { return }
@@ -38,10 +92,18 @@ import WatchConnectivity
     }
 
     @objc func attach(binaryMessenger: FlutterBinaryMessenger) {
-        methodChannel = FlutterMethodChannel(
+        let ingest = FlutterMethodChannel(
             name: "run_app/watch_ingest",
             binaryMessenger: binaryMessenger
         )
+        ingest.setMethodCallHandler { call, result in
+            guard call.method == "ready" else {
+                result(FlutterMethodNotImplemented)
+                return
+            }
+            self.markDartReady()
+            result(nil)
+        }
         let routes = FlutterMethodChannel(
             name: "run_app/watch_route",
             binaryMessenger: binaryMessenger
@@ -53,7 +115,197 @@ import WatchConnectivity
             self.handleRouteCall(call, result: result)
         }
         routeChannel = routes
+        // One channel, both directions: Dart invokes `push` on it and this
+        // class invokes `racePing` / `raceResult` back down it.
+        let race = FlutterMethodChannel(
+            name: "run_app/watch_race",
+            binaryMessenger: binaryMessenger
+        )
+        race.setMethodCallHandler { call, result in
+            self.handleRaceCall(call, result: result)
+        }
+        let prefs = FlutterMethodChannel(
+            name: "run_app/watch_prefs",
+            binaryMessenger: binaryMessenger
+        )
+        prefs.setMethodCallHandler { call, result in
+            self.handlePrefsCall(call, result: result)
+        }
+        prefsChannel = prefs
+        state.sync {
+            _methodChannel = ingest
+            // A new engine runs a new isolate, which has not installed its
+            // handler yet; `ready` from Dart is what releases the pen.
+            _dartReady = false
+            _raceChannel = race
+            _raceResultRetries = 0
+        }
+        flushPendingRaceResults()
+    }
+
+    /// Dart's `ready`: its handler is installed, so the pen can drain.
+    func markDartReady() {
+        state.sync { _dartReady = true }
         flushPending()
+    }
+
+    // MARK: - Live race relay (phone <-> watch)
+
+    /// Arm / Go / End, phone to wrist. `transferUserInfo` for the reason the
+    /// route push uses it and with one more at stake: the Arm lands while the
+    /// watch is on a charger in another room, and nothing on the watch times a
+    /// live race out, so an End that is merely *sent* leaves `RACE LIVE` on the
+    /// wrist forever (decisions § 1712).
+    private func handleRaceCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "push":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.raceUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_race",
+                    message: "Race payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    /// Re-check the shape here as well as in Dart, for the reason
+    /// `routeUserInfo` does: a payload that reaches `transferUserInfo` is
+    /// queued durably and retried against a watch that will refuse it every
+    /// time. `LiveRace.decode` is the other end of this list.
+    static func raceUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let eventId = args["race_event_id"] as? String, !eventId.isEmpty,
+              let instanceStart = args["race_instance_start"] as? String,
+              !instanceStart.isEmpty,
+              let status = args["race_status"] as? String,
+              ["armed", "running", "finished", "cancelled"].contains(status)
+        else { return nil }
+        var payload: [String: Any] = [
+            "race_event_id": eventId,
+            "race_instance_start": instanceStart,
+            "race_status": status,
+        ]
+        if let title = args["race_event_title"] as? String, !title.isEmpty {
+            payload["race_event_title"] = title
+        }
+        return payload
+    }
+
+    /// One relayed fix, or nil when the message carries none this build will
+    /// act on. Fail-closed like `routeUserInfo`: a half-read ping would put
+    /// the runner somewhere they have not been on a map other people read.
+    static func racePingPayload(from message: [String: Any]) -> [String: Any]? {
+        guard let eventId = message["race_ping_event_id"] as? String, !eventId.isEmpty,
+              let instanceStart = message["race_ping_instance_start"] as? String,
+              !instanceStart.isEmpty,
+              let latitude = message["race_ping_lat"] as? Double, latitude.isFinite,
+              let longitude = message["race_ping_lng"] as? Double, longitude.isFinite
+        else { return nil }
+        var payload: [String: Any] = [
+            "race_ping_event_id": eventId,
+            "race_ping_instance_start": instanceStart,
+            "race_ping_lat": latitude,
+            "race_ping_lng": longitude,
+        ]
+        if let distance = message["race_ping_distance_m"] as? Double,
+           distance.isFinite, distance >= 0 {
+            payload["race_ping_distance_m"] = distance
+        }
+        if let elapsed = message["race_ping_elapsed_s"] as? Int, elapsed >= 0 {
+            payload["race_ping_elapsed_s"] = elapsed
+        }
+        if let bpm = message["race_ping_bpm"] as? Int, bpm > 0 {
+            payload["race_ping_bpm"] = bpm
+        }
+        return payload
+    }
+
+    /// One relayed finisher time, or nil when the transfer carries none.
+    static func raceResultPayload(from userInfo: [String: Any]) -> [String: Any]? {
+        guard let eventId = userInfo["race_result_event_id"] as? String, !eventId.isEmpty,
+              let instanceStart = userInfo["race_result_instance_start"] as? String,
+              !instanceStart.isEmpty,
+              let runId = userInfo["race_result_run_id"] as? String, !runId.isEmpty,
+              let duration = userInfo["race_result_duration_s"] as? Int, duration >= 0,
+              let distance = userInfo["race_result_distance_m"] as? Double,
+              distance.isFinite, distance >= 0
+        else { return nil }
+        return [
+            "race_result_event_id": eventId,
+            "race_result_instance_start": instanceStart,
+            "race_result_run_id": runId,
+            "race_result_duration_s": duration,
+            "race_result_distance_m": distance,
+        ]
+    }
+
+    /// A ping the engine cannot take right now is DROPPED, never buffered.
+    /// That is the whole trade the watch made when it sent this over
+    /// `sendMessage` instead of the durable outbox: a position delivered an
+    /// hour late is a lie about where the runner is, and buffering here would
+    /// re-introduce exactly the stale dot the watch refused to queue.
+    func dispatchRacePing(_ payload: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            self?.raceChannel?.invokeMethod("racePing", arguments: payload)
+        }
+    }
+
+    /// The opposite trade: a finisher's official time is the one value in the
+    /// feature nobody can re-derive, so it waits for an engine rather than
+    /// being dropped, and a Dart `false` puts it back.
+    func dispatchRaceResult(_ payload: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard let channel = self.raceChannel else {
+                self.bufferRaceResult(payload)
+                return
+            }
+            channel.invokeMethod("raceResult", arguments: payload) { [weak self] result in
+                if let ok = result as? Bool, !ok {
+                    self?.requeueRefusedRaceResult(payload)
+                }
+            }
+        }
+    }
+
+    func flushPendingRaceResults() {
+        let snapshot = state.sync { () -> [[String: Any]] in
+            guard _raceResultRetries < Self.maxPendingRaceResults else { return [] }
+            let snapshot = _pendingRaceResults
+            _pendingRaceResults.removeAll()
+            return snapshot
+        }
+        for payload in snapshot { dispatchRaceResult(payload) }
+    }
+
+    private func bufferRaceResult(_ payload: [String: Any]) {
+        state.sync {
+            _pendingRaceResults.append(payload)
+            if _pendingRaceResults.count > Self.maxPendingRaceResults {
+                _pendingRaceResults.removeFirst(
+                    _pendingRaceResults.count - Self.maxPendingRaceResults
+                )
+            }
+        }
+    }
+
+    func requeueRefusedRaceResult(_ payload: [String: Any]) {
+        state.sync { _raceResultRetries += 1 }
+        bufferRaceResult(payload)
     }
 
     // MARK: - Route push (phone -> watch)
@@ -87,9 +339,164 @@ import WatchConnectivity
             }
             WCSession.default.transferUserInfo(payload)
             result(nil)
+        case "push_saved":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.savedRoutesUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_saved_routes",
+                    message: "Saved-route list rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
+        case "push_workout":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.workoutUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_workout",
+                    message: "Workout payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    /// Today's planned workout, phone to wrist (`watch_workout_push.dart`).
+    ///
+    /// Forwarded as the JSON TEXT the Dart side built, under one key, so the
+    /// watch's `PushedWorkout.decode` parses the same bytes Wear OS's
+    /// `parseWorkoutPush` does and `fixtures/watch_workout_payload.json` holds
+    /// both. Only the envelope is checked here — an object with the version
+    /// the watch decodes — for the `routeUserInfo` reason: a payload that
+    /// reaches `transferUserInfo` is retried durably against a watch that
+    /// would refuse it every time. The step rules are the watch's.
+    static let workoutPayloadVersion = 1
+
+    static func workoutUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let json = args["workout_json"] as? String,
+              let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              (object["v"] as? NSNumber)?.intValue == workoutPayloadVersion
+        else { return nil }
+        return ["todays_workout": json]
+    }
+
+    // MARK: - Preference push (phone -> watch)
+
+    /// `updateApplicationContext`, not `transferUserInfo`: the distance unit
+    /// and the audio-cue switch are latest-value STATE, not events. The
+    /// context is a single slot the phone overwrites, so a runner flipping a
+    /// switch six times costs one delivery, and WCSession hands the watch
+    /// whatever was last written the moment the two are next in contact —
+    /// including on the watch's own cold launch, via
+    /// `receivedApplicationContext`. A queue would replay every intermediate
+    /// value and a `sendMessage` would have dropped them all, which is how a
+    /// runner ended up unable to silence the wrist from anywhere.
+    private func handlePrefsCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "available":
+            result(Self.canPushRoute())
+        case "push":
+            guard let args = call.arguments as? [String: Any],
+                  let context = Self.prefsContext(from: args) else {
+                result(FlutterError(
+                    code: "bad_prefs",
+                    message: "Preference payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            do {
+                try WCSession.default.updateApplicationContext(context)
+                result(nil)
+            } catch {
+                result(FlutterError(
+                    code: "push_failed",
+                    message: error.localizedDescription,
+                    details: nil
+                ))
+            }
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    /// Re-check the shape here as well as on the watch, for the same reason
+    /// `routeUserInfo` does — and one stronger. The application context is
+    /// RETAINED by the system and re-offered on every contact, so a value the
+    /// watch's fail-closed decode refuses is refused on every contact for as
+    /// long as it stands, against a runner who was told their preference
+    /// applied.
+    ///
+    /// The unit and the cue switch are required and refuse the whole push.
+    /// The other five are optional and refused ONE AT A TIME: the watch
+    /// applies each key independently and reads an absent one as "keep what
+    /// you have", so a rogue activity must not cost the runner their cue
+    /// switch.
+    static func prefsContext(from args: [String: Any]) -> [String: Any]? {
+        guard let unit = args["preferred_unit"] as? String,
+              unit == "km" || unit == "mi",
+              let audioCues = args["audio_cues"] as? Bool
+        else { return nil }
+        var context: [String: Any] = ["preferred_unit": unit, "audio_cues": audioCues]
+        if let activity = args["default_activity_type"] as? String,
+           ["run", "walk", "hike", "cycle"].contains(activity) {
+            context["default_activity_type"] = activity
+        }
+        if let privacy = args["privacy_default"] as? String,
+           ["public", "followers", "private"].contains(privacy) {
+            context["privacy_default"] = privacy
+        }
+        if let zones = args["hr_zone_cutoffs"] as? [Int], isZoneLadder(zones) {
+            context["hr_zone_cutoffs"] = zones
+        }
+        if let verbosity = args["voice_feedback_verbosity"] as? String,
+           ["full", "minimal"].contains(verbosity) {
+            context["voice_feedback_verbosity"] = verbosity
+        }
+        if let stepCues = args["voice_cue_workout_steps"] as? Bool {
+            context["voice_cue_workout_steps"] = stepCues
+        }
+        return context
+    }
+
+    /// Empty (the runner has no zones), or five strictly-ascending bounds in
+    /// 40...240 — the watch's `HeartRateZones.decode` gate.
+    static func isZoneLadder(_ zones: [Int]) -> Bool {
+        if zones.isEmpty { return true }
+        guard zones.count == 5, zones.allSatisfy({ (40...240).contains($0) }) else { return false }
+        return zip(zones, zones.dropFirst()).allSatisfy { $0 < $1 }
     }
 
     private static func canPushRoute() -> Bool {
@@ -104,7 +511,7 @@ import WatchConnectivity
     /// that reaches `transferUserInfo` is queued durably and retried by the
     /// system forever against a watch that will reject it every time; the
     /// runner sees a success they never got.
-    private static func routeUserInfo(from args: [String: Any]) -> [String: Any]? {
+    static func routeUserInfo(from args: [String: Any]) -> [String: Any]? {
         guard let id = args["route_id"] as? String, !id.isEmpty,
               let name = args["route_name"] as? String,
               let distance = args["route_distance_m"] as? Double,
@@ -123,13 +530,62 @@ import WatchConnectivity
         ]
     }
 
+    /// Repack the wrist picker's starred list for `transferUserInfo`.
+    ///
+    /// Every element goes through `routeUserInfo(from:)` — the SAME validator
+    /// a single armed push takes — so the list can never carry a dictionary
+    /// `ArmedRoute.decode` would refuse, and picking one on the wrist is a
+    /// store write rather than a second decode with a second set of rules.
+    /// It is also why there is no second key list here to drift from that one.
+    ///
+    /// An element that fails, or that overruns `maxSavedRoutePoints`, is
+    /// dropped and the rest of the list stands. Deliberately weaker than the
+    /// single push's drop-the-whole-thing rule, whose reason does not reach
+    /// here: there a rejection would leave a PARTLY decoded polyline and
+    /// measure the runner against a line their route does not have, where each
+    /// element of a list is whole or absent on its own. What is preserved is
+    /// that nothing reaches the picker the watch could not follow — arming it
+    /// would fail at the start of the run instead.
+    ///
+    /// An EMPTY array is a value rather than an absence: it is what lands when
+    /// the runner unstars their last route, and it must empty the picker. So
+    /// the only rejection of the whole payload is a missing `saved_routes`.
+    static func savedRoutesUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let raw = args["saved_routes"] as? [[String: Any]] else { return nil }
+        var routes: [[String: Any]] = []
+        routes.reserveCapacity(min(raw.count, maxSavedRoutes))
+        for element in raw {
+            guard let route = routeUserInfo(from: element) else { continue }
+            guard let latitudes = route["route_lat"] as? [Double],
+                  latitudes.count <= maxSavedRoutePoints
+            else { continue }
+            routes.append(route)
+            if routes.count == maxSavedRoutes { break }
+        }
+        return ["saved_routes": routes]
+    }
+
     // MARK: - WCSessionDelegate
 
     func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
-    ) {}
+    ) {
+        guard activationState == .activated else { return }
+        flushPending()
+        flushPendingRaceResults()
+    }
+
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let payload = Self.racePingPayload(from: message) else { return }
+        dispatchRacePing(payload)
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let payload = Self.raceResultPayload(from: userInfo) else { return }
+        dispatchRaceResult(payload)
+    }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}
 
@@ -140,51 +596,104 @@ import WatchConnectivity
     }
 
     func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        // Anything still in the pen goes ahead of the run just handed over, so
+        // runs reach Dart in arrival order.
+        flushPending()
         guard let metadata = file.metadata else { return }
+
+        // The file itself is the raw JSON array of track points the
+        // watch wrote. Forward it as a string and let the Dart side
+        // decode. `FileManager`-based read because the file URL is a
+        // temporary inbox location we may lose access to momentarily.
+        var track = "[]"
+        if let data = try? Data(contentsOf: file.fileURL),
+           let str = String(data: data, encoding: .utf8) {
+            track = str
+        }
+
+        let payload = Self.ingestPayload(metadata: metadata, track: track)
+        let dartIsUp = state.sync { () -> Bool in
+            guard _methodChannel != nil, _dartReady else {
+                _pending.append(payload)
+                return false
+            }
+            return true
+        }
+        if dartIsUp { dispatch(payload) }
+    }
+
+    static func ingestPayload(metadata: [String: Any], track: String) -> [String: Any] {
         var payload: [String: Any] = [:]
         // Required metadata fields — match what watch_ios writes in
         // `ContentView.syncRun()`.
         for key in ["id", "started_at", "source", "activity_type", "last_modified_at"] {
             if let v = metadata[key] { payload[key] = v }
         }
+        if let v = metadata["event_id"] { payload["event_id"] = v }
         if let v = metadata["duration_s"] { payload["duration_s"] = v }
         if let v = metadata["distance_m"] { payload["distance_m"] = v }
         if let v = metadata["avg_bpm"] { payload["avg_bpm"] = v }
-
-        // The file itself is the raw JSON array of track points the
-        // watch wrote. Forward it as a string and let the Dart side
-        // decode. `FileManager`-based read because the file URL is a
-        // temporary inbox location we may lose access to momentarily.
-        if let data = try? Data(contentsOf: file.fileURL),
-           let str = String(data: data, encoding: .utf8) {
-            payload["track"] = str
-        } else {
-            payload["track"] = "[]"
-        }
-
-        if methodChannel != nil {
-            dispatch(payload)
-        } else {
-            pending.append(payload)
-        }
+        if let v = metadata["hr_coverage"] { payload["hr_coverage"] = v }
+        if let v = metadata["steps"] { payload["steps"] = v }
+        if let v = metadata["laps"] { payload["laps"] = v }
+        if let v = metadata["is_public"] { payload["is_public"] = v }
+        if let v = metadata["distance_estimator"] { payload["distance_estimator"] = v }
+        if let v = metadata["distance_step_filled_m"] { payload["distance_step_filled_m"] = v }
+        if let v = metadata["distance_step_over_chord_m"] { payload["distance_step_over_chord_m"] = v }
+        if let v = metadata["distance_segments"] { payload["distance_segments"] = v }
+        if let v = metadata["track_complete"] { payload["track_complete"] = v }
+        // The planned-vs-actual trail of a run started from a pushed workout.
+        // `plan_workout_id` is what the database matcher links the workout by
+        // (decisions § 2079); the other two are the review the run detail
+        // renders. Forwarded verbatim; `runFromWatchPayload` validates them.
+        if let v = metadata["plan_workout_id"] { payload["plan_workout_id"] = v }
+        if let v = metadata["workout_step_results"] { payload["workout_step_results"] = v }
+        if let v = metadata["workout_adherence"] { payload["workout_adherence"] = v }
+        payload["track"] = track
+        return payload
     }
 
-    private func flushPending() {
-        guard !pending.isEmpty else { return }
-        let snapshot = pending
-        pending.removeAll()
-        for p in snapshot { dispatch(p) }
+    func flushPending() {
+        // Snapshot and clear under the lock, then dispatch outside it: the
+        // dispatch re-enters this queue to re-buffer a run, and a `sync` from
+        // inside a held block would deadlock.
+        let snapshot = state.sync { () -> [[String: Any]] in
+            let snapshot = _pending
+            _pending.removeAll()
+            return snapshot
+        }
+        for payload in snapshot { dispatch(payload) }
     }
 
-    private func dispatch(_ payload: [String: Any]) {
+    func dispatch(_ payload: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
-            self?.methodChannel?.invokeMethod("run", arguments: payload) { result in
-                // If Dart returned false, Supabase write failed — re-queue
-                // for the next activation so we don't drop the run.
-                if let ok = result as? Bool, !ok {
-                    self?.pending.append(payload)
-                }
+            guard let self else { return }
+            guard let channel = self.readyChannel else {
+                self.buffer(payload)
+                return
+            }
+            channel.invokeMethod("run", arguments: payload) { [weak self] result in
+                if !Self.isHandOff(result) { self?.buffer(payload) }
             }
         }
+    }
+
+    /// Whether Dart's reply means it now owns the run. Only a literal `true`
+    /// does: `false` is Dart saying its disk write and its direct save both
+    /// failed, and "not implemented" or an error is a Dart that never ran the
+    /// handler. Every one of those used to be read as success except `false`,
+    /// which is how a run reached a handler-less channel and vanished.
+    ///
+    /// There is no retry ceiling on what this sends back to the pen. The old
+    /// one bounded a payload Dart refused for its own reasons, forever; a
+    /// refusal now says nothing about the payload — the queue writes every one,
+    /// decodable or not — so the pen retries on the
+    /// next watch contact or `ready`, and nothing more often.
+    static func isHandOff(_ reply: Any?) -> Bool {
+        (reply as? Bool) == true
+    }
+
+    func buffer(_ payload: [String: Any]) {
+        state.sync { _pending.append(payload) }
     }
 }

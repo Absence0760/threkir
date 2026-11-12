@@ -1,0 +1,425 @@
+---
+name: Google sign-in provisioning runbook
+description: The living operator runbook for the Google Cloud side of Google sign-in — consent screen, the three OAuth clients, the Supabase provider and the two build-time gates — with a status ledger that is updated as each step lands.
+---
+
+# Google sign-in provisioning — the living runbook
+
+One Google Cloud project feeds one feature here — Google sign-in on web,
+Android and iOS — but it is the **same project Firebase created for push**
+(`threkir`, [`native_push.md`](../features/native_push.md)), so the Clients
+list may already hold entries nobody here made. Read it before creating a
+duplicate.
+
+**This file is the progress ledger.** Update the status table in the same pass
+that does the step; every other doc points here rather than restating. The
+design record is [`web_app_auth.md`](../features/web_app_auth.md). Its Apple
+sibling is [`apple_provisioning.md`](apple_provisioning.md), which shares
+nothing with this one but the Supabase pages and the release mechanic at the
+end.
+
+## Status
+
+Last moved: **2026-10-18**.
+
+| # | Artifact | Where it ends up | State |
+|---|---|---|---|
+| — | Google Cloud project `threkir` | — | **Done 2026-09-18** — created for push, reused here |
+| 1 | Consent screen (Google Auth Platform) | — | **Done 2026-09-20** — Testing, External, `threkir.com` authorized |
+| 2 | **Web** OAuth client | Supabase provider + GitHub `MOBILE_GOOGLE_WEB_CLIENT_ID` | **Done 2026-09-20** |
+| 3 | **Android** OAuth client, one per SHA-1 | Google console only — no id to copy | **Done 2026-10-18** — `Threkir Android (Play signing)` in project `threkir`, for the Play App Signing SHA-1; upload-key and debug clients not made (#1194 step 3) |
+| 4 | **iOS** OAuth client, re-downloaded `GoogleService-Info.plist` | GitHub `GOOGLE_SERVICE_INFO_PLIST_BASE64` (`production` env) + estate `google_service_info_plist_base64` | ☐ — credential only; the code half landed in #997 |
+| 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-20** — `google_oauth_web_client_id` + `_secret` |
+| 6 | Supabase Google provider enabled | Supabase dashboard | **Done 2026-09-21** — `/auth/v1/authorize?provider=google` 302s to accounts.google.com with `scope=email profile` |
+| 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | **Done 2026-09-21** |
+| 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | **Done 2026-09-21** — `web@1.8.0` deployed; `https://threkir.com/_app/env.js` serves `PUBLIC_GOOGLE_AUTH_ENABLED:"true"` and the other nine gates empty |
+| 9 | `MOBILE_GOOGLE_WEB_CLIENT_ID` + `mobile_android@` tag | GitHub secret + release | **Done 2026-10-18** — secret on the `production` environment, `mobile_android@1.17.1` on the Internal track, Google sign-in verified on a phone (#1194) |
+| 10 | iOS release passes `GOOGLE_WEB_CLIENT_ID` + one device sign-in | `release-ios.yml` + a `mobile_ios@` release | ☐ — **a one-line workflow change, after a device check on a Mac** |
+
+The open rows are `☐` rather than `- [ ]` on purpose, for the reason
+[`apple_provisioning.md`](apple_provisioning.md) gives: the survey docs grep
+`- [ ]`, and [`followups.md`](../product/followups.md) carries this as one
+thread. That file tracks whether the thread is open; this table tracks which
+step you are on.
+
+## The console moved, and the old path is half-right
+
+Google's **OAuth consent screen** is now **Google Auth Platform**
+(<https://console.cloud.google.com/auth/overview?project=threkir>). There is
+exactly one consent configuration per project: **Branding**, **Audience**,
+**Clients** and **Data access** are views onto that single object, not things
+you create separately. A project that has never configured it shows a **Get
+started** wizard — app name, support email, audience, developer contact — and
+nothing else; the authorized domain and the test users are added afterwards,
+under Branding and Audience.
+
+Walkthroughs that route you through *APIs & Services → Credentials → Create
+credentials → OAuth client ID* — including this repo's own, before 2026-09-20 —
+describe the client half correctly and the consent half not at all. That path
+still creates clients, but `Create client` is inert until the consent
+configuration exists, so the documented route dead-ends at a control that looks
+broken rather than unreachable.
+
+## 1. Consent screen — done
+
+Recorded for the next project rather than for this one. Get started → app name
+`Threkir`, user support email, **External**, developer contact → Create. Then
+Branding → Authorized domains → `threkir.com`, and Audience → Test users →
+your own address.
+
+Leave **Data access** alone. The default `email` + `profile` scopes are
+non-sensitive, which is the whole reason this needs no verification review;
+adding one sensitive scope converts the project into a weeks-long audit.
+
+Publishing status stays **Testing**, so only addresses listed under Audience →
+Test users can sign in at all. Audience → **Publish app** lifts that, with no
+review, and is the last thing to do rather than the first.
+
+## 2. Web client — the one everything else depends on
+
+<https://console.cloud.google.com/auth/clients?project=threkir> → **Create
+client** → **Web application**, named `Threkir — Supabase`.
+
+- **Authorized JavaScript origins**: `https://threkir.com` and `http://localhost:7777`
+- **Authorized redirect URIs**: `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback`
+  and `http://localhost:24321/auth/v1/callback`
+
+Copy the **Client ID** and **Client secret**; steps 5 and 6 both want them.
+
+**Google only ever redirects to the Supabase host.** The browser goes `/login`
+→ Supabase `/authorize` → Google → Supabase `/callback` → the app, so
+`threkir.com/auth/callback` is Supabase's own hop and belongs in step 7's
+allow-list, not here. Listing it here too is harmless, which is why
+[`apps/web/local_testing.md`](../../apps/web/local_testing.md) says to. The
+`localhost:24321` line is the local Supabase stack, so one client covers prod
+and local dev.
+
+## 3. Android client — once per signing key, not once per app
+
+**Create client** → **Android**, package name **`com.threkir.app`** (the
+`applicationId`, not the `com.example.` Flutter default this repo's docs
+carried until 2026-09-20), plus one SHA-1. There is no id and no secret to
+copy: Google matches this client on package name + signature at sign-in time.
+
+Google takes one fingerprint per client, so this is one client per key:
+
+- **Debug** (emulator, `flutter run`):
+  `keytool -keystore ~/.android/debug.keystore -list -v -alias androiddebugkey -storepass android -keypass android | grep SHA1`
+- **Upload keystore** — it lives only in the estate repo, so extract it first:
+  `cd ~/github/infra-secrets && AWS_PROFILE=threkir sops --decrypt --extract '["keystore_jks_base64"]' threkir/android-upload-keystore.sops.yaml | base64 -d > /tmp/upload-keystore.jks`
+  then `keytool -keystore /tmp/upload-keystore.jks -list -v -alias upload | grep SHA1`
+- **Play App Signing** — Play Console → the app → Test and release → App integrity,
+  which now redirects to **Protected with Play** → expand *Play Store protection*
+  → Play app signing → *App signing key certificate* (path as of 2026-10-18). **This is the fingerprint real
+  users carry**, because Play strips the upload signature and re-signs with its
+  own key. It does not exist until the first upload, so it is not actionable
+  before step 9; skipping it is the classic works-on-my-phone,
+  fails-from-the-store failure.
+
+## 4. iOS client
+
+**Create client** → **iOS**, bundle id **`com.threkir.app`**. The id appears in
+the Clients list immediately; there is no secret. Read the list first: turning
+on the **Google** provider under Firebase → Authentication → Sign-in method
+auto-creates an iOS client for every iOS app in the project (named *iOS client
+(auto created by Google Service)*), and a second hand-made one for the same
+bundle id is a duplicate to tell apart later. Either route gives you the client
+this step wants; nothing here needs Firebase Authentication itself, which this
+app does not use.
+
+**Then re-download `GoogleService-Info.plist`** — Firebase console → Project
+settings → Your apps → the `com.threkir.app` iOS app. That file is the only
+channel the iOS client reaches the app through: nothing in this repo carries
+the id as a value, and there is no `GIDClientID` in `Info.plist` to set. The
+copy provisioned for push on 2026-09-18 predates every OAuth client in the
+project, so it has no `CLIENT_ID` and no `REVERSED_CLIENT_ID`; one downloaded
+after the client exists carries both. Confirm the two keys are present without printing them:
+
+```
+for k in CLIENT_ID REVERSED_CLIENT_ID; do /usr/libexec/PlistBuddy -c "Print :$k" GoogleService-Info.plist >/dev/null 2>&1 && echo "$k present" || echo "$k MISSING"; done
+```
+
+PlistBuddy is macOS-only; off a Mac,
+`python3 -c 'import plistlib,sys; d=plistlib.load(open(sys.argv[1],"rb")); print([k for k in ("CLIENT_ID","REVERSED_CLIENT_ID") if k in d])' GoogleService-Info.plist`
+lists the key names the same way. Both missing means the project still has no
+iOS client for this bundle id — the file only carries one that exists. Then
+replace the file in both homes
+[`native_push.md` § Where each artifact lives](../features/native_push.md)
+names: the estate `google_service_info_plist_base64` in
+`threkir/push-credentials.sops.yaml`, and the GitHub secret
+**`GOOGLE_SERVICE_INFO_PLIST_BASE64`** on the **`production`** environment,
+which `release-ios.yml` decodes into `ios/Runner/` and checks for
+`BUNDLE_ID` `com.threkir.app`. For a local build, the same file goes at
+`apps/mobile_ios/ios/Runner/GoogleService-Info.plist` (gitignored).
+
+**Download it; never hand-edit or stub one.** `firebase_core` configures
+`FIRApp` during plugin registration, before any Dart runs, so a malformed field
+is an uncaught `NSException` and the app aborts on every launch with nothing
+able to catch it — the field that raised when this was measured was `API_KEY`,
+not the `GOOGLE_APP_ID` first suspected. The Runner's *Copy Firebase config if
+present* phase therefore refuses the build over exactly the fields the SDK
+raises on (`GOOGLE_APP_ID`'s shape, a 39-character `API_KEY`, a
+`PROJECT_ID`), and only warns on a mismatched `BUNDLE_ID`. A placeholder is
+worse than no file: no file builds a working app without push or Google, a
+fake one fails the build or, before that check, crashed at launch.
+
+Each client's id is its own: the JSON that downloads when you create the **web**
+client describes that client alone and will never contain this one.
+
+## 5. Back the credential up
+
+Nothing in this repo reads the Google client secret: Supabase holds the only
+operational copy, so there is no Terraform variable and no repo secret for it.
+This step is a backup, and a cheap one.
+
+It goes in **`threkir/push-credentials.sops.yaml`**, which despite the name is
+the estate's client-credential file — it already carries `apple_team_id` and
+`siwa_key_id`, which are Sign in with Apple. Not `prod.sops.yaml`: that one is
+the Lambda environment source, read by exact key name (`ANTHROPIC_API_KEY`,
+`SENTRY_DSN`, the `OPENAI_*` set, `GRAPHHOPPER_API_KEY`,
+`GRAPH_CYCLE_API_KEY`), and anything else there is inert and misfiled.
+
+```
+cd ~/github/infra-secrets && AWS_PROFILE=threkir sops threkir/push-credentials.sops.yaml
+```
+
+Two keys, matching the file's existing snake_case:
+
+```
+google_oauth_web_client_id: <step 2>.apps.googleusercontent.com
+google_oauth_web_client_secret: GOCSPX-...
+```
+
+A third, `google_oauth_ios_client_id`, may join them when step 4 happens. It
+is a convenience rather than the backup: the re-downloaded plist, which step 4
+stores in this same file, already carries the id.
+
+Delete the downloaded `client_secret_*.json` once both values are in here and
+in Supabase. `.gitignore` refuses that filename, so it cannot be committed from
+this tree, but the copy in `~/Downloads` is a plaintext secret with no reason
+to outlive the paste.
+
+The Android SHA-1 is deliberately **not** stored: it is one `keytool` command
+away from a keystore that is already backed up, and a written copy goes stale
+the moment a key rotates.
+
+Run `sops` from **inside** the estate repo — config discovery is relative to
+the working directory, not to the file being written, and from elsewhere it
+fails with *"config file not found, or has no creation rules"*, which reads as
+a missing rule rather than a missing `cd`. A **new** filename would genuinely
+need a `creation_rules` entry first: the estate `.sops.yaml` matches exact
+paths, not `^threkir/.*`.
+
+Unlike the two Apple `.p8` files, this one is not download-once — the console
+shows the secret again, and it can be reset. Losing it costs a console trip,
+not a rotation.
+
+## 6. Supabase Google provider
+
+<https://supabase.com/dashboard/project/mcbgrgvegqcmdmtraikl/auth/providers> →
+**Google** → enable.
+
+- **Client IDs**: the **web** client id. If step 4 has happened, a comma and the
+  **iOS** client id after it, no space — otherwise add that when it does
+- **Client Secret (for OAuth)**: the step-2 secret
+
+Both ids because the audiences differ by platform. Web and Android both present
+a token minted for the **web** client — `initialize(serverClientId:)` in
+[`sign_in_screen.dart`](../../apps/mobile_android/lib/screens/sign_in_screen.dart)
+is what forces that on Android — while iOS may mint for the iOS client. That
+last point is the one thing here no Linux session can settle, and the field
+takes a list, so listing both costs nothing and saves a debugging session at a
+layer nobody suspects.
+
+## 7. Supabase URL configuration
+
+Same dashboard, **URL Configuration**:
+
+- **Site URL**: `https://threkir.com`
+- **Redirect URLs**: `https://threkir.com/auth/callback`,
+  `https://threkir.com/auth/reset`, `com.threkir.app://login-callback`,
+  `http://localhost:7777/auth/callback`
+
+And on the Providers page, **Allow manual linking** — without it **Link
+Google** on `/settings/account` fails with `manual_linking_disabled`.
+
+Step 7 is **project-wide, not per-provider**, so doing it here finished it for
+Apple as well — [`apple_provisioning.md`](apple_provisioning.md) ticks it on
+this date and does not repeat it. Step 6 is the per-provider half, and its
+Apple twin differs in the one way that matters: Apple's client secret is a JWT
+signed with a `.p8`, capped at six months, not a static string.
+
+## 8. Turn the web button on
+
+The web code is done and fail-closed; there is no diff to write.
+
+1. Set the repo secret **`PUBLIC_GOOGLE_AUTH_ENABLED`** to `true`.
+2. Publish a **`web@<version>`** GitHub *Release* — a bare tag push deploys
+   nothing ([`releasing.md`](releasing.md)).
+3. **Approve the deployment.** The job declares `environment: production`,
+   which carries a required-reviewer rule, so the run parks at `waiting` until
+   a human clicks *Review deployments → Approve and deploy*. A re-run resets
+   the gate and needs approving again.
+
+Both are needed. `release-web.yml` writes `apps/web/.env` from its own `env:`
+block and the build reads nothing else, so the secret alone changes nothing —
+which is how eight flags sat permanently off until
+[§ 1683](../architecture/decisions.md).
+
+**It is a GitHub Actions secret, not a sops entry, and it is not secret.** The
+two stores do different jobs: the estate `*.sops.yaml` files are the durable
+backup plus the runtime values Terraform writes into the Lambda's environment,
+while GitHub Actions secrets are the only way a value reaches a *build*. Put
+this one in sops and nothing would read it. And `PUBLIC_*` is inlined by Vite
+into the client bundle, so its value ships to every browser that loads the site
+— after the deploy anyone can read `true` out of the JS. It sits in a store
+called "secrets" because that is GitHub's mechanism for workflow inputs, not
+because the value is sensitive. Step 5's client secret is the opposite case in
+every respect.
+
+## 9. Turn the Android button on
+
+1. Set **`MOBILE_GOOGLE_WEB_CLIENT_ID`** to the **web** client id from step 2 —
+   not the Android one, which has no id at all. Put it on the **`production`
+   environment**, where `MOBILE_SUPABASE_URL` and the four `ANDROID_KEYSTORE_*`
+   values already live, not at repo level.
+2. Publish a **`mobile_android@<version>`** Release, and approve it at the same
+   gate as step 8.
+
+**Repository secrets and environment secrets are two different lists**, and
+`gh secret list` shows only the first unless you pass `--env production`. A
+session reading the short list concluded the Android release was unsignable for
+want of `ANDROID_KEYSTORE_BASE64`, which has been set since July — on the
+environment. A job with an `environment:` sees both lists, so a repo-level
+value still resolves; the reason to match the neighbours is that the next
+person to audit the list will read the same short one.
+
+`sign_in_screen.dart` reads the value through `dotenv` and shows the
+`googleSignInSoon` notice while it is empty, so a build made before the secret
+landed is indistinguishable from a broken credential.
+
+## 10. Turn the iOS button on — what the build does, and what is still owed
+
+The code half is on `main` (#997). What it does, so nobody re-derives it:
+
+- **The redirect scheme is added at build time, never committed.**
+  GoogleSignIn hands the browser back through a URL scheme that is the iOS
+  client id reversed, and the repo keeps that string out of the tree the way it
+  keeps the plist itself out. The committed
+  [`Info.plist`](../../apps/mobile_ios/ios/Runner/Info.plist) declares two
+  schemes, `com.threkir.app` (the Supabase auth deep link) and
+  `ShareMedia-com.threkir.app` (the Share Extension handoff), and no
+  `GIDClientID`. The Runner target's **last** build phase, *Register the Google
+  Sign-In redirect scheme*
+  ([`project.pbxproj`](../../apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj)),
+  reads `REVERSED_CLIENT_ID` from `ios/Runner/GoogleService-Info.plist` and
+  appends a third `CFBundleURLTypes` entry, `com.threkir.app.google`, to the
+  **built** `Info.plist`. It has to be last and `alwaysOutOfDate`, because
+  `ProcessInfoPlistFile` regenerates the built plist from the source and would
+  overwrite an earlier edit. No file, or a file with no `REVERSED_CLIENT_ID`,
+  registers nothing and logs a `note:`.
+- **The client id is read at runtime, from the same file.** `sign_in_screen.dart`
+  calls `initialize(serverClientId:)` with no `clientId`, so `google_sign_in_ios`
+  builds its configuration from the bundled plist's `CLIENT_ID`.
+  [`google_auth.dart`](../../apps/mobile_android/lib/google_auth.dart)'s
+  `iosOauthClientId()` reads that key back off `FirebaseOptions.iosClientId`.
+- **The button is absent, not "Soon", until both halves exist.** On iOS
+  `googleSignInOffered()` renders it only when `googleSignInAvailable()` holds:
+  a non-empty `GOOGLE_WEB_CLIENT_ID` **and** an iOS client id. A sign-in button
+  that cannot work is an App Review 2.1 rejection
+  ([decisions § 1700](../architecture/decisions.md)), so an unconfigured iOS
+  build shows Sign in with Apple and email only. The scheme and the gate both
+  key off the one plist, so they turn on together.
+
+What is still owed, in order:
+
+1. **Step 4** — the iOS client and the re-downloaded plist in both homes.
+2. **Step 6** — append the iOS client id to the Supabase provider's Client IDs.
+3. **A device check on a Mac.** Build with the new plist in
+   `ios/Runner/` and the web client id as a define —
+   `flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=<step 2 id>` from
+   `apps/mobile_ios` — then confirm, in order: the build log carries
+   `note: registered the Google Sign-In redirect scheme from GoogleService-Info.plist`;
+   the built plist lists the extra scheme by name, without printing its value —
+   `plutil -extract CFBundleURLTypes json -o - build/ios/iphoneos/Runner.app/Info.plist | grep -o '"CFBundleURLName":"[^"]*"'`
+   shows `com.threkir.app.auth`, `com.threkir.app.share` and
+   `com.threkir.app.google` (`iphonesimulator` for a simulator build);
+   the sign-in screen shows **Sign in with Google**; and the chooser returns
+   to the app signed in. That last one has never been run, and it is the only
+   thing that settles step 6's open question about which audience iOS mints
+   the id token for.
+4. **Pass the web client id to the release.** `release-ios.yml`'s *Write the
+   production runtime config* step deliberately leaves `GOOGLE_WEB_CLIENT_ID`
+   out of `dart_defines.json`
+   ([decisions § 1700](../architecture/decisions.md)), so a release build shows
+   no Google button however complete steps 4 and 6 are. After step 3 passes,
+   add `GOOGLE_WEB_CLIENT_ID: ${{ secrets.MOBILE_GOOGLE_WEB_CLIENT_ID }}` to
+   that step's `env:` and to its `jq` object — the same `production` secret
+   step 9 sets for Android — correct the matching line in
+   [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md) and
+   § 1700, then publish a `mobile_ios@<version>` Release. This is a diff, not a
+   secret, on purpose: it is the one switch that puts the button in front of
+   App Review, and it should be flipped by someone who has seen it work.
+
+No Linux session can do steps 3 or 4's verification, which is why this row is
+open rather than done.
+
+## Local dev
+
+Optional, and independent of everything above except step 2.
+
+1. `apps/backend/supabase/config.toml` → `[auth.external.google]` →
+   `enabled = true` plus `client_id` / `secret`, then
+   `cd apps/backend && supabase stop && supabase start`
+2. `flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=<web client id>` —
+   flutter_dotenv reads only the bundled `.env.development` asset, so a
+   `.env.local` is never loaded on mobile and a define is the per-machine
+   override ([decisions § 137](../architecture/decisions.md)). iOS additionally
+   needs step 4's plist in `ios/Runner/`
+3. `apps/web/.env.development` already carries `PUBLIC_GOOGLE_AUTH_ENABLED=true`
+
+Test paths for the sign-up, link and unlink flows are in
+[`apps/web/local_testing.md`](../../apps/web/local_testing.md) and
+[`apps/mobile_android/local_testing.md`](../../apps/mobile_android/local_testing.md).
+
+## Verifying, in the order the signal appears
+
+1. `/login` shows **Continue with Google** with no "Soon" pill. Still pilled →
+   step 8's secret did not reach a build. That is a release, not a Supabase
+   setting, and it is checkable without a browser: the static build writes
+   every public variable to `/_app/env.js`, so
+   `curl -sS https://threkir.com/_app/env.js | grep -o 'PUBLIC_[A-Z_]*:"[^"]*"'`
+   prints the gate set the deploy actually shipped. It is also the fastest way
+   to confirm a release turned on *only* what you meant it to.
+2. The button reaches Google's account chooser. A `redirect_uri_mismatch` here
+   names the URI Google was asked for — it will be the Supabase callback, and
+   it is missing from step 2.
+3. The return lands on `/auth/confirm-age` (first sign-in) or `/dashboard`, and
+   a user appears in Supabase → Authentication → Users. Bounced to `/login`
+   with no session → step 7, not step 2.
+4. Android: the system chooser opens and sign-in completes.
+   iOS: the button is present at all (absent → step 10's gate: no
+   `GOOGLE_WEB_CLIENT_ID`, or a plist with no `CLIENT_ID`), then the
+   step 10 device check.
+5. `/settings/account` → **Link Google** on an email account → two rows under
+   Sign-in Methods sharing one `user_id`.
+
+Remember the app is in **Testing** until you publish it, so every one of these
+must be run as an address listed under Audience → Test users.
+
+## When it breaks
+
+| Symptom | Cause |
+|---|---|
+| `Create client` greyed out | No consent configuration yet — run the Get started wizard (step 1). |
+| `redirect_uri_mismatch` | The Supabase callback is not in step 2's redirect list. The error text names the URI it wanted. |
+| Returns to `/login` with no session | Step 7's Redirect URLs, not Google. A target that is not on the list falls back to the Site URL. |
+| "Google sign-in did not return an ID token" on Android | The Android client's package name or SHA-1 does not match the installed build. Play-signed builds need Play's fingerprint, not the upload key's. |
+| Nothing at all happens on Android | Emulator without Google Play services — use a Google Play system image. |
+| Works for you, fails for everyone from the Play store | The Play App Signing SHA-1 in step 3 was never registered. |
+| No Google button on iOS | Working as designed until step 10: the build has no `GOOGLE_WEB_CLIENT_ID`, or its `GoogleService-Info.plist` has no `CLIENT_ID` (downloaded before step 4). A release build has no button until step 10's workflow change. |
+| iOS chooser completes but never returns to the app | The redirect scheme is missing from the built `Info.plist` — check the build log for the *Register the Google Sign-In redirect scheme* note, and that the phase is still last in the Runner's build phases. |
+| iOS app aborts at launch | A malformed `GoogleService-Info.plist` (step 4). Re-download it; the build phase should have refused it. |
+| iOS build fails with `error: GoogleService-Info.plist: ...` | The same check doing its job — the message names the field. Re-download rather than edit. |
+| A nonce error on a native sign-in | Supabase's **Skip nonce check** toggle on the Google provider page. Leave it off unless you hit this. |
+| `access_denied` for a colleague | Still in Testing — add them under Audience → Test users, or publish. |

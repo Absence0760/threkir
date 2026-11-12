@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { TrackPoint } from '$lib/types';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	// Module-level cache keyed by track URL + clip variant. Populated the
 	// first time a card scrolls into view and re-read on subsequent
@@ -25,17 +25,22 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { env } from '$env/dynamic/public';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
 	import TrackPreview from './TrackPreview.svelte';
-	import { fetchTrackByPath, fetchClippedTrackForRun } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { isTrackOwner } from '$lib/runs/track_ownership';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '$lib/routes/static_map';
-	import { isTrackRenderable } from '$lib/routes/track_projection';
+	import StaticMapImage from './StaticMapImage.svelte';
+	import { fetchTrackByPath, fetchClippedTrackForRun } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { isTrackOwner } from '#lib/runs/track_ownership.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { trackThumbnailUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+	import { thumbnailSize } from '#lib/routes/static_map.ts';
+	import { isTrackRenderable } from '#lib/routes/track_projection.ts';
 
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	// Same OS read RunMap makes, so `streets` resolves to the same light or
+	// dark rung here as on the live map.
+	const prefersDark =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 	let {
 		runId,
@@ -81,18 +86,25 @@
 	);
 
 	let el: HTMLDivElement;
+	// The box the image is drawn into, so the request matches it (thumbnailSize).
+	let boxW = $state(0);
+	let boxH = $state(0);
 	let points = $state<TrackPoint[] | null>(null);
 	let attempted = $state(false);
 
 	onMount(() => {
 		let io: IntersectionObserver | null = null;
+		let destroyed = false;
 		// Wait for auth to settle before reading `cacheKey` / `shouldClip`
 		// — this component mounts on shell-less public surfaces before the
 		// root layout's auth gate resolves, and an owner whose session is
 		// still restoring would otherwise be clipped (issue #347).
 		void (async () => {
 			await auth.ready();
-			if (!cacheKey) return;
+			// A list that re-renders while auth settles (the /runs period
+			// switch) destroys this card first: `el` is unbound by then, and
+			// an observer created now would never be disconnected.
+			if (destroyed || !cacheKey) return;
 			// Hit cache synchronously if we've fetched this one before in
 			// this session — common when the user scrolls up / re-enters the
 			// list page.
@@ -115,7 +127,10 @@
 			);
 			io.observe(el);
 		})();
-		return () => io?.disconnect();
+		return () => {
+			destroyed = true;
+			io?.disconnect();
+		};
 	});
 
 	async function load() {
@@ -155,43 +170,38 @@
 	}
 </script>
 
-<div bind:this={el} class="wrap">
+<div bind:this={el} bind:clientWidth={boxW} bind:clientHeight={boxH} class="wrap">
 	{#if points && points.length > 1}
+		{@const track = points}
+		{@const size = thumbnailSize(boxW, boxH)}
 		{@const mapUrl =
-			buildLocalStaticMapUrl(points, {
-				w: 220,
-				h: 140,
-				styleUrl: PUBLIC_TILE_STYLE_URL,
-			}) ??
-			// MapTiler logs the requester IP per static-map fetch and this
-			// preview renders on anon surfaces (public /u/[id], feed). Hold
-			// the third-party request until consent; fall through to the
-			// SVG below until then. Local self-hosted override is exempt.
-			// audit/cookie-consent.
-			(consent.accepted
-				? buildStaticMapUrl(points, {
-						w: 220,
-						h: 140,
-						style: 'streets-v2',
+			boxW > 0 && boxH > 0
+				? trackThumbnailUrlFromEnv(points, {
+						w: size.w,
+						h: size.h,
 						key: PUBLIC_MAPTILER_KEY,
+						prefersDark,
+						allowThirdParty: consent.accepted,
 					})
-				: null)}
+				: null}
+		<!-- MapTiler logs the requester IP per static-map fetch and this
+		     preview renders on anon surfaces (public /u/[id], feed), so the
+		     third-party rung waits for consent; the self-hosted override is
+		     exempt. audit/cookie-consent. -->
 		{#if mapUrl}
 			<!-- Static-map background mirroring RouteTrackPreview. Real
 				 tiles read better than a bare SVG line on cards. Falls
 				 back to the SVG when neither MapTiler nor the local
-				 Protomaps server is configured. Lazy-load so a list
-				 of 50 runs doesn't fire 50 PNGs at page load. -->
-			<img
-				src={mapUrl}
-				class="map-img"
-				loading="lazy"
-				decoding="async"
-				alt=""
-				data-testid="run-preview-map"
-			/>
+				 Protomaps server is configured, or when the image
+				 request fails. Lazy-load so a list of 50 runs doesn't
+				 fire 50 PNGs at page load. -->
+			<StaticMapImage src={mapUrl} alt="" class="map-img" testid="run-preview-map" lazy>
+				{#snippet fallback()}
+					<TrackPreview points={track} />
+				{/snippet}
+			</StaticMapImage>
 		{:else}
-			<TrackPreview {points} />
+			<TrackPreview points={track} />
 		{/if}
 	{:else}
 		<span class="material-symbols placeholder">map</span>
@@ -205,6 +215,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+	.wrap :global(.map-img) {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 	.placeholder {
 		font-family: 'Material Symbols Outlined';

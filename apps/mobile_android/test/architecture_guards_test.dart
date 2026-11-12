@@ -7,6 +7,7 @@
 // optimization or broke a layering rule we deliberately codified. Read
 // the reason before blindly updating the test.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
@@ -35,6 +36,66 @@ String _extractMethodBody(String source, String signaturePattern) {
   return source.substring(start, i - 1);
 }
 
+/// The body of every `} catch (...) { ... }` in [body], brace-matched so a
+/// nested block inside a catch does not truncate it.
+List<String> _catchBlocks(String body) {
+  final out = <String>[];
+  for (final m in RegExp(r'\}\s*catch\s*\([^)]*\)\s*\{').allMatches(body)) {
+    final start = m.end;
+    var depth = 1;
+    var i = start;
+    while (depth > 0 && i < body.length) {
+      if (body[i] == '{') depth++;
+      if (body[i] == '}') depth--;
+      i++;
+    }
+    out.add(body.substring(start, i - 1));
+  }
+  return out;
+}
+
+/// [body] with every `try { ... } catch (...) { ... }` span removed, so what
+/// is left is the code that runs with no wrapper around it.
+String _withoutTryCatchBlocks(String body) {
+  final buf = StringBuffer();
+  var cursor = 0;
+  while (true) {
+    final t = body.indexOf('try {', cursor);
+    if (t < 0) {
+      buf.write(body.substring(cursor));
+      return buf.toString();
+    }
+    buf.write(body.substring(cursor, t));
+    var i = body.indexOf('{', t);
+    var depth = 0;
+    while (i < body.length) {
+      if (body[i] == '{') depth++;
+      if (body[i] == '}') {
+        depth--;
+        if (depth == 0) break;
+      }
+      i++;
+    }
+    final catchMatch =
+        RegExp(r'^\s*catch\s*\([^)]*\)\s*\{').firstMatch(body.substring(i + 1));
+    if (catchMatch == null) {
+      cursor = i + 1;
+      continue;
+    }
+    var j = i + 1 + catchMatch.end - 1;
+    depth = 0;
+    while (j < body.length) {
+      if (body[j] == '{') depth++;
+      if (body[j] == '}') {
+        depth--;
+        if (depth == 0) break;
+      }
+      j++;
+    }
+    cursor = j + 1;
+  }
+}
+
 void main() {
   group('run_screen.dart', () {
     late String source;
@@ -54,6 +115,60 @@ void main() {
         begin.contains('_turnAnnouncer?.reset()'),
         isTrue,
         reason: 'every recording must start from a cleared announced-turn set',
+      );
+    });
+
+    test('a foreground-only location grant is disclosed when it costs the run, '
+        'never at run start', () {
+      // Reason: Android's first-run dialog only ever grants "While using the
+      // app"; "Allow all the time" is a separate trip to Settings. The
+      // recorder used to REFUSE that grant, so the default Android runner got
+      // no position stream at all — the live map sat on "Waiting for GPS" for
+      // the whole run, distance stayed 0, and the run saved as indoor. GPS now
+      // records under it (#784). The disclosure that used to fire at _begin
+      // read as "recording is broken" at the exact moment nothing was wrong;
+      // it belongs on the real event — the runner returning to a recording run
+      // that received no fix while the app was off screen (#785).
+      final begin = _extractMethodBody(source, r'Future<void> _begin\(\) async \{');
+      expect(
+        begin.contains('_notifyBackgroundLocationLimited()'),
+        isFalse,
+        reason: 'run start must not warn about background permission — '
+            'nothing has gone wrong yet',
+      );
+      final lifecycle = _extractMethodBody(
+        source,
+        r'void didChangeAppLifecycleState\(AppLifecycleState state\) \{',
+      );
+      expect(
+        lifecycle.contains('shouldDiscloseBackgroundLocationLimit('),
+        isTrue,
+        reason: 'the disclosure must be driven by the app-lifecycle event and '
+            'gated on the evidenced-gap decision',
+      );
+      expect(
+        lifecycle.contains('_notifyBackgroundLocationLimited()'),
+        isTrue,
+        reason: 'the disclosure must reach the runner as a banner, not be '
+            'dropped on the floor',
+      );
+      // L4: the disclosure is auxiliary to recording and carries its own
+      // catch, so nothing in it can reach the recording state machine.
+      expect(
+        lifecycle.contains('catch'),
+        isTrue,
+        reason: 'the lifecycle disclosure path must be L4-isolated',
+      );
+      // The disclosure is a warning about a recording run — it must never
+      // reuse the GPS-unavailable path, which describes a run with no fixes.
+      final notify = _extractMethodBody(
+        source,
+        r'void _notifyBackgroundLocationLimited\(\)\s*\{',
+      );
+      expect(
+        notify.contains('_notifyGpsUnavailable('),
+        isFalse,
+        reason: 'a limited grant still records — it is not GPS unavailable',
       );
     });
 
@@ -90,15 +205,30 @@ void main() {
         reason: 'the _begin() hook must gate through '
             'shouldStartBroadcastOnRunStart',
       );
-      final hookWindow = sideEffects.substring(gateIdx, gateIdx + 500);
+      // The whole unawaited(...) call the gate guards, balanced on its
+      // parentheses, so a longer .then() cannot push its catchError out of
+      // view.
+      final callIdx = sideEffects.indexOf('unawaited(', gateIdx);
       expect(
-        hookWindow.contains('unawaited(_startLiveBroadcast()'),
+        callIdx > -1 &&
+            sideEffects.startsWith('unawaited(_startLiveBroadcast(', callIdx),
         isTrue,
         reason: 'the auto share is fire-and-forget — _begin() must not '
             'await the network before starting the clock',
       );
+      var depth = 0;
+      var callEnd = callIdx;
+      for (var i = callIdx; i < sideEffects.length; i++) {
+        final c = sideEffects[i];
+        if (c == '(') depth++;
+        if (c == ')' && --depth == 0) {
+          callEnd = i + 1;
+          break;
+        }
+      }
+      final hookCall = sideEffects.substring(callIdx, callEnd);
       expect(
-        hookWindow.contains('catchError'),
+        hookCall.contains('catchError'),
         isTrue,
         reason: 'the auto share needs its own error path (L4) so a '
             'failure cannot surface as an unhandled zone error mid-start',
@@ -199,12 +329,102 @@ void main() {
       );
     });
 
+    test('every L4 catch in _onSnapshot absorbs and reports the failure', () {
+      // Reason: the sibling guard above counts try/catch PAIRS, which is
+      // blind to what the catch does. A `catch (e) { rethrow; }` or an empty
+      // `catch (e) {}` keeps the count intact while defeating the layering
+      // rule outright — the first swallows nothing and kills every later
+      // effect in the snapshot pipeline, the second hides an auxiliary that
+      // has stopped working with no trace in the log. Both are exactly the
+      // shape a "clean up the noisy debugPrints" edit produces.
+      //
+      // The contract is stated in CLAUDE.md and
+      // docs/architecture/conventions.md § Layered resilience: wrap each
+      // auxiliary effect in its own try/catch plus a debugPrint, never
+      // swallow silently.
+      final body = _extractMethodBody(
+        source,
+        r'void _onSnapshot\(RunSnapshot snapshot\)\s*\{',
+      );
+      final blocks = _catchBlocks(body);
+      expect(
+        blocks.length,
+        greaterThanOrEqualTo(7),
+        reason: 'expected one catch per L4 effect in _onSnapshot; found '
+            '${blocks.length}. If the effects were collapsed under a shared '
+            'catch, re-split them.',
+      );
+      for (var i = 0; i < blocks.length; i++) {
+        final block = blocks[i];
+        expect(
+          block.trim(),
+          isNotEmpty,
+          reason: 'catch #$i in _onSnapshot is empty — an auxiliary that '
+              'has silently stopped working leaves no trace at all.',
+        );
+        expect(
+          block.contains('debugPrint'),
+          isTrue,
+          reason: 'catch #$i in _onSnapshot does not report the failure. '
+              'Every L4 catch must debugPrint what it absorbed:\n$block',
+        );
+        expect(
+          block.contains('rethrow'),
+          isFalse,
+          reason: 'catch #$i in _onSnapshot rethrows, so the throw escapes '
+              'into the snapshot pipeline and every LATER effect stops '
+              'running. The layering rule is that an L4 failure is '
+              'absorbed where it happens:\n$block',
+        );
+      }
+    });
+
+    test('nothing runs unguarded between the L0/L1 publish and the end', () {
+      // Reason: the ordering guard proves the publish comes before the first
+      // try, and the catch guards prove each effect is isolated. Neither
+      // sees a BARE statement dropped between two try-blocks — a new
+      // `_someService.notify(...)` added without a wrapper, say — which
+      // throws straight out of _onSnapshot and skips every effect below it.
+      // The only two things allowed out here are the publish itself and the
+      // debug-only mirror assert.
+      final body = _extractMethodBody(
+        source,
+        r'void _onSnapshot\(RunSnapshot snapshot\)\s*\{',
+      );
+      final publishAt = body.indexOf('_statsNotifier.value = _LiveStats(');
+      expect(publishAt, greaterThan(-1));
+      final tail = _withoutTryCatchBlocks(body.substring(publishAt));
+      final stray = tail
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty && !l.startsWith('//'))
+          .toList();
+      // Everything left has to belong to the publish expression or the
+      // assert; both end before the first effect and neither can throw in
+      // release (the assert is stripped).
+      final allowed = RegExp(
+        r'^(_statsNotifier\.value = _LiveStats\(|[a-zA-Z_]+: [^;]+,|\);|'
+        r'assert\(\(\) \{|final v = _statsNotifier\.value;|'
+        r'return v\.|v\.|identical\(|\}\(\),)',
+      );
+      final unexpected =
+          stray.where((l) => !allowed.hasMatch(l)).toList();
+      expect(
+        unexpected,
+        isEmpty,
+        reason: 'these statements sit between the L0/L1 publish and the end '
+            'of _onSnapshot without a try/catch, so a throw in one skips '
+            'every L4 effect below it: $unexpected',
+      );
+    });
+
     test('_formattedElevation reads the accumulator, not a loop', () {
       // Reason: was O(n) over the full track on every build. For a 60-min
       // run (~3600 waypoints) that's millions of iterator steps per
       // minute. Now maintained incrementally in _onSnapshot.
       final match = RegExp(
-        r"String get _formattedElevation =>\s*'\$\{_elevationGain\.gainMetres\.round\(\)\}';",
+        r'String get _formattedElevation =>\s*'
+        r'UnitFormat\.elevationValue\(_elevationGain\.gainMetres, _unit\);',
       ).firstMatch(source);
       expect(
         match,
@@ -218,9 +438,11 @@ void main() {
       // Reason: the live counter used to sum every positive altitude delta
       // with no noise band and no dropout carry, so a flat 10K read ~1,200 m
       // on the run screen and ~38 m on the run-detail screen minutes later.
-      // computeElevationGain / ElevationGainAccumulator in route_simplify.dart
-      // are the ONE elevation-gain contract (3 m gate + dropout carry); the
-      // screen must feed the accumulator, not re-derive the arithmetic.
+      // computeRunElevationGain / RunElevationGainAccumulator in
+      // run_altitude.dart are the ONE recorded-run elevation-gain contract
+      // (the barometer-or-GPS series and its band, over core_models'
+      // elevation_gain.dart gate + dropout carry); the screen must feed that accumulator, not
+      // re-derive the arithmetic or pick a band of its own.
       final body = _extractMethodBody(
         source,
         r'void _onSnapshot\(RunSnapshot snapshot\)\s*\{',
@@ -229,7 +451,13 @@ void main() {
         body,
         contains('_elevationGain.add('),
         reason: '_onSnapshot must append new waypoints to the shared '
-            'ElevationGainAccumulator.',
+            'RunElevationGainAccumulator.',
+      );
+      expect(
+        source,
+        contains('final RunElevationGainAccumulator _elevationGain'),
+        reason: 'The live gain must be the run_altitude.dart accumulator, '
+            'so it reads the same series and band as the run-detail figure.',
       );
       expect(
         body.contains('_elevationGainMetres +='),
@@ -239,9 +467,14 @@ void main() {
       );
       expect(
         source,
-        contains("import '../route_simplify.dart';"),
-        reason: 'The gate constant and the accumulator live in '
-            'route_simplify.dart; do not fork a second 3 m threshold here.',
+        contains("import '../run_altitude.dart';"),
+        reason: 'The accumulator and its bands live in run_altitude.dart.',
+      );
+      expect(
+        RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
+        isFalse,
+        reason: 'The noise bands belong to run_altitude.dart and '
+            'core_models; do not fork a threshold here.',
       );
     });
 
@@ -358,24 +591,43 @@ void main() {
       );
     });
 
-    test('_saveInProgress stamps workout review metadata', () {
+    test('the in-progress checkpoint stamps workout review metadata', () {
       // Reason: a crash mid-workout must preserve the planned-vs-actual
       // review trail. The in-progress save path calls
       // `WorkoutRunner.reviewMetadata` so the recovered run lands with
       // `plan_workout_id`, `workout_step_results`, and
       // `workout_adherence` already on its metadata bag. If a future
-      // refactor removes the call from _saveInProgress, a crashed
+      // refactor removes the call from _inProgressCheckpoint, a crashed
       // workout silently drops the review trail again. (7d in followups)
       final body = _extractMethodBody(
         source,
-        r'Future<void> _saveInProgress\(\)\s*async\s*\{',
+        r'cm\.Run\? _inProgressCheckpoint\(\)\s*\{',
       );
       expect(
         body,
         contains('reviewMetadata'),
-        reason: '_saveInProgress must call WorkoutRunner.reviewMetadata '
+        reason: '_inProgressCheckpoint must call WorkoutRunner.reviewMetadata '
             'so a crashed workout keeps its review on recovery.',
       );
+    });
+
+    test('the in-progress checkpoint holds the stored track, not the line', () {
+      // Reason: the recorder stores every fix its distance estimator took,
+      // off-track ones flagged, so the server can replay the run's own
+      // input (gps_distance.md § Stored track). The live line drops those
+      // fixes; a checkpoint written from it would lose them on a resume or
+      // a crash recovery, and its `track_complete` would then be false.
+      final body = _extractMethodBody(
+        source,
+        r'cm\.Run\? _inProgressCheckpoint\(\)\s*\{',
+      );
+      expect(body, contains('List.unmodifiable(_storedTrack)'),
+          reason: 'the checkpoint must persist the stored track');
+      expect(body, contains('storedTrackComplete'),
+          reason: 'the checkpoint carries track_complete for the resume');
+      expect(source, contains('trackComplete:'),
+          reason: 'the resume hands the checkpoint\'s claim back to the '
+              'recorder');
     });
 
     test('_stop stamps workout review metadata via the same helper', () {
@@ -456,6 +708,28 @@ void main() {
       );
     });
 
+    test('_stop shows the finished screen before the route auto-link RPC',
+        () {
+      // Reason: the auto-link RPC ships the whole track over the network
+      // with a 15 s timeout. Awaited ahead of the finish flip, it left the
+      // recording UI on screen for seconds after the hold-to-stop completed,
+      // so the stop read as laggy (and invited a second hold). It is an L4
+      // auxiliary effect and must never sit between the gesture and the UI.
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _stop\(\)\s*async\s*\{',
+      );
+      final flipIdx = body.indexOf('_setScreenState(_ScreenState.finished)');
+      final rpcIdx = body.indexOf('fetchRoutesIntersectingTrack');
+      expect(flipIdx, greaterThan(-1),
+          reason: '_stop must flip to the finished screen');
+      expect(rpcIdx, greaterThan(-1),
+          reason: '_stop must still auto-link unmatched runs to a route');
+      expect(flipIdx, lessThan(rpcIdx),
+          reason: 'The finish flip must come before the auto-link RPC in '
+              '_stop; a network await ahead of it delays the stop.');
+    });
+
     test('_stop is guarded against re-entry before it awaits the recorder',
         () {
       // Reason: _stop() awaits the recorder, the local save, and the cloud
@@ -523,26 +797,25 @@ void main() {
       );
     });
 
-    test('_onOverlaySizeChanged defers setState to a post-frame callback', () {
-      // Reason: SizeChangedLayoutNotification dispatches *synchronously*
-      // from inside `_RenderSizeChangedWithCallback.performLayout` —
-      // we're still in the layout phase when the notification fires.
-      // Calling `setState` directly from here throws a "Build scheduled
-      // during frame" assertion. Repro: hold the stop button on the
-      // collapsed bar; the per-tick progress-ring rebuild triggers a
-      // panel relayout which fires the size notifier mid-layout.
-      // Schedule the state change for the next frame instead.
+    test('_onStatsOverlaySized defers setState to a post-frame callback', () {
+      // Reason: the panel's size is reported synchronously from inside
+      // `_RenderLaidOutSizeReporter.performLayout` — we're still in the
+      // layout phase when the callback fires. Calling `setState` directly
+      // from here throws a "Build scheduled during frame" assertion.
+      // Repro: hold the stop button on the collapsed bar; the per-tick
+      // progress-ring rebuild triggers a panel relayout which reports a
+      // size mid-layout. Schedule the state change for the next frame.
       final body = _extractMethodBody(
         source,
-        r'bool _onOverlaySizeChanged\(SizeChangedLayoutNotification _\)\s*\{',
+        r'void _onStatsOverlaySized\(Size size\)\s*\{',
       );
       expect(
         body,
         contains('addPostFrameCallback'),
-        reason: '_onOverlaySizeChanged must wrap its setState in '
+        reason: '_onStatsOverlaySized must wrap its setState in '
             'WidgetsBinding.instance.addPostFrameCallback so the '
             'rebuild lands in the next frame, not during the layout '
-            'pass that fired the notification.',
+            'pass that reported the size.',
       );
     });
 
@@ -591,6 +864,97 @@ void main() {
     });
   });
 
+  group('store write serialisation (§ 828)', () {
+    late String runStore;
+    late String routeStore;
+    setUpAll(() {
+      runStore = File('lib/local_run_store.dart').readAsStringSync();
+      routeStore = File('lib/local_route_store.dart').readAsStringSync();
+    });
+
+    // Every entry point that mutates a store DIRECTORY runs on the shared
+    // per-directory chain. A new one that forgets reopens the delete-vs-save
+    // race: the delete removes `<id>.json`, the in-flight save's rename puts
+    // it straight back, and memory agrees with the resurrected file.
+    const runEntryPoints = [
+      r'Future<Run> save\(Run run\)',
+      r'Future<void> saveFromRemote\(Run run\)',
+      r'Future<void> saveManyFromRemote\(Iterable<Run> runs\)',
+      r'Future<void> update\(Run updated\)',
+      r'Future<void> delete\(String runId\)',
+      r'Future<void> deleteMany\(Iterable<String> runIds\)',
+      r'Future<void> markSynced\(String runId\)',
+      r'Future<void> markManySynced\(Iterable<Run> pushed\)',
+      r'Future<void> clearPendingRemoteDelete\(String runId\)',
+      r'Future<void> adoptPushedEdit\(Run landed, PendingRunEdit sent\)',
+      r'Future<void> rebasePendingEdit\(Run server\)',
+    ];
+    for (final signature in runEntryPoints) {
+      test('LocalRunStore.$signature is serialised', () {
+        final match = RegExp('$signature\\s*=>[^;]*;').firstMatch(runStore);
+        expect(match, isNotNull,
+            reason: 'entry point moved — update this guard, and keep it on '
+                'the chain');
+        expect(match!.group(0), contains('_serialised'));
+      });
+    }
+
+    const routeEntryPoints = [
+      r'Future<void> markRouteSynced\(String routeId\)',
+      r'Future<void> markManyRoutesSynced\(Iterable<String> routeIds\)',
+      r'Future<void> tagRoutesOwner\(Iterable<String> routeIds, String owner\)',
+      r'Future<void> delete\(String routeId\)',
+      r'Future<void> deleteMany\(Iterable<String> routeIds\)',
+      r'Future<void> pinOffline\(String routeId\)',
+      r'Future<void> unpinOffline\(String routeId\)',
+      r'Future<void> clearPendingRemoteDelete\(String routeId\)',
+    ];
+    for (final signature in routeEntryPoints) {
+      test('LocalRouteStore.$signature is serialised', () {
+        final match = RegExp('$signature\\s*=>[^;]*;').firstMatch(routeStore);
+        expect(match, isNotNull,
+            reason: 'entry point moved — update this guard, and keep it on '
+                'the chain');
+        expect(match!.group(0), contains('_serialised'));
+      });
+    }
+
+    // The other half of the contract, and the one that matters more: the L1
+    // recording path must NEVER join the chain. It owns `in_progress.json`,
+    // which nothing chained touches, and a tick queued behind a directory
+    // walk is a durability gap during a live run — a queued write that never
+    // lands is worse than the race the chain closes.
+    test('the in-progress recording path stays off the chain', () {
+      for (final signature in [
+        r'Future<void> saveInProgress\(Run run\)\s*async\s*\{',
+        // The public `clearInProgress` is now a thin wrapper that publishes
+        // its own future for `debugInProgressSettled` (decisions § 1012); the
+        // body that could reach the chain is the private one.
+        r'Future<void> _clearInProgress\(\)\s*async\s*\{',
+        r'Future<Run\?> loadInProgress\(\)\s*async\s*\{',
+      ]) {
+        expect(_extractMethodBody(runStore, signature), isNot(contains('_serialised')),
+            reason: 'an L1 recording write must not queue behind a directory '
+                'operation');
+      }
+    });
+
+    // Two locking schemes in one file is how the next race gets written. The
+    // FileLock these stores held over their sidecar merges excluded nothing:
+    // POSIX record locks are owned by the process, so a second handle in the
+    // same process — the WorkManager isolate it named included — acquires it
+    // too (§ 829).
+    test('no store re-introduces a second locking scheme', () {
+      for (final source in [runStore, routeStore]) {
+        final code = source
+            .split('\n')
+            .where((l) => !l.trimLeft().startsWith('///'))
+            .join('\n');
+        expect(code, isNot(contains('FileLock')));
+      }
+    });
+  });
+
   group('local_run_store.dart', () {
     late String source;
     setUpAll(() {
@@ -602,7 +966,7 @@ void main() {
       // just to flip a boolean. The synced_ids.json sidecar replaces it.
       final body = _extractMethodBody(
         source,
-        r'Future<void> markSynced\(String runId\)\s*async\s*\{',
+        r'Future<void> _markSynced\(String runId\)\s*async\s*\{',
       );
       expect(
         body.contains('writeAsString(jsonEncode'),
@@ -647,7 +1011,7 @@ void main() {
       // encodes on the UI thread and reintroduces the freeze.
       final body = _extractMethodBody(
         source,
-        r'Future<void> save\(Run run\)\s*async\s*\{',
+        r'Future<Run> _save\(Run run\)\s*async\s*\{',
       );
       expect(
         body,
@@ -726,68 +1090,61 @@ void main() {
       );
     });
 
-    test('save() stamps metadata.last_modified_at', () {
-      // Reason: sync uses `metadata.last_modified_at` for newer-wins
-      // conflict resolution (see saveFromRemote). A local save that
-      // doesn't stamp can be silently clobbered by the next remote pull
-      // if the remote carries a later timestamp from a different device.
-      final body = _extractMethodBody(
-        source,
-        r'Future<void> save\(Run run\)\s*async\s*\{',
-      );
-      expect(
-        body,
-        contains('_withLastModified('),
-        reason: 'save() must route the incoming run through '
-            '_withLastModified so metadata.last_modified_at is set. '
-            'Without this, conflict resolution degrades to '
-            'created_at / started_at — incorrect after any local edit.',
-      );
+    test('save() and update() stamp the device write clock', () {
+      // Reason: `metadata.last_modified_at` orders the summary index between
+      // this device's two isolates (`_persistIndex`); without it a background
+      // isolate's stale snapshot of an edited run wins the index merge. It no
+      // longer decides anything against the server (decisions § 2147).
+      for (final signature in [
+        r'Future<Run> _save\(Run run\)\s*async\s*\{',
+        r'Future<void> _update\(Run updated\)\s*async\s*\{',
+      ]) {
+        expect(
+          _extractMethodBody(source, signature),
+          contains('_withLastModified('),
+          reason: '$signature must stamp the write clock the index merge '
+              'orders on',
+        );
+      }
     });
 
-    test('update() stamps metadata.last_modified_at', () {
-      // Reason: same as save(). Edit-dialog changes (title, notes) flow
-      // through update(). If this stops stamping, web/watch edits to the
-      // same run can race and the older write silently wins.
+    test('the remote merge decides by pending edit, never by a clock', () {
+      // Reason: two devices' clocks disagree, so comparing their stamps let
+      // a stale copy beat a newer edit (decisions § 2147). A pulled row
+      // replaces a synced copy unless that copy has a pending edit, whose
+      // fields are laid on top of the row.
       final body = _extractMethodBody(
         source,
-        r'Future<void> update\(Run updated\)\s*async\s*\{',
+        r'Future<\(\{Run merged, bool windowedOut\}\)\?> _mergeRemote\(Run run\)\s*async\s*\{',
       );
       expect(
-        body,
-        contains('_withLastModified('),
-        reason: 'update() must call _withLastModified on the incoming '
-            'run. Newer-wins sync depends on this stamp — see '
-            'saveFromRemote for the counterparty.',
-      );
-    });
-
-    test('saveFromRemote() compares timestamps and preserves remote', () {
-      // Reason: this is the counterparty to save/update. The remote copy
-      // carries its own `last_modified_at`; overwriting it here would
-      // collapse the whole newer-wins mechanism into "last writer wins".
-      // The regex looks for the timestamp comparison that gates the
-      // preserve-local branch.
-      final body = _extractMethodBody(
-        source,
-        r'Future<void> saveFromRemote\(Run run\)\s*async\s*\{',
-      );
-      expect(
-        body,
-        contains('_lastModifiedOf('),
-        reason: 'saveFromRemote() must call _lastModifiedOf() on both '
-            'the local and remote copies to decide which to keep. If '
-            'someone drops this comparison, the cloud will clobber '
-            'local-only edits on every sync.',
-      );
-      expect(
-        body.contains('_withLastModified('),
+        body.contains('_lastModifiedOf('),
         isFalse,
-        reason: 'saveFromRemote() must NOT stamp — it preserves the '
-            "remote's timestamp. Stamping here would make the local "
-            "copy look newer than the write that produced it, "
-            'breaking newer-wins on the NEXT sync.',
+        reason: 'no device clock may decide which copy of a run survives',
       );
+      expect(body, contains('_pendingEdits'));
+      expect(body, contains('applyRunEditFields('));
+      for (final signature in [
+        r'Future<void> _saveFromRemote\(Run run\)\s*async\s*\{',
+        r'Future<bool> _writeRemoteBatch\(List<Run> runs\)\s*async\s*\{',
+      ]) {
+        final caller = _extractMethodBody(source, signature);
+        expect(caller, contains('_mergeRemote('),
+            reason: '$signature must take the one merge rule');
+        expect(caller.contains('_lastModifiedOf('), isFalse);
+      }
+    });
+
+    test('update() of a synced run records a pending field edit', () {
+      // Reason: the whole-row upsert re-uploads the track and writes every
+      // field back over whatever another device changed. A synced run's edit
+      // is pushed as a compare-and-swap of the fields it changed.
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _update\(Run updated\)\s*async\s*\{',
+      );
+      expect(body, contains('changedRunFields('));
+      expect(body, contains('PendingRunEdit('));
     });
   });
 
@@ -811,7 +1168,6 @@ void main() {
       'lib/local_gear_store.dart',
       'lib/local_gym_store.dart',
       'lib/local_food_store.dart',
-      'lib/local_session_store.dart',
       'lib/local_routine_store.dart',
       'lib/offline_sync_store.dart',
     ];
@@ -848,10 +1204,20 @@ void main() {
       // unsynced pendingCreate rows. The fixed order is write-all-then-
       // prune. The gear / gym / food stores share this single base impl
       // now (decisions §122).
+      // The public `rewriteAll` is a thin wrapper that puts the transition on
+      // the store's serial write chain; `_rewriteAll` holds the ordering this
+      // guard is about. Both are named, so a rename can't quietly vacate it.
       final source = File('lib/offline_sync_store.dart').readAsStringSync();
+      expect(
+        RegExp(r'Future<void> rewriteAll\(\)[^}]*_serialised\(_rewriteAll\)')
+            .hasMatch(source),
+        isTrue,
+        reason: 'rewriteAll must delegate to _rewriteAll on the write chain — '
+            'the body this guard reads lives there.',
+      );
       final body = _extractMethodBody(
         source,
-        r'Future<void> rewriteAll\(\)\s*async\s*\{',
+        r'Future<void> _rewriteAll\(\)\s*async\s*\{',
       );
       final firstWrite = body.indexOf('writeJsonAtomic(');
       final firstDelete = body.indexOf('.delete()');
@@ -872,7 +1238,7 @@ void main() {
   });
 
   group('share-button consent before flipping is_public', () {
-    test('run_detail_screen._shareRun gates makeRunPublic on a confirm dialog',
+    test('run_detail_screen._shareRunLink gates makeRunPublic on a confirm dialog',
         () {
       // Reason: a casual user tapping Share on a freshly-recorded run
       // used to silently flip is_public — no warning, no copy
@@ -1014,7 +1380,7 @@ void main() {
       // the mobile race-control card used to fire _raceMutation(end) /
       // _raceMutation(cancel) on a single tap. The fix requires both
       // destructive arms to route through a _confirmRaceAction dialog;
-      // Arm / Fire Go stay one-tap. Catches a regression that drops the
+      // Arm / GO stay one-tap. Catches a regression that drops the
       // confirm or wires a button straight to _raceMutation.
       final source =
           File('lib/screens/event_detail_screen.dart').readAsStringSync();
@@ -1043,7 +1409,7 @@ void main() {
         reason: 'Cancel must go through _confirmRaceAction, not call '
             '_raceMutation(_RaceAction.cancel) directly from a button.',
       );
-      // Arm / Fire Go remain one-tap (non-destructive) — guard that the
+      // Arm / GO remain one-tap (non-destructive) — guard that the
       // confirm wrapper is reserved for the destructive arms by pinning
       // the localized confirm-body keys.
       expect(source, contains('eventRaceEndConfirmBody'));
@@ -1077,6 +1443,17 @@ void main() {
         reason:
             'The api.saveRun call in _stop must pass isPublic so the '
             'privacy_default setting reaches RunRow.isPublic at upsert.',
+      );
+    });
+
+    test('run_screen._stop passes the followers level to saveRun', () {
+      // `followers` used to collapse to private (decisions § 1875).
+      final source = File('lib/screens/run_screen.dart').readAsStringSync();
+      expect(
+        source,
+        contains(
+            'followersOnly: widget.preferences.newRunsAreFollowersOnly'),
+        reason: 'the followers privacy default must reach the run row',
       );
     });
   });
@@ -1447,7 +1824,12 @@ void main() {
     test('ActivityType.strideMetres exists for the pedometer fallback', () {
       // Reason: indoor runs display steps × stride instead of 0 km.
       // Removing the getter would quietly zero indoor distances.
-      final source = File('lib/preferences.dart').readAsStringSync();
+      // The enum moved to `core_models` so a pure parser could reach the
+      // vocabulary without a widget toolkit (decisions § 1013); the getter
+      // travelled with it, being physics rather than presentation.
+      final source =
+          File('../../packages/core_models/lib/src/activity_type.dart')
+              .readAsStringSync();
       expect(
         source,
         contains('double get strideMetres'),
@@ -1542,21 +1924,37 @@ void main() {
       );
     });
 
+    test('backup.dart logs no raw caught error (decisions § 2332)', () {
+      // A debugPrint becomes a Sentry breadcrumb once a reader consents, and
+      // a Storage download error can carry the signed URL it was fetching.
+      // Every caught error a log line interpolates goes through
+      // loggableMessage, which blanks quoted values, key details and emails.
+      final raw = File('lib/backup.dart')
+          .readAsLinesSync()
+          .where((l) => l.contains('debugPrint('))
+          .map((l) => l.replaceAll("loggableMessage('\$e')", ''))
+          // `${e.runtimeType}` names the type only, which is safe.
+          .where((l) => RegExp(r'\$e\b|\$\{e(\}|\.(?!runtimeType))').hasMatch(l))
+          .toList();
+      expect(raw, isEmpty,
+          reason: 'wrap the caught error in loggableMessage(\'\$e\')');
+    });
+
     test('Single-file route import dispatches to compute()', () {
       // Reason: a 5MB GPX file (long ride exported as a route) parses on
       // a single XmlDocument call that takes hundreds of ms on a phone.
-      // The routes-screen import must wrap the parse in compute() so the
-      // user-tap → save flow doesn't lock up.
-      final src = File('lib/screens/routes_screen.dart').readAsStringSync();
+      // The shared route-file import (Routes and Add run) must wrap the
+      // parse in compute() so the user-tap → save flow doesn't lock up.
+      final src = File('lib/route_file_import.dart').readAsStringSync();
       final body = _extractMethodBody(
         src,
-        r'Future<void> _pickAndImport\(\)\s*async\s*\{',
+        r'Future<List<cm\.Route>> pickAndImportRouteFile\([^)]*\)\s*async\s*\{',
       );
       expect(
         body,
         contains('compute('),
-        reason: '_pickAndImport must run RouteParser.fromGpx / fromKml inside '
-            'compute() so a large file does not freeze the routes screen.',
+        reason: 'pickAndImportRouteFile must run the parse inside compute() '
+            'so a large file does not freeze the screen that opened it.',
       );
     });
   });
@@ -1747,6 +2145,42 @@ void main() {
           reason: 'run start clears a previous run\'s leftover split row');
     });
 
+    test('the ongoing run notification stays eligible for an Android 16 Live Update', () {
+      // Reason: Android only promotes a notification to the lock-screen
+      // card and status-bar chip when it asks to be promoted, the app holds
+      // POST_PROMOTED_NOTIFICATIONS, and the row is not colorized and has no
+      // custom view. Losing any one demotes it to an ordinary row with no
+      // error anywhere (decisions § 2239). Shared host file — skip on the
+      // iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
+      final post = source.substring(source.indexOf('private fun post('));
+      final postBody = post.substring(0, post.indexOf('companion object'));
+      expect(postBody, contains('.setRequestPromotedOngoing(true)'),
+          reason: 'the run row must ask to be promoted to a Live Update');
+      expect(postBody, contains('.setUsesChronometer(true)'),
+          reason: 'the card and chip clock tick on-device from an anchor');
+      for (final disqualifier in [
+        'setColorized',
+        'setCustomContentView',
+        'setCustomBigContentView',
+        'DecoratedCustomViewStyle',
+      ]) {
+        expect(postBody, isNot(contains(disqualifier)),
+            reason: '$disqualifier makes the row ineligible for promotion');
+      }
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      expect(
+        manifest,
+        contains('android.permission.POST_PROMOTED_NOTIFICATIONS'),
+        reason: 'without the permission the promotion request is ignored',
+      );
+    });
+
     test('RunNotificationBridge sources its user-facing strings from resources', () {
       // audit/i18n-readiness W-OS-3: the channel name (shown in system
       // notification settings), the title fallback, and the lock-screen
@@ -1764,7 +2198,6 @@ void main() {
         'R.string.run_notif_title_fallback',
         'R.string.run_notif_action_resume',
         'R.string.run_notif_action_pause',
-        'R.string.run_notif_action_stop',
       ]) {
         expect(
           source,
@@ -1775,9 +2208,28 @@ void main() {
       }
     });
 
+    test('the lock-screen notification has no Stop action', () {
+      // Reason: a Stop button on the lock-screen card ends the run with
+      // one tap, on a locked phone or in a pocket, where the app's own Stop
+      // needs an 800 ms hold. Ending a run takes the app. Shared host
+      // files — skip on the iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
+      expect(source, isNot(contains('ACTION_STOP')),
+          reason: 'the notification must not post a Stop action');
+      expect(source, isNot(contains('run_notif_action_stop')),
+          reason: 'the notification must not label a Stop action');
+      final dart = File('lib/run_notification_bridge.dart').readAsStringSync();
+      expect(dart, isNot(contains('onStop')),
+          reason: 'no lock-screen action may end the run');
+    });
+
     test('lock-screen action buttons broadcast, never launch an activity (#270)',
         () {
-      // Reason: a getActivity PendingIntent on the Pause/Stop buttons
+      // Reason: a getActivity PendingIntent on the Pause/Resume button
       // launches MainActivity, which trips the keyguard unlock prompt on
       // a locked phone — the user must unlock before the action fires.
       // A true lock-screen control must work locked, so the buttons must
@@ -1893,6 +2345,27 @@ void main() {
       );
     });
 
+    test('the coach view clips the athlete map as the athlete, not the coach',
+        () {
+      // Reason: decisions § 1968 serves a linked coach the athlete's run map
+      // only through clip-public-track. Without ownerUserId the preview
+      // would take the owner branch and ask Storage for the raw bytes.
+      final source =
+          File('lib/screens/coaching_athlete_screen.dart').readAsStringSync();
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*runId: r\.id', dotAll: true)),
+        reason: 'the coach view must thread the run id into RunTrackPreview.',
+      );
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*ownerUserId: widget\.athleteId',
+            dotAll: true)),
+        reason: 'the coach view must name the athlete as the owner, so the '
+            'privacy-zone clip runs against the athlete\'s zones.',
+      );
+    });
+
     test('RunTrackPreview cache is bounded (LRU)', () {
       // Reason: without the cap a long session through 1000+ runs
       // holds every deserialised track in memory until app restart.
@@ -1950,9 +2423,10 @@ void main() {
       // polyline that leaks the same start / end / interior locations
       // a recorded run would. Same gate as public_run_screen — clip
       // unless the viewer is the route owner. Use the route-specific
-      // RPC `clipRouteForViewer`, NOT the run-bound `clipTrackForUser`
-      // (which downloads from the runs Storage bucket and skips route
-      // visibility entirely).
+      // RPC `clipRouteForViewer`, NOT the run-bound
+      // `fetchClippedTrackForRun` (which resolves a RUN id through the
+      // clip-public-track Edge Function and knows nothing about route
+      // visibility).
       final source =
           File('lib/screens/public_route_screen.dart').readAsStringSync();
       expect(
@@ -1964,10 +2438,10 @@ void main() {
       );
       expect(
         source,
-        isNot(matches(RegExp(r'\.clipTrackForUser\s*\('))),
-        reason: 'public_route_screen must not call `clipTrackForUser` — '
-            'that helper is for runs (Storage-backed) and skips route '
-            'visibility / club-member checks. Use clipRouteForViewer.',
+        isNot(matches(RegExp(r'\.fetchClippedTrackForRun\s*\('))),
+        reason: 'public_route_screen must not clip through the run path — '
+            'it takes a run id and skips route visibility / club-member '
+            'checks. Use clipRouteForViewer.',
       );
       expect(
         source,
@@ -2073,8 +2547,9 @@ void main() {
     });
 
     test('clipRouteForViewer fails closed on RPC error', () {
-      // Reason: same fail-closed contract as clipTrackForUser. Returning
-      // the unclipped row column on RPC error would defeat the helper.
+      // Reason: the same fail-closed contract fetchClippedTrackForRun
+      // keeps for runs. Returning the unclipped row column on RPC error
+      // would defeat the helper.
       final source =
           File('../../packages/api_client/lib/src/api_client.dart')
               .readAsStringSync();
@@ -2174,43 +2649,6 @@ void main() {
         reason:
             '$fn must NOT read from the bare GymWorkoutRow.table — that path '
             'is owner-only and silently yields an empty lift feed.',
-      );
-    });
-
-    test('clipTrackForUser fails closed on RPC error', () {
-      // Reason: returning the unclipped input on RPC error was the
-      // privacy leak this helper exists to prevent. Fail-closed
-      // (return []) so a transient outage renders an empty map for
-      // non-owner viewers instead of leaking the full track. The
-      // empty-input early-return is fine — `points.isEmpty ? points`
-      // is the same shape as `[]`, just no allocation.
-      final source =
-          File('../../packages/api_client/lib/src/api_client.dart')
-              .readAsStringSync();
-      final body = _extractMethodBody(
-        source,
-        r'Future<List<Map<String, dynamic>>> clipTrackForUser\([^)]*\)\s*async\s*\{',
-      );
-      // Pull just the catch block and the post-rpc shape-validation
-      // path so the assertion doesn't trip on the empty-input guard.
-      final tail = body.substring(body.indexOf('try'));
-      expect(
-        tail.contains('return const [];'),
-        isTrue,
-        reason: 'clipTrackForUser must return [] on RPC failure — see '
-            'decisions §33.',
-      );
-      // The catch / shape-fail branches must not return the unclipped
-      // input.
-      expect(RegExp(r'catch \([^)]*\) \{').hasMatch(tail), isTrue,
-          reason: 'clipTrackForUser must have an explicit catch branch.');
-      final catchBody = _extractMethodBody(tail, r'catch \([^)]*\) \{');
-      expect(
-        catchBody.contains('return points'),
-        isFalse,
-        reason: 'clipTrackForUser must not fall back to the input track '
-            'on RPC error — that is the leak this helper exists to '
-            'prevent.',
       );
     });
 
@@ -2315,51 +2753,43 @@ void main() {
     });
   });
 
-  group('explore-screen save clips non-owner routes', () {
-    // Reason: Explore browsing reads from `search_public_routes` /
+  group('explore-screen save never copies a non-owner route', () {
+    // Reason: Explore browsing reads the `public_routes` view (search) /
     // `nearby_routes` / `routes_within_box`, which (after migration
     // 20260703_001_public_routes_view.sql) return rows from the
-    // `public_routes` view — i.e. with no waypoints. Naively saving
-    // such a row to LocalRouteStore stores an empty-waypoint route
-    // (broken offline preview), and reaching for the original
-    // unclipped waypoints would leak the original author's start
-    // coordinate to anyone the saver shares the route with. The
-    // mitigation is `_saveRoute` calling `ApiClient.fetchRouteById`
-    // before `routeStore.save` — that helper does owner-aware
-    // clipping (full polyline if the saver IS the owner, server-
-    // clipped polyline via `clip_route_for_viewer` otherwise). This
-    // guard pins that flow in place.
+    // `public_routes` view — i.e. with no waypoints. Saving such a row
+    // into LocalRouteStore stored an empty-waypoint route, and reaching
+    // for the unclipped waypoints would leak the author's start
+    // coordinate. Saving is now a `saved_routes` reference by id
+    // (decisions § 30), so no polyline crosses this screen at all; the
+    // detail screen it opens owns any clipped fetch. This guard pins
+    // that the screen keeps it that way.
 
-    test('_saveRoute fetches via ApiClient before persisting', () {
-      final src =
-          File('lib/screens/explore_routes_screen.dart').readAsStringSync();
+    final src =
+        File('lib/screens/explore_routes_screen.dart').readAsStringSync();
+
+    test('_toggleBookmark writes a saved_routes reference, not a copy', () {
       final body = _extractMethodBody(
         src,
-        r'Future<void> _saveRoute\(cm\.Route route\)\s*async\s*\{',
+        r'Future<void> _toggleBookmark\(cm\.Route route\)\s*async\s*\{',
       );
-      expect(
-        body.contains('fetchRouteById'),
-        isTrue,
-        reason: '_saveRoute must call ApiClient.fetchRouteById to fetch '
-            'the privacy-zone-clipped polyline before saving — see the '
-            'audit/privacy-zones High finding from /audit/all on '
-            '2026-05-03.',
-      );
-      expect(
-        body.contains('routeStore.save'),
-        isTrue,
-        reason: '_saveRoute should still persist via routeStore.save '
-            'once it has the clipped Route in hand.',
-      );
-      // Order check: the fetch must come BEFORE the save.
-      final fetchIdx = body.indexOf('fetchRouteById');
-      final saveIdx = body.indexOf('routeStore.save');
-      expect(
-        fetchIdx < saveIdx,
-        isTrue,
-        reason: 'fetchRouteById must run before routeStore.save — '
-            'persisting before clipping defeats the whole point.',
-      );
+      expect(body.contains('bookmarkRoute(route.id)'), isTrue,
+          reason: 'saving from Explore must go through '
+              'ApiClient.bookmarkRoute, the saved_routes reference.');
+      expect(body.contains('unbookmarkRoute(route.id)'), isTrue,
+          reason: 'a second tap must remove the reference via '
+              'ApiClient.unbookmarkRoute.');
+      expect(body.contains('routeStore'), isFalse,
+          reason: 'the bookmark must not persist the route locally — '
+              'an Explore row has no clipped polyline to store.');
+    });
+
+    test('nothing on the screen saves a route into the local store', () {
+      expect(RegExp(r'routeStore\s*\.\s*save').hasMatch(src), isFalse,
+          reason: 'Explore must not copy a public route into '
+              'LocalRouteStore; if a local copy is ever needed again, it '
+              'must come from ApiClient.fetchRouteById (owner-aware '
+              'clipping), and this guard must pin that order.');
     });
   });
 
@@ -2497,7 +2927,7 @@ void main() {
     // landed without the call-site fix.
     //
     // Pin the discipline statically so the next regression fails the
-    // `Test Flutter packages` job in PR CI before it reaches Postgres.
+    // `Test mobile_android` job in PR CI before it reaches Postgres.
     // The fix at any failing call site is "enumerate the columns
     // explicitly via the constants in social_service.dart /
     // api_client.dart", or for nested embeds use the `($_safeCols)`
@@ -2550,385 +2980,52 @@ void main() {
     }
   });
 
-  group('iOS Info.plist', () {
-    // These tests are gated on the iOS Info.plist being present —
-    // they auto-skip on the Android twin (which has no `ios/`
-    // directory). The twin-share rule keeps the test file byte-
-    // identical; the runtime check below picks the right target.
-    test('every plugin-required usage-description key is set', () {
-      final file = File('ios/Runner/Info.plist');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // Without these keys iOS silently denies the permission and
-      // the corresponding feature fails at runtime — the worst kind
-      // of regression because nothing throws, the feature just
-      // returns empty / never streams. Pin them in place.
-      final required = <String, String>{
-        'NSLocationWhenInUseUsageDescription': 'geolocator (foreground GPS)',
-        'NSLocationAlwaysAndWhenInUseUsageDescription':
-            'geolocator (background GPS during a run)',
-        'NSHealthShareUsageDescription':
-            'health (HealthKit reads for the import surface)',
-        'NSBluetoothAlwaysUsageDescription':
-            'flutter_reactive_ble (BLE chest-strap HR)',
-        'NSMotionUsageDescription':
-            'pedometer (treadmill step count / cadence)',
-        'NSPhotoLibraryUsageDescription':
-            'image_picker (attaching photos to runs)',
-        // NSPhotoLibraryAddUsageDescription added 2026-05 per /audit/
-        // app-store-privacy Medium — `image_picker` reads on iOS 14+
-        // don't strictly need it, but the share-card "Save to Photos"
-        // path writes back via UIImageWriteToSavedPhotosAlbum which
-        // crashes without the key. Pre-emptive add so the share
-        // flow doesn't trigger a runtime denial on iOS submission.
-        'NSPhotoLibraryAddUsageDescription':
-            'share-card save-to-photos write-back (UIImageWriteToSavedPhotosAlbum)',
-        'NSCameraUsageDescription':
-            'mobile_scanner (nutrition barcode scan fast-path)',
-      };
-      for (final entry in required.entries) {
-        expect(
-          body,
-          contains('<key>${entry.key}</key>'),
-          reason: 'Info.plist must declare ${entry.key} '
-              '(used by ${entry.value}). iOS denies the permission '
-              'silently when the key is missing.',
-        );
+  group('one club-insert path', () {
+    // `clubs.slug` is `text unique not null`, so an insert that does not
+    // handle 23505 fails outright the moment two people name a club the same
+    // thing — and the slug is derived from the NAME, so that is not a rare
+    // race. `SocialService.createClub` retries up to four times with a random
+    // suffix; `ApiClient.createClub` was a second, caller-less insert that did
+    // not, and also never minted the `invite_token` an invite-only club needs
+    // to be shareable. It was deleted rather than repaired, because two write
+    // paths to one unique column is the defect (decisions § 1339).
+    //
+    // Pinned as a COUNT over the whole mobile + api_client tree rather than as
+    // the absence of one deleted symbol: a guard keyed on the name
+    // `ApiClient.createClub` would pass the moment the next one is called
+    // something else, which is precisely how this one survived unnoticed.
+    test('exactly one place in the tree inserts into clubs', () {
+      final roots = <String>[
+        'lib',
+        '../../packages/api_client/lib',
+        '../../packages/core_models/lib',
+      ];
+      final insert = RegExp(
+        r"""\.from\((?:['"]clubs['"]|ClubRow\.table)\)\s*\.insert\(""",
+      );
+      final sites = <String>[];
+      for (final root in roots) {
+        final dir = Directory(root);
+        if (!dir.existsSync()) continue;
+        for (final f in dir.listSync(recursive: true).whereType<File>()) {
+          if (!f.path.endsWith('.dart')) continue;
+          final stripped = f
+              .readAsStringSync()
+              .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '')
+              .replaceAll(RegExp(r'//.*'), '');
+          if (insert.hasMatch(stripped)) sites.add(f.path);
+        }
       }
-    });
-
-    test('AppDelegate excludes the Documents dir from iCloud backup', () {
-      // Same skip idiom — auto-skips on the Android twin (no `ios/`).
-      // The Flutter app writes its GPS/HR run cache under Documents
-      // (NSDocumentDirectory); without isExcludedFromBackup that whole
-      // subtree rides into iCloud / iTunes backups. See decisions.md
-      // (at-rest / backup posture) + remediation plan 3c-b.
-      final file = File('ios/Runner/AppDelegate.swift');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
       expect(
-        body,
-        contains('isExcludedFromBackup = true'),
-        reason: 'AppDelegate.swift must mark the Documents directory '
-            'isExcludedFromBackup so the GPS/HR run cache is never '
-            'extracted via an iCloud / iTunes device backup.',
+        sites.length,
+        1,
+        reason: 'Expected exactly one club-insert site (the one in '
+            'social_service.dart that retries on 23505 and mints the '
+            'invite token). Found: $sites. A second insert path to a '
+            'unique column is a trap for whoever calls it next — route '
+            'it through SocialService.createClub instead.',
       );
-      expect(
-        body,
-        contains('.documentDirectory'),
-        reason: 'The backup-exclusion must target the Documents directory '
-            '(where path_provider stores the run/route/gym/food caches).',
-      );
-    });
-
-    test('Workmanager background-task identifier is registered', () {
-      final file = File('ios/Runner/Info.plist');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // Workmanager uses BGTaskScheduler under the hood on iOS 13+.
-      // Without the identifier listed in
-      // BGTaskSchedulerPermittedIdentifiers the task ID gets rejected
-      // at registration time.
-      expect(
-        body,
-        contains('com.threkir.backgroundSync'),
-        reason: 'BGTaskSchedulerPermittedIdentifiers must include '
-            'the Workmanager task ID (com.threkir.backgroundSync) '
-            'or the background sync job will not run on iOS.',
-      );
-      expect(
-        body,
-        contains('<string>processing</string>'),
-        reason: 'UIBackgroundModes must include `processing` so the '
-            'BGTaskScheduler permitted-identifier above is honoured.',
-      );
-    });
-
-    test('iOS background sync submits the task type the plist authorises', () {
-      // Reason: iOS gates each BGTaskScheduler request type on a
-      // different UIBackgroundModes entry — BGAppRefreshTaskRequest on
-      // `fetch`, BGProcessingTaskRequest on `processing`. Submitting a
-      // type the plist doesn't authorise makes
-      // BGTaskScheduler.submit throw, and workmanager swallows that
-      // (`logInfo("Could not schedule ...")`), so background sync
-      // silently never runs. That was the state fixed here: the plist
-      // declared `processing` while Dart called registerPeriodicTask
-      // (BGAppRefreshTaskRequest) and AppDelegate registered the
-      // periodic handler. Pin all three to the processing task so the
-      // trio can't drift apart again.
-      final dart = File('lib/background_sync.dart').readAsStringSync();
-      final iosBranch = RegExp(
-        r'Platform\.isIOS[\s\S]{0,120}?Workmanager\(\)\.registerProcessingTask',
-      );
-      expect(
-        iosBranch.hasMatch(dart),
-        isTrue,
-        reason: 'background_sync.dart must call registerProcessingTask '
-            '(BGProcessingTaskRequest) on the Platform.isIOS branch. '
-            'registerPeriodicTask submits a BGAppRefreshTaskRequest, '
-            'which needs the `fetch` background mode the app '
-            'deliberately does not declare.',
-      );
-
-      final plist = File('ios/Runner/Info.plist');
-      final appDelegate = File('ios/Runner/AppDelegate.swift');
-      if (!plist.existsSync() || !appDelegate.existsSync()) return;
-
-      expect(
-        appDelegate.readAsStringSync(),
-        contains('WorkmanagerPlugin.registerBGProcessingTask'),
-        reason: 'AppDelegate must register the BGProcessingTask launch '
-            'handler. The handler dispatches on the delivered task '
-            'type, so registering the periodic (BGAppRefreshTask) '
-            'registrar leaves a submitted BGProcessingTaskRequest '
-            'unhandled. It must also happen during '
-            'didFinishLaunchingWithOptions — this app adopts UIScene, '
-            'so the plugin cannot register it in time itself.',
-      );
-      expect(
-        plist.readAsStringSync(),
-        contains('<string>processing</string>'),
-        reason: 'UIBackgroundModes must declare `processing` — it is '
-            'what authorises the BGProcessingTaskRequest above.',
-      );
-    });
-
-    test('background-sync task identifier agrees across Dart, plist, Swift',
-        () {
-      // Reason: the identifier is repeated as a bare string in three
-      // files that no compiler or type system links. A rename in one
-      // place produces no build error — the task simply stops being
-      // delivered, which is invisible until someone notices runs are
-      // not syncing. Parse the value out of each and compare, rather
-      // than asserting a hardcoded literal in three places (which
-      // would drift with them).
-      final dart = File('lib/background_sync.dart').readAsStringSync();
-      final dartId = RegExp(
-        r"""const\s+backgroundSyncTaskName\s*=\s*['"]([^'"]+)['"]""",
-      ).firstMatch(dart);
-      expect(
-        dartId,
-        isNotNull,
-        reason: 'background_sync.dart must declare a top-level '
-            'backgroundSyncTaskName string constant.',
-      );
-      final identifier = dartId!.group(1)!;
-
-      final plist = File('ios/Runner/Info.plist');
-      final appDelegate = File('ios/Runner/AppDelegate.swift');
-      if (!plist.existsSync() || !appDelegate.existsSync()) return;
-
-      final permitted = RegExp(
-        r'<key>BGTaskSchedulerPermittedIdentifiers</key>\s*<array>([\s\S]*?)</array>',
-      ).firstMatch(plist.readAsStringSync());
-      expect(
-        permitted,
-        isNotNull,
-        reason: 'Info.plist must declare a '
-            'BGTaskSchedulerPermittedIdentifiers array.',
-      );
-      final permittedIds = RegExp(r'<string>([^<]+)</string>')
-          .allMatches(permitted!.group(1)!)
-          .map((m) => m.group(1)!)
-          .toList();
-      expect(
-        permittedIds,
-        contains(identifier),
-        reason: 'BGTaskSchedulerPermittedIdentifiers must list the Dart '
-            'backgroundSyncTaskName ($identifier). iOS rejects a '
-            'submission whose identifier is not in this array.',
-      );
-
-      final swiftId = RegExp(
-        r'registerBGProcessingTask\(\s*withIdentifier:\s*"([^"]+)"',
-      ).firstMatch(appDelegate.readAsStringSync());
-      expect(
-        swiftId,
-        isNotNull,
-        reason: 'AppDelegate must register the BGProcessing task with a '
-            'literal identifier.',
-      );
-      expect(
-        swiftId!.group(1),
-        identifier,
-        reason: 'AppDelegate registers "${swiftId.group(1)}" but Dart '
-            'submits "$identifier". BGTaskScheduler matches the launch '
-            'handler to the request by identifier, so a mismatch means '
-            'the task is never delivered.',
-      );
-    });
-
-    test('PrivacyInfo.xcprivacy declares NSPrivacyAccessedAPICategoryActiveKeyboards', () {
-      // Reason: Flutter's text-input plugin calls
-      // UITextInputMode.activeInputModes during keyboard handling, so
-      // the binary touches the Active Keyboards required-reason API.
-      // Apple's privacy-manifest upload validation rejects any binary
-      // that uses a required-reason API without an entry in
-      // PrivacyInfo.xcprivacy. Reason code 3EC4.1 ("App functionality
-      // initiated by the user") is the correct one for text-input
-      // keyboard handling. /audit/app-store-privacy May 2026 Critical.
-      final file = File('ios/Runner/PrivacyInfo.xcprivacy');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      expect(
-        body,
-        contains('NSPrivacyAccessedAPICategoryActiveKeyboards'),
-        reason: 'PrivacyInfo.xcprivacy must declare '
-            'NSPrivacyAccessedAPICategoryActiveKeyboards — Flutter '
-            'text-input plugin uses UITextInputMode.activeInputModes '
-            'and Apple rejects uploads with undeclared required-'
-            'reason API usage.',
-      );
-      expect(
-        body,
-        contains('3EC4.1'),
-        reason: 'ActiveKeyboards entry must carry reason code 3EC4.1 '
-            '(app functionality initiated by the user) — the correct '
-            'reason for text-input keyboard handling.',
-      );
-    });
-
-    test('UIBackgroundModes does not claim unused `fetch` mode', () {
-      final file = File('ios/Runner/Info.plist');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // Reason: Apple App Review rejects binaries that declare a
-      // `UIBackgroundModes` capability the binary doesn't exercise.
-      // `fetch` is what authorises a BGAppRefreshTaskRequest (and the
-      // legacy performFetchWithCompletionHandler: path); the
-      // background-sync task is a BGProcessingTask declared via the
-      // `processing` mode + the BGTaskSchedulerPermittedIdentifiers
-      // entry, so nothing here needs `fetch`. Keep this paired with
-      // the task-type guard above: dropping to `fetch` would mean
-      // switching the submitted request type too, not just the plist.
-      // See audit/app-store-privacy 2026-05-25.
-      expect(
-        body.contains('<string>fetch</string>'),
-        isFalse,
-        reason: 'UIBackgroundModes must not include `fetch` — no '
-            'fetch handler is implemented and Apple rejects '
-            'undeclared-capability claims.',
-      );
-    });
-
-    test('ITSAppUsesNonExemptEncryption is declared', () {
-      final file = File('ios/Runner/Info.plist');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // Without this key App Store Connect blocks every binary upload
-      // (TestFlight + production) because the reviewer cannot determine
-      // export-compliance status. The app only uses HTTPS, which is
-      // exempt under EAR 740.13, so the value is `false`.
-      expect(
-        body,
-        contains('<key>ITSAppUsesNonExemptEncryption</key>'),
-        reason: 'Info.plist must declare ITSAppUsesNonExemptEncryption '
-            'or App Store Connect rejects the upload.',
-      );
-    });
-
-    test('NSHealthUpdateUsageDescription is declared', () {
-      final file = File('ios/Runner/Info.plist');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // The watchOS app already writes HealthKit workouts, and the
-      // phone app shares the same HealthKit entitlement. Without an
-      // Update usage description, any write call crashes at runtime
-      // AND the App Store privacy label cannot honestly declare the
-      // "Health & Fitness - Linked to user" data class.
-      expect(
-        body,
-        contains('<key>NSHealthUpdateUsageDescription</key>'),
-        reason: 'Info.plist must declare NSHealthUpdateUsageDescription '
-            'so HealthKit writes do not crash and the nutrition label '
-            'matches the actual binary behaviour.',
-      );
-    });
-
-    test('location usage strings use the brand name (no "Run App")', () {
-      final file = File('ios/Runner/Info.plist');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // Display name is "Threkir"; legacy copy in the usage strings
-      // said "Run App". App Review flags metadata mismatches like
-      // this — keep the strings in sync with CFBundleDisplayName.
-      expect(
-        body.contains('>Run App '),
-        isFalse,
-        reason: 'Location usage descriptions must reference the brand '
-            'name (Threkir), not the legacy "Run App" placeholder. '
-            'Metadata-name mismatch is an App Review rejection cause.',
-      );
-    });
-
-    test('Runner.entitlements declares the HealthKit capability', () {
-      // audit/app-store-privacy (2026-05-30) Critical. The phone app
-      // calls HealthKit at runtime (the `health` plugin, via the shared
-      // lib/) and Info.plist carries the Share/Update usage strings, but
-      // there was no Runner.entitlements declaring
-      // com.apple.developer.healthkit. Without it App Store Connect
-      // validation rejects the IPA and any HealthKit call crashes.
-      // Auto-skips on the Android twin (no ios/ folder).
-      final file = File('ios/Runner/Runner.entitlements');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      final keyIdx = body.indexOf('com.apple.developer.healthkit</key>');
-      expect(
-        keyIdx,
-        greaterThanOrEqualTo(0),
-        reason: 'Runner.entitlements must declare '
-            'com.apple.developer.healthkit — the health plugin needs it '
-            'and removing it reintroduces an App Store reject + a '
-            'runtime crash on the first HealthKit call.',
-      );
-      expect(
-        body.substring(keyIdx).contains('<true/>'),
-        isTrue,
-        reason: 'com.apple.developer.healthkit must be set <true/>.',
-      );
-    });
-
-    test('Runner.entitlements declares the Sign in with Apple capability', () {
-      // audit/app-store-privacy (2026-05-31) Critical. sign_in_screen.dart
-      // calls the Apple ID credential APIs at runtime on iOS, but the
-      // entitlement was missing — App Store Connect rejects an IPA whose
-      // signed binary uses an OAuth capability with no provisioned
-      // entitlement. Auto-skips on the Android twin (no ios/ folder).
-      final file = File('ios/Runner/Runner.entitlements');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      final keyIdx = body.indexOf('com.apple.developer.applesignin</key>');
-      expect(
-        keyIdx,
-        greaterThanOrEqualTo(0),
-        reason: 'Runner.entitlements must declare '
-            'com.apple.developer.applesignin — Sign in with Apple is '
-            'rendered on the iOS sign-in screen and the App Store rejects '
-            'the upload without the matching entitlement.',
-      );
-      expect(
-        body.substring(keyIdx).contains('<string>Default</string>'),
-        isTrue,
-        reason: 'com.apple.developer.applesignin must carry the Default '
-            'capability string.',
-      );
-    });
-
-    test('Xcode project wires CODE_SIGN_ENTITLEMENTS to the entitlements file',
-        () {
-      // The entitlement only reaches the binary if the Runner target's
-      // build configs point CODE_SIGN_ENTITLEMENTS at it. Pin both
-      // halves so a future pbxproj rewrite can't silently drop it.
-      final file = File('ios/Runner.xcodeproj/project.pbxproj');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      expect(
-        body,
-        contains('CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;'),
-        reason: 'The Runner target build configs must set '
-            'CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements; — '
-            'otherwise the HealthKit capability never reaches the binary.',
-      );
+      expect(sites.single, endsWith('social_service.dart'));
     });
   });
 
@@ -3307,11 +3404,22 @@ void main() {
       );
       expect(
         source,
+        contains('await resolveManageSubscriptionUrl('),
+        reason: '_openManageSubscription must resolve its target through '
+            'resolveManageSubscriptionUrl(...), which asks RC for the '
+            'store-specific manage page. A hard-coded URL would bypass the '
+            'cancel paths Apple + Play require, and on iOS would point at '
+            'the web page that sells Pro (decisions § 1700).',
+      );
+      final rc = File('lib/revenuecat.dart').readAsStringSync();
+      final resolver = rc.substring(
+          rc.indexOf('Future<String> resolveManageSubscriptionUrl('));
+      expect(
+        resolver,
         contains('await managementUrl('),
-        reason: '_openManageSubscription must call managementUrl(...) '
-            'to route to RC\'s hosted manage page. A hard-coded URL '
-            'would bypass the store-specific cancel paths Apple + Play '
-            'require.',
+        reason: 'resolveManageSubscriptionUrl must try managementUrl(...) '
+            'before falling back, or a store subscriber is sent to a page '
+            'that cannot cancel their subscription.',
       );
     });
 
@@ -3341,10 +3449,16 @@ void main() {
       );
       expect(
         source,
-        contains('proMonthlyPriceString('),
+        contains('.storeProduct.priceString'),
         reason: 'Subscribe-to-Pro tile must source the displayed price from '
-            'the store (RevenueCat proMonthlyPriceString) — Apple 3.1.1 / Play '
-            'policy forbid a hard-coded price that ignores the territory.',
+            'the store (the RevenueCat package priceString) — Apple 3.1.1 / '
+            'Play policy forbid a hard-coded price that ignores the territory.',
+      );
+      expect(
+        source,
+        contains('l10n.proSubscribeTitleAnnual(priceLabel)'),
+        reason: 'the annual plan must state its own price and period on the '
+            'Subscribe tile, not borrow the monthly copy.',
       );
       expect(
         source,
@@ -3360,12 +3474,73 @@ void main() {
             'shape so the price + period stay visible in-app.',
       );
       expect(
+        arb,
+        contains(
+            r'"proSubscribeTitleAnnual": "Subscribe to Pro — {price}/year"'),
+        reason: 'app_en.arb proSubscribeTitleAnnual must keep the '
+            '"{price}/year" shape so the annual price + period stay visible.',
+      );
+      expect(
+        arb,
+        contains('Auto-renews yearly until cancelled'),
+        reason: 'the annual subtitle must state its own renewal period.',
+      );
+      expect(
         RegExp(r'Auto-renews|cancelled').hasMatch(arb),
         isTrue,
         reason: 'Subscribe-to-Pro tile subtitle must communicate '
             'auto-renewal AND how to cancel — at minimum the words '
             '"Auto-renews" or "cancelled" appear in the ARB copy.',
       );
+    });
+
+    test('Subscribe-to-Pro copy never promises unlimited coach use', () {
+      // Reason: Pro caps the AI coach at a daily message limit
+      // (docs/features/paywall.md), so "Unlimited AI coach" on the purchase
+      // tile misstated the entitlement to buyers and to App Review
+      // (Guideline 2.3, issue #1120). Every locale is checked because a
+      // translation can reintroduce the claim the English no longer makes.
+      final unlimited = RegExp(
+        r'unlimit|unbegrenzt|illimit|ilimitad|無制限',
+        caseSensitive: false,
+      );
+      final arbs = Directory('lib/l10n')
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.arb'))
+          .toList();
+      expect(arbs.length, greaterThanOrEqualTo(7));
+      for (final file in arbs) {
+        final catalogue =
+            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+        for (final entry in catalogue.entries) {
+          if (!entry.key.startsWith('proSubscribe')) continue;
+          expect(
+            unlimited.hasMatch(entry.value as String),
+            isFalse,
+            reason: '${file.path} ${entry.key} must not claim unlimited use: '
+                '"${entry.value}"',
+          );
+        }
+      }
+
+      final coach = File('lib/screens/coach_screen.dart').readAsStringSync();
+      final cap = RegExp(r'static const _proDailyLimit = (\d+);')
+          .firstMatch(coach)!
+          .group(1);
+      final en = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
+      for (final key in [
+        'proSubscribeSubtitleConfigured',
+        'proSubscribeSubtitleConfiguredAnnual',
+      ]) {
+        expect(
+          en[key] as String,
+          startsWith('$cap AI coach messages a day'),
+          reason: '$key must state the same Pro coach cap the coach screen '
+              'enforces (_proDailyLimit = $cap), on both plans alike.',
+        );
+      }
     });
 
     test('revenuecat.dart exports a restorePurchases helper', () {
@@ -3383,42 +3558,6 @@ void main() {
         contains('Purchases.restorePurchases()'),
         reason: 'restorePurchases must actually call the RC SDK.',
       );
-    });
-  });
-
-  group('accessibility: watchOS ContentView accessibility hints', () {
-    test('watchOS recording-flow buttons carry .accessibilityHint', () {
-      // Reason: audit/accessibility (May 2026) High — EU EAA. The
-      // watchOS app's primary recording buttons (Start / Pause / Stop /
-      // Resume / Recover / Discard / Sync Run) had no
-      // .accessibilityHint, leaving VoiceOver users without usage
-      // cues on the main recording surface. watch_ios has no XCTest
-      // target today, so this is a source-grep guard run from the
-      // mobile_android twin's relative path. Auto-skips when the
-      // watch_ios sibling isn't present.
-      final file = File('../watch_ios/WatchApp/ContentView.swift');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      for (final cue in const [
-        // Each cue is a substring from a hint we wrote — checking
-        // for the start of each unique sentence is enough to detect
-        // a future refactor that drops the modifier.
-        'Begins a new run',
-        'Pauses the recording without ending it',
-        'Ends the run and opens the summary',
-        'Resumes the paused recording',
-        'Restores the unsaved run',
-        'Sends the completed run to your iPhone',
-      ]) {
-        expect(
-          body,
-          contains(cue),
-          reason:
-              'ContentView.swift must carry .accessibilityHint("$cue...") '
-              'on the matching button so VoiceOver announces a usage cue. '
-              'audit/accessibility Critical.',
-        );
-      }
     });
   });
 
@@ -3598,118 +3737,6 @@ void main() {
     });
   });
 
-  group('iOS PrivacyInfo.xcprivacy', () {
-    // Required since spring 2024 for every iOS binary that uses any
-    // "required reason" API. flutter_secure_storage, shared_preferences,
-    // and workmanager all hit UserDefaults / file timestamps; the
-    // manifest declares the reason code for each.
-    test('PrivacyInfo.xcprivacy exists at ios/Runner/', () {
-      final infoPlist = File('ios/Runner/Info.plist');
-      if (!infoPlist.existsSync()) return; // Android twin
-      final file = File('ios/Runner/PrivacyInfo.xcprivacy');
-      expect(
-        file.existsSync(),
-        isTrue,
-        reason: 'ios/Runner/PrivacyInfo.xcprivacy is required for '
-            'every iOS binary using required-reason APIs '
-            '(UserDefaults, file timestamps, disk space, system boot '
-            'time). Submission fails without it.',
-      );
-    });
-
-    test('PrivacyInfo declares the required-reason API categories', () {
-      final infoPlist = File('ios/Runner/Info.plist');
-      if (!infoPlist.existsSync()) return;
-      final file = File('ios/Runner/PrivacyInfo.xcprivacy');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // The four categories the bundled plugins actually trigger.
-      // Each is paired with the canonical Apple reason code published
-      // at https://developer.apple.com/documentation/bundleresources
-      // /privacy_manifest_files/describing_use_of_required_reason_api
-      final required = <String, String>{
-        'NSPrivacyAccessedAPICategoryUserDefaults':
-            'shared_preferences / flutter_secure_storage',
-        'NSPrivacyAccessedAPICategoryFileTimestamp':
-            'path_provider / disk-backed tile cache / local stores',
-        'NSPrivacyAccessedAPICategoryDiskSpace':
-            'backup + export size estimation',
-        'NSPrivacyAccessedAPICategorySystemBootTime':
-            'workmanager periodic-task scheduling',
-      };
-      for (final entry in required.entries) {
-        expect(
-          body,
-          contains('<string>${entry.key}</string>'),
-          reason: 'PrivacyInfo.xcprivacy must declare ${entry.key} '
-              '(used by ${entry.value}).',
-        );
-      }
-      // The encryption-export key (ITSAppUsesNonExemptEncryption)
-      // lives in Info.plist, not PrivacyInfo.xcprivacy, and is
-      // covered by the Info.plist test above.
-    });
-
-    test('PrivacyInfo declares every data type the binary actually collects',
-        () {
-      final infoPlist = File('ios/Runner/Info.plist');
-      if (!infoPlist.existsSync()) return;
-      final file = File('ios/Runner/PrivacyInfo.xcprivacy');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      // Reason: spring-2024 Privacy Manifest validation rejects
-      // binaries whose NSPrivacyCollectedDataTypes array is empty
-      // while the binary actually exercises the matching APIs (here
-      // CLLocation, HealthKit, image_picker, Sentry, RevenueCat,
-      // Supabase Auth). The full set must agree with the App Store
-      // Connect Privacy Nutrition Label. See audit/app-store-privacy
-      // 2026-05-25.
-      final required = <String, String>{
-        'NSPrivacyCollectedDataTypePreciseLocation':
-            'geolocator GPS recording',
-        'NSPrivacyCollectedDataTypeCoarseLocation':
-            'CLLocationManager under an Approximate-Location grant (iOS 14+) '
-                '+ ACCESS_COARSE_LOCATION on Android',
-        'NSPrivacyCollectedDataTypeHealth':
-            'health (HealthKit reads/writes for HR + workout import)',
-        'NSPrivacyCollectedDataTypeFitness':
-            'pedometer + workout distance/duration',
-        'NSPrivacyCollectedDataTypeEmailAddress':
-            'Supabase Auth email sign-in',
-        'NSPrivacyCollectedDataTypeName': 'user_profiles.display_name',
-        'NSPrivacyCollectedDataTypeUserID':
-            'auth.users.id stored on RevenueCat + Supabase',
-        'NSPrivacyCollectedDataTypePhotosorVideos':
-            'image_picker run photo attachments',
-        'NSPrivacyCollectedDataTypePurchaseHistory':
-            'RevenueCat in-app subscription events',
-        'NSPrivacyCollectedDataTypeOtherUserContent':
-            'coach chat messages + notes/title + saved runs',
-        'NSPrivacyCollectedDataTypeCrashData':
-            'sentry_flutter exception capture',
-        'NSPrivacyCollectedDataTypePerformanceData':
-            'sentry_flutter performance traces',
-      };
-      for (final entry in required.entries) {
-        expect(
-          body,
-          contains('<string>${entry.key}</string>'),
-          reason: 'PrivacyInfo.xcprivacy must declare ${entry.key} '
-              '(collected by ${entry.value}). An empty or partial '
-              'NSPrivacyCollectedDataTypes array fails Privacy '
-              'Manifest validation on App Store submission.',
-        );
-      }
-      // NSPrivacyTracking must remain false for the no-IDFA stance.
-      expect(
-        body,
-        contains('<key>NSPrivacyTracking</key>\n\t<false/>'),
-        reason: 'NSPrivacyTracking must stay false — the app does '
-            'not access the IDFA or perform cross-app/site tracking.',
-      );
-    });
-  });
-
   group('segments v2 wiring', () {
     test('SegmentsPanel widget calls the v2 tiered RPC, not the v1 fetcher',
         () {
@@ -3837,37 +3864,67 @@ void main() {
     // data.ts is a small follow-up" and that commit eee128c / 3c71481
     // closed. These guards keep it closed.
 
-    test('club_form_sheet imports + calls rateLimitErrorMessage', () {
+    // Since decisions § 744 the wording lives in the ARBs, so each catch
+    // path must reach the render-layer helper AND hand it a localizer —
+    // a call that resolved the sentence without one would put English in
+    // front of every reader, which is the defect that ADR closed.
+    test('club_form_sheet imports + calls rateLimitErrorMessage with a '
+        'localizer', () {
       final source =
           File('lib/widgets/club_form_sheet.dart').readAsStringSync();
       expect(
-        source.contains("import '../rate_limit_errors.dart'"),
+        source.contains("import '../rate_limit_message.dart'"),
         isTrue,
-        reason: 'club_form_sheet must import rate_limit_errors.dart so the '
+        reason: 'club_form_sheet must import rate_limit_message.dart so the '
             'create-club catch path runs through the helper.',
       );
       expect(
-        source.contains('rateLimitErrorMessage('),
+        source.contains('rateLimitErrorMessage(l10n,'),
         isTrue,
-        reason:
-            'club_form_sheet catch block must call rateLimitErrorMessage.',
+        reason: 'club_form_sheet catch block must call '
+            'rateLimitErrorMessage(l10n, …).',
       );
     });
 
-    test('route_builder_screen imports + calls rateLimitErrorMessage', () {
+    test('route_builder_screen imports + renders through rateLimitMessage',
+        () {
       final source =
           File('lib/screens/route_builder_screen.dart').readAsStringSync();
       expect(
-        source.contains("import '../rate_limit_errors.dart'"),
+        source.contains("import '../rate_limit_message.dart'"),
         isTrue,
-        reason: 'route_builder_screen must import rate_limit_errors.dart '
+        reason: 'route_builder_screen must import rate_limit_message.dart '
             'so the saveRoute catch path runs through the helper.',
       );
       expect(
-        source.contains('rateLimitErrorMessage('),
+        source.contains('parseRateLimitError('),
         isTrue,
         reason: 'route_builder_screen save catch block must call '
-            'rateLimitErrorMessage.',
+            'parseRateLimitError.',
+      );
+      expect(
+        RegExp(r'rateLimitMessage\(\s*\n?\s*context != null').hasMatch(source),
+        isTrue,
+        reason: 'formatSaveRouteError must render the refusal through '
+            'rateLimitMessage with the caller\'s AppLocalizations when it '
+            'has a context.',
+      );
+    });
+
+    test('report_sheet calls rateLimitErrorMessage with a localizer', () {
+      final source = File('lib/widgets/report_sheet.dart').readAsStringSync();
+      expect(
+        source.contains("import '../rate_limit_message.dart'"),
+        isTrue,
+        reason: 'report_sheet must import rate_limit_message.dart so the '
+            'create_report catch path runs through the helper.',
+      );
+      expect(
+        RegExp(r'rateLimitErrorMessage\(\s*\n?\s*(?:AppLocalizations\.of\(context\)|l10n\b)')
+            .hasMatch(source),
+        isTrue,
+        reason: 'report_sheet catch block must call rateLimitErrorMessage '
+            'with the sheet\'s AppLocalizations.',
       );
     });
   });
@@ -3914,6 +3971,35 @@ void main() {
     });
 
     test(
+      'fetchActiveOverview bounds its own read, so its saved-copy fallback '
+      'runs before any caller gives up',
+      () {
+        // A caller-side .timeout of the same length fires first and skips
+        // the fallback to the saved active plan (active_plan_cache.dart), so
+        // the deadline lives in the service and the callers await it bare.
+        final source = File('lib/training_service.dart').readAsStringSync();
+        final at = source.indexOf('Future<ActivePlanOverview?> fetchActiveOverview()');
+        expect(at, greaterThan(0));
+        final body = source.substring(at, source.indexOf('\n  }\n', at));
+        expect(body, contains('.timeout(kBackendLoadTimeout)'));
+        expect(body, contains('readActivePlanCache('));
+        for (final caller in const [
+          'lib/screens/run_screen.dart',
+          'lib/screens/home_screen.dart',
+          'lib/screens/dashboard_screen.dart',
+        ]) {
+          expect(
+            RegExp(r'fetchActiveOverview\(\)\s*\.timeout\(')
+                .hasMatch(File(caller).readAsStringSync()),
+            isFalse,
+            reason: '$caller wraps fetchActiveOverview in its own timeout, '
+                'which races the service deadline and loses the offline copy',
+          );
+        }
+      },
+    );
+
+    test(
       'run_screen.dart bounds every Supabase / training / social await '
       'with kBackendLoadTimeout',
       () {
@@ -3951,10 +4037,20 @@ void main() {
           'makeRunPrivate',
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
-          'fetchActiveOverview',
           'fetchNextRsvpedEvent',
-          'fetchMyClubs',
         ];
+        // The event card's club lookup moved into the shared
+        // `openUpcomingEvent` (Home and the Run tab both tap through it,
+        // decisions § 2285), so its timeout is pinned there.
+        final eventCard =
+            File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
+        expect(
+          RegExp(r'\.fetchMyClubs\(\)\s*\.timeout\(kBackendLoadTimeout\)')
+              .hasMatch(eventCard),
+          isTrue,
+          reason: 'openUpcomingEvent must bound fetchMyClubs with '
+              'kBackendLoadTimeout',
+        );
         for (final name in methodNames) {
           final pattern = RegExp(
             r'\.' + RegExp.escape(name) + r'\s*\([\s\S]{0,400}?\)'
@@ -4173,9 +4269,10 @@ void main() {
           reason: 'updated_at_ms data-map key — drives the stale-push '
               'protection on the watch side');
       expect(src, contains('kMaxRoutesPerPush'),
-          reason: 'the 50-route Wearable Data Layer 100 KB cap is '
-              'load-bearing; do not remove the constant without a '
-              'corresponding bump on the watch picker side');
+          reason: 'the push cap is load-bearing and must equal the watch '
+              'store\'s LocalRouteStore.MAX_ROUTES, which '
+              'scripts/check_shared_constants.mjs reads on both rails; do '
+              'not remove the constant');
     });
 
     test('Phone-side WearRoutesBridge.kt mirrors the Dart channel + path',
@@ -4312,7 +4409,7 @@ void main() {
       // builder (`buildMapStyleUrl`, `resolveTileUrl`, `buildTileUrl`)
       // for choosing between the local-dev override and the
       // MapTiler fallback. The contract MUST be identical across
-      // the three so a stray space in one platform's .env.local
+      // the three so a stray space in one platform's env file
       // doesn't behave differently from another. See
       // `decisions.md § 68`.
 
@@ -5046,6 +5143,112 @@ void main() {
     });
   });
 
+  group('a screen-owned OfflineSyncStore is init()ed, never only loadAll()ed',
+      () {
+    // Reason (followups 2026-08-18): `nutrition_screen.dart` constructed its
+    // meal-template + recipe stores and called `loadAll()` on them. `loadAll`
+    // tolerates a null `dir` and returns, so the store read as alive while
+    // every write refused — a saved meal or recipe lived in memory for the
+    // session and reached neither disk nor the server. Only `init()` resolves
+    // the directory, so a screen that owns one of these stores must call it.
+    test('every field holding one calls init() on it', () {
+      final sources = <String, String>{};
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        sources[entity.path] = entity.readAsStringSync();
+      }
+      final storeTypes = <String>{};
+      for (final src in sources.values) {
+        for (final m
+            in RegExp(r'class\s+(\w+)\s+extends\s+OfflineSyncStore<')
+                .allMatches(src)) {
+          storeTypes.add(m.group(1)!);
+        }
+      }
+      expect(storeTypes, isNotEmpty,
+          reason: 'the subclass scan itself must find the stores');
+
+      final offenders = <String>[];
+      sources.forEach((path, src) {
+        for (final m in RegExp(r'(\w+)\s*=\s*(\w+)\(\)').allMatches(src)) {
+          final field = m.group(1)!;
+          if (!storeTypes.contains(m.group(2)!)) continue;
+          if (RegExp('${RegExp.escape(field)}\\.init\\(').hasMatch(src)) {
+            continue;
+          }
+          offenders.add('$path: $field');
+        }
+      });
+      expect(offenders, isEmpty,
+          reason: 'these fields hold an OfflineSyncStore that is never '
+              'init()ed, so every write to them refuses and the rows never '
+              'reach disk or the server: ${offenders.join(', ')}');
+    });
+  });
+
+  group('every replaceFromServer refuses before it touches rowsById', () {
+    // Reason (followups 2026-08-18): `rewriteAll` used to return silently on a
+    // null `dir`, so a cache fill on a never-init()ed store replaced the
+    // resident rows and wrote nothing. Gating `rewriteAll` alone is too late —
+    // each `replaceFromServer` has already rebuilt `rowsById` from the fetch by
+    // the time it calls down, so the refusal has to be the method's first
+    // statement or a failed fill leaves a half-replaced store behind.
+    // The scan finds a DECLARATION by its name and its parameter list, not by
+    // its return type or an `async` keyword, and it walks the parameter list's
+    // own parentheses to reach the body. Anchoring on `Future<void> ` and then
+    // on the next `async` left three measured holes, each of which passes an
+    // ungated override: a non-async override skipped forward to the next
+    // `async` method in the file and read THAT body's first statement; an
+    // override returning anything but `Future<void>` was not found at all,
+    // with the count floor still met by its seven siblings; and the gate's
+    // argument was never read, so one naming another method refused under a
+    // name its caller never called.
+    test('requireInitialised is the first statement of each override', () {
+      final offenders = <String>[];
+      final found = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final src = entity.readAsStringSync();
+        var from = 0;
+        while (true) {
+          final at = src.indexOf('replaceFromServer(', from);
+          if (at < 0) break;
+          from = at + 1;
+          final before = src.substring(0, at).trimRight();
+          if (before.endsWith('.') || before.endsWith('`')) continue;
+          var depth = 0;
+          var i = src.indexOf('(', at);
+          for (; i < src.length; i++) {
+            if (src[i] == '(') depth++;
+            if (src[i] == ')') {
+              depth--;
+              if (depth == 0) break;
+            }
+          }
+          final open = src.indexOf('{', i);
+          if (i >= src.length || open < 0) {
+            offenders.add('${entity.path}: unparseable signature');
+            continue;
+          }
+          found.add(entity.path);
+          final firstStatement = src.substring(open + 1).trimLeft();
+          if (!firstStatement
+              .startsWith("requireInitialised('replaceFromServer');")) {
+            offenders.add(entity.path);
+          }
+        }
+      }
+      expect(found.length, greaterThanOrEqualTo(7),
+          reason: 'the scan itself must find the replaceFromServer overrides, '
+              'found: ${found.join(', ')}');
+      expect(offenders, isEmpty,
+          reason: 'these replaceFromServer overrides rebuild rowsById before '
+              'anything checks the store was init()ed, so a fill that can '
+              'never reach disk still replaces what the screen is showing: '
+              '${offenders.join(', ')}');
+    });
+  });
+
   group('local-day arithmetic is DST-safe', () {
     // A calendar week spanning a DST transition is 167 or 169 hours, so
     // stepping days with a fixed Duration walks the boundary off local
@@ -5066,9 +5269,6 @@ void main() {
       'lib/screens/period_summary_screen.dart':
           r'DateTime periodEnd\(PeriodType period, DateTime anchor,\s*'
           r'\{String weekStartDay = .monday.\}\) \{',
-      // The trend chart buckets weekly the same way; a skewed Monday mislabels
-      // the bars and drops the transition week out of the chart entirely.
-      'lib/mileage_trend.dart': r'DateTime _mondayOf\(DateTime d\) \{',
     };
 
     weekBoundaryFns.forEach((path, signature) {
@@ -5135,6 +5335,52 @@ void main() {
     });
   });
 
+  group('every "this week" window comes from weekStartLocal', () {
+    // Field report: week start Sunday, the Home tile read 22.50 km this week
+    // and the Distance chart beside it 7.50 km — mileage_trend.dart carried
+    // its own Monday-only `_mondayOf`, and the heatmap called weekStartLocal
+    // without the preference. One helper, always handed the preference.
+    test('no file re-derives a week start from DateTime.weekday', () {
+      const allowed = {
+        'lib/goals.dart': 'the helper itself',
+        'lib/recap.dart': 'ISO-8601 weeks for the year recap (web recap.ts)',
+        'lib/recurrence.dart': 'weekly-recurrence anchor (web recurrence.ts)',
+      };
+      final pattern = RegExp(
+          r'weekday - 1\)\)|weekday - DateTime\.monday|_mondayOf\(|_weekStartMidnight\(');
+      final offenders = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart') && !f.path.contains('/gen/'))
+          .where((f) => !allowed.containsKey(f.path))
+          .where((f) => pattern.hasMatch(f.readAsStringSync()))
+          .map((f) => f.path)
+          .toList();
+      expect(offenders, isEmpty,
+          reason: 'take the week window from weekStartLocal(now, '
+              'weekStartDay: …) in goals.dart');
+    });
+
+    test('every weekStartLocal call on a Home surface passes the preference',
+        () {
+      for (final path in [
+        // The heatmap's weeks; it moved off Home onto the weekly summary
+        // (decisions § 2284) and still windows by the preference.
+        'lib/widgets/activity_heatmap.dart',
+        'lib/mileage_trend.dart',
+        'lib/current_week.dart',
+      ]) {
+        final source = File(path).readAsStringSync();
+        final calls = RegExp(r'weekStartLocal\(([^)]*)\)').allMatches(source);
+        expect(calls, isNotEmpty, reason: '$path must read weekStartLocal');
+        for (final c in calls) {
+          expect(c.group(1), contains('weekStartDay:'),
+              reason: '$path: `${c.group(0)}` falls back to Monday');
+        }
+      }
+    });
+  });
+
   group('remote images always carry a failure path', () {
     // Every avatar in the app used to be hand-rolled, and four of the six
     // painted the picture through a `DecorationImage` — which has no error
@@ -5189,11 +5435,13 @@ void main() {
     // A bare `Center(child: CircularProgressIndicator())` tells the user only
     // that something is happening: it occupies none of the space the content
     // will, so the arriving frame lands as a re-layout rather than a fill.
-    // Round 7 shipped the two named treatments (`ListSkeleton` for a row-
-    // shaped surface, `FullBodyLoader` for a mixed one) and converted 16 of
-    // the 30 sites; round 10 closed the remaining 14 (decisions.md § 492).
-    // The trap is not a bug in one file — it is the shape every screen
-    // reached for because there was nothing named to reach for.
+    // Round 7 shipped the named treatments and converted 16 of the 30 sites;
+    // round 10 closed the remaining 14 (decisions.md § 492). Since § 2288 a
+    // loading screen is a skeleton shaped like the screen it becomes —
+    // `ListSkeleton`, `.section` and `SkeletonBlock`, composed — and the
+    // running-figure loader that mixed layouts used to take is gone. The
+    // trap is not a bug in one file — it is the shape every screen reached
+    // for because there was nothing named to reach for.
     late List<File> sources;
     setUpAll(() {
       sources = Directory('lib')
@@ -5213,7 +5461,37 @@ void main() {
       expect(offenders, isEmpty,
           reason: 'use ListSkeleton where the surface is rows, '
               'ListSkeleton.section where it is one section of a scrollable, '
-              'FullBodyLoader where the layout is mixed');
+              'and compose SkeletonBlock beside them (or a '
+              'widgets/loading_skeletons.dart composition) where the layout '
+              'is mixed');
+    });
+
+    test('no screen loads its content behind a running figure', () {
+      // The figure stood in the middle of an otherwise empty page, so it
+      // held none of the layout the content would take and was the one
+      // high-contrast thing on screen while a detail route faded in over
+      // the page it left (decisions.md § 2288). A wait that is not page
+      // content (GPS acquisition, finishing a sign-in) may earn a figure
+      // back, but it gets a new name and a reason here, not this one.
+      final figure = RegExp(r'\b(?:ActivityLoader|FullBodyLoader)\b');
+      final scanned = [
+        ...sources,
+        ...Directory('../../packages/ui_kit/lib')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart')),
+      ];
+      expect(scanned.length, greaterThan(sources.length),
+          reason: 'the ui_kit scan must actually reach the package');
+      final offenders = <String>[
+        for (final f in scanned)
+          if (figure.hasMatch(f.readAsStringSync())) f.path,
+      ];
+      expect(offenders, isEmpty,
+          reason: 'a screen loading content shows a skeleton shaped like the '
+              'screen it becomes: compose ListSkeleton, ListSkeleton.section '
+              'and SkeletonBlock, or use a widgets/loading_skeletons.dart '
+              'composition');
     });
 
     test('no screen hand-rolls its own empty state', () {
@@ -5345,6 +5623,11 @@ void main() {
       // Rename / create / edit prompts and forms.
       'screens/devices_screen.dart::l10n.devicesRenameTitle': 1,
       'screens/gear_rotations_screen.dart::title': 1,
+      // A chooser, not a confirm: it lists the ways to adjust a plan and
+      // dismisses without touching anything. Each option that does destroy
+      // work raises its own `danger` confirm; pause is reversed by resume in
+      // this same dialog.
+      'screens/plan_detail_screen.dart::l10n.planDetailAdjustPlan': 1,
       'screens/races_screen.dart::l.racesEditorTitle': 1,
       'screens/races_screen.dart::widget.race.name': 1,
       'screens/roadbook_screen.dart::l10n.roadbookPlanTitle': 1,
@@ -5352,32 +5635,55 @@ void main() {
       'screens/route_builder_screen.dart::l10n.routeBuilderSaveDialogTitle': 1,
       'screens/route_detail_screen.dart::l10n.routeDetailRateDialogTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailEditTitle': 1,
+      // A race director's result correction form: the save is the edit, and
+      // the same form makes the next one.
+      'screens/event_detail_screen.dart::l10n.eventResultEditTitle(widget.name)': 1,
       'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,
+      // Checkboxes that show or hide Home's trend groups; a group hidden here
+      // is ticked back in the same dialog (decisions § 2386).
+      'screens/settings_preferences_screen.dart::l10n.prefsHomeCards': 1,
       'screens/settings_preferences_screen.dart::title': 3,
       'screens/settings_safety_screen.dart::l10n.safetyTitle': 1,
       'screens/workout_detail_screen.dart::l10n.workoutRelinkTitle': 1,
       'widgets/fitness_card.dart::label': 1,
+      // Grants AI-processing consent: accepting writes a consent record and
+      // nothing else, cancelling leaves the runner exactly where they were,
+      // and the account screen's withdrawal control reverses either way.
+      'widgets/ai_disclosure_notice.dart::l10n.coachConsentHeadline': 1,
+      // An agreement, not a confirm: accepting joins the club and declining
+      // leaves the caller where it was, so neither button can lose data.
+      'widgets/activity_waiver_dialog.dart::l10n.clubWaiverTitle': 1,
       'widgets/nutrition_log_sheet.dart::widget.result.name': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsMealTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,
       // Copies rather than replaces; the source plan is untouched.
       'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle': 1,
-      // The displaced plan keeps every workout and stays readable.
-      'screens/plan_new_screen.dart::l10n.planNewReplaceActiveTitle': 1,
-      // Abandon: a status change, not a deletion.
-      'screens/plans_screen.dart::title': 1,
+      // Moves dates only; shifting back by the same amount restores them.
+      'screens/plan_detail_screen.dart::l10n.planDetailShiftTitle': 1,
+      // Restart copies the plan and retires the live one as abandoned, a
+      // status change that keeps its history; the second dialog is the
+      // race-ahead refusal, whose only action is dismissal.
+      'screens/plan_detail_screen.dart::l10n.planDetailRestartTitle': 2,
       // Visibility toggles and a share that only widens visibility.
       'screens/route_detail_screen.dart::l10n.routeDetailShareConfirmTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePrivateTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePublicTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailSaveAsRouteTitle': 1,
+      // Re-derives the distance from the stored track; the recorded figure
+      // is kept in metadata.distance_recorded_m, so nothing is discarded.
+      'screens/run_detail_screen.dart::l10n.runDetailRecalculateDistanceDialogTitle': 1,
+      // States what the OS just refused and offers the Settings shortcut.
+      // Either action finishes onboarding; nothing is discarded by it.
+      'screens/onboarding_screen.dart::l10n.onboardingLocationDeniedTitle': 1,
       // Recording nudges and prompts; none of them discards a run.
       'screens/run_screen.dart::_l10n.runBackgroundLocationNudgeTitle': 1,
       'screens/run_screen.dart::_l10n.runBatteryOptHintTitle': 1,
       'screens/run_screen.dart::_l10n.runLiveShareEndedTitle': 1,
       'screens/run_screen.dart::_l10n.runResumeDialogTitle': 1,
+      // Asked before a no-GPS run starts; every choice leaves nothing to lose.
+      'screens/run_screen.dart::l10n.runNoGpsStartTitle': 1,
       // Credential changes the user is performing on purpose.
       'screens/settings_account_screen.dart::l10n.settingsAccountChangeEmail': 1,
       'screens/settings_account_screen.dart::l10n.settingsAccountChangePassword': 1,
@@ -5385,11 +5691,48 @@ void main() {
       // the backup, and the copy says so.
       'screens/settings_account_screen.dart::l10n.settingsAccountRestoreTitle': 1,
       // Every integration here reconnects in one tap.
-      'screens/settings_integrations_screen.dart::(no title)': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsHrTitle': 1,
-      'screens/settings_integrations_screen.dart::l10n.integrationsParkrunTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsStravaDisconnectTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsTreadmillTitle': 1,
+      // The athlete-number form on the barcode screen: it opens prefilled with
+      // the current number, so the same dialog puts back whatever it replaced.
+      'screens/parkrun_barcode_screen.dart::l10n.parkrunBarcodeTitle': 1,
+      // Chooses how far back a Strava sync reaches. Imports are additive and
+      // deduped against what is already there, so a wider window can only add
+      // runs — there is nothing here to lose.
+      'screens/settings_integrations_screen.dart::l10n.integrationsStravaLookbackTitle': 1,
+      // Explains what a feature is. Its only action is dismissal; nothing is
+      // decided here and nothing can be lost by tapping it.
+      'widgets/info_tip.dart::title': 1,
+      // Explains what a derived metric IS. Its only action is dismissal;
+      // nothing is decided here and nothing can be lost by tapping it.
+      'widgets/metric_label.dart::metricText(l10n, metric)': 1,
+      // Asks before saving a manual run slower than walking pace. Saving keeps
+      // the typed figures and "Fix it" returns to the form, so neither button
+      // discards anything.
+      'manual_duration_input.dart::l10n.manualDurationSlowTitle': 1,
+      // Edits a direct message's text. Cancel keeps the message as it was,
+      // Save replaces only the visible text, and the server keeps the text as
+      // first sent for reports (migration 20271114000210).
+      'widgets/dm_bubble.dart::l10n.messagesEditTitle': 1,
+      // The race-course tools (decisions § 2381). Claiming takes an
+      // unclaimed race and destroys nothing; linking replaces the course with
+      // another public club route, undone by linking the old one again;
+      // suggesting queues a suggestion and links nothing. `dialogTitle` is the
+      // link dialog, which also approves a suggestion (linking through the
+      // same checks); its Remove course is held for the undo window, never
+      // committed from the dialog (decisions § 2396).
+      'screens/race_detail_screen.dart::l.raceCourseClaimTitle': 1,
+      'screens/race_detail_screen.dart::dialogTitle': 1,
+      'screens/race_detail_screen.dart::l.raceCourseSuggestTitle': 1,
+      // The one-time driver safety notice for Drive this course. Cancel leaves
+      // the screen before anything has started; "I understand" only records
+      // that it was read on this device.
+      'screens/course_drive_screen.dart::l.courseDriveNoticeTitle': 1,
+      // The Arm preflight (decisions § 2391). Arm anyway arms a race, which
+      // Cancel undoes from the race card; Cancel and the blocking dialog's OK
+      // leave the race unarmed. Nothing is discarded either way.
+      'widgets/race_preflight_dialog.dart::blocked': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {
@@ -5462,7 +5805,6 @@ void main() {
       // — have no last row to cover.
       const nonScrolling = {
         'lib/screens/privacy_zones_screen.dart',
-        'lib/screens/route_builder_screen.dart',
       };
       // Hosts that hoist a sub-screen's FAB into their own Scaffold. The
       // clearance belongs to the list, which lives in the sub-screen.
@@ -5626,11 +5968,11 @@ void main() {
   // to reach. The rule is narrow: whatever the body interpolates, it may not
   // be a bare English label.
   test('the lock-screen notification body carries no English literal', () {
-    final src = File('lib/screens/run_screen.dart').readAsStringSync();
-    final match = RegExp(r'bigText:([\s\S]{0,400}?),\n\s*paused:').firstMatch(src);
+    final src = File('lib/run_notification_bridge.dart').readAsStringSync();
+    final match = RegExp(r'final statsBig =([\s\S]{0,400}?);\n').firstMatch(src);
     expect(match, isNotNull,
-        reason: 'could not find the bigText argument in run_screen.dart — if '
-            'the lock-screen body moved, move this guard with it');
+        reason: 'could not find the statsBig body in run_notification_bridge.dart '
+            '— if the lock-screen body moved, move this guard with it');
     final body = match!.group(1)!;
     for (final label in ['Time:', 'Distance:', 'Speed:', 'Pace:']) {
       expect(
@@ -5646,84 +5988,964 @@ void main() {
         reason: 'the body interpolates nothing — the match is probably wrong');
   });
 
-  // ── setState after dispose ────────────────────────────────────────────
-  //
-  // `setState` on a disposed State throws. Every occurrence below was a real
-  // crash a user could reach by leaving the screen while an async call was
-  // still in flight — the Fitness tab mid-sync, the OS file picker or photo
-  // picker open over an import/photo surface, a tag save on route detail.
-  //
-  // Two mechanical shapes are pinned. Both are cheap source rules because the
-  // paths need a live picker / network leg to reach in a widget test.
-  group('setState is mount-guarded after an await', () {
-    Iterable<File> libDartFiles() sync* {
-      for (final e in Directory('lib').listSync(recursive: true)) {
-        if (e is File && e.path.endsWith('.dart')) yield e;
+  // A number the user typed reaches the app through a TextEditingController,
+  // and five of the seven shipped locales (de, es, fr, pt, pt_BR) put a comma
+  // on the decimal key. `double.tryParse` only understands a dot, so a raw
+  // parse either drops the value to null or — behind a `[0-9.]` input filter
+  // that deletes the comma first — reads "5,2" as 52 and saves a 5.2 km run
+  // as 52 km. Both failures are silent. parseTypedDecimal is the one reader
+  // that accepts either separator; these guards keep new fields on it.
+  group('typed decimals are read locale-tolerantly', () {
+    List<File> libSources() => Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+
+    test('no controller text is parsed with a bare double.tryParse', () {
+      final offenders = <String>[];
+      for (final f in libSources()) {
+        for (final m
+            in RegExp(r'double\.tryParse\([^)]*\.text').allMatches(
+          f.readAsStringSync(),
+        )) {
+          offenders.add('${f.path}: ${m.group(0)}');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'read typed text with parseTypedDecimal (lib/typed_decimal.dart) '
+            'so a comma decimal survives:\n${offenders.join('\n')}',
+      );
+    });
+
+    test('no decimal field filters the comma out of its own input', () {
+      final offenders = <String>[];
+      for (final f in libSources()) {
+        if (f.path.endsWith('typed_decimal.dart')) continue;
+        final src = f.readAsStringSync();
+        for (final m in RegExp(r"allow\(RegExp\(r'\[[^\]]*\]'\)\)").allMatches(src)) {
+          final pattern = m.group(0)!;
+          if (pattern.contains('.') && !pattern.contains(',')) {
+            offenders.add('${f.path}: $pattern');
+          }
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'a filter that admits "." but not "," deletes the comma a de/'
+            'es/fr/pt keyboard produces, turning 5,2 into 52 before any parse. '
+            'Use typedDecimalInputFormatters:\n${offenders.join('\n')}',
+      );
+    });
+  });
+
+  // iPadOS presents `UIActivityViewController` as a popover and will not
+  // present one without a non-empty anchor inside the host view. share_plus's
+  // iOS plugin turns a missing or empty anchor into a `PlatformException`, so
+  // the sheet never appears at all. The first release is iPhone-only
+  // (`TARGETED_DEVICE_FAMILY = 1`, decisions § 1701), but iPad is one setting
+  // away, so the anchor stays mandatory. Every share call site in the tree once
+  // omitted it. `share_sheet.dart` is the single place that derives and passes
+  // one, so nothing else may reach the plugin.
+  group('every share goes through share_sheet.dart', () {
+    const helper = 'lib/share_sheet.dart';
+
+    List<File> libSources() => Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+
+    test('share_plus is imported by the helper and nothing else', () {
+      var helperImports = false;
+      final offenders = <String>[];
+      for (final f in libSources()) {
+        if (!f.readAsStringSync().contains('package:share_plus/')) continue;
+        if (f.path == helper) {
+          helperImports = true;
+        } else {
+          offenders.add(f.path);
+        }
+      }
+      expect(helperImports, isTrue,
+          reason: '$helper must import share_plus — it is the only wrapper, '
+              'and the scan below is meaningless if it stops doing so');
+      expect(offenders, isEmpty,
+          reason: 'these reach share_plus directly and can therefore share '
+              'without a popover anchor, which is broken on iPad. Call '
+              'shareFilesFrom / shareTextFrom from $helper instead: '
+              '${offenders.join(', ')}');
+    });
+
+    test('no raw share call exists outside the helper', () {
+      final calls = RegExp(r'\bShare\.share|\bSharePlus\.instance');
+      final offenders = <String>[];
+      for (final f in libSources()) {
+        if (f.path == helper) continue;
+        for (final m in calls.allMatches(f.readAsStringSync())) {
+          offenders.add('${f.path}: ${m.group(0)}');
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a raw share call cannot carry the sharePositionOrigin iPad '
+              'requires. Route it through $helper: ${offenders.join(', ')}');
+    });
+
+    test('every share the helper makes carries a position origin', () {
+      final src = File(helper).readAsStringSync();
+      var found = 0;
+      var from = 0;
+      while (true) {
+        final at = src.indexOf('ShareParams(', from);
+        if (at < 0) break;
+        found++;
+        var i = at + 'ShareParams('.length;
+        var depth = 1;
+        while (depth > 0 && i < src.length) {
+          if (src[i] == '(') depth++;
+          if (src[i] == ')') depth--;
+          i++;
+        }
+        final args = src.substring(at, i);
+        expect(args.contains('sharePositionOrigin:'), isTrue,
+            reason: 'a ShareParams in $helper omits sharePositionOrigin, which '
+                'is the whole reason the helper exists:\n$args');
+        from = i;
+      }
+      expect(found, greaterThanOrEqualTo(2),
+          reason: 'expected the file + text share paths — did they move?');
+    });
+
+    test('every share entry point takes the context it anchors on', () {
+      final src = File(helper).readAsStringSync();
+      final entries =
+          RegExp(r'^Future<[^>]*> (share\w+)\(\s*\n?\s*([^,)]*)', multiLine: true)
+              .allMatches(src)
+              .toList();
+      expect(entries, isNotEmpty,
+          reason: 'no share entry point found in $helper — renamed?');
+      for (final m in entries) {
+        expect(m.group(2)!.trim(), 'BuildContext context',
+            reason: '${m.group(1)} must take the BuildContext it derives the '
+                'anchor from as its first parameter. An optional Rect lets a '
+                'caller omit the anchor, which is the bug this replaced.');
+      }
+    });
+  });
+  group('locale reach', () {
+    // A catalogue that ships in the binary but that no runtime path resolves
+    // to is translation work going nowhere: it costs bytes in every build and
+    // no reader can ever see it. Nothing else in the tree connects "the ARB
+    // file exists" to "a reader can get to it" — `app_pt.arb` shipped dark
+    // twice for exactly that reason (decisions.md § 740). These read the
+    // catalogue directory as the source of truth and hold every declaration
+    // site to it.
+
+    /// Catalogues that no BARE base-language tag resolves to, each with the
+    /// reason it is reachable anyway. `_baseToLocale` can name one variant per
+    /// language, so a language shipping two catalogues necessarily leaves one
+    /// off it. Every entry is asserted to still be unreachable that way, so
+    /// the list cannot rot into a blanket exemption.
+    const baseFallbackExempt = <String, String>{
+      'pt-BR': 'Portuguese ships two catalogues and the bare `pt` base is the '
+          'European one (Portugal and Angola share that orthography), so '
+          'pt-BR is reached by its exact tag — a pt-BR device, or the picker.',
+    };
+
+    /// ARB filename tag -> the CANONICAL tag every other declaration spells it
+    /// with. gen-l10n refuses to generate when a country-coded catalogue exists
+    /// without a bare base of the same language ("Arb file for a fallback, pt,
+    /// does not exist, even though the following locale(s) exist: [pt_BR,
+    /// pt_PT]"), so European Portuguese has to be the `pt` base FILE while
+    /// every tag a reader, the OS or the runtime sees is `pt-PT` — the
+    /// spelling web, the wrist and Info.plist all use. The filename is the
+    /// tool's; the tag is ours. Each entry is asserted below to still be a real
+    /// override, so the table cannot outlive the constraint that forced it.
+    const arbTagOverride = <String, String>{'pt': 'pt-PT'};
+
+    /// `app_pt_BR.arb` -> `pt-BR`; `app_en.arb` -> `en`.
+    String tagOfArb(String filename) {
+      final stem = filename.substring('app_'.length, filename.length - 4);
+      final parts = stem.split('_');
+      return parts.length == 1
+          ? parts[0]
+          : '${parts[0]}-${parts[1].toUpperCase()}';
+    }
+
+    /// The text between the bracket [marker] ends on and its match.
+    String literalAfter(String source, String marker) {
+      final at = source.indexOf(marker);
+      if (at < 0) {
+        fail('Could not find "$marker" — renamed? Update this guard.');
+      }
+      final open = marker[marker.length - 1];
+      final close = open == '[' ? ']' : '}';
+      var depth = 1;
+      var i = at + marker.length;
+      while (depth > 0 && i < source.length) {
+        if (source[i] == open) depth++;
+        if (source[i] == close) depth--;
+        i++;
+      }
+      return source.substring(at + marker.length, i - 1);
+    }
+
+    Set<String> localeTags(String literal) => RegExp(
+          r"Locale\('(\w+)'(?:,\s*'(\w+)')?\)",
+        ).allMatches(literal).map((m) {
+          final country = m.group(2);
+          return country == null ? m.group(1)! : '${m.group(1)}-$country';
+        }).toSet();
+
+    Set<String> mapKeys(String literal) =>
+        RegExp(r"'([\w-]+)'\s*:").allMatches(literal).map((m) => m.group(1)!).toSet();
+
+    String withoutComments(String source) => source
+        .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '')
+        .split('\n')
+        .map((l) => l.replaceAll(RegExp(r'//.*$'), ''))
+        .join('\n');
+
+    late Set<String> catalogues;
+    late Set<String> declared;
+    late String support;
+    late String generated;
+
+    setUpAll(() {
+      catalogues = Directory('lib/l10n')
+          .listSync()
+          .map((e) => e.uri.pathSegments.last)
+          .where((n) => n.startsWith('app_') && n.endsWith('.arb'))
+          .map(tagOfArb)
+          .toSet();
+      declared = catalogues.map((t) => arbTagOverride[t] ?? t).toSet();
+      support = File('lib/l10n/locale_support.dart').readAsStringSync();
+      generated =
+          File('lib/l10n/gen/app_localizations.dart').readAsStringSync();
+    });
+
+    test('a catalogue exists for exactly the locales we say we support', () {
+      expect(catalogues, isNotEmpty, reason: 'no app_*.arb found — moved?');
+      expect(
+        localeTags(literalAfter(support, 'supportedLocales = <Locale>[')),
+        declared,
+        reason: 'supportedLocales is what MaterialApp negotiates against. A '
+            'catalogue missing from it is dead weight in the binary; an entry '
+            'with no catalogue resolves to a locale gen-l10n cannot load.',
+      );
+    });
+
+    test('the generated delegate carries exactly the catalogue set', () {
+      expect(
+        localeTags(literalAfter(generated, 'supportedLocales = <Locale>[')),
+        catalogues,
+        reason: 'gen/app_localizations.dart is regenerated from the ARB '
+            'directory — a mismatch means the checked-in output is stale.',
+      );
+    });
+
+    test('every catalogue has a picker endonym', () {
+      expect(
+        mapKeys(literalAfter(support, 'localeLabels = <String, String>{')),
+        declared,
+        reason: 'the picker names each locale in its own language; a locale '
+            'the table cannot name renders a blank row.',
+      );
+    });
+
+    test('every catalogue is reachable by its exact tag', () {
+      expect(
+        localeTags(literalAfter(support, '_exact = <String, Locale>{')),
+        declared,
+        reason: '_exact is the only path a stored preference or an exactly '
+            'matching device tag takes; a catalogue absent from its VALUES '
+            'can be selected by nobody.',
+      );
+    });
+
+    test('the language picker is derived from the supported set, not listed',
+        () {
+      final body = withoutComments(_extractMethodBody(
+        File('lib/screens/settings_preferences_screen.dart').readAsStringSync(),
+        r'Future<void> _editLanguage\(\) async \{',
+      ));
+      expect(body.contains('supportedLocales'), isTrue,
+          reason: 'the picker must build its options from supportedLocales.');
+      for (final tag in catalogues) {
+        expect(body.contains("'$tag'"), isFalse,
+            reason: 'the picker spells $tag out. A hand-written list is how '
+                'European Portuguese came to be unpickable while shipping.');
+      }
+    });
+
+    test('the ARB parity suite covers every catalogue', () {
+      final listed = RegExp(r"'([\w_]+)'")
+          .allMatches(literalAfter(
+              File('test/l10n_parity_test.dart').readAsStringSync(),
+              'localeTags = ['))
+          .map((m) => m.group(1)!.replaceFirst('_', '-'))
+          .toSet();
+      expect(listed, catalogues,
+          reason: 'l10n_parity_test.dart names its locales by hand, so a new '
+              'catalogue is silently unchecked for missing keys until it is '
+              'added there too.');
+    });
+
+    // A locale absent from CFBundleLocalizations is one the App Store and the
+    // iOS language picker will not offer the app in, however complete its ARB.
+    // Reachable from either twin's directory: `..` is `apps/`.
+    String bundleLocalizations() {
+      final plist =
+          File('../mobile_ios/ios/Runner/Info.plist').readAsStringSync();
+      final at = plist.indexOf('<key>CFBundleLocalizations</key>');
+      if (at < 0) fail('CFBundleLocalizations is gone from Info.plist.');
+      final open = plist.indexOf('<array>', at);
+      return plist.substring(open, plist.indexOf('</array>', open));
+    }
+
+    test('the iOS bundle advertises exactly the catalogue set', () {
+      final advertised = RegExp(r'<string>([\w-]+)</string>')
+          .allMatches(bundleLocalizations())
+          .map((m) => m.group(1)!)
+          .toSet();
+      expect(
+        advertised,
+        declared,
+        reason: 'Info.plist and lib/l10n disagree about which locales ship. '
+            'Apple names a locale by its region, which is the spelling the '
+            'canonical tag set now uses everywhere — the plist needs no '
+            'override of its own any more.',
+      );
+    });
+
+    test('every ARB filename override is still an override', () {
+      for (final entry in arbTagOverride.entries) {
+        expect(catalogues, contains(entry.key),
+            reason: '${entry.key} is renamed by arbTagOverride but ships no '
+                'catalogue file — drop the entry.');
+        expect(catalogues, isNot(contains(entry.value)),
+            reason: 'lib/l10n now holds app_${entry.value.replaceAll('-', '_')}'
+                '.arb, so the filename and the tag agree — drop '
+                '${entry.key} from arbTagOverride.');
+      }
+    });
+
+    test('the Android manifest advertises exactly the catalogue set', () {
+      // Android 13+ reads locales_config.xml to populate Settings -> Apps ->
+      // Threkir -> Language, a path to a catalogue the in-app picker does not
+      // own alone. Android spells tags the way we do, so this reads the
+      // canonical set directly.
+      final config = File(
+        '../mobile_android/android/app/src/main/res/xml/locales_config.xml',
+      ).readAsStringSync();
+      expect(
+        RegExp(r'android:name="([\w-]+)"')
+            .allMatches(config)
+            .map((m) => m.group(1)!)
+            .toSet(),
+        declared,
+        reason: 'locales_config.xml and lib/l10n disagree about which locales '
+            'ship, so the OS language picker offers the wrong set.',
+      );
+    });
+
+    test('a catalogue no base-language tag reaches carries a reason', () {
+      final reachedByBase =
+          localeTags(literalAfter(support, '_baseToLocale = <String, Locale>{'));
+      final unreached = declared
+          .difference(reachedByBase)
+          .where((t) => !baseFallbackExempt.containsKey(t))
+          .toList()
+        ..sort();
+      expect(unreached, isEmpty,
+          reason: 'a device reporting only a base language (`pt`, `de`) lands '
+              'on _baseToLocale. These catalogues are off it with no recorded '
+              'reason — either map the base to one of them, or add the entry '
+              'to baseFallbackExempt saying how a reader reaches it.');
+    });
+
+    /// Words that only one of the two Portuguese variants uses. A catalogue
+    /// tagged for one variant containing the other's word is the failure this
+    /// whole locale has kept producing: `app_pt.arb` shipped 3434 byte-identical
+    /// Brazilian strings under a European tag for three weeks, and nothing in
+    /// the tree could see it, because every existing guard asks whether a
+    /// catalogue is REACHABLE, never whether it says what its tag claims.
+    ///
+    /// Deliberately narrow. Each entry is a word the other variant does not use
+    /// at all, not merely one it uses less — a frequency judgement would need a
+    /// threshold, and a threshold is a number nobody can defend.
+    const brazilianOnly = <String>[
+      'você', 'senha', 'tela', 'arquivo', 'celular', 'esteira', 'excluir',
+      'registrar', 'compartilhar', 'baixar', 'ônibus', 'geladeira', 'xícara',
+      'aplicativo', 'cadastrar', 'planejar', 'gerenciar', 'tênis',
+      'quilômetro', 'gênero', 'acessar', 'câmera', 'escanear',
+      // `quilômetro` and `gênero` were one class caught one word at a time:
+      // every Brazilian proparoxytone taking ô/ê where Portugal takes ó/é.
+      'cronômetro', 'oxigênio', 'autônomo', 'autônoma',
+      'planilha', 'usuário', 'deletar', 'esporte',
+      // Brazil's progressive gerund, which Portugal writes as `a` + infinitive
+      // (`A carregar…`), and three nouns Portugal says another way.
+      'carregando', 'aguardando', 'procurando', 'enviando', 'criando',
+      'salvando', 'desconectar', 'provedor', 'treinamento',
+      // Bluetooth pairing is `emparelhar` in Portugal, and to monitor is
+      // `monitorizar`; signing in is `iniciar sessão`, so the English loanword
+      // `login` is how a string copied from the Brazilian catalogue shows.
+      'pareado', 'pareada', 'pareamento', 'monitorar', 'monitoramento',
+      'login',
+    ];
+    const europeanOnly = <String>[
+      'palavra-passe', 'ecrã', 'ficheiro', 'telemóvel', 'passadeira',
+      'partilhar', 'quilómetro', 'género', 'autocarro', 'frigorífico',
+      'chávena', 'utilizador', 'ginásio',
+    ];
+
+    /// Which variant a catalogue's tag CLAIMS, for the tags that make a claim.
+    const portugueseVariant = <String, List<String>>{
+      'pt-PT': brazilianOnly,
+      'pt-BR': europeanOnly,
+    };
+
+    test('a Portuguese catalogue does not read as the variant it is not', () {
+      // `excluir`/`arquivo`/`acessar` carry a second sense in Portugal
+      // (exclude / archive / accessible) that is not a Brazilianism at all, so
+      // the scan runs on whole words and these keys are named rather than the
+      // words being dropped from the list — dropping them would blind the
+      // guard to the delete and file senses everywhere else.
+      const senseExempt = <String>{
+        'runDetailMarkDnfSubtitle', 'coachArchiveBanner',
+        'coachArchiveDeleteFailed', 'coachArchiveDeleteBody',
+        'prefsExcludeGymFromReadiness',
+        'settingsAccountRestoreIncompleteArchive',
+        'settingsAccountBackupTracksPartialNotice',
+      };
+      for (final entry in portugueseVariant.entries) {
+        final file = arbTagOverride.entries
+            .where((e) => e.value == entry.key)
+            .map((e) => e.key)
+            .followedBy([entry.key]).first;
+        final arb = File('lib/l10n/app_${file.replaceAll('-', '_')}.arb');
+        expect(arb.existsSync(), isTrue,
+            reason: '${entry.key} claims a catalogue at ${arb.path}.');
+        final messages =
+            (jsonDecode(arb.readAsStringSync()) as Map<String, dynamic>)
+              ..removeWhere((k, v) => k.startsWith('@') || v is! String);
+        final offenders = <String>[];
+        for (final message in messages.entries) {
+          if (senseExempt.contains(message.key)) continue;
+          for (final word in entry.value) {
+            if (RegExp('(?<![a-zà-ÿ])$word(s|es)?(?![a-zà-ÿ])',
+                    caseSensitive: false, unicode: true)
+                .hasMatch(message.value as String)) {
+              offenders.add('${message.key}: "$word"');
+            }
+          }
+        }
+        expect(offenders, isEmpty,
+            reason: '${arb.path} is tagged ${entry.key} but reads as the other '
+                'variant. A tag that disagrees with its content is worse than '
+                'a missing catalogue: the reader is told this is their '
+                'Portuguese and it is not.');
+      }
+    });
+
+    /// Words European Portuguese really does use, but for a DIFFERENT sense
+    /// than the one Brazilian spends them on. `brazilianOnly` above cannot
+    /// hold these: its entries are words Portugal does not use at all, and a
+    /// deny-list entry for a word with a legitimate sense can only be answered
+    /// by dropping the word, which blinds the scan everywhere else. So the
+    /// direction is inverted — the word is banned outright and the sites that
+    /// mean the other thing are named.
+    ///
+    /// `padrão` is *standard* and *pattern* in Portugal; the pre-set value is a
+    /// `predefinição`. Brazilian spends one word on all three, so a catalogue
+    /// derived from it reads as Brazilian at every default. Naming the
+    /// survivors is what makes this hold: a NEW string saying `padrão` fails
+    /// here and forces the per-site decision rather than inheriting the
+    /// ambiguity again. The web twin is `locale_reach.test.ts`.
+    const senseSplit = <String, (String, List<String>)>{
+      'pt-PT': (
+        r'padr(ão|ões)',
+        // loadRampMeaningHigh is "the pattern most associated with injury".
+        ['loadRampMeaningHigh'],
+      ),
+    };
+
+    test('a sense-split word survives only where the other sense was recorded',
+        () {
+      for (final entry in senseSplit.entries) {
+        final (pattern, onlyAt) = entry.value;
+        final word = RegExp('(?<![a-zà-ÿ])$pattern(?![a-zà-ÿ])',
+            caseSensitive: false, unicode: true);
+        final file = arbTagOverride.entries
+            .where((e) => e.value == entry.key)
+            .map((e) => e.key)
+            .followedBy([entry.key]).first;
+        final arb = File('lib/l10n/app_${file.replaceAll('-', '_')}.arb');
+        final messages =
+            (jsonDecode(arb.readAsStringSync()) as Map<String, dynamic>)
+              ..removeWhere((k, v) => k.startsWith('@') || v is! String);
+        expect(
+            messages.entries
+                .where((m) =>
+                    !onlyAt.contains(m.key) && word.hasMatch(m.value as String))
+                .map((m) => m.key)
+                .toList(),
+            isEmpty,
+            reason: '${arb.path} spends $pattern on a sense Portugal does not '
+                'use it for. A default is a `predefinição`; `padrão` is a '
+                'standard or a pattern. If one of these really is the other '
+                'sense, add it to senseSplit with the English source in a '
+                'comment.');
+        // A named site that no longer says the word is a dead entry, and a dead
+        // entry is how an allowlist stops being a decision and becomes noise.
+        for (final key in onlyAt) {
+          expect(messages, contains(key),
+              reason: '${entry.key}: senseSplit names $key, which the '
+                  'catalogue no longer has.');
+          expect(word.hasMatch(messages[key] as String), isTrue,
+              reason: '${entry.key}: $key no longer says $pattern — drop it '
+                  'from senseSplit so the guard covers the key again.');
+        }
+      }
+    });
+
+
+    /// Which SECOND PERSON a catalogue addresses its reader in. Portuguese has
+    /// two and they do not mix inside one catalogue: `tu` takes `teu`/`tua`,
+    /// the enclitic `-te` and a second-person-singular verb, while `você` — the
+    /// register European Portuguese software uses, and the one § 755 chose for
+    /// every Portuguese surface derived since — takes `seu`/`sua`, `-lhe` and a
+    /// third-person verb. `app_pt.arb` used both: 39 strings on the tu
+    /// possessive against 203 on `seu`/`sua`, plus 7 tu-only finite verbs, 6
+    /// enclitics and one `contigo`. Web's `pt-PT.ts` is unanimous on the
+    /// possessive axis (335 `seu`/`sua`, zero of these) and `app_pt_BR.arb`
+    /// carries none at all, so the phone was the one surface telling one reader
+    /// it was two products.
+    ///
+    /// The markers split into two kinds and only one kind can be listed, so
+    /// this is two tests. A [tuOnlyMarker] is a form no other person, tense or
+    /// part of speech spells the same way, which makes a token list exact. The
+    /// affirmative imperative is the other kind and is unlistable: its tu form
+    /// is letter-for-letter the third-person present indicative, so `Adiciona
+    /// um peso` (tu, *add a weight*) and `a app adiciona um peso` (*the app
+    /// adds a weight*) are the same word, and any token banning it fires on
+    /// ordinary prose. That half is derived against the Brazilian catalogue
+    /// instead — see the second test.
+    ///
+    /// `precisas` is deliberately absent: it is `precisar` in the tu form AND
+    /// the feminine plural of `preciso`, and `zonas precisas` is a live string
+    /// in both catalogues. Bare `tu` is absent for the opposite reason — a
+    /// label whose whole value names the reader is not a possessive in running
+    /// prose, and web pt-PT ships those same two keys as `(tu)` and `Tu: `
+    /// after § 760 put the pronoun back into them.
+    const tuOnlyMarkers = <String>[
+      'teu', 'tua', 'teus', 'tuas',
+      'podes', 'estás', 'tens', 'queres', 'vais', 'deves', 'sabes', 'fazes',
+      'és', 'vês', 'dizes', 'escolhes', 'alteras', 'tomas',
+      'tiveres', 'estiveres', 'quiseres', 'puderes', 'fizeres',
+      'fizeste', 'foste', 'tiveste', 'estiveste',
+      'tenhas', 'estejas', 'sejas', 'possas', 'vás', 'faças',
+      'contigo',
+    ];
+
+    /// The enclitic object pronoun. `você` takes `-lhe` or `-o`/`-a`, never
+    /// this, so a hyphen followed by exactly `te` is a tu marker wherever it
+    /// lands. Verified to fire on nothing else across all seven catalogues.
+    final tuEnclitic =
+        RegExp(r'(?<![a-zà-ÿ])[a-zà-ÿ]+-te(?![a-zà-ÿ])',
+            caseSensitive: false, unicode: true);
+
+    /// Key prefixes allowed to address the reader as `tu`, with the reason.
+    /// **Empty, and that is the finding.** § 760 unified the `tts*` voice cues
+    /// on tu — correctly observing that a spoken coach cannot address one
+    /// runner two ways mid-run — but measured only inside that block. The
+    /// OTHER spoken block, the 44 `guided*` coach scripts, was already `você`
+    /// ("Comece leve", "Mantenha o ritmo"), so the two halves of one voice
+    /// disagreed: the guided coach said `Comece` and the pace cue said
+    /// `Acelera`, in the same run, through the same engine. Applying § 760's
+    /// own principle one block wider reverses its choice of variant, because
+    /// the catalogue-wide register is § 755's `você`. Both blocks are now that.
+    ///
+    /// Each prefix added here is asserted below to still cover a key the guard
+    /// would otherwise flag, so an exemption cannot outlive the strings it was
+    /// written for.
+    const registerExemptPrefixes = <String>[];
+
+    /// European/Brazilian word pairs that differ by the same one-letter ending
+    /// an imperative does and are not verbs at all, so the derived scan below
+    /// cannot tell them apart on shape. `equipa`/`equipe` is *team*;
+    /// `este`/`esta`, `esse`/`essa` and `deste`/`desta` are demonstratives
+    /// agreeing with a noun whose gender the variants disagree on (`o ecrã`
+    /// against `a tela`, the § 760 rule; `essa comunicação` against `esse
+    /// relato`). `aceite`/`aceita` is the participle *accepted*, not an
+    /// imperative. Each is asserted to still be in use.
+    const variantWordPairs = <String, String>{
+      'equipa': 'equipe',
+      'este': 'esta',
+      'esta': 'este',
+      'essa': 'esse',
+      'esse': 'essa',
+      'nesta': 'neste',
+      'deste': 'desta',
+      'aceite': 'aceita',
+    };
+
+    Map<String, String> arbMessages(String path) {
+      final file = File(path);
+      expect(file.existsSync(), isTrue, reason: '$path is missing.');
+      final raw = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      return <String, String>{
+        for (final e in raw.entries)
+          if (!e.key.startsWith('@') && e.value is String)
+            e.key: e.value as String,
+      };
+    }
+
+    bool registerExempt(String key) =>
+        registerExemptPrefixes.any((p) => key.startsWith(p));
+
+    List<String> tuMarkersIn(String value) => [
+          for (final marker in tuOnlyMarkers)
+            if (RegExp('(?<![a-zà-ÿ])$marker(?![a-zà-ÿ])',
+                    caseSensitive: false, unicode: true)
+                .hasMatch(value))
+              '"$marker"',
+          if (tuEnclitic.hasMatch(value)) 'the "-te" enclitic',
+        ];
+
+    test('a Portuguese catalogue addresses its reader in one register', () {
+      // Both catalogues, not just the European one. `app_pt_BR.arb` is the
+      // reference the derived imperative scan below measures against, so a tu
+      // marker landing in IT makes that scan blind rather than merely wrong —
+      // the two words would cancel and the pair would never be reported.
+      for (final tag in ['pt', 'pt_BR']) {
+        final offenders = <String>[];
+        for (final message in arbMessages('lib/l10n/app_$tag.arb').entries) {
+          if (registerExempt(message.key)) continue;
+          for (final marker in tuMarkersIn(message.value)) {
+            offenders.add('${message.key}: $marker');
+          }
+        }
+        expect(offenders, isEmpty,
+            reason: 'app_$tag.arb addresses its reader as `tu` here and as '
+                '`você` everywhere else. One catalogue cannot be two products '
+                'to one reader: use `seu`/`sua`, `-lhe` and a third-person '
+                'verb, per decisions § 755. If a string really must be tu, it '
+                'belongs in the spoken-cue block or in registerExemptPrefixes '
+                'with the reason written down.');
+      }
+    });
+
+    test('the pt-PT catalogue uses no tu imperative its Brazilian twin does not',
+        () {
+      // Derived rather than listed, because the tu affirmative imperative is
+      // spelled exactly like the third-person present indicative and no token
+      // can separate them. `app_pt_BR.arb` is uniformly `você` (pinned by the
+      // test above), so a word this catalogue uses where Brazilian uses the
+      // same stem with the imperative's other ending IS the tu form: `Tenta`
+      // against `Tente`, `Adiciona` against `Adicione`, `Escolhe` against
+      // `Escolha`. No threshold, no vocabulary list, and a new one fails here
+      // the day it lands.
+      final european = arbMessages('lib/l10n/app_pt.arb');
+      final brazilian = arbMessages('lib/l10n/app_pt_BR.arb');
+      final word = RegExp(r'[a-zà-ÿ]+', caseSensitive: false, unicode: true);
+      Set<String> wordsOf(String v) =>
+          word.allMatches(v).map((m) => m.group(0)!.toLowerCase()).toSet();
+
+      final offenders = <String>[];
+      for (final message in european.entries) {
+        if (registerExempt(message.key)) continue;
+        final other = brazilian[message.key];
+        if (other == null) continue;
+        final ours = wordsOf(message.value);
+        final theirs = wordsOf(other);
+        for (final a in ours.difference(theirs)) {
+          if (a.length < 4) continue;
+          for (final b in theirs.difference(ours)) {
+            if (b.length < 4) continue;
+            if (a.substring(0, a.length - 1) != b.substring(0, b.length - 1)) {
+              continue;
+            }
+            final swap = '${a[a.length - 1]}${b[b.length - 1]}';
+            if (swap != 'ae' && swap != 'ea') continue;
+            if (variantWordPairs[a] == b) continue;
+            offenders.add('${message.key}: "$a" where pt-BR says "$b"');
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'app_pt.arb gives an imperative in the tu form. Portugal '
+              'says `Tente`, not `Tenta`, in the register this catalogue uses '
+              'everywhere else (decisions § 755). If the word is not a verb, '
+              'add the pair to variantWordPairs with what it means.');
+    });
+
+    test('every register exemption still needs its exemption', () {
+      // An exemption that covers nothing has stopped being a decision and
+      // become noise — the shape senseSplit above already uses for its named
+      // sites. The spoken-cue prefixes must still name a key the guard would
+      // otherwise flag, and each variant pair must still be a word both
+      // catalogues use.
+      final european = arbMessages('lib/l10n/app_pt.arb');
+      final brazilian = arbMessages('lib/l10n/app_pt_BR.arb');
+      for (final prefix in registerExemptPrefixes) {
+        final covered = european.entries.where(
+            (e) => e.key.startsWith(prefix) && tuMarkersIn(e.value).isNotEmpty);
+        expect(covered, isNotEmpty,
+            reason: 'registerExemptPrefixes carries "$prefix", but no key '
+                'under it says `tu` any more. Drop the prefix so the guard '
+                'covers those keys again.');
+      }
+      final whole = <String>[
+        ...european.values,
+        ...brazilian.values,
+      ].join('\n');
+      for (final pair in variantWordPairs.entries) {
+        for (final word in [pair.key, pair.value]) {
+          expect(
+              RegExp('(?<![a-zà-ÿ])$word(?![a-zà-ÿ])',
+                      caseSensitive: false, unicode: true)
+                  .hasMatch(whole),
+              isTrue,
+              reason: 'variantWordPairs names "$word", which neither '
+                  'Portuguese catalogue uses any more.');
+        }
+      }
+    });
+    test('every base-fallback exemption still needs its exemption', () {
+      final reachedByBase =
+          localeTags(literalAfter(support, '_baseToLocale = <String, Locale>{'));
+      for (final entry in baseFallbackExempt.entries) {
+        expect(declared, contains(entry.key),
+            reason: '${entry.key} is exempted from the base-fallback rule but '
+                'ships no catalogue — drop the entry.');
+        expect(reachedByBase, isNot(contains(entry.key)),
+            reason: '${entry.key} is now a base-fallback target '
+                '(${entry.value}) — drop it from baseFallbackExempt so the '
+                'guard covers it.');
+        expect(entry.value.trim(), isNotEmpty);
+      }
+    });
+  });
+
+  group('translated catalogues quote with their own marks, never "', () {
+    // Every translated locale's glossary (.claude/agents/i18n/languages/)
+    // sets its quotation marks, so a straight `"` in one of its messages is a
+    // slip — 99 of them shipped across pt, pt_BR, de, es, fr and ja before
+    // this guard. A straight double quote is never ICU syntax (ICU escapes
+    // with the apostrophe), so every one in a message value is a quotation
+    // mark. Keyed on the ARB suffix and checked against the tree in both
+    // directions, so a new locale cannot ship without naming its marks here.
+    // English quotes with the straight pair and is left out. The web twin is
+    // in apps/web/src/lib/i18n/messages_parity.test.ts.
+    const marks = {
+      'de': '„…“',
+      'es': '«…»',
+      'fr': '« … »',
+      'ja': '「…」',
+      'pt': '“…”',
+      'pt_BR': '“…”',
+    };
+    final arbLocales = [
+      for (final f in Directory('lib/l10n').listSync().whereType<File>())
+        ...RegExp(r'^app_(\w+)\.arb$')
+            .allMatches(f.uri.pathSegments.last)
+            .map((m) => m.group(1)!)
+            .where((l) => l != 'en'),
+    ]..sort();
+
+    test('every translated ARB names its quotation marks', () {
+      expect(arbLocales, unorderedEquals(marks.keys),
+          reason: 'add the locale\'s glossary marks to `marks` (or drop a '
+              'locale that no longer ships)');
+    });
+
+    for (final loc in arbLocales) {
+      test('app_$loc.arb has no straight double quote in a message', () {
+        final messages =
+            jsonDecode(File('lib/l10n/app_$loc.arb').readAsStringSync())
+                as Map<String, dynamic>;
+        final straight = [
+          for (final e in messages.entries)
+            if (!e.key.startsWith('@') &&
+                e.value is String &&
+                (e.value as String).contains('"'))
+              e.key,
+        ];
+        expect(straight, isEmpty,
+            reason: 'app_$loc.arb quotes with a straight " in these messages; '
+                'its glossary uses ${marks[loc]}');
+      });
+    }
+
+    final getterFiles = [
+      for (final f in Directory('lib/l10n/gen').listSync().whereType<File>())
+        if (RegExp(r'^app_localizations_\w+\.dart$')
+                .hasMatch(f.uri.pathSegments.last) &&
+            f.uri.pathSegments.last != 'app_localizations_en.dart')
+          f.path,
+    ]..sort();
+
+    test('a getter file exists for every translated language', () {
+      // pt and pt_BR share app_localizations_pt.dart, so the language part
+      // of each ARB suffix is what must have a file.
+      final languages = {for (final l in arbLocales) l.split('_').first};
+      expect(
+          getterFiles.map((p) => RegExp(r'app_localizations_(\w+)\.dart$')
+              .firstMatch(p)!
+              .group(1)),
+          unorderedEquals(languages));
+    });
+
+    for (final path in getterFiles) {
+      final name = File(path).uri.pathSegments.last;
+      test('$name carries no straight double quote', () {
+        // The ARBs above are not what ships: these getters are, and they are
+        // kept in step with the ARBs by hand.
+        final lines = File(path).readAsLinesSync();
+        final straight = [
+          for (var i = 0; i < lines.length; i++)
+            if (!lines[i].trimLeft().startsWith('//') &&
+                lines[i].contains('"'))
+              i + 1,
+        ];
+        expect(straight, isEmpty,
+            reason: '$name quotes with a straight " on these lines; its '
+                'glossary sets its own quotation marks');
+      });
+    }
+  });
+
+  group('a header that names its web twin names a file that exists', () {
+    // A doc comment pointing at a path the counterpart moved out of is a
+    // claim the next reader cannot follow, and it is invisible to
+    // `check_parity_pair_registry.mjs`, which holds paths of its own rather
+    // than reading these. Twenty-six distinct web paths had gone stale under
+    // the 2026 `src/lib` re-foldering — including registered pairs such as
+    // `privacy`, `segments`, `training` and `training_load` — before anything
+    // read them (decisions § 989).
+    final ref = RegExp(r'apps/web/src/[A-Za-z0-9_./\-]+\.(?:ts|svelte|mjs)');
+    final repoRoot = Directory('../..');
+
+    Iterable<File> dartSources() sync* {
+      for (final base in <String>['lib', 'test', '../../packages']) {
+        final dir = Directory(base);
+        if (!dir.existsSync()) continue;
+        for (final e in dir.listSync(recursive: true)) {
+          if (e is File && e.path.endsWith('.dart')) yield e;
+        }
       }
     }
 
-    test('no mounted check sits BELOW the setState it was meant to guard', () {
-      // The exact shape of the runs_screen sync bug: `setState(...)` followed
-      // a line or two later by `if (!mounted) return;`. The author knew a
-      // guard was needed and put it one statement too late, so the crash
-      // happens before the check runs.
-      final offenders = <String>[];
-      for (final f in libDartFiles()) {
-        final lines = f.readAsLinesSync();
-        for (var i = 0; i < lines.length; i++) {
-          if (!lines[i].contains('setState(')) continue;
-          for (var j = i + 1; j < lines.length && j <= i + 3; j++) {
-            final ahead = lines[j].trim();
-            // An intervening `await` (or a new block / a second setState)
-            // makes a later mounted check the RIGHT guard for whatever
-            // follows it, not a late guard for the setState above.
-            if (ahead.startsWith('}') ||
-                ahead.contains('await ') ||
-                ahead.contains('setState(')) break;
-            if (RegExp(r'if \(!mounted\)\s*return').hasMatch(ahead)) {
-              offenders.add('${f.path}:${i + 1}');
-              break;
-            }
+    test('every referenced web path resolves', () {
+      final stale = <String, Set<String>>{};
+      var scanned = 0;
+      for (final f in dartSources()) {
+        for (final m in ref.allMatches(f.readAsStringSync())) {
+          scanned++;
+          final target = File('${repoRoot.path}/${m.group(0)}');
+          if (!target.existsSync()) {
+            stale.putIfAbsent(m.group(0)!, () => <String>{}).add(f.path);
           }
         }
       }
-      expect(offenders, isEmpty,
-          reason: 'a `if (!mounted) return;` appears just AFTER a setState — '
-              'the guard has to come first or it protects nothing:\n'
-              '${offenders.join('\n')}');
+      expect(scanned, greaterThan(100),
+          reason: 'the scan found almost nothing — the pattern or the walk '
+              'is broken, not the tree');
+      expect(stale, isEmpty,
+          reason: 'a header names a web file that no longer exists at that '
+              'path; find where it moved and update the comment');
     });
+  });
 
-    test('every picker await is mount-checked before the next setState', () {
-      // An OS picker hands control to another app; the user can dismiss the
-      // whole screen from there and come back to a dead State. These are the
-      // awaits in lib/ that leave the app entirely.
-      const triggers = [
-        'pickImage(',
-        'FilePicker.pickFiles(',
-        'await _pick()',
-      ];
-      final offenders = <String>[];
-      for (final f in libDartFiles()) {
-        final src = f.readAsStringSync();
-        for (final trigger in triggers) {
-          var from = 0;
-          while (true) {
-            final at = src.indexOf(trigger, from);
-            if (at < 0) break;
-            from = at + trigger.length;
-            final nextSetState = src.indexOf('setState(', from);
-            final nextMounted = src.indexOf('mounted', from);
-            if (nextSetState < 0) continue;
-            if (nextMounted < 0 || nextMounted > nextSetState) {
-              offenders.add(
-                  '${f.path} (${trigger.trim()} at offset $at)');
-            }
+  group('user-facing copy names a destination that exists', () {
+    // Reason: the Phase 4 nav reshape (decisions § 139) deleted the Run tab,
+    // and English strings went on telling people to tap it. The sweep that
+    // closed the first of those (#921 / #923) left the second behind, which is
+    // the argument for deriving the check instead of re-reading the copy by
+    // hand: a name nothing renders should fail a test, not wait for the next
+    // reader to notice it.
+    test('no English string points at a tab the app no longer has', () {
+      // The live set is DERIVED from the two files that render the app's tab
+      // strips — the shell's bottom nav / rail and the Fitness hub's tabs and
+      // surface peers. Only labels in a `label:` position (or a FitnessTab
+      // switch arm) count: home_screen.dart also resolves `l10n.navRun` for
+      // the "you are already on this page" banner, which names a PAGE, not a
+      // tab, and must not re-admit the very name this guard exists to catch.
+      final home = File('lib/screens/home_screen.dart').readAsStringSync();
+      final hub =
+          File('lib/screens/fitness_hub_screen.dart').readAsStringSync();
+      final labelled = RegExp(r'label:\s*(?:Text\(\s*)?l(?:10n)?\.(\w+)');
+      final tabArm = RegExp(r'FitnessTab\.\w+\s*=>\s*l(?:10n)?\.(\w+)');
+      final keys = <String>{
+        for (final src in [home, hub])
+          for (final m in labelled.allMatches(src)) m.group(1)!,
+        for (final m in tabArm.allMatches(hub)) m.group(1)!,
+      };
+      final arb = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
+      final oneWord = RegExp(r'^[A-Z][a-z]+$');
+      final live = <String>{
+        for (final k in keys)
+          if (arb[k] is String && oneWord.hasMatch(arb[k] as String))
+            arb[k] as String,
+      };
+      expect(live, containsAll(<String>['Home', 'Fitness', 'Social', 'You']),
+          reason: 'the bottom-nav labels did not resolve — the shell changed '
+              'shape, so this guard is reading nothing');
+      expect(live.contains('Run'), isFalse,
+          reason: 'the recorder is reached from the Log action, not a tab — a '
+              '"Run" label back in a tab strip means this guard needs '
+              'rewriting, not that the old copy became true');
+      final named = RegExp(r'\b([A-Z][a-z]+) tab\b');
+      final stale = <String, String>{};
+      for (final e in arb.entries) {
+        if (e.key.startsWith('@') || e.value is! String) continue;
+        for (final m in named.allMatches(e.value as String)) {
+          if (!live.contains(m.group(1))) stale[e.key] = m.group(0)!;
+        }
+      }
+      expect(stale, isEmpty,
+          reason: 'user-facing copy names a tab the app no longer has — name a '
+              'surface that exists, and give the string a CTA if it is the '
+              'only instruction someone gets');
+    });
+  });
+
+  group('no integration scrapes a third party\'s website', () {
+    // parkrun-import read parkrun's results pages against its terms, and the
+    // UltraSignup results leg read UltraSignup's internal name-keyed feed.
+    // Both were removed on mobile and web; nothing here may call either again.
+    // The parkrun barcode and an UltraSignup race LISTING stay — neither
+    // fetches anything from those sites.
+    final roots = [Directory('lib'), Directory('../../packages/api_client/lib')];
+    final banned = <Pattern>[
+      RegExp(r'parkrun-import(?![a-z])'),
+      'importParkrunResults',
+      RegExp(r'UltraSignUp|ultraSignUp'),
+      'historybyname',
+    ];
+
+    test('no client source names a removed scraper leg', () {
+      final hits = <String>[];
+      for (final root in roots) {
+        expect(root.existsSync(), isTrue, reason: '${root.path} moved');
+        for (final f in root.listSync(recursive: true).whereType<File>()) {
+          if (!f.path.endsWith('.dart')) continue;
+          final src = f.readAsStringSync();
+          for (final p in banned) {
+            if (p.allMatches(src).isNotEmpty) hits.add('${f.path}: $p');
           }
         }
       }
-      expect(offenders, isEmpty,
-          reason: 'a setState follows a picker await with no mounted check '
-              'in between:\n${offenders.join('\n')}');
+      expect(hits, isEmpty,
+          reason: 'a removed scraper integration is back. parkrun results and '
+              'UltraSignup results are entered by manual paste, not fetched');
     });
   });
 }

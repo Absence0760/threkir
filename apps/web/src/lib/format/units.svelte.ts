@@ -2,7 +2,7 @@
 ///
 /// `preferredUnit` is a module-level reactive signal — any Svelte view
 /// that calls `formatDistance` or `formatPace` re-renders automatically
-/// when the user flips the setting on `/settings/preferences`. The auth
+/// when the user flips the setting on `/settings/display`. The auth
 /// store calls `setUnit(...)` once after the profile loads so all views
 /// pick up the saved preference without plumbing it through every call.
 ///
@@ -12,8 +12,10 @@
 
 import type { PreferredUnit } from '../types';
 import { currentLocale } from '../i18n/store.svelte';
-import { formatDecimal, formatInteger } from './number';
-import { paceMinutesSeconds, isMeaningfulPace } from './pace_format';
+import { formatDecimal } from './number';
+import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
+import { formatShortDistance } from './short_distance';
+import { formatElevationIn, formatStrideLengthIn } from './elevation';
 import {
 	type WeightUnit,
 	parseWeightUnit,
@@ -85,15 +87,7 @@ export function weightUnitLabel(): WeightUnit {
 /// metric distances render in metres; sub-mile imperial distances
 /// render in yards for parity with how runners read race distances.
 export function formatDistance(metres: number): string {
-	const loc = currentLocale();
-	if (unit.value === 'mi') {
-		const miles = metres / METRES_PER_MILE;
-		if (miles >= 1) return `${formatDecimal(miles, 2, loc)} mi`;
-		const yards = Math.round(metres * 1.09361);
-		return `${formatInteger(yards, loc)} yd`;
-	}
-	if (metres >= 1000) return `${formatDecimal(metres / 1000, 2, loc)} km`;
-	return `${formatInteger(Math.round(metres), loc)} m`;
+	return formatShortDistance(metres, unit.value, currentLocale());
 }
 
 /// Pace label: "m:ss" with the appropriate per-unit suffix baked in
@@ -150,26 +144,31 @@ export function fmtKm(metres: number | null | undefined, digits = 1): string {
 	return `${formatDecimal(metres / 1000, digits, loc)} km`;
 }
 
-const FEET_PER_METRE = 3.28084;
-
 /// Elevation gain label: `Xm` / `Xft` with the unit baked in. Used
 /// for vert ("vertical metres climbed") stats on dashboards + run
 /// lists. Persona-hunt Round 3 finding Ultra #4 — pro / ultra
 /// runners track vert as a first-class metric and the dashboard
-/// hid it. null / undefined → '—'. Rounds to integer because
-/// sub-metre precision on cumulative gain is GPS-noise floor.
+/// hid it. null / undefined → '—'. The arithmetic lives in
+/// `elevation.ts`; this supplies the unit + locale signals.
 export function formatElevation(metres: number | null | undefined): string {
-	if (metres == null) return '—';
-	const loc = currentLocale();
-	if (unit.value === 'mi') return `${formatInteger(Math.round(metres * FEET_PER_METRE), loc)} ft`;
-	return `${formatInteger(Math.round(metres), loc)} m`;
+	return formatElevationIn(metres, unit.value, currentLocale());
+}
+
+/// Stride length in the preferred unit, two decimals: "1.18 m" / "3.87 ft".
+export function formatStrideLength(metres: number | null | undefined): string {
+	return formatStrideLengthIn(metres, unit.value, currentLocale());
 }
 
 /// Plan-surface pace formatter. Input is always seconds-per-km (the
 /// canonical unit stored on `plan_workouts`); we convert to /mi when
 /// the user prefers miles.
 export function fmtPace(secPerKm: number | null | undefined): string {
-	if (secPerKm == null || secPerKm <= 0) return '—';
+	if (secPerKm == null || !Number.isFinite(secPerKm) || secPerKm <= 0) return '—';
 	const sec = unit.value === 'mi' ? secPerKm * (METRES_PER_MILE / 1000) : secPerKm;
 	return `${paceMinutesSeconds(sec)}/${unit.value}`;
+}
+
+/// Plan-surface pace tolerance, in the same unit `fmtPace` shows the pace in.
+export function fmtPaceTolerance(secPerKm: number): string {
+	return paceToleranceLabel(secPerKm, unit.value);
 }

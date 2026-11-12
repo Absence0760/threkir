@@ -30,6 +30,11 @@ data class Checkpoint(
     // the snapshot and the runner would lose the in-flight run.
     val bpmSum: Long = 0L,
     val bpmCount: Long = 0L,
+    // Active milliseconds the heart-rate sensor was delivering by `savedAtMs`.
+    // NULL, not 0, when nothing measured it — a checkpoint written by a build
+    // predating the field would otherwise recover as zero coverage and suppress
+    // an average that build would have saved (decisions § 1083).
+    val hrAvailableMs: Long? = null,
     val activityType: String = "run",
     val laps: List<CheckpointLap> = emptyList(),
     // Cumulative pedometer steps for the in-flight run, and the runner's
@@ -48,6 +53,29 @@ data class Checkpoint(
     // checkpoint (no paused field) recovers the raw span exactly as it
     // did before the field existed — see the forward-compat note above.
     val pausedAccumulatedMs: Long = 0L,
+    // Which estimator produced [distanceM], and how much of it the pedometer
+    // filled across GPS gaps. Null on a checkpoint written by a build that
+    // summed raw hops, so a recovered run of that vintage claims no estimator.
+    val distanceEstimator: String? = null,
+    val distanceStepFilledM: Double? = null,
+    // What of [distanceStepFilledM] the gaps' chords would not have credited.
+    // Null on an older checkpoint, whose run uploads without it.
+    val distanceStepOverChordM: Double? = null,
+    // Which stream recorded the fixes so far, so a recovered run says what
+    // the normal stop path would. Null on an older checkpoint, or before the
+    // run has a track.
+    val locationProvider: String? = null,
+    // The receiver's signal-quality summary so far, so a recovered run keeps
+    // `metadata.gnss_signal`. Null on an older checkpoint or before a reading.
+    val gnssSignal: GnssSignalSummary? = null,
+    // Whether the track file holds every fix the estimator took, off-track
+    // ones flagged. False on a checkpoint from a build that stored only the
+    // fixes inside the 30 m gate, so its recovered run claims nothing.
+    val trackComplete: Boolean = false,
+    // The workout review so far, the step in progress as a skipped row, so a
+    // recovered run keeps its link to the plan workout and reads `partial`.
+    // Null on a free run or an older checkpoint.
+    val workoutReview: com.runapp.watchwear.workout.WorkoutReview? = null,
 )
 
 @Serializable
@@ -86,4 +114,22 @@ class CheckpointStore(private val context: Context) {
     suspend fun clear() {
         context.checkpointDataStore.edit { prefs -> prefs.remove(KEY_CHECKPOINT) }
     }
+
+    /// Clears the checkpoint only if it is [runId]'s, in one edit. The
+    /// finished-run cleanup runs after the queue write, by which time the
+    /// next run may have written its own checkpoint, and that one is its
+    /// only crash protection.
+    suspend fun clearIfFor(runId: String) {
+        context.checkpointDataStore.edit { prefs ->
+            val stored = prefs[KEY_CHECKPOINT]?.let { raw ->
+                runCatching { json.decodeFromString(Checkpoint.serializer(), raw) }.getOrNull()
+            }
+            if (checkpointClearableFor(stored, runId)) prefs.remove(KEY_CHECKPOINT)
+        }
+    }
 }
+
+/// An unreadable checkpoint recovers nothing, so it goes; a readable one goes
+/// only when it belongs to the run being cleaned up.
+internal fun checkpointClearableFor(stored: Checkpoint?, runId: String): Boolean =
+    stored == null || stored.runId == runId

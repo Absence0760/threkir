@@ -6,10 +6,21 @@ import {
 	applyRunMetadataPatch,
 	normalisePlanWorkoutNotes,
 	readGlobalSegmentsScoredCount,
+	readGlobalSegmentsMatcherVersion,
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
-	GLOBAL_SEGMENT_SCORING_LIMIT,
+	singleEmbed,
+	fitnessSnapshotDue,
+	publicRouteListFill,
 } from './data_normalise.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { stripComments } from './strip_comments.js';
+import type { JsonObject } from '../types.js';
+import {
+	PUBLIC_ROUTE_LIST_COLUMNS,
+	ROUTE_LIST_COLUMNS,
+} from '../routes/route_list_columns';
 
 // ---------------------------------------------------------------------------
 // trimOrNull — the JS `s?.trim() || null` mirror
@@ -87,23 +98,19 @@ test('normaliseRunMetadataFields: ignores keys whose value is not a string', () 
 // applyRunMetadataPatch — the end-to-end metadata merge
 // ---------------------------------------------------------------------------
 
-const NOW = '2026-06-01T12:00:00.000Z';
-
 test('applyRunMetadataPatch: writes title + notes onto an empty bag', () => {
-	const next = applyRunMetadataPatch(null, { title: 'A', notes: 'B' }, NOW);
-	assert.deepEqual(next, { title: 'A', notes: 'B', last_modified_at: NOW });
+	const next = applyRunMetadataPatch(null, { title: 'A', notes: 'B' });
+	assert.deepEqual(next, { title: 'A', notes: 'B' });
 });
 
 test('applyRunMetadataPatch: preserves unrelated keys', () => {
 	const next = applyRunMetadataPatch(
 		{ activity_type: 'run', strava_id: 12345 },
 		{ title: 'A' },
-		NOW,
 	);
 	assert.equal(next.activity_type, 'run');
 	assert.equal(next.strava_id, 12345);
 	assert.equal(next.title, 'A');
-	assert.equal(next.last_modified_at, NOW);
 });
 
 test('applyRunMetadataPatch: empty patch field REMOVES the key (the bug fix)', () => {
@@ -113,7 +120,6 @@ test('applyRunMetadataPatch: empty patch field REMOVES the key (the bug fix)', (
 	const next = applyRunMetadataPatch(
 		{ title: 'Old', notes: 'Old notes' },
 		{ title: 'New', notes: '   ' },
-		NOW,
 	);
 	assert.equal(next.title, 'New');
 	assert.equal(Object.prototype.hasOwnProperty.call(next, 'notes'), false,
@@ -121,13 +127,15 @@ test('applyRunMetadataPatch: empty patch field REMOVES the key (the bug fix)', (
 });
 
 test('applyRunMetadataPatch: empty patch field on an empty bag is a no-op', () => {
-	const next = applyRunMetadataPatch({}, { notes: '' }, NOW);
+	const next = applyRunMetadataPatch({}, { notes: '' });
 	assert.equal(Object.prototype.hasOwnProperty.call(next, 'notes'), false);
 });
 
-test('applyRunMetadataPatch: always stamps last_modified_at', () => {
-	const next = applyRunMetadataPatch({ title: 'x' }, {}, NOW);
-	assert.equal(next.last_modified_at, NOW);
+test('applyRunMetadataPatch: stamps no device clock (decisions § 2147)', () => {
+	// The browser's clock is not the server's, and nothing reads the stamp:
+	// a run edit conflict is decided by the server-stamped `updated_at`.
+	const next = applyRunMetadataPatch({ title: 'x' }, {});
+	assert.equal(Object.prototype.hasOwnProperty.call(next, 'last_modified_at'), false);
 });
 
 test('applyRunMetadataPatch: only the keys in fields are touched — '
@@ -137,7 +145,6 @@ test('applyRunMetadataPatch: only the keys in fields are touched — '
 	const next = applyRunMetadataPatch(
 		{ title: 'Keep me', other_field: 'untouched' },
 		{ notes: 'New' },
-		NOW,
 	);
 	assert.equal(next.title, 'Keep me');
 	assert.equal(next.other_field, 'untouched');
@@ -197,9 +204,13 @@ test('readGlobalSegmentsScoredCount: well-formed value parses (0 is valid)', () 
 	assert.equal(readGlobalSegmentsScoredCount({ global_segments_scored_count: 0 }), 0);
 });
 
+// The matcher version the count-rule cases run under; the version rule has
+// cases of its own below.
+const V = 2;
+
 test('shouldRescoreGlobalSegments: never-scored run → true', () => {
-	assert.equal(shouldRescoreGlobalSegments(null, 12), true);
-	assert.equal(shouldRescoreGlobalSegments({}, 12), true);
+	assert.equal(shouldRescoreGlobalSegments(null, 12, V), true);
+	assert.equal(shouldRescoreGlobalSegments({}, 12, V), true);
 });
 
 test('shouldRescoreGlobalSegments: SKIPS the expensive path when the run was '
@@ -207,69 +218,78 @@ test('shouldRescoreGlobalSegments: SKIPS the expensive path when the run was '
 	// This is the regression guard: a scored run whose catalogue has not
 	// grown must NOT re-fetch + re-match. Before the fix the function had
 	// no stamp to read, so this was unconditionally re-scored every view.
-	const meta = { global_segments_scored_count: 12 };
-	assert.equal(shouldRescoreGlobalSegments(meta, 12), false);
-	assert.equal(shouldRescoreGlobalSegments(meta, 5), false); // catalogue shrank
+	const meta = { global_segments_scored_count: 12, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(meta, 12, V), false);
+	assert.equal(shouldRescoreGlobalSegments(meta, 5, V), false); // catalogue shrank
 });
 
 test('shouldRescoreGlobalSegments: re-scores when the catalogue grew', () => {
-	assert.equal(shouldRescoreGlobalSegments({ global_segments_scored_count: 12 }, 13), true);
+	assert.equal(shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: V }, 13, V), true);
 });
 
 test('shouldRescoreGlobalSegments: unknown active count fails open to true', () => {
-	const meta = { global_segments_scored_count: 12 };
-	assert.equal(shouldRescoreGlobalSegments(meta, null), true);
-	assert.equal(shouldRescoreGlobalSegments(meta, undefined), true);
+	const meta = { global_segments_scored_count: 12, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(meta, null, V), true);
+	assert.equal(shouldRescoreGlobalSegments(meta, undefined, V), true);
 });
 
-test('shouldRescoreGlobalSegments: a saturated stamp is NOT re-scored forever '
-	+ 'once the active catalogue outgrows the fetch limit', () => {
-	// The gate compares an UNCAPPED count(*) of the active catalogue
-	// against a stamp written from a fetch capped at
-	// GLOBAL_SEGMENT_SCORING_LIMIT. Without the clamp, a catalogue of 520
-	// makes `520 > 500` permanently true, so every run re-fetches 500
-	// polylines + re-runs the haversine match on EVERY view forever —
-	// a net pessimisation vs not gating at all. Pin the exact case.
-	const saturated = { global_segments_scored_count: GLOBAL_SEGMENT_SCORING_LIMIT };
-	assert.equal(shouldRescoreGlobalSegments(saturated, 520), false);
-	assert.equal(shouldRescoreGlobalSegments(saturated, 900), false);
-	assert.equal(shouldRescoreGlobalSegments(saturated, 5_000), false);
+test('shouldRescoreGlobalSegments: a catalogue past the old 500-row fetch is tracked exactly', () => {
+	// The stamp is now the active count the pass ran under (the scorer reads
+	// candidates near the track, not a capped catalogue), so growth past 500
+	// is real growth and must re-score, and a stamp at the count must not.
+	// A run stamped 500 by the old capped fetch is re-scored once, because it
+	// never saw the tail.
+	const old = { global_segments_scored_count: 500, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(old, 520, V), true);
+	const current = { global_segments_scored_count: 5_000, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(current, 5_000, V), false);
+	assert.equal(shouldRescoreGlobalSegments(current, 5_001, V), true);
 });
 
-test('shouldRescoreGlobalSegments: boundary cases around the fetch limit', () => {
-	// 499 / 500 / 501 against a 500-row stamp — the transition the drift
-	// bug turned into a cliff.
-	const saturated = { global_segments_scored_count: 500 };
-	assert.equal(GLOBAL_SEGMENT_SCORING_LIMIT, 500, 'boundary cases below assume a 500-row cap');
-	assert.equal(shouldRescoreGlobalSegments(saturated, 499), false);
-	assert.equal(shouldRescoreGlobalSegments(saturated, 500), false);
-	assert.equal(shouldRescoreGlobalSegments(saturated, 501), false);
-	// Below the cap the stamp still tracks real growth — clamping must
-	// not blunt the case the gate exists for.
-	const partial = { global_segments_scored_count: 499 };
-	assert.equal(shouldRescoreGlobalSegments(partial, 499), false);
-	assert.equal(shouldRescoreGlobalSegments(partial, 500), true);
-	assert.equal(shouldRescoreGlobalSegments(partial, 501), true);
+test('readGlobalSegmentsMatcherVersion: a count with no version was scored by version 1', () => {
+	assert.equal(readGlobalSegmentsMatcherVersion(null), null);
+	assert.equal(readGlobalSegmentsMatcherVersion({}), null);
+	assert.equal(readGlobalSegmentsMatcherVersion({ global_segments_scored_count: 12 }), 1);
+	assert.equal(
+		readGlobalSegmentsMatcherVersion({ global_segments_scored_count: 12, global_segments_matcher_version: 2 }),
+		2,
+	);
+	assert.equal(
+		readGlobalSegmentsMatcherVersion({ global_segments_scored_count: 12, global_segments_matcher_version: 'x' }),
+		1,
+	);
 });
 
-test('shouldRescoreGlobalSegments: clamps against the caller-supplied limit', () => {
-	// The limit is a parameter so the gate and the fetch call site read
-	// the same number; pin that a different cap moves the clamp with it.
-	const meta = { global_segments_scored_count: 10 };
-	assert.equal(shouldRescoreGlobalSegments(meta, 50, 10), false);
-	assert.equal(shouldRescoreGlobalSegments(meta, 50, 11), true);
+test('shouldRescoreGlobalSegments: a run scored by an older matcher is re-matched (issue #1308)', () => {
+	// A run stamped before the line matcher existed holds circle efforts; its
+	// next owner view must re-match it even though the catalogue has not grown.
+	assert.equal(shouldRescoreGlobalSegments({ global_segments_scored_count: 12 }, 12, 2), true);
+	assert.equal(
+		shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: 1 }, 12, 2),
+		true,
+	);
+	assert.equal(
+		shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: 2 }, 12, 2),
+		false,
+	);
+	assert.equal(
+		shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: 3 }, 12, 2),
+		false,
+		'a newer stamp (another tab on a newer build) is not re-matched backwards',
+	);
 });
 
 test('stampGlobalSegmentsScored: writes the stamp without clobbering the bag', () => {
-	const next = stampGlobalSegmentsScored({ title: 'Morning run', notes: 'felt great' }, 12);
+	const next = stampGlobalSegmentsScored({ title: 'Morning run', notes: 'felt great' }, 12, V);
 	assert.equal(next.title, 'Morning run');
 	assert.equal(next.notes, 'felt great');
 	assert.equal(next.global_segments_scored_count, 12);
+	assert.equal(next.global_segments_matcher_version, V);
 });
 
 test('stampGlobalSegmentsScored: round-trips through the reader as not-needing-rescore', () => {
-	const next = stampGlobalSegmentsScored(null, 8);
-	assert.equal(shouldRescoreGlobalSegments(next, 8), false);
+	const next = stampGlobalSegmentsScored(null, 8, V);
+	assert.equal(shouldRescoreGlobalSegments(next, 8, V), false);
 });
 
 // `runs.metadata` is a whole-column jsonb write, and the scoring pass that
@@ -281,16 +301,16 @@ test('stampGlobalSegmentsScored: round-trips through the reader as not-needing-r
 // does not. `computeGlobalSegmentEffortsForRun` must do the latter — pinned
 // structurally in data.test.ts.
 function stampRun(
-	store: { metadata: Record<string, unknown> },
-	bagToMergeInto: Record<string, unknown> | null,
+	store: { metadata: JsonObject },
+	bagToMergeInto: JsonObject | null,
 	catalogueCount: number,
 ): void {
-	store.metadata = stampGlobalSegmentsScored(bagToMergeInto, catalogueCount);
+	store.metadata = stampGlobalSegmentsScored(bagToMergeInto, catalogueCount, V);
 }
 
 test('stampGlobalSegmentsScored: merging a bag re-read before the write keeps a '
 	+ 'concurrent title/notes edit', () => {
-	const store = { metadata: { title: 'Morning run' } as Record<string, unknown> };
+	const store = { metadata: { title: 'Morning run' } as JsonObject };
 
 	// t0 — the gate reads the bag, then the expensive scoring pass starts.
 	const gateRead = { ...store.metadata };
@@ -311,7 +331,7 @@ test('stampGlobalSegmentsScored: merging a bag re-read before the write keeps a 
 
 test('stampGlobalSegmentsScored: merging the STALE pre-pass bag silently reverts '
 	+ 'the concurrent edit (the bug this ordering exists to prevent)', () => {
-	const store = { metadata: { title: 'Morning run' } as Record<string, unknown> };
+	const store = { metadata: { title: 'Morning run' } as JsonObject };
 	const gateRead = { ...store.metadata };
 	store.metadata = { ...store.metadata, title: 'Tempo 8k', notes: 'negative split' };
 
@@ -319,4 +339,241 @@ test('stampGlobalSegmentsScored: merging the STALE pre-pass bag silently reverts
 
 	assert.equal(store.metadata.title, 'Morning run', 'stale merge reverts the rename — data loss');
 	assert.equal(store.metadata.notes, undefined, 'stale merge drops the notes the owner added');
+});
+
+// -------------------------------------------------------------------
+// singleEmbed — one shape for a PostgREST to-one embed
+// -------------------------------------------------------------------
+
+test('singleEmbed collapses both shapes PostgREST can return for a to-one embed', () => {
+	// Reason: the same `events → clubs(slug)` embed comes back as an object or
+	// as a one-element array depending on the FK metadata PostgREST detects.
+	// Three sites in data.ts normalised it and the fourth read `.slug` off the
+	// raw value, so an array shape would have produced `club_slug: undefined`
+	// under a type declaring `string`.
+	assert.deepEqual(singleEmbed({ slug: 'harriers' }), { slug: 'harriers' });
+	assert.deepEqual(singleEmbed([{ slug: 'harriers' }]), { slug: 'harriers' });
+	assert.deepEqual(singleEmbed([{ slug: 'a' }, { slug: 'b' }]), { slug: 'a' });
+});
+
+test('singleEmbed answers null for every shape that carries no related row', () => {
+	// Reason: an empty array and a null embed mean the same thing, and a caller
+	// that treats one as a row gets `undefined` where it expected a value. The
+	// caller decides whether that is a skip or a fallback — this returns null
+	// for all three so there is only one case to decide about.
+	assert.equal(singleEmbed([]), null);
+	assert.equal(singleEmbed(null), null);
+	assert.equal(singleEmbed(undefined), null);
+});
+
+test('no data.ts reader hand-rolls the to-one embed collapse', () => {
+	// Reason: the four sites drifted precisely because each spelled the ternary
+	// itself — three got it right and fetchNextRsvpedEvent did not, and nothing
+	// could see the difference. A restated `Array.isArray(x) ? x[0] : x` is the
+	// drift returning.
+	const source = stripComments(
+		readFileSync(resolve('src/lib/core/data.ts'), 'utf-8'),
+	);
+	const offenders = [...source.matchAll(/Array\.isArray\((\w+(?:\.\w+)*)\)\s*\?[^;\n]*\[0\]/g)].map(
+		(mm) => mm[0],
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		`these reads must collapse a to-one embed through singleEmbed:\n  ${offenders.join('\n  ')}`,
+	);
+});
+
+test('the run track and HR sidecar uploads address the Storage bucket registry, not the table one', () => {
+	// Reason: `saveRun`'s two uploads read `supabase.storage.from(TABLES.runs)`
+	// while every other Storage call in the file uses `BUCKETS.runs`. The two
+	// registries hold the same string today, which is exactly why the mistake
+	// was invisible: renaming either one would silently send a runner's GPS
+	// trace to a bucket that does not exist, and the upload failure path is a
+	// console.warn.
+	const source = stripComments(
+		readFileSync(resolve('src/lib/core/data.ts'), 'utf-8'),
+	);
+	const storageReads = [...source.matchAll(/storage\s*\n?\s*\.from\((\w+)\./g)].map(
+		(mm) => mm[1],
+	);
+	assert.ok(storageReads.length >= 10, 'expected the Storage call sites to be found');
+	assert.deepEqual(
+		[...new Set(storageReads)],
+		['BUCKETS'],
+		'every supabase.storage.from(...) must name the BUCKETS registry',
+	);
+});
+
+// -------------------------------------------------------------------
+// fitnessSnapshotDue — at most one snapshot per user per UTC day
+// -------------------------------------------------------------------
+
+test('a runner with no snapshot yet is owed one', () => {
+	assert.equal(fitnessSnapshotDue(null, new Date('2026-03-14T10:00:00Z')), true);
+	assert.equal(fitnessSnapshotDue(undefined, new Date('2026-03-14T10:00:00Z')), true);
+});
+
+test('a second dashboard mount on the same UTC day is not owed a snapshot', () => {
+	// Reason: /dashboard recomputes on every mount and used to persist every
+	// time. fetchFitnessSnapshots windows at 60 points, so three or four opens
+	// a day fill the whole trend chart with one fortnight of duplicates and the
+	// multi-month trend the chart exists for scrolls off.
+	const now = new Date('2026-03-14T23:59:00Z');
+	assert.equal(fitnessSnapshotDue('2026-03-14T00:00:01Z', now), false);
+	assert.equal(fitnessSnapshotDue('2026-03-14T12:30:00Z', now), false);
+});
+
+test('the answer does not depend on the zone the reader happens to be in', () => {
+	// Reason: the previous assertion is only DISCRIMINATING off UTC — on a UTC
+	// runner (which CI is) a local-day implementation gives the same answers
+	// and the guard passes over the bug. Sweep the zone instead: the boundary
+	// is a property of the constraint this pairs with, not of the reader, so
+	// every zone must agree. Node re-reads `process.env.TZ` per Date operation.
+	const original = process.env.TZ;
+	try {
+		const cases: [string | null, string, boolean][] = [
+			['2026-03-14T23:30:00Z', '2026-03-15T00:30:00Z', true],
+			['2026-03-14T23:30:00Z', '2026-03-14T23:59:59Z', false],
+			['2026-03-14T00:00:01Z', '2026-03-14T23:59:00Z', false],
+			['2026-03-14T12:00:00Z', '2026-03-15T11:00:00Z', true],
+		];
+		for (const zone of ['UTC', 'Pacific/Auckland', 'America/Los_Angeles', 'Asia/Kolkata']) {
+			process.env.TZ = zone;
+			for (const [latest, now, expected] of cases) {
+				assert.equal(
+					fitnessSnapshotDue(latest, new Date(now)),
+					expected,
+					`${zone}: latest=${latest} now=${now} should be ${expected}`,
+				);
+			}
+		}
+	} finally {
+		if (original === undefined) delete process.env.TZ;
+		else process.env.TZ = original;
+	}
+});
+
+test('the day boundary is UTC, not the reader local one', () => {
+	// Reason: the uniqueness this pairs with is a database constraint over
+	// `computed_at`, and a `date` cast there runs in the connection time zone —
+	// UTC for PostgREST. A client measuring local days would ask for a second
+	// row on the same database day (absorbed, but a pointless round trip) or
+	// skip a genuinely new one, depending on which side of midnight it sits.
+	// 23:30 UTC on the 14th and 00:30 UTC on the 15th are different UTC days
+	// however far the reader is from Greenwich.
+	assert.equal(
+		fitnessSnapshotDue('2026-03-14T23:30:00Z', new Date('2026-03-15T00:30:00Z')),
+		true,
+	);
+	assert.equal(
+		fitnessSnapshotDue('2026-03-14T23:30:00Z', new Date('2026-03-14T23:59:59Z')),
+		false,
+	);
+});
+
+test('yesterday, last month and last year each owe a new snapshot', () => {
+	const now = new Date('2026-03-01T09:00:00Z');
+	assert.equal(fitnessSnapshotDue('2026-02-28T09:00:00Z', now), true);
+	assert.equal(fitnessSnapshotDue('2025-03-01T09:00:00Z', now), true);
+	assert.equal(fitnessSnapshotDue('2026-04-01T09:00:00Z', now), true);
+});
+
+test('an unreadable timestamp fails closed — no snapshot is written', () => {
+	// Reason: the two mistakes are not symmetric. Skipping a write loses one
+	// day point from a chart that self-heals tomorrow; writing when we cannot
+	// tell is the duplicate spam the gate exists to stop.
+	const now = new Date('2026-03-14T10:00:00Z');
+	assert.equal(fitnessSnapshotDue('not a timestamp', now), false);
+	assert.equal(fitnessSnapshotDue('', now), false);
+	assert.equal(fitnessSnapshotDue('2026-03-14T10:00:00Z', new Date(NaN)), false);
+});
+
+test('the fitness-snapshot write is gated on the per-day check and reports its own failure', () => {
+	// Reason: the write ran on every /dashboard mount with its `{ error }`
+	// unbound — a PostgREST error resolves rather than throws, so the caller's
+	// `.catch(() => {})` could never fire and a failing write was invisible.
+	// The gate must sit between the sufficiency check and the insert, and the
+	// insert must absorb only the duplicate a race with another tab produces
+	// once fitness_snapshots_user_day_uniq exists.
+	const source = stripComments(
+		readFileSync(resolve('src/lib/core/data.ts'), 'utf-8'),
+	);
+	const start = source.indexOf('export async function insertFitnessSnapshot(');
+	assert.ok(start > 0, 'insertFitnessSnapshot moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	const gate = body.indexOf('fitnessSnapshotDue(');
+	const insert = body.indexOf('.insert({');
+	assert.ok(gate > 0, 'the write must be gated on fitnessSnapshotDue');
+	assert.ok(insert > gate, 'the per-day gate must run before the insert, not after');
+	assert.match(
+		body,
+		/const \{ error \} = await supabase/,
+		"the insert's error must be bound — an unbound one is invisible to every caller",
+	);
+	assert.doesNotMatch(
+		body,
+		/\.upsert\(/,
+		'fitness_snapshots has no UPDATE policy, so ON CONFLICT DO UPDATE is refused by RLS',
+	);
+});
+
+// -------------------------------------------------------------------
+// publicRouteListFill — the narrow public_routes row is filled, not cast
+// -------------------------------------------------------------------
+
+test('every column the public_routes half cannot serve is filled with what it means', () => {
+	// Reason: the requirement is DERIVED from the two column lists the reads
+	// actually use, so widening ROUTE_LIST_COLS without teaching the public
+	// half about the new column fails here rather than silently producing rows
+	// missing a field under a type that promises it. That is exactly how
+	// `waypoints` came to be `undefined` on every route saved from Explore.
+	// The two lists used to be scraped out of `core/data.ts` as string
+	// literals. They are declared once in `routes/route_list_columns.ts` now,
+	// so this reads them rather than parsing them back out of a source file —
+	// the claim is unchanged and the instrument is no longer a regex.
+	const owned: readonly string[] = ROUTE_LIST_COLUMNS;
+	const publicCols = new Set<string>(PUBLIC_ROUTE_LIST_COLUMNS);
+	const withheld = owned.filter((c) => !publicCols.has(c));
+	assert.ok(withheld.length > 0, 'the two lists differ — that is the point of the fill');
+	const fill = publicRouteListFill() as Record<string, unknown>;
+	const unfilled = withheld.filter((c) => !(c in fill));
+	assert.deepEqual(
+		unfilled,
+		[],
+		`public_routes cannot serve these and the fill does not supply them: ${unfilled.join(', ')}`,
+	);
+});
+
+test('an empty waypoints array is the withheld-line signal, not an absent field', () => {
+	// Reason: RouteTrackPreview treats `waypoints.length < 2` as "ask
+	// clip_route_for_viewer for this viewer's clipped line" — the same path
+	// the RouteExplorer cards take. `undefined` is not that signal; it is a
+	// field the type says cannot be missing, and a consumer reading `.length`
+	// off it throws.
+	const fill = publicRouteListFill();
+	assert.deepEqual(fill.waypoints, []);
+	assert.equal(Array.isArray(fill.waypoints), true);
+	// A fresh array per call — a shared one would be mutated across rows.
+	assert.notEqual(publicRouteListFill().waypoints, fill.waypoints);
+	// The star is the owner's flag, and every row from this view is somebody
+	// else's, so false is the truth rather than a placeholder.
+	assert.equal(fill.is_starred, false);
+});
+
+test('the saved-public route rows are filled before they are treated as routes', () => {
+	// Reason: the defect was the `as unknown as Route[]` on the public half —
+	// a cast asserting a shape the select cannot produce. Casting again, with
+	// or without the fill, puts it back.
+	const source = stripComments(
+		readFileSync(resolve('src/lib/core/data.ts'), 'utf-8'),
+	);
+	const start = source.indexOf('export async function fetchRoutesWithError(');
+	assert.ok(start > 0, 'fetchRoutesWithError moved — re-anchor this guard');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.match(
+		body,
+		/savedPublicRes\.data[\s\S]{0,200}?publicRouteListFill\(\)/,
+		'the public_routes rows must be filled, not asserted to be full Route rows',
+	);
 });

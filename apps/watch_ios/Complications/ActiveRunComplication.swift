@@ -1,12 +1,18 @@
 // Active-run complication for watchOS 10+. Renders the live workout
 // stats (elapsed time, distance, current pace) on the runner's watch
-// face. Reads from `WorkoutManager.shared` — the same singleton that
-// owns the HKWorkoutSession — so the complication and the in-app run
-// screen always agree on what to show.
+// face, and between runs today's planned workout when the phone pushed
+// one for today.
 //
-// Belongs to its own Widget Extension target. See README.md in this
-// directory for the one-time Xcode wiring step that adds the target,
-// links HealthKit, and shares WorkoutManager via an App Group.
+// This runs in the `WatchAppComplication` extension, a separate PROCESS
+// from the app that owns the HKWorkoutSession — it cannot reach
+// `WorkoutManager` and never tries. Everything it draws comes from the
+// snapshot the host writes to the App Group through `ActiveRunBridge`.
+// README.md in this directory describes the target.
+//
+// The entry shaping and the formatting live in `ActiveRunTimeline.swift`
+// and `WatchApp/RunFormat.swift`, both members of this target AND of
+// `WatchApp`, which is what lets `WatchAppTests` cover them. This file
+// holds what cannot be shared: the `@main` bundle and the views.
 //
 // The `accessoryCircular`, `accessoryCorner`, `accessoryRectangular`,
 // and `accessoryInline` families cover Modular, Infograph, X-Large,
@@ -19,13 +25,11 @@ import WidgetKit
 
 // MARK: - Provider
 
-/// Hands the system fresh entries on a coarse cadence. We can't
-/// `requestUpdate` on every GPS tick from a workout session — the
-/// platform throttles complication refreshes to ~50/day per app.
-/// Strategy: emit one entry per 30 seconds while a run is active,
-/// and a single static entry when idle. The Run app explicitly
-/// reloads the timeline on workout state transitions (start, pause,
-/// resume, stop) via `WidgetCenter.shared.reloadTimelines(...)`.
+/// Hands the system fresh entries on a coarse cadence; the schedule itself
+/// is `ActiveRunTimeline`'s. The Run app explicitly reloads the timeline on
+/// workout state transitions (start, pause, resume, stop) and when the phone
+/// pushes a different workout for today, via
+/// `WidgetCenter.shared.reloadTimelines(...)`.
 struct ActiveRunProvider: TimelineProvider {
     typealias Entry = ActiveRunEntry
 
@@ -40,67 +44,22 @@ struct ActiveRunProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
-        completion(snapshotEntry())
+        completion(ActiveRunTimeline.entry(
+            from: ActiveRunBridge.read(),
+            today: ActiveRunBridge.readToday(),
+            now: .now
+        ))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
-        let snap = snapshotEntry()
-        // Inactive — single static entry; the app calls reloadTimelines
-        // on the next state change so we don't have to budget refreshes.
-        guard snap.isActive else {
-            completion(Timeline(entries: [snap], policy: .never))
-            return
-        }
-        // Active — 10 entries 30 s apart, then ask the system to come
-        // back. Each entry advances the elapsed-time *display* without
-        // the complication consuming a real refresh per tick. The app
-        // reloads the timeline on stage transitions to overwrite this
-        // schedule with fresher data.
-        let now = Date()
-        let entries = (0..<10).map { i -> ActiveRunEntry in
-            let dt = TimeInterval(i * 30)
-            return ActiveRunEntry(
-                date: now.addingTimeInterval(dt),
-                isActive: true,
-                elapsedSeconds: snap.elapsedSeconds + Int(dt),
-                distanceMeters: snap.distanceMeters,
-                paceSecPerKm: snap.paceSecPerKm,
-            )
-        }
-        completion(Timeline(entries: entries, policy: .atEnd))
-    }
-
-    private func snapshotEntry() -> Entry {
-        let snap = ActiveRunBridge.read()
-        // The writer stamps `lastUpdatedEpoch` on every state transition so
-        // the reader can tell a live run from a stale snapshot — but it was
-        // never consumed. If the host app is killed mid-run without a clean
-        // stop/reset, `isActive` stays true and the watch face would show a
-        // phantom run until the next launch clears it. Treat a snapshot
-        // older than this ceiling as inactive. The ceiling sits far beyond
-        // any realistic Apple-Watch run (battery dies long before a day), so
-        // a genuine long run is never wrongly hidden.
-        let staleAfter: TimeInterval = 24 * 60 * 60
-        let age = Date().timeIntervalSince1970 - snap.lastUpdatedEpoch
-        let isActive = snap.isActive && snap.lastUpdatedEpoch > 0 && age < staleAfter
-        return ActiveRunEntry(
-            date: .now,
-            isActive: isActive,
-            elapsedSeconds: snap.elapsedSeconds,
-            distanceMeters: snap.distanceMeters,
-            paceSecPerKm: snap.paceSecPerKm,
+        let entries = ActiveRunTimeline.entries(
+            from: ActiveRunBridge.read(),
+            today: ActiveRunBridge.readToday(),
+            now: .now
         )
+        let policy: TimelineReloadPolicy = ActiveRunTimeline.reloadsAtEnd(entries) ? .atEnd : .never
+        completion(Timeline(entries: entries, policy: policy))
     }
-}
-
-// MARK: - Entry
-
-struct ActiveRunEntry: TimelineEntry {
-    let date: Date
-    let isActive: Bool
-    let elapsedSeconds: Int
-    let distanceMeters: Double
-    let paceSecPerKm: Double?
 }
 
 // MARK: - Views
@@ -143,6 +102,18 @@ private struct CircularView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
+        } else if let today = entry.today {
+            VStack(spacing: 0) {
+                Image(systemName: "figure.run")
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+                Text(ActiveRunTimeline.todayHeadline(today) ?? ActiveRunTimeline.kindLabel(today.workoutKind))
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(ActiveRunTimeline.todayLine(today))
         } else {
             VStack(spacing: 0) {
                 Image(systemName: "figure.run")
@@ -165,6 +136,9 @@ private struct CornerView: View {
                 .font(.body.weight(.semibold))
                 .widgetCurvesContent()
                 .widgetLabel("Pace")
+        } else if let today = entry.today {
+            Image(systemName: "figure.run")
+                .widgetLabel(ActiveRunTimeline.todayLine(today))
         } else {
             Image(systemName: "figure.run")
                 .widgetLabel("Run")
@@ -177,10 +151,9 @@ private struct InlineView: View {
 
     var body: some View {
         if entry.isActive {
-            Label(
-                "\(formatDistanceKm(entry.distanceMeters)) · \(formatPaceSecPerKm(entry.paceSecPerKm))",
-                systemImage: "figure.run",
-            )
+            Label(ActiveRunTimeline.statLine(entry), systemImage: "figure.run")
+        } else if let today = entry.today {
+            Label(ActiveRunTimeline.todayLine(today), systemImage: "figure.run")
         } else {
             Label("Tap to start", systemImage: "figure.run")
         }
@@ -203,10 +176,30 @@ private struct RectangularView: View {
                     .font(.title2.weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text("\(formatDistanceKm(entry.distanceMeters)) · \(formatPaceSecPerKm(entry.paceSecPerKm))")
+                Text(ActiveRunTimeline.statLine(entry))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+            }
+        } else if let today = entry.today {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.run").font(.caption2)
+                    Text("Today's workout")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tint)
+                        .lineLimit(1)
+                }
+                Text(ActiveRunTimeline.kindLabel(today.workoutKind))
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let headline = ActiveRunTimeline.todayHeadline(today) {
+                    Text(headline)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
@@ -236,7 +229,10 @@ struct ActiveRunComplicationBundle: WidgetBundle {
 }
 
 struct ActiveRunComplication: Widget {
-    let kind: String = "ActiveRunComplication"
+    /// One constant, read by both targets — see `ActiveRunBridge`. The host
+    /// app's `reloadTimelines(ofKind:)` must name exactly this, and a kind no
+    /// widget declares is a silent no-op there.
+    let kind: String = ActiveRunBridge.complicationKind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ActiveRunProvider()) { entry in
@@ -252,56 +248,4 @@ struct ActiveRunComplication: Widget {
             .accessoryRectangular,
         ])
     }
-}
-
-// MARK: - Pure formatters
-// Mirrors apps/watch_wear/.../tiles/ActiveRunTileService.kt so the two
-// platforms render identical strings. This Widget Extension target can't
-// link RunFormat.swift, so it carries this copy; WatchApp/RunFormat.swift
-// holds a byte-identical copy that ComplicationFormatterTests pins. Keep
-// the two in lockstep.
-
-func formatElapsed(_ seconds: Int) -> String {
-    let s = max(seconds, 0)
-    let h = s / 3600
-    let m = (s % 3600) / 60
-    let sec = s % 60
-    if h > 0 {
-        return String(format: "%d:%02d:%02d", h, m, sec)
-    }
-    return String(format: "%02d:%02d", m, sec)
-}
-
-func formatDistanceKm(_ meters: Double) -> String {
-    let miles = UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
-    let metresPerMile = 1609.344
-    let value = miles ? meters / metresPerMile : meters / 1000.0
-    let digits = value >= 10.0 ? 1 : 2
-
-    let number = NumberFormatter()
-    number.locale = Locale.current
-    number.numberStyle = .decimal
-    number.minimumFractionDigits = digits
-    number.maximumFractionDigits = digits
-    number.usesGroupingSeparator = false
-    let numberStr = number.string(from: NSNumber(value: value)) ?? "\(value)"
-
-    let measurement = MeasurementFormatter()
-    measurement.locale = Locale.current
-    measurement.unitOptions = .providedUnit
-    let unitStr = measurement.string(from: miles ? UnitLength.miles : UnitLength.kilometers)
-    return "\(numberStr) \(unitStr)"
-}
-
-func formatPaceSecPerKm(_ secPerKm: Double?) -> String {
-    let miles = UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
-    guard let p = secPerKm, p.isFinite, p > 0 else {
-        return miles ? "—:—/mi" : "—:—/km"
-    }
-    let metresPerMile = 1609.344
-    let perUnit = miles ? p * (metresPerMile / 1000.0) : p
-    let total = Int(perUnit.rounded())
-    let m = total / 60
-    let s = total % 60
-    return String(format: "%d:%02d%@", m, s, miles ? "/mi" : "/km")
 }

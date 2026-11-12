@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { buildPhasePlan } from './race_phases';
 import {
 	daysUntilRace,
 	evenSplitPacing,
 	MILE_METRES,
 	negativeSplitPacing,
 	raceChecklist,
-	fmtSplitTime,
 	goalFeasibility,
 	GOAL_ONTRACK_BAND,
 	GOAL_FARBEHIND_BAND,
@@ -173,11 +173,31 @@ test('negativeSplitPacing: first half slower, second half faster', () => {
 	}
 });
 
-test('negativeSplitPacing: sum of splits ≈ total time', () => {
+test('negativeSplitPacing: sum of splits is the total time', () => {
 	const s = negativeSplitPacing(10_000, 3000, 2);
 	const sum = s.splitsSec.reduce((a, b) => a + b, 0);
 	// 5 km @ (300+6) + 5 km @ (300-6) = 1530 + 1470 = 3000.
-	assert.ok(Math.abs(sum - 3000) <= 10);
+	assert.equal(sum, 3000);
+});
+
+test('negativeSplitPacing: splits sum to the predicted finish on partial-unit races', () => {
+	// The panel prints the predicted finish directly above the split list, so a
+	// list that adds to something else is a visible contradiction. Every split
+	// used to be rounded independently, drifting a marathon 15 s past its goal.
+	const cases: [number, number, number][] = [
+		[42195, 12600, 1000],
+		[21097.5, 6300, 1000],
+		[5000, 1500, MILE_METRES],
+		[42195, 12600, MILE_METRES],
+	];
+	for (const [distanceM, totalSec, unitMetres] of cases) {
+		const s = negativeSplitPacing(distanceM, totalSec, 2, unitMetres);
+		assert.equal(
+			s.splitsSec.reduce((a, b) => a + b, 0),
+			totalSec,
+			`${distanceM} m in ${totalSec} s over ${unitMetres} m units`,
+		);
+	}
 });
 
 test('negativeSplitPacing: 0% delta → even splits', () => {
@@ -223,22 +243,6 @@ test('raceChecklist: marathon adds the toilet-plan item', () => {
 	const gear = c.find((s) => s.title === 'Gear');
 	const gearText = gear!.items.map((i) => i.name).join(' ');
 	assert.match(gearText, /Toilet plan/i);
-});
-
-// ─────────── fmtSplitTime ───────────
-
-test('fmtSplitTime: under an hour formats as M:SS', () => {
-	assert.equal(fmtSplitTime(305), '5:05');
-	assert.equal(fmtSplitTime(60), '1:00');
-});
-
-test('fmtSplitTime: over an hour formats as H:MM:SS', () => {
-	assert.equal(fmtSplitTime(3725), '1:02:05');
-	assert.equal(fmtSplitTime(3 * 3600 + 30 * 60), '3:30:00');
-});
-
-test('fmtSplitTime: rounds to nearest second', () => {
-	assert.equal(fmtSplitTime(305.6), '5:06');
 });
 
 // ─────────── Round 3 edge cases ───────────
@@ -293,12 +297,6 @@ test('raceChecklist: gear section always has the core 5 items', () => {
 	assert.match(gear, /Race bib/);
 	assert.match(gear, /[Aa]nti-chafe/);
 	assert.match(gear, /Socks/);
-});
-
-test('fmtSplitTime: zero and very-small inputs', () => {
-	assert.equal(fmtSplitTime(0), '0:00');
-	assert.equal(fmtSplitTime(0.4), '0:00');
-	assert.equal(fmtSplitTime(0.5), '0:01');
 });
 
 test('evenSplitPacing: marathon distance (42.195 km) has 43 splits, last partial', () => {
@@ -384,4 +382,52 @@ test('goalFeasibility: deltaSec is rounded to whole seconds', () => {
 	assert.ok(f);
 	assert.equal(f!.deltaSec, 1);
 	assert.equal(f!.verdict, 'on_track');
+});
+
+// ─────────── the negative-split delta, pinned by assertion ───────────
+
+test('negativeSplitPacing: deltaPercent is applied to EACH half, not split across them', () => {
+	// The header used to document a total spread of `deltaPercent` (a 2% call
+	// on a 4:30/km marathon reading "first half ~4:33, second half ~4:27"),
+	// which is half what the code applies. Nothing asserted the magnitude — the
+	// only statement of it was a comment beside a sum-preservation test — so a
+	// maintainer tuning the parameter against the header was off by 2x.
+	// 10 km in 3000 s is 300 s/km average; 2% of that is 6 s.
+	const s = negativeSplitPacing(10_000, 3000, 2);
+	assert.equal(s.splitsSec.length, 10);
+	for (let i = 0; i < 5; i++) assert.equal(s.splitsSec[i], 306);
+	for (let i = 5; i < 10; i++) assert.equal(s.splitsSec[i], 294);
+});
+
+test('negativeSplitPacing: the halves match race_phases\' factors for the same strategy', () => {
+	// Two independent implementations of "negative split" in one product, one
+	// of them a registered TS<->Dart pair with a firmware port. If they drift,
+	// the race-day panel and the mobile race-strategy sheet plan the same race
+	// two different ways. Anchored to the plan's own factors, not to a literal.
+	const plan = buildPhasePlan(10_000, 'negative_split');
+	assert.equal(plan.length, 2);
+	const s = negativeSplitPacing(10_000, 3000, 2);
+	const avgPerUnit = 300;
+	assert.equal(s.splitsSec[0], Math.round(avgPerUnit * plan[0].paceFactor));
+	assert.equal(s.splitsSec[9], Math.round(avgPerUnit * plan[1].paceFactor));
+});
+
+test('pacing helpers refuse a non-numeric input rather than emitting NaN splits', () => {
+	// `distanceM <= 0` is false for NaN, so the panel rendered a NaN average
+	// pace and one bogus split holding the whole predicted time. The
+	// NaN-rejecting `!(x > 0)` form is what `goalFeasibility` in this same file
+	// already uses.
+	const refusals = [
+		evenSplitPacing(NaN, 3000),
+		evenSplitPacing(10_000, NaN),
+		evenSplitPacing(10_000, 3000, NaN),
+		negativeSplitPacing(NaN, 3000, 2),
+		negativeSplitPacing(10_000, NaN, 2),
+		negativeSplitPacing(10_000, 3000, NaN),
+		negativeSplitPacing(10_000, 3000, 2, NaN),
+	];
+	for (const r of refusals) {
+		assert.deepEqual(r.splitsSec, []);
+		assert.equal(r.avgSecPerKm, 0);
+	}
 });

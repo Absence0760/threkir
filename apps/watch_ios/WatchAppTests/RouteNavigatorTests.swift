@@ -2,7 +2,7 @@ import XCTest
 import CoreLocation
 @testable import WatchApp
 
-/// Mirrors the `distanceAlongRoute` cases in the web
+/// Mirrors the `progressAlongRoute` cases in the web
 /// `route_geometry.test.ts` (fixtures anchored in ground metres along the
 /// equator, like `route_snap.test.ts` / the custom watch's `course.rs`
 /// tests) plus the shared 40 m / 20 m off-route hysteresis cases.
@@ -250,5 +250,68 @@ final class RouteNavigatorTests: XCTestCase {
             currentLocation: location(offsetPoint(east: 155, north: 55)))
         XCTAssertTrue(navigator.isOffRoute)
         XCTAssertEqual(haptics, 1)
+    }
+
+    // MARK: - Following a route that passes the same place twice
+
+    /// 500 m square, start == finish, run anticlockwise: east, north, west,
+    /// south. The closing leg runs down x = 0 into the start.
+    private var squareLoop: [CLLocationCoordinate2D] {
+        [
+            offsetPoint(east: 0, north: 0), offsetPoint(east: 500, north: 0),
+            offsetPoint(east: 500, north: 500), offsetPoint(east: 0, north: 500),
+            offsetPoint(east: 0, north: 0),
+        ]
+    }
+
+    func testNavigatorLoopRunnerAtStartHasTheWholeLoopToGo() {
+        let navigator = RouteNavigator(routePoints: squareLoop.map(location))
+        navigator.playOffRouteHaptic = {}
+        // 1 m east and 3 m north of the start: nearer the CLOSING leg (1 m)
+        // than the opening one (3 m), which a whole-line nearest search snaps
+        // to — reading the lap as finished the instant the run starts.
+        navigator.update(currentLocation: location(offsetPoint(east: 1, north: 3)))
+        XCTAssertEqual(navigator.remainingMetres ?? -1, 2000, accuracy: 5)
+        XCTAssertEqual(navigator.deviationMetres ?? -1, 1, accuracy: 0.5)
+        for step in 1...20 {
+            navigator.update(currentLocation: location(
+                offsetPoint(east: 1 + Double(step) * 10, north: 3)))
+        }
+        XCTAssertEqual(navigator.remainingMetres ?? -1, 1799, accuracy: 5)
+        XCTAssertEqual(navigator.deviationMetres ?? -1, 3, accuracy: 0.5)
+        XCTAssertFalse(navigator.isOffRoute)
+    }
+
+    func testNavigatorOutAndBackRunnerPastTheTurnaroundIsOnTheReturnLeg() {
+        let outAndBack = [distPoint(0), distPoint(1000), distPoint(0)]
+        let navigator = RouteNavigator(routePoints: outAndBack.map(location))
+        navigator.playOffRouteHaptic = {}
+        for metres in stride(from: 0.0, through: 1000, by: 10) {
+            navigator.update(currentLocation: location(distPoint(metres)))
+        }
+        for metres in stride(from: 990.0, through: 900, by: -10) {
+            navigator.update(currentLocation: location(distPoint(metres)))
+        }
+        XCTAssertEqual(navigator.remainingMetres ?? -1, 900, accuracy: 1)
+        XCTAssertEqual(navigator.deviationMetres ?? -1, 0, accuracy: 0.5)
+    }
+
+    func testNavigatorStillFlagsARunnerWhoLeavesTheLoop() {
+        let navigator = RouteNavigator(routePoints: squareLoop.map(location))
+        var haptics = 0
+        navigator.playOffRouteHaptic = { haptics += 1 }
+        for step in 0...10 {
+            navigator.update(currentLocation: location(
+                offsetPoint(east: Double(step) * 10, north: 0)))
+        }
+        for step in 1...12 {
+            navigator.update(currentLocation: location(
+                offsetPoint(east: 100, north: Double(step) * 10)))
+        }
+        // 120 m north of the opening leg is 100 m east of the closing one.
+        XCTAssertEqual(navigator.deviationMetres ?? -1, 100, accuracy: 1)
+        XCTAssertTrue(navigator.isOffRoute)
+        XCTAssertEqual(haptics, 1)
+        XCTAssertGreaterThan(navigator.remainingMetres ?? -1, 1750)
     }
 }

@@ -1,6 +1,7 @@
 package com.runapp.watchwear
 
 import com.runapp.watchwear.generated.RunRow
+import com.runapp.watchwear.workout.VoiceVerbosity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -19,10 +21,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
-import java.util.zip.GZIPOutputStream
 
 /// Thrown by [SupabaseClient.execute] when the response is not 2xx.
 ///
@@ -67,7 +67,7 @@ internal fun buildSaveRunRowMap(
     startedAtIso: String,
     durationS: Int,
     distanceM: Double,
-    trackPath: String,
+    trackPath: String?,
     metadata: JsonObject?,
     isPublic: Boolean?,
 ): Map<String, Any?> = buildMap {
@@ -112,8 +112,11 @@ internal fun humanErrorMessage(code: Int, body: String): String {
 ///     fallback inputs `maxHrBpm` and `dateOfBirth` feed the live
 ///     "Z3" badge next to BPM on the RunningScreen. The
 ///     `resolveZoneCutoffs` precedence is: explicit hr_zones >
-///     60/70/80/90/100% of max_hr_bpm > 60/70/80/90/100% of
-///     (Tanaka 208 − 0.7×age from DOB) > null (no zone display).
+///     60/70/80/90/100% of an IN-RANGE max_hr_bpm > 60/70/80/90/100% of
+///     (Tanaka 208 − 0.7×age from DOB) > null (no zone display). The web
+///     and Dart rails end that ladder at the legacy 190 cutoffs instead;
+///     this one shows nothing rather than a stranger's zones, which is the
+///     one place the three rails differ (decisions § 1245).
 data class UniversalSettings(
     val defaultActivityType: String?,
     val privacyDefault: String?,
@@ -133,10 +136,31 @@ data class UniversalSettings(
     /// PostRun summary omits the calorie line entirely — the pref exists
     /// so a weight-conscious runner can stop the app surfacing calorie
     /// figures at all, so every surface that renders one must honour it,
-    /// not just run-detail on web + phone. Only an explicit `false`
+    /// not just run-detail on web + phone. Only an explicit JSON `false`
     /// hides it, mirroring web's `effective(..., 'show_calories', true)
-    /// !== false`; an absent or unparseable value leaves it on.
+    /// !== false` — under which the string `"false"` is not `false`; an
+    /// absent, stringified or otherwise unparseable value leaves it on.
     val showCalories: Boolean = true,
+    /// Universal `voice_feedback_enabled` — the master gate on the spoken
+    /// split / pace cues, default ON (docs/backend/settings.md). The watch
+    /// spoke unconditionally until 2026-09: `BuildConfig.ENABLE_TTS` is a
+    /// BUILD flag, so a shipped watch had no off switch on any surface the
+    /// runner owns, and the phone's own switch — the one the web settings
+    /// page writes — reached the phone and stopped there. Only an explicit
+    /// `false` silences the wrist, mirroring `showCalories`: a bag written
+    /// by an older build, or a value of the wrong type, must not mute cues
+    /// nobody turned off.
+    val voiceFeedbackEnabled: Boolean = true,
+    /// Universal `voice_feedback_verbosity`: `minimal` drops the spoken
+    /// end-of-step warning and pace-drift nudge of today's workout and keeps
+    /// the step change and completion, as on the phone. Any other value,
+    /// absent included, is `full`, the registry default.
+    val voiceFeedbackVerbosity: VoiceVerbosity = VoiceVerbosity.FULL,
+    /// The `workout_steps` id of the universal `voice_cue_types` map: whether
+    /// the workout's step cues are spoken. An absent id is ON (the registry's
+    /// rule, so a new cue type defaults audible) and only an explicit JSON
+    /// `false` turns it off, as with [voiceFeedbackEnabled].
+    val workoutStepCuesEnabled: Boolean = true,
 )
 
 /// Allowed values for `default_activity_type`. Mirrors the CHECK
@@ -184,19 +208,51 @@ internal fun parseUniversalSettings(body: String?): UniversalSettings? {
             hrZones = parseHrZones(prefs["hr_zones"] as? JsonObject),
             restingHrBpm = (prefs["resting_hr_bpm"]?.jsonPrimitive?.intOrNull)
                 ?.takeIf { it in 25..120 },
+            // `MAX_HR_BPM_RANGE`, not a second literal. This gate used to
+            // read 100..240 while the shared contract § 1245 established is
+            // 80..240, and since this parse is the ONLY producer of a
+            // `UniversalSettings`, `resolveZoneCutoffs` could never observe a
+            // value in 80..99 — so a heavily beta-blocked masters runner with
+            // a genuine max of 95 got zones on web and phone and, on the
+            // watch, Tanaka zones off a different number entirely or no
+            // Z-badge at all (decisions § 1303).
             maxHrBpm = (prefs["max_hr_bpm"]?.jsonPrimitive?.intOrNull)
-                ?.takeIf { it in 100..240 },
+                ?.takeIf { it in MAX_HR_BPM_RANGE },
             dateOfBirth = prefs["date_of_birth"]?.jsonPrimitive?.contentOrNull
                 ?.takeIf { isValidIsoDate(it) },
             bodyWeightKg = (prefs["body_weight_kg"]?.jsonPrimitive?.doubleOrNull)
                 ?.takeIf { it in 20.0..400.0 },
             preferredUnit = prefs["preferred_unit"]?.jsonPrimitive?.contentOrNull
                 ?.takeIf { it in UNIVERSAL_PREFERRED_UNITS },
-            showCalories = prefs["show_calories"]?.jsonPrimitive?.booleanOrNull != false,
+            showCalories = strictBoolean(prefs, "show_calories") != false,
+            voiceFeedbackEnabled = strictBoolean(prefs, "voice_feedback_enabled") != false,
+            voiceFeedbackVerbosity = VoiceVerbosity.fromPref(
+                (prefs["voice_feedback_verbosity"] as? JsonPrimitive)
+                    ?.takeIf { it.isString }?.contentOrNull,
+            ),
+            workoutStepCuesEnabled = (prefs["voice_cue_types"] as? JsonObject)
+                ?.let { strictBoolean(it, "workout_steps") } != false,
         )
     } catch (_: Throwable) {
         null
     }
+}
+
+/// A JSON boolean, and only a JSON boolean.
+///
+/// `jsonPrimitive.booleanOrNull` parses the CONTENT and never asks whether
+/// the value was quoted, so it reads the string `"false"` as false. For a
+/// key whose registry row says it is dropped and never coerced
+/// (`voice_feedback_enabled`, docs/backend/settings.md) that is the wrong
+/// direction to be wrong in: a bag written by some other client with a
+/// stringified boolean would silence a runner who never asked for silence,
+/// on a device with no settings screen to undo it from. `show_calories`
+/// reads through it for the same reason, and because web's `!== false`
+/// already treats the string as not-false.
+internal fun strictBoolean(obj: JsonObject, key: String): Boolean? {
+    val primitive = obj[key] as? JsonPrimitive ?: return null
+    if (primitive.isString) return null
+    return primitive.booleanOrNull
 }
 
 /// Parse an `hr_zones` object (`{z1, z2, z3, z4, z5}`) into an
@@ -250,14 +306,23 @@ internal fun hrZoneOf(bpm: Int, cutoffs: List<Int>?): Int? {
 }
 
 /// Pick zone cutoffs in priority order: explicit `hr_zones` >
-/// 60/70/80/90/100% of `max_hr_bpm` > 60/70/80/90/100% of
+/// 60/70/80/90/100% of an IN-RANGE `max_hr_bpm` > 60/70/80/90/100% of
 /// (Tanaka 208 − 0.7×age from `date_of_birth`) > null.
 ///
 /// `nowMs` is injected so tests can pin the age calculation —
 /// production callers pass `System.currentTimeMillis()`.
 internal fun resolveZoneCutoffs(s: UniversalSettings, nowMs: Long): List<Int>? {
     s.hrZones?.let { return it }
-    val maxHr = s.maxHrBpm ?: ageBasedMaxHr(s.dateOfBirth, nowMs)
+    // `max_hr_bpm` is a jsonb prefs key with no column and therefore no CHECK,
+    // and the web preferences page writes it as a bare parseInt, so a stored
+    // 300 or 0 reaches every reader. Web and Dart have always ignored one
+    // outside 80..240 and fallen through to age; this rail applied it flat,
+    // which turned a mistyped 300 into a [180, 210, 240, 270, 300] ladder that
+    // parks every real sample in Z1 while the phone showed the same run in
+    // sensible zones -- and a stored 0 into an all-zero ladder that puts every
+    // sample above Z5. decisions § 1245.
+    val maxHr = s.maxHrBpm?.takeIf { it in MAX_HR_BPM_RANGE }
+        ?: ageBasedMaxHr(s.dateOfBirth, nowMs)
     if (maxHr == null) return null
     // 60/70/80/90/100% — matches the Dart `zoneCutoffsFromMaxHr`
     // ladder (60% × 190 = 114, etc.) and the web inferred path.
@@ -270,6 +335,13 @@ internal fun resolveZoneCutoffs(s: UniversalSettings, nowMs: Long): List<Int>? {
         maxHr,
     )
 }
+
+/// The range a stored `max_hr_bpm` has to fall in to be used as one, and the
+/// age range Tanaka is applied over. Both mirror `MAX_HR_BPM_MIN` /
+/// `MAX_HR_BPM_MAX` and `TANAKA_AGE_MIN` / `TANAKA_AGE_MAX` in the web
+/// `hr_zones.ts` and their `k`-prefixed Dart twins.
+internal val MAX_HR_BPM_RANGE = 80..240
+internal val TANAKA_AGE_RANGE = 5..120
 
 /// Tanaka (2001) age-predicted maximal heart rate: 208 − 0.7 × age.
 /// More accurate for masters runners than the classic 220 − age, which
@@ -285,7 +357,7 @@ private fun ageBasedMaxHr(dob: String?, nowMs: Long): Int? {
             .atZone(java.time.ZoneOffset.UTC).toLocalDate()
         val born = java.time.LocalDate.of(year, month, day)
         val age = java.time.Period.between(born, now).years
-        if (age in 5..120) Math.round(208 - 0.7 * age).toInt() else null
+        if (age in TANAKA_AGE_RANGE) Math.round(208 - 0.7 * age).toInt() else null
     } catch (_: Throwable) {
         null
     }
@@ -339,10 +411,20 @@ class SupabaseClient(
         this.anonKey = anonKey
     }
 
+    private val refreshFlight = SingleFlight<RefreshedSession>()
+
     /// Exchange the cached refresh token for a fresh access token. Returns
     /// the new access + refresh token pair and the absolute expiry (ms since
     /// epoch); the caller persists them back to `SessionStore`.
-    suspend fun refreshAccessToken(): RefreshedSession {
+    ///
+    /// Single-flighted: GoTrue rotates the refresh token, so a second
+    /// concurrent call would present one the first has already spent and get
+    /// a 400 back — see [SingleFlight].
+    suspend fun refreshAccessToken(): RefreshedSession = refreshFlight.run {
+        refreshAccessTokenOnce()
+    }
+
+    private suspend fun refreshAccessTokenOnce(): RefreshedSession {
         val refresh = refreshToken
             ?: throw IllegalStateException("no refresh token cached")
 
@@ -514,7 +596,13 @@ class SupabaseClient(
         startedAtIso: String,
         durationS: Int,
         distanceM: Double,
-        trackFile: File,
+        /// Null when the recorded track is gone — the platform purged it
+        /// from the pre-migration cache directory, or the process died
+        /// between a successful upload and the queue entry's removal. The
+        /// run row still carries everything else the runner recorded, so it
+        /// is posted with a null `track_url` (the same shape an indoor
+        /// recording takes) rather than left stuck in the queue forever.
+        trackFile: File?,
         metadata: JsonObject?,
         /// Snapshot of the user's `privacy_default` at run-stop time,
         /// mapped to a boolean: `public → true`, `followers / private
@@ -528,10 +616,13 @@ class SupabaseClient(
         val token = accessToken ?: throw IllegalStateException("not authenticated")
         val uid = userId ?: throw IllegalStateException("not authenticated")
 
-        val gzFile = withContext(Dispatchers.IO) { gzipToTempFile(trackFile) }
+        val gzFile = trackFile?.let { withContext(Dispatchers.IO) { gzipTrackToTempFile(it) } }
         try {
-            val path = "$uid/$runId.json.gz"
-            uploadTrack(path, gzFile, token)
+            var path: String? = null
+            if (gzFile != null) {
+                path = "$uid/$runId.json.gz"
+                uploadTrack(path, gzFile, token)
+            }
 
             val rowMap = buildSaveRunRowMap(
                 runId = runId,
@@ -556,7 +647,7 @@ class SupabaseClient(
 
             execute(req)
         } finally {
-            gzFile.delete()
+            gzFile?.delete()
         }
     }
 
@@ -566,7 +657,7 @@ class SupabaseClient(
             path = path,
             anonKey = anonKey,
             token = token,
-            body = gzFile.asRequestBody("application/json".toMediaType()),
+            gzFile = gzFile,
         )
         execute(req)
     }
@@ -583,19 +674,6 @@ class SupabaseClient(
             }
             body
         }
-    }
-
-    /// Gzip `src` into a sibling temp file and return the temp file. Caller
-    /// owns the returned file and must delete it. Streams 8 KiB at a time
-    /// so peak memory is O(buffer) regardless of track size.
-    private fun gzipToTempFile(src: File): File {
-        val out = File.createTempFile("track_", ".gz", src.parentFile)
-        src.inputStream().use { input ->
-            GZIPOutputStream(out.outputStream().buffered()).use { gz ->
-                input.copyTo(gz, bufferSize = 8192)
-            }
-        }
-        return out
     }
 
     /// Encode a `Map<String, Any?>` from [RunRow.toJsonMap] to a JSON string.

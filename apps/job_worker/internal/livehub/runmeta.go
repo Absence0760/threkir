@@ -1,6 +1,7 @@
 package livehub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Absence0760/project-running/apps/job_worker/internal/schema"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
 
-	"github.com/Absence0760/project-running/apps/job_worker/internal/supakey"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/supakey"
 )
 
 // RunMeta captures the two `runs` columns the authorizer cares about:
@@ -32,6 +33,16 @@ type RunMeta struct {
 // [SupabaseRunMetaFetcher].
 type RunMetaFetcher interface {
 	RunMeta(ctx context.Context, runID string) (*RunMeta, error)
+}
+
+// HeartRateConsentFetcher answers `live_heart_rate_shared(user_id)`: the
+// live_overlay gate is open and the owner has health-data consent on
+// record (decisions § 2265). It is deliberately not part of [RunMeta],
+// whose per-room cache lives for CacheRefreshTTL: consent is withdrawn
+// mid-run, and the hub must stop fanning out bpm about as fast as the
+// database stops storing it.
+type HeartRateConsentFetcher interface {
+	HeartRateShared(ctx context.Context, userID string) (bool, error)
 }
 
 // SupabaseRunMetaFetcher reads a single `runs` row via PostgREST.
@@ -66,14 +77,42 @@ func (f *SupabaseRunMetaFetcher) RunMeta(ctx context.Context, runID string) (*Ru
 	return &RunMeta{UserID: rows[0].UserID, IsPublic: rows[0].IsPublic}, nil
 }
 
+// HeartRateShared implements [HeartRateConsentFetcher].
+func (f *SupabaseRunMetaFetcher) HeartRateShared(ctx context.Context, userID string) (bool, error) {
+	payload, err := json.Marshal(map[string]string{"p_user_id": userID})
+	if err != nil {
+		return false, err
+	}
+	body, err := f.do(ctx, http.MethodPost, "/rest/v1/rpc/live_heart_rate_shared", payload)
+	if err != nil {
+		return false, err
+	}
+	var shared bool
+	if err := json.Unmarshal(body, &shared); err != nil {
+		return false, fmt.Errorf("runmeta: decode heart-rate consent: %w", err)
+	}
+	return shared, nil
+}
+
 func (f *SupabaseRunMetaFetcher) get(ctx context.Context, path string) ([]byte, error) {
+	return f.do(ctx, http.MethodGet, path, nil)
+}
+
+func (f *SupabaseRunMetaFetcher) do(ctx context.Context, method, path string, payload []byte) ([]byte, error) {
 	base := strings.TrimRight(f.BaseURL, "/")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
+	var reqBody io.Reader
+	if payload != nil {
+		reqBody = bytes.NewReader(payload)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, base+path, reqBody)
 	if err != nil {
 		return nil, err
 	}
 	supakey.SetAuthHeaders(req.Header, f.ServiceKey)
 	req.Header.Set("Accept", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	client := f.HTTP
 	if client == nil {
 		// Fallback timeout — http.DefaultClient has no deadline, so a

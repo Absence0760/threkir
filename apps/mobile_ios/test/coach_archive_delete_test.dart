@@ -3,12 +3,12 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Seeds one archive and lets the test choose whether the delete throws,
 /// so the delete path can be exercised end to end without a network.
@@ -25,7 +25,10 @@ class _ArchiveApi extends ApiClient {
   String? get userId => 'u-viewer';
 
   @override
-  Future<DateTime?> fetchCoachConsentAt() async => DateTime(2026, 1, 1);
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async => const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      };
 
   @override
   Future<List<CoachMessageRow>> fetchCoachMessages({String? planId}) async =>
@@ -58,10 +61,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -172,9 +172,6 @@ void main() {
       expect(find.textContaining('Something went wrong'), findsOneWidget);
       expect(find.textContaining('Exception: boom'), findsNothing);
 
-      // Let the banner's auto-dismiss timer fire so it isn't left
-      // pending when the widget tree is disposed.
-      await tester.pump(const Duration(seconds: 4));
     });
   });
 }

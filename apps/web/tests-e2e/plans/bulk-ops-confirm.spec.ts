@@ -1,19 +1,24 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] destructive bulk ops (duplicate week / make-recovery-week /
  * shift plan) now route through a ConfirmDialog — each rewrites or re-dates a
  * chunk of the plan and can't be cleanly undone. This pins the two halves of
  * the contract: Cancel performs no mutation, Confirm runs it. Throwaway plan
- * is `completed` to dodge the one-active unique index (the bulk ops gate on
+ * is `completed` to dodge the active-plan overlap constraint (the bulk ops gate on
  * ownership, not status).
  */
 
 test.describe('/plans/[id] bulk-op confirmations', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('duplicate week asks first — Cancel is a no-op, Confirm duplicates', async ({ page }) => {
 		const admin = getAdminClient();

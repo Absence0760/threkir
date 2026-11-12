@@ -1,31 +1,82 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { onMount } from 'svelte';
-	import { createTrainingPlan, fetchActivePlanOverview } from '$lib/core/data';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { onMount, untrack } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+	import {
+		createTrainingPlan,
+		fetchMyOverlappingActivePlans,
+		fetchRuns,
+		type PlanOverlapChoice,
+	} from '#lib/core/data.ts';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, type OverlapPlan } from '#lib/training/plan_overlap.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		GOAL_DISTANCES_M,
+		ULTRA_PRESETS,
 		defaultPlanWeeks,
+		isUltraDistance,
 		walkRunDefaultWeeks,
+		WALK_RUN_MAX_DAYS_PER_WEEK,
 		generatePlan,
+		isMastersAge,
+		fmtHms,
 		formatISO,
 		parseISO,
-	} from '$lib/training/training';
-	import { workoutKindLabel, planPhaseLabel } from '$lib/training/workout_labels';
+		type UltraPresetId,
+	} from '#lib/training/training.ts';
+	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
+	import { fitPlanToRaceDay } from '#lib/training/season_plan.ts';
+	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import type {
 		GoalEvent,
 		GeneratedPlan,
 		WorkoutKind,
 		TrainingGender,
-	} from '$lib/training/training';
-	import { isSundayIso, nextSundayIso } from '$lib/training/plan_start';
-	import { parsePlanMarkdown, parsePlanJson } from '$lib/training/plan_serialize';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { ageFromDob } from '$lib/nutrition/nutrition_targets';
-	import { supabase } from '$lib/core/supabase';
-	import { fmtKm, fmtPace, getUnit } from '$lib/format/units.svelte';
-	import { paceMinutesSeconds } from '$lib/format/pace_format';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/training/training.ts';
+	import {
+		alignPlanStartIso,
+		defaultPlanStartIso,
+		planStartAllowedIso,
+	} from '#lib/training/plan_start.ts';
+	import { capReturnRamp, returningFromBreak, LAYOFF_MAX_DAYS } from '#lib/training/comeback.ts';
+	import { goalAheadOfRecentRuns, type EffortForPrediction } from '#lib/training/race_predictor.ts';
+	import { qualifyingRuns } from '#lib/training/fitness.ts';
+	import {
+		CHRONIC_WINDOW_WEEKS,
+		MIN_ACTIVE_WEEKS,
+		openingWeekVolumeM,
+		peakWeekVolumeM,
+		planRampCheck,
+		recentRunVolume,
+		shouldSurfaceRampNote,
+		type RunForVolume,
+	} from '#lib/training/plan_ramp.ts';
+	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { EXTRA_RECOVERY_KEY } from '#lib/training/plan_calibration.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { updateUniversal } from '#lib/settings/settings.ts';
+	import type { HealthUseDobState } from '#lib/core/health_consent.ts';
+	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
+	import { paceFieldFromSecPerKm, secPerKmFromPaceField } from '#lib/format/pace_format.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { planParseMessage } from '#lib/i18n/plan_parse_message.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import {
+		PlanRequestError,
+		requestPlanInputs,
+		type PlanRequestAssumption,
+		type PlanRequestInputs,
+	} from '#lib/training/plan_request_client.ts';
+	import { racePlanPreset, type RacePlanRefusal } from '#lib/training/race_plan_preset.ts';
 
 	// Persona-hunt Round 3 finding Woman #3. Pull the runner's gender
 	// off user_profiles so generatePlan can apply the gender-aware
@@ -34,27 +85,116 @@
 	// the segments-leaderboard demographics). null → unmodified
 	// (male-curve) paces, matching pre-fix behaviour.
 	let viewerGender = $state<TrainingGender>(null);
-	// Persona-hunt finding Older #30. Age (from date_of_birth) drives the
-	// masters recovery calibration in generatePlan — wider hard-day
-	// spacing + a 3-week build/recover cycle for 50+. Like gender, it's
-	// read off the profile rather than asked in the wizard. null → the
-	// standard (younger-physiology) schedule.
+	// Persona-hunt finding Older #30. Age drives the masters recovery
+	// calibration in generatePlan — wider hard-day spacing + a 3-week
+	// build/recover cycle for 50+. Like gender, it's read off the profile
+	// rather than asked in the wizard. null → the standard
+	// (younger-physiology) schedule. Reshaping the plan around the runner's
+	// age is an Art 9 health inference, so the date comes through
+	// `healthUseDob` rather than off the age record directly (§ 722).
 	let viewerAge = $state<number | null>(null);
+	// Null until the profile read lands, and on failure: the hint to add a
+	// date of birth then stays hidden rather than tell a runner with one on
+	// record that it is missing.
+	let viewerDobState = $state<HealthUseDobState | null>(null);
+	// `extra_recovery` (settings.md): the masters recovery calibration for a
+	// runner under 50 or with no age on record. A universal setting, so the
+	// toggle here and the one in Settings → Training are the same switch.
+	let extraRecovery = $state(false);
+	let extraRecoveryLoaded = $state(false);
+	let extraRecoverySaving = $state(false);
+	let extraRecoveryError = $state(false);
+	const viewerIsMasters = $derived(isMastersAge(viewerAge));
+	// The runner's running history, far enough back to see the break a
+	// returning runner is coming back from as well as the four weeks the ramp
+	// check grades against. Null until loaded (and on failure): every note
+	// built from it self-hides rather than grading against a base it doesn't
+	// have.
+	let recentRuns = $state<RunForVolume[] | null>(null);
+	// The last 90 days' qualifying efforts, for checking a goal time against
+	// what the runner has actually run. Empty until loaded, and on failure.
+	let recentEfforts = $state<EffortForPrediction[]>([]);
 	onMount(async () => {
 		if (!auth.user) return;
-		// Self-read via get_my_profile(): gender / date_of_birth are
-		// deny-by-default for direct authenticated SELECTs (column lockdown,
-		// 20260707_001).
-		const { data } = await supabase.rpc('get_my_profile');
-		const g = (data as { gender?: string | null } | null)?.gender;
-		if (g === 'male' || g === 'female' || g === 'prefer_not_to_say') viewerGender = g;
-		const dob = (data as { date_of_birth?: string | null } | null)?.date_of_birth;
-		// Parse by calendar components — new Date('YYYY-MM-DD') is UTC midnight,
-		// and reading it back through local getters shifts the birthday a day
-		// early in negative-UTC offsets, misfiring the masters (50) gate.
-		const age = ageFromDob(dob, Date.now());
-		if (age !== null) viewerAge = age;
+		const c = await loadPlanCalibration(auth.user.id);
+		viewerGender = c.gender;
+		viewerAge = c.age;
+		viewerDobState = c.dobState;
+		extraRecovery = c.extraRecovery;
+		extraRecoveryLoaded = true;
 	});
+
+	async function onExtraRecoveryToggle(e: Event) {
+		const uid = auth.user?.id;
+		if (!uid || extraRecoverySaving) return;
+		const on = (e.currentTarget as HTMLInputElement).checked;
+		const before = extraRecovery;
+		extraRecovery = on;
+		extraRecoverySaving = true;
+		extraRecoveryError = false;
+		try {
+			await updateUniversal(uid, { [EXTRA_RECOVERY_KEY]: on });
+		} catch (err) {
+			console.error('plan wizard: extra_recovery save failed', { message: thrownMessage(err) });
+			extraRecovery = before;
+			extraRecoveryError = true;
+		} finally {
+			extraRecoverySaving = false;
+		}
+	}
+
+	// Its own mount effect, and its own catch: the volume read is an advisory
+	// layer over the wizard, so neither a profile failure above nor a failure
+	// here may take the other — or the plan preview — down with it.
+	onMount(async () => {
+		if (!auth.user) return;
+		try {
+			// A break of up to LAYOFF_MAX_DAYS plus the four-week base before it.
+			const fromIso = new Date(
+				Date.now() - (LAYOFF_MAX_DAYS + CHRONIC_WINDOW_WEEKS * 7 + 1) * 86_400_000,
+			).toISOString();
+			recentRuns = await fetchRuns({
+				columns: ['started_at', 'distance_m', 'activity_type'] as const,
+				startedAtFrom: fromIso,
+			});
+		} catch (e) {
+			console.error('Recent-volume read for the plan ramp note failed', e);
+		}
+	});
+
+	onMount(async () => {
+		if (!auth.user) return;
+		try {
+			const now = Date.now();
+			const runs = await fetchRuns({
+				columns: [
+					'started_at',
+					'distance_m',
+					'duration_s',
+					'activity_type',
+					'metadata',
+					'source',
+				] as const,
+				startedAtFrom: new Date(now - GOAL_CHECK_WINDOW_DAYS * 86_400_000).toISOString(),
+			});
+			recentEfforts = qualifyingRuns(runs).map((r) => ({
+				distanceM: r.distance_m,
+				durationS: r.duration_s,
+				ageDays: Math.max(0, (now - Date.parse(r.started_at)) / 86_400_000),
+			}));
+		} catch (e) {
+			console.error('Recent-efforts read for the plan goal check failed', e);
+		}
+	});
+
+	/// The window the goal check reads efforts from: the same 90 days
+	/// `currentVdot` takes the runner's fitness from.
+	const GOAL_CHECK_WINDOW_DAYS = 90;
+
+	let recentVolume = $derived(recentRuns ? recentRunVolume(recentRuns, Date.now()) : null);
+	let returning = $derived(recentRuns ? returningFromBreak(recentRuns, Date.now()) : null);
+	// A returning runner's plan is eased in unless they turn it off.
+	let easeBack = $state(true);
 
 	const METRES_PER_MILE = 1609.344;
 	let distanceUnit = $derived(getUnit());
@@ -79,32 +219,314 @@
 		// "create my training plan" deep-link keys these off primary_goal).
 		// Absent → the normal defaults below.
 		initialGoalEvent?: GoalEvent;
+		/// An ultra goal distance (past the marathon) to preselect, as the race
+		/// calendar hands one over. Ignored for any other distance.
+		initialGoalDistanceM?: number | null;
 		initialBeginnerWalkRun?: boolean;
+		// Preset the schedule so the plan's race week lands on a known race
+		// day (the race-calendar "train for this race" deep-link). The start
+		// date is already Sunday-aligned by `racePlanPreset`; it still goes
+		// through the same snap on change as a hand-typed one.
+		initialName?: string;
+		initialStartDate?: string;
+		initialWeeks?: number;
+		/// The race day the preset is built around and the race's name: the
+		/// plan ends on that day with the race as its one A race (#1294).
+		initialRace?: { date: string; name: string | null } | null;
+		/// The chained start floor a race page's "Add to my season" hands over;
+		/// an AI fill that re-derives the dates from a race keeps to it too.
+		notBeforeIso?: string | null;
+		/// The race listing the plan is built for; the created plan links to it.
+		raceListingId?: string | null;
+		// A plain-English plan description handed over by a deep link (the
+		// coach's plan handoff). With the assistant live it prefills the box
+		// and runs one fill on mount; with it off it is ignored.
+		initialDescription?: string;
+		/// A measured 5K to fill the recent-5K field with (Home's recent-5K
+		/// suggestion). Filled, never confirmed: it sets no paces until the
+		/// runner ticks the confirm box.
+		initialRecent5kSec?: number;
 	}
-	let { oncreated, oncancel, initialGoalEvent, initialBeginnerWalkRun }: Props = $props();
+	let {
+		oncreated,
+		oncancel,
+		initialGoalEvent,
+		initialGoalDistanceM,
+		initialBeginnerWalkRun,
+		initialName,
+		initialStartDate,
+		initialWeeks,
+		initialRace,
+		notBeforeIso,
+		raceListingId,
+		initialDescription,
+		initialRecent5kSec,
+	}: Props = $props();
 
-	let name = $state('');
-	let goalEvent = $state<GoalEvent>(initialGoalEvent ?? 'distance_half');
-	let startDate = $state(defaultStart());
+	// The initial* props seed the form once; the fields are edited locally after.
+	let name = $state(untrack(() => initialName ?? ''));
+	// An ultra goal is stored as `custom` plus its distance — the distance
+	// is what the generator plans from — and `ultraChoice` remembers which
+	// wizard entry the runner picked, so the select can show it.
+	type UltraChoice = UltraPresetId | 'ultra_other';
+	const initialUltra = untrack(() =>
+		initialGoalDistanceM != null && isUltraDistance(initialGoalDistanceM) ? initialGoalDistanceM : null,
+	);
+	let ultraChoice = $state<UltraChoice | null>(
+		initialUltra == null ? null : (ultraPresetFor(initialUltra) ?? 'ultra_other'),
+	);
+	let ultraDistanceM = $state<number | null>(initialUltra);
+	let goalEvent = $state<GoalEvent>(
+		untrack(() => (initialUltra != null ? 'custom' : (initialGoalEvent ?? 'distance_half'))),
+	);
+
+	/// The preset a distance is, to the metre, or null.
+	function ultraPresetFor(distanceM: number): UltraPresetId | null {
+		return ULTRA_PRESETS.find((p) => Math.abs(p.distanceM - distanceM) < 1)?.id ?? null;
+	}
+
+	function onGoalChange(e: Event) {
+		exitImportMode();
+		const value = (e.currentTarget as HTMLSelectElement).value;
+		if (value === 'ultra_other' || ULTRA_PRESETS.some((p) => p.id === value)) {
+			const preset = ULTRA_PRESETS.find((p) => p.id === value);
+			ultraChoice = value as UltraChoice;
+			goalEvent = 'custom';
+			ultraDistanceM = preset?.distanceM ?? ultraDistanceM ?? 70_000;
+			return;
+		}
+		ultraChoice = null;
+		goalEvent = value as GoalEvent;
+	}
+	let startDate = $state(
+		untrack(() => initialStartDate ?? defaultPlanStartIso(todayIso(), initialBeginnerWalkRun ?? false)),
+	);
 	let daysPerWeek = $state(4);
 
 	let targetHours = $state<number | null>(null);
 	let targetMin = $state<number | null>(null);
 	let targetSec = $state<number | null>(null);
 
-	let recent5kMin = $state<number | null>(null);
-	let recent5kSec = $state<number | null>(null);
+	const suggestedRecent5k = untrack(() => initialRecent5kSec ?? null);
+	let recent5kMin = $state<number | null>(suggestedRecent5k == null ? null : Math.floor(suggestedRecent5k / 60));
+	let recent5kSec = $state<number | null>(suggestedRecent5k == null ? null : suggestedRecent5k % 60);
 	// Returning runners type an old PR; the engine would treat it as current
 	// fitness and prescribe paces that are too fast (injury risk — comeback
 	// persona #24). The time only anchors paces once the runner confirms it
-	// reflects current fitness; otherwise we fall back to goal-based paces.
+	// reflects current fitness; otherwise paces come from the goal time, which
+	// is no safer when the goal is ambitious — hence the goal check below.
 	let recent5kConfirmed = $state(false);
 	// Beginner / return-to-run: generate a C25K-style walk-run plan (persona #22).
-	let beginnerWalkRun = $state(initialBeginnerWalkRun ?? false);
+	let beginnerWalkRun = $state(untrack(() => initialBeginnerWalkRun ?? false));
+	// The wizard's first question. It decides which fields apply: a runner
+	// who has never run gets the walk-run plan and none of the race fields; a
+	// runner building up picks a distance but no goal time; a runner training
+	// for a race sees everything.
+	type StartingPoint = 'new' | 'building' | 'race';
+	let startingPoint = $state<StartingPoint>(untrack(() => (initialBeginnerWalkRun ? 'new' : 'race')));
+	const STARTING_POINTS: { value: StartingPoint; label: MessageKey; hint: MessageKey }[] = [
+		{ value: 'new', label: 'planEditor.startingPointNew', hint: 'planEditor.startingPointNewHint' },
+		{ value: 'building', label: 'planEditor.startingPointBuilding', hint: 'planEditor.startingPointBuildingHint' },
+		{ value: 'race', label: 'planEditor.startingPointRace', hint: 'planEditor.startingPointRaceHint' },
+	];
+	// Every day a walk-run week can hold, and nothing it would cut.
+	const WALK_RUN_DAY_OPTIONS = Array.from(
+		{ length: WALK_RUN_MAX_DAYS_PER_WEEK - 1 },
+		(_, i) => i + 2,
+	);
+	const DAY_OPTIONS = [3, 4, 5, 6, 7];
+	let dayOptions = $derived(beginnerWalkRun ? WALK_RUN_DAY_OPTIONS : DAY_OPTIONS);
+	let showGoalRace = $derived(startingPoint !== 'new');
+	let showGoalTime = $derived(startingPoint === 'race' && !beginnerWalkRun);
+	let showRecent5k = $derived(startingPoint !== 'new' && !beginnerWalkRun);
 
-	let weekOverride = $state<number | null>(null);
+	let weekOverride = $state<number | null>(untrack(() => initialWeeks ?? null));
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+
+	// "Describe the plan you want". The AI is the interface, never the planner:
+	// it only fills the fields below, and the generator builds the plan from
+	// them exactly as it does for a hand-filled form. Every failure leaves the
+	// manual form as it was.
+	const showAiPlan = coachEnabled() && aiPlanEnabled();
+	const handedDescription = untrack(() => (showAiPlan ? (initialDescription?.trim() ?? '') : ''));
+	let aiRequest = $state(handedDescription);
+	let aiBox = $state<HTMLDetailsElement | null>(null);
+	let aiBusy = $state(false);
+	let aiError = $state<{ message: string; consent: boolean } | null>(null);
+	let aiApplied = $state<{
+		assumptions: PlanRequestAssumption[];
+		raceNote: string | null;
+		recent5kFilled: boolean;
+	} | null>(null);
+	// The runner's own plan name always beats the extracted one.
+	let nameTouched = $state(false);
+	// The start date the last AI fill derived from a race date. A later fill
+	// without a race date puts it back, so the plan stops being sized for a
+	// race the new description no longer mentions; a date the runner picked
+	// by hand is left alone.
+	let aiRaceStart = $state<string | null>(null);
+	let raceDay = $state<{ date: string; name: string | null } | null>(untrack(() => initialRace ?? null));
+
+	const AI_ASSUMPTION_KEYS: Record<PlanRequestAssumption, MessageKey> = {
+		goal_event_default: 'planEditor.aiAssumptionGoalEventDefault',
+		days_per_week_default: 'planEditor.aiAssumptionDaysDefault',
+		days_per_week_clamped: 'planEditor.aiAssumptionDaysClamped',
+		weeks_clamped: 'planEditor.aiAssumptionWeeksClamped',
+		race_date_dropped: 'planEditor.aiAssumptionRaceDateDropped',
+		goal_time_dropped: 'planEditor.aiAssumptionGoalTimeDropped',
+		recent_5k_dropped: 'planEditor.aiAssumptionRecent5kDropped',
+		beginner_5k: 'planEditor.aiAssumptionBeginner5k',
+	};
+	const RACE_REFUSAL_KEYS: Record<RacePlanRefusal, MessageKey> = {
+		past: 'planEditor.aiRacePast',
+		too_soon: 'planEditor.aiRaceTooSoon',
+		invalid: 'planEditor.aiRaceInvalid',
+	};
+
+	function addDaysIso(iso: string, days: number): string {
+		const d = parseISO(iso);
+		d.setDate(d.getDate() + days);
+		return formatISO(d);
+	}
+
+	/// Presets the start date + length so race week contains race day, and
+	/// returns the note saying so — or why it could not.
+	function applyRaceDate(raceDate: string, requestedWeeks: number | null): string {
+		const result = racePlanPreset({
+			raceDateIso: raceDate,
+			distanceM: goalDistance,
+			todayIso: todayIso(),
+			notBeforeIso,
+		});
+		if (!result.ok) return t(RACE_REFUSAL_KEYS[result.reason]);
+		raceDay = { date: raceDate, name: null };
+		let { weeks: presetWeeks, startDate: presetStart } = result.preset;
+		// A shorter plan the runner asked for still ends on race week: start
+		// later rather than earlier. A longer one cannot fit, so the preset wins.
+		if (requestedWeeks != null && requestedWeeks < presetWeeks) {
+			presetStart = addDaysIso(presetStart, (presetWeeks - requestedWeeks) * 7);
+			presetWeeks = requestedWeeks;
+		}
+		startDate = presetStart;
+		aiRaceStart = presetStart;
+		startSnapped = false;
+		weekOverride = presetWeeks;
+		return t('planEditor.aiRaceApplied', {
+			date: parseISO(raceDate).toLocaleDateString(activeFormatLocale(), { dateStyle: 'medium' }),
+		});
+	}
+
+	function applyPlanInputs(inputs: PlanRequestInputs) {
+		exitImportMode();
+		const wasDefaultStart = startDate === defaultPlanStartIso(todayIso(), beginnerWalkRun);
+		beginnerWalkRun = inputs.beginnerWalkRun;
+		// A walk-run description is a runner who has never run; a goal time
+		// is a race, and has to land somewhere the runner can see it.
+		if (inputs.beginnerWalkRun) startingPoint = 'new';
+		else if (startingPoint === 'new' || inputs.goalTimeSec != null) startingPoint = 'race';
+		goalEvent = inputs.goalEvent;
+		// An ultra arrives as `custom` plus its distance and selects the
+		// matching Ultra entry, so the distance field shows what was heard.
+		const ultra = inputs.goalEvent === 'custom' && inputs.goalDistanceM != null;
+		ultraChoice = ultra ? (ultraPresetFor(inputs.goalDistanceM!) ?? 'ultra_other') : null;
+		if (ultra) ultraDistanceM = inputs.goalDistanceM;
+		daysPerWeek = clampDays(inputs.daysPerWeek, inputs.beginnerWalkRun);
+		// A fill replaces the shape of the plan, not just the fields this
+		// description happened to name: a second fill must not inherit the
+		// first one's length, race start or goal time.
+		weekOverride = inputs.weeks;
+		if ((!inputs.raceDate && aiRaceStart !== null && startDate === aiRaceStart) || wasDefaultStart) {
+			startDate = defaultPlanStartIso(todayIso(), beginnerWalkRun);
+		}
+		aiRaceStart = null;
+		raceDay = null;
+		if (inputs.goalTimeSec != null) {
+			targetHours = Math.floor(inputs.goalTimeSec / 3600);
+			targetMin = Math.floor((inputs.goalTimeSec % 3600) / 60);
+			targetSec = inputs.goalTimeSec % 60;
+		} else {
+			targetHours = null;
+			targetMin = null;
+			targetSec = null;
+		}
+		if (inputs.recent5kSec != null) {
+			recent5kMin = Math.floor(inputs.recent5kSec / 60);
+			recent5kSec = inputs.recent5kSec % 60;
+			// Never ticked for the runner: whether the time reflects their
+			// fitness today is theirs to confirm, and an unconfirmed time leaves
+			// the paces on the goal time (or the cautious default without one).
+			recent5kConfirmed = false;
+		}
+		if (inputs.planName && (!nameTouched || !name.trim())) name = inputs.planName;
+		const raceNote = inputs.raceDate ? applyRaceDate(inputs.raceDate, inputs.weeks) : null;
+		aiApplied = {
+			assumptions: inputs.assumptions,
+			raceNote,
+			recent5kFilled: inputs.recent5kSec != null,
+		};
+	}
+
+	function aiErrorFor(e: unknown): { message: string; consent: boolean } {
+		const kind = e instanceof PlanRequestError ? e.kind : 'unavailable';
+		if (kind === 'consent') return { message: t('planEditor.aiErrorConsent'), consent: true };
+		if (kind === 'daily_limit') return { message: t('planEditor.aiErrorDailyLimit'), consent: false };
+		return { message: t('planEditor.aiErrorFallback'), consent: false };
+	}
+
+	// A deep-linked description spends a Coach message, so it runs once and
+	// leaves the URL: a reload or a back-navigation must not run it again.
+	// The strip waits a macrotask because SvelteKit refuses replaceState until
+	// its router has finished starting, which is after the first mount.
+	function stripDescribeParam() {
+		const url = new URL(page.url.href);
+		if (!url.searchParams.has('describe')) return;
+		url.searchParams.delete('describe');
+		try {
+			replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+		} catch (e) {
+			console.error('Clearing the plan description from the URL failed', { message: thrownMessage(e) });
+		}
+	}
+
+	onMount(() => {
+		if (!handedDescription) return;
+		if (aiBox) {
+			aiBox.open = true;
+			aiBox.scrollIntoView({ block: 'start' });
+		}
+		void fillFromDescription();
+		setTimeout(stripDescribeParam, 0);
+	});
+
+	async function fillFromDescription() {
+		const text = aiRequest.trim();
+		if (!text || aiBusy) return;
+		aiBusy = true;
+		aiError = null;
+		aiApplied = null;
+		let inputs: PlanRequestInputs;
+		try {
+			inputs = await requestPlanInputs(text, todayIso());
+		} catch (e) {
+			if (!(e instanceof PlanRequestError)) {
+				console.error('Plan assistant request failed', { message: thrownMessage(e) });
+			}
+			aiError = aiErrorFor(e);
+			aiBusy = false;
+			return;
+		}
+		// Its own catch: a fill that throws part-way must not take the editor
+		// down with it — the fields already set stay, the runner edits the rest.
+		try {
+			applyPlanInputs(inputs);
+		} catch (e) {
+			console.error('Applying plan assistant inputs failed', { message: thrownMessage(e) });
+			aiError = { message: t('planEditor.aiErrorFallback'), consent: false };
+		} finally {
+			aiBusy = false;
+		}
+	}
 
 	// Editable plan state. The auto-generator produces a candidate
 	// outline whenever core form inputs change; the user can then
@@ -133,9 +555,13 @@
 			const parsed = text.startsWith('{') ? parsePlanJson(text) : parsePlanMarkdown(text);
 			name = parsed.name;
 			goalEvent = parsed.goalEvent;
+			const pastedUltra = parsed.goalEvent === 'custom' && isUltraDistance(parsed.goalDistanceM);
+			ultraChoice = pastedUltra ? (ultraPresetFor(parsed.goalDistanceM) ?? 'ultra_other') : null;
+			ultraDistanceM = pastedUltra ? parsed.goalDistanceM : ultraDistanceM;
 			startDate = parsed.startDate;
 			importedGoalDistanceM = parsed.goalDistanceM;
 			if (parsed.goalTimeSec != null && parsed.goalTimeSec > 0) {
+				startingPoint = 'race';
 				targetHours = Math.floor(parsed.goalTimeSec / 3600);
 				targetMin = Math.floor((parsed.goalTimeSec % 3600) / 60);
 				targetSec = parsed.goalTimeSec % 60;
@@ -145,7 +571,8 @@
 			expandedWeek = null;
 			showImport = false;
 		} catch (e) {
-			importError = describeError(e);
+			const reason = planParseMessage(e, t);
+			importError = reason != null ? t('planEditor.importParseFailed', { detail: reason }) : describeError(e);
 		}
 	}
 
@@ -169,39 +596,23 @@
 		'rest',
 	];
 
-	function paceToInput(secPerKm: number | null): string {
-		if (secPerKm == null || secPerKm <= 0) return '';
-		return paceMinutesSeconds(secPerKm);
-	}
-
-	function inputToPace(raw: string): number | null {
-		const trimmed = raw.trim();
-		if (!trimmed) return null;
-		const m = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-		if (!m) return null;
-		return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-	}
-
+	// The outline's pace is typed in the runner's unit, beside distances in
+	// that unit, and stored per km.
 	function paceInputHandler(weekIdx: number, woIdx: number) {
 		return (e: Event) => {
 			if (!plan) return;
 			const value = (e.currentTarget as HTMLInputElement).value;
-			const sec = inputToPace(value);
-			plan.weeks[weekIdx].workouts[woIdx].target_pace_sec_per_km = sec;
+			plan.weeks[weekIdx].workouts[woIdx].target_pace_sec_per_km = secPerKmFromPaceField(
+				value,
+				distanceUnit,
+			);
 		};
 	}
 
 	function describeError(e: unknown): string {
-		if (e instanceof Error) return e.message;
-		if (e && typeof e === 'object') {
-			const obj = e as { message?: unknown; code?: unknown; details?: unknown };
-			const parts: string[] = [];
-			if (typeof obj.message === 'string') parts.push(obj.message);
-			if (typeof obj.code === 'string') parts.push(`(${obj.code})`);
-			if (typeof obj.details === 'string') parts.push(obj.details);
-			if (parts.length) return parts.join(' ');
-		}
-		return t('planEditor.errorCreateFailed');
+		return t('planEditor.errorCreateFailed', {
+			error: errorCopy(e, t, 'planEditor.errorCreateFailed'),
+		});
 	}
 
 	// A brand-new runner ticking the walk-run box is not training for a half
@@ -210,17 +621,39 @@
 	// longer than 5K, so it never clobbers a deliberate 5K choice and never
 	// stops them re-picking 10K afterwards.
 	function onBeginnerToggle(e: Event) {
-		beginnerWalkRun = (e.currentTarget as HTMLInputElement).checked;
-		if (beginnerWalkRun && goalDistance > GOAL_DISTANCES_M.distance_5k) {
+		setWalkRun((e.currentTarget as HTMLInputElement).checked);
+	}
+
+	/// The one place the walk-run choice changes, so the fields that depend on
+	/// it follow: the goal drops to 5K, the training days fit a walk-run week,
+	/// and a start date the runner never touched moves to the new default.
+	function setWalkRun(on: boolean) {
+		exitImportMode();
+		const wasDefaultStart = startDate === defaultPlanStartIso(todayIso(), beginnerWalkRun);
+		beginnerWalkRun = on;
+		if (on && goalDistance > GOAL_DISTANCES_M.distance_5k) {
 			goalEvent = 'distance_5k';
+			ultraChoice = null;
+		}
+		daysPerWeek = clampDays(daysPerWeek, on);
+		if (wasDefaultStart) {
+			startDate = defaultPlanStartIso(todayIso(), on);
+			startSnapped = false;
+		} else {
+			alignStart();
 		}
 	}
 
-	function defaultStart(): string {
-		const d = new Date();
-		d.setDate(d.getDate() + 7);
-		d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
-		return formatISO(d);
+	function clampDays(days: number, walkRun: boolean): number {
+		const options = walkRun ? WALK_RUN_DAY_OPTIONS : DAY_OPTIONS;
+		return Math.min(Math.max(days, options[0]), options[options.length - 1]);
+	}
+
+	function setStartingPoint(next: StartingPoint) {
+		const was = startingPoint;
+		startingPoint = next;
+		if (next === 'new') setWalkRun(true);
+		else if (was === 'new') setWalkRun(false);
 	}
 
 	// The generator hard-anchors day 0 of the start week to the Sunday long
@@ -229,31 +662,43 @@
 	// type="date"> can't restrict to Sundays, so snap the chosen date
 	// forward to the upcoming Sunday on change — the reactive preview then
 	// regenerates from the aligned date, keeping what the user sees in sync
-	// with what's saved. (Persona round-5 intermediate.)
+	// with what's saved. (Persona round-5 intermediate.) A walk-run plan has
+	// no weekday roles, so its date is left where the runner put it.
 	let startSnapped = $state(false);
-	function alignStartToSunday() {
+	function alignStart() {
 		if (!startDate) return;
-		if (isSundayIso(startDate)) {
+		if (planStartAllowedIso(startDate, beginnerWalkRun)) {
 			startSnapped = false;
 			return;
 		}
-		startDate = nextSundayIso(startDate);
+		startDate = alignPlanStartIso(startDate, beginnerWalkRun);
 		startSnapped = true;
 	}
 
 	let goalDistance = $derived(
-		goalEvent === 'custom' ? 10_000 : GOAL_DISTANCES_M[goalEvent]
+		goalEvent !== 'custom'
+			? GOAL_DISTANCES_M[goalEvent]
+			: ultraChoice != null
+				? (ultraDistanceM ?? 0)
+				: 10_000
 	);
+	// An ultra entry whose typed distance is not past the marathon plans
+	// nothing: the generator would quietly build a road plan under an ultra
+	// label.
+	let ultraDistanceInvalid = $derived(ultraChoice != null && !isUltraDistance(goalDistance));
 	// A beginner walk-run plan needs the full C25K progression length (9
 	// weeks), not the 5k continuous-run default (8) — otherwise the final
 	// graduation week is dropped. Persona round-5 runner-new. An explicit
 	// override still wins.
 	let weeks = $derived(
-		weekOverride ?? (beginnerWalkRun ? walkRunDefaultWeeks() : defaultPlanWeeks(goalEvent))
+		weekOverride ??
+			(beginnerWalkRun ? walkRunDefaultWeeks() : defaultPlanWeeks(goalEvent, goalDistance))
 	);
 
+	// A hidden goal time is not applied: a runner who typed one and then said
+	// they are not training for a race gets the plan they now describe.
 	let goalTimeSec = $derived(
-		targetHours != null || targetMin != null || targetSec != null
+		showGoalTime && (targetHours != null || targetMin != null || targetSec != null)
 			? (targetHours ?? 0) * 3600 + (targetMin ?? 0) * 60 + (targetSec ?? 0)
 			: null
 	);
@@ -265,8 +710,13 @@
 	// Only anchor paces on the entered time once the runner confirms it's
 	// current. An entered-but-unconfirmed time is treated as absent so paces
 	// stay on the conservative goal-based fallback.
-	let recent5kApplied = $derived(recent5kConfirmed ? recent5kTotal : null);
-	let recent5kNeedsConfirm = $derived(recent5kTotal != null && !recent5kConfirmed);
+	let recent5kApplied = $derived(recent5kConfirmed && showRecent5k ? recent5kTotal : null);
+	// Shown only once the time is a whole one: a warning on the first digit
+	// typed is noise, and a time under a minute is not a 5K.
+	let recent5kComplete = $derived(
+		recent5kMin != null && recent5kMin > 0 && recent5kSec != null,
+	);
+	let recent5kNeedsConfirm = $derived(recent5kComplete && !recent5kConfirmed);
 
 	// A beginner walk-run plan is duration-based intervals, not pace-based —
 	// the VDOT badge and the five Daniels pace zones are jargon the runner who
@@ -277,22 +727,84 @@
 		!!plan && plan.weeks.some((w) => w.workouts.some((wo) => wo.kind === 'walk_run'))
 	);
 
+	// How the plan compares with what the runner has actually been running.
+	// Recomputes as the goal / days / weeks inputs change, so dropping a
+	// training day shows the ramp easing in real time.
+	let rampCheck = $derived(
+		plan && recentVolume
+			? planRampCheck(
+					openingWeekVolumeM(plan.weeks),
+					peakWeekVolumeM(plan.weeks),
+					recentVolume
+				)
+			: null
+	);
+	// The opening-week ceiling the plan is eased in under, or null when it is
+	// not: no break to come back from, the runner turned it off, or a
+	// walk-run plan, whose opening week is already far below it.
+	let returnCapM = $derived(
+		returning && easeBack && !beginnerWalkRun ? returning.openingCapM : null,
+	);
+	let returnMessage = $derived(
+		returning && !isWalkRunPlan
+			? t('planEditor.returnBody', {
+					weeks: returning.layoffWeeks,
+					pre: fmtKm(returning.preLayoffWeeklyM, 0),
+					cap: fmtKm(returning.openingCapM, 0),
+				})
+			: null,
+	);
+	// The ramp check has nothing to grade a runner with too little recent
+	// running against. Said out loud rather than left silent, because that
+	// runner is the one a big first week hurts — unless the plan is walk-run,
+	// which is the gentle start this note would suggest.
+	let thinHistoryMessage = $derived(
+		plan && recentVolume && !returning && !isWalkRunPlan && recentVolume.activeWeeks < MIN_ACTIVE_WEEKS
+			? t('planEditor.thinHistory', { opening: fmtKm(openingWeekVolumeM(plan.weeks), 0) })
+			: null,
+	);
+	// Paces come from the goal time unless a recent 5K is confirmed, so an
+	// ambitious goal makes every pace too fast. Checked against what the
+	// runner has run lately; silent without a confident projection.
+	let goalAhead = $derived(
+		plan && !isWalkRunPlan && recent5kApplied == null
+			? goalAheadOfRecentRuns(goalDistance, goalTimeSec, recentEfforts)
+			: null,
+	);
+
+	let rampMessage = $derived.by(() => {
+		if (!rampCheck || !shouldSurfaceRampNote(rampCheck, { beginnerWalkRun: isWalkRunPlan })) {
+			return null;
+		}
+		const recent = fmtKm(rampCheck.recentWeeklyM, 0);
+		// Each verdict quotes the week it was graded on: the safety warnings
+		// are about the first step, the under-cooked one about the peak.
+		if (rampCheck.verdict === 'under') {
+			return t('planEditor.rampUnder', { peak: fmtKm(rampCheck.peakWeekM, 0), recent });
+		}
+		const opening = fmtKm(rampCheck.openingWeekM, 0);
+		if (rampCheck.verdict === 'elevated') {
+			return t('planEditor.rampElevated', { opening, recent });
+		}
+		return t('planEditor.rampHigh', { opening, recent });
+	});
+
 	// Re-generate the editable plan whenever any input that drives
 	// generation changes. Replaces the previous $derived preview so we
 	// can mutate workouts in-place; the user's edits live on `plan`
 	// until they touch a top-level input again.
 	$effect(() => {
 		// Read every input we care about so the effect tracks them.
-		void [goalEvent, goalDistance, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode];
+		void [goalEvent, goalDistance, ultraDistanceInvalid, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode, returnCapM, raceDay];
 		// A pasted plan owns `plan` until the runner edits a core input
 		// (which flips importedMode off and re-runs this effect).
 		if (importedMode) return;
-		if (!startDate) {
+		if (!startDate || ultraDistanceInvalid) {
 			plan = null;
 			return;
 		}
 		try {
-			plan = generatePlan({
+			const generated = generatePlan({
 				goalEvent,
 				goalDistanceM: goalDistance,
 				goalTimeSec,
@@ -302,8 +814,29 @@
 				weeks,
 				gender: viewerGender,
 				age: viewerAge,
+				extraRecovery,
 				beginnerWalkRun,
 			});
+			const capped =
+				returnCapM == null
+					? generated
+					: {
+							...generated,
+							weeks: capReturnRamp(generated.weeks, returnCapM, generated.paces.easy),
+						};
+			plan = raceDay
+				? fitPlanToRaceDay(
+						capped,
+						{
+							name: raceDay.name ?? '',
+							date: raceDay.date,
+							distanceM: goalDistance,
+							priority: 'A',
+							goalTimeSec: goalTimeSec ?? null,
+						},
+						goalDistance,
+					)
+				: capped;
 			expandedWeek = null;
 		} catch (_) {
 			plan = null;
@@ -316,17 +849,29 @@
 		{ value: 'distance_half', label: t('planEditor.halfMarathon') },
 		{ value: 'distance_full', label: t('planEditor.marathon') }
 	]);
+	const ULTRA_LABELS: Record<UltraPresetId, string> = {
+		ultra_50k: '50 km',
+		ultra_56k: '56 km',
+		ultra_90k: '90 km',
+		ultra_100mi: '100 mi',
+	};
+	const ultraOptions: { value: UltraChoice; label: string }[] = $derived([
+		...ULTRA_PRESETS.map((p) => ({ value: p.id as UltraChoice, label: ULTRA_LABELS[p.id] })),
+		{ value: 'ultra_other', label: t('planEditor.ultraOther') },
+	]);
+	// Smallest distance the ultra input accepts, in the runner's unit: the
+	// first tenth past the marathon.
+	let ultraMinInput = $derived(
+		String(Math.ceil((GOAL_DISTANCES_M.distance_full / distancePerUnit) * 10 + 0.001) / 10),
+	);
 
-	/// The schema enforces one active plan per user via a partial unique
-	/// index, and `createTrainingPlan` enforces it by auto-completing
-	/// any existing active plan inside the same transaction. That used
-	/// to happen silently — clicking "Create plan" on the wizard would
-	/// transparently flip the user's current plan to `completed` with
-	/// no warning. This dialog gates the create on an explicit
-	/// confirmation when a previous active plan exists; the user gets
-	/// to see what they're about to retire and can cancel.
-	let showReplaceConfirm = $state(false);
-	let existingActiveName = $state<string | null>(null);
+	/// Active plans may chain but not overlap (decisions § 2008). The create
+	/// asks the server to refuse any overlap; when it does, the dialog names
+	/// the plans in the way, read fresh at that moment, and the runner's choice
+	/// is sent back so the server resolves it in the same transaction as the
+	/// insert (decisions § 2050). A plan created since an earlier look is
+	/// therefore never replaced without being named first.
+	let overlapping = $state<OverlapPlan[]>([]);
 
 	async function submit(e: Event) {
 		e.preventDefault();
@@ -348,27 +893,12 @@
 		// onchange), snap now and re-show the preview rather than persisting
 		// a misaligned plan. The reactive preview regenerates from the
 		// aligned date, so ask the user to submit once more.
-		if (!importedMode && startDate && !isSundayIso(startDate)) {
-			alignStartToSunday();
+		if (!importedMode && startDate && !planStartAllowedIso(startDate, beginnerWalkRun)) {
+			alignStart();
 			error = t('planEditor.errorStartMovedToSunday');
 			return;
 		}
-		busy = true;
-		error = null;
-		try {
-			const active = await fetchActivePlanOverview();
-			if (active?.plan) {
-				existingActiveName = active.plan.name;
-				showReplaceConfirm = true;
-				busy = false;
-				return;
-			}
-			await proceedWithCreate();
-		} catch (e: unknown) {
-			error = describeError(e);
-			console.error('Plan create failed', e);
-			busy = false;
-		}
+		await proceedWithCreate('refuse');
 	}
 
 	function todayIso(): string {
@@ -376,117 +906,301 @@
 		return formatISO(d);
 	}
 
-	async function proceedWithCreate() {
+	async function proceedWithCreate(overlap: PlanOverlapChoice) {
 		busy = true;
 		error = null;
+		overlapping = [];
+		const endDate = plan!.endDate;
 		try {
-			const created = await createTrainingPlan({
-				name: name.trim(),
-				goalEvent,
-				// A pasted plan's distance comes from the parse (the derived
-				// `goalDistance` is wrong for a custom-event import).
-				goalDistanceM: importedMode && importedGoalDistanceM ? importedGoalDistanceM : goalDistance,
-				goalTimeSec,
-				recent5kSec: recent5kApplied,
-				startDate,
-				daysPerWeek,
-				generated: plan!,
-			});
-			oncreated?.(created);
+			const outcome = await attemptPlanCreate(
+				() =>
+					createTrainingPlan({
+						name: name.trim(),
+						goalEvent,
+						// A pasted plan's distance comes from the parse (the derived
+						// `goalDistance` is wrong for a custom-event import).
+						goalDistanceM: importedMode && importedGoalDistanceM ? importedGoalDistanceM : goalDistance,
+						goalTimeSec,
+						recent5kSec: recent5kApplied,
+						startDate,
+						daysPerWeek,
+						generated: plan!,
+						raceListingId,
+						overlap,
+					}),
+				() => fetchMyOverlappingActivePlans(startDate, endDate)
+			);
+			if (outcome.kind === 'overlap') overlapping = outcome.overlapping;
+			else if (outcome.kind === 'trimBlocked') error = trimBlockedMessage(outcome.overlapping, startDate);
+			else oncreated?.(outcome.value);
 		} catch (e: unknown) {
 			error = describeError(e);
-			console.error('Plan create failed', e);
 		} finally {
 			busy = false;
-			showReplaceConfirm = false;
-			existingActiveName = null;
 		}
 	}
 
-	function cancelReplace() {
-		showReplaceConfirm = false;
-		existingActiveName = null;
+	function cancelOverlap() {
+		overlapping = [];
 	}
 </script>
 
 <form onsubmit={submit} class="plan-editor">
+	<!-- Spans both columns: a pasted plan is a wide Markdown table, and the
+	     22rem form column wrapped every row of it. -->
+	<details class="import-box import-wide" bind:open={showImport}>
+		<summary id="plan-import-title">{t('planEditor.importTitle')}</summary>
+		<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
+		<textarea
+			aria-labelledby="plan-import-title"
+			class="import-text"
+			bind:value={importText}
+			rows="14"
+			wrap="off"
+			placeholder={t('planEditor.importPlaceholder')}
+			aria-describedby="plan-import-hint"
+		></textarea>
+		{#if importError}
+			<p class="error" role="alert">{importError}</p>
+		{/if}
+		<button type="button" class="btn btn-secondary" onclick={loadFromText}>
+			{t('planEditor.importLoad')}
+		</button>
+	</details>
 	<div class="grid">
 		<section class="form">
-			<details class="import-box" bind:open={showImport}>
-				<summary>{t('planEditor.importTitle')}</summary>
-				<p class="hint">{t('planEditor.importHint')}</p>
-				<textarea
-					class="import-text"
-					bind:value={importText}
-					rows="6"
-					placeholder={t('planEditor.importPlaceholder')}
-				></textarea>
-				{#if importError}
-					<p class="error">{importError}</p>
-				{/if}
-				<button type="button" class="btn btn-secondary" onclick={loadFromText}>
-					{t('planEditor.importLoad')}
-				</button>
-			</details>
+			{#if showAiPlan}
+				<details class="import-box ai-box" id="ai-plan" bind:this={aiBox} open>
+					<summary>{t('planEditor.aiTitle')}</summary>
+					<p class="hint" id="plan-ai-hint">{t('planEditor.aiHint')}</p>
+					<label class="visually-hidden" for="plan-ai-request">{t('planEditor.aiTitle')}</label>
+					<textarea
+						id="plan-ai-request"
+						class="ai-text"
+						bind:value={aiRequest}
+						rows="3"
+						maxlength="600"
+						placeholder={t('planEditor.aiPlaceholder')}
+						aria-describedby="plan-ai-hint"
+						disabled={aiBusy}
+					></textarea>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={fillFromDescription}
+						disabled={aiBusy || !aiRequest.trim()}
+						aria-busy={aiBusy}
+					>
+						{aiBusy ? t('planEditor.aiWorking') : t('planEditor.aiButton')}
+					</button>
+					{#if aiError}
+						<p class="error ai-error" role="alert">
+							{aiError.message}
+							{#if aiError.consent}
+								<a href={AI_CONSENT_HREF}>{t('planEditor.aiErrorConsentLink')}</a>
+							{/if}
+						</p>
+					{/if}
+					{#if aiApplied}
+						<div class="ai-applied" role="status">
+							<p class="ai-applied-title">{t('planEditor.aiAppliedTitle')}</p>
+							<ul>
+								<li>{t('planEditor.aiAppliedGenerator')}</li>
+								{#if aiApplied.raceNote}
+									<li>{aiApplied.raceNote}</li>
+								{/if}
+								{#if aiApplied.recent5kFilled}
+									<li>{t('planEditor.aiAppliedRecent5k')}</li>
+								{/if}
+								{#each aiApplied.assumptions as a (a)}
+									<li>{t(AI_ASSUMPTION_KEYS[a])}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+				</details>
+			{/if}
 			{#if importedMode}
 				<p class="imported-note" role="status">{t('planEditor.importedNote')}</p>
 			{/if}
 
-			<label>
-				<span>{t('planEditor.planName')}</span>
-				<input
-					type="text"
-					bind:value={name}
-					placeholder={t('planEditor.planNamePlaceholder')}
-					required
-					maxlength="80"
-				/>
-			</label>
-
-			<label>
-				<span>{t('planEditor.goalRace')}</span>
-				<select bind:value={goalEvent} onchange={exitImportMode}>
-					{#each eventOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			</label>
-
-			<label>
-				<span>{t('planEditor.startDate')} <span class="optional">{t('planEditor.firstWeekBeginsSunday')}</span></span>
-				<input
-					type="date"
-					bind:value={startDate}
-					min={todayIso()}
-					onchange={() => { exitImportMode(); alignStartToSunday(); }}
-					required
-				/>
-				{#if startSnapped}
-					<span class="field-note">{t('planEditor.movedToNextSunday')}</span>
-				{/if}
-			</label>
-
-			<label>
-				<span>{t('planEditor.daysPerWeek')}</span>
-				<select bind:value={daysPerWeek} onchange={exitImportMode}>
-					{#each [3, 4, 5, 6, 7] as n}
-						<option value={n}>{t('planEditor.nDays', { n })}</option>
-					{/each}
-				</select>
-			</label>
-
-			<fieldset>
-				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
-				<p class="hint">{t('planEditor.goalTimeHint')}</p>
-				<div class="time-row">
-					<input type="number" min="0" max="9" bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} />
-					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={targetMin} placeholder={t('planEditor.placeholderMinutes')} />
-					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={targetSec} placeholder={t('planEditor.placeholderSeconds')} />
-				</div>
+			<fieldset class="starting-point" data-testid="plan-starting-point">
+				<legend>{t('planEditor.startingPoint')}</legend>
+				{#each STARTING_POINTS as sp (sp.value)}
+					<div class="starting-point-option">
+						<input
+							type="radio"
+							id="starting-point-{sp.value}"
+							name="plan-starting-point"
+							value={sp.value}
+							checked={startingPoint === sp.value}
+							onchange={() => setStartingPoint(sp.value)}
+							aria-describedby="starting-point-{sp.value}-hint"
+						/>
+						<span>
+							<label class="starting-point-title" for="starting-point-{sp.value}">{t(sp.label)}</label>
+							<span class="hint" id="starting-point-{sp.value}-hint">{t(sp.hint)}</span>
+						</span>
+					</div>
+				{/each}
 			</fieldset>
 
+			<div class="field">
+				<label>
+					<span>{t('planEditor.planName')}</span>
+					<input
+						type="text"
+						bind:value={name}
+						oninput={() => (nameTouched = true)}
+						placeholder={t('planEditor.planNamePlaceholder')}
+						required
+						maxlength={lengthLimit('training_plans.name')}
+						aria-describedby="plan-name-hint"
+					/>
+				</label>
+				<p class="hint" id="plan-name-hint">{t('planEditor.planNameHint')}</p>
+			</div>
+
+			{#if showGoalRace}
+			<div class="field">
+				<label>
+					<span>{t('planEditor.goalRace')}</span>
+					<select value={ultraChoice ?? goalEvent} onchange={onGoalChange} aria-describedby="goal-race-hint">
+						<optgroup label={t('planEditor.goalGroupRoad')}>
+							{#each eventOptions as opt}
+								<option value={opt.value}>{opt.label}</option>
+							{/each}
+						</optgroup>
+						<optgroup label={t('planEditor.goalGroupUltra')}>
+							{#each ultraOptions as opt}
+								<option value={opt.value}>{opt.label}</option>
+							{/each}
+						</optgroup>
+					</select>
+				</label>
+				<p class="hint" id="goal-race-hint">{t('planEditor.goalRaceHint')}</p>
+			</div>
+
+			{#if ultraChoice}
+				<div class="field">
+					<label>
+						<span>{t('planEditor.ultraDistance', { unit: distanceUnit })}</span>
+						<input
+							type="number"
+							min={ultraMinInput}
+							step="0.1"
+							value={metresToDistanceInput(ultraDistanceM)}
+							oninput={(e) => {
+								exitImportMode();
+								ultraDistanceM = distanceInputToMetres((e.currentTarget as HTMLInputElement).value);
+							}}
+							aria-describedby="ultra-distance-hint"
+							aria-invalid={ultraDistanceInvalid}
+							data-testid="plan-ultra-distance"
+						/>
+					</label>
+					<p class="hint" id="ultra-distance-hint">{t('planEditor.ultraDistanceHint')}</p>
+					{#if ultraDistanceInvalid}
+						<p class="hint warn" role="alert">{t('planEditor.ultraDistanceTooShort')}</p>
+					{/if}
+				</div>
+			{/if}
+			{/if}
+
+			<div class="field">
+				<label>
+					<span>
+						{t('planEditor.startDate')}
+						{#if !beginnerWalkRun}<span class="optional">{t('planEditor.firstWeekBeginsSunday')}</span>{/if}
+					</span>
+					<input
+						type="date"
+						bind:value={startDate}
+						min={importedMode ? undefined : todayIso()}
+						onchange={() => { exitImportMode(); alignStart(); }}
+						required
+						aria-describedby="start-date-hint"
+					/>
+					{#if startSnapped}
+						<span class="field-note">{t('planEditor.movedToNextSunday')}</span>
+					{/if}
+				</label>
+				<p class="hint" id="start-date-hint">
+					{t(beginnerWalkRun ? 'planEditor.startDateHintWalkRun' : 'planEditor.startDateHint')}
+				</p>
+			</div>
+
+			<div class="field">
+				<label>
+					<span>{t('planEditor.daysPerWeek')}</span>
+					<select bind:value={daysPerWeek} onchange={exitImportMode} aria-describedby="days-per-week-hint">
+						{#each dayOptions as n (n)}
+							<option value={n}>{t('planEditor.nDays', { n })}</option>
+						{/each}
+					</select>
+				</label>
+				<p class="hint" id="days-per-week-hint">
+					{t(beginnerWalkRun ? 'planEditor.daysPerWeekWalkRunHint' : 'planEditor.daysPerWeekHint')}
+				</p>
+			</div>
+
+			{#if !beginnerWalkRun}
+			<div class="field" data-testid="plan-recovery">
+				{#if viewerIsMasters}
+					<p class="hint" data-testid="plan-recovery-masters">{t('planEditor.mastersRecoveryApplied')}</p>
+				{:else}
+					<label class="beginner-toggle">
+						<input
+							type="checkbox"
+							checked={extraRecovery}
+							disabled={!extraRecoveryLoaded || extraRecoverySaving}
+							onchange={onExtraRecoveryToggle}
+							aria-describedby="plan-extra-recovery-hint"
+							data-testid="plan-extra-recovery"
+						/>
+						<span>
+							<span class="beginner-title">{t('prefs.extraRecovery')}</span>
+							<span class="hint" id="plan-extra-recovery-hint">{t('planEditor.extraRecoveryHint')}</span>
+						</span>
+					</label>
+					{#if extraRecoveryError}
+						<p class="error" role="alert" data-testid="plan-extra-recovery-error">{t('planEditor.extraRecoverySaveFailed')}</p>
+					{/if}
+					{#if viewerDobState === 'absent'}
+						<p class="hint" data-testid="plan-dob-hint">
+							{t('planEditor.dobHintAbsent')}
+							<a href="/settings/body#body-metrics">{t('planEditor.dobHintAbsentLink')}</a>
+						</p>
+					{:else if viewerDobState === 'consent_withheld'}
+						<p class="hint" data-testid="plan-dob-consent-hint">
+							{t('planEditor.dobHintHealthData')}
+							<a href="/settings/body#body-metrics">{t('planEditor.dobHintHealthDataLink')}</a>
+						</p>
+					{/if}
+				{/if}
+			</div>
+			{/if}
+
+			{#if showGoalTime}
+			<fieldset>
+				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
+				<p class="hint" id="goal-time-hint">{t('planEditor.goalTimeHint')}</p>
+				<div class="time-row">
+					<input type="number" min="0" max={RACE_GOAL_MAX_HOURS} bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} aria-describedby="goal-time-hint" />
+					<span>:</span>
+					<input type="number" min="0" max="59" bind:value={targetMin} placeholder={t('planEditor.placeholderMinutes')} aria-describedby="goal-time-hint" />
+					<span>:</span>
+					<input type="number" min="0" max="59" bind:value={targetSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="goal-time-hint" />
+				</div>
+				{#if goalAhead}
+					<p class="hint warn" role="status" data-testid="plan-goal-ahead">
+						{t('planEditor.goalAheadOfRecent', { predicted: fmtHms(goalAhead.predictedSec) })}
+					</p>
+				{/if}
+			</fieldset>
+			{/if}
+
+			{#if startingPoint !== 'new'}
 			<label class="beginner-toggle">
 				<input type="checkbox" checked={beginnerWalkRun} onchange={onBeginnerToggle} />
 				<span>
@@ -496,19 +1210,27 @@
 					</span>
 				</span>
 			</label>
+			{/if}
 
+			{#if showRecent5k}
 			<fieldset>
 				<legend>{t('planEditor.recent5kTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
-				<p class="hint">{t('planEditor.recent5kHint')}</p>
+				<p class="hint" id="recent-5k-hint"><MetricLabel metric="riegel" sentence="planEditor.recent5kHint" /></p>
 				<div class="time-row">
-					<input type="number" min="0" max="59" bind:value={recent5kMin} placeholder={t('planEditor.placeholderMinutes')} />
+					<input type="number" min="0" max="59" bind:value={recent5kMin} placeholder={t('planEditor.placeholderMinutes')} aria-describedby="recent-5k-hint" />
 					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} />
+					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="recent-5k-hint" />
 				</div>
-				{#if recent5kTotal != null}
+				{#if suggestedRecent5k != null && recent5kTotal === suggestedRecent5k && !recent5kConfirmed}
+					<p class="hint" role="status" data-testid="plan-recent-5k-suggested">{t('planEditor.recent5kSuggested')}</p>
+				{/if}
+				{#if recent5kComplete}
 					<label class="confirm-recent">
 						<input type="checkbox" bind:checked={recent5kConfirmed} />
-						<span>{t('planEditor.recent5kConfirm')}</span>
+						<span>
+							{t('planEditor.recent5kConfirm')}
+							<span class="hint">{t('planEditor.recent5kConfirmHint')}</span>
+						</span>
 					</label>
 				{/if}
 				{#if recent5kNeedsConfirm}
@@ -517,17 +1239,22 @@
 					</p>
 				{/if}
 			</fieldset>
+			{/if}
 
-			<label>
-				<span>{t('planEditor.overrideTotalWeeks')} <span class="optional">{t('planEditor.optional')}</span></span>
-				<input
-					type="number"
-					min="4"
-					max="24"
-					bind:value={weekOverride}
-					placeholder={String(defaultPlanWeeks(goalEvent))}
-				/>
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('planEditor.overrideTotalWeeks')} <span class="optional">{t('planEditor.optional')}</span></span>
+					<input
+						type="number"
+						min="4"
+						max="24"
+						bind:value={weekOverride}
+						placeholder={String(defaultPlanWeeks(goalEvent, goalDistance))}
+						aria-describedby="override-weeks-hint"
+					/>
+				</label>
+				<p class="hint" id="override-weeks-hint">{t('planEditor.overrideTotalWeeksHint')}</p>
+			</div>
 
 			{#if error}
 				<p class="error">{error}</p>
@@ -562,12 +1289,42 @@
 					{/if}
 
 					{#if plan.vdot}
-						<p class="vdot">{t('planEditor.danielsVdot')} <strong>{plan.vdot.toFixed(1)}</strong></p>
+						<p class="vdot"><MetricLabel metric="vdot" /> <strong>{plan.vdot.toFixed(1)}</strong></p>
 					{/if}
 				{/if}
 
-				<h3>{t('planEditor.weekOutline')}</h3>
-				<p class="outline-hint">
+				{#if returnMessage}
+					<div class="ramp-note" role="status" data-testid="plan-return-note">
+						<h3>{t('planEditor.returnTitle')}</h3>
+						<p id="plan-return-body">{returnMessage}</p>
+						<label class="confirm-recent">
+							<input type="checkbox" bind:checked={easeBack} aria-describedby="plan-return-body" />
+							<span>{t('planEditor.returnEaseBack')}</span>
+						</label>
+						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>
+							{t('planEditor.returnWalkRun')}
+						</button>
+					</div>
+				{:else if rampMessage}
+					<div class="ramp-note" role="status">
+						<h3>{t('planEditor.rampLabel')}</h3>
+						<p>{rampMessage}</p>
+					</div>
+				{:else if thinHistoryMessage}
+					<div class="ramp-note" role="status" data-testid="plan-thin-history-note">
+						<h3>{t('planEditor.rampLabel')}</h3>
+						<p>{thinHistoryMessage}</p>
+						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>
+							{t('planEditor.thinHistoryWalkRun')}
+						</button>
+					</div>
+				{/if}
+
+				<div class="outline-head">
+					<h3>{t('planEditor.weekOutline')}</h3>
+					<MetricLabel metric="planPhases" />
+				</div>
+				<p class="outline-hint" id="week-outline-hint">
 					{t('planEditor.outlineHint')}
 				</p>
 				<ul class="weeks">
@@ -577,6 +1334,8 @@
 							<button
 								type="button"
 								class="week-row"
+								aria-expanded={expandedWeek === weekIdx}
+								aria-controls="plan-editor-week-{weekIdx}"
 								onclick={() => (expandedWeek = expandedWeek === weekIdx ? null : weekIdx)}
 							>
 								<span class="week-num">#{w.week_index + 1}</span>
@@ -585,13 +1344,13 @@
 								<span class="week-workouts">
 									{t(sessionCount === 1 ? 'planEditor.nSessionsOne' : 'planEditor.nSessionsMany', { n: sessionCount })}
 								</span>
-								<span class="caret material-symbols">
+								<span class="caret material-symbols" aria-hidden="true">
 									{expandedWeek === weekIdx ? 'expand_less' : 'expand_more'}
 								</span>
 							</button>
 
 							{#if expandedWeek === weekIdx}
-								<div class="week-editor">
+								<div class="week-editor" id="plan-editor-week-{weekIdx}">
 									{#each w.workouts as wo, woIdx (woIdx)}
 										<div class="wo-row">
 											<div class="wo-date">
@@ -603,7 +1362,7 @@
 											</div>
 											<label class="wo-field">
 												<span>{t('planEditor.runType')}</span>
-												<select bind:value={w.workouts[woIdx].kind}>
+												<select bind:value={w.workouts[woIdx].kind} aria-describedby="week-outline-hint">
 													{#each KIND_OPTIONS as k}
 														<option value={k}>{workoutKindLabel(k)}</option>
 													{/each}
@@ -616,6 +1375,7 @@
 													min="0"
 													step={distanceStep}
 													value={metresToDistanceInput(wo.target_distance_m)}
+													aria-describedby="week-outline-hint"
 													oninput={(e) => {
 														w.workouts[woIdx].target_distance_m = distanceInputToMetres(
 															(e.currentTarget as HTMLInputElement).value,
@@ -625,13 +1385,14 @@
 												/>
 											</label>
 											<label class="wo-field">
-												<span>{t('planEditor.paceMmSs')}</span>
+												<span>{t('planEditor.paceMmSs', { unit: distanceUnit })}</span>
 												<input
 													type="text"
 													inputmode="numeric"
 													pattern={'[0-9]{1,2}:[0-9]{2}'}
 													placeholder="—"
-													value={paceToInput(wo.target_pace_sec_per_km)}
+													value={paceFieldFromSecPerKm(wo.target_pace_sec_per_km, distanceUnit)}
+													aria-describedby="week-outline-hint"
 													oninput={paceInputHandler(weekIdx, woIdx)}
 													disabled={wo.kind === 'rest'}
 												/>
@@ -643,6 +1404,7 @@
 													bind:value={w.workouts[woIdx].notes}
 													placeholder="—"
 													maxlength="200"
+													aria-describedby="week-outline-hint"
 												/>
 											</label>
 										</div>
@@ -659,17 +1421,11 @@
 	</div>
 </form>
 
-<ConfirmDialog
-	open={showReplaceConfirm}
-	title={t('planEditor.replaceActivePlanTitle')}
-	message={existingActiveName
-		? t('planEditor.replaceActivePlanNamed', { name: existingActiveName })
-		: t('planEditor.replaceActivePlanUnnamed')}
-	confirmLabel={t('planEditor.replacePlan')}
-	cancelLabel={t('planEditor.keepCurrent')}
-	danger={true}
-	onconfirm={proceedWithCreate}
-	oncancel={cancelReplace}
+<PlanOverlapDialog
+	{overlapping}
+	{startDate}
+	onchoose={proceedWithCreate}
+	oncancel={cancelOverlap}
 />
 
 <style>
@@ -706,6 +1462,15 @@
 		/* The UA sheet gives every fieldset `min-width: min-content`, which
 		   is what stops this one shrinking into its grid track. */
 		min-width: 0;
+	}
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		min-width: 0;
+	}
+	.field .hint {
+		margin-bottom: 0;
 	}
 	.optional {
 		font-weight: 400;
@@ -766,9 +1531,28 @@
 		gap: 0.6rem;
 	}
 	.beginner-toggle input { margin-top: 0.2rem; }
+	.starting-point {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.starting-point-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
+		font-weight: 400;
+	}
+	.starting-point-option input { margin-top: 0.2rem; }
+	.starting-point-title { display: block; font-weight: 600; }
+	.starting-point-option .hint { display: block; margin-bottom: 0; }
+	.ramp-note .btn { margin-top: 0.5rem; }
 	.beginner-title { display: block; font-weight: 600; }
 	.confirm-recent input {
 		margin-top: 0.15rem;
+	}
+	.confirm-recent .hint {
+		display: block;
+		margin-bottom: 0;
 	}
 	.time-row {
 		display: flex;
@@ -810,6 +1594,9 @@
 	.import-box[open] summary {
 		margin-bottom: 0.4rem;
 	}
+	.import-wide {
+		margin-bottom: var(--space-lg);
+	}
 	.import-text {
 		width: 100%;
 		box-sizing: border-box;
@@ -821,7 +1608,43 @@
 		padding: 0.5rem;
 		color: var(--color-text);
 		resize: vertical;
+		white-space: pre;
+		overflow-x: auto;
 		margin-bottom: 0.5rem;
+	}
+	.ai-text {
+		width: 100%;
+		box-sizing: border-box;
+		font: inherit;
+		font-size: 0.9rem;
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		padding: 0.5rem;
+		color: var(--color-text);
+		resize: vertical;
+		margin-bottom: 0.5rem;
+	}
+	.ai-error {
+		margin-top: 0.5rem;
+	}
+	.ai-error a {
+		color: inherit;
+		font-weight: 600;
+	}
+	.ai-applied {
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+	}
+	.ai-applied-title {
+		font-weight: 600;
+		color: var(--color-primary);
+		margin: 0 0 0.25rem;
+	}
+	.ai-applied ul {
+		margin: 0;
+		padding-inline-start: 1.1rem;
+		color: var(--color-text-secondary);
 	}
 	.imported-note {
 		font-size: 0.82rem;
@@ -865,10 +1688,43 @@
 		font-size: 0.82rem;
 		margin: 0;
 	}
+	.outline-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-xs) var(--space-md);
+		margin-top: var(--space-md);
+	}
+	.outline-head h3 {
+		margin: 0;
+	}
+	.outline-head :global(.metric-label) {
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+	}
 	.outline-hint {
 		font-size: 0.78rem;
 		color: var(--color-text-tertiary);
 		margin: 0 0 0.4rem 0;
+	}
+	/* Full-contrast body text on a plain rule, not a coloured alert panel:
+	   the note is advisory on a surface that already carries the fallback-
+	   paces disclosure, and a second tinted band would out-shout the plan
+	   preview it is annotating. */
+	.ramp-note {
+		border-inline-start: 3px solid var(--color-border);
+		padding-inline-start: 0.7rem;
+		margin: 0.6rem 0 0 0;
+	}
+	.ramp-note h3 {
+		margin: 0 0 0.2rem 0;
+	}
+	.ramp-note p {
+		color: var(--color-text);
+		font-weight: 500;
+		font-size: 0.82rem;
+		margin: 0;
 	}
 	.weeks {
 		list-style: none;

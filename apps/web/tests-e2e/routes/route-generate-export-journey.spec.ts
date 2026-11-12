@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — build → save → detail → GPX export JOURNEY (one route's life,
@@ -28,7 +30,7 @@ import { USER_A } from '../fixtures/users';
  * assertion between create and delete is driven through the real UI.
  *
  * The export is fully CLIENT-SIDE: src/routes/routes/[id]/+page.svelte builds
- * the GPX in-page (toGpx / toRouteGpxWithMarkers from $lib/routes) and triggers
+ * the GPX in-page (toGpx / toRouteGpxWithMarkers from #lib/routes) and triggers
  * a Blob download via downloadFile(). So there is no network response to
  * capture — the GPX is read off the browser `download` event's stream.
  *
@@ -48,12 +50,7 @@ test.describe('Routes — build → save → detail → GPX export', () => {
 		// The seeded user's storageState carries accepted cookie consent,
 		// but inject it on every navigation too so the GDPR banner never
 		// floats over the map / actions row and eats a click.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 
 		// create_route is rate-limited (30/hour/user, migration 20260907_001).
 		// A shared-USER_A shard can blow through the cap; reset the window so
@@ -123,25 +120,31 @@ test.describe('Routes — build → save → detail → GPX export', () => {
 	}) => {
 		await test.step('1. backend: the seeded route + marker are owned by USER_A', async () => {
 			const admin = getAdminClient();
-			const { data: routeRow } = await admin
-				.from('routes')
-				.select('user_id, distance_m, surface')
-				.eq('id', routeId)
-				.single();
-			expect(routeRow?.user_id).toBe(USER_A.id);
-			expect(routeRow?.distance_m).toBe(8000);
+			const routeRow = await readRow(
+				'routes by id',
+				admin
+					.from('routes')
+					.select('user_id, distance_m, surface')
+					.eq('id', routeId)
+					.single()
+			);
+			expect(routeRow.user_id).toBe(USER_A.id);
+			expect(routeRow.distance_m).toBe(8000);
 
 			// The marker's position_m is trigger-derived from routes.geom —
 			// proves the geom trigger fired and the GPX `<wpt>` is anchored
 			// on the line, not floating.
-			const { data: markerRow } = await admin
-				.from('route_markers')
-				.select('user_id, kind, position_m')
-				.eq('route_id', routeId)
-				.single();
-			expect(markerRow?.user_id).toBe(USER_A.id);
-			expect(markerRow?.kind).toBe('aid_station');
-			expect(markerRow?.position_m).not.toBeNull();
+			const markerRow = await readRow(
+				'route_markers by route_id',
+				admin
+					.from('route_markers')
+					.select('user_id, kind, position_m')
+					.eq('route_id', routeId)
+					.single()
+			);
+			expect(markerRow.user_id).toBe(USER_A.id);
+			expect(markerRow.kind).toBe('aid_station');
+			expect(markerRow.position_m).not.toBeNull();
 		});
 
 		await test.step('2. the saved route appears in My routes on /routes', async () => {
@@ -167,10 +170,13 @@ test.describe('Routes — build → save → detail → GPX export', () => {
 				page.getByRole('heading', { name: routeName, level: 1 })
 			).toBeVisible({ timeout: 10_000 });
 
+			// The surface tile names the `routes.surface` value through the one
+			// catalogue namespace (decisions § 572); the lowercase token would
+			// also match the tile's `add_road` icon ligature, so pin the name.
 			const keyStats = page.locator('.key-stats');
 			await expect(keyStats).toBeVisible();
 			await expect(keyStats).toContainText('Distance');
-			await expect(keyStats).toContainText('road');
+			await expect(keyStats).toContainText('Road');
 
 			// MapLibre map container mounts.
 			await expect(page.locator('.run-map').first()).toBeVisible({

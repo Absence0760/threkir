@@ -6,6 +6,7 @@
 
 import type { TrackPoint } from '../types';
 import { unwrapLonDeg } from './geo';
+import { toLinePoint } from '../runs/track_line';
 
 export interface Projected {
 	x: number;
@@ -14,17 +15,20 @@ export interface Projected {
 
 /// Project `points` into a `[0, vbW] × [0, vbH]` viewBox with a
 /// `cos(midLat)` longitude correction so a square loop at any latitude
-/// renders square instead of a horizontally-stretched rectangle.
+/// renders square instead of a horizontally-stretched rectangle. Each fix
+/// is drawn at its smoothed position when the stored track carries one
+/// (`lineLat` / `lineLng`, lib/runs/track_line.ts).
 ///
 /// `pad` is the inset margin on every side of the viewBox (default 4).
 /// Returns an empty array for tracks with fewer than two points.
 export function projectTrack(
-	points: TrackPoint[],
+	track: TrackPoint[],
 	vbW: number,
 	vbH: number,
 	pad = 4,
 ): Projected[] {
-	if (points.length < 2) return [];
+	if (track.length < 2) return [];
+	const points = track.map(toLinePoint);
 	// Longitudes are expressed on the first point's side of the antimeridian,
 	// so a track that crosses it spans its own width instead of ~360° (which
 	// collapsed the fitted scale to a dot). Identity inside a hemisphere.
@@ -46,8 +50,13 @@ export function projectTrack(
 	// bounding box into equal-distance units.
 	const midLat = (minLat + maxLat) / 2;
 	const lngScale = Math.abs(Math.cos((midLat * Math.PI) / 180));
-	const dLat = maxLat - minLat || 1e-6;
-	const dLng = (maxLng - minLng) * lngScale || 1e-6;
+	// A degenerate or non-finite span collapses to the epsilon rather than
+	// producing an absurd scale. `|| 1e-6` alone was falsy-only, so it caught an
+	// exact 0 but let a 1e-7 span through at a 10x different scale from the Dart
+	// twin's `max(span, 1e-6)`; `max` alone propagated NaN, which `||` absorbed.
+	// Both sides now clamp AND reject non-finite, so neither failure remains.
+	const dLat = spanOrEpsilon(maxLat - minLat);
+	const dLng = spanOrEpsilon((maxLng - minLng) * lngScale);
 	const scaleX = (vbW - pad * 2) / dLng;
 	const scaleY = (vbH - pad * 2) / dLat;
 	const scale = Math.min(scaleX, scaleY);
@@ -64,7 +73,17 @@ export function projectTrack(
 	return out;
 }
 
-/// True iff the track's bounding-box diagonal exceeds ~5 m — i.e. it is
+/// Bounding-box diagonal a track must exceed before it is worth drawing at
+/// thumbnail scale. Named rather than spelled at the comparison because two
+/// other rails hold the same number — the Dart twin's `kMinRenderableSpanM`
+/// and the firmware's `MIN_RENDERABLE_SPAN_M` — and
+/// `scripts/check_watch_wire_vectors.mjs` reads a rail by the NAME of its
+/// constant, so an unnamed one cannot be registered and the three drift
+/// unwatched.
+export const MIN_RENDERABLE_SPAN_M = 5;
+
+/// True iff the track's bounding-box diagonal exceeds
+/// [MIN_RENDERABLE_SPAN_M] — i.e. it is
 /// worth drawing at thumbnail scale. A runner who hits Start + Stop
 /// indoors uploads a non-empty array of near-identical fixes; without
 /// this gate the thumbnail projects them all onto a single pixel and
@@ -78,12 +97,13 @@ export function projectTrack(
 /// lockstep.
 export function isTrackRenderable(track: TrackPoint[]): boolean {
 	if (!track || track.length < 2) return false;
-	const refLng = track[0].lng;
-	let minLat = track[0].lat;
-	let maxLat = track[0].lat;
+	const points = track.map(toLinePoint);
+	const refLng = points[0].lng;
+	let minLat = points[0].lat;
+	let maxLat = points[0].lat;
 	let minLng = refLng;
 	let maxLng = refLng;
-	for (const p of track) {
+	for (const p of points) {
 		if (p.lat < minLat) minLat = p.lat;
 		if (p.lat > maxLat) maxLat = p.lat;
 		const lng = unwrapLonDeg(refLng, p.lng);
@@ -92,5 +112,11 @@ export function isTrackRenderable(track: TrackPoint[]): boolean {
 	}
 	const dLatM = (maxLat - minLat) * 111_320;
 	const dLngM = (maxLng - minLng) * 111_320 * Math.cos((minLat * Math.PI) / 180);
-	return Math.hypot(dLatM, dLngM) > 5;
+	return Math.hypot(dLatM, dLngM) > MIN_RENDERABLE_SPAN_M;
+}
+
+/// A positive, finite span for the projection scale. Mirrors `_spanOrEpsilon`
+/// in `track_preview.dart`.
+function spanOrEpsilon(v: number): number {
+	return Number.isFinite(v) && v > 1e-6 ? v : 1e-6;
 }

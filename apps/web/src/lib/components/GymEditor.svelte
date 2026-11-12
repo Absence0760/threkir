@@ -5,16 +5,32 @@
 		updateGymWorkout,
 		type GymWorkoutWithSets,
 		type GymSetInput,
-	} from '$lib/core/data';
-	import type { Exercise, GymSetType } from '$lib/types';
-	import { normaliseExerciseName } from '$lib/gym/gym_prs';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { parseWeight, weightInputValue, weightUnitLabel } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ExerciseCataloguePicker from '$lib/components/ExerciseCataloguePicker.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
+	} from '#lib/core/data.ts';
+	import type { Exercise, GymSetType } from '#lib/types.ts';
+	import { dedupeShadowedExercises } from '#lib/gym/exercise_catalogue.ts';
+	import {
+		namesAnExercise,
+		normaliseExerciseName,
+		sameExerciseName as sameExercise,
+	} from '#lib/gym/gym_prs.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { parseWeight, weightInputValue, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { metricName } from '#lib/metrics/metric_name.ts';
+	import ExerciseCataloguePicker from '#lib/components/ExerciseCataloguePicker.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { noteModalityData } from '#lib/stores/modality_visibility.svelte.ts';
+
+	interface PrefillSetRow {
+		exercise_name: string;
+		reps: number | null;
+		duration_s?: number | null;
+		weight_kg?: number | null;
+		rpe?: number | null;
+	}
 
 	interface Props {
 		existing?: GymWorkoutWithSets | null;
@@ -23,11 +39,12 @@
 		/// is set (an edit owns its own values).
 		prefill?: {
 			title?: string | null;
-			/// Session-plan-derived rows (class -> gym seam,
-			/// workoutDraftFromSession): pre-populate the exercise blocks of a
-			/// NEW log so an attendee logs the class content, not just its
-			/// title. Ignored when `existing` / `seed` carries real sets.
-			sets?: { exercise_name: string; reps: number | null; duration_s: number | null }[];
+			/// Class-content rows (class -> gym seam: workoutDraftFromSession for
+			/// a session plan, workoutDraftFromRoutine for a gym routine):
+			/// pre-populate the exercise blocks of a NEW log so an attendee logs
+			/// the class content, not just its title. Ignored when `existing` /
+			/// `seed` carries real sets.
+			sets?: PrefillSetRow[];
 		} | null;
 		/// Prefill the editor with these sets/title but save as a NEW workout
 		/// (the "Repeat last" / "Start routine" path) — distinct from `existing`,
@@ -42,6 +59,12 @@
 		/// that matches a catalogue entry by normalised key binds its
 		/// exercise_id onto the logged sets. Free text still logs with no id.
 		catalogue?: Exercise[];
+		/// The catalogue read failed, or has not answered yet. `catalogue` is then
+		/// whatever was last known rather than a statement about what exists, so
+		/// the picker must not offer to create a name it cannot prove is free —
+		/// and the browse affordance stays reachable, because a feature that
+		/// silently vanishes on a transient error explains nothing.
+		catalogueUnavailable?: boolean;
 		oncreated?: () => void;
 		onupdated?: () => void;
 		oncancel: () => void;
@@ -53,10 +76,12 @@
 		seed: seedWorkout = null,
 		suggestions = [],
 		catalogue = [],
+		catalogueUnavailable = false,
 		oncreated,
 		onupdated,
 		oncancel
 	}: Props = $props();
+	const uid = $props.id();
 
 	/// Customs created from the picker this session, kept locally so they bind +
 	/// autocomplete immediately without waiting for the host to reload.
@@ -64,17 +89,8 @@
 
 	/// The effective catalogue: the prop (which can arrive late — the host loads
 	/// it async, so this must track it, not snapshot it) unioned with this
-	/// session's created customs, de-duplicated by id.
-	const entries = $derived.by(() => {
-		const seen = new Set<string>();
-		const out: Exercise[] = [];
-		for (const e of [...catalogue, ...createdCustoms]) {
-			if (seen.has(e.id)) continue;
-			seen.add(e.id);
-			out.push(e);
-		}
-		return out;
-	});
+	/// session's created customs, under the read's own shadow precedence.
+	const entries = $derived(dedupeShadowedExercises([...catalogue, ...createdCustoms]));
 
 	/// normalised name -> catalogue exercise id, for binding a typed name to its
 	/// catalogue entry at save time. Empty when no catalogue is supplied, in
@@ -150,27 +166,25 @@
 				duration: s.duration_s == null ? '' : String(s.duration_s),
 				setType: s.set_type ?? 'working',
 			};
-			if (last && last.name === s.exercise_name) last.sets.push(row);
+			if (last && sameExercise(last.name, s.exercise_name)) last.sets.push(row);
 			else blocks.push({ name: s.exercise_name, sets: [row] });
 		}
 		return blocks;
 	}
 
-	function initFromPrefillSets(
-		sets: { exercise_name: string; reps: number | null; duration_s: number | null }[] | undefined,
-	): EditExercise[] {
+	function initFromPrefillSets(sets: PrefillSetRow[] | undefined): EditExercise[] {
 		if (!sets || sets.length === 0) return [{ name: '', sets: [emptySet()] }];
 		const blocks: EditExercise[] = [];
 		for (const s of sets) {
 			const row: EditSet = {
 				reps: s.reps == null ? '' : String(s.reps),
-				weight: '',
-				rpe: '',
+				weight: weightInputValue(s.weight_kg),
+				rpe: s.rpe == null ? '' : String(s.rpe),
 				duration: s.duration_s == null ? '' : String(s.duration_s),
 				setType: 'working',
 			};
 			const last = blocks[blocks.length - 1];
-			if (last && last.name === s.exercise_name) last.sets.push(row);
+			if (last && sameExercise(last.name, s.exercise_name)) last.sets.push(row);
 			else blocks.push({ name: s.exercise_name, sets: [row] });
 		}
 		return blocks;
@@ -229,7 +243,12 @@
 		const out: GymSetInput[] = [];
 		for (const ex of exercises) {
 			const name = ex.name.trim();
-			if (name === '') continue;
+			// Blank on the KEY, never on the trim: a name JS leaves non-empty but
+			// the canonical fold empties saves a set whose server-stamped
+			// exercise_key is '', which the header stat, the summaries view and
+			// the routine promotion all count as nothing while this editor keeps
+			// rendering it.
+			if (!namesAnExercise(name)) continue;
 			// Bind to a catalogue entry when the typed name matches one by
 			// normalised key; otherwise stay free-text (exercise_id null).
 			const exerciseId = catalogueByKey.get(normaliseExerciseName(name)) ?? null;
@@ -269,6 +288,7 @@
 				onupdated?.();
 			} else {
 				await createGymWorkout({ title: title.trim() || null, is_public: isPublic, sets });
+				noteModalityData('gym');
 				showToast(t('gym.created'));
 				dirty.rebaseline();
 				oncreated?.();
@@ -285,10 +305,18 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <div class="editor-form gym-editor">
-	<label class="field">
-		<span class="section-label">{t('gym.editor.titleLabel')}</span>
-		<input type="text" bind:value={title} placeholder={t('gym.editor.titlePlaceholder')} />
-	</label>
+	<div class="field">
+		<label>
+			<span class="section-label">{t('gym.editor.titleLabel')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				placeholder={t('gym.editor.titlePlaceholder')}
+				aria-describedby="{uid}-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="{uid}-title-hint">{t('gym.editor.titleHint')}</span>
+	</div>
 
 	<datalist id="gym-exercise-suggestions">
 		{#each datalistNames as s (s)}
@@ -305,8 +333,9 @@
 					list="gym-exercise-suggestions"
 					bind:value={exercises[ei].name}
 					placeholder={t('gym.editor.exercisePlaceholder')}
+					aria-describedby="{uid}-exercise-hint"
 				/>
-				{#if catalogue.length > 0}
+				{#if entries.length > 0 || catalogueUnavailable}
 					<button
 						type="button"
 						class="icon-btn browse"
@@ -328,26 +357,33 @@
 					<span class="material-symbols">delete</span>
 				</button>
 			</div>
+			{#if ei === 0}
+				<span class="field-hint" id="{uid}-exercise-hint">{t('gym.editor.exerciseHint')}</span>
+			{/if}
 			<div class="set-grid">
-				<div class="set-head" aria-hidden="true">
-					<span class="set-label"></span>
-					<span class="section-label set-cap">{t('gym.routine.setType')}</span>
-					<span class="section-label set-cap">{t('gym.reps')}</span>
-					<span class="section-label set-cap">{t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
-					<span class="section-label set-cap">{t('gym.rpe')}</span>
-					<span class="section-label set-cap">{t('gym.duration')}</span>
-					<span></span>
+				<!-- Every caption but RPE's is hidden from assistive tech, because each
+				     input carries its own name; RPE's stays exposed so its definition
+				     can be opened from the header on a wide screen. -->
+				<div class="set-head">
+					<span class="set-label" aria-hidden="true"></span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.routine.setType')}</span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.reps')}</span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
+					<span class="section-label set-cap"><MetricLabel metric="rpe" /></span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.duration')}</span>
+					<span aria-hidden="true"></span>
 				</div>
 				{#each ex.sets as _set, si (si)}
 					<div class="set-row">
 						<span class="set-label">{t('gym.setN', { n: si + 1 })}</span>
-						<label class="set-field">
+						<label class="set-field set-field-type">
 							<span class="section-label set-cap-inline">{t('gym.routine.setType')}</span>
 							<select
 								class="set-type"
 								aria-label={t('gym.routine.setType')}
 								data-testid="gym-set-type"
 								bind:value={exercises[ei].sets[si].setType}
+								aria-describedby="{uid}-set-hint"
 							>
 								{#each SET_TYPES as st (st)}
 									<option value={st}>{setTypeLabel(st)}</option>
@@ -362,6 +398,7 @@
 								min="0"
 								aria-label={t('gym.reps')}
 								bind:value={exercises[ei].sets[si].reps}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</label>
 						<label class="set-field">
@@ -373,20 +410,28 @@
 								step="0.5"
 								aria-label={t('gym.weightUnit', { unit: weightUnitLabel() })}
 								bind:value={exercises[ei].sets[si].weight}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</label>
-						<label class="set-field">
-							<span class="section-label set-cap-inline">{t('gym.rpe')}</span>
+						<!-- A div, not a label: the caption carries a disclosure button,
+						     which inside a label would take the label's click. One
+						     disclosure per exercise, on its first set. -->
+						<div class="set-field">
+							<span class="section-label set-cap-inline"
+								><MetricLabel metric="rpe" labelFor="{uid}-rpe-{ei}-{si}" plain={si > 0} /></span
+							>
 							<input
+								id="{uid}-rpe-{ei}-{si}"
 								type="number"
 								inputmode="decimal"
 								min="0"
 								max="10"
 								step="0.5"
-								aria-label={t('gym.rpe')}
+								aria-label={metricName('rpe')}
 								bind:value={exercises[ei].sets[si].rpe}
+								aria-describedby="{uid}-set-hint"
 							/>
-						</label>
+						</div>
 						<label class="set-field">
 							<span class="section-label set-cap-inline">{t('gym.duration')}</span>
 							<input
@@ -396,6 +441,7 @@
 								step="1"
 								aria-label={t('gym.duration')}
 								bind:value={exercises[ei].sets[si].duration}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</label>
 						<button
@@ -410,6 +456,9 @@
 					</div>
 				{/each}
 			</div>
+			{#if ei === 0}
+				<span class="field-hint" id="{uid}-set-hint">{t('gym.editor.setHint')}</span>
+			{/if}
 			<button type="button" class="btn btn-sm btn-outline add-set" onclick={() => addSet(ei)}>
 				<span class="material-symbols">add</span>
 				{t('gym.editor.addSet')}
@@ -426,7 +475,7 @@
 		<input type="checkbox" bind:checked={isPublic} />
 		<span class="share-text">
 			<span class="share-title">{t('gym.editor.share')}</span>
-			<span class="share-hint">{t('gym.editor.shareHint')}</span>
+			<span class="hint">{t('gym.editor.shareHint')}</span>
 		</span>
 	</label>
 
@@ -450,7 +499,12 @@
 	onclose={closePicker}
 	data-testid="catalogue-modal"
 >
-	<ExerciseCataloguePicker catalogue={entries} onpick={onPick} oncreated={onCreated} />
+	<ExerciseCataloguePicker
+		catalogue={entries}
+		unavailable={catalogueUnavailable}
+		onpick={onPick}
+		oncreated={onCreated}
+	/>
 </Modal>
 
 <style>
@@ -580,7 +634,7 @@
 		font-weight: 500;
 		color: var(--color-text);
 	}
-	.share-hint {
+	.share-text .hint {
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 	}
@@ -606,7 +660,7 @@
 		}
 		/* The set-type picker spans the full width above the numeric fields so
 		   the dropdown stays legible on a phone. */
-		.set-row .set-field:first-of-type {
+		.set-row .set-field-type {
 			grid-column: 1 / -1;
 		}
 		.set-field {

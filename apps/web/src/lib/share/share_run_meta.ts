@@ -5,7 +5,7 @@
 ///
 /// Persona-hunt finding Casual #4. Kept in apps/web/src/lib so the
 /// Lambda build can pull this and the related helpers from a single
-/// tree without dragging in $env or SvelteKit-only modules.
+/// tree without dragging in $app/env or SvelteKit-only modules.
 
 import {
 	buildRunShareTitle,

@@ -1,16 +1,21 @@
-import 'dart:math';
-
 import 'package:core_models/core_models.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../run_stats.dart' show haversineMetres;
+
 /// The result of tapping the run-detail map. Mirrors `SelectedSegment`
-/// in `apps/web/src/lib/components/RunMap.svelte`. Carries the index
+/// in `apps/web/src/lib/runs/track_segment.ts`. Carries the index
 /// range and a few aggregate stats for the slice of track within
 /// ±150 m of the tapped point.
 class SelectedSegment {
   final int startIdx;
   final int endIdx;
   final int clickIdx;
+
+  /// Cumulative distance along the drawn line where the stretch starts and
+  /// ends, so the card can say which part of the run it measures.
+  final double startDistanceMetres;
+  final double endDistanceMetres;
   final double distanceMetres;
   final Duration? duration;
   final double? paceSecondsPerKm;
@@ -23,6 +28,8 @@ class SelectedSegment {
     required this.startIdx,
     required this.endIdx,
     required this.clickIdx,
+    required this.startDistanceMetres,
+    required this.endDistanceMetres,
     required this.distanceMetres,
     required this.duration,
     required this.paceSecondsPerKm,
@@ -34,20 +41,13 @@ class SelectedSegment {
 }
 
 /// ±150 m window around the tapped track point. Matches `SEGMENT_RADIUS_M`
-/// on web — keep in lockstep so a click on web and a tap on mobile
+/// in `runs/track_segment.ts` on web — keep in lockstep so a click on web and a tap on mobile
 /// produce visually identical highlights and stats.
 const double segmentRadiusMetres = 150;
 
-double _haversineMetres(LatLng a, LatLng b) {
-  const r = 6371000.0;
-  final lat1 = a.latitude * pi / 180;
-  final lat2 = b.latitude * pi / 180;
-  final dLat = (b.latitude - a.latitude) * pi / 180;
-  final dLng = (b.longitude - a.longitude) * pi / 180;
-  final h = sin(dLat / 2) * sin(dLat / 2) +
-      cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
-  return 2 * r * asin(sqrt(h));
-}
+/// The `LatLng` door onto the shared `haversineMetres`, not a second formula.
+double _haversineMetres(LatLng a, LatLng b) =>
+    haversineMetres(a.latitude, a.longitude, b.latitude, b.longitude);
 
 /// Cumulative haversine distance from index 0 to each point. O(n) — the
 /// runs we render top out around 2k points, well below the cost of
@@ -57,8 +57,8 @@ List<double> buildCumulativeDistances(List<Waypoint> track) {
   for (int i = 1; i < track.length; i++) {
     out[i] = out[i - 1] +
         _haversineMetres(
-          LatLng(track[i - 1].lat, track[i - 1].lng),
-          LatLng(track[i].lat, track[i].lng),
+          LatLng(track[i - 1].lineLat, track[i - 1].lineLng),
+          LatLng(track[i].lineLat, track[i].lineLng),
         );
   }
   return out;
@@ -70,7 +70,8 @@ int nearestTrackIdx(LatLng tap, List<Waypoint> track) {
   int best = 0;
   double bestDist = double.infinity;
   for (int i = 0; i < track.length; i++) {
-    final d = _haversineMetres(tap, LatLng(track[i].lat, track[i].lng));
+    final d =
+        _haversineMetres(tap, LatLng(track[i].lineLat, track[i].lineLng));
     if (d < bestDist) {
       bestDist = d;
       best = i;
@@ -112,7 +113,9 @@ SelectedSegment? buildSegmentAt(List<Waypoint> track, int clickIdx,
     }
   }
 
-  final distanceM = cum[endIdx] - cum[startIdx];
+  final startM = cum[startIdx];
+  final endM = cum[endIdx];
+  final distanceM = endM - startM;
 
   // Duration + pace come from per-point timestamps when present.
   final startTs = track[startIdx].timestamp;
@@ -158,6 +161,8 @@ SelectedSegment? buildSegmentAt(List<Waypoint> track, int clickIdx,
     startIdx: startIdx,
     endIdx: endIdx,
     clickIdx: clickIdx,
+    startDistanceMetres: startM,
+    endDistanceMetres: endM,
     distanceMetres: distanceM,
     duration: duration,
     paceSecondsPerKm: paceSecondsPerKm,

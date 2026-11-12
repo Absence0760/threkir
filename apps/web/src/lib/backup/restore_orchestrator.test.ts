@@ -6,12 +6,16 @@
 // Invocation:
 //   npx tsx --test src/lib/backup/restore_orchestrator.test.ts
 
+import type { JsonObject } from '../types.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	noteIncompleteArchive,
 	restoreOrchestrate,
-	type RestoreBackend
+	restoreWarningLogFields,
+	type RestoreBackend,
+	type RestoreResult
 } from './restore_orchestrator';
 import type { ParsedBackup } from './backup_reader';
 
@@ -85,17 +89,22 @@ function makeFakeBackend(): FakeBackend {
 }
 
 interface ParsedBackupOpts {
-	runs?: Record<string, unknown>[];
-	routes?: Record<string, unknown>[];
-	profile?: Record<string, unknown> | null;
-	settingsPrefs?: Record<string, unknown>;
+	runs?: JsonObject[];
+	routes?: JsonObject[];
+	profile?: JsonObject | null;
+	settingsPrefs?: JsonObject;
 	tracks?: Record<string, Uint8Array>;
+	manifest?: Record<string, unknown>;
 }
 
 function makeParsedBackup(opts: ParsedBackupOpts = {}): ParsedBackup {
 	const tracks = opts.tracks ?? {};
 	return {
-		manifest: { format: 'run-app-backup', version: 1 },
+		manifest: {
+			format: 'run-app-backup',
+			version: 1,
+			...(opts.manifest ?? {})
+		} as ParsedBackup['manifest'],
 		runs: opts.runs ?? [],
 		routes: opts.routes ?? [],
 		profile: opts.profile ?? null,
@@ -161,7 +170,9 @@ test('upsertProfile error becomes a warning, settings + runs still process', asy
 	);
 	assert.equal(result.profileRestored, false);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('profile:') && w.includes('rls denied')),
+		result.warnings.some(
+			(w) => w.kind === 'profile' && (w.error as Error).message.includes('rls denied')
+		),
 		`expected profile warning; got ${JSON.stringify(result.warnings)}`
 	);
 	// Subsequent stages still ran — partial-success contract.
@@ -214,7 +225,7 @@ test('upsertSettings error becomes a warning, runs still process', async () => {
 		backend
 	);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('settings_prefs:')),
+		result.warnings.some((w) => w.kind === 'settings'),
 		`got warnings: ${JSON.stringify(result.warnings)}`
 	);
 	assert.equal(result.runsImported, 1);
@@ -263,7 +274,12 @@ test('happy-path single run with track uploads then upserts', async () => {
 	assert.equal(runRow.activity_type, 'run');
 });
 
-test('run with no track in archive still upserts the row, track_url=null', async () => {
+// A track-short archive restored into the account it came from used to
+// overwrite the run's own valid `track_url` with null — orphaning the
+// Storage object and costing the run its trace. The column is omitted
+// now, so PostgREST leaves the existing row's path alone and a fresh
+// insert still lands null.
+test('run with no track in archive upserts WITHOUT a track_url key', async () => {
 	const backend = makeFakeBackend();
 	const result = await restoreOrchestrate(
 		makeParsedBackup({
@@ -276,7 +292,121 @@ test('run with no track in archive still upserts the row, track_url=null', async
 	assert.equal(result.tracksUploaded, 0);
 	const row = backend.calls.find((c) => c.method === 'upsertRun')!
 		.arg as Record<string, unknown>;
-	assert.equal(row.track_url, null);
+	assert.equal('track_url' in row, false, 'track_url must be absent, not null');
+});
+
+// The archived value names the run + owner the archive was TAKEN from, so
+// re-homing it is worse than dropping it: a cross-account restore would
+// point the row at a stranger's object.
+test('an archived track_url does not survive a restore that uploaded no blob', async () => {
+	const backend = makeFakeBackend();
+	await restoreOrchestrate(
+		makeParsedBackup({
+			runs: [{ id: 'run-1', track_url: 'other-uid/run-1.json.gz' }]
+		}),
+		'uid',
+		backend
+	);
+	const row = backend.calls.find((c) => c.method === 'upsertRun')!
+		.arg as Record<string, unknown>;
+	assert.equal('track_url' in row, false);
+});
+
+// No web archive carries hr blobs, so an archived `hr_series_url` can only
+// be a foreign path — and one that fails `runs_hr_series_url_path_shape`
+// (§ 116) whenever the ids differ.
+test('an archived hr_series_url is never written back', async () => {
+	const backend = makeFakeBackend();
+	await restoreOrchestrate(
+		makeParsedBackup({
+			runs: [{ id: 'run-1', hr_series_url: 'other-uid/run-1.hr.json.gz' }],
+			tracks: { 'run-1': new Uint8Array([1, 2, 3]) }
+		}),
+		'uid',
+		backend
+	);
+	const row = backend.calls.find((c) => c.method === 'upsertRun')!
+		.arg as Record<string, unknown>;
+	assert.equal('hr_series_url' in row, false);
+	assert.equal(row.track_url, 'uid/run-1.json.gz');
+});
+
+// ─────────────────── archive completeness ───────────────────
+
+function emptyResult(): RestoreResult {
+	return {
+		runsImported: 0,
+		routesImported: 0,
+		tracksUploaded: 0,
+		profileRestored: false,
+		warnings: [],
+		archiveIncomplete: false,
+		archiveIncompleteSections: []
+	};
+}
+
+test('an archive declaring complete:false is carried into the result', async () => {
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(
+		makeParsedBackup({
+			runs: [{ id: 'run-1' }],
+			manifest: { complete: false, incomplete: ['tracks'] }
+		}),
+		'uid',
+		backend
+	);
+	assert.equal(result.archiveIncomplete, true);
+	assert.deepEqual(result.archiveIncompleteSections, ['tracks']);
+	// The shortfall is the archive's, not this restore's — the rows it
+	// does carry still land.
+	assert.equal(result.runsImported, 1);
+});
+
+test('an archive declaring complete:true claims no shortfall', async () => {
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(
+		makeParsedBackup({ manifest: { complete: true, incomplete: [] } }),
+		'uid',
+		backend
+	);
+	assert.equal(result.archiveIncomplete, false);
+	assert.deepEqual(result.archiveIncompleteSections, []);
+});
+
+// A web- or mobile-built archive from before the field existed says
+// NOTHING about itself; warning on all of those would be its own
+// dishonesty.
+test('a manifest with no completeness field claims no shortfall', async () => {
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(makeParsedBackup(), 'uid', backend);
+	assert.equal(result.archiveIncomplete, false);
+});
+
+test('noteIncompleteArchive: only an explicit false flags, and non-strings are dropped', () => {
+	for (const manifest of [
+		null,
+		undefined,
+		'nonsense',
+		{},
+		{ complete: true },
+		{ complete: 'false' },
+		{ complete: 0 }
+	]) {
+		const r = emptyResult();
+		noteIncompleteArchive(manifest, r);
+		assert.equal(r.archiveIncomplete, false, `flagged on ${JSON.stringify(manifest)}`);
+	}
+
+	const flagged = emptyResult();
+	noteIncompleteArchive({ complete: false, incomplete: ['tracks', 7, null] }, flagged);
+	assert.equal(flagged.archiveIncomplete, true);
+	assert.deepEqual(flagged.archiveIncompleteSections, ['tracks']);
+
+	// A shortfall with no named section is still a shortfall.
+	const unnamed = emptyResult();
+	noteIncompleteArchive({ complete: false }, unnamed);
+	assert.equal(unnamed.archiveIncomplete, true);
+	assert.deepEqual(unnamed.archiveIncompleteSections, []);
 });
 
 test('uploadTrack failure becomes a warning, row still upserts (no track_url)', async () => {
@@ -295,7 +425,7 @@ test('uploadTrack failure becomes a warning, row still upserts (no track_url)', 
 		}
 	);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('track run-1:')),
+		result.warnings.some((w) => w.kind === 'track' && w.itemId === 'run-1'),
 		`got: ${JSON.stringify(result.warnings)}`
 	);
 	// runsImported still reflects the row landing — we don't sink
@@ -320,7 +450,7 @@ test('upsertRun failure becomes a warning, other rows continue', async () => {
 	);
 	assert.equal(result.runsImported, 2);
 	assert.equal(
-		result.warnings.filter((w) => w.startsWith('run r-bad:')).length,
+		result.warnings.filter((w) => w.kind === 'run' && w.itemId === 'r-bad').length,
 		1
 	);
 });
@@ -514,7 +644,7 @@ test('upsertRoute failure becomes a warning, other routes continue', async () =>
 	);
 	assert.equal(result.routesImported, 2);
 	assert.equal(
-		result.warnings.filter((w) => w.startsWith('route rt-bad:')).length,
+		result.warnings.filter((w) => w.kind === 'route' && w.itemId === 'rt-bad').length,
 		1
 	);
 });
@@ -624,4 +754,193 @@ test('coalesceRunActivity clones — original metadata is not mutated', async ()
 	// promotes + strips the legacy bag key.
 	assert.equal(inputMeta.activity_type, 'cycle');
 	assert.equal(inputMeta.title, 'Original');
+});
+
+// ─────────────────── unknown columns ───────────────────
+
+test('a run column this schema dropped is removed, not sent as a whole-row 400', async () => {
+	// Reason: PostgREST refuses a payload naming a column the table does not
+	// have (PGRST204) for the WHOLE row, and `runs.kind` was dropped by
+	// 20261206_001 — so an archive written before it failed every run it
+	// carried, after each track blob had already been uploaded to Storage.
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(
+		makeParsedBackup({
+			runs: [
+				{ id: 'r-1', distance_m: 5000, kind: 'run' },
+				{ id: 'r-2', distance_m: 6000, kind: 'run' }
+			]
+		}),
+		'uid',
+		backend
+	);
+	assert.equal(result.runsImported, 2);
+	for (const call of backend.calls.filter((c) => c.method === 'upsertRun')) {
+		const row = call.arg as Record<string, unknown>;
+		assert.equal('kind' in row, false, 'a dropped column must not reach the wire');
+		assert.equal(row.distance_m, row.id === 'r-1' ? 5000 : 6000, 'the rest of the row lands');
+	}
+});
+
+test('the dropped names are ONE warning per section, not one per row', async () => {
+	// Reason: the account page renders the warning COUNT, not the text, so a
+	// stale archive of 500 runs read as "500 warnings" beside an import of
+	// zero. The names are the same handful on every row by construction.
+	const backend = makeFakeBackend();
+	const runs = Array.from({ length: 50 }, (_, i) => ({
+		id: `r-${i}`,
+		kind: 'run',
+		pace_s_per_km: 300
+	}));
+	const result = await restoreOrchestrate(
+		makeParsedBackup({
+			runs,
+			routes: [{ id: 'rt-1', name: 'Loop', legacy_polyline: 'abc' }],
+			profile: { display_name: 'Tester', favourite_colour: 'blue' }
+		}),
+		'uid',
+		backend
+	);
+	assert.equal(result.runsImported, 50);
+	assert.deepEqual(result.warnings, [
+		{ kind: 'columnsDropped', section: 'profile', columns: ['favourite_colour'] },
+		{ kind: 'columnsDropped', section: 'runs', columns: ['kind', 'pace_s_per_km'] },
+		{ kind: 'columnsDropped', section: 'routes', columns: ['legacy_polyline'] }
+	]);
+});
+
+test('an archive carrying no unknown column warns about nothing', async () => {
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(
+		makeParsedBackup({
+			runs: [{ id: 'r-1', distance_m: 5000 }],
+			routes: [{ id: 'rt-1', name: 'Loop' }],
+			profile: { display_name: 'Tester' }
+		}),
+		'uid',
+		backend
+	);
+	assert.deepEqual(result.warnings, []);
+});
+
+test('a prototype key in the archive is a dropped column, never a column', async () => {
+	// Reason: the rows are parsed from a user-supplied JSON file, so
+	// `constructor` / `toString` are keys an archive can carry and both answer
+	// true to `in` on any object's prototype chain. Only `Object.hasOwn` on the
+	// allowlist tells a column from an inherited property.
+	const backend = makeFakeBackend();
+	const result = await restoreOrchestrate(
+		makeParsedBackup({ runs: [{ id: 'r-1', constructor: 'x', toString: 'y' }] }),
+		'uid',
+		backend
+	);
+	assert.equal(result.runsImported, 1);
+	const row = backend.calls.find((c) => c.method === 'upsertRun')?.arg as Record<string, unknown>;
+	assert.deepEqual(Object.keys(row).sort(), [
+		'activity_type',
+		'event_id',
+		'id',
+		'metadata',
+		'user_id'
+	]);
+	assert.deepEqual(result.warnings, [
+		{ kind: 'columnsDropped', section: 'runs', columns: ['constructor', 'toString'] }
+	]);
+});
+
+test('a warning carries the caught failure as a value, never as text', async () => {
+	// Reason: `run r-bad: <PostgREST message>` put table and constraint names in
+	// a field a page could render. Every field but `error` is the archive's own
+	// id, a position or a column name; the failure stays an object.
+	const backend = makeFakeBackend();
+	const failure = new Error('new row for relation "runs" violates check constraint "x"');
+	backend.upsertRunSelectiveFailure = () => failure;
+	const result = await restoreOrchestrate(
+		makeParsedBackup({ runs: [{ id: 'r-bad' }, 'not a row' as unknown as JsonObject] }),
+		'uid',
+		backend
+	);
+	assert.deepEqual(result.warnings, [
+		{ kind: 'run', itemId: 'r-bad', error: failure },
+		{ kind: 'runUnreadable', index: 1 }
+	]);
+	for (const w of result.warnings) {
+		for (const [key, value] of Object.entries(w)) {
+			if (key === 'error') continue;
+			assert.ok(!String(value).includes('violates'), `${key} carries the failure text`);
+		}
+	}
+});
+
+/// Every `console.warn` the call makes, with its arguments, and nothing printed.
+async function capturingWarn<T>(fn: () => Promise<T>): Promise<{ value: T; logged: unknown[][] }> {
+	const original = console.warn;
+	const logged: unknown[][] = [];
+	console.warn = (...args: unknown[]) => {
+		logged.push(args);
+	};
+	try {
+		return { value: await fn(), logged };
+	} finally {
+		console.warn = original;
+	}
+}
+
+test('the restore log carries no archive-written text', async () => {
+	// Reason: console output becomes a Sentry breadcrumb once the reader
+	// consents, and the archive is a user-supplied file, so its row ids and its
+	// JSON keys are text a stranger chose. They used to be logged verbatim.
+	const backend = makeFakeBackend();
+	const failure = new Error('invalid input syntax for type uuid: "runner@example.com"');
+	backend.upsertRunSelectiveFailure = () => failure;
+	backend.upsertRouteSelectiveFailure = () => failure;
+	const secretId = 'Jane Doe 07700 900123';
+	const secretKey = 'home_address_42_acacia_avenue';
+	const { value: result, logged } = await capturingWarn(() =>
+		restoreOrchestrate(
+			makeParsedBackup({
+				runs: [{ id: secretId, [secretKey]: 'x' }],
+				routes: [{ id: secretId, name: 'Loop' }],
+				profile: { display_name: 'Tester', [secretKey]: 'x' }
+			}),
+			'uid',
+			backend
+		)
+	);
+	assert.equal(logged.length, result.warnings.length);
+	const text = JSON.stringify(logged);
+	for (const leaked of [secretId, secretKey, 'runner@example.com']) {
+		assert.ok(!text.includes(leaked), `the log carries ${leaked}`);
+	}
+	// The page still gets the raw id and names to show.
+	assert.ok(result.warnings.some((w) => w.itemId === secretId));
+	assert.ok(result.warnings.some((w) => w.columns?.includes(secretKey)));
+});
+
+test('restoreWarningLogFields keeps a uuid id, counts columns and scrubs the failure', () => {
+	const id = '0b6f2d3e-6c1a-4f7e-9a51-2f9b0d2c7e11';
+	assert.deepEqual(
+		restoreWarningLogFields({
+			kind: 'run',
+			itemId: id,
+			error: new Error("Key (email)=(a@b.co) already exists in 'x'")
+		}),
+		{
+			itemId: id,
+			index: undefined,
+			section: undefined,
+			columnsDropped: undefined,
+			error: "Key (…)=(…) already exists in '…'"
+		}
+	);
+	assert.deepEqual(
+		restoreWarningLogFields({ kind: 'columnsDropped', section: 'runs', columns: ['a', 'b', 'c'] }),
+		{ itemId: undefined, index: undefined, section: 'runs', columnsDropped: 3, error: undefined }
+	);
+	assert.equal(restoreWarningLogFields({ kind: 'track', itemId: 'r-1' }).itemId, '<invalid>');
+	assert.equal(
+		restoreWarningLogFields({ kind: 'track', itemId: 7 as unknown as string }).itemId,
+		'<invalid>'
+	);
+	assert.equal(restoreWarningLogFields({ kind: 'routeUnreadable', index: 4 }).index, 4);
 });

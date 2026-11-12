@@ -7,10 +7,15 @@ import {
 import {
   buildCheckoutSessionParams,
   capacityDecision,
+  checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
+  heldOfferCount,
+  isPastSeriesEnd,
   isSalesWindowOpen,
+  type PendingOrderRow,
   reservationExpiry,
+  resolveHold,
 } from './lib.ts';
 
 const HOUR = 60 * 60 * 1000;
@@ -72,17 +77,19 @@ Deno.test('capacityDecision — going + pending at/over cap -> full', () => {
   assertEquals(capacityDecision(7, 5, 10), 'full'); // over cap
 });
 
-Deno.test('checkoutIdempotencyKey — deterministic for same inputs', () => {
-  const a = checkoutIdempotencyKey('buyer1', 'event1', '2026-06-11T18:00:00Z');
-  const b = checkoutIdempotencyKey('buyer1', 'event1', '2026-06-11T18:00:00Z');
-  assertStrictEquals(a, b);
+Deno.test('checkoutIdempotencyKey — keyed on the order, one key per hold', () => {
+  assertStrictEquals(checkoutIdempotencyKey('order1'), 'events-checkout:order1');
+  assertStrictEquals(checkoutIdempotencyKey('order1'), checkoutIdempotencyKey('order1'));
+  assertStrictEquals(checkoutIdempotencyKey('order1') === checkoutIdempotencyKey('order2'), false);
 });
 
-Deno.test('checkoutIdempotencyKey — differs by buyer / event / instance', () => {
-  const base = checkoutIdempotencyKey('buyer1', 'event1', '2026-06-11T18:00:00Z');
-  assertStrictEquals(base === checkoutIdempotencyKey('buyer2', 'event1', '2026-06-11T18:00:00Z'), false);
-  assertStrictEquals(base === checkoutIdempotencyKey('buyer1', 'event2', '2026-06-11T18:00:00Z'), false);
-  assertStrictEquals(base === checkoutIdempotencyKey('buyer1', 'event1', '2026-06-18T18:00:00Z'), false);
+Deno.test('checkoutExpiresAtUnix — anchored on the order, never on the clock', () => {
+  const createdAtMs = Date.parse('2026-06-11T17:00:00.000Z');
+  assertEquals(checkoutExpiresAtUnix(createdAtMs), createdAtMs / 1000 + 30 * 60);
+  // The same order read again eight minutes later derives the same value —
+  // this is the property the reused idempotency key depends on.
+  assertEquals(checkoutExpiresAtUnix(createdAtMs), checkoutExpiresAtUnix(createdAtMs));
+  assertEquals(checkoutExpiresAtUnix(createdAtMs, 45), createdAtMs / 1000 + 45 * 60);
 });
 
 Deno.test('buildCheckoutSessionParams — destination charge + fee + expires + metadata present', () => {
@@ -113,4 +120,193 @@ Deno.test('buildCheckoutSessionParams — destination charge + fee + expires + m
   assertEquals(params.metadata.instance_start, '2026-06-11T18:00:00Z');
   assertEquals(params.metadata.buyer_user_id, 'b1');
   assertEquals(params.metadata.order_id, 'o1');
+});
+
+const HOLD: PendingOrderRow = {
+  id: 'order-1',
+  created_at: '2026-06-11T17:00:00.000Z',
+  reserved_until: '2026-06-11T17:15:00.000Z',
+  stripe_checkout_session_id: 'cs_first',
+};
+const HOLD_CREATED_MS = Date.parse(HOLD.created_at);
+
+Deno.test('resolveHold — no pending order opens a fresh hold', () => {
+  assertEquals(resolveHold(null, HOLD_CREATED_MS), {
+    orderId: null,
+    anchorMs: null,
+    supersedeSessionId: null,
+  });
+});
+
+Deno.test('resolveHold — a live reservation is reused, anchored on its creation', () => {
+  assertEquals(resolveHold(HOLD, HOLD_CREATED_MS + 8 * 60 * 1000), {
+    orderId: 'order-1',
+    anchorMs: HOLD_CREATED_MS,
+    supersedeSessionId: null,
+  });
+});
+
+Deno.test('resolveHold — a lapsed reservation is superseded, not reused', () => {
+  // Its Checkout Session stays payable ~15 min after the seat was released,
+  // so opening a replacement alongside it would let one buyer be charged
+  // twice for one registration. It is expired at Stripe first.
+  assertEquals(resolveHold(HOLD, HOLD_CREATED_MS + 20 * 60 * 1000), {
+    orderId: null,
+    anchorMs: null,
+    supersedeSessionId: 'cs_first',
+  });
+});
+
+Deno.test('resolveHold — an unparseable or absent reservation is never treated as live', () => {
+  assertEquals(
+    resolveHold({ ...HOLD, reserved_until: null }, HOLD_CREATED_MS).orderId,
+    null,
+  );
+  assertEquals(
+    resolveHold({ ...HOLD, reserved_until: 'whenever' }, HOLD_CREATED_MS).orderId,
+    null,
+  );
+});
+
+/// The invariant the 502-for-24-hours bug violated: Stripe's idempotency is
+/// JOINT — a key replayed with a body that has moved is answered with
+/// `idempotency_error`, not with the original session, and the key is held
+/// for ~24 h. So every attempt that reuses a key must reproduce the request
+/// byte for byte. Composing the helpers the way index.ts does is the only
+/// place that property is visible, so it is asserted here.
+function attempt(order: PendingOrderRow | null, nowMs: number) {
+  const hold = resolveHold(order, nowMs);
+  const orderId = hold.orderId ?? 'freshly-minted-uuid';
+  const anchorMs = hold.anchorMs ?? nowMs;
+  return {
+    key: checkoutIdempotencyKey(orderId),
+    body: buildCheckoutSessionParams({
+      amountCents: 2200,
+      currency: 'usd',
+      productName: 'Reformer Pilates',
+      applicationFeeCents: 55,
+      hostAccountId: 'acct_host',
+      successUrl: 'https://app.example.com/clubs?checkout=success',
+      cancelUrl: 'https://app.example.com/clubs?checkout=cancel',
+      metadata: {
+        event_id: 'e1',
+        instance_start: '2026-06-11T18:00:00Z',
+        buyer_user_id: 'b1',
+        order_id: orderId,
+      },
+      expiresAtUnix: checkoutExpiresAtUnix(anchorMs),
+    }),
+  };
+}
+
+Deno.test('a double-click inside the live hold replays byte-identically', () => {
+  const first = attempt(HOLD, HOLD_CREATED_MS + 1_000);
+  const second = attempt(HOLD, HOLD_CREATED_MS + 8 * 60 * 1000);
+  assertStrictEquals(first.key, second.key);
+  assertEquals(
+    JSON.stringify(first.body),
+    JSON.stringify(second.body),
+    'same idempotency key with a different body is an idempotency_error at ' +
+      'Stripe, not a replay — the second attempt would 502 for ~24 h',
+  );
+});
+
+Deno.test('a replacement hold never reuses the superseded hold\'s key', () => {
+  const inHold = attempt(HOLD, HOLD_CREATED_MS + 60_000);
+  const afterLapse = attempt(HOLD, HOLD_CREATED_MS + 20 * 60 * 1000);
+  assertStrictEquals(inHold.key === afterLapse.key, false);
+  assertStrictEquals(afterLapse.body.metadata.order_id === 'order-1', false);
+});
+
+Deno.test('isSalesWindowOpen — a later occurrence of a started series is still on sale', () => {
+  // The instant the two arguments disagree about, stated as a difference so
+  // it cannot be satisfied by a function that ignores its first argument.
+  // A weekly class whose first session ran in January, being bought for a
+  // session next week: the series start is long past, the occurrence is not.
+  const seriesStartMs = Date.parse('2026-01-05T18:00:00Z');
+  const occurrenceMs = Date.parse('2026-03-02T18:00:00Z');
+  const nowMs = Date.parse('2026-02-27T09:00:00Z');
+  assertEquals(isSalesWindowOpen(seriesStartMs, 0, nowMs), false);
+  assertEquals(isSalesWindowOpen(occurrenceMs, 0, nowMs), true);
+});
+
+Deno.test('isSalesWindowOpen — an unparseable instant refuses the sale', () => {
+  // Every caller reaches this having already shape-checked its input, but a
+  // naive literal Postgres accepts can still parse to NaN on some paths, and
+  // both comparisons against NaN are false. Closed is the right answer: we
+  // would rather refuse a sale than open one against an instant we cannot
+  // place.
+  assertEquals(isSalesWindowOpen(NaN, 0, Date.parse('2026-02-27T09:00:00Z')), false);
+});
+
+// ── waitlist offers (migration 20270726000002) ──
+
+const NOW = Date.parse('2026-10-13T12:00:00Z');
+const LATER = '2026-10-13T20:00:00Z';
+const EARLIER = '2026-10-13T11:00:00Z';
+
+Deno.test('heldOfferCount: someone else\'s live offer holds a seat against the caller', () => {
+  const held = heldOfferCount([{ user_id: 'w1', offer_expires_at: LATER }], new Set(), 'stranger', NOW);
+  assertStrictEquals(held, 1);
+  // With one seat left, that hold makes the class full for the stranger.
+  assertStrictEquals(capacityDecision(9, held, 10), 'full');
+});
+
+Deno.test('heldOfferCount: the offered caller is not blocked by their own offer', () => {
+  const held = heldOfferCount([{ user_id: 'w1', offer_expires_at: LATER }], new Set(), 'w1', NOW);
+  assertStrictEquals(held, 0);
+  assertStrictEquals(capacityDecision(9, held, 10), 'available');
+});
+
+Deno.test('heldOfferCount: a lapsed offer holds nothing', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: EARLIER }], new Set(), 'stranger', NOW),
+    0,
+  );
+});
+
+Deno.test('heldOfferCount: a holder mid-checkout is counted once, through the pending count', () => {
+  // Their pending order already holds the seat, deadline or not.
+  assertStrictEquals(
+    heldOfferCount(
+      [
+        { user_id: 'w1', offer_expires_at: LATER },
+        { user_id: 'w2', offer_expires_at: EARLIER },
+      ],
+      new Set(['w1', 'w2']),
+      'stranger',
+      NOW,
+    ),
+    0,
+  );
+});
+
+Deno.test('heldOfferCount: an unreadable deadline holds the seat (fail closed)', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: 'not-a-date' }], new Set(), 'stranger', NOW),
+    1,
+  );
+});
+
+Deno.test('heldOfferCount: a row with no offer is ignored', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: null }], new Set(), 'stranger', NOW),
+    0,
+  );
+});
+
+Deno.test('isPastSeriesEnd — an instant after an ended series is not for sale', () => {
+  const until = '2026-09-01T12:00:00+00:00';
+  const untilMs = Date.parse(until);
+  assertStrictEquals(isPastSeriesEnd(until, untilMs + 1), true);
+  // The series' last occurrence is still its own.
+  assertStrictEquals(isPastSeriesEnd(until, untilMs), false);
+  assertStrictEquals(isPastSeriesEnd(until, untilMs - 7 * 24 * HOUR), false);
+  // The same instant in the other rendering decides the same way.
+  assertStrictEquals(isPastSeriesEnd('2026-09-01T12:00:00.000Z', untilMs + 1), true);
+});
+
+Deno.test('isPastSeriesEnd — no end, or an unreadable one, is not past it', () => {
+  assertStrictEquals(isPastSeriesEnd(null, Date.parse('2099-01-01T00:00:00Z')), false);
+  assertStrictEquals(isPastSeriesEnd('not a date', Date.parse('2099-01-01T00:00:00Z')), false);
 });

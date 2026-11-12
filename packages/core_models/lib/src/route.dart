@@ -53,6 +53,19 @@ class Route {
   /// the title on the route detail surfaces.
   final String? description;
 
+  /// Published by a verified organiser: [clubId] names a verified club and
+  /// the author is an active owner/admin of it. Derived server-side
+  /// (`is_official`, migration 20271021000030) and never stored on the row,
+  /// so it is true only on reads that select it.
+  final bool official;
+
+  /// The race's certified distance (`routes.official_distance_m`, migration
+  /// 20271108000010). A course traced on street centre lines measures long,
+  /// so when this is set it is the distance the route is shown as, and km
+  /// markers scale along the line to it; [distanceMetres] stays the length of
+  /// the line. Null means no official distance.
+  final double? officialDistanceMetres;
+
   const Route({
     required this.id,
     required this.name,
@@ -69,6 +82,8 @@ class Route {
     this.isStarred = false,
     this.clubId,
     this.description,
+    this.official = false,
+    this.officialDistanceMetres,
   });
 
   factory Route.fromJson(Map<String, dynamic> json) => _$RouteFromJson(json);

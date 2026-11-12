@@ -14,6 +14,17 @@ Waypoint _$WaypointFromJson(Map<String, dynamic> json) => Waypoint(
       ? null
       : DateTime.parse(json['timestamp'] as String),
   bpm: (json['bpm'] as num?)?.toInt(),
+  accuracyMetres: (json['accuracyMetres'] as num?)?.toDouble(),
+  speedMps: (json['speedMps'] as num?)?.toDouble(),
+  speedAccuracyMps: (json['speedAccuracyMps'] as num?)?.toDouble(),
+  bearingDeg: (json['bearingDeg'] as num?)?.toDouble(),
+  smoothedLat: (json['smoothedLat'] as num?)?.toDouble(),
+  smoothedLng: (json['smoothedLng'] as num?)?.toDouble(),
+  baroElevationMetres: (json['baroElevationMetres'] as num?)?.toDouble(),
+  cumulativeDistanceMetres: (json['cumulativeDistanceMetres'] as num?)
+      ?.toDouble(),
+  offTrack: Waypoint._isTrue(json['offTrack']),
+  segmentStart: Waypoint._isTrue(json['segmentStart']),
 );
 
 Map<String, dynamic> _$WaypointToJson(Waypoint instance) => <String, dynamic>{
@@ -22,4 +33,14 @@ Map<String, dynamic> _$WaypointToJson(Waypoint instance) => <String, dynamic>{
   'elevationMetres': instance.elevationMetres,
   'timestamp': instance.timestamp?.toIso8601String(),
   'bpm': instance.bpm,
+  'accuracyMetres': ?instance.accuracyMetres,
+  'speedMps': ?instance.speedMps,
+  'speedAccuracyMps': ?instance.speedAccuracyMps,
+  'bearingDeg': ?instance.bearingDeg,
+  'smoothedLat': ?instance.smoothedLat,
+  'smoothedLng': ?instance.smoothedLng,
+  'baroElevationMetres': ?instance.baroElevationMetres,
+  'cumulativeDistanceMetres': ?instance.cumulativeDistanceMetres,
+  'offTrack': ?Waypoint._trueOrNull(instance.offTrack),
+  'segmentStart': ?Waypoint._trueOrNull(instance.segmentStart),
 };

@@ -64,6 +64,12 @@ test('metricFromActivity duration reads duration_s', () => {
 	assert.equal(metricFromActivity({ duration_s: 1800 }, 'duration', null), 1800);
 });
 
+test('metricFromActivity duration at or past the ten-day bound is 0, as the SQL aggregate skips it', () => {
+	assert.equal(metricFromActivity({ duration_s: 44_400_094 }, 'duration', null), 0);
+	assert.equal(metricFromActivity({ duration_s: 864_000 }, 'duration', null), 0);
+	assert.equal(metricFromActivity({ duration_s: 863_999 }, 'duration', null), 863_999);
+});
+
 test('metricFromActivity vert reads elevation_gain_m (number or string, missing → 0)', () => {
 	assert.equal(metricFromActivity({ elevation_gain_m: 640 }, 'vert', null), 640);
 	assert.equal(metricFromActivity({ elevation_gain_m: '640' }, 'vert', null), 640);
@@ -73,6 +79,10 @@ test('metricFromActivity vert reads elevation_gain_m (number or string, missing 
 test('metricFromActivity count + streak each contribute 1', () => {
 	assert.equal(metricFromActivity({}, 'activity_count', null), 1);
 	assert.equal(metricFromActivity({}, 'streak_days', null), 1);
+});
+
+test('park_courses is server-only: an activity contributes 0', () => {
+	assert.equal(metricFromActivity({ distance_m: 5000, activity_type: 'run' }, 'park_courses', null), 0);
 });
 
 test('metricFromActivity activity_type filter excludes non-matching', () => {
@@ -125,6 +135,40 @@ test('rankParticipants falls back to team_club_id for team boards', () => {
 		[
 			['blue', 1],
 			['red', 1],
+		],
+	);
+});
+
+test('rankParticipants sorts the keyless team last, like the SQL nulls last', () => {
+	// challenge_leaderboard's team branch ends `order by rank, pt.team_club_id
+	// nulls last`, so the unaffiliated bucket (a deleted club, or a member who
+	// joined without picking one) trails the named clubs it ties with. Collapsing
+	// the null key to '' would put it first.
+	const ranked = rankParticipants([
+		{ user_id: null, team_club_id: null, value: 50 },
+		{ user_id: null, team_club_id: 'red', value: 50 },
+		{ user_id: null, team_club_id: 'blue', value: 50 },
+	]);
+	assert.deepEqual(
+		ranked.map((r) => [r.entry.team_club_id, r.rank]),
+		[
+			['blue', 1],
+			['red', 1],
+			[null, 1],
+		],
+	);
+});
+
+test('a keyless entry still outranks a lower value — nulls last is a tie-break only', () => {
+	const ranked = rankParticipants([
+		{ user_id: null, team_club_id: 'red', value: 10 },
+		{ user_id: null, team_club_id: null, value: 90 },
+	]);
+	assert.deepEqual(
+		ranked.map((r) => [r.entry.team_club_id, r.rank]),
+		[
+			[null, 1],
+			['red', 2],
 		],
 	);
 });

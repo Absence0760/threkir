@@ -1,14 +1,32 @@
 project_id = "project-running"
 
+# Every host port the stack publishes is pinned here, and all of them sit
+# below 32768 — outside Linux's default ephemeral range (32768-60999) — so
+# the kernel can never hand one out as an outbound connection's source port
+# and fail docker-proxy's bind. The CLI defaults (5432x) sit inside it, which
+# cost CI a run of "address already in use" incidents. Keep the list in
+# lockstep with PORTS in .github/actions/start-supabase/start_stack.sh;
+# start_stack.test.mjs fails when a port is unpinned, drifts, or lands inside
+# the range.
 [api]
-port = 54321
+port = 24321
 
 [db]
-port = 54322
+port = 24322
+shadow_port = 24320
+
+[db.pooler]
+port = 24329
+
+[studio]
+port = 24323
+
+[analytics]
+port = 24327
 
 [auth]
 site_url = "http://localhost:7777"
-additional_redirect_urls = ["http://localhost:7777/auth/callback", "http://localhost:7779/auth/callback"]
+additional_redirect_urls = ["http://localhost:7777/auth/callback", "http://localhost:7780/auth/callback"]
 enable_signup = true
 
 # The clients (web PASSWORD_MIN_LENGTH, mobile kPasswordMinLength) both
@@ -20,6 +38,42 @@ minimum_password_length = 8
 
 [auth.email]
 enable_confirmations = false
+
+# GoTrue's own password-changed security notice: sent on every password
+# change a user makes (settings change and the recovery reset alike — both go
+# through PUT /user), never on an admin update. With the send-email hook below
+# enabled it reaches auth-email as `password_changed_notification`, which
+# renders it localized with the time and a reset CTA; the template fields are
+# left unset because the hook owns the copy. Prod enables the same notice in
+# Dashboard → Auth → Emails (docs/features/email.md § Security emails).
+# Not optional for the user: it is the one mail an account takeover cannot
+# be allowed to silence.
+[auth.email.notification.password_changed]
+enabled = true
+
+# GoTrue's six other account-change notices, enabled here so local Mailpit
+# shows them; each reaches auth-email as `<name>_notification` and renders
+# from its own catalogue entry (time, what to do if it wasn't you, the
+# security contact). Email changed goes to the PREVIOUS address. Prod flips
+# the matching toggles in Dashboard → Authentication → Emails → Security
+# (docs/features/email.md § Security emails).
+[auth.email.notification.email_changed]
+enabled = true
+
+[auth.email.notification.phone_changed]
+enabled = true
+
+[auth.email.notification.identity_linked]
+enabled = true
+
+[auth.email.notification.identity_unlinked]
+enabled = true
+
+[auth.email.notification.mfa_factor_enrolled]
+enabled = true
+
+[auth.email.notification.mfa_factor_unenrolled]
+enabled = true
 
 # Every GoTrue auth email (signup confirmation, recovery, magic link,
 # email change, reauthentication) is rendered + sent by the auth-email
@@ -41,18 +95,16 @@ enable_confirmations = false
 # this file's value there.
 [auth.hook.send_email]
 enabled = true
-uri = "http://host.docker.internal:54321/functions/v1/auth-email"
+uri = "http://host.docker.internal:24321/functions/v1/auth-email"
 secrets = "v1,whsec_bG9jYWwtZGV2LW9ubHktc2VuZC1lbWFpbC1ob29rLXNlY3JldA=="
 
-# Pin the local mail-catcher ports rather than relying on the CLI default
-# (web 54324 / SMTP 54325 / POP3 54326). The Go worker's notification-email
-# sender targets SMTP 54325 in local dev (SMTP_HOST=127.0.0.1
-# SMTP_PORT=54325); inspect sent mail at http://127.0.0.1:54324. Auth
-# emails (GoTrue) land here too.
+# The Go worker's notification-email sender targets SMTP 24325 in local
+# dev (SMTP_HOST=127.0.0.1 SMTP_PORT=24325); inspect sent mail at
+# http://127.0.0.1:24324. Auth emails (GoTrue) land here too.
 [inbucket]
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
+port = 24324
+smtp_port = 24325
+pop3_port = 24326
 
 [auth.external.google]
 enabled = false
@@ -99,10 +151,13 @@ url = "env(SSO_MOCK_OIDC_URL)"
 # JWT — the platform gate would 401 the hook before the signature
 # check runs. The function fails closed without the secret.
 #
-# The other functions (strava-import, parkrun-import, export-data,
+# The other functions (strava-import, export-data,
 # delete-account, events-connect-onboard, events-checkout,
 # events-cancel) all need a user-scoped Supabase JWT and are correct on
-# the default verify_jwt = true.
+# the default verify_jwt = true. That default does not block the browser's
+# CORS preflight: the hosted gateway forwards OPTIONS to the function without
+# a JWT check (measured 2026-10-18: delete-account answered its own 405), and
+# _shared/cors.ts answers it. Do not turn the gate off for CORS (§ 2148).
 #
 # clip-public-track is the exception: it serves logged-out spectators
 # on public share pages, whose supabase-js sends the anon/publishable
@@ -113,7 +168,16 @@ url = "env(SSO_MOCK_OIDC_URL)"
 # The function body is the trust boundary (same posture as
 # donations-checkout): RLS-gated read via the anon-key client,
 # fail-closed empty result on error, per-IP rate limit on the anon
-# branch (pinned by apps/web/src/lib/security_guards.test.ts).
+# branch (pinned by apps/web/src/lib/rate_limit_guards.test.ts).
+
+# plan-calendar serves a subscribed calendar app (Google, Apple, Outlook),
+# which polls a URL and can send no header of any kind. The 96-hex token in
+# the path is the credential: plan-calendar/handler.ts rate-limits per IP,
+# then compares the secret's SHA-256 to the stored hash in constant time,
+# and answers one indistinguishable 404 for every way of not being a live
+# feed. Both rate-limit buckets fail closed.
+[functions.plan-calendar]
+verify_jwt = false
 
 [functions.strava-webhook]
 verify_jwt = false
@@ -133,5 +197,46 @@ verify_jwt = false
 [functions.refresh-tokens]
 verify_jwt = false
 
+# events-refund-sweep is invoked by pg_cron (invoke_event_refund_sweep, through
+# pg_net) with the same CRON_SECRET bearer as refresh-tokens; the platform gate
+# would 401 it before the bearer check runs (decisions § 1839).
+[functions.events-refund-sweep]
+verify_jwt = false
+
+# race-listings-sweep is invoked by pg_cron (invoke_race_listings_sweep, through
+# pg_net) with the CRON_SECRET bearer; the platform gate would 401 it before the
+# bearer check runs (decisions § 1902).
+[functions.race-listings-sweep]
+verify_jwt = false
+
+# segment-match is invoked by the Go job worker with its server key on
+# `apikey`. An `sb_secret_` key is not a JWT, so the platform gate would 401 it
+# before handler.ts compares it against the project's own server keys
+# (decisions § 2392).
+[functions.segment-match]
+verify_jwt = false
+
+# club-verification-recheck is invoked by pg_cron
+# (invoke_club_verification_recheck, through pg_net) with the CRON_SECRET
+# bearer; the platform gate would 401 it before the bearer check runs
+# (decisions § 2398). club-verification itself keeps the gate: it is called
+# by a signed-in club owner.
+[functions.club-verification-recheck]
+verify_jwt = false
+
 [functions.clip-public-track]
+verify_jwt = false
+
+# park-course-report takes a report from a signed-out land manager or runner,
+# whose supabase-js sends the publishable key as the bearer; the platform gate
+# would 401 it. The handler verifies a user JWT when one is sent, rate-limits
+# per user or per hashed client address (fail closed), and calls a filing RPC
+# only the service role may execute (decisions § 2449).
+[functions.park-course-report]
+verify_jwt = false
+
+# park-closures-sweep is invoked daily by pg_cron (invoke_park_closures_sweep,
+# through pg_net) with the CRON_SECRET bearer; the platform gate would 401 it
+# before the bearer check runs (decisions § 2454).
+[functions.park-closures-sweep]
 verify_jwt = false

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
@@ -238,7 +238,7 @@ test.describe('/clubs/[slug]/events/[id] — race control (admin + member multi-
 			// fires handleEnd('cancelled'), which opens a ConfirmDialog
 			// whose confirm button is labelled "Cancel race"
 			// (unambiguous on the page).
-			await adminPage.getByRole('button', { name: 'Cancel' }).click();
+			await adminPage.getByRole('button', { name: 'Cancel', exact: true }).click();
 			await adminPage
 				.getByRole('dialog')
 				.getByRole('button', { name: 'Cancel race' })

@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from '../fixtures/test';
 
 import { expectReflows } from '../fixtures/reflow';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -15,6 +15,7 @@ import {
 	insertRun
 } from '../fixtures/simulate';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * WCAG 1.4.10 reflow over the routes the static sweep could not reach.
@@ -186,12 +187,7 @@ test.describe('no horizontal document scroll on the seeded dynamic routes', () =
 		test.use({ storageState: USER_A.storageStatePath });
 
 		test.beforeEach(async ({ context }) => {
-			await context.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(context);
 		});
 
 		test('a populated direct-message thread list', async ({ page }) => {

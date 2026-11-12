@@ -18,7 +18,7 @@ gate.
 What the Pro tier changes:
 
 - **Higher AI Coach daily cap (10/day vs 2/day for free).** Both tiers
-  go through the same `increment_coach_usage` RPC and the same
+  go through the same `spend_coach_usage_slot` RPC and the same
   `usedToday > dailyLimit` gate in `apps/web/src/lib/coach/handler.ts`;
   only the resolved cap differs. Free users get
   `TIER_LIMITS.free.dailyLimit = 2` messages per UTC day, then the
@@ -29,13 +29,15 @@ What the Pro tier changes:
   `bypassPaywallEnabled: false`, so a caller that POSTs directly to
   `/api/coach` from devtools still gets a 429 once they exceed their
   tier's cap with `{ error: 'daily_limit', tier, limit }`. The gate is
-  fail-closed: the `increment_coach_usage` RPC result is resolved through
-  the pure `resolveUsageCount(data, error)` helper in `coach/limits.ts`,
-  which denies (handler returns a transient 503) on an RPC error or a
-  non-finite/negative count rather than defaulting the count to 0 — so an
+  fail-closed: the `spend_coach_usage_slot` RPC result is resolved through
+  the pure `resolveUsageSpend(data, error)` helper in `coach/limits.ts`,
+  which denies (handler returns a transient 503) on an RPC error or an
+  unreadable or negative count rather than defaulting the count to 0 — so an
   unenforceable cap never streams an unmetered provider call. On a
-  provider failure the slot is **refunded** (`decrement_coach_usage`) only
-  when the stream yielded **zero** tokens; a partial answer keeps the slot
+  provider failure the slot is **refunded** (`refund_coach_usage_slot`,
+  with the ticket that request's spend returned, so a runner cannot refund a
+  message that succeeded — decisions § 1990) only when the stream yielded
+  **zero** tokens; a partial answer keeps the slot
   AND is persisted to `coach_messages` (via the same service-role writer
   the happy path uses) so what the user paid for survives a reload —
   content-persisted ⟺ slot-consumed, never a charged slot with a lost
@@ -54,7 +56,7 @@ What the Pro tier changes:
 - **AI route descriptions.** On a route's detail page, every user can
   tap "Describe this route" to get an instant, offline templated
   description built from the route's stats (`localisedTemplate` in
-  `$lib/routes/route_description.ts`). Pro users' tap additionally calls
+  `#lib/routes/route_description.ts`). Pro users' tap additionally calls
   `/api/coach/route-describe`, which asks Claude (`claude-opus-4-8`,
   adaptive thinking) to turn those facts into a richer paragraph. The
   gate is server-side (`is_pro()`, fail-closed) and the enhancement is
@@ -67,7 +69,7 @@ What the Pro tier changes:
   The engine-backed "Generate a route by distance" path
   (`/api/routes/generate` → graph_cycle + GraphHopper) requires a user
   JWT and a true `is_pro()` in the shared handler
-  (`$lib/routes/generate/handler.ts`), fail-closed exactly like
+  (`#lib/routes/generate/handler.ts`), fail-closed exactly like
   route-describe: a missing Supabase env or a failed RPC denies (500),
   never grants. Free / anonymous callers get 403
   `{error:'pro_required', upgrade:true}` **before any engine fetch** and
@@ -85,7 +87,8 @@ What the Pro tier changes:
   `PUBLIC_SUPABASE_ANON_KEY`.
 
 `/settings/upgrade` shows a two-card layout: a Pro plan card
-($9.99 / month, feature bullets, "Get Pro" CTA) and a one-off Donate
+(a Yearly $79.99 / Monthly $9.99 plan picker with the yearly saving,
+feature bullets, "Get Pro" CTA) and a one-off Donate
 button that links to an external payment provider. The transparent
 cost breakdown, monthly progress bars, donor count, and tiered
 donation buttons that existed under the previous donations-only model
@@ -93,8 +96,8 @@ are gone — see [decisions.md § 23](../architecture/decisions.md#23-pro-tier-r
 
 **The Pro storefront is gated on a live perk** — sellable when
 `coachEnabled() || routeGenEnabled()`, i.e. when either
-`PUBLIC_COACH_ENABLED` (`$lib/coach/coach_flag.ts`) or
-`PUBLIC_ROUTE_GEN_ENABLED` (`$lib/routes/route_gen_flag.ts`, decisions
+`PUBLIC_COACH_ENABLED` (`#lib/coach/coach_flag.ts`) or
+`PUBLIC_ROUTE_GEN_ENABLED` (`#lib/routes/route_gen_flag.ts`, decisions
 §204) is set; both flags are fail-closed like `weigh_in_flag.ts`. On a
 deploy with both perks off — the rock-bottom deploy leaves
 `ANTHROPIC_API_KEY` unset so `/api/coach` 503s, and both rock-bottom and
@@ -104,29 +107,83 @@ its "Get Pro" CTA for a "Pro — coming soon" teaser
 (`upgrade.proComingSoon`), the "Most popular" ribbon becomes
 "Coming soon", and the Donate button becomes the primary CTA — so the
 app never sells a hollow subscription and leads with donations instead.
+The Donate card itself renders only when `PUBLIC_DONATE_URL` holds a
+Stripe Payment Link (decisions § 2217), so with both perks off and no
+link the page offers no purchase at all rather than a dead button.
 Each flagged perk's card bullet is additionally gated on its own flag
 (the Coach bullets on `coachOn`, the route-generation bullet on
-`routeGenOn`), so a partially-live deploy (e.g. Lean: Coach on, engines
+`routeGenOn`, the plate-photo bullet on `coachOn && platePhotoEnabled()`
+— a perk that never on its own makes Pro sellable), so a partially-live deploy (e.g. Lean: Coach on, engines
 still deferred) sells Pro without advertising the dead perk. Setting
 each flag true (only once its feature is actually live) restores the
 full card with no code change. The tier machinery (`subscription_tier`,
 `is_pro()`, `TIER_LIMITS`, RevenueCat webhook) stays intact and dormant
 either way.
 
+**Selling Pro and selling it on the web are separate questions**
+([decisions.md § 1826](../architecture/decisions.md)). The web card reads a
+three-state storefront, `proStorefront(proSellable, webCheckoutAvailable())`
+in `#lib/billing/revenuecat_links.ts`:
+
+| Storefront | When | Web Pro card (free user) |
+|---|---|---|
+| `checkout` | a perk is live **and** `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` is a usable Web Purchase Link | plan picker + "Get Pro" + Terms / Privacy |
+| `app_only` | a perk is live, no usable web checkout link | `upgrade.proInIosApp` ("Pro is available now as a subscription in the Threkir app for iPhone…") + `upgrade.webCheckoutComingSoon`, the price note swapped for `upgrade.appPriceNote`, Donate becomes the primary button, **no buy button** |
+| `coming_soon` | no perk is live | `upgrade.proComingSoon` teaser |
+
+`webCheckoutAvailable()` (`#lib/billing/revenuecat.ts`) fails closed
+through `checkoutBaseProblem()`: unset, unparseable, non-https, a host
+other than `pay.rev.cat`, a bare host, and a placeholder token all answer
+false. The release guard applies the same function, so a link the guard
+lets ship is a link the page redirects to. `app_only` is how Pro launched
+(owner decision 2026-10-10): Coach on, Pro sold through iPhone In-App
+Purchase, web checkout after live Stripe activation and the tax decision
+(#1081 S6.x). A Pro bought in the app unlocks web in every state — the
+tier is the account's `subscription_tier`, written by the RevenueCat
+webhook whichever store sold it — so a Pro user sees "Active" and gets the
+Pro Coach caps on web regardless. `/app-capabilities.json` publishes
+`web_checkout` from the same `webCheckoutAvailable()` gate, so a mobile
+build knows whether the web page can take the payment (see "Mobile
+mirrors the same gate" below); the perk flags are unchanged, so iOS with
+the store key sells Pro in `app_only` exactly as in `checkout`.
+
+**Terms and Privacy sit beside the purchase** (App Store Guideline 3.1.2:
+an auto-renewing subscription must link functional Terms of Use and
+Privacy Policy from the purchase flow, not only from a footer). Web
+renders `upgrade.termsLink` / `upgrade.privacyLink` under the "Get Pro"
+CTA on the `checkout` storefront; mobile `SettingsProScreen` renders both via
+`legal_links.dart`'s `openLegalDoc` on every state, teaser included, so
+they also sit beside Restore Purchases. Pinned by
+`apps/web/tests-e2e/settings/upgrade.spec.ts` and
+`apps/mobile_android/test/settings_pro_screen_test.dart`.
+
 **Mobile mirrors the same gate** ([decisions.md § 466](../architecture/decisions.md)).
 A Flutter binary has no server-rendered env, so the web build publishes
 the two flags it already reads as a prerendered manifest at
 **`/app-capabilities.json`** (`apps/web/src/routes/app-capabilities.json/+server.ts`,
-body `{coach, route_gen}`, derived from the *same* `coachEnabled()` /
-`routeGenEnabled()` gates — there is no second flag to keep in sync).
+body `{coach, route_gen, web_checkout, ai_plan, plate_photo}`, derived from
+the *same* `coachEnabled()` / `routeGenEnabled()` / `webCheckoutAvailable()`
+gates, and `coachEnabled() && aiPlanEnabled()` / `coachEnabled() &&
+platePhotoEnabled()` for the last two — there is no second flag to keep in
+sync). `ai_plan` and `plate_photo` only tell the phone whether to offer the
+AI plan box and the plate-photo camera action; they sell nothing.
 `apps/mobile_android/lib/pro_sellable.dart` (twin-mirrored) fetches it
 from `WEB_BASE_URL` — the origin the app already calls for `/api/coach`
 — and `SettingsProScreen` swaps the "Subscribe to Pro" tile for the
-`proComingSoonTitle` / `proComingSoon` teaser when `ProPerks.sellable`
-is false, exactly as web swaps in `upgrade.proComingSoon`.
+`proComingSoonTitle` / `proComingSoon` teaser unless
+`proPurchasable(perks, storeConfigured:, webLinksAllowed:)` holds: a perk
+must be live (`ProPerks.sellable`, exactly as web swaps in
+`upgrade.proComingSoon`) **and** there must be somewhere to pay — the
+RevenueCat store SDK, or, where the platform may link out to pay
+(`webPaymentLinksAllowed()`, never on iOS per § 1700), a web checkout the
+deploy actually has (`ProPerks.webCheckout`). Without that last condition
+an Android build with no `MOBILE_REVENUECAT_API_KEY_ANDROID` sent buyers to
+a web page that, in the `app_only` storefront, can only point at the
+iPhone app ([decisions.md § 1826](../architecture/decisions.md)).
 **Fail-closed:** an unreachable host, a timeout, a non-200, a malformed
 body, a missing field, and a truthy-but-not-boolean field all resolve to
-`ProPerks.none`, and the state is unknown-therefore-not-sellable until
+`ProPerks.none` (and a missing or non-boolean `web_checkout` alone to
+"no web checkout"), and the state is unknown-therefore-not-sellable until
 the manifest lands — a client that can't establish a perk is live never
 takes a payment. `_startProCheckout` carries the same gate so no caller
 can route around the hidden tile. **Restore purchases** and **Manage
@@ -136,11 +193,32 @@ regardless. The release workflow gives the manifest the short
 HTML-style `cache-control` rather than the immutable-asset one, so a
 perk switched off propagates instead of sticking in caches for a year.
 
+**A subscriber sees their subscription, not the storefront.** The mobile
+Pro screen counts the user as Pro when **either** the RevenueCat
+`CustomerInfo` entitlement `threkir_pro` is active (`ProStore.loadEntitlement` →
+`loadProEntitlement`, true the instant the store completes a purchase) **or**
+the server tier is paid (`ApiClient.isPro()` → `is_pro`, authoritative for
+gating but only flipped once `revenuecat-webhook` lands, and the only signal
+for Pro bought on web or a `lifetime` tier). It then replaces the plan picker
+and Subscribe tile with a "You're on Pro" status tile, carrying the plan and
+its renewal date ("Renews …", or "Ends …, won't renew" once cancelled) when
+the store knows them, else a thank-you line. Manage subscription and Restore
+purchases stay below it. A successful purchase or restore re-reads both
+signals and switches the screen in place. While the store says Pro and the
+server does not yet, a note says the benefits can take a minute to unlock and
+the screen re-asks the server (up to 6 × 5 s). Both are re-read on app
+resume, so a cancellation made on the store's page shows on return. Web
+`/settings/upgrade` already renders the Active Pro card from `auth.isPro`.
+[decisions.md § 1827](../architecture/decisions.md).
+
 The same `coachEnabled()` flag hides every other **web** entry point into
 the AI Coach so rock-bottom shows no door that only 503s:
 
-- the **Coach sidebar nav item** (`+layout.svelte` filters it out),
-- the **`/coach` page chat** — replaced by a "coming soon" notice
+- the **AI Coach row in the Messages inbox** (the sidebar has no Coach item
+  since decisions § 2227; `stores/messages_inbox.svelte.ts` leaves the row
+  out),
+- the **`/messages/coach` chat** (`/coach` redirects there) — replaced by a
+  "coming soon" notice
   (`coachPage.comingSoon*`); the static guided-runs rail below it stays
   (it's local TTS cue scripts, no Anthropic dependency),
 - the **dashboard "Ask the Coach" promo** card,
@@ -149,7 +227,7 @@ the AI Coach so rock-bottom shows no door that only 503s:
 - the **`/compare` "AI Coach" explore link**.
 
 The human coach-athlete roster (`/coaching`) is a **separate feature** and
-is NOT gated — it has no Anthropic dependency. `security_guards.test.ts`
+is NOT gated — it has no Anthropic dependency. `paywall_guards.test.ts`
 pins the storefront gate so Pro can't be silently re-sold while the Coach
 is off.
 
@@ -161,7 +239,7 @@ dropped); reviving transparent funding later is a one-page revert.
 | Tier | How you get it | What it unlocks |
 |---|---|---|
 | `free` | Default for every new account | Every screen in the app. AI Coach capped at 2 messages/day. Standard request priority. Route generation via the in-browser heuristic. |
-| `pro` | RevenueCat subscription ($9.99 / month) | Everything free users get + AI Coach capped at 10 messages/day (5× the free cap) + priority processing (wider context budget, longer responses) + AI route descriptions + server-side route generation (real street-graph loops, decisions §204). |
+| `pro` | RevenueCat subscription: $9.99 / month (`pro_monthly`, package `$rc_monthly`) or $79.99 / year (`pro_annual`, package `$rc_annual`), both in offering `default` and both granting entitlement `threkir_pro` | Everything free users get + AI Coach capped at 10 messages/day (5× the free cap) + priority processing (wider context budget, longer responses) + AI route descriptions + server-side route generation (real street-graph loops, decisions §204). |
 | `lifetime` | RevenueCat one-time purchase (not currently sold) | Same as `pro`. |
 
 `user_profiles.subscription_tier` is the authoritative column. A CHECK
@@ -187,10 +265,15 @@ flow requires an admin SQL session; from a client there is no way.
 
 | Perk | Feature key | Enforcement point |
 |---|---|---|
-| Higher AI Coach daily cap (10/day vs 2/day) | `ai_coach` | Server: `apps/web/src/lib/coach/handler.ts` checks `is_pro()` via the auth context, resolves `TIER_LIMITS[tier].dailyLimit`, and runs the same `increment_coach_usage` + `usedToday > dailyLimit` gate for both tiers. A free user's 3rd attempt of a UTC day returns 429 with `{ error: 'daily_limit', tier: 'free', limit: 2 }`; a Pro user's 11th attempt returns 429 with `{ error: 'daily_limit', tier: 'pro', limit: 10 }`. Client: `CoachChat.svelte` reads back the tier and limit from the SSE `meta` event and shows the "Free badge · N of 2 remaining" or "Pro badge · N of 10 remaining · priority context window" footer. The composer is replaced with a `.limit-bar` block when `usedToday >= dailyLimit`. |
+| Higher AI Coach daily cap (10/day vs 2/day) | `ai_coach` | Server: `apps/web/src/lib/coach/handler.ts` checks `is_pro()` via the auth context, resolves `TIER_LIMITS[tier].dailyLimit`, and runs the same `spend_coach_usage_slot` + `usedToday > dailyLimit` gate for both tiers. A free user's 3rd attempt of a UTC day returns 429 with `{ error: 'daily_limit', tier: 'free', limit: 2 }`; a Pro user's 11th attempt returns 429 with `{ error: 'daily_limit', tier: 'pro', limit: 10 }`. Client: `CoachChat.svelte` reads back the tier and limit from the SSE `meta` event and shows the "Free badge · N of 2 remaining" or "Pro badge · N of 10 remaining · priority context window" footer. The composer is replaced with a `.limit-bar` block when `usedToday >= dailyLimit`. |
 | Priority processing — coach context | `priority_processing` | Server: `/api/coach/+server.ts` derives `tier` from `is_pro()` then resolves a `TIER_LIMITS` budget (`maxTokens`, `maxRunsLimit`, `dailyLimit`). Pro gets 2048 max-tokens + 75-runs context cap; free gets 768 + 30. Budget is echoed in `X-Coach-Tier` / `X-RateLimit-*` headers and the response body's `tier` + `limits`, so clients can render the right footer state without parsing headers. |
-| AI route description | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_describe/handler.ts` verifies the JWT, gates on `is_pro()` (fail-closed: an RPC error or a free caller serves the templated text, never the model), then calls `claude-opus-4-8` (adaptive thinking, 400-token cap, 12 s timeout). Reached via `/api/coach/route-describe` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-describe')`). Every failure mode — not-Pro, missing `ANTHROPIC_API_KEY`, model error, `stop_reason:'refusal'`, empty completion, timeout — returns 200 with `{ description: <templated>, source: 'template' }`; a free caller also gets `upgrade:true`. Client: `/routes/[id]` renders `localisedTemplate` instantly, then swaps in the AI text on a `source:'ai'` 200 with an `auto_awesome` attribution. |
-| AI route request (natural language → generator constraints) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_request/handler.ts` verifies the JWT, gates on `is_pro()` **fail-closed** (an RPC error returns 503 `route assistant unavailable`; a free caller gets 403 `{ error: 'pro required', upgrade: true }` — never the model), then makes a single tool-forced `claude-opus-4-8` call that extracts a constraints object, re-validated / clamped by `validateConstraints` before it can reach the deterministic generator. Reached via `/api/coach/route-request` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-request')`). The NL box is purely additive — the manual generator form keeps working on every failure mode. Client: the 403's `upgrade:true` surfaces a Pro upsell on the NL box without implying the manual form failed. |
+| AI route description | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_describe/handler.ts` verifies the JWT, gates on `is_pro()` (fail-closed: an RPC error or a free caller serves the templated text, never the model), takes a `route-describe` slot (60/hour per user, `spendRouteRateLimitSlot`, fail-closed to the template), then calls `claude-opus-4-8` (adaptive thinking, 400-token cap, 12 s timeout). A refusal, an empty completion or a provider failure refunds the slot (`refund_rate_limit_slot`, migration `20270827000001`). Reached via `/api/coach/route-describe` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-describe')`). Every failure mode — not-Pro, missing `ANTHROPIC_API_KEY`, model error, `stop_reason:'refusal'`, empty completion, timeout — returns 200 with `{ description: <templated>, source: 'template' }`; a free caller also gets `upgrade:true`. Client: `/routes/[id]` renders `localisedTemplate` instantly, then swaps in the AI text on a `source:'ai'` 200 with an `auto_awesome` attribution. |
+| AI route request (natural language → generator constraints) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_request/handler.ts` verifies the JWT, gates on `is_pro()` **fail-closed** (an RPC error returns 503 `route assistant unavailable`; a free caller gets 403 `{ error: 'pro required', upgrade: true }` — never the model), takes a `route-request` slot (60/hour per user, `spendRouteRateLimitSlot`, fail-closed 429), then makes a single tool-forced `claude-opus-4-8` call that extracts a constraints object, re-validated / clamped by `validateConstraints` before it can reach the deterministic generator. A refusal, a reply with no tool call or a provider failure refunds the slot. Reached via `/api/coach/route-request` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-request')`). The NL box is purely additive — the manual generator form keeps working on every failure mode. Client: the 403's `upgrade:true` surfaces a Pro upsell on the NL box without implying the manual form failed. |
+| Coach assistant (AI drafts for a coach) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/coach/assist/handler.ts` (issue #1215 Phase 4) runs, in order, the deploy flag (`COACH_ASSIST_ENABLED`, default off), the coach's AI disclosure v7, an active coaching link with the athlete's consent on it, `is_pro()` **fail-closed** (an RPC error answers 503; a free coach gets 403 `{ error: 'pro required', upgrade: true }`), then a `coach-assist` slot (30/hour per coach, `spendRouteRateLimitSlot`, refunded on a failed read, refusal, empty draft or provider error). Reached via `/api/coach/assist` (dev `+server.ts`; prod the coach Lambda's anchored `assist` sub-path). The human coach roster stays free; only the AI drafting is Pro. Client: the draft panel shows a See Pro link on the upgrade refusal. |
+| AI plan assistant (natural language → plan-wizard inputs) | _(no key — spends a Coach message)_ | Server: `apps/web/src/lib/training/plan_request/handler.ts` verifies the JWT, requires AI disclosure v3, then spends one message from the **AI Coach daily counter** (`spend_coach_usage_slot`, `TIER_LIMITS` free 2 / Pro 10, fail-closed 503 on an RPC error, 429 `daily_limit` over the cap, refunded via `refund_coach_usage_slot` with that spend's ticket on any provider failure). Not Pro-gated: a free runner can use it inside the same cap that bounds Coach spend. One tool-forced `claude-opus-4-8` call extracts wizard inputs, clamped by `validatePlanInputs` before the deterministic generator sees them (decisions § 1930). Reached via `/api/coach/plan-request`. Client: the box on `/plans/new`, shown only when `PUBLIC_COACH_ENABLED` and `PUBLIC_AI_PLAN_ENABLED` are both on; the manual wizard keeps working on every failure. |
+| AI season request (natural language → season race list) | _(no key — spends a Coach message)_ | Server: `apps/web/src/lib/training/season_request/handler.ts`, the plan assistant's rails unchanged — JWT, AI disclosure v3, one message from the **AI Coach daily counter** (`spend_coach_usage_slot`, fail-closed 503, 429 `daily_limit`, refunded with the spend's ticket on refusal / no tool call / provider failure). Not Pro-gated. One tool-forced `claude-opus-4-8` call lists the races, clamped by `validateSeasonRaces` (issue #1181). Reached via `/api/coach/season-request`, behind `PUBLIC_AI_PLAN_ENABLED` + `AI_PLAN_ENABLED`. |
+| AI plan edits (natural language → typed plan-edit operations) | _(no key — spends a Coach message)_ | Server: `apps/web/src/lib/training/plan_edit/handler.ts` verifies the JWT, requires AI disclosure v4, reads the caller's own plan (404 / 409 before any spend), then spends one message from the **AI Coach daily counter** (`spend_coach_usage_slot`, fail-closed 503 on an RPC error, 429 `daily_limit` over the cap, refunded via `refund_coach_usage_slot` with that spend's ticket on any provider failure). Not Pro-gated (decisions § 1981). One tool-forced `claude-opus-4-8` call, validated by `validatePlanEditOps`. Reached via `/api/coach/plan-edit`. Client: Adjust with AI on `/plans/[id]` and the plan-edit card in the Coach chat (decisions § 2230), shown only when `PUBLIC_COACH_ENABLED` and `PUBLIC_AI_PLAN_EDIT_ENABLED` are both on. |
+| Plate-photo logger (meal photo → proposed food-log entries) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/nutrition/plate_photo/handler.ts` refuses with 503 unless `PLATE_PHOTO_ENABLED` (Lambda) / `PUBLIC_PLATE_PHOTO_ENABLED` (dev) is truthy, verifies the JWT, requires AI disclosure **v5** (the bypass never skips it), gates on `is_pro()` **fail-closed** (an RPC error is 503, a free caller 403 `upgrade: true`), then takes a `plate-photo` slot through `spendRouteRateLimitSlot` (20/hour per user, fail-closed); a refusal, a reply with no tool call or a provider failure refunds it. The refund is ticketed (`spend_rate_limit_slot` returns a ticket the handler keeps server-side, `refund_rate_limit_slot` consumes it, migration `20270827000001`) because the handler holds only the caller's JWT, so a bare per-bucket decrement would let a runner reset their own ceiling after a successful call. Pro + throttle rather than a Coach message because a vision call is the most expensive single request the app makes. Client: `LogFoodPanel` — every Log food surface (`/nutrition` and `/history` dialogs, `/nutrition/log`) — offers the control only under `coachEnabled() && platePhotoEnabled()`, and the `/settings/upgrade` Pro card lists it under the same gate; a consent refusal links to `AI_CONSENT_HREF` (Settings → Account); mobile reads `plate_photo` from `/app-capabilities.json`. [decisions § 1972](../architecture/decisions.md). |
 | Priority map-matching | `priority_processing` | DB: every enqueue site for `kind='map_match'` jobs (the auto-trigger `runs_enqueue_match_job` and the manual-rematch RPC `enqueue_run_rematch`) calls `job_scheduled_at_for_user(uuid)` from migration `20260730_001`. Pro / lifetime → `now()` (front of queue); free → `now() + 30 s` (defers behind Pro). The worker's `claim_next_job` orders by `(scheduled_at, id)` so Pro jobs are always claimable strictly before free jobs enqueued at the same instant. **Future job kinds follow the same pattern** — call the helper at enqueue time; don't inline `case ... subscription_tier ...`. See [decisions.md § 57](../architecture/decisions.md#57-map-matching-is-free-queue-priority-is-the-pro-perk). |
 
 `PRO_ONLY_FEATURES` in `features.ts` is empty today — every screen is
@@ -264,8 +347,8 @@ server-side with the `is_pro()` RPC.
      <ActualFeatureComponent />
    {/if}
    ```
-   Import `isLocked` from `$lib/settings/features` and `ProGate` from
-   `$lib/components/ProGate.svelte`.
+   Import `isLocked` from `#lib/settings/features` and `ProGate` from
+   `#lib/components/ProGate.svelte`.
 
 4. **Android gate.** In the Flutter app, read the tier from the
    profile and gate the feature on it. **Do not branch on
@@ -357,14 +440,33 @@ events from RevenueCat's server-to-server webhook. On relevant events
 updates `user_profiles.subscription_tier` for the `app_user_id` (which
 must be set to the Supabase user id on the client SDK).
 
+**A cancellation does not end Pro; the expiry does.** RevenueCat sends
+`CANCELLATION` the moment auto-renew is turned off, while the period the
+user paid for runs on to the event's `expiration_at_ms`, and `EXPIRATION`
+follows at that instant. So a `CANCELLATION` leaves the tier alone when
+`expiration_at_ms` is still in the future, and the `EXPIRATION` does the
+downgrade. A `CANCELLATION` downgrades at once only when it is a refund
+(`cancel_reason: "CUSTOMER_SUPPORT"`), when its `expiration_at_ms` has
+already passed (a late delivery, a billing-error cancel at the end of the
+grace period), or when `expiration_at_ms` is missing — the paywall fails
+closed, and an `UNCANCELLATION` / `RENEWAL` restores Pro. The rule is
+`cancellationEndsAccessNow` in `revenuecat-webhook/lib.ts`. There is no
+column for the expiry: `user_profiles` records only the tier, so the
+"Pro until <date>" a cancelled subscriber sees comes from the store /
+RevenueCat customer info on the client, not from the row.
+
 Webhook URL (configure in RevenueCat → Integrations → Webhooks):
 ```
 https://<project-ref>.supabase.co/functions/v1/revenuecat-webhook
 ```
 
-Signing secret: the `REVENUECAT_WEBHOOK_SECRET` env var. Set this on
-both the RevenueCat dashboard and the Supabase project's function
-secrets (`supabase secrets set REVENUECAT_WEBHOOK_SECRET=whsec_...`).
+Signing secret: turn on **HMAC webhook signing** on the webhook in the
+RevenueCat dashboard and store the secret it shows (once) as the
+`REVENUECAT_WEBHOOK_SECRET` function secret. RevenueCat then sends
+`X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>`, an HMAC-SHA256 over
+`<t>.<raw body>` — the same scheme as Stripe's, verified by the shared
+`verifyTimestampedHmac` with a five-minute tolerance on `t`. The optional
+authorization-header setting is not used.
 
 ### Client → RevenueCat SDK
 
@@ -377,8 +479,12 @@ that weight leaves the bundle entirely (see decisions.md + followups.md
 thin env-reading shell over the pure `revenuecat_links.ts` URL builder:
 
 - **Checkout**: `/settings/upgrade` "Get Pro" does a full-page redirect to
-  the project's Web Paywall Link, `proCheckoutUrl(userId, returnUrl)` →
-  `https://pay.rev.cat/<token>/<urlEncodedUserId>?redirect_url=<page>`.
+  the project's Web Paywall Link, `proCheckoutUrl(userId, plan, returnUrl)` →
+  `https://pay.rev.cat/<token>/<urlEncodedUserId>?package_id=<pkg>&redirect_url=<page>`.
+  `package_id` is RevenueCat's documented Web Purchase Link parameter: it
+  preselects `$rc_annual` or `$rc_monthly` (whichever plan the page's picker
+  holds, yearly by default) and skips the hosted package picker, so the
+  buyer checks out exactly the plan the page priced.
   The Supabase user id is the App User ID, so RevenueCat keys the purchase
   to the identity the webhook sees. On success RevenueCat redirects back to
   `/settings/upgrade`; the `revenuecat-webhook` Edge Function flips
@@ -390,9 +496,12 @@ thin env-reading shell over the pure `revenuecat_links.ts` URL builder:
   `getCustomerInfo()` call.
 
 Env-gated by `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` (the portal URL is
-optional): an unconfigured build reports `configured = false` and the CTAs
-fall back to the "coming soon" / "manage where you started it" toasts so
-local dev and previews still compile and stay usable end-to-end.
+optional): a build without a usable link has `webCheckoutAvailable()`
+false, so the Pro card renders the `app_only` storefront (or `coming_soon`
+with no perk live) instead of a buy button, and "Manage subscription"
+shows the "manage where you started it" hint. Local dev and previews stay
+usable end-to-end; the e2e dev server sets a `pay.rev.cat` fixture link so
+the purchase specs exercise the `checkout` storefront.
 
 **Android (Flutter)**: use `purchases_flutter` package. Initialise in
 `main.dart` after sign-in with the user id as `appUserId`. The
@@ -412,7 +521,7 @@ watch inherits the phone's subscription via the paired Supabase session
 | `REVENUECAT_WEBHOOK_SECRET` | Supabase function env | HMAC signing secret from RevenueCat |
 | `REVENUECAT_API_KEY_IOS` | iOS app `.env` / CI secrets | RevenueCat project API key for iOS |
 | `REVENUECAT_API_KEY_ANDROID` | Android app `.env` / CI secrets | RevenueCat project API key for Android |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `apps/web/.env.local` / CI public env | Hosted Web Paywall Link base `https://pay.rev.cat/<token>` (read by `$lib/billing/revenuecat.ts`); unset → Pro CTA falls back to placeholder. **Public** — no secret/API key ships in the web bundle anymore |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `apps/web/.env.local` / CI public env | Hosted Web Paywall Link base `https://pay.rev.cat/<token>` (read by `#lib/billing/revenuecat.ts`); unset or malformed → no web buy button, the `app_only` storefront. **Public** — no secret/API key ships in the web bundle anymore |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | `apps/web/.env.local` / CI public env | No-code customer-portal link for managing/cancelling a web subscription; optional, unset → "Manage subscription" shows a hint |
 
 ### Regional availability & international payments
@@ -420,27 +529,35 @@ watch inherits the phone's subscription via the paired Supabase session
 **RevenueCat is not the payment processor.** On mobile it sits on top of **Apple StoreKit** (App Store) and **Google Play Billing**; the charge runs through the buyer's Apple ID / Google account. That makes cross-border purchases work *for free* — but only once the store-side configuration exists. The split is:
 
 - **Handled by Apple / Google (no work for us):** local currency + payment methods (e.g. UPI / net-banking / cards / carrier billing in India), currency conversion, and — critically — **tax as merchant of record** (Apple/Google collect + remit GST/VAT/sales tax per territory; we never file foreign tax for IAP). They also own refunds and the auto-renewal mechanics. We're paid out in our configured currency after their 15–30% cut.
-- **The buyer always sees their store-localized price**, not a hard-coded USD figure. The mobile Subscribe tile reads it via `proMonthlyPriceString` → `storeProduct.priceString` (`apps/mobile_android/lib/screens/settings_pro_screen.dart` + iOS twin), falling back to the `$9.99` USD list price + a "billed in USD" note only when RevenueCat is unconfigured or the offering hasn't loaded. Apple Guideline 3.1.1 / the Play subscription policy require the displayed amount to come from the store (it varies by territory), which is why the price is never hard-coded.
+- **The buyer always sees their store-localized price**, not a hard-coded USD figure. The mobile screen reads it via `loadProPlans` → each package's `storeProduct.priceString` (`apps/mobile_android/lib/screens/settings_pro_screen.dart` + iOS twin). When the offering carries both plans the buyer picks Yearly or Monthly (yearly preselected), the yearly row states the saving computed from the two STORE prices (rounded down, omitted across two currencies), and the purchase buys exactly the chosen package; a single package is offered alone. It falls back to the monthly `$9.99` USD list price + a "billed in USD" note only when RevenueCat is unconfigured or the offering hasn't loaded or failed. Apple Guideline 3.1.1 / the Play subscription policy require the displayed amount to come from the store (it varies by territory), which is why the price is never hard-coded.
 
 **Operator prerequisites — a purchase from (say) India only succeeds when all of these are set up (none are code):**
 
 1. **Storefront availability.** The app *and* the subscription product must be enabled for the buyer's country (App Store Connect → Availability; Play Console → Countries/regions). Excluding a country silently makes Pro unbuyable there — this is the most common gap, so any "is Pro reachable in country X?" check starts here. (`/audit/regional-availability` exercises this.)
 2. **Per-region price.** Apple via a price tier (auto-generates the local amount per storefront) or a custom per-region price; Play via per-country pricing. RevenueCat just reports whatever the store says.
-3. **RC project provisioned** — the `pro_monthly` package + `REVENUECAT_API_KEY_*` (followups.md §#9). Until then the tile falls through to the web URL.
+3. **RC project provisioned** — offering `default` with packages `$rc_monthly` → `pro_monthly` and `$rc_annual` → `pro_annual`, both attached to entitlement `threkir_pro`, + `REVENUECAT_API_KEY_*` (followups.md §#9). Both products need a store price in every territory: an offering missing one simply offers the other alone. Until then the tile falls through to the web URL.
 
 **Caveats:**
 
 - **The web Stripe path is a separate story.** When RevenueCat is unconfigured the app routes to `/settings/upgrade` (Stripe), which has its own international constraints — notably India's RBI e-mandate rules for recurring charges and Stripe-India entity requirements. That is *not* solved by the IAP path above.
-- **iOS effectively requires IAP for the Pro subscription** (Guideline 3.1.1 forbids routing users to an external processor for digital goods), so on iOS the RevenueCat → StoreKit path is mandatory, not optional. Play has similar rules with narrower external-link exceptions.
+- **iOS effectively requires IAP for the Pro subscription** (Guideline 3.1.1 forbids routing users to an external processor for digital goods), so on iOS the RevenueCat → StoreKit path is mandatory, not optional. The app enforces it: `lib/store_links.dart`'s `webPaymentLinksAllowed()` is false on iOS, so an iOS build with no `REVENUECAT_API_KEY_IOS` shows the Pro teaser instead of a web checkout, the Support (donate) tile is not rendered, and "Manage subscription" falls back to Apple's subscription page rather than `/settings/upgrade` ([decisions § 1700](../architecture/decisions.md)). Play has similar rules with narrower external-link exceptions.
 - **Auto-renewal in India** broke ecosystem-wide under the 2021–22 RBI mandate rules; Apple and Google now implement compliant recurring billing *inside* IAP — another reason to go through them rather than a self-hosted recurring charge in those markets.
 
 ## One-off donation flow (user perspective)
 
 1. User navigates to `/settings/upgrade` (linked from sidebar and
    settings layout).
-2. Page shows the two-card layout: Pro plan card ($9.99 / month) plus
+2. Page shows the two-card layout: Pro plan card ($79.99 / year or $9.99 / month) plus
    a one-off **Donate** button.
-3. Tapping Donate opens an external payment link in a new tab.
+3. Tapping Donate opens a Stripe Payment Link in a new tab. The link is
+   the `PUBLIC_DONATE_URL` build secret, on the same Threkir Stripe
+   account RevenueCat Web Billing charges web Pro through, so both kinds
+   of payment share one processor. `donateUrlProblem`
+   (`lib/billing/donate_link.ts`) accepts only `https://donate.stripe.com/…`
+   or `https://buy.stripe.com/…`. Unset or malformed hides the card, the
+   hero's "chip in" sentence and the `/compare` footer's donate sentence,
+   and the release guard fails a set-but-malformed value
+   (decisions § 2217).
 
 The tiered donation picker, transparent cost breakdown, progress bars,
 and donor count that existed under the previous donations-only model

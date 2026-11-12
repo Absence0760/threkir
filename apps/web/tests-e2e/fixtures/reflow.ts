@@ -1,5 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
+import { BLANK_TILE, FALLBACK_TILE_ORIGINS } from './map-tiles';
+
 /**
  * Shared contract for the WCAG 1.4.10 reflow specs. Extracted so the static
  * sweep (cross-cutting/reflow-narrow-viewport.spec.ts) and the seeded-dynamic
@@ -47,6 +49,13 @@ export async function expectReflows(
 	route: string,
 	populated?: { locator: string; min?: number }
 ) {
+	// A map page's `networkidle` otherwise waits on a third-party tile server,
+	// which took 29 s on one CI shard and timed the test out. Tile imagery sits
+	// inside a fixed-size map box and cannot change the document's width.
+	await page.route(
+		(url) => FALLBACK_TILE_ORIGINS.has(url.origin),
+		(route) => route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE })
+	);
 	for (const viewport of VIEWPORTS) {
 		await page.setViewportSize(viewport);
 		await page.goto(route);

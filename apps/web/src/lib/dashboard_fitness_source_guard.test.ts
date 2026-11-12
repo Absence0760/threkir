@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { SUPPORTED_LOCALES } from './i18n/locale';
 
 const SOURCE = readFileSync(
 	resolve('src/routes/dashboard/+page.svelte'),
@@ -48,7 +49,7 @@ test('readiness ring reads the training-load series', () => {
 test('the CTL/ATL/TSB card numbers read loadNow, not liveSnap', () => {
 	assert.match(SOURCE, /loadNow\.ctl\.toFixed/, 'CTL must read loadNow');
 	assert.match(SOURCE, /loadNow\.atl\.toFixed/, 'ATL must read loadNow');
-	assert.match(SOURCE, /loadNow\.tsb\.toFixed/, 'TSB must read loadNow');
+	assert.match(SOURCE, /formatSignedInteger\(loadNow\.tsb,/, 'TSB must read loadNow');
 	assert.doesNotMatch(
 		SOURCE,
 		/liveSnap\.(chronicLoad|acuteLoad|trainingStressBal)\.toFixed/,
@@ -130,7 +131,7 @@ test('the fitness card\'s next-hard line is localized, not an English literal', 
 		'no English copy for this line may remain in the template',
 	);
 
-	for (const locale of ['en', 'de', 'es', 'fr', 'ja', 'pt-BR']) {
+	for (const locale of SUPPORTED_LOCALES) {
 		const catalogue = readFileSync(
 			resolve(`src/lib/i18n/locales/${locale}.ts`),
 			'utf-8',

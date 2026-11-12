@@ -60,6 +60,7 @@ to build:
   `setof` a row type `(athlete_id uuid, display_name text, avatar_url text, last_run_at timestamptz,
   runs_7d int, distance_7d_m double precision, load_acute double precision, load_chronic double precision,
   acwr double precision, active_plan_id uuid, plan_completion_pct int)`.
+  - `active_plan_id` is the athlete's current plan when several are active (decisions § 2008): the active plan covering the athlete's local today, else the latest-ended, else the next to start — the same order and the same date as `plan_current.ts` on the athlete's own dashboard. The local date comes from the `time_zone` universal pref each client writes from its device zone (`20270830000011`, issue #1182); with none set it falls back to the server date.
   - Body: `with mine as (select athlete_id from coach_athletes where coach_id = auth.uid() and status='active')`,
     then LEFT JOIN aggregates over `runs` (last 7d + last 28d windows for ACWR; `is_dnf=false`) and the athlete's
     active `training_plans` + a completion count over `plan_workouts` mirroring `fetchAthletePlanOverview`'s logic.
@@ -156,7 +157,7 @@ agree):
 - **Mobile (Flutter)** — `apps/mobile_android/test/coach_load_test.dart` (~10 cases, mirrors web) + a widget test for the
   roster section in `coaching_screen_test.dart` (renders rows from a fake api). Mirror both to iOS twin.
 
-## i18n keys to add (all six web locales + ARBs)
+## i18n keys to add (every web locale + ARBs)
 
 Web (`apps/web/src/lib/i18n/locales/{en,de,fr,es,ja,pt-BR}.ts`), dotted keys; mobile ARBs camelCase
 (`apps/mobile_android/lib/l10n/app_*.arb`, all six + base `pt`, real translations):
@@ -189,6 +190,50 @@ Run `flutter gen-l10n` after ARB edits and mirror `lib/l10n/gen/` to the iOS twi
   re-checking consent per athlete inside the definer body; injury-risk flag is ACWR with the band thresholds in the
   shared `coach_load` helper, not the SQL; raw track stays owner-only (no new privacy surface)."
 
+## Coach run map (decisions § 1968)
+
+Built 2026-10-15 (issue #1168 item 8), after the roster above. The coach review page (`/coaching/athletes/[id]` on web, `coaching_athlete_screen.dart` on mobile) draws each tracked run's map. The track comes from `clip-public-track`, clipped against the **athlete's** privacy zones like every non-owner read; the raw track and the `runs` Storage policy stay owner-only, and photos stay out. Consent is the same active `coach_athletes` link the run rows ride on: ending the link ends the map on the next request.
+
+- **Server:** the `coached_runs` view (migration `20270822000011`), asked third by `clip-public-track` after `public_runs` and `shared_runs`; the `coach_run_map` row of `private.feature_flags`, read in SQL. Closed, the view is empty and both clients draw no map (`coachRunMapEnabled` on web and in `ApiClient`).
+- **Pre-deploy checklist:**
+  - [ ] **CISO / Security Analyst review** of `coached_runs` and the coach branch of `clip-public-track`, then open the flag ([deployment.md § Coach run map](../ops/deployment.md#coach-run-map--after-the-ciso--security-analyst-review)).
+- **Tests:** pgtap `coach_run_map_test.sql` (active / ended / no link / closed gate, the athlete's own run, the clip); Deno `clip-public-track/viewable_run.test.ts` + `wiring.test.ts`; Playwright `tests-e2e/coaching/coach-run-map.spec.ts`; Flutter `coaching_athlete_screen_test.dart` and the coach case in `architecture_guards_test.dart`.
+
+The roster note below ("raw GPS track stays owner-only … do not add a track read here") still holds for the roster: the map lives on the per-athlete review page only.
+
+## Coach assistant (issue #1215 Phase 4)
+
+Built on web, off everywhere. In a conversation with an athlete they actively coach, a coach can open **Draft with AI** (`CoachAssistPanel.svelte`), pick a reply or plan changes to suggest, optionally say what it should say, and get a draft only they see. **Use draft** puts it in the composer to edit; the message it becomes is stored as `kind = 'ai_assisted'` and marked "AI-assisted" on both sides. Drafts are never stored. Plan changes are suggested in words: nothing edits the athlete's plan (the athlete can apply a change, or send one for approval, as § 2382 describes).
+
+- **Consent, per link.** The athlete turns "Let {coach} use AI assistance" on for one coach on `/coaching` (web `CoachAssistConsent.svelte`; mobile `coaching_screen.dart`), which writes `coach_athletes.ai_assist_consent_version` through `set_coach_ai_assist_consent`. Off by default; withdrawing is one tap; ending the link clears it; a coach can never set it. The copy names every lane, and the lanes are `COACH_ASSIST_REGISTRY` in `apps/web/src/lib/coach/assist/context.ts`: the athlete's last 20 messages with this coach since the link began (shared AI Coach answers left out), the current plan with 14 days of workouts, and 10 recent activities. No heart rate, metadata, location, nutrition or date of birth.
+- **Gates, all server-side** (`assist/handler.ts`): `COACH_ASSIST_ENABLED` → the coach's AI disclosure v7 → an active link with the athlete's consent → no block either way → Pro (fail-closed) → a `coach-assist` rate slot (30/hour). Reached at `/api/coach/assist` (dev `+server.ts`, prod the coach Lambda's `assist` sub-path).
+- **Mobile.** The athlete's consent toggle (behind `/app-capabilities.json` `coach_assist`), the marker and the v7 disclosure bullet. The drafting panel is web-canonical (decisions § 24).
+- **Pre-deploy checklist:**
+  - [ ] **Before the release that carries migration `20271210001219`**: counsel / CISO sign-off on the v7 AI-disclosure copy, which every user is asked to accept whatever the flags say.
+  - [ ] **CISO + counsel sign-off** on the athlete's consent copy, the Art. 9 question for free-text messages, and the v7 coach bullet.
+  - [ ] **DPIA** section completed and signed ([dpia.md](../compliance/dpia.md#coach-assistant-issue-1215-phase-4)).
+  - [ ] Sub-processor changelog entry published and its 30-day notice run.
+  - [ ] Then set `PUBLIC_COACH_ASSIST_ENABLED` and `COACH_ASSIST_ENABLED` together ([deployment.md § Coach assistant](../ops/deployment.md#coach-assistant--after-the-ciso--counsel-sign-off-and-the-dpia-update)).
+- **Tests:** unit `src/lib/coach/assist/assist.test.ts` (consent ladder, registry, every gate, refunds); `src/lib/coach/assist/client_request.test.ts` (what the panel receives for every answer: each 4xx, the athlete-consent refusal, the 401 refresh-and-retry, a 5xx, a network failure, an empty draft); pgtap `coach_assist_test.sql`; Playwright `tests-e2e/messages/coach-assist-off.spec.ts` (gate off) and `tests-e2e/configured/coach-assist.spec.ts` (gate on, endpoint mocked); Flutter coaching screen and thread marker tests.
+
+## Effort targets, roster flags and the medication flag (decisions § 2092)
+
+Built 2026-10-17 (issue #1186, persona "coach, and an older athlete on beta-blockers").
+
+- **Effort targets.** `plan_workouts.target_rpe_min/max` (RPE 1-10) and `target_hr_min_bpm/max_bpm` (30-230 bpm), either end open (migration `20270912000001`). Set in the workout editor (web `WorkoutEditor.svelte`, mobile `workout_edit_sheet.dart`), shown on workout detail, the coach's athlete view and, on mobile, the live workout band. Bounds and ordering live in the `workout_prescription` parity pair. A rest day carries neither. The three cross-user copy paths (`clone_plan_template`, `clone_public_plan`, `assign_plan_to_athlete`) carry the RPE range and never the bpm range, and so do the two publishers (`planWorkoutCopyRows`, the `plan_copy` pair). A template never holds one: a workout write onto a template is refused, flipping a plan row to a template nulls its bpm targets in the same statement, and a week carrying one cannot move into a template plan (migration `20270915000005`, decisions § 2096).
+- **Coach edit on mobile.** A row on `coaching_athlete_screen.dart` opens the same edit sheet the athlete uses; RLS (`20261116_001`) is what admits the write.
+- **Provenance.** The owner sees "Updated by your coach on {date}" on a workout whose `updated_by` is someone else (`isEditedByCoach`). The coach's own view never says it.
+- **Roster flags.** `coach_roster_summary` returns `athlete_today`, `recent_workouts` and `easy_hr_drift_pct` (migration `20270912000002`). A run of 2+ misses (derived on the client through `plan_current`'s `isWorkoutMissed`, `consecutiveMissedWorkouts`) shows "N missed in a row". The easy-run HR drift is heart rate at the same pace (migration `20270915000003`, decisions § 2094): planned easy / recovery runs within 15 s/km of the athlete's 56-day median easy pace, mean `avg_bpm` over the last 14 days against the 42 before, with at least three runs in each window and the two windows' mean paces within 5 s/km of each other (migration `20270917000001`, decisions § 2103), else no figure. It is computed in SQL only for an athlete with `health_data_consent_at`, inside the link-gated read, and shows at 5 % or more. Every `metadata` cast in that query sits behind its own `jsonb_typeof` CASE, so one malformed run cannot fail a coach's roster. Both chips are registered metrics (`easyHrDrift`, `missStreak` in `metric_registry.ts` / `metrics.dart`) and open their definition from a disclosure, not a hover title. The roster ACWR stays distance-based, so a beta blocker does not distort it.
+- **Medication flag.** `hr_medication_affected` (settings.md) marks the HR-derived training load low-confidence on the dashboard and asks for a measured max HR.
+
+### Pre-deploy checklist (heart-rate prescription)
+
+The bpm target, the medication flag and the HR-drift flag are new Art 9 uses of heart rate. All three ship off behind ONE switch: the `hr_prescription` row in `private.feature_flags`, which no migration writes (seed.sql opens it locally and in CI; migrations `20270915000004` + `20270917000004`, decisions § 2095, § 2108). The database enforces it, and web (`training/hr_prescription_gate.ts`) and mobile (`hr_prescription_gate.dart`) render the surfaces only when `public.hr_prescription_enabled()` says it is open, so there is no client flag that could disagree with the server. With it shut the database refuses a new bpm target and turning the medication flag on (42501), and `coach_roster_summary` processes no heart rate and returns a null drift; clearing a target, turning the flag off and withdrawal are never gated. With it open, the database still refuses a bpm target or turning the medication flag on without the plan owner's `health_data_consent_at` (42501), computes the drift only for a consented athlete, and `withdraw_health_data_consent()` clears both.
+
+- [ ] CISO + counsel review of the three uses against the health-data consent copy (does the existing consent cover a coach prescribing a bpm cap, a medication flag, and a coach seeing an HR-drift figure?).
+- [ ] Then open the server gate; both platforms follow it on their next read, with no client release or build flag: add `"hr_prescription": { "enabled": true, "signoff": "<link>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR, and the next backend release applies it (decisions § 2430).
+- [ ] Know what closing it again (the same row set to `false`) does and does not do. It stops new bpm targets, turning the medication flag on and every roster HR-drift computation, and the clients stop rendering all three. It does **not** erase or hide what is already stored: the plan owner and an active coach can still read the workouts' `target_hr_min_bpm` / `target_hr_max_bpm` through RLS, the stored `hr_medication_affected` pref stays readable by its owner, and the Art 20 export still carries them. Erasure is `withdraw_health_data_consent()` per user, or an explicit nulling migration. And a plan already carrying bpm targets refuses a week duplicate or move that would re-write them until they are cleared.
+
 ## Gating / compliance
 
 - **Consent is the gate, and it already exists** — every read is scoped to an `active` `coach_athletes` link
@@ -211,7 +256,7 @@ Run `flutter gen-l10n` after ARB edits and mirror `lib/l10n/gen/` to the iOS twi
 2. `feat(web): coach_load injury-risk + load-band helper` — `apps/web/src/lib/training/coach_load.ts` +
    `coach_load.test.ts`.
 3. `feat(web): coach roster dashboard on /coaching` — `+page.svelte` + `fetchCoachRosterSummary` in `data.ts` +
-   i18n keys in all six locales + `apps/web/tests-e2e/coaching/roster.spec.ts`.
+   i18n keys in every web locale + `apps/web/tests-e2e/coaching/roster.spec.ts`.
    Paths: `apps/web/src/routes/coaching/+page.svelte apps/web/src/lib/core/data.ts apps/web/src/lib/i18n/locales/*.ts apps/web/tests-e2e/coaching/roster.spec.ts`
 4. `feat(mobile): coach_load helper + roster on coaching screen` — Dart helper + tests + `coaching_screen.dart` +
    api_client method + core_models model + ARBs + gen-l10n. **Mirror every path to `apps/mobile_ios` in the same
@@ -237,7 +282,7 @@ Run `flutter gen-l10n` after ARB edits and mirror `lib/l10n/gen/` to the iOS twi
    aggregates for the seed link you add.
 2. Run both codegen commands; commit the migration + generated files + pgtap + seed (commit 1).
 3. Write `coach_load.ts` + tests; commit (commit 2).
-4. Add `fetchCoachRosterSummary` + the roster section to `/coaching/+page.svelte`; add i18n keys to all six locales;
+4. Add `fetchCoachRosterSummary` + the roster section to `/coaching/+page.svelte`; add i18n keys to every web locale;
    write the Playwright spec; `npm run check`; commit (commit 3).
 5. Mirror to mobile: api_client method, core_models model, `coach_load.dart` + tests, `coaching_screen.dart` roster
    section, ARBs (+ gen-l10n); diff-verify the iOS twin is byte-identical; commit (commit 4).

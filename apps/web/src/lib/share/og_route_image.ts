@@ -10,10 +10,21 @@
 import type { TrackPoint } from '../types';
 import { projectTrack } from '../routes/track_projection';
 import { OG_CARD_LIGHT } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
+import { escapeXml } from '../util/html_escape';
+import { clipToWidthPx } from './svg_text_width';
+import { formatOfficialKmStable } from './share_meta';
+import { grisnirBadgeSvg } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
 const PAD = 40; // inset margin so the track doesn't hug the edges
+/// The title's face size, named because the width budget is measured in it.
+/// A cluster budget cannot bound a box measured in pixels: one cluster is
+/// 0.24 em of `'` and 1.0 em of a Han character, so the 30 clusters this used
+/// to allow painted 1142 px of lowercase Latin and 1678 px of Han into the
+/// same 1120 px — and a route named in capitals overran it by 525 px.
+const TITLE_SIZE = 56;
 
 const BG = OG_CARD_LIGHT.bg;
 const FG = OG_CARD_LIGHT.brand;
@@ -28,6 +39,7 @@ const TEXT_MUTED = OG_CARD_LIGHT.muted;
 export type RouteImageInput = {
 	name?: string | null;
 	distance_m?: number | null;
+	official_distance_m?: number | null;
 	surface?: string | null;
 	track: TrackPoint[];
 };
@@ -45,8 +57,12 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 
 	// Top-left: site name strap.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 24}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="700" fill="${FG}">Threkir</text>`,
+		`<text x="${PAD}" y="${PAD + 24}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${FG}">Threkir</text>`,
 	);
+
+	// Grisnir under the wordmark: the left column above the title is the one
+	// corner the track's viewport never reaches.
+	parts.push(grisnirBadgeSvg(PAD, PAD + 48));
 
 	// Track polyline — projected into the lower-right 800×500 viewport.
 	if (input.track.length >= 2) {
@@ -74,19 +90,20 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 		}
 	}
 
-	// Title block, lower-left. Wraps at ~30 chars by truncating —
-	// the SVG renderer doesn't reflow text and a route name longer
-	// than two lines would overlap the polyline. 90 chars caps it at
-	// a reasonable two-line display.
+	// Title block, lower-left, truncated at 30 characters: an SVG <text>
+	// neither reflows nor clips, so a longer name paints straight over the
+	// polyline and off the card. 30 is sized for a Latin name at 56px against
+	// the 1120px between the margins — a script whose glyphs are that wide
+	// still overruns it, which the single-line <text> cannot express.
 	const name = (input.name ?? '').trim() || 'Untitled route';
-	const meta = buildMetaLine(input.distance_m, input.surface);
+	const meta = buildMetaLine(input.distance_m, input.surface, input.official_distance_m);
 	const titleY = H - 160;
 	parts.push(
-		`<text x="${PAD}" y="${titleY}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="56" font-weight="700" fill="${TEXT_FILL}">${xmlEscape(truncate(name, 30))}</text>`,
+		`<text x="${PAD}" y="${titleY}" font-family="${OG_FONT_STACK}" font-size="${TITLE_SIZE}" font-weight="700" fill="${TEXT_FILL}">${escapeXml(clipToWidthPx(name, W - PAD * 2, TITLE_SIZE))}</text>`,
 	);
 	if (meta) {
 		parts.push(
-			`<text x="${PAD}" y="${titleY + 60}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="36" font-weight="500" fill="${TEXT_MUTED}">${xmlEscape(meta)}</text>`,
+			`<text x="${PAD}" y="${titleY + 60}" font-family="${OG_FONT_STACK}" font-size="36" font-weight="500" fill="${TEXT_MUTED}">${escapeXml(meta)}</text>`,
 		);
 	}
 
@@ -97,27 +114,17 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 export function buildMetaLine(
 	distanceM: number | null | undefined,
 	surface: string | null | undefined,
+	officialDistanceM?: number | null,
 ): string {
 	const bits: string[] = [];
-	if (distanceM != null && Number.isFinite(distanceM) && distanceM >= 0) {
+	const official = formatOfficialKmStable(officialDistanceM);
+	if (official) {
+		bits.push(official);
+	} else if (distanceM != null && Number.isFinite(distanceM) && distanceM >= 0) {
 		const km = distanceM / 1000;
 		const digits = km >= 21 ? 2 : 1;
 		bits.push(`${km.toFixed(digits)} km`);
 	}
 	if (surface) bits.push(surface);
 	return bits.join(' · ');
-}
-
-export function truncate(s: string, max: number): string {
-	if (s.length <= max) return s;
-	return s.slice(0, Math.max(0, max - 1)).trimEnd() + '…';
-}
-
-export function xmlEscape(s: string): string {
-	return s
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
 }

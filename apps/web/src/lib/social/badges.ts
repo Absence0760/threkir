@@ -8,7 +8,7 @@
  *
  * `evaluateBadges` is a pure dispatcher: it takes the user's milestone
  * primitives (PR count, lifetime/single-run distance, best streak, completed
- * plan count) and returns the earned set with the highest tier reached per
+ * plan count, park course counts) and returns the earned set with the highest tier reached per
  * family. The SQL `award_achievements_for_user` function duplicates these
  * exact thresholds; `badges.test.ts` (web) + `achievements_test.sql` (pgtap)
  * pin the contract so drift fails CI.
@@ -21,8 +21,8 @@
  * shared-library-syncer agent watches the pair.
  */
 
-import type { MessageKey } from '$lib/i18n/messages';
-import type { AchievementTier, AchievementSourceKind } from '$lib/types';
+import type { MessageKey } from '#lib/i18n/messages.ts';
+import type { AchievementTier, AchievementSourceKind } from '#lib/types.ts';
 import { en } from '../i18n/locales/en';
 
 export type { AchievementTier, AchievementSourceKind };
@@ -73,6 +73,12 @@ export interface BadgeInput {
 	prCount: number;
 	/** Count of completed training plans. */
 	completedPlanCount: number;
+	/** Distinct park courses completed. */
+	parkCourseCount: number;
+	/** Parks (with two or more courses not closed) where every such course is completed. */
+	completeParkCount: number;
+	/** Regions (with three or more parks) where a course is completed in every park. */
+	passportRegionCount: number;
 }
 
 /**
@@ -129,6 +135,34 @@ export const BADGE_CATALOGUE: Badge[] = [
 			{ tier: 'gold', threshold: 10, icon: 'emoji_events', labelKey: 'badges.plan10.label', descKey: 'badges.plan10.desc' },
 		],
 	},
+	{
+		id: 'park_courses',
+		sourceKind: 'segment',
+		tiers: [
+			{ tier: 'bronze', threshold: 1, icon: 'park', labelKey: 'badges.parkCourses1.label', descKey: 'badges.parkCourses1.desc' },
+			{ tier: 'silver', threshold: 5, icon: 'hiking', labelKey: 'badges.parkCourses5.label', descKey: 'badges.parkCourses5.desc' },
+			{ tier: 'gold', threshold: 10, icon: 'forest', labelKey: 'badges.parkCourses10.label', descKey: 'badges.parkCourses10.desc' },
+			{ tier: 'platinum', threshold: 25, icon: 'explore', labelKey: 'badges.parkCourses25.label', descKey: 'badges.parkCourses25.desc' },
+		],
+	},
+	{
+		id: 'park_complete',
+		sourceKind: 'segment',
+		tiers: [
+			{ tier: 'bronze', threshold: 1, icon: 'flag_circle', labelKey: 'badges.parkComplete1.label', descKey: 'badges.parkComplete1.desc' },
+			{ tier: 'silver', threshold: 3, icon: 'flag_circle', labelKey: 'badges.parkComplete3.label', descKey: 'badges.parkComplete3.desc' },
+			{ tier: 'gold', threshold: 10, icon: 'emoji_events', labelKey: 'badges.parkComplete10.label', descKey: 'badges.parkComplete10.desc' },
+		],
+	},
+	{
+		id: 'park_passport',
+		sourceKind: 'segment',
+		tiers: [
+			{ tier: 'bronze', threshold: 1, icon: 'map', labelKey: 'badges.parkPassport1.label', descKey: 'badges.parkPassport1.desc' },
+			{ tier: 'silver', threshold: 3, icon: 'map', labelKey: 'badges.parkPassport3.label', descKey: 'badges.parkPassport3.desc' },
+			{ tier: 'gold', threshold: 10, icon: 'public', labelKey: 'badges.parkPassport10.label', descKey: 'badges.parkPassport10.desc' },
+		],
+	},
 ];
 
 /** Map a catalogue family to the input value it evaluates against. */
@@ -144,6 +178,12 @@ function valueForBadge(badge: Badge, input: BadgeInput): number {
 			return input.prCount;
 		case 'plan_finisher':
 			return input.completedPlanCount;
+		case 'park_courses':
+			return input.parkCourseCount;
+		case 'park_complete':
+			return input.completeParkCount;
+		case 'park_passport':
+			return input.passportRegionCount;
 		default:
 			return 0;
 	}

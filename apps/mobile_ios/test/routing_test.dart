@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show SocketException;
+import 'dart:io' show HttpException, SocketException;
 
 import 'package:core_models/core_models.dart' show Waypoint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -222,7 +222,7 @@ void main() {
       // to reach unbounded distance to find a road — a tap on a
       // stream / parking lot / private drive snaps to a road
       // 800m+ away. Pinned at 250 m to match
-      // `apps/web/src/lib/routing_quality.ts:OSRM_SNAP_RADIUS_M`.
+      // `apps/web/src/lib/routes/routing_quality.ts:OSRM_SNAP_RADIUS_M`.
       final stub = _StubFetcher(jsonEncode({
         'code': 'Ok',
         'waypoints': [{'location': [8.5, 47.5]}],
@@ -751,6 +751,111 @@ void main() {
       expect(cache.length, 0);
       await fetchRouteThrough(const [a, b], fetcher: stub.call, cache: cache);
       expect(stub.callCount, 2);
+    });
+  });
+
+  group('fetchRouteArtBatch (Draw mode)', () {
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      dotenv.loadFromString(isOptional: true);
+    });
+
+    const points = [
+      [8.54, 47.37],
+      [8.545, 47.375],
+      [8.55, 47.38],
+    ];
+
+    String okBody() => jsonEncode({
+          'code': 'Ok',
+          'routes': [
+            {
+              'distance': 900.0,
+              'geometry': {
+                'coordinates': [
+                  [8.54, 47.37],
+                  [8.5451, 47.3751],
+                  [8.55, 47.38],
+                ],
+              },
+            },
+          ],
+        });
+
+    test('routes every point in one call and returns the matched line',
+        () async {
+      final stub = _StubFetcher(okBody());
+      final r = await fetchRouteArtBatch(points, fetcher: stub.call);
+      expect(r.ok, isTrue);
+      expect(r.line.length, 3);
+      expect(r.line[1], [8.5451, 47.3751]);
+      expect(stub.callCount, 1);
+      expect(stub.lastUrl.toString(),
+          contains('/route/v1/foot/8.54,47.37;8.545,47.375;8.55,47.38?'));
+      expect(stub.lastUrl.toString(), contains('radiuses=150;150;150'));
+    });
+
+    test('widens the reach once when a point has no way nearby', () async {
+      final urls = <Uri>[];
+      Future<String> fetcher(Uri u) async {
+        urls.add(u);
+        if (urls.length == 1) {
+          throw HttpException('OSRM 400: {"code":"NoSegment"}', uri: u);
+        }
+        return okBody();
+      }
+
+      final r = await fetchRouteArtBatch(points, fetcher: fetcher);
+      expect(r.ok, isTrue);
+      expect(urls.length, 2);
+      expect(urls[0].toString(), contains('radiuses=150;150;150'));
+      expect(urls[1].toString(), contains('radiuses=400;400;400'));
+    });
+
+    test('reports no roads when even the wider reach finds none', () async {
+      var calls = 0;
+      Future<String> fetcher(Uri u) async {
+        calls++;
+        return jsonEncode({'code': 'NoSegment'});
+      }
+
+      final r = await fetchRouteArtBatch(points, fetcher: fetcher);
+      expect(r.failure, RouteArtBatchFailure.noRoads);
+      expect(calls, 2);
+    });
+
+    test('retries an outage once and never widens it', () async {
+      final urls = <Uri>[];
+      Future<String> fetcher(Uri u) async {
+        urls.add(u);
+        throw const SocketException('down');
+      }
+
+      final r = await fetchRouteArtBatch(points, fetcher: fetcher);
+      expect(r.failure, RouteArtBatchFailure.unavailable);
+      expect(urls.length, 2);
+      expect(urls.every((u) => u.toString().contains('radiuses=150;')), isTrue);
+    });
+
+    test('a cancelled pass makes no call', () async {
+      final stub = _StubFetcher(okBody());
+      final r = await fetchRouteArtBatch(points,
+          fetcher: stub.call, cancelled: () => true);
+      expect(r.failure, RouteArtBatchFailure.cancelled);
+      expect(stub.callCount, 0);
+    });
+
+    test('a seeded cache piece is reused without a fetch', () async {
+      const a = Waypoint(lat: 47.37, lng: 8.54);
+      const b = Waypoint(lat: 47.38, lng: 8.55);
+      final cache = RouteSegmentCache()
+        ..seed(a, b, OsrmProfile.foot, const [a, b], 1234);
+      final stub = _StubFetcher(okBody());
+      final r = await fetchRouteThrough(const [a, b],
+          fetcher: stub.call, cache: cache);
+      expect(stub.callCount, 0);
+      expect(r.distanceMetres, 1234);
+      expect(r.okSegments, 1);
     });
   });
 }

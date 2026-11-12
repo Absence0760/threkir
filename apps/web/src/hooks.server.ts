@@ -1,8 +1,9 @@
 import * as Sentry from "@sentry/sveltekit";
-import type { Handle, HandleServerError } from "@sveltejs/kit";
-import { dev } from "$app/environment";
-import { env } from "$env/dynamic/private";
-import { isConsentGiven } from "$lib/settings/consent_cookie";
+import type { Handle, HandleServerError } from "@sveltejs/kit/hooks";
+import { dev } from "$app/env";
+import { APP_RELEASE, SENTRY_DSN } from "$app/env/private";
+import { isConsentGiven } from "#lib/settings/consent_cookie.ts";
+import { SENTRY_DATA_COLLECTION } from "#lib/sentry/data_collection.ts";
 
 // audit/cookie-consent + audit/third-party-data-flows (May 2026)
 // flagged that server-side Sentry initialised + intercepted every
@@ -29,22 +30,31 @@ import { isConsentGiven } from "$lib/settings/consent_cookie";
 //      Lambda logs) and skips the Sentry call.
 //
 // The cookie is written by the client-side consent module
-// ($lib/settings/consent.svelte). When the user accepts, the cookie ships
+// (#lib/settings/consent.svelte). When the user accepts, the cookie ships
 // on the next request; when they reset, it's cleared. Requests
 // before the banner is interacted with have no cookie and are
 // excluded.
 
-if (!dev && env.SENTRY_DSN) {
+if (!dev && SENTRY_DSN) {
 	Sentry.init({
-		dsn: env.SENTRY_DSN,
-		release: env.APP_RELEASE || "dev",
-		environment: env.APP_RELEASE && env.APP_RELEASE !== "dev" ? "production" : "development",
+		dsn: SENTRY_DSN,
+		release: APP_RELEASE || "dev",
+		environment: APP_RELEASE && APP_RELEASE !== "dev" ? "production" : "development",
+		dataCollection: SENTRY_DATA_COLLECTION,
 		tracesSampleRate: 0.1,
 	});
 }
 
 const sentryHandle = Sentry.sentryHandle();
-const sentryHandleError = Sentry.handleErrorWithSentry();
+// The type argument is load-bearing. Sentry 10.74.0 made this generic
+// (`<T extends AnyErrorHandler = SentryHandleServerError>(handleError?: T): T`)
+// so it could type-check against SvelteKit 1.x, 2.x and 3 at once. Called with
+// no argument there is nothing to infer `T` from, and it resolves to the
+// CONSTRAINT — `(input: never) => unknown` — not the default, which makes the
+// wrapped hook reject its own input and return `unknown`. Naming SvelteKit's
+// own `HandleServerError` says what this hook is instead of relying on an
+// inference fallback that already moved once.
+const sentryHandleError = Sentry.handleErrorWithSentry<HandleServerError>();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	if (isConsentGiven(event.request)) {

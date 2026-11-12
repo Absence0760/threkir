@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
@@ -76,6 +79,264 @@ void main() {
       final w = ApiClient.debugWaypointFromJson(
           {'lat': 0, 'lng': 0, 'ts': 'not-a-date'});
       expect(w.timestamp, isNull);
+    });
+
+    // The server-side distance recompute (apps/job_worker) reads these exact
+    // key names from the Storage blob; docs/features/gps_distance.md.
+    test('fix-quality fields round-trip under their wire names', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        accuracyMetres: 4.25,
+        speedMps: 2.68,
+        speedAccuracyMps: 0.41,
+        bearingDeg: 359.5,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['accuracyMetres'], 4.25);
+      expect(json['speedMps'], 2.68);
+      expect(json['speedAccuracyMps'], 0.41);
+      expect(json['bearingDeg'], 359.5);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.accuracyMetres, 4.25);
+      expect(back.speedMps, 2.68);
+      expect(back.speedAccuracyMps, 0.41);
+      expect(back.bearingDeg, 359.5);
+    });
+
+    test('absent fix-quality fields are omitted, not written as null', () {
+      final json =
+          ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2));
+      for (final k in [
+        'accuracyMetres',
+        'speedMps',
+        'speedAccuracyMps',
+        'bearingDeg',
+      ]) {
+        expect(json.containsKey(k), isFalse, reason: k);
+      }
+    });
+
+    test('a pre-v1 track point without fix-quality fields still parses', () {
+      final w = ApiClient.debugWaypointFromJson({
+        'lat': 47.37,
+        'lng': 8.54,
+        'ele': 400,
+        'ts': '2026-04-10T10:00:00.000Z',
+        'bpm': 150,
+      });
+      expect(w.lat, 47.37);
+      expect(w.bpm, 150);
+      expect(w.accuracyMetres, isNull);
+      expect(w.speedMps, isNull);
+      expect(w.speedAccuracyMps, isNull);
+      expect(w.bearingDeg, isNull);
+    });
+
+    // Every reader that draws the run line reads these two keys
+    // (docs/features/gps_distance.md § Waypoint fields); lat/lng stay raw.
+    test('the smoothed position round-trips under its wire names', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        smoothedLat: 47.370012,
+        smoothedLng: 8.539991,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['lat'], 47.37);
+      expect(json['lng'], 8.54);
+      expect(json['smoothedLat'], 47.370012);
+      expect(json['smoothedLng'], 8.539991);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.smoothedLat, 47.370012);
+      expect(back.smoothedLng, 8.539991);
+      expect(back.lat, 47.37);
+    });
+
+    test('a half smoothed pair is not written', () {
+      final json = ApiClient.debugWaypointToJson(
+          const Waypoint(lat: 1, lng: 2, smoothedLat: 1.00001));
+      expect(json.containsKey('smoothedLat'), isFalse);
+      expect(json.containsKey('smoothedLng'), isFalse);
+    });
+
+    test('the track blob drops a non-finite smoothed pair, keeps the point',
+        () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 1, lng: 2, smoothedLat: double.nan, smoothedLng: 2.0),
+      ]);
+      final points = jsonDecode(blob) as List;
+      expect(points, hasLength(1));
+      final p = points.single as Map<String, dynamic>;
+      expect(p.containsKey('smoothedLat'), isFalse);
+      expect(p.containsKey('smoothedLng'), isFalse);
+      expect(p['lat'], 1);
+    });
+
+    // The fused barometric altitude rides beside the GPS `ele`, never in
+    // place of it (docs/features/gps_distance.md § Waypoint fields).
+    test('the barometric altitude round-trips as baroEle beside ele', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        elevationMetres: 412,
+        baroElevationMetres: 405.25,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['ele'], 412);
+      expect(json['baroEle'], 405.25);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.elevationMetres, 412);
+      expect(back.baroElevationMetres, 405.25);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('baroEle'),
+        isFalse,
+      );
+    });
+
+    test('the cumulative credited distance round-trips as distM', () {
+      const w = Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 812.4);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['distM'], 812.4);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.cumulativeDistanceMetres, 812.4);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('distM'),
+        isFalse,
+      );
+    });
+
+    test('an off-track fix round-trips as offTrack: true, an on-track one omits it',
+        () {
+      const w = Waypoint(
+          lat: 47.37, lng: 8.54, accuracyMetres: 38, cumulativeDistanceMetres: 90,
+          offTrack: true);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['offTrack'], isTrue);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.offTrack, isTrue);
+      expect(back.cumulativeDistanceMetres, 90);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('offTrack'),
+        isFalse,
+      );
+      expect(
+        ApiClient.debugWaypointFromJson(const {'lat': 1, 'lng': 2}).offTrack,
+        isFalse,
+      );
+    });
+
+    test('the uploaded track blob keeps off-track fixes in order, flagged', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 0),
+        Waypoint(
+            lat: 47.3703, lng: 8.54, cumulativeDistanceMetres: 33, offTrack: true),
+        Waypoint(lat: 47.3706, lng: 8.54, cumulativeDistanceMetres: 66),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['offTrack']), [null, true, null]);
+      expect(points.map((p) => p['distM']), [0, 33, 66]);
+      expect(points[0].containsKey('offTrack'), isFalse);
+    });
+
+    test('a segment-start fix round-trips as segmentStart: true and the blob keeps it',
+        () {
+      const w = Waypoint(
+          lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 90, segmentStart: true);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['segmentStart'], isTrue);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.segmentStart, isTrue);
+      expect(
+        ApiClient.debugWaypointFromJson(const {'lat': 1, 'lng': 2}).segmentStart,
+        isFalse,
+      );
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54),
+        Waypoint(lat: 47.371, lng: 8.54, segmentStart: true),
+        Waypoint(lat: 47.3713, lng: 8.54),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['segmentStart']), [null, true, null]);
+      expect(points[0].containsKey('segmentStart'), isFalse);
+    });
+
+    test('the uploaded track blob carries baroEle on every fix that has one',
+        () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(
+            lat: 47.37, lng: 8.54, elevationMetres: 412, baroElevationMetres: 405.25),
+        Waypoint(lat: 47.371, lng: 8.54, elevationMetres: 398),
+        Waypoint(
+            lat: 47.372, lng: 8.54, elevationMetres: 420, baroElevationMetres: 409.5),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['baroEle']), [405.25, null, 409.5]);
+      expect(points.map((p) => p['ele']), [412, 398, 420]);
+      expect(points[1].containsKey('baroEle'), isFalse);
+    });
+
+    test('the track blob drops a non-finite barometric altitude only', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(
+            lat: 1, lng: 2, elevationMetres: 30, baroElevationMetres: double.nan),
+      ]);
+      final p = (jsonDecode(blob) as List).single as Map<String, dynamic>;
+      expect(p.containsKey('baroEle'), isFalse);
+      expect(p['ele'], 30);
+    });
+  });
+
+  group('encodeTrackBlob / decodeTrackBlob', () {
+    test('a device backup keeps every per-fix field the upload path keeps',
+        () {
+      final track = [
+        Waypoint(
+          lat: 47.37,
+          lng: 8.54,
+          elevationMetres: 408,
+          timestamp: DateTime.utc(2026, 4, 10, 8),
+          bpm: 142,
+          accuracyMetres: 4.5,
+          speedMps: 3.1,
+          baroElevationMetres: 410.5,
+          cumulativeDistanceMetres: 0,
+        ),
+        Waypoint(
+          lat: 47.371,
+          lng: 8.541,
+          elevationMetres: 409,
+          timestamp: DateTime.utc(2026, 4, 10, 8, 0, 30),
+          bpm: 145,
+          accuracyMetres: 6,
+          speedMps: 3.2,
+          baroElevationMetres: 411.25,
+          cumulativeDistanceMetres: 132.4,
+        ),
+      ];
+      final back = ApiClient.decodeTrackBlob(ApiClient.encodeTrackBlob(track));
+      expect(back, hasLength(2));
+      expect(back.map((w) => w.bpm), [142, 145]);
+      expect(back.map((w) => w.baroElevationMetres), [410.5, 411.25]);
+      expect(back.map((w) => w.cumulativeDistanceMetres), [0.0, 132.4]);
+      expect(back.map((w) => w.accuracyMetres), [4.5, 6.0]);
+      expect(back.map((w) => w.speedMps), [3.1, 3.2]);
+      expect(back.last.timestamp, DateTime.utc(2026, 4, 10, 8, 0, 30));
+    });
+
+    test('the bytes are the gzipped blob the runs bucket stores', () {
+      const track = [Waypoint(lat: 1, lng: 2)];
+      expect(utf8.decode(gzip.decode(ApiClient.encodeTrackBlob(track))),
+          ApiClient.debugTrackBlobJson(track));
     });
   });
 
@@ -212,83 +473,73 @@ void main() {
       final run = ApiClient.debugRunFromRow(minimalRow());
       expect(run.routeId, isNull);
     });
-  });
 
-  group('metadataWithoutPromotedColumns (saveRun write-side strip)', () {
-    test('strips activity_type + is_dnf from the persisted bag', () {
-      final out = ApiClient.debugMetadataWithoutPromotedColumns({
-        'activity_type': 'cycle',
-        'is_dnf': true,
-        'avg_bpm': 142,
+    // decisions § 1240. `run_row_shape_test.dart` guards the WRITE direction
+    // ("runRowFromRun fills every declared column") and nothing guarded the
+    // read one, which is how `elevation_gain_m` came to be the one promoted
+    // column `_runFromRow` never surfaced back onto the bag. A `Run` carries
+    // only `metadata`, so a column this read drops is a column no Dart reader
+    // can ever see.
+    group('every promoted column is surfaced back onto the bag', () {
+      // A row value per declared column. Keyed on the column so a newly
+      // promoted one fails the coverage check below rather than being skipped.
+      const sample = <String, Object>{
+        RunRow.colActivityType: 'walk',
+        RunRow.colEventId: 'event-1',
+        RunRow.colIsDnf: true,
+        RunRow.colFastest5kS: 1200,
+        RunRow.colFastest10kS: 2500,
+        RunRow.colFastestHalfMarathonS: 5400,
+        RunRow.colFastestMarathonS: 11400,
+        RunRow.colTrackUrl: 'user-1/run-1.json.gz',
+        RunRow.colHrSeriesUrl: 'user-1/run-1.hr.json.gz',
+        RunRow.colElevationGainM: 312.5,
+      };
+      final declared = <String, String>{
+        ...kRunPromotedMetadataColumns,
+        ...kRunMirroredMetadataColumns,
+      };
+
+      test('every declared column has a sample value', () {
+        expect(declared.values.toSet().difference(sample.keys.toSet()), isEmpty,
+            reason: 'a migration promoted a column and this suite cannot '
+                'exercise it — add a row value for it to `sample`');
       });
-      expect(out, {'avg_bpm': 142});
-    });
 
-    test('collapses to null when only the promoted keys were present', () {
-      final out = ApiClient.debugMetadataWithoutPromotedColumns({
-        'activity_type': 'run',
-        'is_dnf': false,
+      test('the read surfaces each one under its metadata key', () {
+        final row = minimalRow();
+        for (final entry in declared.entries) {
+          row[entry.value] = sample[entry.value];
+        }
+        final meta = ApiClient.debugRunFromRow(row).metadata;
+        for (final entry in declared.entries) {
+          expect(meta?[entry.key], sample[entry.value],
+              reason: '${entry.value} is authoritative and a Run carries no '
+                  'column, so dropping it here hides it from every Dart '
+                  'reader of metadata.${entry.key}');
+        }
       });
-      expect(out, isNull);
-    });
 
-    test('null in → null out', () {
-      expect(ApiClient.debugMetadataWithoutPromotedColumns(null), isNull);
-    });
-
-    test('does not mutate the caller argument', () {
-      final input = {'activity_type': 'walk', 'steps': 9000};
-      ApiClient.debugMetadataWithoutPromotedColumns(input);
-      expect(input['activity_type'], 'walk');
-      expect(input['steps'], 9000);
-    });
-
-    test('strips the four promoted embedded-best keys from the bag', () {
-      final out = ApiClient.debugMetadataWithoutPromotedColumns({
-        'fastest_5k_s': 1170,
-        'fastest_10k_s': 2450,
-        'fastest_half_marathon_s': 5400,
-        'fastest_marathon_s': 10500,
-        'avg_bpm': 150,
+      test('an absent column leaves its key absent rather than nulled', () {
+        // The bag's own semantics: a key that is not there means "not
+        // recorded". Stashing an explicit null would make every reader that
+        // tests `containsKey` claim a reading nobody took.
+        final meta = ApiClient.debugRunFromRow(minimalRow()).metadata;
+        expect(meta?.containsKey(MetadataKeys.elevationM), isFalse);
+        expect(meta?.containsKey(MetadataKeys.fastest5kS), isFalse);
+        expect(meta?.containsKey(MetadataKeys.trackUrl), isFalse);
       });
-      expect(out, {'avg_bpm': 150});
-    });
-  });
 
-  group('embeddedBestSeconds (saveRun bag → column lift)', () {
-    test('lifts an int value through unchanged', () {
-      expect(
-        ApiClient.debugEmbeddedBestSeconds({'fastest_5k_s': 1170}, 'fastest_5k_s'),
-        1170,
-      );
-    });
-
-    test('coerces a num and admits zero (the old regex domain)', () {
-      expect(
-        ApiClient.debugEmbeddedBestSeconds({'fastest_5k_s': 1170.0}, 'fastest_5k_s'),
-        1170,
-      );
-      expect(
-        ApiClient.debugEmbeddedBestSeconds({'fastest_5k_s': 0}, 'fastest_5k_s'),
-        0,
-      );
-    });
-
-    test('drops negative, non-numeric, absent, and null-bag values', () {
-      expect(
-        ApiClient.debugEmbeddedBestSeconds({'fastest_5k_s': -5}, 'fastest_5k_s'),
-        isNull,
-      );
-      expect(
-        ApiClient.debugEmbeddedBestSeconds({'fastest_5k_s': 'nope'}, 'fastest_5k_s'),
-        isNull,
-      );
-      expect(
-        ApiClient.debugEmbeddedBestSeconds(
-            {'fastest_10k_s': 2450}, 'fastest_5k_s'),
-        isNull,
-      );
-      expect(ApiClient.debugEmbeddedBestSeconds(null, 'fastest_5k_s'), isNull);
+      test('the column wins over a disagreeing bag copy', () {
+        // elevation_m is a MIRRORED key: writers populate the column and the
+        // bag, so both arrive. The column is authoritative (§ 1187), which is
+        // what the web half's `storedElevationGainM` reads first.
+        final row = minimalRow(
+            metadata: <String, dynamic>{MetadataKeys.elevationM: 250});
+        row[RunRow.colElevationGainM] = 312.5;
+        final meta = ApiClient.debugRunFromRow(row).metadata;
+        expect(meta?[MetadataKeys.elevationM], 312.5);
+      });
     });
   });
 
@@ -358,6 +609,17 @@ void main() {
       expect(route.elevationGainMetres, 145.5);
     });
 
+    test('official_distance_m maps to officialDistanceMetres, null when absent', () {
+      expect(
+        ApiClient.debugRouteFromRow(minimalRouteRow()).officialDistanceMetres,
+        isNull,
+      );
+      final route = ApiClient.debugRouteFromRow(
+        {...minimalRouteRow(), 'official_distance_m': 42195},
+      );
+      expect(route.officialDistanceMetres, 42195.0);
+    });
+
     test('null is_public is treated as false', () {
       final route = ApiClient.debugRouteFromRow(minimalRouteRow());
       expect(route.isPublic, isFalse);
@@ -398,6 +660,52 @@ void main() {
     test('waypoint without elevation produces null on the domain object', () {
       final route = ApiClient.debugRouteFromRow(minimalRouteRow());
       expect(route.waypoints.first.elevationMetres, isNull);
+    });
+  });
+
+  group('debugTrackBlobJson', () {
+    test('a point that is not a location is dropped, not thrown on', () {
+      // Before the filter this was a `JsonUnsupportedObjectError` — an
+      // `Error`, indistinguishable to the sync drain from a lost network, so
+      // the run retried its upload forever and never left the phone.
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54),
+        Waypoint(lat: double.nan, lng: 8.54),
+        Waypoint(lat: 47.38, lng: double.infinity),
+        Waypoint(lat: 47.39, lng: 8.55, elevationMetres: double.nan),
+      ]);
+      final decoded = jsonDecode(blob) as List<dynamic>;
+      expect(decoded.length, 2);
+      expect((decoded[0] as Map<String, dynamic>)['lat'], 47.37);
+      expect((decoded[1] as Map<String, dynamic>)['lat'], 47.39);
+      expect((decoded[1] as Map<String, dynamic>)['ele'], isNull);
+    });
+
+    test('the credited distance survives the gzipped blob, and an older '
+        'blob without it still decodes', () {
+      final stored = gzip.encode(utf8.encode(ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 0),
+        Waypoint(lat: 47.371, lng: 8.54, cumulativeDistanceMetres: 111.2),
+        Waypoint(
+            lat: 47.372, lng: 8.54, cumulativeDistanceMetres: double.infinity),
+      ])));
+      final back = ApiClient.debugDecodeTrack(gzip.decode(stored));
+      expect(back.map((w) => w.cumulativeDistanceMetres), [0, 111.2, null]);
+      expect(back[2].lat, 47.372);
+
+      final legacy = ApiClient.debugDecodeTrack(gzip.decode(gzip.encode(
+          utf8.encode('[{"lat":47.37,"lng":8.54,"ele":408.5,'
+              '"ts":"2026-04-01T07:00:00.000Z"}]'))));
+      expect(legacy.single.cumulativeDistanceMetres, isNull);
+      expect(legacy.single.elevationMetres, 408.5);
+    });
+
+    test('a clean track encodes every point', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, elevationMetres: 408.5),
+        Waypoint(lat: 47.38, lng: 8.55),
+      ]);
+      expect((jsonDecode(blob) as List<dynamic>).length, 2);
     });
   });
 }

@@ -145,7 +145,8 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
         imageQuality: 85,
         maxWidth: 2048,
       );
-      if (f == null || !mounted) return;
+      if (f == null) return;
+      if (!mounted) return;
       setState(() {
         _pending = f;
         _pendingCaptionCtrl.text = '';

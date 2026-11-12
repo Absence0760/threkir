@@ -12,24 +12,51 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Absence0760/threkir/apps/job_worker/internal/nativepush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
 )
 
 // fakeBackend records every call so tests can pin the worker's
 // finish/defer/upload behaviour without a real Supabase. Pure data —
 // no network, no goroutines — so tests run in milliseconds.
+type exportFinishCall struct {
+	id  string
+	res ExportJobResult
+}
+
 type fakeBackend struct {
 	mu sync.Mutex
 
 	// Inputs
 	jobs        []*Job // queued in order; ClaimNextJob pops from the front
 	trackByPath map[string][]TrackPoint
-	trackURL    string
-	// Optional override: when non-nil, ReadRunTrackURL returns
+	// Storage-retention doubles, keyed by bucket.
+	storageObjects        map[string][]StorageObject
+	storageDeleted        [][]string
+	storageDeleteCalls    int
+	storageDeleteErrAfter int
+	storageListErr        error
+	// storageDeleteIgnored makes DeleteStorageObjects record the call and
+	// erase nothing, the API accepting names that match no object.
+	storageDeleteIgnored bool
+	// routePhotoOrphans models route_photo_orphan_paths: the unreferenced,
+	// past-grace set. The fake answers with the entries still present in
+	// the route-photos bucket, which is how an erased object drops out.
+	routePhotoOrphans    []string
+	routePhotoOrphanErr  error
+	routePhotoOrphanArgs [][]string
+	trackURL             string
+	// Optional override: when non-nil, ReadRunTrackSource returns
 	// trackURLs[i] on the i-th call (clamped to the last entry).
 	// Lets tests simulate a re-upload mid-match — the worker reads
 	// trackURL at start, then re-reads before writing, and the
 	// second read returns the new URL.
 	trackURLs []string
+	// trackVersions scripts the Storage version ReadRunTrackSource reports
+	// the same way (a re-upload in place keeps the URL and changes this);
+	// empty means "v1" on every call.
+	trackVersions []string
 	// Auto-link inputs
 	autoLinkInfo    RunLinkInfo
 	autoLinkInfoErr error
@@ -39,10 +66,16 @@ type fakeBackend struct {
 	// Auto-link outputs
 	links []linkCall
 	// CAS: when non-empty, UpdateMatchedTrackRow returns
-	// ErrStaleSourceTrackURL whenever the worker's
-	// expectedSourceTrackURL doesn't equal this value. Lets a test
-	// model "trigger reset the row between recheck and PATCH".
+	// ErrStaleSourceTrackURL whenever the worker's source URL doesn't
+	// equal this value. Lets a test model "trigger reset the row between
+	// recheck and write".
 	casExpected string
+	// casVersion does the same for the Storage version: a re-upload in
+	// place landing between recheck and write.
+	casVersion string
+	// trackSourceWrites records the source each UpdateMatchedTrackRow
+	// call was conditional on.
+	trackSourceWrites []TrackSource
 
 	// Errors to inject — return on the next call to that method.
 	claimErr     error
@@ -57,6 +90,37 @@ type fakeBackend struct {
 	// defer_job RPC return). Empty → "queued"; set to "failed" to
 	// simulate the worker deferring a job whose retry budget is spent.
 	deferStatus string
+
+	// data_export job state. `exportJobs` is the fake table; the two
+	// slices record what the handler did to it.
+	exportJobs           map[string]*ExportJobRow
+	exportRunningMarks   []string
+	exportFinishes       []exportFinishCall
+	getExportJobErr      error
+	markExportRunningErr error
+	finishExportJobErr   error
+	// exportNotifies records every announcement attempt; the fake mirrors
+	// the RPC's own `notified_at` stamp so a redelivery is a no-op here too.
+	exportNotifies  []string
+	exportNotified  map[string]bool
+	notifyExportErr error
+
+	// distance_recompute state; nil fails every call. Methods live in
+	// handler_distance_recompute_test.go.
+	distance *fakeDistanceRecompute
+	// duration_repair state; nil fails every call. Methods live in
+	// handler_duration_repair_test.go.
+	durationRepair *fakeDurationRepair
+	// map_match road-distance state; nil reads as a deleted run so the
+	// map_match tests that do not care skip the step. Methods live in
+	// road_distance_test.go.
+	road *fakeRoadDistance
+	// segment_match state; nil fails every call. Methods live in
+	// handler_segment_match_test.go.
+	segmentMatch *fakeSegmentMatch
+	// dm_image_process / dm_image_orphan_sweep state; nil fails every
+	// call. Methods live in handler_dm_image_process_test.go.
+	dm *fakeDmImages
 
 	// downloadDelay, when non-zero, makes DownloadTrack block for
 	// that duration OR until the caller's context is cancelled.
@@ -97,6 +161,7 @@ type fakeBackend struct {
 	receiptSentErr   error
 	recordReceiptErr error
 	recordedReceipts []string // email hashes recorded this run
+	receiptLookups   []string // email hashes PROBED this run, in order
 
 	// web_push inputs/outputs.
 	pushSubs        map[string][]PushSubscriptionRow // keyed by user_id
@@ -137,6 +202,8 @@ type fakeBackend struct {
 	getTokenCalls         []string
 	setTokenCalls         []setTokenCall
 	markDisconnectedCalls []markDisconnectedCall
+	deleteSecretsCalls    []string
+	deleteSecretsErr      error
 	// quotaAllowOverride: nil → always allow. Pointer-to-false →
 	// always deny. /audit/strava M7 test seam.
 	quotaAllowOverride *bool
@@ -147,11 +214,11 @@ type fakeBackend struct {
 	isAlreadyImportedErr error
 	// nearIdentities feeds FetchRunIdentitiesNear — the cross-provider
 	// dedupe guard's view of existing runs near a candidate's start.
-	nearIdentities    []RunIdentity
-	nearIdentitiesErr error
-	insertStravaRunErr   error
-	webhookEvents        map[string]bool
-	insertWebhookErr     error
+	nearIdentities     []RunIdentity
+	nearIdentitiesErr  error
+	insertStravaRunErr error
+	webhookEvents      map[string]bool
+	insertWebhookErr   error
 	// strava_event outputs
 	insertedStravaRuns []insertedStravaRun
 	trackURLPatches    []trackURLPatch
@@ -307,6 +374,68 @@ func (f *fakeBackend) UpdateRoutePhotoThumb512Path(ctx context.Context, photoID,
 	return f.UpdatePhotoThumb512Path(ctx, photoID, path)
 }
 
+// Export-retention doubles. `storageObjects` is the bucket as the list API
+// would report it; `storageDeleted` records every path handed to a DELETE, in
+// order, so a test can assert the batching rather than only the total.
+func (f *fakeBackend) ListStorageObjectsWithMeta(ctx context.Context, bucket, prefix string) ([]StorageObject, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.storageListErr != nil {
+		return nil, f.storageListErr
+	}
+	var out []StorageObject
+	for _, o := range f.storageObjects[bucket] {
+		if prefix == "" || strings.HasPrefix(o.Path, prefix) {
+			out = append(out, o)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeBackend) DeleteStorageObjects(ctx context.Context, bucket string, paths []string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.storageDeleteCalls++
+	if f.storageDeleteErrAfter > 0 && f.storageDeleteCalls > f.storageDeleteErrAfter {
+		return errors.New("storage delete refused")
+	}
+	f.storageDeleted = append(f.storageDeleted, append([]string(nil), paths...))
+	if f.storageDeleteIgnored {
+		return nil
+	}
+	remaining := f.storageObjects[bucket][:0]
+	for _, o := range f.storageObjects[bucket] {
+		if !slicesContains(paths, o.Path) {
+			remaining = append(remaining, o)
+		}
+	}
+	f.storageObjects[bucket] = remaining
+	return nil
+}
+
+func (f *fakeBackend) RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.routePhotoOrphanArgs = append(f.routePhotoOrphanArgs, paths)
+	if f.routePhotoOrphanErr != nil {
+		return nil, f.routePhotoOrphanErr
+	}
+	var out []string
+	for _, o := range f.storageObjects[schema.BucketRoutePhotos] {
+		if len(out) == limit {
+			break
+		}
+		if !slicesContains(f.routePhotoOrphans, o.Path) {
+			continue
+		}
+		if paths != nil && !slicesContains(paths, o.Path) {
+			continue
+		}
+		out = append(out, o.Path)
+	}
+	return out, nil
+}
+
 func (f *fakeBackend) DownloadClubPhoto(ctx context.Context, path string) ([]byte, string, error) {
 	return f.DownloadPhoto(ctx, path)
 }
@@ -402,6 +531,7 @@ func (f *fakeBackend) RecordLifecycleEmail(_ context.Context, userID, template s
 func (f *fakeBackend) AccountDeletionReceiptAlreadySent(_ context.Context, emailHash string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.receiptLookups = append(f.receiptLookups, emailHash)
 	if f.receiptSentErr != nil {
 		err := f.receiptSentErr
 		f.receiptSentErr = nil
@@ -548,6 +678,69 @@ func (f *fakeBackend) BuildWeeklyDigest(_ context.Context, userID string, _ time
 	return f.digestByUser[userID], nil
 }
 
+// ─────────────── data_export job state (20270603_001) ───────────────
+
+func (f *fakeBackend) GetDataExportJob(_ context.Context, exportJobID string) (*ExportJobRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.getExportJobErr != nil {
+		return nil, f.getExportJobErr
+	}
+	row, ok := f.exportJobs[exportJobID]
+	if !ok {
+		return nil, ErrExportJobGone
+	}
+	copied := *row
+	return &copied, nil
+}
+
+func (f *fakeBackend) MarkDataExportRunning(_ context.Context, exportJobID, startedAt string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.exportRunningMarks = append(f.exportRunningMarks, exportJobID)
+	if f.markExportRunningErr != nil {
+		return f.markExportRunningErr
+	}
+	if row, ok := f.exportJobs[exportJobID]; ok {
+		row.Status = "running"
+		row.StartedAt = startedAt
+	}
+	return nil
+}
+
+func (f *fakeBackend) FinishDataExportJob(_ context.Context, exportJobID string, res ExportJobResult) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.exportFinishes = append(f.exportFinishes, exportFinishCall{id: exportJobID, res: res})
+	if f.finishExportJobErr != nil {
+		return f.finishExportJobErr
+	}
+	if row, ok := f.exportJobs[exportJobID]; ok {
+		row.Status = res.Status
+		if res.ObjectPath != nil {
+			row.ObjectPath = *res.ObjectPath
+		}
+	}
+	return nil
+}
+
+func (f *fakeBackend) NotifyDataExportReady(_ context.Context, exportJobID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.exportNotifies = append(f.exportNotifies, exportJobID)
+	if f.notifyExportErr != nil {
+		return false, f.notifyExportErr
+	}
+	if f.exportNotified == nil {
+		f.exportNotified = map[string]bool{}
+	}
+	if f.exportNotified[exportJobID] {
+		return false, nil
+	}
+	f.exportNotified[exportJobID] = true
+	return true, nil
+}
+
 func (f *fakeBackend) DownloadTrack(ctx context.Context, path string) ([]TrackPoint, error) {
 	f.mu.Lock()
 	delay := f.downloadDelay
@@ -591,7 +784,7 @@ func (f *fakeBackend) UploadMatchedTrack(_ context.Context, path string, pts []T
 }
 
 func (f *fakeBackend) UpdateMatchedTrackRow(
-	_ context.Context, runID string, expectedSourceTrackURL string, row MatchedTrackRow,
+	_ context.Context, runID string, src TrackSource, row MatchedTrackRow,
 ) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -603,8 +796,11 @@ func (f *fakeBackend) UpdateMatchedTrackRow(
 	// CAS: the test sets `casExpected` to whatever the row's
 	// source_track_url is "currently". Mismatch surfaces the same
 	// sentinel the production client returns.
-	if expectedSourceTrackURL != "" && f.casExpected != "" &&
-		expectedSourceTrackURL != f.casExpected {
+	f.trackSourceWrites = append(f.trackSourceWrites, src)
+	if f.casExpected != "" && src.URL != f.casExpected {
+		return ErrStaleSourceTrackURL
+	}
+	if f.casVersion != "" && src.Version != f.casVersion {
 		return ErrStaleSourceTrackURL
 	}
 	f.rowSets = append(f.rowSets, rowSet{RunID: runID, Row: row})
@@ -647,25 +843,30 @@ func (f *fakeBackend) LinkRunToRoute(_ context.Context, runID, routeID string) e
 	return nil
 }
 
-func (f *fakeBackend) ReadRunTrackURL(_ context.Context, _ string) (string, error) {
+func (f *fakeBackend) ReadRunTrackSource(_ context.Context, _ string) (TrackSource, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.readURLErr != nil {
 		err := f.readURLErr
 		f.readURLErr = nil
-		return "", err
+		return TrackSource{}, err
 	}
+	// Each script returns its next entry, sticking on the last one once it
+	// runs out (extra reads behave like the final state).
+	src := TrackSource{URL: f.trackURL, Version: "v1"}
 	if len(f.trackURLs) > 0 {
-		// Return the next scripted URL, sticking on the last entry
-		// once the script runs out (extra reads behave like the
-		// final state).
-		url := f.trackURLs[0]
+		src.URL = f.trackURLs[0]
 		if len(f.trackURLs) > 1 {
 			f.trackURLs = f.trackURLs[1:]
 		}
-		return url, nil
 	}
-	return f.trackURL, nil
+	if len(f.trackVersions) > 0 {
+		src.Version = f.trackVersions[0]
+		if len(f.trackVersions) > 1 {
+			f.trackVersions = f.trackVersions[1:]
+		}
+	}
+	return src, nil
 }
 
 // --- token_refresh fake state ---
@@ -771,6 +972,18 @@ func (f *fakeBackend) SetIntegrationTokensCAS(_ context.Context, userID, provide
 	})
 	f.tokensByUser[userID] = TokenPair{AccessToken: access, RefreshToken: refresh}
 	return true, nil
+}
+
+func (f *fakeBackend) DeleteUserProviderSecrets(_ context.Context, userID, provider string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.deleteSecretsErr != nil {
+		err := f.deleteSecretsErr
+		f.deleteSecretsErr = nil
+		return err
+	}
+	f.deleteSecretsCalls = append(f.deleteSecretsCalls, userID+":"+provider)
+	return nil
 }
 
 func (f *fakeBackend) MarkIntegrationDisconnected(_ context.Context, userID, provider, reason string) error {
@@ -1072,9 +1285,9 @@ func TestWorker_SkipsTooFewPoints(t *testing.T) {
 // ---- re-upload race ---------------------------------------------------
 
 // If track_url changes between the start of the match and the write
-// back, the worker should discard its result and finish_job(done) so
-// the OLD job exits cleanly. The trigger has already enqueued a new
-// job for the fresh track; that one will produce the right result.
+// back, the worker should discard its result and finish_job(done);
+// finish_job re-queues the job because the trigger left
+// run_matched_tracks pending, and the next run matches the fresh track.
 func TestWorker_ReuploadDuringMatchDiscardsResult(t *testing.T) {
 	be := newFakeBackend()
 	be.trackURLs = []string{
@@ -1108,11 +1321,10 @@ func TestWorker_ReuploadDuringMatchDiscardsResult(t *testing.T) {
 // ---- CAS race ----------------------------------------------------------
 
 // Source-track-url CAS: when the trigger has reset the row's
-// source_track_url between the worker's recheck and its PATCH, the
-// PATCH targets zero rows and the worker discards cleanly. Same
-// "OLD job exits done, NEW job already queued by trigger produces
-// the right result" outcome as the recheck path — this closes the
-// residual TOCTOU window that the recheck alone couldn't.
+// source_track_url between the worker's recheck and its write, the
+// write is refused and the worker discards cleanly. Same "job exits
+// done, finish_job re-queues it" outcome as the recheck path — this
+// closes the residual TOCTOU window that the recheck alone couldn't.
 func TestWorker_StaleSourceTrackURLDiscardsResult(t *testing.T) {
 	be := newFakeBackend()
 	be.trackURL = "user-1/run-1.json.gz"
@@ -1138,6 +1350,70 @@ func TestWorker_StaleSourceTrackURLDiscardsResult(t *testing.T) {
 	}
 	if got := len(be.finished); got != 1 || be.finished[0].Status != "done" {
 		t.Errorf("finish=%+v, want done despite CAS miss", be.finished)
+	}
+}
+
+// A re-upload in place keeps track_url — the runs_track_url_path_shape
+// CHECK allows one path per run — and changes the Storage version. The
+// recheck compares the version too, so the old bytes' match is never
+// uploaded or written.
+func TestWorker_ReuploadInPlaceDuringMatchDiscardsResult(t *testing.T) {
+	be := newFakeBackend()
+	be.trackURL = "user-1/run-1.json.gz"
+	be.trackVersions = []string{"v1", "v2"}
+	be.trackByPath["user-1/run-1.json.gz"] = []TrackPoint{
+		{Lat: 1, Lng: 2}, {Lat: 1.001, Lng: 2.001}, {Lat: 1.002, Lng: 2.002},
+	}
+	be.jobs = []*Job{{
+		ID: 22, Kind: "map_match",
+		Payload: mustPayload(t, MapMatchPayload{RunID: "run-1", UserID: "user-1"}),
+	}}
+
+	w := newTestWorker(be, PassthroughMatcher{})
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+
+	if got := len(be.uploaded); got != 0 {
+		t.Errorf("uploaded count=%d, want 0 (old bytes' match discarded)", got)
+	}
+	if got := len(be.trackSourceWrites); got != 0 {
+		t.Errorf("row writes=%d, want 0 (old bytes' match discarded)", got)
+	}
+	if got := len(be.finished); got != 1 || be.finished[0].Status != "done" {
+		t.Errorf("finish=%+v, want one done", be.finished)
+	}
+}
+
+// A re-upload in place landing after the recheck: the write carries the
+// version the worker downloaded, record_map_match_result refuses it, and
+// the job ends cleanly for finish_job to re-queue.
+func TestWorker_StaleTrackVersionDiscardsResult(t *testing.T) {
+	be := newFakeBackend()
+	be.trackURL = "user-1/run-1.json.gz"
+	be.trackByPath["user-1/run-1.json.gz"] = []TrackPoint{
+		{Lat: 1, Lng: 2}, {Lat: 1.001, Lng: 2.001}, {Lat: 1.002, Lng: 2.002},
+	}
+	be.casVersion = "v2"
+	be.jobs = []*Job{{
+		ID: 42, Kind: "map_match",
+		Payload: mustPayload(t, MapMatchPayload{RunID: "run-1", UserID: "user-1"}),
+	}}
+
+	w := newTestWorker(be, PassthroughMatcher{})
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+
+	want := TrackSource{URL: "user-1/run-1.json.gz", Version: "v1"}
+	if len(be.trackSourceWrites) != 1 || be.trackSourceWrites[0] != want {
+		t.Errorf("write conditional on %+v, want one on %+v", be.trackSourceWrites, want)
+	}
+	if got := len(be.rowSets); got != 0 {
+		t.Errorf("rowSets=%d, want 0 (version CAS refused the write)", got)
+	}
+	if got := len(be.finished); got != 1 || be.finished[0].Status != "done" {
+		t.Errorf("finish=%+v, want done despite the refused write", be.finished)
 	}
 }
 
@@ -1480,6 +1756,17 @@ func TestIsTransient(t *testing.T) {
 	}{
 		{"5xx", &HTTPError{StatusCode: 503}, true},
 		{"4xx", &HTTPError{StatusCode: 404}, false},
+		// 429 is "come back later", not a rejection. Both push handlers encode
+		// a throttling response as a transient HTTPError; classifying it as
+		// permanent here failed the job outright and dropped the push. 408 and
+		// 425 are the same shape.
+		{"429 rate limit", &HTTPError{StatusCode: 429}, true},
+		{"408 request timeout", &HTTPError{StatusCode: 408}, true},
+		{"425 too early", &HTTPError{StatusCode: 425}, true},
+		{"499 is still permanent", &HTTPError{StatusCode: 499}, false},
+		{"400 is still permanent", &HTTPError{StatusCode: 400}, false},
+		{"401 is still permanent", &HTTPError{StatusCode: 401}, false},
+		{"600 is out of the 5xx band", &HTTPError{StatusCode: 600}, false},
 		{"timeout substring", errors.New("dial tcp: i/o timeout"), true},
 		{"connection refused", errors.New("connection refused"), true},
 		{"deadline exceeded", context.DeadlineExceeded, true},
@@ -1491,6 +1778,31 @@ func TestIsTransient(t *testing.T) {
 				t.Errorf("isTransient(%v) = %v, want %v", tc.err, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestIsTransient_AgreesWithPushClassifiers — the push handlers decide which
+// upstream statuses deserve a retry and encode that decision as a typed
+// *HTTPError; the worker then re-decides via isTransient. Two classifiers for
+// one question drifted apart on 429: nativepush.IsTransient said retry, the
+// worker said fail. Pin that they agree on every status either one accepts, so
+// a future edit to one has to move the other.
+func TestIsTransient_AgreesWithPushClassifiers(t *testing.T) {
+	// BOTH directions. One-directional (push => worker) let the reverse drift
+	// silently: the worker learned 408/425 while the push classifiers kept
+	// hand-rolling `429 || >=500`, so those statuses were dropped as permanent
+	// at the handler and never reached the worker that would have retried them.
+	for status := 100; status < 600; status++ {
+		pushWants := nativepush.IsTransient(status)
+		workerWants := isTransient(&HTTPError{StatusCode: status})
+		if pushWants && !workerWants {
+			t.Errorf("nativepush.IsTransient(%d) = true but the worker would "+
+				"permanently fail the job", status)
+		}
+		if workerWants && !pushWants {
+			t.Errorf("the worker retries %d but nativepush.IsTransient says "+
+				"permanent, so the handler drops it before the worker sees it", status)
+		}
 	}
 }
 
@@ -1835,6 +2147,95 @@ func TestTokenRefresh_5xxIsTransientAndDoesntDisconnect(t *testing.T) {
 	}
 }
 
+func TestTokenRefresh_SupabaseAuthFailureDoesNotDisconnect(t *testing.T) {
+	// The disconnect branch means "Strava says this grant is dead". Only
+	// Strava's /oauth/token leg can say that. refreshOne also talks to
+	// Supabase twice, and SupabaseClient.do returns an *HTTPError for any
+	// non-2xx, so a bare 4xx match disconnected users for OUR failure: a
+	// rotated service key or a migration briefly revoking execute on
+	// get_integration_tokens returns 401 for EVERY row in the batch, and
+	// FetchExpiringStravaIntegrations filters on `disconnected_at is null`,
+	// so those rows are never retried again. Every affected user has to
+	// manually reconnect, tagged with a reason indistinguishable from a
+	// genuine revocation.
+	for _, status := range []int{401, 403, 404} {
+		be := newFakeBackend()
+		be.expiring = []IntegrationRow{
+			{ID: 1, UserID: "dave"},
+			{ID: 2, UserID: "erin"},
+		}
+		be.tokensByUser = map[string]TokenPair{
+			"dave": {RefreshToken: "rt-dave"},
+			"erin": {RefreshToken: "rt-erin"},
+		}
+		be.getTokenErrs = map[string]error{
+			"dave": &HTTPError{StatusCode: status, Method: "POST", Endpoint: "/rest/v1/rpc/get_integration_tokens"},
+			"erin": &HTTPError{StatusCode: status, Method: "POST", Endpoint: "/rest/v1/rpc/get_integration_tokens"},
+		}
+		be.jobs = []*Job{{ID: 9, Kind: "token_refresh", Payload: []byte(`{}`)}}
+		w := newTokenRefreshWorker(be, &fakeStrava{})
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		_ = w.Run(ctx)
+		cancel()
+		if got := len(be.markDisconnectedCalls); got != 0 {
+			t.Fatalf("supabase %d must NOT disconnect; got %d marks (%+v)",
+				status, got, be.markDisconnectedCalls)
+		}
+	}
+}
+
+func TestTokenRefresh_SupabaseWriteFailureDoesNotDisconnect(t *testing.T) {
+	// The other Supabase hop: the CAS write after a SUCCESSFUL Strava
+	// refresh. A 409/400 there is our problem, not a dead grant.
+	be := newFakeBackend()
+	be.expiring = []IntegrationRow{{ID: 1, UserID: "frank"}}
+	be.tokensByUser = map[string]TokenPair{"frank": {RefreshToken: "rt-frank"}}
+	be.setTokenErrs = map[string]error{
+		"frank": &HTTPError{StatusCode: 400, Method: "POST", Endpoint: "/rest/v1/rpc/set_integration_tokens_cas"},
+	}
+	be.jobs = []*Job{{ID: 10, Kind: "token_refresh", Payload: []byte(`{}`)}}
+	w := newTokenRefreshWorker(be, &fakeStrava{})
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+	if got := len(be.markDisconnectedCalls); got != 0 {
+		t.Fatalf("a failed CAS write must NOT disconnect; got %d marks", got)
+	}
+}
+
+func TestTokenRefresh_StravaGrantFailureStillDisconnects(t *testing.T) {
+	// The behaviour the scoping must preserve: a real 4xx from Strava's own
+	// refresh endpoint still marks the integration disconnected, with the
+	// classified reason.
+	cases := []struct {
+		status     int
+		body       string
+		wantReason string
+	}{
+		{401, "unauthorized", "unauthorized"},
+		{400, `{"error":"invalid_grant"}`, "invalid_grant"},
+	}
+	for _, tc := range cases {
+		be := newFakeBackend()
+		be.expiring = []IntegrationRow{{ID: 1, UserID: "gina"}}
+		be.tokensByUser = map[string]TokenPair{"gina": {RefreshToken: "rt-gina"}}
+		st := &fakeStrava{errsByToken: map[string]error{
+			"rt-gina": &HTTPError{StatusCode: tc.status, Body: tc.body},
+		}}
+		be.jobs = []*Job{{ID: 11, Kind: "token_refresh", Payload: []byte(`{}`)}}
+		w := newTokenRefreshWorker(be, st)
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		_ = w.Run(ctx)
+		cancel()
+		if got := len(be.markDisconnectedCalls); got != 1 {
+			t.Fatalf("strava %d must disconnect; got %d marks", tc.status, got)
+		}
+		if got := be.markDisconnectedCalls[0].Reason; got != tc.wantReason {
+			t.Fatalf("reason=%q, want %q", got, tc.wantReason)
+		}
+	}
+}
+
 func TestTokenRefresh_FetchExpiringErrorFailsJob(t *testing.T) {
 	be := newFakeBackend()
 	be.fetchExpiringErr = &HTTPError{StatusCode: 500, Body: "boom"}
@@ -1910,5 +2311,35 @@ func TestTokenRefresh_DispatchUnknownKindIsPermanentFail(t *testing.T) {
 
 	if got := len(be.finished); got != 1 || be.finished[0].Status != "failed" {
 		t.Fatalf("unknown kind must fail permanent; got %v", be.finished)
+	}
+}
+
+func TestTokenRefresh_429IsTransientAndDoesntDisconnect(t *testing.T) {
+	// Strava's rate limit is per-APPLICATION and this sweep fans out 12-wide,
+	// so a 429 from the grant leg says nothing about whether the user's
+	// authorisation is still valid. Disconnecting on it took the row out of
+	// every future sweep (they filter on disconnected_at IS NULL), so the user
+	// had to manually re-authorise a connection that was never revoked — from
+	// a throttle that would have cleared on its own.
+	be := newFakeBackend()
+	be.expiring = []IntegrationRow{{ID: 1, UserID: "dave"}}
+	be.tokensByUser = map[string]TokenPair{
+		"dave": {RefreshToken: "rt-dave"},
+	}
+	st := &fakeStrava{
+		errsByToken: map[string]error{
+			"rt-dave": &HTTPError{StatusCode: 429, Body: "Rate Limit Exceeded"},
+		},
+	}
+	be.jobs = []*Job{{ID: 11, Kind: "token_refresh", Payload: []byte(`{}`)}}
+	w := newTokenRefreshWorker(be, st)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+	if got := len(be.markDisconnectedCalls); got != 0 {
+		t.Fatalf("429 must NOT trigger disconnect; got %d marks", got)
+	}
+	if got := len(be.setTokenCalls); got != 0 {
+		t.Fatalf("set calls=%d, want 0", got)
 	}
 }

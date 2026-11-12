@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 
@@ -32,6 +32,8 @@ test.describe('/plans/[id] load error', () => {
 
 		// Error state — not the not-found page, not a stuck skeleton.
 		await expect(page.locator('.error-banner')).toBeVisible({ timeout: 10_000 });
+		// The detail line is catalogue copy, not the server's text.
+		await expect(page.locator('.error-banner')).not.toContainText('simulated');
 		await expect(page.getByRole('heading', { name: /not found/i })).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Retry' }).click();

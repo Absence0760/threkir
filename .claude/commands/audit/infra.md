@@ -32,7 +32,7 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
    - `response_headers_policy_id` attached to BOTH default and ordered behaviors
    - The response-headers policy has `strict_transport_security` (max_age ≥ 1 year, `include_subdomains`, `preload`), `content_type_options`, `referrer_policy`, `frame_options = "DENY"`, and a `content_security_policy` (permissive at first is OK; `default-src 'self'` plus listed origins is the floor)
    - `price_class = "PriceClass_100"` or `PriceClass_200` (not `PriceClass_All` unless explicitly justified — meaningful cost difference)
-   - SPA fallback `custom_error_response` rewrites 404 → 200 + `/index.html`
+   - SPA fallback `custom_error_response` rewrites 403 → 200 + `/index.html`, and there is NO 404 mapping (the share Lambdas answer their own 404 with the shell; the mapping discarded the `noindex` in it — decisions §§ 1022, 1084)
 
 6. **Lambda function.** `modules/web-stack/main.tf` —
    - `runtime = "nodejs20.x"` or newer (no `nodejs18.x` — deprecated Sept 2025)
@@ -51,8 +51,8 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
    - `aws_kms_alias` exists alongside the key (sops + future rotation are easier with aliases)
 
 8. **Secrets handling.**
-   - `infra/.sops.yaml` `creation_rules` cover `envs/prod/secrets.enc.yaml` and `envs/preview/secrets.enc.yaml`. ARNs may be placeholders (e.g. `REPLACE_PROD_KMS_ARN`) until first apply — document if so.
-   - **`infra/envs/*/secrets.enc.yaml` files, if present, are actually encrypted.** Open and confirm the file contains `sops:` metadata at the bottom and ENC[ blocks, not plaintext.
+   - **No ciphertext lives in this public repo.** Prod secrets are sops files in the private estate repo (`../infra-secrets/threkir/<env>.sops.yaml`), whose creation rules live in `../infra-secrets/.sops.yaml`. Confirm `infra/.sops.yaml` still declares NO `creation_rules` (so `sops --encrypt` under `infra/` fails closed), `infra/.gitignore` still blocks `secrets.enc.yaml`, and no `*.sops.yaml` / `secrets.enc.yaml` is tracked (`git ls-files infra | grep -E 'sops\.yaml$|secrets\.enc\.yaml$'` should print only `infra/.sops.yaml`). Any tracked ciphertext is a finding even if encrypted — public history is exposure.
+   - The `secrets_file` var in `infra/envs/<env>/main.tf` defaults to the estate path, and the slot name is spelled only in `bin/lib/estate.sh` (`scripts/check_estate_slot.mjs`).
    - **`infra/envs/*/terraform.tfvars` is gitignored.** `terraform.tfvars.example` is committed as a template; the real file is per-developer / per-env.
    - Variables holding secrets (`public_supabase_anon_key` is publishable so it's borderline; any real secret) marked `sensitive = true`.
    - No `output` exposes a sensitive value without `sensitive = true`.
@@ -60,7 +60,7 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
 9. **Provider + Terraform pinning.**
    - Every stack has a `versions.tf` with `required_version = ">= 1.13"` (or current) and pinned `required_providers`.
    - Provider versions use `~> X.Y` or exact pins.
-   - `.terraform.lock.hcl` should be committed once `terraform init` has been run for each stack — flag if missing in stacks that have been initialized.
+   - `.terraform.lock.hcl` should be committed once `terraform init` has been run for each stack — flag if missing in stacks that have been initialized. Each must be multi-platform (an `h1:` per provider for `linux_amd64`, `darwin_arm64`, `darwin_amd64`) — `scripts/check_terraform_lock_platforms.mjs` enforces that in CI, so only flag what it cannot see.
 
 10. **Cross-region wiring.** `modules/web-stack` declares `configuration_aliases = [aws.us_east_1]`. The ACM cert (in `dns/main.tf`) uses `provider = aws.us_east_1`. Per-env stacks correctly pass `aws.us_east_1` in their `module "web" { providers = { ... } }` block. Wrong wiring here surfaces as cert validation hangs.
 

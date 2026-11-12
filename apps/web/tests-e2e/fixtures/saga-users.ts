@@ -2,6 +2,7 @@ import { mkdir, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
+import { resolveBaseUrl } from './base-url';
 import { getAdminClient } from './local-supabase';
 
 /**
@@ -44,7 +45,12 @@ const PASSWORD = 'sagatest123';
 
 export async function createSagaUsers(
 	count: number,
-	opts?: { displayNames?: string[] }
+	opts?: {
+		displayNames?: string[];
+		/// The lane's own base URL, for a secondary lane that boots its dev
+		/// server elsewhere (the configured lane); the sharded lane's otherwise.
+		baseURL?: string;
+	}
 ): Promise<SagaUser[]> {
 	if (count < 1) throw new Error('createSagaUsers: count must be >= 1');
 	const admin = getAdminClient();
@@ -113,12 +119,23 @@ export async function createSagaUsers(
 
 	// 2) sign each user in via the form to capture storage state.
 	//    Single browser process, parallel contexts. ~1.5s for 3 users.
-	const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:7777';
+	// This fixture signs its users in from a plain chromium.launch() with no
+	// `baseURL` fixture in scope, so a secondary lane passes its own; the
+	// sharded lane's is the default.
+	const baseURL = opts?.baseURL ?? resolveBaseUrl();
 	const browser = await chromium.launch();
 	try {
 		await Promise.all(
 			users.map(async (user, i) => {
-				const ctx = await browser.newContext({ baseURL });
+				// An explicit empty state. Inside a test, `test.use({ storageState })`
+				// is the default for every context the worker opens, this one
+				// included, so a caller under USER_A reached /login signed in,
+				// was sent on to /dashboard, and waited out its test for an
+				// email field that never rendered.
+				const ctx = await browser.newContext({
+					baseURL,
+					storageState: { cookies: [], origins: [] }
+				});
 				const page = await ctx.newPage();
 				try {
 					await page.goto('/login');

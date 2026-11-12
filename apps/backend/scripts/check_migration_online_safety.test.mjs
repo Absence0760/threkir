@@ -4,176 +4,527 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { MIGRATIONS_DIR } from './check_migration_versions.mjs';
+import { splitSqlStatements } from './sql_lex.mjs';
 import {
-  GRANDFATHER_CUTOFF,
-  isAfterCutoff,
-  findUnsafeConstraintAdds,
-  scanMigrations,
+  GRANDFATHERED_VIOLATIONS,
+  UnlexableMigration,
+  auditMigrations,
+  findOnlineSafetyViolations,
 } from './check_migration_online_safety.mjs';
 
-const AFTER_CUTOFF = `${BigInt(GRANDFATHER_CUTOFF) + 1n}`;
+function committedMigrations() {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .map((filename) => ({
+      filename,
+      sql: readFileSync(join(MIGRATIONS_DIR, filename), 'utf8'),
+    }));
+}
 
-test('isAfterCutoff grandfathers the shipped history, flags newer days', () => {
-  // The cutoff itself and everything before it is grandfathered.
-  assert.equal(isAfterCutoff('20270430'), false);
-  assert.equal(isAfterCutoff('20270429'), false);
-  assert.equal(isAfterCutoff('20270429000001'), false); // pre-cutoff same-day tail
-  assert.equal(isAfterCutoff('20270428'), false);
-  assert.equal(isAfterCutoff('20270427'), false);
-  assert.equal(isAfterCutoff('20270426'), false);
-  assert.equal(isAfterCutoff('20270425'), false);
-  assert.equal(isAfterCutoff('20270424'), false);
-  assert.equal(isAfterCutoff('20270423'), false);
-  assert.equal(isAfterCutoff('20270423000003'), false); // renamed collision trio
-  assert.equal(isAfterCutoff('20261210'), false); // #411
-  assert.equal(isAfterCutoff('20260728'), false); // #410
-  assert.equal(isAfterCutoff('20261207'), false); // #409
-  // An older 14-digit migration is still grandfathered (normalised compare, not
-  // a naive numeric one that would rank 2026…000002 above the 2027 cutoff).
-  assert.equal(isAfterCutoff('20260528000002'), false);
-  // A genuinely newer migration is guarded.
-  assert.equal(isAfterCutoff(GRANDFATHER_CUTOFF), false);
-  assert.equal(isAfterCutoff(AFTER_CUTOFF), true);
-  assert.equal(isAfterCutoff(`${GRANDFATHER_CUTOFF}000001`), true); // same-day, added later
-  assert.equal(isAfterCutoff('20280101'), true);
-});
-
-test('findUnsafeConstraintAdds flags a NOT-VALID-less CHECK on a guarded table', () => {
+test('findOnlineSafetyViolations flags a NOT-VALID-less CHECK on a guarded table', () => {
   const sql = `alter table public.runs
     add constraint runs_activity_type_check
     check (activity_type in ('run', 'walk'));`;
-  const findings = findUnsafeConstraintAdds(sql);
+  const findings = findOnlineSafetyViolations(sql);
   assert.equal(findings.length, 1);
   assert.equal(findings[0].table, 'runs');
+  assert.equal(findings[0].constraint, 'runs_activity_type_check');
 });
 
-test('findUnsafeConstraintAdds flags a NOT-VALID-less FK drop+recreate (the #410 shape)', () => {
+test('findOnlineSafetyViolations flags a NOT-VALID-less FK drop+recreate (the #410 shape)', () => {
   const sql = `alter table runs
     drop constraint runs_user_id_fkey,
     add constraint runs_user_id_fkey
       foreign key (user_id) references auth.users (id) on delete cascade;`;
-  const findings = findUnsafeConstraintAdds(sql);
+  const findings = findOnlineSafetyViolations(sql);
   assert.equal(findings.length, 1);
   assert.equal(findings[0].table, 'runs');
+  assert.equal(findings[0].constraint, 'runs_user_id_fkey');
 });
 
-test('findUnsafeConstraintAdds flags a NOT-VALID-less jobs_kind_chk widening', () => {
+test('findOnlineSafetyViolations flags a NOT-VALID-less jobs_kind_chk widening', () => {
   // The #394 shape: a `jobs` kind CHECK widened via bare DROP + ADD CONSTRAINT,
   // which blocks the continuously-polled job queue while every row validates.
   const sql = `alter table public.jobs drop constraint jobs_kind_chk;
     alter table public.jobs
       add constraint jobs_kind_chk
       check (kind in ('map_match', 'new_kind'));`;
-  const findings = findUnsafeConstraintAdds(sql);
+  const findings = findOnlineSafetyViolations(sql);
   assert.equal(findings.length, 1);
   assert.equal(findings[0].table, 'jobs');
+  assert.equal(findings[0].constraint, 'jobs_kind_chk');
 });
 
-test('findUnsafeConstraintAdds passes a NOT VALID jobs_kind_chk widening', () => {
+test('findOnlineSafetyViolations passes the ADD half of a jobs_kind_chk widening', () => {
   const sql = `alter table public.jobs drop constraint jobs_kind_chk;
     alter table public.jobs
       add constraint jobs_kind_chk
-      check (kind in ('map_match', 'new_kind')) not valid;
-    alter table public.jobs validate constraint jobs_kind_chk;`;
-  assert.deepEqual(findUnsafeConstraintAdds(sql), []);
+      check (kind in ('map_match', 'new_kind')) not valid;`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
 });
 
-test('scanMigrations catches a bare jobs ADD CONSTRAINT after the cutoff', () => {
-  const unsafe = `alter table public.jobs drop constraint jobs_kind_chk;
-    alter table public.jobs
-      add constraint jobs_kind_chk check (kind in ('map_match', 'new_kind'));`;
-  // Grandfathered before the cutoff (the shipped #394 widening at 20270410).
+test('findOnlineSafetyViolations flags a bare ADD beside a NOT VALID one in the same ALTER', () => {
+  // NOT VALID qualifies only the action it terminates. Testing the whole
+  // statement for it exempted every sibling action in the same
+  // comma-separated list, so the second ADD here took a validating scan of
+  // every row in `runs` while the guard reported the migration clean.
+  const sql = `alter table runs
+    add constraint runs_distance_check check (distance_m >= 0) not valid,
+    add constraint runs_duration_check check (duration_s >= 0);`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].table, 'runs');
+  assert.equal(findings[0].constraint, 'runs_duration_check');
+});
+
+test('findOnlineSafetyViolations reports BOTH bare ADDs in one ALTER, not just the first', () => {
+  // Each action is its own violation and its own allowlist key, so a statement
+  // that adds two blocking constraints cannot be exempted by naming one.
+  const sql = `alter table runs
+    add constraint runs_distance_check check (distance_m >= 0),
+    add constraint runs_duration_check check (duration_s >= 0);`;
+  const findings = findOnlineSafetyViolations(sql);
   assert.deepEqual(
-    scanMigrations([{ filename: '20270410_001_safety_sms.sql', sql: unsafe }]),
-    [],
+    findings.map((f) => f.constraint),
+    ['runs_distance_check', 'runs_duration_check'],
   );
-  // Flagged for a NEW widening after the cutoff.
-  const caught = scanMigrations([
-    { filename: `${AFTER_CUTOFF}_001_jobs_new_kind.sql`, sql: unsafe },
-  ]);
-  assert.equal(caught.length, 1);
-  assert.equal(caught[0].filename, `${AFTER_CUTOFF}_001_jobs_new_kind.sql`);
-  assert.equal(caught[0].table, 'jobs');
 });
 
-test('findUnsafeConstraintAdds passes the NOT VALID two-step', () => {
+test('findOnlineSafetyViolations passes a multi-action ALTER whose every ADD is NOT VALID', () => {
+  const sql = `alter table runs
+    add constraint runs_distance_check check (distance_m >= 0) not valid,
+    add constraint runs_duration_check check (duration_s >= 0) not valid;`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('findOnlineSafetyViolations does not split an action on a comma inside its parens', () => {
+  // The commas in the IN-list and in a multi-column FK are not action
+  // separators; cutting there would strand the trailing NOT VALID.
+  const check = `alter table runs
+    add constraint runs_activity_type_check
+    check (activity_type in ('run', 'walk', 'hike')) not valid;`;
+  assert.deepEqual(findOnlineSafetyViolations(check), []);
+  const fk = `alter table run_kudos
+    add constraint run_kudos_run_user_fkey
+    foreign key (run_id, user_id) references runs (id, user_id) not valid;`;
+  assert.deepEqual(findOnlineSafetyViolations(fk), []);
+});
+
+test('findOnlineSafetyViolations passes the NOT VALID two-step', () => {
   const notValid = `alter table runs
     add constraint runs_activity_type_check
     check (activity_type in ('run', 'walk')) not valid;`;
-  assert.deepEqual(findUnsafeConstraintAdds(notValid), []);
+  assert.deepEqual(findOnlineSafetyViolations(notValid), []);
   // The later VALIDATE step is not an ADD, so it never trips either.
   const validate = `alter table runs validate constraint runs_activity_type_check;`;
-  assert.deepEqual(findUnsafeConstraintAdds(validate), []);
+  assert.deepEqual(findOnlineSafetyViolations(validate), []);
 });
 
-test('findUnsafeConstraintAdds ignores small, unguarded config tables', () => {
+test('an anonymous constraint is named null, so no allowlist entry can match it', () => {
+  const findings = findOnlineSafetyViolations(
+    'alter table runs add check (distance_m >= 0);',
+  );
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].constraint, null);
+  const { violations } = auditMigrations(
+    [{ filename: '29990101_001_anon.sql', sql: 'alter table runs add check (distance_m >= 0);' }],
+    [{ filename: '29990101_001_anon.sql', kind: 'blocking_add', table: 'runs', constraint: '' }],
+  );
+  assert.equal(violations.length, 1);
+});
+
+test('findOnlineSafetyViolations ignores small, unguarded config tables', () => {
   const sql = `alter table event_pricing
     add constraint event_pricing_modality_check
     check (modality in ('in_person', 'virtual'));`;
-  assert.deepEqual(findUnsafeConstraintAdds(sql), []);
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
 });
 
-test('findUnsafeConstraintAdds ignores ADD COLUMN and inline CREATE TABLE checks', () => {
+test('findOnlineSafetyViolations ignores ADD COLUMN and inline CREATE TABLE checks', () => {
   const addColumn = `alter table runs add column is_dnf boolean not null default false;`;
-  assert.deepEqual(findUnsafeConstraintAdds(addColumn), []);
+  assert.deepEqual(findOnlineSafetyViolations(addColumn), []);
   const createTable = `create table runs (
     id uuid primary key,
     activity_type text check (activity_type in ('run', 'walk')));`;
-  assert.deepEqual(findUnsafeConstraintAdds(createTable), []);
+  assert.deepEqual(findOnlineSafetyViolations(createTable), []);
 });
 
-test('scanMigrations grandfathers a pre-cutoff violation but catches a post-cutoff one', () => {
-  const unsafe = `alter table runs
-    add constraint runs_new_check check (distance_m >= 0);`;
-  // Same offending SQL, before vs after the cutoff.
+// The four below are the shapes a `;` split and a comment-strip that ran
+// before it got wrong. Two of them are FALSE NEGATIVES on the guarded tables
+// this file exists to protect — the filing that reported the parser said it
+// "fails in the safe direction", and it does not.
+test('a `--` inside a literal cannot borrow the next statement\'s NOT VALID', () => {
+  const sql = [
+    "alter table runs add constraint runs_note_chk check (note not like '%--%');",
+    'alter table runs add constraint runs_v_chk check (v > 0) not valid;',
+  ].join('\n');
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].table, 'runs');
+  assert.equal(findings[0].constraint, 'runs_note_chk');
+});
+
+test('a NOT VALID spelled inside a string literal vouches for nothing', () => {
+  const findings = findOnlineSafetyViolations(
+    "alter table runs add constraint runs_state_chk check (state <> 'not valid');",
+  );
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].table, 'runs');
+});
+
+test('DDL inside a function body is not the migration taking the lock', () => {
+  const sql = [
+    'create or replace function rebuild() returns void language plpgsql as $$',
+    'begin',
+    "  insert into audit(note) values ('ran; ok');",
+    "  alter table notifications add constraint notifications_kind_check check (kind in ('a','b'));",
+    'end;',
+    '$$;',
+  ].join('\n');
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('a migration whose SQL does not lex is named, not skipped', () => {
+  assert.throws(
+    () =>
+      auditMigrations([{ filename: '29990101_001_broken.sql', sql: "select 'unclosed" }]),
+    (/** @type {unknown} */ error) =>
+      error instanceof UnlexableMigration &&
+      error.filename === '29990101_001_broken.sql' &&
+      /unterminated string literal/.test(error.message),
+  );
+});
+
+test('the allowlist exempts the one constraint it names and nothing else', () => {
+  const sql = `alter table runs add constraint runs_a_chk check (a >= 0);
+    alter table runs add constraint runs_b_chk check (b >= 0);
+    alter table jobs add constraint jobs_kind_chk check (kind in ('x'));`;
+  const { violations, unmatched } = auditMigrations(
+    [{ filename: '20260101_001_legacy.sql', sql }],
+    [{ filename: '20260101_001_legacy.sql', kind: 'blocking_add', table: 'runs', constraint: 'runs_a_chk' }],
+  );
+  assert.deepEqual(unmatched, []);
   assert.deepEqual(
-    scanMigrations([{ filename: '20261207_001_promote.sql', sql: unsafe }]),
+    violations.map((v) => `${v.table}.${v.constraint}`),
+    ['runs.runs_b_chk', 'jobs.jobs_kind_chk'],
+  );
+});
+
+test('an allowlist entry naming the wrong file, table or constraint exempts nothing and is reported', () => {
+  const sql = `alter table runs add constraint runs_a_chk check (a >= 0);`;
+  /** @type {readonly import('./check_migration_online_safety.mjs').Grandfathered[]} */
+  const wrong = [
+    { filename: '20260101_002_other.sql', kind: 'blocking_add', table: 'runs', constraint: 'runs_a_chk' },
+    { filename: '20260101_001_legacy.sql', kind: 'blocking_add', table: 'notifications', constraint: 'runs_a_chk' },
+    { filename: '20260101_001_legacy.sql', kind: 'blocking_add', table: 'runs', constraint: 'runs_typo_chk' },
+    { filename: '20260101_001_legacy.sql', kind: 'same_txn_validate', table: 'runs', constraint: 'runs_a_chk' },
+  ];
+  for (const entry of wrong) {
+    const { violations, unmatched } = auditMigrations(
+      [{ filename: '20260101_001_legacy.sql', sql }],
+      [entry],
+    );
+    assert.equal(violations.length, 1, JSON.stringify(entry));
+    assert.deepEqual(unmatched, [entry]);
+  }
+});
+
+test('a new migration is scanned without any edit to the allowlist', () => {
+  // The property the GRANDFATHER_CUTOFF design could not hold: a migration
+  // newer than everything committed is inspected as it stands, and the guard
+  // needs no bookkeeping change to see it. Under the cutoff, the bump that its
+  // own test demanded was also what removed the file from the scan.
+  const unsafe = `alter table notifications
+    add constraint notifications_kind_check check (kind in ('a', 'b'));`;
+  const { violations } = auditMigrations([
+    { filename: '29990101_001_new_kind.sql', sql: unsafe },
+  ]);
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].filename, '29990101_001_new_kind.sql');
+  assert.equal(violations[0].table, 'notifications');
+
+  const safe = `alter table notifications
+    add constraint notifications_kind_check check (kind in ('a', 'b')) not valid;`;
+  assert.deepEqual(
+    auditMigrations([{ filename: '29990101_001_new_kind.sql', sql: safe }]).violations,
     [],
   );
-  const caught = scanMigrations([
-    { filename: `${AFTER_CUTOFF}_001_new_runs_check.sql`, sql: unsafe },
-  ]);
-  assert.equal(caught.length, 1);
-  assert.equal(caught[0].filename, `${AFTER_CUTOFF}_001_new_runs_check.sql`);
-  assert.equal(caught[0].table, 'runs');
+});
+
+test('the scanned set is the WHOLE committed tree, never empty', () => {
+  // This is the assertion the retired "GRANDFATHER_CUTOFF is the max version in
+  // the committed tree" test made impossible: that test forced the cutoff at or
+  // above the newest migration, which left the scan with nothing to read. A
+  // guard reporting a clean tree over an empty set says nothing at all, so the
+  // count is asserted rather than the verdict.
+  const migrations = committedMigrations();
+  const { scanned } = auditMigrations(migrations);
+  assert.ok(scanned.length > 400, `expected the whole tree, scanned ${scanned.length}`);
+  assert.deepEqual(scanned, migrations.map((m) => m.filename));
 });
 
 test('the committed migrations directory is clean under the guard', () => {
-  const migrations = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .map((filename) => ({
-      filename,
-      sql: readFileSync(join(MIGRATIONS_DIR, filename), 'utf8'),
-    }));
-  assert.deepEqual(scanMigrations(migrations), []);
+  const { violations, unmatched } = auditMigrations(committedMigrations());
+  assert.deepEqual(violations, []);
+  assert.deepEqual(unmatched, []);
+});
+
+test('every grandfathered entry still names a real violation in the tree', () => {
+  // Dropping one entry must turn the tree red: an entry is cover for exactly
+  // one blocking constraint that is really there, so a list that has drifted
+  // past the SQL cannot pass.
+  const migrations = committedMigrations();
+  assert.ok(GRANDFATHERED_VIOLATIONS.length > 0);
+  for (const dropped of GRANDFATHERED_VIOLATIONS) {
+    const { violations } = auditMigrations(
+      migrations,
+      GRANDFATHERED_VIOLATIONS.filter((e) => e !== dropped),
+    );
+    assert.equal(
+      violations.length,
+      1,
+      `dropping ${dropped.constraint} in ${dropped.filename} should expose exactly one violation`,
+    );
+    assert.equal(violations[0].filename, dropped.filename);
+    assert.equal(violations[0].constraint, dropped.constraint);
+  }
 });
 
 test('the guard would catch a new violation dropped into the real tree', () => {
-  const migrations = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .map((filename) => ({
-      filename,
-      sql: readFileSync(join(MIGRATIONS_DIR, filename), 'utf8'),
-    }));
+  const migrations = committedMigrations();
   migrations.push({
     filename: '29990101_001_hypothetical_unsafe.sql',
     sql: `alter table notifications
       add constraint notifications_kind_check check (kind in ('a', 'b'));`,
   });
-  const violations = scanMigrations(migrations);
+  const { violations } = auditMigrations(migrations);
   assert.equal(violations.length, 1);
   assert.equal(violations[0].filename, '29990101_001_hypothetical_unsafe.sql');
   assert.equal(violations[0].table, 'notifications');
 });
 
-test('GRANDFATHER_CUTOFF is the max version in the committed tree', () => {
-  // If a real migration ever lands with a version > cutoff, this test forces a
-  // conscious decision: either it used the NOT VALID two-step (fine) or the
-  // cutoff was bumped for it (fine) — but the cutoff must not silently lag.
-  const versions = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .map((f) => (/^([0-9]+)_/.exec(f) || [])[1])
-    .filter(Boolean);
-  const max = versions.reduce((a, b) => (a > b ? a : b), '');
-  assert.equal(max.slice(0, 8) <= GRANDFATHER_CUTOFF, true);
+test('a VALIDATE alone in a file is the online form and passes', () => {
+  // The half of the two-step that is actually online: its own migration, its
+  // own transaction, so the scan runs under SHARE UPDATE EXCLUSIVE with nothing
+  // stronger held and writers keep going.
+  const sql = 'alter table notifications validate constraint notifications_kind_check;';
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('a VALIDATE after the ADD in the same file is flagged, not passed', () => {
+  // The shape migration_locks.md used to call "far better than the single-step
+  // form" and this guard used to look for. One file is one transaction, so the
+  // ADD's ACCESS EXCLUSIVE is still held while the VALIDATE scans.
+  const sql = `alter table notifications
+      add constraint notifications_kind_check check (kind in ('a', 'b')) not valid;
+    alter table notifications validate constraint notifications_kind_check;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'same_txn_validate');
+  assert.equal(findings[0].table, 'notifications');
+  assert.equal(findings[0].constraint, 'notifications_kind_check');
+});
+
+test('a VALIDATE after a DROP CONSTRAINT in the same file is flagged', () => {
+  const sql = `alter table jobs drop constraint jobs_kind_chk;
+    alter table jobs add constraint jobs_kind_chk check (kind in ('x')) not valid;
+    alter table jobs validate constraint jobs_kind_chk;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'same_txn_validate');
+});
+
+test('a VALIDATE after an ADD COLUMN on the same table is flagged', () => {
+  // The lock is the table's, not the constraint's: 20261127_001 added a column
+  // and then validated, and a rule keyed on constraint DDL alone would miss it.
+  const sql = `alter table runs add column hr_series_url text;
+    alter table runs validate constraint runs_hr_series_url_path_shape;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'same_txn_validate');
+  assert.equal(findings[0].constraint, 'runs_hr_series_url_path_shape');
+});
+
+test('a VALIDATE after a CREATE INDEX on the same table is flagged', () => {
+  const sql = `create index runs_started_at_idx on public.runs (started_at);
+    alter table runs validate constraint runs_distance_m_check;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'same_txn_validate');
+});
+
+test('a VALIDATE sharing one ALTER with an ADD is flagged whichever comes first', () => {
+  // A single ALTER TABLE takes the strongest lock any of its actions needs, for
+  // the whole statement — so writing the VALIDATE first buys nothing.
+  const sql = `alter table runs
+    validate constraint runs_a_chk,
+    add constraint runs_b_chk check (b >= 0) not valid;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'same_txn_validate');
+  assert.equal(findings[0].constraint, 'runs_a_chk');
+});
+
+test('a VALIDATE is not escalated by DDL on a DIFFERENT table', () => {
+  // ROW EXCLUSIVE and locks on other relations do not conflict with the scan's
+  // SHARE UPDATE EXCLUSIVE. A rule that flagged any busy file would be noise.
+  const sql = `alter table jobs add constraint jobs_kind_chk check (kind in ('x')) not valid;
+    alter table runs validate constraint runs_distance_m_check;`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('a VALIDATE on an unguarded table is not flagged', () => {
+  const sql = `alter table race_listings add column x text;
+    alter table race_listings validate constraint race_listings_x_chk;`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('a blocking_add entry does not also exempt a same_txn_validate in its file', () => {
+  // The `kind` is in the key precisely so one reviewed exemption cannot quietly
+  // cover a second, differently-caused violation in the same file.
+  const sql = `alter table runs add constraint runs_a_chk check (a >= 0);
+    alter table runs validate constraint runs_a_chk;`;
+  const { violations, unmatched } = auditMigrations(
+    [{ filename: '20260101_001_legacy.sql', sql }],
+    [{ filename: '20260101_001_legacy.sql', kind: 'blocking_add', table: 'runs', constraint: 'runs_a_chk' }],
+  );
+  assert.deepEqual(unmatched, []);
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].kind, 'same_txn_validate');
+});
+
+test('a quoted VALIDATE target is unnamed, so no allowlist entry can cover it', () => {
+  const sql = `alter table runs add column x text;
+    alter table runs validate constraint "Runs_A_Chk";`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].constraint, null);
+});
+
+test('the grandfathered set covers both violation kinds', () => {
+  // The shipped history holds 11 files that wrote both halves of the two-step
+  // into one transaction. If the list ever loses that half, the assertion that
+  // the tree is clean would be passing over a rule nothing exercises.
+  const kinds = new Set(GRANDFATHERED_VIOLATIONS.map((e) => e.kind));
+  assert.deepEqual([...kinds].sort(), ['blocking_add', 'index_under_exclusive', 'same_txn_validate']);
+});
+
+test('an index built after the same file took ACCESS EXCLUSIVE on its table is flagged', () => {
+  // The 20271121002400 shape: the kind_check swap's ACCESS EXCLUSIVE is held
+  // to commit, so the index build's heap scan stops readers as well.
+  const sql = `alter table notifications drop constraint notifications_kind_check;
+    alter table notifications add constraint notifications_kind_check check (kind in ('a')) not valid;
+    create unique index notifications_race_starting_soon_uniq
+      on notifications (user_id, event_id) where kind = 'a';`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'index_under_exclusive');
+  assert.equal(findings[0].table, 'notifications');
+  assert.equal(findings[0].constraint, 'notifications_race_starting_soon_uniq');
+  assert.equal(findings[0].held, 'alter table notifications drop constraint notifications_kind_check');
+});
+
+test('an index after an ADD COLUMN on the same table is flagged, IF NOT EXISTS or not', () => {
+  const sql = `alter table notifications add column course_alert_id uuid;
+    create index if not exists notifications_course_alert_id
+      on notifications (course_alert_id) where course_alert_id is not null;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'index_under_exclusive');
+  assert.equal(findings[0].held, 'alter table notifications add column course_alert_id uuid');
+});
+
+test('DROP TRIGGER and policy DDL take ACCESS EXCLUSIVE, so an index after them is flagged', () => {
+  for (const first of [
+    'drop trigger if exists runs_enqueue_x on runs;',
+    'drop policy if exists runs_select on public.runs;',
+    'create policy runs_select on public.runs for select using (true);',
+  ]) {
+    const findings = findOnlineSafetyViolations(`${first}
+      create index runs_x_idx on public.runs (x);`);
+    assert.equal(findings.length, 1, first);
+    assert.equal(findings[0].kind, 'index_under_exclusive', first);
+    assert.equal(findings[0].table, 'runs', first);
+  }
+});
+
+test('an index is not flagged when nothing stronger than SHARE ROW EXCLUSIVE is held on its table', () => {
+  // CREATE TRIGGER and ADD FOREIGN KEY block writers but not readers, which the
+  // build does on its own anyway; VALIDATE takes SHARE UPDATE EXCLUSIVE.
+  const sql = `create trigger runs_t after insert on public.runs for each row execute function f();
+    alter table runs add constraint runs_route_id_fkey foreign key (route_id) references routes (id) not valid;
+    alter table runs validate constraint runs_distance_m_check;
+    create index runs_route_id_idx on public.runs (route_id);`;
+  const kinds = findOnlineSafetyViolations(sql).map((f) => f.kind);
+  assert.ok(!kinds.includes('index_under_exclusive'), kinds.join(','));
+});
+
+test('an index built BEFORE the ACCESS EXCLUSIVE, or on another table, is not flagged', () => {
+  const sql = `create index notifications_a_idx on notifications (a);
+    alter table notifications add column b text;
+    alter table jobs drop constraint jobs_kind_chk;
+    create index runs_b_idx on runs (b);`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('an index on an unguarded table after its ACCESS EXCLUSIVE is not flagged', () => {
+  const sql = `alter table public.events add column race_start_mode text;
+    create index events_race_start_mode_idx on public.events (race_start_mode);`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('the backend@1.0.38 split files each pass on their own', () => {
+  // The three files the migration-lock audit flagged, as split: each index is
+  // alone in its file, and no file holds jobs and runs at once.
+  for (const filename of [
+    '20271117002392_segment_match_jobs.sql',
+    '20271117100001_segment_match_jobs_dedupe_index.sql',
+    '20271117100002_segment_match_jobs_triggers.sql',
+    '20271121002400_race_start_modes.sql',
+    '20271121100004_race_start_modes_notifications_index.sql',
+    '20271121100006_race_start_modes_race_pings.sql',
+    '20271124002408_notifications_course_alert.sql',
+    '20271124100001_notifications_course_alert_index.sql',
+  ]) {
+    const sql = readFileSync(join(MIGRATIONS_DIR, filename), 'utf8');
+    assert.deepEqual(findOnlineSafetyViolations(sql), [], filename);
+  }
+});
+
+test('no file in the segment_match split holds jobs and runs together', () => {
+  // The tables each top-level statement locks: ALTER TABLE, CREATE INDEX and
+  // CREATE/DROP TRIGGER targets. Function bodies are not the migration's locks.
+  const locked = (/** @type {string} */ filename) =>
+    new Set(
+      splitSqlStatements(readFileSync(join(MIGRATIONS_DIR, filename), 'utf8'), { blankLiterals: true })
+        .map((raw) => raw.replace(/\s+/g, ' ').trim().toLowerCase())
+        .map(
+          (st) =>
+            /^alter table (?:if exists )?(?:only )?(?:public\.)?([a-z0-9_]+)/.exec(st)?.[1] ??
+            /^(?:create (?:unique )?index|create trigger|drop trigger)\b.*?\bon (?:only )?(?:public\.)?([a-z0-9_]+)/.exec(st)?.[1],
+        )
+        .filter(Boolean),
+    );
+  for (const filename of [
+    '20271117002392_segment_match_jobs.sql',
+    '20271117100001_segment_match_jobs_dedupe_index.sql',
+    '20271117100002_segment_match_jobs_triggers.sql',
+  ]) {
+    const tables = locked(filename);
+    assert.ok(tables.size > 0, filename);
+    assert.ok(!(tables.has('jobs') && tables.has('runs')), `${filename}: ${[...tables].join(', ')}`);
+  }
+});
+
+test('an index_under_exclusive entry exempts that index and not a second one in its file', () => {
+  const sql = `alter table runs add column x text;
+    create index runs_x_idx on runs (x);
+    create index runs_y_idx on runs (y);`;
+  const { violations, unmatched } = auditMigrations(
+    [{ filename: '20260101_001_legacy.sql', sql }],
+    [{ filename: '20260101_001_legacy.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_x_idx' }],
+  );
+  assert.deepEqual(unmatched, []);
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].constraint, 'runs_y_idx');
 });

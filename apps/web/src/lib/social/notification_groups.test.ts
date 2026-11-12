@@ -25,6 +25,7 @@ function n(overrides: Partial<GroupableNotification>): GroupableNotification {
 		plan_id: overrides.plan_id ?? null,
 		achievement_id: overrides.achievement_id ?? null,
 		challenge_id: overrides.challenge_id ?? null,
+		conversation_id: overrides.conversation_id ?? null,
 		read_at: overrides.read_at ?? null,
 		created_at: overrides.created_at ?? ago(0),
 	};
@@ -142,6 +143,42 @@ test('groupNotifications: follows collapse regardless of actor', () => {
 	assert.equal(groups[0].otherCount, 2);
 });
 
+test('groupNotifications: follow requests collapse together, apart from follows', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'r1', kind: 'follow_request', actor_id: 'u1', created_at: ago(1000) }),
+			n({ id: 'r2', kind: 'follow_request', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'f1', kind: 'follow', actor_id: 'u3', created_at: ago(1500) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+	const requests = groups.find((g) => g.lead.kind === 'follow_request');
+	assert.equal(requests?.otherCount, 1);
+});
+
+test('groupNotifications: workout reminders on the same plan never collapse', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'w1', kind: 'workout_reminder', plan_id: 'p1', created_at: ago(1000) }),
+			n({ id: 'w2', kind: 'workout_reminder', plan_id: 'p1', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+});
+
+test('groupNotifications: personal records never collapse, even on one run', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'p1', kind: 'personal_record', run_id: 'r1', created_at: ago(1000) }),
+			n({ id: 'p2', kind: 'personal_record', run_id: 'r1', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+});
+
 test('groupNotifications: event RSVPs collapse per event, distinct events split', () => {
 	const groups = groupNotifications(
 		[
@@ -169,6 +206,31 @@ test('groupNotifications: club posts collapse per club', () => {
 	assert.equal(groups[0].otherCount, 1);
 });
 
+test('groupNotifications: join requests collapse per club, edits per event, deleted-event cancels never', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'j1', kind: 'club_join_request', club_id: 'c1', actor_id: 'u1', created_at: ago(1000) }),
+			n({ id: 'j2', kind: 'club_join_request', club_id: 'c1', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'j3', kind: 'club_join_request', club_id: 'c2', actor_id: 'u3', created_at: ago(1500) }),
+			n({ id: 'u1', kind: 'event_updated', event_id: 'ev1', created_at: ago(3000) }),
+			n({ id: 'u2', kind: 'event_updated', event_id: 'ev1', created_at: ago(4000) }),
+			n({ id: 'x1', kind: 'event_cancel', club_id: 'c1', created_at: ago(5000) }),
+			n({ id: 'x2', kind: 'event_cancel', club_id: 'c1', created_at: ago(6000) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['j1', 1],
+			['j3', 0],
+			['u1', 1],
+			['x1', 0],
+			['x2', 0],
+		],
+	);
+});
+
 test('groupNotifications: messages collapse per actor, distinct actors split', () => {
 	const groups = groupNotifications(
 		[
@@ -182,6 +244,34 @@ test('groupNotifications: messages collapse per actor, distinct actors split', (
 	const u1 = groups.find((g) => g.lead.actor_id === 'u1');
 	assert.ok(u1);
 	assert.equal(u1.otherCount, 1);
+});
+
+test('groupNotifications: group messages collapse per group, never per sender', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'g1', kind: 'message', actor_id: 'u1', conversation_id: 'c1', created_at: ago(1000) }),
+			n({ id: 'g2', kind: 'message', actor_id: 'u2', conversation_id: 'c1', created_at: ago(2000) }),
+			n({ id: 'g3', kind: 'message', actor_id: 'u1', conversation_id: 'c2', created_at: ago(1500) }),
+			n({ id: 'd1', kind: 'message', actor_id: 'u1', created_at: ago(1200) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 3);
+	const c1 = groups.find((g) => g.lead.id === 'g1');
+	assert.ok(c1);
+	assert.deepEqual(c1.others.map((o) => o.id), ['g2']);
+	assert.equal(groups.find((g) => g.lead.id === 'd1')?.otherCount, 0, 'a 1:1 message stays apart from a group');
+});
+
+test('groupNotifications: group invitations never collapse, even into one group', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'i1', kind: 'group_invite', actor_id: 'u1', conversation_id: 'c1', created_at: ago(1000) }),
+			n({ id: 'i2', kind: 'group_invite', actor_id: 'u1', conversation_id: 'c2', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(groups.map((g) => g.otherCount), [0, 0]);
 });
 
 test('groupNotifications: a null target never merges two rows', () => {
@@ -254,4 +344,44 @@ test('groupNotifications: achievements group by id, a null id stays solo', () =>
 	const ach1 = groups.find((g) => g.lead.achievement_id === 'ach1');
 	assert.ok(ach1);
 	assert.equal(ach1.otherCount, 1);
+});
+
+test('groupNotifications: reactions, comment likes and mentions collapse per run and kind', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'r1', kind: 'reaction', run_id: 'run1', actor_id: 'u1', created_at: ago(3000) }),
+			n({ id: 'r2', kind: 'reaction', run_id: 'run1', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'l1', kind: 'comment_like', run_id: 'run1', actor_id: 'u1', created_at: ago(1500) }),
+			n({ id: 'm1', kind: 'mention', run_id: 'run1', actor_id: 'u3', created_at: ago(1000) }),
+			n({ id: 'm2', kind: 'mention', run_id: 'run2', actor_id: 'u3', created_at: ago(500) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['m2', 0],
+			['m1', 0],
+			['l1', 0],
+			['r2', 1],
+		],
+	);
+});
+
+test('groupNotifications: race start notices collapse per event', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'm1', kind: 'race_start_moved', event_id: 'ev1', created_at: ago(1000) }),
+			n({ id: 'm2', kind: 'race_start_moved', event_id: 'ev1', created_at: ago(2000) }),
+			n({ id: 's1', kind: 'race_starting_soon', event_id: 'ev2', created_at: ago(3000) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['m1', 1],
+			['s1', 0],
+		],
+	);
 });

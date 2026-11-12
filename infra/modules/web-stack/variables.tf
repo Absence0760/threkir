@@ -160,7 +160,7 @@ variable "waf_enabled" {
 }
 
 variable "waf_rate_limit" {
-  description = "Per-IP rate limit applied to /api/coach* requests across a 5-minute rolling window (the WAF v2 default). 100 is generous against the per-user daily cap of 2/day — a single legitimate user can never approach it from one IP. (Cap value tracked in apps/web/src/lib/coach/types.ts#TIER_LIMITS.free.dailyLimit — pinned to be kept in lockstep with this comment by security_guards.test.ts.)"
+  description = "Per-IP rate limit applied to /api/coach* requests across a 5-minute rolling window (the WAF v2 default). 100 is generous against the per-user daily cap of 2/day — a single legitimate user can never approach it from one IP. (Cap value tracked in apps/web/src/lib/coach/types.ts#TIER_LIMITS.free.dailyLimit — pinned to be kept in lockstep with this comment by lambda_guards.test.ts.)"
   type        = number
   default     = 100
 }
@@ -199,10 +199,33 @@ variable "alert_emails" {
   }
 }
 
+variable "alarm_tier" {
+  description = "Which CloudWatch alarms to create. \"full\" is every alarm in alarms.tf (~40 alarm metrics). \"essential\" keeps the ones guarding spend or total outage — coach error rate, CloudFront 5xx, the three Lambda throttle ceilings, the bypass-paywall tripwire — 7 alarm metrics. \"none\" creates no alarms. The CloudWatch free tier is 10 alarm metrics shared across the whole AWS Organization; see the header of alarms.tf."
+  type        = string
+  default     = "full"
+
+  validation {
+    condition     = contains(["full", "essential", "none"], var.alarm_tier)
+    error_message = "alarm_tier must be one of \"full\", \"essential\", \"none\"."
+  }
+}
+
 variable "lambda_throttle_alarm_threshold" {
   description = "Number of Lambda throttles across two 5-min windows that fires the alarm. Default 5 is fine for preview's noisy demo traffic; prod should override to 1 so a single throttle pages immediately (the reserved concurrency is the cost ceiling — hitting it should be a loud signal). audit/cost-controls Medium 2026-05-07."
   type        = number
   default     = 5
+}
+
+variable "cloudfront_4xx_alarm_threshold" {
+  description = "Percentage of CloudFront requests answered 4xx that fires the distribution alarm, measured across two consecutive 5-min windows. A static SPA answers plenty of 404s for missing assets and stale bookmarks, so this sits well above zero; it is looking for a step change — mass auth failure, a behaviour ordering that stopped routing an /api path, an SPA fallback that stopped falling back."
+  type        = number
+  default     = 5
+}
+
+variable "cloudfront_5xx_alarm_threshold" {
+  description = "Percentage of CloudFront requests answered 5xx that fires the distribution alarm, measured across two consecutive 5-min windows. Tighter than the 4xx threshold because a 5xx is never the viewer's doing: an origin is failing. Note this cannot see a Lambda-origin 403 or 404 — the distribution-wide SPA error fallback rewrites those to 200 (decisions § 890) — which is why every Lambda also carries its own error-rate and p95 alarms."
+  type        = number
+  default     = 1
 }
 
 # ─────────────────── Tagging ───────────────────

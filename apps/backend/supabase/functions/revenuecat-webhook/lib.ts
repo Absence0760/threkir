@@ -36,13 +36,42 @@ export const ACTIVATING_EVENTS = [
   'PRODUCT_CHANGE',
 ] as const;
 
-/// Deactivating events. CANCELLATION fires at the end of the billing
-/// period (entitlement still active until then), but RC sends both
-/// CANCELLATION and EXPIRATION at that point — handling either is fine.
+/// Events that can end access. EXPIRATION always does. CANCELLATION
+/// usually does not: RevenueCat sends it the moment auto-renew is turned
+/// off, while the period the user paid for still runs to
+/// `expiration_at_ms`, and EXPIRATION follows at that instant.
+/// `cancellationEndsAccessNow` decides which CANCELLATIONs downgrade.
 export const DEACTIVATING_EVENTS = [
   'EXPIRATION',
   'CANCELLATION',
 ] as const;
+
+/// RevenueCat's `cancel_reason` for a cancellation made through store
+/// support, which is how a refund arrives: the entitlement is revoked at
+/// once rather than at the period end.
+export const REFUND_CANCEL_REASON = 'CUSTOMER_SUPPORT';
+
+/// Whether a CANCELLATION removes access now. It does when it is a refund
+/// (`cancel_reason` CUSTOMER_SUPPORT) or when the paid period has already
+/// run out (`expiration_at_ms` at or before `nowMs`). A missing or
+/// non-numeric `expiration_at_ms` also counts as ended: the paywall fails
+/// closed, and if the period was in fact still running the user's next
+/// store event (UNCANCELLATION, RENEWAL) restores Pro.
+export function cancellationEndsAccessNow(
+  expirationAtMs: unknown,
+  cancelReason: unknown,
+  nowMs: number,
+): boolean {
+  if (cancelReason === REFUND_CANCEL_REASON) return true;
+  if (typeof expirationAtMs !== 'number' || !Number.isFinite(expirationAtMs)) return true;
+  return expirationAtMs <= nowMs;
+}
+
+export type CancellationContext = {
+  expirationAtMs?: unknown;
+  cancelReason?: unknown;
+  nowMs?: number;
+};
 
 /// Decide what `billing_issue_at` should become for the given event.
 /// Returns:
@@ -85,11 +114,17 @@ export function mapEventToBillingIssue(
 /// and is treated as not-lifetime (the conservative default — if a
 /// fetch fails the safest thing is to apply the deactivation).
 ///
+/// `cancellation` carries a CANCELLATION's `expiration_at_ms` and
+/// `cancel_reason`: one that leaves the paid period running changes
+/// nothing (`cancellationEndsAccessNow`), and the EXPIRATION at the period
+/// end does the downgrade.
+///
 /// Returns `null` when no tier change should be applied.
 export function mapEventToTier(
   eventType: string,
   productId: string | null | undefined,
   currentTier: string | null | undefined,
+  cancellation: CancellationContext = {},
 ): Tier | null {
   if ((ACTIVATING_EVENTS as readonly string[]).includes(eventType)) {
     const pid = productId ?? '';
@@ -105,6 +140,16 @@ export function mapEventToTier(
   }
   if ((DEACTIVATING_EVENTS as readonly string[]).includes(eventType)) {
     if (currentTier === 'lifetime') return null;
+    if (
+      eventType === 'CANCELLATION' &&
+      !cancellationEndsAccessNow(
+        cancellation.expirationAtMs,
+        cancellation.cancelReason,
+        cancellation.nowMs ?? Date.now(),
+      )
+    ) {
+      return null;
+    }
     return 'free';
   }
   return null;

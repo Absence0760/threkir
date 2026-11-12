@@ -18,7 +18,6 @@ test('pickAllowedRunMetadata — empty input returns null', () => {
 
 test('pickAllowedRunMetadata — keeps coaching-value keys (consent granted)', () => {
 	const meta = {
-		activity_type: 'run',
 		avg_bpm: 152,
 		workout_kind: 'tempo',
 		manual_completion: true,
@@ -34,12 +33,12 @@ test('pickAllowedRunMetadata — strips avg_bpm when health consent is absent', 
 	// must never cross the Anthropic sub-processor boundary; non-health
 	// keys still pass through.
 	const meta = {
-		activity_type: 'run',
+		is_indoor: false,
 		avg_bpm: 152,
 		elevation_m: 120,
 	};
 	assert.deepEqual(pickAllowedRunMetadata(meta, false), {
-		activity_type: 'run',
+		is_indoor: false,
 		elevation_m: 120,
 	});
 	// With consent, the same input keeps avg_bpm.
@@ -57,10 +56,10 @@ test('pickAllowedRunMetadata — drops free-form notes', () => {
 	// `notes` is a free-form field — anything the runner typed.
 	// Realistic exposure for a user who pasted a journal entry.
 	const out = pickAllowedRunMetadata({
-		activity_type: 'run',
+		is_indoor: false,
 		notes: 'felt awful, fight with partner before run, considered quitting',
 	}, true);
-	assert.deepEqual(out, { activity_type: 'run' });
+	assert.deepEqual(out, { is_indoor: false });
 });
 
 test('pickAllowedRunMetadata — drops parkrun event + position', () => {
@@ -68,33 +67,33 @@ test('pickAllowedRunMetadata — drops parkrun event + position', () => {
 	// against parkrun's own public results pages — leaks runner's
 	// real-world identity into the model.
 	const out = pickAllowedRunMetadata({
-		activity_type: 'run',
+		is_indoor: false,
 		event: 'bushy-2026-04-15',
 		position: 42,
 	}, true);
-	assert.deepEqual(out, { activity_type: 'run' });
+	assert.deepEqual(out, { is_indoor: false });
 });
 
 test('pickAllowedRunMetadata — drops external integration ids', () => {
 	const out = pickAllowedRunMetadata({
-		activity_type: 'run',
+		is_indoor: false,
 		strava_id: '12345678',
 		garmin_id: 'abc-def-123',
 		health_connect_type: 'EXERCISE_SESSION',
 		imported_from: 'strava',
 		external_id: 'strava:12345678',
 	}, true);
-	assert.deepEqual(out, { activity_type: 'run' });
+	assert.deepEqual(out, { is_indoor: false });
 });
 
 test('pickAllowedRunMetadata — drops internal owner-only flags', () => {
 	const out = pickAllowedRunMetadata({
-		activity_type: 'run',
+		is_indoor: false,
 		created_by_user_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
 		recovered_from_crash: true,
 		// owner-only by docs/backend/metadata.md classification
 	}, true);
-	assert.deepEqual(out, { activity_type: 'run' });
+	assert.deepEqual(out, { is_indoor: false });
 });
 
 test('pickAllowedRunMetadata — drops raw laps array', () => {
@@ -102,13 +101,13 @@ test('pickAllowedRunMetadata — drops raw laps array', () => {
 	// coach doesn't read it (workout_step_results is the structured
 	// version that's allowlisted instead).
 	const out = pickAllowedRunMetadata({
-		activity_type: 'run',
+		is_indoor: false,
 		laps: [
 			{ distance_m: 1000, duration_s: 240 },
 			{ distance_m: 1000, duration_s: 245 },
 		],
 	}, true);
-	assert.deepEqual(out, { activity_type: 'run' });
+	assert.deepEqual(out, { is_indoor: false });
 });
 
 test('pickAllowedRunMetadata — entirely unallowlisted input returns null', () => {
@@ -130,4 +129,11 @@ test('pickAllowedRunMetadata — workout_step_results passes through (planned vs
 		],
 	};
 	assert.deepEqual(pickAllowedRunMetadata(meta, true), meta);
+});
+
+test('pickAllowedRunMetadata — drops a legacy metadata.activity_type', () => {
+	// The key moved to the runs.activity_type column (migration
+	// 20261207_001), which the Coach selects; a copy still sitting in an
+	// older row's bag would only send the same value twice.
+	assert.equal(pickAllowedRunMetadata({ activity_type: 'run' }, true), null);
 });

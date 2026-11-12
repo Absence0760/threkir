@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:health/health.dart';
 
+import 'column_limits.dart';
 import 'embedded_bests.dart';
+import 'import_failures.dart';
 import 'imported_run_id.dart';
 
 /// One `ExerciseRoute` location, flattened off the plugin's
@@ -18,20 +20,28 @@ typedef HcRoutePoint = ({
   double? altitudeMetres,
 });
 
-/// What one Health Connect route read produced: the tracks it released, and
-/// the sessions whose route it refused to release.
+/// What one Health Connect route read produced: the tracks it released, the
+/// sessions whose route it refused to release, and — when the read itself
+/// threw — the error behind an empty result. Without that last field an
+/// outright failed read is indistinguishable from a source that genuinely
+/// holds no routes, and the import tells the runner the wrong one.
 typedef HealthConnectRoutes = ({
   Map<String, List<Waypoint>> tracks,
   Set<String> withheldSessionIds,
+  Object? readFailure,
 });
 
-/// A Health Connect import: the runs, and the sessions whose GPS route Health
-/// Connect withheld. The withheld set is the only honest trigger for offering
-/// the route grant — there is no point asking a runner for a permission that
-/// would buy them nothing.
+/// A Health Connect import: the runs, the sessions whose GPS route Health
+/// Connect withheld, and the workouts that could not be mapped at all. The
+/// withheld set is the only honest trigger for offering the route grant —
+/// there is no point asking a runner for a permission that would buy them
+/// nothing. `failures` names the workouts that were dropped: they used to
+/// vanish into a `debugPrint` with nothing on screen at all, so a session
+/// Health Connect could not hand over simply never appeared.
 typedef HealthConnectImport = ({
   List<Run> runs,
   Set<String> withheldSessionIds,
+  ImportFailureLog failures,
 });
 
 /// The Health Connect permission that releases a workout's GPS route. Must
@@ -94,6 +104,12 @@ class HealthConnectImporter {
       // privacy labels have to declare. That is a decision of its own, not
       // a side effect of fixing the Health Connect import.
       if (Platform.isAndroid) HealthDataType.WORKOUT_ROUTE,
+      // Android-only for the same reason as WORKOUT_ROUTE above, though the
+      // asymmetry is the other way round: the plugin's Health Connect
+      // workout handler sums a StepsRecord read into totalSteps, while its
+      // HealthKit one never populates that field at all. So on iOS this
+      // would widen what the build collects and buy nothing back.
+      if (Platform.isAndroid) HealthDataType.STEPS,
       HealthDataType.DISTANCE_DELTA,
       HealthDataType.HEART_RATE,
       // Read body weight so the import can seed the user's body_weight_kg
@@ -132,10 +148,28 @@ class HealthConnectImporter {
     final routeTracks = routes.tracks;
 
     final runs = <Run>[];
+    final failures = newImportFailureLog();
+    // A refused route read leaves exactly the shape a source with no routes
+    // leaves, so without this the import would tell the runner their maps
+    // don't exist when they were simply unreadable.
+    if (routes.readFailure != null) {
+      recordImportFailure(
+        failures,
+        name: 'GPS routes',
+        error: routes.readFailure,
+      );
+    }
     for (final point in data) {
+      // Filled as soon as the workout identifies itself so the catch below
+      // can name what was dropped; a throw before that still reports, under
+      // the unnamed-activity fallback.
+      var label = '';
+      String? startedAt;
       try {
         final value = point.value;
         if (value is! WorkoutHealthValue) continue;
+        label = value.workoutActivityType.name;
+        startedAt = point.dateFrom.toUtc().toIso8601String();
 
         final activityType = _mapWorkoutType(value.workoutActivityType);
         if (activityType == null) continue; // not a movement workout we care about
@@ -150,11 +184,18 @@ class HealthConnectImporter {
 
         final metadata = <String, dynamic>{
           MetadataKeys.importedFrom: 'health_connect',
-          MetadataKeys.importedAt: DateTime.now().toIso8601String(),
+          MetadataKeys.importedAt: DateTime.now().toUtc().toIso8601String(),
           MetadataKeys.healthConnectType: value.workoutActivityType.name,
           MetadataKeys.activityType: activityType,
         };
         if (avgBpm != null) metadata[MetadataKeys.avgBpm] = avgBpm;
+
+        final steps = stepsForWorkout(
+          activityType: activityType,
+          totalSteps: value.totalSteps,
+          duration: point.dateTo.difference(point.dateFrom),
+        );
+        if (steps != null) metadata[MetadataKeys.steps] = steps;
 
         // Both the workout point and its route point carry the same
         // ExerciseSessionRecord id, so that is the join key.
@@ -183,9 +224,19 @@ class HealthConnectImporter {
         ));
       } catch (e) {
         debugPrint('Failed to map Health Connect workout: $e');
+        recordImportFailure(
+          failures,
+          name: label,
+          startedAt: startedAt,
+          error: e,
+        );
       }
     }
-    return (runs: runs, withheldSessionIds: routes.withheldSessionIds);
+    return (
+      runs: runs,
+      withheldSessionIds: routes.withheldSessionIds,
+      failures: failures,
+    );
   }
 
   /// Per-workout GPS tracks Health Connect will release for the window, keyed
@@ -202,6 +253,7 @@ class HealthConnectImporter {
       return (
         tracks: const <String, List<Waypoint>>{},
         withheldSessionIds: const <String>{},
+        readFailure: null,
       );
     }
     try {
@@ -230,12 +282,14 @@ class HealthConnectImporter {
       return (
         tracks: tracksFromRoutePoints(routes),
         withheldSessionIds: withheldRouteSessionIds(routes),
+        readFailure: null,
       );
     } catch (e) {
       debugPrint('Health Connect route fetch failed: $e');
       return (
         tracks: const <String, List<Waypoint>>{},
         withheldSessionIds: const <String>{},
+        readFailure: e,
       );
     }
   }
@@ -341,6 +395,46 @@ class HealthConnectImporter {
     return out;
   }
 
+  /// The step count worth recording for an imported workout, or null when
+  /// there isn't a believable one.
+  ///
+  /// Health Connect has no per-session step field: the plugin derives
+  /// `totalSteps` by summing every `StepsRecord` overlapping the session
+  /// window, whoever wrote it. Two things follow. A ride with the phone in
+  /// a jersey pocket comes back with a real step count that is not the
+  /// rider's cadence, and the run-detail tile divides whatever is stored by
+  /// moving time and calls the result spm — so `cycle` is excluded, matching
+  /// the "pedometer not meaningful for cycling" stride table. The exclusion
+  /// names the bike rather than listing the foot-powered types, for the
+  /// reason decisions § 598 records against `gearBackfillCandidates`: an
+  /// allowlist of `{run, walk, hike}` silently drops a real activity_type
+  /// nobody remembered, and a step count is wrong only where there are no
+  /// steps.
+  ///
+  /// A count implying a cadence no human sustains is window contamination
+  /// (a whole-day total overlapping a short session), not a step count, and
+  /// is dropped whole — the same call the HR average makes on a sample
+  /// outside 30-230 bpm. Dropping it leaves the run exactly as it imports
+  /// today rather than publishing a fabricated cadence.
+  @visibleForTesting
+  static int? stepsForWorkout({
+    required String activityType,
+    required int? totalSteps,
+    required Duration duration,
+  }) {
+    if (totalSteps == null || totalSteps <= 0) return null;
+    if (activityType == 'cycle') return null;
+    final minutes = duration.inSeconds / 60;
+    if (minutes <= 0) return null;
+    if (totalSteps / minutes > _maxPlausibleCadenceSpm) return null;
+    return totalSteps;
+  }
+
+  /// Steps per minute past which a count is contamination rather than a
+  /// cadence. Elite track sprinters peak near 300; nothing sustains it over
+  /// a whole session, so this only ever rejects a summed foreign record.
+  static const int _maxPlausibleCadenceSpm = 300;
+
   static bool _isPlausibleFix(HcRoutePoint p) =>
       p.lat.isFinite &&
       p.lng.isFinite &&
@@ -349,13 +443,14 @@ class HealthConnectImporter {
 
   /// The most-recent body-weight sample (kg) Health Connect holds, or null
   /// when there is none or the read errors. Used to one-time seed the
-  /// user's `body_weight_kg` on import. Clamps to a sane 30–300 kg so a
-  /// stray sample can't poison the calorie estimate.
+  /// user's `body_weight_kg` on import, so a stray sample can't poison the
+  /// calorie estimate.
   static Future<double?> fetchLatestWeightKg() async {
     try {
       final now = DateTime.now();
       final samples = await _health.getHealthDataFromTypes(
         types: const [HealthDataType.WEIGHT],
+        // elapsed-time: lower bound of a Health Connect query, not a calendar day.
         startTime: now.subtract(const Duration(days: 3650)),
         endTime: now,
       );
@@ -373,15 +468,22 @@ class HealthConnectImporter {
     }
   }
 
-  /// Pick the most-recent in-range (30–300 kg) weight from a list of
-  /// samples. Pure so the recency + clamp logic is unit-testable without
-  /// the Health Connect plugin. Returns null when none qualify.
+  /// Pick the most-recent in-range weight from a list of samples. Pure so the
+  /// recency + range logic is unit-testable without the Health Connect plugin.
+  /// Returns null when none qualify.
+  ///
+  /// The range is `body_metrics.weight_kg`'s registered client bound, not a
+  /// third opinion. This filter said 30–300 kg, which disagreed with the
+  /// body-metrics field at BOTH ends: 300 is above what the field lets a
+  /// runner type, so an import could seed a weight the runner then could not
+  /// re-save, and 30 is above the field's floor, so a legitimately light
+  /// runner's real sample was discarded as noise (decisions § 819).
   @visibleForTesting
   static double? selectLatestWeightKg(List<({double kg, DateTime at})> samples) {
     double? latestKg;
     DateTime? latestAt;
     for (final s in samples) {
-      if (s.kg < 30 || s.kg > 300) continue;
+      if (!withinColumnLimit('body_metrics.weight_kg', s.kg)) continue;
       if (latestAt == null || s.at.isAfter(latestAt)) {
         latestAt = s.at;
         latestKg = s.kg;

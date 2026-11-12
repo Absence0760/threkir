@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:api_client/api_client.dart' show ApiClient, safeErrorLabel;
 import 'package:flutter/material.dart';
 
+import '../auth_change_aware.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../undo_queue.dart';
 import 'top_banner.dart';
@@ -46,6 +48,14 @@ void setUndoWindowS(Object? raw) {
   _windowS = undoWindowSFromPref(raw);
 }
 
+String? _ownerId;
+
+/// The signed-in account, kept current by the app root. A held delete whose
+/// commit fails after it changed is logged, not bannered or restored.
+void setUndoOwner(String? userId) {
+  _ownerId = userId;
+}
+
 final ValueNotifier<PendingUndo?> _pending = ValueNotifier<PendingUndo?>(null);
 
 OverlayState? _overlay;
@@ -64,6 +74,8 @@ final UndoQueue undoQueue = UndoQueue(
     clearTimer: (handle) => (handle as Timer).cancel(),
     now: () => DateTime.now().millisecondsSinceEpoch,
     onChange: _onChange,
+    owner: () => _ownerId,
+    log: (message, error) => debugPrint('$message: ${safeErrorLabel(error)}'),
   ),
 );
 
@@ -102,6 +114,45 @@ void deferDestructive(BuildContext context, DeferredDestruction destruction) {
   undoQueue.defer(destruction);
 }
 
+/// A held delete belongs to the account that made it. Our own Sign out
+/// commits it first (`signOutAfterSettling` in `sign_out.dart`); a session
+/// that ends or changes some other way (a revoked token, another device's
+/// password change) can no longer commit it as that account, so it is put
+/// back rather than run as nobody or as the next account. A commit already
+/// running is not stopped; if it fails, the queue sees the owner changed and
+/// only logs it. Keyed on the user id, so a token refresh is not a change.
+/// Web does the same from its root layout.
+class UndoSessionGuard extends StatefulWidget {
+  const UndoSessionGuard({super.key, required this.api, required this.child});
+
+  final ApiClient? api;
+  final Widget child;
+
+  @override
+  State<UndoSessionGuard> createState() => _UndoSessionGuardState();
+}
+
+class _UndoSessionGuardState extends State<UndoSessionGuard>
+    with AuthChangeAware<UndoSessionGuard> {
+  @override
+  ApiClient? get authApi => widget.api;
+
+  @override
+  void initState() {
+    super.initState();
+    setUndoOwner(widget.api?.userId);
+  }
+
+  @override
+  void onAuthUserChanged(String? userId) {
+    undoQueue.undo();
+    setUndoOwner(userId);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 @visibleForTesting
 void debugResetUndo() {
   final entry = _entry;
@@ -111,6 +162,7 @@ void debugResetUndo() {
   _pending.value = null;
   _windowS = kDefaultUndoWindowS;
   _topInset = 0;
+  _ownerId = null;
 }
 
 class _UndoPill extends StatefulWidget {

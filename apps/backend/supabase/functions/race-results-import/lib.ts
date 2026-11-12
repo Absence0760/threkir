@@ -1,7 +1,9 @@
 // Pure helpers for the race-results importer.
 //
 // Import modes:
-//   - 'runsignup'   — maps the RunSignUp REST get-results JSON onto runs rows.
+//   - 'runsignup'   — finds the listing's event(s) in RunSignUp's public race
+//                     feed and maps the runner's bib-filtered result onto a
+//                     runs row; keyless (the key pair is sent when set).
 //   - 'chronotrack' — maps the ChronoTrack Live (CTLive) results JSON onto runs
 //                     rows; gated fail-closed on its own CHRONOTRACK_* creds.
 //   - 'paste'       — maps a single user-pasted result row (any timing site that
@@ -9,22 +11,66 @@
 //
 // Everything here is network-free + side-effect-free so the mapping, the field
 // caps, and the external_id shape are unit-testable without live credentials
-// (the EF itself returns 503 when a provider's creds are unset — see index.ts).
+// (the EF itself returns 503 when a provider's creds are unset — see handler.ts).
 
+import type { Json } from '../_shared/database.ts';
+import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
+import { clipText } from '../_shared/text_clip.ts';
 import { SYNTHETIC_START_TIME_UTC } from '../_shared/synthetic_start_time.ts';
+import {
+  isInPersonRunningEvent,
+  parseProviderRaceDate,
+  parseRunSignUpDistance,
+  type RunSignUpEventRow,
+  runSignUpErrorOf,
+} from '../race-listings-sync/lib.ts';
+
+export { runSignUpErrorOf };
 
 export const MAX_FIELD_LEN = 200;
 export const MAX_RESULTS_ROWS = 2000;
 
+/**
+ * Whether a provider fetch may have been cut off by `MAX_RESULTS_ROWS`.
+ *
+ * The three extractors stop pushing at the cap and return a plain array, so the
+ * only evidence of a truncation is the length — and a page carrying exactly
+ * `MAX_RESULTS_ROWS` results is indistinguishable from one that carried more.
+ * This reads that ambiguity the fail-closed way: exactly-at-the-cap is
+ * "possibly truncated", because a false "possibly" costs a caller one honest
+ * sentence while a false "complete" costs them the belief that they were not in
+ * a race they finished.
+ *
+ * It matters most on a path whose upstream filter is not honoured: a bib-scoped
+ * request that the feed answers with the whole field truncates at 2,000 BEFORE
+ * `filterResultsByBib` runs, and a runner whose bib sits past that slice would
+ * be told nothing was found (decisions § 976). RunSignUp's `bib_num` narrows
+ * upstream today, so there it is the guard for the day it stops.
+ */
+export function resultsPossiblyTruncated(rowCount: number): boolean {
+  return rowCount >= MAX_RESULTS_ROWS;
+}
+
 /** Trim + truncate an untrusted text field. Non-strings become ''. */
 export function capField(raw: unknown, max: number = MAX_FIELD_LEN): string {
   if (typeof raw !== 'string') return '';
-  const trimmed = raw.trim();
-  return trimmed.length <= max ? trimmed : trimmed.slice(0, max);
+  return clipText(raw, max);
 }
 
-/** Parse "H:MM:SS" / "MM:SS" / "SS" into whole seconds. 0 on garbage. */
+/**
+ * Parse "H:MM:SS" / "MM:SS" / "SS" into whole seconds. 0 on garbage.
+ *
+ * Chip-timed feeds carry hundredths (`21:43.34` — every RunSignUp result
+ * observed 2026-10-14), and `runs.duration_s` is an integer: a fractional value
+ * fails the batch insert, losing the import rather than the fraction. Fractions
+ * round UP to the next whole second, which is how road-race times are reported.
+ */
 export function parseClockToSeconds(time: unknown): number {
+  return Math.ceil(parseClock(time));
+}
+
+/** The clock reading in seconds, fraction kept. 0 on garbage. */
+function parseClock(time: unknown): number {
   const s = capField(time);
   if (!s) return 0;
   const parts = s.split(':').map((p) => Number(p));
@@ -33,6 +79,12 @@ export function parseClockToSeconds(time: unknown): number {
   if (parts.length === 2) return parts[0] * 60 + parts[1];
   if (parts.length === 1) return parts[0];
   return 0;
+}
+
+/** A result field that may arrive as a number (RunSignUp's `bib`) or text. */
+function resultText(raw: unknown, max: number = MAX_FIELD_LEN): string {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
+  return capField(raw, max);
 }
 
 /**
@@ -46,14 +98,34 @@ export function raceExternalId(name: string, date: string, bib: string): string 
   return `race:${clean(name)}:${clean(date)}:${clean(bib)}`;
 }
 
-/** A finisher row as RunSignUp returns it (the fields we consume). */
-export interface RunSignUpResult {
-  bib_num?: unknown;
+/**
+ * The external_id of a result with no bib: `race:{name}:{date}::{finish}`,
+ * where `{finish}` spells the facts `isSameFinish` reads — `c` chip and `g`
+ * gun seconds (rounded up, as `duration_s` is) and `p` overall place, each only
+ * when the result carries it (decisions § 1920). A bib is colon-stripped, so
+ * the extra segment can never spell a bib's id. Two results with one id agree
+ * on every reading to under a second, so `isSameFinish` would call them one
+ * finish too: the id never refuses a result the finish rule would file.
+ */
+export function bibLessRaceExternalId(name: string, date: string, finish: FinishFacts): string {
+  const reading = (tag: string, s: number | null) => (s === null ? '' : `${tag}${Math.ceil(s)}`);
+  const place = finish.place === null ? '' : `p${finish.place}`;
+  return `${raceExternalId(name, date, '')}:${reading('c', finish.chipS)}${reading('g', finish.gunS)}${place}`;
+}
+
+/**
+ * One result in the provider-neutral shape every leg is read into before
+ * `mapRaceResult` shapes it — and the shape a pasted result arrives in.
+ */
+export interface RaceResultFields {
+  bib?: unknown;
   chip_time?: unknown;
-  clock_time?: unknown; // gun time
-  place?: unknown; // overall place
+  gun_time?: unknown;
+  overall_place?: unknown;
   age_group_place?: unknown;
   age_group?: unknown;
+  division_award_place?: unknown;
+  division_award?: unknown;
 }
 
 export interface MappedRaceRun {
@@ -63,13 +135,14 @@ export interface MappedRaceRun {
   source: 'race';
   activity_type: 'run';
   is_public: boolean;
+  followers_only: boolean;
   external_id: string;
   race_listing_id: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, Json>;
 }
 
 /**
- * Map one RunSignUp finisher onto a runs row for `userId`. `raceName` +
+ * Map one provider-neutral result onto a runs row for `userId`. `raceName` +
  * `raceDate` + `distanceM` come from the race_listings row being imported;
  * `chip_time` is authoritative for duration_s, falling back to clock (gun)
  * time when chip is absent. Returns null when the result can't become a valid
@@ -78,8 +151,8 @@ export interface MappedRaceRun {
  * stored distance would otherwise produce a row that fails the batch insert
  * (23502) and silently imports nothing for the whole race.
  */
-export function mapRunSignUpResult(
-  r: RunSignUpResult,
+export function mapRaceResult(
+  r: RaceResultFields,
   opts: {
     userId: string;
     listingId: string;
@@ -87,10 +160,11 @@ export function mapRunSignUpResult(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
   const chip = capField(r.chip_time);
-  const gun = capField(r.clock_time);
+  const gun = capField(r.gun_time);
   const durationS = parseClockToSeconds(chip || gun);
   if (durationS <= 0) return null;
   // runs.distance_m is NOT NULL. A listing with no stored distance can't yield
@@ -98,26 +172,38 @@ export function mapRunSignUpResult(
   if (opts.distanceM == null || !Number.isFinite(opts.distanceM) || opts.distanceM <= 0) {
     return null;
   }
+  // Same rule for the date. `public_race_listings` is a view, so the generated
+  // type cannot carry the base table's NOT NULL and the caller resolves it
+  // with `?? ''` — which appended to the synthetic clock gives the literal
+  // `T10:00:00Z`, a value `timestamptz` cannot parse. That 22007s the batch
+  // insert, so ONE unattributable date loses the whole race rather than one
+  // result.
+  if (!isIsoCalendarDate(opts.raceDate)) return null;
 
-  const bib = capField(r.bib_num);
-  // The RunSignUp / ChronoTrack / UltraSignup feeds carry a race date with no
+  const bib = resultText(r.bib);
+  // The RunSignUp / ChronoTrack feeds and a paste carry a race date with no
   // start clock, so synthesise a UTC time-of-day. The 10:00 UTC choice + its
-  // worldwide-timezone rationale live in the shared constant so this path and
-  // parkrun-import's parseParkrunDate can't silently diverge.
+  // worldwide-timezone rationale live in the shared constant.
   const startedAt = `${opts.raceDate}${SYNTHETIC_START_TIME_UTC}`;
 
-  const metadata: Record<string, unknown> = {
+  const metadata: Record<string, Json> = {
     race_name: capField(opts.raceName),
   };
   if (bib) metadata.bib = bib;
   if (chip) metadata.chip_time = chip;
   if (gun) metadata.gun_time = gun;
-  const place = toPositiveInt(r.place);
+  const place = toPositiveInt(r.overall_place);
   if (place != null) metadata.overall_place = place;
   const agPlace = toPositiveInt(r.age_group_place);
   if (agPlace != null) metadata.age_group_place = agPlace;
   const ag = capField(r.age_group, 40);
   if (ag) metadata.age_group = ag;
+  const awardPlace = toPositiveInt(r.division_award_place);
+  const award = capField(r.division_award, 40);
+  if (award && awardPlace != null) {
+    metadata.division_award = award;
+    metadata.division_award_place = awardPlace;
+  }
 
   return {
     started_at: startedAt,
@@ -126,26 +212,137 @@ export function mapRunSignUpResult(
     source: 'race',
     activity_type: 'run',
     is_public: opts.isPublic,
-    external_id: raceExternalId(opts.raceName, opts.raceDate, bib),
+    followers_only: !opts.isPublic && opts.followersOnly === true,
+    external_id: bib
+      ? raceExternalId(opts.raceName, opts.raceDate, bib)
+      : bibLessRaceExternalId(opts.raceName, opts.raceDate, finishFacts(metadata)),
     race_listing_id: opts.listingId,
     metadata,
   };
 }
 
-/** A single user-pasted result (the no-API path). */
-export interface PasteResultInput {
-  bib?: unknown;
-  chip_time?: unknown;
-  gun_time?: unknown;
-  overall_place?: unknown;
-  age_group_place?: unknown;
-  age_group?: unknown;
+// ── One finish, two paths (decisions § 1912) ─────────────────────────────────
+//
+// A result pasted without a bib is filed as `race:{name}:{date}::{finish}` and
+// the same result imported from a provider as `race:{name}:{date}:{bib}`, so
+// neither the
+// id nor the listing-and-bib skip can see that they are one finish. What both
+// paths do know is the listing (one race on one day), the finish clock and,
+// often, the overall place, and those are what decide it.
+
+/**
+ * How far apart two readings of one finish clock can be. A runner copies
+ * `21:43.34` as `21:43` or `21:44`, and a feed that publishes hundredths is
+ * stored rounded up (`parseClockToSeconds`), so one finish reads up to a
+ * second apart; two different finishes by one runner on one morning — a 5K and
+ * a 10K — are minutes apart.
+ */
+export const SAME_FINISH_TOLERANCE_S = 1;
+
+/** What a result's metadata says about the finish it records. */
+export interface FinishFacts {
+  bib: string;
+  chipS: number | null;
+  gunS: number | null;
+  place: number | null;
+}
+
+export function finishFacts(metadata: unknown): FinishFacts {
+  const m = metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? metadata as Record<string, unknown>
+    : {};
+  const clock = (raw: unknown) => {
+    const s = parseClock(typeof raw === 'number' ? String(raw) : raw);
+    return s > 0 ? s : null;
+  };
+  return {
+    bib: resultText(m.bib),
+    chipS: clock(m.chip_time),
+    gunS: clock(m.gun_time),
+    place: toPositiveInt(m.overall_place),
+  };
 }
 
 /**
- * Map a single pasted result onto a runs row. Same shape + dedup id as the
- * RunSignUp path so a later provider sync of the same race can't create a
- * duplicate. Returns null when the paste has no usable time.
+ * Whether two results under ONE listing for ONE runner are the same finish.
+ *
+ * Two bibs decide it alone. Otherwise the overall places, when both carry one,
+ * must agree, and the clocks must agree to within `SAME_FINISH_TOLERANCE_S` —
+ * chip against chip and gun against gun wherever both sides have that reading,
+ * and only when no reading is shared, the one each side has (RunSignUp's
+ * `chip_time` is often empty, and a runner pastes their time into whichever
+ * box). Two results with nothing to compare are not the same finish: a missed
+ * merge files a race twice, which the runner can delete, while a false merge
+ * writes one race's result over another's.
+ */
+export function isSameFinish(a: FinishFacts, b: FinishFacts): boolean {
+  if (a.bib && b.bib) return a.bib === b.bib;
+  if (a.place !== null && b.place !== null && a.place !== b.place) return false;
+  const pairs: Array<[number, number]> = [];
+  if (a.chipS !== null && b.chipS !== null) pairs.push([a.chipS, b.chipS]);
+  if (a.gunS !== null && b.gunS !== null) pairs.push([a.gunS, b.gunS]);
+  if (pairs.length === 0) {
+    const x = a.chipS ?? a.gunS;
+    const y = b.chipS ?? b.gunS;
+    if (x === null || y === null) return false;
+    pairs.push([x, y]);
+  }
+  return pairs.every(([x, y]) => Math.abs(x - y) < SAME_FINISH_TOLERANCE_S);
+}
+
+/** A run the caller already holds under the listing being imported onto. */
+export interface FiledRaceRun {
+  id: string;
+  source: string;
+  metadata: unknown;
+}
+
+/** A filed result that an incoming one names, to be written onto it. */
+export interface FinishMerge {
+  run: FiledRaceRun;
+  result: MappedRaceRun;
+}
+
+/**
+ * Reconcile incoming results against the runs already filed under the same
+ * listing. A result is dropped when a filed run is the same finish
+ * (`isSameFinish`) and carries everything the result knows; when the result
+ * carries a bib the filed run lacks — a bib-less paste, then the provider
+ * import of the same race — it is written onto that run instead, so the run
+ * gains its bib and later imports skip it by the cheaper rules. Each filed run
+ * absorbs at most one result. Pure; the handler does the writes.
+ */
+export function reconcileFiledFinishes(
+  incoming: readonly MappedRaceRun[],
+  filed: readonly FiledRaceRun[],
+): { fresh: MappedRaceRun[]; skipped: number; merges: FinishMerge[] } {
+  const facts = filed.map((f) => finishFacts(f.metadata));
+  const claimed = new Set<number>();
+  const fresh: MappedRaceRun[] = [];
+  const merges: FinishMerge[] = [];
+  let skipped = 0;
+  for (const result of incoming) {
+    const mine = finishFacts(result.metadata);
+    const at = facts.findIndex((f, i) => !claimed.has(i) && isSameFinish(mine, f));
+    if (at === -1) {
+      fresh.push(result);
+      continue;
+    }
+    claimed.add(at);
+    if (mine.bib && !facts[at].bib) merges.push({ run: filed[at], result });
+    else skipped += 1;
+  }
+  return { fresh, skipped, merges };
+}
+
+/** A single user-pasted result (the no-API path). */
+export type PasteResultInput = RaceResultFields;
+
+/**
+ * Map a single pasted result onto a runs row, in the same shape as every
+ * provider leg. A pasted bib gives it the provider's dedup id; without one it
+ * is matched to a provider import of the same race by `reconcileFiledFinishes`.
+ * Returns null when the paste has no usable time.
  */
 export function parseRaceResultRow(
   input: PasteResultInput,
@@ -156,19 +353,10 @@ export function parseRaceResultRow(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
-  return mapRunSignUpResult(
-    {
-      bib_num: input.bib,
-      chip_time: input.chip_time,
-      clock_time: input.gun_time,
-      place: input.overall_place,
-      age_group_place: input.age_group_place,
-      age_group: input.age_group,
-    },
-    opts,
-  );
+  return mapRaceResult(input, opts);
 }
 
 function toPositiveInt(raw: unknown): number | null {
@@ -204,7 +392,7 @@ export interface ChronoTrackResult {
 
 /**
  * Map one ChronoTrack finisher onto a runs row for `userId`. Delegates to the
- * shared `mapRunSignUpResult` shaping so the run row shape, the time fallback
+ * shared `mapRaceResult` shaping so the run row shape, the time fallback
  * (chip → gun), the external_id, and the metadata keys are identical across
  * providers — only the provider-specific field names differ here.
  */
@@ -217,14 +405,15 @@ export function mapChronoTrackResult(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
-  return mapRunSignUpResult(
+  return mapRaceResult(
     {
-      bib_num: r.results_bib,
+      bib: r.results_bib,
       chip_time: r.results_time,
-      clock_time: r.results_gun_time,
-      place: r.results_rank,
+      gun_time: r.results_gun_time,
+      overall_place: r.results_rank,
       age_group_place: r.results_division_rank,
       age_group: r.results_division,
     },
@@ -281,56 +470,317 @@ export function extractChronoTrackResults(payload: unknown): ChronoTrackResult[]
   return out;
 }
 
+// ── RunSignUp ────────────────────────────────────────────────────────────────
+//
+// Both endpoints are public (measured 2026-10-14: HTTP 200 with no key), so the
+// leg runs keyless and sends `api_key` / `api_secret` only when BOTH are set —
+// the rule `race-listings-sync` applies to the same provider (decisions § 1899).
+// What the live feed actually takes and returns, which the earlier reader had
+// guessed at:
+//
+// - get-results REQUIRES `event_id`. Without it the answer is an error
+//   envelope — `{"error":{"error_code":3,...,"param_missing":[{"param_name":
+//   "event_id"}]}}` — with HTTP 200, so a status check alone reads it as a race
+//   with nobody in it. The event comes from `GET /Rest/race/{race_id}`, whose
+//   `events` carry every edition the race has held.
+// - `bib_num` narrows upstream (a bib that ran answers one row, one that did
+//   not answers none). `user_id` is IGNORED keyless: it answers the whole field,
+//   so it can never be the thing that scopes an import (issue #360).
+// - A row carries `bib` (a number), `place`, `chip_time` (often `""`),
+//   `clock_time`, both with hundredths, and one `division-<id>-placement`
+//   column per division the set defines, named in the set's `results_headers`.
+
+/** Append the RunSignUp key pair, but only when both halves are set. */
+function withRunSignUpKey(u: URL, apiKey?: string | null, apiSecret?: string | null): URL {
+  if (apiKey && apiSecret) {
+    u.searchParams.set('api_key', apiKey);
+    u.searchParams.set('api_secret', apiSecret);
+  }
+  return u;
+}
+
+/** `GET /Rest/race/{race_id}`: the race and every event it has held. */
+export function runSignUpRaceUrl(opts: {
+  raceId: string;
+  apiKey?: string | null;
+  apiSecret?: string | null;
+}): string {
+  const u = new URL(`https://runsignup.com/Rest/race/${encodeURIComponent(opts.raceId)}`);
+  u.searchParams.set('format', 'json');
+  return withRunSignUpKey(u, opts.apiKey, opts.apiSecret).toString();
+}
+
 /**
- * Build the RunSignUp get-results URL. Centralised so the scraper-hygiene
- * (api_key/api_secret in the query string, format=json) lives in one place and
- * the URL is testable. `userId` here is the runner's RunSignUp account id —
- * NOT our auth user id.
+ * Build the RunSignUp get-results URL for one event, narrowed upstream to one
+ * bib. `results_per_page` is the row cap, so a feed that stopped honouring
+ * `bib_num` would show up as `resultsPossiblyTruncated` rather than as a silent
+ * first page.
  */
 export function runSignUpResultsUrl(opts: {
   raceId: string;
-  apiKey: string;
-  apiSecret: string;
-  runSignUpUserId?: string;
+  eventId: string;
+  bib: string;
+  apiKey?: string | null;
+  apiSecret?: string | null;
 }): string {
   const u = new URL(
     `https://runsignup.com/Rest/race/${encodeURIComponent(opts.raceId)}/results/get-results`,
   );
   u.searchParams.set('format', 'json');
-  u.searchParams.set('api_key', opts.apiKey);
-  u.searchParams.set('api_secret', opts.apiSecret);
-  if (opts.runSignUpUserId) u.searchParams.set('user_id', opts.runSignUpUserId);
-  return u.toString();
+  u.searchParams.set('event_id', opts.eventId);
+  u.searchParams.set('bib_num', opts.bib);
+  u.searchParams.set('results_per_page', String(MAX_RESULTS_ROWS));
+  return withRunSignUpKey(u, opts.apiKey, opts.apiSecret).toString();
+}
+
+/** A RunSignUp event a listing's results may sit under. */
+export interface RunSignUpEvent {
+  eventId: string;
+  distanceM: number | null;
+}
+
+/** How many of one race-day's events an import will query, at most. */
+export const MAX_RUNSIGNUP_EVENTS = 8;
+
+/**
+ * The in-person running events of the race that started on `raceDate`.
+ *
+ * One listing is one race (decisions § 1899), and a race morning commonly runs
+ * a 5K, a 10K and a half under it, so the runner's result can be under any of
+ * them. The race's `events` also carry every past edition, which is what lets a
+ * past listing find its own year. `start_time` is `M/D/YYYY HH:MM` in the
+ * race's own zone, so its date half is compared as the race's local day — the
+ * same reading `race_date` was stored with. The event matching the listing's
+ * distance sorts first, because it is the one the listing was filed under;
+ * volunteer slots, walks and virtual options are never queried.
+ */
+export function runSignUpEventsOn(
+  payload: unknown,
+  raceDate: string,
+  listingDistanceM: number | null,
+): RunSignUpEvent[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const race = (payload as Record<string, unknown>).race;
+  if (!race || typeof race !== 'object') return [];
+  const events = (race as Record<string, unknown>).events;
+  if (!Array.isArray(events)) return [];
+  const out: RunSignUpEvent[] = [];
+  for (const raw of events) {
+    if (!raw || typeof raw !== 'object') continue;
+    const ev = raw as RunSignUpEventRow;
+    if (!isInPersonRunningEvent(ev)) continue;
+    const startDay = typeof ev.start_time === 'string' ? ev.start_time.trim().split(/\s+/)[0] : '';
+    if (parseProviderRaceDate(startDay) !== raceDate) continue;
+    const eventId = resultText(ev.event_id, 32);
+    if (!/^\d+$/.test(eventId)) continue;
+    out.push({ eventId, distanceM: parseRunSignUpDistance(ev.distance) });
+  }
+  out.sort((a, b) =>
+    Number(b.distanceM !== null && b.distanceM === listingDistanceM) -
+    Number(a.distanceM !== null && a.distanceM === listingDistanceM)
+  );
+  return out.slice(0, MAX_RUNSIGNUP_EVENTS);
+}
+
+/** One RunSignUp result row with the headers of the set it came from. */
+export interface RunSignUpResultRow {
+  result: Record<string, unknown>;
+  headers: Record<string, unknown>;
 }
 
 /**
  * Pull the flat finisher array out of the RunSignUp get-results envelope,
- * capped. The API nests results under
- * `individual_results_sets[].results[]`; tolerate a top-level `results` too.
+ * capped. Rows sit under `individual_results_sets[].results[]`, and each set
+ * names its own division columns, so every row keeps its set's headers.
  */
-export function extractRunSignUpResults(payload: unknown): RunSignUpResult[] {
-  const out: RunSignUpResult[] = [];
+export function extractRunSignUpResults(payload: unknown): RunSignUpResultRow[] {
+  const out: RunSignUpResultRow[] = [];
   if (!payload || typeof payload !== 'object') return out;
-  const obj = payload as Record<string, unknown>;
-  const sets = obj.individual_results_sets;
-  if (Array.isArray(sets)) {
-    for (const set of sets) {
-      const rows = (set as Record<string, unknown>)?.results;
-      if (Array.isArray(rows)) {
-        for (const r of rows) {
-          out.push(r as RunSignUpResult);
-          if (out.length >= MAX_RESULTS_ROWS) return out;
-        }
-      }
-    }
-  }
-  if (out.length === 0 && Array.isArray(obj.results)) {
-    for (const r of obj.results) {
-      out.push(r as RunSignUpResult);
+  const sets = (payload as Record<string, unknown>).individual_results_sets;
+  if (!Array.isArray(sets)) return out;
+  for (const set of sets) {
+    if (!set || typeof set !== 'object') continue;
+    const rows = (set as Record<string, unknown>).results;
+    const rawHeaders = (set as Record<string, unknown>).results_headers;
+    const headers = rawHeaders && typeof rawHeaders === 'object' && !Array.isArray(rawHeaders)
+      ? rawHeaders as Record<string, unknown>
+      : {};
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) {
+      if (!r || typeof r !== 'object' || Array.isArray(r)) continue;
+      out.push({ result: r as Record<string, unknown>, headers });
       if (out.length >= MAX_RESULTS_ROWS) return out;
     }
   }
   return out;
+}
+
+const DIVISION_COLUMN = /^division-\d+-placement$/;
+
+const MAX_AGE = 120;
+const EVENT_PREFIX = /^\d+(?:\.\d+)?(?:k|mi|m)_/;
+const SEX_LEAD =
+  /^(?:non[- ]?binary|female|male|women'?s|men'?s|women|men|girls|boys|nb|f|m|x)(?:([ _-]+)|(?=u?\d))/;
+const SEX_TRAIL = / (?:female|male|women|men)$/;
+const AGE_WORD = /^(?:age group|ages|age) /;
+const RANGE = /^(\d{1,3}) ?(?:-|\u2013|to|thru|through) ?(\d{1,3})$/;
+const COMPACT = /^(\d{4,6})$/;
+const OVER = /^(\d{1,3}) ?(?:\+|plus|and over|and older|and up|or over|or older)$|^over (\d{1,3})$/;
+const UNDER = /^(\d{1,3}) ?(?:and under|and younger|or under|or younger|and und|u|-)$|^(?:under|u) ?(\d{1,3})$/;
+const SINGLE = /^(\d{1,3})$/;
+
+function bandIsAgeGroup(lo: number, hi: number): boolean {
+  return lo <= hi && hi >= 1 && hi <= MAX_AGE && !(lo <= 1 && hi >= 99);
+}
+
+/**
+ * Whether a RunSignUp division name is an age band, read from its shape.
+ *
+ * Measured over the headers of 826 public events across 297 races
+ * (decisions § 1913): an age group is a range (`F 30-39`, `Male 20 to 29`,
+ * `Ages 18-24`, `30-39 Female`), an open end (`Female 70 and Over`, `M75+`,
+ * `F14&UND`, `MU14`, `M 10-`, `Under 18`), a sex letter fused to its bounds
+ * (`M2029`, `F0119`, `F80120`), or a single year after the word "age"
+ * (`Boys age 10`), optionally under an event code (`5K_F30-39`). Everything
+ * else that carries a digit is some other award: `M Top 3 Overall`,
+ * `Top 10 Female`, `2 Person Team`, and the weight classes, which are banded by
+ * age themselves (`Clydesdale 40 and Over`, `F Athena Under 40`) and place a
+ * runner instead of their age group. Masters tiers are awards too: they lift a
+ * runner out of the age groups exactly as an overall win does. A band covering
+ * the whole field (`M 1-99`, `F 00-00`) is a catch-all, not an age group, and a
+ * shape this does not know leaves the age group unset rather than guessed.
+ */
+function isRunSignUpAgeGroupName(name: string): boolean {
+  const band = runSignUpBand(name);
+  return band !== null && bandIsAgeGroup(band[0], band[1]);
+}
+
+/**
+ * The age band a RunSignUp division name spells, read from its shape, or null
+ * when it names none (an award such as `M Masters`, `F Top 3 Overall` or
+ * `M Clydes`). A band that is not an age group (`M 1-99`, `F 00-00`) is still
+ * returned, so a caller can tell a catch-all from an award.
+ */
+function runSignUpBand(name: string): [number, number] | null {
+  let s = name.toLowerCase().replace(/&/g, ' and ').replace(/\s+/g, ' ').trim();
+  s = s.replace(EVENT_PREFIX, '');
+  let sex = false;
+  let fused = false;
+  const lead = SEX_LEAD.exec(s);
+  if (lead) {
+    sex = true;
+    fused = lead[1] === undefined;
+    s = s.slice(lead[0].length);
+  }
+  const word = AGE_WORD.exec(s);
+  if (word) s = s.slice(word[0].length);
+  if (!sex) s = s.replace(SEX_TRAIL, '');
+
+  const range = RANGE.exec(s);
+  if (range) return [Number(range[1]), Number(range[2])];
+  const compact = fused ? COMPACT.exec(s) : null;
+  if (compact) {
+    const digits = compact[1];
+    const split = digits.length === 6 ? 3 : 2;
+    return [Number(digits.slice(0, split)), Number(digits.slice(split))];
+  }
+  const over = OVER.exec(s);
+  if (over) return [Number(over[1] ?? over[2]), MAX_AGE];
+  const under = UNDER.exec(s);
+  if (under) return [0, Number(under[1] ?? under[2])];
+  const single = word ? SINGLE.exec(s) : null;
+  if (single) return [Number(single[1]), Number(single[1])];
+  return null;
+}
+
+/**
+ * The runner's age group and their place in it, or null when the row does not
+ * say which one that is.
+ *
+ * RunSignUp has no age-group field: a row holds a placement for each division
+ * it scored in, and the set's headers name them. The one placed division whose
+ * name is an age band (`isRunSignUpAgeGroupName`) is taken. Zero is common, as
+ * an overall, masters or weight-class award lifts a runner out of their age
+ * group, and two happens where a race defines two age schemes side by side
+ * (`M 20-24` beside `M2024`); both leave the age group unset rather than pick.
+ */
+export function runSignUpAgeGroup(
+  row: RunSignUpResultRow,
+): { label: string; place: number } | null {
+  let found: { label: string; place: number } | null = null;
+  for (const [key, value] of Object.entries(row.result)) {
+    if (!DIVISION_COLUMN.test(key)) continue;
+    const place = toPositiveInt(value);
+    if (place === null) continue;
+    const label = capField(row.headers[key], 40);
+    if (!isRunSignUpAgeGroupName(label)) continue;
+    if (found) return null;
+    found = { label, place };
+  }
+  return found;
+}
+
+/**
+ * The award division the runner placed in and their place in it, or null.
+ *
+ * An award division is one whose name spells no age band at all: masters
+ * tiers, overall top-N, weight classes, team or challenged divisions. These
+ * lift a runner out of their age group (§ 1913), so without this the runner
+ * who won one would carry no division at all. A catch-all band (`M 1-99`) is
+ * not an award, and neither is anything beside a placed age group: a runner
+ * still in their age group was not lifted out of it, so a named division next
+ * to it (`All Male`, place 20) is a field-wide ranking, not a prize. Two placed
+ * award divisions leave it unset rather than pick, the same rule
+ * `runSignUpAgeGroup` follows.
+ */
+export function runSignUpDivisionAward(
+  row: RunSignUpResultRow,
+): { label: string; place: number } | null {
+  let found: { label: string; place: number } | null = null;
+  for (const [key, value] of Object.entries(row.result)) {
+    if (!DIVISION_COLUMN.test(key)) continue;
+    const place = toPositiveInt(value);
+    if (place === null) continue;
+    const label = capField(row.headers[key], 40);
+    if (!label) continue;
+    const band = runSignUpBand(label);
+    if (band !== null && bandIsAgeGroup(band[0], band[1])) return null;
+    if (band !== null) continue;
+    if (found) return null;
+    found = { label, place };
+  }
+  return found;
+}
+
+/** Map one RunSignUp result row onto a runs row (see `mapRaceResult`). */
+export function mapRunSignUpResult(
+  row: RunSignUpResultRow,
+  opts: {
+    userId: string;
+    listingId: string;
+    raceName: string;
+    raceDate: string;
+    distanceM: number | null;
+    isPublic: boolean;
+    followersOnly?: boolean;
+  },
+): MappedRaceRun | null {
+  const r = row.result;
+  const ag = runSignUpAgeGroup(row);
+  const award = runSignUpDivisionAward(row);
+  return mapRaceResult(
+    {
+      bib: r.bib,
+      chip_time: r.chip_time,
+      gun_time: r.clock_time,
+      overall_place: r.place,
+      age_group: ag?.label,
+      age_group_place: ag?.place,
+      division_award: award?.label,
+      division_award_place: award?.place,
+    },
+    opts,
+  );
 }
 
 // ── Athlete-scoping guard (issue #360) ───────────────────────────────────────
@@ -351,20 +801,44 @@ export interface RaceImportGate {
 const GATE_OK: RaceImportGate = { ok: true };
 
 /**
- * Pre-fetch gate for the RunSignUp leg. A request is scoped when it carries the
- * runner's RunSignUp user id (narrows the upstream fetch) or a bib (narrows the
- * mapped results client-side via `filterResultsByBib`). An unscoped request is
- * rejected 400 `runsignup_athlete_id_required` — never fetched.
+ * Pre-fetch gate for the RunSignUp leg: a request is scoped only by a bib.
+ *
+ * The bib narrows twice — upstream (`bib_num`) and again over the mapped rows
+ * (`filterResultsByBib`), because the gate proves the REQUEST was scoped, not
+ * that the feed honoured it. The runner's RunSignUp user id used to count as
+ * scope too, and it cannot: the feed ignores `user_id` keyless and answers the
+ * whole field, and no result row carries a user id to narrow by afterwards. An
+ * unscoped request is rejected 400 `runsignup_bib_required` — never fetched.
  */
-export function runSignUpScopeGate(scope: {
-  runSignUpUserId?: string;
-  bib?: string;
-}): RaceImportGate {
-  const scoped = Boolean(capField(scope.runSignUpUserId) || capField(scope.bib));
-  return scoped ? GATE_OK : {
+export function runSignUpScopeGate(scope: { bib?: string }): RaceImportGate {
+  return capField(scope.bib) ? GATE_OK : {
     ok: false,
     status: 400,
-    error: 'runsignup_athlete_id_required',
+    error: 'runsignup_bib_required',
+  };
+}
+
+/**
+ * Pre-fetch gate for the ChronoTrack leg — the same fail-closed rule as
+ * `runSignUpScopeGate`, which the ChronoTrack branch never had.
+ *
+ * `chronoTrackResultsUrl` only narrows the upstream fetch when a bib is
+ * supplied; omit it and the request returns the WHOLE finisher field for the
+ * event. `extractChronoTrackResults` then takes up to MAX_RESULTS_ROWS (2000)
+ * and `mapChronoTrackResult` stamps the CALLER's user_id on every one, so a
+ * plain "import from ChronoTrack" with no bib inserts 2000 strangers' races as
+ * the caller's own runs — which re-derive personal_records (the winner's 2:09
+ * becomes their marathon PR), fire award_achievements_for_user, poison
+ * run_streaks_for_user, and feed every challenge leaderboard.
+ *
+ * `matchResultGate` does not cover this: it guards only the matchRunId enrich
+ * path, not the plain-insert path.
+ */
+export function chronoTrackScopeGate(scope: { bib?: string }): RaceImportGate {
+  return capField(scope.bib) ? GATE_OK : {
+    ok: false,
+    status: 400,
+    error: 'chronotrack_bib_required',
   };
 }
 
@@ -383,9 +857,10 @@ export function matchResultGate(mappedCount: number): RaceImportGate {
 }
 
 /**
- * Keep only the mapped results whose bib matches `bib`. RunSignUp's API filters
- * only by user id, so a request scoped by bib alone must be narrowed here — a
- * blank bib is a no-op (the user-id narrowing already applied upstream).
+ * Keep only the mapped results whose bib matches `bib`. Every bib-scoped leg
+ * narrows here as well as upstream: a feed that ignores a filter answers the
+ * whole field, and every row of it carries the caller's user id by then
+ * (issue #360). A blank bib is a no-op.
  */
 export function filterResultsByBib(
   mapped: MappedRaceRun[],
@@ -394,102 +869,4 @@ export function filterResultsByBib(
   const want = capField(bib);
   if (!want) return mapped;
   return mapped.filter((r) => r.metadata.bib === want);
-}
-
-// ── UltraSignup ──────────────────────────────────────────────────────────────
-//
-// UltraSignup powers most US trail + ultra events and exposes a per-athlete
-// results feed. Its field names differ from RunSignUp's (it spells the bib
-// `bibno`, the finishing clock `formattime`, the overall position `place`, the
-// age-group rank `agerank`, and the division string `agegroup`), so it gets its
-// own tolerant row shape + mapper rather than being forced through the
-// RunSignUp one. The mapped output is the SAME `MappedRaceRun` (source='race',
-// the race:{name}:{date}:{bib} dedup id, the owner-only race metadata) so a
-// UltraSignup-imported result dedups against a paste/recorded counterpart for
-// the same race exactly like the other providers.
-
-/** A finisher row as UltraSignup returns it (the fields we consume). */
-export interface UltraSignUpResult {
-  bibno?: unknown;
-  bib?: unknown;
-  formattime?: unknown; // "1:47:23" finishing clock
-  time?: unknown; // fallback time field on some feeds
-  place?: unknown; // overall place
-  agerank?: unknown; // age-group place
-  age_group_place?: unknown;
-  agegroup?: unknown; // division string, e.g. "M35-39"
-  age_group?: unknown;
-}
-
-/**
- * Map one UltraSignup finisher onto a runs row for `userId`. `raceName` +
- * `raceDate` + `distanceM` come from the race_listings row being imported.
- * Returns null when there is no usable time at all (a DNS/DNF row is not a run).
- */
-export function mapUltraSignUpResult(
-  r: UltraSignUpResult,
-  opts: {
-    userId: string;
-    listingId: string;
-    raceName: string;
-    raceDate: string;
-    distanceM: number | null;
-    isPublic: boolean;
-  },
-): MappedRaceRun | null {
-  return mapRunSignUpResult(
-    {
-      bib_num: r.bibno ?? r.bib,
-      chip_time: r.formattime ?? r.time,
-      place: r.place,
-      age_group_place: r.agerank ?? r.age_group_place,
-      age_group: r.agegroup ?? r.age_group,
-    },
-    opts,
-  );
-}
-
-/**
- * Build the UltraSignup athlete-results URL. `athleteId` is the runner's
- * UltraSignup participant id (uid in the public results URL pattern). The
- * api_key/api_secret carry our credential (gated server-side); `format=json`
- * asks for the structured feed.
- */
-export function ultraSignUpResultsUrl(opts: {
-  athleteId: string;
-  apiKey: string;
-  apiSecret: string;
-}): string {
-  const u = new URL('https://ultrasignup.com/service/events.svc/results/athlete');
-  u.searchParams.set('format', 'json');
-  u.searchParams.set('uid', opts.athleteId);
-  u.searchParams.set('api_key', opts.apiKey);
-  u.searchParams.set('api_secret', opts.apiSecret);
-  return u.toString();
-}
-
-/**
- * Pull the flat finisher array out of the UltraSignup results envelope, capped.
- * The feed is usually a bare top-level array; tolerate a `{ results: [...] }`
- * wrapper too.
- */
-export function extractUltraSignUpResults(payload: unknown): UltraSignUpResult[] {
-  const out: UltraSignUpResult[] = [];
-  if (Array.isArray(payload)) {
-    for (const r of payload) {
-      out.push(r as UltraSignUpResult);
-      if (out.length >= MAX_RESULTS_ROWS) return out;
-    }
-    return out;
-  }
-  if (payload && typeof payload === 'object') {
-    const rows = (payload as Record<string, unknown>).results;
-    if (Array.isArray(rows)) {
-      for (const r of rows) {
-        out.push(r as UltraSignUpResult);
-        if (out.length >= MAX_RESULTS_ROWS) return out;
-      }
-    }
-  }
-  return out;
 }

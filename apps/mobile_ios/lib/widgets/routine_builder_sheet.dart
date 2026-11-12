@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../gym_prs.dart' show normaliseExerciseName;
+import '../gym_prs.dart' show namesAnExercise, normaliseExerciseName;
 import '../l10n/gen/app_localizations.dart';
+import '../metrics.dart';
 import '../local_routine_store.dart';
 import '../preferences.dart';
 import '../routine_editor_build.dart';
+import '../typed_decimal.dart';
 import 'full_screen_form.dart';
+import 'metric_label.dart';
 
 /// Open the routine builder as a fullscreen dialog. Pass [seedExercises] /
 /// [seedTitle] to prefill it (e.g. the output of `routineFromWorkout` for a
@@ -226,13 +229,13 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     final inc = WeightFormat.parseToKg(ex.increment.text, activeWeightUnit);
     if (inc != null) params['incrementKg'] = inc;
     if (ex.progression == 'percent_cycle') {
-      final pct = double.tryParse(ex.percent.text.trim().replaceAll(',', '.'));
+      final pct = parseTypedDecimal(ex.percent.text);
       final oneRm = WeightFormat.parseToKg(ex.oneRm.text, activeWeightUnit);
       if (pct != null) params['percent'] = pct / 100;
       if (oneRm != null) params['oneRmKg'] = oneRm;
     }
     if (ex.progression == 'rpe_autoreg') {
-      final rpe = double.tryParse(ex.targetRpe.text.trim().replaceAll(',', '.'));
+      final rpe = parseTypedDecimal(ex.targetRpe.text);
       if (rpe != null) params['targetRpe'] = rpe;
     }
     return params;
@@ -241,7 +244,11 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
   List<StoredRoutineExercise> _buildExercises() {
     // Drop blank-named exercises first so superset linking only sees real rows
     // (a blank row between two flagged blocks must not bridge them).
-    final named = _exercises.where((e) => e.name.text.trim().isNotEmpty).toList();
+    // Blank on the KEY: gym_routine_exercises.exercise_key carries
+    // `length(...) between 1 and 120`, so a name the canonical fold empties is
+    // a 23514 rather than a dropped row.
+    final named =
+        _exercises.where((e) => namesAnExercise(e.name.text)).toList();
     if (named.isEmpty) return const [];
     final groups = assignSupersetGroups([for (final e in named) e.supersetWithNext]);
 
@@ -270,13 +277,12 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
               targetWeightKg: ex.modality == 'weight_reps'
                   ? WeightFormat.parseToKg(s.weight.text, activeWeightUnit)
                   : null,
-              targetRpe:
-                  double.tryParse(s.rpe.text.trim().replaceAll(',', '.')),
+              targetRpe: parseTypedDecimal(s.rpe.text),
               restS: int.tryParse(s.rest.text.trim()),
               targetDurationS:
                   ex.modality == 'time' ? int.tryParse(s.duration.text.trim()) : null,
               targetDistanceM: ex.modality == 'distance'
-                  ? double.tryParse(s.distance.text.trim().replaceAll(',', '.'))
+                  ? parseTypedDecimal(s.distance.text)
                   : null,
             ),
         ],
@@ -578,7 +584,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           const SizedBox(width: 4),
           SizedBox(
             width: 56,
-            child: _numField(s.rpe, l10n.gymRpe, true),
+            child: _numField(s.rpe, metricText(l10n, Metric.rpe), true),
           ),
           IconButton(
             tooltip: l10n.gymEditorRemoveSet,
@@ -624,14 +630,35 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         ],
         if (scheme == 'percent_cycle') ...[
           const SizedBox(height: 8),
-          _numField(ex.percent, l10n.gymRoutineProgressionPercentLabel, true),
+          _numField(
+              ex.percent,
+              metricText(l10n, Metric.e1rm, variant: 'percent'),
+              true),
           const SizedBox(height: 8),
-          _numField(ex.oneRm, l10n.gymRoutineProgressionOneRmLabel(unit), true),
+          Row(
+            children: [
+              Expanded(
+                child: _numField(
+                    ex.oneRm,
+                    metricText(l10n, Metric.e1rm,
+                        variant: 'oneRm', args: {'unit': unit}),
+                    true),
+              ),
+              const MetricInfoButton(metric: Metric.e1rm),
+            ],
+          ),
         ],
         if (scheme == 'rpe_autoreg') ...[
           const SizedBox(height: 8),
-          _numField(
-              ex.targetRpe, l10n.gymRoutineProgressionTargetRpeLabel, true),
+          Row(
+            children: [
+              Expanded(
+                child: _numField(ex.targetRpe,
+                    metricText(l10n, Metric.rpe, variant: 'target'), true),
+              ),
+              const MetricInfoButton(metric: Metric.rpe),
+            ],
+          ),
         ],
       ],
     );
@@ -643,7 +670,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           hintText: l10n.gymEditorExercisePlaceholder,
-          errorText: _needExercise && ex.name.text.trim().isEmpty
+          errorText: _needExercise && !namesAnExercise(ex.name.text)
               ? l10n.gymRoutineEditorNeedExercise
               : null,
         );
@@ -667,10 +694,10 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       textEditingController: ex.name,
       focusNode: ex.nameFocus,
       optionsBuilder: (value) {
-        final q = value.text.trim().toLowerCase();
+        final q = normaliseExerciseName(value.text);
         if (q.isEmpty) return const Iterable<String>.empty();
         return widget.suggestions
-            .where((s) => s.toLowerCase().contains(q))
+            .where((s) => normaliseExerciseName(s).contains(q))
             .take(6);
       },
       fieldViewBuilder: (context, controller, focusNode, onSubmit) => Semantics(

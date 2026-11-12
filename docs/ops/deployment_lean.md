@@ -51,6 +51,23 @@ Fully functional web launch with backups intact.
   sellable (`PUBLIC_COACH_ENABLED=true`), but leave `PUBLIC_ROUTE_GEN_ENABLED`
   unset — the route engines are still deferred here, and the flag keeps the
   Pro card + `/routes/new` from advertising the dead perk (decisions §204).
+  `PUBLIC_AI_PLAN_ENABLED` (the AI plan assistant on `/plans/new` and the
+  season request behind it, which spend the Coach's key and daily counter)
+  stays unset until its decisions §12
+  liability sign-off and the v3 AI-disclosure copy sign-off land; it is not a
+  Pro storefront gate, and on its own it changes nothing without the Coach flag.
+  `PUBLIC_COACH_FUEL_ENABLED` + the coach Lambda's `COACH_FUEL_ENABLED` (the
+  Coach's fuelling handoff to `/nutrition/fuel`, decisions § 1975) stay unset
+  until the owner + counsel sign-off in `race_fueling_plan.md` lands; they add
+  no model call, only prompt text and a deterministic page.
+  `PUBLIC_AI_PLAN_EDIT_ENABLED` (Adjust with AI on `/plans/[id]`, same key and
+  counter) stays unset the same way until its decisions § 1979 sign-off and the
+  v4 disclosure copy sign-off land.
+  `PUBLIC_PLATE_PHOTO_ENABLED` (the plate-photo logger on `/nutrition/log`, a
+  Pro perk on the Coach's key) stays unset, with `PLATE_PHOTO_ENABLED` unset in
+  the coach Lambda's sops file, until the counsel / CISO sign-off on the v5
+  AI-disclosure copy lands; like the plan flag it does nothing without the Coach
+  flag.
 - No mobile stores.
 
 ### Rock-bottom — ~$10–11/mo (coach off) — SELECTED 2026-07-02, DEPLOYED 2026-07-11
@@ -71,8 +88,8 @@ tradeoffs (below).
   engines deferred, Pro delivers nothing — `/settings/upgrade` shows a
   "Pro — coming soon" teaser and leads with donations rather than selling a
   hollow subscription (also a consumer-protection / chargeback risk). The coach
-  flag hides every web entry point into the AI Coach (sidebar nav, the `/coach`
-  chat → "coming soon", the dashboard promo, the route-detail AI upsell, the
+  flag hides every web entry point into the AI Coach (the Messages inbox row, the
+  `/messages/coach` chat → "coming soon", the dashboard promo, the route-detail AI upsell, the
   `/compare` link) so nothing surfaces a door that only 503s; the static
   guided-runs rail and the offline "Describe this route" template stay. The
   route-gen flag hides the `/routes/new` Pro upsell and the Pro-card bullet —
@@ -131,7 +148,7 @@ Deploy the rock-bottom Edge Function subset — the functions the web app actual
 that work without gated secrets (platform-injected env only; deployed 2026-07-11):
 
 ```bash
-for fn in clip-public-track delete-account export-data race-results-import race-listings-sync; do
+for fn in clip-public-track delete-account export-data race-results-import race-listings-sync race-listings-sweep; do
   supabase functions deploy "$fn" --project-ref <ref>
 done
 ```
@@ -139,10 +156,22 @@ done
 - `clip-public-track` — privacy-zone clipping for non-owner track viewers (privacy
   invariant, not optional). `delete-account` — GDPR erasure; the third-party sweeps
   (RevenueCat / FCM / Stripe) record `skipped` when their keys are unset. `export-data` —
-  nominally deprecated for the Go worker's `/v1/export`, but the worker is exactly what
-  this tier defers, so the EF is the load-bearing export path. `race-results-import` +
-  `race-listings-sync` — the parkrun and manual-paste legs work keyless; the
-  RunSignUp / UltraSignup / ChronoTrack legs answer 503 `provider_not_configured`.
+  nominally deprecated for the Go worker's queued rail, but the worker is exactly what
+  this tier defers, so the EF is the load-bearing export path on this tier. Note the
+  consequence for MOBILE: since [decisions § 724](../architecture/decisions.md) the
+  mobile client speaks only the queued rail, so without the worker its Account export
+  tile has no service to call and says so — the on-device Full backup is what mobile
+  gets on this tier, and it does not carry the personal-data table set. `race-results-import` +
+  `race-listings-sync` — the manual-paste and RunSignUp legs work keyless
+  (RunSignUp's feeds are public, decisions § 1903); the ChronoTrack results leg and
+  the UltraSignup listings leg answer 503 `provider_not_configured`. `race-listings-sweep` fills the calendar
+  from RunSignUp on a five-minute schedule once its Vault URL is armed (`deployment.md`
+  § RunSignUp race calendar).
+  No leg scrapes a third party's site; the parkrun and UltraSignup results imports
+  were removed ([decisions § 2467](../architecture/decisions.md)).
+  Audience sharing (followers level + named-person shares) needs no deploy step and
+  ships closed; opening its `private.feature_flags` row waits on the CISO / Security
+  Analyst review in [deployment.md § Audience sharing](deployment.md#audience-sharing--after-the-ciso--security-analyst-review).
 - **Skip**: `strava-import` (needs Strava OAuth creds, and token refresh lives on the
   deferred worker — connections would go stale; Strava re-attaches with the worker rung),
   `refresh-tokens` + `strava-webhook` (deprecated worker rollback paths, nothing calls
@@ -215,9 +244,12 @@ once.
 Set the required build-input GitHub secrets (`PUBLIC_SUPABASE_URL` = the same raw
 `<ref>.supabase.co` URL, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`) before the first
 `web@*` deploy, then push to trigger `release-web.yml`. `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`
-is NOT needed at this tier: the release guard (`check_production_env.mjs`) only requires it
-when a Pro perk flag (`PUBLIC_COACH_ENABLED` / `PUBLIC_ROUTE_GEN_ENABLED`) is truthy — with
-both unset, the empty checkout link matches the "Pro — coming soon" teaser.
+is NOT needed at this tier: with both Pro perk flags (`PUBLIC_COACH_ENABLED` /
+`PUBLIC_ROUTE_GEN_ENABLED`) unset the empty checkout link matches the "Pro — coming soon"
+teaser. It is not required with a perk on either: Coach on and no checkout link is the
+app-only storefront, where Pro is sold in the iPhone app and the release guard
+(`check_production_env.mjs`) prints a `::notice::` instead of failing (decisions § 1826). A
+value that IS set must be `https://pay.rev.cat/<token>` or the guard fails the release.
 
 ### 3. Skip Fly entirely
 

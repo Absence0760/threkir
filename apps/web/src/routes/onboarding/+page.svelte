@@ -1,37 +1,57 @@
 <script lang="ts">
-	import { TEXT_LIMITS } from '$lib/core/text_limits';
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { m } from '$lib/i18n/store.svelte';
-	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
+	import { onMount, tick } from 'svelte';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
+	import GrisnirArt from '#lib/components/GrisnirArt.svelte';
+	import { loadMascotShown, peekMascotShown } from '#lib/mascot/mascot_pref.ts';
+	import { browser } from '$app/env';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 	import {
 		parseWeightToKg,
 		roundWeight,
 		isBodyWeightInRangeKg,
+		weightBoundsIn,
 		type WeightUnit,
-	} from '$lib/format/weight';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { updateUniversal } from '$lib/settings/settings';
+	} from '#lib/format/weight.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { updateUniversal } from '#lib/settings/settings.ts';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
+	import type { Updatable } from '#lib/core/database.ts';
 	import {
 		isPushSupported,
 		pushPermission,
 		subscribeToPush,
 		getCurrentSubscription,
-	} from '$lib/util/push';
+	} from '#lib/util/push.ts';
 	import {
-		ONBOARDING_TOTAL_STEPS,
+		ONBOARDING_IMPORT_SOURCES,
+		ONBOARDING_STEPS,
 		PRIMARY_GOAL_KEY,
 		PRIMARY_GOAL_VALUES,
+		visibleOnboardingSteps,
+		type OnboardingImportSource,
+		type OnboardingStep,
 		type PrimaryGoal,
-	} from '$lib/settings/onboarding';
+	} from '#lib/settings/onboarding.ts';
 
-	/// Step state. Bounded 1..ONBOARDING_TOTAL_STEPS. Persona-hunt
+	/// Step state, a 1-based index into `steps`. Persona-hunt
 	/// new-runner finding-area #1: a Garmin-style step-by-step is
 	/// lower cognitive load than a single long form, especially for
 	/// the new-runner persona who's overwhelmed by choice.
 	let step = $state(1);
+
+	// The steps this visitor walks. Settled in onMount, before the wizard
+	// renders: the notifications step only appears when push can actually be
+	// turned on in this browser (visibleOnboardingSteps).
+	let steps = $state<OnboardingStep[]>([...ONBOARDING_STEPS]);
+	const total = $derived(steps.length);
+	const current = $derived<OnboardingStep>(steps[step - 1]);
 
 	// ── Step 1: display name ──────────────────────────────────
 	let displayName = $state('');
@@ -48,7 +68,7 @@
 	let primaryGoal = $state<PrimaryGoal | null>(null);
 
 	// ── Step 4: about you (gender + DOB + weight + Art 9 consent) ──
-	// Identical shape to /settings/preferences so the same fields
+	// Identical shape to /settings/body so the same fields
 	// land in the same columns. Consent gates the health-data *use* —
 	// gender, the prefs-bag mirror, and the consent timestamp are only
 	// written when the box is ticked. The bare `date_of_birth` column,
@@ -68,8 +88,9 @@
 	// parsing, exactly like preferred_unit for distance.
 	let bodyWeight = $state('');
 	const weightUnit = $derived<WeightUnit>(preferredUnit === 'mi' ? 'lbs' : 'kg');
-	const weightMin = $derived(weightUnit === 'lbs' ? 44 : 20);
-	const weightMax = $derived(weightUnit === 'lbs' ? 550 : 250);
+	const weightBounds = $derived(weightBoundsIn('body_metrics.weight_kg', weightUnit));
+	const weightMin = $derived(weightBounds.min);
+	const weightMax = $derived(weightBounds.max);
 	// The `min`/`max` input attributes above are cosmetic — the wizard
 	// advances via onclick handlers, not a native form submit, so the
 	// browser's constraint validation never runs (issue #677). This is the
@@ -89,10 +110,25 @@
 	// overrode a mobile user's private choice. Persona-hunt new #56.
 	let privacyDefault = $state<'public' | 'followers' | 'private'>('private');
 
-	// ── Step 6: notifications ─────────────────────────────────
+	// ── Step 6: notifications (web shows it only when push can be turned on) ──
 	const pushSupported = isPushSupported();
 	let pushSubscribed = $state(false);
 	let pushBusy = $state(false);
+
+	// ── Step 7: what to track ─────────────────────────────────
+	// Running is always on. Gym and Nutrition start off and stay null until a
+	// switch is touched, so an untouched or skipped step writes nothing and the
+	// data default (shown once that modality has data) stays in force, as
+	// decisions § 1650 has every other step do. Mobile's wizard asks the same.
+	let trackGym = $state<boolean | null>(null);
+	let trackNutrition = $state<boolean | null>(null);
+
+	// ── Step 8: import your history ───────────────────────────
+	// Each row hands off to the import surface that already exists for that
+	// source. The layout gate sends a signed-in account with no onboarded_at
+	// back here from every other page, so a row finishes setup first (the same
+	// save Open dashboard does) and then goes, exactly as the done step's
+	// create-plan CTA does — there is no half-finished wizard to resume.
 
 	let saving = $state(false);
 
@@ -103,6 +139,18 @@
 	// a value typed into the gap. Rendering the wizard only once `ready` is
 	// true means it exists only client-side, post-hydration, fully wired.
 	let ready = $state(false);
+
+	// Grisnir waits by the trail sign in the side panel, hidden until the
+	// runner's show_mascot is known. A settings read that succeeds with no
+	// value is known and on (a new account); one that fails with nothing
+	// cached is unknown and keeps him hidden, as EmptyState and the flyover do.
+	// The read waits for auth, since a hard reload mounts with no user yet.
+	let mascotShown = $state<boolean | null>(null);
+	onMount(async () => {
+		await auth.ready();
+		mascotShown = peekMascotShown();
+		mascotShown = await loadMascotShown();
+	});
 
 	onMount(async () => {
 		// `auth.svelte.ts` flips loading=false before the async
@@ -119,21 +167,96 @@
 		if (pushSupported) {
 			pushSubscribed = !!(await getCurrentSubscription());
 		}
+		steps = visibleOnboardingSteps({
+			supported: pushSupported,
+			permission: pushPermission(),
+			subscribed: pushSubscribed,
+		});
 		ready = true;
 	});
 
+	// Which way the last step change went, so the incoming step slides in
+	// from the side the reader is moving toward.
+	let direction = $state<1 | -1>(1);
+
 	function next() {
-		if (step < ONBOARDING_TOTAL_STEPS) step += 1;
+		if (step < total) {
+			direction = 1;
+			step += 1;
+		}
 	}
 
 	function back() {
-		if (step > 1) step -= 1;
+		if (step > 1) {
+			direction = -1;
+			step -= 1;
+		}
 	}
 
+	// A step change replaces the whole card body, so without this, focus
+	// stays on a Continue button that now belongs to a different question
+	// and a screen reader announces nothing. Moving it to the new step's
+	// heading reads the question out. The first render is left alone.
+	let card = $state<HTMLElement | null>(null);
+	let shownStep = 1;
+	$effect(() => {
+		const current = step;
+		if (!ready || current === shownStep) return;
+		shownStep = current;
+		tick().then(() => card?.querySelector<HTMLElement>('.step-frame h1')?.focus());
+	});
+
+	// The panel's step list. Short names, keyed by step.
+	const RAIL_NAME = {
+		name: 'onboarding.rail.name',
+		units: 'onboarding.rail.units',
+		goal: 'onboarding.rail.goal',
+		about: 'onboarding.rail.about',
+		'run-privacy': 'onboarding.rail.privacy',
+		notifications: 'onboarding.rail.notifications',
+		track: 'onboarding.rail.track',
+		import: 'onboarding.rail.import',
+		done: 'onboarding.rail.done',
+	} as const satisfies Record<OnboardingStep, string>;
+
+	// One glyph per goal, all already in the icon subset.
+	const GOAL_ICON: Record<PrimaryGoal, string> = {
+		general_fitness: 'favorite',
+		weight_loss: 'local_fire_department',
+		'5k': 'directions_run',
+		'10k': 'sprint',
+		half_marathon: 'military_tech',
+		marathon: 'emoji_events',
+	};
+
+	const PRIVACY_ICON = { private: 'lock', followers: 'group', public: 'public' } as const;
+
+	// Brand names are not translated (availability.ts says why); the line under
+	// each one is.
+	const IMPORT_SOURCE = {
+		strava: { name: 'Strava', icon: 'directions_run', desc: 'onboarding.importStravaDesc' },
+		garmin: { name: 'Garmin', icon: 'watch', desc: 'onboarding.importGarminDesc' },
+	} as const satisfies Record<OnboardingImportSource, { name: string; icon: string; desc: string }>;
+
+	// Skip means "leave this one unanswered", so it discards the step's
+	// current value before advancing. Sharing `next()` made the two buttons
+	// one action wearing two labels: Skip committed whatever was selected,
+	// exactly as Continue did (issue #921). A step whose answer has no unset
+	// state — units, privacy — offers no Skip at all, and the notifications
+	// step stores no answer to unset (its one action is the browser
+	// permission prompt), so Continue is its only way on.
 	function skipStep() {
-		// Per-step skip — keeps the wizard moving without forcing the
-		// user to commit. The unset field falls back to its default
-		// at save time, and the Settings nudge surfaces it later.
+		if (current === 'goal') {
+			primaryGoal = null;
+		} else if (current === 'about') {
+			gender = '';
+			dateOfBirth = '';
+			bodyWeight = '';
+			healthDataConsent = false;
+		} else if (current === 'track') {
+			trackGym = null;
+			trackNutrition = null;
+		}
 		next();
 	}
 
@@ -144,7 +267,7 @@
 			await subscribeToPush();
 			pushSubscribed = true;
 		} catch (e) {
-			showToast(m('onboarding.pushEnableError', { message: (e as Error).message }), 'error');
+			showToast(m('onboarding.pushEnableError', { message: errorCopy(e, m, 'onboarding.pushEnableError') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -167,18 +290,18 @@
 	/// wizard then navigated to /dashboard, the gate re-read a still-null
 	/// `onboarded_at`, and bounced the user back to step 1 with every
 	/// answer lost (issue #227). Throws so both callers surface the toast.
-	async function stampProfile(profileUpdate: Record<string, unknown>): Promise<void> {
+	async function stampProfile(profileUpdate: Updatable<'user_profiles'>): Promise<void> {
 		const { data: updatedRows, error } = await supabase
 			.from('user_profiles')
 			.update(profileUpdate)
 			.eq('id', auth.user!.id)
 			.select('id');
-		if (error) throw error;
+		if (error) throw dbError(error);
 		if (!updatedRows?.length) {
 			const { error: insertError } = await supabase
 				.from('user_profiles')
 				.insert({ id: auth.user!.id, ...profileUpdate });
-			if (insertError) throw insertError;
+			if (insertError) throw dbError(insertError);
 		}
 	}
 
@@ -220,7 +343,7 @@
 			await stampProfile({ onboarded_at: new Date().toISOString() });
 			navigateToDashboard();
 		} catch (e) {
-			showToast(m('onboarding.saveError', { message: (e as Error).message }), 'error');
+			showToast(m('onboarding.saveError', { message: errorCopy(e, m, 'onboarding.saveError') }), 'error');
 			saving = false;
 		}
 		// On success the navigation tears down the page; no need to
@@ -228,7 +351,7 @@
 		// component instance.
 	}
 
-	/// Final "Open dashboard" button on Step 7. Persists everything
+	/// Final "Open dashboard" button on the done step. Persists everything
 	/// the runner answered along the way: display name, units, goal,
 	/// optional demographics (with GDPR Art 9 consent), privacy
 	/// default. Stamps `onboarded_at` so the gate releases.
@@ -242,12 +365,14 @@
 		saving = true;
 		try {
 			// 1. Universal prefs bag (units + goal + weight + privacy).
-			const bagChanges: Record<string, unknown> = {
+			const bagChanges: PrefsBag = {
 				preferred_unit: preferredUnit,
 				weight_unit: weightUnit,
 				privacy_default: privacyDefault,
 			};
 			if (primaryGoal) bagChanges[PRIMARY_GOAL_KEY] = primaryGoal;
+			if (trackGym !== null) bagChanges.show_gym = trackGym;
+			if (trackNutrition !== null) bagChanges.show_nutrition = trackNutrition;
 			// The typed value is in the display unit (kg or lbs); store canonical
 			// kg. parseWeightToKg rejects empty / non-numeric / negative input.
 			// `bind:value` on a type=number input coerces bodyWeight to a
@@ -257,7 +382,7 @@
 			// isBodyWeightInRangeKg is the same gate the Continue button's
 			// disabled state checks — kept here too so an out-of-bounds value
 			// can never reach the TDEE/hydration math even via a path that
-			// bypasses step 4 (e.g. the step-7 CTA reached after Skip).
+			// bypasses the about step (e.g. the done step's CTA reached after Skip).
 			if (weightKg != null && weightKg > 0 && isBodyWeightInRangeKg(weightKg)) {
 				bagChanges.body_weight_kg = roundWeight(weightKg);
 			}
@@ -272,11 +397,13 @@
 			// 2. user_profiles columns: display_name, preferred_unit
 			// (dual-write for the cross-user readable surfaces),
 			// gender + DOB + health_data_consent_at, onboarded_at.
-			const profileUpdate: Record<string, unknown> = {
+			const profileUpdate: Updatable<'user_profiles'> = {
 				preferred_unit: preferredUnit,
 				onboarded_at: new Date().toISOString(),
 			};
-			if (displayName.trim()) profileUpdate.display_name = displayName.trim();
+			// A cleared field is written as null: the step is prefilled with the
+			// provider's name (decisions § 2365), and clearing it must stick.
+			profileUpdate.display_name = displayName.trim() || null;
 			// DOB writes to user_profiles whenever supplied, NOT only under
 			// Art 9 consent (persona round-5 family-club): the under-18
 			// minor-exclusion floor in search_user_profiles keys off this
@@ -300,7 +427,7 @@
 			// set health_data_consent_at to a non-null value.
 			if (healthDataConsent) {
 				const { error: consentErr } = await supabase.rpc('grant_health_data_consent');
-				if (consentErr) throw consentErr;
+				if (consentErr) throw dbError(consentErr);
 			}
 
 			// Issue both writes in parallel — the bag write doesn't
@@ -319,7 +446,7 @@
 			// /plans/new deep-link from the "create my training plan" CTA.
 			window.location.href = dest;
 		} catch (e) {
-			showToast(m('onboarding.saveError', { message: (e as Error).message }), 'error');
+			showToast(m('onboarding.saveError', { message: errorCopy(e, m, 'onboarding.saveError') }), 'error');
 			saving = false;
 		}
 		// On success the navigation tears down the page; no need to
@@ -331,29 +458,60 @@
 	<title>{m('onboarding.pageTitle')}</title>
 </svelte:head>
 
-<div class="onboarding-shell">
-	<header class="head">
-		<div class="brand">Threkir</div>
-		<button type="button" class="skip-all" onclick={skipOnboarding} disabled={saving}>
-			{m('onboarding.skipOnboarding')}
-		</button>
-	</header>
+<AuthShell wide>
+	{#snippet panel()}
+		<p class="panel-kicker">{m('onboarding.stepCount', { index: step, total })}</p>
+		<h2 class="panel-title">{m('onboarding.panelTitle')}</h2>
+		<p class="panel-sub">{m('onboarding.panelSub')}</p>
+		<!-- A picture of the progressbar in the card, which is what assistive
+		     technology reads; this copy is for the eye. -->
+		<ol class="rail" aria-hidden="true">
+			{#each steps as id, i (id)}
+				<li class:rail-done={i + 1 < step} class:rail-now={i + 1 === step}>
+					<span class="rail-mark">
+						{#if i + 1 < step}<span class="material-symbols">check</span>{:else}{i + 1}{/if}
+					</span>
+					<span class="rail-name">{m(RAIL_NAME[id])}</span>
+				</li>
+			{/each}
+		</ol>
+		{#if mascotShown}
+			<div class="panel-grisnir">
+				<GrisnirArt pose="wait" width="10rem" testid="onboarding-grisnir" />
+				<p>{m('mascot.onboardingLine')}</p>
+			</div>
+		{/if}
+	{/snippet}
 
-	<div class="progress" role="progressbar" aria-valuemin="1" aria-valuemax={ONBOARDING_TOTAL_STEPS} aria-valuenow={step}>
-		{#each Array(ONBOARDING_TOTAL_STEPS) as _, i (i)}
-			<span class="dot" class:active={i + 1 === step} class:done={i + 1 < step}></span>
-		{/each}
-	</div>
+	<main class="auth-card onboarding-card" id="main-content" bind:this={card}>
+		<div class="card-top">
+			<div
+				class="progress-track"
+				role="progressbar"
+				aria-label={m('onboarding.stepCount', { index: step, total })}
+				aria-valuemin="1"
+				aria-valuemax={total}
+				aria-valuenow={step}
+			>
+				<span class="progress-fill" style="--progress: {step / total}"></span>
+			</div>
+			<button type="button" class="skip-all" onclick={skipOnboarding} disabled={saving}>
+				{m('onboarding.skipOnboarding')}
+			</button>
+		</div>
+		<p class="step-count" aria-hidden="true">
+			{m('onboarding.stepCount', { index: step, total })}
+		</p>
 
-	<main class="card" id="main-content">
+		{#key step}
+		<div class="step-frame" style="--from: {direction}">
 		{#if !ready}
 			<p class="loading-hint">{m('shell.loading')}</p>
-		{:else if step === 1}
-			<section aria-labelledby="step-1-title">
-				<h1 id="step-1-title">{m('onboarding.step1Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step1Hint')}
-				</p>
+		{:else if current === 'name'}
+			<section aria-labelledby="step-name-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">badge</span></span>
+				<h1 id="step-name-title" tabindex="-1">{m('onboarding.step1Title')}</h1>
+				<p class="hint" id="onboarding-name-hint">{m('onboarding.step1Hint')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.displayNameLabel')}</span>
 					<input
@@ -361,82 +519,99 @@
 						bind:value={displayName}
 						maxlength={TEXT_LIMITS.displayName}
 						placeholder={m('onboarding.displayNamePlaceholder')}
+						aria-describedby="onboarding-name-hint"
 					/>
 				</label>
 			</section>
-		{:else if step === 2}
-			<section aria-labelledby="step-2-title">
-				<h1 id="step-2-title">{m('onboarding.step2Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step2Hint')}
-				</p>
-				<div class="unit-toggle" role="radiogroup">
+		{:else if current === 'units'}
+			<section aria-labelledby="step-units-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">straighten</span></span>
+				<h1 id="step-units-title" tabindex="-1">{m('onboarding.step2Title')}</h1>
+				<p class="hint" id="onboarding-units-hint">{m('onboarding.step2Hint')}</p>
+				<div
+					class="unit-tiles"
+					role="radiogroup"
+					aria-labelledby="step-units-title"
+					aria-describedby="onboarding-units-hint"
+				>
 					<button
 						type="button"
-						class="unit-option"
+						class="choice unit-tile"
 						class:selected={preferredUnit === 'km'}
 						role="radio"
 						aria-checked={preferredUnit === 'km'}
 						onclick={() => (preferredUnit = 'km')}
 					>
-						<span class="unit-name">{m('onboarding.unitKm')}</span>
-						<span class="unit-sample">{m('onboarding.unitKmSample')}</span>
+						<span class="unit-abbr" aria-hidden="true">km</span>
+						<span class="choice-text">
+							<span class="choice-name">{m('onboarding.unitKm')}</span>
+							<span class="choice-desc unit-sample">{m('onboarding.unitKmSample')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
 					</button>
 					<button
 						type="button"
-						class="unit-option"
+						class="choice unit-tile"
 						class:selected={preferredUnit === 'mi'}
 						role="radio"
 						aria-checked={preferredUnit === 'mi'}
 						onclick={() => (preferredUnit = 'mi')}
 					>
-						<span class="unit-name">{m('onboarding.unitMi')}</span>
-						<span class="unit-sample">{m('onboarding.unitMiSample')}</span>
+						<span class="unit-abbr" aria-hidden="true">mi</span>
+						<span class="choice-text">
+							<span class="choice-name">{m('onboarding.unitMi')}</span>
+							<span class="choice-desc unit-sample">{m('onboarding.unitMiSample')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
 					</button>
 				</div>
 			</section>
-		{:else if step === 3}
-			<section aria-labelledby="step-3-title">
-				<h1 id="step-3-title">{m('onboarding.step3Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step3Hint')}
-				</p>
-				<div class="goal-grid" role="radiogroup">
-					{#each PRIMARY_GOAL_VALUES as v}
+		{:else if current === 'goal'}
+			<section aria-labelledby="step-goal-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">flag</span></span>
+				<h1 id="step-goal-title" tabindex="-1">{m('onboarding.step3Title')}</h1>
+				<p class="hint" id="onboarding-goal-hint">{m('onboarding.step3Hint')}</p>
+				<div
+					class="goal-grid"
+					role="radiogroup"
+					aria-labelledby="step-goal-title"
+					aria-describedby="onboarding-goal-hint"
+				>
+					{#each PRIMARY_GOAL_VALUES as v (v)}
 						<button
 							type="button"
-							class="goal-option"
+							class="choice goal-tile"
 							class:selected={primaryGoal === v}
 							role="radio"
 							aria-checked={primaryGoal === v}
 							onclick={() => (primaryGoal = v)}
 						>
-							{m(`onboarding.goal.${v}`)}
+							<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">{GOAL_ICON[v]}</span></span>
+							<span class="choice-name">{m(`onboarding.goal.${v}`)}</span>
+							<span class="choice-mark" aria-hidden="true"></span>
 						</button>
 					{/each}
 				</div>
 			</section>
-		{:else if step === 4}
-			<section aria-labelledby="step-4-title">
-				<h1 id="step-4-title">{m('onboarding.step4Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step4Hint')}
-				</p>
-				<label class="field">
-					<span class="label-text">{m('onboarding.genderLabel')}</span>
-					<select bind:value={gender}>
-						<option value="">{m('onboarding.genderPreferNot')}</option>
-						<option value="female">{m('onboarding.genderFemale')}</option>
-						<option value="male">{m('onboarding.genderMale')}</option>
-					</select>
-				</label>
-				<label class="field">
-					<span class="label-text">{m('onboarding.dobLabel')}</span>
-					<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} />
-					<span class="field-note">
-						{m('onboarding.dobNote')}
-					</span>
-				</label>
+		{:else if current === 'about'}
+			<section aria-labelledby="step-about-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">person</span></span>
+				<h1 id="step-about-title" tabindex="-1">{m('onboarding.step4Title')}</h1>
+				<p class="hint" id="onboarding-about-hint">{m('onboarding.step4Hint')}</p>
+				<div class="field-row">
+					<label class="field">
+						<span class="label-text">{m('onboarding.genderLabel')}</span>
+						<select bind:value={gender} aria-describedby="onboarding-about-hint">
+							<option value="">{m('onboarding.genderPreferNot')}</option>
+							<option value="female">{m('onboarding.genderFemale')}</option>
+							<option value="male">{m('onboarding.genderMale')}</option>
+						</select>
+					</label>
+					<div class="field">
+						<DateOfBirthInput bind:value={dateOfBirth} label={m('onboarding.dobLabel')} describedby="onboarding-dob-note" size="lg" />
+					</div>
+				</div>
+				<p class="field-note" id="onboarding-dob-note">{m('onboarding.dobNote')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.weightLabel', { unit: weightUnit })}</span>
 					<input
@@ -448,98 +623,171 @@
 						bind:value={bodyWeight}
 						placeholder={m('onboarding.weightPlaceholder', { example: weightUnit === 'lbs' ? 155 : 70 })}
 						aria-invalid={weightOutOfRange}
+						aria-describedby="onboarding-about-hint"
 					/>
 					{#if weightOutOfRange}
 						<span class="field-error" role="alert">
-							{m('onboarding.weightOutOfRange', { min: weightMin, max: weightMax, unit: weightUnit })}
+							{m('limits.weightOutOfRange', { min: weightMin, max: weightMax, unit: weightUnit })}
 						</span>
 					{/if}
 				</label>
 				{#if gender || dateOfBirth}
 					<label class="consent-row">
-						<input type="checkbox" bind:checked={healthDataConsent} />
-						<span>
-							{m('onboarding.healthConsent')}
-						</span>
+						<input
+							type="checkbox"
+							bind:checked={healthDataConsent}
+							aria-describedby="onboarding-dob-note"
+						/>
+						<span>{m('onboarding.healthConsent')}</span>
 					</label>
 				{/if}
 			</section>
-		{:else if step === 5}
-			<section aria-labelledby="step-5-title">
-				<h1 id="step-5-title">{m('onboarding.step5Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step5Hint')}
-				</p>
-				<div class="privacy-list" role="radiogroup">
-					<button
-						type="button"
-						class="privacy-option"
-						class:selected={privacyDefault === 'private'}
-						role="radio"
-						aria-checked={privacyDefault === 'private'}
-						onclick={() => (privacyDefault = 'private')}
-					>
-						<strong>{m('onboarding.privacyPrivate')}</strong>
-						<span>{m('onboarding.privacyPrivateDesc')}</span>
-					</button>
-					<button
-						type="button"
-						class="privacy-option"
-						class:selected={privacyDefault === 'followers'}
-						role="radio"
-						aria-checked={privacyDefault === 'followers'}
-						onclick={() => (privacyDefault = 'followers')}
-					>
-						<strong>{m('onboarding.privacyFollowers')}</strong>
-						<span>{m('onboarding.privacyFollowersDesc')}</span>
-					</button>
-					<button
-						type="button"
-						class="privacy-option"
-						class:selected={privacyDefault === 'public'}
-						role="radio"
-						aria-checked={privacyDefault === 'public'}
-						onclick={() => (privacyDefault = 'public')}
-					>
-						<strong>{m('onboarding.privacyPublic')}</strong>
-						<span>{m('onboarding.privacyPublicDesc')}</span>
-					</button>
+		{:else if current === 'run-privacy'}
+			<section aria-labelledby="step-privacy-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">verified_user</span></span>
+				<h1 id="step-privacy-title" tabindex="-1">{m('onboarding.step5Title')}</h1>
+				<p class="hint" id="onboarding-privacy-hint">{m('onboarding.step5Hint')}</p>
+				<div
+					class="privacy-list"
+					role="radiogroup"
+					aria-labelledby="step-privacy-title"
+					aria-describedby="onboarding-privacy-hint"
+				>
+					{#each [
+						{ value: 'private', name: m('onboarding.privacyPrivate'), desc: m('onboarding.privacyPrivateDesc') },
+						{ value: 'followers', name: m('onboarding.privacyFollowers'), desc: m('onboarding.privacyFollowersDesc') },
+						{ value: 'public', name: m('onboarding.privacyPublic'), desc: m('onboarding.privacyPublicDesc') },
+					] as const as option (option.value)}
+						<button
+							type="button"
+							class="choice privacy-row"
+							class:selected={privacyDefault === option.value}
+							role="radio"
+							aria-checked={privacyDefault === option.value}
+							onclick={() => (privacyDefault = option.value)}
+						>
+							<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">{PRIVACY_ICON[option.value]}</span></span>
+							<span class="choice-text">
+								<strong class="choice-name">{option.name}</strong>
+								<span class="choice-desc">{option.desc}</span>
+							</span>
+							<span class="choice-mark" aria-hidden="true"></span>
+						</button>
+					{/each}
 				</div>
 			</section>
-		{:else if step === 6}
-			<section aria-labelledby="step-6-title">
-				<h1 id="step-6-title">{m('onboarding.step6Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step6Hint')}
-				</p>
+		{:else if current === 'notifications'}
+			<section aria-labelledby="step-notifications-title">
+				<span class="step-icon step-icon--bell" aria-hidden="true"><span class="material-symbols">notifications_active</span></span>
+				<h1 id="step-notifications-title" tabindex="-1">{m('onboarding.step6Title')}</h1>
+				<p class="hint">{m('onboarding.step6Hint')}</p>
 				{#if !pushSupported}
-					<p class="not-available">
-						{m('onboarding.pushUnsupported')}
-					</p>
+					<p class="not-available">{m('onboarding.pushUnsupported')}</p>
 				{:else if pushPermission() === 'denied'}
-					<p class="not-available">
-						{m('onboarding.pushBlocked')}
-					</p>
+					<p class="not-available">{m('onboarding.pushBlocked')}</p>
 				{:else if pushSubscribed}
-					<p class="success-text">{m('onboarding.pushEnabled')}</p>
+					<p class="success-text">
+						<span class="material-symbols" aria-hidden="true">check_circle</span>
+						{m('onboarding.pushEnabled')}
+					</p>
 				{:else}
 					<button
 						type="button"
-						class="btn btn-primary"
+						class="btn btn-primary push-cta"
 						onclick={handleEnablePush}
 						disabled={pushBusy}
 					>
-						<span class="material-symbols">notifications_active</span>
+						<span class="material-symbols" aria-hidden="true">notifications_active</span>
 						{pushBusy ? m('onboarding.pushEnabling') : m('onboarding.pushEnable')}
 					</button>
 				{/if}
 			</section>
-		{:else if step === 7}
-			<section aria-labelledby="step-7-title">
-				<h1 id="step-7-title">{m('onboarding.step7Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step7Hint')}
-				</p>
+		{:else if current === 'track'}
+			<section aria-labelledby="step-track-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">tune</span></span>
+				<h1 id="step-track-title" tabindex="-1">{m('onboarding.trackTitle')}</h1>
+				<p class="hint" id="onboarding-track-hint">{m('onboarding.trackHint')}</p>
+				<div
+					class="privacy-list"
+					role="group"
+					aria-labelledby="step-track-title"
+					aria-describedby="onboarding-track-hint"
+				>
+					<div class="choice privacy-row selected fixed" role="checkbox" aria-checked="true" aria-disabled="true">
+						<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">directions_run</span></span>
+						<span class="choice-text">
+							<strong class="choice-name">{m('onboarding.trackRunning')}</strong>
+							<span class="choice-desc">{m('onboarding.trackRunningDesc')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
+					</div>
+					<button
+						type="button"
+						class="choice privacy-row"
+						class:selected={trackGym === true}
+						role="checkbox"
+						aria-checked={trackGym === true}
+						onclick={() => (trackGym = trackGym !== true)}
+					>
+						<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">fitness_center</span></span>
+						<span class="choice-text">
+							<strong class="choice-name">{m('onboarding.trackGym')}</strong>
+							<span class="choice-desc">{m('onboarding.trackGymDesc')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
+					</button>
+					<button
+						type="button"
+						class="choice privacy-row"
+						class:selected={trackNutrition === true}
+						role="checkbox"
+						aria-checked={trackNutrition === true}
+						onclick={() => (trackNutrition = trackNutrition !== true)}
+					>
+						<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">restaurant</span></span>
+						<span class="choice-text">
+							<strong class="choice-name">{m('onboarding.trackNutrition')}</strong>
+							<span class="choice-desc">{m('onboarding.trackNutritionDesc')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
+					</button>
+				</div>
+			</section>
+		{:else if current === 'import'}
+			<section aria-labelledby="step-import-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">history</span></span>
+				<h1 id="step-import-title" tabindex="-1">{m('onboarding.importTitle')}</h1>
+				<p class="hint" id="onboarding-import-hint">{m('onboarding.importHint')}</p>
+				<ul class="privacy-list import-list" aria-labelledby="step-import-title" aria-describedby="onboarding-import-hint">
+					{#each ONBOARDING_IMPORT_SOURCES as option (option.source)}
+						{@const src = IMPORT_SOURCE[option.source]}
+						<li>
+							<button
+								type="button"
+								class="choice privacy-row"
+								data-testid="onboarding-import-{option.source}"
+								onclick={() => finishAndExit(option.href)}
+								disabled={saving}
+							>
+								<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">{src.icon}</span></span>
+								<span class="choice-text">
+									<strong class="choice-name">{src.name}</strong>
+									<span class="choice-desc">{m(src.desc)}</span>
+								</span>
+								<span class="material-symbols import-go" aria-hidden="true">arrow_forward</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{:else if current === 'done'}
+			<section class="finish" aria-labelledby="step-done-title">
+				<span class="done-badge" aria-hidden="true">
+					<span class="done-ring"></span>
+					<span class="material-symbols">check</span>
+				</span>
+				<h1 id="step-done-title" tabindex="-1">{m('onboarding.step7Title')}</h1>
+				<p class="hint">{m('onboarding.step7Hint')}</p>
 				{#if primaryGoal}
 					<button
 						type="button"
@@ -547,45 +795,48 @@
 						onclick={() => finishAndExit(`/plans/new?type=training&goal=${primaryGoal}`)}
 						disabled={saving}
 					>
+						<span class="material-symbols" aria-hidden="true">{GOAL_ICON[primaryGoal]}</span>
 						{saving ? m('onboarding.saving') : m('onboarding.createPlanCta')}
 					</button>
 				{/if}
 			</section>
 		{/if}
+		</div>
+		{/key}
 
 		{#if ready}
 		<div class="nav-row">
 			{#if step > 1}
-				<button type="button" class="btn btn-outline" onclick={back} disabled={saving}>
+				<button type="button" class="btn btn-outline nav-back" onclick={back} disabled={saving}>
+					<span class="material-symbols" aria-hidden="true">arrow_back</span>
 					{m('onboarding.back')}
 				</button>
 			{:else}
 				<span></span>
 			{/if}
 			<div class="nav-right">
-				{#if step !== 7 && step !== 1 && step !== 5 && step !== 2}
-					<button
-						type="button"
-						class="skip-step"
-						onclick={skipStep}
-						disabled={saving || (step === 4 && weightOutOfRange)}
-					>
+				{#if current === 'goal' || current === 'about' || current === 'track'}
+					<!-- Not disabled on an out-of-range weight the way Continue is:
+					     Skip discards the typed value, so it is the way out of that
+					     state rather than another way to carry it forward. -->
+					<button type="button" class="skip-step" onclick={skipStep} disabled={saving}>
 						{m('onboarding.skip')}
 					</button>
 				{/if}
-				{#if step < ONBOARDING_TOTAL_STEPS}
+				{#if step < total}
 					<button
 						type="button"
-						class="btn btn-primary"
+						class="btn btn-primary nav-next"
 						onclick={next}
-						disabled={saving || (step === 4 && weightOutOfRange)}
+						disabled={saving || (current === 'about' && weightOutOfRange)}
 					>
-						{m('onboarding.continue')}
+						{current === 'import' ? m('onboarding.importSkip') : m('onboarding.continue')}
+						<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 					</button>
 				{:else}
 					<button
 						type="button"
-						class="btn {primaryGoal ? 'btn-outline' : 'btn-primary'}"
+						class="btn nav-next {primaryGoal ? 'btn-outline' : 'btn-primary'}"
 						onclick={() => finishAndExit()}
 						disabled={saving}
 					>
@@ -596,101 +847,262 @@
 		</div>
 		{/if}
 	</main>
-</div>
+</AuthShell>
 
 <style>
-	.onboarding-shell {
-		min-height: 100vh;
+	/* Layout, the brand panel and the card chrome belong to AuthShell (the
+	   same shell as sign-up, so the journey is one design from the landing
+	   page into the app). What is here is the wizard's own furniture. */
+
+	/* --- panel copy (inks measured on AuthShell's ramp) ------------------ */
+
+	.panel-kicker {
+		margin: 0 0 var(--space-sm);
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: #FFD6C8;
+	}
+
+	.panel-title {
+		margin: 0 0 var(--space-sm);
+		font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+		font-weight: 800;
+		line-height: 1.1;
+		letter-spacing: -0.03em;
+		text-wrap: balance;
+	}
+
+	.panel-sub {
+		margin: 0 0 var(--space-xl);
+		max-width: 26rem;
+		font-size: 0.95rem;
+		line-height: 1.55;
+		color: rgba(255, 255, 255, 0.85);
+	}
+
+	.panel-grisnir {
 		display: flex;
 		flex-direction: column;
-		background: var(--color-bg);
-		padding: var(--space-lg);
+		align-items: flex-start;
+		gap: var(--space-xs);
+		margin-top: var(--space-lg);
 	}
-	.head {
+	.panel-grisnir p {
+		margin: 0;
+		font-size: 0.9rem;
+		font-style: italic;
+		color: var(--color-on-primary);
+	}
+	.rail {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.rail li {
+		position: relative;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		margin-bottom: var(--space-xl);
+		gap: var(--space-sm);
+		font-size: 0.92rem;
+		color: rgba(255, 255, 255, 0.85);
 	}
-	.brand {
-		font-size: 1.1rem;
+
+	/* The line joining each mark to the next. */
+	.rail li:not(:last-child)::after {
+		content: '';
+		position: absolute;
+		inset-inline-start: 0.8rem;
+		top: 1.75rem;
+		height: 0.35rem;
+		width: 1px;
+		background: rgba(255, 255, 255, 0.25);
+	}
+
+	.rail-mark {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 1.6rem;
+		height: 1.6rem;
+		border-radius: var(--radius-pill);
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		font-size: 0.8rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		font-variant-numeric: tabular-nums;
+		transition: background var(--transition-base), border-color var(--transition-base);
 	}
+
+	.rail-mark .material-symbols {
+		font-size: 1rem;
+	}
+
+	.rail-done .rail-mark {
+		border-color: transparent;
+		background: rgba(255, 255, 255, 0.14);
+		color: #FFD6C8;
+	}
+
+	/* White disc, plum numeral: 11.18:1, and no text on a gradient. */
+	.rail-now .rail-mark {
+		border-color: transparent;
+		background: #FFFFFF;
+		color: #43356A;
+		box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.14);
+	}
+
+	.rail-now .rail-name {
+		font-weight: 700;
+		color: #FFFFFF;
+	}
+
+	/* --- card ------------------------------------------------------------ */
+
+	.card-top {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+	}
+
+	.progress-track {
+		flex: 1;
+		height: 0.4rem;
+		border-radius: var(--radius-pill);
+		background: var(--color-bg-tertiary);
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		display: block;
+		height: 100%;
+		width: calc(var(--progress) * 100%);
+		border-radius: inherit;
+		background: linear-gradient(90deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
+		transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
 	.skip-all {
+		flex-shrink: 0;
 		background: none;
 		border: none;
+		padding: var(--space-2xs) 0;
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		cursor: pointer;
 		text-decoration: underline;
+		text-underline-offset: 0.2em;
 	}
 	.skip-all:hover { color: var(--color-text); }
 	.skip-all:disabled { opacity: 0.5; cursor: not-allowed; }
 
-	.progress {
-		display: flex;
-		gap: 0.5rem;
-		justify-content: center;
-		margin-bottom: var(--space-xl);
+	.step-count {
+		margin: var(--space-sm) 0 var(--space-lg);
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-text-tertiary);
 	}
-	.dot {
-		width: 0.55rem;
-		height: 0.55rem;
-		border-radius: 50%;
-		background: var(--color-bg-tertiary);
-		transition: background var(--transition-fast);
-	}
-	.dot.done { background: color-mix(in srgb, var(--color-primary) 50%, transparent); }
-	.dot.active { background: var(--color-primary); transform: scale(1.2); }
 
-	.card {
-		max-width: 36rem;
-		width: 100%;
-		margin: 0 auto;
-		background: var(--color-surface);
+	/* The panel's kicker says the same thing beside the card on a desktop;
+	   on a phone the panel is a band with no copy, so the card says it. */
+	@media (min-width: 56rem) {
+		.step-count {
+			visibility: hidden;
+			margin-bottom: var(--space-sm);
+		}
+	}
+
+	/* Each step slides in from the side the reader is moving toward. The
+	   frame is re-keyed per step, so this plays on every change; declared
+	   only for visitors who accept motion. */
+	@media (prefers-reduced-motion: no-preference) {
+		.step-frame {
+			animation: step-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+		}
+	}
+
+	@keyframes step-in {
+		from {
+			opacity: 0;
+			transform: translateX(calc(1.5rem * var(--from) * var(--dir-sign)));
+		}
+	}
+
+	section { display: flex; flex-direction: column; gap: var(--space-md); }
+
+	.step-icon {
+		display: grid;
+		place-items: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 0.9rem;
+		background: var(--color-primary-light);
+		color: var(--color-primary);
+	}
+
+	.step-icon .material-symbols {
+		font-size: 1.5rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 800;
+		line-height: 1.15;
+		letter-spacing: -0.025em;
+		margin: 0;
+		text-wrap: balance;
+	}
+
+	.hint {
+		font-size: 0.95rem;
+		color: var(--color-text-secondary);
+		line-height: 1.55;
+		margin: 0 0 var(--space-sm);
+	}
+
+	.loading-hint {
+		color: var(--color-text-secondary);
+		margin: var(--space-xl) 0;
+	}
+
+	.field { display: flex; flex-direction: column; gap: 0.4rem; }
+	.field-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-md);
+	}
+	@media (min-width: 32rem) {
+		.field-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	}
+	.label-text { font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 600; }
+	.field-note { font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.5; margin: calc(-1 * var(--space-xs)) 0 0; }
+	.field-error { font-size: 0.8rem; color: var(--color-danger-text); line-height: 1.45; }
+	.field input, .field select {
+		min-height: 2.9rem;
+		padding: 0.65rem 0.8rem;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
-		padding: var(--space-2xl);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-lg);
-	}
-	h1 {
-		font-size: 1.5rem;
-		font-weight: 700;
-		margin: 0 0 var(--space-xs);
-	}
-	.hint {
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-		margin: 0 0 var(--space-lg);
-	}
-	section { display: flex; flex-direction: column; gap: var(--space-md); }
-	.create-plan-cta { align-self: flex-start; }
-
-	.field { display: flex; flex-direction: column; gap: 0.35rem; }
-	.label-text { font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 500; }
-	.field-note { font-size: 0.78rem; color: var(--color-text-tertiary); line-height: 1.45; }
-	.field-error { font-size: 0.78rem; color: var(--color-danger-text); line-height: 1.45; }
-	.field input, .field select {
-		padding: 0.6rem 0.7rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
 		background: var(--color-bg);
 		color: var(--color-text);
 		font-size: 1rem;
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 	}
 	.field input:focus, .field select:focus {
 		outline: none;
 		border-color: var(--color-primary);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
 	}
 	/* Keyboard-only focus retains a visible indicator per
 	   WCAG 2.4.7 (Focus Visible) + 2.4.11 (Focus Appearance).
 	   Pointer / touch focus loses the ring (handled by the :focus
 	   rule above) so the form looks clean during mouse use. The
-	   security_guards.test.ts accessibility guard pins that every
+	   a11y_guards.test.ts guard pins that every
 	   `:focus { outline:none }` selector has a matching
 	   `:focus-visible` companion. */
 	.field input:focus-visible, .field select:focus-visible {
@@ -698,34 +1110,117 @@
 		outline-offset: 2px;
 	}
 
-	.unit-toggle, .privacy-list { display: flex; flex-direction: column; gap: var(--space-sm); }
-	@media (min-width: 32rem) {
-		.unit-toggle { flex-direction: row; }
-		.unit-option { flex: 1; }
-	}
-	.unit-option, .privacy-option, .goal-option {
+	/* --- choices --------------------------------------------------------- */
+
+	/* One tile shape for every single-choice question: a whole-row target,
+	   a radio mark that fills when chosen, and a ring rather than a colour
+	   change alone, so the choice reads without relying on hue. */
+	.choice {
+		position: relative;
 		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
+		align-items: center;
+		gap: var(--space-sm);
+		width: 100%;
 		padding: var(--space-md);
-		background: var(--color-bg);
+		background: var(--color-surface);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		text-align: start;
 		color: var(--color-text);
+		font: inherit;
 		font-size: 0.95rem;
 		cursor: pointer;
-		transition: border-color var(--transition-fast), background var(--transition-fast);
+		transition:
+			border-color var(--transition-fast),
+			background var(--transition-fast),
+			box-shadow var(--transition-fast),
+			transform var(--transition-fast);
 	}
-	.unit-option:hover, .privacy-option:hover, .goal-option:hover {
+
+	.choice:hover {
 		border-color: var(--color-primary);
+		transform: translateY(-1px);
 	}
-	.unit-option.selected, .privacy-option.selected, .goal-option.selected {
+
+	.choice.selected {
 		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+		background: var(--color-primary-light);
+		box-shadow: inset 0 0 0 1px var(--color-primary);
 	}
-	.unit-name { font-weight: 600; }
-	.unit-sample { font-size: 0.8rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+
+	.choice-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.choice-name { font-weight: 600; }
+	.choice-desc { font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.45; }
+
+	.choice-mark {
+		flex-shrink: 0;
+		width: 1.15rem;
+		height: 1.15rem;
+		margin-inline-start: auto;
+		border-radius: var(--radius-pill);
+		border: 2px solid var(--color-border);
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+	}
+
+	/* The track step's switches are a multi-select, so their mark is square. */
+	.choice[role='checkbox'] .choice-mark { border-radius: var(--radius-sm); }
+
+	.choice.fixed { cursor: default; }
+	.choice.fixed:hover { transform: none; }
+
+	.choice.selected .choice-mark {
+		border-color: var(--color-primary);
+		box-shadow: inset 0 0 0 0.2rem var(--color-surface);
+		background: var(--color-primary);
+	}
+
+	.unit-tiles, .privacy-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+	.import-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.import-go {
+		flex-shrink: 0;
+		margin-inline-start: auto;
+		color: var(--color-text-secondary);
+	}
+
+	.import-list .choice:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+	@media (min-width: 32rem) {
+		.unit-tiles { flex-direction: row; }
+	}
+
+	.unit-abbr {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 0.8rem;
+		background: var(--color-bg-tertiary);
+		font-size: 1rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		color: var(--color-text);
+	}
+
+	.choice.selected .unit-abbr,
+	.choice.selected .goal-glyph {
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+
+	.unit-sample { font-variant-numeric: tabular-nums; }
 
 	.goal-grid {
 		display: grid;
@@ -735,52 +1230,152 @@
 	@media (min-width: 32rem) {
 		.goal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
-	.goal-option { padding: 0.85rem var(--space-md); font-weight: 500; }
 
-	.privacy-option strong { font-size: 0.95rem; font-weight: 600; }
-	.privacy-option span { font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.45; }
+	.goal-glyph {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 2.4rem;
+		height: 2.4rem;
+		border-radius: 0.75rem;
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+		transition: background var(--transition-fast), color var(--transition-fast);
+	}
+
+	.goal-glyph .material-symbols {
+		font-size: 1.3rem;
+	}
 
 	.consent-row {
 		display: flex;
-		gap: 0.55rem;
+		gap: 0.6rem;
 		align-items: flex-start;
 		padding: var(--space-md);
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		font-size: 0.82rem;
+		border-radius: var(--radius-lg);
+		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+		cursor: pointer;
+	}
+	.consent-row:has(input:checked) {
+		border-color: var(--color-primary);
+		background: var(--color-primary-light);
 	}
 	.consent-row input { margin-top: 0.2rem; flex-shrink: 0; }
 
 	.not-available {
-		font-size: 0.88rem;
+		font-size: 0.9rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
 		padding: var(--space-md);
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		margin: 0;
 	}
+
 	.success-text {
-		font-size: 0.92rem;
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		font-size: 0.95rem;
 		color: var(--color-success-text);
 		margin: 0;
 	}
+
+	.push-cta,
+	.create-plan-cta {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+
+	/* --- finish ---------------------------------------------------------- */
+
+	.finish {
+		align-items: center;
+		text-align: center;
+		padding-top: var(--space-md);
+	}
+
+	.finish .create-plan-cta {
+		align-self: center;
+	}
+
+	.done-badge {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 4.5rem;
+		height: 4.5rem;
+		border-radius: var(--radius-pill);
+		background: linear-gradient(140deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
+		color: #FFFFFF;
+		box-shadow: 0 1rem 2.5rem -0.75rem rgba(91, 75, 138, 0.6);
+	}
+
+	.done-badge .material-symbols {
+		font-size: 2.4rem;
+	}
+
+	.done-ring {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		border: 2px solid var(--brand-coral);
+		opacity: 0;
+	}
+
+	/* Arrives once: the badge pops and a ring spreads out and fades. */
+	@media (prefers-reduced-motion: no-preference) {
+		.done-badge {
+			animation: badge-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) 120ms backwards;
+		}
+		.done-ring {
+			animation: ring-out 1100ms ease-out 300ms;
+		}
+	}
+
+	@keyframes badge-pop {
+		from { transform: scale(0.4); opacity: 0; }
+	}
+
+	@keyframes ring-out {
+		from { transform: scale(1); opacity: 0.8; }
+		to { transform: scale(1.9); opacity: 0; }
+	}
+
+	/* --- navigation ------------------------------------------------------ */
 
 	.nav-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-md);
-		margin-top: var(--space-md);
+		margin-top: var(--space-xl);
+		padding-top: var(--space-lg);
+		border-top: 1px solid var(--color-border);
 	}
 	.nav-right {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
+	}
+	.nav-back,
+	.nav-next {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		min-height: 2.75rem;
+		border-radius: var(--radius-lg);
+	}
+	.nav-back .material-symbols,
+	.nav-next .material-symbols {
+		font-size: 1.15rem;
 	}
 	.skip-step {
 		background: none;

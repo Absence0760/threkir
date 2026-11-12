@@ -31,7 +31,7 @@ test('persistSubscription writes through the atomic RPC and checks the result', 
 		/\.rpc\('set_push_subscription'/,
 		'persistSubscription must call the set_push_subscription RPC',
 	);
-	assert.match(body, /if \(error\) throw error/, 'the RPC result must be checked and thrown');
+	assert.match(body, /if \(error\) throw dbError\(error\)/, 'the RPC result must be checked and thrown');
 });
 
 test('push.ts carries no whole-bag read-merge-write of user_device_settings', () => {

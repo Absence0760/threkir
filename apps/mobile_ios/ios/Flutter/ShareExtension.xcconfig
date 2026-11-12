@@ -1,0 +1,11 @@
+// App Store upload rejects an .ipa whose embedded app extension does not carry
+// the same CFBundleShortVersionString / CFBundleVersion as its host app, so the
+// share extension reads Flutter's version rather than a second literal — the
+// same reason WatchApp.xcconfig exists. Only Generated.xcconfig is included:
+// the Pods xcconfigs Debug/Release.xcconfig pull in are the HOST app's
+// (Pods-Runner), and linking those into an appex duplicates every symbol the
+// host already embeds.
+#include "Generated.xcconfig"
+
+MARKETING_VERSION=$(FLUTTER_BUILD_NAME)
+CURRENT_PROJECT_VERSION=$(FLUTTER_BUILD_NUMBER)

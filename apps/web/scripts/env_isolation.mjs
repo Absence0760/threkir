@@ -28,7 +28,7 @@ const KNOWN_ENV_VARS = [
 	'LIVE_HUB_URL',
 	'PUBLIC_LIVE_HUB_URL',
 	// Web's "Cloud export (GPX zip)" button POSTs to
-	// `${PUBLIC_EXPORT_HUB_URL}/v1/export` (the Go worker). Same
+	// `${PUBLIC_EXPORT_HUB_URL}/v1/export/jobs` (the Go worker). Same
 	// risk shape as the live hub: a dev .env aimed at the prod
 	// export endpoint would write test export jobs to the live
 	// service's queue + Storage bucket.
@@ -40,8 +40,40 @@ const KNOWN_ENV_VARS = [
 	// ignored.
 	'PUBLIC_OSRM_URL',
 	'OSRM_URL',
+	// The two route-generation engines the dev `/api/routes/generate` route
+	// reads from private env. Same risk shape as the live + export hubs, with
+	// a price attached: one generate races REQUEST_MULTIPLIERS x seeds — up to
+	// 32 upstream fetches — so a `.env.local` (or an inherited shell env)
+	// naming the production GraphHopper or graph-cycle sidecar turns every
+	// local route build into a burst against a billed prod engine.
+	'GRAPHHOPPER_URL',
+	'GRAPH_CYCLE_URL',
 	'PUBLIC_SITE_URL',
 ];
+
+/**
+ * URL-shaped env vars the web tree reads that are deliberately NOT required to
+ * be loopback in dev, each with the reason. Declared rather than omitted: the
+ * coverage test below reads this map, so a new endpoint var is a choice
+ * somebody made in writing instead of a var nobody added to the list. The
+ * omission has happened three times now — PUBLIC_LIVE_HUB_URL and
+ * PUBLIC_EXPORT_HUB_URL were both added after the fact, and the two engine
+ * URLs above were unguarded from the day the generator chain landed.
+ *
+ * @type {Record<string, string>}
+ */
+export const NOT_ISOLATED_URL_VARS = {
+	PUBLIC_TILE_STYLE_URL:
+		'A read-only third-party basemap style (MapTiler), or the loopback Protomaps override when a developer starts one. Reading map tiles from the live style writes nothing and touches no user data, so the production value is the intended dev default.',
+	PUBLIC_TERRAIN_URL:
+		'A read-only elevation tile template for the 3D course preview (MapTiler or the AWS Open Data bucket), or a loopback tileserver when a developer runs one. Reading elevation tiles writes nothing and touches no user data, the same reasoning as PUBLIC_TILE_STYLE_URL.',
+	PUBLIC_REVENUECAT_WEB_CHECKOUT_URL:
+		'A RevenueCat-hosted checkout page with no loopback form. The dev/prod split is which RevenueCat project the link belongs to, which a URL-shape guard cannot see.',
+	PUBLIC_REVENUECAT_WEB_PORTAL_URL:
+		'The same hosted-page shape as the checkout link above.',
+	PUBLIC_DONATE_URL:
+		'A Stripe-hosted Payment Link with no loopback form. The dev/prod split is whether the link was made in test mode, which a URL-shape guard cannot see.',
+};
 
 const KEY_PATTERNS = [
 	{
@@ -92,7 +124,7 @@ export function checkEnvIsolation(env, _opts = {}) {
 			envVar: varName,
 			value: trimmed,
 			rule: 'remote-host-in-dev',
-			fix: `Set ${varName} to a loopback URL (e.g. http://127.0.0.1:54321) or unset it.`,
+			fix: `Set ${varName} to a loopback URL (e.g. http://127.0.0.1:24321) or unset it.`,
 		});
 	}
 

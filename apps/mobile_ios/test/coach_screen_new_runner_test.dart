@@ -2,11 +2,11 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Drives the empty-state suggestion branch: a consented viewer with a
 /// configurable run count and no plan, so `_buildScroll` picks the
@@ -20,7 +20,10 @@ class _FakeApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
-  Future<DateTime?> fetchCoachConsentAt() async => DateTime(2026, 1, 1);
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async => const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      };
 
   @override
   Future<int> countRunsForUser(String userId, {int limit = 100}) async => runs;
@@ -42,10 +45,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

@@ -133,8 +133,9 @@ the question asked most; `SLP` (the §373 sleep-station nap budget) sits
 immediately after `CUT`, because it IS that page's margin less a safety
 reserve — a runner reading `TIGHT` is one tap from what it costs them in
 sleep, and the two pages come and go together off one projection; `TIMR` (the
-§375 countdown / stopwatch), `SUN` (the Daylight sunset countdown, §355) and
-`WPT` (the §357 marked waypoint) close the back half just ahead of `BACK`,
+§375 countdown / stopwatch), `SUN` (the Daylight sunset countdown, §355),
+`BARO` (the §376 storm watch) and `WPT` (the §357 marked waypoint) close the
+back half just ahead of `BACK`,
 which `WPT` sits beside deliberately — the two pages answer the same "which
 way, how far" question about different anchors, and `TIMR` heads that trio
 beside `SUN` for the same kind of reason: both are countdowns, one the runner
@@ -159,7 +160,7 @@ flowchart LR
         GEAR --> TPCE --> FITN --> REDY --> GOAL --> RDAY --> PLAN --> ADPT
     end
     subgraph summaries [synced summaries]
-        RCAP --> STRK --> STAT --> PR --> SMPL --> RELV --> AEFF --> TIMR --> SUN --> WPT
+        RCAP --> STRK --> STAT --> PR --> SMPL --> RELV --> AEFF --> TIMR --> SUN --> BARO --> WPT
     end
     WKT --> CLMB
     FUEL --> ELEV
@@ -770,8 +771,10 @@ removes.
   (§293) — the watch has no zoneinfo of its own.
 - `FIN` retains the last run's stats until dismissed — there is no summary
   page beyond the frozen dashboard.
-- The home face's battery icon is a rest-voltage estimate off the SAADC's
-  internal VDD channel (§294), not a fuel gauge: a loaded cell sags below the
+- The home face's battery icon is a rest-voltage estimate off whichever
+  internal SAADC channel the boot-time supply mode exposes the cell on — `VDD`
+  in normal-voltage mode, `VDDH/5` in high-voltage mode (§294, §691) — not a
+  fuel gauge: a loaded cell sags below the
   curve anchors, and it yields the title row's mid-band to the post-press
   BTN3 hint and the re-zero banner. The numeric `BAT n%` is diagnostics-only.
   A rail the plausibility band can't read as a 1S LiPo — the USB-powered DK

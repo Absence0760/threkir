@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A, USER_B } from '../fixtures/users';
+import { readCount, readRows } from '../fixtures/db-read';
 
 /**
  * Behaviour tests — cheap, focused checks on specific data-layer
@@ -14,12 +15,13 @@ test.describe('engagement uniqueness via UI toggle', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	test('alex kudos+rescind on the pinned public run leaves zero rows', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The kudos toggle is implemented as click→insert,
 		// click-again→delete. After a kudos+rescind round-trip the
 		// run_kudos table must hold zero rows for that (user, run) pair.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -41,11 +43,14 @@ test.describe('engagement uniqueness via UI toggle', () => {
 		await expect(btn).not.toHaveClass(/given/);
 
 		const admin = getAdminClient();
-		const { count } = await admin
-			.from('run_kudos')
-			.select('user_id', { count: 'exact', head: true })
-			.eq('run_id', RUNNER_PUBLIC_RUN_ID)
-			.eq('user_id', USER_B.id);
+		const count = await readCount(
+			'run_kudos by run_id+user_id',
+			admin
+				.from('run_kudos')
+				.select('user_id', { count: 'exact', head: true })
+				.eq('run_id', RUNNER_PUBLIC_RUN_ID)
+				.eq('user_id', USER_B.id)
+		);
 		expect(count).toBe(0);
 	});
 });
@@ -119,12 +124,15 @@ test.describe('trigger fan-out — UI-driven', () => {
 			page.locator('article.post', { hasText: body })
 		).toBeVisible({ timeout: 10_000 });
 
-		const { data: rows } = await admin
-			.from('club_posts')
-			.select('club_id, author_id, body, parent_post_id')
-			.eq('body', body);
-		expect(rows?.length).toBe(1);
-		const row = rows?.[0] as {
+		const rows = await readRows(
+			'club_posts by body',
+			admin
+				.from('club_posts')
+				.select('club_id, author_id, body, parent_post_id')
+				.eq('body', body)
+		);
+		expect(rows.length).toBe(1);
+		const row = rows[0] as {
 			club_id: string;
 			author_id: string;
 			body: string;

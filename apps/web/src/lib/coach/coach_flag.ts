@@ -16,9 +16,9 @@
  * the client half — it stops the UI advertising a plan it can't deliver. Mirrors
  * the weigh_in_flag.ts fail-closed pattern.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_COACH_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from '../core/env_flag';
 
 export function coachEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_COACH_ENABLED);
+	return isTruthyFlagValue(PUBLIC_COACH_ENABLED);
 }

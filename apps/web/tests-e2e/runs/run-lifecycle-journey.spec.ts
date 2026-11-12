@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { switchRunsToAllTime } from '../fixtures/helpers';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Run-lifecycle journey — the full cradle-to-grave life of a single
@@ -51,7 +52,8 @@ test.describe('run lifecycle journey', () => {
 
 	test('create public → list → detail → edit → cross-user kudos+comment → owner sees it → delete', async ({
 		page,
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 		// RunEditor's only textarea is the run NOTES field, not a title —
@@ -88,11 +90,9 @@ test.describe('run lifecycle journey', () => {
 					.first()
 					.fill('2026-04-29T08:00');
 				await page.locator('input[type="number"]').first().fill('5'); // distance km
-				await page.locator('input[type="number"]').nth(1).fill('25'); // duration min
+				await page.getByTestId('run-editor-minutes').fill('25'); // duration min
 				await page.locator('textarea').fill(createNotes);
-				await page
-					.getByRole('checkbox', { name: /Make this run public/ })
-					.check();
+				await page.getByTestId('run-editor-audience').selectOption('public');
 
 				await page.locator('form button[type="submit"]').click();
 
@@ -103,13 +103,16 @@ test.describe('run lifecycle journey', () => {
 				// Settle the client-side INSERT before the service-role read
 				// (no Playwright auto-wait on a raw SELECT).
 				await page.waitForLoadState('networkidle');
-				const { data: row } = await admin
-					.from('runs')
-					.select('user_id, is_public')
-					.eq('id', runId)
-					.single();
-				expect(row?.user_id).toBe(USER_A.id);
-				expect(row?.is_public).toBe(true);
+				const row = await readRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('user_id, is_public')
+						.eq('id', runId)
+						.single()
+				);
+				expect(row.user_id).toBe(USER_A.id);
+				expect(row.is_public).toBe(true);
 			});
 
 			// ── 2. It appears in the /runs list ─────────────────────────
@@ -176,7 +179,7 @@ test.describe('run lifecycle journey', () => {
 				try {
 					// The pinned public run has no real track in Storage;
 					// stub the clip function so the share page mounts fast.
-					await guestPage.route(
+					await mockRoute(guestPage, 
 						'**/functions/v1/clip-public-track',
 						(route) =>
 							route.fulfill({
@@ -227,12 +230,15 @@ test.describe('run lifecycle journey', () => {
 					page.locator('.comment p').first()
 				).toHaveText(commentBody, { timeout: 10_000 });
 				// Backend cross-check: exactly one kudos row from USER_C_PRO.
-				const { data: kudosRows } = await admin
-					.from('run_kudos')
-					.select('user_id')
-					.eq('run_id', runId);
-				expect(kudosRows?.length ?? 0).toBe(1);
-				expect(kudosRows?.[0]?.user_id).toBe(USER_C_PRO.id);
+				const kudosRows = await readRows(
+					'run_kudos by run_id',
+					admin
+						.from('run_kudos')
+						.select('user_id')
+						.eq('run_id', runId)
+				);
+				expect(kudosRows.length).toBe(1);
+				expect(kudosRows[0]?.user_id).toBe(USER_C_PRO.id);
 			});
 
 			// ── 7. Delete from the detail page; gone from /runs ─────────
@@ -254,11 +260,14 @@ test.describe('run lifecycle journey', () => {
 
 				// Backend: the row is gone (the delete cascades the guest's
 				// kudos + comment rows via FK ON DELETE CASCADE).
-				const { data: gone } = await admin
-					.from('runs')
-					.select('id')
-					.eq('id', runId)
-					.maybeSingle();
+				const gone = await readMaybeRow(
+					'runs by id',
+					admin
+						.from('runs')
+						.select('id')
+						.eq('id', runId)
+						.maybeSingle()
+				);
 				expect(gone).toBeNull();
 				runId = ''; // delete succeeded — no teardown needed.
 			});

@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 
 import '../auth_error.dart';
@@ -8,9 +11,12 @@ import '../onboarding.dart';
 import '../preferences.dart';
 import '../text_limits.dart';
 import '../settings_sync.dart';
+import '../typed_decimal.dart';
+import '../widgets/confirm_destructive.dart';
 import '../widgets/top_banner.dart';
+import 'import_screen.dart' show healthLabelFor;
 
-/// Post-signup setup wizard — mobile twin of web's 7-step `/onboarding`
+/// Post-signup setup wizard — mobile twin of web's `/onboarding`
 /// page. Shown once when a signed-in user's `user_profiles.onboarded_at`
 /// is still null; stamps it on Finish or Skip so a returning user never
 /// re-sees it. The home-screen gate ([SetupWizardScreen] is pushed by
@@ -20,11 +26,23 @@ import '../widgets/top_banner.dart';
 /// privacy flow keyed on the local `Preferences.onboarded` flag. This
 /// wizard collects account-level setup data and writes the SAME fields
 /// web collects (display name, units, goal, demographics + Art 9 consent,
-/// privacy default, notifications).
-class SetupWizardScreen extends StatefulWidget {
+/// privacy default, notifications), plus one mobile-only step asking
+/// whether to show Gym and Nutrition (decisions § 1739).
+class SetupWizardScreen extends StatelessWidget {
   final ApiClient apiClient;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
+
+  /// Builds the existing Import screen (Health Connect / Apple Health and the
+  /// Strava archive), which the import step pushes over the wizard. The
+  /// wizard is a route, so closing the import lands back on the same step
+  /// with every answer still held — the caller owns the stores it needs.
+  final WidgetBuilder importScreenBuilder;
+
+  /// Test seam for the platform the source list is chosen for. Production
+  /// leaves it null and the wizard reads `Platform.isIOS`.
+  @visibleForTesting
+  final bool? isIOS;
 
   /// The user's display name from the auth row, if the provider returned
   /// one — prefills the name field so the user can edit before continuing.
@@ -42,28 +60,95 @@ class SetupWizardScreen extends StatefulWidget {
     this.settingsSync,
     this.initialDisplayName,
     this.initialPreferredUnit,
+    required this.importScreenBuilder,
+    this.isIOS,
   });
 
   @override
-  State<SetupWizardScreen> createState() => _SetupWizardScreenState();
+  Widget build(BuildContext context) {
+    // The wizard is pushed from a plain `MaterialPageRoute` under a
+    // `MaterialApp` with no `restorationScopeId`, so nothing above it offers
+    // a bucket for [RestorationMixin] to hang the typed answers on. The
+    // scope has to sit ABOVE the state that registers into it — a
+    // `RootRestorationScope` built by that same state is below itself and
+    // feeds nothing, which reads as restoration silently doing nothing.
+    return RootRestorationScope(
+      restorationId: 'setup_wizard_root',
+      child: _SetupWizardBody(
+        apiClient: apiClient,
+        preferences: preferences,
+        settingsSync: settingsSync,
+        initialDisplayName: initialDisplayName,
+        initialPreferredUnit: initialPreferredUnit,
+        importScreenBuilder: importScreenBuilder,
+        isIOS: isIOS,
+      ),
+    );
+  }
 }
 
-class _SetupWizardScreenState extends State<SetupWizardScreen> {
-  int _step = 0;
+class _SetupWizardBody extends StatefulWidget {
+  final ApiClient apiClient;
+  final Preferences preferences;
+  final SettingsSyncService? settingsSync;
+  final String? initialDisplayName;
+  final String? initialPreferredUnit;
+  final WidgetBuilder importScreenBuilder;
+  final bool? isIOS;
 
-  final _displayNameCtl = TextEditingController();
-  String _preferredUnit = 'km';
-  String? _primaryGoal;
-  String _gender = '';
-  DateTime? _dateOfBirth;
-  final _weightCtl = TextEditingController();
-  bool _healthDataConsent = false;
-  String _privacyDefault = 'private';
+  const _SetupWizardBody({
+    required this.apiClient,
+    required this.preferences,
+    this.settingsSync,
+    this.initialDisplayName,
+    this.initialPreferredUnit,
+    required this.importScreenBuilder,
+    this.isIOS,
+  });
+
+  @override
+  State<_SetupWizardBody> createState() => _SetupWizardBodyState();
+}
+
+class _SetupWizardBodyState extends State<_SetupWizardBody>
+    with RestorationMixin {
+  /// The step ids this run of the wizard walks — [visibleSetupWizardSteps]
+  /// with the already-answered ones dropped. Resolved once in [initState]
+  /// so the list can't change length under a restored cursor.
+  late final List<String> _steps;
+  final RestorableInt _stepIndex = RestorableInt(0);
+
+  // Seeded in initState rather than at the declaration: a RestorableValue
+  // refuses `value =` before registration, so the seed has to reach it
+  // through the constructor, and every seed reads `widget`.
+  late final RestorableTextEditingController _displayNameCtl;
+  late final RestorableString _preferredUnit;
+  final RestorableStringN _primaryGoal = RestorableStringN(null);
+  final RestorableString _gender = RestorableString('');
+  final RestorableDateTimeN _dateOfBirth = RestorableDateTimeN(null);
+  final RestorableTextEditingController _weightCtl =
+      RestorableTextEditingController();
+  final RestorableBool _healthDataConsent = RestorableBool(false);
+  late final RestorableString _privacyDefault;
   // Mobile's notification control is the universal `push_notifications`
   // bag key (no native OS permission prompt to request here — unlike web
-  // — so the wizard step sets the preference). Default 'important' matches
-  // the bag default registered in settings.md.
-  String _pushNotifications = 'important';
+  // — so the wizard step sets the preference). Null until the runner taps a
+  // level: seeded with the registry's `important`, an untouched step wrote
+  // that default into the bag as a choice, and reported itself answered to
+  // [_currentStepAnswered] so the nav button said Continue over a question
+  // nobody had been asked. Left unwritten, reads fall back to the same
+  // `important` (settings.md).
+  final RestorableStringN _pushNotifications = RestorableStringN(null);
+  // The track step records a choice only once a switch is touched, for the
+  // same reason as the notification level: an untouched step that wrote
+  // false/false would pin both modalities hidden for a runner who later logs
+  // a lift, where leaving them unset lets data presence decide (§ 1739).
+  final RestorableBool _modalitiesChosen = RestorableBool(false);
+  late final RestorableBool _trackGym;
+  late final RestorableBool _trackNutrition;
+  // Set once the runner has opened an import from the import step and come
+  // back, so the step's forward button stops reading Skip.
+  final RestorableBool _importOpened = RestorableBool(false);
 
   bool _saving = false;
 
@@ -77,9 +162,18 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialDisplayName != null) {
-      _displayNameCtl.text = widget.initialDisplayName!;
-    }
+    // The launch flow's privacy chooser already wrote a real answer, so the
+    // wizard seeds from it rather than from a hard-coded 'private' it would
+    // then write back over the top on Finish.
+    _privacyDefault = RestorableString(widget.preferences.privacyDefault);
+    _trackGym = RestorableBool(widget.preferences.showGym ?? false);
+    _trackNutrition = RestorableBool(widget.preferences.showNutrition ?? false);
+    _steps = visibleSetupWizardSteps(
+      privacyAlreadyChosen: widget.preferences.onboarded,
+    );
+    _displayNameCtl = RestorableTextEditingController(
+      text: widget.initialDisplayName ?? '',
+    );
     // Units step default: an explicit prior choice wins, otherwise the
     // device locale decides (mi for US/GB/LR/MM, km elsewhere) instead of
     // hard-coding km for every signup — mirrors web /onboarding's
@@ -87,28 +181,67 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     // locale (not Localizations.localeOf) because the app's resolved
     // locale drops the region subtag the derivation needs.
     final unit = widget.initialPreferredUnit;
-    _preferredUnit = (unit == 'km' || unit == 'mi')
-        ? unit!
-        : defaultUnitForLocale(WidgetsBinding
-            .instance.platformDispatcher.locale
-            .toLanguageTag());
+    _preferredUnit = RestorableString(
+      (unit == 'km' || unit == 'mi')
+          ? unit!
+          : defaultUnitForLocale(
+              WidgetsBinding.instance.platformDispatcher.locale.toLanguageTag(),
+            ),
+    );
+  }
+
+  bool get _isIOS => widget.isIOS ?? Platform.isIOS;
+
+  @override
+  String get restorationId => 'setup_wizard';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_stepIndex, 'step');
+    registerForRestoration(_displayNameCtl, 'display_name');
+    registerForRestoration(_preferredUnit, 'preferred_unit');
+    registerForRestoration(_primaryGoal, 'primary_goal');
+    registerForRestoration(_gender, 'gender');
+    registerForRestoration(_dateOfBirth, 'date_of_birth');
+    registerForRestoration(_weightCtl, 'weight');
+    registerForRestoration(_healthDataConsent, 'health_consent');
+    registerForRestoration(_privacyDefault, 'privacy_default');
+    registerForRestoration(_pushNotifications, 'push_notifications');
+    registerForRestoration(_modalitiesChosen, 'modalities_chosen');
+    registerForRestoration(_trackGym, 'track_gym');
+    registerForRestoration(_trackNutrition, 'track_nutrition');
+    registerForRestoration(_importOpened, 'import_opened');
   }
 
   @override
   void dispose() {
+    _stepIndex.dispose();
     _displayNameCtl.dispose();
+    _preferredUnit.dispose();
+    _primaryGoal.dispose();
+    _gender.dispose();
+    _dateOfBirth.dispose();
     _weightCtl.dispose();
+    _healthDataConsent.dispose();
+    _privacyDefault.dispose();
+    _pushNotifications.dispose();
+    _modalitiesChosen.dispose();
+    _trackGym.dispose();
+    _trackNutrition.dispose();
+    _importOpened.dispose();
     super.dispose();
   }
 
-  bool get _isLastStep => _step == onboardingTotalSteps - 1;
+  String get _step => _steps[_stepIndex.value];
+
+  bool get _isLastStep => _stepIndex.value == _steps.length - 1;
 
   void _next() {
-    if (_step < onboardingTotalSteps - 1) setState(() => _step += 1);
+    if (!_isLastStep) setState(() => _stepIndex.value += 1);
   }
 
   void _back() {
-    if (_step > 0) setState(() => _step -= 1);
+    if (_stepIndex.value > 0) setState(() => _stepIndex.value -= 1);
   }
 
   /// Skip-onboarding header link. Stamps `onboarded_at = now()` only — the
@@ -157,37 +290,48 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       // owns the consent-gating: gender + consent only under the toggle,
       // DOB written unconditionally for the minor-exclusion floor).
       await widget.apiClient.completeOnboarding(
-        displayName: _displayNameCtl.text,
-        preferredUnit: _preferredUnit,
-        dateOfBirth: _dateOfBirth,
-        gender: _gender,
-        healthDataConsent: _healthDataConsent,
+        displayName: _displayNameCtl.value.text,
+        preferredUnit: _preferredUnit.value,
+        dateOfBirth: _dateOfBirth.value,
+        gender: _gender.value,
+        healthDataConsent: _healthDataConsent.value,
       );
 
       // 2. Universal-prefs bag (units + privacy + goal + weight + the
       // consent-gated DOB mirror). Best-effort + locally mirrored where a
       // local pref exists, so the privacy default protects new-run
       // visibility immediately even if the bag write fails offline.
-      _preferredUnit == 'mi'
+      _preferredUnit.value == 'mi'
           ? widget.preferences.setUseMiles(true)
           : widget.preferences.setUseMiles(false);
-      await widget.preferences.setPrivacyDefault(_privacyDefault);
+      await widget.preferences.setPrivacyDefault(_privacyDefault.value);
+      if (_modalitiesChosen.value) {
+        await widget.preferences.setShowGym(_trackGym.value);
+        await widget.preferences.setShowNutrition(_trackNutrition.value);
+        try {
+          await widget.settingsSync?.pushModalityVisibility();
+        } catch (e) {
+          debugPrint('onboarding modality push failed (kept local): $e');
+        }
+      }
 
       final bag = <String, dynamic>{
-        SettingsKeys.preferredUnit: _preferredUnit,
-        SettingsKeys.privacyDefault: _privacyDefault,
-        SettingsKeys.pushNotifications: _pushNotifications,
+        SettingsKeys.preferredUnit: _preferredUnit.value,
+        SettingsKeys.privacyDefault: _privacyDefault.value,
       };
-      if (_primaryGoal != null) bag[SettingsKeys.primaryGoal] = _primaryGoal;
-      final w = double.tryParse(_weightCtl.text.trim().replaceAll(',', '.'));
+      final goal = _primaryGoal.value;
+      if (goal != null) bag[SettingsKeys.primaryGoal] = goal;
+      final push = _pushNotifications.value;
+      if (push != null) bag[SettingsKeys.pushNotifications] = push;
+      final w = parseTypedDecimal(_weightCtl.value.text);
       if (w != null && w > 0) bag[SettingsKeys.bodyWeightKg] = w;
       // DOB mirrors into the bag only under health consent — the bag copy
       // feeds the coach / leaderboard read paths (Art 9 surfaces). The
       // minor-exclusion floor reads the profile column written above, not
       // the bag, so the child-safety write doesn't depend on this mirror.
-      if (_healthDataConsent && _dateOfBirth != null) {
-        bag[SettingsKeys.dateOfBirth] =
-            ApiClient.dateOnly(_dateOfBirth!);
+      final dob = _dateOfBirth.value;
+      if (_healthDataConsent.value && dob != null) {
+        bag[SettingsKeys.dateOfBirth] = ApiClient.dateOnly(dob);
       }
       // `onboarded_at` is stamped by now, so the wizard can never re-ask —
       // and the goal / notification answers have no local mirror to fall
@@ -211,7 +355,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
             : l10n.setupPrefsSaveError(bagError),
         duration: Duration(seconds: bagError == null ? 3 : 6),
       );
-      Navigator.of(context).pop(createPlan ? _primaryGoal : null);
+      Navigator.of(context).pop(createPlan ? _primaryGoal.value : null);
     } catch (e) {
       debugPrint('SetupWizardScreen save failed: $e');
       if (!mounted) return;
@@ -228,10 +372,12 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return PopScope(
-      // The gate decides when the wizard shows; a swipe-back would leave
-      // onboarded_at null and re-trigger it next launch. Force a choice
-      // (Finish or Skip).
+      // The gate decides when the wizard shows; letting the OS pop it
+      // would leave onboarded_at null and re-trigger it next launch. The
+      // gesture isn't dead, though: it steps back through the wizard, and
+      // on the first step it offers the same exit the header does.
       canPop: false,
+      onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -246,11 +392,13 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              _ProgressDots(step: _step, total: onboardingTotalSteps),
+              _ProgressDots(step: _stepIndex.value, total: _steps.length),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 8),
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
                   child: _buildStep(theme, l10n),
                 ),
               ),
@@ -263,15 +411,40 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     );
   }
 
+  /// The OS back gesture / button. Steps back through the wizard rather
+  /// than doing nothing; on the first step there is nothing to step back
+  /// to, so it offers the exit — confirmed, because the alternative is a
+  /// swipe that silently throws away everything typed so far.
+  void _onPopInvoked(bool didPop, Object? result) {
+    if (didPop || _saving) return;
+    if (_stepIndex.value > 0) {
+      _back();
+      return;
+    }
+    _confirmExit();
+  }
+
+  Future<void> _confirmExit() async {
+    final l10n = AppLocalizations.of(context);
+    final leave = await confirmDestructive(
+      context,
+      title: l10n.setupLeaveTitle,
+      body: l10n.setupLeaveBody,
+      confirmLabel: l10n.setupLeaveConfirm,
+      cancelLabel: l10n.setupLeaveStay,
+    );
+    if (leave && mounted) await _skip();
+  }
+
   Widget _buildStep(ThemeData theme, AppLocalizations l10n) {
     switch (_step) {
-      case 0:
+      case 'name':
         return _stepShell(
           theme,
           title: l10n.setupNameTitle,
           hint: l10n.setupNameHint,
           child: TextField(
-            controller: _displayNameCtl,
+            controller: _displayNameCtl.value,
             maxLength: kDisplayNameMaxLength,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
@@ -280,7 +453,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
             ),
           ),
         );
-      case 1:
+      case 'units':
         return _stepShell(
           theme,
           title: l10n.setupUnitsTitle,
@@ -288,21 +461,21 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           child: Column(
             children: [
               _OptionCard(
-                selected: _preferredUnit == 'km',
+                selected: _preferredUnit.value == 'km',
                 title: l10n.setupUnitKm,
                 subtitle: l10n.setupUnitKmSample,
-                onTap: () => setState(() => _preferredUnit = 'km'),
+                onTap: () => setState(() => _preferredUnit.value = 'km'),
               ),
               _OptionCard(
-                selected: _preferredUnit == 'mi',
+                selected: _preferredUnit.value == 'mi',
                 title: l10n.setupUnitMi,
                 subtitle: l10n.setupUnitMiSample,
-                onTap: () => setState(() => _preferredUnit = 'mi'),
+                onTap: () => setState(() => _preferredUnit.value = 'mi'),
               ),
             ],
           ),
         );
-      case 2:
+      case 'goal':
         return _stepShell(
           theme,
           title: l10n.setupGoalTitle,
@@ -311,16 +484,16 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
             children: [
               for (final g in primaryGoalValues)
                 _OptionCard(
-                  selected: _primaryGoal == g,
+                  selected: _primaryGoal.value == g,
                   title: _goalLabel(l10n, g),
-                  onTap: () => setState(() => _primaryGoal = g),
+                  onTap: () => setState(() => _primaryGoal.value = g),
                 ),
             ],
           ),
         );
-      case 3:
+      case 'about':
         return _buildAboutYou(theme, l10n);
-      case 4:
+      case 'run-privacy':
         return _stepShell(
           theme,
           title: l10n.setupPrivacyTitle,
@@ -328,27 +501,28 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           child: Column(
             children: [
               _OptionCard(
-                selected: _privacyDefault == 'private',
+                selected: _privacyDefault.value == 'private',
                 title: l10n.privacyPrivateTitle,
                 subtitle: l10n.privacyPrivateSubtitle,
-                onTap: () => setState(() => _privacyDefault = 'private'),
+                onTap: () => setState(() => _privacyDefault.value = 'private'),
               ),
               _OptionCard(
-                selected: _privacyDefault == 'followers',
+                selected: _privacyDefault.value == 'followers',
                 title: l10n.privacyFollowersTitle,
                 subtitle: l10n.privacyFollowersSubtitle,
-                onTap: () => setState(() => _privacyDefault = 'followers'),
+                onTap: () =>
+                    setState(() => _privacyDefault.value = 'followers'),
               ),
               _OptionCard(
-                selected: _privacyDefault == 'public',
+                selected: _privacyDefault.value == 'public',
                 title: l10n.privacyPublicTitle,
                 subtitle: l10n.privacyPublicSubtitle,
-                onTap: () => setState(() => _privacyDefault = 'public'),
+                onTap: () => setState(() => _privacyDefault.value = 'public'),
               ),
             ],
           ),
         );
-      case 5:
+      case 'notifications':
         return _stepShell(
           theme,
           title: l10n.setupNotificationsTitle,
@@ -356,24 +530,28 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           child: Column(
             children: [
               _OptionCard(
-                selected: _pushNotifications == 'important',
+                selected: _pushNotifications.value == 'important',
                 title: l10n.prefsPushNotifImportant,
                 onTap: () =>
-                    setState(() => _pushNotifications = 'important'),
+                    setState(() => _pushNotifications.value = 'important'),
               ),
               _OptionCard(
-                selected: _pushNotifications == 'all',
+                selected: _pushNotifications.value == 'all',
                 title: l10n.prefsPushNotifAll,
-                onTap: () => setState(() => _pushNotifications = 'all'),
+                onTap: () => setState(() => _pushNotifications.value = 'all'),
               ),
               _OptionCard(
-                selected: _pushNotifications == 'off',
+                selected: _pushNotifications.value == 'off',
                 title: l10n.prefsPushNotifOff,
-                onTap: () => setState(() => _pushNotifications = 'off'),
+                onTap: () => setState(() => _pushNotifications.value = 'off'),
               ),
             ],
           ),
         );
+      case setupWizardTrackStep:
+        return _buildTrack(theme, l10n);
+      case setupWizardImportStep:
+        return _buildImport(theme, l10n);
       default:
         return _stepShell(
           theme,
@@ -381,23 +559,127 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           // When a goal was picked the body hosts the primary "Create my
           // training plan" CTA, so the hint names that action; otherwise
           // "Open dashboard" in the nav is the primary and the hint names it.
-          hint: _primaryGoal == null ? l10n.setupDoneHint : l10n.setupDoneHintGoal,
+          hint: _primaryGoal.value == null
+              ? l10n.setupDoneHint
+              : l10n.setupDoneHintGoal,
           // A goal-keyed CTA into the plan wizard (runner-new discoverability
           // nudge) when the runner picked a goal; a plain finish otherwise.
-          child: _primaryGoal == null
+          child: _primaryGoal.value == null
               ? const SizedBox.shrink()
               : Align(
                   alignment: Alignment.centerLeft,
                   child: FilledButton(
                     onPressed: _saving ? null : () => _finish(createPlan: true),
-                    child: Text(_saving
-                        ? l10n.setupSaving
-                        : l10n.setupCreatePlanCta),
+                    child: Text(
+                      _saving ? l10n.setupSaving : l10n.setupCreatePlanCta,
+                    ),
                   ),
                 ),
         );
     }
   }
+
+  Widget _buildTrack(ThemeData theme, AppLocalizations l10n) {
+    return _stepShell(
+      theme,
+      title: l10n.setupTrackTitle,
+      hint: l10n.setupTrackHint,
+      child: Column(
+        children: [
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.directions_run),
+              title: Text(l10n.setupTrackRunning),
+              subtitle: Text(l10n.setupTrackRunningAlwaysOn),
+              trailing:
+                  Icon(Icons.check_circle, color: theme.colorScheme.primary),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: SwitchListTile(
+              secondary: const Icon(Icons.fitness_center),
+              title: Text(l10n.fitnessTabGym),
+              subtitle: Text(l10n.prefsShowGymSubtitle),
+              value: _trackGym.value,
+              onChanged: (v) => setState(() {
+                _trackGym.value = v;
+                _modalitiesChosen.value = true;
+              }),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: SwitchListTile(
+              secondary: const Icon(Icons.restaurant),
+              title: Text(l10n.fitnessTabNutrition),
+              subtitle: Text(l10n.prefsShowNutritionSubtitle),
+              value: _trackNutrition.value,
+              onChanged: (v) => setState(() {
+                _trackNutrition.value = v;
+                _modalitiesChosen.value = true;
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImport(ThemeData theme, AppLocalizations l10n) {
+    final sources = setupWizardImportSources(isIOS: _isIOS);
+    return _stepShell(
+      theme,
+      title: l10n.setupImportTitle,
+      hint: l10n.setupImportHint,
+      child: Column(
+        children: [
+          for (final source in sources)
+            Card(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              child: ListTile(
+                key: ValueKey('setup-import-$source'),
+                leading: Icon(_importIcon(source)),
+                title: Text(_importName(l10n, source)),
+                subtitle: Text(_importDescription(l10n, source)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _saving ? null : () => _openImport(source),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Opens the existing import surface for [source] over the wizard. The
+  /// health platform's own permission sheet, and every consent the import
+  /// screen asks for, run there exactly as they do from Settings.
+  Future<void> _openImport(String source) async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: widget.importScreenBuilder));
+    if (!mounted) return;
+    setState(() => _importOpened.value = true);
+  }
+
+  IconData _importIcon(String source) => switch (source) {
+    'strava' => Icons.directions_run,
+    _ => Icons.favorite_outline,
+  };
+
+  // The health platform's name is the Import screen's own label, so it reads
+  // the same on every surface.
+  String _importName(AppLocalizations l10n, String source) => switch (source) {
+    'strava' => 'Strava',
+    _ => healthLabelFor(l10n, isIOS: source == 'healthkit'),
+  };
+
+  String _importDescription(AppLocalizations l10n, String source) =>
+      switch (source) {
+        'strava' => l10n.setupImportStravaDesc,
+        'healthkit' => l10n.setupImportHealthIos,
+        _ => l10n.setupImportHealthAndroid,
+      };
 
   Widget _buildAboutYou(ThemeData theme, AppLocalizations l10n) {
     return _stepShell(
@@ -408,18 +690,23 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<String>(
-            initialValue: _gender,
-            decoration: InputDecoration(
-              labelText: l10n.setupGenderLabel,
-            ),
+            initialValue: _gender.value,
+            decoration: InputDecoration(labelText: l10n.setupGenderLabel),
             items: [
-              DropdownMenuItem(value: '', child: Text(l10n.setupGenderPreferNot)),
               DropdownMenuItem(
-                  value: 'female', child: Text(l10n.setupGenderFemale)),
+                value: '',
+                child: Text(l10n.setupGenderPreferNot),
+              ),
               DropdownMenuItem(
-                  value: 'male', child: Text(l10n.setupGenderMale)),
+                value: 'female',
+                child: Text(l10n.setupGenderFemale),
+              ),
+              DropdownMenuItem(
+                value: 'male',
+                child: Text(l10n.setupGenderMale),
+              ),
             ],
-            onChanged: (v) => setState(() => _gender = v ?? ''),
+            onChanged: (v) => setState(() => _gender.value = v ?? ''),
           ),
           const SizedBox(height: 16),
           InkWell(
@@ -431,28 +718,27 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                 helperMaxLines: 3,
               ),
               child: Text(
-                _dateOfBirth == null
+                _dateOfBirth.value == null
                     ? l10n.setupDobPlaceholder
-                    : ApiClient.dateOnly(_dateOfBirth!),
+                    : ApiClient.dateOnly(_dateOfBirth.value!),
               ),
             ),
           ),
           const SizedBox(height: 16),
           TextField(
-            controller: _weightCtl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            controller: _weightCtl.value,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: l10n.setupWeightLabel,
               hintText: l10n.setupWeightPlaceholder,
             ),
           ),
-          if (_gender.isNotEmpty || _dateOfBirth != null) ...[
+          if (_gender.value.isNotEmpty || _dateOfBirth.value != null) ...[
             const SizedBox(height: 16),
             CheckboxListTile(
-              value: _healthDataConsent,
+              value: _healthDataConsent.value,
               onChanged: (v) =>
-                  setState(() => _healthDataConsent = v ?? false),
+                  setState(() => _healthDataConsent.value = v ?? false),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
               title: Text(
@@ -470,12 +756,14 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dateOfBirth ?? DateTime(now.year - 25, now.month, now.day),
+      initialDate:
+          _dateOfBirth.value ?? DateTime(now.year - 25, now.month, now.day),
       firstDate: DateTime(now.year - 120),
       lastDate: now,
       initialDatePickerMode: DatePickerMode.year,
     );
-    if (picked != null) setState(() => _dateOfBirth = picked);
+    if (!mounted) return;
+    if (picked != null) setState(() => _dateOfBirth.value = picked);
   }
 
   Widget _stepShell(
@@ -489,17 +777,17 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       children: [
         Text(
           title,
-          style: theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
           hint,
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.5,
-              ),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.5,
+          ),
         ),
         const SizedBox(height: 20),
         child,
@@ -515,8 +803,9 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           Expanded(
             child: Text(
               l10n.setupOfflineHint,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -529,13 +818,29 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     );
   }
 
+  /// Whether the current step has an answer yet. Every step can be walked
+  /// past unanswered, so a second button that only advances was a Skip and
+  /// a Continue doing the identical thing side by side. One button, whose
+  /// label names which of the two this press actually is.
+  bool get _currentStepAnswered => switch (_step) {
+    'name' => _displayNameCtl.value.text.trim().isNotEmpty,
+    'goal' => _primaryGoal.value != null,
+    'about' =>
+      _gender.value.isNotEmpty ||
+          _dateOfBirth.value != null ||
+          _weightCtl.value.text.trim().isNotEmpty,
+    'notifications' => _pushNotifications.value != null,
+    setupWizardTrackStep => _modalitiesChosen.value,
+    setupWizardImportStep => _importOpened.value,
+    _ => true,
+  };
+
   Widget _buildNav(AppLocalizations l10n) {
-    final showSkipStep = _step == 0 || _step == 2 || _step == 3 || _step == 5;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          if (_step > 0) ...[
+          if (_stepIndex.value > 0) ...[
             OutlinedButton(
               onPressed: _saving ? null : _back,
               child: Text(l10n.setupBack),
@@ -549,26 +854,35 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                if (!_isLastStep && showSkipStep)
-                  TextButton(
-                    onPressed: _saving ? null : _next,
-                    child: Text(l10n.setupSkipStep),
-                  ),
                 if (!_isLastStep)
-                  FilledButton(
-                    onPressed: _saving ? null : _next,
-                    child: Text(l10n.setupContinue),
+                  // The two text fields are the only answers typed rather
+                  // than tapped, so the label tracks them directly instead
+                  // of rebuilding the whole wizard on every keystroke.
+                  ListenableBuilder(
+                    listenable: Listenable.merge([
+                      _displayNameCtl.value,
+                      _weightCtl.value,
+                    ]),
+                    builder: (context, _) => FilledButton(
+                      onPressed: _saving ? null : _next,
+                      child: Text(
+                        _currentStepAnswered
+                            ? l10n.setupContinue
+                            : l10n.setupSkipStep,
+                      ),
+                    ),
                   )
                 // On the final step, when the runner picked a goal the body
                 // hosts the primary "Create my training plan" CTA — so "Open
                 // dashboard" demotes to a secondary action here to avoid two
                 // competing primary buttons. With no goal, finishing is the
                 // one primary action.
-                else if (_primaryGoal == null)
+                else if (_primaryGoal.value == null)
                   FilledButton(
                     onPressed: _saving ? null : _finish,
-                    child:
-                        Text(_saving ? l10n.setupSaving : l10n.setupOpenDashboard),
+                    child: Text(
+                      _saving ? l10n.setupSaving : l10n.setupOpenDashboard,
+                    ),
                   )
                 else
                   OutlinedButton(
@@ -584,13 +898,13 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   }
 
   String _goalLabel(AppLocalizations l10n, String g) => switch (g) {
-        'weight_loss' => l10n.setupGoalWeightLoss,
-        '5k' => l10n.setupGoal5k,
-        '10k' => l10n.setupGoal10k,
-        'half_marathon' => l10n.setupGoalHalf,
-        'marathon' => l10n.setupGoalMarathon,
-        _ => l10n.setupGoalGeneralFitness,
-      };
+    'weight_loss' => l10n.setupGoalWeightLoss,
+    '5k' => l10n.setupGoal5k,
+    '10k' => l10n.setupGoal10k,
+    'half_marathon' => l10n.setupGoalHalf,
+    'marathon' => l10n.setupGoalMarathon,
+    _ => l10n.setupGoalGeneralFitness,
+  };
 }
 
 class _ProgressDots extends StatelessWidget {
@@ -645,9 +959,7 @@ class _OptionCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: selected
-              ? theme.colorScheme.primary
-              : theme.dividerColor,
+          color: selected ? theme.colorScheme.primary : theme.dividerColor,
           width: selected ? 2 : 1,
         ),
       ),
@@ -662,16 +974,18 @@ class _OptionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 4),
-                      Text(subtitle!,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
+                      Text(
+                        subtitle!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ],
                 ),

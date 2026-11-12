@@ -1,14 +1,19 @@
+import type { JsonObject } from '../types';
 /// Pure overlay-lookup helper for the universal + per-device prefs
 /// bags. Lives in its own module so tests can import it without
 /// dragging in `./supabase` (which transitively pulls in the
-/// SvelteKit `$env/static/public` virtual import — that breaks the
+/// SvelteKit `$app/env/public` virtual import — that breaks the
 /// `tsx --test` loader). `settings.ts` re-exports both names.
 
-export type PrefsBag = Record<string, unknown>;
+export type PrefsBag = JsonObject;
 
 export interface LoadedSettings {
 	universal: PrefsBag;
 	device: PrefsBag;
+	/// Set when the universal bag came from neither the server nor this
+	/// device's cache (offline on a cold cache), so it holds no setting at all
+	/// rather than the user's. Absent everywhere else.
+	universalUnknown?: true;
 }
 
 /// device → universal → fallback. Null and undefined fall through to
@@ -23,6 +28,17 @@ export function effective<T>(
 	const fromUniversal = settings.universal[key];
 	if (fromUniversal !== undefined && fromUniversal !== null) return fromUniversal as T;
 	return fallback;
+}
+
+/// [effective] for a decision that must not run on a guess, such as which
+/// privacy zones a shared image withholds: null when the key is not on the
+/// device bag and the universal bag is not known (`universalUnknown`), where
+/// [effective] would answer the fallback as though the user had set nothing.
+export function knownEffective<T>(settings: LoadedSettings, key: string): T | undefined | null {
+	const fromDevice = settings.device[key];
+	if (fromDevice !== undefined && fromDevice !== null) return fromDevice as T;
+	if (settings.universalUnknown) return null;
+	return effective<T>(settings, key);
 }
 
 /// Resolve the effective distance unit for the app-wide `setUnit` signal.

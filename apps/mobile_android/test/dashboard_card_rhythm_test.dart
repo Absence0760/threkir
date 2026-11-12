@@ -25,6 +25,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/widgets/disclosure_section.dart';
 
 Run _run(String id, DateTime startedAt) => Run(
       id: id,
@@ -75,31 +76,63 @@ void main() {
         await tester.pump();
         await tester.pump();
 
-        // The painted surface of every full-width card, top-to-bottom. Measured
-        // on the inner Material, since a Card's own render object spans its
-        // margin box.
-        final rects = tester
-            .widgetList<Card>(find.byType(Card))
-            .map((c) => tester.getRect(find
-                .descendant(of: find.byWidget(c), matching: find.byType(Material))
-                .first))
-            .where((r) => r.width > 200)
-            .toList()
-          ..sort((a, b) => a.top.compareTo(b.top));
+        // The self-heading run starts at the streak card. Everything above it
+        // is a group block (the week lead, goals, the period strip) and keeps
+        // its section gap, so the run is anchored on the streak's own card
+        // rather than on a fixed offset that any block added above it would
+        // shift. (It was anchored on the This Week strip until that left Home,
+        // decisions § 2283.)
+        final stripCard = find
+            .ancestor(
+                of: find.byKey(const Key('dashboardStreakRow')),
+                matching: find.byType(Card))
+            .first;
+        final stripTop = tester
+            .getRect(find
+                .descendant(of: stripCard, matching: find.byType(Material))
+                .first)
+            .top;
+        // Cards are measured on the inner Material, since a Card's own render
+        // object spans its margin box. Below the strip the cards sit in
+        // collapsible trend groups (multi_modal.md § Home, contract v1), each
+        // opening on its own heading. The rhythm holds inside each run of cards — the streak
+        // card above the first group, then each group's own stack —
+        // so the gaps are measured per run, never across a group heading.
+        final runs = <Key?, List<Rect>>{};
+        for (final c in tester.widgetList<Card>(find.byType(Card))) {
+          final rect = tester.getRect(find
+              .descendant(of: find.byWidget(c), matching: find.byType(Material))
+              .first);
+          if (rect.width <= 200 || rect.top < stripTop) continue;
+          // A card that is a row of another card (the one Training load card
+          // holds the load views, decisions § 2385) is not in the stack.
+          if (find
+              .ancestor(of: find.byWidget(c), matching: find.byType(Card))
+              .evaluate()
+              .isNotEmpty) {
+            continue;
+          }
+          final group = find
+              .ancestor(of: find.byWidget(c), matching: find.byType(DisclosureSection))
+              .evaluate();
+          (runs[group.isEmpty ? null : group.first.widget.key] ??= []).add(rect);
+        }
+        expect(runs.length, greaterThanOrEqualTo(3),
+            reason: 'the strip run plus at least two trend groups must mount');
+        expect(runs.values.fold<int>(0, (n, r) => n + r.length),
+            greaterThanOrEqualTo(5),
+            reason: 'the card stack must actually have mounted (the four load '
+                'views are one card since decisions § 2385)');
 
-        // The self-heading run: the "This Week" strip through the training-load
-        // chart. Everything above it is a group block (goals, the three-abreast
-        // period strip) and keeps its section gap.
-        final headed = rects.where((r) => r.top > 300).toList();
-        expect(headed.length, greaterThanOrEqualTo(6),
-            reason: 'the card stack must actually have mounted');
-
-        final gaps = <double>[
-          for (var i = 1; i < headed.length; i++)
-            headed[i].top - headed[i - 1].bottom,
-        ];
+        final gaps = <double>[];
+        for (final run in runs.values) {
+          run.sort((a, b) => a.top.compareTo(b.top));
+          for (var i = 1; i < run.length; i++) {
+            gaps.add(run[i].top - run[i - 1].bottom);
+          }
+        }
         expect(gaps.toSet(), hasLength(1),
-            reason: 'the stack changes rhythm partway down: $gaps');
+            reason: 'a run of cards changes rhythm partway down: $gaps');
 
         // And the one gap is the card theme's own vertical margin, doubled —
         // derived from the theme rather than asserted as a number, so raising

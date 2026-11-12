@@ -1,5 +1,7 @@
+import 'package:core_models/core_models.dart';
+import 'package:flutter/material.dart';
+
 import 'l10n/gen/app_localizations.dart';
-import 'preferences.dart';
 
 /// The one `runs.activity_type` vocabulary on mobile — the Dart mirror of
 /// web's `runs/activity_type.svelte.ts#activityTypeLabel`.
@@ -33,3 +35,60 @@ String activityTypeLabel(AppLocalizations l10n, ActivityType type) {
 /// `run`, matching the column default and `ActivityType.fromName`.
 String activityTypeLabelFor(AppLocalizations l10n, String? raw) =>
     activityTypeLabel(l10n, ActivityType.fromName(raw));
+
+/// The Material icon per value.
+///
+/// An extension rather than a member because the enum lives in `core_models`,
+/// which has no Flutter dependency — the same reason the label above is a
+/// function rather than a getter. Both halves of "how this value is presented"
+/// therefore sit in this one file.
+extension ActivityTypeIcon on ActivityType {
+  IconData get icon {
+    switch (this) {
+      case ActivityType.run:
+        return Icons.directions_run;
+      case ActivityType.walk:
+        return Icons.directions_walk;
+      case ActivityType.cycle:
+        return Icons.directions_bike;
+      case ActivityType.hike:
+        return Icons.terrain;
+      case ActivityType.stroller:
+        return Icons.child_friendly;
+    }
+  }
+}
+
+/// The centre nav button's caption when a tap starts recording [type]. Short
+/// enough for the centre slot; the caption shrinks to fit rather than clip.
+String startActivityCaption(AppLocalizations l10n, ActivityType type) {
+  switch (type) {
+    case ActivityType.run:
+      return l10n.navStartRun;
+    case ActivityType.walk:
+      return l10n.navStartWalk;
+    case ActivityType.cycle:
+      return l10n.navStartRide;
+    case ActivityType.hike:
+      return l10n.navStartTrailRun;
+    case ActivityType.stroller:
+      return l10n.navStartStroller;
+  }
+}
+
+/// The sentence-form action that starts recording [type]: the centre button's
+/// spoken label and the empty Home's primary button.
+String startActivityAction(AppLocalizations l10n, ActivityType type) {
+  switch (type) {
+    case ActivityType.run:
+      return l10n.startRecordingRun;
+    case ActivityType.walk:
+      return l10n.startRecordingWalk;
+    case ActivityType.cycle:
+      return l10n.startRecordingRide;
+    case ActivityType.hike:
+      return l10n.startRecordingTrailRun;
+    case ActivityType.stroller:
+      return l10n.startRecordingStroller;
+  }
+}

@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/preferences.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/this_week_strip.dart';
 
 Run _run({
   required DateTime startedAt,
@@ -23,6 +23,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required List<Run> runs,
   DistanceUnit unit = DistanceUnit.km,
+  String weekStartDay = 'monday',
   required DateTime now,
   double textScale = 1.0,
   Locale? locale,
@@ -41,7 +42,12 @@ Future<void> _pump(
       ),
       home: Scaffold(
         body: SingleChildScrollView(
-          child: MileageTrendCard(runs: runs, unit: unit, now: now),
+          child: MileageTrendCard(
+            runs: runs,
+            unit: unit,
+            weekStartDay: weekStartDay,
+            now: now,
+          ),
         ),
       ),
     ),
@@ -63,7 +69,7 @@ void main() {
       // even when the data set is empty. Pre-fix this collapsed
       // to SizedBox.shrink and the dashboard had a "missing tile"
       // gap until the user logged their first run.
-      expect(find.text('Mileage'), findsOneWidget);
+      expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Week'), findsOneWidget);
       expect(find.text('Month'), findsOneWidget);
       expect(find.text('Year'), findsOneWidget);
@@ -78,7 +84,7 @@ void main() {
         ],
         now: now,
       );
-      expect(find.text('Mileage'), findsOneWidget);
+      expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Week'), findsOneWidget);
       expect(find.text('Month'), findsOneWidget);
       expect(find.text('Year'), findsOneWidget);
@@ -191,6 +197,34 @@ void main() {
       expect(tester.getSize(label).height, lessThanOrEqualTo(grown));
     });
 
+    testWidgets('switching views does not resize the toggle mid-animation',
+        (tester) async {
+      // Field report: switching Week / Month / Year "glitched". Each chip's
+      // checkmark grew in or out over ~150 ms, so two chips changed width on
+      // every switch and the row slid sideways (20 px at 360 dp). Every chip
+      // now carries an avatar slot the checkmark paints over, so no frame of
+      // the transition moves the row.
+      tester.view.physicalSize = const Size(360, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(tester,
+          runs: [_run(startedAt: DateTime(2026, 5, 18, 7), distanceM: 5000)],
+          now: now);
+      final toggle = find
+          .ancestor(of: find.text('Week'), matching: find.byType(Wrap))
+          .first;
+      final rest = tester.getRect(toggle);
+      for (final next in ['Month', 'Year', 'Week']) {
+        await tester.tap(find.text(next));
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.getRect(toggle), rest,
+              reason: 'frame $frame of the switch to $next moved the toggle');
+        }
+        await tester.pumpAndSettle();
+      }
+    });
+
     testWidgets('the view toggle reflows instead of bursting the card',
         (tester) async {
       // Issue #666 round 9. As a SegmentedButton the toggle overflowed a
@@ -228,7 +262,10 @@ void main() {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     MileageTrendCard(
-                        runs: runs, unit: DistanceUnit.km, now: now),
+                        runs: runs,
+                        unit: DistanceUnit.km,
+                        weekStartDay: 'monday',
+                        now: now),
                   ],
                 ),
               ),
@@ -302,11 +339,67 @@ void main() {
       });
     }
 
+    // Field report: week start Sunday, the Home tile said 22.50 km this week
+    // and this card's headline said 7.50 km. The card and the This Week strip
+    // render from the same runs and preference on Home; both must name the
+    // same seven days, across a local Saturday-night / Sunday-morning seam.
+    for (final (weekStartDay, expected) in [
+      ('sunday', '15.50 km'),
+      ('monday', '12.50 km'),
+    ]) {
+      testWidgets(
+          'the "this week" headline matches the This Week strip ($weekStartDay)',
+          (tester) async {
+        final seamNow = DateTime(2026, 5, 23, 22); // Saturday, 22:00 local
+        final runs = [
+          _run(startedAt: DateTime(2026, 5, 16, 23, 30), distanceM: 4000),
+          _run(startedAt: DateTime(2026, 5, 17, 0, 30), distanceM: 3000),
+          _run(startedAt: DateTime(2026, 5, 18, 12), distanceM: 5000),
+          _run(startedAt: DateTime(2026, 5, 23, 12), distanceM: 7500),
+        ];
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Column(children: [
+                MileageTrendCard(
+                  runs: runs,
+                  unit: DistanceUnit.km,
+                  weekStartDay: weekStartDay,
+                  now: seamNow,
+                ),
+                ThisWeekStrip(
+                  runs: runs,
+                  unit: DistanceUnit.km,
+                  weekStartDay: weekStartDay,
+                  now: seamNow,
+                ),
+              ]),
+            ),
+          ),
+        ));
+
+        expect(
+          find.descendant(
+              of: find.byType(MileageTrendCard), matching: find.text(expected)),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(ThisWeekStrip),
+            matching: find.textContaining('$expected ·'),
+          ),
+          findsOneWidget,
+        );
+      });
+    }
+
     testWidgets('the header is the shared chart eyebrow', (tester) async {
       await _pump(tester, runs: const [], now: now);
       expect(
         find.ancestor(
-          of: find.text('Mileage'),
+          of: find.text('Distance'),
           matching: find.byType(ChartCardHeader),
         ),
         findsOneWidget,
